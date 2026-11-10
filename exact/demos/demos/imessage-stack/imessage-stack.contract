@@ -1,88 +1,17 @@
 // iMessage Stack: ten pastel cards in a fanned stack; a paged horizontal swipe brings the next
 // card to the front, the one leaving swinging aside and tucking behind. RN:
-// src/animations/imessage-stack (index.tsx, card.tsx).
+// src/animations/imessage-stack (index.tsx, card.tsx). The whole demo is one Rust surface
+// (gpu/src/imessage_stack.rs): the inverted FlatList as UIKit's scroll with RN's snapToInterval
+// and disableIntervalMomentum (one card per fling), and the cards' interpolated transforms,
+// shadows and depth order.
 use DemoEnv from "../env.contract"
-
-// index.tsx CARDS.
-fn cardColors(): string[] = ["color(display-p3 0.9451 0.9333 0.8784)", "color(display-p3 0.9529 0.851 0.7373)", "color(display-p3 0.9569 0.6745 0.7176)", "color(display-p3 0.9647 0.8745 0.9216)", "color(display-p3 0.8863 0.9412 0.7961)", "color(display-p3 0.7804 0.8902 0.8314)", "color(display-p3 0.6863 0.7961 1)", "color(display-p3 0.8902 0.8745 1)", "color(display-p3 1 0.898 0.8784)", "color(display-p3 1 0.8196 0.8627)"]
-
-// card.tsx: CARD_WIDTH = window width / 3, CARD_HEIGHT = CARD_WIDTH / 3 · 4.
-fn cw(w: number): number = w / 3
-fn ch(w: number): number = cw(w) / 3 * 4
-// index.tsx VerticalListPadding 25.
-fn pad(): number = 25
-
-// card.tsx interpolates the scroll offset over (index - 3 … index + 3) · CARD_WIDTH (and the
-// half steps for the swap), Extrapolation.CLAMP: `u` is the offset in cards relative to this one.
-fn seg(u: number, x0: number, x1: number, y0: number, y1: number): number = y0 + (y1 - y0) * (u - x0) / (x1 - x0)
-fn pw7(u: number, a: number, b: number, c: number, d: number, e: number, f: number, g: number): number = u <= -3 ? a : (u <= -2 ? seg(u, -3, -2, a, b) : (u <= -1 ? seg(u, -2, -1, b, c) : (u <= 0 ? seg(u, -1, 0, c, d) : (u <= 1 ? seg(u, 0, 1, d, e) : (u <= 2 ? seg(u, 1, 2, e, f) : (u <= 3 ? seg(u, 2, 3, f, g) : g))))))
-fn pw9(u: number, a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, k: number): number = u <= -3 ? a : (u <= -2 ? seg(u, -3, -2, a, b) : (u <= -1 ? seg(u, -2, -1, b, c) : (u <= -0.5 ? seg(u, -1, -0.5, c, d) : (u <= 0 ? seg(u, -0.5, 0, d, e) : (u <= 0.5 ? seg(u, 0, 0.5, e, f) : (u <= 1 ? seg(u, 0.5, 1, f, g) : (u <= 2 ? seg(u, 1, 2, g, h) : (u <= 3 ? seg(u, 2, 3, h, k) : k))))))))
-fn pi(): number = 3.141592653589793
-fn deg(rad: number): number = rad * 180 / pi()
-
-// ANIMATION_CONFIG.scale: min 0.75, medium 0.8, active 1.
-fn cardScale(u: number): number = pw7(u, 0.75, 0.8, 0.8, 1, 0.8, 0.8, 0.75)
-// rotation: maxAngle π/5, mediumAngle π/10, smallAngle π/20.
-fn cardRotate(u: number): number = pw7(u, 0 - pi() / 5, 0 - pi() / 10, 0 - pi() / 20, 0, pi() / 20, pi() / 10, pi() / 5)
-// translation.xMultiplier: small 0.2, medium 0.25, large 0.3 (of CARD_WIDTH).
-fn cardX(u: number, c: number): number = pw7(u, 0 - c * 0.3, 0 - c * 0.25, 0 - c * 0.2, 0, c * 0.2, c * 0.25, c * 0.3)
-// translation.yMultiplier: small 0.02, medium 0.025, large 0.04, active 0.05 (of CARD_HEIGHT).
-fn cardY(u: number, h: number): number = pw7(u, 0 - h * 0.05, 0 - h * 0.025, 0 - h * 0.04, 0, 0 - h * 0.04, 0 - h * 0.025, 0 - h * 0.02)
-// perspectiveRotateY: perspective.rotationAngle π/10, swapAngle π/5, rotation.smallAngle π/20.
-fn cardRotateY(u: number): number = pw9(u, 0 - pi() / 10, 0 - pi() / 10, 0 - pi() / 20, 0 - pi() / 5, 0, pi() / 5, pi() / 20, pi() / 10, pi() / 10)
-// additionalTranslateX: ± CARD_WIDTH / translation.swapDivisor (2.8) at the half steps.
-fn swapX(u: number, c: number): number = pw9(u, 0, 0, 0, 0 - c / 2.8, 0, c / 2.8, 0, 0, 0)
-// zIndex (transformOrigin's z under perspective 10000000: the stacking order): min 0, low 200,
-// medium 300, high 400.
-fn cardZ(u: number): number = round(pw7(u, 0, 200, 300, 400, 300, 200, 0))
 
 component ImessageStack
   props
     env: DemoEnv
-  // The strip's scrollLeft; -1 before the first scroll event (it opens at the end).
-  state x = -1
-  // The FlatList is `inverted`: its offset 0 is the strip's far end, and it grows as the cards
-  // move right. Here the strip runs left to right and opens at that end (9 cards in).
-  derive offset = x < 0 ? 0 : 9 * cw(env.width) - x
-  action scrolled(left: number, top: number)
-    x = left
   view
-    // styles.container: black, centred. The FlatList's wrapper is 0 tall with marginBottom
-    // CARD_HEIGHT, so its top is (height - CARD_HEIGHT) / 2.
+    // styles.container: black.
     column position="absolute" inset=0 background-color="#000" testId="imessage-stack"
-      // The FlatList: absolute, CARD_HEIGHT + 2 · padding tall; paged at CARD_WIDTH
-      // (snapToInterval, pagingEnabled); content padded by CARD_WIDTH each side, its cells
-      // invisible.
-      scroll position="absolute" top=((env.height - ch(env.width)) / 2) left=0 width="100%"
-        height=(ch(env.width) + pad() * 2) overflow-x="scroll" overflow-y="hidden"
-        scrollbar-width="none" scroll-snap-type="x mandatory" scroll-padding-left=cw(env.width)
-        scrollLeft=(9 * cw(env.width)) scroll=scrolled testId="imessage-scroll"
-        row width=(12 * cw(env.width)) height=(ch(env.width) + pad() * 2) align-items="center"
-          padding-left=cw(env.width) box-sizing="border-box"
-          for i in range(10) key=i
-            view width=cw(env.width) height=ch(env.width) flex-shrink=0 scroll-snap-align="start"
-      // The cards' layer: absolute, top VerticalListPadding, untouchable.
-      view position="absolute" top=((env.height - ch(env.width)) / 2 + pad()) left=0 right=0
-        height=ch(env.width) pointer-events="none"
-        for color, i in cardColors() key=i
-          Card(index=9 - i, color=color, u=offset / cw(env.width) - (9 - i), w=env.width)
-
-// card.tsx: absolute at left (window width - CARD_WIDTH) / 2, CARD_WIDTH × CARD_HEIGHT, radius
-// 20 continuous, the card's colour, shadow 0 5 10 rgba(0, 0, 0, 0.08). transform [translateX,
-// translateY, translateX (swap), scale, rotate, rotateY]: the scale is uniform, so it commutes
-// with both rotations; the outer box carries translate, rotate and scale (CSS applies them in
-// that order) and the card inside it the rotateY (no perspective: 10000000 draws none).
-component Card
-  props
-    index: number
-    color: string
-    u: number
-    w: number
-  view
-    view position="absolute" top=0 left=((w - cw(w)) / 2) width=cw(w) height=ch(w)
-      z-index=cardZ(u) aria-label=`Card ${index + 1} with ${color} color` role="button"
-      translate=`${cardX(u, cw(w)) + swapX(u, cw(w))}px ${cardY(u, ch(w))}px`
-      rotate=`${deg(cardRotate(u))}deg` scale=cardScale(u) testId=`card-${index}`
-      view width=cw(w) height=ch(w) border-radius=20 corner-shape="-exact-continuous"
-        background-color=color box-shadow="0px 5px 10px rgba(0, 0, 0, 0.08)"
-        rotate=`y ${deg(cardRotateY(u))}deg`
+      canvas surface=imessage_stack() position="absolute" top=0 left=0 width=env.width
+        height=env.height touch-action="none" aria-label="Cards: swipe sideways"
+        testId="imessage-scroll"

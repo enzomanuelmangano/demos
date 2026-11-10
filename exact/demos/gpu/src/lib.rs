@@ -19,10 +19,11 @@ pub mod shaders {
 mod bench;
 pub mod gfx;
 pub mod gooey;
+pub mod imessage_stack;
 pub mod ui_scroll;
 
-pub mod animated_3d_parallax;
 pub mod alert_drawer_card;
+pub mod animated_3d_parallax;
 pub mod atlas_button;
 pub mod atlas_sphere;
 pub mod audio_player;
@@ -91,8 +92,8 @@ pub mod wheel_picker;
 /// The module's surfaces and its reflected shaders.
 pub static REGISTRY: Registry = Registry {
     surfaces: &[
-        ("animated_3d_parallax", 0, animated_3d_parallax::surface),
         ("alert_drawer_card", 1, alert_drawer_card::surface),
+        ("animated_3d_parallax", 0, animated_3d_parallax::surface),
         ("atlas_button", 1, atlas_button::surface),
         ("atlas_sphere", 0, atlas_sphere::surface),
         ("audio_player", 1, audio_player::surface),
@@ -126,6 +127,7 @@ pub static REGISTRY: Registry = Registry {
         ("fractal_glass", 1, fractal_glass::surface),
         ("geometry_button", 0, geometry_button::surface),
         ("gl_transitions", 4, gl_transitions::surface),
+        ("imessage_stack", 0, imessage_stack::surface),
         ("light_on_painting", 4, light_on_painting::surface),
         ("linear_sensors", 0, linear_sensors::surface),
         ("loading_button", 0, loading_button::surface),

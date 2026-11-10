@@ -1,7 +1,5 @@
 at "/demo/imessage-stack"
 
-test "the stack opens on the last card"
+test "the stack is there"
   expect tree has "imessage-stack"
   expect tree has "imessage-scroll"
-  expect tree has "card-0"
-  expect tree has "card-9"
