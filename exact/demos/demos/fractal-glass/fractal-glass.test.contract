@@ -4,7 +4,9 @@ test "the glass and the theme button are there; the button switches the theme"
   expect tree has "fractal-glass-canvas"
   expect tree has "fractal-glass-theme"
   expect tree has "fractal-glass-theme-fill"
-  expect "fractal-glass-theme" has label "Dark theme"
-  tap "fractal-glass-theme"
+  // `tap` matches a label: each tap fails unless the button carries that label.
+  tap "Dark theme"
   clock settle
-  expect "fractal-glass-theme" has label "Light theme"
+  tap "Light theme"
+  clock settle
+  tap "Dark theme"
