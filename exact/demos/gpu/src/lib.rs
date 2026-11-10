@@ -106,7 +106,7 @@ pub static REGISTRY: Registry = Registry {
         ("fractal_glass", 1, fractal_glass::surface),
         ("geometry_button", 0, geometry_button::surface),
         ("linear_sensors", 0, linear_sensors::surface),
-        ("loading_button", 1, loading_button::surface),
+        ("loading_button", 0, loading_button::surface),
         ("magnet_spring", 0, magnet_spring::surface),
         ("metaball", 0, metaball::surface),
         ("miles_bar_chart", 7, miles_bar_chart::surface),

@@ -1,65 +1,18 @@
 // Loading Button: "Check Transaction" turns into a spinner and "Analyzing Transaction", then
 // into a check and "Transaction Safe" (or a lock and "Transaction Unsafe", every other time),
 // and back after 1.5 s. Inspired by @lochieaxon. RN: src/animations/loading-button (index.tsx,
-// components/loading-button/index.tsx, activity-indicator.tsx). The indicator is Skia, drawn in
-// Rust (gpu/src/loading_button.rs) from the status, and keeps index.tsx's two timers (a demo
-// may own no task): it posts "settle" 2 s after the status turns loading and "reset" 1.5 s
-// after the outcome. The button and its text are here.
-use PressableScale from "pressto"
-
-// Reanimated's withTiming / FadeIn default curve, Easing.inOut(Easing.quad).
-fn inOutQuad(): string = "linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
-// The status as the surface takes it: idle 0, loading 1, success 2, error 3.
-fn code(status: string): number = status == "loading" ? 1 : (status == "success" ? 2 : (status == "error" ? 3 : 0))
-// colorFromStatusMap, and Color(c).lighten(0.6).hex() for the background.
-fn activeColor(status: string): string = status == "success" ? "color(display-p3 0.3569 0.7765 0.5098)" : (status == "error" ? "color(display-p3 0.8039 0.3294 0.3294)" : "color(display-p3 0.2784 0.6314 0.902)")
-fn lightColor(status: string): string = status == "success" ? "color(display-p3 0.8627 0.9529 0.8941)" : (status == "error" ? "color(display-p3 0.9569 0.8549 0.8549)" : "color(display-p3 0.902 0.949 0.9882)")
-fn titleOf(status: string): string = status == "loading" ? "Analyzing Transaction" : (status == "success" ? "Transaction Safe" : (status == "error" ? "Transaction Unsafe" : "Check Transaction"))
-
-keyframes titleIn
-  from opacity=0
-  to opacity=1
+// components/loading-button/index.tsx, activity-indicator.tsx). The whole demo is Rust
+// (gpu/src/loading_button.rs): RN's pill follows Yoga every frame while the indicator's box
+// animates, and its PressableScale's LinearTransition restarts at every layout change, which no
+// Contract layout transition expresses.
 
 component LoadingButton
-  // useMutation's status and isLoading; `calls` is i.current (even: safe, odd: unsafe).
-  state status = "idle"
-  state busy = false
-  state calls = 0
-  action press
-    haptic("selection")
-    if not busy
-      busy = true
-      status = "loading"
-  // The indicator's timers: the mutation resolving, then the timeout's reset().
-  action heard(m: string)
-    if m == "settle"
-      status = calls % 2 == 0 ? "success" : "error"
-      calls = calls + 1
-      busy = false
-    if m == "reset"
-      status = "idle"
-      busy = false
+  // The press's haptic (the app's global pressable handler).
+  action buzz(text: string)
+    if text == "haptic:selection"
+      haptic("selection")
   view
     // styles.container: white, centred.
-    column position="absolute" inset=0 background-color="#ffffff" align-items="center"
-      justify-content="center" testId="loading-button"
-      // PressableScale layout={LinearTransition.springify()}: Reanimated's default spring.
-      button appearance="none" press=press class=PressableScale border="none" padding=0
-        background-color="transparent" -exact-layout-transition="-exact-spring(900, 120, 4)"
-        aria-label=titleOf(status) testId="loading-button-press"
-        // A row, paddingHorizontal 12, 40 tall, radius 16 continuous, its background the
-        // lightened colour (transition: 'backgroundColor 200ms').
-        row align-items="center" padding="0px 12px" height=40 border-radius=16 corner-shape="-exact-continuous"
-          background-color=lightColor(status) transition="background-color 200ms ease"
-          -exact-layout-transition=`200ms ${inOutQuad()}`
-          // The indicator's box: width, height 0 → 20 and marginRight 0 → 6 on withTiming
-          // (200 ms), clipping the 20 pt canvas.
-          view width=(status == "idle" ? 0 : 20) height=(status == "idle" ? 0 : 20)
-            margin-right=(status == "idle" ? 0 : 6) overflow="hidden" flex-shrink=0
-            -exact-layout-transition=`200ms ${inOutQuad()}`
-            canvas surface=loading_button(code(status)) message=heard width=20 height=20 aria-hidden=true
-              testId="loading-indicator"
-          // styles.title: 14, bold, the status's colour; entering FadeIn.
-          text titleOf(status) font-size=14 font-weight=700 color=activeColor(status) white-space="nowrap"
-            animation=`titleIn 300ms ${inOutQuad()} both` -exact-layout-transition=`200ms ${inOutQuad()}`
-            testId="loading-title"
+    column position="absolute" inset=0 background-color="#ffffff" testId="loading-button"
+      canvas surface=loading_button() message=buzz position="absolute" top=0 left=0 width="100%"
+        height="100%" touch-action="none" aria-label="Check Transaction" testId="loading-button-press"
