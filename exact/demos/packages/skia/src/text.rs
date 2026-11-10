@@ -581,9 +581,24 @@ pub fn match_system_font(size: f32, weight: f32) -> Option<Font> {
 /// system face at `weight` and the optical size of `size` ([`match_system_font`]), with the
 /// font's tracking for the size, its default GSUB substitutions, and its kerning in the advances
 /// ([`Font::with_ui_layout`]). GPOS mark positioning is not applied (the demos' labels have no
-/// combining marks: `Ó` is its own glyph).
+/// combining marks: `Ó` is its own glyph). RN maps `fontWeight` to a `UIFontWeight` (`'600'` is
+/// `.semibold`), which San Francisco draws at its named instance's `wght`, not at the CSS number:
+/// [`ui_weight`].
 pub fn match_ui_font(size: f32, weight: f32) -> Option<Font> {
-    match_system_font(size, weight).map(Font::with_ui_layout)
+    let data = system_face()?;
+    Font::with_variations(data, size, &[(b"wght", ui_weight(weight)), (b"opsz", size)]).map(Font::with_ui_layout)
+}
+
+/// The `wght` San Francisco (`SFUI.ttf`'s fvar instances) draws an RN `fontWeight` at: RN's
+/// RCTFont maps 100…900 to UIFontWeight ultraLight, thin, light, regular, medium, semibold, bold,
+/// heavy, black, whose instances are 30.925, 110.725, 274.315, 400, 510, 590, 700, 860, 1000
+/// (a semibold `'600'` drawn at 600 was a hair heavy: expandable-mini-player's "Demo"). Weights
+/// between the hundreds interpolate.
+pub fn ui_weight(weight: f32) -> f32 {
+    const WGHT: [f32; 9] = [30.925, 110.725, 274.315, 400.0, 510.0, 590.0, 700.0, 860.0, 1000.0];
+    let k = ((weight / 100.0).clamp(1.0, 9.0)) - 1.0;
+    let i = (k.floor() as usize).min(7);
+    WGHT[i] + (WGHT[i + 1] - WGHT[i]) * (k - i as f32)
 }
 
 fn system_face() -> Option<&'static [u8]> {
