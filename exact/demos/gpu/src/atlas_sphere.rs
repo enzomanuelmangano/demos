@@ -284,8 +284,8 @@ impl Surface for AtlasSphere {
             Event::Start(p) | Event::Update(p) => self.point = Some((p.x, p.y)),
             _ => {}
         }
-        // onTouchesUp: the pan's finger lifted (or was cancelled).
-        if was && !self.pan.tracking() && matches!(phase, Phase::Up | Phase::Cancel) {
+        // onTouchesUp: the pan's finger lifted (a system cancel fires no onTouchesUp).
+        if was && !self.pan.tracking() && matches!(phase, Phase::Up) {
             gfx::spring_to(&mut self.progress, 0.0, 1000.0, 1.0);
         }
     }
