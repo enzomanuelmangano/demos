@@ -67,6 +67,10 @@ One commit per haptic event, never per frame.
 
 ## Traps the compiler only catches in the whole app
 
+- iOS host: `object-fit="cover"` pins the image to the TOP when it crops vertically (CSS and
+  expo-image centre it; Contract has no `object-position`). When the photo is taller than its box
+  at cover scale, lay the cover box out by hand: a clip box, the image absolute at
+  `max(w/iw, h/ih)` × its size, centred (see swipe-cards). Horizontal crops are fine.
 - `-exact-exit-animation` must be one literal declaration (no `${…}`), or the web target
   refuses it. Write the curve out (`cubic-bezier(0.455, 0.03, 0.515, 0.955)` is inOut(quad)).
 
