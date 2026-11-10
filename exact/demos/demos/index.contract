@@ -50,6 +50,7 @@ use FourierVisualizer from "./fourier-visualizer/fourier-visualizer.contract"
 use FractalGlass from "./fractal-glass/fractal-glass.contract"
 use GeometryButton from "./geometry-button/geometry-button.contract"
 use GithubContributions from "./github-contributions/github-contributions.contract"
+use GithubTerrain from "./github-terrain/github-terrain.contract"
 use GlTransitions from "./gl-transitions/gl-transitions.contract"
 use ImageCropper from "./image-cropper/image-cropper.contract"
 use ImessageStack from "./imessage-stack/imessage-stack.contract"
@@ -212,6 +213,8 @@ component PortedDemo
         GeometryButton()
       if slug == "github-contributions"
         GithubContributions(env=env)
+      if slug == "github-terrain"
+        GithubTerrain(env=env)
       if slug == "gl-transitions"
         GlTransitions(env=env)
       if slug == "image-cropper"

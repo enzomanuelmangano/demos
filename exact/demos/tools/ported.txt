@@ -42,6 +42,7 @@ fluid-tab-interaction
 fractal-glass
 geometry-button
 github-contributions
+github-terrain
 imessage-stack
 linear-sensors
 liquid-glass-playground
