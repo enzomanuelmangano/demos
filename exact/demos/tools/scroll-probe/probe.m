@@ -3,7 +3,7 @@
 // rules the demos' Rust UIScrollView (exact/demos/gpu/src/ui_scroll.rs) models.
 //   ./build.sh; xcrun simctl install <sim> /tmp/scroll-probe/ScrollProbe.app
 //   xcrun simctl launch <sim> com.reactiive.scrollprobe [-content <× port width>] [-offset <x>]
-//     [-rate fast|normal] [-snap <interval> [-current YES]]
+//     [-rate fast|normal|<number>] [-paging YES] [-snap <interval> [-current YES]]
 // Documents/log.txt (written once nothing has moved for 1 s): "<t> touch <phase> <x>" per touch,
 // "<t> off <contentOffset.x> drag <0|1> decel <0|1> frame <display link timestamp>" per display
 // frame while it changes, "<t> willEnd v <pt/ms> target <x> off <x>", "<t> snapTarget <x>" (the
@@ -49,6 +49,9 @@ static void plog(NSString *fmt, ...) {
   self.sv.showsHorizontalScrollIndicator = NO;
   self.sv.contentSize = CGSizeMake(b.size.width * content, 200);
   if ([[d stringForKey:@"rate"] isEqual:@"fast"]) self.sv.decelerationRate = UIScrollViewDecelerationRateFast;
+  else if ([d doubleForKey:@"rate"] > 0) self.sv.decelerationRate = [d doubleForKey:@"rate"];  // RN's numeric decelerationRate
+  if ([d boolForKey:@"paging"]) self.sv.pagingEnabled = YES;
+  plog(@"rate %.4f", self.sv.decelerationRate);
   self.sv.delegate = self;
   for (int i = 0; i < (int)(content * 4); i++) {
     UIView *v = [[UIView alloc] initWithFrame:CGRectMake(i * b.size.width / 4 + 10, 50, b.size.width / 4 - 20, 100)];

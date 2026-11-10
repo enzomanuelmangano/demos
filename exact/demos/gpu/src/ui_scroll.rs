@@ -46,8 +46,9 @@ const BOUNCE_PULL: f64 = 0.00797;
 /// The velocity a deceleration stops at, pt/ms (measured: UIKit's projected rest is
 /// (v − this) / −ln(rate) past the lift, and a changed target is reached with this velocity).
 const STOP_VELOCITY: f64 = 0.00988;
-/// −ln of the per-ms rate a snap glides at when the lift had no velocity (UIKit animates a target
-/// set in willEndDragging at this rate, measured), whatever the deceleration rate.
+/// −ln of the per-ms rate a snap glides at when the lift had no velocity and the deceleration
+/// rate is normal (measured; at fast, and RN's 0.8 that UIKit clamps to fast, it glides at the
+/// deceleration rate itself, also measured).
 const SNAP_LAMBDA: f64 = 0.014644;
 /// One display frame, ms.
 const FRAME_MS: f64 = 1000.0 / 60.0;
@@ -244,7 +245,8 @@ impl UiScroll {
             self.state = State::Bounce { edge, offset, velocity, at: None };
             return;
         }
-        let lambda = -self.rate.ln();
+        // UIKit clamps decelerationRate to fast at least (RN's 0.8 runs at 0.99, measured).
+        let lambda = -self.rate.max(FAST).ln();
         let projected = offset + v.signum() * (v.abs() - STOP_VELOCITY).max(0.0) / lambda;
         let to = match self.snap {
             Snap::Free => projected,
@@ -261,7 +263,7 @@ impl UiScroll {
         }
         .clamp(0.0, max);
         // A snap moved with no velocity glides at UIKit's own rate, not the deceleration rate.
-        let lambda = if v == 0.0 { SNAP_LAMBDA } else { lambda };
+        let lambda = if v == 0.0 && self.rate > FAST { SNAP_LAMBDA } else { lambda };
         self.state = if (to - offset).abs() < 1e-9 { State::Idle } else { State::Settle { from: offset, to, at: f64::NAN, lambda } };
     }
 
@@ -453,5 +455,23 @@ mod tests {
             s.step((6 * k + 1) as f64 * FRAME_MS);
             assert!((s.offset - want).abs() < 0.5, "snap frame {}: {} vs UIKit {want}", 6 * k + 1, s.offset);
         }
+    }
+
+    #[test]
+    fn rn_s_rate_0_8_is_fast() {
+        // scroll-probe, decelerationRate 0.8 (UIKit reads back 0.99), snapping every 84: a still
+        // lift at 53.67 glides onto 84 at the fast rate (frames 1, 5, 9); a fling at 291.2 pt/s from
+        // 114.33 projects 28 pt (UIKit's target 142.33), then snaps on to 168.
+        let mut s = UiScroll::new(53.67, 1000.0, 420.0, 0.8, Snap::Interval(84.0));
+        s.release(0.0, 0.0);
+        s.step(0.0);
+        for (k, want) in [(1, 58.33), (5, 71.33), (9, 78.0)] {
+            s.step(k as f64 * FRAME_MS);
+            assert!((s.offset - want).abs() < 0.5, "frame {k}: {} vs UIKit {want}", s.offset);
+        }
+        let mut s = UiScroll::new(114.33, 1000.0, 420.0, 0.8, Snap::Free);
+        s.release(-291.2, -291.2);
+        settle(&mut s, 0.0);
+        assert!((s.offset - 142.33).abs() < 0.3, "{}", s.offset);
     }
 }
