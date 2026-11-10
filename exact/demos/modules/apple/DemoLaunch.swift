@@ -522,6 +522,10 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
     private func startLink() {
         guard link == nil else { return }
         let link = CADisplayLink(target: LinkTarget(self), selector: #selector(LinkTarget.tick(_:)))
+        // A spatial transition asks for the panel's full rate: at `.default` a ProMotion
+        // iPhone paces this link at 60 Hz, so the card's flight presents at half rate.
+        let fastest = Float(controller?.view.window?.screen.maximumFramesPerSecond ?? UIScreen.main.maximumFramesPerSecond)
+        link.preferredFrameRateRange = CAFrameRateRange(minimum: min(80, fastest), maximum: fastest, preferred: fastest)
         link.add(to: .main, forMode: .common)
         self.link = link
     }
