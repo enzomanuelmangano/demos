@@ -149,6 +149,7 @@ pub static REGISTRY: Registry = Registry {
         ("stacked_carousel", 0, stacked_carousel::surface),
         ("staggered_card_number", 0, staggered_card_number::surface),
         ("steddy_graph_interaction", 1, steddy_graph_interaction::surface),
+        ("steddy_highlight", 1, steddy_graph_interaction::highlight),
         ("story_list", 0, story_list::surface),
         ("swipe_cards", 4, swipe_cards::surface),
         ("telegram_theme_switch", 1, telegram_theme_switch::surface),

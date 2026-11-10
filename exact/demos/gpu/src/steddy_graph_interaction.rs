@@ -41,6 +41,105 @@ pub fn surface() -> Box<dyn Surface> {
     Box::new(graph())
 }
 
+/// The segmented control's highlight (components/segmented-control/index.tsx, CELL BACKGROUND),
+/// on a canvas over the control's padding box, under the labels (zIndex 1 < 2). Input: the
+/// selected index.
+///
+/// - Frame: absolute, left 0, alignSelf center, (cellBackgroundWidth − 5 / 3) × (56 − 10),
+///   cellBackgroundWidth = (windowWidth − 30) / 3: in the padding box (the control's border 1
+///   in), x = translateX, y = (54 − 10 − 46) / 2 + 5 = 4.
+/// - translateX = withSpring(cbw · index + interpolate(index, [0, 2], [5, −5])), Gentle: linear
+///   in the index ((cbw − 5) · index + 5), so the index itself springs (a spring's motion and its
+///   rest test are linear) and Reanimated's onStart rule applies in either unit: the running
+///   velocity is kept on a retarget only when it points toward the new target.
+/// - Palette.background #F1EEE8 on a continuous radius 12 (the background layer RN shapes with
+///   the view's cornerCurve); border 1 baseGray05 #E5E2DC: opaque and not clipping, so not Core
+///   Animation's: RCTBorderDrawing's ring with circular corners over it.
+/// - boxShadow 0 1 2 rgba(0, 0, 0, 0.1): RCTBoxShadow, σ 1, the circular rounded rect, outside
+///   the view.
+pub fn highlight() -> Box<dyn Surface> {
+    Box::new(Highlight::default())
+}
+
+const HIGHLIGHT_HEIGHT: f32 = 46.0;
+const HIGHLIGHT_RADIUS: f32 = 12.0;
+
+#[derive(Default)]
+struct Highlight {
+    index: Option<usize>,
+    /// The selected index, springing.
+    spring: Spring,
+    canvas: Canvas,
+    renderer: Renderer,
+}
+
+impl Highlight {
+    /// The highlight's frame in the padding box of a canvas `width` wide (the control's width − 2).
+    fn frame(&self, width: f32) -> [f32; 4] {
+        let cbw = (width + 2.0) / 3.0;
+        let x = (cbw - 5.0) * self.spring.value as f32 + 5.0;
+        [x, 4.0, cbw - 5.0 / 3.0, HIGHLIGHT_HEIGHT]
+    }
+}
+
+impl Surface for Highlight {
+    fn bind(&mut self, inputs: &[Value], _: Option<f64>) -> Result<(), SurfaceError> {
+        let i = (inputs.first().and_then(|v| v.as_number()).unwrap_or(1.0).round().max(0.0) as usize).min(2);
+        if self.index == Some(i) {
+            return Ok(());
+        }
+        if self.index.is_none() {
+            self.spring.set(i as f64);
+        } else {
+            // Spring::to drops a velocity pointing away from the target (Reanimated's onStart).
+            let v = if self.spring.running { self.spring.velocity } else { 0.0 };
+            self.spring.to(i as f64, v, GENTLE);
+        }
+        self.index = Some(i);
+        Ok(())
+    }
+
+    fn agent(&mut self, _request: &str) -> Option<String> {
+        Some(format!(
+            "{{\"index\":{},\"position\":{:.4},\"velocity\":{:.4}}}",
+            self.index.unwrap_or(1),
+            self.spring.value,
+            self.spring.velocity
+        ))
+    }
+
+    fn render(
+        &mut self,
+        frame: &Frame,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        encoder: &mut wgpu::CommandEncoder,
+        target: &wgpu::TextureView,
+        format: wgpu::TextureFormat,
+    ) -> bool {
+        if self.index.is_none() {
+            self.bind(&[], None).ok();
+        }
+        let moving = self.spring.step(frame.now_ms);
+        let [x, y, w, h] = self.frame(frame.width);
+        let r = HIGHLIGHT_RADIUS;
+        let c = &mut self.canvas;
+        c.begin(frame.scale);
+        c.save();
+        c.clip_with(|b| {
+            skia::add_rect(b, x - 10.0, y - 10.0, w + 20.0, h + 20.0);
+            skia::add_rrect_hole(b, x, y, w, h, r);
+        });
+        c.draw_rrect_shadow(x, y + 1.0, w, h, r, 1.0, Color::BLACK.alpha(0.1));
+        c.restore();
+        c.draw_continuous_rrect(x, y, w, h, r, &Paint::fill(Color::view_hex(0xF1EEE8)));
+        c.draw_path(&skia::border_ring_path(x, y, w, h, r, 1.0), &Paint::fill(Color::view_hex(0xE5E2DC)));
+        let (pw, ph) = frame.pixels();
+        self.renderer.draw(device, queue, encoder, &self.canvas, target, format, pw, ph, wgpu::Color::TRANSPARENT);
+        moving
+    }
+}
+
 fn graph() -> Graph {
     Graph {
         font: Font::new(SF_COMPACT_ROUNDED, 18.0),
@@ -333,5 +432,55 @@ mod tests {
         // Score 100 at x 50: y 18.2.
         assert!(purple(light.at(100, 37)), "{:?}", light.at(100, 37));
         assert!(!purple(light.at(100, 95)));
+    }
+
+    #[test]
+    fn the_highlight_retargets_as_reanimated() {
+        let mut h = Highlight::default();
+        h.bind(&[Value::Number(1.0)], None).unwrap();
+        // iPhone Air: control 390, canvas 388; Standard at x = 125 + 5 = 130.
+        assert_eq!(h.frame(388.0), [130.0, 4.0, 130.0 - 5.0 / 3.0, 46.0]);
+        // Pro, then back to Light mid-flight: the velocity toward Pro points away from Light,
+        // so the reversal starts from rest.
+        h.bind(&[Value::Number(2.0)], None).unwrap();
+        let mut ms = 0.0;
+        h.spring.step(ms);
+        while ms < 100.0 {
+            ms += 1000.0 / 60.0;
+            h.spring.step(ms);
+        }
+        assert!(h.spring.velocity > 0.5, "{}", h.spring.velocity);
+        let at = h.spring.value;
+        h.bind(&[Value::Number(0.0)], None).unwrap();
+        ms += 1000.0 / 60.0;
+        h.spring.step(ms);
+        // The first frame is the clock's 0 step; the next starts moving toward 0 from rest.
+        ms += 1000.0 / 60.0;
+        h.spring.step(ms);
+        assert!(h.spring.value < at, "{} {}", h.spring.value, at);
+        // A retarget along the motion keeps it: Light → Pro, then Standard while still short of
+        // it, the velocity toward Standard carried over.
+        let mut g = Highlight::default();
+        g.bind(&[Value::Number(0.0)], None).unwrap();
+        g.bind(&[Value::Number(2.0)], None).unwrap();
+        let mut t = 0.0;
+        g.spring.step(t);
+        while t < 50.0 {
+            t += 1000.0 / 60.0;
+            g.spring.step(t);
+        }
+        let v = g.spring.velocity;
+        g.bind(&[Value::Number(1.0)], None).unwrap();
+        assert!(g.spring.value < 1.0 && v > 0.0);
+        g.spring.step(t);
+        t += 1000.0 / 60.0;
+        let before = g.spring.value;
+        g.spring.step(t);
+        // Kept inertia: it moves more than a start from rest would in one frame.
+        let mut rest = Spring::at(before);
+        rest.to(1.0, 0.0, GENTLE);
+        rest.step(0.0);
+        rest.step(1000.0 / 60.0);
+        assert!(g.spring.value - before > rest.value - before);
     }
 }
