@@ -21,7 +21,7 @@ fn twitterEditPath(): string = "M442 150 403 189 323 109 362 70Q368 64 377 64Q38
 fn twitterMessagePath(): string = "M384 171V128H128V171ZM384 235V192H128V235ZM384 299V256H128V299ZM427 43Q444 43 456.5 55.5Q469 68 469 85V341Q469 358 456.5 371Q444 384 427 384H128L43 469V85Q43 68 55.5 55.5Q68 43 85 43Z"
 
 // The bar's translateY: withSpring({ dampingRatio: 1, duration: 500 }) → bun tools/spring.ts 500 1.
-fn twitterBarSpring(): string = "-exact-spring(1087.7, 131.9, 4)"
+fn twitterBarSpring(): string = "-exact-spring(1087.7349, 131.9234, 4)"
 // Reanimated 4's withSpring() default: the button's scale (overshootClamping changes nothing on
 // this critically damped spring) and its highlight.
 fn twitterGentle(): string = "-exact-spring(900, 120, 4)"

@@ -11,7 +11,7 @@ fn toggles(i: number): bool = i < 12
 
 // HideableNumber: animationProgress = withDelay(index × HideableNumberHeight (25 ms),
 // withSpring(isHidden, { duration: 700, dampingRatio: 1 })): bun tools/spring.ts 700 1 is
-// -exact-spring(555.0, 94.2, 4), critically damped: P(t) = 1 - e^(-ωt)(1 + ωt), ω = √(555 / 4),
+// -exact-spring(554.9668, 94.231, 4), critically damped: P(t) = 1 - e^(-ωt)(1 + ωt), ω = √(555 / 4),
 // run for 1050 ms (1.5 × duration, Reanimated's actual duration). Each transition is that curve as
 // linear() stops (time in ms, value), placed where the straight segments stay within 0.1 px of
 // the 25 px translate and 0.0015 of an opacity (under half a colour level) of the real curve

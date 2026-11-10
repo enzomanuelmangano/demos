@@ -17,7 +17,7 @@ fn backWidth(w: number): number = (w - 20 * 2 - 10) * 0.25
 // (back: activeIndex > 0, icon: activeIndex == 2) ride it; every value interpolated on them
 // (width, marginRight, opacity) is linear in the progress, so each rides the same spring.
 // ζ 1.5 ≥ 1: Reanimated runs it critically damped, so damping 2√(k·m) = 179.4.
-fn stepSpring(): string = "-exact-spring(2011.7, 179.4, 4)"
+fn stepSpring(): string = "-exact-spring(2011.7188, 179.4088, 4)"
 
 component Steps
   props

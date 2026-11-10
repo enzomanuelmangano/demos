@@ -36,7 +36,7 @@ fn clerkTiming(): string = "300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756
 // dismissItem: withSpring(-windowWidth, { dampingRatio 1, duration 350 }) (bun tools/spring.ts).
 fn clerkThrow(): string = "-exact-spring(2219.9, 188.5, 4)"
 // Backdrop translateY withSpring({ dampingRatio 1, duration 500 }).
-fn clerkBackdropSpring(): string = "-exact-spring(1087.7, 131.9, 4)"
+fn clerkBackdropSpring(): string = "-exact-spring(1087.7349, 131.9234, 4)"
 // use-gradient-height.ts: min(min(count, 3) × (TOAST_HEIGHT + 90), windowHeight / 2).
 fn clerkGradient(count: number, h: number): number = min(min(count, 3) * 145, h / 2)
 

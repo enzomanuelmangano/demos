@@ -40,7 +40,7 @@ fn squaredIn(): string = "600ms linear(0, 0.009, 0.0759, 0.2093, 0.3725, 0.5301,
 fn squaredOut(): string = "600ms linear(0, 0.1808, 0.4751, 0.7056, 0.8482, 0.9261, 0.9655, 0.9844, 0.9931, 0.997, 0.9987, 0.9995, 0.9998, 0.9999, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1) both"
 
 style Drawer
-  -exact-layout-transition="-exact-spring(1699.6, 164.9, 4)"
+  -exact-layout-transition="-exact-spring(1699.5858, 164.9042, 4)"
 
 component AlertDrawer
   props
@@ -75,7 +75,7 @@ component AlertDrawer
           border-radius=(50 - inset(w)) corner-shape="-exact-continuous"
           box-shadow="0px 2px 30px rgba(0, 0, 0, 0.1)"
           background-color=(isExpanded ? "#FFFFFF" : "#FFFFFF00")
-          transition="background-color -exact-spring(1699.6, 164.9, 4)"
+          transition="background-color -exact-spring(1699.5858, 164.9042, 4)"
           testId="card"
           // styles.cardContentWrapper: flex 1, clipped, opacity delayedProgress.
           column class=Drawer flex=1 overflow="hidden" opacity=(isExpanded ? 1 : 0)
@@ -112,7 +112,7 @@ component AlertDrawer
                 position="absolute" left=0 bottom=0 width=minButtonWidth(w) height=50
                 border-radius=50 background-color="#dfdfdf"
                 padding-left=20 padding-right=20 display="flex" align-items="center"
-                justify-content="center" -exact-layout-transition="-exact-spring(1699.6, 164.9, 4)"
+                justify-content="center" -exact-layout-transition="-exact-spring(1699.5858, 164.9042, 4)"
                 // styles.buttonLabel + cancelButtonLabel: Honk 16 bold, #111.
                 text "Cancel" font-family="Honk-Regular" font-size=16 color="#111111"
         // The pill (styles.button): right (EXPANDED_CARD_WIDTH - BUTTON_WIDTH) / 2; bottom
@@ -122,7 +122,7 @@ component AlertDrawer
           width=(isExpanded ? minButtonWidth(w) : buttonWidth(w)) height=50 border-radius=50
           corner-shape="-exact-continuous" background-color="color(display-p3 0.9412 0.1294 0.1686)" padding-left=20 padding-right=20
           box-sizing="border-box" display="flex" align-items="center" justify-content="center"
-          -exact-layout-transition="-exact-spring(1699.6, 164.9, 4)"
+          -exact-layout-transition="-exact-spring(1699.5858, 164.9042, 4)"
           // styles.buttonLabel: white, Honk 16 bold.
           text "Continue" font-family="Honk-Regular" font-size=16 color="#ffffff"
-            -exact-layout-transition="-exact-spring(1699.6, 164.9, 4)"
+            -exact-layout-transition="-exact-spring(1699.5858, 164.9042, 4)"
