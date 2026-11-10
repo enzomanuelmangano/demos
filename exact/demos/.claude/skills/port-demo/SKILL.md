@@ -333,6 +333,20 @@ One commit per haptic event, never per frame.
 - A `Chain` of timings (withSequence / withRepeat) starts each step at the frame the last one
   ended: a fixture rendered at sparse times (0, 6000, 12100 ms) lands mid-chain on the wrong step.
   Step the surface every 16 ms before an "at rest" render.
+- CoreGraphics draws an RN Text line's baseline on the next device pixel DOWN (ceil); the iOS
+  host rounds to the nearest. A single-line text whose TextKit baseline lands .01-.49 px past a
+  pixel sits 1 px high: `position="relative" top="0.1666px"` (just under half a device pixel at
+  3x) makes nearest a ceil. Lines 2+ of a multi-line text are rounded from the text's snapped
+  origin (k × line height): neither an offset, a padding nor a line height reproduces ceil for
+  every line (scroll-progress' descriptions: lines 2-5 at .12/.24/.36/.48 px sit 1 px high). Host
+  limit; Rust text if it must be exact.
+- A 0.5 pt border on a non-clipping RN View draws 2 full device rows (RCTBorderDrawing), and Yoga
+  lays the children out at the unrounded inset and rounds their edges half up: a margin-5 child
+  starts 5.667 in and ends 5.333 short (scroll-progress' pill). Contract: border 0.66667 and the
+  child's margins 5 / 4.66667 (right, bottom), its padding rebalanced to keep RN's unrounded
+  content box.
+- RN's ReText is a TextInput: UITextField centres the line a device pixel above where a Text
+  would sit (scroll-progress' percentage).
 
 ## 4. Check
 

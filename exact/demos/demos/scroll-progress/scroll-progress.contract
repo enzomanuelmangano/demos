@@ -95,8 +95,14 @@ component ScrollProgress
               // it back. RN then rounds each Text up to the device pixel (title 24, description
               // +0.13..0.21): about that same hairline per section (within 0.07 pt a section).
               column margin-bottom=20
+              // CoreGraphics draws a line's baseline on the next device pixel DOWN (ceil), Exact
+              // on the nearest: every title (TextKit's baseline .13 px past a pixel) sat 1 px
+              // high; 0.1666 pt lower (just under half a device pixel at 3×), nearest is ceil.
+              // A description's 2nd to 5th lines (.12, .24, .36, .48 px past the first) still
+              // sit 1 px high: the host rounds each line from the text's snapped origin, which
+              // neither an offset nor a line height can make a ceil (a host limit, Traps).
                 text x.title color="#EEEEEE" font-size=20 font-weight=700 line-height="23.8671875px"
-                  margin-bottom=10
+                  margin-bottom=10 position="relative" top="0.1666px"
                 text x.description color="#999999" font-size=14 line-height="16.70703125px"
                   padding-top="-exact-hairline"
       // The top gradient: ['#111111', '#11111100'], safeTop + 16 tall, zIndex 10.
@@ -121,26 +127,30 @@ component BottomProgress
     pressing = pressUp(pressing)
   view
     // styles.container: radius 40, height 70, the width above; absolute at bottom 50, centred,
-    // #222123, zIndex 100, a 0.5 border rgba(255,255,255,0.1).
+    // #222123, zIndex 100, a 0.5 border rgba(255,255,255,0.1). Yoga rounds the 0.5 inset to
+    // the device pixel (the children start 0.667 in) and RCTBorderDrawing's ring covers those
+    // 2 px fully (measured): 0.66667 here, where 0.5 drew 1 px and the inner pill 1 px early.
     column class=PillMotion position="absolute" bottom=50 left=left width=pillWidth(progress) height=70
-      box-sizing="border-box" border-radius=40 background-color="color(display-p3 0.1333 0.1294 0.1373)" border-width=0.5
+      box-sizing="border-box" border-radius=40 background-color="color(display-p3 0.1333 0.1294 0.1373)" border-width=0.66667
       border-style="solid" border-color="rgba(255, 255, 255, 0.1)" z-index=100 testId="progress-pill"
       // ProgressBarArea: flex 1, margin 5, #2E2D2E, paddingHorizontal 10, radius 40 continuous,
       // a centred row; opacity withTiming(expanded ? 1 : 0).
-      row class=PillMotion flex=1 margin=5 padding-left=10 padding-right=10 border-radius=40 corner-shape="-exact-continuous"
+      // Yoga lays the 0.5 border + 5 margin out unrounded and rounds the edges (16.5 px → 17,
+      // 193.5 → 194): the inner pill is 59 pt, 5.667 in from the left and top, 5.333 from the
+      // right and bottom (measured: a 177 px circle). Here the ring is 0.667 thick, hence 5 and
+      // 4.667; the padding (10) is 9.833 and 10.167 so the content box is RN's unrounded
+      // [15.5, 184.5], where the bar's edges round as Yoga's do (it ended 1 px long).
+      row class=PillMotion flex=1 margin-top=5 margin-left=5 margin-right=4.66667 margin-bottom=4.66667 padding-left=9.83333 padding-right=10.16667 border-radius=40 corner-shape="-exact-continuous"
         background-color="color(display-p3 0.1804 0.1765 0.1804)" justify-content="center" align-items="center"
         opacity=(isExpanded(progress) ? 1 : 0)
         transition="opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)" testId="progress-bar-area"
-        // ReText: #9E9E9E, 15, width 50, centred. A text per frame is a layout per frame: every
-        // label 0%…100% is laid out once in a strip, clipped to one line and slid to the
-        // current one by a translate.
-        view class=PillMotion width=50 flex-shrink=0 overflow="hidden" position="relative"
-          aria-label=`${percentOf(progress)}%` testId="progress-percent"
-          text "0%" color="#9E9E9E" font-size=15 text-align="center" opacity=0 aria-hidden=true
-          column position="absolute" left=0 top=0 width=50 aria-hidden=true
-            translate=`0px ${0 - percentOf(progress) * 100 / 101}%`
-            for n in range(101) key=n
-              text `${n}%` color="#9E9E9E" font-size=15 text-align="center" width=50
+        // ReText: #9E9E9E, 15, width 50, centred. One text whose string changes with the whole
+        // percent (at most 100 times a scroll; `progress` commits each scroll frame anyway).
+        // ReText is a TextInput: UITextField centres its line its own way, a device pixel above
+        // a Text's (measured: "100%" 1 px low); half a pixel up lands on it (host snap).
+        text `${percentOf(progress)}%` color="#9E9E9E" font-size=15 text-align="center" width=50
+          flex-shrink=0 position="relative" top="-0.16667px" aria-label=`${percentOf(progress)}%`
+          testId="progress-percent"
         // The bar: 5 tall, 70% wide, white, radius 40, clipping: the #1A1A1A track and the
         // #9E9E9E fill, scaleX(progress) from its left (the same pixels as the fill slid in
         // from the left by (progress - 1) × its width, clipped by the bar).
@@ -151,7 +161,7 @@ component BottomProgress
             translate=`${(progress - 1) * 100}% 0px` testId="progress-fill"
       // CollapsedArea: absoluteFill, margin 5, #2E2D2E, radius 40 continuous; opacity
       // withTiming(INITIAL or END ? 1 : 0).
-      view class=PillMotion position="absolute" top=5 left=5 right=5 bottom=5 border-radius=40 corner-shape="-exact-continuous"
+      view class=PillMotion position="absolute" top=5 left=5 right=4.66667 bottom=4.66667 border-radius=40 corner-shape="-exact-continuous"
         background-color="color(display-p3 0.1804 0.1765 0.1804)"
         opacity=(isExpanded(progress) ? 0 : 1)
         transition="opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)" testId="collapsed-area"
@@ -161,8 +171,10 @@ component BottomProgress
           opacity=(isInitial(progress) ? 1 : 0)
           transition="opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
           // RN's default fontSize, 14 (Exact's iOS default is 17).
+          // Yoga floors the Text's left in that 59 pt box (measured on device: half a pixel back
+          // from the centred box lands on RN's pixel; a whole one overshoots by the host's snap).
           text readingTime() color="#9E9E9E" font-size=14 margin-left=5 margin-right=5 white-space="nowrap"
-            -exact-fit="shrink" testId="reading-time"
+            -exact-fit="shrink" position="relative" left="-0.16667px" testId="reading-time"
         // The up arrow, shown at END: PressableOpacity, AntDesign arrow-up 24 #9E9E9E; pressed,
         // it scrolls to the top (only at END).
         column class=PillMotion position="absolute" inset=0 opacity=(isEnd(progress) ? 1 : 0)
