@@ -49,10 +49,33 @@ fn hsv2rgb(c: vec3<f32>) -> vec3<f32> {
     return c.z * mix(K.xxx, clamp(p - K.xxx, vec3<f32>(0.0), vec3<f32>(1.0)), c.y);
 }
 
+// RN Skia draws into the app's Display P3 surface: a runtime effect's output is P3, and a
+// gradient interpolates its sRGB stops' P3 values. Both are turned back into sRGB here (the
+// wheel's saturated edge clips to the sRGB gamut, as a P3 colour does on an sRGB capture).
+fn dec(c: vec3<f32>) -> vec3<f32> {
+    return select(pow((c + 0.055) / 1.055, vec3<f32>(2.4)), c / 12.92, c <= vec3<f32>(0.04045));
+}
+fn enc(c0: vec3<f32>) -> vec3<f32> {
+    let c = clamp(c0, vec3<f32>(0.0), vec3<f32>(1.0));
+    return select(1.055 * pow(c, vec3<f32>(1.0 / 2.4)) - 0.055, c * 12.92, c <= vec3<f32>(0.0031308));
+}
+fn p3_to_srgb(c: vec3<f32>) -> vec3<f32> {
+    let l = dec(c);
+    return enc(vec3<f32>(1.2249 * l.r - 0.2247 * l.g, -0.0420 * l.r + 1.0419 * l.g, -0.0197 * l.r - 0.0786 * l.g + 1.0979 * l.b));
+}
+fn srgb_to_p3(c: vec3<f32>) -> vec3<f32> {
+    let l = dec(c);
+    return enc(vec3<f32>(0.8225 * l.r + 0.1774 * l.g, 0.0332 * l.r + 0.9669 * l.g, 0.0171 * l.r + 0.0724 * l.g + 0.9108 * l.b));
+}
+
 fn sweep(t: f32) -> vec3<f32> {
-    let cyan = vec3<f32>(0.0, 1.0, 1.0);
-    let magenta = vec3<f32>(1.0, 0.0, 1.0);
-    let yellow = vec3<f32>(1.0, 1.0, 0.0);
+    return p3_to_srgb(sweep_p3(t));
+}
+
+fn sweep_p3(t: f32) -> vec3<f32> {
+    let cyan = srgb_to_p3(vec3<f32>(0.0, 1.0, 1.0));
+    let magenta = srgb_to_p3(vec3<f32>(1.0, 0.0, 1.0));
+    let yellow = srgb_to_p3(vec3<f32>(1.0, 1.0, 0.0));
     if (t < 1.0 / 3.0) { return mix(cyan, magenta, t * 3.0); }
     if (t < 2.0 / 3.0) { return mix(magenta, yellow, t * 3.0 - 1.0); }
     return mix(yellow, cyan, t * 3.0 - 2.0);
@@ -79,7 +102,7 @@ fn wheel(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
         let a = atan2(nc.y, nc.x);
         let hue = a * 0.5 / PI + 0.5;
         let sat = (distance * 2.0) * (distance * 2.0);
-        let rgb = hsv2rgb(vec3<f32>(hue, sat, 1.0));
+        let rgb = p3_to_srgb(hsv2rgb(vec3<f32>(hue, sat, 1.0)));
         c = vec4<f32>(rgb * mask, mask) + c * (1.0 - mask);
     }
     return c;
