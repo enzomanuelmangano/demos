@@ -26,6 +26,10 @@ component DemoScreen
       bottom = max(0, env.height - g.y - g.height)
   view
     column id="demo-route" position="absolute" inset=0 resize=placed testId=`demo-${demo.slug}`
+      // demo-screen.tsx styles.card: the card's continuous SCREEN_CORNER_RADIUS corners, clipped,
+      // the home showing in them. The route is UIKit's presentation: `screen-corners`
+      // (modules/apple/Demos.swift) rounds the presented view itself.
+      screen-corners position="absolute" left=0 top=0 width=0 height=0 aria-hidden=true
       column position="absolute" left=0 right=0 top=(0 - top) bottom=(0 - bottom) background-color=demo.backdrop
         if demo.ported
           PortedDemo(slug=demo.slug, env=DemoEnv(env, safeTop=top, safeBottom=bottom))

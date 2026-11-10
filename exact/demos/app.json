@@ -10,7 +10,8 @@
     "name": "Demos"
   },
   "modules": [
-    "rolling-count"
+    "rolling-count",
+    "screen-corners"
   ],
   "host": {
     "web": {},
