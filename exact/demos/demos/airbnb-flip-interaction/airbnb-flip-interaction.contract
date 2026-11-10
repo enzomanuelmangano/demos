@@ -1,0 +1,214 @@
+// Airbnb Flip Interaction: a coral profile card that flips (rotateY on a spring, dipping to 0.95
+// mid-turn) to a white stats card when pressed; the text under it swaps between two pages with
+// short rise-and-fade keyframes. RN: src/animations/airbnb-flip-interaction (index.tsx,
+// constants.ts, flip-interaction/constants, flip-interaction/components/card/{index.tsx,
+// front.tsx, back.tsx, profile-avatar.tsx}, pages/{MainPage.tsx, SecondPage.tsx}).
+use PressableOpacity from "pressto"
+use DemoEnv, demoButtonRow from "../env.contract"
+
+// card/index.tsx SPRING_CONFIG { mass 1.2, stiffness 60, damping 12, velocity 0.2 }: progress
+// springs to 0 or 1; rotateY = 180 × progress (the back 180 + that). Not exact: the initial
+// velocity 0.2 has no counterpart in a transition spring.
+fn flipSpring(): string = "-exact-spring(60, 12, 1.2)"
+// scale = interpolate(progress, [0, 0.5, 1], [1, 0.95, 1]) (extended past the ends), the same
+// curve both ways (f(1 - p) = f(p)): from 1 to 0.95 on a linear() easing of (1 - scale) / 0.05,
+// sampled every 25 ms from the spring's own progress from rest (ζ 0.707, ω 7.07; 1.2 s, where
+// Reanimated's rest thresholds stop it). Two names, so each press restarts it. Not exact: a press
+// mid-flip restarts the dip, where RN's scale follows the retargeted spring.
+keyframes flipScaleA
+  from scale=1
+  to scale=0.95
+keyframes flipScaleB
+  from scale=1
+  to scale=0.95
+fn flipScaleTiming(): string = "1200ms linear(0, 0.0287, 0.1055, 0.2175, 0.3539, 0.5055, 0.6648, 0.8257, 0.9833, 0.8658, 0.7245, 0.5944, 0.4767, 0.3719, 0.28, 0.2008, 0.1335, 0.0774, 0.0316, -0.0049, -0.0333, -0.0544, -0.0694, -0.0791, -0.0845, -0.0864, -0.0855, -0.0824, -0.0777, -0.072, -0.0655, -0.0586, -0.0517, -0.0448, -0.0383, -0.0321, -0.0264, -0.0212, -0.0166, -0.0126, -0.0091, -0.0061, -0.0036, -0.0016, 0, 0.0013, 0.0022, 0.0029, 0) both"
+
+// index.tsx ANIMATION and its Keyframes (linear between keys, as a Reanimated Keyframe):
+// enteringFront / exitingFront for the second page, enteringBack / exitingBack for the first.
+keyframes airbnbInFront
+  0% opacity=0 translate="0px -5px"
+  60% opacity=0.45 translate="0px -2px"
+  100% opacity=1 translate="0px 0px"
+keyframes airbnbOutFront
+  0% opacity=1 translate="0px 0px"
+  30% opacity=0.45 translate="0px 2px"
+  100% opacity=0 translate="0px 5px"
+keyframes airbnbInBack
+  0% opacity=0 translate="0px 5px"
+  60% opacity=0.45 translate="0px 2px"
+  100% opacity=1 translate="0px 0px"
+keyframes airbnbOutBack
+  0% opacity=1 translate="0px 0px"
+  30% opacity=0.45 translate="0px -2px"
+  100% opacity=0 translate="0px -5px"
+style AirbnbFrontOut
+  -exact-exit-animation="airbnbOutFront 250ms linear both"
+style AirbnbBackOut
+  -exact-exit-animation="airbnbOutBack 250ms linear both"
+
+component AirbnbFlipInteraction
+  props
+    env: DemoEnv
+  state isFlipped = false
+  // Presses so far: the scale keyframes alternate names, none before the first.
+  state flips = 0
+  // flip-interaction/constants spacing.xxl 64: cardWidth = screenWidth - 64, height / 1.6.
+  derive cardW = env.width - 64
+  derive cardH = cardW / 1.6
+  action toggleCard
+    haptic("selection")
+    isFlipped = not isFlipped
+    flips = flips + 1
+  view
+    // styles.container: white, flex 1.
+    column position="absolute" inset=0 background-color="#ffffff" testId="airbnb-flip"
+      // The ScrollView (no indicator): paddingTop safeTop + DEMO_BUTTON_ROW_HEIGHT, paddingBottom
+      // safeBottom + 40.
+      scroll flex=1 min-height=0 scrollbar-width="none" testId="airbnb-scroll"
+        column padding-top=(env.safeTop + demoButtonRow())
+          padding-bottom="calc(40px + env(safe-area-inset-bottom))"
+          // styles.cardSection: centred, paddingBottom spacing.xl (24), paddingHorizontal 20.
+          column align-items="center" padding-bottom=24 padding-left=20 padding-right=20
+            column class=PressableOpacity press=toggleCard role="button"
+              aria-label=(isFlipped ? "Show the profile card" : "Show the stats card")
+              testId="airbnb-card"
+              // FlipCard: rotationContainer cardWidth × cardHeight (horizontal: rotate 0); the
+              // faces fill it.
+              view position="relative" width=cardW height=cardH
+                // cardFace: radius spacing.l + 4 (28) continuous, boxShadow 0 4 12 10 % black,
+                // clipped; transform perspective 1000, rotateY, scale; backface hidden.
+                column position="absolute" inset=0 border-radius=28 corner-shape="squircle"
+                  overflow="hidden" box-shadow="0px 4px 12px rgba(0, 0, 0, 0.1)"
+                  perspective=1000 backface-visibility="hidden"
+                  rotate=`y ${isFlipped ? 180 : 0}deg` transition=`rotate ${flipSpring()}`
+                  animation=(flips == 0 ? "none" : (flips % 2 == 1 ? `flipScaleA ${flipScaleTiming()}` : `flipScaleB ${flipScaleTiming()}`))
+                  testId="airbnb-front"
+                  AirbnbFront()
+                column position="absolute" inset=0 border-radius=28 corner-shape="squircle"
+                  overflow="hidden" box-shadow="0px 4px 12px rgba(0, 0, 0, 0.1)"
+                  perspective=1000 backface-visibility="hidden"
+                  rotate=`y ${isFlipped ? 360 : 180}deg` transition=`rotate ${flipSpring()}`
+                  animation=(flips == 0 ? "none" : (flips % 2 == 1 ? `flipScaleA ${flipScaleTiming()}` : `flipScaleB ${flipScaleTiming()}`))
+                  testId="airbnb-back"
+                  AirbnbBack()
+          // styles.descriptionSection: paddingHorizontal spacing.xxl (32).
+          column position="relative" padding-left=32 padding-right=32
+            if isFlipped
+              // descriptionContainer: radius spacing.m (12) continuous, clipped.
+              column border-radius=12 corner-shape="squircle" overflow="hidden"
+                animation="airbnbInFront 400ms linear both" class=AirbnbFrontOut
+                testId="airbnb-second-page"
+                AirbnbPage(second=true)
+            else
+              column border-radius=12 corner-shape="squircle" overflow="hidden"
+                animation="airbnbInBack 400ms linear both" class=AirbnbBackOut
+                testId="airbnb-main-page"
+                AirbnbPage(second=false)
+            // The AnimatedBlurView over it: absoluteFill, rgba(255,255,255,0.5), zIndex 1, tint
+            // light. Not exact: its intensity (0 → 10 → 20 → 10 → 0 over the flip's progress)
+            // doesn't animate in Exact; at rest it is 0 both ways, so only the veil is drawn.
+            view position="absolute" inset=0 background-color="rgba(255, 255, 255, 0.5)"
+              z-index=1 pointer-events="none" aria-hidden=true
+      // The LinearGradient over the top: #FFFFFF → #FFFFFF00, safeTop + 16 tall, zIndex 10.
+      view position="absolute" top=0 left=0 right=0 height=(env.safeTop + 16) z-index=10
+        background-image="linear-gradient(to bottom, #FFFFFF 0%, rgba(255, 255, 255, 0) 100%)"
+        pointer-events="none" aria-hidden=true
+
+// front.tsx: a LinearGradient #FF6B6B → #FF8E53 → #FF6B6B (0, 0.5, 1) from the top-left to the
+// bottom-right corner (CSS's `to bottom right` draws the same isolines); paddingContainer flex 1,
+// padding spacing.l (24).
+component AirbnbFront
+  view
+    column flex=1 border-radius=28 corner-shape="squircle" overflow="hidden"
+      background-image="linear-gradient(to bottom right, #FF6B6B 0%, #FF8E53 50%, #FF6B6B 100%)"
+      column flex=1 padding=24
+        // nameText: white, SF-Pro-Rounded-Heavy 32 (fontWeight 700), letterSpacing -0.5,
+        // marginBottom 4.
+        text "Reactiive" color="#ffffff" font-family="ui-rounded" font-weight=800 font-size=32
+          letter-spacing=-0.5 margin-bottom=4
+        // verifiedText: rgba(255,255,255,0.95), SF-Pro-Rounded-Bold 17, letterSpacing 0.2, a
+        // 0 1 1 10 % black text shadow (CSS blur twice the radius).
+        text "Verified" color="rgba(255, 255, 255, 0.95)" font-family="ui-rounded" font-weight=700
+          font-size=17 letter-spacing=0.2 text-shadow="0px 1px 2px rgba(0, 0, 0, 0.1)"
+        view flex=1
+        // avatarSection: flex 1, at the end both ways.
+        column flex=1 align-items="flex-end" justify-content="flex-end"
+          AirbnbAvatar()
+
+// back.tsx: white, radius 28 continuous, centred, padding spacing.l (24).
+component AirbnbBack
+  view
+    column flex=1 background-color="#ffffff" border-radius=28 corner-shape="squircle"
+      justify-content="center" padding=24
+      // headerSection: a centred row, space-between.
+      row align-items="center" justify-content="space-between"
+        AirbnbAvatar()
+        // profileInfo: flex 1, marginLeft spacing.l (24).
+        column flex=1 min-width=0 margin-left=24
+          // nameText: #1A1D29, SF-Pro-Rounded-Heavy 22 (700), letterSpacing -0.3, marginBottom 4.
+          text "Reactiive" color="#1A1D29" font-family="ui-rounded" font-weight=800 font-size=22
+            letter-spacing=-0.3 margin-bottom=4
+          // locationText: #6B7280, SF-Pro-Rounded-Bold 15, letterSpacing 0.1.
+          text "Italy" color="#6B7280" font-family="ui-rounded" font-weight=700 font-size=15
+            letter-spacing=0.1
+      // statsContainer: a centred row, space-around, marginTop spacing.s (8).
+      row align-items="center" justify-content="space-around" margin-top=8
+        AirbnbStat(value="3", label="Trip")
+        AirbnbStat(value="1", label="Review")
+        AirbnbStat(value="4", label="Years")
+
+component AirbnbStat
+  props
+    value: string
+    label: string
+  view
+    // statItem: centred; statNumber #1A1D29 Heavy 24 (700), letterSpacing -0.5; statLabel
+    // #6B7280 Bold 13, letterSpacing 0.2, marginTop 4.
+    column align-items="center"
+      text value color="#1A1D29" font-family="ui-rounded" font-weight=800 font-size=24
+        letter-spacing=-0.5
+      text label color="#6B7280" font-family="ui-rounded" font-weight=700 font-size=13
+        letter-spacing=0.2 margin-top=4
+
+// profile-avatar.tsx, size 80: a LinearGradient #4A5568 → #2D3748 circle with a 3 px
+// rgba(255,255,255,0.3) border, the initial (Heavy, 700, 0.4 × size, a 0 1 2 20 % black
+// shadow); the verified badge: #FF6B6B → #FF5252, 0.32 × size, radius 0.16 × size, a 3 px white
+// border, at bottom -2 right -2, a ✓ (700, 0.14 × size, a 0 1 1 20 % black shadow).
+component AirbnbAvatar
+  view
+    view position="relative" width=80 height=80
+      column width=80 height=80 border-radius=40 border-width=3 border-style="solid"
+        border-color="rgba(255, 255, 255, 0.3)" align-items="center" justify-content="center"
+        background-image="linear-gradient(to bottom, #4A5568 0%, #2D3748 100%)"
+        text "R" color="#ffffff" font-family="ui-rounded" font-weight=800 font-size=32
+          text-shadow="0px 1px 4px rgba(0, 0, 0, 0.2)"
+      column position="absolute" bottom=-2 right=-2 width=25.6 height=25.6 border-radius=12.8
+        border-width=3 border-style="solid" border-color="#ffffff" align-items="center"
+        justify-content="center"
+        background-image="linear-gradient(to bottom, #FF6B6B 0%, #FF5252 100%)"
+        text "✓" color="#ffffff" font-weight=700 font-size=11.2
+          text-shadow="0px 1px 2px rgba(0, 0, 0, 0.2)"
+
+// pages/MainPage.tsx and SecondPage.tsx (the demo's own constants: s 8, m 12, xxl 32):
+// container paddingBottom 32; each section radius 12, marginBottom 12, paddingVertical 8;
+// sectionTitle #000, SF-Pro-Rounded-Bold 20, marginBottom 8; sectionText #1A1D29, regular 16,
+// lineHeight 24.
+component AirbnbPage
+  props
+    second: bool
+  view
+    column padding-bottom=32
+      AirbnbSection(title=(second ? "Profile Overview" : "Identity Verification"),
+        body=(second ? "Your complete profile showcases your journey, including stats, personal information, and places visited. This transparency helps build trust within our community." : "Our identity verification process checks a person's information against trusted third-party sources or a government ID. The process has safeguards but doesn't guarantee that someone is who they say they are."))
+      AirbnbSection(title=(second ? "Community Engagement" : "Trust & Safety"),
+        body=(second ? "Through reviews, recommendations, and respectful interactions, you contribute to creating better experiences for everyone in our global community." : "Building trust in our community is essential. Verified identities help create safer, more reliable experiences for everyone."))
+
+component AirbnbSection
+  props
+    title: string
+    body: string
+  view
+    column border-radius=12 corner-shape="squircle" margin-bottom=12 padding-top=8 padding-bottom=8
+      text title color="#000000" font-family="ui-rounded" font-weight=700 font-size=20
+        margin-bottom=8
+      text body color="#1A1D29" font-family="regular" font-size=16 line-height=24

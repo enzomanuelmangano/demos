@@ -5,6 +5,13 @@ description: Port one demo of the RN demos app (src/animations/<slug>) to the Ex
 
 # Port one demo
 
+**The bar (the owner's): high-quality parity, not a copy.** No "not exact" item is accepted.
+If Contract cannot express something exactly (an animated blur intensity, an animated radius
+or font size, a value computed from the finger each move, a staggered exit, a sensor, a
+haptic at a precise moment), the demo — or the part of it that moves — is drawn in Rust
+(`gpu/`), where everything is possible. A port is done only when `parity-verify` passes:
+still frames AND motion, side by side with the RN app.
+
 The RN demo (`src/animations/<slug>/`, read-only) is the source of truth: every size,
 padding, radius, colour, font, timing, curve, spring and gesture. Target: the same demo,
 not a lookalike. Read `demos-dev-loop` first (build rules, springs, GPU rules).
@@ -50,6 +57,13 @@ drawing with Contract boxes: it is Rust.
 - Registration (the integrator does it, one at a time): `demos/index.contract` (`use` + an
   `if slug == …` arm), `gpu/src/lib.rs` (`pub mod`, the `REGISTRY` row), a surface that
   holds touches publishes `{"held": bool}` and gets a `Hold` resource in `app.contract`.
+
+## Haptics from a surface
+
+A surface cannot play a haptic itself. It returns the kind from `messages()` (e.g.
+`"haptic:selection"`, `"haptic:impact-heavy"`), and the demo's canvas has `message=buzz` with
+an action that plays it (`if text == "haptic:selection" haptic("selection")`, one line per kind).
+One commit per haptic event, never per frame.
 
 ## Traps the compiler only catches in the whole app
 

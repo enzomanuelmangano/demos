@@ -1,0 +1,133 @@
+// Popup Handler: a white circle over a photo, dragged anywhere; a tap blurs the screen (dark) and
+// opens a four-row menu beside it (above or below, left or right, by where it is); a row closes
+// the menu and, 800 ms later, springs the circle to that corner.
+// RN: src/animations/popup-handler (index.tsx, BlurredPopup/{BlurredPopupProvider.tsx,
+// TouchablePopupHandler.tsx}).
+use PressableOpacity from "pressto"
+use DemoEnv, demoButtonRow from "../env.contract"
+
+// index.tsx: size 64, internalPadding size / 2; the angles, their labels (capitalized words) and
+// the arrow's rotation (getRotationByAngle).
+fn popupLabel(a: number): string = match ["Top Left", "Top Right", "Bottom Left", "Bottom Right"].at(a) { case some(t) => t, case none => "" }
+fn popupTurn(a: number): number = match [270, 0, 180, 90].at(a) { case some(t) => t, case none => 0 }
+fn popupRight(a: number): bool = a == 1 or a == 3
+fn popupBottom(a: number): bool = a == 2 or a == 3
+// FontAwesome "location-arrow", the vector-icons font's glyph: 1792 units to the em, 1408 wide.
+fn popupArrowPath(): string = "M1401 349 761 1629Q744 1664 704 1664Q699 1664 689 1662Q667 1657 653.5 1639.5Q640 1622 640 1600V1024H64Q42 1024 24.5 1010.5Q7 997 2 975Q-3 953 6 933Q15 913 35 903L1315 263Q1328 256 1344 256Q1371 256 1389 275Q1404 289 1407.5 309.5Q1411 330 1401 349Z"
+
+// Reanimated 4's withSpring() default (the corner) and the menu's withTiming 200 ms, the blur's
+// 300 ms (Reanimated's default inOut(quad)).
+fn popupSpring(): string = "-exact-spring(900, 120, 4)"
+fn popupEase(): string = "cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+
+component PopupHandler
+  props
+    env: DemoEnv
+  // translateX / translateY (the circle's place), starting at (size / 2, topY).
+  state px = 32
+  state py = env.safeTop + demoButtonRow()
+  // selectedAngle (0 top-left … 3 bottom-right): the reaction runs only when it changes.
+  state angle = 0
+  // The corner spring's delay: the option's setTimeout(800) while it is pending, else 0.
+  state moveDelay = 0
+  // menuVisible, and the measured layout of the circle when it opened (params).
+  state open = false
+  state shown = false
+  state pageX = 0
+  state pageY = 0
+  derive w = env.width
+  derive h = env.height
+  derive topY = env.safeTop + demoButtonRow()
+  // BlurredPopupProvider popupStyle: listItemHeight 54 × 4 options; above when it would end
+  // under 100 px from the bottom, right-aligned when under 200 px from the right (its `right`
+  // is the node's width, 64, as RN writes it); 5 px apart.
+  derive above = h - pageY - 216 < 100
+  derive alignLeft = w - pageX > 200
+  derive menuTop = (above ? pageY - 216 : pageY + 64) + (above ? -5 : 5)
+
+  action began(bw: number, bh: number, pw: number, ph: number)
+    moveDelay = 0
+  // Pan onUpdate: translate = context + translation; the circle stays where it is let go.
+  action released(x: number, y: number, scale: number, vx: number, vy: number, vscale: number)
+    px = x
+    py = y
+  // TouchablePopupHandler's Tap (onTouchesUp): measure, showPopup, a selection haptic.
+  action openPopup
+    haptic("selection")
+    pageX = px
+    pageY = py
+    open = true
+    shown = true
+  // close(): the menu fades (200 ms), the blur 100 ms later (300 ms).
+  action close
+    open = false
+  // A row (PressableOpacity): close(), then 800 ms later selectedAngle; its reaction springs
+  // the circle to the corner.
+  action pick(a: number)
+    haptic("selection")
+    open = false
+    if a != angle
+      angle = a
+      moveDelay = 800
+      px = popupRight(a) ? w - 64 - 32 : 32
+      py = popupBottom(a) ? h - 64 - 64 : topY
+
+  view
+    // The root View: #111, flex 1; an expo-image absoluteFill (cover).
+    column position="absolute" inset=0 background-color="#111111" overflow="hidden"
+      testId="popup-handler"
+      image "assets/demos/popup-handler/background.jpg" position="absolute" inset=0
+        width="100%" height="100%" object-fit="cover" aria-hidden=true
+      // The GestureDetector's Animated.View (64 × 64, translated): the transform drag's target
+      // is a layer the size of the screen, under an untransformed, clipping parent.
+      column position="absolute" inset=0 overflow="hidden" pointer-events="none"
+        column id="popup-drag" width="100%" height="100%" box-sizing="border-box"
+          position="relative" translate=`${px}px ${py}px`
+          transition=`translate ${popupSpring()} ${moveDelay}ms`
+          // The white circle (radius size / 2, continuous).
+          view position="absolute" left=0 top=0 width=64 height=64 border-radius=32
+            background-color="#ffffff" pointer-events="auto" touch-action="none"
+            transformDragFor="popup-drag" transformgeometry=began transformrelease=released
+            press=openPopup role="button" aria-label="Show the menu" testId="popup-circle"
+      // The BlurView (intensity maxBlur × 20, tint dark): opacity withTiming(1, 300) on show,
+      // to 0 100 ms after close; a touch on it closes.
+      view position="absolute" inset=0 backgroundMaterial="dark" opacity=(open ? 1 : 0)
+        transition=(open ? `opacity 300ms ${popupEase()}` : `opacity 300ms ${popupEase()} 100ms`)
+        pointer-events=(open ? "auto" : "none") press=close aria-label="Close the menu"
+        testId="popup-blur"
+      // mainPopupContainerView (absoluteFill, zIndex 500): the node copy, the touch catcher,
+      // the menu.
+      if shown
+        // (RN keeps it touchable until the blur has faded; here it stops at the close.)
+        column position="absolute" inset=0 pointer-events="none"
+          // The node at its measured place, with the menu's opacity and scale.
+          view position="absolute" left=pageX top=pageY width=64 height=64 border-radius=32
+            background-color="#ffffff" pointer-events="none" opacity=(open ? 1 : 0)
+            scale=(open ? 1 : 0.95)
+            transition=`opacity 200ms ${popupEase()}, scale 200ms ${popupEase()}`
+            aria-hidden=true
+          view position="absolute" inset=0 press=close aria-label="Close the menu"
+            pointer-events=(open ? "auto" : "none") testId="popup-background"
+          // styles.popup: radius 12 continuous, boxShadow 0 8 16 25 % black, clipped.
+          column position="absolute" top=menuTop height=216 left=(alignLeft ? pageX : "auto")
+            right=(alignLeft ? "auto" : 64) border-radius=12 corner-shape="squircle"
+            overflow="hidden" box-shadow="0px 8px 16px rgba(0, 0, 0, 0.25)"
+            pointer-events=(open ? "auto" : "none") opacity=(open ? 1 : 0) scale=(open ? 1 : 0.95)
+            transition=`opacity 200ms ${popupEase()}, scale 200ms ${popupEase()}`
+            testId="popup-menu"
+            for a in range(4) key=a
+              // A row: 54 tall, rgba(255,255,255,0.95), paddingHorizontal 16, a 0.5 px
+              // rgba(0,0,0,0.08) rule under it (none under the last).
+              row class=PressableOpacity press=pick(a) role="button" aria-label=popupLabel(a)
+                height=54 align-items="center" padding-left=16 padding-right=16
+                background-color="rgba(255, 255, 255, 0.95)"
+                border-bottom-width=(a == 3 ? 0 : 0.5) border-bottom-style="solid"
+                border-bottom-color="rgba(0, 0, 0, 0.08)" testId=`popup-option-${a}`
+                // styles.title: #1a1a1a, 16, 500, letterSpacing 0.3.
+                text popupLabel(a) color="#1a1a1a" font-size=16 font-weight=500 letter-spacing=0.3
+                view flex=1
+                // trailingContainer: marginLeft 8; FontAwesome location-arrow 14 gray, rotated.
+                view margin-left=8
+                  svg width=11 height=14 viewBox="0 0 1408 1792" rotate=`${popupTurn(a)}deg`
+                    aria-hidden=true
+                    path d=popupArrowPath() fill="#808080"

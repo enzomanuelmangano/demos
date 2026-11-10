@@ -6,7 +6,6 @@
 use PressableScale from "pressto"
 use DemoEnv, demoButtonRow from "../env.contract"
 
-font "AddingtonCF-Light" = "assets/fonts/AddingtonCF-Light.otf"
 
 // card-input.tsx: progress = withSpring(focused ? 1 : 0, { duration: 800, dampingRatio: 1 }).
 fn cardSpring(): string = "-exact-spring(424.9, 82.5, 4)"

@@ -72,3 +72,14 @@ bun exact.mjs ios --run --sim $EXACT_SIM                         # native build 
   static (`ownsDrags` in app.contract).
 - Skia drawing goes through `packages/skia` (lyon tessellation + one MSAA pipeline): vello
   was tried and fails on the iOS Simulator (no indirect dispatch), so don't reach for it.
+
+## Parity with RN (tools/compare.sh)
+
+- The RN dev build runs on the same simulator (`com.reactiive.app`, Metro on 8082:
+  `exp+thank-you://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8082`).
+  `WAIT=5 ./tools/compare.sh <slug>…` → `/tmp/compare/sheet.png`, RN left, Exact right. A
+  capture of the home or a half-open card is timing: rerun with a larger WAIT.
+- GPU surfaces: one `write_buffer` per resource per frame (each stages a buffer); morphs in
+  the vertex shader; the web host gives a surface no touches (iOS is the target).
+- If argent's touches fail ("CoreDevice transport is dead"), `stop-simulator-server` for
+  the device and retry.

@@ -1,0 +1,21 @@
+at "/demo/popup-handler"
+
+test "a tap on the circle opens the menu; a row closes it"
+  expect tree has "popup-handler"
+  expect tree has "popup-circle"
+  expect tree missing "popup-menu"
+  tap "popup-circle"
+  clock settle
+  expect tree has "popup-menu"
+  expect text "popup-option-0" == "Top Left"
+  expect text "popup-option-3" == "Bottom Right"
+  tap "popup-option-3"
+  clock settle
+  expect tree has "popup-circle"
+
+test "a tap outside the menu closes it"
+  tap "popup-circle"
+  clock settle
+  tap "popup-background"
+  clock settle
+  expect tree has "popup-circle"

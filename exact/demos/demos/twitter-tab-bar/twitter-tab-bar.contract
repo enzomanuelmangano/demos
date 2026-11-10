@@ -1,0 +1,129 @@
+// Twitter Tab Bar: a dark feed of 50 empty rows over a four-tab bar with a floating compose
+// button; scrolling down hides the bar (and shrinks the button away), scrolling up brings it
+// back; the Message tab spins the button into a message icon. RN: src/animations/twitter-tab-bar
+// (index.tsx, constants/palette.ts, constants/screens.ts, screens/home/index.tsx,
+// components/bottom-tab-bar/index.tsx, floating-button.tsx, active-tab-bar-provider.tsx).
+use PressableScale from "pressto"
+use DemoEnv from "../env.contract"
+
+// constants/palette.ts DarkPalette: primary #4A9AE9, background #17202A,
+// card Color('#17202A').lighten(0.15) = #1A2530, border Color('#FFFFFF').darken(0.65) = #595959,
+// text #FFFFFF.
+
+// bottom-tab-bar: IS_SMALL_DEVICE = SCREEN_HEIGHT < 700; BOTTOM_BAR_HEIGHT 80 : 95.
+fn twitterBarHeight(h: number): number = h < 700 ? 80 : 95
+// ScreenNamesArray, and the MaterialIcons each tab draws (home, search, notifications, message,
+// 28, white): the SF Symbols they look like.
+fn twitterTabName(i: number): string = i == 0 ? "Home" : (i == 1 ? "Search" : (i == 2 ? "Notifications" : "Message"))
+fn twitterTabSymbol(i: number): string = i == 0 ? "symbol:sf/house.fill" : (i == 1 ? "symbol:sf/magnifyingglass" : (i == 2 ? "symbol:sf/bell.fill" : "symbol:sf/message.fill"))
+
+// The bar's translateY: withSpring({ dampingRatio: 1, duration: 500 }) → bun tools/spring.ts 500 1.
+fn twitterBarSpring(): string = "-exact-spring(1087.7, 131.9, 4)"
+// Reanimated 4's withSpring() default: the button's scale (overshootClamping changes nothing on
+// this critically damped spring) and its highlight.
+fn twitterGentle(): string = "-exact-spring(900, 120, 4)"
+// withTiming's default curve, Easing.inOut(Easing.quad).
+fn twitterInOutQuad(): string = "cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+
+// floatingProgress = withTiming(Message ? 1 : 0, { duration: 500 }) is a hidden box's translate
+// (0 → 100 px), a drag timeline the button's interpolations follow, host-driven:
+// rotate [0, 1] → [0, 2π]; scale [0, 0.5, 1] → [1, 1.2, 1]; the edit icon shown while
+// progress <= 0.5, the message icon past it.
+keyframes twitterFabSpin
+  0% rotate=0 scale=1
+  50% scale=1.2
+  100% rotate=360 scale=1
+keyframes twitterEditIcon
+  0% opacity=1
+  50% opacity=1
+  50.01% opacity=0
+  100% opacity=0
+keyframes twitterMessageIcon
+  0% opacity=0
+  50% opacity=0
+  50.01% opacity=1
+  100% opacity=1
+
+component TwitterTabBar
+  props
+    env: DemoEnv
+  state activeTab = 0
+  // isActive (the shared value the scroll handler writes): written only when it flips.
+  state isActive = true
+  // prevContentOffsetY: the one value written per scroll frame; nothing in the view reads it.
+  state prevY = 0
+  state highlighted = false
+  derive barHeight = twitterBarHeight(env.height)
+  // useAnimatedScrollHandler onScroll: scrolling up (or still) shows the bar.
+  action scrolled(x: number, y: number)
+    let up = max(prevY, 0) - max(y, 0) >= 0
+    if up != isActive
+      isActive = up
+    prevY = y
+  // onTapIcon: isActive true, floatingProgress to 1 on Message, else 0; the tab is shown.
+  action tapTab(i: number)
+    haptic("selection")
+    isActive = true
+    activeTab = i
+    if i != 0
+      prevY = 0
+  // The floating button's Tap: onBegin highlighted, onFinalize not (onSelect only logs).
+  action fabDown
+    highlighted = true
+  action fabUp
+    highlighted = false
+  view
+    // index.tsx: flex 1 on colors.background.
+    column position="absolute" inset=0 background-color="#17202A" timeline-scope="--twitterFab"
+      testId="twitter-tab-bar"
+      column flex=1 min-height=0
+        // ScreenMap: Home is the feed; Search, Notifications and Message an empty View.
+        if activeTab == 0
+          // HomeScreen: an Animated.FlatList of 50 rows (height 100, a 1 px bottom border in
+          // colors.border), content padded BOTTOM_BAR_HEIGHT at the bottom.
+          scroll flex=1 min-height=0 scroll=scrolled testId="twitter-feed"
+            column padding-bottom=barHeight
+              for r in range(50) key=r
+                view height=100 box-sizing="border-box" border-bottom-width=1
+                  border-bottom-style="solid" border-bottom-color="#595959"
+      // floatingProgress, as a timeline.
+      view position="absolute" left=0 top=0 width=0 height=0 pointer-events="none"
+        aria-hidden=true translate=(activeTab == 3 ? "100px 0px" : "0px 0px")
+        transition=`translate 500ms ${twitterInOutQuad()}` -exact-drag-timeline="--twitterFab x"
+      // BottomFloatingButton: absolute, bottom BOTTOM_BAR_HEIGHT + safeBottom / 2, right 16,
+      // 64 × 64 (aspectRatio 1), colors.primary, radius 32; scale withSpring(isActive ? 1 : 0).
+      column position="absolute" right=16
+        bottom=`calc(${barHeight}px + env(safe-area-inset-bottom) / 2)` width=64 height=64
+        scale=(isActive ? 1 : 0) transition=`scale ${twitterGentle()}` testId="twitter-fab"
+        column flex=1 animation="twitterFabSpin 1s linear both" animation-timeline="--twitterFab"
+          animation-range="0px 100px"
+          // rHighlightedStyle: scale withSpring(highlighted ? 0.8 : 1).
+          column flex=1 position="relative" background-color="#4A9AE9" border-radius=32
+            scale=(highlighted ? 0.8 : 1) transition=`scale ${twitterGentle()}`
+            pointerdown=fabDown pointerup=fabUp touch-action="none"
+            role="button" aria-label=(activeTab == 3 ? "New message" : "Compose")
+            // MaterialIcons edit / message, 28, Palette.text.
+            column position="absolute" inset=0 align-items="center" justify-content="center"
+              animation="twitterEditIcon 1s linear both" animation-timeline="--twitterFab"
+              animation-range="0px 100px"
+              image "symbol:sf/pencil" font-size=28 color="#FFFFFF" aria-hidden=true
+            column position="absolute" inset=0 align-items="center" justify-content="center"
+              animation="twitterMessageIcon 1s linear both" animation-timeline="--twitterFab"
+              animation-range="0px 100px"
+              image "symbol:sf/message.fill" font-size=28 color="#FFFFFF" aria-hidden=true
+      // localStyles.container: absolute at the bottom, BOTTOM_BAR_HEIGHT tall, a row on
+      // colors.card, paddingBottom safeBottom / 2; translateY 0, or BOTTOM_BAR_HEIGHT +
+      // safeBottom hidden.
+      row position="absolute" left=0 right=0 bottom=0 height=barHeight box-sizing="border-box"
+        padding-bottom="calc(env(safe-area-inset-bottom) / 2)" background-color="#1A2530"
+        translate=(isActive ? "0px 0px" : `0px calc(${barHeight}px + env(safe-area-inset-bottom))`)
+        transition=`translate ${twitterBarSpring()}` role="tablist" testId="twitter-bar"
+        for i in range(4) key=i
+          // TabBarItem: flex 1, opacity withTiming(focused ? 1 : 0.3); a PressableScale,
+          // centred.
+          column flex=1 opacity=(activeTab == i ? 1 : 0.3)
+            transition=`opacity 300ms ${twitterInOutQuad()}`
+            column class=PressableScale flex=1 align-items="center" justify-content="center"
+              press=tapTab(i) role="tab" aria-selected=(activeTab == i)
+              aria-label=twitterTabName(i) testId=`twitter-tab-${i}`
+              image twitterTabSymbol(i) font-size=28 color="#FFFFFF" aria-hidden=true

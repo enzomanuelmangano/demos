@@ -1,0 +1,32 @@
+at "/demo/clerk-toast"
+
+test "each card press stacks the next toast, the front ones swipeable"
+  expect tree has "clerk-toast"
+  expect tree has "clerk-card-0"
+  expect tree missing "clerk-handle-0"
+  tap "clerk-card-0"
+  clock settle
+  expect text "clerk-title-0" == "This is a Custom Toast message"
+  expect tree has "clerk-handle-0"
+  tap "clerk-card-1"
+  clock settle
+  expect text "clerk-title-1" == "Strongly inspired by Emil Kowalski"
+  expect tree has "clerk-handle-0"
+  expect tree has "clerk-handle-1"
+
+test "the eighth toast's x clears them all"
+  tap "clerk-card-0"
+  tap "clerk-card-0"
+  tap "clerk-card-0"
+  tap "clerk-card-0"
+  tap "clerk-card-0"
+  tap "clerk-card-0"
+  tap "clerk-card-0"
+  tap "clerk-card-0"
+  clock settle
+  expect text "clerk-title-7" == "Actually, let's clear quickly everything"
+  expect tree has "clerk-clear-7"
+  tap "clerk-x-7"
+  clock settle
+  expect tree missing "clerk-handle-7"
+  expect tree missing "clerk-handle-6"

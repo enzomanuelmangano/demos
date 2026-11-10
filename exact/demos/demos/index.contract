@@ -1,6 +1,7 @@
 // The demos ported to Exact, by slug. Each lives in demos/<slug>/. Written by tools/gen-index.ts.
 use DemoEnv from "./env.contract"
 use ActionTray from "./action-tray/action-tray.contract"
+use AirbnbFlipInteraction from "./airbnb-flip-interaction/airbnb-flip-interaction.contract"
 use AlertDrawer from "./alert-drawer/alert-drawer.contract"
 use Animated3dParallax from "./animated-3d-parallax/animated-3d-parallax.contract"
 use AnimatedClipBox from "./animated-clip-box/animated-clip-box.contract"
@@ -11,17 +12,22 @@ use BalanceSlider from "./balance-slider/balance-slider.contract"
 use BlurCards from "./blur-cards/blur-cards.contract"
 use BlurCircles from "./blur-circles/blur-circles.contract"
 use BlurredBottomBar from "./blurred-bottom-bar/blurred-bottom-bar.contract"
+use BlurredScroll from "./blurred-scroll/blurred-scroll.contract"
 use BottomBarSkia from "./bottom-bar-skia/bottom-bar-skia.contract"
 use CheckboxInteractions from "./checkbox-interactions/checkbox-interactions.contract"
 use CircularCarousel from "./circular-carousel/circular-carousel.contract"
+use ClerkToast from "./clerk-toast/clerk-toast.contract"
+use ColorCarousel from "./color-carousel/color-carousel.contract"
 use ComposableText from "./composable-text/composable-text.contract"
 use CoverflowCarousel from "./coverflow-carousel/coverflow-carousel.contract"
 use CubertoSlider from "./cuberto-slider/cuberto-slider.contract"
+use DotSheet from "./dot-sheet/dot-sheet.contract"
 use DynamicBlurTabs from "./dynamic-blur-tabs/dynamic-blur-tabs.contract"
 use DynamicTabIndicator from "./dynamic-tab-indicator/dynamic-tab-indicator.contract"
 use EmailDemo from "./email-demo/email-demo.contract"
 use EverybodyCanCook from "./everybody-can-cook/everybody-can-cook.contract"
 use FamilyNumberInput from "./family-number-input/family-number-input.contract"
+use FibonacciShader from "./fibonacci-shader/fibonacci-shader.contract"
 use FloatingBottomBar from "./floating-bottom-bar/floating-bottom-bar.contract"
 use FluidSlider from "./fluid-slider/fluid-slider.contract"
 use FluidTabInteraction from "./fluid-tab-interaction/fluid-tab-interaction.contract"
@@ -30,19 +36,26 @@ use GithubContributions from "./github-contributions/github-contributions.contra
 use ImessageStack from "./imessage-stack/imessage-stack.contract"
 use LinearSensors from "./linear-sensors/linear-sensors.contract"
 use LiquidGlassPlayground from "./liquid-glass-playground/liquid-glass-playground.contract"
+use LoadingButton from "./loading-button/loading-button.contract"
 use MagnetSpring from "./magnet-spring/magnet-spring.contract"
 use Metaball from "./metaball/metaball.contract"
 use MilesBarChart from "./miles-bar-chart/miles-bar-chart.contract"
 use MotionBlur from "./motion-blur/motion-blur.contract"
 use OnlineOffline from "./online-offline/online-offline.contract"
+use PopupHandler from "./popup-handler/popup-handler.contract"
 use RadarChart from "./radar-chart/radar-chart.contract"
+use RecordButton from "./record-button/record-button.contract"
 use ScrollProgress from "./scroll-progress/scroll-progress.contract"
 use ScrollableBottomSheet from "./scrollable-bottom-sheet/scrollable-bottom-sheet.contract"
 use ShakeToDelete from "./shake-to-delete/shake-to-delete.contract"
 use SharedTransitions from "./shared-transitions/shared-transitions.contract"
+use SkiaBottomSheet from "./skia-bottom-sheet/skia-bottom-sheet.contract"
+use SlideToReveal from "./slide-to-reveal/slide-to-reveal.contract"
 use SmoothDropdown from "./smooth-dropdown/smooth-dropdown.contract"
+use SphereWaves from "./sphere-waves/sphere-waves.contract"
 use Spiral from "./spiral/spiral.contract"
 use SplitButton from "./split-button/split-button.contract"
+use StackedBottomSheet from "./stacked-bottom-sheet/stacked-bottom-sheet.contract"
 use StackedCarousel from "./stacked-carousel/stacked-carousel.contract"
 use StackedList from "./stacked-list/stacked-list.contract"
 use StackedModals from "./stacked-modals/stacked-modals.contract"
@@ -51,6 +64,9 @@ use Steps from "./steps/steps.contract"
 use StoryList from "./story-list/story-list.contract"
 use SwipeCards from "./swipe-cards/swipe-cards.contract"
 use TabNavigation from "./tab-navigation/tab-navigation.contract"
+use ThemeCanvasAnimation from "./theme-canvas-animation/theme-canvas-animation.contract"
+use Toast from "./toast/toast.contract"
+use TwitterTabBar from "./twitter-tab-bar/twitter-tab-bar.contract"
 use VerificationCode from "./verification-code/verification-code.contract"
 
 component PortedDemo
@@ -61,6 +77,8 @@ component PortedDemo
     column position="absolute" inset=0
       if slug == "action-tray"
         ActionTray(env=env)
+      if slug == "airbnb-flip-interaction"
+        AirbnbFlipInteraction(env=env)
       if slug == "alert-drawer"
         AlertDrawer(env=env)
       if slug == "animated-3d-parallax"
@@ -81,18 +99,26 @@ component PortedDemo
         BlurCircles()
       if slug == "blurred-bottom-bar"
         BlurredBottomBar(env=env)
+      if slug == "blurred-scroll"
+        BlurredScroll(env=env)
       if slug == "bottom-bar-skia"
         BottomBarSkia(env=env)
       if slug == "checkbox-interactions"
         CheckboxInteractions(env=env)
       if slug == "circular-carousel"
         CircularCarousel(env=env)
+      if slug == "clerk-toast"
+        ClerkToast(env=env)
+      if slug == "color-carousel"
+        ColorCarousel(env=env)
       if slug == "composable-text"
         ComposableText()
       if slug == "coverflow-carousel"
         CoverflowCarousel(env=env)
       if slug == "cuberto-slider"
         CubertoSlider()
+      if slug == "dot-sheet"
+        DotSheet(env=env)
       if slug == "dynamic-blur-tabs"
         DynamicBlurTabs(env=env)
       if slug == "dynamic-tab-indicator"
@@ -103,6 +129,8 @@ component PortedDemo
         EverybodyCanCook()
       if slug == "family-number-input"
         FamilyNumberInput(env=env)
+      if slug == "fibonacci-shader"
+        FibonacciShader(env=env)
       if slug == "floating-bottom-bar"
         FloatingBottomBar(env=env)
       if slug == "fluid-slider"
@@ -119,6 +147,8 @@ component PortedDemo
         LinearSensors()
       if slug == "liquid-glass-playground"
         LiquidGlassPlayground()
+      if slug == "loading-button"
+        LoadingButton()
       if slug == "magnet-spring"
         MagnetSpring()
       if slug == "metaball"
@@ -129,8 +159,12 @@ component PortedDemo
         MotionBlur(env=env)
       if slug == "online-offline"
         OnlineOffline(env=env)
+      if slug == "popup-handler"
+        PopupHandler(env=env)
       if slug == "radar-chart"
         RadarChart(env=env)
+      if slug == "record-button"
+        RecordButton(env=env)
       if slug == "scroll-progress"
         ScrollProgress(env=env)
       if slug == "scrollable-bottom-sheet"
@@ -139,12 +173,20 @@ component PortedDemo
         ShakeToDelete(env=env)
       if slug == "shared-transitions"
         SharedTransitions(env=env)
+      if slug == "skia-bottom-sheet"
+        SkiaBottomSheet()
+      if slug == "slide-to-reveal"
+        SlideToReveal(env=env)
       if slug == "smooth-dropdown"
         SmoothDropdown()
+      if slug == "sphere-waves"
+        SphereWaves()
       if slug == "spiral"
         Spiral()
       if slug == "split-button"
         SplitButton()
+      if slug == "stacked-bottom-sheet"
+        StackedBottomSheet(env=env)
       if slug == "stacked-carousel"
         StackedCarousel(env=env)
       if slug == "stacked-list"
@@ -161,5 +203,11 @@ component PortedDemo
         SwipeCards(env=env)
       if slug == "tab-navigation"
         TabNavigation(env=env)
+      if slug == "theme-canvas-animation"
+        ThemeCanvasAnimation()
+      if slug == "toast"
+        Toast(env=env)
+      if slug == "twitter-tab-bar"
+        TwitterTabBar(env=env)
       if slug == "verification-code"
         VerificationCode()
