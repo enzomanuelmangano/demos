@@ -1,0 +1,22 @@
+// Image Cropper: a square photo under a crop grid that a finger moves or resizes by its
+// corners, Expand / Collapse / Crop buttons under it, and the crop presented full screen in a
+// Modal that slides up, with Back. RN: src/animations/image-cropper (index.tsx,
+// components/image-cropper, components/image-cropper/grid, components/border-button).
+// Everything is one Rust surface, gpu/src/image_cropper.rs: the Skia canvas (photo, grid,
+// dimming, dots) and its react-native-skia-gesture Pan, the timings, the pressto buttons, the
+// Modal's UIKit slide and its page. It posts `haptic:selection` at each button's press (the
+// app's PressablesConfig onPress).
+use DemoEnv from "../env.contract"
+
+component ImageCropper
+  props
+    env: DemoEnv
+  action buzz(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+  view
+    // styles.container: black, flex 1.
+    column position="absolute" inset=0 background-color="#000000" testId="image-cropper"
+      canvas surface=image_cropper() message=buzz position="absolute" top=0 left=0
+        width=env.width height=env.height touch-action="none" testId="image-cropper-canvas"
+        aria-label="A photo with a crop grid; drag the grid or its corners, then Expand, Collapse or Crop"

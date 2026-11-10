@@ -64,6 +64,7 @@ pub mod fractal_glass;
 pub mod geometry_button;
 pub mod github_contributions;
 pub mod gl_transitions;
+pub mod image_cropper;
 pub mod imessage_stack;
 pub mod light_on_painting;
 pub mod linear_sensors;
@@ -146,6 +147,7 @@ pub static REGISTRY: Registry = Registry {
         ("geometry_button", 0, geometry_button::surface),
         ("github_contributions", 0, github_contributions::surface),
         ("gl_transitions", 4, gl_transitions::surface),
+        ("image_cropper", 0, image_cropper::surface),
         ("imessage_stack", 0, imessage_stack::surface),
         ("light_on_painting", 4, light_on_painting::surface),
         ("linear_sensors", 0, linear_sensors::surface),
