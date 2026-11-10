@@ -1,0 +1,4 @@
+at "/demo/twodos-slide"
+
+test "the squares and the slider are there"
+  expect tree has "twodos-slide"

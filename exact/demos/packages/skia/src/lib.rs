@@ -17,7 +17,8 @@
 //!
 //! Images are [`Images`] (decoded once, one mipmapped texture array) painted with
 //! [`Shader::Image`] (`<Image fit>`, an image shader) or [`Canvas::draw_atlas`] (`<Atlas>`); a
-//! view's Gaussian box shadow is [`Canvas::draw_rrect_shadow`], evaluated per pixel (no pass).
+//! view's Gaussian box shadow is [`Canvas::draw_rrect_shadow`], evaluated per pixel (no pass); a
+//! rotated or scaled view's is [`Canvas::draw_rrect_shadow_local`], in its own space.
 //!
 //! What a demo needs beyond this (Skia's image filters, runtime shaders) is its own wgpu pass.
 
@@ -700,6 +701,11 @@ pub fn border_ring_path(x: f32, y: f32, w: f32, h: f32, r: f32, width: f32) -> P
     b.build()
 }
 
+/// What [`path_builder`] returns.
+pub type PathBuilder = lyon::path::path::Builder;
+/// The builder [`Canvas::draw_with`] and [`Canvas::clip_with`] hand out.
+pub type ScratchBuilder<'a> = lyon::path::builder::NoAttributes<lyon::path::path_buffer::Builder<'a>>;
+
 /// A path builder, for demos that build paths point by point (Skia's `PathBuilder`).
 pub fn path_builder() -> lyon::path::path::Builder {
     Path::builder()
@@ -743,6 +749,86 @@ pub fn add_arc<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::
         b.cubic_bezier_to(c.ctrl1, c.ctrl2, c.to);
     });
     b.end(false);
+}
+
+/// Appends `PathBuilder.arcTo(rx, ry, xAxisRotateInDegrees, useSmallArc, isCCW, x, y)` (an SVG
+/// arc, Skia's `SkPath::arcTo` with `ArcSize` and `PathDirection`) from `from` to `to`, as cubic
+/// Béziers on the current contour; `rArcTo` is the same with `to = from + (dx, dy)`.
+#[allow(clippy::too_many_arguments)]
+pub fn add_svg_arc<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, from: Point, to: Point, rx: f32, ry: f32, x_rotation_deg: f32, small_arc: bool, ccw: bool) {
+    let arc = lyon::geom::SvgArc {
+        from,
+        to,
+        radii: vector(rx, ry),
+        x_rotation: lyon::math::Angle::degrees(x_rotation_deg),
+        // Clockwise on screen (y down) is lyon's positive angle.
+        flags: lyon::geom::ArcFlags { large_arc: !small_arc, sweep: !ccw },
+    };
+    if arc.is_straight_line() {
+        b.line_to(to);
+        return;
+    }
+    arc.for_each_cubic_bezier(&mut |c| {
+        b.cubic_bezier_to(c.ctrl1, c.ctrl2, c.to);
+    });
+}
+
+/// Appends a rounded rect wound the other way (a hole: with a rect around it, the nonzero fill
+/// of the two is everything outside the rounded rect, as an inverted clip or an even-odd mask).
+pub fn add_rrect_hole<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, x: f32, y: f32, w: f32, h: f32, r: f32) {
+    let r = r.min(w / 2.0).min(h / 2.0).max(0.0);
+    b.add_rounded_rectangle(&lyon::math::Box2D::new(point(x, y), point(x + w, y + h)), &BorderRadii::new(r), Winding::Negative);
+}
+
+/// Appends a circle as sixteen cubic arcs of 22.5° (within 1e-7 r of the circle, where
+/// [`add_circle`]'s four cubics are 2e-4 r off: 0.19 pt on a 950 pt circle; Skia's `addCircle`
+/// is conics, exact). `hole` winds it the other way (an inverted clip with a rect around it).
+pub fn add_circle_fine<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, cx: f32, cy: f32, r: f32, hole: bool) {
+    const N: usize = 16;
+    let (cx, cy, r) = (cx as f64, cy as f64, r.abs() as f64);
+    let step = std::f64::consts::TAU / N as f64 * if hole { -1.0 } else { 1.0 };
+    let k = 4.0 / 3.0 * (step / 4.0).tan() * r;
+    let at = |a: f64| point((cx + r * a.cos()) as f32, (cy + r * a.sin()) as f32);
+    b.begin(at(0.0));
+    for i in 0..N {
+        let (a0, a1) = (step * i as f64, step * (i + 1) as f64);
+        let c1 = point((cx + r * a0.cos() - k * a0.sin()) as f32, (cy + r * a0.sin() + k * a0.cos()) as f32);
+        let c2 = point((cx + r * a1.cos() + k * a1.sin()) as f32, (cy + r * a1.sin() - k * a1.cos()) as f32);
+        b.cubic_bezier_to(c1, c2, at(a1));
+    }
+    b.end(true);
+}
+
+/// A path measured once, to be drawn trimmed every frame without allocating
+/// ([`Canvas::draw_trimmed`], `<Path path start end>` with an animated `end`).
+pub struct MeasuredPath {
+    path: Path,
+    measurements: lyon::algorithms::measure::PathMeasurements,
+}
+
+impl MeasuredPath {
+    /// `path`, measured as [`trim`] measures it.
+    pub fn new(path: Path) -> MeasuredPath {
+        let measurements = lyon::algorithms::measure::PathMeasurements::from_path(&path, 0.01);
+        MeasuredPath { path, measurements }
+    }
+    /// The whole path.
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
+impl Canvas {
+    /// `<Path path start end paint>` ([`trim`]) of a [`MeasuredPath`], built in the canvas's kept
+    /// buffer: nothing when `end <= start`.
+    pub fn draw_trimmed(&mut self, path: &MeasuredPath, start: f32, end: f32, paint: &Paint) {
+        let (start, end) = (start.clamp(0.0, 1.0), end.clamp(0.0, 1.0));
+        if end <= start {
+            return;
+        }
+        let mut sampler = path.measurements.create_sampler(&path.path, lyon::algorithms::measure::SampleType::Normalized);
+        self.draw_with(paint, |b| sampler.split_range(start..end, b));
+    }
 }
 
 /// `<Path path start end>`: the part of `path` between the fractions `start` and `end` of its
@@ -913,6 +999,53 @@ mod path_tests {
     }
 
     #[test]
+    fn a_fine_circle_stays_on_the_circle() {
+        let mut b = Path::builder();
+        add_circle_fine(&mut b, 10.0, 20.0, 950.0, false);
+        let p = b.build();
+        let mut worst: f64 = 0.0;
+        for e in p.iter() {
+            if let PathEvent::Cubic { from, ctrl1, ctrl2, to } = e {
+                let c = lyon::geom::CubicBezierSegment { from, ctrl1, ctrl2, to };
+                for k in 0..=32 {
+                    let q = c.sample(k as f32 / 32.0);
+                    let d = (((q.x - 10.0) as f64).powi(2) + ((q.y - 20.0) as f64).powi(2)).sqrt();
+                    worst = worst.max((d - 950.0).abs());
+                }
+            }
+        }
+        // f32 coordinates near 1000 carry 6e-5 of rounding.
+        assert!(worst < 2e-3, "{worst}");
+        // Clockwise on screen from (r, 0) (y down: through +y first); the hole the other way.
+        assert!(matches!(p.iter().nth(1), Some(PathEvent::Cubic { to, .. }) if to.y > 20.0));
+        let mut h = Path::builder();
+        add_circle_fine(&mut h, 0.0, 0.0, 1.0, true);
+        assert!(matches!(h.build().iter().nth(1), Some(PathEvent::Cubic { to, .. }) if to.y < 0.0));
+    }
+
+    #[test]
+    fn a_small_clockwise_arc_bulges_out_of_a_corner() {
+        // rArcTo(10, 10, 0, true, false, 10, 10) from (0, 0): the quarter circle about (0, 10),
+        // through (7.07, 2.93) (clockwise on screen), not the one about (10, 0).
+        let mut b = Path::builder();
+        b.begin(point(0.0, 0.0));
+        add_svg_arc(&mut b, point(0.0, 0.0), point(10.0, 10.0), 10.0, 10.0, 0.0, true, false);
+        b.end(false);
+        let p = b.build();
+        let bb = lyon::algorithms::aabb::bounding_box(p.iter());
+        assert!((bb.max.x - 10.0).abs() < 1e-3 && (bb.min.y).abs() < 1e-3, "{bb:?}");
+        let measured = MeasuredPath::new(p);
+        let mut c = Canvas::default();
+        c.begin(1.0);
+        c.draw_trimmed(&measured, 0.0, 0.5, &Paint::stroke(Color::BLACK, 1.0));
+        assert!(!c.vertices.is_empty());
+        let mid = trim(measured.path(), 0.0, 0.5);
+        let end = mid.iter().filter(|e| !matches!(e, PathEvent::End { .. })).last().map(|e| e.to()).unwrap();
+        // (Lengths are measured on the flattened path, tolerance 0.01, as `trim` measures.)
+        assert!((end.x - 7.0711).abs() < 0.02 && (end.y - 2.9289).abs() < 0.02, "{end:?}");
+    }
+
+    #[test]
     fn a_quarter_arc_ends_where_skia_ends_it() {
         let mut b = Path::builder();
         add_arc(&mut b, 0.0, 0.0, 20.0, 20.0, 0.0, 90.0);
@@ -1008,5 +1141,51 @@ impl Canvas {
         let corners = [point(x0, y0), point(x1, y0), point(x1, y1), point(x0, y1)];
         self.quad(corners, corners, paint, u32::MAX);
         self.push_draw(start);
+    }
+
+    /// [`Canvas::draw_rrect_shadow`] under any transform: the shadow is evaluated in the rounded
+    /// rect's own space (σ and `r` in its units) and drawn through the current transform, as Core
+    /// Animation draws a rotated or scaled layer's shadow (RN's `boxShadow` on a view with a
+    /// `rotate` / `scale` transform: RCTBoxShadow's shadow layer is a sublayer of the view's).
+    #[allow(clippy::too_many_arguments)]
+    pub fn draw_rrect_shadow_local(&mut self, x: f32, y: f32, w: f32, h: f32, r: f32, sigma: f32, color: Color) {
+        let sigma = sigma.max(1e-3);
+        let mut gpu = GpuPaint { head: [5.0, 1.0, self.state.opacity, 0.0], geometry: [x, y, x + w, y + h], offsets: [[0.0; 4]; 2], colors: [[0.0; 4]; MAX_STOPS] };
+        gpu.offsets[0] = [r.min(w / 2.0).min(h / 2.0).max(0.0), sigma, 1.0, 0.0];
+        gpu.colors[0] = color.0;
+        self.paints.push(gpu);
+        let paint = (self.paints.len() - 1) as u32;
+        let e = 3.0 * sigma;
+        let (x0, y0, x1, y1) = (x - e, y - e, x + w + e, y + h + e);
+        let start = self.indices.len() as u32;
+        let corners = [point(x0, y0), point(x1, y0), point(x1, y1), point(x0, y1)];
+        self.quad(corners, corners, paint, u32::MAX);
+        self.push_draw(start);
+    }
+}
+
+#[cfg(test)]
+mod shadow_tests {
+    use super::*;
+
+    #[test]
+    fn a_local_shadow_is_evaluated_in_its_own_space() {
+        let mut c = Canvas::default();
+        c.begin(3.0);
+        c.translate(100.0, 50.0);
+        c.rotate(0.3);
+        c.draw_rrect_shadow_local(0.0, 0.0, 120.0, 120.0, 25.0, 5.0, Color::BLACK.alpha(0.1));
+        let p = c.paints[0];
+        // The rect, radius and σ in points (not device pixels), flagged local.
+        assert_eq!(p.geometry, [0.0, 0.0, 120.0, 120.0]);
+        assert_eq!(p.offsets[0], [25.0, 5.0, 1.0, 0.0]);
+        // The quad's uv is its local corners; its positions went through the rotation.
+        assert_eq!(c.vertices[0].uv, [-15.0, -15.0]);
+        let m = c.matrix().apply(point(-15.0, -15.0));
+        assert!((c.vertices[0].pos[0] - m.x).abs() < 1e-4 && (c.vertices[0].pos[1] - m.y).abs() < 1e-4);
+        // The device-space shadow keeps its flag off.
+        c.begin(3.0);
+        c.draw_rrect_shadow(0.0, 0.0, 120.0, 120.0, 25.0, 5.0, Color::BLACK);
+        assert_eq!(c.paints[0].offsets[0][2], 0.0);
     }
 }
