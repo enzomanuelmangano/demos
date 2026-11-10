@@ -1,0 +1,17 @@
+// Skia Color Picker: a hue/saturation wheel the width of the screen with a soft halo; a
+// drop-shaped picker follows the finger, clamped to the wheel, filled with the colour under its
+// tip. RN: src/animations/skia-color-picker (index.tsx, components/color-picker). The wheel (its
+// sweep gradient, BlurMask and runtime shader), the picker (its drop shadow) and the pan are
+// Rust: gpu/src/skia_color_picker.rs.
+use DemoEnv from "../env.contract"
+
+component SkiaColorPicker
+  props
+    env: DemoEnv
+  view
+    // styles.container: black, flex 1, centred; the canvases are canvasSize = window width
+    // square.
+    column position="absolute" inset=0 background-color="color(display-p3 0 0 0)" align-items="center"
+      justify-content="center" testId="skia-color-picker"
+      canvas surface=skia_color_picker() width=env.width height=env.width flex-shrink=0
+        touch-action="none" testId="skia-color-picker-canvas" aria-label="Colour wheel"

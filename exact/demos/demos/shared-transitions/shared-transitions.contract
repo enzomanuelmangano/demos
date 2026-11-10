@@ -1,0 +1,162 @@
+// Shared Transitions: a two-column masonry of ten photos under a "Home" bar; a photo fades in a
+// details screen (the photo across the top, a title and a paragraph fading in after it), whose
+// Home button fades it back out. RN: src/animations/shared-transition (index.tsx,
+// constants/images.ts, screens/home/index.tsx, screens/details/index.tsx). Its
+// sharedTransitionTag is commented out in RN (@@TODO), so the screens only cross-fade.
+use PressablesConfig, pressNone, pressDown, pressUp, pressableOpacity, pressTransition from "pressto"
+use DemoEnv, demoButtonRow from "../env.contract"
+
+// constants/images.ts: thumbnails/NN.jpg on the grid, detail/NN.jpg on the details screen
+// (each already sized by scripts/shared-transition-images.py to cover its view at 3x).
+fn twoDigits(i: number): string = i < 10 ? `0${i}` : `${i}`
+fn thumbnail(i: number): string = `assets/demos/shared-transitions/thumbnails/${twoDigits(i)}.jpg`
+fn detail(i: number): string = `assets/demos/shared-transitions/detail/${twoDigits(i)}.jpg`
+// Each photo's width / height (thumbnail and detail alike). expo-image's cover centres the
+// photo; Exact's object-fit cover pins it to the top, so the cover is laid out by hand: the
+// photo at its cover size, centred in a clipping box.
+fn aspectOf(i: number): number = match [1.5, 0.6667, 0.75, 0.7995, 0.5615, 1.5, 1.4, 0.6667, 0.7915, 0.7995].at(i) { case some(a) => a, case none => 1 }
+fn coverW(a: number, w: number, h: number): number = a < w / h ? w : h * a
+fn coverH(a: number, w: number, h: number): number = a < w / h ? w / a : h
+
+// DefaultTheme (index.tsx NavigationContainer): background rgb(242, 242, 242), card white,
+// text rgb(28, 28, 30). Every screen's background is the theme's background.
+fn themeBackground(): string = "#F2F2F2"
+fn themeCard(): string = "#FFFFFF"
+fn themeText(): string = "color(display-p3 0.1098 0.1098 0.1176)"
+// UIKit's navigation bar (iOS 26): 54 tall under the status bar, its title 17 semibold in the
+// theme's text colour centred in the bar's top 44, and its hairline shadow (headerShadowVisible
+// defaults on). Measured on the RN build: hairline 54 pt under the safe area, title as at 44.
+fn barHeight(): number = 54
+
+// Stack screenOptions: animation 'fade', animationDuration 300. react-native-screens' fade
+// animator: a push fades the new screen in over the old, a pop fades the old one out over the
+// new, on UIView's default curve (ease-in-out).
+keyframes screenIn
+  from opacity=0
+keyframes screenOut
+  to opacity=0
+// details: FadeIn.delay(400 | 600), exiting FadeOut: 300 ms on Reanimated's default
+// Easing.inOut(Easing.quad).
+fn inOutQuad(): string = "linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
+
+// details/index.tsx BACK_COLOR.
+fn backColor(): string = "color(display-p3 0 0.4784 1)"
+// Ionicons chevron-back (the vector-icons font: 512 units to the em, ascent 454, descent 71, so
+// a Text box 525 units tall).
+fn chevronBackPath(): string = "M322 95Q322 95 322 95Q329 93 337.0 96.5Q345 100 349 107Q355 118 349 129Q348 132 283 197Q283 197 218 262L283 327Q348 392 349 395Q353 402 351 410Q350 419 342.5 425.0Q335 431 326 430Q319 429 309.0 420.0Q299 411 239 351Q178 290 169.0 280.0Q160 270 160.0 262.0Q160 254 168.5 244.5Q177 235 237 175Q309 102 313.5 99.0Q318 96 322 95Z"
+
+component SharedTransitions
+  props
+    env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
+  // The Details route is pushed (`open`) with the photo `pick`; `pick` stays while it fades out.
+  state open = false
+  state pick = 0
+  // navigation.navigate(Details, { source, heroTag }). The app's PressablesConfig plays the
+  // selection haptic on every pressto press.
+  action show(i: number)
+    haptic("selection")
+    pick = i
+    open = true
+  // goBack.
+  action back
+    pressablesOnPress()
+    open = false
+  view
+    column position="absolute" inset=0 background-color=themeBackground() testId="shared-transitions"
+      // Home: the native stack's header ("Home", the route's name) over the MasonryList.
+      column position="absolute" inset=0 background-color=themeBackground()
+        scroll position="absolute" left=0 top=(env.safeTop + barHeight()) width=env.width
+          height=(env.height - env.safeTop - barHeight())
+          overflow-y="scroll" testId="home-list"
+          // MasonryList: a row of numColumns 2 columns (flex 1 / 2 each), item i in column i % 2;
+          // contentContainerStyle paddingBottom 100.
+          row align-items="flex-start" padding-bottom=100
+            for col in [0, 1] key=col
+              column width=(env.width / 2) align-items="stretch"
+                for i in range(10).filter(n => n % 2 == col) key=i
+                  Cell(i=i, w=env.width, press=show(i))
+        // The bar: card colour, the title centred in its 44 points, a hairline under it.
+        column position="absolute" left=0 right=0 top=0 height=(env.safeTop + barHeight())
+          background-color=themeCard() padding-top=env.safeTop padding-bottom=10 box-sizing="border-box"
+          align-items="center" justify-content="center" testId="home-bar"
+          text "Home" font-size=17 font-weight=600 color=themeText() role="heading" aria-level=1
+          view position="absolute" left=0 right=0 bottom=-0.33 height=0.33
+            background-color="rgba(0, 0, 0, 0.3)"
+      if open
+        // Details (headerShown false): styles.container flex 1, paddingTop safeTop +
+        // DEMO_BUTTON_ROW_HEIGHT.
+        column position="absolute" inset=0 background-color=themeBackground()
+          padding-top=(env.safeTop + demoButtonRow()) box-sizing="border-box"
+          animation="screenIn 300ms ease-in-out both"
+          -exact-exit-animation="screenOut 300ms ease-in-out both" testId="details"
+          // styles.back: PressableOpacity, row, centred, alignSelf flex-start, 44 tall,
+          // paddingHorizontal 8: Ionicons chevron-back 24 and "Home" 17, both BACK_COLOR.
+          button appearance="none" press=back aria-label="Home"
+            pointerdown=pressIn(0) pointerup=pressOut
+            opacity=pressableOpacity(pressing, 0, pressto) transition=pressTransition("opacity", pressto)
+            testId="back" align-self="flex-start" display="flex" flex-direction="row"
+            align-items="center" height=44 padding="0px 8px"
+            svg width=24 height=(24 * 525 / 512) viewBox="0 0 512 525" aria-hidden=true
+              path d=chevronBackPath() fill=backColor()
+            text "Home" font-size=17 color=backColor()
+          // styles.imageContainer: 300 tall, the window's width (expo-image: cover).
+          view width=env.width height=300 overflow="hidden" position="relative" flex-shrink=0
+            testId="details-image"
+            image detail(pick) position="absolute" width=coverW(aspectOf(pick), env.width, 300)
+              height=coverH(aspectOf(pick), env.width, 300)
+              left=((env.width - coverW(aspectOf(pick), env.width, 300)) / 2)
+              top=((300 - coverH(aspectOf(pick), env.width, 300)) / 2) aria-hidden=true
+          // styles.textContainer: paddingHorizontal 10.
+          column padding="0px 10px"
+            // styles.title: 20 bold, marginTop 15.
+            text "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec" font-size=20
+              font-weight=700 margin-top=15 color="#000000"
+              animation=`screenIn 300ms ${inOutQuad()} 400ms both`
+              -exact-exit-animation="screenOut 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) both" testId="details-title"
+            // styles.paragraph: 16, marginTop 20.
+            text "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec Lorem ipsum dolor sit amet consectetur adipisicing elit. Id tenetur deserunt vel, harum at cupiditate eveniet pariatur perferendis maiores possimus omnis accusantium itaque sapiente blanditiis asperiores! Pariatur alias autem non?"
+              font-size=16 margin-top=20 color="#000000"
+              animation=`screenIn 300ms ${inOutQuad()} 600ms both`
+              -exact-exit-animation="screenOut 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) both"
+
+// home/index.tsx renderItem: a PressableOpacity (stretched across its column) around a view with
+// marginLeft 20 / 3, marginTop 20 / 3 and, in the second column, marginRight 20 / 3; the image
+// (window width / 2 - 10 wide, 150 + 50 · (i % 3) tall, radius 10 continuous) overflows the
+// second column by those margins, as in RN.
+component Cell
+  props
+    i: number
+    w: number
+    press: action
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
+  view
+    button appearance="none" press=press aria-label=`Photo ${i + 1}`
+      pointerdown=pressIn(0) pointerup=pressOut
+      opacity=pressableOpacity(pressing, 0, pressto) transition=pressTransition("opacity", pressto)
+      testId=`photo-${i}` display="flex" flex-direction="column" align-items="stretch"
+      view display="flex" flex-direction="column" margin-left=(20 / 3) margin-top=(20 / 3) margin-right=(i % 2 == 1 ? 20 / 3 : 0)
+        align-items="flex-start"
+        view width=(w / 2 - 10) height=(150 + 50 * (i % 3)) border-radius=10
+          corner-shape="-exact-continuous" overflow="hidden" position="relative" flex-shrink=0
+          image thumbnail(i) position="absolute" width=coverW(aspectOf(i), w / 2 - 10, 150 + 50 * (i % 3))
+            height=coverH(aspectOf(i), w / 2 - 10, 150 + 50 * (i % 3))
+            left=((w / 2 - 10 - coverW(aspectOf(i), w / 2 - 10, 150 + 50 * (i % 3))) / 2)
+            top=((150 + 50 * (i % 3) - coverH(aspectOf(i), w / 2 - 10, 150 + 50 * (i % 3))) / 2)
+            aria-hidden=true

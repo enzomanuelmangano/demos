@@ -1,0 +1,5 @@
+at "/demo/imessage-stack"
+
+test "the stack is there"
+  expect tree has "imessage-stack"
+  expect tree has "imessage-scroll"

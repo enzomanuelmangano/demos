@@ -1,0 +1,5 @@
+at "/demo/delete-button"
+
+test "the button's canvas is there"
+  expect tree has "delete-button"
+  expect tree has "delete-button-canvas"

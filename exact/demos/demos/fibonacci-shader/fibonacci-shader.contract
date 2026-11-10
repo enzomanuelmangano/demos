@@ -1,0 +1,39 @@
+// Fibonacci Shader: XorDev's sphere of glowing points, turning; the slider sets how many
+// (5 to 350), the 🪄 button a new spiral. RN: src/animations/fibonacci-shader (index.tsx,
+// components/animated-slider). The canvas (the shader, its blurred circle mask, the slider and
+// its drag) is Rust: gpu/src/fibonacci_shader.rs; the button is here.
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+use DemoEnv, roll from "../env.contract"
+
+component FibonacciShader
+  props
+    env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
+  // magicalMul: 2.4 first, then Math.random() * 100 at each press.
+  state magic = 2.4
+  state presses = 0
+  action wand
+    pressablesOnPress()
+    magic = roll(env.seed, presses, 1000000) / 10000
+    presses = presses + 1
+  view
+    // styles.container: black.
+    column position="absolute" inset=0 background-color="#000000" testId="fibonacci-shader"
+      canvas surface=fibonacci_shader(magic) position="absolute" top=0 left=0 width="100%" height="100%"
+        touch-action="none" aria-label="Fibonacci sphere and its slider" testId="fibonacci-canvas"
+      // styles.floatingButton: 64 round, #232323, 120 from the bottom, 60 from the right.
+      button appearance="none" press=wand position="absolute" bottom=120 right=60
+        pointerdown=pressIn(0) pointerup=pressOut
+        scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
+        width=64 height=64 border-radius=32 border="none" background-color="#232323" display="flex"
+        align-items="center" justify-content="center" aria-label="New spiral" testId="wand"
+        // styles.floatingContent: fontSize 32.
+        text "🪄" font-size=32

@@ -1,0 +1,18 @@
+// Delete Button: a red "Delete" pill that, tapped, slides left, turns black and reads "Confirm"
+// while a black close circle melts out of its right end; its "X" puts it back. RN:
+// src/animations/delete-button (src/index.tsx, src/components/delete-button.tsx and its hooks).
+// The Touchable.Canvas (the gooey layer, the labels, the cross, the presses, springs and
+// timings) is Rust: gpu/src/delete_button.rs, which posts the selection haptic of each tap.
+
+component DeleteButton
+  action buzz(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+  view
+    // styles.container: white, flex 1, centred.
+    column position="absolute" inset=0 background-color="color(display-p3 1 1 1)" align-items="center"
+      justify-content="center" testId="delete-button"
+      // <DeleteButton height={50} width={150} additionalWidth={80} />: the canvas is
+      // (width + additionalWidth) × height.
+      canvas surface=delete_button() width=230 height=50 flex-shrink=0 touch-action="none" message=buzz
+        testId="delete-button-canvas" aria-label="Delete"

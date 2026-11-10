@@ -1,0 +1,40 @@
+{
+  "lockfileVersion": 2,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "demos",
+      "dependencies": {
+        "@exact/motion": "file:/Users/enzomanuelmangano/.exact/exact2/94b8671f70fe2e25b307a40e7fce66dc27c9f802/packages/motion",
+        "pressto": "workspace:*",
+      },
+    },
+    "packages/gesture-handler": {
+      "name": "gesture-handler",
+      "version": "2.28.0",
+    },
+    "packages/pressto": {
+      "name": "pressto",
+      "version": "0.7.0",
+    },
+    "packages/reanimated": {
+      "name": "reanimated",
+      "version": "4.7.1",
+    },
+    "packages/simplex-noise": {
+      "name": "simplex-noise",
+      "version": "4.0.3",
+    },
+  },
+  "packages": {
+    "@exact/motion": ["@exact/motion@file:../../../../../../.exact/exact2/94b8671f70fe2e25b307a40e7fce66dc27c9f802/packages/motion", {}],
+
+    "gesture-handler": ["gesture-handler@workspace:packages/gesture-handler"],
+
+    "pressto": ["pressto@workspace:packages/pressto"],
+
+    "reanimated": ["reanimated@workspace:packages/reanimated"],
+
+    "simplex-noise": ["simplex-noise@workspace:packages/simplex-noise"],
+  }
+}

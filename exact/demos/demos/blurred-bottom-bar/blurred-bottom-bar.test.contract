@@ -1,0 +1,20 @@
+at "/demo/blurred-bottom-bar"
+
+test "each tab shows its photo"
+  expect tree has "tab-bar"
+  expect tree has "gradient"
+  expect tree has "tab-bar-blur"
+  expect tree has "screen-0"
+  tap "tab-1"
+  clock settle
+  expect tree has "screen-1"
+  expect tree missing "screen-0"
+  tap "tab-2"
+  clock settle
+  expect tree has "screen-2"
+  tap "tab-3"
+  clock settle
+  expect tree has "screen-3"
+  tap "tab-0"
+  clock settle
+  expect tree has "screen-0"

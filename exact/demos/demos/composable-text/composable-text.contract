@@ -1,0 +1,65 @@
+// Composable Text: a "Use Max" pill whose letters spring in, fade out and slide to their new
+// places as it toggles to "Using Max". RN: src/animations/composable-text (index.tsx,
+// composable-text.tsx).
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+
+// index.tsx Variants: base / active.
+fn labelOf(active: bool): string = active ? "Using Max" : "Use Max"
+fn colorOf(active: bool): string = active ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,1)"
+// composable-text.tsx buildKeys: a character and how many of it came before ('a-0', 'a-1').
+fn keyOf(text: string, c: string, i: number): string = `${c}-${text.slice(0, i).split(c).length - 1}`
+
+// CharacterEntering: opacity 0 → 1 and scale 0.5 → 1, each withSpring(CharacterSpringConfig
+// { mass: 0.3, damping: 12, stiffness: 80 }). An `animation` takes no spring, so the spring's
+// own curve from rest is sampled into `linear()` (48 steps over the 757 ms it takes to reach
+// Reanimated's energy cutoff 6e-9). ζ is 1.22, which Reanimated runs as critically damped at
+// ω0 = √(k/m): 1 - (1 + ωt)e^{-ωt}, no overshoot.
+keyframes charIn
+  from opacity=0 scale=0.5
+  to opacity=1 scale=1
+// exiting: FadeOut.duration(200), Reanimated's default timing easing Easing.inOut(Easing.quad).
+keyframes charOut
+  to opacity=0
+
+fn charInRow(): string = "charIn 757ms linear(0, 0.028, 0.0949, 0.1815, 0.2755, 0.369, 0.4574, 0.5382, 0.6103, 0.6735, 0.7281, 0.7747, 0.8142, 0.8473, 0.875, 0.898, 0.917, 0.9326, 0.9454, 0.9559, 0.9644, 0.9714, 0.977, 0.9815, 0.9852, 0.9881, 0.9905, 0.9924, 0.994, 0.9952, 0.9962, 0.9969, 0.9976, 0.9981, 0.9985, 0.9988, 0.999, 0.9992, 0.9994, 0.9995, 0.9996, 0.9997, 0.9998, 0.9998, 0.9999, 0.9999, 0.9999, 0.9999, 1)"
+
+component ComposableText
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
+  state active = false
+  // LayoutAnimationConfig skipEntering: the first letters do not spring in. They mount with
+  // the entering animation already over (a delay of minus its duration); after the first
+  // press the same animation (same name, so no restart for a letter that stays) runs whole
+  // for each new letter.
+  state pressed = false
+  action toggle
+    pressablesOnPress()
+    active = not active
+    pressed = true
+  view
+    column position="absolute" inset=0 background-color="#0c0c0c" align-items="center" justify-content="center"
+      testId="composable-text"
+      // PressableScale, layout LinearTransition.springify().mass(0.4).damping(12).stiffness(100).
+      button appearance="none" press=toggle testId="toggle" aria-label=labelOf(active)
+        pointerdown=pressIn(0) pointerup=pressOut
+        scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
+        aria-pressed=active -exact-layout-transition="-exact-spring(100, 12, 0.4)"
+        // styles.textContainer: #181818, borderRadius 32 continuous, padding 16, paddingHorizontal 22;
+        // the same springify() layout as the button.
+        row background-color="#181818" border-radius=32 corner-shape="-exact-continuous" padding="16px 22px"
+          -exact-layout-transition="-exact-spring(100, 12, 0.4)" testId="label"
+          for c, i in labelOf(active).split("") key=keyOf(labelOf(active), c, i)
+            // styles.text: fontSize 24, bold; colour withTiming 200 ms linear. Each letter's
+            // layout: springify().mass(0.3).damping(12).stiffness(80).
+            text c font-size=24 font-weight=700 white-space="pre" color=colorOf(active)
+              transition="color 200ms linear" aria-hidden=true
+              -exact-layout-transition="-exact-spring(80, 9.798, 0.3)"
+              animation=(pressed ? `${charInRow()} both` : `${charInRow()} -757ms both`)
+              -exact-exit-animation="charOut 200ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) both"

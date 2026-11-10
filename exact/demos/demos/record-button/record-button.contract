@@ -1,0 +1,22 @@
+// Record Button: a dark page that scrolls down to reveal a second one, where a red "Record"
+// outline draws itself from the bottom as the page comes in, fills, grows and buzzes once it
+// is fully there. Inspired by @uuuntitleddd. RN: src/animations/record-button (index.tsx,
+// components/record-button/index.tsx, create-skia-line.ts). The whole demo is Rust
+// (gpu/src/record_button.rs): the inverted FlatList with RCTScrollView's snapToInterval (the
+// page in the fling's direction), onScrollBeginDrag / onScrollEndDrag at the finger's lift,
+// UIKit's animated scrollToIndex, the pages, the button and its labels.
+use DemoEnv from "../env.contract"
+
+component RecordButton
+  props
+    env: DemoEnv
+  // The surface's haptics: the light impact as the button activates, the app's press haptic.
+  action buzz(text: string)
+    if text == "haptic:impact-light"
+      haptic("impact-light")
+    if text == "haptic:selection"
+      haptic("selection")
+  view
+    column position="absolute" inset=0 background-color="#252525" testId="record-button"
+      canvas surface=record_button() message=buzz position="absolute" top=0 left=0 width=env.width
+        height=env.height touch-action="none" aria-label="Scroll" testId="record-canvas"

@@ -1,0 +1,22 @@
+# @shopify/react-native-skia's drawing, for the Demos app's GPU surfaces: antialiased as Skia
+# Graphite does it (analytic rects/rrects/circles, 4x MSAA paths and clips), tessellated on the
+# CPU, on the module's own device, with no compute and no indirect dispatch (the iOS Simulator
+# has none).
+[package]
+name = "skia"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "react-native-skia's drawing on lyon and wgpu, for GPU surfaces"
+publish = false
+
+[lib]
+name = "skia"
+
+[dependencies]
+exact-gpu = { path = "../../../../../../../../.exact/exact2/94b8671f70fe2e25b307a40e7fce66dc27c9f802/gpu" }
+lyon = "1.0"
+ttf-parser = { version = "0.25", default-features = false, features = ["std", "variable-fonts", "gvar-alloc", "opentype-layout", "apple-layout"] }
+bytemuck = { version = "1", features = ["derive"] }
+# Decodes the JPEGs a demo bundles (`Image::from_jpeg`), pure Rust, the same on the web.
+zune-jpeg = "0.5"

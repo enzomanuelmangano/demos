@@ -1,0 +1,20 @@
+// Color Carousel: a paged strip of twenty colour cards that grow, turn in perspective and come
+// forward as they near the middle, over a radial glow that eases to the centred card's colour.
+// RN: src/animations/color-carousel (index.tsx, constants.ts, components/carousel/index.tsx,
+// carousel-item.tsx). The glow and the cards (their transforms, zIndex, shadows) are Rust:
+// gpu/src/color_carousel.rs, with the horizontal ScrollView: UIKit's drag and deceleration
+// (decelerationRate 0.8, clamped by UIKit to fast) and RN's snapToOffsets at every item.
+use DemoEnv from "../env.contract"
+
+component ColorCarousel
+  props
+    env: DemoEnv
+  view
+    // styles.container: #111111 (BACKGROUND_COLOR), centred.
+    column position="absolute" inset=0 background-color="#111111" align-items="center"
+      justify-content="center" testId="color-carousel"
+      // width 100%, aspectRatio 1: the canvas under the carousel (StyleSheet.absoluteFill).
+      view position="relative" width=env.width height=env.width flex-shrink=0
+        // The canvas draws the cards and owns the ScrollView over the square.
+        canvas surface=color_carousel() position="absolute" top=0 left=0 width=env.width
+          height=env.width touch-action="none" aria-label="Colours" testId="color-carousel-canvas"

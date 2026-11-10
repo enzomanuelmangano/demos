@@ -1,0 +1,154 @@
+// Twitter Tab Bar: a dark feed of 50 empty rows over a four-tab bar with a floating compose
+// button; scrolling down hides the bar (and shrinks the button away), scrolling up brings it
+// back; the Message tab spins the button into a message icon. RN: src/animations/twitter-tab-bar
+// (index.tsx, constants/palette.ts, constants/screens.ts, screens/home/index.tsx,
+// components/bottom-tab-bar/index.tsx, floating-button.tsx, active-tab-bar-provider.tsx).
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+use DemoEnv from "../env.contract"
+
+// constants/palette.ts DarkPalette: primary #4A9AE9, background #17202A,
+// card Color('#17202A').lighten(0.15) = #1A2530, border Color('#FFFFFF').darken(0.65) = #595959,
+// text #FFFFFF.
+
+// bottom-tab-bar: IS_SMALL_DEVICE = SCREEN_HEIGHT < 700; BOTTOM_BAR_HEIGHT 80 : 95.
+fn twitterBarHeight(h: number): number = h < 700 ? 80 : 95
+// ScreenNamesArray, and the MaterialIcons each tab draws (home, search, notifications, message,
+// 28, white): the vector-icons font's glyphs (512 units to the em, ascent 512, descent 0, so
+// a Text box 28 × 28), drawn from their outlines.
+fn twitterTabName(i: number): string = i == 0 ? "Home" : (i == 1 ? "Search" : (i == 2 ? "Notifications" : "Message"))
+fn twitterTabPath(i: number): string = i == 0 ? "M213 427H107V256H43L256 64L469 256H405V427H299V299H213Z" : (i == 1 ? "M135 271Q163 299 203 299Q243 299 271 271Q299 243 299 203Q299 163 271 135Q243 107 203 107Q163 107 135 135Q107 163 107 203Q107 243 135 271ZM331 299 437 405 405 437 299 331V314L293 308Q255 341 203 341Q145 341 104.5 301Q64 261 64 203Q64 145 104.5 104.5Q145 64 203 64Q261 64 301 104.5Q341 145 341 203Q341 224 331 250.5Q321 277 308 293L314 299Z" : (i == 2 ? "M384 341 427 384V405H85V384L128 341V235Q128 185 153.5 148Q179 111 224 100V85Q224 72 233 62.5Q242 53 256 53Q270 53 279 62.5Q288 72 288 85V100Q333 111 358.5 148Q384 185 384 235ZM256 469Q238 469 225.5 457Q213 445 213 427H299Q299 444 286 456.5Q273 469 256 469Z" : "M384 171V128H128V171ZM384 235V192H128V235ZM384 299V256H128V299ZM427 43Q444 43 456.5 55.5Q469 68 469 85V341Q469 358 456.5 371Q444 384 427 384H128L43 469V85Q43 68 55.5 55.5Q68 43 85 43Z"))
+fn twitterEditPath(): string = "M442 150 403 189 323 109 362 70Q368 64 377 64Q386 64 392 70L442 120Q448 126 448 135Q448 144 442 150ZM64 368 300 132 380 212 144 448H64Z"
+fn twitterMessagePath(): string = "M384 171V128H128V171ZM384 235V192H128V235ZM384 299V256H128V299ZM427 43Q444 43 456.5 55.5Q469 68 469 85V341Q469 358 456.5 371Q444 384 427 384H128L43 469V85Q43 68 55.5 55.5Q68 43 85 43Z"
+
+// The bar's translateY: withSpring({ dampingRatio: 1, duration: 500 }) → bun tools/spring.ts 500 1.
+fn twitterBarSpring(): string = "-exact-spring(1087.7349, 131.9234, 4)"
+// Reanimated 4's withSpring() default: the button's scale (overshootClamping changes nothing on
+// this critically damped spring) and its highlight.
+fn twitterGentle(): string = "-exact-spring(900, 120, 4)"
+// withTiming's default curve, Easing.inOut(Easing.quad).
+fn twitterInOutQuad(): string = "linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
+
+// floatingProgress = withTiming(Message ? 1 : 0, { duration: 500 }) on inOut(quad); the button
+// follows it: rotate [0, 1] → [0, 2π], scale [0, 0.5, 1] → [1, 1.2, 1]; the edit icon shown
+// while progress <= 0.5, the message icon past it. inOut(quad) is 2t² then 1 − 2(1 − t)²: each
+// half is exactly a cubic Bézier (a quadratic raised: y = s² is cubic-bezier(⅓, 0, ⅔, ⅓)), and
+// rotate and scale are linear in the progress within each half, so these two segments are the
+// curve itself.
+keyframes twitterSpinOn
+  0% rotate=0 scale=1 animation-timing-function="cubic-bezier(0.3333, 0, 0.6667, 0.3333)"
+  50% rotate=180 scale=1.2 animation-timing-function="cubic-bezier(0.3333, 0.6667, 0.6667, 1)"
+  100% rotate=360 scale=1
+keyframes twitterSpinOff
+  0% rotate=360 scale=1 animation-timing-function="cubic-bezier(0.3333, 0, 0.6667, 0.3333)"
+  50% rotate=180 scale=1.2 animation-timing-function="cubic-bezier(0.3333, 0.6667, 0.6667, 1)"
+  100% rotate=0 scale=1
+keyframes twitterEditIcon
+  0% opacity=1
+  50% opacity=1
+  50.01% opacity=0
+  100% opacity=0
+keyframes twitterMessageIcon
+  0% opacity=0
+  50% opacity=0
+  50.01% opacity=1
+  100% opacity=1
+
+component TwitterTabBar
+  props
+    env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
+  state activeTab = 0
+  // isActive (the shared value the scroll handler writes): written only when it flips.
+  state isActive = true
+  // prevContentOffsetY: the one value written per scroll frame; nothing in the view reads it.
+  state prevY = 0
+  state highlighted = false
+  // floatingProgress's target (Message or not), and whether it has ever moved (no animation
+  // at mount).
+  state spun = false
+  state spinning = false
+  derive barHeight = twitterBarHeight(env.height)
+  // useAnimatedScrollHandler onScroll: scrolling up (or still) shows the bar.
+  action scrolled(x: number, y: number)
+    let up = max(prevY, 0) - max(y, 0) >= 0
+    if up != isActive
+      isActive = up
+    prevY = y
+  // onTapIcon: isActive true, floatingProgress to 1 on Message, else 0; the tab is shown.
+  action tapTab(i: number)
+    pressablesOnPress()
+    isActive = true
+    activeTab = i
+    if (i == 3) != spun
+      spun = i == 3
+      spinning = true
+    if i != 0
+      prevY = 0
+  // The floating button's Tap: onBegin highlighted, onFinalize not (onSelect only logs).
+  action fabDown
+    highlighted = true
+  action fabUp
+    highlighted = false
+  view
+    // index.tsx: flex 1 on colors.background.
+    column position="absolute" inset=0 background-color="color(display-p3 0.0902 0.1255 0.1647)"
+      testId="twitter-tab-bar"
+      column flex=1 min-height=0
+        // ScreenMap: Home is the feed; Search, Notifications and Message an empty View.
+        if activeTab == 0
+          // HomeScreen: an Animated.FlatList of 50 rows (height 100, a 1 px bottom border in
+          // colors.border), content padded BOTTOM_BAR_HEIGHT at the bottom.
+          scroll flex=1 min-height=0 scroll=scrolled testId="twitter-feed"
+            column padding-bottom=barHeight
+              for r in range(50) key=r
+                view height=100 box-sizing="border-box" border-bottom-width=1
+                  border-bottom-style="solid" border-bottom-color="#595959"
+      // BottomFloatingButton: absolute, bottom BOTTOM_BAR_HEIGHT + safeBottom / 2, right 16,
+      // 64 × 64 (aspectRatio 1), colors.primary, radius 32; scale withSpring(isActive ? 1 : 0).
+      column position="absolute" right=16
+        bottom=`calc(${barHeight}px + env(safe-area-inset-bottom) / 2)` width=64 height=64
+        scale=(isActive ? 1 : 0) transition=`scale ${twitterGentle()}` testId="twitter-fab"
+        column flex=1 animation=(spinning ? (spun ? "twitterSpinOn 500ms linear both" : "twitterSpinOff 500ms linear both") : "none")
+          // rHighlightedStyle: scale withSpring(highlighted ? 0.8 : 1).
+          column flex=1 position="relative" background-color="color(display-p3 0.2902 0.6039 0.9137)" border-radius=32
+            scale=(highlighted ? 0.8 : 1) transition=`scale ${twitterGentle()}`
+            pointerdown=fabDown pointerup=fabUp touch-action="none"
+            role="button" aria-label=(activeTab == 3 ? "New message" : "Compose")
+            // MaterialIcons edit / message, 28, Palette.text.
+            column position="absolute" inset=0 align-items="center" justify-content="center"
+              opacity=(spun ? 0 : 1)
+              animation=(spinning ? (spun ? "twitterEditIcon 500ms linear both" : "twitterMessageIcon 500ms linear both") : "none")
+              svg width=28 height=28 viewBox="0 0 512 512" aria-hidden=true
+                path d=twitterEditPath() fill="#FFFFFF"
+            column position="absolute" inset=0 align-items="center" justify-content="center"
+              opacity=(spun ? 1 : 0)
+              animation=(spinning ? (spun ? "twitterMessageIcon 500ms linear both" : "twitterEditIcon 500ms linear both") : "none")
+              svg width=28 height=28 viewBox="0 0 512 512" aria-hidden=true
+                path d=twitterMessagePath() fill="#FFFFFF"
+      // localStyles.container: absolute at the bottom, BOTTOM_BAR_HEIGHT tall, a row on
+      // colors.card, paddingBottom safeBottom / 2; translateY 0, or BOTTOM_BAR_HEIGHT +
+      // safeBottom hidden.
+      row position="absolute" left=0 right=0 bottom=0 height=barHeight box-sizing="border-box"
+        padding-bottom="calc(env(safe-area-inset-bottom) / 2)" background-color="color(display-p3 0.102 0.1451 0.1882)"
+        translate=(isActive ? "0px 0px" : `0px ${barHeight + env.safeBottom}px`)
+        transition=`translate ${twitterBarSpring()}` role="tablist" testId="twitter-bar"
+        for i in range(4) key=i
+          // TabBarItem: flex 1, opacity withTiming(focused ? 1 : 0.3); a PressableScale,
+          // centred.
+          column flex=1 opacity=(activeTab == i ? 1 : 0.3)
+            transition=`opacity 300ms ${twitterInOutQuad()}`
+            column flex=1 align-items="center" justify-content="center"
+              pointerdown=pressIn(i) pointerup=pressOut
+              scale=pressableScale(pressing, i, pressto) transition=pressTransition("scale", pressto)
+              press=tapTab(i) role="tab" aria-selected=(activeTab == i)
+              aria-label=twitterTabName(i) testId=`twitter-tab-${i}`
+              svg width=28 height=28 viewBox="0 0 512 512" aria-hidden=true
+                path d=twitterTabPath(i) fill="#FFFFFF"

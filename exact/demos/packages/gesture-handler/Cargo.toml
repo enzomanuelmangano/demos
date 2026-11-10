@@ -1,0 +1,13 @@
+# react-native-gesture-handler's recognizers, for the Demos app's GPU surfaces: Pan and Tap fed
+# the raw pointer events a canvas receives (exact-gpu's InputEvent), giving what an RNGH
+# worklet callback receives (translation, velocity, absolute and canvas positions).
+[package]
+name = "gesture-handler"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "react-native-gesture-handler's Pan and Tap, from raw pointer events"
+publish = false
+
+[lib]
+name = "gesture_handler"

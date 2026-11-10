@@ -1,0 +1,5 @@
+at "/demo/story-list"
+
+test "the stories are one scrolling canvas"
+  expect tree has "story-list"
+  expect tree has "story-list-scroll"

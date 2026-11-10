@@ -1,0 +1,104 @@
+// Liquid Glass Playground: a full-screen photo under a full-screen pane of clear Liquid Glass
+// (radius 50); dragging pulls the pane up or down at half the finger's travel, with a haptic
+// every 5 px of the pane's travel growing from selection to heavy, and it springs back on
+// release. RN: src/animations/liquid-glass-playground (index.tsx, overlay.liquid.tsx, the iOS 26
+// variant the liquid-glass resolver picks; haptics.ts).
+//
+// The drag is a `pan` (one action per move of the finger), not a host transform drag: RN runs
+// handleProgressiveHaptics on every onUpdate, which needs the travel at each move. The action
+// writes the pane's translate (a commit per move) and plays the haptic when it is due.
+
+// The photo (index.tsx's Unsplash photo-1592330169142, w=2832: 2832 × 1593), its centre
+// 1200 × 1593: what contentFit cover shows of it on a portrait screen.
+fn photo(): string = "assets/demos/liquid-glass-playground/background.jpg"
+
+// haptics.ts HAPTIC_CONFIG: DISTANCE_THRESHOLD 5, MAX_DRAG_DISTANCE window height × 0.3,
+// INTENSITY HEAVY 1 / MEDIUM 0.7 / LIGHT 0.3, DRAG_FRICTION 0.5.
+// easedProgress = Easing.ease(progress), Easing.bezier(0.42, 0, 1, 1): it is 1 only at
+// progress 1, 0.7 at progress 0.8058677170 and 0.3 at 0.4855721557 (the curve solved, 30
+// digits; Reanimated's own bezier solver is within 1e-7 of it), so the intensity steps are
+// thresholds on the progress itself.
+fn hapticOf(p: number): string = p >= 1 ? "impact-heavy" : (p >= 0.8058677170 ? "impact-medium" : (p >= 0.4855721557 ? "impact-light" : "selection"))
+
+fn paneMotion(dragging: bool): string = dragging ? "none" : "translate -exact-spring(755.3715, 109.9361, 4)"
+
+component LiquidGlassPlayground
+  // The gesture's translationY (from the touch-down, as UIKit's and RNGH's translation).
+  state ty = 0
+  // A pan in progress: the pane follows the finger without a transition.
+  state dragging = false
+  // This contact's first move was seen; failOffsetX(10) failed it.
+  state began = false
+  state failed = false
+  state maxDrag = 0
+  // lastHapticPosition, hasReachedMaxIntensity.
+  state lastHaptic = 0
+  state hasMax = false
+  // Pan().failOffsetX(10).onUpdate: translateY = translationY × DRAG_FRICTION, then
+  // handleProgressiveHaptics(dampedTranslation). RNGH fails the pan while it is still possible
+  // once translationX > 10 (failOffsetXEnd); it becomes active at UIKit's pan hysteresis, the same
+  // recognizer as this pan's, whose first delta is the whole displacement from the touch-down:
+  // so the pan failed exactly when that first delta is more than 10 to the right.
+  action drag(dx: number, dy: number)
+    let fails = began ? failed : dx > 10
+    if not began
+      maxDrag = frame("liquid-glass-playground").height * 0.3
+    began = true
+    failed = fails
+    if not fails
+      let t = ty + dy
+      ty = t
+      dragging = true
+      let d = max(t * 0.5, 0 - t * 0.5)
+      if max(d - lastHaptic, lastHaptic - d) >= 5
+        let p = min(d / (maxDrag > 0 ? maxDrag : frame("liquid-glass-playground").height * 0.3), 1)
+        if not (hasMax and p >= 1)
+          hasMax = p >= 1
+          haptic(hapticOf(p))
+          lastHaptic = d
+  // onEnd (only after the pan was active): the haptic tracking reset, translateY
+  // withSpring(0, { duration: 600, dampingRatio: 1 }) = bun tools/spring.ts 600 1, from rest
+  // (Reanimated starts it at velocity 0: the drag set the value directly).
+  action release(vx: number, vy: number)
+    if began and not failed
+      lastHaptic = 0
+      hasMax = false
+      ty = 0
+    began = false
+    failed = false
+    dragging = false
+  view
+    // styles.container: absoluteFill, centred.
+    column position="absolute" inset=0 align-items="center" justify-content="center"
+      testId="liquid-glass-playground"
+      // styles.backgroundImage: 100% × 100%, contentFit cover.
+      // (Laid out by hand: Exact's object-fit cover does not centre a horizontal crop here. The
+      // photo is height-bound: full height at its aspect, centred by its row.)
+      row position="absolute" inset=0 justify-content="center" align-items="stretch"
+        image photo() height="100%" aspect-ratio=(1200 / 1593) flex-shrink=0
+          alt="Background photo" testId="photo"
+      // Full screen, as the RN container is.
+      view position="absolute" inset=0 overflow="hidden"
+        // styles.glassView: absoluteFill, borderRadius 50 continuous, clipped, zIndex 2;
+        // GlassView glassEffectStyle "clear", tintColor rgba(0,0,0,0.5), not interactive.
+        //
+        // Exact's glass material takes no tint, and untinted clear glass barely blurs (a pale
+        // haze over a sharp photo). The tinted glass as UIKit draws it on iOS 26, measured on the
+        // RN screen: the photo blurred with σ 10 pt, saturated 1.2 and darkened by black at
+        // 0.25. So the pane is that: a still, filtered copy of the photo (drawn once), held in
+        // place under the moving pane by the inverse of its translate, on the same transition.
+        view position="absolute" inset=0 border-radius=50 corner-shape="-exact-continuous" overflow="hidden"
+          pointer-events="none" translate=`0px ${ty * 0.5}px` transition=paneMotion(dragging)
+          aria-hidden=true testId="glass"
+          view position="absolute" inset=0 translate=`0px ${0 - ty * 0.5}px` transition=paneMotion(dragging)
+            // The photo at the same scale and place as the sharp one (it is wider than the screen,
+            // so the blur does not darken the edges).
+            row position="absolute" inset=0 justify-content="center" align-items="stretch"
+              image photo() height="100%" aspect-ratio=(1200 / 1593) flex-shrink=0
+                filter="blur(10px) saturate(1.2)" aria-hidden=true
+            view position="absolute" inset=0 background-color="rgba(0, 0, 0, 0.25)"
+        // The GestureDetector: on the pane's Animated.View, so it moves with the pane (the
+        // strip a pulled pane uncovers takes no drag).
+        view position="absolute" inset=0 touch-action="none" pan=drag panrelease=release
+          translate=`0px ${ty * 0.5}px` transition=paneMotion(dragging)
+          aria-label="Pull the glass" testId="pull-handle"

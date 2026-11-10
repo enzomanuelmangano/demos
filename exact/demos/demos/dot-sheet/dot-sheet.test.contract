@@ -1,0 +1,6 @@
+at "/demo/dot-sheet"
+
+test "the sheet rests closed over its background"
+  expect tree has "dot-sheet-canvas"
+  expect tree has "dot-card"
+  expect tree has "dot-start"

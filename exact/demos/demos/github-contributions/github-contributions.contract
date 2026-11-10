@@ -1,0 +1,76 @@
+// GitHub Contributions: a GitHub-style contribution calendar (the last width × 0.9 / 3 days, a
+// random level each); a tap anywhere sweeps every square from grey to its green, squashing it on
+// the way, from the bottom-left to the top-right, and a second tap puts them back, each after a
+// random wait. RN: src/animations/github-contributions (index.tsx, contribution-data.tsx,
+// contribution-calendar/index.tsx, contribution-square.tsx, config/defaults.tsx, utils/*).
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+use DemoEnv, roll from "../env.contract"
+
+// fonts.ts `regular`: assets/fonts/regular.ttf (Source Sans Pro Regular), the day labels' face,
+// under this demo's own family name.
+
+// contribution-data.tsx: days = floor(calendarWidth / 3), calendarWidth = window width × 0.9;
+// endDate = new Date() (the day the demo opened, local), startDate = endDate - (days - 1).
+fn dayCount(w: number): number = floor(w * 0.9 / 3)
+// Days since 1970-01-01, local (the epoch at launch shifted by the zone).
+fn today(env: DemoEnv): number = floor((env.epoch + env.utcOffset * 60000) / 86400000)
+// date-fns startOfWeek / endOfWeek { weekStartsOn: 1 }: 1970-01-01 was a Thursday (3, Monday 0).
+fn weekday(d: number): number = (d + 3) % 7
+fn firstDay(env: DemoEnv): number = today(env) - (dayCount(env.width) - 1)
+fn calendarStart(env: DemoEnv): number = firstDay(env) - weekday(firstDay(env))
+fn weekCount(env: DemoEnv): number = (today(env) + 6 - weekday(today(env)) - calendarStart(env) + 1) / 7
+// isInDataRange: `date >= startDate && date <= endDate`, where the range's ends come back from
+// `new Date('yyyy-MM-dd')` (UTC midnight) and each calendar day is a local midnight: east of UTC
+// the first day falls outside (an empty square), west of UTC the last one does.
+fn inRange(env: DemoEnv, d: number): bool = (d > firstDay(env) or (d == firstDay(env) and env.utcOffset <= 0)) and (d < today(env) or (d == today(env) and env.utcOffset >= 0))
+// Math.floor(Math.random() * 5) per day.
+fn levelOf(env: DemoEnv, d: number): number = roll(env.seed, d - firstDay(env), 5)
+
+// The grid: every square and its animation in Rust (gpu/src/github_contributions.rs), one
+// character a calendar day, week by week from Monday: its level, or `.` outside the data's range.
+fn levelsOf(env: DemoEnv): string = range(weekCount(env) * 7).map(i => inRange(env, calendarStart(env) + i) ? `${levelOf(env, calendarStart(env) + i)}` : ".").join("")
+
+component GithubContributions
+  props
+    env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
+  // toggleAnimation's presses: the surface starts on an odd one and resets on an even one.
+  state presses = 0
+  derive weeks = weekCount(env)
+  action toggleAnimation
+    pressablesOnPress()
+    presses = presses + 1
+  view
+    // index.tsx styles.appContainer: #f7f7f7, centred, flex 1; the PressableScale over it is the
+    // same box.
+    column position="absolute" inset=0 background-color="#f7f7f7" align-items="center"
+      justify-content="center" testId="github-contributions"
+      button appearance="none" press=toggleAnimation testId="calendar-press"
+        pointerdown=pressIn(0) pointerup=pressOut
+        scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
+        aria-label="Animate the contributions" flex=1 align-self="stretch" display="flex"
+        flex-direction="column" align-items="center" justify-content="center"
+        // styles.calendarContainer: white, radius 16 continuous, shadow 0 0 20 5 % black, padding 16.
+        column background-color="#ffffff" border-radius=16 corner-shape="-exact-continuous"
+          box-shadow="0px 0px 20px 0px rgba(0, 0, 0, 0.05)" padding=16 testId="calendar"
+          // styles.calendarGrid: a row, aligned to the top.
+          row align-items="flex-start"
+            // styles.dayLabelsContainer: marginRight 8. dayLabel: #656d76, `regular` 11, 14 tall,
+            // 25 wide, marginBottom 3, left-aligned (format 'EEE' from Monday).
+            column justify-content="flex-start" margin-right=8
+              for day in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] key=day
+                // (One device pixel lower: RN's ink sits there, measured; 0 diff once moved.)
+                text day color="color(display-p3 0.3961 0.4275 0.4627)" font-family="regular" font-size=11
+                  height=14 margin-bottom=3 text-align="left" width=25 position="relative" top=0.5
+            // styles.gridContainer: a row of weeks, each marginRight 3 (in the width), seven
+            // squares 14 tall each with marginBottom 3.
+            canvas surface=github_contributions(levelsOf(env), presses, env.seed) width=(weeks * 17)
+              height=119 pointer-events="none" testId="grid" aria-hidden=true

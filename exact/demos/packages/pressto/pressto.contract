@@ -1,0 +1,108 @@
+// pressto 0.7.0 for Exact: the press system every demo's pressable uses, as pressto is
+// designed (node_modules/pressto/src). RN today shows no feedback at all: pressto 0.7.0 passes
+// onBegan/onEnded to RNGH 3.3's v3 BaseButton, which reads only onBegin/onFinalize. That is an
+// RN bug, not copied here.
+//
+// pressto: `active` turns on at touch-down (BaseButton onBegin) and off at the lift or a cancel
+// (onFinalize); shouldCancelWhenOutside is false, so sliding off keeps it on; onPress only when
+// the lift is inside. progress = withTiming(active ? 1 : 0, 250 ms, bezier(0.25, 0.1, 0.25, 1))
+// (or withSpring per config), retargeting from where it is; each pressable's style is linear
+// in progress (`interpolate(progress, [0, 1], [rest, pressed])`), so it is a transition of
+// that property between the two ends on the same curve.
+//
+// Not the host's `:active`: the iOS host eases it over a fixed 120 ms on
+// cubic-bezier(.16, 1, .3, 1) (exact2 host/apple/Sources/ExactKit/PressFeedback.swift
+// `duration`/`timing`; no transition or property changes it). So the pressed state is the
+// component's, from `pointerdown`/`pointerup` (every ancestor of the touched node hears them,
+// the up wherever the finger lifts, a cancel is an up, and neither takes anything from
+// `press`, which the host fires only for a lift inside): 2 commits a press.
+//
+// Use (one pressable; in a `for`, pass the item's index as the key):
+//
+//   use Press, PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+//   component X
+//     inject
+//       pressto: PressablesConfig
+//       pressablesOnPress: action
+//     state pressing = pressNone()
+//     action pressIn(key: number)
+//       pressing = pressDown(pressing, key)
+//     action pressOut
+//       pressing = pressUp(pressing)
+//     action go
+//       pressablesOnPress()
+//       …
+//     view
+//       button appearance="none" press=go pointerdown=pressIn(0) pointerup=pressOut
+//         scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
+
+// PressablesConfig (provider/index.tsx): the animation and pressto's `config`. The root
+// provides one (`pressto`), with the app's global onPress (`pressablesOnPress`).
+shape PressablesConfig
+  // The progress curve, as a transition's timing (DefaultAnimationConfigs).
+  animation: string
+  // DefaultPressableConfig.
+  minScale: number
+  baseScale: number
+  activeOpacity: number
+
+// DefaultAnimationConfigs.timing: withTiming 250 ms on Easing.bezier(0.25, 0.1, 0.25, 1),
+// which is CSS `ease` exactly.
+fn pressTiming(): string = "250ms cubic-bezier(0.25, 0.1, 0.25, 1)"
+// DefaultAnimationConfigs.spring { mass 1, damping 30, stiffness 200 }: ζ = 30 / (2√200) > 1,
+// which Reanimated runs critically damped, so damping 2√(200 · 1).
+fn pressSpring(): string = "-exact-spring(200, 28.284271247461902, 1)"
+
+// <PressablesConfig> with no props: animationType 'timing', DefaultPressableConfig.
+fn defaultPressablesConfig(): PressablesConfig =
+  PressablesConfig(animation=pressTiming(), minScale=0.96, baseScale=1, activeOpacity=0.5)
+// animationType="spring" with its default config.
+fn springPressablesConfig(): PressablesConfig =
+  PressablesConfig(animation=pressSpring(), minScale=0.96, baseScale=1, activeOpacity=0.5)
+
+// A component's press state: the held pressable's key (-1: none) and the parity of its
+// presses (pressNudge).
+shape Press
+  key: number
+  odd: bool
+
+fn pressNone(): Press = Press(key=-1, odd=false)
+// onPressIn: pressable `key` goes active.
+fn pressDown(p: Press, key: number): Press = Press(key=key, odd=not p.odd)
+// onPressOut / onPress / a cancel: none active.
+fn pressUp(p: Press): Press = Press(key=-1, odd=p.odd)
+// isPressed.
+fn isPressed(p: Press, key: number): bool = p.key == key
+
+// A transition that returns to the value it started from is CSS's reversing case (CSS
+// Transitions §3.2, exact2 motion/src/engine.rs): it runs for only a share of the duration.
+// Reanimated's withTiming always runs the full 250 ms from where it is. So every other press
+// aims a millionth off toward the other end (0.001 px across 1000 device px, one f32 step is
+// 6e-8): no target ever equals the start of the transition it interrupts, and each retarget
+// is a fresh full run from the current value.
+fn pressNudge(p: Press, rest: number, pressed: number): number =
+  p.odd ? (pressed < rest ? -0.000001 : 0.000001) : 0
+
+// createAnimatedPressable for a style linear in progress: the value of a property that is
+// `rest` idle and `pressed` held (interpolate(progress, [0, 1], [rest, pressed])). Give the
+// property `transition=pressTransition(<property>, pressto)`.
+fn animatedPressable(p: Press, key: number, rest: number, pressed: number): number =
+  isPressed(p, key) ? pressed - pressNudge(p, rest, pressed) : rest + pressNudge(p, rest, pressed)
+
+// PressableScale: interpolate(progress, [0, 1], [baseScale, minScale]).
+fn pressableScale(p: Press, key: number, c: PressablesConfig): number =
+  animatedPressable(p, key, c.baseScale, c.minScale)
+// PressableOpacity: interpolate(progress, [0, 1], [1, activeOpacity]).
+fn pressableOpacity(p: Press, key: number, c: PressablesConfig): number =
+  animatedPressable(p, key, 1, c.activeOpacity)
+
+// The transition the pressed property runs on (join it to a node's own with `, `).
+fn pressTransition(property: string, c: PressablesConfig): string = `${property} ${c.animation}`
+
+
+// createAnimatedPressable for a colour (interpolateColor(progress, [0, 1], [rest, pressed])):
+// the colour idle or held, with `transition=pressTransition("background-color", pressto)`.
+// Not nudged, so a colour released mid-flight takes CSS's shortened reverse; Exact blends in
+// Oklab, Reanimated in gamma-2.2 RGB.
+fn animatedPressableColor(p: Press, key: number, rest: string, pressed: string): string =
+  isPressed(p, key) ? pressed : rest

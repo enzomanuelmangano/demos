@@ -1,0 +1,64 @@
+// A demo, opened out of its icon: the demo itself and the way out over it.
+// RN: src/navigation/home/demo-screen.tsx, demo-close-button.tsx.
+use Demo from "../demos.contract"
+use PortedDemo from "../demos/index.contract"
+use DemoEnv from "../demos/env.contract"
+
+component DemoScreen
+  props
+    demo: Demo
+    env: DemoEnv
+    ownsDrags: bool
+    leave: action
+  // A presented route keeps its own safe area clear (UIKit's sheet); RN's demos are full
+  // screen and pad their own top. The demo is drawn over the whole screen: its box reaches past
+  // the route's by what the route leaves at the top and the bottom.
+  state top = 0
+  state bottom = 0
+  action inspire
+    haptic("impact-light")
+    showModal("inspiration")
+  action follow
+    openURL(demo.actionUrl)
+  action placed(w: number, h: number)
+    let g = frame("demo-route")
+    if not g.unavailable
+      top = g.y
+      bottom = max(0, env.height - g.y - g.height)
+  view
+    column id="demo-route" position="absolute" inset=0 resize=placed testId=`demo-${demo.slug}`
+      column position="absolute" left=0 right=0 top=(0 - top) bottom=(0 - bottom) background-color=demo.backdrop
+        if demo.ported
+          PortedDemo(slug=demo.slug, env=DemoEnv(env, safeTop=top, safeBottom=bottom))
+        else
+          column flex=1 align-items="center" justify-content="center" padding=32
+            column align-items="center" gap=10 padding="28px 32px" border-radius=28 backgroundMaterial="regular"
+              color-scheme="dark"
+              image demo.icon width=96 height=96 border-radius=21.5 corner-shape="-exact-continuous" aria-hidden=true
+              text demo.name font-size=22 font-weight=700 color="#ffffff" text-align="center" margin-top=4
+              text "Not on Exact yet." font-size=15 color="#8e8e93" text-align="center" testId="not-ported"
+        // demo-screen.tsx DemoLaunch: the card in the demo's backdrop, the demo fading in over it
+        // once it has painted, and the launch around it (open, close drag, flight home, the
+        // home's blur): `demo-card` (modules/apple/DemoLaunch.swift). Under the buttons.
+        demo-card press=leave slug=demo.slug tint=demo.backdrop owns=(ownsDrags ? "drags" : "")
+          position="absolute" inset=0 pointer-events="none" aria-hidden=true
+        // demo-close-button.tsx: the close role on liquid glass, 16 pt from the leading edge, at
+        // the safe top. RN's is a real SwiftUI Button (@expo/ui), so is this: `glass-button`
+        // (modules/apple/Demos.swift), the button at the box's top-left as Host matchContents.
+        glass-button press=leave caption="Close" symbol="xmark" role="close" aria-label="Close"
+          testId="close" position="absolute" top=top left=16 width=48 height=48
+        // demo-inspiration.tsx: the info button mirroring the close button (16 pt from the
+        // trailing edge), when the demo credits someone; it opens the Inspiration sheet.
+        if demo.story != ""
+          glass-button press=inspire caption="Inspiration" symbol="info" edge="trailing"
+            aria-label="Inspiration" testId="inspiration" position="absolute" top=top right=16 width=48
+            height=48
+      // The sheet, sized to its content (BottomSheet fitToContents): title2 bold, the story in
+      // body, the action as a large capsule button; inset 24.
+      dialog id="inspiration" aria-label="Inspiration" testId="inspiration-sheet"
+        column gap=16 padding="28px 24px 24px" align-items="stretch"
+          text "Inspiration" font="-exact-title2" font-weight=700
+          text demo.story font="-exact-body"
+          button press=follow buttonStyle="filled" commandfor="inspiration" command="close"
+            testId="inspiration-action" margin-top=8
+            text demo.actionLabel

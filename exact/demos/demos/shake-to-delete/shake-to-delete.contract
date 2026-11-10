@@ -1,0 +1,360 @@
+// Shake to Delete: a grid of metallic app tiles; a long press makes them jiggle as on the
+// iPhone's home screen, each with a minus badge that deletes its tile (the rest reflow); a
+// second long press stops them. RN: src/animations/shake-to-delete (index.tsx,
+// apps-list/index.tsx, app-item.tsx, constants.ts, hooks/animation-config.ts,
+// hooks/use-is-shaking.ts, hooks/use-shaking-animation.ts).
+use PressablesConfig, pressNone, pressDown, pressUp, pressableOpacity, pressTransition from "pressto"
+use DemoEnv from "../env.contract"
+
+// constants.ts APPS_DATA = METALLIC_APPS_DATA_RAW with id = index.
+fn tileColors(): string[][] = [
+  ["#E8E9ED", "#B8B9BD", "#D1D2D6"], ["#FFFFFF", "#C8CBD0", "#E6E8EA"], ["#F5F5F5", "#C0C0C0", "#DEDEDE"],
+  ["#FFFFFF", "#C4C4C4", "#E8E8E8"], ["#595C63", "#2A2D33", "#424548"], ["#E5E5E5", "#B0B0B0", "#CCCCCC"],
+  ["#B4B7BC", "#7F8287", "#9A9DA2"], ["#FFFFFF", "#D6D6D6", "#F0F0F0"], ["#DEE3ED", "#A5AAB3", "#C2C7D0"],
+  ["#9B9B9E", "#636366", "#818184"], ["#F0F2F5", "#B8BBC0", "#D6D9DD"], ["#B3B5B1", "#7D7F7B", "#989A96"],
+  ["#D0D3D8", "#9CA0A5", "#B6B9BE"], ["#F2F2F2", "#BABABA", "#DADADA"], ["#D6D6D6", "#A0A0A0", "#BCBCBC"],
+  ["#CDD0D4", "#959AA0", "#B3B6BA"], ["#C4C4C4", "#8F8F8F", "#ABABAB"], ["#E8E9EC", "#B5B7BA", "#CED0D3"],
+  ["#A6A9AD", "#6D7074", "#8C8F93"], ["#97999C", "#5F6164", "#7D7F82"], ["#C7CBD2", "#939AA4", "#ADB1C7"],
+  ["#F5F6F8", "#B4B6B8", "#DCDDDF"], ["#FFFFFF", "#C3C3C6", "#E6E6E8"], ["#E2E5E8", "#A1A4A7", "#C9CCD0"],
+]
+// LinearGradient start (0, 0) end (1, 1), the colours evenly spaced (a square tile: 135deg).
+fn gradientOf(cs: string[]): string = `linear-gradient(135deg, ${cs.join(", ")})`
+
+// apps-list/index.tsx: SPACING 8, NUM_COLUMNS 4; horizontalPadding 16; itemSize =
+// floor((width - 16 - 8 × 3) / 4 - 2); each tile marginRight 8, marginBottom 8, padding 14,
+// aspectRatio 1, in a wrapping row padded safeTop at the top and 8 at the sides.
+fn tileSize(w: number): number = floor((w - 16 - 8 * 3) / 4 - 2)
+fn slotLeft(w: number, k: number): number = 8 + (k % 4) * (tileSize(w) + 8)
+fn slotTop(w: number, top: number, k: number): number = top + floor(k / 4) * (tileSize(w) + 8)
+
+// use-shaking-animation.ts: generateRandom(id) (LCG 9301, 49297, 233280) returns the same draw
+// on every call, so amplitude, duration, rotation amplitude and base rotation share one r.
+fn draw(id: number): number = (((id * 9301 + 49297) % 233280) * 9301 + 49297) % 233280 / 233280
+// animation-config.ts BASE: AMPLITUDE 1 + 0.2 r, DURATION 80 + 40 r, ROTATION_AMPLITUDE 1 + 2 r,
+// ROTATION_BASE -3 + 6 r.
+fn amp(id: number): number = 1 + draw(id) * 0.2
+fn legMs(id: number): number = 80 + draw(id) * 40
+fn rotAmp(id: number): number = 1 + draw(id) * 2
+fn rotBase(id: number): number = -3 + draw(id) * 6
+// translateX interpolate(progress, [-1, 0, 1], [-amplitude, 0, amplitude]); rotate
+// interpolate(progress, [-1, 0, 1], [base - rotAmp, 0, base + rotAmp]) deg.
+fn shakeX(id: number, p: number): string = `${amp(id) * p}px 0px`
+fn rotDeg(id: number, p: number): number = p < 0 ? (0 - p) * (rotBase(id) - rotAmp(id)) : p * (rotBase(id) + rotAmp(id))
+fn shakeR(id: number, p: number): string = `${rotDeg(id, p)}deg`
+
+// progress = withRepeat(withSequence(withTiming(-1, d), withTiming(1, 2d), withTiming(0, d)),
+// -1, true): the reverse flag only swaps a sequence's own toValue, which it never reads, so the
+// sequence repeats as written, a 4d period. Each leg is Easing.inOut(Easing.quad): exactly an
+// ease-in quad to the leg's midpoint and an ease-out quad after it (t² is the cubic-bezier
+// (1/3, 0, 2/3, 1/3)), so the keyframes stop at every half leg; the rotation's kink at 0 falls
+// on a stop.
+fn inOutQuad(s: number): number = s < 0.5 ? 2 * s * s : 1 - 2 * (1 - s) * (1 - s)
+fn phaseOf(id: number, elapsed: number): number = (elapsed - floor(elapsed / (4 * legMs(id))) * 4 * legMs(id)) / (4 * legMs(id))
+fn progressAt(f: number): number = f < 0.25 ? 0 - inOutQuad(f / 0.25) : (f < 0.75 ? -1 + 2 * inOutQuad((f - 0.25) / 0.5) : 1 - inOutQuad((f - 0.75) / 0.25))
+
+// Not shaking: withTiming(0, { duration: 150 }) from wherever the jiggle was (keyframes
+// settleZero). stopP: the progress the jiggle had when it stopped.
+fn stopP(id: number, elapsed: number): number = progressAt(phaseOf(id, elapsed))
+fn settleTiming(): string = "150ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) both"
+
+// Reanimated's withTiming default curve, Easing.inOut(Easing.quad), as its cubic-bezier.
+// FadeOut: 300 ms. The delete waits 150 ms (setTimeout) before the tile leaves the list: its
+// fade and the others' LinearTransition.duration(350) start 150 ms after the press.
+keyframes tileOut
+  to opacity=0
+
+keyframes shake0
+  0% translate=shakeX(0, 0) rotate=shakeR(0, 0) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  12.5% translate=shakeX(0, -0.5) rotate=shakeR(0, -0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  25% translate=shakeX(0, -1) rotate=shakeR(0, -1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  50% translate=shakeX(0, 0) rotate=shakeR(0, 0) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  75% translate=shakeX(0, 1) rotate=shakeR(0, 1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  87.5% translate=shakeX(0, 0.5) rotate=shakeR(0, 0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  100% translate=shakeX(0, 0) rotate=shakeR(0, 0)
+keyframes shake1
+  0% translate=shakeX(1, 0) rotate=shakeR(1, 0) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  12.5% translate=shakeX(1, -0.5) rotate=shakeR(1, -0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  25% translate=shakeX(1, -1) rotate=shakeR(1, -1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  50% translate=shakeX(1, 0) rotate=shakeR(1, 0) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  75% translate=shakeX(1, 1) rotate=shakeR(1, 1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  87.5% translate=shakeX(1, 0.5) rotate=shakeR(1, 0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  100% translate=shakeX(1, 0) rotate=shakeR(1, 0)
+keyframes shake2
+  0% translate=shakeX(2, 0) rotate=shakeR(2, 0) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  12.5% translate=shakeX(2, -0.5) rotate=shakeR(2, -0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  25% translate=shakeX(2, -1) rotate=shakeR(2, -1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  50% translate=shakeX(2, 0) rotate=shakeR(2, 0) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  75% translate=shakeX(2, 1) rotate=shakeR(2, 1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  87.5% translate=shakeX(2, 0.5) rotate=shakeR(2, 0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  100% translate=shakeX(2, 0) rotate=shakeR(2, 0)
+keyframes shake3
+  0% translate=shakeX(3, 0) rotate=shakeR(3, 0) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  12.5% translate=shakeX(3, -0.5) rotate=shakeR(3, -0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  25% translate=shakeX(3, -1) rotate=shakeR(3, -1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  50% translate=shakeX(3, 0) rotate=shakeR(3, 0) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  75% translate=shakeX(3, 1) rotate=shakeR(3, 1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  87.5% translate=shakeX(3, 0.5) rotate=shakeR(3, 0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  100% translate=shakeX(3, 0) rotate=shakeR(3, 0)
+keyframes shake4
+  0% translate=shakeX(4, 0) rotate=shakeR(4, 0) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  12.5% translate=shakeX(4, -0.5) rotate=shakeR(4, -0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  25% translate=shakeX(4, -1) rotate=shakeR(4, -1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  50% translate=shakeX(4, 0) rotate=shakeR(4, 0) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  75% translate=shakeX(4, 1) rotate=shakeR(4, 1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  87.5% translate=shakeX(4, 0.5) rotate=shakeR(4, 0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  100% translate=shakeX(4, 0) rotate=shakeR(4, 0)
+keyframes shake5
+  0% translate=shakeX(5, 0) rotate=shakeR(5, 0) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  12.5% translate=shakeX(5, -0.5) rotate=shakeR(5, -0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  25% translate=shakeX(5, -1) rotate=shakeR(5, -1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  50% translate=shakeX(5, 0) rotate=shakeR(5, 0) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  75% translate=shakeX(5, 1) rotate=shakeR(5, 1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  87.5% translate=shakeX(5, 0.5) rotate=shakeR(5, 0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  100% translate=shakeX(5, 0) rotate=shakeR(5, 0)
+keyframes shake6
+  0% translate=shakeX(6, 0) rotate=shakeR(6, 0) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  12.5% translate=shakeX(6, -0.5) rotate=shakeR(6, -0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  25% translate=shakeX(6, -1) rotate=shakeR(6, -1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  50% translate=shakeX(6, 0) rotate=shakeR(6, 0) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  75% translate=shakeX(6, 1) rotate=shakeR(6, 1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  87.5% translate=shakeX(6, 0.5) rotate=shakeR(6, 0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  100% translate=shakeX(6, 0) rotate=shakeR(6, 0)
+keyframes shake7
+  0% translate=shakeX(7, 0) rotate=shakeR(7, 0) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  12.5% translate=shakeX(7, -0.5) rotate=shakeR(7, -0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  25% translate=shakeX(7, -1) rotate=shakeR(7, -1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  50% translate=shakeX(7, 0) rotate=shakeR(7, 0) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  75% translate=shakeX(7, 1) rotate=shakeR(7, 1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  87.5% translate=shakeX(7, 0.5) rotate=shakeR(7, 0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  100% translate=shakeX(7, 0) rotate=shakeR(7, 0)
+keyframes shake8
+  0% translate=shakeX(8, 0) rotate=shakeR(8, 0) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  12.5% translate=shakeX(8, -0.5) rotate=shakeR(8, -0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  25% translate=shakeX(8, -1) rotate=shakeR(8, -1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  50% translate=shakeX(8, 0) rotate=shakeR(8, 0) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  75% translate=shakeX(8, 1) rotate=shakeR(8, 1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  87.5% translate=shakeX(8, 0.5) rotate=shakeR(8, 0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  100% translate=shakeX(8, 0) rotate=shakeR(8, 0)
+keyframes shake9
+  0% translate=shakeX(9, 0) rotate=shakeR(9, 0) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  12.5% translate=shakeX(9, -0.5) rotate=shakeR(9, -0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  25% translate=shakeX(9, -1) rotate=shakeR(9, -1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  50% translate=shakeX(9, 0) rotate=shakeR(9, 0) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  75% translate=shakeX(9, 1) rotate=shakeR(9, 1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  87.5% translate=shakeX(9, 0.5) rotate=shakeR(9, 0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  100% translate=shakeX(9, 0) rotate=shakeR(9, 0)
+keyframes shake10
+  0% translate=shakeX(10, 0) rotate=shakeR(10, 0) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  12.5% translate=shakeX(10, -0.5) rotate=shakeR(10, -0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  25% translate=shakeX(10, -1) rotate=shakeR(10, -1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  50% translate=shakeX(10, 0) rotate=shakeR(10, 0) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  75% translate=shakeX(10, 1) rotate=shakeR(10, 1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  87.5% translate=shakeX(10, 0.5) rotate=shakeR(10, 0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  100% translate=shakeX(10, 0) rotate=shakeR(10, 0)
+keyframes shake11
+  0% translate=shakeX(11, 0) rotate=shakeR(11, 0) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  12.5% translate=shakeX(11, -0.5) rotate=shakeR(11, -0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  25% translate=shakeX(11, -1) rotate=shakeR(11, -1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  50% translate=shakeX(11, 0) rotate=shakeR(11, 0) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  75% translate=shakeX(11, 1) rotate=shakeR(11, 1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  87.5% translate=shakeX(11, 0.5) rotate=shakeR(11, 0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  100% translate=shakeX(11, 0) rotate=shakeR(11, 0)
+keyframes shake12
+  0% translate=shakeX(12, 0) rotate=shakeR(12, 0) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  12.5% translate=shakeX(12, -0.5) rotate=shakeR(12, -0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  25% translate=shakeX(12, -1) rotate=shakeR(12, -1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  50% translate=shakeX(12, 0) rotate=shakeR(12, 0) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  75% translate=shakeX(12, 1) rotate=shakeR(12, 1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  87.5% translate=shakeX(12, 0.5) rotate=shakeR(12, 0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  100% translate=shakeX(12, 0) rotate=shakeR(12, 0)
+keyframes shake13
+  0% translate=shakeX(13, 0) rotate=shakeR(13, 0) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  12.5% translate=shakeX(13, -0.5) rotate=shakeR(13, -0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  25% translate=shakeX(13, -1) rotate=shakeR(13, -1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  50% translate=shakeX(13, 0) rotate=shakeR(13, 0) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  75% translate=shakeX(13, 1) rotate=shakeR(13, 1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  87.5% translate=shakeX(13, 0.5) rotate=shakeR(13, 0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  100% translate=shakeX(13, 0) rotate=shakeR(13, 0)
+keyframes shake14
+  0% translate=shakeX(14, 0) rotate=shakeR(14, 0) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  12.5% translate=shakeX(14, -0.5) rotate=shakeR(14, -0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  25% translate=shakeX(14, -1) rotate=shakeR(14, -1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  50% translate=shakeX(14, 0) rotate=shakeR(14, 0) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  75% translate=shakeX(14, 1) rotate=shakeR(14, 1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  87.5% translate=shakeX(14, 0.5) rotate=shakeR(14, 0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  100% translate=shakeX(14, 0) rotate=shakeR(14, 0)
+keyframes shake15
+  0% translate=shakeX(15, 0) rotate=shakeR(15, 0) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  12.5% translate=shakeX(15, -0.5) rotate=shakeR(15, -0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  25% translate=shakeX(15, -1) rotate=shakeR(15, -1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  50% translate=shakeX(15, 0) rotate=shakeR(15, 0) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  75% translate=shakeX(15, 1) rotate=shakeR(15, 1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  87.5% translate=shakeX(15, 0.5) rotate=shakeR(15, 0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  100% translate=shakeX(15, 0) rotate=shakeR(15, 0)
+keyframes shake16
+  0% translate=shakeX(16, 0) rotate=shakeR(16, 0) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  12.5% translate=shakeX(16, -0.5) rotate=shakeR(16, -0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  25% translate=shakeX(16, -1) rotate=shakeR(16, -1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  50% translate=shakeX(16, 0) rotate=shakeR(16, 0) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  75% translate=shakeX(16, 1) rotate=shakeR(16, 1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  87.5% translate=shakeX(16, 0.5) rotate=shakeR(16, 0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  100% translate=shakeX(16, 0) rotate=shakeR(16, 0)
+keyframes shake17
+  0% translate=shakeX(17, 0) rotate=shakeR(17, 0) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  12.5% translate=shakeX(17, -0.5) rotate=shakeR(17, -0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  25% translate=shakeX(17, -1) rotate=shakeR(17, -1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  50% translate=shakeX(17, 0) rotate=shakeR(17, 0) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  75% translate=shakeX(17, 1) rotate=shakeR(17, 1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  87.5% translate=shakeX(17, 0.5) rotate=shakeR(17, 0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  100% translate=shakeX(17, 0) rotate=shakeR(17, 0)
+keyframes shake18
+  0% translate=shakeX(18, 0) rotate=shakeR(18, 0) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  12.5% translate=shakeX(18, -0.5) rotate=shakeR(18, -0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  25% translate=shakeX(18, -1) rotate=shakeR(18, -1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  50% translate=shakeX(18, 0) rotate=shakeR(18, 0) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  75% translate=shakeX(18, 1) rotate=shakeR(18, 1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  87.5% translate=shakeX(18, 0.5) rotate=shakeR(18, 0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  100% translate=shakeX(18, 0) rotate=shakeR(18, 0)
+keyframes shake19
+  0% translate=shakeX(19, 0) rotate=shakeR(19, 0) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  12.5% translate=shakeX(19, -0.5) rotate=shakeR(19, -0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  25% translate=shakeX(19, -1) rotate=shakeR(19, -1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  50% translate=shakeX(19, 0) rotate=shakeR(19, 0) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  75% translate=shakeX(19, 1) rotate=shakeR(19, 1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  87.5% translate=shakeX(19, 0.5) rotate=shakeR(19, 0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  100% translate=shakeX(19, 0) rotate=shakeR(19, 0)
+keyframes shake20
+  0% translate=shakeX(20, 0) rotate=shakeR(20, 0) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  12.5% translate=shakeX(20, -0.5) rotate=shakeR(20, -0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  25% translate=shakeX(20, -1) rotate=shakeR(20, -1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  50% translate=shakeX(20, 0) rotate=shakeR(20, 0) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  75% translate=shakeX(20, 1) rotate=shakeR(20, 1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  87.5% translate=shakeX(20, 0.5) rotate=shakeR(20, 0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  100% translate=shakeX(20, 0) rotate=shakeR(20, 0)
+keyframes shake21
+  0% translate=shakeX(21, 0) rotate=shakeR(21, 0) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  12.5% translate=shakeX(21, -0.5) rotate=shakeR(21, -0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  25% translate=shakeX(21, -1) rotate=shakeR(21, -1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  50% translate=shakeX(21, 0) rotate=shakeR(21, 0) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  75% translate=shakeX(21, 1) rotate=shakeR(21, 1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  87.5% translate=shakeX(21, 0.5) rotate=shakeR(21, 0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  100% translate=shakeX(21, 0) rotate=shakeR(21, 0)
+keyframes shake22
+  0% translate=shakeX(22, 0) rotate=shakeR(22, 0) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  12.5% translate=shakeX(22, -0.5) rotate=shakeR(22, -0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  25% translate=shakeX(22, -1) rotate=shakeR(22, -1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  50% translate=shakeX(22, 0) rotate=shakeR(22, 0) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  75% translate=shakeX(22, 1) rotate=shakeR(22, 1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  87.5% translate=shakeX(22, 0.5) rotate=shakeR(22, 0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  100% translate=shakeX(22, 0) rotate=shakeR(22, 0)
+keyframes shake23
+  0% translate=shakeX(23, 0) rotate=shakeR(23, 0) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  12.5% translate=shakeX(23, -0.5) rotate=shakeR(23, -0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  25% translate=shakeX(23, -1) rotate=shakeR(23, -1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  50% translate=shakeX(23, 0) rotate=shakeR(23, 0) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  75% translate=shakeX(23, 1) rotate=shakeR(23, 1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
+  87.5% translate=shakeX(23, 0.5) rotate=shakeR(23, 0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
+  100% translate=shakeX(23, 0) rotate=shakeR(23, 0)
+// The settle: withTiming(0, { duration: 150 }) from the pose the jiggle stopped at. The box's
+// own translate and rotate are that pose (shakeX / shakeR of the progress it stopped at); the
+// keyframes have no `from`, so they start there and run both to 0, linear in the eased time,
+// which is RN's value: p(t) = p0 (1 - inOut(quad)(t / 150)) maps to translate and rotation
+// linearly (p keeps its sign, so the rotation stays on one side of its kink at 0).
+keyframes settleZero
+  to translate="0px 0px" rotate="0deg"
+
+component ShakeToDelete
+  props
+    env: DemoEnv
+  // use-is-shaking.ts isShaking, shared by every tile.
+  state shaking = false
+  state shakeStart = 0
+  state stopAt = 0
+  // The deleted tiles, each with the slot it held: it fades out there.
+  state gone = []
+  state goneSlot = []
+  derive live = range(24).filter(id => not gone.includes(id))
+  action toggle
+    if shaking
+      shaking = false
+      stopAt = performanceNow()
+    else
+      shaking = true
+      shakeStart = performanceNow()
+  // onDelete: stopShaking(), then the tile leaves the list 150 ms later.
+  action remove(id: number)
+    haptic("selection")
+    if shaking and not gone.includes(id)
+      shaking = false
+      stopAt = performanceNow()
+      gone = gone.concat([id])
+      goneSlot = goneSlot.concat([live.indexOf(id)])
+  view
+    // index.tsx: LinearGradient ['#000000', '#121212'], top to bottom, filling the screen.
+    column position="absolute" inset=0 overflow="hidden"
+      background-image="linear-gradient(180deg, #000000 0%, #121212 100%)" testId="shake-to-delete"
+      for id in range(24) key=id
+        AppItem(id=id, size=tileSize(env.width),
+          left=slotLeft(env.width, gone.includes(id) ? match goneSlot.at(gone.indexOf(id)) { case some(k) => k, case none => 0 } : live.indexOf(id)),
+          top=slotTop(env.width, env.safeTop, gone.includes(id) ? match goneSlot.at(gone.indexOf(id)) { case some(k) => k, case none => 0 } : live.indexOf(id)),
+          shaking=shaking, elapsed=(stopAt - shakeStart), settled=(stopAt > 0), gone=gone.includes(id),
+          hold=toggle, remove=remove(id))
+
+component AppItem
+  props
+    id: number
+    size: number
+    left: number
+    top: number
+    shaking: bool
+    elapsed: number
+    settled: bool
+    gone: bool
+    hold: action
+    remove: action
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
+  view
+    // The tile's place in the grid; LinearTransition.duration(350) when the others reflow, and
+    // FadeOut when it leaves, both 150 ms after the delete.
+    view position="absolute" left=left top=top width=size height=size display="flex" flex-direction="column"
+      -exact-layout-transition="350ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) 150ms"
+      animation=(gone ? "tileOut 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) 150ms both" : "none")
+      pointer-events=(gone ? "none" : "auto") aria-hidden=gone testId=`app-${id}`
+      // styles.itemContainer + rShakingStyle: padding SPACING + 6 (14), transform
+      // [translateX, rotate].
+      column flex=1 padding=14
+        translate=(shaking or not settled ? "0px 0px" : shakeX(id, stopP(id, elapsed)))
+        rotate=(shaking or not settled ? "0deg" : shakeR(id, stopP(id, elapsed)))
+        animation=(shaking ? `shake${id} ${4 * legMs(id)}ms linear infinite` : (settled ? `settleZero ${settleTiming()}` : "none"))
+        // The PressableOpacity: onLongPress toggles the shaking.
+        view flex=1 display="flex" flex-direction="column" contextmenu=hold role="button"
+          pointerdown=pressIn(0) pointerup=pressOut
+          opacity=pressableOpacity(pressing, 0, pressto) transition=pressTransition("opacity", pressto)
+          aria-label=`App ${id + 1}`
+          testId=`app-${id}-tile`
+          // styles.deleteButtonContainer: absolute at -4, -4, zIndex 1; opacity
+          // withTiming(isShaking ? 1 : 0), touchable only while shaking.
+          view position="absolute" left=-4 top=-4 z-index=1 opacity=(shaking ? 1 : 0)
+            pointer-events=(shaking ? "auto" : "none")
+            transition="opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
+            // styles.deleteButton: 20 × 20, rgba(255,255,255,0.8), radius 100; Ionicons "remove"
+            // 12 black.
+            view display="flex" flex-direction="column" width=20 height=20 border-radius=100
+              pointerdown=pressIn(1) pointerup=pressOut
+              opacity=pressableOpacity(pressing, 1, pressto) transition=pressTransition("opacity", pressto)
+              background-color="rgba(255, 255, 255, 0.8)" align-items="center" justify-content="center"
+              press=remove role="button" aria-label="Delete" testId=`app-${id}-delete`
+              // Ionicons "remove" 12: the vector-icons glyph (512 × 525 units of 512 to the em).
+              svg width=12 height=12.3047 viewBox="0 0 512 525" aria-hidden=true
+                path d="M108 246Q108 246 108 246Q111 246 257 246Q257 246 404 246L408 248Q416 253 416 262Q416 271 408 276Q408 276 405 278H256H107L104 276Q91 268 98 254Q101 248 108 246Z" fill="#000000"
+          // styles.gradient: radius 16 continuous, flex 1, overflow hidden.
+          view flex=1 border-radius=16 corner-shape="-exact-continuous" overflow="hidden"
+            background-image=gradientOf(match tileColors().at(id) { case some(cs) => cs, case none => [] })

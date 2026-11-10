@@ -1,0 +1,32 @@
+// Floating Bottom Bar: a black floating tab bar of five icons; a light hangs over the selected
+// one and springs to the tab pressed. RN: src/animations/floating-bottom-bar (index.tsx,
+// components/bottom-tab-bar/index.tsx, animated-opacity-view, shader-light). The bar's body is
+// here; its icons, their pressto presses and fades, and the Skia light with its spring are
+// gpu/src/floating_bottom_bar.rs (one canvas over the body): the tab chosen fades in on the frame
+// the light's spring rests and the tab left fades out at once (withTiming keeps its start while
+// its target holds), which needs the spring's own frames.
+use DemoEnv from "../env.contract"
+
+// tabBarWidth = screenWidth × 0.95.
+fn barWidth(w: number): number = w * 0.95
+
+component FloatingBottomBar
+  props
+    env: DemoEnv
+  inject
+    pressablesOnPress: action
+  // pressto's global onPress (the selection haptic) for a tab press.
+  action heard(m: string)
+    if m == "haptic:selection"
+      pressablesOnPress()
+  view
+    // The navigator's screens: plain Views on DefaultTheme's background, rgb(242, 242, 242).
+    column position="absolute" inset=0 background-color="rgb(242, 242, 242)" testId="floating-bottom-bar"
+      // styles.container: absolute, centred, at the bottom inset, tabBarWidth × 65, black,
+      // radius 20 continuous.
+      view position="absolute" left=((env.width - barWidth(env.width)) / 2) bottom="env(safe-area-inset-bottom)"
+        width=barWidth(env.width) height=65 background-color="#000000" border-radius=20 corner-shape="-exact-continuous"
+        testId="tab-bar"
+        canvas surface=floating_bottom_bar() message=heard position="absolute" left=0 top=0
+          width=barWidth(env.width) height=65 touch-action="none" testId="tab-bar-canvas"
+          aria-label="Tabs: Home, Bookmark, Add, Profile, Settings"

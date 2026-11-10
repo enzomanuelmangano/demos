@@ -1,0 +1,142 @@
+// Tab Navigation: four pill tabs in a row; the chosen one widens, its icon slides left and its
+// label fades in. RN: src/animations/tab-navigation (src/index.tsx, src/constants.ts,
+// src/components/tabs/index.tsx, tab.tsx).
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+use DemoEnv from "../env.contract"
+
+shape TabData
+  label: string
+  icon: string
+
+// AntDesign glyphs (the vector-icons font: 512 units to the em, ascent 455, descent 81, so a
+// Text box 536 units tall), constants.ts TABS_DATA's icons.
+fn userAddPath(): string = "M239 29Q256 27 275 30Q298 33 321 44Q349 58 368.5 83.5Q388 109 394 139Q404 185 385 228Q372 258 344 281L339 285L352 291Q373 301 391 316Q399 323 399.0 324.5Q399 326 391 326Q373 328 356 335L349 338L345 336Q305 314 263 312Q200 309 149 349Q133 362 121 378Q103 402 94.0 428.0Q85 454 85 476Q85 480 83.5 481.5Q82 483 63 483Q46 483 44.0 482.0Q42 481 42 470Q44 428 64 389Q79 357 105 332Q132 304 164 289L173 285L166 279Q126 247 117 194Q113 171 116 150Q123 106 152 74Q187 36 239 29ZM273 73Q223 65 187 100Q165 123 159 153Q156 172 160 189Q170 237 213.5 258.0Q257 279 300 257Q325 245 339.5 221.0Q354 197 354 170Q354 143 340.5 120.5Q327 98 304 84Q290 76 273 73ZM379 353Q377 354 377 380V405H352Q327 405 326.0 405.5Q325 406 325.0 424.5Q325 443 326.0 444.0Q327 445 352 445L377 446V470Q377 495 378.5 496.5Q380 498 398.0 498.0Q416 498 417.0 497.0Q418 496 418 471V446H443Q468 446 469.5 444.0Q471 442 471.0 425.0Q471 408 470.0 406.5Q469 405 444 404H419L418 379Q418 354 416.5 353.0Q415 352 397.5 352.0Q380 352 379 353Z"
+fn homePath(): string = "M252 19Q258 17 265 21Q267 22 387.5 142.5Q508 263 510.0 266.5Q512 270 512 285V300L510 304Q503 314 494 318Q485 322 466 322H454V415V507H256H58V415V322H46Q34 322 29 321Q12 318 2 304L0 300V285Q0 270 2.0 267.0Q4 264 124.0 143.0Q244 22 247.0 21.0Q250 20 252 19ZM362 175Q256 69 256.0 69.0Q256 69 150 175L45 280H72H99L100 374V467H144H187L188 398Q188 329 190 326Q193 319 201 315Q204 314 256.0 314.0Q308 314 311 315Q319 319 322 326Q324 329 324 398L325 467H368H412V374L413 280H440H467ZM288 408V467H256H224V408V350H256H288V408Z"
+fn walletPath(): string = "M40 35Q43 34 257 35H472L476 37Q480 40 482 44L485 49V263V477L482 482Q480 486 476 489L472 491H256H40L36 489Q32 486 30 482L27 477V263V49L30 45Q33 38 40 35ZM444 132V75H256H68V263V451H256H444V394V336H343H242L238 334Q234 331 231 328L229 324V263V202L231 198Q234 195 238 192L242 190H343H444ZM444 263V226H355H265V263V300H355H444ZM313 241Q295 245 295 263Q295 273 302.5 280.0Q310 287 320 286Q329 284 334.5 278.0Q340 272 340 263Q340 256 336 249Q327 237 313 241Z"
+fn swapPath(): string = "M196 62Q202 64 199 69Q197 71 157 122L116 174H290L465 175L466 177Q467 179 466.5 196.5Q466 214 464.5 215.5Q463 217 264.5 217.5Q66 218 61.5 217.0Q57 216 53 214Q41 205 47 192Q49 188 98.0 126.0Q147 64 149.5 63.0Q152 62 173.0 62.0Q194 62 196 62ZM47 310Q46 312 46.0 330.5Q46 349 48.0 351.0Q50 353 222.5 353.0Q395 353 395.0 353.0Q395 353 363 394Q312 458 313 460Q314 463 317.5 463.5Q321 464 338 464Q360 464 363 463Q364 462 413.5 400.0Q463 338 464 335Q471 321 458 312L455 310L251 309Q48 309 47 310Z"
+fn iconPath(icon: string): string = icon == "user-add" ? userAddPath() : (icon == "home" ? homePath() : (icon == "wallet" ? walletPath() : swapPath()))
+
+// tabs/index.tsx: gap 10, paddingHorizontal 10, maxTabWidth 170,
+// minTabWidth = (tabsWidth - maxTabWidth) / (tabs.length - 1),
+// tabsWidth = windowWidth - paddingHorizontal × 2 - gap × (tabs.length - 1).
+fn minTabWidth(w: number): number = (w - 10 * 2 - 10 * 3 - 170) / 3
+
+// tab.tsx: progress = withSpring(isActive, { dampingRatio 1, duration 400 })
+// (bun tools/spring.ts 400 1).
+fn tabSpring(): string = "-exact-spring(1699.5858, 164.9042, 4)"
+
+// The label's opacity is progress ** 3, progress the tab's critically damped spring
+// (ω = √(k/m) = 20.6 /s: 1 − (1 + ωt)·e^(−ωt)), sampled over the 600 ms it takes to settle
+// (the stops placed adaptively so the linear segments stay within 0.003 of the curve:
+// under one colour level); labelOff is its way back (1 − progress) ** 3.
+keyframes labelOn
+  0% opacity=0.0000
+  3.125% opacity=0.0002
+  6.25% opacity=0.0060
+  7.812% opacity=0.0160
+  9.375% opacity=0.0336
+  10.94% opacity=0.0601
+  12.5% opacity=0.0957
+  14.06% opacity=0.1397
+  15.62% opacity=0.1905
+  18.75% opacity=0.3055
+  21.87% opacity=0.4258
+  25% opacity=0.5397
+  28.13% opacity=0.6401
+  31.25% opacity=0.7242
+  34.38% opacity=0.7920
+  37.5% opacity=0.8451
+  40.62% opacity=0.8858
+  43.75% opacity=0.9165
+  46.88% opacity=0.9394
+  50% opacity=0.9562
+  56.25% opacity=0.9774
+  62.5% opacity=0.9885
+  75% opacity=0.9971
+  100% opacity=0.9998
+keyframes labelOff
+  0% opacity=1.0000
+  0.3906% opacity=0.9966
+  0.7812% opacity=0.9869
+  1.562% opacity=0.9515
+  2.344% opacity=0.8994
+  3.125% opacity=0.8360
+  6.25% opacity=0.5483
+  7.812% opacity=0.4188
+  9.375% opacity=0.3107
+  10.94% opacity=0.2250
+  12.5% opacity=0.1597
+  14.06% opacity=0.1114
+  15.62% opacity=0.0765
+  17.19% opacity=0.0519
+  18.75% opacity=0.0348
+  21.87% opacity=0.0152
+  25% opacity=0.0064
+  37.5% opacity=0.0002
+  50% opacity=0.0000
+  100% opacity=0.0000
+
+component TabNavigation
+  props
+    env: DemoEnv
+  state activeTabIndex = 0
+  // The tab that was active before the last change (-1: none yet): its label fades out.
+  state previousTabIndex = -1
+  action choose(i: number)
+    haptic("selection")
+    if i != activeTabIndex
+      previousTabIndex = activeTabIndex
+      activeTabIndex = i
+  view
+    // src/index.tsx styles.container: white, centred.
+    column position="absolute" inset=0 background-color="#ffffff" align-items="center" justify-content="center"
+      testId="tab-navigation"
+      row width=env.width box-sizing="border-box" gap=10 padding="0px 10px"
+        for tab, i in [TabData(label="Accounts", icon="user-add"), TabData(label="Home", icon="home"), TabData(label="Payments", icon="wallet"), TabData(label="Transfers", icon="swap")] key=i
+          Tab(label=tab.label, icon=tab.icon, minWidth=minTabWidth(env.width), isActive=(i == activeTabIndex),
+            wasActive=(i == previousTabIndex), changed=(previousTabIndex >= 0),
+            press=choose(i), testId=`tab-${i}`)
+
+component Tab
+  props
+    label: string
+    icon: string
+    minWidth: number
+    isActive: bool
+    wasActive: bool
+    changed: bool
+    press: action
+    testId: string
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
+  view
+    button appearance="none" press=press testId=testId aria-label=label aria-pressed=isActive
+      pointerdown=pressIn(0) pointerup=pressOut
+      scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
+      // styles.container: #f1f1f1, borderRadius 15 continuous, height 60, justifyContent center;
+      // width interpolate(progress, [0, 1], [minWidth, maxWidth 170]) on the progress spring.
+      column width=(isActive ? 170 : minWidth) height=60 justify-content="center" background-color="#f1f1f1"
+        border-radius=15 corner-shape="-exact-continuous" -exact-layout-transition=tabSpring()
+        // styles.innerContainer: row, centred, overflow hidden, width 100%.
+        row align-items="center" justify-content="center" overflow="hidden" width="100%"
+          -exact-layout-transition=tabSpring()
+          // styles.iconContainer: 20 × 20 (IconSize), #f1f1f1, absolute at left 0 (centred on the
+          // cross axis, as Yoga places it), zIndex 100; translateX from (minWidth - 20) / 2 to 20.
+          view position="absolute" left=0 top="50%" margin-top=-10 width=20 height=20 background-color="#f1f1f1"
+            z-index=100 translate=`${isActive ? 20 : (minWidth - 20) / 2}px 0px`
+            transition=`translate ${tabSpring()}`
+            svg width=20 height=(20 * 536 / 512) viewBox="0 0 512 536" aria-hidden=true
+              path d=iconPath(icon) fill="#000000"
+          // styles.label: fontSize 16, weight 500, zIndex 100, one line; marginLeft from 0 to 15.
+          text label font-size=16 font-weight=500 z-index=100 white-space="nowrap" line-clamp=1
+            color="#000000" margin-left=(isActive ? 15 : 0) -exact-layout-transition=tabSpring()
+            opacity=(isActive ? 1 : 0)
+            animation=(changed and isActive ? "labelOn 600ms linear both" : (wasActive ? "labelOff 600ms linear both" : "none"))
+            testId=`${testId}-label`

@@ -1,0 +1,15 @@
+at "/demo/cherry-blossom-qrcode"
+
+test "the canvas, the hint and the field are there"
+  expect tree has "cherry-blossom-qrcode"
+  expect tree has "cherry-blossom-qrcode-canvas"
+  expect tree has "cherry-blossom-qrcode-hint"
+  expect tree has "cherry-input"
+
+test "the field starts on the default content"
+  expect text "cherry-input" == "https://enzo.fyi"
+
+test "typing sets the QR's content"
+  type "cherry-input" "enzo.fyi/beta"
+  expect text "cherry-input" == "enzo.fyi/beta"
+

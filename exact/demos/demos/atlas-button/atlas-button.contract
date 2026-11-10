@@ -1,0 +1,17 @@
+// Atlas Button: a 250 × 200 button with the React logo; held, it shrinks a little, the logo
+// rises, "React Native" fades in and a disc of blue squares grows from its centre. Inspired by
+// @jamesm. RN: src/animations/atlas-button (index.tsx, atlas-button/index.tsx,
+// atlas-button/animated-squares.tsx). The button (its Atlas, logo, label, press and spring) is
+// Rust: gpu/src/atlas_button.rs. Its onPress only logs. Math.random() is env.seed's stream.
+use DemoEnv from "../env.contract"
+
+component AtlasButton
+  props
+    env: DemoEnv
+  view
+    // styles.container: black, flex 1, centred, paddingTop 10.
+    column position="absolute" inset=0 box-sizing="border-box" padding-top=10 background-color="#000000"
+      align-items="center" justify-content="center" testId="atlas-button"
+      // CanvasWidth × CanvasHeight.
+      canvas surface=atlas_button(env.seed) width=250 height=200 flex-shrink=0 touch-action="none"
+        testId="atlas-button-canvas" aria-label="React Native"

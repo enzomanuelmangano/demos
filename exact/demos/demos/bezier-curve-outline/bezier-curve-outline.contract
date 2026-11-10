@@ -1,0 +1,88 @@
+// Bezier Curve Outline: a chess-board square that, pressed, grows while it travels along a cubic
+// Bézier and blurs on the way; "Outline Mode" crossfades to the curve itself, whose four control
+// points can be dragged, and the screen blurs while the button is held. RN:
+// src/animations/bezier-curve-outline (src/index.tsx, components/bezier-outline.tsx,
+// components/animated-square, hooks/useAnimateThroughPath). The outline, the square (its walk
+// along the contour, press, chessboard, pawn, BlurView) and both crossfades are Rust:
+// gpu/src/bezier_curve_outline.rs, which posts the square's press haptic, and so is the
+// full-screen BlurView (it blurs what the surface draws; `held` drives its intensity). The
+// button is here.
+use DemoEnv from "../env.contract"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+
+// rLabelColorStyle: interpolateColor(outlineModeProgress, [0, 1], ['#202020', 'white']),
+// Reanimated's RGB with gamma 2.2, each channel rounded: these stops, on a timeline the hidden
+// box below drives with the same spring (withSpring's default, 900 / 120 / 4). Greys: the same
+// numbers in Display P3 and sRGB.
+keyframes labelInk
+  0% color="#202020"
+  1% color="#2B2B2B"
+  2% color="#343434"
+  3% color="#3B3B3B"
+  4% color="#414141"
+  5% color="#474747"
+  6% color="#4C4C4C"
+  7% color="#515151"
+  8% color="#555555"
+  9% color="#595959"
+  10% color="#5D5D5D"
+  15% color="#6E6E6E"
+  20% color="#7D7D7D"
+  25% color="#8A8A8A"
+  30% color="#959595"
+  35% color="#A0A0A0"
+  40% color="#A9A9A9"
+  45% color="#B2B2B2"
+  50% color="#BBBBBB"
+  55% color="#C3C3C3"
+  60% color="#CBCBCB"
+  65% color="#D2D2D2"
+  70% color="#D9D9D9"
+  75% color="#E0E0E0"
+  80% color="#E7E7E7"
+  85% color="#EDEDED"
+  90% color="#F3F3F3"
+  95% color="#F9F9F9"
+  100% color="#FFFFFF"
+
+component BezierCurveOutline
+  props
+    env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  state outline = false
+  // pressto's PressableScale (packages/pressto); `held` is its isPressed, for the surface's blur.
+  state pressing = pressNone()
+  state held = false
+  action heard(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+  action pressIn
+    held = true
+    pressing = pressDown(pressing, 0)
+  action pressOut
+    held = false
+    pressing = pressUp(pressing)
+  action toggle
+    pressablesOnPress()
+    outline = not outline
+  view
+    column position="absolute" inset=0 timeline-scope="--outlineMode" testId="bezier-curve-outline"
+      view position="absolute" left=0 top=0 width=0 height=0 pointer-events="none" aria-hidden=true
+        translate=(outline ? "100px 0px" : "0px 0px") transition="translate -exact-spring(900, 120, 4)"
+        -exact-drag-timeline="--outlineMode x"
+      // The surface also draws the AnimatedBlurView (absoluteFill, zIndex 100, untouchable, tint
+      // systemUltraThinMaterialLight, intensity withTiming(held ? 65 : 0, 300 ms, linear)).
+      canvas surface=bezier_curve_outline(outline, held) message=heard position="absolute" top=0 left=0
+        width=env.width height=env.height touch-action="none" testId="bezier-curve-outline-canvas"
+        aria-label="Press the square; in outline mode, drag the curve's points"
+      // styles.button: absolute, bottom 48, centred (alignSelf), zIndex 2000; styles.text 14,
+      // centred, its colour on the outline spring.
+      row position="absolute" left=0 right=0 bottom=48 justify-content="center" pointer-events="none"
+        button appearance="none" press=toggle pointerdown=pressIn pointerup=pressOut
+          pointer-events="auto" border="none" background-color="transparent" padding=0
+          scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto) testId="bezier-curve-outline-toggle"
+          aria-label="Outline Mode"
+          text "Outline Mode" font-size=14 text-align="center" color="#202020"
+            animation="labelInk 1s linear both" animation-timeline="--outlineMode" animation-range="0px 100px"

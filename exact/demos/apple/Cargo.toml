@@ -1,0 +1,19 @@
+[package]
+name = "demos-apple"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+build = "build.rs"
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+exact-logic = { path = "../../../../../../../.exact/exact2/94b8671f70fe2e25b307a40e7fce66dc27c9f802/logic" }
+exact-apple = { path = "../../../../../../../.exact/exact2/94b8671f70fe2e25b307a40e7fce66dc27c9f802/host/apple" }
+exact-apple-update = { path = "../../../../../../../.exact/exact2/94b8671f70fe2e25b307a40e7fce66dc27c9f802/host/apple-update" }
+exact-js = { path = "../../../../../../../.exact/exact2/94b8671f70fe2e25b307a40e7fce66dc27c9f802/js" }
+
+[build-dependencies]
+exact-js-bake = { path = "../../../../../../../.exact/exact2/94b8671f70fe2e25b307a40e7fce66dc27c9f802/js/bake" }

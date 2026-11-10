@@ -1,0 +1,12 @@
+at "/demo/scroll-progress"
+
+test "the pill shows the reading time at the top"
+  expect tree has "scroll-progress"
+  expect text "reading-time" == "15 min"
+  expect tree has "progress-pill"
+
+test "scrolling widens the pill into a progress bar"
+  tap "scroll-progress-scroll" drag 0 -300
+  clock settle
+  expect tree has "progress-bar-area"
+  expect tree has "progress-fill"

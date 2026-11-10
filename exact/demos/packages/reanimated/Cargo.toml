@@ -1,0 +1,13 @@
+# react-native-reanimated's animations, for the Demos app's GPU surfaces: what a worklet does
+# on the UI thread (withSpring, withTiming, withDecay, interpolate), stepped on the host's frame
+# clock inside a surface. Pure Rust, no GPU.
+[package]
+name = "reanimated"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "react-native-reanimated 4's withSpring, withTiming, withDecay and interpolate, frame by frame"
+publish = false
+
+[lib]
+name = "reanimated"

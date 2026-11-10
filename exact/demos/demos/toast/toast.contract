@@ -1,0 +1,354 @@
+// Toast: a black "Toast!" button; each press stacks a white toast at the bottom (the older ones
+// rise 20 px a step, shrink 5 % a step and hide their text past the second). The front one swipes
+// left to dismiss; the fifth dismisses itself after 2.5 s; past the fifth, "You can spam me!".
+// RN: src/animations/toast (index.tsx, toast-manager/toast-provider.tsx, toast-manager/toast.tsx).
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+use DemoEnv from "../env.contract"
+
+// toast.tsx: ToastOffset 20, ToastHeight 70, HideToastOffset 90, BaseSafeArea 50. A toast with
+// id k sits translateY -(k × ToastOffset) over a static bottom 50, scale 1 - k × 0.05 (× 0.96 while
+// swiped), zIndex 1000 - k; its row's opacity is withTiming(k <= 1 ? 1 : 0).
+//
+// Timers: a dismissal's onDismiss (when the 300 ms withTiming to -windowWidth ends) and the
+// autodismiss (setTimeout 2500, then that same withTiming) are two `timer` surfaces
+// (gpu/src/timer.rs): the iOS host ignores a transition's delay, so the others move when the
+// timer's commit drops the toast, as RN's onDismiss re-ids them. A toast stays in the list (and
+// keeps the others' ids) until then.
+//
+// The model, in creation order (older first): `gone` 0 live, 1 swiped away (sliding out), 2 the
+// autodismissed one (sliding out); `goneX` where the finger left a swiped one, `goneAt` when it
+// started to leave, `goneK` its id then (frozen while it leaves). A gone toast is dropped from the
+// lists when its timer fires (or by the next action past its 300 ms).
+
+fn toastNum(xs: number[], i: number): number = match xs.at(i) { case some(v) => v, case none => 0 }
+fn toastSet(xs: number[], i: number, v: number): number[] = range(xs.length).map(j => j == i ? v : toastNum(xs, j))
+// The id of a toast: how many toasts in the list are newer (a leaving one keeps its place until
+// its onDismiss).
+fn toastNewer(gone: number[], i: number): number = range(gone.length).filter(j => j > i).length
+fn toastId(gone: number[], goneK: number[], i: number): number = toastNum(gone, i) != 0 ? toastNum(goneK, i) : toastNewer(gone, i)
+// The newest live toast's index (-1 for none).
+fn toastLive(gone: number[]): number = match range(gone.length).filter(j => toastNum(gone, j) == 0).at(-1) { case some(j) => j, case none => -1 }
+// The toast the gesture is enabled on: id 0, the newest in the list, while it is live (a leaving
+// one holds id 0 until its onDismiss).
+fn toastFront(gone: number[]): number = gone.length > 0 and toastNum(gone, gone.length - 1) == 0 ? gone.length - 1 : -1
+
+// index.tsx toasts: title, subtitle, autodismiss; past the fifth, the spam one.
+fn toastTitle(kind: number): string = kind == 0 ? "I am a simple toast" : (kind == 1 ? "Well, not so simple" : (kind == 2 ? "You can swipe me" : (kind == 3 ? "You can add a subtitle" : (kind == 4 ? "And if you're lazy" : "You can spam me!"))))
+fn toastSubtitle(kind: number): string = kind == 3 ? "Here I am" : (kind == 4 ? "I can dismiss myself" : "")
+// AntDesign check-circle, shake, swap, smile, user (20, black): the vector-icons glyphs' outlines
+// (512 units to the em, a Text box 512 × 536 units).
+fn toastIconPath(kind: number): string = kind == 0 ? "M239 8Q304 4 362.5 30.5Q421 57 461 109Q494 153 506 206Q518 262 506.5 317Q495 372 460 417Q398 500 292 517Q279 519 256.5 519Q234 519 221 517Q142 504 84 453Q17 392 2 298Q0 285 0 263Q0 241 2 228Q13 160 51 109Q110 32 203 13Q223 9 239 8ZM283 52Q278 52 261.5 51.5Q245 51 241 51Q238 51 230 52Q211 54 192 60Q142 76 105 113.5Q68 151 53 202Q44 230 44 263Q44 286 48 306Q63 380 122 428Q159 458 204 469Q227 475 256 475Q286 475 309 469Q364 454 403.5 416Q443 378 459 324Q468 296 468 263Q468 230 459 202Q444 151 406 113Q368 75 317 60Q302 55 283 52ZM328 174Q325 176 322.5 178.5Q320 181 276 242Q232 302 230 302Q229 301 211 276Q190 247 186 244Q182 241 165 240Q146 240 145 244Q144 245 146 248Q148 251 183.5 300.5Q219 350 223 352Q236 358 245 348Q246 347 305 264.5Q364 182 366 179Q368 177 367 175L365 173H348Q332 173 328 174Z" : (kind == 1 ? "M310 8Q324 5 337 11Q342 14 424 96Q490 162 500 173Q510 184 512 193Q516 208 506 222Q504 226 361 369Q246 483 229 499.5Q212 516 204 518Q195 520 186 518Q178 516 166.5 505.5Q155 495 90 430Q25 365 14.5 353.5Q4 342 2 334Q-1 321 6 307Q8 303 152 158Q268 43 285 26.5Q302 10 310 8ZM28.5 158Q29 156 90 95Q151 34 152.5 34Q154 34 167 47Q180 60 179.5 62Q179 64 118 124.5Q57 185 55 185Q53 185 40.5 172.5Q28 160 28.5 158ZM394 127Q320 53 319.5 53Q319 53 183 189L47 325L121 399L195 473L331 337L467 201ZM170 325Q179 322 189 327Q203 333 204 349Q205 361 198 369Q190 377 178 378Q166 379 158 371Q150 363 150 351Q150 344 152 340Q157 329 170 325ZM396 401Q335 462 334.5 464Q334 466 347 479Q360 492 362 491.5Q364 491 425 430Q486 369 486 367.5Q486 366 473.5 353.5Q461 341 459 341Q457 341 396 401Z" : (kind == 2 ? "M196 62Q202 64 199 69Q197 71 157 122L116 174H290L465 175L466 177Q467 179 466.5 196.5Q466 214 464.5 215.5Q463 217 264.5 217.5Q66 218 61.5 217Q57 216 53 214Q41 205 47 192Q49 188 98 126Q147 64 149.5 63Q152 62 173 62Q194 62 196 62ZM47 310Q46 312 46 330.5Q46 349 48 351Q50 353 222.5 353Q395 353 395 353Q395 353 363 394Q312 458 313 460Q314 463 317.5 463.5Q321 464 338 464Q360 464 363 463Q364 462 413.5 400Q463 338 464 335Q471 321 458 312L455 310L251 309Q48 309 47 310Z" : (kind == 3 ? "M239 8Q304 4 362.5 30.5Q421 57 461 109Q494 153 506 206Q518 262 506.5 317Q495 372 460 417Q398 500 292 517Q279 519 256.5 519Q234 519 221 517Q142 504 84 453Q17 392 2 298Q0 285 0 263Q0 241 2 228Q13 160 51 109Q110 32 203 13Q223 9 239 8ZM275 51Q239 48 204 57Q142 73 98.5 120.5Q55 168 46 233Q44 243 44 263Q44 283 46 293Q55 354 93.5 400Q132 446 189 465Q256 487 323 465Q380 446 419 399.5Q458 353 466 292Q468 282 468 263Q468 244 466 234Q454 150 390 98Q339 57 275 51ZM149 184Q151 184 157 184Q169 185 176 193Q187 206 180 222Q173 238 155 238Q138 238 131 223Q124 208 134 194Q140 187 149 184ZM348 185Q352 184 358 184Q376 185 382 201.5Q388 218 375 231Q363 243 347 236.5Q331 230 330 213Q328 192 348 185ZM166 277Q164 278 165 285Q167 310 184 331Q201 352 225 361Q254 371 282.5 362.5Q311 354 329 329Q345 309 347 285Q348 277 345.5 276Q343 275 329 275Q316 275 313.5 276Q311 277 310 282Q308 301 293 315Q278 330 256 330Q234 330 218 313Q206 301 202 285Q201 277 199.5 276Q198 275 183 275Q168 275 166 277Z" : "M238 37Q241 36 258.5 36.5Q276 37 286 39Q328 49 357 78.5Q386 108 395 150Q400 172 396 196Q391 232 370 262Q357 279 344 289Q340 291 340 291.5Q340 292 351 298Q397 320 428 361.5Q459 403 468 453Q472 480 471 487Q470 489 468 490Q466 491 449 491Q432 491 430 490Q428 489 427 481Q423 423 387 380Q350 336 292.5 323.5Q235 311 182 336Q140 356 114 394.5Q88 433 85 480Q84 488 82 489.5Q80 491 63 491Q46 491 44 490Q40 489 42 474Q47 415 80 368Q111 322 160 298Q172 293 172.5 292.5Q173 292 170 290Q128 258 117 204Q115 195 115 177Q115 159 117 150Q125 113 148.5 85Q172 57 207 44Q223 39 238 37ZM274 81Q316 88 340 126Q367 171 345 218Q338 234 324.5 247.5Q311 261 296 267Q256 284 216 267Q201 261 187.5 247.5Q174 234 167 218Q145 171 172 126Q195 88 238 81Q244 80 255.5 80Q267 80 274 81Z")))
+// AntDesign "twitter" (the spam toast's), the vector-icons font's glyph: 512 units to the em, a
+// Text box 536 units tall.
+fn toastTwitterPath(): string = "M330 72Q293 78 270 109Q244 142 251 183L252 190H250Q237 190 213 185Q119 166 56 93L51 88L48 94Q38 115 39 141Q40 168 54 190Q63 204 77 215L81 218H78Q61 218 42 208L38 206V210Q38 229 48 250Q67 290 110 301L116 303L111 304Q106 305 89 305H72L74 310Q87 345 121 361Q136 369 158 372H162L158 376Q138 390 114 400Q91 409 64 412Q58 413 40.5 413.5Q23 414 20 413L42 426Q81 446 128 453Q160 458 194 455Q261 449 315 416Q362 386 395.0 338.0Q428 290 439 233Q445 208 445 182V166L453 160Q472 145 487 124Q493 117 493.0 116.5Q493 116 483.5 119.5Q474 123 465 126Q440 132 439 131Q439 130 443 127Q455 119 466 105Q469 101 472.5 94.5Q476 88 478.5 83.0Q481 78 480 78Q479 78 473 81Q453 92 427 99L419 101L413 95Q386 70 347 70Q337 70 330 72Z"
+
+// Reanimated 4's withSpring() default (bottom) and withTiming() default (300 ms, inOut(quad)).
+fn toastSpring(): string = "-exact-spring(900, 120, 4)"
+fn toastTiming(): string = "300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
+fn toastScaleOf(k: number): number = 1 - k * 0.05
+
+// Mount: bottom starts at -HideToastOffset (translateY 140) and springs to 0. A spring is no
+// keyframe timing: the default one is critically damped (ω = √(900 / 4) = 15), p(t) =
+// 1 - e^(-ωt)(1 + ωt), sampled every 25 ms over 800 ms as linear() stops.
+keyframes toastEnter
+  from translate="0px 140px"
+  to translate="0px 0px"
+fn toastEnterTiming(): string = "800ms linear(0, 0.055, 0.1734, 0.3101, 0.4422, 0.5591, 0.6575, 0.7374, 0.8009, 0.8503, 0.8883, 0.9172, 0.9389, 0.9551, 0.9672, 0.9761, 0.9826, 0.9874, 0.9909, 0.9935, 0.9953, 0.9966, 0.9976, 0.9983, 0.9988, 0.9991, 0.9994, 0.9996, 0.9997, 0.9998, 0.9998, 0.9999, 1) both"
+
+// The front toast's translateX: the shared drag layer's horizontal translate, 1:1, clamped at 0
+// (onUpdate ignores a translation to the right).
+keyframes toastSwipeX
+  from translate="-2000px 0px"
+  to translate="0px 0px"
+
+// dismissItem from the autodismiss: translateX withTiming(-windowWidth). The card is 0.9 of the
+// window wide: -windowWidth is -111.1111 % of it.
+keyframes toastAutoThrow
+  from translate="0px 0px"
+  to translate="-111.1111% 0px"
+
+component Toast
+  props
+    env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
+  // value.current: the presses so far (the index into the five toasts).
+  state pressed = 0
+  state serial = 0
+  state keys = []
+  state kinds = []
+  state gone = []
+  state goneX = []
+  state goneAt = []
+  state goneK = []
+  // The self-dismissing toast while its timer runs: its key, when it starts to leave (-1: not
+  // counting), the delay of its slide.
+  state autoKey = -1
+  state autoE = -1
+  state autoThrow = 2500
+  // The timers: a swipe's onDismiss (300 ms); the autodismiss's onDismiss (its 2500 ms timeout
+  // plus the 300 ms slide), the key it drops, and its delay. A token of 0 cancels (clearTimeout);
+  // the autodismiss arms with -1, -2, … (`autoSerial`), never a token it used before.
+  state swipeToken = 0
+  state autoToken = 0
+  state autoDrop = -1
+  state autoMs = 2800
+  // The toast that follows the drag layer (the front one when the drag began), and isSwiping.
+  state dragKey = -1
+  state swiping = false
+  // On the web the timers publish their tokens instead of posting `swipeDone` / `autoDone`
+  // (gpu/src/timer.rs; the autodismiss's tokens are negative, so the two never match): what
+  // they would have dropped is read from env.timers until the next action keeps it. On iOS
+  // env.timers is empty and each v-value is its state.
+  state goneT = []
+  state autoSerial = 0
+  derive swipeFired = match range(swipeToken + 1).filter(t => t > 0 and env.timers.includes(t)).at(-1) { case some(t) => t, case none => 0 }
+  derive autoFired = autoToken != 0 and env.timers.includes(autoToken) and autoDrop >= 0
+  derive vIdx = range(keys.length).filter(j => not (toastNum(gone, j) == 1 and toastNum(goneT, j) > 0 and toastNum(goneT, j) <= swipeFired) and not (autoFired and toastNum(keys, j) == autoDrop))
+  derive vKeys = vIdx.map(j => toastNum(keys, j))
+  derive vKinds = vIdx.map(j => toastNum(kinds, j))
+  derive vGone = vIdx.map(j => toastNum(gone, j))
+  derive vGoneX = vIdx.map(j => toastNum(goneX, j))
+  derive vGoneAt = vIdx.map(j => toastNum(goneAt, j))
+  derive vGoneK = vIdx.map(j => toastNum(goneK, j))
+  derive vGoneT = vIdx.map(j => toastNum(goneT, j))
+  derive vAutoKey = autoFired and autoKey == autoDrop ? -1 : autoKey
+  derive vAutoE = autoFired and autoKey == autoDrop ? -1 : autoE
+  derive vAutoDrop = autoFired ? -1 : autoDrop
+  derive w = env.width
+  derive ai = vKeys.indexOf(vAutoKey)
+  derive front = toastFront(vGone)
+
+  // A press: the next toast (index.tsx onPress; showToast refuses past six in the list).
+  action showToast
+    pressablesOnPress()
+    let now = performanceNow()
+    autoKey = vAutoKey
+    autoE = vAutoE
+    autoDrop = vAutoDrop
+    let expired = vAutoE >= 0 and now >= vAutoE
+    let g1 = expired ? toastSet(vGone, ai, 2) : vGone
+    let at1 = expired ? toastSet(vGoneAt, ai, vAutoE) : vGoneAt
+    let k1 = expired ? toastSet(vGoneK, ai, 0) : vGoneK
+    let keep = range(vKeys.length).filter(j => toastNum(g1, j) == 0 or now < toastNum(at1, j) + 300)
+    let nGone = keep.map(j => toastNum(g1, j))
+    let kind = pressed < 5 ? pressed : 5
+    pressed = pressed + 1
+    if keep.length > 5
+      // console.warn("Too many toasts"): the list is kept.
+      keys = keep.map(j => toastNum(vKeys, j))
+      kinds = keep.map(j => toastNum(vKinds, j))
+      gone = nGone
+      goneX = keep.map(j => toastNum(vGoneX, j))
+      goneAt = keep.map(j => toastNum(at1, j))
+      goneK = keep.map(j => toastNum(k1, j))
+      goneT = keep.map(j => toastNum(vGoneT, j))
+    else
+      keys = keep.map(j => toastNum(vKeys, j)).concat([serial])
+      kinds = keep.map(j => toastNum(vKinds, j)).concat([kind])
+      gone = nGone.concat([0])
+      goneX = keep.map(j => toastNum(vGoneX, j)).concat([0])
+      goneAt = keep.map(j => toastNum(at1, j)).concat([0])
+      goneK = keep.map(j => toastNum(k1, j)).concat([0])
+      goneT = keep.map(j => toastNum(vGoneT, j)).concat([0])
+      let newKey = serial
+      serial = newKey + 1
+      if kind == 4
+        // The fifth is id 0 with autodismiss: setTimeout(dismissItem, 2500).
+        autoKey = newKey
+        autoE = now + 2500
+        autoThrow = 2500
+        autoDrop = newKey
+        autoMs = 2800
+        autoToken = -1 - autoSerial
+        autoSerial = autoSerial + 1
+      else
+        if expired
+          // Its withTiming already runs: its onDismiss still comes.
+          autoKey = -1
+          autoE = -1
+        else
+          if vAutoE >= 0
+            // No longer id 0: the effect's cleanup clears the timeout.
+            autoE = -1
+            autoToken = 0
+
+  // The front toast's drag binding measured (transformgeometry fires when the handle binds, not
+  // when a finger lands): the handle is keyed by the front toast, so each new front rebinds.
+  action began(key: number, bw: number, bh: number, pw: number, ph: number)
+    dragKey = key
+
+  // Pan onBegin / onFinalize: isSwiping (the front toast's scale × 0.96).
+  action touched
+    swiping = true
+  action untouched
+    swiping = false
+
+  // Pan onEnd: past -50 the toast slides to -windowWidth (withTiming) and leaves the list at its
+  // onDismiss; else translateX withSpring(0). onFinalize: isSwiping false.
+  action released(x: number, y: number, scale: number, vx: number, vy: number, vscale: number)
+    let now = performanceNow()
+    let i = vKeys.indexOf(dragKey)
+    swiping = false
+    keys = vKeys
+    kinds = vKinds
+    gone = vGone
+    goneX = vGoneX
+    goneAt = vGoneAt
+    goneK = vGoneK
+    goneT = vGoneT
+    autoKey = vAutoKey
+    autoE = vAutoE
+    autoDrop = vAutoDrop
+    if i >= 0 and x < -50 and toastNum(vGone, i) == 0
+      let nGone = toastSet(vGone, i, 1)
+      let nl = toastLive(nGone)
+      let wasCounting = dragKey == vAutoKey and vAutoE >= 0
+      goneK = toastSet(vGoneK, i, toastNewer(vGone, i))
+      gone = nGone
+      goneX = toastSet(vGoneX, i, x)
+      goneAt = toastSet(vGoneAt, i, now)
+      goneT = toastSet(vGoneT, i, swipeToken + 1)
+      swipeToken = swipeToken + 1
+      dragKey = -1
+      if wasCounting
+        // The counting one, swiped: its own onDismiss removes it; the timeout goes with it.
+        autoKey = -1
+        autoE = -1
+        autoToken = 0
+      else
+        // The self-dismissing one is id 0 again once the swiped one is gone (at 300 ms): its
+        // 2.5 s timeout starts then, its onDismiss 300 ms after.
+        if vAutoKey >= 0 and nl == ai and nl >= 0
+          autoE = now + 2800
+          autoThrow = 2800
+          autoDrop = vAutoKey
+          autoMs = 3100
+          autoToken = -1 - autoSerial
+          autoSerial = autoSerial + 1
+
+  // onDismiss of a swiped toast: it leaves the list, the others take their new ids.
+  action swipeDone(m: string)
+    let now = performanceNow()
+    let keep = range(keys.length).filter(j => not (toastNum(gone, j) == 1 and now >= toastNum(goneAt, j) + 250))
+    keys = keep.map(j => toastNum(keys, j))
+    kinds = keep.map(j => toastNum(kinds, j))
+    gone = keep.map(j => toastNum(gone, j))
+    goneX = keep.map(j => toastNum(goneX, j))
+    goneAt = keep.map(j => toastNum(goneAt, j))
+    goneK = keep.map(j => toastNum(goneK, j))
+    goneT = keep.map(j => toastNum(goneT, j))
+
+  // onDismiss of the self-dismissed toast.
+  action autoDone(m: string)
+    let i = keys.indexOf(autoDrop)
+    let keep = range(keys.length).filter(j => j != i)
+    keys = keep.map(j => toastNum(keys, j))
+    kinds = keep.map(j => toastNum(kinds, j))
+    gone = keep.map(j => toastNum(gone, j))
+    goneX = keep.map(j => toastNum(goneX, j))
+    goneAt = keep.map(j => toastNum(goneAt, j))
+    goneK = keep.map(j => toastNum(goneK, j))
+    goneT = keep.map(j => toastNum(goneT, j))
+    if autoKey == autoDrop
+      autoKey = -1
+      autoE = -1
+    autoDrop = -1
+
+  view
+    // styles.container: centred, white.
+    column position="absolute" inset=0 background-color="#ffffff" align-items="center"
+      justify-content="center" timeline-scope="--toastSwipe" testId="toast"
+      // styles.button: #111, radius 25 continuous, a 1 px border, marginBottom 20, padding 25 × 18;
+      // styles.textButton: white, 700, letterSpacing 1.2, uppercase (14).
+      column press=showToast role="button" aria-label="Toast!"
+        pointerdown=pressIn(0) pointerup=pressOut
+        scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
+        background-color="#111111" border-radius=25 corner-shape="-exact-continuous" border-width=1
+        border-style="solid" border-color="#000000" margin-bottom=20 padding-left=25
+        padding-right=25 padding-top=18 padding-bottom=18 testId="toast-button"
+        text "Toast!" color="#ffffff" font-size=14 font-weight=700 letter-spacing=1.2
+          text-transform="uppercase"
+      for key, i in vKeys key=key
+        ToastCard(env=env, toastKey=key, kind=toastNum(vKinds, i),
+          k=toastId(vGone, vGoneK, i), goneMode=toastNum(vGone, i), goneX=toastNum(vGoneX, i),
+          dragged=(key == dragKey), held=(key == dragKey and swiping),
+          counting=(key == vAutoKey and vAutoE >= 0), autoThrow=autoThrow)
+      // The front toast's GestureDetector: one drag layer for the stack (its translate is the
+      // timeline the dragged toast follows), under an untransformed, clipping parent.
+      column position="absolute" inset=0 overflow="hidden" pointer-events="none" z-index=2000
+        column id="toast-drag" width="100%" height="100%" box-sizing="border-box"
+          position="relative" translate="0px 0px" transition=`translate ${toastSpring()}`
+          -exact-drag-timeline="--toastSwipe x"
+          if front >= 0
+            for fk in [toastNum(vKeys, front)] key=fk
+              view position="absolute" left=(w * 0.05) bottom=50 width=(w * 0.9) height=70
+                pointer-events="auto" touch-action="none" transformDragFor="toast-drag"
+                transformgeometry=began(fk) transformrelease=released pointerdown=touched
+                pointerup=untouched aria-label="Swipe the toast away"
+                testId="toast-handle"
+      canvas surface=timer(swipeToken, 300) message=swipeDone width=1 height=1 position="absolute"
+        left=0 top=0 aria-hidden=true pointer-events="none"
+      canvas surface=timer(autoToken, autoMs) message=autoDone width=1 height=1 position="absolute"
+        left=0 top=0 aria-hidden=true pointer-events="none"
+
+component ToastCard
+  props
+    env: DemoEnv
+    toastKey: number
+    kind: number
+    // The toast's id.
+    k: number
+    goneMode: number
+    goneX: number
+    dragged: bool
+    held: bool
+    counting: bool
+    autoThrow: number
+  derive w = env.width
+  view
+    // The Animated.View: width 0.9 w, left 0.05 w, bottom BaseSafeArea, height 70.
+    column position="absolute" left=(w * 0.05) bottom=50 width=(w * 0.9) height=70
+      z-index=(1000 - k) pointer-events="none" testId=`toast-${toastKey}`
+      column flex=1 animation=`toastEnter ${toastEnterTiming()}`
+        // translateY -(bottom - BaseSafeArea), withSpring on id changes.
+        column flex=1 translate=`0px ${-20 * k}px` transition=`translate ${toastSpring()}`
+            // scale: withTiming(baseScale, × 0.96 while swiping).
+              column flex=1 scale=(toastScaleOf(k) * (held ? 0.96 : 1))
+                transition=`scale ${toastTiming()}`
+                // translateX: the drag, or where the finger left it.
+                column flex=1 translate=(goneMode == 1 ? `${goneX}px 0px` : "0px 0px")
+                  animation=(dragged ? "toastSwipeX 1s linear both" : "none")
+                  animation-timeline=(dragged ? "--toastSwipe" : "auto")
+                  animation-range="-2000px 0px"
+                  // styles.container: white, radius 20 continuous, boxShadow 0 0 2 20 % black,
+                  // paddingHorizontal 25. The slide out: withTiming to -windowWidth.
+                  column flex=1 background-color="#ffffff" border-radius=20 corner-shape="-exact-continuous"
+                    box-shadow="0px 0px 2px rgba(0, 0, 0, 0.2)" padding-left=25 padding-right=25
+                    translate=(goneMode == 1 ? `${0 - w - goneX}px 0px` : "0px 0px")
+                    transition=`translate ${toastTiming()}`
+                    animation=((counting or goneMode == 2) ? `toastAutoThrow ${toastTiming()} ${autoThrow}ms both` : "none")
+                    // styles.textContainer: flex 1, centred, alignItems flex-start, rowGap 2.
+                    column flex=1 justify-content="center" align-items="flex-start" gap=2
+                      column opacity=(k <= 1 ? 1 : 0)
+                        transition=`opacity ${toastTiming()}`
+                        column
+                          // styles.rowCenter; the leading icon (AntDesign, 20, black).
+                          row align-items="center" justify-content="center"
+                            svg width=20 height=(20 * 536 / 512) viewBox="0 0 512 536" aria-hidden=true
+                              path d=(kind == 5 ? toastTwitterPath() : toastIconPath(kind)) fill="#000000"
+                            // styles.columnCenter (flex 1 in a row that hugs its content: its
+                            // content's width), marginLeft 10 beside the icon.
+                            column justify-content="center" margin-left=10
+                              // styles.title: 16 bold; styles.subtitle: #666, 13.
+                              text toastTitle(kind) font-size=16 font-weight=700 color="#000000"
+                                testId=`toast-title-${toastKey}`
+                              if toastSubtitle(kind) != ""
+                                text toastSubtitle(kind) font-size=13 color="#666666"

@@ -1,0 +1,8 @@
+at "/demo/bottom-bar-skia"
+
+test "the bar and its tabs are there"
+  expect tree has "bottom-bar-canvas"
+  expect tree has "tab-2"
+  tap "tab-2"
+  clock settle
+  expect tree has "bottom-bar-canvas"

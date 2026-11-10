@@ -1,0 +1,11 @@
+// react-native-reanimated 4.7.1's springs and curves, for Contract transitions. A demo names
+// these instead of retyping numbers; `bun tools/spring.ts <ms> <ratio>` converts a duration spring.
+
+// withSpring()'s default (GentleSpringConfig): `-exact-spring(900, 120, 4)`.
+// withTiming()'s default: 300 ms on Easing.inOut(Easing.quad) = cubic-bezier(0.455, 0.03, 0.515, 0.955).
+// Reanimated 3's withSpring default (damping 10, mass 1, stiffness 100): `-exact-spring(100, 10, 1)`.
+// WigglySpringConfig: `-exact-spring(900, 90, 4)`; SnappySpringConfig: `-exact-spring(900, 110, 4)`
+// (with overshootClamping, which Exact's spring does not do).
+
+fn gentleSpring(): string = "-exact-spring(900, 120, 4)"
+fn timingDefault(): string = "300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)"

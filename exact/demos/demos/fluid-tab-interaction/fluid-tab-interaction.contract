@@ -1,0 +1,21 @@
+// Fluid Tab Interaction: a three-cell segmented control (Accounts, Deposits, Funds) whose
+// highlighted pill slides to the cell pressed while the labels' colours cross over and the
+// expo-blur BlurViews pulse. RN: src/animations/fluid-tab-interaction (src/index.tsx,
+// src/constants.ts, src/components/segmented-control/index.tsx). The whole screen is one Rust
+// surface (gpu/src/fluid_tab_interaction.rs): the control, the pill and its shadow, the labels at
+// UIKit's text layout, Reanimated's timings and colour timing, pressto's press scale, the four
+// BlurViews' animated intensity (skia::backdrop) and RN's touch blocking (the pill and the blur
+// cell take the touches over the selected cell). The surface posts each press's selection haptic.
+use DemoEnv from "../env.contract"
+
+component FluidTabInteraction
+  props
+    env: DemoEnv
+  // The app's PressablesConfig onPress: Haptics.selectionAsync().
+  action heard(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+  view
+    canvas surface=fluid_tab_interaction() message=heard position="absolute" top=0 left=0
+      width=env.width height=env.height touch-action="none" testId="fluid-tab-interaction"
+      aria-label="Accounts, Deposits, Funds: tap a cell"

@@ -1,0 +1,69 @@
+// Airbnb Flip Interaction: a coral profile card that flips (rotateY on a spring, dipping to 0.95
+// mid-turn) to a white stats card when pressed; the text under it swaps between two pages with
+// short rise-and-fade keyframes. RN: src/animations/airbnb-flip-interaction (index.tsx,
+// constants.ts, flip-interaction/constants, flip-interaction/components/card/{index.tsx,
+// front.tsx, back.tsx, profile-avatar.tsx}, pages/{MainPage.tsx, SecondPage.tsx}). The card (both
+// faces, the 4×4 turn, its spring with Reanimated's velocity rules) and the description (pages,
+// Keyframes, the blur pulse) are Rust surfaces; the scroll, the press and the top gradient are here.
+use PressablesConfig, pressNone, pressDown, pressUp, pressableOpacity, pressTransition from "pressto"
+use DemoEnv, demoButtonRow from "../env.contract"
+
+component AirbnbFlipInteraction
+  props
+    env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
+  state isFlipped = false
+  // flip-interaction/constants spacing.xxl 64: cardWidth = screenWidth - 64, height / 1.6.
+  derive cardW = env.width - 64
+  derive cardH = cardW / 1.6
+  action toggleCard
+    pressablesOnPress()
+    isFlipped = not isFlipped
+  view
+    // styles.container: white, flex 1.
+    column position="absolute" inset=0 background-color="#ffffff" testId="airbnb-flip"
+      // The ScrollView (no indicator): paddingTop safeTop + DEMO_BUTTON_ROW_HEIGHT, paddingBottom
+      // safeBottom + 40.
+      // Vertical only (RN's ScrollView): the card's canvas overhangs the window across.
+      scroll flex=1 min-height=0 scrollbar-width="none" overflow-x="hidden" overflow-y="auto"
+        testId="airbnb-scroll"
+        column position="relative" width="100%" overflow-x="clip"
+          padding-top=(env.safeTop + demoButtonRow())
+          padding-bottom="calc(40px + env(safe-area-inset-bottom))"
+          // The description (gpu/src/airbnb_flip_pages.rs): the pages, their Keyframes and the
+          // AnimatedBlurView's pulse. From the card box's top (on the pixel grid), under the
+          // card's canvas; it draws only below the card.
+          canvas surface=airbnb_flip_pages(isFlipped, env.safeTop) position="absolute" left=0
+            top=(env.safeTop + demoButtonRow()) width=env.width height=(cardH + 24 + 400)
+            pointer-events="none" aria-hidden=true testId=(isFlipped ? "airbnb-second-page" : "airbnb-main-page")
+          // styles.cardSection: centred, paddingBottom spacing.xl (24), paddingHorizontal 20.
+          column align-items="center" padding-bottom=24 padding-left=20 padding-right=20
+            column press=toggleCard role="button"
+              pointerdown=pressIn(0) pointerup=pressOut
+              opacity=pressableOpacity(pressing, 0, pressto) transition=pressTransition("opacity", pressto)
+              aria-label=(isFlipped ? "Show the profile card" : "Show the stats card")
+              testId="airbnb-card"
+              // FlipCard: rotationContainer cardWidth × cardHeight (horizontal: rotate 0). Both
+              // faces, their 3D turn and the progress spring are drawn in Rust
+              // (gpu/src/airbnb_flip_card.rs); the canvas reaches 56 past the box for the shadow
+              // and the perspective.
+              view position="relative" width=cardW height=cardH testId="airbnb-front"
+                canvas surface=airbnb_flip_card(isFlipped) position="absolute" left=-56 top=-56
+                  width=(cardW + 112) height=(cardH + 112) pointer-events="none" aria-hidden=true
+                  testId="airbnb-back"
+          // styles.descriptionSection: the pages are the canvas's; this box holds their place
+          // (taller than either page: the content stays shorter than the window, as RN's, so
+          // the scroll only bounces).
+          view height=380 testId="airbnb-description"
+      // The LinearGradient over the top: #FFFFFF → #FFFFFF00, safeTop + 16 tall, zIndex 10.
+      view position="absolute" top=0 left=0 right=0 height=(env.safeTop + 16) z-index=10
+        background-image="linear-gradient(to bottom, #FFFFFF 0%, rgba(255, 255, 255, 0) 100%)"
+        pointer-events="none" aria-hidden=true

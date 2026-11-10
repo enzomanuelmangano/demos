@@ -1,0 +1,11 @@
+at "/demo/tab-navigation"
+
+test "a tab becomes the active one"
+  expect tree has "tab-navigation"
+  expect text "tab-0-label" == "Accounts"
+  tap "tab-2"
+  clock settle
+  expect text "tab-2-label" == "Payments"
+  tap "tab-3"
+  clock settle
+  expect text "tab-3-label" == "Transfers"

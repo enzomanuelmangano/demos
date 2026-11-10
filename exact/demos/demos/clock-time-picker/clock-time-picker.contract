@@ -1,0 +1,20 @@
+// Clock Time Picker: an analog clock beside a list of times (1:00 pm … 10:30 pm); scrolling the
+// list turns the hands with it and settles on a time. RN: src/animations/clock-time-picker
+// (index.tsx, components/clock.tsx, components/time-range.tsx). The picker's content (the Skia
+// clock with its shadows, the FlatList's text, gradients and UIScrollView snapping) is Rust:
+// gpu/src/clock_time_picker.rs, so the hands follow the scroll with no commit per frame.
+
+component ClockTimePicker
+  view
+    // styles.container: #111, flex 1, centred.
+    column position="absolute" inset=0 background-color="color(display-p3 0.0667 0.0667 0.0667)"
+      align-items="center" justify-content="center" testId="clock-time-picker"
+      // styles.pickerContainer: #111111, border 1 #222222, radius 24 continuous, padding 32, a
+      // row centred with gap 32 (the clock 100², the list 100 × 120: one 232 × 120 canvas);
+      // boxShadow 0 0 0 #000 draws nothing.
+      row background-color="color(display-p3 0.0667 0.0667 0.0667)"
+        border="1px solid color(display-p3 0.1333 0.1333 0.1333)" border-radius=24
+        corner-shape="-exact-continuous" padding=32 align-items="center" justify-content="center"
+        testId="clock-time-picker-container"
+        canvas surface=clock_time_picker() width=232 height=120 flex-shrink=0 touch-action="none"
+          testId="clock-time-picker-canvas" aria-label="Time: scroll the list to set the clock"

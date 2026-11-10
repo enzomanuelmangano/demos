@@ -1,0 +1,20 @@
+// Stacked Carousel: twenty white cards in a pile; a horizontal swipe pages through them, the
+// front card lifting up, growing and fading out while the ones behind tilt forward and rise
+// into its place; a paginator of dots follows. RN: src/animations/stacked-carousel (index.tsx,
+// components/stacked-carousel/index.tsx, components/paginator/index.tsx). The FlatList
+// (snapToInterval with disableIntervalMomentum: one page per fling at most), the cards and the
+// paginator it drives are Rust: gpu/src/stacked_carousel.rs, gpu/shaders/stacked_carousel.wgsl.
+use DemoEnv from "../env.contract"
+
+component StackedCarousel
+  props
+    env: DemoEnv
+  // useAnimatedReaction on round(currentPageIndex): a selection haptic each time it changes.
+  action buzz(text: string)
+    if text == "haptic:selection"
+      haptic("selection")
+  view
+    // index.tsx styles.container: #eeeeee (the canvas draws it), the carousel centred.
+    column position="absolute" inset=0 background-color="#eeeeee" testId="stacked-carousel"
+      canvas surface=stacked_carousel() message=buzz position="absolute" top=0 left=0 width=env.width
+        height=env.height touch-action="none" aria-label="Cards" testId="stacked-carousel-list"

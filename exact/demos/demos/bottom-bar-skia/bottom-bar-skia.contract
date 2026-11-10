@@ -1,0 +1,35 @@
+// BottomBarSkia: a white tab bar of three icons; a purple circle in a liquid bump of the bar
+// springs to the tab tapped, and its icon rises into it and turns white.
+// RN: src/animations/bottom-bar-skia (index.tsx, components/bottom-tab-bar, bottom-tab-item).
+// The bar is Skia: drawn and sprung in Rust (gpu/src/bottom_bar_skia.rs), from the selected
+// index, which lives here as the navigator's state does.
+use DemoEnv from "../env.contract"
+
+// bottomTabBarHeight = 65 + bottom / 2; the canvas is 50 (BOTTOM_BAR_HEIGHT_OFFSET) taller,
+// and the surface's 85 more on top hold the view's shadow (bottom_bar_skia.rs SHADOW_ROOM).
+fn barHeight(): string = "calc(65px + env(safe-area-inset-bottom) / 2)"
+fn canvasHeight(): string = "calc(65px + env(safe-area-inset-bottom) / 2 + 50px + 85px)"
+fn tabName(i: number): string = i == 0 ? "Home" : (i == 1 ? "Search" : "User")
+
+component BottomBarSkia
+  props
+    env: DemoEnv
+  state index = 0
+  // onTap: navigation.navigate(screenName) and Haptics.selectionAsync().
+  action choose(i: number)
+    haptic("selection")
+    index = i
+  view
+    // The navigator on DefaultTheme's background, rgb(242, 242, 242); each screen a
+    // BackgroundView (flex 1, rgba(0,0,0,0.1)) above the tab bar's room.
+    column position="absolute" inset=0 background-color="rgb(242, 242, 242)" testId="bottom-bar-skia"
+      view position="absolute" top=0 left=0 right=0 bottom=barHeight() background-color="rgba(0, 0, 0, 0.1)"
+        aria-hidden=true
+      // styles.container: absolute at the bottom, the full width.
+      canvas surface=bottom_bar_skia(index) position="absolute" left=0 bottom=0 width="100%"
+        height=canvasHeight() pointer-events="none" aria-hidden=true testId="bottom-bar-canvas"
+      // Each BottomTabItem's Touchable.Rect: a third of the width, from y 50 to the bottom.
+      for i in range(3) key=i
+        view position="absolute" bottom=0 left=(i * env.width / 3) width=(env.width / 3)
+          height=barHeight() press=choose(i) role="button" aria-label=tabName(i)
+          aria-pressed=(i == index) testId=`tab-${i}`

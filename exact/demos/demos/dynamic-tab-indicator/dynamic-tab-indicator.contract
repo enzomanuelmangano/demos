@@ -1,0 +1,101 @@
+// Dynamic Tab Indicator: five full-screen photos on a horizontal pager under a frosted bar of
+// country tabs; a black line under the tabs slides and stretches from title to title as the
+// pager scrolls, and a tab scrolls the pager to its photo.
+// RN: src/animations/dynamic-tab-indicator (constants/data.tsx,
+// components/dynamic-tab-indicator/index.tsx, section-tabs.tsx).
+use DemoEnv, demoButtonRow from "../env.contract"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableOpacity, pressTransition from "pressto"
+
+// constants/data.tsx: the five photos (assets copied as they are) and their titles.
+fn titles(): string[] = ["France", "Italy", "Iceland", "Norway", "Japan"]
+fn photos(): string[] = ["assets/demos/dynamic-tab-indicator/france.jpg", "assets/demos/dynamic-tab-indicator/italy.jpg", "assets/demos/dynamic-tab-indicator/iceland.jpg", "assets/demos/dynamic-tab-indicator/norway.jpg", "assets/demos/dynamic-tab-indicator/japan.jpg"]
+
+// index.tsx INDICATOR_CONTAINER_HEIGHT 120.
+fn barHeight(): number = 120
+fn atOr(xs: number[], i: number): number = match xs.at(i) { case some(v) => v, case none => 0 }
+fn setAt(xs: number[], i: number, v: number): number[] = range(5).map(j => j == i ? v : atOr(xs, j))
+// interpolate(contentOffsetX, [0, w, 2w, 3w, 4w], out, CLAMP).
+fn page(scroll: number, w: number): number = min(4, max(0, scroll / w))
+fn lerpAt(xs: number[], t: number): number = atOr(xs, floor(t)) + (atOr(xs, min(4, floor(t) + 1)) - atOr(xs, floor(t))) * (t - floor(t))
+// The widest a title can be: its tab (width / 5) less paddingHorizontal 8 each side.
+fn widest(w: number): number = w / 5 - 16
+
+component DynamicTabIndicator
+  props
+    env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
+  state scroll = 0
+  // Each title's onLayout: x within its tab plus index * width / 5 (xOutputRange), its width
+  // (widthOutputRange), and the first title's y within its tab (indicatorLayout.y).
+  state xs: number[] = [0, 0, 0, 0, 0]
+  state ws: number[] = [0, 0, 0, 0, 0]
+  state y = 0
+  // The titles' font: styles.title's 17, shrunk by adjustsFontSizeToFit until a line fits the
+  // tab's height (the bar's 120 + 56 less the safe-area paddings leaves ~18 pt on an iPhone:
+  // UIKit draws them at ~15). A line of SF is 20 / 17 of its size tall.
+  state fit = 17
+  action scrolled(x: number, top: number)
+    scroll = x
+  action measured(i: number, w: number, h: number)
+    let t = frame(`tab-title-${i}`)
+    let p = frame(`tab-${i}`)
+    let bar = frame("section-tabs")
+    if not t.unavailable and not p.unavailable and not bar.unavailable
+      xs = setAt(xs, i, t.x - bar.x)
+      ws = setAt(ws, i, t.width)
+      if i == 0
+        y = t.y - p.y
+        fit = min(17, p.height * 17 / 20)
+  // handleSelectSection: scrollTo({ x: index * width, animated: true }).
+  action select(i: number)
+    pressablesOnPress()
+    scrollIntoView(`page-${i}`, block="nearest", inline="start", behavior="smooth")
+  view
+    column position="absolute" inset=0 testId="dynamic-tab-indicator"
+      // The Animated.ScrollView: horizontal, paged, each photo width x height, cover.
+      scroll position="absolute" left=0 top=0 width=env.width height=env.height overflow-x="scroll"
+        overflow-y="hidden" scrollbar-width="none" scroll-snap-type="x mandatory" scroll=scrolled
+        testId="pages"
+        row width=(env.width * 5) height=env.height
+          for src, i in photos() key=i
+            image src id=`page-${i}` width=env.width height=env.height flex-shrink=0
+              object-fit="cover" scroll-snap-align="start" aria-hidden=true testId=`page-${i}`
+      // SectionTabs styles.safeContainer: absolute at the top, white 90%, a row; height
+      // INDICATOR_CONTAINER_HEIGHT + DEMO_BUTTON_ROW_HEIGHT, padded by safeTop +
+      // DEMO_BUTTON_ROW_HEIGHT at the top and the bottom inset at the bottom.
+      row id="section-tabs" position="absolute" left=0 top=0 width=env.width
+        height=(barHeight() + demoButtonRow()) box-sizing="border-box"
+        padding-top=(env.safeTop + demoButtonRow()) padding-bottom="env(safe-area-inset-bottom)"
+        background-color="rgba(255, 255, 255, 0.9)" testId="section-tabs"
+        for title, i in titles() key=i
+          // styles.container: flex 1, width / 5, centred, paddingHorizontal 8.
+          view display="flex" flex-direction="column" id=`tab-${i}` press=select(i) role="button" aria-label=title
+            // pressto's PressableOpacity.
+            pointerdown=pressIn(i) pointerup=pressOut opacity=pressableOpacity(pressing, i, pressto)
+            transition=pressTransition("opacity", pressto)
+            flex=1 width=(env.width / 5) align-items="center" justify-content="center"
+            padding-left=8 padding-right=8 box-sizing="border-box" resize=measured(i) testId=`tab-${i}`
+            // styles.title: #000, 17 bold (fitted: `fit`), centred, one line. The title and its tab
+            // both re-measure: the tab's height settles after the first title layout.
+            text title id=`tab-title-${i}` resize=measured(i) color="#000000" font-size=fit
+              font-weight=700 text-align="center" white-space="nowrap" testId=`tab-title-${i}`
+        // rIndicatorLayoutStyle: top y + height + DEMO_BUTTON_ROW_HEIGHT - 35, left x, width,
+        // height 2, black, radius 5, zIndex 10; x and width on the scroll.
+        //
+        // The width per frame is layout: the same bar is a clip whose left edge is the bar's left
+        // and, inside it, the black bar whose right edge is the bar's right, both `widest` long:
+        // two translates.
+        view position="absolute" left=0 top=(y + barHeight() + demoButtonRow() - 35)
+          width=widest(env.width) height=2 overflow="hidden" border-radius=5 z-index=10
+          translate=`${lerpAt(xs, page(scroll, env.width))}px 0px` pointer-events="none"
+          testId="indicator"
+          view width=widest(env.width) height=2 border-radius=5 background-color="#000000"
+            translate=`${lerpAt(ws, page(scroll, env.width)) - widest(env.width)}px 0px`

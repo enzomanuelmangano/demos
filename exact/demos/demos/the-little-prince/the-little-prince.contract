@@ -1,0 +1,68 @@
+// The Little Prince: a page of the rose-and-fox farewell whose letters fly together into the
+// prince on his planet when the corner button is pressed, and back. RN:
+// src/animations/the-little-prince (index.tsx, text.ts, assets/prince.png) on
+// src/animations/text-image-morph. The page, the glyph atlas, the picture's sampled targets
+// and the per-letter morph are Rust: gpu/src/the_little_prince.rs (Math.random() seeded by the
+// launch's seed). The button and its icon crossfade are here; the surface posts `tick` at the
+// morph haptic pattern's beats.
+//
+// RN ignores a toggle within 400 ms of the last one (text-image-morph.tsx), real double taps
+// included: so does `toggle`.
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+use DemoEnv from "../env.contract"
+
+// withTiming(…, { duration: 240, easing: Easing.out(Easing.cubic) }): 1 − (1 − t)³, exactly. A
+// cubic Bézier with x control points 1/3 and 2/3 has x(s) = s, so its y(s) = 3(1 − s)²s·y1 +
+// 3(1 − s)s²·y2 + s³ is the curve of the time itself; y1 = y2 = 1 makes it 3s − 3s² + s³ =
+// 1 − (1 − s)³. (easings.net's 0.33, 1, 0.68, 1 is a fit, off by up to 0.004.) The icon
+// layers' opacity (1 − f, f) and scale (1 − 0.15 f, 0.85 + 0.15 f) are linear in face, so
+// easing them is easing face.
+fn outCubic(): string = "cubic-bezier(0.3333333333333333, 1, 0.6666666666666666, 1)"
+
+component TheLittlePrince
+  props
+    env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
+  state revealed = false
+  state lastToggle = -1000000
+  action toggle
+    pressablesOnPress()
+    let now = performanceNow()
+    if now - lastToggle >= 400
+      lastToggle = now
+      revealed = not revealed
+  action heard(m: string)
+    if m == "tick"
+      haptic("impact-light")
+  view
+    view position="absolute" top=0 left=0 width=env.width height=env.height background-color="#f7f4ec"
+      testId="the-little-prince"
+      canvas surface=the_little_prince(env.seed, revealed) message=heard position="absolute" top=0
+        left=0 width=env.width height=env.height aria-hidden=true testId="prince-canvas"
+      // PressableToggleIcon: a 48 pt disc (#1c1a17, radius 24) width × 0.09 from the bottom and
+      // right, hitSlop 16 (the 80 pt button around it); photo ↔ textformat, 20 semibold
+      // #efe7d6, crossfading (opacity, scale 1 → 0.85 / 0.85 → 1) as `face` moves.
+      button appearance="none" press=toggle position="absolute"
+        pointerdown=pressIn(0) pointerup=pressOut
+        scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
+        right=(env.width * 0.09 - 16) bottom=(env.width * 0.09 - 16) width=80 height=80 padding=16
+        box-sizing="border-box" border="none" background-color="transparent" aria-label="Switch between the text and the picture"
+        testId="prince-toggle"
+        view position="relative" width=48 height=48 border-radius=24 corner-shape="-exact-continuous"
+          background-color="#1c1a17"
+          view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
+            opacity=(revealed ? 0 : 1) scale=(revealed ? 0.85 : 1)
+            transition=`opacity 240ms ${outCubic()}, scale 240ms ${outCubic()}`
+            image "symbol:sf/photo" font-size=20 font-weight=600 color="#efe7d6" aria-hidden=true
+          view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
+            opacity=(revealed ? 1 : 0) scale=(revealed ? 1 : 0.85)
+            transition=`opacity 240ms ${outCubic()}, scale 240ms ${outCubic()}`
+            image "symbol:sf/textformat" font-size=20 font-weight=600 color="#efe7d6" aria-hidden=true

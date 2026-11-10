@@ -1,0 +1,15 @@
+{
+  "name": "demos",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "bun exact.mjs web-build --out dist",
+    "start": "bun exact.mjs serve dist"
+  },
+  "dependencies": {
+    "pressto": "workspace:*",
+    "@exact/motion": "file:/Users/enzomanuelmangano/.exact/exact2/94b8671f70fe2e25b307a40e7fce66dc27c9f802/packages/motion"
+  }
+}

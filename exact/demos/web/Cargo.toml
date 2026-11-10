@@ -1,0 +1,19 @@
+[package]
+name = "demos-web"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+build = "build.rs"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+exact-logic = { path = "../../../../../../../.exact/exact2/94b8671f70fe2e25b307a40e7fce66dc27c9f802/logic" }
+exact-web = { path = "../../../../../../../.exact/exact2/94b8671f70fe2e25b307a40e7fce66dc27c9f802/host/web" }
+exact-web-capabilities = { path = "../../../../../../../.exact/exact2/94b8671f70fe2e25b307a40e7fce66dc27c9f802/host/web-capabilities" }
+exact-js-web = { path = "../../../../../../../.exact/exact2/94b8671f70fe2e25b307a40e7fce66dc27c9f802/js/web" }
+
+[build-dependencies]
+exact-js-bake = { path = "../../../../../../../.exact/exact2/94b8671f70fe2e25b307a40e7fce66dc27c9f802/js/bake" }

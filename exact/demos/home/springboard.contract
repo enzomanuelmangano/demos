@@ -1,0 +1,101 @@
+// The launcher: an iOS Home Screen of demo icons, paged sideways.
+// RN: src/navigation/home/springboard.tsx, use-grid-layout.ts, app-icon.tsx, page-dots.tsx,
+// background.tsx, press-opacity.ts.
+use Demo from "../demos.contract"
+
+// use-grid-layout.ts: the icon keeps one physical size; columns and rows follow the screen.
+fn gridCols(w: number): number = min(6, max(3, floor((w - 44 + 22) / (62 + 22))))
+fn cellWidth(w: number): number = (w - 44) / gridCols(w)
+fn iconSize(w: number): number = min(62, cellWidth(w) - 8)
+// The page's height is the route's (the safe area already out); 16 on top, 44 for the dots.
+fn gridRows(w: number, h: number): number = max(1, floor((h - 16 - 44 + 22) / (iconSize(w) + 26 + 22)))
+fn perPage(w: number, h: number): number = gridCols(w) * gridRows(w, h)
+fn pageCount(n: number, per: number): number = per > 0 ? ceil(n / per) : 0
+
+// press-opacity.ts: a pressed icon dims to 0.85 (80 ms in, 220 ms out). Exact's custom press
+// eases over its own 120 ms either way.
+style IconPress
+  :active
+    opacity = 0.85
+
+component Springboard
+  props
+    demos: Demo[]
+    open: action
+  state boxW = 0
+  state boxH = 0
+  state shown = 0
+  derive per = perPage(boxW, boxH)
+  derive pages = boxW > 0 and boxH > 0 ? range(pageCount(demos.length, per)) : []
+
+  action fit(w: number, h: number)
+    boxW = w
+    boxH = h
+  // Where the pager came to rest: the first page's offset says which page shows.
+  action settle
+    let g = frame("page-0")
+    if not g.unavailable and boxW > 0
+      shown = round(0 - g.x / boxW)
+
+  view
+    column position="absolute" inset=0 testId="springboard"
+      // background.tsx: a static dark wallpaper (a glowing loupe ring on black), edge to edge.
+      image "assets/home-wallpaper.png" position="absolute" inset=0 width="100%" height="100%"
+        object-fit="cover" aria-hidden=true
+      column flex=1 min-height=0 resize=fit position="relative"
+        padding-top="env(safe-area-inset-top)" padding-bottom="env(safe-area-inset-bottom)"
+        scroll testId="pager" flex=1 min-height=0 overflow-x="scroll" overflow-y="hidden"
+          scroll-snap-type="x mandatory" scrollbar-width="none" scrollend=settle
+          row height="100%"
+            for p in pages key=p
+              column id=`page-${p}` width=boxW height="100%" flex-shrink=0 scroll-snap-align="start"
+                padding="16px 22px 0" box-sizing="border-box"
+                row flex-wrap="wrap" row-gap=22 align-content="flex-start"
+                  for d in demos.slice(p * per, (p + 1) * per) key=d.slug
+                    AppIcon(demo=d, cell=cellWidth(boxW), size=iconSize(boxW), open=open)
+        // page-dots.tsx: equal round dots, the shown one brightened.
+        if pages.length > 1
+          row height=44 align-items="center" justify-content="center" flex-shrink=0 pointer-events="none"
+            aria-hidden=true
+            for p in pages key=p
+              view width=7 height=7 border-radius=3.5 corner-shape="-exact-continuous" margin="0 3.5px" background-color="#ffffff"
+                opacity=(p == shown ? 1 : 0.35) transition="opacity 200ms ease"
+
+// app-icon.tsx: the squircle icon and its label under it; a long press offers the demo's
+// inspiration, a share and its code.
+component AppIcon
+  props
+    demo: Demo
+    cell: number
+    size: number
+    open: action
+  action openLink(url: string)
+    openURL(url)
+  action shareDemo
+    share(text=`${demo.name} — ${sourceUrl(demo.slug)}`, url=sourceUrl(demo.slug))
+  view
+    column width=cell height=(size + 26) align-items="center"
+      contextPopover=`menu-${demo.slug}`
+      button appearance="none" press=open(demo.slug) aria-label=`Open ${demo.name}` testId=`icon-${demo.slug}`
+        class=IconPress width=size height=size padding=0 border-width=0 background-color="transparent"
+        // launch-icon.tsx: the square the demo opens out of and closes into (DemoLaunch.swift).
+        view id=`icon-${demo.slug}` hatch="launch-icon" data-slug=demo.slug width=size height=size border-radius=(size * 0.2237) corner-shape="-exact-continuous"
+          box-shadow="0px 5px 9px rgba(27, 34, 51, 0.18)"
+          image demo.icon width=size height=size border-radius=(size * 0.2237) corner-shape="-exact-continuous"
+            overflow="hidden" background-color="#1c1c1e" object-fit="cover" aria-hidden=true
+      text demo.label margin-top=6 max-width="100%" font-size=11 font-weight=600
+        color="rgba(255,255,255,0.92)" text-align="center" white-space="nowrap" overflow="hidden"
+        text-overflow="ellipsis"
+      column id=`menu-${demo.slug}` popover="auto" role="menu" aria-label=demo.name
+        if demo.inspiration != ""
+          button press=openLink(demo.inspiration) popovertarget=`menu-${demo.slug}` popovertargetaction="hide"
+            text "Inspiration"
+            image "symbol:sparkles"
+        button press=shareDemo popovertarget=`menu-${demo.slug}` popovertargetaction="hide"
+          text "Share"
+          image "symbol:share"
+        button press=openLink(sourceUrl(demo.slug)) popovertarget=`menu-${demo.slug}` popovertargetaction="hide"
+          text "View Code"
+          image "symbol:document"
+
+fn sourceUrl(slug: string): string = `https://github.com/enzomanuelmangano/demos/tree/main/src/animations/${slug}`

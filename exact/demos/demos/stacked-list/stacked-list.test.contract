@@ -1,0 +1,7 @@
+at "/demo/stacked-list"
+
+test "the list scrolls under its stack"
+  expect tree has "stacked-list"
+  tap "stacked-list-scroll" drag 0 -300
+  clock settle
+  expect tree has "stacked-list"

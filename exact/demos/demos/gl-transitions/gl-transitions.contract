@@ -1,0 +1,60 @@
+// GL Transitions: a notes list whose "new note" screen slides up from the + and leaves through a
+// GL transition (gl-transitions' DirectionalWarp) between snapshots of the two screens; the check
+// prepends the note, an empty one asks for text first. RN: src/animations/gl-transitions
+// (src/index.tsx, providers/gl-transitions, the-magic/directional-warp.ts, screens/, atoms/notes.ts,
+// constants/theme.ts). Everything drawn, the presses, the list's scroll, the slide and the warp are
+// one Rust surface (gpu/src/gl_transitions.rs), so each screen can be drawn again as its snapshot.
+// Here: the TextInput (a real field and keyboard), mounted over the canvas once the screen has
+// slid up and handing its text to the surface (the snapshot draws it), and Alert.alert's alert.
+use DemoEnv, demoButtonRow from "../env.contract"
+
+// add-note-screen.tsx: the TextInput's frame. The row (paddingTop safe top + 56, 48 tall), the
+// container (marginTop 16, padding 16), the label (marginTop 8, 12 pt: 14.333 tall, marginBottom
+// 4), the input's marginTop 16; 20 pt: 23.87 tall, 24 on the pixel grid. x: 8 + 16.
+fn fieldTop(safeTop: number): number = safeTop + demoButtonRow() + 48 + 16 + 16 + 8 + 14.333 + 4 + 16
+
+component GlTransitions
+  props
+    env: DemoEnv
+  // noteText (the field's text), whether the field is mounted (the screen is up), and whether
+  // the transition's canvas covers it (zIndex 10; the field stays focused under it).
+  state text = ""
+  state field = false
+  state veiled = false
+  action heard(m: string)
+    // The app's PressablesConfig onPress: Haptics.selectionAsync().
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "presented"
+      field = true
+      veiled = false
+    if m == "alert"
+      showModal("empty-note")
+    if m == "transition"
+      veiled = true
+    // goBack(): the screen is dismissed, its field (and keyboard) with it.
+    if m == "dismiss"
+      field = false
+      veiled = false
+      text = ""
+  action typed(v: string)
+    text = v
+  view
+    column position="absolute" inset=0 background-color="#f0f0f0" testId="gl-transitions"
+      canvas surface=gl_transitions(env.safeTop, env.safeBottom, text, field) message=heard
+        position="absolute" top=0 left=0 width=env.width height=env.height touch-action="none"
+        aria-label="Notes: + adds a note; the new note screen has close and save"
+        testId="gl-transitions-canvas"
+      if field
+        // styles.inputText: fontSize 20, #333, selectionColor Palette.primary (#EB6439 in P3);
+        // UIKit's own placeholder colour.
+        input id="note-input" value=text input=typed placeholder="Write your ideas here..."
+          position="absolute" left=24 top=fieldTop(env.safeTop) width=(env.width - 48) height=24
+          font-size=20 color="#333333" caret-color="color(display-p3 0.92157 0.39216 0.22353)"
+          background-color="transparent" border="none" padding=0 outline="none"
+          opacity=(veiled ? 0 : 1) aria-label="Note" testId="note-input"
+      // Alert.alert('Empty Note', 'Please write something before saving'): its one OK.
+      dialog id="empty-note" role="alertdialog" aria-label="Empty Note" testId="empty-note"
+        text "Please write something before saving"
+        button commandfor="empty-note" command="close" testId="empty-note-ok"
+          text "OK"

@@ -1,0 +1,28 @@
+// GitHub Terrain: nine years of GitHub contributions as blocks, flat as the contribution chart;
+// a tap anywhere springs them into an isometric mountain range and back, the Switch springs
+// between the real data and a synthetic range. RN: src/animations/github-terrain (index.tsx,
+// hooks/use-webgpu-renderer.ts, shaders/*, utils/*). The canvas, its Pressable and both springs
+// are Rust: gpu/src/github_terrain.rs, which posts `haptic:impact-light` at a press.
+use DemoEnv from "../env.contract"
+
+component GithubTerrain
+  props
+    env: DemoEnv
+  state useRealData = true
+  action setData(on: bool)
+    useRealData = on
+  action buzz(m: string)
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+  view
+    // styles.container: SURFACE_HEX, flex 1; the Pressable and its Canvas absoluteFill.
+    column position="absolute" inset=0 background-color="#F9F6F1" testId="github-terrain"
+      canvas surface=github_terrain(useRealData) message=buzz position="absolute" top=0 left=0
+        width="100%" height="100%" touch-action="none" testId="github-terrain-canvas"
+        aria-label="Contribution terrain: tap to switch between the chart and the terrain"
+      // styles.switchContainer: absolute, right 20, bottom safeBottom + 14, zIndex 10 (over the
+      // canvas, which takes the touches under it otherwise). trackColor true #34D399.
+      view position="absolute" right=20 bottom=(env.safeBottom + 14) z-index=10
+        input type="checkbox" switch checked=useRealData change=setData accent-color="#34D399"
+          aria-label="Toggle real GitHub contribution data" testId="terrain-data-switch"
+at "/demo/github-terrain"

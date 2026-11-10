@@ -1,0 +1,22 @@
+// Empty QR Code: a tilted card cycling the letters of YOURLOGO on radial gradients every 650 ms;
+// a tap turns it straight, grows it to 1.4 and fades the letter out over a white QR code of
+// https://reactiive.io/demos on #111, and back. RN: src/animations/empty-qrcode (index.tsx,
+// components/qrcode-share/{index.tsx, hooks/use-active-qrcode.ts, hooks/use-active-letter.ts}).
+// Everything is Rust: gpu/src/empty_qr_code.rs (the press, the interval, the springs and the
+// timing, both Skia canvases and Core Animation's composite of the card) and
+// gpu/shaders/empty_qr_code.wgsl. The surface posts `haptic:selection` at each press (the app's
+// PressablesConfig onPress).
+use DemoEnv from "../env.contract"
+
+component EmptyQrCode
+  props
+    env: DemoEnv
+  action buzz(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+  view
+    // styles.container: #fbfbfb (a View colour: Display P3 components), flex 1.
+    column position="absolute" inset=0 background-color="color(display-p3 0.984314 0.984314 0.984314)" testId="empty-qr-code"
+      canvas surface=empty_qr_code() position="absolute" top=0 left=0 width=env.width height=env.height
+        touch-action="none" message=buzz testId="empty-qr-code-canvas"
+        aria-label="Tap the card to show the QR code"

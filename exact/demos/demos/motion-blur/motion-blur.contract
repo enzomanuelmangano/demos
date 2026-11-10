@@ -1,0 +1,139 @@
+// Motion Blur: a black + button adds a random transaction card (emoji, amount, address) to a
+// list showing the last three; each new card pops in blurred and sharpens, the others slide
+// up on a spring and the oldest fades out upwards.
+// RN: src/animations/motion-blur (src/index.tsx, utils/generate-random-item.ts,
+// components/blurred-list/index.tsx, components/list-item/index.tsx).
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+use DemoEnv, roll from "../env.contract"
+
+// src/navigation/fonts.ts 'Honk-Bold': assets/fonts/honk-bold.otf (the amount's face).
+
+// blurred-list: LIST_ITEM_HEIGHT 90, LIST_ITEM_MARGIN_BOTTOM 20 (110 a row); maxVisibleItems 3.
+fn rowHeight(): number = 110
+fn maxVisible(): number = 3
+// calculateTop(index, length, maxVisible).
+fn topOf(k: number, n: number): number = k * rowHeight() - max(n - maxVisible(), 0) * rowHeight()
+// The indices still drawn (an older one renders null: it leaves with its exiting animation).
+fn visibleOf(n: number): number[] = range(min(n, maxVisible())).map(j => max(n - maxVisible(), 0) + j)
+
+// generateRandomItem(id): Math.random() is roll(seed, …), four draws an item.
+fn emojis(): string[] = ["🫠", "💪", "🤔", "😎", "🚀", "💡", "🌈", "🍕", "🎉", "🦄", "🌟", "🍀", "🎸", "🏆", "🌺", "🍦", "🐱", "🐶", "🦋", "🌴", "⚡️", "🔥", "❄️", "🌊", "🎨", "📚", "🧠", "🧘", "🏄", "🚴", "🏋️", "🧗", "🎭", "🎬", "🎧", "📷"]
+fn emojiOf(seed: number, k: number): string = match emojis().at(roll(seed, k * 4 + 3, 36)) { case some(e) => e, case none => "" }
+// `$ ${(Math.random() * 10000).toFixed(2)}`.
+fn amountOf(seed: number, k: number): string = `$ ${(roll(seed, k * 4, 1000000) / 100).toFixed(2)}`
+// `0x${three hex digits}..${two hex digits}` (Math.random().toString(16).substring(…)).
+fn hexDigit(d: number): string = "0123456789abcdef".slice(d, d + 1)
+fn addressOf(seed: number, k: number): string = `0x${hexDigit(floor(roll(seed, k * 4 + 1, 4096) / 256))}${hexDigit(floor(roll(seed, k * 4 + 1, 4096) / 16) % 16)}${hexDigit(roll(seed, k * 4 + 1, 4096) % 16)}..${hexDigit(floor(roll(seed, k * 4 + 2, 256) / 16))}${hexDigit(roll(seed, k * 4 + 2, 256) % 16)}`
+
+// The entering Keyframe (200 ms, linear between its two frames): opacity 0 → 1 and
+// [scale 0.5, translateY 100] → identity, about the wrapper's centre (a 0-tall box at the
+// list's top). The translate inside the scale moves the card by scale × translateY, a product
+// of two linear ramps: sampled every 10% as an unscaled translate.
+keyframes motionBlurIn
+  0% opacity=0 scale=0.5 translate="0px 50px"
+  10% opacity=0.1 scale=0.55 translate="0px 49.5px"
+  20% opacity=0.2 scale=0.6 translate="0px 48px"
+  30% opacity=0.3 scale=0.65 translate="0px 45.5px"
+  40% opacity=0.4 scale=0.7 translate="0px 42px"
+  50% opacity=0.5 scale=0.75 translate="0px 37.5px"
+  60% opacity=0.6 scale=0.8 translate="0px 32px"
+  70% opacity=0.7 scale=0.85 translate="0px 25.5px"
+  80% opacity=0.8 scale=0.9 translate="0px 18px"
+  90% opacity=0.9 scale=0.95 translate="0px 9.5px"
+  100% opacity=1 scale=1 translate="0px 0px"
+// exiting FadeOutUp.duration(400): opacity to 0, translateY to -25, Reanimated's default
+// curve Easing.inOut(Easing.quad).
+keyframes motionBlurOut
+  from opacity=1 translate="0px 0px"
+  to opacity=0 translate="0px -25px"
+// blurIntensity withTiming(50 → 0, { duration: 500, easing: linear }) on mount; at 0 the
+// BlurView's opacity is 0.
+keyframes motionBlurSharpen
+  from opacity=1
+  to opacity=0
+
+style MotionBlurRow
+  -exact-exit-animation="motionBlurOut 400ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) both"
+// containerStyle: top withSpring(top), Reanimated 4's default spring.
+style MotionBlurSlide
+  -exact-layout-transition="-exact-spring(900, 120, 4)"
+
+component MotionBlur
+  props
+    env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
+  // The items added (item k has id k + 1).
+  state count = 0
+  action addItem
+    pressablesOnPress()
+    count = count + 1
+  view
+    // styles.container: #fff, flex 1, centred; styles.listContainer: flex 1, centred.
+    column position="absolute" inset=0 background-color="#fff" justify-content="center"
+      testId="motion-blur"
+      column flex=1 justify-content="center"
+        // BlurredList: maxVisibleItems × 110 tall, clipped.
+        view height=(maxVisible() * rowHeight()) overflow="hidden" position="relative"
+          testId="motion-blur-list"
+          for k in visibleOf(count) key=k
+            MotionBlurItem(k=k, count=count, seed=env.seed)
+        // styles.buttonContainer: centred, top -50.
+        column align-items="center" position="relative" top=-50
+          // styles.addButton: 64 × 64, black, radius 32; Entypo plus 40 white.
+          column width=64 height=64 border-radius=32
+            pointerdown=pressIn(0) pointerup=pressOut
+            scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
+            background-color="black" align-items="center" justify-content="center"
+            press=addItem role="button" aria-label="Add an item" testId="add"
+            // Entypo "plus" 40: the vector-icons glyph (512 × 514 units of 512 to the em).
+            svg width=40 height=40.1562 viewBox="0 0 512 514" aria-hidden=true
+              path d="M394 283H282V395Q282 405 275.5 408Q269 411 256 411Q243 411 236.5 408Q230 405 230 395V283H118Q108 283 105 276.5Q102 270 102 257Q102 244 105 237.5Q108 231 118 231H230V119Q230 109 236.5 106Q243 103 256 103Q269 103 275.5 106Q282 109 282 119V231H394Q404 231 407 237.5Q410 244 410 257Q410 270 407 276.5Q404 283 394 283Z" fill="white"
+
+component MotionBlurItem
+  props
+    k: number
+    count: number
+    seed: number
+  view
+    // The wrapper keyed by index with the entering keyframe: it has no height of its own, at
+    // the list's top.
+    view class=MotionBlurRow position="absolute" top=0 left=0 right=0 height=0
+      animation="motionBlurIn 200ms linear both" testId=`item-${k + 1}`
+      // styles.itemContainer: absolute, 90 tall (marginBottom 20), full width, at calculateTop.
+      view class=MotionBlurSlide position="absolute" left=0 width="100%" height=90
+        top=topOf(k, count)
+        // styles.itemContent: 80% wide, centred, white, radius 20 continuous, 90 tall,
+        // boxShadow 0 0 10 rgba(0,0,0,0.05); contentStyle's shadow (black) withTiming from
+        // offset 20, opacity 0.03, radius 10 to 10, 0.02, 5 as it becomes the last (iOS's
+        // shadowRadius r is a CSS blur of 2r).
+        column width="80%" height=90 align-self="center" align-items="center"
+          justify-content="center" background-color="white" border-radius=20
+          corner-shape="-exact-continuous"
+          box-shadow=(k == count - 1 ? "0px 0px 10px rgba(0, 0, 0, 0.05), 0px 10px 10px rgba(0, 0, 0, 0.02)" : "0px 0px 10px rgba(0, 0, 0, 0.05), 0px 20px 20px rgba(0, 0, 0, 0.03)")
+          transition="box-shadow 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
+          // ListItem: a row, padding 10, centred.
+          row align-self="stretch" align-items="center" padding=10
+            // EmojiCircle: 60 × 60, #F4F4F4, radius 30; the emoji 25.
+            column width=60 height=60 border-radius=30 background-color="#F4F4F4"
+              align-items="center" justify-content="center"
+              text emojiOf(seed, k) font-size=25
+            // ItemDetails: flex 1, marginLeft 10, to the right.
+            column flex=1 margin-left=10 align-items="flex-end"
+              // amount: Honk-Bold 22 (bold: the face's own), letterSpacing 1, black.
+              text amountOf(seed, k) font-family="Honk-Bold" font-size=22 letter-spacing=1
+                color="black" testId=`amount-${k + 1}`
+              // address: Honk-Regular 14, marginTop 5, opacity 0.3.
+              text addressOf(seed, k) font-family="Honk-Regular" font-size=14 margin-top=5
+                opacity=0.3 color="black" testId=`address-${k + 1}`
+        // The BlurView (tint extraLight, zIndex 100): absoluteFill, top -5, bottom -20.
+        view position="absolute" left=0 right=0 top=-5 bottom=-20 z-index=100
+          backgroundMaterial="ultra-thin-light" pointer-events="none" aria-hidden=true
+          animation="motionBlurSharpen 500ms linear both"

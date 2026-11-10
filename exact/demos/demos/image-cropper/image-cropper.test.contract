@@ -1,0 +1,7 @@
+at "/demo/image-cropper"
+
+// The web host gives a surface no touches: the grid's drags, the buttons, the Modal and the
+// haptic are the Rust tests' (gpu/src/image_cropper.rs); here what the Contract holds.
+test "the canvas fills the black screen"
+  expect tree has "image-cropper"
+  expect tree has "image-cropper-canvas"

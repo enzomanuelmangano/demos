@@ -1,0 +1,16 @@
+at "/demo/twitter-tab-bar"
+
+test "the feed under a four-tab bar and the floating button"
+  expect tree has "twitter-tab-bar"
+  expect tree has "twitter-feed"
+  expect tree has "twitter-bar"
+  expect tree has "twitter-fab"
+  expect tree has "twitter-tab-3"
+
+test "another tab shows its empty screen; Home brings the feed back"
+  tap "twitter-tab-3"
+  clock settle
+  expect tree missing "twitter-feed"
+  tap "twitter-tab-0"
+  clock settle
+  expect tree has "twitter-feed"

@@ -1,0 +1,18 @@
+// Twodos Slide: two squares fanned out over "Slide to Unlock →"; dragging the label sideways
+// (a ScrollView that only rubber-bands) turns the squares and draws a dark outline round the
+// front one, with a light haptic past the end. RN: src/animations/twodos-slide (index.tsx,
+// components/animated-squares, components/friction-slider, utils/). The squares, their shadows,
+// the Skia outline, the label and the UIScrollView (rubber band, bounce, RN's 16 ms onScroll
+// throttle, the opening contentOffset) are one Rust surface: gpu/src/twodos_slide.rs, which posts
+// the debounced haptic.
+
+component TwodosSlide
+  // hapticFeedback: Haptics.impactAsync(Light), debounced by the surface.
+  action heard(m: string)
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+  view
+    // The demo's root: two flex 1 halves on the screen's white (the squares, the ScrollView).
+    canvas surface=twodos_slide() message=heard position="absolute" top=0 left=0 width="100%"
+      height="100%" touch-action="none" testId="twodos-slide"
+      aria-label="Slide to Unlock: drag the label sideways"

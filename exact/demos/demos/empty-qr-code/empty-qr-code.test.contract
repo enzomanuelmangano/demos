@@ -1,0 +1,5 @@
+at "/demo/empty-qr-code"
+
+test "the card's canvas is there"
+  expect tree has "empty-qr-code"
+  expect tree has "empty-qr-code-canvas"

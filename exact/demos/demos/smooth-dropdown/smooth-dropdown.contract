@@ -1,0 +1,112 @@
+// Smooth Dropdown: a header card over a stack of four option cards; a tap on the header springs
+// them open into a list (its chevron turns), a tap on an option picks it.
+// RN: src/animations/smooth-dropdown (index.tsx, components/dropdown/index.tsx, dropdrop-item.tsx).
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+
+shape DropdownOption
+  label: string
+  // The AntDesign icon (index.tsx iconName), the vector-icons glyph's outline: 512 units to
+  // the em, a Text box 512 × 536 units.
+  icon: string
+
+// index.tsx options, with the header first (Dropdown's fullOptions = [header, ...options]).
+fn fullOptions(): DropdownOption[] = [
+  DropdownOption(label="Header", icon="M86 232Q106 226 120 241.5Q134 257 125 276Q116 294 96 294Q84 294 75 286Q61 274 64.5 256Q68 238 86 232ZM247 232Q250 231 257 231Q264 231 270 234Q279 238 284 247.5Q289 257 288 267Q284 287 265.5 293Q247 299 234 285Q222 273 224 258Q228 238 247 232ZM406 232Q388 238 384.5 256Q381 274 395 286Q404 294 416 294Q436 294 445 276Q454 257 440 241.5Q426 226 406 232Z"),
+  DropdownOption(label="Charts", icon="M39 63Q41 61 57.5 61Q74 61 76 63L78 64V244V423H275Q473 423 474 424Q475 425 475 443.5Q475 462 473.5 463Q472 464 256 464Q40 464 39 463L37 462V263V64ZM387 140Q389 139 405.5 139.5Q422 140 423.5 141Q425 142 425 258Q425 374 423.5 375.5Q422 377 404.5 377Q387 377 385.5 375.5Q384 374 384 258V141ZM210 281.5Q210 189 211.5 187Q213 185 231 185Q249 185 250.5 187Q252 189 252 281.5Q252 374 250 375.5Q248 377 230.5 377Q213 377 211.5 375.5Q210 374 210 281.5ZM297 303.5Q297 233 298.5 231.5Q300 230 317.5 230Q335 230 336.5 231Q338 232 338 303.5Q338 375 336.5 376Q335 377 317.5 377Q300 377 298.5 375.5Q297 374 297 303.5ZM125 287Q124 288 124 332Q124 376 125.5 376.5Q127 377 144.5 377Q162 377 163.5 375.5Q165 374 165 331.5Q165 289 163.5 287.5Q162 286 144 286Q126 286 125 287Z"),
+  DropdownOption(label="Book", icon="M65 9 69 7H256H443L447 9Q452 12 454 16L457 20V263V506L454 510Q452 514 447 517L443 519H256H69L65 517Q60 514 58 510L55 506V263V20L58 16Q60 12 65 9ZM256 134V48H176H96V263V478H256H416V263V48H398H380V133Q380 202 379.5 212.5Q379 223 375 225Q371 228 366.5 225.5Q362 223 343 209Q320 192 318.5 192Q317 192 293 209Q269 226 266 227Q259 228 257 222Q256 219 256 134ZM345 108Q345 127 345 138Q345 149 344.5 156Q344 163 344 165Q344 167 344 167Q342 166 330.5 157.5Q319 149 318.5 149Q318 149 304.5 158.5Q291 168 290.5 168Q290 168 290 108V48H317H345V108Z"),
+  DropdownOption(label="Calendar", icon="M144 36Q146 34 162.5 34Q179 34 181 35.5Q183 37 183 56V75H256H329V56Q329 37 330.5 35.5Q332 34 349.5 34Q367 34 368.5 35.5Q370 37 370 56V75H420Q471 76 474 77Q482 81 484 89Q485 92 485 284V477L482 482Q480 486 476 489L472 491H256H40L36 489Q32 486 30 482L27 477V284Q27 92 28 88.5Q29 85 32 82Q37 77 43 76.5Q49 76 92 75H142V56Q142 37 144 36ZM142 131V117H105H68V156V195H256H444V156V117H407H370V131Q370 146 368.5 147.5Q367 149 350 149Q333 149 331 148Q329 147 329 132V117H256H183V132Q183 147 181 148Q179 149 161.5 149Q144 149 143 147.5Q142 146 142 131ZM444 342V451H256H68V342V233H256H444V342Z"),
+  DropdownOption(label="Camera", icon="M164 49Q167 48 258 48H349L352 50Q356 52 358 55Q360 58 370 85L379 112H422Q465 112 471 114Q495 122 501 147Q503 152 503 288Q503 424 501 430Q494 457 466 463Q460 464 256 464Q87 464 65 463.5Q43 463 34 459Q21 453 15 440Q10 432 9.5 416.5Q9 401 9 288Q9 151 11 146Q18 122 41 114Q47 112 90 112H133L142 85Q152 58 154 55Q158 50 164 49ZM339 122 328 90H256Q184 90 183.5 91Q183 92 173 123L162 153L107 154Q52 154 51 155.5Q50 157 50 288.5Q50 420 51.5 421.5Q53 423 256 423Q459 423 460.5 421.5Q462 420 462 288.5Q462 157 461 155.5Q460 154 405 154L350 153ZM246 191Q253 190 254 190Q256 190 265 190Q293 193 315 211.5Q337 230 344 258Q347 267 347 281.5Q347 296 345 304Q338 327 322 344Q295 372 256 372Q217 372 190 344Q174 327 167 304Q165 296 165 281.5Q165 267 168 258Q174 235 191 217.5Q208 200 231 193Q238 191 246 191ZM273 229Q291 235 301 250.5Q311 266 310 284Q309 305 295 320Q286 329 273 333Q266 336 256 336Q246 336 239 333Q212 324 204 298Q199 284 203 269Q206 255 215 245Q228 230 248 227Q260 225 273 229Z")
+]
+
+// dropdown/index.tsx: DROP_DOWN_ITEM_HEIGHT 75, DROP_DOWN_ITEM_PADDING 10, four options:
+// fullDropDownExpandedHeight = (75 + 10) * 4 = 340.
+// dropdrop-item.tsx: bottom = interpolate(progress, [0, 1], [index * 15, 340 / 2 - index * (75 + 10)]).
+fn itemBottom(open: bool, i: number): number = open ? 340 / 2 - i * (75 + 10) : i * 15
+// scale = interpolate(progress, [0, 1], [1 - index * 0.05, 1]).
+fn itemScale(open: bool, i: number): number = open ? 1 : 1 - i * 0.05
+// Color('#1B1B1B').lighten(1 - (5 - index) / 5).hex(), worked out with the color package.
+fn collapsedColor(i: number): string = match ["#1B1B1B", "#202020", "#262626", "#2B2B2B", "#313131"].at(i) {
+  case some(c) => c,
+  case none => "#1B1B1B"
+}
+
+// progress = withSpring(isToggled ? 1 : 0): Reanimated 4's default spring (stiffness 900,
+// damping 120, mass 4; critically damped). Every per-frame value is linear in progress, so
+// each one rides the same spring on the host.
+// The background flips where progress crosses 0.5: (1 + u)e^-u = 0.5 at u = 1.678, over
+// sqrt(900 / 4) = 15 rad/s, is 112 ms into the spring either way: a step at 112 ms.
+
+component SmoothDropdown
+  state open = false
+  // The global onPress (the haptic) is DropdownItem's.
+  action pick(i: number)
+    if i == 0
+      open = not open
+  view
+    column position="absolute" inset=0 background-color="#000000" testId="smooth-dropdown"
+      // The Dropdown view: centred, with no size of its own (all its items are absolute), so
+      // each item's `bottom` is measured from the screen's centre line.
+      view position="absolute" left=0 right=0 top="50%" height=0
+        for o, i in fullOptions() key=i
+          DropdownItem(option=o, index=i, open=open, press=pick(i))
+
+component DropdownItem
+  props
+    option: DropdownOption
+    index: number
+    open: bool
+    press: action
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
+  // onPress: the global onPress, then the item's.
+  action pressed
+    pressablesOnPress()
+    press()
+  derive isHeader = index == 0
+  view
+    // styles.item: absolute, 80% wide, 75 tall, padding 15, radius 10 (continuous);
+    // zIndex optionsLength - index. Collapsed options are behind the header: no touches.
+    // The PressableScale's own scale multiplies the item's (a box inside it, filling it, takes
+    // the press scale and the item's paint: both turn about the same centre).
+    button appearance="none" press=pressed testId=(isHeader ? "dropdown-header" : `dropdown-${option.label.toLowerCase()}`)
+      aria-label=option.label aria-expanded=open
+      position="absolute" bottom=0 left="10%" width="80%" height=75 padding=0
+      z-index=(5 - index) pointer-events=(open or isHeader ? "auto" : "none")
+      pointerdown=pressIn(0) pointerup=pressOut
+      display="flex" flex-direction="row" align-items="stretch"
+      translate=`0px ${0 - itemBottom(open, index)}px` scale=itemScale(open, index)
+      transition="translate -exact-spring(900, 120, 4), scale -exact-spring(900, 120, 4)"
+      row flex=1 padding=15 box-sizing="border-box" align-items="stretch"
+        border-radius=10 corner-shape="-exact-continuous"
+        background-color=(open ? "#1B1B1B" : collapsedColor(index))
+        scale=pressableScale(pressing, 0, pressto)
+        transition=`${pressTransition("scale", pressto)}, background-color 112ms step-end`
+        // styles.content: a row, opacity interpolate(progress, [0, 1], [isHeader ? 1 : 0, 1]).
+        row flex=1 align-items="center" opacity=(open or isHeader ? 1 : 0) transition="opacity -exact-spring(900, 120, 4)"
+          // styles.iconBox: 80% of the row's height, square, #0C0C0C, radius 10, margin-right 12.
+          view height="80%" aspect-ratio=1 background-color="#0C0C0C" border-radius=10 corner-shape="-exact-continuous"
+            margin-right=12 display="flex" align-items="center" justify-content="center"
+            svg width=20 height=(20 * 536 / 512) viewBox="0 0 512 536" aria-hidden=true
+              path d=option.icon fill="#ffffff"
+          // styles.title: white, 16, letter-spacing 1.2, uppercase.
+          text option.label.toUpperCase() color="#ffffff" font-size=16 letter-spacing=1.2
+          view flex=1
+          // styles.arrowBox: 80% tall, centred, margin-right 5. The header's chevron turns
+          // interpolate(progress, [0, 1], [0, PI / 2], CLAMP) on the same spring (no overshoot).
+          view height="80%" margin-right=5 display="flex" align-items="center" justify-content="center"
+            if isHeader
+              // MaterialIcons "arrow-forward-ios" 20: the vector-icons glyph (512 × 512 units of 512 to the em).
+              svg width=20 height=20 viewBox="0 0 512 512" aria-hidden=true
+                rotate=(open ? "90deg" : "0deg") transition="rotate -exact-spring(900, 120, 4)"
+                path d="M133 432 171 469 384 256 171 43 133 80 308 256Z" fill="rgba(255,255,255,0.8)"
+            else
+              // MaterialIcons "arrow-forward" 20: the vector-icons glyph (512 × 512 units of 512 to the em).
+              svg width=20 height=20 viewBox="0 0 512 512" aria-hidden=true
+                path d="M256 85 427 256 256 427 226 397 345 277H85V235H345L226 115Z" fill="rgba(255,255,255,0.5)"

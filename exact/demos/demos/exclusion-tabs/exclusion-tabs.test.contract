@@ -1,0 +1,5 @@
+at "/demo/exclusion-tabs"
+
+test "the tabs' canvas is there"
+  expect tree has "exclusion-tabs"
+  expect tree has "exclusion-tabs-canvas"

@@ -1,0 +1,6 @@
+{
+  "name": "simplex-noise",
+  "version": "4.0.3",
+  "private": true,
+  "description": "simplex-noise 4.0.3 for Exact's GPU surfaces: a Rust crate of createNoise2D, line for line."
+}

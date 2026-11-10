@@ -1,0 +1,18 @@
+seed 3
+at "/demo/animated-grid-list"
+
+test "the button switches grid and list, the titles show only in the list"
+  expect tree has "animated-grid-list"
+  expect tree has "card-0"
+  expect tree missing "title-0"
+  tap "layout-toggle"
+  clock settle
+  expect tree has "title-0"
+  tap "layout-toggle"
+  clock settle
+  expect tree missing "title-0"
+
+test "the list scrolls and settles"
+  tap "grid-scroll" drag 0 -300
+  clock settle
+  expect tree has "card-9"

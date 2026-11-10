@@ -1,0 +1,5 @@
+at "/demo/balance-slider"
+
+test "the slider is there"
+  expect tree has "balance-slider"
+  expect tree has "balance-canvas"

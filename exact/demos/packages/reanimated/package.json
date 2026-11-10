@@ -1,0 +1,9 @@
+{
+  "name": "reanimated",
+  "version": "4.7.1",
+  "private": true,
+  "description": "react-native-reanimated 4.7.1 for Exact: spring and easing presets for Contract (reanimated.contract), and a Rust crate of withSpring, withTiming, withDecay and interpolate for GPU surfaces.",
+  "exports": {
+    ".": "./reanimated.contract"
+  }
+}

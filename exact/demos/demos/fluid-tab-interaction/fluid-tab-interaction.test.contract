@@ -1,0 +1,4 @@
+at "/demo/fluid-tab-interaction"
+
+test "the segmented control is there"
+  expect tree has "fluid-tab-interaction"

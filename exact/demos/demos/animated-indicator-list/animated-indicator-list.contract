@@ -1,0 +1,102 @@
+// Animated Indicator List: a list of films grouped by actor under a row of the actors' names;
+// as the list scrolls, the row slides to keep the current section's name at the left and the
+// black bar under it stretches to that name's width. Tapping a name scrolls to its section.
+// RN: src/animations/animated-indicator-list (index.tsx, constants.ts,
+// components/SectionListItem.tsx, hooks/useHeaderLayout.ts, hooks/useHeaderStyle.ts).
+use DemoEnv, demoButtonRow from "../env.contract"
+
+// constants.ts data: a header row, then its films.
+shape ListEntry
+  header: bool
+  label: string
+
+fn h(label: string): ListEntry = ListEntry(header=true, label=label)
+fn f(label: string): ListEntry = ListEntry(header=false, label=label)
+fn data(): ListEntry[] = [
+  h("Robert De Niro"), f("The Godfather"), f("The Godfather: Part II"), f("The Godfather: Part III"),
+  f("Goodfellas"), f("Casino"), f("The Irishman"),
+  h("Al Pacino"), f("The Godfather"), f("The Godfather: Part II"), f("The Godfather: Part III"),
+  f("Scarface"), f("Heat"),
+  h("Joe Pesci"), f("Goodfellas"), f("Casino"), f("The Irishman"), f("Home Alone"),
+  f("Home Alone 2: Lost in New York"),
+  h("Leonardo DiCaprio"), f("The Wolf of Wall Street"), f("The Departed"), f("Shutter Island"),
+  f("Inception"), f("Catch Me If You Can"),
+  h("Brad Pitt"), f("Fight Club"), f("Inglourious Basterds"), f("Se7en"),
+  f("Once Upon a Time... in Hollywood"), f("The Curious Case of Benjamin Button"),
+]
+fn headers(): string[] = data().filter(e => e.header).map(e => e.label)
+// The index of each header in `data` (scrollToIndex's target).
+fn headerRows(): number[] = [0, 7, 13, 19, 25]
+
+// index.tsx: HeaderHeight 65, ItemHeight 50. headersLayoutY: each header's offset in the list
+// (the interpolation's input range): 0, 65 + 6 × 50, … .
+fn headerY(): number[] = [0, 365, 680, 995, 1310]
+
+// interpolate(contentOffsetY, headersLayoutY, outs, Extrapolation.CLAMP) over five points.
+fn seg(y: number, a: number, b: number, oa: number, ob: number): number = oa + (ob - oa) * (y - a) / (b - a)
+fn nth(xs: number[], i: number): number = match xs.at(i) { case some(v) => v, case none => 0 }
+fn interp(y: number, outs: number[]): number = y <= 0 ? nth(outs, 0) : (y <= 365 ? seg(y, 0, 365, nth(outs, 0), nth(outs, 1)) : (y <= 680 ? seg(y, 365, 680, nth(outs, 1), nth(outs, 2)) : (y <= 995 ? seg(y, 680, 995, nth(outs, 2), nth(outs, 3)) : (y <= 1310 ? seg(y, 995, 1310, nth(outs, 3), nth(outs, 4)) : nth(outs, 4)))))
+
+component AnimatedIndicatorList
+  props
+    env: DemoEnv
+  state scroll = 0
+  // headersLayoutXData before the headers are measured: x = i, width 0.
+  state xs = [0, 1, 2, 3, 4]
+  state widths = [0, 0, 0, 0, 0]
+  // useMounted: RN measures the headers 100 ms after mount ("otherwise the layout isn't
+  // correct"), x relative to their row. A demo is no root and declares no timer: the row's
+  // `intersect`, delivered once it is laid out after mounting, measures them instead.
+  action measureHeaders(entry: IntersectionObserverEntry)
+    let row = frame("header-row")
+    let g0 = frame("header-0")
+    let g1 = frame("header-1")
+    let g2 = frame("header-2")
+    let g3 = frame("header-3")
+    let g4 = frame("header-4")
+    if not (row.unavailable or g0.unavailable or g1.unavailable or g2.unavailable or g3.unavailable or g4.unavailable)
+      xs = [g0.x - row.x, g1.x - row.x, g2.x - row.x, g3.x - row.x, g4.x - row.x]
+      widths = [g0.width, g1.width, g2.width, g3.width, g4.width]
+  action scrolled(x: number, y: number)
+    scroll = y
+  // onSelectHeaderItem: scrollToIndex({ index }), animated.
+  action select(i: number)
+    scrollIntoView(`row-${nth(headerRows(), i)}`, behavior="smooth")
+  view
+    // styles.container: white, flex 1, overflow hidden; paddingTop safeTop +
+    // DEMO_BUTTON_ROW_HEIGHT, paddingBottom the bottom inset.
+    column position="absolute" inset=0 background-color="#ffffff" overflow="hidden"
+      padding-top=(env.safeTop + demoButtonRow()) padding-bottom="env(safe-area-inset-bottom)"
+      testId="animated-indicator-list"
+      // The header row: translateX -interpolate(offset, headersLayoutY, headersX).
+      row id="header-row" flex-shrink=0 intersect=measureHeaders translate=`${0 - interp(scroll, xs)}px 0px`
+        for name, i in headers() key=name
+          // MeasureableAnimatedView: padding 20; onTouchStart selects the header.
+          view id=`header-${i}` flex-shrink=0 padding=20 pointerdown=select(i) role="button"
+            aria-label=name testId=`header-${i}`
+            // fontSize 14, bold, uppercase, letterSpacing 1.
+            text name font-size=14 font-weight=700 text-transform="uppercase" letter-spacing=1
+              white-space="nowrap" color="#000000"
+      // rIndicatorStyle: a 3 tall black bar from the left edge, `width` wide (RN draws it as
+      // 100 wide scaled by width / 100 from its left). A box takes no per-axis scale, so the
+      // same pixels are two boxes that only translate: a clip 1000 wide whose right edge is at
+      // `width`, holding a 1000 wide bar put back at the left edge.
+      view flex-shrink=0 align-self="flex-start" width=1000 height=3 overflow="hidden"
+        translate=`${interp(scroll, widths) - 1000}px 0px` testId="indicator"
+        view width=1000 height=3 background-color="#000000"
+          translate=`${1000 - interp(scroll, widths)}px 0px`
+      // The FlatList: paddingBottom 400.
+      scroll flex=1 min-height=0 scroll=scrolled testId="animated-indicator-list-scroll"
+        column padding-bottom=400
+          for e, i in data() key=i
+            if e.header
+              // headerContainer: height 65, rgba(0,0,0,0.1), centred; text 20 bold, spacing 1,
+              // paddingLeft 15.
+              column id=`row-${i}` height=65 flex-shrink=0 justify-content="center"
+                background-color="rgba(0, 0, 0, 0.1)"
+                text e.label font-size=20 font-weight=700 letter-spacing=1 padding-left=15 color="#000000"
+            else
+              // itemContainer: height 50, white, a row centred, paddingLeft 15; text 15.
+              row id=`row-${i}` height=50 flex-shrink=0 align-items="center" background-color="#ffffff"
+                padding-left=15
+                text e.label font-size=15 color="#000000"

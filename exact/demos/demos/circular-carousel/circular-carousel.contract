@@ -1,0 +1,33 @@
+// Circular Carousel: nine round photos on a horizontal paged strip that bends into an arc as it
+// scrolls; the Scale switch springs the arc's scale effect on and off.
+// RN: src/animations/circular-carousel (index.tsx, components/circular-list/index.tsx,
+// components/circular-list/list-item.tsx). The list is one Rust surface
+// (gpu/src/circular_carousel.rs): the FlatList's UIScrollView (ui_scroll: UIKit's drag and
+// deceleration, RN's snapToInterval), the arc, the springing scale output range, the shadows,
+// borders and the photos (bundled from index.tsx's Unsplash URLs, w=400). The label and the Switch stay here.
+use DemoEnv from "../env.contract"
+
+// LIST_ITEM_WIDTH = windowWidth / 4.
+fn itemWidth(w: number): number = w / 4
+
+component CircularCarousel
+  props
+    env: DemoEnv
+  state scaleEnabled = false
+  action setScale(on: bool)
+    scaleEnabled = on
+  view
+    // index.tsx container: centred; the backdrop (#f4f4f6) shows through.
+    column position="absolute" inset=0 align-items="center" justify-content="center"
+      testId="circular-carousel"
+      // styles.label: fontSize 18, bold, letterSpacing 1, marginBottom 8, uppercase.
+      text "Scale" font-size=18 font-weight=700 letter-spacing=1 margin-bottom=8
+        text-transform="uppercase" color="#000000"
+      view
+        // trackColor { false: '#ccc', true: '#111' }.
+        input type="checkbox" switch checked=scaleEnabled change=setScale accent-color="#111111"
+          aria-label="Scale" testId="scale-switch"
+      // circular-list styles.list: absolute, bottom 0, the window wide, LIST_ITEM_WIDTH * 3 tall.
+      canvas surface=circular_carousel(scaleEnabled) position="absolute" left=0 bottom=0
+        width=env.width height=(itemWidth(env.width) * 3) touch-action="none"
+        testId="circular-list" aria-label="Photos: drag sideways"

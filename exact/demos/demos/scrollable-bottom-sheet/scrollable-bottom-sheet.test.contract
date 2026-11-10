@@ -1,0 +1,45 @@
+at "/demo/scrollable-bottom-sheet"
+
+test "the button opens the sheet with three pages; the last page's button closes it"
+  expect tree has "scrollable-bottom-sheet"
+  expect tree has "sheet"
+  tap "open"
+  clock settle
+  expect text "sheet-button-0" == "Next Page"
+  expect text "sheet-button-1" == "Next Page"
+  expect text "sheet-button-2" == "Close"
+  tap "sheet-button-0"
+  clock settle
+  tap "sheet-button-1"
+  clock settle
+  tap "sheet-button-2"
+  clock settle
+  expect tree has "open"
+
+// The backdrop covers the button while the sheet is open (as RN's does: a touch on it closes
+// the sheet), so the button is reachable again only once the backdrop has closed it.
+test "the backdrop closes an open sheet and the button opens it again"
+  tap "open"
+  clock settle
+  tap "backdrop" drag 0 0 from 20 120
+  clock settle
+  tap "open"
+  clock settle
+  tap "backdrop" drag 0 0 from 20 120
+  clock settle
+  tap "open"
+  clock settle
+  expect tree has "sheet"
+
+// BottomSheet.tsx's Pan: a short drag springs back, one past 100 down closes the sheet; it is
+// heard on the pages too.
+test "a drag down past 100 closes the sheet, a shorter one springs back"
+  tap "open"
+  clock settle
+  tap "sheet" drag 0 60 from 100 10
+  clock settle
+  tap "sheet" drag 0 150 from 100 200
+  clock settle
+  tap "open"
+  clock settle
+  expect text "sheet-button-0" == "Next Page"

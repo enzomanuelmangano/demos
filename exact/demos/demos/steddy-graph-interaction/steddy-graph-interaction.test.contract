@@ -1,0 +1,10 @@
+at "/demo/steddy-graph-interaction"
+
+test "the control and the graph are there; a difficulty is picked"
+  expect tree has "steddy-control"
+  expect tree has "steddy-graph"
+  expect text "steddy-Standard" == "Standard"
+  tap "steddy-Pro"
+  clock settle
+  expect tree has "steddy-highlight"
+  expect text "steddy-Pro" == "Pro"

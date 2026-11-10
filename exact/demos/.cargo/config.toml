@@ -1,0 +1,4 @@
+[env]
+# Builds never fetch or compile Hermes. Provision the pinned, attested bundle
+# once with the installer documented in README.md.
+HERMES_LEAN_SYS_OFFLINE = { value = "1", force = true }

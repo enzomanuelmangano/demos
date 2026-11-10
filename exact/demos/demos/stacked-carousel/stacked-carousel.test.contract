@@ -1,0 +1,5 @@
+at "/demo/stacked-carousel"
+
+test "the cards and the paginator are one scrolling canvas"
+  expect tree has "stacked-carousel"
+  expect tree has "stacked-carousel-list"

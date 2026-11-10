@@ -1,0 +1,64 @@
+// Steddy Graph Interaction: a segmented control (Light, Standard, Pro) over a graph; picking a
+// difficulty slides the highlight and springs the line to that difficulty's scores. Inspired by
+// @steddyapp. RN: src/animations/steddy-graph-interaction (index.tsx,
+// components/segmented-control/index.tsx, components/graph/index.tsx, constants/*). The graph
+// is Skia, drawn and sprung in Rust (gpu/src/steddy_graph_interaction.rs), as is the control's
+// highlight (its spring retargets as Reanimated's); the rest of the control is here.
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+use DemoEnv from "../env.contract"
+
+font "SF-Compact-Rounded-Medium" = "assets/fonts/SF-Compact-Rounded-Medium.otf"
+
+// ScoringDifficultyData.
+fn difficultyName(i: number): string = i == 0 ? "Light" : (i == 1 ? "Standard" : "Pro")
+// The control: width = windowWidth − 30, height 56, internalPadding 5, three cells.
+fn controlWidth(w: number): number = w - 30
+fn cellWidth(w: number): number = controlWidth(w) / 3
+
+component SteddyGraphInteraction
+  props
+    env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
+  // useState<ScoringDifficultyType>('Standard').
+  state selected = 1
+  action pick(i: number)
+    pressablesOnPress()
+    selected = i
+  view
+    // styles.container: Palette.background, flex 1, centred.
+    column position="absolute" inset=0 background-color="#F1EEE8" align-items="center"
+      justify-content="center" testId="steddy-graph-interaction"
+      // backgroundContainer: Palette.baseGray05, border 1 baseGray05, radius 18, borderCurve continuous (-exact-continuous: CALayer .continuous, not CSS squircle),
+      // padding 5, a row.
+      row position="relative" box-sizing="border-box" width=controlWidth(env.width) height=56 padding=5
+        background-color="#E5E2DC" border="1px solid #E5E2DC" border-radius=18 corner-shape="-exact-continuous"
+        flex-shrink=0 testId="steddy-control"
+        for i in range(3) key=i
+          // labelContainer: flex 1, centred, zIndex 2; PressableScale.
+          button appearance="none" press=pick(i) flex=1 height="100%" display="flex"
+            pointerdown=pressIn(i) pointerup=pressOut
+            scale=pressableScale(pressing, i, pressto) transition=pressTransition("scale", pressto)
+            align-items="center" justify-content="center" padding=0 border="none"
+            background-color="transparent" z-index=2 aria-pressed=(i == selected)
+            testId=`steddy-${difficultyName(i)}`
+            // difficultyLabel: SF-Compact-Rounded-Medium 17, baseGray80, centred.
+            text difficultyName(i) font-family="SF-Compact-Rounded-Medium" font-size=17 color="#30302E"
+              text-align="center"
+        // CELL BACKGROUND: drawn in Rust (gpu/src/steddy_graph_interaction.rs `highlight`):
+        // translateX = withSpring(…) with Reanimated's retarget rule (the running velocity
+        // dropped when it points away from the new target), which -exact-spring doesn't follow.
+        // The canvas covers the padding box (the border 1 in), under the labels (zIndex 1 < 2).
+        canvas surface=steddy_highlight(selected) position="absolute" left=0 top=0
+          width=(controlWidth(env.width) - 2) height=54 z-index=1 pointer-events="none"
+          aria-hidden=true testId="steddy-highlight"
+      // <Graph canvasWidth={windowWidth} canvasHeight={200} style={{ marginTop: 20 }}>.
+      canvas surface=steddy_graph_interaction(selected) width=env.width height=200 margin-top=20
+        flex-shrink=0 aria-hidden=true testId="steddy-graph"

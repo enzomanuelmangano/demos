@@ -1,0 +1,8 @@
+// Blur Circles: a gradient circle seen through a wandering glass circle that blurs what it
+// covers. RN: src/animations/blur-circles (Skia, simplex noise). Drawn in Rust:
+// gpu/src/blur_circles.rs.
+
+component BlurCircles
+  view
+    canvas surface=blur_circles() position="absolute" top=0 left=0 width="100%" height="100%"
+      background-color="#ffffff" testId="blur-circles" aria-hidden=true

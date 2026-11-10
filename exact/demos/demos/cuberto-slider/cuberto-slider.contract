@@ -1,0 +1,11 @@
+// Cuberto Slider: a thin track with a round picker; dragged, the picker grows and a balloon
+// with the value trails it on a spring, leaning toward it. RN: src/animations/cuberto-slider
+// (index.tsx, components/slider.tsx). The slider moves per frame from one pan, its balloon is
+// Skia: the whole slider is drawn, dragged and sprung in Rust (gpu/src/cuberto_slider.rs) on a
+// full-screen canvas, the track at its centre as styles.container centres it.
+
+component CubertoSlider
+  view
+    // styles.container: #fff, centred.
+    canvas surface=cuberto_slider() position="absolute" top=0 left=0 width="100%" height="100%"
+      background-color="#ffffff" touch-action="none" testId="cuberto-slider" aria-label="Slider"

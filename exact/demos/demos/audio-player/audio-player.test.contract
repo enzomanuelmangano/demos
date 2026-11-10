@@ -1,0 +1,4 @@
+at "/demo/audio-player"
+
+test "the waveform is there"
+  expect tree has "audio-player"

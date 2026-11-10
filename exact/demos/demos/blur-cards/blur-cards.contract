@@ -1,0 +1,18 @@
+// Blur Cards: five glass cards over a violet glow; a tap anywhere fans them out in 3D, each
+// blurring what it covers, and another folds them back. RN: src/animations/blur-cards. The
+// canvas (glow, cards, backdrop blurs, the progress spring) is Rust: gpu/src/blur_cards.rs; the
+// full-screen PressableOpacity is here, its presses counted into the surface.
+
+component BlurCards
+  state presses = 0
+  action press
+    haptic("selection")
+    presses = presses + 1
+  view
+    // styles.container: black.
+    column position="absolute" inset=0 background-color="#000000" testId="blur-cards"
+      canvas surface=blur_cards(presses) position="absolute" top=0 left=0 width="100%" height="100%"
+        aria-hidden=true testId="blur-cards-canvas"
+      // <PressableOpacity style={StyleSheet.absoluteFill}>: nothing inside, so nothing dims.
+      button appearance="none" press=press position="absolute" inset=0 background-color="transparent"
+        border="none" testId="blur-cards-press" aria-label="Fan the cards"

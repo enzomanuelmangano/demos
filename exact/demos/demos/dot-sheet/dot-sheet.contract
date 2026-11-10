@@ -1,0 +1,120 @@
+// Dot Sheet: a blurred rose-and-white sweep behind "One more thing"; a small tilted white card
+// grows to a full sheet with a text field when it (or "Start your Journey") is pressed, and
+// shrinks back from the chevron. Inspired by Dot. RN: src/animations/dot-sheet (src/index.tsx,
+// components/card-input.tsx, components/background-gradient.tsx). The background is Skia,
+// drawn once in Rust: gpu/src/dot_sheet.rs; the card (its frame, rotation, animated continuous
+// radius and shadow on RN's spring) is gpu/src/dot_sheet_card.rs; the field and the rest are here.
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+use DemoEnv, demoButtonRow from "../env.contract"
+
+
+// card-input.tsx: progress = withSpring(focused ? 1 : 0, { duration: 800, dampingRatio: 1 }).
+fn cardSpring(): string = "-exact-spring(424.9, 82.5, 4)"
+// potentialHeaderHeight.
+fn header(): number = 52
+fn cardHeight(h: number, open: bool): number = open ? h : h / 2.8
+fn cardWidth(w: number, h: number, open: bool): number = open ? w - 2 : h / 2.8 * (3 / 4)
+fn cardTop(h: number, safeTop: number, open: bool): number = open ? safeTop + demoButtonRow() + header() : (h - h / 2.8) / 2 + 35
+fn cardLeft(w: number, h: number, open: bool): number = open ? 1 : (w - h / 2.8 * (3 / 4)) / 2
+
+component DotSheet
+  props
+    env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
+  state open = false
+  // progress === 0: the card's surface says when its spring has landed closed.
+  state still = true
+  action heard(m: string)
+    if m == "card:rest"
+      still = true
+    if m == "card:moving"
+      still = false
+  // onFocus / onBlur of the field drive the card.
+  action opened
+    open = true
+  action closed
+    open = false
+  // The card's onTouchEnd: focus only while progress is exactly 0 (not on a card still closing).
+  action tapCard
+    if not open and still
+      focus("dot-input")
+  action start
+    pressablesOnPress()
+    focus("dot-input")
+  action back
+    pressablesOnPress()
+    blur("dot-input")
+  view
+    column position="absolute" inset=0 testId="dot-sheet"
+      // <BackgroundGradient style={{ height: '100%', position: 'absolute' }} />.
+      canvas surface=dot_sheet() position="absolute" top=0 left=0 width="100%" height="100%"
+        aria-hidden=true testId="dot-sheet-canvas"
+      // styles.fillCenter, then styles.fill. Positioned, so it paints over the absolute canvas
+      // (an in-flow box paints under a positioned sibling, whatever the order).
+      column flex=1 position="relative" align-items="center" justify-content="center"
+        // TextKit's lines (hhea 2099 + 358 over 2048, no lineGap) as explicit px line-heights, each
+        // text moved back onto RN's pixels (measured against the RN capture). RN's Text draws in its
+        // view's drawRect, so ink past its frame (its side ceiled to the pixel grid) is cut: the title's
+        // "g" loses its last row there.
+        // The clip is RN's frame (rows 550-651 on the iPhone Air); the line sits a point lower in
+        // Exact's box than in TextKit's, so the text moves down a point inside it.
+        view height=33.6667 overflow="hidden" position="relative" top=-0.3333 left=-0.3333
+          text "One more thing" font-family="AddingtonCF-Light" font-size=28 letter-spacing=-0.5
+            line-height="33.591796875px" position="relative" top=1 color="#000000" role="heading"
+        text "This animation is inspired by Dot and made with React Native." color="#6c6c6c"
+          font-family="AddingtonCF-Light" font-size=18 letter-spacing=-0.5 line-height="21.5947265625px"
+          position="relative" top=0.3333 margin-top=12 max-width="60%"
+          text-align="center"
+      column flex=1
+      // The back button: top = safe area + DEMO_BUTTON_ROW_HEIGHT, left 16, 32 square, its
+      // opacity the progress; it blurs the field. The card's canvas (full screen, later) takes the
+      // touches under it on iOS whatever its pointer-events, so both buttons rise above it where
+      // the card never covers them: the back button always (the open card starts 20 below it),
+      // the bottom one while the card rests closed (RN's card, zIndex 1, covers it otherwise).
+      button appearance="none" press=back position="absolute"
+        top=(env.safeTop + demoButtonRow()) left=16 width=32 height=32 border="none" padding=0
+        background-color="transparent" display="flex" align-items="center" justify-content="center"
+        pointerdown=pressIn(1) pointerup=pressOut scale=pressableScale(pressing, 1, pressto)
+        opacity=(open ? 1 : 0) transition=`opacity ${cardSpring()}, ${pressTransition("scale", pressto)}` aria-label="Back" testId="dot-back"
+        z-index=2
+        image "symbol:sf/chevron.backward" font-size=24 color="#323232" aria-hidden=true
+      // The bottom button: safe bottom + 16, centred, 85% wide, 52 tall, radius 30.
+      button appearance="none" press=start position="absolute"
+        pointerdown=pressIn(0) pointerup=pressOut
+        scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
+        bottom="calc(env(safe-area-inset-bottom) + 16px)" left="7.5%" width="85%" height=52
+        border="none" border-radius=30 background-color="rgba(55, 55, 55, 0.2)" display="flex"
+        align-items="center" justify-content="center" testId="dot-start" z-index=(not open and still ? 2 : 0)
+        text "Start your Journey" color="#ffffff" font-size=16 font-weight=700 line-height="19.09375px"
+          position="relative" top=0.3333
+      // The card (zIndex 1): top, left, width, height, radius and rotate all interpolate the
+      // progress: from (h / 2.8 × 3/4) × h / 2.8 centred 35 below the middle at -4° and radius
+      // 16, to the window's width less 2 and its height, below the header, upright, radius 32.
+      canvas surface=dot_sheet_card(open, env.safeTop) message=heard position="absolute" top=0 left=0
+        width="100%" height="100%" z-index=1 pointer-events="none" aria-hidden=true
+        testId="dot-card-canvas"
+      // The card's box for the field and the touches; the surface above draws it.
+      column position="absolute" z-index=1 top=cardTop(env.height, env.safeTop, open)
+        left=cardLeft(env.width, env.height, open) width=cardWidth(env.width, env.height, open)
+        height=cardHeight(env.height, open) rotate=(open ? "0deg" : "-4deg") -exact-layout-transition=cardSpring()
+        transition=`rotate ${cardSpring()}` press=tapCard testId="dot-card"
+        // The multiline field: marginTop 16 → 24, fontSize 14 → 24. The host's field sets its first
+        // baseline at AddingtonCF's typo ascender (USE_TYPO_METRICS), UITextView at the hhea one:
+        // 461 / 2048 em lower; against RN on the iPhone Air the line then sat 1 px low open (24, text and
+        // placeholder alike) and 5 px high closed (14): a third of a point up open, five thirds down closed.
+        textarea id="dot-input" placeholder="Hello there 👋" autocorrect="off" autocapitalize="none"
+          focus=opened blur=closed font-family="AddingtonCF-Light" font-size=(open ? 24 : 14)
+          margin="0px 12px 0px 16px" margin-top=(open ? 24 : 16) flex=1 min-height=0
+          background-color="transparent" border="none" padding=0 color="#000000" outline="none"
+          padding-top=(open ? 24 * 461 / 2048 - 1 / 3 : 14 * 461 / 2048 + 5 / 3)
+          resize="none" -exact-layout-transition=cardSpring() aria-label="Note" testId="dot-input"
+          ::placeholder
+            color="#b4b4b4"

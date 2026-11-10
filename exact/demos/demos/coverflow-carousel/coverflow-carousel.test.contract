@@ -1,0 +1,4 @@
+at "/demo/coverflow-carousel"
+
+test "the strip is one canvas"
+  expect tree has "coverflow-carousel"

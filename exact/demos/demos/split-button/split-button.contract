@@ -1,0 +1,108 @@
+// Split Button: a "Start" chip that, tapped, turns black with an Apple logo and slides right
+// while a bordered Google chip fades in and slides out to its left; either chip folds them back.
+// RN: src/animations/split-button (index.tsx, constants.ts, components/split-button/index.tsx).
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+
+// No background of its own (RN's container is transparent): the demo screen's backdrop
+// (#f1eee8) shows through, as in RN.
+
+// constants.ts colors.
+fn almostBlack(): string = "color(display-p3 0.0941 0.0941 0.0902)"
+fn border(): string = "color(display-p3 0.851 0.8392 0.8196)"
+fn background(): string = "color(display-p3 0.9451 0.9333 0.9098)"
+
+// SplitButton defaults: buttonWidth 120, maxSpacing 13; offset = buttonWidth / 2 + maxSpacing.
+fn offset(): number = 120 / 2 + 13
+
+// translateX: withSpring(…) with no config, Reanimated 4's default.
+fn slide(): string = "-exact-spring(900, 120, 4)"
+// paddingHorizontal: withSpring(24 | 36, WithTimingConfig { duration: 300 }), dampingRatio 1
+// (GentleSpringConfigWithDuration): bun tools/spring.ts 300 1.
+fn padSpring(): string = "-exact-spring(3021.5, 219.9, 4)"
+// Reanimated's withTiming default curve, Easing.inOut(Easing.quad): the left chip's opacity
+// (WithTimingConfig 300 ms), and FadeIn / FadeOut / LinearTransition (300 ms) on its icon.
+fn inOutQuad(): string = "linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
+
+keyframes fadeIn
+  from opacity=0
+keyframes fadeOut
+  to opacity=0
+
+// AntDesign glyphs (the vector-icons font: 512 units to the em, ascent 455, descent 81, so a
+// Text box 536 units tall).
+fn applePath(): string = "M343 27Q349 26 352.5 26.0Q356 26 356 28Q359 39 353 62Q345 87 323.5 109.0Q302 131 279 137Q261 141 258 138Q257 138 257.0 130.0Q257 122 258 115Q262 91 278.0 69.5Q294 48 318 36Q331 30 343 27ZM335 140Q337 139 351 140Q388 141 417 160Q432 170 441 183L444 187L438 190Q406 211 395 244Q386 273 394 303Q399 322 411 339Q427 359 451 371Q456 374 456 375Q456 380 442 408Q410 474 373 493Q359 500 346 500Q333 500 308 491Q286 483 274 482Q251 481 221 492Q198 500 185 500Q165 500 143 482Q123 464 102.0 430.0Q81 396 70 363Q52 306 58.5 256.5Q65 207 95 176Q130 141 177 141Q194 141 220 150Q250 160 256.5 161.0Q263 162 276 157Q319 142 335 140ZM356 179Q372 181 380 184L384 186L378 193Q364 213 357 236Q352 254 352 277Q352 300 359 322Q369 353 395 378L407 391L404 398Q387 429 369 447Q354 462 345 462Q342 462 331 458Q323 455 311 451Q289 443 266 444Q248 444 237.5 446.0Q227 448 200 458Q186 463 179 460Q168 455 154 437Q120 395 105 344Q96 313 96 282Q96 258 101 241Q109 215 129.0 198.0Q149 181 175 180Q187 179 215 189Q244 199 257 200Q271 200 296 191Q325 181 336 179Q346 177 356 179Z"
+fn googlePath(): string = "M243 45Q178 50 125 90Q106 105 90 125Q61 161 49 205Q33 265 50 324Q66 381 109.0 422.0Q152 463 209 476Q233 482 262 482Q290 482 313 477Q397 458 440 387Q480 321 469 237Q468 227 467.5 225.5Q467 224 363 224H260V266V308H319Q378 308 378.0 309.5Q378 311 376 318Q361 369 308 387Q272 400 236 393Q198 385 170.0 357.0Q142 329 134 291Q128 263 134 235Q141 202 164.5 175.0Q188 148 221 138Q238 132 261 132Q279 132 288 134Q316 140 338 159L344 164L376 133L407 101L403 98Q394 89 379 79Q339 52 290 46Q265 43 243 45Z"
+
+component SplitButton
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  state activated = false
+  // The two PressableScales' press state (keys 0 left, 1 right).
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
+  // Left onPress: onLeft (none given), setActive(false); the global onPress first.
+  action pressLeft
+    pressablesOnPress()
+    activated = false
+  // Right onPress: activates; activated, deactivates (onRight: none given).
+  action pressRight
+    pressablesOnPress()
+    activated = not activated
+  view
+    // index.tsx styles.container: flex 1, centred.
+    column position="absolute" inset=0 align-items="center" justify-content="center"
+      testId="split-button"
+      // styles.container: height 100, width 100%, centred.
+      column position="relative" height=100 width="100%" align-items="center" justify-content="center"
+        // Left button: opacity withTiming(activated, 300 ms), translateX withSpring(0 | -offset).
+        view opacity=(activated ? 1 : 0) translate=`${activated ? 0 - offset() : 0}px 0px`
+          transition=`opacity 300ms ${inOutQuad()}, translate ${slide()}` testId="left"
+          button appearance="none" press=pressLeft aria-label="Google"
+            pointerdown=pressIn(0) pointerup=pressOut
+            scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
+            testId="left-press" display="flex" flex-direction="column"
+            // styles.chip (+ activeChip: the same border, width 120): border 1 #D9D6D1, radius 16
+            // continuous, shadow 0 1 5 10% black, 60 tall, 140 wide.
+            column width=(activated ? 120 : 140) height=60 border-width=1 border-style="solid"
+              border-color=border() border-radius=16 corner-shape="-exact-continuous" box-sizing="border-box"
+              box-shadow="0px 1px 5px rgba(0, 0, 0, 0.1)"
+              if activated
+                // styles.chipContent: row, flex 1, centred, paddingVertical 16; paddingHorizontal
+                // 36 while activated (it only exists then). entering FadeIn, exiting FadeOut,
+                // layout LinearTransition.
+                row flex=1 align-items="center" justify-content="center" padding="16px 36px"
+                  animation=`fadeIn 300ms ${inOutQuad()} both`
+                  -exact-exit-animation="fadeOut 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) both"
+                  -exact-layout-transition=`300ms ${inOutQuad()}` testId="left-icon"
+                  // AntDesign google, 22, almostBlack.
+                  svg width=22 height=(22 * 536 / 512) viewBox="0 0 512 536" aria-hidden=true
+                    path d=googlePath() fill=almostBlack()
+        // Right button: styles.rightChipContainer (absolute, zIndex 100), translateX
+        // withSpring(0 | offset).
+        view position="absolute" z-index=100 translate=`${activated ? offset() : 0}px 0px`
+          transition=`translate ${slide()}` testId="right"
+          button appearance="none" press=pressRight
+            pointerdown=pressIn(1) pointerup=pressOut
+            scale=pressableScale(pressing, 1, pressto) transition=pressTransition("scale", pressto)
+            aria-label=(activated ? "Apple" : "Start") testId="right-press" display="flex"
+            flex-direction="column"
+            // styles.chip + rightChip (#F1EEE8); activeRightChip: black, shadow 0 0 0 30% black.
+            column width=140 height=60 border-width=1 border-style="solid" border-color=border()
+              border-radius=16 corner-shape="-exact-continuous" box-sizing="border-box"
+              background-color=(activated ? "#000000" : background())
+              box-shadow=(activated ? "0px 0px 0px rgba(0, 0, 0, 0.3)" : "0px 1px 5px rgba(0, 0, 0, 0.1)")
+              // styles.chipContent, paddingHorizontal on the duration spring.
+              row flex=1 align-items="center" justify-content="center"
+                padding=`16px ${activated ? 36 : 24}px` -exact-layout-transition=padSpring()
+                if activated
+                  // AntDesign apple, 21, colors.background (inside the chip's Text).
+                  svg width=21 height=(21 * 536 / 512) viewBox="0 0 512 536" aria-hidden=true
+                    testId="right-icon"
+                    path d=applePath() fill=background()
+                else
+                  // styles.chipText: fontSize 20, weight 600 (RN's default black).
+                  text "Start" font-size=20 font-weight=600 color="#000000" testId="start-label"

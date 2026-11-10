@@ -1,0 +1,5 @@
+at "/demo/loading-button"
+
+test "the button is one canvas"
+  expect tree has "loading-button"
+  expect tree has "loading-button-press"

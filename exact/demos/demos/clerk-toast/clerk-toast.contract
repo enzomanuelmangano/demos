@@ -1,0 +1,271 @@
+// Clerk Toast: ten black cards in a scroll; each press stacks the next dark pill toast at the
+// bottom over a masked blur (three slots 70 px apart, older ones hidden under the third). Any of
+// the three front toasts swipes left to dismiss; the eighth's x clears them all, each fading left
+// in turn. RN: src/animations/clerk-toast (src/index.tsx, src/hook.tsx, src/hooks/use-toast.tsx,
+// src/stacked-toast-manager/{constants.ts, hooks.ts, stacked-toast-provider.tsx,
+// stacked-toast.tsx, backdrop/index.tsx, backdrop/use-gradient-height.ts}).
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+use DemoEnv, demoButtonRow from "../env.contract"
+
+// hook.tsx toasts: the thirteen titles, taken in turn (toastIndex % 13).
+fn clerkTitle(kind: number): string = match ["This is a Custom Toast message", "Strongly inspired by Emil Kowalski", "It works with React Native and Expo!", "Can you guess the main library used here?", "Reanimated - of course!", "Wait! Too many Toasts here!", "Let's swipe them away!", "Actually, let's clear quickly everything", "What about the source code?", "You can find it at reactiive.io/demos", "You're still here?", "Ok, last one!", "Thanks for watching!"].at(kind) { case some(t) => t, case none => "" }
+// The Octicons (16, white) each one leads with: archive, star, rocket, question, heart, alert,
+// arrow-left, trash, code, package, smiley, check, thumbsup; the eighth's trailing x. The glyphs
+// of the vector-icons font (512 units to the em; a Text box 518 units tall, its baseline at 450).
+fn clerkIconPath(kind: number): string = match ["M0 90Q0 67 16.5 50.5Q33 34 56 34H456Q479 34 495.5 50.5Q512 67 512 90V138Q512 161 495.5 177.5Q479 194 456 194H56Q33 194 16.5 177.5Q0 161 0 138ZM80 250V426Q80 434 88 434H424Q432 434 432 426V250Q432 240 439 233Q446 226 456 226Q466 226 473 233Q480 240 480 250V426Q480 449 463.5 465.5Q447 482 424 482H88Q65 482 48.5 465.5Q32 449 32 426V250Q32 240 39 233Q46 226 56 226Q66 226 73 233Q80 240 80 250ZM56 82Q48 82 48 90V138Q48 146 56 146H456Q464 146 464 138V90Q464 82 456 82ZM200 258H312Q322 258 329 265Q336 272 336 282Q336 292 329 299Q322 306 312 306H200Q190 306 183 299Q176 292 176 282Q176 272 183 265Q190 258 200 258Z", "M278 23 338 145 472 165Q481 166 487 173Q493 180 493 189Q493 199 486 206L388 301L411 435Q412 437 412 439Q412 449 405 456Q398 463 388 463Q382 463 377 460Q377 460 346.5 444.5Q316 429 286 413L256 397L135 460Q130 463 124 463Q114 463 107 456Q100 449 100 439Q100 437 101 435L124 301L26 206Q19 199 19 189Q19 180 25 173Q31 166 39 165Q39 165 73 160Q107 155 141 150L174 145L234 23Q241 10 256 10Q271 10 278 23ZM256 88 212 178Q206 189 194 191Q194 191 169 194.5Q144 198 119 202L95 206L166 275Q173 282 173 293Q173 295 173 297L156 395L245 349Q250 346 256 346Q262 346 267 349Q267 349 289 360.5Q311 372 334 384L356 395L339 297Q339 295 339 293Q339 282 346 275L417 206L318 191Q306 189 300 178Z", "M451 2H457Q480 2 496.5 18.5Q513 35 513 58V64Q513 180 431 262Q431 262 427.5 265.5Q424 269 420 273L416 277Q401 292 385 306V408Q385 439 358 456L270 510Q264 514 257 514Q239 514 234 497L203 398Q201 396 199 394L121 316Q119 314 117 311L18 281Q1 276 1 258Q1 251 5 245Q5 245 18.5 223Q32 201 46 179L59 157Q76 130 107 130H209Q223 114 238 99L253 84Q335 2 451 2ZM287 118 272 133Q236 169 208 213L160 287L228 355L302 307Q346 279 382 243L397 228Q465 160 465 64Q465 58 465 58Q465 50 457 50H451Q355 50 287 118ZM115 468Q89 494 19 505Q18 505 18 505Q15 505 12.5 502.5Q10 500 10 497Q10 497 10 496Q21 426 47 400Q61 384 83 384Q103 384 117 398Q131 412 131 432Q131 454 115 468ZM337 342Q333 344 328 348L253 396L271 453L333 415Q337 413 337 408ZM119 262 167 187Q169 184 173 178H107Q102 178 100 182L62 244ZM375.5 139.5Q385 149 385 162Q385 175 375.5 184.5Q366 194 353 194Q340 194 330.5 184.5Q321 175 321 162Q321 149 330.5 139.5Q340 130 353 130Q366 130 375.5 139.5Z", "M75 439Q0 364 0 258Q0 152 75 77Q150 2 256 2Q362 2 437 77Q512 152 512 258Q512 364 437 439Q362 514 256 514Q150 514 75 439ZM403 111Q342 50 256 50Q170 50 109 111Q48 172 48 258Q48 344 109 405Q170 466 256 466Q342 466 403 405Q464 344 464 258Q464 172 403 111ZM221 197Q215 210 200 210Q190 210 183 203Q176 196 176 186Q176 180 179 175Q188 156 206 144Q227 130 256 130Q256 130 257 130Q285 130 308 147Q336 167 336 202Q336 223 325 239Q318 250 303 260Q301 261 293 266Q289 269 285 271Q280 275 276 279Q269 290 256 290Q246 290 239 283Q232 276 232 266Q232 259 236 253Q245 240 258 232Q263 228 268 225Q275 221 277 220Q282 217 286 212Q288 209 288 202Q288 202 288 201Q288 191 280 185Q269 178 257 178Q256 178 256 178Q241 178 232 184Q225 189 221 197ZM278.5 331.5Q288 341 288 354Q288 367 278.5 376.5Q269 386 256 386Q243 386 233.5 376.5Q224 367 224 354Q224 341 233.5 331.5Q243 322 256 322Q269 322 278.5 331.5Z", "M256 458 267 479Q262 482 256 482Q250 482 245 479H244Q239 476 234 473Q176 440 124 396Q0 289 0 178Q0 116 41 75Q82 34 136 34Q172 34 203.5 51.5Q235 69 256 99Q277 69 308.5 51.5Q340 34 376 34Q430 34 471 75Q512 116 512 178Q512 289 388 396Q332 444 268 479H267ZM136 82Q102 82 75 109Q48 136 48 178Q48 267 156 360Q203 400 256 431Q309 400 356 360Q464 267 464 178Q464 136 437 109Q410 82 376 82Q343 82 316 103.5Q289 125 279 161Q274 178 256 178Q238 178 233 161Q223 125 196 103.5Q169 82 136 82Z", "M207 36Q222 6 256 6Q290 6 305 36L500 400Q507 412 507 426Q507 449 490.5 465.5Q474 482 451 482H61Q38 482 21.5 465.5Q5 449 5 426Q5 412 12 400Q12 400 60.5 309Q109 218 158 127ZM263 58Q261 54 256 54Q251 54 249 58L54 422Q53 424 53 426Q53 434 61 434H451Q459 434 459 426Q459 424 458 422Q458 422 409 331Q360 240 312 149ZM280 186V266Q280 276 273 283Q266 290 256 290Q246 290 239 283Q232 276 232 266V186Q232 176 239 169Q246 162 256 162Q266 162 273 169Q280 176 280 186ZM278.5 331.5Q288 341 288 354Q288 367 278.5 376.5Q269 386 256 386Q243 386 233.5 376.5Q224 367 224 354Q224 341 233.5 331.5Q243 322 256 322Q269 322 278.5 331.5Z", "M215 403Q215 403 181 369Q147 335 113 301L79 267Q72 260 72 250Q72 240 79 233L215 97Q222 91 231 91Q241 91 248 98Q255 105 255 115Q255 124 249 131Q249 131 225 154.5Q201 178 178 202L154 226H392Q402 226 409 233Q416 240 416 250Q416 260 409 267Q402 274 392 274H154L249 369Q256 376 256 386Q256 396 249 403Q242 410 232 410Q222 410 215 403Z", "M352 58V98H424Q434 98 441 105Q448 112 448 122Q448 132 441 139Q434 146 424 146H88Q78 146 71 139Q64 132 64 122Q64 112 71 105Q78 98 88 98H160V58Q160 35 176.5 18.5Q193 2 216 2H296Q319 2 335.5 18.5Q352 35 352 58ZM144 216 165 427Q166 434 173 434H339Q346 434 347 427Q347 427 352.5 374Q358 321 363 268L368 216Q369 207 376 201Q383 195 392 195Q402 195 409 202Q416 209 416 219Q416 220 416 220L395 432Q393 453 377 467.5Q361 482 339 482Q339 482 297.5 482Q256 482 214 482H173Q151 482 135 467.5Q119 453 117 432Q117 432 112 379Q107 326 101 273L96 220Q96 219 96 217Q96 207 103 200Q110 193 120 193Q129 193 136 199.5Q143 206 144 216ZM208 58V98H304V58Q304 50 296 50H216Q208 50 208 58Z", "M361 105 497 241Q504 248 504 258Q504 268 497 275L361 411Q354 419 343 419Q325 419 320 401Q319 398 319 395Q319 384 327 377L446 258L327 139Q319 132 319 121Q319 103 337 98Q340 97 343 97Q354 97 361 105ZM151 105Q158 99 167 99Q177 99 184 106Q191 113 191 123Q191 132 185 139Q185 139 155 168.5Q125 198 96 228L66 258L185 377Q193 384 193 395Q193 413 175 418Q172 419 169 419Q158 419 151 411L15 275Q8 268 8 258Q8 248 15 241Z", "M284 15 452 112Q480 128 480 160V356Q480 388 452 404L284 501Q271 509 256 509Q241 509 228 501Q228 501 186 477Q144 453 102 428L60 404Q32 388 32 356V160Q32 128 60 112L228 15Q241 7 256 7Q271 7 284 15ZM252 56 104 142 256 230 408 142 260 56Q258 55 256 55Q254 55 252 56ZM80 184V356Q80 360 84 362L232 448V272ZM280 448 428 362Q432 360 432 356V184L280 272Z", "M75 77Q150 2 256 2Q362 2 437 77Q512 152 512 258Q512 364 437 439Q362 514 256 514Q150 514 75 439Q0 364 0 258Q0 152 75 77ZM109 111Q48 172 48 258Q48 344 109 405Q170 466 256 466Q342 466 403 405Q464 344 464 258Q464 172 403 111Q342 50 256 50Q170 50 109 111ZM170 310Q176 306 184 306Q196 306 203 316H204Q209 322 215 326Q232 338 256 338Q280 338 297 326Q303 322 308 316H309Q316 306 328 306Q338 306 345 313Q352 320 352 330Q352 338 348 344L347 343L348 344H347V345Q344 348 341 352Q333 360 324 366Q293 386 256 386Q218 386 188 366Q175 357 165 345V344H164L184 330L164 344Q160 338 160 330Q160 318 170 310ZM374.5 203.5Q384 213 384 226Q384 239 374.5 248.5Q365 258 352 258Q339 258 329.5 248.5Q320 239 320 226Q320 213 329.5 203.5Q339 194 352 194Q365 194 374.5 203.5ZM182.5 248.5Q173 258 160 258Q147 258 137.5 248.5Q128 239 128 226Q128 213 137.5 203.5Q147 194 160 194Q173 194 182.5 203.5Q192 213 192 226Q192 239 182.5 248.5ZM328 330 347 343Q337 337 328 330Z", "M441 171 209 403Q202 410 192 410Q182 410 175 403Q175 403 149 377Q123 351 97 325L71 299Q65 292 65 283Q65 273 72 266Q79 259 89 259Q98 259 105 265Q105 265 126.5 287Q148 309 170 330L192 352L407 137Q414 130 424 130Q434 130 441 137Q448 144 448 154Q448 164 441 171Z", "M267 22Q274 10 288 10Q290 10 292 10L300 12Q337 18 361.5 47Q386 76 386 114Q386 129 382 143L368 194H389Q432 194 462.5 224.5Q493 255 493 298Q493 313 489 327L453 451Q444 479 421 496.5Q398 514 368 514H211Q172 514 141 492Q124 514 96 514H56Q33 514 16.5 497.5Q0 481 0 458V250Q0 227 16.5 210.5Q33 194 56 194H165Q170 194 172 190ZM152 439 165 449Q185 466 211 466H368Q382 466 392.5 458Q403 450 406 437Q406 437 410 424.5Q414 412 419.5 394Q425 376 430 357.5Q435 339 439 327L443 314Q445 306 445 298Q445 275 428.5 258.5Q412 242 389 242H336Q326 242 319 235Q312 228 312 218Q312 215 313 211L336 130Q338 122 338 114Q338 96 327.5 81.5Q317 67 300 61Q300 61 278.5 99Q257 137 236 175L214 214Q198 242 165 242H152ZM104 242H56Q48 242 48 250V458Q48 466 56 466H96Q104 466 104 458Z"].at(kind) { case some(p) => p, case none => "" }
+fn clerkXPath(): string = "M153 121Q153 121 178.5 147Q204 173 230 198L256 224L359 121Q366 113 377 113Q395 113 400 131Q401 134 401 137Q401 148 393 155L290 258L393 361Q401 368 401 379Q401 397 383 402Q380 403 377 403Q366 403 359 395L256 292L153 395Q146 401 137 401Q127 401 120 394Q113 387 113 377Q113 368 119 361Q119 361 145 335.5Q171 310 196 284L222 258L119 155Q112 148 112 138Q112 128 119 121Q126 114 136 114Q146 114 153 121Z"
+
+fn clerkNum(xs: number[], i: number): number = match xs.at(i) { case some(v) => v, case none => 0 }
+fn clerkSet(xs: number[], i: number, v: number): number[] = range(xs.length).map(j => j == i ? v : clerkNum(xs, j))
+// A live toast's id: how many live toasts are newer (showStackedToast gives the new one 0 and
+// bumps the rest; onDismiss lowers the older ones).
+fn clerkNewer(gone: number[], i: number): number = range(gone.length).filter(j => j > i and clerkNum(gone, j) == 0).length
+fn clerkId(gone: number[], goneK: number[], i: number): number = clerkNum(gone, i) != 0 ? clerkNum(goneK, i) : clerkNewer(gone, i)
+// A gone toast leaves the list once its motion ends: a swiped one (gone 1) when its spring
+// (duration 350) does, at 1.5 × 350 = 525 ms, Reanimated's settling time (onDismiss), a cleared one (gone 2) after its FadeOutLeft (120 ms × id, then 300 ms).
+fn clerkStays(gone: number[], goneAt: number[], goneK: number[], j: number, now: number): bool = clerkNum(gone, j) == 0 or now < clerkNum(goneAt, j) + (clerkNum(gone, j) == 1 ? 525 : 120 * clerkNum(goneK, j) + 300)
+
+// constants.ts TOAST_HEIGHT 55, MAX_VISIBLE_TOASTS 3; hooks.ts bottomHeight =
+// min(id, MAX_VISIBLE_TOASTS - 1) × (TOAST_HEIGHT + 15). stacked-toast.tsx BaseSafeArea 50.
+fn clerkBottom(id: number): number = min(id, 2) * 70
+// The bottom's withSpring { mass 1, damping 100, stiffness 80 }: ζ 5.59, which Reanimated runs
+// as critically damped at ω0 = √(k/m) = 8.944, so the damping here is 2√(k·m).
+fn clerkSpring(): string = "-exact-spring(80, 17.889, 1)"
+// withTiming() default: 300 ms, inOut(quad).
+fn clerkTiming(): string = "300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
+// dismissItem: withSpring(-windowWidth, { dampingRatio 1, duration 350 }) (bun tools/spring.ts).
+fn clerkThrow(): string = "-exact-spring(2219.9, 188.5, 4)"
+// Backdrop translateY withSpring({ dampingRatio 1, duration 500 }).
+fn clerkBackdropSpring(): string = "-exact-spring(1087.7349, 131.9234, 4)"
+// use-gradient-height.ts: min(min(count, 3) × (TOAST_HEIGHT + 90), windowHeight / 2).
+fn clerkGradient(count: number, h: number): number = min(min(count, 3) * 145, h / 2)
+
+// The mount: `bottom` starts at -TOAST_HEIGHT and springs to BaseSafeArea (105 px) on the
+// spring above, from rest, critically damped: 1 - (1 + ωt)e^{-ωt}, ω 8.944, sampled (denser
+// early) over the 1383 ms Reanimated takes to settle it (energy below 6e-9 of the start). A later id
+// change is the translate transition one wrapper in: the spring is linear, so the two sum to
+// RN's retargeted spring.
+keyframes clerkEnter
+  from translate="0px 105px"
+  to translate="0px 0px"
+fn clerkEnterTiming(): string = "1383ms linear(0, 0.0006 0.27%, 0.0049 0.83%, 0.0169 1.59%, 0.0393 2.51%, 0.0737 3.59%, 0.12 4.81%, 0.1771 6.15%, 0.2428 7.61%, 0.3145 9.19%, 0.3893 10.88%, 0.4645 12.67%, 0.5377 14.57%, 0.6068 16.56%, 0.6705 18.64%, 0.7277 20.82%, 0.7781 23.08%, 0.8216 25.43%, 0.8584 27.87%, 0.889 30.39%, 0.9141 32.99%, 0.9343 35.67%, 0.9503 38.42%, 0.9629 41.25%, 0.9726 44.16%, 0.9799 47.14%, 0.9855 50.2%, 0.9896 53.32%, 0.9926 56.51%, 0.9948 59.78%, 0.9964 63.11%, 0.9975 66.51%, 0.9983 69.98%, 0.9989 73.51%, 0.9992 77.1%, 0.9995 80.76%, 0.9997 84.49%, 0.9998 88.27%, 0.9999 92.12%, 0.9999 96.03%, 1 100%) both"
+
+// The dragged toast's translateX: the shared drag layer's horizontal translate, 1:1, held at 0
+// on the right (onUpdate ignores a translation > 0).
+keyframes clerkSwipeX
+  from translate="-2000px 0px"
+  to translate="0px 0px"
+
+// exiting FadeOutLeft: opacity to 0, translateX -25, 300 ms on inOut(quad). A toast leaves the
+// list only once it is out of sight (swiped off, or faded by clerkClearOut), so the exit itself
+// draws nothing; the clear's 120 ms × id stagger is clerkClearOut's delay.
+keyframes clerkOutLeft
+  to opacity=0 translate="-25px 0px"
+style ClerkOut
+  -exact-exit-animation="clerkOutLeft 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) both"
+keyframes clerkClearOut
+  from opacity=1 translate="0px 0px"
+  to opacity=0 translate="-25px 0px"
+
+component ClerkToast
+  props
+    env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
+  // toastIndex.current, and the key serial.
+  state pressed = 0
+  state serial = 0
+  // The list in creation order (older first): key, which toast, gone (0 live, 1 swiped, 2
+  // cleared), where the finger left a swiped one, when it started to leave, its id then.
+  state keys = []
+  state kinds = []
+  state gone = []
+  state goneX = []
+  state goneAt = []
+  state goneK = []
+  // The delay on the id-driven motion: 525 after a swipe (the others move once onDismiss runs).
+  state shiftDelay = 0
+  // The toast that follows the drag layer (the one whose handle the drag began on).
+  state dragKey = -1
+  derive w = env.width
+  derive live = gone.filter(g => g == 0).length
+
+  // A list card's press (hook.tsx onPress): the next toast, id 0, the others one place back.
+  action showToast
+    pressablesOnPress()
+    let now = performanceNow()
+    let keep = range(keys.length).filter(j => clerkStays(gone, goneAt, goneK, j, now))
+    keys = keep.map(j => clerkNum(keys, j)).concat([serial])
+    kinds = keep.map(j => clerkNum(kinds, j)).concat([pressed % 13])
+    gone = keep.map(j => clerkNum(gone, j)).concat([0])
+    goneX = keep.map(j => clerkNum(goneX, j)).concat([0])
+    goneAt = keep.map(j => clerkNum(goneAt, j)).concat([0])
+    goneK = keep.map(j => clerkNum(goneK, j)).concat([0])
+    serial = serial + 1
+    pressed = pressed + 1
+    shiftDelay = 0
+
+  // The eighth toast's x (clearAllStackedToasts): every toast leaves, FadeOutLeft.delay(120 × id).
+  action clearAll
+    haptic("selection")
+    let now = performanceNow()
+    goneK = range(keys.length).map(j => clerkId(gone, goneK, j))
+    gone = range(keys.length).map(j => clerkNum(gone, j) == 0 ? 2 : clerkNum(gone, j))
+    goneAt = range(keys.length).map(j => clerkNum(gone, j) == 0 ? now : clerkNum(goneAt, j))
+    shiftDelay = 0
+    dragKey = -1
+
+  // Pan onBegin on a toast: the drag layer now moves that one. Toasts already gone are dropped.
+  action began(key: number, bw: number, bh: number, pw: number, ph: number)
+    let now = performanceNow()
+    let keep = range(keys.length).filter(j => clerkStays(gone, goneAt, goneK, j, now))
+    keys = keep.map(j => clerkNum(keys, j))
+    kinds = keep.map(j => clerkNum(kinds, j))
+    gone = keep.map(j => clerkNum(gone, j))
+    goneX = keep.map(j => clerkNum(goneX, j))
+    goneAt = keep.map(j => clerkNum(goneAt, j))
+    goneK = keep.map(j => clerkNum(goneK, j))
+    dragKey = key
+
+  // Pan onEnd: past -50 dismissItem (the spring to -windowWidth, then onDismiss); else
+  // translateX withSpring(0) (the layer's own spring home, which the toast follows).
+  action released(x: number, y: number, scale: number, vx: number, vy: number, vscale: number)
+    let i = keys.indexOf(dragKey)
+    if i >= 0 and x < -50 and clerkNum(gone, i) == 0
+      goneK = clerkSet(goneK, i, clerkNewer(gone, i))
+      gone = clerkSet(gone, i, 1)
+      goneX = clerkSet(goneX, i, x)
+      goneAt = clerkSet(goneAt, i, performanceNow())
+      shiftDelay = 525
+      dragKey = -1
+
+  view
+    // styles.container: #fefefe, flex 1.
+    column position="absolute" inset=0 background-color="#fefefe" overflow="hidden"
+      timeline-scope="--clerkSwipe" testId="clerk-toast"
+      // The ScrollView: paddingTop safeTop + DEMO_BUTTON_ROW_HEIGHT; ten PressableScale cards
+      // (styles.listItem: black, radius 20 continuous, height 100, margins 20 × 10).
+      scroll flex=1 min-height=0 testId="clerk-scroll"
+        column padding-top=(env.safeTop + demoButtonRow())
+          for n in range(10) key=n
+            view press=showToast role="button" aria-label="Show a toast"
+              pointerdown=pressIn(n) pointerup=pressOut
+              scale=pressableScale(pressing, n, pressto) transition=pressTransition("scale", pressto)
+              background-color="#000000" border-radius=20 corner-shape="-exact-continuous" height=100
+              margin-left=20 margin-right=20 margin-top=10 margin-bottom=10
+              testId=`clerk-card-${n}`
+      // Backdrop: absoluteFill, translateY withSpring(windowHeight - gradientHeight); a
+      // MaskedView windowHeight / 2 tall, its mask a LinearGradient (white 0 → 1 at 0 → 0.55),
+      // over a BlurView (intensity 80, systemChromeMaterialLight). Not exact: the material is
+      // drawn at its full strength (expo-blur's 80 is 0.8 of the effect).
+      view position="absolute" left=0 right=0 top=0 pointer-events="none" aria-hidden=true
+        translate=`0px ${env.height - clerkGradient(live, env.height)}px`
+        transition=`translate ${clerkBackdropSpring()} ${shiftDelay}ms` testId="clerk-backdrop"
+        view height=(env.height / 2) width="100%" backgroundMaterial="chrome-light"
+          mask-image="linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 1) 55%)"
+      for key, i in keys key=key
+        ClerkToastCard(env=env, toastKey=key, kind=clerkNum(kinds, i), k=clerkId(gone, goneK, i),
+          goneMode=clerkNum(gone, i), goneX=clerkNum(goneX, i), dragged=(key == dragKey),
+          shiftDelay=shiftDelay, clear=clearAll)
+      // The toasts' GestureDetectors: one drag layer (its translate is the timeline the dragged
+      // toast follows) under an untransformed, clipping parent; a handle on each of the three
+      // front slots (an older toast lies under the third, which takes the touch).
+      column position="absolute" inset=0 overflow="hidden" pointer-events="none" z-index=2000
+        column id="clerk-drag" width="100%" height="100%" box-sizing="border-box"
+          position="relative" translate="0px 0px" transition="translate -exact-spring(900, 120, 4)"
+          -exact-drag-timeline="--clerkSwipe x"
+          for key, i in keys key=key
+            if clerkNum(gone, i) == 0 and clerkNewer(gone, i) <= 2
+              view position="absolute" left=(w * 0.05) bottom=(50 + clerkBottom(clerkNewer(gone, i)))
+                width=(w * 0.9) height=55 pointer-events="auto" touch-action="none"
+                transformDragFor="clerk-drag" transformgeometry=began(key)
+                transformrelease=released aria-label="Swipe the toast away"
+                testId=`clerk-handle-${key}`
+                // The eighth toast's x is a PressableScale inside the gesture: an unseen copy of
+                // its row, so the press lands where the x is drawn.
+                if clerkNum(kinds, i) == 7
+                  ClerkRow(toastKey=key, kind=7, ghost=true, clear=clearAll)
+
+component ClerkToastCard
+  props
+    env: DemoEnv
+    toastKey: number
+    kind: number
+    k: number
+    goneMode: number
+    goneX: number
+    dragged: bool
+    shiftDelay: number
+    clear: action
+  derive w = env.width
+  view
+    // The Animated.View: width 0.9 w, left 0.05 w, absolute, zIndex 100 - id; `bottom` is a
+    // static BaseSafeArea and the translates below.
+    column position="absolute" left=(w * 0.05) bottom=50 width=(w * 0.9) height=55
+      z-index=(100 - k) pointer-events="none" class=ClerkOut testId=`clerk-toast-${toastKey}`
+      column flex=1 animation=`clerkEnter ${clerkEnterTiming()}`
+        column flex=1 translate=`0px ${0 - clerkBottom(k)}px`
+          transition=`translate ${clerkSpring()} ${shiftDelay}ms`
+          // clearAllStackedToasts: FadeOutLeft.delay(120 × id).
+          column flex=1 animation=(goneMode == 2 ? `clerkClearOut ${clerkTiming()} ${120 * k}ms both` : "none")
+            // translateX: the drag, or where the finger left it, then dismissItem's spring.
+            column flex=1 translate=(goneMode == 1 ? `${goneX}px 0px` : "0px 0px")
+              animation=(dragged ? "clerkSwipeX 1s linear both" : "none")
+              animation-timeline=(dragged ? "--clerkSwipe" : "auto") animation-range="-2000px 0px"
+              column flex=1 translate=(goneMode == 1 ? `${0 - w - goneX}px 0px` : "0px 0px")
+                transition=`translate ${clerkThrow()}`
+                // rVisibleContainerStyle: opacity withTiming(id < 3 ? 1 : 0); 0.9 w × 55, radius
+                // 35 continuous, clipped. rStackedToastStyle's layer shadow (RN's default
+                // offset 0, -3, black; the shape of what it draws) withTiming to radius
+                // max(10 - id × 2.5, 2) (CSS blur twice that) and opacity id > 3 ? 0.1 - id ×
+                // 0.025 : 0.08.
+                column flex=1 border-radius=35 overflow="hidden" opacity=(k < 3 ? 1 : 0)
+                  box-shadow=`0px -3px ${2 * max(10 - k * 2.5, 2)}px rgba(0, 0, 0, ${k > 3 ? max(0, 0.1 - k * 0.025) : 0.08})`
+                  transition=`opacity ${clerkTiming()} ${shiftDelay}ms, box-shadow ${clerkTiming()} ${shiftDelay}ms`
+                  // The children render for id <= MAX_VISIBLE_TOASTS × 1.5.
+                  if k <= 4
+                    ClerkRow(toastKey=toastKey, kind=kind, ghost=false, clear=clear)
+
+component ClerkRow
+  props
+    toastKey: number
+    kind: number
+    ghost: bool
+    clear: action
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
+  view
+    // use-toast.tsx: a LinearGradient #2C2E35 → #26252D (locations 0, 0.9) over #2A292F, flex 1,
+    // a centred row, paddingHorizontal 20.
+    row flex=1 align-items="center" padding-left=20 padding-right=20
+      opacity=(ghost ? 0 : 1) pointer-events=(ghost ? "none" : "auto")
+      background-color=(ghost ? "transparent" : "color(display-p3 0.1647 0.1608 0.1843)")
+      background-image=(ghost ? "none" : "linear-gradient(to bottom, color(display-p3 0.1725 0.1804 0.2078) 0%, color(display-p3 0.149 0.1451 0.1765) 90%)")
+      svg width=16 height=(16 * 518 / 512) viewBox="0 0 512 518" aria-hidden=true
+        path d=clerkIconPath(kind) fill="#ffffff"
+      // styles.internalText: white, SF-Pro-Rounded-Bold 14, marginLeft 10.
+      text clerkTitle(kind) color="#ffffff" font-family="ui-rounded" font-weight=700 font-size=14
+        margin-left=10 testId=(ghost ? `clerk-ghost-title-${toastKey}` : `clerk-title-${toastKey}`)
+      view flex=1
+      if kind == 7
+        // The trailing PressableScale (marginRight 6), Octicons x 16 white.
+        view press=clear pointer-events="auto" margin-right=6 role="button"
+          pointerdown=pressIn(0) pointerup=pressOut
+          scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
+          aria-label="Clear all toasts" testId=(ghost ? `clerk-clear-${toastKey}` : `clerk-x-${toastKey}`)
+          svg width=16 height=(16 * 518 / 512) viewBox="0 0 512 518" aria-hidden=true
+            path d=clerkXPath() fill="#ffffff"

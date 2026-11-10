@@ -1,0 +1,22 @@
+// Add to Cart: a list of 20 product rows, each with a black cart button; a tap flies a button
+// from the row to the bottom of the screen, where it grows into "ADD TO CART" over a dimmed
+// backdrop and a white sheet; confirming counts the item (a red badge) and flies it back.
+// RN: src/animations/add-to-cart (index.tsx, components/list-item, confirm-button, backdrop,
+// bottom-sheet). Everything is one Rust surface, gpu/src/add_to_cart.rs: the FlatList
+// (UIScrollView), the rows, the buttons' Tap and pressto press, the progress spring, the
+// ConfirmButton's per-frame Yoga layout, the backdrop and the sheet. It posts
+// `haptic:selection` at the ConfirmButton's press (the app's PressablesConfig onPress).
+use DemoEnv from "../env.contract"
+
+component AddToCart
+  props
+    env: DemoEnv
+  action buzz(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+  view
+    // styles.container: white, flex 1.
+    column position="absolute" inset=0 background-color="#ffffff" testId="add-to-cart"
+      canvas surface=add_to_cart(env.safeTop) message=buzz position="absolute" top=0 left=0
+        width=env.width height=env.height touch-action="none" testId="add-to-cart-canvas"
+        aria-label="Products; tap a cart button to add the item to your cart"

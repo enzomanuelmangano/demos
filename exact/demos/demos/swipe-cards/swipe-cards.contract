@@ -1,0 +1,85 @@
+// Swipe Cards: a stack of nine photos; the top one follows the finger, tilts with it and is
+// thrown aside past a translation-and-velocity circle (or springs back); the stack below rises
+// one place. Three buttons under it: throw left, reset (the cards come back one after another)
+// and throw right. RN: src/animations/swipe-cards (index.tsx, constants.ts,
+// hooks/use-swipe-controls.ts, components/Card/index.tsx).
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+use DemoEnv from "../env.contract"
+
+// The stack's entering FadeIn: 300 ms on inOut(quad).
+keyframes swipeFadeIn
+  from opacity=0
+  to opacity=1
+
+component SwipeCards
+  props
+    env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
+  // The buttons' presses, counted: the stack (gpu/src/swipe_cards.rs) throws or resets on
+  // each new count (useSwipeControls' swipeLeft, swipeRight and reset).
+  state lefts = 0
+  state rights = 0
+  state resets = 0
+  action swipeLeft
+    pressablesOnPress()
+    lefts = lefts + 1
+  action swipeRight
+    pressablesOnPress()
+    rights = rights + 1
+  action onReset
+    pressablesOnPress()
+    resets = resets + 1
+  view
+    // styles.container: #242831, flex 1.
+    column position="absolute" inset=0 background-color="color(display-p3 0.1412 0.1569 0.1922)" overflow="hidden"
+      testId="swipe-cards"
+      // The stack's Animated.View: entering FadeIn (300 ms on inOut(quad)), one group opacity
+      // over every card. The nine cards, their pan, springs and timings are Rust
+      // (gpu/src/swipe_cards.rs): RN rotates each card before its drag, so the drag runs along
+      // the tilted axes, and its springs start at rest.
+      canvas surface=swipe_cards(env.safeTop, lefts, rights, resets) position="absolute" top=0 left=0
+        width=env.width height=env.height touch-action="none" testId="swipe-cards-stack" aria-label="Swipe the card"
+        animation="swipeFadeIn 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) both"
+      // styles.buttonsContainer: flex 2, a centred row (over the cards, as RN draws it).
+      column position="absolute" inset=0 pointer-events="none"
+        view flex=7 pointer-events="none"
+        row flex=2 align-items="center" justify-content="center" pointer-events="none"
+          // styles.button: 80 tall, aspectRatio 1, #3A3D45, radius 40, boxShadow 0 4 0 10%
+          // black, marginHorizontal 20; AntDesign close 32 white.
+          column pointer-events="auto" width=80 height=80 border-radius=40
+            pointerdown=pressIn(0) pointerup=pressOut
+            scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
+            background-color="color(display-p3 0.2275 0.2392 0.2706)" box-shadow="0px 4px 0px rgba(0, 0, 0, 0.1)"
+            margin-left=20 margin-right=20 align-items="center" justify-content="center"
+            press=swipeLeft role="button" aria-label="Dislike" testId="swipe-left"
+            // AntDesign "close" 32: the vector-icons glyph (512 × 536 units of 512 to the em).
+            svg width=32 height=33.5 viewBox="0 0 512 536" aria-hidden=true
+              path d="M75 82 58 98 141 181 223 263 141 345 58 428 75 444 91 461 174 378 256 296 338 378 421 461 437 444 454 428 371 345 289 263 371 181 454 98 437 82 421 65 338 148 256 230 174 148Q92 66 91.5 66Q91 66 75 82Z" fill="#ffffff"
+          // The reset: height 60, marginHorizontal 10; AntDesign reload 24.
+          column pointer-events="auto" width=60 height=60 border-radius=40
+            pointerdown=pressIn(1) pointerup=pressOut
+            scale=pressableScale(pressing, 1, pressto) transition=pressTransition("scale", pressto)
+            background-color="color(display-p3 0.2275 0.2392 0.2706)" box-shadow="0px 4px 0px rgba(0, 0, 0, 0.1)"
+            margin-left=10 margin-right=10 align-items="center" justify-content="center"
+            press=onReset role="button" aria-label="Reset" testId="reset"
+            // AntDesign "reload" 24: the vector-icons glyph (512 × 536 units of 512 to the em).
+            svg width=24 height=25.125 viewBox="0 0 512 536" aria-hidden=true
+              path d="M243 24Q239 24 232 25Q186 30 144.5 53.5Q103 77 74 114Q36 160 25.5 220Q15 280 34 338Q57 409 117 455Q135 468 156 478Q209 504 269 503Q310 501 347 487Q393 469 429 434.5Q465 400 484 354Q488 343 486 341Q484 339 467 333.5Q450 328 448.5 328.5Q447 329 443 338Q424 384 388 413Q346 448 292 457Q282 459 261 459Q240 459 231 457Q201 452 175 439Q148 426 126 404Q101 380 86 350Q66 309 66 262Q66 216 87 174Q101 145 125 122Q147 101 173 88Q214 67 262 67Q340 67 396 120Q400 123 405 128.5Q410 134 413.5 138Q417 142 416.5 142Q416 142 398.5 155.5Q381 169 380.5 170.5Q380 172 381 174Q382 176 438 190Q486 202 488 200.5Q490 199 490.5 146Q491 93 490 92Q488 88 484 90Q482 91 466 103L451 115L446 109Q432 93 413 77Q376 47 334 34Q301 24 266 24Q246 23 243 24Z" fill="#ffffff"
+          // AntDesign heart 32.
+          column pointer-events="auto" width=80 height=80 border-radius=40
+            pointerdown=pressIn(2) pointerup=pressOut
+            scale=pressableScale(pressing, 2, pressto) transition=pressTransition("scale", pressto)
+            background-color="color(display-p3 0.2275 0.2392 0.2706)" box-shadow="0px 4px 0px rgba(0, 0, 0, 0.1)"
+            margin-left=20 margin-right=20 align-items="center" justify-content="center"
+            press=swipeRight role="button" aria-label="Like" testId="swipe-right"
+            // AntDesign "heart" 32: the vector-icons glyph (512 × 536 units of 512 to the em).
+            svg width=32 height=33.5 viewBox="0 0 512 536" aria-hidden=true
+              path d="M143 43Q149 42 159 42Q206 42 247 69L256 75L265 69Q308 40 358 42Q403 44 441 71Q460 84 474 103Q497 135 502 173Q505 197 500 221Q486 283 423 353Q364 418 277 474Q262 484 256 484Q250 484 233 473Q164 428 106 370Q38 303 18 241Q10 219 10 196Q9 164 20 137Q34 99 67.5 73.5Q101 48 143 43ZM177 87Q185 88 191 90Q209 95 225 107Q241 119 251 134Q256 142 256 142Q256 142 261 134Q271 119 287 107Q303 95 321 90Q384 72 428 117Q459 148 459 190Q459 230 427 279Q379 350 271 426Q257 435 256 435Q254 435 229.5 417.5Q205 400 188 386Q79 296 58 223Q39 161 84 117Q96 104 112 97Q126 90 142 87Q159 84 177 87Z" fill="#ffffff"

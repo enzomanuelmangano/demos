@@ -1,0 +1,16 @@
+at "/demo/dynamic-blur-tabs"
+
+test "the grid under a five-tab bar; another tab shows its empty screen, home the grid again"
+  expect tree has "dynamic-blur-tabs"
+  expect tree has "gradients"
+  expect tree has "tab-bar"
+  expect tree has "tab-bar-blur"
+  expect tree has "tab-home"
+  expect tree has "tab-settings"
+  expect tree missing "screen-search"
+  tap "tab-search"
+  clock settle
+  expect tree has "screen-search"
+  tap "tab-home"
+  clock settle
+  expect tree missing "screen-search"

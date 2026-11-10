@@ -1,0 +1,4 @@
+at "/demo/metaball"
+
+test "the canvas is there"
+  expect tree has "metaball"

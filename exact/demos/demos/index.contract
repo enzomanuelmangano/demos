@@ -1,0 +1,330 @@
+// The demos ported to Exact, by slug. Each lives in demos/<slug>/. Written by tools/gen-index.ts.
+use DemoEnv from "./env.contract"
+use ActionTray from "./action-tray/action-tray.contract"
+use AddToCart from "./add-to-cart/add-to-cart.contract"
+use AirbnbFlipInteraction from "./airbnb-flip-interaction/airbnb-flip-interaction.contract"
+use AlertDrawer from "./alert-drawer/alert-drawer.contract"
+use Animated3dParallax from "./animated-3d-parallax/animated-3d-parallax.contract"
+use AnimatedClipBox from "./animated-clip-box/animated-clip-box.contract"
+use AnimatedCountText from "./animated-count-text/animated-count-text.contract"
+use AnimatedGridList from "./animated-grid-list/animated-grid-list.contract"
+use AnimatedIndicatorList from "./animated-indicator-list/animated-indicator-list.contract"
+use AtlasButton from "./atlas-button/atlas-button.contract"
+use AtlasSphere from "./atlas-sphere/atlas-sphere.contract"
+use AudioPlayer from "./audio-player/audio-player.contract"
+use BalanceSlider from "./balance-slider/balance-slider.contract"
+use BezierCurveOutline from "./bezier-curve-outline/bezier-curve-outline.contract"
+use BlurCards from "./blur-cards/blur-cards.contract"
+use BlurCircles from "./blur-circles/blur-circles.contract"
+use BlurredBottomBar from "./blurred-bottom-bar/blurred-bottom-bar.contract"
+use BlurredScroll from "./blurred-scroll/blurred-scroll.contract"
+use BottomBarSkia from "./bottom-bar-skia/bottom-bar-skia.contract"
+use CalendarDays from "./calendar-days/calendar-days.contract"
+use CardShaderReflections from "./card-shader-reflections/card-shader-reflections.contract"
+use CheckboxInteractions from "./checkbox-interactions/checkbox-interactions.contract"
+use CherryBlossomQrcode from "./cherry-blossom-qrcode/cherry-blossom-qrcode.contract"
+use CircularCarousel from "./circular-carousel/circular-carousel.contract"
+use ClerkToast from "./clerk-toast/clerk-toast.contract"
+use ClockTimePicker from "./clock-time-picker/clock-time-picker.contract"
+use ColorCarousel from "./color-carousel/color-carousel.contract"
+use ComposableText from "./composable-text/composable-text.contract"
+use CoverflowCarousel from "./coverflow-carousel/coverflow-carousel.contract"
+use CubertoSlider from "./cuberto-slider/cuberto-slider.contract"
+use DeleteButton from "./delete-button/delete-button.contract"
+use DotSheet from "./dot-sheet/dot-sheet.contract"
+use DurationSlider from "./duration-slider/duration-slider.contract"
+use DynamicBlurTabs from "./dynamic-blur-tabs/dynamic-blur-tabs.contract"
+use DynamicTabIndicator from "./dynamic-tab-indicator/dynamic-tab-indicator.contract"
+use EmailDemo from "./email-demo/email-demo.contract"
+use EmptyQrCode from "./empty-qr-code/empty-qr-code.contract"
+use EverybodyCanCook from "./everybody-can-cook/everybody-can-cook.contract"
+use ExclusionTabs from "./exclusion-tabs/exclusion-tabs.contract"
+use ExpandableMiniPlayer from "./expandable-mini-player/expandable-mini-player.contract"
+use FamilyNumberInput from "./family-number-input/family-number-input.contract"
+use FibonacciShader from "./fibonacci-shader/fibonacci-shader.contract"
+use FibonacciShaderGrid from "./fibonacci-shader-grid/fibonacci-shader-grid.contract"
+use FloatingBottomBar from "./floating-bottom-bar/floating-bottom-bar.contract"
+use FloatingModal from "./floating-modal/floating-modal.contract"
+use FluidSlider from "./fluid-slider/fluid-slider.contract"
+use FluidTabInteraction from "./fluid-tab-interaction/fluid-tab-interaction.contract"
+use FourierVisualizer from "./fourier-visualizer/fourier-visualizer.contract"
+use FractalGlass from "./fractal-glass/fractal-glass.contract"
+use GeometryButton from "./geometry-button/geometry-button.contract"
+use GithubContributions from "./github-contributions/github-contributions.contract"
+use GithubTerrain from "./github-terrain/github-terrain.contract"
+use GlTransitions from "./gl-transitions/gl-transitions.contract"
+use ImageCropper from "./image-cropper/image-cropper.contract"
+use ImessageStack from "./imessage-stack/imessage-stack.contract"
+use LightOnPainting from "./light-on-painting/light-on-painting.contract"
+use LinearSensors from "./linear-sensors/linear-sensors.contract"
+use LiquidGlassPlayground from "./liquid-glass-playground/liquid-glass-playground.contract"
+use LoadingButton from "./loading-button/loading-button.contract"
+use MagnetSpring from "./magnet-spring/magnet-spring.contract"
+use Metaball from "./metaball/metaball.contract"
+use MilesBarChart from "./miles-bar-chart/miles-bar-chart.contract"
+use MobileInput from "./mobile-input/mobile-input.contract"
+use MotionBlur from "./motion-blur/motion-blur.contract"
+use NotionQrCode from "./notion-qrcode/notion-qrcode.contract"
+use OnlineOffline from "./online-offline/online-offline.contract"
+use PaperFolding from "./paper-folding/paper-folding.contract"
+use ParticlesButton from "./particles-button/particles-button.contract"
+use PopupHandler from "./popup-handler/popup-handler.contract"
+use PrequelSlider from "./prequel-slider/prequel-slider.contract"
+use QrCodeGenerator from "./qr-code-generator/qr-code-generator.contract"
+use RadarChart from "./radar-chart/radar-chart.contract"
+use RecordButton from "./record-button/record-button.contract"
+use ScrollProgress from "./scroll-progress/scroll-progress.contract"
+use ScrollableBottomSheet from "./scrollable-bottom-sheet/scrollable-bottom-sheet.contract"
+use ScrollableShapes from "./scrollable-shapes/scrollable-shapes.contract"
+use SelectableGridList from "./selectable-grid-list/selectable-grid-list.contract"
+use ShakeToDelete from "./shake-to-delete/shake-to-delete.contract"
+use SharedTransitions from "./shared-transitions/shared-transitions.contract"
+use SkiaBottomSheet from "./skia-bottom-sheet/skia-bottom-sheet.contract"
+use SkiaColorPicker from "./skia-color-picker/skia-color-picker.contract"
+use SlideToReveal from "./slide-to-reveal/slide-to-reveal.contract"
+use SmoothDropdown from "./smooth-dropdown/smooth-dropdown.contract"
+use Snake from "./snake/snake.contract"
+use SphereWaves from "./sphere-waves/sphere-waves.contract"
+use Spiral from "./spiral/spiral.contract"
+use SplitButton from "./split-button/split-button.contract"
+use StackedBottomSheet from "./stacked-bottom-sheet/stacked-bottom-sheet.contract"
+use StackedCarousel from "./stacked-carousel/stacked-carousel.contract"
+use StackedList from "./stacked-list/stacked-list.contract"
+use StackedModals from "./stacked-modals/stacked-modals.contract"
+use StaggeredCardNumber from "./staggered-card-number/staggered-card-number.contract"
+use SteddyGraphInteraction from "./steddy-graph-interaction/steddy-graph-interaction.contract"
+use Steps from "./steps/steps.contract"
+use StoryList from "./story-list/story-list.contract"
+use Sudoku from "./sudoku/sudoku.contract"
+use SwipeCards from "./swipe-cards/swipe-cards.contract"
+use TabNavigation from "./tab-navigation/tab-navigation.contract"
+use TelegramThemeSwitch from "./telegram-theme-switch/telegram-theme-switch.contract"
+use TheLittlePrince from "./the-little-prince/the-little-prince.contract"
+use ThemeCanvasAnimation from "./theme-canvas-animation/theme-canvas-animation.contract"
+use ThreadsHoloTicket from "./threads-holo-ticket/threads-holo-ticket.contract"
+use Toast from "./toast/toast.contract"
+use TwitterTabBar from "./twitter-tab-bar/twitter-tab-bar.contract"
+use TwodosSlide from "./twodos-slide/twodos-slide.contract"
+use VerificationCode from "./verification-code/verification-code.contract"
+use WheelPicker from "./wheel-picker/wheel-picker.contract"
+
+component PortedDemo
+  props
+    slug: string
+    env: DemoEnv
+  view
+    column position="absolute" inset=0
+      if slug == "action-tray"
+        ActionTray(env=env)
+      if slug == "add-to-cart"
+        AddToCart(env=env)
+      if slug == "airbnb-flip-interaction"
+        AirbnbFlipInteraction(env=env)
+      if slug == "alert-drawer"
+        AlertDrawer(env=env)
+      if slug == "animated-3d-parallax"
+        Animated3dParallax()
+      if slug == "animated-clip-box"
+        AnimatedClipBox(env=env)
+      if slug == "animated-count-text"
+        AnimatedCountText(env=env)
+      if slug == "animated-grid-list"
+        AnimatedGridList(env=env)
+      if slug == "animated-indicator-list"
+        AnimatedIndicatorList(env=env)
+      if slug == "atlas-button"
+        AtlasButton(env=env)
+      if slug == "atlas-sphere"
+        AtlasSphere(env=env)
+      if slug == "audio-player"
+        AudioPlayer(env=env)
+      if slug == "balance-slider"
+        BalanceSlider(env=env)
+      if slug == "bezier-curve-outline"
+        BezierCurveOutline(env=env)
+      if slug == "blur-cards"
+        BlurCards()
+      if slug == "blur-circles"
+        BlurCircles()
+      if slug == "blurred-bottom-bar"
+        BlurredBottomBar(env=env)
+      if slug == "blurred-scroll"
+        BlurredScroll(env=env)
+      if slug == "bottom-bar-skia"
+        BottomBarSkia(env=env)
+      if slug == "calendar-days"
+        CalendarDays(env=env)
+      if slug == "card-shader-reflections"
+        CardShaderReflections()
+      if slug == "checkbox-interactions"
+        CheckboxInteractions(env=env)
+      if slug == "cherry-blossom-qrcode"
+        CherryBlossomQrcode(env=env)
+      if slug == "circular-carousel"
+        CircularCarousel(env=env)
+      if slug == "clerk-toast"
+        ClerkToast(env=env)
+      if slug == "clock-time-picker"
+        ClockTimePicker()
+      if slug == "color-carousel"
+        ColorCarousel(env=env)
+      if slug == "composable-text"
+        ComposableText()
+      if slug == "coverflow-carousel"
+        CoverflowCarousel(env=env)
+      if slug == "cuberto-slider"
+        CubertoSlider()
+      if slug == "delete-button"
+        DeleteButton()
+      if slug == "dot-sheet"
+        DotSheet(env=env)
+      if slug == "duration-slider"
+        DurationSlider(env=env)
+      if slug == "dynamic-blur-tabs"
+        DynamicBlurTabs(env=env)
+      if slug == "dynamic-tab-indicator"
+        DynamicTabIndicator(env=env)
+      if slug == "email-demo"
+        EmailDemo(env=env)
+      if slug == "empty-qr-code"
+        EmptyQrCode(env=env)
+      if slug == "everybody-can-cook"
+        EverybodyCanCook()
+      if slug == "exclusion-tabs"
+        ExclusionTabs(env=env)
+      if slug == "expandable-mini-player"
+        ExpandableMiniPlayer(env=env)
+      if slug == "family-number-input"
+        FamilyNumberInput(env=env)
+      if slug == "fibonacci-shader"
+        FibonacciShader(env=env)
+      if slug == "fibonacci-shader-grid"
+        FibonacciShaderGrid()
+      if slug == "floating-bottom-bar"
+        FloatingBottomBar(env=env)
+      if slug == "floating-modal"
+        FloatingModal(env=env)
+      if slug == "fluid-slider"
+        FluidSlider(env=env)
+      if slug == "fluid-tab-interaction"
+        FluidTabInteraction(env=env)
+      if slug == "fourier-visualizer"
+        FourierVisualizer(env=env)
+      if slug == "fractal-glass"
+        FractalGlass()
+      if slug == "geometry-button"
+        GeometryButton()
+      if slug == "github-contributions"
+        GithubContributions(env=env)
+      if slug == "github-terrain"
+        GithubTerrain(env=env)
+      if slug == "gl-transitions"
+        GlTransitions(env=env)
+      if slug == "image-cropper"
+        ImageCropper(env=env)
+      if slug == "imessage-stack"
+        ImessageStack(env=env)
+      if slug == "light-on-painting"
+        LightOnPainting()
+      if slug == "linear-sensors"
+        LinearSensors()
+      if slug == "liquid-glass-playground"
+        LiquidGlassPlayground()
+      if slug == "loading-button"
+        LoadingButton()
+      if slug == "magnet-spring"
+        MagnetSpring()
+      if slug == "metaball"
+        Metaball()
+      if slug == "miles-bar-chart"
+        MilesBarChart(env=env)
+      if slug == "mobile-input"
+        MobileInput(env=env)
+      if slug == "motion-blur"
+        MotionBlur(env=env)
+      if slug == "notion-qrcode"
+        NotionQrCode(env=env)
+      if slug == "online-offline"
+        OnlineOffline(env=env)
+      if slug == "paper-folding"
+        PaperFolding()
+      if slug == "particles-button"
+        ParticlesButton(env=env)
+      if slug == "popup-handler"
+        PopupHandler(env=env)
+      if slug == "prequel-slider"
+        PrequelSlider(env=env)
+      if slug == "qr-code-generator"
+        QrCodeGenerator(env=env)
+      if slug == "radar-chart"
+        RadarChart(env=env)
+      if slug == "record-button"
+        RecordButton(env=env)
+      if slug == "scroll-progress"
+        ScrollProgress(env=env)
+      if slug == "scrollable-bottom-sheet"
+        ScrollableBottomSheet(env=env)
+      if slug == "scrollable-shapes"
+        ScrollableShapes()
+      if slug == "selectable-grid-list"
+        SelectableGridList(env=env)
+      if slug == "shake-to-delete"
+        ShakeToDelete(env=env)
+      if slug == "shared-transitions"
+        SharedTransitions(env=env)
+      if slug == "skia-bottom-sheet"
+        SkiaBottomSheet()
+      if slug == "skia-color-picker"
+        SkiaColorPicker(env=env)
+      if slug == "slide-to-reveal"
+        SlideToReveal(env=env)
+      if slug == "smooth-dropdown"
+        SmoothDropdown()
+      if slug == "snake"
+        Snake(env=env)
+      if slug == "sphere-waves"
+        SphereWaves()
+      if slug == "spiral"
+        Spiral()
+      if slug == "split-button"
+        SplitButton()
+      if slug == "stacked-bottom-sheet"
+        StackedBottomSheet(env=env)
+      if slug == "stacked-carousel"
+        StackedCarousel(env=env)
+      if slug == "stacked-list"
+        StackedList(env=env)
+      if slug == "stacked-modals"
+        StackedModals(env=env)
+      if slug == "staggered-card-number"
+        StaggeredCardNumber(env=env)
+      if slug == "steddy-graph-interaction"
+        SteddyGraphInteraction(env=env)
+      if slug == "steps"
+        Steps(env=env)
+      if slug == "story-list"
+        StoryList(env=env)
+      if slug == "sudoku"
+        Sudoku(env=env)
+      if slug == "swipe-cards"
+        SwipeCards(env=env)
+      if slug == "tab-navigation"
+        TabNavigation(env=env)
+      if slug == "telegram-theme-switch"
+        TelegramThemeSwitch(env=env)
+      if slug == "the-little-prince"
+        TheLittlePrince(env=env)
+      if slug == "theme-canvas-animation"
+        ThemeCanvasAnimation()
+      if slug == "threads-holo-ticket"
+        ThreadsHoloTicket()
+      if slug == "toast"
+        Toast(env=env)
+      if slug == "twitter-tab-bar"
+        TwitterTabBar(env=env)
+      if slug == "twodos-slide"
+        TwodosSlide()
+      if slug == "verification-code"
+        VerificationCode()
+      if slug == "wheel-picker"
+        WheelPicker(env=env)

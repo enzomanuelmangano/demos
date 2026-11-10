@@ -1,0 +1,14 @@
+seed 7
+at "/demo/online-offline"
+
+test "a tap moves someone across, and the groups stay"
+  expect tree has "online-offline"
+  expect tree has "online-section"
+  expect tree has "offline-section"
+  tap "online-offline"
+  clock settle
+  tap "online-offline"
+  clock settle
+  expect tree has "avatar-0"
+  expect tree has "avatar-6"
+  expect tree has "online-offline-list"

@@ -1,0 +1,106 @@
+// Steps: three dots over a Back / Continue pair; Continue fills the dots one by one under a green
+// bar that springs to the active one, Back appears after the first step, and the last step turns
+// Continue into a Finish with a check. RN: src/animations/steps (src/index.tsx,
+// src/steps/dots/index.tsx, dots/dot.tsx, src/steps/step-buttons/index.tsx).
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+use DemoEnv from "../env.contract"
+
+// dots/index.tsx: count 3, dotSize 10, dotSpacing 20, externalSpacing = dotSpacing, bar height
+// dotSize + 20. activeWidth = (activeIndex + 1) · dotSize + activeIndex · dotSpacing +
+// externalSpacing, on withSpring() (the default spring).
+fn barWidth(i: number): number = (i + 1) * 10 + i * 20 + 20
+
+// step-buttons/index.tsx: BUTTON_HEIGHT 60, PADDING_HORIZONTAL 20, GAP 10,
+// BACK_BUTTON_WIDTH_RATIO 0.25, ICON_WIDTH 22, ICON_MARGIN_RIGHT 6.
+fn backWidth(w: number): number = (w - 20 * 2 - 10) * 0.25
+// SPRING_CONFIG { duration 250, dampingRatio 1.5 }: bun tools/spring.ts 250 1.5. Both progresses
+// (back: activeIndex > 0, icon: activeIndex == 2) ride it; every value interpolated on them
+// (width, marginRight, opacity) is linear in the progress, so each rides the same spring.
+// ζ 1.5 ≥ 1: Reanimated runs it critically damped, so damping 2√(k·m) = 179.4.
+fn stepSpring(): string = "-exact-spring(2011.7188, 179.4088, 4)"
+
+component Steps
+  props
+    env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
+  state activeIndex = 0
+  // increaseActiveIndex: (activeIndex + 1) % 3.
+  action onContinue
+    pressablesOnPress()
+    activeIndex = (activeIndex + 1) % 3
+  // decreaseActiveIndex: max(0, activeIndex - 1).
+  action onBack
+    pressablesOnPress()
+    activeIndex = max(0, activeIndex - 1)
+  view
+    // src/index.tsx styles.container: white, centred, content at the bottom, paddingBottom 64.
+    column position="absolute" inset=0 background-color="#fff" align-items="center"
+      justify-content="flex-end" padding-bottom=64 testId="steps"
+      // Dots: a row, paddingHorizontal externalSpacing / 2, gap dotSpacing.
+      row padding-left=10 padding-right=10 gap=20 align-items="center" position="relative"
+        testId="dots"
+        // styles.bar: absolute (no insets: Yoga puts it at the row's border edge, centred on the
+        // row), #66e070, radius 100 continuous.
+        view position="absolute" left=0 top=-10 height=30 width=barWidth(activeIndex)
+          background-color="color(display-p3 0.4 0.8784 0.4392)" border-radius=100 corner-shape="-exact-continuous"
+          -exact-layout-transition="-exact-spring(900, 120, 4)" testId="bar"
+        // dot.tsx: dotSize, radius dotSize / 2 continuous; backgroundColor withTiming(white or
+        // rgba(0,0,0,0.15), 200 ms) on Reanimated's default curve inOut(quad).
+        for i in range(3) key=i
+          // Positioned so it paints over the bar, as RN's later sibling does.
+          view width=10 height=10 border-radius=5 corner-shape="-exact-continuous" position="relative"
+            background-color=(activeIndex >= i ? "white" : "rgba(0,0,0,0.15)")
+            transition="background-color 200ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
+            testId=`dot-${i}`
+      // StepButtons styles.container: a row, BUTTON_HEIGHT, marginTop 48, paddingHorizontal 20,
+      // width 100 %.
+      row height=60 margin-top=48 padding-left=20 padding-right=20 align-self="stretch"
+        // rBackButtonStyle: width 0 → backButtonWidth, marginRight 0 → GAP, clipped.
+        view width=(activeIndex > 0 ? backWidth(env.width) : 0)
+          margin-right=(activeIndex > 0 ? 10 : 0) overflow="hidden"
+          -exact-layout-transition=stepSpring() testId="back-clip"
+          // rBackButtonInnerStyle: opacity 0 → 1.
+          view opacity=(activeIndex > 0 ? 1 : 0) transition=`opacity ${stepSpring()}`
+            // styles.button + backButton: rgba(0,0,0,0.08), radius 30 continuous, width
+            // backButtonWidth. backButtonLabel: black, SF-Pro-Rounded-Bold 18, letterSpacing 0.5.
+            button appearance="none" press=onBack testId="back"
+              pointerdown=pressIn(0) pointerup=pressOut
+              scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
+              width=backWidth(env.width) height=60 border-radius=30 corner-shape="-exact-continuous"
+              background-color="rgba(0,0,0,0.08)" display="flex" flex-direction="row"
+              align-items="center" justify-content="center"
+              text "Back" color="black" font-family="SF-Pro-Rounded-Bold" font-size=18
+                letter-spacing=0.5
+        // styles.fill + continueButton: flex 1, #0c86f7.
+        view display="flex" flex-direction="column" flex=1 -exact-layout-transition=stepSpring()
+          button appearance="none" press=onContinue testId="continue"
+            pointerdown=pressIn(1) pointerup=pressOut
+            scale=pressableScale(pressing, 1, pressto) transition=pressTransition("scale", pressto)
+            flex=1 height=60 border-radius=30 corner-shape="-exact-continuous" background-color="color(display-p3 0.0471 0.5255 0.9686)"
+            display="flex" flex-direction="row" align-items="center" justify-content="center"
+            -exact-layout-transition=stepSpring()
+            // styles.labelContainer: a centred row (it moves with the button's resize).
+            row align-items="center" justify-content="center"
+              -exact-layout-transition=stepSpring()
+              // rIconStyle: width 0 → ICON_WIDTH, opacity 0 → 1, marginRight 0 → ICON_MARGIN_RIGHT,
+              // clipped; AntDesign check-circle 16 white.
+              view display="flex" flex-direction="column" width=(activeIndex == 2 ? 22 : 0) margin-right=(activeIndex == 2 ? 6 : 0)
+                opacity=(activeIndex == 2 ? 1 : 0) overflow="hidden" align-items="center"
+                justify-content="center" transition=`opacity ${stepSpring()}`
+                -exact-layout-transition=stepSpring() testId="check"
+                // AntDesign "check-circle" 16: the vector-icons glyph (512 × 536 units of 512 to the em).
+                svg width=16 height=16.75 viewBox="0 0 512 536" aria-hidden=true
+                  path d="M239 8Q304 4 362.5 30.5Q421 57 461 109Q494 153 506 206Q518 262 506.5 317Q495 372 460 417Q398 500 292 517Q279 519 256.5 519Q234 519 221 517Q142 504 84 453Q17 392 2 298Q0 285 0 263Q0 241 2 228Q13 160 51 109Q110 32 203 13Q223 9 239 8ZM283 52Q278 52 261.5 51.5Q245 51 241 51Q238 51 230 52Q211 54 192 60Q142 76 105 113.5Q68 151 53 202Q44 230 44 263Q44 286 48 306Q63 380 122 428Q159 458 204 469Q227 475 256 475Q286 475 309 469Q364 454 403.5 416Q443 378 459 324Q468 296 468 263Q468 230 459 202Q444 151 406 113Q368 75 317 60Q302 55 283 52ZM328 174Q325 176 322.5 178.5Q320 181 276 242Q232 302 230 302Q229 301 211 276Q190 247 186 244Q182 241 165 240Q146 240 145 244Q144 245 146 248Q148 251 183.5 300.5Q219 350 223 352Q236 358 245 348Q246 347 305 264.5Q364 182 366 179Q368 177 367 175L365 173H348Q332 173 328 174Z" fill="white"
+              // continueButtonLabel: white, SF-Pro-Rounded-Bold 18, letterSpacing 0.5. rightLabel:
+              // Finish on the last step.
+              text (activeIndex == 2 ? "Finish" : "Continue") color="white" font-family="SF-Pro-Rounded-Bold"
+                font-size=18 letter-spacing=0.5 -exact-layout-transition=stepSpring()
+                testId="continue-label"

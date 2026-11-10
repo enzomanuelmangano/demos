@@ -1,0 +1,18 @@
+// Loading Button: "Check Transaction" turns into a spinner and "Analyzing Transaction", then
+// into a check and "Transaction Safe" (or a lock and "Transaction Unsafe", every other time),
+// and back after 1.5 s. Inspired by @lochieaxon. RN: src/animations/loading-button (index.tsx,
+// components/loading-button/index.tsx, activity-indicator.tsx). The whole demo is Rust
+// (gpu/src/loading_button.rs): RN's pill follows Yoga every frame while the indicator's box
+// animates, and its PressableScale's LinearTransition restarts at every layout change, which no
+// Contract layout transition expresses.
+
+component LoadingButton
+  // The press's haptic (the app's global pressable handler).
+  action buzz(text: string)
+    if text == "haptic:selection"
+      haptic("selection")
+  view
+    // styles.container: white, centred.
+    column position="absolute" inset=0 background-color="#ffffff" testId="loading-button"
+      canvas surface=loading_button() message=buzz position="absolute" top=0 left=0 width="100%"
+        height="100%" touch-action="none" aria-label="Check Transaction" testId="loading-button-press"

@@ -1,0 +1,16 @@
+at "/demo/sudoku"
+
+// The web host gives a surface no touches: the game, the presses, the cascade, the pad, the
+// confetti and the haptics are the Rust fixture tests' (gpu/src/sudoku.rs); here what the
+// Contract holds at rest.
+test "the canvas fills the screen"
+  expect tree has "sudoku"
+  expect tree has "sudoku-canvas"
+
+test "the New Game alert is declared, closed"
+  clock settle
+  expect tree has "new-game-alert"
+
+test "the Genius alert is declared, closed"
+  clock settle
+  expect tree has "genius-alert"

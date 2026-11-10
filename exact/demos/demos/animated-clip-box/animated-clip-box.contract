@@ -1,0 +1,40 @@
+// Animated Clip Box: two cards whose corner circle floods the card while held (the text turns
+// white with it) and shrinks back on release. RN: src/animations/animated-clip-box (index.tsx,
+// components/clip-box-button/index.tsx, expanded-circle.tsx). Each card's body (white, its
+// shadow) is here; what moves in it is gpu/src/animated_clip_box.rs (one canvas per card): the
+// circle's frame and both colours follow the radius's spring every frame (interpolateColor of
+// `r`), the PressableOpacity fades the circles as one layer, and the description shows only the
+// lines RN's measured Text has room for.
+use DemoEnv from "../env.contract"
+
+component AnimatedClipBox
+  props
+    env: DemoEnv
+  view
+    // styles.container: white, centred. boxWidth = window width × 0.9.
+    column position="absolute" inset=0 background-color="#ffffff" align-items="center" justify-content="center"
+      testId="animated-clip-box"
+      ClipBoxButton(boxWidth=env.width * 0.9, marginBottom=30, card=0, testId="explore",
+        label="Explore Demos. Perfect for learning how React Native Reanimated works, prototyping a new idea, or creating a demo to share online.")
+      ClipBoxButton(boxWidth=env.width * 0.9, marginBottom=0, card=1, testId="learn",
+        label="Learn More. What if I tell you that this text is animated with React Native Reanimated?")
+
+component ClipBoxButton
+  props
+    boxWidth: number
+    marginBottom: number
+    card: number
+    label: string
+    testId: string
+  inject
+    pressablesOnPress: action
+  // pressto's global onPress (the selection haptic) for a press of the card or its action.
+  action heard(m: string)
+    if m == "haptic:selection"
+      pressablesOnPress()
+  view
+    // styles.button: white, boxShadow 0 0 20 rgba(0,0,0,0.15), height 250, width boxWidth.
+    column width=boxWidth height=250 margin-bottom=marginBottom background-color="#ffffff"
+      box-shadow="0px 0px 20px rgba(0, 0, 0, 0.15)" position="relative" testId=testId
+      canvas surface=animated_clip_box(card) message=heard position="absolute" left=0 top=0
+        width=boxWidth height=250 touch-action="none" testId=`${testId}-canvas` aria-label=label

@@ -1,0 +1,6 @@
+at "/demo/animated-clip-box"
+
+test "both cards are there"
+  expect tree has "animated-clip-box"
+  expect tree has "explore-canvas"
+  expect tree has "learn-canvas"
