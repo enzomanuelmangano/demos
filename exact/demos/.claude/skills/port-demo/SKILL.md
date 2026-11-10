@@ -260,6 +260,40 @@ One commit per haptic event, never per frame.
 - RN Metro on 8082 can stop seeing edits (watchman here fails to load: libfmt.10.dylib missing),
   and serves the old transform after a reload: grep the served bundle before trusting an
   instrumentation run.
+- A canvas that overhangs its box inside a Contract `scroll` (a shadow's reach, `left=-48`)
+  widens the scroll's content: the list then scrolls sideways (email-demo, all rows cut on the
+  left after a horizontal drag). Give the `scroll` `overflow-x="hidden"` and its content column
+  `width="100%" overflow-x="clip"`. A canvas with no input inside a Contract scroll does not
+  take its drags: the native UIScrollView still scrolls over it (no `ui_scroll` needed).
+- Yoga rounds each node's position RELATIVE to its parent (half up; a Text's floored) and its
+  size from the unrounded absolute edges, so an inset of 0.5 (a 0.5 border) puts the children at
+  0.667 and nested centring can land a third of a point off a whole-tree rounding. email-demo's
+  labels: title at 18, subtitle at 42.333 (pixel-exact only with the per-parent sum).
+- `exact_gpu::fixture` on the Mac draws San Francisco from the Mac's own SF file: text positions
+  read from a fixture can be a pixel off the simulator's. Judge text placement on device.
+- A RN Text's `lineHeight` (TextKit min = max line height, NSBaselineOffset (lineHeight −
+  UIFont.lineHeight) / 2): the glyphs' baseline is offset + ascent below the box top (text probe:
+  15.332 for SF 15 at lineHeight 20).
+- A bundled font's `trak` table is NOT applied to an RN Text (SF-Pro-Rounded-Heavy at 32 was
+  0.375 pt a glyph wider with it, +24 units); `Font::with_ui_layout` applies it when present, so
+  drop `trak` from a bundled subset (fontTools' subsetter does). The system font's is applied.
+- expo-image ignores `borderCurve` (ListItem's own TODO): its radius is circular, measured. It
+  downscales a larger photo with `UIGraphicsImageRenderer` at the view's pixel size before Core
+  Animation shows it 1:1: run that once on the simulator and bundle the result (email-demo).
+- expo-linear-gradient's layer masks to its bounds, so RN draws its border and radius with Core
+  Animation (circular unless borderCurve), and its colours are a CG gradient in DeviceRGB from
+  start × size to end × size (isolines perpendicular to that axis, not CSS's corner-to-corner).
+- RN's border on a view that does not clip (translucent or not) is RCTBorderDrawing's ring with
+  circular corners over the background layer (which keeps the view's cornerCurve); only a
+  clipping view (or a hidden border) gets Core Animation's border.
+- Reanimated `withSpring(v, { velocity })` starts from the running animation's velocity PLUS
+  `velocity` (just `velocity` from rest), then drops it when it points away from the target: a
+  flip back from rest starts from 0 (airbnb-flip-interaction).
+- expo-blur at intensity 0 shows no effect even though its fraction clamps to 0.01 (the page
+  under airbnb's BlurView is sharp at rest): treat intensity ≤ 0 as none.
+- A Core Animation layer moved by translateY (a Keyframe on a View of text) is its backing store
+  resampled at the fractional offset, not glyphs re-rasterised: pre-render such a layer and
+  sample it bilinearly (airbnb's pages).
 
 ## 4. Check
 
@@ -277,10 +311,10 @@ finger), magnet-spring (2D distance per frame to nine magnets).
 ## Parity debts (ported, with a known gap to revisit, likely in Rust)
 
 - Animated blur intensity (expo-blur `intensity` driven by Reanimated): Exact's materials and
-  `backdrop-filter` don't animate. airbnb-flip-interaction (the description's pulse: its pages
-  would have to move into Rust with it). The fix is `skia::backdrop` (UIKit's partially animated blur, measured by
+  `backdrop-filter` don't animate. The fix is `skia::backdrop` (UIKit's partially animated blur, measured by
   `exact/parity-tools/blur-probe`): a Rust surface draws what is under the BlurView and runs the
-  tint's chain at intensity / 100 (blurred-bottom-bar, dynamic-blur-tabs, bezier-curve-outline).
+  tint's chain at intensity / 100 (blurred-bottom-bar, dynamic-blur-tabs, bezier-curve-outline,
+  airbnb-flip-interaction).
 - `border-radius` doesn't animate: draw the body in Rust under the Contract content
   (alert-drawer, dot-sheet: `alert_drawer_card.rs`, `dot_sheet_card.rs`).
 - liquid-glass-playground: progressive haptics every 5 px of drag (needs per-move logic).
