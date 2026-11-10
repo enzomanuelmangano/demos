@@ -84,3 +84,4 @@ theme-canvas-animation
 toast
 twitter-tab-bar
 verification-code
+wheel-picker

@@ -86,6 +86,7 @@ use ThemeCanvasAnimation from "./theme-canvas-animation/theme-canvas-animation.c
 use Toast from "./toast/toast.contract"
 use TwitterTabBar from "./twitter-tab-bar/twitter-tab-bar.contract"
 use VerificationCode from "./verification-code/verification-code.contract"
+use WheelPicker from "./wheel-picker/wheel-picker.contract"
 
 component PortedDemo
   props
@@ -265,3 +266,5 @@ component PortedDemo
         TwitterTabBar(env=env)
       if slug == "verification-code"
         VerificationCode()
+      if slug == "wheel-picker"
+        WheelPicker(env=env)

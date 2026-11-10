@@ -57,7 +57,7 @@ pub fn surface() -> Box<dyn Surface> {
         clamped: Timing::at(0.0),
         last_clamped: f64::NAN,
         context: 0.0,
-        pan: PanGesture::new(),
+        pan: PanGesture::new().uikit(),
         line_index: -1,
         count: 0,
         posted: Vec::new(),
@@ -216,9 +216,14 @@ impl Surface for WheelPicker {
             self.gradient = Some(Paint::shader(Shader::Linear { start: point(0.0, 0.0), end: point(w as f32, 0.0), stops: stops(&[white, clear, clear, clear, white]) }));
         }
         let now = frame.now_ms;
-        // The spacing, then its reaction (keeps the tick), then the offsets and theirs.
+        // The spacing, then its reaction (keeps the tick), then the offsets and theirs. The
+        // progress reaction hears an offset the spacing reaction set one frame later, against
+        // that frame's progressWidth (Reanimated runs a reaction a mapper's write dirtied on the
+        // next pass): expanding at tick 6 rolls the count 6 → 5 → 6, collapsing 6 → 8 → 7 → 6,
+        // as the RN app does (recorded on the sim).
         let prev = self.space.value;
         let mut moving = self.space.step(now);
+        self.react();
         if self.space.value != prev {
             let curr = self.space.value;
             let tick = ((w / 2.0 - self.clamped.value) / prev).round();
@@ -227,7 +232,11 @@ impl Surface for WheelPicker {
         }
         moving |= self.scroll.step(now);
         moving |= self.clamped.step(now);
-        self.react();
+        if self.space.value == prev {
+            // A pan's or the snap's offsets are heard this frame (the spacing is at rest).
+            self.react();
+        }
+        moving |= self.clamped.value != self.last_clamped;
 
         let c = &mut self.canvas;
         c.begin(frame.scale);
@@ -297,24 +306,26 @@ mod tests {
         let finger = |s: &mut Box<dyn Surface>, phase, x, at_ms| {
             s.input(&InputEvent::Pointer { id: 1, phase, x, y: 75.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
         };
-        // Drag left 103 pt slowly: offset 210 − 103 → 5.15 lines; the haptics and counts posted.
+        // Drag left 103 pt slowly; the pan activates 10.3 pt in (UIKit's translation starts
+        // there): offset 210 − 92.7 → 4.6 lines; the haptics and counts posted.
         finger(&mut s, PointerPhase::Down, 300.0, 0.0);
         for i in 1..=10 {
             finger(&mut s, PointerPhase::Move, 300.0 - 10.3 * i as f32, 30.0 * i as f64);
         }
         finger(&mut s, PointerPhase::Move, 197.0, 600.0);
         let posted = s.messages();
-        assert!(posted.contains(&"count:6".to_string()), "{posted:?}");
-        assert_eq!(posted.iter().filter(|m| *m == "haptic:selection").count(), 6, "{posted:?}");
+        assert!(posted.contains(&"count:5".to_string()), "{posted:?}");
+        assert_eq!(posted.iter().filter(|m| *m == "haptic:selection").count(), 5, "{posted:?}");
         finger(&mut s, PointerPhase::Up, 197.0, 700.0);
         let mut ms = 700.0;
         while ms < 2500.0 {
             ms += 16.0;
             fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         }
-        // Snapped to 5 lines (offset 110): count 5.
-        assert!(s.agent("{}").unwrap().contains("\"count\":5,\"offset\":110.00"), "{}", s.agent("{}").unwrap());
-        // Expanding keeps tick 5 (offset 210 − 250 = −40), no count change.
+        // The finger rested 300 ms, but UIKit's velocity is the last move's (343 pt/s, as on RN):
+        // snapPoint projects 92.7 + 0.2 · 343 = 161 → 8 lines (offset 50): count 8.
+        assert!(s.agent("{}").unwrap().contains("\"count\":8,\"offset\":50.00"), "{}", s.agent("{}").unwrap());
+        // Expanding keeps tick 8 (offset 210 − 400 = −190), no count change.
         s.bind(&[Value::Bool(true)], None).unwrap();
         s.messages();
         while ms < 4000.0 {
@@ -324,6 +335,6 @@ mod tests {
         let (expanded, animating) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         expanded.save("wheel-picker-expanded");
         assert!(!animating);
-        assert!(s.agent("{}").unwrap().contains("\"count\":5,\"offset\":-40.00,\"space\":50.00"), "{}", s.agent("{}").unwrap());
+        assert!(s.agent("{}").unwrap().contains("\"count\":8,\"offset\":-190.00,\"space\":50.00"), "{}", s.agent("{}").unwrap());
     }
 }
