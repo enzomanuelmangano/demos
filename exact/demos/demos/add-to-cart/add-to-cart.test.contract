@@ -1,0 +1,7 @@
+at "/demo/add-to-cart"
+
+// The web host gives a surface no touches: the list, the taps, the flight, the confirm press
+// and its haptic are the Rust tests' (gpu/src/add_to_cart.rs); here what the Contract holds.
+test "the canvas fills the white screen"
+  expect tree has "add-to-cart"
+  expect tree has "add-to-cart-canvas"

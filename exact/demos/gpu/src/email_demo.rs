@@ -215,7 +215,7 @@ fn text_side(v: f32, scale: f32) -> f32 {
 
 /// TextKit's word wrapping with `letterSpacing` (NSKern after every glyph): a break after spaces
 /// (which hang) and after a hyphen between letters; a line holds what fits in `width`.
-fn wrap(font: &Font, text: &str, spacing: f32, width: f32, out: &mut Vec<(usize, usize)>) {
+pub(crate) fn wrap(font: &Font, text: &str, spacing: f32, width: f32, out: &mut Vec<(usize, usize)>) {
     out.clear();
     let mut breaks: Vec<(usize, usize)> = Vec::new();
     let bytes: Vec<(usize, char)> = text.char_indices().collect();

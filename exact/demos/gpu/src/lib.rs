@@ -22,6 +22,7 @@ pub mod gooey;
 pub mod qr;
 pub mod ui_scroll;
 
+pub mod add_to_cart;
 pub mod airbnb_flip_card;
 pub mod airbnb_flip_pages;
 pub mod alert_drawer_card;
@@ -64,6 +65,7 @@ pub mod fractal_glass;
 pub mod geometry_button;
 pub mod github_contributions;
 pub mod gl_transitions;
+pub mod image_cropper;
 pub mod imessage_stack;
 pub mod light_on_painting;
 pub mod linear_sensors;
@@ -105,6 +107,7 @@ pub mod wheel_picker;
 /// The module's surfaces and its reflected shaders.
 pub static REGISTRY: Registry = Registry {
     surfaces: &[
+        ("add_to_cart", 1, add_to_cart::surface),
         ("airbnb_flip_card", 1, airbnb_flip_card::surface),
         ("airbnb_flip_pages", 2, airbnb_flip_pages::surface),
         ("alert_drawer_card", 1, alert_drawer_card::surface),
@@ -147,6 +150,7 @@ pub static REGISTRY: Registry = Registry {
         ("geometry_button", 0, geometry_button::surface),
         ("github_contributions", 0, github_contributions::surface),
         ("gl_transitions", 4, gl_transitions::surface),
+        ("image_cropper", 0, image_cropper::surface),
         ("imessage_stack", 0, imessage_stack::surface),
         ("light_on_painting", 4, light_on_painting::surface),
         ("linear_sensors", 0, linear_sensors::surface),
