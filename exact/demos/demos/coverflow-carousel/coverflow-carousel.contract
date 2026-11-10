@@ -91,9 +91,9 @@ component CoverItem
       // transform [translateX, scaleY], opacity.
       view width=item() height=120 opacity=fade(a) translate=`${shiftX(u)}px 0px`
         rotate=`x ${squashDeg(scaleY(a))}deg`
-        view width=item() height=120 overflow="hidden" border-radius=radiusOf(a) corner-shape="squircle"
+        view width=item() height=120 overflow="hidden" border-radius=radiusOf(a) corner-shape="-exact-continuous"
           translate=`${inset}px 0px`
-          view width=item() height=120 overflow="hidden" border-radius=radiusOf(a) corner-shape="squircle"
+          view width=item() height=120 overflow="hidden" border-radius=radiusOf(a) corner-shape="-exact-continuous"
             translate=`${0 - 2 * inset}px 0px`
             // expo-image contentFit cover, 160 wide at 4 / 3.
             image uri width=item() height=120 object-fit="cover" translate=`${2 * inset}px 0px`
