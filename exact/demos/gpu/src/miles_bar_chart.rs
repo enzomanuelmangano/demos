@@ -40,7 +40,7 @@ pub fn surface() -> Box<dyn Surface> {
         scroll: None,
         active: 0,
         posted: Vec::new(),
-        font: Font::new(FIRA, SIZE),
+        font: Font::new(FIRA, SIZE).map(Font::with_ui_layout),
         canvas: Canvas::default(),
         renderer: Renderer::default(),
     })

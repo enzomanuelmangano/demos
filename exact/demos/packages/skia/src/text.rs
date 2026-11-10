@@ -77,7 +77,11 @@ pub struct FontMetrics {
 }
 
 impl Font {
-    /// `useFont(require(file), size)`: the first face of a TrueType/OpenType file.
+    /// `useFont(require(file), size)`: the first face of a TrueType/OpenType file, for RN Skia's
+    /// `<Text>` (Skia's glyph masks and gamma pre-blend). A font standing in for an RN `<Text>`
+    /// (a label, an @expo/vector-icons glyph, a ReText) must be `.with_ui_layout()`: UIKit draws
+    /// those with raw coverage, and Skia's pre-blend makes them 5-20 % heavier (measured against
+    /// the text probe's colour cases).
     pub fn new(data: &'static [u8], size: f32) -> Option<Font> {
         Font::with_variations(data, size, &[])
     }
