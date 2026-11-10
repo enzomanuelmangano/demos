@@ -100,6 +100,11 @@ One commit per haptic event, never per frame.
   expo-image centre it; Contract has no `object-position`). When the photo is taller than its box
   at cover scale, lay the cover box out by hand: a clip box, the image absolute at
   `max(w/iw, h/ih)` × its size, centred (see swipe-cards). Horizontal crops: unchecked, check for a left pin too.
+- `transformgeometry` is NOT a touch-down: it fires when the drag binds (the handle mounts or its
+  geometry changes, deduplicated). To know which item a drag holds, key the handle by the item
+  (`for k in [frontKey] key=k` or one handle per item, `transformgeometry=began(k)`), so a new
+  front rebinds; for RN's onBegin (isSwiping) use `pointerdown` / `pointerup` on the handle
+  (toast: the drag held the oldest toast until this).
 - Text line height: an RN Text with no `lineHeight` is laid out by TextKit at the font's
   unrounded hhea line height, (ascender + descender + lineGap) / unitsPerEm × font size (SF:
   (1950 + 494) / 2048, so 16.70703125 at 14, 23.8671875 at 20, every weight). Exact's `normal`
