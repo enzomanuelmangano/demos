@@ -35,6 +35,8 @@ pub enum Material {
     SystemMaterialDark,
     /// `tint="systemUltraThinMaterialLight"`.
     SystemUltraThinMaterialLight,
+    /// `tint="light"` → `.light` (not adaptive: the same in either appearance).
+    Light,
 }
 
 /// A style's backdrop at full strength, as the probe read it from the layer tree.
@@ -76,6 +78,15 @@ impl Material {
                 brightness: 0.12,
                 tint: None,
             },
+            // [gaussianBlur 30, colorSaturate 1.8], scale 0.125; a white (extended gray 1.0)
+            // α 0.3 `sourceOver` layer whose opacity the animator runs from 0, like `.regular`'s
+            // (blur-probe dump, iOS 27.0 Simulator, fractions 0.01 … 1). Under an ancestor with
+            // alpha a < 1 the effect view is not switched off: the ancestor composites as a
+            // group, so the pixel is bg × (1 − a) + a × E, E the chain over what is behind the
+            // effect at full opacity, the group's own earlier content included (probe: a black
+            // circle in and behind a parent of alpha 0.5 and 0.2 at fractions 0.125 and 0.25,
+            // centre 141 / 210 vs 0.5 × 255 + 0.5 × 28 and 0.8 × 255 + 0.2 × 28).
+            Material::Light => Chain { radius: 30.0, scale: 0.125, blur_first: true, curve: None, saturation: 1.8, brightness: 0.0, tint: Some((1.0, 0.3)) },
         }
     }
 }
@@ -493,7 +504,19 @@ mod tests {
             Material::Regular => "regular",
             Material::SystemMaterialDark => "systemMaterialDark",
             Material::SystemUltraThinMaterialLight => "systemUltraThinMaterialLight",
+            Material::Light => "light",
         }
+    }
+
+    #[test]
+    fn light_is_the_probes_chain() {
+        // The probe's presentation values at 0.2 and 0.65: radius 6 / 19.5, saturate 1.16 /
+        // 1.52, scale 0.825 / 0.43125, the white layer's opacity 0.2 / 0.65 of its 0.3.
+        let p = Material::Light.chain().at(0.2);
+        assert!((p.radius - 6.0).abs() < 1e-5 && (p.saturation - 1.16).abs() < 1e-6 && (p.scale - 0.825).abs() < 1e-6);
+        assert!((p.tint_grey - 1.0).abs() < 1e-6 && (p.tint_alpha - 0.06).abs() < 1e-6);
+        let p = Material::Light.chain().at(0.65);
+        assert!((p.radius - 19.5).abs() < 1e-4 && (p.saturation - 1.52).abs() < 1e-6);
     }
 
     /// The probe's patch means: (kind, style, fraction) → 24 colours.
