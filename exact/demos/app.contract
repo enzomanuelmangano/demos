@@ -27,6 +27,10 @@ shape Time
 // that holds the canvas's first frames.
 fn ownsDrags(slug: string): bool = ["metaball", "magnet-spring", "swipe-cards", "animated-3d-parallax", "record-button", "sphere-waves", "skia-bottom-sheet", "atlas-sphere", "floating-modal", "expandable-mini-player", "selectable-grid-list", "skia-color-picker", "duration-slider", "clock-time-picker", "wheel-picker", "bezier-curve-outline", "prequel-slider", "scrollable-shapes", "twodos-slide", "color-carousel", "fibonacci-shader-grid", "fourier-visualizer", "card-shader-reflections", "threads-holo-ticket", "light-on-painting", "gl-transitions", "qr-code-generator"].includes(slug)
 
+// The keyboard over a demo: RN moves nothing for it unless a demo says so (KeyboardAvoidingView,
+// or cherry-blossom-qrcode's input riding useKeyboardHandler's height, which a keyboard toolbar
+// is here), where the host's default resizes the screen above the keys.
+fn overlaysKeyboard(slug: string): bool = ["cherry-blossom-qrcode"].includes(slug)
 // Demos whose GPU surface reads the gravity sensor while it shows (RN: useAnimatedSensor).
 fn tilts(slug: string): bool = slug == "linear-sensors"
 // Demos whose GPU surface reads the attitude (RN: useAnimatedSensor(SensorType.ROTATION)).
@@ -85,6 +89,7 @@ component Demos
   view
     main testId="root" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow
       width="100%" height="100%" background-color="#000000" color-scheme="dark" viewport-fit="cover"
+      interactive-widget=(top(nav).name == "demo" and overlaysKeyboard(top(nav).params.slug) ? "overlays-content" : "resizes-content")
       for e in stack(nav) key=e.id
         if e.name == "home"
           column navigationKey=`${e.id}` navigationBar="none" position="absolute" inset=0
