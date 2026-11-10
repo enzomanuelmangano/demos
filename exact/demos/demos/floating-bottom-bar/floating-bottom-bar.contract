@@ -44,7 +44,7 @@ component FloatingBottomBar
       // radius 20 continuous, a row with paddingHorizontal 5% (of the screen, its parent).
       row position="absolute" left=((env.width - barWidth(env.width)) / 2) bottom="env(safe-area-inset-bottom)"
         width=barWidth(env.width) height=65 box-sizing="border-box" padding-left=(0.05 * env.width)
-        padding-right=(0.05 * env.width) background-color="#000000" border-radius=20 corner-shape="squircle"
+        padding-right=(0.05 * env.width) background-color="#000000" border-radius=20 corner-shape="-exact-continuous"
         testId="tab-bar"
         // The ShaderLight: absolute at left 0.05 × tabBarWidth, zIndex 10, 65 tall, one tab
         // wide; translateX selectedAnimatedIndex × singleTabWidth on withSpring() (Gentle).
