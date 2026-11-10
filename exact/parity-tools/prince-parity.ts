@@ -3,7 +3,7 @@
 // for number with what the surface computed.
 //
 //   PRINCE_DUMP=/tmp/prince.json cargo test -q -p demos-gpu prince_dump
-//   bun tools/prince-parity.ts /tmp/prince.json
+//   bun ../parity-tools/prince-parity.ts (from exact/demos; outside the app so its TS stage skips it) /tmp/prince.json
 //
 // Inputs given to RN's code: prince.png's own RGBA samples (decoded by PIL, no colour
 // conversion, as Skia's readPixels with no colour space returns them), the font's advances
@@ -14,7 +14,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const root = resolve(import.meta.dir, '../../..');
+const root = resolve(import.meta.dir, '../..');
 const morph = resolve(root, 'src/animations/text-image-morph');
 
 Bun.plugin({
