@@ -5,6 +5,7 @@ use Springboard from "./home/springboard.contract"
 use DemoScreen from "./home/demo-screen.contract"
 use DemoEnv from "./demos/env.contract"
 use startSensorInput, stopSensorInput, SensorInput from "@exact/motion"
+use defaultPressablesConfig from "pressto"
 
 routes nav
   home "/"
@@ -88,6 +89,13 @@ component Demos
   action redirect
     nav = replace(nav, linkPath(searchParam(top(nav), "u")))
 
+  // <PressablesConfig globalHandlers={{ onPress: () => Haptics.selectionAsync() }}> around
+  // the app (app/_layout.tsx): pressto's default timing and config, and the global onPress.
+  action pressablesOnPress
+    haptic("selection")
+  provide
+    pressto = defaultPressablesConfig()
+    pressablesOnPress
   view
     main testId="root" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow
       width="100%" height="100%" background-color="#000000" color-scheme="dark" viewport-fit="cover"
