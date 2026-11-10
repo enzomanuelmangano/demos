@@ -28,13 +28,21 @@ component RecordButton
     if on and not activated
       haptic("impact-light")
     activated = on
-  // snapToInterval={WindowHeight}: where the scroll rests between the pages, the nearer one.
+  // shouldEnableSnapping: onScrollBeginDrag's progress < 0.9, read where the scroll last
+  // rested on a page (a drag begins from there).
+  state snapping = true
+  // snapToInterval={WindowHeight}: where the scroll rests between the pages, the nearer one;
+  // and onScrollEndDrag: progress > 0.97 with snapping on goes to the TopScreen
+  // (scrollToIndex({ index: 1 })). Contract has no drag-end event, so both are decided once
+  // the scroll stops (the same moment for a release with nothing thrown).
   action settle
     if offset > 0.5 and offset < env.height - 0.5
-      if offset >= env.height / 2
+      if (snapping and progressOf(offset, env.height) > 0.97) or offset >= env.height / 2
         scrollIntoView("record-top-page", behavior="smooth")
       else
         scrollIntoView("record-home-page", behavior="smooth")
+    else
+      snapping = progressOf(offset, env.height) < 0.9
   // onButtonPress: scrollToIndex({ index: 0 }), animated.
   action press
     haptic("selection")
