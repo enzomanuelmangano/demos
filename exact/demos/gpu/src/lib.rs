@@ -76,6 +76,7 @@ pub mod spiral;
 pub mod stacked_carousel;
 pub mod steddy_graph_interaction;
 pub mod story_list;
+pub mod sudoku;
 pub mod swipe_cards;
 pub mod telegram_lottie;
 pub mod telegram_theme_switch;
@@ -143,6 +144,7 @@ pub static REGISTRY: Registry = Registry {
         ("stacked_carousel", 0, stacked_carousel::surface),
         ("steddy_graph_interaction", 1, steddy_graph_interaction::surface),
         ("story_list", 0, story_list::surface),
+        ("sudoku", 3, sudoku::surface),
         ("swipe_cards", 4, swipe_cards::surface),
         ("telegram_theme_switch", 1, telegram_theme_switch::surface),
         ("the_little_prince", 2, the_little_prince::surface),

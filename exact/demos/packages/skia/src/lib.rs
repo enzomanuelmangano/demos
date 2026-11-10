@@ -1490,11 +1490,27 @@ pub fn continuous_radius(w: f32, h: f32, r: f32) -> f32 {
 /// Appends a rounded rect with continuous corners (RN's `borderRadius` + `borderCurve:
 /// 'continuous'`, iOS's squircle) to a builder, clockwise from the top edge.
 pub fn add_continuous_rrect<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, x: f32, y: f32, w: f32, h: f32, r: f32) {
+    continuous_rrect_wound(b, x, y, w, h, r, false);
+}
+
+/// [`add_continuous_rrect`] wound the other way (mirrored about its horizontal centre line, the
+/// same shape): a hole under the nonzero rule, as the inner edge of a Core Animation border
+/// (the continuous rounded rect less the one inset by the border's width).
+pub fn add_continuous_rrect_hole<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, x: f32, y: f32, w: f32, h: f32, r: f32) {
+    continuous_rrect_wound(b, x, y, w, h, r, true);
+}
+
+fn continuous_rrect_wound<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, x: f32, y: f32, w: f32, h: f32, r: f32, hole: bool) {
     let r = continuous_radius(w, h, r);
     if r <= 0.0 {
-        add_rect(b, x, y, w, h);
+        if hole {
+            b.add_rectangle(&lyon::math::Box2D::new(point(x, y), point(x + w, y + h)), Winding::Negative);
+        } else {
+            add_rect(b, x, y, w, h);
+        }
         return;
     }
+    let flip = |p: Point| if hole { point(p.x, 2.0 * y + h - p.y) } else { p };
     let e = CONTINUOUS_EXTENT * r;
     // Each corner: its point, the incoming side's direction (unit), the outgoing side's.
     let corners = [
@@ -1503,9 +1519,9 @@ pub fn add_continuous_rrect<B: lyon::path::traits::PathBuilder>(b: &mut lyon::pa
         (point(x, y + h), vector(-1.0, 0.0), vector(0.0, -1.0)),
         (point(x, y), vector(0.0, -1.0), vector(1.0, 0.0)),
     ];
-    b.begin(point(x + e, y));
+    b.begin(flip(point(x + e, y)));
     for (corner, incoming, outgoing) in corners {
-        let at = |[a, c]: [f32; 2]| corner - incoming * (a * r) + outgoing * (c * r);
+        let at = |[a, c]: [f32; 2]| flip(corner - incoming * (a * r) + outgoing * (c * r));
         // The side's straight part (backwards when the corners overlap, as Apple's path).
         b.line_to(at([CONTINUOUS_EXTENT, 0.0]));
         for [c1, c2, to] in CONTINUOUS_CORNER {
