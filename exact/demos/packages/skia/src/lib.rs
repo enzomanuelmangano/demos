@@ -3,12 +3,14 @@
 //! A demo records its Skia `<Canvas>` into a [`Canvas`] each frame, as its JSX declares it:
 //! paths (fill or stroke), circles, rects and rounded rects, with a [`Paint`] (a colour or a
 //! linear, radial or sweep gradient), under transforms, opacity and clips. [`Renderer::draw`]
-//! puts the frame into the surface's target: one vertex buffer, one pipeline, MSAA 4×.
-//!
-//! Paths are tessellated by lyon on the CPU (in local space, then transformed), so nothing
-//! needs compute or indirect dispatch: it runs the same on a phone and in the iOS Simulator.
-//! Gradients are evaluated per pixel in the shader, interpolated as Skia does (unpremultiplied
-//! sRGB). Clips are stencil levels.
+//! puts the frame into the surface's target, antialiased as RN Skia's Graphite (Skia m157 on
+//! Dawn/Metal) does it ([`graphite`]): rects, rounded rects, circles, ovals and lines, filled
+//! or stroked, through AnalyticRRectRenderStep's mesh and coverage; paths through its curve
+//! subdivision, stencil-and-cover fills and stroke tessellator with 4× MSAA, the pass
+//! multisampled only when such a draw is in it; clips folded into the draw, scissored, one
+//! analytic, or drawn into depth. Everything is tessellated on the CPU, so nothing needs compute
+//! or indirect dispatch: it runs the same on a phone and in the iOS Simulator. Gradients are
+//! evaluated per pixel in the shader, interpolated as Skia does (unpremultiplied sRGB).
 //!
 //! Text is [`Font`] + [`Canvas::draw_text`] (glyph outlines filled as paths); SVG path strings
 //! are [`path_from_svg`]; `<FitBox>` is [`fit_box`]; `<CornerPathEffect>` on a polyline is

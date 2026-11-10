@@ -76,8 +76,12 @@ bun exact.mjs ios --run --sim $EXACT_SIM                         # native build 
 - Never let a surface publish state that changes route props (`closedby`, presentation)
   during a gesture: the commit held the canvas's first frames ~1 s. Per-demo policy is
   static (`ownsDrags` in app.contract).
-- Skia drawing goes through `packages/skia` (lyon tessellation + one MSAA pipeline): vello
-  was tried and fails on the iOS Simulator (no indirect dispatch), so don't reach for it.
+- Skia drawing goes through `packages/skia`, antialiased as RN Skia's Graphite: `draw_rect`,
+  `draw_rrect`, `draw_circle`, `draw_oval`, `draw_line` (and paths that are those shapes) are
+  analytic (AnalyticRRectRenderStep), other paths 4× MSAA of Graphite's tessellation, clips
+  analytic or MSAA as Graphite picks. Use the shape call RN's JSX makes (`<Circle>` is
+  `draw_circle`, not a circle path). vello was tried and fails on the iOS Simulator (no
+  indirect dispatch), so don't reach for it.
 
 ## Parity with RN (tools/compare.sh)
 

@@ -16,7 +16,7 @@
 //! - A render pass is multisampled only when one of its draws `requiresMSAA()` (RenderPassDesc).
 //! - `AnalyticRRectRenderStep.cpp` + `analytic_rrect_vertex_fn` (sksl_graphite_vert.sksl) +
 //!   `analytic_rrect_coverage_fn` (sksl_graphite_frag.sksl): the 36-vertex, 69-index strip and
-//!   its coverage, ported to WGSL in `render.rs` and to Rust in [`reference`].
+//!   its coverage, ported to WGSL in `render.rs` and to Rust in [`mod@reference`].
 //! - `TessellateWedgesRenderStep` + `tessellate_filled_curve` + `PatchWriter`: each curve becomes
 //!   2^L chords at T = k / 2^L, L = ceil(log2(Wang's formula, precision 4)) ≤ 5 (chopped on the
 //!   CPU past 32 segments); a wedge per curve fans from the contour's mean point.
