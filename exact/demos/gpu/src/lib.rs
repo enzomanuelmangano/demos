@@ -46,6 +46,7 @@ pub mod radar_chart;
 pub mod record_button;
 pub mod selectable_grid_list;
 pub mod skia_bottom_sheet;
+pub mod skia_color_picker;
 pub mod slide_to_reveal;
 pub mod sphere_waves;
 pub mod spiral;
@@ -85,6 +86,7 @@ pub static REGISTRY: Registry = Registry {
         ("record_button", 1, record_button::surface),
         ("selectable_grid_list", 1, selectable_grid_list::surface),
         ("skia_bottom_sheet", 0, skia_bottom_sheet::surface),
+        ("skia_color_picker", 0, skia_color_picker::surface),
         ("slide_to_reveal", 0, slide_to_reveal::surface),
         ("sphere_waves", 0, sphere_waves::surface),
         ("spiral", 0, spiral::surface),

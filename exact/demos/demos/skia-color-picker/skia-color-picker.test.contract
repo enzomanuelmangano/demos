@@ -1,0 +1,5 @@
+at "/demo/skia-color-picker"
+
+test "the wheel is there"
+  expect tree has "skia-color-picker"
+  expect tree has "skia-color-picker-canvas"
