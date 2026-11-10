@@ -78,10 +78,10 @@ component CircularCarousel
               opacity=arcOpacity(away(scroll, env.width, i))
               transition=(springing ? "scale -exact-spring(900, 120, 4)" : "none")
               // styles.imageContainer: margin 8, radius 100 continuous, boxShadow 0 0 10 10% black.
-              view display="flex" flex-direction="column" flex=1 margin=8 border-radius=100
+              view display="flex" flex-direction="column" flex=1 margin=8 border-radius=100 corner-shape="-exact-continuous"
                 box-shadow="0px 0px 10px rgba(0, 0, 0, 0.1)"
                 // styles.image: white 2 pt border, radius 100 continuous; expo-image covers.
-                image uri flex=1 border-radius=100 border-width=2
+                image uri flex=1 border-radius=100 corner-shape="-exact-continuous" border-width=2
                   border-style="solid" border-color="#ffffff" object-fit="cover" aria-hidden=true
           // paddingRight LIST_ITEM_WIDTH * 3.
           view width=(itemWidth(env.width) * 3) height=1 flex-shrink=0
