@@ -104,7 +104,7 @@ component ActionTray
           // wide; styles.actionTray: padding 25. borderRadius interpolates 25 → 5 only past
           // -maxHeight + 50, which translateY never reaches: 25.
           column position="absolute" bottom=30 left="2.5%" width="95%" box-sizing="border-box"
-            padding=25 background-color="#FFF" border-radius=25 corner-shape="squircle"
+            padding=25 background-color="#FFF" border-radius=25 corner-shape="-exact-continuous"
             testId="tray"
             // The GestureDetector: the whole tray (its buttons keep their taps).
             view position="absolute" inset=0 pointer-events="auto" touch-action="none"
@@ -148,7 +148,7 @@ component ActionTray
               // styles.continueButton: #4290F6, radius 25 continuous, 55 tall, full width;
               // buttonText #FFF 16 bold.
               column class=PressableScale pointer-events="auto" height=55 width="100%"
-                border-radius=25 corner-shape="squircle" background-color="color(display-p3 0.2588 0.5647 0.9647)"
+                border-radius=25 corner-shape="-exact-continuous" background-color="color(display-p3 0.2588 0.5647 0.9647)"
                 align-items="center" justify-content="center" press=next role="button"
                 aria-label=actionOf(step) testId="continue"
                 text actionOf(step) font-size=16 font-weight=700 color="#FFF" testId="continue-label"
