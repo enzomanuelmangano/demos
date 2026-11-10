@@ -33,6 +33,16 @@ fn swipes(w: number, x: number, vx: number): bool = x != 0 and (x / (w / 3)) * (
 // scale 1 - 0.07 × (index - activeIndex).
 fn stackTiming(): string = "opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%), translate 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%), scale 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
 
+// reset(): ref.reset() after index × 100 ms (setTimeout), then withSpring(0) (Gentle, 900 / 120 /
+// 4, critically damped: P(t) = 1 - e^(-15t)(1 + 15t), done at 825 ms where its energy reaches
+// 6e-9). The iOS host ignores a transition's delay, so during a reset each card's translate runs
+// that spring as linear() stops (time in ms, value; within 0.0003 of the curve, 0.2 px of a
+// 1.5 × width throw), the transition 100·i ms longer and holding 0 over those first ms.
+fn resetT(): number[] = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 80, 90, 100, 105, 110, 115, 120, 125, 130, 135, 140, 145, 150, 155, 160, 165, 170, 175, 180, 185, 190, 200, 210, 220, 230, 240, 250, 260, 270, 280, 295, 310, 325, 345, 365, 390, 420, 455, 500, 565, 680, 825]
+fn resetV(): number[] = [0, 0.00268, 0.01019, 0.02182, 0.03694, 0.05498, 0.07544, 0.09788, 0.1219, 0.14716, 0.17336, 0.22752, 0.33737, 0.39079, 0.44217, 0.46696, 0.49107, 0.51448, 0.53716, 0.5591, 0.58029, 0.60072, 0.62039, 0.63929, 0.65745, 0.67487, 0.69156, 0.70753, 0.72281, 0.73741, 0.75134, 0.76463, 0.7773, 0.80085, 0.82216, 0.8414, 0.85873, 0.87431, 0.88829, 0.90081, 0.91202, 0.92202, 0.93504, 0.94598, 0.95514, 0.96507, 0.97287, 0.98027, 0.98659, 0.9915, 0.9953, 0.99802, 0.99958, 1]
+fn resetPct(ms: number, i: number): number = (i * 100 + ms) / (825 + i * 100) * 100
+fn resetSpring(i: number): string = `translate ${825 + i * 100}ms linear(0 0%, ${range(resetT().length).map(k => `${numAt(resetV(), k)} ${resetPct(numAt(resetT(), k), i)}%`).join(", ")})`
+
 // rotate: interpolate(translateX, [-w/3, 0, w/3], [-π/20, 0, π/20], CLAMP) = ±9°, on the
 // card's own drag timeline (its horizontal translate, held or springing).
 keyframes swipeTilt
@@ -51,8 +61,8 @@ component SwipeCards
   // Each card's translateX / translateY (RN's per-card shared values).
   state panX = [0, 0, 0, 0, 0, 0, 0, 0, 0]
   state panY = [0, 0, 0, 0, 0, 0, 0, 0, 0]
-  // reset(): each card springs back after index × 100 ms (setTimeout); a delay on its
-  // translate's transition while this is set.
+  // reset(): each card springs back after index × 100 ms (setTimeout); resetSpring(i) on its
+  // translate while this is set.
   state resetting = false
   // The layer's width (transformgeometry, paired with the release; the card's travel uses
   // the window's width as RN does).
@@ -102,43 +112,45 @@ component SwipeCards
     // styles.container: #242831, flex 1.
     column position="absolute" inset=0 background-color="color(display-p3 0.1412 0.1569 0.1922)" overflow="hidden"
       testId="swipe-cards"
-      for i in order() key=i
-        // One layer per card, the size of the screen: its translate is the card's pan (the
-        // transform drag's target, under an untransformed, clipping parent). Inside it the RN
-        // layout again: flex 7 (the stack's box) over flex 2 (the buttons' row).
-        column position="absolute" inset=0 overflow="hidden" pointer-events="none"
-          timeline-scope="--tilt" aria-hidden=(i != activeIndex)
-          column id=`swipe-card-${i}` width="100%" height="100%" box-sizing="border-box"
-            position="relative" translate=`${numAt(panX, i)}px ${numAt(panY, i)}px`
-            transition=`translate -exact-spring(900, 120, 4) ${resetting ? i * 100 : 0}ms`
-            -exact-drag-timeline="--tilt x" testId=`card-${i}`
-            column flex=7
-              // The Animated.View: marginTop safeTop + DEMO_BUTTON_ROW_HEIGHT - CENTRED_SLACK,
-              // centred, flex 1.
-              column flex=1 margin-top=(env.safeTop + demoButtonRow() - centredSlack())
-                justify-content="center" align-items="center"
-                // The card: 90% × 75%.
-                view width="90%" height="75%" position="relative"
-                  column position="absolute" inset=0 opacity=(i - activeIndex < 5 ? 1 : 0)
-                    translate=`0px ${(i - activeIndex) * 23}px` scale=(1 - 0.07 * (i - activeIndex))
-                    transition=stackTiming()
-                    // Radius 25 continuous, clipped; the image covers it.
-                    column flex=1 border-radius=25 corner-shape="-exact-continuous" overflow="hidden"
-                      animation="swipeTilt 1s linear both" animation-timeline="--tilt"
-                      animation-range=`${0 - w / 3}px ${w / 3}px`
-                      column flex=1
-                        animation="swipeFadeIn 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) both"
+      // The stack's Animated.View: entering FadeIn (300 ms on inOut(quad)), one group opacity
+      // over every card as RN fades the container (not each card: the back ones would show
+      // through the front one).
+      column position="absolute" inset=0 pointer-events="none" animation="swipeFadeIn 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) both"
+        for i in order() key=i
+          // One layer per card, the size of the screen: its translate is the card's pan (the
+          // transform drag's target, under an untransformed, clipping parent). Inside it the RN
+          // layout again: flex 7 (the stack's box) over flex 2 (the buttons' row).
+          column position="absolute" inset=0 overflow="hidden" pointer-events="none"
+            timeline-scope="--tilt" aria-hidden=(i != activeIndex)
+            column id=`swipe-card-${i}` width="100%" height="100%" box-sizing="border-box"
+              position="relative" translate=`${numAt(panX, i)}px ${numAt(panY, i)}px`
+              transition=(resetting ? resetSpring(i) : "translate -exact-spring(900, 120, 4)")
+              -exact-drag-timeline="--tilt x" testId=`card-${i}`
+              column flex=7
+                // The Animated.View: marginTop safeTop + DEMO_BUTTON_ROW_HEIGHT - CENTRED_SLACK,
+                // centred, flex 1.
+                column flex=1 margin-top=(env.safeTop + demoButtonRow() - centredSlack())
+                  justify-content="center" align-items="center"
+                  // The card: 90% × 75%.
+                  view width="90%" height="75%" position="relative"
+                    column position="absolute" inset=0 opacity=(i - activeIndex < 5 ? 1 : 0)
+                      translate=`0px ${(i - activeIndex) * 23}px` scale=(1 - 0.07 * (i - activeIndex))
+                      transition=stackTiming()
+                      // Radius 25 continuous, clipped; the image covers it.
+                      column flex=1 border-radius=25 corner-shape="-exact-continuous" overflow="hidden"
+                        animation="swipeTilt 1s linear both" animation-timeline="--tilt"
+                        animation-range=`${0 - w / 3}px ${w / 3}px`
                         image photo(i) position="absolute" flex-shrink=0
                           width=coverW(photoAspect(i), cardW, cardH) height=coverH(photoAspect(i), cardW, cardH)
                           left=((cardW - coverW(photoAspect(i), cardW, cardH)) / 2)
                           top=((cardH - coverH(photoAspect(i), cardW, cardH)) / 2) aria-hidden=true
-                  // The GestureDetector, on the active card only (onUpdate returns for others).
-                  if i == activeIndex
-                    view position="absolute" inset=0 pointer-events="auto" touch-action="none"
-                      transformDragFor=`swipe-card-${i}` transformgeometry=geometry
-                      transformrelease=release(i) aria-label="Swipe the card"
-                      testId="card-handle"
-            view flex=2
+                    // The GestureDetector, on the active card only (onUpdate returns for others).
+                    if i == activeIndex
+                      view position="absolute" inset=0 pointer-events="auto" touch-action="none"
+                        transformDragFor=`swipe-card-${i}` transformgeometry=geometry
+                        transformrelease=release(i) aria-label="Swipe the card"
+                        testId="card-handle"
+              view flex=2
       // styles.buttonsContainer: flex 2, a centred row (over the cards, as RN draws it).
       column position="absolute" inset=0 pointer-events="none"
         view flex=7
