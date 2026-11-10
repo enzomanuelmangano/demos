@@ -289,7 +289,7 @@ static UIColor *p3(double r, double g, double b, double a) {
       dumpView(e[2], @"");
       dumpLayer(((UIView *)e[2]).layer, @"");
     }
-    NSString *path = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES)[0] stringByAppendingPathComponent:@"dump.txt"];
+    NSString *path = @"/tmp/blurprobe-src/dump.txt";
     [gOut writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:nil];
     NSLog(@"PROBE DONE %@", path);
   });
@@ -386,6 +386,29 @@ static UIColor *p3(double r, double g, double b, double a) {
     [root addSubview:g];
     NSArray *r = [[d stringForKey:@"bar"] componentsSeparatedByString:@","];
     [self effect:style fraction:f frame:CGRectMake([r[0] doubleValue], [r[1] doubleValue], [r[2] doubleValue], [r[3] doubleValue]) in:root];
+  } else if ([pattern isEqual:@"dot"]) {
+    // staggered-card-number: white; left, a parent view (100 × 100 at 60, 400) with alpha
+    // -parentAlpha holding a black 40 pt circle and the effect over the parent's bounds; right
+    // (260, 400), the circle in the window behind a parent that holds only the effect.
+    root.backgroundColor = p3(1, 1, 1, 1);
+    double pa = [d objectForKey:@"parentAlpha"] ? [d doubleForKey:@"parentAlpha"] : 1;
+    for (int k = 0; k < 2; k++) {
+      CGRect r = CGRectMake(60 + k * 200, 400, 100, 100);
+      UIView *parent = [[UIView alloc] initWithFrame:r];
+      parent.alpha = pa;
+      parent.clipsToBounds = YES;
+      UIView *dot = [[UIView alloc] initWithFrame:CGRectMake(30, 30, 40, 40)];
+      dot.backgroundColor = p3(0, 0, 0, 1);
+      dot.layer.cornerRadius = 20;
+      if (k == 0) {
+        [parent addSubview:dot];
+      } else {
+        dot.frame = CGRectOffset(dot.frame, r.origin.x, r.origin.y);
+        [root addSubview:dot];
+      }
+      [root addSubview:parent];
+      [self effect:style fraction:f frame:parent.bounds in:parent];
+    }
   } else if ([pattern isEqual:@"patches"]) {
     // 24 colour patches (6 rows × 4), each 105 × 152 pt; an effect view per patch, inset 40 pt.
     NSArray *cs = @[ @[@255,@0,@0], @[@0,@255,@0], @[@0,@0,@255], @[@255,@255,@0],
