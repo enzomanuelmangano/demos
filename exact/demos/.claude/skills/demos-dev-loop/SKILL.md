@@ -83,7 +83,13 @@ bun exact.mjs ios --run --sim $EXACT_SIM                         # native build 
   analytic (AnalyticRRectRenderStep), other paths 4× MSAA of Graphite's tessellation, clips
   analytic or MSAA as Graphite picks. Text below 162 device px is Graphite's direct masks:
   CoreText rasterises each glyph with Skia's Mac-scaler settings into a per-thread atlas
-  (bit-exact against tools/coretext_reference.c); larger text is still glyph paths. Use the shape call RN's JSX makes (`<Circle>` is
+  (bit-exact against tools/coretext_reference.c); larger text is still glyph paths. Arcs,
+  ovals and circles built with `skia::add_arc`, `add_svg_arc`, `add_circle`, `add_oval` (and SVG
+  `A` commands) are Skia's conics: build them with those helpers, not lyon's own arc/circle
+  builders, or they stay cubics.
+- `cargo test --release -p demos-gpu bench -- --ignored --nocapture`: CPU µs per frame of the
+  heaviest Skia surfaces (`BENCH_ONLY=<name>`, `BENCH_FRAMES=<n>`); run it before and after
+  touching `packages/skia`. Use the shape call RN's JSX makes (`<Circle>` is
   `draw_circle`, not a circle path). vello was tried and fails on the iOS Simulator (no
   indirect dispatch), so don't reach for it.
 
