@@ -164,6 +164,13 @@ fn grid(v: f32, scale: f32) -> f32 {
     ((v * scale + 0.5 + 1e-4).floor()) / scale
 }
 
+/// A Text node's position in its parent: Yoga's roundLayoutResultsToPixelGrid floors a Text
+/// node's relative left/top to the pixel grid (textRounding), where a View's rounds (measured:
+/// the label sits 0.667 pt into its 21 pt row, not 1.0).
+fn text_grid(v: f32, scale: f32) -> f32 {
+    ((v * scale + 1e-4).floor()) / scale
+}
+
 /// A Text's measured box side: Core Text's used size, ceiled to the pixel grid (RN's
 /// internal_roundTextMeasurementToPixelGrid).
 fn text_side(v: f32, scale: f32) -> f32 {
@@ -301,7 +308,7 @@ impl TwodosSlide {
         c.restore();
         if let Some(font) = self.check.as_ref() {
             let (w, h) = (text_side(font.advance_width(CHECK), scale), text_side(gfx::line_height(font), scale));
-            let (x, y) = (grid((SIZE - w) / 2.0, scale), grid((SIZE - h) / 2.0, scale));
+            let (x, y) = (text_grid((SIZE - w) / 2.0, scale), text_grid((SIZE - h) / 2.0, scale));
             c.draw_text(CHECK, x, gfx::baseline(font, y), font, &Paint::fill(Color::view_hex(0x2A2A2A)));
         }
         let c = &mut self.layer_canvas;
@@ -329,9 +336,9 @@ impl TwodosSlide {
         let c = &mut self.layer_canvas;
         // alignItems center: each child centred in the row's height (edges on the grid, in the
         // row's own pixel-aligned frame).
-        let top = |h: f32| grid((row[3] - h) / 2.0, scale);
+        let top = |h: f32| text_grid((row[3] - h) / 2.0, scale);
         c.draw_text(LABEL, 0.0, gfx::baseline(label, top(lh)), label, &gray);
-        c.draw_text(ARROW, grid(lw + LABEL_GAP, scale), gfx::baseline(arrow, top(ah)), arrow, &gray);
+        c.draw_text(ARROW, text_grid(lw + LABEL_GAP, scale), gfx::baseline(arrow, top(ah)), arrow, &gray);
     }
 
     /// One square under its transform (about its bottom-right corner), its shadow first.
