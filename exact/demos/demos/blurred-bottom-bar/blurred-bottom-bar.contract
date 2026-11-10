@@ -1,7 +1,9 @@
 // Blurred Bottom Bar: four full-screen photos behind a floating, blurred, bordered tab bar of
 // four icons over a dark gradient; the tab pressed shows its photo and its icon brightens.
 // RN: src/animations/blurred-bottom-bar (index.tsx, constants/screens.ts,
-// components/bottom-tab-bar.tsx, components/tab-bar-item.tsx).
+// components/bottom-tab-bar.tsx, components/tab-bar-item.tsx). The BlurView (intensity 40, a
+// partially animated UIKit blur no material reaches) is a Rust canvas inside the bar's border:
+// gpu/src/blurred_bottom_bar.rs draws what is under it and blurs it as UIKit does.
 use PressableScale from "pressto"
 use DemoEnv from "../env.contract"
 
@@ -41,13 +43,18 @@ component BlurredBottomBar
         testId="gradient"
       // localStyles.bottomContainer: absolute, left / right 15%, bottom safeBottom + 15, 60
       // tall (border-box), border 1 rgb(216, 216, 216), radius 30 continuous, clipped.
-      // BlurView intensity 40 (iOS), tint default (UIBlurEffect .regular), background
-      // rgba(255,255,255,0.05); localStyles.container: a row, paddingHorizontal 15.
+      // localStyles.container: a row, paddingHorizontal 15.
       row position="absolute" left="15%" right="15%" bottom="calc(env(safe-area-inset-bottom) + 15px)"
         height=60 box-sizing="border-box" border-width=1 border-style="solid"
         border-color="rgb(216, 216, 216)" border-radius=30 corner-shape="-exact-continuous" overflow="hidden"
-        backgroundMaterial="regular" background-color="rgba(255,255,255,0.05)" padding-left=15
-        padding-right=15 role="tablist" testId="tab-bar"
+        padding-left=15 padding-right=15 role="tablist" testId="tab-bar"
+        // BlurView intensity 40 (iOS), tint default (UIBlurEffect .regular), background
+        // rgba(255,255,255,0.05), flex 1 inside the border: the canvas over that box, given its
+        // window origin, the window and the gradient (BOTTOM_BAR_HEIGHT + safeBottom + 30) to
+        // draw what UIKit's backdrop captures.
+        canvas surface=blurred_bottom_bar((index == 3 ? 0 : index), env.width * 0.15 + 1, env.height - env.safeBottom - 74, env.width, env.height, 90 + env.safeBottom)
+          position="absolute" left=0 top=0 width=(env.width * 0.7 - 2) height=58 pointer-events="none"
+          aria-hidden=true testId="tab-bar-blur"
         for i in range(4) key=i
           // TabBarItem: flex 1, opacity withTiming(focused ? 1 : 0.3) (300 ms inOut(quad));
           // a PressableScale, flex 1, centred.

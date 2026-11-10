@@ -3,7 +3,11 @@
 // indicator, once scrolled it springs into a floating pill. The other four tabs are empty.
 // RN: src/animations/dynamic-blur-tabs (src/index.tsx, constants/screens.ts,
 // hooks/use-bottom-bar-height.ts, screens/scrollable-gradients/index.tsx,
-// components/bottom-tab-bar/{index.tsx, states.ts, tab-bar-item.tsx}).
+// components/bottom-tab-bar/{index.tsx, states.ts, tab-bar-item.tsx}). The bar's BlurView
+// (systemMaterialDark at intensity 70, a partially animated UIKit blur no material reaches), its
+// continuous outline and its border (whose radius and width spring) are Rust:
+// gpu/src/dynamic_blur_tabs.rs, a canvas over the window's bottom given the scroll's offset to
+// draw what is under the bar; the icons are here.
 use PressableScale from "pressto"
 use DemoEnv, roll from "../env.contract"
 
@@ -55,9 +59,12 @@ component DynamicBlurTabs
   state isTabBarActive = true
   // The focused tab (focusedIndex), home at first.
   state focusedIndex = 0
+  // contentOffsetY: the one value written per scroll frame, read only by the bar's canvas.
+  state scrollY = 0
   derive w = env.width
-  // The scroll handler writes only on a change.
+  // The scroll handler writes IsTabBarActive only on a change.
   action scrolled(x: number, y: number)
+    scrollY = y
     if (y <= 0) != isTabBarActive
       isTabBarActive = y <= 0
   action pick(i: number)
@@ -86,20 +93,21 @@ component DynamicBlurTabs
       view position="absolute" left=0 right=0 bottom=0 height=gradientHeight()
         pointer-events="none" aria-hidden=true
         background-image="linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(0, 0, 0, 0.1) 33.333%, rgba(0, 0, 0, 0.5) 66.667%, rgba(0, 0, 0, 0.8) 100%)"
-      // styles.bottomContainer: absolute, clipped, a rgba(216, 216, 216, 0.597) border,
-      // continuous corners. left/right 0 → 0.15 w, radius 20 → 0.15 w, borderWidth 0.6 → 1.
+      // The bar's BlurView, outline and border, on the same spring (the canvas covers where
+      // the bar can be: safeBottom + 85 points at the bottom; transparent beside the bar).
+      canvas surface=dynamic_blur_tabs(isTabBarActive, focusedIndex, scrollY, env.seed, env.safeTop, env.safeBottom, env.height)
+        position="absolute" left=0 bottom=0 width=w height=(env.safeBottom + 85) pointer-events="none"
+        aria-hidden=true testId="tab-bar-blur"
+      // styles.bottomContainer: absolute, left/right 0 → 0.15 w, borderWidth 0.6 → 1 (drawn by
+      // the canvas: here transparent, for the icons' layout).
       column class=BarMotion position="absolute" left=(isTabBarActive ? 0 : w * 0.15)
         right=(isTabBarActive ? 0 : w * 0.15) bottom=barBottom(isTabBarActive)
         height=barHeight(isTabBarActive) box-sizing="border-box"
-        border-radius=(isTabBarActive ? 20 : w * 0.15) corner-shape="-exact-continuous"
-        border-width=(isTabBarActive ? 0.6 : 1) border-style="solid"
-        border-color="rgba(216, 216, 216, 0.597)" overflow="hidden" testId="tab-bar"
-        // The BlurView: systemMaterialDark (intensity 70), rgba(255,255,255,0.05) over it,
-        // flex 1, paddingHorizontal 15 → 0.
-        column class=BarMotion flex=1 backgroundMaterial="material-dark"
+        border-width=(isTabBarActive ? 0.6 : 1) border-style="solid" border-color="transparent"
+        testId="tab-bar"
+        // The BlurView (drawn by the canvas): flex 1, paddingHorizontal 15 → 0.
+        column class=BarMotion flex=1
           padding-left=(isTabBarActive ? 15 : 0) padding-right=(isTabBarActive ? 15 : 0)
-          view class=BarMotion position="absolute" inset=0 background-color="rgba(255, 255, 255, 0.05)"
-            pointer-events="none" aria-hidden=true
           row class=BarMotion flex=1 role="tablist"
             for i in range(5) key=i
               // TabBarItem: flex 1, opacity withTiming(focused ? 1 : 0.3); PressableScale

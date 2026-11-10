@@ -27,6 +27,7 @@ pub use exact_gpu::wgpu;
 pub use lyon::math::{point, vector, Point, Vector};
 pub use lyon::path::{Path, PathBuffer, PathEvent, PathSlice};
 
+pub mod backdrop;
 pub mod blur;
 pub mod color;
 pub mod image;

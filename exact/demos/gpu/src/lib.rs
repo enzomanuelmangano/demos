@@ -25,6 +25,7 @@ pub mod atlas_sphere;
 pub mod audio_player;
 pub mod balance_slider;
 pub mod bezier_curve_outline;
+pub mod blurred_bottom_bar;
 pub mod blur_cards;
 pub mod blur_circles;
 pub mod blurred_scroll;
@@ -34,6 +35,7 @@ pub mod color_carousel;
 pub mod cuberto_slider;
 pub mod delete_button;
 pub mod dot_sheet;
+pub mod dynamic_blur_tabs;
 pub mod duration_slider;
 pub mod exclusion_tabs;
 pub mod expandable_mini_player;
@@ -73,7 +75,8 @@ pub static REGISTRY: Registry = Registry {
         ("atlas_sphere", 0, atlas_sphere::surface),
         ("audio_player", 1, audio_player::surface),
         ("balance_slider", 0, balance_slider::surface),
-        ("bezier_curve_outline", 1, bezier_curve_outline::surface),
+        ("bezier_curve_outline", 2, bezier_curve_outline::surface),
+        ("blurred_bottom_bar", 6, blurred_bottom_bar::surface),
         ("blur_cards", 1, blur_cards::surface),
         ("blur_circles", 0, blur_circles::surface),
         ("blurred_scroll", 1, blurred_scroll::surface),
@@ -83,6 +86,7 @@ pub static REGISTRY: Registry = Registry {
         ("cuberto_slider", 0, cuberto_slider::surface),
         ("delete_button", 0, delete_button::surface),
         ("dot_sheet", 0, dot_sheet::surface),
+        ("dynamic_blur_tabs", 7, dynamic_blur_tabs::surface),
         ("duration_slider", 0, duration_slider::surface),
         ("exclusion_tabs", 0, exclusion_tabs::surface),
         ("expandable_mini_player", 1, expandable_mini_player::surface),
