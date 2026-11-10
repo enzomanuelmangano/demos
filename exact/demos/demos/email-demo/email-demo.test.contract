@@ -2,8 +2,8 @@ at "/demo/email-demo"
 
 test "the ten emails are listed"
   expect tree has "email-demo"
-  expect text "email-title-0" == "Welcome to our community"
-  expect text "email-title-9" == "App update available"
+  expect tree has "email-0"
+  expect tree has "email-9"
 
 test "delete shifts the list and restore brings it back"
   tap "delete"

@@ -44,6 +44,7 @@ pub mod dot_sheet;
 pub mod dot_sheet_card;
 pub mod duration_slider;
 pub mod dynamic_blur_tabs;
+pub mod email_demo;
 pub mod exclusion_tabs;
 pub mod expandable_mini_player;
 pub mod fibonacci_shader;
@@ -115,6 +116,7 @@ pub static REGISTRY: Registry = Registry {
         ("dot_sheet_card", 2, dot_sheet_card::surface),
         ("duration_slider", 0, duration_slider::surface),
         ("dynamic_blur_tabs", 7, dynamic_blur_tabs::surface),
+        ("email_row", 2, email_demo::surface),
         ("exclusion_tabs", 0, exclusion_tabs::surface),
         ("expandable_mini_player", 1, expandable_mini_player::surface),
         ("fibonacci_shader", 1, fibonacci_shader::surface),
