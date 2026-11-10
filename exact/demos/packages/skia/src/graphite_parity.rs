@@ -434,3 +434,47 @@ fn curved_strokes_follow_the_offset_curve() {
     assert!(off * 10 < inked, "{off} of {inked}");
 }
 
+
+/// Text below SDFT sizes as BitmapTextRenderStep draws it: each glyph's A8 mask at its floored
+/// device position (+ ½), sampled 1:1, the paint times the coverage, no MSAA. The expected
+/// picture is the atlas's own masks composited on the CPU.
+#[cfg(target_vendor = "apple")]
+#[test]
+fn text_is_graphites_direct_masks() {
+    let Some(gpu) = gpu() else { return };
+    static OUTFIT: &[u8] = include_bytes!("../../../gpu/fonts/outfit.ttf");
+    let font = Font::new(OUTFIT, 16.0).unwrap();
+    for (name, m) in [("text", Matrix::scale(2.0, 2.0)), ("text-sub", Matrix::scale(2.0, 2.0).then(Matrix::translate(0.37, 0.71))), ("text-rot", Matrix::rotate(0.2).then(Matrix::scale(2.0, 2.0)).then(Matrix::translate(6.0, 0.0)))] {
+        let mut c = Canvas::default();
+        c.begin(1.0);
+        c.concat(m);
+        c.draw_text("Ag%", 3.3, 22.6, &font, &white());
+        assert!(!c.msaa, "{name}: text needs no MSAA");
+        assert!(matches!(c.ops[..], [Op::Glyphs { .. }]), "{name}: one glyph draw, {:?}", c.ops);
+        let px = render(&gpu, &c);
+        px.save(&format!("parity-{name}"));
+        // The quads' corners and texels, back to coverage per pixel.
+        let mut want = vec![0.0f32; (W * H) as usize];
+        crate::glyphs::Atlas::with(|atlas| {
+            for q in c.indices.chunks(6) {
+                let v0 = c.vertices[q[0] as usize];
+                let v2 = c.vertices[q[2] as usize];
+                let (u0, t0) = (v0.color & 0xffff, v0.color >> 16);
+                for y in v0.pos[1] as i32..v2.pos[1] as i32 {
+                    for x in v0.pos[0] as i32..v2.pos[0] as i32 {
+                        if (0..W as i32).contains(&x) && (0..H as i32).contains(&y) {
+                            let tu = u0 + (x - v0.pos[0] as i32) as u32;
+                            let tv = t0 + (y - v0.pos[1] as i32) as u32;
+                            let a = atlas.pixels[(tv * crate::glyphs::ATLAS_W + tu) as usize] as f32 / 255.0;
+                            let w = &mut want[(y as u32 * W + x as u32) as usize];
+                            *w = a + *w * (1.0 - a);
+                        }
+                    }
+                }
+            }
+        });
+        let worst = compare(&px, |x, y| want[(y * W + x) as usize], name);
+        assert!(worst <= 0.5 / 255.0 + 1e-4, "{name}: {worst}");
+        assert!(px.count(|p| p[3] > 200) > 30, "{name}: ink");
+    }
+}

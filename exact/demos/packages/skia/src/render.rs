@@ -21,6 +21,7 @@ struct Paint {
 @group(0) @binding(1) var<storage, read> paints: array<Paint>;
 @group(0) @binding(2) var images: texture_2d_array<f32>;
 @group(0) @binding(3) var smp: sampler;
+@group(0) @binding(4) var glyph_atlas: texture_2d<f32>;
 
 // Graphite's device-to-NDC step (rtAdjust): x · 2/w − 1, y · −2/h + 1.
 fn ndc(p: vec2<f32>, depth: f32) -> vec4<f32> {
@@ -180,6 +181,36 @@ fn shade(p: Paint, px: vec2<f32>, uv0: vec2<f32>, color: vec4<f32>, gx: vec2<f32
 }
 
 @fragment fn clip() -> @location(0) vec4<f32> { return vec4<f32>(0.0); }
+
+// ---- BitmapTextRenderStep (text_vertex_fn / bitmap_text_coverage_fn), A8 masks ----
+
+struct GOut {
+    @builtin(position) pos: vec4<f32>,
+    @location(0) @interpolate(flat) paint: u32,
+    @location(1) px: vec2<f32>,
+    @location(2) uv: vec2<f32>,
+    @location(3) atlas: vec2<f32>,
+};
+
+@vertex fn vs_glyph(@location(0) pos: vec2<f32>, @location(1) depth: f32, @location(2) paint: u32, @location(3) texel: u32, @location(4) uv: vec2<f32>) -> GOut {
+    var o: GOut;
+    o.pos = ndc(pos, depth);
+    o.paint = paint;
+    o.px = pos;
+    o.uv = uv;
+    o.atlas = vec2<f32>(f32(texel & 0xffffu), f32(texel >> 16u));
+    return o;
+}
+
+@fragment fn fs_glyph(in: GOut) -> @location(0) vec4<f32> {
+    let dims = vec2<f32>(textureDimensions(images));
+    let gx = dpdx(in.uv) / dims;
+    let gy = dpdy(in.uv) / dims;
+    let p = paints[in.paint];
+    // Nearest: the texel under the pixel centre (the quad sits on whole pixels).
+    let coverage = textureLoad(glyph_atlas, vec2<i32>(floor(in.atlas)), 0).r;
+    return shade(p, in.px, in.uv, vec4<f32>(1.0), gx, gy) * (coverage * analytic_clip(p, in.pos.xy));
+}
 
 // ---- AnalyticRRectRenderStep (analytic_rrect_vertex_fn / analytic_rrect_coverage_fn) ----
 
@@ -503,6 +534,11 @@ pub struct Renderer {
     bind: Option<wgpu::BindGroup>,
     /// The images paints sample ([`Renderer::set_images`]); a blank layer until set.
     images: Option<wgpu::TextureView>,
+    /// This renderer's copy of the glyph atlas: the texture (its height), the atlas epoch it
+    /// holds, and how many of the atlas's written masks it has uploaded.
+    atlas: Option<(wgpu::Texture, wgpu::TextureView, u32)>,
+    atlas_epoch: u64,
+    atlas_seen: usize,
 }
 
 /// One sample count's pipelines.
@@ -513,6 +549,7 @@ struct Pipes {
     cover: wgpu::RenderPipeline,
     clip_cover: wgpu::RenderPipeline,
     rrect: wgpu::RenderPipeline,
+    glyph: wgpu::RenderPipeline,
 }
 
 struct Built {
@@ -522,6 +559,7 @@ struct Built {
     layout: wgpu::BindGroupLayout,
     view: wgpu::Buffer,
     blank: wgpu::TextureView,
+    blank_mask: wgpu::TextureView,
     sampler: wgpu::Sampler,
     /// AnalyticRRectRenderStep's static vertex and index buffers.
     template: wgpu::Buffer,
@@ -603,6 +641,10 @@ impl Renderer {
         if self.depth[k].is_none() {
             self.depth[k] = Some(make(DEPTH, if multisampled { MSAA } else { 1 }, "skia depth"));
         }
+        let glyphs = canvas.atlas_epoch != 0;
+        if glyphs {
+            self.upload_atlas(device, queue);
+        }
         let built = self.built.as_ref().unwrap();
         let mut view = [0u8; 16];
         view[..4].copy_from_slice(&(width as f32).to_le_bytes());
@@ -630,6 +672,9 @@ impl Renderer {
         if !pb.is_empty() {
             queue.write_buffer(&self.paints.as_ref().unwrap().0, 0, pb);
         }
+        // Quads recorded against an atlas cleared since are not drawn (it is cleared between
+        // frames, so only a canvas recorded before another's clear and drawn after it).
+        let glyphs_ok = glyphs && canvas.atlas_epoch == self.atlas_epoch;
         let bind = self.bind.get_or_insert_with(|| {
             device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("skia"),
@@ -639,6 +684,7 @@ impl Renderer {
                     wgpu::BindGroupEntry { binding: 1, resource: self.paints.as_ref().unwrap().0.as_entire_binding() },
                     wgpu::BindGroupEntry { binding: 2, resource: wgpu::BindingResource::TextureView(self.images.as_ref().unwrap_or(&built.blank)) },
                     wgpu::BindGroupEntry { binding: 3, resource: wgpu::BindingResource::Sampler(&built.sampler) },
+                    wgpu::BindGroupEntry { binding: 4, resource: wgpu::BindingResource::TextureView(self.atlas.as_ref().map_or(&built.blank_mask, |a| &a.1)) },
                 ],
             })
         });
@@ -680,7 +726,7 @@ impl Renderer {
         let mut template = false;
         for op in &canvas.ops {
             let want = match *op {
-                Op::Tri { scissor, .. } | Op::Stencil { scissor, .. } | Op::Cover { scissor, .. } | Op::RRects { scissor, .. } => scissor,
+                Op::Tri { scissor, .. } | Op::Stencil { scissor, .. } | Op::Cover { scissor, .. } | Op::RRects { scissor, .. } | Op::Glyphs { scissor, .. } => scissor,
                 Op::ClipCover { .. } => None,
             }
             .map(|[x, y, w, h]| {
@@ -726,6 +772,14 @@ impl Renderer {
                     pass.set_stencil_reference(0);
                     pass.draw_indexed(start..end, 0, 0..1);
                 }
+                Op::Glyphs { start, end, .. } => {
+                    if !glyphs_ok {
+                        continue;
+                    }
+                    rebind_canvas(&mut pass, &mut template);
+                    pass.set_pipeline(&pipes.glyph);
+                    pass.draw_indexed(start..end, 0, 0..1);
+                }
                 Op::RRects { first, count, .. } => {
                     if !template {
                         template = true;
@@ -738,6 +792,56 @@ impl Renderer {
                 }
             }
         }
+    }
+}
+
+impl Renderer {
+    /// Brings this renderer's atlas texture up to the glyph atlas: what was rasterised since the
+    /// last upload (whole rows), all of it after a clear or when the atlas outgrew the texture.
+    fn upload_atlas(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
+        use crate::glyphs::{Atlas, ATLAS_W};
+        Atlas::with(|atlas| {
+            let height = atlas.height.max(1).next_power_of_two().max(256);
+            let mut full = atlas.epoch != self.atlas_epoch;
+            if self.atlas.as_ref().is_none_or(|a| a.2 < height) {
+                let texture = device.create_texture(&wgpu::TextureDescriptor {
+                    label: Some("skia glyph atlas"),
+                    size: wgpu::Extent3d { width: ATLAS_W, height, depth_or_array_layers: 1 },
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: wgpu::TextureFormat::R8Unorm,
+                    usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                    view_formats: &[],
+                });
+                let view = texture.create_view(&Default::default());
+                self.atlas = Some((texture, view, height));
+                self.bind = None;
+                full = true;
+            }
+            let texture = &self.atlas.as_ref().unwrap().0;
+            let write = |y0: u32, y1: u32| {
+                let y1 = y1.min(atlas.height);
+                if y1 <= y0 {
+                    return;
+                }
+                queue.write_texture(
+                    wgpu::TexelCopyTextureInfo { texture, mip_level: 0, origin: wgpu::Origin3d { x: 0, y: y0, z: 0 }, aspect: wgpu::TextureAspect::All },
+                    &atlas.pixels[(y0 * ATLAS_W) as usize..(y1 * ATLAS_W) as usize],
+                    wgpu::TexelCopyBufferLayout { offset: 0, bytes_per_row: Some(ATLAS_W), rows_per_image: None },
+                    wgpu::Extent3d { width: ATLAS_W, height: y1 - y0, depth_or_array_layers: 1 },
+                );
+            };
+            if full {
+                write(0, atlas.height);
+            } else if let Some(new) = atlas.dirty.get(self.atlas_seen..) {
+                // The rows the masks written since the last upload span.
+                let (y0, y1) = new.iter().fold((u32::MAX, 0), |(a, b), &(y0, y1)| (a.min(y0), b.max(y1)));
+                write(y0, y1);
+            }
+            self.atlas_epoch = atlas.epoch;
+            self.atlas_seen = atlas.dirty.len();
+        });
     }
 }
 
@@ -765,6 +869,12 @@ fn build(device: &wgpu::Device, queue: &wgpu::Queue, format: wgpu::TextureFormat
                 count: None,
             },
             wgpu::BindGroupLayoutEntry { binding: 3, visibility: wgpu::ShaderStages::FRAGMENT, ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering), count: None },
+            wgpu::BindGroupLayoutEntry {
+                binding: 4,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture { sample_type: wgpu::TextureSampleType::Float { filterable: true }, view_dimension: wgpu::TextureViewDimension::D2, multisampled: false },
+                count: None,
+            },
         ],
     });
     let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor { label: Some("skia"), bind_group_layouts: &[Some(&layout)], immediate_size: 0 });
@@ -854,6 +964,7 @@ fn build(device: &wgpu::Device, queue: &wgpu::Queue, format: wgpu::TextureFormat
             samples,
         ),
         rrect: pipeline(Desc { vs: "vs_rrect", fs: "fs_rrect", buffers: &rrect_buffers, strip: true, color: true, depth_write: true, lequal: false, front: keep, back: keep }, samples),
+        glyph: pipeline(Desc { vs: "vs_glyph", fs: "fs_glyph", buffers: &canvas_buffers, strip: false, color: true, depth_write: true, lequal: true, front: keep, back: keep }, samples),
     };
     let mut template = Vec::with_capacity(36);
     for corner in 0..4u32 {
@@ -888,6 +999,18 @@ fn build(device: &wgpu::Device, queue: &wgpu::Queue, format: wgpu::TextureFormat
                 view_formats: &[],
             })
             .create_view(&wgpu::TextureViewDescriptor { dimension: Some(wgpu::TextureViewDimension::D2Array), ..Default::default() }),
+        blank_mask: device
+            .create_texture(&wgpu::TextureDescriptor {
+                label: Some("skia no glyphs"),
+                size: wgpu::Extent3d { width: 1, height: 1, depth_or_array_layers: 1 },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::R8Unorm,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats: &[],
+            })
+            .create_view(&Default::default()),
         sampler: device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("skia images"),
             address_mode_u: wgpu::AddressMode::ClampToEdge,

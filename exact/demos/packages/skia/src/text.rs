@@ -9,9 +9,12 @@
 //! included), and its optical size follows the point size ([`Font::set_size`] re-applies it as
 //! an animated `fontSize` changes).
 //!
-//! Glyph outlines are read with ttf-parser (TrueType and CFF, variable fonts at the axis values
-//! the font was made with), cached per glyph in font units, and drawn through the canvas's
-//! transform, so a glyph is tessellated at the size it lands on screen.
+//! [`Canvas::draw_text`] draws as Graphite does on iOS ([`crate::glyphs`]): below 162 device
+//! pixels, glyph masks rasterised by CoreText as RN Skia's Mac scaler does ([`crate::coretext`])
+//! from an atlas, one quad per glyph; larger runs (and every run where there is no CoreText: the
+//! web) as glyph outlines, read with ttf-parser (TrueType and CFF, variable fonts at the axis
+//! values the font was made with), cached per glyph in font units, and filled through the
+//! canvas's transform.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -21,10 +24,22 @@ use lyon::path::Path;
 use ttf_parser::{Face, GlyphId, OutlineBuilder, Tag};
 
 use crate::{Canvas, Matrix, Paint, Rect};
+#[cfg(target_vendor = "apple")]
+use crate::{DrawClip, Geo, Op, Shader, Vertex, EMPTY};
 
 /// A typeface at a size: RN Skia's `SkFont`.
 pub struct Font {
     face: Face<'static>,
+    data: &'static [u8],
+    /// This font's id in the glyph atlas, and its variation's generation (bumped as `opsz`
+    /// follows the size).
+    uid: u64,
+    generation: u64,
+    /// CoreText's typeface for this variation and the last strikes made from it.
+    #[cfg(target_vendor = "apple")]
+    typeface: RefCell<Option<(u64, Option<crate::coretext::Typeface>)>>,
+    #[cfg(target_vendor = "apple")]
+    strikes: RefCell<Vec<(crate::glyphs::StrikeKey, Option<crate::coretext::Strike>)>>,
     size: f32,
     /// Font units to points.
     units: f32,
@@ -72,7 +87,23 @@ impl Font {
         let axes: Vec<([u8; 4], f32)> = axes.iter().map(|(t, v)| (**t, *v)).collect();
         apply_axes(&mut face, &axes);
         let units = size / face.units_per_em() as f32;
-        Some(Font { face, size, units, glyphs: RefCell::new(HashMap::new()), axes, ui: None })
+        static UID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+        let uid = UID.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        Some(Font {
+            face,
+            data,
+            uid,
+            generation: 0,
+            #[cfg(target_vendor = "apple")]
+            typeface: RefCell::new(None),
+            #[cfg(target_vendor = "apple")]
+            strikes: RefCell::new(Vec::new()),
+            size,
+            units,
+            glyphs: RefCell::new(HashMap::new()),
+            axes,
+            ui: None,
+        })
     }
 
     /// The size in points.
@@ -104,6 +135,7 @@ impl Font {
         apply_axes(&mut self.face, &self.axes);
         if self.face.variation_coordinates() != before.as_slice() {
             self.glyphs.borrow_mut().clear();
+            self.generation += 1;
         }
         self.size = size;
         self.units = size / self.face.units_per_em() as f32;
@@ -232,24 +264,6 @@ impl Font {
             return Rect::new(0.0, 0.0, 0.0, 0.0);
         }
         Rect::new(l, t, r - l, b - t)
-    }
-
-    /// Every glyph of `text` with its pen x, its outline (font units, y up) handed to `f`.
-    fn each(&self, text: &str, mut f: impl FnMut(f32, &Path)) {
-        let mut glyphs = self.glyphs.borrow_mut();
-        self.layout(text, |g, pen| {
-            let path = glyphs.entry(g.0).or_insert_with(|| {
-                let mut b = Outline { b: Path::builder(), open: false };
-                self.face.outline_glyph(g, &mut b)?;
-                if b.open {
-                    b.b.end(false);
-                }
-                Some(b.b.build())
-            });
-            if let Some(path) = path {
-                f(pen, path);
-            }
-        });
     }
 }
 
@@ -557,16 +571,198 @@ fn system_face() -> Option<&'static [u8]> {
     })
 }
 
-impl Canvas {
-    /// `<Text x y text font paint>`: `text` with its baseline's start at (x, y).
-    pub fn draw_text(&mut self, text: &str, x: f32, y: f32, font: &Font, paint: &Paint) {
-        let saved = self.matrix();
-        let u = font.units;
-        font.each(text, |pen, path| {
-            self.set_matrix(Matrix([u, 0.0, 0.0, -u, x + pen, y]).then(saved));
-            self.draw_path(path, paint);
+impl Font {
+    /// Each glyph of `text` and its pen x (the layout [`Canvas::draw_text`] places).
+    pub(crate) fn glyph_run(&self, text: &str, out: &mut Vec<(u16, f32)>) {
+        out.clear();
+        self.layout(text, |g, pen| out.push((g.0, pen)));
+    }
+
+    /// A glyph's outline (font units, y up), read once.
+    fn with_outline(&self, g: u16, f: impl FnOnce(&Path)) {
+        let mut glyphs = self.glyphs.borrow_mut();
+        let path = glyphs.entry(g).or_insert_with(|| {
+            let mut b = Outline { b: Path::builder(), open: false };
+            self.face.outline_glyph(GlyphId(g), &mut b)?;
+            if b.open {
+                b.b.end(false);
+            }
+            Some(b.b.build())
         });
-        self.set_matrix(saved);
+        if let Some(path) = path {
+            f(path);
+        }
+    }
+
+    /// The variation as `SkTypeface_Mac::MakeFromStream` gives it to CoreText
+    /// (`ctvariation_from_SkFontArguments`): none when the font was made without one, else every
+    /// axis, at the value asked for pinned to its range, or at its default.
+    pub(crate) fn ct_axes(&self) -> Vec<([u8; 4], f32)> {
+        if self.axes.is_empty() {
+            return Vec::new();
+        }
+        self.face
+            .variation_axes()
+            .into_iter()
+            .map(|a| {
+                let tag = a.tag.to_bytes();
+                let value = self.axes.iter().rev().find(|(t, _)| *t == tag).map_or(a.def_value, |(_, v)| v.clamp(a.min_value, a.max_value));
+                (tag, value)
+            })
+            .collect()
+    }
+
+    /// The glyph atlas's name for this font at its current variation.
+    pub(crate) fn atlas_key(&self) -> u64 {
+        (self.uid << 24) | (self.generation & 0xFF_FFFF)
+    }
+
+    /// `f` with the CoreText strike of `key` (made on first use; the last few are kept).
+    #[cfg(target_vendor = "apple")]
+    pub(crate) fn with_strike<R>(&self, key: crate::glyphs::StrikeKey, text_size: f32, sa: [f32; 4], invertible: bool, f: impl FnOnce(&crate::coretext::Strike) -> R) -> Option<R> {
+        let mut strikes = self.strikes.borrow_mut();
+        if let Some(i) = strikes.iter().position(|(k, _)| *k == key) {
+            if i != 0 {
+                let s = strikes.remove(i);
+                strikes.insert(0, s);
+            }
+        } else {
+            let mut typeface = self.typeface.borrow_mut();
+            if typeface.as_ref().is_none_or(|(g, _)| *g != self.generation) {
+                *typeface = Some((self.generation, crate::coretext::Typeface::new(self.data, &self.ct_axes(), self.axes.iter().any(|(t, _)| t == b"opsz"))));
+            }
+            let strike = typeface.as_ref().and_then(|(_, t)| t.as_ref()).and_then(|t| crate::coretext::Strike::new(t, text_size, sa, invertible));
+            strikes.insert(0, (key, strike));
+            strikes.truncate(8);
+        }
+        strikes[0].1.as_ref().map(f)
+    }
+}
+
+impl Canvas {
+    /// `<Text x y text font paint>`: `text` with its baseline's start at (x, y). As Graphite
+    /// draws a glyph run ([`crate::glyphs`]): from the glyph atlas below 162 device pixels (where
+    /// CoreText rasterises the masks), the glyphs it can't take and larger runs as paths.
+    pub fn draw_text(&mut self, text: &str, x: f32, y: f32, font: &Font, paint: &Paint) {
+        let mut run = std::mem::take(&mut self.glyph_run);
+        font.glyph_run(text, &mut run);
+        #[cfg(target_vendor = "apple")]
+        let paths = self.draw_glyph_masks(&mut run, x, y, font, paint);
+        #[cfg(not(target_vendor = "apple"))]
+        let paths = true;
+        if paths {
+            let saved = self.matrix();
+            let u = font.units;
+            for &(g, pen) in &run {
+                font.with_outline(g, |path| {
+                    self.set_matrix(Matrix([u, 0.0, 0.0, -u, x + pen, y]).then(saved));
+                    self.draw_path(path, paint);
+                });
+            }
+            self.set_matrix(saved);
+        }
+        self.glyph_run = run;
+    }
+
+    /// The direct-mask sub run of a glyph run (`prepare_for_direct_mask_drawing`): one draw, its
+    /// glyphs' quads from the atlas. Leaves in `run` the glyphs that are paths and returns
+    /// whether there are any.
+    #[cfg(target_vendor = "apple")]
+    fn draw_glyph_masks(&mut self, run: &mut Vec<(u16, f32)>, x: f32, y: f32, font: &Font, paint: &Paint) -> bool {
+        use crate::glyphs::{self, Atlas, Digest, StrikeKey};
+        let m = self.state.matrix;
+        let xf = crate::graphite::Xf::new(m);
+        if !xf.valid() || run.is_empty() {
+            run.clear();
+            return false;
+        }
+        let [a, b, c, d, e, f] = m.0;
+        let device_size = font.size * glyphs::max_scale([a, c, b, d]);
+        // A hairline or stroked run, an SDFT-sized one (not ported yet) or a path-sized one.
+        if paint.stroke.is_some() || !(device_size > 0.0) || device_size >= glyphs::MIN_SDFT {
+            return true;
+        }
+        let post = glyphs::post2x2(&m);
+        let Some((text_size, sa, invertible)) = glyphs::compute_matrices(font.size, post) else {
+            run.clear();
+            return false;
+        };
+        let smoothing = crate::coretext::smooth_behavior() as u8;
+        let (smooth, _, _) = glyphs::scaler_settings(smoothing);
+        let lum = glyphs::luminance_index(paint, smoothing);
+        let key = StrikeKey { font: font.atlas_key(), size: font.size.to_bits(), post: post.map(f32::to_bits), lum };
+        // positionMatrix = drawMatrix.preTranslate(origin), then postTranslate(½, ½).
+        let tx = a * x + c * y + e + 0.5;
+        let ty = b * x + d * y + f + 0.5;
+        let mut quads = std::mem::take(&mut self.glyph_quads);
+        quads.clear();
+        let mut bounds = EMPTY;
+        let mut paths = 0;
+        let epoch = Atlas::with(|atlas| {
+            for i in 0..run.len() {
+                let (g, pen) = run[i];
+                let (px, py) = (a * pen + c * 0.0 + tx, b * pen + d * 0.0 + ty);
+                if !(px.is_finite() && py.is_finite()) {
+                    continue;
+                }
+                let digest = atlas.glyph(key, g, &mut |atlas, mask| {
+                    font.with_strike(key, text_size, sa, invertible, |strike| {
+                        let bounds = strike.bounds(g)?;
+                        if bounds.2.max(bounds.3) <= glyphs::TOO_BIG {
+                            mask.resize((bounds.2 * bounds.3) as usize, 0);
+                            let lut = *atlas.lut(lum);
+                            atlas.offscreen.draw(strike, g, bounds, &lut, smooth, mask);
+                        }
+                        Some(bounds)
+                    })
+                    .flatten()
+                });
+                match digest {
+                    Digest::Empty => {}
+                    Digest::Path => {
+                        run[paths] = run[i];
+                        paths += 1;
+                    }
+                    Digest::Mask(slot) => {
+                        let (ox, oy) = (px.floor() + slot.left as f32, py.floor() + slot.top as f32);
+                        let r = [ox, oy, ox + slot.w as f32, oy + slot.h as f32];
+                        bounds = [bounds[0].min(r[0]), bounds[1].min(r[1]), bounds[2].max(r[2]), bounds[3].max(r[3])];
+                        quads.push((r, slot));
+                    }
+                }
+            }
+            atlas.epoch
+        });
+        run.truncate(paths);
+        if !quads.is_empty() {
+            self.atlas_epoch = epoch;
+            let mut geo = Geo::Path;
+            let mut clip = DrawClip::default();
+            if self.visit_clips(&mut geo, &xf, false, bounds, EMPTY, &mut clip) {
+                let depth = self.next_depth();
+                self.use_msaa_clips(&clip, depth);
+                let paint_index = self.push_paint(paint, clip.analytic.as_ref());
+                let to_image = match &paint.shader {
+                    Shader::Image { to_image, .. } => Some(m.invert().then(*to_image)),
+                    _ => None,
+                };
+                let start = self.indices.len() as u32;
+                for (r, slot) in &quads {
+                    let base = self.vertices.len() as u32;
+                    for (k, (vx, vy)) in [(r[0], r[1]), (r[2], r[1]), (r[2], r[3]), (r[0], r[3])].into_iter().enumerate() {
+                        let u = slot.x + if k == 1 || k == 2 { slot.w } else { 0 };
+                        let v = slot.y + if k >= 2 { slot.h } else { 0 };
+                        let uv = to_image.map_or(lyon::math::point(0.0, 0.0), |t| t.apply(lyon::math::point(vx, vy)));
+                        self.vertices.push(Vertex { pos: [vx, vy], depth, paint: paint_index, color: u | (v << 16), uv: [uv.x, uv.y] });
+                    }
+                    self.indices.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+                }
+                let end = self.indices.len() as u32;
+                self.ops.push(Op::Glyphs { start, end, scissor: clip.scissor });
+            }
+        }
+        self.glyph_quads = quads;
+        paths > 0
     }
 }
 

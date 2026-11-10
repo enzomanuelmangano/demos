@@ -12,7 +12,10 @@
 //! or indirect dispatch: it runs the same on a phone and in the iOS Simulator. Gradients are
 //! evaluated per pixel in the shader, interpolated as Skia does (unpremultiplied sRGB).
 //!
-//! Text is [`Font`] + [`Canvas::draw_text`] (glyph outlines filled as paths); SVG path strings
+//! Text is [`Font`] + [`Canvas::draw_text`]: as Graphite's direct-mask text, glyph masks that
+//! CoreText rasterises as RN Skia's iOS scaler does, drawn from an atlas (no MSAA); runs of 162
+//! device pixels and more (SDFT and path sizes in Graphite) and non-Apple targets fill the glyph
+//! outlines as paths. SVG path strings
 //! are [`path_from_svg`]; `<FitBox>` is [`fit_box`]; `<CornerPathEffect>` on a polyline is
 //! [`corner_polyline`]. A `<Group transform>` with `perspective`,
 //! `rotateX` or `rotateY` is [`Matrix4`] (its plane's [`Matrix3`] inverted in a demo's shader).
@@ -33,6 +36,9 @@ pub use lyon::path::{Path, PathBuffer, PathEvent, PathSlice};
 pub mod backdrop;
 pub mod blur;
 pub mod color;
+#[cfg(target_vendor = "apple")]
+mod coretext;
+mod glyphs;
 pub mod graphite;
 pub mod image;
 pub mod matrix4;
@@ -291,6 +297,10 @@ pub(crate) enum Op {
     ClipCover { start: u32, end: u32 },
     /// AnalyticRRectRenderStep instances `first..first + count`.
     RRects { first: u32, count: u32, scissor: Option<[u32; 4]> },
+    /// BitmapTextRenderStep: glyph quads `start..end` (indices), each vertex's `color` its atlas
+    /// texel (x | y << 16), the mask sampled nearest (depth LEQUAL: a run may overlap itself).
+    #[cfg_attr(not(target_vendor = "apple"), allow(dead_code))]
+    Glyphs { start: u32, end: u32, scissor: Option<[u32; 4]> },
 }
 
 /// A clip element's shape, as the clip stack keeps it.
@@ -381,6 +391,12 @@ pub struct Canvas {
     points: Vec<Point>,
     /// The path a shape draw ([`Canvas::draw_circle`], …) is built into, kept between draws.
     scratch: lyon::path::PathBuffer,
+    /// A text run's glyphs and their quads (scratch, kept between draws).
+    glyph_run: Vec<(u16, f32)>,
+    #[cfg_attr(not(target_vendor = "apple"), allow(dead_code))]
+    glyph_quads: Vec<([f32; 4], glyphs::Slot)>,
+    /// The glyph atlas's epoch the frame's glyph quads point into (0: none).
+    pub(crate) atlas_epoch: u64,
 }
 
 impl Default for Canvas {
@@ -400,6 +416,9 @@ impl Default for Canvas {
             verbs: Vec::new(),
             points: Vec::new(),
             scratch: lyon::path::PathBuffer::new(),
+            glyph_run: Vec::new(),
+            glyph_quads: Vec::new(),
+            atlas_epoch: 0,
         }
     }
 }
@@ -591,6 +610,10 @@ impl Canvas {
         self.clip_elems.clear();
         self.clip_verbs.clear();
         self.state = State { matrix: Matrix::scale(scale, scale), opacity: 1.0, clips: 0, clip_verbs: 0 };
+        if self.atlas_epoch != 0 {
+            glyphs::Atlas::with(|a| a.begin_frame());
+        }
+        self.atlas_epoch = 0;
     }
 
     /// `canvas.save()` / a `<Group>`'s start.

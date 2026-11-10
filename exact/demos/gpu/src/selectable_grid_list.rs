@@ -619,7 +619,8 @@ mod tests {
         assert!(!moving);
         // Cell 5's border (4 wide, #55D5FF) at its left edge; the button is up (8 selected).
         assert_eq!(&selected.at(2 * 110, 2 * 270)[..3], &[0x55, 0xD5, 0xFF]);
-        assert_eq!(&selected.at(2 * 330, 2 * 860)[..3], &[0x55, 0xD5, 0xFF]);
+        // (330, 860) is the clear glyph's centre, where CoreText's mask leaves half coverage.
+        assert_eq!(&selected.at(2 * 322, 2 * 860)[..3], &[0x55, 0xD5, 0xFF]);
 
         // The button clears.
         s.input(&pointer(PointerPhase::Down, 352.0, 860.0, ms));

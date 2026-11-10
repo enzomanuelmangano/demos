@@ -81,7 +81,9 @@ bun exact.mjs ios --run --sim $EXACT_SIM                         # native build 
 - Skia drawing goes through `packages/skia`, antialiased as RN Skia's Graphite: `draw_rect`,
   `draw_rrect`, `draw_circle`, `draw_oval`, `draw_line` (and paths that are those shapes) are
   analytic (AnalyticRRectRenderStep), other paths 4× MSAA of Graphite's tessellation, clips
-  analytic or MSAA as Graphite picks. Use the shape call RN's JSX makes (`<Circle>` is
+  analytic or MSAA as Graphite picks. Text below 162 device px is Graphite's direct masks:
+  CoreText rasterises each glyph with Skia's Mac-scaler settings into a per-thread atlas
+  (bit-exact against tools/coretext_reference.c); larger text is still glyph paths. Use the shape call RN's JSX makes (`<Circle>` is
   `draw_circle`, not a circle path). vello was tried and fails on the iOS Simulator (no
   indirect dispatch), so don't reach for it.
 
