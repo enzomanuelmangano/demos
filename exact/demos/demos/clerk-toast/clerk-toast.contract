@@ -21,15 +21,16 @@ fn clerkSet(xs: number[], i: number, v: number): number[] = range(xs.length).map
 // bumps the rest; onDismiss lowers the older ones).
 fn clerkNewer(gone: number[], i: number): number = range(gone.length).filter(j => j > i and clerkNum(gone, j) == 0).length
 fn clerkId(gone: number[], goneK: number[], i: number): number = clerkNum(gone, i) != 0 ? clerkNum(goneK, i) : clerkNewer(gone, i)
-// A gone toast leaves the list once its motion ends: a swiped one (gone 1) when its 350 ms spring
-// does (onDismiss), a cleared one (gone 2) after its FadeOutLeft (120 ms × id, then 300 ms).
-fn clerkStays(gone: number[], goneAt: number[], goneK: number[], j: number, now: number): bool = clerkNum(gone, j) == 0 or now < clerkNum(goneAt, j) + (clerkNum(gone, j) == 1 ? 350 : 120 * clerkNum(goneK, j) + 300)
+// A gone toast leaves the list once its motion ends: a swiped one (gone 1) when its spring
+// (duration 350) does, at 1.5 × 350 = 525 ms, Reanimated's settling time (onDismiss), a cleared one (gone 2) after its FadeOutLeft (120 ms × id, then 300 ms).
+fn clerkStays(gone: number[], goneAt: number[], goneK: number[], j: number, now: number): bool = clerkNum(gone, j) == 0 or now < clerkNum(goneAt, j) + (clerkNum(gone, j) == 1 ? 525 : 120 * clerkNum(goneK, j) + 300)
 
 // constants.ts TOAST_HEIGHT 55, MAX_VISIBLE_TOASTS 3; hooks.ts bottomHeight =
 // min(id, MAX_VISIBLE_TOASTS - 1) × (TOAST_HEIGHT + 15). stacked-toast.tsx BaseSafeArea 50.
 fn clerkBottom(id: number): number = min(id, 2) * 70
-// The bottom's withSpring { mass 1, damping 100, stiffness 80 } (overdamped, ζ 5.59).
-fn clerkSpring(): string = "-exact-spring(80, 100, 1)"
+// The bottom's withSpring { mass 1, damping 100, stiffness 80 }: ζ 5.59, which Reanimated runs
+// as critically damped at ω0 = √(k/m) = 8.944, so the damping here is 2√(k·m).
+fn clerkSpring(): string = "-exact-spring(80, 17.889, 1)"
 // withTiming() default: 300 ms, inOut(quad).
 fn clerkTiming(): string = "300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)"
 // dismissItem: withSpring(-windowWidth, { dampingRatio 1, duration 350 }) (bun tools/spring.ts).
@@ -40,14 +41,14 @@ fn clerkBackdropSpring(): string = "-exact-spring(1087.7, 131.9, 4)"
 fn clerkGradient(count: number, h: number): number = min(min(count, 3) * 145, h / 2)
 
 // The mount: `bottom` starts at -TOAST_HEIGHT and springs to BaseSafeArea (105 px) on the
-// spring above, from rest: 1 - (r₂e^{r₁t} - r₁e^{r₂t}) / (r₂ - r₁), r = -0.807, -99.19, sampled
-// (denser early) over the 11.5 s Reanimated takes to settle it (0.01 px and 2 px/s). A later id
+// spring above, from rest, critically damped: 1 - (1 + ωt)e^{-ωt}, ω 8.944, sampled (denser
+// early) over the 1383 ms Reanimated takes to settle it (energy below 6e-9 of the start). A later id
 // change is the translate transition one wrapper in: the spring is linear, so the two sum to
 // RN's retargeted spring.
 keyframes clerkEnter
   from translate="0px 105px"
   to translate="0px 0px"
-fn clerkEnterTiming(): string = "11500ms linear(0, 0.0008 0.04%, 0.009 0.17%, 0.0278 0.39%, 0.0547 0.69%, 0.0883 1.09%, 0.1278 1.56%, 0.1723 2.13%, 0.2208 2.78%, 0.2723 3.52%, 0.3259 4.34%, 0.3806 5.25%, 0.4353 6.25%, 0.4894 7.34%, 0.542 8.51%, 0.5924 9.77%, 0.6403 11.11%, 0.685 12.54%, 0.7264 14.06%, 0.7643 15.67%, 0.7985 17.36%, 0.8292 19.14%, 0.8563 21.01%, 0.8801 22.96%, 0.9008 25%, 0.9186 27.13%, 0.9337 29.34%, 0.9464 31.64%, 0.9571 34.03%, 0.9659 36.5%, 0.9731 39.06%, 0.9789 41.71%, 0.9837 44.44%, 0.9874 47.27%, 0.9904 50.17%, 0.9927 53.17%, 0.9945 56.25%, 0.9959 59.42%, 0.997 62.67%, 0.9978 66.02%, 0.9984 69.44%, 0.9988 72.96%, 0.9992 76.56%, 0.9994 80.25%, 0.9996 84.03%, 0.9997 87.89%, 0.9998 91.84%, 0.9999 95.88%, 1 100%) both"
+fn clerkEnterTiming(): string = "1383ms linear(0, 0.0006 0.27%, 0.0049 0.83%, 0.0169 1.59%, 0.0393 2.51%, 0.0737 3.59%, 0.12 4.81%, 0.1771 6.15%, 0.2428 7.61%, 0.3145 9.19%, 0.3893 10.88%, 0.4645 12.67%, 0.5377 14.57%, 0.6068 16.56%, 0.6705 18.64%, 0.7277 20.82%, 0.7781 23.08%, 0.8216 25.43%, 0.8584 27.87%, 0.889 30.39%, 0.9141 32.99%, 0.9343 35.67%, 0.9503 38.42%, 0.9629 41.25%, 0.9726 44.16%, 0.9799 47.14%, 0.9855 50.2%, 0.9896 53.32%, 0.9926 56.51%, 0.9948 59.78%, 0.9964 63.11%, 0.9975 66.51%, 0.9983 69.98%, 0.9989 73.51%, 0.9992 77.1%, 0.9995 80.76%, 0.9997 84.49%, 0.9998 88.27%, 0.9999 92.12%, 0.9999 96.03%, 1 100%) both"
 
 // The dragged toast's translateX: the shared drag layer's horizontal translate, 1:1, held at 0
 // on the right (onUpdate ignores a translation > 0).
@@ -80,7 +81,7 @@ component ClerkToast
   state goneX = []
   state goneAt = []
   state goneK = []
-  // The delay on the id-driven motion: 350 after a swipe (the others move once onDismiss runs).
+  // The delay on the id-driven motion: 525 after a swipe (the others move once onDismiss runs).
   state shiftDelay = 0
   // The toast that follows the drag layer (the one whose handle the drag began on).
   state dragKey = -1
@@ -133,7 +134,7 @@ component ClerkToast
       gone = clerkSet(gone, i, 1)
       goneX = clerkSet(goneX, i, x)
       goneAt = clerkSet(goneAt, i, performanceNow())
-      shiftDelay = 350
+      shiftDelay = 525
       dragKey = -1
 
   view
