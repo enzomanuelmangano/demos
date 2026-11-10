@@ -1,37 +1,72 @@
 // Liquid Glass Playground: a full-screen photo under a full-screen pane of clear Liquid Glass
-// (radius 50); dragging pulls the pane up or down at half the finger's travel, and it springs
-// back on release. RN: src/animations/liquid-glass-playground (index.tsx, overlay.liquid.tsx,
-// the iOS 26 variant the liquid-glass resolver picks; haptics.ts).
+// (radius 50); dragging pulls the pane up or down at half the finger's travel, with a haptic
+// every 5 px of the pane's travel growing from selection to heavy, and it springs back on
+// release. RN: src/animations/liquid-glass-playground (index.tsx, overlay.liquid.tsx, the iOS 26
+// variant the liquid-glass resolver picks; haptics.ts).
 //
-// Not ported: haptics.ts's progressive haptics (an impact every 5 px of damped travel, its
-// strength on Easing.ease(distance / 30% of the window)). That is logic per move of the finger,
-// and the drag here is the host's, with no commit per frame.
+// The drag is a `pan` (one action per move of the finger), not a host transform drag: RN runs
+// handleProgressiveHaptics on every onUpdate, which needs the travel at each move. The action
+// writes the pane's translate (a commit per move) and plays the haptic when it is due.
 
 // The photo (index.tsx's Unsplash photo-1592330169142, w=2832: 2832 × 1593), its centre
 // 1200 × 1593: what contentFit cover shows of it on a portrait screen.
 fn photo(): string = "assets/demos/liquid-glass-playground/background.jpg"
 
-// HAPTIC_CONFIG.DRAG_FRICTION 0.5: the pane moves translationY × 0.5. The host drags a clear
-// box 1:1 (`pull`); the pane follows its vertical translate on the `--pull` timeline, mapped
-// linearly to half of it (−2000 → −1000 … 2000 → 1000, so 0 stays 0).
-keyframes followHalf
-  from translate="0px -1000px"
-  to translate="0px 1000px"
-// Its inverse: what stays put on screen inside the moving pane.
-keyframes holdHalf
-  from translate="0px 1000px"
-  to translate="0px -1000px"
+// haptics.ts HAPTIC_CONFIG: DISTANCE_THRESHOLD 5, MAX_DRAG_DISTANCE window height × 0.3,
+// INTENSITY HEAVY 1 / MEDIUM 0.7 / LIGHT 0.3, DRAG_FRICTION 0.5.
+// easedProgress = Easing.ease(progress), Easing.bezier(0.42, 0, 1, 1): it is 1 only at
+// progress 1, 0.7 at progress 0.8058677170 and 0.3 at 0.4855721557 (the curve solved, 30
+// digits; Reanimated's own bezier solver is within 1e-7 of it), so the intensity steps are
+// thresholds on the progress itself.
+fn hapticOf(p: number): string = p >= 1 ? "impact-heavy" : (p >= 0.8058677170 ? "impact-medium" : (p >= 0.4855721557 ? "impact-light" : "selection"))
+
+fn paneMotion(dragging: bool): string = dragging ? "none" : "translate -exact-spring(755.4, 109.9, 4)"
 
 component LiquidGlassPlayground
-  state panX = 0
-  state panY = 0
-  state boxHeight = 0
-  action geometry(bw: number, bh: number, pw: number, ph: number)
-    boxHeight = bh
-  // onEnd: translateY.set(withSpring(0, { duration: 600, dampingRatio: 1 })).
-  action release(x: number, y: number, scale: number, vx: number, vy: number, vscale: number)
-    panX = 0
-    panY = 0
+  // The gesture's translationY (from the touch-down, as UIKit's and RNGH's translation).
+  state ty = 0
+  // A pan in progress: the pane follows the finger without a transition.
+  state dragging = false
+  // This contact's first move was seen; failOffsetX(10) failed it.
+  state began = false
+  state failed = false
+  state maxDrag = 0
+  // lastHapticPosition, hasReachedMaxIntensity.
+  state lastHaptic = 0
+  state hasMax = false
+  // Pan().failOffsetX(10).onUpdate: translateY = translationY × DRAG_FRICTION, then
+  // handleProgressiveHaptics(dampedTranslation). RNGH fails the pan while it is still possible
+  // once translationX > 10 (failOffsetXEnd); it becomes active at UIKit's pan hysteresis, the same
+  // recognizer as this pan's, whose first delta is the whole displacement from the touch-down:
+  // so the pan failed exactly when that first delta is more than 10 to the right.
+  action drag(dx: number, dy: number)
+    let fails = began ? failed : dx > 10
+    if not began
+      maxDrag = frame("liquid-glass-playground").height * 0.3
+    began = true
+    failed = fails
+    if not fails
+      let t = ty + dy
+      ty = t
+      dragging = true
+      let d = max(t * 0.5, 0 - t * 0.5)
+      if max(d - lastHaptic, lastHaptic - d) >= 5
+        let p = min(d / (maxDrag > 0 ? maxDrag : frame("liquid-glass-playground").height * 0.3), 1)
+        if not (hasMax and p >= 1)
+          hasMax = p >= 1
+          haptic(hapticOf(p))
+          lastHaptic = d
+  // onEnd (only after the pan was active): the haptic tracking reset, translateY
+  // withSpring(0, { duration: 600, dampingRatio: 1 }) = bun tools/spring.ts 600 1, from rest
+  // (Reanimated starts it at velocity 0: the drag set the value directly).
+  action release(vx: number, vy: number)
+    if began and not failed
+      lastHaptic = 0
+      hasMax = false
+      ty = 0
+    began = false
+    failed = false
+    dragging = false
   view
     // styles.container: absoluteFill, centred.
     column position="absolute" inset=0 align-items="center" justify-content="center"
@@ -42,8 +77,8 @@ component LiquidGlassPlayground
       row position="absolute" inset=0 justify-content="center" align-items="stretch"
         image photo() height="100%" aspect-ratio=(1200 / 1593) flex-shrink=0
           alt="Background photo" testId="photo"
-      // The drag's clip: full screen, as the RN container is.
-      view position="absolute" inset=0 overflow="hidden" timeline-scope="--pull"
+      // Full screen, as the RN container is.
+      view position="absolute" inset=0 overflow="hidden"
         // styles.glassView: absoluteFill, borderRadius 50 continuous, clipped, zIndex 2;
         // GlassView glassEffectStyle "clear", tintColor rgba(0,0,0,0.5), not interactive.
         //
@@ -51,23 +86,19 @@ component LiquidGlassPlayground
         // haze over a sharp photo). The tinted glass as UIKit draws it on iOS 26, measured on the
         // RN screen: the photo blurred with σ 10 pt, saturated 1.2 and darkened by black at
         // 0.25. So the pane is that: a still, filtered copy of the photo (drawn once), held in
-        // place under the moving pane by the inverse of its translate on the same timeline.
+        // place under the moving pane by the inverse of its translate, on the same transition.
         view position="absolute" inset=0 border-radius=50 corner-shape="-exact-continuous" overflow="hidden"
-          pointer-events="none" animation="followHalf 1s linear both" animation-timeline="--pull"
-          animation-range="-2000px 2000px" aria-hidden=true testId="glass"
-          view position="absolute" inset=0 animation="holdHalf 1s linear both"
-            animation-timeline="--pull" animation-range="-2000px 2000px"
+          pointer-events="none" translate=`0px ${ty * 0.5}px` transition=paneMotion(dragging)
+          aria-hidden=true testId="glass"
+          view position="absolute" inset=0 translate=`0px ${0 - ty * 0.5}px` transition=paneMotion(dragging)
             // The photo at the same scale and place as the sharp one (it is wider than the screen,
             // so the blur does not darken the edges).
             row position="absolute" inset=0 justify-content="center" align-items="stretch"
               image photo() height="100%" aspect-ratio=(1200 / 1593) flex-shrink=0
                 filter="blur(10px) saturate(1.2)" aria-hidden=true
             view position="absolute" inset=0 background-color="rgba(0, 0, 0, 0.25)"
-        // What the finger drags: clear, 1:1, back on bun tools/spring.ts 600 1.
-        box id="pull" width="100%" height="100%" position="relative" padding=0 border-width=0
-          margin=0 box-sizing="border-box" translate=`${panX}px ${panY}px`
-          transition="translate -exact-spring(755.4, 109.9, 4), scale -exact-spring(755.4, 109.9, 4)"
-          -exact-drag-timeline="--pull y" testId="pull"
-          box transformDragFor="pull" transformgeometry=geometry transformrelease=release
-            touch-action="none" position="absolute" left=0 top=0 width="100%" height="100%"
-            aria-label="Pull the glass" testId="pull-handle"
+        // The GestureDetector: on the pane's Animated.View, so it moves with the pane (the
+        // strip a pulled pane uncovers takes no drag).
+        view position="absolute" inset=0 touch-action="none" pan=drag panrelease=release
+          translate=`0px ${ty * 0.5}px` transition=paneMotion(dragging)
+          aria-label="Pull the glass" testId="pull-handle"
