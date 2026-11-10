@@ -16,6 +16,7 @@ pub mod shaders {
     include!(concat!(env!("OUT_DIR"), "/shaders.rs"));
 }
 pub mod gfx;
+pub mod gooey;
 
 pub mod animated_3d_parallax;
 pub mod atlas_button;
@@ -30,6 +31,7 @@ pub mod bottom_bar_skia;
 pub mod clock_time_picker;
 pub mod color_carousel;
 pub mod cuberto_slider;
+pub mod delete_button;
 pub mod dot_sheet;
 pub mod duration_slider;
 pub mod expandable_mini_player;
@@ -74,6 +76,7 @@ pub static REGISTRY: Registry = Registry {
         ("clock_time_picker", 0, clock_time_picker::surface),
         ("color_carousel", 1, color_carousel::surface),
         ("cuberto_slider", 0, cuberto_slider::surface),
+        ("delete_button", 0, delete_button::surface),
         ("dot_sheet", 0, dot_sheet::surface),
         ("duration_slider", 0, duration_slider::surface),
         ("expandable_mini_player", 1, expandable_mini_player::surface),
