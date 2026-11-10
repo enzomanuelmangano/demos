@@ -664,7 +664,9 @@ impl Surface for Prince {
         }
         let c = &mut self.canvas;
         c.begin(frame.scale);
-        c.fill(Color::hex(PAGE_BG));
+        // The page is the View under the Canvas (backgroundColor PAGE_BG): a Display P3 colour,
+        // (248, 244, 235) on screen, not the sRGB (247, 244, 236).
+        c.fill(Color::view_hex(PAGE_BG));
         if let Some(atlas) = self.atlas.as_ref() {
             // colorBlendMode="srcIn": the sprite in the colour's alpha (see the header).
             c.draw_atlas(atlas.image(0), &self.sprites, &self.xforms, Some(&self.colors), false);
