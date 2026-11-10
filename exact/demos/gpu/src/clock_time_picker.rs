@@ -19,20 +19,23 @@
 //!   format(date, 'h:mm aaa') lowercased, #d8d8d8, Honk-Regular 20, centred (an RN <Text>: UIKit
 //!   layout, match_ui_font's GSUB and GPOS kerning). Two expo LinearGradients over it: #111111 →
 //!   transparent over the top half, transparent → #111111 over the bottom half.
-//! - Scroll: UIScrollView's. The drag is 1:1 (rubber-banded past the ends); at release UIKit
-//!   projects the target (velocity · rate / (1 − rate), decelerationRate "fast" 0.99 per ms),
-//!   RCTEnhancedScrollView snaps it to snapToOffsets (velocity > 0: the next offset at or past the
-//!   target; < 0: the one before; 0: the nearest), clamped to the content; the scroll then
-//!   decelerates exponentially at 0.99 per ms onto it. Released past an end, it bounces back.
-//!   disableIntervalMomentum has no effect with snapToOffsets.
+//! - Scroll: UIScrollView's, vertical (`ui_scroll`, measured: the pan begins on the second move
+//!   past its hysteresis, the drag 1:1 and rubber-banded past the ends; at the lift a finger
+//!   slower than ~335 pt/s or rested 100 ms decelerates with no velocity; UIKit projects the
+//!   rest at decelerationRate "fast", 0.99 per ms; past an end it bounces back as UIKit does).
+//!   RCTEnhancedScrollView snaps the projected target to snapToOffsets (velocity > 0: the next
+//!   offset at or past it; < 0: the one before; 0: the nearest), clamped to the content: the
+//!   offsets are i × 30 up to the content's end (570), so `Snap::Interval(30)`.
+//!   disableIntervalMomentum has no effect with snapToOffsets (only snapToInterval reads it).
+//!   A touch that never drags snaps nothing (no scrollViewWillEndDragging).
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture};
 use reanimated::{interpolate, Extrapolation};
 use skia::blur::{round_out, GraphiteBlur, GraphitePlan, IRect, Placed, GRAPHITE_FORMAT};
 use skia::{point, stops, Canvas, Color, Font, Paint, PathEvent, Renderer, Shader};
 
+use crate::ui_scroll::{Snap, UiScroll, FAST};
 use crate::{gfx, shaders};
 use shaders::clock_time_picker::{entry, module, Uniforms, B0, B1, B2, BASE, DOT, GROUP_0, HOUR, MINUTE, SMP, U};
 
@@ -47,11 +50,6 @@ const ITEMS: usize = 20;
 /// Date.UTC(2025, 0, 1, 13, 0): dates[0] as wall time.
 const FIRST_MS: f64 = 1_735_736_400_000.0;
 const HALF_HOUR_MS: f64 = 1_800_000.0;
-/// UIScrollView.DecelerationRate.fast, per ms; the rubber band's constant.
-const RATE: f64 = 0.99;
-const RUBBER: f64 = 0.55;
-/// The bounce back to an end: critically damped at this rate (per ms), as selectable_grid_list.
-const BOUNCE_RATE: f64 = 0.0125;
 const SHADOW_SIGMA: f32 = 10.0;
 static HONK: &[u8] = include_bytes!("../fonts/honk-regular-times-subset.otf");
 
@@ -63,9 +61,8 @@ pub fn surface() -> Box<dyn Surface> {
     });
     let plan = || GraphitePlan::new([0, 0, 1, 1], [0, 0, 1, 1], 1.0).unwrap();
     Box::new(ClockTimePicker {
-        offset: 0.0,
-        scroll: Scroll::Idle,
-        pan: PanGesture::new(),
+        // The list's contentOffset.y, as a horizontal UiScroll fed the finger's y.
+        scroll: UiScroll::new(0.0, max_offset(), LIST_H as f64, FAST, Snap::Interval(ITEM)),
         labels,
         font: Font::new(HONK, 20.0).map(Font::with_ui_layout),
         gradients: None,
@@ -78,22 +75,9 @@ pub fn surface() -> Box<dyn Surface> {
     })
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-enum Scroll {
-    Idle,
-    /// A finger scrolling: its y and the offset when the scroll began.
-    Drag { id: u32, y: f64, offset: f64 },
-    /// Decelerating onto a snap offset.
-    Settle { from: f64, to: f64, at: f64 },
-    /// Past an end: back to `edge` from `offset` at `velocity` (points per ms) since `at`.
-    Bounce { edge: f64, offset: f64, velocity: f64, at: Option<f64> },
-}
-
 struct ClockTimePicker {
-    /// contentOffset.y.
-    offset: f64,
-    scroll: Scroll,
-    pan: PanGesture,
+    /// contentOffset.y in `scroll.offset`.
+    scroll: UiScroll,
     labels: [String; ITEMS],
     font: Option<Font>,
     /// The two gradient overlays' paints.
@@ -132,31 +116,6 @@ fn max_offset() -> f64 {
     ITEMS as f64 * ITEM + 2.0 * (LIST_H as f64 / 2.0 - ITEM / 2.0) - LIST_H as f64
 }
 
-/// RCTEnhancedScrollView's scrollViewWillEndDragging with snapToOffsets (i × 30).
-fn snap(offset: f64, target: f64, velocity: f64) -> f64 {
-    let max = max_offset();
-    let (mut smaller, mut larger) = (0.0f64, max);
-    for i in 0..ITEMS {
-        let o = i as f64 * ITEM;
-        if o <= target && target - o < target - smaller {
-            smaller = o;
-        }
-        if o >= target && o - target < larger - target {
-            larger = o;
-        }
-    }
-    let nearest = if target - smaller < larger - target { smaller } else { larger };
-    let _ = offset;
-    let t = if velocity > 0.0 {
-        larger
-    } else if velocity < 0.0 {
-        smaller
-    } else {
-        nearest
-    };
-    t.clamp(0.0, max)
-}
-
 /// The wall time the clock shows at a scroll offset (interpolate, extended).
 fn date_at(offset: f64) -> f64 {
     let input: [f64; ITEMS] = std::array::from_fn(|i| i as f64 * ITEM);
@@ -172,69 +131,9 @@ fn angles(ms: f64) -> (f64, f64) {
 }
 
 impl ClockTimePicker {
-    fn dragged(&self, raw: f64) -> f64 {
-        let (max, d) = (max_offset(), LIST_H as f64);
-        let band = |x: f64| (1.0 - 1.0 / (x * RUBBER / d + 1.0)) * d;
-        if raw < 0.0 {
-            -band(-raw)
-        } else if raw > max {
-            max + band(raw - max)
-        } else {
-            raw
-        }
-    }
-
-    fn release(&mut self, finger_velocity: f32) {
-        // Scroll velocity, points per ms (the content moves against the finger).
-        let v = -(finger_velocity as f64) / 1000.0;
-        let max = max_offset();
-        if self.offset < 0.0 || self.offset > max {
-            let edge = if self.offset < 0.0 { 0.0 } else { max };
-            self.scroll = Scroll::Bounce { edge, offset: self.offset, velocity: v, at: None };
-            return;
-        }
-        let projected = self.offset + v * RATE / (1.0 - RATE);
-        let to = snap(self.offset, projected, v);
-        self.scroll = if (to - self.offset).abs() < 1e-9 { Scroll::Idle } else { Scroll::Settle { from: self.offset, to, at: f64::NAN } };
-    }
-
-    fn step(&mut self, now: f64) -> bool {
-        match self.scroll {
-            Scroll::Settle { from, to, at } => {
-                let at = if at.is_nan() { now } else { at };
-                let t = now - at;
-                let x = to + (from - to) * RATE.powf(t);
-                if (x - to).abs() < 0.01 {
-                    self.offset = to;
-                    self.scroll = Scroll::Idle;
-                } else {
-                    self.offset = x;
-                    self.scroll = Scroll::Settle { from, to, at };
-                }
-                true
-            }
-            Scroll::Bounce { edge, offset, velocity, at } => {
-                let at = at.unwrap_or(now);
-                let t = now - at;
-                let (x0, w) = (offset - edge, BOUNCE_RATE);
-                let x = (x0 + (velocity + w * x0) * t) * (-w * t).exp();
-                if t > 0.0 && x.abs() < 0.01 {
-                    self.offset = edge;
-                    self.scroll = Scroll::Idle;
-                } else {
-                    self.offset = edge + x;
-                    self.scroll = Scroll::Bounce { edge, offset, velocity, at: Some(at) };
-                }
-                true
-            }
-            Scroll::Drag { .. } => true,
-            Scroll::Idle => false,
-        }
-    }
-
     /// Records the four canvases at this offset.
     fn record(&mut self, s: f32) -> [(f32, f32, f32, f32, f32); 3] {
-        let (hour_a, minute_a) = angles(date_at(self.offset));
+        let (hour_a, minute_a) = angles(date_at(self.scroll.offset));
         let c = CLOCK / 2.0;
         let (ox, oy) = (0.0, CLOCK_Y);
         let hand = |a: f64, len: f32| (ox + c + len * (a.sin() as f32), oy + c - len * (a.cos() as f32));
@@ -260,7 +159,7 @@ impl ClockTimePicker {
         base.clip_path(&self.list_clip);
         if let Some(font) = self.font.as_ref() {
             let lh = gfx::line_height(font);
-            let top0 = (LIST_H as f64 / 2.0 - ITEM / 2.0) - self.offset;
+            let top0 = (LIST_H as f64 / 2.0 - ITEM / 2.0) - self.scroll.offset;
             for (i, label) in self.labels.iter().enumerate() {
                 let top = top0 + i as f64 * ITEM;
                 if top + ITEM < 0.0 || top > LIST_H as f64 {
@@ -302,50 +201,16 @@ impl Surface for ClockTimePicker {
     }
 
     fn agent(&mut self, _request: &str) -> Option<String> {
-        let ms = date_at(self.offset);
+        let ms = date_at(self.scroll.offset);
         let wall = (ms - FIRST_MS) / 60000.0 + 13.0 * 60.0;
-        Some(format!("{{\"offset\":{:.2},\"minutes\":{:.1},\"settled\":{}}}", self.offset, wall, self.scroll == Scroll::Idle))
+        Some(format!("{{\"offset\":{:.2},\"minutes\":{:.1},\"settled\":{}}}", self.scroll.offset, wall, !self.scroll.moving()))
     }
 
     fn input(&mut self, event: &InputEvent) {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
         let on_list = (LIST_X..=LIST_X + LIST_W).contains(&x) && (0.0..=LIST_H).contains(&y);
-        let phase = gfx::phase(phase);
-        if phase == gesture_handler::Phase::Down && on_list && !matches!(self.scroll, Scroll::Drag { .. }) {
-            // A finger down catches a moving list where it is.
-            self.scroll = Scroll::Idle;
-        }
-        match self.pan.event(id, phase, x, y, at_ms, on_list) {
-            Event::Start(p) => {
-                // The drag goes on from the raw offset under the shown one: a list caught past an
-                // end is banded once, not twice.
-                let (max, d) = (max_offset(), LIST_H as f64);
-                let unband = |y: f64| d / RUBBER * (1.0 / (1.0 - y / d) - 1.0);
-                let raw = if self.offset < 0.0 {
-                    -unband(-self.offset)
-                } else if self.offset > max {
-                    max + unband(self.offset - max)
-                } else {
-                    self.offset
-                };
-                self.scroll = Scroll::Drag { id, y: p.y as f64, offset: raw };
-            }
-            Event::Update(p) => {
-                if let Scroll::Drag { y: y0, offset, .. } = self.scroll {
-                    self.offset = self.dragged(offset + (y0 - p.y as f64));
-                }
-            }
-            // UIScrollView does not fling a drag held still before the lift (a RNGH pan would).
-            Event::End(p) => self.release(crate::ui_scroll::release_velocity(p.velocity_y, self.pan.rest_ms(at_ms))),
-            // A touch with no drag: UIScrollView leaves a caught list where it stopped (no
-            // scrollViewWillEndDragging, so no snap); only one past an end bounces back.
-            Event::Fail => {
-                if self.offset < 0.0 || self.offset > max_offset() {
-                    self.release(0.0);
-                }
-            }
-            _ => {}
-        }
+        // A vertical scroll view: its axis is the finger's y.
+        self.scroll.input(id, gfx::phase(phase), y, x, at_ms, on_list);
     }
 
     fn render(
@@ -359,7 +224,7 @@ impl Surface for ClockTimePicker {
     ) -> bool {
         let (pw, ph) = frame.pixels();
         let s = frame.scale;
-        let moving = self.step(frame.now_ms);
+        let moving = self.scroll.step(frame.now_ms);
         if self.gradients.is_none() {
             let dark = Color::hex(0x111111);
             let clear = Color::rgba8(0x11, 0x11, 0x11, 0);
@@ -414,7 +279,7 @@ impl Surface for ClockTimePicker {
             gpu.bind = Some((views, group));
         }
         skia::render::fullscreen_pass(encoder, "clock time picker", target, &gpu.compose, &gpu.bind.as_ref().unwrap().1);
-        moving || self.pan.tracking()
+        moving || self.scroll.moving()
     }
 }
 
@@ -462,11 +327,8 @@ mod tests {
         // Half way between two items: 15 minutes more.
         let (_, m) = angles(date_at(15.0));
         assert!(((m % std::f64::consts::TAU).to_degrees() - 90.0).abs() < 1e-6);
-        // Snapping: a slow flick down from 31 lands on 60; no velocity, the nearest.
-        assert_eq!(snap(31.0, 40.0, 0.1), 60.0);
-        assert_eq!(snap(31.0, 40.0, -0.1), 30.0);
-        assert_eq!(snap(44.0, 44.0, 0.0), 30.0);
-        assert_eq!(snap(560.0, 900.0, 3.0), 570.0);
+        // snapToOffsets i × 30 end at the content's end: ui_scroll's Snap::Interval(30) is their rule.
+        assert_eq!((ITEMS - 1) as f64 * ITEM, max_offset());
     }
 
     #[test]
@@ -508,5 +370,28 @@ mod tests {
         let offset: f64 = state.split("\"offset\":").nth(1).unwrap().split(',').next().unwrap().parse().unwrap();
         assert!(offset > 54.0 && (offset / 30.0 - (offset / 30.0).round()).abs() < 1e-6, "{state}");
         assert_ne!(rest.data, after.data);
+
+        // Flung again and caught by a tap mid-flight: no drag, no scrollViewWillEndDragging, so the
+        // list rests where the tap caught it, between items.
+        finger(&mut s, PointerPhase::Down, 100.0, ms);
+        for i in 1..=8 {
+            finger(&mut s, PointerPhase::Move, 100.0 - 8.0 * i as f32, ms + 10.0 * i as f64);
+        }
+        finger(&mut s, PointerPhase::Up, 36.0, ms + 80.0);
+        ms += 80.0;
+        for _ in 0..4 {
+            ms += 16.0;
+            fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+        }
+        finger(&mut s, PointerPhase::Down, 60.0, ms);
+        finger(&mut s, PointerPhase::Up, 60.0, ms + 50.0);
+        let caught = s.agent("{}").unwrap();
+        for _ in 0..60 {
+            ms += 16.0;
+            fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+        }
+        assert_eq!(s.agent("{}").unwrap(), caught);
+        let offset: f64 = caught.split("\"offset\":").nth(1).unwrap().split(',').next().unwrap().parse().unwrap();
+        assert!((offset / 30.0 - (offset / 30.0).round()).abs() > 0.01, "{caught}");
     }
 }
