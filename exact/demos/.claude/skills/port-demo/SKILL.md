@@ -345,6 +345,15 @@ One commit per haptic event, never per frame.
   starts 5.667 in and ends 5.333 short (scroll-progress' pill). Contract: border 0.66667 and the
   child's margins 5 / 4.66667 (right, bottom), its padding rebalanced to keep RN's unrounded
   content box.
+- Order between an exit and what a commit starts with it: RN's `exiting` starts at the Fabric
+  mount, a `useAnimatedStyle` whose deps changed (a backdrop's `withTiming`) only when its mapper
+  re-runs after the JS effect, so the leaving view leads (stacked-modals: ~20 ms). The iOS host
+  does the opposite: in one commit a `transition` (or a plain animation) on a box led a
+  translate keyframe animation on the leaving card by ~28 ms (not the drag timeline, the
+  `pointer-events` switch nor a `to`-only keyframe: each measured). Measure same-frame pairs
+  (argent's recordings are resampled to 30 fps: compare two values in one frame, never frame
+  times), and delay the follower (`animation` delay; a retargetable fade is one 0 → 1 keyframe
+  pair with a computed `linear()` of RN's values from the current one: stacked-modals' backdrop).
 - RN's ReText is a TextInput: UITextField centres the line a device pixel above where a Text
   would sit (scroll-progress' percentage).
 - The demo screen is UIKit's `.overFullScreen` presentation (the home stays beneath). Contract
@@ -392,4 +401,3 @@ finger), magnet-spring (2D distance per frame to nine magnets).
 - `border-radius` doesn't animate: draw the body in Rust under the Contract content
   (alert-drawer, dot-sheet: `alert_drawer_card.rs`, `dot_sheet_card.rs`).
 - liquid-glass-playground: progressive haptics every 5 px of drag (needs per-move logic).
-- stacked-modals: the 60 ms × index stagger on exit (an exit animation is one literal).

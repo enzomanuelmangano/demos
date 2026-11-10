@@ -71,6 +71,28 @@ keyframes contentPow
   95% opacity=0.9259
   100% opacity=1
 
+// Backdrop: opacity withTiming(any modal ? 1 : 0), 300 ms on Reanimated's default
+// Easing.inOut(Easing.quad), from wherever it is. In RN the cards' exits (FadeOutDown) start at
+// the Fabric mount, but the backdrop's withTiming only when its useAnimatedStyle mapper re-runs
+// after the JS effect: the front card is visibly on its way before the screen clears (RN's
+// recording: the card ~20 ms ahead). Here a `transition` started a frame BEFORE the cards'
+// exit animations (their translate ~28 ms behind, measured), so all of it read as one fade.
+// The backdrop is an `animation` too (in step with the cards' modalIn on open), and its fade out
+// waits backdropLagMs() (28 + 20). One 0 → 1 keyframe pair (two names, so a retarget restarts
+// it) whose `linear()` outputs are RN's opacities from the current value.
+fn backdropLagMs(): number = 48
+fn quadStops(): number[] = [0, 0.00151, 0.00604, 0.0136, 0.02418, 0.03778, 0.0544, 0.07405, 0.09671, 0.1224, 0.15112, 0.18285, 0.21761, 0.25539, 0.29619, 0.34001, 0.38686, 0.43672, 0.48961, 0.54354, 0.59235, 0.64645, 0.69338, 0.73407, 0.77779, 0.81433, 0.84486, 0.87639, 0.90151, 0.92617, 0.94466, 0.96167, 0.97606, 0.98697, 0.99411, 0.9986, 1]
+fn quadAt(): number[] = [0, 2.74878, 5.49756, 8.24634, 10.99512, 13.7439, 16.49267, 19.24145, 21.99023, 24.73901, 27.48779, 30.23657, 32.98535, 35.73413, 38.48291, 41.23169, 43.98047, 46.72924, 49.47802, 52.2268, 54.85316, 57.95563, 60.8449, 63.53561, 66.66788, 69.53109, 72.14835, 75.1389, 77.80834, 80.78685, 83.3656, 86.15639, 89.0596, 91.92756, 94.57274, 97.3515, 100]
+fn inOutQuad(t: number): number = t < 0.5 ? 2 * t * t : 1 - (2 - 2 * t) * (2 - 2 * t) / 2
+fn backdropAt(from: number, to: number, start: number, now: number): number = from + (to - from) * inOutQuad(min(1, max(0, (now - start) / 300)))
+fn backdropCurve(from: number, to: number): string = `linear(${range(quadStops().length).map(i => `${from + (to - from) * (match quadStops().at(i) { case some(v) => v, case none => 0 })} ${match quadAt().at(i) { case some(v) => v, case none => 0 }}%`).join(", ")})`
+keyframes backdropA
+  from opacity=0
+  to opacity=1
+keyframes backdropB
+  from opacity=0
+  to opacity=1
+
 // use-modal.tsx: createAnimatedPressable buttons, pressed: Dismiss from #d5534a00 to
 // #e14f4482, Confirm from #50505000 to #bababa9b; radius 8 continuous; on pressto's progress.
 
@@ -88,9 +110,24 @@ component StackedModals
     pressing = pressUp(pressing)
   state stack = []
   state serial = 0
+  // The backdrop's fade: from, to, its start (performanceNow) and a play count (0: none yet).
+  state bdFrom = 0
+  state bdTo = 0
+  state bdStart = 0
+  state bdPlay = 0
+  state bdDelay = 0
+  action fadeBackdrop(to: number, delay: number)
+    let now = performanceNow()
+    bdFrom = backdropAt(bdFrom, bdTo, bdStart, now)
+    bdTo = to
+    bdStart = now + delay
+    bdDelay = delay
+    bdPlay = bdPlay + 1
   // The + button: showNextModal(modals) from the first.
   action open
     pressablesOnPress()
+    if stack.length == 0
+      fadeBackdrop(1, 0)
     stack = [serial * 10].concat(stack)
     serial = serial + 1
   // Confirm and Dismiss both show the next modal (none after the seventh); the seventh's
@@ -103,6 +140,8 @@ component StackedModals
       serial = serial + 1
     else
       stack = kept
+      if kept.length == 0
+        fadeBackdrop(0, backdropLagMs())
   // Backdrop onTouchEnd: clearAllStackedModals. Each leaves with FadeOutDown.delay(60 × id).
   state leaving = []
   state leaveEnd = 0
@@ -116,6 +155,8 @@ component StackedModals
     let now = performanceNow()
     let end = max(leftWeb ? 0 : leaveEnd, now + 300 + 60 * max(0, stack.length - 1))
     leaving = shownLeaving.concat(stack.map((e, i) => [e, i]))
+    if stack.length > 0
+      fadeBackdrop(0, backdropLagMs())
     stack = []
     leaveEnd = end
     leaveMs = end - now
@@ -148,7 +189,8 @@ component StackedModals
       // then.
       view position="absolute" inset=0 background-color="rgba(0, 0, 0, 0.4353)"
         opacity=(stack.length > 0 ? 1 : 0) pointer-events=(stack.length > 0 ? "auto" : "none")
-        transition="opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)" press=clearAll
+        animation=(bdPlay == 0 ? "none" : `${bdPlay % 2 == 0 ? "backdropA" : "backdropB"} 300ms ${backdropCurve(bdFrom, bdTo)} ${bdDelay}ms both`)
+        press=clearAll
         aria-label="Close all" testId="backdrop"
 
 fn leaveEntry(pair: number[]): number = match pair.at(0) { case some(v) => v, case none => 0 }
