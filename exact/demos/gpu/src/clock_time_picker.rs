@@ -335,7 +335,8 @@ impl Surface for ClockTimePicker {
                     self.offset = self.dragged(offset + (y0 - p.y as f64));
                 }
             }
-            Event::End(p) => self.release(p.velocity_y),
+            // UIScrollView does not fling a drag held still before the lift (a RNGH pan would).
+            Event::End(p) => self.release(crate::ui_scroll::release_velocity(p.velocity_y, self.pan.rest_ms(at_ms))),
             // A touch with no drag: UIScrollView leaves a caught list where it stopped (no
             // scrollViewWillEndDragging, so no snap); only one past an end bounces back.
             Event::Fail => {

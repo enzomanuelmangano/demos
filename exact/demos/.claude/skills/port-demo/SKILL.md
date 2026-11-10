@@ -100,8 +100,55 @@ One commit per haptic event, never per frame.
   expo-image centre it; Contract has no `object-position`). When the photo is taller than its box
   at cover scale, lay the cover box out by hand: a clip box, the image absolute at
   `max(w/iw, h/ih)` × its size, centred (see swipe-cards). Horizontal crops: unchecked, check for a left pin too.
+- `transformgeometry` is NOT a touch-down: it fires when the drag binds (the handle mounts or its
+  geometry changes, deduplicated). To know which item a drag holds, key the handle by the item
+  (`for k in [frontKey] key=k` or one handle per item, `transformgeometry=began(k)`), so a new
+  front rebinds; for RN's onBegin (isSwiping) use `pointerdown` / `pointerup` on the handle
+  (toast: the drag held the oldest toast until this).
+- Text line height: an RN Text with no `lineHeight` is laid out by TextKit at the font's
+  unrounded hhea line height, (ascender + descender + lineGap) / unitsPerEm × font size (SF:
+  (1950 + 494) / 2048, so 16.70703125 at 14, 23.8671875 at 20, every weight). Exact's `normal`
+  line box rounds ascent and descent to whole points (17 and 23 there): every multi-line text
+  drifts per line (scroll-progress: 0.88 px a line). Give each multi-line text that px value as
+  an explicit `line-height`. Its baseline then sits at the rounded ascent plus the floored
+  half-leading (SF: 13 at 14, 17 at 18) where TextKit's is 1950 / 2048 × size (13.33, 17.14), and
+  RN rounds each Text box up to the device pixel: measure, then a `position="relative" top=…`
+  puts the line back (stacked-modals: title and message pixel-identical; scroll-progress).
+- Bundled fonts: Exact's line box takes the OS/2 usWin ascent/descent, TextKit the hhea ones
+  (FiraCode: 2164 / 1000 vs 1980 / 644). In a fixed-height box that centres the text, the
+  baseline moves by the metric difference and no `line-height` changes it (it cancels): offset
+  the text (`position="relative" top=…`) by the computed difference (staggered-card-number: 1 pt).
+  Read the metrics with fontTools, don't eyeball.
+- Vector-icon glyphs drawn as SVG paths (Feather, Octicons, AntDesign…): TextKit puts half the
+  font's hhea lineGap above the ascender, so in an `ascender + descender + lineGap` tall box the
+  glyph sits lineGap / 2 lower than at the box top + ascender: `viewBox="0 -23 512 572"` for a
+  lineGap of 46 / 512 (staggered-card-number's eye was 1.09 pt high). Where the box is centred
+  in its row and hugs the glyph the offset cancels; check which case a demo is.
 - `-exact-exit-animation` must be one literal declaration (no `${…}`), or the web target
   refuses it. Write the curve out (`cubic-bezier(0.455, 0.03, 0.515, 0.955)` is inOut(quad)).
+- RNGH's iOS Pan (measured: wheel-picker, floating-modal): a plain `Gesture.Pan()` is UIKit's
+  pan, whose `translationX/Y` leaves out exactly the 10 pt hysteresis along the direction it set
+  off in (104.5 → 94.3, 140 → 130.2, 99.95 → 90.1 pt), not the travel from touch-down and not 0
+  at activation; custom criteria (`minDist`, active offsets) `setTranslation(.zero)` at
+  activation instead. A finger at rest sends no moves, so the lift's `velocityX/Y` is the last
+  move's (a drag held still still flings a snapPoint one tick on). The gesture-handler crate's
+  `PanGesture` does all of it (`.min_distance(d)` is the custom-criteria case);
+  react-native-skia-gesture is an RNGH Pan underneath. The demo screen's close Pan (activeOffsetY
+  10, failOffsetX ±30) does not change a demo pan's activation, horizontal or vertical. A Rust
+  UIScrollView zeroes the velocity after a rest itself (`ui_scroll::release_velocity`).
+- UIScrollView (measured, selectable-grid-list's FlatList): the drag is 1:1 from the pan's
+  activation; at the lift it decelerates (0.998/ms) only from a finger faster than ~335 pt/s and
+  not after a 100 ms rest: `ui_scroll::uiscroll_release`. Below that it stops under the finger.
+- SwiftUI views RN draws with @expo/ui (numeric text, …) are exact through the app's native
+  module (`modules/apple/Demos.swift`, a hyphenated tag in app.json `modules`): `rolling-count`
+  is AnimatedCount's Text. The web shows an empty box: test it with `expect tree has`.
+- RN Debug: Reanimated `scrollTo` driven from a pan's onUpdate lands about once per 200 ms (the
+  onScroll that refreshes the offset arrives late, so faster updates repeat the same target):
+  selectable-grid-list's edge auto-scroll steps 15.75 pt per update 200 ms apart, but only 2 of
+  7 updates 37 ms apart. A release build would not; decide per demo which one parity means.
+- argent on the Exact app: `gesture-custom` calls return before the gesture has played out; put
+  consecutive gestures in one `run-sequence` with `delayMs`, or the next Down catches a fling.
+  Its `interpolate` also fills an Up → Down gap with moves (one call per gesture).
 
 ## 4. Check
 

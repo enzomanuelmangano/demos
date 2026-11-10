@@ -62,6 +62,7 @@ use RecordButton from "./record-button/record-button.contract"
 use ScrollProgress from "./scroll-progress/scroll-progress.contract"
 use ScrollableBottomSheet from "./scrollable-bottom-sheet/scrollable-bottom-sheet.contract"
 use ScrollableShapes from "./scrollable-shapes/scrollable-shapes.contract"
+use SelectableGridList from "./selectable-grid-list/selectable-grid-list.contract"
 use ShakeToDelete from "./shake-to-delete/shake-to-delete.contract"
 use SharedTransitions from "./shared-transitions/shared-transitions.contract"
 use SkiaBottomSheet from "./skia-bottom-sheet/skia-bottom-sheet.contract"
@@ -86,6 +87,7 @@ use ThemeCanvasAnimation from "./theme-canvas-animation/theme-canvas-animation.c
 use Toast from "./toast/toast.contract"
 use TwitterTabBar from "./twitter-tab-bar/twitter-tab-bar.contract"
 use VerificationCode from "./verification-code/verification-code.contract"
+use WheelPicker from "./wheel-picker/wheel-picker.contract"
 
 component PortedDemo
   props
@@ -217,6 +219,8 @@ component PortedDemo
         ScrollableBottomSheet(env=env)
       if slug == "scrollable-shapes"
         ScrollableShapes()
+      if slug == "selectable-grid-list"
+        SelectableGridList(env=env)
       if slug == "shake-to-delete"
         ShakeToDelete(env=env)
       if slug == "shared-transitions"
@@ -265,3 +269,5 @@ component PortedDemo
         TwitterTabBar(env=env)
       if slug == "verification-code"
         VerificationCode()
+      if slug == "wheel-picker"
+        WheelPicker(env=env)

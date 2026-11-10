@@ -23,7 +23,7 @@ fn minTabWidth(w: number): number = (w - 10 * 2 - 10 * 3 - 170) / 3
 
 // tab.tsx: progress = withSpring(isActive, { dampingRatio 1, duration 400 })
 // (bun tools/spring.ts 400 1).
-fn tabSpring(): string = "-exact-spring(1699.6, 164.9, 4)"
+fn tabSpring(): string = "-exact-spring(1699.5858, 164.9042, 4)"
 
 // The label's opacity is progress ** 3, progress the tab's critically damped spring
 // (ω = √(k/m) = 20.6 /s: 1 − (1 + ωt)·e^(−ωt)), sampled over the 600 ms it takes to settle

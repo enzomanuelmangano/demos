@@ -9,6 +9,9 @@
     "id": "com.reactiive.demos.exact",
     "name": "Demos"
   },
+  "modules": [
+    "rolling-count"
+  ],
   "host": {
     "web": {},
     "ios": {

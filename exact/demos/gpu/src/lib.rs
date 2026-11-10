@@ -65,6 +65,7 @@ pub mod slide_to_reveal;
 pub mod sphere_waves;
 pub mod spiral;
 pub mod steddy_graph_interaction;
+pub mod swipe_cards;
 pub mod telegram_lottie;
 pub mod telegram_theme_switch;
 pub mod the_little_prince;
@@ -123,6 +124,7 @@ pub static REGISTRY: Registry = Registry {
         ("sphere_waves", 0, sphere_waves::surface),
         ("spiral", 0, spiral::surface),
         ("steddy_graph_interaction", 1, steddy_graph_interaction::surface),
+        ("swipe_cards", 4, swipe_cards::surface),
         ("telegram_theme_switch", 1, telegram_theme_switch::surface),
         ("the_little_prince", 2, the_little_prince::surface),
         ("theme_canvas_animation", 0, theme_canvas_animation::surface),

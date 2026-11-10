@@ -1,15 +1,12 @@
 at "/demo/swipe-cards"
 
-test "nine cards, the top one draggable; the buttons throw it and reset brings them back"
+test "the stack is one canvas; the buttons throw and reset through it"
   expect tree has "swipe-cards"
-  expect tree has "card-0"
-  expect tree has "card-8"
-  expect tree has "card-handle"
+  expect tree has "swipe-cards-stack"
   tap "swipe-right"
   clock settle
-  expect tree has "card-handle"
   tap "swipe-left"
   clock settle
   tap "reset"
   clock settle
-  expect tree has "card-handle"
+  expect tree has "swipe-cards-stack"

@@ -21,7 +21,7 @@ fn bottomHeight(id: number): number = min(id, 2) + 15 * id
 
 // withCustomSpring: { mass 2.5, damping 100, stiffness 740 }.
 // ζ 1.16 ≥ 1: Reanimated runs it critically damped, so damping 2√(k·m) = 86.02.
-fn modalSpring(): string = "-exact-spring(740, 86.02, 2.5)"
+fn modalSpring(): string = "-exact-spring(740, 86.0233, 2.5)"
 
 // On mount `bottom` springs from (windowHeight - 200) / 2 - 110 (bottomOffset) to its place
 // and baseOpacity from 0 to 1, on that spring (overdamped, ζ 1.16): its curve from rest,
@@ -40,9 +40,11 @@ keyframes modalOut
 // rContentStyle: opacity = isActiveStackedModalProgress ** 1.5, the progress springing to 1
 // for the front modal. A hidden box translated by progress × 100 px on the same spring is a
 // drag timeline these stops follow (host-driven, no commit per frame).
-// FadeOutDown. Not exact: RN delays each modal's 60 ms × its place in the stack; an exit
-// animation must be one literal declaration (and `class=` chooses between two), so they leave
-// together.
+// FadeOutDown, for a modal removed alone (clearModal: the front one, delay 60 × 0). The backdrop
+// clears them all with each one's delay 60 × id: an exit animation is one literal, so those stay
+// mounted (`leaving`, ids frozen) and play modalOut with their delay (an animation delay holds on
+// iOS), and a timer surface unmounts them when the last is done.
+fn modalOutOf(id: number): string = `modalOut 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) ${60 * id}ms both`
 style ModalOut
   -exact-exit-animation="modalOut 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) both"
 
@@ -98,9 +100,22 @@ component StackedModals
       serial = serial + 1
     else
       stack = kept
-  // Backdrop onTouchEnd: clearAllStackedModals.
+  // Backdrop onTouchEnd: clearAllStackedModals. Each leaves with FadeOutDown.delay(60 × id).
+  state leaving = []
+  state leaveEnd = 0
+  state leaveToken = 0
+  state leaveMs = 0
   action clearAll
+    let now = performanceNow()
+    let end = max(leaveEnd, now + 300 + 60 * max(0, stack.length - 1))
+    leaving = leaving.concat(stack.map((e, i) => [e, i]))
     stack = []
+    leaveEnd = end
+    leaveMs = end - now
+    leaveToken = leaveToken + 1
+  action cleared(m: string)
+    leaving = []
+    leaveEnd = 0
   view
     // index.tsx styles.container: #fefefe, flex 1.
     column position="absolute" inset=0 background-color="#fefefe" overflow="hidden"
@@ -113,9 +128,13 @@ component StackedModals
         // Ionicons "add" 28: the vector-icons glyph (512 × 525 units of 512 to the em).
         svg width=28 height=28.7109 viewBox="0 0 512 525" aria-hidden=true
           path d="M248 105Q248 105 248 105Q253 101 259.5 102.5Q266 104 270 110Q270 110 272 113V179V246H338H404L408 248Q416 253 416 262Q416 271 408 276Q408 276 405 278H339H272V345V411L270 414Q265 422 256 422Q247 422 242 414Q242 414 240 411V345V278H173H107L104 276Q96 271 96 262Q96 253 103 249Q103 249 107 246H173H240V179V113L242 110Q244 107 248 105Z" fill="#ffffff"
-      for entry, id in stack key=(entry - modalOf(entry)) / 10
-        Modal(entry=entry, id=id, width=env.width, height=env.height,
-          confirm=answer(entry, false), dismiss=answer(entry, true))
+      canvas surface=timer(leaveToken, leaveMs) message=cleared width=1 height=1 position="absolute"
+        left=0 top=0 aria-hidden=true pointer-events="none"
+      // One list, so a modal that starts leaving keeps its instance (no remount).
+      for pair in stack.map((e, i) => [e, i, 0]).concat(leaving.map(p => [leaveEntry(p), leaveId(p), 1])) key=(leaveEntry(pair) - modalOf(leaveEntry(pair))) / 10
+        Modal(entry=leaveEntry(pair), id=leaveId(pair), width=env.width, height=env.height,
+          leaving=(leaveFlag(pair) == 1), confirm=answer(leaveEntry(pair), false),
+          dismiss=answer(leaveEntry(pair), true))
       // Backdrop: absoluteFill, #0000006f, opacity withTiming(any modal ? 1 : 0), touchable only
       // then.
       view position="absolute" inset=0 background-color="rgba(0, 0, 0, 0.4353)"
@@ -123,10 +142,15 @@ component StackedModals
         transition="opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)" press=clearAll
         aria-label="Close all" testId="backdrop"
 
+fn leaveEntry(pair: number[]): number = match pair.at(0) { case some(v) => v, case none => 0 }
+fn leaveId(pair: number[]): number = match pair.at(1) { case some(v) => v, case none => 0 }
+fn leaveFlag(pair: number[]): number = match pair.at(2) { case some(v) => v, case none => 0 }
+
 component Modal
   props
     entry: number
     id: number
+    leaving: bool
     width: number
     height: number
     confirm: action
@@ -136,33 +160,37 @@ component Modal
     // boxShadow 0 0 10px rgba(0,0,0,0.03), zIndex 100 - id; bottom at (windowHeight -
     // MODAL_HEIGHT) / 2 + bottomHeight (the rise below).
     column position="absolute" left=(width * 0.1) width=(width * 0.8)
-      bottom=((height - 200) / 2) z-index=(100 - id) border-radius=35 corner-shape="-exact-continuous"
-      box-shadow="0px 0px 10px rgba(0, 0, 0, 0.03)" timeline-scope="--active"
-      class=ModalOut
-      testId=`modal-${modalOf(entry)}`
-      view position="absolute" left=0 top=0 width=0 height=0 pointer-events="none" aria-hidden=true
-        translate=`${id == 0 ? 100 : 0}px 0px` transition=`translate ${modalSpring()}`
-        -exact-drag-timeline="--active x"
-      // bottom: withCustomSpring(… + bottomHeight) as the id changes.
-      column translate=`0px ${0 - bottomHeight(id)}px` transition=`translate ${modalSpring()}`
-        // The mount: bottomOffset 110 and baseOpacity.
-        column animation=`modalIn ${modalInTiming()}`
-          // rVisibleContainerStyle: opacity withCustomSpring(id < 3 ? 1 : 0), translateY
-          // withCustomSpring(-id × 5), scale withCustomSpring(1 - id × 0.05); 0.8 w × 200,
-          // radius 10 continuous, white. rStackedModalStyle's layer shadow (RN's default
-          // shadowOffset 0, -3 and black) springs to radius max(10 - id, 2) (CSS blur twice
-          // that) and opacity id > 3 ? 0.1 - id × 0.01 : 0.08; it is the card's.
-          column width=(width * 0.8) height=200 border-radius=10 corner-shape="-exact-continuous"
-            background-color="#ffffff" opacity=(id < 3 ? 1 : 0) translate=`0px ${0 - id * 5}px`
-            scale=(1 - id * 0.05)
-            box-shadow=`0px -3px ${2 * max(10 - id, 2)}px rgba(0, 0, 0, ${id > 3 ? 0.1 - id * 0.01 : 0.08})`
-            transition=`opacity ${modalSpring()}, translate ${modalSpring()}, scale ${modalSpring()}, box-shadow ${modalSpring()}`
-            column flex=1 border-radius=10 corner-shape="-exact-continuous" overflow="hidden"
-              column flex=1 animation="contentPow 1s linear both" animation-timeline="--active"
-                animation-range="0px 100px"
-                // The content is rendered for id <= MAX_VISIBLE_MODALS × 1.5.
-                if id <= 4
-                  ModalContent(index=modalOf(entry), confirm=confirm, dismiss=dismiss)
+      bottom=((height - 200) / 2) z-index=(100 - id) class=ModalOut
+      pointer-events=(leaving ? "none" : "auto") testId=`modal-${modalOf(entry)}`
+      // The clear-all fade (modalOutOf) runs on this inner box, which also carries the visible
+      // part (the shadow): when the leaving modal unmounts, the outer box's literal exit replays
+      // over nothing.
+      column border-radius=35 corner-shape="-exact-continuous"
+        box-shadow="0px 0px 10px rgba(0, 0, 0, 0.03)" timeline-scope="--active"
+        animation=(leaving ? modalOutOf(id) : "none")
+        view position="absolute" left=0 top=0 width=0 height=0 pointer-events="none" aria-hidden=true
+          translate=`${id == 0 ? 100 : 0}px 0px` transition=`translate ${modalSpring()}`
+          -exact-drag-timeline="--active x"
+        // bottom: withCustomSpring(… + bottomHeight) as the id changes.
+        column translate=`0px ${0 - bottomHeight(id)}px` transition=`translate ${modalSpring()}`
+          // The mount: bottomOffset 110 and baseOpacity.
+          column animation=`modalIn ${modalInTiming()}`
+            // rVisibleContainerStyle: opacity withCustomSpring(id < 3 ? 1 : 0), translateY
+            // withCustomSpring(-id × 5), scale withCustomSpring(1 - id × 0.05); 0.8 w × 200,
+            // radius 10 continuous, white. rStackedModalStyle's layer shadow (RN's default
+            // shadowOffset 0, -3 and black) springs to radius max(10 - id, 2) (CSS blur twice
+            // that) and opacity id > 3 ? 0.1 - id × 0.01 : 0.08; it is the card's.
+            column width=(width * 0.8) height=200 border-radius=10 corner-shape="-exact-continuous"
+              background-color="#ffffff" opacity=(id < 3 ? 1 : 0) translate=`0px ${0 - id * 5}px`
+              scale=(1 - id * 0.05)
+              box-shadow=`0px -3px ${2 * max(10 - id, 2)}px rgba(0, 0, 0, ${id > 3 ? 0.1 - id * 0.01 : 0.08})`
+              transition=`opacity ${modalSpring()}, translate ${modalSpring()}, scale ${modalSpring()}, box-shadow ${modalSpring()}`
+              column flex=1 border-radius=10 corner-shape="-exact-continuous" overflow="hidden"
+                column flex=1 animation="contentPow 1s linear both" animation-timeline="--active"
+                  animation-range="0px 100px"
+                  // The content is rendered for id <= MAX_VISIBLE_MODALS × 1.5.
+                  if id <= 4
+                    ModalContent(index=modalOf(entry), confirm=confirm, dismiss=dismiss)
 
 component ModalContent
   props
@@ -175,8 +203,16 @@ component ModalContent
       // marginBottom 8; title #333 18 bold; message #666 14, marginBottom 12.
       column flex=1 background-color="#ffffff" border-radius=12 corner-shape="-exact-continuous" padding=16
         row align-items="center" margin-bottom=8
-          text titleOf(index) color="#333333" font-size=18 font-weight=700
-        text messageOf(index) color="#666666" font-size=14 margin-bottom=12
+          // No lineHeight in RN: TextKit's SF line height, (1950 + 494) / 2048 × size, its
+          // baseline at 1950 / 2048 × size (17.14 at 18, 13.33 at 14). Exact puts an authored
+          // line's baseline at its rounded ascent plus the floored half-leading (17 and 13), and
+          // RN rounds each Text box up to the device pixel (the title 21.48 → 21.67): the
+          // relative tops put both baselines back (0.14, which RN's pixel-aligned baseline rounds
+          // up to one device pixel, measured; 0.33 + 0.19).
+          text titleOf(index) color="#333333" font-size=18 font-weight=700 line-height="21.48046875px"
+            position="relative" top=(1 / 3)
+        text messageOf(index) color="#666666" font-size=14 line-height="16.70703125px" margin-bottom=12
+          position="relative" top=0.52
       // styles.buttonContainer: a row at the end, marginBottom 12, marginRight 12; each button
       // paddingHorizontal 12, paddingVertical 8; text #141414 bold.
       row justify-content="flex-end" margin-bottom=12 margin-right=12

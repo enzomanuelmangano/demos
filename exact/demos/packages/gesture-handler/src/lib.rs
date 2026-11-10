@@ -4,9 +4,19 @@
 //! RNGH callbacks would have been told.
 //!
 //! What RNGH's iOS handlers do, kept here:
-//! - Pan begins once the finger has moved `min_distance` (RNGH's `minDist`, UIKit's ~10 pt
-//!   by default) and reports translation from where the finger went down, as `translationX/Y`.
-//! - Velocity is points per second, from the last 100 ms of samples (UIKit's estimate).
+//! - Pan begins once the finger has moved `min_distance` (RNGH's `minDist`, UIKit's 10 pt
+//!   hysteresis by default) and reports `translationX/Y` without that hysteresis, as RNGH on
+//!   iOS does. A plain `Gesture.Pan()` is UIKit's pan, whose translation leaves out exactly the
+//!   10 pt along the direction it set off in: at activation it is the travel past 10 pt, not 0
+//!   and not the travel from touch-down. Measured on the RN app (iPhone Air sim, argent moves):
+//!   104.5 pt → 94.3 (wheel-picker, 5.2 pt moves), 140 → 130.2 (3.5 pt moves), 99.95 → 90.1
+//!   (floating-modal, whose moves cross 10 pt only at 14.3). RNGH's custom criteria (`minDist`
+//!   here) instead `setTranslation(.zero)` at activation (RNPanHandler.m): from that point. The
+//!   demo screen's close Pan (activeOffsetY 10, failOffsetX ±30) does not delay a demo's pan:
+//!   horizontal and vertical drags measured the same.
+//! - Velocity is points per second, from the last 100 ms of samples (UIKit's estimate), only
+//!   from samples where the finger moved: UIKit hears no `touchesMoved` from a finger at rest, so a drag held still keeps its last velocity at the lift (measured on the RN app:
+//!   a ruler dragged at ~100 pt/s, held 600 ms, then lifted still flings one more tick).
 //! - Tap ends within `max_duration_ms` (500) having moved less than `max_distance` (10).
 //! - Pinch is two fingers: it starts when one of them moves while both are down, and its
 //!   `scale` is their distance over the distance when the second came down (UIKit's
@@ -63,7 +73,7 @@ pub struct Pan {
     pub x: f32,
     /// See `x`.
     pub y: f32,
-    /// `translationX/Y`: from where the finger went down.
+    /// `translationX/Y`: from where the pan activated (0 on `onStart`).
     pub translation_x: f32,
     /// See `translation_x`.
     pub translation_y: f32,
@@ -91,6 +101,9 @@ pub struct PanGesture {
     pub min_distance: f32,
     id: Option<u32>,
     start: (f32, f32),
+    origin: (f32, f32),
+    /// `.min_distance(d)` was set: RNGH's custom criteria, translation from the activation.
+    custom: bool,
     last: (f32, f32),
     active: bool,
     samples: Vec<Sample>,
@@ -105,11 +118,18 @@ impl Default for PanGesture {
 impl PanGesture {
     /// `Gesture.Pan()`: activates after 10 pt of travel, as UIKit's pan does.
     pub fn new() -> PanGesture {
-        PanGesture { min_distance: 10.0, id: None, start: (0.0, 0.0), last: (0.0, 0.0), active: false, samples: Vec::with_capacity(16) }
+        PanGesture { min_distance: 10.0, id: None, start: (0.0, 0.0), origin: (0.0, 0.0), custom: false, last: (0.0, 0.0), active: false, samples: Vec::with_capacity(16) }
+    }
+    /// The former opt-in, now the only behaviour: a no-op kept so callers written against it
+    /// still build (swipe_cards); drop the call.
+    #[doc(hidden)]
+    pub fn uikit(self) -> PanGesture {
+        self
     }
     /// `.minDistance(d)`.
     pub fn min_distance(mut self, d: f32) -> PanGesture {
         self.min_distance = d;
+        self.custom = true;
         self
     }
     /// Whether a finger is down on this gesture.
@@ -120,14 +140,19 @@ impl PanGesture {
     pub fn active(&self) -> bool {
         self.active
     }
+    /// How long since the finger last moved, at `now`.
+    /// UIScrollView, unlike a pan's velocity, does not fling a drag held still before the lift.
+    pub fn rest_ms(&self, now: f64) -> f64 {
+        self.samples.last().map_or(0.0, |s| now - s.ms)
+    }
 
     fn payload(&self, x: f32, y: f32) -> Pan {
         let (vx, vy) = self.velocity();
         Pan {
             x,
             y,
-            translation_x: x - self.start.0,
-            translation_y: y - self.start.1,
+            translation_x: x - self.origin.0,
+            translation_y: y - self.origin.1,
             change_x: x - self.last.0,
             change_y: y - self.last.1,
             velocity_x: vx,
@@ -146,6 +171,9 @@ impl PanGesture {
     }
 
     fn sample(&mut self, x: f32, y: f32, ms: f64) {
+        if self.samples.last().is_some_and(|s| s.x == x && s.y == y) {
+            return; // a finger at rest: UIKit hears no move, its velocity stays
+        }
         self.samples.retain(|s| ms - s.ms <= 150.0);
         self.samples.push(Sample { x, y, ms });
     }
@@ -159,6 +187,7 @@ impl PanGesture {
                 }
                 self.id = Some(id);
                 self.start = (x, y);
+                self.origin = (x, y);
                 self.last = (x, y);
                 self.active = false;
                 self.samples.clear();
@@ -180,6 +209,13 @@ impl PanGesture {
                     let (dx, dy) = (x - self.start.0, y - self.start.1);
                     if (dx * dx + dy * dy).sqrt() >= self.min_distance {
                         self.active = true;
+                        self.origin = if self.custom {
+                            (x, y)
+                        } else {
+                            // UIKit: the touch-down point moved 10 pt along the set-off.
+                            let d = (dx * dx + dy * dy).sqrt();
+                            (self.start.0 + dx / d * self.min_distance, self.start.1 + dy / d * self.min_distance)
+                        };
                         Event::Start(self.payload(x, y))
                     } else {
                         Event::None
@@ -366,10 +402,30 @@ mod tests {
         let mut pan = PanGesture::new();
         assert!(matches!(pan.event(1, Phase::Down, 0.0, 0.0, 0.0, true), Event::Begin { .. }));
         assert_eq!(pan.event(1, Phase::Move, 4.0, 0.0, 16.0, true), Event::None);
-        assert!(matches!(pan.event(1, Phase::Move, 20.0, 0.0, 32.0, true), Event::Start(_)));
+        let Event::Start(p) = pan.event(1, Phase::Move, 20.0, 0.0, 32.0, true) else { panic!() };
+        assert_eq!(p.translation_x, 10.0, "the travel past UIKit's 10 pt hysteresis");
         let Event::End(p) = pan.event(1, Phase::Up, 40.0, 0.0, 48.0, true) else { panic!() };
-        assert_eq!(p.translation_x, 40.0);
+        assert_eq!(p.translation_x, 30.0);
         assert!(p.velocity_x > 500.0, "{}", p.velocity_x);
+        // RNGH's custom criteria zero the translation where the pan activates.
+        let mut pan = PanGesture::new().min_distance(10.0);
+        pan.event(1, Phase::Down, 0.0, 0.0, 0.0, true);
+        let Event::Start(p) = pan.event(1, Phase::Move, 0.0, 20.0, 16.0, true) else { panic!() };
+        assert_eq!(p.translation_y, 0.0);
+    }
+
+    #[test]
+    fn a_drag_held_still_keeps_its_velocity() {
+        let mut pan = PanGesture::new();
+        pan.event(1, Phase::Down, 0.0, 0.0, 0.0, true);
+        for i in 1..=20 {
+            pan.event(1, Phase::Move, i as f32 * 5.0, 0.0, i as f64 * 50.0, true);
+        }
+        for i in 1..=12 {
+            pan.event(1, Phase::Move, 100.0, 0.0, 1000.0 + i as f64 * 50.0, true);
+        }
+        let Event::End(p) = pan.event(1, Phase::Up, 100.0, 0.0, 1700.0, true) else { panic!() };
+        assert!((p.velocity_x - 100.0).abs() < 1.0, "{}", p.velocity_x);
     }
 
     #[test]

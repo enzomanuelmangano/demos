@@ -4,40 +4,7 @@
 // and throw right. RN: src/animations/swipe-cards (index.tsx, constants.ts,
 // hooks/use-swipe-controls.ts, components/Card/index.tsx).
 use PressableScale from "pressto"
-use DemoEnv, demoButtonRow from "../env.contract"
-
-// constants.ts IMAGES: 01.jpg … 09.jpg.
-fn photo(i: number): string = `assets/demos/swipe-cards/0${i + 1}.jpg`
-fn count(): number = 9
-// Each photo's width / height. expo-image's contentFit cover centres the photo; Exact's
-// object-fit cover pins it to the top, so the cover is laid out here: the photo at its cover
-// size, centred in the card and clipped by it.
-fn photoAspect(i: number): number = match [0.6667, 0.6024, 0.6667, 0.75, 0.6667, 0.7704, 0.6667, 0.7144, 1.6147].at(i) { case some(a) => a, case none => 1 }
-fn coverW(a: number, cw: number, ch: number): number = a < cw / ch ? cw : ch * a
-fn coverH(a: number, cw: number, ch: number): number = a < cw / ch ? cw / a : ch
-// index.tsx CENTRED_SLACK.
-fn centredSlack(): number = 40
-
-// The cards drawn last are on top (zIndex -index): 8 first, 0 last.
-fn order(): number[] = [8, 7, 6, 5, 4, 3, 2, 1, 0]
-fn numAt(xs: number[], i: number): number = match xs.at(i) { case some(v) => v, case none => 0 }
-fn setAt(xs: number[], i: number, v: number): number[] = range(xs.length).map(j => j == i ? v : numAt(xs, j))
-
-// Card/index.tsx: inputTranslationRange [-w/3, 0, w/3]; FLICK_DURATION 0.1 s, so the velocity
-// range is ±(w/3) / 0.1. The swipe triggers when normalizedTranslation² + normalizedVelocity²
-// reaches 1 (nextActiveIndex interpolated, clamped, to activeIndex + 1).
-fn swipes(w: number, x: number, vx: number): bool = x != 0 and (x / (w / 3)) * (x / (w / 3)) + (vx / (w / 3 / 0.1)) * (vx / (w / 3 / 0.1)) >= 1
-
-// rCardStyle: withTiming (300 ms, Reanimated's default Easing.inOut(Easing.quad)) of
-// opacity (index - activeIndex < 5 ? 1 : 0), translateY (index - activeIndex) × 23 and
-// scale 1 - 0.07 × (index - activeIndex).
-fn stackTiming(): string = "opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%), translate 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%), scale 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
-
-// rotate: interpolate(translateX, [-w/3, 0, w/3], [-π/20, 0, π/20], CLAMP) = ±9°, on the
-// card's own drag timeline (its horizontal translate, held or springing).
-keyframes swipeTilt
-  from rotate=-9
-  to rotate=9
+use DemoEnv from "../env.contract"
 
 // The stack's entering FadeIn: 300 ms on inOut(quad).
 keyframes swipeFadeIn
@@ -47,102 +14,35 @@ keyframes swipeFadeIn
 component SwipeCards
   props
     env: DemoEnv
-  state activeIndex = 0
-  // Each card's translateX / translateY (RN's per-card shared values).
-  state panX = [0, 0, 0, 0, 0, 0, 0, 0, 0]
-  state panY = [0, 0, 0, 0, 0, 0, 0, 0, 0]
-  // reset(): each card springs back after index × 100 ms (setTimeout); a delay on its
-  // translate's transition while this is set.
-  state resetting = false
-  // The layer's width (transformgeometry, paired with the release; the card's travel uses
-  // the window's width as RN does).
-  state layerWidth = 0
-  derive w = env.width
-  // The card's box: 90% of the width, 75% of the flex-7 box (7 / 9 of the screen) under its
-  // top margin.
-  derive cardW = env.width * 0.9
-  derive cardH = (env.height * 7 / 9 - (env.safeTop + demoButtonRow() - centredSlack())) * 0.75
-  action geometry(bw: number, bh: number, pw: number, ph: number)
-    layerWidth = pw
-  // maxCardTranslation = width × 1.5; swipeRight / swipeLeft: translateX withSpring(±max)
-  // (Reanimated 4's default spring), translateY left where it is, activeIndex + 1.
-  // Pan onFinalize on the active card: thrown by the sign of translationX, else both
-  // translates withSpring(0).
-  action release(i: number, x: number, y: number, scale: number, vx: number, vy: number, vscale: number)
-    if i == activeIndex
-      if swipes(w, x, vx)
-        panX = setAt(panX, i, (x > 0 ? 1 : -1) * w * 1.5)
-        panY = setAt(panY, i, y)
-        activeIndex = activeIndex + 1
-      else
-        panX = setAt(panX, i, 0)
-        panY = setAt(panY, i, 0)
-      resetting = false
-  // The buttons: refs[activeIndex] (none past the ninth).
+  // The buttons' presses, counted: the stack (gpu/src/swipe_cards.rs) throws or resets on
+  // each new count (useSwipeControls' swipeLeft, swipeRight and reset).
+  state lefts = 0
+  state rights = 0
+  state resets = 0
   action swipeLeft
     haptic("selection")
-    if activeIndex < count()
-      panX = setAt(panX, activeIndex, 0 - w * 1.5)
-      activeIndex = activeIndex + 1
-      resetting = false
+    lefts = lefts + 1
   action swipeRight
     haptic("selection")
-    if activeIndex < count()
-      panX = setAt(panX, activeIndex, w * 1.5)
-      activeIndex = activeIndex + 1
-      resetting = false
-  // onReset: activeIndex 0 at once; every card springs home, index × 100 ms apart.
+    rights = rights + 1
   action onReset
     haptic("selection")
-    activeIndex = 0
-    resetting = true
-    panX = range(count()).map(j => 0)
-    panY = range(count()).map(j => 0)
+    resets = resets + 1
   view
     // styles.container: #242831, flex 1.
     column position="absolute" inset=0 background-color="color(display-p3 0.1412 0.1569 0.1922)" overflow="hidden"
       testId="swipe-cards"
-      for i in order() key=i
-        // One layer per card, the size of the screen: its translate is the card's pan (the
-        // transform drag's target, under an untransformed, clipping parent). Inside it the RN
-        // layout again: flex 7 (the stack's box) over flex 2 (the buttons' row).
-        column position="absolute" inset=0 overflow="hidden" pointer-events="none"
-          timeline-scope="--tilt" aria-hidden=(i != activeIndex)
-          column id=`swipe-card-${i}` width="100%" height="100%" box-sizing="border-box"
-            position="relative" translate=`${numAt(panX, i)}px ${numAt(panY, i)}px`
-            transition=`translate -exact-spring(900, 120, 4) ${resetting ? i * 100 : 0}ms`
-            -exact-drag-timeline="--tilt x" testId=`card-${i}`
-            column flex=7
-              // The Animated.View: marginTop safeTop + DEMO_BUTTON_ROW_HEIGHT - CENTRED_SLACK,
-              // centred, flex 1.
-              column flex=1 margin-top=(env.safeTop + demoButtonRow() - centredSlack())
-                justify-content="center" align-items="center"
-                // The card: 90% × 75%.
-                view width="90%" height="75%" position="relative"
-                  column position="absolute" inset=0 opacity=(i - activeIndex < 5 ? 1 : 0)
-                    translate=`0px ${(i - activeIndex) * 23}px` scale=(1 - 0.07 * (i - activeIndex))
-                    transition=stackTiming()
-                    // Radius 25 continuous, clipped; the image covers it.
-                    column flex=1 border-radius=25 corner-shape="-exact-continuous" overflow="hidden"
-                      animation="swipeTilt 1s linear both" animation-timeline="--tilt"
-                      animation-range=`${0 - w / 3}px ${w / 3}px`
-                      column flex=1
-                        animation="swipeFadeIn 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) both"
-                        image photo(i) position="absolute" flex-shrink=0
-                          width=coverW(photoAspect(i), cardW, cardH) height=coverH(photoAspect(i), cardW, cardH)
-                          left=((cardW - coverW(photoAspect(i), cardW, cardH)) / 2)
-                          top=((cardH - coverH(photoAspect(i), cardW, cardH)) / 2) aria-hidden=true
-                  // The GestureDetector, on the active card only (onUpdate returns for others).
-                  if i == activeIndex
-                    view position="absolute" inset=0 pointer-events="auto" touch-action="none"
-                      transformDragFor=`swipe-card-${i}` transformgeometry=geometry
-                      transformrelease=release(i) aria-label="Swipe the card"
-                      testId="card-handle"
-            view flex=2
+      // The stack's Animated.View: entering FadeIn (300 ms on inOut(quad)), one group opacity
+      // over every card. The nine cards, their pan, springs and timings are Rust
+      // (gpu/src/swipe_cards.rs): RN rotates each card before its drag, so the drag runs along
+      // the tilted axes, and its springs start at rest.
+      canvas surface=swipe_cards(env.safeTop, lefts, rights, resets) position="absolute" top=0 left=0
+        width=env.width height=env.height touch-action="none" testId="swipe-cards-stack" aria-label="Swipe the card"
+        animation="swipeFadeIn 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) both"
       // styles.buttonsContainer: flex 2, a centred row (over the cards, as RN draws it).
       column position="absolute" inset=0 pointer-events="none"
-        view flex=7
-        row flex=2 align-items="center" justify-content="center"
+        view flex=7 pointer-events="none"
+        row flex=2 align-items="center" justify-content="center" pointer-events="none"
           // styles.button: 80 tall, aspectRatio 1, #3A3D45, radius 40, boxShadow 0 4 0 10%
           // black, marginHorizontal 20; AntDesign close 32 white.
           column class=PressableScale pointer-events="auto" width=80 height=80 border-radius=40

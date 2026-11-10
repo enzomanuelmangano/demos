@@ -105,6 +105,7 @@ fn grid() -> SelectableGrid {
         pending: None,
         start: None,
         last_pending: None,
+        down: (0.0, 0.0),
         pan: PanGesture::new(),
         tap: TapGesture::default().max_distance(5.0),
         active: [false; ITEMS],
@@ -195,6 +196,8 @@ struct SelectableGrid {
     start: Option<usize>,
     /// lastPendingFinalIndex.
     last_pending: Option<usize>,
+    /// Where the finger went down (the pan's translation starts at its activation).
+    down: (f32, f32),
     pan: PanGesture,
     tap: TapGesture,
     /// totalActiveIndexes, per cell, as the items last saw it.
@@ -329,6 +332,9 @@ impl Surface for SelectableGrid {
             self.scroll = Scroll::Idle;
         }
         let event = self.pan.event(id, phase, x, y, at_ms, on_list);
+        if let Event::Begin { x, y } = event {
+            self.down = (x, y);
+        }
         // The list's own scroll, once a drag set off vertically.
         if let Scroll::Drag { id: sid, y: y0, offset: o0 } = self.scroll {
             if sid == id {
@@ -336,7 +342,8 @@ impl Surface for SelectableGrid {
                     Event::Update(_) => self.offset = self.dragged(o0 - (y as f64 - y0)),
                     Event::End(e) => {
                         // The finger's velocity, points per ms, the content's the other way.
-                        let v = -(e.velocity_y as f64) / 1000.0;
+                        let finger = crate::ui_scroll::uiscroll_release(e.velocity_y, self.pan.rest_ms(at_ms));
+                        let v = -(finger as f64) / 1000.0;
                         let max = self.max_offset();
                         self.scroll = if self.offset < 0.0 || self.offset > max {
                             let edge = if self.offset < 0.0 { 0.0 } else { max };
@@ -357,7 +364,8 @@ impl Surface for SelectableGrid {
             // Measured on RN (sim, slow straight drags from a cell): 20° and 27° off the
             // horizontal select, 35° and 45° scroll; the UIScrollView takes a drag whose
             // vertical travel is at least tan 30° of its sideways one when the pan activates.
-            if e.translation_y.abs() >= e.translation_x.abs() * 0.5773502691896258 {
+            let (dx, dy) = (e.x - self.down.0, e.y - self.down.1);
+            if dy.abs() >= dx.abs() * 0.5773502691896258 {
                 // The UIScrollView began: the pan fails (onFinalize), the list scrolls from here.
                 self.pending = None;
                 self.start = None;
@@ -683,9 +691,9 @@ mod tests {
         assert!(s.agent("{}").unwrap().contains("\"selected\":[]"));
         s.input(&pointer(PointerPhase::Up, 200.0, 500.0, 200.0));
         assert!(matches!(s.scroll, Scroll::Decelerate { .. }));
-        // 1 pt/ms released: 1 / ln(1/0.998) ≈ 499.5 further when it stops (or the end, bouncing).
+        // 1 pt/ms released: UIScrollView decelerates from it, 90.6 pt in the first 100 ms.
         let (y, _) = s.scroll.at(200.0 + 100.0, s.max_offset());
-        assert!(y > 190.0 + 80.0, "{y}");
+        assert!((y - 190.0 - 90.6).abs() < 0.5, "{y}");
         // Past the top while dragging: rubber-banded, never 1:1.
         let mut t = grid();
         t.size = (420.0, 912.0);

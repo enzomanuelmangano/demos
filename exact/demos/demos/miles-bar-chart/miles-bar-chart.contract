@@ -81,6 +81,6 @@ component Bar
       // bun tools/spring.ts 500 1. Radius 10 (continuous).
       view width=width height=(30 + 120 * value) background-color=`rgba(255, 255, 255, ${0.3 + 0.7 * value})`
         border-radius=10 corner-shape="-exact-continuous" testId=testId
-        transition="height -exact-spring(1087.7, 131.9, 4), background-color -exact-spring(1087.7, 131.9, 4)"
+        transition="height -exact-spring(1087.7349, 131.9234, 4), background-color -exact-spring(1087.7349, 131.9234, 4)"
       // styles.label: white FiraCode, margin-top 8, centred (RN's default 14).
       text letter color="#ffffff" font-family="FiraCode-Regular" font-size=14 margin-top=8 text-align="center"
