@@ -42,7 +42,7 @@ component ComposableText
         aria-pressed=active -exact-layout-transition="-exact-spring(100, 12, 0.4)"
         // styles.textContainer: #181818, borderRadius 32 continuous, padding 16, paddingHorizontal 22;
         // the same springify() layout as the button.
-        row background-color="#181818" border-radius=32 padding="16px 22px"
+        row background-color="#181818" border-radius=32 corner-shape="-exact-continuous" padding="16px 22px"
           -exact-layout-transition="-exact-spring(100, 12, 0.4)" testId="label"
           for c, i in labelOf(active).split("") key=keyOf(labelOf(active), c, i)
             // styles.text: fontSize 24, bold; colour withTiming 200 ms linear. Each letter's
