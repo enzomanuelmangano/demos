@@ -69,7 +69,7 @@ component EmailDemo
       erasedItems = erasedItems - 1
   view
     // styles.container: #f8fafc, flex 1.
-    column position="absolute" inset=0 background-color="#f8fafc" testId="email-demo"
+    column position="absolute" inset=0 background-color="color(display-p3 0.9725 0.9804 0.9882)" testId="email-demo"
       // The FlatList: contentContainerStyle paddingTop safeTop + DEMO_BUTTON_ROW_HEIGHT,
       // paddingBottom ITEM_HEIGHT + ITEM_MARGIN.
       scroll position="absolute" top=0 left=0 width="100%" height="100%" testId="email-list"
@@ -79,10 +79,10 @@ component EmailDemo
       // styles.topGradient: absolute, safeTop × 1.5 tall, rgba(248,250,252,1) → 0, over the list.
       view position="absolute" top=0 left=0 right=0 height=(env.safeTop * 1.5) z-index=1
         pointer-events="none"
-        background-image="linear-gradient(to bottom, rgba(248,250,252,1), rgba(248,250,252,0))"
+        background-image="linear-gradient(to bottom, color(display-p3 0.9725 0.9804 0.9882), color(display-p3 0.9725 0.9804 0.9882 / 0))"
       // styles.bottomGradient: absolute, 150 tall, rgba(248,250,252,0) → 1.
       view position="absolute" bottom=0 left=0 right=0 height=150 z-index=1 pointer-events="none"
-        background-image="linear-gradient(to bottom, rgba(248,250,252,0), rgba(248,250,252,1))"
+        background-image="linear-gradient(to bottom, color(display-p3 0.9725 0.9804 0.9882 / 0), color(display-p3 0.9725 0.9804 0.9882))"
       // styles.buttonsContainer: absolute, bottom safeBottom + 10, marginHorizontal 20 %, a row
       // spaced evenly, zIndex 2.
       row position="absolute" left=0 right=0 bottom="calc(env(safe-area-inset-bottom) + 10px)"
@@ -91,17 +91,20 @@ component EmailDemo
           // styles.floatingButton: 64, radius 32, shadow 0 4 8 rgba(0,0,0,0.15); #10b981;
           // MaterialIcons restore 24 white.
           button appearance="none" class=PressableScale press=onRestore testId="restore"
-            aria-label="Restore" width=64 height=64 border-radius=32 background-color="#10b981"
+            aria-label="Restore" width=64 height=64 border-radius=32 background-color="color(display-p3 0.0627 0.7255 0.5059)"
             box-shadow="0px 4px 8px rgba(0, 0, 0, 0.15)" display="flex" align-items="center"
             justify-content="center"
-            image "symbol:sf/clock.arrow.circlepath" font-size=24 color="white" aria-hidden=true
+            // MaterialIcons' own glyph (24 × 24 grid): an SF Symbol at 24 is a larger, other one.
+            svg width=24 height=24 viewBox="0 0 24 24" aria-hidden=true
+              path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z" fill="#ffffff"
         view animation=shakeOf(deleteShakes) testId="delete-shake"
           // #ef4444; MaterialIcons delete 24 white.
           button appearance="none" class=PressableScale press=onDelete testId="delete"
-            aria-label="Delete" width=64 height=64 border-radius=32 background-color="#ef4444"
+            aria-label="Delete" width=64 height=64 border-radius=32 background-color="color(display-p3 0.9373 0.2667 0.2667)"
             box-shadow="0px 4px 8px rgba(0, 0, 0, 0.15)" display="flex" align-items="center"
             justify-content="center"
-            image "symbol:sf/trash.fill" font-size=24 color="white" aria-hidden=true
+            svg width=24 height=24 viewBox="0 0 24 24" aria-hidden=true
+              path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="#ffffff"
 
 // interactive-list AnimatedListItem + styles.listContainerItem + list-item ListItem.
 //
@@ -124,10 +127,10 @@ component EmailRow
     // translateY withSpring(-shifted · 110, { damping 30, stiffness 180, mass 1.5 }); opacity
     // withSpring(index >= shifted, { damping 26, stiffness 190, mass 1.4 }).
     view display="flex" flex-direction="column" height=itemHeight() margin-bottom=8 margin-left=12 margin-right=12 border-radius=20
-      corner-shape="squircle" border-width=0.5 border-color="rgba(229, 231, 235, 0.3)"
+      corner-shape="squircle" border-width=0.5 border-color="color(display-p3 0.898 0.9059 0.9216 / 0.3)"
       box-shadow="0px 1px 4px rgba(0, 0, 0, 0.05)"
-      background-color=(on ? "rgba(59, 130, 246, 0.06)" : "transparent")
-      filter=(on ? "drop-shadow(0px 6px 24px rgba(59, 130, 246, 0.06))" : "none")
+      background-color=(on ? "color(display-p3 0.2314 0.5098 0.9647 / 0.06)" : "transparent")
+      filter=(on ? "drop-shadow(0px 6px 24px color(display-p3 0.2314 0.5098 0.9647 / 0.06))" : "none")
       translate=`0px ${0 - shifted * 110}px` opacity=(index >= shifted ? 1 : 0)
       transition="translate -exact-spring(180, 30, 1.5), opacity -exact-spring(190, 26, 1.4), background-color -exact-spring(200, 25, 1.2)"
       testId=`email-${index}`
@@ -135,15 +138,15 @@ component EmailRow
       row align-items="center" flex=1 padding-left=16 padding-right=16 padding-top=12
         padding-bottom=12
         // avatarContainer marginRight 12; the image itemHeight × 0.45, radius itemHeight × 0.225
-        // continuous, cover.
+        // continuous (a circle: UIKit draws a half-height radius round), cover.
         view margin-right=12
-          image item.imageUrl width=45 height=45 border-radius=22.5 corner-shape="squircle"
+          image item.imageUrl width=45 height=45 border-radius=22.5
             object-fit="cover" aria-hidden=true
         // labelsContainer: flex 1, centred.
         column flex=1 justify-content="center"
           // titleText: #111827, 17, 600, letterSpacing -0.2, marginBottom 4, one line.
-          text item.title color="#111827" font-size=17 font-weight=600 letter-spacing=-0.2
+          text item.title color="color(display-p3 0.0667 0.0941 0.1529)" font-size=17 font-weight=600 letter-spacing=-0.2
             margin-bottom=4 line-clamp=1 testId=`email-title-${index}`
           // subtitleText: #6b7280, 15, letterSpacing -0.1, lineHeight 20, two lines.
-          text item.subtitle color="#6b7280" font-size=15 letter-spacing=-0.1 line-height=20
+          text item.subtitle color="color(display-p3 0.4196 0.4471 0.502)" font-size=15 letter-spacing=-0.1 line-height="20px"
             line-clamp=2

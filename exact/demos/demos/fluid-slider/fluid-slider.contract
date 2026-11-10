@@ -8,7 +8,7 @@ component FluidSlider
     env: DemoEnv
   view
     // styles.container: #f8f9fa, centred.
-    column position="absolute" inset=0 background-color="#f8f9fa" align-items="center"
+    column position="absolute" inset=0 background-color="color(display-p3 0.9725 0.9765 0.9804)" align-items="center"
       justify-content="center" testId="fluid-slider"
       // <FluidSlider width={windowWidth} height={100} />: the canvas, its translateX drawn in
       // the surface.

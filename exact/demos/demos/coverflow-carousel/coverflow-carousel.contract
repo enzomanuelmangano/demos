@@ -31,10 +31,11 @@ fn scaleX(a: number): number = a <= 1 ? 1 - 0.8 * a : (a <= 2 ? 0.2 - 0.075 * (a
 fn shownWidth(a: number): number = round(item() * scaleX(a))
 // scaleY [0.6, 0.8, 0.9, 1, 0.9, 0.8, 0.6], EXTEND (held in [0, 1] past where opacity is 0).
 fn scaleY(a: number): number = min(1, max(0, a <= 1 ? 1 - 0.1 * a : (a <= 2 ? 0.9 - 0.1 * (a - 1) : 0.8 - 0.2 * (a - 2))))
-// translateX [-1.9w, -w/0.93, -w/3.3, 0, w/3.3, w/0.93, 1.9w], EXTEND; scroll past an item
-// (u > 0) moves it left.
+// translateX [-1.9w, -w/0.93, -w/3.3, 0, w/3.3, w/0.93, 1.9w], EXTEND: an item to the right of
+// the centre (scroll before it, u < 0) moves left, towards the centre; one scrolled past (u > 0)
+// moves right.
 fn shiftOf(a: number): number = a <= 1 ? item() / 3.3 * a : (a <= 2 ? item() / 3.3 + (item() / 0.93 - item() / 3.3) * (a - 1) : item() / 0.93 + (item() * 1.9 - item() / 0.93) * (a - 2))
-fn shiftX(u: number): number = u > 0 ? 0 - shiftOf(dist(u)) : shiftOf(dist(u))
+fn shiftX(u: number): number = u > 0 ? shiftOf(dist(u)) : 0 - shiftOf(dist(u))
 // borderRadius [25, 25, 25, 15, 25, 25, 25] (maxBorderRadius 25), held to half the width as
 // UIKit clamps a corner.
 fn radiusOf(a: number): number = min(a <= 1 ? 15 + 10 * a : 25, shownWidth(a) / 2)

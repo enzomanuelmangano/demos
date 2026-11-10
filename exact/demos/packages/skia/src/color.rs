@@ -25,6 +25,26 @@ impl Color {
     pub fn hex(rgb: u32) -> Color {
         Color::rgb8((rgb >> 16) as u8, (rgb >> 8) as u8, rgb as u8)
     }
+    /// `0xRRGGBB` as an RN View draws it in the demos app, whose AppDelegate sets
+    /// `RCTColorSpace.displayP3`: the components are Display P3's, shown here as the sRGB colour
+    /// they make (linear P3 → linear sRGB, clipped to the gamut). Skia's own paints stay `hex`.
+    pub fn view_hex(rgb: u32) -> Color {
+        let lin = |c: u32| {
+            let c = (c & 0xFF) as f64 / 255.0;
+            if c <= 0.04045 { c / 12.92 } else { ((c + 0.055) / 1.055).powf(2.4) }
+        };
+        let enc = |c: f64| {
+            let c = c.clamp(0.0, 1.0);
+            let e = if c <= 0.0031308 { 12.92 * c } else { 1.055 * c.powf(1.0 / 2.4) - 0.055 };
+            (e * 255.0).round() as u8
+        };
+        let (r, g, b) = (lin(rgb >> 16), lin(rgb >> 8), lin(rgb));
+        Color::rgb8(
+            enc(1.2249 * r - 0.2247 * g),
+            enc(-0.0420 * r + 1.0419 * g),
+            enc(-0.0197 * r - 0.0786 * g + 1.0979 * b),
+        )
+    }
     /// This colour at alpha `a` (0…1), as `Color(c).alpha(a)`.
     pub fn alpha(self, a: f32) -> Color {
         Color([self.0[0], self.0[1], self.0[2], a])

@@ -4,7 +4,7 @@
 use DemoEnv from "../env.contract"
 
 // index.tsx CARDS.
-fn cardColors(): string[] = ["#F1EEE0", "#F3D9BC", "#F4ACB7", "#F6DFEB", "#E2F0CB", "#C7E3D4", "#AFCBFF", "#E3DFFF", "#FFE5E0", "#FFD1DC"]
+fn cardColors(): string[] = ["color(display-p3 0.9451 0.9333 0.8784)", "color(display-p3 0.9529 0.851 0.7373)", "color(display-p3 0.9569 0.6745 0.7176)", "color(display-p3 0.9647 0.8745 0.9216)", "color(display-p3 0.8863 0.9412 0.7961)", "color(display-p3 0.7804 0.8902 0.8314)", "color(display-p3 0.6863 0.7961 1)", "color(display-p3 0.8902 0.8745 1)", "color(display-p3 1 0.898 0.8784)", "color(display-p3 1 0.8196 0.8627)"]
 
 // card.tsx: CARD_WIDTH = window width / 3, CARD_HEIGHT = CARD_WIDTH / 3 · 4.
 fn cw(w: number): number = w / 3

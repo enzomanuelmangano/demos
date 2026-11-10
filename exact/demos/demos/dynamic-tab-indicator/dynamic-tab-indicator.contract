@@ -34,6 +34,10 @@ component DynamicTabIndicator
   state xs: number[] = [0, 0, 0, 0, 0]
   state ws: number[] = [0, 0, 0, 0, 0]
   state y = 0
+  // The titles' font: styles.title's 17, shrunk by adjustsFontSizeToFit until a line fits the
+  // tab's height (the bar's 120 + 56 less the safe-area paddings leaves ~18 pt on an iPhone:
+  // UIKit draws them at ~15). A line of SF is 20 / 17 of its size tall.
+  state fit = 17
   action scrolled(x: number, top: number)
     scroll = x
   action measured(i: number, w: number, h: number)
@@ -45,6 +49,7 @@ component DynamicTabIndicator
       ws = setAt(ws, i, t.width)
       if i == 0
         y = t.y - p.y
+        fit = min(17, p.height * 17 / 20)
   // handleSelectSection: scrollTo({ x: index * width, animated: true }).
   action select(i: number)
     haptic("selection")
@@ -70,9 +75,10 @@ component DynamicTabIndicator
           // styles.container: flex 1, width / 5, centred, paddingHorizontal 8.
           view display="flex" flex-direction="column" id=`tab-${i}` class=TabPress press=select(i) role="button" aria-label=title
             flex=1 width=(env.width / 5) align-items="center" justify-content="center"
-            padding-left=8 padding-right=8 box-sizing="border-box" testId=`tab-${i}`
-            // styles.title: #000, 17 bold, centred, one line.
-            text title id=`tab-title-${i}` resize=measured(i) color="#000000" font-size=17
+            padding-left=8 padding-right=8 box-sizing="border-box" resize=measured(i) testId=`tab-${i}`
+            // styles.title: #000, 17 bold (fitted: `fit`), centred, one line. The title and its tab
+            // both re-measure: the tab's height settles after the first title layout.
+            text title id=`tab-title-${i}` resize=measured(i) color="#000000" font-size=fit
               font-weight=700 text-align="center" white-space="nowrap" testId=`tab-title-${i}`
         // rIndicatorLayoutStyle: top y + height + DEMO_BUTTON_ROW_HEIGHT - 35, left x, width,
         // height 2, black, radius 5, zIndex 10; x and width on the scroll.

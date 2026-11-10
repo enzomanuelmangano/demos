@@ -40,12 +40,12 @@ component BlurredBottomBar
         background-image="linear-gradient(rgba(255,255,255,0), rgba(0,0,0,0.1), rgba(0,0,0,0.5), rgba(0,0,0,0.8))"
         testId="gradient"
       // localStyles.bottomContainer: absolute, left / right 15%, bottom safeBottom + 15, 60
-      // tall (border-box), border 1 rgb(216, 216, 216), radius 30 continuous, clipped.
+      // tall (border-box), border 1 rgb(216, 216, 216), radius 30 continuous (a pill: round), clipped.
       // BlurView intensity 40 (iOS), tint default (UIBlurEffect .regular), background
       // rgba(255,255,255,0.05); localStyles.container: a row, paddingHorizontal 15.
       row position="absolute" left="15%" right="15%" bottom="calc(env(safe-area-inset-bottom) + 15px)"
         height=60 box-sizing="border-box" border-width=1 border-style="solid"
-        border-color="rgb(216, 216, 216)" border-radius=30 corner-shape="squircle" overflow="hidden"
+        border-color="rgb(216, 216, 216)" border-radius=30 overflow="hidden"
         backgroundMaterial="regular" background-color="rgba(255,255,255,0.05)" padding-left=15
         padding-right=15 role="tablist" testId="tab-bar"
         for i in range(4) key=i

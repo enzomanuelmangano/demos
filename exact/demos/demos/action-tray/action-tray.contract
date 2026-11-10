@@ -82,7 +82,7 @@ component ActionTray
       justify-content="center" testId="action-tray"
       // styles.button: 50 × 50, #4290F6, radius 25, marginTop 200, centred; rotate 0 → 45°.
       // MaterialCommunityIcons plus 25 #FFF.
-      column class=PressableScale width=50 height=50 border-radius=25 background-color="#4290F6"
+      column class=PressableScale width=50 height=50 border-radius=25 background-color="color(display-p3 0.2588 0.5647 0.9647)"
         margin-top=200 align-items="center" justify-content="center"
         rotate=(opened ? 45 : 0) transition=`rotate ${rotateSpring()}`
         press=toggleActionTray role="button" aria-label=(opened ? "Close the tray" : "Open the tray")
@@ -120,35 +120,35 @@ component ActionTray
                 // styles.closeButton: 24 × 24, radius 20, #F1F1F4, hitSlop 8;
                 // MaterialCommunityIcons close-thick 15 #B3B3B6.
                 column class=PressableScale pointer-events="auto" width=24 height=24
-                  border-radius=20 background-color="#F1F1F4" align-items="center"
+                  border-radius=20 background-color="color(display-p3 0.9451 0.9451 0.9569)" align-items="center"
                   justify-content="center" press=close role="button" aria-label="Close"
                   testId="close"
-                  image "symbol:sf/xmark" font-size=15 font-weight=900 color="#B3B3B6"
+                  image "symbol:sf/xmark" font-size=15 font-weight=900 color="color(display-p3 0.702 0.702 0.7137)"
                     aria-hidden=true
               // rContentStyle: height withSpring(80 | 200 | 250).
               column height=contentHeight(step) transition=`height ${gentle()}` testId="content"
                 // styles.contentText: #B3B3B6, 16, weight 600, marginTop 15, marginBottom 25.
                 if step == 0
                   text "Content here" class=StepContent font-size=16 font-weight=600
-                    color="#B3B3B6" margin-top=15 margin-bottom=25 testId="step-0"
+                    color="color(display-p3 0.702 0.702 0.7137)" margin-top=15 margin-bottom=25 testId="step-0"
                 if step == 1
                   column class=StepContent flex=1
                     animation=`trayFadeIn 300ms ${inOutQuad()} both` testId="step-1"
                     text "You know what? I really don't know what to write here.\n\nI just want to make this text long enough to test the animation. So I am just typing some random words here.\nI hope this is enough."
-                      font-size=16 font-weight=600 color="#B3B3B6" margin-top=15 margin-bottom=25
+                      font-size=16 font-weight=600 color="color(display-p3 0.702 0.702 0.7137)" margin-top=15 margin-bottom=25
                 if step == 2
                   column class=StepContent flex=1
                     animation=`trayFadeIn 300ms ${inOutQuad()} both` testId="step-2"
                     column margin-top=15 margin-bottom=25
                       text "Waaait a second! Actually I have something to say.\n\nIf you are reading this, you're probably searching for the source code!\n\nIf I'm right, you can find it here:"
-                        font-size=16 font-weight=600 color="#B3B3B6"
+                        font-size=16 font-weight=600 color="color(display-p3 0.702 0.702 0.7137)"
                       // The nested Text: bold, rgba(0,0,0,0.5).
                       text "reactiive.io/demos" font-size=16 font-weight=700
                         color="rgba(0, 0, 0, 0.5)"
               // styles.continueButton: #4290F6, radius 25 continuous, 55 tall, full width;
               // buttonText #FFF 16 bold.
               column class=PressableScale pointer-events="auto" height=55 width="100%"
-                border-radius=25 corner-shape="squircle" background-color="#4290F6"
+                border-radius=25 corner-shape="squircle" background-color="color(display-p3 0.2588 0.5647 0.9647)"
                 align-items="center" justify-content="center" press=next role="button"
                 aria-label=actionOf(step) testId="continue"
                 text actionOf(step) font-size=16 font-weight=700 color="#FFF" testId="continue-label"

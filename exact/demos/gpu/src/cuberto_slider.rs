@@ -151,7 +151,10 @@ impl Surface for CubertoSlider {
             self.label_value = value;
         }
         let (ox, oy) = self.origin();
+        // The balloon is a Skia Path (sRGB); the bar and the picker's border are RN Views,
+        // whose colour the app reads as Display P3 (`Color::view_hex`).
         let color = Paint::fill(Color::hex(PRIMARY_COLOR));
+        let view_color = Paint::fill(Color::view_hex(PRIMARY_COLOR));
         let c = &mut self.canvas;
         c.begin(frame.scale);
         // The track: #E5E5E5, radius 5 (continuous; 4 tall, so 2).
@@ -179,13 +182,13 @@ impl Surface for CubertoSlider {
         }
         c.set_matrix(saved);
         // The progress: the full-width bar scaled from its left edge.
-        c.draw_rect(ox, oy, x, SLIDER_HEIGHT, &color);
+        c.draw_rect(ox, oy, x, SLIDER_HEIGHT, &view_color);
         // The picker: a white square with a border, rounded, scaled about its centre.
         let (s, r, b) = (self.scale.value as f32, self.radius.value as f32, self.border.value as f32);
         c.translate(ox + x, oy + SLIDER_HEIGHT / 2.0);
         c.scale(s, s);
         let half = PICKER_SIZE / 2.0;
-        c.draw_rrect(-half, -half, PICKER_SIZE, PICKER_SIZE, r, &color);
+        c.draw_rrect(-half, -half, PICKER_SIZE, PICKER_SIZE, r, &view_color);
         c.draw_rrect(-half + b, -half + b, PICKER_SIZE - 2.0 * b, PICKER_SIZE - 2.0 * b, (r - b).max(0.0), &Paint::fill(Color::WHITE));
         let (pw, ph) = frame.pixels();
         self.renderer.draw(device, queue, encoder, &self.canvas, target, format, pw, ph, wgpu::Color::TRANSPARENT);
@@ -212,10 +215,12 @@ mod tests {
         let (img, animating) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         img.save("cuberto-rest");
         assert!(!animating);
+        // #6141B9: the balloon (Skia) as is, the bar and the picker (Views) read as P3.
         let purple = |p: [u8; 4]| p[0] == 0x61 && p[1] == 0x41 && p[2] == 0xB9;
+        let view_purple = |p: [u8; 4]| p[..3] == [103, 63, 192];
         // The track from x 50 to 350 at y 198–202; the picker at x 50, its border 16 × 0.7.
         assert_eq!(img.at(500, 400)[..3], [0xE5, 0xE5, 0xE5], "{:?}", img.at(500, 400));
-        assert!(purple(img.at(100 - 30, 400)), "border {:?}", img.at(70, 400));
+        assert!(view_purple(img.at(100 - 30, 400)), "border {:?}", img.at(70, 400));
         assert_eq!(img.at(100, 400)[..3], [255, 255, 255], "inside {:?}", img.at(100, 400));
         // The balloon over the picker: its body's centre 40 + ~43 above the track.
         assert!(purple(img.at(100, 180)), "balloon {:?}", img.at(100, 180));
@@ -232,7 +237,7 @@ mod tests {
         // Mid-drag: the picker grown (border 4) at x 200, the balloon behind it, leaning.
         let report: String = s.agent("{}").unwrap();
         assert!(report.starts_with("{\"value\":50,\"x\":150,"), "{report}");
-        assert!(purple(img.at(300, 400)), "progress {:?}", img.at(300, 400));
+        assert!(view_purple(img.at(300, 400)), "progress {:?}", img.at(300, 400));
         assert_eq!(img.at(2 * 200 - 20, 400)[..3], [255, 255, 255], "picker inside {:?}", img.at(380, 400));
         s.input(&pointer(PointerPhase::Up, 200.0, ms));
         let mut animating = true;
