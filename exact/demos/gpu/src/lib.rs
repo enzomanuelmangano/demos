@@ -19,6 +19,7 @@ pub mod shaders {
 mod bench;
 pub mod gfx;
 pub mod gooey;
+pub mod qr;
 pub mod ui_scroll;
 
 pub mod animated_3d_parallax;
