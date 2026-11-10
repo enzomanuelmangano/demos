@@ -97,6 +97,18 @@ keyframes level4
   75% background-color="rgb(0, 112, 50)" scale=1
   100% background-color="rgb(0, 112, 50)" scale=1.6
 
+// Levels 2–4 end outside sRGB (their P3 greens' red is below 0: -70, -59, -35 of 255), and
+// keyframes take sRGB colours only, so their last stop is the clipped one. Over it, a box of the
+// exact P3 colour fades in across the last 0.1 of progress (70 % → 75 %, held through the
+// overshoot as interpolateColor clamps): at rest the square is RN's colour; every earlier stop
+// is in gamut.
+keyframes levelEnd
+  0% opacity=0
+  70% opacity=0
+  75% opacity=1
+  100% opacity=1
+fn levelColour(level: number): string = level == 2 ? "color(display-p3 0.251 0.7686 0.3882)" : (level == 3 ? "color(display-p3 0.1882 0.6314 0.3059)" : "color(display-p3 0.1294 0.4314 0.2235)")
+
 // startAnimation: withDelay(45 · (weekIndex + (6 - dayIndex)), withSpring(1, { mass 1.1,
 // damping 13, stiffness 150 })); resetAnimation: withDelay(Math.random() · 500, withSpring(0,
 // { mass 0.9, damping 10, stiffness 60 })). cancelAnimation first: the new delay holds the
@@ -162,5 +174,10 @@ component ContributionSquare
         translate=`${animating ? 100 : 0}px 0px` transition=squareTransition(animating, delay)
         -exact-drag-timeline="--progress x"
       view width=14 height=14 border-radius=2 corner-shape="-exact-continuous" background-color="color(display-p3 0.9216 0.9294 0.9412)"
-        animation=`level${level} 1s linear both` animation-timeline="--progress"
+        position="relative" animation=`level${level} 1s linear both` animation-timeline="--progress"
         animation-range="-50px 150px" testId=testId
+        if level >= 2
+          view position="absolute" inset=0 border-radius=2 corner-shape="-exact-continuous"
+            background-color=levelColour(level) opacity=0 animation="levelEnd 1s linear both"
+            animation-timeline="--progress" animation-range="-50px 150px" pointer-events="none"
+            aria-hidden=true
