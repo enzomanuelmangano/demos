@@ -1,0 +1,6 @@
+at "/demo/clock-time-picker"
+
+test "the picker is there"
+  expect tree has "clock-time-picker"
+  expect tree has "clock-time-picker-container"
+  expect tree has "clock-time-picker-canvas"
