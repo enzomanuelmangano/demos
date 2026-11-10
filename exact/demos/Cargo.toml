@@ -15,3 +15,8 @@ taffy = { path = "../../../../../../.exact/exact2/94b8671f70fe2e25b307a40e7fce66
 parley = { path = "../../../../../../.exact/exact2/94b8671f70fe2e25b307a40e7fce66dc27c9f802/vendor/parley" }
 fontique = { path = "../../../../../../.exact/exact2/94b8671f70fe2e25b307a40e7fce66dc27c9f802/vendor/fontique" }
 wgpu-hal = { path = "../../../../../../.exact/exact2/94b8671f70fe2e25b307a40e7fce66dc27c9f802/vendor/wgpu-hal" }
+
+# The skia package's Graphite port (tessellation, coverage references, glyph rasterisation) runs
+# optimised even in debug builds and tests: its parity tests drop from ~25 s to a few seconds.
+[profile.dev.package.skia]
+opt-level = 3

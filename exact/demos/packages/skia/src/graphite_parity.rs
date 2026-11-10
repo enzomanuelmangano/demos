@@ -434,3 +434,121 @@ fn curved_strokes_follow_the_offset_curve() {
     assert!(off * 10 < inked, "{off} of {inked}");
 }
 
+
+/// Text below SDFT sizes as BitmapTextRenderStep draws it: each glyph's A8 mask at its floored
+/// device position (+ ½), sampled 1:1, the paint times the coverage, no MSAA. The expected
+/// picture is the atlas's own masks composited on the CPU.
+#[cfg(target_vendor = "apple")]
+#[test]
+fn text_is_graphites_direct_masks() {
+    let Some(gpu) = gpu() else { return };
+    static OUTFIT: &[u8] = include_bytes!("../../../gpu/fonts/outfit.ttf");
+    let font = Font::new(OUTFIT, 16.0).unwrap();
+    for (name, m) in [("text", Matrix::scale(2.0, 2.0)), ("text-sub", Matrix::scale(2.0, 2.0).then(Matrix::translate(0.37, 0.71))), ("text-rot", Matrix::rotate(0.2).then(Matrix::scale(2.0, 2.0)).then(Matrix::translate(6.0, 0.0)))] {
+        let mut c = Canvas::default();
+        c.begin(1.0);
+        c.concat(m);
+        c.draw_text("Ag%", 3.3, 22.6, &font, &white());
+        assert!(!c.msaa, "{name}: text needs no MSAA");
+        assert!(matches!(c.ops[..], [Op::Glyphs { .. }]), "{name}: one glyph draw, {:?}", c.ops);
+        let px = render(&gpu, &c);
+        px.save(&format!("parity-{name}"));
+        // The quads' corners and texels, back to coverage per pixel.
+        let mut want = vec![0.0f32; (W * H) as usize];
+        crate::glyphs::Atlas::with(|atlas| {
+            for q in c.indices.chunks(6) {
+                let v0 = c.vertices[q[0] as usize];
+                let v2 = c.vertices[q[2] as usize];
+                let (u0, t0) = (v0.color & 0xffff, v0.color >> 16);
+                for y in v0.pos[1] as i32..v2.pos[1] as i32 {
+                    for x in v0.pos[0] as i32..v2.pos[0] as i32 {
+                        if (0..W as i32).contains(&x) && (0..H as i32).contains(&y) {
+                            let tu = u0 + (x - v0.pos[0] as i32) as u32;
+                            let tv = t0 + (y - v0.pos[1] as i32) as u32;
+                            let a = atlas.pixels[(tv * crate::glyphs::ATLAS_W + tu) as usize] as f32 / 255.0;
+                            let w = &mut want[(y as u32 * W + x as u32) as usize];
+                            *w = a + *w * (1.0 - a);
+                        }
+                    }
+                }
+            }
+        });
+        let worst = compare(&px, |x, y| want[(y * W + x) as usize], name);
+        assert!(worst <= 0.5 / 255.0 + 1e-4, "{name}: {worst}");
+        assert!(px.count(|p| p[3] > 200) > 30, "{name}: ink");
+    }
+}
+
+/// Arcs, SVG arcs and circles inside a bigger path are Skia's conics, tessellated as Graphite
+/// tessellates conics (Wang's conic formula): 4× MSAA of that subdivision sample for sample, and
+/// its points on the true circle within f32 rounding (where a cubic stand-in is 2.7e-4 r off).
+#[test]
+fn arcs_and_circles_in_paths_are_conics() {
+    let Some(gpu) = gpu() else { return };
+    let mut b = Path::builder();
+    // addArc: 200° of an oval, closed by a line back.
+    add_arc(&mut b, 8.3, 6.1, 50.2, 44.7, -30.0, 200.0);
+    // A circle and a rect in the same path (not a lone oval: no analytic draw).
+    add_circle(&mut b, 70.4, 52.3, 17.9);
+    add_rect(&mut b, 60.0, 8.0, 25.0, 12.0);
+    // An SVG arc on a contour.
+    b.begin(point(12.0, 70.0));
+    add_svg_arc(&mut b, point(12.0, 70.0), point(44.0, 66.0), 19.0, 12.0, 25.0, true, false);
+    b.line_to(point(30.0, 78.0));
+    b.end(true);
+    let path = b.build();
+    let mut verbs = Vec::new();
+    push_verbs(path.iter(), &mut verbs);
+    let conics = verbs.iter().filter(|v| matches!(v, graphite::Verb::Conic(..))).count();
+    assert!(verbs.iter().all(|v| !matches!(v, graphite::Verb::Cubic(..))), "{verbs:?}");
+    // 200°: two quadrants and 20°; the circle's four; the SVG arc's segments.
+    assert!(conics >= 3 + 4 + 1, "{conics}");
+    let m = Matrix::rotate(0.07).then(Matrix::translate(1.3, -0.6));
+    let mut c = Canvas::default();
+    c.begin(1.0);
+    c.concat(m);
+    c.draw_path(&path, &white());
+    assert!(c.msaa && c.rrects.is_empty());
+    let px = render(&gpu, &c);
+    px.save("parity-conics");
+    let mut polys: Vec<Vec<Point>> = Vec::new();
+    let mut scratch = Vec::new();
+    graphite::flatten(&verbs, &m, |_, pts| polys.push(pts.iter().map(|p| point((p.x * 256.0).round() / 256.0, (p.y * 256.0).round() / 256.0)).collect()), &mut scratch);
+    const SAMPLES: [(f32, f32); 4] = [(0.375, 0.125), (0.875, 0.375), (0.125, 0.625), (0.625, 0.875)];
+    let want = |x: u32, y: u32| SAMPLES.iter().filter(|(sx, sy)| winding(&polys, point(x as f32 + sx, y as f32 + sy)) != 0).count() as f32 / 4.0;
+    let worst = compare(&px, want, "conics");
+    assert!(worst <= 0.5 / 255.0 + 1e-4, "{worst}");
+
+    // The circle's tessellation against the circle, in device pixels: conics vs the cubics
+    // they stand in for.
+    let mut cb = Path::builder();
+    add_circle(&mut cb, 0.0, 0.0, 40.0);
+    let circle = cb.build();
+    let off = |verbs: &[graphite::Verb]| {
+        let mut worst = 0.0f64;
+        graphite::flatten(verbs, &Matrix::IDENTITY, |_, pts| {
+            for p in pts {
+                worst = worst.max((((p.x as f64).powi(2) + (p.y as f64).powi(2)).sqrt() - 40.0).abs());
+            }
+        }, &mut Vec::new());
+        worst
+    };
+    let mut as_conics = Vec::new();
+    push_verbs(circle.iter(), &mut as_conics);
+    let as_cubics: Vec<graphite::Verb> = {
+        let mut v = Vec::new();
+        for e in circle.iter() {
+            match e {
+                PathEvent::Begin { at } => v.push(graphite::Verb::Move(at)),
+                PathEvent::Cubic { ctrl1, ctrl2, to, .. } => v.push(graphite::Verb::Cubic(ctrl1, ctrl2, to)),
+                PathEvent::End { close: true, .. } => v.push(graphite::Verb::Close),
+                _ => {}
+            }
+        }
+        v
+    };
+    let (e_conic, e_cubic) = (off(&as_conics), off(&as_cubics));
+    eprintln!("circle r = 40 px: tessellated points off the circle by {e_conic:.2e} px as conics, {e_cubic:.2e} px as cubics");
+    assert!(e_conic < 2e-5, "{e_conic}");
+    assert!(e_cubic > 5e-3, "{e_cubic}");
+}

@@ -15,6 +15,8 @@ use exact_gpu::Registry;
 pub mod shaders {
     include!(concat!(env!("OUT_DIR"), "/shaders.rs"));
 }
+#[cfg(test)]
+mod bench;
 pub mod gfx;
 pub mod gooey;
 pub mod ui_scroll;

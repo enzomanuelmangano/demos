@@ -1,7 +1,7 @@
 //! `Skia.Path.MakeFromSVGString(d)`: an SVG path's `d` attribute (every command, absolute and
 //! relative, arcs included) as a [`Path`].
 
-use lyon::math::{point, vector, Angle};
+use lyon::math::{point, vector};
 use lyon::path::builder::SvgPathBuilder;
 use lyon::path::{ArcFlags, Path};
 
@@ -79,15 +79,18 @@ pub fn path_from_svg(d: &str) -> Option<Path> {
     Some(lyon::path::traits::Build::build(svg))
 }
 
-fn parse(d: &str, b: &mut dyn SvgPathBuilder) -> Option<()> {
+type Svg = lyon::path::builder::WithSvg<lyon::path::path::BuilderImpl>;
+
+fn parse(d: &str, b: &mut Svg) -> Option<()> {
     let mut t = Tokens { s: d.as_bytes(), i: 0 };
     let mut cmd = t.command()?;
     loop {
         let rel = cmd.is_ascii_lowercase();
+        let sb: &mut dyn SvgPathBuilder = &mut *b;
         match cmd.to_ascii_uppercase() {
             b'M' => {
                 let (x, y) = (t.number()?, t.number()?);
-                if rel { b.relative_move_to(vector(x, y)) } else { b.move_to(point(x, y)) }
+                if rel { sb.relative_move_to(vector(x, y)) } else { sb.move_to(point(x, y)) }
                 // Pairs after a move are lines.
                 cmd = if rel { b'l' } else { b'L' };
                 if !t.at_number() {
@@ -100,53 +103,55 @@ fn parse(d: &str, b: &mut dyn SvgPathBuilder) -> Option<()> {
             }
             b'L' => {
                 let (x, y) = (t.number()?, t.number()?);
-                if rel { b.relative_line_to(vector(x, y)) } else { b.line_to(point(x, y)) }
+                if rel { sb.relative_line_to(vector(x, y)) } else { sb.line_to(point(x, y)) }
             }
             b'H' => {
                 let x = t.number()?;
-                if rel { b.relative_horizontal_line_to(x) } else { b.horizontal_line_to(x) }
+                if rel { sb.relative_horizontal_line_to(x) } else { sb.horizontal_line_to(x) }
             }
             b'V' => {
                 let y = t.number()?;
-                if rel { b.relative_vertical_line_to(y) } else { b.vertical_line_to(y) }
+                if rel { sb.relative_vertical_line_to(y) } else { sb.vertical_line_to(y) }
             }
             b'C' => {
                 let n: [f32; 6] = [t.number()?, t.number()?, t.number()?, t.number()?, t.number()?, t.number()?];
                 if rel {
-                    b.relative_cubic_bezier_to(vector(n[0], n[1]), vector(n[2], n[3]), vector(n[4], n[5]))
+                    sb.relative_cubic_bezier_to(vector(n[0], n[1]), vector(n[2], n[3]), vector(n[4], n[5]))
                 } else {
-                    b.cubic_bezier_to(point(n[0], n[1]), point(n[2], n[3]), point(n[4], n[5]))
+                    sb.cubic_bezier_to(point(n[0], n[1]), point(n[2], n[3]), point(n[4], n[5]))
                 }
             }
             b'S' => {
                 let n: [f32; 4] = [t.number()?, t.number()?, t.number()?, t.number()?];
                 if rel {
-                    b.smooth_relative_cubic_bezier_to(vector(n[0], n[1]), vector(n[2], n[3]))
+                    sb.smooth_relative_cubic_bezier_to(vector(n[0], n[1]), vector(n[2], n[3]))
                 } else {
-                    b.smooth_cubic_bezier_to(point(n[0], n[1]), point(n[2], n[3]))
+                    sb.smooth_cubic_bezier_to(point(n[0], n[1]), point(n[2], n[3]))
                 }
             }
             b'Q' => {
                 let n: [f32; 4] = [t.number()?, t.number()?, t.number()?, t.number()?];
                 if rel {
-                    b.relative_quadratic_bezier_to(vector(n[0], n[1]), vector(n[2], n[3]))
+                    sb.relative_quadratic_bezier_to(vector(n[0], n[1]), vector(n[2], n[3]))
                 } else {
-                    b.quadratic_bezier_to(point(n[0], n[1]), point(n[2], n[3]))
+                    sb.quadratic_bezier_to(point(n[0], n[1]), point(n[2], n[3]))
                 }
             }
             b'T' => {
                 let (x, y) = (t.number()?, t.number()?);
-                if rel { b.smooth_relative_quadratic_bezier_to(vector(x, y)) } else { b.smooth_quadratic_bezier_to(point(x, y)) }
+                if rel { sb.smooth_relative_quadratic_bezier_to(vector(x, y)) } else { sb.smooth_quadratic_bezier_to(point(x, y)) }
             }
             b'A' => {
                 let (rx, ry, rot) = (t.number()?, t.number()?, t.number()?);
                 let flags = ArcFlags { large_arc: t.flag()?, sweep: t.flag()? };
                 let (x, y) = (t.number()?, t.number()?);
-                let (radii, angle) = (vector(rx, ry), Angle::degrees(rot));
-                if rel { b.relative_arc_to(radii, angle, flags, vector(x, y)) } else { b.arc_to(radii, angle, flags, point(x, y)) }
+                // SkParsePath: arcTo(r, angle, largeArc, sweep ? kCW : kCCW, end), as Skia's conics.
+                let from = b.current_position();
+                let end = if rel { point(from.x + x, from.y + y) } else { point(x, y) };
+                crate::conics::svg_arc_to(b as &mut dyn SvgPathBuilder, from, rx, ry, rot, flags.large_arc, !flags.sweep, end);
             }
             b'Z' => {
-                b.close();
+                sb.close();
                 match t.command() {
                     Some(c) => {
                         cmd = c;
