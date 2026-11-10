@@ -45,7 +45,7 @@ component Steps
         // dot.tsx: dotSize, radius dotSize / 2 continuous; backgroundColor withTiming(white or
         // rgba(0,0,0,0.15), 200 ms) on Reanimated's default curve inOut(quad).
         for i in range(3) key=i
-          view width=10 height=10 border-radius=5 corner-shape="squircle"
+          view width=10 height=10 border-radius=5
             background-color=(activeIndex >= i ? "white" : "rgba(0,0,0,0.15)")
             transition="background-color 200ms cubic-bezier(0.455, 0.03, 0.515, 0.955)"
             testId=`dot-${i}`
@@ -61,7 +61,7 @@ component Steps
             // styles.button + backButton: rgba(0,0,0,0.08), radius 30 continuous, width
             // backButtonWidth. backButtonLabel: black, SF-Pro-Rounded-Bold 18, letterSpacing 0.5.
             button appearance="none" class=PressableScale press=onBack testId="back"
-              width=backWidth(env.width) height=60 border-radius=30 corner-shape="squircle"
+              width=backWidth(env.width) height=60 border-radius=30
               background-color="rgba(0,0,0,0.08)" display="flex" flex-direction="row"
               align-items="center" justify-content="center"
               text "Back" color="black" font-family="ui-rounded" font-weight=700 font-size=18
@@ -69,7 +69,7 @@ component Steps
         // styles.fill + continueButton: flex 1, #0c86f7.
         view display="flex" flex-direction="column" flex=1 -exact-layout-transition=stepSpring()
           button appearance="none" class=PressableScale press=onContinue testId="continue"
-            flex=1 height=60 border-radius=30 corner-shape="squircle" background-color="#0c86f7"
+            flex=1 height=60 border-radius=30 background-color="#0c86f7"
             display="flex" flex-direction="row" align-items="center" justify-content="center"
             -exact-layout-transition=stepSpring()
             // styles.labelContainer: a centred row (it moves with the button's resize).

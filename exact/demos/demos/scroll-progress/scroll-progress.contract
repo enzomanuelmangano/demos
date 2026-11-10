@@ -109,7 +109,7 @@ component BottomProgress
       // ProgressBarArea: flex 1, margin 5, #2E2D2E, paddingHorizontal 10, radius 40 continuous,
       // a centred row; opacity withTiming(expanded ? 1 : 0).
       row class=PillMotion flex=1 margin=5 padding-left=10 padding-right=10 border-radius=40
-        corner-shape="squircle" background-color="#2E2D2E" justify-content="center" align-items="center"
+        background-color="#2E2D2E" justify-content="center" align-items="center"
         opacity=(isExpanded(progress) ? 1 : 0)
         transition="opacity 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)" testId="progress-bar-area"
         // ReText: #9E9E9E, 15, width 50, centred. A text per frame is a layout per frame: every
@@ -133,7 +133,7 @@ component BottomProgress
       // CollapsedArea: absoluteFill, margin 5, #2E2D2E, radius 40 continuous; opacity
       // withTiming(INITIAL or END ? 1 : 0).
       view class=PillMotion position="absolute" top=5 left=5 right=5 bottom=5 border-radius=40
-        corner-shape="squircle" background-color="#2E2D2E"
+        background-color="#2E2D2E"
         opacity=(isExpanded(progress) ? 0 : 1)
         transition="opacity 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)" testId="collapsed-area"
         // The reading time, shown at INITIAL: #9E9E9E, marginHorizontal 5, one line, shrunk to

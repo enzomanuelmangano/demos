@@ -37,6 +37,7 @@ const COLORS: [u32; 20] = [
 const ITEMS: usize = COLORS.len() + 4;
 /// BACKGROUND_COLOR.
 const BACKGROUND: u32 = 0x111111;
+
 /// MAX_RENDERED_ITEMS.
 const MAX_RENDERED: f64 = 5.0;
 /// LIST_ITEM_ASPECT_RATIO.
@@ -176,7 +177,8 @@ impl Surface for ColorCarousel {
             let m0 = [k * (scale * cos + cx * p), 0.0, k * cx];
             let m1 = [k * cy * p, k * scale, k * cy];
             let m2 = [p, 0.0, 1.0];
-            let c = Color::hex(rgb).0;
+            // An RN View: its colour is read as Display P3 (`Color::view_hex`).
+            let c = Color::view_hex(rgb).0;
             for row in [m0, m1, m2] {
                 self.cards.extend_from_slice(&[row[0] as f32, row[1] as f32, row[2] as f32, 0.0]);
             }
@@ -263,11 +265,12 @@ mod tests {
         let (a, moving) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         a.save("color-carousel-0");
         assert!(!moving);
-        // Item 2 (#336699) is centred at scale 2: 168 x 224 about (210, 210).
-        assert_eq!(&a.at(210, 210)[..3], &[0x33, 0x66, 0x99]);
-        assert_eq!(&a.at(210, 110)[..3], &[0x33, 0x66, 0x99]);
-        // Its neighbour (#6699CC) shows past its right edge at 1.52.
-        assert_eq!(&a.at(320, 210)[..3], &[0x66, 0x99, 0xCC]);
+        // Item 2 (#336699, read as Display P3: rgb(27, 104, 157)) is centred at scale 2: 168 x 224
+        // about (210, 210).
+        assert_eq!(&a.at(210, 210)[..3], &[27, 104, 157]);
+        assert_eq!(&a.at(210, 110)[..3], &[27, 104, 157]);
+        // Its neighbour (#6699CC as P3: rgb(85, 155, 209)) shows past its right edge at 1.52.
+        assert_eq!(&a.at(320, 210)[..3], &[85, 155, 209]);
         // The gradient's corner is BACKGROUND_COLOR.
         assert_eq!(&a.at(2, 2)[..3], &[0x11, 0x11, 0x11]);
         assert!(s.agent("{}").unwrap().contains("#2E5C8A"));
@@ -278,7 +281,7 @@ mod tests {
         let (b, moving) = fixture::render(&gpu, s.as_mut(), &frame(400.0)).unwrap();
         b.save("color-carousel-1");
         assert!(!moving);
-        assert_eq!(&b.at(210, 210)[..3], &[0x66, 0x99, 0xCC]);
+        assert_eq!(&b.at(210, 210)[..3], &[85, 155, 209]);
         let reply = s.agent("{}").unwrap();
         assert!(reply.contains(&{
             let [r, g, bb, _] = Color::hex(0x6699CC).darken(0.1).0.map(|v| (v * 255.0).round() as u8);

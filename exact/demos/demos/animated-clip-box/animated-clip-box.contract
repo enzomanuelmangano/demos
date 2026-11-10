@@ -22,29 +22,29 @@ fn springOf(phase: number): string = phase == 1 ? "-exact-spring(80, 20, 1)" : "
 // A hidden box translated by `r` px on the same spring is a drag timeline those colour
 // keyframes follow: host-driven, no commit per frame. Stops are gamma 2.2 mixes.
 keyframes blueCircle
-  0% background-color="#4BA2E4"
-  10% background-color="#53A6E5"
-  20% background-color="#5AAAE7"
-  30% background-color="#60ADE8"
-  40% background-color="#66B1E9"
-  50% background-color="#6BB5EB"
-  60% background-color="#71B8EC"
-  70% background-color="#76BBED"
-  80% background-color="#7ABFEE"
-  90% background-color="#7FC2F0"
-  100% background-color="#83C5F1"
+  0% background-color="rgb(16, 164, 234)"
+  10% background-color="rgb(39, 168, 235)"
+  20% background-color="rgb(52, 172, 237)"
+  30% background-color="rgb(63, 175, 237)"
+  40% background-color="rgb(72, 179, 238)"
+  50% background-color="rgb(78, 183, 240)"
+  60% background-color="rgb(87, 186, 241)"
+  70% background-color="rgb(93, 189, 242)"
+  80% background-color="rgb(98, 193, 243)"
+  90% background-color="rgb(104, 196, 245)"
+  100% background-color="rgb(109, 199, 246)"
 keyframes orangeCircle
-  0% background-color="#ED7D3A"
-  10% background-color="#EC7F40"
-  20% background-color="#EB8245"
-  30% background-color="#EA844A"
-  40% background-color="#E9864E"
-  50% background-color="#E88852"
-  60% background-color="#E78A56"
-  70% background-color="#E68C5A"
-  80% background-color="#E58E5D"
-  90% background-color="#E49061"
-  100% background-color="#E39264"
+  0% background-color="rgb(254, 117, 31)"
+  10% background-color="rgb(253, 119, 42)"
+  20% background-color="rgb(251, 123, 50)"
+  30% background-color="rgb(250, 125, 57)"
+  40% background-color="rgb(249, 128, 62)"
+  50% background-color="rgb(247, 130, 68)"
+  60% background-color="rgb(246, 132, 73)"
+  70% background-color="rgb(245, 134, 78)"
+  80% background-color="rgb(243, 137, 82)"
+  90% background-color="rgb(242, 139, 86)"
+  100% background-color="rgb(241, 141, 90)"
 keyframes inkToWhite
   0% color="#000000"
   10% color="#5A5A5A"
@@ -70,10 +70,10 @@ component AnimatedClipBox
     column position="absolute" inset=0 background-color="#ffffff" align-items="center" justify-content="center"
       testId="animated-clip-box"
       ClipBoxButton(boxWidth=env.width * 0.9, marginBottom=30, circleFrames="blueCircle",
-        primaryColor="#4BA2E4", actionTitle="Explore Demos", testId="explore",
+        primaryColor="color(display-p3 0.2941 0.6353 0.8941)", actionTitle="Explore Demos", testId="explore",
         description="Perfect for learning how React Native Reanimated works, prototyping a new idea, or creating a demo to share online.")
       ClipBoxButton(boxWidth=env.width * 0.9, marginBottom=0, circleFrames="orangeCircle",
-        primaryColor="#ED7D3A", actionTitle="Learn More", testId="learn",
+        primaryColor="color(display-p3 0.9294 0.4902 0.2275)", actionTitle="Learn More", testId="learn",
         description="What if I tell you that this text is animated with React Native Reanimated?")
 
 component ClipBoxButton
@@ -109,12 +109,12 @@ component ClipBoxButton
         view position="absolute" left=(boxWidth * 0.12 / 2 + 17.5 - radiusOf(phase, boxWidth) / 2)
           top=(boxWidth * 0.12 / 2 + 17.5 - radiusOf(phase, boxWidth) / 2)
           width=(radiusOf(phase, boxWidth) * 2) height=(radiusOf(phase, boxWidth) * 2)
-          border-radius=200 corner-shape="squircle" background-color=primaryColor
+          border-radius=200 background-color=primaryColor
           -exact-layout-transition=springOf(phase) testId=`${testId}-circle`
         // Secondary circle: initialR × 2 at circleMargin / 2, its colour on the timeline, the icon
         // (AntDesign twitter, 40, white) centred.
         view display="flex" flex-direction="column" position="absolute" left=(boxWidth * 0.12 / 2) top=(boxWidth * 0.12 / 2) width=70 height=70
-          border-radius=200 corner-shape="squircle" align-items="center" justify-content="center"
+          border-radius=200 align-items="center" justify-content="center"
           background-color=primaryColor animation=`${circleFrames} 1s linear both` animation-timeline="--r"
           animation-range=`35px ${boxWidth / 2}px`
           svg width=40 height=(40 * 536 / 512) viewBox="0 0 512 536" aria-hidden=true

@@ -232,8 +232,8 @@ component ClerkRow
     // a centred row, paddingHorizontal 20.
     row flex=1 align-items="center" padding-left=20 padding-right=20
       opacity=(ghost ? 0 : 1) pointer-events=(ghost ? "none" : "auto")
-      background-color=(ghost ? "transparent" : "#2A292F")
-      background-image=(ghost ? "none" : "linear-gradient(to bottom, #2C2E35 0%, #26252D 90%)")
+      background-color=(ghost ? "transparent" : "color(display-p3 0.1647 0.1608 0.1843)")
+      background-image=(ghost ? "none" : "linear-gradient(to bottom, color(display-p3 0.1725 0.1804 0.2078) 0%, color(display-p3 0.149 0.1451 0.1765) 90%)")
       svg width=16 height=(16 * 518 / 512) viewBox="0 0 512 518" aria-hidden=true
         path d=clerkIconPath(kind) fill="#ffffff"
       // styles.internalText: white, SF-Pro-Rounded-Bold 14, marginLeft 10.

@@ -26,7 +26,8 @@ test "the eighth toast's x clears them all"
   clock settle
   expect text "clerk-title-7" == "Actually, let's clear quickly everything"
   expect tree has "clerk-clear-7"
-  tap "clerk-x-7"
+  // The drawn x lies under the toast's swipe handle; the press lands on its unseen copy in the handle.
+  tap "clerk-clear-7"
   clock settle
   expect tree missing "clerk-handle-7"
   expect tree missing "clerk-handle-6"

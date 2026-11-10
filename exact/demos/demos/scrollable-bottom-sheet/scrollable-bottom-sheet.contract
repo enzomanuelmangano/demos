@@ -70,7 +70,7 @@ component ScrollableBottomSheet
   view
     // index.tsx styles.container: #000, centred.
     column position="absolute" inset=0 background-color="#000" align-items="center"
-      justify-content="center" overflow="hidden" testId="scrollable-bottom-sheet"
+      justify-content="center" overflow="clip" testId="scrollable-bottom-sheet"
       // styles.button: PressableScale, 50 × 50, radius 25, clipped; LinearGradient
       // ['#4E65FF', '#92EFFD'] (top to bottom).
       view class=PressableScale width=50 height=50 border-radius=25 overflow="hidden"
@@ -83,8 +83,10 @@ component ScrollableBottomSheet
         transition=`opacity 300ms ${inOutQuad()}` pointerdown=close aria-label="Close the sheet"
         testId="backdrop"
       // The sheet's layer: its translate is RN's translateY, the transform drag's target under
-      // an untransformed, clipping parent.
-      column position="absolute" inset=0 overflow="hidden" pointer-events="none"
+      // an untransformed, clipping parent. The clips are `clip`, not `hidden`: a hidden box is
+      // still a scroll container, and the open's scrollIntoView of the first page scrolled it
+      // (on the web) to bring the sheet below the screen into view.
+      column position="absolute" inset=0 overflow="clip" pointer-events="none"
         column id="sheet-layer" width="100%" height="100%" box-sizing="border-box"
           position="relative" translate=`0px ${translateY}px` transition=`translate ${sheetSpring()}`
           // styles.bottomSheetContainer: #171717, radius 25 continuous (its interpolation to 5

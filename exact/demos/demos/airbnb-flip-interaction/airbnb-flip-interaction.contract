@@ -120,7 +120,7 @@ component AirbnbFlipInteraction
 component AirbnbFront
   view
     column flex=1 border-radius=28 corner-shape="squircle" overflow="hidden"
-      background-image="linear-gradient(to bottom right, #FF6B6B 0%, #FF8E53 50%, #FF6B6B 100%)"
+      background-image="linear-gradient(to bottom right, color(display-p3 1 0.4196 0.4196) 0%, color(display-p3 1 0.5569 0.3255) 50%, color(display-p3 1 0.4196 0.4196) 100%)"
       column flex=1 padding=24
         // nameText: white, SF-Pro-Rounded-Heavy 32 (fontWeight 700), letterSpacing -0.5,
         // marginBottom 4.
@@ -146,10 +146,10 @@ component AirbnbBack
         // profileInfo: flex 1, marginLeft spacing.l (24).
         column flex=1 min-width=0 margin-left=24
           // nameText: #1A1D29, SF-Pro-Rounded-Heavy 22 (700), letterSpacing -0.3, marginBottom 4.
-          text "Reactiive" color="#1A1D29" font-family="ui-rounded" font-weight=800 font-size=22
+          text "Reactiive" color="color(display-p3 0.102 0.1137 0.1608)" font-family="ui-rounded" font-weight=800 font-size=22
             letter-spacing=-0.3 margin-bottom=4
           // locationText: #6B7280, SF-Pro-Rounded-Bold 15, letterSpacing 0.1.
-          text "Italy" color="#6B7280" font-family="ui-rounded" font-weight=700 font-size=15
+          text "Italy" color="color(display-p3 0.4196 0.4471 0.502)" font-family="ui-rounded" font-weight=700 font-size=15
             letter-spacing=0.1
       // statsContainer: a centred row, space-around, marginTop spacing.s (8).
       row align-items="center" justify-content="space-around" margin-top=8
@@ -165,9 +165,9 @@ component AirbnbStat
     // statItem: centred; statNumber #1A1D29 Heavy 24 (700), letterSpacing -0.5; statLabel
     // #6B7280 Bold 13, letterSpacing 0.2, marginTop 4.
     column align-items="center"
-      text value color="#1A1D29" font-family="ui-rounded" font-weight=800 font-size=24
+      text value color="color(display-p3 0.102 0.1137 0.1608)" font-family="ui-rounded" font-weight=800 font-size=24
         letter-spacing=-0.5
-      text label color="#6B7280" font-family="ui-rounded" font-weight=700 font-size=13
+      text label color="color(display-p3 0.4196 0.4471 0.502)" font-family="ui-rounded" font-weight=700 font-size=13
         letter-spacing=0.2 margin-top=4
 
 // profile-avatar.tsx, size 80: a LinearGradient #4A5568 → #2D3748 circle with a 3 px
@@ -179,13 +179,13 @@ component AirbnbAvatar
     view position="relative" width=80 height=80
       column width=80 height=80 border-radius=40 border-width=3 border-style="solid"
         border-color="rgba(255, 255, 255, 0.3)" align-items="center" justify-content="center"
-        background-image="linear-gradient(to bottom, #4A5568 0%, #2D3748 100%)"
+        background-image="linear-gradient(to bottom, color(display-p3 0.2902 0.3333 0.4078) 0%, color(display-p3 0.1765 0.2157 0.2824) 100%)"
         text "R" color="#ffffff" font-family="ui-rounded" font-weight=800 font-size=32
           text-shadow="0px 1px 4px rgba(0, 0, 0, 0.2)"
       column position="absolute" bottom=-2 right=-2 width=25.6 height=25.6 border-radius=12.8
         border-width=3 border-style="solid" border-color="#ffffff" align-items="center"
         justify-content="center"
-        background-image="linear-gradient(to bottom, #FF6B6B 0%, #FF5252 100%)"
+        background-image="linear-gradient(to bottom, color(display-p3 1 0.4196 0.4196) 0%, color(display-p3 1 0.3216 0.3216) 100%)"
         text "✓" color="#ffffff" font-weight=700 font-size=11.2
           text-shadow="0px 1px 2px rgba(0, 0, 0, 0.2)"
 
@@ -211,4 +211,4 @@ component AirbnbSection
     column border-radius=12 corner-shape="squircle" margin-bottom=12 padding-top=8 padding-bottom=8
       text title color="#000000" font-family="ui-rounded" font-weight=700 font-size=20
         margin-bottom=8
-      text body color="#1A1D29" font-family="regular" font-size=16 line-height=24
+      text body color="color(display-p3 0.102 0.1137 0.1608)" font-family="regular" font-size=16 line-height="24px"

@@ -146,12 +146,12 @@ impl Surface for BalanceSlider {
         let right_w = (1.0 - ui - PICKER) * w;
         let c = &mut self.canvas;
         c.begin(frame.scale);
-        c.draw_rrect(0.0, top, left_w, bh, 5.0, &Paint::fill(Color::hex(0x44220C)));
+        c.draw_rrect(0.0, top, left_w, bh, 5.0, &Paint::fill(Color::view_hex(0x44220C)));
         // The pill: pickerWidth / 4 wide, 80% of the picker's height, centred; radius 50 (a
         // capsule once clamped).
         let (pill_w, pill_h) = (pw / 4.0, 0.8 * bh);
         c.draw_rrect(left_w + (pw - pill_w) / 2.0, top + (bh - pill_h) / 2.0, pill_w, pill_h, 50.0, &Paint::fill(Color::WHITE));
-        c.draw_rrect(left_w + pw, top, right_w, bh, 5.0, &Paint::fill(Color::hex(0x363636)));
+        c.draw_rrect(left_w + pw, top, right_w, bh, 5.0, &Paint::fill(Color::view_hex(0x363636)));
 
         if let Some(font) = self.font.as_ref() {
             let m = font.metrics();
@@ -161,14 +161,14 @@ impl Surface for BalanceSlider {
             let left_pct = &self.percents[(p * 100.0).round() as usize];
             let right_pct = &self.percents[((1.0 - p) * 100.0).round() as usize];
             let label = font.advance_width("COFFEE");
-            c.draw_text("COFFEE", 8.0, baseline, font, &Paint::fill(Color::hex(0x964D20)));
-            c.draw_text(left_pct, 8.0 + label + PERCENT_MARGIN, baseline, font, &Paint::fill(Color::hex(0xE37C33)));
+            c.draw_text("COFFEE", 8.0, baseline, font, &Paint::fill(Color::view_hex(0x964D20)));
+            c.draw_text(left_pct, 8.0 + label + PERCENT_MARGIN, baseline, font, &Paint::fill(Color::view_hex(0xE37C33)));
             let milk = font.advance_width("MILK");
             let milk_x = w - 8.0 - milk;
-            c.draw_text("MILK", milk_x, baseline, font, &Paint::fill(Color::hex(0x999898)));
+            c.draw_text("MILK", milk_x, baseline, font, &Paint::fill(Color::view_hex(0x999898)));
             let pct_right = milk_x - PERCENT_MARGIN;
             debug_assert!(PERCENT_WIDTH >= font.advance_width("100%"));
-            c.draw_text(right_pct, pct_right - font.advance_width(right_pct), baseline, font, &Paint::fill(Color::hex(0xF8F8F8)));
+            c.draw_text(right_pct, pct_right - font.advance_width(right_pct), baseline, font, &Paint::fill(Color::view_hex(0xF8F8F8)));
         }
         let (px, py) = frame.pixels();
         self.renderer.draw(device, queue, encoder, &self.canvas, target, format, px, py, wgpu::Color::TRANSPARENT);
@@ -195,7 +195,8 @@ mod tests {
         assert!(!animating);
         assert_eq!(s.agent("{}").unwrap(), "{\"left\":50,\"right\":50,\"held\":false}");
         // Full height: the left box from x 0 to 179.55 (0.5 × 0.95 × 378), the picker after it.
-        assert_eq!(&rest.at(20, 96)[..3], &[0x44, 0x22, 0x0C]);
+        // #44220C read as Display P3 (an RN View): rgb(73, 32, 5).
+        assert_eq!(&rest.at(20, 96)[..3], &[73, 32, 5]);
         assert_eq!(&rest.at(2 * 365, 4)[..3], &[0x36, 0x36, 0x36]);
         assert_eq!(&rest.at(2 * 189, 50)[..3], &[255, 255, 255]);
 

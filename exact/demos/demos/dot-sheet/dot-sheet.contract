@@ -40,8 +40,9 @@ component DotSheet
       // <BackgroundGradient style={{ height: '100%', position: 'absolute' }} />.
       canvas surface=dot_sheet() position="absolute" top=0 left=0 width="100%" height="100%"
         aria-hidden=true testId="dot-sheet-canvas"
-      // styles.fillCenter, then styles.fill.
-      column flex=1 align-items="center" justify-content="center"
+      // styles.fillCenter, then styles.fill. Positioned, so it paints over the absolute canvas
+      // (an in-flow box paints under a positioned sibling, whatever the order).
+      column flex=1 position="relative" align-items="center" justify-content="center"
         text "One more thing" font-family="AddingtonCF-Light" font-size=28 letter-spacing=-0.5
           color="#000000" role="heading"
         text "This animation is inspired by Dot and made with React Native." color="#6c6c6c"

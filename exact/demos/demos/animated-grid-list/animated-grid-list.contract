@@ -22,8 +22,10 @@ fn quotes(): string[] = [
   "Tell me and I forget. Teach me and I remember. Involve me and I learn."
 ]
 fn quote(seed: number, k: number): string = match quotes().at(roll(seed, k, 13)) { case some(q) => q, case none => "" }
-// constants.ts data: img 'https://picsum.photos/200/300' for every item (one cached image).
-fn picture(): string = "https://picsum.photos/200/300"
+// constants.ts data: img 'https://picsum.photos/200/300' for every item. Picsum answers each
+// request with a random photo, and expo-image fetches each cell's on its own, so RN shows a
+// different picture per cell; a query per index keeps the host from sharing one download.
+fn picture(i: number): string = `https://picsum.photos/200/300?random=${i}`
 
 // Reanimated's withTiming default curve, Easing.inOut(Easing.quad), as its cubic-bezier: the
 // curve of LinearTransition, FadeIn and FadeOut when no easing is given.
@@ -100,7 +102,7 @@ component Card
         rotate=tilt(direction) transition="rotate -exact-spring(1087.7, 131.9, 4)"
         // renderItem: a row in the list, a column in the grid, items centred.
         view flex=1 display="flex" align-items="center" flex-direction=(isList ? "row" : "column")
-          image picture() class=Reflow width=(isList ? 64 : 200) height=(isList ? 64 : 200)
+          image picture(index) class=Reflow width=(isList ? 64 : 200) height=(isList ? 64 : 200)
             border-radius=(isList ? 32 : 0) margin-left=(isList ? 16 : 0) margin-right=(isList ? 16 : 0)
             object-fit="cover" flex-shrink=0 aria-hidden=true
           if isList
@@ -132,6 +134,6 @@ component FloatingButton
         padding-left=5 padding-right=5
         for i in range(isList ? 2 : 4) key=i
           view class=Reflow align-self="center" width=(isList ? 42 : 17.5) height=(isList ? 14 : 17.5)
-            margin=2 background-color="#6283B1" border-radius=(isList ? 4 : 2) corner-shape="squircle"
+            margin=2 background-color="color(display-p3 0.3843 0.5137 0.6941)" border-radius=(isList ? 4 : 2) corner-shape="squircle"
             animation="fadeIn 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955) both"
             -exact-exit-animation="fadeOut 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955) both"
