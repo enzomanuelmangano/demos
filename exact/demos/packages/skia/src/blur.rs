@@ -284,6 +284,24 @@ impl GraphitePlan {
     /// `FilterResult::Builder::blur` for a source image covering `layer` (transparent outside),
     /// a desired output `desired` (the device clip, in layer pixels) and `sigma`.
     pub fn new(layer: IRect, desired: IRect, sigma: f32) -> Option<GraphitePlan> {
+        Self::build(layer, desired, sigma, Vec::new())
+    }
+
+    /// [`GraphitePlan::new`] into `self`, its steps' buffer reused (a blur planned every frame
+    /// allocates nothing once warm). False when nothing is drawn (`self` is then stale).
+    pub fn update(&mut self, layer: IRect, desired: IRect, sigma: f32) -> bool {
+        let steps = std::mem::take(&mut self.steps);
+        match Self::build(layer, desired, sigma, steps) {
+            Some(plan) => {
+                *self = plan;
+                true
+            }
+            None => false,
+        }
+    }
+
+    fn build(layer: IRect, desired: IRect, sigma: f32, mut steps: Vec<RescaleStep>) -> Option<GraphitePlan> {
+        steps.clear();
         let radius = ceil_size(3.0 * sigma);
         let max_output = outset(layer, radius, radius);
         let output_bounds = intersect(max_output, desired)?;
@@ -293,7 +311,6 @@ impl GraphitePlan {
         let src_rect = intersect(layer, sample_bounds)?;
         let src = to_f(src_rect);
         let mut x_steps = downscale_step_count(scale);
-        let mut steps = Vec::new();
         let mut bounds = src;
         while x_steps > 0 {
             // Square σ: the x and y step counts and factors are the same.
@@ -434,12 +451,19 @@ struct Blur1D { dir_size: vec4<f32>, taps: array<vec4<f32>, 8> };
 /// The transparent margin around each rescale surface (bilinear reads past its edge see 0).
 const STEP_MARGIN: i32 = 4;
 
-/// [`GraphitePlan`]'s passes on the GPU, 8-bit premultiplied surfaces as Skia's.
+/// [`GraphitePlan`]'s passes on the GPU, 8-bit premultiplied surfaces as Skia's. Its targets,
+/// uniform buffers and bind groups are kept between runs: a blur run every frame (a filtered
+/// shape that moves) allocates nothing once its sizes have been seen.
 #[derive(Default)]
 pub struct GraphiteBlur {
     built: Option<GraphiteBuilt>,
     targets: Vec<((u32, u32), wgpu::TextureView)>,
     params: Vec<wgpu::Buffer>,
+    /// Per slot: the view it last read and its bind group.
+    binds: Vec<Option<(wgpu::TextureView, wgpu::BindGroup)>>,
+    sizes: Vec<(u32, u32)>,
+    /// The linear kernel's taps for (σ bits, radius).
+    taps: Option<((u32, i32), [f32; 32])>,
 }
 
 struct GraphiteBuilt {
@@ -474,27 +498,55 @@ pub struct Blurred<'a> {
 pub const GRAPHITE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
 impl GraphiteBlur {
+    /// The bind group of `slot` reading `view` (made once per view and slot).
+    fn bind(&mut self, device: &wgpu::Device, slot: usize, view: &wgpu::TextureView) {
+        if self.binds.len() <= slot {
+            self.binds.resize_with(slot + 1, || None);
+        }
+        if self.binds[slot].as_ref().is_some_and(|(v, _)| v == view) {
+            return;
+        }
+        let built = self.built.as_ref().unwrap();
+        let params = &self.params[slot];
+        let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("graphite blur"),
+            layout: &built.layout,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: wgpu::BindingResource::TextureView(view) },
+                wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::Sampler(&built.sampler) },
+                wgpu::BindGroupEntry { binding: 2, resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding { buffer: params, offset: 0, size: wgpu::BufferSize::new(80) }) },
+                wgpu::BindGroupEntry { binding: 3, resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding { buffer: params, offset: 256, size: wgpu::BufferSize::new(144) }) },
+            ],
+        });
+        self.binds[slot] = Some((view.clone(), group));
+    }
+
     /// Runs `plan` on `source` (the layer image, transparent outside the plan's layer).
     pub fn run<'s>(&'s mut self, device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut wgpu::CommandEncoder, source: Placed<'_>, plan: &GraphitePlan) -> Blurred<'s> {
         if self.built.is_none() {
             self.built = Some(build_graphite(device));
         }
-        let n = plan.steps.len();
         // Surfaces: one per step, then the two blur passes on the low-res grid with room for
         // the kernel's reach.
         let reach = plan.low_radius + 2;
         let low_origin = [plan.low_pixels[0] - reach, plan.low_pixels[1] - reach];
         let low_size = [(plan.low_pixels[2] - plan.low_pixels[0] + 2 * reach) as u32, (plan.low_pixels[3] - plan.low_pixels[1] + 2 * reach) as u32];
-        let mut sizes: Vec<(u32, u32)> = plan
-            .steps
-            .iter()
-            .enumerate()
-            .map(|(i, s)| if i + 1 == n { (low_size[0], low_size[1]) } else { ((s.pixels[2] - s.pixels[0] + 2 * STEP_MARGIN) as u32, (s.pixels[3] - s.pixels[1] + 2 * STEP_MARGIN) as u32) })
-            .collect();
-        sizes.push((low_size[0], low_size[1]));
-        sizes.push((low_size[0], low_size[1]));
-        self.targets.truncate(sizes.len());
-        for (i, &size) in sizes.iter().enumerate() {
+        // σ ≤ 4 has no rescale: the source is read on the low-res grid. A source placed
+        // otherwise is first copied there (an identity step: texel centres onto texel centres).
+        let src = plan.src_rect.map(|v| v as f32);
+        let copy = [RescaleStep { from: src, to: src, pixels: plan.src_rect }];
+        let steps: &[RescaleStep] = if plan.steps.is_empty() && (source.origin, source.size) != (low_origin, low_size) { &copy } else { &plan.steps };
+        let n = steps.len();
+        self.sizes.clear();
+        for (i, s) in steps.iter().enumerate() {
+            self.sizes.push(if i + 1 == n { (low_size[0], low_size[1]) } else { ((s.pixels[2] - s.pixels[0] + 2 * STEP_MARGIN) as u32, (s.pixels[3] - s.pixels[1] + 2 * STEP_MARGIN) as u32) });
+        }
+        self.sizes.push((low_size[0], low_size[1]));
+        self.sizes.push((low_size[0], low_size[1]));
+        let count = self.sizes.len();
+        self.targets.truncate(count);
+        for i in 0..count {
+            let size = self.sizes[i];
             if self.targets.get(i).map(|t| t.0) != Some(size) {
                 let view = crate::render::sampled_target(device, "graphite blur", GRAPHITE_FORMAT, size.0, size.1);
                 if i < self.targets.len() {
@@ -504,68 +556,68 @@ impl GraphiteBlur {
                 }
             }
         }
-        while self.params.len() < sizes.len() {
+        while self.params.len() < count {
             self.params.push(device.create_buffer(&wgpu::BufferDescriptor { label: Some("graphite blur"), size: 400, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false }));
         }
-        let built = self.built.as_ref().unwrap();
-        let bind = |view: &wgpu::TextureView, params: &wgpu::Buffer| {
-            device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("graphite blur"),
-                layout: &built.layout,
-                entries: &[
-                    wgpu::BindGroupEntry { binding: 0, resource: wgpu::BindingResource::TextureView(view) },
-                    wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::Sampler(&built.sampler) },
-                    wgpu::BindGroupEntry { binding: 2, resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding { buffer: params, offset: 0, size: wgpu::BufferSize::new(80) }) },
-                    wgpu::BindGroupEntry { binding: 3, resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding { buffer: params, offset: 256, size: wgpu::BufferSize::new(144) }) },
-                ],
-            })
+        let put = |data: &mut [u8; 400], at: usize, v: &[f32]| {
+            for (k, f) in v.iter().enumerate() {
+                data[at + 4 * k..at + 4 * k + 4].copy_from_slice(&f.to_le_bytes());
+            }
         };
-        let floats = |v: &[f32]| v.iter().flat_map(|f| f.to_le_bytes()).collect::<Vec<u8>>();
         let (mut prev_origin, mut prev_size) = (source.origin, source.size);
-        for (i, step) in plan.steps.iter().enumerate() {
+        for i in 0..n {
+            let step = steps[i];
             let margin = if i + 1 == n { reach } else { STEP_MARGIN };
             let origin = [step.pixels[0] - margin, step.pixels[1] - margin];
-            let mut data = floats(&[
+            let mut data = [0u8; 400];
+            put(&mut data, 0, &[
                 step.from[0], step.from[1], step.from[2], step.from[3],
                 step.to[0], step.to[1], step.to[2], step.to[3],
                 prev_origin[0] as f32, prev_origin[1] as f32, origin[0] as f32, origin[1] as f32,
                 step.pixels[0] as f32, step.pixels[1] as f32, step.pixels[2] as f32, step.pixels[3] as f32,
                 prev_size[0] as f32, prev_size[1] as f32, 0.0, 0.0,
             ]);
-            data.resize(400, 0);
             queue.write_buffer(&self.params[i], 0, &data);
-            let input = if i == 0 { source.view } else { &self.targets[i - 1].1 };
-            crate::render::fullscreen_pass(encoder, "graphite rescale", &self.targets[i].1, &built.down, &bind(input, &self.params[i]));
+            let input = if i == 0 { source.view.clone() } else { self.targets[i - 1].1.clone() };
+            self.bind(device, i, &input);
+            let built = self.built.as_ref().unwrap();
+            crate::render::fullscreen_pass(encoder, "graphite rescale", &self.targets[i].1, &built.down, &self.binds[i].as_ref().unwrap().1);
             prev_origin = origin;
-            prev_size = [sizes[i].0, sizes[i].1];
+            prev_size = [self.sizes[i].0, self.sizes[i].1];
         }
         // With no step the low-res image is the source; put it on the blur grid first.
-        let kernel = plan.linear_kernel();
-        let mut taps = [0f32; 32];
-        for (k, &(o, w)) in kernel.iter().enumerate() {
-            taps[2 * k] = o;
-            taps[2 * k + 1] = w;
+        let key = (plan.low_sigma.to_bits(), plan.low_radius);
+        if self.taps.as_ref().map(|t| t.0) != Some(key) {
+            let mut taps = [0f32; 32];
+            for (k, (o, w)) in plan.linear_kernel().into_iter().enumerate() {
+                taps[2 * k] = o;
+                taps[2 * k + 1] = w;
+            }
+            self.taps = Some((key, taps));
         }
+        let taps = self.taps.as_ref().unwrap().1;
         let low_index = if n == 0 { usize::MAX } else { n - 1 };
         for (pass, dir) in [[1.0f32, 0.0], [0.0, 1.0]].into_iter().enumerate() {
-            let slot = sizes.len() - 2 + pass;
+            let slot = count - 2 + pass;
             // The blur's uniforms sit at offset 256 (the uniform offset alignment).
-            let mut data = vec![0u8; 256];
-            data.extend(floats(&[dir[0], dir[1], low_size[0] as f32, low_size[1] as f32]));
-            data.extend(floats(&taps));
+            let mut data = [0u8; 400];
+            put(&mut data, 256, &[dir[0], dir[1], low_size[0] as f32, low_size[1] as f32]);
+            put(&mut data, 272, &taps);
             queue.write_buffer(&self.params[slot], 0, &data);
-            let input: &wgpu::TextureView = if pass == 1 {
-                &self.targets[slot - 1].1
+            let input = if pass == 1 {
+                self.targets[slot - 1].1.clone()
             } else if low_index != usize::MAX {
-                &self.targets[low_index].1
+                self.targets[low_index].1.clone()
             } else {
                 assert_eq!((source.origin, source.size), (low_origin, low_size), "a σ ≤ 4 blur reads the source on the low-res grid");
-                source.view
+                source.view.clone()
             };
-            crate::render::fullscreen_pass(encoder, "graphite blur 1d", &self.targets[slot].1, &built.blur, &bind(input, &self.params[slot]));
+            self.bind(device, slot, &input);
+            let built = self.built.as_ref().unwrap();
+            crate::render::fullscreen_pass(encoder, "graphite blur 1d", &self.targets[slot].1, &built.blur, &self.binds[slot].as_ref().unwrap().1);
         }
         let _ = prev_size;
-        Blurred { view: &self.targets[sizes.len() - 1].1, origin: low_origin, size: low_size }
+        Blurred { view: &self.targets[count - 1].1, origin: low_origin, size: low_size }
     }
 }
 

@@ -1,0 +1,6 @@
+at "/demo/bezier-curve-outline"
+
+test "the canvas, the blur and the button are there"
+  expect tree has "bezier-curve-outline"
+  expect tree has "bezier-curve-outline-canvas"
+  expect tree has "bezier-curve-outline-toggle"
