@@ -110,7 +110,10 @@ One commit per haptic event, never per frame.
   (1950 + 494) / 2048, so 16.70703125 at 14, 23.8671875 at 20, every weight). Exact's `normal`
   line box rounds ascent and descent to whole points (17 and 23 there): every multi-line text
   drifts per line (scroll-progress: 0.88 px a line). Give each multi-line text that px value as
-  an explicit `line-height`.
+  an explicit `line-height`. Its baseline then sits at the rounded ascent plus the floored
+  half-leading (SF: 13 at 14, 17 at 18) where TextKit's is 1950 / 2048 × size (13.33, 17.14), and
+  RN rounds each Text box up to the device pixel: measure, then a `position="relative" top=…`
+  puts the line back (stacked-modals: title and message pixel-identical; scroll-progress).
 - Bundled fonts: Exact's line box takes the OS/2 usWin ascent/descent, TextKit the hhea ones
   (FiraCode: 2164 / 1000 vs 1980 / 644). In a fixed-height box that centres the text, the
   baseline moves by the metric difference and no `line-height` changes it (it cancels): offset
