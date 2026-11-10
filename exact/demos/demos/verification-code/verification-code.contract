@@ -27,9 +27,9 @@ fn statusOf(code: string): string = code == correctCode() ? "correct" : code.len
 
 // animated-code-number.tsx getColorByStatus: highlighted (the next box) white first, then
 // green when correct, red when wrong, else #2E2B2E.
-fn liveColor(code: string, status: string, i: number): string = i == code.length ? "#FFFFFF" : status == "correct" ? "#22bb33" : status == "wrong" ? "#bb2124" : "#2E2B2E"
+fn liveColor(code: string, status: string, i: number): string = i == code.length ? "#FFFFFF" : status == "correct" ? "color(display-p3 0.1333 0.7333 0.2)" : status == "wrong" ? "color(display-p3 0.7333 0.1294 0.1412)" : "color(display-p3 0.1804 0.1686 0.1804)"
 // After the reset: no code, so the first box is highlighted.
-fn resetColor(i: number): string = i == 0 ? "#FFFFFF" : "#2E2B2E"
+fn resetColor(i: number): string = i == 0 ? "#FFFFFF" : "color(display-p3 0.1804 0.1686 0.1804)"
 // The finished code's borders: from the colours at four digits (the last box highlighted) to the
 // status colour over 300 ms, held, then at 1000 ms to the reset colours over 300 ms.
 fn finishKeyframes(status: string, i: number): string = `${status == "correct" ? "correct" : "wrong"}${i == 0 ? "First" : i == 4 ? "Last" : "Middle"} 1300ms linear both`
@@ -37,35 +37,35 @@ fn finishKeyframes(status: string, i: number): string = `${status == "correct" ?
 // borderColor: withTiming(colour): 300 ms on inOut(quad) (Reanimated's default curve, as its
 // cubic-bezier). 300 / 1300 = 23.0769%, 1000 / 1300 = 76.9231%.
 keyframes wrongFirst
-  0% border-color="#2E2B2E" animation-timing-function="cubic-bezier(0.455, 0.03, 0.515, 0.955)"
-  23.0769% border-color="#bb2124" animation-timing-function="linear"
-  76.9231% border-color="#bb2124" animation-timing-function="cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+  0% border-color="#2f2b2e" animation-timing-function="linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
+  23.0769% border-color="#cc0017" animation-timing-function="linear"
+  76.9231% border-color="#cc0017" animation-timing-function="linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
   100% border-color="#FFFFFF"
 keyframes wrongMiddle
-  0% border-color="#2E2B2E" animation-timing-function="cubic-bezier(0.455, 0.03, 0.515, 0.955)"
-  23.0769% border-color="#bb2124" animation-timing-function="linear"
-  76.9231% border-color="#bb2124" animation-timing-function="cubic-bezier(0.455, 0.03, 0.515, 0.955)"
-  100% border-color="#2E2B2E"
+  0% border-color="#2f2b2e" animation-timing-function="linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
+  23.0769% border-color="#cc0017" animation-timing-function="linear"
+  76.9231% border-color="#cc0017" animation-timing-function="linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
+  100% border-color="#2f2b2e"
 keyframes wrongLast
-  0% border-color="#FFFFFF" animation-timing-function="cubic-bezier(0.455, 0.03, 0.515, 0.955)"
-  23.0769% border-color="#bb2124" animation-timing-function="linear"
-  76.9231% border-color="#bb2124" animation-timing-function="cubic-bezier(0.455, 0.03, 0.515, 0.955)"
-  100% border-color="#2E2B2E"
+  0% border-color="#FFFFFF" animation-timing-function="linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
+  23.0769% border-color="#cc0017" animation-timing-function="linear"
+  76.9231% border-color="#cc0017" animation-timing-function="linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
+  100% border-color="#2f2b2e"
 keyframes correctFirst
-  0% border-color="#2E2B2E" animation-timing-function="cubic-bezier(0.455, 0.03, 0.515, 0.955)"
-  23.0769% border-color="#22bb33" animation-timing-function="linear"
-  76.9231% border-color="#22bb33" animation-timing-function="cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+  0% border-color="#2f2b2e" animation-timing-function="linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
+  23.0769% border-color="#00be00" animation-timing-function="linear"
+  76.9231% border-color="#00be00" animation-timing-function="linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
   100% border-color="#FFFFFF"
 keyframes correctMiddle
-  0% border-color="#2E2B2E" animation-timing-function="cubic-bezier(0.455, 0.03, 0.515, 0.955)"
-  23.0769% border-color="#22bb33" animation-timing-function="linear"
-  76.9231% border-color="#22bb33" animation-timing-function="cubic-bezier(0.455, 0.03, 0.515, 0.955)"
-  100% border-color="#2E2B2E"
+  0% border-color="#2f2b2e" animation-timing-function="linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
+  23.0769% border-color="#00be00" animation-timing-function="linear"
+  76.9231% border-color="#00be00" animation-timing-function="linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
+  100% border-color="#2f2b2e"
 keyframes correctLast
-  0% border-color="#FFFFFF" animation-timing-function="cubic-bezier(0.455, 0.03, 0.515, 0.955)"
-  23.0769% border-color="#22bb33" animation-timing-function="linear"
-  76.9231% border-color="#22bb33" animation-timing-function="cubic-bezier(0.455, 0.03, 0.515, 0.955)"
-  100% border-color="#2E2B2E"
+  0% border-color="#FFFFFF" animation-timing-function="linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
+  23.0769% border-color="#00be00" animation-timing-function="linear"
+  76.9231% border-color="#00be00" animation-timing-function="linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
+  100% border-color="#2f2b2e"
 
 // useAnimatedShake: withRepeat(withTiming(10, { duration 120, bezier(0.35, 0.7, 0.5, 0.7) }), 6,
 // reverse): six legs of 120 ms, each on the same curve (Reanimated does not invert it on the
@@ -90,23 +90,35 @@ keyframes shakeB
 component VerificationCode
   // `field` is the hidden input's text; `code` the digits shown this round.
   state field = ""
+  state base = ""
   state code = ""
   state status = "inProgress"
   state doneAt = 0
   state glyphs: Glyph[] = []
   state nextKey = 0
   state shakes = 0
+  // The keyboard is up (the field has focus): rKeyboardAvoidingViewStyle lifts the content by
+  // half the keyboard's height (useReanimatedKeyboardAnimation), 118 pt for the number pad here (measured).
+  state keyboard = false
+  action keyboardUp
+    keyboard = true
+  action keyboardDown
+    keyboard = false
   action focusField
     focus("code-field")
   action typed(v: string)
     let now = performanceNow()
     let finished = status != "inProgress"
-    // Within the second after a check RN's input is past maxLength: ignored.
+    // Within the second after a check RN's input is past maxLength: ignored, and cleared at the
+    // reset with the rest. `base` is what the field held that RN has cleared (or will clear):
+    // the code is what was typed after it.
     if finished and now < doneAt + 1000
+      base = v
       field = v
     else
-      // After the reset RN's field is cleared: what was typed since is the new code.
-      let typedCode = finished ? (v.startsWith(field) ? v.slice(field.length) : "") : v
+      let typedCode = v.startsWith(base) ? v.slice(base.length) : ""
+      if not v.startsWith(base)
+        base = v
       field = v
       if typedCode.length <= 5
         let before = finished ? "" : code
@@ -124,13 +136,15 @@ component VerificationCode
         status = next
         if next != "inProgress"
           doneAt = now
+          base = v
         if next == "wrong"
           shakes = shakes + 1
   view
     // styles.container: black, centred.
     column position="absolute" inset=0 background-color="#000000" align-items="center" justify-content="center"
       testId="verification-code"
-      column width="100%"
+      column width="100%" translate=(keyboard ? "0px -118px" : "0px 0px")
+        transition="translate 500ms cubic-bezier(0.19, 0.91, 0.38, 1)"
         // styles.headerText: white, 30, margin-bottom 30, margin-left 18.
         text "Enter Code" color="#ffffff" font-size=30 margin-bottom=30 margin-left=18
         // styles.codeContainer (100% wide) with the shake; a touch focuses the field.
@@ -142,7 +156,7 @@ component VerificationCode
             view flex=1 aspect-ratio=0.95 display="flex" align-items="center" justify-content="center"
               // AnimatedCodeNumber container: 80% × 90%, radius 20 (continuous), border 2. The
               // perspective is FlipInXDown's perspective(500) about the digit's centre (the box's).
-              view position="relative" width="80%" height="90%" border-radius=20 corner-shape="squircle"
+              view position="relative" width="80%" height="90%" box-sizing="border-box" border-radius=20 corner-shape="-exact-continuous"
                 border-width=2 border-style="solid" perspective=500 testId=`box-${i}`
                 border-color=(status == "inProgress" ? liveColor(code, status, i) : resetColor(i))
                 transition="border-color 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
@@ -150,9 +164,26 @@ component VerificationCode
                 for g in glyphs.filter(g => g.box == i) key=g.key
                   CodeDigit(digit=g.digit, leaving=g.leaving, late=g.late, testId=`digit-${i}`)
       // The invisible TextInput: number pad, autofocus, 50 below the screen.
+      // (one-time-code: a number pad with no Done bar over it, as RN's has none.)
       input id="code-field" value=field input=typed inputmode="numeric" autofocus=true
+        autocomplete="one-time-code" focus=keyboardUp blur=keyboardDown
         aria-label="Verification code" testId="code-field" position="absolute" bottom=-50 left=0
         color="#000000" background-color="transparent" border="none"
+
+// The reset's exit as keyframes (a transition's delay does not hold on the iOS host; an
+// animation's does): FlipOutXDown.duration(500) on bezier(0.6, 0.1, 0.4, 0.8) and
+// FadeOut.duration(250) on inOut(quad), 1000 ms after the check. The node's static
+// rotate="x 0deg" gives the rotation its x axis; the keyframes animate the angle.
+keyframes digitLateRotate
+  0% rotate=0 animation-timing-function="cubic-bezier(0.6, 0.1, 0.4, 0.8)"
+  100% rotate=-90
+keyframes digitLateDrop
+  0% translate="0px 0px" animation-timing-function="cubic-bezier(0.6, 0.1, 0.4, 0.8)"
+  100% translate="0px 52.48px"
+keyframes digitLateFade
+  0% opacity=1 animation-timing-function="linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
+  50% opacity=0
+  100% opacity=0
 
 component CodeDigit
   props
@@ -165,7 +196,8 @@ component CodeDigit
   action appear(w: number, h: number)
     shown = true
   // A digit that arrives already checked (the fifth) leaves only after it has arrived.
-  derive gone = leaving and shown
+  derive goneLate = leaving and late and shown
+  derive goneNow = leaving and not late and shown
   view
     // FadeIn.duration(250) + FlipInXDown.duration(500) on bezier(0, 0.75, 0.5, 0.9):
     // perspective(500) rotateX(-90deg → 0) translateY(the text's height → 0), the translate in
@@ -176,12 +208,20 @@ component CodeDigit
       transition="rotate 500ms cubic-bezier(0, 0.75, 0.5, 0.9), opacity 250ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
       column width="100%" height="100%" display="flex" align-items="center" justify-content="center"
         translate=(shown ? "0px 0px" : "0px 52.48px") transition="translate 500ms cubic-bezier(0, 0.75, 0.5, 0.9)"
+        perspective=500
         // FadeOut.duration(250) + FlipOutXDown.duration(500) on bezier(0.6, 0.1, 0.4, 0.8):
-        // rotateX(0 → -90deg) translateY(0 → height), turned by the node above's perspective.
+        // rotateX(0 → -90deg) translateY(0 → height). A checked code leaves at the reset, 1000 ms
+        // on; a deleted digit at once. Each way is its own node with a constant transition (the
+        // host takes a change's transition from the style before it, so a delay switched on
+        // with the change would not hold): the outer for the reset, the inner for a delete.
         column width="100%" height="100%" display="flex" align-items="center" justify-content="center"
-          rotate=(gone ? "x -90deg" : "x 0deg") opacity=(gone ? 0 : 1)
-          transition=(late ? "rotate 500ms cubic-bezier(0.6, 0.1, 0.4, 0.8) 1000ms, opacity 250ms cubic-bezier(0.455, 0.03, 0.515, 0.955) 1000ms" : "rotate 500ms cubic-bezier(0.6, 0.1, 0.4, 0.8), opacity 250ms cubic-bezier(0.455, 0.03, 0.515, 0.955)")
-          // styles.text: white FiraCode 40.
-          text `${digit}` color="#ffffff" font-family="FiraCode-Regular" font-size=40 testId=testId
-            translate=(gone ? "0px 52.48px" : "0px 0px")
-            transition=(late ? "translate 500ms cubic-bezier(0.6, 0.1, 0.4, 0.8) 1000ms" : "translate 500ms cubic-bezier(0.6, 0.1, 0.4, 0.8)")
+          perspective=500 rotate="x 0deg"
+          animation=(goneLate ? "digitLateRotate 500ms linear 1000ms both, digitLateFade 500ms linear 1000ms both" : "none")
+          column width="100%" height="100%" display="flex" align-items="center" justify-content="center"
+            rotate=(goneNow ? "x -90deg" : "x 0deg") opacity=(goneNow ? 0 : 1)
+            transition="rotate 500ms cubic-bezier(0.6, 0.1, 0.4, 0.8), opacity 250ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
+            column display="flex" align-items="center" justify-content="center"
+              animation=(goneLate ? "digitLateDrop 500ms linear 1000ms both" : "none")
+              // styles.text: white FiraCode 40.
+              text `${digit}` color="#ffffff" font-family="FiraCode-Regular" font-size=40 testId=testId
+                translate=(goneNow ? "0px 52.48px" : "0px 0px") transition="translate 500ms cubic-bezier(0.6, 0.1, 0.4, 0.8)"
