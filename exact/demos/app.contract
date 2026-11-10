@@ -64,7 +64,11 @@ component Demos
     haptic("selection")
     nav = push(nav, path("demo", slug))
   mutation sensors as shape SensorInput
+  // demo-screen.tsx: a close, by the button or by the drag past CLOSE_SCALE, plays
+  // Presets.System.impactMedium().
   action back
+    if top(nav).name == "demo"
+      haptic("impact-medium")
     if top(nav).name == "demo" and tilts(top(nav).params.slug)
       send sensors = stopSensorInput(surface="linear_sensors", sensor="gravity")
     else if top(nav).name == "demo" and turns(top(nav).params.slug)
@@ -109,4 +113,4 @@ component Demos
           column navigationKey=`${e.id}` navigationBar="none" navigationPresentation="fullscreen"
             navigationSource=`icon-${e.params.slug}` position="absolute" inset=0
             background-color=demoOf(e.params.slug).backdrop closedby=(ownsDrags(e.params.slug) ? "none" : "closerequest")
-            DemoScreen(demo=demoOf(e.params.slug), env=env, close=back)
+            DemoScreen(demo=demoOf(e.params.slug), env=env, leave=back)

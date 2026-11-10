@@ -11,7 +11,8 @@
   },
   "modules": [
     "rolling-count",
-    "screen-corners"
+    "screen-corners",
+    "glass-button"
   ],
   "host": {
     "web": {},

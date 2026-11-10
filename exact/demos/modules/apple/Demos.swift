@@ -21,6 +21,14 @@
 // once it is in a window. The radius is react-native-screen-corner-radius's, the screen's
 // `_displayCornerRadius` floored at 25 (screen-radius.ts MIN_RADIUS); under UIKit's zoom the
 // layer's radius scales with the view, as RN's radius × pose.
+//
+// `glass-button` is the demo screen's close and info buttons (demo-close-button.tsx,
+// demo-inspiration.tsx): @expo/ui's Button in a matchContents Host with colorScheme dark,
+// SwiftUI.Button(label, systemImage:, role:) with RN's modifiers in RN's order:
+//   labelStyle('iconOnly') buttonStyle('glass') buttonBorderShape('circle') controlSize('large')
+//   opacity(visible) animation(Animation.easeOut({ duration: 0.22 }), visible)
+// `role="close"` is the close role (iOS 26: LIQUID_GLASS). RN fades it in once the demo has
+// painted (demo-screen.tsx `shown`): here once SwiftUI shows it.
 import Foundation
 #if os(iOS)
 import SwiftUI
@@ -31,7 +39,8 @@ let exactModule: ExactModule.Type = DemosModule.self
 final class DemosModule: ExactModule {
     override class var views: [String: ExactNativeFactory] {
         ["rolling-count": ExactNativeFactory { props, events in RollingCount(props: props, events: events) },
-         "screen-corners": ExactNativeFactory { _, events in ScreenCorners(events: events) }]
+         "screen-corners": ExactNativeFactory { _, events in ScreenCorners(events: events) },
+         "glass-button": ExactNativeFactory { props, events in GlassButton(props: props, events: events) }]
     }
 }
 
@@ -126,6 +135,74 @@ private final class ScreenCorners: ExactNativeInstance {
     }
 
     override var view: ExactNativeView { probe }
+}
+private final class GlassModel: ObservableObject {
+    @Published var label = ""
+    @Published var symbol = ""
+    @Published var close = false
+    @Published var visible = false
+    @Published var trailing = false
+}
+
+private struct GlassBody: View {
+    @ObservedObject var model: GlassModel
+    let press: () -> Void
+
+    var body: some View {
+        styled(SwiftUI.Button(model.label, systemImage: model.symbol, role: role, action: press)
+            .labelStyle(.iconOnly))
+            .buttonBorderShape(.circle)
+            .controlSize(.large)
+            .opacity(model.visible ? 1 : 0)
+            .animation(.easeOut(duration: 0.22), value: model.visible)
+            // RN's `shown`: the button fades in once the demo is on screen.
+            .onAppear { DispatchQueue.main.async { model.visible = true } }
+            // RN's Host sits at left 16 (close) or right 16 (info) at its content's own size;
+            // the box here is rounded to whole points, so the button keeps to that edge.
+            .frame(maxWidth: .infinity, maxHeight: .infinity,
+                   alignment: model.trailing ? .topTrailing : .topLeading)
+    }
+
+    /// buttonStyle(LIQUID_GLASS ? 'glass' : 'bordered').
+    @ViewBuilder
+    private func styled<V: View>(_ button: V) -> some View {
+        if #available(iOS 26.0, *) {
+            button.buttonStyle(.glass)
+        } else {
+            button.buttonStyle(.bordered)
+        }
+    }
+
+    private var role: ButtonRole? {
+        guard model.close else { return nil }
+        if #available(iOS 26.0, *) { return .close }
+        return nil
+    }
+}
+
+private final class GlassButton: ExactNativeInstance {
+    private let model = GlassModel()
+    private let host: UIHostingController<GlassBody>
+
+    init(props: [String: String], events: ExactNativeEvents) {
+        let model = self.model
+        host = UIHostingController(rootView: GlassBody(model: model, press: { events.press() }))
+        host.safeAreaRegions = []
+        host.view.backgroundColor = .clear
+        // Host colorScheme="dark".
+        host.overrideUserInterfaceStyle = .dark
+        super.init(events: events)
+        try? setProps(props)
+    }
+
+    override var view: ExactNativeView { host.view }
+
+    override func setProps(_ props: [String: String]) throws {
+        model.label = props["caption"] ?? ""
+        model.symbol = props["symbol"] ?? ""
+        model.close = props["role"] == "close"
+        model.trailing = props["edge"] == "trailing"
+    }
 }
 #else
 let exactModule: ExactModule.Type = DemosModule.self
