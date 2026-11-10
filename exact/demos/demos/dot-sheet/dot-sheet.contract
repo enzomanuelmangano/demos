@@ -62,17 +62,21 @@ component DotSheet
           text-align="center"
       column flex=1
       // The back button: top = safe area + DEMO_BUTTON_ROW_HEIGHT, left 16, 32 square, its
-      // opacity the progress; it blurs the field.
+      // opacity the progress; it blurs the field. The card's canvas (full screen, later) takes the
+      // touches under it on iOS whatever its pointer-events, so both buttons rise above it where
+      // the card never covers them: the back button always (the open card starts 20 below it),
+      // the bottom one while the card rests closed (RN's card, zIndex 1, covers it otherwise).
       button appearance="none" press=back class=PressableScale position="absolute"
         top=(env.safeTop + demoButtonRow()) left=16 width=32 height=32 border="none" padding=0
         background-color="transparent" display="flex" align-items="center" justify-content="center"
         opacity=(open ? 1 : 0) transition=`opacity ${cardSpring()}` aria-label="Back" testId="dot-back"
+        z-index=2
         image "symbol:sf/chevron.backward" font-size=24 color="#323232" aria-hidden=true
       // The bottom button: safe bottom + 16, centred, 85% wide, 52 tall, radius 30.
       button appearance="none" press=start class=PressableScale position="absolute"
         bottom="calc(env(safe-area-inset-bottom) + 16px)" left="7.5%" width="85%" height=52
         border="none" border-radius=30 background-color="rgba(55, 55, 55, 0.2)" display="flex"
-        align-items="center" justify-content="center" testId="dot-start"
+        align-items="center" justify-content="center" testId="dot-start" z-index=(not open and still ? 2 : 0)
         text "Start your Journey" color="#ffffff" font-size=16 font-weight=700 line-height="19.09375px"
           position="relative" top=0.3333
       // The card (zIndex 1): top, left, width, height, radius and rotate all interpolate the
@@ -88,12 +92,13 @@ component DotSheet
         transition=`rotate ${cardSpring()}` press=tapCard testId="dot-card"
         // The multiline field: marginTop 16 → 24, fontSize 14 → 24. The host's field sets its first
         // baseline at AddingtonCF's typo ascender (USE_TYPO_METRICS), UITextView at the hhea one:
-        // 461 / 2048 em lower (measured: 16 px at 24, 10 px at 14, text and placeholder alike).
+        // 461 / 2048 em lower; against RN on the iPhone Air the line then sat 1 px low open (24, text and
+        // placeholder alike) and 5 px high closed (14): a third of a point up open, five thirds down closed.
         textarea id="dot-input" placeholder="Hello there 👋" autocorrect="off" autocapitalize="none"
           focus=opened blur=closed font-family="AddingtonCF-Light" font-size=(open ? 24 : 14)
           margin="0px 12px 0px 16px" margin-top=(open ? 24 : 16) flex=1 min-height=0
           background-color="transparent" border="none" padding=0 color="#000000" outline="none"
-          padding-top=((open ? 24 : 14) * 461 / 2048)
+          padding-top=(open ? 24 * 461 / 2048 - 1 / 3 : 14 * 461 / 2048 + 5 / 3)
           resize="none" -exact-layout-transition=cardSpring() aria-label="Note" testId="dot-input"
           ::placeholder
             color="#b4b4b4"
