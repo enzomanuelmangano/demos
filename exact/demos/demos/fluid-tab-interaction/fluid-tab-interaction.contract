@@ -1,78 +1,21 @@
 // Fluid Tab Interaction: a three-cell segmented control (Accounts, Deposits, Funds) whose
-// highlighted pill slides to the cell pressed while the labels' colours cross over.
-// RN: src/animations/fluid-tab-interaction (src/index.tsx, src/constants.ts,
-// src/components/segmented-control/index.tsx).
-use PressableScale from "pressto"
+// highlighted pill slides to the cell pressed while the labels' colours cross over and the
+// expo-blur BlurViews pulse. RN: src/animations/fluid-tab-interaction (src/index.tsx,
+// src/constants.ts, src/components/segmented-control/index.tsx). The whole screen is one Rust
+// surface (gpu/src/fluid_tab_interaction.rs): the control, the pill and its shadow, the labels at
+// UIKit's text layout, Reanimated's timings and colour timing, pressto's press scale, the four
+// BlurViews' animated intensity (skia::backdrop) and RN's touch blocking (the pill and the blur
+// cell take the touches over the selected cell). The surface posts each press's selection haptic.
 use DemoEnv from "../env.contract"
-
-// constants.ts Palette.
-fn baseGray05(): string = "color(display-p3 0.9608 0.9529 0.9333)"
-fn background(): string = "color(display-p3 0.9765 0.9725 0.9569)"
-fn highlightLabel(): string = "color(display-p3 0.1922 0.1843 0.1765)"
-fn baseLabel(): string = "color(display-p3 0.6078 0.5961 0.5765)"
-
-// TimingConfig: 1000 ms, Easing.bezier(0.4, 0.0, 0.2, 1).
-fn timing(): string = "1000ms cubic-bezier(0.4, 0, 0.2, 1)"
-
-// src/index.tsx Data. MaterialCommunityIcons wallet-outline / bank / chart-bar (512 units to the
-// em; a Text line of ascent 448 + descent 64).
-fn itemName(i: number): string = i == 0 ? "Accounts" : (i == 1 ? "Deposits" : "Funds")
-fn walletPath(): string = "M107 64Q89 64 76.5 76.5Q64 89 64 107V405Q64 423 76.5 435.5Q89 448 107 448H405Q423 448 435.5 435.5Q448 423 448 405V357Q458 351 463.5 341.5Q469 332 469 320V192Q469 180 463.5 170.5Q458 161 448 155V107Q448 89 435.5 76.5Q423 64 405 64ZM107 107H405V149H277Q260 149 247.5 161.5Q235 174 235 192V320Q235 338 247.5 350.5Q260 363 277 363H405V405H107ZM277 192H427V320H277ZM341 224Q328 224 318.5 233.5Q309 243 309 256Q309 269 318.5 278.5Q328 288 341.5 288Q355 288 364 278.5Q373 269 373 256Q373 243 364 233.5Q355 224 341 224Z"
-fn bankPath(): string = "M245 21 43 128V171H448V128ZM341 213V363H405V213ZM43 469H448V405H43ZM213 213V363H277V213ZM85 213V363H149V213Z"
-fn chartBarPath(): string = "M469 448H43V64H85V405H128V213H213V405H256V128H341V405H384V299H469Z"
-fn itemIcon(i: number): string = i == 0 ? walletPath() : (i == 1 ? bankPath() : chartBarPath())
-
-// width = windowWidth - 40, height 50, internalPadding 5; cellBackgroundWidth = width / 3.
-fn cellWidth(w: number): number = w / 3
-// rCellMessageStyle: translateX cellBackgroundWidth × index + interpolate(index, [0, 2], [5, -5]).
-fn pillX(w: number, i: number): number = cellWidth(w) * i + (5 - 5 * i)
-
-// Not ported: RN's AnimatedBlurViews (tint light) pulse their intensity 0 → 15 → 0 on the blur
-// cell over the pill and 0 → 10 → 0 on the cells left and entered, over TimingConfig. Exact's
-// blurs (backgroundMaterial, backdrop-filter, filter) do not animate, and at rest they are 0:
-// only that pulse is missing.
 
 component FluidTabInteraction
   props
     env: DemoEnv
-  state selected = 0
-  derive w = env.width - 40
-  action choose(i: number)
-    haptic("selection")
-    selected = i
+  // The app's PressablesConfig onPress: Haptics.selectionAsync().
+  action heard(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
   view
-    // src/index.tsx container: white, centred.
-    column position="absolute" inset=0 background-color="#ffffff" align-items="center"
-      justify-content="center" testId="fluid-tab-interaction"
-      // styles.backgroundContainer: a row, border 1 baseGray05, radius 30 continuous; width ×
-      // 50 (border-box, as Yoga's), background baseGray05, padding 5.
-      row position="relative" width=w height=50 box-sizing="border-box" padding=5
-        border-width=1 border-style="solid" border-color=baseGray05() border-radius=30 corner-shape="-exact-continuous"
-        background-color=baseGray05() testId="segmented-control"
-        for i in range(3) key=i
-          // styles.labelContainer: PressableScale, flex 1, a centred row, gap 5, zIndex 2. The
-          // selected cell sits under the blur cell (zIndex 10, its width and place), which
-          // takes its touches: pressing it does nothing.
-          button appearance="none" class=PressableScale press=choose(i) flex=1 height="100%"
-            display="flex" flex-direction="row" align-items="center" justify-content="center"
-            gap=5 z-index=2 pointer-events=(i == selected ? "none" : "auto")
-            aria-label=itemName(i) aria-pressed=(i == selected) testId=`cell-${i}`
-            // AnimatedIcon size 13, rLabelStyle's colour.
-            svg width=13 height=13 viewBox="0 0 512 512" aria-hidden=true
-              path d=itemIcon(i) fill=(i == selected ? highlightLabel() : baseLabel())
-                transition=`fill ${timing()}`
-            // styles.difficultyLabel: Honk-Regular 14, centred; colour withTiming(selected ?
-            // highlightLabel : baseLabel, TimingConfig).
-            text itemName(i) font-family="Honk-Regular" font-size=14 text-align="center"
-              color=(i == selected ? highlightLabel() : baseLabel()) transition=`color ${timing()}`
-              testId=`label-${i}`
-        // styles.highlightedCellContent: absolute, left 0, alignSelf center (top 4 in the
-        // padding box: (50 - 2 - 10 - 40) / 2 + 5), cellBackgroundWidth - 5 / 3 × 40,
-        // background, border 1 baseGray05, radius 30 continuous, boxShadow 0 1 2 10% black,
-        // zIndex 1; translateX on TimingConfig.
-        view position="absolute" left=0 top=4 width=(cellWidth(w) - 5 / 3) height=40
-          box-sizing="border-box" background-color=background() border-width=1 border-style="solid"
-          border-color=baseGray05() border-radius=30 corner-shape="-exact-continuous"
-          box-shadow="0px 1px 2px rgba(0, 0, 0, 0.1)" z-index=1 pointer-events="none"
-          translate=`${pillX(w, selected)}px 0px` transition=`translate ${timing()}`
-          aria-hidden=true testId="highlight"
+    canvas surface=fluid_tab_interaction() message=heard position="absolute" top=0 left=0
+      width=env.width height=env.height touch-action="none" testId="fluid-tab-interaction"
+      aria-label="Accounts, Deposits, Funds: tap a cell"
