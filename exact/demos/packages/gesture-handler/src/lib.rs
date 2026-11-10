@@ -5,8 +5,16 @@
 //!
 //! What RNGH's iOS handlers do, kept here:
 //! - Pan begins once the finger has moved `min_distance` (RNGH's `minDist`, UIKit's ~10 pt
-//!   by default) and reports translation from where the finger went down, as `translationX/Y`.
-//! - Velocity is points per second, from the last 100 ms of samples (UIKit's estimate).
+//!   by default) and reports translation as `translationX/Y`. With `.uikit()` (RNGH on iOS, to
+//!   be the default once every surface is re-verified) it is from where the pan began, 0 on
+//!   activation; without, from where the finger went down. UIKit's pan drops its hysteresis and RNGH's custom criteria call
+//!   `setTranslation(.zero)` when they activate (RNPanHandler.m). Measured on the RN app
+//!   (wheel-picker, iPhone Air sim): a 104.5 pt drag moved the ruler 94.3 pt, with no jump at
+//!   activation.
+//! - Velocity is points per second, from the last 100 ms of samples (UIKit's estimate); with
+//!   `.uikit()` only from samples where the finger moved: UIKit hears no `touchesMoved` from a finger at
+//!   rest, so a drag held still keeps its last velocity at the lift (measured on the RN app:
+//!   a ruler dragged at ~100 pt/s, held 600 ms, then lifted still flings one more tick).
 //! - Tap ends within `max_duration_ms` (500) having moved less than `max_distance` (10).
 //! - Pinch is two fingers: it starts when one of them moves while both are down, and its
 //!   `scale` is their distance over the distance when the second came down (UIKit's
@@ -63,7 +71,7 @@ pub struct Pan {
     pub x: f32,
     /// See `x`.
     pub y: f32,
-    /// `translationX/Y`: from where the finger went down.
+    /// `translationX/Y`: from where the pan activated (0 on `onStart`).
     pub translation_x: f32,
     /// See `translation_x`.
     pub translation_y: f32,
@@ -91,6 +99,8 @@ pub struct PanGesture {
     pub min_distance: f32,
     id: Option<u32>,
     start: (f32, f32),
+    origin: (f32, f32),
+    uikit: bool,
     last: (f32, f32),
     active: bool,
     samples: Vec<Sample>,
@@ -105,7 +115,13 @@ impl Default for PanGesture {
 impl PanGesture {
     /// `Gesture.Pan()`: activates after 10 pt of travel, as UIKit's pan does.
     pub fn new() -> PanGesture {
-        PanGesture { min_distance: 10.0, id: None, start: (0.0, 0.0), last: (0.0, 0.0), active: false, samples: Vec::with_capacity(16) }
+        PanGesture { min_distance: 10.0, id: None, start: (0.0, 0.0), origin: (0.0, 0.0), uikit: false, last: (0.0, 0.0), active: false, samples: Vec::with_capacity(16) }
+    }
+    /// RNGH's iOS pan exactly: translation from the activation point, and a velocity a finger
+    /// at rest does not change (see the module notes).
+    pub fn uikit(mut self) -> PanGesture {
+        self.uikit = true;
+        self
     }
     /// `.minDistance(d)`.
     pub fn min_distance(mut self, d: f32) -> PanGesture {
@@ -120,14 +136,19 @@ impl PanGesture {
     pub fn active(&self) -> bool {
         self.active
     }
+    /// How long since the last sample at `now` (with `.uikit()`, since the finger last moved).
+    /// UIScrollView, unlike a pan's velocity, does not fling a drag held still before the lift.
+    pub fn rest_ms(&self, now: f64) -> f64 {
+        self.samples.last().map_or(0.0, |s| now - s.ms)
+    }
 
     fn payload(&self, x: f32, y: f32) -> Pan {
         let (vx, vy) = self.velocity();
         Pan {
             x,
             y,
-            translation_x: x - self.start.0,
-            translation_y: y - self.start.1,
+            translation_x: x - self.origin.0,
+            translation_y: y - self.origin.1,
             change_x: x - self.last.0,
             change_y: y - self.last.1,
             velocity_x: vx,
@@ -146,6 +167,9 @@ impl PanGesture {
     }
 
     fn sample(&mut self, x: f32, y: f32, ms: f64) {
+        if self.uikit && self.samples.last().is_some_and(|s| s.x == x && s.y == y) {
+            return; // a finger at rest: UIKit hears no move, its velocity stays
+        }
         self.samples.retain(|s| ms - s.ms <= 150.0);
         self.samples.push(Sample { x, y, ms });
     }
@@ -159,6 +183,7 @@ impl PanGesture {
                 }
                 self.id = Some(id);
                 self.start = (x, y);
+                self.origin = (x, y);
                 self.last = (x, y);
                 self.active = false;
                 self.samples.clear();
@@ -180,6 +205,9 @@ impl PanGesture {
                     let (dx, dy) = (x - self.start.0, y - self.start.1);
                     if (dx * dx + dy * dy).sqrt() >= self.min_distance {
                         self.active = true;
+                        if self.uikit {
+                            self.origin = (x, y);
+                        }
                         Event::Start(self.payload(x, y))
                     } else {
                         Event::None
@@ -363,13 +391,27 @@ mod tests {
 
     #[test]
     fn pan_starts_past_its_distance_and_reports_velocity() {
-        let mut pan = PanGesture::new();
+        let mut pan = PanGesture::new().uikit();
         assert!(matches!(pan.event(1, Phase::Down, 0.0, 0.0, 0.0, true), Event::Begin { .. }));
         assert_eq!(pan.event(1, Phase::Move, 4.0, 0.0, 16.0, true), Event::None);
         assert!(matches!(pan.event(1, Phase::Move, 20.0, 0.0, 32.0, true), Event::Start(_)));
         let Event::End(p) = pan.event(1, Phase::Up, 40.0, 0.0, 48.0, true) else { panic!() };
-        assert_eq!(p.translation_x, 40.0);
+        assert_eq!(p.translation_x, 20.0, "from where it activated, as UIKit's");
         assert!(p.velocity_x > 500.0, "{}", p.velocity_x);
+    }
+
+    #[test]
+    fn a_drag_held_still_keeps_its_velocity() {
+        let mut pan = PanGesture::new().uikit();
+        pan.event(1, Phase::Down, 0.0, 0.0, 0.0, true);
+        for i in 1..=20 {
+            pan.event(1, Phase::Move, i as f32 * 5.0, 0.0, i as f64 * 50.0, true);
+        }
+        for i in 1..=12 {
+            pan.event(1, Phase::Move, 100.0, 0.0, 1000.0 + i as f64 * 50.0, true);
+        }
+        let Event::End(p) = pan.event(1, Phase::Up, 100.0, 0.0, 1700.0, true) else { panic!() };
+        assert!((p.velocity_x - 100.0).abs() < 1.0, "{}", p.velocity_x);
     }
 
     #[test]

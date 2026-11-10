@@ -29,6 +29,24 @@ pub enum Snap {
     Free,
     /// RN's `snapToInterval` (snapToAlignment start): the interval index at or past the target
     /// in the velocity's direction (velocity > 0: ceil; < 0: floor; 0: round).
+/// The finger's velocity UIScrollView decelerates with at the lift: none once the finger has
+/// rested 100 ms (measured on the RN app: a drag held 1 s, then lifted, does not fling, where a
+/// RNGH pan keeps its velocity).
+pub fn release_velocity(finger: f32, rest_ms: f64) -> f32 {
+    if rest_ms > 100.0 { 0.0 } else { finger }
+}
+
+/// UIScrollView's deceleration velocity for a finger released at `finger` pt/s (the crate's
+/// 100 ms estimate), as measured on the RN app (selectable-grid-list's FlatList, iPhone Air
+/// sim, steady drags whose moves reach the app every ~17.6 ms, lifted 34–48 ms after the
+/// last; Exact's estimate logged from the same input): a finger at 313 pt/s does not fling
+/// (nor slower ones), at 360 pt/s it flings 175 pt (Exact 180), at 672 pt/s 340 pt (Exact
+/// 335), at 0.998 per ms. Below the threshold the scroll stops where the finger left it.
+pub fn uiscroll_release(finger: f32, rest_ms: f64) -> f32 {
+    let v = release_velocity(finger, rest_ms);
+    if v.abs() < 335.0 { 0.0 } else { v }
+}
+
     Interval(f64),
 }
 
@@ -120,7 +138,7 @@ impl UiScroll {
                     self.offset = self.dragged(raw + (x - p.x as f64));
                 }
             }
-            Event::End(p) => self.release(p.velocity_x),
+            Event::End(p) => self.release(release_velocity(p.velocity_x, self.pan.rest_ms(at_ms))),
             Event::Fail => self.release(0.0),
             _ => {}
         }
