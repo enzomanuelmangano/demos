@@ -67,9 +67,11 @@ component StaggeredText
         // StaggeredDigit styles.container: centred.
         column position="relative" align-items="center" justify-content="center" testId=`${testId}-${i}`
           // styles.digit: white; fontSize 50; textStyle Honk-Regular. perspective(1000) leads
-          // its transform.
-          text c font-family="Honk-Regular" font-size=50 color="#ffffff" white-space="pre"
-            perspective=1000 rotate="x 0deg" animation=flipOf("top", plays, i * 40 + delay)
+          // its transform: Exact's `perspective` (CSS's) acts on a box's children, so it sits
+          // on a wrapper the size of this copy, its vanishing point the copy's centre.
+          view perspective=1000
+            text c font-family="Honk-Regular" font-size=50 color="#ffffff" white-space="pre"
+              rotate="x 0deg" animation=flipOf("top", plays, i * 40 + delay)
           // The second copy, absolute over the first, at p = 0 before the first tap.
           text c position="absolute" left=0 top=0 font-family="Honk-Regular" font-size=50
             color="#ffffff" white-space="pre" opacity=0 translate="0px 27.5px" rotate="x -90deg"
