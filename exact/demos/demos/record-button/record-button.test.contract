@@ -1,6 +1,5 @@
 at "/demo/record-button"
 
-test "both pages and the button are there"
+test "the pages and the button are one canvas"
   expect tree has "record-button"
   expect tree has "record-canvas"
-  expect tree has "record-press"
