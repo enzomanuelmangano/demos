@@ -14,7 +14,9 @@ style ClipPressOpacity
 // (withSpring { damping 20, mass 1, stiffness 80 }), 30 after the release (withSpring
 // { damping 25, mass 1.2, stiffness 120 }). Phase 0 = never pressed, 1 = held, 2 = released.
 fn radiusOf(phase: number, boxWidth: number): number = phase == 1 ? boxWidth : (phase == 2 ? 30 : 35)
-fn springOf(phase: number): string = phase == 1 ? "-exact-spring(80, 20, 1)" : "-exact-spring(120, 25, 1.2)"
+// Both are overdamped (ζ 1.12, 1.04), which Reanimated runs as critically damped at
+// ω0 = √(k/m): the damping here is that critical 2√(k·m).
+fn springOf(phase: number): string = phase == 1 ? "-exact-spring(80, 17.889, 1)" : "-exact-spring(120, 24, 1.2)"
 
 // The colours follow `r`, clamped, in Reanimated's interpolateColor (RGB, gamma 2.2): the
 // small circle's from primaryColor at r = initialR to highlightColor at r = boxWidth / 2, the
