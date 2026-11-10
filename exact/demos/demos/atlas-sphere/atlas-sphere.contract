@@ -1,0 +1,21 @@
+// Atlas Sphere: a grid of small cyan dots; under a finger they shrink with their distance from
+// it and gather toward it, a sphere that follows the finger and spreads back on release.
+// Inspired by @philipcdavis. RN: src/animations/atlas-sphere (index.tsx, atlas-sphere.tsx).
+// The Atlas, its pan and its springs are Rust: gpu/src/atlas_sphere.rs.
+use DemoEnv from "../env.contract"
+
+// SQUARE_CONTAINER_SIZE = floor(SCREEN_WIDTH / (40 × 1.2)); CANVAS_WIDTH = 40 × it.
+fn canvasWidth(w: number): number = 40 * floor(w / 48)
+// CANVAS_HEIGHT = SCREEN_HEIGHT − 200.
+fn canvasHeight(h: number): number = h - 200
+
+component AtlasSphere
+  props
+    env: DemoEnv
+  view
+    // styles.container (both): black, flex 1, centred, paddingTop 70.
+    column position="absolute" inset=0 box-sizing="border-box" padding-top=70 background-color="#000000"
+      align-items="center" justify-content="center" testId="atlas-sphere"
+      canvas surface=atlas_sphere() width=canvasWidth(env.width) height=canvasHeight(env.height)
+        flex-shrink=0 touch-action="none" testId="atlas-sphere-canvas"
+        aria-label="Drag to gather the dots into a sphere"

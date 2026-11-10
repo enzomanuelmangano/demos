@@ -1,13 +1,18 @@
 // Sphere Waves: 2000 dots on a Fibonacci sphere breathing in waves of depth, their gradient's
 // hues turning with time. A tap on the right picks a new pattern, on the left goes back one; a
 // pinch moves the eye nearer or farther. RN: src/animations/sphere-waves/index.tsx. Drawn,
-// tapped and pinched in Rust: gpu/src/sphere_waves.rs. The tap's selection haptic is the
-// host's, at the touch-down (RN plays it at the tap's end).
+// tapped and pinched in Rust: gpu/src/sphere_waves.rs, which posts the haptics: selection at
+// the tap's end, heavy (debounced 500 ms) while the pinch is under 0.3.
 
 component SphereWaves
+  action buzz(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-heavy"
+      haptic("impact-heavy")
   view
     // styles.container: black, flex 1; the canvas the window's size, absolute.
     column position="absolute" inset=0 background-color="#000000" testId="sphere-waves"
       canvas surface=sphere_waves() position="absolute" top=0 left=0 width="100%" height="100%"
-        touch-action="none" -exact-press-haptic="selection" testId="sphere-waves-canvas"
+        touch-action="none" message=buzz testId="sphere-waves-canvas"
         aria-label="Tap right for a new pattern, left to go back; pinch to zoom"

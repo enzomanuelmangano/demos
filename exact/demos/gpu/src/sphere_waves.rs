@@ -18,6 +18,8 @@
 //! - Pinch: onStart saves distance (300 at first); onUpdate distance = saved ×
 //!   interpolate(scale, [0.05, 0.2, 0.3, 1, 3], [80, 25, 2, 1, 0.05], CLAMP); onEnd
 //!   withSpring(300) (Reanimated 4's default).
+//! - Haptics, posted for the app (`messages`): selection at each tap's end; heavy while the
+//!   pinch's scale is under 0.3, debounced 500 ms (leading, no trailing).
 //!
 //! The dots are computed here in f64, as the worklet does (i × magicalMul reaches 2 × 10⁵ rad,
 //! past f32's precision), and drawn as instances of one quad.
@@ -40,6 +42,8 @@ const DISTANCE: f64 = 300.0;
 /// iTime's withTiming: to 15 over 50 s, linear, back and forth.
 const TIME_TO: f64 = 15.0;
 const TIME_MS: f64 = 50000.0;
+/// debounce(heavyHapticFeedback, 500, { leading: true, trailing: false }).
+const DEBOUNCE_MS: f64 = 500.0;
 /// The gradient's base hues, saturations and lightnesses.
 const HSL: [(f64, f32, f32); 5] = [(340.0, 90.0, 70.0), (280.0, 85.0, 75.0), (220.0, 95.0, 80.0), (160.0, 88.0, 72.0), (60.0, 92.0, 78.0)];
 
@@ -69,6 +73,10 @@ struct SphereWaves {
     taps: u64,
     dots: Vec<[f32; 4]>,
     gpu: Option<Gpu>,
+    /// The last call of the debounced heavy haptic (lodash debounce, 500 ms, leading only).
+    heavy_at: Option<f64>,
+    /// Haptics for the app to play (`message=buzz`).
+    posted: Vec<String>,
 }
 
 struct Gpu {
@@ -159,6 +167,10 @@ impl Surface for SphereWaves {
         true
     }
 
+    fn messages(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.posted)
+    }
+
     fn agent(&mut self, _request: &str) -> Option<String> {
         Some(format!(
             "{{\"magicalMul\":{:.4},\"historyIndex\":{},\"history\":{},\"distance\":{:.2}}}",
@@ -174,11 +186,20 @@ impl Surface for SphereWaves {
         let phase = gfx::phase(phase);
         // Gesture.Simultaneous(tap, pinch).
         if let Event::Tap { x, .. } = self.tap.event(id, phase, x, y, at_ms, true) {
+            // onEnd: scheduleOnRN(lightHapticFeedback).
+            self.posted.push("haptic:selection".into());
             self.tapped(x, at_ms);
         }
         match self.pinch.event(id, phase, x, y, true) {
             PinchEvent::Start(_) => self.saved_distance = self.distance.value,
             PinchEvent::Update(p) => {
+                // scale < 0.3: debouncedFeedback, which fires on a call after 500 ms of none.
+                if p.scale < 0.3 {
+                    if self.heavy_at.is_none_or(|last| at_ms - last >= DEBOUNCE_MS) {
+                        self.posted.push("haptic:impact-heavy".into());
+                    }
+                    self.heavy_at = Some(at_ms);
+                }
                 let multiplier = interpolate_clamp(p.scale as f64, &[0.05, 0.2, 0.3, 1.0, 3.0], &[80.0, 25.0, 2.0, 1.0, 0.05]);
                 self.distance.set(self.saved_distance * multiplier);
             }
@@ -305,6 +326,7 @@ mod tests {
             s.input(&e(PointerPhase::Up));
         };
         tap(&mut s, 400.0, 100.0);
+        assert_eq!(s.messages(), ["haptic:selection"]);
         let after = s.agent("{}").unwrap();
         assert!(after.contains("\"historyIndex\":1,\"history\":2"), "{after}");
         assert!(!after.contains("\"magicalMul\":2.4000"), "{after}");
@@ -318,6 +340,7 @@ mod tests {
         // Back at the start, a left tap does nothing.
         tap(&mut s, 20.0, 300.0);
         assert!(s.agent("{}").unwrap().contains("\"historyIndex\":0"));
+        assert_eq!(s.messages().len(), 2);
 
         // A pinch in to half: distance × interpolate(0.5) = 300 × (1 + (2 − 1) × 0.5 / 0.7).
         let finger = |s: &mut Box<dyn Surface>, id, phase, y: f32| {
@@ -328,6 +351,12 @@ mod tests {
         finger(&mut s, 2, PointerPhase::Move, 656.0);
         finger(&mut s, 2, PointerPhase::Move, 456.0);
         let pinched = s.agent("{}").unwrap();
+        // Over 0.3: no heavy haptic; under it, one per 500 ms of calls.
+        assert!(s.messages().is_empty());
+        finger(&mut s, 2, PointerPhase::Move, 316.0);
+        finger(&mut s, 2, PointerPhase::Move, 306.0);
+        assert_eq!(s.messages(), ["haptic:impact-heavy"]);
+        finger(&mut s, 2, PointerPhase::Move, 456.0);
         assert!(pinched.ends_with("\"distance\":514.29}"), "{pinched}");
         let (e, _) = fixture::render(&gpu, s.as_mut(), &frame(4100.0)).unwrap();
         e.save("sphere-waves-pinched");

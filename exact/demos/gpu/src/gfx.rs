@@ -103,3 +103,12 @@ pub fn phase(phase: exact_gpu::PointerPhase) -> gesture_handler::Phase {
         exact_gpu::PointerPhase::Cancel => gesture_handler::Phase::Cancel,
     }
 }
+
+/// `v.set(withSpring(to, { duration, dampingRatio }))`: from where `spring` is, at its velocity
+/// (dropped when it points away from `to`, as Reanimated's onStart), with the stiffness solved
+/// for this start (mass 4, Reanimated's default).
+pub fn spring_to(spring: &mut reanimated::Spring, to: f64, duration_ms: f64, damping_ratio: f64) {
+    let (x, v) = (spring.value, spring.velocity);
+    let v = if !spring.running || (to > x && v < 0.0) || (to < x && v > 0.0) { 0.0 } else { v };
+    spring.to(to, v, reanimated::duration_config(x - to, v, duration_ms, damping_ratio, 4.0));
+}
