@@ -5,7 +5,7 @@ github-contributions ported done:38efb062
 mobile-input todo done:3c817f2f (ported in Rust; pressto press feedback per the owner, RN app shows none: pressto 0.7 / RNGH 3.3 handler mismatch)
 swipe-cards ported done:5ba2f6ee (verified 2026-11-10: stills edge- and button-exact, photo mean 0.85; A/B drag, throw, reset same structure)
 spiral ported done:9fecc647 (stills: arm hues, glow, MSAA coverage within 1-2 levels; spring audit line for line; A/B tap same structure)
-scroll-progress ported claimed:sim2
+scroll-progress ported open:3d498955 pill+titles pixel-exact; host rounds a Text's lines 2+ to nearest (RN ceil): description lines 2-5 sit 1 px high (needs Rust text or a host fix); "100%" 1 px wide; reset scrollTo animation not A/B-recorded
 animated-grid-list ported claimed:sim1
 floating-bottom-bar ported
 animated-clip-box ported
