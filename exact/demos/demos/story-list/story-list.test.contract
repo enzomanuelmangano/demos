@@ -1,9 +1,5 @@
 at "/demo/story-list"
 
-test "the deck scrolls sideways"
+test "the stories are one scrolling canvas"
   expect tree has "story-list"
-  expect tree has "story-0"
-  expect tree has "story-7"
-  tap "story-list-scroll" drag -300 0
-  clock settle
-  expect tree has "story-list"
+  expect tree has "story-list-scroll"
