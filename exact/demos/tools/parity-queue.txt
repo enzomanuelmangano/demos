@@ -10,7 +10,7 @@ animated-grid-list ported
 floating-bottom-bar ported
 animated-clip-box ported
 theme-canvas-animation ported
-add-to-cart todo
+add-to-cart todo claimed:r3-port (offline port; verify on device when done)
 bottom-bar-skia ported
 cuberto-slider ported
 metaball ported
@@ -27,41 +27,41 @@ animated-3d-parallax ported
 fluid-slider ported
 animated-indicator-list ported
 radar-chart ported
-image-cropper todo
+image-cropper todo claimed:r3-port (offline port; verify on device when done)
 selectable-grid-list ported
 animated-count-text ported
-qr-code-generator todo
+qr-code-generator unregistered (ported by R3f, verify on device then register)
 popup-handler ported
 twitter-tab-bar ported
 circular-carousel ported
 split-button ported
 telegram-theme-switch ported
 fourier-visualizer ported
-github-onboarding todo
+github-onboarding todo claimed:r3-port (offline port; verify on device when done)
 loading-button ported
 scrollable-bottom-sheet ported
 skia-color-picker ported
 blurred-scroll ported
-airbnb-slider todo
+airbnb-slider todo claimed:r3-port (offline port; verify on device when done)
 steddy-graph-interaction ported
 action-tray ported
 toast ported
 slide-to-reveal ported
 blurred-bottom-bar ported
 fractal-glass ported
-drag-to-sort todo
+drag-to-sort todo claimed:r3-port (offline port; verify on device when done)
 fibonacci-shader ported
 family-number-input ported
 balance-slider ported
 fibonacci-shader-grid ported
 verification-code ported
 email-demo ported
-scroll-transition-3d todo
+scroll-transition-3d todo claimed:r3-port (offline port; verify on device when done)
 staggered-card-number ported
 stacked-bottom-sheet ported
 gl-transitions ported
 prequel-slider ported
-empty-qr-code todo
+empty-qr-code unregistered (ported by R3f, verify on device then register)
 infinite-carousel todo
 twodos-slide ported
 wheel-picker ported
@@ -87,7 +87,7 @@ alert-drawer ported
 motion-blur ported
 delete-button ported
 dynamic-blur-tabs ported
-snake todo
+snake unregistered (ported by R3f, verify on device then register)
 expandable-mini-player ported
 bezier-curve-outline ported
 tab-navigation ported
@@ -102,7 +102,7 @@ shake-to-delete ported
 composable-text ported
 card-shader-reflections ported
 clock-time-picker ported
-sudoku todo
+sudoku unregistered (ported by R3f, verify on device then register)
 particles-button ported
 magnet-spring ported
 ios-home-grid todo
@@ -117,9 +117,9 @@ blur-cards ported
 calendar-days todo
 sphere-waves ported
 scrollable-shapes ported
-notion-qrcode todo
+notion-qrcode unregistered (ported by R3f, verify on device then register)
 github-terrain todo
-cherry-blossom-qrcode todo
+cherry-blossom-qrcode unregistered (ported by R3f, verify on device then register)
 art-gallery todo
 the-little-prince ported
 light-on-painting ported
