@@ -57,12 +57,13 @@
 //! | button Lottie | animatedProps progress | round(animationProgress); its view's opacity 0 while 0 < p < 1 | — |
 //! | button scale | withSpring(scale) | scale is never changed: 1 | — |
 //! | tab opacity | withTiming | 300 ms, inOut(quad), 1 focused / 0.3 | a tab press |
-//! | tab press opacity | pressto withTiming | 250 ms, bezier(0.25, 0.1, 0.25, 1), 1 → 0.5 while held | touch down / up |
+//! | tab press opacity | pressto withTiming | 250 ms, bezier(0.25, 0.1, 0.25, 1), 1 → 0.5 while held | touch down / up (`pressto::Pressable`) |
 //! | haptics | the app's PressablesConfig onPress | selection | a tab press |
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
 use gesture_handler::Phase;
+use pressto::{PressEvent, Pressable};
 use reanimated::{Easing, Spring, Timing};
 use skia::{point, Canvas, Color, Font, Paint, Renderer};
 
@@ -89,9 +90,6 @@ const SWITCH_MS: f64 = 1000.0;
 const TAP_MAX_MS: f64 = 500.0;
 /// The tab opacity's timing; pressto's.
 const TAB_MS: f64 = 300.0;
-const PRESS_MS: f64 = 250.0;
-/// activeOpacity.
-const PRESS_OPACITY: f64 = 0.5;
 /// An unfocused tab's opacity.
 const DIM: f64 = 0.3;
 /// The clip's smallest radius; the scale where it reaches the farthest corner.
@@ -326,9 +324,8 @@ struct TelegramThemeSwitch {
     tab: usize,
     /// Each cell's focus opacity and pressto's press progress.
     focus: [Timing; 4],
-    press: [Timing; 4],
-    /// The finger on a cell: its id and the cell.
-    pressing: Option<(u32, usize)>,
+    /// Each cell's PressableOpacity (the shared pressto machine).
+    press: [Pressable; 4],
     /// The finger on the button: its id and when it came down.
     tapping: Option<(u32, f64)>,
     /// animationProgress (and clipPathRadiusScale, the same curve here).
@@ -352,8 +349,7 @@ impl TelegramThemeSwitch {
             theme: Theme::Dark,
             tab: SEARCH,
             focus: std::array::from_fn(|i| Timing::at(if i == SEARCH { 1.0 } else { DIM })),
-            press: std::array::from_fn(|_| Timing::at(0.0)),
-            pressing: None,
+            press: std::array::from_fn(|_| Pressable::new()),
             tapping: None,
             progress: Spring::at(0.0),
             animating: false,
@@ -372,19 +368,14 @@ impl TelegramThemeSwitch {
         Scene {
             theme: self.theme,
             tab: self.tab,
-            tabs: std::array::from_fn(|i| (self.focus[i].value * (1.0 - (1.0 - PRESS_OPACITY) * self.press[i].value)) as f32),
+            tabs: std::array::from_fn(|i| (self.focus[i].value * self.press[i].opacity()) as f32),
             lottie: p.round(),
             lottie_opacity: if p > 0.0 && p < 1.0 { 0.0 } else { 1.0 },
         }
     }
 
-    fn press_to(&mut self, i: usize, held: bool) {
-        self.press[i].to(if held { 1.0 } else { 0.0 }, PRESS_MS, Easing::bezier(0.25, 0.1, 0.25, 1.0));
-    }
-
-    /// onPress: the selection haptic, the tab.
+    /// onPress (after the global selection haptic): the tab.
     fn select(&mut self, i: usize) {
-        self.posted.push("haptic:selection".into());
         if i != self.tab {
             self.focus[self.tab].to(DIM, TAB_MS, Easing::timing_default());
             self.focus[i].to(1.0, TAB_MS, Easing::timing_default());
@@ -439,12 +430,18 @@ impl Surface for TelegramThemeSwitch {
                     if !self.animating {
                         self.pending = Some(self.scene());
                     }
-                } else if let (Some(i), None) = (l.cell_at(x, y), self.pressing) {
-                    self.pressing = Some((id, i));
-                    self.press_to(i, true);
+                } else if let Some(i) = l.cell_at(x, y) {
+                    if !self.press.iter().any(Pressable::is_pressed) {
+                        self.press[i].pointer_down(id, true);
+                    }
                 }
             }
-            Phase::Move => {}
+            Phase::Move => {
+                let at = l.cell_at(x, y);
+                for (i, p) in self.press.iter_mut().enumerate() {
+                    p.pointer_move(id, at == Some(i));
+                }
+            }
             Phase::Up | Phase::Cancel => {
                 if let Some((tid, down)) = self.tapping {
                     if tid == id {
@@ -457,13 +454,11 @@ impl Surface for TelegramThemeSwitch {
                         }
                     }
                 }
-                if let Some((pid, i)) = self.pressing {
-                    if pid == id {
-                        self.pressing = None;
-                        self.press_to(i, false);
-                        if phase == Phase::Up && l.cell_at(x, y) == Some(i) {
-                            self.select(i);
-                        }
+                let at = l.cell_at(x, y);
+                for i in 0..self.press.len() {
+                    if let Some(PressEvent::Press(press)) = self.press[i].pointer(id, phase, at == Some(i)) {
+                        self.posted.extend(press.global_message().map(String::from));
+                        self.select(i);
                     }
                 }
             }
@@ -482,8 +477,11 @@ impl Surface for TelegramThemeSwitch {
         let now = frame.now_ms;
         self.layout = Layout::new(frame.width, frame.height, frame.scale, self.safe_bottom, self.icons.as_ref());
         let mut moving = false;
-        for t in self.focus.iter_mut().chain(self.press.iter_mut()) {
+        for t in self.focus.iter_mut() {
             moving |= t.step(now);
+        }
+        for p in self.press.iter_mut() {
+            moving |= p.step(now);
         }
         if self.animating {
             if self.progress.step(now) {
@@ -518,7 +516,7 @@ impl Surface for TelegramThemeSwitch {
         }
         let (pw, ph) = frame.pixels();
         self.renderer.draw(device, queue, encoder, &self.canvas, target, format, pw, ph, wgpu::Color::TRANSPARENT);
-        moving || self.tapping.is_some() || self.pressing.is_some()
+        moving || self.tapping.is_some() || self.press.iter().any(Pressable::is_pressed)
     }
 }
 

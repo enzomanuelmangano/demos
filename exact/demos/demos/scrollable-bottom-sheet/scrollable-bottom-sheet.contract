@@ -3,7 +3,7 @@
 // page's button closes it; a drag down or the backdrop closes it too.
 // RN: src/animations/scrollable-bottom-sheet (index.tsx, components/BottomSheetPage/index.tsx,
 // components/BottomSheet/{BottomSheet.tsx, ScrollableBottomSheet.tsx, Backdrop/index.tsx}).
-use PressableScale from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
 use DemoEnv from "../env.contract"
 
 // index.tsx FIRST_PAGE_HEIGHT, SECOND_PAGE_HEIGHT, THIRD_PAGE_HEIGHT.
@@ -29,6 +29,15 @@ fn buttonDrop(ty: number): number = 17 - ty / 2 - 34 - 25
 component ScrollableBottomSheet
   props
     env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   // translateY: pages[0].height at mount (below the screen), 0 closed, -height open.
   state translateY = 350
   state active = false
@@ -37,7 +46,7 @@ component ScrollableBottomSheet
   derive w = env.width
   // onPress: close if active, else scrollToY(-FIRST_PAGE_HEIGHT).
   action toggle
-    haptic("selection")
+    pressablesOnPress()
     if active
       active = false
       translateY = 0
@@ -54,7 +63,7 @@ component ScrollableBottomSheet
     active = false
     translateY = 0
   action pressPage(i: number)
-    haptic("selection")
+    pressablesOnPress()
     if i == 2
       active = false
       translateY = 0
@@ -99,7 +108,9 @@ component ScrollableBottomSheet
       justify-content="center" overflow="clip" testId="scrollable-bottom-sheet"
       // styles.button: PressableScale, 50 × 50, radius 25, clipped; LinearGradient
       // ['#4E65FF', '#92EFFD'] (top to bottom).
-      view class=PressableScale width=50 height=50 border-radius=25 overflow="hidden"
+      view width=50 height=50 border-radius=25 overflow="hidden"
+        pointerdown=pressIn(0) pointerup=pressOut
+        scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
         background-image="linear-gradient(180deg, #4E65FF 0%, #92EFFD 100%)" press=toggle
         role="button" aria-label=(active ? "Close the sheet" : "Open the sheet") testId="open"
       // Backdrop: absoluteFill rgba(255,255,255,0.05), opacity withTiming(active ? 1 : 0),
@@ -147,7 +158,9 @@ component ScrollableBottomSheet
                           transition=(dragging ? "none" : `translate ${sheetSpring()}`)
                           // styles.button: 200 × 50, radius 40, LinearGradient ['#4E65FF',
                           // '#92EFFD'] from bottom-left to top-right; buttonText white 20 bold.
-                          column class=PressableScale width=200 height=50 border-radius=40
+                          column width=200 height=50 border-radius=40
+                            pointerdown=pressIn((1 + i)) pointerup=pressOut
+                            scale=pressableScale(pressing, (1 + i), pressto) transition=pressTransition("scale", pressto)
                             background-image="linear-gradient(to top right, #4E65FF 0%, #92EFFD 100%)"
                             align-items="center" justify-content="center" press=pressPage(i)
                             role="button" aria-label=pageTitle(i) testId=`sheet-button-${i}`

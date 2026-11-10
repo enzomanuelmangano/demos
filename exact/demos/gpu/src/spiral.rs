@@ -17,7 +17,7 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, TapGesture};
+use pressto::{PressEvent, Pressable};
 use reanimated::SpringArray;
 use skia::blur::{ceil_size, outset, GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
 use skia::{point, stops, Canvas, Color, Paint, Renderer, Shader};
@@ -31,16 +31,13 @@ const SIGMA: f32 = 5.0;
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
-    // pressto's PressableWithoutFeedback (absoluteFill) is RNGH's BaseButton: onPress at the
-    // finger's lift unless cancelled, however long it was held or far it moved
-    // (shouldCancelWhenOutside: false, and the button covers the screen).
-    let tap = TapGesture::default().max_duration(f64::INFINITY);
     let mut renderer = Renderer::default();
     renderer.p3 = true;
     Box::new(Spiral {
         springs: None,
         count: 0,
-        tap,
+        press: Pressable::new(),
+        posted: Vec::new(),
         taps: 0,
         canvas: Canvas::default(),
         renderer,
@@ -64,7 +61,12 @@ fn positions(angle: f64, count: usize) -> Vec<f64> {
 struct Spiral {
     springs: Option<SpringArray>,
     count: usize,
-    tap: TapGesture,
+    /// pressto's PressableWithoutFeedback (absoluteFill), the shared `pressto::Pressable`
+    /// (RNGH's BaseButton): onPress at the finger's lift unless cancelled, however long it was
+    /// held or far it moved (shouldCancelWhenOutside: false, and the button covers the screen).
+    /// It draws no feedback; its press posts the app's global selection haptic.
+    press: Pressable,
+    posted: Vec<String>,
     taps: u64,
     canvas: Canvas,
     renderer: Renderer,
@@ -112,19 +114,14 @@ impl Surface for Spiral {
         true
     }
 
+    fn messages(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.posted)
+    }
+
     fn input(&mut self, event: &InputEvent) {
-        let InputEvent::Pointer {
-            id,
-            phase,
-            x,
-            y,
-            at_ms,
-            ..
-        } = *event
-        else {
-            return;
-        };
-        if let Event::Tap { .. } = self.tap.event(id, gfx::phase(phase), x, y, at_ms, true) {
+        let InputEvent::Pointer { id, phase, at_ms, .. } = *event else { return };
+        if let Some(PressEvent::Press(press)) = self.press.pointer(id, gfx::phase(phase), true) {
+            self.posted.extend(press.global_message().map(String::from));
             let angle = std::f64::consts::TAU * self.random(at_ms);
             let target = positions(angle, self.count);
             if let Some(springs) = self.springs.as_mut() {

@@ -2,7 +2,7 @@
 // button switches them, its squares becoming two bars); while the list scrolls, every card
 // tilts back on X against the scroll's direction and springs flat when it stops.
 // RN: src/animations/animated-grid-list (index.tsx, constants.ts, components/*).
-use PressableScale from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
 use DemoEnv, roll from "../env.contract"
 
 // constants.ts getRandomQuote(): one of these thirteen, Math.random() → roll(seed, k, 13).
@@ -133,10 +133,21 @@ component FloatingButton
   props
     isList: bool
     press: action
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   view
     // floating-button.tsx: 70 × 70, white, radius 35, shadow 0 10 20 rgba(0,0,0,0.25),
     // bottom 50, right 16.
-    button appearance="none" press=press class=PressableScale aria-label=(isList ? "Grid" : "List")
+    button appearance="none" press=press aria-label=(isList ? "Grid" : "List")
+      pointerdown=pressIn(0) pointerup=pressOut
+      scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
       testId="layout-toggle" position="absolute" bottom=50 right=16 width=70 height=70 border-radius=35
       background-color="#FFFFFF" box-shadow="0px 10px 20px rgba(0, 0, 0, 0.25)"
       display="flex" flex-direction="column" justify-content="center"

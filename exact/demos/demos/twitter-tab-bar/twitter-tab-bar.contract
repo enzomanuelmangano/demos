@@ -3,7 +3,7 @@
 // back; the Message tab spins the button into a message icon. RN: src/animations/twitter-tab-bar
 // (index.tsx, constants/palette.ts, constants/screens.ts, screens/home/index.tsx,
 // components/bottom-tab-bar/index.tsx, floating-button.tsx, active-tab-bar-provider.tsx).
-use PressableScale from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
 use DemoEnv from "../env.contract"
 
 // constants/palette.ts DarkPalette: primary #4A9AE9, background #17202A,
@@ -56,6 +56,15 @@ keyframes twitterMessageIcon
 component TwitterTabBar
   props
     env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   state activeTab = 0
   // isActive (the shared value the scroll handler writes): written only when it flips.
   state isActive = true
@@ -75,7 +84,7 @@ component TwitterTabBar
     prevY = y
   // onTapIcon: isActive true, floatingProgress to 1 on Message, else 0; the tab is shown.
   action tapTab(i: number)
-    haptic("selection")
+    pressablesOnPress()
     isActive = true
     activeTab = i
     if (i == 3) != spun
@@ -136,7 +145,9 @@ component TwitterTabBar
           // centred.
           column flex=1 opacity=(activeTab == i ? 1 : 0.3)
             transition=`opacity 300ms ${twitterInOutQuad()}`
-            column class=PressableScale flex=1 align-items="center" justify-content="center"
+            column flex=1 align-items="center" justify-content="center"
+              pointerdown=pressIn(i) pointerup=pressOut
+              scale=pressableScale(pressing, i, pressto) transition=pressTransition("scale", pressto)
               press=tapTab(i) role="tab" aria-selected=(activeTab == i)
               aria-label=twitterTabName(i) testId=`twitter-tab-${i}`
               svg width=28 height=28 viewBox="0 0 512 512" aria-hidden=true

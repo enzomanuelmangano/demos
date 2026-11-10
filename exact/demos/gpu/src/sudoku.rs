@@ -65,7 +65,7 @@
 //! | card frame | the same | `AnimFrame`; children at their new place in it, ghosts at their old |
 //! | headerActions opacity | entering FadeIn.duration(400); no exiting (kept while its child exits) | `Actions::group` |
 //! | New Game / Start PressableScale opacity | entering FadeIn.duration(400); exiting FadeOut.duration(200) from 1 (FadeOut's initial value) | `press_fade` |
-//! | PressableScale scale | pressto 0.7 hands RNGH 3.3's BaseButton onBegan/onActivated/onEnded, which it never reads: never scales; onPress at any lift that isn't a cancel of a touch that began on it | none; `Which` |
+//! | PressableScale scale (title, New Game, Start) | pressto as designed (RNGH 3.3 shows none: pressto 0.7 hands its v3 BaseButton onBegan/onEnded, which it never reads): withTiming(active, 250 ms, bezier(0.25, 0.1, 0.25, 1)), 1 → 0.96 about its centre; onPress at a lift inside it, not on a cancel | `pressto::Pressable` per `Which`; a button's container (shadow, tint) does not scale |
 //! | wrapper opacity | entering FadeIn.duration(800), exiting FadeOut.duration(200) | `BoardView::wrapper` |
 //! | board opacity, translateY | entering FadeInDown.duration(200): 0 → 1, 25 → 0, inOut(quad) | `BoardView::enter` |
 //! | cell opacity | entering FadeIn.delay(max(0, (r + c) × 75 − elapsed)).duration(350), the row mounted one per frame (rAF) from setTimeout(600)'s revealStart | `CellAnim::fade`, delay from the row's JS render time |
@@ -90,6 +90,7 @@ use std::sync::Mutex;
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, PointerPhase, Surface, SurfaceError, Value};
+use pressto::{PressEvent, Pressable};
 use reanimated::{
     interpolate, interpolate_clamp, Easing, Extrapolation, Spring, SpringConfig, Timing, GENTLE,
 };
@@ -445,6 +446,11 @@ impl R {
     }
     fn contains(self, x: f32, y: f32) -> bool {
         x >= self.x && x <= self.x + self.w && y >= self.y && y <= self.y + self.h
+    }
+    /// Scaled by `k` about its centre.
+    fn scaled(self, k: f32) -> R {
+        let (cx, cy) = self.center();
+        R { x: cx - self.w * k / 2.0, y: cy - self.h * k / 2.0, w: self.w * k, h: self.h * k }
     }
     fn center(self) -> (f32, f32) {
         (self.x + self.w / 2.0, self.y + self.h / 2.0)
@@ -1163,7 +1169,8 @@ struct Sudoku {
     board: Option<BoardView>,
     board_ghost: Option<BoardView>,
     confetti: Option<Confetti>,
-    press: Option<(u32, Which)>,
+    /// The PressableScales (the shared pressto machine), by `Which`.
+    presses: [Pressable; 3],
     responder: Option<Responder>,
     layout: Option<Layout>,
     size: (f32, f32, f32),
@@ -1202,7 +1209,7 @@ impl Sudoku {
             board: None,
             board_ghost: None,
             confetti: None,
-            press: None,
+            presses: std::array::from_fn(|_| Pressable::new()),
             responder: None,
             layout: None,
             size: (0.0, 0.0, 0.0),
@@ -1253,9 +1260,8 @@ impl Sudoku {
         self.schedule(at + CELEBRATION[0].1, TimerKind::Haptic(1));
     }
 
-    /// A PressableScale's onPress (JS): the app's selection haptic, then its handler.
+    /// A PressableScale's onPress (JS), after the app's selection haptic: its handler.
     fn pressed(&mut self, which: Which, at: f64) {
-        self.posted.push("haptic:selection".into());
         match which {
             Which::Title => {
                 // onGeniusLongPress: if started, solve (setBoard, onComplete), then 100 ms,
@@ -1587,6 +1593,9 @@ impl Sudoku {
     /// Steps every animation to `now`; whether anything moves.
     fn step(&mut self, now: f64) -> bool {
         let mut moving = self.header_fade.step(now);
+        for p in self.presses.iter_mut() {
+            moving |= p.step(now);
+        }
         moving |= self.header_frame.step(now);
         moving |= self.card_frame.step(now);
         for a in [&mut self.actions, &mut self.actions_ghost]
@@ -1687,28 +1696,43 @@ impl Sudoku {
         alpha > 0.01
     }
 
-    fn hit_press(&self, x: f32, y: f32) -> Option<Which> {
+    fn pressable(&self, which: Which) -> &Pressable {
+        &self.presses[which as usize]
+    }
+
+    /// A PressableScale's frame in the window as it shows (through its press scale), and
+    /// whether UIKit's hit test reaches it.
+    fn press_rect(&self, which: Which) -> Option<(R, bool)> {
         let layout = self.layout.as_ref()?;
         let (header, card) = self.frames();
         let hf = self.header_fade.value;
-        let title = layout.title.rel(layout.header).at(header.x, header.y);
-        if Self::hittable(hf) && title.contains(x, y) {
-            return Some(Which::Title);
-        }
-        if let Some(a) = self.actions.as_ref() {
-            let r = a.rel.at(header.x, header.y);
-            if Self::hittable(hf * a.group.value * a.press.value) && r.contains(x, y) {
-                return Some(Which::NewGame);
+        let k = self.pressable(which).scale() as f32;
+        match which {
+            Which::Title => {
+                let title = layout.title.rel(layout.header).at(header.x, header.y);
+                Some((title.scaled(k), Self::hittable(hf)))
             }
+            Which::NewGame => self.actions.as_ref().map(|a| {
+                let r = a.rel.at(header.x, header.y);
+                (r.scaled(k), Self::hittable(hf * a.group.value * a.press.value))
+            }),
+            Which::Start => self.start.as_ref().map(|st| {
+                let r = st.rel.at(card.x, card.y);
+                (r.scaled(k), Self::hittable(st.press.value))
+            }),
         }
-        if let Some(st) = self.start.as_ref() {
-            let r = st.rel.at(card.x, card.y);
-            let cardr = card;
-            if Self::hittable(st.press.value) && r.contains(x, y) && cardr.contains(x, y) {
-                return Some(Which::Start);
-            }
-        }
-        None
+    }
+
+    /// Whether (x, y) is in the PressableScale's bounds (pointerInside).
+    fn in_press(&self, which: Which, x: f32, y: f32) -> bool {
+        self.press_rect(which).is_some_and(|(r, _)| r.contains(x, y))
+    }
+
+    fn hit_press(&self, x: f32, y: f32) -> Option<Which> {
+        let (_, card) = self.frames();
+        [Which::Title, Which::NewGame, Which::Start].into_iter().find(|&w| {
+            self.press_rect(w).is_some_and(|(r, hit)| hit && r.contains(x, y) && (w != Which::Start || card.contains(x, y)))
+        })
     }
 
     fn hit_target(&self, x: f32, y: f32) -> Option<(Target, R)> {
@@ -2301,6 +2325,16 @@ impl Sudoku {
     }
 }
 
+/// A PressableScale's transform: scale `k` about the centre of `r`.
+fn scale_about(c: &mut Canvas, r: R, k: f32) {
+    if k != 1.0 {
+        let (cx, cy) = r.center();
+        c.translate(cx, cy);
+        c.scale(k, k);
+        c.translate(-cx, -cy);
+    }
+}
+
 /// The first whole pixel of a band holding something whose top is at `y` (window points).
 fn band_origin(y: f32, scale: f32) -> i32 {
     (y * scale).floor() as i32 - 2
@@ -2322,6 +2356,9 @@ impl Sudoku {
         if let (Some(layout), Some(f)) = (self.layout.as_ref(), self.fonts.as_ref()) {
             if hf > 0.0 {
                 let title = layout.title.rel(layout.header).at(header.x, header.y);
+                // The title's PressableScale, about its centre.
+                c.save();
+                scale_about(c, title, self.presses[Which::Title as usize].scale() as f32);
                 text(
                     c,
                     "SUDOKU",
@@ -2330,6 +2367,7 @@ impl Sudoku {
                     view(TEXT).alpha(hf),
                     TITLE_SPACING,
                 );
+                c.restore();
                 let subtitle = layout.subtitle.rel(layout.header).at(header.x, header.y);
                 text(
                     c,
@@ -2352,6 +2390,10 @@ impl Sudoku {
                 box_shadow(c, r, BUTTON_R, BUTTON_SHADOW, group);
                 let alpha = group * a.press.value.clamp(0.0, 1.0) as f32;
                 if alpha > 0.0 {
+                    // The PressableScale (its border and label), about its centre; the
+                    // container's shadow stays.
+                    c.save();
+                    scale_about(c, r, self.presses[Which::NewGame as usize].scale() as f32);
                     ca_border(
                         c,
                         r,
@@ -2367,6 +2409,7 @@ impl Sudoku {
                         view(TEXT_SECONDARY).alpha(alpha),
                         BUTTON_SPACING,
                     );
+                    c.restore();
                 }
             }
         }
@@ -2402,6 +2445,9 @@ impl Sudoku {
                 let to_band = Matrix::scale(s, s)
                     .then(Matrix::translate(0.0, wrapper_band as f32 - y0 as f32));
                 c.save();
+                // The PressableScale (its fill and label, from the band), about its centre;
+                // the container's shadow and tint stay.
+                scale_about(c, r, self.presses[Which::Start as usize].scale() as f32);
                 c.clip_rrect(r.x, r.y, r.w, r.h, BUTTON_R);
                 c.draw_rect(
                     r.x - 1.0,
@@ -2560,9 +2606,9 @@ impl Surface for Sudoku {
         }
         match phase {
             PointerPhase::Down => {
-                if self.press.is_none() {
+                if !self.presses.iter().any(Pressable::is_pressed) {
                     if let Some(which) = self.hit_press(x, y) {
-                        self.press = Some((id, which));
+                        self.presses[which as usize].pointer_down(id, true);
                         return;
                     }
                 }
@@ -2581,6 +2627,10 @@ impl Surface for Sudoku {
                 }
             }
             PointerPhase::Move => {
+                for which in [Which::Title, Which::NewGame, Which::Start] {
+                    let inside = self.in_press(which, x, y);
+                    self.presses[which as usize].pointer_move(id, inside);
+                }
                 let Some(mut r) = self.responder.filter(|r| r.id == id) else {
                     return;
                 };
@@ -2603,14 +2653,16 @@ impl Surface for Sudoku {
                 self.responder = Some(r);
             }
             PointerPhase::Up | PointerPhase::Cancel => {
-                if let Some((pid, which)) = self.press {
-                    if pid == id {
-                        self.press = None;
-                        if phase == PointerPhase::Up {
-                            self.pressed(which, at_ms);
-                        }
-                        return;
+                for which in [Which::Title, Which::NewGame, Which::Start] {
+                    if self.pressable(which).finger() != Some(id) {
+                        continue;
                     }
+                    let inside = self.in_press(which, x, y);
+                    if let Some(PressEvent::Press(press)) = self.presses[which as usize].pointer(id, gfx::phase(phase), inside) {
+                        self.posted.extend(press.global_message().map(String::from));
+                        self.pressed(which, at_ms);
+                    }
+                    return;
                 }
                 let Some(r) = self.responder.filter(|r| r.id == id) else {
                     return;
@@ -2747,7 +2799,7 @@ impl Surface for Sudoku {
             ph,
             wgpu::Color::TRANSPARENT,
         );
-        moving |= self.press.is_some() || self.responder.is_some();
+        moving |= self.presses.iter().any(Pressable::is_animating) || self.responder.is_some();
         moving
     }
 }
@@ -3164,6 +3216,22 @@ mod tests {
         let ink =
             (0..60).any(|i| rgb(&start, l.title.x + i as f32 * 3.0, l.title.y + 24.0)[0] > 200);
         assert!(ink, "SUDOKU");
+
+        // Held (pressto as designed), Start scales to 0.96 about its centre over 250 ms: its
+        // left edge moves in by w × 0.02; slid off and lifted outside, no press, no haptic.
+        s.input(&pointer(PointerPhase::Down, st.x + st.w / 2.0, st.y + st.h / 2.0, ms + 5.0));
+        let (held, ms) = render_to(&gpu, &mut s, ms + 16.0, ms + 300.0);
+        gfx::save_over(&held, "sudoku-start-held", [0, 0, 0]);
+        assert!((s.pressable(Which::Start).scale() - 0.96).abs() < 1e-9);
+        let inset = st.w * 0.02;
+        assert!(!close(rgb(&held, st.x + inset - 1.0, st.y + st.h / 2.0), bytes(view(PRIMARY)), 6), "{:?}", rgb(&held, st.x + inset - 1.0, st.y + st.h / 2.0));
+        assert!(close(rgb(&held, st.x + inset + 2.0, st.y + st.h / 2.0), bytes(view(PRIMARY)), 2), "{:?}", rgb(&held, st.x + inset + 2.0, st.y + st.h / 2.0));
+        s.input(&pointer(PointerPhase::Move, st.x - 40.0, st.y - 40.0, ms + 5.0));
+        s.input(&pointer(PointerPhase::Up, st.x - 40.0, st.y - 40.0, ms + 10.0));
+        assert!(s.messages().is_empty());
+        let (back, ms) = render_to(&gpu, &mut s, ms + 16.0, ms + 300.0);
+        assert_eq!(s.pressable(Which::Start).scale(), 1.0);
+        assert!(close(rgb(&back, st.x + 1.0, st.y + st.h / 2.0), bytes(view(PRIMARY)), 2));
 
         // Start: the selection haptic at the lift, the board mounts at the next frame.
         tap(&mut s, st.center(), ms + 10.0);

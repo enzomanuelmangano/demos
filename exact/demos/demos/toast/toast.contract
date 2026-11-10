@@ -2,7 +2,7 @@
 // rise 20 px a step, shrink 5 % a step and hide their text past the second). The front one swipes
 // left to dismiss; the fifth dismisses itself after 2.5 s; past the fifth, "You can spam me!".
 // RN: src/animations/toast (index.tsx, toast-manager/toast-provider.tsx, toast-manager/toast.tsx).
-use PressableScale from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
 use DemoEnv from "../env.contract"
 
 // toast.tsx: ToastOffset 20, ToastHeight 70, HideToastOffset 90, BaseSafeArea 50. A toast with
@@ -70,6 +70,15 @@ keyframes toastAutoThrow
 component Toast
   props
     env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   // value.current: the presses so far (the index into the five toasts).
   state pressed = 0
   state serial = 0
@@ -119,7 +128,7 @@ component Toast
 
   // A press: the next toast (index.tsx onPress; showToast refuses past six in the list).
   action showToast
-    haptic("selection")
+    pressablesOnPress()
     let now = performanceNow()
     autoKey = vAutoKey
     autoE = vAutoE
@@ -259,7 +268,9 @@ component Toast
       justify-content="center" timeline-scope="--toastSwipe" testId="toast"
       // styles.button: #111, radius 25 continuous, a 1 px border, marginBottom 20, padding 25 × 18;
       // styles.textButton: white, 700, letterSpacing 1.2, uppercase (14).
-      column class=PressableScale press=showToast role="button" aria-label="Toast!"
+      column press=showToast role="button" aria-label="Toast!"
+        pointerdown=pressIn(0) pointerup=pressOut
+        scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
         background-color="#111111" border-radius=25 corner-shape="-exact-continuous" border-width=1
         border-style="solid" border-color="#000000" margin-bottom=20 padding-left=25
         padding-right=25 padding-top=18 padding-bottom=18 testId="toast-button"

@@ -2,7 +2,7 @@
 // slides up a row and the next one is highlighted), the green one restores it, and either shakes
 // when there is nothing left to do. RN: src/animations/email-demo (index.tsx, constants.ts,
 // components/interactive-list, components/list-item, hooks/use-animated-shake.ts).
-use PressableScale from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
 use DemoEnv, demoButtonRow from "../env.contract"
 
 shape Email
@@ -52,17 +52,26 @@ fn shakeOf(n: number): string = n == 0 ? "none" : `${n % 2 == 1 ? "shakeA" : "sh
 component EmailDemo
   props
     env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   state erasedItems = 0
   state restoreShakes = 0
   state deleteShakes = 0
   action onDelete
-    haptic("selection")
+    pressablesOnPress()
     if erasedItems >= 10
       deleteShakes = deleteShakes + 1
     else
       erasedItems = erasedItems + 1
   action onRestore
-    haptic("selection")
+    pressablesOnPress()
     if erasedItems <= 0
       restoreShakes = restoreShakes + 1
     else
@@ -94,7 +103,9 @@ component EmailDemo
         view animation=shakeOf(restoreShakes) testId="restore-shake"
           // styles.floatingButton: 64, radius 32, shadow 0 4 8 rgba(0,0,0,0.15); #10b981;
           // MaterialIcons restore 24 white.
-          button appearance="none" class=PressableScale press=onRestore testId="restore"
+          button appearance="none" press=onRestore testId="restore"
+            pointerdown=pressIn(0) pointerup=pressOut
+            scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
             aria-label="Restore" width=64 height=64 border-radius=32 background-color="color(display-p3 0.0627 0.7255 0.5059)"
             box-shadow="0px 4px 8px rgba(0, 0, 0, 0.15)" display="flex" align-items="center"
             justify-content="center"
@@ -103,7 +114,9 @@ component EmailDemo
               path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z" fill="#ffffff"
         view animation=shakeOf(deleteShakes) testId="delete-shake"
           // #ef4444; MaterialIcons delete 24 white.
-          button appearance="none" class=PressableScale press=onDelete testId="delete"
+          button appearance="none" press=onDelete testId="delete"
+            pointerdown=pressIn(1) pointerup=pressOut
+            scale=pressableScale(pressing, 1, pressto) transition=pressTransition("scale", pressto)
             aria-label="Delete" width=64 height=64 border-radius=32 background-color="color(display-p3 0.9373 0.2667 0.2667)"
             box-shadow="0px 4px 8px rgba(0, 0, 0, 0.15)" display="flex" align-items="center"
             justify-content="center"

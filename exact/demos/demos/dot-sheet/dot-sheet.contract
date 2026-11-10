@@ -4,7 +4,7 @@
 // components/card-input.tsx, components/background-gradient.tsx). The background is Skia,
 // drawn once in Rust: gpu/src/dot_sheet.rs; the card (its frame, rotation, animated continuous
 // radius and shadow on RN's spring) is gpu/src/dot_sheet_card.rs; the field and the rest are here.
-use PressableScale from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
 use DemoEnv, demoButtonRow from "../env.contract"
 
 
@@ -20,6 +20,15 @@ fn cardLeft(w: number, h: number, open: bool): number = open ? 1 : (w - h / 2.8 
 component DotSheet
   props
     env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   state open = false
   // progress === 0: the card's surface says when its spring has landed closed.
   state still = true
@@ -38,10 +47,10 @@ component DotSheet
     if not open and still
       focus("dot-input")
   action start
-    haptic("selection")
+    pressablesOnPress()
     focus("dot-input")
   action back
-    haptic("selection")
+    pressablesOnPress()
     blur("dot-input")
   view
     column position="absolute" inset=0 testId="dot-sheet"
@@ -70,14 +79,17 @@ component DotSheet
       // touches under it on iOS whatever its pointer-events, so both buttons rise above it where
       // the card never covers them: the back button always (the open card starts 20 below it),
       // the bottom one while the card rests closed (RN's card, zIndex 1, covers it otherwise).
-      button appearance="none" press=back class=PressableScale position="absolute"
+      button appearance="none" press=back position="absolute"
         top=(env.safeTop + demoButtonRow()) left=16 width=32 height=32 border="none" padding=0
         background-color="transparent" display="flex" align-items="center" justify-content="center"
-        opacity=(open ? 1 : 0) transition=`opacity ${cardSpring()}` aria-label="Back" testId="dot-back"
+        pointerdown=pressIn(1) pointerup=pressOut scale=pressableScale(pressing, 1, pressto)
+        opacity=(open ? 1 : 0) transition=`opacity ${cardSpring()}, ${pressTransition("scale", pressto)}` aria-label="Back" testId="dot-back"
         z-index=2
         image "symbol:sf/chevron.backward" font-size=24 color="#323232" aria-hidden=true
       // The bottom button: safe bottom + 16, centred, 85% wide, 52 tall, radius 30.
-      button appearance="none" press=start class=PressableScale position="absolute"
+      button appearance="none" press=start position="absolute"
+        pointerdown=pressIn(0) pointerup=pressOut
+        scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
         bottom="calc(env(safe-area-inset-bottom) + 16px)" left="7.5%" width="85%" height=52
         border="none" border-radius=30 background-color="rgba(55, 55, 55, 0.2)" display="flex"
         align-items="center" justify-content="center" testId="dot-start" z-index=(not open and still ? 2 : 0)

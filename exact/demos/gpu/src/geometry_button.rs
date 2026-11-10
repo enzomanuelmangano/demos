@@ -61,6 +61,7 @@ impl Surface for GeometryButton {
         true
     }
 
+    /// RN drives this press with Gesture.Tap and its own withSpring, not pressto: not `pressto::Pressable`.
     fn input(&mut self, event: &InputEvent) {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
         match phase {

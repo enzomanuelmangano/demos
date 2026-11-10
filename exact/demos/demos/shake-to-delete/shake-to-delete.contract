@@ -3,7 +3,7 @@
 // second long press stops them. RN: src/animations/shake-to-delete (index.tsx,
 // apps-list/index.tsx, app-item.tsx, constants.ts, hooks/animation-config.ts,
 // hooks/use-is-shaking.ts, hooks/use-shaking-animation.ts).
-use PressableOpacity from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableOpacity, pressTransition from "pressto"
 use DemoEnv from "../env.contract"
 
 // constants.ts APPS_DATA = METALLIC_APPS_DATA_RAW with id = index.
@@ -312,6 +312,15 @@ component AppItem
     gone: bool
     hold: action
     remove: action
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   view
     // The tile's place in the grid; LinearTransition.duration(350) when the others reflow, and
     // FadeOut when it leaves, both 150 ms after the delete.
@@ -326,7 +335,9 @@ component AppItem
         rotate=(shaking or not settled ? "0deg" : shakeR(id, stopP(id, elapsed)))
         animation=(shaking ? `shake${id} ${4 * legMs(id)}ms linear infinite` : (settled ? `settleZero ${settleTiming()}` : "none"))
         // The PressableOpacity: onLongPress toggles the shaking.
-        view class=PressableOpacity flex=1 display="flex" flex-direction="column" contextmenu=hold role="button"
+        view flex=1 display="flex" flex-direction="column" contextmenu=hold role="button"
+          pointerdown=pressIn(0) pointerup=pressOut
+          opacity=pressableOpacity(pressing, 0, pressto) transition=pressTransition("opacity", pressto)
           aria-label=`App ${id + 1}`
           testId=`app-${id}-tile`
           // styles.deleteButtonContainer: absolute at -4, -4, zIndex 1; opacity
@@ -336,7 +347,9 @@ component AppItem
             transition="opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
             // styles.deleteButton: 20 × 20, rgba(255,255,255,0.8), radius 100; Ionicons "remove"
             // 12 black.
-            view display="flex" flex-direction="column" class=PressableOpacity width=20 height=20 border-radius=100
+            view display="flex" flex-direction="column" width=20 height=20 border-radius=100
+              pointerdown=pressIn(1) pointerup=pressOut
+              opacity=pressableOpacity(pressing, 1, pressto) transition=pressTransition("opacity", pressto)
               background-color="rgba(255, 255, 255, 0.8)" align-items="center" justify-content="center"
               press=remove role="button" aria-label="Delete" testId=`app-${id}-delete`
               // Ionicons "remove" 12: the vector-icons glyph (512 × 525 units of 512 to the em).

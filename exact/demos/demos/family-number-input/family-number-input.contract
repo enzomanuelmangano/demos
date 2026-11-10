@@ -4,6 +4,7 @@
 // src/animations/family-number-input (number-input.tsx, components/animated-number,
 // components/buttons-grid).
 use DemoEnv from "../env.contract"
+use PressablesConfig, pressNone, pressDown, pressUp, animatedPressable, animatedPressableColor, pressTransition from "pressto"
 
 // buttons-grid/index.tsx items: 1…9, an empty key, 0, backspace (-1 empty, -2 backspace).
 fn keys(): number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, -1, 0, -2]
@@ -28,17 +29,23 @@ keyframes charOut
   to opacity=0 translate="0px 25px"
 
 // InputButton (createAnimatedPressable): pressed, a white 10% fill and scale 0.9, radius 20.
-style KeypadKey
-  :active
-    -exact-press-scale = 0.9
-    background-color = "rgba(255, 255, 255, 0.1)"
+// On pressto's progress (packages/pressto): pressablesOnPress is the app's global onPress.
 
 component FamilyNumberInput
   props
     env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   state input = 0
   action press(k: number)
-    haptic("selection")
+    pressablesOnPress()
     if k >= 0 and (input * 10 + k).toString().length <= 11
       input = input * 10 + k
     if k == -2
@@ -62,10 +69,12 @@ component FamilyNumberInput
       // 7/3% left and bottom.
       row flex=1 flex-wrap="wrap" align-items="center" align-content="flex-start"
         for k, i in keys() key=i
-          view display="flex" flex-direction="column" class=KeypadKey press=press(k) contextmenu=hold(k)
+          view display="flex" flex-direction="column" press=press(k) contextmenu=hold(k)
+            pointerdown=pressIn(i) pointerup=pressOut scale=animatedPressable(pressing, i, 1, 0.9)
+            transition=`${pressTransition("scale", pressto)}, ${pressTransition("background-color", pressto)}`
             width="30%" height="20%" margin-left="2.3333%" margin-bottom="2.3333%"
             align-items="center" justify-content="center" border-radius=20
-            background-color="rgba(255, 255, 255, 0)" role="button"
+            background-color=animatedPressableColor(pressing, i, "rgba(255, 255, 255, 0)", "rgba(255, 255, 255, 0.1)") role="button"
             aria-label=(k >= 0 ? `${k}` : (k == -2 ? "Delete" : "")) testId=`key-${k}`
             if k >= 0
               // styles.number: SF-Pro-Rounded-Bold 30, white, centred.

@@ -3,6 +3,7 @@
 // and shows them again. RN: src/animations/staggered-card-number (index.tsx,
 // components/card-info/index.tsx, hideable-number.tsx).
 use DemoEnv from "../env.contract"
+use PressablesConfig, pressNone, pressDown, pressUp, animatedPressable, animatedPressableColor, pressTransition from "pressto"
 
 // Feather eye / eye-off (@expo/vector-icons, 512 units to the em), in a box of the Text's line:
 // ascent + descent + line gap (457 + 69 + 46).
@@ -11,22 +12,23 @@ fn eyeOffPath(): string = "M318 325Q327 315 321.5 302Q316 289 302 289Q293 289 28
 
 
 // TouchableFeedback (pressto createAnimatedPressable): pressed, scale 1 → 0.9 and a
-// rgba(0,0,0,0 → 0.1) background, borderRadius 20. pressto drives progress with timing 250 ms
-// Easing.bezier(0.25, 0.1, 0.25, 1): the background follows it exactly; the press scale is the
-// host's fixed 120 ms ease (a known host limit).
-style CardPress
-  border-radius = 20
-  transition = "background-color 250ms cubic-bezier(0.25, 0.1, 0.25, 1)"
-  :active
-    -exact-press-scale = 0.9
-    background-color = "rgba(0,0,0,0.1)"
+// rgba(0,0,0,0 → 0.1) background, borderRadius 20, on pressto's progress (packages/pressto).
 
 component StaggeredCardNumber
   props
     env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   state toggled = false
   action onToggle
-    haptic("selection")
+    pressablesOnPress()
     toggled = not toggled
   view
     // index.tsx container: #eaeaea, centred.
@@ -55,7 +57,10 @@ component StaggeredCardNumber
         view flex=1
         // styles.button: aspectRatio 1, height 100% (80 - 15 - 10 = 55), centred. Feather
         // eye / eye-off 24 #38a27b.
-        button appearance="none" class=CardPress press=onToggle width=55 height=55
+        button appearance="none" press=onToggle width=55 height=55 border-radius=20
+          pointerdown=pressIn(0) pointerup=pressOut scale=animatedPressable(pressing, 0, 1, 0.9)
+          background-color=animatedPressableColor(pressing, 0, "rgba(0,0,0,0)", "rgba(0,0,0,0.1)")
+          transition=`${pressTransition("scale", pressto)}, ${pressTransition("background-color", pressto)}`
           display="flex" align-items="center" justify-content="center"
           aria-label=(toggled ? "Show number" : "Hide number") aria-pressed=toggled testId="toggle"
           if toggled

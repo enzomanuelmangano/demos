@@ -3,7 +3,7 @@
 // the way, from the bottom-left to the top-right, and a second tap puts them back, each after a
 // random wait. RN: src/animations/github-contributions (index.tsx, contribution-data.tsx,
 // contribution-calendar/index.tsx, contribution-square.tsx, config/defaults.tsx, utils/*).
-use PressableScale from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
 use DemoEnv, roll from "../env.contract"
 
 // fonts.ts `regular`: assets/fonts/regular.ttf (Source Sans Pro Regular), the day labels' face,
@@ -33,18 +33,29 @@ fn levelsOf(env: DemoEnv): string = range(weekCount(env) * 7).map(i => inRange(e
 component GithubContributions
   props
     env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   // toggleAnimation's presses: the surface starts on an odd one and resets on an even one.
   state presses = 0
   derive weeks = weekCount(env)
   action toggleAnimation
-    haptic("selection")
+    pressablesOnPress()
     presses = presses + 1
   view
     // index.tsx styles.appContainer: #f7f7f7, centred, flex 1; the PressableScale over it is the
     // same box.
     column position="absolute" inset=0 background-color="#f7f7f7" align-items="center"
       justify-content="center" testId="github-contributions"
-      button appearance="none" class=PressableScale press=toggleAnimation testId="calendar-press"
+      button appearance="none" press=toggleAnimation testId="calendar-press"
+        pointerdown=pressIn(0) pointerup=pressOut
+        scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
         aria-label="Animate the contributions" flex=1 align-self="stretch" display="flex"
         flex-direction="column" align-items="center" justify-content="center"
         // styles.calendarContainer: white, radius 16 continuous, shadow 0 0 20 5 % black, padding 16.

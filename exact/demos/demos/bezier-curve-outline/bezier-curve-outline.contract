@@ -8,6 +8,7 @@
 // full-screen BlurView (it blurs what the surface draws; `held` drives its intensity). The
 // button is here.
 use DemoEnv from "../env.contract"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
 
 // rLabelColorStyle: interpolateColor(outlineModeProgress, [0, 1], ['#202020', 'white']),
 // Reanimated's RGB with gamma 2.2, each channel rounded: these stops, on a timeline the hidden
@@ -44,26 +45,27 @@ keyframes labelInk
   95% color="#F9F9F9"
   100% color="#FFFFFF"
 
-// pressto's press (250 ms, bezier(0.25, 0.1, 0.25, 1), 0.96) from pointer down / up; the host's
-// own press is set to no change.
-style NoHostPress
-  :active
-    -exact-press-scale = 1
-
 component BezierCurveOutline
   props
     env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
   state outline = false
+  // pressto's PressableScale (packages/pressto); `held` is its isPressed, for the surface's blur.
+  state pressing = pressNone()
   state held = false
   action heard(m: string)
     if m == "haptic:selection"
       haptic("selection")
   action pressIn
     held = true
+    pressing = pressDown(pressing, 0)
   action pressOut
     held = false
+    pressing = pressUp(pressing)
   action toggle
-    haptic("selection")
+    pressablesOnPress()
     outline = not outline
   view
     column position="absolute" inset=0 timeline-scope="--outlineMode" testId="bezier-curve-outline"
@@ -78,9 +80,9 @@ component BezierCurveOutline
       // styles.button: absolute, bottom 48, centred (alignSelf), zIndex 2000; styles.text 14,
       // centred, its colour on the outline spring.
       row position="absolute" left=0 right=0 bottom=48 justify-content="center" pointer-events="none"
-        button appearance="none" class=NoHostPress press=toggle pointerdown=pressIn pointerup=pressOut
-          pointer-events="auto" border="none" background-color="transparent" padding=0 scale=(held ? 0.96 : 1)
-          transition="scale 250ms cubic-bezier(0.25, 0.1, 0.25, 1)" testId="bezier-curve-outline-toggle"
+        button appearance="none" press=toggle pointerdown=pressIn pointerup=pressOut
+          pointer-events="auto" border="none" background-color="transparent" padding=0
+          scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto) testId="bezier-curve-outline-toggle"
           aria-label="Outline Mode"
           text "Outline Mode" font-size=14 text-align="center" color="#202020"
             animation="labelInk 1s linear both" animation-timeline="--outlineMode" animation-range="0px 100px"

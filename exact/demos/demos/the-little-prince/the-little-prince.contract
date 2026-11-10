@@ -8,7 +8,7 @@
 //
 // RN ignores a toggle within 400 ms of the last one (text-image-morph.tsx), real double taps
 // included: so does `toggle`.
-use PressableScale from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
 use DemoEnv from "../env.contract"
 
 // withTiming(…, { duration: 240, easing: Easing.out(Easing.cubic) }): 1 − (1 − t)³, exactly. A
@@ -22,10 +22,19 @@ fn outCubic(): string = "cubic-bezier(0.3333333333333333, 1, 0.6666666666666666,
 component TheLittlePrince
   props
     env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   state revealed = false
   state lastToggle = -1000000
   action toggle
-    haptic("selection")
+    pressablesOnPress()
     let now = performanceNow()
     if now - lastToggle >= 400
       lastToggle = now
@@ -41,7 +50,9 @@ component TheLittlePrince
       // PressableToggleIcon: a 48 pt disc (#1c1a17, radius 24) width × 0.09 from the bottom and
       // right, hitSlop 16 (the 80 pt button around it); photo ↔ textformat, 20 semibold
       // #efe7d6, crossfading (opacity, scale 1 → 0.85 / 0.85 → 1) as `face` moves.
-      button appearance="none" press=toggle class=PressableScale position="absolute"
+      button appearance="none" press=toggle position="absolute"
+        pointerdown=pressIn(0) pointerup=pressOut
+        scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
         right=(env.width * 0.09 - 16) bottom=(env.width * 0.09 - 16) width=80 height=80 padding=16
         box-sizing="border-box" border="none" background-color="transparent" aria-label="Switch between the text and the picture"
         testId="prince-toggle"

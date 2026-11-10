@@ -1,7 +1,7 @@
 // Composable Text: a "Use Max" pill whose letters spring in, fade out and slide to their new
 // places as it toggles to "Using Max". RN: src/animations/composable-text (index.tsx,
 // composable-text.tsx).
-use PressableScale from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
 
 // index.tsx Variants: base / active.
 fn labelOf(active: bool): string = active ? "Using Max" : "Use Max"
@@ -24,6 +24,15 @@ keyframes charOut
 fn charInRow(): string = "charIn 757ms linear(0, 0.028, 0.0949, 0.1815, 0.2755, 0.369, 0.4574, 0.5382, 0.6103, 0.6735, 0.7281, 0.7747, 0.8142, 0.8473, 0.875, 0.898, 0.917, 0.9326, 0.9454, 0.9559, 0.9644, 0.9714, 0.977, 0.9815, 0.9852, 0.9881, 0.9905, 0.9924, 0.994, 0.9952, 0.9962, 0.9969, 0.9976, 0.9981, 0.9985, 0.9988, 0.999, 0.9992, 0.9994, 0.9995, 0.9996, 0.9997, 0.9998, 0.9998, 0.9999, 0.9999, 0.9999, 0.9999, 1)"
 
 component ComposableText
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   state active = false
   // LayoutAnimationConfig skipEntering: the first letters do not spring in. They mount with
   // the entering animation already over (a delay of minus its duration); after the first
@@ -31,14 +40,16 @@ component ComposableText
   // for each new letter.
   state pressed = false
   action toggle
-    haptic("selection")
+    pressablesOnPress()
     active = not active
     pressed = true
   view
     column position="absolute" inset=0 background-color="#0c0c0c" align-items="center" justify-content="center"
       testId="composable-text"
       // PressableScale, layout LinearTransition.springify().mass(0.4).damping(12).stiffness(100).
-      button appearance="none" press=toggle class=PressableScale testId="toggle" aria-label=labelOf(active)
+      button appearance="none" press=toggle testId="toggle" aria-label=labelOf(active)
+        pointerdown=pressIn(0) pointerup=pressOut
+        scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
         aria-pressed=active -exact-layout-transition="-exact-spring(100, 12, 0.4)"
         // styles.textContainer: #181818, borderRadius 32 continuous, padding 16, paddingHorizontal 22;
         // the same springify() layout as the button.

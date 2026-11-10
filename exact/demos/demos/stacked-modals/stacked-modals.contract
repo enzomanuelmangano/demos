@@ -4,7 +4,7 @@
 // RN: src/animations/stacked-modals (index.tsx, hook.tsx, hooks/use-modal.tsx,
 // stacked-modal-manager/{constants.ts, hooks.ts, stacked-modal-provider.tsx, stacked-modal.tsx,
 // backdrop/index.tsx}).
-use PressableScale from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, animatedPressableColor, pressTransition from "pressto"
 use DemoEnv from "../env.contract"
 
 // hook.tsx onPress: the seven modals.
@@ -72,22 +72,25 @@ keyframes contentPow
   100% opacity=1
 
 // use-modal.tsx: createAnimatedPressable buttons, pressed: Dismiss from #d5534a00 to
-// #e14f4482, Confirm from #50505000 to #bababa9b; radius 8 continuous.
-style DismissPress
-  :active
-    background-color = "color(display-p3 0.8824 0.3098 0.2667 / 0.5098)"
-style ConfirmPress
-  :active
-    background-color = "rgba(186, 186, 186, 0.6078)"
+// #e14f4482, Confirm from #50505000 to #bababa9b; radius 8 continuous; on pressto's progress.
 
 component StackedModals
   props
     env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   state stack = []
   state serial = 0
   // The + button: showNextModal(modals) from the first.
   action open
-    haptic("selection")
+    pressablesOnPress()
     stack = [serial * 10].concat(stack)
     serial = serial + 1
   // Confirm and Dismiss both show the next modal (none after the seventh); the seventh's
@@ -126,7 +129,9 @@ component StackedModals
       testId="stacked-modals"
       // styles.button: PressableScale, 64 × 64, black, radius 32, absolute at bottom 48,
       // right 20 with marginHorizontal 20; Ionicons "add" 28 white.
-      view display="flex" flex-direction="column" class=PressableScale position="absolute" bottom=48 right=20 margin-left=20 margin-right=20
+      view display="flex" flex-direction="column" position="absolute" bottom=48 right=20 margin-left=20 margin-right=20
+        pointerdown=pressIn(0) pointerup=pressOut
+        scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
         width=64 height=64 border-radius=32 background-color="#000000" align-items="center"
         justify-content="center" press=open role="button" aria-label="Show a modal" testId="add"
         // Ionicons "add" 28: the vector-icons glyph (512 × 525 units of 512 to the em).
@@ -201,6 +206,14 @@ component ModalContent
     index: number
     confirm: action
     dismiss: action
+  inject
+    pressto: PressablesConfig
+  // pressto: the pressed button (0 Dismiss, 1 Confirm) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   view
     column flex=1
       // styles.container: white, radius 12 continuous, flex 1, padding 16; header a row,
@@ -223,13 +236,17 @@ component ModalContent
       // "Confirm" 55.7197 → 56 at 3×); the buttons hug their text and the row is right-aligned,
       // so an unrounded width put both labels right of RN's (Confirm by 0.28, Dismiss by 0.46).
       row justify-content="flex-end" margin-bottom=12 margin-right=12
-        view display="flex" flex-direction="column" class=DismissPress padding-left=12 padding-right=12 padding-top=8 padding-bottom=8
-          border-radius=8 corner-shape="-exact-continuous" background-color="color(display-p3 0.8353 0.3255 0.2902 / 0)"
+        view display="flex" flex-direction="column" padding-left=12 padding-right=12 padding-top=8 padding-bottom=8
+          border-radius=8 corner-shape="-exact-continuous"
+          background-color=animatedPressableColor(pressing, 0, "color(display-p3 0.8353 0.3255 0.2902 / 0)", "color(display-p3 0.8824 0.3098 0.2667 / 0.5098)")
+          pointerdown=pressIn(0) pointerup=pressOut transition=pressTransition("background-color", pressto)
           align-items="center" justify-content="center" press=dismiss role="button"
           testId=`modal-${index}-dismiss`
           text "Dismiss" color="#141414" font-weight=700 font-size=14 width=(163 / 3) white-space="nowrap"
-        view display="flex" flex-direction="column" class=ConfirmPress padding-left=12 padding-right=12 padding-top=8 padding-bottom=8
-          border-radius=8 corner-shape="-exact-continuous" background-color="rgba(80, 80, 80, 0)"
+        view display="flex" flex-direction="column" padding-left=12 padding-right=12 padding-top=8 padding-bottom=8
+          border-radius=8 corner-shape="-exact-continuous"
+          background-color=animatedPressableColor(pressing, 1, "rgba(80, 80, 80, 0)", "rgba(186, 186, 186, 0.6078)")
+          pointerdown=pressIn(1) pointerup=pressOut transition=pressTransition("background-color", pressto)
           align-items="center" justify-content="center" press=confirm role="button"
           testId=`modal-${index}-confirm`
           text "Confirm" color="#141414" font-weight=700 font-size=14 width=56 white-space="nowrap"

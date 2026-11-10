@@ -2,7 +2,7 @@
 // springs them to new random values. RN: src/animations/radar-chart (index.tsx,
 // components/radar-chart). The chart is Skia: drawn and sprung in Rust
 // (gpu/src/radar_chart.rs); the data and the button are here.
-use PressableScale from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
 use DemoEnv, roll from "../env.contract"
 
 // generateRandomDataChart: (Math.random() × 100) / 100 for each of five keys, twice; the
@@ -12,9 +12,18 @@ fn value(seed: number, draw: number, k: number): number = roll(seed, draw * 10 +
 component RadarChart
   props
     env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   state draw = 0
   action shuffle
-    haptic("selection")
+    pressablesOnPress()
     draw = draw + 1
   view
     // styles.container: black, centred, paddingHorizontal 20.
@@ -26,7 +35,9 @@ component RadarChart
         value(env.seed, draw, 7), value(env.seed, draw, 8), value(env.seed, draw, 9))
         width=env.width height=env.width flex-shrink=0 aria-label="Radar chart" testId="radar-canvas"
       // styles.button: 80% wide, 60 tall, white 1 border, radius 20 continuous, marginTop 50.
-      button appearance="none" press=shuffle class=PressableScale width=(0.8 * (env.width - 40)) height=60
+      button appearance="none" press=shuffle width=(0.8 * (env.width - 40)) height=60
+        pointerdown=pressIn(0) pointerup=pressOut
+        scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
         margin-top=50 box-sizing="border-box" border="1px solid #ffffff" border-radius=20 corner-shape="-exact-continuous"
         display="flex" align-items="center" justify-content="center" testId="shuffle"
         // styles.title: white, 20, weight 800, letterSpacing 2, uppercase.

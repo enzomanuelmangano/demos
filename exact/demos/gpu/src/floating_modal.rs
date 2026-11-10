@@ -18,8 +18,9 @@
 //!   80 tall row holding the "Done" button (margin 10, #111, radius 12, "Done" 20 / 700 white).
 //! - The "+" (AntDesign plus, 28, black) in a 64² PressableScale at the modal's top-left,
 //!   rotated by progress × π/4; pressing it toggles isOpened.
-//! - PressableScale (pressto): scale 1 → 0.96 on withTiming(250 ms, bezier(0.25, 0.1, 0.25, 1))
-//!   while pressed; every press posts `press` (the app's selection haptic).
+//! - PressableScale (pressto, the shared `pressto::Pressable`): scale 1 → 0.96 on
+//!   withTiming(250 ms, bezier(0.25, 0.1, 0.25, 1)) while pressed; a press lifted inside the
+//!   button posts `press` (the app's selection haptic); a pan that activates cancels it.
 //!
 //! - The "+"'s `transform` has two writers: the icon's rotate style and pressto's scale style,
 //!   both animated styles of the same view. Reanimated sends each style's changed props when its
@@ -36,6 +37,7 @@
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
 use gesture_handler::{Event, PanGesture};
+use pressto::{PressEvent, Pressable};
 use reanimated::{interpolate_clamp, Easing, Spring, Timing, GENTLE};
 use skia::{Canvas, Color, Font, Paint, Renderer};
 
@@ -47,9 +49,9 @@ const BUTTON: f64 = 64.0;
 const PLUS: &str = "\u{F21A}";
 static ANTDESIGN: &[u8] = include_bytes!("../fonts/antdesign-subset.ttf");
 
-/// pressto's press animation.
+/// pressto's press animation (`pressto::timing_easing`), for the surfaces that ease like it.
 pub(crate) fn press_easing() -> Easing {
-    Easing::bezier(0.25, 0.1, 0.25, 1.0)
+    pressto::timing_easing()
 }
 
 /// The demo's surface.
@@ -69,9 +71,8 @@ fn modal() -> FloatingModal {
         content: Timing::at(0.0),
         visible: false,
         pan: PanGesture::new(),
-        press: None,
-        plus_press: Timing::at(0.0),
-        done_press: Timing::at(0.0),
+        plus_press: Pressable::new(),
+        done_press: Pressable::new(),
         plus_shown: (0.0, 1.0),
         posted: Vec::new(),
         plus: Font::new(ANTDESIGN, 28.0).map(Font::with_ui_layout),
@@ -79,12 +80,6 @@ fn modal() -> FloatingModal {
         canvas: Canvas::default(),
         renderer: Renderer::default(),
     }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-enum Button {
-    Plus,
-    Done,
 }
 
 struct FloatingModal {
@@ -99,10 +94,10 @@ struct FloatingModal {
     content: Timing,
     visible: bool,
     pan: PanGesture,
-    /// The button a finger is down on (until it lifts, moves away as a pan, or is cancelled).
-    press: Option<(u32, Button)>,
-    plus_press: Timing,
-    done_press: Timing,
+    /// The "+" and "Done" PressableScales (the shared pressto machine); a finger is on one
+    /// until it lifts, moves away as a pan, or is cancelled.
+    plus_press: Pressable,
+    done_press: Pressable,
     /// The "+"'s transform as last written: (rotate, scale).
     plus_shown: (f64, f64),
     posted: Vec<String>,
@@ -141,20 +136,17 @@ impl FloatingModal {
         self.progress.to(if self.opened { 1.0 } else { 0.0 }, 300.0, Easing::timing_default());
     }
 
-    fn release(&mut self, fired: bool) {
-        if let Some((_, button)) = self.press.take() {
-            let t = match button {
-                Button::Plus => &mut self.plus_press,
-                Button::Done => &mut self.done_press,
-            };
-            t.to(0.0, 250.0, press_easing());
-            if fired {
-                self.posted.push("press".into());
-                if button == Button::Plus {
-                    self.toggle();
-                }
-            }
-        }
+    /// A finger is on one of the buttons.
+    fn pressing(&self) -> bool {
+        self.plus_press.is_pressed() || self.done_press.is_pressed()
+    }
+
+    /// The "+" and the "Done" button's hit tests, in the modal's points.
+    fn on_buttons(&self, lx: f64, ly: f64, size: f64) -> (bool, bool) {
+        let in_modal = (0.0..=size).contains(&lx) && (0.0..=size).contains(&ly);
+        let on_plus = in_modal && lx <= BUTTON && ly <= BUTTON;
+        let on_done = self.visible && (10.0..=size - 10.0).contains(&lx) && (size - 70.0..=size - 10.0).contains(&ly);
+        (on_plus, on_done)
     }
 }
 
@@ -178,7 +170,7 @@ impl Surface for FloatingModal {
             self.progress.value,
             self.scale(),
             self.visible,
-            self.pan.tracking() || self.press.is_some()
+            self.pan.tracking() || self.pressing()
         ))
     }
 
@@ -198,14 +190,10 @@ impl Surface for FloatingModal {
                 }
                 return;
             }
-            if self.press.is_none() {
-                let on_plus = lx <= BUTTON && ly <= BUTTON;
-                let on_done = self.visible && (10.0..=size - 10.0).contains(&lx) && (size - 70.0..=size - 10.0).contains(&ly);
-                let button = if on_plus { Some(Button::Plus) } else if on_done { Some(Button::Done) } else { None };
-                if let Some(b) = button {
-                    self.press = Some((id, b));
-                    let t = if b == Button::Plus { &mut self.plus_press } else { &mut self.done_press };
-                    t.to(1.0, 250.0, press_easing());
+            if !self.pressing() {
+                let (on_plus, on_done) = self.on_buttons(lx, ly, size);
+                if !self.plus_press.pointer_down(id, on_plus) {
+                    self.done_press.pointer_down(id, on_done);
                 }
             }
         }
@@ -213,8 +201,11 @@ impl Surface for FloatingModal {
             Event::Begin { y: by, .. } => self.down_y = by as f64,
             Event::Start(p) | Event::Update(p) => {
                 // The pan activates: the button under the finger is cancelled.
-                if self.press.is_some_and(|(pid, _)| pid == id) {
-                    self.release(false);
+                if self.plus_press.finger() == Some(id) {
+                    self.plus_press.cancel();
+                }
+                if self.done_press.finger() == Some(id) {
+                    self.done_press.cancel();
                 }
                 if self.opened {
                     self.x.set(p.translation_x as f64);
@@ -226,8 +217,21 @@ impl Surface for FloatingModal {
             Event::Fail => self.finalize(y as f64 - self.down_y),
             _ => {}
         }
-        if matches!(phase, gesture_handler::Phase::Up | gesture_handler::Phase::Cancel) && self.press.is_some_and(|(pid, _)| pid == id) {
-            self.release(phase == gesture_handler::Phase::Up);
+        if phase != gesture_handler::Phase::Down {
+            let (on_plus, on_done) = self.on_buttons(lx, ly, size);
+            // onPress (lifted inside): the app's haptic, posted as `press` (what
+            // floating-modal.contract listens for); the "+" toggles isOpened.
+            if let Some(PressEvent::Press(press)) = self.plus_press.pointer(id, phase, on_plus) {
+                if press.global {
+                    self.posted.push("press".into());
+                }
+                self.toggle();
+            }
+            if let Some(PressEvent::Press(press)) = self.done_press.pointer(id, phase, on_done) {
+                if press.global {
+                    self.posted.push("press".into());
+                }
+            }
         }
     }
 
@@ -242,7 +246,7 @@ impl Surface for FloatingModal {
     ) -> bool {
         self.size = (frame.width as f64, frame.height as f64);
         let now = frame.now_ms;
-        let (p0, k0) = (self.progress.value, self.plus_press.value);
+        let (p0, k0) = (self.progress.value, self.plus_press.progress());
         let mut moving = self.progress.step(now);
         moving |= self.x.step(now) | self.y.step(now);
         let visible = self.progress.value == 1.0;
@@ -255,8 +259,8 @@ impl Surface for FloatingModal {
         moving |= self.backdrop.step(now) | self.content.step(now);
         moving |= self.plus_press.step(now) | self.done_press.step(now);
         // The "+"'s two transform writers, pressto's first, the icon's last.
-        if self.plus_press.value != k0 {
-            self.plus_shown = (0.0, 1.0 - 0.04 * self.plus_press.value);
+        if self.plus_press.progress() != k0 {
+            self.plus_shown = (0.0, self.plus_press.scale());
         }
         if self.progress.value != p0 {
             self.plus_shown = (self.progress.value.clamp(0.0, 1.0) * std::f64::consts::FRAC_PI_4, 1.0);
@@ -290,7 +294,7 @@ impl Surface for FloatingModal {
                 c.draw_text("New", (size - new_w) / 2.0, gfx::baseline(font, (64.0 - lh) / 2.0), font, &Paint::fill(Color::BLACK));
                 // The button: the bottom 80 row, inset 10, scaled about its centre.
                 let (bx, by, bw, bh) = (10.0, size - 70.0, size - 20.0, 60.0);
-                let k = 1.0 - 0.04 * self.done_press.value as f32;
+                let k = self.done_press.scale() as f32;
                 c.save();
                 c.translate(bx + bw / 2.0, by + bh / 2.0);
                 c.scale(k, k);
@@ -317,7 +321,7 @@ impl Surface for FloatingModal {
         c.restore();
         let (pw, ph) = frame.pixels();
         self.renderer.draw(device, queue, encoder, &self.canvas, target, format, pw, ph, wgpu::Color::TRANSPARENT);
-        moving || self.pan.tracking() || self.press.is_some()
+        moving || self.pan.tracking() || self.plus_press.is_animating() || self.done_press.is_animating()
     }
 }
 
@@ -339,6 +343,25 @@ impl FloatingModal {
 mod tests {
     use super::*;
     use exact_gpu::{fixture, PointerKind, PointerPhase};
+
+    #[test]
+    fn the_plus_presses_only_when_lifted_inside_it() {
+        // pressto's BaseButton: onPress needs pointerInside at the lift (shouldCancelWhenOutside
+        // false keeps the press on while the finger is off it, but lifting there presses nothing).
+        let pointer = |phase, x: f32, y: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let mut m = modal();
+        m.size = (420.0, 912.0);
+        m.input(&pointer(PointerPhase::Down, 356.0, 848.0, 0.0));
+        assert!(m.plus_press.is_pressed());
+        m.input(&pointer(PointerPhase::Up, 300.0, 848.0, 80.0));
+        assert!(!m.plus_press.is_pressed());
+        assert!(m.messages().is_empty());
+        assert!(!m.opened);
+        m.input(&pointer(PointerPhase::Down, 356.0, 848.0, 200.0));
+        m.input(&pointer(PointerPhase::Up, 360.0, 850.0, 1500.0));
+        assert_eq!(m.messages(), vec!["press".to_string()]);
+        assert!(m.opened);
+    }
 
     #[test]
     fn it_opens_drags_and_closes() {

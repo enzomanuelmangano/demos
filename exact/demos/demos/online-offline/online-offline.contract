@@ -1,7 +1,7 @@
 // Online / Offline: seven overlapping avatars in two pill-shaped groups, online in colour and
 // offline in grey; a tap anywhere moves a random one across, and everything springs to its place.
 // RN: src/animations/online-offline (index.tsx, components/online-to-offline/*).
-use PressableScale from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
 use DemoEnv, roll from "../env.contract"
 
 shape Avatar
@@ -50,6 +50,15 @@ keyframes sectionOut
 component OnlineOffline
   props
     env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   state items: Avatar[] = initialItems()
   state taps = 0
   // LayoutAnimationConfig skipEntering: the sections fade in only when they come back after a
@@ -59,7 +68,7 @@ component OnlineOffline
   derive online = items.filter(a => not a.offline).length
   derive offline = items.filter(a => a.offline).length
   action move
-    haptic("selection")
+    pressablesOnPress()
     // Math.random() > 0.5, then a random item of that side: roll(seed, k, n).
     let toOffline = offline == 0 ? true : online == 0 ? false : roll(env.seed, 2 * taps, 2) == 1
     if toOffline and online > 0
@@ -78,7 +87,9 @@ component OnlineOffline
     taps = taps + 1
   view
     // The whole screen is the PressableScale (styles.container: white, flex 1, centred).
-    button appearance="none" press=move class=PressableScale aria-label="Move someone online or offline"
+    button appearance="none" press=move aria-label="Move someone online or offline"
+      pointerdown=pressIn(0) pointerup=pressOut
+      scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
       testId="online-offline" position="absolute" inset=0 background-color="#FFFFFF"
       display="flex" flex-direction="column" justify-content="center"
       // OnlineToOffline container: full width, 40 tall, the list centred in it.

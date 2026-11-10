@@ -41,9 +41,9 @@
 //!
 //! Touches: the button is a sibling over the GestureDetector's view, so a touch on it never
 //! reaches the Pan; UIKit's hit test skips it below alpha 0.01, and then the Pan gets it.
-//! The button is RNGH's BaseButton: pressto's progress goes to 1 at onBegan and back at
-//! onEnded / onFailed / onCancelled; onPress fires at the lift when the finger was inside the
-//! (scaled) bounds at its last event, and posts `press` (the app's selection haptic).
+//! The button is RNGH's BaseButton (the shared `pressto::Pressable`): pressto's progress goes to 1 at onBegan and back at
+//! onEnded / onFailed / onCancelled; onPress fires at the lift when the finger is inside the
+//! (scaled) bounds, and posts `press` (the app's selection haptic).
 //!
 //! Motion (the audit):
 //! | value | RN driver | config | trigger | Exact |
@@ -54,7 +54,7 @@
 //! | chain, circles, trace | useAnimatedReaction | per change of time or the epicycles | — | recomputed when the time steps or the epicycles change |
 //! | button opacity | withTiming(isDrawing ? 1 : 0) | 300 ms, inOut(quad) | isDrawing | `Timing`, same |
 //! | button bottom | withSpring(isDrawing ? 65 : 0) | the default (900, 120, 4: ζ = 1) | isDrawing | `Spring::retarget(GENTLE)` |
-//! | button scale | pressto withTiming(active) | 250 ms, bezier(0.25, 0.1, 0.25, 1), 1 → 0.96 | press in / out | `Timing`, same |
+//! | button scale | pressto withTiming(active) | 250 ms, bezier(0.25, 0.1, 0.25, 1), 1 → 0.96 | press in / out | `pressto::Pressable` |
 //! | haptic | PressablesConfig onPress | selection | a press | `press` → haptic("selection") |
 //!
 //! isDrawing: false at the Pan's onStart, at a too-short stroke, at the end of the 20 s and on
@@ -63,10 +63,10 @@
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
 use gesture_handler::{Event, PanGesture, Phase};
+use pressto::{PressEvent, Pressable};
 use reanimated::{Easing, Spring, Timing, GENTLE};
 use skia::{point, Canvas, Color, Font, Paint, Point, Renderer, ScratchBuilder};
 
-use crate::floating_modal::press_easing;
 use crate::{gfx, shaders};
 use shaders::fourier_visualizer::{entry, module, Uniforms, BUTTON as BUTTON_TEXTURE, GROUP_0, U};
 
@@ -84,8 +84,6 @@ const RADIUS: f32 = 32.0;
 const BUTTON_COLOR: u32 = 0x111111;
 /// rClearButton's bottom while drawing.
 const BOTTOM_DRAWING: f64 = 65.0;
-/// pressto's minScale.
-const MIN_SCALE: f32 = 0.96;
 /// The Path stroke widths: the drawn stroke, the chain, the circles, the trace.
 const STROKE: f32 = 10.0;
 const CHAIN: f32 = 2.5;
@@ -123,9 +121,7 @@ fn visualizer() -> FourierVisualizer {
         drawing: false,
         button_opacity: Timing::at(0.0),
         bottom: Spring::at(0.0),
-        press: Timing::at(0.0),
-        pressing: None,
-        inside: false,
+        press: Pressable::new(),
         posted: Vec::new(),
         icon: Font::new(MATERIAL, ICON).map(Font::with_ui_layout),
         canvas: Canvas::default(),
@@ -160,10 +156,8 @@ struct FourierVisualizer {
     button_opacity: Timing,
     bottom: Spring,
     /// pressto's progress.
-    press: Timing,
-    pressing: Option<u32>,
-    /// pointerInside at the press's last event.
-    inside: bool,
+    /// The button's PressableScale (the shared pressto machine).
+    press: Pressable,
     posted: Vec<String>,
     icon: Option<Font>,
     canvas: Canvas,
@@ -232,7 +226,7 @@ impl FourierVisualizer {
 
     /// The button's scale (pressto: interpolate(progress, [0, 1], [1, 0.96])).
     fn button_scale(&self) -> f32 {
-        1.0 + (MIN_SCALE - 1.0) * self.press.value as f32
+        self.press.scale() as f32
     }
 
     /// Whether (x, y) is inside the button's bounds, through its transform.
@@ -711,7 +705,7 @@ impl Surface for FourierVisualizer {
             self.time.value,
             self.trace.len(),
             self.stroke.len(),
-            self.pan.tracking() || self.pressing.is_some()
+            self.pan.tracking() || self.press.is_pressed()
         ))
     }
 
@@ -722,26 +716,20 @@ impl Surface for FourierVisualizer {
         }
         let phase = gfx::phase(phase);
         // The clear button, over the GestureDetector's view.
-        if phase == Phase::Down && self.pressing.is_none() && self.hits_button(x, y) {
-            self.pressing = Some(id);
-            self.inside = true;
-            self.press.to(1.0, 250.0, press_easing());
+        if phase == Phase::Down && !self.press.is_pressed() && self.hits_button(x, y) {
+            self.press.pointer_down(id, true);
             return;
         }
-        if self.pressing == Some(id) {
-            match phase {
-                Phase::Move => self.inside = self.in_button(x, y),
-                Phase::Up | Phase::Cancel => {
-                    self.pressing = None;
-                    self.press.to(0.0, 250.0, press_easing());
-                    if phase == Phase::Up && self.inside {
-                        // onPress: isDrawing false, ref.current.clear(), the app's haptic.
-                        self.set_drawing(false);
-                        self.clear();
-                        self.posted.push("press".into());
-                    }
+        if self.press.finger() == Some(id) {
+            let inside = self.in_button(x, y);
+            if let Some(PressEvent::Press(press)) = self.press.pointer(id, phase, inside) {
+                // onPress: isDrawing false, ref.current.clear(), the app's haptic (posted as
+                // `press`: what fourier-visualizer.contract listens for).
+                self.set_drawing(false);
+                self.clear();
+                if press.global {
+                    self.posted.push("press".into());
                 }
-                Phase::Down => {}
             }
             return;
         }
@@ -815,7 +803,7 @@ impl Surface for FourierVisualizer {
                 pass.draw(0..3, 0..1);
             }
         }
-        moving || self.pan.tracking() || self.pressing.is_some()
+        moving || self.pan.tracking() || self.press.is_animating()
     }
 }
 

@@ -11,7 +11,8 @@
 //!   0.25, 1)), scale interpolate(p, [0, 1], [1, 0.96]) about the button's centre. active on
 //!   touch-down (onBegan), off on lift or cancel (onEnded/onFailed/onCancelled). onPress when the
 //!   finger lifts inside the button's own 48² bounds (RNGestureHandlerButton's strict hit frame):
-//!   the app's selection haptic (posted `haptic:selection`), then onPressHandler.
+//!   the app's selection haptic (posted `haptic:selection`), then onPressHandler. All of it is
+//!   the shared `pressto::Pressable`.
 //! - onPressHandler, unless isAnimating: progress = withSpring(1, { mass 0.5, stiffness 70,
 //!   damping 16 }) (ζ 1.35: run critically damped, as Reanimated does), then on finish
 //!   withSpring(0, { mass 0.5, stiffness 120, damping 14 }) (ζ 0.90, undershoots 0), then
@@ -34,8 +35,8 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::Phase;
-use reanimated::{interpolate, interpolate_clamp, Extrapolation, Spring, SpringConfig, Timing};
+use pressto::{PressEvent, Pressable};
+use reanimated::{interpolate, interpolate_clamp, Extrapolation, Spring, SpringConfig};
 use skia::{Canvas, Color, Font, Image, Images, Paint, Rect, Renderer, RsXform};
 
 use crate::gfx;
@@ -73,8 +74,7 @@ pub fn surface() -> Box<dyn Surface> {
         base: 0.0,
         texture: None,
         images: None,
-        press: Timing::at(0.0),
-        finger: None,
+        press: Pressable::new(),
         pressed: false,
         progress: Spring::at(0.0),
         stage: Stage::Idle,
@@ -108,9 +108,8 @@ struct ParticlesButton {
     /// The 80 × 4 premultiplied texture, rolled at mount.
     texture: Option<Image>,
     images: Option<Images>,
-    /// pressto's progress.
-    press: Timing,
-    finger: Option<u32>,
+    /// The PressableScale (the shared pressto machine).
+    press: Pressable,
     /// A press to handle on the next frame (JS runs it, the UI thread starts its animations).
     pressed: bool,
     progress: Spring,
@@ -233,7 +232,7 @@ impl ParticlesButton {
             }
         }
         // The PressableScale: scaled about its centre.
-        let k = interpolate(self.press.value, &[0.0, 1.0], &[1.0, 0.96], Extrapolation::Extend) as f32;
+        let k = self.press.scale() as f32;
         let mid = BLAST_SIZE / 2.0;
         c.save();
         c.translate(mid, mid);
@@ -296,7 +295,7 @@ impl Surface for ParticlesButton {
             self.animating(),
             self.progress.value,
             self.blast.value,
-            self.finger.is_some()
+            self.press.is_pressed()
         ))
     }
 
@@ -304,20 +303,9 @@ impl Surface for ParticlesButton {
         let InputEvent::Pointer { id, phase, x, y, .. } = *event else { return };
         let o = button_origin();
         let inside = (o..=o + SIZE).contains(&x) && (o..=o + SIZE).contains(&y);
-        match gfx::phase(phase) {
-            Phase::Down if self.finger.is_none() && inside => {
-                self.finger = Some(id);
-                self.press.to(1.0, 250.0, crate::floating_modal::press_easing());
-            }
-            Phase::Up | Phase::Cancel if self.finger == Some(id) => {
-                self.finger = None;
-                self.press.to(0.0, 250.0, crate::floating_modal::press_easing());
-                if phase == exact_gpu::PointerPhase::Up && inside {
-                    self.posted.push("haptic:selection".into());
-                    self.pressed = true;
-                }
-            }
-            _ => {}
+        if let Some(PressEvent::Press(press)) = self.press.pointer(id, gfx::phase(phase), inside) {
+            self.posted.extend(press.global_message().map(String::from));
+            self.pressed = true;
         }
     }
 
@@ -343,7 +331,7 @@ impl Surface for ParticlesButton {
         self.images = images;
         let (pw, ph) = frame.pixels();
         self.renderer.draw(device, queue, encoder, &self.canvas, target, format, pw, ph, wgpu::Color::TRANSPARENT);
-        moving || self.finger.is_some() || self.pressed
+        moving || self.press.is_animating() || self.pressed
     }
 }
 

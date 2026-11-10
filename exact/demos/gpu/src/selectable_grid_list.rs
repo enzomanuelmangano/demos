@@ -18,8 +18,8 @@
 //!   withTiming(active), scale withSpring(active) (Reanimated's default).
 //! - The button (bottom 20, right 20, 96 × 64, radius 20, #55D5FF, boxShadow 0 0 20px
 //!   rgba(0,0,0,0.5) → σ 10): MaterialIcons clear 20 and the count (20, black, 32 wide) spaced
-//!   evenly; translateY withSpring(count == 0 ? 150 : 0); a PressableScale (0.96, 250 ms) whose
-//!   press clears the selection and posts `press` (the app's selection haptic).
+//!   evenly; translateY withSpring(count == 0 ? 150 : 0); a PressableScale (0.96, 250 ms; the
+//!   shared `pressto::Pressable`) whose press (lifted inside it) clears the selection and posts `press` (the app's selection haptic).
 //!
 //! - The FlatList's own scroll: the pan and the UIScrollView's pan recognizer are not
 //!   simultaneous (RNGH's `shouldRecognizeSimultaneouslyWithGestureRecognizer` answers NO for a
@@ -46,10 +46,10 @@
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
 use gesture_handler::{Event, PanGesture, Phase, TapGesture};
+use pressto::{PressEvent, Pressable};
 use reanimated::{Easing, Spring, Timing, GENTLE};
 use skia::{fit_cover, Canvas, Color, Font, Images, Paint, Rect, Renderer};
 
-use crate::floating_modal::press_easing;
 use crate::gfx;
 
 /// GridConfig.
@@ -115,8 +115,7 @@ fn grid() -> SelectableGrid {
         count: 0,
         counts: (0..=ITEMS).map(|n| n.to_string()).collect(),
         fab_y: Spring::at(150.0),
-        fab_press: Timing::at(0.0),
-        pressing: None,
+        fab_press: Pressable::new(),
         posted: Vec::new(),
         check: Font::new(ANTDESIGN, 16.0).map(Font::with_ui_layout),
         clear: Font::new(MATERIAL, 20.0).map(Font::with_ui_layout),
@@ -208,8 +207,8 @@ struct SelectableGrid {
     count: usize,
     counts: Vec<String>,
     fab_y: Spring,
-    fab_press: Timing,
-    pressing: Option<u32>,
+    /// The button's PressableScale (the shared pressto machine).
+    fab_press: Pressable,
     posted: Vec<String>,
     check: Option<Font>,
     clear: Option<Font>,
@@ -295,7 +294,7 @@ impl Surface for SelectableGrid {
 
     fn agent(&mut self, _request: &str) -> Option<String> {
         let selected: Vec<String> = (0..ITEMS).filter(|&i| self.total(i)).map(|i| i.to_string()).collect();
-        Some(format!("{{\"selected\":[{}],\"offset\":{:.2},\"held\":{}}}", selected.join(","), self.offset, self.pan.tracking() || self.pressing.is_some()))
+        Some(format!("{{\"selected\":[{}],\"offset\":{:.2},\"held\":{}}}", selected.join(","), self.offset, self.pan.tracking() || self.fab_press.is_pressed()))
     }
 
     fn input(&mut self, event: &InputEvent) {
@@ -306,19 +305,17 @@ impl Surface for SelectableGrid {
         let phase = gfx::phase(phase);
         // The floating button, above the list.
         let (fx, fy) = self.fab_frame();
-        if phase == Phase::Down && self.pressing.is_none() && !self.pan.tracking() && (fx..=fx + FAB_W).contains(&x) && (fy..=fy + FAB_H).contains(&y) {
-            self.pressing = Some(id);
-            self.fab_press.to(1.0, 250.0, press_easing());
+        let on_fab = (fx..=fx + FAB_W).contains(&x) && (fy..=fy + FAB_H).contains(&y);
+        if phase == Phase::Down && !self.pan.tracking() && self.fab_press.pointer_down(id, on_fab) {
             return;
         }
-        if self.pressing == Some(id) {
-            if matches!(phase, Phase::Up | Phase::Cancel) {
-                self.pressing = None;
-                self.fab_press.to(0.0, 250.0, press_easing());
-                if phase == Phase::Up {
-                    // gridListRef.current.reset().
-                    self.current = [false; ITEMS];
-                    self.pending = None;
+        if self.fab_press.finger() == Some(id) {
+            if let Some(PressEvent::Press(press)) = self.fab_press.pointer(id, phase, on_fab) {
+                // gridListRef.current.reset(); the app's haptic, posted as `press` (what
+                // selectable-grid-list.contract listens for).
+                self.current = [false; ITEMS];
+                self.pending = None;
+                if press.global {
                     self.posted.push("press".into());
                 }
             }
@@ -542,7 +539,7 @@ impl Surface for SelectableGrid {
 
         // The floating button.
         if fy < h + 40.0 {
-            let k = 1.0 - 0.04 * self.fab_press.value as f32;
+            let k = self.fab_press.scale() as f32;
             c.save();
             c.translate(fx + FAB_W / 2.0, fy + FAB_H / 2.0);
             c.scale(k, k);
@@ -563,7 +560,7 @@ impl Surface for SelectableGrid {
         }
         let (pw, ph) = frame.pixels();
         self.renderer.draw(device, queue, encoder, &self.canvas, target, format, pw, ph, wgpu::Color::BLACK);
-        moving || self.pan.tracking() || self.pressing.is_some()
+        moving || self.pan.tracking() || self.fab_press.is_animating()
     }
 }
 

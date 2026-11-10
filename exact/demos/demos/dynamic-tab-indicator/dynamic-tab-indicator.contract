@@ -4,16 +4,11 @@
 // RN: src/animations/dynamic-tab-indicator (constants/data.tsx,
 // components/dynamic-tab-indicator/index.tsx, section-tabs.tsx).
 use DemoEnv, demoButtonRow from "../env.contract"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableOpacity, pressTransition from "pressto"
 
 // constants/data.tsx: the five photos (assets copied as they are) and their titles.
 fn titles(): string[] = ["France", "Italy", "Iceland", "Norway", "Japan"]
 fn photos(): string[] = ["assets/demos/dynamic-tab-indicator/france.jpg", "assets/demos/dynamic-tab-indicator/italy.jpg", "assets/demos/dynamic-tab-indicator/iceland.jpg", "assets/demos/dynamic-tab-indicator/norway.jpg", "assets/demos/dynamic-tab-indicator/japan.jpg"]
-
-// pressto's PressableOpacity (activeOpacity 0.5). packages/pressto's own `PressableOpacity`
-// does not compile (`-exact-press-opacity` is refused in `:active`), so the same 0.5 here.
-style TabPress
-  :active
-    opacity = 0.5
 
 // index.tsx INDICATOR_CONTAINER_HEIGHT 120.
 fn barHeight(): number = 120
@@ -28,6 +23,15 @@ fn widest(w: number): number = w / 5 - 16
 component DynamicTabIndicator
   props
     env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   state scroll = 0
   // Each title's onLayout: x within its tab plus index * width / 5 (xOutputRange), its width
   // (widthOutputRange), and the first title's y within its tab (indicatorLayout.y).
@@ -52,7 +56,7 @@ component DynamicTabIndicator
         fit = min(17, p.height * 17 / 20)
   // handleSelectSection: scrollTo({ x: index * width, animated: true }).
   action select(i: number)
-    haptic("selection")
+    pressablesOnPress()
     scrollIntoView(`page-${i}`, block="nearest", inline="start", behavior="smooth")
   view
     column position="absolute" inset=0 testId="dynamic-tab-indicator"
@@ -73,7 +77,10 @@ component DynamicTabIndicator
         background-color="rgba(255, 255, 255, 0.9)" testId="section-tabs"
         for title, i in titles() key=i
           // styles.container: flex 1, width / 5, centred, paddingHorizontal 8.
-          view display="flex" flex-direction="column" id=`tab-${i}` class=TabPress press=select(i) role="button" aria-label=title
+          view display="flex" flex-direction="column" id=`tab-${i}` press=select(i) role="button" aria-label=title
+            // pressto's PressableOpacity.
+            pointerdown=pressIn(i) pointerup=pressOut opacity=pressableOpacity(pressing, i, pressto)
+            transition=pressTransition("opacity", pressto)
             flex=1 width=(env.width / 5) align-items="center" justify-content="center"
             padding-left=8 padding-right=8 box-sizing="border-box" resize=measured(i) testId=`tab-${i}`
             // styles.title: #000, 17 bold (fitted: `fit`), centred, one line. The title and its tab

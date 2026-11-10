@@ -72,7 +72,8 @@ bun exact.mjs ios --run --sim $EXACT_SIM                         # native build 
   write damping 2√(k·m), not RN's number. `packages/reanimated` already does this.
 - `perspective` in Exact acts on a box's children (CSS), not on the box: put it on the parent of
   the rotating node.
-- Contract presses ease over 120 ms (host-fixed); pressto uses 250 ms. A known host limit.
+- Presses are pressto's (packages/pressto: 250 ms ease from pointerdown/pointerup state), not
+  the host's `:active` (a fixed 120 ms). See the port-demo skill.
 
 ## GPU surfaces (gpu/, packages/reanimated, packages/gesture-handler)
 

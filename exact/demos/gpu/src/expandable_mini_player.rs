@@ -9,7 +9,8 @@
 //! - The tab bar: 84 tall at the bottom; its four tabs (Ionicons home, search, create,
 //!   settings, 24, white) share the width of its top 74. A tab is a pressto pressable:
 //!   opacity interpolate(press, [0, 1], [selected ? 1 : 0.5, 1]), scale 1 → 0.97 (press:
-//!   withTiming 250 ms, bezier(0.25, 0.1, 0.25, 1)); the last pressed is selected; each press
+//!   withTiming 250 ms, bezier(0.25, 0.1, 0.25, 1); the shared `pressto::Pressable`); the last
+//!   pressed is selected (`pressto::Group`); each press
 //!   posts `press` (the app's selection haptic). The navigation shows the same screen.
 //! - The sheet (above the tabs): height 64 → window, bottom 84 → 0, left/right 16 → 0, its
 //!   colour #222222 → #0D0D0D (interpolateColor), a hairline border rgba(255,255,255,0.1)
@@ -43,10 +44,10 @@
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
 use gesture_handler::{Event, PanGesture, Phase, TapGesture};
-use reanimated::{interpolate, interpolate_color, Extrapolation, Spring, Timing, GENTLE};
+use pressto::{Group, PressEvent, Pressable};
+use reanimated::{interpolate, interpolate_color, Extrapolation, Spring, GENTLE};
 use skia::{fit_cover, Canvas, Color, Font, Images, Paint, Rect, Renderer};
 
-use crate::floating_modal::press_easing;
 use crate::gfx;
 
 /// TabBarHeight.
@@ -81,9 +82,8 @@ pub fn surface() -> Box<dyn Surface> {
         tap: TapGesture::default(),
         pan: PanGesture::new(),
         pan_enabled: false,
-        tab: None,
-        tab_press: std::array::from_fn(|_| Timing::at(0.0)),
-        selected: None,
+        tab_press: std::array::from_fn(|_| Pressable::new()),
+        group: Group::new(),
         posted: Vec::new(),
         icons: Font::new(IONICONS, 24.0).map(Font::with_ui_layout),
         demo: skia::match_ui_font(24.0, 600.0),
@@ -104,10 +104,10 @@ struct MiniPlayer {
     tap: TapGesture,
     pan: PanGesture,
     pan_enabled: bool,
-    /// The finger on a tab.
-    tab: Option<(u32, usize)>,
-    tab_press: [Timing; 4],
-    selected: Option<usize>,
+    /// Each tab's createAnimatedPressable (the shared pressto machine).
+    tab_press: [Pressable; 4],
+    /// The app's PressablesGroup: the last tab pressed is `isSelected`.
+    group: Group,
     posted: Vec<String>,
     icons: Option<Font>,
     demo: Option<Font>,
@@ -155,8 +155,8 @@ impl Surface for MiniPlayer {
     }
 
     fn agent(&mut self, _request: &str) -> Option<String> {
-        let selected = self.selected.map_or("null".to_string(), |s| s.to_string());
-        Some(format!("{{\"progress\":{:.3},\"selected\":{selected},\"held\":{}}}", self.progress.value, self.pan.tracking() || self.tab.is_some()))
+        let selected = self.group.last().map_or("null".to_string(), |s| s.to_string());
+        Some(format!("{{\"progress\":{:.3},\"selected\":{selected},\"held\":{}}}", self.progress.value, self.pan.tracking() || self.tab_press.iter().any(Pressable::is_pressed)))
     }
 
     fn input(&mut self, event: &InputEvent) {
@@ -169,24 +169,23 @@ impl Surface for MiniPlayer {
         let (px, py) = (x as f64, y as f64);
         let on_sheet = (sx..=sx + sw).contains(&px) && (sy..=sy + sh).contains(&py);
         // The tabs: the bar's top 74, in quarters, under the sheet.
-        if phase == Phase::Down && !on_sheet && self.tab.is_none() {
-            let (w, h) = self.size;
-            if (h - TAB_BAR..=h - 10.0).contains(&py) && (0.0..w).contains(&px) {
-                let i = ((px / (w / 4.0)) as usize).min(3);
-                self.tab = Some((id, i));
-                self.tab_press[i].to(1.0, 250.0, press_easing());
+        let (w, h) = self.size;
+        let q = w / 4.0;
+        let in_tab = |i: usize| (q * i as f64..=q * (i + 1) as f64).contains(&px) && (h - TAB_BAR..=h - 10.0).contains(&py);
+        if phase == Phase::Down {
+            if !on_sheet && !self.tab_press.iter().any(Pressable::is_pressed) && (h - TAB_BAR..=h - 10.0).contains(&py) && (0.0..w).contains(&px) {
+                let i = ((px / q) as usize).min(3);
+                self.tab_press[i].pointer_down(id, true);
             }
-        }
-        if let Some((tid, i)) = self.tab {
-            if tid == id && matches!(phase, Phase::Up | Phase::Cancel) {
-                self.tab = None;
-                self.tab_press[i].to(0.0, 250.0, press_easing());
-                let (w, h) = self.size;
-                let q = w / 4.0;
-                let inside = (q * i as f64..=q * (i + 1) as f64).contains(&px) && (h - TAB_BAR..=h - 10.0).contains(&py);
-                if phase == Phase::Up && inside {
-                    self.selected = Some(i);
-                    self.posted.push("press".into());
+        } else {
+            for i in 0..4 {
+                if let Some(PressEvent::Press(press)) = self.tab_press[i].pointer(id, phase, in_tab(i)) {
+                    // The app's haptic, posted as `press` (what expandable-mini-player.contract
+                    // listens for).
+                    self.group.press(i);
+                    if press.global {
+                        self.posted.push("press".into());
+                    }
                 }
             }
         }
@@ -277,8 +276,8 @@ impl Surface for MiniPlayer {
             let lh = gfx::line_height(font);
             let cy = h - TAB_BAR as f32 + (TAB_BAR as f32 - 10.0) / 2.0;
             for (i, glyph) in TABS.iter().enumerate() {
-                let press = self.tab_press[i].value;
-                let rest = if self.selected == Some(i) { 1.0 } else { 0.5 };
+                let press = self.tab_press[i].progress();
+                let rest = if self.group.is_selected(i) { 1.0 } else { 0.5 };
                 let opacity = interpolate(press, &[0.0, 1.0], &[rest, 1.0], Extrapolation::Extend) as f32;
                 let s = interpolate(press, &[0.0, 1.0], &[1.0, 0.97], Extrapolation::Extend) as f32;
                 let cx = w / 8.0 * (2 * i + 1) as f32;
@@ -342,7 +341,7 @@ impl Surface for MiniPlayer {
 
         let (pw, ph) = frame.pixels();
         self.renderer.draw(device, queue, encoder, &self.canvas, target, format, pw, ph, wgpu::Color::BLACK);
-        moving || self.pan.tracking() || self.tab.is_some()
+        moving || self.pan.tracking() || self.tab_press.iter().any(Pressable::is_animating)
     }
 }
 

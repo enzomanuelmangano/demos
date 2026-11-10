@@ -26,8 +26,9 @@
 //! - outlineModeProgress = withSpring(outlineMode) (Reanimated's default: 900, 120, 4).
 //! - progress: start (progress === 0) cancels, sets 0 and withSpring(1, { duration 1500,
 //!   dampingRatio 1 }); else cancel and withSpring(0, …) (no velocity: cancelled first).
-//! - pressto on the square: withTiming(active, 250 ms, bezier(0.25, 0.1, 0.25, 1)), scale
-//!   1 → 0.96 about its centre; onPress (lifted inside) posts `haptic:selection` then toggles.
+//! - pressto on the square (the shared `pressto::Pressable`): withTiming(active, 250 ms,
+//!   bezier(0.25, 0.1, 0.25, 1)), scale 1 → 0.96 about its centre; onPress (lifted inside)
+//!   posts `haptic:selection` then toggles.
 //! - The square's BlurView (zIndex 100: over the chessboard and the icon) intensity
 //!   interpolate(progress, [0, 0.7, 1], [0, 40, 0]), expo-blur's animator fraction intensity /
 //!   100 clamped to 0.01…1: skia::backdrop's `.regular` chain over the square's bounds (as
@@ -41,7 +42,8 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture, Phase};
+use gesture_handler::{Event, PanGesture};
+use pressto::{PressEvent, Pressable};
 use reanimated::{interpolate, Extrapolation, Spring, Timing, GENTLE};
 use reanimated::Easing;
 use skia::backdrop::{expo_fraction, BackdropBlur, Material};
@@ -77,8 +79,7 @@ pub fn surface() -> Box<dyn Surface> {
         samples: Vec::with_capacity(2048),
         stale: true,
         progress: Spring::at(0.0),
-        press: Timing::at(0.0),
-        pressing: None,
+        press: Pressable::new(),
         dragging: None,
         pan: PanGesture::new(),
         posted: Vec::new(),
@@ -103,9 +104,8 @@ struct BezierOutline {
     samples: Vec<(f64, f64)>,
     stale: bool,
     progress: Spring,
-    press: Timing,
-    /// The finger on the square.
-    pressing: Option<u32>,
+    /// The square's PressableScale (the shared pressto machine).
+    press: Pressable,
     /// The control point a finger moves.
     dragging: Option<usize>,
     pan: PanGesture,
@@ -191,8 +191,8 @@ impl BezierOutline {
         (cx - size / 2.0, cy - size / 2.0, size)
     }
 
+    /// onPress, after the global handler's haptic.
     fn on_press(&mut self) {
-        self.posted.push("haptic:selection".into());
         if self.progress.value == 0.0 {
             sample(&self.points, &mut self.samples);
             self.stale = false;
@@ -208,7 +208,7 @@ impl BezierOutline {
     fn record(&mut self, s: f32) {
         let (x, y, size) = self.square();
         let (x, y, size) = (x as f32, y as f32, size as f32);
-        let k = interpolate(self.press.value, &[0.0, 1.0], &[1.0, 0.96], Extrapolation::Extend) as f32;
+        let k = self.press.scale() as f32;
         let [outline, under, icon, mask] = &mut self.canvases;
         // The outline.
         outline.begin(s);
@@ -351,19 +351,9 @@ impl Surface for BezierOutline {
         // The square (PressableScale), in its own bounds.
         let (sx, sy, size) = self.square();
         let inside = (sx..=sx + size).contains(&xf) && (sy..=sy + size).contains(&yf);
-        match phase {
-            Phase::Down if self.pressing.is_none() && inside => {
-                self.pressing = Some(id);
-                self.press.to(1.0, 250.0, crate::floating_modal::press_easing());
-            }
-            Phase::Up | Phase::Cancel if self.pressing == Some(id) => {
-                self.pressing = None;
-                self.press.to(0.0, 250.0, crate::floating_modal::press_easing());
-                if phase == Phase::Up && inside {
-                    self.on_press();
-                }
-            }
-            _ => {}
+        if let Some(PressEvent::Press(press)) = self.press.pointer(id, phase, inside) {
+            self.posted.extend(press.global_message().map(String::from));
+            self.on_press();
         }
     }
 
@@ -409,7 +399,7 @@ impl Surface for BezierOutline {
         queue.write_buffer(&gpu.uniforms, 0, &u.bytes());
         skia::render::fullscreen_pass(encoder, "bezier content", &gpu.layers[4], &gpu.content, &gpu.content_bind);
         // The square's BlurView over its bounds as pressed (scale k about its centre).
-        let k = interpolate(self.press.value, &[0.0, 1.0], &[1.0, 0.96], Extrapolation::Extend) as f32;
+        let k = self.press.scale() as f32;
         let (cx, cy, half) = ((sx + size / 2.0) as f32, (sy + size / 2.0) as f32, size as f32 * k / 2.0);
         let square = round_out([(cx - half) * s, (cy - half) * s, (cx + half) * s, (cy + half) * s]);
         // What the window shows of it (the backdrop captures nothing beyond the screen).
@@ -441,7 +431,7 @@ impl Surface for BezierOutline {
         let screen = expo_fraction(self.intensity.value);
         self.screen_blur.run(device, queue, encoder, &gpu.layers[5], [0, 0, pw as i32, ph as i32], [0.0, 0.0], &Material::SystemUltraThinMaterialLight.chain().at(screen), s);
         self.screen_blur.draw(device, queue, encoder, target, format, [0.0, 0.0], [0, 0], [pw, ph]);
-        moving || self.pressing.is_some() || self.pan.tracking()
+        moving || self.press.is_animating() || self.pan.tracking()
     }
 }
 

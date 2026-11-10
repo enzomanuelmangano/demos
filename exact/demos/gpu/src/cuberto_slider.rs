@@ -105,6 +105,7 @@ impl Surface for CubertoSlider {
         Some(format!("{{\"value\":{},\"x\":{},\"balloonX\":{}}}", self.label_value, self.clamped(), self.balloon_x.value))
     }
 
+    /// RN's press is a Gesture.Pan's onBegin / onFinalize with its own springs, not pressto: not `pressto::Pressable`.
     fn input(&mut self, event: &InputEvent) {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
         // The picker's box (50 × 50 at the clamped x, scaled about its centre) is its hit area.

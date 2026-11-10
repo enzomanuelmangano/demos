@@ -53,9 +53,12 @@
 //!   bitmaps are drawn once, on the pixel grid, and composited (bilinear) at their opacity,
 //!   translateY and the button's scale. Layout is Yoga's (pixel grid, text sizes ceiled).
 //!
-//! The press (pressto 0.7 on RNGH 3.3): the PressableScale never scales; onPress fires at any
-//! lift of a touch that began on it (UIKit's hit test of its bounds through the pulse's scale),
-//! inside or outside, not on a cancel; the app's PressablesConfig plays the selection haptic.
+//! The press: pressto's PressableScale as designed (the shared `pressto::Pressable`; pressto 0.7
+//! on RNGH 3.3 shows none, its v3 BaseButton never reading onBegan/onEnded): a touch that
+//! begins on it (UIKit's hit test of its bounds through the pulse's and its own scale) holds
+//! it, scale 1 → 0.96 about its centre inside the pulse (withTiming 250 ms, bezier(0.25, 0.1,
+//! 0.25, 1)); onPress at a lift inside those bounds, not outside, not on a cancel; the app's
+//! PressablesConfig plays the selection haptic.
 //! toggle() runs on the JS thread at the lift: it reads iTime's last UI value.
 //!
 //! Motion audit (every animated value):
@@ -83,6 +86,7 @@ use std::sync::{Arc, Mutex};
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, PointerPhase, Surface, SurfaceError, Value};
+use pressto::{PressEvent, Pressable};
 use reanimated::interpolate_clamp;
 use skia::{Canvas, Color, Font, Image, ImageRef, Images, Matrix, Paint, Renderer, Shader};
 
@@ -1289,8 +1293,8 @@ struct NotionQrCode {
     /// The haptic reaction: lastHapticIndex and its previous value.
     haptic_index: i32,
     reaction_prev: Option<f64>,
-    /// The pointer that went down on the button.
-    press: Option<u32>,
+    /// The PressableScale (the shared pressto machine).
+    press: Pressable,
     posted: Vec<String>,
     /// The resting colours (createBackgroundColors: morph 0 and 1).
     resting: [[Color; AVATARS]; 2],
@@ -1331,7 +1335,7 @@ impl NotionQrCode {
             style_first: false,
             haptic_index: -1,
             reaction_prev: Some(0.0),
-            press: None,
+            press: Pressable::new(),
             posted: Vec::new(),
             resting,
             fonts: Fonts::new(),
@@ -1441,12 +1445,17 @@ impl NotionQrCode {
         self.layout = Some(Layout::new(w, h, s, sizes));
     }
 
-    /// UIKit's hit test of the PressableScale's bounds through the pulse's scale.
+    /// The button's scale: the pulse's Animated.View, then the PressableScale's own.
+    fn button_scale(&self) -> f32 {
+        (self.pulse.current * self.press.scale()) as f32
+    }
+
+    /// UIKit's hit test of the PressableScale's bounds through the pulse's and its own scale.
     fn hit(&self, x: f32, y: f32) -> bool {
         let Some(l) = self.layout.as_ref() else {
             return false;
         };
-        let k = self.pulse.current as f32;
+        let k = self.button_scale();
         let (cx, cy) = (l.button.x + l.button.w / 2.0, l.button.y + l.button.h / 2.0);
         let (hw, hh) = (l.button.w / 2.0 * k, l.button.h / 2.0 * k);
         x - cx >= -hw && x - cx < hw && y - cy >= -hh && y - cy < hh
@@ -1610,9 +1619,9 @@ impl NotionQrCode {
         draw_gradient(c, 0.0, w, TOP_GRADIENT, s);
         draw_gradient(c, h - BOTTOM_GRADIENT.0, w, BOTTOM_GRADIENT, s);
         let Some(l) = self.layout else { return };
-        // The button, under its Animated.View's scale.
+        // The button, under its Animated.View's scale and the PressableScale's.
         let b = l.button;
-        let k = self.pulse.current as f32;
+        let k = (self.pulse.current * self.press.scale()) as f32;
         let (cx, cy) = (b.x + b.w / 2.0, b.y + b.h / 2.0);
         c.save();
         c.translate(cx, cy);
@@ -1770,24 +1779,12 @@ impl Surface for NotionQrCode {
         else {
             return;
         };
-        match phase {
-            PointerPhase::Down => {
-                if self.press.is_none() && self.hit(x, y) {
-                    self.press = Some(id);
-                }
-            }
-            PointerPhase::Move => {}
-            PointerPhase::Up | PointerPhase::Cancel => {
-                if self.press == Some(id) {
-                    self.press = None;
-                    if phase == PointerPhase::Up {
-                        // BaseButton's onPress: the app's PressablesConfig haptic, then
-                        // animationRef.current.toggle().
-                        self.posted.push("haptic:selection".into());
-                        self.toggle(at_ms);
-                    }
-                }
-            }
+        let inside = self.hit(x, y);
+        if let Some(PressEvent::Press(press)) = self.press.pointer(id, crate::gfx::phase(phase), inside) {
+            // BaseButton's onPress: the app's PressablesConfig haptic, then
+            // animationRef.current.toggle().
+            self.posted.extend(press.global_message().map(String::from));
+            self.toggle(at_ms);
         }
     }
 
@@ -1801,6 +1798,7 @@ impl Surface for NotionQrCode {
         format: wgpu::TextureFormat,
     ) -> bool {
         let now = frame.now_ms;
+        self.press.step(now);
         let size = (frame.width, frame.height, frame.scale);
         if self.size != size {
             self.size = size;
@@ -2163,6 +2161,25 @@ mod tests {
         s.size = (W, H, 3.0);
         s.relayout();
         s
+    }
+
+    #[test]
+    fn the_toggle_scales_while_held_and_presses_only_lifted_inside() {
+        // pressto as designed: 0.96 at 250 ms on the bezier; lifted outside, no onPress.
+        let mut s = mounted();
+        let b = s.layout.unwrap().button;
+        let (x, y) = (b.x + 32.0, b.y + 32.0);
+        s.input(&pointer(PointerPhase::Down, x, y, 0.0));
+        s.press.step(0.0);
+        s.press.step(250.0);
+        assert!((s.button_scale() - 0.96).abs() < 1e-6);
+        s.input(&pointer(PointerPhase::Move, x, y - 120.0, 260.0));
+        s.input(&pointer(PointerPhase::Up, x, y - 120.0, 300.0));
+        assert!(s.messages().is_empty());
+        assert!(!s.showing_qr);
+        press(&mut s, 1000.0);
+        assert_eq!(s.messages(), vec!["haptic:selection".to_string()]);
+        assert!(s.showing_qr);
     }
 
     #[test]

@@ -4,7 +4,7 @@
 // RN: src/animations/scroll-progress (index.tsx, constants.ts, section-content-list/index.tsx,
 // section-content-list/bottom-progress/index.tsx, progress-bar-area.tsx, collapsed-area.tsx,
 // utils/get-reading-time.ts).
-use PressableOpacity from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableOpacity, pressTransition from "pressto"
 use DemoEnv, demoButtonRow from "../env.contract"
 
 shape Section
@@ -110,6 +110,15 @@ component BottomProgress
     left: number
     progress: number
     reset: action
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   view
     // styles.container: radius 40, height 70, the width above; absolute at bottom 50, centred,
     // #222123, zIndex 100, a 0.5 border rgba(255,255,255,0.1).
@@ -158,7 +167,9 @@ component BottomProgress
         // it scrolls to the top (only at END).
         column class=PillMotion position="absolute" inset=0 opacity=(isEnd(progress) ? 1 : 0)
           transition="opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
-          view display="flex" flex-direction="column" class=PressableOpacity flex=1 align-items="center" justify-content="center" press=reset
+          view display="flex" flex-direction="column" flex=1 align-items="center" justify-content="center" press=reset
+            pointerdown=pressIn(0) pointerup=pressOut
+            opacity=pressableOpacity(pressing, 0, pressto) transition=pressTransition("opacity", pressto)
             role="button" aria-label="Back to the top" testId="reset"
             // AntDesign "arrow-up" 24: the vector-icons glyph (512 × 536 units of 512 to the em).
             svg width=24 height=25.125 viewBox="0 0 512 536" aria-hidden=true

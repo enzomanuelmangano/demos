@@ -162,6 +162,7 @@ impl Surface for ExclusionTabs {
         Some(format!("{{\"active\":{},\"tab\":\"{}\"}}", self.active, TABS[self.active]))
     }
 
+    /// RN's tabs are Skia Touchable.Path onTap, not pressto: not `pressto::Pressable`.
     fn input(&mut self, event: &InputEvent) {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
         if let Event::Tap { x, y } = self.tap.event(id, gfx::phase(phase), x, y, at_ms, true) {

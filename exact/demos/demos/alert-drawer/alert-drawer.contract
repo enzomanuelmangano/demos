@@ -3,7 +3,7 @@
 // the close button folds it back. RN: src/animations/alert-drawer (src/index.tsx,
 // src/components/alert-drawer/index.tsx, styles.ts). The card's body, whose radius interpolates
 // with the spring, is a Rust surface: gpu/src/alert_drawer_card.rs.
-use PressableScale from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
 use DemoEnv from "../env.contract"
 
 // fonts.ts 'Honk-Regular': assets/fonts/honk-regular.otf. Its one face: RN's fontWeight 'bold'
@@ -46,17 +46,26 @@ style Drawer
 component AlertDrawer
   props
     env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   state isExpanded = false
   // Nothing plays before the first tap.
   state toggles = 0
   derive w = env.width
   action toggleExpansion
-    haptic("selection")
+    pressablesOnPress()
     isExpanded = not isExpanded
     toggles = toggles + 1
   // The pill: expanded, onConfirm (console.log('Confirmed') in src/index.tsx); else expands.
   action pressMain
-    haptic("selection")
+    pressablesOnPress()
     if not isExpanded
       isExpanded = true
       toggles = toggles + 1
@@ -92,7 +101,9 @@ component AlertDrawer
                   // styles.closeIconContainer 50 x 50; styles.closeButton 32, radius 16, #F8F8FA;
                   // FontAwesome close 14 #A1A0A2.
                   view display="flex" flex-direction="column" width=50 height=50 align-items="center" justify-content="center"
-                    button appearance="none" class=PressableScale press=toggleExpansion
+                    button appearance="none" press=toggleExpansion
+                      pointerdown=pressIn(0) pointerup=pressOut
+                      scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
                       aria-label="Close" testId="close-card" width=32 height=32 border-radius=16
                       background-color="color(display-p3 0.9725 0.9725 0.9804)" display="flex" align-items="center"
                       justify-content="center"
@@ -108,7 +119,9 @@ component AlertDrawer
                     color="#999999"
               // styles.button + styles.cancelButton: absolute, bottom 0, MIN_BUTTON_WIDTH x 50,
               // radius 50 continuous, #dfdfdf, paddingHorizontal 20.
-              button appearance="none" class=PressableScale press=toggleExpansion testId="cancel"
+              button appearance="none" press=toggleExpansion testId="cancel"
+                pointerdown=pressIn(1) pointerup=pressOut
+                scale=pressableScale(pressing, 1, pressto) transition=pressTransition("scale", pressto)
                 position="absolute" left=0 bottom=0 width=minButtonWidth(w) height=50
                 border-radius=50 background-color="#dfdfdf"
                 padding-left=20 padding-right=20 box-sizing="border-box" display="flex" align-items="center"
@@ -117,7 +130,9 @@ component AlertDrawer
                 text "Cancel" font-family="Honk-Regular" font-size=16 color="#111111"
         // The pill (styles.button): right (EXPANDED_CARD_WIDTH - BUTTON_WIDTH) / 2; bottom
         // padding; width BUTTON_WIDTH → MIN_BUTTON_WIDTH.
-        button appearance="none" class=PressableScale press=pressMain testId="continue"
+        button appearance="none" press=pressMain testId="continue"
+          pointerdown=pressIn(2) pointerup=pressOut
+          scale=pressableScale(pressing, 2, pressto) transition=pressTransition("scale", pressto)
           position="absolute" right=inset(w) bottom=(isExpanded ? inset(w) : 0)
           width=(isExpanded ? minButtonWidth(w) : buttonWidth(w)) height=50 border-radius=50
           corner-shape="-exact-continuous" background-color="color(display-p3 0.9412 0.1294 0.1686)" padding-left=20 padding-right=20

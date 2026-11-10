@@ -4,7 +4,7 @@
 // components/segmented-control/index.tsx, components/graph/index.tsx, constants/*). The graph
 // is Skia, drawn and sprung in Rust (gpu/src/steddy_graph_interaction.rs), as is the control's
 // highlight (its spring retargets as Reanimated's); the rest of the control is here.
-use PressableScale from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
 use DemoEnv from "../env.contract"
 
 font "SF-Compact-Rounded-Medium" = "assets/fonts/SF-Compact-Rounded-Medium.otf"
@@ -18,10 +18,19 @@ fn cellWidth(w: number): number = controlWidth(w) / 3
 component SteddyGraphInteraction
   props
     env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   // useState<ScoringDifficultyType>('Standard').
   state selected = 1
   action pick(i: number)
-    haptic("selection")
+    pressablesOnPress()
     selected = i
   view
     // styles.container: Palette.background, flex 1, centred.
@@ -34,7 +43,9 @@ component SteddyGraphInteraction
         flex-shrink=0 testId="steddy-control"
         for i in range(3) key=i
           // labelContainer: flex 1, centred, zIndex 2; PressableScale.
-          button appearance="none" press=pick(i) class=PressableScale flex=1 height="100%" display="flex"
+          button appearance="none" press=pick(i) flex=1 height="100%" display="flex"
+            pointerdown=pressIn(i) pointerup=pressOut
+            scale=pressableScale(pressing, i, pressto) transition=pressTransition("scale", pressto)
             align-items="center" justify-content="center" padding=0 border="none"
             background-color="transparent" z-index=2 aria-pressed=(i == selected)
             testId=`steddy-${difficultyName(i)}`

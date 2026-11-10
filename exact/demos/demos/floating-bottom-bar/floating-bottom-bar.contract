@@ -2,7 +2,7 @@
 // one and springs to the tab pressed. RN: src/animations/floating-bottom-bar (index.tsx,
 // components/bottom-tab-bar/index.tsx, animated-opacity-view, shader-light). The light is Skia:
 // gpu/src/floating_bottom_bar.rs draws it; its spring and the bar are here.
-use PressableScale from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
 use DemoEnv from "../env.contract"
 
 // The icons' glyphs (@expo/vector-icons fonts, 512 units to the em), in a box of the Text's
@@ -32,10 +32,19 @@ fn fade(active: bool): string = "opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.
 component FloatingBottomBar
   props
     env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   state index = 0
   // navigation.navigate(screenName).
   action choose(i: number)
-    haptic("selection")
+    pressablesOnPress()
     index = i
   view
     // The navigator's screens: plain Views on DefaultTheme's background, rgb(242, 242, 242).
@@ -54,9 +63,10 @@ component FloatingBottomBar
           testId="shader-light"
         for i in range(5) key=i
           // styles.iconContainer: flex 1, centred; PressableScale.
-          button appearance="none" press=choose(i) class=PressableScale flex=1 height="100%" display="flex"
+          button appearance="none" press=choose(i) flex=1 height="100%" display="flex"
             align-items="center" justify-content="center" opacity=(i == index ? 1 : 0.5)
-            transition=fade(i == index) aria-pressed=(i == index) testId=`tab-${i}`
+            pointerdown=pressIn(i) pointerup=pressOut scale=pressableScale(pressing, i, pressto)
+            transition=`${fade(i == index)}, ${pressTransition("scale", pressto)}` aria-pressed=(i == index) testId=`tab-${i}`
             aria-label=tabName(i)
             // size 24, white.
             svg width=24 height=(24 * iconLine(i) / 512) viewBox=`0 0 512 ${iconLine(i)}` aria-hidden=true

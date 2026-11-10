@@ -31,7 +31,7 @@
 //! - Touches: iOS Fabric applies zIndex as the layers' zPosition, which hit-testing ignores: the
 //!   pill and the blur cell, later siblings than the cells, take every touch inside them (the
 //!   recordings: a held press on the selected cell does not scale it). A cell (RNGH BaseButton,
-//!   pressto): scale 1 → 0.96 while held (withTiming 250 ms, bezier(0.25, 0.1, 0.25, 1)), onPress
+//!   pressto; the shared `pressto::Pressable`): scale 1 → 0.96 while held (withTiming 250 ms, bezier(0.25, 0.1, 0.25, 1)), onPress
 //!   on a lift inside it, with the app's selection haptic.
 //! - The blurs (`skia::backdrop`, UIBlurEffect.light at intensity / 100; 0 is none, as measured
 //!   at rest): each reads what lies under its frame: the blur cell the screen, the control and
@@ -40,6 +40,7 @@
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
 use gesture_handler::Phase;
+use pressto::{PressEvent, Pressable};
 use reanimated::{interpolate, interpolate_color, Easing, Extrapolation, Timing};
 use skia::backdrop::{BackdropBlur, Material, BACKDROP_WGSL};
 use skia::{Canvas, Color, Font, Paint, Renderer};
@@ -69,9 +70,6 @@ const ICON_SIZE: f32 = 13.0;
 const LABEL_SIZE: f32 = 14.0;
 /// TimingConfig.
 const TIMING_MS: f64 = 1000.0;
-/// pressto: minScale 0.96, 250 ms.
-const MIN_SCALE: f64 = 0.96;
-const PRESS_MS: f64 = 250.0;
 const LAYER: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 const UNIFORM: u64 = 256;
 
@@ -233,9 +231,8 @@ struct FluidTab {
     active: Vec<usize>,
     /// Each label's colour: its timing's progress, from, to.
     colour: [(Timing, [f64; 4], [f64; 4]); 3],
-    /// pressto's progress per cell; the finger on a cell.
-    press: [Timing; 3],
-    pressing: Option<(u32, usize)>,
+    /// Each cell's PressableScale (the shared pressto machine).
+    press: [Pressable; 3],
     placed: bool,
     label: Option<Font>,
     icon: Option<Font>,
@@ -263,8 +260,7 @@ impl FluidTab {
             blur: Timing::at(0.0),
             active: Vec::new(),
             colour: std::array::from_fn(colour),
-            press: std::array::from_fn(|_| Timing::at(0.0)),
-            pressing: None,
+            press: std::array::from_fn(|_| Pressable::new()),
             placed: false,
             label: Font::new(HONK, LABEL_SIZE).map(Font::with_ui_layout),
             icon: Font::new(MCI, ICON_SIZE).map(Font::with_ui_layout),
@@ -289,17 +285,8 @@ impl FluidTab {
             || inside(l.blur_cell(self.blur_tx.value as f32), x, y)
     }
 
-    fn press_to(&mut self, i: usize, held: bool) {
-        self.press[i].to(
-            if held { 1.0 } else { 0.0 },
-            PRESS_MS,
-            Easing::bezier(0.25, 0.1, 0.25, 1.0),
-        );
-    }
-
-    /// The cell's onPress (the app's selection haptic first).
+    /// The cell's onPress (after the app's selection haptic).
     fn select(&mut self, i: usize) {
-        self.posted.push("haptic:selection".into());
         let prev = self.selected;
         if prev == i {
             return;
@@ -498,7 +485,7 @@ impl FluidTab {
         let scales: Vec<f32> = self
             .press
             .iter()
-            .map(|t| (1.0 - (1.0 - MIN_SCALE) * t.value) as f32)
+            .map(|t| t.scale() as f32)
             .collect();
         let c = &mut self.canvas;
         c.begin(s);
@@ -572,26 +559,19 @@ impl Surface for FluidTab {
             return;
         };
         let phase = gfx::phase(phase);
-        match phase {
-            Phase::Down => {
-                if self.pressing.is_none() && !self.blocked(x, y) {
-                    if let Some(i) = self.layout.cell_at(x, y) {
-                        self.pressing = Some((id, i));
-                        self.press_to(i, true);
-                    }
+        if phase == Phase::Down {
+            if !self.press.iter().any(Pressable::is_pressed) && !self.blocked(x, y) {
+                if let Some(i) = self.layout.cell_at(x, y) {
+                    self.press[i].pointer_down(id, true);
                 }
             }
-            Phase::Move => {}
-            Phase::Up | Phase::Cancel => {
-                if let Some((pid, i)) = self.pressing {
-                    if pid == id {
-                        self.pressing = None;
-                        self.press_to(i, false);
-                        if phase == Phase::Up && self.layout.cell_at(x, y) == Some(i) {
-                            self.select(i);
-                        }
-                    }
-                }
+            return;
+        }
+        let at = self.layout.cell_at(x, y);
+        for i in 0..3 {
+            if let Some(PressEvent::Press(press)) = self.press[i].pointer(id, phase, at == Some(i)) {
+                self.posted.extend(press.global_message().map(String::from));
+                self.select(i);
             }
         }
     }
@@ -721,7 +701,7 @@ impl Surface for FluidTab {
         // Each cell's BlurView over its (pressed) frame of that.
         let mut second = vec![0f32; (UNIFORM / 4) as usize];
         for (i, intensity) in cells.iter().enumerate() {
-            let k = 1.0 - (1.0 - MIN_SCALE as f32) * self.press[i].value as f32;
+            let k = self.press[i].scale() as f32;
             let [cx, cy, cw, ch] = l.cell(i);
             let scaled = [
                 cx + cw * (1.0 - k) / 2.0,
@@ -749,7 +729,7 @@ impl Surface for FluidTab {
             &gpu.mid, &views[1], &views[2], &views[3], &gpu.under, UNIFORM,
         );
         gfx::pass(encoder, "fluid tab out", target, &gpu.out, &last);
-        moving || self.pressing.is_some()
+        moving || self.press.iter().any(Pressable::is_animating)
     }
 }
 

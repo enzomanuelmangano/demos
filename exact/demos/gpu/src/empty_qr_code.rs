@@ -21,17 +21,15 @@
 //! sampled bilinearly through the inverse of the card's transform, the continuous rounded clip
 //! drawn by the skia package under that transform.
 //!
-//! The press (RN with RNGH 3.3 and pressto 0.7): pressto hands BaseButton `onBegan`,
-//! `onActivated`, `onEnded`, `onFailed` and `onCancelled`, which RNGH 3's (v3) BaseButton does
-//! not read (its callbacks are onBegin / onActivate / onFinalize), so pressto's `active` never
-//! turns true: the PressableScale never scales (progress stays 0). Its `onPress` is BaseButton's,
-//! called from onFinalize when the native gesture was not cancelled or failed, whatever
-//! `pointerInside` says: the RawButton's shouldCancelWhenOutside is false, so UIControl's
-//! TouchUpOutside ends the gesture too. So a touch that starts inside the button's frame (UIKit's
-//! hit test: the BaseButton's bounds, not the card's transformed overflow) toggles at its lift,
-//! inside or outside; a cancelled touch (the screen's close pan taking it) does nothing.
-//! onPress also runs the app's PressablesConfig onPress: Haptics.selectionAsync, posted here as
-//! `haptic:selection`.
+//! The press: pressto's PressableScale as designed (the shared `pressto::Pressable`; RN with
+//! RNGH 3.3 shows none, as pressto 0.7 hands its v3 BaseButton `onBegan` / `onEnded`, which it
+//! no longer reads). A touch that starts in the button (UIKit's hit test: the BaseButton's
+//! bounds through its press scale, not the card's transformed overflow) holds it: progress
+//! withTiming 250 ms bezier(0.25, 0.1, 0.25, 1), the whole row scaled 1 → 0.96 about its centre
+//! (the card's too). onPress at a lift inside it (shouldCancelWhenOutside false: sliding off
+//! keeps the press, lifting there presses nothing); a cancelled touch (the screen's close pan
+//! taking it) does nothing. onPress runs toggle(), then the app's PressablesConfig onPress:
+//! Haptics.selectionAsync, posted here as `haptic:selection`.
 //!
 //! The letter: useActiveLetterAnimation's `setInterval(…, 650)` from the mount. RN's iOS timers
 //! (RCTTiming) are checked once per display frame: a repeating timer fires on the first frame
@@ -46,7 +44,7 @@
 //! | card scale | useAnimatedStyle withSpring(show ? 1.4 : 1), the default (900, 120, 4: ζ = 1); at mount the style updater's first value is the target (no motion) | `Spring::retarget(GENTLE)` from where it is; a velocity pointing away from the new target dropped (Reanimated's onStart); at rest at 1 |
 //! | card rotate | withSpring(show ? '0deg' : '-10deg'), the default | the same, in degrees; at rest at −10 |
 //! | logo opacity | withTiming(show ? 0 : 1): 300 ms, inOut(quad), from where it is | `Timing` (Easing::timing_default), same |
-//! | button scale | pressto PressableScale: progress never leaves 0 (see above) | none |
+//! | button scale | pressto PressableScale: withTiming(active, 250 ms, bezier(0.25, 0.1, 0.25, 1)), 1 → 0.96 about the row's centre | `pressto::Pressable` |
 //! | letter, colours, letterX | setInterval 650 ms: index (i + 1) % 8; useDerivedValue | ticks on the first frame ≥ last tick + 650 ms |
 //! | haptic | PressablesConfig onPress: selectionAsync | `haptic:selection` at the lift |
 //!
@@ -55,6 +53,7 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, PointerPhase, Surface, SurfaceError, Value};
+use pressto::{PressEvent, Pressable};
 use reanimated::{Easing, Spring, Timing, GENTLE};
 use skia::{point, Canvas, Color, Font, Matrix, Paint, Renderer, Shader};
 
@@ -162,8 +161,8 @@ struct EmptyQrCode {
     /// activeLetterIndex, and when the interval fires next (None until the first frame).
     index: usize,
     next_tick: Option<f64>,
-    /// The finger the button tracks.
-    finger: Option<u32>,
+    /// The PressableScale (the shared pressto machine).
+    press: Pressable,
     posted: Vec<String>,
     font: Option<Font>,
     qr: skia::Path,
@@ -206,7 +205,7 @@ impl EmptyQrCode {
             opacity: Timing::at(1.0),
             index: 0,
             next_tick: None,
-            finger: None,
+            press: Pressable::new(),
             posted: Vec::new(),
             font: Font::new(SF_ROUNDED_BOLD, FONT_SIZE),
             qr: qr::to_lyon(&verbs),
@@ -245,12 +244,24 @@ impl EmptyQrCode {
             .then(Matrix::rotate((self.rotate.value as f32).to_radians()))
             .then(Matrix::scale(k, k))
             .then(Matrix::translate(l.x0 + SIZE / 2.0, l.y0 + SIZE / 2.0))
+            .then(self.press_matrix())
     }
 
-    /// UIKit's hit test of the BaseButton: its untransformed frame (the window's width × 150;
-    /// pressto's scale never leaves 1).
+    /// The PressableScale's scale about the row's centre.
+    fn press_matrix(&self) -> Matrix {
+        let l = &self.layout;
+        let (cx, cy) = (l.w / 2.0, l.y0 + SIZE / 2.0);
+        let k = self.press.scale() as f32;
+        Matrix::translate(-cx, -cy).then(Matrix::scale(k, k)).then(Matrix::translate(cx, cy))
+    }
+
+    /// UIKit's hit test of the BaseButton: its frame (the window's width × 150) through its
+    /// press scale about its centre.
     fn hits(&self, x: f32, y: f32) -> bool {
         let l = &self.layout;
+        let k = self.press.scale() as f32;
+        let (cx, cy) = (l.w / 2.0, l.y0 + SIZE / 2.0);
+        let (x, y) = (cx + (x - cx) / k, cy + (y - cy) / k);
         x >= 0.0 && x < l.w && y >= l.y0 && y < l.y0 + SIZE
     }
 
@@ -302,20 +313,14 @@ impl Surface for EmptyQrCode {
         else {
             return;
         };
-        match phase {
-            PointerPhase::Down if self.finger.is_none() && self.layout.s > 0.0 => {
-                if self.hits(x, y) {
-                    self.finger = Some(id);
-                }
-            }
-            PointerPhase::Up if self.finger == Some(id) => {
-                self.finger = None;
-                // onPress: toggle(), then the app's selection haptic.
-                self.toggle();
-                self.posted.push("haptic:selection".into());
-            }
-            PointerPhase::Cancel if self.finger == Some(id) => self.finger = None,
-            _ => {}
+        if self.layout.s <= 0.0 {
+            return;
+        }
+        let inside = self.hits(x, y);
+        if let Some(PressEvent::Press(press)) = self.press.pointer(id, crate::gfx::phase(phase), inside) {
+            // onPress: toggle(), then the app's selection haptic.
+            self.toggle();
+            self.posted.extend(press.global_message().map(String::from));
         }
     }
 
@@ -332,7 +337,7 @@ impl Surface for EmptyQrCode {
             self.scale.value,
             self.rotate.value,
             self.opacity.value,
-            self.finger.is_some()
+            self.press.is_pressed()
         ))
     }
 
@@ -351,6 +356,7 @@ impl Surface for EmptyQrCode {
         self.scale.step(frame.now_ms);
         self.rotate.step(frame.now_ms);
         self.opacity.step(frame.now_ms);
+        self.press.step(frame.now_ms);
         if self
             .gpu
             .as_ref()
@@ -399,7 +405,7 @@ impl Surface for EmptyQrCode {
             );
             self.drawn_letter = Some(self.index);
         }
-        let pose = (self.scale.value, self.rotate.value);
+        let pose = (self.scale.value * self.press.scale(), self.rotate.value);
         if self.drawn_mask != Some(pose) {
             let m = self.matrix();
             let c = &mut self.mask;
@@ -586,16 +592,27 @@ mod tests {
     }
 
     #[test]
-    fn a_touch_on_the_row_toggles_at_its_lift_wherever_it_lifts() {
+    fn a_touch_on_the_row_presses_and_toggles_when_it_lifts_inside() {
         let mut q = EmptyQrCode::new();
         q.layout = Layout::new(420.0, 912.0, 3.0);
         // Outside the button's 150-pt row (the card's overflow at 1.4 is not hit-testable).
         q.input(&pointer(PointerPhase::Down, 210.0, 370.0));
         q.input(&pointer(PointerPhase::Up, 210.0, 370.0));
         assert!(!q.show && q.messages().is_empty());
-        // On the row, beside the card: a press.
+        // pressto as designed: held, the row scales to 0.96 over 250 ms; lifted outside it
+        // (BaseButton's pointerInside false), no onPress, no haptic.
         q.input(&pointer(PointerPhase::Down, 20.0, 400.0));
+        q.press.step(0.0);
+        q.press.step(250.0);
+        assert!((q.press.scale() - 0.96).abs() < 1e-9);
         q.input(&pointer(PointerPhase::Up, 20.0, 100.0));
+        assert!(!q.show && q.messages().is_empty());
+        q.press.step(266.0);
+        q.press.step(516.0);
+        assert_eq!(q.press.scale(), 1.0);
+        // On the row, beside the card, lifted inside it: a press.
+        q.input(&pointer(PointerPhase::Down, 20.0, 400.0));
+        q.input(&pointer(PointerPhase::Up, 30.0, 420.0));
         assert!(q.show);
         assert_eq!(q.messages(), vec!["haptic:selection".to_string()]);
         assert_eq!(

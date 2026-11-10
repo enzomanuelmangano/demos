@@ -8,7 +8,7 @@
 // continuous outline and its border (whose radius and width spring) are Rust:
 // gpu/src/dynamic_blur_tabs.rs, a canvas over the window's bottom given the scroll's offset to
 // draw what is under the bar; the icons are here.
-use PressableScale from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
 use DemoEnv, roll from "../env.contract"
 
 // constants/screens.ts: MaterialIcons home, search, favorite, person, settings.
@@ -55,6 +55,15 @@ style BarMotion
 component DynamicBlurTabs
   props
     env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   // states.ts IsTabBarActive: the scroll's offset is at (or above) the top.
   state isTabBarActive = true
   // The focused tab (focusedIndex), home at first.
@@ -68,7 +77,7 @@ component DynamicBlurTabs
     if (y <= 0) != isTabBarActive
       isTabBarActive = y <= 0
   action pick(i: number)
-    haptic("selection")
+    pressablesOnPress()
     focusedIndex = i
   view
     column position="absolute" inset=0 background-color="black" overflow="hidden"
@@ -115,7 +124,9 @@ component DynamicBlurTabs
               column class=BarMotion flex=1 opacity=(focusedIndex == i ? 1 : 0.3)
                 transition="opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
                 // A layout transition moves a box, its children jump: each level springs.
-                column class=PressableScale flex=1 align-items="center" justify-content="center"
+                column flex=1 align-items="center" justify-content="center"
+                  pointerdown=pressIn(i) pointerup=pressOut
+                  scale=pressableScale(pressing, i, pressto) transition=pressTransition("scale", pressto)
                   -exact-layout-transition="-exact-spring(900, 120, 4)" press=pick(i) role="tab" aria-selected=(focusedIndex == i)
                   aria-label=tabName(i) testId=`tab-${tabName(i)}`
                   svg width=25 height=25 viewBox="0 0 24 24" aria-hidden=true

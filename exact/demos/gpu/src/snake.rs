@@ -40,10 +40,12 @@
 //!   Animations started in a mapper pass start at that frame (their first value is where they
 //!   are); a style re-run with an unchanged target goes on (Reanimated's triggered-twice spring,
 //!   timing's same-target continuity).
-//! - The press (pressto's PressableScale on RNGH 3.3's BaseButton): pressto 0.7 hands BaseButton
-//!   onBegan/onActivated/onEnded, which RNGH 3's BaseButton never reads, so it never scales; its
-//!   onPress runs at any uncancelled lift of a touch that began in its frame (JS:
-//!   isGameOver.set(false), restart()), with the app's PressablesConfig haptic. The overlay takes
+//! - The press: pressto's PressableScale as designed (the shared `pressto::Pressable`; RNGH 3.3
+//!   shows none, as pressto 0.7 hands its v3 BaseButton onBegan/onEnded, which it never reads):
+//!   held from a touch-down in its frame, scale 1 → 0.96 about its centre (withTiming 250 ms,
+//!   bezier(0.25, 0.1, 0.25, 1)); onPress at a lift inside it (sliding off keeps the press;
+//!   lifting there or a cancel does nothing): JS isGameOver.set(false), restart(), with the
+//!   app's PressablesConfig haptic. The overlay takes
 //!   the board's touches (pointerEvents auto) from the frame its style says game over.
 //!
 //! Drawing. The board canvas: RoundedRect (0, 0, rows·sq, cols·sq, r 10, #ebebec); the snake
@@ -74,7 +76,7 @@
 //! | isChanging | reaction on the digit (true), setTimeout 200 ms on JS (false) | true in the mapper pass, false the frame after the first frame ≥ +200 ms |
 //! | blur intensity | withTiming(isChanging ? 1 : 0) × 10: 300 ms inOut(quad) | `Timing`, fraction = clamp(i / 100, 0.01, 1) of UIBlurEffect.light |
 //! | board blur | withTiming(isGameOver ? 50 : 0, 1000 ms) on a root BlurMask | nothing (RN draws none, above) |
-//! | button scale | pressto PressableScale: never scales (above) | none |
+//! | button scale | pressto PressableScale: withTiming(active, 250 ms, bezier(0.25, 0.1, 0.25, 1)), 1 → 0.96 about its centre | `pressto::Pressable`; the shader samples the button layer bilinearly through it |
 //! | haptics | onDirectionChange → selectionAsync at each fling's onStart (a refused reversal too); PressablesConfig on the restart press | `haptic:selection` at the recognising move and at the lift |
 
 use std::collections::VecDeque;
@@ -82,6 +84,7 @@ use std::collections::VecDeque;
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, PointerPhase, Surface, SurfaceError, Value};
 use gesture_handler::{directions, FlingEvent, FlingGesture};
+use pressto::{PressEvent, Pressable};
 use reanimated::{Easing, Spring, SpringConfig, Timing, GENTLE};
 use skia::backdrop::{expo_fraction, BackdropBlur, Material};
 use skia::{Canvas, Color, Font, Paint, Renderer};
@@ -545,8 +548,11 @@ impl Layout {
         x >= 0.0 && x < self.board && y >= self.board_top && y < self.board_top + self.board
     }
 
-    fn on_button(&self, x: f32, y: f32) -> bool {
+    /// UIKit's hit test of the button, through its press scale `k` about its centre.
+    fn on_button(&self, x: f32, y: f32, k: f32) -> bool {
         let [bx, by, bw, bh] = self.button;
+        let (cx, cy) = (bx + bw / 2.0, by + bh / 2.0);
+        let (x, y) = (cx + (x - cx) / k, cy + (y - cy) / k);
         x >= bx && x < bx + bw && y >= by && y < by + bh
     }
 
@@ -607,8 +613,8 @@ struct SnakeDemo {
     /// resetIsChanging's timeouts: when, which digit.
     timers: Vec<(f64, usize)>,
     flings: [FlingGesture; 4],
-    /// The finger on the restart button.
-    press: Option<u32>,
+    /// The restart PressableScale (the shared pressto machine).
+    press: Pressable,
     posted: Vec<String>,
     score_font: Option<Font>,
     label_font: Option<Font>,
@@ -678,7 +684,7 @@ impl SnakeDemo {
                 FlingGesture::new(directions::RIGHT),
                 FlingGesture::new(directions::DOWN),
             ],
-            press: None,
+            press: Pressable::new(),
             posted: Vec::new(),
             score_font: skia::match_ui_font(SCORE_SIZE, 700.0),
             label_font: skia::match_ui_font(LABEL_SIZE, 500.0),
@@ -720,7 +726,7 @@ impl SnakeDemo {
     }
 
     /// The restart press's onPress (JS): isGameOver.set(false); restart(): clear() and
-    /// gameState.set; the app's press haptic.
+    /// gameState.set (the app's press haptic is the caller's).
     fn restart(&mut self) {
         self.next.over = Some(false);
         if let Some(g) = self.game.as_mut() {
@@ -728,7 +734,6 @@ impl SnakeDemo {
             self.staged.capture(g);
             self.next.state = true;
         }
-        self.posted.push("haptic:selection".into());
     }
 
     /// One frame at `now`, as RN's threads run it: what JS sent lands, timers fire, the
@@ -968,17 +973,16 @@ impl Surface for SnakeDemo {
         if l.s <= 0.0 {
             return;
         }
+        let k = self.press.scale() as f32;
         if phase == PointerPhase::Down && self.overlay_auto && l.on_board(x, y) {
             // The overlay (pointerEvents auto) is hit; in it, the button.
-            if self.press.is_none() && l.on_button(x, y) {
-                self.press = Some(id);
-            }
+            self.press.pointer_down(id, l.on_button(x, y, k));
             return;
         }
-        if matches!(phase, PointerPhase::Up | PointerPhase::Cancel) && self.press == Some(id) {
-            self.press = None;
-            if phase == PointerPhase::Up {
+        if self.press.finger() == Some(id) {
+            if let Some(PressEvent::Press(press)) = self.press.pointer(id, gfx::phase(phase), l.on_button(x, y, k)) {
                 self.restart();
+                self.posted.extend(press.global_message().map(String::from));
             }
             return;
         }
@@ -1018,7 +1022,7 @@ impl Surface for SnakeDemo {
             json(head),
             length,
             json(food),
-            self.flings.iter().any(|f| f.tracking()) || self.press.is_some()
+            self.flings.iter().any(|f| f.tracking()) || self.press.is_pressed()
         ))
     }
 
@@ -1046,6 +1050,7 @@ impl Surface for SnakeDemo {
             self.drawn_count = None;
         }
         self.advance(frame.now_ms);
+        self.press.step(frame.now_ms);
         let (pw, ph) = frame.pixels();
         let l = self.layout;
         let s = l.s;
@@ -1126,7 +1131,7 @@ impl Surface for SnakeDemo {
                 l.px(l.button[2]) as f32,
                 l.px(l.button[3]) as f32,
             ],
-            overlay: [self.overlay.value as f32, 0.0, 0.0, 0.0],
+            overlay: [self.overlay.value as f32, self.press.scale() as f32, 0.0, 0.0],
         };
         let mut lefts = [0.0f32; MAX_DIGITS];
         for k in 0..MAX_DIGITS {
@@ -1635,10 +1640,16 @@ mod tests {
             t + 40.0,
         ));
         assert!(d.messages().is_empty());
-        // The button: a touch that began in it restarts at its lift, inside or not.
+        // The button (pressto as designed): a touch that began in it and lifts outside it
+        // presses nothing; one that lifts inside restarts.
         let (bx, by) = (l.button[0] + 5.0, l.button[1] + 5.0);
         d.input(&pointer(PointerPhase::Down, bx, by, t));
+        assert!(d.press.is_pressed());
         d.input(&pointer(PointerPhase::Up, bx, by - 80.0, t + 50.0));
+        assert!(d.messages().is_empty());
+        assert!(d.game.as_ref().unwrap().is_game_over);
+        d.input(&pointer(PointerPhase::Down, bx, by, t));
+        d.input(&pointer(PointerPhase::Up, bx + 2.0, by, t + 50.0));
         assert_eq!(d.messages(), vec!["haptic:selection".to_string()]);
         assert!(!d.game.as_ref().unwrap().is_game_over);
         t += F120;
@@ -1844,5 +1855,19 @@ mod tests {
             x += 1.0 / 3.0;
         }
         assert!(white > 20, "the label: {white}");
+
+        // Held (pressto as designed): 0.96 about its centre at 250 ms, so its left edge moves in
+        // by bw × 0.02 (3 pt): 2 pt in is the board now, 4 pt in still black.
+        s.press.pointer_down(9, true);
+        let held_from = t;
+        while t < held_from + 260.0 {
+            t += F120;
+            fixture::render(&gpu, &mut s, &frame(t)).unwrap();
+        }
+        let (held, _) = fixture::render(&gpu, &mut s, &frame(t)).unwrap();
+        held.save("snake-over-pressed");
+        assert!((s.press.scale() - 0.96).abs() < 1e-9);
+        assert!(near(px(&held, bx + 2.0, by + bh / 2.0), hex(BOARD), 2), "{:?}", px(&held, bx + 2.0, by + bh / 2.0));
+        assert!(near(px(&held, bx + 4.0, by + bh / 2.0), [0, 0, 0], 1), "{:?}", px(&held, bx + 4.0, by + bh / 2.0));
     }
 }

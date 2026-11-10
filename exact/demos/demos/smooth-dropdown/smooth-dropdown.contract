@@ -1,7 +1,7 @@
 // Smooth Dropdown: a header card over a stack of four option cards; a tap on the header springs
 // them open into a list (its chevron turns), a tap on an option picks it.
 // RN: src/animations/smooth-dropdown (index.tsx, components/dropdown/index.tsx, dropdrop-item.tsx).
-use PressableScale from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
 
 shape DropdownOption
   label: string
@@ -38,8 +38,8 @@ fn collapsedColor(i: number): string = match ["#1B1B1B", "#202020", "#262626", "
 
 component SmoothDropdown
   state open = false
+  // The global onPress (the haptic) is DropdownItem's.
   action pick(i: number)
-    haptic("selection")
     if i == 0
       open = not open
   view
@@ -56,38 +56,57 @@ component DropdownItem
     index: number
     open: bool
     press: action
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
+  // onPress: the global onPress, then the item's.
+  action pressed
+    pressablesOnPress()
+    press()
   derive isHeader = index == 0
   view
     // styles.item: absolute, 80% wide, 75 tall, padding 15, radius 10 (continuous);
     // zIndex optionsLength - index. Collapsed options are behind the header: no touches.
-    button appearance="none" press=press class=PressableScale testId=(isHeader ? "dropdown-header" : `dropdown-${option.label.toLowerCase()}`)
+    // The PressableScale's own scale multiplies the item's (a box inside it, filling it, takes
+    // the press scale and the item's paint: both turn about the same centre).
+    button appearance="none" press=pressed testId=(isHeader ? "dropdown-header" : `dropdown-${option.label.toLowerCase()}`)
       aria-label=option.label aria-expanded=open
-      position="absolute" bottom=0 left="10%" width="80%" height=75 padding=15 box-sizing="border-box"
-      border-radius=10 corner-shape="-exact-continuous" z-index=(5 - index)
-      pointer-events=(open or isHeader ? "auto" : "none")
+      position="absolute" bottom=0 left="10%" width="80%" height=75 padding=0
+      z-index=(5 - index) pointer-events=(open or isHeader ? "auto" : "none")
+      pointerdown=pressIn(0) pointerup=pressOut
       display="flex" flex-direction="row" align-items="stretch"
       translate=`0px ${0 - itemBottom(open, index)}px` scale=itemScale(open, index)
-      background-color=(open ? "#1B1B1B" : collapsedColor(index))
-      transition="translate -exact-spring(900, 120, 4), scale -exact-spring(900, 120, 4), background-color 112ms step-end"
-      // styles.content: a row, opacity interpolate(progress, [0, 1], [isHeader ? 1 : 0, 1]).
-      row flex=1 align-items="center" opacity=(open or isHeader ? 1 : 0) transition="opacity -exact-spring(900, 120, 4)"
-        // styles.iconBox: 80% of the row's height, square, #0C0C0C, radius 10, margin-right 12.
-        view height="80%" aspect-ratio=1 background-color="#0C0C0C" border-radius=10 corner-shape="-exact-continuous"
-          margin-right=12 display="flex" align-items="center" justify-content="center"
-          svg width=20 height=(20 * 536 / 512) viewBox="0 0 512 536" aria-hidden=true
-            path d=option.icon fill="#ffffff"
-        // styles.title: white, 16, letter-spacing 1.2, uppercase.
-        text option.label.toUpperCase() color="#ffffff" font-size=16 letter-spacing=1.2
-        view flex=1
-        // styles.arrowBox: 80% tall, centred, margin-right 5. The header's chevron turns
-        // interpolate(progress, [0, 1], [0, PI / 2], CLAMP) on the same spring (no overshoot).
-        view height="80%" margin-right=5 display="flex" align-items="center" justify-content="center"
-          if isHeader
-            // MaterialIcons "arrow-forward-ios" 20: the vector-icons glyph (512 × 512 units of 512 to the em).
-            svg width=20 height=20 viewBox="0 0 512 512" aria-hidden=true
-              rotate=(open ? "90deg" : "0deg") transition="rotate -exact-spring(900, 120, 4)"
-              path d="M133 432 171 469 384 256 171 43 133 80 308 256Z" fill="rgba(255,255,255,0.8)"
-          else
-            // MaterialIcons "arrow-forward" 20: the vector-icons glyph (512 × 512 units of 512 to the em).
-            svg width=20 height=20 viewBox="0 0 512 512" aria-hidden=true
-              path d="M256 85 427 256 256 427 226 397 345 277H85V235H345L226 115Z" fill="rgba(255,255,255,0.5)"
+      transition="translate -exact-spring(900, 120, 4), scale -exact-spring(900, 120, 4)"
+      row flex=1 padding=15 box-sizing="border-box" align-items="stretch"
+        border-radius=10 corner-shape="-exact-continuous"
+        background-color=(open ? "#1B1B1B" : collapsedColor(index))
+        scale=pressableScale(pressing, 0, pressto)
+        transition=`${pressTransition("scale", pressto)}, background-color 112ms step-end`
+        // styles.content: a row, opacity interpolate(progress, [0, 1], [isHeader ? 1 : 0, 1]).
+        row flex=1 align-items="center" opacity=(open or isHeader ? 1 : 0) transition="opacity -exact-spring(900, 120, 4)"
+          // styles.iconBox: 80% of the row's height, square, #0C0C0C, radius 10, margin-right 12.
+          view height="80%" aspect-ratio=1 background-color="#0C0C0C" border-radius=10 corner-shape="-exact-continuous"
+            margin-right=12 display="flex" align-items="center" justify-content="center"
+            svg width=20 height=(20 * 536 / 512) viewBox="0 0 512 536" aria-hidden=true
+              path d=option.icon fill="#ffffff"
+          // styles.title: white, 16, letter-spacing 1.2, uppercase.
+          text option.label.toUpperCase() color="#ffffff" font-size=16 letter-spacing=1.2
+          view flex=1
+          // styles.arrowBox: 80% tall, centred, margin-right 5. The header's chevron turns
+          // interpolate(progress, [0, 1], [0, PI / 2], CLAMP) on the same spring (no overshoot).
+          view height="80%" margin-right=5 display="flex" align-items="center" justify-content="center"
+            if isHeader
+              // MaterialIcons "arrow-forward-ios" 20: the vector-icons glyph (512 × 512 units of 512 to the em).
+              svg width=20 height=20 viewBox="0 0 512 512" aria-hidden=true
+                rotate=(open ? "90deg" : "0deg") transition="rotate -exact-spring(900, 120, 4)"
+                path d="M133 432 171 469 384 256 171 43 133 80 308 256Z" fill="rgba(255,255,255,0.8)"
+            else
+              // MaterialIcons "arrow-forward" 20: the vector-icons glyph (512 × 512 units of 512 to the em).
+              svg width=20 height=20 viewBox="0 0 512 512" aria-hidden=true
+                path d="M256 85 427 256 256 427 226 397 345 277H85V235H345L226 115Z" fill="rgba(255,255,255,0.5)"

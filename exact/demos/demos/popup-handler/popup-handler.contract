@@ -3,7 +3,7 @@
 // the menu and, 800 ms later, springs the circle to that corner.
 // RN: src/animations/popup-handler (index.tsx, BlurredPopup/{BlurredPopupProvider.tsx,
 // TouchablePopupHandler.tsx}).
-use PressableOpacity from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableOpacity, pressTransition from "pressto"
 use DemoEnv, demoButtonRow from "../env.contract"
 
 // index.tsx: size 64, internalPadding size / 2; the angles, their labels (capitalized words) and
@@ -76,6 +76,15 @@ keyframes blurOut
 component PopupHandler
   props
     env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   // translateX / translateY (the circle's place), starting at (size / 2, topY).
   state px = 32
   // (env is not read at state creation, so py is only used once the circle has moved: until
@@ -132,7 +141,7 @@ component PopupHandler
   // A row (PressableOpacity): close(), then 800 ms later selectedAngle; its reaction springs
   // the circle to the corner when the angle changes. The spring is begun here, held 800 ms.
   action pick(a: number)
-    haptic("selection")
+    pressablesOnPress()
     open = false
     if a != angle
       let now = performanceNow()
@@ -196,7 +205,9 @@ component PopupHandler
             for a in range(4) key=a
               // A row: 54 tall, rgba(255,255,255,0.95), paddingHorizontal 16, a 0.5 px
               // rgba(0,0,0,0.08) rule under it (none under the last).
-              row class=PressableOpacity press=pick(a) role="button" aria-label=popupLabel(a)
+              row press=pick(a) role="button" aria-label=popupLabel(a)
+                pointerdown=pressIn(a) pointerup=pressOut
+                opacity=pressableOpacity(pressing, a, pressto) transition=pressTransition("opacity", pressto)
                 height=54 align-items="center" padding-left=16 padding-right=16
                 background-color="rgba(255, 255, 255, 0.95)"
                 border-bottom-width=(a == 3 ? 0 : 0.5) border-bottom-style="solid"

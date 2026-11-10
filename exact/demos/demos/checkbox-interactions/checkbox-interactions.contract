@@ -1,6 +1,6 @@
 // Checkbox Interactions: twenty "Italian" chips; a tap checks one, its check fades in and the
 // chip reflows. RN: src/animations/checkbox-interactions (src/index.tsx, components/checkbox.tsx).
-use PressableScale from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
 use DemoEnv, demoButtonRow from "../env.contract"
 
 // FadeIn / FadeOut 150 ms on bezier(0.895, 0.03, 0.685, 0.22).
@@ -31,8 +31,19 @@ component Checkbox
     checked: bool
     press: action
     testId: string
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   view
-    button appearance="none" press=press testId=testId aria-pressed=checked class=PressableScale
+    button appearance="none" press=press testId=testId aria-pressed=checked
+      pointerdown=pressIn(0) pointerup=pressOut
+      scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
       display="flex" flex-direction="row" align-items="center" justify-content="center"
       padding=(checked ? "12px 14px 12px 24px" : "12px 24px") border-radius=36 corner-shape="-exact-continuous"
       border-width=1.5 border-style="solid"

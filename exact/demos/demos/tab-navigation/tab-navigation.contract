@@ -1,7 +1,7 @@
 // Tab Navigation: four pill tabs in a row; the chosen one widens, its icon slides left and its
 // label fades in. RN: src/animations/tab-navigation (src/index.tsx, src/constants.ts,
 // src/components/tabs/index.tsx, tab.tsx).
-use PressableScale from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
 use DemoEnv from "../env.contract"
 
 shape TabData
@@ -107,8 +107,19 @@ component Tab
     changed: bool
     press: action
     testId: string
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   view
-    button appearance="none" press=press class=PressableScale testId=testId aria-label=label aria-pressed=isActive
+    button appearance="none" press=press testId=testId aria-label=label aria-pressed=isActive
+      pointerdown=pressIn(0) pointerup=pressOut
+      scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
       // styles.container: #f1f1f1, borderRadius 15 continuous, height 60, justifyContent center;
       // width interpolate(progress, [0, 1], [minWidth, maxWidth 170]) on the progress spring.
       column width=(isActive ? 170 : minWidth) height=60 justify-content="center" background-color="#f1f1f1"

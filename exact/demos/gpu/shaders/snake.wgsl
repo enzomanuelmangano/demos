@@ -25,7 +25,8 @@ struct Snake {
     d0: vec4<f32>,
     d1: vec4<f32>,
     d2: vec4<f32>,
-    // The button's left and top (device px) and size (device px); the overlay's opacity.
+    // The button's left and top (device px) and size (device px); the overlay's opacity and the
+    // PressableScale's scale (about the button's centre).
     button: vec4<f32>,
     overlay: vec4<f32>,
 };
@@ -148,9 +149,17 @@ fn compose(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
         }
     }
     let o = u.overlay.x;
-    let b = pos.xy - u.button.xy;
+    let k = select(u.overlay.y, 1.0, u.overlay.y <= 0.0);
+    let half = u.button.zw * 0.5;
+    let b = (pos.xy - u.button.xy - half) / k + half;
     if (o > 0.0 && all(b >= vec2<f32>(0.0)) && all(b < u.button.zw)) {
-        let t = layer_p3(textureLoad(button, vec2<i32>(floor(b)), 0)) * o;
+        // At rest texel for texel; pressed, the layer's contents sampled bilinearly (Core
+        // Animation's filter) through the scale.
+        var raw = textureLoad(button, vec2<i32>(floor(b)), 0);
+        if (k != 1.0) {
+            raw = textureSampleLevel(button, smp, b / u.button.zw, 0.0);
+        }
+        let t = layer_p3(raw) * o;
         c = t.rgb + c * (1.0 - t.a);
     }
     var rgb = p3_to_srgb(c);

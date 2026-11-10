@@ -116,6 +116,7 @@ impl Surface for Theme {
         Some(format!("{{\"selected\":{},\"previous\":{},\"radius\":{:.1},\"scales\":[{}]}}", self.selected, self.previous, self.radius.value, scales.join(",")))
     }
 
+    /// RN's squares are Skia touch handlers with withSpring(0.9) / withSpring(1), not pressto: not `pressto::Pressable`.
     fn input(&mut self, event: &InputEvent) {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
         let phase = gfx::phase(phase);

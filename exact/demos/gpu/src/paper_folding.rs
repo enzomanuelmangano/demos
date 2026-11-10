@@ -25,7 +25,7 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, TapGesture};
+use pressto::{PressEvent, Pressable};
 use reanimated::{interpolate_color, Spring};
 use skia::{point, stops, Blur, Canvas, Color, Paint, Renderer, Shader};
 
@@ -43,16 +43,17 @@ const LAYER: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
-    // pressto's PressableWithoutFeedback is RNGH's BaseButton: onPress at the lift however long
-    // it was held (no maxDuration) or far it moved (no distance limit, the crate's default).
-    let tap = TapGesture::default().max_duration(f64::INFINITY);
-    Box::new(PaperFolding { tap, ..Default::default() })
+    // RN passes `globalHandlers={{}}`, which is no pressto prop (it falls through to the
+    // BaseButton): the intent, no global haptic over its own three, is `skipGlobalHandlers`.
+    Box::new(PaperFolding { press: Pressable::new().skip_global_handlers(), ..Default::default() })
 }
 
 #[derive(Default)]
 struct PaperFolding {
     progress: Spring,
-    tap: TapGesture,
+    /// pressto's PressableWithoutFeedback over the screen, the shared `pressto::Pressable`
+    /// (RNGH's BaseButton): onPress at the lift however long it was held or far it moved.
+    press: Pressable,
     /// Haptics still due: their delay after the press, the press's frame time once known.
     due: Vec<f64>,
     pressed_at: Option<f64>,
@@ -113,8 +114,8 @@ impl Surface for PaperFolding {
     }
 
     fn input(&mut self, event: &InputEvent) {
-        let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
-        if let Event::Tap { .. } = self.tap.event(id, gfx::phase(phase), x, y, at_ms, true) {
+        let InputEvent::Pointer { id, phase, .. } = *event else { return };
+        if let Some(PressEvent::Press(_)) = self.press.pointer(id, gfx::phase(phase), true) {
             let to = if self.progress.value > 0.5 { 0.0 } else { 1.0 };
             gfx::spring_to(&mut self.progress, to, 1000.0, 1.5);
             self.posted.push("haptic:selection".into());
