@@ -83,6 +83,6 @@ component Card
       z-index=cardZ(u) aria-label=`Card ${index + 1} with ${color} color` role="button"
       translate=`${cardX(u, cw(w)) + swapX(u, cw(w))}px ${cardY(u, ch(w))}px`
       rotate=`${deg(cardRotate(u))}deg` scale=cardScale(u) testId=`card-${index}`
-      view width=cw(w) height=ch(w) border-radius=20 corner-shape="squircle"
+      view width=cw(w) height=ch(w) border-radius=20 corner-shape="-exact-continuous"
         background-color=color box-shadow="0px 5px 10px rgba(0, 0, 0, 0.08)"
         rotate=`y ${deg(cardRotateY(u))}deg`
