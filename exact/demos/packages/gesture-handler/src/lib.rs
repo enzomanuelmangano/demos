@@ -221,6 +221,11 @@ impl Default for TapGesture {
 }
 
 impl TapGesture {
+    /// `.maxDistance(d)` (or `.maxDeltaX(d).maxDeltaY(d)`, as a radius): moving farther fails it.
+    pub fn max_distance(mut self, d: f32) -> TapGesture {
+        self.max_distance = d;
+        self
+    }
     /// A pointer event; `claim` says whether a down here is this tap's.
     pub fn event(&mut self, id: u32, phase: Phase, x: f32, y: f32, ms: f64, claim: bool) -> Event {
         match phase {

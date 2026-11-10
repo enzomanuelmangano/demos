@@ -17,3 +17,5 @@ exact-gpu = { path = "../../../../../../../../.exact/exact2/94b8671f70fe2e25b307
 lyon = "1.0"
 ttf-parser = { version = "0.25", default-features = false, features = ["std", "variable-fonts", "gvar-alloc"] }
 bytemuck = { version = "1", features = ["derive"] }
+# Decodes the JPEGs a demo bundles (`Image::from_jpeg`), pure Rust, the same on the web.
+zune-jpeg = "0.5"

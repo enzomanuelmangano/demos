@@ -1,0 +1,18 @@
+// Floating Modal: a "+" button in the corner grows into a centred modal ("New", "Done"); drag
+// the modal and it shrinks with the distance, let go far enough down and it closes. RN:
+// src/animations/floating-modal (index.tsx, components/FloatingModal). The modal, its content,
+// the backdrop, the pan, the presses and their timings are Rust: gpu/src/floating_modal.rs,
+// over styles.container's rgba(0, 0, 0, 0.1). The surface posts `press` for each press (the
+// app's selection haptic).
+use DemoEnv from "../env.contract"
+
+component FloatingModal
+  props
+    env: DemoEnv
+  action heard(m: string)
+    if m == "press"
+      haptic("selection")
+  view
+    canvas surface=floating_modal() message=heard position="absolute" top=0 left=0 width=env.width
+      height=env.height background-color="rgba(0, 0, 0, 0.1)" touch-action="none"
+      testId="floating-modal" aria-label="Floating modal: tap + to open, drag down to close"

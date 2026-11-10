@@ -1,0 +1,4 @@
+at "/demo/expandable-mini-player"
+
+test "the player is there"
+  expect tree has "expandable-mini-player"

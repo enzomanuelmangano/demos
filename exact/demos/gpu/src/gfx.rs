@@ -103,3 +103,35 @@ pub fn phase(phase: exact_gpu::PointerPhase) -> gesture_handler::Phase {
         exact_gpu::PointerPhase::Cancel => gesture_handler::Phase::Cancel,
     }
 }
+
+/// `Math.random()` for a surface: a seeded stream (mulberry32), so a demo's random layout is
+/// the same for a seed (the Contract's `env.seed`) and differs between launches.
+#[derive(Clone, Debug)]
+pub struct Random(u32);
+
+impl Random {
+    /// The stream `seed` names.
+    pub fn new(seed: f64) -> Random {
+        Random((seed.abs() as u64 % 4_294_967_296) as u32 ^ 0x9E37_79B9)
+    }
+    /// The next number in [0, 1).
+    pub fn next(&mut self) -> f64 {
+        self.0 = self.0.wrapping_add(0x6D2B_79F5);
+        let mut t = self.0;
+        t = (t ^ (t >> 15)).wrapping_mul(t | 1);
+        t ^= t.wrapping_add((t ^ (t >> 7)).wrapping_mul(t | 61));
+        ((t ^ (t >> 14)) as f64) / 4_294_967_296.0
+    }
+}
+
+/// Where a one-line RN `<Text>` box's baseline sits: the line is the font's ascent + descent
+/// (+ its line gap) tall, the baseline an ascent below its top.
+pub fn baseline(font: &skia::Font, top: f32) -> f32 {
+    top - font.metrics().ascent
+}
+
+/// The height of one line of `font` (an RN `<Text>` with no `lineHeight`).
+pub fn line_height(font: &skia::Font) -> f32 {
+    let m = font.metrics();
+    -m.ascent + m.descent + m.leading
+}

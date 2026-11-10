@@ -18,6 +18,7 @@ pub mod shaders {
 pub mod gfx;
 
 pub mod animated_3d_parallax;
+pub mod audio_player;
 pub mod balance_slider;
 pub mod blur_cards;
 pub mod blur_circles;
@@ -25,8 +26,10 @@ pub mod bottom_bar_skia;
 pub mod color_carousel;
 pub mod cuberto_slider;
 pub mod dot_sheet;
+pub mod expandable_mini_player;
 pub mod fibonacci_shader;
 pub mod floating_bottom_bar;
+pub mod floating_modal;
 pub mod fluid_slider;
 pub mod geometry_button;
 pub mod linear_sensors;
@@ -35,11 +38,13 @@ pub mod magnet_spring;
 pub mod metaball;
 pub mod radar_chart;
 pub mod record_button;
+pub mod selectable_grid_list;
 pub mod spiral;
+pub mod the_little_prince;
 
 /// The module's surfaces and its reflected shaders.
 pub static REGISTRY: Registry = Registry {
-    surfaces: &[("animated_3d_parallax", 0, animated_3d_parallax::surface), ("balance_slider", 0, balance_slider::surface), ("blur_cards", 1, blur_cards::surface), ("blur_circles", 0, blur_circles::surface), ("bottom_bar_skia", 1, bottom_bar_skia::surface), ("color_carousel", 1, color_carousel::surface), ("cuberto_slider", 0, cuberto_slider::surface), ("dot_sheet", 0, dot_sheet::surface), ("fibonacci_shader", 1, fibonacci_shader::surface), ("floating_bottom_bar", 0, floating_bottom_bar::surface), ("fluid_slider", 0, fluid_slider::surface), ("geometry_button", 0, geometry_button::surface), ("linear_sensors", 0, linear_sensors::surface), ("loading_button", 1, loading_button::surface), ("magnet_spring", 0, magnet_spring::surface), ("metaball", 0, metaball::surface), ("radar_chart", 10, radar_chart::surface), ("record_button", 1, record_button::surface), ("spiral", 0, spiral::surface)],
+    surfaces: &[("animated_3d_parallax", 0, animated_3d_parallax::surface), ("audio_player", 1, audio_player::surface), ("balance_slider", 0, balance_slider::surface), ("blur_cards", 1, blur_cards::surface), ("blur_circles", 0, blur_circles::surface), ("bottom_bar_skia", 1, bottom_bar_skia::surface), ("color_carousel", 1, color_carousel::surface), ("cuberto_slider", 0, cuberto_slider::surface), ("dot_sheet", 0, dot_sheet::surface), ("expandable_mini_player", 1, expandable_mini_player::surface), ("fibonacci_shader", 1, fibonacci_shader::surface), ("floating_bottom_bar", 0, floating_bottom_bar::surface), ("floating_modal", 0, floating_modal::surface), ("fluid_slider", 0, fluid_slider::surface), ("geometry_button", 0, geometry_button::surface), ("linear_sensors", 0, linear_sensors::surface), ("loading_button", 1, loading_button::surface), ("magnet_spring", 0, magnet_spring::surface), ("metaball", 0, metaball::surface), ("radar_chart", 10, radar_chart::surface), ("record_button", 1, record_button::surface), ("selectable_grid_list", 1, selectable_grid_list::surface), ("spiral", 0, spiral::surface), ("the_little_prince", 2, the_little_prince::surface)],
     shaders: shaders::SHADERS,
 };
 

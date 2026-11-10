@@ -1,0 +1,15 @@
+// Audio Player: a 22 s waveform of fifty bars that plays itself; a finger on it scrubs, the
+// bars near the finger grow and the time follows. RN: src/animations/audio-player (index.tsx,
+// constants.ts, helpers/, components/waveform-scrubber). The pills, the scrubber, the bars,
+// their springs and timings, the time label and the pan are Rust: gpu/src/audio_player.rs
+// (styles.container's #1D1B2B, the whole window). The waveform is random (Math.random()): the
+// launch's seed picks it.
+use DemoEnv from "../env.contract"
+
+component AudioPlayer
+  props
+    env: DemoEnv
+  view
+    canvas surface=audio_player(env.seed) position="absolute" top=0 left=0 width=env.width
+      height=env.height background-color="#1D1B2B" touch-action="none" testId="audio-player"
+      aria-label="Waveform: drag to scrub"

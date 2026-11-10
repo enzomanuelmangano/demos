@@ -1,0 +1,9 @@
+at "/demo/the-little-prince"
+
+test "the page and its button are there"
+  expect tree has "prince-canvas"
+  expect tree has "prince-toggle"
+
+test "the button toggles"
+  tap "prince-toggle"
+  expect tree has "prince-canvas"
