@@ -126,6 +126,25 @@ One commit per haptic event, never per frame.
   in its row and hugs the glyph the offset cancels; check which case a demo is.
 - `-exact-exit-animation` must be one literal declaration (no `${…}`), or the web target
   refuses it. Write the curve out (`cubic-bezier(0.455, 0.03, 0.515, 0.955)` is inOut(quad)).
+- RNGH's iOS Pan (measured, wheel-picker): `translationX/Y` starts at 0 where the pan activates
+  (UIKit drops its ~10 pt hysteresis; RNGH's custom criteria `setTranslation(.zero)`), not where
+  the finger went down; and a finger at rest sends no moves, so the lift's `velocityX/Y` is the
+  last move's (a drag held still still flings a snapPoint one tick on). `PanGesture::new().uikit()`
+  does both; the plain `new()` (translation from the down point, velocity decaying at rest) is
+  still the default until each surface is re-verified.
+- UIScrollView (measured, selectable-grid-list's FlatList): the drag is 1:1 from the pan's
+  activation; at the lift it decelerates (0.998/ms) only from a finger faster than ~335 pt/s and
+  not after a 100 ms rest: `ui_scroll::uiscroll_release`. Below that it stops under the finger.
+- SwiftUI views RN draws with @expo/ui (numeric text, …) are exact through the app's native
+  module (`modules/apple/Demos.swift`, a hyphenated tag in app.json `modules`): `rolling-count`
+  is AnimatedCount's Text. The web shows an empty box: test it with `expect tree has`.
+- RN Debug: Reanimated `scrollTo` driven from a pan's onUpdate lands about once per 200 ms (the
+  onScroll that refreshes the offset arrives late, so faster updates repeat the same target):
+  selectable-grid-list's edge auto-scroll steps 15.75 pt per update 200 ms apart, but only 2 of
+  7 updates 37 ms apart. A release build would not; decide per demo which one parity means.
+- argent on the Exact app: `gesture-custom` calls return before the gesture has played out; put
+  consecutive gestures in one `run-sequence` with `delayMs`, or the next Down catches a fling.
+  Its `interpolate` also fills an Up → Down gap with moves (one call per gesture).
 
 ## 4. Check
 
