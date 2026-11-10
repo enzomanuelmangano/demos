@@ -73,20 +73,21 @@ component AirbnbFlipInteraction
               aria-label=(isFlipped ? "Show the profile card" : "Show the stats card")
               testId="airbnb-card"
               // FlipCard: rotationContainer cardWidth × cardHeight (horizontal: rotate 0); the
-              // faces fill it.
-              view position="relative" width=cardW height=cardH
+              // faces fill it. Each face's `perspective(1000)` is here: Exact's `perspective`
+              // (CSS's) acts on a box's children, and the faces share this box's centre.
+              view position="relative" width=cardW height=cardH perspective=1000
                 // cardFace: radius spacing.l + 4 (28) continuous, boxShadow 0 4 12 10 % black,
                 // clipped; transform perspective 1000, rotateY, scale; backface hidden.
                 column position="absolute" inset=0 border-radius=28 corner-shape="squircle"
                   overflow="hidden" box-shadow="0px 4px 12px rgba(0, 0, 0, 0.1)"
-                  perspective=1000 backface-visibility="hidden"
+                  backface-visibility="hidden"
                   rotate=`y ${isFlipped ? 180 : 0}deg` transition=`rotate ${flipSpring()}`
                   animation=(flips == 0 ? "none" : (flips % 2 == 1 ? `flipScaleA ${flipScaleTiming()}` : `flipScaleB ${flipScaleTiming()}`))
                   testId="airbnb-front"
                   AirbnbFront()
                 column position="absolute" inset=0 border-radius=28 corner-shape="squircle"
                   overflow="hidden" box-shadow="0px 4px 12px rgba(0, 0, 0, 0.1)"
-                  perspective=1000 backface-visibility="hidden"
+                  backface-visibility="hidden"
                   rotate=`y ${isFlipped ? 360 : 180}deg` transition=`rotate ${flipSpring()}`
                   animation=(flips == 0 ? "none" : (flips % 2 == 1 ? `flipScaleA ${flipScaleTiming()}` : `flipScaleB ${flipScaleTiming()}`))
                   testId="airbnb-back"
