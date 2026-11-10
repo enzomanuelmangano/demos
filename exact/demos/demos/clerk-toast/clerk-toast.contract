@@ -147,7 +147,7 @@ component ClerkToast
         column padding-top=(env.safeTop + demoButtonRow())
           for n in range(10) key=n
             view class=PressableScale press=showToast role="button" aria-label="Show a toast"
-              background-color="#000000" border-radius=20 corner-shape="squircle" height=100
+              background-color="#000000" border-radius=20 corner-shape="-exact-continuous" height=100
               margin-left=20 margin-right=20 margin-top=10 margin-bottom=10
               testId=`clerk-card-${n}`
       // Backdrop: absoluteFill, translateY withSpring(windowHeight - gradientHeight); a
