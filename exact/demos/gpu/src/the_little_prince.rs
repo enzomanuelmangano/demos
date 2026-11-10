@@ -30,7 +30,7 @@
 //! Numbers as RN holds them: the page points, the picture points and the delays are
 //! Float32Arrays in RN (pageXY, picXY, delays), so they are rounded to f32 where RN stores them
 //! and every later step reads the rounded values (the centroids, angles, ripple and travel); a
-//! letter's advance is Core Text's (hmtx × 30 / 2000 in f64, then Skia's f32), not an f32
+//! letter's advance is Core Text's at opsz 12 (measured, then Skia's f32), not an f32
 //! product. The colour buffer is RN Skia's: a Float32Array per letter read as JS numbers and
 //! turned into an 8-bit SkColor by truncation (SkColorSetARGB(a × 255, r × 255, …)), so a
 //! letter's alpha is ⌊f32(1 − 0.42 sin(pe π)) × 255⌋. drawAtlas blends it with the sprite as the
@@ -222,11 +222,62 @@ fn ink_prob(rgb: &[u8]) -> f64 {
     t.powf(SAMPLE_GAMMA)
 }
 
-/// getGlyphWidths at 30 as RN Skia measures on iOS: Core Text's advance (hmtx × 30 / 2000, in
-/// f64) rounded once to f32. `advance_width` multiplies in f32 (one ulp off for 15 of the
-/// page's characters); the font unit count is recovered from it exactly (an integer, far
-/// inside f32's precision) and scaled as Core Text does.
+/// getGlyphWidths at 30 as RN Skia measures on iOS: Core Text's advances for Newsreader at 30
+/// on optical size 12 (CTFontGetAdvancesForGlyphs with the opsz variation 12), f32 as Skia
+/// keeps them. They are the variable font's interpolated advances, fractional: the opsz 12
+/// instance's hmtx rounds each to a font unit, and on this page that rounding moves a line
+/// break ("…said the fox. “But"). Measured with Core Text on the page's characters.
+const CORE_TEXT_ADVANCES: [(char, f32); 44] = [
+    (' ', 7.304999828338623),
+    ('(', 9.404999732971191),
+    (')', 9.404999732971191),
+    (',', 7.642499923706055),
+    ('.', 7.485000133514404),
+    (':', 8.234999656677246),
+    (';', 8.602499961853027),
+    ('A', 22.68000030517578),
+    ('B', 20.407499313354492),
+    ('G', 23.684999465942383),
+    ('I', 11.069999694824219),
+    ('M', 30.795000076293945),
+    ('O', 24.142499923706055),
+    ('T', 21.360000610351562),
+    ('W', 30.854999542236328),
+    ('Y', 21.712499618530273),
+    ('a', 15.427499771118164),
+    ('b', 17.774999618530273),
+    ('c', 14.4375),
+    ('d', 18.157499313354492),
+    ('e', 15.172499656677246),
+    ('f', 11.602499961853027),
+    ('g', 16.110000610351562),
+    ('h', 18.3075008392334),
+    ('i', 9.1875),
+    ('j', 8.145000457763672),
+    ('k', 17.6924991607666),
+    ('l', 8.8125),
+    ('m', 27.135000228881836),
+    ('n', 18.690000534057617),
+    ('o', 17.06999969482422),
+    ('p', 18.344999313354492),
+    ('r', 12.802499771118164),
+    ('s', 13.357500076293945),
+    ('t', 11.444999694824219),
+    ('u', 17.602500915527344),
+    ('v', 17.579999923706055),
+    ('w', 24.014999389648438),
+    ('x', 16.672500610351562),
+    ('y', 17.190000534057617),
+    ('—', 20.954999923706055),
+    ('“', 13.207500457763672),
+    ('”', 13.22249984741211),
+    ('…', 20.482500076293945),
+];
+
 fn core_text_advance(font: &Font, c: char) -> f64 {
+    if let Some((_, w)) = CORE_TEXT_ADVANCES.iter().find(|(k, _)| *k == c) {
+        return *w as f64;
+    }
     let mut buf = [0u8; 4];
     let w = font.advance_width(c.encode_utf8(&mut buf)) as f64;
     let units = (w * UNITS_PER_EM / FONT_SIZE as f64).round();
@@ -701,13 +752,12 @@ mod tests {
     #[test]
     fn advances_are_core_texts() {
         let font = Font::new(NEWSREADER, FONT_SIZE).unwrap();
-        for (c, ct) in [('o', 17.07f64), ('Y', 21.72), ('u', 17.61), (' ', 7.305), ('—', 20.955), ('“', 13.215)] {
+        for (c, ct) in [('o', 17.07f64), ('“', 13.2075)] {
             assert_eq!(core_text_advance(&font, c), ct as f32 as f64, "{c}");
         }
-        let mut buf = [0u8; 4];
+        // Every character of the page has its measured advance.
         for c in TEXT.chars().filter(|c| *c != '\n') {
-            let w = font.advance_width(c.encode_utf8(&mut buf)) as f64 * UNITS_PER_EM / FONT_SIZE as f64;
-            assert!((w - w.round()).abs() < 1e-3, "{c}: {w}");
+            assert!(CORE_TEXT_ADVANCES.iter().any(|(k, _)| *k == c), "{c}");
         }
     }
 
