@@ -6,12 +6,14 @@
 //!   stiffness 755.4, damping 109.9, mass 4 (tools/spring.ts 600 1).
 //! - The canvas's scale: withSpring(isActive ? 1 : 0.5), Reanimated 4's default spring.
 //! - The canvas is 200×200 with a border radius of 100: it clips to its circle, scaled with it.
-//! - Tap().maxDuration(20000): active from the finger's down to its lift. The heavy haptic at
-//!   the down is the app's (`-exact-press-haptic` on the canvas's box).
+//! - Tap().maxDuration(20000): active from the finger's down (inside the scaled view's
+//!   rectangle: its radius does not clip RN's hit test) to its lift, its leaving that rectangle
+//!   (Tap cancels outside its view) or 20 s. The heavy haptic is onBegin's: posted at an
+//!   accepted down (`messages`), played by the app.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, PointerPhase, Surface, SurfaceError, Value};
-use reanimated::{interpolate_clamp, Spring, SpringConfig, GENTLE};
+use reanimated::{interpolate, Extrapolation, Spring, SpringConfig, GENTLE};
 use skia::{Canvas, Color, Paint, Renderer};
 
 const CIRCLES: usize = 50;
@@ -27,6 +29,10 @@ pub fn surface() -> Box<dyn Surface> {
 struct GeometryButton {
     size: (f32, f32),
     finger: Option<u32>,
+    /// When the finger went down (Tap's maxDuration 20000 counts from it).
+    down_ms: f64,
+    /// Haptics for the app to play (`message=buzz`).
+    posted: Vec<String>,
     progress: Spring,
     scale: Spring,
     canvas: Canvas,
@@ -34,6 +40,12 @@ struct GeometryButton {
 }
 
 impl GeometryButton {
+    /// Inside the scaled view: the 200×200 box at its scale about the centre.
+    fn inside(&self, x: f32, y: f32) -> bool {
+        let s = self.scale.value as f32;
+        let (cx, cy) = (self.size.0 / 2.0, self.size.1 / 2.0);
+        (x - cx).abs() <= self.size.0 / 2.0 * s && (y - cy).abs() <= self.size.1 / 2.0 * s
+    }
     fn press(&mut self, active: bool) {
         self.progress.to(if active { 1.0 } else { 0.0 }, self.progress.velocity, PROGRESS);
         self.scale.to(if active { 1.0 } else { 0.5 }, self.scale.velocity, GENTLE);
@@ -50,15 +62,20 @@ impl Surface for GeometryButton {
     }
 
     fn input(&mut self, event: &InputEvent) {
-        let InputEvent::Pointer { id, phase, x, y, .. } = *event else { return };
+        let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
         match phase {
             PointerPhase::Down if self.finger.is_none() => {
-                // The tap is the scaled view's: a touch inside its circle.
-                let (cx, cy) = (self.size.0 / 2.0, self.size.1 / 2.0);
-                let r = self.size.0.min(self.size.1) / 2.0 * self.scale.value as f32;
-                if (x - cx).hypot(y - cy) <= r {
+                if self.inside(x, y) {
                     self.finger = Some(id);
+                    self.down_ms = at_ms;
+                    self.posted.push("haptic:impact-heavy".into());
                     self.press(true);
+                }
+            }
+            PointerPhase::Move if self.finger == Some(id) => {
+                if !self.inside(x, y) || at_ms - self.down_ms > 20000.0 {
+                    self.finger = None;
+                    self.press(false);
                 }
             }
             PointerPhase::Up | PointerPhase::Cancel if self.finger == Some(id) => {
@@ -67,6 +84,10 @@ impl Surface for GeometryButton {
             }
             _ => {}
         }
+    }
+
+    fn messages(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.posted)
     }
 
     fn render(
@@ -79,9 +100,13 @@ impl Surface for GeometryButton {
         format: wgpu::TextureFormat,
     ) -> bool {
         self.size = (frame.width, frame.height);
+        if self.finger.is_some() && frame.now_ms - self.down_ms > 20000.0 {
+            self.finger = None;
+            self.press(false);
+        }
         let moving = self.progress.step(frame.now_ms) | self.scale.step(frame.now_ms);
         let p = self.progress.value;
-        let stroke_width = interpolate_clamp(p, &[0.0, 0.5, 1.0], &[3.0, 0.6, 0.2]);
+        let stroke_width = interpolate(p, &[0.0, 0.5, 1.0], &[3.0, 0.6, 0.2], Extrapolation::Extend).max(0.0);
         let radius = (SIZE / 2.0) as f32;
         let mut path = skia::path_builder();
         for i in 0..CIRCLES {
