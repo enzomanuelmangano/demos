@@ -36,7 +36,7 @@ gesture-handler, expo-*): those map to `packages/*` here.
 | Pan/drag that moves a box (no per-frame logic) | `transformDragFor` + `transformgeometry`/`transformrelease`, `-exact-drag-timeline` + `animation-timeline` (interaction-gallery's CardDeck): host-driven, zero commits |
 | Gestures with per-frame logic, physics, many moving things | Rust surface: `gesture-handler` + `reanimated` crates, `wants_input()` |
 | Skia (anything), WebGPU, three.js, shaders | Rust surface in `gpu/src/<slug>.rs` + `gpu/shaders/<slug>.wgsl` |
-| `PressableScale` / `PressableOpacity` (pressto) | `class=PressableScale` / `PressableOpacity` from `"pressto"`, + `haptic("selection")` in the press action (the app's global press haptic) |
+| Any pressto pressable (`PressableScale`, `PressableOpacity`, `PressableWithoutFeedback`, `createAnimatedPressable`) | **pressto is the app's global press system: use `packages/pressto`, never `:active` / `-exact-press-*`.** Contract: `pressing` state + `pointerdown=pressIn(key) pointerup=pressOut` + `scale=pressableScale(pressing, key, pressto)` (`pressableOpacity`, `animatedPressable(…, rest, pressed)`, `animatedPressableColor`) + `transition=pressTransition("scale", pressto)`, and `pressablesOnPress()` (the global haptic) in the press action; `inject pressto: PressablesConfig` and `pressablesOnPress: action` (the root provides them). Rust surface: `pressto::Pressable` (BaseButton semantics, progress, `scale()`/`opacity()`, `global_message()`). packages/pressto/README.md |
 | `Math.random()` | `roll(env.seed, k, n)` from `../env.contract` |
 | `useWindowDimensions()` | `env.width`, `env.height`; `useSafeAreaInsets().top` is `env.safeTop` |
 | `DEMO_BUTTON_ROW_HEIGHT` | `demoButtonRow()` (56) |
@@ -317,6 +317,13 @@ One commit per haptic event, never per frame.
   calls onPress on any uncancelled lift, inside or not (a key slid off still types; measured on
   mobile-input and steps' Continue). The owner's decision: port pressto's design (progress on press
   in/out, onPress only on a lift inside), not the bug.
+- pressto is the global press system; use it (packages/pressto, Contract and crate). Its timing is
+  pressto's (250 ms on CSS `ease`, a full run from the current value on every retarget): the
+  host's `:active` is a fixed 120 ms on cubic-bezier(.16, 1, .3, 1) that nothing changes, so no
+  pressable uses it. A node with `pointerdown`/`pointerup` gets no host dim. A node that already
+  has its own `scale` takes the press on a box inside that fills it (smooth-dropdown); its own
+  `transition` joins `pressTransition(…)` with `, `. Never write `haptic("selection")` for a press:
+  call `pressablesOnPress()` (or post `haptic:selection` from a surface).
 - RNGestureHandlerButton's inside test is `locationInView:self` against its own bounds: through
   the view's transform. A pressable scaled to 0.9 while held has a 0.9 hit frame; test the lift
   in the key's transformed bounds (mobile-input).
