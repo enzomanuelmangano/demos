@@ -1,0 +1,20 @@
+// Duration Slider: a soft white dial with a red ring that follows a knob dragged around it, the
+// value 1…12 in its middle, a selection haptic at each step. RN: src/animations/duration-slider
+// (src/index.tsx, components/circular-slider.tsx, donut.tsx, picker.tsx, background-dots.tsx).
+// The whole Skia canvas (its blurs, inner shadows, gradient ring, text) and its touch handling
+// are Rust: gpu/src/duration_slider.rs, which posts the haptic.
+use DemoEnv from "../env.contract"
+
+component DurationSlider
+  props
+    env: DemoEnv
+  action buzz(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+  view
+    // styles.container: white, flex 1, centred; the canvas is windowWidth × 0.8 square.
+    column position="absolute" inset=0 background-color="color(display-p3 1 1 1)" align-items="center"
+      justify-content="center" testId="duration-slider"
+      canvas surface=duration_slider() message=buzz width=(env.width * 0.8) height=(env.width * 0.8)
+        flex-shrink=0 touch-action="none" testId="duration-slider-canvas"
+        aria-label="Duration: drag the knob around the dial"

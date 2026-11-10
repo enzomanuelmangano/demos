@@ -29,6 +29,7 @@ pub mod bottom_bar_skia;
 pub mod color_carousel;
 pub mod cuberto_slider;
 pub mod dot_sheet;
+pub mod duration_slider;
 pub mod expandable_mini_player;
 pub mod fibonacci_shader;
 pub mod floating_bottom_bar;
@@ -69,6 +70,7 @@ pub static REGISTRY: Registry = Registry {
         ("color_carousel", 1, color_carousel::surface),
         ("cuberto_slider", 0, cuberto_slider::surface),
         ("dot_sheet", 0, dot_sheet::surface),
+        ("duration_slider", 0, duration_slider::surface),
         ("expandable_mini_player", 1, expandable_mini_player::surface),
         ("fibonacci_shader", 1, fibonacci_shader::surface),
         ("floating_bottom_bar", 0, floating_bottom_bar::surface),

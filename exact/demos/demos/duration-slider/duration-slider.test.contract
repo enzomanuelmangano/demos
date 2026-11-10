@@ -1,0 +1,5 @@
+at "/demo/duration-slider"
+
+test "the dial is there"
+  expect tree has "duration-slider"
+  expect tree has "duration-slider-canvas"
