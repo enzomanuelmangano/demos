@@ -147,6 +147,18 @@ One commit per haptic event, never per frame.
   still lift glides at λ = 0.01464 (~300 ms), not at the deceleration rate. `ui_scroll` does all
   of it. A still lift below ~335 pt/s reports velocity 0 to willEndDragging, so snapToInterval
   rounds. Measure a new scroll question with the probe before guessing: RN's recordings can't.
+- UIScrollView's drag (scroll probe, argent drags): the pan begins on the SECOND move past the
+  10 pt hysteresis (7 of 9 drags) and the content follows 1:1 from that move; the lift's own
+  point does not move the content. A 101 pt flick so lands one snap shorter than a pan-style
+  start (color-carousel). `ui_scroll` does it. UIKit clamps `decelerationRate` to fast (0.99) at
+  least: RN's `decelerationRate={0.8}` is fast.
+- RN ScrollView snapping on iOS: `snapToInterval` / `snapToOffsets` override `pagingEnabled`
+  (ScrollView.js sets it false), so a list with both snaps by RCTEnhancedScrollView's rule, never
+  by UIKit's page. Evenly spaced `snapToOffsets` are `Snap::Interval`.
+- Remote photos in a Rust surface: download the exact URLs RN requests (same `w=`) into
+  `gpu/images/<slug>/` and `include_bytes!` them (coverflow, circular-carousel: ~1 MB total).
+- packages/skia: a continuous rrect with r ≥ half its side (a continuous circle or pill) leaves a
+  1-sample AA crack one pixel inside its extremes (reported; circular-carousel's rings show it).
 - Icon fonts drawn in Rust (`draw_text` of an AntDesign / Entypo glyph): TextKit sets the glyph
   half the font's hhea lineGap below box top + ascender (twodos-slide's check was 5.6 px high).
   Add `font.metrics().leading / 2` to the top before `gfx::baseline`.
