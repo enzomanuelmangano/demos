@@ -32,5 +32,6 @@ component FractalGlass
           canvas surface=fractal_glass(theme == "dark" ? 3 : 2) position="absolute" top=0 left=0 width=58
             height=58 pointer-events="none" testId="fractal-glass-theme-fill" aria-hidden=true
           // Octicons, size 24, white: the sun in the dark theme, the moon in the light one.
-          svg width=24 height=(24 * 564 / 512) viewBox="0 0 512 564" aria-hidden=true testId="fractal-glass-icon"
+          // Positioned, so it paints over the absolute fill (an in-flow box paints under it).
+          svg position="relative" width=24 height=(24 * 564 / 512) viewBox="0 0 512 564" aria-hidden=true testId="fractal-glass-icon"
             path d=(theme == "light" ? moonPath() : sunPath()) fill="#ffffff"
