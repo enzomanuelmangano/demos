@@ -18,6 +18,7 @@ use BlurCircles from "./blur-circles/blur-circles.contract"
 use BlurredBottomBar from "./blurred-bottom-bar/blurred-bottom-bar.contract"
 use BlurredScroll from "./blurred-scroll/blurred-scroll.contract"
 use BottomBarSkia from "./bottom-bar-skia/bottom-bar-skia.contract"
+use CardShaderReflections from "./card-shader-reflections/card-shader-reflections.contract"
 use CheckboxInteractions from "./checkbox-interactions/checkbox-interactions.contract"
 use CircularCarousel from "./circular-carousel/circular-carousel.contract"
 use ClerkToast from "./clerk-toast/clerk-toast.contract"
@@ -37,14 +38,18 @@ use ExclusionTabs from "./exclusion-tabs/exclusion-tabs.contract"
 use ExpandableMiniPlayer from "./expandable-mini-player/expandable-mini-player.contract"
 use FamilyNumberInput from "./family-number-input/family-number-input.contract"
 use FibonacciShader from "./fibonacci-shader/fibonacci-shader.contract"
+use FibonacciShaderGrid from "./fibonacci-shader-grid/fibonacci-shader-grid.contract"
 use FloatingBottomBar from "./floating-bottom-bar/floating-bottom-bar.contract"
 use FloatingModal from "./floating-modal/floating-modal.contract"
 use FluidSlider from "./fluid-slider/fluid-slider.contract"
 use FluidTabInteraction from "./fluid-tab-interaction/fluid-tab-interaction.contract"
+use FourierVisualizer from "./fourier-visualizer/fourier-visualizer.contract"
 use FractalGlass from "./fractal-glass/fractal-glass.contract"
 use GeometryButton from "./geometry-button/geometry-button.contract"
 use GithubContributions from "./github-contributions/github-contributions.contract"
+use GlTransitions from "./gl-transitions/gl-transitions.contract"
 use ImessageStack from "./imessage-stack/imessage-stack.contract"
+use LightOnPainting from "./light-on-painting/light-on-painting.contract"
 use LinearSensors from "./linear-sensors/linear-sensors.contract"
 use LiquidGlassPlayground from "./liquid-glass-playground/liquid-glass-playground.contract"
 use LoadingButton from "./loading-button/loading-button.contract"
@@ -85,6 +90,7 @@ use TabNavigation from "./tab-navigation/tab-navigation.contract"
 use TelegramThemeSwitch from "./telegram-theme-switch/telegram-theme-switch.contract"
 use TheLittlePrince from "./the-little-prince/the-little-prince.contract"
 use ThemeCanvasAnimation from "./theme-canvas-animation/theme-canvas-animation.contract"
+use ThreadsHoloTicket from "./threads-holo-ticket/threads-holo-ticket.contract"
 use Toast from "./toast/toast.contract"
 use TwitterTabBar from "./twitter-tab-bar/twitter-tab-bar.contract"
 use TwodosSlide from "./twodos-slide/twodos-slide.contract"
@@ -133,6 +139,8 @@ component PortedDemo
         BlurredScroll(env=env)
       if slug == "bottom-bar-skia"
         BottomBarSkia(env=env)
+      if slug == "card-shader-reflections"
+        CardShaderReflections()
       if slug == "checkbox-interactions"
         CheckboxInteractions(env=env)
       if slug == "circular-carousel"
@@ -171,6 +179,8 @@ component PortedDemo
         FamilyNumberInput(env=env)
       if slug == "fibonacci-shader"
         FibonacciShader(env=env)
+      if slug == "fibonacci-shader-grid"
+        FibonacciShaderGrid()
       if slug == "floating-bottom-bar"
         FloatingBottomBar(env=env)
       if slug == "floating-modal"
@@ -179,14 +189,20 @@ component PortedDemo
         FluidSlider(env=env)
       if slug == "fluid-tab-interaction"
         FluidTabInteraction(env=env)
+      if slug == "fourier-visualizer"
+        FourierVisualizer(env=env)
       if slug == "fractal-glass"
         FractalGlass()
       if slug == "geometry-button"
         GeometryButton()
       if slug == "github-contributions"
         GithubContributions(env=env)
+      if slug == "gl-transitions"
+        GlTransitions(env=env)
       if slug == "imessage-stack"
         ImessageStack(env=env)
+      if slug == "light-on-painting"
+        LightOnPainting()
       if slug == "linear-sensors"
         LinearSensors()
       if slug == "liquid-glass-playground"
@@ -267,6 +283,8 @@ component PortedDemo
         TheLittlePrince(env=env)
       if slug == "theme-canvas-animation"
         ThemeCanvasAnimation()
+      if slug == "threads-holo-ticket"
+        ThreadsHoloTicket()
       if slug == "toast"
         Toast(env=env)
       if slug == "twitter-tab-bar"

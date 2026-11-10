@@ -57,9 +57,8 @@ component Demos
   action back
     if top(nav).name == "demo" and tilts(top(nav).params.slug)
       send sensors = stopSensorInput(surface="linear_sensors", sensor="gravity")
-    // Uncomment with threads-holo-ticket's registration (the compiler wants its canvas placed):
-  //   else if top(nav).name == "demo" and turns(top(nav).params.slug)
-  //     send sensors = stopSensorInput(surface="threads_holo_ticket", sensor="relativeOrientation")
+    else if top(nav).name == "demo" and turns(top(nav).params.slug)
+      send sensors = stopSensorInput(surface="threads_holo_ticket", sensor="relativeOrientation")
     nav = back(nav)
   // Linear Sensors' feed: the gravity sensor at 50 Hz (RN's interval 20), into its surface.
   task tilt when top(nav).name == "demo" and tilts(top(nav).params.slug) key=top(nav).id
@@ -68,11 +67,10 @@ component Demos
     send sensors = startSensorInput(surface="linear_sensors", sensor="gravity", frequency=50)
   // Threads Holo Ticket's feed: Core Motion's attitude at 62.5 Hz (RN's interval 16 ms is
   // deviceMotionUpdateInterval 0.016 s), into its surface.
-  // Uncomment with threads-holo-ticket's registration:
-  // task turn when top(nav).name == "demo" and turns(top(nav).params.slug) key=top(nav).id
-  //   after(1, startTurn)
-  // action startTurn
-  //   send sensors = startSensorInput(surface="threads_holo_ticket", sensor="relativeOrientation", frequency=62.5)
+  task turn when top(nav).name == "demo" and turns(top(nav).params.slug) key=top(nav).id
+    after(1, startTurn)
+  action startTurn
+    send sensors = startSensorInput(surface="threads_holo_ticket", sensor="relativeOrientation", frequency=62.5)
   action follow(url: string)
     let n = go(nav, url)
     nav = top(n).name == "open" ? replace(n, linkPath(searchParam(top(n), "u"))) : n
