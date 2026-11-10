@@ -51,6 +51,18 @@ fn ramp(p: Paint, t0: f32) -> vec4<f32> {
 fn lin(c: vec3<f32>) -> vec3<f32> {
     return select(pow((c + 0.055) / 1.055, vec3<f32>(2.4)), c / 12.92, c <= vec3<f32>(0.04045));
 }
+fn enc(c0: vec3<f32>) -> vec3<f32> {
+    let c = clamp(c0, vec3<f32>(0.0), vec3<f32>(1.0));
+    return select(1.055 * pow(c, vec3<f32>(1.0 / 2.4)) - 0.055, c * 12.92, c <= vec3<f32>(0.0031308));
+}
+// Encoded Display P3 to encoded sRGB (clipped to the sRGB gamut).
+fn p3_to_srgb(c: vec3<f32>) -> vec3<f32> {
+    let l = lin(c);
+    return enc(vec3<f32>(
+        1.2249 * l.r - 0.2247 * l.g,
+        -0.0420 * l.r + 1.0419 * l.g,
+        -0.0197 * l.r - 0.0786 * l.g + 1.0979 * l.b));
+}
 
 // A rounded rect blurred by a Gaussian (Evan Wallace, "Fast Rounded Rectangle Shadows").
 fn erf2(x0: vec2<f32>) -> vec2<f32> {
@@ -114,6 +126,7 @@ fn shadow(lower: vec2<f32>, upper: vec2<f32>, p0: vec2<f32>, sigma: f32, corner:
     } else if (kind == 5u) {
         c.a = c.a * shadow(p.geometry.xy, p.geometry.zw, in.px, p.offsets[0].y, p.offsets[0].x);
     }
+    if (p.head.w > 0.5) { c = vec4<f32>(p3_to_srgb(c.rgb), c.a); }
     if (kind != 4u) { c = c * in.color; }
     let a = c.a * p.head.z;
     var rgb = c.rgb;
