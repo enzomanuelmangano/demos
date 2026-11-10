@@ -2,9 +2,12 @@
 //! radial gradient (centre (w/2, w/2), radius w/2, from the active item's accent colour to
 //! BACKGROUND_COLOR #111111) under a paged horizontal strip of 24 items (two empty at each
 //! end, then constants.ts's twenty colours), each `w / 5` wide and `(w / 5) / (3 / 4)` tall,
-//! centred on the square's middle (components/carousel). The strip's scroll is the Contract's
-//! (a native scroller, snapping at every item); its offset is this surface's input, and the
-//! cards are drawn here.
+//! centred on the square's middle (components/carousel). The strip is a horizontal ScrollView
+//! over the square (ui_scroll.rs: UIKit's drag, rubber band, bounce and deceleration):
+//! decelerationRate 0.8, which UIKit clamps to fast (0.99), and snapToOffsets at every item
+//! (index × itemWidth; on iOS they override pagingEnabled). With evenly spaced offsets
+//! RCTEnhancedScrollView's rule is the interval's: the offset at or past UIKit's projected target
+//! in the velocity's direction (the nearest with none), clamped to the content.
 //!
 //! Per item (carousel-item.tsx), from translateX = −scrollX:
 //! - position = index × itemWidth + translateX; distance = |w/2 − ((position + w/2 +
@@ -25,7 +28,9 @@ use exact_gpu::{Frame, Surface, SurfaceError, Value};
 use reanimated::{interpolate, interpolate_clamp, Easing, Extrapolation, Timing};
 use skia::Color;
 
+use crate::ui_scroll::{Snap, UiScroll};
 use crate::{gfx, shaders};
+use exact_gpu::InputEvent;
 use shaders::color_carousel::{entry, module, Uniforms, CARDS, GROUP_0, U};
 
 /// The twenty colours (constants.ts).
@@ -48,15 +53,20 @@ const RADIUS: f32 = 5.0;
 const SHADOW_SIGMA: f32 = 2.5;
 /// Floats per card: five vec4s.
 const CARD_FLOATS: usize = 20;
+/// The ScrollView's decelerationRate (UIKit clamps it to fast).
+const DECELERATION: f64 = 0.8;
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
-    let mut s = ColorCarousel { scroll_x: 0.0, active: None, channels: Default::default(), cards: Vec::with_capacity(ITEMS * CARD_FLOATS), order: Vec::with_capacity(ITEMS), gpu: None };
+    let mut s = ColorCarousel { scroll: UiScroll::new(0.0, 0.0, 0.0, DECELERATION, Snap::Free), width: 0.0, scroll_x: 0.0, active: None, channels: Default::default(), cards: Vec::with_capacity(ITEMS * CARD_FLOATS), order: Vec::with_capacity(ITEMS), gpu: None };
     s.retarget(2, true);
     Box::new(s)
 }
 
 struct ColorCarousel {
+    scroll: UiScroll,
+    /// The square's side the scroll was laid out for.
+    width: f64,
     scroll_x: f64,
     active: Option<i64>,
     /// The gradient's colour, per channel in Reanimated's linear space (value^2.2).
@@ -114,9 +124,24 @@ impl ColorCarousel {
 }
 
 impl Surface for ColorCarousel {
+    /// An input, when given, sets the scroll's offset (tests).
     fn bind(&mut self, inputs: &[Value], _: Option<f64>) -> Result<(), SurfaceError> {
-        self.scroll_x = inputs.first().and_then(|v| v.as_number()).unwrap_or(0.0);
+        if let Some(x) = inputs.first().and_then(|v| v.as_number()) {
+            self.scroll.offset = x;
+        }
         Ok(())
+    }
+
+    fn wants_input(&self) -> bool {
+        true
+    }
+
+    fn input(&mut self, event: &InputEvent) {
+        let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
+        // The ScrollView fills the square.
+        let w = self.width as f32;
+        let inside = (0.0..=w).contains(&x) && (0.0..=w).contains(&y);
+        self.scroll.input(id, gfx::phase(phase), x, y, at_ms, inside);
     }
 
     fn opaque(&self) -> bool {
@@ -140,11 +165,19 @@ impl Surface for ColorCarousel {
         let width = frame.width as f64;
         let item_width = width / MAX_RENDERED;
         let item_height = item_width / ASPECT;
+        if self.width != width {
+            self.width = width;
+            // [null, null, ...colors, null, null]: ITEMS items in a row, the port the square.
+            self.scroll.port = width;
+            self.scroll.max = (ITEMS as f64 * item_width - width).max(0.0);
+            self.scroll.snap = Snap::Interval(item_width);
+        }
+        let mut moving = self.scroll.step(frame.now_ms);
+        self.scroll_x = self.scroll.offset;
         let x = self.scroll_x;
         // onScroll: activeIndex = floor(2 + (x + itemWidth / 2) / (width / 5)).
         let precise = (MAX_RENDERED / 2.0).floor() + (x + item_width / 2.0) / (width / MAX_RENDERED);
         self.retarget(precise.floor() as i64, false);
-        let mut moving = false;
         for ch in &mut self.channels {
             moving |= ch.step(frame.now_ms);
         }
@@ -291,5 +324,43 @@ mod tests {
         s.bind(&[Value::Number(42.0)], None).unwrap();
         let (c, _) = fixture::render(&gpu, s.as_mut(), &frame(800.0)).unwrap();
         c.save("color-carousel-half");
+    }
+
+    #[test]
+    fn a_flick_moves_one_item_and_a_slow_drag_rounds() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
+        exact_gpu::shaders::load_dir(&dir, &crate::REGISTRY).unwrap();
+        let gpu = match fixture::device() {
+            Ok(gpu) => gpu,
+            Err(error) => return eprintln!("{error}; skipped"),
+        };
+        let frame = |now_ms| Frame { width: 420.0, height: 420.0, scale: 1.0, now_ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: exact_gpu::shaders::shader_generation(), headroom: 1.0 };
+        let touch = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 210.0, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
+        let mut s = surface();
+        let settle = |s: &mut Box<dyn Surface>, mut ms: f64| {
+            while fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap().1 && ms < 10_000.0 {
+                ms += 16.67;
+            }
+            ms
+        };
+        let mut ms = settle(&mut s, 0.0);
+        // A flick left at ~600 pt/s, 50 pt: UIKit projects (0.6 − 0.00988) / 0.01005 ≈ 59 more,
+        // short of the next item past it (84 × 2 = 168), so it rests on 168.
+        use exact_gpu::PointerPhase::*;
+        s.input(&touch(Down, 300.0, ms));
+        for k in 1..=6 {
+            s.input(&touch(Move, 300.0 - 10.0 * k as f32, ms + 16.67 * k as f64));
+        }
+        s.input(&touch(Up, 240.0, ms + 16.67 * 6.0));
+        ms = settle(&mut s, ms + 100.0);
+        assert!(s.agent("{}").unwrap().contains("\"scrollX\":168"), "{}", s.agent("{}").unwrap());
+        // A slow drag of 30 pt, held: rounds back to 168.
+        s.input(&touch(Down, 300.0, ms));
+        for k in 1..=30 {
+            s.input(&touch(Move, 300.0 - k as f32, ms + 33.0 * k as f64));
+        }
+        s.input(&touch(Up, 270.0, ms + 33.0 * 30.0 + 200.0));
+        settle(&mut s, ms + 33.0 * 30.0 + 200.0);
+        assert!(s.agent("{}").unwrap().contains("\"scrollX\":168"), "{}", s.agent("{}").unwrap());
     }
 }
