@@ -16,7 +16,8 @@ fn backWidth(w: number): number = (w - 20 * 2 - 10) * 0.25
 // SPRING_CONFIG { duration 250, dampingRatio 1.5 }: bun tools/spring.ts 250 1.5. Both progresses
 // (back: activeIndex > 0, icon: activeIndex == 2) ride it; every value interpolated on them
 // (width, marginRight, opacity) is linear in the progress, so each rides the same spring.
-fn stepSpring(): string = "-exact-spring(2011.7, 269.1, 4)"
+// ζ 1.5 ≥ 1: Reanimated runs it critically damped, so damping 2√(k·m) = 179.4.
+fn stepSpring(): string = "-exact-spring(2011.7, 179.4, 4)"
 
 component Steps
   props
@@ -40,12 +41,13 @@ component Steps
         // styles.bar: absolute (no insets: Yoga puts it at the row's border edge, centred on the
         // row), #66e070, radius 100 continuous.
         view position="absolute" left=0 top=-10 height=30 width=barWidth(activeIndex)
-          background-color="#66e070" border-radius=100
+          background-color="color(display-p3 0.4 0.8784 0.4392)" border-radius=100 corner-shape="-exact-continuous"
           -exact-layout-transition="-exact-spring(900, 120, 4)" testId="bar"
         // dot.tsx: dotSize, radius dotSize / 2 continuous; backgroundColor withTiming(white or
         // rgba(0,0,0,0.15), 200 ms) on Reanimated's default curve inOut(quad).
         for i in range(3) key=i
-          view width=10 height=10 border-radius=5
+          // Positioned so it paints over the bar, as RN's later sibling does.
+          view width=10 height=10 border-radius=5 corner-shape="-exact-continuous" position="relative"
             background-color=(activeIndex >= i ? "white" : "rgba(0,0,0,0.15)")
             transition="background-color 200ms cubic-bezier(0.455, 0.03, 0.515, 0.955)"
             testId=`dot-${i}`
@@ -61,15 +63,15 @@ component Steps
             // styles.button + backButton: rgba(0,0,0,0.08), radius 30 continuous, width
             // backButtonWidth. backButtonLabel: black, SF-Pro-Rounded-Bold 18, letterSpacing 0.5.
             button appearance="none" class=PressableScale press=onBack testId="back"
-              width=backWidth(env.width) height=60 border-radius=30
+              width=backWidth(env.width) height=60 border-radius=30 corner-shape="-exact-continuous"
               background-color="rgba(0,0,0,0.08)" display="flex" flex-direction="row"
               align-items="center" justify-content="center"
-              text "Back" color="black" font-family="ui-rounded" font-weight=700 font-size=18
+              text "Back" color="black" font-family="SF-Pro-Rounded-Bold" font-size=18
                 letter-spacing=0.5
         // styles.fill + continueButton: flex 1, #0c86f7.
         view display="flex" flex-direction="column" flex=1 -exact-layout-transition=stepSpring()
           button appearance="none" class=PressableScale press=onContinue testId="continue"
-            flex=1 height=60 border-radius=30 background-color="#0c86f7"
+            flex=1 height=60 border-radius=30 corner-shape="-exact-continuous" background-color="color(display-p3 0.0471 0.5255 0.9686)"
             display="flex" flex-direction="row" align-items="center" justify-content="center"
             -exact-layout-transition=stepSpring()
             // styles.labelContainer: a centred row (it moves with the button's resize).
@@ -81,9 +83,11 @@ component Steps
                 opacity=(activeIndex == 2 ? 1 : 0) overflow="hidden" align-items="center"
                 justify-content="center" transition=`opacity ${stepSpring()}`
                 -exact-layout-transition=stepSpring() testId="check"
-                image "symbol:sf/checkmark.circle" font-size=16 color="white" aria-hidden=true
+                // AntDesign "check-circle" 16: the vector-icons glyph (512 × 536 units of 512 to the em).
+                svg width=16 height=16.75 viewBox="0 0 512 536" aria-hidden=true
+                  path d="M239 8Q304 4 362.5 30.5Q421 57 461 109Q494 153 506 206Q518 262 506.5 317Q495 372 460 417Q398 500 292 517Q279 519 256.5 519Q234 519 221 517Q142 504 84 453Q17 392 2 298Q0 285 0 263Q0 241 2 228Q13 160 51 109Q110 32 203 13Q223 9 239 8ZM283 52Q278 52 261.5 51.5Q245 51 241 51Q238 51 230 52Q211 54 192 60Q142 76 105 113.5Q68 151 53 202Q44 230 44 263Q44 286 48 306Q63 380 122 428Q159 458 204 469Q227 475 256 475Q286 475 309 469Q364 454 403.5 416Q443 378 459 324Q468 296 468 263Q468 230 459 202Q444 151 406 113Q368 75 317 60Q302 55 283 52ZM328 174Q325 176 322.5 178.5Q320 181 276 242Q232 302 230 302Q229 301 211 276Q190 247 186 244Q182 241 165 240Q146 240 145 244Q144 245 146 248Q148 251 183.5 300.5Q219 350 223 352Q236 358 245 348Q246 347 305 264.5Q364 182 366 179Q368 177 367 175L365 173H348Q332 173 328 174Z" fill="white"
               // continueButtonLabel: white, SF-Pro-Rounded-Bold 18, letterSpacing 0.5. rightLabel:
               // Finish on the last step.
-              text (activeIndex == 2 ? "Finish" : "Continue") color="white" font-family="ui-rounded"
-                font-weight=700 font-size=18 letter-spacing=0.5 -exact-layout-transition=stepSpring()
+              text (activeIndex == 2 ? "Finish" : "Continue") color="white" font-family="SF-Pro-Rounded-Bold"
+                font-size=18 letter-spacing=0.5 -exact-layout-transition=stepSpring()
                 testId="continue-label"
