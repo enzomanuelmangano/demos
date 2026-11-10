@@ -152,6 +152,13 @@ fn grid(v: f32, scale: f32) -> f32 {
     ((v * scale + 0.5 + 1e-4).floor()) / scale
 }
 
+/// A Text node's position in its parent: Yoga's roundLayoutResultsToPixelGrid floors a Text
+/// node's relative left/top (textRounding) where a View's rounds. Measured: each icon's 28.333 box
+/// sits 24.667 into its 78 pt cell, not 24.833 rounded to 25 (the icons were 1 px low).
+fn text_grid(v: f32, scale: f32) -> f32 {
+    ((v * scale + 1e-4).floor()) / scale
+}
+
 /// A Text's measured box side, ceiled to the pixel grid (RN's text measurement rounding).
 fn text_side(v: f32, scale: f32) -> f32 {
     ((v + 0.001) * scale).ceil() / scale
@@ -306,8 +313,8 @@ fn draw_scene(c: &mut Canvas, l: &Layout, scene: &Scene, icons: Option<&Font>) {
     let Some(font) = icons else { return };
     for (i, glyph) in ICONS.iter().enumerate() {
         let (x0, x1) = (l.cells[i], l.cells[i + 1]);
-        let x = grid(x0 + (x1 - x0 - l.icon) / 2.0, l.scale);
-        let y = grid(l.bar_top + (l.content - l.icon) / 2.0, l.scale);
+        let x = x0 + text_grid((x1 - x0 - l.icon) / 2.0, l.scale);
+        let y = l.bar_top + text_grid((l.content - l.icon) / 2.0, l.scale);
         c.draw_text(glyph, x, gfx::baseline(font, y), font, &Paint::fill(Color::WHITE).with_opacity(scene.tabs[i]));
     }
 }
