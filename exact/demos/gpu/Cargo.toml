@@ -17,6 +17,7 @@ crate-type = ["cdylib", "rlib"]
 reanimated = { path = "../packages/reanimated" }
 gesture-handler = { path = "../packages/gesture-handler" }
 skia = { path = "../packages/skia" }
+pressto = { path = "../packages/pressto" }
 simplex-noise = { path = "../packages/simplex-noise" }
 # Inflates the bitmaps in images/ (zlib), once, when a surface first draws.
 miniz_oxide = "0.9"
