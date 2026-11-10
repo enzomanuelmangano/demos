@@ -903,9 +903,25 @@ mod tests {
             (0.7, 20.0, 16.0)
         );
         assert!(q.messages().is_empty(), "a pan is no press");
-        // Back from 370 (the translateX keeps the overshoot: context is the clamped value).
+        // Back from 370 (the translateX keeps the overshoot: context is the clamped value). The
+        // first move comes 16 ms after the down, 39.5 pt from it: UIKit begins the pan that early
+        // with its translation zeroed at the finger (port-demo's Pan trap), so the 395 pt drag
+        // moves the picker 355.5 and it stops at 14.5, as RN's would.
         let t = drag(&mut q, (395.0, 683.0), (0.0, 683.0), 10, 1000.0);
         touch(&mut q, Phase::Up, 0.0, 683.0, t);
+        assert!((q.clamped() - 14.5).abs() < 1e-4, "{}", q.clamped());
+        assert!((q.deviation() - 14.5 / 370.0 * 6.0).abs() < 1e-6);
+        // A drag that sets off after 90 ms leaves out the 10 pt instead: 40 pt left reads 30.
+        let t0 = t + 500.0;
+        touch(&mut q, Phase::Down, 30.0, 683.0, t0);
+        touch(&mut q, Phase::Move, 15.0, 683.0, t0 + 100.0);
+        touch(&mut q, Phase::Move, -10.0, 683.0, t0 + 116.0);
+        assert!(
+            (q.translate_x - (14.5 - 30.0)).abs() < 1e-4,
+            "{}",
+            q.translate_x
+        );
+        touch(&mut q, Phase::Up, -10.0, 683.0, t0 + 132.0);
         assert_eq!(q.clamped(), 0.0);
         assert_eq!(q.deviation(), 0.0);
     }
