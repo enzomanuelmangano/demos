@@ -1,0 +1,5 @@
+at "/demo/scrollable-shapes"
+
+test "the shapes' canvas is there"
+  expect tree has "scrollable-shapes"
+  expect tree has "scrollable-shapes-canvas"

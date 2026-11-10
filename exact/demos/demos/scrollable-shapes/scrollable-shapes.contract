@@ -1,0 +1,13 @@
+// Scrollable Shapes: 3000 glowing points spinning in perspective on black, morphing between a
+// sphere, a cube, a torus and a heart as the screen is swiped sideways; four dots below say
+// which. RN: src/animations/scrollable-shapes (index.tsx, shapes/, components/paginator.tsx).
+// The glow, the points, the paginator's scroll-driven dots and the invisible paged ScrollView
+// (UIScrollView's drag, snapToInterval and bounce, modelled as the other Rust scrollers are)
+// are Rust: gpu/src/scrollable_shapes.rs, gpu/src/ui_scroll.rs.
+
+component ScrollableShapes
+  view
+    // styles.container: black, flex 1; both canvases and the ScrollView are absoluteFill.
+    column position="absolute" inset=0 background-color="color(display-p3 0 0 0)" testId="scrollable-shapes"
+      canvas surface=scrollable_shapes() position="absolute" top=0 left=0 width="100%" height="100%"
+        touch-action="none" testId="scrollable-shapes-canvas" aria-label="Swipe to morph the shape"

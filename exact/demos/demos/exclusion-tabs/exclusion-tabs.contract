@@ -1,0 +1,20 @@
+// Exclusion Tabs: four black tabs melted into one bar; the tapped one turns blue with rounded
+// corners and pushes its neighbours away, so it stands apart. RN: src/animations/exclusion-tabs
+// (src/index.tsx, src/components/exclusion-tabs and its hooks). The Touchable.Canvas (the gooey
+// layer, the labels, the active tab and its timings) is Rust: gpu/src/exclusion_tabs.rs, which
+// posts the selection haptic of each tap.
+use DemoEnv from "../env.contract"
+
+component ExclusionTabs
+  props
+    env: DemoEnv
+  action buzz(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+  view
+    // styles.container: white, flex 1, centred.
+    column position="absolute" inset=0 background-color="color(display-p3 1 1 1)" align-items="center"
+      justify-content="center" testId="exclusion-tabs"
+      // <ExclusionTabs containerWidth={windowWidth} height={45} />.
+      canvas surface=exclusion_tabs() width=env.width height=45 flex-shrink=0 touch-action="none"
+        message=buzz testId="exclusion-tabs-canvas" aria-label="Tabs: Home, Changelog, Career, About"

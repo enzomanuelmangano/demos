@@ -144,3 +144,18 @@ pub fn spring_to(spring: &mut reanimated::Spring, to: f64, duration_ms: f64, dam
     let v = if !spring.running || (to > x && v < 0.0) || (to < x && v > 0.0) { 0.0 } else { v };
     spring.to(to, v, reanimated::duration_config(x - to, v, duration_ms, damping_ratio, 4.0));
 }
+
+/// A fixture image (premultiplied) composited over the opaque `background` colour, written as
+/// `EXACT_GPU_OUT/<name>.ppm` (what the demo looks like on its screen's colour).
+#[cfg(all(test, not(target_arch = "wasm32")))]
+pub fn save_over(img: &exact_gpu::fixture::Pixels, name: &str, background: [u8; 3]) {
+    let Some(dir) = std::env::var_os("EXACT_GPU_OUT") else { return };
+    let mut out = format!("P6\n{} {}\n255\n", img.width, img.height).into_bytes();
+    for p in img.data.chunks(4) {
+        let a = p[3] as u32;
+        for k in 0..3 {
+            out.push((p[k] as u32 + (255 - a) * background[k] as u32 / 255).min(255) as u8);
+        }
+    }
+    let _ = std::fs::write(std::path::Path::new(&dir).join(format!("{name}.ppm")), out);
+}

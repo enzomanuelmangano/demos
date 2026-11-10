@@ -16,6 +16,8 @@ pub mod shaders {
     include!(concat!(env!("OUT_DIR"), "/shaders.rs"));
 }
 pub mod gfx;
+pub mod gooey;
+pub mod ui_scroll;
 
 pub mod animated_3d_parallax;
 pub mod atlas_button;
@@ -30,8 +32,10 @@ pub mod bottom_bar_skia;
 pub mod clock_time_picker;
 pub mod color_carousel;
 pub mod cuberto_slider;
+pub mod delete_button;
 pub mod dot_sheet;
 pub mod duration_slider;
+pub mod exclusion_tabs;
 pub mod expandable_mini_player;
 pub mod fibonacci_shader;
 pub mod floating_bottom_bar;
@@ -45,8 +49,10 @@ pub mod magnet_spring;
 pub mod metaball;
 pub mod paper_folding;
 pub mod particles_button;
+pub mod prequel_slider;
 pub mod radar_chart;
 pub mod record_button;
+pub mod scrollable_shapes;
 pub mod selectable_grid_list;
 pub mod skia_bottom_sheet;
 pub mod skia_color_picker;
@@ -74,8 +80,10 @@ pub static REGISTRY: Registry = Registry {
         ("clock_time_picker", 0, clock_time_picker::surface),
         ("color_carousel", 1, color_carousel::surface),
         ("cuberto_slider", 0, cuberto_slider::surface),
+        ("delete_button", 0, delete_button::surface),
         ("dot_sheet", 0, dot_sheet::surface),
         ("duration_slider", 0, duration_slider::surface),
+        ("exclusion_tabs", 0, exclusion_tabs::surface),
         ("expandable_mini_player", 1, expandable_mini_player::surface),
         ("fibonacci_shader", 1, fibonacci_shader::surface),
         ("floating_bottom_bar", 0, floating_bottom_bar::surface),
@@ -89,8 +97,10 @@ pub static REGISTRY: Registry = Registry {
         ("metaball", 0, metaball::surface),
         ("paper_folding", 0, paper_folding::surface),
         ("particles_button", 1, particles_button::surface),
+        ("prequel_slider", 2, prequel_slider::surface),
         ("radar_chart", 10, radar_chart::surface),
         ("record_button", 1, record_button::surface),
+        ("scrollable_shapes", 0, scrollable_shapes::surface),
         ("selectable_grid_list", 1, selectable_grid_list::surface),
         ("skia_bottom_sheet", 0, skia_bottom_sheet::surface),
         ("skia_color_picker", 0, skia_color_picker::surface),
