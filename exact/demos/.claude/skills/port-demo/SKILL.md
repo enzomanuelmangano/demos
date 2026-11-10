@@ -96,7 +96,9 @@ finger), magnet-spring (2D distance per frame to nine magnets).
 
 - Animated blur intensity (expo-blur `intensity` driven by Reanimated): Exact's materials and
   `backdrop-filter` don't animate. staggered-card-number (per-digit blur), fluid-tab-interaction
-  (blur pulses), blurred-bottom-bar (intensity 40 → "regular").
+  (blur pulses). The fix is `skia::backdrop` (UIKit's partially animated blur, measured by
+  `exact/parity-tools/blur-probe`): a Rust surface draws what is under the BlurView and runs the
+  tint's chain at intensity / 100 (blurred-bottom-bar, dynamic-blur-tabs, bezier-curve-outline).
 - `border-radius` doesn't animate: alert-drawer (mid-spring radius).
 - liquid-glass-playground: progressive haptics every 5 px of drag (needs per-move logic).
 - stacked-modals: the 60 ms × index stagger on exit (an exit animation is one literal).
