@@ -250,7 +250,7 @@ component PortedDemo
       if slug == "stacked-modals"
         StackedModals(env=env)
       if slug == "staggered-card-number"
-        StaggeredCardNumber()
+        StaggeredCardNumber(env=env)
       if slug == "steddy-graph-interaction"
         SteddyGraphInteraction(env=env)
       if slug == "steps"
