@@ -1,0 +1,11 @@
+// Skia Bottom Sheet: a photo filling the screen and a frosted sheet over its bottom that the
+// finger drags up and lets snap open or closed. RN: src/animations/skia-bottom-sheet
+// (index.tsx, components/bottom-sheet/index.tsx). The photo, the sheet's blur, its drag and its
+// spring are Rust: gpu/src/skia_bottom_sheet.rs.
+
+component SkiaBottomSheet
+  view
+    // <Touchable.Canvas style={{ flex: 1 }}>.
+    column position="absolute" inset=0 testId="skia-bottom-sheet"
+      canvas surface=skia_bottom_sheet() position="absolute" top=0 left=0 width="100%" height="100%"
+        touch-action="none" testId="skia-bottom-sheet-canvas" aria-label="Drag the sheet up"

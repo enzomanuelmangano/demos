@@ -20,6 +20,8 @@ skia = { path = "../packages/skia" }
 simplex-noise = { path = "../packages/simplex-noise" }
 # Inflates the bitmaps in images/ (zlib), once, when a surface first draws.
 miniz_oxide = "0.9"
+# Decodes the photo skia-bottom-sheet draws (images/), once, when it first draws.
+zune-jpeg = "0.5"
 exact-gpu = { path = "../../../../../../../.exact/exact2/94b8671f70fe2e25b307a40e7fce66dc27c9f802/gpu" }
 
 [build-dependencies]

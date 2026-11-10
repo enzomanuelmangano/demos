@@ -1,0 +1,5 @@
+at "/demo/blurred-scroll"
+
+test "the cards and their scroller are there"
+  expect tree has "blurred-scroll-canvas"
+  expect tree has "blurred-scroll-list"

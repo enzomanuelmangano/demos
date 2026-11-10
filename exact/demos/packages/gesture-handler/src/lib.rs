@@ -1,4 +1,4 @@
-//! react-native-gesture-handler's Pan and Tap, recognised from the pointer events a canvas
+//! react-native-gesture-handler's Pan, Tap and Pinch, recognised from the pointer events a canvas
 //! that asks for input receives (exact-gpu's `InputEvent::Pointer`, in canvas points with the
 //! host's clock). A surface keeps one recognizer per gesture and asks it, per event, what the
 //! RNGH callbacks would have been told.
@@ -8,6 +8,9 @@
 //!   by default) and reports translation from where the finger went down, as `translationX/Y`.
 //! - Velocity is points per second, from the last 100 ms of samples (UIKit's estimate).
 //! - Tap ends within `max_duration_ms` (500) having moved less than `max_distance` (10).
+//! - Pinch is two fingers: it starts when one of them moves while both are down, and its
+//!   `scale` is their distance over the distance when the second came down (UIKit's
+//!   `UIPinchGestureRecognizer.scale`, 1 at the start); it ends when either lifts.
 
 #![deny(missing_docs)]
 
@@ -257,6 +260,98 @@ impl TapGesture {
     }
 }
 
+/// What a [`PinchGesture`] says about an event.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum PinchEvent {
+    /// Nothing for this gesture.
+    None,
+    /// `onStart`: both fingers down and moving.
+    Start(Pinch),
+    /// `onUpdate` / `onChange`.
+    Update(Pinch),
+    /// `onEnd`: a finger lifted (or was cancelled) while active.
+    End(Pinch),
+}
+
+/// A pinch's payload (RNGH `PinchGestureHandlerEventPayload`).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Pinch {
+    /// `scale`: the fingers' distance over their distance when the second came down.
+    pub scale: f32,
+    /// `focalX/Y`: the point between the fingers, in the canvas.
+    pub focal_x: f32,
+    /// See `focal_x`.
+    pub focal_y: f32,
+}
+
+/// A two-finger pinch (`Gesture.Pinch()`).
+#[derive(Clone, Debug, Default)]
+pub struct PinchGesture {
+    /// The fingers down on it: id and where it is.
+    fingers: [Option<(u32, f32, f32)>; 2],
+    start_distance: f32,
+    active: bool,
+}
+
+impl PinchGesture {
+    /// Whether any finger is down on this gesture.
+    pub fn tracking(&self) -> bool {
+        self.fingers.iter().any(Option::is_some)
+    }
+    /// Whether the pinch is active.
+    pub fn active(&self) -> bool {
+        self.active
+    }
+
+    fn payload(&self) -> Pinch {
+        let (Some((_, ax, ay)), Some((_, bx, by))) = (self.fingers[0], self.fingers[1]) else { return Pinch { scale: 1.0, ..Pinch::default() } };
+        let d = (bx - ax).hypot(by - ay);
+        Pinch { scale: if self.start_distance > 0.0 { d / self.start_distance } else { 1.0 }, focal_x: (ax + bx) / 2.0, focal_y: (ay + by) / 2.0 }
+    }
+
+    /// A pointer event; `claim` says whether a down here is this pinch's.
+    pub fn event(&mut self, id: u32, phase: Phase, x: f32, y: f32, claim: bool) -> PinchEvent {
+        let slot = self.fingers.iter().position(|f| f.is_some_and(|(i, _, _)| i == id));
+        match phase {
+            Phase::Down => {
+                if slot.is_some() || !claim {
+                    return PinchEvent::None;
+                }
+                let Some(free) = self.fingers.iter().position(Option::is_none) else { return PinchEvent::None };
+                self.fingers[free] = Some((id, x, y));
+                if let (Some((_, ax, ay)), Some((_, bx, by))) = (self.fingers[0], self.fingers[1]) {
+                    self.start_distance = (bx - ax).hypot(by - ay);
+                }
+                PinchEvent::None
+            }
+            Phase::Move => {
+                let Some(k) = slot else { return PinchEvent::None };
+                self.fingers[k] = Some((id, x, y));
+                if self.fingers.iter().any(Option::is_none) {
+                    return PinchEvent::None;
+                }
+                if self.active {
+                    PinchEvent::Update(self.payload())
+                } else {
+                    self.active = true;
+                    PinchEvent::Start(self.payload())
+                }
+            }
+            Phase::Up | Phase::Cancel => {
+                let Some(k) = slot else { return PinchEvent::None };
+                let payload = self.payload();
+                self.fingers[k] = None;
+                if self.active {
+                    self.active = false;
+                    PinchEvent::End(payload)
+                } else {
+                    PinchEvent::None
+                }
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -270,6 +365,21 @@ mod tests {
         let Event::End(p) = pan.event(1, Phase::Up, 40.0, 0.0, 48.0, true) else { panic!() };
         assert_eq!(p.translation_x, 40.0);
         assert!(p.velocity_x > 500.0, "{}", p.velocity_x);
+    }
+
+    #[test]
+    fn pinch_scales_by_the_fingers_distance() {
+        let mut pinch = PinchGesture::default();
+        assert_eq!(pinch.event(1, Phase::Down, 100.0, 100.0, true), PinchEvent::None);
+        assert_eq!(pinch.event(1, Phase::Move, 100.0, 90.0, true), PinchEvent::None);
+        assert_eq!(pinch.event(2, Phase::Down, 100.0, 190.0, true), PinchEvent::None);
+        let PinchEvent::Start(p) = pinch.event(2, Phase::Move, 100.0, 190.0, true) else { panic!() };
+        assert_eq!(p.scale, 1.0);
+        let PinchEvent::Update(p) = pinch.event(2, Phase::Move, 100.0, 290.0, true) else { panic!() };
+        assert_eq!(p.scale, 2.0);
+        assert_eq!(p.focal_y, 190.0);
+        assert!(matches!(pinch.event(1, Phase::Up, 100.0, 90.0, true), PinchEvent::End(_)));
+        assert!(!pinch.active());
     }
 
     #[test]

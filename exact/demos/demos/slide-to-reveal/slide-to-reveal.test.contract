@@ -1,0 +1,4 @@
+at "/demo/slide-to-reveal"
+
+test "the code card is there"
+  expect tree has "slide-to-reveal-canvas"

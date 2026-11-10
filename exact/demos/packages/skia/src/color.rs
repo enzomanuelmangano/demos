@@ -30,9 +30,39 @@ impl Color {
         Color([self.0[0], self.0[1], self.0[2], a])
     }
 
+    /// `hsl(h, s%, l%)` as React Native's normalizeColor converts it (what `Skia.Color` parses
+    /// a CSS `hsl()` string with): hue in degrees, saturation and lightness 0…100, each channel
+    /// rounded to 8 bits.
+    pub fn hsl(h: f32, s: f32, l: f32) -> Color {
+        let h = (h % 360.0 + 360.0) % 360.0 / 360.0;
+        let (s, l) = ((s / 100.0).clamp(0.0, 1.0), (l / 100.0).clamp(0.0, 1.0));
+        let q = if l < 0.5 { l * (1.0 + s) } else { l + s - l * s };
+        let p = 2.0 * l - q;
+        let channel = |t: f32| {
+            let t = if t < 0.0 { t + 1.0 } else if t > 1.0 { t - 1.0 } else { t };
+            let v = if t < 1.0 / 6.0 {
+                p + (q - p) * 6.0 * t
+            } else if t < 0.5 {
+                q
+            } else if t < 2.0 / 3.0 {
+                p + (q - p) * (2.0 / 3.0 - t) * 6.0
+            } else {
+                p
+            };
+            (v * 255.0).round() / 255.0
+        };
+        Color([channel(h + 1.0 / 3.0), channel(h), channel(h - 1.0 / 3.0), 1.0])
+    }
+
     /// A CSS colour string as `Skia.Color(…)` parses it; black when it cannot.
     pub fn parse(s: &str) -> Color {
         let s = s.trim();
+        if let Some(args) = s.strip_prefix("hsl(").and_then(|r| r.strip_suffix(')')) {
+            let n: Vec<f32> = args.split(',').filter_map(|p| p.trim().trim_end_matches('%').parse().ok()).collect();
+            if n.len() == 3 {
+                return Color::hsl(n[0], n[1], n[2]);
+            }
+        }
         if let Some(hex) = s.strip_prefix('#') {
             let v = |i: usize, n: usize| u8::from_str_radix(&hex[i..i + n], 16).unwrap_or(0);
             return match hex.len() {

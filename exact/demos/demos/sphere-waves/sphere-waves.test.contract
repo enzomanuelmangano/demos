@@ -1,0 +1,4 @@
+at "/demo/sphere-waves"
+
+test "the sphere is there"
+  expect tree has "sphere-waves-canvas"
