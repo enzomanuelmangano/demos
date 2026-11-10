@@ -100,18 +100,19 @@ impl Surface for Metaball {
                 self.first_from = self.first;
                 self.touched = true;
             }
-            Event::Start(p) | Event::Update(p) | Event::End(p) => {
+            // onActive (the pan's onUpdate); circleGesture has no onEnd, so the lift moves nothing.
+            Event::Start(p) | Event::Update(p) => {
                 self.first = (self.first_from.0 + p.translation_x, self.first_from.1 + p.translation_y);
                 self.dirty = true;
             }
             _ => {}
         }
         match self.second_pan.event(id, phase, x, y, at_ms, on_second) {
+            // onStart (the pan's onBegin) only keeps the context: a spring back still running goes
+            // on until onActive sets the values.
             Event::Begin { .. } => {
                 self.touched = true;
                 self.second_from = second;
-                self.second.0.set(second.0 as f64);
-                self.second.1.set(second.1 as f64);
             }
             Event::Start(p) | Event::Update(p) => {
                 self.second.0.set((self.second_from.0 + p.translation_x) as f64);
@@ -119,9 +120,13 @@ impl Surface for Metaball {
                 self.dirty = true;
             }
             Event::End(_) | Event::Fail => {
+                // withSpring(width / 2), withSpring(height / 2); a spring still running hands its
+                // velocity on (Reanimated's onStart).
                 let (cx, cy) = self.centre();
-                self.second.0.to(cx as f64, 0.0, GENTLE);
-                self.second.1.to(cy as f64, 0.0, GENTLE);
+                for (s, to) in [(&mut self.second.0, cx), (&mut self.second.1, cy)] {
+                    let v = if s.running { s.velocity } else { 0.0 };
+                    s.to(to as f64, v, GENTLE);
+                }
                 self.dirty = true;
             }
             _ => {}
@@ -241,5 +246,33 @@ mod tests {
         img.save("metaball-bridge");
         assert!(lit(&img, 105, 168), "bridge {:?}", img.at(105, 168));
         assert!(!lit(&img, 20, 168), "beside the bridge {:?}", img.at(20, 168));
+        // The lift at another point than the last move: circleGesture has no onEnd.
+        s.input(&pointer(exact_gpu::PointerPhase::Down, 105.0, 108.0, 400.0));
+        s.input(&pointer(exact_gpu::PointerPhase::Move, 105.0, 96.0, 416.0));
+        s.input(&pointer(exact_gpu::PointerPhase::Up, 105.0, 90.0, 432.0));
+        assert_eq!(s.first, (105.0, 96.0));
+    }
+
+    #[test]
+    fn the_second_springs_back_and_a_touch_down_does_not_stop_it() {
+        let mut s = Metaball { size: (210.0, 456.0), touched: true, first: (105.0, 0.0), ..Default::default() };
+        s.second = (Spring::at(105.0), Spring::at(228.0));
+        let pointer = |phase, x, y, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
+        s.input(&pointer(exact_gpu::PointerPhase::Down, 105.0, 228.0, 0.0));
+        s.input(&pointer(exact_gpu::PointerPhase::Move, 105.0, 400.0, 16.0));
+        s.input(&pointer(exact_gpu::PointerPhase::Up, 105.0, 400.0, 32.0));
+        assert!(s.second.1.running);
+        s.second.1.step(32.0);
+        s.second.1.step(132.0);
+        let mid = s.second.1.value;
+        assert!(mid < 400.0 && mid > 228.0, "{mid}");
+        // Held still on it (the pan not active yet): the spring goes on.
+        s.input(&pointer(exact_gpu::PointerPhase::Down, 105.0, mid as f32, 140.0));
+        assert!(s.second.1.running);
+        s.second.1.step(200.0);
+        assert!(s.second.1.value < mid);
+        // Lifted without a drag (onFinalize → onEnd): withSpring again, from where it is.
+        s.input(&pointer(exact_gpu::PointerPhase::Up, 105.0, mid as f32, 210.0));
+        assert!(s.second.1.running && s.second.1.velocity < 0.0);
     }
 }
