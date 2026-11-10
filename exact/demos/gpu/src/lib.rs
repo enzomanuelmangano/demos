@@ -40,6 +40,7 @@ pub mod duration_slider;
 pub mod exclusion_tabs;
 pub mod expandable_mini_player;
 pub mod fibonacci_shader;
+pub mod fibonacci_shader_grid;
 pub mod floating_bottom_bar;
 pub mod floating_modal;
 pub mod fluid_slider;
@@ -94,6 +95,7 @@ pub static REGISTRY: Registry = Registry {
         ("exclusion_tabs", 0, exclusion_tabs::surface),
         ("expandable_mini_player", 1, expandable_mini_player::surface),
         ("fibonacci_shader", 1, fibonacci_shader::surface),
+        ("fibonacci_shader_grid", 0, fibonacci_shader_grid::surface),
         ("floating_bottom_bar", 0, floating_bottom_bar::surface),
         ("floating_modal", 0, floating_modal::surface),
         ("fluid_slider", 0, fluid_slider::surface),

@@ -1,0 +1,12 @@
+// Fibonacci Shader Grid: XorDev's sphere of glowing points over a 6 × 6 pad; dragging the pad's
+// pointer sets how many points (x, 5 to 175) and the spiral's multiplier (y, 1.2 to 3.6), with a
+// spring on touch down. RN: src/animations/fibonacci-shader-grid (index.tsx,
+// components/control-panel). Everything is Rust: gpu/src/fibonacci_shader_grid.rs (the shader,
+// its blurred circle mask, the pad's views and its pan, whose every move is a uniform).
+
+component FibonacciShaderGrid
+  view
+    // styles.container: black, flex 1.
+    column position="absolute" inset=0 background-color="#000000" testId="fibonacci-shader-grid"
+      canvas surface=fibonacci_shader_grid() position="absolute" top=0 left=0 width="100%" height="100%"
+        touch-action="none" aria-label="Fibonacci sphere and its control pad" testId="fibonacci-grid-canvas"
