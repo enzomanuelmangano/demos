@@ -9,7 +9,8 @@
 //!   (width − 12) / 3 wide, 38 tall, 6 in. In a cell: MaterialCommunityIcons wallet-outline / bank
 //!   / chart-bar at 13 (a 13.333 Text box) and the label (Honk-Regular 14: HonkSans-Medium, a
 //!   17 pt box), each Text at Yoga's floored position (icon 20.333, 12.333; "Accounts" 38.667,
-//!   10.333), and an absoluteFill `<BlurView tint="light">` over them (zIndex 1 in the cell).
+//!   10.333; the label's textAlign center sets its line half the ceiled box's slack right: 0.0967
+//!   pt for "Accounts"), and an absoluteFill `<BlurView tint="light">` over them (zIndex 1 in the cell).
 //! - The pill (zIndex 1): absolute, left 0, alignSelf center: x = 1 + translateX, y 5 in the
 //!   border box, cellBackgroundWidth − 5 / 3 × 40 (125 × 40), #F9F8F4, border 1 baseGray05,
 //!   radius 30 continuous (20 drawn), boxShadow 0 1 2 rgba(0, 0, 0, 0.1) (RCTBoxShadow: σ 1, the
@@ -510,10 +511,8 @@ impl FluidTab {
         );
         for i in 0..3 {
             let [cx, cy, cw, ch] = l.cell(i);
-            let (iw, lw) = (
-                text_side(icon.advance_width(ICONS[i]), s),
-                text_side(label.advance_width(NAMES[i]), s),
-            );
+            let line = label.advance_width(NAMES[i]);
+            let (iw, lw) = (text_side(icon.advance_width(ICONS[i]), s), text_side(line, s));
             let left = (cw - (iw + GAP + lw)) / 2.0;
             let paint = Paint::fill(Color::view_hex(colours[i]));
             c.save();
@@ -529,7 +528,9 @@ impl FluidTab {
             );
             c.draw_text(
                 NAMES[i],
-                text_grid(left + iw + GAP, s),
+                // textAlign 'center': TextKit centres the line in the ceiled box ("Accounts" 0.29 px
+                // right, which carries its o, u and s past a pixel edge).
+                text_grid(left + iw + GAP, s) + (lw - line) / 2.0,
                 gfx::baseline(label, text_grid((ch - lh) / 2.0, s)),
                 label,
                 &paint,
