@@ -41,6 +41,7 @@ pub mod delete_button;
 pub mod dot_sheet;
 pub mod dynamic_blur_tabs;
 pub mod duration_slider;
+pub mod empty_qr_code;
 pub mod exclusion_tabs;
 pub mod expandable_mini_player;
 pub mod fibonacci_shader;
@@ -105,6 +106,7 @@ pub static REGISTRY: Registry = Registry {
         ("dot_sheet", 0, dot_sheet::surface),
         ("dynamic_blur_tabs", 7, dynamic_blur_tabs::surface),
         ("duration_slider", 0, duration_slider::surface),
+        ("empty_qr_code", 0, empty_qr_code::surface),
         ("exclusion_tabs", 0, exclusion_tabs::surface),
         ("expandable_mini_player", 1, expandable_mini_player::surface),
         ("fibonacci_shader", 1, fibonacci_shader::surface),
