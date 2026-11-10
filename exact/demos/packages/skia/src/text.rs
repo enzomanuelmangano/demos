@@ -165,29 +165,17 @@ impl Font {
     /// `first` and that has the pair (a class pair always matches), the first glyph's x advance
     /// (plus its variation delta at the font's axes).
     fn pair(&self, first: GlyphId, second: GlyphId) -> f32 {
-        use ttf_parser::gpos::{Device, PairAdjustment, PositioningSubtable};
         let Some(ui) = self.ui.as_ref() else { return 0.0 };
-        let tables = self.face.tables();
-        let Some(gpos) = tables.gpos else { return 0.0 };
+        let Some(gpos) = self.face.raw_face().table(Tag::from_bytes(b"GPOS")) else { return 0.0 };
+        let gdef = self.face.tables().gdef;
         let coords = self.face.variation_coordinates();
         let mut total = 0.0;
         for &index in &ui.kern {
-            let Some(lookup) = gpos.lookups.get(index) else { continue };
-            for subtable in lookup.subtables.into_iter::<PositioningSubtable>() {
-                let PositioningSubtable::Pair(pair) = subtable else { continue };
-                let Some(at) = pair.coverage().get(first) else { continue };
-                let value = match pair {
-                    PairAdjustment::Format1 { sets, .. } => sets.get(at).and_then(|set| set.get(second)).map(|v| v.0),
-                    PairAdjustment::Format2 { classes, matrix, .. } => matrix.get((classes.0.get(first), classes.1.get(second))).map(|v| v.0),
-                };
-                let Some(v) = value else { continue };
-                let delta = match v.x_advance_device {
-                    Some(Device::Variation(d)) => tables.gdef.and_then(|g| g.glyph_variation_delta(d.outer_index, d.inner_index, coords)).unwrap_or(0.0),
-                    _ => 0.0,
-                };
-                total += v.x_advance as f32 + delta;
-                break;
-            }
+            let Some((x, device)) = gpos_pair(gpos, index, first.0, second.0) else { continue };
+            // A VariationIndex device: the delta at the font's axes (SF's period + space is
+            // −100 with a +100 delta at every weight: 0, as Core Text kerns it).
+            let delta = device.and_then(|(outer, inner)| gdef.and_then(|g| g.glyph_variation_delta(outer, inner, coords))).unwrap_or(0.0);
+            total += x as f32 + delta;
         }
         total
     }
@@ -296,6 +284,103 @@ impl Font {
         let width = self.layout(text, |_, _| n += 1);
         width + spacing * n as f32
     }
+}
+
+/// A GPOS PairPos lookup's adjustment for `first` then `second`, read from the table's bytes
+/// (ttf-parser drops value-record device tables, whose offsets are from the PairPos subtable):
+/// the first subtable whose coverage holds `first` and that has the pair (a class pair always
+/// does), its first value record's x advance and its x-advance VariationIndex device, if any.
+fn gpos_pair(gpos: &[u8], lookup: u16, first: u16, second: u16) -> Option<(i16, Option<(u16, u16)>)> {
+    let u16_at = |d: &[u8], o: usize| -> Option<u16> { Some(u16::from_be_bytes([*d.get(o)?, *d.get(o + 1)?])) };
+    let u32_at = |d: &[u8], o: usize| -> Option<u32> { Some(u32::from_be_bytes([*d.get(o)?, *d.get(o + 1)?, *d.get(o + 2)?, *d.get(o + 3)?])) };
+    let coverage = |d: &[u8], g: u16| -> Option<usize> {
+        match u16_at(d, 0)? {
+            1 => {
+                let n = u16_at(d, 2)? as usize;
+                (0..n).position(|k| u16_at(d, 4 + 2 * k) == Some(g))
+            }
+            2 => {
+                let n = u16_at(d, 2)? as usize;
+                (0..n).find_map(|k| {
+                    let o = 4 + 6 * k;
+                    let (s, e, i) = (u16_at(d, o)?, u16_at(d, o + 2)?, u16_at(d, o + 4)?);
+                    (s <= g && g <= e).then(|| (i + g - s) as usize)
+                })
+            }
+            _ => None,
+        }
+    };
+    let class = |d: &[u8], g: u16| -> u16 {
+        let f = || -> Option<u16> {
+            match u16_at(d, 0)? {
+                1 => {
+                    let (start, n) = (u16_at(d, 2)?, u16_at(d, 4)?);
+                    if g >= start && g - start < n { u16_at(d, 6 + 2 * (g - start) as usize) } else { Some(0) }
+                }
+                2 => {
+                    let n = u16_at(d, 2)? as usize;
+                    Some((0..n).find_map(|k| {
+                        let o = 4 + 6 * k;
+                        let (s, e, c) = (u16_at(d, o)?, u16_at(d, o + 2)?, u16_at(d, o + 4)?);
+                        (s <= g && g <= e).then_some(c)
+                    }).unwrap_or(0))
+                }
+                _ => Some(0),
+            }
+        };
+        f().unwrap_or(0)
+    };
+    let record_len = |f: u16| 2 * f.count_ones() as usize;
+    // A value record at `o` of format `f`, in subtable `sub`: (x advance, x-advance device).
+    let value = |sub: &[u8], o: usize, f: u16| -> Option<(i16, Option<(u16, u16)>)> {
+        let field = |bit: u16| -> Option<u16> { (f & bit != 0).then(|| u16_at(sub, o + 2 * (f & (bit - 1)).count_ones() as usize)).flatten() };
+        let x = field(0x4).unwrap_or(0) as i16;
+        let device = field(0x40).filter(|&off| off != 0).and_then(|off| {
+            let d = sub.get(off as usize..)?;
+            (u16_at(d, 4)? == 0x8000).then(|| Some((u16_at(d, 0)?, u16_at(d, 2)?))).flatten()
+        });
+        Some((x, device))
+    };
+    let list = gpos.get(u16_at(gpos, 8)? as usize..)?;
+    let lk = list.get(u16_at(list, 2 + 2 * lookup as usize)? as usize..)?;
+    let (kind, count) = (u16_at(lk, 0)?, u16_at(lk, 4)? as usize);
+    for k in 0..count {
+        let mut sub = lk.get(u16_at(lk, 6 + 2 * k)? as usize..)?;
+        if kind == 9 {
+            if u16_at(sub, 2)? != 2 {
+                continue;
+            }
+            sub = sub.get(u32_at(sub, 4)? as usize..)?;
+        } else if kind != 2 {
+            continue;
+        }
+        let Some(at) = coverage(sub.get(u16_at(sub, 2)? as usize..)?, first) else { continue };
+        let (f1, f2) = (u16_at(sub, 4)?, u16_at(sub, 6)?);
+        match u16_at(sub, 0)? {
+            1 => {
+                let set = sub.get(u16_at(sub, 10 + 2 * at)? as usize..)?;
+                let n = u16_at(set, 0)? as usize;
+                let stride = 2 + record_len(f1) + record_len(f2);
+                let found = (0..n).find(|&r| u16_at(set, 2 + r * stride) == Some(second));
+                if let Some(r) = found {
+                    // The record's device offsets are from the PairSet (OpenType 1.9).
+                    return value(set, 2 + r * stride + 2, f1);
+                }
+            }
+            2 => {
+                let c1 = class(sub.get(u16_at(sub, 8)? as usize..)?, first) as usize;
+                let c2 = class(sub.get(u16_at(sub, 10)? as usize..)?, second) as usize;
+                let (n1, n2) = (u16_at(sub, 12)? as usize, u16_at(sub, 14)? as usize);
+                if c1 >= n1 || c2 >= n2 {
+                    continue;
+                }
+                let stride = record_len(f1) + record_len(f2);
+                return value(sub, 16 + (c1 * n2 + c2) * stride, f1);
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 fn apply_axes(face: &mut Face<'static>, axes: &[([u8; 4], f32)]) {
@@ -808,6 +893,7 @@ impl Canvas {
 
     /// One glyph-run draw of the quads in `glyph_quads` (device bounds `bounds`): the clip
     /// stack, a depth, the paint, a quad per glyph.
+    #[cfg(target_vendor = "apple")]
     fn emit_glyph_quads(&mut self, xf: &crate::graphite::Xf, paint: &Paint, bounds: [f32; 4], epoch: u64) {
         let m = self.state.matrix;
         let quads = std::mem::take(&mut self.glyph_quads);
@@ -848,6 +934,7 @@ impl Canvas {
     /// [`crate::coretext::Strike::subpixel_levels`], floored; y floored in CoreGraphics'
     /// y-up space, so the baseline rounds down the screen), its coverage as drawn (no Skia
     /// pre-blend). A run's glyphs blend over each other as CoreGraphics' do.
+    #[cfg(target_vendor = "apple")]
     #[allow(clippy::too_many_arguments)]
     fn draw_uikit_glyphs(&mut self, run: &mut Vec<(u16, f32)>, x: f32, y: f32, font: &Font, paint: &Paint, key: crate::glyphs::StrikeKey, text_size: f32, sa: [f32; 4], invertible: bool) -> bool {
         use crate::glyphs::{self, Atlas, Digest};
