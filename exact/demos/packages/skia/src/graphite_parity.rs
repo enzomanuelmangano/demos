@@ -714,3 +714,45 @@ fn uikit_text_is_coregraphics() {
     assert!(worst <= 1, "{worst}");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// A continuous circle (r past half the side: the corners overlap along every side) fills as
+/// Core Animation does with no crack: 89 × 89 at r 100, white on black at 3×, every pixel more
+/// than one in from the edge fully covered along the middle row and column. Its rows match
+/// CA's nonzero fill (path_tests::continuous_corners_fill_as_core_animation).
+#[test]
+fn a_continuous_circle_has_no_msaa_crack() {
+    let Some(gpu) = gpu() else { return };
+    let path = continuous_rrect_path(10.0, 10.0, 89.0, 89.0, 100.0);
+    let (w, h) = (330u32, 330u32);
+    let format = wgpu::TextureFormat::Rgba8Unorm;
+    let tex = gpu.device.create_texture(&wgpu::TextureDescriptor {
+        label: None,
+        size: wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+        view_formats: &[],
+    });
+    let view = tex.create_view(&Default::default());
+    let mut c = Canvas::default();
+    c.begin(3.0);
+    c.draw_path(&path, &white());
+    let mut r = Renderer::default();
+    let mut enc = gpu.device.create_command_encoder(&Default::default());
+    r.draw(&gpu.device, &gpu.queue, &mut enc, &c, &view, format, w, h, wgpu::Color::BLACK);
+    gpu.queue.submit([enc.finish()]);
+    let px = fixture::read(&gpu, &tex).unwrap();
+    px.save("parity-continuous-circle");
+    // The middle (y 54.5 pt = 163 px) row from the left edge (30 px), the middle column from the
+    // bottom (297 px), and the top row and right column.
+    let mid = 163;
+    let row: Vec<u8> = (28..40).map(|x| px.at(x, mid)[0]).collect();
+    let col: Vec<u8> = (288..300).rev().map(|y| px.at(mid, y)[0]).collect();
+    eprintln!("left edge, middle row: {row:?}\nbottom edge, middle column: {col:?}");
+    for x in 31..296 {
+        assert_eq!(px.at(x, mid)[0], 255, "row {mid}, x {x}: {row:?}");
+        assert_eq!(px.at(mid, x)[0], 255, "column {mid}, y {x}: {col:?}");
+    }
+}

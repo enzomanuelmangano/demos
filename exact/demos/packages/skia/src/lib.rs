@@ -1488,7 +1488,17 @@ pub fn continuous_radius(w: f32, h: f32, r: f32) -> f32 {
 }
 
 /// Appends a rounded rect with continuous corners (RN's `borderRadius` + `borderCurve:
-/// 'continuous'`, iOS's squircle) to a builder, clockwise from the top edge.
+/// 'continuous'`, iOS's squircle) to a builder, clockwise from the top edge, for a fill or a
+/// clip.
+///
+/// When the corners overlap along a side (a circle or a pill: the side shorter than 2 ×
+/// 1.52866 r), Apple's path runs that side's straight part backwards and Core Animation fills
+/// it with the nonzero rule. That region is drawn here as its own outline, which fills the same
+/// points without the overlap: per such side, the main contour goes from one corner's curve to
+/// the next at the point where they cross (the side's middle, by symmetry), and a second
+/// contour is the strip between the side and the two curves' outer halves (the backward line's
+/// part of the fill). Tessellating the overlap as it stands left a crack of MSAA samples just
+/// inside the side, where the two curves' chords cross.
 pub fn add_continuous_rrect<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, x: f32, y: f32, w: f32, h: f32, r: f32) {
     let r = continuous_radius(w, h, r);
     if r <= 0.0 {
@@ -1496,23 +1506,107 @@ pub fn add_continuous_rrect<B: lyon::path::traits::PathBuilder>(b: &mut lyon::pa
         return;
     }
     let e = CONTINUOUS_EXTENT * r;
-    // Each corner: its point, the incoming side's direction (unit), the outgoing side's.
+    // Each corner: its point, the incoming side's direction (unit), the outgoing side's, and
+    // the outgoing side's length.
     let corners = [
-        (point(x + w, y), vector(1.0, 0.0), vector(0.0, 1.0)),
-        (point(x + w, y + h), vector(0.0, 1.0), vector(-1.0, 0.0)),
-        (point(x, y + h), vector(-1.0, 0.0), vector(0.0, -1.0)),
-        (point(x, y), vector(0.0, -1.0), vector(1.0, 0.0)),
+        (point(x + w, y), vector(1.0, 0.0), vector(0.0, 1.0), h),
+        (point(x + w, y + h), vector(0.0, 1.0), vector(-1.0, 0.0), w),
+        (point(x, y + h), vector(-1.0, 0.0), vector(0.0, -1.0), h),
+        (point(x, y), vector(0.0, -1.0), vector(1.0, 0.0), w),
     ];
-    b.begin(point(x + e, y));
-    for (corner, incoming, outgoing) in corners {
-        let at = |[a, c]: [f32; 2]| corner - incoming * (a * r) + outgoing * (c * r);
-        // The side's straight part (backwards when the corners overlap, as Apple's path).
-        b.line_to(at([CONTINUOUS_EXTENT, 0.0]));
-        for [c1, c2, to] in CONTINUOUS_CORNER {
-            b.cubic_bezier_to(at(c1), at(c2), at(to));
+    let frame = |k: usize, [a, c]: [f32; 2]| {
+        let (corner, incoming, outgoing, _) = corners[k];
+        corner - incoming * (a * r) + outgoing * (c * r)
+    };
+    let cubic = |k: usize, i: usize| -> [Point; 4] {
+        let start = if i == 0 { [CONTINUOUS_EXTENT, 0.0] } else { CONTINUOUS_CORNER[i - 1][2] };
+        let [c1, c2, to] = CONTINUOUS_CORNER[i];
+        [frame(k, start), frame(k, c1), frame(k, c2), frame(k, to)]
+    };
+    // Where corner k's last curve meets corner k + 1's first one on their side (overlapping
+    // only): the parameter on the last curve (the first one's is 1 − t, mirrored).
+    let crossing = |k: usize| -> Option<f32> {
+        let side = corners[k].3;
+        if 2.0 * e <= side {
+            return None;
+        }
+        // The last curve's coordinate along the outgoing side runs 0.6315 r → 1.5287 r.
+        let [_, c1, c2, to] = [CONTINUOUS_CORNER[1][2], CONTINUOUS_CORNER[2][0], CONTINUOUS_CORNER[2][1], CONTINUOUS_CORNER[2][2]];
+        let p0 = CONTINUOUS_CORNER[1][2];
+        let along = |t: f64| {
+            let mt = 1.0 - t;
+            mt * mt * mt * p0[1] as f64 + 3.0 * mt * mt * t * c1[1] as f64 + 3.0 * mt * t * t * c2[1] as f64 + t * t * t * to[1] as f64
+        };
+        let target = side as f64 / 2.0 / r as f64;
+        let (mut lo, mut hi) = (0.0f64, 1.0f64);
+        for _ in 0..60 {
+            let mid = 0.5 * (lo + hi);
+            if along(mid) < target {
+                lo = mid;
+            } else {
+                hi = mid;
+            }
+        }
+        Some((0.5 * (lo + hi)) as f32)
+    };
+    let cross: [Option<f32>; 4] = std::array::from_fn(crossing);
+    // `p` cut to [t0, t1] (de Casteljau).
+    let cut = |p: [Point; 4], t0: f32, t1: f32| -> [Point; 4] {
+        let split = |p: [Point; 4], t: f32| -> ([Point; 4], [Point; 4]) {
+            let l = |a: Point, b: Point| a.lerp(b, t);
+            let (a, bb, c) = (l(p[0], p[1]), l(p[1], p[2]), l(p[2], p[3]));
+            let (d, f) = (l(a, bb), l(bb, c));
+            let m = l(d, f);
+            ([p[0], a, d, m], [m, f, c, p[3]])
+        };
+        let right = if t0 > 0.0 { split(p, t0).1 } else { p };
+        if t1 < 1.0 {
+            split(right, (t1 - t0) / (1.0 - t0)).0
+        } else {
+            right
+        }
+    };
+    let prev = |k: usize| (k + 3) % 4;
+    // The main contour, from corner 0's first curve.
+    match cross[prev(0)] {
+        Some(t) => b.begin(cut(cubic(0, 0), 1.0 - t, 1.0)[0]),
+        // From the top side's left end, as Apple's path.
+        None => b.begin(frame(3, [0.0, CONTINUOUS_EXTENT])),
+    };
+    for k in 0..4 {
+        for i in 0..3 {
+            let mut c = cubic(k, i);
+            if i == 0 {
+                match cross[prev(k)] {
+                    Some(t) => c = cut(c, 1.0 - t, 1.0),
+                    // The side's straight part.
+                    None => {
+                        b.line_to(c[0]);
+                    }
+                }
+            }
+            if i == 2 {
+                if let Some(t) = cross[k] {
+                    c = cut(c, 0.0, t);
+                }
+            }
+            b.cubic_bezier_to(c[1], c[2], c[3]);
         }
     }
     b.end(true);
+    // The strips the backward lines fill: the next corner's first curve to the crossing, this
+    // corner's last curve from it, the side back.
+    for k in 0..4 {
+        if let Some(t) = cross[k] {
+            let n = (k + 1) % 4;
+            let into = cut(cubic(n, 0), 0.0, 1.0 - t);
+            let out = cut(cubic(k, 2), t, 1.0);
+            b.begin(into[0]);
+            b.cubic_bezier_to(into[1], into[2], into[3]);
+            b.cubic_bezier_to(out[1], out[2], out[3]);
+            b.end(true);
+        }
+    }
 }
 
 /// A rounded rect with continuous corners as a path ([`add_continuous_rrect`]).
