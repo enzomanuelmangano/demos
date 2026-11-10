@@ -67,6 +67,12 @@ One commit per haptic event, never per frame.
 
 ## Traps the compiler only catches in the whole app
 
+- RN Skia renders into a Display P3 surface: a RuntimeEffect (SkSL) shader's output colours
+  are P3 values, so convert them to sRGB in the WGSL port (skia-color-picker: 5.0 → 1.2 levels).
+- RN Skia `measureText` on iOS: each glyph's bounds rounded out to whole points + 1 pt, wider
+  than the ink; `skia::measure_text` reproduces it ("Home" = 37.888).
+- Variable fonts: RN uses the optical size it draws at and Core Text's fractional advances
+  (Newsreader at opsz 12): never round advances to font units.
 - iOS host: a `transition`'s DELAY is ignored (measured: popup-handler, verification-code),
   armed early or not. `animation` delays hold. A delayed motion (`withDelay`) is keyframes
   with a delay (`… 300ms <easing> 800ms both`) or Rust. Keyframes refuse `rotate="x -90deg"`
