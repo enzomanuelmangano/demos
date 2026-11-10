@@ -478,3 +478,77 @@ fn text_is_graphites_direct_masks() {
         assert!(px.count(|p| p[3] > 200) > 30, "{name}: ink");
     }
 }
+
+/// Arcs, SVG arcs and circles inside a bigger path are Skia's conics, tessellated as Graphite
+/// tessellates conics (Wang's conic formula): 4× MSAA of that subdivision sample for sample, and
+/// its points on the true circle within f32 rounding (where a cubic stand-in is 2.7e-4 r off).
+#[test]
+fn arcs_and_circles_in_paths_are_conics() {
+    let Some(gpu) = gpu() else { return };
+    let mut b = Path::builder();
+    // addArc: 200° of an oval, closed by a line back.
+    add_arc(&mut b, 8.3, 6.1, 50.2, 44.7, -30.0, 200.0);
+    // A circle and a rect in the same path (not a lone oval: no analytic draw).
+    add_circle(&mut b, 70.4, 52.3, 17.9);
+    add_rect(&mut b, 60.0, 8.0, 25.0, 12.0);
+    // An SVG arc on a contour.
+    b.begin(point(12.0, 70.0));
+    add_svg_arc(&mut b, point(12.0, 70.0), point(44.0, 66.0), 19.0, 12.0, 25.0, true, false);
+    b.line_to(point(30.0, 78.0));
+    b.end(true);
+    let path = b.build();
+    let mut verbs = Vec::new();
+    push_verbs(path.iter(), &mut verbs);
+    let conics = verbs.iter().filter(|v| matches!(v, graphite::Verb::Conic(..))).count();
+    assert!(verbs.iter().all(|v| !matches!(v, graphite::Verb::Cubic(..))), "{verbs:?}");
+    // 200°: two quadrants and 20°; the circle's four; the SVG arc's segments.
+    assert!(conics >= 3 + 4 + 1, "{conics}");
+    let m = Matrix::rotate(0.07).then(Matrix::translate(1.3, -0.6));
+    let mut c = Canvas::default();
+    c.begin(1.0);
+    c.concat(m);
+    c.draw_path(&path, &white());
+    assert!(c.msaa && c.rrects.is_empty());
+    let px = render(&gpu, &c);
+    px.save("parity-conics");
+    let mut polys: Vec<Vec<Point>> = Vec::new();
+    let mut scratch = Vec::new();
+    graphite::flatten(&verbs, &m, |_, pts| polys.push(pts.iter().map(|p| point((p.x * 256.0).round() / 256.0, (p.y * 256.0).round() / 256.0)).collect()), &mut scratch);
+    const SAMPLES: [(f32, f32); 4] = [(0.375, 0.125), (0.875, 0.375), (0.125, 0.625), (0.625, 0.875)];
+    let want = |x: u32, y: u32| SAMPLES.iter().filter(|(sx, sy)| winding(&polys, point(x as f32 + sx, y as f32 + sy)) != 0).count() as f32 / 4.0;
+    let worst = compare(&px, want, "conics");
+    assert!(worst <= 0.5 / 255.0 + 1e-4, "{worst}");
+
+    // The circle's tessellation against the circle, in device pixels: conics vs the cubics
+    // they stand in for.
+    let mut cb = Path::builder();
+    add_circle(&mut cb, 0.0, 0.0, 40.0);
+    let circle = cb.build();
+    let off = |verbs: &[graphite::Verb]| {
+        let mut worst = 0.0f64;
+        graphite::flatten(verbs, &Matrix::IDENTITY, |_, pts| {
+            for p in pts {
+                worst = worst.max((((p.x as f64).powi(2) + (p.y as f64).powi(2)).sqrt() - 40.0).abs());
+            }
+        }, &mut Vec::new());
+        worst
+    };
+    let mut as_conics = Vec::new();
+    push_verbs(circle.iter(), &mut as_conics);
+    let as_cubics: Vec<graphite::Verb> = {
+        let mut v = Vec::new();
+        for e in circle.iter() {
+            match e {
+                PathEvent::Begin { at } => v.push(graphite::Verb::Move(at)),
+                PathEvent::Cubic { ctrl1, ctrl2, to, .. } => v.push(graphite::Verb::Cubic(ctrl1, ctrl2, to)),
+                PathEvent::End { close: true, .. } => v.push(graphite::Verb::Close),
+                _ => {}
+            }
+        }
+        v
+    };
+    let (e_conic, e_cubic) = (off(&as_conics), off(&as_cubics));
+    eprintln!("circle r = 40 px: tessellated points off the circle by {e_conic:.2e} px as conics, {e_cubic:.2e} px as cubics");
+    assert!(e_conic < 2e-5, "{e_conic}");
+    assert!(e_cubic > 5e-3, "{e_cubic}");
+}

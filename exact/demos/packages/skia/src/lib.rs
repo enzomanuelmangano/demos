@@ -36,6 +36,7 @@ pub use lyon::path::{Path, PathBuffer, PathEvent, PathSlice};
 pub mod backdrop;
 pub mod blur;
 pub mod color;
+mod conics;
 #[cfg(target_vendor = "apple")]
 mod coretext;
 mod glyphs;
@@ -424,6 +425,7 @@ impl Default for Canvas {
 }
 
 /// The verbs of lyon path events (curves kept; `End { close }` becomes a close).
+/// A cubic that [`conics`] made from a conic (an arc, an oval) is that conic again.
 fn push_verbs<I: IntoIterator<Item = PathEvent>>(events: I, out: &mut Vec<graphite::Verb>) {
     use graphite::Verb;
     for e in events {
@@ -431,7 +433,10 @@ fn push_verbs<I: IntoIterator<Item = PathEvent>>(events: I, out: &mut Vec<graphi
             PathEvent::Begin { at } => out.push(Verb::Move(at)),
             PathEvent::Line { to, .. } => out.push(Verb::Line(to)),
             PathEvent::Quadratic { ctrl, to, .. } => out.push(Verb::Quad(ctrl, to)),
-            PathEvent::Cubic { ctrl1, ctrl2, to, .. } => out.push(Verb::Cubic(ctrl1, ctrl2, to)),
+            PathEvent::Cubic { from, ctrl1, ctrl2, to } => out.push(match conics::lookup(from, ctrl1, ctrl2, to) {
+                Some((c, w)) => Verb::Conic(c, to, w),
+                None => Verb::Cubic(ctrl1, ctrl2, to),
+            }),
             PathEvent::End { close, .. } => {
                 if close {
                     out.push(Verb::Close)
@@ -533,6 +538,29 @@ fn detect(verbs: &[graphite::Verb]) -> Option<(Geo, bool)> {
         let m = b.into_inner();
         m.ok && m.at == n
     };
+    // addOval / addCircle (conics::add_oval): four quarter conics of the on-curve points' box,
+    // from one of its four starts, either way round.
+    if body.len() == 4 && body.iter().all(|v| matches!(v, Verb::Conic(_, _, w) if *w == conics::ROOT2_OVER2)) {
+        let mut r = [start.x, start.y, start.x, start.y];
+        for v in body {
+            if let Verb::Conic(_, p, _) = *v {
+                r = [r[0].min(p.x), r[1].min(p.y), r[2].max(p.x), r[3].max(p.y)];
+            }
+        }
+        if r[0] < r[2] && r[1] < r[3] {
+            let tol = 1e-5 * (r[2] - r[0]).max(r[3] - r[1]).max(1.0);
+            for ccw in [false, true] {
+                for index in 0..4 {
+                    let (s0, q) = conics::oval_conics(r, ccw, index);
+                    let same = near(s0, start, tol)
+                        && q.iter().zip(body).all(|((c, p), v)| matches!(*v, Verb::Conic(vc, vp, _) if near(vc, *c, tol) && near(vp, *p, tol)));
+                    if same {
+                        return Some((Geo::RRect(graphite::RRect::oval(r)), true));
+                    }
+                }
+            }
+        }
+    }
     // add_circle: begins at (cx − r, cy), four cubics, the second ending at (cx + r, cy).
     if body.len() == 4 && body.iter().all(|v| matches!(v, Verb::Cubic(..))) {
         if let Verb::Cubic(_, _, right) = body[1] {
@@ -1548,54 +1576,34 @@ pub fn add_rect<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder:
 }
 
 /// Appends an oval to a builder (`<Oval x y width height>`, `PathBuilder.addOval`): the ellipse
-/// inscribed in the rect.
+/// inscribed in the rect, as Skia builds it (four quarter conics from the right, clockwise).
 pub fn add_oval<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, x: f32, y: f32, w: f32, h: f32) {
-    b.add_ellipse(point(x + w / 2.0, y + h / 2.0), vector(w / 2.0, h / 2.0), lyon::math::Angle::radians(0.0), Winding::Positive);
+    conics::add_oval(b, [x.min(x + w), y.min(y + h), x.max(x + w), y.max(y + h)], false, 1);
 }
 
-/// Appends a circle to a builder (`PathBuilder.addCircle`).
+/// Appends a circle to a builder (`PathBuilder.addCircle`): Skia's four quarter conics from
+/// (cx + r, cy), clockwise.
 pub fn add_circle<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, cx: f32, cy: f32, r: f32) {
-    b.add_circle(point(cx, cy), r, Winding::Positive);
+    if r >= 0.0 {
+        conics::add_oval(b, [cx - r, cy - r, cx + r, cy + r], false, 1);
+    }
 }
 
 /// Appends an arc of the oval inscribed in a rect (`PathBuilder.addArc(oval, startAngle,
 /// sweepAngle)`): a new contour from `start_deg`, sweeping `sweep_deg` (degrees, clockwise on
-/// screen as Skia's), as cubic Béziers.
+/// screen as Skia's), as Skia's conics (a quadrant each, the rest in one more); a full turn from
+/// a quadrant is the oval.
 pub fn add_arc<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, x: f32, y: f32, w: f32, h: f32, start_deg: f32, sweep_deg: f32) {
-    let arc = lyon::geom::Arc {
-        center: point(x + w / 2.0, y + h / 2.0),
-        radii: vector(w / 2.0, h / 2.0),
-        start_angle: lyon::math::Angle::degrees(start_deg),
-        sweep_angle: lyon::math::Angle::degrees(sweep_deg),
-        x_rotation: lyon::math::Angle::radians(0.0),
-    };
-    b.begin(arc.from());
-    arc.for_each_cubic_bezier(&mut |c| {
-        b.cubic_bezier_to(c.ctrl1, c.ctrl2, c.to);
-    });
-    b.end(false);
+    conics::add_arc(b, [x, y, x + w, y + h], start_deg, sweep_deg);
 }
 
 /// Appends `PathBuilder.arcTo(rx, ry, xAxisRotateInDegrees, useSmallArc, isCCW, x, y)` (an SVG
-/// arc, Skia's `SkPath::arcTo` with `ArcSize` and `PathDirection`) from `from` to `to`, as cubic
-/// Béziers on the current contour; `rArcTo` is the same with `to = from + (dx, dy)`.
+/// arc, Skia's `SkPath::arcTo` with `ArcSize` and `PathDirection`) from `from` to `to`, as
+/// Skia's conics (at most 120° each) on the current contour; `rArcTo` is the same with
+/// `to = from + (dx, dy)`.
 #[allow(clippy::too_many_arguments)]
 pub fn add_svg_arc<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, from: Point, to: Point, rx: f32, ry: f32, x_rotation_deg: f32, small_arc: bool, ccw: bool) {
-    let arc = lyon::geom::SvgArc {
-        from,
-        to,
-        radii: vector(rx, ry),
-        x_rotation: lyon::math::Angle::degrees(x_rotation_deg),
-        // Clockwise on screen (y down) is lyon's positive angle.
-        flags: lyon::geom::ArcFlags { large_arc: !small_arc, sweep: !ccw },
-    };
-    if arc.is_straight_line() {
-        b.line_to(to);
-        return;
-    }
-    arc.for_each_cubic_bezier(&mut |c| {
-        b.cubic_bezier_to(c.ctrl1, c.ctrl2, c.to);
-    });
+    conics::svg_arc_to(b, from, rx, ry, x_rotation_deg, !small_arc, ccw, to);
 }
 
 /// Appends a rounded rect wound the other way (a hole: with a rect around it, the nonzero fill
@@ -1605,23 +1613,12 @@ pub fn add_rrect_hole<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::bu
     b.add_rounded_rectangle(&lyon::math::Box2D::new(point(x, y), point(x + w, y + h)), &BorderRadii::new(r), Winding::Negative);
 }
 
-/// Appends a circle as sixteen cubic arcs of 22.5° (within 1e-7 r of the circle, where
-/// [`add_circle`]'s four cubics are 2e-4 r off: 0.19 pt on a 950 pt circle; Skia's `addCircle`
-/// is conics, exact). `hole` winds it the other way (an inverted clip with a rect around it).
+/// Appends a circle exactly as Skia's `addCircle` draws it: its four quarter conics (in a lyon
+/// reader's eyes, their cubics). `hole` winds it the other way (`SkPathDirection::kCCW`: an
+/// inverted clip with a rect around it).
 pub fn add_circle_fine<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, cx: f32, cy: f32, r: f32, hole: bool) {
-    const N: usize = 16;
-    let (cx, cy, r) = (cx as f64, cy as f64, r.abs() as f64);
-    let step = std::f64::consts::TAU / N as f64 * if hole { -1.0 } else { 1.0 };
-    let k = 4.0 / 3.0 * (step / 4.0).tan() * r;
-    let at = |a: f64| point((cx + r * a.cos()) as f32, (cy + r * a.sin()) as f32);
-    b.begin(at(0.0));
-    for i in 0..N {
-        let (a0, a1) = (step * i as f64, step * (i + 1) as f64);
-        let c1 = point((cx + r * a0.cos() - k * a0.sin()) as f32, (cy + r * a0.sin() + k * a0.cos()) as f32);
-        let c2 = point((cx + r * a1.cos() + k * a1.sin()) as f32, (cy + r * a1.sin() - k * a1.cos()) as f32);
-        b.cubic_bezier_to(c1, c2, at(a1));
-    }
-    b.end(true);
+    let r = r.abs();
+    conics::add_oval(b, [cx - r, cy - r, cx + r, cy + r], hole, 1);
 }
 
 /// A path measured once, to be drawn trimmed every frame without allocating
@@ -1828,17 +1825,31 @@ mod path_tests {
         let mut b = Path::builder();
         add_circle_fine(&mut b, 10.0, 20.0, 950.0, false);
         let p = b.build();
+        // What the canvas draws: Skia's four quarter conics, on the circle.
+        let mut verbs = Vec::new();
+        push_verbs(p.iter(), &mut verbs);
         let mut worst: f64 = 0.0;
-        for e in p.iter() {
-            if let PathEvent::Cubic { from, ctrl1, ctrl2, to } = e {
-                let c = lyon::geom::CubicBezierSegment { from, ctrl1, ctrl2, to };
-                for k in 0..=32 {
-                    let q = c.sample(k as f32 / 32.0);
-                    let d = (((q.x - 10.0) as f64).powi(2) + ((q.y - 20.0) as f64).powi(2)).sqrt();
-                    worst = worst.max((d - 950.0).abs());
+        let mut at = point(0.0, 0.0);
+        let mut conics = 0;
+        for v in &verbs {
+            match *v {
+                graphite::Verb::Move(q) => at = q,
+                graphite::Verb::Conic(c, to, w) => {
+                    conics += 1;
+                    for k in 0..=32 {
+                        let t = k as f64 / 32.0;
+                        let (a, b2, c2) = ((1.0 - t) * (1.0 - t), 2.0 * t * (1.0 - t) * w as f64, t * t);
+                        let d = a + b2 + c2;
+                        let x = (a * at.x as f64 + b2 * c.x as f64 + c2 * to.x as f64) / d;
+                        let y = (a * at.y as f64 + b2 * c.y as f64 + c2 * to.y as f64) / d;
+                        worst = worst.max((((x - 10.0).powi(2) + (y - 20.0).powi(2)).sqrt() - 950.0).abs());
+                    }
+                    at = to;
                 }
+                _ => {}
             }
         }
+        assert_eq!(conics, 4);
         // f32 coordinates near 1000 carry 6e-5 of rounding.
         assert!(worst < 2e-3, "{worst}");
         // Clockwise on screen from (r, 0) (y down: through +y first); the hole the other way.

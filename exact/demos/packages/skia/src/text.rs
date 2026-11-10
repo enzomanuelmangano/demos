@@ -30,9 +30,11 @@ use crate::{DrawClip, Geo, Op, Shader, Vertex, EMPTY};
 /// A typeface at a size: RN Skia's `SkFont`.
 pub struct Font {
     face: Face<'static>,
+    #[cfg_attr(not(target_vendor = "apple"), allow(dead_code))]
     data: &'static [u8],
     /// This font's id in the glyph atlas, and its variation's generation (bumped as `opsz`
     /// follows the size).
+    #[cfg_attr(not(target_vendor = "apple"), allow(dead_code))]
     uid: u64,
     generation: u64,
     /// CoreText's typeface for this variation and the last strikes made from it.
@@ -597,6 +599,7 @@ impl Font {
     /// The variation as `SkTypeface_Mac::MakeFromStream` gives it to CoreText
     /// (`ctvariation_from_SkFontArguments`): none when the font was made without one, else every
     /// axis, at the value asked for pinned to its range, or at its default.
+    #[cfg_attr(not(target_vendor = "apple"), allow(dead_code))]
     pub(crate) fn ct_axes(&self) -> Vec<([u8; 4], f32)> {
         if self.axes.is_empty() {
             return Vec::new();
@@ -613,6 +616,7 @@ impl Font {
     }
 
     /// The glyph atlas's name for this font at its current variation.
+    #[cfg_attr(not(target_vendor = "apple"), allow(dead_code))]
     pub(crate) fn atlas_key(&self) -> u64 {
         (self.uid << 24) | (self.generation & 0xFF_FFFF)
     }
