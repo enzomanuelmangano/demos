@@ -183,6 +183,29 @@ static void dumpView(UIView *v, NSString *indent) {
   for (UIView *s in v.subviews) dumpView(s, [indent stringByAppendingString:@"  "]);
 }
 
+// expo-linear-gradient's LinearGradientLayer: a CGGradient in DeviceRGB, evenly spaced, top to
+// bottom, drawn into the layer's own bitmap.
+@interface GradientView : UIView
+@property(nonatomic, strong) NSArray<UIColor *> *colors;
+@end
+@implementation GradientView
+- (void)drawRect:(CGRect)rect {
+  CGContextRef ctx = UIGraphicsGetCurrentContext();
+  CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
+  NSMutableArray *cg = [NSMutableArray array];
+  CGFloat loc[8];
+  for (NSUInteger i = 0; i < self.colors.count; i++) {
+    [cg addObject:(__bridge id)self.colors[i].CGColor];
+    loc[i] = (CGFloat)i / (self.colors.count - 1);
+  }
+  CGGradientRef g = CGGradientCreateWithColors(space, (__bridge CFArrayRef)cg, loc);
+  CGContextDrawLinearGradient(ctx, g, CGPointMake(0, 0), CGPointMake(0, self.bounds.size.height),
+                              kCGGradientDrawsBeforeStartLocation | kCGGradientDrawsAfterEndLocation);
+  CGGradientRelease(g);
+  CGColorSpaceRelease(space);
+}
+@end
+
 @interface Probe : UIResponder <UIApplicationDelegate, UIWindowSceneDelegate>
 @property(nonatomic, strong) UIWindow *window;
 @property(nonatomic, strong) NSMutableArray *animators;
@@ -302,6 +325,26 @@ static UIColor *p3(double r, double g, double b, double a) {
     NSArray *c = [[pattern substringFromIndex:5] componentsSeparatedByString:@","];
     root.backgroundColor = p3([c[0] doubleValue] / 255, [c[1] doubleValue] / 255, [c[2] doubleValue] / 255, 1);
     [self effect:style fraction:f frame:CGRectMake(60, 150, 300, 600) in:root];
+  } else if ([pattern isEqual:@"photo"]) {
+    // blurred-bottom-bar: a photo (scaleAspectFill, RN's cover) over the window, the
+    // LinearGradient (rgba(255,255,255,0) → rgba(0,0,0,0.1/0.5/0.8)) over its bottom -gradient
+    // points, the effect over -bar "x,y,w,h" (points).
+    UIImageView *iv = [[UIImageView alloc] initWithImage:[UIImage imageWithContentsOfFile:[d stringForKey:@"photo"]]];
+    iv.frame = b;
+    iv.contentMode = UIViewContentModeScaleAspectFill;
+    iv.clipsToBounds = YES;
+    [root addSubview:iv];
+    double gh = [d doubleForKey:@"gradient"];
+    if (gh > 0) {
+      GradientView *g = [[GradientView alloc] initWithFrame:CGRectMake(0, b.size.height - gh, b.size.width, gh)];
+      g.opaque = NO;
+      g.backgroundColor = UIColor.clearColor;
+      g.colors = @[ [UIColor colorWithRed:1 green:1 blue:1 alpha:0], [UIColor colorWithRed:0 green:0 blue:0 alpha:0.1],
+                    [UIColor colorWithRed:0 green:0 blue:0 alpha:0.5], [UIColor colorWithRed:0 green:0 blue:0 alpha:0.8] ];
+      [root addSubview:g];
+    }
+    NSArray *r = [[d stringForKey:@"bar"] componentsSeparatedByString:@","];
+    [self effect:style fraction:f frame:CGRectMake([r[0] doubleValue], [r[1] doubleValue], [r[2] doubleValue], [r[3] doubleValue]) in:root];
   } else if ([pattern isEqual:@"patches"]) {
     // 24 colour patches (6 rows × 4), each 105 × 152 pt; an effect view per patch, inset 40 pt.
     NSArray *cs = @[ @[@255,@0,@0], @[@0,@255,@0], @[@0,@0,@255], @[@255,@255,@0],

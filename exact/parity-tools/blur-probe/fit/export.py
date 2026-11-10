@@ -21,3 +21,11 @@ with open(OUT+'/patches.txt','w') as o:
       for f in FR:
         o.write(f'{k} {s} {f}: '+' '.join(','.join(f'{v:.1f}' for v in p) for p in patches(f'{k}-{s}-{f}'))+'\n')
 print(len(b))
+
+def export_bar(out_dir):
+    """blurred-bottom-bar: the probe's bar (292 × 58 pt at (64, 804), regular 0.4, 5 % white,
+    the gradient 124 pt) over each photo; every 4th pixel of the bar, RGB."""
+    from PIL import Image
+    for i in range(3):
+        cap=np.asarray(Image.open(f'/tmp/blur-probe/cap/bbb-0{i+1}.png').convert('RGB')).astype(np.uint8)[2412:2586:4,192:1068:4]
+        open(f'{out_dir}/bar-{i}.rgb','wb').write(cap.tobytes())
