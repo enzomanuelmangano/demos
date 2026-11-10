@@ -347,6 +347,27 @@ One commit per haptic event, never per frame.
   content box.
 - RN's ReText is a TextInput: UITextField centres the line a device pixel above where a Text
   would sit (scroll-progress' percentage).
+- The demo screen is UIKit's `.overFullScreen` presentation (the home stays beneath). Contract
+  cannot round or clear the presented controller's view (a fullscreen route's backdrop falls back
+  to its ancestors' or the system background, never clear), so RN's card corners (continuous
+  SCREEN_CORNER_RADIUS, 62 on iPhone Air, clipped) are the `screen-corners` module view
+  (modules/apple/Demos.swift) setting the presented view's layer as Fabric sets RN's card.
+- A SwiftUI view in a module tag: Exact rounds the module box to whole points and the hosting
+  view centres its content in it, so a fractional-size control (the glass close, 47.33 pt) lands a
+  device pixel off. Author the box and pin the SwiftUI content to the edge RN anchors it at
+  (`.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)`); return the
+  hosting controller's view itself as the instance's view (a wrapper UIView offset it by half its
+  size). `label` is refused on a module tag (it is `aria-label`): name it otherwise (`caption`).
+- iOS host, `-exact-layout-transition` on a state toggle (animated-grid-list grid ↔ list): the
+  photo's clip box (a `Reflow` child) shows its new size on the commit's first frame, square, and
+  the cards' 700 ms transitions start ~4 frames (~130 ms) after it; RN starts every layout
+  animation on the same frame, the photo shrinking and rounding over 300 ms. Unsolved.
+- `pgrep -f "exact.mjs ios"` also matches a shell whose own command line contains that text (a
+  wait loop): check the build lock with a bare `pgrep` call, never from inside a loop that greps it.
+- The RN dev client launched cold by its `exp+thank-you://expo-development-client/?url=…` link
+  lands on Unmatched Route (RootLayout pushes the dev-client URL's path) and later `demos://`
+  links stay there. `restart-app com.reactiive.app` with no URL reconnects to Metro and shows the
+  home; then the deep links work. Never `simctl terminate` the RN app.
 
 ## 4. Check
 
