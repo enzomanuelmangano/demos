@@ -86,9 +86,19 @@ component ScrollProgress
             for x, i in sections() key=i
               // styles.textContainer: marginBottom 20; title #EEE 20 bold, marginBottom 10;
               // description #999 14.
+              // No lineHeight in RN: TextKit sets each line at UIFont.lineHeight, iOS SF's
+              // (1950 + 494) / 2048 em unrounded: 16.70703125 at 14, 23.8671875 at 20 (every
+              // weight). Exact's `normal` is Chrome's line box (1980 / 432 em, ascent and descent
+              // each rounded to a whole point): 17 and 23, so the lines drifted 0.88 px each.
+              // The authored height floors its half-leading to a point, which puts a
+              // description's baseline at 13 where TextKit's is 13.33: the hairline on top puts
+              // it back. RN then rounds each Text up to the device pixel (title 24, description
+              // +0.13..0.21): about that same hairline per section (within 0.07 pt a section).
               column margin-bottom=20
-                text x.title color="#EEEEEE" font-size=20 font-weight=700 margin-bottom=10
-                text x.description color="#999999" font-size=14
+                text x.title color="#EEEEEE" font-size=20 font-weight=700 line-height="23.8671875px"
+                  margin-bottom=10
+                text x.description color="#999999" font-size=14 line-height="16.70703125px"
+                  padding-top="-exact-hairline"
       // The top gradient: ['#111111', '#11111100'], safeTop + 16 tall, zIndex 10.
       view position="absolute" left=0 right=0 top=0 height=(env.safeTop + 16) z-index=10
         pointer-events="none" aria-hidden=true
@@ -141,7 +151,8 @@ component BottomProgress
         column class=PillMotion position="absolute" inset=0 align-items="center" justify-content="center"
           opacity=(isInitial(progress) ? 1 : 0)
           transition="opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
-          text readingTime() color="#9E9E9E" margin-left=5 margin-right=5 white-space="nowrap"
+          // RN's default fontSize, 14 (Exact's iOS default is 17).
+          text readingTime() color="#9E9E9E" font-size=14 margin-left=5 margin-right=5 white-space="nowrap"
             -exact-fit="shrink" testId="reading-time"
         // The up arrow, shown at END: PressableOpacity, AntDesign arrow-up 24 #9E9E9E; pressed,
         // it scrolls to the top (only at END).
