@@ -3,12 +3,14 @@
 //! A demo records its Skia `<Canvas>` into a [`Canvas`] each frame, as its JSX declares it:
 //! paths (fill or stroke), circles, rects and rounded rects, with a [`Paint`] (a colour or a
 //! linear, radial or sweep gradient), under transforms, opacity and clips. [`Renderer::draw`]
-//! puts the frame into the surface's target: one vertex buffer, one pipeline, MSAA 4×.
-//!
-//! Paths are tessellated by lyon on the CPU (in local space, then transformed), so nothing
-//! needs compute or indirect dispatch: it runs the same on a phone and in the iOS Simulator.
-//! Gradients are evaluated per pixel in the shader, interpolated as Skia does (unpremultiplied
-//! sRGB). Clips are stencil levels.
+//! puts the frame into the surface's target, antialiased as RN Skia's Graphite (Skia m157 on
+//! Dawn/Metal) does it ([`graphite`]): rects, rounded rects, circles, ovals and lines, filled
+//! or stroked, through AnalyticRRectRenderStep's mesh and coverage; paths through its curve
+//! subdivision, stencil-and-cover fills and stroke tessellator with 4× MSAA, the pass
+//! multisampled only when such a draw is in it; clips folded into the draw, scissored, one
+//! analytic, or drawn into depth. Everything is tessellated on the CPU, so nothing needs compute
+//! or indirect dispatch: it runs the same on a phone and in the iOS Simulator. Gradients are
+//! evaluated per pixel in the shader, interpolated as Skia does (unpremultiplied sRGB).
 //!
 //! Text is [`Font`] + [`Canvas::draw_text`] (glyph outlines filled as paths); SVG path strings
 //! are [`path_from_svg`]; `<FitBox>` is [`fit_box`]; `<CornerPathEffect>` on a polyline is
@@ -31,6 +33,7 @@ pub use lyon::path::{Path, PathBuffer, PathEvent, PathSlice};
 pub mod backdrop;
 pub mod blur;
 pub mod color;
+pub mod graphite;
 pub mod image;
 pub mod matrix4;
 pub mod render;
@@ -47,10 +50,7 @@ pub use text::{match_system_font, match_ui_font, Font, FontMetrics};
 
 use lyon::path::builder::BorderRadii;
 use lyon::path::Winding;
-use lyon::tessellation::{
-    BuffersBuilder, FillOptions, FillRule, FillTessellator, FillVertex, LineCap, LineJoin, StrokeOptions, StrokeTessellator,
-    StrokeVertex, VertexBuffers,
-};
+use lyon::tessellation::{LineCap, LineJoin};
 
 /// A 2D affine transform: `[a, b, c, d, e, f]` maps (x, y) to (a x + c y + e, b x + d y + f).
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -222,11 +222,13 @@ impl Paint {
 
 pub use lyon::tessellation::{LineCap as Cap, LineJoin as Join};
 
-/// One vertex: a device-pixel position and the paint it is coloured with.
+/// One vertex: a device-pixel position, the draw's depth and the paint it is coloured with.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct Vertex {
     pub pos: [f32; 2],
+    /// The draw's depth (painter's order: later draws are nearer).
+    pub depth: f32,
     pub paint: u32,
     /// A straight RGBA8 colour the paint is multiplied by (an atlas sprite's), white otherwise.
     pub color: u32,
@@ -264,33 +266,98 @@ pub(crate) struct GpuPaint {
     /// Image: its width, height, layer, and 1 for `srcIn` (the vertex colour in the image's
     /// alpha) else 0. Shadow: the rect's top-left and bottom-right (device pixels).
     pub geometry: [f32; 4],
-    /// Each stop's offset, in two vec4s.
+    /// Each stop's offset, in two vec4s. Image: the shape's local points to the image's pixels
+    /// (a, b, c, d, e, f), read by the analytic step.
     pub offsets: [[f32; 4]; 2],
     /// Each stop's straight sRGB colour.
     pub colors: [[f32; 4]; MAX_STOPS],
+    /// The draw's analytic clip (`sk_analytic_clip`'s xform, rect, radiiWithInverse); radii all
+    /// 0 for none.
+    pub clip: [[f32; 4]; 3],
 }
 
-/// A batch of triangles, a stencil step, or a change of clip level.
-#[derive(Clone, Debug)]
+/// One step of the frame, in order.
+#[derive(Clone, Copy, Debug)]
 pub(crate) enum Op {
-    /// Indices `start..end`, drawn where the stencil equals `level`.
-    Draw { start: u32, end: u32, level: u32 },
-    /// Indices `start..end`, drawn where the stencil equals `level`, each sample once (it steps
-    /// the stencil to `level + 1`; a `ClipOut` of the same indices steps it back): a stroke's
-    /// overlapping triangles cover a pixel once, as Skia's coverage does.
-    DrawOnce { start: u32, end: u32, level: u32 },
-    /// Indices `start..end`, incrementing the stencil where it equals `level`.
-    ClipIn { start: u32, end: u32, level: u32 },
-    /// Indices `start..end`, decrementing the stencil where it equals `level + 1`.
-    ClipOut { start: u32, end: u32, level: u32 },
+    /// Painted triangles `start..end` (indices): non-AA rects and floods, convex path fills,
+    /// atlases, shadows (depth LEQUAL: they may overlap themselves), or with `once` a path's
+    /// stroke (depth LESS: each sample takes the draw once).
+    Tri { start: u32, end: u32, scissor: Option<[u32; 4]>, once: bool },
+    /// A path's winding into the stencil (fan triangles `start..end`), not painted.
+    Stencil { start: u32, end: u32, scissor: Option<[u32; 4]> },
+    /// The stencilled path's bounds, painted where the winding isn't 0 (resetting it).
+    Cover { start: u32, end: u32, scissor: Option<[u32; 4]> },
+    /// A clip element's outside written into depth (after its `Stencil`).
+    ClipCover { start: u32, end: u32 },
+    /// AnalyticRRectRenderStep instances `first..first + count`.
+    RRects { first: u32, count: u32, scissor: Option<[u32; 4]> },
 }
 
-#[derive(Clone)]
+/// A clip element's shape, as the clip stack keeps it.
+#[derive(Clone, Copy, Debug)]
+enum ElemShape {
+    Rect([f32; 4]),
+    RRect(graphite::RRect),
+    /// Verbs `start..end` of [`Canvas::clip_verbs`].
+    Path(u32, u32),
+}
+
+/// A clip element (always an intersection).
+#[derive(Clone, Copy, Debug)]
+struct ClipElem {
+    shape: ElemShape,
+    /// Its transform to device space (the identity once a rect or rrect is pre-transformed).
+    xf: graphite::Xf,
+    outer: [f32; 4],
+    inner: [f32; 4],
+    /// Its depth-only MSAA draw once a draw needed it: the vertex range whose depth follows the
+    /// last draw that used it, and that draw's painter's depth.
+    drawn: Option<(u32, u32)>,
+    max_z: u32,
+}
+
+#[derive(Clone, Copy)]
 struct State {
     matrix: Matrix,
     opacity: f32,
-    /// The clips pushed since this save: index ranges to undo at restore.
-    clips: Vec<(u32, u32)>,
+    /// How many clip elements (and clip verbs) are on the stack.
+    clips: usize,
+    clip_verbs: usize,
+}
+
+/// What a draw is, before Graphite picks its renderer.
+#[derive(Clone, Copy, Debug)]
+enum Geo {
+    Rect([f32; 4]),
+    RRect(graphite::RRect),
+    Line(Point, Point),
+    /// `drawPaint`: everything under the clip.
+    Flood,
+    /// The verbs in [`Canvas::verbs`].
+    Path,
+}
+
+/// What the clip stack decided for one draw.
+#[derive(Clone, Copy, Debug, Default)]
+struct DrawClip {
+    analytic: Option<graphite::AnalyticClip>,
+    scissor: Option<[u32; 4]>,
+    /// Indices of elements drawn with MSAA into depth, `count` of them.
+    msaa: [u16; 8],
+    count: usize,
+}
+
+const INFINITE: [f32; 4] = [f32::NEG_INFINITY, f32::NEG_INFINITY, f32::INFINITY, f32::INFINITY];
+const EMPTY: [f32; 4] = [f32::INFINITY, f32::INFINITY, f32::NEG_INFINITY, f32::NEG_INFINITY];
+
+fn intersects(a: [f32; 4], b: [f32; 4]) -> bool {
+    a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3]
+}
+fn contains(outer: [f32; 4], inner: [f32; 4]) -> bool {
+    outer[0] <= inner[0] && outer[1] <= inner[1] && outer[2] >= inner[2] && outer[3] >= inner[3] && inner[0] < inner[2] && inner[1] < inner[3]
+}
+fn intersect(a: [f32; 4], b: [f32; 4]) -> [f32; 4] {
+    [a[0].max(b[0]), a[1].max(b[1]), a[2].min(b[2]), a[3].min(b[3])]
 }
 
 /// One frame's drawing, in canvas points; the renderer scales it to device pixels.
@@ -299,14 +366,21 @@ pub struct Canvas {
     pub(crate) indices: Vec<u32>,
     pub(crate) paints: Vec<GpuPaint>,
     pub(crate) ops: Vec<Op>,
-    level: u32,
+    pub(crate) rrects: Vec<graphite::RRectInstance>,
+    /// Whether a draw needs MSAA: the pass is 4× then, single-sampled otherwise.
+    pub(crate) msaa: bool,
+    /// The last draw's painter's depth (0 is the clear).
+    z: u32,
     state: State,
     saved: Vec<State>,
-    fill: FillTessellator,
-    stroke: StrokeTessellator,
+    clip_elems: Vec<ClipElem>,
+    clip_verbs: Vec<graphite::Verb>,
+    /// The path being drawn, as verbs (kept between draws).
+    verbs: Vec<graphite::Verb>,
+    /// Flattening scratch.
+    points: Vec<Point>,
     /// The path a shape draw ([`Canvas::draw_circle`], …) is built into, kept between draws.
     scratch: lyon::path::PathBuffer,
-    buffers: VertexBuffers<Point, u32>,
 }
 
 impl Default for Canvas {
@@ -316,15 +390,191 @@ impl Default for Canvas {
             indices: Vec::new(),
             paints: Vec::new(),
             ops: Vec::new(),
-            level: 0,
-            state: State { matrix: Matrix::IDENTITY, opacity: 1.0, clips: Vec::new() },
+            rrects: Vec::new(),
+            msaa: false,
+            z: 0,
+            state: State { matrix: Matrix::IDENTITY, opacity: 1.0, clips: 0, clip_verbs: 0 },
             saved: Vec::new(),
-            fill: FillTessellator::new(),
-            stroke: StrokeTessellator::new(),
-            buffers: VertexBuffers::new(),
+            clip_elems: Vec::new(),
+            clip_verbs: Vec::new(),
+            verbs: Vec::new(),
+            points: Vec::new(),
             scratch: lyon::path::PathBuffer::new(),
         }
     }
+}
+
+/// The verbs of lyon path events (curves kept; `End { close }` becomes a close).
+fn push_verbs<I: IntoIterator<Item = PathEvent>>(events: I, out: &mut Vec<graphite::Verb>) {
+    use graphite::Verb;
+    for e in events {
+        match e {
+            PathEvent::Begin { at } => out.push(Verb::Move(at)),
+            PathEvent::Line { to, .. } => out.push(Verb::Line(to)),
+            PathEvent::Quadratic { ctrl, to, .. } => out.push(Verb::Quad(ctrl, to)),
+            PathEvent::Cubic { ctrl1, ctrl2, to, .. } => out.push(Verb::Cubic(ctrl1, ctrl2, to)),
+            PathEvent::End { close, .. } => {
+                if close {
+                    out.push(Verb::Close)
+                }
+            }
+        }
+    }
+}
+
+/// A lyon builder that compares what it is given with recorded verbs (no allocation).
+struct Matcher<'a> {
+    verbs: &'a [graphite::Verb],
+    at: usize,
+    tol: f32,
+    ok: bool,
+}
+
+impl Matcher<'_> {
+    fn next(&mut self, f: impl FnOnce(&graphite::Verb, f32) -> bool) {
+        self.ok = self.ok && self.verbs.get(self.at).is_some_and(|v| f(v, self.tol));
+        self.at += 1;
+    }
+}
+
+fn near(p: Point, q: Point, tol: f32) -> bool {
+    (p.x - q.x).abs() <= tol && (p.y - q.y).abs() <= tol
+}
+
+impl lyon::path::builder::PathBuilder for Matcher<'_> {
+    fn num_attributes(&self) -> usize {
+        0
+    }
+    fn begin(&mut self, at: Point, _: lyon::path::Attributes) -> lyon::path::EndpointId {
+        self.next(|v, t| matches!(*v, graphite::Verb::Move(p) if near(p, at, t)));
+        lyon::path::EndpointId(0)
+    }
+    fn end(&mut self, close: bool) {
+        if close {
+            self.next(|v, _| matches!(v, graphite::Verb::Close));
+        }
+    }
+    fn line_to(&mut self, to: Point, _: lyon::path::Attributes) -> lyon::path::EndpointId {
+        self.next(|v, t| matches!(*v, graphite::Verb::Line(p) if near(p, to, t)));
+        lyon::path::EndpointId(0)
+    }
+    fn quadratic_bezier_to(&mut self, ctrl: Point, to: Point, _: lyon::path::Attributes) -> lyon::path::EndpointId {
+        self.next(|v, t| matches!(*v, graphite::Verb::Quad(c, p) if near(c, ctrl, t) && near(p, to, t)));
+        lyon::path::EndpointId(0)
+    }
+    fn cubic_bezier_to(&mut self, ctrl1: Point, ctrl2: Point, to: Point, _: lyon::path::Attributes) -> lyon::path::EndpointId {
+        self.next(|v, t| matches!(*v, graphite::Verb::Cubic(a, b, p) if near(a, ctrl1, t) && near(b, ctrl2, t) && near(p, to, t)));
+        lyon::path::EndpointId(0)
+    }
+}
+
+/// What `SkPath::isLine`, `isOval`, `isRRect` and `isRect` find in a path: Skia's `isOval` and
+/// `isRRect` are true for the paths `addOval`/`addCircle`/`addRRect` build, which here are the
+/// curves lyon's `add_circle`, `add_ellipse` and `add_rounded_rectangle` emit (matched within
+/// 1e-5 of their size); `isRect` is geometric. The second value: the contour is closed.
+fn detect(verbs: &[graphite::Verb]) -> Option<(Geo, bool)> {
+    use graphite::Verb;
+    let n = verbs.len();
+    let Some(&Verb::Move(start)) = verbs.first() else { return None };
+    if verbs[1..].iter().any(|v| matches!(v, Verb::Move(_))) {
+        return None;
+    }
+    let closed = matches!(verbs.last(), Some(Verb::Close));
+    let body = &verbs[1..if closed { n - 1 } else { n }];
+    // isLine: a move and a line, not closed.
+    if !closed && body.len() == 1 {
+        if let Verb::Line(to) = body[0] {
+            return Some((Geo::Line(start, to), false));
+        }
+    }
+    // isRect: 3 or 4 axis-aligned lines around a rect (a 4th back to the start or the close).
+    if body.iter().all(|v| matches!(v, Verb::Line(_))) && (body.len() == 3 || body.len() == 4) {
+        let mut pts = [start; 5];
+        for (i, v) in body.iter().enumerate() {
+            if let Verb::Line(p) = v {
+                pts[i + 1] = *p;
+            }
+        }
+        let (a, b, c, d) = (pts[0], pts[1], pts[2], pts[3]);
+        let back = body.len() == 3 || pts[4] == start;
+        let axis = |p: Point, q: Point| (p.x == q.x) != (p.y == q.y);
+        if back && axis(a, b) && axis(b, c) && axis(c, d) && axis(d, a) && (a.x == b.x) != (b.x == c.x) {
+            let r = [a.x.min(c.x), a.y.min(c.y), a.x.max(c.x), a.y.max(c.y)];
+            if r[0] < r[2] && r[1] < r[3] {
+                return Some((Geo::Rect(r), closed || body.len() == 4));
+            }
+        }
+    }
+    if !closed {
+        return None;
+    }
+    let same = |built: &mut dyn FnMut(&mut lyon::path::builder::NoAttributes<Matcher<'_>>), tol: f32| {
+        let mut b = lyon::path::builder::NoAttributes::wrap(Matcher { verbs, at: 0, tol, ok: true });
+        built(&mut b);
+        let m = b.into_inner();
+        m.ok && m.at == n
+    };
+    // add_circle: begins at (cx − r, cy), four cubics, the second ending at (cx + r, cy).
+    if body.len() == 4 && body.iter().all(|v| matches!(v, Verb::Cubic(..))) {
+        if let Verb::Cubic(_, _, right) = body[1] {
+            let (cx, cy, r) = ((start.x + right.x) * 0.5, start.y, (right.x - start.x).abs() * 0.5);
+            let tol = 1e-5 * r.max(1.0);
+            for w in [Winding::Positive, Winding::Negative] {
+                if r > 0.0 && same(&mut |b| b.add_circle(point(cx, cy), r, w), tol) {
+                    return Some((Geo::RRect(graphite::RRect::oval([cx - r, cy - r, cx + r, cy + r])), true));
+                }
+            }
+        }
+    }
+    let mut bb = [f32::INFINITY, f32::INFINITY, f32::NEG_INFINITY, f32::NEG_INFINITY];
+    let mut on = bb;
+    let grow = |b: &mut [f32; 4], p: Point| *b = [b[0].min(p.x), b[1].min(p.y), b[2].max(p.x), b[3].max(p.y)];
+    for v in verbs {
+        match *v {
+            Verb::Move(p) | Verb::Line(p) => {
+                grow(&mut bb, p);
+                grow(&mut on, p);
+            }
+            Verb::Quad(c, p) => {
+                grow(&mut bb, c);
+                grow(&mut bb, p);
+                grow(&mut on, p);
+            }
+            Verb::Cubic(c1, c2, p) => {
+                grow(&mut bb, c1);
+                grow(&mut bb, c2);
+                grow(&mut bb, p);
+                grow(&mut on, p);
+            }
+            _ => {}
+        }
+    }
+    let (w, h) = (bb[2] - bb[0], bb[3] - bb[1]);
+    if !(w > 0.0 && h > 0.0) {
+        return None;
+    }
+    let tol = 1e-5 * w.max(h).max(1.0);
+    // add_ellipse: quadratics around the centre of the on-curve points.
+    if body.iter().all(|v| matches!(v, Verb::Quad(..))) {
+        let (cx, cy) = ((on[0] + on[2]) * 0.5, (on[1] + on[3]) * 0.5);
+        let r = vector((on[2] - on[0]) * 0.5, (on[3] - on[1]) * 0.5);
+        for wd in [Winding::Positive, Winding::Negative] {
+            if same(&mut |b| b.add_ellipse(point(cx, cy), r, lyon::math::Angle::radians(0.0), wd), tol) {
+                return Some((Geo::RRect(graphite::RRect::oval([cx - r.x, cy - r.y, cx + r.x, cy + r.y])), true));
+            }
+        }
+    }
+    // add_rounded_rectangle with one radius: it begins at (left, top + r).
+    if matches!(body.first(), Some(Verb::Cubic(..))) && (start.x - bb[0]).abs() <= tol {
+        let r = start.y - bb[1];
+        let rect = lyon::math::Box2D::new(point(bb[0], bb[1]), point(bb[2], bb[3]));
+        for wd in [Winding::Positive, Winding::Negative] {
+            if r > 0.0 && same(&mut |b| b.add_rounded_rectangle(&rect, &BorderRadii::new(r), wd), tol) {
+                return Some((Geo::RRect(graphite::RRect::xy(bb, r, r)), true));
+            }
+        }
+    }
+    None
 }
 
 impl Canvas {
@@ -334,26 +584,33 @@ impl Canvas {
         self.indices.clear();
         self.paints.clear();
         self.ops.clear();
-        self.level = 0;
+        self.rrects.clear();
+        self.msaa = false;
+        self.z = 0;
         self.saved.clear();
-        self.state = State { matrix: Matrix::scale(scale, scale), opacity: 1.0, clips: Vec::new() };
+        self.clip_elems.clear();
+        self.clip_verbs.clear();
+        self.state = State { matrix: Matrix::scale(scale, scale), opacity: 1.0, clips: 0, clip_verbs: 0 };
     }
 
     /// `canvas.save()` / a `<Group>`'s start.
     pub fn save(&mut self) {
-        let mut next = self.state.clone();
-        next.clips.clear();
-        self.saved.push(std::mem::replace(&mut self.state, next));
+        self.saved.push(self.state);
     }
 
-    /// `canvas.restore()` / a `<Group>`'s end: its transform, opacity and clips undone.
+    /// `canvas.restore()` / a `<Group>`'s end: its transform, opacity and clips undone (a clip
+    /// is depth: the draws after it are nearer than what it wrote, so nothing is undrawn).
     pub fn restore(&mut self) {
-        for (start, end) in std::mem::take(&mut self.state.clips).into_iter().rev() {
-            self.level -= 1;
-            self.ops.push(Op::ClipOut { start, end, level: self.level });
-        }
         if let Some(state) = self.saved.pop() {
             self.state = state;
+            // Draws after a clip element come after its depth (`updateNextDepthForClipping`).
+            for e in &self.clip_elems[state.clips.min(self.clip_elems.len())..] {
+                if e.drawn.is_some() {
+                    self.z = self.z.max(e.max_z + 1);
+                }
+            }
+            self.clip_elems.truncate(state.clips);
+            self.clip_verbs.truncate(state.clip_verbs);
         }
     }
 
@@ -393,67 +650,46 @@ impl Canvas {
     }
 
     /// [`Canvas::draw_path`] of a path given as its events (a `lyon` `PathBuffer`'s slice, a
-    /// path a demo refills every frame without allocating).
+    /// path a demo refills every frame without allocating). As Graphite's `Device::drawPath`, a
+    /// path that is a line, an oval, a rounded rect or a rect is drawn as that shape.
     pub fn draw_path_events<I: IntoIterator<Item = lyon::path::PathEvent>>(&mut self, path: I, paint: &Paint) {
-        let scale = self.state.matrix.max_scale().max(1e-3);
-        // A stroke thinner than a device pixel is drawn a pixel wide at its share of the
-        // alpha, as Skia covers a hairline: MSAA alone breaks it into dashes.
-        let thin = paint.stroke.filter(|w| w * scale < 1.0);
-        let thinned;
-        let paint = match thin {
-            Some(w) => {
-                thinned = Paint { stroke: Some(1.0 / scale), opacity: paint.opacity * (w * scale).max(0.0), ..paint.clone() };
-                &thinned
+        let mut verbs = std::mem::take(&mut self.verbs);
+        verbs.clear();
+        push_verbs(path, &mut verbs);
+        self.verbs = verbs;
+        let geo = match detect(&self.verbs) {
+            Some((Geo::Line(a, b), _)) => {
+                if paint.stroke.is_none() {
+                    return;
+                }
+                Geo::Line(a, b)
             }
-            None => paint,
+            Some((Geo::Rect(r), closed)) if paint.stroke.is_none() || closed => Geo::Rect(r),
+            Some((Geo::RRect(rr), _)) => Geo::RRect(rr),
+            _ => Geo::Path,
         };
-        let tolerance = 0.2 / scale;
-        self.buffers.vertices.clear();
-        self.buffers.indices.clear();
-        let ok = match paint.stroke {
-            Some(width) => self
-                .stroke
-                .tessellate(
-                    path,
-                    &StrokeOptions::tolerance(tolerance).with_line_width(width).with_line_cap(paint.cap).with_line_join(paint.join),
-                    &mut BuffersBuilder::new(&mut self.buffers, |v: StrokeVertex| v.position()),
-                )
-                .is_ok(),
-            None => self
-                .fill
-                .tessellate(
-                    path,
-                    &FillOptions::tolerance(tolerance).with_fill_rule(FillRule::NonZero),
-                    &mut BuffersBuilder::new(&mut self.buffers, |v: FillVertex| v.position()),
-                )
-                .is_ok(),
-        };
-        if !ok || self.buffers.indices.is_empty() {
-            return;
-        }
-        let paint_index = self.push_paint(paint);
-        let start = self.indices.len() as u32;
-        let to_image = match &paint.shader {
-            Shader::Image { to_image, .. } => Some(*to_image),
-            _ => None,
-        };
-        self.emit(paint_index, to_image);
-        let end = self.indices.len() as u32;
-        if paint.stroke.is_some() {
-            // Stroke triangles overlap at joins and crossings: blend each sample once.
-            self.ops.push(Op::DrawOnce { start, end, level: self.level });
-            self.ops.push(Op::ClipOut { start, end, level: self.level });
-            return;
-        }
-        match self.ops.last_mut() {
-            Some(Op::Draw { end: e, level, .. }) if *e == start && *level == self.level => *e = end,
-            _ => self.ops.push(Op::Draw { start, end, level: self.level }),
-        }
+        self.draw_geo(geo, paint);
     }
 
-    /// `<Circle cx cy r paint>`.
+    /// `<Circle cx cy r paint>`: `drawCircle` → `drawOval` → `drawRRect(MakeOval)`.
     pub fn draw_circle(&mut self, cx: f32, cy: f32, r: f32, paint: &Paint) {
-        self.draw_with(paint, |b| add_circle(b, cx, cy, r));
+        let rect = [cx - r, cy - r, cx + r, cy + r];
+        if !(rect[0] < rect[2]) {
+            return;
+        }
+        self.draw_geo(Geo::RRect(graphite::RRect::oval(rect)), paint);
+    }
+
+    /// `<Oval x y width height paint>`.
+    pub fn draw_oval(&mut self, x: f32, y: f32, w: f32, h: f32, paint: &Paint) {
+        let rect = [x.min(x + w), y.min(y + h), x.max(x + w), y.max(y + h)];
+        self.draw_geo(Geo::RRect(graphite::RRect::oval(rect)), paint);
+    }
+
+    /// `<Line p1 p2 paint>` (`drawLine`: always a stroke).
+    pub fn draw_line(&mut self, p1: Point, p2: Point, paint: &Paint) {
+        let width = paint.stroke.unwrap_or(0.0);
+        self.draw_geo(Geo::Line(p1, p2), &Paint { stroke: Some(width), ..paint.clone() });
     }
 
     /// Draws the path `build` appends to a builder, built in a buffer the canvas keeps (no
@@ -472,21 +708,20 @@ impl Canvas {
 
     /// `<Rect x y width height paint>`.
     pub fn draw_rect(&mut self, x: f32, y: f32, w: f32, h: f32, paint: &Paint) {
-        self.draw_with(paint, |b| add_rect(b, x, y, w, h));
+        let r = [x.min(x + w), y.min(y + h), x.max(x + w), y.max(y + h)];
+        self.draw_geo(Geo::Rect(r), paint);
     }
 
-    /// `<RoundedRect x y width height r paint>`.
+    /// `<RoundedRect x y width height r paint>` (`SkRRect::setRectXY(r, r)`).
     pub fn draw_rrect(&mut self, x: f32, y: f32, w: f32, h: f32, r: f32, paint: &Paint) {
-        self.draw_with(paint, |b| add_rrect(b, x, y, w, h, r));
+        let rect = [x.min(x + w), y.min(y + h), x.max(x + w), y.max(y + h)];
+        let rr = graphite::RRect::xy(rect, r, r);
+        self.draw_geo(if rr.is_rect() { Geo::Rect(rect) } else { Geo::RRect(rr) }, paint);
     }
 
     /// `<Fill color>`: the whole canvas (under the current clip).
     pub fn fill(&mut self, color: Color) {
-        let inverse_huge = 1.0e5;
-        self.save();
-        self.state.matrix = Matrix::IDENTITY;
-        self.draw_rect(-inverse_huge, -inverse_huge, 2.0 * inverse_huge, 2.0 * inverse_huge, &Paint::fill(color));
-        self.restore();
+        self.draw_geo(Geo::Flood, &Paint::fill(color));
     }
 
     /// `<Group clip={path}>` (until the matching restore): later draws only inside `path`.
@@ -494,29 +729,41 @@ impl Canvas {
         self.clip_events(path.iter());
     }
 
-    /// [`Canvas::clip_path`] of a path given as its events.
+    /// [`Canvas::clip_path`] of a path given as its events. As `SkCanvas::clipPath`, under a
+    /// rect-stays-rect transform a path that is a rect, an oval or a rounded rect clips as one.
     pub fn clip_events<I: IntoIterator<Item = lyon::path::PathEvent>>(&mut self, path: I) {
-        let tolerance = 0.2 / self.state.matrix.max_scale().max(1e-3);
-        self.buffers.vertices.clear();
-        self.buffers.indices.clear();
-        if self
-            .fill
-            .tessellate(path, &FillOptions::tolerance(tolerance).with_fill_rule(FillRule::NonZero), &mut BuffersBuilder::new(&mut self.buffers, |v: FillVertex| v.position()))
-            .is_err()
-        {
-            return;
+        let start = self.clip_verbs.len();
+        let mut verbs = std::mem::take(&mut self.clip_verbs);
+        push_verbs(path, &mut verbs);
+        self.clip_verbs = verbs;
+        let xf = graphite::Xf::new(self.state.matrix);
+        if xf.kind <= graphite::Kind::RectStaysRect {
+            match detect(&self.clip_verbs[start..]) {
+                Some((Geo::Rect(r), _)) => {
+                    self.clip_verbs.truncate(start);
+                    return self.add_clip(ElemShape::Rect(r));
+                }
+                Some((Geo::RRect(rr), _)) => {
+                    self.clip_verbs.truncate(start);
+                    return self.add_clip(ElemShape::RRect(rr));
+                }
+                _ => {}
+            }
         }
-        let start = self.indices.len() as u32;
-        self.emit(0, None);
-        let end = self.indices.len() as u32;
-        self.ops.push(Op::ClipIn { start, end, level: self.level });
-        self.level += 1;
-        self.state.clips.push((start, end));
+        let end = self.clip_verbs.len();
+        self.add_clip(ElemShape::Path(start as u32, end as u32));
     }
 
-    /// A rounded-rect clip.
+    /// A rounded-rect clip (`clipRRect`).
     pub fn clip_rrect(&mut self, x: f32, y: f32, w: f32, h: f32, r: f32) {
-        self.clip_with(|b| add_rrect(b, x, y, w, h, r));
+        let rect = [x.min(x + w), y.min(y + h), x.max(x + w), y.max(y + h)];
+        let rr = graphite::RRect::xy(rect, r, r);
+        self.add_clip(if rr.is_rect() { ElemShape::Rect(rect) } else { ElemShape::RRect(rr) });
+    }
+
+    /// A rect clip (`clipRect`).
+    pub fn clip_rect(&mut self, x: f32, y: f32, w: f32, h: f32) {
+        self.add_clip(ElemShape::Rect([x.min(x + w), y.min(y + h), x.max(x + w), y.max(y + h)]));
     }
 
     /// A clip to the path `build` appends, built in the canvas's kept buffer (no allocation).
@@ -532,22 +779,572 @@ impl Canvas {
         self.scratch = buffer;
     }
 
-    fn emit(&mut self, paint: u32, to_image: Option<Matrix>) {
-        let base = self.vertices.len() as u32;
-        let m = self.state.matrix;
-        let t = to_image.unwrap_or(Matrix::IDENTITY);
-        self.vertices.extend(self.buffers.vertices.iter().map(|p| {
-            let q = m.apply(*p);
-            let uv = t.apply(*p);
-            Vertex { pos: [q.x, q.y], paint, color: u32::MAX, uv: [uv.x, uv.y] }
-        }));
-        self.indices.extend(self.buffers.indices.iter().map(|i| base + i));
+    /// `ClipStack::clipShape` for an intersection: the element pre-transformed to device space
+    /// when it is a rect or rrect under a rect-stays-rect transform, then simplified against the
+    /// elements of the same save.
+    fn add_clip(&mut self, shape: ElemShape) {
+        let xf = graphite::Xf::new(self.state.matrix);
+        let mut elem = ClipElem { shape, xf, outer: EMPTY, inner: EMPTY, drawn: None, max_z: 0 };
+        if xf.valid() {
+            match shape {
+                ElemShape::Rect(r) => {
+                    elem.outer = xf.map_rect(r);
+                    if xf.kind <= graphite::Kind::RectStaysRect {
+                        elem.shape = ElemShape::Rect(elem.outer);
+                        elem.xf = graphite::Xf::new(Matrix::IDENTITY);
+                        elem.inner = elem.outer;
+                    }
+                }
+                ElemShape::RRect(rr) => {
+                    elem.outer = xf.map_rect(rr.rect);
+                    if xf.kind <= graphite::Kind::RectStaysRect {
+                        if let Some(d) = rr.transform(&xf) {
+                            elem.shape = ElemShape::RRect(d);
+                            elem.xf = graphite::Xf::new(Matrix::IDENTITY);
+                            elem.outer = d.rect;
+                            elem.inner = d.inner_bounds();
+                        }
+                    }
+                }
+                ElemShape::Path(s, e) => {
+                    let mut b = EMPTY;
+                    for v in &self.clip_verbs[s as usize..e as usize] {
+                        let mut add = |p: Point| {
+                            let q = xf.m.apply(p);
+                            b = [b[0].min(q.x), b[1].min(q.y), b[2].max(q.x), b[3].max(q.y)];
+                        };
+                        match *v {
+                            graphite::Verb::Move(p) | graphite::Verb::Line(p) => add(p),
+                            graphite::Verb::Quad(c, p) | graphite::Verb::Conic(c, p, _) => {
+                                add(c);
+                                add(p)
+                            }
+                            graphite::Verb::Cubic(c1, c2, p) => {
+                                add(c1);
+                                add(c2);
+                                add(p)
+                            }
+                            graphite::Verb::Close => {}
+                        }
+                    }
+                    elem.outer = b;
+                }
+            }
+        }
+        // Combine with the newest element of this save: a device rect into a device rect; drop
+        // an element the other contains.
+        let base = self.saved.last().map_or(0, |s| s.clips);
+        if self.clip_elems.len() > base {
+            let last = *self.clip_elems.last().unwrap();
+            if last.drawn.is_none() {
+                if let (ElemShape::Rect(a), ElemShape::Rect(b)) = (last.shape, elem.shape) {
+                    if last.xf.kind == graphite::Kind::Identity && elem.xf.kind == graphite::Kind::Identity {
+                        let r = intersect(a, b);
+                        let l = self.clip_elems.last_mut().unwrap();
+                        l.shape = ElemShape::Rect(r);
+                        l.outer = r;
+                        l.inner = r;
+                        self.state.clips = self.clip_elems.len();
+                        self.state.clip_verbs = self.clip_verbs.len();
+                        return;
+                    }
+                }
+                if contains(elem.inner, last.outer) {
+                    // The new element clips nothing the last doesn't.
+                    self.state.clip_verbs = self.clip_verbs.len();
+                    return;
+                }
+            }
+        }
+        self.clip_elems.push(elem);
+        self.state.clips = self.clip_elems.len();
+        self.state.clip_verbs = self.clip_verbs.len();
     }
 
-    fn push_paint(&mut self, paint: &Paint) -> u32 {
+    /// The device bounds of the surface's drawing (for floods and clip covers).
+    fn device_bounds(&self) -> [f32; 4] {
+        [-1.0e6, -1.0e6, 1.0e6, 1.0e6]
+    }
+
+    /// `ClipStack::visitClipStackForDraw` for a draw whose device bounds are `outer` (and,
+    /// when its geometry may be replaced, `inner`): clips folded into `geo`, a scissor, one
+    /// analytic clip, the rest drawn into depth with MSAA. `false` when it is clipped out.
+    fn visit_clips(&mut self, geo: &mut Geo, xf: &graphite::Xf, modifiable: bool, outer: [f32; 4], inner: [f32; 4], out: &mut DrawClip) -> bool {
+        let mut outer = outer;
+        let mut inner = inner;
+        let mut modifiable = modifiable;
+        for i in (0..self.clip_elems.len()).rev() {
+            let e = self.clip_elems[i];
+            let flood = matches!(geo, Geo::Flood);
+            if !flood && !intersects(e.outer, outer) {
+                return false;
+            }
+            if !flood && contains(e.inner, outer) {
+                continue;
+            }
+            // The draw covers the element: the element's shape replaces it.
+            if modifiable && !flood && contains(inner, e.outer) {
+                *geo = Geo::Flood;
+                outer = INFINITE;
+                inner = INFINITE;
+            }
+            if modifiable && self.intersect_shape(&e, geo, xf) {
+                outer = intersect(outer, e.outer);
+                inner = intersect(inner, e.inner);
+                continue;
+            }
+            modifiable = false;
+            if let (ElemShape::Rect(r), graphite::Kind::Identity) = (e.shape, e.xf.kind) {
+                if graphite::nearly_pixel_aligned(r) {
+                    let r = r.map(|v| (v + 0.5).floor().max(0.0));
+                    let s = [r[0] as u32, r[1] as u32, (r[2] - r[0]).max(0.0) as u32, (r[3] - r[1]).max(0.0) as u32];
+                    out.scissor = Some(match out.scissor {
+                        None => s,
+                        Some(o) => {
+                            let (x0, y0) = (o[0].max(s[0]), o[1].max(s[1]));
+                            let (x1, y1) = ((o[0] + o[2]).min(s[0] + s[2]), (o[1] + o[3]).min(s[1] + s[3]));
+                            [x0, y0, x1.saturating_sub(x0), y1.saturating_sub(y0)]
+                        }
+                    });
+                    continue;
+                }
+            }
+            if out.analytic.is_none() {
+                let a = match e.shape {
+                    ElemShape::Rect(r) => graphite::analytic_clip(r, None, &e.xf),
+                    ElemShape::RRect(rr) => graphite::analytic_clip(rr.rect, Some(&rr), &e.xf),
+                    ElemShape::Path(..) => None,
+                };
+                if a.is_some() {
+                    out.analytic = a;
+                    continue;
+                }
+            }
+            if out.count < out.msaa.len() {
+                out.msaa[out.count] = i as u16;
+                out.count += 1;
+            }
+        }
+        true
+    }
+
+    /// `intersect_shape`: the element folded into a rect, rrect or flood draw when their
+    /// relative transform keeps rects rects.
+    fn intersect_shape(&self, e: &ClipElem, geo: &mut Geo, xf: &graphite::Xf) -> bool {
+        if !matches!(geo, Geo::Rect(_) | Geo::RRect(_) | Geo::Flood) {
+            return false;
+        }
+        let (other_rect, other_rr) = match e.shape {
+            ElemShape::Rect(r) => (r, None),
+            ElemShape::RRect(rr) => (rr.rect, Some(rr)),
+            ElemShape::Path(..) => return false,
+        };
+        // localToOther: the element in the draw's space.
+        let to_local = if e.xf.m == xf.m {
+            graphite::Xf::new(Matrix::IDENTITY)
+        } else if e.xf.kind == graphite::Kind::Identity && xf.kind <= graphite::Kind::RectStaysRect {
+            graphite::Xf::new(xf.m.invert())
+        } else {
+            return false;
+        };
+        let mut local = to_local.map_rect(other_rect);
+        let back = graphite::Xf::new(to_local.m.invert()).map_rect(local);
+        let tol = graphite::PIXEL_TOLERANCE * e.xf.local_aa_radius();
+        if !(local[0] < local[2] && local[1] < local[3]) || back.iter().zip(other_rect.iter()).any(|(a, b)| (a - b).abs() > tol) {
+            return false;
+        }
+        let bounds = match *geo {
+            Geo::Rect(r) => Some(r),
+            Geo::RRect(rr) => Some(rr.rect),
+            _ => None,
+        };
+        if let Some(b) = bounds {
+            local = intersect(local, b);
+        }
+        let aa = xf.local_aa_radius();
+        if !aa.is_finite() || local[2] - local[0] <= aa || local[3] - local[1] <= aa {
+            return false;
+        }
+        match (other_rr, *geo) {
+            (None, Geo::Rect(_) | Geo::Flood) => {
+                *geo = Geo::Rect(local);
+                true
+            }
+            (Some(rr), Geo::Flood) => match rr.transform(&to_local) {
+                Some(l) => {
+                    *geo = Geo::RRect(l);
+                    true
+                }
+                None => false,
+            },
+            (other, draw) => {
+                let a = match other {
+                    None => graphite::RRect { rect: local, radii: [[0.0; 2]; 4] },
+                    Some(rr) => match rr.transform(&to_local) {
+                        Some(l) => l,
+                        None => return false,
+                    },
+                };
+                let b = match draw {
+                    Geo::Rect(r) => graphite::RRect { rect: r, radii: [[0.0; 2]; 4] },
+                    Geo::RRect(rr) => rr,
+                    _ => return false,
+                };
+                match graphite::conservative_intersect(&a, &b) {
+                    Some(r) if r.is_rect() => {
+                        *geo = Geo::Rect(r.rect);
+                        true
+                    }
+                    Some(r) => {
+                        *geo = Geo::RRect(r);
+                        true
+                    }
+                    None => false,
+                }
+            }
+        }
+    }
+
+    /// The depth of painter's depth `z` (`DrawOrder::depthAsFloat`: decreasing, tested LESS).
+    fn depth_of(z: u32) -> f32 {
+        1.0 - z as f32 * (1.0 / 1_048_576.0)
+    }
+
+    /// The next draw's depth.
+    fn next_depth(&mut self) -> f32 {
+        self.z += 1;
+        Self::depth_of(self.z)
+    }
+
+    /// Draws (once) or re-depths the MSAA clip elements a draw uses: an element writes the depth
+    /// one past the last draw that uses it (`fMaxZ.next()`), so those draws fail outside it.
+    fn use_msaa_clips(&mut self, clip: &DrawClip, _draw_depth: f32) {
+        let depth = Self::depth_of(self.z + 1);
+        for &i in &clip.msaa[..clip.count] {
+            let i = i as usize;
+            self.clip_elems[i].max_z = self.z;
+            let e = self.clip_elems[i];
+            if let Some((s, t)) = e.drawn {
+                for v in &mut self.vertices[s as usize..t as usize] {
+                    v.depth = depth;
+                }
+                continue;
+            }
+            let v0 = self.vertices.len() as u32;
+            let mut verbs = std::mem::take(&mut self.verbs);
+            verbs.clear();
+            match e.shape {
+                ElemShape::Rect(r) => verbs.extend([
+                    graphite::Verb::Move(point(r[0], r[1])),
+                    graphite::Verb::Line(point(r[2], r[1])),
+                    graphite::Verb::Line(point(r[2], r[3])),
+                    graphite::Verb::Line(point(r[0], r[3])),
+                    graphite::Verb::Close,
+                ]),
+                ElemShape::RRect(rr) => graphite::rrect_verbs(&rr, &mut verbs),
+                ElemShape::Path(s, t) => verbs.extend_from_slice(&self.clip_verbs[s as usize..t as usize]),
+            }
+            let start = self.indices.len() as u32;
+            self.fan(&verbs, &e.xf.m, depth, 0, None);
+            let mid = self.indices.len() as u32;
+            self.verbs = verbs;
+            if mid > start {
+                self.ops.push(Op::Stencil { start, end: mid, scissor: None });
+                let b = self.device_bounds();
+                self.quad_device(b, depth, 0);
+                let end = self.indices.len() as u32;
+                self.ops.push(Op::ClipCover { start: mid, end });
+                self.msaa = true;
+            }
+            self.clip_elems[i].drawn = Some((v0, self.vertices.len() as u32));
+        }
+    }
+
+    /// Fan triangles (wedges) of `verbs` under `m`, as Graphite's TessellateWedgesRenderStep
+    /// subdivides them. Returns the device bounds.
+    fn fan(&mut self, verbs: &[graphite::Verb], m: &Matrix, depth: f32, paint: u32, to_image: Option<Matrix>) -> ([f32; 4], bool) {
+        let mut points = std::mem::take(&mut self.points);
+        let mut bounds = EMPTY;
+        let mut contours = 0;
+        let mut convex = true;
+        let uv_of = to_image.map(|t| m.invert().then(t));
+        let (vertices, indices) = (&mut self.vertices, &mut self.indices);
+        graphite::flatten(
+            verbs,
+            m,
+            |fan, pts| {
+                if pts.len() < 2 {
+                    return;
+                }
+                contours += 1;
+                convex = convex && contours == 1 && graphite::convex(pts);
+                let vert = |p: Point| {
+                    let uv = uv_of.map_or(point(0.0, 0.0), |t| t.apply(p));
+                    Vertex { pos: [p.x, p.y], depth, paint, color: u32::MAX, uv: [uv.x, uv.y] }
+                };
+                let base = vertices.len() as u32;
+                vertices.push(vert(fan));
+                for &p in pts {
+                    vertices.push(vert(p));
+                    bounds = [bounds[0].min(p.x), bounds[1].min(p.y), bounds[2].max(p.x), bounds[3].max(p.y)];
+                }
+                let n = pts.len() as u32;
+                for k in 0..n {
+                    let (a, b) = (base + 1 + k, base + 1 + (k + 1) % n);
+                    indices.extend_from_slice(&[base, a, b]);
+                }
+            },
+            &mut points,
+        );
+        self.points = points;
+        (bounds, convex && contours == 1)
+    }
+
+    /// A device-space rect as two triangles.
+    fn quad_device(&mut self, r: [f32; 4], depth: f32, paint: u32) {
+        let base = self.vertices.len() as u32;
+        for (x, y) in [(r[0], r[1]), (r[2], r[1]), (r[2], r[3]), (r[0], r[3])] {
+            self.vertices.push(Vertex { pos: [x, y], depth, paint, color: u32::MAX, uv: [x, y] });
+        }
+        self.indices.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+    }
+
+    fn push_tri(&mut self, start: u32, scissor: Option<[u32; 4]>) {
+        self.push_tris(start, scissor, false);
+    }
+
+    fn push_tris(&mut self, start: u32, scissor: Option<[u32; 4]>, once: bool) {
+        let end = self.indices.len() as u32;
+        if end == start {
+            return;
+        }
+        match self.ops.last_mut() {
+            Some(Op::Tri { end: e, scissor: s, once: o, .. }) if *e == start && *s == scissor && *o == once => *e = end,
+            _ => self.ops.push(Op::Tri { start, end, scissor, once }),
+        }
+    }
+
+    /// One draw: the clip stack's decisions, then Graphite's renderer for what remains.
+    fn draw_geo(&mut self, mut geo: Geo, paint: &Paint) {
+        let m = self.state.matrix;
+        let xf = graphite::Xf::new(m);
+        if !xf.valid() {
+            return;
+        }
+        let aa = xf.local_aa_radius();
+        // The draw's local bounds and whether the clip stack may replace its geometry.
+        let local = match geo {
+            Geo::Rect(r) => r,
+            Geo::RRect(rr) => rr.rect,
+            Geo::Line(a, b) => [a.x.min(b.x), a.y.min(b.y), a.x.max(b.x), a.y.max(b.y)],
+            Geo::Flood => INFINITE,
+            Geo::Path => {
+                let mut b = EMPTY;
+                for v in &self.verbs {
+                    let mut add = |p: Point| b = [b[0].min(p.x), b[1].min(p.y), b[2].max(p.x), b[3].max(p.y)];
+                    match *v {
+                        graphite::Verb::Move(p) | graphite::Verb::Line(p) => add(p),
+                        graphite::Verb::Quad(c, p) | graphite::Verb::Conic(c, p, _) => {
+                            add(c);
+                            add(p)
+                        }
+                        graphite::Verb::Cubic(c1, c2, p) => {
+                            add(c1);
+                            add(c2);
+                            add(p)
+                        }
+                        graphite::Verb::Close => {}
+                    }
+                }
+                b
+            }
+        };
+        if !matches!(geo, Geo::Flood | Geo::Path) {
+            let size = [local[2] - local[0], local[3] - local[1]];
+            if paint.stroke.is_none() && (matches!(geo, Geo::Line(..)) || size[0] <= 0.0 || size[1] <= 0.0) {
+                return;
+            }
+        }
+        let (outset, modifiable) = match paint.stroke {
+            None => {
+                let small = !matches!(geo, Geo::Flood) && (local[2] - local[0] < aa || local[3] - local[1] < aa);
+                (if small { 0.5 * aa } else { 0.0 }, !small && matches!(geo, Geo::Rect(_) | Geo::RRect(_) | Geo::Flood))
+            }
+            Some(w) => {
+                let w = w.max(aa);
+                let mut r = w * 0.5;
+                if matches!(geo, Geo::Path) && matches!(paint.join, LineJoin::Miter | LineJoin::MiterClip) {
+                    r *= 4.0;
+                }
+                if matches!(paint.cap, LineCap::Square) {
+                    r *= std::f32::consts::SQRT_2;
+                }
+                (r, false)
+            }
+        };
+        let (outer, inner) = if matches!(geo, Geo::Flood) {
+            (INFINITE, INFINITE)
+        } else {
+            let l = [local[0] - outset, local[1] - outset, local[2] + outset, local[3] + outset];
+            let outer = xf.map_rect(l);
+            let inner = if modifiable && xf.kind <= graphite::Kind::RectStaysRect {
+                match geo {
+                    Geo::Rect(_) => outer,
+                    Geo::RRect(rr) => xf.map_rect(rr.inner_bounds()),
+                    _ => EMPTY,
+                }
+            } else {
+                EMPTY
+            };
+            (outer, inner)
+        };
+        let mut clip = DrawClip::default();
+        if !self.visit_clips(&mut geo, &xf, modifiable, outer, inner, &mut clip) {
+            return;
+        }
+        let stroke = paint.stroke.map(|w| graphite::Stroke {
+            half_width: w * 0.5,
+            join_limit: match paint.join {
+                LineJoin::Round => -1.0,
+                LineJoin::Bevel => 0.0,
+                _ => MITER_LIMIT,
+            },
+            cap: match paint.cap {
+                LineCap::Butt => 0,
+                LineCap::Round => 1,
+                LineCap::Square => 2,
+            },
+        });
+        let depth = self.next_depth();
+        self.use_msaa_clips(&clip, depth);
+        let paint_index = self.push_paint(paint, clip.analytic.as_ref());
+        let to_image = match &paint.shader {
+            Shader::Image { to_image, .. } => Some(*to_image),
+            _ => None,
+        };
+        let scissor = clip.scissor;
+        // nonAABounds: a flood, or a filled rect on whole pixels.
+        let bounds_draw = match geo {
+            Geo::Flood => Some(self.device_bounds()),
+            Geo::Rect(r) if stroke.is_none() && xf.kind <= graphite::Kind::RectStaysRect => {
+                let d = xf.map_rect(r);
+                graphite::nearly_pixel_aligned(d).then_some(d)
+            }
+            _ => None,
+        };
+        if let Some(d) = bounds_draw {
+            let start = self.indices.len() as u32;
+            let base = self.vertices.len() as u32;
+            self.quad_device(d, depth, paint_index);
+            if let Some(t) = to_image {
+                let inv = m.invert().then(t);
+                for v in &mut self.vertices[base as usize..] {
+                    let uv = inv.apply(point(v.pos[0], v.pos[1]));
+                    v.uv = [uv.x, uv.y];
+                }
+            }
+            self.push_tri(start, scissor);
+            return;
+        }
+        // is_simple_shape → analyticRRect.
+        let simple = match geo {
+            Geo::Rect(r) => Some(graphite::Simple::Rect(r)),
+            Geo::Line(a, b) => Some(graphite::Simple::Line(a, b)),
+            Geo::RRect(rr) => {
+                let circular = rr.all_corners_circular(aa * graphite::PIXEL_TOLERANCE);
+                (stroke.is_none_or(|s| s.half_width == 0.0) || circular).then_some(graphite::Simple::RRect(rr))
+            }
+            _ => None,
+        };
+        if let Some(shape) = simple {
+            let inst = graphite::rrect_instance(&shape, stroke, &xf, depth, paint_index);
+            let first = self.rrects.len() as u32;
+            self.rrects.push(inst);
+            match self.ops.last_mut() {
+                Some(Op::RRects { first: f, count, scissor: s }) if *f + *count == first && *s == scissor => *count += 1,
+                _ => self.ops.push(Op::RRects { first, count: 1, scissor }),
+            }
+            return;
+        }
+        // The path renderers (kTessellation): MSAA.
+        self.msaa = true;
+        let mut verbs = std::mem::take(&mut self.verbs);
+        match geo {
+            Geo::Path => {}
+            Geo::Rect(r) => {
+                verbs.clear();
+                verbs.extend([
+                    graphite::Verb::Move(point(r[0], r[1])),
+                    graphite::Verb::Line(point(r[2], r[1])),
+                    graphite::Verb::Line(point(r[2], r[3])),
+                    graphite::Verb::Line(point(r[0], r[3])),
+                    graphite::Verb::Close,
+                ]);
+            }
+            Geo::RRect(rr) => {
+                verbs.clear();
+                graphite::rrect_verbs(&rr, &mut verbs);
+            }
+            Geo::Line(a, b) => {
+                verbs.clear();
+                verbs.extend([graphite::Verb::Move(a), graphite::Verb::Line(b)]);
+            }
+            Geo::Flood => unreachable!(),
+        }
+        match paint.stroke {
+            None => {
+                let start = self.indices.len() as u32;
+                let (bounds, convex) = self.fan(&verbs, &m, depth, paint_index, to_image);
+                let mid = self.indices.len() as u32;
+                // One convex contour: convexTessellatedWedges, shaded directly.
+                if convex {
+                    self.push_tri(start, scissor);
+                } else if mid > start {
+                    self.ops.push(Op::Stencil { start, end: mid, scissor });
+                    let b = [bounds[0].floor() - 1.0, bounds[1].floor() - 1.0, bounds[2].ceil() + 1.0, bounds[3].ceil() + 1.0];
+                    let vb = self.vertices.len();
+                    self.quad_device(b, depth, paint_index);
+                    if let Some(t) = to_image {
+                        let inv = m.invert().then(t);
+                        for v in &mut self.vertices[vb..] {
+                            let uv = inv.apply(point(v.pos[0], v.pos[1]));
+                            v.uv = [uv.x, uv.y];
+                        }
+                    }
+                    let end = self.indices.len() as u32;
+                    self.ops.push(Op::Cover { start: mid, end, scissor });
+                }
+            }
+            Some(_) => {
+                // tessellatedStrokes: Graphite's stroke tessellator, each sample once (LESS).
+                let s = stroke.unwrap();
+                let start = self.indices.len() as u32;
+                let t = to_image.unwrap_or(Matrix::IDENTITY);
+                let (vertices, indices) = (&mut self.vertices, &mut self.indices);
+                graphite::stroke(&verbs, &m, s.half_width, s.join_limit, s.cap, |strip| {
+                    let base = vertices.len() as u32;
+                    for (dev, local) in strip {
+                        let uv = t.apply(point(local[0], local[1]));
+                        vertices.push(Vertex { pos: dev, depth, paint: paint_index, color: u32::MAX, uv: [uv.x, uv.y] });
+                    }
+                    let n = vertices.len() as u32 - base;
+                    for k in 0..n.saturating_sub(2) {
+                        indices.extend_from_slice(&[base + k, base + k + 1, base + k + 2]);
+                    }
+                });
+                self.push_tris(start, scissor, true);
+            }
+        }
+        self.verbs = verbs;
+    }
+
+    fn push_paint(&mut self, paint: &Paint, clip: Option<&graphite::AnalyticClip>) -> u32 {
         let m = self.state.matrix;
         let opacity = paint.opacity * self.state.opacity;
-        let mut gpu = GpuPaint { head: [0.0, 0.0, opacity, 0.0], geometry: [0.0; 4], offsets: [[0.0; 4]; 2], colors: [[0.0; 4]; MAX_STOPS] };
+        let mut gpu = GpuPaint { head: [0.0, 0.0, opacity, 0.0], geometry: [0.0; 4], offsets: [[0.0; 4]; 2], colors: [[0.0; 4]; MAX_STOPS], clip: [[0.0; 4]; 3] };
+        if let Some(c) = clip {
+            gpu.clip = [c.xform, c.rect, c.radii_with_inverse];
+        }
         // RN Skia on iOS draws into a Display P3 surface (the app's colour space), so a gradient
         // interpolates between its stops' P3 values: the stops go in as encoded P3 and the
         // shader turns each interpolated colour back into sRGB (`head.w` = 1). Measured on
@@ -585,15 +1382,20 @@ impl Canvas {
                 gpu.head[0] = 3.0;
                 gpu.geometry = [c.x, c.y, 0.0, 0.0];
             }
-            Shader::Image { image, .. } => {
+            Shader::Image { image, to_image } => {
                 gpu.head[0] = 4.0;
                 gpu.geometry = [image.width, image.height, image.layer as f32, 0.0];
+                let [a, b, c, d, e, f] = to_image.0;
+                gpu.offsets = [[a, b, c, d], [e, f, 0.0, 0.0]];
             }
         }
         self.paints.push(gpu);
         (self.paints.len() - 1) as u32
     }
 }
+
+/// `SkPaint`'s default miter limit.
+const MITER_LIMIT: f32 = 4.0;
 
 /// A rect as a path.
 pub fn rect_path(x: f32, y: f32, w: f32, h: f32) -> Path {
@@ -1079,32 +1881,55 @@ pub struct RsXform {
 impl Canvas {
     /// One quad of four local corners (clockwise from the top-left), with their image pixels
     /// and a colour, through the current transform.
-    fn quad(&mut self, corners: [Point; 4], uv: [Point; 4], paint: u32, color: u32) {
+    fn quad(&mut self, corners: [Point; 4], uv: [Point; 4], paint: u32, color: u32, depth: f32) {
         let base = self.vertices.len() as u32;
         let m = self.state.matrix;
         for (p, t) in corners.iter().zip(uv.iter()) {
             let q = m.apply(*p);
-            self.vertices.push(Vertex { pos: [q.x, q.y], paint, color, uv: [t.x, t.y] });
+            self.vertices.push(Vertex { pos: [q.x, q.y], depth, paint, color, uv: [t.x, t.y] });
         }
         self.indices.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
     }
 
-    fn push_draw(&mut self, start: u32) {
-        let end = self.indices.len() as u32;
-        match self.ops.last_mut() {
-            Some(Op::Draw { end: e, level, .. }) if *e == start && *level == self.level => *e = end,
-            _ => self.ops.push(Op::Draw { start, end, level: self.level }),
+    /// The clip stack for a draw that keeps its own geometry (an atlas, a shadow) over the local
+    /// rect `local`: its clip and depth, `None` when clipped out.
+    fn plain_clip(&mut self, local: [f32; 4]) -> Option<(DrawClip, f32)> {
+        let xf = graphite::Xf::new(self.state.matrix);
+        if !xf.valid() {
+            return None;
         }
+        let mut geo = Geo::Path;
+        let mut clip = DrawClip::default();
+        if !self.visit_clips(&mut geo, &xf, false, xf.map_rect(local), EMPTY, &mut clip) {
+            return None;
+        }
+        let depth = self.next_depth();
+        self.use_msaa_clips(&clip, depth);
+        Some((clip, depth))
     }
 
     /// `<Atlas image sprites transforms colors colorBlendMode>`: each sprite (a rect of the
     /// image's pixels) drawn by its [`RsXform`]. With `colors`, each sprite's colour is blended
     /// with it: `src_in` (`colorBlendMode="srcIn"`) paints the colour in the image's alpha;
-    /// otherwise it multiplies the image (`modulate`).
+    /// otherwise it multiplies the image (`modulate`). As Graphite's drawAtlas (vertices), the
+    /// sprites are not anti-aliased.
     pub fn draw_atlas(&mut self, image: ImageRef, sprites: &[Rect], transforms: &[RsXform], colors: Option<&[Color]>, src_in: bool) {
-        let paint = self.push_paint(&Paint::image(image, Matrix::IDENTITY));
+        let at = |x: &RsXform, px: f32, py: f32| point(x.scos * px - x.ssin * py + x.tx, x.ssin * px + x.scos * py + x.ty);
+        let mut b = EMPTY;
+        for (s, x) in sprites.iter().zip(transforms.iter()) {
+            for p in [at(x, 0.0, 0.0), at(x, s.width, 0.0), at(x, s.width, s.height), at(x, 0.0, s.height)] {
+                b = [b[0].min(p.x), b[1].min(p.y), b[2].max(p.x), b[3].max(p.y)];
+            }
+        }
+        if !(b[0] <= b[2]) {
+            return;
+        }
+        let Some((clip, depth)) = self.plain_clip(b) else { return };
+        let paint = self.push_paint(&Paint::image(image, Matrix::IDENTITY), clip.analytic.as_ref());
+        let p = &mut self.paints[paint as usize];
+        p.offsets = [[0.0; 4]; 2];
         if src_in {
-            self.paints[paint as usize].geometry[3] = 1.0;
+            p.geometry[3] = 1.0;
         }
         let start = self.indices.len() as u32;
         for (i, (s, x)) in sprites.iter().zip(transforms.iter()).enumerate() {
@@ -1112,12 +1937,11 @@ impl Canvas {
                 let [r, g, b, a] = c.0.map(|v| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u32);
                 r | (g << 8) | (b << 16) | (a << 24)
             });
-            let at = |px: f32, py: f32| point(x.scos * px - x.ssin * py + x.tx, x.ssin * px + x.scos * py + x.ty);
-            let corners = [at(0.0, 0.0), at(s.width, 0.0), at(s.width, s.height), at(0.0, s.height)];
+            let corners = [at(x, 0.0, 0.0), at(x, s.width, 0.0), at(x, s.width, s.height), at(x, 0.0, s.height)];
             let uv = [point(s.x, s.y), point(s.x + s.width, s.y), point(s.x + s.width, s.y + s.height), point(s.x, s.y + s.height)];
-            self.quad(corners, uv, paint, color);
+            self.quad(corners, uv, paint, color, depth);
         }
-        self.push_draw(start);
+        self.push_tri(start, clip.scissor);
     }
 
     /// A view's box shadow (RN's `boxShadow` / iOS `shadow*` on a rounded view, Skia's
@@ -1130,17 +1954,24 @@ impl Canvas {
         let s = m.max_scale();
         let (a, b) = (m.apply(point(x, y)), m.apply(point(x + w, y + h)));
         let sigma = sigma.max(1e-3);
-        let mut gpu = GpuPaint { head: [5.0, 1.0, self.state.opacity, 0.0], geometry: [a.x.min(b.x), a.y.min(b.y), a.x.max(b.x), a.y.max(b.y)], offsets: [[0.0; 4]; 2], colors: [[0.0; 4]; MAX_STOPS] };
+        let e = 3.0 * sigma;
+        let (x0, y0, x1, y1) = (x - e, y - e, x + w + e, y + h + e);
+        let Some((clip, depth)) = self.plain_clip([x0, y0, x1, y1]) else { return };
+        let mut gpu = GpuPaint {
+            head: [5.0, 1.0, self.state.opacity, 0.0],
+            geometry: [a.x.min(b.x), a.y.min(b.y), a.x.max(b.x), a.y.max(b.y)],
+            offsets: [[0.0; 4]; 2],
+            colors: [[0.0; 4]; MAX_STOPS],
+            clip: clip.analytic.map_or([[0.0; 4]; 3], |c| [c.xform, c.rect, c.radii_with_inverse]),
+        };
         gpu.offsets[0] = [r.min(w / 2.0).min(h / 2.0).max(0.0) * s, sigma * s, 0.0, 0.0];
         gpu.colors[0] = color.0;
         self.paints.push(gpu);
         let paint = (self.paints.len() - 1) as u32;
-        let e = 3.0 * sigma;
-        let (x0, y0, x1, y1) = (x - e, y - e, x + w + e, y + h + e);
         let start = self.indices.len() as u32;
         let corners = [point(x0, y0), point(x1, y0), point(x1, y1), point(x0, y1)];
-        self.quad(corners, corners, paint, u32::MAX);
-        self.push_draw(start);
+        self.quad(corners, corners, paint, u32::MAX, depth);
+        self.push_tri(start, clip.scissor);
     }
 
     /// [`Canvas::draw_rrect_shadow`] under any transform: the shadow is evaluated in the rounded
@@ -1150,17 +1981,24 @@ impl Canvas {
     #[allow(clippy::too_many_arguments)]
     pub fn draw_rrect_shadow_local(&mut self, x: f32, y: f32, w: f32, h: f32, r: f32, sigma: f32, color: Color) {
         let sigma = sigma.max(1e-3);
-        let mut gpu = GpuPaint { head: [5.0, 1.0, self.state.opacity, 0.0], geometry: [x, y, x + w, y + h], offsets: [[0.0; 4]; 2], colors: [[0.0; 4]; MAX_STOPS] };
+        let e = 3.0 * sigma;
+        let (x0, y0, x1, y1) = (x - e, y - e, x + w + e, y + h + e);
+        let Some((clip, depth)) = self.plain_clip([x0, y0, x1, y1]) else { return };
+        let mut gpu = GpuPaint {
+            head: [5.0, 1.0, self.state.opacity, 0.0],
+            geometry: [x, y, x + w, y + h],
+            offsets: [[0.0; 4]; 2],
+            colors: [[0.0; 4]; MAX_STOPS],
+            clip: clip.analytic.map_or([[0.0; 4]; 3], |c| [c.xform, c.rect, c.radii_with_inverse]),
+        };
         gpu.offsets[0] = [r.min(w / 2.0).min(h / 2.0).max(0.0), sigma, 1.0, 0.0];
         gpu.colors[0] = color.0;
         self.paints.push(gpu);
         let paint = (self.paints.len() - 1) as u32;
-        let e = 3.0 * sigma;
-        let (x0, y0, x1, y1) = (x - e, y - e, x + w + e, y + h + e);
         let start = self.indices.len() as u32;
         let corners = [point(x0, y0), point(x1, y0), point(x1, y1), point(x0, y1)];
-        self.quad(corners, corners, paint, u32::MAX);
-        self.push_draw(start);
+        self.quad(corners, corners, paint, u32::MAX, depth);
+        self.push_tri(start, clip.scissor);
     }
 }
 
@@ -1189,3 +2027,6 @@ mod shadow_tests {
         assert_eq!(c.paints[0].offsets[0][2], 0.0);
     }
 }
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod graphite_parity;

@@ -1,6 +1,7 @@
-# @shopify/react-native-skia's drawing, for the Demos app's GPU surfaces: paths tessellated
-# by lyon and drawn by one wgpu pipeline (MSAA, gradients in the shader, stencil clips), on the
-# module's own device, with no compute and no indirect dispatch (the iOS Simulator has none).
+# @shopify/react-native-skia's drawing, for the Demos app's GPU surfaces: antialiased as Skia
+# Graphite does it (analytic rects/rrects/circles, 4x MSAA paths and clips), tessellated on the
+# CPU, on the module's own device, with no compute and no indirect dispatch (the iOS Simulator
+# has none).
 [package]
 name = "skia"
 version.workspace = true
