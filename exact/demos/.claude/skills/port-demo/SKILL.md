@@ -221,6 +221,34 @@ One commit per haptic event, never per frame.
   ancestor) ends the host drag: keep the handle on the dragged layer and move only what is drawn
   (action-tray's −50 clamp). RN's own clamps that freeze on "the last update above X" land
   where the event cadence puts them (−43.3 on a slow argent drag): the limit is X.
+- RN `textAlign: 'center'` on a Text: Yoga ceils the Text's measured width to the pixel grid and
+  TextKit centres the line in that box, so the glyphs start half the slack right of the box
+  (fluid-tab's "Accounts": 63.14 in 63.333, 0.29 px; its o, u, s crossed a pixel edge). Add
+  `(ceiled − width) / 2` to the x in Rust.
+- RN's Text draws in its view's drawRect: ink past the (ceiled) frame is cut (dot-sheet's "g"
+  lost its last row, max 239). `overflow="hidden"` on a Contract `text` doesn't clip on iOS: wrap
+  it in a box of RN's frame that clips.
+- iOS host: a full-screen `canvas` takes the touches under it whatever its `pointer-events`
+  (dot-sheet's Start and Back did nothing). Give the controls under it a higher `z-index`
+  where the drawing never covers them.
+- iOS host: the keyboard's default policy (`resizes-content`) shrinks the screen above the keys;
+  RN moves nothing unless the demo has a KeyboardAvoidingView. app.contract's
+  `overlaysKeyboard(slug)` sets the root's `interactive-widget="overlays-content"` per demo.
+- `-exact-spring` on translate/scale/rotate/opacity carries the running velocity into a retarget
+  unconditionally (motion/src/engine.rs); Reanimated's withSpring zeroes it when it points away
+  from the new target (spring.ts onStart). A reversal mid-flight (steddy's highlight, any toggle
+  tapped twice) differs: RN restarts from rest, Exact keeps going first. Rust, or a host option.
+- RNGH's iOS Tap has no distance limit by default (maxDist/maxDeltaX/Y NaN), only maxDuration
+  500 ms; `maxDeltaX/Y` bound each axis, `maxDist` a radius. The crate's `TapGesture::default()`
+  is that; pressto's buttons (BaseButton) also have no duration: `.max_duration(f64::INFINITY)`.
+- UIScrollView: a touch that never drags gets no scrollViewWillEndDragging, so RN's snap never
+  runs: a caught snapping list rests where it is (`ui_scroll` does it).
+- Shared tree: a commit through a private `GIT_INDEX_FILE` leaves the shared index on the old
+  content of those paths (`git status` shows MM: anyone committing then reverts them). After it,
+  `git reset -q -- <your paths>` with the shared index.
+- RN Metro on 8082 can stop seeing edits (watchman here fails to load: libfmt.10.dylib missing),
+  and serves the old transform after a reload: grep the served bundle before trusting an
+  instrumentation run.
 
 ## 4. Check
 
