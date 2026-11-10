@@ -124,7 +124,9 @@ fn shadow(lower: vec2<f32>, upper: vec2<f32>, p0: vec2<f32>, sigma: f32, corner:
             c = vec4<f32>(t.rgb / max(t.a, 1e-5), t.a) * in.color;
         }
     } else if (kind == 5u) {
-        c.a = c.a * shadow(p.geometry.xy, p.geometry.zw, in.px, p.offsets[0].y, p.offsets[0].x);
+        // In device pixels, or (offsets.z = 1) in the shape's own space: the quad's uv.
+        let q = select(in.px, in.uv, p.offsets[0].z > 0.5);
+        c.a = c.a * shadow(p.geometry.xy, p.geometry.zw, q, p.offsets[0].y, p.offsets[0].x);
     }
     if (p.head.w > 0.5) { c = vec4<f32>(p3_to_srgb(c.rgb), c.a); }
     if (kind != 4u) { c = c * in.color; }

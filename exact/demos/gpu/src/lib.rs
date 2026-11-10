@@ -65,6 +65,7 @@ pub mod steddy_graph_interaction;
 pub mod the_little_prince;
 pub mod theme_canvas_animation;
 pub mod timer;
+pub mod twodos_slide;
 pub mod wheel_picker;
 
 /// The module's surfaces and its reflected shaders.
@@ -116,6 +117,7 @@ pub static REGISTRY: Registry = Registry {
         ("the_little_prince", 2, the_little_prince::surface),
         ("theme_canvas_animation", 0, theme_canvas_animation::surface),
         ("timer", 2, timer::surface),
+        ("twodos_slide", 0, twodos_slide::surface),
         ("wheel_picker", 1, wheel_picker::surface),
     ],
     shaders: shaders::SHADERS,
