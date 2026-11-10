@@ -78,14 +78,14 @@ component AirbnbFlipInteraction
               view position="relative" width=cardW height=cardH perspective=1000
                 // cardFace: radius spacing.l + 4 (28) continuous, boxShadow 0 4 12 10 % black,
                 // clipped; transform perspective 1000, rotateY, scale; backface hidden.
-                column position="absolute" inset=0 border-radius=28 corner-shape="squircle"
+                column position="absolute" inset=0 border-radius=28 corner-shape="-exact-continuous"
                   overflow="hidden" box-shadow="0px 4px 12px rgba(0, 0, 0, 0.1)"
                   backface-visibility="hidden"
                   rotate=`y ${isFlipped ? 180 : 0}deg` transition=`rotate ${flipSpring()}`
                   animation=(flips == 0 ? "none" : (flips % 2 == 1 ? `flipScaleA ${flipScaleTiming()}` : `flipScaleB ${flipScaleTiming()}`))
                   testId="airbnb-front"
                   AirbnbFront()
-                column position="absolute" inset=0 border-radius=28 corner-shape="squircle"
+                column position="absolute" inset=0 border-radius=28 corner-shape="-exact-continuous"
                   overflow="hidden" box-shadow="0px 4px 12px rgba(0, 0, 0, 0.1)"
                   backface-visibility="hidden"
                   rotate=`y ${isFlipped ? 360 : 180}deg` transition=`rotate ${flipSpring()}`
@@ -96,12 +96,12 @@ component AirbnbFlipInteraction
           column position="relative" padding-left=32 padding-right=32
             if isFlipped
               // descriptionContainer: radius spacing.m (12) continuous, clipped.
-              column border-radius=12 corner-shape="squircle" overflow="hidden"
+              column border-radius=12 corner-shape="-exact-continuous" overflow="hidden"
                 animation="airbnbInFront 400ms linear both" class=AirbnbFrontOut
                 testId="airbnb-second-page"
                 AirbnbPage(second=true)
             else
-              column border-radius=12 corner-shape="squircle" overflow="hidden"
+              column border-radius=12 corner-shape="-exact-continuous" overflow="hidden"
                 animation="airbnbInBack 400ms linear both" class=AirbnbBackOut
                 testId="airbnb-main-page"
                 AirbnbPage(second=false)
@@ -120,7 +120,7 @@ component AirbnbFlipInteraction
 // padding spacing.l (24).
 component AirbnbFront
   view
-    column flex=1 border-radius=28 corner-shape="squircle" overflow="hidden"
+    column flex=1 border-radius=28 corner-shape="-exact-continuous" overflow="hidden"
       background-image="linear-gradient(to bottom right, color(display-p3 1 0.4196 0.4196) 0%, color(display-p3 1 0.5569 0.3255) 50%, color(display-p3 1 0.4196 0.4196) 100%)"
       column flex=1 padding=24
         // nameText: white, SF-Pro-Rounded-Heavy 32 (fontWeight 700), letterSpacing -0.5,
@@ -139,7 +139,7 @@ component AirbnbFront
 // back.tsx: white, radius 28 continuous, centred, padding spacing.l (24).
 component AirbnbBack
   view
-    column flex=1 background-color="#ffffff" border-radius=28 corner-shape="squircle"
+    column flex=1 background-color="#ffffff" border-radius=28 corner-shape="-exact-continuous"
       justify-content="center" padding=24
       // headerSection: a centred row, space-between.
       row align-items="center" justify-content="space-between"
@@ -209,7 +209,7 @@ component AirbnbSection
     title: string
     body: string
   view
-    column border-radius=12 corner-shape="squircle" margin-bottom=12 padding-top=8 padding-bottom=8
+    column border-radius=12 corner-shape="-exact-continuous" margin-bottom=12 padding-top=8 padding-bottom=8
       text title color="#000000" font-family="ui-rounded" font-weight=700 font-size=20
         margin-bottom=8
       text body color="color(display-p3 0.102 0.1137 0.1608)" font-family="regular" font-size=16 line-height="24px"
