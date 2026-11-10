@@ -21,7 +21,7 @@ fn bottomHeight(id: number): number = min(id, 2) + 15 * id
 
 // withCustomSpring: { mass 2.5, damping 100, stiffness 740 }.
 // ζ 1.16 ≥ 1: Reanimated runs it critically damped, so damping 2√(k·m) = 86.02.
-fn modalSpring(): string = "-exact-spring(740, 86.02, 2.5)"
+fn modalSpring(): string = "-exact-spring(740, 86.0233, 2.5)"
 
 // On mount `bottom` springs from (windowHeight - 200) / 2 - 110 (bottomOffset) to its place
 // and baseOpacity from 0 to 1, on that spring (overdamped, ζ 1.16): its curve from rest,

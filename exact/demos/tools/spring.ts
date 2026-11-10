@@ -21,6 +21,9 @@ for (let i = 0; i < 200; i++) {
   const mid = (lo + hi) / 2;
   if (fraction(mid) - threshold > 0) lo = mid; else hi = mid;
 }
-const k = (lo + hi) / 2;
-const c = 2 * zeta * Math.sqrt(k * m);
-console.log(`-exact-spring(${k.toFixed(1)}, ${c.toFixed(1)}, ${m})`);
+const k = Number(((lo + hi) / 2).toFixed(4));
+// Damping from the printed stiffness, rounded up at ζ = 1: a rounded-down damping is ζ < 1, and
+// Contract runs the underdamped branch where Reanimated runs the critically damped one.
+const c0 = 2 * zeta * Math.sqrt(k * m);
+const c = zeta >= 1 ? Math.ceil(c0 * 1e4) / 1e4 : Number(c0.toFixed(4));
+console.log(`-exact-spring(${k}, ${c}, ${m})`);

@@ -20,7 +20,7 @@ fn photo(): string = "assets/demos/liquid-glass-playground/background.jpg"
 // thresholds on the progress itself.
 fn hapticOf(p: number): string = p >= 1 ? "impact-heavy" : (p >= 0.8058677170 ? "impact-medium" : (p >= 0.4855721557 ? "impact-light" : "selection"))
 
-fn paneMotion(dragging: bool): string = dragging ? "none" : "translate -exact-spring(755.4, 109.9, 4)"
+fn paneMotion(dragging: bool): string = dragging ? "none" : "translate -exact-spring(755.3715, 109.9361, 4)"
 
 component LiquidGlassPlayground
   // The gesture's translationY (from the touch-down, as UIKit's and RNGH's translation).
