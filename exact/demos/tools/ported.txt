@@ -10,6 +10,7 @@ atlas-button
 atlas-sphere
 audio-player
 balance-slider
+bezier-curve-outline
 blur-cards
 blur-circles
 blurred-bottom-bar
@@ -18,12 +19,14 @@ bottom-bar-skia
 checkbox-interactions
 circular-carousel
 clerk-toast
+clock-time-picker
 color-carousel
 composable-text
 coverflow-carousel
 cuberto-slider
 delete-button
 dot-sheet
+duration-slider
 dynamic-blur-tabs
 dynamic-tab-indicator
 email-demo
@@ -49,6 +52,7 @@ miles-bar-chart
 motion-blur
 online-offline
 paper-folding
+particles-button
 popup-handler
 prequel-slider
 radar-chart
@@ -59,6 +63,7 @@ scrollable-shapes
 shake-to-delete
 shared-transitions
 skia-bottom-sheet
+skia-color-picker
 slide-to-reveal
 smooth-dropdown
 sphere-waves

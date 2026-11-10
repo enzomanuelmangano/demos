@@ -12,6 +12,7 @@ use AtlasButton from "./atlas-button/atlas-button.contract"
 use AtlasSphere from "./atlas-sphere/atlas-sphere.contract"
 use AudioPlayer from "./audio-player/audio-player.contract"
 use BalanceSlider from "./balance-slider/balance-slider.contract"
+use BezierCurveOutline from "./bezier-curve-outline/bezier-curve-outline.contract"
 use BlurCards from "./blur-cards/blur-cards.contract"
 use BlurCircles from "./blur-circles/blur-circles.contract"
 use BlurredBottomBar from "./blurred-bottom-bar/blurred-bottom-bar.contract"
@@ -20,12 +21,14 @@ use BottomBarSkia from "./bottom-bar-skia/bottom-bar-skia.contract"
 use CheckboxInteractions from "./checkbox-interactions/checkbox-interactions.contract"
 use CircularCarousel from "./circular-carousel/circular-carousel.contract"
 use ClerkToast from "./clerk-toast/clerk-toast.contract"
+use ClockTimePicker from "./clock-time-picker/clock-time-picker.contract"
 use ColorCarousel from "./color-carousel/color-carousel.contract"
 use ComposableText from "./composable-text/composable-text.contract"
 use CoverflowCarousel from "./coverflow-carousel/coverflow-carousel.contract"
 use CubertoSlider from "./cuberto-slider/cuberto-slider.contract"
 use DeleteButton from "./delete-button/delete-button.contract"
 use DotSheet from "./dot-sheet/dot-sheet.contract"
+use DurationSlider from "./duration-slider/duration-slider.contract"
 use DynamicBlurTabs from "./dynamic-blur-tabs/dynamic-blur-tabs.contract"
 use DynamicTabIndicator from "./dynamic-tab-indicator/dynamic-tab-indicator.contract"
 use EmailDemo from "./email-demo/email-demo.contract"
@@ -51,6 +54,7 @@ use MilesBarChart from "./miles-bar-chart/miles-bar-chart.contract"
 use MotionBlur from "./motion-blur/motion-blur.contract"
 use OnlineOffline from "./online-offline/online-offline.contract"
 use PaperFolding from "./paper-folding/paper-folding.contract"
+use ParticlesButton from "./particles-button/particles-button.contract"
 use PopupHandler from "./popup-handler/popup-handler.contract"
 use PrequelSlider from "./prequel-slider/prequel-slider.contract"
 use RadarChart from "./radar-chart/radar-chart.contract"
@@ -61,6 +65,7 @@ use ScrollableShapes from "./scrollable-shapes/scrollable-shapes.contract"
 use ShakeToDelete from "./shake-to-delete/shake-to-delete.contract"
 use SharedTransitions from "./shared-transitions/shared-transitions.contract"
 use SkiaBottomSheet from "./skia-bottom-sheet/skia-bottom-sheet.contract"
+use SkiaColorPicker from "./skia-color-picker/skia-color-picker.contract"
 use SlideToReveal from "./slide-to-reveal/slide-to-reveal.contract"
 use SmoothDropdown from "./smooth-dropdown/smooth-dropdown.contract"
 use SphereWaves from "./sphere-waves/sphere-waves.contract"
@@ -112,6 +117,8 @@ component PortedDemo
         AudioPlayer(env=env)
       if slug == "balance-slider"
         BalanceSlider(env=env)
+      if slug == "bezier-curve-outline"
+        BezierCurveOutline(env=env)
       if slug == "blur-cards"
         BlurCards()
       if slug == "blur-circles"
@@ -128,6 +135,8 @@ component PortedDemo
         CircularCarousel(env=env)
       if slug == "clerk-toast"
         ClerkToast(env=env)
+      if slug == "clock-time-picker"
+        ClockTimePicker()
       if slug == "color-carousel"
         ColorCarousel(env=env)
       if slug == "composable-text"
@@ -140,6 +149,8 @@ component PortedDemo
         DeleteButton()
       if slug == "dot-sheet"
         DotSheet(env=env)
+      if slug == "duration-slider"
+        DurationSlider(env=env)
       if slug == "dynamic-blur-tabs"
         DynamicBlurTabs(env=env)
       if slug == "dynamic-tab-indicator"
@@ -190,6 +201,8 @@ component PortedDemo
         OnlineOffline(env=env)
       if slug == "paper-folding"
         PaperFolding()
+      if slug == "particles-button"
+        ParticlesButton(env=env)
       if slug == "popup-handler"
         PopupHandler(env=env)
       if slug == "prequel-slider"
@@ -210,6 +223,8 @@ component PortedDemo
         SharedTransitions(env=env)
       if slug == "skia-bottom-sheet"
         SkiaBottomSheet()
+      if slug == "skia-color-picker"
+        SkiaColorPicker(env=env)
       if slug == "slide-to-reveal"
         SlideToReveal(env=env)
       if slug == "smooth-dropdown"
