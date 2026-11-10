@@ -1123,7 +1123,7 @@ mod tests {
         assert_eq!(px(&right, 64.0, 456.0), bg);
 
         // The lift, the finger still since its last move: the decay flings from that move's
-        // velocity, clamped 1080 on.
+        // velocity (clamp 1080 either side, not reached).
         s.input(&pointer(PointerPhase::Up, 207.0, 120.0));
         let mut ms = 120.0;
         let mut moving = true;
@@ -1133,6 +1133,8 @@ mod tests {
         }
         let reply = s.agent("").unwrap();
         assert!(reply.contains("\"moving\":false,\"held\":false"), "{reply}");
+        // rigidDecay.ts compounds its fade: the fling stops at 326.433, well short of the clamp.
+        assert!(reply.starts_with("{\"translateX\":326.433,"), "{reply}");
 
         // A tap flips the ticket half a turn: the back's QR shows, the haptic is posted.
         let tap = |s: &mut Box<dyn Surface>, at: f64| {
@@ -1140,7 +1142,7 @@ mod tests {
             s.input(&p(PointerPhase::Down));
             s.input(&InputEvent::Pointer { id: 2, phase: PointerPhase::Up, x: 211.0, y: 450.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: at + 80.0 });
         };
-        // From rotateY 45 (translateX 1125, the clamp): round(1125 / 180) × 180 + 180 = 1260.
+        // From translateX 326.433: round(326.433 / 180) × 180 + 180 = 540.
         tap(&mut s, ms + 100.0);
         assert_eq!(s.messages(), vec!["haptic:selection".to_string()]);
         let mut t = ms + 200.0;
@@ -1152,7 +1154,7 @@ mod tests {
         let (back, _) = fixture::render(&gpu, s.as_mut(), &frame(t + 16.0)).unwrap();
         back.save("threads-holo-ticket-back");
         let reply = s.agent("").unwrap();
-        assert!(reply.starts_with("{\"translateX\":1260.000,\"rotateY\":180.000,\"front\":false,\"maskOpacity\":0.0000"), "{reply}");
+        assert!(reply.starts_with("{\"translateX\":540.000,\"rotateY\":180.000,\"front\":false,\"maskOpacity\":0.0000"), "{reply}");
         // The QR (60 + 75 … 60 + 225, 256 + 125 …) reads unmirrored (scaleX −1 and the half turn
         // cancel): its top-right eye, gold; the card around it seashell.
         let eye = px(&back, 60.0 + 225.0 - 2.0, 256.0 + 125.0 + 2.0);

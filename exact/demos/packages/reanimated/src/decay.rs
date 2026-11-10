@@ -1,5 +1,9 @@
 //! `withDecay` (animation/decay): deceleration 0.998, velocityFactor 1, the rigid decay or,
-//! with `rubber_band_factor`, the rubber band past a clamp.
+//! with `rubber_band_factor`, the rubber band past a clamp. As rigidDecay.ts and
+//! rubberBandDecay.ts, each frame multiplies the velocity it LEFT (not the initial one) by
+//! exp(−(1 − deceleration) × (now − start) × SLOPE_FACTOR): the fade compounds, so a fling
+//! stops far sooner than v0 × exp(−k t) would carry it (threads-holo-ticket: about +90° where
+//! the plain exponential spun several turns).
 
 const SLOPE_FACTOR: f64 = 0.1;
 const VELOCITY_EPS: f64 = 1.0;
@@ -70,7 +74,7 @@ impl Decay {
             (Some(clamp), Some(factor)) => {
                 let i = if (self.value - clamp[0]).abs() < (self.value - clamp[1]).abs() { 0 } else { 1 };
                 let d = if self.value < clamp[0] || self.value > clamp[1] { self.value - clamp[i] } else { 0.0 };
-                let v = self.v0 * fade - d * factor;
+                let v = self.velocity * fade - d * factor;
                 if d.abs() > DERIVATIVE_EPS {
                     self.spring_active = true;
                 } else if self.spring_active {
@@ -87,7 +91,7 @@ impl Decay {
                 true
             }
             _ => {
-                let v = self.v0 * fade;
+                let v = self.velocity * fade;
                 self.value += v * self.velocity_factor * dt / 1000.0;
                 self.velocity = v;
                 self.last_ms = now_ms;
@@ -108,5 +112,26 @@ impl Decay {
 impl Default for Decay {
     fn default() -> Self {
         Decay::at(0.0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_fade_compounds_as_rigid_decay_ts() {
+        // rigidDecay.ts at 60 fps from 195.49 (deceleration 0.998), computed line for line:
+        // 67.4291640632 moved, done on the 56th frame after the start.
+        let mut d = Decay::at(0.0);
+        d.fling(195.49);
+        let mut frames = 0;
+        let mut now = 0.0;
+        while d.step(now) {
+            now += 1000.0 / 60.0;
+            frames += 1;
+        }
+        assert!((d.value - 67.4291640632).abs() < 1e-6, "{}", d.value);
+        assert_eq!(frames, 56);
     }
 }
