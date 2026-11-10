@@ -1,0 +1,21 @@
+// Threads Holo Ticket: a ticket on a deep purple background that turns about its vertical axis
+// as it is dragged (and keeps turning when flung) or flips half a turn on a tap. While it turns,
+// a holographic grid shines across it, following the phone's tilt; the front has the event's
+// details, the back a gold QR code. RN: src/animations/threads-holo-ticket (src/index.tsx,
+// components/holographic-card.tsx, components/ticket/{index,front-side,back-side}.tsx,
+// hooks/use-device-tilt.ts). Everything is Rust: gpu/src/threads_holo_ticket.rs (the Race of
+// the tap and the pan, the decay and the flip spring, the 3D transform, both sides) and
+// gpu/shaders/threads_holo_ticket*.wgsl (the holographic canvas, the QR canvas, the compose).
+// The app feeds it the relativeOrientation sensor while it shows (app.contract); it posts
+// `haptic:selection` on a flip.
+
+component ThreadsHoloTicket
+  action buzz(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+  view
+    // styles.container: #070018 (a View colour: Display P3 components), flex 1.
+    column position="absolute" inset=0 background-color="color(display-p3 0.027451 0 0.094118)" testId="threads-holo-ticket"
+      canvas surface=threads_holo_ticket() position="absolute" top=0 left=0 width="100%" height="100%"
+        touch-action="none" message=buzz testId="threads-holo-ticket-canvas"
+        aria-label="Drag the ticket to turn it, tap it to flip it"

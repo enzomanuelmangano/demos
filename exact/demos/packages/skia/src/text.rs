@@ -267,6 +267,15 @@ impl Font {
         }
         Rect::new(l, t, r - l, b - t)
     }
+
+    /// [`Font::advance_width`] with RN's `letterSpacing` (Core Text's `NSKern`): measured with
+    /// Core Text, a non-zero kern keeps the font's tracking and pair kerning and adds `spacing`
+    /// after every glyph, the last one included (the line's typographic width).
+    pub fn advance_width_spaced(&self, text: &str, spacing: f32) -> f32 {
+        let mut n = 0;
+        let width = self.layout(text, |_, _| n += 1);
+        width + spacing * n as f32
+    }
 }
 
 fn apply_axes(face: &mut Face<'static>, axes: &[([u8; 4], f32)]) {
@@ -648,8 +657,19 @@ impl Canvas {
     /// draws a glyph run ([`crate::glyphs`]): from the glyph atlas below 162 device pixels (where
     /// CoreText rasterises the masks), the glyphs it can't take and larger runs as paths.
     pub fn draw_text(&mut self, text: &str, x: f32, y: f32, font: &Font, paint: &Paint) {
+        self.draw_text_spaced(text, x, y, font, paint, 0.0);
+    }
+
+    /// [`Canvas::draw_text`] with RN's `letterSpacing` ([`Font::advance_width_spaced`]): `spacing`
+    /// added after every glyph, the run drawn as [`Canvas::draw_text`] draws it.
+    pub fn draw_text_spaced(&mut self, text: &str, x: f32, y: f32, font: &Font, paint: &Paint, spacing: f32) {
         let mut run = std::mem::take(&mut self.glyph_run);
         font.glyph_run(text, &mut run);
+        if spacing != 0.0 {
+            for (i, glyph) in run.iter_mut().enumerate() {
+                glyph.1 += spacing * i as f32;
+            }
+        }
         #[cfg(target_vendor = "apple")]
         let paths = self.draw_glyph_masks(&mut run, x, y, font, paint);
         #[cfg(not(target_vendor = "apple"))]
@@ -768,6 +788,7 @@ impl Canvas {
         self.glyph_quads = quads;
         paths > 0
     }
+
 }
 
 #[cfg(all(test, not(target_arch = "wasm32")))]

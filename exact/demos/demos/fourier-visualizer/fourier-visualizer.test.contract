@@ -1,0 +1,4 @@
+at "/demo/fourier-visualizer"
+
+test "the canvas is there"
+  expect tree has "fourier-visualizer"

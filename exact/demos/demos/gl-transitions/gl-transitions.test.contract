@@ -1,0 +1,16 @@
+at "/demo/gl-transitions"
+
+// The web host gives a surface no touches: the presses, the slide, the empty-save alert's
+// trigger and the warp are the Rust fixture tests' (gpu/src/gl_transitions.rs); here what the
+// Contract holds at rest.
+test "the notes and the canvas are there"
+  expect tree has "gl-transitions"
+  expect tree has "gl-transitions-canvas"
+
+test "the field waits for the screen to slide up"
+  clock settle
+  expect tree missing "note-input"
+
+test "the empty-note alert is declared, closed"
+  clock settle
+  expect tree has "empty-note"

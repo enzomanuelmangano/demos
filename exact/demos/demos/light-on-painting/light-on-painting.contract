@@ -1,0 +1,59 @@
+// Light on Painting: Vermeer's Girl with a Pearl Earring and Hopper's Nighthawks on black,
+// relit by a bulb on a cord that the finger carries, swings when let go and pinches deeper
+// into the scene; a swipe elsewhere pages between them, a double tap opens the Light sheet.
+// RN: src/animations/light-on-painting (index.tsx, state.ts, constants.ts, paintings.ts,
+// hooks/use-relight-renderer.ts, shaders/relight.ts, components/{paginator,settings-sheet.ios}).
+// The canvas, its gestures, physics and paginator are Rust: gpu/src/light_on_painting.rs; the
+// surface posts `settings` on a double tap.
+
+component LightOnPainting
+  // components/settings.ts defaultSheetSettings (intensity is fixed at 4.05 in the surface).
+  state showBulb = true
+  state showCord = true
+  state relight = true
+  state showDepth = false
+  action heard(m: string)
+    if m == "settings"
+      showModal("light-settings")
+  // settings-sheet.ios.tsx toggle(): Haptics.selectionAsync, then the change.
+  action setBulb(on: bool)
+    haptic("selection")
+    showBulb = on
+  action setCord(on: bool)
+    haptic("selection")
+    showCord = on
+  action setRelight(on: bool)
+    haptic("selection")
+    relight = on
+  action setDepth(on: bool)
+    haptic("selection")
+    showDepth = on
+  view
+    // styles.container: black, flex 1; the Canvas fills it (StyleSheet.absoluteFill).
+    column position="absolute" inset=0 background-color="#000000" testId="light-on-painting"
+      canvas surface=light_on_painting(showBulb, showCord, relight, showDepth) message=heard
+        position="absolute" top=0 left=0 width="100%" height="100%" touch-action="none"
+        aria-label="A painting relit by a bulb: drag the bulb, swipe to page, double tap for settings"
+        testId="light-on-painting-canvas"
+      // SettingsSheet: a SwiftUI BottomSheet fitToContents in the dark scheme; VStack spacing 20,
+      // padding 22; "Light" in title3 semibold; four Toggles tinted LAMP_TINT (#FFC280).
+      dialog id="light-settings" aria-label="Light" color-scheme="dark" testId="light-settings"
+        column gap=20 padding=22 align-items="center" width="100%" box-sizing="border-box"
+          text "Light" font="-exact-title3" font-weight=600
+          row align-self="stretch" align-items="center" justify-content="space-between"
+            text "Bulb" font="-exact-body"
+            input type="checkbox" switch checked=showBulb change=setBulb accent-color="#FFC280"
+              aria-label="Bulb" testId="bulb-switch"
+          row align-self="stretch" align-items="center" justify-content="space-between"
+            text "Cord" font="-exact-body"
+            // isOn: showCord && showBulb (a cord with no bulb reads as a stray line).
+            input type="checkbox" switch checked=(showCord && showBulb) change=setCord
+              accent-color="#FFC280" aria-label="Cord" testId="cord-switch"
+          row align-self="stretch" align-items="center" justify-content="space-between"
+            text "Shader" font="-exact-body"
+            input type="checkbox" switch checked=relight change=setRelight accent-color="#FFC280"
+              aria-label="Shader" testId="shader-switch"
+          row align-self="stretch" align-items="center" justify-content="space-between"
+            text "Show depth" font="-exact-body"
+            input type="checkbox" switch checked=showDepth change=setDepth accent-color="#FFC280"
+              aria-label="Show depth" testId="depth-switch"

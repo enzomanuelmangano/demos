@@ -1,0 +1,20 @@
+// Fourier Visualizer: draw a stroke on the grey canvas; when the finger lifts, its FFT becomes
+// a chain of epicycles (circles on circles, largest first) that retraces it over 20 s, and a
+// round button clears it. RN: src/animations/fourier-visualizer (index.tsx,
+// components/fourier-visualizer/{index.tsx, utils/*}). The stroke, the FFT, the chain, its
+// circles and trace, and the clear button with its animations are Rust:
+// gpu/src/fourier_visualizer.rs. The surface posts `press` when the button clears (the app's
+// selection haptic).
+use DemoEnv from "../env.contract"
+
+component FourierVisualizer
+  props
+    env: DemoEnv
+  action heard(m: string)
+    if m == "press"
+      haptic("selection")
+  view
+    // styles.container (flex 1) and styles.canvas (#D4D4D4, flex 1): the whole window.
+    canvas surface=fourier_visualizer() message=heard position="absolute" top=0 left=0
+      width=env.width height=env.height background-color="#D4D4D4" touch-action="none"
+      testId="fourier-visualizer" aria-label="Fourier canvas: draw a stroke to retrace it with epicycles"

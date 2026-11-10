@@ -32,6 +32,7 @@ pub mod blur_cards;
 pub mod blur_circles;
 pub mod blurred_scroll;
 pub mod bottom_bar_skia;
+pub mod card_shader_reflections;
 pub mod clock_time_picker;
 pub mod color_carousel;
 pub mod cuberto_slider;
@@ -42,11 +43,15 @@ pub mod duration_slider;
 pub mod exclusion_tabs;
 pub mod expandable_mini_player;
 pub mod fibonacci_shader;
+pub mod fibonacci_shader_grid;
 pub mod floating_bottom_bar;
 pub mod floating_modal;
 pub mod fluid_slider;
+pub mod fourier_visualizer;
 pub mod fractal_glass;
 pub mod geometry_button;
+pub mod gl_transitions;
+pub mod light_on_painting;
 pub mod linear_sensors;
 pub mod loading_button;
 pub mod magnet_spring;
@@ -72,6 +77,7 @@ pub mod telegram_lottie;
 pub mod telegram_theme_switch;
 pub mod the_little_prince;
 pub mod theme_canvas_animation;
+pub mod threads_holo_ticket;
 pub mod timer;
 pub mod twodos_slide;
 pub mod wheel_picker;
@@ -90,6 +96,7 @@ pub static REGISTRY: Registry = Registry {
         ("blur_circles", 0, blur_circles::surface),
         ("blurred_scroll", 1, blurred_scroll::surface),
         ("bottom_bar_skia", 1, bottom_bar_skia::surface),
+        ("card_shader_reflections", 0, card_shader_reflections::surface),
         ("clock_time_picker", 0, clock_time_picker::surface),
         ("color_carousel", 1, color_carousel::surface),
         ("cuberto_slider", 0, cuberto_slider::surface),
@@ -100,11 +107,15 @@ pub static REGISTRY: Registry = Registry {
         ("exclusion_tabs", 0, exclusion_tabs::surface),
         ("expandable_mini_player", 1, expandable_mini_player::surface),
         ("fibonacci_shader", 1, fibonacci_shader::surface),
+        ("fibonacci_shader_grid", 0, fibonacci_shader_grid::surface),
         ("floating_bottom_bar", 0, floating_bottom_bar::surface),
         ("floating_modal", 0, floating_modal::surface),
         ("fluid_slider", 0, fluid_slider::surface),
+        ("fourier_visualizer", 0, fourier_visualizer::surface),
         ("fractal_glass", 1, fractal_glass::surface),
         ("geometry_button", 0, geometry_button::surface),
+        ("gl_transitions", 4, gl_transitions::surface),
+        ("light_on_painting", 4, light_on_painting::surface),
         ("linear_sensors", 0, linear_sensors::surface),
         ("loading_button", 0, loading_button::surface),
         ("magnet_spring", 0, magnet_spring::surface),
@@ -129,6 +140,7 @@ pub static REGISTRY: Registry = Registry {
         ("telegram_theme_switch", 1, telegram_theme_switch::surface),
         ("the_little_prince", 2, the_little_prince::surface),
         ("theme_canvas_animation", 0, theme_canvas_animation::surface),
+        ("threads_holo_ticket", 0, threads_holo_ticket::surface),
         ("timer", 2, timer::surface),
         ("twodos_slide", 0, twodos_slide::surface),
         ("wheel_picker", 1, wheel_picker::surface),
