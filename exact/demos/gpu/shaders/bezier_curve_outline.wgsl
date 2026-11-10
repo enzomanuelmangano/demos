@@ -5,14 +5,16 @@
 // icon container over it at the container's own (group) opacity 1 − progress, inside the square.
 // `compose`: the outline layer at opacity outline, under the main content at opacity
 // 1 − outline (two views with group opacity); inside the square the main content shows the
-// blur view's backdrop (`blurred`) where the blur is on.
+// square's BlurView (`blurred`, skia::backdrop's low-resolution result, drawn back up
+// bilinearly as BACKDROP_WGSL does). The result is the full-screen BlurView's backdrop.
 struct Uniforms {
     // The canvas (device px), unused, whether the target encodes sRGB itself.
     canvas: vec4<f32>,
     // outlineModeProgress, 1 − progress (the icon's opacity), whether the square's blur is on,
     // unused.
     mix: vec4<f32>,
-    // The blur: uv = p · low.xy + low.zw, defined inside out (ltrb, device px).
+    // The square's backdrop (skia::backdrop::Backdrop::mapping): the low-resolution coordinate
+    // of pixel (0, 0) and the scale; the used size and the texture's size.
     low: vec4<f32>,
     out: vec4<f32>,
 };
@@ -52,8 +54,9 @@ fn compose(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
     let p = pos.xy;
     let q = vec2<i32>(p);
     var m = textureLoad(base, q, 0);
-    if (u.mix.z > 0.5 && all(p >= u.out.xy) && all(p <= u.out.zw)) {
-        let b = textureSampleLevel(blurred, smp, p * u.low.xy + u.low.zw, 0.0);
+    if (u.mix.z > 0.5) {
+        let c = clamp(p * u.low.z + u.low.xy, vec2<f32>(0.5), u.out.xy - vec2<f32>(0.5));
+        let b = textureSampleLevel(blurred, smp, c / u.out.zw, 0.0);
         let k = textureLoad(mask, q, 0).a;
         m = m * (1.0 - k) + b * k;
     }

@@ -28,9 +28,14 @@
 //!   dampingRatio 1 }); else cancel and withSpring(0, …) (no velocity: cancelled first).
 //! - pressto on the square: withTiming(active, 250 ms, bezier(0.25, 0.1, 0.25, 1)), scale
 //!   1 → 0.96 about its centre; onPress (lifted inside) posts `haptic:selection` then toggles.
-//! - The square's BlurView intensity interpolate(progress, [0, 0.7, 1], [0, 40, 0]) / 100 as
-//!   expo-blur's animator fraction: drawn here as a Graphite blur of the content under it at
-//!   σ = fraction × REGULAR_RADIUS (UIKit's .regular material constants are private).
+//! - The square's BlurView (zIndex 100: over the chessboard and the icon) intensity
+//!   interpolate(progress, [0, 0.7, 1], [0, 40, 0]), expo-blur's animator fraction intensity /
+//!   100 clamped to 0.01…1: skia::backdrop's `.regular` chain over the square's bounds (as
+//!   pressed: its radius scaled with the press), clipped to the square's corners.
+//! - The full-screen BlurView (zIndex 100: over the outline and the main content, under the
+//!   button), tint systemUltraThinMaterialLight, intensity withTiming(held ? 65 : 0, 300 ms,
+//!   linear) (the Contract's button sends `held`): skia::backdrop's chain over the whole screen
+//!   at that fraction, never below 0.01 (a BlurView at intensity 0 still blurs at 1 %).
 //! - Points are re-sampled whenever the curve changes while the square can be seen
 //!   (outlineModeProgress < 1) and at each start.
 
@@ -38,7 +43,9 @@ use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
 use gesture_handler::{Event, PanGesture, Phase};
 use reanimated::{interpolate, Extrapolation, Spring, Timing, GENTLE};
-use skia::blur::{round_out, GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
+use reanimated::Easing;
+use skia::backdrop::{expo_fraction, BackdropBlur, Material};
+use skia::blur::{round_out, GRAPHITE_FORMAT};
 use skia::{path_from_svg, point, Canvas, Color, Paint, Path, PathEvent, Renderer};
 
 use crate::{gfx, shaders};
@@ -49,9 +56,6 @@ const SMALL: f64 = 64.0;
 const BIG: f64 = 180.0;
 const RADIUS: f32 = 20.0;
 const ICON: f32 = 48.0;
-/// UIBlurEffect(.regular)'s blur at full fraction, points (σ): Core Animation's private value,
-/// taken as 30.
-const REGULAR_RADIUS: f32 = 30.0;
 /// assets/pawn.svg (viewBox 50): its four paths.
 const PAWN: [&str; 4] = [
     "M25 11.961c-3.39 0-6.032 2.505-6.032 5.818 0 1.704.716 3.333 1.976 4.514-3.896 1.692-3.644 2.322-3.236 6.479h3.776c-1.66 8.227-9.02 6.338-8.862 15.47h24.755c.16-9.132-7.201-7.242-8.861-15.47h3.776c.408-4.157.66-4.787-3.237-6.48a6.189 6.189 0 0 0 1.976-4.513c0-3.313-2.64-5.818-6.031-5.818z",
@@ -63,7 +67,7 @@ const PAWN: [&str; 4] = [
 /// Where the composite's copy of the uniforms sits (the uniform offset alignment).
 const COMPOSE_OFFSET: u64 = 256;
 
-/// The demo's surface. Input: outlineMode.
+/// The demo's surface. Inputs: outlineMode, whether the button is held.
 pub fn surface() -> Box<dyn Surface> {
     Box::new(BezierOutline {
         size: (0.0, 0.0),
@@ -81,8 +85,10 @@ pub fn surface() -> Box<dyn Surface> {
         pawn: PAWN.iter().filter_map(|d| path_from_svg(d)).collect(),
         canvases: Default::default(),
         renderers: Default::default(),
-        blur: GraphiteBlur::default(),
-        plan: GraphitePlan::new([0, 0, 1, 1], [0, 0, 1, 1], 1.0).unwrap(),
+        held: false,
+        intensity: Timing::at(0.0),
+        square_blur: BackdropBlur::default(),
+        screen_blur: BackdropBlur::default(),
         gpu: None,
     })
 }
@@ -108,8 +114,12 @@ struct BezierOutline {
     /// The outline, the content under the icon, the icon container, the square's mask.
     canvases: [Canvas; 4],
     renderers: [Renderer; 4],
-    blur: GraphiteBlur,
-    plan: GraphitePlan,
+    /// The button is held (blurIntensity 65, else 0).
+    held: bool,
+    /// The full-screen BlurView's intensity, withTiming(…, 300 ms, linear).
+    intensity: Timing,
+    square_blur: BackdropBlur,
+    screen_blur: BackdropBlur,
     gpu: Option<Gpu>,
 }
 
@@ -122,11 +132,10 @@ struct Gpu {
     layout: wgpu::BindGroupLayout,
     sampler: wgpu::Sampler,
     uniforms: wgpu::Buffer,
-    /// outline, under, icon, mask, main.
-    layers: [wgpu::TextureView; 5],
+    /// outline, under, icon, mask, main, the screen under the full-screen BlurView.
+    layers: [wgpu::TextureView; 6],
     content_bind: wgpu::BindGroup,
     bind: Option<(wgpu::TextureView, wgpu::BindGroup)>,
-    empty: wgpu::TextureView,
 }
 
 /// A cubic's point at t (f64).
@@ -271,9 +280,9 @@ impl BezierOutline {
         mask.restore();
     }
 
-    /// The square's blur fraction (intensity / 100).
+    /// The square's blur fraction: expo-blur's intensity / 100, clamped to 0.01…1.
     fn blur_fraction(&self) -> f32 {
-        (interpolate(self.progress.value, &[0.0, 0.7, 1.0], &[0.0, 40.0, 0.0], Extrapolation::Extend) / 100.0).max(0.0) as f32
+        expo_fraction(interpolate(self.progress.value, &[0.0, 0.7, 1.0], &[0.0, 40.0, 0.0], Extrapolation::Extend))
     }
 }
 
@@ -284,6 +293,13 @@ impl Surface for BezierOutline {
             self.outline_progress.retarget(if outline { 1.0 } else { 0.0 }, GENTLE);
         }
         self.outline = Some(outline);
+        // onPressIn / onPressOut: blurIntensity.set(65 / 0), its prop withTiming(…, 300 ms,
+        // Easing.linear) from where it is.
+        let held = inputs.get(1).and_then(|v| v.as_bool()).unwrap_or(false);
+        if held != self.held {
+            self.held = held;
+            self.intensity.to(if held { 65.0 } else { 0.0 }, 300.0, Easing::Linear);
+        }
         Ok(())
     }
 
@@ -370,6 +386,7 @@ impl Surface for BezierOutline {
         let mut moving = self.outline_progress.step(now);
         moving |= self.progress.step(now);
         moving |= self.press.step(now);
+        moving |= self.intensity.step(now);
         // The contour is walked again while the square can be seen.
         if self.stale && self.outline_progress.value != 1.0 {
             sample(&self.points, &mut self.samples);
@@ -387,20 +404,21 @@ impl Surface for BezierOutline {
         for i in 0..4 {
             self.renderers[i].draw(device, queue, encoder, &self.canvases[i], &gpu.layers[i], GRAPHITE_FORMAT, pw, ph, wgpu::Color::TRANSPARENT);
         }
-        let mut u = Uniforms { canvas: [pw as f32, ph as f32, s, gfx::srgb_flag(format)], mix: [self.outline_progress.value as f32, 1.0 - self.progress.value as f32, 0.0, 0.0], low: [0.0; 4], out: [0.0; 4] };
+        // The composite below is the full-screen blur's source: encoded, not linearised.
+        let mut u = Uniforms { canvas: [pw as f32, ph as f32, s, 0.0], mix: [self.outline_progress.value as f32, 1.0 - self.progress.value as f32, 0.0, 0.0], low: [0.0; 4], out: [0.0; 4] };
         queue.write_buffer(&gpu.uniforms, 0, &u.bytes());
         skia::render::fullscreen_pass(encoder, "bezier content", &gpu.layers[4], &gpu.content, &gpu.content_bind);
-        let mut blurred = gpu.empty.clone();
-        if fraction > 0.0 {
-            let square = round_out([sx as f32 * s, sy as f32 * s, (sx + size) as f32 * s, (sy + size) as f32 * s]);
-            if self.plan.update([0, 0, pw as i32, ph as i32], square, REGULAR_RADIUS * fraction * s) {
-                let out = self.blur.run(device, queue, encoder, Placed { view: &gpu.layers[4], origin: [0, 0], size: [pw, ph] }, &self.plan);
-                u.low = low_mapping(&self.plan, out.origin, out.size);
-                u.out = self.plan.output.map(|v| v as f32);
-                u.mix[2] = 1.0;
-                blurred = out.view.clone();
-            }
-        }
+        // The square's BlurView over its bounds as pressed (scale k about its centre).
+        let k = interpolate(self.press.value, &[0.0, 1.0], &[1.0, 0.96], Extrapolation::Extend) as f32;
+        let (cx, cy, half) = ((sx + size / 2.0) as f32, (sy + size / 2.0) as f32, size as f32 * k / 2.0);
+        let square = round_out([(cx - half) * s, (cy - half) * s, (cx + half) * s, (cy + half) * s]);
+        // What the window shows of it (the backdrop captures nothing beyond the screen).
+        let square = [square[0].max(0), square[1].max(0), square[2].min(pw as i32).max(square[0].max(0) + 1), square[3].min(ph as i32).max(square[1].max(0) + 1)];
+        let out = self.square_blur.run(device, queue, encoder, &gpu.layers[4], square, [0.0, 0.0], &Material::Regular.chain().at(fraction), s * k);
+        u.low = out.mapping[0];
+        u.out = out.mapping[1];
+        u.mix[2] = 1.0;
+        let blurred = out.view.clone();
         // The composite reads its own copy (the content pass's is written above).
         queue.write_buffer(&gpu.uniforms, COMPOSE_OFFSET, &u.bytes());
         if gpu.bind.as_ref().is_none_or(|(v, _)| *v != blurred) {
@@ -418,25 +436,20 @@ impl Surface for BezierOutline {
             });
             gpu.bind = Some((blurred, group));
         }
-        skia::render::fullscreen_pass(encoder, "bezier compose", target, &gpu.compose, &gpu.bind.as_ref().unwrap().1);
+        skia::render::fullscreen_pass(encoder, "bezier compose", &gpu.layers[5], &gpu.compose, &gpu.bind.as_ref().unwrap().1);
+        // The full-screen BlurView over all of it, then the target.
+        let screen = expo_fraction(self.intensity.value);
+        self.screen_blur.run(device, queue, encoder, &gpu.layers[5], [0, 0, pw as i32, ph as i32], [0.0, 0.0], &Material::SystemUltraThinMaterialLight.chain().at(screen), s);
+        self.screen_blur.draw(device, queue, encoder, target, format, [0.0, 0.0], [0, 0], [pw, ph]);
         moving || self.pressing.is_some() || self.pan.tracking()
     }
-}
-
-fn low_mapping(plan: &GraphitePlan, origin: [i32; 2], size: [u32; 2]) -> [f32; 4] {
-    let src = plan.src_rect.map(|v| v as f32);
-    let low = plan.low_bounds;
-    let kx = (low[2] - low[0]) / (src[2] - src[0]);
-    let ky = (low[3] - low[1]) / (src[3] - src[1]);
-    let (sw, sh) = (size[0] as f32, size[1] as f32);
-    [kx / sw, ky / sh, (low[0] - src[0] * kx - origin[0] as f32) / sw, (low[1] - src[1] * ky - origin[1] as f32) / sh]
 }
 
 fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32, pixels: (u32, u32)) -> Gpu {
     let shader = device.create_shader_module(module());
     let layout = device.create_bind_group_layout(&GROUP_0);
     let target = |label| skia::render::sampled_target(device, label, GRAPHITE_FORMAT, pixels.0, pixels.1);
-    let layers = [target("bezier outline"), target("bezier under"), target("bezier icon"), target("bezier mask"), target("bezier main")];
+    let layers = [target("bezier outline"), target("bezier under"), target("bezier icon"), target("bezier mask"), target("bezier main"), target("bezier screen")];
     // Two copies of the uniforms (256-aligned): the content pass's, the composite's.
     let uniforms = device.create_buffer(&wgpu::BufferDescriptor { label: Some("bezier"), size: COMPOSE_OFFSET + Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
     let sampler = skia::render::linear_sampler(device);
@@ -458,14 +471,13 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32, pi
         generation,
         pixels,
         content: skia::render::fullscreen_pipeline(device, &shader, &layout, entry::CONTENT, GRAPHITE_FORMAT, None),
-        compose: skia::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None),
+        compose: skia::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, GRAPHITE_FORMAT, None),
         layout,
         sampler,
         uniforms,
         layers,
         content_bind,
         bind: None,
-        empty,
     }
 }
 
@@ -534,7 +546,25 @@ mod tests {
         }
         let (outline, _) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         outline.save("bezier-outline");
-        assert_eq!(&outline.at(10, 10)[..3], &[0x11, 0x11, 0x11]);
+        // #111111 under the full-screen BlurView at intensity 0 (fraction 0.01).
+        let flat = |c: u8, f: f32| (Material::SystemUltraThinMaterialLight.chain().at(f).flat([c as f32 / 255.0; 3])[0] * 255.0).round() as u8;
+        assert_eq!(&outline.at(10, 10)[..3], &[flat(0x11, 0.01); 3]);
+        // Holding the button: the BlurView's intensity runs to 65 in 300 ms, linearly.
+        s.bind(&[Value::Bool(true), Value::Bool(true)], None).unwrap();
+        let start = ms;
+        while ms < start + 150.0 {
+            ms += 16.0;
+            fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+        }
+        while ms < start + 400.0 {
+            ms += 16.0;
+            fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+        }
+        let (held, animating) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+        held.save("bezier-held");
+        assert!(!animating);
+        assert_eq!(&held.at(10, 10)[..3], &[flat(0x11, 0.65); 3]);
+        s.bind(&[Value::Bool(true), Value::Bool(false)], None).unwrap();
         // Drag the first point (140, 712) to (100, 600).
         let at = |s: &mut Box<dyn Surface>, phase, x, y, t| s.input(&InputEvent::Pointer { id: 2, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: t });
         at(&mut s, PointerPhase::Down, 141.0, 713.0, ms);

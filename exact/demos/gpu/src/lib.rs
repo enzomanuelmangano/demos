@@ -66,7 +66,7 @@ pub static REGISTRY: Registry = Registry {
         ("atlas_sphere", 0, atlas_sphere::surface),
         ("audio_player", 1, audio_player::surface),
         ("balance_slider", 0, balance_slider::surface),
-        ("bezier_curve_outline", 1, bezier_curve_outline::surface),
+        ("bezier_curve_outline", 2, bezier_curve_outline::surface),
         ("blur_cards", 1, blur_cards::surface),
         ("blur_circles", 0, blur_circles::surface),
         ("blurred_scroll", 1, blurred_scroll::surface),

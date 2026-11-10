@@ -4,8 +4,9 @@
 // src/animations/bezier-curve-outline (src/index.tsx, components/bezier-outline.tsx,
 // components/animated-square, hooks/useAnimateThroughPath). The outline, the square (its walk
 // along the contour, press, chessboard, pawn, BlurView) and both crossfades are Rust:
-// gpu/src/bezier_curve_outline.rs, which posts the square's press haptic. The full-screen
-// BlurView and the button are here.
+// gpu/src/bezier_curve_outline.rs, which posts the square's press haptic, and so is the
+// full-screen BlurView (it blurs what the surface draws; `held` drives its intensity). The
+// button is here.
 use DemoEnv from "../env.contract"
 
 // rLabelColorStyle: interpolateColor(outlineModeProgress, [0, 1], ['#202020', 'white']),
@@ -69,15 +70,11 @@ component BezierCurveOutline
       view position="absolute" left=0 top=0 width=0 height=0 pointer-events="none" aria-hidden=true
         translate=(outline ? "100px 0px" : "0px 0px") transition="translate -exact-spring(900, 120, 4)"
         -exact-drag-timeline="--outlineMode x"
-      canvas surface=bezier_curve_outline(outline) message=heard position="absolute" top=0 left=0
+      // The surface also draws the AnimatedBlurView (absoluteFill, zIndex 100, untouchable, tint
+      // systemUltraThinMaterialLight, intensity withTiming(held ? 65 : 0, 300 ms, linear)).
+      canvas surface=bezier_curve_outline(outline, held) message=heard position="absolute" top=0 left=0
         width=env.width height=env.height touch-action="none" testId="bezier-curve-outline-canvas"
         aria-label="Press the square; in outline mode, drag the curve's points"
-      // AnimatedBlurView: absoluteFill, zIndex 100, untouchable, tint
-      // systemUltraThinMaterialLight, intensity withTiming(0 / 65, 300 ms, linear) as the button
-      // is held.
-      view position="absolute" inset=0 pointer-events="none" backgroundMaterial="ultra-thin"
-        opacity=(held ? 0.65 : 0) transition="opacity 300ms linear" aria-hidden=true
-        testId="bezier-curve-outline-blur"
       // styles.button: absolute, bottom 48, centred (alignSelf), zIndex 2000; styles.text 14,
       // centred, its colour on the outline spring.
       row position="absolute" left=0 right=0 bottom=48 justify-content="center" pointer-events="none"
