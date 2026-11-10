@@ -43,7 +43,7 @@
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
 use gesture_handler::{Event, PanGesture, Phase, TapGesture};
-use reanimated::{duration_config, interpolate, interpolate_color, Extrapolation, Spring, Timing, GENTLE};
+use reanimated::{interpolate, interpolate_color, Extrapolation, Spring, Timing, GENTLE};
 use skia::{fit_cover, Canvas, Color, Font, Images, Paint, Rect, Renderer};
 
 use crate::floating_modal::press_easing;
@@ -128,9 +128,9 @@ impl MiniPlayer {
         (side, h - bottom - height, w - 2.0 * side, height, radius)
     }
 
+    /// withSpring({ dampingRatio 1, duration 600 }): keeps a velocity that points at the target.
     fn spring_to(&mut self, to: f64) {
-        let config = duration_config(self.progress.value - to, 0.0, 600.0, 1.0, 4.0);
-        self.progress.to(to, 0.0, config);
+        gfx::spring_to(&mut self.progress, to, 600.0, 1.0);
     }
 }
 
