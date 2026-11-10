@@ -11,7 +11,8 @@ struct Uniforms {
     canvas: vec4<f32>,
     // The paper's left and top (points), its width, a fold's height.
     paper: vec4<f32>,
-    // Per fold 0, 1, 2: its top (points, from the paper's top), its signed length, unused, unused.
+    // Per fold 0, 1, 2: its top (points, from the paper's top), its signed length, its wrapper's
+    // scale about the paper's top centre (perspective 1e6 about a transformOrigin z), unused.
     folds: array<vec4<f32>, 3>,
     // The colour of folds 1 and 2 (straight sRGB).
     shade: vec4<f32>,
@@ -70,7 +71,7 @@ fn fs(in: Out) -> @location(0) vec4<f32> {
     let w = u.paper.z;
     let fh = u.paper.w;
     var c = textureSampleLevel(background, smp, in.uv, 0.0);
-    let cx = span(px.x, u.paper.x * s, (u.paper.x + w) * s);
+    let mid = u.paper.x + w * 0.5;
     for (var k = 2; k >= 0; k = k - 1) {
         let f = u.folds[k];
         let top = u.paper.y + f.x;
@@ -78,9 +79,10 @@ fn fs(in: Out) -> @location(0) vec4<f32> {
         if (abs(len) * s < 0.01) { continue; }
         let a = min(top, top + len) * s;
         let b = max(top, top + len) * s;
-        let cover = cx * span(px.y, a, b);
+        let half = w * 0.5 * f.z;
+        let cover = span(px.x, (mid - half) * s, (mid + half) * s) * span(px.y, a, b);
         if (cover <= 0.0) { continue; }
-        let local = vec2<f32>(p.x - u.paper.x, clamp((p.y - top) / len, 0.0, 1.0) * fh);
+        let local = vec2<f32>((p.x - mid) / f.z + w * 0.5, clamp((p.y - top) / len, 0.0, 1.0) * fh);
         var rgb = vec3<f32>(1.0);
         if (k > 0) {
             let inside = within(local.x, 0.0, w) * within(local.y, SHADOW_DY, fh + SHADOW_DY);

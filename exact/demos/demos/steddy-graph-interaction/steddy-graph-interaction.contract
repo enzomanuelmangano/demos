@@ -28,10 +28,10 @@ component SteddyGraphInteraction
     // styles.container: Palette.background, flex 1, centred.
     column position="absolute" inset=0 background-color="#F1EEE8" align-items="center"
       justify-content="center" testId="steddy-graph-interaction"
-      // backgroundContainer: Palette.baseGray05, border 1 baseGray05, radius 18 continuous,
+      // backgroundContainer: Palette.baseGray05, border 1 baseGray05, radius 18, borderCurve continuous (-exact-continuous: CALayer .continuous, not CSS squircle),
       // padding 5, a row.
       row position="relative" box-sizing="border-box" width=controlWidth(env.width) height=56 padding=5
-        background-color="#E5E2DC" border="1px solid #E5E2DC" border-radius=18 corner-shape="squircle"
+        background-color="#E5E2DC" border="1px solid #E5E2DC" border-radius=18 corner-shape="-exact-continuous"
         flex-shrink=0 testId="steddy-control"
         for i in range(3) key=i
           // labelContainer: flex 1, centred, zIndex 2; PressableScale.
@@ -47,7 +47,7 @@ component SteddyGraphInteraction
         // 0 1 2 rgba(0,0,0,0.1); under the labels (zIndex 1 < 2). translateX on withSpring().
         view position="absolute" left=0 top=4 box-sizing="border-box" width=(cellWidth(env.width) - 5 / 3)
           height=46 background-color="#F1EEE8" border="1px solid #E5E2DC" border-radius=12
-          corner-shape="squircle" box-shadow="0px 1px 2px rgba(0, 0, 0, 0.1)" z-index=1
+          corner-shape="-exact-continuous" box-shadow="0px 1px 2px rgba(0, 0, 0, 0.1)" z-index=1
           translate=`${highlightX(env.width, selected)}px 0px` transition="translate -exact-spring(900, 120, 4)"
           pointer-events="none" testId="steddy-highlight"
       // <Graph canvasWidth={windowWidth} canvasHeight={200} style={{ marginTop: 20 }}>.

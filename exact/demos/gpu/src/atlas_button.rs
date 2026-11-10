@@ -17,6 +17,12 @@
 //!   interpolate(3p, [0, 1], [0, −25], CLAMP); the label (white, 20, bold, centred over 250,
 //!   absolute at the icon box's top + marginTop 10), opacity 3p (clamped), translateY
 //!   interpolate(3p, [0, 1], [50, 25], CLAMP).
+//! - The label is an RN `<Text>`, so UIKit lays it out: `skia::match_ui_font(20, 700)` (SF at
+//!   its Bold instance, opsz 20, the font's trak tracking and GPOS kerning in the advances;
+//!   checked against Core Text's CTLine, the_label_is_laid_out_as_uikit), not Skia's drawText.
+//! - Math.random(): xorshift64*, 53-bit doubles, seeded by `env.seed` (per launch) and the
+//!   surface's mount count, so each mount draws anew, as RN's useMemo on mount does. The colours are RN Skia's SkColor bytes
+//!   (truncated: [`sk_byte`]).
 //!
 //! The squares' transforms run in the vertex shader (one instance each, their colours and
 //! random values written once); the icon and label are packages/skia, into a layer composited
@@ -57,10 +63,17 @@ const LOGO_STROKE: f32 = 5.333;
 const LABEL: &str = "React Native";
 static OUTFIT: &[u8] = include_bytes!("../fonts/outfit.ttf");
 
-/// The demo's surface.
+/// How many times the surface has been made (each RN mount rolls anew).
+static MOUNTS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// The demo's surface. Input: `env.seed`.
 pub fn surface() -> Box<dyn Surface> {
     Box::new(AtlasButton {
-        font: skia::match_system_font(20.0, 700.0).or_else(|| Font::new(OUTFIT, 20.0)),
+        mount: MOUNTS.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+        // styles.label is an RN <Text> (Animated.Text): UIKit lays it out (Core Text), the system
+        // face at bold (wght 700, SF's Bold instance) and opsz 20, with its trak tracking and
+        // GPOS kerning in the advances.
+        font: skia::match_ui_font(20.0, 700.0).or_else(|| Font::new(OUTFIT, 20.0)),
         dot: path_from_svg(LOGO_DOT),
         orbits: LOGO_ORBITS.iter().filter_map(|d| path_from_svg(d)).collect(),
         ..Default::default()
@@ -74,6 +87,9 @@ struct AtlasButton {
     finger: Option<(u32, f64)>,
     /// Each square's colour and random value, rolled once.
     squares: Vec<[f32; 4]>,
+    /// `env.seed` and this mount's number: Math.random()'s stream.
+    seed: f64,
+    mount: u64,
     font: Option<Font>,
     dot: Option<Path>,
     orbits: Vec<Path>,
@@ -113,13 +129,24 @@ impl Random {
     }
 }
 
-/// The squares' colours (Float32Array → SkColor, 8 bits; DstOver the white sprite) and random
-/// values.
+/// RN Skia's Float32Array → SkColor for an Atlas colour (Convertor.h getPropertyValue<SkColor>:
+/// each channel read as a JS number, × 255 in f64, handed to SkColorSetARGB, whose U8CPU
+/// arguments truncate): LIGHT_BLUE's 0.5 is 127, BLUE_VARIANT's 0.3 is 76, 0.8 is 204.
+fn sk_byte(v: f32) -> f32 {
+    ((v as f64 * 255.0) as u8) as f32 / 255.0
+}
+
+/// The squares' colours and random values (animated-squares.tsx): per square, once per mount
+/// (useMemo), staticColors first — `_colors[Math.floor(Math.random() * 7)]`, uniform over the
+/// seven entries, so TRANSPARENT 3/7, LIGHT_BLUE 2/7, BLUE 1/7, BLUE_VARIANT 1/7 — then
+/// randomValues, one Math.random() each. A colour is the SkColor (8 bits, [`sk_byte`]) blended
+/// as drawAtlas does with DstOver, the sprite the source and the colour the destination
+/// (SkCanvas.h): colour premultiplied + (1 − a) × the white sprite, opaque.
 fn roll(seed: u64) -> Vec<[f32; 4]> {
     let (_, rows) = grid();
     let n = (H_SQUARES * rows) as usize;
     let mut random = Random(seed | 1);
-    let q = |v: f32| (v * 255.0).round() / 255.0;
+    let q = sk_byte;
     let colors: Vec<[f32; 4]> = (0..n)
         .map(|_| {
             let [r, g, b, a] = COLORS[(random.next() * COLORS.len() as f64).floor() as usize % COLORS.len()].map(q);
@@ -185,7 +212,8 @@ impl AtlasButton {
 }
 
 impl Surface for AtlasButton {
-    fn bind(&mut self, _: &[Value], _: Option<f64>) -> Result<(), SurfaceError> {
+    fn bind(&mut self, inputs: &[Value], _: Option<f64>) -> Result<(), SurfaceError> {
+        self.seed = inputs.first().and_then(|v| v.as_number()).unwrap_or(0.0);
         Ok(())
     }
 
@@ -229,7 +257,9 @@ impl Surface for AtlasButton {
         let (pw, ph) = frame.pixels();
         if self.gpu.as_ref().map(|g| (g.format, g.generation, g.size)) != Some((format, frame.shader_generation, (pw, ph))) {
             if self.squares.is_empty() {
-                self.squares = roll(frame.now_ms.to_bits() ^ 0x5DEE_CE66_D1CE_4E5B);
+                // env.seed (a whole number below 2^32) and this mount's number.
+                let seed = (self.seed.abs() as u64 % (1 << 32)) << 32 | (self.mount & 0xFFFF_FFFF);
+                self.squares = roll(seed ^ 0x5DEE_CE66_D1CE_4E5B);
             }
             self.gpu = Some(build(device, queue, format, frame.shader_generation, (pw, ph), &self.squares));
         }
@@ -306,10 +336,50 @@ mod tests {
         // DstOver of the white sprite: TRANSPARENT is black; BLUE 0.8 is (51, 92, 255)…
         let rgb = |s: &[f32; 4]| [s[0], s[1], s[2]].map(|v| (v * 255.0).round() as u8);
         for s in &squares {
-            assert!([[0, 0, 0], [51, 153, 255], [51, 92, 255], [113, 92, 255]].contains(&rgb(s)), "{:?}", rgb(s));
+            assert!([[0, 0, 0], [51, 153, 255], [51, 92, 255], [112, 92, 255]].contains(&rgb(s)), "{:?}", rgb(s));
             assert!(s[3] > 0.0 && s[3] <= 1.0);
         }
         assert!(squares.iter().filter(|s| rgb(s) == [0, 0, 0]).count() > 600);
+    }
+
+    /// SkColorSetARGB truncates: the colours RN hands Skia, byte for byte.
+    #[test]
+    fn colours_are_rn_skias_bytes() {
+        let bytes = |c: [f32; 4]| c.map(|v| (sk_byte(v) * 255.0).round() as u8);
+        assert_eq!(bytes(COLORS[0]), [0, 0, 0, 255]);
+        assert_eq!(bytes(COLORS[3]), [0, 127, 255, 204]);
+        assert_eq!(bytes(COLORS[5]), [0, 51, 255, 204]);
+        assert_eq!(bytes(COLORS[6]), [76, 51, 255, 204]);
+        // BLUE_VARIANT over white: 76 / 255 × 0.8 + 0.2 = 0.4384 → 112 (113 with rounding).
+        let s = roll(11).into_iter().find(|s| s[2] > 0.99 && s[1] < 0.4 && s[0] > 0.3).unwrap();
+        assert_eq!((s[0] * 255.0).round() as u8, 112);
+        // Uniform over the seven entries (3/7 black), the random values in (0, 1].
+        let squares: Vec<[f32; 4]> = (0..50).flat_map(roll).collect();
+        let black = squares.iter().filter(|s| s[..3] == [0.0, 0.0, 0.0]).count() as f64 / squares.len() as f64;
+        assert!((black - 3.0 / 7.0).abs() < 0.01, "{black}");
+        let mean = squares.iter().map(|s| s[3] as f64).sum::<f64>() / squares.len() as f64;
+        assert!((mean - 0.5).abs() < 0.01, "{mean}");
+    }
+
+    /// The label is UIKit's (an RN <Text>): pen positions and line metrics as Core Text lays
+    /// out "React Native" in the system font at 20 bold (CTLine on macOS's SFNS.ttf, the face
+    /// this test reads; tools/ui-label-ct.swift).
+    #[test]
+    fn the_label_is_laid_out_as_uikit() {
+        let Some(f) = skia::match_ui_font(20.0, 700.0) else { return eprintln!("no system font; skipped") };
+        if f.metrics().ascent != -19.335_938 {
+            return eprintln!("another SF than the reference's; skipped");
+        }
+        let ct = [0.0, 12.8972, 24.2477, 35.3897, 46.5611, 54.0927, 58.5158, 73.1221, 84.2641, 91.7957, 96.8694, 107.3948];
+        let t: Vec<char> = LABEL.chars().collect();
+        for (i, want) in ct.iter().enumerate() {
+            let pre: String = t[..i].iter().collect();
+            let k = if i > 0 { f.kerning(t[i - 1], t[i]) } else { 0.0 };
+            let pen = f.advance_width(&pre) + k;
+            assert!((pen - want).abs() < 1e-3, "#{i} {}: {pen} vs {want}", t[i]);
+        }
+        assert!((f.advance_width(LABEL) - 118.745_28).abs() < 1e-3, "{}", f.advance_width(LABEL));
+        assert_eq!((f.metrics().descent, f.metrics().leading), (4.218_75, 0.0));
     }
 
     #[test]
@@ -364,3 +434,4 @@ mod tests {
         assert_eq!(back.data, rest.data);
     }
 }
+

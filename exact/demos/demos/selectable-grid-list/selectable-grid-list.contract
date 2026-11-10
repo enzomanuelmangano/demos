@@ -14,6 +14,6 @@ component SelectableGridList
     if m == "press"
       haptic("selection")
   view
-    canvas surface=selectable_grid_list(env.safeTop) message=heard position="absolute" top=0 left=0
+    canvas surface=selectable_grid_list(env.safeTop, env.safeBottom) message=heard position="absolute" top=0 left=0
       width=env.width height=env.height background-color="#000000" touch-action="none"
       testId="selectable-grid-list" aria-label="Photos: tap or drag to select"

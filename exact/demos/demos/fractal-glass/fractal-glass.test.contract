@@ -3,6 +3,7 @@ at "/demo/fractal-glass"
 test "the glass and the theme button are there; the button switches the theme"
   expect tree has "fractal-glass-canvas"
   expect tree has "fractal-glass-theme"
+  expect tree has "fractal-glass-theme-fill"
   expect "fractal-glass-theme" has label "Dark theme"
   tap "fractal-glass-theme"
   clock settle

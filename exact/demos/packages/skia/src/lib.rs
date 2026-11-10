@@ -25,7 +25,7 @@
 
 pub use exact_gpu::wgpu;
 pub use lyon::math::{point, vector, Point, Vector};
-pub use lyon::path::Path;
+pub use lyon::path::{Path, PathBuffer, PathEvent, PathSlice};
 
 pub mod blur;
 pub mod color;
@@ -41,7 +41,7 @@ pub use blur::Blur;
 pub use image::{Image, ImageRef, Images};
 pub use render::Renderer;
 pub use svg::path_from_svg;
-pub use text::{match_system_font, Font, FontMetrics};
+pub use text::{match_system_font, match_ui_font, Font, FontMetrics};
 
 use lyon::path::builder::BorderRadii;
 use lyon::path::Winding;
@@ -368,6 +368,12 @@ impl Canvas {
 
     /// `<Path path paint>`.
     pub fn draw_path(&mut self, path: &Path, paint: &Paint) {
+        self.draw_path_events(path.iter(), paint);
+    }
+
+    /// [`Canvas::draw_path`] of a path given as its events (a `lyon` `PathBuffer`'s slice, a
+    /// path a demo refills every frame without allocating).
+    pub fn draw_path_events<I: IntoIterator<Item = lyon::path::PathEvent>>(&mut self, path: I, paint: &Paint) {
         let scale = self.state.matrix.max_scale().max(1e-3);
         // A stroke thinner than a device pixel is drawn a pixel wide at its share of the
         // alpha, as Skia covers a hairline: MSAA alone breaks it into dashes.
@@ -386,7 +392,7 @@ impl Canvas {
         let ok = match paint.stroke {
             Some(width) => self
                 .stroke
-                .tessellate_path(
+                .tessellate(
                     path,
                     &StrokeOptions::tolerance(tolerance).with_line_width(width).with_line_cap(paint.cap).with_line_join(paint.join),
                     &mut BuffersBuilder::new(&mut self.buffers, |v: StrokeVertex| v.position()),
@@ -394,7 +400,7 @@ impl Canvas {
                 .is_ok(),
             None => self
                 .fill
-                .tessellate_path(
+                .tessellate(
                     path,
                     &FillOptions::tolerance(tolerance).with_fill_rule(FillRule::NonZero),
                     &mut BuffersBuilder::new(&mut self.buffers, |v: FillVertex| v.position()),
@@ -457,7 +463,7 @@ impl Canvas {
         self.buffers.indices.clear();
         if self
             .fill
-            .tessellate_path(path, &FillOptions::tolerance(tolerance), &mut BuffersBuilder::new(&mut self.buffers, |v: FillVertex| v.position()))
+            .tessellate_path(path, &FillOptions::tolerance(tolerance).with_fill_rule(FillRule::NonZero), &mut BuffersBuilder::new(&mut self.buffers, |v: FillVertex| v.position()))
             .is_err()
         {
             return;
@@ -545,6 +551,97 @@ pub fn rrect_path(x: f32, y: f32, w: f32, h: f32, r: f32) -> Path {
     let r = r.min(w / 2.0).min(h / 2.0).max(0.0);
     let mut b = Path::builder();
     b.add_rounded_rectangle(&lyon::math::Box2D::new(point(x, y), point(x + w, y + h)), &BorderRadii::new(r), Winding::Positive);
+    b.build()
+}
+
+/// How far along each side a continuous corner of radius `r` reaches: 1.52866483 r (the
+/// extent of Apple's continuous corner: CoreAnimation's `kCACornerCurveContinuous`, RN's
+/// `borderCurve: 'continuous'`, UIKit's and SwiftUI's continuous rounded rects).
+pub const CONTINUOUS_EXTENT: f32 = 1.528_665;
+
+/// One continuous corner, in its own frame: `(a, b)` is `a` radii back along the side coming
+/// into the corner and `b` radii along the side leaving it, from the corner's point. Three
+/// cubics from the incoming side to the outgoing one: the elements of Apple's path (dumped from
+/// SwiftUI's `RoundedRectangle(cornerRadius:style: .continuous)` on macOS 27, which Core
+/// Animation's continuous layer fills to within 0.001 pt: see the tests).
+const CONTINUOUS_CORNER: [[[f32; 2]; 3]; 3] = [
+    [[1.088_493, 0.0], [0.868_407, 0.0], [0.631_494, 0.074_911]],
+    [[0.372_824, 0.169_060], [0.169_060, 0.372_824], [0.074_911, 0.631_494]],
+    [[0.0, 0.868_407], [0.0, 1.088_493], [0.0, CONTINUOUS_EXTENT]],
+];
+
+/// The radius a continuous corner is drawn at: `r`, at most half the shorter side (RN's
+/// `resolveBorderMetrics` scales radii so adjacent ones don't overlap, which for one radius is
+/// this). Core Animation does not shorten the curve past `min(w, h) / 2 / 1.52866483`: the
+/// corners' curves then overlap along the side, and the path fills with the nonzero rule.
+pub fn continuous_radius(w: f32, h: f32, r: f32) -> f32 {
+    r.min(w.min(h).max(0.0) / 2.0).max(0.0)
+}
+
+/// Appends a rounded rect with continuous corners (RN's `borderRadius` + `borderCurve:
+/// 'continuous'`, iOS's squircle) to a builder, clockwise from the top edge.
+pub fn add_continuous_rrect(b: &mut lyon::path::path::Builder, x: f32, y: f32, w: f32, h: f32, r: f32) {
+    let r = continuous_radius(w, h, r);
+    if r <= 0.0 {
+        add_rect(b, x, y, w, h);
+        return;
+    }
+    let e = CONTINUOUS_EXTENT * r;
+    // Each corner: its point, the incoming side's direction (unit), the outgoing side's.
+    let corners = [
+        (point(x + w, y), vector(1.0, 0.0), vector(0.0, 1.0)),
+        (point(x + w, y + h), vector(0.0, 1.0), vector(-1.0, 0.0)),
+        (point(x, y + h), vector(-1.0, 0.0), vector(0.0, -1.0)),
+        (point(x, y), vector(0.0, -1.0), vector(1.0, 0.0)),
+    ];
+    b.begin(point(x + e, y));
+    for (corner, incoming, outgoing) in corners {
+        let at = |[a, c]: [f32; 2]| corner - incoming * (a * r) + outgoing * (c * r);
+        // The side's straight part (backwards when the corners overlap, as Apple's path).
+        b.line_to(at([CONTINUOUS_EXTENT, 0.0]));
+        for [c1, c2, to] in CONTINUOUS_CORNER {
+            b.cubic_bezier_to(at(c1), at(c2), at(to));
+        }
+    }
+    b.end(true);
+}
+
+/// A rounded rect with continuous corners as a path ([`add_continuous_rrect`]).
+pub fn continuous_rrect_path(x: f32, y: f32, w: f32, h: f32, r: f32) -> Path {
+    let mut b = Path::builder();
+    add_continuous_rrect(&mut b, x, y, w, h, r);
+    b.build()
+}
+
+impl Canvas {
+    /// A view with `borderRadius` and `borderCurve: 'continuous'`: [`continuous_rrect_path`].
+    pub fn draw_continuous_rrect(&mut self, x: f32, y: f32, w: f32, h: f32, r: f32, paint: &Paint) {
+        self.draw_path(&continuous_rrect_path(x, y, w, h, r), paint);
+    }
+
+    /// A continuous rounded-rect clip (`overflow: 'hidden'` on a continuous view).
+    pub fn clip_continuous_rrect(&mut self, x: f32, y: f32, w: f32, h: f32, r: f32) {
+        self.clip_path(&continuous_rrect_path(x, y, w, h, r));
+    }
+}
+
+/// A border RN draws itself (RCTBorderDrawing's border image, used when a view's border is not
+/// Core Animation's: translucent and not clipping): the ring between the rounded rect of radius
+/// `r` and the one inset by `width` with radius `r − width`, both with circular corners
+/// (`RCTPathCreateWithRoundedRect`), whatever the view's `borderCurve`.
+pub fn border_ring_path(x: f32, y: f32, w: f32, h: f32, r: f32, width: f32) -> Path {
+    let mut b = Path::builder();
+    let r = r.min(w / 2.0).min(h / 2.0).max(0.0);
+    b.add_rounded_rectangle(&lyon::math::Box2D::new(point(x, y), point(x + w, y + h)), &BorderRadii::new(r), Winding::Positive);
+    let (iw, ih) = (w - 2.0 * width, h - 2.0 * width);
+    if iw > 0.0 && ih > 0.0 {
+        let ir = (r - width).max(0.0).min(iw / 2.0).min(ih / 2.0);
+        b.add_rounded_rectangle(
+            &lyon::math::Box2D::new(point(x + width, y + width), point(x + w - width, y + h - width)),
+            &BorderRadii::new(ir),
+            Winding::Negative,
+        );
+    }
     b.build()
 }
 
@@ -660,6 +757,92 @@ mod path_tests {
         let q = corner_polyline(&[point(0.0, 0.0), point(10.0, 0.0), point(10.0, 10.0)], 20.0);
         let events: Vec<_> = q.iter().collect();
         assert!(matches!(events[2], Event::Quadratic { ctrl, to, .. } if ctrl == point(10.0, 0.0) && to == point(10.0, 5.0)));
+    }
+
+    #[test]
+    fn continuous_corners_are_apples_path() {
+        use lyon::path::Event;
+        // 200 × 100 at (10, 20), radius 20: SwiftUI's continuous RoundedRectangle on macOS 27
+        // gives, for its corners (here the top-right), a side ending 1.52866 r from the corner
+        // and three cubics: (21.7698, 0) (17.36814, 0) → (12.62988, 1.49823), then
+        // (7.45648, 3.38120) (3.38120, 7.45648) → (1.49823, 12.62988), then (0, 17.36814)
+        // (0, 21.76980) → (0, 30.57330), as offsets from the corner.
+        let p = continuous_rrect_path(10.0, 20.0, 200.0, 100.0, 20.0);
+        let events: Vec<_> = p.iter().collect();
+        let close = |a: Point, b: Point| (a - b).length() < 1e-3;
+        let tr = |a: f32, d: f32| point(210.0 - a, 20.0 + d);
+        assert!(matches!(events[0], Event::Begin { at } if close(at, point(10.0 + 30.5733, 20.0))));
+        assert!(matches!(events[1], Event::Line { to, .. } if close(to, tr(30.5733, 0.0))));
+        let cubics = [
+            (tr(21.7698, 0.0), tr(17.36814, 0.0), tr(12.62988, 1.49823)),
+            (tr(7.45648, 3.38120), tr(3.38120, 7.45648), tr(1.49823, 12.62988)),
+            (tr(0.0, 17.36814), tr(0.0, 21.76980), tr(0.0, 30.57330)),
+        ];
+        for (k, (c1, c2, to)) in cubics.into_iter().enumerate() {
+            match events[2 + k] {
+                Event::Cubic { ctrl1, ctrl2, to: t, .. } => assert!(close(ctrl1, c1) && close(ctrl2, c2) && close(t, to), "{k}: {:?}", events[2 + k]),
+                ref other => panic!("{other:?}"),
+            }
+        }
+        // Four corners of a side and three cubics, closed.
+        assert_eq!(events.len(), 1 + 4 * 4 + 1);
+        let bb = lyon::algorithms::aabb::bounding_box(p.iter());
+        assert!(close(bb.min, point(10.0, 20.0)) && close(bb.max, point(210.0, 120.0)), "{bb:?}");
+    }
+
+    /// The width of `path` along the row at `y` under the nonzero rule: the flattened path's
+    /// crossings of the row, by x, summed where the winding isn't 0.
+    fn row_width(path: &Path, y: f32) -> f32 {
+        use lyon::path::iterator::PathIterator;
+        let mut crossings: Vec<(f32, i32)> = Vec::new();
+        for e in path.iter().flattened(1e-4) {
+            if let lyon::path::Event::Line { from, to } | lyon::path::Event::End { last: from, first: to, .. } = e {
+                if (from.y <= y) != (to.y <= y) {
+                    let x = from.x + (to.x - from.x) * (y - from.y) / (to.y - from.y);
+                    crossings.push((x, if to.y > from.y { 1 } else { -1 }));
+                }
+            }
+        }
+        crossings.sort_by(|a, b| a.0.total_cmp(&b.0));
+        let (mut winding, mut width, mut start) = (0, 0.0, 0.0);
+        for (x, d) in crossings {
+            if winding == 0 {
+                start = x;
+            }
+            winding += d;
+            if winding == 0 {
+                width += x - start;
+            }
+        }
+        width
+    }
+
+    #[test]
+    fn continuous_corners_fill_as_core_animation() {
+        // Rows of a CALayer (cornerCurve .continuous, a white background) rendered by Core
+        // Animation on macOS 27 at 64×: (row centre, covered width). 58 × 58 at radius 29 and
+        // 200 × 100 at 40 are past min/2/1.52866 (corners overlapping), 96 × 64 at 20 within it.
+        let cases: [(f32, f32, f32, &[(f32, f32)]); 3] = [
+            (58.0, 58.0, 29.0, &[(0.257812, 0.6505), (1.00781, 12.0493), (3.00781, 25.4397), (8.00781, 40.1782), (15.0078, 50.7338), (25.0078, 56.8257)]),
+            (200.0, 100.0, 40.0, &[(0.257812, 115.6765), (1.00781, 131.9961), (3.00781, 149.5420), (8.00781, 168.1822), (15.0078, 182.6141), (25.0078, 193.8216)]),
+            (96.0, 64.0, 20.0, &[(0.257812, 57.6890), (1.00781, 67.2327), (3.00781, 77.0929), (8.00781, 88.0700), (15.0078, 94.2721), (25.0078, 95.9604)]),
+        ];
+        for (w, h, r, rows) in cases {
+            let p = continuous_rrect_path(0.0, 0.0, w, h, r);
+            for &(y, want) in rows {
+                // CA's row is 1/64 pt tall: its width is the mean over it.
+                let got = (0..8).map(|k| row_width(&p, y - 0.5 / 64.0 + (k as f32 + 0.5) / 512.0)).sum::<f32>() / 8.0;
+                assert!((got - want).abs() < 0.03, "{w}×{h} r {r}, row {y}: {got} vs CA {want}");
+            }
+        }
+    }
+
+    #[test]
+    fn continuous_radius_is_rns() {
+        assert_eq!(continuous_radius(120.0, 44.0, 22.0), 22.0);
+        assert_eq!(continuous_radius(120.0, 44.0, 40.0), 22.0);
+        assert_eq!(continuous_radius(120.0, 44.0, -3.0), 0.0);
+        assert_eq!(continuous_rrect_path(0.0, 0.0, 10.0, 10.0, 0.0).iter().count(), rect_path(0.0, 0.0, 10.0, 10.0).iter().count());
     }
 
     #[test]

@@ -2,49 +2,20 @@
 // a 4 × 4 grid of gradient cells; a round button switches the light theme (white, orange) and the
 // dark one (black, #78C0E0). RN: src/animations/fractal-glass (index.tsx,
 // components/fractal-glass-mask.tsx). The canvas, the circle's drag and the theme's colour
-// timings are Rust (gpu/src/fractal_glass.rs); the button is here.
+// timings are Rust (gpu/src/fractal_glass.rs); the button is here, its fill a second instance
+// of that surface (input + 2) so it is the circle's colour timing itself: a toggle mid-way
+// continues from the colour shown, in Reanimated's colour space, as RN's circleColor does.
 use PressableScale from "pressto"
 
 // Octicons sun / moon (512 units to the em, the line ascent 450 + descent 68 + gap 46 = 564).
 fn sunPath(): string = "M346.5 348.5Q309 386 256 386Q203 386 165.5 348.5Q128 311 128 258Q128 205 165.5 167.5Q203 130 256 130Q309 130 346.5 167.5Q384 205 384 258Q384 311 346.5 348.5ZM199.5 314.5Q223 338 256 338Q289 338 312.5 314.5Q336 291 336 258Q336 225 312.5 201.5Q289 178 256 178Q223 178 199.5 201.5Q176 225 176 258Q176 291 199.5 314.5ZM437 111Q437 111 428.5 119.5Q420 128 412 136L403 145Q396 153 386 153Q367 153 362 134Q362 131 362 128Q362 118 369 111L403 77Q410 70 420 70Q430 70 437 77Q444 84 444 94Q444 104 437 111ZM143 405Q143 405 134.5 413.5Q126 422 117 431L109 439Q102 446 92 446Q82 446 75 439Q68 432 68 422Q68 412 75 405Q75 405 83.5 396.5Q92 388 100 380L109 371Q116 364 126 364Q136 364 143 371Q150 378 150 388Q150 398 143 405ZM280 26V74Q280 84 273 91Q266 98 256 98Q246 98 239 91Q232 84 232 74V26Q232 16 239 9Q246 2 256 2Q266 2 273 9Q280 16 280 26ZM72 282H24Q14 282 7 275Q0 268 0 258Q0 248 7 241Q14 234 24 234H72Q82 234 89 241Q96 248 96 258Q96 268 89 275Q82 282 72 282ZM488 282H440Q430 282 423 275Q416 268 416 258Q416 248 423 241Q430 234 440 234H488Q498 234 505 241Q512 248 512 258Q512 268 505 275Q498 282 488 282ZM280 442V490Q280 500 273 507Q266 514 256 514Q246 514 239 507Q232 500 232 490V442Q232 432 239 425Q246 418 256 418Q266 418 273 425Q280 432 280 442ZM403 371Q403 371 411.5 379.5Q420 388 429 397L437 405Q444 412 444 422Q444 432 437 439Q430 446 420 446Q410 446 403 439Q403 439 394.5 430.5Q386 422 378 414L369 405Q362 398 362 388Q362 378 369 371Q376 364 386 364Q396 364 403 371ZM109 77Q109 77 117.5 85.5Q126 94 134 102L143 111Q149 118 149 127Q149 137 142 144Q135 151 125 151Q116 151 109 145Q109 145 100.5 136.5Q92 128 83 119L75 111Q68 104 68 94Q68 84 75 77Q82 70 92 70Q102 70 109 77Z"
 fn moonPath(): string = "M324 46Q328 46 332 47Q398 71 439 128.5Q480 186 480 258Q480 351 414.5 416.5Q349 482 256 482Q184 482 126.5 441Q69 400 45 334Q44 330 44 326Q44 316 51 309Q58 302 68 302Q72 302 76 304Q105 314 136 314Q209 314 260.5 262.5Q312 211 312 138Q312 107 302 78Q300 74 300 70Q300 60 307 53Q314 46 324 46ZM359 115Q360 127 360 138Q360 231 294.5 296.5Q229 362 136 362Q127 362 113 361Q138 395 175.5 414.5Q213 434 256 434Q329 434 380.5 382.5Q432 331 432 258Q432 215 412.5 177.5Q393 140 359 115Z"
 
-// circleColor: withTiming('orange' <-> '#78C0E0'), 300 ms inOut(quad), in Reanimated's colour
-// space (each channel mixed in gamma 2.2): the stops are those mixes.
-keyframes orangeToBlue
-  0% background-color="#FFA500"
-  10% background-color="#F5A84F"
-  20% background-color="#EBAB6C"
-  30% background-color="#E1AE82"
-  40% background-color="#D5B094"
-  50% background-color="#C9B3A3"
-  60% background-color="#BCB6B2"
-  70% background-color="#AEB8BE"
-  80% background-color="#9FBBCA"
-  90% background-color="#8DBED6"
-  100% background-color="#78C0E0"
-
-keyframes blueToOrange
-  0% background-color="#78C0E0"
-  10% background-color="#8DBED6"
-  20% background-color="#9FBBCA"
-  30% background-color="#AEB8BE"
-  40% background-color="#BCB6B2"
-  50% background-color="#C9B3A3"
-  60% background-color="#D5B094"
-  70% background-color="#E1AE82"
-  80% background-color="#EBAB6C"
-  90% background-color="#F5A84F"
-  100% background-color="#FFA500"
-
 component FractalGlass
   state theme = "light"
-  // Whether the theme ever changed: the button's colour animates only from then on.
-  state toggled = false
   action toggle
     haptic("selection")
     theme = theme == "light" ? "dark" : "light"
-    toggled = true
   view
     // styles.fill: the window; its background is drawn by the canvas (withTiming white/black).
     column position="absolute" inset=0 testId="fractal-glass"
@@ -55,11 +26,11 @@ component FractalGlass
       button appearance="none" press=toggle class=PressableScale position="absolute" bottom=64 right=64
         width=58 height=58 padding=0 border="none" background-color="transparent" display="flex"
         aria-label=(theme == "light" ? "Dark theme" : "Light theme") testId="fractal-glass-theme"
-        // styles.floatingContent: flex 1, centred, radius 29 continuous, circleColor.
+        // styles.floatingContent: flex 1, centred; its fill (radius 29, borderCurve continuous,
+        // circleColor) is the surface's button instance, under the icon.
         view flex=1 align-self="stretch" display="flex" align-items="center" justify-content="center"
-          border-radius=29 corner-shape="squircle"
-          background-color=(theme == "light" ? "#FFA500" : "#78C0E0")
-          animation=(toggled ? (theme == "light" ? "blueToOrange 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955) both" : "orangeToBlue 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955) both") : "none")
+          canvas surface=fractal_glass(theme == "dark" ? 3 : 2) position="absolute" top=0 left=0 width=58
+            height=58 pointer-events="none" testId="fractal-glass-theme-fill" aria-hidden=true
           // Octicons, size 24, white: the sun in the dark theme, the moon in the light one.
           svg width=24 height=(24 * 564 / 512) viewBox="0 0 512 564" aria-hidden=true testId="fractal-glass-icon"
             path d=(theme == "light" ? moonPath() : sunPath()) fill="#ffffff"

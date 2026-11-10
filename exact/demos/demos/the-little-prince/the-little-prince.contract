@@ -11,8 +11,13 @@
 use PressableScale from "pressto"
 use DemoEnv from "../env.contract"
 
-// withTiming(…, { duration: 240, easing: Easing.out(Easing.cubic) }).
-fn outCubic(): string = "cubic-bezier(0.33, 1, 0.68, 1)"
+// withTiming(…, { duration: 240, easing: Easing.out(Easing.cubic) }): 1 − (1 − t)³, exactly. A
+// cubic Bézier with x control points 1/3 and 2/3 has x(s) = s, so its y(s) = 3(1 − s)²s·y1 +
+// 3(1 − s)s²·y2 + s³ is the curve of the time itself; y1 = y2 = 1 makes it 3s − 3s² + s³ =
+// 1 − (1 − s)³. (easings.net's 0.33, 1, 0.68, 1 is a fit, off by up to 0.004.) The icon
+// layers' opacity (1 − f, f) and scale (1 − 0.15 f, 0.85 + 0.15 f) are linear in face, so
+// easing them is easing face.
+fn outCubic(): string = "cubic-bezier(0.3333333333333333, 1, 0.6666666666666666, 1)"
 
 component TheLittlePrince
   props

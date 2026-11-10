@@ -7,9 +7,16 @@
 //! - Paper (centred): foldHeight = 330 / 3. With progress p, translateY = (h/2 − fh/2)(1 − p);
 //!   fold 0 at top 0 (+ translateY); fold 1 at top h/2 − fh/2, rotated about its top edge by
 //!   rotateX(−π(1 − p)) after translateY; fold 2 hinged on fold 1's bottom edge, rotateX(π(1 −
-//!   p)) more. The perspective (1000000) is flat: rotateX(θ) scales y by cos θ. Folds 1 and 2:
-//!   interpolateColor(p, [0, 1], [#b1b1b1, #ffffff]) under an inner Shadow (0, 12, 25, #efefef);
-//!   fold 0: #ffffff. The transformOrigin z (200, 100, 0) stacks fold 0 over 1 over 2.
+//!   p)) more. Fold 2's list is one layer's matrix, so its rotations add up to 0: it stays
+//!   parallel to the screen, full height, hung from fold 1's far edge. Each fold's view is a
+//!   plain layer, which flattens its content (an orthographic projection: rotateX(θ) scales y
+//!   by cos θ). Folds 1 and 2: interpolateColor(p, [0, 1], [#b1b1b1, #ffffff]) under an inner
+//!   Shadow (0, 12, 25, #efefef); fold 0: #ffffff (its drop shadow falls outside its canvas).
+//! - Stacking: each fold's wrapper has transform [perspective(1000000)] about transformOrigin
+//!   (50%, 50%, z = 200, 100, 0) of its 250 × 0 box (the paper's top edge). That matrix moves
+//!   the wrapper's plane to depth z − z/(1 + z/1e6) (0.04, 0.01, 0 pt) and scales it by
+//!   1/(1 + z/1e6) about (125, 0): Core Animation depth-sorts sibling layers, so fold 0 is
+//!   drawn over 1 over 2 at every angle (each wrapper is flat, its depth constant).
 //! - The press (PressableWithoutFeedback over the screen, no global handler): progress =
 //!   withSpring(p > 0.5 ? 0 : 1, { duration 1000, dampingRatio 1.5 }); three selection haptics,
 //!   at once and 100 and 200 ms later (posted for the app).
@@ -66,15 +73,26 @@ struct Gpu {
     bind: wgpu::BindGroup,
 }
 
-/// Fold `i`'s top (from the paper's top) and signed length on screen, at progress `p`.
+/// `perspective: 1000000`.
+const PERSPECTIVE: f32 = 1_000_000.0;
+
+/// Fold `i`'s wrapper's scale about the paper's top centre: perspective(d) about
+/// transformOrigin z = (2 − i) × 100 maps a point of its plane by 1 / (1 + z / d).
+pub(crate) fn wrapper_scale(i: usize) -> f32 {
+    1.0 / (1.0 + (2 - i) as f32 * 100.0 / PERSPECTIVE)
+}
+
+/// Fold `i`'s top (from the paper's top) and signed length on screen, at progress `p`, before
+/// its wrapper's scale.
 pub(crate) fn folds(p: f32) -> [(f32, f32); 3] {
     let fh = HEIGHT / 3.0;
     let rest = HEIGHT / 2.0 - fh / 2.0;
     let ty = rest * (1.0 - p);
+    // rotateX(−π(1 − p)) about fold 1's top edge.
     let c1 = (-std::f32::consts::PI * (1.0 - p)).cos();
-    let c2 = (std::f32::consts::PI * (1.0 - p)).cos();
     let t1 = rest + ty;
-    [(ty, fh), (t1, fh * c1), (t1 + fh * c1, fh * c1 * c2)]
+    // Fold 2: rotateX(−π(1 − p)) then rotateX(π(1 − p)) in one matrix, cos(0) = 1.
+    [(ty, fh), (t1, fh * c1), (t1 + fh * c1, fh)]
 }
 
 impl Surface for PaperFolding {
@@ -149,7 +167,10 @@ impl Surface for PaperFolding {
         let uniforms = Uniforms {
             canvas: [pw as f32, ph as f32, frame.scale, gfx::srgb_flag(format)],
             paper: [(frame.width - WIDTH) / 2.0, (frame.height - HEIGHT) / 2.0, WIDTH, HEIGHT / 3.0],
-            folds: f.map(|(top, len)| [top, len, 0.0, 0.0]),
+            folds: [0, 1, 2].map(|i| {
+                let k = wrapper_scale(i);
+                [f[i].0 * k, f[i].1 * k, k, 0.0]
+            }),
             shade: [(shade[0] / 255.0) as f32, (shade[1] / 255.0) as f32, (shade[2] / 255.0) as f32, 1.0],
         };
         queue.write_buffer(&gpu.uniforms, 0, &uniforms.bytes());
@@ -188,6 +209,19 @@ mod tests {
         assert!((folded[0].0 - 110.0).abs() < 1e-4 && (folded[1].0 - 220.0).abs() < 1e-4);
         assert!((folded[1].1 + 110.0).abs() < 1e-3 && (folded[2].0 - 110.0).abs() < 1e-3 && (folded[2].1 - 110.0).abs() < 1e-3);
         assert_eq!(folds(1.0), [(0.0, 110.0), (110.0, 110.0), (220.0, 110.0)]);
+        // Mid-fold, against RN's transform lists multiplied out as 4 × 4 matrices (p = 0.25:
+        // fold 1 spans 192.5 → 114.718, fold 2 114.718 → 224.718; p = 0.5: fold 1 is edge-on
+        // at 165, fold 2 165 → 275). Fold 2 stays full height: its two rotations cancel.
+        let quarter = folds(0.25);
+        assert!((quarter[0].0 - 82.5).abs() < 1e-3);
+        assert!((quarter[1].0 - 192.5).abs() < 1e-3 && (quarter[1].0 + quarter[1].1 - 114.718).abs() < 1e-3);
+        assert!((quarter[2].0 - 114.718).abs() < 1e-3 && (quarter[2].1 - 110.0).abs() < 1e-3);
+        let half = folds(0.5);
+        assert!((half[1].0 - 165.0).abs() < 1e-3 && half[1].1.abs() < 1e-3);
+        assert!((half[2].0 - 165.0).abs() < 1e-3 && (half[2].1 - 110.0).abs() < 1e-3);
+        // The wrappers: 1/(1 + 200/1e6), 1/(1 + 100/1e6), 1.
+        assert!((wrapper_scale(0) - 0.999_8).abs() < 1e-6 && (wrapper_scale(1) - 0.999_9).abs() < 1e-6);
+        assert_eq!(wrapper_scale(2), 1.0);
     }
 
     #[test]
@@ -234,6 +268,17 @@ mod tests {
         b.save("paper-folding-open");
         assert!(!animating);
         assert!(s.agent("{}").unwrap().starts_with("{\"progress\":1.000"));
+        // Poses at fixed progress, for reading against RN's matrices (fold 2 full height).
+        let mut posed = PaperFolding::default();
+        for (p, name) in [(0.25, "paper-folding-p25"), (0.5, "paper-folding-p50"), (0.75, "paper-folding-p75")] {
+            posed.progress.set(p);
+            let (img, _) = fixture::render(&gpu, &mut posed, &frame(0.0)).unwrap();
+            img.save(name);
+            if p == 0.5 {
+                // Fold 1 edge-on at 291 + 165; fold 2 hangs below it, 456…566, shaded.
+                assert!(img.at(210, 510)[0] < 255 && img.at(210, 510)[3] == 255, "{:?}", img.at(210, 510));
+            }
+        }
         // Open: white from the paper's top (291) to its bottom (621); the inner shadow tints
         // the lower folds' edges #efefef-ward.
         assert_eq!(&b.at(210, 300)[..3], &[255, 255, 255]);

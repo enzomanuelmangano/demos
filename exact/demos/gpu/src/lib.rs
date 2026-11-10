@@ -56,7 +56,7 @@ pub mod theme_canvas_animation;
 pub static REGISTRY: Registry = Registry {
     surfaces: &[
         ("animated_3d_parallax", 0, animated_3d_parallax::surface),
-        ("atlas_button", 0, atlas_button::surface),
+        ("atlas_button", 1, atlas_button::surface),
         ("atlas_sphere", 0, atlas_sphere::surface),
         ("audio_player", 1, audio_player::surface),
         ("balance_slider", 0, balance_slider::surface),
