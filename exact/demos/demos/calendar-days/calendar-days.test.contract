@@ -1,0 +1,7 @@
+at "/demo/calendar-days"
+
+// The web host gives a surface no touches: the pages, the slider's pan, the springs and the
+// haptics are the Rust fixture tests' (gpu/src/calendar_days.rs); here what the Contract holds.
+test "the canvas fills the screen"
+  expect tree has "calendar-days"
+  expect tree has "calendar-days-canvas"

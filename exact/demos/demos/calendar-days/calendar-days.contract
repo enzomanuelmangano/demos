@@ -1,0 +1,19 @@
+// Calendar Days: a tear-off calendar whose pages flip up as the slider under it is dragged, one
+// per 1/30 of its travel, with a selection haptic per day. RN: src/animations/calendar-days
+// (index.tsx, components/animated-slider.tsx, components/calendar-card/*). The card, its 30
+// pages in 3D, the slider, its pan and every spring are one Rust surface
+// (gpu/src/calendar_days.rs); it posts the haptic.
+use DemoEnv from "../env.contract"
+
+component CalendarDays
+  props
+    env: DemoEnv
+  action buzz(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+  view
+    // styles.container: #fcfcfc, the card and the slider centred.
+    column position="absolute" inset=0 background-color="#fcfcfc" testId="calendar-days"
+      canvas surface=calendar_days(env.safeTop) position="absolute" top=0 left=0 width=env.width height=env.height
+        touch-action="none" message=buzz testId="calendar-days-canvas"
+        aria-label="Calendar: drag the slider to flip the days"

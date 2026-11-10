@@ -38,6 +38,7 @@ pub mod blur_circles;
 pub mod blurred_bottom_bar;
 pub mod blurred_scroll;
 pub mod bottom_bar_skia;
+pub mod calendar_days;
 pub mod card_shader_reflections;
 pub mod circular_carousel;
 pub mod cherry_blossom_qrcode;
@@ -123,6 +124,7 @@ pub static REGISTRY: Registry = Registry {
         ("blurred_bottom_bar", 6, blurred_bottom_bar::surface),
         ("blurred_scroll", 1, blurred_scroll::surface),
         ("bottom_bar_skia", 1, bottom_bar_skia::surface),
+        ("calendar_days", 1, calendar_days::surface),
         ("card_shader_reflections", 0, card_shader_reflections::surface),
         ("circular_carousel", 1, circular_carousel::surface),
         ("cherry_blossom_qrcode", 4, cherry_blossom_qrcode::surface),
