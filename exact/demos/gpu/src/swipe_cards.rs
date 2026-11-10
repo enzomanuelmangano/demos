@@ -13,7 +13,7 @@
 //!   (Reanimated's withTiming onStart), and on mount the style is at its targets.
 //! - The pan (one GestureDetector per card; the touch goes to the topmost card under it, its
 //!   transform and its alpha ≥ 0.01 as UIKit's hit test): onBegin currentActiveIndex =
-//!   floor(activeIndex); onUpdate (RNGH's iOS translation counts from where the pan activates) on the active card sets translateX / translateY to the
+//!   floor(activeIndex); onUpdate (the translation as gesture_handler models RNGH's iOS pan) on the active card sets translateX / translateY to the
 //!   translation and nextActiveIndex = interpolate(sign(x) · (nx² + nv²), [−1, 0, 1],
 //!   [a + 1, a, a + 1], CLAMP), nx = x / (w/3), nv = vx / ((w/3) / 0.1); onFinalize, when
 //!   nextActiveIndex == activeIndex + 1 it throws by sign(translationX) (0 throws left), else
