@@ -227,7 +227,11 @@ impl Surface for AtlasButton {
 
     fn input(&mut self, event: &InputEvent) {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
-        let inside = (0.0..=WIDTH).contains(&x) && (0.0..=HEIGHT).contains(&y);
+        // The Tap is on the view rStyle scales 1 → 0.95 about its centre: RNGH tests the touch
+        // in that view's own coordinates, after the scale.
+        let k = 1.0 - 0.05 * self.progress.value as f32;
+        let (lx, ly) = (WIDTH / 2.0 + (x - WIDTH / 2.0) / k, HEIGHT / 2.0 + (y - HEIGHT / 2.0) / k);
+        let inside = (0.0..=WIDTH).contains(&lx) && (0.0..=HEIGHT).contains(&ly);
         match gfx::phase(phase) {
             Phase::Down if self.finger.is_none() && inside => {
                 self.finger = Some((id, at_ms));
