@@ -1,12 +1,13 @@
 //! Skia's `Blur` image filter (`ImageFilter.MakeBlur(σ, σ, TileMode.Decal)`) for a layer a demo
 //! drew into a texture: a separable Gaussian, run at a lower resolution where σ is large (the
 //! result is smooth, so a bilinear read back up is exact to the eye), outside the texture
-//! transparent (decal).
+//! transparent (decal), or its edge repeated outward ([`Blur::clamped`], `TileMode.Clamp`: the
+//! `<Blur mode="clamp">` a photo's edges keep their colour with).
 
 use crate::wgpu;
 
 const SHADER: &str = r#"
-struct P { dir: vec2<f32>, sigma: f32, _p: f32 };
+struct P { dir: vec2<f32>, sigma: f32, clamp: f32 };
 @group(0) @binding(0) var src: texture_2d<f32>;
 @group(0) @binding(1) var smp: sampler;
 @group(0) @binding(2) var<uniform> p: P;
@@ -16,7 +17,7 @@ struct Out { @builtin(position) pos: vec4<f32>, @location(0) uv: vec2<f32> };
     var o: Out; o.pos = vec4<f32>(q, 0.0, 1.0); o.uv = vec2<f32>(q.x * 0.5 + 0.5, 0.5 - q.y * 0.5); return o;
 }
 fn tap(uv: vec2<f32>) -> vec4<f32> {
-    if (any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0))) { return vec4<f32>(0.0); }
+    if (p.clamp < 0.5 && (any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0)))) { return vec4<f32>(0.0); }
     return textureSampleLevel(src, smp, uv, 0.0);
 }
 @fragment fn down(in: Out) -> @location(0) vec4<f32> { return textureSampleLevel(src, smp, in.uv, 0.0); }
@@ -38,6 +39,9 @@ fn tap(uv: vec2<f32>) -> vec4<f32> {
 /// A blur's textures and pipelines, kept between frames.
 #[derive(Default)]
 pub struct Blur {
+    /// `TileMode.Clamp`: outside the texture is its nearest edge pixel (`Blur::default()` is
+    /// `TileMode.Decal`, outside transparent).
+    pub clamp: bool,
     built: Option<Built>,
     size: (u32, u32),
     a: Option<wgpu::TextureView>,
@@ -54,6 +58,11 @@ struct Built {
 }
 
 impl Blur {
+    /// `<Blur mode="clamp">`: a blur whose source's edges extend outward.
+    pub fn clamped() -> Blur {
+        Blur { clamp: true, ..Blur::default() }
+    }
+
     /// Blurs `source` (`width`×`height` pixels of `format`) by `sigma` pixels and returns the
     /// blurred texture, at `1/factor` of the size, to be sampled with a linear filter.
     /// `factor` is chosen so σ is about 4 texels where it is large.
@@ -82,11 +91,13 @@ impl Blur {
         }
         let b = self.built.as_ref().unwrap();
         let s = sigma / factor;
+        let clamp = self.clamp;
         let put = |i: usize, dir: [f32; 2]| {
             let mut bytes = [0u8; 16];
             bytes[..4].copy_from_slice(&dir[0].to_le_bytes());
             bytes[4..8].copy_from_slice(&dir[1].to_le_bytes());
             bytes[8..12].copy_from_slice(&s.to_le_bytes());
+            bytes[12..16].copy_from_slice(&(clamp as u32 as f32).to_le_bytes());
             queue.write_buffer(&b.params[i], 0, &bytes);
         };
         put(0, [0.0, 0.0]);
