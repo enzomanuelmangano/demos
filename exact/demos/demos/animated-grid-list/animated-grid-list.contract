@@ -55,12 +55,19 @@ component AnimatedGridList
   state scrolling = false
   state direction = 0
   state anchor = 0
+  // onBeginDrag: a finger down on the scroll (which stops a momentum where it is) re-anchors at
+  // the next scroll event; Contract's pointerdown carries no offset, so the anchor is that
+  // event's y, one event after RN's.
+  state rebase = false
+  action began
+    rebase = true
   action toggle
     haptic("selection")
     isList = not isList
   action scrolled(x: number, y: number)
-    if not scrolling
+    if not scrolling or rebase
       scrolling = true
+      rebase = false
       anchor = y
     else
       if (y > anchor ? 1 : -1) != direction
@@ -74,7 +81,7 @@ component AnimatedGridList
     column position="absolute" inset=0 background-color="#EEEEEE" testId="animated-grid-list"
       // The ScrollView draws outside its bounds (overflow visible): a full-screen scroller whose
       // content starts below the safe top and ends above the home indicator looks the same.
-      scroll position="absolute" top=0 left=0 width="100%" height="100%" scroll=scrolled scrollend=ended testId="grid-scroll"
+      scroll position="absolute" top=0 left=0 width="100%" height="100%" scroll=scrolled scrollend=ended pointerdown=began testId="grid-scroll"
         row flex-wrap="wrap" align-items="flex-start" padding-top=env.safeTop
           padding-bottom="env(safe-area-inset-bottom)"
           for i in range(10) key=i
