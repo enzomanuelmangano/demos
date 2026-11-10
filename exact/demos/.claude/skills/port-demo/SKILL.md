@@ -74,7 +74,8 @@ One commit per haptic event, never per frame.
   or move it to Rust. Release-after-drag is fine (swipe-cards verified): only never-dragged
   boxes are affected. Keyframes cap at ~21-33 stops.
 - Exact easings: `cubic-bezier(0.455, 0.03, 0.515, 0.955)` is only CLOSE to Reanimated's
-  inOut(quad). Exact: two keyframe halves, ease-in half `cubic-bezier(1/3, 0, 2/3, 1/3)` (y = s²)
+  inOut(quad) (1.9 % off): never use it. In a `transition` / `animation`, paste
+  `bun tools/easing.ts inOutQuad` (a `linear()` within 0.0005, verified on iOS). Or, for keyframes, Exact: two keyframe halves, ease-in half `cubic-bezier(1/3, 0, 2/3, 1/3)` (y = s²)
   and ease-out half `cubic-bezier(1/3, 2/3, 2/3, 1)`, with the value linear in progress inside
   each half. Any polynomial easing of degree ≤ 3 is an exact cubic Bézier this way; out(cubic)
   = 1-(1-t)³ is `cubic-bezier(1/3, 1, 2/3, 1)`.
