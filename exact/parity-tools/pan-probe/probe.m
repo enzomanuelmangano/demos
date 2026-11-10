@@ -34,6 +34,7 @@ static NSMutableString *gLog; static double gT0;
   UIWindow *w = self.card.window;
   CGPoint t = [p translationInView:w];
   CGPoint f = [p locationInView:w];
+  CGPoint v = [p velocityInView:w];
   if (!self.fixed) {
     double third = w.bounds.size.width / 3;
     double n = MAX(-1, MIN(1, t.x / third));
@@ -41,7 +42,7 @@ static NSMutableString *gLog; static double gT0;
     if (p.state == UIGestureRecognizerStateEnded || p.state == UIGestureRecognizerStateCancelled) m = CATransform3DIdentity;
     self.card.layer.transform = m;
   }
-  [self.log appendFormat:@"%ld finger %.2f %.2f trans %.2f %.2f at %.1f\n", (long)p.state, f.x, f.y, t.x, t.y, (CACurrentMediaTime() - gT0) * 1000];
+  [self.log appendFormat:@"%ld finger %.2f %.2f trans %.2f %.2f at %.1f vel %.1f %.1f\n", (long)p.state, f.x, f.y, t.x, t.y, (CACurrentMediaTime() - gT0) * 1000, v.x, v.y];
   if (p.state == UIGestureRecognizerStateEnded || p.state == UIGestureRecognizerStateCancelled) {
     [self.log appendString:@"end\n"];
     [self.log writeToFile:@"/tmp/pan-probe/log.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
