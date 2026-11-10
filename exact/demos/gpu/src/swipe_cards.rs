@@ -117,7 +117,7 @@ impl SwipeCards {
             active: 0.0,
             current: 0.0,
             cards,
-            pan: PanGesture::new().uikit(),
+            pan: PanGesture::new(),
             touched: None,
             reset_at: None,
             now: 0.0,
