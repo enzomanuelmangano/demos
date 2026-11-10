@@ -1,11 +1,14 @@
 // Theme Canvas Animation: "THEME" over six round swatches; a tap on one floods the screen with
 // its theme in a circle growing from it. RN: src/animations/theme-canvas-animation (index.tsx,
 // selectable-square/index.tsx). The whole canvas (swatches, presses, the flood's spring) is
-// Rust: gpu/src/theme_canvas_animation.rs.
+// Rust: gpu/src/theme_canvas_animation.rs, which posts the selection haptic of a select.
 
 component ThemeCanvasAnimation
+  action buzz(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
   view
     // <Touchable.Canvas style={{ flex: 1 }}>: the window.
     column position="absolute" inset=0 testId="theme-canvas-animation"
       canvas surface=theme_canvas_animation() position="absolute" top=0 left=0 width="100%"
-        height="100%" touch-action="none" testId="theme-canvas" aria-label="Pick a theme"
+        height="100%" touch-action="none" message=buzz testId="theme-canvas" aria-label="Pick a theme"

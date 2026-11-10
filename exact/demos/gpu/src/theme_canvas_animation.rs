@@ -60,6 +60,8 @@ struct Theme {
     tap: TapGesture,
     canvas: Canvas,
     renderer: Renderer,
+    /// Haptics for the app to play (`message=buzz`): Haptics.selectionAsync on a select.
+    posted: Vec<String>,
 }
 
 impl Theme {
@@ -84,6 +86,8 @@ impl Theme {
         self.radius.set(0.0);
         self.radius.to(h, 0.0, duration_config(-h, 0.0, 1000.0, 1.0, 4.0));
         self.flooding = true;
+        // scheduleOnRN(Haptics.selectionAsync).
+        self.posted.push("haptic:selection".into());
         self.previous = self.selected;
         self.selected = index;
     }
@@ -100,6 +104,10 @@ impl Surface for Theme {
 
     fn wants_input(&self) -> bool {
         true
+    }
+
+    fn messages(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.posted)
     }
 
     fn agent(&mut self, _request: &str) -> Option<String> {
@@ -235,6 +243,7 @@ mod tests {
         assert!(s.agent("{}").unwrap().contains("\"scales\":[1.000,1.000,0.9"), "{}", s.agent("{}").unwrap());
         finger(&mut s, PointerPhase::Up, 160.0);
         assert!(s.agent("{}").unwrap().starts_with("{\"selected\":2,\"previous\":0"));
+        assert_eq!(s.messages(), ["haptic:selection"]);
         fixture::render(&gpu, s.as_mut(), &frame(166.0)).unwrap();
         // Half way: a circle of #1A535C about swatch 2, the rest still #F7FFF7.
         let (mid, moving) = fixture::render(&gpu, s.as_mut(), &frame(400.0)).unwrap();

@@ -11,7 +11,8 @@
 //! sRGB). Clips are stencil levels.
 //!
 //! Text is [`Font`] + [`Canvas::draw_text`] (glyph outlines filled as paths); SVG path strings
-//! are [`path_from_svg`]; `<FitBox>` is [`fit_box`]. A `<Group transform>` with `perspective`,
+//! are [`path_from_svg`]; `<FitBox>` is [`fit_box`]; `<CornerPathEffect>` on a polyline is
+//! [`corner_polyline`]. A `<Group transform>` with `perspective`,
 //! `rotateX` or `rotateY` is [`Matrix4`] (its plane's [`Matrix3`] inverted in a demo's shader).
 //!
 //! Images are [`Images`] (decoded once, one mipmapped texture array) painted with
@@ -606,9 +607,60 @@ pub fn trim(path: &Path, start: f32, end: f32) -> Path {
     b.build()
 }
 
+/// `<CornerPathEffect r>` on an open polyline (`moveTo(points[0])`, then `lineTo` each of
+/// `points[1..]`), as `SkCornerPathEffect` filters it: each corner becomes a quadratic whose
+/// control point is the corner, from `radius` before it to `radius` after it along the
+/// segments (half a segment when it is shorter than `2 × radius`, which then has no straight
+/// part), and the last segment runs on to the last point.
+pub fn corner_polyline(points: &[Point], radius: f32) -> Path {
+    let mut b = Path::builder();
+    let Some(&first) = points.first() else { return b.build() };
+    b.begin(first);
+    if radius <= 0.0 {
+        for &p in &points[1..] {
+            b.line_to(p);
+        }
+        b.end(false);
+        return b.build();
+    }
+    for pair in points.windows(2) {
+        let (a, c) = (pair[0], pair[1]);
+        // ComputeStep.
+        let d = c - a;
+        let dist = d.length();
+        let (step, segment) = if dist <= radius * 2.0 { (d * 0.5, false) } else { (d * (radius / dist), true) };
+        // The previous corner (a first segment's start is the moveTo, already valid).
+        b.quadratic_bezier_to(a, a + step);
+        if segment {
+            b.line_to(c - step);
+        }
+    }
+    if points.len() > 1 {
+        b.line_to(points[points.len() - 1]);
+    }
+    b.end(false);
+    b.build()
+}
+
 #[cfg(test)]
 mod path_tests {
     use super::*;
+
+    #[test]
+    fn corners_round_as_skia_rounds_them() {
+        // A right angle of long legs: straight to 20 before the corner, a quad through it.
+        let p = corner_polyline(&[point(0.0, 0.0), point(100.0, 0.0), point(100.0, 100.0)], 20.0);
+        let events: Vec<_> = p.iter().collect();
+        use lyon::path::Event;
+        assert!(matches!(events[1], Event::Quadratic { to, .. } if to == point(20.0, 0.0)));
+        assert!(matches!(events[2], Event::Line { to, .. } if to == point(80.0, 0.0)));
+        assert!(matches!(events[3], Event::Quadratic { ctrl, to, .. } if ctrl == point(100.0, 0.0) && to == point(100.0, 20.0)));
+        assert!(matches!(events[5], Event::Line { to, .. } if to == point(100.0, 100.0)));
+        // Short legs: from midpoint to midpoint.
+        let q = corner_polyline(&[point(0.0, 0.0), point(10.0, 0.0), point(10.0, 10.0)], 20.0);
+        let events: Vec<_> = q.iter().collect();
+        assert!(matches!(events[2], Event::Quadratic { ctrl, to, .. } if ctrl == point(10.0, 0.0) && to == point(10.0, 5.0)));
+    }
 
     #[test]
     fn trim_keeps_the_first_part_of_a_line() {

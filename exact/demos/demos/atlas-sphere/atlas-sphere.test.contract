@@ -1,0 +1,5 @@
+at "/demo/atlas-sphere"
+
+test "the dot grid is there"
+  expect tree has "atlas-sphere"
+  expect tree has "atlas-sphere-canvas"

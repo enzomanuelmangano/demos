@@ -18,6 +18,8 @@ pub mod shaders {
 pub mod gfx;
 
 pub mod animated_3d_parallax;
+pub mod atlas_button;
+pub mod atlas_sphere;
 pub mod audio_player;
 pub mod balance_slider;
 pub mod blur_cards;
@@ -32,11 +34,13 @@ pub mod fibonacci_shader;
 pub mod floating_bottom_bar;
 pub mod floating_modal;
 pub mod fluid_slider;
+pub mod fractal_glass;
 pub mod geometry_button;
 pub mod linear_sensors;
 pub mod loading_button;
 pub mod magnet_spring;
 pub mod metaball;
+pub mod paper_folding;
 pub mod radar_chart;
 pub mod record_button;
 pub mod selectable_grid_list;
@@ -44,6 +48,7 @@ pub mod skia_bottom_sheet;
 pub mod slide_to_reveal;
 pub mod sphere_waves;
 pub mod spiral;
+pub mod steddy_graph_interaction;
 pub mod the_little_prince;
 pub mod theme_canvas_animation;
 
@@ -51,6 +56,8 @@ pub mod theme_canvas_animation;
 pub static REGISTRY: Registry = Registry {
     surfaces: &[
         ("animated_3d_parallax", 0, animated_3d_parallax::surface),
+        ("atlas_button", 0, atlas_button::surface),
+        ("atlas_sphere", 0, atlas_sphere::surface),
         ("audio_player", 1, audio_player::surface),
         ("balance_slider", 0, balance_slider::surface),
         ("blur_cards", 1, blur_cards::surface),
@@ -65,11 +72,13 @@ pub static REGISTRY: Registry = Registry {
         ("floating_bottom_bar", 0, floating_bottom_bar::surface),
         ("floating_modal", 0, floating_modal::surface),
         ("fluid_slider", 0, fluid_slider::surface),
+        ("fractal_glass", 1, fractal_glass::surface),
         ("geometry_button", 0, geometry_button::surface),
         ("linear_sensors", 0, linear_sensors::surface),
         ("loading_button", 1, loading_button::surface),
         ("magnet_spring", 0, magnet_spring::surface),
         ("metaball", 0, metaball::surface),
+        ("paper_folding", 0, paper_folding::surface),
         ("radar_chart", 10, radar_chart::surface),
         ("record_button", 1, record_button::surface),
         ("selectable_grid_list", 1, selectable_grid_list::surface),
@@ -77,6 +86,7 @@ pub static REGISTRY: Registry = Registry {
         ("slide_to_reveal", 0, slide_to_reveal::surface),
         ("sphere_waves", 0, sphere_waves::surface),
         ("spiral", 0, spiral::surface),
+        ("steddy_graph_interaction", 1, steddy_graph_interaction::surface),
         ("the_little_prince", 2, the_little_prince::surface),
         ("theme_canvas_animation", 0, theme_canvas_animation::surface),
     ],
