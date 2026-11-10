@@ -49,6 +49,7 @@ pub mod linear_sensors;
 pub mod loading_button;
 pub mod magnet_spring;
 pub mod metaball;
+pub mod miles_bar_chart;
 pub mod paper_folding;
 pub mod particles_button;
 pub mod prequel_slider;
@@ -106,6 +107,7 @@ pub static REGISTRY: Registry = Registry {
         ("loading_button", 1, loading_button::surface),
         ("magnet_spring", 0, magnet_spring::surface),
         ("metaball", 0, metaball::surface),
+        ("miles_bar_chart", 7, miles_bar_chart::surface),
         ("paper_folding", 0, paper_folding::surface),
         ("particles_button", 1, particles_button::surface),
         ("prequel_slider", 2, prequel_slider::surface),

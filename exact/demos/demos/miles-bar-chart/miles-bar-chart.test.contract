@@ -3,14 +3,8 @@ epoch "2026-11-09T12:00:00Z"
 time-zone "UTC"
 at "/demo/miles-bar-chart"
 
-test "seven bars over the week labels"
+test "seven bars over the week strip"
   expect tree has "miles-bar-chart"
   expect tree has "bar-0"
   expect tree has "bar-6"
-  expect text "week-0" == "week of 19 October"
-  expect text "week-3" == "week of 9 November"
-
-test "paging to another week keeps the chart"
-  tap "miles-weeks" drag -300 0
-  clock settle
-  expect tree has "bar-3"
+  expect tree has "miles-weeks"

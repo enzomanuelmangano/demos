@@ -32,16 +32,14 @@ fn monthName(m: number): string = match ["January", "February", "March", "April"
 }
 fn weekLabel(env: DemoEnv, week: number): string = `week of ${dayOfMonth(firstMonday(env) + week * 7)} ${monthName(monthIndex(firstMonday(env) + week * 7))}`
 
-// index.tsx activeIndex: floor((offset + width / 2) / width), held inside the data.
-fn activeOf(x: number, width: number): number = min(6, max(0, floor((x + width / 2) / width)))
-
 component MilesBarChart
   props
     env: DemoEnv
   state active = 0
-  // Written only when the week changes, never per frame.
-  action scrolled(x: number, y: number)
-    let i = activeOf(x, env.width)
+  // The week strip (gpu/src/miles_bar_chart.rs) posts `week:<i>` when activeIndex changes:
+  // once per week, never per frame.
+  action week(text: string)
+    let i = match parseNumber(text.replaceAll("week:", "")) { case some(n) => n, case none => active }
     if i != active
       haptic("selection")
       active = i
@@ -55,18 +53,13 @@ component MilesBarChart
         for d in range(7) key=d
           Bar(letter=dayLabel(d), value=dayValue(env.seed, active, d),
             width=(env.width - 48 * 2 - 20 * 6) / 7, testId=`bar-${d}`)
-      // The 60-tall strip of week labels, a page per week (snapToInterval width, fast
-      // deceleration), its content padded 20 at the top. FlatList's hitSlop 100: the scroller
-      // reaches 100 past the strip above and below, with the labels where they were.
-      scroll width=env.width height=260 margin-top=-100 margin-bottom=-100 overflow-x="auto"
-        overflow-y="hidden" scroll-snap-type="x mandatory" scrollbar-width="none" scroll=scrolled
-        testId="miles-weeks"
-        row padding-top=120
-          for w in range(7) key=w
-            column width=env.width height=40 flex-shrink=0 align-items="center" justify-content="center"
-              scroll-snap-align="start"
-              text weekLabel(env, w) color="#ffffff" font-family="FiraCode-Regular" font-size=16
-                testId=`week-${w}`
+      // The 60-tall list box. Its FlatList (snapToInterval width, fast deceleration: the page
+      // in the fling's direction, as RCTScrollView picks it; hitSlop 100) and the week labels
+      // on TextKit's metrics are Rust: gpu/src/miles_bar_chart.rs, a canvas over the screen.
+      view width=env.width height=60 flex-shrink=0
+      canvas surface=miles_bar_chart(weekLabel(env, 0), weekLabel(env, 1), weekLabel(env, 2), weekLabel(env, 3), weekLabel(env, 4), weekLabel(env, 5), weekLabel(env, 6))
+        message=week position="absolute" top=0 left=0 width=env.width height=env.height touch-action="none"
+        aria-label=weekLabel(env, active) testId="miles-weeks"
 
 component Bar
   props
