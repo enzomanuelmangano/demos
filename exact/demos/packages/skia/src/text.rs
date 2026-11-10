@@ -808,6 +808,7 @@ impl Canvas {
 
     /// One glyph-run draw of the quads in `glyph_quads` (device bounds `bounds`): the clip
     /// stack, a depth, the paint, a quad per glyph.
+    #[cfg(target_vendor = "apple")]
     fn emit_glyph_quads(&mut self, xf: &crate::graphite::Xf, paint: &Paint, bounds: [f32; 4], epoch: u64) {
         let m = self.state.matrix;
         let quads = std::mem::take(&mut self.glyph_quads);
@@ -848,6 +849,7 @@ impl Canvas {
     /// [`crate::coretext::Strike::subpixel_levels`], floored; y floored in CoreGraphics'
     /// y-up space, so the baseline rounds down the screen), its coverage as drawn (no Skia
     /// pre-blend). A run's glyphs blend over each other as CoreGraphics' do.
+    #[cfg(target_vendor = "apple")]
     #[allow(clippy::too_many_arguments)]
     fn draw_uikit_glyphs(&mut self, run: &mut Vec<(u16, f32)>, x: f32, y: f32, font: &Font, paint: &Paint, key: crate::glyphs::StrikeKey, text_size: f32, sa: [f32; 4], invertible: bool) -> bool {
         use crate::glyphs::{self, Atlas, Digest};
