@@ -227,8 +227,10 @@ mod tests {
         let pointer = |phase, x, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 200.0, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
         s.input(&pointer(PointerPhase::Down, 50.0, 0.0));
         let mut ms = 0.0;
+        // RNGH on iOS leaves UIKit's 10 pt hysteresis out of the translation: 160 pt of travel
+        // translate the picker 150.
         for i in 1..=10 {
-            s.input(&pointer(PointerPhase::Move, 50.0 + 15.0 * i as f32, ms));
+            s.input(&pointer(PointerPhase::Move, 50.0 + 16.0 * i as f32, ms));
             ms += 16.0;
             fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         }
@@ -239,7 +241,7 @@ mod tests {
         assert!(report.starts_with("{\"value\":50,\"x\":150,"), "{report}");
         assert!(view_purple(img.at(300, 400)), "progress {:?}", img.at(300, 400));
         assert_eq!(img.at(2 * 200 - 20, 400)[..3], [255, 255, 255], "picker inside {:?}", img.at(380, 400));
-        s.input(&pointer(PointerPhase::Up, 200.0, ms));
+        s.input(&pointer(PointerPhase::Up, 210.0, ms));
         let mut animating = true;
         let mut last = img;
         while animating && ms < 5000.0 {

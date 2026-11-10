@@ -126,12 +126,16 @@ One commit per haptic event, never per frame.
   in its row and hugs the glyph the offset cancels; check which case a demo is.
 - `-exact-exit-animation` must be one literal declaration (no `${…}`), or the web target
   refuses it. Write the curve out (`cubic-bezier(0.455, 0.03, 0.515, 0.955)` is inOut(quad)).
-- RNGH's iOS Pan (measured, wheel-picker): `translationX/Y` starts at 0 where the pan activates
-  (UIKit drops its ~10 pt hysteresis; RNGH's custom criteria `setTranslation(.zero)`), not where
-  the finger went down; and a finger at rest sends no moves, so the lift's `velocityX/Y` is the
-  last move's (a drag held still still flings a snapPoint one tick on). `PanGesture::new().uikit()`
-  does both; the plain `new()` (translation from the down point, velocity decaying at rest) is
-  still the default until each surface is re-verified.
+- RNGH's iOS Pan (measured: wheel-picker, floating-modal): a plain `Gesture.Pan()` is UIKit's
+  pan, whose `translationX/Y` leaves out exactly the 10 pt hysteresis along the direction it set
+  off in (104.5 → 94.3, 140 → 130.2, 99.95 → 90.1 pt), not the travel from touch-down and not 0
+  at activation; custom criteria (`minDist`, active offsets) `setTranslation(.zero)` at
+  activation instead. A finger at rest sends no moves, so the lift's `velocityX/Y` is the last
+  move's (a drag held still still flings a snapPoint one tick on). The gesture-handler crate's
+  `PanGesture` does all of it (`.min_distance(d)` is the custom-criteria case);
+  react-native-skia-gesture is an RNGH Pan underneath. The demo screen's close Pan (activeOffsetY
+  10, failOffsetX ±30) does not change a demo pan's activation, horizontal or vertical. A Rust
+  UIScrollView zeroes the velocity after a rest itself (`ui_scroll::release_velocity`).
 - UIScrollView (measured, selectable-grid-list's FlatList): the drag is 1:1 from the pan's
   activation; at the lift it decelerates (0.998/ms) only from a finger faster than ~335 pt/s and
   not after a 100 ms rest: `ui_scroll::uiscroll_release`. Below that it stops under the finger.

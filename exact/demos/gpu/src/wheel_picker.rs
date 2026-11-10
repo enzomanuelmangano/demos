@@ -57,7 +57,7 @@ pub fn surface() -> Box<dyn Surface> {
         clamped: Timing::at(0.0),
         last_clamped: f64::NAN,
         context: 0.0,
-        pan: PanGesture::new().uikit(),
+        pan: PanGesture::new(),
         line_index: -1,
         count: 0,
         posted: Vec::new(),
@@ -306,8 +306,8 @@ mod tests {
         let finger = |s: &mut Box<dyn Surface>, phase, x, at_ms| {
             s.input(&InputEvent::Pointer { id: 1, phase, x, y: 75.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
         };
-        // Drag left 103 pt slowly; the pan activates 10.3 pt in (UIKit's translation starts
-        // there): offset 210 − 92.7 → 4.6 lines; the haptics and counts posted.
+        // Drag left 103 pt slowly; RNGH on iOS leaves UIKit's 10 pt hysteresis out of the
+        // translation: offset 210 − 93 → 4.65 lines; the haptics and counts posted.
         finger(&mut s, PointerPhase::Down, 300.0, 0.0);
         for i in 1..=10 {
             finger(&mut s, PointerPhase::Move, 300.0 - 10.3 * i as f32, 30.0 * i as f64);
@@ -323,7 +323,7 @@ mod tests {
             fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         }
         // The finger rested 300 ms, but UIKit's velocity is the last move's (343 pt/s, as on RN):
-        // snapPoint projects 92.7 + 0.2 · 343 = 161 → 8 lines (offset 50): count 8.
+        // snapPoint projects 93 + 0.2 · 343 = 161.6 → 8 lines (offset 50): count 8.
         assert!(s.agent("{}").unwrap().contains("\"count\":8,\"offset\":50.00"), "{}", s.agent("{}").unwrap());
         // Expanding keeps tick 8 (offset 210 − 400 = −190), no count change.
         s.bind(&[Value::Bool(true)], None).unwrap();

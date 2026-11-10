@@ -234,14 +234,16 @@ mod tests {
         assert!(!lit(&img, 105, 100), "above {:?}", img.at(105, 100));
         let pointer = |phase, x, y, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
         s.input(&pointer(exact_gpu::PointerPhase::Down, 105.0, 228.0, 10.0));
-        for i in 1..=10 {
-            s.input(&pointer(exact_gpu::PointerPhase::Move, 105.0, 228.0 - 12.0 * i as f32, 10.0 + 16.0 * i as f64));
+        // RNGH on iOS leaves UIKit's 10 pt hysteresis out of the translation: 130 pt of travel
+        // translate it 120.
+        for i in 1..=11 {
+            s.input(&pointer(exact_gpu::PointerPhase::Move, 105.0, 228.0 - (12.0 * i as f32).min(130.0), 10.0 + 16.0 * i as f64));
         }
         let (img, _) = fixture::render(&gpu, &mut s, &frame(200.0)).unwrap();
         img.save("metaball-dragged");
         assert!(lit(&img, 105, 108), "dragged {:?}", img.at(105, 108));
         // Lifted, the first stays 120 pt above the second: their gap of 0 bridges.
-        s.input(&pointer(exact_gpu::PointerPhase::Up, 105.0, 108.0, 200.0));
+        s.input(&pointer(exact_gpu::PointerPhase::Up, 105.0, 98.0, 200.0));
         let (img, _) = fixture::render(&gpu, &mut s, &frame(300.0)).unwrap();
         img.save("metaball-bridge");
         assert!(lit(&img, 105, 168), "bridge {:?}", img.at(105, 168));
@@ -249,7 +251,8 @@ mod tests {
         // The lift at another point than the last move: circleGesture has no onEnd.
         s.input(&pointer(exact_gpu::PointerPhase::Down, 105.0, 108.0, 400.0));
         s.input(&pointer(exact_gpu::PointerPhase::Move, 105.0, 96.0, 416.0));
-        s.input(&pointer(exact_gpu::PointerPhase::Up, 105.0, 90.0, 432.0));
+        s.input(&pointer(exact_gpu::PointerPhase::Move, 105.0, 86.0, 424.0));
+        s.input(&pointer(exact_gpu::PointerPhase::Up, 105.0, 78.0, 432.0));
         assert_eq!(s.first, (105.0, 96.0));
     }
 
@@ -259,6 +262,7 @@ mod tests {
         s.second = (Spring::at(105.0), Spring::at(228.0));
         let pointer = |phase, x, y, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
         s.input(&pointer(exact_gpu::PointerPhase::Down, 105.0, 228.0, 0.0));
+        s.input(&pointer(exact_gpu::PointerPhase::Move, 105.0, 240.0, 8.0));
         s.input(&pointer(exact_gpu::PointerPhase::Move, 105.0, 400.0, 16.0));
         s.input(&pointer(exact_gpu::PointerPhase::Up, 105.0, 400.0, 32.0));
         assert!(s.second.1.running);

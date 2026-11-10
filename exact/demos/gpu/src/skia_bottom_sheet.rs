@@ -279,16 +279,17 @@ mod tests {
         let finger = |s: &mut Box<dyn Surface>, phase, y: f32, at_ms| {
             s.input(&InputEvent::Pointer { id: 1, phase, x: 210.0, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
         };
+        // RNGH on iOS leaves UIKit's 10 pt hysteresis out of the translation: 410 pt of travel.
         finger(&mut s, PointerPhase::Down, 800.0, 0.0);
-        for i in 1..=20 {
-            finger(&mut s, PointerPhase::Move, 800.0 - 20.0 * i as f32, 16.0 * i as f64);
+        for i in 1..=21 {
+            finger(&mut s, PointerPhase::Move, 800.0 - (20.0 * i as f32).min(410.0), 16.0 * i as f64);
         }
         assert!(s.agent("{}").unwrap().starts_with("{\"translateY\":-400.00"), "{}", s.agent("{}").unwrap());
         let (dragged, held) = fixture::render(&gpu, s.as_mut(), &frame(400.0)).unwrap();
         dragged.save("skia-bottom-sheet-dragged");
         assert!(held);
         assert!(dragged.at(210, 374)[0] >= 190, "the handle at 362 + 10: {:?}", dragged.at(210, 374));
-        finger(&mut s, PointerPhase::Up, 400.0, 420.0);
+        finger(&mut s, PointerPhase::Up, 390.0, 420.0);
         let mut ms = 400.0;
         let mut animating = true;
         while animating && ms < 5000.0 {
@@ -308,6 +309,7 @@ mod tests {
         assert!(s.agent("{}").unwrap().starts_with("{\"translateY\":-456.00"));
         // A small drag down from the open sheet snaps it closed once under a third.
         finger(&mut s, PointerPhase::Down, 320.0, 7000.0);
+        finger(&mut s, PointerPhase::Move, 330.0, 7050.0);
         finger(&mut s, PointerPhase::Move, 520.0, 7100.0);
         finger(&mut s, PointerPhase::Move, 720.0, 7200.0);
         finger(&mut s, PointerPhase::Up, 720.0, 7300.0);

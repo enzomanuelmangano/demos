@@ -106,7 +106,7 @@ fn grid() -> SelectableGrid {
         start: None,
         last_pending: None,
         down: (0.0, 0.0),
-        pan: PanGesture::new().uikit(),
+        pan: PanGesture::new(),
         tap: TapGesture::default().max_distance(5.0),
         active: [false; ITEMS],
         border: std::array::from_fn(|_| Timing::at(0.0)),

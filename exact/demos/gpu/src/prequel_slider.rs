@@ -487,16 +487,22 @@ mod tests {
         let finger = |s: &mut Box<dyn Surface>, phase, x, at_ms| {
             s.input(&InputEvent::Pointer { id: 1, phase, x, y: 2409.0 / 3.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
         };
-        // Drag left 253 pt slowly: offset 210 − 253 → progress 0.506; release, snap to 0.5.
+        // Drag left slowly (RNGH on iOS leaves UIKit's 10 pt hysteresis out of the
+        // translation): offset 210 − 254.5 → progress 0.506; release, snap to 0.5.
         finger(&mut s, PointerPhase::Down, 350.0, 0.0);
-        for i in 1..=22 {
+        for i in 1..=23 {
             finger(&mut s, PointerPhase::Move, 350.0 - 11.5 * i as f32, 40.0 * i as f64);
         }
         // A haptic per line index reached (11.5 pt moves skip some of the 26).
         let posted = s.messages();
         assert!(posted.iter().filter(|m| *m == "haptic:selection").count() > 15, "{posted:?}");
         assert!(s.agent("").unwrap().ends_with("\"lineIndex\":25}"), "{}", s.agent("").unwrap());
-        finger(&mut s, PointerPhase::Up, 97.0, 2000.0);
+        // The finger slows before the lift: UIKit keeps the last move's velocity at a lift
+        // after a rest, so a release meant to be still ends on slow moves.
+        // (here easing back 2 pt: offset 210 − 252.5 + 0.2 · 25 → snaps to −40).
+        finger(&mut s, PointerPhase::Move, 86.5, 960.0);
+        finger(&mut s, PointerPhase::Move, 87.5, 1000.0);
+        finger(&mut s, PointerPhase::Up, 87.5, 2000.0);
         let mut ms = 2000.0;
         let mut img = rest;
         let mut moving = true;

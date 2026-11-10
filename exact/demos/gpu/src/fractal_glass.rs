@@ -446,7 +446,8 @@ mod tests {
         finger(&mut s, PointerPhase::Move, 200.0, 400.0, 60.0);
         finger(&mut s, PointerPhase::Move, 220.0, 480.0, 80.0);
         finger(&mut s, PointerPhase::Up, 220.0, 480.0, 90.0);
-        assert!(s.agent("{}").unwrap().contains("\"cx\":200.0,\"cy\":450.0"), "{}", s.agent("{}").unwrap());
+        // RNGH on iOS leaves UIKit's 10 pt hysteresis (along the set-off, down) out: (20, 170).
+        assert!(s.agent("{}").unwrap().contains("\"cx\":200.0,\"cy\":440.0"), "{}", s.agent("{}").unwrap());
         let (b, _) = fixture::render(&gpu, s.as_mut(), &frame(100.0)).unwrap();
         b.save("fractal-glass-moved");
         // Wholly behind the pane: no sharp orange anywhere.
@@ -588,9 +589,11 @@ mod tests {
         // A fractional centre, so nothing lands on the pixel grid by luck.
         let (cx, cy) = (183.3f32, 341.7f32);
         s.input(&InputEvent::Pointer { id: 1, phase: PointerPhase::Down, x: 180.0, y: 270.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: 0.0 });
-        s.input(&InputEvent::Pointer { id: 1, phase: PointerPhase::Move, x: 180.0 + 20.0, y: 270.0 + 20.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: 10.0 });
-        s.input(&InputEvent::Pointer { id: 1, phase: PointerPhase::Move, x: 180.0 + (cx - 180.0), y: 270.0 + (cy - 270.0), dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: 20.0 });
-        s.input(&InputEvent::Pointer { id: 1, phase: PointerPhase::Up, x: 180.0 + (cx - 180.0), y: 270.0 + (cy - 270.0), dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: 30.0 });
+        // The pan sets off straight down: UIKit's 10 pt hysteresis is left out of the
+        // translation (RNGH on iOS), so the finger ends 10 pt past the centre's travel.
+        s.input(&InputEvent::Pointer { id: 1, phase: PointerPhase::Move, x: 180.0, y: 270.0 + 20.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: 10.0 });
+        s.input(&InputEvent::Pointer { id: 1, phase: PointerPhase::Move, x: 180.0 + (cx - 180.0), y: 280.0 + (cy - 270.0), dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: 20.0 });
+        s.input(&InputEvent::Pointer { id: 1, phase: PointerPhase::Up, x: 180.0 + (cx - 180.0), y: 280.0 + (cy - 270.0), dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: 30.0 });
         assert!(s.agent("{}").unwrap().contains("\"cx\":183.3,\"cy\":341.7"), "{}", s.agent("{}").unwrap());
         let (img, _) = fixture::render(&gpu, s.as_mut(), &frame).unwrap();
         img.save("fractal-glass-reference");

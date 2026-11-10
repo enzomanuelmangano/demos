@@ -375,9 +375,10 @@ mod tests {
         assert_eq!(open.at(2 * 10, 2 * 100)[3], 102);
         assert_eq!(&open.at(2 * 40, 2 * 590)[..3], &[0x11, 0x11, 0x11]);
 
-        // Drag it down 200: it shrinks, and the release closes it.
+        // Drag it down 210 (RNGH on iOS leaves UIKit's 10 pt hysteresis out: translation 200):
+        // it shrinks, and the release closes it.
         s.input(&pointer(PointerPhase::Down, 210.0, 400.0, ms));
-        for k in 1..=20 {
+        for k in 1..=21 {
             ms += 16.0;
             s.input(&pointer(PointerPhase::Move, 210.0, 400.0 + 10.0 * k as f32, ms));
             fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
@@ -386,7 +387,7 @@ mod tests {
         dragged.save("floating-modal-dragged");
         let state = s.agent("{}").unwrap();
         assert!(state.contains("\"scale\":0.8008"), "{state}");
-        s.input(&pointer(PointerPhase::Up, 210.0, 600.0, ms));
+        s.input(&pointer(PointerPhase::Up, 210.0, 610.0, ms));
         while ms < 3000.0 {
             ms += 16.0;
             fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();

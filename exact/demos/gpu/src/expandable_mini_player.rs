@@ -398,16 +398,17 @@ mod tests {
         assert_eq!(&full.at(2 * 52, 2 * 870)[..3], &[0x0D, 0x0D, 0x0D]);
         assert_eq!(&full.at(2 * 210, 2 * 72)[..3], &[0x76, 0x76, 0x76]);
 
-        // Drag down 300 and let go: progress 0.67 < 0.8, it collapses.
+        // Drag down 310 (RNGH on iOS leaves UIKit's 10 pt hysteresis out: translation 300) and
+        // let go: progress 0.67 < 0.8, it collapses.
         s.input(&pointer(PointerPhase::Down, 210.0, 400.0, ms));
-        for k in 1..=15 {
+        for k in 1..=16 {
             ms += 16.0;
-            s.input(&pointer(PointerPhase::Move, 210.0, 400.0 + 20.0 * k as f32, ms));
+            s.input(&pointer(PointerPhase::Move, 210.0, 400.0 + (20.0 * k as f32).min(310.0), ms));
             fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         }
         let state = s.agent("{}").unwrap();
         assert!(state.contains("\"progress\":0.671"), "{state}");
-        s.input(&pointer(PointerPhase::Up, 210.0, 700.0, ms));
+        s.input(&pointer(PointerPhase::Up, 210.0, 710.0, ms));
         while ms < 4000.0 {
             ms += 16.0;
             fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
