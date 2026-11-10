@@ -8,6 +8,9 @@ use AnimatedClipBox from "./animated-clip-box/animated-clip-box.contract"
 use AnimatedCountText from "./animated-count-text/animated-count-text.contract"
 use AnimatedGridList from "./animated-grid-list/animated-grid-list.contract"
 use AnimatedIndicatorList from "./animated-indicator-list/animated-indicator-list.contract"
+use AtlasButton from "./atlas-button/atlas-button.contract"
+use AtlasSphere from "./atlas-sphere/atlas-sphere.contract"
+use AudioPlayer from "./audio-player/audio-player.contract"
 use BalanceSlider from "./balance-slider/balance-slider.contract"
 use BlurCards from "./blur-cards/blur-cards.contract"
 use BlurCircles from "./blur-circles/blur-circles.contract"
@@ -26,11 +29,14 @@ use DynamicBlurTabs from "./dynamic-blur-tabs/dynamic-blur-tabs.contract"
 use DynamicTabIndicator from "./dynamic-tab-indicator/dynamic-tab-indicator.contract"
 use EmailDemo from "./email-demo/email-demo.contract"
 use EverybodyCanCook from "./everybody-can-cook/everybody-can-cook.contract"
+use ExpandableMiniPlayer from "./expandable-mini-player/expandable-mini-player.contract"
 use FamilyNumberInput from "./family-number-input/family-number-input.contract"
 use FibonacciShader from "./fibonacci-shader/fibonacci-shader.contract"
 use FloatingBottomBar from "./floating-bottom-bar/floating-bottom-bar.contract"
+use FloatingModal from "./floating-modal/floating-modal.contract"
 use FluidSlider from "./fluid-slider/fluid-slider.contract"
 use FluidTabInteraction from "./fluid-tab-interaction/fluid-tab-interaction.contract"
+use FractalGlass from "./fractal-glass/fractal-glass.contract"
 use GeometryButton from "./geometry-button/geometry-button.contract"
 use GithubContributions from "./github-contributions/github-contributions.contract"
 use ImessageStack from "./imessage-stack/imessage-stack.contract"
@@ -42,6 +48,7 @@ use Metaball from "./metaball/metaball.contract"
 use MilesBarChart from "./miles-bar-chart/miles-bar-chart.contract"
 use MotionBlur from "./motion-blur/motion-blur.contract"
 use OnlineOffline from "./online-offline/online-offline.contract"
+use PaperFolding from "./paper-folding/paper-folding.contract"
 use PopupHandler from "./popup-handler/popup-handler.contract"
 use RadarChart from "./radar-chart/radar-chart.contract"
 use RecordButton from "./record-button/record-button.contract"
@@ -60,10 +67,12 @@ use StackedCarousel from "./stacked-carousel/stacked-carousel.contract"
 use StackedList from "./stacked-list/stacked-list.contract"
 use StackedModals from "./stacked-modals/stacked-modals.contract"
 use StaggeredCardNumber from "./staggered-card-number/staggered-card-number.contract"
+use SteddyGraphInteraction from "./steddy-graph-interaction/steddy-graph-interaction.contract"
 use Steps from "./steps/steps.contract"
 use StoryList from "./story-list/story-list.contract"
 use SwipeCards from "./swipe-cards/swipe-cards.contract"
 use TabNavigation from "./tab-navigation/tab-navigation.contract"
+use TheLittlePrince from "./the-little-prince/the-little-prince.contract"
 use ThemeCanvasAnimation from "./theme-canvas-animation/theme-canvas-animation.contract"
 use Toast from "./toast/toast.contract"
 use TwitterTabBar from "./twitter-tab-bar/twitter-tab-bar.contract"
@@ -91,6 +100,12 @@ component PortedDemo
         AnimatedGridList(env=env)
       if slug == "animated-indicator-list"
         AnimatedIndicatorList(env=env)
+      if slug == "atlas-button"
+        AtlasButton(env=env)
+      if slug == "atlas-sphere"
+        AtlasSphere(env=env)
+      if slug == "audio-player"
+        AudioPlayer(env=env)
       if slug == "balance-slider"
         BalanceSlider(env=env)
       if slug == "blur-cards"
@@ -127,16 +142,22 @@ component PortedDemo
         EmailDemo(env=env)
       if slug == "everybody-can-cook"
         EverybodyCanCook()
+      if slug == "expandable-mini-player"
+        ExpandableMiniPlayer(env=env)
       if slug == "family-number-input"
         FamilyNumberInput(env=env)
       if slug == "fibonacci-shader"
         FibonacciShader(env=env)
       if slug == "floating-bottom-bar"
         FloatingBottomBar(env=env)
+      if slug == "floating-modal"
+        FloatingModal(env=env)
       if slug == "fluid-slider"
         FluidSlider(env=env)
       if slug == "fluid-tab-interaction"
         FluidTabInteraction(env=env)
+      if slug == "fractal-glass"
+        FractalGlass()
       if slug == "geometry-button"
         GeometryButton()
       if slug == "github-contributions"
@@ -159,6 +180,8 @@ component PortedDemo
         MotionBlur(env=env)
       if slug == "online-offline"
         OnlineOffline(env=env)
+      if slug == "paper-folding"
+        PaperFolding()
       if slug == "popup-handler"
         PopupHandler(env=env)
       if slug == "radar-chart"
@@ -195,6 +218,8 @@ component PortedDemo
         StackedModals(env=env)
       if slug == "staggered-card-number"
         StaggeredCardNumber()
+      if slug == "steddy-graph-interaction"
+        SteddyGraphInteraction(env=env)
       if slug == "steps"
         Steps(env=env)
       if slug == "story-list"
@@ -203,6 +228,8 @@ component PortedDemo
         SwipeCards(env=env)
       if slug == "tab-navigation"
         TabNavigation(env=env)
+      if slug == "the-little-prince"
+        TheLittlePrince(env=env)
       if slug == "theme-canvas-animation"
         ThemeCanvasAnimation()
       if slug == "toast"

@@ -52,7 +52,6 @@ radar-chart
 record-button
 scroll-progress
 scrollable-bottom-sheet
-selectable-grid-list
 shake-to-delete
 shared-transitions
 skia-bottom-sheet
