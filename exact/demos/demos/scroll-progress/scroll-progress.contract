@@ -46,7 +46,7 @@ fn percentOf(p: number): number = round(p * 100)
 // The pill's width (500 ms) moves every box inside it on the same curve, as Yoga relays
 // them out each frame.
 style PillMotion
-  -exact-layout-transition="500ms cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+  -exact-layout-transition="500ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
 
 component ScrollProgress
   props
@@ -111,7 +111,7 @@ component BottomProgress
       row class=PillMotion flex=1 margin=5 padding-left=10 padding-right=10 border-radius=40
         background-color="#2E2D2E" justify-content="center" align-items="center"
         opacity=(isExpanded(progress) ? 1 : 0)
-        transition="opacity 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)" testId="progress-bar-area"
+        transition="opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)" testId="progress-bar-area"
         // ReText: #9E9E9E, 15, width 50, centred. A text per frame is a layout per frame: every
         // label 0%…100% is laid out once in a strip, clipped to one line and slid to the
         // current one by a translate.
@@ -135,18 +135,18 @@ component BottomProgress
       view class=PillMotion position="absolute" top=5 left=5 right=5 bottom=5 border-radius=40
         background-color="#2E2D2E"
         opacity=(isExpanded(progress) ? 0 : 1)
-        transition="opacity 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)" testId="collapsed-area"
+        transition="opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)" testId="collapsed-area"
         // The reading time, shown at INITIAL: #9E9E9E, marginHorizontal 5, one line, shrunk to
         // fit (adjustsFontSizeToFit).
         column class=PillMotion position="absolute" inset=0 align-items="center" justify-content="center"
           opacity=(isInitial(progress) ? 1 : 0)
-          transition="opacity 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+          transition="opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
           text readingTime() color="#9E9E9E" margin-left=5 margin-right=5 white-space="nowrap"
             -exact-fit="shrink" testId="reading-time"
         // The up arrow, shown at END: PressableOpacity, AntDesign arrow-up 24 #9E9E9E; pressed,
         // it scrolls to the top (only at END).
         column class=PillMotion position="absolute" inset=0 opacity=(isEnd(progress) ? 1 : 0)
-          transition="opacity 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+          transition="opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
           view display="flex" flex-direction="column" class=PressableOpacity flex=1 align-items="center" justify-content="center" press=reset
             role="button" aria-label="Back to the top" testId="reset"
             image "symbol:sf/arrow.up" font-size=24 color="#9E9E9E" aria-hidden=true
