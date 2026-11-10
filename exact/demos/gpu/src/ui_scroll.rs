@@ -124,6 +124,8 @@ pub struct UiScroll {
     /// RN's `bounces` (default true): false holds the content inside its ends.
     pub bounces: bool,
     state: State,
+    /// The pan has crossed its hysteresis once; UIKit begins it on the next move.
+    armed: bool,
     drag_ended: bool,
     pan: PanGesture,
 }
@@ -131,7 +133,7 @@ pub struct UiScroll {
 impl UiScroll {
     /// At `offset`, at rest.
     pub fn new(offset: f64, max: f64, port: f64, rate: f64, snap: Snap) -> UiScroll {
-        UiScroll { offset, max, port, rate, snap, bounces: true, state: State::Idle, drag_ended: false, pan: PanGesture::new() }
+        UiScroll { offset, max, port, rate, snap, bounces: true, state: State::Idle, armed: false, drag_ended: false, pan: PanGesture::new() }
     }
 
     /// Whether it moves (or a finger holds it).
@@ -189,12 +191,21 @@ impl UiScroll {
         }
         let was_dragging = self.dragging();
         match self.pan.event(id, phase, x, y, at_ms, inside) {
-            Event::Start(p) => self.state = State::Drag { raw: self.raw(), x: p.x as f64 },
+            // UIScrollView's pan begins on the second move past the 10 pt hysteresis, and the
+            // content follows from that move (measured with the scroll probe: 7 of 9 argent drags,
+            // 2 to 21 pt per move; the other two began on the first).
+            Event::Start(_) => self.armed = true,
+            Event::Update(p) if self.armed => {
+                self.armed = false;
+                self.state = State::Drag { raw: self.raw(), x: p.x as f64 };
+            }
             Event::Update(p) => {
                 if let State::Drag { raw, x } = self.state {
                     self.offset = self.dragged(raw + (x - p.x as f64));
                 }
             }
+            // Lifted before the pan began: no drag, nothing to decelerate.
+            Event::End(_) if self.armed => self.armed = false,
             Event::End(p) => {
                 let rest = self.pan.rest_ms(at_ms);
                 self.release(uiscroll_release(p.velocity_x, rest), release_velocity(p.velocity_x, rest));
@@ -325,7 +336,8 @@ mod tests {
         assert!((s.dragged(s.raw()) - 94.5).abs() < 1e-9);
         s.input(1, Phase::Down, 200.0, 10.0, 0.0, true);
         s.input(1, Phase::Move, 215.0, 10.0, 16.0, true);
-        // Activated at 15 pt: no jump.
+        // Past 10 pt, and the next move begins it: no jump.
+        s.input(1, Phase::Move, 230.0, 10.0, 24.0, true);
         assert!((s.offset - 94.5).abs() < 1e-9, "{}", s.offset);
         s.input(1, Phase::Move, 300.0, 10.0, 32.0, true);
         assert!(s.offset < 94.5 && s.offset > 0.0, "{}", s.offset);
@@ -373,9 +385,9 @@ mod tests {
         s.input(1, Phase::Move, 130.0, 10.0, 16.0, true);
         s.input(1, Phase::Move, 300.0, 10.0, 32.0, true);
         assert_eq!(s.offset, 0.0, "no band past the start");
-        s.input(1, Phase::Move, 100.0, 10.0, 48.0, true);
+        s.input(1, Phase::Move, 150.0, 10.0, 48.0, true);
         assert!(s.offset > 0.0 && s.offset < 200.0, "{}", s.offset);
-        s.input(1, Phase::Up, 100.0, 10.0, 600.0, true);
+        s.input(1, Phase::Up, 150.0, 10.0, 600.0, true);
         assert!(s.take_drag_end());
         assert!(!s.take_drag_end(), "once");
         settle(&mut s, 600.0);
@@ -473,5 +485,22 @@ mod tests {
         s.release(-291.2, -291.2);
         settle(&mut s, 0.0);
         assert!((s.offset - 142.33).abs() < 0.3, "{}", s.offset);
+    }
+
+    #[test]
+    fn a_flick_drags_from_the_second_move_past_the_hysteresis() {
+        // scroll-probe, decelerationRate 0.8, snapping every 84: touches at their UITouch times.
+        // UIKit began on the move to 260.33, held 67 at the lift (the lift's own point does not
+        // move the content), reported 952.6 pt/s and rested on 168.
+        let mut s = UiScroll::new(0.0, 2000.0, 420.0, 0.8, Snap::Interval(84.0));
+        let moves = [(18.2, 277.33), (36.9, 260.33), (55.5, 243.67), (73.2, 226.67), (90.2, 210.0), (115.1, 193.33)];
+        s.input(1, Phase::Down, 294.0, 10.0, 0.0, true);
+        for (ms, x) in moves {
+            s.input(1, Phase::Move, x, 10.0, ms, true);
+        }
+        assert!((s.offset - 67.0).abs() < 0.01, "{}", s.offset);
+        s.input(1, Phase::Up, 176.33, 10.0, 133.4, true);
+        settle(&mut s, 140.0);
+        assert_eq!(s.offset, 168.0);
     }
 }
