@@ -19,6 +19,7 @@ pub mod shaders {
 mod bench;
 pub mod gfx;
 pub mod gooey;
+pub mod qr;
 pub mod ui_scroll;
 
 pub mod airbnb_flip_card;
@@ -37,6 +38,7 @@ pub mod blurred_scroll;
 pub mod bottom_bar_skia;
 pub mod card_shader_reflections;
 pub mod circular_carousel;
+pub mod cherry_blossom_qrcode;
 pub mod clock_time_picker;
 pub mod color_carousel;
 pub mod coverflow_carousel;
@@ -47,6 +49,7 @@ pub mod dot_sheet_card;
 pub mod duration_slider;
 pub mod dynamic_blur_tabs;
 pub mod email_demo;
+pub mod empty_qr_code;
 pub mod exclusion_tabs;
 pub mod expandable_mini_player;
 pub mod fibonacci_shader;
@@ -67,9 +70,11 @@ pub mod loading_button;
 pub mod magnet_spring;
 pub mod metaball;
 pub mod miles_bar_chart;
+pub mod notion_qrcode;
 pub mod paper_folding;
 pub mod particles_button;
 pub mod prequel_slider;
+pub mod qr_code_generator;
 pub mod radar_chart;
 pub mod record_button;
 pub mod scrollable_shapes;
@@ -77,12 +82,14 @@ pub mod selectable_grid_list;
 pub mod skia_bottom_sheet;
 pub mod skia_color_picker;
 pub mod slide_to_reveal;
+pub mod snake;
 pub mod sphere_waves;
 pub mod spiral;
 pub mod stacked_carousel;
 pub mod staggered_card_number;
 pub mod steddy_graph_interaction;
 pub mod story_list;
+pub mod sudoku;
 pub mod swipe_cards;
 pub mod telegram_lottie;
 pub mod telegram_theme_switch;
@@ -112,6 +119,7 @@ pub static REGISTRY: Registry = Registry {
         ("bottom_bar_skia", 1, bottom_bar_skia::surface),
         ("card_shader_reflections", 0, card_shader_reflections::surface),
         ("circular_carousel", 1, circular_carousel::surface),
+        ("cherry_blossom_qrcode", 4, cherry_blossom_qrcode::surface),
         ("clock_time_picker", 0, clock_time_picker::surface),
         ("color_carousel", 0, color_carousel::surface),
         ("coverflow_carousel", 0, coverflow_carousel::surface),
@@ -122,6 +130,7 @@ pub static REGISTRY: Registry = Registry {
         ("duration_slider", 0, duration_slider::surface),
         ("dynamic_blur_tabs", 7, dynamic_blur_tabs::surface),
         ("email_row", 2, email_demo::surface),
+        ("empty_qr_code", 0, empty_qr_code::surface),
         ("exclusion_tabs", 0, exclusion_tabs::surface),
         ("expandable_mini_player", 1, expandable_mini_player::surface),
         ("fibonacci_shader", 1, fibonacci_shader::surface),
@@ -142,9 +151,11 @@ pub static REGISTRY: Registry = Registry {
         ("magnet_spring", 0, magnet_spring::surface),
         ("metaball", 0, metaball::surface),
         ("miles_bar_chart", 7, miles_bar_chart::surface),
+        ("notion_qrcode", 0, notion_qrcode::surface),
         ("paper_folding", 0, paper_folding::surface),
         ("particles_button", 1, particles_button::surface),
         ("prequel_slider", 2, prequel_slider::surface),
+        ("qr_code_generator", 3, qr_code_generator::surface),
         ("radar_chart", 10, radar_chart::surface),
         ("record_button", 1, record_button::surface),
         ("scrollable_shapes", 0, scrollable_shapes::surface),
@@ -152,6 +163,7 @@ pub static REGISTRY: Registry = Registry {
         ("skia_bottom_sheet", 0, skia_bottom_sheet::surface),
         ("skia_color_picker", 0, skia_color_picker::surface),
         ("slide_to_reveal", 0, slide_to_reveal::surface),
+        ("snake", 3, snake::surface),
         ("sphere_waves", 0, sphere_waves::surface),
         ("spiral", 0, spiral::surface),
         ("stacked_carousel", 0, stacked_carousel::surface),
@@ -159,6 +171,7 @@ pub static REGISTRY: Registry = Registry {
         ("steddy_graph_interaction", 1, steddy_graph_interaction::surface),
         ("steddy_highlight", 1, steddy_graph_interaction::highlight),
         ("story_list", 0, story_list::surface),
+        ("sudoku", 3, sudoku::surface),
         ("swipe_cards", 4, swipe_cards::surface),
         ("telegram_theme_switch", 1, telegram_theme_switch::surface),
         ("the_little_prince", 2, the_little_prince::surface),

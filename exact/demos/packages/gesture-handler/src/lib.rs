@@ -1,4 +1,4 @@
-//! react-native-gesture-handler's Pan, Tap and Pinch, recognised from the pointer events a canvas
+//! react-native-gesture-handler's Pan, Tap, Pinch and Fling, recognised from the pointer events a canvas
 //! that asks for input receives (exact-gpu's `InputEvent::Pointer`, in canvas points with the
 //! host's clock). A surface keeps one recognizer per gesture and asks it, per event, what the
 //! RNGH callbacks would have been told.
@@ -34,6 +34,7 @@
 //! - Pinch is two fingers: it starts when one of them moves while both are down, and its
 //!   `scale` is their distance over the distance when the second came down (UIKit's
 //!   `UIPinchGestureRecognizer.scale`, 1 at the start); it ends when either lifts.
+//! - Fling is UIKit's `UISwipeGestureRecognizer` with its own thresholds ([`FlingGesture`]).
 
 #![deny(missing_docs)]
 
@@ -427,6 +428,218 @@ impl PinchGesture {
     }
 }
 
+/// RNGH's `Directions` (`Directions.RIGHT` …), the bits of UIKit's
+/// `UISwipeGestureRecognizerDirection` that RNFlingHandler hands its recognizer.
+pub mod directions {
+    /// `Directions.RIGHT`.
+    pub const RIGHT: u32 = 1;
+    /// `Directions.LEFT`.
+    pub const LEFT: u32 = 2;
+    /// `Directions.UP`.
+    pub const UP: u32 = 4;
+    /// `Directions.DOWN`.
+    pub const DOWN: u32 = 8;
+}
+
+/// What a [`FlingGesture`] says about an event.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum FlingEvent {
+    /// Nothing for this gesture.
+    None,
+    /// `onBegin`: RNBetterSwipeGestureRecognizer's touchesBegan sends BEGAN at the first touch.
+    Begin {
+        /// Canvas x.
+        x: f32,
+        /// Canvas y.
+        y: f32,
+    },
+    /// `onStart` (then `onEnd`): the swipe recognised on this move.
+    Start {
+        /// Canvas x.
+        x: f32,
+        /// Canvas y.
+        y: f32,
+    },
+    /// `onFinalize` without activating.
+    Fail,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Swipe {
+    Possible,
+    Recognized,
+    Failed,
+}
+
+/// `Gesture.Fling().direction(d)` on iOS: RNGH 3.3's RNFlingHandler is UIKit's
+/// `UISwipeGestureRecognizer` (RNBetterSwipeGestureRecognizer only adds the BEGAN at touch-down),
+/// so this is UIKit's swipe as UIKitCore runs it (`-[UISwipeGestureRecognizer touchesMoved:]` and
+/// `_checkForSwipeWithDelta:time:currentPositionChange:currentTimeChange:indirect:`, read from
+/// the arm64 code and the defaults a fresh recognizer holds: exact/parity-tools/swipe-probe):
+/// - `maximumDuration` 0.5 s: a move later than that from the touch-down fails it.
+/// - On each move, with t = min(time since touch-down, 0.5) and (dx, dy) the travel from the
+///   touch-down: the needed primary travel is `minimumPrimaryMovement` 50 pt × (1 − t × (1 −
+///   `rateOfMinimumMovementDecay` 0.06)) and the allowed sideways travel
+///   `maximumSecondaryMovement` 50 pt × (1 − t × (1 − `rateOfMaximumMovementDecay` 0.02));
+///   `maximumPrimaryMovement` is FLT_MAX, `minimumSecondaryMovement` and
+///   `minimumPrimaryMovementRate` 0. A single direction fails at any travel against it
+///   (`maximumOppositeMovement` 0: dx < 0 for RIGHT, dx > 0 for LEFT, dy < 0 for DOWN, dy > 0 for
+///   UP) and at a sideways travel past the allowance; it is recognised on the first move whose
+///   primary travel reaches the need.
+/// - `numberOfTouchesRequired` (RNGH `numberOfPointers`, 1): one more touch fails it; a lift
+///   before it is recognised fails it. It resets when all its touches are up.
+#[derive(Clone, Debug)]
+pub struct FlingGesture {
+    /// `.direction(d)`: a mask of [`directions`].
+    pub direction: u32,
+    /// `.numberOfPointers(n)`.
+    pub number_of_pointers: usize,
+    /// The touches it follows: id, where it came down, where it is.
+    touches: Vec<(u32, f64, f64, f64, f64)>,
+    /// Every touch down on it since its last reset.
+    down: Vec<u32>,
+    start_ms: f64,
+    state: Swipe,
+}
+
+impl FlingGesture {
+    /// `minimumPrimaryMovement`, points.
+    pub const MIN_PRIMARY: f64 = 50.0;
+    /// `maximumSecondaryMovement`, points.
+    pub const MAX_SECONDARY: f64 = 50.0;
+    /// `rateOfMinimumMovementDecay`.
+    pub const MIN_DECAY: f64 = 0.06;
+    /// `rateOfMaximumMovementDecay`.
+    pub const MAX_DECAY: f64 = 0.02;
+    /// `maximumDuration`, seconds (also the cap on the decays' time).
+    pub const MAX_DURATION: f64 = 0.5;
+
+    /// `Gesture.Fling().direction(direction)` (one pointer).
+    pub fn new(direction: u32) -> FlingGesture {
+        FlingGesture { direction, number_of_pointers: 1, touches: Vec::with_capacity(4), down: Vec::with_capacity(4), start_ms: 0.0, state: Swipe::Possible }
+    }
+
+    /// Whether a touch is down on it.
+    pub fn tracking(&self) -> bool {
+        !self.down.is_empty()
+    }
+
+    /// `_checkForSwipeWithDelta:…:indirect:NO` for one touch: `Some(true)` recognised, `Some(false)`
+    /// failed (too much movement), `None` still possible.
+    pub fn check(direction: u32, dx: f64, dy: f64, time_s: f64) -> Option<bool> {
+        let t = time_s.min(0.5);
+        let min_primary = Self::MIN_PRIMARY * (1.0 - t * (1.0 - Self::MIN_DECAY));
+        let max_secondary = Self::MAX_SECONDARY * (1.0 - t * (1.0 - Self::MAX_DECAY));
+        let max_opposite = 0.0;
+        let horizontal = direction & 3;
+        let vertical = direction & 12;
+        if (horizontal == directions::LEFT && dx > max_opposite)
+            || (horizontal == directions::RIGHT && dx < -max_opposite)
+            || (vertical == directions::DOWN && dy < -max_opposite)
+            || (vertical == directions::UP && dy > max_opposite)
+        {
+            return Some(false);
+        }
+        let mut recognised = false;
+        let mut failed = false;
+        if horizontal != 0 {
+            if dy.abs() > max_secondary {
+                return Some(false);
+            }
+            recognised = dx.abs() >= min_primary;
+        }
+        if vertical != 0 {
+            if dx.abs() > max_secondary {
+                failed = true;
+            } else if dy.abs() >= min_primary {
+                recognised = true;
+            }
+        }
+        if recognised {
+            Some(true)
+        } else if failed {
+            Some(false)
+        } else {
+            None
+        }
+    }
+
+    /// A pointer event; `claim` says whether a down here is this gesture's (a hit test).
+    pub fn event(&mut self, id: u32, phase: Phase, x: f32, y: f32, ms: f64, claim: bool) -> FlingEvent {
+        match phase {
+            Phase::Down => {
+                if !claim {
+                    return FlingEvent::None;
+                }
+                if self.down.is_empty() {
+                    self.state = Swipe::Possible;
+                    self.touches.clear();
+                }
+                self.down.push(id);
+                if self.state != Swipe::Possible {
+                    return FlingEvent::None;
+                }
+                if self.touches.len() + 1 > self.number_of_pointers {
+                    self.state = Swipe::Failed;
+                    return FlingEvent::Fail;
+                }
+                let first = self.touches.is_empty();
+                self.touches.push((id, x as f64, y as f64, x as f64, y as f64));
+                self.start_ms = ms;
+                if first {
+                    FlingEvent::Begin { x, y }
+                } else {
+                    FlingEvent::None
+                }
+            }
+            Phase::Move => {
+                if self.state != Swipe::Possible {
+                    return FlingEvent::None;
+                }
+                let Some(i) = self.touches.iter().position(|t| t.0 == id) else { return FlingEvent::None };
+                let time = (ms - self.start_ms) / 1000.0;
+                if time > Self::MAX_DURATION {
+                    self.state = Swipe::Failed;
+                    return FlingEvent::Fail;
+                }
+                self.touches[i].3 = x as f64;
+                self.touches[i].4 = y as f64;
+                let mut all = self.touches.len() == self.number_of_pointers;
+                let mut failed = false;
+                for t in &self.touches {
+                    match Self::check(self.direction, t.3 - t.1, t.4 - t.2, time) {
+                        Some(true) => {}
+                        Some(false) => {
+                            all = false;
+                            failed = true;
+                        }
+                        None => all = false,
+                    }
+                }
+                if all {
+                    self.state = Swipe::Recognized;
+                    FlingEvent::Start { x, y }
+                } else if failed {
+                    self.state = Swipe::Failed;
+                    FlingEvent::Fail
+                } else {
+                    FlingEvent::None
+                }
+            }
+            Phase::Up | Phase::Cancel => {
+                let Some(k) = self.down.iter().position(|&d| d == id) else { return FlingEvent::None };
+                self.down.swap_remove(k);
+                self.touches.retain(|t| t.0 != id);
+                if self.state == Swipe::Possible {
+                    self.state = Swipe::Failed;
+                    return FlingEvent::Fail;
+                }
+                FlingEvent::None
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -538,5 +751,45 @@ mod tests {
         tap.event(1, Phase::Down, 0.0, 0.0, 100.0, true);
         tap.event(1, Phase::Move, 5.5, 0.0, 150.0, true);
         assert_eq!(tap.event(1, Phase::Up, 5.5, 0.0, 160.0, true), Event::Fail);
+    }
+
+    #[test]
+    fn fling_is_uikits_swipe() {
+        use directions::*;
+        // 50 pt at touch-down, decaying by 0.94 / s of it: 45.3 pt at 0.1 s, 26.5 pt at 0.5 s.
+        let mut f = FlingGesture::new(RIGHT);
+        assert!(matches!(f.event(1, Phase::Down, 0.0, 0.0, 0.0, true), FlingEvent::Begin { .. }));
+        assert_eq!(f.event(1, Phase::Move, 45.0, 0.0, 100.0, true), FlingEvent::None);
+        assert!(matches!(f.event(1, Phase::Move, 45.4, 0.0, 100.0, true), FlingEvent::Start { .. }));
+        assert_eq!(f.event(1, Phase::Move, 90.0, 0.0, 120.0, true), FlingEvent::None, "once a touch");
+        assert_eq!(f.event(1, Phase::Up, 90.0, 0.0, 130.0, true), FlingEvent::None);
+        // Sideways: 50 pt × (1 − 0.98 t) allowed (35.3 at 0.3 s).
+        assert_eq!(FlingGesture::check(RIGHT, 40.0, 35.0, 0.3), Some(true));
+        assert_eq!(FlingGesture::check(RIGHT, 40.0, 35.4, 0.3), Some(false));
+        assert_eq!(FlingGesture::check(RIGHT, 30.0, -20.0, 0.3), None);
+        // Any travel against the direction fails it; the other axis' direction does not matter.
+        assert_eq!(FlingGesture::check(RIGHT, -0.5, 0.0, 0.1), Some(false));
+        assert_eq!(FlingGesture::check(UP, 10.0, 0.5, 0.1), Some(false));
+        assert_eq!(FlingGesture::check(UP, -10.0, -48.0, 0.0), None);
+        assert_eq!(FlingGesture::check(UP, -10.0, -50.0, 0.0), Some(true));
+        assert_eq!(FlingGesture::check(DOWN, 0.0, 26.5, 0.6), Some(true), "the decay stops at 0.5 s");
+        // Too slow: a move after 0.5 s fails it, however far.
+        let mut f = FlingGesture::new(LEFT);
+        f.event(1, Phase::Down, 100.0, 0.0, 0.0, true);
+        assert_eq!(f.event(1, Phase::Move, 90.0, 0.0, 400.0, true), FlingEvent::None);
+        assert_eq!(f.event(1, Phase::Move, 0.0, 0.0, 501.0, true), FlingEvent::Fail);
+        assert_eq!(f.event(1, Phase::Up, 0.0, 0.0, 510.0, true), FlingEvent::None);
+        // A lift before it is recognised fails it; a second finger fails it.
+        let mut f = FlingGesture::new(DOWN);
+        f.event(1, Phase::Down, 0.0, 0.0, 0.0, true);
+        assert_eq!(f.event(1, Phase::Up, 0.0, 20.0, 50.0, true), FlingEvent::Fail);
+        f.event(1, Phase::Down, 0.0, 0.0, 100.0, true);
+        assert_eq!(f.event(2, Phase::Down, 50.0, 0.0, 110.0, true), FlingEvent::Fail);
+        assert_eq!(f.event(1, Phase::Move, 0.0, 80.0, 150.0, true), FlingEvent::None);
+        f.event(1, Phase::Up, 0.0, 80.0, 160.0, true);
+        f.event(2, Phase::Up, 50.0, 0.0, 170.0, true);
+        // Reset once every touch is up.
+        f.event(3, Phase::Down, 0.0, 0.0, 200.0, true);
+        assert!(matches!(f.event(3, Phase::Move, 0.0, 60.0, 220.0, true), FlingEvent::Start { .. }));
     }
 }
