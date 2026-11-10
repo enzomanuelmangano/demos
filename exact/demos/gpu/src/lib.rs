@@ -22,6 +22,7 @@ pub mod gooey;
 pub mod qr;
 pub mod ui_scroll;
 
+pub mod add_to_cart;
 pub mod airbnb_flip_card;
 pub mod airbnb_flip_pages;
 pub mod alert_drawer_card;
@@ -103,6 +104,7 @@ pub mod wheel_picker;
 /// The module's surfaces and its reflected shaders.
 pub static REGISTRY: Registry = Registry {
     surfaces: &[
+        ("add_to_cart", 1, add_to_cart::surface),
         ("airbnb_flip_card", 1, airbnb_flip_card::surface),
         ("airbnb_flip_pages", 2, airbnb_flip_pages::surface),
         ("alert_drawer_card", 1, alert_drawer_card::surface),
