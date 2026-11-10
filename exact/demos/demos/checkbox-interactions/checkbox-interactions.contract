@@ -47,3 +47,5 @@ component Checkbox
           aria-hidden=true
           animation="checkIn 150ms cubic-bezier(0.895, 0.03, 0.685, 0.22) both"
           -exact-exit-animation="checkOut 150ms cubic-bezier(0.895, 0.03, 0.685, 0.22) both"
+          // The check's own layout={Layout} (the chip's spring).
+          -exact-layout-transition="-exact-spring(250, 30, 1)"
