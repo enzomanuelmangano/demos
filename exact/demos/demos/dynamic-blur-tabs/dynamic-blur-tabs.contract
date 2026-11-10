@@ -76,7 +76,7 @@ component DynamicBlurTabs
             view padding=4
               view width=((w - 40) / 4) height=((w - 40) / 4) box-sizing="border-box"
                 border-width=1 border-style="solid" border-color="rgba(255, 255, 255, 0.2)"
-                border-radius=4 corner-shape="squircle" background-image=gradientOf(env.seed, k)
+                border-radius=4 corner-shape="-exact-continuous" background-image=gradientOf(env.seed, k)
                 aria-hidden=true
       // The other tabs render null: the navigator's DefaultTheme background, rgb(242, 242, 242).
       if focusedIndex != 0
@@ -91,7 +91,7 @@ component DynamicBlurTabs
       column class=BarMotion position="absolute" left=(isTabBarActive ? 0 : w * 0.15)
         right=(isTabBarActive ? 0 : w * 0.15) bottom=barBottom(isTabBarActive)
         height=barHeight(isTabBarActive) box-sizing="border-box"
-        border-radius=(isTabBarActive ? 20 : w * 0.15) corner-shape="squircle"
+        border-radius=(isTabBarActive ? 20 : w * 0.15) corner-shape="-exact-continuous"
         border-width=(isTabBarActive ? 0.6 : 1) border-style="solid"
         border-color="rgba(216, 216, 216, 0.597)" overflow="hidden" testId="tab-bar"
         // The BlurView: systemMaterialDark (intensity 70), rgba(255,255,255,0.05) over it,
