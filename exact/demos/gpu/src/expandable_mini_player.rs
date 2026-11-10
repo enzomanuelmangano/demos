@@ -305,12 +305,14 @@ impl Surface for MiniPlayer {
             let border = interpolate_color(p, &[0.0, 0.9, 1.0], &[[255.0, 255.0, 255.0, 0.1], [255.0, 255.0, 255.0, 0.1], [0.0, 0.0, 0.0, 0.0]]);
             c.draw_path(&skia::border_ring_path(0.0, 0.0, sw, sh, sr, bw), &Paint::fill(rgba(border)));
         }
-        // The knob.
+        // The knob (absolute: from the padding box's top).
         let knob = interpolate(p, &[0.0, THRESHOLD / 2.0, 1.0], &[0.0, 0.0, 1.0], Extrapolation::Extend) as f32;
         if knob > 0.0 {
-            c.draw_rrect((sw - 48.0) / 2.0, safe_top + 8.0, 48.0, 4.0, 24.0, &Paint::fill(Color::hex(0x767676)).with_opacity(knob));
+            c.draw_rrect((sw - 48.0) / 2.0, bw + safe_top + 8.0, 48.0, 4.0, 24.0, &Paint::fill(Color::hex(0x767676)).with_opacity(knob));
         }
-        // The content.
+        // The content. The sheet's children sit in its padding box, inside the animated border
+        // (measured: the cover and the labels 0.333 right of and below 16 + 10, 764 + 10 at rest).
+        c.translate(bw, bw);
         let ml = interpolate(p, &[0.0, 1.0], &[BASE_OFFSET, 24.0], Extrapolation::Extend) as f32;
         let cty = interpolate(p, &[0.0, 1.0], &[0.0, 120.0], Extrapolation::Extend) as f32;
         c.save();
@@ -329,7 +331,8 @@ impl Surface for MiniPlayer {
             title.set_size(interpolate(p, &[0.0, 1.0], &[14.0, 28.0], Extrapolation::Extend) as f32);
             subtitle.set_size(interpolate(p, &[0.0, 1.0], &[12.0, 24.0], Extrapolation::Extend) as f32);
             c.draw_text(TITLE, lx, gfx::baseline(title, ly), title, &Paint::fill(Color::WHITE));
-            let top = ly + gfx::line_height(title) + 2.0;
+            // The title's Text box: its line ceiled to the device pixel (Fabric's measure).
+            let top = ly + (gfx::line_height(title) * frame.scale - 1e-3).ceil() / frame.scale + 2.0;
             c.draw_text(SUBTITLE, lx, gfx::baseline(subtitle, top), subtitle, &Paint::fill(Color::WHITE).with_opacity(0.5));
         }
         c.restore();
