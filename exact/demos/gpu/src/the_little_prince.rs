@@ -699,7 +699,11 @@ mod tests {
         // Ink on the page's first line (y ≈ 118.6…), none in the margin.
         let first_line = (2 * 40..2 * 380).filter(|&x| page.at(x, 2 * 124)[0] < 150).count();
         assert!(first_line > 20, "{first_line}");
-        assert_eq!(&page.at(10, 10)[..3], &[0xf7, 0xf4, 0xec]);
+        // The margin is the View under the Canvas: PAGE_BG in Display P3, shown as sRGB
+        // (248, 244, 235), as RN draws it.
+        assert_eq!(&page.at(10, 10)[..3], &[248, 244, 235]);
+        let p3 = Color::view_hex(PAGE_BG).0.map(|c| (c * 255.0).round() as u8);
+        assert_eq!(&page.at(10, 10)[..3], &p3[..3]);
 
         s.bind(&[Value::Number(3.0), Value::Bool(true)], None).unwrap();
         let mut ms = 0.0;
