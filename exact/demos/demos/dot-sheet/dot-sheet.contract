@@ -76,6 +76,6 @@ component DotSheet
           focus=opened blur=closed font-family="AddingtonCF-Light" font-size=(open ? 24 : 14)
           margin="0px 12px 0px 16px" margin-top=(open ? 24 : 16) flex=1 min-height=0
           background-color="transparent" border="none" padding=0 color="#000000" outline="none"
-          resize="none" aria-label="Note" testId="dot-input"
+          resize="none" -exact-layout-transition=cardSpring() aria-label="Note" testId="dot-input"
           ::placeholder
             color="#b4b4b4"
