@@ -22,11 +22,13 @@ color-carousel
 composable-text
 coverflow-carousel
 cuberto-slider
+delete-button
 dot-sheet
 dynamic-blur-tabs
 dynamic-tab-indicator
 email-demo
 everybody-can-cook
+exclusion-tabs
 expandable-mini-player
 family-number-input
 fibonacci-shader
@@ -48,10 +50,12 @@ motion-blur
 online-offline
 paper-folding
 popup-handler
+prequel-slider
 radar-chart
 record-button
 scroll-progress
 scrollable-bottom-sheet
+scrollable-shapes
 shake-to-delete
 shared-transitions
 skia-bottom-sheet

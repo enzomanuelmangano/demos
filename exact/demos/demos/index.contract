@@ -24,11 +24,13 @@ use ColorCarousel from "./color-carousel/color-carousel.contract"
 use ComposableText from "./composable-text/composable-text.contract"
 use CoverflowCarousel from "./coverflow-carousel/coverflow-carousel.contract"
 use CubertoSlider from "./cuberto-slider/cuberto-slider.contract"
+use DeleteButton from "./delete-button/delete-button.contract"
 use DotSheet from "./dot-sheet/dot-sheet.contract"
 use DynamicBlurTabs from "./dynamic-blur-tabs/dynamic-blur-tabs.contract"
 use DynamicTabIndicator from "./dynamic-tab-indicator/dynamic-tab-indicator.contract"
 use EmailDemo from "./email-demo/email-demo.contract"
 use EverybodyCanCook from "./everybody-can-cook/everybody-can-cook.contract"
+use ExclusionTabs from "./exclusion-tabs/exclusion-tabs.contract"
 use ExpandableMiniPlayer from "./expandable-mini-player/expandable-mini-player.contract"
 use FamilyNumberInput from "./family-number-input/family-number-input.contract"
 use FibonacciShader from "./fibonacci-shader/fibonacci-shader.contract"
@@ -50,10 +52,12 @@ use MotionBlur from "./motion-blur/motion-blur.contract"
 use OnlineOffline from "./online-offline/online-offline.contract"
 use PaperFolding from "./paper-folding/paper-folding.contract"
 use PopupHandler from "./popup-handler/popup-handler.contract"
+use PrequelSlider from "./prequel-slider/prequel-slider.contract"
 use RadarChart from "./radar-chart/radar-chart.contract"
 use RecordButton from "./record-button/record-button.contract"
 use ScrollProgress from "./scroll-progress/scroll-progress.contract"
 use ScrollableBottomSheet from "./scrollable-bottom-sheet/scrollable-bottom-sheet.contract"
+use ScrollableShapes from "./scrollable-shapes/scrollable-shapes.contract"
 use ShakeToDelete from "./shake-to-delete/shake-to-delete.contract"
 use SharedTransitions from "./shared-transitions/shared-transitions.contract"
 use SkiaBottomSheet from "./skia-bottom-sheet/skia-bottom-sheet.contract"
@@ -132,6 +136,8 @@ component PortedDemo
         CoverflowCarousel(env=env)
       if slug == "cuberto-slider"
         CubertoSlider()
+      if slug == "delete-button"
+        DeleteButton()
       if slug == "dot-sheet"
         DotSheet(env=env)
       if slug == "dynamic-blur-tabs"
@@ -142,6 +148,8 @@ component PortedDemo
         EmailDemo(env=env)
       if slug == "everybody-can-cook"
         EverybodyCanCook()
+      if slug == "exclusion-tabs"
+        ExclusionTabs(env=env)
       if slug == "expandable-mini-player"
         ExpandableMiniPlayer(env=env)
       if slug == "family-number-input"
@@ -184,6 +192,8 @@ component PortedDemo
         PaperFolding()
       if slug == "popup-handler"
         PopupHandler(env=env)
+      if slug == "prequel-slider"
+        PrequelSlider(env=env)
       if slug == "radar-chart"
         RadarChart(env=env)
       if slug == "record-button"
@@ -192,6 +202,8 @@ component PortedDemo
         ScrollProgress(env=env)
       if slug == "scrollable-bottom-sheet"
         ScrollableBottomSheet(env=env)
+      if slug == "scrollable-shapes"
+        ScrollableShapes()
       if slug == "shake-to-delete"
         ShakeToDelete(env=env)
       if slug == "shared-transitions"
