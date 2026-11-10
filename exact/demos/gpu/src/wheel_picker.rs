@@ -218,9 +218,13 @@ impl Surface for WheelPicker {
         let now = frame.now_ms;
         // The spacing, then its reaction (keeps the tick), then the offsets and theirs. The
         // progress reaction hears an offset the spacing reaction set one frame later, against
-        // that frame's progressWidth (Reanimated runs a reaction a mapper's write dirtied on the
-        // next pass): expanding at tick 6 rolls the count 6 → 5 → 6, collapsing 6 → 8 → 7 → 6,
-        // as the RN app does (recorded on the sim).
+        // that frame's progressWidth (Reanimated 4.7.1 mappers.ts: neither reaction has outputs,
+        // so they run in registration order, progress first; the spacing reaction's write marks
+        // it dirty and requestAnimationFrame runs it next frame): count = ceil(tick · prev /
+        // curr). Collapsing at tick 6 reads 7 until the spacing rests (8 on a step over 7 / 6).
+        // Expanding reads 6 at any steady frame rate: a 5 needs the spacing to grow by 6 / 5 in
+        // one step (20 → 24: a frame gap of 40 ms or more, ω 16.49 / s), which the RN Debug
+        // app's stalled main thread at the expand's commit gives and a Release build doesn't.
         let prev = self.space.value;
         let mut moving = self.space.step(now);
         self.react();
@@ -325,16 +329,26 @@ mod tests {
         // The finger rested 300 ms, but UIKit's velocity is the last move's (343 pt/s, as on RN):
         // snapPoint projects 93 + 0.2 · 343 = 161.6 → 8 lines (offset 50): count 8.
         assert!(s.agent("{}").unwrap().contains("\"count\":8,\"offset\":50.00"), "{}", s.agent("{}").unwrap());
-        // Expanding keeps tick 8 (offset 210 − 400 = −190), no count change.
+        // Expanding keeps tick 8 (offset 210 − 400 = −190): the stale read is ceil(8 · prev /
+        // curr), which 16 ms steps never take below 8.
         s.bind(&[Value::Bool(true)], None).unwrap();
         s.messages();
         while ms < 4000.0 {
             ms += 16.0;
             fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         }
+        assert!(!s.messages().iter().any(|m| m.starts_with("count:")));
         let (expanded, animating) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         expanded.save("wheel-picker-expanded");
         assert!(!animating);
         assert!(s.agent("{}").unwrap().contains("\"count\":8,\"offset\":-190.00,\"space\":50.00"), "{}", s.agent("{}").unwrap());
+        // Collapsing reads 9 while the spacing shrinks, 8 once it rests.
+        s.bind(&[Value::Bool(false)], None).unwrap();
+        while ms < 5500.0 {
+            ms += 16.0;
+            fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+        }
+        let counts: Vec<String> = s.messages().into_iter().filter(|m| m.starts_with("count:")).collect();
+        assert_eq!(counts, ["count:9", "count:8"]);
     }
 }
