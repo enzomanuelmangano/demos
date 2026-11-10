@@ -13,7 +13,7 @@ fn sheetSet(xs: number[], i: number, v: number): number[] = range(xs.length).map
 // hook.tsx bottomSheetConfigs heights; config 7 is the wand's sheet (componentHeight 300).
 fn sheetHeightOf(cfg: number): number = match [140, 160, 180, 200, 250, 275, 350, 300].at(cfg) { case some(h) => h, case none => 0 }
 // A live sheet's id: how many live sheets are newer.
-fn sheetNewer(gone: number[], i: number): number = range(gone.length).filter(j => j > i and sheetNum(gone, j) == 0).length
+fn sheetNewer(gone: number[], i: number): number = range(gone.length).filter(j => j > i and sheetNum(gone, j) != 2).length
 // hooks.ts biggestItemHeight: the tallest of the list (of the eight heights there are).
 fn sheetBiggest(hs: number[]): number = match [350, 300, 275, 250, 200, 180, 160, 140].filter(x => hs.includes(x)).at(0) { case some(x) => x, case none => 0 }
 // hooks.ts bottomHeight: biggestItemHeight - componentHeight + sign(id) × 35 (offset).
@@ -72,7 +72,8 @@ component StackedBottomSheet
   state increment = 0
   state serial = 0
   // The list in creation order (older first): key, config, the tallest height when it mounted,
-  // gone (1: swiped, sliding out), where the finger left it, when, and its lift then.
+  // gone (1: swiped, sliding out, still in the stack for the others; 2: dismissed, onDismiss
+  // ran 250 ms on), where the finger left it, when, and its lift then.
   state keys = []
   state cfgs = []
   state mountB = []
@@ -80,11 +81,12 @@ component StackedBottomSheet
   state goneY = []
   state goneAt = []
   state goneL = []
-  // 250 after a swipe: the others move once onDismiss runs.
-  state shiftDelay = 0
+  // The others move once onDismiss runs, 250 ms after a swipe: a timer surface
+  // (gpu/src/timer.rs), as the iOS host ignores a transition's delay.
+  state timerToken = 0
   state dragKey = -1
   derive w = env.width
-  derive biggest = sheetBiggest(range(keys.length).filter(j => sheetNum(gone, j) == 0).map(j => sheetHeightOf(sheetNum(cfgs, j))))
+  derive biggest = sheetBiggest(range(keys.length).filter(j => sheetNum(gone, j) != 2).map(j => sheetHeightOf(sheetNum(cfgs, j))))
 
   // showStackedSheet: the new sheet takes id 0, the rest one place back. The button (hook.tsx
   // onPress) shows the next config, the last one again past the seventh; the wand a 300 px
@@ -94,7 +96,7 @@ component StackedBottomSheet
     let cfg = wand ? 7 : min(increment, 6)
     let now = performanceNow()
     let keep = range(keys.length).filter(j => sheetNum(gone, j) == 0 or now < sheetNum(goneAt, j) + 250)
-    let hs = keep.filter(j => sheetNum(gone, j) == 0).map(j => sheetHeightOf(sheetNum(cfgs, j))).concat([sheetHeightOf(cfg)])
+    let hs = keep.filter(j => sheetNum(gone, j) != 2).map(j => sheetHeightOf(sheetNum(cfgs, j))).concat([sheetHeightOf(cfg)])
     keys = keep.map(j => sheetNum(keys, j)).concat([serial])
     cfgs = keep.map(j => sheetNum(cfgs, j)).concat([cfg])
     mountB = keep.map(j => sheetNum(mountB, j)).concat([sheetBiggest(hs)])
@@ -103,7 +105,6 @@ component StackedBottomSheet
     goneAt = keep.map(j => sheetNum(goneAt, j)).concat([0])
     goneL = keep.map(j => sheetNum(goneL, j)).concat([0])
     serial = serial + 1
-    shiftDelay = 0
     if not wand
       increment = increment + 1
 
@@ -120,14 +121,21 @@ component StackedBottomSheet
       gone = sheetSet(gone, i, 1)
       goneY = sheetSet(goneY, i, y)
       goneAt = sheetSet(goneAt, i, performanceNow())
-      shiftDelay = 250
+      timerToken = timerToken + 1
       dragKey = -1
+
+  // onDismiss: every sheet that has slid for its 250 ms leaves the stack.
+  action dismissed(m: string)
+    let now = performanceNow()
+    gone = range(gone.length).map(j => sheetNum(gone, j) == 1 and now >= sheetNum(goneAt, j) + 200 ? 2 : sheetNum(gone, j))
 
   view
     // styles.container: #fefefe, centred.
     column position="absolute" inset=0 background-color="#fefefe" align-items="center"
       justify-content="center" overflow="hidden" timeline-scope="--sheetSwipe"
       testId="stacked-bottom-sheet"
+      canvas surface=timer(timerToken, 250) message=dismissed width=1 height=1 position="absolute"
+        left=0 top=0 aria-hidden=true pointer-events="none"
       // styles.button: #111, radius 25 continuous, a 1 px border, marginBottom 20, padding 25 ×
       // 18; styles.textButton: white, SF-Pro-Rounded-Bold (its one face is the bold), letterSpacing 1.2, uppercase (14).
       column class=PressableScale press=push(false) role="button" aria-label="Show stacked tray"
@@ -136,12 +144,14 @@ component StackedBottomSheet
         padding-right=25 padding-top=18 padding-bottom=18 testId="sheet-button"
         text "Show stacked tray" color="#ffffff" font-family="SF-Pro-Rounded-Bold"
           font-size=14 letter-spacing=1.2 text-transform="uppercase"
+      // A dismissed sheet (onDismiss ran) has left RN's list: it is not drawn.
       for key, i in keys key=key
-        StackedSheetCard(env=env, sheetKey=key, cfg=sheetNum(cfgs, i),
-          id=(sheetNum(gone, i) == 1 ? 0 : sheetNewer(gone, i)),
-          lift=(sheetNum(gone, i) == 1 ? sheetNum(goneL, i) : sheetLift(biggest, sheetHeightOf(sheetNum(cfgs, i)), sheetNewer(gone, i))),
-          mountBiggest=sheetNum(mountB, i), goneMode=sheetNum(gone, i), goneY=sheetNum(goneY, i),
-          dragged=(key == dragKey), shiftDelay=shiftDelay, magic=push(true))
+        if sheetNum(gone, i) != 2
+          StackedSheetCard(env=env, sheetKey=key, cfg=sheetNum(cfgs, i),
+            id=(sheetNum(gone, i) >= 1 ? 0 : sheetNewer(gone, i)),
+            lift=(sheetNum(gone, i) >= 1 ? sheetNum(goneL, i) : sheetLift(biggest, sheetHeightOf(sheetNum(cfgs, i)), sheetNewer(gone, i))),
+            mountBiggest=sheetNum(mountB, i), goneMode=sheetNum(gone, i), goneY=sheetNum(goneY, i),
+            dragged=(key == dragKey), magic=push(true))
       // The front sheet's GestureDetector: one drag layer (its vertical translate is the
       // timeline the sheet follows) under an untransformed, clipping parent.
       column position="absolute" inset=0 overflow="hidden" pointer-events="none" z-index=2000
@@ -173,7 +183,6 @@ component StackedSheetCard
     goneMode: number
     goneY: number
     dragged: bool
-    shiftDelay: number
     magic: action
   derive w = env.width
   derive h = sheetHeightOf(cfg)
@@ -183,14 +192,14 @@ component StackedSheetCard
       pointer-events="none" testId=`sheet-${sheetKey}`
       column animation=`${sheetEnterName(mountBiggest)} ${sheetEnterTiming()}`
         // transform: translateY -(bottom - BaseSafeArea), withSpring as bottomHeight changes;
-        column translate=`0px ${0 - lift}px` transition=`translate ${sheetSpring()} ${shiftDelay}ms`
+        column translate=`0px ${0 - lift}px` transition=`translate ${sheetSpring()}`
           // scale withSpring(1 - id × 0.05);
-          column scale=(1 - id * 0.05) transition=`scale ${sheetSpring()} ${shiftDelay}ms`
+          column scale=(1 - id * 0.05) transition=`scale ${sheetSpring()}`
             // translateY: the drag, or where the finger left it, then dismissItem's spring.
-            column translate=(goneMode == 1 ? `0px ${goneY}px` : "0px 0px")
+            column translate=(goneMode >= 1 ? `0px ${goneY}px` : "0px 0px")
               animation=(dragged ? "sheetSwipeY 1s linear both" : "none")
               animation-timeline=(dragged ? "--sheetSwipe" : "auto") animation-range="0px 2000px"
-              column translate=(goneMode == 1 ? `0px ${h + 50 - goneY}px` : "0px 0px")
+              column translate=(goneMode >= 1 ? `0px ${h + 50 - goneY}px` : "0px 0px")
                 transition=`translate ${sheetThrow()}`
                 // styles.container: white, radius 35 continuous, boxShadow 0 0 10px 3 % black;
                 // rShadowStyle's layer shadow (RN's default offset 0, -3, black) withTiming to
@@ -198,12 +207,12 @@ component StackedSheetCard
                 // 0.025, 0.05).
                 column background-color="#ffffff" border-radius=35 corner-shape="-exact-continuous"
                   box-shadow=`0px 0px 10px rgba(0, 0, 0, 0.03), 0px -3px ${2 * max(10 - id * 2.5, 2)}px rgba(0, 0, 0, ${max(0.1 - id * 0.025, 0.05)})`
-                  transition=`box-shadow ${sheetTiming()} ${shiftDelay}ms`
+                  transition=`box-shadow ${sheetTiming()}`
                   // rVisibleContainerStyle: opacity withTiming(id <= 1 ? 1 : 0); 0.9 w ×
                   // componentHeight, radius 35 continuous, clipped.
                   column width=(w * 0.9) height=h border-radius=35 corner-shape="-exact-continuous"
                     overflow="hidden" position="relative" opacity=(id <= 1 ? 1 : 0)
-                    transition=`opacity ${sheetTiming()} ${shiftDelay}ms`
+                    transition=`opacity ${sheetTiming()}`
                     SheetGrabber(light=false)
                     // The children render for id <= 2.
                     if id <= 2
