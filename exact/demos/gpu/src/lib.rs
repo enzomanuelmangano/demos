@@ -22,6 +22,7 @@ pub mod atlas_button;
 pub mod atlas_sphere;
 pub mod audio_player;
 pub mod balance_slider;
+pub mod bezier_curve_outline;
 pub mod blur_cards;
 pub mod blur_circles;
 pub mod blurred_scroll;
@@ -65,6 +66,7 @@ pub static REGISTRY: Registry = Registry {
         ("atlas_sphere", 0, atlas_sphere::surface),
         ("audio_player", 1, audio_player::surface),
         ("balance_slider", 0, balance_slider::surface),
+        ("bezier_curve_outline", 1, bezier_curve_outline::surface),
         ("blur_cards", 1, blur_cards::surface),
         ("blur_circles", 0, blur_circles::surface),
         ("blurred_scroll", 1, blurred_scroll::surface),

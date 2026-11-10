@@ -526,14 +526,19 @@ impl GraphiteBlur {
         if self.built.is_none() {
             self.built = Some(build_graphite(device));
         }
-        let n = plan.steps.len();
         // Surfaces: one per step, then the two blur passes on the low-res grid with room for
         // the kernel's reach.
         let reach = plan.low_radius + 2;
         let low_origin = [plan.low_pixels[0] - reach, plan.low_pixels[1] - reach];
         let low_size = [(plan.low_pixels[2] - plan.low_pixels[0] + 2 * reach) as u32, (plan.low_pixels[3] - plan.low_pixels[1] + 2 * reach) as u32];
+        // σ ≤ 4 has no rescale: the source is read on the low-res grid. A source placed
+        // otherwise is first copied there (an identity step: texel centres onto texel centres).
+        let src = plan.src_rect.map(|v| v as f32);
+        let copy = [RescaleStep { from: src, to: src, pixels: plan.src_rect }];
+        let steps: &[RescaleStep] = if plan.steps.is_empty() && (source.origin, source.size) != (low_origin, low_size) { &copy } else { &plan.steps };
+        let n = steps.len();
         self.sizes.clear();
-        for (i, s) in plan.steps.iter().enumerate() {
+        for (i, s) in steps.iter().enumerate() {
             self.sizes.push(if i + 1 == n { (low_size[0], low_size[1]) } else { ((s.pixels[2] - s.pixels[0] + 2 * STEP_MARGIN) as u32, (s.pixels[3] - s.pixels[1] + 2 * STEP_MARGIN) as u32) });
         }
         self.sizes.push((low_size[0], low_size[1]));
@@ -561,7 +566,7 @@ impl GraphiteBlur {
         };
         let (mut prev_origin, mut prev_size) = (source.origin, source.size);
         for i in 0..n {
-            let step = plan.steps[i];
+            let step = steps[i];
             let margin = if i + 1 == n { reach } else { STEP_MARGIN };
             let origin = [step.pixels[0] - margin, step.pixels[1] - margin];
             let mut data = [0u8; 400];
