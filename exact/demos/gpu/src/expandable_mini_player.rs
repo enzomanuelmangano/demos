@@ -28,9 +28,17 @@
 //!   onFinalize it springs (the same config) to progress > 0.8 ? 1 : 0.
 //!
 //! The cover is the video's thumbnail (maxresdefault.jpg) at 3× its largest drawn size, in
-//! images/. Text is the system font (San Francisco), scaled from its 14 / 12 pt instances, so
-//! its optical size stays the text one as it grows (UIKit switches to SF Display past 20 pt).
-//! Corners are circular where RN's are continuous.
+//! images/. The labels are RN `<Text>`s whose fontSize animates: UIKit lays each frame out at
+//! its size, so here too (`skia::match_ui_font` + `Font::set_size`): the optical size follows the
+//! point size (SFUI's `opsz` axis with its `avar`: the Text design up to 17 pt, turning into
+//! Display between 19 and 24, Display from 28), with the `trak` tracking and GPOS kerning of that
+//! size. RN's views are `borderCurve: 'continuous'`: the screen, the sheet's background and the
+//! cover's clip are continuous rounded rects (Core Animation's `cornerCurve`). The sheet's
+//! hairline border is translucent and doesn't clip, so RN draws it itself as a border image
+//! with circular corners (`skia::border_ring_path`), and its shadowPath (a solid background) is
+//! circular too (RCTViewComponentView's `RCTPathCreateWithRoundedRect`). The knob has no
+//! borderCurve: circular. A tab presses only when the finger lifts inside it (RNGH's
+//! BaseButton: `onPress` needs `pointerInside`).
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -76,9 +84,9 @@ pub fn surface() -> Box<dyn Surface> {
         selected: None,
         posted: Vec::new(),
         icons: Font::new(IONICONS, 24.0),
-        demo: skia::match_system_font(24.0, 600.0),
-        title: skia::match_system_font(14.0, 400.0),
-        subtitle: skia::match_system_font(12.0, 400.0),
+        demo: skia::match_ui_font(24.0, 600.0),
+        title: skia::match_ui_font(14.0, 400.0),
+        subtitle: skia::match_ui_font(12.0, 400.0),
         images: None,
         canvas: Canvas::default(),
         renderer: Renderer::default(),
@@ -171,7 +179,10 @@ impl Surface for MiniPlayer {
             if tid == id && matches!(phase, Phase::Up | Phase::Cancel) {
                 self.tab = None;
                 self.tab_press[i].to(0.0, 250.0, press_easing());
-                if phase == Phase::Up {
+                let (w, h) = self.size;
+                let q = w / 4.0;
+                let inside = (q * i as f64..=q * (i + 1) as f64).contains(&px) && (h - TAB_BAR..=h - 10.0).contains(&py);
+                if phase == Phase::Up && inside {
                     self.selected = Some(i);
                     self.posted.push("press".into());
                 }
@@ -253,7 +264,7 @@ impl Surface for MiniPlayer {
         c.scale(k, k);
         c.translate(-w / 2.0, -h / 2.0);
         let radius = interpolate(p, &[0.0, 1.0], &[0.0, 48.0], Extrapolation::Extend).max(0.0) as f32;
-        c.draw_rrect(0.0, 0.0, w, h, radius, &Paint::fill(Color::hex(0x0D0D0D)));
+        c.draw_continuous_rrect(0.0, 0.0, w, h, radius, &Paint::fill(Color::hex(0x0D0D0D)));
         if let Some(font) = self.demo.as_ref() {
             c.draw_text("Demo", 24.0, gfx::baseline(font, safe_top + BUTTON_ROW), font, &Paint::fill(Color::WHITE));
         }
@@ -287,13 +298,12 @@ impl Surface for MiniPlayer {
         let shadow = interpolate(p, &[0.0, 1.0], &[0.2, 0.5], Extrapolation::Extend) as f32;
         c.draw_rrect_shadow(0.0, 4.0, sw, sh, sr, 16.0, Color::hex(0x222222).alpha(shadow.clamp(0.0, 1.0)));
         let bg = interpolate_color(p, &[0.0, 1.0], &[[34.0, 34.0, 34.0, 1.0], [13.0, 13.0, 13.0, 1.0]]);
-        c.draw_rrect(0.0, 0.0, sw, sh, sr, &Paint::fill(rgba(bg)));
+        c.draw_continuous_rrect(0.0, 0.0, sw, sh, sr, &Paint::fill(rgba(bg)));
         let hairline = 1.0 / frame.scale;
         let bw = interpolate(p, &[0.0, 0.9, 1.0], &[hairline as f64, hairline as f64, 0.0], Extrapolation::Extend).max(0.0) as f32;
         if bw > 0.0 {
             let border = interpolate_color(p, &[0.0, 0.9, 1.0], &[[255.0, 255.0, 255.0, 0.1], [255.0, 255.0, 255.0, 0.1], [0.0, 0.0, 0.0, 0.0]]);
-            let path = skia::rrect_path(bw / 2.0, bw / 2.0, sw - bw, sh - bw, (sr - bw / 2.0).max(0.0));
-            c.draw_path(&path, &Paint::stroke(rgba(border), bw));
+            c.draw_path(&skia::border_ring_path(0.0, 0.0, sw, sh, sr, bw), &Paint::fill(rgba(border)));
         }
         // The knob.
         let knob = interpolate(p, &[0.0, THRESHOLD / 2.0, 1.0], &[0.0, 0.0, 1.0], Extrapolation::Extend) as f32;
@@ -310,24 +320,17 @@ impl Surface for MiniPlayer {
         if let Some(images) = self.images.as_ref() {
             let cover = images.image(0);
             let placed = fit_cover(Rect::new(0.0, 0.0, cover.width, cover.height), Rect::new(0.0, 0.0, side, side));
-            c.draw_rrect(0.0, 0.0, side, side, ir, &Paint::image(cover, placed.invert()));
+            c.draw_continuous_rrect(0.0, 0.0, side, side, ir, &Paint::image(cover, placed.invert()));
         }
         let lx = interpolate(p, &[0.0, 1.0], &[IMAGE + 10.0, 0.0], Extrapolation::Extend) as f32;
         let ly = 5.0 + interpolate(p, &[0.0, 1.0], &[0.0, IMAGE_EXPANDED + 24.0 - 5.0], Extrapolation::Extend) as f32;
-        if let (Some(title), Some(subtitle)) = (self.title.as_ref(), self.subtitle.as_ref()) {
-            let ts = interpolate(p, &[0.0, 1.0], &[14.0, 28.0], Extrapolation::Extend) as f32 / 14.0;
-            let ss = interpolate(p, &[0.0, 1.0], &[12.0, 24.0], Extrapolation::Extend) as f32 / 12.0;
-            c.save();
-            c.translate(lx, ly + gfx::baseline(title, 0.0) * ts);
-            c.scale(ts, ts);
-            c.draw_text(TITLE, 0.0, 0.0, title, &Paint::fill(Color::WHITE));
-            c.restore();
-            let top = ly + gfx::line_height(title) * ts + 2.0;
-            c.save();
-            c.translate(lx, top + gfx::baseline(subtitle, 0.0) * ss);
-            c.scale(ss, ss);
-            c.draw_text(SUBTITLE, 0.0, 0.0, subtitle, &Paint::fill(Color::WHITE).with_opacity(0.5));
-            c.restore();
+        if let (Some(title), Some(subtitle)) = (self.title.as_mut(), self.subtitle.as_mut()) {
+            // fontSize 14 → 28 and 12 → 24, laid out at that size.
+            title.set_size(interpolate(p, &[0.0, 1.0], &[14.0, 28.0], Extrapolation::Extend) as f32);
+            subtitle.set_size(interpolate(p, &[0.0, 1.0], &[12.0, 24.0], Extrapolation::Extend) as f32);
+            c.draw_text(TITLE, lx, gfx::baseline(title, ly), title, &Paint::fill(Color::WHITE));
+            let top = ly + gfx::line_height(title) + 2.0;
+            c.draw_text(SUBTITLE, lx, gfx::baseline(subtitle, top), subtitle, &Paint::fill(Color::WHITE).with_opacity(0.5));
         }
         c.restore();
         c.restore();

@@ -25,16 +25,32 @@
 //! - progress: withSpring(revealed, { dampingRatio 1, duration 2000 }) on each toggle; the
 //!   surface posts `tick` at MORPH_PATTERN's discrete times (0 … 1200 ms) for the haptic.
 //!
-//! Math.random() is a stream seeded by the Contract (a launch's seed). The image's ink is kept
-//! in images/ as the probability itself (8 bits), not the PNG. The targets are computed at the
-//! first frame (RN defers them past its first paint, the morph a no-op until then).
+//! Numbers as RN holds them: the page points, the picture points and the delays are
+//! Float32Arrays in RN (pageXY, picXY, delays), so they are rounded to f32 where RN stores them
+//! and every later step reads the rounded values (the centroids, angles, ripple and travel); a
+//! letter's advance is Core Text's (hmtx × 30 / 2000 in f64, then Skia's f32), not an f32
+//! product. The colour buffer is RN Skia's: a Float32Array per letter read as JS numbers and
+//! turned into an 8-bit SkColor by truncation (SkColorSetARGB(a × 255, r × 255, …)), so a
+//! letter's alpha is ⌊f32(1 − 0.42 sin(pe π)) × 255⌋. drawAtlas blends it with the sprite as the
+//! source and the colour as the destination (SkCanvas.h), so srcIn is the sprite × the colour's
+//! alpha: the ink is the atlas's #1c1a17 and the buffer's rgb (0.11, 0.102, 0.09) never shows.
+//! Here that is the atlas modulated by white at that alpha.
+//!
+//! Math.random(): a stream named by the launch's seed (`env.seed`, exactTime().seed: a whole
+//! number drawn once per launch) and by this surface's instance, so each mount and each
+//! re-computation (a resize) draws fresh numbers, as RN's Math.random does; 53-bit doubles in
+//! [0, 1), as Math.random's. The image is kept in images/ as prince.png's own 8-bit r, g, b
+//! (what RN's readPixels returns: tools/prince-ink.py), and RN's makeInkProb runs on them here
+//! in f64. The targets are computed at the first frame (RN defers them past its first paint,
+//! the morph a no-op until then).
+
+use std::sync::atomic::{AtomicU32, Ordering};
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
 use reanimated::{duration_config, Spring};
 use skia::{Canvas, Color, Font, Images, Paint, Rect, Renderer, RsXform};
 
-use crate::gfx;
 
 /// PAGE_BG, INK.
 const PAGE_BG: u32 = 0xf7f4ec;
@@ -65,8 +81,17 @@ const TICKS: [f64; 11] = [0.0, 90.0, 180.0, 280.0, 380.0, 490.0, 610.0, 740.0, 8
 const IMAGE: (usize, usize) = (910, 1218);
 /// Newsreader's default instance, only the page's letters.
 static NEWSREADER: &[u8] = include_bytes!("../fonts/newsreader-prince-subset.ttf");
-/// prince.png's ink probability per pixel (row major, 910 × 1218, × 255).
-static INK_MAP: &[u8] = include_bytes!("../images/prince-ink-910x1218.u8.zlib");
+/// prince.png's 8-bit r, g, b per pixel (row major, 910 × 1218; a pixel whose ink probability
+/// is 0 written white, also 0): tools/prince-ink.py.
+static PIXELS: &[u8] = include_bytes!("../images/prince-rgb-910x1218.rgb8.zlib");
+/// constants.ts INK_FLOOR, SAT_WEIGHT, SAMPLE_GAMMA.
+const INK_FLOOR: f64 = 0.18;
+const SAT_WEIGHT: f64 = 0.45;
+const SAMPLE_GAMMA: f64 = 1.4;
+/// Newsreader's units per em: an advance is Core Text's hmtx × size / 2000.
+const UNITS_PER_EM: f64 = 2000.0;
+/// Surfaces made so far: each one's Math.random() stream is its own.
+static INSTANCES: AtomicU32 = AtomicU32::new(0);
 
 /// LITTLE_PRINCE_TEXT.
 const TEXT: &str = "“You are beautiful, but you are empty,” he went on. “One could not die for you. To be \
@@ -89,8 +114,14 @@ const TEXT: &str = "“You are beautiful, but you are empty,” he went on. “O
 
 /// The demo's surface. Inputs: a seed (Math.random()), and whether the picture is shown.
 pub fn surface() -> Box<dyn Surface> {
-    Box::new(Prince {
+    Box::new(prince())
+}
+
+fn prince() -> Prince {
+    Prince {
         seed: None,
+        instance: INSTANCES.fetch_add(1, Ordering::Relaxed),
+        random: Stream(0),
         revealed: None,
         size: (0.0, 0.0),
         font: Font::new(NEWSREADER, FONT_SIZE),
@@ -112,11 +143,14 @@ pub fn surface() -> Box<dyn Surface> {
         atlas_renderer: Renderer::default(),
         canvas: Canvas::default(),
         renderer: Renderer::default(),
-    })
+    }
 }
 
 struct Prince {
     seed: Option<f64>,
+    instance: u32,
+    /// Math.random(), for every computation of the targets this surface makes.
+    random: Stream,
     revealed: Option<bool>,
     /// The window the layout and the targets were made for.
     size: (f64, f64),
@@ -144,6 +178,67 @@ struct Prince {
     renderer: Renderer,
 }
 
+/// Math.random(): mulberry32 named by (seed, instance), two draws per number as a 53-bit double
+/// in [0, 1) (genrand_res53), the resolution of Math.random's.
+#[derive(Clone)]
+struct Stream(u32);
+
+impl Stream {
+    fn new(seed: f64, instance: u32) -> Stream {
+        Stream((seed.abs() as u64 % 4_294_967_296) as u32 ^ 0x9E37_79B9 ^ instance.wrapping_mul(0x85EB_CA6B))
+    }
+    fn word(&mut self) -> u32 {
+        self.0 = self.0.wrapping_add(0x6D2B_79F5);
+        let mut t = self.0;
+        t = (t ^ (t >> 15)).wrapping_mul(t | 1);
+        t ^= t.wrapping_add((t ^ (t >> 7)).wrapping_mul(t | 61));
+        t ^ (t >> 14)
+    }
+    fn next(&mut self) -> f64 {
+        let a = (self.word() >> 5) as f64;
+        let b = (self.word() >> 6) as f64;
+        (a * 67_108_864.0 + b) / 9_007_199_254_740_992.0
+    }
+}
+
+/// A JS number stored in a Float32Array and read back.
+fn f32r(v: f64) -> f64 {
+    v as f32 as f64
+}
+
+/// makeInkProb on a pixel's 8-bit r, g, b, in RN's f64 and order of operations.
+fn ink_prob(rgb: &[u8]) -> f64 {
+    let r = rgb[0] as f64 / 255.0;
+    let g = rgb[1] as f64 / 255.0;
+    let b = rgb[2] as f64 / 255.0;
+    let lum = 0.299 * r + 0.587 * g + 0.114 * b;
+    let mx = r.max(g).max(b);
+    let mn = r.min(g).min(b);
+    let sat = if mx <= 0.0 { 0.0 } else { (mx - mn) / mx };
+    let ink = (1.0 - lum).max(sat * SAT_WEIGHT);
+    let t = 0f64.max(1f64.min((ink - INK_FLOOR) / (1.0 - INK_FLOOR)));
+    t.powf(SAMPLE_GAMMA)
+}
+
+/// getGlyphWidths at 30 as RN Skia measures on iOS: Core Text's advance (hmtx × 30 / 2000, in
+/// f64) rounded once to f32. `advance_width` multiplies in f32 (one ulp off for 15 of the
+/// page's characters); the font unit count is recovered from it exactly (an integer, far
+/// inside f32's precision) and scaled as Core Text does.
+fn core_text_advance(font: &Font, c: char) -> f64 {
+    let mut buf = [0u8; 4];
+    let w = font.advance_width(c.encode_utf8(&mut buf)) as f64;
+    let units = (w * UNITS_PER_EM / FONT_SIZE as f64).round();
+    (units * FONT_SIZE as f64 / UNITS_PER_EM) as f32 as f64
+}
+
+/// What a letter's colour does under srcIn: the sprite (the atlas's ink) × the colour's alpha,
+/// the alpha as RN Skia makes the SkColor: val[3] = 1 − fade stored in a Float32Array, read back
+/// as a JS number, × 255, truncated. As a modulating colour: white at that alpha.
+fn sk_color(fade: f64) -> Color {
+    let a = (1.0 - fade) as f32 as f64;
+    Color::rgba8(255, 255, 255, (a * 255.0) as u8)
+}
+
 /// pe: 0 before a letter starts, 1 once it has landed.
 fn letter_phase(p: f64, d: f64) -> f64 {
     let start = d * STAGGER;
@@ -161,17 +256,16 @@ impl Prince {
             }
         }
         self.cols = (self.unique.len() as f64).sqrt().ceil() as usize;
-        let mut buf = [0u8; 4];
-        let advance = |c: char, buf: &mut [u8; 4]| {
-            let w = font.advance_width(c.encode_utf8(buf)) as f64;
+        let advance = |c: char| {
+            let w = core_text_advance(font, c);
             if w.is_finite() && w > 0.0 {
                 w
             } else {
                 FONT_SIZE as f64 * 0.5
             }
         };
-        let char_advance: Vec<f64> = self.unique.iter().map(|&c| advance(c, &mut buf)).collect();
-        let space = advance(' ', &mut buf);
+        let char_advance: Vec<f64> = self.unique.iter().map(|&c| advance(c)).collect();
+        let space = advance(' ');
         let ds = PAGE_SCALE;
         let half = CELL / 2.0 * ds;
         let pad_x = PAD * ds;
@@ -207,7 +301,8 @@ impl Prince {
                 for c in word.chars() {
                     let Some(i) = index(c) else { continue };
                     let cell_left = x - pad_x;
-                    self.page.push((cell_left + half, y + half));
+                    // Float32Array.from(pagePts).
+                    self.page.push((f32r(cell_left + half), f32r(y + half)));
                     self.sprites.push(sprite(i));
                     x += char_advance[i] * ds;
                 }
@@ -221,12 +316,12 @@ impl Prince {
     }
 
     /// computeTargets: sample → prune → fit → assign.
-    fn targets(&mut self, width: f64, height: f64, seed: f64) {
+    fn targets(&mut self, width: f64, height: f64) {
         let n = self.page.len();
-        let mut random = gfx::Random::new(seed);
-        let ink = miniz_oxide::inflate::decompress_to_vec_zlib(INK_MAP).unwrap_or_default();
+        let mut random = self.random.clone();
+        let ink = miniz_oxide::inflate::decompress_to_vec_zlib(PIXELS).unwrap_or_default();
         let (img_w, img_h) = IMAGE;
-        let mut raw = if ink.len() == img_w * img_h {
+        let mut raw = if ink.len() == img_w * img_h * 3 {
             let min_dist = img_w.max(img_h) as f64 * MIN_SPACING;
             let raw = sample(&ink, img_w, img_h, n, min_dist, &mut random);
             prune(raw, min_dist, &mut random)
@@ -272,26 +367,42 @@ impl Prince {
         let (pcx, pcy) = centroid(&mut self.page.iter().copied());
         let (scx, scy) = centroid(&mut raw.iter().take(n).copied());
         let mut page_order: Vec<(usize, f64)> = self.page.iter().enumerate().map(|(i, &(x, y))| (i, (y - pcy).atan2(x - pcx))).collect();
-        page_order.sort_by(|a, b| a.1.total_cmp(&b.1));
+        // sort((u, v) => u.a - v.a): stable, −0 equal to +0.
+        page_order.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
         let mut sample_order: Vec<(usize, f64)> = raw.iter().enumerate().map(|(i, &(x, y))| (i, (y - scy).atan2(x - scx))).collect();
-        sample_order.sort_by(|a, b| a.1.total_cmp(&b.1));
+        sample_order.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
         let (ax, ay) = (width, height);
-        let max_r = self.page.iter().fold(1.0f64, |m, &(x, y)| m.max((x - ax).hypot(y - ay)));
+        let max_r = self.page.iter().fold(1.0f64, |m, &(x, y)| {
+            let r = ((x - ax) * (x - ax) + (y - ay) * (y - ay)).sqrt();
+            if r > m {
+                r
+            } else {
+                m
+            }
+        });
         self.picture = vec![(0.0, 0.0); n];
         self.delays = vec![0.0; n];
         for k in 0..n {
             let pi = page_order[k].0;
-            self.picture[pi] = raw[sample_order[k].0];
+            let (sx, sy) = raw[sample_order[k].0];
+            self.picture[pi] = (f32r(sx), f32r(sy));
             let (px, py) = self.page[pi];
-            let r = (px - ax).hypot(py - ay) / max_r;
+            let (dx, dy) = (px - ax, py - ay);
+            let r = (dx * dx + dy * dy).sqrt() / max_r;
             let e = r * r * r * (r * (r * 6.0 - 15.0) + 10.0);
-            self.delays[pi] = e * (1.0 - JITTER) + random.next() * JITTER;
+            self.delays[pi] = f32r(e * (1.0 - JITTER) + random.next() * JITTER);
         }
+        self.random = random;
         // reveal.tsx's travel memo.
-        self.travel = (0..n).map(|i| ((self.picture[i].0 - self.page[i].0).hypot(self.picture[i].1 - self.page[i].1) / width).min(1.0)).collect();
+        self.travel = (0..n)
+            .map(|i| {
+                let (dx, dy) = (self.picture[i].0 - self.page[i].0, self.picture[i].1 - self.page[i].1);
+                ((dx * dx + dy * dy).sqrt() / width).min(1.0)
+            })
+            .collect();
         self.signs = (0..n).map(|i| if self.picture[i].0 - self.page[i].0 >= 0.0 { 1.0 } else { -1.0 }).collect();
         self.xforms = vec![RsXform::default(); n];
-        self.colors = vec![Color::hex(INK); n];
+        self.colors = vec![sk_color(0.0); n];
     }
 
     /// The atlas texture: every unique letter in its cell, at 1×.
@@ -316,7 +427,7 @@ impl Prince {
 }
 
 /// sampleInkPoints: Poisson-disc samples where the ink is.
-fn sample(ink: &[u8], img_w: usize, img_h: usize, count: usize, min_dist: f64, random: &mut gfx::Random) -> Vec<(f64, f64)> {
+fn sample(rgb: &[u8], img_w: usize, img_h: usize, count: usize, min_dist: f64, random: &mut Stream) -> Vec<(f64, f64)> {
     let cell = min_dist;
     let gw = (img_w as f64 / cell).ceil() as usize + 1;
     let gh = (img_h as f64 / cell).ceil() as usize + 1;
@@ -339,7 +450,10 @@ fn sample(ink: &[u8], img_w: usize, img_h: usize, count: usize, min_dist: f64, r
         }
         false
     };
-    let prob = |x: usize, y: usize| ink[y * img_w + x] as f64 / 255.0;
+    let prob = |x: usize, y: usize| {
+        let p = (y * img_w + x) * 3;
+        ink_prob(&rgb[p..p + 3])
+    };
     let max_guard = count * MAX_TRIES;
     let mut guard = 0;
     while raw.len() < count && guard < max_guard {
@@ -365,7 +479,7 @@ fn sample(ink: &[u8], img_w: usize, img_h: usize, count: usize, min_dist: f64, r
 }
 
 /// pruneStrays: drop points with fewer than PRUNE_MIN neighbours, re-seed onto kept ones.
-fn prune(raw: Vec<(f64, f64)>, min_dist: f64, random: &mut gfx::Random) -> Vec<(f64, f64)> {
+fn prune(raw: Vec<(f64, f64)>, min_dist: f64, random: &mut Stream) -> Vec<(f64, f64)> {
     if raw.len() <= 8 {
         return raw;
     }
@@ -409,6 +523,7 @@ impl Surface for Prince {
         let seed = inputs.first().and_then(|v| v.as_number()).unwrap_or(0.0);
         if self.seed != Some(seed) {
             self.seed = Some(seed);
+            self.random = Stream::new(seed, self.instance);
             self.size = (0.0, 0.0);
         }
         let revealed = inputs.get(1).and_then(|v| v.as_bool()).unwrap_or(false);
@@ -454,7 +569,7 @@ impl Surface for Prince {
             if let Some(font) = self.font.take() {
                 self.layout(&font, w, h);
                 self.font = Some(font);
-                self.targets(w, h, self.seed.unwrap_or(0.0));
+                self.targets(w, h);
             }
         }
         if self.atlas.is_none() && !self.unique.is_empty() {
@@ -477,7 +592,6 @@ impl Surface for Prince {
         let p = self.progress.value;
         let (cxc, cyc) = (w / 2.0, h / 2.0);
         let half = CELL / 2.0;
-        let [r, g, b, _] = Color::hex(INK).0;
         for i in 0..self.page.len() {
             let pe = letter_phase(p, self.delays[i]);
             let (sx, sy) = self.page[i];
@@ -493,13 +607,14 @@ impl Surface for Prince {
             let rot = eff * ROT_3D * self.travel[i] * self.signs[i];
             let (scos, ssin) = (s * rot.cos(), s * rot.sin());
             self.xforms[i] = RsXform { scos: scos as f32, ssin: ssin as f32, tx: (cx - half * (scos - ssin)) as f32, ty: (cy - half * (ssin + scos)) as f32 };
-            self.colors[i] = Color([r, g, b, (1.0 - eff * FADE) as f32]);
+            self.colors[i] = sk_color(eff * FADE);
         }
         let c = &mut self.canvas;
         c.begin(frame.scale);
         c.fill(Color::hex(PAGE_BG));
         if let Some(atlas) = self.atlas.as_ref() {
-            c.draw_atlas(atlas.image(0), &self.sprites, &self.xforms, Some(&self.colors), true);
+            // colorBlendMode="srcIn": the sprite in the colour's alpha (see the header).
+            c.draw_atlas(atlas.image(0), &self.sprites, &self.xforms, Some(&self.colors), false);
         }
         let (pw, ph) = frame.pixels();
         self.renderer.draw(device, queue, encoder, &self.canvas, target, format, pw, ph, wgpu::Color::WHITE);
@@ -554,5 +669,98 @@ mod tests {
         // The page's first line is empty now.
         let first_line = (2 * 40..2 * 380).filter(|&x| picture.at(x, 2 * 124)[0] < 150).count();
         assert!(first_line < 10, "{first_line}");
+    }
+
+    /// prince.png through RN's makeInkProb (tools/prince-ink.py, numpy on the PNG's samples):
+    /// the same pixels have ink, and the probabilities sum to the same f64, bit for bit.
+    #[test]
+    fn the_ink_is_rns_probability_of_the_pngs_own_pixels() {
+        let rgb = miniz_oxide::inflate::decompress_to_vec_zlib(PIXELS).unwrap();
+        assert_eq!(rgb.len(), IMAGE.0 * IMAGE.1 * 3);
+        let (mut count, mut sum) = (0usize, 0.0f64);
+        for px in rgb.chunks_exact(3) {
+            let p = ink_prob(px);
+            if p > 0.0 {
+                count += 1;
+                sum += p;
+            }
+        }
+        assert_eq!(count, 170960);
+        assert_eq!(sum, 4419.394717270405);
+        // The 8-bit store this replaces was off by up to 1/510 per pixel: one of RN's
+        // probabilities, (40, 36, 31), is not a multiple of 1/255.
+        let p = ink_prob(&[40, 36, 31]);
+        assert!(((p * 255.0).round() / 255.0 - p).abs() > 1e-4, "{p}");
+    }
+
+    /// Core Text's advances (CTFontGetAdvancesForGlyphs on Newsreader.ttf at 30, optical size
+    /// "none" as Skia's SkCTFontCreateExactCopy asks), f32 as Skia keeps them.
+    #[test]
+    fn advances_are_core_texts() {
+        let font = Font::new(NEWSREADER, FONT_SIZE).unwrap();
+        for (c, ct) in [('o', 15.135f64), ('Y', 19.904999999999998), ('u', 15.344999999999999), (' ', 6.66), ('—', 20.37), ('“', 11.865)] {
+            assert_eq!(core_text_advance(&font, c), ct as f32 as f64, "{c}");
+        }
+        let mut buf = [0u8; 4];
+        for c in TEXT.chars().filter(|c| *c != '\n') {
+            let w = font.advance_width(c.encode_utf8(&mut buf)) as f64 * UNITS_PER_EM / FONT_SIZE as f64;
+            assert!((w - w.round()).abs() < 1e-3, "{c}: {w}");
+        }
+    }
+
+    /// reveal.tsx's colour buffer as RN Skia converts it (SkColorSetARGB of the f32 × 255,
+    /// truncated); only its alpha reaches the screen under srcIn.
+    #[test]
+    fn letter_colours_are_rn_skias_truncated_alpha() {
+        assert_eq!(sk_color(0.0), Color::rgba8(255, 255, 255, 255));
+        // Mid-flight, sin(pe π) = 1: 1 − 0.42 = 0.58, × 255 = 147.9 → 147.
+        assert_eq!(sk_color(FADE), Color::rgba8(255, 255, 255, 147));
+    }
+
+    /// Math.random(): a fresh stream per surface (RN draws anew on each mount), 53-bit.
+    #[test]
+    fn each_surface_draws_its_own_numbers() {
+        let (mut a, mut b) = (Stream::new(7.0, 0), Stream::new(7.0, 1));
+        let (x, y) = (a.next(), b.next());
+        assert_ne!(x, y);
+        let mut fine = false;
+        for _ in 0..64 {
+            let v = a.next();
+            assert!((0.0..1.0).contains(&v));
+            fine |= (v * 4_294_967_296.0).fract() != 0.0;
+        }
+        assert!(fine, "only 32 bits");
+        assert_ne!(prince().instance, prince().instance);
+    }
+
+    /// `PRINCE_DUMP=/tmp/prince.json cargo test -p demos-gpu prince_dump`: the layout and targets
+    /// at a window and stream, for tools/prince-parity.ts to recompute with RN's own code.
+    #[test]
+    fn prince_dump() {
+        let Ok(path) = std::env::var("PRINCE_DUMP") else { return };
+        let mut out = String::from("[");
+        for (i, &(w, h, seed)) in [(420.0, 912.0, 3.0), (402.0, 874.0, 2_718_281_828.0), (375.0, 667.0, 0.0)].iter().enumerate() {
+            let mut p = prince();
+            p.random = Stream::new(seed, 0);
+            let state = p.random.0;
+            let font = p.font.take().unwrap();
+            p.layout(&font, w, h);
+            let advances: Vec<String> = p.unique.iter().map(|&c| format!("[{},{}]", c as u32, core_text_advance(&font, c))).chain([format!("[32,{}]", core_text_advance(&font, ' '))]).collect();
+            p.targets(w, h);
+            let list = |v: &[(f64, f64)]| v.iter().map(|(x, y)| format!("{x},{y}")).collect::<Vec<_>>().join(",");
+            let delays: Vec<String> = p.delays.iter().map(|d| d.to_string()).collect();
+            if i > 0 {
+                out.push(',');
+            }
+            out += &format!(
+                "{{\"width\":{w},\"height\":{h},\"state\":{state},\"advances\":[{}],\"pageXY\":[{}],\"picXY\":[{}],\"delays\":[{}]}}",
+                advances.join(","),
+                list(&p.page),
+                list(&p.picture),
+                delays.join(",")
+            );
+        }
+        out.push(']');
+        std::fs::write(path, out).unwrap();
     }
 }

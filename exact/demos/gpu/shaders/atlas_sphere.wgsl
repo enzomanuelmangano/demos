@@ -1,28 +1,28 @@
 // Atlas Sphere (src/animations/atlas-sphere/atlas-sphere.tsx): the <Atlas> of a grid of 3-pt
-// sprites, each a texel-for-pixel copy of BASE_SQUARE (a #00f7ff circle of r 1.5 at (1.5, 1.5),
-// drawn by useTexture into a SQUARE_CONTAINER_SIZE-pixel image) under its RSXform(scale, 0,
-// x, y). The useAnimatedReaction that writes the transforms runs here, per instance; the
-// sprite is read back linearly filtered (drawAtlas's default sampling) from its 4 × 4 texels.
+// sprites, each the (0, 0, 3, 3) rect of BASE_SQUARE's texture (a #00f7ff circle of r 1.5 at
+// (1.5, 1.5) that useTexture draws into a SQUARE_CONTAINER_SIZE-pixel Graphite surface: the
+// bytes atlas_sphere.rs's circle_texture computes) under its RSXform(scale, 0, x, y). The
+// useAnimatedReaction that writes the transforms runs here, per instance; the sprite is read
+// with drawAtlas's default linear sampling, clamped, by the GPU's bilinear filter.
 struct Uniforms {
     // The canvas in device pixels (w, h), device pixels per point, whether the target encodes
     // sRGB itself (1).
     canvas: vec4<f32>,
-    // SQUARE_CONTAINER_SIZE, SQUARES_AMOUNT_HORIZONTAL, SCALE_DISTANCE, unused.
+    // SQUARE_CONTAINER_SIZE, SQUARES_AMOUNT_HORIZONTAL, SCALE_DISTANCE, the texture's side in
+    // pixels.
     grid: vec4<f32>,
     // The touched point (x, y), progress, whether a point was ever touched (1).
     touch: vec4<f32>,
-    // The texture's texels (0, 0) to (3, 3), row by row: the circle's coverage (texel 3 is
-    // outside it).
-    texels: array<vec4<f32>, 4>,
 };
 
 @group(0) @binding(0) var<uniform> u: Uniforms;
+// SQUARE_TEXTURE_SIZE premultiplied RGBA8, one texel per point.
+@group(0) @binding(1) var circle: texture_2d<f32>;
+@group(0) @binding(2) var smp: sampler;
 
 const MAX_SCALE: f32 = 1.0;
 const MIN_SCALE: f32 = 0.1;
 const SQUARE_SIZE: f32 = 3.0;
-// BASE_SQUARE's color, #00f7ffff.
-const COLOR: vec3<f32> = vec3<f32>(0.0, 247.0 / 255.0, 1.0);
 
 struct Sprite {
     @builtin(position) pos: vec4<f32>,
@@ -52,25 +52,17 @@ fn sprite_vs(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> 
     return o;
 }
 
-fn texel(x: i32, y: i32) -> f32 {
-    let cx = clamp(x, 0, 3);
-    let cy = clamp(y, 0, 3);
-    return u.texels[cy][cx];
-}
-
 fn to_linear(c: vec3<f32>) -> vec3<f32> {
     return select(pow((c + 0.055) / 1.055, vec3<f32>(2.4)), c / 12.92, c <= vec3<f32>(0.04045));
 }
 
 @fragment
 fn sprite_fs(in: Sprite) -> @location(0) vec4<f32> {
-    let tc = in.local - vec2<f32>(0.5);
-    let i0 = vec2<i32>(floor(tc));
-    let f = tc - floor(tc);
-    let top = mix(texel(i0.x, i0.y), texel(i0.x + 1, i0.y), f.x);
-    let bottom = mix(texel(i0.x, i0.y + 1), texel(i0.x + 1, i0.y + 1), f.x);
-    let a = mix(top, bottom, f.y);
-    var rgb = COLOR;
+    // The sprite rect's texture coordinates are its own points (one texel per point).
+    let c = textureSampleLevel(circle, smp, in.local / u.grid.w, 0.0);
+    // Skia writes the premultiplied, sRGB-encoded bytes it sampled; a target that encodes sRGB
+    // itself gets them decoded, so that it stores the same bytes.
+    var rgb = c.rgb;
     if (u.canvas.w > 0.5) { rgb = to_linear(rgb); }
-    return vec4<f32>(rgb * a, a);
+    return vec4<f32>(rgb, c.a);
 }

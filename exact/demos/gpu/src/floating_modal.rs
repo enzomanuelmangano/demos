@@ -21,8 +21,17 @@
 //! - PressableScale (pressto): scale 1 → 0.96 on withTiming(250 ms, bezier(0.25, 0.1, 0.25, 1))
 //!   while pressed; every press posts `press` (the app's selection haptic).
 //!
-//! Not exact: RN applies the icon's rotate and pressto's scale as two animated styles that
-//! each write `transform` (the last write wins a frame); here both apply.
+//! - The "+"'s `transform` has two writers: the icon's rotate style and pressto's scale style,
+//!   both animated styles of the same view. Reanimated sends each style's changed props when its
+//!   mapper runs and `transform` is replaced whole, so the view shows the last one written: a
+//!   frame where only the press moves shows [scale] (unrotated), one where the progress moves
+//!   shows [rotate] (scale 1). In a frame where both move, the mappers run in Reanimated's
+//!   topological order (mappers.ts `updateMappersOrder`, a DFS over registration order):
+//!   pressto's (registered in its own effect, a child's, first), then the icon's, which wins.
+//!   Before any write it is pressto's initial [scale 1] (last in the style array).
+//! - Text is RN `<Text>`, laid out by UIKit (`skia::match_ui_font`: tracking, kerning). The
+//!   modal has no borderCurve (circular); the "Done" button is continuous. The boxShadow's path
+//!   is RCTBoxShadow's circular rounded rect.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -45,7 +54,11 @@ pub(crate) fn press_easing() -> Easing {
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
-    Box::new(FloatingModal {
+    Box::new(modal())
+}
+
+fn modal() -> FloatingModal {
+    FloatingModal {
         size: (0.0, 0.0),
         opened: false,
         progress: Timing::at(0.0),
@@ -58,12 +71,13 @@ pub fn surface() -> Box<dyn Surface> {
         press: None,
         plus_press: Timing::at(0.0),
         done_press: Timing::at(0.0),
+        plus_shown: (0.0, 1.0),
         posted: Vec::new(),
         plus: Font::new(ANTDESIGN, 28.0),
-        title: skia::match_system_font(20.0, 700.0),
+        title: skia::match_ui_font(20.0, 700.0),
         canvas: Canvas::default(),
         renderer: Renderer::default(),
-    })
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -86,6 +100,8 @@ struct FloatingModal {
     press: Option<(u32, Button)>,
     plus_press: Timing,
     done_press: Timing,
+    /// The "+"'s transform as last written: (rotate, scale).
+    plus_shown: (f64, f64),
     posted: Vec<String>,
     plus: Option<Font>,
     title: Option<Font>,
@@ -221,6 +237,7 @@ impl Surface for FloatingModal {
     ) -> bool {
         self.size = (frame.width as f64, frame.height as f64);
         let now = frame.now_ms;
+        let (p0, k0) = (self.progress.value, self.plus_press.value);
         let mut moving = self.progress.step(now);
         moving |= self.x.step(now) | self.y.step(now);
         let visible = self.progress.value == 1.0;
@@ -232,6 +249,13 @@ impl Surface for FloatingModal {
         }
         moving |= self.backdrop.step(now) | self.content.step(now);
         moving |= self.plus_press.step(now) | self.done_press.step(now);
+        // The "+"'s two transform writers, pressto's first, the icon's last.
+        if self.plus_press.value != k0 {
+            self.plus_shown = (0.0, 1.0 - 0.04 * self.plus_press.value);
+        }
+        if self.progress.value != p0 {
+            self.plus_shown = (self.progress.value.clamp(0.0, 1.0) * std::f64::consts::FRAC_PI_4, 1.0);
+        }
 
         let p = self.progress.value;
         let (fx, fy, size, radius) = frame_at(p, self.size.0, self.size.1);
@@ -266,7 +290,7 @@ impl Surface for FloatingModal {
                 c.translate(bx + bw / 2.0, by + bh / 2.0);
                 c.scale(k, k);
                 c.translate(-bw / 2.0, -bh / 2.0);
-                c.draw_rrect(0.0, 0.0, bw, bh, 12.0, &Paint::fill(Color::hex(0x111111)));
+                c.draw_continuous_rrect(0.0, 0.0, bw, bh, 12.0, &Paint::fill(Color::hex(0x111111)));
                 let done_w = font.advance_width("Done");
                 c.draw_text("Done", (bw - done_w) / 2.0, gfx::baseline(font, (bh - lh) / 2.0), font, &Paint::fill(Color::WHITE));
                 c.restore();
@@ -275,11 +299,11 @@ impl Surface for FloatingModal {
         }
         if let Some(font) = self.plus.as_ref() {
             let half = (BUTTON / 2.0) as f32;
-            let k = 1.0 - 0.04 * self.plus_press.value as f32;
+            let (rotate, k) = self.plus_shown;
             c.save();
             c.translate(half, half);
-            c.rotate((p * std::f64::consts::FRAC_PI_4) as f32);
-            c.scale(k, k);
+            c.rotate(rotate as f32);
+            c.scale(k as f32, k as f32);
             let w = font.advance_width(PLUS);
             let lh = gfx::line_height(font);
             c.draw_text(PLUS, -w / 2.0, gfx::baseline(font, -lh / 2.0), font, &Paint::fill(Color::BLACK));
@@ -366,5 +390,48 @@ mod tests {
         assert!(!moving);
         assert!(s.agent("{}").unwrap().contains("\"opened\":false"));
         assert_eq!(back.data, closed.data);
+    }
+
+    #[test]
+    fn the_plus_shows_the_last_transform_written() {
+        let gpu = match fixture::device() {
+            Ok(gpu) => gpu,
+            Err(error) => return eprintln!("{error}; skipped"),
+        };
+        let frame = |now_ms| Frame { width: 420.0, height: 912.0, scale: 2.0, now_ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: 0, headroom: 1.0 };
+        let pointer = |phase, x: f32, y: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let mut m = modal();
+        m.bind(&[], None).unwrap();
+        fixture::render(&gpu, &mut m, &frame(0.0)).unwrap();
+        // Open: during the release both move, the icon's rotate is written last.
+        m.input(&pointer(PointerPhase::Down, 356.0, 848.0, 0.0));
+        let mut ms = 0.0;
+        for _ in 0..3 {
+            ms += 16.0;
+            fixture::render(&gpu, &mut m, &frame(ms)).unwrap();
+        }
+        // Held, closed: pressto's scale only.
+        assert_eq!(m.plus_shown.0, 0.0);
+        assert!(m.plus_shown.1 < 1.0);
+        m.input(&pointer(PointerPhase::Up, 356.0, 848.0, ms));
+        while ms < 800.0 {
+            ms += 16.0;
+            let before = m.progress.value;
+            fixture::render(&gpu, &mut m, &frame(ms)).unwrap();
+            if m.progress.value != before {
+                // Both may have moved this frame: the icon's rotate is written last.
+                assert_eq!(m.plus_shown.1, 1.0, "the rotate wins the shared frames");
+            }
+        }
+        assert!((m.plus_shown.0 - std::f64::consts::FRAC_PI_4).abs() < 1e-9 && m.plus_shown.1 == 1.0);
+        // Opened, press the "+" (now at the modal's top-left) and hold: the press rewrites the
+        // transform as [scale], the rotation is gone while held.
+        let (fx, fy, _, _) = frame_at(1.0, 420.0, 912.0);
+        m.input(&pointer(PointerPhase::Down, fx as f32 + 32.0, fy as f32 + 32.0, ms));
+        for _ in 0..3 {
+            ms += 16.0;
+            fixture::render(&gpu, &mut m, &frame(ms)).unwrap();
+        }
+        assert_eq!(m.plus_shown.0, 0.0);
     }
 }

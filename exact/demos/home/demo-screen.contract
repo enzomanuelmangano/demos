@@ -28,7 +28,7 @@ component DemoScreen
     column id="demo-route" position="absolute" inset=0 resize=placed testId=`demo-${demo.slug}`
       column position="absolute" left=0 right=0 top=(0 - top) bottom=(0 - bottom) background-color=demo.backdrop
         if demo.ported
-          PortedDemo(slug=demo.slug, env=DemoEnv(env, safeTop=top))
+          PortedDemo(slug=demo.slug, env=DemoEnv(env, safeTop=top, safeBottom=bottom))
         else
           column flex=1 align-items="center" justify-content="center" padding=32
             column align-items="center" gap=10 padding="28px 32px" border-radius=28 backgroundMaterial="regular"

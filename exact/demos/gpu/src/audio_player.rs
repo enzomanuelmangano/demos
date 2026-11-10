@@ -21,6 +21,12 @@
 //!   1.4 near the finger (|currentX − position| < 20) and played, 0.9 played, 0.7 ahead. The
 //!   scale is the view's, about its centre (the corners scale with it).
 //! - The time: `0:${zeroPad(min(floor(currentX / contentWidth × 22), 22), 2)}`.
+//! - The pills and the scrubber are `borderCurve: 'continuous'` (Apple's corner); the bars have
+//!   no borderCurve (circular). Both times (a ReText TextInput and a Text) are laid out by UIKit
+//!   (`skia::match_ui_font`: SF's tracking for 14 pt and its kerning).
+//! - The waveform is computed when RN evaluates the demo's module, once per app launch: the
+//!   stream is `env.seed`, also once per launch, so a second visit shows the same waveform in
+//!   both.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -56,7 +62,8 @@ const BAR_MAX: f32 = 45.0;
 
 /// The demo's surface. Input: a seed for the waveform (Math.random()).
 pub fn surface() -> Box<dyn Surface> {
-    let font = skia::match_system_font(14.0, 700.0);
+    // The two times: an RN Text and a ReText (a TextInput), both laid out by UIKit.
+    let font = skia::match_ui_font(14.0, 700.0);
     let labels = (0..=DURATION as usize).map(|s| format!("0:{s:02}")).collect();
     Box::new(AudioPlayer {
         font,
@@ -271,8 +278,8 @@ impl Surface for AudioPlayer {
         c.begin(frame.scale);
         c.fill(Color::hex(BACKGROUND));
         let primary = Paint::fill(Color::hex(PRIMARY));
-        c.draw_rrect(ox, oy, PILL_W, PILL_H, PILL_RADIUS, &primary);
-        c.draw_rrect(ox + sw - PILL_W, oy, PILL_W, PILL_H, PILL_RADIUS, &primary);
+        c.draw_continuous_rrect(ox, oy, PILL_W, PILL_H, PILL_RADIUS, &primary);
+        c.draw_continuous_rrect(ox + sw - PILL_W, oy, PILL_W, PILL_H, PILL_RADIUS, &primary);
         if let Some(font) = self.font.as_ref() {
             let body = Paint::fill(Color::hex(BODY));
             let top = oy + (PILL_H - gfx::line_height(font)) / 2.0;
@@ -288,7 +295,7 @@ impl Surface for AudioPlayer {
             c.draw_text(end, ox + sw - PILL_W + (PILL_W - ew) / 2.0, baseline, font, &body);
         }
         let row_top = oy + PILL_H + PILL_GAP;
-        c.draw_rrect(ox, row_top, sw, ROW_H, ROW_RADIUS, &primary);
+        c.draw_continuous_rrect(ox, row_top, sw, ROW_H, ROW_RADIUS, &primary);
         let cell = (sw - 2.0 * ROW_PADDING) / N as f32;
         for i in 0..N {
             let h = BAR_MAX * (self.values[i] as f32).max(0.1);
