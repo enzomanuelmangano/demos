@@ -7,7 +7,7 @@ swipe-cards ported done:5ba2f6ee (verified 2026-11-10: stills edge- and button-e
 spiral ported done:9fecc647 (stills: arm hues, glow, MSAA coverage within 1-2 levels; spring audit line for line; A/B tap same structure)
 scroll-progress ported open:3d498955 pill+titles pixel-exact; host rounds a Text's lines 2+ to nearest (RN ceil): description lines 2-5 sit 1 px high (needs Rust text or a host fix); "100%" 1 px wide; reset scrollTo animation not A/B-recorded
 animated-grid-list ported open:toggle starts the cards' 700 ms layout transitions ~130 ms late and snaps the photo to 64 on frame 1 (host layout-transition, RN animates all together); tilt spring keeps a reversing velocity (engine.rs inherits, Reanimated zeroes). Stills, close button, tilt anchor fixed in 62f78e2f
-floating-bottom-bar ported
+floating-bottom-bar ported claimed:sim2
 animated-clip-box ported
 theme-canvas-animation ported
 add-to-cart todo claimed:r3-port (offline port; verify on device when done)
