@@ -47,7 +47,7 @@ component MilesBarChart
       active = i
   view
     // styles.container: #392F40, centred.
-    column position="absolute" inset=0 background-color="#392F40" align-items="center"
+    column position="absolute" inset=0 background-color="color(display-p3 0.2235 0.1843 0.251)" align-items="center"
       justify-content="center" testId="miles-bar-chart"
       // WeeklyChart: width × 150, padding 0 48, gap 20, a row aligned to its bottom.
       row width=env.width height=150 padding-left=48 padding-right=48 gap=20 align-items="flex-end"
@@ -80,7 +80,7 @@ component Bar
       // rgba(255,255,255, 0.3 → 1) on the same withSpring({ dampingRatio: 1, duration: 500 }):
       // bun tools/spring.ts 500 1. Radius 10 (continuous).
       view width=width height=(30 + 120 * value) background-color=`rgba(255, 255, 255, ${0.3 + 0.7 * value})`
-        border-radius=10 corner-shape="squircle" testId=testId
+        border-radius=10 corner-shape="-exact-continuous" testId=testId
         transition="height -exact-spring(1087.7, 131.9, 4), background-color -exact-spring(1087.7, 131.9, 4)"
       // styles.label: white FiraCode, margin-top 8, centred (RN's default 14).
       text letter color="#ffffff" font-family="FiraCode-Regular" font-size=14 margin-top=8 text-align="center"

@@ -20,16 +20,28 @@ fn popupArrowPath(): string = "M1401 349 761 1629Q744 1664 704 1664Q699 1664 689
 fn popupSpring(): string = "-exact-spring(900, 120, 4)"
 fn popupEase(): string = "linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
 
+keyframes blurIn
+  from opacity=0
+  to opacity=1
+keyframes blurOut
+  from opacity=1
+  to opacity=0
+
 component PopupHandler
   props
     env: DemoEnv
   // translateX / translateY (the circle's place), starting at (size / 2, topY).
   state px = 32
-  state py = env.safeTop + demoButtonRow()
+  // (env is not read at state creation, so py is only used once the circle has moved: until
+  // then its y is topY.)
+  state py = 0
+  state placed = false
   // selectedAngle (0 top-left … 3 bottom-right): the reaction runs only when it changes.
   state angle = 0
-  // The corner spring's delay: the option's setTimeout(800) while it is pending, else 0.
-  state moveDelay = 0
+  // The option's setTimeout(800): a timer surface (gpu/src/timer.rs) armed with a new token;
+  // the angle it will set when it fires.
+  state timerToken = 0
+  state pendingAngle = 0
   // menuVisible, and the measured layout of the circle when it opened (params).
   state open = false
   state shown = false
@@ -38,6 +50,7 @@ component PopupHandler
   derive w = env.width
   derive h = env.height
   derive topY = env.safeTop + demoButtonRow()
+  derive cy = placed ? py : topY
   // BlurredPopupProvider popupStyle: listItemHeight 54 × 4 options; above when it would end
   // under 100 px from the bottom, right-aligned when under 200 px from the right (its `right`
   // is the node's width, 64, as RN writes it); 5 px apart.
@@ -46,16 +59,18 @@ component PopupHandler
   derive menuTop = (above ? pageY - 216 : pageY + 64) + (above ? -5 : 5)
 
   action began(bw: number, bh: number, pw: number, ph: number)
-    moveDelay = 0
+    // (A drag during a pending timer does not cancel it, as in RN.)
+    placed = placed
   // Pan onUpdate: translate = context + translation; the circle stays where it is let go.
   action released(x: number, y: number, scale: number, vx: number, vy: number, vscale: number)
     px = x
     py = y
+    placed = true
   // TouchablePopupHandler's Tap (onTouchesUp): measure, showPopup, a selection haptic.
   action openPopup
     haptic("selection")
     pageX = px
-    pageY = py
+    pageY = cy
     open = true
     shown = true
   // close(): the menu fades (200 ms), the blur 100 ms later (300 ms).
@@ -66,33 +81,40 @@ component PopupHandler
   action pick(a: number)
     haptic("selection")
     open = false
-    if a != angle
-      angle = a
-      moveDelay = 800
-      px = popupRight(a) ? w - 64 - 32 : 32
-      py = popupBottom(a) ? h - 64 - 64 : topY
-
+    pendingAngle = a
+    timerToken = timerToken + 1
+  // selectedAngle.set(angle) 800 ms on; its reaction springs the circle to the corner when the
+  // angle changes.
+  action fired(m: string)
+    if m == `timer:${timerToken}` and pendingAngle != angle
+      angle = pendingAngle
+      px = popupRight(pendingAngle) ? w - 64 - 32 : 32
+      py = popupBottom(pendingAngle) ? h - 64 - 64 : topY
+      placed = true
   view
     // The root View: #111, flex 1; an expo-image absoluteFill (cover).
     column position="absolute" inset=0 background-color="#111111" overflow="hidden"
       testId="popup-handler"
       image "assets/demos/popup-handler/background.jpg" position="absolute" inset=0
         width="100%" height="100%" object-fit="cover" aria-hidden=true
+      canvas surface=timer(timerToken, 800) message=fired width=1 height=1 position="absolute"
+        left=0 top=0 aria-hidden=true pointer-events="none"
       // The GestureDetector's Animated.View (64 × 64, translated): the transform drag's target
       // is a layer the size of the screen, under an untransformed, clipping parent.
       column position="absolute" inset=0 overflow="hidden" pointer-events="none"
         column id="popup-drag" width="100%" height="100%" box-sizing="border-box"
-          position="relative" translate=`${px}px ${py}px`
-          transition=`translate ${popupSpring()} ${moveDelay}ms`
+          position="relative" translate=`${px}px ${cy}px`
+          transition=`translate ${popupSpring()}`
           // The white circle (radius size / 2, continuous).
-          view position="absolute" left=0 top=0 width=64 height=64 border-radius=32
+          view position="absolute" left=0 top=0 width=64 height=64 border-radius=32 corner-shape="-exact-continuous"
             background-color="#ffffff" pointer-events="auto" touch-action="none"
             transformDragFor="popup-drag" transformgeometry=began transformrelease=released
             press=openPopup role="button" aria-label="Show the menu" testId="popup-circle"
       // The BlurView (intensity maxBlur × 20, tint dark): opacity withTiming(1, 300) on show,
       // to 0 100 ms after close; a touch on it closes.
-      view position="absolute" inset=0 backgroundMaterial="dark" opacity=(open ? 1 : 0)
-        transition=(open ? `opacity 300ms ${popupEase()}` : `opacity 300ms ${popupEase()} 100ms`)
+      // (Keyframes: the host ignores a transition's delay, an animation's holds.)
+      view position="absolute" inset=0 backgroundMaterial="dark" opacity=0
+        animation=(shown ? (open ? `blurIn 300ms ${popupEase()} both` : `blurOut 300ms ${popupEase()} 100ms both`) : "none")
         pointer-events=(open ? "auto" : "none") press=close aria-label="Close the menu"
         testId="popup-blur"
       // mainPopupContainerView (absoluteFill, zIndex 500): the node copy, the touch catcher,
@@ -101,7 +123,7 @@ component PopupHandler
         // (RN keeps it touchable until the blur has faded; here it stops at the close.)
         column position="absolute" inset=0 pointer-events="none"
           // The node at its measured place, with the menu's opacity and scale.
-          view position="absolute" left=pageX top=pageY width=64 height=64 border-radius=32
+          view position="absolute" left=pageX top=pageY width=64 height=64 border-radius=32 corner-shape="-exact-continuous"
             background-color="#ffffff" pointer-events="none" opacity=(open ? 1 : 0)
             scale=(open ? 1 : 0.95)
             transition=`opacity 200ms ${popupEase()}, scale 200ms ${popupEase()}`
@@ -110,7 +132,7 @@ component PopupHandler
             pointer-events=(open ? "auto" : "none") testId="popup-background"
           // styles.popup: radius 12 continuous, boxShadow 0 8 16 25 % black, clipped.
           column position="absolute" top=menuTop height=216 left=(alignLeft ? pageX : "auto")
-            right=(alignLeft ? "auto" : 64) border-radius=12 corner-shape="squircle"
+            right=(alignLeft ? "auto" : 64) border-radius=12 corner-shape="-exact-continuous"
             overflow="hidden" box-shadow="0px 8px 16px rgba(0, 0, 0, 0.25)"
             pointer-events=(open ? "auto" : "none") opacity=(open ? 1 : 0) scale=(open ? 1 : 0.95)
             transition=`opacity 200ms ${popupEase()}, scale 200ms ${popupEase()}`

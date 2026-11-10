@@ -27,7 +27,7 @@ component RadarChart
         width=env.width height=env.width flex-shrink=0 aria-label="Radar chart" testId="radar-canvas"
       // styles.button: 80% wide, 60 tall, white 1 border, radius 20 continuous, marginTop 50.
       button appearance="none" press=shuffle class=PressableScale width=(0.8 * (env.width - 40)) height=60
-        margin-top=50 box-sizing="border-box" border="1px solid #ffffff" border-radius=20 corner-shape="squircle"
+        margin-top=50 box-sizing="border-box" border="1px solid #ffffff" border-radius=20 corner-shape="-exact-continuous"
         display="flex" align-items="center" justify-content="center" testId="shuffle"
         // styles.title: white, 20, weight 800, letterSpacing 2, uppercase.
         text "Shuffle" color="#ffffff" font-size=20 font-weight=800 letter-spacing=2 text-transform="uppercase"

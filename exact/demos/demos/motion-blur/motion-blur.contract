@@ -82,7 +82,9 @@ component MotionBlur
           column class=PressableScale width=64 height=64 border-radius=32
             background-color="black" align-items="center" justify-content="center"
             press=addItem role="button" aria-label="Add an item" testId="add"
-            image "symbol:sf/plus" font-size=40 color="white" aria-hidden=true
+            // Entypo "plus" 40: the vector-icons glyph (512 × 514 units of 512 to the em).
+            svg width=40 height=40.1562 viewBox="0 0 512 514" aria-hidden=true
+              path d="M394 283H282V395Q282 405 275.5 408Q269 411 256 411Q243 411 236.5 408Q230 405 230 395V283H118Q108 283 105 276.5Q102 270 102 257Q102 244 105 237.5Q108 231 118 231H230V119Q230 109 236.5 106Q243 103 256 103Q269 103 275.5 106Q282 109 282 119V231H394Q404 231 407 237.5Q410 244 410 257Q410 270 407 276.5Q404 283 394 283Z" fill="white"
 
 component MotionBlurItem
   props
@@ -103,7 +105,7 @@ component MotionBlurItem
         // shadowRadius r is a CSS blur of 2r).
         column width="80%" height=90 align-self="center" align-items="center"
           justify-content="center" background-color="white" border-radius=20
-          corner-shape="squircle"
+          corner-shape="-exact-continuous"
           box-shadow=(k == count - 1 ? "0px 0px 10px rgba(0, 0, 0, 0.05), 0px 10px 10px rgba(0, 0, 0, 0.02)" : "0px 0px 10px rgba(0, 0, 0, 0.05), 0px 20px 20px rgba(0, 0, 0, 0.03)")
           transition="box-shadow 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
           // ListItem: a row, padding 10, centred.

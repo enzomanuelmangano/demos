@@ -12,8 +12,8 @@ fn inOutQuad(): string = "linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.013
 // The status as the surface takes it: idle 0, loading 1, success 2, error 3.
 fn code(status: string): number = status == "loading" ? 1 : (status == "success" ? 2 : (status == "error" ? 3 : 0))
 // colorFromStatusMap, and Color(c).lighten(0.6).hex() for the background.
-fn activeColor(status: string): string = status == "success" ? "#5BC682" : (status == "error" ? "#CD5454" : "#47A1E6")
-fn lightColor(status: string): string = status == "success" ? "#DCF3E4" : (status == "error" ? "#F4DADA" : "#E6F2FC")
+fn activeColor(status: string): string = status == "success" ? "color(display-p3 0.3569 0.7765 0.5098)" : (status == "error" ? "color(display-p3 0.8039 0.3294 0.3294)" : "color(display-p3 0.2784 0.6314 0.902)")
+fn lightColor(status: string): string = status == "success" ? "color(display-p3 0.8627 0.9529 0.8941)" : (status == "error" ? "color(display-p3 0.9569 0.8549 0.8549)" : "color(display-p3 0.902 0.949 0.9882)")
 fn titleOf(status: string): string = status == "loading" ? "Analyzing Transaction" : (status == "success" ? "Transaction Safe" : (status == "error" ? "Transaction Unsafe" : "Check Transaction"))
 
 keyframes titleIn
@@ -49,7 +49,7 @@ component LoadingButton
         aria-label=titleOf(status) testId="loading-button-press"
         // A row, paddingHorizontal 12, 40 tall, radius 16 continuous, its background the
         // lightened colour (transition: 'backgroundColor 200ms').
-        row align-items="center" padding="0px 12px" height=40 border-radius=16 corner-shape="squircle"
+        row align-items="center" padding="0px 12px" height=40 border-radius=16 corner-shape="-exact-continuous"
           background-color=lightColor(status) transition="background-color 200ms ease"
           -exact-layout-transition=`200ms ${inOutQuad()}`
           // The indicator's box: width, height 0 → 20 and marginRight 0 → 6 on withTiming

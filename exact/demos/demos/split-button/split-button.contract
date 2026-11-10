@@ -7,9 +7,9 @@ use PressableScale from "pressto"
 // (#f1eee8) shows through, as in RN.
 
 // constants.ts colors.
-fn almostBlack(): string = "#181817"
-fn border(): string = "#D9D6D1"
-fn background(): string = "#F1EEE8"
+fn almostBlack(): string = "color(display-p3 0.0941 0.0941 0.0902)"
+fn border(): string = "color(display-p3 0.851 0.8392 0.8196)"
+fn background(): string = "color(display-p3 0.9451 0.9333 0.9098)"
 
 // SplitButton defaults: buttonWidth 120, maxSpacing 13; offset = buttonWidth / 2 + maxSpacing.
 fn offset(): number = 120 / 2 + 13
@@ -58,7 +58,7 @@ component SplitButton
             // styles.chip (+ activeChip: the same border, width 120): border 1 #D9D6D1, radius 16
             // continuous, shadow 0 1 5 10% black, 60 tall, 140 wide.
             column width=(activated ? 120 : 140) height=60 border-width=1 border-style="solid"
-              border-color=border() border-radius=16 corner-shape="squircle" box-sizing="border-box"
+              border-color=border() border-radius=16 corner-shape="-exact-continuous" box-sizing="border-box"
               box-shadow="0px 1px 5px rgba(0, 0, 0, 0.1)"
               if activated
                 // styles.chipContent: row, flex 1, centred, paddingVertical 16; paddingHorizontal
@@ -80,7 +80,7 @@ component SplitButton
             flex-direction="column"
             // styles.chip + rightChip (#F1EEE8); activeRightChip: black, shadow 0 0 0 30% black.
             column width=140 height=60 border-width=1 border-style="solid" border-color=border()
-              border-radius=16 corner-shape="squircle" box-sizing="border-box"
+              border-radius=16 corner-shape="-exact-continuous" box-sizing="border-box"
               background-color=(activated ? "#000000" : background())
               box-shadow=(activated ? "0px 0px 0px rgba(0, 0, 0, 0.3)" : "0px 1px 5px rgba(0, 0, 0, 0.1)")
               // styles.chipContent, paddingHorizontal on the duration spring.

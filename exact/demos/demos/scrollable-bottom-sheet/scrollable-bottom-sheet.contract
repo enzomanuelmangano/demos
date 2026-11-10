@@ -93,7 +93,7 @@ component ScrollableBottomSheet
           // starts past -SCREEN_HEIGHT + 100, never reached), SCREEN_HEIGHT tall at top
           // SCREEN_HEIGHT, full width.
           column position="absolute" top="100%" left=0 width="100%" height="100%"
-            background-color="#171717" border-radius=25 corner-shape="squircle" overflow="hidden"
+            background-color="#171717" border-radius=25 corner-shape="-exact-continuous" overflow="hidden"
             testId="sheet"
             // The GestureDetector over the sheet.
             view position="absolute" inset=0 pointer-events="auto" touch-action="none"

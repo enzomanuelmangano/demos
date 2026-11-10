@@ -106,9 +106,9 @@ component Section
     // background-section.tsx: absolute, listPadding (2) around the section, radius 999,
     // #EAEAEA, z-index 0.
     view class=Springy position="absolute" left=(left - 2) width=(width + 4) top=-2 bottom=-2
-      border-radius=999 background-color="#EAEAEA" z-index=0 testId=testId
-      animation=(fades ? "sectionIn 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955) both" : "none")
-      -exact-exit-animation="sectionOut 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955) both"
+      border-radius=999 corner-shape="-exact-continuous" background-color="#EAEAEA" z-index=0 testId=testId
+      animation=(fades ? "sectionIn 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) both" : "none")
+      -exact-exit-animation="sectionOut 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) both"
 
 component Item
   props
@@ -120,7 +120,7 @@ component Item
   view
     // list-item.tsx: absolute, 40 × 40, radius 20 (continuous), border 3 #EAEAEA, clipped.
     view class=Springy position="absolute" top=0 left=left width=40 height=40 box-sizing="border-box"
-      border-radius=20 border-width=3 border-style="solid" border-color="#EAEAEA"
+      border-radius=20 corner-shape="-exact-continuous" border-width=3 border-style="solid" border-color="#EAEAEA"
       overflow="hidden" z-index=z testId=testId
       image uri width="100%" height="100%" object-fit="cover" aria-hidden=true
       // filter: grayscale(p), p = withTiming(offline ? 1 : 0, 300 ms linear). grayscale(p) is

@@ -50,7 +50,7 @@ component StaggeredCardNumber
       // row 80 tall, paddingTop 15, paddingBottom 10, paddingHorizontal 25, 90% wide.
       row width="90%" height=80 box-sizing="border-box" padding-top=15 padding-bottom=10
         padding-left=25 padding-right=25 background-color="#ffffff" border-radius=20
-        corner-shape="squircle" box-shadow="0px 2px 20px rgba(0, 0, 0, 0.05)" testId="card"
+        corner-shape="-exact-continuous" box-shadow="0px 2px 20px rgba(0, 0, 0, 0.05)" testId="card"
         column
           // styles.title: #787878, 17, weight 400.
           text "Number" font-size=17 font-weight=400 color="#787878"
@@ -87,7 +87,7 @@ component StaggeredCardNumber
           aria-label=(toggled ? "Show number" : "Hide number") aria-pressed=toggled testId="toggle"
           if toggled
             svg width=24 height=(24 * 572 / 512) viewBox="0 0 512 572" aria-hidden=true testId="icon-eye"
-              path d=eyePath() fill="#38a27b"
+              path d=eyePath() fill="color(display-p3 0.2196 0.6353 0.4824)"
           else
             svg width=24 height=(24 * 572 / 512) viewBox="0 0 512 572" aria-hidden=true testId="icon-eye-off"
-              path d=eyeOffPath() fill="#38a27b"
+              path d=eyeOffPath() fill="color(display-p3 0.2196 0.6353 0.4824)"

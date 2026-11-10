@@ -37,8 +37,11 @@ component LiquidGlassPlayground
     column position="absolute" inset=0 align-items="center" justify-content="center"
       testId="liquid-glass-playground"
       // styles.backgroundImage: 100% × 100%, contentFit cover.
-      image photo() position="absolute" left=0 top=0 width="100%" height="100%" object-fit="cover"
-        alt="Background photo" testId="photo"
+      // (Laid out by hand: Exact's object-fit cover does not centre a horizontal crop here. The
+      // photo is height-bound: full height at its aspect, centred by its row.)
+      row position="absolute" inset=0 justify-content="center" align-items="stretch"
+        image photo() height="100%" aspect-ratio=(1200 / 1593) flex-shrink=0
+          alt="Background photo" testId="photo"
       // The drag's clip: full screen, as the RN container is.
       view position="absolute" inset=0 overflow="hidden" timeline-scope="--pull"
         // styles.glassView: absoluteFill, borderRadius 50 continuous, clipped, zIndex 2;
@@ -49,15 +52,16 @@ component LiquidGlassPlayground
         // RN screen: the photo blurred with σ 10 pt, saturated 1.2 and darkened by black at
         // 0.25. So the pane is that: a still, filtered copy of the photo (drawn once), held in
         // place under the moving pane by the inverse of its translate on the same timeline.
-        view position="absolute" inset=0 border-radius=50 corner-shape="squircle" overflow="hidden"
+        view position="absolute" inset=0 border-radius=50 corner-shape="-exact-continuous" overflow="hidden"
           pointer-events="none" animation="followHalf 1s linear both" animation-timeline="--pull"
           animation-range="-2000px 2000px" aria-hidden=true testId="glass"
           view position="absolute" inset=0 animation="holdHalf 1s linear both"
             animation-timeline="--pull" animation-range="-2000px 2000px"
-            // 30 pt past each side so the blur does not darken the edges (the photo is
-            // height-bound, so it covers at the same scale and place as the sharp one).
-            image photo() position="absolute" left=-30 right=-30 top=0 height="100%"
-              object-fit="cover" filter="blur(10px) saturate(1.2)" aria-hidden=true
+            // The photo at the same scale and place as the sharp one (it is wider than the screen,
+            // so the blur does not darken the edges).
+            row position="absolute" inset=0 justify-content="center" align-items="stretch"
+              image photo() height="100%" aspect-ratio=(1200 / 1593) flex-shrink=0
+                filter="blur(10px) saturate(1.2)" aria-hidden=true
             view position="absolute" inset=0 background-color="rgba(0, 0, 0, 0.25)"
         // What the finger drags: clear, 1:1, back on bun tools/spring.ts 600 1.
         box id="pull" width="100%" height="100%" position="relative" padding=0 border-width=0

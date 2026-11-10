@@ -104,12 +104,12 @@ component BottomProgress
     // styles.container: radius 40, height 70, the width above; absolute at bottom 50, centred,
     // #222123, zIndex 100, a 0.5 border rgba(255,255,255,0.1).
     column class=PillMotion position="absolute" bottom=50 left=left width=pillWidth(progress) height=70
-      box-sizing="border-box" border-radius=40 background-color="#222123" border-width=0.5
+      box-sizing="border-box" border-radius=40 background-color="color(display-p3 0.1333 0.1294 0.1373)" border-width=0.5
       border-style="solid" border-color="rgba(255, 255, 255, 0.1)" z-index=100 testId="progress-pill"
       // ProgressBarArea: flex 1, margin 5, #2E2D2E, paddingHorizontal 10, radius 40 continuous,
       // a centred row; opacity withTiming(expanded ? 1 : 0).
-      row class=PillMotion flex=1 margin=5 padding-left=10 padding-right=10 border-radius=40
-        background-color="#2E2D2E" justify-content="center" align-items="center"
+      row class=PillMotion flex=1 margin=5 padding-left=10 padding-right=10 border-radius=40 corner-shape="-exact-continuous"
+        background-color="color(display-p3 0.1804 0.1765 0.1804)" justify-content="center" align-items="center"
         opacity=(isExpanded(progress) ? 1 : 0)
         transition="opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)" testId="progress-bar-area"
         // ReText: #9E9E9E, 15, width 50, centred. A text per frame is a layout per frame: every
@@ -132,8 +132,8 @@ component BottomProgress
             translate=`${(progress - 1) * 100}% 0px` testId="progress-fill"
       // CollapsedArea: absoluteFill, margin 5, #2E2D2E, radius 40 continuous; opacity
       // withTiming(INITIAL or END ? 1 : 0).
-      view class=PillMotion position="absolute" top=5 left=5 right=5 bottom=5 border-radius=40
-        background-color="#2E2D2E"
+      view class=PillMotion position="absolute" top=5 left=5 right=5 bottom=5 border-radius=40 corner-shape="-exact-continuous"
+        background-color="color(display-p3 0.1804 0.1765 0.1804)"
         opacity=(isExpanded(progress) ? 0 : 1)
         transition="opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)" testId="collapsed-area"
         // The reading time, shown at INITIAL: #9E9E9E, marginHorizontal 5, one line, shrunk to
@@ -149,4 +149,6 @@ component BottomProgress
           transition="opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
           view display="flex" flex-direction="column" class=PressableOpacity flex=1 align-items="center" justify-content="center" press=reset
             role="button" aria-label="Back to the top" testId="reset"
-            image "symbol:sf/arrow.up" font-size=24 color="#9E9E9E" aria-hidden=true
+            // AntDesign "arrow-up" 24: the vector-icons glyph (512 × 536 units of 512 to the em).
+            svg width=24 height=25.125 viewBox="0 0 512 536" aria-hidden=true
+              path d="M249 59Q245 61 241 65Q236 70 144.5 176Q53 282 52 283Q51 285 52 287L54 289H79Q105 289 106.5 288.5Q108 288 171 216L233 143L234 305Q234 466 235.5 467.5Q237 469 256 469Q275 469 276.5 467.5Q278 466 278 305L279 143L341 216Q404 288 405.5 288.5Q407 289 433 289H458L460 287Q461 285 460 283Q459 282 367.5 176.5Q276 71 271 65Q260 54 249 59Z" fill="#9E9E9E"

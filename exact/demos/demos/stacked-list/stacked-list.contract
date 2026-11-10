@@ -27,7 +27,7 @@ component StackedList
         aria-hidden=true
         for i in range(50) key=i
           view position="absolute" top=0 left="2.5%" width="95%" height=100 border-radius=15
-            corner-shape="squircle" background-color="#51ACCC" z-index=(0 - i)
+            corner-shape="-exact-continuous" background-color="color(display-p3 0.3176 0.6745 0.8)" z-index=(0 - i)
             translate=`0px ${cardY(scroll, env.height, i) - scroll}px`
             scale=cardScale(visibleAmount(scroll, env.height, i))
             opacity=cardOpacity(visibleAmount(scroll, env.height, i))

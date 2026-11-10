@@ -65,7 +65,7 @@ component StackedCarousel
           view display="flex" flex-direction="column" flex=1 rotate=`x ${tiltOf(rel(scroll, i))}deg`
             // styles.cardShadow: white, radius 25 continuous, boxShadow 0 0 5px 0
             // rgba(0, 0, 0, 0.05), overflow hidden; renderCard draws an empty flex 1 view.
-            view flex=1 background-color="#ffffff" border-radius=25 corner-shape="squircle"
+            view flex=1 background-color="#ffffff" border-radius=25 corner-shape="-exact-continuous"
               box-shadow="0px 0px 5px 0px rgba(0, 0, 0, 0.05)" overflow="hidden"
       // The invisible FlatList over the cards: screenWidth × (cardHeight + stackOffset × 6),
       // zIndex 1000, centred; snapToInterval cardWidth, decelerationRate fast; content padded
@@ -95,9 +95,10 @@ component Paginator
     row position="absolute" left=0 right=0 top=top height=40 align-items="center"
       justify-content="center" overflow="hidden" pointer-events="none" aria-hidden=true
       testId="paginator"
-      // styles.dotsContainer: a centred row.
+      // styles.dotsContainer: a centred row. The springs { stiffness 100, damping 15, mass 0.5 }
+      // have ζ 1.06 ≥ 1: Reanimated runs them critically damped (damping 2√(k·m) = 14.14).
       row flex-shrink=0 align-items="center" justify-content="center"
-        translate=`${rowShift(current)}px 0px` transition="translate -exact-spring(100, 15, 0.5)"
+        translate=`${rowShift(current)}px 0px` transition="translate -exact-spring(100, 14.14, 0.5)"
         for i in range(count()) key=i
           // AnimatedDot: marginRight spacing (10); opacity withTiming(500 ms linear) to 1 when
           // currentPageIndex == index, 0.75 when in the window, else 0; scale springs to 1
@@ -105,6 +106,6 @@ component Paginator
           view flex-shrink=0 margin-right=10
             opacity=(page == i ? 1 : (dotShown(i, current) ? 0.75 : 0))
             scale=(page == i ? 1 : 0.75)
-            transition="opacity 500ms linear, scale -exact-spring(100, 15, 0.5)" testId=`dot-${i}`
+            transition="opacity 500ms linear, scale -exact-spring(100, 14.14, 0.5)" testId=`dot-${i}`
             // styles.dot: 10 × 10, rgba(0, 0, 0, 0.15), fully round.
             view width=10 height=10 border-radius=9999 background-color="rgba(0, 0, 0, 0.15)"

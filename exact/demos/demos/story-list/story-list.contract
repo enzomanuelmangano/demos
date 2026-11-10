@@ -21,7 +21,7 @@ component StoryList
     scroll = x
   view
     // styles.container: #2D3045, centred. storyItemDimensions: width × 0.7 by width.
-    column position="absolute" inset=0 background-color="#2D3045" align-items="center" justify-content="center"
+    column position="absolute" inset=0 background-color="color(display-p3 0.1765 0.1882 0.2706)" align-items="center" justify-content="center"
       testId="story-list"
       column position="relative" width="100%" height=env.width
         // The horizontal ScrollView: snapToInterval itemWidth, no indicator, bounces. Its
@@ -44,4 +44,4 @@ component StoryList
               scale=storyScale(scroll / (env.width * 0.7), i) testId=`story-${i}`
               // The expo-image: cover, borderRadius 25 continuous.
               image storyImage(i) width="100%" height="100%" object-fit="cover" border-radius=25
-                corner-shape="squircle" overflow="hidden"
+                corner-shape="-exact-continuous" overflow="hidden"

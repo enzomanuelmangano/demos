@@ -59,11 +59,11 @@ component RecordButton
               // The label: fontSize 16, opacity progress; white 600 once activated, else the
               // button's colour at 500.
               view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
-                text "Record" font-size=16 color=(activated ? "#ffffff" : "#ed4e3c")
+                text "Record" font-size=16 color=(activated ? "#ffffff" : "color(display-p3 0.9294 0.3059 0.2353)")
                   font-weight=(activated ? 600 : 500) opacity=progressOf(offset, env.height)
                   testId="record-label"
         // The HomeScreen: #191919, rounded 35 (continuous) once it moves.
         column id="record-home-page" width="100%" height=env.height flex-shrink=0
-          background-color="#191919" border-radius=radiusOf(offset) corner-shape="squircle"
+          background-color="#191919" border-radius=radiusOf(offset) corner-shape="-exact-continuous"
           align-items="center" justify-content="center"
           text "Scroll" font-size=18 color="#ffffff"

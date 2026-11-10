@@ -532,7 +532,9 @@ component AppItem
             view display="flex" flex-direction="column" class=PressableOpacity width=20 height=20 border-radius=100
               background-color="rgba(255, 255, 255, 0.8)" align-items="center" justify-content="center"
               press=remove role="button" aria-label="Delete" testId=`app-${id}-delete`
-              image "symbol:sf/minus" font-size=12 color="#000000" aria-hidden=true
+              // Ionicons "remove" 12: the vector-icons glyph (512 × 525 units of 512 to the em).
+              svg width=12 height=12.3047 viewBox="0 0 512 525" aria-hidden=true
+                path d="M108 246Q108 246 108 246Q111 246 257 246Q257 246 404 246L408 248Q416 253 416 262Q416 271 408 276Q408 276 405 278H256H107L104 276Q91 268 98 254Q101 248 108 246Z" fill="#000000"
           // styles.gradient: radius 16 continuous, flex 1, overflow hidden.
-          view flex=1 border-radius=16 corner-shape="squircle" overflow="hidden"
+          view flex=1 border-radius=16 corner-shape="-exact-continuous" overflow="hidden"
             background-image=gradientOf(match tileColors().at(id) { case some(cs) => cs, case none => [] })
