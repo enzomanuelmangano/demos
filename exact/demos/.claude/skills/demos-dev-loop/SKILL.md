@@ -57,6 +57,12 @@ bun exact.mjs ios --run --sim $EXACT_SIM                         # native build 
   prints the exact stiffness/damping/mass (Reanimated's own bisection, mass 4 by default).
 - `{ stiffness, damping, mass }` configs copy straight across; a missing key is Gentle's.
 - Layout `springify()` with no setters is the same default spring.
+- Overdamped: Reanimated runs any spring with damping ratio ζ = c / (2√(k·m)) ≥ 1 as
+  critically damped. Contract's `-exact-spring` solves the real overdamped curve, so when ζ > 1
+  write damping 2√(k·m), not RN's number. `packages/reanimated` already does this.
+- `perspective` in Exact acts on a box's children (CSS), not on the box: put it on the parent of
+  the rotating node.
+- Contract presses ease over 120 ms (host-fixed); pressto uses 250 ms. A known host limit.
 
 ## GPU surfaces (gpu/, packages/reanimated, packages/gesture-handler)
 
