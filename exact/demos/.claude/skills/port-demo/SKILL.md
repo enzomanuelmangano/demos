@@ -67,6 +67,9 @@ One commit per haptic event, never per frame.
 
 ## Traps the compiler only catches in the whole app
 
+- Text in a surface standing for an RN `<Text>` (not RN Skia `<Text>`): its font MUST be
+  `.with_ui_layout()` (or `match_ui_font`). `Font::new` alone takes Skia's path with gamma
+  pre-blend: 5–20 % heavier ink than TextKit. With it, the text probe matches UIKit at 0 diff.
 - RN Skia renders into a Display P3 surface: a RuntimeEffect (SkSL) shader's output colours
   are P3 values, so convert them to sRGB in the WGSL port (skia-color-picker: 5.0 → 1.2 levels).
 - RN Skia `measureText` on iOS: each glyph's bounds rounded out to whole points + 1 pt, wider
