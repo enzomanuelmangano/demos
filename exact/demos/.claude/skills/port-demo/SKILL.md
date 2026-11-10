@@ -243,6 +243,17 @@ One commit per haptic event, never per frame.
   is that; pressto's buttons (BaseButton) also have no duration: `.max_duration(f64::INFINITY)`.
 - UIScrollView: a touch that never drags gets no scrollViewWillEndDragging, so RN's snap never
   runs: a caught snapping list rests where it is (`ui_scroll` does it).
+- iOS host: a transition begun by a commit a surface's `message` made (the `timer` surface) can
+  play its first frame at the end: popup-handler's corner spring and a plain box in the same commit
+  jumped in one frame at 400 and 800 ms, sprang fully at 50 and 200 ms (a keeper animation running
+  meanwhile did not help). Begin the motion from the input's own commit instead: a delayed spring
+  is keyframes with an `animation` delay and `backwards` fill on a box sized to the travel
+  (`translate` from ∓100 % to 0, the spring sampled into a `linear()`), the moved box set to its
+  end at once (popup-handler). Check toast / stacked-bottom-sheet timers the same way.
+- iOS host: a `transformDragFor` target takes only a spring (or no) `translate` transition: a
+  `linear()` / duration transition on it keeps the drag from binding at all, even at rest. And
+  every ancestor of the handle below the target must be untransformed and not animating while a
+  drag starts (`supported_mapping`): a running keyframe on a wrapper refuses the drag until it ends.
 - Shared tree: a commit through a private `GIT_INDEX_FILE` leaves the shared index on the old
   content of those paths (`git status` shows MM: anyone committing then reverts them). After it,
   `git reset -q -- <your paths>` with the shared index.
