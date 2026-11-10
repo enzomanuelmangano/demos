@@ -48,6 +48,7 @@ pub mod magnet_spring;
 pub mod metaball;
 pub mod paper_folding;
 pub mod particles_button;
+pub mod prequel_slider;
 pub mod radar_chart;
 pub mod record_button;
 pub mod selectable_grid_list;
@@ -94,6 +95,7 @@ pub static REGISTRY: Registry = Registry {
         ("metaball", 0, metaball::surface),
         ("paper_folding", 0, paper_folding::surface),
         ("particles_button", 1, particles_button::surface),
+        ("prequel_slider", 2, prequel_slider::surface),
         ("radar_chart", 10, radar_chart::surface),
         ("record_button", 1, record_button::surface),
         ("selectable_grid_list", 1, selectable_grid_list::surface),

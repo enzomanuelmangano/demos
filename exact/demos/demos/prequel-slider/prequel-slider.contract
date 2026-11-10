@@ -1,0 +1,21 @@
+// Prequel Slider: a photo warped by a butterfly-wave transition as a ruler of white ticks is
+// dragged under a blue-to-orange indicator, a ring above it showing the progress. RN:
+// src/animations/prequel-slider (src/index.tsx, gl-transition, components/image-editor,
+// donut-circular-progress, draggable-slider). The whole screen's drawing (the transition shader
+// over the photo, the ring, the ruler, the indicator), the pan and its snap spring are Rust:
+// gpu/src/prequel_slider.rs, laid out from the safe area as RN lays it out; it posts the
+// selection haptic of each line crossed.
+use DemoEnv from "../env.contract"
+
+component PrequelSlider
+  props
+    env: DemoEnv
+  action buzz(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+  view
+    // styles.container: black, flex 1.
+    column position="absolute" inset=0 background-color="color(display-p3 0 0 0)" testId="prequel-slider"
+      canvas surface=prequel_slider(env.safeTop, env.safeBottom) position="absolute" top=0 left=0
+        width=env.width height=env.height touch-action="none" message=buzz testId="prequel-slider-canvas"
+        aria-label="Drag the ruler to transform the photo"
