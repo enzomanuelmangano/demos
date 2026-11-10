@@ -62,6 +62,7 @@ pub mod miles_bar_chart;
 pub mod paper_folding;
 pub mod particles_button;
 pub mod prequel_slider;
+pub mod qr_code_generator;
 pub mod radar_chart;
 pub mod record_button;
 pub mod scrollable_shapes;
@@ -127,6 +128,7 @@ pub static REGISTRY: Registry = Registry {
         ("paper_folding", 0, paper_folding::surface),
         ("particles_button", 1, particles_button::surface),
         ("prequel_slider", 2, prequel_slider::surface),
+        ("qr_code_generator", 3, qr_code_generator::surface),
         ("radar_chart", 10, radar_chart::surface),
         ("record_button", 1, record_button::surface),
         ("scrollable_shapes", 0, scrollable_shapes::surface),
