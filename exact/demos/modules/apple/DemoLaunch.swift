@@ -457,6 +457,7 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         ctx.view(forKey: .from)?.removeFromSuperview()
         ctx.completeTransition(true)
         if !grouped { land() }
+        if flight == nil { LaunchSession.live.removeAll { $0 === self } }
     }
 
     /// landClose: the artwork is back in the home, the blur gone.
@@ -469,7 +470,9 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         icon?.isHidden = false
         link?.invalidate()
         link = nil
-        LaunchSession.live.removeAll { $0 === self }
+        // The landed frame commits first; the route's unmount runs on the next turn, on a still screen.
+        if grouped, !routeGone { DispatchQueue.main.async { [self] in leave() } }
+        if routeGone { LaunchSession.live.removeAll { $0 === self } }
     }
 
     // MARK: drag
@@ -568,7 +571,12 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
             ctx.completeTransition(!ctx.transitionWasCancelled)
             opened()
         }
-        if closing, grouped, progress.value <= K.routeGoesAt { leave() }
+        // RN removes the route here; its unmount (the demo's tree, its GPU surfaces) on the main
+        // thread mid-flight was the close's hitch. The card is transparent from here on
+        // (closeFadeAt(0.2) is 0), so it is hidden now and the route goes once the flight lands.
+        if closing, grouped, progress.value <= K.routeGoesAt, controller?.view.isHidden == false {
+            controller?.view.isHidden = true
+        }
         if closing, grouped, flight == nil { land(); return }
         let moving = progress.running || flight != nil || poseX.running || poseY.running || poseScale.running
             || revealCountdown != nil || fade != nil || presenting != nil
