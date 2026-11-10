@@ -21,6 +21,8 @@ pub mod gfx;
 pub mod gooey;
 pub mod ui_scroll;
 
+pub mod airbnb_flip_card;
+pub mod airbnb_flip_pages;
 pub mod alert_drawer_card;
 pub mod animated_3d_parallax;
 pub mod atlas_button;
@@ -93,6 +95,8 @@ pub mod wheel_picker;
 /// The module's surfaces and its reflected shaders.
 pub static REGISTRY: Registry = Registry {
     surfaces: &[
+        ("airbnb_flip_card", 1, airbnb_flip_card::surface),
+        ("airbnb_flip_pages", 2, airbnb_flip_pages::surface),
         ("alert_drawer_card", 1, alert_drawer_card::surface),
         ("animated_3d_parallax", 0, animated_3d_parallax::surface),
         ("atlas_button", 1, atlas_button::surface),
