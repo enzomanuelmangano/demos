@@ -203,9 +203,16 @@ component ModalContent
       // marginBottom 8; title #333 18 bold; message #666 14, marginBottom 12.
       column flex=1 background-color="#ffffff" border-radius=12 corner-shape="-exact-continuous" padding=16
         row align-items="center" margin-bottom=8
-          // No lineHeight in RN: TextKit's SF line height, (1950 + 494) / 2048 × size.
+          // No lineHeight in RN: TextKit's SF line height, (1950 + 494) / 2048 × size, its
+          // baseline at 1950 / 2048 × size (17.14 at 18, 13.33 at 14). Exact puts an authored
+          // line's baseline at its rounded ascent plus the floored half-leading (17 and 13), and
+          // RN rounds each Text box up to the device pixel (the title 21.48 → 21.67): the
+          // relative tops put both baselines back (0.14, which RN's pixel-aligned baseline rounds
+          // up to one device pixel, measured; 0.33 + 0.19).
           text titleOf(index) color="#333333" font-size=18 font-weight=700 line-height="21.48046875px"
+            position="relative" top=(1 / 3)
         text messageOf(index) color="#666666" font-size=14 line-height="16.70703125px" margin-bottom=12
+          position="relative" top=0.52
       // styles.buttonContainer: a row at the end, marginBottom 12, marginRight 12; each button
       // paddingHorizontal 12, paddingVertical 8; text #141414 bold.
       row justify-content="flex-end" margin-bottom=12 margin-right=12
