@@ -60,6 +60,7 @@ record-button
 scroll-progress
 scrollable-bottom-sheet
 scrollable-shapes
+selectable-grid-list
 shake-to-delete
 shared-transitions
 skia-bottom-sheet
