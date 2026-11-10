@@ -316,14 +316,33 @@ impl Surface for ClockTimePicker {
             self.scroll = Scroll::Idle;
         }
         match self.pan.event(id, phase, x, y, at_ms, on_list) {
-            Event::Start(p) => self.scroll = Scroll::Drag { id, y: p.y as f64, offset: self.offset },
+            Event::Start(p) => {
+                // The drag goes on from the raw offset under the shown one: a list caught past an
+                // end is banded once, not twice.
+                let (max, d) = (max_offset(), LIST_H as f64);
+                let unband = |y: f64| d / RUBBER * (1.0 / (1.0 - y / d) - 1.0);
+                let raw = if self.offset < 0.0 {
+                    -unband(-self.offset)
+                } else if self.offset > max {
+                    max + unband(self.offset - max)
+                } else {
+                    self.offset
+                };
+                self.scroll = Scroll::Drag { id, y: p.y as f64, offset: raw };
+            }
             Event::Update(p) => {
                 if let Scroll::Drag { y: y0, offset, .. } = self.scroll {
                     self.offset = self.dragged(offset + (y0 - p.y as f64));
                 }
             }
             Event::End(p) => self.release(p.velocity_y),
-            Event::Fail => self.release(0.0),
+            // A touch with no drag: UIScrollView leaves a caught list where it stopped (no
+            // scrollViewWillEndDragging, so no snap); only one past an end bounces back.
+            Event::Fail => {
+                if self.offset < 0.0 || self.offset > max_offset() {
+                    self.release(0.0);
+                }
+            }
             _ => {}
         }
     }
