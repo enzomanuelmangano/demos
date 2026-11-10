@@ -67,6 +67,11 @@ One commit per haptic event, never per frame.
 
 ## Traps the compiler only catches in the whole app
 
+- iOS host: a `-exact-drag-timeline` box moved only by a `transition` (state change, no
+  finger) does NOT drive its `animation-timeline` keyframes: they jump to the end. For
+  state-driven motion use state-triggered keyframes that sample the RN curve densely enough that
+  the linear segments stay under 0.5 px / 1 colour level off the real curve (check numerically),
+  or move it to Rust. Release-after-drag: being verified (swipe-cards).
 - Corners: RN `borderCurve: 'continuous'` = `corner-shape="-exact-continuous"` (CALayer
   cornerCurve .continuous), pills and circles included: CA draws it unclamped at min(r, w/2, h/2),
   so a continuous pill's ends are flatter than a semicircle. `squircle` is the CSS superellipse,
