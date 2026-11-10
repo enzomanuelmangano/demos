@@ -172,6 +172,30 @@ pub(crate) fn smooth_behavior() -> Smooth {
     })
 }
 
+impl Strike {
+    /// How many glyph positions per pixel CoreGraphics' subpixel quantization keeps for this
+    /// strike (it depends on the size: 4 at 3 pt, 3 at 4 pt, 2 up to about 11 pt, 1 from 12 pt
+    /// at 3×), measured: `glyph` drawn 1/L px right of its origin, from L = 8 down, until the
+    /// image differs from the unshifted one.
+    pub(crate) fn subpixel_levels(&self, glyph: u16, offscreen: &mut Offscreen) -> u8 {
+        let Some(b) = self.bounds(glyph) else { return 1 };
+        let b = (b.0, b.1, b.2 + 1, b.3);
+        let lut: [u8; 256] = std::array::from_fn(|i| i as u8);
+        let mut image = |sub: f64| {
+            let mut m = vec![0u8; (b.2 * b.3) as usize];
+            offscreen.draw_at(self, glyph, b, &lut, false, Some(sub), &mut m);
+            m
+        };
+        let base = image(0.0);
+        for l in [8u8, 6, 5, 4, 3, 2] {
+            if image(1.0 / l as f64) != base {
+                return l;
+            }
+        }
+        1
+    }
+}
+
 /// `gLinearCoverageFromCGLCDValue`: (i² + 128) / 255.
 fn linear_from_cg(i: u32) -> u32 {
     (i * i + 128) / 255
@@ -253,6 +277,8 @@ pub(crate) struct Strike {
     font: Cf,
     transform: CGAffineTransform,
     inverse: CGAffineTransform,
+    /// [`Strike::subpixel_levels`], once measured (0 until then).
+    pub(crate) levels: std::cell::Cell<u8>,
 }
 
 unsafe impl Send for Strike {}
@@ -292,7 +318,7 @@ impl Strike {
             if font.0.is_null() {
                 return None;
             }
-            Some(Strike { font, transform, inverse })
+            Some(Strike { font, transform, inverse, levels: std::cell::Cell::new(0) })
         }
     }
 
@@ -364,6 +390,15 @@ impl Offscreen {
     /// (`width × height` bytes, rows top down). `smooth` is `requestSmooth` (normal hinting,
     /// which `onFilterRec` keeps unless the smoothing behaviour is `none`).
     pub(crate) fn draw(&mut self, strike: &Strike, glyph: u16, bounds: (i32, i32, u32, u32), lut: &[u8; 256], smooth: bool, out: &mut [u8]) {
+        self.draw_at(strike, glyph, bounds, lut, smooth, None, out)
+    }
+
+    /// [`Offscreen::draw`], or with `uikit` = `Some(sub_x)` as UIKit's own drawing does it (a
+    /// UILabel / RN `<Text>` backing store: CoreGraphics' default font subpixel positioning and
+    /// quantization, smoothing off): the glyph `sub_x` px right of its whole-pixel origin, the
+    /// coverage as drawn.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn draw_at(&mut self, strike: &Strike, glyph: u16, bounds: (i32, i32, u32, u32), lut: &[u8; 256], smooth: bool, uikit: Option<f64>, out: &mut [u8]) {
         let (left, top, gw, gh) = (bounds.0, bounds.1, bounds.2 as usize, bounds.3 as usize);
         unsafe {
             if self.space.is_null() {
@@ -392,6 +427,8 @@ impl Offscreen {
             let c = self.context;
             CGContextSetShouldAntialias(c, true);
             CGContextSetShouldSmoothFonts(c, smooth);
+            CGContextSetAllowsFontSubpixelQuantization(c, uikit.is_some());
+            CGContextSetShouldSubpixelQuantizeFonts(c, uikit.is_some());
             // One offscreen serves every strike (Skia keeps one per scaler context, whose
             // transform never changes): the text matrix is the strike's.
             CGContextSetTextMatrix(c, strike.transform);
@@ -400,7 +437,7 @@ impl Offscreen {
             for y in 0..gh {
                 self.pixels[first + y * width..first + y * width + gw].fill(0xFFFF_FFFF);
             }
-            let p = CGPoint { x: -left as f64, y: (top + gh as i32) as f64 };
+            let p = CGPoint { x: -left as f64 + uikit.unwrap_or(0.0), y: (top + gh as i32) as f64 };
             let p = CGPointApplyAffineTransform(p, strike.inverse);
             CTFontDrawGlyphs(strike.font.0, &glyph, &p, 1, c);
             for y in 0..gh {

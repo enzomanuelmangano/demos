@@ -552,3 +552,207 @@ fn arcs_and_circles_in_paths_are_conics() {
     assert!(e_conic < 2e-5, "{e_conic}");
     assert!(e_cubic > 5e-3, "{e_cubic}");
 }
+
+/// Our drawing of RN `<Text>` runs against UIKit's, as exact/parity-tools/text-probe dumps it:
+/// `TEXT_PROBE=<dump> cargo test -p skia text_probe -- --ignored --nocapture`. Each case is
+/// drawn in a box of the probe's size at its origin, white, and compared pixel for pixel
+/// (also at the best whole-pixel shift).
+#[test]
+#[ignore = "needs a text-probe dump"]
+fn text_probe() {
+    let Some(gpu) = gpu() else { return };
+    let Ok(path) = std::env::var("TEXT_PROBE") else { return eprintln!("TEXT_PROBE unset") };
+    let dump = std::fs::read_to_string(path).unwrap();
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../");
+    let mut lines = dump.lines().peekable();
+    let mut case = String::new();
+    let mut glyphs = String::new();
+    while let Some(l) = lines.next() {
+        if let Some(c) = l.strip_prefix("case ") {
+            case = c.to_string();
+        }
+        if l.starts_with("glyphs") {
+            glyphs = l.to_string();
+        }
+        let Some(dims) = l.strip_prefix("pixels ") else { continue };
+        let d: Vec<u32> = dims.split(' ').map(|v| v.parse().unwrap()).collect();
+        let (w, h) = (d[0], d[1]);
+        let hex = lines.next().unwrap();
+        let want: Vec<u8> = (0..(w * h) as usize).map(|i| u8::from_str_radix(&hex[2 * i..2 * i + 2], 16).unwrap()).collect();
+        let f: Vec<&str> = case.split('|').collect();
+        let size: f32 = f[1].parse().unwrap();
+        let mut text = String::new();
+        let mut chars = f[2].chars().peekable();
+        while let Some(ch) = chars.next() {
+            if ch == '\\' && chars.peek() == Some(&'u') {
+                chars.next();
+                let code: String = (0..4).filter_map(|_| chars.next()).collect();
+                text.push(char::from_u32(u32::from_str_radix(&code, 16).unwrap()).unwrap());
+            } else {
+                text.push(ch);
+            }
+        }
+        let font = if let Some(wt) = f[0].strip_prefix("system-") {
+            let weight = match wt {
+                "0.4" => 700.0,
+                "0.3" => 600.0,
+                "0.23" => 500.0,
+                _ => 400.0,
+            };
+            match_ui_font(size, weight).unwrap()
+        } else {
+            let p = ["gpu/fonts/", "assets/fonts/"].iter().map(|d| format!("{root}{d}{}", f[0])).find(|p| std::path::Path::new(p).exists()).unwrap();
+            Font::new(Box::leak(std::fs::read(p).unwrap().into_boxed_slice()), size).unwrap().with_ui_layout()
+        };
+        let mut c = Canvas::default();
+        c.begin(3.0);
+        c.draw_text(&text, 0.0, -font.metrics().ascent, &font, &white());
+        let format = wgpu::TextureFormat::Rgba8Unorm;
+        let tex = gpu.device.create_texture(&wgpu::TextureDescriptor {
+            label: None,
+            size: wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+            view_formats: &[],
+        });
+        let view = tex.create_view(&Default::default());
+        let mut r = Renderer::default();
+        let mut enc = gpu.device.create_command_encoder(&Default::default());
+        r.draw(&gpu.device, &gpu.queue, &mut enc, &c, &view, format, w, h, wgpu::Color::TRANSPARENT);
+        gpu.queue.submit([enc.finish()]);
+        let px = fixture::read(&gpu, &tex).unwrap();
+        let diff = |dx: i32, dy: i32| {
+            let (mut max, mut sum) = (0u32, 0u64);
+            for y in 0..h as i32 {
+                for x in 0..w as i32 {
+                    let (sx, sy) = (x - dx, y - dy);
+                    let ours = if sx >= 0 && sy >= 0 && sx < w as i32 && sy < h as i32 { px.at(sx as u32, sy as u32)[3] } else { 0 };
+                    let d = (ours as i32 - want[(y as u32 * w + x as u32) as usize] as i32).unsigned_abs();
+                    max = max.max(d);
+                    sum += d as u64;
+                }
+            }
+            (max, sum as f64 / (w * h) as f64)
+        };
+        let (m0, a0) = diff(0, 0);
+        let best = (-2..=2).flat_map(|dy| (-2..=2).map(move |dx| (dx, dy))).map(|(dx, dy)| (diff(dx, dy), dx, dy)).min_by(|a, b| a.0 .0.cmp(&b.0 .0)).unwrap();
+        eprintln!("{case}: max {m0} mean {a0:.3}; best shift ({}, {}) max {} mean {:.3}", best.1, best.2, best.0 .0, best.0 .1);
+        let mut run = Vec::new();
+        font.glyph_run(&text, &mut run);
+        eprintln!("  ours   {}", run.iter().map(|(g, p)| format!("{g}:{p:.6}")).collect::<Vec<_>>().join(" "));
+        eprintln!("  uikit  {}", glyphs.trim_start_matches("glyphs "));
+    }
+}
+
+/// An RN `<Text>` font (`with_ui_layout`) is drawn as UIKit draws it: against
+/// tools/uikit_text_reference.c (CoreGraphics with UIKit's backing-store settings, whose output
+/// the iOS Simulator matches byte for byte), at sizes across CoreGraphics' 4, 2 and 1 subpixel
+/// levels and box origins on each third of a point; and TextKit's measured metrics.
+#[cfg(target_os = "macos")]
+#[test]
+fn uikit_text_is_coregraphics() {
+    let Some(gpu) = gpu() else { return };
+    let root = env!("CARGO_MANIFEST_DIR");
+    let dir = std::env::temp_dir().join(format!("skia-uikit-ref-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let tool = dir.join("ref");
+    let built = std::process::Command::new("cc")
+        .args(["-O1", "-w", &format!("{root}/tools/uikit_text_reference.c"), "-framework", "CoreText", "-framework", "CoreGraphics", "-framework", "CoreFoundation", "-o"])
+        .arg(&tool)
+        .status();
+    if !built.is_ok_and(|s| s.success()) {
+        return eprintln!("no cc; skipped");
+    }
+    static OUTFIT: &[u8] = include_bytes!("../../../gpu/fonts/outfit.ttf");
+    static ANTDESIGN: &[u8] = include_bytes!("../../../gpu/fonts/antdesign-arrow-right-subset.ttf");
+    static SFC: &[u8] = include_bytes!("../../../assets/fonts/SF-Compact-Rounded-Medium.otf");
+    // TextKit's numbers for AntDesign 20 (the probe's UIFont and NSLayoutManager): hhea, not the
+    // USE_TYPO_METRICS typo ascender; the line without the gap.
+    let ad = Font::new(ANTDESIGN, 20.0).unwrap().with_ui_layout();
+    assert_eq!(-ad.metrics().ascent, 17.773438);
+    assert_eq!(ad.ui_line_height(), 20.9375);
+    let mut worst = 0u8;
+    for (file, data, size, text) in [
+        ("../../gpu/fonts/outfit.ttf", OUTFIT, 11.0f32, "Sacrifice it all"),
+        ("../../gpu/fonts/outfit.ttf", OUTFIT, 4.0, "tiny text"),
+        ("../../assets/fonts/SF-Compact-Rounded-Medium.otf", SFC, 17.0, "Standard Pro"),
+        ("../../gpu/fonts/antdesign-arrow-right-subset.ttf", ANTDESIGN, 20.0, "\u{F117}"),
+    ] {
+        let font = Font::new(data, size).unwrap().with_ui_layout();
+        for (ox, oy) in [(2.0f32, 3.0f32), (2.0 + 1.0 / 3.0, 3.0 + 1.0 / 3.0), (2.0 + 2.0 / 3.0, 3.0 + 2.0 / 3.0)] {
+            let (w, h) = (W, H);
+            let baseline = oy - font.metrics().ascent;
+            let mut c = Canvas::default();
+            c.begin(3.0);
+            c.draw_text(text, ox, baseline, &font, &white());
+            assert!(!c.msaa);
+            let px = render(&gpu, &c);
+            let mut run = Vec::new();
+            font.glyph_run(text, &mut run);
+            let mut cmd = std::process::Command::new(&tool);
+            cmd.arg(format!("{root}/{file}")).arg(size.to_string()).arg(w.to_string()).arg(h.to_string()).arg("3").arg("PQA");
+            for (g, pen) in &run {
+                cmd.arg(format!("{g}:{:.9},{:.9}", ox + pen, baseline));
+            }
+            let out = String::from_utf8(cmd.output().unwrap().stdout).unwrap();
+            let want: Vec<u8> = (0..(w * h) as usize).map(|i| u8::from_str_radix(&out[2 * i..2 * i + 2], 16).unwrap()).collect();
+            assert!(want.iter().any(|&v| v > 0), "{text}: ink");
+            let mut case = 0u8;
+            for y in 0..h {
+                for x in 0..w {
+                    case = case.max(px.at(x, y)[3].abs_diff(want[(y * w + x) as usize]));
+                }
+            }
+            eprintln!("{text} {size} at ({ox:.3}, {oy:.3}): {case}");
+            worst = worst.max(case);
+        }
+    }
+    eprintln!("uikit text: max error {worst} / 255");
+    assert!(worst <= 1, "{worst}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A continuous circle (r past half the side: the corners overlap along every side) fills as
+/// Core Animation does with no crack: 89 × 89 at r 100, white on black at 3×, every pixel more
+/// than one in from the edge fully covered along the middle row and column. Its rows match
+/// CA's nonzero fill (path_tests::continuous_corners_fill_as_core_animation).
+#[test]
+fn a_continuous_circle_has_no_msaa_crack() {
+    let Some(gpu) = gpu() else { return };
+    let path = continuous_rrect_path(10.0, 10.0, 89.0, 89.0, 100.0);
+    let (w, h) = (330u32, 330u32);
+    let format = wgpu::TextureFormat::Rgba8Unorm;
+    let tex = gpu.device.create_texture(&wgpu::TextureDescriptor {
+        label: None,
+        size: wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+        view_formats: &[],
+    });
+    let view = tex.create_view(&Default::default());
+    let mut c = Canvas::default();
+    c.begin(3.0);
+    c.draw_path(&path, &white());
+    let mut r = Renderer::default();
+    let mut enc = gpu.device.create_command_encoder(&Default::default());
+    r.draw(&gpu.device, &gpu.queue, &mut enc, &c, &view, format, w, h, wgpu::Color::BLACK);
+    gpu.queue.submit([enc.finish()]);
+    let px = fixture::read(&gpu, &tex).unwrap();
+    px.save("parity-continuous-circle");
+    // The middle (y 54.5 pt = 163 px) row from the left edge (30 px), the middle column from the
+    // bottom (297 px), and the top row and right column.
+    let mid = 163;
+    let row: Vec<u8> = (28..40).map(|x| px.at(x, mid)[0]).collect();
+    let col: Vec<u8> = (288..300).rev().map(|y| px.at(mid, y)[0]).collect();
+    eprintln!("left edge, middle row: {row:?}\nbottom edge, middle column: {col:?}");
+    for x in 31..296 {
+        assert_eq!(px.at(x, mid)[0], 255, "row {mid}, x {x}: {row:?}");
+        assert_eq!(px.at(mid, x)[0], 255, "column {mid}, y {x}: {col:?}");
+    }
+}

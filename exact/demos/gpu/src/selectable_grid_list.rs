@@ -118,8 +118,8 @@ fn grid() -> SelectableGrid {
         fab_press: Timing::at(0.0),
         pressing: None,
         posted: Vec::new(),
-        check: Font::new(ANTDESIGN, 16.0),
-        clear: Font::new(MATERIAL, 20.0),
+        check: Font::new(ANTDESIGN, 16.0).map(Font::with_ui_layout),
+        clear: Font::new(MATERIAL, 20.0).map(Font::with_ui_layout),
         // ReText: a TextInput, laid out by UIKit (tracking, kerning).
         label: skia::match_ui_font(20.0, 400.0),
         images: None,

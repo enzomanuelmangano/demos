@@ -83,7 +83,7 @@ pub fn surface() -> Box<dyn Surface> {
         tab_press: std::array::from_fn(|_| Timing::at(0.0)),
         selected: None,
         posted: Vec::new(),
-        icons: Font::new(IONICONS, 24.0),
+        icons: Font::new(IONICONS, 24.0).map(Font::with_ui_layout),
         demo: skia::match_ui_font(24.0, 600.0),
         title: skia::match_ui_font(14.0, 400.0),
         subtitle: skia::match_ui_font(12.0, 400.0),
