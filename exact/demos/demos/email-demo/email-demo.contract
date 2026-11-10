@@ -127,7 +127,7 @@ component EmailRow
     // translateY withSpring(-shifted · 110, { damping 30, stiffness 180, mass 1.5 }); opacity
     // withSpring(index >= shifted, { damping 26, stiffness 190, mass 1.4 }).
     view display="flex" flex-direction="column" height=itemHeight() margin-bottom=8 margin-left=12 margin-right=12 border-radius=20
-      corner-shape="squircle" border-width=0.5 border-color="color(display-p3 0.898 0.9059 0.9216 / 0.3)"
+      corner-shape="-exact-continuous" border-width=0.5 border-color="color(display-p3 0.898 0.9059 0.9216 / 0.3)"
       box-shadow="0px 1px 4px rgba(0, 0, 0, 0.05)"
       background-color=(on ? "color(display-p3 0.2314 0.5098 0.9647 / 0.06)" : "transparent")
       filter=(on ? "drop-shadow(0px 6px 24px color(display-p3 0.2314 0.5098 0.9647 / 0.06))" : "none")
