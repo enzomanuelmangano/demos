@@ -23,3 +23,22 @@ The RN dev build and the Exact build run on the same simulator (`demos-dev-loop`
    visibility, repeat until none is left. If Contract can't reach parity, move that part to
    Rust (`port-demo`).
 4. **Then** the demo goes in `tools/ported.txt`.
+
+## Motion verdict: audit first, record second
+
+argent's recordings of the RN Debug app drop every other frame (about 15 fps), so a recording
+can't time RN to tens of milliseconds. Motion parity is proved in two parts:
+
+1. **Audit (decides timing and feel).** For every animated value in the RN source, write a row:
+   value, driver (withSpring / withTiming / withDecay / interpolate / gesture), config (stiffness
+   / damping / mass or duration + dampingRatio, duration, easing, delay), input and output ranges,
+   extrapolation, what triggers it, what cancels it, the haptics. Check the Exact side against
+   each row. `packages/reanimated` is Reanimated's math line for line, so equal rows mean equal
+   curves. Contract `-exact-spring(k, c, m)` is the same spring; durations go through
+   `tools/spring.ts`.
+2. **Recording (decides structure).** At 15 fps a recording still shows the wrong property
+   moving, a wrong direction, a missing stagger, a wrong end state, or a gesture threshold firing
+   at the wrong place. Use it for that, not for timing.
+
+A demo's motion is "identical" only when every audit row matches and the recording shows the same
+structure.
