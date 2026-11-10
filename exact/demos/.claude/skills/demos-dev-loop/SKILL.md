@@ -17,8 +17,10 @@ bun exact.mjs ios --run --sim $EXACT_SIM                         # native build 
 
 ## Hot reload first
 
-- Keep one development build running on `$EXACT_SIM`. An edit to any `.contract`, to
-  `app.ts` or what it imports reaches it in about a second: never rebuild for those.
+- Keep one development build installed on your simulator. An edit to any `.contract`, to
+  `app.ts` or what it imports reaches it only when you run `bun exact.mjs ios --run --sim <udid>`
+  again: it skips the native build and pushes the new plan (about 15 s). The web dev server
+  (`exact.mjs web`, e.g. :5203) does not reload the iOS app.
 - Rebuild natively only for Rust (`gpu/`), Swift, `app.json`, `assets/` (icons, images),
   fonts or grants. Batch them and build once (warm: 1–2 min; first: many minutes).
 - One build at a time: `pgrep -f "exact.mjs ios"` empty first; `df -h ~` above 8 GB.
@@ -87,5 +89,8 @@ bun exact.mjs ios --run --sim $EXACT_SIM                         # native build 
   capture of the home or a half-open card is timing: rerun with a larger WAIT.
 - GPU surfaces: one `write_buffer` per resource per frame (each stages a buffer); morphs in
   the vertex shader; the web host gives a surface no touches (iOS is the target).
+- argent on the RN Debug build: `gesture-swipe` often doesn't register; `gesture-custom` with
+  interpolated Moves (`interpolate: 20`) works on both apps, so drive A/B gestures with it. Its
+  recordings of RN drop frames heavily (often 3-15 fps): time nothing from them.
 - If argent's touches fail ("CoreDevice transport is dead"), `stop-simulator-server` for
   the device and retry.

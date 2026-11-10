@@ -100,6 +100,22 @@ One commit per haptic event, never per frame.
   expo-image centre it; Contract has no `object-position`). When the photo is taller than its box
   at cover scale, lay the cover box out by hand: a clip box, the image absolute at
   `max(w/iw, h/ih)` × its size, centred (see swipe-cards). Horizontal crops: unchecked, check for a left pin too.
+- Text line height: an RN Text with no `lineHeight` is laid out by TextKit at the font's
+  unrounded hhea line height, (ascender + descender + lineGap) / unitsPerEm × font size (SF:
+  (1950 + 494) / 2048, so 16.70703125 at 14, 23.8671875 at 20, every weight). Exact's `normal`
+  line box rounds ascent and descent to whole points (17 and 23 there): every multi-line text
+  drifts per line (scroll-progress: 0.88 px a line). Give each multi-line text that px value as
+  an explicit `line-height`.
+- Bundled fonts: Exact's line box takes the OS/2 usWin ascent/descent, TextKit the hhea ones
+  (FiraCode: 2164 / 1000 vs 1980 / 644). In a fixed-height box that centres the text, the
+  baseline moves by the metric difference and no `line-height` changes it (it cancels): offset
+  the text (`position="relative" top=…`) by the computed difference (staggered-card-number: 1 pt).
+  Read the metrics with fontTools, don't eyeball.
+- Vector-icon glyphs drawn as SVG paths (Feather, Octicons, AntDesign…): TextKit puts half the
+  font's hhea lineGap above the ascender, so in an `ascender + descender + lineGap` tall box the
+  glyph sits lineGap / 2 lower than at the box top + ascender: `viewBox="0 -23 512 572"` for a
+  lineGap of 46 / 512 (staggered-card-number's eye was 1.09 pt high). Where the box is centred
+  in its row and hugs the glyph the offset cancels; check which case a demo is.
 - `-exact-exit-animation` must be one literal declaration (no `${…}`), or the web target
   refuses it. Write the curve out (`cubic-bezier(0.455, 0.03, 0.515, 0.955)` is inOut(quad)).
 
