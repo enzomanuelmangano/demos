@@ -70,7 +70,9 @@ One commit per haptic event, never per frame.
 - iOS host: a `transition`'s DELAY is ignored (measured: popup-handler, verification-code),
   armed early or not. `animation` delays hold. A delayed motion (`withDelay`) is keyframes
   with a delay (`… 300ms <easing> 800ms both`) or Rust. Keyframes refuse `rotate="x -90deg"`
-  (BadValue). Timers (`task … when` + `after(ms, action)`) exist only in the ROOT component.
+  (BadValue), but animate the angle of a node whose axis a fixed `rotate="x 0deg"` sets
+  (verification-code). A delay before a spring or a state change: the `timer` surface
+  (`gpu/src/timer.rs`: inputs token, ms; posts `timer:<token>` once; see popup-handler). Timers (`task … when` + `after(ms, action)`) exist only in the ROOT component.
 - iOS host: a `-exact-drag-timeline` box moved only by a `transition` (state change, no
   finger) does NOT drive its `animation-timeline` keyframes: they jump to the end. For
   state-driven motion use state-triggered keyframes that sample the RN curve densely enough that
