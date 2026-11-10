@@ -2,7 +2,8 @@
 // grows to a full sheet with a text field when it (or "Start your Journey") is pressed, and
 // shrinks back from the chevron. Inspired by Dot. RN: src/animations/dot-sheet (src/index.tsx,
 // components/card-input.tsx, components/background-gradient.tsx). The background is Skia,
-// drawn once in Rust: gpu/src/dot_sheet.rs; the rest is here.
+// drawn once in Rust: gpu/src/dot_sheet.rs; the card (its frame, rotation, animated continuous
+// radius and shadow on RN's spring) is gpu/src/dot_sheet_card.rs; the field and the rest are here.
 use PressableScale from "pressto"
 use DemoEnv, demoButtonRow from "../env.contract"
 
@@ -20,14 +21,21 @@ component DotSheet
   props
     env: DemoEnv
   state open = false
+  // progress === 0: the card's surface says when its spring has landed closed.
+  state still = true
+  action heard(m: string)
+    if m == "card:rest"
+      still = true
+    if m == "card:moving"
+      still = false
   // onFocus / onBlur of the field drive the card.
   action opened
     open = true
   action closed
     open = false
-  // The card's onTouchEnd: focus while it rests closed.
+  // The card's onTouchEnd: focus only while progress is exactly 0 (not on a card still closing).
   action tapCard
-    if not open
+    if not open and still
       focus("dot-input")
   action start
     haptic("selection")
@@ -43,10 +51,14 @@ component DotSheet
       // styles.fillCenter, then styles.fill. Positioned, so it paints over the absolute canvas
       // (an in-flow box paints under a positioned sibling, whatever the order).
       column flex=1 position="relative" align-items="center" justify-content="center"
+        // TextKit's lines (hhea 2099 + 358 over 2048, no lineGap) as explicit px line-heights, each
+        // text moved back onto RN's pixels (measured against the RN capture).
         text "One more thing" font-family="AddingtonCF-Light" font-size=28 letter-spacing=-0.5
-          color="#000000" role="heading"
+          line-height="33.591796875px" position="relative" top=0.6667 left=-0.3333 color="#000000"
+          role="heading"
         text "This animation is inspired by Dot and made with React Native." color="#6c6c6c"
-          font-family="AddingtonCF-Light" font-size=18 letter-spacing=-0.5 margin-top=12 max-width="60%"
+          font-family="AddingtonCF-Light" font-size=18 letter-spacing=-0.5 line-height="21.5947265625px"
+          position="relative" top=0.3333 margin-top=12 max-width="60%"
           text-align="center"
       column flex=1
       // The back button: top = safe area + DEMO_BUTTON_ROW_HEIGHT, left 16, 32 square, its
@@ -61,21 +73,27 @@ component DotSheet
         bottom="calc(env(safe-area-inset-bottom) + 16px)" left="7.5%" width="85%" height=52
         border="none" border-radius=30 background-color="rgba(55, 55, 55, 0.2)" display="flex"
         align-items="center" justify-content="center" testId="dot-start"
-        text "Start your Journey" color="#ffffff" font-size=16 font-weight=700
+        text "Start your Journey" color="#ffffff" font-size=16 font-weight=700 line-height="19.09375px"
+          position="relative" top=0.3333
       // The card (zIndex 1): top, left, width, height, radius and rotate all interpolate the
       // progress: from (h / 2.8 × 3/4) × h / 2.8 centred 35 below the middle at -4° and radius
       // 16, to the window's width less 2 and its height, below the header, upright, radius 32.
+      canvas surface=dot_sheet_card(open, env.safeTop) message=heard position="absolute" top=0 left=0
+        width="100%" height="100%" z-index=1 pointer-events="none" aria-hidden=true
+        testId="dot-card-canvas"
+      // The card's box for the field and the touches; the surface above draws it.
       column position="absolute" z-index=1 top=cardTop(env.height, env.safeTop, open)
         left=cardLeft(env.width, env.height, open) width=cardWidth(env.width, env.height, open)
-        height=cardHeight(env.height, open) background-color="#ffffff" border-radius=(open ? 32 : 16)
-        corner-shape="-exact-continuous" box-shadow="0px 0px 20px rgba(193, 193, 193, 0.1)"
-        rotate=(open ? "0deg" : "-4deg") -exact-layout-transition=cardSpring()
+        height=cardHeight(env.height, open) rotate=(open ? "0deg" : "-4deg") -exact-layout-transition=cardSpring()
         transition=`rotate ${cardSpring()}` press=tapCard testId="dot-card"
-        // The multiline field: marginTop 16 → 24, fontSize 14 → 24.
+        // The multiline field: marginTop 16 → 24, fontSize 14 → 24. The host's field sets its first
+        // baseline at AddingtonCF's typo ascender (USE_TYPO_METRICS), UITextView at the hhea one:
+        // 461 / 2048 em lower (measured: 16 px at 24, 10 px at 14, text and placeholder alike).
         textarea id="dot-input" placeholder="Hello there 👋" autocorrect="off" autocapitalize="none"
           focus=opened blur=closed font-family="AddingtonCF-Light" font-size=(open ? 24 : 14)
           margin="0px 12px 0px 16px" margin-top=(open ? 24 : 16) flex=1 min-height=0
           background-color="transparent" border="none" padding=0 color="#000000" outline="none"
+          padding-top=((open ? 24 : 14) * 461 / 2048)
           resize="none" -exact-layout-transition=cardSpring() aria-label="Note" testId="dot-input"
           ::placeholder
             color="#b4b4b4"

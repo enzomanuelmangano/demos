@@ -40,6 +40,7 @@ pub mod coverflow_carousel;
 pub mod cuberto_slider;
 pub mod delete_button;
 pub mod dot_sheet;
+pub mod dot_sheet_card;
 pub mod dynamic_blur_tabs;
 pub mod duration_slider;
 pub mod exclusion_tabs;
@@ -108,6 +109,7 @@ pub static REGISTRY: Registry = Registry {
         ("cuberto_slider", 0, cuberto_slider::surface),
         ("delete_button", 0, delete_button::surface),
         ("dot_sheet", 0, dot_sheet::surface),
+        ("dot_sheet_card", 2, dot_sheet_card::surface),
         ("dynamic_blur_tabs", 7, dynamic_blur_tabs::surface),
         ("duration_slider", 0, duration_slider::surface),
         ("exclusion_tabs", 0, exclusion_tabs::surface),
