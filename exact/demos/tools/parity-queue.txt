@@ -4,8 +4,8 @@
 github-contributions ported done:38efb062
 mobile-input todo claimed:sim1
 swipe-cards ported done:5ba2f6ee (verified 2026-11-10: stills edge- and button-exact, photo mean 0.85; A/B drag, throw, reset same structure)
-spiral ported claimed:sim2
-scroll-progress ported
+spiral ported done:9fecc647 (stills: arm hues, glow, MSAA coverage within 1-2 levels; spring audit line for line; A/B tap same structure)
+scroll-progress ported claimed:sim2
 animated-grid-list ported
 floating-bottom-bar ported
 animated-clip-box ported
