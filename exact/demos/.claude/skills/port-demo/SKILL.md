@@ -308,6 +308,9 @@ One commit per haptic event, never per frame.
 - A path of many small `addCircle`s (spiral's 1641) is one Graphite path, a 4× MSAA union: the
   sub-pixel circles take quarter coverages. Instanced analytic circles overstate them (a r 0.6 px
   dot lit 4 pixels): draw RN's path with `draw_with` + `skia::add_circle` (~1.7 ms CPU a frame).
+- An RN Skia canvas is an 8-bit Display P3 surface even with no gradient: every flat colour takes a
+  rounded P3 round trip (#F7FFF7 shows as 246, 255, 247) and AA edges and glyphs blend P3 values
+  (6 levels off in sRGB). Draw through `gfx::P3Layer` (theme-canvas-animation: max 1 level).
 - iOS Graphite rounds each gradient value to 8 bits in P3: on saturated cyan one P3 level of red
   is ~11 sRGB levels, so a sweep's seam can step a few pixels apart from RN's (sub-level float
   arithmetic, not a model error).

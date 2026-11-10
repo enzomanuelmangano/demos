@@ -17,6 +17,9 @@
 //!   withSpring(0.9); onTap (the canvas tap's onTouchesUp on it) scale = withSpring(1) and
 //!   onSelectSquare. Both Reanimated 4's default spring, about the swatch's centre. The tap
 //!   fails past 500 ms (RNGH's maxDuration); RNGH sets no distance for it.
+//! - Drawn through `gfx::P3Layer`, RN Skia's 8-bit Display P3 surface: the background #F7FFF7
+//!   shows as (246, 255, 247) on RN's screen, #F38D68 as (243, 141, 105), and the swatches'
+//!   edges blend in P3 (measured A/B: an sRGB canvas was 1 level off everywhere, 6 on edges).
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -61,6 +64,8 @@ struct Theme {
     tap: TapGesture,
     canvas: Canvas,
     renderer: Renderer,
+    /// RN Skia's 8-bit Display P3 surface: flat colours and edges as RN shows them.
+    p3: gfx::P3Layer,
     /// Haptics for the app to play (`message=buzz`): Haptics.selectionAsync on a select.
     posted: Vec<String>,
 }
@@ -206,7 +211,7 @@ impl Surface for Theme {
             c.restore();
         }
         let (pw, ph) = frame.pixels();
-        self.renderer.draw(device, queue, encoder, &self.canvas, target, format, pw, ph, wgpu::Color::BLACK);
+        self.p3.draw(&mut self.renderer, device, queue, encoder, &self.canvas, target, format, pw, ph, wgpu::Color::BLACK);
         moving || self.finger.is_some()
     }
 }
@@ -227,8 +232,8 @@ mod tests {
         let (rest, animating) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         rest.save("theme-canvas-rest");
         assert!(!animating);
-        // #F7FFF7 everywhere but the text and the swatches; THEME in #373737 above the centre.
-        assert_eq!(&rest.at(10, 10)[..3], &[0xF7, 0xFF, 0xF7]);
+        // #F7FFF7 (246, 255, 247 through P3, as RN shows it) everywhere but the text and the swatches; THEME in #373737 above the centre.
+        assert_eq!(&rest.at(10, 10)[..3], &[246, 255, 247]);
         assert!(rest.count(|p| p[..3] == [0x37, 0x37, 0x37]) > 300);
         // Swatch 2 (offset (1, 0)) centred at (280, 456): #1A535C.
         assert_eq!(&rest.at(280, 456)[..3], &[0x1A, 0x53, 0x5C]);
@@ -252,7 +257,7 @@ mod tests {
         mid.save("theme-canvas-flooding");
         assert!(moving);
         assert_eq!(&mid.at(300, 470)[..3], &[0x1A, 0x53, 0x5C]);
-        assert_eq!(&mid.at(10, 10)[..3], &[0xF7, 0xFF, 0xF7]);
+        assert_eq!(&mid.at(10, 10)[..3], &[246, 255, 247]);
         let mut ms = 400.0;
         let mut moving = true;
         while moving && ms < 3000.0 {

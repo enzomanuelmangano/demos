@@ -160,3 +160,105 @@ pub fn save_over(img: &exact_gpu::fixture::Pixels, name: &str, background: [u8; 
     }
     let _ = std::fs::write(std::path::Path::new(&dir).join(format!("{name}.ppm")), out);
 }
+
+/// RN Skia's canvas on iOS: an 8-bit Display P3 surface that Core Animation converts to the
+/// screen. Every flat colour takes a rounded P3 round trip (#F7FFF7 shows as (246, 255, 247),
+/// #F38D68 as (243, 141, 105)) and antialiased edges, glyphs and clips blend P3 values (a
+/// half-covered #4ECDC4 edge over #F7FFF7: RN (169, 231, 222), an sRGB blend 163 in red).
+/// `draw` renders the canvas into an Rgba8Unorm layer with `renderer.p3` set, then converts each
+/// pixel to sRGB, unpremultiplied, into the target (theme-canvas-animation, measured).
+#[derive(Default)]
+pub struct P3Layer {
+    layer: Option<(u32, u32, wgpu::TextureView)>,
+    pipe: Option<(wgpu::TextureFormat, wgpu::RenderPipeline, wgpu::BindGroupLayout)>,
+    bind: Option<wgpu::BindGroup>,
+}
+
+const P3_RESOLVE: &str = r#"
+@group(0) @binding(0) var layer: texture_2d<f32>;
+@vertex fn vs(@builtin(vertex_index) i: u32) -> @builtin(position) vec4<f32> {
+    let p = vec2<f32>(f32((i << 1u) & 2u), f32(i & 2u));
+    return vec4<f32>(p * vec2<f32>(2.0, -2.0) + vec2<f32>(-1.0, 1.0), 0.0, 1.0);
+}
+fn lin(c: vec3<f32>) -> vec3<f32> {
+    return select(pow((c + 0.055) / 1.055, vec3<f32>(2.4)), c / 12.92, c <= vec3<f32>(0.04045));
+}
+fn enc(c0: vec3<f32>) -> vec3<f32> {
+    let c = clamp(c0, vec3<f32>(0.0), vec3<f32>(1.0));
+    return select(1.055 * pow(c, vec3<f32>(1.0 / 2.4)) - 0.055, c * 12.92, c <= vec3<f32>(0.0031308));
+}
+// Linear Display P3 to linear sRGB (D65).
+fn p3_lin_to_srgb_lin(l: vec3<f32>) -> vec3<f32> {
+    return vec3<f32>(
+        1.2249401 * l.r - 0.2249404 * l.g,
+        -0.0420569 * l.r + 1.0420571 * l.g,
+        -0.0196376 * l.r - 0.0786361 * l.g + 1.0982735 * l.b);
+}
+fn resolve(pos: vec4<f32>) -> vec4<f32> {
+    let c = textureLoad(layer, vec2<i32>(pos.xy), 0);
+    if (c.a <= 0.0) { return vec4<f32>(0.0); }
+    return vec4<f32>(c.rgb / c.a, c.a);
+}
+// An encoded (unorm) target.
+@fragment fn fs_encoded(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
+    let c = resolve(pos);
+    return vec4<f32>(enc(p3_lin_to_srgb_lin(lin(c.rgb))) * c.a, c.a);
+}
+// An sRGB target (the hardware encodes): write linear.
+@fragment fn fs_linear(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
+    let c = resolve(pos);
+    return vec4<f32>(lin(enc(p3_lin_to_srgb_lin(lin(c.rgb)))) * c.a, c.a);
+}
+"#;
+
+impl P3Layer {
+    /// Draws `canvas` as RN Skia would show it: into the P3 layer (cleared to `clear`), then
+    /// converted into `target` (`width`×`height` pixels).
+    #[allow(clippy::too_many_arguments)]
+    pub fn draw(
+        &mut self,
+        renderer: &mut skia::Renderer,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        encoder: &mut wgpu::CommandEncoder,
+        canvas: &skia::Canvas,
+        target: &wgpu::TextureView,
+        format: wgpu::TextureFormat,
+        width: u32,
+        height: u32,
+        clear: wgpu::Color,
+    ) {
+        renderer.p3 = true;
+        if self.layer.as_ref().map(|l| (l.0, l.1)) != Some((width, height)) {
+            self.layer = Some((width, height, self::target(device, "p3 layer", wgpu::TextureFormat::Rgba8Unorm, width, height)));
+            self.bind = None;
+        }
+        if self.pipe.as_ref().map(|p| p.0) != Some(format) {
+            let module = device.create_shader_module(wgpu::ShaderModuleDescriptor { label: Some("p3 layer"), source: wgpu::ShaderSource::Wgsl(P3_RESOLVE.into()) });
+            let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("p3 layer"),
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture { sample_type: wgpu::TextureSampleType::Float { filterable: false }, view_dimension: wgpu::TextureViewDimension::D2, multisampled: false },
+                    count: None,
+                }],
+            });
+            let fs = if format.is_srgb() { "fs_linear" } else { "fs_encoded" };
+            let pipeline = fullscreen(device, format, &module, &layout, "vs", fs, None, "p3 layer");
+            self.pipe = Some((format, pipeline, layout));
+            self.bind = None;
+        }
+        let (_, _, layer) = self.layer.as_ref().unwrap();
+        let (_, pipeline, layout) = self.pipe.as_ref().unwrap();
+        let bind = self.bind.get_or_insert_with(|| {
+            device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("p3 layer"),
+                layout,
+                entries: &[wgpu::BindGroupEntry { binding: 0, resource: wgpu::BindingResource::TextureView(layer) }],
+            })
+        });
+        renderer.draw(device, queue, encoder, canvas, layer, wgpu::TextureFormat::Rgba8Unorm, width, height, clear);
+        pass(encoder, "p3 layer", target, pipeline, bind);
+    }
+}
