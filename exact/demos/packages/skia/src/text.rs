@@ -767,7 +767,7 @@ impl Canvas {
                 self.use_msaa_clips(&clip, depth);
                 let paint_index = self.push_paint(paint, clip.analytic.as_ref());
                 let to_image = match &paint.shader {
-                    Shader::Image { to_image, .. } => Some(m.invert().then(*to_image)),
+                    Shader::Image { to_image, .. } | Shader::ImageNearest { to_image, .. } => Some(m.invert().then(*to_image)),
                     _ => None,
                 };
                 let start = self.indices.len() as u32;

@@ -169,6 +169,11 @@ pub enum Shader {
     /// image's pixels (the inverse of where the image is drawn: `fit_cover(…).invert()`).
     /// Outside the image its edge repeats (clamp).
     Image { image: ImageRef, to_image: Matrix },
+    /// [`Shader::Image`] sampled nearest, as `canvas.drawImageRect(image, src, dst, paint)`
+    /// samples in RN Skia (`SkSamplingOptions()`: no filtering, no mipmaps, and
+    /// `kStrict_SrcRectConstraint`): Graphite's `sk_image_shader` nearest path, the texel under
+    /// the local point, clamped to `subset` (the src rect, image pixels `[l, t, r, b]`).
+    ImageNearest { image: ImageRef, to_image: Matrix, subset: [f32; 4] },
 }
 
 /// Evenly spaced stops for `colors`, as Skia places them without `positions`.
@@ -1270,7 +1275,7 @@ impl Canvas {
         self.use_msaa_clips(&clip, depth);
         let paint_index = self.push_paint(paint, clip.analytic.as_ref());
         let to_image = match &paint.shader {
-            Shader::Image { to_image, .. } => Some(*to_image),
+            Shader::Image { to_image, .. } | Shader::ImageNearest { to_image, .. } => Some(*to_image),
             _ => None,
         };
         let scissor = clip.scissor;
@@ -1438,6 +1443,13 @@ impl Canvas {
                 gpu.geometry = [image.width, image.height, image.layer as f32, 0.0];
                 let [a, b, c, d, e, f] = to_image.0;
                 gpu.offsets = [[a, b, c, d], [e, f, 0.0, 0.0]];
+            }
+            Shader::ImageNearest { image, to_image, subset } => {
+                gpu.head[0] = 4.0;
+                gpu.geometry = [image.width, image.height, image.layer as f32, 2.0];
+                let [a, b, c, d, e, f] = to_image.0;
+                gpu.offsets = [[a, b, c, d], [e, f, 0.0, 0.0]];
+                gpu.colors[1] = *subset;
             }
         }
         self.paints.push(gpu);

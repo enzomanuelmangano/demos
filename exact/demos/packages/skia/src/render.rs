@@ -153,8 +153,14 @@ fn shade(p: Paint, px: vec2<f32>, uv0: vec2<f32>, color: vec4<f32>, gx: vec2<f32
         c = ramp(p, fract(atan2(v.y, v.x) / 6.283185307 + 1.0));
     } else if (kind == 4u) {
         let uv = clamp(uv0, vec2<f32>(0.5), max(p.geometry.xy - vec2<f32>(0.5), vec2<f32>(0.5))) / dims;
-        let t = textureSampleGrad(images, smp, uv, i32(p.geometry.z), gx, gy);
-        if (p.geometry.w > 0.5) {
+        var t = textureSampleGrad(images, smp, uv, i32(p.geometry.z), gx, gy);
+        if (p.geometry.w > 1.5) {
+            // Nearest (ImageNearest): the texel under the point, inside the subset.
+            let s = p.colors[1];
+            let texel = clamp(floor(uv0), floor(s.xy), ceil(s.zw) - vec2<f32>(1.0));
+            t = textureLoad(images, vec2<i32>(texel), i32(p.geometry.z), 0);
+            c = vec4<f32>(t.rgb / max(t.a, 1e-5), t.a) * color;
+        } else if (p.geometry.w > 0.5) {
             c = vec4<f32>(color.rgb, color.a * t.a);
         } else {
             c = vec4<f32>(t.rgb / max(t.a, 1e-5), t.a) * color;
