@@ -49,6 +49,7 @@ loading-button
 magnet-spring
 metaball
 miles-bar-chart
+mobile-input
 motion-blur
 online-offline
 paper-folding

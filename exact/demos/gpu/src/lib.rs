@@ -70,6 +70,7 @@ pub mod loading_button;
 pub mod magnet_spring;
 pub mod metaball;
 pub mod miles_bar_chart;
+pub mod mobile_input;
 pub mod notion_qrcode;
 pub mod paper_folding;
 pub mod particles_button;
@@ -151,6 +152,7 @@ pub static REGISTRY: Registry = Registry {
         ("magnet_spring", 0, magnet_spring::surface),
         ("metaball", 0, metaball::surface),
         ("miles_bar_chart", 7, miles_bar_chart::surface),
+        ("mobile_input", 2, mobile_input::surface),
         ("notion_qrcode", 0, notion_qrcode::surface),
         ("paper_folding", 0, paper_folding::surface),
         ("particles_button", 1, particles_button::surface),

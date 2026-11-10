@@ -311,6 +311,21 @@ One commit per haptic event, never per frame.
 - iOS Graphite rounds each gradient value to 8 bits in P3: on saturated cyan one P3 level of red
   is ~11 sRGB levels, so a sweep's seam can step a few pixels apart from RN's (sub-level float
   arithmetic, not a model error).
+- The RN app today (pressto 0.7.0 on RNGH 3.3) shows NO press feedback: pressto hands BaseButton
+  `onBegan`/`onActivated`/`onEnded`, but RNGH 3.3's v3 BaseButton reads only `onBegin`/
+  `onActivate`/`onFinalize` (propsWhiteList.ts), so `active` never turns true. Its onFinalize then
+  calls onPress on any uncancelled lift, inside or not (a key slid off still types; measured on
+  mobile-input and steps' Continue). The owner's decision: port pressto's design (progress on press
+  in/out, onPress only on a lift inside), not the bug.
+- RNGestureHandlerButton's inside test is `locationInView:self` against its own bounds: through
+  the view's transform. A pressable scaled to 0.9 while held has a 0.9 hit frame; test the lift
+  in the key's transformed bounds (mobile-input).
+- Yoga, a wrapping row with `alignItems: 'center'`: each item's BORDER box is centred in its line,
+  whose height includes the trailing margin, so the item sits margin / 2 below the line's top
+  (mobile-input's keys at 498 + 4.9, measured 503).
+- A `Chain` of timings (withSequence / withRepeat) starts each step at the frame the last one
+  ended: a fixture rendered at sparse times (0, 6000, 12100 ms) lands mid-chain on the wrong step.
+  Step the surface every 16 ms before an "at rest" render.
 
 ## 4. Check
 
