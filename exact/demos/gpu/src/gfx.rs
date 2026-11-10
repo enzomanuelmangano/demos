@@ -124,16 +124,17 @@ impl Random {
     }
 }
 
-/// Where a one-line RN `<Text>` box's baseline sits: the line is the font's ascent + descent
-/// (+ its line gap) tall, the baseline an ascent below its top.
+/// Where a one-line RN `<Text>` box's baseline sits: an ascent below its top (TextKit's line
+/// fragment starts at the box top; measured by exact/parity-tools/text-probe).
 pub fn baseline(font: &skia::Font, top: f32) -> f32 {
     top - font.metrics().ascent
 }
 
-/// The height of one line of `font` (an RN `<Text>` with no `lineHeight`).
+/// The height of one line of `font` (an RN `<Text>` with no `lineHeight`): ascent + descent.
+/// RN's NSLayoutManager has `usesFontLeading = NO`, so the hhea line gap is not in the line
+/// (AntDesign, Entypo and Ionicons have one: their boxes were a lineGap too tall).
 pub fn line_height(font: &skia::Font) -> f32 {
-    let m = font.metrics();
-    -m.ascent + m.descent + m.leading
+    font.ui_line_height()
 }
 
 /// `v.set(withSpring(to, { duration, dampingRatio }))`: from where `spring` is, at its velocity

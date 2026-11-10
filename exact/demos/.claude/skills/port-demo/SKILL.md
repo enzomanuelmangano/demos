@@ -119,11 +119,16 @@ One commit per haptic event, never per frame.
   baseline moves by the metric difference and no `line-height` changes it (it cancels): offset
   the text (`position="relative" top=…`) by the computed difference (staggered-card-number: 1 pt).
   Read the metrics with fontTools, don't eyeball.
-- Vector-icon glyphs drawn as SVG paths (Feather, Octicons, AntDesign…): TextKit puts half the
-  font's hhea lineGap above the ascender, so in an `ascender + descender + lineGap` tall box the
-  glyph sits lineGap / 2 lower than at the box top + ascender: `viewBox="0 -23 512 572"` for a
-  lineGap of 46 / 512 (staggered-card-number's eye was 1.09 pt high). Where the box is centred
-  in its row and hugs the glyph the offset cancels; check which case a demo is.
+- RN `<Text>` drawn in Rust (labels, @expo/vector-icons glyphs): use a UIKit font
+  (`skia::match_ui_font`, or `Font::new(..).map(Font::with_ui_layout)` for a bundled/icon font)
+  and `gfx::line_height` / `gfx::baseline`. Measured by exact/parity-tools/text-probe (UILabel-
+  free RN path: NSLayoutManager, usesFontLeading NO, lineFragmentPadding 0) and matched pixel for
+  pixel: the line is hhea ascent + descent (no lineGap), the baseline the hhea ascent below the
+  box top (CoreText ignores USE_TYPO_METRICS: AntDesign, Entypo, Ionicons), trak values truncated
+  to whole units, glyphs drawn by CoreGraphics (x floored to the size's subpixel levels, y
+  rounded down the screen, raw coverage). The old "half the lineGap above the ascender" was the
+  box being a lineGap too tall. Vector-icon glyphs drawn as SVG paths in a Contract box still
+  need that offset by hand (the box is Contract's).
 - `-exact-exit-animation` must be one literal declaration (no `${…}`), or the web target
   refuses it. Write the curve out (`cubic-bezier(0.455, 0.03, 0.515, 0.955)` is inOut(quad)).
 - RNGH's iOS Pan (measured: wheel-picker, floating-modal): a plain `Gesture.Pan()` is UIKit's

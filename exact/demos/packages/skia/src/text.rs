@@ -188,13 +188,29 @@ impl Font {
         total
     }
 
-    /// `getMetrics()`, from the font's hhea table (Skia's ascent, descent and leading).
+    /// `getMetrics()`: the font's hhea ascender, descender and line gap, as CoreText reads them
+    /// (`CTFontGetAscent` / `Descent` / `Leading`, Skia's on iOS, and UIKit's `UIFont`): not the
+    /// OS/2 typo metrics a font's USE_TYPO_METRICS flag asks for (AntDesign, Entypo set it).
     pub fn metrics(&self) -> FontMetrics {
-        FontMetrics {
-            ascent: -(self.face.ascender() as f32) * self.units,
-            descent: -(self.face.descender() as f32) * self.units,
-            leading: self.face.line_gap() as f32 * self.units,
-        }
+        let t = self.face.tables();
+        let typo = t.os2.is_some_and(|o| o.use_typographic_metrics());
+        let (asc, desc, gap) = if typo {
+            // hhea, with its MVAR deltas (hasc, hdsc, hlgp) at the font's variation.
+            let coords = self.face.variation_coordinates();
+            let delta = |tag: &[u8; 4]| t.mvar.and_then(|m| m.metric_offset(Tag::from_bytes(tag), coords)).unwrap_or(0.0);
+            (t.hhea.ascender as f32 + delta(b"hasc"), t.hhea.descender as f32 + delta(b"hdsc"), t.hhea.line_gap as f32 + delta(b"hlgp"))
+        } else {
+            (self.face.ascender() as f32, self.face.descender() as f32, self.face.line_gap() as f32)
+        };
+        FontMetrics { ascent: -asc * self.units, descent: -desc * self.units, leading: gap * self.units }
+    }
+
+    /// The line an RN `<Text>` with no `lineHeight` lays out (RN's `NSLayoutManager` has
+    /// `usesFontLeading = NO`): ascent + descent, the line gap left out; the baseline is the
+    /// ascent below the line's top (measured by exact/parity-tools/text-probe).
+    pub fn ui_line_height(&self) -> f32 {
+        let m = self.metrics();
+        -m.ascent + m.descent
     }
 
     fn glyph(&self, c: char) -> GlyphId {
@@ -298,7 +314,9 @@ fn tracking(face: &Face<'static>, size: f32) -> f32 {
         let (s1, v1) = at(i);
         let (sa, va) = at(i - 1);
         if size <= s1 {
-            return va + (v1 - va) * (size - sa) / (s1 - sa);
+            // Core Text keeps whole font units, truncated toward zero (measured by
+            // exact/parity-tools/text-probe: SF at 26.5 pt tracks 19, not 19.75).
+            return (va + (v1 - va) * (size - sa) / (s1 - sa)).trunc();
         }
     }
     at(n - 1).1
@@ -682,8 +700,11 @@ impl Canvas {
         }
         let [a, b, c, d, e, f] = m.0;
         let device_size = font.size * glyphs::max_scale([a, c, b, d]);
+        // An RN `<Text>` (a UIKit-laid-out font) under a scale and translation: drawn as UIKit
+        // draws a label's glyphs.
+        let uikit = font.ui.is_some() && b == 0.0 && c == 0.0 && a > 0.0 && d > 0.0 && paint.stroke.is_none();
         // A hairline or stroked run, an SDFT-sized one (not ported yet) or a path-sized one.
-        if paint.stroke.is_some() || !(device_size > 0.0) || device_size >= glyphs::MIN_SDFT {
+        if !uikit && (paint.stroke.is_some() || !(device_size > 0.0) || device_size >= glyphs::MIN_SDFT) {
             return true;
         }
         let post = glyphs::post2x2(&m);
@@ -693,8 +714,11 @@ impl Canvas {
         };
         let smoothing = crate::coretext::smooth_behavior() as u8;
         let (smooth, _, _) = glyphs::scaler_settings(smoothing);
-        let lum = glyphs::luminance_index(paint, smoothing);
-        let key = StrikeKey { font: font.atlas_key(), size: font.size.to_bits(), post: post.map(f32::to_bits), lum };
+        let lum = if uikit { 0 } else { glyphs::luminance_index(paint, smoothing) };
+        let key = StrikeKey { mode: uikit as u8, font: font.atlas_key(), size: font.size.to_bits(), post: post.map(f32::to_bits), lum };
+        if uikit {
+            return self.draw_uikit_glyphs(run, x, y, font, paint, key, text_size, sa, invertible);
+        }
         // positionMatrix = drawMatrix.preTranslate(origin), then postTranslate(½, ½).
         let tx = a * x + c * y + e + 0.5;
         let ty = b * x + d * y + f + 0.5;
@@ -709,7 +733,7 @@ impl Canvas {
                 if !(px.is_finite() && py.is_finite()) {
                     continue;
                 }
-                let digest = atlas.glyph(key, g, &mut |atlas, mask| {
+                let digest = atlas.glyph(key, g as u32, &mut |atlas, mask| {
                     font.with_strike(key, text_size, sa, invertible, |strike| {
                         let bounds = strike.bounds(g)?;
                         if bounds.2.max(bounds.3) <= glyphs::TOO_BIG {
@@ -738,11 +762,21 @@ impl Canvas {
             atlas.epoch
         });
         run.truncate(paths);
+        self.glyph_quads = quads;
+        self.emit_glyph_quads(&xf, paint, bounds, epoch);
+        paths > 0
+    }
+
+    /// One glyph-run draw of the quads in `glyph_quads` (device bounds `bounds`): the clip
+    /// stack, a depth, the paint, a quad per glyph.
+    fn emit_glyph_quads(&mut self, xf: &crate::graphite::Xf, paint: &Paint, bounds: [f32; 4], epoch: u64) {
+        let m = self.state.matrix;
+        let quads = std::mem::take(&mut self.glyph_quads);
         if !quads.is_empty() {
             self.atlas_epoch = epoch;
             let mut geo = Geo::Path;
             let mut clip = DrawClip::default();
-            if self.visit_clips(&mut geo, &xf, false, bounds, EMPTY, &mut clip) {
+            if self.visit_clips(&mut geo, xf, false, bounds, EMPTY, &mut clip) {
                 let depth = self.next_depth();
                 self.use_msaa_clips(&clip, depth);
                 let paint_index = self.push_paint(paint, clip.analytic.as_ref());
@@ -766,6 +800,76 @@ impl Canvas {
             }
         }
         self.glyph_quads = quads;
+    }
+
+    /// An RN `<Text>` run as UIKit draws it (`NSLayoutManager drawGlyphsForGlyphRange:` into the
+    /// text view's backing store, measured on the iOS Simulator by exact/parity-tools/text-probe):
+    /// each glyph drawn by CoreGraphics at its device position with the context's default
+    /// subpixel positioning and quantization (the x fraction kept to the strike's
+    /// [`crate::coretext::Strike::subpixel_levels`], floored; y floored in CoreGraphics'
+    /// y-up space, so the baseline rounds down the screen), its coverage as drawn (no Skia
+    /// pre-blend). A run's glyphs blend over each other as CoreGraphics' do.
+    #[allow(clippy::too_many_arguments)]
+    fn draw_uikit_glyphs(&mut self, run: &mut Vec<(u16, f32)>, x: f32, y: f32, font: &Font, paint: &Paint, key: crate::glyphs::StrikeKey, text_size: f32, sa: [f32; 4], invertible: bool) -> bool {
+        use crate::glyphs::{self, Atlas, Digest};
+        let m = self.state.matrix;
+        let xf = crate::graphite::Xf::new(m);
+        let [a, _, _, d, e, f] = m.0;
+        let mut quads = std::mem::take(&mut self.glyph_quads);
+        quads.clear();
+        let mut bounds = EMPTY;
+        let mut paths = 0;
+        let probe = font.face.glyph_index('H').map(|g| g.0).or_else(|| run.first().map(|r| r.0)).unwrap_or(0);
+        let epoch = Atlas::with(|atlas| {
+            let levels = font
+                .with_strike(key, text_size, sa, invertible, |strike| {
+                    if strike.levels.get() == 0 {
+                        strike.levels.set(strike.subpixel_levels(probe, &mut atlas.offscreen));
+                    }
+                    strike.levels.get()
+                })
+                .unwrap_or(1) as f32;
+            let identity: [u8; 256] = std::array::from_fn(|i| i as u8);
+            for i in 0..run.len() {
+                let (g, pen) = run[i];
+                let (px, py) = (a * (x + pen) + e, d * y + f);
+                if !(px.is_finite() && py.is_finite()) {
+                    continue;
+                }
+                let (ix, iy) = (px.floor(), py.ceil());
+                let sub = ((px - ix) * levels).floor().min(levels - 1.0);
+                let digest = atlas.glyph(key, g as u32 | ((sub as u32) << 16), &mut |atlas, mask| {
+                    font.with_strike(key, text_size, sa, invertible, |strike| {
+                        let b = strike.bounds(g)?;
+                        // A subpixel offset reaches up to a pixel further right.
+                        let b = (b.0, b.1, b.2 + 1, b.3);
+                        if b.2.max(b.3) <= glyphs::TOO_BIG {
+                            mask.resize((b.2 * b.3) as usize, 0);
+                            atlas.offscreen.draw_at(strike, g, b, &identity, false, Some((sub / levels) as f64), mask);
+                        }
+                        Some(b)
+                    })
+                    .flatten()
+                });
+                match digest {
+                    Digest::Empty => {}
+                    Digest::Path => {
+                        run[paths] = run[i];
+                        paths += 1;
+                    }
+                    Digest::Mask(slot) => {
+                        let (ox, oy) = (ix + slot.left as f32, iy + slot.top as f32);
+                        let r = [ox, oy, ox + slot.w as f32, oy + slot.h as f32];
+                        bounds = [bounds[0].min(r[0]), bounds[1].min(r[1]), bounds[2].max(r[2]), bounds[3].max(r[3])];
+                        quads.push((r, slot));
+                    }
+                }
+            }
+            atlas.epoch
+        });
+        run.truncate(paths);
+        self.glyph_quads = quads;
+        self.emit_glyph_quads(&xf, paint, bounds, epoch);
         paths > 0
     }
 }

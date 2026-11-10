@@ -73,6 +73,8 @@ fn relax(x: f32) -> f32 {
 /// luminance table.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct StrikeKey {
+    /// 0: Skia's text (SkScalerContext_Mac); 1: UIKit's (an RN `<Text>`).
+    pub mode: u8,
     pub font: u64,
     pub size: u32,
     pub post: [u32; 4],
@@ -239,7 +241,7 @@ pub(crate) struct Atlas {
     pub dirty: Vec<(u32, u32)>,
     pub height: u32,
     shelves: Vec<(u32, u32, u32)>,
-    glyphs: HashMap<(StrikeKey, u16), Digest>,
+    glyphs: HashMap<(StrikeKey, u32), Digest>,
     /// An allocation failed: clear at the next frame's start.
     pub full: bool,
     luts: [Option<Box<[u8; 256]>>; 8],
@@ -326,7 +328,7 @@ impl Atlas {
 
     /// The glyph's digest in a strike, made (and its mask rasterised) on first use by `make`,
     /// which returns its bounds and writes its `w × h` mask.
-    pub(crate) fn glyph(&mut self, key: StrikeKey, glyph: u16, make: &mut dyn FnMut(&mut Atlas, &mut Vec<u8>) -> Option<(i32, i32, u32, u32)>) -> Digest {
+    pub(crate) fn glyph(&mut self, key: StrikeKey, glyph: u32, make: &mut dyn FnMut(&mut Atlas, &mut Vec<u8>) -> Option<(i32, i32, u32, u32)>) -> Digest {
         if let Some(d) = self.glyphs.get(&(key, glyph)) {
             return *d;
         }

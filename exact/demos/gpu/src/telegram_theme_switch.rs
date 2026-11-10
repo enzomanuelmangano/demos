@@ -353,7 +353,7 @@ impl TelegramThemeSwitch {
             invert: false,
             pending: None,
             shown: None,
-            icons: Font::new(MATERIAL_ICONS, ICON),
+            icons: Font::new(MATERIAL_ICONS, ICON).map(Font::with_ui_layout),
             posted: Vec::new(),
             canvas: Canvas::default(),
             renderer: Renderer::default(),

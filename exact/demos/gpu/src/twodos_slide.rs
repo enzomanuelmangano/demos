@@ -232,8 +232,8 @@ impl TwodosSlide {
             posted: Vec::new(),
             squircle: MeasuredPath::new(squircle_path(SQUIRCLE_SIDE, SQUIRCLE_SIDE, SQUIRCLE_RADIUS, 1.0)),
             label: skia::match_ui_font(LABEL_SIZE, 700.0),
-            arrow: Font::new(ANTDESIGN_ARROW, ARROW_SIZE),
-            check: Font::new(ENTYPO_CHECK, CHECK_SIZE),
+            arrow: Font::new(ANTDESIGN_ARROW, ARROW_SIZE).map(Font::with_ui_layout),
+            check: Font::new(ENTYPO_CHECK, CHECK_SIZE).map(Font::with_ui_layout),
             layers: None,
             drawn_path: None,
             canvas: Canvas::default(),
@@ -302,8 +302,7 @@ impl TwodosSlide {
         if let Some(font) = self.check.as_ref() {
             let (w, h) = (text_side(font.advance_width(CHECK), scale), text_side(gfx::line_height(font), scale));
             let (x, y) = (grid((SIZE - w) / 2.0, scale), grid((SIZE - h) / 2.0, scale));
-            // TextKit sets an icon glyph half the font's lineGap below the box top + ascender.
-            c.draw_text(CHECK, x, gfx::baseline(font, y + font.metrics().leading / 2.0), font, &Paint::fill(Color::view_hex(0x2A2A2A)));
+            c.draw_text(CHECK, x, gfx::baseline(font, y), font, &Paint::fill(Color::view_hex(0x2A2A2A)));
         }
         let c = &mut self.layer_canvas;
         c.save();
@@ -332,8 +331,7 @@ impl TwodosSlide {
         // row's own pixel-aligned frame).
         let top = |h: f32| grid((row[3] - h) / 2.0, scale);
         c.draw_text(LABEL, 0.0, gfx::baseline(label, top(lh)), label, &gray);
-        // TextKit puts half the icon font's lineGap above its ascender (SF has none).
-        c.draw_text(ARROW, grid(lw + LABEL_GAP, scale), gfx::baseline(arrow, top(ah) + arrow.metrics().leading / 2.0), arrow, &gray);
+        c.draw_text(ARROW, grid(lw + LABEL_GAP, scale), gfx::baseline(arrow, top(ah)), arrow, &gray);
     }
 
     /// One square under its transform (about its bottom-right corner), its shadow first.

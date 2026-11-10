@@ -74,7 +74,7 @@ fn modal() -> FloatingModal {
         done_press: Timing::at(0.0),
         plus_shown: (0.0, 1.0),
         posted: Vec::new(),
-        plus: Font::new(ANTDESIGN, 28.0),
+        plus: Font::new(ANTDESIGN, 28.0).map(Font::with_ui_layout),
         title: skia::match_ui_font(20.0, 700.0),
         canvas: Canvas::default(),
         renderer: Renderer::default(),
