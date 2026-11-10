@@ -13,7 +13,10 @@
 //!   (Reanimated's withTiming onStart), and on mount the style is at its targets.
 //! - The pan (one GestureDetector per card; the touch goes to the topmost card under it, its
 //!   transform and its alpha ≥ 0.01 as UIKit's hit test): onBegin currentActiveIndex =
-//!   floor(activeIndex); onUpdate (the translation as gesture_handler models RNGH's iOS pan) on the active card sets translateX / translateY to the
+//!   floor(activeIndex); onUpdate (RNGH reports `translationInView:` of the window: 0 at the
+//!   move where UIKit's pan begins, the first one 10 pt or more from touch-down, and counted
+//!   from the finger there; measured by exact/parity-tools/pan-probe with the card transformed
+//!   as RN's and still, same numbers) on the active card sets translateX / translateY to the
 //!   translation and nextActiveIndex = interpolate(sign(x) · (nx² + nv²), [−1, 0, 1],
 //!   [a + 1, a, a + 1], CLAMP), nx = x / (w/3), nv = vx / ((w/3) / 0.1); onFinalize, when
 //!   nextActiveIndex == activeIndex + 1 it throws by sign(translationX) (0 throws left), else
@@ -117,7 +120,10 @@ impl SwipeCards {
             active: 0.0,
             current: 0.0,
             cards,
-            pan: PanGesture::new(),
+            // UIKit's pan reports translationInView:window from where it began (0 there), not
+            // the travel past 10 pt, and the card's own transform plays no part
+            // (exact/parity-tools/pan-probe): RNGH's custom-criteria model.
+            pan: PanGesture::new().min_distance(10.0),
             touched: None,
             reset_at: None,
             now: 0.0,
