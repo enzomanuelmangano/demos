@@ -31,6 +31,11 @@ bun exact.mjs ios --run --sim $EXACT_SIM                         # native build 
 - Several agents share this tree: never run `cargo fmt` (it rewrites every file), `git stash`,
   or `git checkout`/`restore` on files you didn't write. Format only your own files
   (`rustfmt gpu/src/<slug>.rs`); commit only your own hunks.
+- Commit through a private index (`GIT_INDEX_FILE=$(mktemp)` seeded with `git read-tree HEAD`),
+  then `git reset -q -- <your paths>` in the shared index: otherwise the shared index keeps
+  your paths' old content staged and the next agent's commit reverts your work.
+- Metro 8082 (RN reference) is the integrator's; watchman is broken on this machine, so if RN
+  edits stop reaching the app, tell the integrator (restart with `--clear`).
 - Simulators: this app uses only `$EXACT_SIM`. Never touch "Exact Try (Air)" (D3273441…),
   "RN Ref (Air)" (FF41FAED…) nor the patterns-exact agents' iPhone Air (4F281EA4…).
 - `bun exact.mjs feedback` is `never`; never run `share` (it publishes a link).
