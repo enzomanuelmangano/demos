@@ -13,9 +13,12 @@ use DemoEnv from "../env.contract"
 // bottom-tab-bar: IS_SMALL_DEVICE = SCREEN_HEIGHT < 700; BOTTOM_BAR_HEIGHT 80 : 95.
 fn twitterBarHeight(h: number): number = h < 700 ? 80 : 95
 // ScreenNamesArray, and the MaterialIcons each tab draws (home, search, notifications, message,
-// 28, white): the SF Symbols they look like.
+// 28, white): the vector-icons font's glyphs (512 units to the em, ascent 512, descent 0, so
+// a Text box 28 × 28), drawn from their outlines.
 fn twitterTabName(i: number): string = i == 0 ? "Home" : (i == 1 ? "Search" : (i == 2 ? "Notifications" : "Message"))
-fn twitterTabSymbol(i: number): string = i == 0 ? "symbol:sf/house.fill" : (i == 1 ? "symbol:sf/magnifyingglass" : (i == 2 ? "symbol:sf/bell.fill" : "symbol:sf/message.fill"))
+fn twitterTabPath(i: number): string = i == 0 ? "M213 427H107V256H43L256 64L469 256H405V427H299V299H213Z" : (i == 1 ? "M135 271Q163 299 203 299Q243 299 271 271Q299 243 299 203Q299 163 271 135Q243 107 203 107Q163 107 135 135Q107 163 107 203Q107 243 135 271ZM331 299 437 405 405 437 299 331V314L293 308Q255 341 203 341Q145 341 104.5 301Q64 261 64 203Q64 145 104.5 104.5Q145 64 203 64Q261 64 301 104.5Q341 145 341 203Q341 224 331 250.5Q321 277 308 293L314 299Z" : (i == 2 ? "M384 341 427 384V405H85V384L128 341V235Q128 185 153.5 148Q179 111 224 100V85Q224 72 233 62.5Q242 53 256 53Q270 53 279 62.5Q288 72 288 85V100Q333 111 358.5 148Q384 185 384 235ZM256 469Q238 469 225.5 457Q213 445 213 427H299Q299 444 286 456.5Q273 469 256 469Z" : "M384 171V128H128V171ZM384 235V192H128V235ZM384 299V256H128V299ZM427 43Q444 43 456.5 55.5Q469 68 469 85V341Q469 358 456.5 371Q444 384 427 384H128L43 469V85Q43 68 55.5 55.5Q68 43 85 43Z"))
+fn twitterEditPath(): string = "M442 150 403 189 323 109 362 70Q368 64 377 64Q386 64 392 70L442 120Q448 126 448 135Q448 144 442 150ZM64 368 300 132 380 212 144 448H64Z"
+fn twitterMessagePath(): string = "M384 171V128H128V171ZM384 235V192H128V235ZM384 299V256H128V299ZM427 43Q444 43 456.5 55.5Q469 68 469 85V341Q469 358 456.5 371Q444 384 427 384H128L43 469V85Q43 68 55.5 55.5Q68 43 85 43Z"
 
 // The bar's translateY: withSpring({ dampingRatio: 1, duration: 500 }) → bun tools/spring.ts 500 1.
 fn twitterBarSpring(): string = "-exact-spring(1087.7, 131.9, 4)"
@@ -25,14 +28,54 @@ fn twitterGentle(): string = "-exact-spring(900, 120, 4)"
 // withTiming's default curve, Easing.inOut(Easing.quad).
 fn twitterInOutQuad(): string = "cubic-bezier(0.455, 0.03, 0.515, 0.955)"
 
-// floatingProgress = withTiming(Message ? 1 : 0, { duration: 500 }) is a hidden box's translate
-// (0 → 100 px), a drag timeline the button's interpolations follow, host-driven:
-// rotate [0, 1] → [0, 2π]; scale [0, 0.5, 1] → [1, 1.2, 1]; the edit icon shown while
-// progress <= 0.5, the message icon past it.
-keyframes twitterFabSpin
-  0% rotate=0 scale=1
-  50% scale=1.2
-  100% rotate=360 scale=1
+// floatingProgress = withTiming(Message ? 1 : 0, { duration: 500 }) on inOut(quad); the button
+// follows it: rotate [0, 1] → [0, 2π], scale [0, 0.5, 1] → [1, 1.2, 1]; the edit icon shown
+// while progress <= 0.5, the message icon past it. The progress is sampled every 25 ms of its
+// 500 (linear between samples), so the curve is the eased one, not a per-segment ease.
+keyframes twitterSpinOn
+  0% rotate=0.000 scale=1.0000
+  5% rotate=1.800 scale=1.0020
+  10% rotate=7.200 scale=1.0080
+  15% rotate=16.200 scale=1.0180
+  20% rotate=28.800 scale=1.0320
+  25% rotate=45.000 scale=1.0500
+  30% rotate=64.800 scale=1.0720
+  35% rotate=88.200 scale=1.0980
+  40% rotate=115.200 scale=1.1280
+  45% rotate=145.800 scale=1.1620
+  50% rotate=180.000 scale=1.2000
+  55% rotate=214.200 scale=1.1620
+  60% rotate=244.800 scale=1.1280
+  65% rotate=271.800 scale=1.0980
+  70% rotate=295.200 scale=1.0720
+  75% rotate=315.000 scale=1.0500
+  80% rotate=331.200 scale=1.0320
+  85% rotate=343.800 scale=1.0180
+  90% rotate=352.800 scale=1.0080
+  95% rotate=358.200 scale=1.0020
+  100% rotate=360.000 scale=1.0000
+keyframes twitterSpinOff
+  0% rotate=360.000 scale=1.0000
+  5% rotate=358.200 scale=1.0020
+  10% rotate=352.800 scale=1.0080
+  15% rotate=343.800 scale=1.0180
+  20% rotate=331.200 scale=1.0320
+  25% rotate=315.000 scale=1.0500
+  30% rotate=295.200 scale=1.0720
+  35% rotate=271.800 scale=1.0980
+  40% rotate=244.800 scale=1.1280
+  45% rotate=214.200 scale=1.1620
+  50% rotate=180.000 scale=1.2000
+  55% rotate=145.800 scale=1.1620
+  60% rotate=115.200 scale=1.1280
+  65% rotate=88.200 scale=1.0980
+  70% rotate=64.800 scale=1.0720
+  75% rotate=45.000 scale=1.0500
+  80% rotate=28.800 scale=1.0320
+  85% rotate=16.200 scale=1.0180
+  90% rotate=7.200 scale=1.0080
+  95% rotate=1.800 scale=1.0020
+  100% rotate=0.000 scale=1.0000
 keyframes twitterEditIcon
   0% opacity=1
   50% opacity=1
@@ -53,6 +96,10 @@ component TwitterTabBar
   // prevContentOffsetY: the one value written per scroll frame; nothing in the view reads it.
   state prevY = 0
   state highlighted = false
+  // floatingProgress's target (Message or not), and whether it has ever moved (no animation
+  // at mount).
+  state spun = false
+  state spinning = false
   derive barHeight = twitterBarHeight(env.height)
   // useAnimatedScrollHandler onScroll: scrolling up (or still) shows the bar.
   action scrolled(x: number, y: number)
@@ -65,6 +112,9 @@ component TwitterTabBar
     haptic("selection")
     isActive = true
     activeTab = i
+    if (i == 3) != spun
+      spun = i == 3
+      spinning = true
     if i != 0
       prevY = 0
   // The floating button's Tap: onBegin highlighted, onFinalize not (onSelect only logs).
@@ -74,7 +124,7 @@ component TwitterTabBar
     highlighted = false
   view
     // index.tsx: flex 1 on colors.background.
-    column position="absolute" inset=0 background-color="#17202A" timeline-scope="--twitterFab"
+    column position="absolute" inset=0 background-color="color(display-p3 0.0902 0.1255 0.1647)"
       testId="twitter-tab-bar"
       column flex=1 min-height=0
         // ScreenMap: Home is the feed; Search, Notifications and Message an empty View.
@@ -86,37 +136,34 @@ component TwitterTabBar
               for r in range(50) key=r
                 view height=100 box-sizing="border-box" border-bottom-width=1
                   border-bottom-style="solid" border-bottom-color="#595959"
-      // floatingProgress, as a timeline.
-      view position="absolute" left=0 top=0 width=0 height=0 pointer-events="none"
-        aria-hidden=true translate=(activeTab == 3 ? "100px 0px" : "0px 0px")
-        transition=`translate 500ms ${twitterInOutQuad()}` -exact-drag-timeline="--twitterFab x"
       // BottomFloatingButton: absolute, bottom BOTTOM_BAR_HEIGHT + safeBottom / 2, right 16,
       // 64 × 64 (aspectRatio 1), colors.primary, radius 32; scale withSpring(isActive ? 1 : 0).
       column position="absolute" right=16
         bottom=`calc(${barHeight}px + env(safe-area-inset-bottom) / 2)` width=64 height=64
         scale=(isActive ? 1 : 0) transition=`scale ${twitterGentle()}` testId="twitter-fab"
-        column flex=1 animation="twitterFabSpin 1s linear both" animation-timeline="--twitterFab"
-          animation-range="0px 100px"
+        column flex=1 animation=(spinning ? (spun ? "twitterSpinOn 500ms linear both" : "twitterSpinOff 500ms linear both") : "none")
           // rHighlightedStyle: scale withSpring(highlighted ? 0.8 : 1).
-          column flex=1 position="relative" background-color="#4A9AE9" border-radius=32
+          column flex=1 position="relative" background-color="color(display-p3 0.2902 0.6039 0.9137)" border-radius=32
             scale=(highlighted ? 0.8 : 1) transition=`scale ${twitterGentle()}`
             pointerdown=fabDown pointerup=fabUp touch-action="none"
             role="button" aria-label=(activeTab == 3 ? "New message" : "Compose")
             // MaterialIcons edit / message, 28, Palette.text.
             column position="absolute" inset=0 align-items="center" justify-content="center"
-              animation="twitterEditIcon 1s linear both" animation-timeline="--twitterFab"
-              animation-range="0px 100px"
-              image "symbol:sf/pencil" font-size=28 color="#FFFFFF" aria-hidden=true
+              opacity=(spun ? 0 : 1)
+              animation=(spinning ? (spun ? "twitterEditIcon 500ms linear both" : "twitterMessageIcon 500ms linear both") : "none")
+              svg width=28 height=28 viewBox="0 0 512 512" aria-hidden=true
+                path d=twitterEditPath() fill="#FFFFFF"
             column position="absolute" inset=0 align-items="center" justify-content="center"
-              animation="twitterMessageIcon 1s linear both" animation-timeline="--twitterFab"
-              animation-range="0px 100px"
-              image "symbol:sf/message.fill" font-size=28 color="#FFFFFF" aria-hidden=true
+              opacity=(spun ? 1 : 0)
+              animation=(spinning ? (spun ? "twitterMessageIcon 500ms linear both" : "twitterEditIcon 500ms linear both") : "none")
+              svg width=28 height=28 viewBox="0 0 512 512" aria-hidden=true
+                path d=twitterMessagePath() fill="#FFFFFF"
       // localStyles.container: absolute at the bottom, BOTTOM_BAR_HEIGHT tall, a row on
       // colors.card, paddingBottom safeBottom / 2; translateY 0, or BOTTOM_BAR_HEIGHT +
       // safeBottom hidden.
       row position="absolute" left=0 right=0 bottom=0 height=barHeight box-sizing="border-box"
-        padding-bottom="calc(env(safe-area-inset-bottom) / 2)" background-color="#1A2530"
-        translate=(isActive ? "0px 0px" : `0px calc(${barHeight}px + env(safe-area-inset-bottom))`)
+        padding-bottom="calc(env(safe-area-inset-bottom) / 2)" background-color="color(display-p3 0.102 0.1451 0.1882)"
+        translate=(isActive ? "0px 0px" : `0px ${barHeight + env.safeBottom}px`)
         transition=`translate ${twitterBarSpring()}` role="tablist" testId="twitter-bar"
         for i in range(4) key=i
           // TabBarItem: flex 1, opacity withTiming(focused ? 1 : 0.3); a PressableScale,
@@ -126,4 +173,5 @@ component TwitterTabBar
             column class=PressableScale flex=1 align-items="center" justify-content="center"
               press=tapTab(i) role="tab" aria-selected=(activeTab == i)
               aria-label=twitterTabName(i) testId=`twitter-tab-${i}`
-              image twitterTabSymbol(i) font-size=28 color="#FFFFFF" aria-hidden=true
+              svg width=28 height=28 viewBox="0 0 512 512" aria-hidden=true
+                path d=twitterTabPath(i) fill="#FFFFFF"
