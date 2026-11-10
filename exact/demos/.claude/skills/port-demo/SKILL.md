@@ -363,11 +363,19 @@ One commit per haptic event, never per frame.
   velocity is not in the initial energy (`reanimated::Spring::retarget` does this).
 - RN's ReText is a TextInput: UITextField centres the line a device pixel above where a Text
   would sit (scroll-progress' percentage).
-- The demo screen is UIKit's `.overFullScreen` presentation (the home stays beneath). Contract
-  cannot round or clear the presented controller's view (a fullscreen route's backdrop falls back
-  to its ancestors' or the system background, never clear), so RN's card corners (continuous
-  SCREEN_CORNER_RADIUS, 62 on iPhone Air, clipped) are the `screen-corners` module view
-  (modules/apple/Demos.swift) setting the presented view's layer as Fabric sets RN's card.
+- The demo screen is UIKit's `.overFullScreen` presentation (the home stays beneath), but its open,
+  close drag, flight home and the home's blur are RN's launch choreography, drawn by
+  modules/apple/DemoLaunch.swift (no `navigationSource`, so no UIKit zoom). The host makes the
+  presented controller inside its own present, and a module tag's instance is made only AFTER
+  `present`, so DemoLaunch wraps
+  `present(_:animated:completion:)` once to set its transitioning delegate, names the launch by
+  the icon a finger last went down on (the `launch-icon` hatch), and the route's `demo-card`
+  joins the session when it enters the window. The close pan lives on the WINDOW: a GPU canvas's
+  touches never pass the presented view's recognizers. Exact's canvas takes touches over views
+  above it, so "touch went down in the strip" is decided by location, not by `touch.view`. A
+  paused `UIViewPropertyAnimator` blur made before its view is in a window shows the effect
+  whole whatever its fraction (expo-blur makes it in `draw`). argent's touches in the top status
+  bar band (y < ~0.07) reach neither app, so RN's grab strip can't be driven on the simulator.
 - A SwiftUI view in a module tag: Exact rounds the module box to whole points and the hosting
   view centres its content in it, so a fractional-size control (the glass close, 47.33 pt) lands a
   device pixel off. Author the box and pin the SwiftUI content to the edge RN anchors it at

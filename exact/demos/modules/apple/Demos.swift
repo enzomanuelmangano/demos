@@ -13,14 +13,9 @@
 //                                        blendDuration: 0), value: Double(count))
 // So the number always rolls up (countsDown false), on a 0.3 s bounce-free spring.
 //
-// `screen-corners` is the demo screen's card (src/navigation/home/demo-screen.tsx styles.card:
-// borderCurve 'continuous', overflow 'hidden', borderRadius SCREEN_CORNER_RADIUS × the drag's
-// pose). RN's demo route is transparent over the home, so the home shows in the card's corners.
-// The Exact route is UIKit's fullscreen presentation (`.overFullScreen`: the home stays beneath),
-// whose view Contract cannot round: this zero-sized view rounds the presented controller's view
-// once it is in a window. The radius is react-native-screen-corner-radius's, the screen's
-// `_displayCornerRadius` floored at 25 (screen-radius.ts MIN_RADIUS); under UIKit's zoom the
-// layer's radius scales with the view, as RN's radius × pose.
+// `demo-card` is the demo screen's card (src/navigation/home/demo-screen.tsx styles.card and
+// DemoLaunch): its open out of the icon, the close drag, the flight home, the home's blur, all
+// in DemoLaunch.swift. The view itself is the demo's backdrop over the demo until it has painted.
 //
 // `glass-button` is the demo screen's close and info buttons (demo-close-button.tsx,
 // demo-inspiration.tsx): @expo/ui's Button in a matchContents Host with colorScheme dark,
@@ -38,9 +33,18 @@ let exactModule: ExactModule.Type = DemosModule.self
 
 final class DemosModule: ExactModule {
     override class var views: [String: ExactNativeFactory] {
-        ["rolling-count": ExactNativeFactory { props, events in RollingCount(props: props, events: events) },
-         "screen-corners": ExactNativeFactory { _, events in ScreenCorners(events: events) },
+        installLaunch()
+        return ["rolling-count": ExactNativeFactory { props, events in RollingCount(props: props, events: events) },
+         "demo-card": ExactNativeFactory { props, events in DemoCard(props: props, events: events) },
          "glass-button": ExactNativeFactory { props, events in GlassButton(props: props, events: events) }]
+    }
+
+    override func element(_ element: ExactElement) {
+        if element.hatch == .launchIcon { launchIconHatch(element) }
+    }
+
+    override func elementEnded(_ element: ExactElement) {
+        if element.hatch == .launchIcon { launchIconHatchEnded(element) }
     }
 }
 
@@ -94,47 +98,36 @@ private final class RollingCount: ExactNativeInstance {
         }
     }
 
-    private static func color(_ hex: String) -> Color? {
+    private static func color(_ hex: String) -> Color? { uiColor(hex).map { Color($0) } }
+
+    static func uiColor(_ hex: String) -> UIColor? {
         let s = hex.hasPrefix("#") ? String(hex.dropFirst()) : hex
         guard s.count == 6, let v = UInt32(s, radix: 16) else { return nil }
-        return Color(.sRGB, red: Double((v >> 16) & 0xff) / 255, green: Double((v >> 8) & 0xff) / 255,
-                     blue: Double(v & 0xff) / 255, opacity: 1)
+        return UIColor(red: CGFloat((v >> 16) & 0xff) / 255, green: CGFloat((v >> 8) & 0xff) / 255,
+                       blue: CGFloat(v & 0xff) / 255, alpha: 1)
     }
 }
-/// screen-radius.ts: max(ScreenCornerRadius, MIN_RADIUS 25).
-private let screenCornerRadius: CGFloat = {
-    let device = (UIScreen.main.value(forKey: "_displayCornerRadius") as? CGFloat) ?? 0
-    return max(device, 25)
-}()
+/// `demo-card`: the demo's cover in its backdrop until the demo has painted, and the route's hold
+/// on the launch (DemoLaunch.swift). `press` is the route's leave, which the launch fires when
+/// the close lets the route go.
+private final class DemoCard: ExactNativeInstance {
+    private let card = DemoCardView()
 
-private final class CornerProbe: UIView {
-    override func didMoveToWindow() {
-        super.didMoveToWindow()
-        guard window != nil else { return }
-        // The route's controller, then its outermost parent: the presented one.
-        var responder: UIResponder? = self
-        while let r = responder, !(r is UIViewController) { responder = r.next }
-        guard var controller = responder as? UIViewController else { return }
-        while let parent = controller.parent { controller = parent }
-        guard controller.presentingViewController != nil,
-              controller.modalPresentationStyle == .overFullScreen else { return }
-        let layer = controller.view.layer
-        layer.cornerRadius = screenCornerRadius
-        layer.cornerCurve = .continuous
-        layer.masksToBounds = true
-    }
-}
-
-private final class ScreenCorners: ExactNativeInstance {
-    private let probe = CornerProbe()
-
-    override init(events: ExactNativeEvents) {
-        probe.isUserInteractionEnabled = false
-        probe.isAccessibilityElement = false
+    init(props: [String: String], events: ExactNativeEvents) {
+        card.isUserInteractionEnabled = false
+        card.isAccessibilityElement = false
         super.init(events: events)
+        card.onLeave = { events.press() }
+        try? setProps(props)
     }
 
-    override var view: ExactNativeView { probe }
+    override var view: ExactNativeView { card }
+
+    override func setProps(_ props: [String: String]) throws {
+        card.slug = props["slug"] ?? card.slug
+        card.ownsDrags = props["owns"] == "drags"
+        if let hex = props["tint"], let color = RollingCount.uiColor(hex) { card.backgroundColor = color }
+    }
 }
 private final class GlassModel: ObservableObject {
     @Published var label = ""
@@ -155,8 +148,12 @@ private struct GlassBody: View {
             .controlSize(.large)
             .opacity(model.visible ? 1 : 0)
             .animation(.easeOut(duration: 0.22), value: model.visible)
-            // RN's `shown`: the button fades in once the demo is on screen.
-            .onAppear { DispatchQueue.main.async { model.visible = true } }
+            // RN's `visible={shown && !closing}`: in once the demo has painted, out at the close.
+            .onAppear { DispatchQueue.main.async { model.visible = LaunchSession.current?.buttonsVisible ?? true } }
+            .onReceive(NotificationCenter.default.publisher(for: LaunchSession.shownChanged)) { note in
+                guard let session = note.object as? LaunchSession else { return }
+                model.visible = session.buttonsVisible
+            }
             // RN's Host sits at left 16 (close) or right 16 (info) at its content's own size;
             // the box here is rounded to whole points, so the button keeps to that edge.
             .frame(maxWidth: .infinity, maxHeight: .infinity,
@@ -186,7 +183,11 @@ private final class GlassButton: ExactNativeInstance {
 
     init(props: [String: String], events: ExactNativeEvents) {
         let model = self.model
-        host = UIHostingController(rootView: GlassBody(model: model, press: { events.press() }))
+        // The close is the launch's (closeFromButton: haptic, then the flight home); without one
+        // (a demo the launch does not hold) the route's own leave.
+        host = UIHostingController(rootView: GlassBody(model: model, press: {
+            if model.close, let session = LaunchSession.current { session.closeFromButton() } else { events.press() }
+        }))
         host.safeAreaRegions = []
         host.view.backgroundColor = .clear
         // Host colorScheme="dark".

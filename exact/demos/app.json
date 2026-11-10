@@ -11,7 +11,7 @@
   },
   "modules": [
     "rolling-count",
-    "screen-corners",
+    "demo-card",
     "glass-button"
   ],
   "host": {
@@ -34,5 +34,13 @@
       "protocol": "demos-exact",
       "url": "/open?u=%s"
     }
+  ],
+  "hatches": {
+    "launch-icon": [
+      "ios"
+    ]
+  },
+  "data": [
+    "slug"
   ]
 }

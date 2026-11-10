@@ -26,10 +26,10 @@ shape Time
   epochAtZero: number
   utcOffset: number
 
-// Demos whose drags own the whole screen: their swipe-down close is off (the close button
-// stays). RN lets a demo keep a touch it claimed (demo-screen.tsx CloseGesture); a route's
-// dismissal cannot ask the canvas mid-gesture, and switching it per touch costs a commit
-// that holds the canvas's first frames.
+// Demos whose drags own the whole screen: their swipe-down close starts only in RN's grab strip
+// over the status bar (the close button stays). RN lets a demo keep a touch it claimed
+// (demo-screen.tsx CloseGesture); the close cannot ask the canvas mid-gesture, and switching it
+// per touch costs a commit that holds the canvas's first frames.
 fn ownsDrags(slug: string): bool = ["metaball", "magnet-spring", "swipe-cards", "animated-3d-parallax", "record-button", "sphere-waves", "skia-bottom-sheet", "atlas-sphere", "floating-modal", "expandable-mini-player", "selectable-grid-list", "skia-color-picker", "duration-slider", "clock-time-picker", "wheel-picker", "bezier-curve-outline", "prequel-slider", "scrollable-shapes", "twodos-slide", "color-carousel", "coverflow-carousel", "circular-carousel", "fibonacci-shader-grid", "fourier-visualizer", "card-shader-reflections", "threads-holo-ticket", "light-on-painting", "gl-transitions", "imessage-stack", "qr-code-generator"].includes(slug)
 
 // The keyboard over a demo: RN moves nothing for it unless a demo says so (KeyboardAvoidingView,
@@ -65,10 +65,9 @@ component Demos
     nav = push(nav, path("demo", slug))
   mutation sensors as shape SensorInput
   // demo-screen.tsx: a close, by the button or by the drag past CLOSE_SCALE, plays
-  // Presets.System.impactMedium().
+  // Presets.System.impactMedium() when it commits, before the flight home: the launch does
+  // (modules/apple/DemoLaunch.swift), and lets the route go here at expansion 0.2.
   action back
-    if top(nav).name == "demo"
-      haptic("impact-medium")
     if top(nav).name == "demo" and tilts(top(nav).params.slug)
       send sensors = stopSensorInput(surface="linear_sensors", sensor="gravity")
     else if top(nav).name == "demo" and turns(top(nav).params.slug)
@@ -110,7 +109,9 @@ component Demos
           column navigationKey=`${e.id}` navigationBar="none" position="absolute" inset=0
             Springboard(demos=demos, open=open)
         if e.name == "demo"
+          // The open out of the icon and the close into it are RN's launch, drawn by the app's
+          // module (DemoLaunch.swift) on UIKit's fullscreen presentation, not UIKit's zoom.
           column navigationKey=`${e.id}` navigationBar="none" navigationPresentation="fullscreen"
-            navigationSource=`icon-${e.params.slug}` position="absolute" inset=0
+            position="absolute" inset=0
             background-color=demoOf(e.params.slug).backdrop closedby=(ownsDrags(e.params.slug) ? "none" : "closerequest")
-            DemoScreen(demo=demoOf(e.params.slug), env=env, leave=back)
+            DemoScreen(demo=demoOf(e.params.slug), env=env, ownsDrags=ownsDrags(e.params.slug), leave=back)
