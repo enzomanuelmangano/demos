@@ -72,8 +72,12 @@ component EmailDemo
     column position="absolute" inset=0 background-color="color(display-p3 0.9725 0.9804 0.9882)" testId="email-demo"
       // The FlatList: contentContainerStyle paddingTop safeTop + DEMO_BUTTON_ROW_HEIGHT,
       // paddingBottom ITEM_HEIGHT + ITEM_MARGIN.
-      scroll position="absolute" top=0 left=0 width="100%" height="100%" testId="email-list"
-        column padding-top=(env.safeTop + demoButtonRow()) padding-bottom=110
+      // Vertical only, as RN's FlatList: the rows' canvases overhang the row by 48 on every side
+      // (the shadow), which must not widen the content (clipped across, at the screen's edges,
+      // where the FlatList clips it too).
+      scroll position="absolute" top=0 left=0 width="100%" height="100%" overflow-x="hidden"
+        overflow-y="auto" testId="email-list"
+        column width="100%" overflow-x="clip" padding-top=(env.safeTop + demoButtonRow()) padding-bottom=110
           for item, i in items() key=i
             EmailRow(item=item, index=i, shifted=erasedItems, rowWidth=(env.width - 24))
       // styles.topGradient: absolute, safeTop × 1.5 tall, rgba(248,250,252,1) → 0, over the list.
