@@ -52,14 +52,10 @@ fn inOutQuad(s: number): number = s < 0.5 ? 2 * s * s : 1 - 2 * (1 - s) * (1 - s
 fn phaseOf(id: number, elapsed: number): number = (elapsed - floor(elapsed / (4 * legMs(id))) * 4 * legMs(id)) / (4 * legMs(id))
 fn progressAt(f: number): number = f < 0.25 ? 0 - inOutQuad(f / 0.25) : (f < 0.75 ? -1 + 2 * inOutQuad((f - 0.25) / 0.5) : 1 - inOutQuad((f - 0.75) / 0.25))
 
-// Not shaking: withTiming(0, { duration: 150 }) from wherever the jiggle was. A hidden box
-// sits at 100 px while shaking and slides to 0 over 150 ms on inOut(quad) when it stops: a drag
-// timeline. Each tile's settle keyframes are its p ∈ [-1, 1] (translate and rotation linear in
-// p on each side of 0); the range maps the box's 100 px to the p it stopped at and 0 px to 0.
+// Not shaking: withTiming(0, { duration: 150 }) from wherever the jiggle was (keyframes
+// settleZero). stopP: the progress the jiggle had when it stopped.
 fn stopP(id: number, elapsed: number): number = progressAt(phaseOf(id, elapsed))
-fn absOf(x: number): number = x < 0 ? 0 - x : x
-fn settleOf(id: number, elapsed: number): string = absOf(stopP(id, elapsed)) < 0.0001 ? "none" : `${stopP(id, elapsed) < 0 ? "settleBack" : "settle"}${id} 1s linear both`
-fn settleRange(id: number, elapsed: number): string = `${0 - 100 / max(0.0001, absOf(stopP(id, elapsed)))}px ${100 / max(0.0001, absOf(stopP(id, elapsed)))}px`
+fn settleTiming(): string = "150ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) both"
 
 // Reanimated's withTiming default curve, Easing.inOut(Easing.quad), as its cubic-bezier.
 // FadeOut: 300 ms. The delete waits 150 ms (setTimeout) before the tile leaves the list: its
@@ -259,198 +255,13 @@ keyframes shake23
   75% translate=shakeX(23, 1) rotate=shakeR(23, 1) animation-timing-function="cubic-bezier(0.333333, 0, 0.666667, 0.333333)"
   87.5% translate=shakeX(23, 0.5) rotate=shakeR(23, 0.5) animation-timing-function="cubic-bezier(0.333333, 0.666667, 0.666667, 1)"
   100% translate=shakeX(23, 0) rotate=shakeR(23, 0)
-keyframes settle0
-  0% translate=shakeX(0, -1) rotate=shakeR(0, -1)
-  50% translate=shakeX(0, 0) rotate=shakeR(0, 0)
-  100% translate=shakeX(0, 1) rotate=shakeR(0, 1)
-keyframes settleBack0
-  0% translate=shakeX(0, 1) rotate=shakeR(0, 1)
-  50% translate=shakeX(0, 0) rotate=shakeR(0, 0)
-  100% translate=shakeX(0, -1) rotate=shakeR(0, -1)
-keyframes settle1
-  0% translate=shakeX(1, -1) rotate=shakeR(1, -1)
-  50% translate=shakeX(1, 0) rotate=shakeR(1, 0)
-  100% translate=shakeX(1, 1) rotate=shakeR(1, 1)
-keyframes settleBack1
-  0% translate=shakeX(1, 1) rotate=shakeR(1, 1)
-  50% translate=shakeX(1, 0) rotate=shakeR(1, 0)
-  100% translate=shakeX(1, -1) rotate=shakeR(1, -1)
-keyframes settle2
-  0% translate=shakeX(2, -1) rotate=shakeR(2, -1)
-  50% translate=shakeX(2, 0) rotate=shakeR(2, 0)
-  100% translate=shakeX(2, 1) rotate=shakeR(2, 1)
-keyframes settleBack2
-  0% translate=shakeX(2, 1) rotate=shakeR(2, 1)
-  50% translate=shakeX(2, 0) rotate=shakeR(2, 0)
-  100% translate=shakeX(2, -1) rotate=shakeR(2, -1)
-keyframes settle3
-  0% translate=shakeX(3, -1) rotate=shakeR(3, -1)
-  50% translate=shakeX(3, 0) rotate=shakeR(3, 0)
-  100% translate=shakeX(3, 1) rotate=shakeR(3, 1)
-keyframes settleBack3
-  0% translate=shakeX(3, 1) rotate=shakeR(3, 1)
-  50% translate=shakeX(3, 0) rotate=shakeR(3, 0)
-  100% translate=shakeX(3, -1) rotate=shakeR(3, -1)
-keyframes settle4
-  0% translate=shakeX(4, -1) rotate=shakeR(4, -1)
-  50% translate=shakeX(4, 0) rotate=shakeR(4, 0)
-  100% translate=shakeX(4, 1) rotate=shakeR(4, 1)
-keyframes settleBack4
-  0% translate=shakeX(4, 1) rotate=shakeR(4, 1)
-  50% translate=shakeX(4, 0) rotate=shakeR(4, 0)
-  100% translate=shakeX(4, -1) rotate=shakeR(4, -1)
-keyframes settle5
-  0% translate=shakeX(5, -1) rotate=shakeR(5, -1)
-  50% translate=shakeX(5, 0) rotate=shakeR(5, 0)
-  100% translate=shakeX(5, 1) rotate=shakeR(5, 1)
-keyframes settleBack5
-  0% translate=shakeX(5, 1) rotate=shakeR(5, 1)
-  50% translate=shakeX(5, 0) rotate=shakeR(5, 0)
-  100% translate=shakeX(5, -1) rotate=shakeR(5, -1)
-keyframes settle6
-  0% translate=shakeX(6, -1) rotate=shakeR(6, -1)
-  50% translate=shakeX(6, 0) rotate=shakeR(6, 0)
-  100% translate=shakeX(6, 1) rotate=shakeR(6, 1)
-keyframes settleBack6
-  0% translate=shakeX(6, 1) rotate=shakeR(6, 1)
-  50% translate=shakeX(6, 0) rotate=shakeR(6, 0)
-  100% translate=shakeX(6, -1) rotate=shakeR(6, -1)
-keyframes settle7
-  0% translate=shakeX(7, -1) rotate=shakeR(7, -1)
-  50% translate=shakeX(7, 0) rotate=shakeR(7, 0)
-  100% translate=shakeX(7, 1) rotate=shakeR(7, 1)
-keyframes settleBack7
-  0% translate=shakeX(7, 1) rotate=shakeR(7, 1)
-  50% translate=shakeX(7, 0) rotate=shakeR(7, 0)
-  100% translate=shakeX(7, -1) rotate=shakeR(7, -1)
-keyframes settle8
-  0% translate=shakeX(8, -1) rotate=shakeR(8, -1)
-  50% translate=shakeX(8, 0) rotate=shakeR(8, 0)
-  100% translate=shakeX(8, 1) rotate=shakeR(8, 1)
-keyframes settleBack8
-  0% translate=shakeX(8, 1) rotate=shakeR(8, 1)
-  50% translate=shakeX(8, 0) rotate=shakeR(8, 0)
-  100% translate=shakeX(8, -1) rotate=shakeR(8, -1)
-keyframes settle9
-  0% translate=shakeX(9, -1) rotate=shakeR(9, -1)
-  50% translate=shakeX(9, 0) rotate=shakeR(9, 0)
-  100% translate=shakeX(9, 1) rotate=shakeR(9, 1)
-keyframes settleBack9
-  0% translate=shakeX(9, 1) rotate=shakeR(9, 1)
-  50% translate=shakeX(9, 0) rotate=shakeR(9, 0)
-  100% translate=shakeX(9, -1) rotate=shakeR(9, -1)
-keyframes settle10
-  0% translate=shakeX(10, -1) rotate=shakeR(10, -1)
-  50% translate=shakeX(10, 0) rotate=shakeR(10, 0)
-  100% translate=shakeX(10, 1) rotate=shakeR(10, 1)
-keyframes settleBack10
-  0% translate=shakeX(10, 1) rotate=shakeR(10, 1)
-  50% translate=shakeX(10, 0) rotate=shakeR(10, 0)
-  100% translate=shakeX(10, -1) rotate=shakeR(10, -1)
-keyframes settle11
-  0% translate=shakeX(11, -1) rotate=shakeR(11, -1)
-  50% translate=shakeX(11, 0) rotate=shakeR(11, 0)
-  100% translate=shakeX(11, 1) rotate=shakeR(11, 1)
-keyframes settleBack11
-  0% translate=shakeX(11, 1) rotate=shakeR(11, 1)
-  50% translate=shakeX(11, 0) rotate=shakeR(11, 0)
-  100% translate=shakeX(11, -1) rotate=shakeR(11, -1)
-keyframes settle12
-  0% translate=shakeX(12, -1) rotate=shakeR(12, -1)
-  50% translate=shakeX(12, 0) rotate=shakeR(12, 0)
-  100% translate=shakeX(12, 1) rotate=shakeR(12, 1)
-keyframes settleBack12
-  0% translate=shakeX(12, 1) rotate=shakeR(12, 1)
-  50% translate=shakeX(12, 0) rotate=shakeR(12, 0)
-  100% translate=shakeX(12, -1) rotate=shakeR(12, -1)
-keyframes settle13
-  0% translate=shakeX(13, -1) rotate=shakeR(13, -1)
-  50% translate=shakeX(13, 0) rotate=shakeR(13, 0)
-  100% translate=shakeX(13, 1) rotate=shakeR(13, 1)
-keyframes settleBack13
-  0% translate=shakeX(13, 1) rotate=shakeR(13, 1)
-  50% translate=shakeX(13, 0) rotate=shakeR(13, 0)
-  100% translate=shakeX(13, -1) rotate=shakeR(13, -1)
-keyframes settle14
-  0% translate=shakeX(14, -1) rotate=shakeR(14, -1)
-  50% translate=shakeX(14, 0) rotate=shakeR(14, 0)
-  100% translate=shakeX(14, 1) rotate=shakeR(14, 1)
-keyframes settleBack14
-  0% translate=shakeX(14, 1) rotate=shakeR(14, 1)
-  50% translate=shakeX(14, 0) rotate=shakeR(14, 0)
-  100% translate=shakeX(14, -1) rotate=shakeR(14, -1)
-keyframes settle15
-  0% translate=shakeX(15, -1) rotate=shakeR(15, -1)
-  50% translate=shakeX(15, 0) rotate=shakeR(15, 0)
-  100% translate=shakeX(15, 1) rotate=shakeR(15, 1)
-keyframes settleBack15
-  0% translate=shakeX(15, 1) rotate=shakeR(15, 1)
-  50% translate=shakeX(15, 0) rotate=shakeR(15, 0)
-  100% translate=shakeX(15, -1) rotate=shakeR(15, -1)
-keyframes settle16
-  0% translate=shakeX(16, -1) rotate=shakeR(16, -1)
-  50% translate=shakeX(16, 0) rotate=shakeR(16, 0)
-  100% translate=shakeX(16, 1) rotate=shakeR(16, 1)
-keyframes settleBack16
-  0% translate=shakeX(16, 1) rotate=shakeR(16, 1)
-  50% translate=shakeX(16, 0) rotate=shakeR(16, 0)
-  100% translate=shakeX(16, -1) rotate=shakeR(16, -1)
-keyframes settle17
-  0% translate=shakeX(17, -1) rotate=shakeR(17, -1)
-  50% translate=shakeX(17, 0) rotate=shakeR(17, 0)
-  100% translate=shakeX(17, 1) rotate=shakeR(17, 1)
-keyframes settleBack17
-  0% translate=shakeX(17, 1) rotate=shakeR(17, 1)
-  50% translate=shakeX(17, 0) rotate=shakeR(17, 0)
-  100% translate=shakeX(17, -1) rotate=shakeR(17, -1)
-keyframes settle18
-  0% translate=shakeX(18, -1) rotate=shakeR(18, -1)
-  50% translate=shakeX(18, 0) rotate=shakeR(18, 0)
-  100% translate=shakeX(18, 1) rotate=shakeR(18, 1)
-keyframes settleBack18
-  0% translate=shakeX(18, 1) rotate=shakeR(18, 1)
-  50% translate=shakeX(18, 0) rotate=shakeR(18, 0)
-  100% translate=shakeX(18, -1) rotate=shakeR(18, -1)
-keyframes settle19
-  0% translate=shakeX(19, -1) rotate=shakeR(19, -1)
-  50% translate=shakeX(19, 0) rotate=shakeR(19, 0)
-  100% translate=shakeX(19, 1) rotate=shakeR(19, 1)
-keyframes settleBack19
-  0% translate=shakeX(19, 1) rotate=shakeR(19, 1)
-  50% translate=shakeX(19, 0) rotate=shakeR(19, 0)
-  100% translate=shakeX(19, -1) rotate=shakeR(19, -1)
-keyframes settle20
-  0% translate=shakeX(20, -1) rotate=shakeR(20, -1)
-  50% translate=shakeX(20, 0) rotate=shakeR(20, 0)
-  100% translate=shakeX(20, 1) rotate=shakeR(20, 1)
-keyframes settleBack20
-  0% translate=shakeX(20, 1) rotate=shakeR(20, 1)
-  50% translate=shakeX(20, 0) rotate=shakeR(20, 0)
-  100% translate=shakeX(20, -1) rotate=shakeR(20, -1)
-keyframes settle21
-  0% translate=shakeX(21, -1) rotate=shakeR(21, -1)
-  50% translate=shakeX(21, 0) rotate=shakeR(21, 0)
-  100% translate=shakeX(21, 1) rotate=shakeR(21, 1)
-keyframes settleBack21
-  0% translate=shakeX(21, 1) rotate=shakeR(21, 1)
-  50% translate=shakeX(21, 0) rotate=shakeR(21, 0)
-  100% translate=shakeX(21, -1) rotate=shakeR(21, -1)
-keyframes settle22
-  0% translate=shakeX(22, -1) rotate=shakeR(22, -1)
-  50% translate=shakeX(22, 0) rotate=shakeR(22, 0)
-  100% translate=shakeX(22, 1) rotate=shakeR(22, 1)
-keyframes settleBack22
-  0% translate=shakeX(22, 1) rotate=shakeR(22, 1)
-  50% translate=shakeX(22, 0) rotate=shakeR(22, 0)
-  100% translate=shakeX(22, -1) rotate=shakeR(22, -1)
-keyframes settle23
-  0% translate=shakeX(23, -1) rotate=shakeR(23, -1)
-  50% translate=shakeX(23, 0) rotate=shakeR(23, 0)
-  100% translate=shakeX(23, 1) rotate=shakeR(23, 1)
-keyframes settleBack23
-  0% translate=shakeX(23, 1) rotate=shakeR(23, 1)
-  50% translate=shakeX(23, 0) rotate=shakeR(23, 0)
-  100% translate=shakeX(23, -1) rotate=shakeR(23, -1)
+// The settle: withTiming(0, { duration: 150 }) from the pose the jiggle stopped at. The box's
+// own translate and rotate are that pose (shakeX / shakeR of the progress it stopped at); the
+// keyframes have no `from`, so they start there and run both to 0, linear in the eased time,
+// which is RN's value: p(t) = p0 (1 - inOut(quad)(t / 150)) maps to translate and rotation
+// linearly (p keeps its sign, so the rotation stays on one side of its kink at 0).
+keyframes settleZero
+  to translate="0px 0px" rotate="0deg"
 
 component ShakeToDelete
   props
@@ -480,12 +291,8 @@ component ShakeToDelete
       goneSlot = goneSlot.concat([live.indexOf(id)])
   view
     // index.tsx: LinearGradient ['#000000', '#121212'], top to bottom, filling the screen.
-    column position="absolute" inset=0 overflow="hidden" timeline-scope="--shake"
+    column position="absolute" inset=0 overflow="hidden"
       background-image="linear-gradient(180deg, #000000 0%, #121212 100%)" testId="shake-to-delete"
-      view position="absolute" left=0 top=0 width=0 height=0 pointer-events="none" aria-hidden=true
-        translate=`${shaking ? 100 : 0}px 0px`
-        transition=(shaking ? "none" : "translate 150ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)")
-        -exact-drag-timeline="--shake x"
       for id in range(24) key=id
         AppItem(id=id, size=tileSize(env.width),
           left=slotLeft(env.width, gone.includes(id) ? match goneSlot.at(gone.indexOf(id)) { case some(k) => k, case none => 0 } : live.indexOf(id)),
@@ -515,9 +322,9 @@ component AppItem
       // styles.itemContainer + rShakingStyle: padding SPACING + 6 (14), transform
       // [translateX, rotate].
       column flex=1 padding=14
-        animation=(shaking ? `shake${id} ${4 * legMs(id)}ms linear infinite` : (settled ? settleOf(id, elapsed) : "none"))
-        animation-timeline=(shaking ? "auto" : "--shake")
-        animation-range=(shaking ? "normal" : settleRange(id, elapsed))
+        translate=(shaking or not settled ? "0px 0px" : shakeX(id, stopP(id, elapsed)))
+        rotate=(shaking or not settled ? "0deg" : shakeR(id, stopP(id, elapsed)))
+        animation=(shaking ? `shake${id} ${4 * legMs(id)}ms linear infinite` : (settled ? `settleZero ${settleTiming()}` : "none"))
         // The PressableOpacity: onLongPress toggles the shaking.
         view class=PressableOpacity flex=1 display="flex" flex-direction="column" contextmenu=hold role="button"
           aria-label=`App ${id + 1}`
