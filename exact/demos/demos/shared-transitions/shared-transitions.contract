@@ -11,15 +11,22 @@ use DemoEnv, demoButtonRow from "../env.contract"
 fn twoDigits(i: number): string = i < 10 ? `0${i}` : `${i}`
 fn thumbnail(i: number): string = `assets/demos/shared-transitions/thumbnails/${twoDigits(i)}.jpg`
 fn detail(i: number): string = `assets/demos/shared-transitions/detail/${twoDigits(i)}.jpg`
+// Each photo's width / height (thumbnail and detail alike). expo-image's cover centres the
+// photo; Exact's object-fit cover pins it to the top, so the cover is laid out by hand: the
+// photo at its cover size, centred in a clipping box.
+fn aspectOf(i: number): number = match [1.5, 0.6667, 0.75, 0.7995, 0.5615, 1.5, 1.4, 0.6667, 0.7915, 0.7995].at(i) { case some(a) => a, case none => 1 }
+fn coverW(a: number, w: number, h: number): number = a < w / h ? w : h * a
+fn coverH(a: number, w: number, h: number): number = a < w / h ? w / a : h
 
 // DefaultTheme (index.tsx NavigationContainer): background rgb(242, 242, 242), card white,
 // text rgb(28, 28, 30). Every screen's background is the theme's background.
 fn themeBackground(): string = "#F2F2F2"
 fn themeCard(): string = "#FFFFFF"
-fn themeText(): string = "#1C1C1E"
-// UIKit's navigation bar: 44 tall under the status bar, its title 17 semibold in the theme's
-// text colour, and its hairline shadow (headerShadowVisible defaults on).
-fn barHeight(): number = 44
+fn themeText(): string = "color(display-p3 0.1098 0.1098 0.1176)"
+// UIKit's navigation bar (iOS 26): 54 tall under the status bar, its title 17 semibold in the
+// theme's text colour centred in the bar's top 44, and its hairline shadow (headerShadowVisible
+// defaults on). Measured on the RN build: hairline 54 pt under the safe area, title as at 44.
+fn barHeight(): number = 54
 
 // Stack screenOptions: animation 'fade', animationDuration 300. react-native-screens' fade
 // animator: a push fades the new screen in over the old, a pop fades the old one out over the
@@ -30,10 +37,10 @@ keyframes screenOut
   to opacity=0
 // details: FadeIn.delay(400 | 600), exiting FadeOut: 300 ms on Reanimated's default
 // Easing.inOut(Easing.quad).
-fn inOutQuad(): string = "cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+fn inOutQuad(): string = "linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
 
 // details/index.tsx BACK_COLOR.
-fn backColor(): string = "#007AFF"
+fn backColor(): string = "color(display-p3 0 0.4784 1)"
 // Ionicons chevron-back (the vector-icons font: 512 units to the em, ascent 454, descent 71, so
 // a Text box 525 units tall).
 fn chevronBackPath(): string = "M322 95Q322 95 322 95Q329 93 337.0 96.5Q345 100 349 107Q355 118 349 129Q348 132 283 197Q283 197 218 262L283 327Q348 392 349 395Q353 402 351 410Q350 419 342.5 425.0Q335 431 326 430Q319 429 309.0 420.0Q299 411 239 351Q178 290 169.0 280.0Q160 270 160.0 262.0Q160 254 168.5 244.5Q177 235 237 175Q309 102 313.5 99.0Q318 96 322 95Z"
@@ -70,7 +77,7 @@ component SharedTransitions
                   Cell(i=i, w=env.width, press=show(i))
         // The bar: card colour, the title centred in its 44 points, a hairline under it.
         column position="absolute" left=0 right=0 top=0 height=(env.safeTop + barHeight())
-          background-color=themeCard() padding-top=env.safeTop box-sizing="border-box"
+          background-color=themeCard() padding-top=env.safeTop padding-bottom=10 box-sizing="border-box"
           align-items="center" justify-content="center" testId="home-bar"
           text "Home" font-size=17 font-weight=600 color=themeText() role="heading" aria-level=1
           view position="absolute" left=0 right=0 bottom=-0.33 height=0.33
@@ -91,20 +98,24 @@ component SharedTransitions
               path d=chevronBackPath() fill=backColor()
             text "Home" font-size=17 color=backColor()
           // styles.imageContainer: 300 tall, the window's width (expo-image: cover).
-          image detail(pick) width=env.width height=300 object-fit="cover" aria-hidden=true
+          view width=env.width height=300 overflow="hidden" position="relative" flex-shrink=0
             testId="details-image"
+            image detail(pick) position="absolute" width=coverW(aspectOf(pick), env.width, 300)
+              height=coverH(aspectOf(pick), env.width, 300)
+              left=((env.width - coverW(aspectOf(pick), env.width, 300)) / 2)
+              top=((300 - coverH(aspectOf(pick), env.width, 300)) / 2) aria-hidden=true
           // styles.textContainer: paddingHorizontal 10.
           column padding="0px 10px"
             // styles.title: 20 bold, marginTop 15.
             text "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec" font-size=20
               font-weight=700 margin-top=15 color="#000000"
               animation=`screenIn 300ms ${inOutQuad()} 400ms both`
-              -exact-exit-animation="screenOut 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955) both" testId="details-title"
+              -exact-exit-animation="screenOut 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) both" testId="details-title"
             // styles.paragraph: 16, marginTop 20.
             text "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec Lorem ipsum dolor sit amet consectetur adipisicing elit. Id tenetur deserunt vel, harum at cupiditate eveniet pariatur perferendis maiores possimus omnis accusantium itaque sapiente blanditiis asperiores! Pariatur alias autem non?"
               font-size=16 margin-top=20 color="#000000"
               animation=`screenIn 300ms ${inOutQuad()} 600ms both`
-              -exact-exit-animation="screenOut 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955) both"
+              -exact-exit-animation="screenOut 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) both"
 
 // home/index.tsx renderItem: a PressableOpacity (stretched across its column) around a view with
 // marginLeft 20 / 3, marginTop 20 / 3 and, in the second column, marginRight 20 / 3; the image
@@ -120,5 +131,10 @@ component Cell
       testId=`photo-${i}` display="flex" flex-direction="column" align-items="stretch"
       view display="flex" flex-direction="column" margin-left=(20 / 3) margin-top=(20 / 3) margin-right=(i % 2 == 1 ? 20 / 3 : 0)
         align-items="flex-start"
-        image thumbnail(i) width=(w / 2 - 10) height=(150 + 50 * (i % 3)) object-fit="cover"
-          border-radius=10 corner-shape="squircle" flex-shrink=0 aria-hidden=true
+        view width=(w / 2 - 10) height=(150 + 50 * (i % 3)) border-radius=10
+          corner-shape="-exact-continuous" overflow="hidden" position="relative" flex-shrink=0
+          image thumbnail(i) position="absolute" width=coverW(aspectOf(i), w / 2 - 10, 150 + 50 * (i % 3))
+            height=coverH(aspectOf(i), w / 2 - 10, 150 + 50 * (i % 3))
+            left=((w / 2 - 10 - coverW(aspectOf(i), w / 2 - 10, 150 + 50 * (i % 3))) / 2)
+            top=((150 + 50 * (i % 3) - coverH(aspectOf(i), w / 2 - 10, 150 + 50 * (i % 3))) / 2)
+            aria-hidden=true
