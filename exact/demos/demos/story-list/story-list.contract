@@ -5,6 +5,12 @@ use DemoEnv from "../env.contract"
 
 // index.tsx stories: image_01…04, twice.
 fn storyImage(i: number): string = match ["image_01.png", "image_02.jpg", "image_03.jpg", "image_04.jpg"].at(i % 4) { case some(f) => `assets/demos/story-list/${f}`, case none => "assets/demos/story-list/image_01.png" }
+// Each photo's width / height (800 × 600, 1400 × 1050, 1400 × 1050, 1400 × 1051). expo-image's
+// contentFit cover centres the photo; the cover is laid out here (as swipe-cards does) rather than
+// trusting the host's object-fit to centre it: the photo at its cover size, centred, clipped.
+fn storyAspect(i: number): number = match [800 / 600, 1400 / 1050, 1400 / 1050, 1400 / 1051].at(i % 4) { case some(a) => a, case none => 1 }
+fn coverW(a: number, cw: number, ch: number): number = a < cw / ch ? cw : ch * a
+fn coverH(a: number, cw: number, ch: number): number = a < cw / ch ? cw / a : ch
 
 // story-item.tsx: interpolate(activeIndex, [i - 2, i - 1, i, i + 1], [a, b, c, d], CLAMP).
 fn piece(a: number, i: number, v0: number, v1: number, v2: number, v3: number): number = a <= i - 2 ? v0 : (a <= i - 1 ? v0 + (v1 - v0) * (a - (i - 2)) : (a <= i ? v1 + (v2 - v1) * (a - (i - 1)) : (a <= i + 1 ? v2 + (v3 - v2) * (a - i) : v3)))
@@ -24,15 +30,17 @@ component StoryList
     column position="absolute" inset=0 background-color="color(display-p3 0.1765 0.1882 0.2706)" align-items="center" justify-content="center"
       testId="story-list"
       column position="relative" width="100%" height=env.width
-        // The horizontal ScrollView: snapToInterval itemWidth, no indicator, bounces. Its
-        // content is ListPadding (window - item width) wider than the eight placeholders,
-        // which start at paddingLeft = (window - item width) / 4; the snap offsets are the
-        // multiples of itemWidth (scroll-padding-left takes paddingLeft back).
+        // The horizontal ScrollView: snapToInterval itemWidth, decelerationRate "fast" (the iOS
+        // host's for x mandatory), no indicator, bounces. disableIntervalMomentum has no Contract
+        // form (no scroll-snap-stop): a hard fling may pass more than one card. Its content is
+        // ListPadding (window - item width) wider than the eight item-wide placeholders. RN puts
+        // them after paddingLeft, but snapToInterval snaps to the multiples of itemWidth whatever
+        // the padding, and the iOS host snaps a placeholder's start to the viewport's (it reads no
+        // scroll-padding): so the placeholders start at 0 and ListPadding trails them.
         scroll position="absolute" top=0 left=0 width="100%" height="100%" overflow-x="scroll" overflow-y="hidden"
-          scrollbar-width="none" scroll-snap-type="x mandatory" scroll-padding-left=((env.width - env.width * 0.7) / 4)
+          scrollbar-width="none" scroll-snap-type="x mandatory"
           scroll=scrolled testId="story-list-scroll"
-          row width=(env.width * 0.7 * 8 + env.width - env.width * 0.7) height=env.width
-            padding-left=((env.width - env.width * 0.7) / 4) flex-shrink=0
+          row width=(env.width * 0.7 * 8 + env.width - env.width * 0.7) height=env.width flex-shrink=0
             for i in range(8) key=i
               view width=(env.width * 0.7) height=env.width flex-shrink=0 scroll-snap-align="start"
         // The visual layer over it, untouchable: each card at paddingLeft, zIndex -index.
@@ -43,5 +51,10 @@ component StoryList
               translate=`${storyX(scroll / (env.width * 0.7), i, env.width * 0.7, (env.width - env.width * 0.7) / 4)}px 0px`
               scale=storyScale(scroll / (env.width * 0.7), i) testId=`story-${i}`
               // The expo-image: cover, borderRadius 25 continuous.
-              image storyImage(i) width="100%" height="100%" object-fit="cover" border-radius=25
+              view position="relative" width="100%" height="100%" border-radius=25
                 corner-shape="-exact-continuous" overflow="hidden"
+                image storyImage(i) position="absolute" flex-shrink=0
+                  width=coverW(storyAspect(i), env.width * 0.7, env.width)
+                  height=coverH(storyAspect(i), env.width * 0.7, env.width)
+                  left=((env.width * 0.7 - coverW(storyAspect(i), env.width * 0.7, env.width)) / 2)
+                  top=((env.width - coverH(storyAspect(i), env.width * 0.7, env.width)) / 2)
