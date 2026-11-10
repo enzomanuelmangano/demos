@@ -5,18 +5,27 @@
 // front.tsx, back.tsx, profile-avatar.tsx}, pages/{MainPage.tsx, SecondPage.tsx}). The card (both
 // faces, the 4×4 turn, its spring with Reanimated's velocity rules) and the description (pages,
 // Keyframes, the blur pulse) are Rust surfaces; the scroll, the press and the top gradient are here.
-use PressableOpacity from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableOpacity, pressTransition from "pressto"
 use DemoEnv, demoButtonRow from "../env.contract"
 
 component AirbnbFlipInteraction
   props
     env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   state isFlipped = false
   // flip-interaction/constants spacing.xxl 64: cardWidth = screenWidth - 64, height / 1.6.
   derive cardW = env.width - 64
   derive cardH = cardW / 1.6
   action toggleCard
-    haptic("selection")
+    pressablesOnPress()
     isFlipped = not isFlipped
   view
     // styles.container: white, flex 1.
@@ -37,7 +46,9 @@ component AirbnbFlipInteraction
             pointer-events="none" aria-hidden=true testId=(isFlipped ? "airbnb-second-page" : "airbnb-main-page")
           // styles.cardSection: centred, paddingBottom spacing.xl (24), paddingHorizontal 20.
           column align-items="center" padding-bottom=24 padding-left=20 padding-right=20
-            column class=PressableOpacity press=toggleCard role="button"
+            column press=toggleCard role="button"
+              pointerdown=pressIn(0) pointerup=pressOut
+              opacity=pressableOpacity(pressing, 0, pressto) transition=pressTransition("opacity", pressto)
               aria-label=(isFlipped ? "Show the profile card" : "Show the stats card")
               testId="airbnb-card"
               // FlipCard: rotationContainer cardWidth × cardHeight (horizontal: rotate 0). Both

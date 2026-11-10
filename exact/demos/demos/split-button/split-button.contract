@@ -1,7 +1,7 @@
 // Split Button: a "Start" chip that, tapped, turns black with an Apple logo and slides right
 // while a bordered Google chip fades in and slides out to its left; either chip folds them back.
 // RN: src/animations/split-button (index.tsx, constants.ts, components/split-button/index.tsx).
-use PressableScale from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
 
 // No background of its own (RN's container is transparent): the demo screen's backdrop
 // (#f1eee8) shows through, as in RN.
@@ -34,15 +34,23 @@ fn applePath(): string = "M343 27Q349 26 352.5 26.0Q356 26 356 28Q359 39 353 62Q
 fn googlePath(): string = "M243 45Q178 50 125 90Q106 105 90 125Q61 161 49 205Q33 265 50 324Q66 381 109.0 422.0Q152 463 209 476Q233 482 262 482Q290 482 313 477Q397 458 440 387Q480 321 469 237Q468 227 467.5 225.5Q467 224 363 224H260V266V308H319Q378 308 378.0 309.5Q378 311 376 318Q361 369 308 387Q272 400 236 393Q198 385 170.0 357.0Q142 329 134 291Q128 263 134 235Q141 202 164.5 175.0Q188 148 221 138Q238 132 261 132Q279 132 288 134Q316 140 338 159L344 164L376 133L407 101L403 98Q394 89 379 79Q339 52 290 46Q265 43 243 45Z"
 
 component SplitButton
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
   state activated = false
-  // Left onPress: onLeft (none given), setActive(false). The app's PressablesConfig plays the
-  // selection haptic on every pressto press.
+  // The two PressableScales' press state (keys 0 left, 1 right).
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
+  // Left onPress: onLeft (none given), setActive(false); the global onPress first.
   action pressLeft
-    haptic("selection")
+    pressablesOnPress()
     activated = false
   // Right onPress: activates; activated, deactivates (onRight: none given).
   action pressRight
-    haptic("selection")
+    pressablesOnPress()
     activated = not activated
   view
     // index.tsx styles.container: flex 1, centred.
@@ -53,7 +61,9 @@ component SplitButton
         // Left button: opacity withTiming(activated, 300 ms), translateX withSpring(0 | -offset).
         view opacity=(activated ? 1 : 0) translate=`${activated ? 0 - offset() : 0}px 0px`
           transition=`opacity 300ms ${inOutQuad()}, translate ${slide()}` testId="left"
-          button appearance="none" class=PressableScale press=pressLeft aria-label="Google"
+          button appearance="none" press=pressLeft aria-label="Google"
+            pointerdown=pressIn(0) pointerup=pressOut
+            scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
             testId="left-press" display="flex" flex-direction="column"
             // styles.chip (+ activeChip: the same border, width 120): border 1 #D9D6D1, radius 16
             // continuous, shadow 0 1 5 10% black, 60 tall, 140 wide.
@@ -75,7 +85,9 @@ component SplitButton
         // withSpring(0 | offset).
         view position="absolute" z-index=100 translate=`${activated ? offset() : 0}px 0px`
           transition=`translate ${slide()}` testId="right"
-          button appearance="none" class=PressableScale press=pressRight
+          button appearance="none" press=pressRight
+            pointerdown=pressIn(1) pointerup=pressOut
+            scale=pressableScale(pressing, 1, pressto) transition=pressTransition("scale", pressto)
             aria-label=(activated ? "Apple" : "Start") testId="right-press" display="flex"
             flex-direction="column"
             // styles.chip + rightChip (#F1EEE8); activeRightChip: black, shadow 0 0 0 30% black.

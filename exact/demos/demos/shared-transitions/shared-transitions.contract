@@ -3,7 +3,7 @@
 // Home button fades it back out. RN: src/animations/shared-transition (index.tsx,
 // constants/images.ts, screens/home/index.tsx, screens/details/index.tsx). Its
 // sharedTransitionTag is commented out in RN (@@TODO), so the screens only cross-fade.
-use PressableOpacity from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableOpacity, pressTransition from "pressto"
 use DemoEnv, demoButtonRow from "../env.contract"
 
 // constants/images.ts: thumbnails/NN.jpg on the grid, detail/NN.jpg on the details screen
@@ -48,6 +48,15 @@ fn chevronBackPath(): string = "M322 95Q322 95 322 95Q329 93 337.0 96.5Q345 100 
 component SharedTransitions
   props
     env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   // The Details route is pushed (`open`) with the photo `pick`; `pick` stays while it fades out.
   state open = false
   state pick = 0
@@ -59,7 +68,7 @@ component SharedTransitions
     open = true
   // goBack.
   action back
-    haptic("selection")
+    pressablesOnPress()
     open = false
   view
     column position="absolute" inset=0 background-color=themeBackground() testId="shared-transitions"
@@ -91,7 +100,9 @@ component SharedTransitions
           -exact-exit-animation="screenOut 300ms ease-in-out both" testId="details"
           // styles.back: PressableOpacity, row, centred, alignSelf flex-start, 44 tall,
           // paddingHorizontal 8: Ionicons chevron-back 24 and "Home" 17, both BACK_COLOR.
-          button appearance="none" class=PressableOpacity press=back aria-label="Home"
+          button appearance="none" press=back aria-label="Home"
+            pointerdown=pressIn(0) pointerup=pressOut
+            opacity=pressableOpacity(pressing, 0, pressto) transition=pressTransition("opacity", pressto)
             testId="back" align-self="flex-start" display="flex" flex-direction="row"
             align-items="center" height=44 padding="0px 8px"
             svg width=24 height=(24 * 525 / 512) viewBox="0 0 512 525" aria-hidden=true
@@ -126,8 +137,19 @@ component Cell
     i: number
     w: number
     press: action
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   view
-    button appearance="none" class=PressableOpacity press=press aria-label=`Photo ${i + 1}`
+    button appearance="none" press=press aria-label=`Photo ${i + 1}`
+      pointerdown=pressIn(0) pointerup=pressOut
+      opacity=pressableOpacity(pressing, 0, pressto) transition=pressTransition("opacity", pressto)
       testId=`photo-${i}` display="flex" flex-direction="column" align-items="stretch"
       view display="flex" flex-direction="column" margin-left=(20 / 3) margin-top=(20 / 3) margin-right=(i % 2 == 1 ? 20 / 3 : 0)
         align-items="flex-start"

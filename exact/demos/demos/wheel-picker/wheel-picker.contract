@@ -6,30 +6,29 @@
 // count is SwiftUI's numeric text, as RN's AnimatedCount (expo-ui Text with contentTransition
 // numericText and a 0.3 s spring): the `rolling-count` native view, the same SwiftUI Text.
 use DemoEnv from "../env.contract"
-
-// pressto's press: progress withTiming 250 ms on bezier(0.25, 0.1, 0.25, 1), scale 1 → 0.96;
-// in from touch-down, out at the lift. The host's own :active press is set to no change.
-style NoHostPress
-  :active
-    -exact-press-scale = 1
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
 
 component WheelPicker
   props
     env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
   state expanded = false
   state count = "0"
-  state held = false
+  // pressto's PressableScale (packages/pressto).
+  state pressing = pressNone()
   action heard(m: string)
     if m == "haptic:selection"
       haptic("selection")
     if m.startsWith("count:")
       count = m.slice(6)
   action pressIn
-    held = true
+    pressing = pressDown(pressing, 0)
   action pressOut
-    held = false
+    pressing = pressUp(pressing)
   action toggle
-    haptic("selection")
+    pressablesOnPress()
     expanded = not expanded
   view
     // styles.container: white, flex 1, centred.
@@ -46,11 +45,11 @@ component WheelPicker
         touch-action="none" testId="wheel-picker-slider" aria-label="Drag the ruler to pick a number"
     // styles.button: absolute, bottom 48, right 32, 64², radius 32, #111; MaterialCommunityIcons
     // arrow-expand / arrow-collapse, 28, white (the font's own glyphs: 512 units, ascent 448).
-    button appearance="none" class=NoHostPress press=toggle pointerdown=pressIn pointerup=pressOut
+    button appearance="none" press=toggle pointerdown=pressIn pointerup=pressOut
       position="absolute" bottom=48 right=32 width=64 height=64 border-radius=32 border="none"
       background-color="color(display-p3 0.0667 0.0667 0.0667)" display="flex" align-items="center"
-      justify-content="center" scale=(held ? 0.96 : 1)
-      transition="scale 250ms cubic-bezier(0.25, 0.1, 0.25, 1)" testId="wheel-picker-toggle"
+      justify-content="center" scale=pressableScale(pressing, 0, pressto)
+      transition=pressTransition("scale", pressto) testId="wheel-picker-toggle"
       aria-label=(expanded ? "Collapse the ruler" : "Expand the ruler")
       svg width=28 height=28 viewBox="0 0 512 512" aria-hidden=true
         path d=(expanded ? "M416 66 320 162V85H277V235H427V192H350L446 96ZM85 277V320H162L66 416L96 446L192 350V427H235V277Z" : "M213 448V405H137L233 309L203 279L107 375V299H64V448ZM309 233 405 137V213H448V64H299V107H375L279 203Z") fill="#ffffff"

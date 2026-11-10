@@ -2,13 +2,9 @@
 // white with it) and shrinks back on release. RN: src/animations/animated-clip-box (index.tsx,
 // components/clip-box-button/index.tsx, expanded-circle.tsx).
 use DemoEnv from "../env.contract"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableOpacity, pressTransition from "pressto"
 
-// pressto's PressableOpacity (activeOpacity 0.5 while held). packages/pressto's own
-// `PressableOpacity` does not compile (`-exact-press-opacity` is refused in `:active`), so the
-// same press, as `:active` accepts it, is kept here.
-style ClipPressOpacity
-  :active
-    opacity=0.5
+// pressto's PressableOpacity (activeOpacity 0.5 while held): packages/pressto.
 
 // The radius `r` springs between three targets: initialRadius 35, boxWidth while held
 // (withSpring { damping 20, mass 1, stiffness 80 }), 30 after the release (withSpring
@@ -87,13 +83,25 @@ component ClipBoxButton
     actionTitle: string
     description: string
     testId: string
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
   state phase = 0
+  // pressto: the pressed pressable (0 the card, 1 its action) and the press parity.
+  state pressing = pressNone()
+  // The card's onPressIn / onPressOut.
   action pressIn
     phase = 1
+    pressing = pressDown(pressing, 0)
   action pressOut
     phase = 2
+    pressing = pressUp(pressing)
+  action actionIn
+    pressing = pressDown(pressing, 1)
+  action actionOut
+    pressing = pressUp(pressing)
   action pressed
-    haptic("selection")
+    pressablesOnPress()
   view
     // styles.button: white, boxShadow 0 0 20 rgba(0,0,0,0.15), height 250, width boxWidth.
     // circleMargin = boxWidth × 0.12; canvasAreaHeight = circleMargin × 2 + initialRadius.
@@ -103,7 +111,8 @@ component ClipBoxButton
         translate=`${radiusOf(phase, boxWidth)}px 0px` transition=`translate ${springOf(phase)}`
         -exact-drag-timeline="--r x" testId=`${testId}-radius`
       // The PressableOpacity over the whole card (onPressIn / onPressOut), clipping its circles.
-      button appearance="none" class=ClipPressOpacity position="absolute" inset=0 overflow="hidden"
+      button appearance="none" position="absolute" inset=0 overflow="hidden"
+        opacity=pressableOpacity(pressing, 0, pressto) transition=pressTransition("opacity", pressto)
         pointerdown=pressIn pointerup=pressOut press=pressed testId=`${testId}-press` aria-label=actionTitle
         // Main circle: height r × 2, aspectRatio 1, borderRadius 200 continuous, left = top =
         // circleCenter - r / 2 - circleMargin / 2 (circleCenter = circleMargin + initialR / 2).
@@ -127,7 +136,9 @@ component ClipBoxButton
         text description font-size=15 color="#000000" animation="inkToWhite 1s linear both"
           animation-timeline="--r" animation-range=`0px ${boxWidth / 3}px` testId=`${testId}-description`
       // The action: PressableOpacity, margin circleMargin / 2; text paddingVertical 5, bold.
-      button appearance="none" class=ClipPressOpacity press=pressed margin=(boxWidth * 0.12 / 2)
+      button appearance="none" press=pressed margin=(boxWidth * 0.12 / 2)
+        pointerdown=actionIn pointerup=actionOut opacity=pressableOpacity(pressing, 1, pressto)
+        transition=pressTransition("opacity", pressto)
         testId=`${testId}-action` display="flex" flex-direction="column" align-items="flex-start"
         text actionTitle padding="5px 0px" font-size=14 font-weight=700 color="#000000"
           animation="inkToWhite 1s linear both" animation-timeline="--r"

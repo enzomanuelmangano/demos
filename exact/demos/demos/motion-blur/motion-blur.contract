@@ -3,7 +3,7 @@
 // up on a spring and the oldest fades out upwards.
 // RN: src/animations/motion-blur (src/index.tsx, utils/generate-random-item.ts,
 // components/blurred-list/index.tsx, components/list-item/index.tsx).
-use PressableScale from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
 use DemoEnv, roll from "../env.contract"
 
 // src/navigation/fonts.ts 'Honk-Bold': assets/fonts/honk-bold.otf (the amount's face).
@@ -61,10 +61,19 @@ style MotionBlurSlide
 component MotionBlur
   props
     env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   // The items added (item k has id k + 1).
   state count = 0
   action addItem
-    haptic("selection")
+    pressablesOnPress()
     count = count + 1
   view
     // styles.container: #fff, flex 1, centred; styles.listContainer: flex 1, centred.
@@ -79,7 +88,9 @@ component MotionBlur
         // styles.buttonContainer: centred, top -50.
         column align-items="center" position="relative" top=-50
           // styles.addButton: 64 × 64, black, radius 32; Entypo plus 40 white.
-          column class=PressableScale width=64 height=64 border-radius=32
+          column width=64 height=64 border-radius=32
+            pointerdown=pressIn(0) pointerup=pressOut
+            scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
             background-color="black" align-items="center" justify-content="center"
             press=addItem role="button" aria-label="Add an item" testId="add"
             // Entypo "plus" 40: the vector-icons glyph (512 × 514 units of 512 to the em).

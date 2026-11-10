@@ -1,6 +1,6 @@
 // Animated Count Text: a number whose digits roll to their new value; the shuffle button picks
 // a random number of one to six digits. RN: src/animations/animated-count-text.
-use PressableScale from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
 use DemoEnv, roll from "../env.contract"
 
 // animated-count.tsx: TEXT_DIGIT_HEIGHT 55, TEXT_DIGIT_WIDTH 40, FONT_SIZE 50.
@@ -19,10 +19,19 @@ keyframes digitOut
 component AnimatedCountText
   props
     env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   state value = 1
   state shuffles = 0
   action shuffle
-    haptic("selection")
+    pressablesOnPress()
     value = randomNumber(env.seed, shuffles)
     shuffles = shuffles + 1
   view
@@ -41,7 +50,9 @@ component AnimatedCountText
               for n in range(10) key=n
                 text `${n}` width=40 height=55 line-height="55px" text-align="center"
                   font-size=50 font-weight=700 color="#ffffff" aria-hidden=true
-      button appearance="none" press=shuffle aria-label="Shuffle" testId="shuffle" class=PressableScale
+      button appearance="none" press=shuffle aria-label="Shuffle" testId="shuffle"
+        pointerdown=pressIn(0) pointerup=pressOut
+        scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
         position="absolute" right=30 bottom=80 width=64 height=64 border-radius=32 background-color="#ffffff"
         display="flex" align-items="center" justify-content="center"
         image "symbol:sf/shuffle" font-size=24 color="#000000"

@@ -3,7 +3,7 @@
 // on a spring; a drag down, the close button or the backdrop closes it.
 // RN: src/animations/action-tray (index.tsx, constants/palette.ts,
 // components/ActionTray/index.tsx, components/ActionTray/Backdrop/index.tsx).
-use PressableScale from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
 use DemoEnv from "../env.contract"
 
 // constants/palette.ts: primary #4290F6, background #FFF, surface #F1F1F4, text #B3B3B6.
@@ -47,6 +47,15 @@ keyframes trayClamp
 component ActionTray
   props
     env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
   state opened = false
   state step = 0
   // maxHeight = screenHeight × 0.6: translateY's closed value (and its start).
@@ -57,21 +66,21 @@ component ActionTray
     layerHeight = ph
   // close(): the tray to maxHeight, isActionTrayOpened false, step 0.
   action close
-    haptic("selection")
+    pressablesOnPress()
     opened = false
     step = 0
   action closeQuietly
     opened = false
     step = 0
   action toggleActionTray
-    haptic("selection")
+    pressablesOnPress()
     if opened
       opened = false
       step = 0
     else
       opened = true
   action next
-    haptic("selection")
+    pressablesOnPress()
     if step == 2
       opened = false
       step = 0
@@ -88,9 +97,10 @@ component ActionTray
       justify-content="center" testId="action-tray"
       // styles.button: 50 × 50, #4290F6, radius 25, marginTop 200, centred; rotate 0 → 45°.
       // MaterialCommunityIcons plus 25 #FFF.
-      column class=PressableScale width=50 height=50 border-radius=25 background-color="color(display-p3 0.2588 0.5647 0.9647)"
+      column width=50 height=50 border-radius=25 background-color="color(display-p3 0.2588 0.5647 0.9647)"
         margin-top=200 align-items="center" justify-content="center"
-        rotate=(opened ? 45 : 0) transition=`rotate ${rotateSpring()}`
+        pointerdown=pressIn(2) pointerup=pressOut scale=pressableScale(pressing, 2, pressto)
+        rotate=(opened ? 45 : 0) transition=`rotate ${rotateSpring()}, ${pressTransition("scale", pressto)}`
         press=toggleActionTray role="button" aria-label=(opened ? "Close the tray" : "Open the tray")
         testId="toggle"
         image "symbol:sf/plus" font-size=25 font-weight=600 color="#FFF" aria-hidden=true
@@ -133,7 +143,9 @@ component ActionTray
                   view flex=1
                   // styles.closeButton: 24 × 24, radius 20, #F1F1F4, hitSlop 8;
                   // MaterialCommunityIcons close-thick 15 #B3B3B6.
-                  column class=PressableScale pointer-events="auto" width=24 height=24
+                  column pointer-events="auto" width=24 height=24
+                    pointerdown=pressIn(0) pointerup=pressOut
+                    scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
                     border-radius=20 background-color="color(display-p3 0.9451 0.9451 0.9569)" align-items="center"
                     justify-content="center" press=close role="button" aria-label="Close"
                     testId="close"
@@ -161,7 +173,9 @@ component ActionTray
                           color="rgba(0, 0, 0, 0.5)"
                 // styles.continueButton: #4290F6, radius 25 continuous, 55 tall, full width;
                 // buttonText #FFF 16 bold.
-                column class=PressableScale pointer-events="auto" height=55 width="100%"
+                column pointer-events="auto" height=55 width="100%"
+                  pointerdown=pressIn(1) pointerup=pressOut
+                  scale=pressableScale(pressing, 1, pressto) transition=pressTransition("scale", pressto)
                   border-radius=25 corner-shape="-exact-continuous" background-color="color(display-p3 0.2588 0.5647 0.9647)"
                   align-items="center" justify-content="center" press=next role="button"
                   aria-label=actionOf(step) testId="continue"
