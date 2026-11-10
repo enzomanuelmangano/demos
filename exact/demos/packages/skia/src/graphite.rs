@@ -814,6 +814,545 @@ pub(crate) fn convex(points: &[Point]) -> bool {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Path strokes (TessellateStrokesRenderStep: the hardware stroke tessellator, run on the CPU)
+
+/// A stroke patch: a cubic (w < 0) or a conic, and its join control point (`prevPoint`).
+#[derive(Clone, Copy, Debug)]
+struct StrokePatch {
+    p: [Point; 4],
+    w: f32,
+    join: Point,
+}
+
+fn sgn(x: f32) -> f32 {
+    if x > 0.0 {
+        1.0
+    } else if x < 0.0 {
+        -1.0
+    } else {
+        0.0
+    }
+}
+fn v2(p: Point) -> [f32; 2] {
+    [p.x, p.y]
+}
+fn dot2(a: [f32; 2], b: [f32; 2]) -> f32 {
+    a[0] * b[0] + a[1] * b[1]
+}
+fn cross2(a: [f32; 2], b: [f32; 2]) -> f32 {
+    a[0] * b[1] - b[0] * a[1]
+}
+fn sub2(a: [f32; 2], b: [f32; 2]) -> [f32; 2] {
+    [a[0] - b[0], a[1] - b[1]]
+}
+fn add2(a: [f32; 2], b: [f32; 2]) -> [f32; 2] {
+    [a[0] + b[0], a[1] + b[1]]
+}
+fn mul2(a: [f32; 2], s: f32) -> [f32; 2] {
+    [a[0] * s, a[1] * s]
+}
+fn norm2(a: [f32; 2]) -> [f32; 2] {
+    let l = 1.0 / dot2(a, a).sqrt();
+    [a[0] * l, a[1] * l]
+}
+/// `$robust_normalize_diff`.
+fn rnd(a: [f32; 2], b: [f32; 2]) -> [f32; 2] {
+    let d = sub2(a, b);
+    if d == [0.0, 0.0] {
+        return d;
+    }
+    let inv = 1.0 / d[0].abs().max(d[1].abs());
+    norm2(mul2(d, inv))
+}
+/// `$unchecked_mix`: fma(b − a, T, a).
+fn umix(a: [f32; 2], b: [f32; 2], t: f32) -> [f32; 2] {
+    [(b[0] - a[0]).mul_add(t, a[0]), (b[1] - a[1]).mul_add(t, a[1])]
+}
+fn umix1(a: f32, b: f32, t: f32) -> f32 {
+    (b - a).mul_add(t, a)
+}
+/// The 2×2 (column-major a, b, c, d) times a vector.
+fn aff2(m: [f32; 4], v: [f32; 2]) -> [f32; 2] {
+    [m[0] * v[0] + m[2] * v[1], m[1] * v[0] + m[3] * v[1]]
+}
+
+/// `$num_radial_segments_per_radian`.
+fn radial_per_radian(r: f32) -> f32 {
+    0.5 / (1.0 - (1.0 / PRECISION) / r).max(-1.0).acos()
+}
+
+/// The shader's per-patch counts for the stroke section: (numEdgesInJoin, numCombinedSegments).
+/// And `tessellate_stroked_curve` for one edge: the device position and the local position.
+fn stroke_vertex(edge_id: f32, aff: [f32; 4], translate: [f32; 2], max_scale: f32, patch: &StrokePatch, params: [f32; 2]) -> ([f32; 2], [f32; 2], f32, f32) {
+    const MAX_EDGES: f32 = 16383.0;
+    let [mut p0, mut p1, mut p2, mut p3] = patch.p.map(v2);
+    let mut w = -1.0f32;
+    if patch.w >= 0.0 {
+        w = patch.w;
+        p3 = p2;
+    }
+    let num_param0 = if w < 0.0 {
+        if p0 == p1 && p2 == p3 {
+            1.0
+        } else {
+            let d0 = aff2(aff, add2([(-2.0f32).mul_add(p1[0], p2[0]), (-2.0f32).mul_add(p1[1], p2[1])], p0));
+            let d1 = aff2(aff, add2([(-2.0f32).mul_add(p2[0], p3[0]), (-2.0f32).mul_add(p2[1], p3[1])], p1));
+            let m = dot2(d0, d0).max(dot2(d1, d1));
+            (3.0 * m.sqrt()).sqrt().ceil().max(1.0)
+        }
+    } else if p0 == p1 || p1 == p2 {
+        1.0
+    } else {
+        conic_p2_mapped(aff2(aff, p0), aff2(aff, p1), aff2(aff, p2), w).sqrt().ceil().max(1.0)
+    };
+    let mut stroke_radius = params[0];
+    let mut join_type = params[1];
+    let hairline = params[0] == 0.0;
+    let nrspr = if hairline {
+        stroke_radius = 0.5;
+        radial_per_radian(0.5)
+    } else {
+        radial_per_radian(max_scale * params[0])
+    };
+    let mut last = v2(patch.join);
+    if hairline {
+        p0 = aff2(aff, p0);
+        p1 = aff2(aff, p1);
+        p2 = aff2(aff, p2);
+        p3 = aff2(aff, p3);
+        last = aff2(aff, last);
+    }
+    let mut tan0 = rnd(if p0 == p1 { if p1 == p2 { p3 } else { p2 } } else { p1 }, p0);
+    let mut tan1 = rnd(p3, if p3 == p2 { if p2 == p1 { p0 } else { p1 } } else { p2 });
+    let mut prev_tan = rnd(p0, last);
+    if tan0 == [0.0, 0.0] {
+        join_type = 0.0;
+        if w < 0.0 {
+            tan0 = [1.0, 0.0];
+            tan1 = [-1.0, 0.0];
+        } else {
+            w = -1.0;
+            tan0 = prev_tan;
+            tan1 = prev_tan;
+            if prev_tan == [0.0, 0.0] {
+                p2 = add2(p0, [stroke_radius, 0.0]);
+                p3 = p2;
+                p0 = sub2(p0, [stroke_radius, 0.0]);
+                p1 = p0;
+                prev_tan = [1.0, 0.0];
+                tan0 = prev_tan;
+                tan1 = prev_tan;
+            } else {
+                p2 = add2(p0, mul2(prev_tan, stroke_radius));
+                p3 = p2;
+            }
+        }
+    }
+    let num_edges_in_join = if join_type >= 0.0 {
+        sgn(join_type) + 3.0
+    } else {
+        let join_rads = dot2(prev_tan, tan0).clamp(-1.0, 1.0).acos();
+        let n = (join_rads * nrspr).ceil().max(1.0);
+        (n + 2.0).min(MAX_EDGES - 2.0)
+    };
+    let mut turn = cross2(sub2(p2, p0), sub2(p3, p1));
+    let mut combined = edge_id.abs() - num_edges_in_join;
+    if combined < 0.0 {
+        tan1 = tan0;
+        if last != p0 {
+            tan0 = prev_tan;
+        }
+        turn = cross2(tan0, tan1);
+    }
+    let cos_theta = dot2(tan0, tan1).clamp(-1.0, 1.0);
+    let mut rotation = cos_theta.acos();
+    if turn < 0.0 {
+        rotation = -rotation;
+    }
+    let mut stroke_outset = sgn(edge_id);
+    let (num_radial, num_param);
+    if combined < 0.0 {
+        num_radial = num_edges_in_join - 2.0;
+        num_param = 1.0;
+        p1 = p0;
+        p2 = p0;
+        p3 = p0;
+        combined += num_radial + 1.0;
+        if combined < 0.0 {
+            combined = 0.0;
+        } else {
+            let parallel = turn.abs() * (1.0 / (dot2(tan0, tan0) * dot2(tan1, tan1)).sqrt()) < 1e-2;
+            if !parallel || dot2(tan0, tan1) < 0.0 {
+                stroke_outset = if turn < 0.0 { stroke_outset.min(0.0) } else { stroke_outset.max(0.0) };
+            }
+        }
+    } else {
+        let max_combined = MAX_EDGES - num_edges_in_join - 1.0;
+        num_radial = (rotation.abs() * nrspr).ceil().max(1.0).min(max_combined);
+        num_param = num_param0.min(max_combined - num_radial + 1.0);
+    }
+    let rads_per_segment = rotation / num_radial;
+    let num_combined = num_param + num_radial - 1.0;
+    let is_final = combined >= num_combined;
+    if combined > num_combined {
+        stroke_outset = 0.0;
+    }
+    if edge_id.abs() == 2.0 && join_type > 0.0 {
+        // $miter_extent
+        let x = cos_theta.mul_add(0.5, 0.5);
+        stroke_outset *= if x * join_type * join_type >= 1.0 { 1.0 / x.sqrt() } else { x.sqrt() };
+    }
+    let (tangent, mut coord);
+    if combined != 0.0 && !is_final {
+        let (a, b, c);
+        let d = sub2(p3, p0);
+        let mut cc = sub2(p1, p0);
+        if w >= 0.0 {
+            cc = mul2(cc, w);
+            b = sub2(mul2(d, 0.5), cc);
+            a = mul2(d, w - 1.0);
+            p1 = mul2(p1, w);
+        } else {
+            let e = sub2(p2, p1);
+            b = sub2(e, cc);
+            a = [(-3.0f32).mul_add(e[0], d[0]), (-3.0f32).mul_add(e[1], d[1])];
+        }
+        c = cc;
+        let b_ = mul2(b, num_param * 2.0);
+        let c_ = mul2(c, num_param * num_param);
+        let mut last_param = 0.0f32;
+        let max_param = (num_param - 1.0).min(combined);
+        let neg_abs = -rads_per_segment.abs();
+        let max_rot0 = (1.0 + combined) * rads_per_segment.abs();
+        let mut exp = 32.0f32;
+        while exp >= 1.0 {
+            let test = last_param + exp;
+            if test <= max_param {
+                let mut t = [test.mul_add(a[0], b_[0]), test.mul_add(a[1], b_[1])];
+                t = [test.mul_add(t[0], c_[0]), test.mul_add(t[1], c_[1])];
+                let cos_rot = dot2(norm2(t), tan0);
+                let max_rot = test.mul_add(neg_abs, max_rot0).min(std::f32::consts::PI);
+                if cos_rot >= max_rot.cos() {
+                    last_param = test;
+                }
+            }
+            exp *= 0.5;
+        }
+        let parametric_t = last_param / num_param;
+        let last_radial = combined - last_param;
+        let mut angle0 = tan0[0].clamp(-1.0, 1.0).acos();
+        if tan0[1] < 0.0 {
+            angle0 = -angle0;
+        }
+        let radial_angle = last_radial.mul_add(rads_per_segment, angle0);
+        let mut tan = [radial_angle.cos(), radial_angle.sin()];
+        let nrm = [-tan[1], tan[0]];
+        let (ra, b2, rc) = (dot2(nrm, a), dot2(nrm, b), dot2(nrm, c));
+        let discr = (b2 * b2 - ra * rc).max(0.0);
+        let mut q = discr.sqrt();
+        if b2 > 0.0 {
+            q = -q;
+        }
+        q -= b2;
+        let qa5 = -0.5 * q * ra;
+        let root = if q.mul_add(q, qa5).abs() < ra.mul_add(rc, qa5).abs() { (q, ra) } else { (rc, q) };
+        let radial_t = if last_radial != 0.0 && root.1 != 0.0 { (root.0 / root.1).clamp(0.0, 1.0) } else { 0.0 };
+        let t = parametric_t.max(radial_t);
+        let ab = umix(p0, p1, t);
+        let bc = umix(p1, p2, t);
+        let cd = umix(p2, p3, t);
+        let abc = umix(ab, bc, t);
+        let bcd = umix(bc, cd, t);
+        let abcd = umix(abc, bcd, t);
+        let u = umix1(1.0, w, t);
+        let v = w + 1.0 - u;
+        let uv = umix1(u, v, t);
+        if t != radial_t {
+            tan = if w >= 0.0 { rnd(mul2(bc, u), mul2(ab, v)) } else { rnd(bcd, abc) };
+        }
+        tangent = tan;
+        coord = if w >= 0.0 { [abc[0] / uv, abc[1] / uv] } else { abcd };
+    } else {
+        tangent = if combined == 0.0 { tan0 } else { tan1 };
+        coord = if combined == 0.0 { p0 } else { p3 };
+    }
+    let ortho = [tangent[1], -tangent[0]];
+    coord = add2(coord, mul2(ortho, stroke_radius * stroke_outset));
+    let (dev, local) = if hairline {
+        let det = aff[0] * aff[3] - aff[2] * aff[1];
+        let inv = [aff[3] / det, -aff[1] / det, -aff[2] / det, aff[0] / det];
+        (add2(coord, translate), aff2(inv, coord))
+    } else {
+        (add2(aff2(aff, coord), translate), coord)
+    };
+    (dev, local, num_edges_in_join, num_combined)
+}
+
+/// The stroke `PatchWriter` (TrackJoinControlPoints, ReplicateLineEndPoints): patches with
+/// their join control points, the first of each contour deferred until its join is known, caps
+/// as circle and square patches.
+struct StrokeWriter<'a, F: FnMut(&StrokePatch)> {
+    m: &'a Matrix,
+    emit: F,
+    join: Point,
+    deferred: Option<StrokePatch>,
+    curve_type: f32,
+    n_p4: f32,
+    first: Point,
+    last: Point,
+}
+
+/// 0 cubic, 1 conic.
+const CUBIC: f32 = 0.0;
+const CONIC: f32 = 1.0;
+
+fn tangent_point(p0: Point, p1: Point, p2: Point, p3: Point) -> Point {
+    if p0 != p1 {
+        p1
+    } else if p2 != p1 {
+        p2
+    } else {
+        p3
+    }
+}
+
+impl<F: FnMut(&StrokePatch)> StrokeWriter<'_, F> {
+    fn write_patch(&mut self, p: [Point; 4], w: f32, curve_type: f32) {
+        self.curve_type = curve_type;
+        let last = if curve_type == CUBIC { p[3] } else { p[2] };
+        if p[0] == p[1] && p[1] == p[2] && p[2] == last {
+            return;
+        }
+        let patch = StrokePatch { p, w, join: self.join };
+        if self.n_p4 < 0.0 {
+            self.deferred = Some(patch);
+            self.n_p4 = 1.0;
+        } else {
+            (self.emit)(&patch);
+        }
+        self.last = last;
+        self.join = tangent_point(last, p[2], p[1], p[0]);
+    }
+    fn circle(&mut self, p: Point) {
+        (self.emit)(&StrokePatch { p: [p; 4], w: -1.0, join: p });
+    }
+    fn square(&mut self, p: Point, join_to: Option<Point>) {
+        (self.emit)(&StrokePatch { p: [p, p, p, p], w: 1.0, join: join_to.unwrap_or(p) });
+    }
+    fn line(&mut self, a: Point, b: Point) {
+        self.write_patch([a, a, b, b], -1.0, CUBIC);
+    }
+    fn patch(&mut self, p: &Patch) {
+        if p.w >= 0.0 {
+            self.write_patch([p.p[0], p.p[1], p.p[2], p.p[2]], p.w, CONIC);
+        } else {
+            self.write_patch(p.p, -1.0, CUBIC);
+        }
+    }
+    fn deferred_stroke(&mut self, move_to: Point, cap: Option<u8>) {
+        if self.n_p4 > 0.0 {
+            let mut d = self.deferred.take().unwrap();
+            let join = match cap {
+                None => self.join,
+                Some(cap) => {
+                    if cap == 1 {
+                        self.circle(self.last);
+                        self.circle(self.first);
+                    } else if cap == 2 {
+                        self.square(self.last, Some(self.join));
+                        let last = if d.w < 0.0 { d.p[3] } else { d.p[2] };
+                        let cap_pt = tangent_point(d.p[0], d.p[1], d.p[2], last);
+                        self.square(d.p[0], Some(cap_pt));
+                    }
+                    self.first
+                }
+            };
+            d.join = join;
+            (self.emit)(&d);
+        } else if let Some(cap) = cap {
+            if self.curve_type >= 0.0 {
+                match cap {
+                    1 => self.circle(self.first),
+                    2 => self.square(self.first, None),
+                    _ => {}
+                }
+            }
+        }
+        self.curve_type = -1.0;
+        self.n_p4 = -1.0;
+        self.deferred = None;
+        self.first = move_to;
+        self.last = move_to;
+    }
+    fn close(&mut self, cap: u8) {
+        self.line(self.last, self.first);
+        let first = self.first;
+        if self.n_p4 > 0.0 {
+            self.deferred_stroke(first, None);
+        } else {
+            self.deferred_stroke(first, Some(cap));
+        }
+    }
+}
+
+/// `FindCubicConvex180Chops`: up to two T values, and whether they are cusps.
+fn convex_180_chops(p: [Point; 4]) -> (usize, [f32; 2], bool) {
+    const EPS: f32 = 1.0 / 2048.0;
+    let in_range = |r: f32| r - EPS >= 0.0 && r - EPS < 1.0 - 2.0 * EPS;
+    let [p0, p1, p2, p3] = p.map(v2);
+    let c = sub2(p1, p0);
+    let d = sub2(p2, p1);
+    let e = sub2(p3, p0);
+    let b = sub2(d, c);
+    let a = add2(mul2(d, -3.0), e);
+    let (mut qa, mut bm2, mut qc) = (cross2(a, b), -0.5 * cross2(a, c), cross2(b, c));
+    let mut discr = bm2 * bm2 - qa * qc;
+    let mut cusp = (qa * (EPS / 2.0)) * (qa * (EPS / 2.0));
+    if discr < -cusp {
+        let root = qc / bm2;
+        return if in_range(root) { (1, [root, 0.0], false) } else { (0, [0.0; 2], false) };
+    }
+    let are_cusps = discr <= cusp;
+    if are_cusps {
+        if qa != 0.0 || bm2 != 0.0 || qc != 0.0 {
+            let root = bm2 / qa;
+            return if in_range(root) { (1, [root, 0.0], true) } else { (0, [0.0; 2], true) };
+        }
+        let tan0 = [if c[0] != 0.0 { c[0] } else { p2[0] - p0[0] }, if c[1] != 0.0 { c[1] } else { p2[1] - p0[1] }];
+        qa = dot2(tan0, a);
+        bm2 = -dot2(tan0, b);
+        qc = dot2(tan0, c);
+        discr = bm2 * bm2 - qa * qc;
+        cusp = cusp.max(0.0);
+        if discr < -cusp {
+            return (0, [0.0; 2], true);
+        }
+        discr = discr.max(0.0);
+    }
+    let q = discr.sqrt().copysign(bm2) + bm2;
+    let roots = [q / qa, qc / q];
+    let inside = |r: f32| r > EPS && r < 1.0 - EPS;
+    if inside(roots[0]) {
+        if inside(roots[1]) && roots[0] != roots[1] {
+            let (x, y) = if roots[0] > roots[1] { (roots[1], roots[0]) } else { (roots[0], roots[1]) };
+            return (2, [x, y], are_cusps);
+        }
+        return (1, [roots[0], 0.0], are_cusps);
+    }
+    if inside(roots[1]) {
+        return (1, [roots[1], 0.0], are_cusps);
+    }
+    (0, [0.0; 2], are_cusps)
+}
+
+/// `SkChopCubicAt`.
+fn chop_cubic(p: [Point; 4], t: f32) -> ([Point; 4], [Point; 4]) {
+    let ab = mix(p[0], p[1], t);
+    let bc = mix(p[1], p[2], t);
+    let cd = mix(p[2], p[3], t);
+    let abc = mix(ab, bc, t);
+    let bcd = mix(bc, cd, t);
+    let abcd = mix(abc, bcd, t);
+    ([p[0], ab, abc, abcd], [abcd, bcd, cd, p[3]])
+}
+
+/// The path stroked as Graphite's TessellateStrokesRenderStep strokes it: for each patch, the
+/// triangle strip of its edges, as (device position, local position) vertices to `vertex` and
+/// strips' starts to `strip` (a strip of `n` vertices follows each call).
+pub(crate) fn stroke(verbs: &[Verb], m: &Matrix, half_width: f32, join_limit: f32, cap: u8, mut strip: impl FnMut(&mut dyn Iterator<Item = ([f32; 2], [f32; 2])>)) {
+    let xf = Xf::new(*m);
+    let [a, b, c, d, e, f] = m.0;
+    let aff = [a, b, c, d];
+    let translate = [e, f];
+    let params = [half_width, join_limit];
+    let mut on_patch = |patch: &StrokePatch| {
+        let (_, _, nej, ncomb) = stroke_vertex(16000.0, aff, translate, xf.max_scale, patch, params);
+        let edges = (nej + ncomb) as u32 + 1;
+        let mut it = (0..edges * 2).map(|k| {
+            let mut id = (k >> 1) as f32;
+            if k & 1 != 0 {
+                id = -id;
+            }
+            let (dev, local, _, _) = stroke_vertex(id, aff, translate, xf.max_scale, patch, params);
+            (dev, local)
+        });
+        strip(&mut it);
+    };
+    let mut w = StrokeWriter { m, emit: &mut on_patch, join: point(0.0, 0.0), deferred: None, curve_type: -1.0, n_p4: -1.0, first: point(0.0, 0.0), last: point(0.0, 0.0) };
+    let mut at = point(0.0, 0.0);
+    for v in verbs {
+        match *v {
+            Verb::Move(p) => {
+                w.deferred_stroke(p, Some(cap));
+                at = p;
+            }
+            Verb::Close => {
+                w.close(cap);
+                at = w.first;
+            }
+            Verb::Line(p) => {
+                w.line(at, p);
+                at = p;
+            }
+            Verb::Quad(c1, p) => {
+                let (a1, b1) = (sub(c1, at), sub(p, c1));
+                if cross2(a1, b1) == 0.0 && dot2(a1, b1) < 0.0 {
+                    // A flat quad turning back: a circle at its cusp, two lines.
+                    let dd = [at.x - 2.0 * c1.x + p.x, at.y - 2.0 * c1.y + p.y];
+                    let t = dot2(sub(at, c1), dd) / dot2(dd, dd);
+                    let cusp = mix(mix(at, c1, t), mix(c1, p, t), t);
+                    w.circle(cusp);
+                    w.line(at, cusp);
+                    w.line(cusp, p);
+                } else {
+                    let mm = w.m;
+                    write_quad(mm, at, c1, p, &mut |pp| w.patch(pp));
+                }
+                at = p;
+            }
+            Verb::Conic(c1, p, wt) => {
+                let mm = w.m;
+                write_conic(mm, at, c1, p, wt, &mut |pp| w.patch(pp));
+                at = p;
+            }
+            Verb::Cubic(c1, c2, p) => {
+                let pts = [at, c1, c2, p];
+                let mm = w.m;
+                let (n, t, cusps) = convex_180_chops(pts);
+                if n == 0 {
+                    write_cubic(mm, at, c1, c2, p, &mut |pp| w.patch(pp));
+                } else if n == 1 {
+                    let (mut l, mut r) = chop_cubic(pts, t[0]);
+                    if cusps {
+                        w.circle(l[3]);
+                        l[2] = l[3];
+                        r[1] = l[3];
+                    }
+                    write_cubic(mm, l[0], l[1], l[2], l[3], &mut |pp| w.patch(pp));
+                    write_cubic(mm, r[0], r[1], r[2], r[3], &mut |pp| w.patch(pp));
+                } else {
+                    let (l, rest) = chop_cubic(pts, t[0]);
+                    let (mid, r) = chop_cubic(rest, (t[1] - t[0]) / (1.0 - t[0]));
+                    if cusps {
+                        w.circle(l[3]);
+                        w.circle(mid[3]);
+                        w.line(l[0], l[3]);
+                        w.line(l[3], mid[3]);
+                        w.line(mid[3], r[3]);
+                    } else {
+                        for q in [l, mid, r] {
+                            write_cubic(mm, q[0], q[1], q[2], q[3], &mut |pp| w.patch(pp));
+                        }
+                    }
+                }
+                at = p;
+            }
+        }
+    }
+    w.deferred_stroke(point(0.0, 0.0), Some(cap));
+}
+
+// ---------------------------------------------------------------------------------------------
 // Analytic clips (ClipStack's can_apply_analytic_clip, non-legacy)
 
 /// `AnalyticClip`: the device-to-local 2×2, the rect (translation folded in), the per-corner
@@ -1230,6 +1769,7 @@ pub mod reference {
     }
 
     /// `sk_analytic_clip` at a device pixel centre.
+    #[allow(dead_code)]
     pub(crate) fn analytic_clip_alpha(c: &super::AnalyticClip, frag: [f32; 2]) -> f32 {
         let x = c.xform;
         let coords = [x[0] * frag[0] + x[2] * frag[1], x[1] * frag[0] + x[3] * frag[1]];

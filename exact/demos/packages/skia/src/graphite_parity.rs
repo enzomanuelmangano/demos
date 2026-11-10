@@ -316,3 +316,121 @@ fn shape_paths_take_the_analytic_step() {
     assert!(c.msaa);
     assert_eq!(c.rrects.len(), 5);
 }
+
+/// Inside a convex polygon (either winding).
+fn in_convex(poly: &[Point], p: Point) -> bool {
+    let n = poly.len();
+    let (mut pos, mut neg) = (false, false);
+    for i in 0..n {
+        let (a, b) = (poly[i], poly[(i + 1) % n]);
+        let c = (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+        pos |= c > 0.0;
+        neg |= c < 0.0;
+    }
+    !(pos && neg)
+}
+
+/// A polyline stroked with straight segments, bevel and miter joins and butt caps: Graphite's
+/// stroke tessellator puts its edges exactly on the offset lines, so 4× MSAA of the exact stroke
+/// (segment rects, the bevel triangle, the miter wedge) is what the GPU writes.
+#[test]
+fn straight_strokes_are_4x_msaa_of_the_exact_outline() {
+    let Some(gpu) = gpu() else { return };
+    let pts = [point(10.3, 12.7), point(60.2, 30.1), point(30.5, 55.9)];
+    let m = Matrix::rotate(0.07).then(Matrix::translate(2.3, -1.4));
+    let width = 6.3f32;
+    for (join, name) in [(Join::Bevel, "bevel"), (Join::Miter, "miter")] {
+        let mut c = Canvas::default();
+        c.begin(1.0);
+        c.concat(m);
+        c.draw_with(&Paint::stroke(Color::WHITE, width).caps(Cap::Butt, join), |b| {
+            b.begin(pts[0]);
+            b.line_to(pts[1]);
+            b.line_to(pts[2]);
+            b.end(false);
+        });
+        assert!(c.msaa && c.rrects.is_empty());
+        let px = render(&gpu, &c);
+        px.save(&format!("parity-stroke-{name}"));
+        // The outline in device space.
+        let d: Vec<Point> = pts.iter().map(|p| m.apply(*p)).collect();
+        let r = width * 0.5 * m.max_scale();
+        let mut polys: Vec<Vec<Point>> = Vec::new();
+        let offs = |a: Point, b: Point| {
+            let v = b - a;
+            let n = vector(-v.y, v.x) * (r / v.length());
+            (v / v.length(), n)
+        };
+        let (d1, n1) = offs(d[0], d[1]);
+        let (d2, n2) = offs(d[1], d[2]);
+        let snap = |p: Point| point((p.x * 256.0).round() / 256.0, (p.y * 256.0).round() / 256.0);
+        polys.push(vec![d[0] + n1, d[1] + n1, d[1] - n1, d[0] - n1]);
+        polys.push(vec![d[1] + n2, d[2] + n2, d[2] - n2, d[1] - n2]);
+        let b = d[1];
+        for s in [1.0f32, -1.0] {
+            let (a1, a2) = (b + n1 * s, b + n2 * s);
+            polys.push(vec![b, a1, a2]);
+            if join == Join::Miter {
+                // Offset lines a1 + t d1 and a2 − u d2 meet beyond the joint on the outer side.
+                let den = d1.x * (-d2.y) - d1.y * (-d2.x);
+                let t = ((a2.x - a1.x) * (-d2.y) - (a2.y - a1.y) * (-d2.x)) / den;
+                if t > 0.0 {
+                    let tip = a1 + d1 * t;
+                    if (tip - b).length() <= 4.0 * r {
+                        polys.push(vec![b, a1, tip, a2]);
+                    }
+                }
+            }
+        }
+        // The rasterizer's 1/256 px vertex snapping (the bevel's inner corner is the joint).
+        for p in polys.iter_mut() {
+            for q in p.iter_mut() {
+                *q = snap(*q);
+            }
+        }
+        const SAMPLES: [(f32, f32); 4] = [(0.375, 0.125), (0.875, 0.375), (0.125, 0.625), (0.625, 0.875)];
+        let want = |x: u32, y: u32| SAMPLES.iter().filter(|(sx, sy)| polys.iter().any(|p| in_convex(p, point(x as f32 + sx, y as f32 + sy)))).count() as f32 / 4.0;
+        let worst = compare(&px, want, &format!("stroke-{name}"));
+        let off = (0..H).flat_map(|y| (0..W).map(move |x| (x, y))).filter(|&(x, y)| (px.at(x, y)[3] as f32 / 255.0 - want(x, y)).abs() > 0.01).count();
+        eprintln!("stroke-{name}: {off} pixels a sample off");
+        assert!(worst <= 0.5 / 255.0 + 1e-4, "{name}: {worst} ({off} pixels off)");
+    }
+}
+
+/// A curved stroke with round caps and joins: its chords stay within Graphite's precision
+/// (1/4 px) of the exact offset curve, so a pixel is at most two samples off the exact stroke's
+/// and nearly all are exact.
+#[test]
+fn curved_strokes_follow_the_offset_curve() {
+    let Some(gpu) = gpu() else { return };
+    let (p0, p1, p2, p3) = (point(8.0, 60.0), point(20.0, -10.0), point(70.0, 90.0), point(88.0, 20.0));
+    let width = 5.0;
+    let mut c = Canvas::default();
+    c.begin(1.0);
+    c.draw_with(&Paint::stroke(Color::WHITE, width).caps(Cap::Round, Join::Round), |b| {
+        b.begin(p0);
+        b.cubic_bezier_to(p1, p2, p3);
+        b.end(false);
+    });
+    let px = render(&gpu, &c);
+    px.save("parity-stroke-curve");
+    let curve = lyon::geom::CubicBezierSegment { from: p0, ctrl1: p1, ctrl2: p2, to: p3 };
+    let samples: Vec<Point> = (0..=4000).map(|k| curve.sample(k as f32 / 4000.0)).collect();
+    const S: [(f32, f32); 4] = [(0.375, 0.125), (0.875, 0.375), (0.125, 0.625), (0.625, 0.875)];
+    let want = |x: u32, y: u32| {
+        S.iter()
+            .filter(|(sx, sy)| {
+                let q = point(x as f32 + sx, y as f32 + sy);
+                samples.iter().any(|s| (*s - q).length() <= width * 0.5)
+            })
+            .count() as f32
+            / 4.0
+    };
+    let worst = compare(&px, want, "stroke-curve");
+    let off = (0..H).flat_map(|y| (0..W).map(move |x| (x, y))).filter(|&(x, y)| (px.at(x, y)[3] as f32 / 255.0 - want(x, y)).abs() > 0.01).count();
+    let inked = (0..H).flat_map(|y| (0..W).map(move |x| (x, y))).filter(|&(x, y)| px.at(x, y)[3] > 0).count();
+    eprintln!("stroke-curve: {off} of {inked} inked pixels differ from the exact stroke");
+    assert!(worst <= 0.5 + 0.5 / 255.0 + 1e-3, "{worst}");
+    assert!(off * 10 < inked, "{off} of {inked}");
+}
+

@@ -48,7 +48,7 @@ pub use text::{match_system_font, match_ui_font, Font, FontMetrics};
 
 use lyon::path::builder::BorderRadii;
 use lyon::path::Winding;
-use lyon::tessellation::{BuffersBuilder, LineCap, LineJoin, StrokeOptions, StrokeTessellator, StrokeVertex, VertexBuffers};
+use lyon::tessellation::{LineCap, LineJoin};
 
 /// A 2D affine transform: `[a, b, c, d, e, f]` maps (x, y) to (a x + c y + e, b x + d y + f).
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -377,12 +377,8 @@ pub struct Canvas {
     verbs: Vec<graphite::Verb>,
     /// Flattening scratch.
     points: Vec<Point>,
-    stroke: StrokeTessellator,
     /// The path a shape draw ([`Canvas::draw_circle`], …) is built into, kept between draws.
     scratch: lyon::path::PathBuffer,
-    /// A lyon path rebuilt from verbs to stroke it.
-    stroke_path: lyon::path::PathBuffer,
-    buffers: VertexBuffers<Point, u32>,
 }
 
 impl Default for Canvas {
@@ -401,10 +397,7 @@ impl Default for Canvas {
             clip_verbs: Vec::new(),
             verbs: Vec::new(),
             points: Vec::new(),
-            stroke: StrokeTessellator::new(),
-            buffers: VertexBuffers::new(),
             scratch: lyon::path::PathBuffer::new(),
-            stroke_path: lyon::path::PathBuffer::new(),
         }
     }
 }
@@ -1320,87 +1313,27 @@ impl Canvas {
                     self.ops.push(Op::Cover { start: mid, end, scissor });
                 }
             }
-            Some(width) => {
-                // tessellatedStrokes: each sample once (the depth test), here lyon's outline.
-                let scale = xf.max_scale.max(1e-3);
-                let mut path = std::mem::take(&mut self.stroke_path);
-                path.clear();
-                {
-                    let mut b = lyon::path::builder::NoAttributes::wrap(path.builder());
-                    let mut open = false;
-                    let mut at = point(0.0, 0.0);
-                    for v in &verbs {
-                        match *v {
-                            graphite::Verb::Move(p) => {
-                                if open {
-                                    b.end(false);
-                                }
-                                b.begin(p);
-                                open = true;
-                                at = p;
-                            }
-                            graphite::Verb::Line(p) => {
-                                b.line_to(p);
-                                at = p;
-                            }
-                            graphite::Verb::Quad(c, p) => {
-                                b.quadratic_bezier_to(c, p);
-                                at = p;
-                            }
-                            graphite::Verb::Cubic(c1, c2, p) => {
-                                b.cubic_bezier_to(c1, c2, p);
-                                at = p;
-                            }
-                            graphite::Verb::Conic(c, p, _) => {
-                                const K: f32 = 0.552_284_8;
-                                b.cubic_bezier_to(at + (c - at) * K, p + (c - p) * K, p);
-                                at = p;
-                            }
-                            graphite::Verb::Close => {
-                                if open {
-                                    b.end(true);
-                                    open = false;
-                                }
-                            }
-                        }
+            Some(_) => {
+                // tessellatedStrokes: Graphite's stroke tessellator, each sample once (LESS).
+                let s = stroke.unwrap();
+                let start = self.indices.len() as u32;
+                let t = to_image.unwrap_or(Matrix::IDENTITY);
+                let (vertices, indices) = (&mut self.vertices, &mut self.indices);
+                graphite::stroke(&verbs, &m, s.half_width, s.join_limit, s.cap, |strip| {
+                    let base = vertices.len() as u32;
+                    for (dev, local) in strip {
+                        let uv = t.apply(point(local[0], local[1]));
+                        vertices.push(Vertex { pos: dev, depth, paint: paint_index, color: u32::MAX, uv: [uv.x, uv.y] });
                     }
-                    if open {
-                        b.end(false);
+                    let n = vertices.len() as u32 - base;
+                    for k in 0..n.saturating_sub(2) {
+                        indices.extend_from_slice(&[base + k, base + k + 1, base + k + 2]);
                     }
-                    b.build();
-                }
-                self.buffers.vertices.clear();
-                self.buffers.indices.clear();
-                let ok = self
-                    .stroke
-                    .tessellate(
-                        path.get(0).iter(),
-                        &StrokeOptions::tolerance(0.2 / scale).with_line_width(width).with_line_cap(paint.cap).with_line_join(paint.join).with_miter_limit(MITER_LIMIT),
-                        &mut BuffersBuilder::new(&mut self.buffers, |v: StrokeVertex| v.position()),
-                    )
-                    .is_ok();
-                self.stroke_path = path;
-                if ok {
-                    let start = self.indices.len() as u32;
-                    self.emit(paint_index, depth, to_image);
-                    self.push_tris(start, scissor, true);
-                }
+                });
+                self.push_tris(start, scissor, true);
             }
         }
         self.verbs = verbs;
-    }
-
-    /// The tessellator's vertices (local) through the transform, with their image pixels.
-    fn emit(&mut self, paint: u32, depth: f32, to_image: Option<Matrix>) {
-        let base = self.vertices.len() as u32;
-        let m = self.state.matrix;
-        let t = to_image.unwrap_or(Matrix::IDENTITY);
-        self.vertices.extend(self.buffers.vertices.iter().map(|p| {
-            let q = m.apply(*p);
-            let uv = t.apply(*p);
-            Vertex { pos: [q.x, q.y], depth, paint, color: u32::MAX, uv: [uv.x, uv.y] }
-        }));
-        self.indices.extend(self.buffers.indices.iter().map(|i| base + i));
     }
 
     fn push_paint(&mut self, paint: &Paint, clip: Option<&graphite::AnalyticClip>) -> u32 {
