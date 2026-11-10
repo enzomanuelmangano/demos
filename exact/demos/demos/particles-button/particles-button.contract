@@ -1,0 +1,21 @@
+// Particles Button: a dark disc with a plus on #111; pressed, the plus turns into a check and
+// back while twenty faint dots burst out of it. RN: src/animations/particles-button (index.tsx,
+// components/circular-button.tsx, components/blast-effect/index.tsx). The button (its pressto
+// press, its chained springs, its icons) and the Skia Atlas blast behind it are Rust:
+// gpu/src/particles_button.rs, which posts the app's selection haptic for each press.
+// Math.random() is env.seed's stream.
+use DemoEnv from "../env.contract"
+
+component ParticlesButton
+  props
+    env: DemoEnv
+  action buzz(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+  view
+    // styles.container: #111, flex 1, centred. The button (48², centred) sits at the centre of
+    // the blast canvas (size × 5 = 240), which BlastCircleEffect centres on it.
+    column position="absolute" inset=0 background-color="color(display-p3 0.0667 0.0667 0.0667)"
+      align-items="center" justify-content="center" testId="particles-button"
+      canvas surface=particles_button(env.seed) message=buzz width=240 height=240 flex-shrink=0
+        touch-action="none" testId="particles-button-canvas" aria-label="Particles button"
