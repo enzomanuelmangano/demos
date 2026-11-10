@@ -482,12 +482,17 @@ struct Gpu {
     bind: wgpu::BindGroup,
 }
 
+/// The pipelines for `format` and the shader `generation`. `keep`, at the same pixel size, hands
+/// over its targets: a new shader generation (a hot reload) or target format rebuilds only the
+/// pipelines, so the snapshots taken so far (`first`, the frozen `live`) survive it.
 fn build(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     generation: u32,
     pixels: (u32, u32),
+    keep: Option<Gpu>,
 ) -> Gpu {
+    let keep = keep.filter(|g| g.pixels == pixels);
     let shader = device.create_shader_module(module());
     let layout = device.create_bind_group_layout(&GROUP_0);
     let copy =
@@ -500,26 +505,31 @@ fn build(
         format,
         None,
     );
-    let live = skia::render::sampled_target(
-        device,
-        "gl transitions live",
-        GRAPHITE_FORMAT,
-        pixels.0,
-        pixels.1,
-    );
-    let first = skia::render::sampled_target(
-        device,
-        "gl transitions first",
-        GRAPHITE_FORMAT,
-        pixels.0,
-        pixels.1,
-    );
-    let uniforms = device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("gl transitions"),
-        size: Uniforms::SIZE as u64,
-        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
-    });
+    let (live, first, uniforms) = match keep {
+        Some(g) => (g.live, g.first, g.uniforms),
+        None => (
+            skia::render::sampled_target(
+                device,
+                "gl transitions live",
+                GRAPHITE_FORMAT,
+                pixels.0,
+                pixels.1,
+            ),
+            skia::render::sampled_target(
+                device,
+                "gl transitions first",
+                GRAPHITE_FORMAT,
+                pixels.0,
+                pixels.1,
+            ),
+            device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("gl transitions"),
+                size: Uniforms::SIZE as u64,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            }),
+        ),
+    };
     let sampler = skia::render::linear_sampler(device);
     let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("gl transitions"),
@@ -1203,7 +1213,14 @@ impl Surface for GlTransitions {
             .map(|g| (g.format, g.generation, g.pixels))
             != Some((format, frame.shader_generation, (pw, ph)))
         {
-            self.gpu = Some(build(device, format, frame.shader_generation, (pw, ph)));
+            let keep = self.gpu.take();
+            self.gpu = Some(build(
+                device,
+                format,
+                frame.shader_generation,
+                (pw, ph),
+                keep,
+            ));
         }
         // What the frame shows: the live scene (into `live`, or into `first` when the Home
         // snapshot is taken), or the transition over the frozen `live` (the second snapshot).

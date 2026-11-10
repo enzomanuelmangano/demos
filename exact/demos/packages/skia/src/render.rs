@@ -12,7 +12,7 @@ const MSAA: u32 = 4;
 const DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::Depth24PlusStencil8;
 
 const SHADER: &str = r#"
-struct View { size: vec2<f32>, srgb: f32, _p: f32 };
+struct View { size: vec2<f32>, srgb: f32, p3: f32 };
 struct Paint {
     head: vec4<f32>, geometry: vec4<f32>, offsets: array<vec4<f32>, 2>, colors: array<vec4<f32>, 8>,
     clip_xform: vec4<f32>, clip_rect: vec4<f32>, clip_radii: vec4<f32>,
@@ -77,6 +77,15 @@ fn p3_to_srgb(c: vec3<f32>) -> vec3<f32> {
         1.2249 * l.r - 0.2247 * l.g,
         -0.0420 * l.r + 1.0419 * l.g,
         -0.0197 * l.r - 0.0786 * l.g + 1.0979 * l.b));
+}
+
+// Encoded sRGB to encoded Display P3.
+fn srgb_to_p3(c: vec3<f32>) -> vec3<f32> {
+    let l = lin(c);
+    return enc(vec3<f32>(
+        0.8225 * l.r + 0.1774 * l.g,
+        0.0332 * l.r + 0.9669 * l.g,
+        0.0171 * l.r + 0.0724 * l.g + 0.9108 * l.b));
 }
 
 // A rounded rect blurred by a Gaussian (Evan Wallace, "Fast Rounded Rectangle Shadows").
@@ -153,8 +162,14 @@ fn shade(p: Paint, px: vec2<f32>, uv0: vec2<f32>, color: vec4<f32>, gx: vec2<f32
         c = ramp(p, fract(atan2(v.y, v.x) / 6.283185307 + 1.0));
     } else if (kind == 4u) {
         let uv = clamp(uv0, vec2<f32>(0.5), max(p.geometry.xy - vec2<f32>(0.5), vec2<f32>(0.5))) / dims;
-        let t = textureSampleGrad(images, smp, uv, i32(p.geometry.z), gx, gy);
-        if (p.geometry.w > 0.5) {
+        var t = textureSampleGrad(images, smp, uv, i32(p.geometry.z), gx, gy);
+        if (p.geometry.w > 1.5) {
+            // Nearest (ImageNearest): the texel under the point, inside the subset.
+            let s = p.colors[1];
+            let texel = clamp(floor(uv0), floor(s.xy), ceil(s.zw) - vec2<f32>(1.0));
+            t = textureLoad(images, vec2<i32>(texel), i32(p.geometry.z), 0);
+            c = vec4<f32>(t.rgb / max(t.a, 1e-5), t.a) * color;
+        } else if (p.geometry.w > 0.5) {
             c = vec4<f32>(color.rgb, color.a * t.a);
         } else {
             c = vec4<f32>(t.rgb / max(t.a, 1e-5), t.a) * color;
@@ -164,8 +179,11 @@ fn shade(p: Paint, px: vec2<f32>, uv0: vec2<f32>, color: vec4<f32>, gx: vec2<f32
         let q = select(px, uv0, p.offsets[0].z > 0.5);
         c.a = c.a * shadow(p.geometry.xy, p.geometry.zw, q, p.offsets[0].y, p.offsets[0].x);
     }
-    if (p.head.w > 0.5) { c = vec4<f32>(p3_to_srgb(c.rgb), c.a); }
+    if (p.head.w > 0.5 && view.p3 < 0.5) { c = vec4<f32>(p3_to_srgb(c.rgb), c.a); }
     if (kind != 4u) { c = c * color; }
+    // A Display P3 target (an RN Skia layer kept in the surface's space): everything but a
+    // gradient's P3 ramp is converted to P3.
+    if (p.head.w < 0.5 && view.p3 > 0.5) { c = vec4<f32>(srgb_to_p3(c.rgb), c.a); }
     let a = c.a * p.head.z;
     var rgb = c.rgb;
     if (view.srgb > 0.5) { rgb = lin(rgb); }
@@ -539,6 +557,10 @@ pub struct Renderer {
     atlas: Option<(wgpu::Texture, wgpu::TextureView, u32)>,
     atlas_epoch: u64,
     atlas_seen: usize,
+    /// The target holds encoded Display P3, as an RN Skia layer does (the surface's colour
+    /// space): gradients stay in P3, every other colour is converted to it. A filter that runs
+    /// on such a layer (a blur) then mixes P3 values, as Skia does; convert once at the end.
+    pub p3: bool,
 }
 
 /// One sample count's pipelines.
@@ -650,6 +672,7 @@ impl Renderer {
         view[..4].copy_from_slice(&(width as f32).to_le_bytes());
         view[4..8].copy_from_slice(&(height as f32).to_le_bytes());
         view[8..12].copy_from_slice(&(if format.is_srgb() { 1.0f32 } else { 0.0 }).to_le_bytes());
+        view[12..16].copy_from_slice(&(self.p3 as u32 as f32).to_le_bytes());
         queue.write_buffer(&built.view, 0, &view);
 
         let vb = bytemuck::cast_slice::<Vertex, u8>(&canvas.vertices);

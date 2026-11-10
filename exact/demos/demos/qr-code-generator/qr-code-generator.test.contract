@@ -1,0 +1,10 @@
+at "/demo/qr-code-generator"
+
+test "the canvas and the field are there"
+  expect tree has "qr-code-generator"
+  expect tree has "qr-code-generator-canvas"
+  expect tree has "qr-input"
+
+test "typing sets the field's text"
+  type "qr-input" "hello"
+  expect text "qr-input" == "hello"

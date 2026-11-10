@@ -1,0 +1,8 @@
+at "/demo/notion-qrcode"
+
+// The web host gives a surface no touches: the morph, the spring, the pulse and the haptics are
+// the Rust tests' (gpu/src/notion_qrcode.rs, against the RN files run in Hermes); here what the
+// Contract holds.
+test "the screen and its canvas are there"
+  expect tree has "notion-qrcode"
+  expect tree has "notion-qrcode-canvas"

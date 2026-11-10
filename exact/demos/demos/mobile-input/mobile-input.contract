@@ -1,0 +1,21 @@
+// Mobile Input: a PIN lock screen. A glowing sweep-gradient ring (its BlurMask breathing 0 → 10 →
+// 45 → 10 over 12 s) holds a face that opens its eyes at the first digit, smiles at the right PIN
+// (11111) and frowns at a wrong one while the PIN area shakes; backspace clears. RN:
+// src/animations/mobile-input (lock-screen.tsx, components/*, hooks/use-animated-shake.ts). The
+// whole screen is one Rust surface (gpu/src/mobile_input.rs): the ring and its animated blur, the
+// face's springs and path morph, the label and dots at UIKit's text layout, the shake, and the
+// keypad's pressto presses (progress over 250 ms, the 10 % fill and 0.9 scale, onPress on a lift
+// inside the key). The surface posts each press's selection haptic.
+use DemoEnv from "../env.contract"
+
+component MobileInput
+  props
+    env: DemoEnv
+  // The app's PressablesConfig onPress: Haptics.selectionAsync().
+  action heard(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+  view
+    canvas surface=mobile_input(env.safeTop, env.safeBottom) message=heard position="absolute" top=0
+      left=0 width=env.width height=env.height touch-action="none" testId="mobile-input"
+      aria-label="Enter PIN Mode: a keypad of 1 to 9, 0 and backspace"

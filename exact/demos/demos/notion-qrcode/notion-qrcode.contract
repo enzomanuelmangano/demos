@@ -1,0 +1,24 @@
+// Notion QR Code: 348 avatars on a rotating 3D torus; the round button morphs them, in a wave,
+// into the QR code of https://www.reactiive.io and back, its icon and label cross-fading, with
+// four light haptics on the way out and a pulse once the QR settles. RN:
+// src/animations/notion-qrcode (index.tsx, create-picture.ts, hooks/, utils/, components/).
+// Everything drawn, the press, the spring, the rotation and the pulse are one Rust surface
+// (gpu/src/notion_qrcode.rs): the picture, the two LinearGradients and the ToggleButton. It
+// posts the haptics: `haptic:selection` at the press (the app's PressablesConfig onPress) and
+// `haptic:impact-light` at each threshold progress crosses (hapticSoft).
+use DemoEnv from "../env.contract"
+
+component NotionQrCode
+  props
+    env: DemoEnv
+  action buzz(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+  view
+    // styles.container: #f5f5f5 (a View colour: Display P3 components), flex 1.
+    column position="absolute" inset=0 background-color="color(display-p3 0.960784 0.960784 0.960784)" testId="notion-qrcode"
+      canvas surface=notion_qrcode() position="absolute" top=0 left=0 width=env.width height=env.height
+        touch-action="none" message=buzz testId="notion-qrcode-canvas"
+        aria-label="Tap the button to turn the avatars into a QR code"

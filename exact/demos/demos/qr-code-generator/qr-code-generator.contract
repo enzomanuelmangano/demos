@@ -1,0 +1,55 @@
+// QR Code Generator: a text field, the QR code of what it holds (or "reactiive.io") filled with
+// a red-to-yellow gradient and roughened by a DiscretePathEffect, and a "Deviation" slider for
+// the effect, in a ScrollView that rubber-bands. RN: src/animations/qrcode (index.tsx,
+// components/slider/index.tsx). Everything drawn, the scroll (UIScrollView's band and bounce),
+// the slider's pan and springs, and the presses are one Rust surface:
+// gpu/src/qr_code_generator.rs. Here: the real TextInput (field and keyboard), shown over the
+// surface's text rect while it is focused; unfocused, the surface draws the field's text, so it
+// moves with the scroll. The surface posts `focus` (a tap on the field) and `blur` (a tap
+// elsewhere: TouchableWithoutFeedback's Keyboard.dismiss; a scroll drag: keyboardDismissMode
+// "on-drag").
+use DemoEnv from "../env.contract"
+
+// styles.textInput's text rect: the field (marginHorizontal 5 %, top = safe top + 50,
+// contentContainerStyle's paddingTop) inset by padding 15 + border 1; its line (SF 20's,
+// 23.87, ceiled to the pixel) 24 tall.
+fn fieldLeft(w: number): number = w * 0.05 + 16
+fn fieldTop(safeTop: number): number = safeTop + 50 + 16
+fn fieldWidth(w: number): number = w * 0.9 - 32
+
+component QrCodeGenerator
+  props
+    env: DemoEnv
+  // The field's value (MAX_QR_TEXT_LENGTH 300 by maxlength; the surface slices too) and
+  // whether it is focused.
+  state text = ""
+  state focused = false
+  action heard(m: string)
+    if m == "focus"
+      focus("qr-input")
+    if m == "blur"
+      blur("qr-input")
+  action typed(v: string)
+    text = v
+  action opened
+    focused = true
+  action closed
+    focused = false
+  view
+    // styles.container: black, flex 1.
+    column position="absolute" inset=0 background-color="#000000" testId="qr-code-generator"
+      canvas surface=qr_code_generator(env.safeTop, text, focused) message=heard
+        position="absolute" top=0 left=0 width=env.width height=env.height touch-action="none"
+        aria-label="QR code of the text; drag the Deviation slider to roughen it"
+        testId="qr-code-generator-canvas"
+      // The TextInput: white SF 20, autoCapitalize none, autoCorrect off, autoComplete off,
+      // maxLength 300, placeholder in 'gray'; the caret is iOS's tint (systemBlue, dark).
+      input id="qr-input" value=text input=typed focus=opened blur=closed maxlength=300
+        placeholder="Enter text to generate QR code" autocapitalize="none" autocorrect="off"
+        autocomplete="off" position="absolute" left=fieldLeft(env.width) top=fieldTop(env.safeTop)
+        width=fieldWidth(env.width) height=24 font-size=20 color="#ffffff" caret-color="#0a84ff"
+        background-color="transparent" border="none" padding=0 outline="none"
+        opacity=(focused ? 1 : 0) pointer-events=(focused ? "auto" : "none")
+        aria-label="Text to generate QR code" testId="qr-input"
+        ::placeholder
+          color="#808080"

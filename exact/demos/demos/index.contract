@@ -56,6 +56,7 @@ use LoadingButton from "./loading-button/loading-button.contract"
 use MagnetSpring from "./magnet-spring/magnet-spring.contract"
 use Metaball from "./metaball/metaball.contract"
 use MilesBarChart from "./miles-bar-chart/miles-bar-chart.contract"
+use MobileInput from "./mobile-input/mobile-input.contract"
 use MotionBlur from "./motion-blur/motion-blur.contract"
 use OnlineOffline from "./online-offline/online-offline.contract"
 use PaperFolding from "./paper-folding/paper-folding.contract"
@@ -215,6 +216,8 @@ component PortedDemo
         Metaball()
       if slug == "miles-bar-chart"
         MilesBarChart(env=env)
+      if slug == "mobile-input"
+        MobileInput(env=env)
       if slug == "motion-blur"
         MotionBlur(env=env)
       if slug == "online-offline"

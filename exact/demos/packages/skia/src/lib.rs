@@ -169,6 +169,11 @@ pub enum Shader {
     /// image's pixels (the inverse of where the image is drawn: `fit_cover(…).invert()`).
     /// Outside the image its edge repeats (clamp).
     Image { image: ImageRef, to_image: Matrix },
+    /// [`Shader::Image`] sampled nearest, as `canvas.drawImageRect(image, src, dst, paint)`
+    /// samples in RN Skia (`SkSamplingOptions()`: no filtering, no mipmaps, and
+    /// `kStrict_SrcRectConstraint`): Graphite's `sk_image_shader` nearest path, the texel under
+    /// the local point, clamped to `subset` (the src rect, image pixels `[l, t, r, b]`).
+    ImageNearest { image: ImageRef, to_image: Matrix, subset: [f32; 4] },
 }
 
 /// Evenly spaced stops for `colors`, as Skia places them without `positions`.
@@ -1270,7 +1275,7 @@ impl Canvas {
         self.use_msaa_clips(&clip, depth);
         let paint_index = self.push_paint(paint, clip.analytic.as_ref());
         let to_image = match &paint.shader {
-            Shader::Image { to_image, .. } => Some(*to_image),
+            Shader::Image { to_image, .. } | Shader::ImageNearest { to_image, .. } => Some(*to_image),
             _ => None,
         };
         let scissor = clip.scissor;
@@ -1439,6 +1444,13 @@ impl Canvas {
                 let [a, b, c, d, e, f] = to_image.0;
                 gpu.offsets = [[a, b, c, d], [e, f, 0.0, 0.0]];
             }
+            Shader::ImageNearest { image, to_image, subset } => {
+                gpu.head[0] = 4.0;
+                gpu.geometry = [image.width, image.height, image.layer as f32, 2.0];
+                let [a, b, c, d, e, f] = to_image.0;
+                gpu.offsets = [[a, b, c, d], [e, f, 0.0, 0.0]];
+                gpu.colors[1] = *subset;
+            }
         }
         self.paints.push(gpu);
         (self.paints.len() - 1) as u32
@@ -1500,11 +1512,27 @@ pub fn continuous_radius(w: f32, h: f32, r: f32) -> f32 {
 /// part of the fill). Tessellating the overlap as it stands left a crack of MSAA samples just
 /// inside the side, where the two curves' chords cross.
 pub fn add_continuous_rrect<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, x: f32, y: f32, w: f32, h: f32, r: f32) {
+    continuous_rrect_wound(b, x, y, w, h, r, false);
+}
+
+/// [`add_continuous_rrect`] wound the other way (mirrored about its horizontal centre line, the
+/// same shape): a hole under the nonzero rule, as the inner edge of a Core Animation border
+/// (the continuous rounded rect less the one inset by the border's width).
+pub fn add_continuous_rrect_hole<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, x: f32, y: f32, w: f32, h: f32, r: f32) {
+    continuous_rrect_wound(b, x, y, w, h, r, true);
+}
+
+fn continuous_rrect_wound<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, x: f32, y: f32, w: f32, h: f32, r: f32, hole: bool) {
     let r = continuous_radius(w, h, r);
     if r <= 0.0 {
-        add_rect(b, x, y, w, h);
+        if hole {
+            b.add_rectangle(&lyon::math::Box2D::new(point(x, y), point(x + w, y + h)), Winding::Negative);
+        } else {
+            add_rect(b, x, y, w, h);
+        }
         return;
     }
+    let flip = |p: Point| if hole { point(p.x, 2.0 * y + h - p.y) } else { p };
     let e = CONTINUOUS_EXTENT * r;
     // Each corner: its point, the incoming side's direction (unit), the outgoing side's, and
     // the outgoing side's length.
@@ -1514,9 +1542,11 @@ pub fn add_continuous_rrect<B: lyon::path::traits::PathBuilder>(b: &mut lyon::pa
         (point(x, y + h), vector(-1.0, 0.0), vector(0.0, -1.0), h),
         (point(x, y), vector(0.0, -1.0), vector(1.0, 0.0), w),
     ];
+    // Every point goes through `flip` (a hole is the mirror image, wound the other way); the
+    // cuts below are in curve parameters, which an affine flip keeps.
     let frame = |k: usize, [a, c]: [f32; 2]| {
         let (corner, incoming, outgoing, _) = corners[k];
-        corner - incoming * (a * r) + outgoing * (c * r)
+        flip(corner - incoming * (a * r) + outgoing * (c * r))
     };
     let cubic = |k: usize, i: usize| -> [Point; 4] {
         let start = if i == 0 { [CONTINUOUS_EXTENT, 0.0] } else { CONTINUOUS_CORNER[i - 1][2] };
@@ -1673,6 +1703,15 @@ pub fn add_rect<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder:
 /// inscribed in the rect, as Skia builds it (four quarter conics from the right, clockwise).
 pub fn add_oval<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, x: f32, y: f32, w: f32, h: f32) {
     conics::add_oval(b, [x.min(x + w), y.min(y + h), x.max(x + w), y.max(y + h)], false, 1);
+}
+
+/// [`add_oval`] from Skia's start point `index` of the box (0 top, 1 right, 2 bottom, 3 left),
+/// clockwise (`addOval(oval, kCW, index)`). `PathBuilder.addRRect` of a rounded rect whose radii
+/// make it an oval (`rrect(rect, r, r)` with r ≥ half of each side: `SkRRect::setRectXY` clamps
+/// it to an oval) is this with index 3: addRRect's clockwise start 6, halved by
+/// `SkPathPriv::SimplifyRRect`.
+pub fn add_oval_from<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, x: f32, y: f32, w: f32, h: f32, index: u32) {
+    conics::add_oval(b, [x.min(x + w), y.min(y + h), x.max(x + w), y.max(y + h)], false, index);
 }
 
 /// Appends a circle to a builder (`PathBuilder.addCircle`): Skia's four quarter conics from

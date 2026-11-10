@@ -44,6 +44,19 @@ struct Case {
 fn cases() -> Vec<Case> {
     vec![
         Case {
+            name: "spiral",
+            make: crate::spiral::surface,
+            size: (420.0, 912.0, 3.0),
+            setup: |_| {},
+            // A tap every 120 frames: all 1641 circles spring to a new angle.
+            tick: |s, i, ms| {
+                if i % 120 == 1 {
+                    s.input(&pointer(1, PointerPhase::Down, 200.0, 400.0, ms));
+                    s.input(&pointer(1, PointerPhase::Up, 200.0, 400.0, ms + 1.0));
+                }
+            },
+        },
+        Case {
             name: "radar-chart",
             make: crate::radar_chart::surface,
             size: (400.0, 400.0, 3.0),

@@ -1,0 +1,54 @@
+// Sudoku: "SUDOKU" over a card with Start Game; started, the board fades in cell by cell, then a
+// number pad; a cell selects (its number's cells get a spring circle), the pad fills it, a solved
+// board blasts confetti with a haptic celebration; the title solves it ("Genius!" 2.1 s later),
+// New Game asks first. RN: src/animations/sudoku (index.tsx, theme.ts, logic/, components/).
+// Everything drawn, every press, timer and animation is one Rust surface (gpu/src/sudoku.rs):
+// it posts the haptics (the app's PressablesConfig selection, playCelebrationHaptics' impacts and
+// success) and asks for the two Alert.alerts, whose buttons come back as the `reset` (New Game)
+// and `ok` (Genius OK) tokens.
+use DemoEnv from "../env.contract"
+
+component Sudoku
+  props
+    env: DemoEnv
+  state reset = 0
+  state ok = 0
+  action heard(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+    if m == "haptic:impact-medium"
+      haptic("impact-medium")
+    if m == "haptic:impact-heavy"
+      haptic("impact-heavy")
+    if m == "haptic:success"
+      haptic("success")
+    if m == "alert:new-game"
+      showModal("new-game")
+    if m == "alert:genius"
+      showModal("genius")
+  // The New Game alert's New Game: setSudoku(generateSudoku('medium')), setHasStarted(false).
+  action newGame
+    reset = reset + 1
+  // The Genius alert's OK: setHasStarted(false).
+  action geniusOk
+    ok = ok + 1
+  view
+    // styles.safeArea: COLORS.background (#0A1222, a View colour: Display P3), under the canvas.
+    column position="absolute" inset=0 background-color="color(display-p3 0.039216 0.070588 0.133333)" testId="sudoku"
+      canvas surface=sudoku(env.seed, reset, ok) position="absolute" top=0 left=0 width=env.width height=env.height
+        touch-action="none" message=heard testId="sudoku-canvas"
+        aria-label="Sudoku: Start Game, then tap a cell and a number"
+      // Alert.alert('New Game', …, [Cancel (cancel), New Game (destructive)]).
+      dialog id="new-game" role="alertdialog" aria-label="New Game" testId="new-game-alert"
+        text "Are you sure you want to start a new game? Your current progress will be lost."
+        button commandfor="new-game" command="close" testId="new-game-cancel"
+          text "Cancel"
+        button press=newGame destructive=true commandfor="new-game" command="close" testId="new-game-confirm"
+          text "New Game"
+      // Alert.alert('Genius!', 'Ready for another challenge?', [OK]).
+      dialog id="genius" role="alertdialog" aria-label="Genius!" testId="genius-alert"
+        text "Ready for another challenge?"
+        button press=geniusOk commandfor="genius" command="close" testId="genius-ok"
+          text "OK"
