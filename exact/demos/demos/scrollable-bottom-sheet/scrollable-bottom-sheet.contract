@@ -22,7 +22,8 @@ fn inOutQuad(): string = "linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.013
 // sheet's top. RN's spacer (height SCREEN_HEIGHT + translateY) leaves the pages
 // -translateY - 34 tall, the button centred in them: 17 - translateY / 2 below the sheet's top.
 // Here the pages keep one height (no layout per frame) and the button rides that centre on
-// the sheet's own spring: its translate is half the sheet's, which a spring keeps exactly.
+// the sheet's own spring: its translate is half the sheet's, which a spring keeps exactly
+// (and, while dragging, the finger's value directly, as the sheet's).
 fn buttonDrop(ty: number): number = 17 - ty / 2 - 34 - 25
 
 component ScrollableBottomSheet
@@ -31,6 +32,8 @@ component ScrollableBottomSheet
   // translateY: pages[0].height at mount (below the screen), 0 closed, -height open.
   state translateY = 350
   state active = false
+  // Bumped on every open: the pages' scroller is keyed by it.
+  state opens = 0
   derive w = env.width
   // onPress: close if active, else scrollToY(-FIRST_PAGE_HEIGHT).
   action toggle
@@ -41,8 +44,10 @@ component ScrollableBottomSheet
     else
       // RN scrolls the pages back to the first 500 ms after a close (scrollToX(0, 500)), when
       // they have faded out; a component has no timer here, so they go back as it opens,
-      // still transparent.
-      scrollIntoView("sheet-page-0", block="nearest", inline="start")
+      // still transparent: a new scroller (a new key) starts at the first page. Not a
+      // scrollIntoView of the first page: the sheet is below the screen here, and it would
+      // scroll the clips above it to bring it into view.
+      opens = opens + 1
       active = true
       translateY = 0 - pageHeight(0)
   action close
@@ -54,19 +59,40 @@ component ScrollableBottomSheet
       active = false
       translateY = 0
     else
-      scrollIntoView(`sheet-page-${i + 1}`, block="nearest", inline="start", behavior="smooth")
+      // scrollViewRef.scrollTo({ x: windowWidth * (i + 1) }), animated. The target is the
+      // page's top strip, which is on screen, so block="nearest" leaves the scrollers above
+      // the pages alone.
+      scrollIntoView(`sheet-anchor-${i + 1}`, block="nearest", inline="start", behavior="smooth")
   // The one value written per scroll frame, read only by the two translates.
   action scrolled(x: number, y: number)
     if active
       translateY = 0 - heightAt(x, w)
-  // Pan onEnd: translationY > 100 closes (scrollTo(0)), else back to where it started.
-  action release(x: number, y: number, scale: number, vx: number, vy: number, vscale: number)
-    if y - translateY > 100
+  // BottomSheet.tsx's Pan, on the whole sheet (its line and its pages; the pages keep their
+  // horizontal scroll). onStart: context = translateY. onUpdate: only while translationY > 0,
+  // translateY = max(translationY + context, MAX_TRANSLATE_Y = -SCREEN_HEIGHT + 50); a
+  // translation <= 0 leaves translateY where it was. The finger's value is set directly, no
+  // spring (the transitions are off while dragging).
+  state dragging = false
+  state dragFrom = 0
+  state dragY = 0
+  action panned(dx: number, dy: number)
+    if not dragging
+      dragging = true
+      dragFrom = translateY
+      dragY = 0
+    dragY = dragY + dy
+    if dragY > 0
+      translateY = max(dragY + dragFrom, 50 - env.height)
+  // onEnd: translationY > 100 closes (scrollTo(0)); else scrollTo(context.y), the spring back
+  // (active = context != 0).
+  action panEnd(vx: number, vy: number)
+    dragging = false
+    if dragY > 100
       active = false
       translateY = 0
-  state layerHeight = 0
-  action geometry(bw: number, bh: number, pw: number, ph: number)
-    layerHeight = ph
+    else
+      active = dragFrom != 0
+      translateY = dragFrom
   view
     // index.tsx styles.container: #000, centred.
     column position="absolute" inset=0 background-color="#000" align-items="center"
@@ -82,23 +108,20 @@ component ScrollableBottomSheet
         opacity=(active ? 1 : 0) pointer-events=(active ? "auto" : "none")
         transition=`opacity 300ms ${inOutQuad()}` pointerdown=close aria-label="Close the sheet"
         testId="backdrop"
-      // The sheet's layer: its translate is RN's translateY, the transform drag's target under
-      // an untransformed, clipping parent. The clips are `clip`, not `hidden`: a hidden box is
-      // still a scroll container, and the open's scrollIntoView of the first page scrolled it
-      // (on the web) to bring the sheet below the screen into view.
+      // The sheet's layer: its translate is RN's translateY (springing, or the finger's while
+      // dragging). The clips are `clip`, not `hidden`: a hidden box is still a scroll container.
       column position="absolute" inset=0 overflow="clip" pointer-events="none"
-        column id="sheet-layer" width="100%" height="100%" box-sizing="border-box"
-          position="relative" translate=`0px ${translateY}px` transition=`translate ${sheetSpring()}`
+        column width="100%" height="100%" position="relative" translate=`0px ${translateY}px`
+          transition=(dragging ? "none" : `translate ${sheetSpring()}`)
           // styles.bottomSheetContainer: #171717, radius 25 continuous (its interpolation to 5
           // starts past -SCREEN_HEIGHT + 100, never reached), SCREEN_HEIGHT tall at top
           // SCREEN_HEIGHT, full width.
           column position="absolute" top="100%" left=0 width="100%" height="100%"
             background-color="#171717" border-radius=25 corner-shape="-exact-continuous" overflow="hidden"
-            testId="sheet"
-            // The GestureDetector over the sheet.
-            view position="absolute" inset=0 pointer-events="auto" touch-action="none"
-              transformDragFor="sheet-layer" transformgeometry=geometry transformrelease=release
-              aria-label="Drag the sheet down to close it" testId="sheet-handle"
+            // The GestureDetector: a vertical pan anywhere on the sheet (horizontal drags stay
+            // the pages' scroll).
+            pointer-events="auto" touch-action="pan-x" pan=panned panrelease=panEnd
+            aria-label="Drag the sheet down to close it" testId="sheet"
             // styles.line: 75 × 4, grey, radius 2, marginVertical 15, centred.
             view width=75 height=4 background-color="grey" border-radius=2 margin-top=15
               margin-bottom=15 align-self="center" pointer-events="none"
@@ -106,26 +129,26 @@ component ScrollableBottomSheet
             column flex=1 min-height=0 opacity=(active ? 1 : 0)
               transition=`opacity 150ms ${inOutQuad()}`
               // The Animated.ScrollView: horizontal, pagingEnabled, no indicator.
-              scroll width="100%" height="100%" overflow-x="scroll" overflow-y="hidden"
-                scrollbar-width="none" scroll-snap-type="x mandatory" scroll=scrolled
-                pointer-events="auto" testId="sheet-pages"
-                row width=(w * 3) height="100%"
-                  for i in [0, 1, 2] key=i
-                    // BottomSheetPage: windowWidth wide, its button centred (here: on the
-                    // centre of the sheet's visible part, see buttonDrop).
-                    column id=`sheet-page-${i}` width=w height="100%" flex-shrink=0
-                      position="relative" scroll-snap-align="start" testId=`sheet-page-${i}`
-                      // The sheet's pan inside the pages too (vertical; the pages keep their
-                      // horizontal scroll).
-                      view position="absolute" inset=0 touch-action="pan-x"
-                        transformDragFor="sheet-layer" transformgeometry=geometry
-                        transformrelease=release aria-hidden=true
-                      column align-items="center" translate=`0px ${buttonDrop(translateY)}px`
-                        transition=`translate ${sheetSpring()}`
-                        // styles.button: 200 × 50, radius 40, LinearGradient ['#4E65FF',
-                        // '#92EFFD'] from bottom-left to top-right; buttonText white 20 bold.
-                        column class=PressableScale width=200 height=50 border-radius=40
-                          background-image="linear-gradient(to top right, #4E65FF 0%, #92EFFD 100%)"
-                          align-items="center" justify-content="center" press=pressPage(i)
-                          role="button" aria-label=pageTitle(i) testId=`sheet-button-${i}`
-                          text pageTitle(i) font-size=20 font-weight=700 color="white"
+              // A new scroller per open: it starts at the first page (scrollToX(0, 500) on close).
+              for k in [opens] key=k
+                scroll width="100%" height="100%" overflow-x="scroll" overflow-y="hidden"
+                  scrollbar-width="none" scroll-snap-type="x mandatory" scroll=scrolled
+                  pointer-events="auto" testId="sheet-pages"
+                  row width=(w * 3) height="100%"
+                    for i in [0, 1, 2] key=i
+                      // BottomSheetPage: windowWidth wide, its button centred (here: on the
+                      // centre of the sheet's visible part, see buttonDrop).
+                      column id=`sheet-page-${i}` width=w height="100%" flex-shrink=0
+                        position="relative" scroll-snap-align="start" testId=`sheet-page-${i}`
+                        // The scroll target of the next-page buttons: the page's top strip, on screen.
+                        view id=`sheet-anchor-${i}` position="absolute" top=0 left=0 width=w height=1
+                          pointer-events="none" aria-hidden=true
+                        column align-items="center" translate=`0px ${buttonDrop(translateY)}px`
+                          transition=(dragging ? "none" : `translate ${sheetSpring()}`)
+                          // styles.button: 200 × 50, radius 40, LinearGradient ['#4E65FF',
+                          // '#92EFFD'] from bottom-left to top-right; buttonText white 20 bold.
+                          column class=PressableScale width=200 height=50 border-radius=40
+                            background-image="linear-gradient(to top right, #4E65FF 0%, #92EFFD 100%)"
+                            align-items="center" justify-content="center" press=pressPage(i)
+                            role="button" aria-label=pageTitle(i) testId=`sheet-button-${i}`
+                            text pageTitle(i) font-size=20 font-weight=700 color="white"

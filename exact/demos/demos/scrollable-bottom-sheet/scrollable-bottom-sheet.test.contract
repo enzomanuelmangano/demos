@@ -2,7 +2,7 @@ at "/demo/scrollable-bottom-sheet"
 
 test "the button opens the sheet with three pages; the last page's button closes it"
   expect tree has "scrollable-bottom-sheet"
-  expect tree has "sheet-handle"
+  expect tree has "sheet"
   tap "open"
   clock settle
   expect text "sheet-button-0" == "Next Page"
@@ -30,3 +30,16 @@ test "the backdrop closes an open sheet and the button opens it again"
   tap "open"
   clock settle
   expect tree has "sheet"
+
+// BottomSheet.tsx's Pan: a short drag springs back, one past 100 down closes the sheet; it is
+// heard on the pages too.
+test "a drag down past 100 closes the sheet, a shorter one springs back"
+  tap "open"
+  clock settle
+  tap "sheet" drag 0 60 from 100 10
+  clock settle
+  tap "sheet" drag 0 150 from 100 200
+  clock settle
+  tap "open"
+  clock settle
+  expect text "sheet-button-0" == "Next Page"
