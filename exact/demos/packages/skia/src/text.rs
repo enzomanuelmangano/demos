@@ -213,16 +213,19 @@ impl Font {
         self.layout(text, |_, _| {})
     }
 
-    /// `measureText(text)`: the ink bounds of `text` drawn at the origin (y down), as Skia
-    /// returns them: `width` is the ink's, not the advance's.
+    /// `measureText(text)`: the bounds of `text` drawn at the origin (y down), as RN Skia
+    /// returns them on iOS: each glyph's Core Text bounds rounded out to whole points and
+    /// outset by 1 (its antialiasing margin) about its pen position, unioned. So `width` is
+    /// neither the ink's nor the advance's: Helvetica bold 13 "Home" is 37.888 (ink 34.77,
+    /// advance 36.12), as the RN app's measureText returns it (read on the simulator).
     pub fn measure_text(&self, text: &str) -> Rect {
         let (mut l, mut t, mut r, mut b) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
         self.layout(text, |g, pen| {
             if let Some(bb) = self.face.glyph_bounding_box(g) {
-                l = l.min(pen + bb.x_min as f32 * self.units);
-                r = r.max(pen + bb.x_max as f32 * self.units);
-                t = t.min(-(bb.y_max as f32) * self.units);
-                b = b.max(-(bb.y_min as f32) * self.units);
+                l = l.min(pen + (bb.x_min as f32 * self.units).floor() - 1.0);
+                r = r.max(pen + (bb.x_max as f32 * self.units).ceil() + 1.0);
+                t = t.min((-(bb.y_max as f32) * self.units).floor() - 1.0);
+                b = b.max((-(bb.y_min as f32) * self.units).ceil() + 1.0);
             }
         });
         if l > r {

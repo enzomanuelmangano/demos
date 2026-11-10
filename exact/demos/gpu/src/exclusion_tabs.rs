@@ -5,7 +5,8 @@
 //! The canvas: the window's width × 45 (`containerWidth`, `height`), a Touchable.Canvas centred
 //! on white.
 //! - Font: Helvetica bold 13 (matchFont, a Skia font: no kerning); textWidths[i] =
-//!   measureText(tab).width (the ink's width).
+//!   measureText(tab).width: RN Skia's bounds on iOS (each glyph's rounded out and outset
+//!   by 1), not the ink: skia's `measure_text` does the same.
 //! - Box i: an rrect (boxX, 0, textWidths[i] + 2 · internalBoxPadding (20), 45), radius
 //!   borderRadius; boxX = Σ_{j<i} (textWidths[j] + 40) + animatedTranslateX + horizontalTabsPadding,
 //!   horizontalTabsPadding = max((containerWidth − Σ (textWidths + 40)) / 2, 0). Filled with its
