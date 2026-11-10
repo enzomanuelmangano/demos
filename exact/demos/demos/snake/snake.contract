@@ -1,0 +1,35 @@
+// Snake: a white card with the score (an AnimatedCount) over a 10 × 10 board where a snake moves
+// every 120 ms, turned by flings, growing on the food; when it bites itself "Life goes on..."
+// fades in over the board and restarts it. RN: src/animations/snake (src/index.tsx,
+// src/snake-game/{index.tsx, snake-game.ts}, src/components/animated-count).
+// The card's content is Rust: gpu/src/snake.rs (the game, its frame callback and JS hops, the
+// four flings as UIKit's swipe, the board's Skia canvas, the count's springs, blur and
+// gradients, the restart overlay and its press) and gpu/shaders/snake.wgsl. The surface posts
+// `haptic:selection` at each fling (onDirectionChange) and at the restart press (the app's
+// PressablesConfig onPress).
+use DemoEnv from "../env.contract"
+
+// index.tsx: boardSize = Math.floor((windowWidth * 0.7) / 10) * 10.
+fn boardSize(width: number): number = floor(width * 0.7 / 10) * 10
+// The canvas: statsContainer ("Score", bold 18: TextKit's SF line of 21.48 pt that RN ceils to
+// the device pixel, 65 / 3 on a 3× iPhone; marginBottom 4; the 30-tall count; marginBottom 8)
+// over the board.
+fn contentHeight(width: number): number = ceil(21.48046875 * 3) / 3 + 4 + 30 + 8 + boardSize(width)
+
+component Snake
+  props
+    env: DemoEnv
+  action buzz(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+  view
+    // styles.container: white, centred.
+    column position="absolute" inset=0 background-color="#ffffff" align-items="center"
+      justify-content="center" testId="snake"
+      // styles.boardContainer: white, borderRadius 18 continuous, boxShadow, padding 10.
+      column background-color="#ffffff" border-radius=18 corner-shape="-exact-continuous"
+        box-shadow="0px 2px 10px rgba(92, 92, 92, 0.2)" padding=10 align-items="center"
+        justify-content="center" testId="snake-card"
+        canvas surface=snake(env.seed, env.width, env.height) width=boardSize(env.width)
+          height=contentHeight(env.width) flex-shrink=0 touch-action="none" message=buzz
+          testId="snake-canvas" aria-label="Swipe on the board to turn the snake"

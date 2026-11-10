@@ -1581,6 +1581,15 @@ pub fn add_oval<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder:
     conics::add_oval(b, [x.min(x + w), y.min(y + h), x.max(x + w), y.max(y + h)], false, 1);
 }
 
+/// [`add_oval`] from Skia's start point `index` of the box (0 top, 1 right, 2 bottom, 3 left),
+/// clockwise (`addOval(oval, kCW, index)`). `PathBuilder.addRRect` of a rounded rect whose radii
+/// make it an oval (`rrect(rect, r, r)` with r ≥ half of each side: `SkRRect::setRectXY` clamps
+/// it to an oval) is this with index 3: addRRect's clockwise start 6, halved by
+/// `SkPathPriv::SimplifyRRect`.
+pub fn add_oval_from<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, x: f32, y: f32, w: f32, h: f32, index: u32) {
+    conics::add_oval(b, [x.min(x + w), y.min(y + h), x.max(x + w), y.max(y + h)], false, index);
+}
+
 /// Appends a circle to a builder (`PathBuilder.addCircle`): Skia's four quarter conics from
 /// (cx + r, cy), clockwise.
 pub fn add_circle<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, cx: f32, cy: f32, r: f32) {

@@ -70,6 +70,7 @@ pub mod selectable_grid_list;
 pub mod skia_bottom_sheet;
 pub mod skia_color_picker;
 pub mod slide_to_reveal;
+pub mod snake;
 pub mod sphere_waves;
 pub mod spiral;
 pub mod stacked_carousel;
@@ -136,6 +137,7 @@ pub static REGISTRY: Registry = Registry {
         ("skia_bottom_sheet", 0, skia_bottom_sheet::surface),
         ("skia_color_picker", 0, skia_color_picker::surface),
         ("slide_to_reveal", 0, slide_to_reveal::surface),
+        ("snake", 3, snake::surface),
         ("sphere_waves", 0, sphere_waves::surface),
         ("spiral", 0, spiral::surface),
         ("stacked_carousel", 0, stacked_carousel::surface),
