@@ -48,6 +48,7 @@ pub mod fluid_slider;
 pub mod fourier_visualizer;
 pub mod fractal_glass;
 pub mod geometry_button;
+pub mod light_on_painting;
 pub mod linear_sensors;
 pub mod loading_button;
 pub mod magnet_spring;
@@ -107,6 +108,7 @@ pub static REGISTRY: Registry = Registry {
         ("fourier_visualizer", 0, fourier_visualizer::surface),
         ("fractal_glass", 1, fractal_glass::surface),
         ("geometry_button", 0, geometry_button::surface),
+        ("light_on_painting", 4, light_on_painting::surface),
         ("linear_sensors", 0, linear_sensors::surface),
         ("loading_button", 1, loading_button::surface),
         ("magnet_spring", 0, magnet_spring::surface),
