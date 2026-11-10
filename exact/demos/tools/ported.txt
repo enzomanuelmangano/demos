@@ -85,4 +85,5 @@ theme-canvas-animation
 toast
 twitter-tab-bar
 verification-code
+twodos-slide
 wheel-picker

@@ -27,15 +27,11 @@
 //! - The scroll (ui_scroll.rs): content width = port width, so the range is [0, 0] and any drag
 //!   is rubber-banded; released, it bounces back to 0 (alwaysBounceHorizontal, RN's default for a
 //!   horizontal ScrollView).
-//! - The opening offset: Fabric mounts the ScrollView with `updateProps` (contentOffset 94.5 set
-//!   on the UIScrollView while its event emitter is still nil: no onScroll), then `updateState`
-//!   (the state's offset is the same prop: no change), then its layout. `updateState` clamps only
-//!   a negative overscroll (`fmax(x, -inset.left)`; RN's TODO there: the right and bottom are
-//!   not), and UIScrollView does not pull an out-of-range offset back on its own. So the demo opens
-//!   with contentOffset.x = 0.225 W (94.5 at 420), the label 94.5 pt left of centre, and
-//!   `scrollOffset` still 0 (squares at rest) until the first drag's first onScroll. (The legacy
-//!   renderer's RCTScrollView clamped the offset when it set the content size: an old video shows
-//!   the label centred.) Flagged for the simulator check.
+//! - The opening offset: contentOffset={{ x: INITIAL_SCROLL_POSITION }} (94.5 at 420) is set on a
+//!   UIScrollView whose content is exactly as wide as the port, and the demo opens with the label
+//!   centred and the squares at rest (measured on the simulator, RN Fabric, iOS 27.1): the offset
+//!   is clamped to the [0, 0] range before the first frame, with no onScroll. So the scroll opens
+//!   at 0 here.
 //! - onScroll: RCTScrollViewComponentView dispatches it from scrollViewDidScroll (each change of
 //!   the offset, once per frame here) only when more than scrollEventThrottle (16 ms) has passed
 //!   since the last dispatch; beginning or ending a drag, and starting or ending a deceleration,
@@ -100,8 +96,8 @@ const CHECK: &str = "\u{F140}";
 const THROTTLE_MS: f64 = 16.0;
 /// The haptic's debounce wait (ms).
 const DEBOUNCE_MS: f64 = 1000.0;
-/// MaxTranslationFrictionThreshold × 1.8 = W / 8 × 1.8: INITIAL_SCROLL_POSITION.
-const INITIAL_OFFSET: f64 = 1.8 / 8.0;
+/// Where the scroll opens: RN's INITIAL_SCROLL_POSITION (W / 8 × 1.8) clamped to the [0, 0] range.
+const INITIAL_OFFSET: f64 = 0.0;
 
 static ANTDESIGN_ARROW: &[u8] = include_bytes!("../fonts/antdesign-arrow-right-subset.ttf");
 static ENTYPO_CHECK: &[u8] = include_bytes!("../fonts/entypo-check-subset.ttf");
@@ -306,7 +302,8 @@ impl TwodosSlide {
         if let Some(font) = self.check.as_ref() {
             let (w, h) = (text_side(font.advance_width(CHECK), scale), text_side(gfx::line_height(font), scale));
             let (x, y) = (grid((SIZE - w) / 2.0, scale), grid((SIZE - h) / 2.0, scale));
-            c.draw_text(CHECK, x, gfx::baseline(font, y), font, &Paint::fill(Color::view_hex(0x2A2A2A)));
+            // TextKit sets an icon glyph half the font's lineGap below the box top + ascender.
+            c.draw_text(CHECK, x, gfx::baseline(font, y + font.metrics().leading / 2.0), font, &Paint::fill(Color::view_hex(0x2A2A2A)));
         }
         let c = &mut self.layer_canvas;
         c.save();
@@ -335,7 +332,8 @@ impl TwodosSlide {
         // row's own pixel-aligned frame).
         let top = |h: f32| grid((row[3] - h) / 2.0, scale);
         c.draw_text(LABEL, 0.0, gfx::baseline(label, top(lh)), label, &gray);
-        c.draw_text(ARROW, grid(lw + LABEL_GAP, scale), gfx::baseline(arrow, top(ah)), arrow, &gray);
+        // TextKit puts half the icon font's lineGap above its ascender (SF has none).
+        c.draw_text(ARROW, grid(lw + LABEL_GAP, scale), gfx::baseline(arrow, top(ah) + arrow.metrics().leading / 2.0), arrow, &gray);
     }
 
     /// One square under its transform (about its bottom-right corner), its shadow first.
@@ -550,7 +548,7 @@ mod tests {
     }
 
     #[test]
-    fn it_opens_overscrolled_and_a_drag_turns_and_draws() {
+    fn it_opens_centred_and_a_drag_turns_and_draws() {
         let gpu = match fixture::device() {
             Ok(gpu) => gpu,
             Err(error) => return eprintln!("{error}; skipped"),
@@ -559,13 +557,13 @@ mod tests {
         let (rest, animating) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         gfx::save_over(&rest, "twodos-rest", [255, 255, 255]);
         assert!(!animating);
-        // contentOffset 94.5 (0.225 W) with no onScroll: the squares at progress 0.
-        assert_eq!(state(&mut s), "{\"contentOffset\":94.50,\"scrollOffset\":0.00,\"progress\":0.0000,\"pathProgress\":0.0000,\"dragging\":false}");
-        // The label row is 94.5 left of centre: its ink spans about the centre − 94.5.
+        // RN opens at contentOffset 0 (INITIAL_SCROLL_POSITION clamped): the squares at progress 0.
+        assert_eq!(state(&mut s), "{\"contentOffset\":0.00,\"scrollOffset\":0.00,\"progress\":0.0000,\"pathProgress\":0.0000,\"dragging\":false}");
+        // The label row is centred.
         let row_y = (3.0 * (H / 2.0 + ROW_TOP + 10.0)) as u32;
         let ink: Vec<u32> = (0..(3.0 * W) as u32).filter(|&x| rest.at(x, row_y)[3] > 0 && rest.at(x, row_y)[0] < 200).collect();
         let (l, r) = (*ink.first().unwrap() as f32 / 3.0, *ink.last().unwrap() as f32 / 3.0);
-        assert!(((l + r) / 2.0 - (W / 2.0 - 94.5)).abs() < 3.0, "ink {l}..{r}");
+        assert!(((l + r) / 2.0 - W / 2.0).abs() < 3.0, "ink {l}..{r}");
         // The front square's body (#DEB986 as Display P3) left of the outline, inside the box.
         let (bx, by) = (150.0, 336.0);
         let body = rest.at((3.0 * (bx + 12.0)) as u32, (3.0 * (by + 60.0)) as u32);
