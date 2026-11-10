@@ -34,7 +34,7 @@ component Checkbox
   view
     button appearance="none" press=press testId=testId aria-pressed=checked class=PressableScale
       display="flex" flex-direction="row" align-items="center" justify-content="center"
-      padding=(checked ? "12px 14px 12px 24px" : "12px 24px") border-radius=36
+      padding=(checked ? "12px 14px 12px 24px" : "12px 24px") border-radius=36 corner-shape="-exact-continuous"
       border-width=1.5 border-style="solid"
       border-color=(checked ? "color(display-p3 0.9373 0.5569 0.3216 / 0.1)" : "color(display-p3 0.702 0.6941 0.7059 / 0.1)")
       background-color=(checked ? "color(display-p3 0.9373 0.5569 0.3216 / 0.1)" : "color(display-p3 0.9373 0.5569 0.3216 / 0)")
