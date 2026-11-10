@@ -1,0 +1,15 @@
+// Card Shader Reflections: four metal cards (Metal, Silver, Gold, Platinum) in a horizontal
+// carousel that snaps card by card; each card is tilted 18° and turns about its vertical axis as
+// it leaves the centre, its brushed-metal shader lit by a light that follows the turn. RN:
+// src/animations/card-shader-reflections (src/components/card-carousel: card-carousel.tsx,
+// card/card.component.tsx, card/card.shader.ts, card/card-chip.component.tsx). Everything is
+// Rust: gpu/src/card_shader_reflections.rs (the FlatList's UIScrollView with snapToInterval and
+// decelerationRate "fast", the cards' 3D transforms, opacities, chip and title) and
+// gpu/shaders/card_shader_reflections.wgsl (getCardShader, line for line).
+
+component CardShaderReflections
+  view
+    // styles.container: #111 (17 / 255, a grey: the same in Display P3), flex 1.
+    column position="absolute" inset=0 background-color="color(display-p3 0.066667 0.066667 0.066667)" testId="card-shader-reflections"
+      canvas surface=card_shader_reflections() position="absolute" top=0 left=0 width="100%" height="100%"
+        touch-action="none" testId="card-shader-reflections-canvas" aria-label="Swipe the cards sideways"

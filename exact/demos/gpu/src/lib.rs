@@ -30,6 +30,7 @@ pub mod blur_cards;
 pub mod blur_circles;
 pub mod blurred_scroll;
 pub mod bottom_bar_skia;
+pub mod card_shader_reflections;
 pub mod clock_time_picker;
 pub mod color_carousel;
 pub mod cuberto_slider;
@@ -86,6 +87,7 @@ pub static REGISTRY: Registry = Registry {
         ("blur_circles", 0, blur_circles::surface),
         ("blurred_scroll", 1, blurred_scroll::surface),
         ("bottom_bar_skia", 1, bottom_bar_skia::surface),
+        ("card_shader_reflections", 0, card_shader_reflections::surface),
         ("clock_time_picker", 0, clock_time_picker::surface),
         ("color_carousel", 1, color_carousel::surface),
         ("cuberto_slider", 0, cuberto_slider::surface),

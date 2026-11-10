@@ -1,0 +1,5 @@
+at "/demo/card-shader-reflections"
+
+test "the cards' canvas is there"
+  expect tree has "card-shader-reflections"
+  expect tree has "card-shader-reflections-canvas"
