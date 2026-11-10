@@ -3,7 +3,7 @@
 # Take the first unclaimed line, mark it claimed (commit just this file), finish it, mark done.
 github-contributions ported done:38efb062
 mobile-input todo claimed:sim1
-swipe-cards ported claimed:sim2
+swipe-cards ported done:5ba2f6ee (verified 2026-11-10: stills edge- and button-exact, photo mean 0.85; A/B drag, throw, reset same structure)
 spiral ported
 scroll-progress ported
 animated-grid-list ported
