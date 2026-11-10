@@ -14,6 +14,10 @@
 //! are [`path_from_svg`]; `<FitBox>` is [`fit_box`]. A `<Group transform>` with `perspective`,
 //! `rotateX` or `rotateY` is [`Matrix4`] (its plane's [`Matrix3`] inverted in a demo's shader).
 //!
+//! Images are [`Images`] (decoded once, one mipmapped texture array) painted with
+//! [`Shader::Image`] (`<Image fit>`, an image shader) or [`Canvas::draw_atlas`] (`<Atlas>`); a
+//! view's Gaussian box shadow is [`Canvas::draw_rrect_shadow`], evaluated per pixel (no pass).
+//!
 //! What a demo needs beyond this (Skia's image filters, runtime shaders) is its own wgpu pass.
 
 #![deny(missing_docs)]
@@ -24,6 +28,7 @@ pub use lyon::path::Path;
 
 pub mod blur;
 pub mod color;
+pub mod image;
 pub mod matrix4;
 pub mod render;
 pub mod svg;
@@ -32,6 +37,7 @@ pub mod text;
 pub use color::Color;
 pub use matrix4::{Matrix3, Matrix4};
 pub use blur::Blur;
+pub use image::{Image, ImageRef, Images};
 pub use render::Renderer;
 pub use svg::path_from_svg;
 pub use text::{match_system_font, Font, FontMetrics};
@@ -82,6 +88,16 @@ impl Matrix {
         let [a, b, c, d, e, f] = self.0;
         point(a * p.x + c * p.y + e, b * p.x + d * p.y + f)
     }
+    /// The inverse (the identity where it does not exist).
+    pub fn invert(&self) -> Matrix {
+        let [a, b, c, d, e, f] = self.0;
+        let det = a * d - b * c;
+        if det.abs() < 1e-12 {
+            return Matrix::IDENTITY;
+        }
+        let (ia, ib, ic, id) = (d / det, -b / det, -c / det, a / det);
+        Matrix([ia, ib, ic, id, -(ia * e + ic * f), -(ib * e + id * f)])
+    }
     /// How much it scales lengths, at most.
     pub fn max_scale(&self) -> f32 {
         let [a, b, c, d, ..] = self.0;
@@ -115,6 +131,15 @@ pub fn fit_box(src: Rect, dst: Rect) -> Matrix {
     Matrix([s, 0.0, 0.0, s, tx, ty])
 }
 
+/// `fit="cover"` (`contentFit="cover"`, `resizeMode="cover"`): `src` scaled uniformly to cover
+/// `dst`, centred (the part outside `dst` is the caller's clip).
+pub fn fit_cover(src: Rect, dst: Rect) -> Matrix {
+    let s = (dst.width / src.width).max(dst.height / src.height);
+    let tx = dst.x + (dst.width - src.width * s) / 2.0 - src.x * s;
+    let ty = dst.y + (dst.height - src.height * s) / 2.0 - src.y * s;
+    Matrix([s, 0.0, 0.0, s, tx, ty])
+}
+
 /// A gradient stop: an offset in 0…1 and its colour.
 pub type Stop = (f32, Color);
 
@@ -130,6 +155,10 @@ pub enum Shader {
     Radial { center: Point, radius: f32, stops: Vec<Stop> },
     /// `<SweepGradient c colors positions>`: from the +x axis, clockwise.
     Sweep { center: Point, stops: Vec<Stop> },
+    /// An image of the renderer's [`Images`]: `to_image` maps the shape's local points to the
+    /// image's pixels (the inverse of where the image is drawn: `fit_cover(…).invert()`).
+    /// Outside the image its edge repeats (clamp).
+    Image { image: ImageRef, to_image: Matrix },
 }
 
 /// Evenly spaced stops for `colors`, as Skia places them without `positions`.
@@ -162,6 +191,10 @@ impl Paint {
     pub fn stroke(color: Color, width: f32) -> Paint {
         Paint { stroke: Some(width), ..Paint::fill(color) }
     }
+    /// A fill with an image, `to_image` from the shape's points to the image's pixels.
+    pub fn image(image: ImageRef, to_image: Matrix) -> Paint {
+        Paint::shader(Shader::Image { image, to_image })
+    }
     /// A fill with a shader.
     pub fn shader(shader: Shader) -> Paint {
         Paint { shader, ..Paint::fill(Color::BLACK) }
@@ -192,7 +225,10 @@ pub use lyon::tessellation::{LineCap as Cap, LineJoin as Join};
 pub(crate) struct Vertex {
     pub pos: [f32; 2],
     pub paint: u32,
-    pub _pad: u32,
+    /// A straight RGBA8 colour the paint is multiplied by (an atlas sprite's), white otherwise.
+    pub color: u32,
+    /// Image pixels (image paints and atlas sprites).
+    pub uv: [f32; 2],
 }
 
 /// Up to this many stops per gradient.
@@ -202,9 +238,12 @@ pub(crate) const MAX_STOPS: usize = 8;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct GpuPaint {
-    /// kind (0 solid, 1 linear, 2 radial, 3 sweep), stop count, opacity, unused.
+    /// kind (0 solid, 1 linear, 2 radial, 3 sweep, 4 image, 5 shadow), stop count, opacity,
+    /// unused.
     pub head: [f32; 4],
     /// Linear: start, end. Radial: centre, radius, unused. Sweep: centre. Device pixels.
+    /// Image: its width, height, layer, and 1 for `srcIn` (the vertex colour in the image's
+    /// alpha) else 0. Shadow: the rect's top-left and bottom-right (device pixels).
     pub geometry: [f32; 4],
     /// Each stop's offset, in two vec4s.
     pub offsets: [[f32; 4]; 2],
@@ -366,7 +405,11 @@ impl Canvas {
         }
         let paint_index = self.push_paint(paint);
         let start = self.indices.len() as u32;
-        self.emit(paint_index);
+        let to_image = match &paint.shader {
+            Shader::Image { to_image, .. } => Some(*to_image),
+            _ => None,
+        };
+        self.emit(paint_index, to_image);
         let end = self.indices.len() as u32;
         if paint.stroke.is_some() {
             // Stroke triangles overlap at joins and crossings: blend each sample once.
@@ -419,7 +462,7 @@ impl Canvas {
             return;
         }
         let start = self.indices.len() as u32;
-        self.emit(0);
+        self.emit(0, None);
         let end = self.indices.len() as u32;
         self.ops.push(Op::ClipIn { start, end, level: self.level });
         self.level += 1;
@@ -431,12 +474,14 @@ impl Canvas {
         self.clip_path(&rrect_path(x, y, w, h, r));
     }
 
-    fn emit(&mut self, paint: u32) {
+    fn emit(&mut self, paint: u32, to_image: Option<Matrix>) {
         let base = self.vertices.len() as u32;
         let m = self.state.matrix;
+        let t = to_image.unwrap_or(Matrix::IDENTITY);
         self.vertices.extend(self.buffers.vertices.iter().map(|p| {
             let q = m.apply(*p);
-            Vertex { pos: [q.x, q.y], paint, _pad: 0 }
+            let uv = t.apply(*p);
+            Vertex { pos: [q.x, q.y], paint, color: u32::MAX, uv: [uv.x, uv.y] }
         }));
         self.indices.extend(self.buffers.indices.iter().map(|i| base + i));
     }
@@ -476,6 +521,10 @@ impl Canvas {
                 let c = m.apply(*center);
                 gpu.head[0] = 3.0;
                 gpu.geometry = [c.x, c.y, 0.0, 0.0];
+            }
+            Shader::Image { image, .. } => {
+                gpu.head[0] = 4.0;
+                gpu.geometry = [image.width, image.height, image.layer as f32, 0.0];
             }
         }
         self.paints.push(gpu);
@@ -588,4 +637,86 @@ mod path_tests {
 pub fn transform_path(path: &Path, m: &Matrix) -> Path {
     let [a, b, c, d, e, f] = m.0;
     path.clone().transformed(&lyon::math::Transform::new(a, b, c, d, e, f))
+}
+
+/// An `RSXform` (`<Atlas transforms>`): a sprite's point (x, y) lands at
+/// (scos·x − ssin·y + tx, ssin·x + scos·y + ty).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct RsXform {
+    /// scale × cos(rotation).
+    pub scos: f32,
+    /// scale × sin(rotation).
+    pub ssin: f32,
+    /// Translation x.
+    pub tx: f32,
+    /// Translation y.
+    pub ty: f32,
+}
+
+impl Canvas {
+    /// One quad of four local corners (clockwise from the top-left), with their image pixels
+    /// and a colour, through the current transform.
+    fn quad(&mut self, corners: [Point; 4], uv: [Point; 4], paint: u32, color: u32) {
+        let base = self.vertices.len() as u32;
+        let m = self.state.matrix;
+        for (p, t) in corners.iter().zip(uv.iter()) {
+            let q = m.apply(*p);
+            self.vertices.push(Vertex { pos: [q.x, q.y], paint, color, uv: [t.x, t.y] });
+        }
+        self.indices.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+    }
+
+    fn push_draw(&mut self, start: u32) {
+        let end = self.indices.len() as u32;
+        match self.ops.last_mut() {
+            Some(Op::Draw { end: e, level, .. }) if *e == start && *level == self.level => *e = end,
+            _ => self.ops.push(Op::Draw { start, end, level: self.level }),
+        }
+    }
+
+    /// `<Atlas image sprites transforms colors colorBlendMode>`: each sprite (a rect of the
+    /// image's pixels) drawn by its [`RsXform`]. With `colors`, each sprite's colour is blended
+    /// with it: `src_in` (`colorBlendMode="srcIn"`) paints the colour in the image's alpha;
+    /// otherwise it multiplies the image (`modulate`).
+    pub fn draw_atlas(&mut self, image: ImageRef, sprites: &[Rect], transforms: &[RsXform], colors: Option<&[Color]>, src_in: bool) {
+        let paint = self.push_paint(&Paint::image(image, Matrix::IDENTITY));
+        if src_in {
+            self.paints[paint as usize].geometry[3] = 1.0;
+        }
+        let start = self.indices.len() as u32;
+        for (i, (s, x)) in sprites.iter().zip(transforms.iter()).enumerate() {
+            let color = colors.and_then(|c| c.get(i)).map_or(u32::MAX, |c| {
+                let [r, g, b, a] = c.0.map(|v| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u32);
+                r | (g << 8) | (b << 16) | (a << 24)
+            });
+            let at = |px: f32, py: f32| point(x.scos * px - x.ssin * py + x.tx, x.ssin * px + x.scos * py + x.ty);
+            let corners = [at(0.0, 0.0), at(s.width, 0.0), at(s.width, s.height), at(0.0, s.height)];
+            let uv = [point(s.x, s.y), point(s.x + s.width, s.y), point(s.x + s.width, s.y + s.height), point(s.x, s.y + s.height)];
+            self.quad(corners, uv, paint, color);
+        }
+        self.push_draw(start);
+    }
+
+    /// A view's box shadow (RN's `boxShadow` / iOS `shadow*` on a rounded view, Skia's
+    /// `<Shadow>` of a rounded rect): the rounded rect `x, y, w, h, r` blurred by a Gaussian of
+    /// σ = `sigma` points, in `color`, evaluated per pixel (Evan Wallace's closed form: exact
+    /// across, four samples down). For axis-aligned transforms (scale and translate).
+    #[allow(clippy::too_many_arguments)]
+    pub fn draw_rrect_shadow(&mut self, x: f32, y: f32, w: f32, h: f32, r: f32, sigma: f32, color: Color) {
+        let m = self.state.matrix;
+        let s = m.max_scale();
+        let (a, b) = (m.apply(point(x, y)), m.apply(point(x + w, y + h)));
+        let sigma = sigma.max(1e-3);
+        let mut gpu = GpuPaint { head: [5.0, 1.0, self.state.opacity, 0.0], geometry: [a.x.min(b.x), a.y.min(b.y), a.x.max(b.x), a.y.max(b.y)], offsets: [[0.0; 4]; 2], colors: [[0.0; 4]; MAX_STOPS] };
+        gpu.offsets[0] = [r.min(w / 2.0).min(h / 2.0).max(0.0) * s, sigma * s, 0.0, 0.0];
+        gpu.colors[0] = color.0;
+        self.paints.push(gpu);
+        let paint = (self.paints.len() - 1) as u32;
+        let e = 3.0 * sigma;
+        let (x0, y0, x1, y1) = (x - e, y - e, x + w + e, y + h + e);
+        let start = self.indices.len() as u32;
+        let corners = [point(x0, y0), point(x1, y0), point(x1, y1), point(x0, y1)];
+        self.quad(corners, corners, paint, u32::MAX);
+        self.push_draw(start);
+    }
 }

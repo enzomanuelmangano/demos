@@ -1,0 +1,4 @@
+at "/demo/selectable-grid-list"
+
+test "the grid is there"
+  expect tree has "selectable-grid-list"

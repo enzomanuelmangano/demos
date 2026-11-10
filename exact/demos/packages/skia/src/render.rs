@@ -10,14 +10,24 @@ struct View { size: vec2<f32>, srgb: f32, _p: f32 };
 struct Paint { head: vec4<f32>, geometry: vec4<f32>, offsets: array<vec4<f32>, 2>, colors: array<vec4<f32>, 8> };
 @group(0) @binding(0) var<uniform> view: View;
 @group(0) @binding(1) var<storage, read> paints: array<Paint>;
+@group(0) @binding(2) var images: texture_2d_array<f32>;
+@group(0) @binding(3) var smp: sampler;
 
-struct Out { @builtin(position) pos: vec4<f32>, @location(0) @interpolate(flat) paint: u32, @location(1) px: vec2<f32> };
+struct Out {
+    @builtin(position) pos: vec4<f32>,
+    @location(0) @interpolate(flat) paint: u32,
+    @location(1) px: vec2<f32>,
+    @location(2) color: vec4<f32>,
+    @location(3) uv: vec2<f32>,
+};
 
-@vertex fn vs(@location(0) pos: vec2<f32>, @location(1) paint: u32) -> Out {
+@vertex fn vs(@location(0) pos: vec2<f32>, @location(1) paint: u32, @location(2) color: u32, @location(3) uv: vec2<f32>) -> Out {
     var o: Out;
     o.pos = vec4<f32>(pos.x / view.size.x * 2.0 - 1.0, 1.0 - pos.y / view.size.y * 2.0, 0.0, 1.0);
     o.paint = paint;
     o.px = pos;
+    o.color = unpack4x8unorm(color);
+    o.uv = uv;
     return o;
 }
 
@@ -42,7 +52,46 @@ fn lin(c: vec3<f32>) -> vec3<f32> {
     return select(pow((c + 0.055) / 1.055, vec3<f32>(2.4)), c / 12.92, c <= vec3<f32>(0.04045));
 }
 
+// A rounded rect blurred by a Gaussian (Evan Wallace, "Fast Rounded Rectangle Shadows").
+fn erf2(x0: vec2<f32>) -> vec2<f32> {
+    let s = sign(x0);
+    let a = abs(x0);
+    var x = 1.0 + (0.278393 + (0.230389 + 0.078108 * (a * a)) * a) * a;
+    x = x * x;
+    return s - s / (x * x);
+}
+fn gaussian(x: f32, sigma: f32) -> f32 {
+    return exp(-(x * x) / (2.0 * sigma * sigma)) / (2.5066282746 * sigma);
+}
+fn shadow_x(x: f32, y: f32, sigma: f32, corner: f32, half: vec2<f32>) -> f32 {
+    let delta = min(half.y - corner - abs(y), 0.0);
+    let curved = half.x - corner + sqrt(max(0.0, corner * corner - delta * delta));
+    let integral = 0.5 + 0.5 * erf2((x + vec2<f32>(-curved, curved)) * (0.7071067812 / sigma));
+    return integral.y - integral.x;
+}
+fn shadow(lower: vec2<f32>, upper: vec2<f32>, p0: vec2<f32>, sigma: f32, corner: f32) -> f32 {
+    let center = (lower + upper) * 0.5;
+    let half = (upper - lower) * 0.5;
+    let p = p0 - center;
+    let low = p.y - half.y;
+    let high = p.y + half.y;
+    let start = clamp(-3.0 * sigma, low, high);
+    let end = clamp(3.0 * sigma, low, high);
+    let step = (end - start) / 4.0;
+    var y = start + step * 0.5;
+    var value = 0.0;
+    for (var i = 0; i < 4; i = i + 1) {
+        value = value + shadow_x(p.x, p.y - y, sigma, corner, half) * gaussian(y, sigma) * step;
+        y = y + step;
+    }
+    return value;
+}
+
 @fragment fn fs(in: Out) -> @location(0) vec4<f32> {
+    // Image texel gradients, taken where every pixel of a quad runs them.
+    let dims = vec2<f32>(textureDimensions(images));
+    let gx = dpdx(in.uv) / dims;
+    let gy = dpdy(in.uv) / dims;
     let p = paints[in.paint];
     let kind = u32(p.head.x);
     var c = p.colors[0];
@@ -54,7 +103,18 @@ fn lin(c: vec3<f32>) -> vec3<f32> {
     } else if (kind == 3u) {
         let v = in.px - p.geometry.xy;
         c = ramp(p, fract(atan2(v.y, v.x) / 6.283185307 + 1.0));
+    } else if (kind == 4u) {
+        let uv = clamp(in.uv, vec2<f32>(0.5), max(p.geometry.xy - vec2<f32>(0.5), vec2<f32>(0.5))) / dims;
+        let t = textureSampleGrad(images, smp, uv, i32(p.geometry.z), gx, gy);
+        if (p.geometry.w > 0.5) {
+            c = vec4<f32>(in.color.rgb, in.color.a * t.a);
+        } else {
+            c = vec4<f32>(t.rgb / max(t.a, 1e-5), t.a) * in.color;
+        }
+    } else if (kind == 5u) {
+        c.a = c.a * shadow(p.geometry.xy, p.geometry.zw, in.px, p.offsets[0].y, p.offsets[0].x);
     }
+    if (kind != 4u) { c = c * in.color; }
     let a = c.a * p.head.z;
     var rgb = c.rgb;
     if (view.srgb > 0.5) { rgb = lin(rgb); }
@@ -74,6 +134,8 @@ pub struct Renderer {
     indices: Option<(wgpu::Buffer, u64)>,
     paints: Option<(wgpu::Buffer, u64)>,
     bind: Option<wgpu::BindGroup>,
+    /// The images paints sample ([`Renderer::set_images`]); a blank layer until set.
+    images: Option<wgpu::TextureView>,
 }
 
 struct Built {
@@ -84,6 +146,8 @@ struct Built {
     clip_out: wgpu::RenderPipeline,
     layout: wgpu::BindGroupLayout,
     view: wgpu::Buffer,
+    blank: wgpu::TextureView,
+    sampler: wgpu::Sampler,
 }
 
 fn grow(slot: &mut Option<(wgpu::Buffer, u64)>, device: &wgpu::Device, label: &str, usage: wgpu::BufferUsages, size: u64) -> bool {
@@ -96,6 +160,13 @@ fn grow(slot: &mut Option<(wgpu::Buffer, u64)>, device: &wgpu::Device, label: &s
 }
 
 impl Renderer {
+    /// The images [`crate::Shader::Image`] and [`Canvas::draw_atlas`] sample from now on
+    /// (uploaded once: [`crate::Images::upload`] / [`crate::Images::target`]).
+    pub fn set_images(&mut self, images: &crate::Images) {
+        self.images = Some(images.view.clone());
+        self.bind = None;
+    }
+
     /// Draws `canvas` into `target` (`format`, `width`×`height` device pixels), cleared to
     /// `clear` first (premultiplied, in the target's encoding). Records into `encoder`.
     #[allow(clippy::too_many_arguments)]
@@ -164,6 +235,8 @@ impl Renderer {
                 entries: &[
                     wgpu::BindGroupEntry { binding: 0, resource: built.view.as_entire_binding() },
                     wgpu::BindGroupEntry { binding: 1, resource: self.paints.as_ref().unwrap().0.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 2, resource: wgpu::BindingResource::TextureView(self.images.as_ref().unwrap_or(&built.blank)) },
+                    wgpu::BindGroupEntry { binding: 3, resource: wgpu::BindingResource::Sampler(&built.sampler) },
                 ],
             })
         });
@@ -235,6 +308,13 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat) -> Built {
                 ty: wgpu::BindingType::Buffer { ty: wgpu::BufferBindingType::Storage { read_only: true }, has_dynamic_offset: false, min_binding_size: None },
                 count: None,
             },
+            wgpu::BindGroupLayoutEntry {
+                binding: 2,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture { sample_type: wgpu::TextureSampleType::Float { filterable: true }, view_dimension: wgpu::TextureViewDimension::D2Array, multisampled: false },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry { binding: 3, visibility: wgpu::ShaderStages::FRAGMENT, ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering), count: None },
         ],
     });
     let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor { label: Some("skia"), bind_group_layouts: &[Some(&layout)], immediate_size: 0 });
@@ -250,7 +330,7 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat) -> Built {
                 buffers: &[Some(wgpu::VertexBufferLayout {
                     array_stride: std::mem::size_of::<Vertex>() as u64,
                     step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes: &wgpu::vertex_attr_array![0 => Float32x2, 1 => Uint32],
+                    attributes: &wgpu::vertex_attr_array![0 => Float32x2, 1 => Uint32, 2 => Uint32, 3 => Float32x2],
                 })],
                 compilation_options: Default::default(),
             },
@@ -281,6 +361,27 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat) -> Built {
         clip_out: pipeline("clip", None, wgpu::ColorWrites::empty(), wgpu::CompareFunction::Equal, wgpu::StencilOperation::DecrementClamp),
         layout,
         view: device.create_buffer(&wgpu::BufferDescriptor { label: Some("skia view"), size: 16, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false }),
+        blank: device
+            .create_texture(&wgpu::TextureDescriptor {
+                label: Some("skia no image"),
+                size: wgpu::Extent3d { width: 1, height: 1, depth_or_array_layers: 1 },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba8Unorm,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats: &[],
+            })
+            .create_view(&wgpu::TextureViewDescriptor { dimension: Some(wgpu::TextureViewDimension::D2Array), ..Default::default() }),
+        sampler: device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("skia images"),
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::MipmapFilterMode::Linear,
+            ..Default::default()
+        }),
     }
 }
 

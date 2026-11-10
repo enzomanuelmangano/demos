@@ -1,0 +1,19 @@
+// Selectable Grid List: fifty photos in four columns; tap one to select it, drag across the
+// grid to select a range (scrolling near the top), and the floating button counts the
+// selection and clears it. RN: src/animations/selectable-grid-list (index.tsx,
+// components/SelectableGridList, SelectableListItem.tsx). The pan hit-tests the grid on every
+// move, so the grid, its scroll, the borders and badges, the button and their animations are
+// Rust: gpu/src/selectable_grid_list.rs (the photos picsum served RN, bundled there). The
+// surface posts `press` when the button clears (the selection haptic).
+use DemoEnv from "../env.contract"
+
+component SelectableGridList
+  props
+    env: DemoEnv
+  action heard(m: string)
+    if m == "press"
+      haptic("selection")
+  view
+    canvas surface=selectable_grid_list(env.safeTop) message=heard position="absolute" top=0 left=0
+      width=env.width height=env.height background-color="#000000" touch-action="none"
+      testId="selectable-grid-list" aria-label="Photos: tap or drag to select"

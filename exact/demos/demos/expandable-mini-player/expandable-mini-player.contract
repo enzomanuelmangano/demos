@@ -1,0 +1,18 @@
+// Expandable Mini Player: a "Demo" screen with a four-tab bar and a mini player above it; a
+// tap grows the player into a full-screen sheet (the screen behind sinks and rounds), a drag
+// pulls it back down. RN: src/animations/expandable-mini-player (navigation, screen,
+// bottom-tab-bar, expanded-sheet). Every frame follows the sheet's progress, so the screen,
+// the tabs, the sheet, its gestures and springs are Rust: gpu/src/expandable_mini_player.rs.
+// The surface posts `press` for a tab press and for the tap that expands (selection haptics).
+use DemoEnv from "../env.contract"
+
+component ExpandableMiniPlayer
+  props
+    env: DemoEnv
+  action heard(m: string)
+    if m == "press"
+      haptic("selection")
+  view
+    canvas surface=expandable_mini_player(env.safeTop) message=heard position="absolute" top=0 left=0
+      width=env.width height=env.height background-color="#000000" touch-action="none"
+      testId="expandable-mini-player" aria-label="Mini player: tap to expand, drag down to close"
