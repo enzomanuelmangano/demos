@@ -11,8 +11,9 @@ fn keyOf(text: string, c: string, i: number): string = `${c}-${text.slice(0, i).
 
 // CharacterEntering: opacity 0 → 1 and scale 0.5 → 1, each withSpring(CharacterSpringConfig
 // { mass: 0.3, damping: 12, stiffness: 80 }). An `animation` takes no spring, so the spring's
-// own curve from rest is sampled into `linear()` (48 steps over the 1171 ms it takes to reach
-// Reanimated's energy cutoff 6e-9; overdamped, so no overshoot).
+// own curve from rest is sampled into `linear()` (48 steps over the 757 ms it takes to reach
+// Reanimated's energy cutoff 6e-9). ζ is 1.22, which Reanimated runs as critically damped at
+// ω0 = √(k/m): 1 - (1 + ωt)e^{-ωt}, no overshoot.
 keyframes charIn
   from opacity=0 scale=0.5
   to opacity=1 scale=1
@@ -20,7 +21,7 @@ keyframes charIn
 keyframes charOut
   to opacity=0
 
-fn charInRow(): string = "charIn 1171ms linear(0, 0.0581, 0.1742, 0.3005, 0.4181, 0.5207, 0.6072, 0.6792, 0.7384, 0.7868, 0.8264, 0.8587, 0.885, 0.9064, 0.9239, 0.938, 0.9496, 0.959, 0.9666, 0.9728, 0.9779, 0.982, 0.9854, 0.9881, 0.9903, 0.9921, 0.9936, 0.9948, 0.9958, 0.9965, 0.9972, 0.9977, 0.9981, 0.9985, 0.9988, 0.999, 0.9992, 0.9993, 0.9995, 0.9996, 0.9996, 0.9997, 0.9998, 0.9998, 0.9998, 0.9999, 0.9999, 0.9999, 1)"
+fn charInRow(): string = "charIn 757ms linear(0, 0.028, 0.0949, 0.1815, 0.2755, 0.369, 0.4574, 0.5382, 0.6103, 0.6735, 0.7281, 0.7747, 0.8142, 0.8473, 0.875, 0.898, 0.917, 0.9326, 0.9454, 0.9559, 0.9644, 0.9714, 0.977, 0.9815, 0.9852, 0.9881, 0.9905, 0.9924, 0.994, 0.9952, 0.9962, 0.9969, 0.9976, 0.9981, 0.9985, 0.9988, 0.999, 0.9992, 0.9994, 0.9995, 0.9996, 0.9997, 0.9998, 0.9998, 0.9999, 0.9999, 0.9999, 0.9999, 1)"
 
 component ComposableText
   state active = false
@@ -48,6 +49,6 @@ component ComposableText
             // layout: springify().mass(0.3).damping(12).stiffness(80).
             text c font-size=24 font-weight=700 white-space="pre" color=colorOf(active)
               transition="color 200ms linear" aria-hidden=true
-              -exact-layout-transition="-exact-spring(80, 12, 0.3)"
-              animation=(pressed ? `${charInRow()} both` : `${charInRow()} -1171ms both`)
+              -exact-layout-transition="-exact-spring(80, 9.798, 0.3)"
+              animation=(pressed ? `${charInRow()} both` : `${charInRow()} -757ms both`)
               -exact-exit-animation="charOut 200ms cubic-bezier(0.455, 0.03, 0.515, 0.955) both"
