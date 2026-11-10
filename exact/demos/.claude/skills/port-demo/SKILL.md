@@ -67,6 +67,11 @@ One commit per haptic event, never per frame.
 
 ## Traps the compiler only catches in the whole app
 
+- Corners: RN `borderCurve: 'continuous'` = `corner-shape="-exact-continuous"` (CALayer
+  cornerCurve .continuous), pills and circles included: CA draws it unclamped at min(r, w/2, h/2),
+  so a continuous pill's ends are flatter than a semicircle. `squircle` is the CSS superellipse,
+  a different shape: never use it. No borderCurve in RN = plain `border-radius`. Rust: skia's
+  continuous rrect.
 - iOS host: `object-fit="cover"` pins the image to the TOP when it crops vertically (CSS and
   expo-image centre it; Contract has no `object-position`). When the photo is taller than its box
   at cover scale, lay the cover box out by hand: a clip box, the image absolute at

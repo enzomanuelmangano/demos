@@ -33,7 +33,7 @@ component DemoScreen
           column flex=1 align-items="center" justify-content="center" padding=32
             column align-items="center" gap=10 padding="28px 32px" border-radius=28 backgroundMaterial="regular"
               color-scheme="dark"
-              image demo.icon width=96 height=96 border-radius=21.5 corner-shape="squircle" aria-hidden=true
+              image demo.icon width=96 height=96 border-radius=21.5 corner-shape="-exact-continuous" aria-hidden=true
               text demo.name font-size=22 font-weight=700 color="#ffffff" text-align="center" margin-top=4
               text "Not on Exact yet." font-size=15 color="#8e8e93" text-align="center" testId="not-ported"
         // demo-close-button.tsx: the close role on liquid glass, 16 pt from the leading edge.

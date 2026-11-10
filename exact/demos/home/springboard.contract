@@ -58,7 +58,7 @@ component Springboard
           row height=44 align-items="center" justify-content="center" flex-shrink=0 pointer-events="none"
             aria-hidden=true
             for p in pages key=p
-              view width=7 height=7 border-radius=3.5 margin="0 3.5px" background-color="#ffffff"
+              view width=7 height=7 border-radius=3.5 corner-shape="-exact-continuous" margin="0 3.5px" background-color="#ffffff"
                 opacity=(p == shown ? 1 : 0.35) transition="opacity 200ms ease"
 
 // app-icon.tsx: the squircle icon and its label under it; a long press offers the demo's
@@ -78,9 +78,9 @@ component AppIcon
       contextPopover=`menu-${demo.slug}`
       button appearance="none" press=open(demo.slug) aria-label=`Open ${demo.name}` testId=`icon-${demo.slug}`
         class=IconPress width=size height=size padding=0 border-width=0 background-color="transparent"
-        view id=`icon-${demo.slug}` width=size height=size border-radius=(size * 0.2237) corner-shape="squircle"
+        view id=`icon-${demo.slug}` width=size height=size border-radius=(size * 0.2237) corner-shape="-exact-continuous"
           box-shadow="0px 5px 9px rgba(27, 34, 51, 0.18)"
-          image demo.icon width=size height=size border-radius=(size * 0.2237) corner-shape="squircle"
+          image demo.icon width=size height=size border-radius=(size * 0.2237) corner-shape="-exact-continuous"
             overflow="hidden" background-color="#1c1c1e" object-fit="cover" aria-hidden=true
       text demo.label margin-top=6 max-width="100%" font-size=11 font-weight=600
         color="rgba(255,255,255,0.92)" text-align="center" white-space="nowrap" overflow="hidden"
