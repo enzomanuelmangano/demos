@@ -29,6 +29,8 @@ pub mod airbnb_slider;
 pub mod alert_drawer_card;
 pub mod animated_3d_parallax;
 pub mod animated_clip_box;
+pub mod animated_count_digit;
+pub mod animated_grid_list;
 pub mod art_gallery;
 pub mod atlas_button;
 pub mod atlas_sphere;
@@ -93,10 +95,12 @@ pub mod notion_qrcode;
 pub mod paper_folding;
 pub mod particles_button;
 pub mod pomodoro_timer;
+pub mod popup_handler;
 pub mod prequel_slider;
 pub mod qr_code_generator;
 pub mod radar_chart;
 pub mod record_button;
+pub mod scroll_progress_text;
 pub mod scroll_transition_3d;
 pub mod scrollable_shapes;
 pub mod sculptures_in_words;
@@ -135,6 +139,8 @@ pub static REGISTRY: Registry = Registry {
         ("alert_drawer_card", 1, alert_drawer_card::surface),
         ("animated_3d_parallax", 0, animated_3d_parallax::surface),
         ("animated_clip_box", 1, animated_clip_box::surface),
+        ("animated_count_digit", 1, animated_count_digit::surface),
+        ("animated_grid_list", 4, animated_grid_list::surface),
         ("art_gallery", 2, art_gallery::surface),
         ("atlas_button", 1, atlas_button::surface),
         ("atlas_sphere", 0, atlas_sphere::surface),
@@ -199,10 +205,12 @@ pub static REGISTRY: Registry = Registry {
         ("paper_folding", 0, paper_folding::surface),
         ("particles_button", 1, particles_button::surface),
         ("pomodoro_timer", 1, pomodoro_timer::surface),
+        ("popup_handler", 3, popup_handler::surface),
         ("prequel_slider", 2, prequel_slider::surface),
         ("qr_code_generator", 3, qr_code_generator::surface),
         ("radar_chart", 10, radar_chart::surface),
         ("record_button", 1, record_button::surface),
+        ("scroll_progress_text", 1, scroll_progress_text::surface),
         ("scroll_transition_3d", 0, scroll_transition_3d::surface),
         ("scrollable_shapes", 0, scrollable_shapes::surface),
         ("sculptures_in_words", 1, sculptures_in_words::surface),

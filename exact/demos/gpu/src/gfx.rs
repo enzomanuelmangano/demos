@@ -130,6 +130,69 @@ pub fn baseline(font: &skia::Font, top: f32) -> f32 {
     top - font.metrics().ascent
 }
 
+/// TextKit's word wrapping of an RN `<Text>` `width` wide: breaks after spaces (hanging) and
+/// after a hyphen between letters; the lines as byte ranges, trailing spaces left out.
+pub fn wrap(font: &skia::Font, text: &str, width: f32) -> Vec<(usize, usize)> {
+    let mut out = Vec::new();
+    let chars: Vec<(usize, char)> = text.char_indices().collect();
+    let n = chars.len();
+    let byte = |i: usize| if i < n { chars[i].0 } else { text.len() };
+    let mut breaks: Vec<(usize, usize)> = Vec::new();
+    let mut i = 0;
+    while i < n {
+        let c = chars[i].1;
+        if c == ' ' {
+            let mut j = i;
+            while j < n && chars[j].1 == ' ' {
+                j += 1;
+            }
+            if j < n {
+                breaks.push((i, j));
+            }
+            i = j;
+            continue;
+        }
+        if c == '-' && i > 0 && i + 1 < n && chars[i - 1].1.is_alphanumeric() && chars[i + 1].1.is_alphanumeric() {
+            breaks.push((i + 1, i + 1));
+        }
+        i += 1;
+    }
+    breaks.push((n, n));
+    let fits = |a: usize, b: usize| font.advance_width(&text[byte(a)..byte(b)]) <= width + 1e-3;
+    let (mut start, mut k) = (0, 0);
+    while start < n {
+        let mut last = None;
+        while k < breaks.len() {
+            let (end, next) = breaks[k];
+            if end <= start {
+                k += 1;
+                continue;
+            }
+            if fits(start, end) {
+                last = Some((end, next));
+                k += 1;
+            } else {
+                break;
+            }
+        }
+        match last {
+            Some((end, next)) => {
+                out.push((byte(start), byte(end)));
+                start = next;
+            }
+            None => {
+                let mut end = start + 1;
+                while end < n && fits(start, end + 1) {
+                    end += 1;
+                }
+                out.push((byte(start), byte(end)));
+                start = end;
+            }
+        }
+    }
+    out
+}
+
 /// The height of one line of `font` (an RN `<Text>` with no `lineHeight`): ascent + descent.
 /// RN's NSLayoutManager has `usesFontLeading = NO`, so the hhea line gap is not in the line
 /// (AntDesign, Entypo and Ionicons have one: their boxes were a lineGap too tall).

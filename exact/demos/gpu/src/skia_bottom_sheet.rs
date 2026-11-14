@@ -11,7 +11,8 @@
 //!   Core Animation shows as sRGB: the photo's colours take that round trip as RN's do.
 //! - The sheet: the rounded rect (x 0, y = height − 150 + clampedTranslateY, the canvas's
 //!   width and height, r 30), clampedTranslateY = max(translateY, −(height − 150)). Inside it the
-//!   photo blurred (Blur 10, mode "clamp", drawn once at the canvas's pixels: useBlurredImage);
+//!   photo blurred (Blur 10, mode "clamp", drawn once at the canvas's pixels: useBlurredImage;
+//!   Graphite's downscaled clamp blur, `GraphitePlan::clamped`);
 //!   the handle: a white RoundedRect 100 × 5, r 5, centred, 10 below the sheet's top; then the
 //!   sheet's path in rgba(0,0,0,0.2) under BlurMask(5, "inner").
 //! - The pan (react-native-skia-gesture's Touchable.Path: a Pan whose onBegin hit-tests the
@@ -48,10 +49,7 @@ const PHOTO_PX: u32 = 2000;
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
-    Box::new(SkiaBottomSheet {
-        blur: skia::Blur::clamped(),
-        ..Default::default()
-    })
+    Box::new(SkiaBottomSheet::default())
 }
 
 #[derive(Default)]
@@ -65,7 +63,8 @@ struct SkiaBottomSheet {
     context: f64,
     mask_layer: Canvas,
     renderer: Renderer,
-    blur: skia::Blur,
+    /// Graphite's downscaled blur, clamp-tiled (`<Blur mode="clamp">`).
+    blur: skia::blur::GraphiteBlur,
     mask_blur: skia::Blur,
     /// The photo, uploaded at the first frame, and its size in pixels.
     photo: Option<wgpu::TextureView>,
@@ -310,10 +309,17 @@ impl Surface for SkiaBottomSheet {
                 &cover_pipeline,
                 &cover_bind,
             );
-            // useBlurredImage: the covering photo blurred, σ 10 points, its edges clamped.
-            let blurred = self
-                .blur
-                .run(device, queue, encoder, &photo, LAYER, pw, ph, BLUR * s);
+            // useBlurredImage: the covering photo blurred, σ 10 points, its edges clamped:
+            // Skia's Graphite blur on kClamp (downscaled to σ 4 in padded, edge-extended
+            // surfaces, clamp-tiled passes), drawn back into the image at the canvas's pixels.
+            let full = [0, 0, pw as i32, ph as i32];
+            let blurred_image =
+                skia::render::sampled_target(device, "skia bottom sheet blurred", LAYER, pw, ph);
+            if let Some(plan) = skia::blur::GraphitePlan::clamped(full, full, BLUR * s) {
+                let source = skia::blur::Placed { view: &photo, origin: [0, 0], size: [pw, ph] };
+                self.blur.run_into(device, queue, encoder, source, &plan, &blurred_image, [0, 0], [pw, ph]);
+            }
+            let blurred = &blurred_image;
             // The sheet at y 0, its coverage blurred (BlurMask 5).
             let mask_source =
                 skia::render::sampled_target(device, "skia bottom sheet mask", LAYER, pw, ph);
