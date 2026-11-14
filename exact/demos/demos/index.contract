@@ -56,6 +56,7 @@ use GithubTerrain from "./github-terrain/github-terrain.contract"
 use GlTransitions from "./gl-transitions/gl-transitions.contract"
 use ImageCropper from "./image-cropper/image-cropper.contract"
 use ImessageStack from "./imessage-stack/imessage-stack.contract"
+use IosHomeBouncy from "./ios-home-bouncy/ios-home-bouncy.contract"
 use IosHomeGrid from "./ios-home-grid/ios-home-grid.contract"
 use LightOnPainting from "./light-on-painting/light-on-painting.contract"
 use LinearSensors from "./linear-sensors/linear-sensors.contract"
@@ -231,6 +232,8 @@ component PortedDemo
         ImageCropper(env=env)
       if slug == "imessage-stack"
         ImessageStack(env=env)
+      if slug == "ios-home-bouncy"
+        IosHomeBouncy(env=env)
       if slug == "ios-home-grid"
         IosHomeGrid(env=env)
       if slug == "light-on-painting"

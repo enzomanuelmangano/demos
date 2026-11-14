@@ -1,0 +1,15 @@
+// iOS Home Bouncy: 28 metallic app squares spring in from 12x, each by its distance from the
+// screen's centre, as iOS's home after unlock; a tap replays it, a long press opens a spring
+// customizer (a fading Modal over an extraLight blur: Opening / Closing tabs, mass, damping and
+// stiffness sliders) that a pull down dismisses. RN: src/animations/ios-home-bouncy. The
+// ScrollView, the Pressable, the shared progress, the Modal, its blur, pan, tabs, keyframed
+// cards and sliders are one Rust surface (gpu/src/ios_home_bouncy.rs).
+use DemoEnv from "../env.contract"
+
+component IosHomeBouncy
+  props
+    env: DemoEnv
+  view
+    canvas surface=ios_home_bouncy(env.safeTop) position="absolute" top=0 left=0 width=env.width
+      height=env.height background-color="#fafafa" touch-action="none"
+      testId="ios-home-bouncy" aria-label="App grid: tap to replay the bounce, long press to tune its springs"
