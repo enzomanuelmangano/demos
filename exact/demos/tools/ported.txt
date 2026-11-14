@@ -28,6 +28,7 @@ coverflow-carousel
 cuberto-slider
 delete-button
 dot-sheet
+draggable-panel
 duration-slider
 dynamic-blur-tabs
 dynamic-tab-indicator

@@ -50,6 +50,7 @@ pub mod cuberto_slider;
 pub mod delete_button;
 pub mod dot_sheet;
 pub mod dot_sheet_card;
+pub mod draggable_panel;
 pub mod duration_slider;
 pub mod dynamic_blur_tabs;
 pub mod email_demo;
@@ -143,6 +144,7 @@ pub static REGISTRY: Registry = Registry {
         ("delete_button", 0, delete_button::surface),
         ("dot_sheet", 0, dot_sheet::surface),
         ("dot_sheet_card", 2, dot_sheet_card::surface),
+        ("draggable_panel", 1, draggable_panel::surface),
         ("duration_slider", 0, duration_slider::surface),
         ("dynamic_blur_tabs", 7, dynamic_blur_tabs::surface),
         ("email_row", 2, email_demo::surface),
