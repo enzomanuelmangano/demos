@@ -28,7 +28,7 @@ fluid-slider ported done:fab917b4 (stills: canvas drawn unshifted and moved by i
 animated-indicator-list ported done:f3a9e96d (scroll= commit per frame replaced by scroll-driven segment boxes (interpolate CLAMP exact, zero commits); headers on Yoga's ceiled text widths (JOE PESCI 81.81 → 82: row and bar were 1 px off past it); section titles 1 px low fixed; stills at offsets 0, 680, 1310 pixel-identical (max 1 level), mid-segment drag consistent with the offset; tap scrolls by UIKit's animated setContentOffset as RN's scrollToIndex, same structure; note: RN shows no indicator for its first 100 ms (useMounted), ours measures at layout)
 radar-chart ported done:a730b443 (stills at RN's own data (Math.random set over the debugger): chart max 7 levels, 8 px over 2 (grid was 1 level off everywhere: P3 canvas); Shuffle text pixel-identical (was 1 px low), ring circular r 20 as RCTBorderDrawing (CA continuous was up to 0.9 px out), left: its AA profile, CG vs CA, max 43, equal mass; audit: progress withSpring {500, 1} from rest, CLAMP interpolate, interrupted from the interpolated values, line for line; A/B tap, mid-flight retap, held press same structure, onPress at the lift; RN shows no press scale (pressto 0.7))
 image-cropper ported claimed:sim1 (registered unverified: verify on device)
-selectable-grid-list ported
+selectable-grid-list ported claimed:sim2
 animated-count-text ported
 qr-code-generator ported (registered unverified: verify on device)
 popup-handler ported
