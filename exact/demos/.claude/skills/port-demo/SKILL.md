@@ -549,6 +549,10 @@ One commit per haptic event, never per frame.
 - An RN Skia gradient mixes the two colours as Display P3 values and stores 8 bits of P3
   (color-carousel's glow: 96 % of pixels exact, mixing sRGB 51 %). A transformed continuous View's
   corner is antialiased over ~1.3 px, 0.1 px inward, its straight edges aliased: color_carousel.wgsl.
+- An icon `<Text>` under a rotate turns about Yoga's ceiled Text box at its half-up top
+  (FontAwesome 14: 11.333 × 14.333), not the em: size the svg so (popup-handler's arrows: 1-3 px
+  off by angle → 0.03). A Contract box with a `height` and a border is content-box: give an RN
+  row `box-sizing="border-box"`.
 
 ## 4. Check
 
