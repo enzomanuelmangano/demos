@@ -42,3 +42,10 @@ can't time RN to tens of milliseconds. Motion parity is proved in two parts:
 
 A demo's motion is "identical" only when every audit row matches and the recording shows the same
 structure.
+
+## RN reference = Release config
+
+RN Release builds set `EXPO_PUBLIC_LIQUID_GLASS_ENABLED=true` (eas.json); the local `.env` keeps it false. Run
+the reference Metro with it on: `EXPO_PUBLIC_LIQUID_GLASS_ENABLED=true node_modules/.bin/expo start --port 8082 --clear`.
+It switches `*.liquid.tsx` variants (airbnb-slider, liquid-glass-playground, qrcode) and liquid-glass
+chrome (art-gallery's painting menu, the demo close/inspiration buttons, search reveal).
