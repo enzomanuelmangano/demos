@@ -11,8 +11,8 @@ floating-bottom-bar ported open:230e1914 icons pixel-identical, fades and spring
 animated-clip-box ported done:3b1b164a (circles, colours, text in Rust on r; action pixel-identical, circles within AA; one description glyph per card 1 px (TextKit subpixel x); spring matches Reanimated on the recording)
 theme-canvas-animation ported done:fb77570d (8-bit P3 surface via gfx::P3Layer: stills max 1-2 levels; spring audit line for line, floods on Reanimated's curve frame for frame; first flood after open 2-4 frames late, first haptic)
 add-to-cart ported (registered unverified: verify on device) claimed:sim2
-bottom-bar-skia ported claimed:sim1
-cuberto-slider ported
+bottom-bar-skia ported done:17757f64 (taps are the canvas's: RNGH 500 ms tap, hit-tested at the lift; stills max 5 levels at the bump's edge; spring/timing audit line for line; A/B tap, reversal, hold, slide-and-lift same structure)
+cuberto-slider ported claimed:sim1
 metaball ported
 shared-transitions ported
 story-list ported
