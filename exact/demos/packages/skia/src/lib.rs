@@ -53,7 +53,7 @@ pub use blur::Blur;
 pub use image::{Image, ImageRef, Images};
 pub use render::Renderer;
 pub use svg::path_from_svg;
-pub use text::{match_system_font, match_ui_font, Font, FontMetrics};
+pub use text::{match_system_font, match_ui_font, Font, FontMetrics, GlyphMask};
 
 use lyon::path::builder::BorderRadii;
 use lyon::path::Winding;

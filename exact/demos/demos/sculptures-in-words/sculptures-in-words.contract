@@ -1,0 +1,66 @@
+// Sculptures in Words: three articles (the Venus de Milo, the Victory of Samothrace, Rodin's
+// Thinker) whose every letter lifts off the column onto its statue when the corner button is
+// pressed, and back; sideways, while a statue shows, the letters re-seat onto the next one.
+// RN: src/animations/sculptures-in-words (index.tsx, fab.tsx). The columns (baked RN Skia
+// Paragraphs), the figure (RN's WebGPU letters), both scrolls, the paginator and the haptic
+// pattern are Rust: gpu/src/sculptures_in_words.rs. The button and its icon crossfade are here.
+//
+// RN ignores a toggle within 120 ms of the last one (the press animation can fire twice on one
+// tap): so does `toggle`.
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+use DemoEnv from "../env.contract"
+
+// withTiming(next ? 1 : 0, { duration: FACE_MS 350 }): Reanimated's default easing,
+// inOut(quad) (bun tools/easing.ts inOutQuad). The icon layers' opacity (1 − f, f) and scale
+// (1 − 0.15 f, 0.85 + 0.15 f) are linear in face, so easing them is easing face.
+fn inOutQuad(): string = "linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
+
+component SculpturesInWords
+  props
+    env: DemoEnv
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  // pressto: the pressed pressable (its key) and the press parity.
+  state pressing = pressNone()
+  action pressIn(key: number)
+    pressing = pressDown(pressing, key)
+  action pressOut
+    pressing = pressUp(pressing)
+  state revealed = false
+  state lastToggle = -1000000
+  action toggle
+    pressablesOnPress()
+    let now = performanceNow()
+    if now - lastToggle >= 120
+      lastToggle = now
+      revealed = not revealed
+  action heard(m: string)
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+  view
+    // PAGE_BG: this screen is paper, white.
+    view position="absolute" top=0 left=0 width=env.width height=env.height background-color="#ffffff"
+      testId="sculptures-in-words"
+      canvas surface=sculptures_in_words(revealed) message=heard position="absolute" top=0
+        left=0 width=env.width height=env.height aria-hidden=true testId="sculptures-canvas"
+      // PortraitToggle: a 48 pt disc (PAPER_INK #1c1a17, radius 24 continuous) width × 0.09
+      // from the bottom and right, hitSlop 16 (the 80 pt button around it); textformat ↔
+      // person.crop.circle, 20 semibold ON_INK #F5F1E8, crossfading (opacity, scale 1 → 0.85 /
+      // 0.85 → 1) as `face` moves. Above the canvas, which takes every touch under it.
+      button appearance="none" press=toggle position="absolute" z-index=1
+        pointerdown=pressIn(0) pointerup=pressOut
+        scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
+        right=(env.width * 0.09 - 16) bottom=(env.width * 0.09 - 16) width=80 height=80 padding=16
+        box-sizing="border-box" border="none" background-color="transparent"
+        aria-label="Switch between the article and the sculpture" testId="sculptures-toggle"
+        view position="relative" width=48 height=48 border-radius=24 corner-shape="-exact-continuous"
+          background-color="#1c1a17"
+          view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
+            opacity=(revealed ? 0 : 1) scale=(revealed ? 0.85 : 1)
+            transition=`opacity 350ms ${inOutQuad()}, scale 350ms ${inOutQuad()}`
+            image "symbol:sf/textformat" font-size=20 font-weight=600 color="#F5F1E8" aria-hidden=true
+          view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
+            opacity=(revealed ? 1 : 0) scale=(revealed ? 1 : 0.85)
+            transition=`opacity 350ms ${inOutQuad()}, scale 350ms ${inOutQuad()}`
+            image "symbol:sf/person.crop.circle" font-size=20 font-weight=600 color="#F5F1E8" aria-hidden=true

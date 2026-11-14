@@ -85,6 +85,7 @@ pub mod qr_code_generator;
 pub mod radar_chart;
 pub mod record_button;
 pub mod scrollable_shapes;
+pub mod sculptures_in_words;
 pub mod selectable_grid_list;
 pub mod skia_bottom_sheet;
 pub mod skia_color_picker;
@@ -173,6 +174,7 @@ pub static REGISTRY: Registry = Registry {
         ("radar_chart", 10, radar_chart::surface),
         ("record_button", 1, record_button::surface),
         ("scrollable_shapes", 0, scrollable_shapes::surface),
+        ("sculptures_in_words", 1, sculptures_in_words::surface),
         ("selectable_grid_list", 1, selectable_grid_list::surface),
         ("skia_bottom_sheet", 0, skia_bottom_sheet::surface),
         ("skia_color_picker", 0, skia_color_picker::surface),

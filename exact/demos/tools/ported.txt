@@ -64,6 +64,7 @@ record-button
 scroll-progress
 scrollable-bottom-sheet
 scrollable-shapes
+sculptures-in-words
 selectable-grid-list
 shake-to-delete
 shared-transitions

@@ -16,7 +16,7 @@ shape Demo
 
 fn allDemos(): Demo[] =
   [
-    Demo(slug="sculptures-in-words", name="Sculptures in Words", label="Sculptures", icon="assets/app-icons/sculptures-in-words.png", backdrop="#f8f8f8", inspiration="", story="", actionLabel="", actionUrl="", unstable=false, ported=false),
+    Demo(slug="sculptures-in-words", name="Sculptures in Words", label="Sculptures", icon="assets/app-icons/sculptures-in-words.png", backdrop="#f8f8f8", inspiration="", story="", actionLabel="", actionUrl="", unstable=false, ported=true),
     Demo(slug="light-on-painting", name="Light on Painting", label="Light Painting", icon="assets/app-icons/light-on-painting.png", backdrop="#33291e", inspiration="https://x.com/reczko_konrad/status/2089670934009413751", story="This animation was built on August 27, 2026 and is inspired by a post on X by @reczko_konrad.", actionLabel="See Post", actionUrl="https://x.com/reczko_konrad/status/2089670934009413751", unstable=false, ported=true),
     Demo(slug="the-little-prince", name="The Little Prince", label="Little Prince", icon="assets/app-icons/the-little-prince.png", backdrop="#f7f4ec", inspiration="", story="", actionLabel="", actionUrl="", unstable=false, ported=true),
     Demo(slug="chessboard", name="Chessboard", label="Chessboard", icon="assets/app-icons/chessboard.png", backdrop="#b3b8c1", inspiration="", story="", actionLabel="", actionUrl="", unstable=false, ported=false),
