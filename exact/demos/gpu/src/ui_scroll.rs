@@ -123,6 +123,9 @@ enum State {
     Drag { raw: f64, x: f64 },
     /// Decelerating onto `to` at `lambda` (−ln of the rate per ms), `at` its first frame.
     Settle { from: f64, to: f64, at: f64, lambda: f64 },
+    /// A free fling whose projected rest lies past an end: it decelerates from `v` (offset per
+    /// ms) at `lambda` until it crosses `edge`, then bounces on with the velocity it has there.
+    Fling { from: f64, v: f64, at: f64, lambda: f64, edge: f64 },
     Bounce { edge: f64, offset: f64, velocity: f64, at: Option<f64> },
     /// A `pagingEnabled` release: UIKit's spring onto the page `to`, integrated per ms from the
     /// first frame after the lift (`at`), `x` / `v` at time `t`.
@@ -304,6 +307,17 @@ impl UiScroll {
         // UIKit clamps decelerationRate to fast at least (RN's 0.8 runs at 0.99, measured).
         let lambda = -self.rate.max(FAST).ln();
         let projected = offset + v.signum() * (v.abs() - STOP_VELOCITY).max(0.0) / lambda;
+        // A free fling projected past an end does not stop at it: UIKit decelerates freely
+        // (x0 + v / λ · (1 − e^(−λt)), no stop velocity) until the content crosses the end, then
+        // bounces from there with the velocity it crossed at (the bounce below, from 0 overshoot).
+        // Measured with the scroll probe (a fling at 1.05 pt/ms released 150.7 pt from the start:
+        // over to −25 and back in 0.78 s, every frame within 0.5 pt); willEndDragging's target
+        // still says the end.
+        if self.snap == Snap::Free && self.bounces && (projected < 0.0 || projected > max) && v != 0.0 {
+            let edge = if projected < 0.0 { 0.0 } else { max };
+            self.state = State::Fling { from: offset, v, at: f64::NAN, lambda, edge };
+            return;
+        }
         let to = match self.snap {
             Snap::Free => projected,
             Snap::Interval(_) | Snap::IntervalCurrent(_) | Snap::Page(_) => {
@@ -340,6 +354,20 @@ impl UiScroll {
                 } else {
                     self.offset = from + (to - from).signum() * v / lambda * (1.0 - (-lambda * t).exp());
                     self.state = State::Settle { from, to, at, lambda };
+                }
+                true
+            }
+            State::Fling { from, v, at, lambda, edge } => {
+                // As a bounce, the first frame after the lift already shows one display frame.
+                let at = if at.is_nan() { now - FRAME_MS } else { at };
+                let cross = -(1.0 - (edge - from) * lambda / v).ln() / lambda;
+                let t = now - at;
+                if t < cross {
+                    self.offset = from + v / lambda * (1.0 - (-lambda * t).exp());
+                    self.state = State::Fling { from, v, at, lambda, edge };
+                } else {
+                    self.state = State::Bounce { edge, offset: edge, velocity: v * (-lambda * cross).exp(), at: Some(at + cross) };
+                    return self.step(now);
                 }
                 true
             }
@@ -411,6 +439,24 @@ mod tests {
             ms += 16.0;
             assert!(ms < 3000.0);
         }
+        assert_eq!(s.offset, 0.0);
+    }
+
+    #[test]
+    fn a_fling_past_the_start_overshoots_and_bounces_back() {
+        // scroll-probe: willEndDragging v −1.0534 pt/ms at 150.667 (content 3 ports, normal
+        // rate); the frames after the lift, 16.67 ms apart from the first.
+        let mut s = UiScroll::new(150.6667, 840.0, 420.0, NORMAL, Snap::Free);
+        s.release(1053.4, 1053.4);
+        let seen = [116.6667, 100.6667, 85.0, 70.0, 55.3333, 41.3333, 27.6667, 14.3333, 1.6667, -9.3333, -16.6667, -21.3333, -24.0, -25.0];
+        let mut ms = 1000.0;
+        s.step(ms);
+        for x in seen {
+            ms += FRAME_MS;
+            s.step(ms);
+            assert!((s.offset - x).abs() < 0.8, "{ms}: {} vs {x}", s.offset);
+        }
+        settle(&mut s, ms);
         assert_eq!(s.offset, 0.0);
     }
 

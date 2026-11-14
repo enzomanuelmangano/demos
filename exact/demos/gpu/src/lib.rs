@@ -151,7 +151,7 @@ pub static REGISTRY: Registry = Registry {
         ("blur_cards", 1, blur_cards::surface),
         ("blur_circles", 0, blur_circles::surface),
         ("blurred_bottom_bar", 6, blurred_bottom_bar::surface),
-        ("blurred_scroll", 1, blurred_scroll::surface),
+        ("blurred_scroll", 0, blurred_scroll::surface),
         ("bottom_bar_skia", 1, bottom_bar_skia::surface),
         ("calendar_days", 1, calendar_days::surface),
         ("card_shader_reflections", 0, card_shader_reflections::surface),

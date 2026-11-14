@@ -574,6 +574,9 @@ One commit per haptic event, never per frame.
 - A centred Text's box: Yoga centres it at its UNROUNDED measured width, floors the left and ceils
   the right, so a left on a half pixel makes the box a pixel wider than the ceiled width and TextKit
   centres the lines half a pixel further right (github-onboarding's 241.53 pt title: 726 px, not 725).
+- UIScrollView (scroll probe): a free fling projected past an end decelerates freely through it,
+  then bounces from the end with the velocity it crossed at (`ui_scroll`'s Fling; it used to glide
+  softly onto the end). contentOffset stays on the device pixel, so onScroll reads thirds of a point.
 
 - Surface clocks: a pointer's `at_ms` is not on `frame.now_ms`'s base: a spring started at it froze
   until the frames caught up. Start motion at the last frame's time; a value set from a scroll event

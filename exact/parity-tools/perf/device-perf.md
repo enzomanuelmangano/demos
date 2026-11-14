@@ -65,8 +65,7 @@ From the code first (the integrator's rule), then measured where the code cannot
 4. **Idle redraws.** Ten surfaces still ask for frames after 4 s untouched. Nine are RN's own
    motion (a `withRepeat`, a 22 s playback, a 12 s mount sequence, a frame-callback game loop,
    a rotation clock). One was not: empty-qr-code (fixed below).
-5. **Commits per frame from Contract** (`scroll=` and `pan=` actions): blurred-scroll and
-   dynamic-blur-tabs bind a canvas input from the scroll each frame; stacked-list, scroll-progress and scrollable-bottom-sheet write state each frame;
+5. **Commits per frame from Contract** (`scroll=` and `pan=` actions): dynamic-blur-tabs binds a canvas input from the scroll each frame; stacked-list, scroll-progress and scrollable-bottom-sheet write state each frame;
    liquid-glass-playground commits each finger move (for its progressive haptics), and moves a
    `blur(10px) saturate(1.2)` pane. Exact's tool is a scroll-driven animation
    (`scroll-timeline` + `animation-timeline`, zero commits, the consumer moved in the scroll's
@@ -105,7 +104,7 @@ it takes input), and whether it rests after 4 s. Device columns: not measured (s
 | blur-cards | `blur_cards` 78/163 µs, 175 allocs; rests |  |
 | blur-circles | `blur_circles` 94/133 µs, 138 allocs; loops (RN withRepeat loop) |  |
 | blurred-bottom-bar | `blurred_bottom_bar` 107/224 µs, 55 allocs; rests |  |
-| blurred-scroll | `blurred_scroll` 25/36 µs, 77 allocs; rests | scroll= sets canvas input each frame |
+| blurred-scroll | `blurred_scroll` 15/37 µs, 70 allocs; rests | fixed: the FlatList is `ui_scroll` in the surface, no commit |
 | bottom-bar-skia | `bottom_bar_skia` 102/266 µs, 238 allocs; drag 138/242 µs; rests |  |
 | calendar-days | `calendar_days` 70/107 µs, 34 allocs; drag 70/112 µs; rests |  |
 | checkbox-interactions | Contract only |  |
