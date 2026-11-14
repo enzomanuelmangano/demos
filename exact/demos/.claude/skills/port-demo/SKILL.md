@@ -393,6 +393,16 @@ One commit per haptic event, never per frame.
   photo's clip box (a `Reflow` child) shows its new size on the commit's first frame, square, and
   the cards' 700 ms transitions start ~4 frames (~130 ms) after it; RN starts every layout
   animation on the same frame, the photo shrinking and rounding over 300 ms. Unsolved.
+- A View with a uniform border (width, colour, radius; no borderCurve) is Core Animation's own
+  border and cornerRadius, and CALayer's `allowsEdgeAntialiasing` is NO: under a scale its
+  straight edges take the pixels whose centres they hold, aliased (cuberto-slider's picker at 0.7:
+  [127.5, 232.5) px is 127..231), the corner arcs stay antialiased. Clip the AA rrect to the
+  aliased bounds and fill the straight spans whole (`cuberto_slider.rs` `layer_rrect`). CA's corner
+  mask stays near full where an arc meets its edge (single pixels, sub-0.5 px): not reproduced.
+- An RN Skia Canvas inside a transformed View is drawn upright into that View's rounded frame
+  (Yoga half-up: `left: -32.5` at 3x lands 0.5 px right), then moved as a bitmap with the View's
+  translate / rotate, bilinear: draw it upright into an `Images::target` and place that
+  (cuberto-slider's balloon and its TextInput: pixel-identical at rest).
 - `pgrep -f "exact.mjs ios"` also matches a shell whose own command line contains that text (a
   wait loop): check the build lock with a bare `pgrep` call, never from inside a loop that greps it.
 - The RN dev client launched cold by its `exp+thank-you://expo-development-client/?url=…` link

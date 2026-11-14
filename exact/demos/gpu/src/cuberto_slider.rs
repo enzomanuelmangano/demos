@@ -16,13 +16,23 @@
 //!   −(−π/2 + atan2(91 + 40, balloonX − x)) about its centre.
 //! - The value: floor(interpolate(x, [0, 300], [0, 100], CLAMP)), a TextInput (ReText) filling
 //!   the balloon less 10 at the bottom: centred both ways (UITextField centres its line), in
-//!   the system font, bold, 20.
+//!   the system font, bold, 20, laid out by UIKit (`match_ui_font`).
+//!
+//! How Core Animation shows RN's views (measured against RN on the simulator):
+//! - Yoga rounds the balloon view's `left: −32.5` to the device pixel (half up): the canvas and
+//!   the TextInput sit in that rounded box, 0.5 px right of the unrounded one at 3x.
+//! - The balloon's canvas and its TextInput are layers inside the balloon view, drawn upright;
+//!   the view's translateX and rotate move those bitmaps, resampled bilinearly. So the balloon
+//!   and its value are drawn upright into a layer, then placed with the view's transform.
+//! - The picker is a View with a uniform border: Core Animation's own border and cornerRadius,
+//!   with `allowsEdgeAntialiasing` NO. Under the scale its straight edges take the pixels whose
+//!   centres they hold, aliased; the corner arcs stay antialiased.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, PointerPhase, Surface, SurfaceError, Value};
 use gesture_handler::{Event, PanGesture};
 use reanimated::{interpolate_clamp, Spring, GENTLE};
-use skia::{fit_box, Canvas, Color, Font, Paint, Path, Rect, Renderer};
+use skia::{fit_box, Canvas, Color, Font, Images, Matrix, Paint, Path, Rect, Renderer};
 
 use crate::gfx;
 
@@ -46,8 +56,9 @@ static OUTFIT: &[u8] = include_bytes!("../fonts/outfit.ttf");
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
-    // fontWeight 'bold', fontSize 20: San Francisco Bold where the platform's file is readable.
-    let font = skia::match_system_font(20.0, 700.0).or_else(|| Font::new(OUTFIT, 20.0));
+    // fontWeight 'bold', fontSize 20: San Francisco Bold as UIKit lays it out, where the
+    // platform's file is readable.
+    let font = skia::match_ui_font(20.0, 700.0).or_else(|| Font::new(OUTFIT, 20.0).map(Font::with_ui_layout));
     Box::new(CubertoSlider {
         font,
         balloon: skia::path_from_svg(BALLOON_PATH),
@@ -61,6 +72,8 @@ pub fn surface() -> Box<dyn Surface> {
 #[derive(Default)]
 struct CubertoSlider {
     size: (f32, f32),
+    /// The screen's pixels per point.
+    scale_px: f32,
     font: Option<Font>,
     balloon: Option<Path>,
     pan: PanGesture,
@@ -74,21 +87,62 @@ struct CubertoSlider {
     label_value: i32,
     canvas: Canvas,
     renderer: Renderer,
+    /// The balloon view's content (the canvas and the TextInput), upright, in device pixels.
+    layer: Canvas,
+    layer_renderer: Renderer,
+    /// The layer's texture, its pixel size and the label and shader generation it holds.
+    layer_gpu: Option<(Images, wgpu::TextureView, (u32, u32), u32)>,
+    layer_label: Option<i32>,
+}
+
+/// Yoga's rounding of an edge to the device pixel (half up).
+fn round_px(v: f32, scale: f32) -> f32 {
+    (v * scale + 0.5).floor() / scale
+}
+
+/// A pixel row or column a Core Animation layer with `allowsEdgeAntialiasing` NO starts at, for an
+/// edge at `v` points: the first whose centre lies past it, in points.
+fn alias(v: f32, scale: f32) -> f32 {
+    (v * scale - 0.5).ceil() / scale
 }
 
 impl CubertoSlider {
-    /// The track's top-left corner: the screen's centre less half the track.
-    fn origin(&self) -> (f32, f32) {
-        ((self.size.0 - SLIDER_WIDTH) / 2.0, (self.size.1 - SLIDER_HEIGHT) / 2.0)
+    /// The track's top-left corner: the screen's centre less half the track, on Yoga's pixel.
+    fn origin(&self, scale: f32) -> (f32, f32) {
+        (round_px((self.size.0 - SLIDER_WIDTH) / 2.0, scale), round_px((self.size.1 - SLIDER_HEIGHT) / 2.0, scale))
+    }
+    /// A rounded rect of a Core Animation layer with `allowsEdgeAntialiasing` NO: the corners
+    /// antialiased where they are, the straight edges aliased to the pixels whose centres they
+    /// hold (`alias`).
+    fn layer_rrect(c: &mut Canvas, sp: f32, (l, t, r, b): (f32, f32, f32, f32), radius: f32, paint: &Paint) {
+        let (al, at, ar, ab) = (alias(l, sp), alias(t, sp), alias(r, sp), alias(b, sp));
+        if ar <= al || ab <= at {
+            return;
+        }
+        let radius = radius.min((r - l) / 2.0).min((b - t) / 2.0);
+        c.save();
+        c.clip_rect(al, at, ar - al, ab - at);
+        c.draw_rrect(l, t, r - l, b - t, radius, paint);
+        c.restore();
+        // The straight spans between the corners, whole pixels.
+        let (il, it, ir, ib) = (alias(l + radius, sp), alias(t + radius, sp), alias(r - radius, sp), alias(b - radius, sp));
+        if ib > it {
+            c.draw_rect(al, it, ar - al, ib - it, paint);
+        }
+        if ir > il {
+            c.draw_rect(il, at, ir - il, ab - at, paint);
+        }
     }
     fn clamped(&self) -> f32 {
         self.translate_x.clamp(0.0, SLIDER_WIDTH)
     }
     fn press(&mut self, down: bool) {
         let (s, r, b) = if down { (1.0, PICKER_SIZE as f64 / 2.0, 4.0) } else { (DEFAULT_SCALE, DEFAULT_RADIUS, DEFAULT_BORDER) };
-        self.scale.to(s, self.scale.velocity, GENTLE);
-        self.radius.to(r, self.radius.velocity, GENTLE);
-        self.border.to(b, self.border.velocity, GENTLE);
+        // sv.set(withSpring(v)) over a running spring: spring.ts onStart keeps its velocity (not
+        // one pointing away), its clock, and measures the rest against getEnergy(x0, 0).
+        self.scale.retarget(s, GENTLE);
+        self.radius.retarget(r, GENTLE);
+        self.border.retarget(b, GENTLE);
     }
 }
 
@@ -109,7 +163,7 @@ impl Surface for CubertoSlider {
     fn input(&mut self, event: &InputEvent) {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
         // The picker's box (50 × 50 at the clamped x, scaled about its centre) is its hit area.
-        let (ox, oy) = self.origin();
+        let (ox, oy) = self.origin(self.scale_px);
         let half = PICKER_SIZE / 2.0 * self.scale.value as f32;
         let (cx, cy) = (ox + self.clamped(), oy + SLIDER_HEIGHT / 2.0);
         let hit = (x - cx).abs() <= half && (y - cy).abs() <= half;
@@ -139,6 +193,8 @@ impl Surface for CubertoSlider {
         format: wgpu::TextureFormat,
     ) -> bool {
         self.size = (frame.width, frame.height);
+        let sp = frame.scale;
+        self.scale_px = sp;
         let x = self.clamped();
         // balloonSliderX: withSpring(clampedTranslateX), re-run as x moves.
         self.balloon_x.retarget(x as f64, GENTLE);
@@ -151,46 +207,70 @@ impl Surface for CubertoSlider {
             let _ = write!(self.label, "{value}");
             self.label_value = value;
         }
-        let (ox, oy) = self.origin();
+        let (ox, oy) = self.origin(sp);
         // The balloon is a Skia Path (sRGB); the bar and the picker's border are RN Views,
         // whose colour the app reads as Display P3 (`Color::view_hex`).
         let color = Paint::fill(Color::hex(PRIMARY_COLOR));
         let view_color = Paint::fill(Color::view_hex(PRIMARY_COLOR));
+
+        // The balloon view's content, upright: the canvas's FitBox path and the TextInput.
+        let (lw, lh) = ((BALLOON_WIDTH * sp).ceil() as u32, (BALLOON_HEIGHT * sp).ceil() as u32);
+        if self.layer_gpu.as_ref().is_none_or(|g| g.2 != (lw, lh) || g.3 != frame.shader_generation) {
+            let images = Images::target(device, lw, lh);
+            let view = images.render_view();
+            self.renderer.set_images(&images);
+            self.layer_gpu = Some((images, view, (lw, lh), frame.shader_generation));
+            self.layer_label = None;
+        }
+        if self.layer_label != Some(value) {
+            self.layer_label = Some(value);
+            let l = &mut self.layer;
+            l.begin(sp);
+            if let Some(path) = &self.balloon {
+                l.save();
+                l.concat(fit_box(Rect::new(0.0, 0.0, 543.0, 711.0), Rect::new(0.0, 0.0, BALLOON_WIDTH, BALLOON_HEIGHT)));
+                l.draw_path(path, &color);
+                l.restore();
+            }
+            if let Some(font) = &self.font {
+                // The TextInput: the balloon less 10 at the bottom; UITextField centres its one
+                // line (ascent + descent) in it, and the text across it.
+                let top = (BALLOON_HEIGHT - 10.0 - gfx::line_height(font)) / 2.0;
+                let w = font.advance_width(&self.label);
+                l.draw_text(&self.label, BALLOON_WIDTH / 2.0 - w / 2.0, gfx::baseline(font, top), font, &Paint::fill(Color::WHITE));
+            }
+            let (_, view, _, _) = self.layer_gpu.as_ref().unwrap();
+            self.layer_renderer.draw(device, queue, encoder, &self.layer, view, wgpu::TextureFormat::Rgba8Unorm, lw, lh, wgpu::Color::TRANSPARENT);
+        }
+
         let c = &mut self.canvas;
-        c.begin(frame.scale);
+        c.begin(sp);
         // The track: #E5E5E5, radius 5 (continuous; 4 tall, so 2).
         c.draw_rrect(ox, oy, SLIDER_WIDTH, SLIDER_HEIGHT, 5.0, &Paint::fill(Color::hex(0xE5E5E5)));
-        // The balloon, behind the bar and the picker.
+        // The balloon view, behind the bar and the picker: left −32.5 and bottom 40 on Yoga's
+        // pixels, moved by translateX(balloonX) and rotate(−r) about its centre.
         let bx = self.balloon_x.value as f32;
         let rotate = -std::f32::consts::FRAC_PI_2 + (BALLOON_HEIGHT + BALLOON_BOTTOM).atan2(bx - x);
+        let (vl, vt) = (round_px(ox - BALLOON_WIDTH / 2.0, sp), round_px(oy + SLIDER_HEIGHT - BALLOON_BOTTOM - BALLOON_HEIGHT, sp));
         let saved = c.matrix();
-        c.translate(ox + bx, oy + SLIDER_HEIGHT - BALLOON_BOTTOM - BALLOON_HEIGHT / 2.0);
+        c.translate(vl + bx + BALLOON_WIDTH / 2.0, vt + BALLOON_HEIGHT / 2.0);
         c.rotate(-rotate);
         c.translate(-BALLOON_WIDTH / 2.0, -BALLOON_HEIGHT / 2.0);
-        if let Some(path) = &self.balloon {
-            let inner = c.matrix();
-            c.concat(fit_box(Rect::new(0.0, 0.0, 543.0, 711.0), Rect::new(0.0, 0.0, BALLOON_WIDTH, BALLOON_HEIGHT)));
-            c.draw_path(path, &color);
-            c.set_matrix(inner);
-        }
-        if let Some(font) = &self.font {
-            let m = font.metrics();
-            // The text box: the balloon less 10 at the bottom; its line centred in it.
-            let box_height = BALLOON_HEIGHT - 10.0;
-            let baseline = box_height / 2.0 - (m.ascent + m.descent) / 2.0;
-            let w = font.advance_width(&self.label);
-            c.draw_text(&self.label, BALLOON_WIDTH / 2.0 - w / 2.0, baseline, font, &Paint::fill(Color::WHITE));
+        if let Some((images, ..)) = &self.layer_gpu {
+            c.draw_rect(0.0, 0.0, BALLOON_WIDTH, BALLOON_HEIGHT, &Paint::image(images.image(0), Matrix::scale(sp, sp)));
         }
         c.set_matrix(saved);
         // The progress: the full-width bar scaled from its left edge.
         c.draw_rect(ox, oy, x, SLIDER_HEIGHT, &view_color);
-        // The picker: a white square with a border, rounded, scaled about its centre.
+        // The picker: 50 square at the clamped x, scaled about its centre; Core Animation's border
+        // over its white background.
         let (s, r, b) = (self.scale.value as f32, self.radius.value as f32, self.border.value as f32);
-        c.translate(ox + x, oy + SLIDER_HEIGHT / 2.0);
-        c.scale(s, s);
-        let half = PICKER_SIZE / 2.0;
-        c.draw_rrect(-half, -half, PICKER_SIZE, PICKER_SIZE, r, &view_color);
-        c.draw_rrect(-half + b, -half + b, PICKER_SIZE - 2.0 * b, PICKER_SIZE - 2.0 * b, (r - b).max(0.0), &Paint::fill(Color::WHITE));
+        let (cx, cy) = (ox + x, oy + SLIDER_HEIGHT / 2.0);
+        let half = PICKER_SIZE / 2.0 * s;
+        let (l, t, rr, bb) = (cx - half, cy - half, cx + half, cy + half);
+        Self::layer_rrect(c, sp, (l, t, rr, bb), r * s, &view_color);
+        let bw = b * s;
+        Self::layer_rrect(c, sp, (l + bw, t + bw, rr - bw, bb - bw), ((r - b) * s).max(0.0), &Paint::fill(Color::WHITE));
         let (pw, ph) = frame.pixels();
         self.renderer.draw(device, queue, encoder, &self.canvas, target, format, pw, ph, wgpu::Color::TRANSPARENT);
         moving || self.pan.tracking()
