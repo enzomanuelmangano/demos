@@ -25,7 +25,7 @@ audio-player ported done:8ae2b094 (frames on Yoga's pixel grid: pills, scrubber,
 color-carousel ported done:173a9087 (stills: glow in 8-bit P3 (96 % exact, rest 1 level), continuous corners on RN's (corner coverage mean 0.006), straight edges aliased as CA, edges on RN's pixel rows; left: CA's corner mask near the tangent of a strongly turned card up to 14 levels on single pixels (sub-0.5 px); audit: ScrollView via ui_scroll (fast deceleration, snapToOffsets interval), scale/zIndex/rotateY/perspective line for line, glow withTiming 300 inOut(quad) in gamma 2.2; A/B slow drag, flick, hard fling, back flick same structure and ends)
 animated-3d-parallax ported done:18abc5fb (card as its own continuous-cornered layer sampled with hard edges, colours as RN's P3 hex: card pixel-identical, corners max 3, shadow max 1 (was 2-3 levels off everywhere); logo is expo-image's 600x495 downscale, trilinear: mass within 0.3 %, centroid 0.2 px low, edge AA max 73 / mean 0.4 (Mac CG resize, not UIKit's renderer bit for bit); audit rows match (Gentle and 100/10/1 mapper springs, interpolate extend, perspective 500, origin z 300, reset at lift); A/B diagonal drag, hold, release same tilt, lag and logo overshoot)
 fluid-slider ported claimed:sim1
-animated-indicator-list ported
+animated-indicator-list ported claimed:sim2
 radar-chart ported
 image-cropper ported (registered unverified: verify on device)
 selectable-grid-list ported
