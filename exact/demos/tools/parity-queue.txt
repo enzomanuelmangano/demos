@@ -21,7 +21,7 @@ blur-circles ported done:02829476 (stills at RN's own frozen centres, 2 poses: m
 smooth-dropdown ported done:1e537101 (toggle = Reanimated spring from rest per run: eased 833 ms transition, reversal shortening dodged, bg step solved from mid-flight; closed still pixel-identical, open within glyph AA (centroids 0.03 px), turned chevron AA only (CA rotates a raster); A/B open, close, mid-flight reversal same structure; gap: options take touches at the tap, RN at progress 0.5 (~112 ms))
 skia-bottom-sheet ported open:669405aa photo as libjpeg-turbo decodes it, draws in the 8-bit P3 canvas, clip RN's non-AA one: stills closed + open photo max 3, handle/sheet edge max 4; A/B drag up, drag down that springs back open (both peak at 489 px), drag to the top clamp: same structure and ends. Left: the blurred photo in the sheet is a true Gaussian with clamp edges, RN's is Graphite's downscaled clamp blur (GraphitePlan has decal only): max 7 levels at its brightest edges, mean 1.1
 floating-modal ported claimed:sim1
-audio-player ported
+audio-player ported claimed:sim2
 color-carousel ported
 animated-3d-parallax ported
 fluid-slider ported
