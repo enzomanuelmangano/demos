@@ -24,6 +24,7 @@ use CalendarDays from "./calendar-days/calendar-days.contract"
 use CardShaderReflections from "./card-shader-reflections/card-shader-reflections.contract"
 use CheckboxInteractions from "./checkbox-interactions/checkbox-interactions.contract"
 use CherryBlossomQrcode from "./cherry-blossom-qrcode/cherry-blossom-qrcode.contract"
+use Chessboard from "./chessboard/chessboard.contract"
 use CircularCarousel from "./circular-carousel/circular-carousel.contract"
 use ClerkToast from "./clerk-toast/clerk-toast.contract"
 use ClockTimePicker from "./clock-time-picker/clock-time-picker.contract"
@@ -171,6 +172,8 @@ component PortedDemo
         CheckboxInteractions(env=env)
       if slug == "cherry-blossom-qrcode"
         CherryBlossomQrcode(env=env)
+      if slug == "chessboard"
+        Chessboard(env=env)
       if slug == "circular-carousel"
         CircularCarousel(env=env)
       if slug == "clerk-toast"
