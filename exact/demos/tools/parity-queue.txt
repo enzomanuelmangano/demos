@@ -37,7 +37,7 @@ circular-carousel ported done:d862d775 (stills: label and Switch pixel-identical
 split-button ported done:27ed2ed5 (stills max 6 levels at rest; icons within 0.03 px; residual: SVG vs CoreGraphics glyph edge AA, sub-pixel black-chip corner fringe; a re-tap within 300 ms of a fold restarts the G fade where RN overlays an exiting and an entering G)
 telegram-theme-switch ported done:426f2dd0 (stills dark and light: tab icons pixel-identical, button circle area within 0.06 % and centre exact (edge AA CA vs analytic), moon/sun centroids within 0.07 px (Lottie view on Yoga's 7.667 inset; was 0.54 px up-left); left: Lottie edges 4x MSAA vs CA's shape-layer AA (mass -0.6 %, max ~110 on edge pixels), dark background 1 level red (21 vs CA's 20: view_hex rounding at 20.5); audit rows match (withSpring {1000, 1} from 1 - to, clip interpolate [0, 0.9] extended, overlay Lottie progress, button round(p) hidden mid-flight, tab withTiming 300 inOut(quad), Tap maxDuration 500: an 800 ms hold toggles in neither); A/B both toggles: overlay Lottie same mass curve frame by frame; tab taps same fade. RN's reveal can't run on the iOS 27 sim (makeImageFromView fails, RN flips at once): ours is the design; clipPathRadiusScale's React-commit lag unmeasured)
 fourier-visualizer ported claimed:sim1
-github-onboarding ported (registered unverified: verify on device)
+github-onboarding ported claimed:sim2
 loading-button ported
 scrollable-bottom-sheet ported
 skia-color-picker ported
