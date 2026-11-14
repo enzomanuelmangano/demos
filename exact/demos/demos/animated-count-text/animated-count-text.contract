@@ -48,11 +48,20 @@ component AnimatedCountText
             -exact-exit-animation="digitOut 250ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) both"
             column translate=`0px ${0 - 55 * d}px` transition="translate -exact-spring(333, 65.7, 4)"
               for n in range(10) key=n
+                // TextKit sets the baseline at SF's ascent (1950 / 2048 × 50) below the 55-tall
+                // box's top, on the next pixel down; the host's 55 line centres it 5 px higher.
                 text `${n}` width=40 height=55 line-height="55px" text-align="center"
+                  position="relative" top="1.66667px"
                   font-size=50 font-weight=700 color="#ffffff" aria-hidden=true
       button appearance="none" press=shuffle aria-label="Shuffle" testId="shuffle"
         pointerdown=pressIn(0) pointerup=pressOut
         scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
         position="absolute" right=30 bottom=80 width=64 height=64 border-radius=32 background-color="#ffffff"
         display="flex" align-items="center" justify-content="center"
-        image "symbol:sf/shuffle" font-size=24 color="#000000"
+        // <Entypo name="shuffle" size={24}>: the glyph's outline (Entypo.ttf, 512 units, y down
+        // from the hhea ascent 449). Its Text box (24 × 24.09, ceiled to 24.333) sits at
+        // (19.667, 19.667); CoreGraphics puts the baseline (21.047 below) on the next pixel down:
+        // 41.0 (fitted to RN's ink centroid). The host snaps an svg to the pixel: box at 20, the
+        // outline lifted 1 unit.
+        svg width=24 height=24 viewBox="0 1 512 512" position="absolute" left="19.66667px" top=20 aria-hidden=true
+          path d="M386 172Q365 172 347 179.5Q329 187 310.5 204.5Q292 222 280.5 235.5Q269 249 248 276Q229 301 218.5 314Q208 327 187.5 348Q167 369 149 380Q131 391 106 399.5Q81 408 54 408H0V336H54Q75 336 93 329Q111 322 129.5 304.5Q148 287 159.5 273.5Q171 260 191 233Q211 207 221.5 194Q232 181 252.5 160Q273 139 290.5 128.5Q308 118 333.5 109.5Q359 101 386 101H410V40L512 143L410 246V172ZM138 218Q98 177 54 177H0V106H54Q124 106 183 161Q166 181 151 202Q141 215 138 218ZM410 341V268L512 371L410 474V413H386Q313 413 252 354Q266 337 289 307L297 297Q340 341 386 341Z" fill="#000000"
