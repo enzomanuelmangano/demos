@@ -108,6 +108,7 @@ use Toast from "./toast/toast.contract"
 use TwitterTabBar from "./twitter-tab-bar/twitter-tab-bar.contract"
 use TwodosSlide from "./twodos-slide/twodos-slide.contract"
 use VerificationCode from "./verification-code/verification-code.contract"
+use VerificationCodeFace from "./verification-code-face/verification-code-face.contract"
 use WheelPicker from "./wheel-picker/wheel-picker.contract"
 
 component PortedDemo
@@ -332,5 +333,7 @@ component PortedDemo
         TwodosSlide()
       if slug == "verification-code"
         VerificationCode()
+      if slug == "verification-code-face"
+        VerificationCodeFace(env=env)
       if slug == "wheel-picker"
         WheelPicker(env=env)

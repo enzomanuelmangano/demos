@@ -106,6 +106,7 @@ pub mod theme_canvas_animation;
 pub mod threads_holo_ticket;
 pub mod timer;
 pub mod twodos_slide;
+pub mod verification_code_face;
 pub mod wheel_picker;
 
 /// The module's surfaces and its reflected shaders.
@@ -195,6 +196,7 @@ pub static REGISTRY: Registry = Registry {
         ("threads_holo_ticket", 0, threads_holo_ticket::surface),
         ("timer", 2, timer::surface),
         ("twodos_slide", 0, twodos_slide::surface),
+        ("verification_code_face", 6, verification_code_face::surface),
         ("wheel_picker", 1, wheel_picker::surface),
     ],
     shaders: shaders::SHADERS,
