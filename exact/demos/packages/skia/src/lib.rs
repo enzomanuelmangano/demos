@@ -1441,12 +1441,14 @@ impl Canvas {
             Shader::Image { image, to_image } => {
                 gpu.head[0] = 4.0;
                 gpu.geometry = [image.width, image.height, image.layer as f32, 0.0];
+                gpu.head[3] = image.p3 as u32 as f32;
                 let [a, b, c, d, e, f] = to_image.0;
                 gpu.offsets = [[a, b, c, d], [e, f, 0.0, 0.0]];
             }
             Shader::ImageNearest { image, to_image, subset } => {
                 gpu.head[0] = 4.0;
                 gpu.geometry = [image.width, image.height, image.layer as f32, 2.0];
+                gpu.head[3] = image.p3 as u32 as f32;
                 let [a, b, c, d, e, f] = to_image.0;
                 gpu.offsets = [[a, b, c, d], [e, f, 0.0, 0.0]];
                 gpu.colors[1] = *subset;

@@ -1497,6 +1497,7 @@ impl NotionQrCode {
             layer: 0,
             width: SPRITE_W as f32,
             height: SPRITE_H as f32,
+            p3: false,
         };
         c.draw_rect(
             0.0,

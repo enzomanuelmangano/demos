@@ -1156,6 +1156,7 @@ impl AddToCart {
                     layer: 0,
                     width: pw,
                     height: ph,
+                    p3: false,
                 },
                 Matrix::translate(-ox, -oy).then(Matrix::scale(s, s)),
             ),

@@ -33,6 +33,9 @@
 //!   ClipStack snaps it to the pixel grid (floor(v + 0.5) in device pixels): the dimming
 //!   covers whole pixels outside that rect; the transparent Touchable.Path draws nothing; the
 //!   four `<Circle r={8} color="white">` at the corners. All clipped to the canvas's bounds.
+//! - Stored as RN Skia stores it, 8-bit Display P3: the photo converted at each sample, the
+//!   dimming blended on P3 values (in sRGB it was up to 12 levels off, +2 blue on average);
+//!   the atlas is drawn in P3 and the frame converted once (`gfx::P3Layer`).
 //!
 //! The buttons, as UIKit shows them: RCTViewComponentView draws a non-clipping view's border
 //! with RCTBorderDrawing (circular corners whatever the borderCurve): a stretchable 17 × 17 pt
@@ -611,7 +614,10 @@ struct ImageCropper {
     canvas: Canvas,
     layer_canvas: Canvas,
     renderer: Renderer,
+    /// Draws the atlas in encoded Display P3, as RN Skia's canvases store their pixels.
     layer_renderer: Renderer,
+    /// The frame, drawn in 8-bit Display P3 and converted once.
+    p3: gfx::P3Layer,
     gpu: Option<Gpu>,
 }
 
@@ -641,7 +647,8 @@ impl ImageCropper {
             canvas: Canvas::default(),
             layer_canvas: Canvas::default(),
             renderer: Renderer::default(),
-            layer_renderer: Renderer::default(),
+            layer_renderer: { let mut r = Renderer::default(); r.p3 = true; r },
+            p3: gfx::P3Layer::default(),
             gpu: None,
         }
     }
@@ -1343,10 +1350,12 @@ impl Surface for ImageCropper {
             );
             self.atlas_dirty = false;
         }
-        let atlas = self.gpu.as_ref().unwrap().atlas.image(0);
+        // The atlas holds P3: sampled as it is into the P3 frame.
+        let atlas = self.gpu.as_ref().unwrap().atlas.image(0).p3();
         self.record(atlas);
         let (pw, ph) = frame.pixels();
-        self.renderer.draw(
+        self.p3.draw(
+            &mut self.renderer,
             device,
             queue,
             encoder,

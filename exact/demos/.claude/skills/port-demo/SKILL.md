@@ -502,6 +502,9 @@ One commit per haptic event, never per frame.
   rounded out, within the screen) outset by the blur's reach, and Graphite's downscale grid starts
   there. A true Gaussian on a field instead left metaball's edge 0.54 px in; `GraphiteBlur` with
   that plan put it on RN's to 0.01 px.
+- A surface that pre-renders RN Skia content into an atlas: draw the atlas with `p3 = true`, sample
+  it as `atlas.image(0).p3()` (texels taken as P3) and draw the frame through `gfx::P3Layer`.
+  A dimming over a photo blended in sRGB was up to 12 levels off (image-cropper: now max 3).
 
 - A scroll-driven animation needs a `column overflow-y="auto"` scroller: `scroll-timeline` on a
   `scroll` tag drives nothing on iOS (`scrollIntoView` works on both). A piecewise-linear

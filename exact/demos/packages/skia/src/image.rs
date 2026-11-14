@@ -56,6 +56,16 @@ pub struct ImageRef {
     pub width: f32,
     /// Pixels down.
     pub height: f32,
+    /// Its texels are encoded Display P3 (an RN Skia surface kept as RN stores it, 8-bit P3):
+    /// a P3 target takes them as they are, an sRGB one converts them.
+    pub p3: bool,
+}
+
+impl ImageRef {
+    /// The same image, its texels taken as encoded Display P3.
+    pub fn p3(self) -> ImageRef {
+        ImageRef { p3: true, ..self }
+    }
 }
 
 /// A set of images on the GPU: one texture array, a layer each, mipmapped.
@@ -179,7 +189,7 @@ impl Images {
     /// The `index`th image, for a paint.
     pub fn image(&self, index: usize) -> ImageRef {
         let (w, h) = self.sizes.get(index).copied().unwrap_or((1, 1));
-        ImageRef { layer: index as u32, width: w as f32, height: h as f32 }
+        ImageRef { layer: index as u32, width: w as f32, height: h as f32, p3: false }
     }
 
     /// How many images.
