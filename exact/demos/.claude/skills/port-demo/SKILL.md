@@ -424,8 +424,16 @@ One commit per haptic event, never per frame.
   ALIASED straight edges: CALayer's `allowsEdgeAntialiasing` is NO, so an edge pixel is in or out
   by its centre (col 1098 full where ours blends 0.7, up to 112 levels), while the corner mask
   stays antialiased. Sub-pixel; our rrects are analytic there.
-- iOS host: `press=` on a generic `view` never fires (dynamic-tab-indicator's tabs did nothing
-  since the port; the web test passed). Put presses on `column` / `row` / `button`.
+- iOS host: dynamic-tab-indicator's tabs (`view display="flex" press=`) never fired, but a sweep of
+  six other `press=` views on the simulator (2026-11-14) found they DO fire (popup-handler's
+  backdrop, clerk-toast's cards, stacked-bottom-sheet's wand, family-number-input's keys, scroll-
+  progress' arrow): the tag is not the cause. Check every press on the device; a web test passing
+  proves nothing. Causes found: a view at `opacity` 0 (UIKit hit-tests no view under alpha 0.01,
+  nor its subviews: clerk-toast's unseen copy of the x, made invisible by transparent paint
+  instead), and a state that never arrives (scroll-progress' arrow).
+- iOS host: a scroll's `scrollTop` at the bottom and `scrollHeight − clientHeight` can differ in the
+  last float bit (1278.3333333333333 vs …335), so `y / max` never reaches 1 where UIKit's offset
+  is exactly RN's max: compare to the end within 1e-9 (scroll-progress' END and its up arrow).
 - RN `adjustsFontSizeToFit` (NSTextStorage+FontScaling.m): Yoga measures the Text at its own
   size (the frame, and its onLayout, are the unshrunk width), then the glyphs are drawn at the
   bisection's last fitting ratio (from 1, bounds 1/128…128, stop within 0.005): 0.88373 for a

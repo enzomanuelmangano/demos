@@ -63,7 +63,11 @@ component ScrollProgress
       if y == 0
         resetting = false
     else
-      progress = min(max(y / max(1, e.scrollHeight - e.clientHeight), 0), 1)
+      // The host's scrollTop at the bottom and scrollHeight − clientHeight differ in the last
+      // float bit (1278.3333333333333 vs …335): UIKit's offset is exactly the max, so RN's
+      // clamp reaches 1 (END, the up arrow). Within 1e-9 of the end is the end.
+      let p = y / max(1, e.scrollHeight - e.clientHeight)
+      progress = p > 1 - 0.000000001 ? 1 : max(p, 0)
   // RN clears the flag on onBeginDrag (a drag interrupting the animated scroll); Exact's scroll
   // has no drag-begin event: the end of that drag's scroll clears it.
   action ended

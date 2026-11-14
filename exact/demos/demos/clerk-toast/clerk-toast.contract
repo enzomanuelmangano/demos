@@ -190,8 +190,10 @@ component ClerkToast
                 testId=`clerk-handle-${key}`
                 // The eighth toast's x is a PressableScale inside the gesture: an unseen copy of
                 // its row, so the press lands where the x is drawn.
+                // The handle is a block view: the copy fills it in a column, as the drawn row.
                 if clerkNum(kinds, i) == 7
-                  ClerkRow(toastKey=key, kind=7, ghost=true, clear=clearAll)
+                  column position="absolute" inset=0 pointer-events="none"
+                    ClerkRow(toastKey=key, kind=7, ghost=true, clear=clearAll)
 
 component ClerkToastCard
   props
@@ -252,13 +254,15 @@ component ClerkRow
     // use-toast.tsx: a LinearGradient #2C2E35 → #26252D (locations 0, 0.9) over #2A292F, flex 1,
     // a centred row, paddingHorizontal 20.
     row flex=1 align-items="center" padding-left=20 padding-right=20
-      opacity=(ghost ? 0 : 1) pointer-events=(ghost ? "none" : "auto")
+      // The ghost is unseen through transparent paint, not opacity 0: UIKit hit-tests no view
+      // under alpha 0.01, so the ghost x took no press (the drag handle had it).
+      pointer-events=(ghost ? "none" : "auto")
       background-color=(ghost ? "transparent" : "color(display-p3 0.1647 0.1608 0.1843)")
       background-image=(ghost ? "none" : "linear-gradient(to bottom, color(display-p3 0.1725 0.1804 0.2078) 0%, color(display-p3 0.149 0.1451 0.1765) 90%)")
       svg width=16 height=(16 * 518 / 512) viewBox="0 0 512 518" aria-hidden=true
-        path d=clerkIconPath(kind) fill="#ffffff"
+        path d=clerkIconPath(kind) fill=(ghost ? "transparent" : "#ffffff")
       // styles.internalText: white, SF-Pro-Rounded-Bold 14, marginLeft 10.
-      text clerkTitle(kind) color="#ffffff" font-family="ui-rounded" font-weight=700 font-size=14
+      text clerkTitle(kind) color=(ghost ? "transparent" : "#ffffff") font-family="ui-rounded" font-weight=700 font-size=14
         margin-left=10 testId=(ghost ? `clerk-ghost-title-${toastKey}` : `clerk-title-${toastKey}`)
       view flex=1
       if kind == 7
@@ -268,4 +272,4 @@ component ClerkRow
           scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
           aria-label="Clear all toasts" testId=(ghost ? `clerk-clear-${toastKey}` : `clerk-x-${toastKey}`)
           svg width=16 height=(16 * 518 / 512) viewBox="0 0 512 518" aria-hidden=true
-            path d=clerkXPath() fill="#ffffff"
+            path d=clerkXPath() fill=(ghost ? "transparent" : "#ffffff")
