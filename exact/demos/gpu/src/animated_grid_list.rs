@@ -316,7 +316,7 @@ impl AnimatedGridList {
         // The scroll runs on y: the recognizers take (y, x).
         scroll.input(id, phase, y, x, ms, inside);
         let release = match self.pan.event(id, phase, y, x, ms, inside) {
-            Event::End(p) => Some(ui_scroll::uiscroll_release(p.velocity_x, self.pan.rest_ms(ms))),
+            Event::End(p) => Some(ui_scroll::uiscroll_release(p.velocity_x)),
             _ => None,
         };
         let scroll = self.scroll.as_mut().unwrap();
