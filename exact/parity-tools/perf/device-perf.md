@@ -109,7 +109,7 @@ it takes input), and whether it rests after 4 s. Device columns: not measured (s
 | bottom-bar-skia | `bottom_bar_skia` 102/266 µs, 238 allocs; drag 138/242 µs; rests |  |
 | calendar-days | `calendar_days` 70/107 µs, 34 allocs; drag 70/112 µs; rests |  |
 | checkbox-interactions | Contract only |  |
-| circular-carousel | `circular_carousel` 216/283 µs, 222 allocs; drag 199/257 µs; rests |  |
+| circular-carousel | `circular_carousel` 42/47 µs, 41 allocs; drag 41/45 µs; rests (2026-11-14: was 216 µs, 222 allocs: continuous-rrect ring paths per cell, now analytic circles) |  |
 | clerk-toast | Contract only | mask-image (offscreen pass while shown); shadows (shadowPath: no pass) |
 | clock-time-picker | `clock_time_picker` 142/199 µs, 180 allocs; drag 131/174 µs; rests |  |
 | color-carousel | `color_carousel` 21/28 µs, 14 allocs; drag 22/28 µs; rests |  |

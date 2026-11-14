@@ -20,13 +20,18 @@ component CircularCarousel
     // index.tsx container: centred; the backdrop (#f4f4f6) shows through.
     column position="absolute" inset=0 align-items="center" justify-content="center"
       testId="circular-carousel"
-      // styles.label: fontSize 18, bold, letterSpacing 1, marginBottom 8, uppercase.
+      // styles.label: fontSize 18, bold, letterSpacing 1, marginBottom 8, uppercase. TextKit's line
+      // (SF: 2444 / 2048 × 18 = 21.48), Yoga's box ceiled to the pixel (21.667); the glyphs put
+      // back on RN's pixels (Yoga floors the Text's left; CG ceils the baseline).
       text "Scale" font-size=18 font-weight=700 letter-spacing=1 margin-bottom=8
-        text-transform="uppercase" color="#000000"
-      view
+        text-transform="uppercase" color="#000000" height="21.666667px"
+        line-height="21.48046875px" position="relative" left="-0.3333px"
+      // The Switch's box is RCTSwitchSize + 2 wide (IOSSwitchShadowNode: 63 + 2 = 65, 28), the
+      // UISwitch 1 pt in; the host's sits a device pixel higher in its box: put back on RN's.
+      view width=65 align-items="flex-start"
         // trackColor { false: '#ccc', true: '#111' }.
         input type="checkbox" switch checked=scaleEnabled change=setScale accent-color="#111111"
-          aria-label="Scale" testId="scale-switch"
+          aria-label="Scale" testId="scale-switch" position="relative" left=1 top="0.1666px"
       // circular-list styles.list: absolute, bottom 0, the window wide, LIST_ITEM_WIDTH * 3 tall.
       canvas surface=circular_carousel(scaleEnabled) position="absolute" left=0 bottom=0
         width=env.width height=(itemWidth(env.width) * 3) touch-action="none"

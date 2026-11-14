@@ -559,6 +559,12 @@ One commit per haptic event, never per frame.
 - Several `useAnimatedStyle`s on one view that each return `transform` do not compose: the last
   writer of the frame shows (style animations in start order, then mappers in a microtask; one
   starting from rest writes at once). twitter-tab-bar's button: rotate, isActive scale, highlight.
+- RN `<Switch>` on iOS is a 65 × 28 box (IOSSwitchShadowNode: RCTSwitchSize + 2), the UISwitch 1 pt
+  in; Contract's switch input sits at its box's left a device pixel higher: `view width=65` and the
+  input `position="relative" left=1 top="0.1666px"` (circular-carousel: pixel-identical).
+- expo-image downscales only when BOTH pixel sides exceed the rounded-up cover size × scale (a 400 ×
+  250 photo in an 89 pt view is not), then aspect-fills the unrounded cover frame. Decode bundled
+  photos with ImageIO (zune is ~1 level off in 8 × 8 blocks): circular-carousel's make.sh.
 
 ## 4. Check
 
