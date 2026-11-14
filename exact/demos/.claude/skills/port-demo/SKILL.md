@@ -309,6 +309,13 @@ One commit per haptic event, never per frame.
   other colours are converted); convert once at the end. Skia sizes such a layer to the filter's
   input, the device clip outset by the blur's `ceil(3σ)` (when the content has no bounds), so what
   lies just off screen glows into the edges: draw the layer that much larger (spiral).
+- A filtered layer's device starts with its bounds as its only clip: under `<Group clip>` the
+  content is blurred UNclipped within the layer (the clip's bounds + ceil(3σ)), then the result
+  is clipped. And RN Skia's native recorder clips without AA (`clipRRect(rrect, op)`): Graphite
+  snaps the clip's device bounds to whole pixels (round half up), then its analytic clip, the
+  same edge for `invertClip` (blur-circles: the glass seam 22 → 4 levels).
+- RN Skia `<BlurMask style="inner">` on Graphite: the shape's coverage in a layer (its rounded-out
+  bounds), Blur(σ × CTM) then DstIn with that coverage, stored 8-bit, the paint drawn through it.
 - A path of many small `addCircle`s (spiral's 1641) is one Graphite path, a 4× MSAA union: the
   sub-pixel circles take quarter coverages. Instanced analytic circles overstate them (a r 0.6 px
   dot lit 4 pixels): draw RN's path with `draw_with` + `skia::add_circle` (~1.7 ms CPU a frame).
