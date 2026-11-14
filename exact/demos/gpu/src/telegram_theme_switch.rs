@@ -31,7 +31,9 @@
 //!   hierarchy rasterized (drawViewHierarchyInRect into a DeviceRGB context, so sRGB: the
 //!   Display P3 colours as sRGB, as `view_hex` gives them) and drawn 1:1 (W × H at the screen's
 //!   scale). Here the old scene is drawn again under the clip from its state at touch down: the
-//!   same pixels.
+//!   same pixels. On the iOS 27 simulator RN's snapshot fails (`drawViewHierarchyInRect` returns
+//!   NO: "could not be rendered"), so the RN app there flips the theme at once under the overlay
+//!   Lottie; the reveal here is the demo's design, as on hardware.
 //! - Over everything, while isAnimating, a second Lottie at the button (absolute at its page
 //!   rect, 80 × 80, the 65 Lottie centred) plays animationProgress continuously.
 //! - The Lottie (telegram_lottie.rs, generated from the JSON by exact/parity-tools/
@@ -143,6 +145,9 @@ struct Layout {
     content: f32,
     /// The button's page rect's top-left.
     button: (f32, f32),
+    /// The Lottie view's offset in the button (and in the overlay): (80 − 65) / 2 = 7.5 rounded by
+    /// Yoga to the device pixel, 7.667 at 3x (the moon sat 0.5 px up and left).
+    lottie_inset: f32,
 }
 
 /// Yoga's rounding of a layout edge to the pixel grid: to the nearest device pixel, a half up.
@@ -170,7 +175,8 @@ impl Layout {
         let icon = icon_font.map_or(ICON, |f| text_side(f.advance_width(ICONS[0]).max(gfx::line_height(f)), scale));
         let content = bar - safe_bottom / 2.0;
         let button = (grid(w - BUTTON_RIGHT - BUTTON, scale), grid(bar_top - BUTTON_BOTTOM - BUTTON, scale));
-        Layout { w, h, scale, bar_top, cells, icon, content, button }
+        let lottie_inset = grid((BUTTON - LOTTIE) / 2.0, scale);
+        Layout { w, h, scale, bar_top, cells, icon, content, button, lottie_inset }
     }
 
     fn cell_at(&self, x: f32, y: f32) -> Option<usize> {
@@ -304,8 +310,7 @@ fn draw_scene(c: &mut Canvas, l: &Layout, scene: &Scene, icons: Option<&Font>) {
     if scene.tab == SEARCH {
         let (bx, by) = l.button;
         c.draw_circle(bx + BUTTON / 2.0, by + BUTTON / 2.0, BUTTON / 2.0, &Paint::fill(Color::view_hex(card)));
-        let inset = (BUTTON - LOTTIE) / 2.0;
-        draw_lottie(c, bx + inset, by + inset, scene.lottie, scene.lottie_opacity);
+        draw_lottie(c, bx + l.lottie_inset, by + l.lottie_inset, scene.lottie, scene.lottie_opacity);
     }
     c.draw_rect(0.0, l.bar_top, l.w, l.h - l.bar_top, &Paint::fill(Color::view_hex(card)));
     let Some(font) = icons else { return };
@@ -511,7 +516,7 @@ impl Surface for TelegramThemeSwitch {
             c.restore();
         }
         if self.animating {
-            let inset = (BUTTON - LOTTIE) / 2.0;
+            let inset = l.lottie_inset;
             draw_lottie(c, l.button.0 + inset, l.button.1 + inset, self.progress.value, 1.0);
         }
         let (pw, ph) = frame.pixels();
