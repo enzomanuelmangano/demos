@@ -19,7 +19,7 @@ story-list ported done:0474dd50 (verified 2026-11-14, no code change: layout pix
 dynamic-tab-indicator ported done:adeb68bf (tabs never pressed on iOS (press= on a view) and the host scroll ignored slow drags: pager, photos, bar and indicator now Rust (UIKit paging, animated scrollTo); indicator spans RN's unshrunk Text frame (was the ink, 8 px short each side) and titles at adjustsFontSizeToFit's 15.02 pt: indicator and all title ink boxes pixel-exact; photos as RN's ImageIO decode, mean 1.7 (was 4.3); A/B tab tap, partial drag, flick, hard flick same segments and durations within 1-3 frames)
 blur-circles ported done:02829476 (stills at RN's own frozen centres, 2 poses: max 5 levels, glass edge max 4 (was 240: blur reads the circle unclipped in its layer, clip is RN's non-AA one snapped to pixels), sharp circle max 2, white exact; path equals RN's for RN's tables to 1e-9 (test), tables once per run as constants.ts; A/B open: both start concentric at the centre and ease out alike)
 smooth-dropdown ported claimed:sim2
-skia-bottom-sheet ported claimed:sim1
+skia-bottom-sheet ported open:669405aa photo as libjpeg-turbo decodes it, draws in the 8-bit P3 canvas, clip RN's non-AA one: stills closed + open photo max 3, handle/sheet edge max 4; A/B drag up, drag down that springs back open (both peak at 489 px), drag to the top clamp: same structure and ends. Left: the blurred photo in the sheet is a true Gaussian with clamp edges, RN's is Graphite's downscaled clamp blur (GraphitePlan has decal only): max 7 levels at its brightest edges, mean 1.1
 floating-modal ported
 audio-player ported
 color-carousel ported
