@@ -74,6 +74,7 @@ use NotionQrCode from "./notion-qrcode/notion-qrcode.contract"
 use OnlineOffline from "./online-offline/online-offline.contract"
 use PaperFolding from "./paper-folding/paper-folding.contract"
 use ParticlesButton from "./particles-button/particles-button.contract"
+use PomodoroTimer from "./pomodoro-timer/pomodoro-timer.contract"
 use PopupHandler from "./popup-handler/popup-handler.contract"
 use PrequelSlider from "./prequel-slider/prequel-slider.contract"
 use QrCodeGenerator from "./qr-code-generator/qr-code-generator.contract"
@@ -269,6 +270,8 @@ component PortedDemo
         PaperFolding()
       if slug == "particles-button"
         ParticlesButton(env=env)
+      if slug == "pomodoro-timer"
+        PomodoroTimer(env=env)
       if slug == "popup-handler"
         PopupHandler(env=env)
       if slug == "prequel-slider"

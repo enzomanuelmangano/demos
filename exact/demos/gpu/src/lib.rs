@@ -85,6 +85,7 @@ pub mod mobile_input;
 pub mod notion_qrcode;
 pub mod paper_folding;
 pub mod particles_button;
+pub mod pomodoro_timer;
 pub mod prequel_slider;
 pub mod qr_code_generator;
 pub mod radar_chart;
@@ -179,6 +180,7 @@ pub static REGISTRY: Registry = Registry {
         ("notion_qrcode", 0, notion_qrcode::surface),
         ("paper_folding", 0, paper_folding::surface),
         ("particles_button", 1, particles_button::surface),
+        ("pomodoro_timer", 1, pomodoro_timer::surface),
         ("prequel_slider", 2, prequel_slider::surface),
         ("qr_code_generator", 3, qr_code_generator::surface),
         ("radar_chart", 10, radar_chart::surface),
