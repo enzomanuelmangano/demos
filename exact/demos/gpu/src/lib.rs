@@ -88,6 +88,7 @@ pub mod prequel_slider;
 pub mod qr_code_generator;
 pub mod radar_chart;
 pub mod record_button;
+pub mod scroll_transition_3d;
 pub mod scrollable_shapes;
 pub mod selectable_grid_list;
 pub mod skia_bottom_sheet;
@@ -180,6 +181,7 @@ pub static REGISTRY: Registry = Registry {
         ("qr_code_generator", 3, qr_code_generator::surface),
         ("radar_chart", 10, radar_chart::surface),
         ("record_button", 1, record_button::surface),
+        ("scroll_transition_3d", 0, scroll_transition_3d::surface),
         ("scrollable_shapes", 0, scrollable_shapes::surface),
         ("selectable_grid_list", 1, selectable_grid_list::surface),
         ("skia_bottom_sheet", 0, skia_bottom_sheet::surface),

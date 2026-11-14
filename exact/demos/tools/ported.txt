@@ -110,3 +110,4 @@ airbnb-slider
 drag-to-sort
 grid-visualizer
 infinite-carousel
+scroll-transition-3d

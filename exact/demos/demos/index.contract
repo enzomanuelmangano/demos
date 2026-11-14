@@ -79,6 +79,7 @@ use QrCodeGenerator from "./qr-code-generator/qr-code-generator.contract"
 use RadarChart from "./radar-chart/radar-chart.contract"
 use RecordButton from "./record-button/record-button.contract"
 use ScrollProgress from "./scroll-progress/scroll-progress.contract"
+use ScrollTransition3D from "./scroll-transition-3d/scroll-transition-3d.contract"
 use ScrollableBottomSheet from "./scrollable-bottom-sheet/scrollable-bottom-sheet.contract"
 use ScrollableShapes from "./scrollable-shapes/scrollable-shapes.contract"
 use SelectableGridList from "./selectable-grid-list/selectable-grid-list.contract"
@@ -277,6 +278,8 @@ component PortedDemo
         RecordButton(env=env)
       if slug == "scroll-progress"
         ScrollProgress(env=env)
+      if slug == "scroll-transition-3d"
+        ScrollTransition3D(env=env)
       if slug == "scrollable-bottom-sheet"
         ScrollableBottomSheet(env=env)
       if slug == "scrollable-shapes"

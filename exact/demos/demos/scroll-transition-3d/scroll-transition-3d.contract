@@ -1,0 +1,16 @@
+// 3D Scroll Transition: the numbers 99 to 0 on an inverted snapping list on black, each a sweep
+// gradient masked by its digits, tipping back, fading and blurring as it leaves the middle.
+// RN: src/animations/3d-scroll-transition (index.tsx, components/blurred-list-item.tsx). The
+// list's scroll, the items' RN Skia canvases and their 3D layers are one Rust surface
+// (gpu/src/scroll_transition_3d.rs).
+use DemoEnv from "../env.contract"
+
+component ScrollTransition3D
+  props
+    env: DemoEnv
+  view
+    // styles.container: #000, the list filling it.
+    column position="absolute" inset=0 background-color="#000000" testId="scroll-transition-3d"
+      canvas surface=scroll_transition_3d() position="absolute" top=0 left=0 width=env.width height=env.height
+        touch-action="none" testId="scroll-transition-3d-canvas"
+        aria-label="Numbers: drag up or down to scroll"
