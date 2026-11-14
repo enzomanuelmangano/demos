@@ -1,0 +1,2800 @@
+//! Chessboard (src/animations/chessboard: src/index.tsx, use-chess-game.ts, state.ts, utils.ts,
+//! constants.ts, theme.ts, haptics.ts, history-sync.tsx, checkmate-aura.tsx, wave-shader.ts,
+//! components/{board,player-card,game-review-card}.tsx; react-native-chessboard 0.2.0 with the
+//! app's patch: state/*, hooks/*, components/skia/*, components/promotion-dialog.tsx; chess.js
+//! 1.4.0: [`chess`]). Lasker–Thomas, London 1912, one move before 18. Kd2#: a live board for
+//! both sides, two player cards with chess clocks, and on checkmate the screen's snapshot swept
+//! by a glass wave into a haze under the game review card.
+//!
+//! The RN source ported: the files' modification times of the user's working tree (2026-11-10
+//! 05:45 for board, game-review-card, constants, move-history, state, theme, types,
+//! use-chess-game, utils; checkmate-aura 2026-11-09 21:43; player-card 2026-10-21; wave-shader
+//! 2026-10-03; index 2026-06-13). `SHOW_CHROME = false` there: no header, status caption, move
+//! history, New Game or play/pause button, so neither the `Alert` nor `togglePlay` can be reached
+//! (pausedRef stays false).
+//!
+//! Layout (Yoga, an iPhone Air 420 × 912): root #0d0e12; content paddingTop 12, paddingBottom 28;
+//! the board zone centres the top group (gap 10): the black card (paddingHorizontal 16), the
+//! board (the screen's width, pieceSize = width / 8), the white card.
+//!
+//! The board is react-native-chessboard's Skia canvas (an 8-bit Display P3 surface:
+//! `gfx::P3Layer`): 64 squares, the labels (matchFont System at pieceSize × 0.15), per square the
+//! last-move and check rects fading over 180 ms linear, the valid-move dots (one path of circles,
+//! r = pieceSize × 0.15, rgba(0,0,0,0.3) at opacity 0.5) and the pieces (one `<Atlas>` of the
+//! 6 × 2 sprite sheet, zIndex-sorted, scaled about the square's centre). The cards, the review card
+//! and the promotion dialog are RN views (Display P3 colours: `Color::view_hex`), Core Animation's.
+//!
+//! Motion audit:
+//!
+//! | value | RN driver / config | here |
+//! |---|---|---|
+//! | piece translateX/Y (move, slide) | withSpring(MOVE_SPRING: 400, 40, 1, energyThreshold 1e-4); the commit rides the axis that travels | `Spring::assign` + `with_threshold`, [`Done`] |
+//! | piece translateX/Y (snap back, promotion cancel) | withSpring(SNAP_BACK_SPRING: 350, 37, 1) | the same |
+//! | piece scale | lift withSpring(1.1, SCALE_SPRING: 600, 49, 1), drop withSpring(1) | the same |
+//! | drag | Pan minDistance 5 (custom criteria): onBegin stores the piece's offset to the finger, onUpdate follows `x − offset − pieceSize / 2` | `PanGesture::min_distance(5)` |
+//! | tap | Tap (no distance limit, 500 ms), simultaneous with the pan: select / deselect / move | `TapGesture` |
+//! | highlights | useDerivedValue(withTiming(flag, 180 linear)) per square | `Timing` per square |
+//! | card active | useAnimatedReaction(!gameOver && turn == side) → withTiming(0/1, 280) | `Timing` |
+//! | turn dot pulse | withRepeat(withTiming(1, 950, inOut(ease)), −1, true); off: withTiming(0, 200) | [`Pulse`] |
+//! | card bg / border | rgba(surface / border, active.toFixed(3)) | the same |
+//! | clock tint, text | opacity active; interpolateColor(active, textMuted → text), RGB gamma 2.2 | the same |
+//! | dot slot | width, marginRight = active × 6 (a layout per frame) | the same |
+//! | clocks | setInterval 1000 from mount: −1 s for the side to move once started, until mate/stalemate | the same |
+//! | aura | onMove(mate) + 580 ms: measureInWindow, show(): snapshot, next frame vis = 1, progress withTiming(1, 3000 linear), breath withRepeat(withTiming(1, 4200, inOut(ease)), −1, true) | the same (a frame per await) |
+//! | review card | setTimeout(round(3000 × 0.55) − 750) after show(); each section enter(d): opacity 0 → 1, translateY 9 → 0, scale 0.985 → 1, withDelay(d, 400 ms bezier(0.16, 0.84, 0.44, 1)) | [`Section`] |
+//! | card blur | filter blur(blurIn × 16), blurIn withTiming(1 → 0, 650, out(cubic)) | none: RN 0.88's iOS view applies `blur` only with `enableSwiftUIBasedFilters` (false by default, not set by the app), so RN shows no blur |
+//! | hide | vis withTiming(0, 360, in(cubic)); at ≤ 0.01 the snapshot and card are dropped | the same |
+//! | Back / Replay | pressto PressableScale: hide + rematch / hide + playSequence | `pressto::Pressable` |
+//! | promotion dialog | Modal fade; FadeIn(200); TouchableOpacity 0.7 (in at once, out 250 inOut(quad)) | [`Promotion`] |
+//! | haptics | moveTick: impactMedium (capture), impactRigid (check), impactLight; mate: MATE_PATTERN (Core Haptics) | `haptic:impact-*`; the mate's discrete events as impacts (see [`MATE`]) |
+//!
+//! Not modelled: `flipped` (never set), the board's `highlight()` colours (never called), the
+//! check / stalemate shader effects (`renderEffect` is not passed).
+
+// chess.js's whole API (reset, isAttacked, isGameOver too), not only what the board calls.
+#[allow(dead_code)]
+mod chess;
+
+use chess::{at, Chess, Kind, Piece, Side};
+use exact_gpu::wgpu;
+use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
+use gesture_handler::{Event, PanGesture, Phase, TapGesture};
+use pressto::{PressEvent, Pressable};
+use reanimated::{Easing, Spring, SpringConfig, Timing};
+use skia::{Canvas, Color, Font, Image, Images, Matrix, Paint, Renderer, RsXform};
+
+use crate::gfx;
+
+/// constants.ts START_FEN: the position after 17...Kg1.
+pub const START_FEN: &str = "rn3r2/pbppq1p1/1p2pN2/8/3P2NP/6P1/PPP1BP1R/R3K1k1 w Q - 5 18";
+/// PLAYERS.
+const NAME: [&str; 2] = ["lasker", "enzo"];
+const RATING: [&str; 2] = ["IM", "???"];
+/// CLOCK_START (seconds).
+const CLOCK_START: [i32; 2] = [74, 23];
+/// REPLAY.
+const START_DELAY: f64 = 900.0;
+const MOVE_GAP: f64 = 260.0;
+const AURA_DELAY: f64 = 580.0;
+/// REPLAY_MOVES: 18. Kd2#.
+const REPLAY_MOVES: [(&str, &str); 1] = [("e1", "d2")];
+/// wave-shader.ts.
+const WAVE_MS: f64 = 3000.0;
+const EXIT_MS: f64 = 360.0;
+
+const MOVE_SPRING: Cfg = Cfg { c: SpringConfig { stiffness: 400.0, damping: 40.0, mass: 1.0 }, threshold: 1e-4 };
+const SCALE_SPRING: Cfg = Cfg { c: SpringConfig { stiffness: 600.0, damping: 49.0, mass: 1.0 }, threshold: 6e-9 };
+const SNAP_BACK_SPRING: Cfg = Cfg { c: SpringConfig { stiffness: 350.0, damping: 37.0, mass: 1.0 }, threshold: 6e-9 };
+
+/// theme.ts (each a Display P3 view colour on iOS).
+mod theme {
+    pub const BG: u32 = 0x0d0e12;
+    pub const SURFACE: u32 = 0x17191f;
+    pub const SURFACE_HI: u32 = 0x202329;
+    pub const BORDER: u32 = 0x2c2f35;
+    pub const TEXT_FAINT: u32 = 0x60636a;
+    pub const TEXT_MUTED: u32 = 0x8f9298;
+    pub const TEXT: u32 = 0xf0f2f5;
+    pub const ACCENT: u32 = 0x3a91f8;
+    pub const LOSE: u32 = 0xf56b76;
+    pub const BOARD_LIGHT: u32 = 0xe5e8ed;
+    pub const BOARD_DARK: u32 = 0x818895;
+}
+
+/// REVIEW_MOVES' qualities, ply by ply (even White, odd Black).
+#[rustfmt::skip]
+const REVIEW: [Q; 35] = [
+    Q::Book, Q::Book, Q::Book, Q::Book, Q::Book, Q::Book, Q::Book, Q::Good, Q::Good, Q::Good, Q::Excellent, Q::Inaccuracy,
+    Q::Best, Q::Mistake, Q::Best, Q::Blunder, Q::Best, Q::Inaccuracy, Q::Great, Q::Miss, Q::Brilliant, Q::Best, Q::Best,
+    Q::Best, Q::Best, Q::Best, Q::Best, Q::Best, Q::Best, Q::Best, Q::Best, Q::Best, Q::Best, Q::Best, Q::Best,
+];
+/// REVIEW_ACCURACY.
+const ACCURACY: [&str; 2] = ["98.1", "64.3"];
+
+/// game-review-card.tsx QUALITY, in TABLE_ORDER.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Q {
+    Brilliant,
+    Great,
+    Book,
+    Best,
+    Excellent,
+    Good,
+    Inaccuracy,
+    Mistake,
+    Miss,
+    Blunder,
+}
+const TABLE_ORDER: [Q; 10] = [Q::Brilliant, Q::Great, Q::Book, Q::Best, Q::Excellent, Q::Good, Q::Inaccuracy, Q::Mistake, Q::Miss, Q::Blunder];
+impl Q {
+    fn glyph(self) -> &'static str {
+        match self {
+            Q::Brilliant => "!!",
+            Q::Great => "!",
+            Q::Book => "⌑",
+            Q::Best => "★",
+            Q::Excellent | Q::Good => "✓",
+            Q::Inaccuracy => "?!",
+            Q::Mistake => "?",
+            Q::Miss => "✕",
+            Q::Blunder => "??",
+        }
+    }
+    fn color(self) -> u32 {
+        match self {
+            Q::Brilliant => 0x84d5d1,
+            Q::Great => 0x90baf1,
+            Q::Book => 0xcebb9e,
+            Q::Best => 0x93d8b0,
+            Q::Excellent => 0xa6dbb6,
+            Q::Good => 0xa6d2b6,
+            Q::Inaccuracy => 0xe9cf87,
+            Q::Mistake => 0xebaf86,
+            Q::Miss => 0xe79287,
+            Q::Blunder => 0xe18083,
+        }
+    }
+    fn label(self) -> &'static str {
+        match self {
+            Q::Brilliant => "Brilliant",
+            Q::Great => "Great",
+            Q::Book => "Book",
+            Q::Best => "Best",
+            Q::Excellent => "Excellent",
+            Q::Good => "Good",
+            Q::Inaccuracy => "Inaccuracy",
+            Q::Mistake => "Mistake",
+            Q::Miss => "Miss",
+            Q::Blunder => "Blunder",
+        }
+    }
+}
+
+/// VALUE.
+fn value(k: Kind) -> i32 {
+    match k {
+        Kind::P => 1,
+        Kind::N | Kind::B => 3,
+        Kind::R => 5,
+        Kind::Q => 9,
+        Kind::K => 0,
+    }
+}
+
+/// haptics.ts MATE_PATTERN's discrete events (ms, amplitude). The Core Haptics pattern (these as
+/// transients plus its continuous rumble) needs the app module's `mate-haptic` view
+/// (modules/apple/Demos.swift), not yet built into the app: until it is, each event plays as the
+/// nearest UIKit impact (amplitude ≥ 0.9 heavy, ≥ 0.5 medium, else light); the rumble is not
+/// played.
+const MATE: [(f64, f64); 16] = [
+    (0.0, 0.45),
+    (90.0, 0.25),
+    (240.0, 0.55),
+    (330.0, 0.3),
+    (400.0, 1.0),
+    (470.0, 0.5),
+    (540.0, 0.3),
+    (700.0, 1.0),
+    (760.0, 0.9),
+    (900.0, 0.55),
+    (1080.0, 0.4),
+    (1280.0, 0.3),
+    (1500.0, 0.2),
+    (1900.0, 0.6),
+    (1975.0, 0.75),
+    (2060.0, 0.9),
+];
+
+static SPRITE: &[u8] = include_bytes!("../images/chessboard/pieces-sprite-768x256.rgba8.zlib");
+static BOLD: &[u8] = include_bytes!("../fonts/sf-pro-rounded-bold-chessboard.otf");
+static BOLD_TNUM: &[u8] = include_bytes!("../fonts/sf-pro-rounded-bold-chessboard-tnum.otf");
+static HEAVY: &[u8] = include_bytes!("../fonts/sf-pro-rounded-heavy-chessboard.otf");
+static COMPACT: &[u8] = include_bytes!("../fonts/sf-compact-rounded-medium-chessboard.otf");
+static COMPACT_TNUM: &[u8] = include_bytes!("../fonts/sf-compact-rounded-medium-chessboard-tnum.otf");
+static IONICONS: &[u8] = include_bytes!("../fonts/ionicons-chessboard-subset.ttf");
+static MENLO_BOLD: &[u8] = include_bytes!("../fonts/menlo-bold-chessboard-subset.ttf");
+static ZAPF: &[u8] = include_bytes!("../fonts/zapfdingbats-chessboard-subset.ttf");
+
+/// The UI's bitmaps, in [`Images`] order: RN `<Image>` decodes (gpu/images/chessboard/make.sh).
+static UI_IMAGES: [(&[u8], u32); 22] = [
+    (include_bytes!("../images/chessboard/avatar-lasker-120x120.rgba8.zlib"), 120),
+    (include_bytes!("../images/chessboard/avatar-enzo-120x120.rgba8.zlib"), 120),
+    (include_bytes!("../images/chessboard/avatar-lasker-102x102.rgba8.zlib"), 102),
+    (include_bytes!("../images/chessboard/avatar-enzo-102x102.rgba8.zlib"), 102),
+    (include_bytes!("../images/chessboard/tray-wp-48x48.rgba8.zlib"), 48),
+    (include_bytes!("../images/chessboard/tray-wn-48x48.rgba8.zlib"), 48),
+    (include_bytes!("../images/chessboard/tray-wb-48x48.rgba8.zlib"), 48),
+    (include_bytes!("../images/chessboard/tray-wr-48x48.rgba8.zlib"), 48),
+    (include_bytes!("../images/chessboard/tray-wq-48x48.rgba8.zlib"), 48),
+    (include_bytes!("../images/chessboard/tray-bp-48x48.rgba8.zlib"), 48),
+    (include_bytes!("../images/chessboard/tray-bn-48x48.rgba8.zlib"), 48),
+    (include_bytes!("../images/chessboard/tray-bb-48x48.rgba8.zlib"), 48),
+    (include_bytes!("../images/chessboard/tray-br-48x48.rgba8.zlib"), 48),
+    (include_bytes!("../images/chessboard/tray-bq-48x48.rgba8.zlib"), 48),
+    (include_bytes!("../images/chessboard/promo-wq-144x144.rgba8.zlib"), 144),
+    (include_bytes!("../images/chessboard/promo-wr-144x144.rgba8.zlib"), 144),
+    (include_bytes!("../images/chessboard/promo-wb-144x144.rgba8.zlib"), 144),
+    (include_bytes!("../images/chessboard/promo-wn-144x144.rgba8.zlib"), 144),
+    (include_bytes!("../images/chessboard/promo-bq-144x144.rgba8.zlib"), 144),
+    (include_bytes!("../images/chessboard/promo-br-144x144.rgba8.zlib"), 144),
+    (include_bytes!("../images/chessboard/promo-bb-144x144.rgba8.zlib"), 144),
+    (include_bytes!("../images/chessboard/promo-bn-144x144.rgba8.zlib"), 144),
+];
+fn avatar_image(side: Side, big: bool) -> usize {
+    (if big { 0 } else { 2 }) + side as usize
+}
+fn tray_image(side: Side, k: Kind) -> usize {
+    4 + side as usize * 5 + k as usize
+}
+/// PROMOTION_PIECES: q, r, b, n.
+const PROMOTION_PIECES: [Kind; 4] = [Kind::Q, Kind::R, Kind::B, Kind::N];
+fn promo_image(side: Side, i: usize) -> usize {
+    14 + side as usize * 4 + i
+}
+
+fn decode(bytes: &[u8], w: u32) -> Image {
+    let px = miniz_oxide::inflate::decompress_to_vec_zlib(bytes).unwrap_or_default();
+    let h = (px.len() as u32 / 4).checked_div(w).unwrap_or(0);
+    if h == 0 {
+        return Image::from_rgba(1, 1, vec![0, 0, 0, 0]);
+    }
+    Image::from_rgba(w, h, px)
+}
+
+#[derive(Clone, Copy)]
+struct Cfg {
+    c: SpringConfig,
+    threshold: f64,
+}
+
+/// What a spring's completion callback does (move-executor.ts).
+#[derive(Clone, Copy, Debug)]
+enum Done {
+    /// commitMove: on a finished spring the piece lands on `to` and `from` resets; then the move's
+    /// `onAnimationComplete` (resolving the awaited `move()`), finished or not.
+    Commit { from: i32, to: i32, piece: Option<Piece>, token: Option<u64> },
+    /// The castling rook's commit.
+    Rook { from: i32, to: i32, piece: Option<Piece> },
+    /// resetBoard's slide: zIndex back to 0, finished or not.
+    DropZ { sq: i32 },
+}
+
+/// A shared value that a `withSpring` with a callback may drive.
+#[derive(Clone, Copy)]
+struct Anim {
+    s: Spring,
+    done: Option<Done>,
+}
+
+impl Anim {
+    fn at(v: f64) -> Anim {
+        Anim { s: Spring::at(v), done: None }
+    }
+    fn set(&mut self, v: f64, q: &mut Vec<(Done, bool)>) {
+        if let Some(d) = self.done.take() {
+            q.push((d, false));
+        }
+        self.s.set(v);
+    }
+    fn spring(&mut self, to: f64, cfg: Cfg, now: f64, done: Option<Done>, q: &mut Vec<(Done, bool)>) {
+        if let Some(d) = self.done.take() {
+            q.push((d, false));
+        }
+        self.s = self.s.with_threshold(cfg.threshold);
+        self.s.assign(to, cfg.c, now);
+        self.done = done;
+    }
+    fn step(&mut self, now: f64, q: &mut Vec<(Done, bool)>) -> bool {
+        let moving = self.s.step(now);
+        if !moving {
+            if let Some(d) = self.done.take() {
+                q.push((d, true));
+            }
+        }
+        moving || self.done.is_some()
+    }
+}
+
+/// state/types.ts SquareState, with its highlight worklets' timings.
+#[derive(Clone)]
+struct SquareState {
+    piece: Option<Piece>,
+    tx: Anim,
+    ty: Anim,
+    scale: Spring,
+    z: i32,
+    last_move: bool,
+    in_check: bool,
+    last_fade: Timing,
+    check_fade: Timing,
+}
+
+/// withRepeat(withTiming(1, …), −1, true) from where it is, or a plain withTiming.
+#[derive(Clone)]
+struct Pulse {
+    t: Timing,
+    repeat: Option<(f64, f64, Easing)>,
+}
+
+impl Pulse {
+    fn at(v: f64) -> Pulse {
+        Pulse { t: Timing::at(v), repeat: None }
+    }
+    fn value(&self) -> f64 {
+        self.t.value
+    }
+    /// withRepeat(withTiming(1, { duration, easing }), -1, true), started at `now`.
+    fn repeat(&mut self, duration: f64, easing: Easing, now: f64) {
+        let start = self.t.value;
+        self.t.to(1.0, duration, easing.clone());
+        self.t.step(now);
+        self.repeat = Some((start, duration, easing));
+    }
+    fn timing(&mut self, to: f64, duration: f64, easing: Easing) {
+        self.repeat = None;
+        self.t.to(to, duration, easing);
+    }
+    fn step(&mut self, now: f64) -> bool {
+        let moving = self.t.step(now);
+        if !moving {
+            if let Some((start, duration, easing)) = self.repeat.clone() {
+                // repeat.ts: reversed, the nested timing restarts at this frame toward the old start.
+                let from = self.t.value;
+                self.t.to(start, duration, easing.clone());
+                self.t.step(now);
+                self.repeat = Some((from, duration, easing));
+                return true;
+            }
+        }
+        moving
+    }
+}
+
+/// One player card's animated values.
+struct CardAnim {
+    to_move: Option<bool>,
+    active: Timing,
+    pulse: Pulse,
+}
+
+/// A ply (state.ts Ply).
+#[derive(Clone, Debug)]
+struct Ply {
+    #[allow(dead_code)]
+    san: String,
+    fen: String,
+    from: i32,
+    to: i32,
+}
+
+/// The promotion picker (gesture-board.tsx promotionInfoRef + PromotionDialog).
+struct Promotion {
+    from: i32,
+    to: i32,
+    color: Side,
+    token: Option<u64>,
+    shown_ms: Option<f64>,
+    closing_ms: Option<f64>,
+    opacity: [Timing; 4],
+    held: Option<(u32, Option<usize>, bool)>,
+}
+
+/// One section of the review card (an `entering={enter(delay)}` view) or one of its buttons.
+#[derive(Clone, Copy, Debug)]
+struct Section {
+    rect: [f32; 4],
+    delay: f64,
+    button: Option<usize>,
+}
+
+/// The checkmate aura (checkmate-aura.tsx) and its review card.
+struct Aura {
+    origin: (f32, f32),
+    winner: Side,
+    snapshot_at: Option<f64>,
+    revealed: bool,
+    progress: Timing,
+    breath: Pulse,
+    vis: Timing,
+    card_at: f64,
+    card: Option<f64>,
+}
+
+/// The replay (playSequence).
+#[derive(Clone, Copy, Debug)]
+enum Replay {
+    Wait { until: f64, next: usize },
+    Move { index: usize, token: u64 },
+}
+
+enum Js {
+    TryMove { from: i32, to: i32, promotion: Option<Kind>, token: Option<u64> },
+    Select(i32),
+    Resolved(u64),
+}
+
+struct Fonts {
+    name: Option<Font>,
+    rating: Option<Font>,
+    tag: Option<Font>,
+    lead: Option<Font>,
+    clock: Option<Font>,
+    kicker: Option<Font>,
+    title: Option<Font>,
+    h_name: Option<Font>,
+    h_label: Option<Font>,
+    pill: Option<Font>,
+    q_label: Option<Font>,
+    q_count: Option<Font>,
+    glyph: Option<Font>,
+    glyph_menlo: Option<Font>,
+    glyph_zapf: Option<Font>,
+    button: Option<Font>,
+    icon_back: Option<Font>,
+    icon_replay: Option<Font>,
+    board: Option<Font>,
+}
+
+fn ui_font(data: &'static [u8], size: f32) -> Option<Font> {
+    Font::new(data, size).map(Font::with_ui_layout)
+}
+
+impl Fonts {
+    fn new() -> Fonts {
+        Fonts {
+            name: ui_font(BOLD, 15.0),
+            rating: ui_font(COMPACT_TNUM, 13.0),
+            tag: ui_font(BOLD, 10.0),
+            lead: ui_font(BOLD_TNUM, 12.0),
+            clock: ui_font(BOLD_TNUM, 16.0),
+            kicker: ui_font(HEAVY, 11.0),
+            title: ui_font(HEAVY, 23.0),
+            h_name: ui_font(COMPACT, 12.0),
+            h_label: ui_font(COMPACT, 14.0),
+            pill: ui_font(BOLD_TNUM, 15.0),
+            q_label: ui_font(BOLD, 14.0),
+            q_count: ui_font(BOLD_TNUM, 15.0),
+            glyph: skia::match_ui_font(11.0, 900.0),
+            glyph_menlo: ui_font(MENLO_BOLD, 11.0),
+            glyph_zapf: ui_font(ZAPF, 11.0),
+            button: ui_font(BOLD, 16.0),
+            icon_back: ui_font(IONICONS, 18.0),
+            icon_replay: ui_font(IONICONS, 20.0),
+            board: None,
+        }
+    }
+}
+
+/// Snaps to the device grid as Yoga rounds an edge (half up).
+fn snap(v: f32, s: f32) -> f32 {
+    (v * s + 1e-4).round() / s
+}
+/// A Text's position (Yoga floors a Text node's offset).
+fn floor_px(v: f32, s: f32) -> f32 {
+    (v * s + 1e-3).floor() / s
+}
+/// A Text's measured size, ceiled to the pixel after an epsilon.
+fn ceil_px(v: f32, s: f32) -> f32 {
+    (v * s - 1e-3).ceil() / s
+}
+
+/// An RN Text line: drawn with its box top at `top`, its baseline on the next device pixel down.
+fn draw_line(c: &mut Canvas, t: &str, x: f32, top: f32, font: &Font, color: Color, spacing: f32, s: f32) {
+    let base = ((gfx::baseline(font, top)) * s - 1e-3).ceil() / s;
+    c.draw_text_spaced(t, x, base, font, &Paint::fill(color), spacing);
+}
+
+fn view(hex: u32, a: f32) -> Color {
+    Color::view_hex(hex).alpha(a)
+}
+
+/// toRgba's alpha: clamped, toFixed(3).
+fn fixed3(a: f64) -> f32 {
+    ((a.clamp(0.0, 1.0) * 1000.0).round() / 1000.0) as f32
+}
+
+/// interpolateColor(v, [0, 1], [a, b]) in RGB with gamma 2.2, each channel rounded.
+fn mix_gamma(a: u32, b: u32, v: f64) -> u32 {
+    let ch = |c: u32, k: u32| ((c >> (16 - 8 * k)) & 0xff) as f64 / 255.0;
+    let mut out = 0;
+    for k in 0..3 {
+        let (x, y) = (ch(a, k).powf(2.2), ch(b, k).powf(2.2));
+        let m = (x + (y - x) * v.clamp(0.0, 1.0)).powf(1.0 / 2.2);
+        out |= ((m * 255.0).round() as u32).min(255) << (16 - 8 * k);
+    }
+    out
+}
+
+/// Square → its top-left in the board (squareToPosition, not flipped).
+fn pos(sq: i32, ps: f32) -> (f32, f32) {
+    ((sq & 0xf) as f32 * ps, (sq >> 4) as f32 * ps)
+}
+
+/// positionToSquare.
+fn square_at(x: f32, y: f32, ps: f32) -> i32 {
+    let col = (x / ps).floor() as i32;
+    let row = (y / ps).floor() as i32;
+    row * 16 + col
+}
+
+struct Gpu {
+    format: wgpu::TextureFormat,
+    layout: wgpu::BindGroupLayout,
+    compose: wgpu::RenderPipeline,
+    wave: wgpu::RenderPipeline,
+    finish: wgpu::RenderPipeline,
+    buffer: wgpu::Buffer,
+    sampler: wgpu::Sampler,
+    px: (u32, u32),
+    board: wgpu::TextureView,
+    ui: wgpu::TextureView,
+    screen: wgpu::TextureView,
+    snapshot: wgpu::TextureView,
+    wave_out: wgpu::TextureView,
+    sheet: wgpu::TextureView,
+    modal: wgpu::TextureView,
+    dummy: wgpu::TextureView,
+}
+
+/// The demo's surface.
+pub fn surface() -> Box<dyn Surface> {
+    Box::new(Chessboard::new())
+}
+
+struct Chessboard {
+    // react-native-chessboard
+    chess: Chess,
+    squares: Vec<SquareState>,
+    turn: Side,
+    selected: Option<i32>,
+    valid: Vec<i32>,
+    last_move: Option<(i32, i32)>,
+    king_in_check: Option<i32>,
+    dragged: Option<i32>,
+    touch_offset: (f32, f32),
+    pan: PanGesture,
+    tap: TapGesture,
+    promotion: Option<Promotion>,
+    callbacks: Vec<(Done, bool)>,
+    js: Vec<Js>,
+    // use-chess-game / state.ts
+    plies: Vec<Ply>,
+    selected_ply: i32,
+    history_prev: (i32, usize),
+    running: bool,
+    replay_gen: u64,
+    replay: Option<(u64, Replay)>,
+    next_token: u64,
+    captured: [Vec<Kind>; 2],
+    status: String,
+    turn_sv: Side,
+    game_over: bool,
+    started: bool,
+    clock: [i32; 2],
+    next_tick: Option<f64>,
+    aura_timer: Option<(f64, Side)>,
+    show_at: Option<(f64, Side)>,
+    mate_haptics: Vec<(f64, &'static str)>,
+    // the views
+    cards: [CardAnim; 2],
+    aura: Option<Aura>,
+    busy: bool,
+    sections: Vec<Section>,
+    buttons: [Pressable; 2],
+    held: Option<u32>,
+    messages: Vec<String>,
+    // drawing
+    size: (f32, f32),
+    scale: f32,
+    now: f64,
+    board_dirty: bool,
+    sheet_dirty: bool,
+    modal_dirty: bool,
+    fonts: Fonts,
+    canvas: Canvas,
+    renderers: [Renderer; 4],
+    p3: gfx::P3Layer,
+    sprite: Option<Images>,
+    images: Option<Images>,
+    gpu: Option<Gpu>,
+}
+
+fn initial_captures() -> [Vec<Kind>; 2] {
+    // capturesFromFen(START_FEN): the opponent's pieces missing from a full set, by the taker.
+    let chess = Chess::new(START_FEN).unwrap();
+    let full = [(Kind::P, 8), (Kind::N, 2), (Kind::B, 2), (Kind::R, 2), (Kind::Q, 1)];
+    let mut left = [[0i32; 6]; 2];
+    for row in chess.board() {
+        for p in row.into_iter().flatten() {
+            left[p.color as usize][p.kind as usize] += 1;
+        }
+    }
+    let taken = |victim: usize| -> Vec<Kind> { full.iter().flat_map(|&(k, n)| std::iter::repeat(k).take((n - left[victim][k as usize]).max(0) as usize)).collect() };
+    [taken(1), taken(0)]
+}
+
+impl Chessboard {
+    fn new() -> Chessboard {
+        let chess = Chess::new(START_FEN).unwrap();
+        let card = || CardAnim { to_move: None, active: Timing::at(0.0), pulse: Pulse::at(0.0) };
+        let mut c = Chessboard {
+            chess,
+            squares: Vec::new(),
+            turn: Side::W,
+            selected: None,
+            valid: Vec::new(),
+            last_move: None,
+            king_in_check: None,
+            dragged: None,
+            touch_offset: (0.0, 0.0),
+            pan: PanGesture::new().min_distance(5.0),
+            tap: TapGesture::default(),
+            promotion: None,
+            callbacks: Vec::new(),
+            js: Vec::new(),
+            plies: Vec::new(),
+            selected_ply: -1,
+            history_prev: (-1, 0),
+            running: false,
+            replay_gen: 0,
+            replay: None,
+            next_token: 1,
+            captured: initial_captures(),
+            status: "White to move".into(),
+            turn_sv: Side::W,
+            game_over: false,
+            started: false,
+            clock: CLOCK_START,
+            next_tick: None,
+            aura_timer: None,
+            show_at: None,
+            mate_haptics: Vec::new(),
+            cards: [card(), card()],
+            aura: None,
+            busy: false,
+            sections: Vec::new(),
+            buttons: [Pressable::new(), Pressable::new()],
+            held: None,
+            messages: Vec::new(),
+            size: (0.0, 0.0),
+            scale: 0.0,
+            now: 0.0,
+            board_dirty: true,
+            sheet_dirty: true,
+            modal_dirty: true,
+            fonts: Fonts::new(),
+            canvas: Canvas::default(),
+            renderers: [Renderer::default(), Renderer::default(), Renderer::default(), Renderer::default()],
+            p3: gfx::P3Layer::default(),
+            sprite: None,
+            images: None,
+            gpu: None,
+        };
+        c.squares = vec![
+            SquareState {
+                piece: None,
+                tx: Anim::at(0.0),
+                ty: Anim::at(0.0),
+                scale: Spring::at(1.0),
+                z: 0,
+                last_move: false,
+                in_check: false,
+                last_fade: Timing::at(0.0),
+                check_fade: Timing::at(0.0),
+            };
+            128
+        ];
+        c
+    }
+
+    fn ps(&self) -> f32 {
+        self.size.0 / 8.0
+    }
+
+    /// createSquareStates: every square's piece at its position.
+    fn mount_squares(&mut self) {
+        let ps = self.ps();
+        for row in 0..8 {
+            for col in 0..8 {
+                let sq = at(col, row);
+                let (x, y) = pos(sq, ps);
+                let s = &mut self.squares[sq as usize];
+                s.piece = self.chess.get(sq);
+                s.tx = Anim::at(x as f64);
+                s.ty = Anim::at(y as f64);
+            }
+        }
+        self.turn = self.chess.turn();
+    }
+
+    // ---- react-native-chessboard: move-executor.ts ----
+
+    fn update_highlights_after_move(&mut self, from: i32, to: i32) {
+        if let Some((a, b)) = self.last_move {
+            self.squares[a as usize].last_move = false;
+            self.squares[b as usize].last_move = false;
+        }
+        self.squares[from as usize].last_move = true;
+        self.squares[to as usize].last_move = true;
+        self.last_move = Some((from, to));
+        let in_check = self.chess.is_check();
+        let prev = self.king_in_check;
+        let king = if in_check || self.chess.is_checkmate() { self.chess.king(self.chess.turn()) } else { None };
+        if let Some(p) = prev {
+            if Some(p) != king {
+                self.squares[p as usize].in_check = false;
+            }
+        }
+        if let Some(k) = king {
+            self.squares[k as usize].in_check = true;
+        }
+        self.king_in_check = king;
+    }
+
+    fn execute_move(&mut self, from: i32, to: i32, promotion: Option<Kind>, token: Option<u64>) -> Option<chess::Move> {
+        let mv = self.chess.play(from, to, promotion)?;
+        let ps = self.ps();
+        let now = self.now;
+        let moving = self.squares[from as usize].piece;
+        if mv.captured.is_some() {
+            self.squares[to as usize].piece = None;
+        }
+        let to_pos = pos(to, ps);
+        let from_pos = pos(from, ps);
+        self.squares[from as usize].z = 100;
+        let piece = match promotion {
+            Some(k) => Some(Piece { color: mv.color, kind: k }),
+            None => moving,
+        };
+        let commit = Done::Commit { from, to, piece, token };
+        let vertical = to_pos.1 != from_pos.1;
+        let q = &mut self.callbacks;
+        let f = &mut self.squares[from as usize];
+        f.tx.spring(to_pos.0 as f64, MOVE_SPRING, now, (!vertical).then_some(commit), q);
+        f.ty.spring(to_pos.1 as f64, MOVE_SPRING, now, vertical.then_some(commit), q);
+        if mv.flags.contains('k') || mv.flags.contains('q') {
+            let kingside = mv.flags.contains('k');
+            let row = if mv.color == Side::W { 7 } else { 0 };
+            let rook_from = at(if kingside { 7 } else { 0 }, row);
+            let rook_to = at(if kingside { 5 } else { 3 }, row);
+            let rook_piece = self.squares[rook_from as usize].piece;
+            let rp = pos(rook_to, ps);
+            let r = &mut self.squares[rook_from as usize];
+            r.tx.spring(rp.0 as f64, MOVE_SPRING, now, Some(Done::Rook { from: rook_from, to: rook_to, piece: rook_piece }), q);
+            r.ty.spring(rp.1 as f64, MOVE_SPRING, now, None, q);
+        }
+        if mv.flags.contains('e') {
+            // capturedPawnSquare: to's file, from's rank.
+            let sq = (from & 0x70) | (to & 0xf);
+            self.squares[sq as usize].piece = None;
+        }
+        self.turn = self.chess.turn();
+        self.selected = None;
+        self.valid.clear();
+        self.update_highlights_after_move(from, to);
+        self.board_dirty = true;
+        let is_checkmate = self.chess.is_checkmate();
+        let is_stalemate = self.chess.is_stalemate();
+        let is_check = self.chess.is_check();
+        let fen = self.chess.fen();
+        self.on_move(&mv, fen, is_check, is_checkmate, is_stalemate);
+        Some(mv)
+    }
+
+    fn is_promotion_move(&self, from: i32, to: i32) -> bool {
+        match self.chess.get(from) {
+            Some(Piece { kind: Kind::P, color }) => (color == Side::W && to >> 4 == 0) || (color == Side::B && to >> 4 == 7),
+            _ => false,
+        }
+    }
+
+    /// tryMove: the move's promise resolves (`Js::Resolved(token)`) once its animation settles,
+    /// at once when it is illegal or abandoned.
+    fn try_move(&mut self, from: i32, to: i32, promotion: Option<Kind>, token: Option<u64>) {
+        if self.is_promotion_move(from, to) && promotion.is_none() {
+            // onPromotionRequired: a pending one is abandoned first.
+            if let Some(old) = self.promotion.take() {
+                if let Some(t) = old.token {
+                    self.js.push(Js::Resolved(t));
+                }
+            }
+            let color = self.chess.turn();
+            self.promotion = Some(Promotion { from, to, color, token, shown_ms: None, closing_ms: None, opacity: std::array::from_fn(|_| Timing::at(1.0)), held: None });
+            self.modal_dirty = true;
+            return;
+        }
+        self.attempt(from, to, promotion, token);
+    }
+
+    fn attempt(&mut self, from: i32, to: i32, promotion: Option<Kind>, token: Option<u64>) {
+        if self.execute_move(from, to, promotion, token).is_none() {
+            if let Some(t) = token {
+                self.js.push(Js::Resolved(t));
+            }
+        }
+    }
+
+    fn select_piece(&mut self, sq: i32) {
+        let piece = self.chess.get(sq);
+        if piece.map_or(true, |p| p.color != self.chess.turn()) {
+            self.selected = None;
+            self.valid.clear();
+        } else {
+            self.selected = Some(sq);
+            self.valid = self.chess.targets(sq);
+        }
+        self.board_dirty = true;
+    }
+
+    fn reset_board(&mut self, fen: &str, slide: Option<(i32, i32)>, last_move: Option<(i32, i32)>) {
+        if !self.chess.load(fen) {
+            return;
+        }
+        let ps = self.ps();
+        let now = self.now;
+        let board = self.chess.board();
+        for (row, cells) in board.iter().enumerate() {
+            for (col, cell) in cells.iter().enumerate() {
+                let sq = at(col, row);
+                let (x, y) = pos(sq, ps);
+                let q = &mut self.callbacks;
+                let s = &mut self.squares[sq as usize];
+                s.piece = *cell;
+                s.scale.set(1.0);
+                s.last_move = last_move.is_some_and(|(a, b)| sq == a || sq == b);
+                s.in_check = false;
+                match slide {
+                    Some((from, to)) if sq == to => {
+                        let fp = pos(from, ps);
+                        s.z = 100;
+                        s.tx.set(fp.0 as f64, q);
+                        s.ty.set(fp.1 as f64, q);
+                        let vertical = y != fp.1;
+                        let drop = Done::DropZ { sq };
+                        s.tx.spring(x as f64, MOVE_SPRING, now, (!vertical).then_some(drop), q);
+                        s.ty.spring(y as f64, MOVE_SPRING, now, vertical.then_some(drop), q);
+                    }
+                    _ => {
+                        s.tx.set(x as f64, q);
+                        s.ty.set(y as f64, q);
+                        s.z = 0;
+                    }
+                }
+            }
+        }
+        self.turn = self.chess.turn();
+        self.selected = None;
+        self.valid.clear();
+        self.last_move = last_move;
+        let in_check = self.chess.is_check();
+        let king = if in_check || self.chess.is_checkmate() { self.chess.king(self.chess.turn()) } else { None };
+        if let Some(k) = king {
+            self.squares[k as usize].in_check = true;
+        }
+        self.king_in_check = king;
+        self.board_dirty = true;
+    }
+
+    /// The completion callbacks the last steps and assignments queued, in order.
+    fn run_callbacks(&mut self) {
+        let ps = self.ps();
+        while !self.callbacks.is_empty() {
+            let batch = std::mem::take(&mut self.callbacks);
+            for (done, finished) in batch {
+                match done {
+                    Done::Commit { from, to, piece, token } => {
+                        if finished {
+                            let (x, y) = pos(from, ps);
+                            self.squares[to as usize].piece = piece;
+                            let q = &mut self.callbacks;
+                            let f = &mut self.squares[from as usize];
+                            f.piece = None;
+                            f.tx.set(x as f64, q);
+                            f.ty.set(y as f64, q);
+                            f.z = 0;
+                        }
+                        if let Some(t) = token {
+                            self.js.push(Js::Resolved(t));
+                        }
+                    }
+                    Done::Rook { from, to, piece } => {
+                        if finished {
+                            let (x, y) = pos(from, ps);
+                            self.squares[to as usize].piece = piece;
+                            let q = &mut self.callbacks;
+                            let f = &mut self.squares[from as usize];
+                            f.piece = None;
+                            f.tx.set(x as f64, q);
+                            f.ty.set(y as f64, q);
+                        }
+                    }
+                    Done::DropZ { sq } => self.squares[sq as usize].z = 0,
+                }
+                self.board_dirty = true;
+            }
+        }
+    }
+
+    // ---- use-board-gesture.ts ----
+
+    fn board_input(&mut self, id: u32, phase: Phase, x: f32, y: f32, ms: f64) {
+        let ps = self.ps();
+        let top = self.board_top();
+        let (bx, by) = (x, y - top);
+        let inside = bx >= 0.0 && bx < self.size.0 && by >= 0.0 && by < self.size.0;
+        let enabled = self.promotion.is_none();
+        let claim = phase == Phase::Down && inside && enabled;
+        let pan = self.pan.event(id, phase, bx, by, ms, claim);
+        let tap = self.tap.event(id, phase, bx, by, ms, claim);
+        match pan {
+            Event::Begin { x, y } => {
+                let sq = square_at(x, y, ps);
+                if sq & 0x88 == 0 && self.squares[sq as usize].piece.is_some() {
+                    let s = &self.squares[sq as usize];
+                    self.dragged = Some(sq);
+                    let cx = s.tx.s.value as f32 + ps / 2.0;
+                    let cy = s.ty.s.value as f32 + ps / 2.0;
+                    self.touch_offset = (x - cx, y - cy);
+                }
+            }
+            Event::Start(p) => {
+                if let Some(sq) = self.dragged {
+                    let s = &mut self.squares[sq as usize];
+                    s.z = 100;
+                    s.scale.assign(1.1, SCALE_SPRING.c, ms);
+                    let own = s.piece.is_some_and(|p| p.color == self.turn);
+                    if own {
+                        self.js.push(Js::Select(sq));
+                    }
+                    self.follow(sq, p.x, p.y);
+                }
+            }
+            Event::Update(p) => {
+                if let Some(sq) = self.dragged {
+                    self.follow(sq, p.x, p.y);
+                }
+            }
+            Event::End(_) => self.pan_end(ms),
+            _ => {}
+        }
+        if matches!(pan, Event::End(_) | Event::Fail) {
+            // onFinalize.
+            if let Some(sq) = self.dragged {
+                let s = &mut self.squares[sq as usize];
+                if s.z > 0 {
+                    s.scale.assign(1.0, SCALE_SPRING.c, ms);
+                    s.z = 0;
+                }
+            }
+            self.dragged = None;
+            self.board_dirty = true;
+        }
+        if let Event::Tap { x, y } = tap {
+            self.tap_end(x, y);
+        }
+    }
+
+    fn follow(&mut self, sq: i32, x: f32, y: f32) {
+        let ps = self.ps();
+        let (ox, oy) = self.touch_offset;
+        let q = &mut self.callbacks;
+        let s = &mut self.squares[sq as usize];
+        s.tx.set((x - ox - ps / 2.0) as f64, q);
+        s.ty.set((y - oy - ps / 2.0) as f64, q);
+        self.board_dirty = true;
+    }
+
+    fn pan_end(&mut self, ms: f64) {
+        let Some(sq) = self.dragged else { return };
+        let ps = self.ps();
+        if self.squares[sq as usize].z <= 0 {
+            self.dragged = None;
+            return;
+        }
+        self.squares[sq as usize].scale.assign(1.0, SCALE_SPRING.c, ms);
+        let own = self.squares[sq as usize].piece.is_some_and(|p| p.color == self.turn);
+        let home = pos(sq, ps);
+        let q = &mut self.callbacks;
+        if !own {
+            let s = &mut self.squares[sq as usize];
+            s.tx.spring(home.0 as f64, SNAP_BACK_SPRING, ms, None, q);
+            s.ty.spring(home.1 as f64, SNAP_BACK_SPRING, ms, None, q);
+            s.z = 0;
+            self.selected = None;
+            self.valid.clear();
+            self.dragged = None;
+            return;
+        }
+        let s = &self.squares[sq as usize];
+        let drop_x = (s.tx.s.value as f32 + ps / 2.0).clamp(0.0, ps * 8.0 - 1.0);
+        let drop_y = (s.ty.s.value as f32 + ps / 2.0).clamp(0.0, ps * 8.0 - 1.0);
+        let target = square_at(drop_x, drop_y, ps);
+        if target != sq && self.valid.contains(&target) {
+            let tp = pos(target, ps);
+            let s = &mut self.squares[sq as usize];
+            s.tx.spring(tp.0 as f64, MOVE_SPRING, ms, None, q);
+            s.ty.spring(tp.1 as f64, MOVE_SPRING, ms, None, q);
+            self.js.push(Js::TryMove { from: sq, to: target, promotion: None, token: None });
+            self.dragged = None;
+            return;
+        }
+        let s = &mut self.squares[sq as usize];
+        s.tx.spring(home.0 as f64, SNAP_BACK_SPRING, ms, None, q);
+        s.ty.spring(home.1 as f64, SNAP_BACK_SPRING, ms, None, q);
+        s.z = 0;
+        self.selected = None;
+        self.valid.clear();
+        self.dragged = None;
+    }
+
+    fn tap_end(&mut self, x: f32, y: f32) {
+        let sq = square_at(x, y, self.ps());
+        if sq & 0x88 != 0 {
+            return;
+        }
+        let own = self.squares[sq as usize].piece.is_some_and(|p| p.color == self.turn);
+        let Some(selected) = self.selected else {
+            if own {
+                self.js.push(Js::Select(sq));
+            }
+            return;
+        };
+        self.board_dirty = true;
+        if sq == selected {
+            self.selected = None;
+            self.valid.clear();
+            return;
+        }
+        if self.valid.contains(&sq) {
+            self.js.push(Js::TryMove { from: selected, to: sq, promotion: None, token: None });
+            return;
+        }
+        if own {
+            self.js.push(Js::Select(sq));
+            return;
+        }
+        self.selected = None;
+        self.valid.clear();
+    }
+
+    // ---- use-chess-game.ts ----
+
+    fn on_move(&mut self, mv: &chess::Move, fen: String, check: bool, mate: bool, stalemate: bool) {
+        let mover = mv.color;
+        self.plies.push(Ply { san: mv.san.clone(), fen, from: chess::square(&mv.from).unwrap(), to: chess::square(&mv.to).unwrap() });
+        self.set_selected_ply(self.selected_ply + 1);
+        if let Some(k) = mv.captured {
+            self.captured[mover as usize].push(k);
+        }
+        self.status = if mate {
+            "Checkmate".into()
+        } else if stalemate {
+            "Stalemate".into()
+        } else if check {
+            "Check".into()
+        } else if mover == Side::W {
+            "Black to move".into()
+        } else {
+            "White to move".into()
+        };
+        self.turn_sv = mover.other();
+        self.game_over = mate || stalemate;
+        self.started = true;
+        if mate {
+            self.mate_haptics = MATE
+                .iter()
+                .map(|&(t, a)| {
+                    (
+                        self.now + t,
+                        if a >= 0.9 {
+                            "haptic:impact-heavy"
+                        } else if a >= 0.5 {
+                            "haptic:impact-medium"
+                        } else {
+                            "haptic:impact-light"
+                        },
+                    )
+                })
+                .collect();
+            self.aura_timer = Some((self.now + AURA_DELAY, mover));
+        } else if mv.captured.is_some() {
+            self.messages.push("haptic:impact-medium".into());
+        } else if check {
+            self.messages.push("haptic:impact-rigid".into());
+        } else {
+            self.messages.push("haptic:impact-light".into());
+        }
+    }
+
+    /// gameResultAtom.
+    fn winner(&self) -> Option<Side> {
+        (self.status == "Checkmate").then(|| if self.plies.len() % 2 == 1 { Side::W } else { Side::B })
+    }
+
+    /// selectedPlyAtom's writes, with HistorySync's subscription.
+    fn set_selected_ply(&mut self, v: i32) {
+        if v == self.selected_ply {
+            return;
+        }
+        self.selected_ply = v;
+        let (from, prev_len) = self.history_prev;
+        let to = v;
+        let grew = self.plies.len() > prev_len;
+        self.history_prev = (to, self.plies.len());
+        if self.running || grew || to == from || to >= self.plies.len() as i32 {
+            return;
+        }
+        let last = (to >= 0).then(|| (self.plies[to as usize].from, self.plies[to as usize].to));
+        let slide = if to == from + 1 && to >= 0 {
+            Some((self.plies[to as usize].from, self.plies[to as usize].to))
+        } else if to == from - 1 && from >= 0 && (from as usize) < self.plies.len() {
+            Some((self.plies[from as usize].to, self.plies[from as usize].from))
+        } else {
+            None
+        };
+        let fen = if to < 0 { START_FEN.to_string() } else { self.plies[to as usize].fen.clone() };
+        self.reset_board(&fen, slide, last);
+    }
+
+    /// resetGameAtom.
+    fn reset_game(&mut self) {
+        self.plies.clear();
+        self.set_selected_ply(-1);
+        self.captured = initial_captures();
+        self.status = "White to move".into();
+        self.turn_sv = Side::W;
+        self.game_over = false;
+        self.started = false;
+        self.clock = CLOCK_START;
+    }
+
+    fn play_sequence(&mut self) {
+        if self.running {
+            return;
+        }
+        self.replay_gen += 1;
+        self.running = true;
+        self.reset_board(START_FEN, None, None);
+        self.reset_game();
+        self.replay = Some((self.replay_gen, Replay::Wait { until: self.now + START_DELAY, next: 0 }));
+    }
+
+    fn rematch(&mut self) {
+        self.replay_gen += 1;
+        self.running = false;
+        self.replay = None;
+        self.aura_timer = None;
+        self.mate_haptics.clear();
+        self.hide();
+        self.reset_board(START_FEN, None, None);
+        self.reset_game();
+    }
+
+    fn hide(&mut self) {
+        if let Some(a) = self.aura.as_mut() {
+            a.vis.to(0.0, EXIT_MS, Easing::r#in(Easing::Cubic));
+        }
+    }
+
+    fn replay_step(&mut self) {
+        let Some((gen, step)) = self.replay else {
+            return;
+        };
+        if gen != self.replay_gen {
+            self.replay = None;
+            return;
+        }
+        if let Replay::Wait { until, next } = step {
+            if self.now < until {
+                return;
+            }
+            if next >= REPLAY_MOVES.len() {
+                self.replay = None;
+                self.running = false;
+                return;
+            }
+            let (a, b) = REPLAY_MOVES[next];
+            let token = self.next_token;
+            self.next_token += 1;
+            self.replay = Some((gen, Replay::Move { index: next, token }));
+            self.try_move(chess::square(a).unwrap(), chess::square(b).unwrap(), None, Some(token));
+        }
+    }
+
+    fn resolved(&mut self, token: u64) {
+        if let Some((gen, Replay::Move { index, token: t })) = self.replay {
+            if t == token && gen == self.replay_gen {
+                self.replay = Some((gen, Replay::Wait { until: self.now + MOVE_GAP, next: index + 1 }));
+            }
+        }
+    }
+
+    fn run_js(&mut self) {
+        while !self.js.is_empty() {
+            let batch = std::mem::take(&mut self.js);
+            for j in batch {
+                match j {
+                    Js::TryMove { from, to, promotion, token } => self.try_move(from, to, promotion, token),
+                    Js::Select(sq) => self.select_piece(sq),
+                    Js::Resolved(t) => self.resolved(t),
+                }
+            }
+            self.run_callbacks();
+        }
+    }
+
+    /// The timers of the game, the aura and the clocks, up to `now`.
+    fn timers(&mut self) {
+        let now = self.now;
+        while let Some(t) = self.next_tick {
+            if t > now {
+                break;
+            }
+            self.next_tick = Some(t + 1000.0);
+            if self.started && !self.game_over {
+                let c = &mut self.clock[self.turn_sv as usize];
+                *c = (*c - 1).max(0);
+            }
+        }
+        while let Some(&(t, kind)) = self.mate_haptics.first() {
+            if t > now {
+                break;
+            }
+            self.mate_haptics.remove(0);
+            self.messages.push(kind.into());
+        }
+        if let Some((t, mover)) = self.aura_timer {
+            if t <= now {
+                // showAura: measureInWindow resolves a frame later.
+                self.aura_timer = None;
+                self.show_at = Some((now + 16.0, mover));
+            }
+        }
+        if let Some((t, mover)) = self.show_at {
+            if t <= now {
+                self.show_at = None;
+                self.show(mover);
+            }
+        }
+        if let Some(a) = self.aura.as_mut() {
+            if a.card.is_none() && a.card_at <= now {
+                a.card = Some(now);
+                self.sheet_dirty = true;
+            }
+        }
+        self.replay_step();
+    }
+
+    /// show(): the snapshot of the screen, the overlay a frame after, the card 900 ms on.
+    fn show(&mut self, mover: Side) {
+        if self.busy {
+            return;
+        }
+        let king_color = mover.other();
+        let Some(k) = self.chess_from_fen_king(king_color) else {
+            return;
+        };
+        self.busy = true;
+        let ps = self.ps();
+        let (col, row) = ((k & 0xf) as f32, (k >> 4) as f32);
+        let origin = (col * ps + ps / 2.0, self.board_top() + row * ps + ps / 2.0);
+        self.aura = Some(Aura {
+            origin,
+            winner: mover,
+            snapshot_at: None,
+            revealed: false,
+            progress: Timing::at(0.0),
+            breath: Pulse::at(0.0),
+            vis: Timing::at(0.0),
+            card_at: self.now + (WAVE_MS * 0.55).round() - 750.0,
+            card: None,
+        });
+    }
+
+    /// kingFromFen on the last ply's FEN (the position on the board at the mate).
+    fn chess_from_fen_king(&self, color: Side) -> Option<i32> {
+        let fen = self.plies.last().map(|p| p.fen.as_str()).unwrap_or(START_FEN);
+        let placement = fen.split(' ').next()?;
+        let target = if color == Side::W { 'K' } else { 'k' };
+        for (row, rank) in placement.split('/').enumerate() {
+            let mut file = 0;
+            for ch in rank.chars() {
+                if let Some(d) = ch.to_digit(10) {
+                    file += d as usize;
+                } else {
+                    if ch == target {
+                        return Some(at(file, row));
+                    }
+                    file += 1;
+                }
+            }
+        }
+        None
+    }
+
+    // ---- layout ----
+
+    fn hair(&self) -> f32 {
+        // StyleSheet.hairlineWidth: PixelRatio.roundToNearestPixel(0.4).
+        ((0.4 * self.scale).round().max(1.0)) / self.scale
+    }
+
+    fn card_h(&self) -> f32 {
+        40.0 + 12.0 + 2.0 * self.hair()
+    }
+
+    /// The top group's top (black card), centred in the board zone.
+    fn group_top(&self) -> f32 {
+        let s = self.scale;
+        let zone = self.size.1 - 40.0;
+        let group = 2.0 * self.card_h() + 20.0 + self.size.0;
+        12.0 + snap((zone - group) / 2.0, s)
+    }
+
+    fn board_top(&self) -> f32 {
+        self.group_top() + self.card_h() + 10.0
+    }
+
+    fn card_top(&self, side: Side) -> f32 {
+        match side {
+            Side::B => self.group_top(),
+            Side::W => self.board_top() + self.size.0 + 10.0,
+        }
+    }
+
+    fn clock_text(&self, side: Side) -> String {
+        let s = self.clock[side as usize];
+        format!("{}:{:02}", s / 60, s % 60)
+    }
+
+    // ---- the review card's layout (game-review-card.tsx), at rest ----
+
+    fn review_rows(&self) -> Vec<(Q, usize, usize)> {
+        TABLE_ORDER
+            .iter()
+            .map(|&q| {
+                let you = REVIEW.iter().enumerate().filter(|(i, m)| i % 2 == 0 && **m == q).count();
+                let opp = REVIEW.iter().enumerate().filter(|(i, m)| i % 2 == 1 && **m == q).count();
+                (q, you, opp)
+            })
+            .filter(|r| r.1 + r.2 > 0)
+            .collect()
+    }
+
+    fn line(&self, font: &Option<Font>) -> f32 {
+        font.as_ref().map_or(0.0, |f| ceil_px(gfx::line_height(f), self.scale))
+    }
+
+    /// Each section's rect at rest, its delay, and the two buttons.
+    fn layout_sections(&mut self) {
+        let s = self.scale;
+        let hair = self.hair();
+        let rows = self.review_rows().len();
+        let header = self.line(&self.fonts.kicker) + 5.0 + self.line(&self.fonts.title) + 12.0;
+        let icon = |f: &Option<Font>| f.as_ref().map_or(0.0, |f| ceil_px(gfx::line_height(f), s));
+        let inner = self.line(&self.fonts.button).max(icon(&self.fonts.icon_back)).max(icon(&self.fonts.icon_replay));
+        let button_h = 24.0 + inner;
+        let total = header + 38.0 * 3.0 + 2.0 + (12.0 + hair) + 34.0 * rows as f32 + 16.0 + button_h;
+        let (left, width) = (22.0, self.size.0 - 44.0);
+        let mut y = snap(self.size.1 - 40.0 - total, s);
+        let mut out = Vec::new();
+        let mut push = |y: &mut f32, h: f32, after: f32, delay: f64| {
+            out.push(Section { rect: [left, snap(*y, s), width, h], delay, button: None });
+            *y += h + after;
+        };
+        push(&mut y, header, 0.0, 0.0);
+        push(&mut y, 38.0, 0.0, 55.0);
+        push(&mut y, 38.0, 0.0, 95.0);
+        push(&mut y, 38.0, 2.0, 135.0);
+        push(&mut y, 12.0 + hair, 0.0, 170.0);
+        for i in 0..rows {
+            push(&mut y, 34.0, 0.0, 190.0 + 30.0 * i as f64);
+        }
+        y += 16.0;
+        let delay = 190.0 + 30.0 * rows as f64 + 40.0;
+        let bw = (width - 10.0) / 2.0;
+        let top = snap(y, s);
+        out.push(Section { rect: [left, top, snap(bw, s), button_h], delay, button: Some(0) });
+        out.push(Section { rect: [left + snap(bw + 10.0, s), top, width - snap(bw + 10.0, s), button_h], delay, button: Some(1) });
+        self.sections = out;
+    }
+
+    /// A section's enter() progress at `now`: opacity, translateY, scale.
+    fn enter(&self, sec: &Section) -> (f32, f32, f32) {
+        let Some(card) = self.aura.as_ref().and_then(|a| a.card) else {
+            return (0.0, 9.0, 0.985);
+        };
+        let t = ((self.now - card - sec.delay) / 400.0).clamp(0.0, 1.0);
+        let e = Easing::bezier(0.16, 0.84, 0.44, 1.0).at(t) as f32;
+        (e, 9.0 * (1.0 - e), 0.985 + 0.015 * e)
+    }
+
+    fn entering(&self) -> bool {
+        let Some(card) = self.aura.as_ref().and_then(|a| a.card) else {
+            return false;
+        };
+        self.sections.iter().any(|s| self.now - card - s.delay < 400.0)
+    }
+
+    /// The button's hit test, through its section's and its own transform.
+    fn in_button(&self, i: usize, x: f32, y: f32) -> bool {
+        let Some(sec) = self.sections.iter().find(|s| s.button == Some(i)) else {
+            return false;
+        };
+        let [l, t, w, h] = sec.rect;
+        let (_, ty, sc) = self.enter(sec);
+        let k = self.buttons[i].scale() as f32 * sc;
+        let (cx, cy) = (l + w / 2.0, t + h / 2.0 + ty);
+        (x - cx).abs() <= w / 2.0 * k && (y - cy).abs() <= h / 2.0 * k
+    }
+
+    // ---- the promotion dialog's layout ----
+
+    fn modal_rects(&self) -> ([f32; 4], [[f32; 4]; 4]) {
+        let (w, h) = (16.0 + 4.0 * (64.0 + 8.0), 80.0);
+        let x = snap((self.size.0 - w) / 2.0, self.scale);
+        let y = snap((self.size.1 - h) / 2.0, self.scale);
+        let buttons = std::array::from_fn(|i| [x + 8.0 + 4.0 + i as f32 * 72.0, y + 8.0, 64.0, 64.0]);
+        ([x, y, w, h], buttons)
+    }
+
+    /// Modal fade (crossDissolve) × FadeIn(200), and whether it still shows.
+    fn modal_alpha(&self) -> (f32, f32) {
+        let Some(p) = self.promotion.as_ref() else {
+            return (0.0, 0.0);
+        };
+        let Some(shown) = p.shown_ms else {
+            return (0.0, 0.0);
+        };
+        let ease = Easing::in_out(Easing::Quad);
+        let fade_in = ((self.now - shown) / 300.0).clamp(0.0, 1.0);
+        let mut m = ease.at(fade_in) as f32;
+        if let Some(c) = p.closing_ms {
+            m = 1.0 - ease.at(((self.now - c) / 300.0).clamp(0.0, 1.0)) as f32;
+        }
+        let f = ((self.now - shown) / 200.0).clamp(0.0, 1.0) as f32;
+        (m, f)
+    }
+
+    fn modal_input(&mut self, id: u32, phase: Phase, x: f32, y: f32) {
+        let (_, buttons) = self.modal_rects();
+        let hit = |r: [f32; 4], slop: bool| {
+            let (l, t, rr, b) = if slop { (20.0, 20.0, 20.0, 30.0) } else { (0.0, 0.0, 0.0, 0.0) };
+            x >= r[0] - l && x <= r[0] + r[2] + rr && y >= r[1] - t && y <= r[1] + r[3] + b
+        };
+        let Some(p) = self.promotion.as_mut() else {
+            return;
+        };
+        if p.closing_ms.is_some() {
+            return;
+        }
+        let now = self.now;
+        match phase {
+            Phase::Down => {
+                if p.held.is_some() {
+                    return;
+                }
+                let button = (0..4).find(|&i| hit(buttons[i], false));
+                if let Some(i) = button {
+                    p.opacity[i].set(0.7);
+                }
+                p.held = Some((id, button, true));
+                self.modal_dirty = true;
+            }
+            Phase::Move => {
+                if let Some((hid, Some(i), inside)) = p.held {
+                    if hid == id {
+                        let now_inside = hit(buttons[i], true);
+                        if now_inside != inside {
+                            if now_inside {
+                                p.opacity[i].to(0.7, 150.0, Easing::in_out(Easing::Quad));
+                            } else {
+                                p.opacity[i].to(1.0, 250.0, Easing::in_out(Easing::Quad));
+                            }
+                            p.held = Some((id, Some(i), now_inside));
+                        }
+                    }
+                }
+            }
+            Phase::Up | Phase::Cancel => {
+                let Some((hid, button, inside)) = p.held else {
+                    return;
+                };
+                if hid != id {
+                    return;
+                }
+                p.held = None;
+                if let Some(i) = button {
+                    if inside {
+                        p.opacity[i].to(1.0, 250.0, Easing::in_out(Easing::Quad));
+                    }
+                    if phase == Phase::Up && inside {
+                        self.promotion_select(PROMOTION_PIECES[i], now);
+                    }
+                } else if phase == Phase::Up {
+                    self.promotion_cancel(now);
+                }
+            }
+        }
+    }
+
+    fn promotion_select(&mut self, piece: Kind, now: f64) {
+        let Some(p) = self.promotion.as_mut() else {
+            return;
+        };
+        p.closing_ms = Some(now);
+        let (from, to, token) = (p.from, p.to, p.token);
+        self.attempt(from, to, Some(piece), token);
+        self.run_callbacks();
+    }
+
+    fn promotion_cancel(&mut self, now: f64) {
+        let Some(p) = self.promotion.as_mut() else {
+            return;
+        };
+        p.closing_ms = Some(now);
+        let (from, token) = (p.from, p.token);
+        let home = pos(from, self.ps());
+        let q = &mut self.callbacks;
+        let s = &mut self.squares[from as usize];
+        s.tx.spring(home.0 as f64, SNAP_BACK_SPRING, now, None, q);
+        s.ty.spring(home.1 as f64, SNAP_BACK_SPRING, now, None, q);
+        s.scale.assign(1.0, SCALE_SPRING.c, now);
+        s.z = 0;
+        self.selected = None;
+        self.valid.clear();
+        self.board_dirty = true;
+        if let Some(t) = token {
+            self.js.push(Js::Resolved(t));
+        }
+        self.run_callbacks();
+    }
+
+    // ---- stepping ----
+
+    fn step(&mut self) -> bool {
+        let now = self.now;
+        let mut moving = false;
+        let mut board = false;
+        for i in 0..128usize {
+            if i & 0x88 != 0 {
+                continue;
+            }
+            let q = &mut self.callbacks;
+            let s = &mut self.squares[i];
+            board |= s.tx.step(now, q);
+            board |= s.ty.step(now, q);
+            board |= s.scale.step(now);
+            let last = if s.last_move { 1.0 } else { 0.0 };
+            if s.last_fade.target() != last {
+                s.last_fade.to(last, 180.0, Easing::Linear);
+            }
+            let check = if s.in_check { 1.0 } else { 0.0 };
+            if s.check_fade.target() != check {
+                s.check_fade.to(check, 180.0, Easing::Linear);
+            }
+            board |= s.last_fade.step(now);
+            board |= s.check_fade.step(now);
+        }
+        self.run_callbacks();
+        if board {
+            self.board_dirty = true;
+        }
+        moving |= board;
+        for side in [Side::W, Side::B] {
+            let to_move = !self.game_over && self.turn_sv == side;
+            let c = &mut self.cards[side as usize];
+            if c.to_move != Some(to_move) {
+                c.to_move = Some(to_move);
+                c.active.to(if to_move { 1.0 } else { 0.0 }, 280.0, Easing::timing_default());
+                c.active.step(now);
+                if to_move {
+                    c.pulse.repeat(950.0, Easing::in_out(Easing::Ease), now);
+                } else {
+                    c.pulse.timing(0.0, 200.0, Easing::timing_default());
+                    c.pulse.step(now);
+                }
+            }
+            moving |= c.active.step(now);
+            moving |= c.pulse.step(now);
+        }
+        if let Some(a) = self.aura.as_mut() {
+            moving |= a.progress.step(now);
+            moving |= a.breath.step(now);
+            let was = a.vis.value;
+            moving |= a.vis.step(now);
+            // The reaction on vis: fully hidden → the snapshot and the card go.
+            if was > 0.01 && a.vis.value <= 0.01 {
+                self.aura = None;
+                self.busy = false;
+                self.sheet_dirty = true;
+            }
+        }
+        moving |= self.entering();
+        for b in self.buttons.iter_mut() {
+            moving |= b.step(now);
+        }
+        if let Some(p) = self.promotion.as_mut() {
+            if p.shown_ms.is_none() {
+                p.shown_ms = Some(now);
+            }
+            for o in p.opacity.iter_mut() {
+                if o.step(now) {
+                    self.modal_dirty = true;
+                }
+            }
+            if let Some(c) = p.closing_ms {
+                if now - c >= 300.0 {
+                    self.promotion = None;
+                }
+            }
+            moving = true;
+        }
+        moving
+    }
+}
+
+// ---- drawing ----
+
+impl Chessboard {
+    /// react-native-chessboard's canvas: BoardBackground, SkiaHighlights, SkiaDots, the atlas.
+    fn draw_board(&mut self) {
+        let ps = self.ps();
+        let s = self.scale;
+        if self.fonts.board.is_none() {
+            self.fonts.board = skia::match_system_font(ps * 0.15, 400.0);
+        }
+        let c = &mut self.canvas;
+        c.begin(s);
+        let light = Color::hex(theme::BOARD_LIGHT);
+        let dark = Color::hex(theme::BOARD_DARK);
+        for row in 0..8 {
+            for col in 0..8 {
+                let is_light = (row + col) % 2 == 0;
+                c.draw_rect(col as f32 * ps, row as f32 * ps, ps, ps, &Paint::fill(if is_light { light } else { dark }));
+            }
+        }
+        if let Some(font) = self.fonts.board.as_ref() {
+            const COLUMNS: &str = "abcdefgh";
+            for col in 0..8 {
+                let (x, y) = (col as f32 * ps, 7.0 * ps);
+                let is_light = (7 + col) % 2 == 0;
+                let color = if is_light { dark } else { light };
+                c.draw_text(&COLUMNS[col..col + 1], x + ps - ps * 0.15, y + ps - ps * 0.05, font, &Paint::fill(color));
+            }
+            for row in 0..8 {
+                let y = row as f32 * ps;
+                let is_light = row % 2 == 0;
+                let color = if is_light { dark } else { light };
+                c.draw_text(&(8 - row).to_string(), ps * 0.05, y + ps * 0.18, font, &Paint::fill(color));
+            }
+        }
+        let last = Color::parse("rgba(58, 145, 248, 0.4)");
+        let check = Color::hex(theme::LOSE);
+        for row in 0..8 {
+            for col in 0..8 {
+                let sq = &self.squares[at(col, row) as usize];
+                let (x, y) = (col as f32 * ps, row as f32 * ps);
+                if sq.last_fade.value > 0.0 {
+                    c.draw_rect(x, y, ps, ps, &Paint::fill(last).with_opacity(sq.last_fade.value as f32));
+                }
+                if sq.check_fade.value > 0.0 {
+                    c.draw_rect(x, y, ps, ps, &Paint::fill(check).with_opacity(sq.check_fade.value as f32));
+                }
+            }
+        }
+        if !self.valid.is_empty() {
+            let r = ps * 0.15;
+            let valid = self.valid.clone();
+            c.draw_with(&Paint::fill(Color::rgba8(0, 0, 0, 255).alpha(0.3)).with_opacity(0.5), |b| {
+                for &m in &valid {
+                    let (x, y) = pos(m, ps);
+                    skia::add_circle(b, x + ps / 2.0, y + ps / 2.0, r);
+                }
+            });
+        }
+        if let Some(sprite) = self.sprite.as_ref() {
+            let mut pieces: Vec<(i32, i32, Piece)> = Vec::new();
+            for row in 0..8 {
+                for col in 0..8 {
+                    let sq = at(col, row);
+                    if let Some(p) = self.squares[sq as usize].piece {
+                        pieces.push((self.squares[sq as usize].z, sq, p));
+                    }
+                }
+            }
+            pieces.sort_by_key(|p| p.0);
+            let cell = 128.0;
+            let mut rects = Vec::with_capacity(pieces.len());
+            let mut xf = Vec::with_capacity(pieces.len());
+            for (_, sq, p) in pieces {
+                let st = &self.squares[sq as usize];
+                rects.push(skia::Rect { x: p.kind.column() as f32 * cell, y: p.color as usize as f32 * cell, width: cell, height: cell });
+                let k = st.scale.value as f32 * ps / cell;
+                let (cx, cy) = (st.tx.s.value as f32 + ps / 2.0, st.ty.s.value as f32 + ps / 2.0);
+                xf.push(RsXform { scos: k, ssin: 0.0, tx: cx - cell / 2.0 * k, ty: cy - cell / 2.0 * k });
+            }
+            c.draw_atlas(sprite.image(0), &rects, &xf, None, false);
+        }
+    }
+
+    /// The two player cards (player-card.tsx).
+    fn draw_cards(&mut self) {
+        let mut c = std::mem::take(&mut self.canvas);
+        c.begin(self.scale);
+        for side in [Side::B, Side::W] {
+            self.draw_card(&mut c, side);
+        }
+        self.canvas = c;
+    }
+
+    fn draw_card(&self, c: &mut Canvas, side: Side) {
+        let s = self.scale;
+        let hair = self.hair();
+        let f = &self.fonts;
+        let anim = &self.cards[side as usize];
+        let active = anim.active.value;
+        let pulse = anim.pulse.value();
+        let (x0, y0) = (16.0, self.card_top(side));
+        let (w, h) = (self.size.0 - 32.0, self.card_h());
+        // Card: the continuous background layer, RCTBorderDrawing's circular ring over it.
+        let a = fixed3(active);
+        if a > 0.0 {
+            c.draw_continuous_rrect(x0, y0, w, h, 18.0, &Paint::fill(view(theme::SURFACE, a)));
+            c.draw_path(&skia::border_ring_path(x0, y0, w, h, 18.0, hair), &Paint::fill(view(theme::BORDER, a)));
+        }
+        let (cx, cy) = (x0 + hair + 6.0, y0 + hair + 6.0);
+        let cw = w - 2.0 * (hair + 6.0);
+        // Avatar: 40, radius 12 continuous, clipped, Core Animation's hairline border.
+        if let Some(images) = self.images.as_ref() {
+            c.save();
+            c.clip_continuous_rrect(cx, cy, 40.0, 40.0, 12.0);
+            let img = images.image(avatar_image(side, true));
+            c.draw_rect(cx, cy, 40.0, 40.0, &Paint::image(img, Matrix::scale(img.width / 40.0, img.height / 40.0).then(Matrix::translate(-cx * img.width / 40.0, -cy * img.height / 40.0))));
+            c.restore();
+        }
+        c.draw_with(&Paint::fill(Color::rgba8(255, 255, 255, 255).alpha(0.14)), |b| {
+            skia::add_continuous_rrect(b, cx, cy, 40.0, 40.0, 12.0);
+            skia::add_continuous_rrect_hole(b, cx + hair, cy + hair, 40.0 - 2.0 * hair, 40.0 - 2.0 * hair, 12.0 - hair);
+        });
+        // Clock: paddings 9, the dot slot (6 × active, margin 6 × active), the 44-wide readout.
+        let rt_h = self.line(&f.clock);
+        let ch = 18.0 + rt_h;
+        let clock_w = 62.0 + 12.0 * active as f32;
+        let clock_l = snap(cx + cw - clock_w, s);
+        let clock_r = snap(cx + cw, s);
+        let clock_t = cy + snap((40.0 - ch) / 2.0, s);
+        c.save();
+        c.clip_continuous_rrect(clock_l, clock_t, clock_r - clock_l, ch, 12.0);
+        c.draw_rect(clock_l, clock_t, clock_r - clock_l, ch, &Paint::fill(view(theme::SURFACE_HI, 1.0)));
+        if active > 0.0 {
+            c.draw_rect(clock_l, clock_t, clock_r - clock_l, ch, &Paint::fill(view(theme::ACCENT, 0.15)).with_opacity(active as f32));
+        }
+        c.restore();
+        let slot = 6.0 * active as f32;
+        let slot_l = snap(clock_l + 9.0, s);
+        if slot > 0.0 {
+            let op = (active * (0.45 + pulse * 0.55)) as f32;
+            let k = (0.8 + pulse * 0.5) as f32;
+            let (dx, dy) = (slot_l + snap(slot, s) / 2.0, clock_t + ch / 2.0);
+            c.save();
+            c.concat(Matrix::translate(-dx, -dy).then(Matrix::scale(k, k)).then(Matrix::translate(dx, dy)));
+            c.draw_continuous_rrect(slot_l, snap(clock_t + (ch - 6.0) / 2.0, s), snap(slot, s), 6.0, 3.0, &Paint::fill(view(theme::ACCENT, 1.0)).with_opacity(op));
+            c.restore();
+        }
+        if let Some(font) = f.clock.as_ref() {
+            let text = self.clock_text(side);
+            let tw = font.advance_width_spaced(&text, 0.3);
+            let rl = snap(clock_l + 9.0 + slot + slot, s);
+            let color = view(mix_gamma(theme::TEXT_MUTED, theme::TEXT, active), 1.0);
+            // ReText (a UITextField): centred in its 44, a device pixel above a Text's line.
+            let top = clock_t + 9.0 - 1.0 / s;
+            draw_line(c, &text, rl + (44.0 - tw) / 2.0, top, font, color, 0.3, s);
+        }
+        // Info: the name row (name, rating, result tag) and the capture tray, gap 3.
+        let info_l = cx + 40.0 + 12.0;
+        let name_h = self.line(&f.name);
+        let info_t = cy + snap((40.0 - (name_h + 3.0 + 16.0)) / 2.0, s);
+        let mut x = info_l;
+        if let Some(font) = f.name.as_ref() {
+            draw_line(c, NAME[side as usize], x, info_t, font, view(theme::TEXT, 1.0), -0.1, s);
+            x += ceil_px(font.advance_width_spaced(NAME[side as usize], -0.1), s) + 8.0;
+        }
+        if let Some(font) = f.rating.as_ref() {
+            let rh = self.line(&f.rating);
+            draw_line(c, RATING[side as usize], x, info_t + floor_px((name_h - rh) / 2.0, s), font, view(theme::TEXT_MUTED, 1.0), 0.2, s);
+            x += ceil_px(font.advance_width_spaced(RATING[side as usize], 0.2), s) + 8.0;
+        }
+        if let (Some(winner), Some(font)) = (self.winner(), f.tag.as_ref()) {
+            let won = winner == side;
+            let label = if won { "WON" } else { "LOST" };
+            let tw = ceil_px(font.advance_width_spaced(label, 0.6), s) + 12.0;
+            let th = self.line(&f.tag) + 4.0;
+            let tt = info_t + floor_px((name_h - th) / 2.0, s);
+            let hue = if won { theme::ACCENT } else { theme::LOSE };
+            c.draw_continuous_rrect(x, tt, tw, th, 5.0, &Paint::fill(view(hue, 0.15)));
+            draw_line(c, label, x + 6.0, tt + 2.0, font, view(hue, 1.0), 0.6, s);
+        }
+        // Tray: the foe's pieces, value-sorted, 16 each overlapping 5; the material lead.
+        let tray_t = info_t + name_h + 3.0;
+        let mut pieces = self.captured[side as usize].clone();
+        pieces.sort_by_key(|&k| value(k));
+        let foe = side.other();
+        let mut tx = info_l;
+        if let Some(images) = self.images.as_ref() {
+            for (i, &k) in pieces.iter().enumerate() {
+                let px = info_l + i as f32 * 11.0;
+                let img = images.image(tray_image(foe, k));
+                c.draw_rect(
+                    px,
+                    tray_t,
+                    16.0,
+                    16.0,
+                    &Paint::image(img, Matrix::scale(img.width / 16.0, img.height / 16.0).then(Matrix::translate(-px * img.width / 16.0, -tray_t * img.height / 16.0))),
+                );
+            }
+        }
+        if !pieces.is_empty() {
+            tx = info_l + 16.0 + 11.0 * (pieces.len() - 1) as f32 + 5.0;
+        }
+        let mat = |side: usize| self.captured[side].iter().map(|&k| value(k)).sum::<i32>();
+        let lead = if side == Side::W { (mat(0) - mat(1)).max(0) } else { (mat(1) - mat(0)).max(0) };
+        if lead > 0 {
+            if let Some(font) = f.lead.as_ref() {
+                let lh = self.line(&f.lead);
+                draw_line(c, &format!("+{lead}"), tx, tray_t + floor_px((16.0 - lh) / 2.0, s), font, view(theme::TEXT_MUTED, 1.0), 0.0, s);
+            }
+        }
+    }
+
+    /// The review card's sections at rest (the sheet the composite moves).
+    fn draw_sheet(&mut self) {
+        let mut c = std::mem::take(&mut self.canvas);
+        c.begin(self.scale);
+        let s = self.scale;
+        let f = &self.fonts;
+        let hair = self.hair();
+        let winner = self.aura.as_ref().map_or(Side::W, |a| a.winner);
+        let rows = self.review_rows();
+        let secs = self.sections.clone();
+        let right_block = |l: f32, w: f32| (l + w - 168.0, l + w - 106.0, l + w - 62.0);
+        let centre = |c: &mut Canvas, t: &str, col: f32, top: f32, font: &Font, color: Color, spacing: f32| {
+            let w = font.advance_width_spaced(t, spacing);
+            draw_line(c, t, col + (62.0 - w) / 2.0, top, font, color, spacing, s);
+        };
+        for (k, sec) in secs.iter().enumerate() {
+            let [l, t, w, h] = sec.rect;
+            match (k, sec.button) {
+                (0, _) => {
+                    if let Some(font) = f.kicker.as_ref() {
+                        draw_line(&mut c, "GAME REVIEW", l, t, font, view(theme::TEXT_MUTED, 1.0), 2.0, s);
+                    }
+                    if let Some(font) = f.title.as_ref() {
+                        let subtitle = format!("{} wins", NAME[winner as usize]);
+                        draw_line(&mut c, &subtitle, l, t + self.line(&f.kicker) + 5.0, font, view(theme::TEXT, 1.0), -0.9, s);
+                    }
+                }
+                (1, _) => {
+                    let (c1, _, c2) = right_block(l, w);
+                    if let Some(font) = f.h_name.as_ref() {
+                        let top = t + floor_px((38.0 - self.line(&f.h_name)) / 2.0, s);
+                        centre(&mut c, NAME[0], c1, top, font, view(theme::TEXT_MUTED, 1.0), 0.0);
+                        centre(&mut c, NAME[1], c2, top, font, view(theme::TEXT_MUTED, 1.0), 0.0);
+                    }
+                }
+                (2, _) | (3, _) => {
+                    let (c1, _, c2) = right_block(l, w);
+                    if let Some(font) = f.h_label.as_ref() {
+                        let top = t + floor_px((38.0 - self.line(&f.h_label)) / 2.0, s);
+                        draw_line(&mut c, if k == 2 { "Players" } else { "Accuracy" }, l, top, font, view(theme::TEXT_MUTED, 1.0), 0.0, s);
+                    }
+                    if k == 2 {
+                        if let Some(images) = self.images.as_ref() {
+                            for (i, col) in [c1, c2].into_iter().enumerate() {
+                                let (ax, ay) = (col + 14.0, t + 2.0);
+                                c.save();
+                                c.clip_continuous_rrect(ax, ay, 34.0, 34.0, 10.0);
+                                let img = images.image(avatar_image(if i == 0 { Side::W } else { Side::B }, false));
+                                let k = img.width / 34.0;
+                                c.draw_rect(ax, ay, 34.0, 34.0, &Paint::image(img, Matrix::scale(k, k).then(Matrix::translate(-ax * k, -ay * k))));
+                                c.restore();
+                                c.draw_with(&Paint::fill(Color::rgba8(255, 255, 255, 255).alpha(0.14)), |b| {
+                                    skia::add_continuous_rrect(b, ax, ay, 34.0, 34.0, 10.0);
+                                    skia::add_continuous_rrect_hole(b, ax + hair, ay + hair, 34.0 - 2.0 * hair, 34.0 - 2.0 * hair, 10.0 - hair);
+                                });
+                            }
+                        }
+                    } else if let Some(font) = f.pill.as_ref() {
+                        let ph = 12.0 + self.line(&f.pill);
+                        for (i, col) in [c1, c2].into_iter().enumerate() {
+                            let won = (i == 0) == (winner == Side::W);
+                            let (px, py) = (col + 3.0, t + snap((38.0 - ph) / 2.0, s));
+                            c.draw_continuous_rrect(px, py, 56.0, ph, 9.0, &Paint::fill(if won { view(theme::ACCENT, 1.0) } else { view(theme::TEXT, 0.10) }));
+                            let tw = ceil_px(font.advance_width(ACCURACY[i]), s);
+                            draw_line(&mut c, ACCURACY[i], px + floor_px((56.0 - tw) / 2.0, s), py + 6.0, font, view(if won { theme::BG } else { theme::TEXT }, 1.0), 0.0, s);
+                        }
+                    }
+                }
+                (4, _) => {
+                    c.draw_rect(l, t + 8.0, w, hair, &Paint::fill(view(theme::BORDER, 1.0)));
+                }
+                (_, None) => {
+                    let (q, you, opp) = rows[k - 5];
+                    let color = view(q.color(), 1.0);
+                    let (c1, ic, c2) = right_block(l, w);
+                    if let Some(font) = f.q_label.as_ref() {
+                        draw_line(&mut c, q.label(), l, t + floor_px((34.0 - self.line(&f.q_label)) / 2.0, s), font, color, -0.2, s);
+                    }
+                    if let Some(font) = f.q_count.as_ref() {
+                        let top = t + floor_px((34.0 - self.line(&f.q_count)) / 2.0, s);
+                        for (n, col) in [(you, c1), (opp, c2)] {
+                            let colr = if n == 0 { view(theme::TEXT_FAINT, 1.0) } else { color };
+                            centre(&mut c, &n.to_string(), col, top, font, colr, 0.0);
+                        }
+                    }
+                    let (gx, gy) = (ic + 11.0, t + 6.0);
+                    c.draw_circle(gx + 11.0, gy + 11.0, 11.0, &Paint::fill(color));
+                    self.draw_glyph(&mut c, q.glyph(), gx, gy);
+                }
+                (_, Some(i)) => {
+                    self.draw_button(&mut c, i, [l, t, w, h]);
+                }
+            }
+        }
+        self.canvas = c;
+    }
+
+    /// qGlyph: the system font 11 / 900 (CoreText's fallback for ⌑ and ✕), centred in its 22.
+    fn draw_glyph(&self, c: &mut Canvas, glyph: &str, x: f32, y: f32) {
+        let s = self.scale;
+        let f = &self.fonts;
+        let font = match glyph {
+            "⌑" => f.glyph_menlo.as_ref(),
+            "✕" => f.glyph_zapf.as_ref(),
+            _ => f.glyph.as_ref(),
+        };
+        let (Some(font), Some(base)) = (font, f.glyph.as_ref()) else {
+            return;
+        };
+        // The line: the taller of the system face and the fallback face (usesFontLeading NO).
+        let asc = (-base.metrics().ascent).max(-font.metrics().ascent);
+        let lh = ceil_px(gfx::line_height(base).max(gfx::line_height(font)), s);
+        let w = ceil_px(font.advance_width(glyph), s);
+        let (l, t) = (x + floor_px((22.0 - w) / 2.0, s), y + floor_px((22.0 - lh) / 2.0, s));
+        let baseline = ((t + asc) * s - 1e-3).ceil() / s;
+        c.draw_text(glyph, l, baseline, font, &Paint::fill(view(theme::BG, 1.0)));
+    }
+
+    fn draw_button(&self, c: &mut Canvas, i: usize, [l, t, w, h]: [f32; 4]) {
+        let s = self.scale;
+        let f = &self.fonts;
+        let hair = self.hair();
+        let (icon, glyph, label, fg) = if i == 0 { (f.icon_back.as_ref(), "\u{F127}", "Back", theme::TEXT) } else { (f.icon_replay.as_ref(), "\u{F51A}", "Replay", theme::BG) };
+        if i == 0 {
+            c.draw_continuous_rrect(l, t, w, h, 18.0, &Paint::fill(view(theme::TEXT, 0.08)));
+            c.draw_path(&skia::border_ring_path(l, t, w, h, 18.0, hair), &Paint::fill(view(theme::TEXT, 0.16)));
+        } else {
+            c.draw_continuous_rrect(l, t, w, h, 18.0, &Paint::fill(view(theme::TEXT, 1.0)));
+        }
+        let (Some(icon), Some(font)) = (icon, f.button.as_ref()) else {
+            return;
+        };
+        let iw = ceil_px(icon.advance_width(glyph), s);
+        let ih = ceil_px(gfx::line_height(icon), s);
+        let tw = ceil_px(font.advance_width(label), s);
+        let th = self.line(&f.button);
+        let content = iw + 8.0 + tw;
+        let x = l + snap((w - content) / 2.0, s);
+        let it = t + snap((h - ih) / 2.0, s);
+        let base = ((gfx::baseline(icon, it + icon.metrics().leading / 2.0)) * s - 1e-3).ceil() / s;
+        c.draw_text(glyph, x, base, icon, &Paint::fill(view(fg, 1.0)));
+        draw_line(c, label, x + iw + 8.0, t + floor_px((h - th) / 2.0, s), font, view(fg, 1.0), 0.0, s);
+    }
+
+    /// The promotion dialog's container and buttons, at full opacity.
+    fn draw_modal(&mut self) {
+        let mut c = std::mem::take(&mut self.canvas);
+        c.begin(self.scale);
+        if let Some(p) = self.promotion.as_ref() {
+            let ([x, y, w, h], buttons) = self.modal_rects();
+            c.draw_rrect_shadow(x, y + 2.0, w, h, 8.0, 4.0, Color::BLACK.alpha(0.25));
+            c.draw_rrect(x, y, w, h, 8.0, &Paint::fill(view(0xffffff, 1.0)));
+            if let Some(images) = self.images.as_ref() {
+                for (i, [bx, by, bw, bh]) in buttons.into_iter().enumerate() {
+                    c.draw_rrect(bx, by, bw, bh, 4.0, &Paint::fill(view(0xff9b71, 1.0)));
+                    let img = images.image(promo_image(p.color, i));
+                    let (ix, iy) = (bx + 8.0, by + 8.0);
+                    let k = img.width / 48.0;
+                    c.draw_rect(ix, iy, 48.0, 48.0, &Paint::image(img, Matrix::scale(k, k).then(Matrix::translate(-ix * k, -iy * k))));
+                }
+            }
+        }
+        self.canvas = c;
+    }
+}
+
+const WGSL: &str = r#"
+struct Layer { rect: vec4<f32>, a: vec4<f32>, b: vec4<f32> };
+struct U {
+    // W, H, scale, srgb
+    screen: vec4<f32>,
+    // board top, board size, vis, wave on
+    board: vec4<f32>,
+    // bg rgb, layers
+    bg: vec4<f32>,
+    // origin xy, progress, max radius
+    wave: vec4<f32>,
+    // breath, modal m, modal f, 0
+    misc: vec4<f32>,
+    modal: vec4<f32>,
+    buttons: array<vec4<f32>, 4>,
+    opacity: vec4<f32>,
+    layers: array<Layer, 20>,
+};
+@group(0) @binding(0) var<uniform> u: U;
+@group(0) @binding(1) var ta: texture_2d<f32>;
+@group(0) @binding(2) var tb: texture_2d<f32>;
+@group(0) @binding(3) var tc: texture_2d<f32>;
+@group(0) @binding(4) var td: texture_2d<f32>;
+@group(0) @binding(5) var smp: sampler;
+
+@vertex fn vs(@builtin(vertex_index) i: u32) -> @builtin(position) vec4<f32> {
+    let q = vec2<f32>(f32(i32(i & 1u) * 4 - 1), f32(i32(i >> 1u) * 4 - 1));
+    return vec4<f32>(q, 0.0, 1.0);
+}
+fn lin(c: vec3<f32>) -> vec3<f32> {
+    return select(pow((c + 0.055) / 1.055, vec3<f32>(2.4)), c / 12.92, c <= vec3<f32>(0.04045));
+}
+fn enc(c0: vec3<f32>) -> vec3<f32> {
+    let c = clamp(c0, vec3<f32>(0.0), vec3<f32>(1.0));
+    return select(1.055 * pow(c, vec3<f32>(1.0 / 2.4)) - 0.055, c * 12.92, c <= vec3<f32>(0.0031308));
+}
+fn p3_to_srgb(c: vec3<f32>) -> vec3<f32> {
+    let l = lin(clamp(c, vec3<f32>(0.0), vec3<f32>(1.0)));
+    return enc(vec3<f32>(
+        1.2249401 * l.r - 0.2249404 * l.g,
+        -0.0420569 * l.r + 1.0420571 * l.g,
+        -0.0196376 * l.r - 0.0786361 * l.g + 1.0982735 * l.b));
+}
+fn over(top: vec4<f32>, under: vec4<f32>) -> vec4<f32> {
+    return top + under * (1.0 - top.a);
+}
+
+// The screen: the root's colour, the board's canvas (converted from P3) and the views.
+@fragment fn compose(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
+    var c = vec4<f32>(u.bg.rgb, 1.0);
+    let p = vec2<i32>(pos.xy);
+    let top = i32(round(u.board.x * u.screen.z));
+    let side = i32(round(u.board.y * u.screen.z));
+    if (p.y >= top && p.y < top + side && p.x < side) {
+        c = over(textureLoad(ta, vec2<i32>(p.x, p.y - top), 0), c);
+    }
+    c = over(textureLoad(tb, p, 0), c);
+    return vec4<f32>(c.rgb, 1.0);
+}
+
+// ---- wave-shader.ts WAVE_SKSL, over the snapshot (its sRGB bytes read as Display P3, as RN
+// Skia's untagged texture image is), its result converted from P3. ----
+fn hash(p: vec2<f32>) -> f32 {
+    return fract(sin(dot(p, vec2<f32>(127.1, 311.7))) * 43758.5453);
+}
+fn spectrum(t: f32) -> vec3<f32> {
+    return 0.5 + 0.5 * cos(6.2831853 * (t + vec3<f32>(0.0, 0.33, 0.67)));
+}
+fn ss(e0: f32, e1: f32, x: f32) -> f32 {
+    let t = clamp((x - e0) / (e1 - e0), 0.0, 1.0);
+    return t * t * (3.0 - 2.0 * t);
+}
+fn texel(i: vec2<i32>) -> vec3<f32> {
+    let size = vec2<i32>(textureDimensions(ta));
+    if (i.x < 0 || i.y < 0 || i.x >= size.x || i.y >= size.y) { return vec3<f32>(0.0); }
+    return textureLoad(ta, i, 0).rgb;
+}
+// ImageShader (fit cover at the screen's size, decal, linear) at point p.
+fn img(p: vec2<f32>) -> vec3<f32> {
+    let q = p * u.screen.z - 0.5;
+    let i = vec2<i32>(floor(q));
+    let f = q - floor(q);
+    let a = mix(texel(i), texel(i + vec2<i32>(1, 0)), f.x);
+    let b = mix(texel(i + vec2<i32>(0, 1)), texel(i + vec2<i32>(1, 1)), f.x);
+    return mix(a, b, f.y);
+}
+fn blur_sample(p: vec2<f32>, r: f32) -> vec3<f32> {
+    if (r < 0.75) { return img(p); }
+    var acc = vec3<f32>(0.0);
+    let j = hash(p) * 6.2831853;
+    for (var k = 0; k < 32; k++) {
+        let i = f32(k);
+        let t = (i + 0.5) / 32.0;
+        let rad = sqrt(t) * r;
+        let a = i * 2.39996323 + j;
+        acc += img(p + vec2<f32>(cos(a), sin(a)) * rad);
+    }
+    return acc / 32.0;
+}
+fn wave_at(position: vec2<f32>) -> vec3<f32> {
+    let res = u.screen.xy;
+    let origin = u.wave.xy;
+    let progress = u.wave.z;
+    let max_radius = u.wave.w;
+    let breath = u.misc.x;
+    let band = 64.0;
+    let amplitude = 50.0;
+    let chroma = 0.28;
+    let glow_strength = 0.55;
+    let wobble = 0.04;
+    let max_blur = 24.0;
+    let tint = 0.8;
+    let glow_c = vec3<f32>(0.8, 0.85, 0.95);
+
+    let to_origin = position - origin;
+    let dist = length(to_origin);
+    var dir = vec2<f32>(0.0);
+    if (dist > 0.0001) { dir = to_origin / dist; }
+    let ang = atan2(to_origin.y, to_origin.x);
+    let wob = 1.0 + wobble * (sin(ang * 3.0) * 0.6 + sin(ang * 2.0 + 1.7) * 0.4);
+    let w = band;
+    let released = ss(0.0, 0.12, progress);
+    let ft = clamp((progress - 0.02) / 0.5, 0.0, 1.0);
+    let fe = 1.0 - pow(1.0 - ft, 2.2);
+    let front = max_radius * fe * wob;
+    let x = dist - front;
+    let lens = exp(-(x * x) / (2.0 * w * w));
+    let shell = lens * released;
+    let grad = -(x / (w * w)) * lens;
+    let bend = grad * w * amplitude * released;
+    let off = dir * bend;
+    let ca = dir * (abs(bend) * chroma);
+    let drop_r = max_radius * ss(0.06, 0.6, progress) * 1.35;
+    let passed = ss(drop_r, drop_r - res.x * 0.9, dist);
+    let blur_r = passed * (max_blur + 2.5 * breath);
+    let center = res * 0.5;
+    let recede = 1.0 + 0.045 * ss(0.2, 1.0, progress) * passed;
+    let sp = center + (position - center) * recede + off;
+    let grey_front = front - dist - w * 2.4;
+    let grey_edge = exp(-(grey_front * grey_front) / (2.0 * (w * 3.0) * (w * 3.0)));
+    let wave_fade = 1.0 - ss(0.45, 0.62, progress);
+    let ca2 = dir * (grey_edge * w * chroma * 0.5);
+    let ca_t = (ca + ca2) * wave_fade;
+    let chroma_mix = max(shell, grey_edge) * wave_fade;
+    let g = blur_sample(sp, blur_r);
+    let r = img(sp + ca_t).r;
+    let b = img(sp - ca_t).b;
+    var col = vec3<f32>(mix(g.r, r, chroma_mix), g.g, mix(g.b, b, chroma_mix));
+    let n = normalize(vec3<f32>(-dir * (grad * w * 0.9), 1.0));
+    let l3 = normalize(vec3<f32>(-0.5, -0.78, 0.6));
+    let h = normalize(l3 + vec3<f32>(0.0, 0.0, 1.0));
+    let diff = dot(n, l3);
+    let spec = pow(max(dot(n, h), 0.0), 60.0);
+    col += vec3<f32>(0.82, 0.88, 1.0) * (clamp(diff, 0.0, 1.0) * shell * 0.32);
+    col *= 1.0 - clamp(-diff, 0.0, 1.0) * shell * 0.4;
+    col += vec3<f32>(1.0) * (spec * shell * 2.4);
+    let rim = exp(-(x * x) / (2.0 * (w * 0.45) * (w * 0.45))) * released;
+    col += vec3<f32>(0.85, 0.9, 1.0) * (rim * 0.18);
+    let hue_t = 0.42 + 0.24 * sin(ang * 2.0 + dist * 0.008 + progress * 2.5);
+    col += spectrum(hue_t) * (shell * glow_strength * wave_fade);
+    col += spectrum(hue_t) * (grey_edge * glow_strength * 0.4 * wave_fade);
+    col += vec3<f32>(0.78, 0.84, 1.0) * (grey_edge * 0.11 * wave_fade);
+    let md = max(res.x, res.y);
+    let kd = dist / md;
+    let glow = exp(-kd * kd * 6.5) * (0.85 + 0.15 * breath);
+    let grey = vec3<f32>(0.038, 0.046, 0.075);
+    let backdrop = mix(grey, glow_c, clamp(glow * 0.06, 0.0, 1.0));
+    col = mix(col, backdrop, passed * tint);
+    col += (hash(position * 0.7) - 0.5) * 0.03 * passed;
+    let diag = (position.x * 0.5 + position.y) / (res.y * 1.3);
+    let sd = (diag - 0.32) * 2.4;
+    let sheen = exp(-(sd * sd));
+    col += vec3<f32>(0.55, 0.63, 0.85) * (sheen * 0.03 * passed);
+    col += (hash(floor(position)) - 0.5) * 0.015;
+    let uvc = position / res - 0.5;
+    let vig = 1.0 - ss(0.5, 1.05, length(uvc) * 1.25);
+    col *= mix(1.0, 0.72 + 0.28 * vig, passed);
+    let vy = position.y / res.y;
+    let bottom_dark = ss(0.3, 0.62, vy) * 0.8;
+    col *= 1.0 - bottom_dark * passed;
+    return col;
+}
+@fragment fn wave(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
+    return vec4<f32>(p3_to_srgb(wave_at(pos.xy / u.screen.z)), 1.0);
+}
+
+// The card's layers: each section's (and button's) bitmap at rest, moved, scaled and faded.
+fn card(p: vec2<f32>) -> vec4<f32> {
+    let n = i32(u.bg.w);
+    for (var i = 0; i < n; i++) {
+        let l = u.layers[i];
+        // The section: translateY then scale about its centre; a button: its press scale inside.
+        var q = l.a.xy + (p - l.a.xy - vec2<f32>(0.0, l.a.z)) / l.a.w;
+        q = l.b.xy + (q - l.b.xy) / l.b.z;
+        if (q.x >= l.rect.x && q.y >= l.rect.y && q.x < l.rect.x + l.rect.z && q.y < l.rect.y + l.rect.w) {
+            let size = vec2<f32>(textureDimensions(tc));
+            let s = textureSampleLevel(tc, smp, q * u.screen.z / size, 0.0);
+            return s * l.b.w;
+        }
+    }
+    return vec4<f32>(0.0);
+}
+fn in_rect(p: vec2<f32>, r: vec4<f32>) -> bool {
+    return p.x >= r.x && p.y >= r.y && p.x < r.x + r.z && p.y < r.y + r.w;
+}
+@fragment fn finish(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
+    let p = pos.xy / u.screen.z;
+    var c = textureLoad(ta, vec2<i32>(pos.xy), 0);
+    let vis = u.board.z;
+    if (u.board.w > 0.5 && vis > 0.0) {
+        let o = over(card(p) * vis, textureLoad(tb, vec2<i32>(pos.xy), 0));
+        c = o * vis + c * (1.0 - vis);
+    }
+    let m = u.misc.y;
+    if (m > 0.0) {
+        c = vec4<f32>(c.rgb * (1.0 - 0.5 * m), 1.0);
+        var a = m * u.misc.z;
+        for (var i = 0; i < 4; i++) {
+            if (in_rect(p, u.buttons[i])) { a = a * u.opacity[i]; }
+        }
+        c = over(textureLoad(td, vec2<i32>(pos.xy), 0) * a, c);
+    }
+    var rgb = c.rgb;
+    if (u.screen.w > 0.5) { rgb = lin(rgb); }
+    return vec4<f32>(rgb, 1.0);
+}
+"#;
+
+const UNIFORM_SIZE: usize = 16 * (6 + 4 + 1) + 20 * 48;
+
+fn build(device: &wgpu::Device, format: wgpu::TextureFormat, px: (u32, u32), board_px: u32) -> Gpu {
+    let module = device.create_shader_module(wgpu::ShaderModuleDescriptor { label: Some("chessboard"), source: wgpu::ShaderSource::Wgsl(WGSL.into()) });
+    let tex = |binding| wgpu::BindGroupLayoutEntry {
+        binding,
+        visibility: wgpu::ShaderStages::FRAGMENT,
+        ty: wgpu::BindingType::Texture { sample_type: wgpu::TextureSampleType::Float { filterable: true }, view_dimension: wgpu::TextureViewDimension::D2, multisampled: false },
+        count: None,
+    };
+    let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("chessboard"),
+        entries: &[
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer { ty: wgpu::BufferBindingType::Uniform, has_dynamic_offset: false, min_binding_size: None },
+                count: None,
+            },
+            tex(1),
+            tex(2),
+            tex(3),
+            tex(4),
+            wgpu::BindGroupLayoutEntry { binding: 5, visibility: wgpu::ShaderStages::FRAGMENT, ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering), count: None },
+        ],
+    });
+    let rgba = wgpu::TextureFormat::Rgba8Unorm;
+    let t = |label| skia::render::sampled_target(device, label, rgba, px.0, px.1);
+    Gpu {
+        format,
+        compose: skia::render::fullscreen_pipeline(device, &module, &layout, "compose", rgba, None),
+        wave: skia::render::fullscreen_pipeline(device, &module, &layout, "wave", rgba, None),
+        finish: skia::render::fullscreen_pipeline(device, &module, &layout, "finish", format, None),
+        buffer: device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("chessboard"),
+            size: UNIFORM_SIZE as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        }),
+        sampler: skia::render::linear_sampler(device),
+        layout,
+        px,
+        board: skia::render::sampled_target(device, "chessboard board", rgba, board_px, board_px),
+        ui: t("chessboard ui"),
+        screen: t("chessboard screen"),
+        snapshot: t("chessboard snapshot"),
+        wave_out: t("chessboard wave"),
+        sheet: t("chessboard sheet"),
+        modal: t("chessboard modal"),
+        dummy: skia::render::sampled_target(device, "chessboard dummy", rgba, 1, 1),
+    }
+}
+
+fn bytes(v: &[f32]) -> Vec<u8> {
+    v.iter().flat_map(|f| f.to_le_bytes()).collect()
+}
+
+impl Surface for Chessboard {
+    fn bind(&mut self, _inputs: &[Value], _: Option<f64>) -> Result<(), SurfaceError> {
+        Ok(())
+    }
+
+    fn wants_input(&self) -> bool {
+        true
+    }
+
+    fn messages(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.messages)
+    }
+
+    fn agent(&mut self, _request: &str) -> Option<String> {
+        let fen = self.chess.fen();
+        let sq = |s: Option<i32>| s.map_or("null".to_string(), |s| format!("\"{}\"", chess::algebraic(s)));
+        Some(format!(
+            "{{\"fen\":\"{fen}\",\"plies\":{},\"status\":\"{}\",\"selected\":{},\"valid\":{},\"clocks\":[{},{}],\"aura\":{},\"card\":{},\"promotion\":{},\"held\":{}}}",
+            self.plies.len(),
+            self.status,
+            sq(self.selected),
+            self.valid.len(),
+            self.clock[0],
+            self.clock[1],
+            self.aura.as_ref().map_or(0.0, |a| a.vis.value),
+            self.aura.as_ref().is_some_and(|a| a.card.is_some()),
+            self.promotion.is_some(),
+            self.pan.tracking() || self.held.is_some()
+        ))
+    }
+
+    fn input(&mut self, event: &InputEvent) {
+        let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else {
+            return;
+        };
+        if self.size.0 <= 0.0 {
+            return;
+        }
+        let phase = gfx::phase(phase);
+        self.now = self.now.max(at_ms);
+        if self.promotion.as_ref().is_some_and(|p| p.shown_ms.is_some()) || self.promotion.as_ref().is_some_and(|p| p.held.is_some()) {
+            self.modal_input(id, phase, x, y);
+            self.run_js();
+            return;
+        }
+        // The overlay takes the touches while vis > 0.5 (pointerEvents 'auto'): the card's buttons.
+        let overlay = self.aura.as_ref().is_some_and(|a| a.vis.value > 0.5);
+        if overlay || self.held.is_some() {
+            if phase == Phase::Down && self.held.is_none() {
+                self.held = Some(id);
+            }
+            if self.held == Some(id) {
+                let mounted = self.aura.as_ref().is_some_and(|a| a.card.is_some());
+                for i in 0..2 {
+                    let inside = mounted && self.in_button(i, x, y);
+                    if let Some(PressEvent::Press(press)) = self.buttons[i].pointer(id, phase, inside) {
+                        self.messages.extend(press.global_message().map(String::from));
+                        self.hide();
+                        if i == 0 {
+                            self.rematch();
+                        } else {
+                            self.play_sequence();
+                        }
+                    }
+                }
+                if matches!(phase, Phase::Up | Phase::Cancel) {
+                    self.held = None;
+                }
+            }
+            self.run_js();
+            return;
+        }
+        self.board_input(id, phase, x, y, at_ms);
+        self.run_js();
+    }
+
+    fn render(&mut self, frame: &Frame, device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut wgpu::CommandEncoder, target: &wgpu::TextureView, format: wgpu::TextureFormat) -> bool {
+        let first = self.size.0 <= 0.0;
+        let resized = self.size != (frame.width, frame.height) || self.scale != frame.scale;
+        self.size = (frame.width, frame.height);
+        self.scale = frame.scale;
+        self.now = frame.now_ms;
+        if first {
+            self.mount_squares();
+            self.next_tick = Some(self.now + 1000.0);
+        }
+        if resized {
+            if !first {
+                // A flip / resize snaps every piece to its square (use-board-state.ts).
+                let ps = self.ps();
+                let mut q = Vec::new();
+                for i in 0..128 {
+                    if i & 0x88 == 0 && self.squares[i].piece.is_some() {
+                        let (x, y) = pos(i as i32, ps);
+                        self.squares[i].tx.set(x as f64, &mut q);
+                        self.squares[i].ty.set(y as f64, &mut q);
+                    }
+                }
+                self.callbacks.extend(q);
+            }
+            self.layout_sections();
+            self.fonts.board = None;
+            self.board_dirty = true;
+            self.sheet_dirty = true;
+            self.modal_dirty = true;
+        }
+        self.timers();
+        self.run_js();
+        let mut moving = self.step();
+        self.run_js();
+        moving |= self.started && !self.game_over;
+        moving |= self.replay.is_some() || self.aura_timer.is_some() || self.show_at.is_some() || !self.mate_haptics.is_empty();
+        moving |= self.aura.is_some();
+        moving |= self.pan.tracking() || self.held.is_some();
+
+        let s = frame.scale;
+        let px = frame.pixels();
+        let board_px = (self.size.0 * s).round() as u32;
+        if self.sprite.is_none() {
+            let sprite = decode(SPRITE, 768);
+            self.sprite = Some(Images::upload(device, queue, &[&sprite]));
+            let ui: Vec<Image> = UI_IMAGES.iter().map(|(b, w)| decode(b, *w)).collect();
+            let refs: Vec<&Image> = ui.iter().collect();
+            self.images = Some(Images::upload(device, queue, &refs));
+            self.renderers[0].set_images(self.sprite.as_ref().unwrap());
+            for r in self.renderers[1..].iter_mut() {
+                r.set_images(self.images.as_ref().unwrap());
+            }
+        }
+        if self.gpu.as_ref().map(|g| (g.format, g.px)) != Some((format, px)) {
+            self.gpu = Some(build(device, format, px, board_px));
+            self.board_dirty = true;
+            self.sheet_dirty = true;
+            self.modal_dirty = true;
+        }
+        // The board's canvas.
+        if self.board_dirty {
+            self.board_dirty = false;
+            self.draw_board();
+            let gpu = self.gpu.as_ref().unwrap();
+            self.p3.draw(&mut self.renderers[0], device, queue, encoder, &self.canvas, &gpu.board, wgpu::TextureFormat::Rgba8Unorm, board_px, board_px, wgpu::Color::TRANSPARENT);
+        }
+        // The cards.
+        self.draw_cards();
+        {
+            let gpu = self.gpu.as_ref().unwrap();
+            self.renderers[1].draw(device, queue, encoder, &self.canvas, &gpu.ui, wgpu::TextureFormat::Rgba8Unorm, px.0, px.1, wgpu::Color::TRANSPARENT);
+        }
+        let card_mounted = self.aura.as_ref().is_some_and(|a| a.card.is_some());
+        if card_mounted && self.sheet_dirty {
+            self.sheet_dirty = false;
+            self.draw_sheet();
+            let gpu = self.gpu.as_ref().unwrap();
+            self.renderers[2].draw(device, queue, encoder, &self.canvas, &gpu.sheet, wgpu::TextureFormat::Rgba8Unorm, px.0, px.1, wgpu::Color::TRANSPARENT);
+        }
+        let modal = self.promotion.is_some();
+        if modal && self.modal_dirty {
+            self.modal_dirty = false;
+            self.draw_modal();
+            let gpu = self.gpu.as_ref().unwrap();
+            self.renderers[3].draw(device, queue, encoder, &self.canvas, &gpu.modal, wgpu::TextureFormat::Rgba8Unorm, px.0, px.1, wgpu::Color::TRANSPARENT);
+        }
+        // Uniforms.
+        let (m, mf) = self.modal_alpha();
+        let ([_, _, _, _], mbuttons) = self.modal_rects();
+        let mut u = vec![0f32; UNIFORM_SIZE / 4];
+        u[0] = frame.width;
+        u[1] = frame.height;
+        u[2] = s;
+        u[3] = gfx::srgb_flag(format);
+        u[4] = self.board_top();
+        u[5] = self.size.0;
+        let bg = Color::view_hex(theme::BG).0;
+        u[8..11].copy_from_slice(&bg[..3]);
+        if let Some(a) = self.aura.as_ref() {
+            u[6] = a.vis.value as f32;
+            u[7] = if a.revealed { 1.0 } else { 0.0 };
+            let (ox, oy) = a.origin;
+            let (w, h) = self.size;
+            let max_r = [(ox, oy), (w - ox, oy), (ox, h - oy), (w - ox, h - oy)].iter().map(|(x, y)| (x * x + y * y).sqrt()).fold(0.0f32, f32::max) * 1.28;
+            u[12..16].copy_from_slice(&[ox, oy, a.progress.value as f32, max_r]);
+            u[16] = a.breath.value() as f32;
+        }
+        u[17] = m;
+        u[18] = mf;
+        for (i, r) in mbuttons.iter().enumerate() {
+            u[24 + i * 4..28 + i * 4].copy_from_slice(r);
+        }
+        if let Some(p) = self.promotion.as_ref() {
+            for i in 0..4 {
+                u[40 + i] = p.opacity[i].value as f32;
+            }
+        }
+        let mut n = 0;
+        if card_mounted {
+            for sec in self.sections.iter() {
+                let (op, ty, sc) = self.enter(sec);
+                let [l, t, w, h] = sec.rect;
+                let k = sec.button.map_or(1.0, |i| self.buttons[i].scale() as f32);
+                let o = 44 + n * 12;
+                u[o..o + 12].copy_from_slice(&[l, t, w, h, l + w / 2.0, t + h / 2.0, ty, sc, l + w / 2.0, t + h / 2.0, k, op]);
+                n += 1;
+            }
+        }
+        u[11] = n as f32;
+        let gpu = self.gpu.as_ref().unwrap();
+        queue.write_buffer(&gpu.buffer, 0, &bytes(&u));
+        let group = |a: &wgpu::TextureView, b: &wgpu::TextureView, c: &wgpu::TextureView, d: &wgpu::TextureView| {
+            device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("chessboard"),
+                layout: &gpu.layout,
+                entries: &[
+                    wgpu::BindGroupEntry { binding: 0, resource: gpu.buffer.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::TextureView(a) },
+                    wgpu::BindGroupEntry { binding: 2, resource: wgpu::BindingResource::TextureView(b) },
+                    wgpu::BindGroupEntry { binding: 3, resource: wgpu::BindingResource::TextureView(c) },
+                    wgpu::BindGroupEntry { binding: 4, resource: wgpu::BindingResource::TextureView(d) },
+                    wgpu::BindGroupEntry { binding: 5, resource: wgpu::BindingResource::Sampler(&gpu.sampler) },
+                ],
+            })
+        };
+        let g_compose = group(&gpu.board, &gpu.ui, &gpu.dummy, &gpu.dummy);
+        skia::render::fullscreen_pass(encoder, "chessboard compose", &gpu.screen, &gpu.compose, &g_compose);
+        // show(): the snapshot of the screen as it is now; the overlay comes in on the next frame.
+        let mut wave = false;
+        if let Some(a) = self.aura.as_mut() {
+            if a.snapshot_at.is_none() {
+                a.snapshot_at = Some(self.now);
+                skia::render::fullscreen_pass(encoder, "chessboard snapshot", &gpu.snapshot, &gpu.compose, &g_compose);
+            } else if !a.revealed {
+                a.revealed = true;
+                a.vis.set(1.0);
+                a.progress.set(0.0);
+                a.progress.to(1.0, WAVE_MS, Easing::Linear);
+                a.progress.step(self.now);
+                a.breath = Pulse::at(0.0);
+                a.breath.repeat(4200.0, Easing::in_out(Easing::Ease), self.now);
+            }
+            wave = a.revealed && a.vis.value > 0.0;
+        }
+        if wave {
+            let g_wave = group(&gpu.snapshot, &gpu.dummy, &gpu.dummy, &gpu.dummy);
+            skia::render::fullscreen_pass(encoder, "chessboard wave", &gpu.wave_out, &gpu.wave, &g_wave);
+        }
+        let g_finish = group(&gpu.screen, &gpu.wave_out, &gpu.sheet, &gpu.modal);
+        skia::render::fullscreen_pass(encoder, "chessboard", target, &gpu.finish, &g_finish);
+        moving || modal
+    }
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    use super::*;
+    use exact_gpu::{fixture, PointerKind, PointerPhase};
+
+    fn frame(now_ms: f64) -> Frame {
+        Frame { width: 420.0, height: 912.0, scale: 3.0, now_ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: 0, headroom: 1.0 }
+    }
+
+    fn touch(id: u32, phase: PointerPhase, x: f32, y: f32, at_ms: f64) -> InputEvent {
+        InputEvent::Pointer { id, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms }
+    }
+
+    /// A square's centre on the screen.
+    fn centre(c: &Chessboard, name: &str) -> (f32, f32) {
+        let sq = chess::square(name).unwrap();
+        let ps = c.ps();
+        let (x, y) = pos(sq, ps);
+        (x + ps / 2.0, c.board_top() + y + ps / 2.0)
+    }
+
+    fn surface_at(ms: f64) -> Chessboard {
+        let mut c = Chessboard::new();
+        c.size = (420.0, 912.0);
+        c.scale = 3.0;
+        c.now = ms;
+        c.mount_squares();
+        c.layout_sections();
+        c
+    }
+
+    fn run(c: &mut Chessboard, from: f64, to: f64) {
+        let mut ms = from;
+        while ms < to {
+            ms += 16.0;
+            c.now = ms;
+            c.timers();
+            c.run_js();
+            c.step();
+            c.run_js();
+        }
+    }
+
+    #[test]
+    fn the_layout_is_yogas() {
+        let c = surface_at(0.0);
+        // Cards 52.667 tall, the group (545.333) centred in 872 below 12.
+        assert!((c.card_h() - 52.6667).abs() < 1e-3);
+        assert!((c.group_top() - 175.3333).abs() < 1e-3, "{}", c.group_top());
+        assert!((c.board_top() - 238.0).abs() < 1e-3);
+        assert!((c.card_top(Side::W) - 668.0).abs() < 1e-3);
+        // Captures seeded from START_FEN: White took p, p, n, b; Black p, b, q (+5).
+        assert_eq!(c.captured[0], vec![Kind::P, Kind::P, Kind::N, Kind::B]);
+        assert_eq!(c.captured[1], vec![Kind::P, Kind::B, Kind::Q]);
+        // The review: all ten qualities occur (White, Black).
+        let rows = c.review_rows();
+        assert_eq!(rows.len(), 10);
+        assert_eq!(rows[3], (Q::Best, 10, 7));
+        assert_eq!(rows[2], (Q::Book, 4, 3));
+    }
+
+    #[test]
+    fn a_dragged_king_mates_and_the_aura_follows() {
+        let mut c = surface_at(0.0);
+        let (x0, y0) = centre(&c, "e1");
+        let (x1, y1) = centre(&c, "d2");
+        c.input(&touch(1, PointerPhase::Down, x0, y0, 10.0));
+        let mut ms = 10.0;
+        for k in 1..=10 {
+            ms += 16.0;
+            let t = k as f32 / 10.0;
+            c.input(&touch(1, PointerPhase::Move, x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, ms));
+            run(&mut c, ms - 16.0, ms);
+        }
+        // Lifted: the pan's drop and the tap (no distance limit, under 500 ms) both land on d2.
+        assert!(c.valid.contains(&chess::square("d2").unwrap()), "{:?}", c.valid);
+        ms += 16.0;
+        c.input(&touch(1, PointerPhase::Up, x1, y1, ms));
+        assert_eq!(c.status, "Checkmate");
+        assert_eq!(c.plies.len(), 1);
+        assert_eq!(c.winner(), Some(Side::W));
+        assert!(c.game_over && c.started);
+        run(&mut c, ms, ms + 1000.0);
+        // The king landed (committed) on d2.
+        assert_eq!(c.squares[chess::square("d2").unwrap() as usize].piece, Some(Piece { color: Side::W, kind: Kind::K }));
+        assert_eq!(c.squares[chess::square("e1").unwrap() as usize].piece, None);
+        // The mated king's square is lit; the aura showed at 580 ms + a frame.
+        assert!(c.squares[chess::square("g1").unwrap() as usize].in_check);
+        assert!(c.aura.is_some() && c.busy);
+        let msgs = c.messages();
+        assert!(msgs.iter().filter(|m| m.starts_with("haptic:impact")).count() >= 9, "{msgs:?}");
+    }
+
+    #[test]
+    fn tap_select_move_capture_and_the_clock() {
+        let mut c = surface_at(0.0);
+        c.next_tick = Some(1000.0);
+        // Tap the f6 knight, then h7: Nxh7 isn't legal (h7 empty, not a knight move); g8 is.
+        let (fx, fy) = centre(&c, "f6");
+        c.input(&touch(1, PointerPhase::Down, fx, fy, 0.0));
+        c.input(&touch(1, PointerPhase::Up, fx, fy, 60.0));
+        assert_eq!(c.selected, chess::square("f6"));
+        // Nxe8? no: the targets: d7 (capture), d5, e4, g8, h7, h5, e8, g4 is own.
+        let (dx, dy) = centre(&c, "d7");
+        c.input(&touch(2, PointerPhase::Down, dx, dy, 200.0));
+        c.input(&touch(2, PointerPhase::Up, dx, dy, 260.0));
+        assert_eq!(c.plies.len(), 1);
+        assert_eq!(c.captured[0].last(), Some(&Kind::P));
+        assert_eq!(c.messages(), vec!["haptic:impact-medium".to_string()]);
+        assert_eq!(c.turn_sv, Side::B);
+        run(&mut c, 260.0, 2100.0);
+        // Black's clock burns: 23 → 21 by 2.1 s (ticks at 1 s and 2 s).
+        assert_eq!(c.clock, [74, 21]);
+    }
+
+    #[test]
+    fn promotion_asks_for_the_piece() {
+        let mut c = surface_at(0.0);
+        c.reset_board("8/4P1k1/8/8/8/8/8/4K3 w - - 0 1", None, None);
+        c.select_piece(chess::square("e7").unwrap());
+        c.try_move(chess::square("e7").unwrap(), chess::square("e8").unwrap(), None, None);
+        assert!(c.promotion.is_some());
+        run(&mut c, 0.0, 400.0);
+        // Tap the knight (the fourth button).
+        let (_, buttons) = c.modal_rects();
+        let [x, y, w, h] = buttons[3];
+        c.input(&touch(3, PointerPhase::Down, x + w / 2.0, y + h / 2.0, 400.0));
+        c.input(&touch(3, PointerPhase::Up, x + w / 2.0, y + h / 2.0, 460.0));
+        assert_eq!(c.plies.len(), 1);
+        run(&mut c, 460.0, 1200.0);
+        assert!(c.promotion.is_none());
+        assert_eq!(c.squares[chess::square("e8").unwrap() as usize].piece, Some(Piece { color: Side::W, kind: Kind::N }));
+    }
+
+    #[test]
+    fn castling_slides_the_rook_and_back_resets_the_game() {
+        let mut c = surface_at(0.0);
+        // Tap e1, tap c1: O-O-O#, the rook riding from a1 to d1 with the king.
+        let (ex, ey) = centre(&c, "e1");
+        c.input(&touch(1, PointerPhase::Down, ex, ey, 0.0));
+        c.input(&touch(1, PointerPhase::Up, ex, ey, 50.0));
+        let (cx, cy) = centre(&c, "c1");
+        c.input(&touch(2, PointerPhase::Down, cx, cy, 100.0));
+        c.input(&touch(2, PointerPhase::Up, cx, cy, 150.0));
+        assert_eq!(c.status, "Checkmate");
+        run(&mut c, 150.0, 1800.0);
+        let at = |c: &Chessboard, n: &str| c.squares[chess::square(n).unwrap() as usize].piece;
+        assert_eq!(at(&c, "d1"), Some(Piece { color: Side::W, kind: Kind::R }));
+        assert_eq!(at(&c, "c1"), Some(Piece { color: Side::W, kind: Kind::K }));
+        assert_eq!(at(&c, "a1"), None);
+        // The card is up (the overlay shown, as render() reveals it): Back.
+        let a = c.aura.as_mut().unwrap();
+        assert!(a.card.is_some());
+        a.revealed = true;
+        a.vis.set(1.0);
+        run(&mut c, 1800.0, 2400.0);
+        let back = c.sections.iter().find(|s| s.button == Some(0)).unwrap().rect;
+        let (bx, by) = (back[0] + back[2] / 2.0, back[1] + back[3] / 2.0);
+        c.input(&touch(3, PointerPhase::Down, bx, by, 2400.0));
+        c.input(&touch(3, PointerPhase::Up, bx, by, 2460.0));
+        assert!(c.messages().contains(&"haptic:selection".to_string()));
+        run(&mut c, 2460.0, 3000.0);
+        assert!(c.aura.is_none() && !c.busy);
+        assert_eq!(c.chess.fen(), START_FEN);
+        assert_eq!(at(&c, "e1"), Some(Piece { color: Side::W, kind: Kind::K }));
+        assert_eq!((c.plies.len(), c.status.as_str(), c.clock), (0, "White to move", CLOCK_START));
+        assert_eq!(c.captured, initial_captures());
+    }
+
+    #[test]
+    fn replay_plays_the_mate_after_its_delay() {
+        let mut c = surface_at(0.0);
+        c.play_sequence();
+        assert!(c.running);
+        run(&mut c, 0.0, 880.0);
+        assert_eq!(c.plies.len(), 0);
+        run(&mut c, 880.0, 940.0);
+        assert_eq!(c.plies.len(), 1);
+        run(&mut c, 940.0, 2000.0);
+        assert!(!c.running);
+    }
+
+    #[test]
+    fn renders_the_board_cards_and_the_aura() {
+        let gpu = match fixture::device() {
+            Ok(gpu) => gpu,
+            Err(error) => return eprintln!("{error}; skipped"),
+        };
+        let mut s = surface();
+        let (rest, _) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
+        gfx::save_over(&rest, "chessboard-rest", [13, 14, 18]);
+        // a8 (light) and b8 (dark) at the board's top-left (board top 238).
+        let light = rest.at(3 * 4, 3 * 240);
+        let dark = rest.at(3 * 60, 3 * 240);
+        assert!(light[0] > 210 && dark[0] < 150 && dark[0] > 110, "{light:?} {dark:?}");
+        // The root's colour above the black card.
+        let top = rest.at(30, 30);
+        assert!(top[0] < 20 && top[2] < 25, "{top:?}");
+        // Drag e1 → d2: mate; the aura sweeps; the card comes.
+        let p = |ph, x, y, ms| touch(1, ph, x, y, ms);
+        let (x0, y0) = (4.5 * 52.5, 238.0 + 7.5 * 52.5);
+        let (x1, y1) = (3.5 * 52.5, 238.0 + 6.5 * 52.5);
+        s.input(&p(PointerPhase::Down, x0, y0, 16.0));
+        let mut ms = 16.0;
+        for k in 1..=10 {
+            ms += 16.0;
+            let t = k as f32 / 10.0;
+            s.input(&p(PointerPhase::Move, x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, ms));
+            fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+        }
+        ms += 16.0;
+        s.input(&p(PointerPhase::Up, x1, y1, ms));
+        while ms < 4500.0 {
+            ms += 16.0;
+            let (img, _) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+            if (1700.0..1716.0).contains(&ms) {
+                gfx::save_over(&img, "chessboard-wave", [13, 14, 18]);
+            }
+        }
+        let agent = s.agent("{}").unwrap();
+        assert!(agent.contains("\"status\":\"Checkmate\"") && agent.contains("\"card\":true"), "{agent}");
+        let (end, _) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+        gfx::save_over(&end, "chessboard-review", [13, 14, 18]);
+        // The Replay button (#f0f2f5) near the bottom right; the haze above it is dark.
+        let replay = end.at(3 * 320, 3 * 840);
+        assert!(replay[0] > 200, "{replay:?}");
+        let haze = end.at(3 * 210, 3 * 150);
+        assert!(haze[0] < 90, "{haze:?}");
+    }
+}

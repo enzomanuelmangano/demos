@@ -36,6 +36,8 @@ pub struct Spring {
     pub running: bool,
     /// `overshootClamping`: done the moment it leaves the span from its start to its target.
     overshoot_clamping: bool,
+    /// `energyThreshold`: done when the energy falls under this fraction of the start's.
+    threshold: f64,
 }
 
 /// `withSpring(to, { duration, dampingRatio, mass })`: the constants Reanimated solves when the
@@ -73,12 +75,36 @@ pub fn duration_config(x0: f64, v0: f64, duration_ms: f64, damping_ratio: f64, m
 impl Spring {
     /// At rest at `value`.
     pub fn at(value: f64) -> Spring {
-        Spring { config: GENTLE, from: value, to: value, v0: 0.0, t: 0.0, last_ms: None, energy0: 0.0, value, velocity: 0.0, running: false, overshoot_clamping: false }
+        Spring { config: GENTLE, from: value, to: value, v0: 0.0, t: 0.0, last_ms: None, energy0: 0.0, value, velocity: 0.0, running: false, overshoot_clamping: false, threshold: 6e-9 }
+    }
+
+    /// `energyThreshold` (6e-9 by default), kept across later starts.
+    pub fn with_threshold(mut self, threshold: f64) -> Spring {
+        self.threshold = threshold;
+        self
     }
 
     /// Held where the finger puts it.
     pub fn set(&mut self, value: f64) {
-        *self = Spring::at(value);
+        *self = Spring::at(value).with_threshold(self.threshold);
+    }
+
+    /// `sv.value = withSpring(to, config)` at `now_ms` (an assignment, not a mapper): from where
+    /// it is, at the running spring's velocity (dropped when it points away from `to`, as
+    /// [`Spring::to`]), its rest measured against the start's distance alone (spring.ts onStart:
+    /// `getEnergy(x0, config.velocity)`), its clock started at `now_ms`. A running spring is
+    /// restarted even toward the same target.
+    pub fn assign(&mut self, to: f64, config: Config, now_ms: f64) {
+        let v = if self.running { self.velocity } else { 0.0 };
+        self.to(to, v, config);
+        let x0 = self.from - to;
+        self.energy0 = 0.5 * config.stiffness * x0 * x0;
+        self.running = self.energy0 > 0.0;
+        if !self.running {
+            self.value = to;
+            self.velocity = 0.0;
+        }
+        self.last_ms = Some(now_ms);
     }
 
     /// Off to `to` from where it is, at `velocity`. As Reanimated's `onStart`, a velocity that
@@ -173,7 +199,7 @@ impl Spring {
             return false;
         }
         let energy = 0.5 * k * x * x + 0.5 * m * v * v;
-        if self.energy0 <= 0.0 || energy / self.energy0 < 6e-9 {
+        if self.energy0 <= 0.0 || energy / self.energy0 < self.threshold {
             self.value = self.to;
             self.velocity = 0.0;
             self.running = false;

@@ -1,0 +1,8 @@
+at "/demo/chessboard"
+
+// The web host gives a surface no touches: the rules (perft, castling, en passant, promotion,
+// mate, stalemate), the drag, the tap, the clocks, the aura and the review card are the Rust tests'
+// (gpu/src/chessboard.rs, gpu/src/chessboard/chess.rs); here what the Contract holds.
+test "the canvas fills the screen"
+  expect tree has "chessboard"
+  expect tree has "chessboard-canvas"

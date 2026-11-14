@@ -114,3 +114,4 @@ scroll-transition-3d
 interaction-appearance
 pomodoro-timer
 mnist
+chessboard

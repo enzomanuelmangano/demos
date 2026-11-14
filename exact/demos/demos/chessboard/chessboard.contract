@@ -1,0 +1,35 @@
+// Chessboard: Lasker–Thomas, London 1912, one move before 18. Kd2#. A live board for both
+// sides (drag or tap a piece; castling, en passant and promotion with its picker), the two
+// player cards with their chess clocks and turn dots, and on checkmate the screen swept by a
+// glass wave into a haze under the game review card (Back resets, Replay plays the mate again).
+// RN: src/animations/chessboard (src/index.tsx, use-chess-game.ts, checkmate-aura.tsx,
+// components/*; react-native-chessboard and chess.js). All of it is one Rust surface
+// (gpu/src/chessboard.rs); here the haptics it posts.
+//
+// The mate's Core Haptics pattern (haptics.ts MATE_PATTERN) is `mate-haptic` in
+// modules/apple/Demos.swift, which needs a native build: until the app has it, the surface posts
+// the pattern's taps as UIKit impacts. Once built, post "haptic:mate" / "haptic:mate-stop" from
+// the surface instead, count them here (`state mate = 0`, `state stop = 0`) and add
+// `mate-haptic play=mate stop=stop width=0 height=0` beside the canvas.
+use DemoEnv from "../env.contract"
+
+component Chessboard
+  props
+    env: DemoEnv
+  action heard(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+    if m == "haptic:impact-medium"
+      haptic("impact-medium")
+    if m == "haptic:impact-rigid"
+      haptic("impact-rigid")
+    if m == "haptic:impact-heavy"
+      haptic("impact-heavy")
+  view
+    // styles.root: theme.bg.
+    column position="absolute" inset=0 background-color="#0d0e12" testId="chessboard"
+      canvas surface=chessboard() message=heard position="absolute" top=0 left=0
+        width=env.width height=env.height touch-action="none" testId="chessboard-canvas"
+        aria-label="Chessboard: drag or tap a piece to move it"

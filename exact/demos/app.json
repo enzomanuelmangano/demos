@@ -12,7 +12,8 @@
   "modules": [
     "rolling-count",
     "demo-card",
-    "glass-button"
+    "glass-button",
+    "mate-haptic"
   ],
   "host": {
     "web": {},
