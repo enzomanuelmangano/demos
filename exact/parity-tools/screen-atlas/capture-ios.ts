@@ -1,4 +1,4 @@
-// RN and Exact on this tool's own simulator, "Demos Atlas (Air)" (iPhone Air, iOS 27.1): each demo opened
+// RN and Exact on this tool's own simulator, "Demos Atlas (Air)" (iPhone Air, iOS 27.0): each demo opened
 // by its deep link after a terminate, captured once it settles.
 //   bun capture-ios.ts [--setup] [--only rn|exact] [--settle 1500] [--rn-boot 3000] [slug…]
 // --setup creates/boots the simulator and installs both apps: Exact with `bun exact.mjs ios --sim`
@@ -24,7 +24,7 @@ async function sim(): Promise<string> {
   const list = JSON.parse(await $`xcrun simctl list devices -j`.text()).devices as Record<string, any[]>;
   for (const ds of Object.values(list)) for (const d of ds) if (d.name === NAME) return d.udid;
   if (!setup) throw new Error(`no "${NAME}" simulator: run with --setup`);
-  const rt = (await $`xcrun simctl list runtimes`.text()).match(/com\.apple\.CoreSimulator\.SimRuntime\.iOS-27-\d+/g)!.pop()!;
+  const rt = "com.apple.CoreSimulator.SimRuntime.iOS-27-0"; // what this app's sims run (27.1 refuses the iPhone Air)
   return (await $`xcrun simctl create ${NAME} com.apple.CoreSimulator.SimDeviceType.iPhone-Air ${rt}`.text()).trim();
 }
 const installed = async (udid: string, id: string) => (await $`xcrun simctl get_app_container ${udid} ${id}`.nothrow().quiet()).exitCode === 0;
