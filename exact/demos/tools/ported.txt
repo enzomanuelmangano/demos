@@ -106,3 +106,4 @@ qr-code-generator
 snake
 sudoku
 github-onboarding
+airbnb-slider

@@ -25,6 +25,7 @@ pub mod ui_scroll;
 pub mod add_to_cart;
 pub mod airbnb_flip_card;
 pub mod airbnb_flip_pages;
+pub mod airbnb_slider;
 pub mod alert_drawer_card;
 pub mod animated_3d_parallax;
 pub mod animated_clip_box;
@@ -113,6 +114,7 @@ pub static REGISTRY: Registry = Registry {
         ("add_to_cart", 1, add_to_cart::surface),
         ("airbnb_flip_card", 1, airbnb_flip_card::surface),
         ("airbnb_flip_pages", 2, airbnb_flip_pages::surface),
+        ("airbnb_slider", 1, airbnb_slider::surface),
         ("alert_drawer_card", 1, alert_drawer_card::surface),
         ("animated_3d_parallax", 0, animated_3d_parallax::surface),
         ("animated_clip_box", 1, animated_clip_box::surface),

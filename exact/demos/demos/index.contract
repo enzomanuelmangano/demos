@@ -3,6 +3,7 @@ use DemoEnv from "./env.contract"
 use ActionTray from "./action-tray/action-tray.contract"
 use AddToCart from "./add-to-cart/add-to-cart.contract"
 use AirbnbFlipInteraction from "./airbnb-flip-interaction/airbnb-flip-interaction.contract"
+use AirbnbSlider from "./airbnb-slider/airbnb-slider.contract"
 use AlertDrawer from "./alert-drawer/alert-drawer.contract"
 use Animated3dParallax from "./animated-3d-parallax/animated-3d-parallax.contract"
 use AnimatedClipBox from "./animated-clip-box/animated-clip-box.contract"
@@ -121,6 +122,8 @@ component PortedDemo
         AddToCart(env=env)
       if slug == "airbnb-flip-interaction"
         AirbnbFlipInteraction(env=env)
+      if slug == "airbnb-slider"
+        AirbnbSlider(env=env)
       if slug == "alert-drawer"
         AlertDrawer(env=env)
       if slug == "animated-3d-parallax"
