@@ -533,6 +533,9 @@ One commit per haptic event, never per frame.
   Core Animation, and a View with opacity < 1 and children fades as one group: draw the Text
   layers into an atlas once and composite them; fade the group from an offscreen
   (floating_modal.rs: texts pixel-identical).
+- An RN Skia gradient mixes the two colours as Display P3 values and stores 8 bits of P3
+  (color-carousel's glow: 96 % of pixels exact, mixing sRGB 51 %). A transformed continuous View's
+  corner is antialiased over ~1.3 px, 0.1 px inward, its straight edges aliased: color_carousel.wgsl.
 
 ## 4. Check
 
