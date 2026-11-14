@@ -37,19 +37,19 @@ circular-carousel ported
 split-button ported
 telegram-theme-switch ported
 fourier-visualizer ported
-github-onboarding todo claimed:r3-port
+github-onboarding ported (registered unverified: verify on device)
 loading-button ported
 scrollable-bottom-sheet ported
 skia-color-picker ported
 blurred-scroll ported
-airbnb-slider todo claimed:r3-port
+airbnb-slider ported (registered unverified: verify on device)
 steddy-graph-interaction ported
 action-tray ported
 toast ported
 slide-to-reveal ported
 blurred-bottom-bar ported
 fractal-glass ported
-drag-to-sort todo claimed:r3-port
+drag-to-sort ported (registered unverified: verify on device)
 fibonacci-shader ported
 family-number-input ported
 balance-slider ported
@@ -68,7 +68,7 @@ wheel-picker ported
 stacked-list ported
 geometry-button ported
 record-button ported
-grid-visualizer todo claimed:r3-port
+grid-visualizer ported (registered unverified: verify on device)
 imessage-stack ported
 atlas-button ported
 atlas-sphere ported
