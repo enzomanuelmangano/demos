@@ -105,6 +105,7 @@ pub mod telegram_theme_switch;
 pub mod the_little_prince;
 pub mod theme_canvas_animation;
 pub mod threads_holo_ticket;
+pub mod time_machine;
 pub mod timer;
 pub mod twodos_slide;
 pub mod verification_code_face;
@@ -196,6 +197,7 @@ pub static REGISTRY: Registry = Registry {
         ("the_little_prince", 2, the_little_prince::surface),
         ("theme_canvas_animation", 0, theme_canvas_animation::surface),
         ("threads_holo_ticket", 0, threads_holo_ticket::surface),
+        ("time_machine", 1, time_machine::surface),
         ("timer", 2, timer::surface),
         ("twodos_slide", 0, twodos_slide::surface),
         ("verification_code_face", 6, verification_code_face::surface),

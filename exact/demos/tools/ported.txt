@@ -89,6 +89,7 @@ tab-navigation
 telegram-theme-switch
 the-little-prince
 theme-canvas-animation
+time-machine
 toast
 twitter-tab-bar
 twodos-slide

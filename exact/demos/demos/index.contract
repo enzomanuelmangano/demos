@@ -105,6 +105,7 @@ use TelegramThemeSwitch from "./telegram-theme-switch/telegram-theme-switch.cont
 use TheLittlePrince from "./the-little-prince/the-little-prince.contract"
 use ThemeCanvasAnimation from "./theme-canvas-animation/theme-canvas-animation.contract"
 use ThreadsHoloTicket from "./threads-holo-ticket/threads-holo-ticket.contract"
+use TimeMachine from "./time-machine/time-machine.contract"
 use Toast from "./toast/toast.contract"
 use TwitterTabBar from "./twitter-tab-bar/twitter-tab-bar.contract"
 use TwodosSlide from "./twodos-slide/twodos-slide.contract"
@@ -328,6 +329,8 @@ component PortedDemo
         ThemeCanvasAnimation()
       if slug == "threads-holo-ticket"
         ThreadsHoloTicket()
+      if slug == "time-machine"
+        TimeMachine(env=env)
       if slug == "toast"
         Toast(env=env)
       if slug == "twitter-tab-bar"
