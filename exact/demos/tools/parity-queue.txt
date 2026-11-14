@@ -23,7 +23,7 @@ skia-bottom-sheet ported open:669405aa photo as libjpeg-turbo decodes it, draws 
 floating-modal ported done:c131e2ff (texts as CA layers: "+", "New", "Done" pixel-identical at rest (the "+" was 1 px right: Yoga ceils 28 to 28.333, floors the left), composited bilinearly through the rotate and scales; frame Yoga-rounded per frame; content fades as one group; Done's onPress re-runs the "+"'s pressto style (lastTouchedPressable) so the open "x" turns upright as in RN; hits through each view's transform. Left: modal circular corner and button circle AA profile max 32-35 levels (area equal to 0.02 px), Done's continuous corners 4x MSAA (max 66). A/B open, drag-close, drag spring-back, Done press, backdrop close same structure; audit rows match)
 audio-player ported done:8ae2b094 (frames on Yoga's pixel grid: pills, scrubber, bar x edges pixel-exact; View hex as P3 (colours exact, were 3 levels off); both time labels pixel-identical (ReText line floored to a pixel); left: bar caps CA analytic AA vs ours (cap pixels only), continuous corners max 20; bar heights unchecked pixel for pixel (Math.random waveform), snapped by the same rule; audit rows match (timing linear 22 s, resume over what remains, opacity 300 ms inOut(quad), Gentle spring inheriting velocity); A/B drag-back, hold, release-and-resume same structure and end (0:10))
 color-carousel ported claimed:sim1
-animated-3d-parallax ported
+animated-3d-parallax ported claimed:sim2
 fluid-slider ported
 animated-indicator-list ported
 radar-chart ported
