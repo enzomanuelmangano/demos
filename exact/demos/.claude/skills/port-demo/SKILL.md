@@ -565,6 +565,12 @@ One commit per haptic event, never per frame.
 - expo-image downscales only when BOTH pixel sides exceed the rounded-up cover size × scale (a 400 ×
   250 photo in an 89 pt view is not), then aspect-fills the unrounded cover frame. Decode bundled
   photos with ImageIO (zune is ~1 level off in 8 × 8 blocks): circular-carousel's make.sh.
+- RN's `makeImageFromView` (react-native-webgpu's drawElementImageToTexture) fails on the iOS 27
+  simulator: `drawViewHierarchyInRect` returns NO, so snapshot effects (telegram-theme-switch's
+  reveal) don't show in RN there. Port the design; A/B only what still runs.
+- iOS host: split-button's `if` arm with `-exact-exit-animation` (a FadeOut under a pressto
+  scale box, in or out of the `button`) vanished at once. Keep such a node mounted and play
+  state-switched keyframes (`from opacity=1`), placed where RN's exiting view keeps its last frame.
 
 ## 4. Check
 
