@@ -22,7 +22,7 @@ smooth-dropdown ported done:1e537101 (toggle = Reanimated spring from rest per r
 skia-bottom-sheet ported open:669405aa photo as libjpeg-turbo decodes it, draws in the 8-bit P3 canvas, clip RN's non-AA one: stills closed + open photo max 3, handle/sheet edge max 4; A/B drag up, drag down that springs back open (both peak at 489 px), drag to the top clamp: same structure and ends. Left: the blurred photo in the sheet is a true Gaussian with clamp edges, RN's is Graphite's downscaled clamp blur (GraphitePlan has decal only): max 7 levels at its brightest edges, mean 1.1
 floating-modal ported done:c131e2ff (texts as CA layers: "+", "New", "Done" pixel-identical at rest (the "+" was 1 px right: Yoga ceils 28 to 28.333, floors the left), composited bilinearly through the rotate and scales; frame Yoga-rounded per frame; content fades as one group; Done's onPress re-runs the "+"'s pressto style (lastTouchedPressable) so the open "x" turns upright as in RN; hits through each view's transform. Left: modal circular corner and button circle AA profile max 32-35 levels (area equal to 0.02 px), Done's continuous corners 4x MSAA (max 66). A/B open, drag-close, drag spring-back, Done press, backdrop close same structure; audit rows match)
 audio-player ported claimed:sim2
-color-carousel ported
+color-carousel ported claimed:sim1
 animated-3d-parallax ported
 fluid-slider ported
 animated-indicator-list ported
