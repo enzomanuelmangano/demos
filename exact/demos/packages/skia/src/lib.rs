@@ -1460,6 +1460,11 @@ impl Canvas {
 /// `SkPaint`'s default miter limit.
 const MITER_LIMIT: f32 = 4.0;
 
+/// `path.contains(x, y)` for a path of the default fill type (winding).
+pub fn path_contains(path: &Path, x: f32, y: f32) -> bool {
+    lyon::algorithms::hit_test::hit_test_path(&point(x, y), path.iter(), lyon::path::FillRule::NonZero, 0.01)
+}
+
 /// A rect as a path.
 pub fn rect_path(x: f32, y: f32, w: f32, h: f32) -> Path {
     let mut b = Path::builder();

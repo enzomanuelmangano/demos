@@ -70,6 +70,7 @@ pub mod github_contributions;
 pub mod github_onboarding;
 pub mod github_terrain;
 pub mod gl_transitions;
+pub mod grid_visualizer;
 pub mod image_cropper;
 pub mod imessage_stack;
 pub mod light_on_painting;
@@ -160,6 +161,7 @@ pub static REGISTRY: Registry = Registry {
         ("github_onboarding", 0, github_onboarding::surface),
         ("github_terrain", 1, github_terrain::surface),
         ("gl_transitions", 4, gl_transitions::surface),
+        ("grid_visualizer", 1, grid_visualizer::surface),
         ("image_cropper", 0, image_cropper::surface),
         ("imessage_stack", 0, imessage_stack::surface),
         ("light_on_painting", 4, light_on_painting::surface),
