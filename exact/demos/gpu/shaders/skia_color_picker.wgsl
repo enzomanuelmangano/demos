@@ -50,8 +50,8 @@ fn hsv2rgb(c: vec3<f32>) -> vec3<f32> {
 }
 
 // RN Skia draws into the app's Display P3 surface: a runtime effect's output is P3, and a
-// gradient interpolates its sRGB stops' P3 values. Both are turned back into sRGB here (the
-// wheel's saturated edge clips to the sRGB gamut, as a P3 colour does on an sRGB capture).
+// gradient interpolates its sRGB stops' P3 values. The wheel is stored and blended in P3 and
+// turned into sRGB per pixel at the composite (the saturated edge clips to the sRGB gamut there).
 fn dec(c: vec3<f32>) -> vec3<f32> {
     return select(pow((c + 0.055) / 1.055, vec3<f32>(2.4)), c / 12.92, c <= vec3<f32>(0.04045));
 }
@@ -61,15 +61,11 @@ fn enc(c0: vec3<f32>) -> vec3<f32> {
 }
 fn p3_to_srgb(c: vec3<f32>) -> vec3<f32> {
     let l = dec(c);
-    return enc(vec3<f32>(1.2249 * l.r - 0.2247 * l.g, -0.0420 * l.r + 1.0419 * l.g, -0.0197 * l.r - 0.0786 * l.g + 1.0979 * l.b));
+    return enc(vec3<f32>(1.2249401 * l.r - 0.2249404 * l.g, -0.0420569 * l.r + 1.0420571 * l.g, -0.0196376 * l.r - 0.0786361 * l.g + 1.0982735 * l.b));
 }
 fn srgb_to_p3(c: vec3<f32>) -> vec3<f32> {
     let l = dec(c);
-    return enc(vec3<f32>(0.8225 * l.r + 0.1774 * l.g, 0.0332 * l.r + 0.9669 * l.g, 0.0171 * l.r + 0.0724 * l.g + 0.9108 * l.b));
-}
-
-fn sweep(t: f32) -> vec3<f32> {
-    return p3_to_srgb(sweep_p3(t));
+    return enc(vec3<f32>(0.8224621 * l.r + 0.1775380 * l.g, 0.0331941 * l.r + 0.9668058 * l.g, 0.0170827 * l.r + 0.0723974 * l.g + 0.9105199 * l.b));
 }
 
 fn sweep_p3(t: f32) -> vec3<f32> {
@@ -93,7 +89,8 @@ fn wheel(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
     let d = local - vec2<f32>(size * 0.5);
     var t = atan2(d.y, d.x) / (2.0 * PI);
     if (t < 0.0) { t = t + 1.0; }
-    var c = vec4<f32>(sweep(t) * mask, mask);
+    // The wheel canvas as RN Skia stores it: premultiplied Display P3 (8 bits: the target).
+    var c = vec4<f32>(sweep_p3(t) * mask, mask);
     // radialGradientShader.
     let normalized = local / vec2<f32>(size);
     let distance = length(normalized - vec2<f32>(0.5));
@@ -102,7 +99,7 @@ fn wheel(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
         let a = atan2(nc.y, nc.x);
         let hue = a * 0.5 / PI + 0.5;
         let sat = (distance * 2.0) * (distance * 2.0);
-        let rgb = p3_to_srgb(hsv2rgb(vec3<f32>(hue, sat, 1.0)));
+        let rgb = hsv2rgb(vec3<f32>(hue, sat, 1.0));
         c = vec4<f32>(rgb * mask, mask) + c * (1.0 - mask);
     }
     return c;
@@ -115,13 +112,22 @@ fn to_linear(c: vec3<f32>) -> vec3<f32> {
 @fragment
 fn compose(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
     let p = pos.xy;
-    var c = textureLoad(base, vec2<i32>(p), 0);
-    let shadow = blur_at(p);
-    c = c * (1.0 - shadow);
+    // Each RN canvas is an 8-bit premultiplied Display P3 surface; Core Animation converts each
+    // pixel to sRGB unpremultiplied, then blends the picker's canvas over the wheel's (over black).
+    let w = textureLoad(base, vec2<i32>(p), 0);
+    var c = vec4<f32>(0.0);
+    if (w.a > 0.0) {
+        c = vec4<f32>(p3_to_srgb(w.rgb / w.a) * w.a, w.a);
+    }
+    // The picker's canvas: the shadow's black under the stroke and the fill (the layer, P3).
+    var k = vec4<f32>(0.0);
     let q = vec2<i32>(p - u.layer.xy);
     if (all(q >= vec2<i32>(0)) && all(vec2<f32>(q) < u.layer.zw)) {
-        let k = textureLoad(picker, q, 0);
-        c = k + c * (1.0 - k.a);
+        k = textureLoad(picker, q, 0);
+    }
+    let pc = round((k + vec4<f32>(0.0, 0.0, 0.0, blur_at(p)) * (1.0 - k.a)) * 255.0) / 255.0;
+    if (pc.a > 0.0) {
+        c = vec4<f32>(p3_to_srgb(pc.rgb / pc.a) * pc.a, pc.a) + c * (1.0 - pc.a);
     }
     if (u.canvas.w > 0.5 && c.a > 0.0) {
         c = vec4<f32>(to_linear(c.rgb / c.a) * c.a, c.a);

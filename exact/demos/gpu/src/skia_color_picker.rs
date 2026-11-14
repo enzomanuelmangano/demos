@@ -59,7 +59,12 @@ pub fn surface() -> Box<dyn Surface> {
         stroke: Canvas::default(),
         both: Canvas::default(),
         stroke_renderer: Renderer::default(),
-        both_renderer: Renderer::default(),
+        both_renderer: {
+            // The picker's canvas is 8-bit Display P3 (the fill's sRGB rgba converted to it).
+            let mut r = Renderer::default();
+            r.p3 = true;
+            r
+        },
         gpu: None,
     })
 }
@@ -228,6 +233,13 @@ impl Surface for ColorPicker {
             self.dirty = true;
         }
         let Some(shape) = self.shape.as_ref() else { return false };
+        // Nothing moved: the layers, the shadow and the uniforms from the last draw still hold.
+        if !self.dirty {
+            if let Some((_, bind)) = self.gpu.as_ref().and_then(|g| g.bind.as_ref()) {
+                skia::render::fullscreen_pass(encoder, "color picker", target, &self.gpu.as_ref().unwrap().compose, bind);
+                return self.pan.tracking();
+            }
+        }
         let (tx, ty) = self.translation();
         let layer = self.layer(s);
         let gpu = self.gpu.as_mut().unwrap();
