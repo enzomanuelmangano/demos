@@ -1,8 +1,10 @@
 at "/demo/bottom-bar-skia"
 
+// The web host gives a surface no touches, and on iOS the canvas takes the taps above the tab
+// boxes (RN's Touchable.Canvas): the tap's 500 ms, its lift-point hit test and the posted tab
+// are the Rust test's (gpu/src/bottom_bar_skia.rs). Here what the Contract holds.
 test "the bar and its tabs are there"
   expect tree has "bottom-bar-canvas"
+  expect tree has "tab-0"
+  expect tree has "tab-1"
   expect tree has "tab-2"
-  tap "tab-2"
-  clock settle
-  expect tree has "bottom-bar-canvas"

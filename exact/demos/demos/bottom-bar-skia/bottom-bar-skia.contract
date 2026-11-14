@@ -19,17 +19,31 @@ component BottomBarSkia
   action choose(i: number)
     haptic("selection")
     index = i
+  // The canvas's tap (bottom_bar_skia.rs): RNGH's 500 ms tap, hit-tested at the lift.
+  action tapped(m: string)
+    if m == "tab:0"
+      haptic("selection")
+      index = 0
+    if m == "tab:1"
+      haptic("selection")
+      index = 1
+    if m == "tab:2"
+      haptic("selection")
+      index = 2
   view
     // The navigator on DefaultTheme's background, rgb(242, 242, 242); each screen a
     // BackgroundView (flex 1, rgba(0,0,0,0.1)) above the tab bar's room.
     column position="absolute" inset=0 background-color="rgb(242, 242, 242)" testId="bottom-bar-skia"
       view position="absolute" top=0 left=0 right=0 bottom=barHeight() background-color="rgba(0, 0, 0, 0.1)"
         aria-hidden=true
-      // styles.container: absolute at the bottom, the full width.
-      canvas surface=bottom_bar_skia(index) position="absolute" left=0 bottom=0 width="100%"
-        height=canvasHeight() pointer-events="none" aria-hidden=true testId="bottom-bar-canvas"
-      // Each BottomTabItem's Touchable.Rect: a third of the width, from y 50 to the bottom.
+      // Each BottomTabItem's Touchable.Rect, for accessibility and the web (which gives a
+      // surface no touches): a third of the width, from y 50 to the bottom. On iOS the canvas
+      // above takes the touches, as RN's Touchable.Canvas does.
       for i in range(3) key=i
         view position="absolute" bottom=0 left=(i * env.width / 3) width=(env.width / 3)
           height=barHeight() press=choose(i) role="button" aria-label=tabName(i)
           aria-pressed=(i == index) testId=`tab-${i}`
+      // styles.container: absolute at the bottom, the full width.
+      canvas surface=bottom_bar_skia(index) position="absolute" left=0 bottom=0 width="100%"
+        height=canvasHeight() touch-action="none" message=tapped aria-hidden=true
+        testId="bottom-bar-canvas"

@@ -6,12 +6,17 @@
 //! #FFFFFF). The canvas view casts an iOS shadow (rgba(0,0,0,0.2), opacity 0.2, radius 25,
 //! offset (0, −10)) from what it draws.
 //!
-//! Input: the selected index (Contract owns it, as the navigator does: its taps are boxes over
-//! the canvas). The canvas is RN's (`bottomTabBarHeight + 50` tall, bottomTabBarHeight =
-//! 65 + bottom inset / 2) with SHADOW_ROOM points more on top, where the shadow falls.
+//! Input: the selected index (Contract owns it, as the navigator does). The taps are the
+//! canvas's: react-native-skia-gesture's Gesture.Tap() (RNGH's iOS tap: 500 ms, no distance
+//! limit), whose onTouchesUp picks the first Touchable.Rect (x tab · i, y 50, a tab wide,
+//! bottomTabBarHeight tall) holding the lift point; the surface posts `tab:<i>` and the
+//! Contract navigates and plays the selection haptic. A hold past 500 ms selects nothing.
+//! The canvas is RN's (`bottomTabBarHeight + 50` tall, bottomTabBarHeight = 65 + bottom
+//! inset / 2) with SHADOW_ROOM points more on top, where the shadow falls.
 
 use exact_gpu::wgpu;
-use exact_gpu::{Frame, Surface, SurfaceError, Value};
+use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
+use gesture_handler::{Event, TapGesture};
 use reanimated::{duration_config, interpolate_color, Easing, Spring, Timing, GENTLE};
 use skia::{fit_box, Canvas, Color, Paint, Path, Rect, Renderer};
 
@@ -62,6 +67,11 @@ struct BottomBarSkia {
     renderers: [Renderer; 2],
     blurs: [skia::Blur; 2],
     gpu: Option<Gpu>,
+    /// The canvas's tap; the screen's width and the tab bar's height it hit-tests against.
+    tap: TapGesture,
+    size: (f32, f32),
+    /// `tab:<i>` for the Contract (navigate + Haptics.selectionAsync).
+    posted: Vec<String>,
 }
 
 struct Gpu {
@@ -96,16 +106,20 @@ impl Surface for BottomBarSkia {
         match self.index {
             None => self.animated = Spring::at(index as f64),
             Some(old) if old != index => {
-                self.animated.to(index as f64, self.animated.velocity, GENTLE);
+                // useDerivedValue(() => withSpring(currentIndex)): a mapper's retarget.
+                self.animated.retarget(index as f64, GENTLE);
                 if let Some(bar) = self.placed {
                     for i in [old, index] {
                         let active = i == index;
                         // withSpring(…, { duration: 400, dampingRatio: 1 }): Reanimated solves the
                         // stiffness from where the icon is and how fast it moves at each start.
+                        // A mapper's withSpring: the running velocity carries over (dropped when it
+                        // points away), the frame clock continues, and the rest is measured
+                        // against getEnergy(x0, config.velocity = 0) (`Spring::retarget`).
                         let to = rise_of(bar, active);
                         let (p, v) = (self.rise[i].value, self.rise[i].velocity);
                         let v = if (to > p && v < 0.0) || (to < p && v > 0.0) { 0.0 } else { v };
-                        self.rise[i].to(to, v, duration_config(p - to, v, 400.0, 1.0, 4.0));
+                        self.rise[i].retarget(to, duration_config(p - to, v, 400.0, 1.0, 4.0));
                         self.tint[i].to(if active { 1.0 } else { 0.0 }, 400.0, Easing::timing_default());
                     }
                 }
@@ -114,6 +128,28 @@ impl Surface for BottomBarSkia {
         }
         self.index = Some(index);
         Ok(())
+    }
+
+    fn wants_input(&self) -> bool {
+        true
+    }
+
+    fn input(&mut self, event: &InputEvent) {
+        let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
+        if let Event::Tap { x, y } = self.tap.event(id, gfx::phase(phase), x, y, at_ms, true) {
+            // findTouchableItem: the first tab whose rect holds the lift (RN's canvas starts
+            // SHADOW_ROOM below this one).
+            let (w, bar) = self.size;
+            let tab = w / TABS as f32;
+            let y = y - SHADOW_ROOM;
+            if let Some(i) = (0..TABS).find(|&i| x >= tab * i as f32 && x <= tab * (i + 1) as f32 && (OFFSET..=OFFSET + bar).contains(&y)) {
+                self.posted.push(format!("tab:{i}"));
+            }
+        }
+    }
+
+    fn messages(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.posted)
     }
 
     fn agent(&mut self, _request: &str) -> Option<String> {
@@ -131,6 +167,7 @@ impl Surface for BottomBarSkia {
     ) -> bool {
         let w = frame.width;
         let bar = frame.height - SHADOW_ROOM - OFFSET;
+        self.size = (w, bar);
         let index = self.index.unwrap_or(0);
         if self.placed != Some(bar) {
             self.placed = Some(bar);
@@ -288,5 +325,41 @@ mod tests {
         img.save("bottom-bar-skia-2");
         assert!(purple(img.at(2 * 325 - 70, y(50.0))), "{:?}", img.at(2 * 325 - 70, y(50.0)));
         assert!(!purple(img.at(2 * 65 - 70, y(50.0))), "{:?}", img.at(60, y(50.0)));
+    }
+
+    #[test]
+    fn a_tap_picks_the_tab_under_the_lift_within_500_ms() {
+        use exact_gpu::{PointerKind, PointerPhase};
+        let mut s = surface();
+        s.bind(&[Value::Number(0.0)], None).unwrap();
+        // render() would set this; the 390-wide frame above (bar 82).
+        let gpu = match fixture::device() {
+            Ok(gpu) => gpu,
+            Err(error) => return eprintln!("{error}; skipped"),
+        };
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
+        exact_gpu::shaders::load_dir(&dir, &crate::REGISTRY).unwrap();
+        fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
+        let finger = |s: &mut Box<dyn Surface>, phase, x: f32, y: f32, at_ms| {
+            s.input(&InputEvent::Pointer { id: 1, phase, x, y: y + SHADOW_ROOM, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
+        };
+        // A tap on the second tab (x 130..260, y 50..132).
+        finger(&mut s, PointerPhase::Down, 200.0, 100.0, 10.0);
+        finger(&mut s, PointerPhase::Up, 200.0, 100.0, 90.0);
+        assert_eq!(s.messages(), ["tab:1"]);
+        // Held 600 ms: the tap fails, nothing is chosen.
+        finger(&mut s, PointerPhase::Down, 300.0, 100.0, 1000.0);
+        finger(&mut s, PointerPhase::Up, 300.0, 100.0, 1600.0);
+        assert!(s.messages().is_empty());
+        // Down on the first tab, lifted on the third: the third (the lift's point).
+        finger(&mut s, PointerPhase::Down, 60.0, 100.0, 2000.0);
+        finger(&mut s, PointerPhase::Move, 200.0, 100.0, 2050.0);
+        finger(&mut s, PointerPhase::Move, 330.0, 100.0, 2100.0);
+        finger(&mut s, PointerPhase::Up, 330.0, 100.0, 2150.0);
+        assert_eq!(s.messages(), ["tab:2"]);
+        // Above the bar (the bump's room): no tab.
+        finger(&mut s, PointerPhase::Down, 60.0, 20.0, 3000.0);
+        finger(&mut s, PointerPhase::Up, 60.0, 20.0, 3050.0);
+        assert!(s.messages().is_empty());
     }
 }
