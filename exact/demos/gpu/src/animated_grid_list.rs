@@ -226,6 +226,8 @@ struct AnimatedGridList {
     renderers: Vec<Renderer>,
     /// The cards' content changed since their layers were drawn.
     dirty: bool,
+    /// Per card: its layer is out of date (drawn only once the card is on screen).
+    stale: Vec<bool>,
     /// Where in its layer each card's point (0, 0) was drawn (texels): the origin's fraction of
     /// a device pixel then, plus the margin. A scroll since moves the drawn layer as it is.
     drawn_at: Vec<[f32; 2]>,
@@ -368,6 +370,8 @@ fn to_linear(c: vec3<f32>) -> vec3<f32> {
         let s = textureSampleLevel(layers, smp, t, i, 0.0);
         c = s + c * (1.0 - s.a);
     }
+    // Over styles.container's #EEEEEE: the surface is opaque (the web's canvas is opaque-only).
+    c = vec4<f32>(c.rgb + vec3<f32>(238.0 / 255.0) * (1.0 - c.a), 1.0);
     if (u.canvas.w > 0.5) { c = vec4<f32>(to_linear(c.rgb / max(c.a, 1e-6)) * c.a, c.a); }
     return c;
 }
@@ -479,20 +483,28 @@ impl Surface for AnimatedGridList {
             let r = c.frame.rect();
             [r[0], self.safe_top + r[1] - offset]
         }).collect();
-        if self.dirty || animating {
-            self.draw_layers(device, queue, encoder, &origins);
+        if self.dirty || animating || self.stale.len() != CARDS {
+            self.stale = vec![true; CARDS];
             self.dirty = false;
+        }
+        // Only the cards on screen (even tilted) are drawn; the others when they come in.
+        let vh = self.size.1;
+        let visible: Vec<bool> = self.cards.iter().zip(&origins).map(|(c, o)| {
+            let h = c.frame.rect()[3];
+            o[1] + h >= -h && o[1] <= vh + h
+        }).collect();
+        if (0..CARDS).any(|i| self.stale[i] && visible[i]) {
+            self.draw_layers(device, queue, encoder, &origins, &visible);
         }
         // The composite: per card the inverse of translate(origin + centre) · perspective ·
         // rotateX · translate(−centre).
         let gpu = self.gpu.as_ref().unwrap();
         let mut data = vec![0f32; CARDS * 16 + 4];
         let angle = (self.tilt.value as f32).to_radians();
-        let vh = self.size.1;
         for (i, c) in self.cards.iter().enumerate() {
             let r = c.frame.rect();
             let o = origins[i];
-            if o[1] + r[3] < -r[3] || o[1] > vh + r[3] {
+            if !visible[i] {
                 continue; // off screen even tilted
             }
             let (cx, cy) = ((r[2] / 2.0) as f32, (r[3] / 2.0) as f32);
@@ -520,7 +532,7 @@ impl Surface for AnimatedGridList {
 
 impl AnimatedGridList {
     /// Each card's layer: its frame now, at its origin's sub-pixel offset.
-    fn draw_layers(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut wgpu::CommandEncoder, origins: &[[f64; 2]]) {
+    fn draw_layers(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut wgpu::CommandEncoder, origins: &[[f64; 2]], visible: &[bool]) {
         let s = self.scale as f32;
         let gpu = self.gpu.as_ref().unwrap();
         let photos = self.photos.as_ref().unwrap();
@@ -528,6 +540,10 @@ impl AnimatedGridList {
         let w = self.size.0;
         self.drawn_at.resize(CARDS, [MARGIN; 2]);
         for (i, c) in self.cards.iter().enumerate() {
+            if !(self.stale[i] && visible[i]) {
+                continue;
+            }
+            self.stale[i] = false;
             let r = c.frame.rect();
             let o = origins[i];
             // At the origin's fraction of a device pixel: at rest, texel for pixel.
@@ -687,9 +703,9 @@ mod tests {
         let (img, _) = exact_gpu::fixture::render(&gpu, &mut s, &frame(0.0)).unwrap();
         // The first card at (21, 68): white inside its corner.
         assert_eq!(img.at(63 + 300, 204 + 300)[3], 255);
-        // Between the two columns and below the first row: nothing.
-        assert_eq!(img.at(630, 300)[3], 0);
-        assert_eq!(img.at(300, 204 + 536 + 30)[3], 0);
+        // Between the two columns and below the first row: the container's #EEEEEE.
+        assert_eq!(img.at(630, 300), [238, 238, 238, 255]);
+        assert_eq!(img.at(300, 204 + 536 + 30), [238, 238, 238, 255]);
         s.bind(&[Value::Bool(true), Value::Number(68.0), Value::Number(34.0), quotes], None).unwrap();
         exact_gpu::fixture::render(&gpu, &mut s, &frame(16.0)).unwrap();
         exact_gpu::fixture::render(&gpu, &mut s, &frame(32.0)).unwrap();

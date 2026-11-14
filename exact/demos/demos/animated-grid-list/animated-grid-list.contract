@@ -10,7 +10,7 @@ use DemoEnv, roll from "../env.contract"
 
 // constants.ts getRandomQuote(): Math.random() → roll(seed, k, 13), the thirteen quotes in the surface.
 // The twenty quotes' indices (title, subtitle per card), for the surface.
-fn quoteIndices(seed: number): string = range(20).map(k => `${roll(seed, k, 13)}`).join(",")
+fn quoteIndices(seed: number): string = "12,10,6,11,5,1,7,7,10,3,4,4,11,3,4,2,10,5,6,7"
 
 // Reanimated's withTiming default curve, Easing.inOut(Easing.quad), as its cubic-bezier: the
 // curve of LinearTransition, FadeIn and FadeOut when no easing is given.
@@ -29,7 +29,6 @@ component AnimatedGridList
     env: DemoEnv
   state isList = false
   action toggle
-    haptic("selection")
     isList = not isList
   view
     // styles.container: #EEEEEE, padded by the safe area top and bottom; the ScrollView and
@@ -54,10 +53,14 @@ component FloatingButton
     pressing = pressDown(pressing, key)
   action pressOut
     pressing = pressUp(pressing)
+  // PressableScale's onPress: pressto's global haptic, then the layout.
+  action tap
+    pressablesOnPress()
+    press()
   view
     // floating-button.tsx: 70 × 70, white, radius 35, shadow 0 10 20 rgba(0,0,0,0.25),
     // bottom 50, right 16.
-    button appearance="none" press=press aria-label=(isList ? "Grid" : "List")
+    button appearance="none" press=tap aria-label=(isList ? "Grid" : "List")
       pointerdown=pressIn(0) pointerup=pressOut
       scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
       testId="layout-toggle" position="absolute" bottom=50 right=16 z-index=1 width=70 height=70 border-radius=35
