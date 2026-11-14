@@ -184,6 +184,11 @@ fn grid(v: f32, scale: f32) -> f32 {
     ((v * scale + 0.5 + 1e-4).floor()) / scale
 }
 
+/// A Text node's position in its parent: floored to the device pixel (Yoga's textRounding).
+fn text_grid(v: f32, scale: f32) -> f32 {
+    ((v * scale + 1e-4).floor()) / scale
+}
+
 /// A Text's measured side, ceiled to the pixel grid (RN's text measurement).
 fn text_side(v: f32, scale: f32) -> f32 {
     ((v + 0.001) * scale).ceil() / scale
@@ -220,7 +225,10 @@ impl FourierVisualizer {
             t: grid(top, s),
             r: grid(left + SIDE, s),
             b: grid(top + SIDE, s),
-            icon: (grid(left + (SIDE - tw) / 2.0, s), grid(top + (SIDE - th) / 2.0, s)),
+            // A Text node's offset in its parent is floored (Yoga's textRounding): the icon's
+            // 24.333 box sits 19.667 into the 64 pt button, not 19.833 rounded to 20 (it was 1 px
+            // right and low).
+            icon: (grid(left, s) + text_grid((SIDE - tw) / 2.0, s), grid(top, s) + text_grid((SIDE - th) / 2.0, s)),
         }
     }
 
