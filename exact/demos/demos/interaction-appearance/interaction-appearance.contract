@@ -1,0 +1,20 @@
+// Interaction Appearance: a movie page whose floating sun button switches the light and dark
+// themes; while it is held the page shrinks, the poster's glow fades and a blur rises over it.
+// RN: src/animations/interaction-appearance (src/screens/movie-detail.tsx, src/components/*,
+// src/theme/*). The page, its Skia canvases, the animated expo-blur, the pressto button and
+// their timings are one Rust surface (gpu/src/interaction_appearance.rs); it posts the press's
+// haptic.
+use DemoEnv from "../env.contract"
+
+component InteractionAppearance
+  props
+    env: DemoEnv
+  action buzz(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+  view
+    column position="absolute" inset=0 testId="interaction-appearance"
+      canvas surface=interaction_appearance(env.safeTop, env.safeBottom) position="absolute" top=0 left=0
+        width=env.width height=env.height touch-action="none" message=buzz
+        testId="interaction-appearance-canvas"
+        aria-label="Past Lives: hold the sun button to switch the theme"

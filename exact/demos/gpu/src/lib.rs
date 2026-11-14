@@ -74,6 +74,7 @@ pub mod grid_visualizer;
 pub mod image_cropper;
 pub mod imessage_stack;
 pub mod infinite_carousel;
+pub mod interaction_appearance;
 pub mod light_on_painting;
 pub mod linear_sensors;
 pub mod loading_button;
@@ -167,6 +168,7 @@ pub static REGISTRY: Registry = Registry {
         ("image_cropper", 0, image_cropper::surface),
         ("imessage_stack", 0, imessage_stack::surface),
         ("infinite_carousel", 0, infinite_carousel::surface),
+        ("interaction_appearance", 2, interaction_appearance::surface),
         ("light_on_painting", 4, light_on_painting::surface),
         ("linear_sensors", 0, linear_sensors::surface),
         ("loading_button", 0, loading_button::surface),
