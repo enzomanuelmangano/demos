@@ -522,6 +522,14 @@ One commit per haptic event, never per frame.
   An RN icon glyph's baseline is on a whole pixel (CoreGraphics), so its outline sits
   (ascent × size × 3) mod 1 px above an svg's: shift it inside the `viewBox` (smooth-dropdown:
   AntDesign at 20, 0.32 px = 2.733 units; ink centroids within 0.03 px).
+- pressto: every pressable's style mapper reads the provider's `lastTouchedPressable`, which each
+  onPress sets (Reanimated's setter has no equality check): any press re-runs EVERY pressable's
+  style. A pressable whose `transform` has a second writer loses it (floating-modal: pressing
+  Done turns the open modal's rotated "×" back into an upright "+").
+- RN Text under a transform (a rotate, a pressto or drag scale) is its backing store resampled by
+  Core Animation, and a View with opacity < 1 and children fades as one group: draw the Text
+  layers into an atlas once and composite them; fade the group from an offscreen
+  (floating_modal.rs: texts pixel-identical).
 
 ## 4. Check
 
