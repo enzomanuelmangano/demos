@@ -40,7 +40,7 @@ fourier-visualizer ported done:a3ba832b (clear button: icon pixel-identical (Tex
 github-onboarding ported done:21e50432 (stills pages 0-3: titles, dots, gradient pixel-identical (title box: Yoga floors the left, ceils the unrounded right: WHISKERED EXPLORER was 0.5 px left); ring centre and radius exact, edge AA max 33 (CA circle vs analytic); photo circle 0.15 px larger than CA's mask; 01/03/04 upscaled by CA, interior mean 0.35-0.96, max 31 (resampling); audit: paging UIScrollView, scrollToOffset animated, rotateY/scale extend, opacity clamps, interpolateColor gamma 2.2, pressto dots + hitSlop: match; A/B drag-page, partial drag back, dot taps, flick same structure and ends; 86 -> 35 us)
 loading-button ported done:2de67b2f (verified 2026-11-14, no code change: idle pill edges, title and ink pixel-exact (centroid within 0.01 px); loading state text max 9, indicator ink within 0.1 %; success state max 19 (check, disc, title, background exact); pill continuous corners 4x MSAA vs CA analytic (max 12); idle/loading background 1 level green (242 vs CA's 243: P3 #E6F2FC is 242.488, CA's compositor rounds near-half values its own way, ColorSync agrees with ours); A/B two presses (success, error): growth 5 frames, title jumps, background ease ~200 ms, outcome at 2.0 s, reset at 1.5 s, shrink 6 frames: same structure; RN shows no press scale (pressto 0.7), ours pressto's design)
 scrollable-bottom-sheet ported claimed:sim1
-skia-color-picker ported
+skia-color-picker ported claimed:sim2
 blurred-scroll ported
 airbnb-slider ported (registered unverified: verify on device)
 steddy-graph-interaction ported
