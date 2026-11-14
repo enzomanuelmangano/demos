@@ -123,4 +123,4 @@ cherry-blossom-qrcode ported (registered unverified: verify on device)
 art-gallery ported (registered unverified: verify on device)
 the-little-prince ported
 light-on-painting ported
-sculptures-in-words ported (registered unverified: verify on device) claimed:sim1
+sculptures-in-words ported open:966a9789 (page paints PAGE_BG, opaque: web was black; iOS: column pixel-identical to RN (mean 0.006) after the hard-break kern in bake.ts, fades whole (8-stop limit), button icons at SymbolView fit (centroid 0.4 px), first-reveal 0.9 s freeze gone; A/B reveal, cross to Nike, back same structure. Left: article 0 at 420 line 324 of 345 breaks 2 words earlier than RN (0.003 px pen gap at the tightest break: the bake's accumulated 16.16 advances); web atlas not re-captured here)
