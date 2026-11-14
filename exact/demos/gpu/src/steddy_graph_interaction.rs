@@ -297,7 +297,7 @@ impl Surface for Graph {
 }
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use exact_gpu::fixture;
     use std::alloc::{GlobalAlloc, Layout, System};
@@ -336,7 +336,7 @@ mod tests {
     #[global_allocator]
     static ALLOCATOR: Counting = Counting;
 
-    fn counted<T>(f: impl FnOnce() -> T) -> (T, usize) {
+    pub(crate) fn counted<T>(f: impl FnOnce() -> T) -> (T, usize) {
         COUNT.with(|c| c.set(Some(0)));
         let out = f();
         (out, COUNT.with(|c| c.replace(None)).unwrap())

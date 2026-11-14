@@ -113,6 +113,22 @@ fn cases() -> Vec<Case> {
             },
         },
         Case {
+            name: "fourier-visualizer",
+            make: crate::fourier_visualizer::surface,
+            size: (402.0, 874.0, 3.0),
+            setup: |_| {},
+            // A finger draws a 2.5 s figure-eight (~1500 pt, 2048 epicycles once padded) and
+            // lifts; the epicycles then retrace it (20 s). Run with BENCH_FRAMES=1200.
+            tick: |s, i, ms| {
+                if i <= 150 {
+                    let t = i as f32 / 150.0 * std::f32::consts::TAU;
+                    let (x, y) = (201.0 + 150.0 * t.sin(), 437.0 + 200.0 * (2.0 * t).sin());
+                    let phase = match i { 0 => PointerPhase::Down, 150 => PointerPhase::Up, _ => PointerPhase::Move };
+                    s.input(&pointer(1, phase, x, y, ms));
+                }
+            },
+        },
+        Case {
             name: "telegram-theme-switch",
             make: crate::telegram_theme_switch::surface,
             size: (420.0, 912.0, 3.0),
@@ -186,5 +202,130 @@ fn bench_cpu_per_frame() {
         }
         let (min, median, p90) = measure(&gpu, &case, frames);
         println!("bench {:<26} min {:>7.1}  median {:>7.1}  p90 {:>7.1} us (thread CPU)", case.name, min, median, p90);
+    }
+}
+
+/// The inputs the app binds a surface with (app values: iPhone 17, safe areas 62/34).
+fn audit_inputs(name: &str, arity: usize) -> Vec<Value> {
+    let n = Value::Number;
+    let b = Value::Bool;
+    match name {
+        "add_to_cart" | "calendar_days" | "drag_to_sort" | "expandable_mini_player" => vec![n(62.0)],
+        "airbnb_flip_card" | "alert_drawer_card" | "circular_carousel" | "wheel_picker" => vec![b(false)],
+        "airbnb_flip_pages" | "dot_sheet_card" => vec![b(false), n(62.0)],
+        "cherry_blossom_qrcode" => vec![n(402.0), n(874.0), n(7.0), Value::str("https://reactiive.io")],
+        "dynamic_blur_tabs" => vec![b(true), n(0.0), n(0.0), n(7.0), n(62.0), n(34.0), n(874.0)],
+        "gl_transitions" => vec![n(62.0), n(34.0), Value::str("Hello"), n(0.0)],
+        "light_on_painting" => vec![b(true), b(true), n(0.0), b(false)],
+        "mobile_input" | "prequel_slider" | "selectable_grid_list" => vec![n(62.0), n(34.0)],
+        "qr_code_generator" => vec![n(62.0), Value::str("https://reactiive.io"), b(false)],
+        "radar_chart" => [1.0, 0.6, 0.1, 0.1, 0.5, 0.2, 0.1, 0.5, 0.9, 0.8].map(n).to_vec(),
+        "snake" => vec![n(7.0), n(402.0), n(874.0)],
+        "staggered_card_number" => vec![b(false), n(45.1), n(417.3)],
+        "sudoku" => vec![n(7.0), n(0.0), n(0.0)],
+        "swipe_cards" => vec![n(62.0), n(0.0), n(0.0), n(0.0)],
+        "the_little_prince" => vec![n(3.0), b(false)],
+        "telegram_theme_switch" => vec![n(34.0)],
+        "timer" => vec![n(0.0), n(250.0)],
+        _ => vec![n(0.0); arity],
+    }
+}
+
+/// Every registered surface, offscreen at the phone's full screen (402 x 874 @3, 120 Hz steps):
+/// whether it still asks for frames after 4 s untouched (a redraw at rest), and the CPU time and
+/// heap allocations of one `render` at rest and under a finger dragging across it.
+/// `cargo test --release -p demos-gpu audit -- --ignored --nocapture` (`BENCH_ONLY` filters).
+#[test]
+#[ignore = "an audit: run with --release --ignored --nocapture"]
+fn audit_every_surface() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
+    exact_gpu::shaders::load_dir(&dir, &crate::REGISTRY).unwrap();
+    let Some(gpu) = fixture::device_or_skip(fixture::device()) else { return };
+    let only = std::env::var("BENCH_ONLY").ok();
+    let (w, h, scale) = (402.0f32, 874.0f32, 3.0f32);
+    let format = wgpu::TextureFormat::Bgra8UnormSrgb;
+    let texture = gpu.device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("audit"),
+        size: wgpu::Extent3d { width: (w * scale) as u32, height: (h * scale) as u32, depth_or_array_layers: 1 },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+        view_formats: &[],
+    });
+    let view = texture.create_view(&Default::default());
+    println!("audit {:<26} {:>5} {:>8} {:>8} {:>7} | {:>8} {:>8} {:>7}", "surface", "rest?", "idle µs", "p90", "allocs", "drag µs", "p90", "allocs");
+    for &(name, arity, make) in crate::REGISTRY.surfaces {
+        if only.as_deref().is_some_and(|o| !name.contains(o)) {
+            continue;
+        }
+        let mut s = make();
+        s.size(w, h);
+        if let Err(e) = s.bind(&audit_inputs(name, arity), Some(0.0)) {
+            println!("audit {name:<26} bind refused: {e:?}");
+            continue;
+        }
+        let step = 1000.0 / 120.0;
+        let mut i = 0usize;
+        let mut run = |s: &mut Box<dyn Surface>, i: &mut usize| -> (f64, u64, bool) {
+            let ms = *i as f64 * step;
+            *i += 1;
+            let _ = s.messages();
+            let mut encoder = gpu.device.create_command_encoder(&Default::default());
+            let t = cpu_us();
+            let (more, da) = crate::steddy_graph_interaction::tests::counted(|| s.render(&frame(w, h, scale, ms), &gpu.device, &gpu.queue, &mut encoder, &view, format));
+            let dt = cpu_us() - t;
+            let da = da as u64;
+            gpu.queue.submit([encoder.finish()]);
+            s.submitted();
+            let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+            (dt, da, more)
+        };
+        // 4 s untouched; the last second is "at rest".
+        let mut idle = Vec::new();
+        let mut more = true;
+        for f in 0..480 {
+            let r = run(&mut s, &mut i);
+            more = r.2;
+            if f >= 360 {
+                idle.push(r);
+            }
+        }
+        // At rest: whether it still asks for frames, and at what cap (`max_fps`) if it does.
+        let cap = s.max_fps();
+        // A finger: down at the centre, 2 s of a figure-eight across the middle, up.
+        let mut drag = Vec::new();
+        let input = s.wants_input();
+        if input {
+            for f in 0..240 {
+                let ms = i as f64 * step;
+                let t = f as f32 / 240.0 * std::f32::consts::TAU;
+                let (x, y) = (w * (0.5 + 0.35 * t.sin()), h * (0.5 + 0.2 * (2.0 * t).sin()));
+                let phase = if f == 0 { PointerPhase::Down } else { PointerPhase::Move };
+                s.input(&pointer(1, phase, x, y, ms));
+                drag.push(run(&mut s, &mut i));
+            }
+            let ms = i as f64 * step;
+            s.input(&pointer(1, PointerPhase::Up, w * 0.5, h * 0.5, ms));
+            for _ in 0..60 {
+                drag.push(run(&mut s, &mut i));
+            }
+        }
+        let stats = |v: &mut Vec<(f64, u64, bool)>| -> (f64, f64, u64) {
+            if v.is_empty() {
+                return (0.0, 0.0, 0);
+            }
+            let mut t: Vec<f64> = v.iter().map(|r| r.0).collect();
+            t.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            let mut a: Vec<u64> = v.iter().map(|r| r.1).collect();
+            a.sort();
+            (t[t.len() / 2], t[t.len() * 9 / 10], a[a.len() / 2])
+        };
+        let (im, ip, ia) = stats(&mut idle);
+        let (dm, dp, da) = stats(&mut drag);
+        let rest = match (more, cap) { (false, _) => "rests".to_string(), (true, 0) => "REDRAW".to_string(), (true, c) => format!("{c}fps") };
+        let d = if input { format!("{dm:>8.0} {dp:>8.0} {da:>7}") } else { format!("{:>8} {:>8} {:>7}", "-", "-", "-") };
+        println!("audit {name:<26} {rest:>5} {im:>8.0} {ip:>8.0} {ia:>7} | {d}");
     }
 }

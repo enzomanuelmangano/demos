@@ -346,9 +346,12 @@ impl FourierVisualizer {
         }
         if opacity > 0.0 {
             c.draw_with(&Paint::stroke(Color::BLACK.alpha(0.2), CHAIN).with_opacity(opacity), |b| polyline(b, chain));
-            c.draw_with(&Paint::stroke(Color::BLACK.alpha(0.2), CIRCLES).with_opacity(opacity), |b| {
+            // circlesPath stroked: the union of each circle's annulus, filled (nonzero) as
+            // rings, once. Stroking 2048 polygons through the stroke tessellator was 15 ms a
+            // frame; the rings' fill wedges are a tenth of it, to the same tolerance.
+            c.draw_with(&Paint::fill(Color::BLACK.alpha(0.2)).with_opacity(opacity), |b| {
                 for &[x, y, r] in circles.iter() {
-                    add_circle_polygon(b, x, y, r, s);
+                    add_circle_ring(b, x, y, r, s);
                 }
             });
             c.draw_with(&Paint::stroke(Color::BLACK, TRACE).with_opacity(opacity), |b| polyline(b, trace));
@@ -387,25 +390,39 @@ fn polyline(b: &mut ScratchBuilder<'_>, points: &[Point]) {
     b.end(false);
 }
 
-/// `addCircle(x, y, r)` under a stroke of CIRCLES: a closed polygon on the circle with enough
-/// sides that, mitred, the stroke's edges stay within CIRCLE_TOLERANCE device px of the
-/// annulus Skia strokes. Nothing for r = 0.
-fn add_circle_polygon(b: &mut ScratchBuilder<'_>, x: f32, y: f32, r: f32, scale: f32) {
+/// `addCircle(x, y, r)` under a stroke of CIRCLES, as the region that stroke covers: the
+/// annulus r ± CIRCLES / 2 (a disc of r + CIRCLES / 2 when r is under half the width), its
+/// outer edge one way round and its inner edge the other, so that under the nonzero rule every
+/// ring winds once and overlapping rings cover a pixel once, as one stroked path does. Each edge
+/// is a polygon straddling its circle within CIRCLE_TOLERANCE device px. Nothing for r = 0
+/// (Skia's stroker drops a degenerate contour with butt caps).
+fn add_circle_ring(b: &mut ScratchBuilder<'_>, x: f32, y: f32, r: f32, scale: f32) {
     if r <= 0.0 {
         return;
     }
-    let outer = (r as f64 + CIRCLES as f64 / 2.0) * scale as f64;
-    let half = (outer / (outer + CIRCLE_TOLERANCE)).acos().max(1e-4);
-    let n = ((std::f64::consts::PI / half).ceil() as usize).clamp(8, 2048);
-    let (step_sin, step_cos) = (std::f64::consts::TAU / n as f64).sin_cos();
-    let (cx, cy, r) = (x as f64, y as f64, r as f64);
-    let (mut dx, mut dy) = (r, 0.0f64);
-    b.begin(point(x + r as f32, y));
-    for _ in 1..n {
-        (dx, dy) = (dx * step_cos - dy * step_sin, dx * step_sin + dy * step_cos);
-        b.line_to(point((cx + dx) as f32, (cy + dy) as f32));
+    let half = CIRCLES as f64 / 2.0;
+    let (cx, cy) = (x as f64, y as f64);
+    let ring = |b: &mut ScratchBuilder<'_>, radius: f64, clockwise: bool| {
+        // An n-gon whose vertices sit at 2ρ / (1 + cos(π / n)) is off the circle by at most
+        // ρ (1 − cos) / (1 + cos) either way.
+        let t = CIRCLE_TOLERANCE / (radius * scale as f64);
+        let n = ((std::f64::consts::PI / ((1.0 - t) / (1.0 + t)).clamp(-1.0, 1.0).acos().max(1e-4)).ceil() as usize).clamp(8, 2048);
+        let rv = 2.0 * radius / (1.0 + (std::f64::consts::PI / n as f64).cos());
+        let step = if clockwise { -std::f64::consts::TAU } else { std::f64::consts::TAU } / n as f64;
+        let (step_sin, step_cos) = step.sin_cos();
+        let (mut dx, mut dy) = (rv, 0.0f64);
+        b.begin(point((cx + dx) as f32, cy as f32));
+        for _ in 1..n {
+            (dx, dy) = (dx * step_cos - dy * step_sin, dx * step_sin + dy * step_cos);
+            b.line_to(point((cx + dx) as f32, (cy + dy) as f32));
+        }
+        b.end(true);
+    };
+    let r = r as f64;
+    ring(b, r + half, false);
+    if r > half {
+        ring(b, r - half, true);
     }
-    b.end(true);
 }
 
 /// A coordinate through SkParsePath::ToSVGString (`%.8g`) and back (a double, then a float).

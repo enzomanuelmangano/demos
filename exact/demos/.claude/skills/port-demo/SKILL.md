@@ -448,6 +448,20 @@ One commit per haptic event, never per frame.
   there. A true Gaussian on a field instead left metaball's edge 0.54 px in; `GraphiteBlur` with
   that plan put it on RN's to 0.01 px.
 
+- Performance (exact/parity-tools/perf/device-perf.md): run `cargo test --release -p demos-gpu
+  --lib audit_every_surface -- --ignored --nocapture` (`BENCH_ONLY=<surface>`) after a port: per
+  surface, whether it still asks for frames after 4 s untouched, render CPU and allocations at
+  rest and under a drag. A surface that only waits for a timed event (an RN `setInterval`)
+  returns `true` but gives `max_fps` the wait, `ceil(1000 / ms left)`, and 0 while anything
+  moves or after an input: the host's deadline is the last draw plus 1000 / cap, so it wakes on
+  time without drawing the same picture 120 times a second (empty-qr-code). Many overlapping
+  stroked circles in one path: fill each annulus as two opposite rings (nonzero) instead of
+  stroking polygons, the same coverage at a tenth of the CPU (fourier-visualizer: 17 → 2 ms).
+- A `scroll=` or `pan=` action is a commit per frame, one round trip behind the finger. For a
+  value that follows a scroll, use a scroll-driven animation (`scroll-timeline` +
+  `animation-timeline`); for a canvas that needs the offset, own the scroll in Rust
+  (`gpu/src/ui_scroll.rs`).
+
 ## 4. Check
 
 `bun tools/check-demo.ts <slug>` prints `[]` (compiles the demo alone, before it is

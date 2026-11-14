@@ -161,6 +161,12 @@ struct EmptyQrCode {
     /// activeLetterIndex, and when the interval fires next (None until the first frame).
     index: usize,
     next_tick: Option<f64>,
+    /// The last frame drew at this time, and something in it (a spring, the fade, a press) still
+    /// moved; or an input came since: `max_fps` draws every display frame then, and between
+    /// the interval's ticks only as often as it takes to land on the next one.
+    drawn_ms: f64,
+    moving: bool,
+    touched: bool,
     /// The PressableScale (the shared pressto machine).
     press: Pressable,
     posted: Vec<String>,
@@ -205,6 +211,9 @@ impl EmptyQrCode {
             opacity: Timing::at(1.0),
             index: 0,
             next_tick: None,
+            drawn_ms: 0.0,
+            moving: true,
+            touched: false,
             press: Pressable::new(),
             posted: Vec::new(),
             font: Font::new(SF_ROUNDED_BOLD, FONT_SIZE),
@@ -277,6 +286,18 @@ impl EmptyQrCode {
         }
     }
 
+    /// A frame at `now`: the interval, the springs and the press, and what `max_fps` reads.
+    fn advance(&mut self, now: f64) {
+        self.tick(now);
+        let mut moving = self.scale.step(now);
+        moving |= self.rotate.step(now);
+        moving |= self.opacity.step(now);
+        self.press.step(now);
+        self.moving = moving || self.press.is_pressed() || self.press.is_animating();
+        self.drawn_ms = now;
+        self.touched = false;
+    }
+
     /// The letter canvas, in its 150 × 150 points.
     fn record_letter(&mut self, s: f32) {
         let (c0, c1) = COLORS[self.index];
@@ -316,6 +337,7 @@ impl Surface for EmptyQrCode {
         if self.layout.s <= 0.0 {
             return;
         }
+        self.touched = true;
         let inside = self.hits(x, y);
         if let Some(PressEvent::Press(press)) = self.press.pointer(id, crate::gfx::phase(phase), inside) {
             // onPress: toggle(), then the app's selection haptic.
@@ -352,11 +374,7 @@ impl Surface for EmptyQrCode {
     ) -> bool {
         let layout = Layout::new(frame.width, frame.height, frame.scale);
         self.layout = layout;
-        self.tick(frame.now_ms);
-        self.scale.step(frame.now_ms);
-        self.rotate.step(frame.now_ms);
-        self.opacity.step(frame.now_ms);
-        self.press.step(frame.now_ms);
+        self.advance(frame.now_ms);
         if self
             .gpu
             .as_ref()
@@ -450,8 +468,22 @@ impl Surface for EmptyQrCode {
         let gpu = self.gpu.as_ref().unwrap();
         queue.write_buffer(&gpu.uniforms, 0, &u.bytes());
         skia::render::fullscreen_pass(encoder, "empty qr code", target, &gpu.compose, &gpu.bind);
-        // setInterval runs as long as the demo shows.
+        // setInterval runs as long as the demo shows: frames go on, at the rate `max_fps` says.
         true
+    }
+
+    /// Between two of the interval's letters nothing moves: rather than redraw the same picture
+    /// 78 times in 650 ms, draw again when the next letter is due (the host's deadline is the
+    /// last frame plus 1000 / cap, so the cap is that wait, in at most 200 ms steps). Anything
+    /// moving, a finger, or the last two display frames before the letter: every frame.
+    fn max_fps(&self) -> u32 {
+        if self.moving || self.touched {
+            return 0;
+        }
+        match self.next_tick {
+            Some(at) if at - self.drawn_ms > 17.0 => (1000.0 / (at - self.drawn_ms)).ceil() as u32,
+            _ => 0,
+        }
     }
 }
 
@@ -776,4 +808,44 @@ mod tests {
         assert!(near(px(&shown, 210.0, 456.0 + 103.0), view(FILL), 1));
         assert!(near(px(&shown, 210.0, 456.0 + 106.0), view(BACKGROUND), 1));
     }
+    /// A host that paces the canvas as exact-gpu's `Cadence` does (a frame is due at the last
+    /// draw plus 1000 / cap, half a display period early allowed): at rest, every letter lands on
+    /// the display frame it lands on at the full rate, with a fraction of the frames drawn.
+    #[test]
+    fn at_rest_it_draws_only_to_land_each_letter() {
+        let period = 1000.0 / 120.0;
+        let run = |paced: bool| {
+            let mut q = EmptyQrCode::new();
+            let (mut drawn, mut landed, mut last, mut last_draw) = (0, Vec::new(), q.index, f64::NEG_INFINITY);
+            for n in 0..(120 * 6) {
+                let now = n as f64 * period;
+                let cap = q.max_fps();
+                if paced && cap > 0 && now < last_draw + 1000.0 / cap.max(5) as f64 - period / 2.0 {
+                    continue;
+                }
+                q.advance(now);
+                drawn += 1;
+                last_draw = now;
+                if q.index != last {
+                    landed.push(n);
+                    last = q.index;
+                }
+            }
+            (drawn, landed)
+        };
+        let (full, every) = run(false);
+        let (paced, at) = run(true);
+        assert_eq!(at, every);
+        assert!(every.len() >= 8, "{every:?}");
+        assert!(paced * 8 < full, "{paced} of {full} frames drawn");
+        // A finger asks for every frame at once.
+        let mut q = EmptyQrCode::new();
+        q.advance(0.0);
+        q.advance(5000.0);
+        assert!(q.max_fps() > 0);
+        q.layout = Layout::new(402.0, 874.0, 3.0);
+        q.input(&pointer(PointerPhase::Down, 10.0, 10.0));
+        assert_eq!(q.max_fps(), 0);
+    }
+
 }
