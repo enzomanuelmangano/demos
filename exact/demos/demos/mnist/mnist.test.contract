@@ -1,0 +1,7 @@
+at "/demo/mnist"
+
+// The web host gives a surface no touches: the drawing, the prediction and the eraser are the
+// Rust fixture tests' (gpu/src/mnist.rs); here what the Contract holds.
+test "the canvas fills the screen"
+  expect tree has "mnist"
+  expect tree has "mnist-canvas"

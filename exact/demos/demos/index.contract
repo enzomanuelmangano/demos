@@ -68,6 +68,7 @@ use LoadingButton from "./loading-button/loading-button.contract"
 use MagnetSpring from "./magnet-spring/magnet-spring.contract"
 use Metaball from "./metaball/metaball.contract"
 use MilesBarChart from "./miles-bar-chart/miles-bar-chart.contract"
+use Mnist from "./mnist/mnist.contract"
 use MobileInput from "./mobile-input/mobile-input.contract"
 use MotionBlur from "./motion-blur/motion-blur.contract"
 use NotionQrCode from "./notion-qrcode/notion-qrcode.contract"
@@ -258,6 +259,8 @@ component PortedDemo
         Metaball()
       if slug == "miles-bar-chart"
         MilesBarChart(env=env)
+      if slug == "mnist"
+        Mnist(env=env)
       if slug == "mobile-input"
         MobileInput(env=env)
       if slug == "motion-blur"
