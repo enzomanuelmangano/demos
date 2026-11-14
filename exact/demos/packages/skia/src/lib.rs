@@ -264,7 +264,7 @@ fn srgb_to_p3(c: [f32; 4]) -> [f32; 4] {
     ]
 }
 
-/// Up to this many stops per gradient.
+/// Stops a gradient keeps in its [`GpuPaint`]; a longer one goes to [`Canvas::stops`] (any count).
 pub(crate) const MAX_STOPS: usize = 8;
 
 /// A paint as the shader reads it.
@@ -278,10 +278,11 @@ pub(crate) struct GpuPaint {
     /// Image: its width, height, layer, and 1 for `srcIn` (the vertex colour in the image's
     /// alpha) else 0. Shadow: the rect's top-left and bottom-right (device pixels).
     pub geometry: [f32; 4],
-    /// Each stop's offset, in two vec4s. Image: the shape's local points to the image's pixels
+    /// Each stop's offset, in two vec4s; over [`MAX_STOPS`] stops, `offsets[0].x` is where the
+    /// gradient's stops start in [`Canvas::stops`]. Image: the shape's local points to the image's pixels
     /// (a, b, c, d, e, f), read by the analytic step.
     pub offsets: [[f32; 4]; 2],
-    /// Each stop's straight sRGB colour.
+    /// Each stop's straight colour (encoded P3 for a gradient), unused over [`MAX_STOPS`] stops.
     pub colors: [[f32; 4]; MAX_STOPS],
     /// The draw's analytic clip (`sk_analytic_clip`'s xform, rect, radiiWithInverse); radii all
     /// 0 for none.
@@ -381,6 +382,9 @@ pub struct Canvas {
     pub(crate) vertices: Vec<Vertex>,
     pub(crate) indices: Vec<u32>,
     pub(crate) paints: Vec<GpuPaint>,
+    /// The stops of gradients longer than [`MAX_STOPS`]: each one's n colours (encoded P3), then
+    /// its n offsets packed four to a vec4.
+    pub(crate) stops: Vec<[f32; 4]>,
     pub(crate) ops: Vec<Op>,
     pub(crate) rrects: Vec<graphite::RRectInstance>,
     /// Whether a draw needs MSAA: the pass is 4× then, single-sampled otherwise.
@@ -411,6 +415,7 @@ impl Default for Canvas {
             vertices: Vec::new(),
             indices: Vec::new(),
             paints: Vec::new(),
+            stops: Vec::new(),
             ops: Vec::new(),
             rrects: Vec::new(),
             msaa: false,
@@ -635,6 +640,7 @@ impl Canvas {
         self.vertices.clear();
         self.indices.clear();
         self.paints.clear();
+        self.stops.clear();
         self.ops.clear();
         self.rrects.clear();
         self.msaa = false;
@@ -1405,11 +1411,25 @@ impl Canvas {
         // interpolates between its stops' P3 values: the stops go in as encoded P3 and the
         // shader turns each interpolated colour back into sRGB (`head.w` = 1). Measured on
         // Blur Circles' sweep: within 2.3 levels of RN, against 23 for an sRGB ramp.
+        // Over MAX_STOPS stops, the gradient's colours and offsets go to the frame's stop buffer.
+        let long = &mut self.stops;
         let mut put = |stops: &[Stop]| {
-            let n = stops.len().min(MAX_STOPS);
-            for (i, (o, c)) in stops.iter().take(n).enumerate() {
-                gpu.offsets[i / 4][i % 4] = *o;
-                gpu.colors[i] = srgb_to_p3(c.0);
+            let n = stops.len();
+            if n <= MAX_STOPS {
+                for (i, (o, c)) in stops.iter().enumerate() {
+                    gpu.offsets[i / 4][i % 4] = *o;
+                    gpu.colors[i] = srgb_to_p3(c.0);
+                }
+            } else {
+                gpu.offsets[0][0] = long.len() as f32;
+                long.extend(stops.iter().map(|(_, c)| srgb_to_p3(c.0)));
+                for chunk in stops.chunks(4) {
+                    let mut o = [0.0; 4];
+                    for (k, (off, _)) in chunk.iter().enumerate() {
+                        o[k] = *off;
+                    }
+                    long.push(o);
+                }
             }
             gpu.head[1] = n as f32;
             gpu.head[3] = 1.0;
