@@ -17,7 +17,7 @@ metaball ported done:b957cd5c (Graphite blur of an 8-bit P3 layer sized by the G
 shared-transitions ported done:0e12f05d (TextKit line heights: paragraph 3.3 px/line drift fixed; back label, photo, title line 2, paragraph lines 1-5 pixel-identical; title line 1 and paragraph line 6 1 px high (one snapped origin, host limit); home pixel-identical but photo resample noise; A/B push, delayed fades, pop same structure; press haptic through pressto)
 story-list ported done:0474dd50 (verified 2026-11-14, no code change: layout pixel-exact, photo interiors max 1 level; snap is RCTEnhancedScrollView's disableIntervalMomentum rule line for line, interpolations as story-item.tsx; A/B slow drag, flicks both ways, rubber band same structure and ends; edge AA only: continuous corners 4x MSAA vs CA analytic, side cards' straight edges aliased in CA)
 dynamic-tab-indicator ported claimed:sim2
-blur-circles ported
+blur-circles ported claimed:sim1
 smooth-dropdown ported
 skia-bottom-sheet ported
 floating-modal ported
