@@ -56,13 +56,13 @@ balance-slider ported
 fibonacci-shader-grid ported
 verification-code ported
 email-demo ported
-scroll-transition-3d todo claimed:r3-port
+scroll-transition-3d ported (registered unverified: verify on device)
 staggered-card-number ported
 stacked-bottom-sheet ported
 gl-transitions ported
 prequel-slider ported
 empty-qr-code ported (registered unverified: verify on device)
-infinite-carousel todo claimed:r3-port
+infinite-carousel ported (registered unverified: verify on device)
 twodos-slide ported
 wheel-picker ported
 stacked-list ported
@@ -73,13 +73,13 @@ imessage-stack ported
 atlas-button ported
 atlas-sphere ported
 checkbox-interactions ported
-interaction-appearance todo claimed:r3-port
+interaction-appearance ported (registered unverified: verify on device)
 dot-sheet ported
 coverflow-carousel ported
 paper-folding ported
 miles-bar-chart ported
 steps ported
-pomodoro-timer todo claimed:r3-port
+pomodoro-timer ported (registered unverified: verify on device)
 exclusion-tabs ported
 clerk-toast ported
 duration-slider ported
@@ -91,7 +91,7 @@ snake ported (registered unverified: verify on device)
 expandable-mini-player ported
 bezier-curve-outline ported
 tab-navigation ported
-mnist todo claimed:r3-port
+mnist ported (registered unverified: verify on device)
 stacked-modals ported
 linear-sensors ported
 verification-code-face todo claimed:r4-port
