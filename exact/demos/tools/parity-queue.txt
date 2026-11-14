@@ -10,7 +10,7 @@ animated-grid-list ported open:toggle starts the cards' 700 ms layout transition
 floating-bottom-bar ported open:230e1914 icons pixel-identical, fades and spring as Reanimated times them (A/B same structure); the light sits 0.35 px right of RN (both edges, unexplained by Yoga rounding)
 animated-clip-box ported done:3b1b164a (circles, colours, text in Rust on r; action pixel-identical, circles within AA; one description glyph per card 1 px (TextKit subpixel x); spring matches Reanimated on the recording)
 theme-canvas-animation ported done:fb77570d (8-bit P3 surface via gfx::P3Layer: stills max 1-2 levels; spring audit line for line, floods on Reanimated's curve frame for frame; first flood after open 2-4 frames late, first haptic)
-add-to-cart ported (registered unverified: verify on device)
+add-to-cart ported (registered unverified: verify on device) claimed:sim2
 bottom-bar-skia ported (an uncommitted WIP diff in the tree from a stopped sim1 agent: review, finish or discard)
 cuberto-slider ported
 metaball ported
