@@ -3,6 +3,7 @@
 use Demo, allDemos from "./demos.contract"
 use Springboard from "./home/springboard.contract"
 use DemoScreen from "./home/demo-screen.contract"
+use Atlas from "./home/atlas.contract"
 use DemoEnv from "./demos/env.contract"
 use startSensorInput, stopSensorInput, SensorInput from "@exact/motion"
 use defaultPressablesConfig from "pressto"
@@ -11,11 +12,13 @@ routes nav
   home "/"
     demo "/demo/:slug"
     open "/open"
+    atlas "/atlas"
 
 shape Host
   width: number
   height: number
   prefersReducedMotion: bool
+  pointer: string
 
 // The web's `timer` surfaces: the token each live one last fired (gpu/src/timer.rs).
 shape Timers
@@ -63,6 +66,11 @@ component Demos
   action open(slug: string)
     haptic("selection")
     nav = push(nav, path("demo", slug))
+  // The atlas (home/atlas.contract): every demo live at once. demos-exact://atlas, or on the Mac
+  // View › Demo Atlas (⇧⌘A).
+  action openAtlas
+    if top(nav).name != "atlas"
+      nav = push(nav, "/atlas")
   mutation sensors as shape SensorInput
   // demo-screen.tsx: a close, by the button or by the drag past CLOSE_SCALE, plays
   // Presets.System.impactMedium() when it commits, before the flight home: the launch does
@@ -108,6 +116,14 @@ component Demos
         if e.name == "home"
           column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" position="absolute" inset=0
             Springboard(demos=demos, open=open)
+            // A Mac (a fine pointer) files this under View; the iPhone's home is unchanged.
+            if host.pointer == "fine"
+              button press=openAtlas -exact-menu="view" aria-keyshortcuts="Meta+Shift+A" aria-label="Demo Atlas"
+                testId="open-atlas" position="absolute" right=12 bottom=12
+                text "Demo Atlas"
+        if e.name == "atlas"
+          column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" position="absolute" inset=0
+            Atlas(demos=allDemos(), env=env, active=(top(nav).name == "atlas"), open=open, leave=back)
         if e.name == "demo"
           // The open out of the icon and the close into it are RN's launch, drawn by the app's
           // module (DemoLaunch.swift) on UIKit's fullscreen presentation, not UIKit's zoom.
