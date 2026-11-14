@@ -17,9 +17,9 @@ metaball ported done:b957cd5c (Graphite blur of an 8-bit P3 layer sized by the G
 shared-transitions ported done:0e12f05d (TextKit line heights: paragraph 3.3 px/line drift fixed; back label, photo, title line 2, paragraph lines 1-5 pixel-identical; title line 1 and paragraph line 6 1 px high (one snapped origin, host limit); home pixel-identical but photo resample noise; A/B push, delayed fades, pop same structure; press haptic through pressto)
 story-list ported done:0474dd50 (verified 2026-11-14, no code change: layout pixel-exact, photo interiors max 1 level; snap is RCTEnhancedScrollView's disableIntervalMomentum rule line for line, interpolations as story-item.tsx; A/B slow drag, flicks both ways, rubber band same structure and ends; edge AA only: continuous corners 4x MSAA vs CA analytic, side cards' straight edges aliased in CA)
 dynamic-tab-indicator ported done:adeb68bf (tabs never pressed on iOS (press= on a view) and the host scroll ignored slow drags: pager, photos, bar and indicator now Rust (UIKit paging, animated scrollTo); indicator spans RN's unshrunk Text frame (was the ink, 8 px short each side) and titles at adjustsFontSizeToFit's 15.02 pt: indicator and all title ink boxes pixel-exact; photos as RN's ImageIO decode, mean 1.7 (was 4.3); A/B tab tap, partial drag, flick, hard flick same segments and durations within 1-3 frames)
-blur-circles ported claimed:sim1
+blur-circles ported done:02829476 (stills at RN's own frozen centres, 2 poses: max 5 levels, glass edge max 4 (was 240: blur reads the circle unclipped in its layer, clip is RN's non-AA one snapped to pixels), sharp circle max 2, white exact; path equals RN's for RN's tables to 1e-9 (test), tables once per run as constants.ts; A/B open: both start concentric at the centre and ease out alike)
 smooth-dropdown ported claimed:sim2
-skia-bottom-sheet ported
+skia-bottom-sheet ported claimed:sim1
 floating-modal ported
 audio-player ported
 color-carousel ported
