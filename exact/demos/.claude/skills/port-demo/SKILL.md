@@ -377,6 +377,9 @@ One commit per haptic event, never per frame.
   velocity is not in the initial energy (`reanimated::Spring::retarget` does this).
 - RN's ReText is a TextInput: UITextField centres the line a device pixel above where a Text
   would sit (scroll-progress' percentage).
+- The RN app sets `RCTColorSpace.displayP3`: an RN View's hex is P3 (#474069 shows as 72, 64,
+  108). An RN View drawn in Rust takes `Color::view_hex` (audio-player). A ReText's centred line
+  starts on a whole device pixel (floored), a Text's on a subpixel.
 - The demo screen is UIKit's `.overFullScreen` presentation (the home stays beneath), but its open,
   close drag, flight home and the home's blur are iOS 27 SpringBoard's own launch, drawn by
   modules/apple/DemoLaunch.swift (no `navigationSource`, so no UIKit zoom). The host makes the
