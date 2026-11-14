@@ -204,19 +204,26 @@ component PopupHandler
             testId="popup-menu"
             for a in range(4) key=a
               // A row: 54 tall, rgba(255,255,255,0.95), paddingHorizontal 16, a 0.5 px
-              // rgba(0,0,0,0.08) rule under it (none under the last).
+              // rgba(0,0,0,0.08) rule under it (none under the last). RN draws the 0.5 pt
+              // border as two device rows (RCTBorderDrawing): 0.66667 here.
               row press=pick(a) role="button" aria-label=popupLabel(a)
                 pointerdown=pressIn(a) pointerup=pressOut
                 opacity=pressableOpacity(pressing, a, pressto) transition=pressTransition("opacity", pressto)
-                height=54 align-items="center" padding-left=16 padding-right=16
+                height=54 box-sizing="border-box" align-items="center" padding-left=16 padding-right=16
                 background-color="rgba(255, 255, 255, 0.95)"
-                border-bottom-width=(a == 3 ? 0 : 0.5) border-bottom-style="solid"
+                border-bottom-width=(a == 3 ? 0 : 0.66667) border-bottom-style="solid"
                 border-bottom-color="rgba(0, 0, 0, 0.08)" testId=`popup-option-${a}`
                 // styles.title: #1a1a1a, 16, 500, letterSpacing 0.3.
+                // (The row's content sat 2 px low: measured, set back.)
                 text popupLabel(a) color="#1a1a1a" font-size=16 font-weight=500 letter-spacing=0.3
+                  position="relative" top=-0.66667
                 view flex=1
                 // trailingContainer: marginLeft 8; FontAwesome location-arrow 14 gray, rotated.
-                view margin-left=8
-                  svg width=11 height=14 viewBox="0 0 1408 1792" rotate=`${popupTurn(a)}deg`
+                // The icon's Text is its advance × line (11 × 14, FontAwesome's hhea is the em),
+                // which Yoga ceils to 11.333 × 14.333: the box it turns about. The glyph keeps
+                // its scale, baseline 1536 units down. Its top, (53.333 − 14.333) / 2 = 19.5, is
+                // Yoga-rounded half up to 19.667: the turn's centre with it.
+                view margin-left=8 position="relative" top=0.16667
+                  svg width=11.33333 height=14.33333 viewBox="0 0 1450.6667 1834.6667" rotate=`${popupTurn(a)}deg`
                     aria-hidden=true
                     path d=popupArrowPath() fill="#808080"
