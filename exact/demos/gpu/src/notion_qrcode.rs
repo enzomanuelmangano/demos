@@ -8,7 +8,9 @@
 //! Everything is this one surface: the Skia picture, the two expo-linear-gradients over it and
 //! the ToggleButton (its scale pulse, icons and labels all follow `progress` per frame, as the
 //! picture does, and the pulse is a Reanimated style-updater quirk a Contract transition can't
-//! express). The screen's #f5f5f5 is the Contract's.
+//! express). The screen's #f5f5f5 (styles.container, a View hex: Display P3) is this surface's
+//! clear: the surface is opaque, as the screen under it is (the web's canvas has no other
+//! alpha mode than opaque, so a transparent clear showed black there).
 //!
 //! Shape data (hooks/use-shape-data.ts computeShapeData, f64 line for line): node-qrcode's
 //! `QRCode.create(text, 'M')` (`qr::create`, bit for bit), read as qr-generation.ts reads it:
@@ -47,7 +49,7 @@
 //!   its Animated.View (scale about its centre) holds the PressableScale: 64 × 64, white,
 //!   circular radius 32 (no borderCurve), RCTBorderDrawing's 1 pt rgba(0,0,0,0.06) ring,
 //!   boxShadow '0px 7px 12px rgba(0,0,0,0.08)' (RCTBoxShadow: σ 6, alpha byte 20). The Ionicons
-//!   "scan" and "qr-code" (28, #1a1a1a, half the font's lineGap below their box top + ascender)
+//!   "scan" and "qr-code" (28, #1a1a1a, UIKit layout: the hhea ascent below their box top)
 //!   centred inside the border, and the labels CONNECT / SHARE (15, 600, letterSpacing 0.5,
 //!   #1a1a1a) centred in a 20-tall box 12 below. Text layers are Core Animation layers: their
 //!   bitmaps are drawn once, on the pixel grid, and composited (bilinear) at their opacity,
@@ -1240,7 +1242,7 @@ impl Fonts {
     fn new() -> Option<Fonts> {
         Some(Fonts {
             label: skia::match_ui_font(LABEL_SIZE, LABEL_WEIGHT)?,
-            icon: Font::new(IONICONS, ICON_SIZE)?,
+            icon: Font::new(IONICONS, ICON_SIZE).map(Font::with_ui_layout)?,
         })
     }
 
@@ -1519,10 +1521,9 @@ impl NotionQrCode {
             c.save();
             c.clip_rect(x, y, r.w, r.h);
             if k < 2 {
-                // Ionicons: half the font's lineGap below the box top + ascender.
-                let m = f.icon.metrics();
+                // Ionicons: TextKit's baseline the hhea ascent below the box top (no lineGap).
                 let glyph = if k == 0 { SCAN } else { QR_CODE };
-                c.draw_text(glyph, x, y + m.leading / 2.0 - m.ascent, &f.icon, &ink);
+                c.draw_text(glyph, x, gfx::baseline(&f.icon, y), &f.icon, &ink);
             } else {
                 let text = if k == 2 { "CONNECT" } else { "SHARE" };
                 c.draw_text_spaced(
@@ -1749,6 +1750,10 @@ impl Surface for NotionQrCode {
         Ok(())
     }
 
+    fn opaque(&self) -> bool {
+        true
+    }
+
     fn wants_input(&self) -> bool {
         true
     }
@@ -1781,7 +1786,9 @@ impl Surface for NotionQrCode {
             return;
         };
         let inside = self.hit(x, y);
-        if let Some(PressEvent::Press(press)) = self.press.pointer(id, crate::gfx::phase(phase), inside) {
+        if let Some(PressEvent::Press(press)) =
+            self.press.pointer(id, crate::gfx::phase(phase), inside)
+        {
             // BaseButton's onPress: the app's PressablesConfig haptic, then
             // animationRef.current.toggle().
             self.posted.extend(press.global_message().map(String::from));
@@ -1888,6 +1895,19 @@ impl Surface for NotionQrCode {
             }
         }
         self.record_main(s);
+        // styles.container's #f5f5f5 under everything (encoded, or linear on an sRGB target).
+        let bg = Color::view_hex(0xF5F5F5).0.map(|v| {
+            let v = v as f64;
+            if format.is_srgb() {
+                if v <= 0.04045 {
+                    v / 12.92
+                } else {
+                    ((v + 0.055) / 1.055).powf(2.4)
+                }
+            } else {
+                v
+            }
+        });
         self.renderers[1].draw(
             device,
             queue,
@@ -1897,7 +1917,12 @@ impl Surface for NotionQrCode {
             format,
             pw,
             ph,
-            wgpu::Color::TRANSPARENT,
+            wgpu::Color {
+                r: bg[0],
+                g: bg[1],
+                b: bg[2],
+                a: 1.0,
+            },
         );
         self.frames += 1;
         // iTime turns forever: the picture is redrawn every frame.
@@ -2314,9 +2339,9 @@ mod tests {
         let l = s.layout.unwrap();
         let centre = (l.button.x + 32.0, l.button.y + 32.0);
         assert_eq!(
-            px(&first, W / 2.0, H / 2.0)[3],
-            0,
-            "no avatar before the data"
+            px(&first, W / 2.0, H / 2.0),
+            [245, 245, 245, 255],
+            "no avatar before the data: the screen's #f5f5f5"
         );
         // Top gradient: opaque white at the top; the button: white at its centre.
         assert_eq!(px(&first, 10.0, 0.2), [255, 255, 255, 255]);
