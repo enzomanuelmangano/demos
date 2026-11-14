@@ -378,7 +378,7 @@ One commit per haptic event, never per frame.
 - RN's ReText is a TextInput: UITextField centres the line a device pixel above where a Text
   would sit (scroll-progress' percentage).
 - The demo screen is UIKit's `.overFullScreen` presentation (the home stays beneath), but its open,
-  close drag, flight home and the home's blur are RN's launch choreography, drawn by
+  close drag, flight home and the home's blur are iOS 27 SpringBoard's own launch, drawn by
   modules/apple/DemoLaunch.swift (no `navigationSource`, so no UIKit zoom). The host makes the
   presented controller inside its own present, and a module tag's instance is made only AFTER
   `present`, so DemoLaunch wraps
@@ -390,6 +390,44 @@ One commit per haptic event, never per frame.
   paused `UIViewPropertyAnimator` blur made before its view is in a window shows the effect
   whole whatever its fraction (expo-blur makes it in `draw`). argent's touches in the top status
   bar band (y < ~0.07) reach neither app, so RN's grab strip can't be driven on the simulator.
+- iOS 27's launch, measured frame by frame on the owner's iPhone 17 recording
+  (exact/parity-tools/ios-launch-reference, 402 × 874 pt, 60 fps, kept out of git): the card's
+  bounds are four separate springs (ω rad/s, ζ, mass 1). Open: width 22.6/0.977, aspect
+  (h/w) 34.6/1.09, centre x 26.9/1.02, centre y 32.1/0.89. Two launches agree to 1 pt rms; the
+  card fills the screen about 0.42 s after the touch-up. The app's content is scaled to the card's
+  width and pinned to its TOP (the card crops the bottom). The icon art is stretched to the card
+  and fades out between 0.2 and 0.42 screen widths. The corner radius is the icon's, then rises
+  past the display's (62 pt) to 1.29× at 70 % of the width, then settles on it. The card is a
+  trapezoid, wider at the top: width falls by k per pt down the card, k = 8.3e-4 × (1 − q) at
+  402 pt (q = width progress). The home behind scales to 0.912 (ω 11, critically damped), blurs to a
+  Gaussian σ 25 pt (ω 10.5) and dims to × 0.445 (ω 25).
+  Close: a drag scales the card by 1 − travel / (0.7 × screen height), the grabbed point under the
+  finger, radius 62 × scale, no taper, the home still blurred. After the release it flies on softer
+  springs that keep the throw: width 15.7/0.87, height 25.7/0.95, x 12.6/0.67, y 13.6/0.72. It
+  undershoots the icon by about 7 % and recovers. The radius holds until q 0.35, then becomes the
+  icon's. The taper comes in over 65 ms. The blur clears as σ·e^(−12.6 t), the dimming on
+  ω 8.7/0.73, the home's scale on ω 10 critically damped, all within about 0.3–0.55 s.
+  Measure with the dark-card threshold (the card is exactly lum 20 or 24, so `L ≤ 22` plus a fill of
+  holes), edges walked from the centre and taken as row and column percentiles (blurred dark icons
+  touch it). Fit springs with a shared start, not per-edge.
+- Draw such a flight with Core Animation, not a display link: run the springs ahead of time, sample
+  them at 120 Hz and add CAKeyframeAnimations (bounds, position, a projective `transform` with
+  m24 = k for the taper, cornerRadius, opacity). The demo's route mounts on the main thread during
+  the open: a CADisplayLink-driven card lost two frames there (dt 41 ms), and Core Animation's copy
+  does not. Only the blur (a paused animator's fraction) is still scrubbed by the link. The open
+  runs INSIDE the icon press's apply, which goes on to mount the route: animations added there
+  are committed when that apply ends (Clock Picker: a 311 ms microhang), so an absolute
+  `beginTime` showed the first frame 0.3 s into the flight. `CATransaction.flush()` right after
+  adding them starts the flight under the finger.
+  `simctl io recordVideo` samples the simulator at 15–40 fps with jittered timestamps, so time
+  nothing from it: compare shapes at matched width progress, and log the samples for timing (the
+  presentation layer's bounds per link tick). xctrace's Hitches and graphics instruments (Core
+  Animation FPS, Display) refuse the simulator. "Hangs" and "Time Profiler" work.
+- `UIBlurEffect(.systemUltraThinMaterialDark)` at fraction 1 is σ 31 pt with a gain of 0.48 (and
+  +10–15 levels of grey). The reference's σ 25 is fraction 0.85, and a black view's opacity
+  supplies the rest of the dimming.
+  At rest the card is unclipped (no masksToBounds, radius 0, identity), and the home, blur and dimming
+  are hidden: they only come back when a drag or close begins.
 - A SwiftUI view in a module tag: Exact rounds the module box to whole points and the hosting
   view centres its content in it, so a fractional-size control (the glass close, 47.33 pt) lands a
   device pixel off. Author the box and pin the SwiftUI content to the edge RN anchors it at
