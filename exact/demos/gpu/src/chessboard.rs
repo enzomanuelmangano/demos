@@ -46,7 +46,7 @@
 //! | hide | vis withTiming(0, 360, in(cubic)); at ≤ 0.01 the snapshot and card are dropped | the same |
 //! | Back / Replay | pressto PressableScale: hide + rematch / hide + playSequence | `pressto::Pressable` |
 //! | promotion dialog | Modal fade; FadeIn(200); TouchableOpacity 0.7 (in at once, out 250 inOut(quad)) | [`Promotion`] |
-//! | haptics | moveTick: impactMedium (capture), impactRigid (check), impactLight; mate: MATE_PATTERN (Core Haptics) | `haptic:impact-*`; the mate's discrete events as impacts (see [`MATE`]) |
+//! | haptics | moveTick: impactMedium (capture), impactRigid (check), impactLight; mate: MATE_PATTERN (Core Haptics) | `haptic:impact-*`; `haptic:mate` / `haptic:mate-stop` to the `mate-haptic` view; impacts on the web (see [`MATE`]) |
 //!
 //! Not modelled: `flipped` (never set), the board's `highlight()` colours (never called), the
 //! check / stalemate shader effects (`renderEffect` is not passed).
@@ -181,11 +181,11 @@ fn value(k: Kind) -> i32 {
     }
 }
 
-/// haptics.ts MATE_PATTERN's discrete events (ms, amplitude). The Core Haptics pattern (these as
-/// transients plus its continuous rumble) needs the app module's `mate-haptic` view
-/// (modules/apple/Demos.swift), not yet built into the app: until it is, each event plays as the
-/// nearest UIKit impact (amplitude ≥ 0.9 heavy, ≥ 0.5 medium, else light); the rumble is not
-/// played.
+/// haptics.ts MATE_PATTERN's discrete events (ms, amplitude). On Apple the surface posts
+/// `haptic:mate` (play) and `haptic:mate-stop` (rematch's `mateHaptic.stop()`), which the demo
+/// hands to the app module's `mate-haptic` view (modules/apple/Demos.swift: the whole Core Haptics
+/// pattern, rumble included). Where that view doesn't exist (the web build) each event plays as
+/// the nearest UIKit impact (amplitude ≥ 0.9 heavy, ≥ 0.5 medium, else light).
 const MATE: [(f64, f64); 16] = [
     (0.0, 0.45),
     (90.0, 0.25),
@@ -1100,7 +1100,10 @@ impl Chessboard {
         self.turn_sv = mover.other();
         self.game_over = mate || stalemate;
         self.started = true;
-        if mate {
+        if mate && !cfg!(target_arch = "wasm32") {
+            self.messages.push("haptic:mate".into());
+            self.aura_timer = Some((self.now + AURA_DELAY, mover));
+        } else if mate {
             self.mate_haptics = MATE
                 .iter()
                 .map(|&(t, a)| {
@@ -1185,6 +1188,9 @@ impl Chessboard {
         self.replay = None;
         self.aura_timer = None;
         self.mate_haptics.clear();
+        if !cfg!(target_arch = "wasm32") {
+            self.messages.push("haptic:mate-stop".into());
+        }
         self.hide();
         self.reset_board(START_FEN, None, None);
         self.reset_game();
@@ -2658,7 +2664,7 @@ mod tests {
         assert!(c.squares[chess::square("g1").unwrap() as usize].in_check);
         assert!(c.aura.is_some() && c.busy);
         let msgs = c.messages();
-        assert!(msgs.iter().filter(|m| m.starts_with("haptic:impact")).count() >= 9, "{msgs:?}");
+        assert_eq!(msgs.iter().filter(|m| *m == "haptic:mate").count(), 1, "{msgs:?}");
     }
 
     #[test]

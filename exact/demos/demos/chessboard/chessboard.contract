@@ -7,16 +7,22 @@
 // (gpu/src/chessboard.rs); here the haptics it posts.
 //
 // The mate's Core Haptics pattern (haptics.ts MATE_PATTERN) is `mate-haptic` in
-// modules/apple/Demos.swift, which needs a native build: until the app has it, the surface posts
-// the pattern's taps as UIKit impacts. Once built, post "haptic:mate" / "haptic:mate-stop" from
-// the surface instead, count them here (`state mate = 0`, `state stop = 0`) and add
-// `mate-haptic play=mate stop=stop width=0 height=0` beside the canvas.
+// modules/apple/Demos.swift: the surface posts "haptic:mate" / "haptic:mate-stop", counted here
+// into its `plays` and `stops`. The web build has no such view; there the surface posts the
+// pattern's taps as UIKit impacts instead.
 use DemoEnv from "../env.contract"
 
 component Chessboard
   props
     env: DemoEnv
+  // MATE_PATTERN's plays and stops (the `mate-haptic` view starts or cancels it on a new value).
+  state mate = 0
+  state stop = 0
   action heard(m: string)
+    if m == "haptic:mate"
+      mate = mate + 1
+    if m == "haptic:mate-stop"
+      stop = stop + 1
     if m == "haptic:selection"
       haptic("selection")
     if m == "haptic:impact-light"
@@ -33,3 +39,4 @@ component Chessboard
       canvas surface=chessboard() message=heard position="absolute" top=0 left=0
         width=env.width height=env.height touch-action="none" testId="chessboard-canvas"
         aria-label="Chessboard: drag or tap a piece to move it"
+      mate-haptic plays=mate stops=stop width=0 height=0

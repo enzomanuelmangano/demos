@@ -29,9 +29,8 @@
 // MATE_PATTERN) as react-native-pulsar's PatternComposer plays it: the discrete points as
 // transient events (intensity = amplitude, sharpness = frequency), the continuous points as one
 // continuous event (intensity 1, sharpness 0) for the curves' length under an intensity-control
-// and a sharpness-control curve (a first point at 0 when the first is later). A new `play` value
-// starts it, a new `stop` value cancels it. Not yet built into the app (the chessboard demo plays
-// UIKit impacts meanwhile: demos/chessboard/chessboard.contract).
+// and a sharpness-control curve (a first point at 0 when the first is later). A new `plays` value
+// starts it, a new `stops` value cancels it (demos/chessboard/chessboard.contract).
 import Foundation
 #if os(iOS)
 import CoreHaptics
@@ -240,19 +239,19 @@ private final class MateHaptic: ExactNativeInstance {
     init(props: [String: String], events: ExactNativeEvents) {
         box.isUserInteractionEnabled = false
         box.isAccessibilityElement = false
-        played = props["play"] ?? "0"
-        stopped = props["stop"] ?? "0"
+        played = props["plays"] ?? "0"
+        stopped = props["stops"] ?? "0"
         super.init(events: events)
     }
 
     override var view: ExactNativeView { box }
 
     override func setProps(_ props: [String: String]) throws {
-        if let p = props["play"], p != played {
+        if let p = props["plays"], p != played {
             played = p
             play()
         }
-        if let s = props["stop"], s != stopped {
+        if let s = props["stops"], s != stopped {
             stopped = s
             stop()
         }
