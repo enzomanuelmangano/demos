@@ -400,6 +400,11 @@ One commit per haptic event, never per frame.
   links stay there. `restart-app com.reactiive.app` with no URL reconnects to Metro and shows the
   home; then the deep links work. Never `simctl terminate` the RN app.
 
+- Core Animation antialiases a continuous-corner View analytically; `draw_continuous_rrect` is a
+  path, so 4× MSAA: the corner's long tail along the side (coverage 7-65 in RN) reads 0 or 64
+  (add-to-cart's buttons: edge pixels up to 76 levels, shape identical). A sub-pixel note until
+  packages/skia gets an analytic continuous rrect.
+
 ## 4. Check
 
 `bun tools/check-demo.ts <slug>` prints `[]` (compiles the demo alone, before it is
