@@ -66,12 +66,11 @@ From the code first (the integrator's rule), then measured where the code cannot
    motion (a `withRepeat`, a 22 s playback, a 12 s mount sequence, a frame-callback game loop,
    a rotation clock). One was not: empty-qr-code (fixed below).
 5. **Commits per frame from Contract** (`scroll=` and `pan=` actions): blurred-scroll and
-   dynamic-blur-tabs bind a canvas input from the scroll each frame; animated-indicator-list,
-   stacked-list, scroll-progress and scrollable-bottom-sheet write state each frame;
+   dynamic-blur-tabs bind a canvas input from the scroll each frame; stacked-list, scroll-progress and scrollable-bottom-sheet write state each frame;
    liquid-glass-playground commits each finger move (for its progressive haptics), and moves a
    `blur(10px) saturate(1.2)` pane. Exact's tool is a scroll-driven animation
    (`scroll-timeline` + `animation-timeline`, zero commits, the consumer moved in the scroll's
-   own frame). These are not changed here: each change needs a device pass for parity, and none
+   own frame; animated-indicator-list now uses it, 2026-11-14). The others are not changed here: each change needs a device pass for parity, and none
    was possible.
 
 ## Fixes
@@ -97,7 +96,7 @@ it takes input), and whether it rests after 4 s. Device columns: not measured (s
 | animated-clip-box | `animated_clip_box` 199/260 µs, 24 allocs; drag 194/281 µs; rests | shadows (shadowPath: no pass) |
 | animated-count-text | Contract only |  |
 | animated-grid-list | Contract only | scroll= action each frame (writes on change); shadows (shadowPath: no pass) |
-| animated-indicator-list | Contract only | scroll= writes state each frame |
+| animated-indicator-list | Contract only | scroll-driven (zero commits per frame) |
 | atlas-button | `atlas_button` 96/258 µs, 27 allocs; drag 109/273 µs; rests |  |
 | atlas-sphere | `atlas_sphere` 24/63 µs, 11 allocs; drag 22/49 µs; rests |  |
 | audio-player | `audio_player` 71/108 µs, 23 allocs; drag 77/132 µs; loops (22 s playback (RN withTiming 22 s)) |  |

@@ -32,61 +32,101 @@ fn headerRows(): number[] = [0, 7, 13, 19, 25]
 // (the interpolation's input range): 0, 65 + 6 × 50, … .
 fn headerY(): number[] = [0, 365, 680, 995, 1310]
 
-// interpolate(contentOffsetY, headersLayoutY, outs, Extrapolation.CLAMP) over five points.
-fn seg(y: number, a: number, b: number, oa: number, ob: number): number = oa + (ob - oa) * (y - a) / (b - a)
 fn nth(xs: number[], i: number): number = match xs.at(i) { case some(v) => v, case none => 0 }
-fn interp(y: number, outs: number[]): number = y <= 0 ? nth(outs, 0) : (y <= 365 ? seg(y, 0, 365, nth(outs, 0), nth(outs, 1)) : (y <= 680 ? seg(y, 365, 680, nth(outs, 1), nth(outs, 2)) : (y <= 995 ? seg(y, 680, 995, nth(outs, 2), nth(outs, 3)) : (y <= 1310 ? seg(y, 995, 1310, nth(outs, 3), nth(outs, 4)) : nth(outs, 4)))))
+// interpolate(contentOffsetY, headersLayoutY, outs, Extrapolation.CLAMP) over five points is
+// out0 + Σ_k (out_k+1 − out_k) × clamp((y − y_k) / (y_k+1 − y_k), 0, 1): each segment is a box
+// |Δ| wide that a scroll-driven animation translates by 0 → ∓100 % of itself over
+// [y_k, y_k+1] (linear, `both` fill = CLAMP), nested so the translates add. Zero commits: the
+// host moves them in the scroll's own frame (was a `scroll=` action, a commit per frame).
+fn delta(outs: number[], k: number): number = nth(outs, k + 1) - nth(outs, k)
+// Yoga ceils a Text's measured width to the device pixel (3x).
+fn ceilPx(v: number): number = ceil(v * 3 - 0.001) / 3
+fn mag(outs: number[], k: number): number = max(delta(outs, k), 0 - delta(outs, k))
+fn segRange(k: number): string = `${nth(headerY(), k)}px ${nth(headerY(), k + 1)}px`
+fn segAnim(d: number, sign: number): string = d * sign >= 0 ? "ailPlus 1s linear both" : "ailMinus 1s linear both"
+keyframes ailMinus
+  from translate="0px 0px"
+  to translate="-100% 0px"
+keyframes ailPlus
+  from translate="0px 0px"
+  to translate="100% 0px"
 
 component AnimatedIndicatorList
   props
     env: DemoEnv
-  state scroll = 0
   // headersLayoutXData before the headers are measured: x = i, width 0.
   state xs = [0, 1, 2, 3, 4]
   state widths = [0, 0, 0, 0, 0]
   // useMounted: RN measures the headers 100 ms after mount ("otherwise the layout isn't
   // correct"), x relative to their row. A demo is no root and declares no timer: the row's
   // `intersect`, delivered once it is laid out after mounting, measures them instead.
+  // RN's header is padding 20 around a Text that Yoga measures ceiled to the device pixel
+  // (JOE PESCI: 81.81 → 82), the row's x the sum of those: the host's text stays unceiled, so
+  // the headers take RN's widths here and the measures are computed from them.
   action measureHeaders(entry: IntersectionObserverEntry)
-    let row = frame("header-row")
-    let g0 = frame("header-0")
-    let g1 = frame("header-1")
-    let g2 = frame("header-2")
-    let g3 = frame("header-3")
-    let g4 = frame("header-4")
-    if not (row.unavailable or g0.unavailable or g1.unavailable or g2.unavailable or g3.unavailable or g4.unavailable)
-      xs = [g0.x - row.x, g1.x - row.x, g2.x - row.x, g3.x - row.x, g4.x - row.x]
-      widths = [g0.width, g1.width, g2.width, g3.width, g4.width]
-  action scrolled(x: number, y: number)
-    scroll = y
+    let t0 = frame("label-0")
+    let t1 = frame("label-1")
+    let t2 = frame("label-2")
+    let t3 = frame("label-3")
+    let t4 = frame("label-4")
+    if not (t0.unavailable or t1.unavailable or t2.unavailable or t3.unavailable or t4.unavailable)
+      let w = [ceilPx(t0.width) + 40, ceilPx(t1.width) + 40, ceilPx(t2.width) + 40, ceilPx(t3.width) + 40, ceilPx(t4.width) + 40]
+      widths = w
+      xs = [0, nth(w, 0), nth(w, 0) + nth(w, 1), nth(w, 0) + nth(w, 1) + nth(w, 2), nth(w, 0) + nth(w, 1) + nth(w, 2) + nth(w, 3)]
   // onSelectHeaderItem: scrollToIndex({ index }), animated.
   action select(i: number)
     scrollIntoView(`row-${nth(headerRows(), i)}`, behavior="smooth")
   view
     // styles.container: white, flex 1, overflow hidden; paddingTop safeTop +
     // DEMO_BUTTON_ROW_HEIGHT, paddingBottom the bottom inset.
-    column position="absolute" inset=0 background-color="#ffffff" overflow="hidden"
+    column position="absolute" inset=0 background-color="#ffffff" overflow="hidden" timeline-scope="--ail"
       padding-top=(env.safeTop + demoButtonRow()) padding-bottom="env(safe-area-inset-bottom)"
       testId="animated-indicator-list"
-      // The header row: translateX -interpolate(offset, headersLayoutY, headersX).
-      row id="header-row" flex-shrink=0 intersect=measureHeaders translate=`${0 - interp(scroll, xs)}px 0px`
-        for name, i in headers() key=name
-          // MeasureableAnimatedView: padding 20; onTouchStart selects the header.
-          view id=`header-${i}` flex-shrink=0 padding=20 pointerdown=select(i) role="button"
-            aria-label=name testId=`header-${i}`
-            // fontSize 14, bold, uppercase, letterSpacing 1.
-            text name font-size=14 font-weight=700 text-transform="uppercase" letter-spacing=1
-              white-space="nowrap" color="#000000"
+      column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(xs, 0)
+        animation=segAnim(delta(xs, 0), -1) animation-timeline="--ail" animation-range=segRange(0)
+        column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(xs, 1)
+          animation=segAnim(delta(xs, 1), -1) animation-timeline="--ail" animation-range=segRange(1)
+          column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(xs, 2)
+            animation=segAnim(delta(xs, 2), -1) animation-timeline="--ail" animation-range=segRange(2)
+            column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(xs, 3)
+              animation=segAnim(delta(xs, 3), -1) animation-timeline="--ail" animation-range=segRange(3)
+              // The header row: translateX −interpolate(offset, headersLayoutY, headersX), the
+              // segments above.
+              row id="header-row" flex-shrink=0 intersect=measureHeaders
+                for name, i in headers() key=name
+                  // MeasureableAnimatedView: padding 20; onTouchStart selects the header.
+                  view id=`header-${i}` flex-shrink=0 padding=20
+                    width=(nth(widths, i) > 0 ? `${nth(widths, i) - 40}px` : "auto") pointerdown=select(i) role="button"
+                    aria-label=name testId=`header-${i}`
+                    // fontSize 14, bold, uppercase, letterSpacing 1.
+                    text name id=`label-${i}` font-size=14 font-weight=700 text-transform="uppercase" letter-spacing=1
+                      white-space="nowrap" color="#000000"
       // rIndicatorStyle: a 3 tall black bar from the left edge, `width` wide (RN draws it as
       // 100 wide scaled by width / 100 from its left). A box takes no per-axis scale, so the
-      // same pixels are two boxes that only translate: a clip 1000 wide whose right edge is at
+      // same pixels are boxes that only translate: a clip 1000 wide whose right edge is at
       // `width`, holding a 1000 wide bar put back at the left edge.
-      view flex-shrink=0 align-self="flex-start" width=1000 height=3 overflow="hidden"
-        translate=`${interp(scroll, widths) - 1000}px 0px` testId="indicator"
-        view width=1000 height=3 background-color="#000000"
-          translate=`${1000 - interp(scroll, widths)}px 0px`
+      column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(widths, 0)
+        animation=segAnim(delta(widths, 0), 1) animation-timeline="--ail" animation-range=segRange(0) testId="indicator"
+        column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(widths, 1)
+          animation=segAnim(delta(widths, 1), 1) animation-timeline="--ail" animation-range=segRange(1)
+          column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(widths, 2)
+            animation=segAnim(delta(widths, 2), 1) animation-timeline="--ail" animation-range=segRange(2)
+            column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(widths, 3)
+              animation=segAnim(delta(widths, 3), 1) animation-timeline="--ail" animation-range=segRange(3)
+              // The clip: right edge at width(offset); the bar inside is put back at the left edge
+              // by the same segments negated.
+              view flex-shrink=0 width=1000 height=3 overflow="hidden" translate=`${nth(widths, 0) - 1000}px 0px`
+                column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(widths, 0)
+                  animation=segAnim(delta(widths, 0), -1) animation-timeline="--ail" animation-range=segRange(0)
+                  column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(widths, 1)
+                    animation=segAnim(delta(widths, 1), -1) animation-timeline="--ail" animation-range=segRange(1)
+                    column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(widths, 2)
+                      animation=segAnim(delta(widths, 2), -1) animation-timeline="--ail" animation-range=segRange(2)
+                      column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(widths, 3)
+                        animation=segAnim(delta(widths, 3), -1) animation-timeline="--ail" animation-range=segRange(3)
+                        view width=1000 height=3 background-color="#000000" translate=`${1000 - nth(widths, 0)}px 0px`
       // The FlatList: paddingBottom 400.
-      scroll flex=1 min-height=0 scroll=scrolled testId="animated-indicator-list-scroll"
+      column flex=1 min-height=0 overflow-y="auto" scroll-timeline="--ail y" testId="animated-indicator-list-scroll"
         column padding-bottom=400
           for e, i in data() key=i
             if e.header
@@ -94,7 +134,10 @@ component AnimatedIndicatorList
               // paddingLeft 15.
               column id=`row-${i}` height=65 flex-shrink=0 justify-content="center"
                 background-color="rgba(0, 0, 0, 0.1)"
+                // TextKit: Yoga floors the 23.87-tall line's top to 20.333 and CoreGraphics ceils the
+                // baseline; the host's rounded line sits a device pixel lower: put it back.
                 text e.label font-size=20 font-weight=700 letter-spacing=1 padding-left=15 color="#000000"
+                  position="relative" top="-0.3333px"
             else
               // itemContainer: height 50, white, a row centred, paddingLeft 15; text 15.
               row id=`row-${i}` height=50 flex-shrink=0 align-items="center" background-color="#ffffff"

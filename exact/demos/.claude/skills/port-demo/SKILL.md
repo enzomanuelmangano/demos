@@ -503,6 +503,12 @@ One commit per haptic event, never per frame.
   there. A true Gaussian on a field instead left metaball's edge 0.54 px in; `GraphiteBlur` with
   that plan put it on RN's to 0.01 px.
 
+- A scroll-driven animation needs a `column overflow-y="auto"` scroller: `scroll-timeline` on a
+  `scroll` tag drives nothing on iOS (`scrollIntoView` works on both). A piecewise-linear
+  `interpolate` of the offset onto measured values is nested boxes, one per segment, each
+  |Δ| wide and keyframed 0 → ∓100 % over its `animation-range` (animated-indicator-list).
+- The host's Text frame is TextKit's unceiled width (81.8125); Yoga ceils it to the pixel (82):
+  a row of texts drifts a pixel per item. Take RN's widths from `ceilPx(frame.width)`.
 - Performance (exact/parity-tools/perf/device-perf.md): run `cargo test --release -p demos-gpu
   --lib audit_every_surface -- --ignored --nocapture` (`BENCH_ONLY=<surface>`) after a port: per
   surface, whether it still asks for frames after 4 s untouched, render CPU and allocations at
