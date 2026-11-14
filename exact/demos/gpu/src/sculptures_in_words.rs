@@ -54,27 +54,15 @@ static BAKED: &[u8] = include_bytes!("../images/sculptures-in-words/sculptures.b
 
 /// constants.ts.
 const PAGE_BG: u32 = 0xffffff;
+/// RN's 12-stop fade: a Skia LinearGradient from `y0` to `y1`, full width.
+fn fade_rect(c: &mut Canvas, w: f32, y0: f32, y1: f32, stops: &[(f32, Color)]) {
+    let shader = Shader::Linear { start: point(0.0, y0), end: point(0.0, y1), stops: stops.to_vec() };
+    c.draw_rect(0.0, y0.min(y1), w, (y1 - y0).abs(), &Paint::shader(shader));
+}
+
 /// The canvas's clear: PAGE_BG (the screen's View, a P3 hex; white is white in both), opaque.
 /// The surface paints the page itself, so it is opaque: the web's canvas composites over black
 /// (it has no other alpha mode there), where a transparent clear showed the page black.
-/// RN's 12-stop fade (a Skia LinearGradient from `y0` to `y1`, full width) drawn as Skia draws
-/// it, where packages/skia takes 8 stops (the rest dropped, which left the bottom fade at
-/// alpha 0.26 past 64 %): two rects split on a device-pixel row inside the segment between stops
-/// 6 and 7, the first holding stops 0…7, the second 6…11, both over the full span, so every
-/// row is evaluated on the whole ramp.
-fn fade_rect(c: &mut Canvas, w: f32, y0: f32, y1: f32, stops: &[(f32, Color)], scale: f32) {
-    let t_mid = (stops[6].0 + stops[7].0) / 2.0;
-    let ys = ((y0 + (y1 - y0) * t_mid) * scale).round() / scale;
-    let shader = |from: usize, to: usize| {
-        Paint::shader(Shader::Linear { start: point(0.0, y0), end: point(0.0, y1), stops: stops[from..to].to_vec() })
-    };
-    let (lo, hi) = (y0.min(y1), y0.max(y1));
-    // The part nearer the start (t below the split) and the rest.
-    let (a, b) = if y1 > y0 { ((lo, ys), (ys, hi)) } else { ((ys, hi), (lo, ys)) };
-    c.draw_rect(0.0, a.0, w, a.1 - a.0, &shader(0, 8));
-    c.draw_rect(0.0, b.0, w, b.1 - b.0, &shader(6, stops.len()));
-}
-
 fn page_clear() -> wgpu::Color {
     let c = |k: u32| ((PAGE_BG >> k) & 0xff) as f64 / 255.0;
     wgpu::Color { r: c(16), g: c(8), b: c(0), a: 1.0 }
@@ -1155,8 +1143,8 @@ impl Sculptures {
         let top_fade = (h * TOP_FADE_FRAC) as f32;
         let fade = (h * BOTTOM_FADE_FRAC) as f32;
         let w32 = w as f32;
-        fade_rect(c, w32, top_fade, 0.0, &stops, scale);
-        fade_rect(c, w32, h as f32 - fade, h as f32, &stops, scale);
+        fade_rect(c, w32, top_fade, 0.0, &stops);
+        fade_rect(c, w32, h as f32 - fade, h as f32, &stops);
     }
 
     /// The paginator's dots (Views): where Yoga puts them at 1 / scale, their widths and

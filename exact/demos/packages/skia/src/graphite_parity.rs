@@ -772,3 +772,85 @@ fn a_continuous_circle_has_no_msaa_crack() {
         assert_eq!(px.at(mid, x)[0], 255, "column {mid}, y {x}: {col:?}");
     }
 }
+
+/// `n` stops at uneven offsets (first past 0, last short of 1, one hard stop), varied colours.
+fn long_stops(n: usize) -> Vec<Stop> {
+    let mut seed = 0x9e37_79b9u32.wrapping_mul(n as u32 + 1);
+    let mut rnd = || {
+        seed ^= seed << 13;
+        seed ^= seed >> 17;
+        seed ^= seed << 5;
+        (seed >> 8) as f32 / (1u32 << 24) as f32
+    };
+    let mut at = 0.04f32;
+    let mut out: Vec<Stop> = Vec::new();
+    for i in 0..n {
+        if i > 0 && i != n / 2 {
+            at += (0.3 + rnd()) * 0.92 / n as f32;
+        }
+        out.push((at.min(0.96), Color([rnd(), rnd(), rnd(), 1.0])));
+    }
+    out
+}
+
+/// Skia's gradient colour at `t` (clamped): the first stop at or past `t` and the one before,
+/// lerped in encoded Display P3, then back to encoded sRGB, as the renderer's sRGB target holds it.
+fn skia_ramp(stops: &[Stop], t: f64) -> [f64; 3] {
+    let lin = |c: f64| if c <= 0.04045 { c / 12.92 } else { ((c + 0.055) / 1.055).powf(2.4) };
+    let enc = |c: f64| {
+        let c = c.clamp(0.0, 1.0);
+        if c <= 0.0031308 { c * 12.92 } else { 1.055 * c.powf(1.0 / 2.4) - 0.055 }
+    };
+    let p3 = |c: Color| {
+        let [r, g, b] = [c.0[0], c.0[1], c.0[2]].map(|v| lin(v as f64));
+        [enc(0.8225 * r + 0.1774 * g), enc(0.0332 * r + 0.9669 * g), enc(0.0171 * r + 0.0724 * g + 0.9108 * b)]
+    };
+    let t = t.clamp(0.0, 1.0);
+    let c = match stops.iter().position(|s| t <= s.0 as f64) {
+        Some(0) => p3(stops[0].1),
+        None => p3(stops[stops.len() - 1].1),
+        Some(i) => {
+            let (a, b) = (stops[i - 1].0 as f64, stops[i].0 as f64);
+            let k = if b - a <= 0.0 { 1.0 } else { (t - a) / (b - a) };
+            let (x, y) = (p3(stops[i - 1].1), p3(stops[i].1));
+            [0, 1, 2].map(|j| x[j] + (y[j] - x[j]) * k)
+        }
+    };
+    let l = c.map(lin);
+    [enc(1.2249 * l[0] - 0.2247 * l[1]), enc(-0.0420 * l[0] + 1.0419 * l[1]), enc(-0.0197 * l[0] - 0.0786 * l[1] + 1.0979 * l[2])]
+}
+
+/// Linear, radial and sweep gradients of 8, 12 and 20 stops, one draw each (no split), against
+/// Skia's formula per pixel centre: within a level of 255, the long ones as the 8-stop one.
+#[test]
+fn long_gradients_are_skias_ramp() {
+    let Some(gpu) = gpu() else { return };
+    let (cx, cy) = (W as f32 / 2.0 + 0.3, H as f32 / 2.0 - 0.2);
+    for n in [8, 12, 20] {
+        let stops = long_stops(n);
+        let shaders: [(&str, Shader, Box<dyn Fn(f64, f64) -> f64>); 3] = [
+            ("linear", Shader::Linear { start: point(4.0, 0.0), end: point(W as f32 - 4.0, 0.0), stops: stops.clone() }, Box::new(|x, _| (x - 4.0) / (W as f64 - 8.0))),
+            ("radial", Shader::Radial { center: point(cx, cy), radius: 44.0, stops: stops.clone() }, Box::new(move |x, y| (x - cx as f64).hypot(y - cy as f64) / 44.0)),
+            ("sweep", Shader::Sweep { center: point(cx, cy), stops: stops.clone() }, Box::new(move |x, y| ((y - cy as f64).atan2(x - cx as f64) / std::f64::consts::TAU + 1.0).fract())),
+        ];
+        for (name, shader, t) in shaders {
+            let mut c = Canvas::default();
+            c.begin(1.0);
+            c.draw_rect(0.0, 0.0, W as f32, H as f32, &Paint::shader(shader));
+            assert_eq!(c.stops.is_empty(), n <= MAX_STOPS, "{name} {n}: the stop buffer holds only long gradients");
+            let px = render(&gpu, &c);
+            let mut worst = 0.0f64;
+            for y in 0..H {
+                for x in 0..W {
+                    let want = skia_ramp(&stops, t(x as f64 + 0.5, y as f64 + 0.5));
+                    let got = px.at(x, y);
+                    for j in 0..3 {
+                        worst = worst.max((got[j] as f64 - want[j] * 255.0).abs());
+                    }
+                }
+            }
+            eprintln!("{name} {n} stops: max error {worst:.3} levels");
+            assert!(worst <= 1.0, "{name} with {n} stops is off Skia's ramp by {worst:.3} levels");
+        }
+    }
+}

@@ -22,6 +22,8 @@ struct Paint {
 @group(0) @binding(2) var images: texture_2d_array<f32>;
 @group(0) @binding(3) var smp: sampler;
 @group(0) @binding(4) var glyph_atlas: texture_2d<f32>;
+// Gradients over 8 stops: from offsets[0].x, n colours then n offsets four to a vec4.
+@group(0) @binding(5) var<storage, read> stops: array<vec4<f32>>;
 
 // Graphite's device-to-NDC step (rtAdjust): x · 2/w − 1, y · −2/h + 1.
 fn ndc(p: vec2<f32>, depth: f32) -> vec4<f32> {
@@ -48,9 +50,31 @@ struct Out {
 
 fn offset(p: Paint, i: u32) -> f32 { return p.offsets[i / 4u][i % 4u]; }
 
+fn long_offset(o: u32, i: u32) -> f32 { return stops[o + i / 4u][i % 4u]; }
+
+// The same ramp over a stop buffer: the first stop at or past t, found by bisection.
+fn long_ramp(p: Paint, t: f32) -> vec4<f32> {
+    let n = u32(p.head.y);
+    let base = u32(p.offsets[0].x);
+    let o = base + n;
+    if (t <= long_offset(o, 0u)) { return stops[base]; }
+    if (t > long_offset(o, n - 1u)) { return stops[base + n - 1u]; }
+    var lo = 1u;
+    var hi = n - 1u;
+    while (lo < hi) {
+        let mid = (lo + hi) / 2u;
+        if (t <= long_offset(o, mid)) { hi = mid; } else { lo = mid + 1u; }
+    }
+    let a = long_offset(o, lo - 1u);
+    let b = long_offset(o, lo);
+    let k = select((t - a) / (b - a), 1.0, b - a <= 0.0);
+    return mix(stops[base + lo - 1u], stops[base + lo], k);
+}
+
 fn ramp(p: Paint, t0: f32) -> vec4<f32> {
     let n = u32(p.head.y);
     let t = clamp(t0, 0.0, 1.0);
+    if (n > 8u) { return long_ramp(p, t); }
     if (t <= offset(p, 0u)) { return p.colors[0]; }
     for (var i = 1u; i < n; i = i + 1u) {
         let o = offset(p, i);
@@ -548,6 +572,8 @@ pub struct Renderer {
     vertices: Option<(wgpu::Buffer, u64)>,
     indices: Option<(wgpu::Buffer, u64)>,
     paints: Option<(wgpu::Buffer, u64)>,
+    /// [`Canvas::stops`]: gradients over [`crate::MAX_STOPS`] stops.
+    stops: Option<(wgpu::Buffer, u64)>,
     rrects: Option<(wgpu::Buffer, u64)>,
     bind: Option<wgpu::BindGroup>,
     /// The images paints sample ([`Renderer::set_images`]); a blank layer until set.
@@ -685,6 +711,13 @@ impl Renderer {
         if grow(&mut self.paints, device, "skia paints", wgpu::BufferUsages::STORAGE, pb.len().max(std::mem::size_of::<GpuPaint>()) as u64) {
             self.bind = None;
         }
+        let sb = bytemuck::cast_slice::<[f32; 4], u8>(&canvas.stops);
+        if grow(&mut self.stops, device, "skia stops", wgpu::BufferUsages::STORAGE, sb.len() as u64) {
+            self.bind = None;
+        }
+        if !sb.is_empty() {
+            queue.write_buffer(&self.stops.as_ref().unwrap().0, 0, sb);
+        }
         if !vb.is_empty() {
             queue.write_buffer(&self.vertices.as_ref().unwrap().0, 0, vb);
             queue.write_buffer(&self.indices.as_ref().unwrap().0, 0, ib);
@@ -708,6 +741,7 @@ impl Renderer {
                     wgpu::BindGroupEntry { binding: 2, resource: wgpu::BindingResource::TextureView(self.images.as_ref().unwrap_or(&built.blank)) },
                     wgpu::BindGroupEntry { binding: 3, resource: wgpu::BindingResource::Sampler(&built.sampler) },
                     wgpu::BindGroupEntry { binding: 4, resource: wgpu::BindingResource::TextureView(self.atlas.as_ref().map_or(&built.blank_mask, |a| &a.1)) },
+                    wgpu::BindGroupEntry { binding: 5, resource: self.stops.as_ref().unwrap().0.as_entire_binding() },
                 ],
             })
         });
@@ -896,6 +930,12 @@ fn build(device: &wgpu::Device, queue: &wgpu::Queue, format: wgpu::TextureFormat
                 binding: 4,
                 visibility: wgpu::ShaderStages::FRAGMENT,
                 ty: wgpu::BindingType::Texture { sample_type: wgpu::TextureSampleType::Float { filterable: true }, view_dimension: wgpu::TextureViewDimension::D2, multisampled: false },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 5,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer { ty: wgpu::BufferBindingType::Storage { read_only: true }, has_dynamic_offset: false, min_binding_size: None },
                 count: None,
             },
         ],
