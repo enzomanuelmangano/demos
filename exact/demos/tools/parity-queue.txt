@@ -94,7 +94,7 @@ tab-navigation ported
 mnist ported (registered unverified: verify on device)
 stacked-modals ported
 linear-sensors ported
-verification-code-face todo claimed:r4-port
+verification-code-face ported (registered unverified: verify on device)
 everybody-can-cook ported
 threads-holo-ticket ported
 fluid-tab-interaction ported
@@ -105,11 +105,11 @@ clock-time-picker ported
 sudoku ported (registered unverified: verify on device)
 particles-button ported
 magnet-spring ported
-ios-home-grid todo claimed:r4-port
-time-machine todo claimed:r4-port
-ios-home-bouncy todo claimed:r4-port
+ios-home-grid ported (registered unverified: verify on device)
+time-machine ported (registered unverified: verify on device)
+ios-home-bouncy ported (registered unverified: verify on device)
 online-offline ported
-draggable-panel todo claimed:r4-port
+draggable-panel ported (registered unverified: verify on device)
 stacked-carousel ported
 airbnb-flip-interaction ported
 liquid-glass-playground ported
@@ -120,7 +120,7 @@ scrollable-shapes ported
 notion-qrcode ported (registered unverified: verify on device)
 github-terrain ported (registered unverified: verify on device)
 cherry-blossom-qrcode ported (registered unverified: verify on device)
-art-gallery todo claimed:r4-port
+art-gallery ported (registered unverified: verify on device)
 the-little-prince ported
 light-on-painting ported
-sculptures-in-words todo claimed:r4-port
+sculptures-in-words ported (registered unverified: verify on device)
