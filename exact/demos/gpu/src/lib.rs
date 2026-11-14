@@ -99,6 +99,7 @@ pub mod prequel_slider;
 pub mod qr_code_generator;
 pub mod radar_chart;
 pub mod record_button;
+pub mod scroll_progress_text;
 pub mod scroll_transition_3d;
 pub mod scrollable_shapes;
 pub mod sculptures_in_words;
@@ -206,6 +207,7 @@ pub static REGISTRY: Registry = Registry {
         ("qr_code_generator", 3, qr_code_generator::surface),
         ("radar_chart", 10, radar_chart::surface),
         ("record_button", 1, record_button::surface),
+        ("scroll_progress_text", 1, scroll_progress_text::surface),
         ("scroll_transition_3d", 0, scroll_transition_3d::surface),
         ("scrollable_shapes", 0, scrollable_shapes::surface),
         ("sculptures_in_words", 1, sculptures_in_words::surface),

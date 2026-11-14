@@ -2,6 +2,7 @@ at "/demo/scroll-progress"
 
 test "the pill shows the reading time at the top"
   expect tree has "scroll-progress"
+  expect tree has "scroll-progress-article"
   expect text "reading-time" == "15 min"
   expect tree has "progress-pill"
 
