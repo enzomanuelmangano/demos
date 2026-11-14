@@ -46,6 +46,7 @@ geometry-button
 github-contributions
 github-terrain
 imessage-stack
+ios-home-grid
 linear-sensors
 liquid-glass-playground
 loading-button

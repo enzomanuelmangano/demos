@@ -70,6 +70,7 @@ pub mod github_terrain;
 pub mod gl_transitions;
 pub mod image_cropper;
 pub mod imessage_stack;
+pub mod ios_home_grid;
 pub mod light_on_painting;
 pub mod linear_sensors;
 pub mod loading_button;
@@ -160,6 +161,7 @@ pub static REGISTRY: Registry = Registry {
         ("gl_transitions", 4, gl_transitions::surface),
         ("image_cropper", 0, image_cropper::surface),
         ("imessage_stack", 0, imessage_stack::surface),
+        ("ios_home_grid", 1, ios_home_grid::surface),
         ("light_on_painting", 4, light_on_painting::surface),
         ("linear_sensors", 0, linear_sensors::surface),
         ("loading_button", 0, loading_button::surface),
