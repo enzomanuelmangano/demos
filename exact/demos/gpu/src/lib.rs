@@ -120,6 +120,7 @@ pub mod theme_canvas_animation;
 pub mod threads_holo_ticket;
 pub mod time_machine;
 pub mod timer;
+pub mod twitter_tab_bar;
 pub mod twodos_slide;
 pub mod verification_code_face;
 pub mod wheel_picker;
@@ -225,6 +226,7 @@ pub static REGISTRY: Registry = Registry {
         ("threads_holo_ticket", 0, threads_holo_ticket::surface),
         ("time_machine", 1, time_machine::surface),
         ("timer", 2, timer::surface),
+        ("twitter_tab_bar", 1, twitter_tab_bar::surface),
         ("twodos_slide", 0, twodos_slide::surface),
         ("verification_code_face", 6, verification_code_face::surface),
         ("wheel_picker", 1, wheel_picker::surface),

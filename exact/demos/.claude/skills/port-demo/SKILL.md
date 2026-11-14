@@ -152,8 +152,9 @@ One commit per haptic event, never per frame.
   change a demo pan's activation. A Rust UIScrollView zeroes the velocity after a rest itself
   (`ui_scroll::release_velocity`).
 - UIScrollView (measured, selectable-grid-list's FlatList): the drag is 1:1 from the pan's
-  activation; at the lift it decelerates (0.998/ms) only from a finger faster than ~335 pt/s and
-  not after a 100 ms rest: `ui_scroll::uiscroll_release`. Below that it stops under the finger.
+  activation; at the lift it decelerates (0.998/ms) only from a finger faster than ~335 pt/s,
+  even after a still rest (no moves, no new velocity: scroll probe, rests 0.15-3 s all fling):
+  `ui_scroll::uiscroll_release`. Below that it stops under the finger.
 - UIScrollView bounce and deceleration (measured with `tools/scroll-probe`, a bare UIScrollView
   logging contentOffset per display frame; drive it with argent at y 0.6): the bounce is critically
   damped at 0.01088/ms from a start velocity of 0.00797 × the overshoot toward the edge (plus the
@@ -556,6 +557,9 @@ One commit per haptic event, never per frame.
   (FontAwesome 14: 11.333 × 14.333), not the em: size the svg so (popup-handler's arrows: 1-3 px
   off by angle → 0.03). A Contract box with a `height` and a border is content-box: give an RN
   row `box-sizing="border-box"`.
+- Several `useAnimatedStyle`s on one view that each return `transform` do not compose: the last
+  writer of the frame shows (style animations in start order, then mappers in a microtask; one
+  starting from rest writes at once). twitter-tab-bar's button: rotate, isActive scale, highlight.
 
 ## 4. Check
 

@@ -161,7 +161,6 @@ impl PanGesture {
         self.active
     }
     /// How long since the finger last moved, at `now`.
-    /// UIScrollView, unlike a pan's velocity, does not fling a drag held still before the lift.
     pub fn rest_ms(&self, now: f64) -> f64 {
         self.samples.last().map_or(0.0, |s| now - s.ms)
     }

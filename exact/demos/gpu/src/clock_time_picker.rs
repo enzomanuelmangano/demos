@@ -21,7 +21,7 @@
 //!   transparent over the top half, transparent → #111111 over the bottom half.
 //! - Scroll: UIScrollView's, vertical (`ui_scroll`, measured: the pan begins on the second move
 //!   past its hysteresis, the drag 1:1 and rubber-banded past the ends; at the lift a finger
-//!   slower than ~335 pt/s or rested 100 ms decelerates with no velocity; UIKit projects the
+//!   slower than ~335 pt/s (by its last moves) decelerates with no velocity; UIKit projects the
 //!   rest at decelerationRate "fast", 0.99 per ms; past an end it bounces back as UIKit does).
 //!   RCTEnhancedScrollView snaps the projected target to snapToOffsets (velocity > 0: the next
 //!   offset at or past it; < 0: the one before; 0: the nearest), clamped to the content: the

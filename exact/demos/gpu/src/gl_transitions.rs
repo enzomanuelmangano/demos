@@ -1645,7 +1645,7 @@ mod tests {
             ));
         }
         s.input(&pointer(PointerPhase::Up, 200.0, 400.0, ms + 600.0));
-        let (_, ms) = render_to(&gpu, &mut s, ms + 600.0, ms + 1200.0);
+        let (_, ms) = render_to(&gpu, &mut s, ms + 600.0, ms + 4000.0);
         let agent = s.agent("").unwrap();
         let scroll: f64 = agent
             .split("\"scroll\":")
@@ -1655,8 +1655,9 @@ mod tests {
             .parse()
             .unwrap();
         // UIScrollView's drag begins on the second move past its 10 pt hysteresis (30 pt here,
-        // ui_scroll) and follows from there: 300 − 30.
-        assert!((scroll - 270.0).abs() < 0.01, "{agent}");
+        // ui_scroll) and follows from there (300 − 30); lifted still after its last move, it
+        // flings on at that move's velocity (UIKit, scroll probe).
+        assert!(scroll > 270.0, "{agent}");
         // The + scrolled away: a tap there scrolls nothing and opens nothing.
         let row = SAFE_TOP as f32 + 56.0;
         tap(&mut s, W - 40.0, row + 24.0, ms + 10.0);
@@ -1672,7 +1673,7 @@ mod tests {
             ));
         }
         s.input(&pointer(PointerPhase::Up, 200.0, 600.0, ms + 700.0));
-        let (_, ms) = render_to(&gpu, &mut s, ms + 700.0, ms + 1500.0);
+        let (_, ms) = render_to(&gpu, &mut s, ms + 700.0, ms + 4500.0);
         tap(&mut s, W - 40.0, row + 24.0, ms + 10.0);
         let (_, ms) = render_to(&gpu, &mut s, ms + 70.0, ms + 900.0);
         let _ = s.messages();

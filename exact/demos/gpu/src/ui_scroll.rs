@@ -55,11 +55,15 @@ const FRAME_MS: f64 = 1000.0 / 60.0;
 /// How much of the content's velocity at the lift the bounce keeps, measured.
 const BOUNCE_CARRY: f64 = 1.656;
 
-/// The finger's velocity UIScrollView decelerates with at the lift: none once the finger has
-/// rested 100 ms (measured on the RN app: a drag held 1 s, then lifted, does not fling, where a
-/// RNGH pan keeps its velocity).
-pub fn release_velocity(finger: f32, rest_ms: f64) -> f32 {
-    if rest_ms > 100.0 { 0.0 } else { finger }
+/// The finger's velocity UIScrollView decelerates with at the lift: the last moves' velocity,
+/// however long the finger then rested (UIKit hears no `touchesMoved` from a finger at rest).
+/// Measured with tools/scroll-probe (2026-11-14, argent drags of 210 pt in 400 ms, then still):
+/// lifted after 0.15, 0.25, 0.4, 0.75, 1.0, 1.5 and 3.0 s, willEndDragging got 0.456–0.480 pt/ms
+/// every time and the scroll decelerated onto UIKit's projection; RN's FlatList flung the same
+/// after a 200 ms rest (twitter-tab-bar). (An earlier "no fling after a 100 ms rest" rule came
+/// from a hold whose input still moved.)
+pub fn release_velocity(finger: f32, _rest_ms: f64) -> f32 {
+    finger
 }
 
 /// UIScrollView's deceleration velocity for a finger released at `finger` pt/s (the crate's
