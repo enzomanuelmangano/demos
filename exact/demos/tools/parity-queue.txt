@@ -16,7 +16,7 @@ cuberto-slider ported done:4325d88d (balloon + value drawn upright into a layer 
 metaball ported done:b957cd5c (Graphite blur of an 8-bit P3 layer sized by the Group clip: edges on RN to 0.01 px (were 0.54 px in), colours exact but P3 gradient rounding (red ±10 on 1 P3 level); A/B drag, second circle spring-back same track and rest)
 shared-transitions ported claimed:sim1
 story-list ported done:0474dd50 (verified 2026-11-14, no code change: layout pixel-exact, photo interiors max 1 level; snap is RCTEnhancedScrollView's disableIntervalMomentum rule line for line, interpolations as story-item.tsx; A/B slow drag, flicks both ways, rubber band same structure and ends; edge AA only: continuous corners 4x MSAA vs CA analytic, side cards' straight edges aliased in CA)
-dynamic-tab-indicator ported
+dynamic-tab-indicator ported claimed:sim2
 blur-circles ported
 smooth-dropdown ported
 skia-bottom-sheet ported
