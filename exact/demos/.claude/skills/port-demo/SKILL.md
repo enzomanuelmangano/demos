@@ -418,6 +418,9 @@ One commit per haptic event, never per frame.
   `env(safe-area-inset-*)`, not from the route's frame (now the full screen).
 - `pgrep -f "exact.mjs ios"` also matches a shell whose own command line contains that text (a
   wait loop): check the build lock with a bare `pgrep` call, never from inside a loop that greps it.
+- argent on one simulator with both apps: after switching apps by deep link, touches can stop
+  reaching the RN app (its sheet never moved; the describe tree stayed the Exact app's). Terminate
+  the Exact app (`com.reactiive.demos.exact`), then reopen the RN demo by its link.
 - The RN dev client launched cold by its `exp+thank-you://expo-development-client/?url=…` link
   lands on Unmatched Route (RootLayout pushes the dev-client URL's path) and later `demos://`
   links stay there. `restart-app com.reactiive.app` with no URL reconnects to Metro and shows the
