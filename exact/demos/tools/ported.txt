@@ -3,6 +3,7 @@ airbnb-flip-interaction
 alert-drawer
 animated-3d-parallax
 animated-clip-box
+art-gallery
 animated-count-text
 animated-grid-list
 animated-indicator-list

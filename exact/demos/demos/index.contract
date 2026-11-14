@@ -9,6 +9,7 @@ use AnimatedClipBox from "./animated-clip-box/animated-clip-box.contract"
 use AnimatedCountText from "./animated-count-text/animated-count-text.contract"
 use AnimatedGridList from "./animated-grid-list/animated-grid-list.contract"
 use AnimatedIndicatorList from "./animated-indicator-list/animated-indicator-list.contract"
+use ArtGallery from "./art-gallery/art-gallery.contract"
 use AtlasButton from "./atlas-button/atlas-button.contract"
 use AtlasSphere from "./atlas-sphere/atlas-sphere.contract"
 use AudioPlayer from "./audio-player/audio-player.contract"
@@ -132,6 +133,8 @@ component PortedDemo
         AnimatedGridList(env=env)
       if slug == "animated-indicator-list"
         AnimatedIndicatorList(env=env)
+      if slug == "art-gallery"
+        ArtGallery(env=env)
       if slug == "atlas-button"
         AtlasButton(env=env)
       if slug == "atlas-sphere"

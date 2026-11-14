@@ -1,0 +1,16 @@
+at "/demo/art-gallery"
+
+// The web host gives a surface no touches and has no ASTC: the mosaic, its gestures, springs,
+// haptics and the button are the Rust fixture tests' (gpu/src/art_gallery.rs); here the
+// Contract's header and the menu's picks.
+test "the canvas, the title and the menu are there"
+  expect tree has "art-gallery-canvas"
+  expect tree has "art-gallery-title"
+  expect tree has "painting-menu"
+
+test "a painting is picked through the movement and the painter"
+  tap "painting-menu"
+  tap "movement-post-impressionism"
+  tap "painter-van-gogh"
+  tap "painting-starry-night"
+  expect tree has "art-gallery-canvas"
