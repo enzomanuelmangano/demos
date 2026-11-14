@@ -5,30 +5,49 @@
 //! (`withSpring`, Reanimated 4's default). A touch goes to the first circle if it is under the
 //! finger, else to the second (RN's Touchable order: "the first one registered, i.e. rendered").
 //!
-//! Everything runs in this surface: the pans, the spring and the drawing. The blur is a
-//! separable Gaussian on a field of FIELD points per texel, which is σ/2 = 15 texels;
-//! the threshold samples it at full resolution, so the edge stays sharp.
+//! Everything runs in this surface: the pans, the spring and the drawing, as RN Skia draws it:
+//! the circles one path (`addCircle` twice: Graphite's 4× MSAA) with the SweepGradient mixed in
+//! Display P3, into an 8-bit layer; the layer is the Group's clip (`layerClip`, the circles'
+//! bounds + LAYER_MARGIN, within the screen) outset by the blur's reach, as Skia sizes a filtered
+//! layer; Graphite's blur of it (`skia::blur::GraphiteBlur`: downscaled to σ 4, σ 90 px at 3×),
+//! then the ColorMatrix and Core Animation's P3 → sRGB (`shaders/metaball.wgsl`).
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
 use gesture_handler::{Event, PanGesture};
 use reanimated::{Spring, GENTLE};
+use skia::blur::{ceil_size, intersect, outset, round_out, GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
+use skia::{point, stops, Canvas, Color, Paint, Renderer, Shader};
 
 use crate::{gfx, shaders};
-use shaders::metaball::{entry, module, Uniforms, GROUP_0, SMP, SRC, U};
+use shaders::metaball::{entry, module, Uniforms, BLURRED, GROUP_0, SMP, U};
 
 const RADIUS: f32 = 80.0;
 const BLUR: f32 = 30.0;
-/// Canvas points per field texel.
-const FIELD: f32 = 2.0;
-/// The field reaches this far past the canvas, so a circle at the edge blurs as Skia's
-/// unclipped layer does.
-const MARGIN: f32 = 3.0 * BLUR + RADIUS;
-const FIELD_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R16Float;
+/// `RADIUS + 3 * BLUR + 2`: the layer clip's margin around the circles' centres.
+const LAYER_MARGIN: f32 = RADIUS + 3.0 * BLUR + 2.0;
+/// The ColorMatrix's alpha row: 60 a − 30.
+const ALPHA_SCALE: f32 = 60.0;
+const ALPHA_BIAS: f32 = -30.0;
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
     Box::new(Metaball::default())
+}
+
+struct Draw {
+    canvas: Canvas,
+    renderer: Renderer,
+    blur: GraphiteBlur,
+    plan: GraphitePlan,
+}
+
+impl Default for Draw {
+    fn default() -> Draw {
+        let mut renderer = Renderer::default();
+        renderer.p3 = true;
+        Draw { canvas: Canvas::default(), renderer, blur: GraphiteBlur::default(), plan: GraphitePlan::new([0, 0, 1, 1], [0, 0, 1, 1], 1.0).unwrap() }
+    }
 }
 
 #[derive(Default)]
@@ -44,22 +63,22 @@ struct Metaball {
     /// whatever size the canvas is laid out at (RN reads the window's size once).
     touched: bool,
     dirty: bool,
+    draw: Draw,
     gpu: Option<Gpu>,
 }
 
 struct Gpu {
     format: wgpu::TextureFormat,
     generation: u32,
-    grid: (u32, u32),
-    mask: wgpu::RenderPipeline,
-    blur_x: wgpu::RenderPipeline,
-    blur_y: wgpu::RenderPipeline,
+    /// The layer texture's size: the canvas + the blur's reach on every side, px.
+    size: (u32, u32),
     compose: wgpu::RenderPipeline,
-    uniforms: exact_gpu::FrameUniform,
-    a: wgpu::TextureView,
-    b: wgpu::TextureView,
-    /// Per uniform slot: (reads b, reads a).
-    binds: Vec<(wgpu::BindGroup, wgpu::BindGroup)>,
+    layout: wgpu::BindGroupLayout,
+    uniforms: wgpu::Buffer,
+    layer: wgpu::TextureView,
+    empty: wgpu::TextureView,
+    sampler: wgpu::Sampler,
+    bind: Option<(wgpu::TextureView, wgpu::BindGroup)>,
 }
 
 impl Metaball {
@@ -149,54 +168,96 @@ impl Surface for Metaball {
             self.second = (Spring::at(cx as f64), Spring::at(cy as f64));
         }
         let moving = self.second.0.step(frame.now_ms) | self.second.1.step(frame.now_ms);
-        let grid = (
-            ((frame.width + 2.0 * MARGIN) / FIELD).ceil() as u32,
-            ((frame.height + 2.0 * MARGIN) / FIELD).ceil() as u32,
-        );
-        if self.gpu.as_ref().map(|g| (g.format, g.generation, g.grid)) != Some((format, frame.shader_generation, grid)) {
-            self.gpu = Some(build(device, format, frame.shader_generation, grid));
+        let (pw, ph) = frame.pixels();
+        let scale = frame.scale;
+        let sigma = BLUR * scale;
+        let reach = ceil_size(3.0 * sigma);
+        let size = (pw + 2 * reach as u32, ph + 2 * reach as u32);
+        if self.gpu.as_ref().map(|g| (g.format, g.generation, g.size)) != Some((format, frame.shader_generation, size)) {
+            self.gpu = Some(build(device, format, frame.shader_generation, size));
         }
+        let (c1, c2) = (self.first, (self.second.0.value as f32, self.second.1.value as f32));
+        // layerClip: the circles' bounds + LAYER_MARGIN; the device clip is it rounded out,
+        // within the screen; the layer, that clip outset by the blur's reach.
+        let clip = [
+            c1.0.min(c2.0) - LAYER_MARGIN,
+            c1.1.min(c2.1) - LAYER_MARGIN,
+            c1.0.max(c2.0) + LAYER_MARGIN,
+            c1.1.max(c2.1) + LAYER_MARGIN,
+        ];
+        let device_clip = intersect(round_out(clip.map(|v| v * scale)), [0, 0, pw as i32, ph as i32]);
+        let draw = &mut self.draw;
+        // The layer texture's texel (0, 0) is device (−reach, −reach).
+        draw.canvas.begin(scale);
+        draw.canvas.translate(reach as f32 / scale, reach as f32 / scale);
+        let colors = [Color::rgb8(0, 255, 255), Color::rgb8(0, 0, 255), Color::rgb8(0, 255, 255)];
+        let paint = Paint::shader(Shader::Sweep { center: point(0.0, 0.0), stops: stops(&colors) });
+        draw.canvas.draw_with(&paint, |b| {
+            skia::add_circle(b, c1.0, c1.1, RADIUS);
+            skia::add_circle(b, c2.0, c2.1, RADIUS);
+        });
         let gpu = self.gpu.as_mut().unwrap();
-        let uniforms = Uniforms {
-            centres: [self.first.0, self.first.1, self.second.0.value as f32, self.second.1.value as f32],
-            field: [-MARGIN, -MARGIN, FIELD, FIELD],
-            grid: [grid.0 as f32, grid.1 as f32, BLUR / FIELD, RADIUS],
-            canvas: [frame.width, frame.height, gfx::srgb_flag(format), 0.0],
+        draw.renderer.draw(device, queue, encoder, &draw.canvas, &gpu.layer, GRAPHITE_FORMAT, size.0, size.1, wgpu::Color::TRANSPARENT);
+        let mut u = Uniforms {
+            canvas: [pw as f32, ph as f32, scale, gfx::srgb_flag(format)],
+            low: [0.0; 4],
+            out: [0.0; 4],
+            layer: [0.0, ALPHA_SCALE, ALPHA_BIAS, 0.0],
         };
-        let slot = gpu.uniforms.write(queue, &uniforms.bytes());
-        let (reads_b, reads_a) = &gpu.binds[slot];
-        gfx::pass(encoder, "metaball mask", &gpu.a, &gpu.mask, reads_b);
-        gfx::pass(encoder, "metaball blur x", &gpu.b, &gpu.blur_x, reads_a);
-        gfx::pass(encoder, "metaball blur y", &gpu.a, &gpu.blur_y, reads_b);
-        gfx::pass(encoder, "metaball", target, &gpu.compose, reads_a);
+        let mut view = gpu.empty.clone();
+        if let Some(desired) = device_clip {
+            if draw.plan.update(outset(desired, reach, reach), desired, sigma) {
+                let out = draw.blur.run(device, queue, encoder, Placed { view: &gpu.layer, origin: [-reach, -reach], size: [size.0, size.1] }, &draw.plan);
+                u.low = low_mapping(&draw.plan, out.origin, out.size);
+                u.out = draw.plan.output.map(|v| v as f32);
+                u.layer[0] = 1.0;
+                view = out.view.clone();
+            }
+        }
+        queue.write_buffer(&gpu.uniforms, 0, &u.bytes());
+        if gpu.bind.as_ref().is_none_or(|(v, _)| *v != view) {
+            let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("metaball"),
+                layout: &gpu.layout,
+                entries: &[
+                    wgpu::BindGroupEntry { binding: U.binding, resource: gpu.uniforms.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: BLURRED.binding, resource: wgpu::BindingResource::TextureView(&view) },
+                    wgpu::BindGroupEntry { binding: SMP.binding, resource: wgpu::BindingResource::Sampler(&gpu.sampler) },
+                ],
+            });
+            gpu.bind = Some((view, group));
+        }
+        skia::render::fullscreen_pass(encoder, "metaball", target, &gpu.compose, &gpu.bind.as_ref().unwrap().1);
         self.dirty = false;
         moving || self.first_pan.tracking() || self.second_pan.tracking()
     }
 }
 
-fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32, grid: (u32, u32)) -> Gpu {
+/// The blurred image's uv of a device pixel: uv = p · xy + zw (as spiral's).
+fn low_mapping(plan: &GraphitePlan, origin: [i32; 2], size: [u32; 2]) -> [f32; 4] {
+    let src = plan.src_rect.map(|v| v as f32);
+    let low = plan.low_bounds;
+    let kx = (low[2] - low[0]) / (src[2] - src[0]);
+    let ky = (low[3] - low[1]) / (src[3] - src[1]);
+    let (sw, sh) = (size[0] as f32, size[1] as f32);
+    [kx / sw, ky / sh, (low[0] - src[0] * kx - origin[0] as f32) / sw, (low[1] - src[1] * ky - origin[1] as f32) / sh]
+}
+
+fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32, size: (u32, u32)) -> Gpu {
     let shader = device.create_shader_module(module());
     let layout = device.create_bind_group_layout(&GROUP_0);
-    let field = |fs| gfx::fullscreen(device, FIELD_FORMAT, &shader, &layout, entry::VS, fs, None, "metaball field");
-    let (mask, blur_x, blur_y) = (field(entry::MASK), field(entry::BLUR_X), field(entry::BLUR_Y));
-    let compose = gfx::fullscreen(device, format, &shader, &layout, entry::VS, entry::COMPOSE, None, "metaball");
-    let uniforms = exact_gpu::FrameUniform::new(device, Uniforms::SIZE, "metaball uniforms");
-    let a = gfx::target(device, "metaball a", FIELD_FORMAT, grid.0, grid.1);
-    let b = gfx::target(device, "metaball b", FIELD_FORMAT, grid.0, grid.1);
-    let sampler = gfx::linear_sampler(device, "metaball");
-    let bind = |slot: usize, view: &wgpu::TextureView| {
-        device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("metaball"),
-            layout: &layout,
-            entries: &[
-                wgpu::BindGroupEntry { binding: U.binding, resource: uniforms.buffer(slot).as_entire_binding() },
-                wgpu::BindGroupEntry { binding: SRC.binding, resource: wgpu::BindingResource::TextureView(view) },
-                wgpu::BindGroupEntry { binding: SMP.binding, resource: wgpu::BindingResource::Sampler(&sampler) },
-            ],
-        })
-    };
-    let binds = (0..uniforms.slots()).map(|slot| (bind(slot, &b), bind(slot, &a))).collect();
-    Gpu { format, generation, grid, mask, blur_x, blur_y, compose, uniforms, a, b, binds }
+    Gpu {
+        format,
+        generation,
+        size,
+        compose: skia::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None),
+        layout,
+        uniforms: device.create_buffer(&wgpu::BufferDescriptor { label: Some("metaball"), size: Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false }),
+        layer: skia::render::sampled_target(device, "metaball layer", GRAPHITE_FORMAT, size.0, size.1),
+        empty: skia::render::sampled_target(device, "metaball empty", GRAPHITE_FORMAT, 1, 1),
+        sampler: skia::render::linear_sampler(device),
+        bind: None,
+    }
 }
 
 #[cfg(all(test, not(target_arch = "wasm32")))]

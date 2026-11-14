@@ -1,108 +1,68 @@
-// Metaball (src/animations/metaball/index.tsx): two circles of radius 80, their union filled with
-// a sweep gradient about the canvas's corner, then blurred (σ 30) and its alpha thresholded by
-// the ColorMatrix (a' = 60 a - 30). The blur runs on a field a point or two per texel: the mask,
-// a horizontal and a vertical Gaussian, then the threshold and the gradient at full resolution.
+// Metaball (src/animations/metaball/index.tsx): the Group's layer (Blur 30 + ColorMatrix) composed
+// onto the canvas. `blurred` is Graphite's blur (skia::blur::GraphiteBlur) of the layer as
+// packages/skia drew it: the two circles as one path (Graphite's 4× MSAA), the SweepGradient
+// about (0, 0) interpolated in Display P3, premultiplied ENCODED DISPLAY P3 in 8 bits, as RN
+// Skia's layer in the surface's colour space. The ColorMatrix runs on the unpremultiplied colour
+// (RGB kept, alpha 60 a − 30, clamped); the result lands in the canvas's 8-bit P3 surface, which
+// is cleared transparent; Core Animation converts it to sRGB per pixel, unpremultiplied, and
+// lays it over the View's #0A0A0A.
 struct Uniforms {
-    // Circle centres, canvas points: (x1, y1, x2, y2).
-    centres: vec4<f32>,
-    // The field's origin in canvas points (x, y), and points per texel (size, size).
-    field: vec4<f32>,
-    // The field's texel count (w, h), σ in texels, the radius in points.
-    grid: vec4<f32>,
-    // The canvas in points (w, h), and whether the target is sRGB-encoding (1) or not (0).
+    // The canvas (device px), its scale, whether the target encodes sRGB itself.
     canvas: vec4<f32>,
+    // The blurred image: uv = p · low.xy + low.zw (p in device px).
+    low: vec4<f32>,
+    // The blur result's bounds (ltrb, device px): transparent outside.
+    out: vec4<f32>,
+    // .x: 1 when there is a blur; .y, .z: the ColorMatrix's alpha row (scale, bias).
+    layer: vec4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> u: Uniforms;
-@group(0) @binding(1) var src: texture_2d<f32>;
+@group(0) @binding(1) var blurred: texture_2d<f32>;
 @group(0) @binding(2) var smp: sampler;
 
-struct Out {
-    @builtin(position) pos: vec4<f32>,
-    @location(0) uv: vec2<f32>,
-};
-
 @vertex
-fn vs(@builtin(vertex_index) i: u32) -> Out {
-    let p = vec2<f32>(f32(i32(i & 1u) * 4 - 1), f32(i32(i >> 1u) * 4 - 1));
-    var o: Out;
-    o.pos = vec4<f32>(p, 0.0, 1.0);
-    o.uv = vec2<f32>(p.x * 0.5 + 0.5, 0.5 - p.y * 0.5);
-    return o;
+fn vs(@builtin(vertex_index) i: u32) -> @builtin(position) vec4<f32> {
+    let q = vec2<f32>(f32(i32(i & 1u) * 4 - 1), f32(i32(i >> 1u) * 4 - 1));
+    return vec4<f32>(q, 0.0, 1.0);
 }
 
-// The union's coverage at a field texel, antialiased over one texel.
-@fragment
-fn mask(in: Out) -> @location(0) vec4<f32> {
-    let p = u.field.xy + in.uv * u.grid.xy * u.field.z;
-    let d = min(distance(p, u.centres.xy), distance(p, u.centres.zw)) - u.grid.w;
-    let a = clamp(0.5 - d / u.field.z, 0.0, 1.0);
-    return vec4<f32>(a, 0.0, 0.0, 1.0);
-}
-
-fn gauss(dir: vec2<f32>, uv: vec2<f32>) -> f32 {
-    let sigma = u.grid.z;
-    let r = i32(ceil(3.0 * sigma));
-    let texel = dir / u.grid.xy;
-    var sum = 0.0;
-    var weight = 0.0;
-    for (var i = -r; i <= r; i = i + 1) {
-        let x = f32(i);
-        let w = exp(-0.5 * x * x / (sigma * sigma));
-        sum = sum + textureSampleLevel(src, smp, uv + texel * x, 0.0).r * w;
-        weight = weight + w;
-    }
-    return sum / weight;
-}
-
-@fragment
-fn blur_x(in: Out) -> @location(0) vec4<f32> {
-    return vec4<f32>(gauss(vec2<f32>(1.0, 0.0), in.uv), 0.0, 0.0, 1.0);
-}
-
-@fragment
-fn blur_y(in: Out) -> @location(0) vec4<f32> {
-    return vec4<f32>(gauss(vec2<f32>(0.0, 1.0), in.uv), 0.0, 0.0, 1.0);
-}
-
-fn to_linear(c: vec3<f32>) -> vec3<f32> {
+fn lin(c: vec3<f32>) -> vec3<f32> {
     return select(pow((c + 0.055) / 1.055, vec3<f32>(2.4)), c / 12.92, c <= vec3<f32>(0.04045));
 }
-
-fn enc_srgb(c0: vec3<f32>) -> vec3<f32> {
+fn enc(c0: vec3<f32>) -> vec3<f32> {
     let c = clamp(c0, vec3<f32>(0.0), vec3<f32>(1.0));
     return select(1.055 * pow(c, vec3<f32>(1.0 / 2.4)) - 0.055, c * 12.92, c <= vec3<f32>(0.0031308));
 }
-// Encoded sRGB to encoded Display P3, and back (clipped to sRGB): RN Skia on iOS draws into a
-// Display P3 surface, so its gradients interpolate between the stops' P3 values.
-fn srgb_to_p3(c: vec3<f32>) -> vec3<f32> {
-    let l = to_linear(c);
-    return enc_srgb(vec3<f32>(
-        0.8225 * l.r + 0.1774 * l.g,
-        0.0332 * l.r + 0.9669 * l.g,
-        0.0171 * l.r + 0.0724 * l.g + 0.9108 * l.b));
-}
+// Encoded Display P3 to encoded sRGB (clipped to the sRGB gamut), as packages/skia's.
 fn p3_to_srgb(c: vec3<f32>) -> vec3<f32> {
-    let l = to_linear(c);
-    return enc_srgb(vec3<f32>(
+    let l = lin(c);
+    return enc(vec3<f32>(
         1.2249 * l.r - 0.2247 * l.g,
         -0.0420 * l.r + 1.0419 * l.g,
         -0.0197 * l.r - 0.0786 * l.g + 1.0979 * l.b));
 }
+// An 8-bit surface's store.
+fn q8(c: vec4<f32>) -> vec4<f32> {
+    return round(clamp(c, vec4<f32>(0.0), vec4<f32>(1.0)) * 255.0) / 255.0;
+}
 
-// SweepGradient c=(0, 0), colors cyan → blue → cyan (mixed in P3), over the background #0A0A0A.
 @fragment
-fn compose(in: Out) -> @location(0) vec4<f32> {
-    let p = in.uv * u.canvas.xy;
-    let fuv = (p - u.field.xy) / (u.grid.xy * u.field.z);
-    let a = clamp(textureSampleLevel(src, smp, fuv, 0.0).r * 60.0 - 30.0, 0.0, 1.0);
-    let turn = fract(atan2(p.y, p.x) / 6.283185307 + 1.0);
-    let k = 1.0 - abs(turn * 2.0 - 1.0);
-    let colour = p3_to_srgb(mix(srgb_to_p3(vec3<f32>(0.0, 1.0, 1.0)), srgb_to_p3(vec3<f32>(0.0, 0.0, 1.0)), k));
-    let bg = vec3<f32>(10.0 / 255.0);
-    var c = mix(bg, colour, a);
-    if (u.canvas.z > 0.5) {
-        c = to_linear(c);
+fn compose(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
+    let p = pos.xy;
+    var g = vec4<f32>(0.0);
+    if (u.layer.x > 0.5 && all(p >= u.out.xy) && all(p <= u.out.zw)) {
+        g = textureSampleLevel(blurred, smp, p * u.low.xy + u.low.zw, 0.0);
     }
+    // SkColorFilters::Matrix: unpremultiplied in, RGB kept, alpha k · a + b, clamped.
+    var rgb = vec3<f32>(0.0);
+    if (g.a > 0.0) { rgb = g.rgb / g.a; }
+    let a = clamp(u.layer.y * g.a + u.layer.z, 0.0, 1.0);
+    let canvas = q8(vec4<f32>(rgb * a, a));
+    var src = vec3<f32>(0.0);
+    if (canvas.a > 0.0) { src = p3_to_srgb(canvas.rgb / canvas.a) * canvas.a; }
+    let bg = vec3<f32>(10.0 / 255.0);
+    var c = src + bg * (1.0 - canvas.a);
+    if (u.canvas.w > 0.5) { c = lin(c); }
     return vec4<f32>(c, 1.0);
 }
