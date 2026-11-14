@@ -122,8 +122,8 @@ component Demos
                 testId="open-atlas" position="absolute" right=12 bottom=12
                 text "Demo Atlas"
         if e.name == "atlas"
-          column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" position="absolute" inset=0
-            Atlas(demos=allDemos(), env=env, active=(top(nav).name == "atlas"), open=open, leave=back)
+          column navigationKey=`${e.id}` position="absolute" inset=0
+            Atlas(demos=allDemos(), env=env, active=(top(nav).name == "atlas"), leave=back)
         if e.name == "demo"
           // The open out of the icon and the close into it are RN's launch, drawn by the app's
           // module (DemoLaunch.swift) on UIKit's fullscreen presentation, not UIKit's zoom.
