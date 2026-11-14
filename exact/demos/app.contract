@@ -3,7 +3,7 @@
 use Demo, allDemos from "./demos.contract"
 use Springboard from "./home/springboard.contract"
 use DemoScreen from "./home/demo-screen.contract"
-use Atlas from "./home/atlas.contract"
+use Atlas, SnapFrame, FeedbackNote from "./home/atlas.contract"
 use DemoEnv from "./demos/env.contract"
 use startSensorInput, stopSensorInput, SensorInput from "@exact/motion"
 use defaultPressablesConfig from "pressto"
@@ -13,6 +13,7 @@ routes nav
     demo "/demo/:slug"
     open "/open"
     atlas "/atlas"
+    snap "/snap/:slug"
 
 shape Host
   width: number
@@ -28,6 +29,23 @@ shape Time
   seed: number
   epochAtZero: number
   utcOffset: number
+
+// The atlas's feedback store on this Mac's loopback (exact/parity-tools/feedback/server.ts):
+// every note, a new one, and an edit (status "resolved", "open" or "deleted"). With the server
+// down the atlas just shows no pins.
+source feedbackNotes() as shape FeedbackNote[]
+  url "http://127.0.0.1:5350/notes"
+  pointer "/notes"
+
+source feedbackAdd(slug: string, x: number, y: number, element: string, ex: number, ey: number, ew: number, eh: number, comment: string) as shape FeedbackNote
+  url "http://127.0.0.1:5350/add"
+  method "POST"
+  body json
+
+source feedbackEdit(slug: string, id: string, comment: string, status: string) as shape FeedbackNote
+  url "http://127.0.0.1:5350/edit"
+  method "POST"
+  body json
 
 // Demos whose drags own the whole screen: their swipe-down close starts only in RN's grab strip
 // over the status bar (the close button stays). RN lets a demo keep a touch it claimed
@@ -61,6 +79,10 @@ component Demos
   derive env = DemoEnv(width=host.width, height=host.height, safeTop=0, safeBottom=0, epoch=time.epochAtZero, utcOffset=time.utcOffset, seed=time.seed, reducedMotion=host.prefersReducedMotion, timers=timers.fired)
   // "Show Unstable" (the General tray): the work-in-progress demos are listed only with it on.
   state showUnstable = false persist
+  resource feedback = feedbackNotes() when atlasShown as shape FeedbackNote[] else empty()
+  mutation noted as shape FeedbackNote refreshes feedback
+  derive desk = host.pointer == "fine" and host.width >= 600
+  derive atlasShown = desk or stack(nav).map(e => e.name).includes("atlas")
   derive demos = showUnstable ? allDemos() : allDemos().filter(d => not d.unstable)
 
   action open(slug: string)
@@ -71,6 +93,10 @@ component Demos
   action openAtlas
     if top(nav).name != "atlas"
       nav = push(nav, "/atlas")
+  action addNote(slug: string, x: number, y: number, element: string, ex: number, ey: number, ew: number, eh: number, comment: string)
+    send noted = feedbackAdd(slug, x, y, element, ex, ey, ew, eh, comment)
+  action editNote(slug: string, id: string, comment: string, status: string)
+    send noted = feedbackEdit(slug, id, comment, status)
   mutation sensors as shape SensorInput
   // demo-screen.tsx: a close, by the button or by the drag past CLOSE_SCALE, plays
   // Presets.System.impactMedium() when it commits, before the flight home: the launch does
@@ -110,10 +136,16 @@ component Demos
     pressablesOnPress
   view
     main testId="root" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow
+      navigationHistory=(desk and stack(nav).length == 1 ? "none" : "back forward")
       width="100%" height="100%" background-color="#000000" color-scheme="dark" viewport-fit="cover"
       interactive-widget=(top(nav).name == "demo" and overlaysKeyboard(top(nav).params.slug) ? "overlays-content" : "resizes-content")
       for e in stack(nav) key=e.id
-        if e.name == "home"
+        // The Mac (a fine pointer in a window wider than a phone) has the atlas as its home, the
+        // window's root: no Back. The SpringBoard is the phone's home.
+        if e.name == "home" and desk
+          Atlas(demos=allDemos(), env=env, active=(top(nav).name == "home"), routeKey=`${e.id}`,
+            closable=false, leave=back, notes=feedback, add=addNote, edit=editNote)
+        if e.name == "home" and not desk
           column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" position="absolute" inset=0
             Springboard(demos=demos, open=open)
             // A Mac (a fine pointer) files this under View; the iPhone's home is unchanged.
@@ -122,8 +154,12 @@ component Demos
                 testId="open-atlas" position="absolute" right=12 bottom=12
                 text "Demo Atlas"
         if e.name == "atlas"
-          column navigationKey=`${e.id}` position="absolute" inset=0
-            Atlas(demos=allDemos(), env=env, active=(top(nav).name == "atlas"), leave=back)
+          Atlas(demos=allDemos(), env=env, active=(top(nav).name == "atlas"), routeKey=`${e.id}`,
+            closable=(stack(nav).length > 1), leave=back, notes=feedback, add=addNote, edit=editNote)
+        // One demo as an atlas tile mounts it, for exact/parity-tools/screen-atlas/gen-snapshots.ts.
+        if e.name == "snap"
+          column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" position="absolute" inset=0
+            SnapFrame(slug=e.params.slug, backdrop=demoOf(e.params.slug).backdrop, env=env)
         if e.name == "demo"
           // The open out of the icon and the close into it are RN's launch, drawn by the app's
           // module (DemoLaunch.swift) on UIKit's fullscreen presentation, not UIKit's zoom.
