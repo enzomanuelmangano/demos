@@ -12,9 +12,9 @@ animated-clip-box ported done:3b1b164a (circles, colours, text in Rust on r; act
 theme-canvas-animation ported done:fb77570d (8-bit P3 surface via gfx::P3Layer: stills max 1-2 levels; spring audit line for line, floods on Reanimated's curve frame for frame; first flood after open 2-4 frames late, first haptic)
 add-to-cart ported done:cd637559 (verified 2026-11-14, no code change: list, open and badge stills pixel-exact in text, card, shadow and badge; button corners 4x MSAA vs CA analytic AA (edge pixels, shape same); photo resample noise mean 2 levels; A/B tap, confirm, backdrop same structure; RN Debug fling lands ~1 row short of ui_scroll (Debug drag loss, ui_scroll follows UIKit))
 bottom-bar-skia ported done:17757f64 (taps are the canvas's: RNGH 500 ms tap, hit-tested at the lift; stills max 5 levels at the bump's edge; spring/timing audit line for line; A/B tap, reversal, hold, slide-and-lift same structure)
-cuberto-slider ported claimed:sim1
+cuberto-slider ported done:4325d88d (balloon + value drawn upright into a layer on Yoga's rounded pixel, moved as a bitmap: stills max 1 level (were 143); picker as CA's border with edge AA off: straight edges exact, corner arcs differ on single pixels (CA corner mask, sub-0.5 px); press springs retarget as spring.ts; A/B press, drag, release, tap same structure and end)
 metaball ported done:b957cd5c (Graphite blur of an 8-bit P3 layer sized by the Group clip: edges on RN to 0.01 px (were 0.54 px in), colours exact but P3 gradient rounding (red ±10 on 1 P3 level); A/B drag, second circle spring-back same track and rest)
-shared-transitions ported
+shared-transitions ported claimed:sim1
 story-list ported
 dynamic-tab-indicator ported
 blur-circles ported
