@@ -1,0 +1,4 @@
+at "/demo/github-onboarding"
+
+test "the pages are one canvas"
+  expect tree has "github-onboarding"

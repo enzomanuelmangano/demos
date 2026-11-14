@@ -65,6 +65,7 @@ pub mod fourier_visualizer;
 pub mod fractal_glass;
 pub mod geometry_button;
 pub mod github_contributions;
+pub mod github_onboarding;
 pub mod github_terrain;
 pub mod gl_transitions;
 pub mod image_cropper;
@@ -152,6 +153,7 @@ pub static REGISTRY: Registry = Registry {
         ("fractal_glass", 1, fractal_glass::surface),
         ("geometry_button", 0, geometry_button::surface),
         ("github_contributions", 0, github_contributions::surface),
+        ("github_onboarding", 0, github_onboarding::surface),
         ("github_terrain", 1, github_terrain::surface),
         ("gl_transitions", 4, gl_transitions::surface),
         ("image_cropper", 0, image_cropper::surface),

@@ -85,7 +85,21 @@ pub enum Snap {
     /// index from the current offset at the lift, not the projected one (one interval per
     /// fling at most), then the same ceil / floor / round by the velocity's sign.
     IntervalCurrent(f64),
+    /// `pagingEnabled` with pages this wide: UIKit's own paging (see [`page_spring`]).
+    Page(f64),
 }
+
+/// UIKit's paging spring for pages `width` wide: (pull per ms², friction per ms). Measured on
+/// UIKit for Mac (exact/parity-tools/github-onboarding/paging-probe.m, the scroll view's
+/// `_pagingSpringPull` / `_pagingFriction`): both linear in the page width over 300…420 pt
+/// (300: 0.00030369, 0.96980; 393: 0.00028652, 0.97073; 420: 0.00028153, 0.97099).
+pub fn page_spring(width: f64) -> (f64, f64) {
+    (0.000_303_693_18 - (width - 300.0) * 1.846_591e-7, 0.969_801_136 + (width - 300.0) * 9.943_182e-6)
+}
+
+/// A paging release's flick threshold, pt/ms: faster lifts turn the page in their direction.
+/// Not measured (the probe's scripted pan carries no velocity); UIKit's rule as commonly observed.
+pub const PAGE_FLICK: f64 = 0.3;
 
 /// UIKit's `setContentOffset(_:animated: true)`: its duration, ms.
 pub const ANIMATED_MS: f64 = 300.0;
@@ -104,6 +118,9 @@ enum State {
     /// Decelerating onto `to` at `lambda` (−ln of the rate per ms), `at` its first frame.
     Settle { from: f64, to: f64, at: f64, lambda: f64 },
     Bounce { edge: f64, offset: f64, velocity: f64, at: Option<f64> },
+    /// A `pagingEnabled` release: UIKit's spring onto the page `to`, integrated per ms from the
+    /// first frame after the lift (`at`), `x` / `v` at time `t`.
+    Page { to: f64, x: f64, v: f64, at: f64, t: f64 },
     /// `setContentOffset(_:animated: true)`.
     Animate { from: f64, to: f64, at: f64 },
 }
@@ -264,16 +281,23 @@ impl UiScroll {
             self.state = State::Bounce { edge, offset, velocity, at: None };
             return;
         }
+        if let Snap::Page(w) = self.snap {
+            let f = offset / w;
+            let i = if v > PAGE_FLICK { f.floor() + 1.0 } else if v < -PAGE_FLICK { f.ceil() - 1.0 } else { f.round() };
+            let to = (i * w).clamp(0.0, max);
+            self.state = State::Page { to, x: offset, v, at: f64::NAN, t: 0.0 };
+            return;
+        }
         // UIKit clamps decelerationRate to fast at least (RN's 0.8 runs at 0.99, measured).
         let lambda = -self.rate.max(FAST).ln();
         let projected = offset + v.signum() * (v.abs() - STOP_VELOCITY).max(0.0) / lambda;
         let to = match self.snap {
             Snap::Free => projected,
-            Snap::Interval(_) | Snap::IntervalCurrent(_) => {
+            Snap::Interval(_) | Snap::IntervalCurrent(_) | Snap::Page(_) => {
                 let (w, from) = match self.snap {
                     Snap::Interval(w) => (w, projected),
                     Snap::IntervalCurrent(w) => (w, offset),
-                    Snap::Free => unreachable!(),
+                    _ => unreachable!(),
                 };
                 let f = from / w;
                 let i = if v > 0.0 { f.ceil() } else if v < 0.0 { f.floor() } else { f.round() };
@@ -321,6 +345,25 @@ impl UiScroll {
                 }
                 true
             }
+            State::Page { to, mut x, mut v, at, mut t } => {
+                // The first frame after the lift shows (almost) the lift's offset: the probe's frames
+                // fit the spring begun 1.33 ms before it (within 1.4 pt, 0.5 pt Mac rounding).
+                let at = if at.is_nan() { now - 1.333 } else { at };
+                let (pull, friction) = page_spring(if let Snap::Page(w) = self.snap { w } else { self.port });
+                while t + 1.0 <= now - at {
+                    v = (v + (to - x) * pull) * friction;
+                    x += v;
+                    t += 1.0;
+                }
+                if (x - to).abs() < 0.5 && v.abs() < 0.0125 {
+                    self.offset = to;
+                    self.state = State::Idle;
+                } else {
+                    self.offset = x;
+                    self.state = State::Page { to, x, v, at, t };
+                }
+                true
+            }
             State::Animate { from, to, at } => {
                 let at = if at.is_nan() { now } else { at };
                 let u = (now - at) / ANIMATED_MS;
@@ -355,6 +398,22 @@ mod tests {
             ms += 16.0;
             assert!(ms < 3000.0);
         }
+        assert_eq!(s.offset, 0.0);
+    }
+
+    #[test]
+    fn paging_springs_back_as_uikit() {
+        // paging-probe: 420 pt pages, released at rest 99 pt in: the frames after the lift (the
+        // first shows the lift's offset), on UIKit for Mac at 120 Hz.
+        let mut s = UiScroll::new(99.0, 1260.0, 420.0, NORMAL, Snap::Page(420.0));
+        s.release(0.0, 0.0);
+        let seen = [(8.333, 99.0), (50.0, 81.0), (83.333, 60.0), (150.0, 26.0), (250.0, 4.5), (350.0, 0.0)];
+        s.step(8.333);
+        for (t, x) in seen {
+            s.step(t);
+            assert!((s.offset - x).abs() < 1.5, "{t}: {} vs {x}", s.offset);
+        }
+        while s.step(1000.0) {}
         assert_eq!(s.offset, 0.0);
     }
 
