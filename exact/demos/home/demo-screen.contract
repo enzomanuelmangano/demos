@@ -42,7 +42,7 @@ component DemoScreen
         // demo-screen.tsx DemoLaunch: the card in the demo's backdrop, the demo fading in over it
         // once it has painted, and the launch around it (open, close drag, flight home, the
         // home's blur): `demo-card` (modules/apple/DemoLaunch.swift). Under the buttons.
-        demo-card press=leave slug=demo.slug tint=demo.backdrop owns=(ownsDrags ? "drags" : "")
+        demo-card press=leave slug=demo.slug caption=demo.name tint=demo.backdrop owns=(ownsDrags ? "drags" : "")
           position="absolute" inset=0 pointer-events="none" aria-hidden=true
         // demo-close-button.tsx: the close role on liquid glass, 16 pt from the leading edge, at
         // the safe top. RN's is a real SwiftUI Button (@expo/ui), so is this: `glass-button`

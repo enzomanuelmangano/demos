@@ -964,12 +964,13 @@ extension LaunchSession: UIGestureRecognizerDelegate {
 /// route's hold on the launch: `press` is the route's leave.
 final class DemoCardView: UIView {
     var slug = ""
+    var name = ""
     var ownsDrags = false
     var onLeave: (() -> Void)?
     func leave() { onLeave?() }
     override func didMoveToWindow() {
         super.didMoveToWindow()
-        if window != nil { LaunchSession.attach(self) }
+        if window != nil { LaunchSession.attach(self); PhoneFeedback.attach(self) }
     }
 }
 

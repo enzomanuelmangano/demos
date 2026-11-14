@@ -22,6 +22,13 @@
       "minimumOS": "18.0",
       "deviceFamily": [
         "iphone"
+      ],
+      "localNetworking": "Sends your feedback on a demo to the Mac you build from.",
+      "resources": [
+        {
+          "from": "feedback-host",
+          "to": "Resources/feedback-host"
+        }
       ]
     },
     "macos": {

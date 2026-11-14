@@ -22,6 +22,31 @@ bun exact.mjs ios --run --sim $EXACT_SIM                         # native build 
   connected, unlocked, paired, Developer Mode on. `share` works again since exact2 730abad1 (expo/exact#30 fixed upstream);
   `phone` stays the cable route.
 
+## Phone loop: hot reload + feedback
+
+The owner tests on the phone; every `.contract` / `app.ts` edit reaches it live, so a native
+build is rare and batched (one, by the integrator, for everyone's Swift / Rust / app.json changes).
+
+1. The dev server on the LAN: `nohup bun exact.mjs web --port 5341 --lan > /tmp/demos-dev-lan.log 2>&1 &`
+   (one loop per app dir: stop a loopback-only one first; `--lan` still answers on 127.0.0.1).
+2. The feedback server on the LAN: `bun exact/parity-tools/feedback/server.ts` (repo root) binds
+   0.0.0.0:5350 and prints `phone: http://<mac ip>:5350`.
+3. The development build, connected to that server: `bun exact.mjs phone <udid> --run --url
+   http://<mac ip>:5341` (the Mac's IP: `ipconfig getifaddr en0`). `tools/phone.mjs` also bakes the
+   Mac's addresses into `feedback-host/mac.json` (gitignored) for the feedback sheet. Saved edits
+   then reload on the phone; the log shows the device's requests.
+4. `phone <udid> --run --release` is for performance checks only: no dev server, no hot reload.
+
+Feedback from the phone (modules/apple/Feedback.swift): in any open demo, shake the phone or
+long-press with two fingers. The sheet has the demo's name and slug, a screenshot taken at the
+trigger (tap it to mark a point), quick commands (📸 Screenshot, 🎬 Record 5 s, 🔁 Same as RN?,
+✅ Looks good), a text note (dictation works) with Send, and the demo's last 3 notes. Each command
+is a POST /phone (parity-tools/feedback/phone.ts): one line of `parity-tools/feedback/inbox.jsonl`
+with `source: "phone"` and `kind` note | screenshot | clip | approve | parity, media in
+`parity-tools/feedback/data/phone/`, a note also in `data/<slug>.json` (`bun
+exact/parity-tools/feedback/list.ts`). Undelivered commands queue on the phone and retry every 20 s.
+Override the Mac without a rebuild: launch argument `-feedbackHost <ip[:port]>`.
+
 ## Hot reload first
 
 - Keep one development build installed on your simulator. An edit to any `.contract`, to
