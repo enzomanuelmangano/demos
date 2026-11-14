@@ -575,6 +575,11 @@ One commit per haptic event, never per frame.
   the right, so a left on a half pixel makes the box a pixel wider than the ceiled width and TextKit
   centres the lines half a pixel further right (github-onboarding's 241.53 pt title: 726 px, not 725).
 
+- Surface clocks: a pointer's `at_ms` is not on `frame.now_ms`'s base: a spring started at it froze
+  until the frames caught up. Start motion at the last frame's time; a value set from a scroll event
+  `render` finds (RN's onScroll `withSpring`) starts at the PREVIOUS frame's time, or a spring restarted
+  every frame never moves. `max_fps` returns 0 while anything moves (scrollable-bottom-sheet).
+
 ## 4. Check
 
 `bun tools/check-demo.ts <slug>` prints `[]` (compiles the demo alone, before it is
