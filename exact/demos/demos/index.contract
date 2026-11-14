@@ -10,6 +10,7 @@ use AnimatedClipBox from "./animated-clip-box/animated-clip-box.contract"
 use AnimatedCountText from "./animated-count-text/animated-count-text.contract"
 use AnimatedGridList from "./animated-grid-list/animated-grid-list.contract"
 use AnimatedIndicatorList from "./animated-indicator-list/animated-indicator-list.contract"
+use ArtGallery from "./art-gallery/art-gallery.contract"
 use AtlasButton from "./atlas-button/atlas-button.contract"
 use AtlasSphere from "./atlas-sphere/atlas-sphere.contract"
 use AudioPlayer from "./audio-player/audio-player.contract"
@@ -35,6 +36,7 @@ use CubertoSlider from "./cuberto-slider/cuberto-slider.contract"
 use DeleteButton from "./delete-button/delete-button.contract"
 use DotSheet from "./dot-sheet/dot-sheet.contract"
 use DragToSort from "./drag-to-sort/drag-to-sort.contract"
+use DraggablePanel from "./draggable-panel/draggable-panel.contract"
 use DurationSlider from "./duration-slider/duration-slider.contract"
 use DynamicBlurTabs from "./dynamic-blur-tabs/dynamic-blur-tabs.contract"
 use DynamicTabIndicator from "./dynamic-tab-indicator/dynamic-tab-indicator.contract"
@@ -62,6 +64,8 @@ use ImageCropper from "./image-cropper/image-cropper.contract"
 use ImessageStack from "./imessage-stack/imessage-stack.contract"
 use InfiniteCarousel from "./infinite-carousel/infinite-carousel.contract"
 use InteractionAppearance from "./interaction-appearance/interaction-appearance.contract"
+use IosHomeBouncy from "./ios-home-bouncy/ios-home-bouncy.contract"
+use IosHomeGrid from "./ios-home-grid/ios-home-grid.contract"
 use LightOnPainting from "./light-on-painting/light-on-painting.contract"
 use LinearSensors from "./linear-sensors/linear-sensors.contract"
 use LiquidGlassPlayground from "./liquid-glass-playground/liquid-glass-playground.contract"
@@ -86,6 +90,7 @@ use ScrollProgress from "./scroll-progress/scroll-progress.contract"
 use ScrollTransition3D from "./scroll-transition-3d/scroll-transition-3d.contract"
 use ScrollableBottomSheet from "./scrollable-bottom-sheet/scrollable-bottom-sheet.contract"
 use ScrollableShapes from "./scrollable-shapes/scrollable-shapes.contract"
+use SculpturesInWords from "./sculptures-in-words/sculptures-in-words.contract"
 use SelectableGridList from "./selectable-grid-list/selectable-grid-list.contract"
 use ShakeToDelete from "./shake-to-delete/shake-to-delete.contract"
 use SharedTransitions from "./shared-transitions/shared-transitions.contract"
@@ -112,10 +117,12 @@ use TelegramThemeSwitch from "./telegram-theme-switch/telegram-theme-switch.cont
 use TheLittlePrince from "./the-little-prince/the-little-prince.contract"
 use ThemeCanvasAnimation from "./theme-canvas-animation/theme-canvas-animation.contract"
 use ThreadsHoloTicket from "./threads-holo-ticket/threads-holo-ticket.contract"
+use TimeMachine from "./time-machine/time-machine.contract"
 use Toast from "./toast/toast.contract"
 use TwitterTabBar from "./twitter-tab-bar/twitter-tab-bar.contract"
 use TwodosSlide from "./twodos-slide/twodos-slide.contract"
 use VerificationCode from "./verification-code/verification-code.contract"
+use VerificationCodeFace from "./verification-code-face/verification-code-face.contract"
 use WheelPicker from "./wheel-picker/wheel-picker.contract"
 
 component PortedDemo
@@ -144,6 +151,8 @@ component PortedDemo
         AnimatedGridList(env=env)
       if slug == "animated-indicator-list"
         AnimatedIndicatorList(env=env)
+      if slug == "art-gallery"
+        ArtGallery(env=env)
       if slug == "atlas-button"
         AtlasButton(env=env)
       if slug == "atlas-sphere"
@@ -194,6 +203,8 @@ component PortedDemo
         DotSheet(env=env)
       if slug == "drag-to-sort"
         DragToSort(env=env)
+      if slug == "draggable-panel"
+        DraggablePanel(env=env)
       if slug == "duration-slider"
         DurationSlider(env=env)
       if slug == "dynamic-blur-tabs"
@@ -248,6 +259,10 @@ component PortedDemo
         InfiniteCarousel(env=env)
       if slug == "interaction-appearance"
         InteractionAppearance(env=env)
+      if slug == "ios-home-bouncy"
+        IosHomeBouncy(env=env)
+      if slug == "ios-home-grid"
+        IosHomeGrid(env=env)
       if slug == "light-on-painting"
         LightOnPainting()
       if slug == "linear-sensors"
@@ -296,6 +311,8 @@ component PortedDemo
         ScrollableBottomSheet(env=env)
       if slug == "scrollable-shapes"
         ScrollableShapes()
+      if slug == "sculptures-in-words"
+        SculpturesInWords(env=env)
       if slug == "selectable-grid-list"
         SelectableGridList(env=env)
       if slug == "shake-to-delete"
@@ -348,6 +365,8 @@ component PortedDemo
         ThemeCanvasAnimation()
       if slug == "threads-holo-ticket"
         ThreadsHoloTicket()
+      if slug == "time-machine"
+        TimeMachine(env=env)
       if slug == "toast"
         Toast(env=env)
       if slug == "twitter-tab-bar"
@@ -356,5 +375,7 @@ component PortedDemo
         TwodosSlide()
       if slug == "verification-code"
         VerificationCode()
+      if slug == "verification-code-face"
+        VerificationCodeFace(env=env)
       if slug == "wheel-picker"
         WheelPicker(env=env)

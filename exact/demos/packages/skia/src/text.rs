@@ -704,6 +704,98 @@ fn system_face() -> Option<&'static [u8]> {
     })
 }
 
+/// A coverage mask of one glyph: its pixels' offset from the glyph's whole-pixel origin, its
+/// size, and its coverage (`width × height`, rows top down).
+#[derive(Clone, Debug, PartialEq)]
+pub struct GlyphMask {
+    /// The mask's left edge, device px right of the origin.
+    pub left: i32,
+    /// Its top edge, device px below the origin.
+    pub top: i32,
+    /// Its width, px.
+    pub width: u32,
+    /// Its height, px.
+    pub height: u32,
+    /// Coverage per pixel, rows top down.
+    pub coverage: Vec<u8>,
+}
+
+/// The strike a subpixel-positioned run draws with (Skia's text, mode 2 of the atlas's keys).
+#[cfg(target_vendor = "apple")]
+struct SubpixelStrike {
+    key: crate::glyphs::StrikeKey,
+    text_size: f32,
+    sa: [f32; 4],
+    invertible: bool,
+    lum: u8,
+    smooth: bool,
+}
+
+#[cfg(target_vendor = "apple")]
+impl SubpixelStrike {
+    fn new(font: &Font, sx: f32, sy: f32, paint: &Paint) -> Option<SubpixelStrike> {
+        use crate::glyphs;
+        let post = glyphs::post2x2(&Matrix([sx, 0.0, 0.0, sy, 0.0, 0.0]));
+        let device_size = font.size * glyphs::max_scale([sx, 0.0, 0.0, sy]);
+        if !(device_size > 0.0) || device_size >= glyphs::MIN_SDFT {
+            return None;
+        }
+        let (text_size, sa, invertible) = glyphs::compute_matrices(font.size, post)?;
+        let smoothing = crate::coretext::smooth_behavior() as u8;
+        let (smooth, _, _) = glyphs::scaler_settings(smoothing);
+        let lum = glyphs::luminance_index(paint, smoothing);
+        let key = glyphs::StrikeKey { mode: 2, font: font.atlas_key(), size: font.size.to_bits(), post: post.map(f32::to_bits), lum };
+        Some(SubpixelStrike { key, text_size, sa, invertible, lum, smooth })
+    }
+
+    /// The glyph's mask at a quarter-pixel phase, in the atlas.
+    fn digest(&self, atlas: &mut crate::glyphs::Atlas, font: &Font, g: u16, phase: u8) -> crate::glyphs::Digest {
+        let sub = phase as f32 / 4.0;
+        atlas.glyph(self.key, g as u32 | ((phase as u32) << 16), &mut |atlas, mask| {
+            font.with_strike(self.key, self.text_size, self.sa, self.invertible, |strike| {
+                let bounds = strike.bounds_sub(g, sub)?;
+                if bounds.2.max(bounds.3) <= crate::glyphs::TOO_BIG {
+                    mask.resize((bounds.2 * bounds.3) as usize, 0);
+                    let lut = *atlas.lut(self.lum);
+                    atlas.offscreen.draw_sub(strike, g, bounds, &lut, self.smooth, sub as f64, mask);
+                }
+                Some(bounds)
+            })
+            .flatten()
+        })
+    }
+}
+
+impl Font {
+    /// The mask [`Canvas::draw_glyphs_subpixel`] draws for glyph `g` at a device scale of
+    /// `scale` (the canvas's, a uniform scale) and quarter-pixel `phase` (0-3), in `paint`'s
+    /// colour (its luminance picks the pre-blend). `None` off Apple, for an empty glyph, or one
+    /// drawn as a path.
+    pub fn subpixel_mask(&self, g: u16, scale: f32, phase: u8, paint: &Paint) -> Option<GlyphMask> {
+        #[cfg(target_vendor = "apple")]
+        {
+            use crate::glyphs::{Atlas, Digest};
+            let strike = SubpixelStrike::new(self, scale, scale, paint)?;
+            Atlas::with(|atlas| match strike.digest(atlas, self, g, phase.min(3)) {
+                Digest::Mask(slot) => {
+                    let mut coverage = Vec::with_capacity((slot.w * slot.h) as usize);
+                    for row in 0..slot.h {
+                        let at = ((slot.y + row) * crate::glyphs::ATLAS_W + slot.x) as usize;
+                        coverage.extend_from_slice(&atlas.pixels[at..at + slot.w as usize]);
+                    }
+                    Some(GlyphMask { left: slot.left, top: slot.top, width: slot.w, height: slot.h, coverage })
+                }
+                _ => None,
+            })
+        }
+        #[cfg(not(target_vendor = "apple"))]
+        {
+            let _ = (g, scale, phase, paint);
+            None
+        }
+    }
+}
+
 impl Font {
     /// Each glyph of `text` and its pen x (the layout [`Canvas::draw_text`] places).
     pub(crate) fn glyph_run(&self, text: &str, out: &mut Vec<(u16, f32)>) {
@@ -825,6 +917,80 @@ impl Canvas {
             self.set_matrix(saved);
         }
         self.glyph_run = run;
+    }
+
+    /// `drawGlyphs` (a text blob) of a subpixel-positioned font: `SkFont::setSubpixel(true)`, as
+    /// SkParagraph sets every run's font. Each glyph's origin is its own (x, y) in the canvas's
+    /// space. As Graphite draws it on iOS: under a scale and translation, below 162 device px,
+    /// from the glyph atlas with Skia's axis-aligned subpixel positioning (the origin's x + 1/8
+    /// quantised to a quarter pixel, its y + 1/2 to a whole one), each quarter's mask drawn by
+    /// CoreText at that offset ([`Font::subpixel_mask`]); otherwise (and off Apple) the outlines.
+    pub fn draw_glyphs_subpixel(&mut self, glyphs: &[(u16, f32, f32)], font: &Font, paint: &Paint) {
+        #[cfg(target_vendor = "apple")]
+        if self.draw_subpixel_masks(glyphs, font, paint) {
+            return;
+        }
+        let saved = self.matrix();
+        let u = font.units;
+        for &(g, x, y) in glyphs {
+            font.with_outline(g, |path| {
+                self.set_matrix(Matrix([u, 0.0, 0.0, -u, x, y]).then(saved));
+                self.draw_path(path, paint);
+            });
+        }
+        self.set_matrix(saved);
+    }
+
+    /// [`Canvas::draw_glyphs_subpixel`]'s atlas path; false when the run is not mask-sized or
+    /// the matrix is not a scale and translation (the caller draws the outlines).
+    #[cfg(target_vendor = "apple")]
+    fn draw_subpixel_masks(&mut self, glyphs: &[(u16, f32, f32)], font: &Font, paint: &Paint) -> bool {
+        use crate::glyphs::{Atlas, Digest};
+        let m = self.state.matrix;
+        let [a, b, c, d, e, f] = m.0;
+        if b != 0.0 || c != 0.0 || !(a > 0.0 && d > 0.0) || paint.stroke.is_some() {
+            return false;
+        }
+        let Some(strike) = SubpixelStrike::new(font, a, d, paint) else {
+            return false;
+        };
+        let xf = crate::graphite::Xf::new(m);
+        let mut quads = std::mem::take(&mut self.glyph_quads);
+        quads.clear();
+        let mut bounds = EMPTY;
+        let mut paths = Vec::new();
+        let epoch = Atlas::with(|atlas| {
+            for &(g, x, y) in glyphs {
+                let (px, py) = (a * x + e + 0.125, d * y + f + 0.5);
+                if !(px.is_finite() && py.is_finite()) {
+                    continue;
+                }
+                let (ix, iy) = (px.floor(), py.floor());
+                let phase = (((px - ix) * 4.0).floor() as u8).min(3);
+                match strike.digest(atlas, font, g, phase) {
+                    Digest::Mask(slot) => {
+                        let (ox, oy) = (ix + slot.left as f32, iy + slot.top as f32);
+                        let r = [ox, oy, ox + slot.w as f32, oy + slot.h as f32];
+                        bounds = [bounds[0].min(r[0]), bounds[1].min(r[1]), bounds[2].max(r[2]), bounds[3].max(r[3])];
+                        quads.push((r, slot));
+                    }
+                    Digest::Path => paths.push((g, x, y)),
+                    Digest::Empty => {}
+                }
+            }
+            atlas.epoch
+        });
+        self.glyph_quads = quads;
+        self.emit_glyph_quads(&xf, paint, bounds, epoch);
+        let saved = self.matrix();
+        for (g, x, y) in paths {
+            font.with_outline(g, |path| {
+                self.set_matrix(Matrix([font.units, 0.0, 0.0, -font.units, x, y]).then(saved));
+                self.draw_path(path, paint);
+            });
+        }
+        self.set_matrix(saved);
+        true
     }
 
     /// The direct-mask sub run of a glyph run (`prepare_for_direct_mask_drawing`): one draw, its

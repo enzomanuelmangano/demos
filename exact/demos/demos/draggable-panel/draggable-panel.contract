@@ -1,0 +1,20 @@
+// Draggable Panel: a white "Spring Animations" panel a pan throws to the nearest screen corner
+// on the spring chosen in it (Elegant, Springy, Super); its close shrinks it into a 64 pt
+// settings button that grows it back. RN: src/animations/draggable-panel. The pan, the corner
+// springs, the layout spring of the panel's size, its animated corner radius, the keyed
+// content's fades, pressto's presses and the options' colour timings are one Rust surface
+// (gpu/src/draggable_panel.rs) over the screen's #f5f7fa. The surface posts each press's
+// selection haptic.
+use DemoEnv from "../env.contract"
+
+component DraggablePanel
+  props
+    env: DemoEnv
+  // The app's PressablesConfig onPress: Haptics.selectionAsync().
+  action heard(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+  view
+    canvas surface=draggable_panel(env.safeTop) message=heard position="absolute" top=0 left=0
+      width=env.width height=env.height touch-action="none" testId="draggable-panel"
+      aria-label="Spring Animations panel: drag it to a corner, pick a spring, close it"

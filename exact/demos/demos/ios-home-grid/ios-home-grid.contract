@@ -1,0 +1,18 @@
+// iOS Home Grid: 24 metallic app squares; a tap grows the app's colour into the whole screen
+// while the grid blurs and sinks, then shows the app's gradient screen; its close button or a
+// drag down shrinks it back into its icon. RN: src/animations/ios-home-grid (apps-list,
+// navigation/expansion-provider.tsx, navigation/*Wrapper.tsx, app-detail-screen.tsx). The grid,
+// its BlurView, the expansion, the detail screen, the tap, the pan, the close PressableOpacity
+// and every spring are one Rust surface (gpu/src/ios_home_grid.rs); it posts the haptics.
+use DemoEnv from "../env.contract"
+
+component IosHomeGrid
+  props
+    env: DemoEnv
+  action buzz(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+  view
+    canvas surface=ios_home_grid(env.safeTop) position="absolute" top=0 left=0 width=env.width
+      height=env.height background-color="rgb(242, 242, 242)" touch-action="none" message=buzz
+      testId="ios-home-grid" aria-label="App grid: tap an app to open it, drag down to close it"

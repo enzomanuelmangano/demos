@@ -181,6 +181,30 @@ impl Images {
         Images { texture, view, sizes: vec![(width, height)] }
     }
 
+    /// [`Images::target`] with `layers` layers of `width`×`height`, each drawn into through
+    /// [`Images::render_view_layer`] and sampled as image `i`: offscreen layers one renderer
+    /// composes (a group opacity over a blurred backdrop).
+    pub fn targets(device: &wgpu::Device, width: u32, height: u32, layers: u32) -> Images {
+        let (width, height, layers) = (width.max(1), height.max(1), layers.max(1));
+        let texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("skia image targets"),
+            size: wgpu::Extent3d { width, height, depth_or_array_layers: layers },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
+        });
+        let view = texture.create_view(&wgpu::TextureViewDescriptor { dimension: Some(wgpu::TextureViewDimension::D2Array), ..Default::default() });
+        Images { texture, view, sizes: vec![(width, height); layers as usize] }
+    }
+
+    /// Layer `layer` of an [`Images::targets`] as a render target.
+    pub fn render_view_layer(&self, layer: u32) -> wgpu::TextureView {
+        self.texture.create_view(&wgpu::TextureViewDescriptor { dimension: Some(wgpu::TextureViewDimension::D2), base_array_layer: layer, array_layer_count: Some(1), ..Default::default() })
+    }
+
     /// A [`Images::target`]'s layer as a render target ([`wgpu::TextureFormat::Rgba8Unorm`]).
     pub fn render_view(&self) -> wgpu::TextureView {
         self.texture.create_view(&wgpu::TextureViewDescriptor { dimension: Some(wgpu::TextureViewDimension::D2), base_array_layer: 0, array_layer_count: Some(1), ..Default::default() })

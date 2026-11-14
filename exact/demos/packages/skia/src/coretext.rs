@@ -324,6 +324,13 @@ impl Strike {
 
     /// `generateMetrics`'s mask bounds: (left, top, width, height), `None` when empty.
     pub(crate) fn bounds(&self, glyph: u16) -> Option<(i32, i32, u32, u32)> {
+        self.bounds_sub(glyph, 0.0)
+    }
+
+    /// [`Strike::bounds`] of a subpixel-positioned glyph `sub_x` px right of its whole-pixel
+    /// origin (`fDoSubPosition`): "the top left must not move", so only the right edge grows by
+    /// it before the bounds are rounded out.
+    pub(crate) fn bounds_sub(&self, glyph: u16, sub_x: f32) -> Option<(i32, i32, u32, u32)> {
         unsafe {
             let mut advance = CGSize::default();
             CTFontGetAdvancesForGlyphs(self.font.0, kCTFontOrientationHorizontal, &glyph, &mut advance, 1);
@@ -348,7 +355,7 @@ impl Strike {
             // SkRect::MakeXYWH(x, -y - h, w, h) in SkScalars, then roundOut and outset(1, 1).
             let l = rect.origin.x as f32;
             let t = (-rect.origin.y - rect.size.height) as f32;
-            let r = l + rect.size.width as f32;
+            let r = l + rect.size.width as f32 + sub_x;
             let b = t + rect.size.height as f32;
             let (l, t, r, b) = (l.floor() as i32 - 1, t.floor() as i32 - 1, r.ceil() as i32 + 1, b.ceil() as i32 + 1);
             Some((l, t, (r - l) as u32, (b - t) as u32))
@@ -362,13 +369,15 @@ pub(crate) struct Offscreen {
     context: Ref,
     pixels: Vec<u32>,
     size: (usize, usize),
+    /// The subpixel offset of the glyph [`Offscreen::draw_sub`] draws.
+    sub_x: f64,
 }
 
 unsafe impl Send for Offscreen {}
 
 impl Default for Offscreen {
     fn default() -> Self {
-        Offscreen { space: std::ptr::null(), context: std::ptr::null(), pixels: Vec::new(), size: (0, 0) }
+        Offscreen { space: std::ptr::null(), context: std::ptr::null(), pixels: Vec::new(), size: (0, 0), sub_x: 0.0 }
     }
 }
 
@@ -391,6 +400,15 @@ impl Offscreen {
     /// which `onFilterRec` keeps unless the smoothing behaviour is `none`).
     pub(crate) fn draw(&mut self, strike: &Strike, glyph: u16, bounds: (i32, i32, u32, u32), lut: &[u8; 256], smooth: bool, out: &mut [u8]) {
         self.draw_at(strike, glyph, bounds, lut, smooth, None, out)
+    }
+
+    /// [`Offscreen::draw`] of a subpixel-positioned glyph (`getCG`'s `fDoSubPosition`): drawn
+    /// at (−left + sub_x, top + height), Skia's context settings (no quantisation).
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn draw_sub(&mut self, strike: &Strike, glyph: u16, bounds: (i32, i32, u32, u32), lut: &[u8; 256], smooth: bool, sub_x: f64, out: &mut [u8]) {
+        self.sub_x = sub_x;
+        self.draw_at(strike, glyph, bounds, lut, smooth, None, out);
+        self.sub_x = 0.0;
     }
 
     /// [`Offscreen::draw`], or with `uikit` = `Some(sub_x)` as UIKit's own drawing does it (a
@@ -437,7 +455,7 @@ impl Offscreen {
             for y in 0..gh {
                 self.pixels[first + y * width..first + y * width + gw].fill(0xFFFF_FFFF);
             }
-            let p = CGPoint { x: -left as f64 + uikit.unwrap_or(0.0), y: (top + gh as i32) as f64 };
+            let p = CGPoint { x: -left as f64 + uikit.unwrap_or(self.sub_x), y: (top + gh as i32) as f64 };
             let p = CGPointApplyAffineTransform(p, strike.inverse);
             CTFontDrawGlyphs(strike.font.0, &glyph, &p, 1, c);
             for y in 0..gh {

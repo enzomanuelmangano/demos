@@ -3,6 +3,7 @@ airbnb-flip-interaction
 alert-drawer
 animated-3d-parallax
 animated-clip-box
+art-gallery
 animated-count-text
 animated-grid-list
 animated-indicator-list
@@ -27,6 +28,7 @@ coverflow-carousel
 cuberto-slider
 delete-button
 dot-sheet
+draggable-panel
 duration-slider
 dynamic-blur-tabs
 dynamic-tab-indicator
@@ -45,6 +47,8 @@ geometry-button
 github-contributions
 github-terrain
 imessage-stack
+ios-home-bouncy
+ios-home-grid
 linear-sensors
 liquid-glass-playground
 loading-button
@@ -63,6 +67,7 @@ record-button
 scroll-progress
 scrollable-bottom-sheet
 scrollable-shapes
+sculptures-in-words
 selectable-grid-list
 shake-to-delete
 shared-transitions
@@ -86,10 +91,12 @@ tab-navigation
 telegram-theme-switch
 the-little-prince
 theme-canvas-animation
+time-machine
 toast
 twitter-tab-bar
 twodos-slide
 verification-code
+verification-code-face
 wheel-picker
 fibonacci-shader-grid
 fourier-visualizer

@@ -1,0 +1,20 @@
+// Time Machine: a drag-to-sort todo list on a card; each reorder keeps the old order as a card
+// behind it. Drag the screen down to open the time machine (the cards shrink into a stack over a
+// starfield that sharpens and moves; scroll sideways through them), drag up to close it on the
+// card in front. RN: src/animations/time-machine (components/app.tsx, background-canvas.tsx,
+// shader.ts, time-machine-list/, drag-to-sort/). The starfield, its blur, the cards, the sortable
+// lists, the three gestures and every spring are one Rust surface (gpu/src/time_machine.rs); it
+// posts the drag's haptic.
+use DemoEnv from "../env.contract"
+
+component TimeMachine
+  props
+    env: DemoEnv
+  action buzz(m: string)
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+  view
+    canvas surface=time_machine(env.safeTop) position="absolute" top=0 left=0 width=env.width
+      height=env.height background-color="#000" touch-action="none" message=buzz
+      testId="time-machine"
+      aria-label="Todo list: drag a row to reorder it, drag the screen down to open the time machine"
