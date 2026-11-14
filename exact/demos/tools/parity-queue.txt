@@ -27,7 +27,7 @@ animated-3d-parallax ported done:18abc5fb (card as its own continuous-cornered l
 fluid-slider ported done:fab917b4 (stills: canvas drawn unshifted and moved by its 31.5 px translateX bilinearly as CA, 8-bit P3, GraphiteBlur goo: slider band max 2 levels (was 235: glyphs 0.6 px off and sharp); audit: pickerY mapper withSpring {200, 20, 0.8} via retarget, value round(interpolate) CLAMP, label by RN measureText, skia-gesture Pan onBegin/onUpdate/onFinalize with the bar's path hit; A/B press-and-drag rise, tap hop, fling drag same structure and values (27, 85, 50, 3); perf 71 -> 42 us)
 animated-indicator-list ported claimed:sim2
 radar-chart ported done:a730b443 (stills at RN's own data (Math.random set over the debugger): chart max 7 levels, 8 px over 2 (grid was 1 level off everywhere: P3 canvas); Shuffle text pixel-identical (was 1 px low), ring circular r 20 as RCTBorderDrawing (CA continuous was up to 0.9 px out), left: its AA profile, CG vs CA, max 43, equal mass; audit: progress withSpring {500, 1} from rest, CLAMP interpolate, interrupted from the interpolated values, line for line; A/B tap, mid-flight retap, held press same structure, onPress at the lift; RN shows no press scale (pressto 0.7))
-image-cropper ported (registered unverified: verify on device)
+image-cropper ported claimed:sim1 (registered unverified: verify on device)
 selectable-grid-list ported
 animated-count-text ported
 qr-code-generator ported (registered unverified: verify on device)
