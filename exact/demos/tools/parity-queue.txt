@@ -41,7 +41,7 @@ github-onboarding ported done:21e50432 (stills pages 0-3: titles, dots, gradient
 loading-button ported done:2de67b2f (verified 2026-11-14, no code change: idle pill edges, title and ink pixel-exact (centroid within 0.01 px); loading state text max 9, indicator ink within 0.1 %; success state max 19 (check, disc, title, background exact); pill continuous corners 4x MSAA vs CA analytic (max 12); idle/loading background 1 level green (242 vs CA's 243: P3 #E6F2FC is 242.488, CA's compositor rounds near-half values its own way, ColorSync agrees with ours); A/B two presses (success, error): growth 5 frames, title jumps, background ease ~200 ms, outcome at 2.0 s, reset at 1.5 s, shrink 6 frames: same structure; RN shows no press scale (pressto 0.7), ours pressto's design)
 scrollable-bottom-sheet ported claimed:sim1
 skia-color-picker ported done:9755cbf1 (both canvases now 8-bit premultiplied P3 blended in P3, CA's per-pixel sRGB at the composite: wheel interior max 2, rim max 17 (was 37, edge AA), picker fill exact ((3, 255, 88) = P3 round trip of rgba(0, 255, 89); was (0, 255, 89)), picker region max 5; audit: Pan onBegin at touch-down + onUpdate from activation, clampToCircle, hue/saturation/hsvToRgb Math.round, no animation: match; A/B drag out past the rim and tap: picker ink pixel-identical in place and colour; at rest 71 -> 1 us (composite only); drag 88 allocs left in packages/skia)
-blurred-scroll ported
+blurred-scroll ported claimed:sim2
 airbnb-slider ported (registered unverified: verify on device)
 steddy-graph-interaction ported
 action-tray ported
