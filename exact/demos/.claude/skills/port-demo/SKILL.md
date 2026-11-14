@@ -414,6 +414,10 @@ One commit per haptic event, never per frame.
   path, so 4× MSAA: the corner's long tail along the side (coverage 7-65 in RN) reads 0 or 64
   (add-to-cart's buttons: edge pixels up to 76 levels, shape identical). A sub-pixel note until
   packages/skia gets an analytic continuous rrect.
+- A transformed RN view (a scale or a fractional translate: story-list's side cards) has
+  ALIASED straight edges: CALayer's `allowsEdgeAntialiasing` is NO, so an edge pixel is in or out
+  by its centre (col 1098 full where ours blends 0.7, up to 112 levels), while the corner mask
+  stays antialiased. Sub-pixel; our rrects are analytic there.
 - A Skia `<Group clip>` around a filtered `layer` sizes it: the layer is the device clip (the clip
   rounded out, within the screen) outset by the blur's reach, and Graphite's downscale grid starts
   there. A true Gaussian on a field instead left metaball's edge 0.54 px in; `GraphiteBlur` with
