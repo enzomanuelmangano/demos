@@ -149,12 +149,11 @@ One commit per haptic event, never per frame.
   or more after its down). The RN Debug app loses more on fast drags (swipe-cards: 113 for 140 pt in
   0.6 s, 127.9 in 2 s): its busy main thread; parity follows UIKit (Release). react-native-skia-gesture
   is an RNGH Pan underneath. The demo screen's close Pan (activeOffsetY 10, failOffsetX ±30) does not
-  change a demo pan's activation. A Rust UIScrollView zeroes the velocity after a rest itself
-  (`ui_scroll::release_velocity`).
+  change a demo pan's activation.
 - UIScrollView (measured, selectable-grid-list's FlatList): the drag is 1:1 from the pan's
   activation; at the lift it decelerates (0.998/ms) only from a finger faster than ~335 pt/s,
-  even after a still rest (no moves, no new velocity: scroll probe, rests 0.15-3 s all fling):
-  `ui_scroll::uiscroll_release`. Below that it stops under the finger.
+  even after a still rest: a finger at rest sends no moves, so the last moves' velocity stands
+  (probe and RN's FlatList alike, rests 0.15-3 s, zero-motion argent holds; 2026-11-14). Below that it stops under the finger.
 - UIScrollView bounce and deceleration (measured with `tools/scroll-probe`, a bare UIScrollView
   logging contentOffset per display frame; drive it with argent at y 0.6): the bounce is critically
   damped at 0.01088/ms from a start velocity of 0.00797 × the overshoot toward the edge (plus the

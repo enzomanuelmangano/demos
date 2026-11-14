@@ -56,13 +56,15 @@ const FRAME_MS: f64 = 1000.0 / 60.0;
 const BOUNCE_CARRY: f64 = 1.656;
 
 /// The finger's velocity UIScrollView decelerates with at the lift: the last moves' velocity,
-/// however long the finger then rested (UIKit hears no `touchesMoved` from a finger at rest).
-/// Measured with tools/scroll-probe (2026-11-14, argent drags of 210 pt in 400 ms, then still):
-/// lifted after 0.15, 0.25, 0.4, 0.75, 1.0, 1.5 and 3.0 s, willEndDragging got 0.456–0.480 pt/ms
-/// every time and the scroll decelerated onto UIKit's projection; RN's FlatList flung the same
-/// after a 200 ms rest (twitter-tab-bar). (An earlier "no fling after a 100 ms rest" rule came
-/// from a hold whose input still moved.)
-pub fn release_velocity(finger: f32, _rest_ms: f64) -> f32 {
+/// however long the finger then rested (UIKit hears no `touchesMoved` from a finger at rest,
+/// and the pan's estimate keeps no zero-motion samples). Measured on the iOS 27.1 simulator
+/// (2026-11-14) with argent drags then a zero-motion hold (no event, or the same point repeated:
+/// neither reaches UIKit as a move): tools/scroll-probe flung after 0.15-3 s rests
+/// (willEndDragging 0.46 pt/ms after 1 s, 1.21 pt/ms after 1 s and 150 ms for a faster drag), and
+/// RN's FlatList (twitter-tab-bar's feed, scrollEventThrottle 16) flung 260, 294 and 280 pt after
+/// 1 s, 3 s and 0.2 s rests, as far as a lift with no rest (310 pt): RN adds nothing to UIKit's
+/// rule. (The earlier "no fling after a 100 ms rest" came from a hold whose input still moved.)
+pub fn release_velocity(finger: f32) -> f32 {
     finger
 }
 
@@ -72,8 +74,8 @@ pub fn release_velocity(finger: f32, _rest_ms: f64) -> f32 {
 /// last; Exact's estimate logged from the same input): a finger at 313 pt/s does not fling
 /// (nor slower ones), at 360 pt/s it flings 175 pt (Exact 180), at 672 pt/s 340 pt (Exact
 /// 335), at 0.998 per ms. Below the threshold the scroll stops where the finger left it.
-pub fn uiscroll_release(finger: f32, rest_ms: f64) -> f32 {
-    let v = release_velocity(finger, rest_ms);
+pub fn uiscroll_release(finger: f32) -> f32 {
+    let v = release_velocity(finger);
     if v.abs() < 335.0 { 0.0 } else { v }
 }
 
@@ -228,8 +230,7 @@ impl UiScroll {
             // Lifted before the pan began: no drag, nothing to decelerate.
             Event::End(_) if self.armed => self.armed = false,
             Event::End(p) => {
-                let rest = self.pan.rest_ms(at_ms);
-                self.release(uiscroll_release(p.velocity_x, rest), release_velocity(p.velocity_x, rest));
+                self.release(uiscroll_release(p.velocity_x), release_velocity(p.velocity_x));
             }
             // A touch that never dragged: UIKit calls no scrollViewWillEndDragging, so RN's snap
             // never runs and a caught scroll rests where it is; only one past an end bounces back.
@@ -581,5 +582,30 @@ mod tests {
         s.input(1, Phase::Up, 176.33, 10.0, 133.4, true);
         settle(&mut s, 140.0);
         assert_eq!(s.offset, 168.0);
+    }
+
+    #[test]
+    fn a_lift_after_a_still_rest_flings() {
+        // scroll-probe and RN's FlatList: a drag of 210 pt in 400 ms, held still 1 s (the same
+        // point repeated), then lifted, decelerates as a lift with no rest does.
+        let fling = |rest: f64| {
+            let mut s = UiScroll::new(0.0, 10000.0, 420.0, 0.998, Snap::Free);
+            s.input(1, Phase::Down, 336.0, 10.0, 0.0, true);
+            for k in 1..=24 {
+                s.input(1, Phase::Move, 336.0 - 210.0 * k as f32 / 24.0, 10.0, 400.0 * k as f64 / 24.0, true);
+            }
+            let mut t = 400.0;
+            while t < 400.0 + rest {
+                t += 16.0;
+                s.input(1, Phase::Move, 126.0, 10.0, t, true);
+            }
+            let lifted = s.offset;
+            s.input(1, Phase::Up, 126.0, 10.0, t + 16.0, true);
+            settle(&mut s, t + 16.0);
+            s.offset - lifted
+        };
+        let (none, held) = (fling(0.0), fling(1000.0));
+        assert!(held > 150.0, "{held}");
+        assert!((held - none).abs() < 1.0, "{held} {none}");
     }
 }
