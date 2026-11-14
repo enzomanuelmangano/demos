@@ -589,6 +589,16 @@ One commit per haptic event, never per frame.
   `EXPO_PUBLIC_LIQUID_GLASS_ENABLED`; .env keeps it off for Metro); an @expo/ui Host pins its
   SwiftUI content top-leading.
 
+- RN's `onContentSizeChange` height is a float32 (2189.666748 for 2189.6667): a ratio of an offset
+  to `height − viewHeight` stays under 1 at the bottom (scroll-progress' END shows only while
+  overscrolled). Use `Math.fround` of the height where RN divides by it.
+- packages/skia's gradients take 8 stops (`MAX_STOPS`; the rest are dropped): draw a longer ramp
+  as pieces split on a device-pixel row (sculptures-in-words' 12-stop fades, `fade_rect`).
+- expo-symbols' SymbolView is a size × size UIImageView, aspect fit: the symbol image at that point
+  size is scaled to fit (textformat at 20 is 29 × 18: drawn at 20/29). Size the Contract symbol so.
+- A skia::Renderer's first draw builds its pipelines (~0.9 s on the simulator): run every path a
+  surface will need on its first frame (sculptures-in-words' composite path, `warmed`).
+
 ## 4. Check
 
 `bun tools/check-demo.ts <slug>` prints `[]` (compiles the demo alone, before it is

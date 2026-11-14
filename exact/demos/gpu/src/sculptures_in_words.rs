@@ -21,8 +21,8 @@
 //!   uniforms written at RN's offsets, the atlas as buildGlyphAtlas draws it (1.6 em cells, a
 //!   quarter-pixel phase per cell, the glyph at (0.2 em, 1.1 em) of it, in #1c1a17: CoreText's
 //!   masks through `skia::Font::subpixel_mask`).
-//! - The canvas: RN Skia's 8-bit Display P3 surface (`gfx::P3Layer`), cleared transparent over
-//!   the white View: the column (while the clock ≤ 0.003), the figure's image (from the first
+//! - The canvas: RN Skia's 8-bit Display P3 surface (`gfx::P3Layer`), cleared to the white View
+//!   under it (PAGE_BG, opaque: see `page_clear`): the column (while the clock ≤ 0.003), the figure's image (from the first
 //!   frame the clock leaves 0), the two eased white fades. The paginator dots are Views over it:
 //!   drawn after, in sRGB, at Yoga's pixel-rounded edges.
 //! - The clock: withSpring(0 | 1, { mass 0.5, stiffness 2.2, damping 2.098 }) on each tap, from
@@ -54,6 +54,31 @@ static BAKED: &[u8] = include_bytes!("../images/sculptures-in-words/sculptures.b
 
 /// constants.ts.
 const PAGE_BG: u32 = 0xffffff;
+/// The canvas's clear: PAGE_BG (the screen's View, a P3 hex; white is white in both), opaque.
+/// The surface paints the page itself, so it is opaque: the web's canvas composites over black
+/// (it has no other alpha mode there), where a transparent clear showed the page black.
+/// RN's 12-stop fade (a Skia LinearGradient from `y0` to `y1`, full width) drawn as Skia draws
+/// it, where packages/skia takes 8 stops (the rest dropped, which left the bottom fade at
+/// alpha 0.26 past 64 %): two rects split on a device-pixel row inside the segment between stops
+/// 6 and 7, the first holding stops 0…7, the second 6…11, both over the full span, so every
+/// row is evaluated on the whole ramp.
+fn fade_rect(c: &mut Canvas, w: f32, y0: f32, y1: f32, stops: &[(f32, Color)], scale: f32) {
+    let t_mid = (stops[6].0 + stops[7].0) / 2.0;
+    let ys = ((y0 + (y1 - y0) * t_mid) * scale).round() / scale;
+    let shader = |from: usize, to: usize| {
+        Paint::shader(Shader::Linear { start: point(0.0, y0), end: point(0.0, y1), stops: stops[from..to].to_vec() })
+    };
+    let (lo, hi) = (y0.min(y1), y0.max(y1));
+    // The part nearer the start (t below the split) and the rest.
+    let (a, b) = if y1 > y0 { ((lo, ys), (ys, hi)) } else { ((ys, hi), (lo, ys)) };
+    c.draw_rect(0.0, a.0, w, a.1 - a.0, &shader(0, 8));
+    c.draw_rect(0.0, b.0, w, b.1 - b.0, &shader(6, stops.len()));
+}
+
+fn page_clear() -> wgpu::Color {
+    let c = |k: u32| ((PAGE_BG >> k) & 0xff) as f64 / 255.0;
+    wgpu::Color { r: c(16), g: c(8), b: c(0), a: 1.0 }
+}
 const PAPER_INK: u32 = 0x1c1a17;
 const GLYPH_FONT_SIZE: f64 = 46.0;
 const PAGE_GLYPH_SCALE: f64 = 0.34;
@@ -569,6 +594,8 @@ struct Sculptures {
     renderer: Renderer,
     dots: Renderer,
     p3: gfx::P3Layer,
+    /// The composite path has drawn once (see `render`).
+    warmed: bool,
     canvas: Canvas,
     top_canvas: Canvas,
     uniforms: [f32; UNIFORM_FLOATS],
@@ -604,6 +631,7 @@ impl Sculptures {
             renderer: Renderer::default(),
             dots: Renderer::default(),
             p3: gfx::P3Layer::default(),
+            warmed: false,
             canvas: Canvas::default(),
             top_canvas: Canvas::default(),
             uniforms: [0.0; UNIFORM_FLOATS],
@@ -1126,29 +1154,9 @@ impl Sculptures {
             .collect();
         let top_fade = (h * TOP_FADE_FRAC) as f32;
         let fade = (h * BOTTOM_FADE_FRAC) as f32;
-        let (w32, h32) = (w as f32, h as f32);
-        c.draw_rect(
-            0.0,
-            0.0,
-            w32,
-            top_fade,
-            &Paint::shader(Shader::Linear {
-                start: point(0.0, top_fade),
-                end: point(0.0, 0.0),
-                stops: stops.clone(),
-            }),
-        );
-        c.draw_rect(
-            0.0,
-            h32 - fade,
-            w32,
-            fade,
-            &Paint::shader(Shader::Linear {
-                start: point(0.0, h32 - fade),
-                end: point(0.0, h32),
-                stops,
-            }),
-        );
+        let w32 = w as f32;
+        fade_rect(c, w32, top_fade, 0.0, &stops, scale);
+        fade_rect(c, w32, h as f32 - fade, h as f32, &stops, scale);
     }
 
     /// The paginator's dots (Views): where Yoga puts them at 1 / scale, their widths and
@@ -1245,7 +1253,7 @@ impl Surface for Sculptures {
     }
 
     fn opaque(&self) -> bool {
-        false
+        true
     }
 
     fn wants_input(&self) -> bool {
@@ -1361,7 +1369,11 @@ impl Surface for Sculptures {
             let gpu = self.gpu.as_ref().unwrap();
             self.renderer.set_images(&gpu.shape.as_ref().unwrap().1);
         }
-        let dots = ((clock - 0.55) / 0.35).clamp(0.0, 1.0) > 0.0;
+        // The first frame takes the composite path too (nothing of the dots shows at clock 0):
+        // the dots' renderer and the composite target are built at mount, not 0.6 s into the
+        // first reveal, where building them froze the figure ~0.9 s on the simulator.
+        let dots = ((clock - 0.55) / 0.35).clamp(0.0, 1.0) > 0.0 || !self.warmed;
+        self.warmed = true;
         if !dots {
             self.p3.draw(
                 &mut self.renderer,
@@ -1373,7 +1385,7 @@ impl Surface for Sculptures {
                 format,
                 pw,
                 ph,
-                wgpu::Color::TRANSPARENT,
+                page_clear(),
             );
         } else {
             let gpu = self.gpu.as_mut().unwrap();
@@ -1393,7 +1405,7 @@ impl Surface for Sculptures {
                 wgpu::TextureFormat::Rgba8Unorm,
                 pw,
                 ph,
-                wgpu::Color::TRANSPARENT,
+                page_clear(),
             );
             let composite = self
                 .gpu

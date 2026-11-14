@@ -48,6 +48,9 @@ component SculpturesInWords
       // from the bottom and right, hitSlop 16 (the 80 pt button around it); textformat ↔
       // person.crop.circle, 20 semibold ON_INK #F5F1E8, crossfading (opacity, scale 1 → 0.85 /
       // 0.85 → 1) as `face` moves. Above the canvas, which takes every touch under it.
+      // SymbolView is a 20 × 20 UIImageView, aspect fit: the 20 pt symbol image (textformat
+      // 29 × 18, person.crop.circle 24 × 24) is drawn 20 / 29 and 20 / 24 the size, the point
+      // sizes below (its "Aa" was 1.45× RN's).
       button appearance="none" press=toggle position="absolute" z-index=1
         pointerdown=pressIn(0) pointerup=pressOut
         scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
@@ -59,8 +62,8 @@ component SculpturesInWords
           view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
             opacity=(revealed ? 0 : 1) scale=(revealed ? 0.85 : 1)
             transition=`opacity 350ms ${inOutQuad()}, scale 350ms ${inOutQuad()}`
-            image "symbol:sf/textformat" font-size=20 font-weight=600 color="#F5F1E8" aria-hidden=true
+            image "symbol:sf/textformat" font-size=13.7931 font-weight=600 position="relative" top="0.2833px" left="0.12px" color="#F5F1E8" aria-hidden=true
           view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
             opacity=(revealed ? 1 : 0) scale=(revealed ? 1 : 0.85)
             transition=`opacity 350ms ${inOutQuad()}, scale 350ms ${inOutQuad()}`
-            image "symbol:sf/person.crop.circle" font-size=20 font-weight=600 color="#F5F1E8" aria-hidden=true
+            image "symbol:sf/person.crop.circle" font-size=16.6667 font-weight=600 color="#F5F1E8" aria-hidden=true

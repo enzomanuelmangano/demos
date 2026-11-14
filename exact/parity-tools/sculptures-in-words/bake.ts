@@ -75,6 +75,7 @@ const fontSize = GLYPH_FONT_SIZE * PAGE_GLYPH_SCALE;
 const VARIATION = [{ axis: 'opsz', value: 12 }];
 const ckFont = new CK.Font(typeface, fontSize);
 const blankIds = new Set(Array.from(ckFont.getGlyphIDs(BLANKS)));
+const spaceId = ckFont.getGlyphIDs(' ')[0];
 
 const fail = (m: string) => {
   console.error(`bake: ${m}`);
@@ -320,7 +321,16 @@ const articles = shaped.map(s => {
     return rounded > maxWidth;
   };
   // The lines (their first glyphs) the greedy wrap makes at maxW (16.16), and its tightest margin.
-  const wrap = (X: Float64Array, adv: (id: number) => number, maxW: number) => {
+  // On iOS a paragraph's last glyph is shaped before its hard break, which HarfBuzz there takes
+  // as a space: the line ends at the glyph's advance plus its kern with a space (RN's article 0,
+  // "…inscribed stone.\n": getLineMetrics 343.93 at 420, the period's pen end 344.35; its kern
+  // with a space is −0.42). Read off the text: the pen step to a following space less the advance.
+  const spaceKern = (X: Float64Array, adv: (id: number) => number) => {
+    const k = new Map<number, number>();
+    for (let i = 0; i + 1 < seq.length; i++) if (seq[i + 1] === spaceId && !isStart[i + 1] && !blankIds.has(seq[i])) k.set(seq[i], X[i + 1] - X[i] - adv(seq[i]));
+    return k;
+  };
+  const wrap = (X: Float64Array, adv: (id: number) => number, maxW: number, endKern?: Map<number, number>) => {
     const starts: number[] = [];
     let margin = Infinity;
     for (let p = 0; p < paraStart.length; p++) {
@@ -334,7 +344,8 @@ const articles = shaped.map(s => {
         while (k > line && blankIds.has(seq[k])) k--;
         // A cluster is as wide as the pen moves past it: to the next glyph (its kern with the
         // space after it included), its advance only at the paragraph's end.
-        return (k + 1 < to ? X[k + 1] : X[k] + adv(seq[k])) - X[line];
+        const brk = endKern && to < seq.length ? endKern.get(seq[k]) ?? 0 : 0;
+        return (k + 1 < to ? X[k + 1] : X[k] + adv(seq[k]) + brk) - X[line];
       };
       let lastFit = -1;
       for (let o = line + 1; o <= to; o++) {
@@ -356,6 +367,7 @@ const articles = shaped.map(s => {
     }
     return { starts, margin };
   };
+  const iosKern = spaceKern(Q, hbIos);
   let tightest = Infinity;
   const lines: { starts: number[]; height: number }[] = [];
   const step = per[0].baselines[1] - per[0].baselines[0];
@@ -367,7 +379,7 @@ const articles = shaped.map(s => {
     if (real.some(v => v === undefined)) fail(`article ${a}: an empty line`);
     const bad = ck.starts.findIndex((v, k) => v !== real[k]);
     if (ck.starts.length !== real.length || bad >= 0) fail(`article ${a} width ${W_MIN + wi}: the greedy wrap isn't CanvasKit's at line ${bad} (${ck.starts[bad]} vs ${real[bad]}, ${ck.starts.length} vs ${real.length})`);
-    const ios = wrap(Q, hbIos, maxW);
+    const ios = wrap(Q, hbIos, maxW, iosKern);
     tightest = Math.min(tightest, ios.margin);
     // Every line is `step` tall: CanvasKit's height, with iOS's line count.
     if (L.height !== f32(L.lines.length * step + (L.height - L.lines.length * step))) fail('height');
