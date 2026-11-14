@@ -5,7 +5,7 @@ github-contributions ported done:38efb062
 mobile-input todo done:3c817f2f (ported in Rust; pressto press feedback per the owner, RN app shows none: pressto 0.7 / RNGH 3.3 handler mismatch)
 swipe-cards ported done:5ba2f6ee (verified 2026-11-10: stills edge- and button-exact, photo mean 0.85; A/B drag, throw, reset same structure)
 spiral ported done:9fecc647 (stills: arm hues, glow, MSAA coverage within 1-2 levels; spring audit line for line; A/B tap same structure)
-scroll-progress ported (Rust rework 71258b41, to re-verify on device)
+scroll-progress ported (Rust rework 71258b41, to re-verify on device) claimed:sim1
 animated-grid-list ported (Rust rework 71258b41, to re-verify on device)
 floating-bottom-bar ported open:230e1914 icons pixel-identical, fades and spring as Reanimated times them (A/B same structure); the light sits 0.35 px right of RN (both edges, unexplained by Yoga rounding)
 animated-clip-box ported done:3b1b164a (circles, colours, text in Rust on r; action pixel-identical, circles within AA; one description glyph per card 1 px (TextKit subpixel x); spring matches Reanimated on the recording)
