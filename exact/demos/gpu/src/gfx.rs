@@ -167,10 +167,17 @@ pub fn save_over(img: &exact_gpu::fixture::Pixels, name: &str, background: [u8; 
 /// half-covered #4ECDC4 edge over #F7FFF7: RN (169, 231, 222), an sRGB blend 163 in red).
 /// `draw` renders the canvas into an Rgba8Unorm layer with `renderer.p3` set, then converts each
 /// pixel to sRGB, unpremultiplied, into the target (theme-canvas-animation, measured).
+///
+/// `over_black`: the converted canvas composited over opaque black (alpha 1 out), as Core
+/// Animation shows a transparent RN Skia canvas on a black view. A transparent surface lets
+/// what lies under the canvas through to the keyboard's glass (qr-code-generator: the home's
+/// colours glinted in it).
 #[derive(Default)]
 pub struct P3Layer {
+    /// Composite over opaque black (alpha 1 out).
+    pub over_black: bool,
     layer: Option<(u32, u32, wgpu::TextureView)>,
-    pipe: Option<(wgpu::TextureFormat, wgpu::RenderPipeline, wgpu::BindGroupLayout)>,
+    pipe: Option<((wgpu::TextureFormat, bool), wgpu::RenderPipeline, wgpu::BindGroupLayout)>,
     bind: Option<wgpu::BindGroup>,
 }
 
@@ -204,6 +211,15 @@ fn resolve(pos: vec4<f32>) -> vec4<f32> {
     let c = resolve(pos);
     return vec4<f32>(enc(p3_lin_to_srgb_lin(lin(c.rgb))) * c.a, c.a);
 }
+// Over opaque black: the premultiplied colour with alpha 1.
+@fragment fn fs_encoded_black(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
+    let c = resolve(pos);
+    return vec4<f32>(enc(p3_lin_to_srgb_lin(lin(c.rgb))) * c.a, 1.0);
+}
+@fragment fn fs_linear_black(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
+    let c = resolve(pos);
+    return vec4<f32>(lin(enc(p3_lin_to_srgb_lin(lin(c.rgb))) * c.a), 1.0);
+}
 // An sRGB target (the hardware encodes): write linear.
 @fragment fn fs_linear(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
     let c = resolve(pos);
@@ -233,7 +249,7 @@ impl P3Layer {
             self.layer = Some((width, height, self::target(device, "p3 layer", wgpu::TextureFormat::Rgba8Unorm, width, height)));
             self.bind = None;
         }
-        if self.pipe.as_ref().map(|p| p.0) != Some(format) {
+        if self.pipe.as_ref().map(|p| p.0) != Some((format, self.over_black)) {
             let module = device.create_shader_module(wgpu::ShaderModuleDescriptor { label: Some("p3 layer"), source: wgpu::ShaderSource::Wgsl(P3_RESOLVE.into()) });
             let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("p3 layer"),
@@ -244,9 +260,14 @@ impl P3Layer {
                     count: None,
                 }],
             });
-            let fs = if format.is_srgb() { "fs_linear" } else { "fs_encoded" };
+            let fs = match (format.is_srgb(), self.over_black) {
+                (true, false) => "fs_linear",
+                (false, false) => "fs_encoded",
+                (true, true) => "fs_linear_black",
+                (false, true) => "fs_encoded_black",
+            };
             let pipeline = fullscreen(device, format, &module, &layout, "vs", fs, None, "p3 layer");
-            self.pipe = Some((format, pipeline, layout));
+            self.pipe = Some(((format, self.over_black), pipeline, layout));
             self.bind = None;
         }
         let (_, _, layer) = self.layer.as_ref().unwrap();

@@ -375,6 +375,9 @@ One commit per haptic event, never per frame.
 - A mapper's `withSpring` retarget (`useDerivedValue(() => withSpring(x))`) inherits the running
   velocity but measures its rest against `getEnergy(x0, config.velocity = 0)`: the inherited
   velocity is not in the initial energy (`reanimated::Spring::retarget` does this).
+- A surface left transparent where it draws nothing shows what lies under the app (the home)
+  in the keyboard's glass, though the column under it is opaque: composite the last pass over the
+  screen's colour (`gfx::P3Layer::over_black`; qr-code-generator).
 - RN's ReText is a TextInput: UITextField centres the line a device pixel above where a Text
   would sit (scroll-progress' percentage).
 - The RN app sets `RCTColorSpace.displayP3`: an RN View's hex is P3 (#474069 shows as 72, 64,

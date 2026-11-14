@@ -59,6 +59,18 @@
 //!
 //! Inputs: `safeTop`, `text` (the field's value), `focused`.
 //!
+//! As Core Animation and RN Skia show it (measured on the simulator against RN):
+//! - The QR Canvas clips to its view (Yoga's frame): the effect's jitter past it is cut.
+//! - Everything goes through `gfx::P3Layer` (RN Skia's 8-bit Display P3 canvas: the gradient
+//!   mixes P3 values), composited over black (`over_black`: a transparent surface let the home
+//!   glint through the keyboard's glass). The views' colours are neutral: the same in P3.
+//! - The field's border is RCTBorderDrawing's (a visible border on a view that does not clip):
+//!   circular corners whatever borderCurve, CoreGraphics' coverage (drawn as two analytic rrects).
+//! - UITextField sets its line a device pixel above where a centred Text would: the unfocused
+//!   text and placeholder are pixel-identical to RN's with that.
+//! - The picker is a transformed layer with `allowsEdgeAntialiasing` NO: placed on the pixel its
+//!   top-left aliases to, straight edges aliased, corners antialiased.
+//!
 //! Motion audit (every animated value):
 //!
 //! | value | RN driver / config | Exact |
@@ -66,10 +78,10 @@
 //! | translateX | Pan onUpdate: context + translationX (RNGH iOS pan) | `PanGesture` (UIKit's hysteresis left out of the translation) |
 //! | clampedTranslateX | useDerivedValue clamp(translateX, 0, W − 50) | same, f64 |
 //! | deviation | useAnimatedReaction → interpolate(clamped, [0, w], [0, 6]); its first run (startMapper) sets 3 over useSharedValue(6) | `interpolate` each frame; 3 from the first frame |
-//! | picker scale | withSpring(1) onBegin, withSpring(0.7) onTouchesUp: default (900, 120, 4) | `Spring::to(.., GENTLE)` with the running velocity (Reanimated's onStart) |
-//! | picker borderRadius | withSpring(25) / withSpring(20): default | same |
+//! | picker scale | withSpring(1) onBegin, withSpring(0.7) onTouchesUp: default (900, 120, 4) | `Spring::assign(.., GENTLE, event time)`: onStart at the event's timestamp, the running velocity kept unless it points away, rest against getEnergy(x0, 0) |
+//! | picker borderRadius | withSpring(25) / withSpring(20): default | same (`assign`) |
 //! | picker borderWidth | withSpring(4, { dampingRatio 1, duration 500 }) / withSpring(16): never visible (white on white) | `gfx::spring_to` / GENTLE, kept for the agent |
-//! | progress bar scaleX | clamped / width, from the left | the bar's right edge at the clamped x, on the pixel grid (a Core Animation layer edge is not antialiased) |
+//! | progress bar scaleX | clamped / width, from the left | the bar's right edge at the clamped x, aliased to the pixel whose centre it holds (a transformed Core Animation layer: `allowsEdgeAntialiasing` NO) |
 //! | scroll offset | UIScrollView: 1:1 drag, rubber band, bounce (alwaysBounceVertical) | `ui_scroll::UiScroll` |
 //! | the QR path | useMemo on value: Skia path; DiscretePathEffect at every deviation | `qr::create` on a text change, `qr::rounded_path` + `qr::discrete` into kept buffers on a text or deviation change |
 
@@ -256,9 +268,9 @@ struct QrCodeGenerator {
     shown: String,
     shown_for: Option<(String, u32)>,
     gradient: Paint,
-    border_path: Option<(Layout, skia::Path, skia::Path)>,
     canvas: Canvas,
     renderer: Renderer,
+    p3: gfx::P3Layer,
 }
 
 impl QrCodeGenerator {
@@ -292,9 +304,13 @@ impl QrCodeGenerator {
             shown: String::new(),
             shown_for: None,
             gradient: Paint::fill(Color::BLACK),
-            border_path: None,
             canvas: Canvas::default(),
             renderer: Renderer::default(),
+            p3: {
+                let mut p3 = gfx::P3Layer::default();
+                p3.over_black = true;
+                p3
+            },
         }
     }
 
@@ -318,7 +334,6 @@ impl QrCodeGenerator {
             end: point(w, w),
             stops,
         });
-        self.border_path = None;
         self.rounded_for = None;
     }
 
@@ -454,9 +469,12 @@ impl QrCodeGenerator {
                 if picker {
                     if let Event::Begin { .. } = self.pan.event(id, phase, x, y, at_ms, true) {
                         self.picker_finger = Some(id);
-                        self.radius.to(RADIUS_HELD, self.radius.velocity, GENTLE);
+                        // sv.set(withSpring(..)) from a gesture callback: spring.ts onStart at
+                        // the event's time, the running velocity kept (dropped when it points
+                        // away), the rest measured against getEnergy(x0, 0).
+                        self.radius.assign(RADIUS_HELD, GENTLE, at_ms);
                         gfx::spring_to(&mut self.border, BORDER_HELD, BORDER_MS, 1.0);
-                        self.scale.to(1.0, self.scale.velocity, GENTLE);
+                        self.scale.assign(1.0, GENTLE, at_ms);
                         self.context_x = self.clamped();
                     }
                 }
@@ -495,9 +513,9 @@ impl QrCodeGenerator {
                     self.picker_finger = None;
                     if phase == Phase::Up {
                         // onTouchesUp.
-                        self.scale.to(SCALE_REST, self.scale.velocity, GENTLE);
-                        self.radius.to(RADIUS_REST, self.radius.velocity, GENTLE);
-                        self.border.to(BORDER_REST, self.border.velocity, GENTLE);
+                        self.scale.assign(SCALE_REST, GENTLE, at_ms);
+                        self.radius.assign(RADIUS_REST, GENTLE, at_ms);
+                        self.border.assign(BORDER_REST, GENTLE, at_ms);
                     }
                 }
                 self.scroll.input(id, phase, y, x, at_ms, true);
@@ -529,33 +547,35 @@ impl QrCodeGenerator {
         let off = self.offset();
         let clamped = self.clamped() as f32;
         let draws_text = self.draws_text();
-        // The TextInput's Core Animation border: the continuous rounded rect less the one inset
-        // by the border's width, with the curve's radius less it (built at a layout change).
-        if self.border_path.as_ref().map(|(b, _, _)| *b) != Some(l) {
+        // The TextInput's border: a visible border on a view that does not clip is RN's own
+        // (RCTBorderDrawing's ring, circular corners whatever the borderCurve, CoreGraphics'
+        // exact coverage), not Core Animation's. Over the screen's black the ring is the outer
+        // rounded rect in white less the inner one in black, both analytic (a path's 4x MSAA
+        // quantises the arcs' coverage to quarters).
+        let white = Paint::fill(Color::view_hex(0xFFFFFF));
+        let c = &mut self.canvas;
+        c.begin(l.s);
+        c.translate(0.0, -off);
+        {
             let [x0, y0, x1, y1] = l.field;
             let b = INPUT_BORDER;
-            let outer = skia::continuous_rrect_path(x0, y0, x1 - x0, y1 - y0, INPUT_RADIUS);
-            let inner = skia::continuous_rrect_path(
+            c.draw_rrect(x0, y0, x1 - x0, y1 - y0, INPUT_RADIUS, &white);
+            c.draw_rrect(
                 x0 + b,
                 y0 + b,
                 x1 - x0 - 2.0 * b,
                 y1 - y0 - 2.0 * b,
                 INPUT_RADIUS - b,
+                &Paint::fill(Color::BLACK),
             );
-            self.border_path = Some((l, outer, inner));
-        }
-        let white = Paint::fill(Color::view_hex(0xFFFFFF));
-        let c = &mut self.canvas;
-        c.begin(l.s);
-        c.translate(0.0, -off);
-        if let Some((_, outer, inner)) = &self.border_path {
-            c.draw_path_events(outer.iter().chain(inner.reversed()), &white);
         }
 
         if let Some(f) = &self.fonts {
             if draws_text {
                 let [x0, y0, _, y1] = l.text_rect();
-                let top = y0 + (y1 - y0 - gfx::line_height(&f.text)) / 2.0;
+                // UITextField centres the line a device pixel above where a Text would sit
+                // (measured: the placeholder's ink 1 px higher than a centred Text's).
+                let top = y0 + (y1 - y0 - gfx::line_height(&f.text)) / 2.0 - 1.0 / l.s;
                 let color = if self.text.is_empty() {
                     Color::hex(GRAY)
                 } else {
@@ -580,7 +600,11 @@ impl QrCodeGenerator {
         }
 
         // The QR canvas.
+        // RN Skia's Canvas clips to its view: the DiscretePathEffect's jitter past the edges is
+        // cut on Yoga's rounded frame.
         c.save();
+        let (qx1, qy1) = (grid(l.qr[0] + l.qr[2], l.s), grid(l.qr[1] + l.qr[2], l.s));
+        c.clip_rect(l.qr[0], l.qr[1], qx1 - l.qr[0], qy1 - l.qr[1]);
         c.translate(l.qr[0], l.qr[1]);
         let verbs = &self.discrete;
         c.draw_with(&self.gradient, |b| push_verbs(b, verbs));
@@ -598,7 +622,7 @@ impl QrCodeGenerator {
             &Paint::fill(Color::view_hex(GRAY)),
         );
         let s = l.s;
-        let right = ((left + clamped) * s).round() / s;
+        let right = alias(left + clamped, s);
         if right > left {
             c.draw_rect(left, top, right - left, TRACK_HEIGHT, &white);
         }
@@ -606,7 +630,51 @@ impl QrCodeGenerator {
         let side = PICKER * k;
         let (cx, cy) = (left + clamped, top + TRACK_HEIGHT / 2.0);
         let r = (self.radius.value as f32).clamp(0.0, PICKER / 2.0) * k;
-        c.draw_rrect(cx - side / 2.0, cy - side / 2.0, side, side, r, &white);
+        // Core Animation places the transformed layer on the pixel its top-left edge aliases to
+        // (measured at rest: RN's picker spans px 577-682 × 1996-2101, its unsnapped box
+        // 577.5-682.5 × 1996.5-2101.5, corner arcs moved with it).
+        let h = side / 2.0;
+        let (x0, y0) = (alias(cx - h, s), alias(cy - h, s));
+        layer_rrect(c, s, (x0, y0, x0 + side, y0 + side), r, &white);
+    }
+}
+
+/// A pixel row or column a Core Animation layer with `allowsEdgeAntialiasing` NO starts at, for an
+/// edge at `v` points: the first whose centre lies past it, in points (cuberto-slider, measured).
+fn alias(v: f32, s: f32) -> f32 {
+    (v * s - 0.5).ceil() / s
+}
+
+/// The picker as Core Animation shows a transformed layer with `allowsEdgeAntialiasing` NO (its
+/// white background and same-coloured CA border): the corner arcs antialiased where they are,
+/// the straight edges aliased to the pixels whose centres they hold (cuberto-slider's picker).
+fn layer_rrect(
+    c: &mut Canvas,
+    s: f32,
+    (l, t, r, b): (f32, f32, f32, f32),
+    radius: f32,
+    paint: &Paint,
+) {
+    let (al, at, ar, ab) = (alias(l, s), alias(t, s), alias(r, s), alias(b, s));
+    if ar <= al || ab <= at {
+        return;
+    }
+    let radius = radius.min((r - l) / 2.0).min((b - t) / 2.0);
+    c.save();
+    c.clip_rect(al, at, ar - al, ab - at);
+    c.draw_rrect(l, t, r - l, b - t, radius, paint);
+    c.restore();
+    let (il, it, ir, ib) = (
+        alias(l + radius, s),
+        alias(t + radius, s),
+        alias(r - radius, s),
+        alias(b - radius, s),
+    );
+    if ib > it {
+        c.draw_rect(al, it, ar - al, ib - it, paint);
+    }
+    if ir > il {
+        c.draw_rect(il, at, ir - il, ab - at, paint);
     }
 }
 
@@ -755,7 +823,11 @@ impl Surface for QrCodeGenerator {
         self.sync_shown();
         self.record();
         let (pw, ph) = frame.pixels();
-        self.renderer.draw(
+        // RN Skia's 8-bit Display P3 canvas (the QR's gradient mixes and its edges blend P3
+        // values), cleared transparent and composited over the column's black (opaque out). The field, the title and the
+        // slider are white, gray and black: neutral, the same in P3, so one layer holds all.
+        self.p3.draw(
+            &mut self.renderer,
             device,
             queue,
             encoder,
@@ -764,7 +836,7 @@ impl Surface for QrCodeGenerator {
             format,
             pw,
             ph,
-            wgpu::Color::BLACK,
+            wgpu::Color::TRANSPARENT,
         );
         moving
     }

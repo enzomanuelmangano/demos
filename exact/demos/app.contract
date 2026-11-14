@@ -35,7 +35,7 @@ fn ownsDrags(slug: string): bool = ["metaball", "magnet-spring", "swipe-cards", 
 // The keyboard over a demo: RN moves nothing for it unless a demo says so (KeyboardAvoidingView,
 // or cherry-blossom-qrcode's input riding useKeyboardHandler's height, which a keyboard toolbar
 // is here), where the host's default resizes the screen above the keys.
-fn overlaysKeyboard(slug: string): bool = ["dot-sheet", "cherry-blossom-qrcode"].includes(slug)
+fn overlaysKeyboard(slug: string): bool = ["dot-sheet", "cherry-blossom-qrcode", "qr-code-generator"].includes(slug)
 // Demos whose GPU surface reads the gravity sensor while it shows (RN: useAnimatedSensor).
 fn tilts(slug: string): bool = slug == "linear-sensors"
 // Demos whose GPU surface reads the attitude (RN: useAnimatedSensor(SensorType.ROTATION)).

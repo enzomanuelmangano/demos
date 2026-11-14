@@ -7,7 +7,8 @@
 // surface's text rect while it is focused; unfocused, the surface draws the field's text, so it
 // moves with the scroll. The surface posts `focus` (a tap on the field) and `blur` (a tap
 // elsewhere: TouchableWithoutFeedback's Keyboard.dismiss; a scroll drag: keyboardDismissMode
-// "on-drag").
+// "on-drag"). The canvas keeps the focus where it is (retainFocus): a tap on it would blur the
+// field the surface's own `focus` just focused; focus and blur are the surface's to decide.
 use DemoEnv from "../env.contract"
 
 // styles.textInput's text rect: the field (marginHorizontal 5 %, top = safe top + 50,
@@ -40,13 +41,16 @@ component QrCodeGenerator
     column position="absolute" inset=0 background-color="#000000" testId="qr-code-generator"
       canvas surface=qr_code_generator(env.safeTop, text, focused) message=heard
         position="absolute" top=0 left=0 width=env.width height=env.height touch-action="none"
+        retainFocus=true
         aria-label="QR code of the text; drag the Deviation slider to roughen it"
         testId="qr-code-generator-canvas"
       // The TextInput: white SF 20, autoCapitalize none, autoCorrect off, autoComplete off,
-      // maxLength 300, placeholder in 'gray'; the caret is iOS's tint (systemBlue, dark).
+      // maxLength 300, placeholder in 'gray', the Return key (returnKeyType's default); the caret
+      // is iOS's tint (systemBlue, dark). No KeyboardAvoidingView: the keyboard overlays the
+      // screen (app.contract's overlaysKeyboard).
       input id="qr-input" value=text input=typed focus=opened blur=closed maxlength=300
         placeholder="Enter text to generate QR code" autocapitalize="none" autocorrect="off"
-        autocomplete="off" position="absolute" left=fieldLeft(env.width) top=fieldTop(env.safeTop)
+        autocomplete="off" enterkeyhint="enter" position="absolute" left=fieldLeft(env.width) top=fieldTop(env.safeTop)
         width=fieldWidth(env.width) height=24 font-size=20 color="#ffffff" caret-color="#0a84ff"
         background-color="transparent" border="none" padding=0 outline="none"
         opacity=(focused ? 1 : 0) pointer-events=(focused ? "auto" : "none")
