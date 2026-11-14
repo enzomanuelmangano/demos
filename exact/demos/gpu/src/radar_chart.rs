@@ -10,6 +10,8 @@
 //!   to 1 on withSpring({ duration 500, dampingRatio 1 }) (stiffness 1087.7, damping 131.9,
 //!   mass 4), each value interpolated from where the last change left it (use-unwrapped-radar-
 //!   values.ts).
+//! - Drawn through `gfx::P3Layer`: RN Skia's 8-bit Display P3 canvas (the grid's half-alpha white
+//!   is 127 there, not 128; the fills and AA edges blend P3 values).
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
@@ -41,6 +43,8 @@ struct RadarChart {
     grid: Option<(f32, Path, Vec<Path>)>,
     canvas: Canvas,
     renderer: Renderer,
+    /// RN Skia's canvas: an 8-bit Display P3 surface, cleared transparent over the black view.
+    p3: crate::gfx::P3Layer,
 }
 
 impl RadarChart {
@@ -165,7 +169,7 @@ impl Surface for RadarChart {
             canvas.draw_path(&path, &Paint::stroke(dark, STROKE_WIDTH * 2.0));
         }
         let (pw, ph) = frame.pixels();
-        self.renderer.draw(device, queue, encoder, &self.canvas, target, format, pw, ph, wgpu::Color::TRANSPARENT);
+        self.p3.draw(&mut self.renderer, device, queue, encoder, &self.canvas, target, format, pw, ph, wgpu::Color::TRANSPARENT);
         moving
     }
 }

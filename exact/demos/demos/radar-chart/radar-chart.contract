@@ -34,11 +34,15 @@ component RadarChart
         value(env.seed, draw, 3), value(env.seed, draw, 4), value(env.seed, draw, 5), value(env.seed, draw, 6),
         value(env.seed, draw, 7), value(env.seed, draw, 8), value(env.seed, draw, 9))
         width=env.width height=env.width flex-shrink=0 aria-label="Radar chart" testId="radar-canvas"
-      // styles.button: 80% wide, 60 tall, white 1 border, radius 20 continuous, marginTop 50.
+      // styles.button: 80% wide, 60 tall, white 1 border, radius 20, marginTop 50. Its borderCurve
+      // 'continuous' is not drawn: a bordered RN View that doesn't clip is RCTBorderDrawing's ring
+      // with circular corners (measured: the outer edge is a circle of 20 to 0.1 px).
       button appearance="none" press=shuffle width=(0.8 * (env.width - 40)) height=60
         pointerdown=pressIn(0) pointerup=pressOut
         scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
-        margin-top=50 box-sizing="border-box" border="1px solid #ffffff" border-radius=20 corner-shape="-exact-continuous"
+        margin-top=50 box-sizing="border-box" border="1px solid #ffffff" border-radius=20
         display="flex" align-items="center" justify-content="center" testId="shuffle"
-        // styles.title: white, 20, weight 800, letterSpacing 2, uppercase.
-        text "Shuffle" color="#ffffff" font-size=20 font-weight=800 letter-spacing=2 text-transform="uppercase"
+        // styles.title: white, 20, weight 800, letterSpacing 2, uppercase. CoreGraphics puts
+        // TextKit's baseline (19.04 below the 24-tall line's top) on the next pixel down; the
+        // host's line sat one device pixel lower: moved back up by one.
+        text "Shuffle" position="relative" top="-0.33333px" color="#ffffff" font-size=20 font-weight=800 letter-spacing=2 text-transform="uppercase"
