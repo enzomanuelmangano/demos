@@ -711,6 +711,23 @@ impl Font {
         self.layout(text, |g, pen| out.push((g.0, pen)));
     }
 
+    /// `Skia.Path.MakeFromText(text, x, y, font)`: each glyph's outline at its pen, the
+    /// baseline's start at (x, y).
+    pub fn text_path(&self, text: &str, x: f32, y: f32) -> Path {
+        let mut run = Vec::new();
+        self.glyph_run(text, &mut run);
+        let mut b = Path::builder();
+        for (g, pen) in run {
+            self.with_outline(g, |p| {
+                let t = lyon::math::Transform::scale(self.units, -self.units).then_translate(lyon::math::vector(pen + x, y));
+                for e in lyon::path::iterator::PathIterator::transformed(p.iter(), &t) {
+                    b.path_event(e);
+                }
+            });
+        }
+        b.build()
+    }
+
     /// A glyph's outline (font units, y up), read once.
     fn with_outline(&self, g: u16, f: impl FnOnce(&Path)) {
         let mut glyphs = self.glyphs.borrow_mut();

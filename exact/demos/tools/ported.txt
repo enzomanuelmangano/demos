@@ -105,3 +105,7 @@ notion-qrcode
 qr-code-generator
 snake
 sudoku
+github-onboarding
+airbnb-slider
+drag-to-sort
+grid-visualizer

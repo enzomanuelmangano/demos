@@ -1,0 +1,5 @@
+at "/demo/airbnb-slider"
+
+test "the price and its slider"
+  expect tree has "airbnb-slider-price"
+  expect tree has "airbnb-slider-range"

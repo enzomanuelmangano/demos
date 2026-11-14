@@ -1,0 +1,14 @@
+// Grid Visualizer: a 35 × 50 grid of tiny white squares on black; the squares inside a number's
+// glyphs spring outward and grow; a tap clears the number and, 700 ms later, shows a random one.
+// RN: src/animations/grid-visualizer (index.tsx, grid-visualizer.tsx). The whole demo is one
+// Rust surface (gpu/src/grid_visualizer.rs): the radial glow, the Atlas of squares, the demo's own
+// spring sets, and the 100 numbers' squares computed offline from SF Pro Rounded Heavy.
+use DemoEnv from "../env.contract"
+
+component GridVisualizer
+  props
+    env: DemoEnv
+  view
+    canvas surface=grid_visualizer(env.seed) position="absolute" top=0 left=0 width=env.width
+      height=env.height touch-action="none" testId="grid-visualizer"
+      aria-label="A number drawn by a grid of squares: tap for another"

@@ -1,0 +1,723 @@
+//! GitHub Onboarding (src/animations/github-onboarding: index.tsx,
+//! components/colorful-onboarding/index.tsx, page.tsx, pagination-dots/*): four cat photos on a
+//! paging FlatList over a Skia gradient whose colours follow the scroll; each page's round badge
+//! turns about its vertical axis and shrinks as it leaves, its title fades, and four pressto dots
+//! page the list.
+//!
+//! - Background (index.tsx): an RN Skia `<Rect>` of the window with a `<LinearGradient>` from
+//!   (W / 2, 0) to (W / 2, 2H) of [base, dark]: `interpolateColor(offset / W, [0 … 3], colors)`
+//!   and the same of `Color(c).darken(0.8).hex()` (gamma 2.2, rounded to 8 bits), drawn on RN
+//!   Skia's 8-bit Display P3 surface (each pixel the P3 lerp rounded to 8 bits, then converted to
+//!   sRGB by Core Animation). Here: the UI views drawn into a transparent layer, then one pass
+//!   that computes the gradient per pixel and lays the layer over it.
+//! - The FlatList: horizontal, pagingEnabled, pages W × H: `ui_scroll` with `Snap::Page` (UIKit's
+//!   paging spring, measured). A dot's onPress is `scrollToOffset({ animated: true })`, UIKit's
+//!   `setContentOffset(animated:)`: `UiScroll::scroll_to`.
+//! - A page (page.tsx): a centred column of the badge (0.6 W square, white, padding 10, overflow
+//!   hidden, radius 0.3 W continuous: a circle) holding the photo (expo-image cover, radius 400
+//!   continuous: a circle), and the title 50 below (SF bold 40, letterSpacing 1, white, centred,
+//!   uppercase, marginHorizontal 40). Over [(i − 1) W, i W, (i + 1) W]: rotateY [π/4, 2π, π/4] and
+//!   scale [0.5, 1, 0.5] (extend) as `[rotateY, scale]` with no perspective (an orthographic
+//!   x-scale of s·cos θ about the centre, mirrored past a quarter turn: backfaces show); the
+//!   title's opacity [−1, 1, −1] clamped.
+//! - PaginationDots: a centred row 100 above the bottom; each a PressableScale (hitSlop 5) of a
+//!   paddingHorizontal 5 view holding the 7 pt #D4D4D4 dot, opacity over [i − 0.7, i, i + 0.7] of
+//!   the progress → [0.2, 0.6, 0.2] clamped. A later dot's hitSlop lies over an earlier one.
+//! - Photos: as expo-image hands them to Core Animation for a 232 pt view at 3x
+//!   (exact/parity-tools/github-onboarding/photos.swift): 02 downscaled to 696 × 999, the others
+//!   as decoded.
+
+use std::f64::consts::PI;
+
+use exact_gpu::wgpu;
+use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
+use gesture_handler::Phase;
+use reanimated::{interpolate, interpolate_clamp, interpolate_color, Extrapolation};
+use skia::{fit_cover, Canvas, Color, Font, Images, Matrix, Paint, Rect, Renderer};
+
+use crate::gfx;
+use crate::ui_scroll::{Snap, UiScroll, NORMAL};
+
+/// index.tsx's data: title, colour, photo.
+const TITLES: [&str; 4] = [
+    "Lazy Day Lounger",
+    "Whiskered Explorer",
+    "Curious Kitty Gaze",
+    "Sleek Feline in Repose",
+];
+const COLORS: [u32; 4] = [0x265D9E, 0x4E8DC5, 0x7BB2E9, 0xA1CAE8];
+static PHOTOS: [(&[u8], u32, u32); 4] = [
+    (
+        include_bytes!("../images/github-onboarding/02-696x999.rgb8up.zlib"),
+        696,
+        999,
+    ),
+    (
+        include_bytes!("../images/github-onboarding/01-640x853.rgb8up.zlib"),
+        640,
+        853,
+    ),
+    (
+        include_bytes!("../images/github-onboarding/03-640x896.rgb8up.zlib"),
+        640,
+        896,
+    ),
+    (
+        include_bytes!("../images/github-onboarding/04-640x960.rgb8up.zlib"),
+        640,
+        960,
+    ),
+];
+/// styles.badge padding.
+const PADDING: f64 = 10.0;
+/// styles.title marginTop, marginHorizontal, fontSize, letterSpacing.
+const TITLE_TOP: f64 = 50.0;
+const TITLE_MARGIN: f64 = 40.0;
+const TITLE_SIZE: f32 = 40.0;
+const SPACING: f32 = 1.0;
+/// DOT_SIZE, the dot's paddingHorizontal, the row's bottom, hitSlop.
+const DOT: f64 = 7.0;
+const DOT_PAD: f64 = 5.0;
+const DOTS_BOTTOM: f64 = 100.0;
+const HIT_SLOP: f64 = 5.0;
+
+/// A photo's pixels (opaque RGBA), its rows restored from their deltas.
+fn photo(index: usize) -> skia::Image {
+    let (bytes, w, h) = PHOTOS[index];
+    let mut rgb = miniz_oxide::inflate::decompress_to_vec_zlib(bytes).unwrap_or_default();
+    let row = w as usize * 3;
+    if rgb.len() != row * h as usize {
+        return skia::Image {
+            width: 1,
+            height: 1,
+            pixels: vec![255, 255, 255, 255],
+        };
+    }
+    for y in 1..h as usize {
+        let (above, here) = rgb.split_at_mut(y * row);
+        for (b, a) in here[..row].iter_mut().zip(&above[(y - 1) * row..]) {
+            *b = b.wrapping_add(*a);
+        }
+    }
+    let mut pixels = vec![255u8; w as usize * h as usize * 4];
+    for (d, s) in pixels.chunks_exact_mut(4).zip(rgb.chunks_exact(3)) {
+        d[..3].copy_from_slice(s);
+    }
+    skia::Image {
+        width: w,
+        height: h,
+        pixels,
+    }
+}
+
+/// Yoga's rounding of a View edge to the device pixel grid (half up).
+fn grid(v: f64, scale: f64) -> f64 {
+    (v * scale + 0.5 + 1e-4).floor() / scale
+}
+
+/// A Text's offset: floored to the device pixel.
+fn text_grid(v: f64, scale: f64) -> f64 {
+    (v * scale + 1e-4).floor() / scale
+}
+
+/// A Text's measured side: ceiled to the device pixel after an epsilon.
+fn text_side(v: f64, scale: f64) -> f64 {
+    ((v * scale + 1e-4).floor() + 1.0) / scale
+}
+
+/// The gradient's two colours at `progress` (0…1 channels, sRGB): `convertToRGBA` of RN's
+/// `interpolateColor`s.
+fn gradient(progress: f64) -> [[f64; 3]; 2] {
+    let input = [0.0, 1.0, 2.0, 3.0];
+    let rgba = |c: Color| {
+        [
+            c.0[0] as f64 * 255.0,
+            c.0[1] as f64 * 255.0,
+            c.0[2] as f64 * 255.0,
+            1.0,
+        ]
+    };
+    let base: Vec<[f64; 4]> = COLORS.iter().map(|&c| rgba(Color::hex(c))).collect();
+    let dark: Vec<[f64; 4]> = COLORS
+        .iter()
+        .map(|&c| rgba(Color::hex(c).darken(0.8)))
+        .collect();
+    let pick = |out: &[[f64; 4]]| {
+        let c = interpolate_color(progress, &input, out);
+        [c[0] / 255.0, c[1] / 255.0, c[2] / 255.0]
+    };
+    [pick(&base), pick(&dark)]
+}
+
+/// sRGB (encoded) → Display P3 (encoded), as Skia converts a paint's colour to the surface's space.
+fn srgb_to_p3(c: [f64; 3]) -> [f32; 3] {
+    let lin = |c: f64| {
+        if c <= 0.04045 {
+            c / 12.92
+        } else {
+            ((c + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    let enc = |c: f64| {
+        let c = c.clamp(0.0, 1.0);
+        if c <= 0.0031308 {
+            12.92 * c
+        } else {
+            1.055 * c.powf(1.0 / 2.4) - 0.055
+        }
+    };
+    let (r, g, b) = (lin(c[0]), lin(c[1]), lin(c[2]));
+    [
+        enc(0.8224621 * r + 0.1775380 * g) as f32,
+        enc(0.0331941 * r + 0.9668058 * g) as f32,
+        enc(0.0170827 * r + 0.0723974 * g + 0.9105199 * b) as f32,
+    ]
+}
+
+/// A page's animated values at scroll offset `x`: (x-scale, scale, title opacity).
+fn page_style(x: f64, index: usize, w: f64) -> (f64, f64, f64) {
+    let i = index as f64;
+    let input = [(i - 1.0) * w, i * w, (i + 1.0) * w];
+    let rotate = interpolate(
+        x,
+        &input,
+        &[PI / 4.0, PI * 2.0, PI / 4.0],
+        Extrapolation::Extend,
+    );
+    let scale = interpolate(x, &input, &[0.5, 1.0, 0.5], Extrapolation::Extend);
+    let opacity = interpolate_clamp(x, &input, &[-1.0, 1.0, -1.0]).clamp(0.0, 1.0);
+    (scale * rotate.cos(), scale, opacity)
+}
+
+/// A dot's opacity at `progress`.
+fn dot_opacity(progress: f64, index: usize) -> f64 {
+    let i = index as f64;
+    interpolate_clamp(progress, &[i - 0.7, i, i + 0.7], &[0.2, 0.6, 0.2])
+}
+
+/// A title broken into lines as TextKit wraps it in `width` (at spaces).
+fn lines(font: &Font, text: &str, width: f64) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for word in text.split(' ') {
+        if let Some(last) = out.last_mut() {
+            let joined = format!("{last} {word}");
+            if font.advance_width_spaced(&joined, SPACING) as f64 <= width + 1e-3 {
+                *last = joined;
+                continue;
+            }
+        }
+        out.push(word.to_string());
+    }
+    out
+}
+
+const COMPOSE: &str = r#"
+struct U { c0: vec4<f32>, c1: vec4<f32>, span: vec4<f32> };
+@group(0) @binding(0) var layer: texture_2d<f32>;
+@group(0) @binding(1) var<uniform> u: U;
+@vertex fn vs(@builtin(vertex_index) i: u32) -> @builtin(position) vec4<f32> {
+    let p = vec2<f32>(f32((i << 1u) & 2u), f32(i & 2u));
+    return vec4<f32>(p * vec2<f32>(2.0, -2.0) + vec2<f32>(-1.0, 1.0), 0.0, 1.0);
+}
+fn lin(c: vec3<f32>) -> vec3<f32> {
+    return select(pow((c + 0.055) / 1.055, vec3<f32>(2.4)), c / 12.92, c <= vec3<f32>(0.04045));
+}
+fn enc(c0: vec3<f32>) -> vec3<f32> {
+    let c = clamp(c0, vec3<f32>(0.0), vec3<f32>(1.0));
+    return select(1.055 * pow(c, vec3<f32>(1.0 / 2.4)) - 0.055, c * 12.92, c <= vec3<f32>(0.0031308));
+}
+fn p3_lin_to_srgb_lin(l: vec3<f32>) -> vec3<f32> {
+    return vec3<f32>(
+        1.2249401 * l.r - 0.2249404 * l.g,
+        -0.0420569 * l.r + 1.0420571 * l.g,
+        -0.0196376 * l.r - 0.0786361 * l.g + 1.0982735 * l.b);
+}
+@fragment fn fs(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
+    // The gradient's t at the pixel's centre, the P3 surface's 8-bit value, shown in sRGB.
+    let t = clamp(pos.y / u.span.x, 0.0, 1.0);
+    let p3 = round(mix(u.c0.rgb, u.c1.rgb, t) * 255.0) / 255.0;
+    let back = enc(p3_lin_to_srgb_lin(lin(p3)));
+    let ui = textureLoad(layer, vec2<i32>(pos.xy), 0);
+    let c = ui.rgb + back * (1.0 - ui.a);
+    return vec4<f32>(select(c, lin(c), u.span.y > 0.5), 1.0);
+}
+"#;
+
+struct Gpu {
+    format: wgpu::TextureFormat,
+    size: (u32, u32),
+    layer: wgpu::TextureView,
+    uniforms: wgpu::Buffer,
+    pipeline: wgpu::RenderPipeline,
+    bind: wgpu::BindGroup,
+}
+
+/// The demo's surface.
+pub fn surface() -> Box<dyn Surface> {
+    Box::new(Onboarding {
+        scroll: UiScroll::new(0.0, 0.0, 0.0, NORMAL, Snap::Page(1.0)),
+        dots: std::array::from_fn(|_| pressto::Pressable::new()),
+        held: None,
+        size: (0.0, 0.0),
+        font: skia::match_ui_font(TITLE_SIZE, 700.0),
+        canvas: Canvas::default(),
+        renderer: Renderer::default(),
+        images: None,
+        gpu: None,
+        posted: Vec::new(),
+    })
+}
+
+struct Onboarding {
+    scroll: UiScroll,
+    dots: [pressto::Pressable; 4],
+    /// The dot a finger holds.
+    held: Option<usize>,
+    size: (f64, f64),
+    font: Option<Font>,
+    canvas: Canvas,
+    renderer: Renderer,
+    images: Option<Images>,
+    gpu: Option<Gpu>,
+    posted: Vec<String>,
+}
+
+impl Onboarding {
+    /// The row of dots: its left and top.
+    fn dots_origin(&self) -> (f64, f64) {
+        let row = 4.0 * (DOT + 2.0 * DOT_PAD);
+        ((self.size.0 - row) / 2.0, self.size.1 - DOTS_BOTTOM - DOT)
+    }
+
+    /// The dot whose pressable (with its hitSlop) is under (x, y): the last one wins.
+    fn dot_at(&self, x: f64, y: f64) -> Option<usize> {
+        let (left, top) = self.dots_origin();
+        let cell = DOT + 2.0 * DOT_PAD;
+        (0..4).rev().find(|&i| {
+            let l = left + i as f64 * cell;
+            (l - HIT_SLOP..=l + cell + HIT_SLOP).contains(&x)
+                && (top - HIT_SLOP..=top + DOT + HIT_SLOP).contains(&y)
+        })
+    }
+
+    fn draw_ui(&mut self, scale: f64) {
+        let (w, h) = self.size;
+        let x = self.scroll.offset;
+        let (dl, dt) = self.dots_origin();
+        let c = &mut self.canvas;
+        c.begin(scale as f32);
+        let side = w * 0.6;
+        let line_h = self
+            .font
+            .as_ref()
+            .map_or(0.0, |f| gfx::line_height(f) as f64);
+        for i in 0..4 {
+            let page_x = i as f64 * w - x;
+            if page_x <= -w || page_x >= w {
+                continue;
+            }
+            let (sx, s, opacity) = page_style(x, i, w);
+            let title = TITLES[i].to_uppercase();
+            let broken = self
+                .font
+                .as_ref()
+                .map(|f| lines(f, &title, w - 2.0 * TITLE_MARGIN))
+                .unwrap_or_default();
+            let text_h = text_side(broken.len() as f64 * line_h, scale);
+            let top0 = (h - (side + TITLE_TOP + text_h)) / 2.0;
+            // The page's views on Yoga's grid inside the content, the content moved by the offset.
+            let left = grid((w - side) / 2.0, scale) + page_x;
+            let top = grid(top0, scale);
+            let (cx, cy) = (left + side / 2.0, top + side / 2.0);
+            if sx.abs() > 1e-6 {
+                c.save();
+                c.concat(
+                    Matrix::translate(-cx as f32, -cy as f32)
+                        .then(Matrix::scale(sx as f32, s as f32))
+                        .then(Matrix::translate(cx as f32, cy as f32)),
+                );
+                c.draw_circle(
+                    cx as f32,
+                    cy as f32,
+                    (side / 2.0) as f32,
+                    &Paint::fill(Color::WHITE),
+                );
+                if let Some(images) = self.images.as_ref() {
+                    let photo = images.image(i);
+                    let inner = side - 2.0 * PADDING;
+                    let (ix, iy) = (left + PADDING, top + PADDING);
+                    let placed = fit_cover(
+                        Rect::new(0.0, 0.0, photo.width, photo.height),
+                        Rect::new(ix as f32, iy as f32, inner as f32, inner as f32),
+                    );
+                    c.draw_circle(
+                        cx as f32,
+                        cy as f32,
+                        (inner / 2.0) as f32,
+                        &Paint::image(photo, placed.invert()),
+                    );
+                }
+                c.restore();
+            }
+            if let (Some(font), true) = (self.font.as_ref(), opacity > 0.0) {
+                let widths: Vec<f64> = broken
+                    .iter()
+                    .map(|l| font.advance_width_spaced(l, SPACING) as f64)
+                    .collect();
+                let box_w = text_side(widths.iter().cloned().fold(0.0, f64::max), scale);
+                let box_left = text_grid((w - box_w) / 2.0, scale) + page_x;
+                let box_top = text_grid(top0 + side + TITLE_TOP, scale);
+                let paint = Paint::fill(Color::WHITE).with_opacity(opacity as f32);
+                for (k, (line, lw)) in broken.iter().zip(&widths).enumerate() {
+                    let lx = box_left + (box_w - lw) / 2.0;
+                    let ly = box_top + k as f64 * line_h;
+                    c.draw_text_spaced(
+                        line,
+                        lx as f32,
+                        gfx::baseline(font, ly as f32),
+                        font,
+                        &paint,
+                        SPACING,
+                    );
+                }
+            }
+        }
+        let progress = x / w;
+        let cell = DOT + 2.0 * DOT_PAD;
+        for (i, dot) in self.dots.iter().enumerate() {
+            let l = grid(dl + i as f64 * cell, scale);
+            let (cx, cy) = (l + cell / 2.0, grid(dt, scale) + DOT / 2.0);
+            let k = dot.scale();
+            c.save();
+            c.concat(
+                Matrix::translate(-cx as f32, -cy as f32)
+                    .then(Matrix::scale(k as f32, k as f32))
+                    .then(Matrix::translate(cx as f32, cy as f32)),
+            );
+            let paint = Paint::fill(Color::view_hex(0xD4D4D4))
+                .with_opacity(dot_opacity(progress, i) as f32);
+            c.draw_circle(cx as f32, cy as f32, (DOT / 2.0) as f32, &paint);
+            c.restore();
+        }
+    }
+}
+
+impl Surface for Onboarding {
+    /// An input, when given, sets the scroll's offset (tests).
+    fn bind(&mut self, inputs: &[Value], _: Option<f64>) -> Result<(), SurfaceError> {
+        if let Some(x) = inputs.first().and_then(|v| v.as_number()) {
+            self.scroll.offset = x;
+        }
+        Ok(())
+    }
+
+    fn wants_input(&self) -> bool {
+        true
+    }
+
+    fn agent(&mut self, _request: &str) -> Option<String> {
+        Some(format!("{{\"contentOffset\":{:.2}}}", self.scroll.offset))
+    }
+
+    fn messages(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.posted)
+    }
+
+    fn input(&mut self, event: &InputEvent) {
+        let InputEvent::Pointer {
+            id,
+            phase,
+            x,
+            y,
+            at_ms,
+            ..
+        } = *event
+        else {
+            return;
+        };
+        let phase = gfx::phase(phase);
+        let (px, py) = (x as f64, y as f64);
+        if phase == Phase::Down && self.held.is_none() && !self.scroll.dragging() {
+            if let Some(i) = self.dot_at(px, py) {
+                self.held = Some(i);
+                self.dots[i].pointer(id, phase, true);
+                return;
+            }
+        }
+        if let Some(i) = self.held {
+            if self.dots[i].finger() != Some(id) {
+                return;
+            }
+            let inside = self.dot_at(px, py) == Some(i) || {
+                let (left, top) = self.dots_origin();
+                let l = left + i as f64 * (DOT + 2.0 * DOT_PAD);
+                (l - HIT_SLOP..=l + DOT + 2.0 * DOT_PAD + HIT_SLOP).contains(&px)
+                    && (top - HIT_SLOP..=top + DOT + HIT_SLOP).contains(&py)
+            };
+            if let Some(pressto::PressEvent::Press(p)) = self.dots[i].pointer(id, phase, inside) {
+                self.scroll.scroll_to(i as f64 * self.size.0);
+                if let Some(m) = p.global_message() {
+                    self.posted.push(m.to_string());
+                }
+            }
+            if matches!(phase, Phase::Up | Phase::Cancel) {
+                self.held = None;
+            }
+            return;
+        }
+        let inside = (0.0..=self.size.0).contains(&px) && (0.0..=self.size.1).contains(&py);
+        self.scroll.input(id, phase, x, y, at_ms, inside);
+    }
+
+    fn render(
+        &mut self,
+        frame: &Frame,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        encoder: &mut wgpu::CommandEncoder,
+        target: &wgpu::TextureView,
+        format: wgpu::TextureFormat,
+    ) -> bool {
+        let (w, h, scale) = (frame.width as f64, frame.height as f64, frame.scale as f64);
+        if self.size != (w, h) {
+            self.size = (w, h);
+            self.scroll.port = w;
+            self.scroll.snap = Snap::Page(w);
+            self.scroll.max = 3.0 * w;
+        }
+        if self.images.is_none() {
+            let decoded: Vec<skia::Image> = (0..4).map(photo).collect();
+            let refs: Vec<&skia::Image> = decoded.iter().collect();
+            let images = Images::upload(device, queue, &refs);
+            self.renderer.set_images(&images);
+            self.images = Some(images);
+        }
+        let mut moving = self.scroll.step(frame.now_ms);
+        for dot in &mut self.dots {
+            moving |= dot.step(frame.now_ms);
+        }
+        self.draw_ui(scale);
+        let (pw, ph) = frame.pixels();
+        if self.gpu.as_ref().map(|g| (g.format, g.size)) != Some((format, (pw, ph))) {
+            let layer = gfx::target(
+                device,
+                "github onboarding views",
+                wgpu::TextureFormat::Rgba8Unorm,
+                pw,
+                ph,
+            );
+            let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("github onboarding"),
+                source: wgpu::ShaderSource::Wgsl(COMPOSE.into()),
+            });
+            let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("github onboarding"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            });
+            let uniforms = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("github onboarding"),
+                size: 48,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("github onboarding"),
+                layout: &layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(&layer),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: uniforms.as_entire_binding(),
+                    },
+                ],
+            });
+            let pipeline = gfx::fullscreen(
+                device,
+                format,
+                &module,
+                &layout,
+                "vs",
+                "fs",
+                None,
+                "github onboarding",
+            );
+            self.gpu = Some(Gpu {
+                format,
+                size: (pw, ph),
+                layer,
+                uniforms,
+                pipeline,
+                bind,
+            });
+        }
+        let gpu = self.gpu.as_ref().unwrap();
+        self.renderer.draw(
+            device,
+            queue,
+            encoder,
+            &self.canvas,
+            &gpu.layer,
+            wgpu::TextureFormat::Rgba8Unorm,
+            pw,
+            ph,
+            wgpu::Color::TRANSPARENT,
+        );
+        let [c0, c1] = gradient(self.scroll.offset / w).map(srgb_to_p3);
+        let span = (2.0 * h * scale) as f32;
+        let u: [f32; 12] = [
+            c0[0],
+            c0[1],
+            c0[2],
+            1.0,
+            c1[0],
+            c1[1],
+            c1[2],
+            1.0,
+            span,
+            gfx::srgb_flag(format),
+            0.0,
+            0.0,
+        ];
+        queue.write_buffer(
+            &gpu.uniforms,
+            0,
+            &u.iter().flat_map(|v| v.to_le_bytes()).collect::<Vec<u8>>(),
+        );
+        gfx::pass(
+            encoder,
+            "github onboarding",
+            target,
+            &gpu.pipeline,
+            &gpu.bind,
+        );
+        moving || self.scroll.moving()
+    }
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    use super::*;
+    use exact_gpu::{fixture, PointerKind, PointerPhase};
+
+    #[test]
+    fn the_pages_turn_and_the_dots_page() {
+        let (sx, s, o) = page_style(0.0, 0, 420.0);
+        assert!((sx - 1.0).abs() < 1e-9 && s == 1.0 && o == 1.0);
+        let (sx, s, o) = page_style(420.0, 0, 420.0);
+        assert!((sx - 0.5 * (PI / 4.0).cos()).abs() < 1e-9 && s == 0.5 && o == 0.0);
+        assert_eq!(page_style(105.0, 0, 420.0).2, 0.5);
+        assert!(
+            (dot_opacity(0.0, 0) - 0.6).abs() < 1e-9 && (dot_opacity(1.0, 0) - 0.2).abs() < 1e-9
+        );
+        // Darken 0.8 keeps a fifth of the lightness.
+        let [_, dark] = gradient(0.0);
+        assert!(dark[2] < 0.25, "{dark:?}");
+
+        let gpu = match fixture::device() {
+            Ok(gpu) => gpu,
+            Err(error) => return eprintln!("{error}; skipped"),
+        };
+        let frame = |now_ms| Frame {
+            width: 420.0,
+            height: 912.0,
+            scale: 3.0,
+            now_ms,
+            seekable: true,
+            period_ms: 0.0,
+            children_generation: 0,
+            shader_generation: 0,
+            headroom: 1.0,
+        };
+        let touch = |phase, x: f32, y: f32, at_ms| InputEvent::Pointer {
+            id: 1,
+            phase,
+            x,
+            y,
+            dx: 0.0,
+            dy: 0.0,
+            kind: PointerKind::Touch,
+            buttons: 1,
+            at_ms,
+        };
+        let mut s = surface();
+        let (img, _) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
+        img.save("github-onboarding-rest");
+        // The title takes two lines (48 + 48 pt), so the column is 252 + 50 + 96 tall: the
+        // badge's top at 257, white 4 pt below it (its padding).
+        let p = img.at(3 * 210, 3 * (257 + 4));
+        assert!(p[0] > 250 && p[1] > 250 && p[2] > 250, "{p:?}");
+        let p = img.at(3 * 210, 3 * (257 - 2));
+        assert!(p[2] < 200, "{p:?}");
+        // The top of the gradient is the first colour, as P3 8-bit shows it.
+        let t = img.at(10, 1);
+        assert!(
+            (t[0] as i32 - 0x26).abs() <= 2 && (t[2] as i32 - 0x9E).abs() <= 2,
+            "{t:?}"
+        );
+        // Half a page: the badges turn.
+        s.bind(&[Value::Number(210.0)], None).unwrap();
+        let (img, _) = fixture::render(&gpu, s.as_mut(), &frame(16.0)).unwrap();
+        img.save("github-onboarding-half");
+        // The third dot: the list pages to 840, a haptic.
+        s.bind(&[Value::Number(0.0)], None).unwrap();
+        let mut ms = 100.0;
+        let (dx, dy) = (176.0 + 2.0 * 17.0 + 8.5, 912.0 - 100.0 - 3.5);
+        s.input(&touch(PointerPhase::Down, dx, dy, ms));
+        s.input(&touch(PointerPhase::Up, dx, dy, ms + 60.0));
+        assert_eq!(s.messages(), vec!["haptic:selection".to_string()]);
+        while fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap().1 && ms < 3000.0 {
+            ms += 16.7;
+        }
+        assert_eq!(s.agent("{}").unwrap(), "{\"contentOffset\":840.00}");
+        let (img, _) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+        img.save("github-onboarding-page3");
+        // A slow drag past half a page turns it; a short one goes back.
+        let drag = |s: &mut Box<dyn Surface>, to: f32, ms: &mut f64| {
+            s.input(&touch(PointerPhase::Down, 300.0, 400.0, *ms));
+            for k in 1..=30 {
+                *ms += 16.7;
+                s.input(&touch(
+                    PointerPhase::Move,
+                    300.0 + (to - 300.0) * k as f32 / 30.0,
+                    400.0,
+                    *ms,
+                ));
+            }
+            *ms += 200.0;
+            s.input(&touch(PointerPhase::Up, to, 400.0, *ms));
+            while fixture::render(&gpu, s.as_mut(), &frame(*ms)).unwrap().1 && *ms < 9000.0 {
+                *ms += 16.7;
+            }
+        };
+        drag(&mut s, 60.0, &mut ms);
+        assert_eq!(s.agent("{}").unwrap(), "{\"contentOffset\":1260.00}");
+        drag(&mut s, 550.0, &mut ms);
+        assert_eq!(s.agent("{}").unwrap(), "{\"contentOffset\":840.00}");
+        drag(&mut s, 400.0, &mut ms);
+        assert_eq!(s.agent("{}").unwrap(), "{\"contentOffset\":840.00}");
+    }
+}

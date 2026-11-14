@@ -1,0 +1,28 @@
+// Airbnb Slider: a price from $0 to $4500 set by a slider; each digit rolls to its value, the
+// leading zeros fade out and the number re-centres, the "$" following it. RN:
+// src/animations/airbnb-slider (index.tsx, constants.ts, components/animated-count.tsx,
+// animated-digit.tsx, components/animated-slider/index.liquid.tsx: the variant the
+// liquid-glass resolver picks on iOS 26 and later, @expo/ui's SwiftUI Slider). The slider is the
+// host's UISlider (`input type="range"`, 0…1, continuous); the "$" and the digits, with their
+// springs and fades, are gpu/src/airbnb_slider.rs, given the price.
+use DemoEnv from "../env.contract"
+
+component AirbnbSlider
+  props
+    env: DemoEnv
+  // The slider's value (0…1): `sliderProgress`.
+  state progress = 0
+  // onSliderValueChange: price.set(Math.round(interpolate(value, [0, 1], [0, 4500], CLAMP))).
+  action moved(v: number)
+    progress = v
+  view
+    // styles.container: Palette.background, centred.
+    column position="absolute" inset=0 background-color="color(display-p3 0.8902 0.9255 0.9804)"
+      align-items="center" justify-content="center" testId="airbnb-slider"
+      // The price row (marginBottom 50): 36 tall, drawn across the screen's width.
+      canvas surface=airbnb_slider(round(min(max(progress, 0), 1) * 4500)) width=env.width height=36
+        margin-bottom=50 flex-shrink=0 testId="airbnb-slider-price" aria-label="Price"
+      // The Host: width windowWidth − 90, height 60, the Slider centred in it.
+      column width=env.width - 90 height=60 align-items="center" justify-content="center" flex-shrink=0
+        input type="range" min=0 max=1 step="any" value=progress input=moved width="100%"
+          testId="airbnb-slider-range" aria-label="Price"

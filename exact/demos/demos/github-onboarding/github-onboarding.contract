@@ -1,0 +1,29 @@
+// GitHub Onboarding: four cat photos on a paging list over a gradient that follows the scroll;
+// each page's round badge turns about its vertical axis and shrinks as it leaves, its title
+// fades, and four dots page the list. RN: src/animations/github-onboarding (index.tsx,
+// components/colorful-onboarding/index.tsx, page.tsx, pagination-dots/*). The whole demo is one
+// Rust surface (gpu/src/github_onboarding.rs): the Skia gradient on RN Skia's P3 surface, the
+// FlatList's paging UIScrollView (ui_scroll, UIKit's paging spring), the badges, titles and the
+// pressto dots.
+use DemoEnv from "../env.contract"
+
+component GithubOnboarding
+  props
+    env: DemoEnv
+  view
+    OnboardingCanvas(width=env.width, height=env.height)
+
+component OnboardingCanvas
+  props
+    width: number
+    height: number
+  inject
+    pressablesOnPress: action
+  // pressto's global onPress (the selection haptic) for a dot's press.
+  action heard(m: string)
+    if m == "haptic:selection"
+      pressablesOnPress()
+  view
+    canvas surface=github_onboarding() message=heard position="absolute" top=0 left=0
+      width=width height=height touch-action="none" testId="github-onboarding"
+      aria-label="Onboarding pages: swipe sideways or tap a dot"

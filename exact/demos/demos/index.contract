@@ -3,6 +3,7 @@ use DemoEnv from "./env.contract"
 use ActionTray from "./action-tray/action-tray.contract"
 use AddToCart from "./add-to-cart/add-to-cart.contract"
 use AirbnbFlipInteraction from "./airbnb-flip-interaction/airbnb-flip-interaction.contract"
+use AirbnbSlider from "./airbnb-slider/airbnb-slider.contract"
 use AlertDrawer from "./alert-drawer/alert-drawer.contract"
 use Animated3dParallax from "./animated-3d-parallax/animated-3d-parallax.contract"
 use AnimatedClipBox from "./animated-clip-box/animated-clip-box.contract"
@@ -32,6 +33,7 @@ use CoverflowCarousel from "./coverflow-carousel/coverflow-carousel.contract"
 use CubertoSlider from "./cuberto-slider/cuberto-slider.contract"
 use DeleteButton from "./delete-button/delete-button.contract"
 use DotSheet from "./dot-sheet/dot-sheet.contract"
+use DragToSort from "./drag-to-sort/drag-to-sort.contract"
 use DurationSlider from "./duration-slider/duration-slider.contract"
 use DynamicBlurTabs from "./dynamic-blur-tabs/dynamic-blur-tabs.contract"
 use DynamicTabIndicator from "./dynamic-tab-indicator/dynamic-tab-indicator.contract"
@@ -51,8 +53,10 @@ use FourierVisualizer from "./fourier-visualizer/fourier-visualizer.contract"
 use FractalGlass from "./fractal-glass/fractal-glass.contract"
 use GeometryButton from "./geometry-button/geometry-button.contract"
 use GithubContributions from "./github-contributions/github-contributions.contract"
+use GithubOnboarding from "./github-onboarding/github-onboarding.contract"
 use GithubTerrain from "./github-terrain/github-terrain.contract"
 use GlTransitions from "./gl-transitions/gl-transitions.contract"
+use GridVisualizer from "./grid-visualizer/grid-visualizer.contract"
 use ImageCropper from "./image-cropper/image-cropper.contract"
 use ImessageStack from "./imessage-stack/imessage-stack.contract"
 use LightOnPainting from "./light-on-painting/light-on-painting.contract"
@@ -120,6 +124,8 @@ component PortedDemo
         AddToCart(env=env)
       if slug == "airbnb-flip-interaction"
         AirbnbFlipInteraction(env=env)
+      if slug == "airbnb-slider"
+        AirbnbSlider(env=env)
       if slug == "alert-drawer"
         AlertDrawer(env=env)
       if slug == "animated-3d-parallax"
@@ -178,6 +184,8 @@ component PortedDemo
         DeleteButton()
       if slug == "dot-sheet"
         DotSheet(env=env)
+      if slug == "drag-to-sort"
+        DragToSort(env=env)
       if slug == "duration-slider"
         DurationSlider(env=env)
       if slug == "dynamic-blur-tabs"
@@ -216,10 +224,14 @@ component PortedDemo
         GeometryButton()
       if slug == "github-contributions"
         GithubContributions(env=env)
+      if slug == "github-onboarding"
+        GithubOnboarding(env=env)
       if slug == "github-terrain"
         GithubTerrain(env=env)
       if slug == "gl-transitions"
         GlTransitions(env=env)
+      if slug == "grid-visualizer"
+        GridVisualizer(env=env)
       if slug == "image-cropper"
         ImageCropper(env=env)
       if slug == "imessage-stack"

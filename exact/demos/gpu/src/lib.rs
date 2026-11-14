@@ -25,6 +25,7 @@ pub mod ui_scroll;
 pub mod add_to_cart;
 pub mod airbnb_flip_card;
 pub mod airbnb_flip_pages;
+pub mod airbnb_slider;
 pub mod alert_drawer_card;
 pub mod animated_3d_parallax;
 pub mod animated_clip_box;
@@ -49,6 +50,7 @@ pub mod cuberto_slider;
 pub mod delete_button;
 pub mod dot_sheet;
 pub mod dot_sheet_card;
+pub mod drag_to_sort;
 pub mod duration_slider;
 pub mod dynamic_blur_tabs;
 pub mod email_demo;
@@ -65,8 +67,10 @@ pub mod fourier_visualizer;
 pub mod fractal_glass;
 pub mod geometry_button;
 pub mod github_contributions;
+pub mod github_onboarding;
 pub mod github_terrain;
 pub mod gl_transitions;
+pub mod grid_visualizer;
 pub mod image_cropper;
 pub mod imessage_stack;
 pub mod light_on_painting;
@@ -112,6 +116,7 @@ pub static REGISTRY: Registry = Registry {
         ("add_to_cart", 1, add_to_cart::surface),
         ("airbnb_flip_card", 1, airbnb_flip_card::surface),
         ("airbnb_flip_pages", 2, airbnb_flip_pages::surface),
+        ("airbnb_slider", 1, airbnb_slider::surface),
         ("alert_drawer_card", 1, alert_drawer_card::surface),
         ("animated_3d_parallax", 0, animated_3d_parallax::surface),
         ("animated_clip_box", 1, animated_clip_box::surface),
@@ -136,6 +141,7 @@ pub static REGISTRY: Registry = Registry {
         ("delete_button", 0, delete_button::surface),
         ("dot_sheet", 0, dot_sheet::surface),
         ("dot_sheet_card", 2, dot_sheet_card::surface),
+        ("drag_to_sort", 1, drag_to_sort::surface),
         ("duration_slider", 0, duration_slider::surface),
         ("dynamic_blur_tabs", 7, dynamic_blur_tabs::surface),
         ("email_row", 2, email_demo::surface),
@@ -152,8 +158,10 @@ pub static REGISTRY: Registry = Registry {
         ("fractal_glass", 1, fractal_glass::surface),
         ("geometry_button", 0, geometry_button::surface),
         ("github_contributions", 0, github_contributions::surface),
+        ("github_onboarding", 0, github_onboarding::surface),
         ("github_terrain", 1, github_terrain::surface),
         ("gl_transitions", 4, gl_transitions::surface),
+        ("grid_visualizer", 1, grid_visualizer::surface),
         ("image_cropper", 0, image_cropper::surface),
         ("imessage_stack", 0, imessage_stack::surface),
         ("light_on_painting", 4, light_on_painting::surface),
