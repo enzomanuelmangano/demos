@@ -10,9 +10,9 @@ component DemoScreen
     env: DemoEnv
     ownsDrags: bool
     leave: action
-  // A presented route keeps its own safe area clear (UIKit's sheet); RN's demos are full
-  // screen and pad their own top. The demo is drawn over the whole screen: its box reaches past
-  // the route's by what the route leaves at the top and the bottom.
+  // RN's demos are full screen and pad their own top: the route keeps the whole screen
+  // (`-exact-safe-area="none"` in app.contract) and `demo-safe`, a box at the safe-area
+  // insets, gives the demo its safeTop and safeBottom.
   state top = 0
   state bottom = 0
   action inspire
@@ -21,13 +21,15 @@ component DemoScreen
   action follow
     openURL(demo.actionUrl)
   action placed(w: number, h: number)
-    let g = frame("demo-route")
+    let g = frame("demo-safe")
     if not g.unavailable
       top = g.y
       bottom = max(0, env.height - g.y - g.height)
   view
     column id="demo-route" position="absolute" inset=0 resize=placed testId=`demo-${demo.slug}`
-      column position="absolute" left=0 right=0 top=(0 - top) bottom=(0 - bottom) background-color=demo.backdrop
+      view id="demo-safe" position="absolute" left=0 right=0 top="env(safe-area-inset-top)"
+        bottom="env(safe-area-inset-bottom)" pointer-events="none" aria-hidden=true
+      column position="absolute" inset=0 background-color=demo.backdrop
         if demo.ported
           PortedDemo(slug=demo.slug, env=DemoEnv(env, safeTop=top, safeBottom=bottom))
         else
