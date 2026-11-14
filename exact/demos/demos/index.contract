@@ -33,6 +33,7 @@ use CoverflowCarousel from "./coverflow-carousel/coverflow-carousel.contract"
 use CubertoSlider from "./cuberto-slider/cuberto-slider.contract"
 use DeleteButton from "./delete-button/delete-button.contract"
 use DotSheet from "./dot-sheet/dot-sheet.contract"
+use DragToSort from "./drag-to-sort/drag-to-sort.contract"
 use DurationSlider from "./duration-slider/duration-slider.contract"
 use DynamicBlurTabs from "./dynamic-blur-tabs/dynamic-blur-tabs.contract"
 use DynamicTabIndicator from "./dynamic-tab-indicator/dynamic-tab-indicator.contract"
@@ -182,6 +183,8 @@ component PortedDemo
         DeleteButton()
       if slug == "dot-sheet"
         DotSheet(env=env)
+      if slug == "drag-to-sort"
+        DragToSort(env=env)
       if slug == "duration-slider"
         DurationSlider(env=env)
       if slug == "dynamic-blur-tabs"
