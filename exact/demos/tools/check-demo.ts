@@ -17,8 +17,15 @@ const takesEnv = new RegExp(`component ${name}\\s*\\n\\s*props[\\s\\S]*?\\n\\s+e
 const scratch = resolve(APP, `_check_${slug.replaceAll('-', '_')}.contract`);
 writeFileSync(scratch, `use ${name} from "./demos/${slug}/${slug}.contract"
 use DemoEnv from "./demos/env.contract"
+use defaultPressablesConfig from "pressto"
 
 component Check
+  // As the app's root provides them (app.contract): pressto's config and the global press.
+  action pressablesOnPress
+    haptic("selection")
+  provide
+    pressto = defaultPressablesConfig()
+    pressablesOnPress
   view
     column position="absolute" inset=0
       ${name}(${takesEnv ? 'env=DemoEnv(width=420, height=912, safeTop=68, safeBottom=34, epoch=1794268800000, utcOffset=60, seed=1, reducedMotion=false, timers=[])' : ''})
