@@ -3,8 +3,14 @@
 //! layer's Blur 4 + ColorMatrix (alpha × 50 − 25); over the layer a white circle (r 16) with the
 //! value 0…100 in Outfit 12 (black, Skia's default paint).
 //!
-//! - The canvas is `width` × 100, moved right by (width − sliderWidth) / 2 (its translateX):
-//!   here the canvas is the screen's width and the drawing is offset by as much.
+//! - The canvas is `width` × 100, moved right by (width − sliderWidth) / 2 (its translateX,
+//!   10.5 pt on a 420 pt screen: 31.5 px at 3×). Core Animation draws the canvas's layer upright
+//!   and moves it as a bitmap, bilinear: a half-pixel shift softens every vertical edge. Here the
+//!   canvas is drawn unshifted (its own pixels, as RN Skia's surface) and the compose pass samples
+//!   it at the shift.
+//! - As RN Skia draws it: an 8-bit Display P3 surface cleared transparent; the Group layer
+//!   (Blur 4 + ColorMatrix) is the canvas outset by the blur's reach, blurred by Graphite
+//!   (`skia::blur::GraphiteBlur`: σ 12 px at 3× is downscaled), as metaball.rs.
 //! - A touch down on the bar (Touchable.RoundedRect, its path) puts the picker at the finger
 //!   (onStart: pickerX = x, isSliding = true); the pan's updates (once active) follow it; its
 //!   finalize ends the slide. The picker's x is clamped to [r, sliderWidth − r].
@@ -17,10 +23,14 @@ use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
 use gesture_handler::{Event, PanGesture};
 use reanimated::{interpolate_clamp, Spring, SpringConfig};
+use skia::blur::{ceil_size, outset, GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
 use skia::{Canvas, Color, Font, Paint, Renderer};
 
 use crate::{gfx, shaders};
 use shaders::fluid_slider::{entry, module, Uniforms, GOO, GROUP_0, SMP, TOP, U};
+
+/// Blur's sigma, points.
+const BLUR: f32 = 4.0;
 
 /// DISTANCE_BETWEEN_SLIDER_AND_METABALL.
 const DISTANCE: f32 = 10.0;
@@ -32,15 +42,17 @@ const SLIDER_HEIGHT: f32 = 12.0;
 const FONT_SIZE: f32 = 12.0;
 /// usePickerLayout's pickerY spring.
 const PICKER_Y: SpringConfig = SpringConfig { stiffness: 200.0, damping: 20.0, mass: 0.8 };
-const LAYER: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 static OUTFIT: &[u8] = include_bytes!("../fonts/outfit.ttf");
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
-    Box::new(FluidSlider { font: Font::new(OUTFIT, FONT_SIZE), picker_y: None, ..Default::default() })
+    let mut renderers: [Renderer; 2] = Default::default();
+    for r in &mut renderers {
+        r.p3 = true;
+    }
+    Box::new(FluidSlider { font: Font::new(OUTFIT, FONT_SIZE), picker_y: None, renderers, plan: GraphitePlan::new([0, 0, 1, 1], [0, 0, 1, 1], 1.0).unwrap(), ..Default::default() })
 }
 
-#[derive(Default)]
 struct FluidSlider {
     /// The canvas, in points.
     size: (f32, f32),
@@ -55,8 +67,29 @@ struct FluidSlider {
     label_value: i32,
     layers: [Canvas; 2],
     renderers: [Renderer; 2],
-    blur: skia::Blur,
+    blur: GraphiteBlur,
+    plan: GraphitePlan,
     gpu: Option<Gpu>,
+}
+
+impl Default for FluidSlider {
+    fn default() -> FluidSlider {
+        FluidSlider {
+            size: (0.0, 0.0),
+            font: None,
+            pan: PanGesture::default(),
+            picker_x: 0.0,
+            sliding: false,
+            picker_y: None,
+            label: String::new(),
+            label_value: 0,
+            layers: Default::default(),
+            renderers: Default::default(),
+            blur: GraphiteBlur::default(),
+            plan: GraphitePlan::new([0, 0, 1, 1], [0, 0, 1, 1], 1.0).unwrap(),
+            gpu: None,
+        }
+    }
 }
 
 struct Gpu {
@@ -67,9 +100,11 @@ struct Gpu {
     layout: wgpu::BindGroupLayout,
     uniforms: wgpu::Buffer,
     sampler: wgpu::Sampler,
-    /// The layer before its blur, and what is drawn over it.
+    /// The goo layer before its blur (the canvas + the blur's reach on every side), and what is
+    /// drawn over it (the canvas).
     views: [wgpu::TextureView; 2],
-    bind: Option<wgpu::BindGroup>,
+    empty: wgpu::TextureView,
+    bind: Option<(wgpu::TextureView, wgpu::BindGroup)>,
 }
 
 impl FluidSlider {
@@ -96,7 +131,9 @@ impl FluidSlider {
         self.sliding = sliding;
         let h = self.size.1 as f64;
         if let Some(y) = self.picker_y.as_mut() {
-            y.to(if sliding { h / 2.0 - 25.0 } else { h / 2.0 }, y.velocity, PICKER_Y);
+            // A mapper's withSpring (useDerivedValue on isSliding): the running velocity kept
+            // (dropped when it points away), the rest measured from the distance alone.
+            y.retarget(if sliding { h / 2.0 - 25.0 } else { h / 2.0 }, PICKER_Y);
         }
     }
     /// Whether (x, y), in the RN canvas's points, is on the bar's rounded rect.
@@ -167,53 +204,81 @@ impl Surface for FluidSlider {
         }
 
         let (pw, ph) = frame.pixels();
+        let scale = frame.scale;
+        let sigma = BLUR * scale;
+        let reach = ceil_size(3.0 * sigma);
+        let layer = (pw + 2 * reach as u32, ph + 2 * reach as u32);
         if self.gpu.as_ref().map(|g| (g.format, g.generation, g.size)) != Some((format, frame.shader_generation, (pw, ph))) {
-            self.gpu = Some(build(device, format, frame.shader_generation, (pw, ph)));
+            self.gpu = Some(build(device, format, frame.shader_generation, (pw, ph), layer));
         }
+        let bar_y = self.bar_y();
+        let shift = self.offset() * scale;
         let gpu = self.gpu.as_mut().unwrap();
         let color = Paint::fill(Color::hex(COLOR));
-        let bar_y = self.size.1 / 2.0 - SLIDER_HEIGHT / 2.0 + 1.0;
-        let offset = (self.size.0 - w) / 2.0;
         let [goo, top] = &mut self.layers;
-        goo.begin(frame.scale);
-        goo.translate(offset, 0.0);
+        // The layer's texel (0, 0) is the canvas's device (−reach, −reach).
+        goo.begin(scale);
+        goo.translate(reach as f32 / scale, reach as f32 / scale);
         goo.draw_rrect(0.0, bar_y, w, SLIDER_HEIGHT, 6.0, &color);
         goo.draw_circle(x, py, r, &color);
-        top.begin(frame.scale);
-        top.translate(offset, 0.0);
+        top.begin(scale);
         top.draw_circle(x, py, r * 0.8, &Paint::fill(Color::WHITE));
         if let Some(font) = &self.font {
             let ink = font.measure_text(&self.label);
             top.draw_text(&self.label, x - ink.width / 2.0, py + FONT_SIZE / 3.0, font, &Paint::fill(Color::BLACK));
         }
-        for (i, layer) in self.layers.iter().enumerate() {
-            self.renderers[i].draw(device, queue, encoder, layer, &gpu.views[i], LAYER, pw, ph, wgpu::Color::TRANSPARENT);
+        self.renderers[0].draw(device, queue, encoder, goo, &gpu.views[0], GRAPHITE_FORMAT, layer.0, layer.1, wgpu::Color::TRANSPARENT);
+        self.renderers[1].draw(device, queue, encoder, top, &gpu.views[1], GRAPHITE_FORMAT, pw, ph, wgpu::Color::TRANSPARENT);
+        let mut u = Uniforms {
+            // The canvas's translateX in device pixels.
+            canvas: [pw as f32, ph as f32, gfx::srgb_flag(format), shift],
+            low: [0.0; 4],
+            out: [0.0; 4],
+            layer: [0.0, 50.0, -25.0, 0.0],
+        };
+        let mut view = gpu.empty.clone();
+        let desired = [0, 0, pw as i32, ph as i32];
+        if self.plan.update(outset(desired, reach, reach), desired, sigma) {
+            let out = self.blur.run(device, queue, encoder, Placed { view: &gpu.views[0], origin: [-reach, -reach], size: [layer.0, layer.1] }, &self.plan);
+            u.low = low_mapping(&self.plan, out.origin, out.size);
+            u.out = self.plan.output.map(|v| v as f32);
+            u.layer[0] = 1.0;
+            view = out.view.clone();
         }
-        // Blur 4: σ 4 points.
-        let blurred = self.blur.run(device, queue, encoder, &gpu.views[0], LAYER, pw, ph, 4.0 * frame.scale);
-        queue.write_buffer(&gpu.uniforms, 0, &Uniforms { canvas: [gfx::srgb_flag(format), 0.0, 0.0, 0.0] }.bytes());
-        let bind = gpu.bind.get_or_insert_with(|| {
-            device.create_bind_group(&wgpu::BindGroupDescriptor {
+        queue.write_buffer(&gpu.uniforms, 0, &u.bytes());
+        if gpu.bind.as_ref().is_none_or(|(v, _)| *v != view) {
+            let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("fluid slider"),
                 layout: &gpu.layout,
                 entries: &[
                     wgpu::BindGroupEntry { binding: U.binding, resource: gpu.uniforms.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: GOO.binding, resource: wgpu::BindingResource::TextureView(blurred) },
+                    wgpu::BindGroupEntry { binding: GOO.binding, resource: wgpu::BindingResource::TextureView(&view) },
                     wgpu::BindGroupEntry { binding: TOP.binding, resource: wgpu::BindingResource::TextureView(&gpu.views[1]) },
                     wgpu::BindGroupEntry { binding: SMP.binding, resource: wgpu::BindingResource::Sampler(&gpu.sampler) },
                 ],
-            })
-        });
-        skia::render::fullscreen_pass(encoder, "fluid slider", target, &gpu.compose, bind);
+            });
+            gpu.bind = Some((view, group));
+        }
+        skia::render::fullscreen_pass(encoder, "fluid slider", target, &gpu.compose, &gpu.bind.as_ref().unwrap().1);
         moving || self.pan.tracking()
     }
 }
 
-fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32, size: (u32, u32)) -> Gpu {
+/// The blurred image's uv of a canvas pixel: uv = p · xy + zw (as metaball's).
+fn low_mapping(plan: &GraphitePlan, origin: [i32; 2], size: [u32; 2]) -> [f32; 4] {
+    let src = plan.src_rect.map(|v| v as f32);
+    let low = plan.low_bounds;
+    let kx = (low[2] - low[0]) / (src[2] - src[0]);
+    let ky = (low[3] - low[1]) / (src[3] - src[1]);
+    let (sw, sh) = (size[0] as f32, size[1] as f32);
+    [kx / sw, ky / sh, (low[0] - src[0] * kx - origin[0] as f32) / sw, (low[1] - src[1] * ky - origin[1] as f32) / sh]
+}
+
+fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32, size: (u32, u32), layer: (u32, u32)) -> Gpu {
     let shader = device.create_shader_module(module());
     let layout = device.create_bind_group_layout(&GROUP_0);
     let compose = skia::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None);
-    let view = |label| skia::render::sampled_target(device, label, LAYER, size.0, size.1);
+    let view = |label, (w, h)| skia::render::sampled_target(device, label, GRAPHITE_FORMAT, w, h);
     Gpu {
         format,
         generation,
@@ -222,7 +287,8 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32, si
         layout,
         uniforms: device.create_buffer(&wgpu::BufferDescriptor { label: Some("fluid slider"), size: Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false }),
         sampler: skia::render::linear_sampler(device),
-        views: [view("fluid slider goo"), view("fluid slider top")],
+        views: [view("fluid slider goo", layer), view("fluid slider top", size)],
+        empty: view("fluid slider empty", (1, 1)),
         bind: None,
     }
 }
