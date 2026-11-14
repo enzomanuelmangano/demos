@@ -102,6 +102,7 @@ pub mod radar_chart;
 pub mod record_button;
 pub mod scroll_progress_text;
 pub mod scroll_transition_3d;
+pub mod scrollable_bottom_sheet;
 pub mod scrollable_shapes;
 pub mod sculptures_in_words;
 pub mod selectable_grid_list;
@@ -212,6 +213,7 @@ pub static REGISTRY: Registry = Registry {
         ("record_button", 1, record_button::surface),
         ("scroll_progress_text", 1, scroll_progress_text::surface),
         ("scroll_transition_3d", 0, scroll_transition_3d::surface),
+        ("scrollable_bottom_sheet", 0, scrollable_bottom_sheet::surface),
         ("scrollable_shapes", 0, scrollable_shapes::surface),
         ("sculptures_in_words", 1, sculptures_in_words::surface),
         ("selectable_grid_list", 1, selectable_grid_list::surface),
