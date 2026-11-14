@@ -45,7 +45,7 @@ component DemoScreen
         // demo-close-button.tsx: the close role on liquid glass, 16 pt from the leading edge, at
         // the safe top. RN's is a real SwiftUI Button (@expo/ui), so is this: `glass-button`
         // (modules/apple/Demos.swift), the button at the box's top-left as Host matchContents.
-        glass-button press=leave caption="Close" symbol="xmark" role="close" aria-label="Close"
+        glass-button press=leave caption="Close" symbol="xmark" aria-label="Close"
           testId="close" position="absolute" top=top left=16 width=48 height=48
         // demo-inspiration.tsx: the info button mirroring the close button (16 pt from the
         // trailing edge), when the demo credits someone; it opens the Inspiration sheet.

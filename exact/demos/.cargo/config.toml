@@ -2,3 +2,7 @@
 # Builds never fetch or compile Hermes. Provision the pinned, attested bundle
 # once with the installer documented in README.md.
 HERMES_LEAN_SYS_OFFLINE = { value = "1", force = true }
+# What Cargo runs (a test, `cargo run`) stops where a box's length reads
+# `var(--exact-safe-area-inset-*)` against the document's environment
+# (LLP 1123 D9, `style::env::misread`); an app the build scripts launch warns.
+EXACT_STRICT_LOCAL_INSETS = "1"

@@ -1,5 +1,5 @@
 {
-  "$schema": "../../../../../../.exact/exact2/94b8671f70fe2e25b307a40e7fce66dc27c9f802/scripts/app.schema.json",
+  "$schema": "../../../../../../.exact/exact2/730abad161c2a5f6cd1f34ea164cda8d9ad6b358/scripts/app.schema.json",
   "name": "Demos",
   "short_name": "Demos",
   "id": "com.reactiive.demos.exact",

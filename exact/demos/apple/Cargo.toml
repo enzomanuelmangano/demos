@@ -10,10 +10,13 @@ build = "build.rs"
 crate-type = ["rlib"]
 
 [dependencies]
-exact-logic = { path = "../../../../../../../.exact/exact2/94b8671f70fe2e25b307a40e7fce66dc27c9f802/logic" }
-exact-apple = { path = "../../../../../../../.exact/exact2/94b8671f70fe2e25b307a40e7fce66dc27c9f802/host/apple" }
-exact-apple-update = { path = "../../../../../../../.exact/exact2/94b8671f70fe2e25b307a40e7fce66dc27c9f802/host/apple-update" }
-exact-js = { path = "../../../../../../../.exact/exact2/94b8671f70fe2e25b307a40e7fce66dc27c9f802/js" }
+exact-logic = { path = "../../../../../../../.exact/exact2/730abad161c2a5f6cd1f34ea164cda8d9ad6b358/logic" }
+exact-apple = { path = "../../../../../../../.exact/exact2/730abad161c2a5f6cd1f34ea164cda8d9ad6b358/host/apple" }
+exact-apple-update = { path = "../../../../../../../.exact/exact2/730abad161c2a5f6cd1f34ea164cda8d9ad6b358/host/apple-update" }
+exact-js = { path = "../../../../../../../.exact/exact2/730abad161c2a5f6cd1f34ea164cda8d9ad6b358/js" }
 
 [build-dependencies]
-exact-js-bake = { path = "../../../../../../../.exact/exact2/94b8671f70fe2e25b307a40e7fce66dc27c9f802/js/bake" }
+exact-js-bake = { path = "../../../../../../../.exact/exact2/730abad161c2a5f6cd1f34ea164cda8d9ad6b358/js/bake" }
+
+[dependencies.ibex2-sqlite]
+path = "../../../../../../../.exact/exact2/730abad161c2a5f6cd1f34ea164cda8d9ad6b358/vendor/ibex/crates/ibex2-sqlite"

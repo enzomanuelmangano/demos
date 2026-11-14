@@ -5,7 +5,7 @@
     "": {
       "name": "demos",
       "dependencies": {
-        "@exact/motion": "file:/Users/enzomanuelmangano/.exact/exact2/94b8671f70fe2e25b307a40e7fce66dc27c9f802/packages/motion",
+        "@exact/motion": "file:../../../../../../.exact/exact2/730abad161c2a5f6cd1f34ea164cda8d9ad6b358/packages/motion",
         "pressto": "workspace:*",
       },
     },
@@ -27,7 +27,7 @@
     },
   },
   "packages": {
-    "@exact/motion": ["@exact/motion@file:../../../../../../.exact/exact2/94b8671f70fe2e25b307a40e7fce66dc27c9f802/packages/motion", {}],
+    "@exact/motion": ["@exact/motion@file:../../../../../../.exact/exact2/730abad161c2a5f6cd1f34ea164cda8d9ad6b358/packages/motion", {}],
 
     "gesture-handler": ["gesture-handler@workspace:packages/gesture-handler"],
 

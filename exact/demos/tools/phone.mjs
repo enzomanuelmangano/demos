@@ -2,7 +2,7 @@
 // (the Apple Development identity and a provisioning profile covering the phone and the bundle
 // id, chosen by host/apple/build.mjs), installed with devicectl. `share` cannot build this app:
 // a production build with a Swift package (@exact/motion) and the app's own native tags fails to
-// qualify its module roster (expo/exact#30); a development build takes the manifest's roster.
+// qualify its module roster before expo/exact#30 was fixed (exact2 730abad1); this stays the cable route.
 // The phone: connected (cable or network), unlocked, paired, Developer Mode on.
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';

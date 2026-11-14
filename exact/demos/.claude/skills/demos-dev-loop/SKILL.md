@@ -19,8 +19,8 @@ bun exact.mjs ios --run --sim $EXACT_SIM                         # native build 
 
 - `bun exact.mjs phone [<udid|name>] [--run]`: a development build signed with this Mac's Apple
   Development identity (wildcard profile W3N4N47454.*), installed with devicectl. The phone must be
-  connected, unlocked, paired, Developer Mode on. `share` cannot build this app (expo/exact#30:
-  production + a Swift package + the app's own native tags).
+  connected, unlocked, paired, Developer Mode on. `share` works again since exact2 730abad1 (expo/exact#30 fixed upstream);
+  `phone` stays the cable route.
 
 ## Hot reload first
 
