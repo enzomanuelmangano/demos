@@ -63,7 +63,7 @@ component SharedTransitions
   // navigation.navigate(Details, { source, heroTag }). The app's PressablesConfig plays the
   // selection haptic on every pressto press.
   action show(i: number)
-    haptic("selection")
+    pressablesOnPress()
     pick = i
     open = true
   // goBack.
@@ -107,7 +107,9 @@ component SharedTransitions
             align-items="center" height=44 padding="0px 8px"
             svg width=24 height=(24 * 525 / 512) viewBox="0 0 512 525" aria-hidden=true
               path d=chevronBackPath() fill=backColor()
-            text "Home" font-size=17 color=backColor()
+            // Yoga: the chevron Text measures 24.333 (ceiled), the label's centred top is floored.
+            text "Home" font-size=17 color=backColor() position="relative" left="0.3333px"
+              top="-0.3333px"
           // styles.imageContainer: 300 tall, the window's width (expo-image: cover).
           view width=env.width height=300 overflow="hidden" position="relative" flex-shrink=0
             testId="details-image"
@@ -117,14 +119,16 @@ component SharedTransitions
               top=((300 - coverH(aspectOf(pick), env.width, 300)) / 2) aria-hidden=true
           // styles.textContainer: paddingHorizontal 10.
           column padding="0px 10px"
-            // styles.title: 20 bold, marginTop 15.
+            // styles.title: 20 bold, marginTop 15. No lineHeight: TextKit's unrounded hhea line,
+            // (1950 + 494) / 2048 × 20.
             text "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec" font-size=20
-              font-weight=700 margin-top=15 color="#000000"
+              font-weight=700 margin-top=15 color="#000000" line-height="23.8671875px"
               animation=`screenIn 300ms ${inOutQuad()} 400ms both`
               -exact-exit-animation="screenOut 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) both" testId="details-title"
-            // styles.paragraph: 16, marginTop 20.
+            // styles.paragraph: 16, marginTop 20; TextKit's line, (1950 + 494) / 2048 × 16.
             text "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec Lorem ipsum dolor sit amet consectetur adipisicing elit. Id tenetur deserunt vel, harum at cupiditate eveniet pariatur perferendis maiores possimus omnis accusantium itaque sapiente blanditiis asperiores! Pariatur alias autem non?"
-              font-size=16 margin-top=20 color="#000000"
+              font-size=16 margin-top=20 color="#000000" line-height="19.09375px"
+              position="relative" top="0.7167px"
               animation=`screenIn 300ms ${inOutQuad()} 600ms both`
               -exact-exit-animation="screenOut 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) both"
 

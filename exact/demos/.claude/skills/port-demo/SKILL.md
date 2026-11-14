@@ -403,6 +403,12 @@ One commit per haptic event, never per frame.
   (Yoga half-up: `left: -32.5` at 3x lands 0.5 px right), then moved as a bitmap with the View's
   translate / rotate, bilinear: draw it upright into an `Images::target` and place that
   (cuberto-slider's balloon and its TextInput: pixel-identical at rest).
+- The `top="0.1666px"` nudge does not fix line 1 of a multi-line text alone: line 1 and the rest
+  follow the same snapped origin (shared-transitions' title: 0.45 px moved nothing, 0.5 px moved
+  both lines). One line stays 1 px off: host limit.
+- exact2 730abad1 clears each route of the safe area itself: the routes in app.contract take
+  `-exact-safe-area="none"`, and DemoScreen reads the insets from `demo-safe`, a box at
+  `env(safe-area-inset-*)`, not from the route's frame (now the full screen).
 - `pgrep -f "exact.mjs ios"` also matches a shell whose own command line contains that text (a
   wait loop): check the build lock with a bare `pgrep` call, never from inside a loop that greps it.
 - The RN dev client launched cold by its `exp+thank-you://expo-development-client/?url=…` link
