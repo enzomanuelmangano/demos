@@ -65,7 +65,7 @@ From the code first (the integrator's rule), then measured where the code cannot
 4. **Idle redraws.** Ten surfaces still ask for frames after 4 s untouched. Nine are RN's own
    motion (a `withRepeat`, a 22 s playback, a 12 s mount sequence, a frame-callback game loop,
    a rotation clock). One was not: empty-qr-code (fixed below).
-5. **Commits per frame from Contract** (`scroll=` and `pan=` actions): dynamic-blur-tabs binds a canvas input from the scroll each frame; stacked-list, scroll-progress and scrollable-bottom-sheet write state each frame;
+5. **Commits per frame from Contract** (`scroll=` and `pan=` actions): dynamic-blur-tabs binds a canvas input from the scroll each frame; stacked-list and scrollable-bottom-sheet write state each frame (scroll-progress fixed 2026-11-14);
    liquid-glass-playground commits each finger move (for its progressive haptics), and moves a
    `blur(10px) saturate(1.2)` pane. Exact's tool is a scroll-driven animation
    (`scroll-timeline` + `animation-timeline`, zero commits, the consumer moved in the scroll's
@@ -150,7 +150,7 @@ it takes input), and whether it rests after 4 s. Device columns: not measured (s
 | prequel-slider | `prequel_slider` 47/79 µs, 31 allocs; drag 47/93 µs; rests |  |
 | radar-chart | `radar_chart` 106/218 µs, 38 allocs; rests |  |
 | record-button | `record_button` 270/416 µs, 19 allocs; drag 195/366 µs; rests |  |
-| scroll-progress | Contract only | scroll= writes state each frame |
+| scroll-progress | Contract only | label and bar scroll-driven (zero commits); scroll= writes state only when the pill's state changes (2026-11-14) |
 | scrollable-bottom-sheet | Contract only | scroll= and pan= write state each frame |
 | scrollable-shapes | `scrollable_shapes` 68/141 µs, 34 allocs; drag 82/138 µs; loops (RN withRepeat loop) |  |
 | selectable-grid-list | `selectable_grid_list` 57/114 µs, 28 allocs; drag 48/99 µs; rests |  |
