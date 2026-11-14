@@ -30,17 +30,58 @@ fn collapsedColor(i: number): string = match ["#1B1B1B", "#202020", "#262626", "
   case none => "#1B1B1B"
 }
 
-// progress = withSpring(isToggled ? 1 : 0): Reanimated 4's default spring (stiffness 900,
-// damping 120, mass 4; critically damped). Every per-frame value is linear in progress, so
-// each one rides the same spring on the host.
-// The background flips where progress crosses 0.5: (1 + u)e^-u = 0.5 at u = 1.678, over
-// sqrt(900 / 4) = 15 rad/s, is 112 ms into the spring either way: a step at 112 ms.
+// progress = useDerivedValue(() => withSpring(isToggled ? 1 : 0)): Reanimated 4's default
+// spring (900, 120, 4; critically damped, ω 15 rad/s). A mapper's retarget drops a velocity
+// that points away from the new target (spring.ts onStart), and a toggle always reverses: every
+// run is the spring FROM REST from where progress is, 833 ms to rest at 60 Hz. That is one
+// eased transition from the current value (tools/easing.ts gentleFromRest), not
+// `-exact-spring`, which would carry the reversing velocity on. Every per-frame value is linear
+// in progress, so each rides this curve.
+fn dropdownEase(): string = "833.333ms linear(0 0%, 0.00066 0.29515%, 0.00259 0.5903%, 0.00569 0.88544%, 0.00987 1.18059%, 0.0165 1.54953%, 0.02455 1.91846%, 0.03386 2.2874%, 0.04432 2.65633%, 0.05881 3.1175%, 0.07468 3.57867%, 0.09172 4.03984%, 0.1144 4.6163%, 0.13832 5.19276%, 0.16953 5.91333%, 0.20992 6.81405%, 0.33569 9.56283%, 0.38591 10.68873%, 0.42485 11.58945%, 0.46247 12.49017%, 0.49859 13.39089%, 0.52635 14.11147%, 0.55304 14.83204%, 0.57865 15.55262%, 0.60316 16.2732%, 0.62657 16.99377%, 0.6489 17.71435%, 0.67015 18.43492%, 0.69035 19.1555%, 0.71414 20.05622%, 0.73638 20.95694%, 0.75712 21.85766%, 0.77644 22.75838%, 0.7944 23.6591%, 0.81106 24.55982%, 0.82651 25.46054%, 0.84081 26.36126%, 0.85403 27.26198%, 0.86915 28.38788%, 0.88281 29.51378%, 0.89514 30.63968%, 0.90625 31.76558%, 0.91625 32.89148%, 0.92735 34.29885%, 0.93704 35.70623%, 0.94549 37.1136%, 0.95455 38.87282%, 0.96215 40.63204%, 0.96852 42.39126%, 0.97505 44.59028%, 0.98025 46.78931%, 0.98529 49.53809%, 0.98907 52.28686%, 0.99235 55.56569%, 0.99547 60.33678%, 0.99749 65.66029%, 0.99909 74.66224%, 0.99986 90.87841%, 1 100%)"
+
+// The host shortens a transition that reverses to its start (CSS §3.2: half way back takes half
+// the time); Reanimated runs the full spring. A target off by a 10⁻⁴ (px, deg; 10⁻⁶ for scale
+// and opacity) that cycles with the toggle count is never the running start.
+fn nudge(n: number): number = (n % 3) * 0.0001
+
+// e^-u from multiplication alone: Taylor at u / 1024, squared ten times (≈1e-14 relative).
+fn sq(x: number): number = x * x
+fn taylorExp(x: number): number = 1 + x * (1 + x / 2 * (1 + x / 3 * (1 + x / 4 * (1 + x / 5 * (1 + x / 6)))))
+fn expNeg(u: number): number = sq(sq(sq(sq(sq(sq(sq(sq(sq(sq(taylorExp(0 - u / 1024)))))))))))
+// The share of the run still to go, ms into it: (1 + ωt) e^-ωt, 0 from the rest frame on.
+fn remaining(ms: number): number = ms <= 0 ? 1 : (ms >= 2500 / 3 ? 0 : (1 + 0.015 * ms) * expNeg(0.015 * ms))
+
+// The background flips where progress crosses 0.5 (rBackgroundStyle: progress < 0.5 is
+// collapsed): from rest that is (1 + u)e^-u = 0.5, u = 1.678, 112 ms; from mid-flight it is
+// solved (bisection on u in [0, 12.5]). No crossing (reversed before 0.5): the colour stays.
+shape Bracket
+  lo: number
+  hi: number
+fn halve(b: Bracket, r: number): Bracket = (1 + (b.lo + b.hi) / 2) * expNeg((b.lo + b.hi) / 2) > r ? Bracket(lo=(b.lo + b.hi) / 2, hi=b.hi) : Bracket(lo=b.lo, hi=(b.lo + b.hi) / 2)
+fn halve5(b: Bracket, r: number): Bracket = halve(halve(halve(halve(halve(b, r), r), r), r), r)
+fn solveU(r: number): number = halve5(halve5(halve5(halve5(halve5(halve5(halve5(halve5(Bracket(lo=0, hi=12.5), r), r), r), r), r), r), r), r).lo
+fn crossMs(p: number, target: number): number = (target == 1 ? p < 0.5 : p >= 0.5) ? solveU((0.5 - target) / (p - target)) / 0.015 : 0
 
 component SmoothDropdown
   state open = false
+  // The run progress is on: from, to, when it began (ms), the toggle count (nudge) and the
+  // background's step for this run.
+  state fromP = 0
+  state toP = 0
+  state at = -100000
+  state n = 0
+  state bgMs = 0
   // The global onPress (the haptic) is DropdownItem's.
   action pick(i: number)
     if i == 0
+      let now = performanceNow()
+      let p = toP + (fromP - toP) * remaining(now - at)
+      let target = open ? 0 : 1
+      bgMs = crossMs(p, target)
+      fromP = p
+      toP = target
+      at = now
+      n = n + 1
       open = not open
   view
     column position="absolute" inset=0 background-color="#000000" testId="smooth-dropdown"
@@ -48,13 +89,15 @@ component SmoothDropdown
       // each item's `bottom` is measured from the screen's centre line.
       view position="absolute" left=0 right=0 top="50%" height=0
         for o, i in fullOptions() key=i
-          DropdownItem(option=o, index=i, open=open, press=pick(i))
+          DropdownItem(option=o, index=i, open=open, n=n, bgMs=bgMs, press=pick(i))
 
 component DropdownItem
   props
     option: DropdownOption
     index: number
     open: bool
+    n: number
+    bgMs: number
     press: action
   inject
     pressto: PressablesConfig
@@ -78,35 +121,51 @@ component DropdownItem
     button appearance="none" press=pressed testId=(isHeader ? "dropdown-header" : `dropdown-${option.label.toLowerCase()}`)
       aria-label=option.label aria-expanded=open
       position="absolute" bottom=0 left="10%" width="80%" height=75 padding=0
+      // RN flips an option's pointerEvents where progress crosses 0.5 (bgMs in); here at the tap
+      // (`pointer-events` takes no transition): an option tapped in those ~112 ms differs.
       z-index=(5 - index) pointer-events=(open or isHeader ? "auto" : "none")
       pointerdown=pressIn(0) pointerup=pressOut
       display="flex" flex-direction="row" align-items="stretch"
-      translate=`0px ${0 - itemBottom(open, index)}px` scale=itemScale(open, index)
-      transition="translate -exact-spring(900, 120, 4), scale -exact-spring(900, 120, 4)"
+      translate=`0px ${0 - itemBottom(open, index) + nudge(n)}px` scale=(itemScale(open, index) + nudge(n) / 100)
+      transition=`translate ${dropdownEase()}, scale ${dropdownEase()}`
       row flex=1 padding=15 box-sizing="border-box" align-items="stretch"
         border-radius=10 corner-shape="-exact-continuous"
         background-color=(open ? "#1B1B1B" : collapsedColor(index))
         scale=pressableScale(pressing, 0, pressto)
-        transition=`${pressTransition("scale", pressto)}, background-color 112ms step-end`
+        transition=`${pressTransition("scale", pressto)}, background-color ${bgMs}ms step-end`
         // styles.content: a row, opacity interpolate(progress, [0, 1], [isHeader ? 1 : 0, 1]).
-        row flex=1 align-items="center" opacity=(open or isHeader ? 1 : 0) transition="opacity -exact-spring(900, 120, 4)"
+        row flex=1 align-items="center" opacity=(open or isHeader ? 1 - nudge(n) / 100 : nudge(n) / 100)
+          transition=`opacity ${dropdownEase()}`
           // styles.iconBox: 80% of the row's height, square, #0C0C0C, radius 10, margin-right 12.
           view height="80%" aspect-ratio=1 background-color="#0C0C0C" border-radius=10 corner-shape="-exact-continuous"
             margin-right=12 display="flex" align-items="center" justify-content="center"
-            svg width=20 height=(20 * 536 / 512) viewBox="0 0 512 536" aria-hidden=true
+            // RN's icon is a Text: Yoga ceils its 20 × 20.94 box to 20.333 × 21 and floors its
+            // centred offset (Traps): 1 px left and 1 px down of a centred svg (the host snaps an
+            // svg's box to the device pixel). CoreGraphics draws the baseline (AntDesign ascent
+            // 455 / 512 em: 17.773 pt, 53.32 px below the box top) on a whole pixel: the viewBox
+            // lifts the outline those 0.32 px (2.733 units).
+            svg width=20 height=(20 * 536 / 512) viewBox="0 2.7333 512 536" aria-hidden=true
+              position="relative" left="-0.3333px" top="0.3333px"
               path d=option.icon fill="#ffffff"
           // styles.title: white, 16, letter-spacing 1.2, uppercase.
+          // Measured: Exact's line box set the label 1 pt below TextKit's.
           text option.label.toUpperCase() color="#ffffff" font-size=16 letter-spacing=1.2
+            position="relative" top="-1px"
           view flex=1
           // styles.arrowBox: 80% tall, centred, margin-right 5. The header's chevron turns
           // interpolate(progress, [0, 1], [0, PI / 2], CLAMP) on the same spring (no overshoot).
           view height="80%" margin-right=5 display="flex" align-items="center" justify-content="center"
-            if isHeader
-              // MaterialIcons "arrow-forward-ios" 20: the vector-icons glyph (512 × 512 units of 512 to the em).
-              svg width=20 height=20 viewBox="0 0 512 512" aria-hidden=true
-                rotate=(open ? "90deg" : "0deg") transition="rotate -exact-spring(900, 120, 4)"
-                path d="M133 432 171 469 384 256 171 43 133 80 308 256Z" fill="rgba(255,255,255,0.8)"
-            else
-              // MaterialIcons "arrow-forward" 20: the vector-icons glyph (512 × 512 units of 512 to the em).
-              svg width=20 height=20 viewBox="0 0 512 512" aria-hidden=true
-                path d="M256 85 427 256 256 427 226 397 345 277H85V235H345L226 115Z" fill="rgba(255,255,255,0.5)"
+            // The glyph is a Text whose box Yoga ceils to 20.333 square, centred (top 8.0, the glyph
+            // at its top); the Animated.View turning it is that box: its centre is the pivot
+            // (measured against RN's open chevron).
+            column width="20.3333px" height="20.3333px" position="relative" top="0.1667px"
+              rotate=(isHeader ? `${(open ? 90 : 0) + nudge(n)}deg` : "0deg")
+              transition=`rotate ${dropdownEase()}`
+              if isHeader
+                // MaterialIcons "arrow-forward-ios" 20: the vector-icons glyph (512 × 512 units of 512 to the em).
+                svg width=20 height=20 viewBox="0 0 512 512" aria-hidden=true
+                  path d="M133 432 171 469 384 256 171 43 133 80 308 256Z" fill="rgba(255,255,255,0.8)"
+              else
+                // MaterialIcons "arrow-forward" 20: the vector-icons glyph (512 × 512 units of 512 to the em).
+                svg width=20 height=20 viewBox="0 0 512 512" aria-hidden=true
+                  path d="M256 85 427 256 256 427 226 397 345 277H85V235H345L226 115Z" fill="rgba(255,255,255,0.5)"

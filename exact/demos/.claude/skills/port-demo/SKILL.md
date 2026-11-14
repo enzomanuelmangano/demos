@@ -509,6 +509,19 @@ One commit per haptic event, never per frame.
   value that follows a scroll, use a scroll-driven animation (`scroll-timeline` +
   `animation-timeline`); for a canvas that needs the offset, own the scroll in Rust
   (`gpu/src/ui_scroll.rs`).
+- A Reanimated toggle (`useDerivedValue(() => withSpring(on ? 1 : 0))`) always reverses, so each
+  run drops the velocity and is the spring FROM REST from the current value, a fixed curve of fixed
+  duration (Gentle: 833 ms at 60 Hz): an eased `transition` (`bun tools/easing.ts gentleFromRest`),
+  not `-exact-spring` (which keeps the reversing velocity). But the host applies CSS §3.2 reversal
+  shortening to eased transitions (motion/src/transition.rs: back to the start takes the elapsed
+  share of the time): make each target differ from the running start by 10⁻⁴ cycling with the
+  toggle count (smooth-dropdown's `nudge`). A step at progress 0.5 from mid-flight: compute where
+  progress is from `performanceNow()` and solve the crossing (Contract has no `exp`: Taylor + ten
+  squarings; bisection by nested calls).
+- The iOS host snaps an `svg` box to the device pixel (a 0.196 and a 0.333 offset drew the same).
+  An RN icon glyph's baseline is on a whole pixel (CoreGraphics), so its outline sits
+  (ascent × size × 3) mod 1 px above an svg's: shift it inside the `viewBox` (smooth-dropdown:
+  AntDesign at 20, 0.32 px = 2.733 units; ink centroids within 0.03 px).
 
 ## 4. Check
 

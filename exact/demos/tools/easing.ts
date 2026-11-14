@@ -10,6 +10,10 @@ const curves: Record<string, (t: number) => number> = {
   outQuad: t => 1 - (1 - t) ** 2,
   inQuad: t => t * t,
   outExp: t => (t === 1 ? 1 : 1 - 2 ** (-10 * t)),
+  // Reanimated 4's default withSpring (900, 120, 4: critically damped, ω 15 rad/s) from rest,
+  // over its 833 ms to rest at 60 Hz (energy under 6e-9 at frame 50), then the snap to 1: a
+  // mapper's withSpring toggle drops the reversing velocity, so each run is this curve.
+  gentleFromRest: t => (t >= 1 ? 1 : 1 - (1 + 12.5 * t) * Math.exp(-12.5 * t)),
 };
 const [name, tolArg] = process.argv.slice(2);
 const f = curves[name];
