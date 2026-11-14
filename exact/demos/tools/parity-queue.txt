@@ -117,7 +117,7 @@ blur-cards ported
 calendar-days ported (registered unverified: verify on device)
 sphere-waves ported
 scrollable-shapes ported
-notion-qrcode ported (registered unverified: verify on device)
+notion-qrcode ported (registered unverified: verify on device) claimed:sim2
 github-terrain ported (registered unverified: verify on device)
 cherry-blossom-qrcode ported (registered unverified: verify on device)
 art-gallery ported (registered unverified: verify on device)
