@@ -74,20 +74,25 @@ pub mod gl_transitions;
 pub mod grid_visualizer;
 pub mod image_cropper;
 pub mod imessage_stack;
+pub mod infinite_carousel;
+pub mod interaction_appearance;
 pub mod light_on_painting;
 pub mod linear_sensors;
 pub mod loading_button;
 pub mod magnet_spring;
 pub mod metaball;
 pub mod miles_bar_chart;
+pub mod mnist;
 pub mod mobile_input;
 pub mod notion_qrcode;
 pub mod paper_folding;
 pub mod particles_button;
+pub mod pomodoro_timer;
 pub mod prequel_slider;
 pub mod qr_code_generator;
 pub mod radar_chart;
 pub mod record_button;
+pub mod scroll_transition_3d;
 pub mod scrollable_shapes;
 pub mod selectable_grid_list;
 pub mod skia_bottom_sheet;
@@ -166,20 +171,25 @@ pub static REGISTRY: Registry = Registry {
         ("grid_visualizer", 1, grid_visualizer::surface),
         ("image_cropper", 0, image_cropper::surface),
         ("imessage_stack", 0, imessage_stack::surface),
+        ("infinite_carousel", 0, infinite_carousel::surface),
+        ("interaction_appearance", 2, interaction_appearance::surface),
         ("light_on_painting", 4, light_on_painting::surface),
         ("linear_sensors", 0, linear_sensors::surface),
         ("loading_button", 0, loading_button::surface),
         ("magnet_spring", 0, magnet_spring::surface),
         ("metaball", 0, metaball::surface),
         ("miles_bar_chart", 7, miles_bar_chart::surface),
+        ("mnist", 0, mnist::surface),
         ("mobile_input", 2, mobile_input::surface),
         ("notion_qrcode", 0, notion_qrcode::surface),
         ("paper_folding", 0, paper_folding::surface),
         ("particles_button", 1, particles_button::surface),
+        ("pomodoro_timer", 1, pomodoro_timer::surface),
         ("prequel_slider", 2, prequel_slider::surface),
         ("qr_code_generator", 3, qr_code_generator::surface),
         ("radar_chart", 10, radar_chart::surface),
         ("record_button", 1, record_button::surface),
+        ("scroll_transition_3d", 0, scroll_transition_3d::surface),
         ("scrollable_shapes", 0, scrollable_shapes::surface),
         ("selectable_grid_list", 1, selectable_grid_list::surface),
         ("skia_bottom_sheet", 0, skia_bottom_sheet::surface),

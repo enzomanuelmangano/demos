@@ -109,3 +109,8 @@ github-onboarding
 airbnb-slider
 drag-to-sort
 grid-visualizer
+infinite-carousel
+scroll-transition-3d
+interaction-appearance
+pomodoro-timer
+mnist

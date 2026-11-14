@@ -59,6 +59,8 @@ use GlTransitions from "./gl-transitions/gl-transitions.contract"
 use GridVisualizer from "./grid-visualizer/grid-visualizer.contract"
 use ImageCropper from "./image-cropper/image-cropper.contract"
 use ImessageStack from "./imessage-stack/imessage-stack.contract"
+use InfiniteCarousel from "./infinite-carousel/infinite-carousel.contract"
+use InteractionAppearance from "./interaction-appearance/interaction-appearance.contract"
 use LightOnPainting from "./light-on-painting/light-on-painting.contract"
 use LinearSensors from "./linear-sensors/linear-sensors.contract"
 use LiquidGlassPlayground from "./liquid-glass-playground/liquid-glass-playground.contract"
@@ -66,18 +68,21 @@ use LoadingButton from "./loading-button/loading-button.contract"
 use MagnetSpring from "./magnet-spring/magnet-spring.contract"
 use Metaball from "./metaball/metaball.contract"
 use MilesBarChart from "./miles-bar-chart/miles-bar-chart.contract"
+use Mnist from "./mnist/mnist.contract"
 use MobileInput from "./mobile-input/mobile-input.contract"
 use MotionBlur from "./motion-blur/motion-blur.contract"
 use NotionQrCode from "./notion-qrcode/notion-qrcode.contract"
 use OnlineOffline from "./online-offline/online-offline.contract"
 use PaperFolding from "./paper-folding/paper-folding.contract"
 use ParticlesButton from "./particles-button/particles-button.contract"
+use PomodoroTimer from "./pomodoro-timer/pomodoro-timer.contract"
 use PopupHandler from "./popup-handler/popup-handler.contract"
 use PrequelSlider from "./prequel-slider/prequel-slider.contract"
 use QrCodeGenerator from "./qr-code-generator/qr-code-generator.contract"
 use RadarChart from "./radar-chart/radar-chart.contract"
 use RecordButton from "./record-button/record-button.contract"
 use ScrollProgress from "./scroll-progress/scroll-progress.contract"
+use ScrollTransition3D from "./scroll-transition-3d/scroll-transition-3d.contract"
 use ScrollableBottomSheet from "./scrollable-bottom-sheet/scrollable-bottom-sheet.contract"
 use ScrollableShapes from "./scrollable-shapes/scrollable-shapes.contract"
 use SelectableGridList from "./selectable-grid-list/selectable-grid-list.contract"
@@ -236,6 +241,10 @@ component PortedDemo
         ImageCropper(env=env)
       if slug == "imessage-stack"
         ImessageStack(env=env)
+      if slug == "infinite-carousel"
+        InfiniteCarousel(env=env)
+      if slug == "interaction-appearance"
+        InteractionAppearance(env=env)
       if slug == "light-on-painting"
         LightOnPainting()
       if slug == "linear-sensors"
@@ -250,6 +259,8 @@ component PortedDemo
         Metaball()
       if slug == "miles-bar-chart"
         MilesBarChart(env=env)
+      if slug == "mnist"
+        Mnist(env=env)
       if slug == "mobile-input"
         MobileInput(env=env)
       if slug == "motion-blur"
@@ -262,6 +273,8 @@ component PortedDemo
         PaperFolding()
       if slug == "particles-button"
         ParticlesButton(env=env)
+      if slug == "pomodoro-timer"
+        PomodoroTimer(env=env)
       if slug == "popup-handler"
         PopupHandler(env=env)
       if slug == "prequel-slider"
@@ -274,6 +287,8 @@ component PortedDemo
         RecordButton(env=env)
       if slug == "scroll-progress"
         ScrollProgress(env=env)
+      if slug == "scroll-transition-3d"
+        ScrollTransition3D(env=env)
       if slug == "scrollable-bottom-sheet"
         ScrollableBottomSheet(env=env)
       if slug == "scrollable-shapes"

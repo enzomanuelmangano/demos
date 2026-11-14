@@ -1,0 +1,15 @@
+// Infinite Carousel: twelve calculator themes on a circular carousel the finger pans, each card
+// turned in 3D by its distance from the centre, over a blurred sweep gradient fading to the
+// centred theme's colour; a tap on a card scrolls to it. RN: src/animations/infinite-carousel
+// (index.tsx, components/*). The cards, the pan, the springs and the Skia background are one
+// Rust surface (gpu/src/infinite_carousel.rs).
+use DemoEnv from "../env.contract"
+
+component InfiniteCarousel
+  props
+    env: DemoEnv
+  view
+    column position="absolute" inset=0 testId="infinite-carousel"
+      canvas surface=infinite_carousel() position="absolute" top=0 left=0 width=env.width height=env.height
+        touch-action="none" testId="infinite-carousel-canvas"
+        aria-label="Theme carousel: drag sideways or tap a card"

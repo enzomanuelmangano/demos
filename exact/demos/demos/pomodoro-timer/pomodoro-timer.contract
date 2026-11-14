@@ -1,0 +1,41 @@
+// Pomodoro Timer: a ring of 200 ticks the finger turns from the lower half of the screen, the
+// seconds it marks rolling in a five-digit counter; the white button counts them back, one a
+// second. RN: src/animations/pomodoro-timer (src/index.tsx, components/animated-count/*,
+// components/draggable-slider/*). The counter (its springs and per-digit expo-blur), the ring,
+// the pan, the timer and the pressto button are one Rust surface (gpu/src/pomodoro_timer.rs);
+// here Alert.alert's two alerts and the haptics it posts.
+use DemoEnv from "../env.contract"
+
+component PomodoroTimer
+  props
+    env: DemoEnv
+  // The completion alert's OK presses, counted (the surface's input: toggleTimer, resetTimer).
+  state ok = 0
+  action heard(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "alert:invalid"
+      showModal("invalid-number")
+    if m == "alert:done"
+      showModal("timer-completed")
+  // How many times the invalid-number alert was dismissed (its OK has no handler in RN; the
+  // dialog asks for an action, and this one changes nothing on screen).
+  state dismissed = 0
+  action confirmed
+    ok = ok + 1
+  action acknowledged
+    dismissed = dismissed + 1
+  view
+    // styles.container: #000.
+    column position="absolute" inset=0 background-color="#000000" testId="pomodoro-timer"
+      canvas surface=pomodoro_timer(ok) message=heard position="absolute" top=0 left=0
+        width=env.width height=env.height touch-action="none" testId="pomodoro-timer-canvas"
+        aria-label="Timer: drag the ring sideways to set the seconds; the button starts and stops"
+      // Alert.alert('Please enter a valid number'): its one OK.
+      dialog id="invalid-number" role="alertdialog" aria-label="Please enter a valid number" testId="invalid-number"
+        button press=acknowledged commandfor="invalid-number" command="close" testId="invalid-number-ok"
+          text "OK"
+      // Alert.alert('Timer completed 🤌', '', [{ text: 'OK', onPress }]).
+      dialog id="timer-completed" role="alertdialog" aria-label="Timer completed 🤌" testId="timer-completed"
+        button press=confirmed commandfor="timer-completed" command="close" testId="timer-completed-ok"
+          text "OK"
