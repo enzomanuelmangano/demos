@@ -13,7 +13,7 @@ theme-canvas-animation ported done:fb77570d (8-bit P3 surface via gfx::P3Layer: 
 add-to-cart ported done:cd637559 (verified 2026-11-14, no code change: list, open and badge stills pixel-exact in text, card, shadow and badge; button corners 4x MSAA vs CA analytic AA (edge pixels, shape same); photo resample noise mean 2 levels; A/B tap, confirm, backdrop same structure; RN Debug fling lands ~1 row short of ui_scroll (Debug drag loss, ui_scroll follows UIKit))
 bottom-bar-skia ported done:17757f64 (taps are the canvas's: RNGH 500 ms tap, hit-tested at the lift; stills max 5 levels at the bump's edge; spring/timing audit line for line; A/B tap, reversal, hold, slide-and-lift same structure)
 cuberto-slider ported claimed:sim1
-metaball ported
+metaball ported claimed:sim2
 shared-transitions ported
 story-list ported
 dynamic-tab-indicator ported
