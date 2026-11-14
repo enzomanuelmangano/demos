@@ -27,9 +27,9 @@
 //!   other. A UIScrollView that can only scroll vertically does not begin on a drag that sets
 //!   off sideways, which the pan then takes; a drag that sets off 30° or more off the
 //!   horizontal scrolls the list (measured on RN: 20° and 27° select, 35° and 45° scroll).
-//!   The scroll is UIScrollView's: 1:1 under the finger, rubber-banded past the ends
-//!   (`(1 - 1 / (x · 0.55 / d + 1)) · d`), a fling decelerating at 0.998 per ms
-//!   (`UIScrollView.DecelerationRate.normal`), bouncing back at the ends.
+//!   The scroll is UIScrollView's (`ui_scroll`, measured on this FlatList and the scroll probe):
+//!   it begins on the second move past the 10 pt hysteresis, 1:1 from there, rubber-banded past
+//!   the ends, flings at 0.998 per ms onto UIKit's projected rest, bounces back critically damped.
 //! - scrollTo (Reanimated's dispatches RN's `scrollTo` command): RCTScrollViewComponentView
 //!   clamps the offset into [min(−inset.top, 0), max(contentHeight − boundsHeight + inset.bottom
 //!   + max(inset.top, 0), 0.01)] (no contentInset here: [0, max(content − bounds, 0.01)]).
@@ -51,6 +51,7 @@ use reanimated::{Easing, Spring, Timing, GENTLE};
 use skia::{fit_cover, Canvas, Color, Font, Images, Paint, Rect, Renderer};
 
 use crate::gfx;
+use crate::ui_scroll::{self, Snap, UiScroll};
 
 /// GridConfig.
 const COLUMNS: usize = 4;
@@ -67,9 +68,6 @@ const FADE_MS: f64 = 100.0;
 const INITIAL_RENDER: usize = 20;
 const BATCH: usize = 10;
 const BATCH_MS: f64 = 50.0;
-/// UIScrollView: the rubber band's constant, DecelerationRate.normal (per ms).
-const RUBBER: f64 = 0.55;
-const DECELERATION: f64 = 0.998;
 /// styles.floating.
 const FAB_W: f32 = 96.0;
 const FAB_H: f32 = 64.0;
@@ -97,8 +95,9 @@ fn grid() -> SelectableGrid {
         size: (0.0, 0.0),
         safe_top: 0.0,
         safe_bottom: 0.0,
-        offset: 0.0,
-        scroll: Scroll::Idle,
+        list: UiScroll::new(0.0, 0.0, 1.0, ui_scroll::NORMAL, Snap::Free),
+        scroller: None,
+        scrolling: None,
         opened: None,
         fade: std::array::from_fn(|_| Timing::at(0.0)),
         current: [false; ITEMS],
@@ -127,62 +126,17 @@ fn grid() -> SelectableGrid {
     }
 }
 
-/// The UIScrollView's own motion (a finger's drag, a fling, a bounce).
-#[derive(Clone, Copy, Debug, PartialEq)]
-enum Scroll {
-    Idle,
-    /// A finger scrolling the list: its y and the offset when the scroll began.
-    Drag { id: u32, y: f64, offset: f64 },
-    /// A fling from `offset` at `velocity` (points per ms) since `at`.
-    Decelerate { offset: f64, velocity: f64, at: f64 },
-    /// Past an end: back to `edge`, from `offset` at `velocity` (points per ms) since `at`.
-    Bounce { edge: f64, offset: f64, velocity: f64, at: f64 },
-}
-
-/// The bounce back to an end: critically damped at this rate (per ms).
-const BOUNCE_RATE: f64 = 0.0125;
-
-impl Scroll {
-    /// Where the motion has the list at `now`, and whether it has more to do.
-    fn at(self, now: f64, max: f64) -> (f64, Scroll) {
-        match self {
-            Scroll::Decelerate { offset, velocity, at } => {
-                let t = (now - at).max(0.0);
-                let ln = DECELERATION.ln();
-                let y = offset + velocity * (DECELERATION.powf(t) - 1.0) / ln;
-                let v = velocity * DECELERATION.powf(t);
-                if y < 0.0 || y > max {
-                    let edge = if y < 0.0 { 0.0 } else { max };
-                    return (y, Scroll::Bounce { edge, offset: y, velocity: v, at: now });
-                }
-                let end = offset - velocity / ln;
-                if (end - y).abs() < 0.05 {
-                    return (end.clamp(0.0, max), Scroll::Idle);
-                }
-                (y, self)
-            }
-            Scroll::Bounce { edge, offset, velocity, at } => {
-                let t = (now - at).max(0.0);
-                let (x0, w) = (offset - edge, BOUNCE_RATE);
-                let x = (x0 + (velocity + w * x0) * t) * (-w * t).exp();
-                if t > 0.0 && x.abs() < 0.05 {
-                    return (edge, Scroll::Idle);
-                }
-                (edge + x, self)
-            }
-            _ => (f64::NAN, self),
-        }
-    }
-}
-
 struct SelectableGrid {
     size: (f64, f64),
     safe_top: f64,
     safe_bottom: f64,
-    /// contentOffsetY (past the ends while the list bounces).
-    offset: f64,
-    /// The UIScrollView's own motion.
-    scroll: Scroll,
+    /// The FlatList's UIScrollView (vertical: fed with x and y swapped); its offset is
+    /// contentOffsetY (past the ends while it bounces).
+    list: UiScroll,
+    /// The finger the selection pan took from the scroll view (not fed to it any more).
+    scroller: Option<u32>,
+    /// The finger the scroll view took (the pan failed for it).
+    scrolling: Option<u32>,
     /// When the list first drew (the FlatList's mount).
     opened: Option<f64>,
     /// Each photo's cross-dissolve.
@@ -219,6 +173,9 @@ struct SelectableGrid {
 }
 
 impl SelectableGrid {
+    fn offset(&self) -> f64 {
+        self.list.offset
+    }
     fn item(&self) -> f64 {
         self.size.0 / COLUMNS as f64
     }
@@ -239,7 +196,7 @@ impl SelectableGrid {
     /// calculateGridItemPosition: (x, y) in the list's view.
     fn index_at(&self, x: f64, y: f64) -> usize {
         let item = self.item();
-        let index = (x / item).floor() + COLUMNS as f64 * ((y + self.offset) / item).floor();
+        let index = (x / item).floor() + COLUMNS as f64 * ((y + self.offset()) / item).floor();
         index.clamp(0.0, (ITEMS - 1) as f64) as usize
     }
     fn total(&self, i: usize) -> bool {
@@ -255,21 +212,14 @@ impl SelectableGrid {
     }
     /// Reanimated's `scrollTo(ref, 0, y, false)`: RN's command clamps it, and it stops the
     /// scroll view's own motion (`setContentOffset:animated:NO`).
-    fn scroll_to(&mut self, y: f64) {
-        self.offset = y.clamp(0.0, self.max_offset());
-        self.scroll = Scroll::Idle;
+    /// The scroll view's range and port from the window's size.
+    fn sync_list(&mut self) {
+        self.list.max = self.max_offset();
+        self.list.port = self.bounds().max(1.0);
     }
-    /// The offset a finger drag puts the list at: 1:1 inside, rubber-banded past the ends.
-    fn dragged(&self, raw: f64) -> f64 {
-        let (max, d) = (self.max_offset(), self.bounds().max(1.0));
-        let band = |x: f64| (1.0 - 1.0 / (x * RUBBER / d + 1.0)) * d;
-        if raw < 0.0 {
-            -band(-raw)
-        } else if raw > max {
-            max + band(raw - max)
-        } else {
-            raw
-        }
+    fn scroll_to(&mut self, y: f64) {
+        let to = y.clamp(0.0, self.max_offset());
+        self.list.set_offset(to);
     }
 }
 
@@ -294,7 +244,7 @@ impl Surface for SelectableGrid {
 
     fn agent(&mut self, _request: &str) -> Option<String> {
         let selected: Vec<String> = (0..ITEMS).filter(|&i| self.total(i)).map(|i| i.to_string()).collect();
-        Some(format!("{{\"selected\":[{}],\"offset\":{:.2},\"held\":{}}}", selected.join(","), self.offset, self.pan.tracking() || self.fab_press.is_pressed()))
+        Some(format!("{{\"selected\":[{}],\"offset\":{:.2},\"held\":{}}}", selected.join(","), self.offset(), self.pan.tracking() || self.fab_press.is_pressed()))
     }
 
     fn input(&mut self, event: &InputEvent) {
@@ -302,6 +252,7 @@ impl Surface for SelectableGrid {
         if self.size.0 <= 0.0 {
             return;
         }
+        self.sync_list();
         let phase = gfx::phase(phase);
         // The floating button, above the list.
         let (fx, fy) = self.fab_frame();
@@ -324,51 +275,41 @@ impl Surface for SelectableGrid {
         let top = self.list_top();
         let (lx, ly) = (x as f64, y as f64 - top);
         let on_list = ly >= 0.0;
-        // A finger down stops a fling where it is (UIScrollView catches the content).
-        if phase == Phase::Down && on_list && matches!(self.scroll, Scroll::Decelerate { .. }) {
-            self.scroll = Scroll::Idle;
-        }
         let event = self.pan.event(id, phase, x, y, at_ms, on_list);
         if let Event::Begin { x, y } = event {
             self.down = (x, y);
         }
-        // The list's own scroll, once a drag set off vertically.
-        if let Scroll::Drag { id: sid, y: y0, offset: o0 } = self.scroll {
-            if sid == id {
-                match event {
-                    Event::Update(_) => self.offset = self.dragged(o0 - (y as f64 - y0)),
-                    Event::End(e) => {
-                        // The finger's velocity, points per ms, the content's the other way.
-                        let finger = crate::ui_scroll::uiscroll_release(e.velocity_y, self.pan.rest_ms(at_ms));
-                        let v = -(finger as f64) / 1000.0;
-                        let max = self.max_offset();
-                        self.scroll = if self.offset < 0.0 || self.offset > max {
-                            let edge = if self.offset < 0.0 { 0.0 } else { max };
-                            Scroll::Bounce { edge, offset: self.offset, velocity: v, at: at_ms }
-                        } else {
-                            Scroll::Decelerate { offset: self.offset, velocity: v, at: at_ms }
-                        };
-                    }
-                    Event::Fail => self.scroll = Scroll::Idle,
-                    _ => {}
-                }
-                // The tap sees the finger too (it fails on the travel).
-                self.tap.event(id, phase, x, y, at_ms, false);
-                return;
-            }
+        if phase == Phase::Down {
+            self.scroller = None;
+            self.scrolling = None;
         }
+        // The FlatList's UIScrollView sees every touch on the list (a down catches a fling) until
+        // the selection pan takes a drag that set off sideways.
+        // Measured on RN (sim, slow straight drags from a cell): 20° and 27° off the horizontal
+        // select, 35° and 45° scroll; the UIScrollView takes a drag whose vertical travel is at
+        // least tan 30° of its sideways one when the pan activates.
+        let mut sideways = false;
         if let Event::Start(e) = event {
-            // Measured on RN (sim, slow straight drags from a cell): 20° and 27° off the
-            // horizontal select, 35° and 45° scroll; the UIScrollView takes a drag whose
-            // vertical travel is at least tan 30° of its sideways one when the pan activates.
             let (dx, dy) = (e.x - self.down.0, e.y - self.down.1);
-            if dy.abs() >= dx.abs() * 0.5773502691896258 {
+            sideways = dy.abs() < dx.abs() * 0.5773502691896258;
+            if !sideways {
                 // The UIScrollView began: the pan fails (onFinalize), the list scrolls from here.
                 self.pending = None;
                 self.start = None;
-                self.scroll = Scroll::Drag { id, y: y as f64, offset: self.offset };
-                return;
+                self.scrolling = Some(id);
             }
+        }
+        if self.scroller != Some(id) {
+            let fed = if sideways { Phase::Cancel } else { phase };
+            self.list.input(id, fed, y, x, at_ms, on_list);
+            if sideways {
+                self.scroller = Some(id);
+            }
+        }
+        if self.scrolling == Some(id) {
+            // The tap sees the finger too (it fails on the travel).
+            self.tap.event(id, phase, x, y, at_ms, false);
+            return;
         }
         match event {
             Event::Begin { .. } => {
@@ -387,13 +328,14 @@ impl Surface for SelectableGrid {
                         }
                     }
                     let item = self.item();
-                    let lower = self.offset + item;
+                    let offset = self.offset();
+                    let lower = offset + item;
                     let upper = lower + self.size.1 - 2.0 * item;
                     let speed = item * 0.15;
-                    if ly + self.offset <= lower {
-                        self.scroll_to(self.offset - speed);
-                    } else if ly + self.offset >= upper {
-                        self.scroll_to(self.offset + speed);
+                    if ly + offset <= lower {
+                        self.scroll_to(offset - speed);
+                    } else if ly + offset >= upper {
+                        self.scroll_to(offset + speed);
                     }
                 }
             }
@@ -436,18 +378,8 @@ impl Surface for SelectableGrid {
     ) -> bool {
         self.size = (frame.width as f64, frame.height as f64);
         let now = frame.now_ms;
-        let max = self.max_offset();
-        let mut moving = false;
-        match self.scroll {
-            Scroll::Idle => self.offset = self.offset.clamp(0.0, max),
-            Scroll::Drag { .. } => {}
-            motion => {
-                let (y, next) = motion.at(now, max);
-                self.offset = y;
-                self.scroll = next;
-                moving = true;
-            }
-        }
+        self.sync_list();
+        let mut moving = self.list.step(now);
         // The FlatList's mount: the photos' loads (and fades) start with their batch.
         let opened = *self.opened.get_or_insert(now);
         for (i, fade) in self.fade.iter_mut().enumerate() {
@@ -486,8 +418,9 @@ impl Surface for SelectableGrid {
         let (w, h) = (frame.width, frame.height);
         let item = self.item() as f32;
         let top = self.list_top() as f32;
-        let offset = self.offset as f32;
+        let offset = self.offset() as f32;
         let (fx, fy) = self.fab_frame();
+        let s_px = frame.scale;
         let c = &mut self.canvas;
         c.begin(frame.scale);
         c.fill(Color::BLACK);
@@ -507,7 +440,7 @@ impl Surface for SelectableGrid {
                 let (ix, iy) = (x + PADDING, y + PADDING);
                 let bw = self.border[i].value as f32;
                 if bw > 0.0 {
-                    let color = if self.active[i] { Color::hex(PRIMARY) } else { Color::BLACK };
+                    let color = if self.active[i] { Color::view_hex(PRIMARY) } else { Color::BLACK };
                     c.draw_rrect(ix, iy, side, side, 10.0 + bw, &Paint::fill(color));
                 }
                 if let Some(images) = self.images.as_ref() {
@@ -526,10 +459,11 @@ impl Surface for SelectableGrid {
                     c.translate(x + 12.0, y + item - 12.0);
                     c.scale(s, s);
                     c.opacity(opacity);
-                    c.draw_rrect(-12.0, -12.0, 24.0, 24.0, 12.0, &Paint::fill(Color::hex(PRIMARY)));
+                    c.draw_rrect(-12.0, -12.0, 24.0, 24.0, 12.0, &Paint::fill(Color::view_hex(PRIMARY)));
                     if let Some(font) = self.check.as_ref() {
-                        let gw = font.advance_width(CHECK);
-                        c.draw_text(CHECK, -gw / 2.0, gfx::baseline(font, -gfx::line_height(font) / 2.0), font, &Paint::fill(Color::BLACK));
+                        // Centred in the 24 pt badge as Yoga places a Text (see `glyph_box`).
+                        let (gx, base) = glyph_box(font, CHECK, 24.0, 24.0, s_px);
+                        c.draw_text(CHECK, gx - 12.0, base - 12.0, font, &Paint::fill(Color::BLACK));
                     }
                     c.restore();
                 }
@@ -545,16 +479,24 @@ impl Surface for SelectableGrid {
             c.scale(k, k);
             c.translate(-FAB_W / 2.0, -FAB_H / 2.0);
             c.draw_rrect_shadow(0.0, 0.0, FAB_W, FAB_H, 20.0, 10.0, Color::BLACK.alpha(0.5));
-            c.draw_continuous_rrect(0.0, 0.0, FAB_W, FAB_H, 20.0, &Paint::fill(Color::hex(PRIMARY)));
-            // space-evenly over 76: the icon (20) and the count (32), 8 apart.
+            c.draw_continuous_rrect(0.0, 0.0, FAB_W, FAB_H, 20.0, &Paint::fill(Color::view_hex(PRIMARY)));
+            // space-evenly over 76: the icon's Text (its measured 20.333) and the count (32).
             if let Some(font) = self.clear.as_ref() {
-                let gw = font.advance_width(CLEAR);
-                c.draw_text(CLEAR, 18.0 + (20.0 - gw) / 2.0, gfx::baseline(font, (FAB_H - gfx::line_height(font)) / 2.0), font, &Paint::fill(Color::BLACK));
-            }
-            if let Some(font) = self.label.as_ref() {
-                let text = &self.counts[self.count];
-                let tw = font.advance_width(text);
-                c.draw_text(text, 46.0 + (32.0 - tw) / 2.0, gfx::baseline(font, (FAB_H - gfx::line_height(font)) / 2.0), font, &Paint::fill(Color::BLACK));
+                let iw = text_side(font.advance_width(CLEAR), s_px);
+                let gap = (FAB_W - 20.0 - iw - 32.0) / 3.0;
+                let (gx, base) = glyph_box(font, CLEAR, iw, FAB_H, s_px);
+                let left = text_grid(10.0 + gap, s_px);
+                c.draw_text(CLEAR, left + gx, base, font, &Paint::fill(Color::BLACK));
+                if let Some(label) = self.label.as_ref() {
+                    let text = &self.counts[self.count];
+                    let tw = label.advance_width(text);
+                    // ReText is a TextInput: UITextField centres its line one device pixel above
+                    // where a Text would sit (measured: the count was 1 px low).
+                    // A TextInput's edge, Yoga-rounded half up.
+                    let x = ((10.0 + 2.0 * gap + iw) * s_px + 1e-4).round() / s_px;
+                    let base = gfx::baseline(label, (FAB_H - gfx::line_height(label)) / 2.0) - 1.0 / s_px;
+                    c.draw_text(text, x + (32.0 - tw) / 2.0, base, label, &Paint::fill(Color::BLACK));
+                }
             }
             c.restore();
         }
@@ -562,6 +504,28 @@ impl Surface for SelectableGrid {
         self.renderer.draw(device, queue, encoder, &self.canvas, target, format, pw, ph, wgpu::Color::BLACK);
         moving || self.pan.tracking() || self.fab_press.is_animating()
     }
+}
+
+/// A Text's offset in its parent: Yoga floors it to the device pixel.
+fn text_grid(v: f32, s: f32) -> f32 {
+    (v * s + 1e-3).floor() / s
+}
+/// A Text's measured side: Yoga ceils it to the device pixel after an epsilon (20 measures 20.333).
+fn text_side(v: f32, s: f32) -> f32 {
+    ((v * s + 1e-4).floor() + 1.0) / s
+}
+/// An icon-font `<Text>` centred in a `w` × `h` box (justify/align center): its x (the box's
+/// floored offset) and its baseline, from the box's top-left. The Text's height is the font's
+/// hhea ascent + descent (no lineGap), ceiled; the baseline an ascent below its top, on the next
+/// device pixel down (CoreGraphics). Measured: the AntDesign check and the MaterialIcons clear
+/// sat 1 px right and 1 px low centred on their advance and unrounded line; both now on RN's
+/// pixels (ink centroids equal).
+fn glyph_box(font: &Font, glyph: &str, w: f32, h: f32, s: f32) -> (f32, f32) {
+    let m = font.metrics();
+    let tw = text_side(font.advance_width(glyph), s);
+    let th = text_side(-m.ascent + m.descent, s);
+    let (x, top) = (text_grid((w - tw) / 2.0, s), text_grid((h - th) / 2.0, s));
+    (x, ((top - m.ascent) * s - 1e-3).ceil() / s)
 }
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
@@ -623,9 +587,9 @@ mod tests {
         selected.save("grid-selected");
         assert!(!moving);
         // Cell 5's border (4 wide, #55D5FF) at its left edge; the button is up (8 selected).
-        assert_eq!(&selected.at(2 * 110, 2 * 270)[..3], &[0x55, 0xD5, 0xFF]);
+        assert_eq!(&selected.at(2 * 110, 2 * 270)[..3], &[0, 216, 255]);
         // (330, 860) is the clear glyph's centre, where CoreText's mask leaves half coverage.
-        assert_eq!(&selected.at(2 * 322, 2 * 860)[..3], &[0x55, 0xD5, 0xFF]);
+        assert_eq!(&selected.at(2 * 322, 2 * 860)[..3], &[0, 216, 255]);
 
         // The button clears.
         s.input(&pointer(PointerPhase::Down, 352.0, 860.0, ms));
@@ -646,13 +610,13 @@ mod tests {
         let mut s = grid();
         s.size = (420.0, 912.0);
         s.safe_top = 62.0;
-        s.offset = 200.0;
+        s.list.offset = 200.0;
         let pointer = |phase, x: f32, y: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
         // Sideways (a vertical drag would scroll the list itself), in the top row.
         s.input(&pointer(PointerPhase::Down, 50.0, 200.0, 0.0));
         s.input(&pointer(PointerPhase::Move, 70.0, 201.0, 16.0));
         // y 83 in the list ≤ itemSize: up by 15.75.
-        assert!((s.offset - (200.0 - 105.0 * 0.15)).abs() < 1e-9, "{}", s.offset);
+        assert!((s.offset() - (200.0 - 105.0 * 0.15)).abs() < 1e-9, "{}", s.offset());
     }
 
     #[test]
@@ -664,9 +628,9 @@ mod tests {
         // 13 rows of 105, + 34 + 10, less the 794 the list shows.
         assert!((s.max_offset() - (13.0 * 105.0 + 44.0 - 794.0)).abs() < 1e-9);
         s.scroll_to(-50.0);
-        assert_eq!(s.offset, 0.0);
+        assert_eq!(s.offset(), 0.0);
         s.scroll_to(1e6);
-        assert_eq!(s.offset, s.max_offset());
+        assert_eq!(s.offset(), s.max_offset());
         // Content shorter than the list: RN's maxRect keeps 0.01 of room.
         s.size = (420.0, 4000.0);
         assert_eq!(s.max_offset(), 0.01);
@@ -684,18 +648,17 @@ mod tests {
         for k in 1..=20 {
             s.input(&pointer(PointerPhase::Move, 200.0, 700.0 - 10.0 * k as f32, 10.0 * k as f64));
         }
-        // The scroll began 10 pt in: 190 of content, 1:1.
-        assert!((s.offset - 190.0).abs() < 1e-6, "{}", s.offset);
+        // UIScrollView began on the second move past its 10 pt: 180 of content, 1:1.
+        assert!((s.offset() - 180.0).abs() < 1e-6, "{}", s.offset());
         assert!(s.agent("{}").unwrap().contains("\"selected\":[]"));
         s.input(&pointer(PointerPhase::Up, 200.0, 500.0, 200.0));
-        assert!(matches!(s.scroll, Scroll::Decelerate { .. }));
-        // 1 pt/ms released: UIScrollView decelerates from it, 90.6 pt in the first 100 ms.
-        let (y, _) = s.scroll.at(200.0 + 100.0, s.max_offset());
-        assert!((y - 190.0 - 90.6).abs() < 0.5, "{y}");
-        // Past the top while dragging: rubber-banded, never 1:1.
-        let mut t = grid();
-        t.size = (420.0, 912.0);
-        assert!(t.dragged(-100.0) > -100.0 && t.dragged(-100.0) < -50.0);
+        // 1 pt/ms released: UIKit projects 494 pt on, past the end, so it settles on the end.
+        let mut ms = 200.0;
+        while s.list.step(ms) {
+            ms += 16.0;
+            assert!(ms < 5000.0);
+        }
+        assert!((s.offset() - s.max_offset()).abs() < 1e-9, "{}", s.offset());
         // A sideways drag selects (the scroll view does not begin).
         let mut u = grid();
         u.size = (420.0, 912.0);
@@ -704,7 +667,7 @@ mod tests {
         for k in 1..=10 {
             u.input(&pointer(PointerPhase::Move, 50.0 + 25.0 * k as f32, 170.0 + 2.0 * k as f32, 16.0 * k as f64));
         }
-        assert_eq!(u.offset, 0.0);
+        assert_eq!(u.offset(), 0.0);
         assert!(u.agent("{}").unwrap().contains("\"selected\":[0,1,2]"), "{}", u.agent("{}").unwrap());
     }
 }

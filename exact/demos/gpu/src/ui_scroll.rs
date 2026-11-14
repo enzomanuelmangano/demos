@@ -254,6 +254,14 @@ impl UiScroll {
     pub fn scroll_to(&mut self, to: f64) {
         self.state = State::Animate { from: self.offset, to, at: f64::NAN };
     }
+    /// `setContentOffset(to, animated: false)` (RN's `scrollTo(…, false)`): there at once, any
+    /// deceleration, bounce or animation stopped.
+    pub fn set_offset(&mut self, to: f64) {
+        self.offset = to;
+        if !self.dragging() {
+            self.state = State::Idle;
+        }
+    }
 
     /// The bounce's start velocity (offset per ms) from `offset` past `edge`, for a finger lifted
     /// at `finger` pt/s (the content moves against it): UIKit's pull toward the edge plus what it
