@@ -117,7 +117,7 @@ blur-cards ported
 calendar-days ported (registered unverified: verify on device)
 sphere-waves ported
 scrollable-shapes ported
-notion-qrcode ported (registered unverified: verify on device) claimed:sim2
+notion-qrcode ported done:b7cbc331 (iOS: background was right (#f5f5f5 from the Contract); the torus scattered over the screen is RN's rest state too. Surface now opaque and clears to RN's #f5f5f5: wgpu's WebGPU backend lists only the Opaque alpha mode, so every transparent surface shows black on the web (shared: Exact's alpha_mode picks Opaque there; airbnb-slider shows it too); web unverified here (the dev JS target drew no canvas). Ionicons scan/qr-code at UIKit's hhea baseline with with_ui_layout (were 1 pt low, 5 % light): icon pixel-identical; CONNECT within glyph AA (centroid 0.03 px); settled QR max 16 levels, mean 0.11; A/B tap: same wave, morph and QR at 0.2-6 s, labels and icons cross-fade alike. Back toggle not re-recorded (reference-hash tests cover the picture))
 github-terrain ported (registered unverified: verify on device)
 cherry-blossom-qrcode ported (registered unverified: verify on device)
 art-gallery ported (registered unverified: verify on device)
