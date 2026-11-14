@@ -15,7 +15,7 @@ bottom-bar-skia ported done:17757f64 (taps are the canvas's: RNGH 500 ms tap, hi
 cuberto-slider ported done:4325d88d (balloon + value drawn upright into a layer on Yoga's rounded pixel, moved as a bitmap: stills max 1 level (were 143); picker as CA's border with edge AA off: straight edges exact, corner arcs differ on single pixels (CA corner mask, sub-0.5 px); press springs retarget as spring.ts; A/B press, drag, release, tap same structure and end)
 metaball ported done:b957cd5c (Graphite blur of an 8-bit P3 layer sized by the Group clip: edges on RN to 0.01 px (were 0.54 px in), colours exact but P3 gradient rounding (red ±10 on 1 P3 level); A/B drag, second circle spring-back same track and rest)
 shared-transitions ported claimed:sim1
-story-list ported
+story-list ported claimed:sim2
 dynamic-tab-indicator ported
 blur-circles ported
 smooth-dropdown ported
