@@ -120,9 +120,17 @@ fn text_grid(v: f64, scale: f64) -> f64 {
     (v * scale + 1e-4).floor() / scale
 }
 
-/// A Text's measured side: ceiled to the device pixel after an epsilon.
-fn text_side(v: f64, scale: f64) -> f64 {
-    ((v * scale + 1e-4).floor() + 1.0) / scale
+/// A Text's right (or bottom) edge with a fractional measured side: ceiled to the device pixel.
+fn text_ceil(v: f64, scale: f64) -> f64 {
+    (v * scale - 1e-4).ceil() / scale
+}
+
+/// A page's title as TextKit lays it out (uppercase, wrapped in the margins): its lines, their
+/// typographic widths (letterSpacing after every glyph) and the widest.
+struct Title {
+    lines: Vec<String>,
+    widths: Vec<f64>,
+    max: f64,
 }
 
 /// The gradient's two colours at `progress` (0…1 channels, sRGB): `convertToRGBA` of RN's
@@ -137,11 +145,8 @@ fn gradient(progress: f64) -> [[f64; 3]; 2] {
             1.0,
         ]
     };
-    let base: Vec<[f64; 4]> = COLORS.iter().map(|&c| rgba(Color::hex(c))).collect();
-    let dark: Vec<[f64; 4]> = COLORS
-        .iter()
-        .map(|&c| rgba(Color::hex(c).darken(0.8)))
-        .collect();
+    let base: [[f64; 4]; 4] = COLORS.map(|c| rgba(Color::hex(c)));
+    let dark: [[f64; 4]; 4] = COLORS.map(|c| rgba(Color::hex(c).darken(0.8)));
     let pick = |out: &[[f64; 4]]| {
         let c = interpolate_color(progress, &input, out);
         [c[0] / 255.0, c[1] / 255.0, c[2] / 255.0]
@@ -260,6 +265,7 @@ pub fn surface() -> Box<dyn Surface> {
         held: None,
         size: (0.0, 0.0),
         font: skia::match_ui_font(TITLE_SIZE, 700.0),
+        titles: Vec::new(),
         canvas: Canvas::default(),
         renderer: Renderer::default(),
         images: None,
@@ -275,6 +281,8 @@ struct Onboarding {
     held: Option<usize>,
     size: (f64, f64),
     font: Option<Font>,
+    /// The four titles laid out for the current width (once per size, not per frame).
+    titles: Vec<Title>,
     canvas: Canvas,
     renderer: Renderer,
     images: Option<Images>,
@@ -317,13 +325,9 @@ impl Onboarding {
                 continue;
             }
             let (sx, s, opacity) = page_style(x, i, w);
-            let title = TITLES[i].to_uppercase();
-            let broken = self
-                .font
-                .as_ref()
-                .map(|f| lines(f, &title, w - 2.0 * TITLE_MARGIN))
-                .unwrap_or_default();
-            let text_h = text_side(broken.len() as f64 * line_h, scale);
+            let title = self.titles.get(i);
+            // Yoga centres the column with the Text's measured (unrounded) height.
+            let text_h = title.map_or(0.0, |t| t.lines.len() as f64) * line_h;
             let top0 = (h - (side + TITLE_TOP + text_h)) / 2.0;
             // The page's views on Yoga's grid inside the content, the content moved by the offset.
             let left = grid((w - side) / 2.0, scale) + page_x;
@@ -359,16 +363,18 @@ impl Onboarding {
                 }
                 c.restore();
             }
-            if let (Some(font), true) = (self.font.as_ref(), opacity > 0.0) {
-                let widths: Vec<f64> = broken
-                    .iter()
-                    .map(|l| font.advance_width_spaced(l, SPACING) as f64)
-                    .collect();
-                let box_w = text_side(widths.iter().cloned().fold(0.0, f64::max), scale);
-                let box_left = text_grid((w - box_w) / 2.0, scale) + page_x;
+            if let (Some(font), Some(title), true) = (self.font.as_ref(), title, opacity > 0.0) {
+                // Yoga centres the Text at its measured (unrounded) width, floors its left and
+                // ceils its right (a fractional width): the box TextKit centres each line in is
+                // a device pixel wider than the ceiled width when the left lands on a half pixel
+                // (WHISKERED's 241.53 pt: 726 px, not 725).
+                let raw_left = (w - title.max) / 2.0;
+                let left = text_grid(raw_left, scale);
+                let box_w = text_ceil(raw_left + title.max, scale) - left;
+                let box_left = left + page_x;
                 let box_top = text_grid(top0 + side + TITLE_TOP, scale);
                 let paint = Paint::fill(Color::WHITE).with_opacity(opacity as f32);
-                for (k, (line, lw)) in broken.iter().zip(&widths).enumerate() {
+                for (k, (line, lw)) in title.lines.iter().zip(&title.widths).enumerate() {
                     let lx = box_left + (box_w - lw) / 2.0;
                     let ly = box_top + k as f64 * line_h;
                     c.draw_text_spaced(
@@ -484,6 +490,21 @@ impl Surface for Onboarding {
             self.scroll.port = w;
             self.scroll.snap = Snap::Page(w);
             self.scroll.max = 3.0 * w;
+            self.titles = match self.font.as_ref() {
+                Some(font) => TITLES
+                    .iter()
+                    .map(|t| {
+                        let lines = lines(font, &t.to_uppercase(), w - 2.0 * TITLE_MARGIN);
+                        let widths: Vec<f64> = lines
+                            .iter()
+                            .map(|l| font.advance_width_spaced(l, SPACING) as f64)
+                            .collect();
+                        let max = widths.iter().cloned().fold(0.0, f64::max);
+                        Title { lines, widths, max }
+                    })
+                    .collect(),
+                None => Vec::new(),
+            };
         }
         if self.images.is_none() {
             let decoded: Vec<skia::Image> = (0..4).map(photo).collect();
@@ -602,11 +623,11 @@ impl Surface for Onboarding {
             0.0,
             0.0,
         ];
-        queue.write_buffer(
-            &gpu.uniforms,
-            0,
-            &u.iter().flat_map(|v| v.to_le_bytes()).collect::<Vec<u8>>(),
-        );
+        let mut bytes = [0u8; 48];
+        for (d, v) in bytes.chunks_exact_mut(4).zip(u) {
+            d.copy_from_slice(&v.to_le_bytes());
+        }
+        queue.write_buffer(&gpu.uniforms, 0, &bytes);
         gfx::pass(
             encoder,
             "github onboarding",
