@@ -52,6 +52,7 @@ pub mod dot_sheet;
 pub mod dot_sheet_card;
 pub mod drag_to_sort;
 pub mod duration_slider;
+pub mod dynamic_tab_indicator;
 pub mod dynamic_blur_tabs;
 pub mod email_demo;
 pub mod empty_qr_code;
@@ -143,6 +144,7 @@ pub static REGISTRY: Registry = Registry {
         ("dot_sheet_card", 2, dot_sheet_card::surface),
         ("drag_to_sort", 1, drag_to_sort::surface),
         ("duration_slider", 0, duration_slider::surface),
+        ("dynamic_tab_indicator", 13, dynamic_tab_indicator::surface),
         ("dynamic_blur_tabs", 7, dynamic_blur_tabs::surface),
         ("email_row", 2, email_demo::surface),
         ("empty_qr_code", 0, empty_qr_code::surface),

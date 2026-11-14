@@ -424,6 +424,17 @@ One commit per haptic event, never per frame.
   ALIASED straight edges: CALayer's `allowsEdgeAntialiasing` is NO, so an edge pixel is in or out
   by its centre (col 1098 full where ours blends 0.7, up to 112 levels), while the corner mask
   stays antialiased. Sub-pixel; our rrects are analytic there.
+- iOS host: `press=` on a generic `view` never fires (dynamic-tab-indicator's tabs did nothing
+  since the port; the web test passed). Put presses on `column` / `row` / `button`.
+- RN `adjustsFontSizeToFit` (NSTextStorage+FontScaling.m): Yoga measures the Text at its own
+  size (the frame, and its onLayout, are the unshrunk width), then the glyphs are drawn at the
+  bisection's last fitting ratio (from 1, bounds 1/128…128, stop within 0.005): 0.88373 for a
+  17 pt line in an 18 pt frame (15.02 pt, not 18/20 × 17). dynamic-tab-indicator unrolls it.
+- RN core `<Image>` (RCTImageLoader) decodes a photo larger than its cover size with ImageIO's
+  thumbnail at that size, then Core Animation shows it 1:1: bundle that decode
+  (gpu/images/dynamic-tab-indicator/make.sh: mean 1.7 vs 4.3 levels resampling the original).
+- The RN dev client's floating tools button sits over the top-right corner below the status
+  bar: a tap there opens the dev menu, not the demo's control (dynamic-tab-indicator's Japan).
 - A Skia `<Group clip>` around a filtered `layer` sizes it: the layer is the device clip (the clip
   rounded out, within the screen) outset by the blur's reach, and Graphite's downscale grid starts
   there. A true Gaussian on a field instead left metaball's edge 0.54 px in; `GraphiteBlur` with

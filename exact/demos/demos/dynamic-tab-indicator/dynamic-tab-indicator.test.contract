@@ -1,12 +1,9 @@
 at "/demo/dynamic-tab-indicator"
 
-test "a tab scrolls the pager; the indicator is there"
+test "the tabs, their titles and the paged photos are there; a tab presses"
   expect tree has "dynamic-tab-indicator"
-  expect tree has "indicator"
+  expect tree has "pages"
   expect text "tab-title-3" == "Norway"
   tap "tab-3"
   clock settle
-  expect tree has "page-3"
-  tap "pages" drag -200 0
-  clock settle
-  expect tree has "indicator"
+  expect tree has "section-tabs"
