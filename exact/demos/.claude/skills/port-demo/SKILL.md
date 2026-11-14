@@ -571,6 +571,9 @@ One commit per haptic event, never per frame.
 - iOS host: split-button's `if` arm with `-exact-exit-animation` (a FadeOut under a pressto
   scale box, in or out of the `button`) vanished at once. Keep such a node mounted and play
   state-switched keyframes (`from opacity=1`), placed where RN's exiting view keeps its last frame.
+- A centred Text's box: Yoga centres it at its UNROUNDED measured width, floors the left and ceils
+  the right, so a left on a half pixel makes the box a pixel wider than the ceiled width and TextKit
+  centres the lines half a pixel further right (github-onboarding's 241.53 pt title: 726 px, not 725).
 
 ## 4. Check
 
