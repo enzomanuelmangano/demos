@@ -31,7 +31,7 @@ image-cropper ported done:8ae77c32 (verified on device: the canvas in 8-bit P3 (
 selectable-grid-list ported done:987a3b22 (Palette.primary as RN's P3 hex (borders, badges, button were sRGB #55D5FF); check and clear glyphs in Yoga's floored/ceiled Text box, count on ReText's line: badge, button, border corners pixel-identical; FlatList scroll now ui_scroll (second-move begin, projected fling, measured bounce); audit rows match (border withTiming 300 inOut(quad), badge opacity timing + Gentle scale, fab Gentle translateY, pressto clear, per-update edge scrollTo as Release); A/B tap, sideways range drag, fling to end and back same structure and ends (9 selected). Photos unverified: picsum unreachable here, RN draws none)
 animated-count-text ported open:241c8be4 stills: digits pixel-identical (were 5 px high), shuffle is Entypo's outline (was SF Symbol's), ink centroid within 0.01 px, edge AA max 54 (svg vs CG glyph); audit: roll withSpring {1000, 0.9} = -exact-spring(333.03, 65.70, 4), FadeIn/Out 250 and LinearTransition 800 inOut(quad), row springify Gentle; A/B single shuffle same structure (fades, roll, re-centre). Left: a shuffle tapped mid-roll: Reanimated recomputes the duration spring's stiffness from the running x0, v0 and drops a velocity pointing away, -exact-spring keeps both (host; Rust digits to fix); retap A/B not compared value for value (random numbers)
 qr-code-generator ported claimed:sim1 (registered unverified: verify on device)
-popup-handler ported
+popup-handler ported claimed:sim2
 twitter-tab-bar ported
 circular-carousel ported
 split-button ported
