@@ -582,6 +582,12 @@ One commit per haptic event, never per frame.
   until the frames caught up. Start motion at the last frame's time; a value set from a scroll event
   `render` finds (RN's onScroll `withSpring`) starts at the PREVIOUS frame's time, or a spring restarted
   every frame never moves. `max_fps` returns 0 while anything moves (scrollable-bottom-sheet).
+- Reanimated `withSpring` re-run toward its running target (a style re-run each frame) is "triggered
+  twice": the spring goes on unchanged (same x0, stiffness, clock), no restart (airbnb-slider).
+- A Text line wider than its given `width` (bold "0" in 19 pt) starts at the box's left under
+  `textAlign: 'center'`. RN's `.liquid.tsx` variants are what Release shows (eas.json sets
+  `EXPO_PUBLIC_LIQUID_GLASS_ENABLED`; .env keeps it off for Metro); an @expo/ui Host pins its
+  SwiftUI content top-leading.
 
 ## 4. Check
 

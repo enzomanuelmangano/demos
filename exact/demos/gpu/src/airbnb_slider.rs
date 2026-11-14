@@ -12,14 +12,19 @@
 //!   when that digit changes. The box: opacity `withTiming(visible ? 1 : 0)` (300 ms,
 //!   inOut(quad)), set when its visibility changes; translateX `withSpring(−19 × invisible / 2,
 //!   { dampingRatio: 1, duration: 200 })` in the same style as the opacity, so that style (and
-//!   its spring) re-runs on every frame the opacity moves, and whenever `invisible` changes.
+//!   its spring) re-runs on every frame the opacity moves (toward the same target: spring.ts
+//!   "triggered twice", the running spring goes on unchanged), and whenever `invisible` changes.
 //!   A digit is visible when it is not 0, or when it lies inside the price's digits.
 //! - At mount every value rests on its target (useAnimatedStyle's first style is the target).
+//! - Each Text is its backing store moved by Core Animation: the "$" and the ten digit Texts are
+//!   drawn once into an atlas (TextKit's line at the box's top; a digit wider than its 19 pt box,
+//!   bold 0 and 4, starts at the box's left instead of centring) and composited bilinearly at the
+//!   translates, which sit on half pixels (−28.5, −9.5, −2.5, −21.5).
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
 use reanimated::{duration_config, Easing, Spring, Timing, GENTLE};
-use skia::{Canvas, Color, Font, Paint, Renderer};
+use skia::{Canvas, Color, Font, Images, Matrix, Paint, Renderer};
 
 use crate::gfx;
 
@@ -30,6 +35,11 @@ const DIGIT_H: f64 = 36.0;
 const FONT_SIZE: f32 = 30.0;
 /// Palette.primary.
 const PRIMARY: u32 = 0x27303F;
+/// An atlas cell: the "$" Text's box (its 19.80 pt line ceiled to the pixel, 36 tall) holds a
+/// digit's 19 × 36 too.
+const CELL_W: f32 = 20.0;
+/// The transparent margin around each atlas cell, device pixels.
+const GUTTER: f32 = 2.0;
 
 /// `count.toString().length`.
 fn length(price: i64) -> usize {
@@ -57,8 +67,13 @@ fn digit_x(price: i64) -> f64 {
 }
 
 /// `withSpring(to, { duration, dampingRatio })` started (or restarted) from where `s` is, as a
-/// re-run style starts it: its velocity kept when it points at `to`, the stiffness solved for it.
+/// re-run style starts it (spring.ts onStart): toward the running spring's own target it is
+/// "triggered twice" and goes on unchanged (same x0, stiffness, clock); toward a new one its
+/// velocity is kept when it points at `to` and the stiffness is solved for it.
 fn chase(s: &mut Spring, to: f64, duration_ms: f64, damping_ratio: f64) {
+    if s.running && s.target() == to {
+        return;
+    }
     let v =
         if !s.running || (to > s.value && s.velocity < 0.0) || (to < s.value && s.velocity > 0.0) {
             0.0
@@ -90,6 +105,9 @@ pub fn surface() -> Box<dyn Surface> {
         font: skia::match_ui_font(FONT_SIZE, 700.0),
         canvas: Canvas::default(),
         renderer: Renderer::default(),
+        atlas_canvas: Canvas::default(),
+        atlas_renderer: Renderer::default(),
+        atlas: None,
     })
 }
 
@@ -100,9 +118,109 @@ struct Price {
     font: Option<Font>,
     canvas: Canvas,
     renderer: Renderer,
+    atlas_canvas: Canvas,
+    atlas_renderer: Renderer,
+    /// The Texts' backing stores ("0"…"9", then "$"), one cell each, with the scale and shader
+    /// generation they were drawn for.
+    atlas: Option<(f32, u32, Images)>,
+}
+
+/// Cell `i`'s top-left in the atlas, pixels.
+fn cell(i: usize, s: f32) -> [f32; 2] {
+    let w = (CELL_W * s).ceil() + 2.0 * GUTTER;
+    [GUTTER + i as f32 * w, GUTTER]
+}
+
+/// Draws the Text box `frame` (points) from the atlas cell at `origin` (pixels), sampled
+/// bilinearly as Core Animation shows a Text's backing store at a fractional offset.
+fn composite(
+    c: &mut Canvas,
+    atlas: &Images,
+    origin: [f32; 2],
+    frame: [f32; 4],
+    s: f32,
+    opacity: f32,
+) {
+    let g = GUTTER / s;
+    let to = Matrix::translate(-frame[0], -frame[1])
+        .then(Matrix::scale(s, s))
+        .then(Matrix::translate(origin[0], origin[1]));
+    c.draw_rect(
+        frame[0] - g,
+        frame[1] - g,
+        frame[2] + 2.0 * g,
+        frame[3] + 2.0 * g,
+        &Paint::image(atlas.image(0), to).with_opacity(opacity),
+    );
 }
 
 impl Price {
+    /// The atlas, drawn once per scale.
+    fn atlas(
+        &mut self,
+        frame: &Frame,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        encoder: &mut wgpu::CommandEncoder,
+    ) {
+        let s = frame.scale;
+        if self
+            .atlas
+            .as_ref()
+            .is_some_and(|a| a.0 == s && a.1 == frame.shader_generation)
+        {
+            return;
+        }
+        let Some(font) = self.font.as_ref() else {
+            return;
+        };
+        let end = cell(11, s);
+        let (aw, ah) = (
+            (end[0] - GUTTER) as u32,
+            ((DIGIT_H as f32 * s).ceil() + 2.0 * GUTTER) as u32,
+        );
+        let atlas = Images::target(device, aw, ah);
+        let view = atlas.render_view();
+        let c = &mut self.atlas_canvas;
+        c.begin(s);
+        let paint = Paint::fill(Color::view_hex(PRIMARY));
+        for i in 0..11 {
+            let label = if i < 10 {
+                i.to_string()
+            } else {
+                "$".to_string()
+            };
+            let [ox, oy] = cell(i, s).map(|v| v / s);
+            let w = if i < 10 { DIGIT_W as f32 } else { CELL_W };
+            // textAlign center in the 19 pt box: TextKit centres a line that fits; a wider one
+            // (bold 0: 20.07, 4: 19.82) starts at the box's left. "$" is left-aligned.
+            let adv = font.advance_width(&label);
+            let x = if i < 10 && adv <= w {
+                (w - adv) / 2.0
+            } else {
+                0.0
+            };
+            // RN's Text draws in its own frame: ink past it is cut.
+            c.save();
+            c.clip_rect(ox, oy, w, DIGIT_H as f32);
+            c.draw_text(&label, ox + x, gfx::baseline(font, oy), font, &paint);
+            c.restore();
+        }
+        self.atlas_renderer.draw(
+            device,
+            queue,
+            encoder,
+            &self.atlas_canvas,
+            &view,
+            wgpu::TextureFormat::Rgba8Unorm,
+            aw,
+            ah,
+            wgpu::Color::TRANSPARENT,
+        );
+        self.renderer.set_images(&atlas);
+        self.atlas = Some((s, frame.shader_generation, atlas));
+    }
+
     fn set(&mut self, price: i64) {
         let Some(old) = self.price.replace(price) else {
             return;
@@ -180,42 +298,47 @@ impl Surface for Price {
         let mut moving = self.currency.step(now);
         for d in &mut self.digits {
             let fading = d.opacity.step(now);
-            // The box's style re-runs while its opacity moves: its spring restarts each frame.
-            if fading {
-                let to = d.x.target();
-                chase(&mut d.x, to, 200.0, 1.0);
-            }
+            // The box's style re-runs while its opacity moves, toward the same translateX: a
+            // running spring goes on (triggered twice), a resting one stays.
             moving |= d.y.step(now) | d.x.step(now) | fading;
         }
-        let (w, scale) = (frame.width as f64, frame.scale as f64);
+        self.atlas(frame, device, queue, encoder);
+        let (w, s) = (frame.width as f64, frame.scale);
         // The row, 76 wide, centred on Yoga's grid; the canvas is the screen's width.
-        let row = (((w - DIGITS as f64 * DIGIT_W) / 2.0) * scale + 0.5 + 1e-4).floor() / scale;
+        let row =
+            (((w - DIGITS as f64 * DIGIT_W) / 2.0) * s as f64 + 0.5 + 1e-4).floor() / s as f64;
         let c = &mut self.canvas;
-        c.begin(frame.scale);
-        if let Some(font) = self.font.as_ref() {
-            let paint = Paint::fill(Color::view_hex(PRIMARY));
-            let top = gfx::baseline(font, 0.0);
-            c.draw_text("$", (row + self.currency.value) as f32, top, font, &paint);
+        c.begin(s);
+        if let Some((_, _, atlas)) = self.atlas.as_ref() {
+            // The "$" view: absolute at the row's top-left, moved by its translateX.
+            let x = (row + self.currency.value) as f32;
+            composite(
+                c,
+                atlas,
+                cell(10, s),
+                [x, 0.0, CELL_W, DIGIT_H as f32],
+                s,
+                1.0,
+            );
             for (i, d) in self.digits.iter().enumerate() {
                 if d.opacity.value <= 0.0 {
                     continue;
                 }
-                let left = row + (DIGITS - 1 - i) as f64 * DIGIT_W + d.x.value;
+                // The digit box (overflow hidden) moved by its translateX; its column by translateY.
+                let left = (row + (DIGITS - 1 - i) as f64 * DIGIT_W + d.x.value) as f32;
                 c.save();
-                c.clip_rect(left as f32, 0.0, DIGIT_W as f32, DIGIT_H as f32);
-                let paint = paint.clone().with_opacity(d.opacity.value as f32);
+                c.clip_rect(left, 0.0, DIGIT_W as f32, DIGIT_H as f32);
                 // Only the rows the box shows.
                 let first = ((-d.y.value / DIGIT_H).floor().max(0.0)) as usize;
                 for k in first..(first + 2).min(10) {
-                    let label = k.to_string();
-                    let x = left + (DIGIT_W - font.advance_width(&label) as f64) / 2.0;
-                    let y = k as f64 * DIGIT_H + d.y.value;
-                    c.draw_text(
-                        &label,
-                        x as f32,
-                        gfx::baseline(font, y as f32),
-                        font,
-                        &paint,
+                    let y = (k as f64 * DIGIT_H + d.y.value) as f32;
+                    composite(
+                        c,
+                        atlas,
+                        cell(k, s),
+                        [left, y, DIGIT_W as f32, DIGIT_H as f32],
+                        s,
+                        d.opacity.value as f32,
                     );
                 }
                 c.restore();

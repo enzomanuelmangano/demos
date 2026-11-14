@@ -13,7 +13,8 @@
     "rolling-count",
     "demo-card",
     "glass-button",
-    "mate-haptic"
+    "mate-haptic",
+    "swift-slider"
   ],
   "host": {
     "web": {},

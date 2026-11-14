@@ -25,6 +25,14 @@
 // `role="close"` is the close role (iOS 26: LIQUID_GLASS). RN fades it in once the demo has
 // painted (demo-screen.tsx `shown`): here once SwiftUI shows it.
 //
+// `swift-slider` is airbnb-slider's AnimatedSlider on iOS 26 (components/animated-slider/
+// index.liquid.tsx): @expo/ui's Host (a ZStack aligned top-leading, filling the box) holding its
+// SliderView: `Slider(value:onEditingChanged:)` (no range, no step) on a clamped binding to the
+// view's own @State value, each change sent once SwiftUI has applied it (`onChange(of: value)`,
+// as onValueChanged) through `change`. `progress` is its value at mount (initialProgress). RN
+// echoes each value back through animatedProps and, with no mostRecentEventCount, a stale echo
+// pulls the thumb back while JS lags: not ported (the slider's design follows the finger).
+//
 // `mate-haptic` is chessboard's checkmate crescendo (src/animations/chessboard/src/haptics.ts
 // MATE_PATTERN) as react-native-pulsar's PatternComposer plays it: the discrete points as
 // transient events (intensity = amplitude, sharpness = frequency), the continuous points as one
@@ -45,7 +53,8 @@ final class DemosModule: ExactModule {
         return ["rolling-count": ExactNativeFactory { props, events in RollingCount(props: props, events: events) },
          "demo-card": ExactNativeFactory { props, events in DemoCard(props: props, events: events) },
          "glass-button": ExactNativeFactory { props, events in GlassButton(props: props, events: events) },
-         "mate-haptic": ExactNativeFactory { props, events in MateHaptic(props: props, events: events) }]
+         "mate-haptic": ExactNativeFactory { props, events in MateHaptic(props: props, events: events) },
+         "swift-slider": ExactNativeFactory { props, events in SwiftSlider(props: props, events: events) }]
     }
 
     override func element(_ element: ExactElement) {
@@ -214,6 +223,42 @@ private final class GlassButton: ExactNativeInstance {
         model.trailing = props["edge"] == "trailing"
     }
 }
+private final class SliderModel: ObservableObject {
+    /// The value at mount (props `progress`).
+    @Published var progress: Float = 0
+}
+/// expo-ui's SliderView with no min, max, step or labels, in HostView's ZStack.
+private struct SliderBody: View {
+    @ObservedObject var model: SliderModel
+    let changed: (Float) -> Void
+    @State private var value: Float = 0
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            Slider(value: Binding(get: { value }, set: { value = min(max($0, 0), 1) }), onEditingChanged: { _ in })
+                .onAppear { value = model.progress }
+                .onChange(of: value) { new in changed(new) }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+}
+/// `swift-slider`: see the header.
+private final class SwiftSlider: ExactNativeInstance {
+    private let model = SliderModel()
+    private let host: UIHostingController<SliderBody>
+    init(props: [String: String], events: ExactNativeEvents) {
+        let model = self.model
+        host = UIHostingController(rootView: SliderBody(model: model, changed: { v in events.change(String(v)) }))
+        host.safeAreaRegions = []
+        host.view.backgroundColor = .clear
+        super.init(events: events)
+        try? setProps(props)
+    }
+    override var view: ExactNativeView { host.view }
+    override func setProps(_ props: [String: String]) throws {
+        if let p = props["progress"].flatMap(Float.init) { model.progress = p }
+    }
+}
+
 /// `mate-haptic`: MATE_PATTERN on Core Haptics (see the header).
 private final class MateHaptic: ExactNativeInstance {
     /// (ms, amplitude, frequency).
