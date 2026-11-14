@@ -10,9 +10,9 @@ animated-grid-list ported open:toggle starts the cards' 700 ms layout transition
 floating-bottom-bar ported open:230e1914 icons pixel-identical, fades and spring as Reanimated times them (A/B same structure); the light sits 0.35 px right of RN (both edges, unexplained by Yoga rounding)
 animated-clip-box ported done:3b1b164a (circles, colours, text in Rust on r; action pixel-identical, circles within AA; one description glyph per card 1 px (TextKit subpixel x); spring matches Reanimated on the recording)
 theme-canvas-animation ported done:fb77570d (8-bit P3 surface via gfx::P3Layer: stills max 1-2 levels; spring audit line for line, floods on Reanimated's curve frame for frame; first flood after open 2-4 frames late, first haptic)
-add-to-cart todo claimed:r3-port (offline port; verify on device when done)
-bottom-bar-skia ported claimed:sim1
-cuberto-slider ported claimed:sim2
+add-to-cart ported (registered unverified: verify on device)
+bottom-bar-skia ported (an uncommitted WIP diff in the tree from a stopped sim1 agent: review, finish or discard)
+cuberto-slider ported
 metaball ported
 shared-transitions ported
 story-list ported
@@ -27,59 +27,59 @@ animated-3d-parallax ported
 fluid-slider ported
 animated-indicator-list ported
 radar-chart ported
-image-cropper todo claimed:r3-port (offline port; verify on device when done)
+image-cropper ported (registered unverified: verify on device)
 selectable-grid-list ported
 animated-count-text ported
-qr-code-generator unregistered (ported by R3f, verify on device then register; rename its .test.contract.pending back)
+qr-code-generator ported (registered unverified: verify on device)
 popup-handler ported
 twitter-tab-bar ported
 circular-carousel ported
 split-button ported
 telegram-theme-switch ported
 fourier-visualizer ported
-github-onboarding todo claimed:r3-port (offline port; verify on device when done)
+github-onboarding todo claimed:r3-port
 loading-button ported
 scrollable-bottom-sheet ported
 skia-color-picker ported
 blurred-scroll ported
-airbnb-slider todo claimed:r3-port (offline port; verify on device when done)
+airbnb-slider todo claimed:r3-port
 steddy-graph-interaction ported
 action-tray ported
 toast ported
 slide-to-reveal ported
 blurred-bottom-bar ported
 fractal-glass ported
-drag-to-sort todo claimed:r3-port (offline port; verify on device when done)
+drag-to-sort todo claimed:r3-port
 fibonacci-shader ported
 family-number-input ported
 balance-slider ported
 fibonacci-shader-grid ported
 verification-code ported
 email-demo ported
-scroll-transition-3d todo claimed:r3-port (offline port; verify on device when done)
+scroll-transition-3d todo claimed:r3-port
 staggered-card-number ported
 stacked-bottom-sheet ported
 gl-transitions ported
 prequel-slider ported
-empty-qr-code unregistered (ported by R3f, verify on device then register; rename its .test.contract.pending back)
-infinite-carousel todo
+empty-qr-code ported (registered unverified: verify on device)
+infinite-carousel todo claimed:r3-port
 twodos-slide ported
 wheel-picker ported
 stacked-list ported
 geometry-button ported
 record-button ported
-grid-visualizer todo
+grid-visualizer todo claimed:r3-port
 imessage-stack ported
 atlas-button ported
 atlas-sphere ported
 checkbox-interactions ported
-interaction-appearance todo
+interaction-appearance todo claimed:r3-port
 dot-sheet ported
 coverflow-carousel ported
 paper-folding ported
 miles-bar-chart ported
 steps ported
-pomodoro-timer todo
+pomodoro-timer todo claimed:r3-port
 exclusion-tabs ported
 clerk-toast ported
 duration-slider ported
@@ -87,14 +87,14 @@ alert-drawer ported
 motion-blur ported
 delete-button ported
 dynamic-blur-tabs ported
-snake unregistered (ported by R3f, verify on device then register; rename its .test.contract.pending back)
+snake ported (registered unverified: verify on device)
 expandable-mini-player ported
 bezier-curve-outline ported
 tab-navigation ported
-mnist todo
+mnist todo claimed:r3-port
 stacked-modals ported
 linear-sensors ported
-verification-code-face todo
+verification-code-face todo claimed:r4-port
 everybody-can-cook ported
 threads-holo-ticket ported
 fluid-tab-interaction ported
@@ -102,25 +102,25 @@ shake-to-delete ported
 composable-text ported
 card-shader-reflections ported
 clock-time-picker ported
-sudoku unregistered (ported by R3f, verify on device then register; rename its .test.contract.pending back)
+sudoku ported (registered unverified: verify on device)
 particles-button ported
 magnet-spring ported
-ios-home-grid todo
-time-machine todo
-ios-home-bouncy todo
+ios-home-grid todo claimed:r4-port
+time-machine todo claimed:r4-port
+ios-home-bouncy todo claimed:r4-port
 online-offline ported
-draggable-panel todo
+draggable-panel todo claimed:r4-port
 stacked-carousel ported
 airbnb-flip-interaction ported
 liquid-glass-playground ported
 blur-cards ported
-calendar-days todo
+calendar-days ported (registered unverified: verify on device)
 sphere-waves ported
 scrollable-shapes ported
-notion-qrcode unregistered (ported by R3f, verify on device then register; rename its .test.contract.pending back)
-github-terrain todo
-cherry-blossom-qrcode unregistered (ported by R3f, verify on device then register; rename its .test.contract.pending back)
-art-gallery todo
+notion-qrcode ported (registered unverified: verify on device)
+github-terrain ported (registered unverified: verify on device)
+cherry-blossom-qrcode ported (registered unverified: verify on device)
+art-gallery todo claimed:r4-port
 the-little-prince ported
 light-on-painting ported
-sculptures-in-words todo
+sculptures-in-words todo claimed:r4-port
