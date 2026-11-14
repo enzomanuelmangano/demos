@@ -1,0 +1,7 @@
+at "/demo/infinite-carousel"
+
+// The web host gives a surface no touches: the pan, the snap, the taps and the colour fade are
+// the Rust fixture tests' (gpu/src/infinite_carousel.rs); here what the Contract holds.
+test "the canvas fills the screen"
+  expect tree has "infinite-carousel"
+  expect tree has "infinite-carousel-canvas"

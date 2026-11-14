@@ -59,6 +59,7 @@ use GlTransitions from "./gl-transitions/gl-transitions.contract"
 use GridVisualizer from "./grid-visualizer/grid-visualizer.contract"
 use ImageCropper from "./image-cropper/image-cropper.contract"
 use ImessageStack from "./imessage-stack/imessage-stack.contract"
+use InfiniteCarousel from "./infinite-carousel/infinite-carousel.contract"
 use LightOnPainting from "./light-on-painting/light-on-painting.contract"
 use LinearSensors from "./linear-sensors/linear-sensors.contract"
 use LiquidGlassPlayground from "./liquid-glass-playground/liquid-glass-playground.contract"
@@ -236,6 +237,8 @@ component PortedDemo
         ImageCropper(env=env)
       if slug == "imessage-stack"
         ImessageStack(env=env)
+      if slug == "infinite-carousel"
+        InfiniteCarousel(env=env)
       if slug == "light-on-painting"
         LightOnPainting()
       if slug == "linear-sensors"
