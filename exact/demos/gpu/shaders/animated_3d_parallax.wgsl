@@ -1,9 +1,9 @@
 // Animated 3D Parallax (src/animations/animated-3d-parallax): the card and the logo, each a
 // view under its own `perspective` + `rotateX` + `rotateY`, as Core Animation draws them: a
 // pixel shows the point of the view's plane its inverse transform finds there. The card is a
-// #1E2731 rounded rect (300², radius 10) over its box shadow (black 0.15, blurred, a texture in
+// #1E2731 continuous rounded rect (300², radius 10, its own layer) over its box shadow (black 0.15, blurred, a texture in
 // the card's own points, 20 pt of margin); the logo is the bitmap's coverage in #179CF0, its
-// 200 × 164.45 box centred in the 300² content view. Composited in sRGB over #17202A.
+// 200 × 165 box centred in the 300² content view. Composited in sRGB over #17202A.
 struct Uniforms {
     // Screen points → the card's points: the inverse projective 3×3, by rows.
     card0: vec4<f32>,
@@ -21,6 +21,8 @@ struct Uniforms {
 @group(0) @binding(1) var shadow: texture_2d<f32>;
 @group(0) @binding(2) var logo: texture_2d<f32>;
 @group(0) @binding(3) var smp: sampler;
+// The card's layer (premultiplied, sRGB-encoded): continuous corners, the device scale.
+@group(0) @binding(4) var card: texture_2d<f32>;
 
 struct Out {
     @builtin(position) pos: vec4<f32>,
@@ -45,12 +47,6 @@ fn unproject(r0: vec4<f32>, r1: vec4<f32>, r2: vec4<f32>, p: vec2<f32>) -> vec3<
     return vec3<f32>(dot(r0.xyz, h), dot(r1.xyz, h), dot(r2.xyz, h));
 }
 
-// A rounded rect's signed distance: centre-relative `p`, half size `b`, radius `r`.
-fn rrect(p: vec2<f32>, b: vec2<f32>, r: f32) -> f32 {
-    let q = abs(p) - b + vec2<f32>(r);
-    return length(max(q, vec2<f32>(0.0))) + min(max(q.x, q.y), 0.0) - r;
-}
-
 fn inside(uv: vec2<f32>) -> bool {
     return all(uv >= vec2<f32>(0.0)) && all(uv <= vec2<f32>(1.0));
 }
@@ -61,22 +57,27 @@ fn compose(in: Out) -> @location(0) vec4<f32> {
 
     let qc = unproject(u.card0, u.card1, u.card2, p);
     let lc = qc.xy / qc.z;
-    let d = rrect(lc - vec2<f32>(150.0), vec2<f32>(150.0), 10.0);
-    let fw = max(fwidth(d), 1e-4);
+    let cuv = lc / 300.0;
     let suv = (lc + vec2<f32>(20.0)) / 340.0;
     let s = textureSampleLevel(shadow, smp, suv, 0.0);
 
     let ql = unproject(u.logo0, u.logo1, u.logo2, p);
     let ll = ql.xy / ql.z;
-    let luv = (ll - vec2<f32>(50.0, 67.7734375)) / vec2<f32>(200.0, 164.453125);
+    // expo-image: the 600 × 495 px bitmap (200 × 165 pt) aspect-fitted (scaleAspectFit) into the
+    // 200² image view, whose content offset is 0 for a centred contentPosition.
+    let luv = (ll - vec2<f32>(50.0, 67.5)) / vec2<f32>(200.0, 165.0);
     let a = textureSample(logo, smp, luv).r;
 
-    var c = vec3<f32>(23.0, 32.0, 42.0) / 255.0;
+    // #17202A as RN shows a View's hex (Display P3), measured.
+    var c = vec3<f32>(20.0, 32.0, 43.0) / 255.0;
     if (qc.z > 0.0 && inside(suv)) {
         c = c * (1.0 - s.a) + s.rgb;
     }
-    if (qc.z > 0.0) {
-        c = mix(c, vec3<f32>(30.0, 39.0, 49.0) / 255.0, clamp(0.5 - d / fw, 0.0, 1.0));
+    // Core Animation projects a layer with no edge antialiasing: the quad's edge is hard, the
+    // layer's own pixels (its corners' coverage) sampled bilinearly, clamped at its bounds.
+    let k = textureSampleLevel(card, smp, cuv, 0.0);
+    if (qc.z > 0.0 && inside(cuv)) {
+        c = c * (1.0 - k.a) + k.rgb;
     }
     if (ql.z > 0.0 && inside(luv)) {
         c = mix(c, vec3<f32>(23.0, 156.0, 240.0) / 255.0, a);

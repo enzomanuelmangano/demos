@@ -13,11 +13,14 @@
 //!   The content's transformOrigin is ['50%', '50%', 300]: React Native resolves it as
 //!   translate(0, 0, 300) · M · translate(0, 0, −300), so its plane sits 300 pt behind the
 //!   perspective's origin: drawn at 500 / 800 of its size, and shifted against the tilt.
+//! - The card is its own layer (continuous corners, #1E2731 as P3) sampled through the transform
+//!   with hard edges, as Core Animation draws a 3D-transformed layer.
 //! - The box shadow is σ = 5 (RN's iOS box shadow: shadowRadius = blur / 2), drawn in the card's
 //!   plane and projected with it, as Core Animation projects the shadow sublayer.
 //!
-//! The logo is the demo's own logo.png (1024 × 842), its coverage kept in images/ (zlib) and
-//! mipmapped here, drawn in its colour #179CF0 into the 200² `contain` box.
+//! The logo is the demo's own logo.png as expo-image downscales it (600 × 495 px, the contain size
+//! rounded up to points), its coverage kept in images/ (zlib) and mipmapped here (Core Animation's
+//! trilinear minification), drawn in its colour #179CF0 aspect-fitted (200 × 165) in the 200² image view.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -26,7 +29,7 @@ use reanimated::{interpolate, Extrapolation, Spring, SpringConfig, GENTLE};
 use skia::{Canvas, Color, Matrix4, Paint, Renderer};
 
 use crate::{gfx, shaders};
-use shaders::animated_3d_parallax::{entry, module, Uniforms, GROUP_0, LOGO, SHADOW, SMP, U};
+use shaders::animated_3d_parallax::{entry, module, Uniforms, CARD, GROUP_0, LOGO, SHADOW, SMP, U};
 
 /// CARD_SIZE.
 const CARD_SIZE: f32 = 300.0;
@@ -37,14 +40,23 @@ const PERSPECTIVE: f32 = 500.0;
 /// The content's transformOrigin z.
 const ORIGIN_Z: f32 = 300.0;
 /// delayedSpringConfig.
-const DELAYED: SpringConfig = SpringConfig { stiffness: 100.0, damping: 10.0, mass: 1.0 };
+const DELAYED: SpringConfig = SpringConfig {
+    stiffness: 100.0,
+    damping: 10.0,
+    mass: 1.0,
+};
 /// The shadow layer's margin around the card, in points (3σ and a little).
 const MARGIN: f32 = 20.0;
 /// boxShadow 10 px blur: σ = 5 pt.
 const SHADOW_SIGMA: f32 = 5.0;
 const LAYER: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
-static LOGO_BITMAP: &[u8] = include_bytes!("../images/parallax-logo-1024x842.a8.zlib");
-const LOGO_SIZE: (u32, u32) = (1024, 842);
+/// The logo as expo-image hands it to Core Animation: logo.png downscaled into the 600 × 495 px
+/// of its contain size rounded up to points (exact/parity-tools/animated-3d-parallax/logo.swift).
+static LOGO_BITMAP: &[u8] = include_bytes!("../images/parallax-logo-600x495.a8.zlib");
+const LOGO_SIZE: (u32, u32) = (600, 495);
+/// styles.card's #1E2731 and styles.container's #17202A as RN shows them: the app reads View hex
+/// as Display P3 (`RCTColorSpace.displayP3`), measured on the simulator.
+const CARD_COLOR: (u8, u8, u8) = (28, 39, 50);
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
@@ -70,6 +82,9 @@ struct Parallax {
     /// touchCardContentX/Y.
     content: (Spring, Spring),
     shadow_layer: Canvas,
+    card_layer: Canvas,
+    /// The card layer's own renderer: one renderer's buffers serve one draw per encoder.
+    card_renderer: Renderer,
     renderer: Renderer,
     blur: skia::Blur,
     gpu: Option<Gpu>,
@@ -88,8 +103,18 @@ struct Gpu {
 /// points.
 fn rotation(x: f64, y: f64, origin_z: f32) -> Matrix4 {
     let max = MAX_ROTATE_DEG;
-    let rotate_x = interpolate(y, &[0.0, CARD_SIZE as f64], &[max, -max], Extrapolation::Extend);
-    let rotate_y = interpolate(x, &[0.0, CARD_SIZE as f64], &[-max, max], Extrapolation::Extend);
+    let rotate_x = interpolate(
+        y,
+        &[0.0, CARD_SIZE as f64],
+        &[max, -max],
+        Extrapolation::Extend,
+    );
+    let rotate_y = interpolate(
+        x,
+        &[0.0, CARD_SIZE as f64],
+        &[-max, max],
+        Extrapolation::Extend,
+    );
     let c = CARD_SIZE / 2.0;
     Matrix4::translate(c, c, origin_z)
         .multiply(Matrix4::perspective(PERSPECTIVE))
@@ -101,7 +126,10 @@ fn rotation(x: f64, y: f64, origin_z: f32) -> Matrix4 {
 impl Parallax {
     /// The card container's top-left in the canvas: centred (styles.container).
     fn origin(&self) -> (f32, f32) {
-        ((self.size.0 - CARD_SIZE) / 2.0, (self.size.1 - CARD_SIZE) / 2.0)
+        (
+            (self.size.0 - CARD_SIZE) / 2.0,
+            (self.size.1 - CARD_SIZE) / 2.0,
+        )
     }
 
     fn set_touch(&mut self, x: f64, y: f64) {
@@ -147,7 +175,17 @@ impl Surface for Parallax {
     }
 
     fn input(&mut self, event: &InputEvent) {
-        let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
+        let InputEvent::Pointer {
+            id,
+            phase,
+            x,
+            y,
+            at_ms,
+            ..
+        } = *event
+        else {
+            return;
+        };
         let (ox, oy) = self.origin();
         let (x, y) = (x - ox, y - oy);
         let on_card = (0.0..=CARD_SIZE).contains(&x) && (0.0..=CARD_SIZE).contains(&y);
@@ -177,13 +215,22 @@ impl Surface for Parallax {
     ) -> bool {
         self.size = (frame.width, frame.height);
         let now = frame.now_ms;
-        let moving = self.card.0.step(now) | self.card.1.step(now) | self.content.0.step(now) | self.content.1.step(now);
+        let moving = self.card.0.step(now)
+            | self.card.1.step(now)
+            | self.content.0.step(now)
+            | self.content.1.step(now);
         let (pw, ph) = frame.pixels();
-        if self.gpu.as_ref().map(|g| (g.format, g.generation, g.size)) != Some((format, frame.shader_generation, (pw, ph))) {
+        if self.gpu.as_ref().map(|g| (g.format, g.generation, g.size))
+            != Some((format, frame.shader_generation, (pw, ph)))
+        {
             self.gpu = Some(self.build(device, queue, encoder, format, frame));
         }
         let card = self.inverse(rotation(self.card.0.value, self.card.1.value, 0.0));
-        let logo = self.inverse(rotation(self.content.0.value, self.content.1.value, ORIGIN_Z));
+        let logo = self.inverse(rotation(
+            self.content.0.value,
+            self.content.1.value,
+            ORIGIN_Z,
+        ));
         let gpu = self.gpu.as_ref().unwrap();
         let uniforms = Uniforms {
             card0: card[0],
@@ -195,7 +242,13 @@ impl Surface for Parallax {
             canvas: [pw as f32, ph as f32, frame.scale, gfx::srgb_flag(format)],
         };
         queue.write_buffer(&gpu.uniforms, 0, &uniforms.bytes());
-        skia::render::fullscreen_pass(encoder, "animated 3d parallax", target, &gpu.compose, &gpu.bind);
+        skia::render::fullscreen_pass(
+            encoder,
+            "animated 3d parallax",
+            target,
+            &gpu.compose,
+            &gpu.bind,
+        );
         moving || self.finger.is_some()
     }
 }
@@ -203,22 +256,95 @@ impl Surface for Parallax {
 impl Parallax {
     /// The pipeline, the card's shadow (drawn and blurred once, in the card's points) and the
     /// logo's mipmapped coverage.
-    fn build(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut wgpu::CommandEncoder, format: wgpu::TextureFormat, frame: &Frame) -> Gpu {
+    fn build(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        encoder: &mut wgpu::CommandEncoder,
+        format: wgpu::TextureFormat,
+        frame: &Frame,
+    ) -> Gpu {
         let s = frame.scale;
         let side = ((CARD_SIZE + 2.0 * MARGIN) * s).ceil() as u32;
         let layer = skia::render::sampled_target(device, "parallax shadow", LAYER, side, side);
         let c = &mut self.shadow_layer;
         c.begin(s);
         c.translate(MARGIN, MARGIN);
-        c.draw_rrect(0.0, 0.0, CARD_SIZE, CARD_SIZE, 10.0, &Paint::fill(Color::rgba8(0, 0, 0, 255).alpha(0.15)));
-        self.renderer.draw(device, queue, encoder, c, &layer, LAYER, side, side, wgpu::Color::TRANSPARENT);
-        let shadow = self.blur.run(device, queue, encoder, &layer, LAYER, side, side, SHADOW_SIGMA * s);
+        c.draw_rrect(
+            0.0,
+            0.0,
+            CARD_SIZE,
+            CARD_SIZE,
+            10.0,
+            &Paint::fill(Color::rgba8(0, 0, 0, 255).alpha(0.15)),
+        );
+        self.renderer.draw(
+            device,
+            queue,
+            encoder,
+            c,
+            &layer,
+            LAYER,
+            side,
+            side,
+            wgpu::Color::TRANSPARENT,
+        );
+        let shadow = self.blur.run(
+            device,
+            queue,
+            encoder,
+            &layer,
+            LAYER,
+            side,
+            side,
+            SHADOW_SIGMA * s,
+        );
+        // The card's own layer, as Core Animation renders it before projecting it: its continuous
+        // corners at the device scale, sampled through the 3D transform with no edge antialiasing
+        // (allowsEdgeAntialiasing is off on iOS).
+        let card_side = (CARD_SIZE * s).ceil() as u32;
+        let card =
+            skia::render::sampled_target(device, "parallax card", LAYER, card_side, card_side);
+        let c = &mut self.card_layer;
+        c.begin(s);
+        let (r, g, b) = CARD_COLOR;
+        c.draw_continuous_rrect(
+            0.0,
+            0.0,
+            CARD_SIZE,
+            CARD_SIZE,
+            10.0,
+            &Paint::fill(Color::rgb8(r, g, b)),
+        );
+        self.card_renderer.draw(
+            device,
+            queue,
+            encoder,
+            c,
+            &card,
+            LAYER,
+            card_side,
+            card_side,
+            wgpu::Color::TRANSPARENT,
+        );
 
         let logo = logo_texture(device, queue);
         let shader = device.create_shader_module(module());
         let layout = device.create_bind_group_layout(&GROUP_0);
-        let compose = skia::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None);
-        let uniforms = device.create_buffer(&wgpu::BufferDescriptor { label: Some("parallax"), size: Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
+        let compose = skia::render::fullscreen_pipeline(
+            device,
+            &shader,
+            &layout,
+            entry::COMPOSE,
+            format,
+            None,
+        );
+        let uniforms = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("parallax"),
+            size: Uniforms::SIZE as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("parallax"),
             address_mode_u: wgpu::AddressMode::ClampToEdge,
@@ -232,24 +358,52 @@ impl Parallax {
             label: Some("parallax"),
             layout: &layout,
             entries: &[
-                wgpu::BindGroupEntry { binding: U.binding, resource: uniforms.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: SHADOW.binding, resource: wgpu::BindingResource::TextureView(shadow) },
-                wgpu::BindGroupEntry { binding: LOGO.binding, resource: wgpu::BindingResource::TextureView(&logo) },
-                wgpu::BindGroupEntry { binding: SMP.binding, resource: wgpu::BindingResource::Sampler(&sampler) },
+                wgpu::BindGroupEntry {
+                    binding: U.binding,
+                    resource: uniforms.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: SHADOW.binding,
+                    resource: wgpu::BindingResource::TextureView(shadow),
+                },
+                wgpu::BindGroupEntry {
+                    binding: LOGO.binding,
+                    resource: wgpu::BindingResource::TextureView(&logo),
+                },
+                wgpu::BindGroupEntry {
+                    binding: CARD.binding,
+                    resource: wgpu::BindingResource::TextureView(&card),
+                },
+                wgpu::BindGroupEntry {
+                    binding: SMP.binding,
+                    resource: wgpu::BindingResource::Sampler(&sampler),
+                },
             ],
         });
-        Gpu { format, generation: frame.shader_generation, size: frame.pixels(), compose, uniforms, bind }
+        Gpu {
+            format,
+            generation: frame.shader_generation,
+            size: frame.pixels(),
+            compose,
+            uniforms,
+            bind,
+        }
     }
 }
 
 /// logo.png's coverage, inflated, with its mip chain (each level a 2×2 box of the last).
 fn logo_texture(device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::TextureView {
     let (w, h) = LOGO_SIZE;
-    let mut level = miniz_oxide::inflate::decompress_to_vec_zlib(LOGO_BITMAP).unwrap_or_else(|_| vec![0; (w * h) as usize]);
+    let mut level = miniz_oxide::inflate::decompress_to_vec_zlib(LOGO_BITMAP)
+        .unwrap_or_else(|_| vec![0; (w * h) as usize]);
     let levels = 32 - w.max(h).leading_zeros();
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("parallax logo"),
-        size: wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+        size: wgpu::Extent3d {
+            width: w,
+            height: h,
+            depth_or_array_layers: 1,
+        },
         mip_level_count: levels,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
@@ -260,17 +414,34 @@ fn logo_texture(device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::TextureView
     let (mut lw, mut lh) = (w, h);
     for mip in 0..levels {
         queue.write_texture(
-            wgpu::TexelCopyTextureInfo { texture: &texture, mip_level: mip, origin: wgpu::Origin3d::ZERO, aspect: wgpu::TextureAspect::All },
+            wgpu::TexelCopyTextureInfo {
+                texture: &texture,
+                mip_level: mip,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
             &level,
-            wgpu::TexelCopyBufferLayout { offset: 0, bytes_per_row: Some(lw), rows_per_image: Some(lh) },
-            wgpu::Extent3d { width: lw, height: lh, depth_or_array_layers: 1 },
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(lw),
+                rows_per_image: Some(lh),
+            },
+            wgpu::Extent3d {
+                width: lw,
+                height: lh,
+                depth_or_array_layers: 1,
+            },
         );
         let (nw, nh) = ((lw / 2).max(1), (lh / 2).max(1));
         let mut next = vec![0u8; (nw * nh) as usize];
         for y in 0..nh {
             for x in 0..nw {
-                let at = |dx: u32, dy: u32| level[(((2 * y + dy).min(lh - 1)) * lw + (2 * x + dx).min(lw - 1)) as usize] as u32;
-                next[(y * nw + x) as usize] = ((at(0, 0) + at(1, 0) + at(0, 1) + at(1, 1) + 2) / 4) as u8;
+                let at = |dx: u32, dy: u32| {
+                    level[(((2 * y + dy).min(lh - 1)) * lw + (2 * x + dx).min(lw - 1)) as usize]
+                        as u32
+                };
+                next[(y * nw + x) as usize] =
+                    ((at(0, 0) + at(1, 0) + at(0, 1) + at(1, 1) + 2) / 4) as u8;
             }
         }
         level = next;
@@ -292,21 +463,41 @@ mod tests {
             Ok(gpu) => gpu,
             Err(error) => return eprintln!("{error}; skipped"),
         };
-        let frame = |now_ms| Frame { width: 420.0, height: 912.0, scale: 1.0, now_ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: exact_gpu::shaders::shader_generation(), headroom: 1.0 };
+        let frame = |now_ms| Frame {
+            width: 420.0,
+            height: 912.0,
+            scale: 1.0,
+            now_ms,
+            seekable: true,
+            period_ms: 0.0,
+            children_generation: 0,
+            shader_generation: exact_gpu::shaders::shader_generation(),
+            headroom: 1.0,
+        };
         let mut s = surface();
         let (rest, animating) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         rest.save("parallax-rest");
         assert!(!animating);
         // At rest: the card spans 60…360 × 306…606; the logo, at 5/8 of its size, is centred.
-        assert_eq!(&rest.at(5, 5)[..3], &[23, 32, 42]);
-        assert_eq!(&rest.at(70, 320)[..3], &[30, 39, 49]);
+        assert_eq!(&rest.at(5, 5)[..3], &[20, 32, 43]);
+        assert_eq!(&rest.at(70, 320)[..3], &[28, 39, 50]);
         assert_eq!(&rest.at(210, 456)[..3], &[23, 156, 240]);
         // The bird at 5/8: 125 pt wide about x = 210, so nothing of it at x = 210 ± 70.
         assert_ne!(&rest.at(285, 456)[..3], &[23, 156, 240]);
 
         // A finger at the card's top-right corner: that corner recedes (the card's edge there moves
         // inward), and the logo is still on its way while the card has nearly arrived.
-        let pointer = |phase, x, y, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let pointer = |phase, x, y, at_ms| InputEvent::Pointer {
+            id: 1,
+            phase,
+            x,
+            y,
+            dx: 0.0,
+            dy: 0.0,
+            kind: PointerKind::Touch,
+            buttons: 1,
+            at_ms,
+        };
         s.input(&pointer(PointerPhase::Down, 350.0, 316.0, 0.0));
         let mut ms = 0.0;
         while ms < 300.0 {
@@ -317,9 +508,9 @@ mod tests {
         tilted.save("parallax-tilted");
         assert!(animating);
         // The top-right corner went in: (358, 308) was card at rest, background now.
-        assert_eq!(&tilted.at(358, 308)[..3], &[23, 32, 42]);
+        assert_eq!(&tilted.at(358, 308)[..3], &[20, 32, 43]);
         // The bottom-left corner came out past the rest edge.
-        assert_eq!(&tilted.at(57, 609)[..3], &[30, 39, 49]);
+        assert_eq!(&tilted.at(57, 609)[..3], &[28, 39, 50]);
         s.input(&pointer(PointerPhase::Up, 350.0, 316.0, ms));
         while ms < 4000.0 {
             ms += 16.0;
