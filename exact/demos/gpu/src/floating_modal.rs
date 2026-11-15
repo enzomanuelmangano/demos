@@ -48,10 +48,11 @@
 //! `open` and `close` are posted for a haptic.
 //!
 //! Haptics past RN (which plays only the presses'; the owner's haptic language):
-//! `haptic:impact-light` when a drag takes the open sheet, `haptic:impact-soft` once when a
-//! drag released short of dismissing has sprung back home (within LANDED of it; a drag shorter
-//! than 2 × LANDED plays none). A dismissal keeps its `close`. The rubber band (up and
-//! sideways) is soft-edged, with no limit to hit: no haptic.
+//! one `haptic:impact-light` when a drag takes the open sheet (the pan's activation, so a tap
+//! plays none); one `haptic:impact-medium` when a release dismisses it (the commit; `close`
+//! is posted too but plays nothing, nor does `open`: the press's selection already did).
+//! Nothing when a drag released short of dismissing springs back home. The rubber band (up
+//! and sideways) is soft-edged, with no limit to hit: no haptic.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -64,8 +65,6 @@ use crate::gfx;
 
 /// FLOATING_BUTTON_SIZE.
 const BUTTON: f64 = 64.0;
-/// A sheet sprung back from a drag has landed within this of home, pt.
-const LANDED: f64 = 3.0;
 /// The open sheet's inset from the display's sides and bottom, and the display's corner radius
 /// (iPhone 17: 62 pt): the sheet's radius is concentric with it.
 const INSET: f64 = 10.0;
@@ -128,7 +127,6 @@ fn modal() -> FloatingModal {
         done_press: Pressable::new(),
         plus_shown: (0.0, 1.0),
         touched: false,
-        homing: false,
         posted: Vec::new(),
         plus: Font::new(ANTDESIGN, 28.0).map(Font::with_ui_layout),
         title: skia::match_ui_font(20.0, 700.0),
@@ -180,8 +178,6 @@ struct FloatingModal {
     plus_shown: (f64, f64),
     /// A press set pressto's `lastTouchedPressable` since the last frame.
     touched: bool,
-    /// Sprung back home from a drag and not yet landed (its soft haptic due).
-    homing: bool,
     posted: Vec<String>,
     plus: Option<Font>,
     title: Option<Font>,
@@ -351,14 +347,6 @@ impl FloatingModal {
             .push(if self.opened { "open" } else { "close" }.into());
     }
 
-    /// A sheet sprung back from a drag lands home: its soft haptic, once.
-    fn land(&mut self) {
-        if self.homing && self.x.value.hypot(self.y.value) < LANDED {
-            self.homing = false;
-            self.posted.push("haptic:impact-soft".into());
-        }
-    }
-
     /// The scrim's opacity: the progress, thinned as the open sheet is dragged down.
     fn scrim(&self) -> f64 {
         let drag = (self.y.value.max(0.0) / 400.0).clamp(0.0, 1.0);
@@ -471,7 +459,6 @@ impl Surface for FloatingModal {
                     if matches!(event, Event::Start(_)) {
                         // The finger takes the sheet.
                         self.posted.push("haptic:impact-light".into());
-                        self.homing = false;
                     }
                     // Down follows the finger, up rubber-bands; it never moves sideways.
                     let (_, _, _, fh) = self.layout(1.0).frame;
@@ -525,7 +512,6 @@ impl Surface for FloatingModal {
         let (p0, k0) = (self.progress.value, self.plus_press.progress());
         let mut moving = self.progress.step(now);
         moving |= self.x.step(now) | self.y.step(now);
-        self.land();
         let visible = self.opened && self.progress.value > 0.9;
         if visible != self.visible {
             self.visible = visible;
@@ -893,9 +879,8 @@ impl FloatingModal {
         // A quarter of the sheet's height down, or a flick down, dismisses it.
         let (_, _, _, fh) = self.layout(1.0).frame;
         if translation_y > 0.0 && (translation_y > fh * 0.25 || velocity_y > 600.0) {
+            self.posted.push("haptic:impact-medium".into());
             self.toggle();
-        } else {
-            self.homing = self.x.value.hypot(self.y.value) >= 2.0 * LANDED;
         }
         self.x.to_clamped(0.0, 0.0, GENTLE);
         self.y.to_clamped(0.0, 0.0, GENTLE);
@@ -1020,13 +1005,13 @@ mod tests {
         assert!(s.agent("{}").unwrap().contains("\"opened\":false"));
         assert_eq!(back.data, closed.data);
         // The grab's light impact, then the dismissal (no landing: it closed).
-        assert_eq!(s.messages(), vec!["haptic:impact-light".to_string(), "close".to_string()]);
+        assert_eq!(s.messages(), vec!["haptic:impact-light".to_string(), "haptic:impact-medium".to_string(), "close".to_string()]);
     }
 
     #[test]
     fn a_short_drag_grabs_and_lands_the_sheet() {
         // Open, at rest; drag down 40 (30 after the hysteresis) and let go slowly: it stays
-        // open and springs home, one light impact at the grab, one soft at the landing.
+        // open and springs home, one light impact at the grab, nothing at the landing.
         let pointer = |phase, y: f32, at_ms| InputEvent::Pointer {
             id: 1,
             phase,
@@ -1055,9 +1040,8 @@ mod tests {
             ms += 16.0;
             m.x.step(ms);
             m.y.step(ms);
-            m.land();
         }
-        assert_eq!(m.messages(), vec!["haptic:impact-soft".to_string()]);
+        assert!(m.messages().is_empty());
     }
 
     #[test]

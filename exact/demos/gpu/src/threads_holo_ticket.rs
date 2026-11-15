@@ -52,9 +52,9 @@
 //!
 //! Haptics past RN (which plays only the tap's selection; the owner's haptic language):
 //! `haptic:impact-light` when the pan takes the ticket; `haptic:selection` each time a drag or
-//! its fling turns the other side to the front (|rotateY| crosses 90 or 270), at most one per
-//! HAPTIC_GAP_MS (the tap's flip keeps only its own); `haptic:impact-rigid` if a fling stops at
-//! its clamp (1080° either side).
+//! its fling turns the other side to the front (|rotateY| SWITCH past 90 or 270, so a ticket
+//! held edge-on does not flap), at most one per HAPTIC_GAP_MS (the tap's flip keeps only its
+//! own). Nothing when a throw's spring settles on its face (it eases in: no limit is felt).
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, SensorKind, Surface, SurfaceError, Value};
@@ -175,6 +175,9 @@ const FLIP_MS: f64 = 500.0;
 const FLIP_DAMPING_RATIO: f64 = 1.5;
 /// The shortest gap between two side haptics, ms.
 const HAPTIC_GAP_MS: f64 = 40.0;
+/// How far past edge-on (90° / 270°) the ticket turns before the other side counts as in
+/// front, degrees (1 pt of drag each): a finger holding it edge-on does not flap.
+const SWITCH: f64 = 6.0;
 /// Graphite's tessellation precision (Wang's formula: 1/4 px).
 const PRECISION: f32 = 4.0;
 const LAYER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
@@ -203,7 +206,6 @@ pub fn surface() -> Box<dyn Surface> {
         side_front: true,
         haptic_at: f64::NEG_INFINITY,
         throwing: false,
-        throw_limit: false,
         fonts: None,
         front: Canvas::default(),
         renderer: Renderer::default(),
@@ -602,8 +604,6 @@ struct ThreadsHoloTicket {
     haptic_at: f64,
     /// translateX's spring carries a throw (its side turns play), not the tap's flip.
     throwing: bool,
-    /// The throw's decay, run ahead, stopped at its clamp: a rigid impact as it lands.
-    throw_limit: bool,
     fonts: Option<Option<Front>>,
     front: Canvas,
     renderer: Renderer,
@@ -708,21 +708,18 @@ impl ThreadsHoloTicket {
     }
 
     fn step(&mut self, now_ms: f64) -> bool {
-        let (moving, fling, limit) = match &mut self.motion {
+        let (moving, fling) = match &mut self.motion {
             Motion::Rest => return false,
             Motion::Decay(d) => {
                 let moving = d.step(now_ms);
                 self.x = d.value;
-                let limit = !moving
-                    && d.clamp.is_some_and(|[lo, hi]| d.value <= lo + 1e-6 || d.value >= hi - 1e-6);
-                (moving, true, limit)
+                (moving, true)
             }
             Motion::Spring(s) => {
                 let moving = s.step(now_ms);
                 self.x = s.value;
-                // A throw's spring (not the tap's flip) plays the side turns, and the rigid
-                // impact at its end when RN's decay would have stopped at the clamp.
-                (moving, self.throwing, !moving && self.throwing && self.throw_limit)
+                // A throw's spring (not the tap's flip) plays the side turns.
+                (moving, self.throwing)
             }
         };
         if !moving {
@@ -730,9 +727,6 @@ impl ThreadsHoloTicket {
             self.throwing = false;
         }
         self.side(now_ms, fling);
-        if limit {
-            self.haptic("impact-rigid", now_ms);
-        }
         moving
     }
 
@@ -748,7 +742,9 @@ impl ThreadsHoloTicket {
     /// The side in front changed: a selection when `play` (a drag or its fling).
     fn side(&mut self, at: f64, play: bool) {
         let front = self.is_front();
-        if front != self.side_front {
+        let a = self.rotate_y().abs();
+        let edge = (a - 90.0).abs().min((a - 270.0).abs());
+        if front != self.side_front && edge >= SWITCH {
             self.side_front = front;
             if play {
                 self.haptic("selection", at);
@@ -852,9 +848,6 @@ impl ThreadsHoloTicket {
                     }
                     let face = (d.value / 180.0).round() * 180.0;
                     self.throwing = true;
-                    self.throw_limit = d
-                        .clamp
-                        .is_some_and(|[lo, hi]| d.value <= lo + 1e-6 || d.value >= hi - 1e-6);
                     let mut s = Spring::at(self.x);
                     s.to(face, v, reanimated::duration_config(self.x - face, v, SETTLE_MS, 1.0, 4.0));
                     self.motion = if s.running { Motion::Spring(s) } else { Motion::Rest };

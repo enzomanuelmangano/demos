@@ -21,9 +21,10 @@
 //! scaled by k blurred by 7k is the blurred digit scaled by k); the circle is blurred once.
 //!
 //! Haptics (past RN, which plays none: the owner's haptic language): `haptic:impact-light` when
-//! a finger touches the card (the lens comes up); `haptic:selection` each time the finger comes
-//! nearest another digit (the one it reveals), at most one per HAPTIC_GAP_MS. The lift only
-//! fades the lens: no haptic.
+//! the pan activates (the lens comes up at the touch, but a tap plays nothing); one
+//! `haptic:selection` each time the finger comes nearest another digit (the one it reveals),
+//! SWITCH nearer than the current one so a finger between two does not flap, at most one per
+//! HAPTIC_GAP_MS. The lift only fades the lens: no haptic.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -53,6 +54,8 @@ const PEN: f32 = 26.0;
 const DIGITS: usize = 6;
 /// The shortest gap between two haptics, ms.
 const HAPTIC_GAP_MS: f64 = 40.0;
+/// How much nearer another digit must be than the revealed one before it takes over, pt.
+const SWITCH: f32 = 4.0;
 const LAYER: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 /// SF-Compact-Rounded-Medium.otf, its digits and space (fontTools subset: same outlines, same
 /// metrics).
@@ -136,9 +139,14 @@ impl SlideToReveal {
     }
     /// A selection when the finger comes nearest another digit.
     fn feel(&mut self, at_ms: f64) {
-        let k = self.nearest();
-        if k.is_some() && k != self.revealing && self.haptic("selection", at_ms) {
-            self.revealing = k;
+        let Some(k) = self.nearest() else { return };
+        let distance = |i: usize| {
+            let d = &self.digits[i];
+            (self.digit_x(d) + d.ink / 2.0 - self.finger.0).abs()
+        };
+        if self.revealing.is_none_or(|r| r != k && distance(k) + SWITCH < distance(r)) {
+            self.revealing = Some(k);
+            self.haptic("selection", at_ms);
         }
     }
     /// The baseline: textY − 5.
@@ -199,16 +207,19 @@ impl Surface for SlideToReveal {
 
     fn input(&mut self, event: &InputEvent) {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
-        match self.pan.event(id, gfx::phase(phase), x, y, at_ms, true) {
+        let event = self.pan.event(id, gfx::phase(phase), x, y, at_ms, true);
+        match event {
             Event::Begin { x, y } => {
                 self.active = true;
                 self.finger = (x, y);
                 self.mask_opacity.to(1.0, 300.0, Easing::timing_default());
                 self.follow();
                 self.revealing = self.nearest();
-                self.haptic("impact-light", at_ms);
             }
             Event::Start(p) | Event::Update(p) => {
+                if matches!(event, Event::Start(_)) {
+                    self.haptic("impact-light", at_ms);
+                }
                 self.finger = (p.x, p.y);
                 self.follow();
                 self.feel(at_ms);
@@ -331,21 +342,39 @@ mod tests {
         let finger = |s: &mut SlideToReveal, phase, x: f32, at_ms| {
             s.input(&InputEvent::Pointer { id: 1, phase, x, y: 45.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
         };
+        // A tap plays nothing.
         finger(&mut s, PointerPhase::Down, 10.0, 0.0);
-        assert_eq!(s.messages(), vec!["haptic:impact-light"]);
-        // A slow slide across the card: one selection per digit after the first, none on the lift.
-        let mut ms = 0.0;
+        finger(&mut s, PointerPhase::Up, 10.0, 60.0);
+        assert!(s.messages().is_empty());
+        finger(&mut s, PointerPhase::Down, 10.0, 200.0);
+        assert!(s.messages().is_empty());
+        // A slow slide across the card: the light at activation, one selection per digit after
+        // the first, none on the lift.
+        let mut ms = 200.0;
         for k in 1..=60 {
             ms += 16.0;
             finger(&mut s, PointerPhase::Move, 10.0 + 232.0 * k as f32 / 60.0, ms);
         }
         finger(&mut s, PointerPhase::Up, 242.0, ms + 16.0);
-        assert_eq!(s.messages(), vec!["haptic:selection"; DIGITS - 1]);
+        let mut expected = vec!["haptic:impact-light"];
+        expected.extend(["haptic:selection"; DIGITS - 1]);
+        assert_eq!(s.messages(), expected);
+        // Hovering midway between two digits: no flapping.
+        finger(&mut s, PointerPhase::Down, 10.0, 1000.0);
+        let mid = {
+            let (a, b) = (&s.digits[2], &s.digits[3]);
+            (s.digit_x(a) + a.ink / 2.0 + s.digit_x(b) + b.ink / 2.0) / 2.0
+        };
+        for k in 0..30 {
+            finger(&mut s, PointerPhase::Move, mid + if k % 2 == 0 { 1.5 } else { -1.5 }, 1100.0 + 50.0 * k as f64);
+        }
+        finger(&mut s, PointerPhase::Up, mid, 2600.0);
+        assert!(s.messages().len() <= 2, "hovering flaps");
         // A fast one (all six in three moves) is paced: one per 40 ms at most.
-        finger(&mut s, PointerPhase::Down, 10.0, 2000.0);
+        finger(&mut s, PointerPhase::Down, 10.0, 3000.0);
         s.messages();
         for k in 1..=3 {
-            finger(&mut s, PointerPhase::Move, 10.0 + 232.0 * k as f32 / 3.0, 2000.0 + 8.0 * k as f64);
+            finger(&mut s, PointerPhase::Move, 10.0 + 232.0 * k as f32 / 3.0, 3000.0 + 8.0 * k as f64);
         }
         assert!(s.messages().len() <= 1);
     }

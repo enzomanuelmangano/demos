@@ -25,8 +25,10 @@
 //! blur, one composite. Nothing is allocated once warm.
 //!
 //! Haptics (past RN, which plays none: the owner's haptic language): `haptic:impact-light` when
-//! a finger takes the picker; `haptic:selection` when the picker's hue crosses a 30° step (twelve
-//! around the wheel) while it is out past half the radius, at most one per HAPTIC_GAP_MS;
+//! the pan activates (the picker jumps to the touch, but a tap plays nothing);
+//! `haptic:selection` when the picker's hue crosses a 30° step (twelve around the wheel), HUE_SWITCH
+//! past the line so a finger on it does not flap, while it is out past half the radius, at most
+//! one per HAPTIC_GAP_MS;
 //! `haptic:impact-rigid` when the finger leaves the wheel and the picker stops at its rim, once
 //! per excursion (re-armed back inside RIM_REARM of the radius). No two within HAPTIC_GAP_MS.
 
@@ -55,6 +57,8 @@ const MARGIN: i32 = 4;
 const HAPTIC_GAP_MS: f64 = 40.0;
 /// The hue step a selection haptic marks, degrees.
 const HUE_STEP: f64 = 30.0;
+/// How far past a step's line the hue goes before the step changes, degrees.
+const HUE_SWITCH: f64 = 3.0;
 /// The share of the radius past which hue steps are felt (nearer the centre they all crowd in).
 const HUE_FELT: f64 = 0.5;
 /// The share of the radius a finger comes back inside to re-arm the rim haptic.
@@ -203,13 +207,16 @@ impl ColorPicker {
     }
 
     /// The rim and hue-step haptics for a finger at (x, y), the picker moved there (clamped).
-    fn feel(&mut self, x: f32, y: f32, at_ms: f64) {
+    /// `play` false (the touch-down) sets the state silently.
+    fn feel(&mut self, x: f32, y: f32, at_ms: f64, play: bool) {
         let c = self.size as f64 / 2.0;
         let radius = max_size(self.size) as f64 / 2.0;
         let finger = (x as f64 - c).hypot(y as f64 - c);
         if finger > radius && !self.on_rim {
             self.on_rim = true;
-            self.haptic("impact-rigid", at_ms);
+            if play {
+                self.haptic("impact-rigid", at_ms);
+            }
         } else if finger < radius * RIM_REARM {
             self.on_rim = false;
         }
@@ -217,18 +224,24 @@ impl ColorPicker {
         let (dx, dy) = (px - c, py - c);
         let step = if dx.hypot(dy) > radius * HUE_FELT {
             let hue = (180.0 + dy.atan2(dx).to_degrees() + 360.0) % 360.0;
-            Some((hue / HUE_STEP).floor() as i64)
+            // The current step holds until the hue is HUE_SWITCH past either of its lines (around
+            // the wheel).
+            let steps = (360.0 / HUE_STEP) as i64;
+            let held = self.hue_step.filter(|&a| {
+                let mid = (a as f64 + 0.5) * HUE_STEP;
+                let off = ((hue - mid + 540.0) % 360.0 - 180.0).abs();
+                off < HUE_STEP / 2.0 + HUE_SWITCH
+            });
+            Some(held.unwrap_or(((hue / HUE_STEP).floor() as i64).rem_euclid(steps)))
         } else {
             None
         };
-        match (self.hue_step, step) {
-            (Some(a), Some(b)) if a != b => {
-                if self.haptic("selection", at_ms) {
-                    self.hue_step = step;
-                }
+        if let (Some(a), Some(b)) = (self.hue_step, step) {
+            if a != b && play {
+                self.haptic("selection", at_ms);
             }
-            _ => self.hue_step = step,
         }
+        self.hue_step = step;
     }
 
     fn on_move(&mut self, x: f32, y: f32) {
@@ -277,16 +290,19 @@ impl Surface for ColorPicker {
         if self.size <= 0.0 {
             return;
         }
-        match self.pan.event(id, gfx::phase(phase), x, y, at_ms, true) {
+        let event = self.pan.event(id, gfx::phase(phase), x, y, at_ms, true);
+        match event {
             Event::Begin { x, y } => {
                 self.on_move(x, y);
-                self.haptic("impact-light", at_ms);
-                self.feel(x, y, at_ms);
+                self.feel(x, y, at_ms, false);
             }
             // Activation sends onUpdate too (RNGH's ACTIVE event).
             Event::Start(p) | Event::Update(p) => {
+                if matches!(event, Event::Start(_)) {
+                    self.haptic("impact-light", at_ms);
+                }
                 self.on_move(p.x, p.y);
-                self.feel(p.x, p.y, at_ms);
+                self.feel(p.x, p.y, at_ms, true);
             }
             _ => {}
         }
@@ -500,15 +516,20 @@ mod tests {
         let finger = |s: &mut ColorPicker, phase, x: f64, y: f64, at_ms| {
             s.input(&InputEvent::Pointer { id: 1, phase, x: x as f32, y: y as f32, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
         };
-        finger(&mut s, PointerPhase::Down, 210.0, 210.0, 0.0);
-        assert_eq!(s.messages(), vec!["haptic:impact-light"]);
-        // Straight out to the right and past the rim: one rigid, however far past.
-        let mut ms = 0.0;
+        // A tap, even outside the wheel, plays nothing.
+        finger(&mut s, PointerPhase::Down, 415.0, 210.0, 0.0);
+        finger(&mut s, PointerPhase::Up, 415.0, 210.0, 50.0);
+        assert!(s.messages().is_empty());
+        finger(&mut s, PointerPhase::Down, 210.0, 210.0, 100.0);
+        assert!(s.messages().is_empty());
+        // Straight out to the right and past the rim: the light at activation, one rigid,
+        // however far past.
+        let mut ms = 100.0;
         for k in 1..=30 {
             ms += 16.0;
             finger(&mut s, PointerPhase::Move, 210.0 + 7.0 * k as f64, 210.0, ms);
         }
-        assert_eq!(s.messages(), vec!["haptic:impact-rigid"]);
+        assert_eq!(s.messages(), vec!["haptic:impact-light", "haptic:impact-rigid"]);
         // Once around inside the rim: a selection per 30° step, nothing else.
         for k in 0..=120 {
             ms += 16.0;
@@ -518,6 +539,14 @@ mod tests {
         finger(&mut s, PointerPhase::Up, 210.0 + 0.9 * r, 210.0, ms + 16.0);
         let steps = s.messages();
         assert!((11..=12).contains(&steps.len()) && steps.iter().all(|m| m == "haptic:selection"), "{steps:?}");
+        // Held on a step's line (hue 90°, straight up at 0.9 r), wobbling 1°: no flapping.
+        finger(&mut s, PointerPhase::Down, 210.0 + 0.9 * r, 210.0, ms + 500.0);
+        for k in 0..30 {
+            ms += 50.0;
+            let a = (-90.0f64 + if k % 2 == 0 { 1.0 } else { -1.0 }).to_radians();
+            finger(&mut s, PointerPhase::Move, 210.0 + 0.9 * r * a.cos(), 210.0 + 0.9 * r * a.sin(), ms + 500.0);
+        }
+        assert!(s.messages().len() <= 2, "hovering flaps");
     }
 
     #[test]

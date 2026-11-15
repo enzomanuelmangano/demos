@@ -46,6 +46,9 @@ const TOTAL: f64 = 31.0;
 const PAGES: usize = 30;
 /// The shortest gap between two day haptics, ms (UIKit's pickers pace theirs so).
 const HAPTIC_GAP_MS: f64 = 40.0;
+/// How far past a day's line (in days) the slider goes before its haptic plays: a finger held
+/// on a line does not flap.
+const SLACK: f64 = 0.25;
 /// SIZE, HEADER_HEIGHT, BODY_HEIGHT, PAGE_SIZE.
 const SIZE: f32 = 190.0;
 const HEADER: f32 = 50.0;
@@ -293,7 +296,7 @@ impl CalendarDays {
             }
             page.start(target, Config::Duration(FLIP_MS), now);
         }
-        let haptic = (self.progress() * TOTAL).round() as i64;
+        let haptic = detent(self.haptic_page, self.progress() * TOTAL + 0.5);
         if haptic != self.haptic_page {
             self.haptic_page = haptic;
             if now - self.haptic_at >= HAPTIC_GAP_MS {
@@ -896,6 +899,16 @@ impl Surface for CalendarDays {
         pass.set_bind_group(0, &*bind, &[]);
         pass.draw(0..4, 0..PAGES as u32);
         moving || self.pan.tracking()
+    }
+}
+
+/// The detent the haptics feel at `v` (in detents, floored), `held` before: it holds until `v`
+/// is SLACK of a detent past either of its edges, so a value hovering on a line does not flap.
+fn detent(held: i64, v: f64) -> i64 {
+    if held >= 0 && v >= held as f64 - SLACK && v < held as f64 + 1.0 + SLACK {
+        held
+    } else {
+        v.floor() as i64
     }
 }
 

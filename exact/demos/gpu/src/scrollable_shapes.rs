@@ -75,6 +75,8 @@ fn soft(x: f64) -> f64 {
 
 /// The shortest gap between two selection haptics, ms.
 const HAPTIC_GAP_MS: f64 = 40.0;
+/// How far past the half-way line the offset goes before the haptics' item changes, pt.
+const SWITCH: f64 = 6.0;
 /// How far past an end (points) the rubber band must pull before its haptic.
 const PAST_END: f64 = 2.0;
 
@@ -263,7 +265,13 @@ impl ScrollableShapes {
         if w <= 0.0 {
             return;
         }
-        let page = (offset / w).round().clamp(0.0, (SHAPES - 1) as f64) as i64;
+        // The page holds until the offset is SWITCH past the half-way line: a finger
+        // hovering there does not flap.
+        let f = offset / w;
+        let page = match self.page {
+            Some(c) if (f - c as f64).abs() < 0.5 + SWITCH / w => c,
+            _ => f.round().clamp(0.0, (SHAPES - 1) as f64) as i64,
+        };
         if self.page.is_some_and(|p| p != page) && now - self.haptic_at >= HAPTIC_GAP_MS {
             self.posted.push("haptic:selection".into());
             self.haptic_at = now;

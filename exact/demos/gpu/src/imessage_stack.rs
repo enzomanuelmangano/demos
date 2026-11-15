@@ -44,6 +44,8 @@ const SHADOW_SIGMA: f32 = 5.0;
 const PI: f64 = std::f64::consts::PI;
 /// The shortest gap between two selection haptics, ms.
 const HAPTIC_GAP_MS: f64 = 40.0;
+/// How far past the half-way line the offset goes before the haptics' item changes, pt.
+const SWITCH: f64 = 6.0;
 /// How far past an end (points) the rubber band must pull before its haptic.
 const PAST_END: f64 = 2.0;
 
@@ -169,7 +171,13 @@ impl Stack {
         if cw <= 0.0 {
             return;
         }
-        let front = (offset / cw).round().clamp(0.0, (COLORS.len() - 1) as f64) as i64;
+        // The front holds until the offset is SWITCH past the half-way line: a finger
+        // hovering there does not flap.
+        let f = offset / cw;
+        let front = match self.front {
+            Some(c) if (f - c as f64).abs() < 0.5 + SWITCH / cw => c,
+            _ => f.round().clamp(0.0, (COLORS.len() - 1) as f64) as i64,
+        };
         if self.front.is_some_and(|f| f != front) && now - self.haptic_at >= HAPTIC_GAP_MS {
             self.haptic("selection");
             self.haptic_at = now;

@@ -30,9 +30,10 @@
 //!   this blur (the frosting), with dispersion, a specular line and a groove shadow.
 //!
 //! Haptics (past RN, which plays none: the owner's haptic language): `haptic:impact-light` when
-//! a finger takes the circle (onBegin); `haptic:selection` each time the drag carries its centre
-//! behind the glass or out from it (the pane's edge), at most one per HAPTIC_GAP_MS. The flutes
-//! play none (crossing them under a drag would buzz); `haptic:release` when the finger lets go.
+//! the pan takes the circle (its activation, so a tap plays none); `haptic:selection` when the
+//! drag carries its centre behind the glass (the pane's edge), none on the way out, re-armed
+//! only once the centre is REARM outside the pane, at most one per HAPTIC_GAP_MS. The flutes
+//! play none (crossing them under a drag would buzz); nothing when the finger lets go.
 //!
 //! Motion (past RN, the owner's ask): the circle drawn follows the finger through a spring
 //! (FOLLOW: a hair of lag and settle), and a release carries its velocity on: the rest point is
@@ -68,6 +69,8 @@ const LAYER_MARGIN: i32 = 4;
 
 /// The shortest gap between two selection haptics, ms.
 const HAPTIC_GAP_MS: f64 = 40.0;
+/// How far outside the pane the circle's centre goes before going behind it plays again, pt.
+const REARM: f32 = 16.0;
 /// The drawn circle chasing the finger (ζ ≈ 0.75).
 const FOLLOW: SpringConfig = SpringConfig { stiffness: 520.0, damping: 34.0, mass: 1.0 };
 /// A release, to its projected rest (ζ ≈ 0.7: one soft overshoot).
@@ -95,7 +98,6 @@ fn surface_struct() -> Box<FractalGlass> {
         saved: (0.0, 0.0),
         pan: PanGesture::new(),
         behind: false,
-        grabbed: false,
         haptic_at: f64::NEG_INFINITY,
         posted: Vec::new(),
         blur: GraphiteBlur::default(),
@@ -118,10 +120,8 @@ struct FractalGlass {
     shown: [Spring; 2],
     saved: (f32, f32),
     pan: PanGesture,
-    /// The circle's centre is behind the pane, and the last selection's time (their haptics).
+    /// The pane's selection played and is not re-armed yet, and the last selection's time.
     behind: bool,
-    /// A finger took the circle (its release plays one haptic).
-    grabbed: bool,
     haptic_at: f64,
     posted: Vec<String>,
     blur: GraphiteBlur,
@@ -202,6 +202,16 @@ impl FractalGlass {
         (self.shown[0].value as f32, self.shown[1].value as f32)
     }
 
+    /// How far the circle's centre is outside the pane, pt (0 behind it).
+    fn outside_pane(&self) -> f32 {
+        let (w, h) = self.size;
+        let (x, y) = self.center;
+        let top = (h - 300.0) / 2.0;
+        let dx = (40.0 - x).max(x - (w - 40.0)).max(0.0);
+        let dy = (top - y).max(y - (top + 300.0)).max(0.0);
+        dx.max(dy)
+    }
+
     fn on_circle(&self, x: f32, y: f32) -> bool {
         let (cx, cy) = self.drawn();
         (x - cx).abs() <= RADIUS && (y - cy).abs() <= RADIUS
@@ -218,9 +228,6 @@ impl FractalGlass {
         self.center = (rest(self.center.0, vx, w), rest(self.center.1, vy, h));
         self.shown[0].launch(self.center.0 as f64, vx as f64, SETTLE);
         self.shown[1].launch(self.center.1 as f64, vy as f64, SETTLE);
-        if std::mem::take(&mut self.grabbed) {
-            self.posted.push("haptic:release".into());
-        }
     }
 }
 
@@ -272,7 +279,8 @@ impl Surface for FractalGlass {
         }
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
         let claim = self.on_circle(x, y);
-        match self.pan.event(id, gfx::phase(phase), x, y, at_ms, claim) {
+        let event = self.pan.event(id, gfx::phase(phase), x, y, at_ms, claim);
+        match event {
             Event::Begin { .. } => {
                 // Caught where it is drawn, mid-flight or not.
                 let (cx, cy) = self.drawn();
@@ -280,29 +288,26 @@ impl Surface for FractalGlass {
                 self.shown[1].set(cy as f64);
                 self.center = (cx, cy);
                 self.saved = self.center;
-                self.grabbed = true;
                 self.behind = self.behind_pane();
-                self.posted.push("haptic:impact-light".into());
             }
             Event::Start(p) | Event::Update(p) => {
+                if matches!(event, Event::Start(_)) {
+                    self.posted.push("haptic:impact-light".into());
+                }
                 self.center = (self.saved.0 + p.translation_x, self.saved.1 + p.translation_y);
                 self.shown[0].retarget(self.center.0 as f64, FOLLOW);
                 self.shown[1].retarget(self.center.1 as f64, FOLLOW);
-                let behind = self.behind_pane();
-                if behind != self.behind {
-                    self.behind = behind;
+                if !self.behind && self.behind_pane() {
+                    self.behind = true;
                     if at_ms - self.haptic_at >= HAPTIC_GAP_MS {
                         self.posted.push("haptic:selection".into());
                         self.haptic_at = at_ms;
                     }
+                } else if self.behind && self.outside_pane() > REARM {
+                    self.behind = false;
                 }
             }
             Event::End(p) => self.release(p.velocity_x, p.velocity_y),
-            Event::Fail => {
-                if std::mem::take(&mut self.grabbed) {
-                    self.posted.push("haptic:release".into());
-                }
-            }
             _ => {}
         }
     }
@@ -761,7 +766,7 @@ mod tests {
     }
 
     #[test]
-    fn the_drag_plays_the_grab_and_the_pane_edge() {
+    fn the_drag_plays_the_grab_and_the_pane_edge_once() {
         let mut s = surface_struct();
         s.size = (420.0, 912.0);
         let p = |phase, y: f32, at_ms| InputEvent::Pointer { id: 1, phase, x: 180.0, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
@@ -773,9 +778,20 @@ mod tests {
         for k in 1..=10 {
             s.input(&p(PointerPhase::Move, 370.0 - 15.0 * k as f32, 300.0 + 16.0 * k as f64));
         }
-        s.input(&p(PointerPhase::Up, 220.0, 480.0));
         assert!(!s.behind_pane());
-        assert_eq!(s.messages(), vec!["haptic:impact-light", "haptic:selection", "haptic:selection", "haptic:release"]);
+        // The grab, one selection going behind; none on the way out.
+        assert_eq!(s.messages(), vec!["haptic:impact-light", "haptic:selection"]);
+        // Hovering across the pane's top edge (y 306): one selection, no flapping.
+        let mut crossed = 0;
+        for k in 0..20 {
+            s.input(&p(PointerPhase::Move, if k % 2 == 0 { 330.0 } else { 300.0 }, 480.0 + 50.0 * k as f64));
+            crossed += (s.behind_pane() as usize) * (k % 2 == 0) as usize;
+        }
+        assert!(crossed > 0, "the hover never went behind the pane");
+        assert_eq!(s.messages(), vec!["haptic:selection"]);
+        // The lift plays nothing; a tap on the circle plays nothing either.
+        s.input(&p(PointerPhase::Up, 220.0, 1500.0));
+        assert!(s.messages().is_empty());
     }
 
     #[test]

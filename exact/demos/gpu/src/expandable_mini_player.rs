@@ -47,6 +47,13 @@
 //! circular too (RCTViewComponentView's `RCTPathCreateWithRoundedRect`). The knob has no
 //! borderCurve: circular. A tab presses only when the finger lifts inside it (RNGH's
 //! BaseButton: `onPress` needs `pointerInside`).
+//!
+//! Haptics: RN's own `press` (the app's selection haptic) for a tab and for the tap that
+//! expands. Past RN, which plays none for the drag (the owner's haptic language):
+//! one `haptic:impact-light` when the pan takes the open sheet; one `haptic:selection` when the
+//! drag goes down past THRESHOLD (where a release collapses), none on the way back, re-armed
+//! only once it is REARM back above, at most one per HAPTIC_GAP_MS; one `haptic:impact-medium`
+//! when a release collapses it. Nothing when the spring lands.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -68,6 +75,12 @@ const IMAGE_EXPANDED: f64 = IMAGE * 3.0;
 const BASE_OFFSET: f64 = (MINI - IMAGE) / 2.0;
 /// progressThreshold.
 const THRESHOLD: f64 = 0.8;
+/// The shortest gap between two selection haptics, ms.
+const HAPTIC_GAP_MS: f64 = 40.0;
+/// Past THRESHOLD by this much (in progress) before the crossing plays.
+const HYSTERESIS: f64 = 0.005;
+/// Back above THRESHOLD by this much (in progress, ~27 pt) before a crossing plays again.
+const REARM: f64 = 0.03;
 /// DEMO_BUTTON_ROW_HEIGHT.
 const BUTTON_ROW: f32 = 56.0;
 const TITLE: &str = "Happiness does not wait";
@@ -93,6 +106,9 @@ pub fn surface() -> Box<dyn Surface> {
         tab_press: std::array::from_fn(|_| Pressable::new()),
         group: Group::new(),
         posted: Vec::new(),
+        grabbed: false,
+        open_side: true,
+        haptic_at: f64::NEG_INFINITY,
         icons: Font::new(IONICONS, 24.0).map(Font::with_ui_layout),
         demo: skia::match_ui_font(24.0, 600.0),
         title: skia::match_ui_font(14.0, 400.0),
@@ -119,6 +135,12 @@ struct MiniPlayer {
     /// The app's PressablesGroup: the last tab pressed is `isSelected`.
     group: Group,
     posted: Vec<String>,
+    /// The pan has taken the sheet (its light haptic played).
+    grabbed: bool,
+    /// The drag holds progress above THRESHOLD (false once its crossing played, until re-armed).
+    open_side: bool,
+    /// The last selection haptic's time, ms.
+    haptic_at: f64,
     icons: Option<Font>,
     demo: Option<Font>,
     title: Option<Font>,
@@ -220,7 +242,11 @@ impl Surface for MiniPlayer {
             }
             Event::Tap { .. } => {
                 if p < THRESHOLD {
-                    self.posted.push("press".into());
+                    // A drag's lift can end a tap too (its collapse wins): only a real tap
+                    // plays the press's haptic, not one stacked on the drag's.
+                    if !self.grabbed {
+                        self.posted.push("press".into());
+                    }
                     self.spring_to(1.0);
                     opened = true;
                 }
@@ -230,11 +256,29 @@ impl Surface for MiniPlayer {
             _ => {}
         }
         match self.pan.event(id, phase, x, y, at_ms, on_sheet) {
-            Event::Begin { .. } => self.pan_enabled = self.progress.value != 0.0,
+            Event::Begin { .. } => {
+                self.pan_enabled = self.progress.value != 0.0;
+                self.grabbed = false;
+            }
             Event::Start(e) | Event::Update(e) => {
                 if self.pan_enabled {
                     let h = self.size.1;
-                    self.progress.set(interpolate(e.translation_y as f64, &[0.0, h], &[1.0, 0.0], Extrapolation::Extend));
+                    let to = interpolate(e.translation_y as f64, &[0.0, h], &[1.0, 0.0], Extrapolation::Extend);
+                    if !self.grabbed {
+                        self.grabbed = true;
+                        self.open_side = self.progress.value > THRESHOLD;
+                        self.posted.push("haptic:impact-light".into());
+                    }
+                    if self.open_side && to < THRESHOLD - HYSTERESIS {
+                        self.open_side = false;
+                        if at_ms - self.haptic_at >= HAPTIC_GAP_MS {
+                            self.posted.push("haptic:selection".into());
+                            self.haptic_at = at_ms;
+                        }
+                    } else if !self.open_side && to > THRESHOLD + REARM {
+                        self.open_side = true;
+                    }
+                    self.progress.set(to);
                 }
             }
             // A pan that never activated: the tap of this touch, if it opened the sheet, wins.
@@ -243,6 +287,10 @@ impl Surface for MiniPlayer {
                 if self.pan_enabled {
                     self.pan_enabled = false;
                     let to = if self.progress.value > THRESHOLD { 1.0 } else { 0.0 };
+                    if self.grabbed && to == 0.0 {
+                        self.posted.push("haptic:impact-medium".into());
+                    }
+                    self.grabbed = false;
                     self.spring_to(to);
                 }
             }
@@ -440,10 +488,14 @@ mod tests {
         let state = s.agent("{}").unwrap();
         assert!(state.contains("\"progress\":0.671"), "{state}");
         s.input(&pointer(PointerPhase::Up, 210.0, 710.0, ms));
+        // The grab, THRESHOLD crossed once, the collapse.
+        assert_eq!(s.messages(), vec!["haptic:impact-light", "haptic:selection", "haptic:impact-medium"]);
         while ms < 4000.0 {
             ms += 16.0;
             fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         }
+        // Nothing when it lands.
+        assert!(s.messages().is_empty());
         let (back, moving) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         assert!(!moving);
         // Back to the mini player, the first tab now selected (opaque).
@@ -480,6 +532,8 @@ mod tests {
         };
         for (cycle, (gap, quick, blur)) in [(2000.0, false, false), (200.0, false, false), (500.0, true, false), (800.0, false, true), (300.0, true, false), (2000.0, false, false)].into_iter().enumerate() {
             let before = progress(&mut s);
+            // The last collapse's haptics (its landing, when it has landed).
+            s.messages();
             // The tap on the mini player.
             s.input(&pointer(PointerPhase::Down, 300.0, 796.0, ms));
             ms += 80.0;

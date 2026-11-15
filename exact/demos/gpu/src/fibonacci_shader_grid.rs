@@ -31,9 +31,10 @@
 //! and of its children (the grid overflowing it by 2, the pointer wherever it is).
 //!
 //! Haptics (past RN, which plays none: the owner's haptic language): `haptic:impact-light` when
-//! a finger takes the pad (onBegin); `haptic:selection` each time the finger crosses into
-//! another of the 6 × 6 cells, at most one per HAPTIC_GAP_MS; `haptic:impact-rigid` once each
-//! time it leaves the pad (where the remap clamps N and the multiplier).
+//! the pan takes the pad (its activation, so a tap plays none); `haptic:selection` each time the
+//! finger crosses into another of the 6 × 6 cells, SWITCH past the line (a finger on a line does
+//! not flap) and at most one per HAPTIC_GAP_MS; `haptic:impact-rigid` once each time it leaves
+//! the pad (where the remap clamps N and the multiplier), re-armed only REARM back inside.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -63,6 +64,10 @@ const BORDER: f32 = 2.0;
 const HAPTIC_GAP_MS: f64 = 40.0;
 /// The grid's cells per side.
 const CELLS: f32 = 6.0;
+/// How far past a cell's line the finger goes before the felt cell changes, pt.
+const SWITCH: f32 = 4.0;
+/// How far back inside the pad the finger goes before leaving it plays again, pt.
+const REARM: f32 = 6.0;
 const PAD_SPRING: Config = Config { stiffness: 100.0, damping: 10.0, mass: 0.5 };
 
 /// The demo's surface.
@@ -173,6 +178,23 @@ impl FibonacciShaderGrid {
         let k = |v: f32| (v / (s / CELLS)).floor().clamp(0.0, CELLS - 1.0) as i32;
         ((k(ex), k(ey)), ex < 0.0 || ex > s || ey < 0.0 || ey > s)
     }
+    /// The cell the haptics feel at (ex, ey): each axis holds the current cell until the finger
+    /// is SWITCH past its edge.
+    fn felt_cell(&self, ex: f32, ey: f32) -> (i32, i32) {
+        let cs = self.side() / CELLS;
+        let (cell, _) = self.cell_at(ex, ey);
+        let hold = |v: f32, c: i32, n: i32| {
+            let lo = c as f32 * cs - SWITCH;
+            let hi = (c + 1) as f32 * cs + SWITCH;
+            if v >= lo && v < hi { c } else { n }
+        };
+        (hold(ex, self.cell.0, cell.0), hold(ey, self.cell.1, cell.1))
+    }
+    /// The finger is well inside the pad (the off-pad rigid re-arms).
+    fn inside(&self, ex: f32, ey: f32) -> bool {
+        let s = self.side();
+        ex > REARM && ex < s - REARM && ey > REARM && ey < s - REARM
+    }
     fn set_active(&mut self, active: bool) {
         if self.active == active {
             return;
@@ -250,17 +272,21 @@ impl Surface for FibonacciShaderGrid {
         let (ox, oy) = self.origin();
         // event.x / event.y: in the container.
         let (ex, ey) = (x - ox, y - oy);
-        match self.pan.event(id, gfx::phase(phase), x, y, at_ms, hit) {
+        let event = self.pan.event(id, gfx::phase(phase), x, y, at_ms, hit);
+        match event {
             Event::Begin { .. } => {
                 self.set_active(true);
                 let (tx, ty) = (self.remap_x(ex), self.remap_y(ey));
                 self.x.to(tx, self.x.velocity, PAD_SPRING);
                 self.y.to(ty, self.y.velocity, PAD_SPRING);
                 (self.cell, self.past_end) = self.cell_at(ex, ey);
-                self.posted.push("haptic:impact-light".into());
             }
             Event::Start(_) | Event::Update(_) => {
-                let (cell, past) = self.cell_at(ex, ey);
+                if matches!(event, Event::Start(_)) {
+                    self.posted.push("haptic:impact-light".into());
+                }
+                let (_, past) = self.cell_at(ex, ey);
+                let cell = self.felt_cell(ex, ey);
                 if cell != self.cell {
                     self.cell = cell;
                     if at_ms - self.haptic_at >= HAPTIC_GAP_MS {
@@ -270,8 +296,10 @@ impl Surface for FibonacciShaderGrid {
                 }
                 if past && !self.past_end {
                     self.posted.push("haptic:impact-rigid".into());
+                    self.past_end = true;
+                } else if self.inside(ex, ey) {
+                    self.past_end = false;
                 }
-                self.past_end = past;
                 let (tx, ty) = (self.remap_x(ex), self.remap_y(ey));
                 self.x.set(tx);
                 self.y.set(ty);

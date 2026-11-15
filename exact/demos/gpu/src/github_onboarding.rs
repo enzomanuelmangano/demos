@@ -44,6 +44,10 @@ use crate::ui_scroll::{Snap, UiScroll, NORMAL};
 
 /// The shortest gap between two page haptics, ms.
 const HAPTIC_GAP_MS: f64 = 40.0;
+/// How far past the half-page line the list goes before the page's haptic plays, pt.
+const SWITCH: f64 = 6.0;
+/// How far past an end the rubber band pulls before its rigid plays (re-armed back inside), pt.
+const PAST_END: f64 = 2.0;
 /// index.tsx's data: title, colour, photo.
 const TITLES: [&str; 4] = [
     "Lazy Day Lounger",
@@ -311,18 +315,24 @@ struct Onboarding {
 impl Onboarding {
     /// The swipe's haptics for the list's offset now: the page it crossed, the end it hit.
     fn swipe_haptics(&mut self, now: f64) {
-        let page = (self.scroll.offset / self.size.0.max(1.0)).round() as i64;
-        if page != self.page {
+        // The page holds until the offset is SWITCH past the half-page line: a finger holding
+        // the list there does not flap.
+        let w = self.size.0.max(1.0);
+        let f = self.scroll.offset / w;
+        let held = (f - self.page as f64).abs() < 0.5 + SWITCH / w;
+        let page = f.round() as i64;
+        if page != self.page && !held {
             self.page = page;
             if self.swiping && now - self.haptic_at >= HAPTIC_GAP_MS {
                 self.posted.push("haptic:selection".into());
                 self.haptic_at = now;
             }
         }
-        let out = self.scroll.offset < -0.5 || self.scroll.offset > self.scroll.max + 0.5;
-        if !out {
+        let (offset, max) = (self.scroll.offset, self.scroll.max);
+        let out = offset < -PAST_END || offset > max + PAST_END;
+        if (0.0..=max).contains(&offset) {
             self.banded = false;
-        } else if self.scroll.dragging() && !self.banded {
+        } else if out && self.scroll.dragging() && !self.banded {
             self.banded = true;
             self.posted.push("haptic:impact-rigid".into());
             self.haptic_at = now;

@@ -74,6 +74,8 @@ const ROW: f64 = 70.0;
 const MAX_HISTORY: usize = 10;
 /// The shortest gap between two haptics, ms.
 const HAPTIC_GAP_MS: f64 = 40.0;
+/// How far past the half-card line the stack scrolls before its front card's haptic plays, pt.
+const SWITCH: f64 = 6.0;
 /// The time machine pan's maxPanDistance.
 const PAN_DISTANCE: f64 = 300.0;
 /// progress = withSpring(tm, …).
@@ -693,8 +695,12 @@ impl TimeMachine {
         }
         let mut moving = self.progress.step(now);
         moving |= self.scroll.step(now);
+        // The front card the haptics feel holds until the offset is SWITCH past the half-card
+        // line: a finger holding the stack there does not flap.
+        let sw = self.sw();
+        let held = sw > 0.0 && (self.scroll.offset / sw - self.card_index as f64).abs() < 0.5 + SWITCH / sw;
         let index = self.active_index();
-        if index != self.card_index {
+        if index != self.card_index && !held {
             self.card_index = index;
             if self.active {
                 self.haptic("selection", now);

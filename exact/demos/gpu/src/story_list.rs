@@ -27,6 +27,8 @@ use crate::ui_scroll::{Snap, UiScroll, FAST};
 const COUNT: usize = 8;
 /// The shortest gap between two selection haptics, ms.
 const HAPTIC_GAP_MS: f64 = 40.0;
+/// How far past the half-item line the offset goes before the haptics' item changes, pt.
+const SWITCH: f64 = 6.0;
 /// How far past an end (points) the rubber band must pull before its haptic.
 const PAST_END: f64 = 2.0;
 static IMAGE_01: &[u8] = include_bytes!("../images/story-list/image_01-800x600.rgb8.zlib");
@@ -81,7 +83,13 @@ impl StoryList {
     /// A selection when the front card changes (one per HAPTIC_GAP_MS at most), a rigid thunk
     /// once per pull past an end.
     fn haptics(&mut self, offset: f64, item: f64, max: f64, now: f64) {
-        let front = (offset / item).round().clamp(0.0, (COUNT - 1) as f64) as i64;
+        // The front item holds until the offset is SWITCH past the half-item line: a finger
+        // hovering there does not flap.
+        let f = offset / item;
+        let front = match self.front {
+            Some(c) if (f - c as f64).abs() < 0.5 + SWITCH / item => c,
+            _ => f.round().clamp(0.0, (COUNT - 1) as f64) as i64,
+        };
         if self.front.is_some_and(|f| f != front) && now - self.haptic_at >= HAPTIC_GAP_MS {
             self.posted.push("haptic:selection".into());
             self.haptic_at = now;

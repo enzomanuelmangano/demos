@@ -30,10 +30,10 @@
 //!   A touch that never drags snaps nothing (no scrollViewWillEndDragging).
 //!
 //! Haptics (past RN, which plays none: the owner's haptic language): `haptic:selection` when the
-//! scroll centres another time (offset / 30 rounded), at most one per HAPTIC_GAP_MS, as UIKit's
-//! pickers pace theirs; `haptic:impact-rigid` when it is pulled or bounces past an end, once per
-//! excursion; `haptic:impact-soft` when it comes to rest after a drag, skipped when it moved less
-//! than MIN_TRAVEL since the lift. No two haptics within HAPTIC_GAP_MS.
+//! scroll centres another time (offset / 30 rounded, SWITCH past the half-row line so a finger
+//! holding it there does not flap), at most one per HAPTIC_GAP_MS, as UIKit's pickers pace
+//! theirs; `haptic:impact-rigid` when it is pulled or bounces past an end, once per excursion.
+//! Nothing when it comes to rest. No two haptics within HAPTIC_GAP_MS.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -59,8 +59,8 @@ const HALF_HOUR_MS: f64 = 1_800_000.0;
 const SHADOW_SIGMA: f32 = 10.0;
 /// The shortest gap between two haptics, ms.
 const HAPTIC_GAP_MS: f64 = 40.0;
-/// A rest this near where the finger lifted plays no landing haptic, pt.
-const MIN_TRAVEL: f64 = 4.0;
+/// How far past the half-row line the scroll goes before another time counts as centred, pt.
+const SWITCH: f64 = 4.0;
 /// How far past an end the scroll is before its limit haptic plays, pt.
 const PAST_END: f64 = 2.0;
 static HONK: &[u8] = include_bytes!("../fonts/honk-regular-times-subset.otf");
@@ -90,7 +90,6 @@ fn picker() -> ClockTimePicker {
         plans: [plan(), plan(), plan()],
         centred: 0,
         past_end: false,
-        released: None,
         haptic_at: f64::NEG_INFINITY,
         posted: Vec::new(),
         gpu: None,
@@ -115,8 +114,6 @@ struct ClockTimePicker {
     centred: usize,
     /// Pulled or bounced past an end (its limit haptic played).
     past_end: bool,
-    /// Where a drag lifted, its landing haptic due when the scroll rests.
-    released: Option<f64>,
     haptic_at: f64,
     posted: Vec<String>,
     gpu: Option<Gpu>,
@@ -244,20 +241,12 @@ impl ClockTimePicker {
         } else if (0.0..=self.scroll.max).contains(&offset) {
             self.past_end = false;
         }
-        let centred = (offset / ITEM).round().clamp(0.0, (ITEMS - 1) as f64) as usize;
-        if centred != self.centred && self.haptic("selection", at_ms) {
+        let f = offset / ITEM;
+        let held = (f - self.centred as f64).abs() < 0.5 + SWITCH / ITEM;
+        let centred = f.round().clamp(0.0, (ITEMS - 1) as f64) as usize;
+        if centred != self.centred && !held {
             self.centred = centred;
-        }
-        if self.scroll.take_drag_end() {
-            self.released = Some(offset);
-        }
-        if let Some(from) = self.released {
-            if !self.scroll.moving() {
-                self.released = None;
-                if (offset - from).abs() > MIN_TRAVEL {
-                    self.haptic("impact-soft", at_ms);
-                }
-            }
+            self.haptic("selection", at_ms);
         }
     }
 }
@@ -286,10 +275,6 @@ impl Surface for ClockTimePicker {
         let on_list = (LIST_X..=LIST_X + LIST_W).contains(&x) && (0.0..=LIST_H).contains(&y);
         // A vertical scroll view: its axis is the finger's y.
         self.scroll.input(id, gfx::phase(phase), y, x, at_ms, on_list);
-        // A finger that catches the list cancels the landing it was heading for.
-        if phase == exact_gpu::PointerPhase::Down && on_list {
-            self.released = None;
-        }
         self.feel(at_ms);
     }
 
@@ -412,7 +397,7 @@ mod tests {
             }
             posted
         };
-        // A flick: a selection per time centred on the way (paced), one soft landing at the end.
+        // A flick: a selection per time centred on the way (paced), nothing at the rest.
         let mut s = picker();
         finger(&mut s, PointerPhase::Down, 100.0, 0.0);
         for i in 1..=8 {
@@ -421,12 +406,10 @@ mod tests {
         finger(&mut s, PointerPhase::Up, 36.0, 80.0);
         let mut posted = s.messages();
         posted.extend(settle(&mut s, 80.0));
-        assert_eq!(posted.last().map(String::as_str), Some("haptic:impact-soft"), "{posted:?}");
-        let ticks = &posted[..posted.len() - 1];
-        assert!(ticks.len() >= 2 && ticks.iter().all(|m| m == "haptic:selection"), "{posted:?}");
+        assert!(posted.len() >= 2 && posted.iter().all(|m| m == "haptic:selection"), "{posted:?}");
         assert_eq!(s.centred, (s.scroll.offset / ITEM).round() as usize);
 
-        // Pulled down past the top: one rigid however far, then a soft landing as it bounces back.
+        // Pulled down past the top: one rigid however far, nothing as it bounces back.
         let mut s = picker();
         finger(&mut s, PointerPhase::Down, 10.0, 0.0);
         for i in 1..=40 {
@@ -434,7 +417,7 @@ mod tests {
         }
         assert_eq!(s.messages(), vec!["haptic:impact-rigid"]);
         finger(&mut s, PointerPhase::Up, 110.0, 16.0 * 41.0);
-        assert_eq!(settle(&mut s, 16.0 * 41.0), vec!["haptic:impact-soft"]);
+        assert!(settle(&mut s, 16.0 * 41.0).is_empty());
         assert_eq!(s.scroll.offset, 0.0);
     }
 

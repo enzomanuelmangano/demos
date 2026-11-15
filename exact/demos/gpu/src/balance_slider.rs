@@ -16,10 +16,12 @@
 //!   side. A ReText is a TextInput: one line of the font's height (ascent + descent), its
 //!   baseline an ascent below its top.
 //!
-//! Haptics (past RN, which plays none: the owner's haptic language): `haptic:impact-light` when
-//! a finger takes the row; `haptic:selection` when the split crosses 0.33 or 0.72 (where the boxes
-//! shrink and the labels rise, either way); `haptic:impact-rigid` when it reaches an end (0 or
-//! 100 %), once per excursion. No two haptics within HAPTIC_GAP_MS.
+//! Haptics (past RN, which plays none), the essentials only, never per move: one
+//! `haptic:impact-light` when the pan takes the row (its activation, so a tap plays none); one
+//! `haptic:selection` when the split goes out past 0.33 or 0.72 (where the boxes shrink and the
+//! labels rise), none on the way back, re-armed only once it is REARM back inside;
+//! `haptic:impact-rigid` when it reaches an end (0 or 100 %), once per excursion. No two
+//! haptics within HAPTIC_GAP_MS.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -44,6 +46,8 @@ const PERCENT_MARGIN: f32 = 4.0;
 const HAPTIC_GAP_MS: f64 = 40.0;
 /// How far from an end the split re-arms its limit haptic.
 const END_REARM: f64 = 0.02;
+/// How far back inside the limits the split goes before a new crossing plays again.
+const REARM: f64 = 0.03;
 static FIRA_CODE_MEDIUM: &[u8] = include_bytes!("../fonts/fira-code-medium.ttf");
 
 /// The demo's surface.
@@ -63,7 +67,7 @@ struct BalanceSlider {
     box_height: Spring,
     /// The labels' translateY (both share it: the same `shifted`).
     label_y: Spring,
-    /// Whether the split was past a limit (shifted) and at an end, when last felt.
+    /// The limit's selection played and is not re-armed yet; the split is at an end.
     felt_shifted: bool,
     at_end: bool,
     haptic_at: f64,
@@ -102,10 +106,14 @@ impl BalanceSlider {
         let end = p <= 0.0 || p >= 1.0;
         if end && !self.at_end {
             self.haptic("impact-rigid", at_ms);
-        } else if shifted != self.felt_shifted {
+        } else if shifted && !self.felt_shifted {
             self.haptic("selection", at_ms);
         }
-        self.felt_shifted = shifted;
+        if shifted {
+            self.felt_shifted = true;
+        } else if p > LEFT_LIMIT + REARM && p < RIGHT_LIMIT - REARM {
+            self.felt_shifted = false;
+        }
         if end {
             self.at_end = true;
         } else if p > END_REARM && p < 1.0 - END_REARM {
@@ -159,14 +167,17 @@ impl Surface for BalanceSlider {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
         let on_row = (0.0..=self.size.0).contains(&x) && (0.0..=self.size.1).contains(&y);
         let half = (self.picker_width() / 2.0) as f64;
-        match self.pan.event(id, gfx::phase(phase), x, y, at_ms, on_row) {
+        let event = self.pan.event(id, gfx::phase(phase), x, y, at_ms, on_row);
+        match event {
             Event::Begin { x, .. } => {
                 let spring = self.x();
                 let velocity = spring.velocity;
                 spring.to_clamped(x as f64 + half, velocity, GENTLE);
-                self.haptic("impact-light", at_ms);
             }
             Event::Start(p) | Event::Update(p) => {
+                if matches!(event, Event::Start(_)) {
+                    self.haptic("impact-light", at_ms);
+                }
                 self.x().set(p.x as f64 + half);
                 self.feel(at_ms);
             }
@@ -242,23 +253,32 @@ mod tests {
         s.x();
         s.feel(0.0);
         let pointer = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 25.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        // A tap plays nothing.
         s.input(&pointer(PointerPhase::Down, 189.0, 0.0));
-        assert_eq!(s.messages(), vec!["haptic:impact-light"]);
-        // Left past 0.33 (one selection), on to the end (one rigid), held there (nothing more).
+        assert!(s.messages().is_empty());
+        // Left past 0.33 (light at activation, one selection), on to the end (one rigid), held
+        // there (nothing more).
         let mut ms = 0.0;
         for k in 1..=40 {
             ms += 16.0;
             s.input(&pointer(PointerPhase::Move, (189.0 - 220.0 * k as f32 / 30.0).max(-20.0), ms));
         }
-        assert_eq!(s.messages(), vec!["haptic:selection", "haptic:impact-rigid"]);
-        // Back across 0.33 to the middle: one selection, the end re-armed.
+        assert_eq!(s.messages(), vec!["haptic:impact-light", "haptic:selection", "haptic:impact-rigid"]);
+        // Back across 0.33 to the middle: nothing, the end and the limit re-armed.
         for k in 1..=20 {
             ms += 16.0;
             s.input(&pointer(PointerPhase::Move, 189.0 * k as f32 / 20.0, ms));
         }
+        assert!(s.messages().is_empty());
+        assert!(!s.at_end && !s.felt_shifted);
+        // Hovering on the 0.72 line: one selection, no flapping.
+        let edge = (0.72 * 378.0) as f32;
+        for k in 0..40 {
+            ms += 50.0;
+            s.input(&pointer(PointerPhase::Move, edge + if k % 2 == 0 { 3.0 } else { -3.0 }, ms));
+        }
+        assert!(s.messages().len() <= 1);
         s.input(&pointer(PointerPhase::Up, 189.0, ms));
-        assert_eq!(s.messages(), vec!["haptic:selection"]);
-        assert!(!s.at_end);
     }
 
     #[test]

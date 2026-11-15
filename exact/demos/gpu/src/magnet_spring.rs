@@ -16,11 +16,12 @@
 //! - The piece's scale: withSpring(isActive ? 1.2 : 1, { mass 0.5, damping 10, stiffness 100 }).
 //! - Box shadows are σ = blur / 2 (RN's iOS shadowRadius = blur / 2), scaled with their view.
 //!
-//! Haptics (past RN, which plays none: the owner's haptic language): `haptic:impact-light` when
-//! a finger takes the piece; `haptic:selection` when the drag brings the piece nearer another
-//! magnet (the one a release would snap to), at most one per HAPTIC_GAP_MS; `haptic:impact-soft`
-//! when the released piece lands (within LANDED of its magnet), skipped for a tiny snap. No two
-//! haptics within HAPTIC_GAP_MS of each other.
+//! Haptics (past RN, which plays none), the essentials only, never per move: one
+//! `haptic:impact-light` when the pan takes the piece (its activation, so a tap plays none);
+//! one `haptic:selection` when the drag brings the piece nearer another magnet (the one a
+//! release would snap to), with SWITCH of hysteresis so a piece hovering on the line between
+//! two magnets does not flap; nothing when the released piece lands. No two haptics within
+//! HAPTIC_GAP_MS of each other.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -43,10 +44,8 @@ const SAMPLES: usize = 128;
 const STEP: f64 = 0.5;
 /// The shortest gap between two haptics, ms.
 const HAPTIC_GAP_MS: f64 = 40.0;
-/// How near its magnet the released piece has landed, pt.
-const LANDED: f64 = 2.0;
-/// A snap shorter than this (and slow) lands with no haptic, pt.
-const MIN_TRAVEL: f64 = 4.0;
+/// How much nearer another magnet must be than the current one before it takes over, pt.
+const SWITCH: f64 = 12.0;
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
@@ -66,8 +65,6 @@ struct MagnetSpring {
     scale: Spring,
     /// The magnet a release would snap to now (while dragged).
     toward: Option<usize>,
-    /// The magnet the released piece springs to, its soft haptic due on landing.
-    landing: Option<(f64, f64)>,
     haptic_at: f64,
     posted: Vec<String>,
     gpu: Option<Gpu>,
@@ -148,16 +145,6 @@ impl MagnetSpring {
         true
     }
 
-    /// The released piece's landing: a soft haptic once it rests within LANDED of its magnet.
-    fn landed(&mut self, now: f64) {
-        let Some((mx, my)) = self.landing else { return };
-        let (x, y) = self.position();
-        if (x - mx).hypot(y - my) <= LANDED {
-            self.landing = None;
-            self.haptic("impact-soft", now);
-        }
-    }
-
     fn position(&self) -> (f64, f64) {
         (self.x.value, self.y.value)
     }
@@ -227,27 +214,31 @@ impl Surface for MagnetSpring {
         let (px, py) = self.position();
         let half = CHEESE_RADIUS * self.scale.value;
         let hit = (x as f64 - px).abs() <= half && (y as f64 - py).abs() <= half;
-        match self.pan.event(id, gfx::phase(phase), x, y, at_ms, hit) {
+        let event = self.pan.event(id, gfx::phase(phase), x, y, at_ms, hit);
+        match event {
             Event::Begin { .. } => {
                 self.set_active(true);
                 self.context = self.position();
                 self.toward = Some(self.nearest_index());
-                self.landing = None;
-                self.haptic("impact-light", at_ms);
             }
             Event::Start(p) | Event::Update(p) => {
+                if matches!(event, Event::Start(_)) {
+                    self.haptic("impact-light", at_ms);
+                }
                 self.x.set(self.context.0 + p.translation_x as f64);
                 self.y.set(self.context.1 + p.translation_y as f64);
+                // The magnet a release snaps to, with hysteresis: another takes over only once it
+                // is SWITCH nearer than the current one.
                 let k = self.nearest_index();
-                if self.toward != Some(k) && self.haptic("selection", at_ms) {
+                let (px, py) = self.position();
+                let far = |i: usize| (px - self.magnets[i].0).hypot(py - self.magnets[i].1);
+                if self.toward.is_none_or(|t| t != k && far(k) + SWITCH < far(t)) {
                     self.toward = Some(k);
+                    self.haptic("selection", at_ms);
                 }
             }
             Event::End(p) => {
                 let (nx, ny) = self.nearest();
-                let (x, y) = self.position();
-                let fast = (p.velocity_x as f64).hypot(p.velocity_y as f64) > 200.0;
-                self.landing = ((x - nx).hypot(y - ny) > MIN_TRAVEL || fast).then_some((nx, ny));
                 self.x.to(nx, p.velocity_x as f64, SNAP);
                 self.y.to(ny, p.velocity_y as f64, SNAP);
                 self.set_active(false);
@@ -270,7 +261,6 @@ impl Surface for MagnetSpring {
         self.place(frame.width, frame.height);
         let now = frame.now_ms;
         let moving = self.x.step(now) | self.y.step(now) | self.scale.step(now);
-        self.landed(now);
         if self.gpu.as_ref().map(|g| (g.format, g.generation)) != Some((format, frame.shader_generation)) {
             self.gpu = Some(build(device, queue, format, frame.shader_generation));
         }
@@ -327,7 +317,7 @@ mod tests {
     }
 
     #[test]
-    fn haptics_on_the_grab_the_magnets_crossed_and_the_landing() {
+    fn haptics_on_the_grab_and_the_magnets_crossed_none_on_landing() {
         let mut s = MagnetSpring::new();
         s.place(420.0, 912.0);
         let m = magnets(420.0, 912.0);
@@ -338,31 +328,42 @@ mod tests {
         assert!(s.messages().is_empty());
         let (tx, ty) = (m[3].0 + 6.0, m[3].1 - 4.0);
         let mut ms = 100.0;
+        // A tap on the piece (touch-down, lift) plays none either.
         s.input(&pointer(PointerPhase::Down, 210.0, 456.0, ms));
-        assert_eq!(s.messages(), vec!["haptic:impact-light"]);
+        s.input(&pointer(PointerPhase::Up, 210.0, 456.0, ms + 60.0));
+        assert!(s.messages().is_empty());
+        ms += 200.0;
+        s.input(&pointer(PointerPhase::Down, 210.0, 456.0, ms));
+        assert!(s.messages().is_empty());
         for k in 1..=30 {
             let f = k as f64 / 30.0;
             ms += 16.0;
             s.input(&pointer(PointerPhase::Move, 210.0 + (tx - 210.0) * f, 456.0 + (ty - 456.0) * f, ms));
         }
-        let crossed = s.messages();
+        let posted = s.messages();
+        assert_eq!(posted.first().map(String::as_str), Some("haptic:impact-light"), "{posted:?}");
+        let crossed = &posted[1..];
         assert!(!crossed.is_empty() && crossed.iter().all(|m| m == "haptic:selection"), "{crossed:?}");
+        // Hovering on the line halfway between two magnets: no flapping.
+        let (a, b) = (m[3], m[4]);
+        let (hx, hy) = ((a.0 + b.0) / 2.0, (a.1 + b.1) / 2.0);
+        for k in 0..40 {
+            ms += 16.0;
+            let wobble = if k % 2 == 0 { 3.0 } else { -3.0 };
+            s.input(&pointer(PointerPhase::Move, hx + wobble, hy + wobble, ms));
+        }
+        assert!(s.messages().len() <= 1, "hovering flaps");
+        s.input(&pointer(PointerPhase::Move, tx, ty, ms + 16.0));
+        ms += 16.0;
+        s.messages();
         s.input(&pointer(PointerPhase::Up, tx, ty, ms + 200.0));
         ms += 200.0;
-        let mut landed_at = None;
         while ms < 3000.0 {
             ms += 16.0;
             s.x.step(ms);
             s.y.step(ms);
-            s.landed(ms);
-            let posted = s.messages();
-            if !posted.is_empty() {
-                assert_eq!(posted, vec!["haptic:impact-soft"]);
-                assert!(landed_at.is_none(), "one landing haptic");
-                landed_at = Some(ms);
-            }
+            assert!(s.messages().is_empty(), "no landing haptic");
         }
-        assert!(landed_at.is_some());
         let (x, y) = s.position();
         assert!((x - m[3].0).hypot(y - m[3].1) < 0.01);
     }

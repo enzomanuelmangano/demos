@@ -81,6 +81,8 @@ const RADIUS: f32 = 15.0;
 const UNIFORM_FLOATS: usize = 8 + N * 16;
 /// The shortest gap between two selection haptics, ms.
 const HAPTIC_GAP_MS: f64 = 40.0;
+/// How far past the half-card line the strip goes before the haptics' card changes, pt.
+const SWITCH: f64 = 6.0;
 
 /// The demo's surface (no inputs).
 pub fn surface() -> Box<dyn Surface> {
@@ -99,6 +101,7 @@ pub fn surface() -> Box<dyn Surface> {
         gpu: None,
         uniforms: vec![0u8; UNIFORM_FLOATS * 4],
         now_ms: 0.0,
+        felt: None,
         haptic_at: f64::NEG_INFINITY,
         posted: Vec::new(),
     })
@@ -214,6 +217,9 @@ struct InfiniteCarousel {
     /// The latest time seen (a frame's or a pointer's), when the last selection haptic played,
     /// and the messages to post.
     now_ms: f64,
+    /// The card (0 … N − 1, along the strip) the haptics last felt: it holds until the strip is
+    /// SWITCH past the half-card line, so a finger hovering there does not flap.
+    felt: Option<i64>,
     haptic_at: f64,
     posted: Vec<String>,
 }
@@ -316,9 +322,22 @@ impl InfiniteCarousel {
         if index != self.active {
             self.active = index;
             self.fade.to(THEMES[index].0);
-            if self.now_ms - self.haptic_at >= HAPTIC_GAP_MS {
-                self.posted.push("haptic:selection".into());
-                self.haptic_at = self.now_ms;
+        }
+        let n = N as f64;
+        let s = (self.tx.value / l).rem_euclid(n);
+        let felt = s.round().rem_euclid(n) as i64;
+        match self.felt {
+            None => self.felt = Some(felt),
+            Some(c) => {
+                // The distance to the felt card along the loop, in cards.
+                let d = ((s - c as f64 + n / 2.0).rem_euclid(n) - n / 2.0).abs();
+                if d >= 0.5 + SWITCH / l {
+                    self.felt = Some(felt);
+                    if self.now_ms - self.haptic_at >= HAPTIC_GAP_MS {
+                        self.posted.push("haptic:selection".into());
+                        self.haptic_at = self.now_ms;
+                    }
+                }
             }
         }
     }

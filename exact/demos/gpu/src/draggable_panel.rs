@@ -49,9 +49,8 @@
 //! - Presses (pressto, the app's global onPress posts `haptic:selection`): the pan's
 //!   activation cancels a held press (RNGH: the pan takes the touch).
 //! - Haptics past RN (which plays only the presses'; the owner's haptic language):
-//!   `haptic:impact-light` when the pan takes the panel, `haptic:impact-soft` once when a
-//!   thrown panel lands in its corner (first within LANDED of it; a throw shorter than
-//!   2 × LANDED plays none, nor one within HAPTIC_GAP_MS of another haptic).
+//!   one `haptic:impact-light` when the pan takes the panel (its activation, so a tap plays
+//!   none). Nothing when the thrown panel lands in its corner.
 //!
 //! Inputs: safeTop.
 
@@ -300,10 +299,6 @@ struct Gpu {
 
 /// The most content views at once (an exiting, an entering, one more exiting).
 const LAYERS: usize = 3;
-/// A thrown panel has landed within this of its corner, pt.
-const LANDED: f64 = 3.0;
-/// The shortest gap between two haptics, ms.
-const HAPTIC_GAP_MS: f64 = 40.0;
 
 struct Panel {
     safe_top: f32,
@@ -323,10 +318,6 @@ struct Panel {
     press: Option<(u32, usize, usize)>,
     contents: Vec<Content>,
     posted: Vec<String>,
-    /// The corner a released panel springs to, until it lands there (its soft haptic due).
-    landing: Option<(f64, f64)>,
-    /// When the last haptic was posted, ms.
-    haptic_at: f64,
     now: f64,
     gpu: Option<Gpu>,
 }
@@ -365,8 +356,6 @@ impl Panel {
             press: None,
             contents: vec![first],
             posted: Vec::new(),
-            landing: None,
-            haptic_at: f64::NEG_INFINITY,
             now: 0.0,
             gpu: None,
         }
@@ -507,7 +496,6 @@ impl Panel {
     }
 
     fn toggle(&mut self) {
-        self.landing = None;
         let (ow, oh) = self.final_size();
         self.collapsed = !self.collapsed;
         let (nw, nh) = self.final_size();
@@ -602,8 +590,6 @@ impl Panel {
                 if matches!(event, Event::Start(_)) {
                     // The finger takes the panel.
                     self.posted.push("haptic:impact-light".into());
-                    self.haptic_at = ms;
-                    self.landing = None;
                 }
                 if let Some((_, ci, k)) = self.press.take() {
                     if let Some(c) = self.contents.get_mut(ci) {
@@ -630,8 +616,6 @@ impl Panel {
                 let cfg = OPTIONS[self.spring_type].spring;
                 self.tx.to(cx as f64, p.velocity_x as f64, cfg);
                 self.ty.to(cy as f64, p.velocity_y as f64, cfg);
-                let (dx, dy) = (cx as f64 - self.tx.value, cy as f64 - self.ty.value);
-                self.landing = (dx.hypot(dy) >= 2.0 * LANDED).then_some((cx as f64, cy as f64));
             }
             _ => {}
         }
@@ -675,15 +659,6 @@ impl Panel {
             &mut self.progress,
         ] {
             moving |= s.step(now);
-        }
-        if let Some((x, y)) = self.landing {
-            if (self.tx.value - x).hypot(self.ty.value - y) < LANDED {
-                self.landing = None;
-                if now - self.haptic_at >= HAPTIC_GAP_MS {
-                    self.posted.push("haptic:impact-soft".into());
-                    self.haptic_at = now;
-                }
-            }
         }
         for c in &mut self.contents {
             moving |= c.fade.step(now);
@@ -1146,8 +1121,8 @@ mod tests {
         assert!((p.ty.target() - 124.0).abs() < 1e-6 && (p.tx.target() - 110.0).abs() < 1e-6);
         let t = run(&mut p, t + FRAME, t + 5000.0);
         assert_eq!((p.tx.value, p.ty.value), (110.0, 124.0));
-        // Light when the pan took it, soft once when it landed in the corner.
-        assert_eq!(p.messages(), vec!["haptic:impact-light".to_string(), "haptic:impact-soft".to_string()]);
+        // Light when the pan took it, nothing when it landed in the corner.
+        assert_eq!(p.messages(), vec!["haptic:impact-light".to_string()]);
         // The close (top right of the header) collapses it, around its centre, into the
         // top-right corner: (326, 124).
         let l = p.layout().unwrap();

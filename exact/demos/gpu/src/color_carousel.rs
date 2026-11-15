@@ -24,9 +24,10 @@
 //! rounded back to 8 bits), from `Color(c).darken(0.1).hex()`.
 //!
 //! Haptics (past RN, which plays none: the owner's haptic language): `haptic:selection` each
-//! time the active (centred) colour changes, during the drag and the glide, at most one per
-//! HAPTIC_GAP_MS; `haptic:impact-rigid` once each time the strip is pulled or thrown past an end
-//! (the rubber band).
+//! time the active (centred) colour changes, during the drag and the glide, with SWITCH of
+//! hysteresis past the line between two cards (a finger hovering there does not flap) and at
+//! most one per HAPTIC_GAP_MS; `haptic:impact-rigid` once each time the strip is pulled or
+//! thrown past an end (the rubber band).
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
@@ -64,10 +65,21 @@ const DECELERATION: f64 = 0.8;
 const HAPTIC_GAP_MS: f64 = 40.0;
 /// How far past an end (points) the rubber band must pull before its haptic.
 const PAST_END: f64 = 2.0;
+/// How far past the line between two cards the offset goes before the felt card changes, pt.
+const SWITCH: f64 = 6.0;
+
+/// The card the haptics feel at `precise` (in items), `felt` before: it holds until `precise`
+/// is SWITCH (as `slack` items) past either of its edges.
+fn detent(felt: Option<i64>, precise: f64, slack: f64) -> i64 {
+    match felt {
+        Some(c) if precise >= c as f64 - slack && precise < c as f64 + 1.0 + slack => c,
+        _ => precise.floor() as i64,
+    }
+}
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
-    let mut s = ColorCarousel { scroll: UiScroll::new(0.0, 0.0, 0.0, DECELERATION, Snap::Free), width: 0.0, scroll_x: 0.0, active: None, channels: Default::default(), cards: Vec::with_capacity(ITEMS * CARD_FLOATS), order: Vec::with_capacity(ITEMS), gpu: None, past_end: false, haptic_at: f64::NEG_INFINITY, posted: Vec::new() };
+    let mut s = ColorCarousel { scroll: UiScroll::new(0.0, 0.0, 0.0, DECELERATION, Snap::Free), width: 0.0, scroll_x: 0.0, active: None, channels: Default::default(), cards: Vec::with_capacity(ITEMS * CARD_FLOATS), order: Vec::with_capacity(ITEMS), gpu: None, felt: None, past_end: false, haptic_at: f64::NEG_INFINITY, posted: Vec::new() };
     s.retarget(2, true);
     Box::new(s)
 }
@@ -83,7 +95,9 @@ struct ColorCarousel {
     cards: Vec<f32>,
     order: Vec<(i64, usize)>,
     gpu: Option<Gpu>,
-    /// Whether the strip is past an end, the last selection haptic, the messages to post.
+    /// The item the haptics last felt (with hysteresis), whether the strip is past an end, the
+    /// last selection haptic, the messages to post.
+    felt: Option<i64>,
     past_end: bool,
     haptic_at: f64,
     posted: Vec<String>,
@@ -198,10 +212,12 @@ impl Surface for ColorCarousel {
         // The haptic's index stays on the colours: the rubber band past an end reaches the empty
         // items, which are no detent.
         let card = |i: i64| i.clamp(2, ITEMS as i64 - 3);
-        if self.active.is_some_and(|a| card(a) != card(index)) && frame.now_ms - self.haptic_at >= HAPTIC_GAP_MS {
+        let felt = detent(self.felt, precise, SWITCH / item_width);
+        if self.felt.is_some_and(|a| card(a) != card(felt)) && frame.now_ms - self.haptic_at >= HAPTIC_GAP_MS {
             self.posted.push("haptic:selection".into());
             self.haptic_at = frame.now_ms;
         }
+        self.felt = Some(felt);
         self.retarget(index, false);
         if x < -PAST_END || x > self.scroll.max + PAST_END {
             if !self.past_end {
@@ -316,6 +332,20 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32) ->
 mod tests {
     use super::*;
     use exact_gpu::fixture;
+
+    #[test]
+    fn the_felt_card_holds_across_a_hovering_line() {
+        let slack = SWITCH / 84.0;
+        let mut felt = detent(None, 4.9, slack);
+        assert_eq!(felt, 4);
+        for k in 0..40 {
+            felt = detent(Some(felt), if k % 2 == 0 { 5.03 } else { 4.97 }, slack);
+            assert_eq!(felt, 4);
+        }
+        assert_eq!(detent(Some(4), 5.1, slack), 5);
+        assert_eq!(detent(Some(5), 4.95, slack), 5);
+        assert_eq!(detent(Some(5), 4.9, slack), 4);
+    }
 
     #[test]
     fn the_centred_card_is_largest_and_the_glow_follows_it() {

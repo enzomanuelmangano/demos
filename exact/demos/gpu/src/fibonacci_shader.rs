@@ -11,9 +11,10 @@
 //! - magicalMul: the input (Math.random() × 100 from the 🪄 button, in the Contract), 2.4 first.
 //!
 //! Haptics (past RN, which plays none: the owner's haptic language): `haptic:impact-light` when
-//! a finger takes the picker; `haptic:impact-rigid` once each time the drag pushes it past an
-//! end of the track (clampedTranslateX's limit: N at 5 or 350). N's steps play none: 345 of them
-//! in the track's ~340 pt would buzz.
+//! the pan takes the picker (its activation, so a tap plays none); `haptic:impact-rigid` once
+//! each time the drag pushes it past an end of the track (clampedTranslateX's limit: N at 5 or
+//! 350), re-armed only once the drag is REARM back inside. N's steps play none: 345 of them in
+//! the track's ~340 pt would buzz.
 //!
 //! Native controls (the owner's redesign, phone feedback 2026-11-15: the drawn slider fought the
 //! screen's navigation and should be native): a second input, N from the Contract's
@@ -45,6 +46,8 @@ const TRACK: f32 = 4.0;
 const PICKER: f32 = 35.0;
 /// defaultScale.
 const REST_SCALE: f64 = 0.8;
+/// How far back inside the track the drag goes before the end's rigid plays again, pt.
+const REARM: f64 = 6.0;
 /// Full-bleed: the room the demo's top row (safe area + close button) and the floating bar
 /// (10 + 64 + 10) take; the sphere centres between them.
 const TOP_ROOM: f32 = 112.0;
@@ -151,20 +154,26 @@ impl Surface for FibonacciShader {
         let (cx, cy) = (tx + self.clamped() as f32, ty + TRACK / 2.0);
         let half = PICKER / 2.0 * self.scale.value as f32;
         let hit = (x - cx).abs() <= half && (y - cy).abs() <= half;
-        match self.pan.event(id, gfx::phase(phase), x, y, at_ms, hit) {
+        let event = self.pan.event(id, gfx::phase(phase), x, y, at_ms, hit);
+        match event {
             Event::Begin { .. } => {
                 self.scale.to(1.0, self.scale.velocity, GENTLE);
                 self.context_x = self.clamped();
                 self.past_end = false;
-                self.posted.push("haptic:impact-light".into());
             }
             Event::Start(p) | Event::Update(p) => {
+                if matches!(event, Event::Start(_)) {
+                    self.posted.push("haptic:impact-light".into());
+                }
                 self.translate_x = self.context_x + p.translation_x as f64;
-                let past = self.translate_x < 0.0 || self.translate_x > self.slider_width();
+                let w = self.slider_width();
+                let past = self.translate_x < 0.0 || self.translate_x > w;
                 if past && !self.past_end {
                     self.posted.push("haptic:impact-rigid".into());
+                    self.past_end = true;
+                } else if self.translate_x > REARM && self.translate_x < w - REARM {
+                    self.past_end = false;
                 }
-                self.past_end = past;
             }
             Event::End(p) => {
                 self.translate_x = self.context_x + p.translation_x as f64;
@@ -342,6 +351,10 @@ mod tests {
         s.input(&p(exact_gpu::PointerPhase::Down, 42.0, 10.0));
         for k in 1..=20 {
             s.input(&p(exact_gpu::PointerPhase::Move, 42.0 + k as f32 * 20.0, 10.0 + k as f64 * 16.0));
+        }
+        // Hovering on the end: no second rigid.
+        for k in 0..20 {
+            s.input(&p(exact_gpu::PointerPhase::Move, if k % 2 == 0 { 396.0 } else { 386.0 }, 330.0 + k as f64 * 3.0));
         }
         s.input(&p(exact_gpu::PointerPhase::Up, 420.0, 400.0));
         // The grab, then the track's end (once, however far past it the finger goes).

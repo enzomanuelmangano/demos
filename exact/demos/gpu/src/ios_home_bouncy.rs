@@ -38,10 +38,12 @@
 //! Input: safeTop.
 //!
 //! Haptics (past RN, which plays none: the owner's haptic language): `haptic:impact-light` when
-//! the long press opens the customizer and when a finger takes a slider's thumb;
-//! `haptic:selection` per value step a thumb moves (at most one per HAPTIC_GAP_MS) and when a pull
-//! crosses the 80 pt line past which a release dismisses (either way); `haptic:impact-medium`
-//! when a release dismisses the customizer. No two within HAPTIC_GAP_MS; taps play none.
+//! the long press opens the customizer and when a thumb's pan activates (a tap on it plays
+//! none); `haptic:selection` per value step a thumb moves (STEP_SLACK of a step past its half
+//! line, so a thumb held there does not flap; at most one per HAPTIC_GAP_MS) and once when a
+//! pull goes past the 80 pt line past which a release dismisses (none on the way back, re-armed
+//! REARM back under it); `haptic:impact-medium` when a release dismisses the customizer. No two
+//! within HAPTIC_GAP_MS; taps play none.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -93,6 +95,10 @@ const LONG_PRESS_SLOP: f32 = 10.0;
 const HAPTIC_GAP_MS: f64 = 40.0;
 /// The pull past which a release dismisses the customizer, pt.
 const DISMISS_PULL: f64 = 80.0;
+/// Back under DISMISS_PULL by this much before going past it plays again, pt.
+const REARM: f64 = 24.0;
+/// How far (in steps) past a step's half line a thumb goes before its selection plays.
+const STEP_SLACK: f64 = 0.15;
 /// The Modal's cross dissolve (UIKit's default transition duration; not measured).
 const FADE_MS: f64 = 400.0;
 /// The keyframes' duration and Offset (screens/spring-customizer/animations.ts).
@@ -276,8 +282,9 @@ impl Card {
 enum Grab {
     /// The PullToDismiss pan (and maybe a tab's Pressable).
     Pull { tab: Option<usize> },
-    /// Slider `i`'s thumb pan: the thumb's x and the value at its start.
-    Thumb { i: usize, start_x: f64 },
+    /// Slider `i`'s thumb pan: the thumb's x and the value at its start, and the value its
+    /// selection haptic last felt (with STEP_SLACK of hysteresis).
+    Thumb { i: usize, start_x: f64, felt: f64 },
 }
 
 /// The SpringCustomizer while rendered.
@@ -646,9 +653,8 @@ impl Bouncy {
             });
             let m = self.modal.as_mut().unwrap();
             if let Some(i) = thumb {
-                m.grab = Some((id, Grab::Thumb { i, start_x: 0.0 }));
+                m.grab = Some((id, Grab::Thumb { i, start_x: 0.0, felt: f64::NAN }));
                 m.thumb.event(id, phase, x, y, at_ms, true);
-                self.haptics.play("impact-light", at_ms);
             } else {
                 m.grab = Some((id, Grab::Pull { tab }));
                 // onBegin.
@@ -665,7 +671,7 @@ impl Bouncy {
         }
         let done = matches!(phase, Phase::Up | Phase::Cancel);
         match grab {
-            Grab::Thumb { i, start_x } => {
+            Grab::Thumb { i, start_x, felt } => {
                 let tab = m
                     .cards
                     .iter()
@@ -674,9 +680,13 @@ impl Bouncy {
                 let (_, min, max, step) = SLIDERS[i];
                 let span = (SLIDER - THUMB) as f64;
                 let mut start_x = start_x;
+                let mut felt = felt;
                 let update = match m.thumb.event(id, phase, x, y, at_ms, true) {
                     Event::Start(p) => {
                         start_x = (self.configs[tab][i] - min) / (max - min) * span;
+                        felt = self.configs[tab][i];
+                        // The pan takes the thumb.
+                        self.haptics.play("impact-light", at_ms);
                         Some(p)
                     }
                     Event::Update(p) => Some(p),
@@ -685,9 +695,9 @@ impl Bouncy {
                 if let Some(p) = update {
                     let nx = (start_x + p.translation_x as f64).clamp(0.0, span);
                     let v = min + nx / span * (max - min);
-                    let old = self.configs[tab][i];
                     self.configs[tab][i] = (v / step).round() * step;
-                    if self.configs[tab][i] != old {
+                    if (v - felt).abs() >= step * (0.5 + STEP_SLACK) {
+                        felt = self.configs[tab][i];
                         self.haptics.play("selection", at_ms);
                     }
                 }
@@ -695,7 +705,7 @@ impl Bouncy {
                 m.grab = if done {
                     None
                 } else {
-                    Some((id, Grab::Thumb { i, start_x }))
+                    Some((id, Grab::Thumb { i, start_x, felt }))
                 };
             }
             Grab::Pull { tab } => {
@@ -711,10 +721,11 @@ impl Bouncy {
                                 m.triggered = true;
                                 self.start = true;
                             }
-                            let past = m.ty.value > DISMISS_PULL;
-                            if past != self.past_dismiss {
-                                self.past_dismiss = past;
+                            if !self.past_dismiss && m.ty.value > DISMISS_PULL {
+                                self.past_dismiss = true;
                                 self.haptics.play("selection", at_ms);
+                            } else if self.past_dismiss && m.ty.value < DISMISS_PULL - REARM {
+                                self.past_dismiss = false;
                             }
                         }
                     }

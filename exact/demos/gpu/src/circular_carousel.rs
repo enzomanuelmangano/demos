@@ -33,7 +33,8 @@
 //!   (400 px is not more than 3 × their idealSize) and are drawn cover, bilinear.
 //! - Haptics (past RN, which plays none: the owner's haptic language): `haptic:selection` each
 //!   time the photo at the arc's crown (round(offset / item)) changes, during the drag and the
-//!   glide, at most one per HAPTIC_GAP_MS; `haptic:impact-rigid` once each time the strip is
+//!   glide, with SWITCH of hysteresis past the half-item line (a finger hovering there does not
+//!   flap) and at most one per HAPTIC_GAP_MS; `haptic:impact-rigid` once each time the strip is
 //!   pulled or thrown past an end (the rubber band).
 
 use exact_gpu::wgpu;
@@ -60,6 +61,8 @@ const AVOID: [f64; 5] = [1.0; 5];
 const HAPTIC_GAP_MS: f64 = 40.0;
 /// How far past an end (points) the rubber band must pull before its haptic.
 const PAST_END: f64 = 2.0;
+/// How far past the half-item line the offset goes before the crown changes, pt.
+const SWITCH: f64 = 6.0;
 
 /// Each photo as iOS decodes it (ImageIO), the 400 × 600 ones downscaled as expo-image does:
 /// RGB rows, zlib, and their size (exact/parity-tools/circular-carousel/make.sh).
@@ -190,7 +193,11 @@ impl Circular {
     /// A selection when the photo at the crown changes (one per HAPTIC_GAP_MS at most), a rigid
     /// thunk once per pull past an end.
     fn haptics(&mut self, x: f64, item: f64, now: f64) {
-        let centred = (x / item).round().clamp(0.0, (COUNT - 1) as f64) as i64;
+        let f = x / item;
+        let centred = match self.centred {
+            Some(c) if (f - c as f64).abs() < 0.5 + SWITCH / item => c,
+            _ => f.round().clamp(0.0, (COUNT - 1) as f64) as i64,
+        };
         if self.centred.is_some_and(|c| c != centred) && now - self.haptic_at >= HAPTIC_GAP_MS {
             self.posted.push("haptic:selection".into());
             self.haptic_at = now;
@@ -409,5 +416,37 @@ mod tests {
         ms += 100.0;
         drag(&mut sf, &mut ms, -150.0);
         assert_eq!(sf.messages(), vec!["haptic:selection", "haptic:impact-rigid"]);
+    }
+
+    #[test]
+    fn hovering_on_the_half_item_line_plays_one_selection() {
+        let mut s = Circular {
+            scroll: UiScroll::new(0.0, 0.0, 0.0, NORMAL, Snap::Free),
+            width: 0.0,
+            enabled: None,
+            outputs: std::array::from_fn(|_| Spring::at(1.0)),
+            canvas: Canvas::default(),
+            renderer: Renderer::default(),
+            images: None,
+            group: None,
+            group_size: (0, 0),
+            group_canvas: Canvas::default(),
+            group_renderer: Renderer::default(),
+            centred: None,
+            past_end: false,
+            haptic_at: f64::NEG_INFINITY,
+            posted: Vec::new(),
+        };
+        s.scroll.max = 1000.0;
+        let item = 100.0;
+        s.haptics(0.0, item, 0.0);
+        for k in 0..40 {
+            s.haptics(if k % 2 == 0 { 53.0 } else { 47.0 }, item, 100.0 * k as f64);
+        }
+        assert!(s.posted.is_empty(), "{:?}", s.posted);
+        s.haptics(57.0, item, 5000.0);
+        s.haptics(52.0, item, 5100.0);
+        s.haptics(45.0, item, 5200.0);
+        assert_eq!(s.posted, vec!["haptic:selection"]);
     }
 }

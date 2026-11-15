@@ -44,6 +44,8 @@ const LIST_H: f64 = 250.0;
 const COUNT: usize = 11;
 /// The shortest gap between two selection haptics, ms.
 const HAPTIC_GAP_MS: f64 = 40.0;
+/// How far past the half-item line the offset goes before the haptics' item changes, pt.
+const SWITCH: f64 = 6.0;
 /// How far past an end (points) the rubber band must pull before its haptic.
 const PAST_END: f64 = 2.0;
 
@@ -131,7 +133,13 @@ impl Coverflow {
     /// A selection when the centred photo changes (one per HAPTIC_GAP_MS at most), a rigid thunk
     /// once per pull past an end.
     fn haptics(&mut self, x: f64, now: f64) {
-        let centred = (x / ITEM).round().clamp(0.0, (COUNT - 1) as f64) as i64;
+        // The centred item holds until the offset is SWITCH past the half-item line: a finger
+        // hovering there does not flap.
+        let f = x / ITEM;
+        let centred = match self.centred {
+            Some(c) if (f - c as f64).abs() < 0.5 + SWITCH / ITEM => c,
+            _ => f.round().clamp(0.0, (COUNT - 1) as f64) as i64,
+        };
         if self.centred.is_some_and(|c| c != centred) && now - self.haptic_at >= HAPTIC_GAP_MS {
             self.posted.push("haptic:selection".into());
             self.haptic_at = now;

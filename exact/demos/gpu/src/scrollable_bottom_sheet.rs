@@ -16,11 +16,11 @@
 //!
 //! Haptics: RN's own (pressto's selection) on the presses. Past RN, which plays none for the
 //! drags (the owner's haptic language): `haptic:impact-light` when the pan takes the sheet;
-//! `haptic:selection` when the pull crosses CLOSE_DRAG (where the release decides, with
-//! HYSTERESIS) and when a drag of the pages, or its paging glide, brings another page into view
-//! (a press's scrollTo and the close's reset play none), at most one per HAPTIC_GAP_MS;
-//! `haptic:impact-medium` when a release closes the sheet; `haptic:impact-soft` when a sheet
-//! sprung back lands (within LANDED of its height), skipped for a pull under 2 × LANDED.
+//! `haptic:selection` when the pull goes past CLOSE_DRAG (where a release closes), none on the
+//! way back, re-armed only REARM back under it, and when a drag of the pages, or its paging
+//! glide, brings another page into view (SWITCH past the half-page line; a press's scrollTo
+//! and the close's reset play none), at most one per HAPTIC_GAP_MS; `haptic:impact-medium`
+//! when a release closes the sheet. Nothing when a sheet sprung back lands.
 //!
 //! Layout (Yoga; the sheet is SCREEN_HEIGHT tall at top SCREEN_HEIGHT, moved by translateY): the
 //! line 75 × 4 at 15, the pages from 34 to the spacer's top (H + translateY tall), so a page is
@@ -77,10 +77,10 @@ const THROTTLE_MS: f64 = 16.0;
 const CLOSE_DRAG: f32 = 100.0;
 /// The shortest gap between two selection haptics, ms.
 const HAPTIC_GAP_MS: f64 = 40.0;
-/// Back across CLOSE_DRAG by this much before it plays again, points.
-const HYSTERESIS: f32 = 4.0;
-/// A sheet this close to its height has landed, points.
-const LANDED: f64 = 6.0;
+/// Back under CLOSE_DRAG by this much before going past it plays again, points.
+const REARM: f32 = 24.0;
+/// How far past the half-page line the pages go before the page's haptic plays, points.
+const SWITCH: f64 = 6.0;
 /// Transparent margin around each atlas cell, device pixels.
 const GUTTER: f32 = 2.0;
 /// The atlas cells: the round button, "Next Page", "Close".
@@ -182,10 +182,8 @@ struct Sheet {
     press: [Pressable; 4],
     font: Option<Font>,
     posted: Vec<String>,
-    /// The pull is past CLOSE_DRAG.
+    /// The pull went past CLOSE_DRAG (its selection played) and is not re-armed yet.
     past_close: bool,
-    /// Sprung back from a pull and not yet landed (its soft haptic due).
-    landing: bool,
     /// The page in view, and whether a press's scrollTo (or the close's reset) drives the pages.
     page: i64,
     driven: bool,
@@ -226,7 +224,6 @@ impl Sheet {
             font: skia::match_ui_font(20.0, 700.0),
             posted: Vec::new(),
             past_close: false,
-            landing: false,
             page: 0,
             driven: false,
             haptic_at: f64::NEG_INFINITY,
@@ -256,7 +253,6 @@ impl Sheet {
 
     /// scrollToY(destination): active, the reset 500 ms after a close, and the spring.
     fn scroll_to_y(&mut self, destination: f64, now: f64) {
-        self.landing = false;
         self.active = destination != 0.0;
         if destination == 0.0 {
             self.resets.push(now + RESET_MS);
@@ -384,8 +380,10 @@ impl Sheet {
             self.driven = false;
         }
         let w = (self.w as f64).max(1.0);
-        let page = (self.pages.offset / w).round().clamp(0.0, 2.0) as i64;
-        if page != self.page {
+        let f = self.pages.offset / w;
+        let held = (f - self.page as f64).abs() < 0.5 + SWITCH / w;
+        let page = f.round().clamp(0.0, 2.0) as i64;
+        if page != self.page && (!held || self.driven) {
             self.page = page;
             if !self.driven {
                 self.selection();
@@ -394,14 +392,11 @@ impl Sheet {
     }
 
     fn pan_update(&mut self, p: &Pan) {
-        let past = if self.past_close {
-            p.translation_y > CLOSE_DRAG - HYSTERESIS
-        } else {
-            p.translation_y > CLOSE_DRAG
-        };
-        if past != self.past_close {
-            self.past_close = past;
+        if !self.past_close && p.translation_y > CLOSE_DRAG {
+            self.past_close = true;
             self.selection();
+        } else if self.past_close && p.translation_y < CLOSE_DRAG - REARM {
+            self.past_close = false;
         }
         if p.translation_y > 0.0 {
             let v = (p.translation_y as f64 + self.context).max(50.0 - self.h as f64);
@@ -451,8 +446,6 @@ impl Sheet {
                     self.scroll_to_y(to, self.now);
                     if to == 0.0 {
                         self.posted.push("haptic:impact-medium".into());
-                    } else {
-                        self.landing = (self.translate_y.value - to).abs() >= 2.0 * LANDED;
                     }
                 }
                 _ => {}
@@ -766,10 +759,6 @@ impl Surface for Sheet {
         self.page_haptic();
         self.scrolled(between);
         moving |= self.translate_y.step(now);
-        if self.landing && (self.translate_y.value - self.translate_y.target()).abs() < LANDED {
-            self.landing = false;
-            self.posted.push("haptic:impact-soft".into());
-        }
         self.sync_fades();
         moving |= self.pages_opacity.step(now);
         moving |= self.backdrop_opacity.step(now);
@@ -919,8 +908,8 @@ mod tests {
             st.contains("\"active\":true,\"translateY\":-250.00"),
             "{st}"
         );
-        // The grab, then the landing as it springs back.
-        assert_eq!(s.messages(), vec!["haptic:impact-light", "haptic:impact-soft"]);
+        // The grab; nothing as it springs back.
+        assert_eq!(s.messages(), vec!["haptic:impact-light"]);
         ms = drag(&gpu, &mut s, (210.0, 700.0), (0.0, 150.0), 20, ms);
         ms = run(&gpu, &mut s, ms, ms + 1500.0);
         let st = state(&mut s);

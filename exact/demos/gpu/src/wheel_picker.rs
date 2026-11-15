@@ -41,6 +41,9 @@ use crate::gfx;
 const LINES: usize = 50;
 /// The shortest gap between two tick haptics, ms (UIKit's pickers pace theirs so).
 const HAPTIC_GAP_MS: f64 = 40.0;
+/// How far past a line (in lines) the wheel turns before its haptic plays: a wheel held on a
+/// line does not flap.
+const SLACK: f64 = 0.25;
 const AREA_H: f32 = 150.0;
 const MAX_LINE: f32 = 20.0;
 const MIN_LINE: f32 = 10.0;
@@ -144,7 +147,7 @@ impl WheelPicker {
         if progress < 0.0 {
             return;
         }
-        let index = (progress * LINES as f64).floor() as i64;
+        let index = detent(self.line_index, progress * LINES as f64);
         if index != self.line_index {
             if now - self.haptic_at >= HAPTIC_GAP_MS {
                 self.posted.push("haptic:selection".into());
@@ -287,10 +290,33 @@ impl Surface for WheelPicker {
     }
 }
 
+/// The detent the haptics feel at `v` (in detents, floored), `held` before: it holds until `v`
+/// is SLACK of a detent past either of its edges, so a value hovering on a line does not flap.
+fn detent(held: i64, v: f64) -> i64 {
+    if held >= 0 && v >= held as f64 - SLACK && v < held as f64 + 1.0 + SLACK {
+        held
+    } else {
+        v.floor() as i64
+    }
+}
+
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
     use exact_gpu::{fixture, PointerKind, PointerPhase};
+
+    #[test]
+    fn a_wheel_held_on_a_line_does_not_flap() {
+        assert_eq!(detent(-1, 0.1), 0);
+        let mut held = 3;
+        for k in 0..40 {
+            held = detent(held, if k % 2 == 0 { 4.1 } else { 3.9 });
+            assert_eq!(held, 3);
+        }
+        assert_eq!(detent(3, 4.3), 4);
+        assert_eq!(detent(4, 3.8), 4);
+        assert_eq!(detent(4, 3.7), 3);
+    }
 
     #[test]
     fn a_fast_drag_paces_its_tick_haptics() {
@@ -343,7 +369,7 @@ mod tests {
         };
         // Drag left 103 pt slowly; RNGH on iOS leaves UIKit's 10 pt hysteresis out of the
         // translation: offset 210 − 93 → 4.65 lines; the counts posted, and the haptics paced to
-        // HAPTIC_GAP_MS (lines 0 and 1 are crossed 30 ms apart: one of them plays).
+        // HAPTIC_GAP_MS; lines 0 … 4 each play one (SLACK puts line 1's a frame after line 0's).
         finger(&mut s, PointerPhase::Down, 300.0, 0.0);
         for i in 1..=10 {
             finger(&mut s, PointerPhase::Move, 300.0 - 10.3 * i as f32, 30.0 * i as f64);
@@ -351,7 +377,7 @@ mod tests {
         finger(&mut s, PointerPhase::Move, 197.0, 600.0);
         let posted = s.messages();
         assert!(posted.contains(&"count:5".to_string()), "{posted:?}");
-        assert_eq!(posted.iter().filter(|m| *m == "haptic:selection").count(), 4, "{posted:?}");
+        assert_eq!(posted.iter().filter(|m| *m == "haptic:selection").count(), 5, "{posted:?}");
         finger(&mut s, PointerPhase::Up, 197.0, 700.0);
         let mut ms = 700.0;
         while ms < 2500.0 {

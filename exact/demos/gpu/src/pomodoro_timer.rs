@@ -53,6 +53,9 @@ const DIGIT_H: f32 = 120.0;
 const BUTTON: f32 = 64.0;
 /// The shortest gap between two tick haptics, ms (UIKit's pickers pace theirs so).
 const HAPTIC_GAP_MS: f64 = 40.0;
+/// How far past a tick's line (in ticks) the dial turns before its haptic plays: a dial held
+/// on a line does not flap.
+const SLACK: f64 = 0.25;
 const TRANSLATE_SPRING: SpringConfig = SpringConfig { stiffness: 100.0, damping: 10.0, mass: 0.25 };
 const TIMER_ICON: &str = "\u{F13AB}";
 const STOP_ICON: &str = "\u{F04DB}";
@@ -343,12 +346,13 @@ impl Pomodoro {
         if seconds < 0 {
             return;
         }
-        if seconds != self.previous_tick {
+        let felt = detent(self.previous_tick, x + 0.5);
+        if felt != self.previous_tick {
             if now - self.haptic_at >= HAPTIC_GAP_MS {
                 self.messages.push("haptic:selection".into());
                 self.haptic_at = now;
             }
-            self.previous_tick = seconds;
+            self.previous_tick = felt;
         }
         if seconds != self.count {
             self.count = seconds;
@@ -910,6 +914,16 @@ impl Pomodoro {
         } else {
             self.progress.fling(velocity);
         }
+    }
+}
+
+/// The detent the haptics feel at `v` (in detents, floored), `held` before: it holds until `v`
+/// is SLACK of a detent past either of its edges, so a value hovering on a line does not flap.
+fn detent(held: i64, v: f64) -> i64 {
+    if held >= 0 && v >= held as f64 - SLACK && v < held as f64 + 1.0 + SLACK {
+        held
+    } else {
+        v.floor() as i64
     }
 }
 
