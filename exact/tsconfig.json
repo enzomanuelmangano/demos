@@ -1,0 +1,28 @@
+{
+  // The Bun tooling of the Exact app: exact/demos/tools (the Contract linter included) and
+  // exact/demos/app.ts. exact/parity-tools is checked separately by tsconfig.parity.json.
+  // It is its own project: the React Native app's tsconfig (../tsconfig.json) excludes exact/.
+  // Check it with `bun x tsc -p exact/tsconfig.json --noEmit` (or `exact/demos/tools/lint.sh ts`).
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    // The scripts are run, not imported: every file is a module, so top-level await is allowed.
+    "moduleDetection": "force",
+    "noFallthroughCasesInSwitch": true,
+    // Node's types come from the repo's root install; Bun's globals from the declaration below
+    // (swap it for the `bun-types` package when that is installed).
+    "types": ["node"],
+    "typeRoots": ["../node_modules/@types"]
+  },
+  "include": ["demos/app.ts", "demos/tools/**/*.ts", "types/**/*.d.ts"],
+  "exclude": ["**/node_modules", "demos/node_modules", "demos/target", "parity-tools/**/out"]
+}

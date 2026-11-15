@@ -33,6 +33,12 @@ bun exact.mjs phone <udid> --run --url http://<your-lan-ip>:5341
 `bun exact.mjs help` lists every verb. `bun tools/gen-demos.ts` rebuilds the launcher's list from
 the original React Native app's registry.
 
+## Lint
+
+`tools/lint.sh all` runs the Contract linter (polish and performance rules, with a baseline of accepted debt), the Rust format
+and clippy gate, the TypeScript check of the Bun tooling and the generated-files check; CI runs the part that needs no Exact
+checkout. What each check does, how to add a rule and how the baseline works: [LINT.md](LINT.md).
+
 ## Adding a demo
 
 1. Add `demos/<slug>/<slug>.contract` with a component that takes `env: DemoEnv`.
