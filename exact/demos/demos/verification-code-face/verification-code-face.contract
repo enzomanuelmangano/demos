@@ -136,7 +136,7 @@ component VerificationCodeFace
                     CodeDigit(digit=g.digit, leaving=g.leaving, late=g.late, testId=`digit-${i}`)
       // The invisible TextInput: number pad, autofocus, 50 below the screen.
       // (one-time-code: a number pad with no Done bar over it, as RN's has none.)
-      input id="code-field" value=field input=typed inputmode="numeric" autofocus=true
+      input id="code-field" value=field input=typed inputmode="numeric" autofocus=(not env.tile)
         autocomplete="one-time-code" focus=keyboardUp blur=keyboardDown
         aria-label="Verification code" testId="code-field" position="absolute" bottom=-50 left=0
         color="#000000" background-color="transparent" border="none"

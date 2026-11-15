@@ -49,6 +49,8 @@ async function crop(slug: string, id: string, x: number, y: number): Promise<str
   return out;
 }
 
+const idle = new Map<string, number>();
+const waiters = new Map<string, (() => void)[]>();
 const json = (v: unknown, status = 200) =>
   new Response(JSON.stringify(v), { status, headers: { "content-type": "application/json", "access-control-allow-origin": "*" } });
 
@@ -60,6 +62,20 @@ Bun.serve({
     if (req.method === "OPTIONS") return new Response(null, { headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type" } });
     if (url.pathname === "/notes") return json({ notes: safe(url.searchParams.get("slug") ?? "") ? read(url.searchParams.get("slug")!) : all() });
     if (url.pathname === "/phone" && req.method === "POST") return phone(req);
+    // The snap route's idle beacon (app.contract snapIdle) and gen-snapshots.ts's wait on it.
+    if (url.pathname === "/snap-idle" && req.method === "POST") {
+      const b = await req.json().catch(() => ({}));
+      if (safe(b.slug ?? "")) { idle.set(b.slug, Date.now()); waiters.get(b.slug)?.forEach((w) => w()); waiters.delete(b.slug); }
+      return json({ ok: true });
+    }
+    if (url.pathname === "/snap-wait") {
+      const slug = url.searchParams.get("slug") ?? "", after = +(url.searchParams.get("after") ?? 0);
+      if ((idle.get(slug) ?? 0) > after) return json({ ok: true });
+      return await new Promise<Response>((done) => {
+        const t = setTimeout(() => done(json({ ok: false }, 408)), +(url.searchParams.get("timeout") ?? 8000));
+        waiters.set(slug, (waiters.get(slug) ?? []).concat([() => { clearTimeout(t); done(json({ ok: true })); }]));
+      });
+    }
     // The atlas's static frames at runtime (gen-snapshots.ts writes them): a regenerated frame
     // shows on the next atlas open, with no native build.
     const snap = /^\/snap\/([a-z0-9-]+)\.jpg$/.exec(url.pathname);

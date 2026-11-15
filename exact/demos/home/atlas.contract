@@ -32,7 +32,7 @@ fn sortLabel(by: string): string = by == "name" ? "Name" : by == "status" ? "Sta
 fn detail(slug: string): string = atlasScore(slug) >= 0 ? `${statusLabel(slug)} · Δ ${atlasScore(slug).toFixed(1)}` : statusLabel(slug)
 // A demo's env inside a tile: the iPhone Air's screen, whatever the window is, and one seed for
 // every launch, so a random demo lays out as its static frame shows.
-fn airEnv(env: DemoEnv): DemoEnv = DemoEnv(env, width=airW(), height=airH(), safeTop=airTop(), safeBottom=airBottom(), seed=atlasSeed())
+fn airEnv(env: DemoEnv): DemoEnv = DemoEnv(env, width=airW(), height=airH(), safeTop=airTop(), safeBottom=airBottom(), seed=atlasSeed(), tile=true)
 fn atlasSeed(): number = 20260101
 // A tile's static frame is the demo `idleMs()` after it mounts on the Mac (gen-snapshots.ts,
 // under the agent's clock): entrances done, a looping demo at a fixed time. A live tile stays
@@ -42,8 +42,10 @@ fn idleMs(): number = 1200
 fn frameServer(): string = "http://127.0.0.1:5350"
 
 // gen-snapshots.ts's frame: one demo as a tile mounts it, at `snapScale()`, `snapLeft()`,
-// `snapTop()` points into the window (demos-exact://snap/<slug>), captured `idleMs()` after.
-fn snapScale(): number = 0.6
+// `snapTop()` points into the window (demos-exact://snap/<slug>), captured from the agent's own
+// window (screencapture -l: the window's own pixels, never the screen's) when the app reports
+// the demo idle (app.contract's snapIdle, `idleMs()` after it mounts) to the feedback server.
+fn snapScale(): number = 0.8
 fn snapLeft(): number = 20
 fn snapTop(): number = 64
 component SnapFrame
@@ -54,7 +56,7 @@ component SnapFrame
   view
     column position="absolute" inset=0 background-color="#ffffff" testId="atlas-snap"
       view position="absolute" left=snapLeft() top=snapTop() width=(airW() * snapScale()) height=(airH() * snapScale())
-        overflow="hidden" background-color=backdrop
+        overflow="hidden" background-color=backdrop testId="atlas-snap-frame"
         column position="absolute" width=airW() height=airH() background-color=backdrop
           left=(0 - airW() * (1 - snapScale()) / 2) top=(0 - airH() * (1 - snapScale()) / 2) scale=snapScale()
           PortedDemo(slug=slug, env=airEnv(env))

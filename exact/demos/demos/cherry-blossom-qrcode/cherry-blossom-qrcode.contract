@@ -52,7 +52,7 @@ component CherryBlossomQrcode
     if m == "haptic:impact-soft"
       haptic("impact-soft")
     // focusInput(): INITIAL_FOCUS_DELAY_MS after the mount, and on every press.
-    if m == "focus"
+    if m == "focus" and not env.tile
       focus("cherry-input")
     if m == "hint"
       hintShown = true
@@ -65,7 +65,8 @@ component CherryBlossomQrcode
     text = v
   // handleInputBlur: requestAnimationFrame(focusInput); the keyboard stays up.
   action refocus
-    focus("cherry-input")
+    if not env.tile
+      focus("cherry-input")
   view
     // styles.container: CONTAINER_BG (#f7f7f7), flex 1.
     column position="absolute" inset=0 background-color="#f7f7f7" testId="cherry-blossom-qrcode"

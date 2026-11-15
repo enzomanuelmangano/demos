@@ -47,6 +47,15 @@ source feedbackEdit(slug: string, id: string, comment: string, status: string) a
   method "POST"
   body json
 
+// The snap route's "idle now": gen-snapshots.ts waits on the server for it, then captures.
+shape SnapAck
+  ok: bool
+
+source snapIdle(slug: string) as shape SnapAck
+  url "http://127.0.0.1:5350/snap-idle"
+  method "POST"
+  body json
+
 // Demos whose drags own the whole screen: their swipe-down close starts only in RN's grab strip
 // over the status bar (the close button stays). RN lets a demo keep a touch it claimed
 // (demo-screen.tsx CloseGesture); the close cannot ask the canvas mid-gesture, and switching it
@@ -76,7 +85,7 @@ component Demos
   resource host = exactViewport() as shape Host
   resource time = exactTime() as shape Time
   resource timers = exactSurface("timer") as shape Timers
-  derive env = DemoEnv(width=host.width, height=host.height, safeTop=0, safeBottom=0, epoch=time.epochAtZero, utcOffset=time.utcOffset, seed=time.seed, reducedMotion=host.prefersReducedMotion, timers=timers.fired)
+  derive env = DemoEnv(width=host.width, height=host.height, safeTop=0, safeBottom=0, epoch=time.epochAtZero, utcOffset=time.utcOffset, seed=time.seed, reducedMotion=host.prefersReducedMotion, timers=timers.fired, tile=false)
   // "Show Unstable" (the General tray): the work-in-progress demos are listed only with it on.
   state showUnstable = false persist
   resource feedback = feedbackNotes() when atlasShown as shape FeedbackNote[] else empty()
@@ -97,6 +106,13 @@ component Demos
     send noted = feedbackAdd(slug, x, y, element, ex, ey, ew, eh, comment)
   action editNote(slug: string, id: string, comment: string, status: string)
     send noted = feedbackEdit(slug, id, comment, status)
+  mutation snapped as shape SnapAck
+  // 1200: home/atlas.contract idleMs() (a timer takes a literal).
+  task snapping when top(nav).name == "snap" key=top(nav).id
+    after(1200, snapNow)
+  action snapNow
+    if top(nav).name == "snap"
+      send snapped = snapIdle(top(nav).params.slug)
   mutation sensors as shape SensorInput
   // demo-screen.tsx: a close, by the button or by the drag past CLOSE_SCALE, plays
   // Presets.System.impactMedium() when it commits, before the flight home: the launch does

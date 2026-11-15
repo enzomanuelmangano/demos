@@ -1,69 +1,86 @@
-// The atlas's static frames, from the running Mac app itself (no build): each demo opened by
-// `demos-exact://snap/<slug>` (app.contract's snap route: the demo exactly as a tile mounts it,
-// airEnv's 420×912 points, safe areas and seed, at snapScale()), captured `idleMs()` after it
-// mounts (home/atlas.contract: a live tile reveals at that moment, so going live is no jump),
-// cropped from the window into exact/demos/assets/atlas/<slug>.jpg. The feedback server serves
-// that folder to the atlas (/snap/<slug>.jpg), so a new frame shows on the atlas's next open.
-// The Mac app must be running (bun exact.mjs mac --run --url …) with its window unobscured.
-//   bun gen-snapshots.ts [--only a,b] [--width 420] [--lag 120]
-import { mkdirSync, readFileSync, existsSync, rmSync, writeFileSync } from "node:fs";
+// The atlas's static frames, from the Mac app itself. It TAKES OVER the running Mac app's window
+// for ~4 minutes (it opens demos-exact://snap/<slug> in it, one demo after another), so run it
+// only when nobody is using the app, and say so: `--take-over-window` is required.
+// Each demo shows alone in the snap route (app.contract: exactly as a tile mounts it, airEnv's
+// 420×912 points, safe areas and pinned seed, at snapScale()); the app posts /snap-idle to the
+// feedback server `idleMs()` after the mount (a live tile reveals at that moment, so going live
+// is no jump); this waits on that, captures the window's own pixels (screencapture -l, never a
+// screen region: other windows over it don't matter), crops the frame, and validates every
+// frame (validate-snapshots.ts), capturing the rejects again. The server serves assets/atlas to
+// the atlas at runtime (/snap/<slug>.jpg), so no build is needed.
+//   bun gen-snapshots.ts --take-over-window [--only a,b] [--width 420]
+import { mkdirSync, readFileSync, existsSync, rmSync, writeFileSync, cpSync } from "node:fs";
 import { join } from "node:path";
 import sharp from "sharp";
 import { DEMOS, demos } from "./lib";
+import { validate } from "./validate-snapshots";
 
+if (!process.argv.includes("--take-over-window")) {
+  console.error("gen-snapshots drives the running Mac app's window for minutes: pass --take-over-window when nobody is using it.");
+  process.exit(2);
+}
 const arg = (k: string, d: string) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const width = +arg("--width", "420");
 const only = arg("--only", "").split(",").filter(Boolean);
 const atlas = readFileSync(join(DEMOS, "home/atlas.contract"), "utf8");
 const num = (name: string) => +(new RegExp(`fn ${name}\\(\\): number = ([\\d.]+)`).exec(atlas)?.[1] ?? NaN);
-const IDLE = num("idleMs"), SCALE = num("snapScale"), LEFT = num("snapLeft"), TOP = num("snapTop");
-// The link's way in (open, the route push, the first layout) before the demo's clock starts.
-const LAG = +arg("--lag", "120");
+const SCALE = num("snapScale"), LEFT = num("snapLeft"), TOP = num("snapTop");
+const SERVER = "http://127.0.0.1:5350";
 const dir = join(DEMOS, "assets/atlas");
-const tmp = "/tmp/atlas-snaps";
-mkdirSync(dir, { recursive: true });
-mkdirSync(tmp, { recursive: true });
+const tmp = "/tmp/atlas-snaps", staged = join(tmp, "out");
+mkdirSync(staged, { recursive: true });
 
-// The Demos window's frame on screen, in points (CoreGraphics' window list), read before each
-// capture (the window may move); the reader is compiled once.
-const reader = join(tmp, "window-frame");
-function windowFrame(): { x: number; y: number; w: number; h: number } {
-  const f = join(tmp, "frame.swift");
+// The Demos window: its CoreGraphics id and size in points (the reader is compiled once).
+const reader = join(tmp, "demos-window");
+function demosWindow(): { id: number; w: number; h: number } {
   if (!existsSync(reader)) {
-  writeFileSync(f, `import CoreGraphics
-let l = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as! [[String: Any]]
-for w in l where (w["kCGWindowOwnerName"] as? String) == "Demos" && (w["kCGWindowLayer"] as? Int) == 0 {
-  let b = w["kCGWindowBounds"] as! [String: Any]; print(b["X"]!, b["Y"]!, b["Width"]!, b["Height"]!); break }
+    const f = join(tmp, "demos-window.swift");
+    writeFileSync(f, `import CoreGraphics
+let l = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as! [[String: Any]]
+for w in l where (w["kCGWindowOwnerName"] as? String) == "Demos" && (w["kCGWindowLayer"] as? Int) == 0 && (w["kCGWindowIsOnscreen"] as? Bool) == true {
+  let b = w["kCGWindowBounds"] as! [String: Any]; print(w["kCGWindowNumber"]!, b["Width"]!, b["Height"]!); break }
 `);
-  Bun.spawnSync(["swiftc", "-O", "-o", reader, f]);
+    Bun.spawnSync(["swiftc", "-O", "-o", reader, f]);
   }
-  const out = Bun.spawnSync([reader]).stdout.toString().trim().split(/\s+/).map(Number);
-  if (out.length < 4 || out.some(isNaN)) throw new Error("no Demos window on screen: launch the Mac app (bun exact.mjs mac --run --url …)");
-  return { x: out[0], y: out[1], w: out[2], h: out[3] };
+  const [id, w, h] = Bun.spawnSync([reader]).stdout.toString().trim().split(/\s+/).map(Number);
+  if (!id) throw new Error("no Demos window: launch the Mac app (bun exact.mjs mac --run --url …)");
+  return { id, w, h };
 }
 
-const open = (url: string) => Bun.spawnSync(["open", url]);
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const open = (url: string) => Bun.spawnSync(["open", "-g", url]); // -g: not brought forward
+async function capture(slug: string): Promise<boolean> {
+  const win = demosWindow();
+  if (win.h < TOP + 912 * SCALE + 4) throw new Error(`the window is ${win.h} pt tall; the frame needs ${TOP + 912 * SCALE + 4}`);
+  const asked = Date.now();
+  open(`demos-exact://snap/${slug}`);
+  // The app's own "idle now" (its clock, idleMs after the mount), not a guessed delay.
+  const r = await fetch(`${SERVER}/snap-wait?slug=${slug}&after=${asked}&timeout=10000`).catch(() => null);
+  const png = join(tmp, `${slug}.png`);
+  if (r?.ok) Bun.spawnSync(["screencapture", "-x", "-o", `-l${win.id}`, png]);
+  open("demos-exact:///");
+  if (!r?.ok || !existsSync(png)) return false;
+  const meta = await sharp(png).metadata();
+  const k = (meta.width ?? win.w) / win.w; // pixels per point
+  await sharp(png)
+    .extract({ left: Math.round(LEFT * k), top: Math.round(TOP * k), width: Math.round(420 * SCALE * k), height: Math.round(912 * SCALE * k) })
+    .resize(width, Math.round((width * 912) / 420), { fit: "fill" }).jpeg({ quality: 82, mozjpeg: true })
+    .toFile(join(staged, `${slug}.jpg`));
+  rmSync(png);
+  return true;
+}
 
 const slugs = demos().map((d) => d.slug).filter((s) => !only.length || only.includes(s));
-let n = 0, bytes = 0;
-const failed: string[] = [];
-open("demos-exact:///");
-await sleep(800);
 const t0 = Date.now();
-for (const s of slugs) {
-  open(`demos-exact://snap/${s}`);
-  await sleep(LAG + IDLE);
-  const png = join(tmp, `${s}.png`);
-  const win = windowFrame();
-  Bun.spawnSync(["screencapture", "-x", `-R${win.x + LEFT},${win.y + TOP},${420 * SCALE},${912 * SCALE}`, png]);
-  open("demos-exact:///");
-  if (!existsSync(png)) { failed.push(s); continue; }
-  const info = await sharp(png).resize(width, Math.round((width * 912) / 420), { fit: "fill" })
-    .jpeg({ quality: 82, mozjpeg: true }).toFile(join(dir, `${s}.jpg`));
-  rmSync(png);
-  n++; bytes += info.size;
-  await sleep(250);
-  if (n % 20 === 0) console.log(`${n}/${slugs.length} · ${((Date.now() - t0) / 1000).toFixed(0)} s`);
+let pending = slugs;
+for (let round = 0; round < 3 && pending.length; round++) {
+  for (const [i, s] of pending.entries()) {
+    if (!(await capture(s))) console.log(`  ${s}: no idle beacon (is the feedback server running, the app on the current plan?)`);
+    if ((i + 1) % 20 === 0) console.log(`${i + 1}/${pending.length} · ${((Date.now() - t0) / 1000).toFixed(0)} s`);
+  }
+  const bad = await validate(staged, pending);
+  for (const [s, why] of bad) console.log(`  reject ${s}: ${why}`);
+  pending = [...bad.keys()];
 }
-console.log(`${n} snapshots, ${(bytes / 1024 / 1024).toFixed(1)} MB in ${((Date.now() - t0) / 1000).toFixed(0)} s → ${dir}${failed.length ? `; failed: ${failed.join(" ")}` : ""}`);
+const good = slugs.filter((s) => !pending.includes(s) && existsSync(join(staged, `${s}.jpg`)));
+for (const s of good) cpSync(join(staged, `${s}.jpg`), join(dir, `${s}.jpg`));
+console.log(`${good.length}/${slugs.length} frames in ${((Date.now() - t0) / 1000).toFixed(0)} s → ${dir}${pending.length ? `; still rejected (old frame kept): ${pending.join(" ")}` : ""}`);
