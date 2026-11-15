@@ -174,6 +174,11 @@ component VerificationCode
 // animation's does): FlipOutXDown.duration(500) on bezier(0.6, 0.1, 0.4, 0.8) and
 // FadeOut.duration(250) on inOut(quad), 1000 ms after the check. The node's static
 // rotate="x 0deg" gives the rotation its x axis; the keyframes animate the angle.
+// Every node here that turns about x also has transform-origin="left center": the iOS host
+// lowers a box's rotate keyframes and transitions to Core Animation's transform.rotation.z
+// whatever the axis (exact/parity-tools/exact-issues/rotate-axis.md), so they turned flat; an
+// origin off the centre keeps the node sampled, through its x axis. A turn about x is the same
+// about any point of the centre line.
 keyframes digitLateRotate
   0% rotate=0 animation-timing-function="cubic-bezier(0.6, 0.1, 0.4, 0.8)"
   100% rotate=-90
@@ -204,7 +209,7 @@ component CodeDigit
     // the rotated frame (this node turns, the text inside moves). FiraCode 40 is 52.48 tall.
     column position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
       resize=appear perspective=500
-      rotate=(shown ? "x 0deg" : "x -90deg") opacity=(shown ? 1 : 0)
+      rotate=(shown ? "x 0deg" : "x -90deg") transform-origin="left center" opacity=(shown ? 1 : 0)
       transition="rotate 500ms cubic-bezier(0, 0.75, 0.5, 0.9), opacity 250ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
       column width="100%" height="100%" display="flex" align-items="center" justify-content="center"
         translate=(shown ? "0px 0px" : "0px 52.48px") transition="translate 500ms cubic-bezier(0, 0.75, 0.5, 0.9)"
@@ -215,10 +220,10 @@ component CodeDigit
         // host takes a change's transition from the style before it, so a delay switched on
         // with the change would not hold): the outer for the reset, the inner for a delete.
         column width="100%" height="100%" display="flex" align-items="center" justify-content="center"
-          perspective=500 rotate="x 0deg"
+          perspective=500 rotate="x 0deg" transform-origin="left center"
           animation=(goneLate ? "digitLateRotate 500ms linear 1000ms both, digitLateFade 500ms linear 1000ms both" : "none")
           column width="100%" height="100%" display="flex" align-items="center" justify-content="center"
-            rotate=(goneNow ? "x -90deg" : "x 0deg") opacity=(goneNow ? 0 : 1)
+            rotate=(goneNow ? "x -90deg" : "x 0deg") transform-origin="left center" opacity=(goneNow ? 0 : 1)
             transition="rotate 500ms cubic-bezier(0.6, 0.1, 0.4, 0.8), opacity 250ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
             column display="flex" align-items="center" justify-content="center"
               animation=(goneLate ? "digitLateDrop 500ms linear 1000ms both" : "none")
