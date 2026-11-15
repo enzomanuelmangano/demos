@@ -183,14 +183,18 @@ component ExpandableMiniPlayer
           opacity=(expanded ? 0.45 : 0) transition=`opacity ${mpPageSpring()}` pointer-events="none"
           aria-hidden=true
 
-      // The tab bar: a floating glass capsule, concentric with the display.
-      row position="absolute" left=mpInset() bottom=mpInset() width=floatingWidth(W, mpInset())
+      // The tab bar: a floating glass capsule, concentric with the display. Its glass is a
+      // background sibling under the tabs (never their parent), touch-transparent.
+      view position="absolute" left=mpInset() bottom=mpInset() width=floatingWidth(W, mpInset())
         height=mpTabH() border-radius=concentricRadius(mpInset(), mpTabH())
         corner-shape="-exact-continuous" background-color="rgba(30, 30, 30, 0.55)"
-        align-items="center" padding="0px 8px" testId="mp-tabs"
+        pointer-events="none" aria-hidden=true
         glass-pane glass-style="regular" corner-size=`${concentricRadius(mpInset(), mpTabH())}`
           interactive="false" continuous="true" position="absolute" inset=0 pointer-events="none"
           aria-hidden=true
+      row position="absolute" left=mpInset() bottom=mpInset() width=floatingWidth(W, mpInset())
+        height=mpTabH() align-items="center" padding="0px 8px" pointer-events="auto"
+        testId="mp-tabs"
         for i in [0, 1, 2, 3] key=i
           view flex=1 height=mpTabH() display="flex" flex-direction="column"
             PressableScale(press=pick(i))
@@ -204,8 +208,7 @@ component ExpandableMiniPlayer
       // The mini player: a glass capsule 8 above the tab bar. Its thumbnail is the flying cover
       // (in the sheet's layer, below); here a tap anywhere but the buttons expands.
       view position="absolute" left=mpInset() bottom=mpMiniBottom() width=floatingWidth(W, mpInset())
-        height=mpMiniH() pointerdown=expand aria-label="Now playing: tap to expand"
-        testId="mp-mini"
+        height=mpMiniH() pointer-events="none" aria-hidden=true
         view position="absolute" inset=0 border-radius=concentricRadius(mpInset(), mpMiniH())
           corner-shape="-exact-continuous" background-color="rgba(30, 30, 30, 0.55)"
           overflow="hidden" pointer-events="none"
@@ -219,6 +222,14 @@ component ExpandableMiniPlayer
               background-color="rgba(255, 255, 255, 0.85)"
               translate=`${(fraction - 1) * (floatingWidth(W, mpInset()) - 60)}px 0px`
               transition="translate 1000ms linear" testId="mp-mini-progress"
+      // The mini player's touches: a pressable over the whole capsule expands; its two
+      // buttons sit above it.
+      view position="absolute" left=mpInset() bottom=mpMiniBottom() width=floatingWidth(W, mpInset())
+        height=mpMiniH() pointer-events="auto" display="flex" flex-direction="column"
+        PressableScale(press=expand)
+          column flex-grow=1 aria-label="Now playing: tap to expand" testId="mp-mini"
+      view position="absolute" left=mpInset() bottom=mpMiniBottom() width=floatingWidth(W, mpInset())
+        height=mpMiniH() pointer-events="none"
         row position="absolute" left=(mpThumbPad() + mpThumb() + 12) right=8 top=0 bottom=0
           align-items="center" gap=4 pointer-events="none"
           column flex=1 min-width=0
@@ -240,7 +251,7 @@ component ExpandableMiniPlayer
 
       // The sheet's layer: 0 open, H collapsed, the drag's target, under a clipping parent.
       column position="absolute" inset=0 overflow="hidden" pointer-events="none"
-        column id="mp-sheet-layer" width="100%" height="100%" position="relative"
+        column id="mp-sheet-layer" width="100%" height="100%" position="relative" pointer-events="none"
           translate=`0px ${expanded ? 0 : H}px` transition=`translate ${mpSheetSpring()}`
           // The drag handle: the open sheet's box (its buttons, above, keep their taps).
           if expanded
@@ -297,18 +308,18 @@ component ExpandableMiniPlayer
                 font-weight=500 color=mpSecondary() font-variant-numeric="tabular-nums"
             // The transport.
             row margin-top=26 height=64 align-items="center" justify-content="space-evenly"
-              view width=64 height=64 pointer-events="auto" display="flex" flex-direction="column"
+              view width=64 height=64 pointer-events=(expanded ? "auto" : "none") display="flex" flex-direction="column"
                 PressableScale(press=back)
                   column flex-grow=1 align-items="center" justify-content="center"
                     aria-label="Previous" testId="mp-back"
                     image "symbol:sf/backward.fill" font-size=30 color=mpLabel() aria-hidden=true
-              view width=64 height=64 pointer-events="auto" display="flex" flex-direction="column"
+              view width=64 height=64 pointer-events=(expanded ? "auto" : "none") display="flex" flex-direction="column"
                 PressableScale(press=toggle)
                   column flex-grow=1 align-items="center" justify-content="center"
                     aria-label=(playing ? "Pause" : "Play") testId="mp-play"
                     image (playing ? "symbol:sf/pause.fill" : "symbol:sf/play.fill") font-size=44
                       color=mpLabel() aria-hidden=true
-              view width=64 height=64 pointer-events="auto" display="flex" flex-direction="column"
+              view width=64 height=64 pointer-events=(expanded ? "auto" : "none") display="flex" flex-direction="column"
                 PressableScale(press=next)
                   column flex-grow=1 align-items="center" justify-content="center"
                     aria-label="Next" testId="mp-next"
