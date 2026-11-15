@@ -1,15 +1,19 @@
-// RN's Alert.alert (UIAlertController .alert, the app's dark appearance), drawn in the demo's own
-// route. A `dialog` opened with showModal from the full-screen demo route is never presented on
-// the phone (the route's owner controller already presents it; see home/demo-screen.contract's
-// Inspiration sheet), so a demo that asks would not respond at all (sudoku's New Game).
+// RN's Alert.alert. On iOS it is UIKit's own alert: `system-alert` (modules/apple/SystemAlert.swift)
+// presents a real UIAlertController from the top-most view controller, as RN's RCTAlertManager
+// does, in the app's dark appearance (RN's userInterfaceStyle 'dark'), the cancel action first
+// as RN's array order puts it. A `dialog` opened with showModal from the full-screen demo route is
+// never presented on the phone (the route's owner controller already presents it), so a demo that
+// asked would not respond at all (sudoku's New Game).
 //
-// iOS 26's alert: a glass panel 300 wide with continuous corners, the title (17 semibold) and
-// message (15) leading-aligned, the actions as capsules side by side (a cancel action first),
-// a destructive action's label in systemRed. It appears scaled from 1.1 with a fade over a
-// dimmed screen and leaves with a fade. A tap outside does nothing, as UIKit's alert.
+// Where the view is an empty box (the web, the Mac, a build without it) it never says
+// "system-alert:1", and the alert is drawn in the demo's own route instead: iOS 26's alert, a
+// glass panel 300 wide with continuous corners, the title (17 semibold) and message (15)
+// leading-aligned, the actions as capsules side by side (a cancel action first), a destructive
+// action's label in systemRed. It appears scaled from 1.1 with a fade over a dimmed screen and
+// leaves with a fade. A tap outside does nothing, as UIKit's alert.
 //
-// Above everything in the demo (z-index 1000): a full-screen canvas takes the touches under it
-// on iOS whatever its pointer-events.
+// The drawn one is above everything in the demo (z-index 1000): a full-screen canvas takes the
+// touches under it on iOS whatever its pointer-events.
 
 keyframes routeAlertIn
   from opacity=0 scale=1.1
@@ -28,13 +32,30 @@ component RouteAlert
     dismiss: action
     accept: action
     testId: string
+  // True once `system-alert` said it is UIKit's (iOS): the drawn alert then never shows.
+  state native = false
+  action heard(m: string)
+    if m == "system-alert:1"
+      native = true
+  // The tapped button's index in `alert-buttons`: with a cancel label, "0" is it.
+  action chose(index: string)
+    if cancelLabel != "" and index == "0"
+      dismiss()
+    else
+      accept()
   view
     view position="absolute" inset=0 z-index=1000 display="flex" flex-direction="column"
       align-items="center" justify-content="center"
-      background-color=(shown ? "rgba(0, 0, 0, 0.48)" : "rgba(0, 0, 0, 0)")
+      background-color=(shown and not native ? "rgba(0, 0, 0, 0.48)" : "rgba(0, 0, 0, 0)")
       transition="background-color 250ms ease-out"
-      pointer-events=(shown ? "auto" : "none") aria-hidden=(not shown) testId=testId
-      if shown
+      pointer-events=(shown and not native ? "auto" : "none") aria-hidden=(not shown or native)
+      testId=testId
+      system-alert open=shown change=chose message=heard alert-title=title alert-message=message
+        alert-buttons=(cancelLabel != "" ? `${cancelLabel}|${confirm}` : confirm)
+        alert-button-styles=(cancelLabel != "" ? (destructive ? "cancel|destructive" : "cancel|default") : (destructive ? "destructive" : "default"))
+        alert-appearance="dark" position="absolute" top=0 left=0 width=0 height=0
+        aria-hidden=true testId=`${testId}-system`
+      if shown and not native
         column aria-label=title width=300 color-scheme="dark"
           backgroundMaterial="regular" border-radius=34 corner-shape="-exact-continuous"
           padding="22px 18px 18px" gap=4 align-items="stretch"

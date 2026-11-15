@@ -120,9 +120,9 @@ component AudioPlayer
             top=(cardMode ? 0 : -50) width=(cardMode ? slotWidth : legacyWidth)
             height=(cardMode ? audioSlotHeight() : 130) touch-action="none" testId="audio-waveform"
             aria-label="Waveform: drag to scrub"
-        // The integrator adds, once the build ships `audio-track` (app.json "modules"):
-        //   audio-track playing=(playing ? "true" : "false") seek=seek message=track
-        //     position="absolute" width=1 height=1 aria-hidden=true
+        // The real sound: `audio-track` (modules/apple/AudioTrack.swift).
+        audio-track play-state=(playing ? "true" : "false") seek=seek message=track
+          position="absolute" width=1 height=1 aria-hidden=true
         row justify-content="center" align-items="center" gap=28 glassGroup=28 margin-top=-4
           button buttonStyle="glass" press=back width=56 height=56
             aria-label="Back 15 seconds" testId="audio-back"
