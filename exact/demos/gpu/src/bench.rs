@@ -102,6 +102,15 @@ fn cases() -> Vec<Case> {
             },
         },
         Case {
+            name: "fibonacci-shader",
+            make: crate::fibonacci_shader::surface,
+            size: (402.0, 874.0, 3.0),
+            // The native slider's layout at its top end: 350 points over the whole screen.
+            setup: |s| s.bind(&[Value::Number(2.4), Value::Number(350.0)], None).unwrap(),
+            // The slider dragged across its top range, one new N a frame.
+            tick: |s, i, _| s.bind(&[Value::Number(2.4), Value::Number(300.0 + 50.0 * ((i as f64 * 0.1).sin() * 0.5 + 0.5))], None).unwrap(),
+        },
+        Case {
             name: "sphere-waves",
             make: crate::sphere_waves::surface,
             size: (420.0, 912.0, 3.0),
