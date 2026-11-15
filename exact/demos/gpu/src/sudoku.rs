@@ -1852,21 +1852,16 @@ fn box_shadow(c: &mut Canvas, r: R, radius: f32, (dy, sigma, a): (f32, f32, u8),
 }
 
 /// expo-linear-gradient's image: [from, to] top to bottom over `h`, each pixel row's colour at
-/// its centre rounded to 8 bits (sRGB, as CGGradient draws DeviceRGB into an 8-bit context).
+/// its centre (sRGB, as CGGradient draws DeviceRGB), as 8 bits per channel.
+///
+/// Past RN (the owner: "something is very strange with the background"): RN rounds each row to
+/// 8 bits, and #0A1222 → #121D33 climbs only 8, 11 and 17 levels over the whole screen, so
+/// it lands in ~150-row bands whose red, green and blue steps fall on different rows: tinted
+/// stripes. Each channel is error-diffused down the rows instead (the rounding error carried
+/// to the next row), so the mean colour of every few rows is the exact gradient's and the
+/// steps dissolve into single-row, one-level alternations, invisible at 3×.
 fn draw_gradient(c: &mut Canvas, w: f32, h: f32, scale: f32, from: u32, to: u32) {
-    let rows = (h * scale).round() as i32;
-    let ch = |v: u32, k: u32| ((v >> k) & 0xFF) as f32;
-    let at = |r: i32| -> [u8; 3] {
-        let t = ((r as f32 + 0.5) / scale / h).clamp(0.0, 1.0);
-        [16, 8, 0].map(|k| (ch(from, k) + (ch(to, k) - ch(from, k)) * t).round() as u8)
-    };
-    let mut r = 0;
-    while r < rows {
-        let color = at(r);
-        let mut end = r + 1;
-        while end < rows && at(end) == color {
-            end += 1;
-        }
+    for (r, end, color) in gradient_rows(h, scale, from, to) {
         c.draw_rect(
             0.0,
             r as f32 / scale,
@@ -1874,8 +1869,30 @@ fn draw_gradient(c: &mut Canvas, w: f32, h: f32, scale: f32, from: u32, to: u32)
             (end - r) as f32 / scale,
             &Paint::fill(Color::rgb8(color[0], color[1], color[2])),
         );
-        r = end;
     }
+}
+
+/// [`draw_gradient`]'s runs of equal device rows: (first row, end row, colour).
+fn gradient_rows(h: f32, scale: f32, from: u32, to: u32) -> Vec<(i32, i32, [u8; 3])> {
+    let rows = (h * scale).round() as i32;
+    let ch = |v: u32, k: u32| ((v >> k) & 0xFF) as f32;
+    let mut err = [0.0f32; 3];
+    let mut runs: Vec<(i32, i32, [u8; 3])> = Vec::new();
+    for r in 0..rows {
+        let t = ((r as f32 + 0.5) / scale / h).clamp(0.0, 1.0);
+        let mut color = [0u8; 3];
+        for (k, shift) in [16, 8, 0].into_iter().enumerate() {
+            let v = ch(from, shift) + (ch(to, shift) - ch(from, shift)) * t;
+            let q = (v + err[k]).round().clamp(0.0, 255.0);
+            err[k] += v - q;
+            color[k] = q as u8;
+        }
+        match runs.last_mut() {
+            Some(last) if last.2 == color => last.1 = r + 1,
+            _ => runs.push((r, r + 1, color)),
+        }
+    }
+    runs
 }
 
 /// The area of the polygon `poly` inside the unit pixel at (px, py) (Sutherland–Hodgman).
@@ -3414,5 +3431,29 @@ mod tests {
         s.fire_timers(231.0);
         s.apply_events(240.0);
         assert_eq!(s.board.as_ref().unwrap().keys_anim[3].scale.target(), 1.0);
+    }
+
+    #[test]
+    fn the_background_gradient_is_dithered_not_banded() {
+        // 874 pt at 3×: 2622 rows from #0A1222 to #121D33.
+        let runs = gradient_rows(874.0, 3.0, BACKGROUND, SURFACE);
+        assert_eq!(runs.first().unwrap().0, 0);
+        assert_eq!(runs.last().unwrap().1, 2622);
+        assert_eq!(runs.last().unwrap().2, [0x12, 0x1D, 0x33]);
+        let mut rows: Vec<[u8; 3]> = Vec::new();
+        for &(a, b, c) in &runs {
+            assert!(b - a <= 40, "a band of {} rows", b - a);
+            rows.extend(std::iter::repeat_n(c, (b - a) as usize));
+        }
+        // Every 16 rows average to the exact gradient within a fifth of a level.
+        for start in (0..2622 - 16).step_by(16) {
+            for k in 0..3 {
+                let shift = [16, 8, 0][k];
+                let mean = rows[start..start + 16].iter().map(|c| c[k] as f32).sum::<f32>() / 16.0;
+                let t = ((start as f32 + 8.0) / 2622.0).clamp(0.0, 1.0);
+                let exact = ((BACKGROUND >> shift) & 0xFF) as f32 + ((((SURFACE >> shift) & 0xFF) as f32) - ((BACKGROUND >> shift) & 0xFF) as f32) * t;
+                assert!((mean - exact).abs() < 0.2, "row {start} channel {k}: {mean} vs {exact}");
+            }
+        }
     }
 }
