@@ -44,6 +44,7 @@
 //! spring (500 ms) instead of a 300 ms timing; the scrim follows the progress (and thins as the
 //! sheet is dragged down) instead of waiting for the end; the content fades in over the last
 //! 40 % of the way; a drag rubber-bands up and sideways and closes on a flick down as well;
+//! Done dismisses it (RN's does nothing);
 //! `open` and `close` are posted for a haptic.
 
 use exact_gpu::wgpu;
@@ -440,6 +441,11 @@ impl Surface for FloatingModal {
                     self.posted.push("press".into());
                 }
                 self.touched = true;
+                // Beyond RN (whose Done does nothing): Done dismisses the sheet, on the same
+                // spring as the scrim, the flick and the "×".
+                if self.opened {
+                    self.toggle();
+                }
             }
         }
     }
@@ -1028,18 +1034,24 @@ mod tests {
         }
         assert!((m.plus_shown.0 - std::f64::consts::FRAC_PI_4).abs() < 1e-9);
         // "Done" (the bottom row of the floating sheet, y 832…892): its onPress sets
-        // lastTouchedPressable, and the "+"'s pressto style writes [scale] over the rotate.
+        // lastTouchedPressable (the "+"'s pressto style writes [scale] over the rotate) and
+        // dismisses the sheet, whose closing rotate is then written last.
         m.input(&pointer(PointerPhase::Down, 210.0, 862.0, ms));
         m.input(&pointer(PointerPhase::Up, 210.0, 862.0, ms + 80.0));
         assert_eq!(
             m.messages(),
-            vec!["press".to_string(), "open".to_string(), "press".to_string()]
+            vec![
+                "press".to_string(),
+                "open".to_string(),
+                "press".to_string(),
+                "close".to_string()
+            ]
         );
-        while ms < 2000.0 {
+        while ms < 2500.0 {
             ms += 16.0;
             fixture::render(&gpu, &mut m, &frame(ms)).unwrap();
         }
         assert_eq!(m.plus_shown, (0.0, 1.0));
-        assert!(m.opened);
+        assert!(!m.opened);
     }
 }
