@@ -40,11 +40,13 @@
 //!   is noise) is ignored.
 //! - RN centres the value by its ink box (measureText's rounded bounds, − 2) and sets the baseline
 //!   at c + size / 3. A proportional "1" so sits with its stem right of centre (its flag pulls the
-//!   box left), "11" is narrow and "10" wide, and the figures stand ~2 pt high. Here the digits
-//!   are SF Pro Rounded Bold's tabular figures (gpu/fonts/sf-pro-rounded-bold-digits-tnum.otf:
-//!   the .tnum glyphs on the digits' code points), centred by their advance (the cell the type
-//!   designer centred each figure in optically), with the figure height (−32…1476 units)
-//!   centred on c.
+//!   box left), and the figures stand ~2 pt high. Here the figures are RN's own: SF Pro Rounded
+//!   Bold's proportional digits at their advances (Skia's drawText; the font kerns no digit pair
+//!   a value uses), so "12" is spaced exactly as RN's. The string's exact ink box (the glyphs'
+//!   outline bounds at their pens, not measureText's rounded-out ones) is centred on c, and the
+//!   cap height (1443 units) centred vertically. Each value centres on its own ink, so nothing
+//!   pads a "1". (Tabular figures were tried first: their "1" sits in a full-width cell and left
+//!   "12" loose and lopsided, the owner's second note.)
 //!
 //! Design pass, past RN (the owner asked for it; each one is a single constant to revert):
 //! - Detents: on release the knob springs (ζ 0.85, ~300 ms, from the finger's angular speed) to
@@ -74,13 +76,39 @@ const MIN_VAL: f64 = 1.0;
 const MAX_VAL: f64 = 12.0;
 const FONT_SIZE: f32 = 100.0;
 const VALUES: [&str; 12] = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
-/// SF Pro Rounded Bold's tabular figures (each 1325 / 2048 em wide).
-static SF_ROUNDED_BOLD_TNUM: &[u8] = include_bytes!("../fonts/sf-pro-rounded-bold-digits-tnum.otf");
-/// The figures' ink, top and bottom, in font units (2048 / em) above the baseline: 0 and 6 reach
-/// 1476, the round bottoms −32.
-const FIGURE_TOP: f32 = 1476.0;
-const FIGURE_BOTTOM: f32 = -32.0;
+/// SF Pro Rounded Bold's digits (RN: useFont(SF-Pro-Rounded-Bold.otf, 100)).
+static SF_ROUNDED_BOLD: &[u8] = include_bytes!("../fonts/sf-pro-rounded-bold-digits.otf");
+/// Each digit's advance and ink left and right (font units, 2048 / em), read from the font
+/// (the test checks them against it): what the ink box of a value is made of.
+const DIGIT_INK: [(f32, f32, f32); 10] = [
+    (1343.0, 83.0, 1260.0),
+    (983.0, 59.0, 761.0),
+    (1235.0, 100.0, 1166.0),
+    (1290.0, 103.0, 1200.0),
+    (1326.0, 70.0, 1283.0),
+    (1280.0, 131.0, 1214.0),
+    (1317.0, 82.0, 1240.0),
+    (1172.0, 52.0, 1104.0),
+    (1336.0, 83.0, 1253.0),
+    (1321.0, 79.0, 1237.0),
+];
+/// The cap height (the flat-topped figures' height), font units.
+const CAP_HEIGHT: f32 = 1443.0;
 const UNITS_PER_EM: f32 = 2048.0;
+
+/// A value's ink, left and right of its pen start, in points at `size` (no kerning: Skia's
+/// drawText, as RN's).
+fn ink_span(value: &str, size: f32) -> (f32, f32) {
+    let (mut pen, mut left, mut right) = (0.0f32, f32::MAX, f32::MIN);
+    for ch in value.chars() {
+        let (adv, l, r) = DIGIT_INK[ch.to_digit(10).unwrap_or(0) as usize];
+        left = left.min(pen + l);
+        right = right.max(pen + r);
+        pen += adv;
+    }
+    let k = size / UNITS_PER_EM;
+    (left * k, right * k)
+}
 /// A finger nearer the centre than this (pt) moves nothing: its angle is noise there.
 const DEAD_ZONE: f64 = 24.0;
 /// How far past either stop (turns) the unwrapped finger is kept.
@@ -111,7 +139,7 @@ fn slider() -> DurationSlider {
         dragging: false,
         value: None,
         posted: Vec::new(),
-        font: Font::new(SF_ROUNDED_BOLD_TNUM, FONT_SIZE),
+        font: Font::new(SF_ROUNDED_BOLD, FONT_SIZE),
         canvases: Default::default(),
         renderers: Default::default(),
         blurs: Default::default(),
@@ -390,8 +418,10 @@ impl Surface for DurationSlider {
         text.begin(s);
         if let Some(font) = self.font.as_ref() {
             // Tabular figures centred by their advance; the figure height centred on c.
-            let x = g.c - font.advance_width(value) / 2.0;
-            let baseline = g.c + (FIGURE_TOP + FIGURE_BOTTOM) / 2.0 / UNITS_PER_EM * font.size();
+            // The ink box centred on c; the cap height centred vertically.
+            let (left, right) = ink_span(value, font.size());
+            let x = g.c - (left + right) / 2.0;
+            let baseline = g.c + CAP_HEIGHT / 2.0 / UNITS_PER_EM * font.size();
             text.draw_text(value, x, baseline, font, &Paint::fill(Color::hex(0x111111)));
         }
         let gpu = self.gpu.as_mut().unwrap();
@@ -690,17 +720,26 @@ mod tests {
     }
 
     #[test]
-    fn figures_are_tabular_and_centred() {
+    fn figures_are_rns_and_their_ink_is_centred() {
         let s = slider();
         let font = s.font.as_ref().unwrap();
-        // Every figure 1325 / 2048 em: "1" … "9" one width, "10" … "12" another.
-        let one = font.advance_width("1");
-        assert!((one - 1325.0 / 2048.0 * 100.0).abs() < 1e-3, "{one}");
-        for v in VALUES {
-            assert!((font.advance_width(v) - one * v.len() as f32).abs() < 1e-3, "{v}");
+        // Proportional, as RN's: the advances are the font's, "12" = 983 + 1235 units, no kern.
+        for (d, &(adv, _, _)) in DIGIT_INK.iter().enumerate() {
+            let w = font.advance_width(&d.to_string());
+            assert!((w - adv / UNITS_PER_EM * 100.0).abs() < 1e-3, "{d}: {w}");
         }
-        // The figure height (−32…1476) centred on c: the baseline 35.25 pt below it at 100 pt.
-        assert!(((FIGURE_TOP + FIGURE_BOTTOM) / 2.0 / UNITS_PER_EM * 100.0 - 35.2539).abs() < 1e-3);
+        assert!((font.advance_width("12") - 2218.0 / UNITS_PER_EM * 100.0).abs() < 1e-3);
+        // The table's ink is the font's: measureText rounds it out by floor − 1 / ceil + 1.
+        for d in 0..10 {
+            let m = font.measure_text(&d.to_string());
+            let (l, r) = ink_span(&d.to_string(), 100.0);
+            assert_eq!((m.x, m.x + m.width), ((l.floor() - 1.0), (r.ceil() + 1.0)), "{d}");
+        }
+        // "12": ink from 59 to 983 + 1166 units; centred, its middle is on c.
+        let (l, r) = ink_span("12", 100.0);
+        assert!((l - 59.0 / 20.48).abs() < 1e-3 && (r - 2149.0 / 20.48).abs() < 1e-3);
+        // The cap height centred: the baseline 35.23 pt under c at 100 pt.
+        assert!((CAP_HEIGHT / 2.0 / UNITS_PER_EM * 100.0 - 35.2295).abs() < 1e-3);
     }
 
     #[test]
