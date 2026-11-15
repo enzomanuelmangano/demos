@@ -5,25 +5,32 @@
 // the pan, the timer and the pressto button are one Rust surface (gpu/src/pomodoro_timer.rs);
 // here Alert.alert's two alerts and the haptics it posts.
 use DemoEnv from "../env.contract"
+use RouteAlert from "../route-alert.contract"
 
 component PomodoroTimer
   props
     env: DemoEnv
   // The completion alert's OK presses, counted (the surface's input: toggleTimer, resetTimer).
   state ok = 0
+  // The two Alert.alerts, drawn in the route (route-alert.contract: a `dialog`'s showModal from
+  // the demo route is never presented on the phone).
+  state invalid = false
+  state done = false
   action heard(m: string)
     if m == "haptic:selection"
       haptic("selection")
     if m == "alert:invalid"
-      showModal("invalid-number")
+      invalid = true
     if m == "alert:done"
-      showModal("timer-completed")
+      done = true
   // How many times the invalid-number alert was dismissed (its OK has no handler in RN; the
   // dialog asks for an action, and this one changes nothing on screen).
   state dismissed = 0
   action confirmed
+    done = false
     ok = ok + 1
   action acknowledged
+    invalid = false
     dismissed = dismissed + 1
   view
     // styles.container: #000.
@@ -32,10 +39,9 @@ component PomodoroTimer
         width=env.width height=env.height touch-action="none" testId="pomodoro-timer-canvas"
         aria-label="Timer: drag the ring sideways to set the seconds; the button starts and stops"
       // Alert.alert('Please enter a valid number'): its one OK.
-      dialog id="invalid-number" role="alertdialog" aria-label="Please enter a valid number" testId="invalid-number"
-        button press=acknowledged commandfor="invalid-number" command="close" testId="invalid-number-ok"
-          text "OK"
+      RouteAlert(shown=invalid, title="Please enter a valid number", message="", cancelLabel="",
+        confirm="OK", destructive=false, dismiss=acknowledged, accept=acknowledged,
+        testId="invalid-number")
       // Alert.alert('Timer completed 🤌', '', [{ text: 'OK', onPress }]).
-      dialog id="timer-completed" role="alertdialog" aria-label="Timer completed 🤌" testId="timer-completed"
-        button press=confirmed commandfor="timer-completed" command="close" testId="timer-completed-ok"
-          text "OK"
+      RouteAlert(shown=done, title="Timer completed 🤌", message="", cancelLabel="", confirm="OK",
+        destructive=false, dismiss=confirmed, accept=confirmed, testId="timer-completed")

@@ -21,7 +21,7 @@ component RouteAlert
     title: string
     message: string
     // The cancel action's label ("" for none) and the other action's.
-    cancel: string
+    cancelLabel: string
     confirm: string
     destructive: bool
     // Each button closes the alert: `dismiss` for the cancel action, `accept` for the other.
@@ -35,20 +35,21 @@ component RouteAlert
       transition="background-color 250ms ease-out"
       pointer-events=(shown ? "auto" : "none") aria-hidden=(not shown) testId=testId
       if shown
-        column role="alertdialog" aria-label=title width=300 color-scheme="dark"
+        column aria-label=title width=300 color-scheme="dark"
           backgroundMaterial="regular" border-radius=34 corner-shape="-exact-continuous"
           padding="22px 18px 18px" gap=4 align-items="stretch"
           animation="routeAlertIn 300ms cubic-bezier(0.32, 0.72, 0, 1) both"
           -exact-exit-animation="routeAlertOut 150ms ease-in both"
           text title font-size=17 font-weight=600 color="#ffffff" padding="0px 6px"
-          text message font-size=15 color="rgba(235, 235, 245, 0.7)" padding="0px 6px"
+          if message != ""
+            text message font-size=15 color="rgba(235, 235, 245, 0.7)" padding="0px 6px"
           row gap=10 margin-top=18
-            if cancel != ""
-              button appearance="none" press=dismiss flex=1 height=48 border-radius=24
+            if cancelLabel != ""
+              button appearance="none" press=dismiss aria-label=cancelLabel flex=1 height=48 border-radius=24
                 background-color="rgba(255, 255, 255, 0.12)" text-align="center"
                 testId=`${testId}-cancel`
-                text cancel font-size=17 font-weight=600 color="#ffffff"
-            button appearance="none" press=accept flex=1 height=48 border-radius=24
+                text cancelLabel font-size=17 font-weight=600 color="#ffffff"
+            button appearance="none" press=accept aria-label=confirm flex=1 height=48 border-radius=24
               background-color="rgba(255, 255, 255, 0.12)" text-align="center"
               testId=`${testId}-confirm`
               text confirm font-size=17 font-weight=600

@@ -7,6 +7,7 @@
 // Here: the TextInput (a real field and keyboard), mounted over the canvas once the screen has
 // slid up and handing its text to the surface (the snapshot draws it), and Alert.alert's alert.
 use DemoEnv, demoButtonRow from "../env.contract"
+use RouteAlert from "../route-alert.contract"
 
 // add-note-screen.tsx: the TextInput's frame. The row (paddingTop safe top + 56, 48 tall), the
 // container (marginTop 16, padding 16), the label (marginTop 8, 12 pt: 14.333 tall, marginBottom
@@ -21,6 +22,11 @@ component GlTransitions
   state text = ""
   state field = false
   state veiled = false
+  // The Empty Note alert, drawn in the route (route-alert.contract: a `dialog`'s showModal from
+  // the demo route is never presented on the phone).
+  state empty = false
+  action emptySeen
+    empty = false
   action heard(m: string)
     // The app's PressablesConfig onPress: Haptics.selectionAsync().
     if m == "haptic:selection"
@@ -29,7 +35,7 @@ component GlTransitions
       field = true
       veiled = false
     if m == "alert"
-      showModal("empty-note")
+      empty = true
     if m == "transition"
       veiled = true
     // goBack(): the screen is dismissed, its field (and keyboard) with it.
@@ -54,7 +60,6 @@ component GlTransitions
           background-color="transparent" border="none" padding=0 outline="none"
           opacity=(veiled ? 0 : 1) aria-label="Note" testId="note-input"
       // Alert.alert('Empty Note', 'Please write something before saving'): its one OK.
-      dialog id="empty-note" role="alertdialog" aria-label="Empty Note" testId="empty-note"
-        text "Please write something before saving"
-        button commandfor="empty-note" command="close" testId="empty-note-ok"
-          text "OK"
+      RouteAlert(shown=empty, title="Empty Note", message="Please write something before saving",
+        cancelLabel="", confirm="OK", destructive=false, dismiss=emptySeen, accept=emptySeen,
+        testId="empty-note")

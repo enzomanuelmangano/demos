@@ -52,9 +52,9 @@ component Sudoku
       // Alert.alert('New Game', …, [Cancel (cancel), New Game (destructive)]).
       RouteAlert(shown=asking, title="New Game",
         message="Are you sure you want to start a new game? Your current progress will be lost.",
-        cancel="Cancel", confirm="New Game", destructive=true, dismiss=keepGame, accept=newGame,
+        cancelLabel="Cancel", confirm="New Game", destructive=true, dismiss=keepGame, accept=newGame,
         testId="new-game-alert")
       // Alert.alert('Genius!', 'Ready for another challenge?', [OK]).
       RouteAlert(shown=genius, title="Genius!", message="Ready for another challenge?",
-        cancel="", confirm="OK", destructive=false, dismiss=geniusOk, accept=geniusOk,
+        cancelLabel="", confirm="OK", destructive=false, dismiss=geniusOk, accept=geniusOk,
         testId="genius-alert")

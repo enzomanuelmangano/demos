@@ -12,9 +12,14 @@ component LightOnPainting
   state showCord = true
   state relight = true
   state showDepth = false
+  // The Light sheet, drawn in the route as the demo screen's Inspiration sheet: a `dialog`'s
+  // showModal from the full-screen demo route is never presented on the phone.
+  state settingsOpen = false
+  action closeSettings
+    settingsOpen = false
   action heard(m: string)
     if m == "settings"
-      showModal("light-settings")
+      settingsOpen = true
   // settings-sheet.ios.tsx toggle(): Haptics.selectionAsync, then the change.
   action setBulb(on: bool)
     haptic("selection")
@@ -37,8 +42,20 @@ component LightOnPainting
         testId="light-on-painting-canvas"
       // SettingsSheet: a SwiftUI BottomSheet fitToContents in the dark scheme; VStack spacing 20,
       // padding 22; "Light" in title3 semibold; four Toggles tinted LAMP_TINT (#FFC280).
-      dialog id="light-settings" aria-label="Light" color-scheme="dark" testId="light-settings"
-        column gap=20 padding=22 align-items="center" width="100%" box-sizing="border-box"
+      // A tap above it closes it, as the sheet's own dismissal.
+      view position="absolute" inset=0 z-index=1000 background-color="rgba(0, 0, 0, 0.3)"
+        opacity=(settingsOpen ? 1 : 0) transition="opacity 300ms ease-out"
+        pointer-events=(settingsOpen ? "auto" : "none") press=closeSettings aria-hidden=true
+        testId="light-settings-scrim"
+      column position="absolute" left=8 right=8 bottom=8 z-index=1001 color-scheme="dark"
+        backgroundMaterial="regular" border-radius=40 corner-shape="-exact-continuous"
+        translate=`0px ${settingsOpen ? 0 : 900}px`
+        transition="translate 450ms cubic-bezier(0.32, 0.72, 0, 1)"
+        pointer-events=(settingsOpen ? "auto" : "none") aria-label="Light"
+        aria-hidden=(not settingsOpen) testId="light-settings"
+        view width=36 height=5 border-radius=2.5 background-color="rgba(255, 255, 255, 0.3)"
+          align-self="center" margin-top=5 aria-hidden=true
+        column gap=20 padding=22 align-items="center" width="100%" box-sizing="border-box" color="#ffffff"
           text "Light" font="-exact-title3" font-weight=600
           row align-self="stretch" align-items="center" justify-content="space-between"
             text "Bulb" font="-exact-body"
