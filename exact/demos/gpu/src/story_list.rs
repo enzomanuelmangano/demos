@@ -1,20 +1,11 @@
-//! Story List (src/animations/story-list: index.tsx, components/story-list/index.tsx,
-//! story-item.tsx): eight story cards over one invisible horizontal ScrollView.
+//! Story list: eight story cards in one horizontal, snapping scroll. Each card scales and slides
+//! as it leaves the front, and the cards are drawn over a fixed backdrop.
 //!
-//! - The list box: the window's width square, centred in the screen (#2D3045 behind, the
-//!   Contract's). Item width × 0.7 by width; paddingLeft (width − itemWidth) / 4; the content
-//!   itemWidth × 8 + (width − itemWidth) wide, so the scroll runs from 0 to itemWidth × 7.
-//! - The ScrollView: horizontal, snapToInterval itemWidth, decelerationRate "fast",
-//!   disableIntervalMomentum (the page is picked from where the finger lifts, so a fling moves
-//!   one card at most), bounces. `ui_scroll` is UIScrollView with RCTScrollView's snapping.
-//! - Each card (zIndex −index, at left paddingLeft): with activeIndex = offset / itemWidth,
-//!   translateX = interpolate(activeIndex, [i − 2, i − 1, i, i + 1], [70, 35, 0,
-//!   −itemWidth − paddingLeft × 2], CLAMP), scale = … [0.8, 0.9, 1, 1], CLAMP, about its
-//!   centre; the expo-image covers it (centred), radius 25 continuous.
-//! - Haptics (past RN, which plays none: the owner's haptic language): `haptic:selection` each
-//!   time the front card (round(offset / itemWidth)) changes, during the drag and the glide, at
-//!   most one per HAPTIC_GAP_MS; `haptic:impact-rigid` once each time the list is pulled or
-//!   thrown past an end (the rubber band).
+//! - The scroll snaps to one card per page. The page is picked from where the finger lifts, so a
+//!   fling moves one card at most.
+//! - Haptics: `haptic:selection` each time the front card changes, during the drag and the glide,
+//!   at most once per HAPTIC_GAP_MS; `haptic:impact-rigid` once each time the list is pulled or
+//!   thrown past an end.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};

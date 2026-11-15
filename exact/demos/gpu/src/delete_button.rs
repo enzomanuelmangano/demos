@@ -1,59 +1,13 @@
-//! Delete Button (src/animations/delete-button/src: index.tsx, components/delete-button.tsx and
-//! its hooks): a red "Delete" pill that, tapped, slides left, turns black and reads "Confirm",
-//! while a black close circle melts out of its right end; the circle's "X" puts it back.
+//! Delete Button: a red "Delete" pill that, tapped, slides left, turns black and reads "Confirm",
+//! while a black close circle slides out of its right end. The circle's "X" puts it back.
 //!
-//! The canvas: (width + additionalWidth) × height = (150 + 80) × 50 (index.tsx's props), in a
-//! Touchable.Canvas, centred on white.
-//! - The gooey layer (useGooeyLayer: Blur 10, ColorMatrix alpha × 18 − 10), drawn analytically
-//!   (see "The merge" below):
-//!   - a RoundedRect (deleteButtonRectX, 0, 150, 50, r 20) in deleteButtonColor, in a Group
-//!     scaled by `scale` about (width / 2, height / 2) = (75, 25);
-//!   - a Circle (closeIconCircleX, 25, r 25) in deleteButtonColor, in a Group at opacity
-//!     closeButtonOpacity, scaled by `closeButtonScale` about (width + additionalWidth / 2,
-//!     25) = (190, 25).
-//! - "Delete" and "Confirm" (Helvetica bold 14: matchFont, a Skia font: no kerning), white, at
-//!   x = deleteButtonRectX + 75 − measureText(text).width / 2, y = 14 / 3 + 25, at their
-//!   opacities.
-//! - The close icon: two white RoundedRects (12√2 + 2) × 2, r 1, centred, rotated ±π/4, in a
-//!   Group translated to (closeIconCircleX, 25), in a layer at closeButtonOpacity (both bars
-//!   are one path here: a layer's alpha covers their crossing once).
-//!
-//! Gestures (react-native-skia-gesture): the canvas's Pan, onBegin on a shape (its own props'
-//! path, no Group transform; the rect is registered before the circle) is that shape's onStart
-//! and its onFinalize the same shape's onEnd; the canvas's Tap (RNGH: 500 ms, no distance), on
-//! touches up, is the onTap of the shape under the lifted finger.
-//! - Rect: onStart pressed; onEnd released; onTap released, Haptics.selectionAsync, then
-//!   isToggled = true (when toggled, onDelete: isToggled = !closeOnConfirm = true, and
-//!   onConfirmDeletion, a no-op).
-//! - Circle: onStart pressed; onEnd released; onTap released, isToggled = false, selection
-//!   haptic.
-//!
-//! Motion audit (every animated value; Reanimated 4 defaults: withSpring GentleSpringConfig
-//! (900, 120, 4), withTiming 300 ms inOut(quad)); each a useDerivedValue, so a change of
-//! isToggled / pressed starts it from where it is, a spring keeping its velocity:
-//!
-//! | value | driver | to | trigger |
-//! |---|---|---|---|
-//! | deleteButtonRectX | withSpring default | toggled ? 0 : additionalWidth / 2 (40) | isToggled |
-//! | deleteButtonColor | withTiming default, gamma-2.2 channels | toggled ? black : red | isToggled |
-//! | scale (rect group) | withSpring default | pressed ? 0.95 : 1 | rect onStart / onEnd / onTap |
-//! | closeIconCircleX | withSpring default | toggled ? 190 : 115 | isToggled |
-//! | closeButtonOpacity (circle group, icon layer alpha) | withTiming default | toggled ? 1 : 0 | isToggled |
-//! | closeButtonScale | withSpring default | pressed ? 0.95 : 1 | circle onStart / onEnd / onTap |
-//! | deleteTextOpacity | withTiming default | toggled ? 0 : 1 | isToggled |
-//! | confirmTextOpacity | withTiming default | toggled ? 1 : 0 | isToggled |
-//!
-//! Text x follows deleteButtonRectX each frame (no animation of its own). Haptics: selection on
-//! each onTap that lands on a shape.
-//!
-//! The layer, analytically (shaders/delete_button.wgsl), drawn crisp at the owner's request:
-//! the blur of the layer's alpha (the pill, plus the circle at its group's opacity, less their
-//! overlap) is integrated per pixel over the shapes' rows, each row's horizontal blur a
-//! difference of two Φ, and the layer's edge is where it reaches the threshold, (0.5 + 10) / 18.
-//! So the outline at rest (corners rounder than r 20, the top and bottom 2.1 pt inside the canvas,
-//! the ends 3.3 pt in), the circle's growth with its opacity and the neck are RN's; the edge is
-//! one pixel of analytic anti-aliasing instead of RN's ×18 ramp, which read as a grey rim. No
-//! blurred texture, one pass.
+//! - The pill and circle merge into one gooey shape. It is drawn analytically in one pass: the
+//!   blur threshold is solved per pixel, so the edge is one pixel of antialiasing, not a grey rim.
+//! - Hit testing uses the shapes' current animated positions. The pill is registered first, so it
+//!   wins where the two overlap.
+//! - A press shrinks the touched shape to 0.95 on a spring. Every animated value starts from where
+//!   it is, so a tap mid-animation reverses smoothly.
+//! - Haptics: a selection on each tap that lands on a shape.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -65,37 +19,35 @@ use crate::gooey::ColorTiming;
 use crate::{gfx, shaders};
 use shaders::delete_button::{entry, module, Uniforms, GROUP_0, TOP, U};
 
-/// The `width` prop.
+/// Pill width, pt.
 const WIDTH: f32 = 150.0;
-/// The `height` prop.
+/// Pill height, pt.
 const HEIGHT: f32 = 50.0;
-/// The `additionalWidth` prop.
+/// Extra width on the right, for the close circle, pt.
 const ADDITIONAL: f32 = 80.0;
-/// The RoundedRect's r.
+/// Pill corner radius, pt.
 const RECT_RADIUS: f32 = 20.0;
-/// fontStyle.fontSize.
+/// Label font size, pt.
 const FONT_SIZE: f32 = 14.0;
-/// CloseIconBarLength.
+/// Length of each cross bar, pt.
 const BAR_LENGTH: f32 = 12.0 * std::f32::consts::SQRT_2 + 2.0;
-/// CloseIconBarThickness.
+/// Thickness of each cross bar, pt.
 const BAR_THICKNESS: f32 = 2.0;
-/// initialText, confirmText.
+/// Button labels.
 const DELETE: &str = "Delete";
 const CONFIRM: &str = "Confirm";
-/// useGooeyLayer's defaults: blurRadius 10, alphaMultiplier 18, alphaOffset −10: the blur's σ
-/// (points) and the layer alpha whose output is one half, (0.5 + 10) / 18.
+/// Blur sigma, pt.
 const SIGMA: f32 = 10.0;
+/// Blurred alpha at the layer's edge: (0.5 + 10) / 18.
 const THRESHOLD: f32 = 10.5 / 18.0;
 const RED: [u8; 3] = [255, 0, 0];
 const BLACK: [u8; 3] = [0, 0, 0];
-/// Helvetica Bold (face 1 of iOS's Helvetica.ttc), the glyphs of the labels both Helvetica demos
-/// draw.
+/// Helvetica Bold, subset to the labels.
 static HELVETICA_BOLD: &[u8] = include_bytes!("../fonts/helvetica-bold-subset.ttf");
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
-    // react-native-skia-gesture's onTap is a plain Gesture.Tap(): RNGH's iOS default, 500 ms and
-    // no distance limit (the crate's default).
+    // Tap: 500 ms, no distance limit.
     let tap = TapGesture::default();
     let font = Font::new(HELVETICA_BOLD, FONT_SIZE);
     let widths = font.as_ref().map_or((0.0, 0.0), |f| (f.measure_text(DELETE).width, f.measure_text(CONFIRM).width));
@@ -138,25 +90,25 @@ enum Shape {
 
 struct DeleteButton {
     font: Option<Font>,
-    /// measureText(initialText).width, measureText(confirmText).width.
+    /// Label widths, for centring.
     widths: (f32, f32),
     cross: Path,
-    /// isToggled.
+    /// Whether the button shows Confirm.
     toggled: bool,
-    /// deleteButtonRectX.
+    /// Pill's left edge, pt.
     rect_x: Spring,
-    /// deleteButtonColor.
+    /// Pill colour, red or black.
     color: ColorTiming,
-    /// The rect group's scale (isButtonPressed).
+    /// Pill scale while pressed.
     scale: Spring,
-    /// closeIconCircleX.
+    /// Close circle's centre x, pt.
     close_x: Spring,
     close_opacity: Timing,
-    /// closeButtonScale (isCloseButtonPressed).
+    /// Close circle's scale while pressed.
     close_scale: Spring,
     delete_opacity: Timing,
     confirm_opacity: Timing,
-    /// The canvas pan's finger and the shape its onBegin landed on.
+    /// The pressing finger, and the shape it landed on.
     finger: Option<(u32, Option<Shape>)>,
     tap: TapGesture,
     melt: Melt,
@@ -284,11 +236,10 @@ impl Surface for DeleteButton {
         ))
     }
 
-    /// RN drives these presses with Skia Touchables (onStart / onEnd / onTap) and default withSpring(0.95), not pressto: not `pressto::Pressable`.
     fn input(&mut self, event: &InputEvent) {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
         let phase = gfx::phase(phase);
-        // The canvas's pan: onBegin on a shape is its onStart, onFinalize its onEnd.
+        // Pan: a press on a shape presses it; lifting releases it.
         match phase {
             Phase::Down if self.finger.is_none() => {
                 let shape = self.shape_at(x, y);
@@ -304,13 +255,13 @@ impl Surface for DeleteButton {
             }
             _ => {}
         }
-        // The canvas's tap: onTouchesUp on a shape is its onTap.
+        // Tap: lifting on a shape activates it.
         if let Event::Tap { x, y } = self.tap.event(id, phase, x, y, at_ms, true) {
             match self.shape_at(x, y) {
                 Some(Shape::Rect) => {
                     self.press(Shape::Rect, false);
                     self.posted.push("haptic:selection".into());
-                    // onDelete when toggled sets isToggled = !closeOnConfirm (true): no change.
+                    // The pill stays on Confirm until the circle is tapped.
                     self.toggle(true);
                 }
                 Some(Shape::Circle) => {
@@ -345,10 +296,10 @@ impl Surface for DeleteButton {
         let rect_x = self.rect_x.value as f32;
         let close_x = self.close_x.value as f32;
         let close_opacity = self.close_opacity.value as f32;
-        // The rect's group: scale about (width / 2, height / 2).
+        // Scales about the pill's centre.
         let (s, ox, oy) = (self.scale.value as f32, WIDTH / 2.0, HEIGHT / 2.0);
         let rect = [ox + (rect_x + WIDTH / 2.0 - ox) * s, oy, WIDTH / 2.0 * s, HEIGHT / 2.0 * s];
-        // The circle's group: opacity, scale about (width + additionalWidth / 2, height / 2).
+        // Scales about the circle's centre.
         let (cs, cox) = (self.close_scale.value as f32, WIDTH + ADDITIONAL / 2.0);
         let circle = [cox + (close_x - cox) * cs, oy, HEIGHT / 2.0 * cs];
         let [r, g, b] = self.color.rgb();
@@ -404,9 +355,7 @@ mod tests {
         let (img, moving) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         gfx::save_over(&img, "delete-button-rest", [255, 255, 255]);
         assert!(!moving);
-        // At rest: the red pill from x 40 to 190 as the gooey layer leaves it (its top and bottom
-        // eaten by the blur and threshold), crisp (one pixel of anti-aliasing, no rim), white text
-        // in its middle, nothing past it.
+        // At rest: a crisp red pill with white text, nothing outside it.
         let red = |p: [u8; 4]| p[0] > 200 && p[1] < 40 && p[3] > 200;
         assert!(red(img.at(3 * 60, 75)), "pill {:?}", img.at(180, 75));
         assert!(red(img.at(3 * 175, 75)), "pill right {:?}", img.at(525, 75));
@@ -414,7 +363,6 @@ mod tests {
         assert_eq!(img.at(3 * 215, 75)[3], 0, "right of it");
         assert_eq!(img.at(3 * 115, 3)[3], 0, "the top edge is eaten by the goo");
         assert!(red(img.at(3 * 115, 9)), "2.1 pt in, the pill {:?}", img.at(345, 9));
-        // Across the left end (40 + 3.3 pt ≈ 130 px): one partly covered pixel at most.
         let row: Vec<u8> = (124..136).map(|x| img.at(x, 75)[3]).collect();
         assert!(row.iter().filter(|&&a| a > 0 && a < 255).count() <= 1, "{row:?}");
         let white = img.data.chunks(4).filter(|p| p[0] > 200 && p[1] > 200 && p[3] > 200).count();
@@ -438,15 +386,12 @@ mod tests {
         }
         gfx::save_over(&img, "delete-button-confirm", [255, 255, 255]);
         assert!(s.agent("").unwrap().contains("\"toggled\":true"));
-        // Toggled: a black pill from 0 to 150 and a black circle centred at 190.
         let black = |p: [u8; 4]| p[0] < 30 && p[3] > 200;
         assert!(black(img.at(3 * 20, 75)), "pill {:?}", img.at(60, 75));
         assert!(black(img.at(3 * 172, 75)), "circle's rim {:?}", img.at(516, 75));
         assert_eq!(img.at(3 * 190, 75)[..3], [255, 255, 255], "the cross's centre");
-        // Parted: white across the gap (150 → 165 pt), on the axis too.
         assert_eq!(img.at(3 * 157, 75)[3], 0, "the gap {:?}", img.at(471, 75));
 
-        // The cross: back to Delete.
         s.input(&pointer(PointerPhase::Down, 190.0, ms));
         s.input(&pointer(PointerPhase::Up, 190.0, ms + 60.0));
         assert_eq!(s.messages(), vec!["haptic:selection".to_string()]);

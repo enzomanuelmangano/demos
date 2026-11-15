@@ -1,23 +1,13 @@
-//! Dot Sheet's card (src/animations/dot-sheet/src/components/card-input.tsx): the white card
-//! behind the text field, whose frame, rotation and corner radius all interpolate one progress.
-//!
-//! - progress = withSpring(focused ? 1 : 0, { duration: 800, dampingRatio: 1 }) from onFocus /
-//!   onBlur of the field: Reanimated's duration spring (mass 4) solved from where it is.
-//! - rCardStyle: top (h − h / 2.8) / 2 + 35 → safeTop + DEMO_BUTTON_ROW_HEIGHT (56) + 52, left
-//!   (w − h / 2.8 · 3/4) / 2 → 1, height h / 2.8 → h, width h / 2.8 · 3/4 → w − 2, rotate −4° → 0°,
-//!   borderRadius 16 → 32 (continuous). They are layout props: Yoga lays the card out every
-//!   frame, its edges rounded to the pixel grid; the rotation turns it about its centre.
-//! - styles.card: #fff, boxShadow 0 0 20 rgba(193, 193, 193, 0.1) (RCTBoxShadow: σ 10, the
-//!   circular rounded rect, drawn outside the view), zIndex 1.
-//! - onTouchEnd focuses the field only when progress is exactly 0: the surface posts
-//!   `card:rest` when the spring lands at 0 and `card:moving` when it leaves it, so the Contract
-//!   ignores a tap on a card still closing.
+//! Dot Sheet's card: the white card behind the text field. Its frame, rotation and corner radius
+//! all interpolate one progress: resting near the top, open to the full card.
 //!
 //! Inputs: open (the field has focus), safeTop.
 //!
-//! Beyond RN (phone feedback 2026-11-15, "faster"): the spring is 350 ms, not 800. The surface
-//! posts `card:ms:350` once, so the Contract (the text field riding the card) takes the same
-//! spring only on a build that has this one.
+//! - Tapping the card focuses the field only when it is fully closed: the surface posts
+//!   `card:rest` when the spring lands at 0 and `card:moving` when it leaves, so the Contract
+//!   ignores a tap on a card still closing.
+//! - The spring runs 350 ms. The surface posts `card:ms:350` once, so the Contract (the text
+//!   field riding the card) uses the same duration.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
@@ -26,11 +16,10 @@ use skia::{Canvas, Color, Paint, Renderer};
 
 use crate::gfx;
 
-/// DEMO_BUTTON_ROW_HEIGHT, potentialHeaderHeight.
 const BUTTON_ROW: f64 = 56.0;
 const HEADER: f64 = 52.0;
 const SHADOW_SIGMA: f32 = 10.0;
-/// The open/close spring's duration (dampingRatio 1); RN's is 800.
+/// Open/close spring duration, ms.
 const SPRING_MS: f64 = 350.0;
 
 /// The card's surface.
@@ -51,7 +40,7 @@ pub fn surface() -> Box<dyn Surface> {
 struct Card {
     open: bool,
     safe_top: f64,
-    /// The spring's duration (dampingRatio 1), and the one last posted.
+    /// Spring duration, ms, and the last value posted to the Contract.
     ms: f64,
     told_ms: Option<f64>,
     progress: Spring,
@@ -151,7 +140,7 @@ impl Surface for Card {
         c.translate(x + w / 2.0, y + h / 2.0);
         c.rotate((deg as f32).to_radians());
         c.translate(-w / 2.0, -h / 2.0);
-        // RCTBoxShadow: outside the view's circular rounded rect.
+        // The shadow is drawn only outside the card.
         c.save();
         c.clip_with(|b| {
             let e = 4.0 * SHADOW_SIGMA;
@@ -192,7 +181,7 @@ mod tests {
 
     #[test]
     fn rests_and_opens_as_rn() {
-        // iPhone Air, safeTop 68: open at (1, 176), 418 × 912 (RN measure: the field at 17, 200).
+        // iPhone Air, safe top 68: the open card's frame.
         let (f, deg, r) = card(1.0, 420.0, 912.0, 68.0, 3.0);
         assert_eq!((f[0], f[1], f[2], deg, r), (1.0, 176.0, 418.0, 0.0, 32.0));
         let (f, deg, r) = card(0.0, 420.0, 912.0, 68.0, 3.0);

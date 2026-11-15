@@ -1,11 +1,7 @@
-//! chess.js 1.4.0 (node_modules/chess.js/src/chess.ts), the rules react-native-chessboard runs:
-//! the 0x88 board, `_moves` (pseudo-legal generation, castling through unattacked squares, en
-//! passant, the four promotions, then the legality filter), `_makeMove` / `_undoMove`,
-//! `_attacked` (the ATTACKS / RAYS tables), `fen()` (the en-passant square only when a capture
-//! is legal), `load()`, `_moveToSan` with `getDisambiguator`, the game-over tests and `perft`.
-//! The position count behind `isThreefoldRepetition` is keyed by the position (board, turn,
-//! castling, en passant) where chess.js keys it by its Zobrist hash of the same fields.
-//! `validateFen` is reduced to the shape checks `load` needs: the demo only loads START_FEN.
+//! Chess rules, ported from chess.js 1.4.0: the 0x88 board, move generation with the legality
+//! filter, make and undo, attack tests, FEN, SAN, the game-over tests and `perft`.
+//! A repetition count is keyed by the position itself, where chess.js uses a Zobrist hash of the
+//! same fields. `validateFen` is reduced to the shape checks that `load` needs.
 
 use std::collections::HashMap;
 
@@ -97,7 +93,7 @@ impl Kind {
             _ => &[-17, -16, -15, 1, 17, 16, 15, -1],
         }
     }
-    /// The sprite column (react-native-chessboard's sheet: p, n, b, r, q, k).
+    /// The sprite sheet's column: p, n, b, r, q, k.
     pub fn column(self) -> usize {
         self as usize
     }
@@ -241,7 +237,7 @@ pub struct InternalMove {
     pub captured: Option<Kind>,
     /// What it becomes.
     pub promotion: Option<Kind>,
-    /// BITS.
+    /// Move flags, as above.
     pub flags: u8,
 }
 
@@ -1006,7 +1002,7 @@ mod tests {
 
     #[test]
     fn the_demo_opens_one_move_from_mate() {
-        // START_FEN: 18. Kd2# is White's own king stepping aside (REPLAY_MOVES, REVIEW_MOVES).
+        // The opening position is one move from mate: the king steps aside to d2.
         let mut c = Chess::new(crate::chessboard::START_FEN).unwrap();
         assert_eq!(c.fen(), crate::chessboard::START_FEN);
         assert!(!c.is_check());
@@ -1016,7 +1012,6 @@ mod tests {
         assert!(c.is_checkmate() && !c.is_stalemate());
         assert_eq!(c.turn(), Side::B);
         assert_eq!(c.king(Side::B), Some(sq("g1")));
-        // O-O-O is legal there too (the Q right): the rook rides along.
         let mut c = Chess::new(crate::chessboard::START_FEN).unwrap();
         let m = c.play(sq("e1"), sq("c1"), None).unwrap();
         assert_eq!((m.san.as_str(), m.flags.as_str()), ("O-O-O#", "q"));
@@ -1036,25 +1031,19 @@ mod tests {
         let mut c = Chess::new("4k3/8/8/8/8/8/4P3/4K3 w - - 0 1").unwrap();
         c.play(sq("e2"), sq("e4"), None).unwrap();
         assert!(c.fen().contains(" b - - "));
-        // Promotion: four moves to one square, the piece chosen; none without one.
         let mut c = Chess::new("8/4P1k1/8/8/8/8/8/4K3 w - - 0 1").unwrap();
         assert_eq!(c.moves_internal(true, Some(sq("e7"))).len(), 4);
         let m = c.play(sq("e7"), sq("e8"), Some(Kind::N)).unwrap();
         assert_eq!((m.san.as_str(), m.flags.as_str()), ("e8=N+", "np"));
         let mut c = Chess::new("8/4P1k1/8/8/8/8/8/4K3 w - - 0 1").unwrap();
-        // A move to the last rank names its piece or is no move (chess.js throws).
         assert!(c.play(sq("e7"), sq("e8"), None).is_none());
-        // Stalemate.
         let mut c = Chess::new("7k/5Q2/6K1/8/8/8/8/8 b - - 0 1").unwrap();
         assert!(c.is_stalemate() && !c.is_checkmate() && c.is_draw());
-        // Disambiguation.
         let mut c = Chess::new("4k3/8/8/8/8/8/8/R4RK1 w - - 0 1").unwrap();
         assert_eq!(c.play(sq("a1"), sq("d1"), None).unwrap().san, "Rad1");
-        // Illegal: into check, or not this side's turn.
         let mut c = Chess::new(crate::chessboard::START_FEN).unwrap();
         assert!(c.play(sq("e1"), sq("f1"), None).is_none());
         assert!(c.play(sq("g1"), sq("h1"), None).is_none());
-        // Insufficient material and the fifty-move rule.
         assert!(Chess::new("8/8/8/8/8/8/8/K1k5 w - - 0 1").unwrap().is_insufficient_material());
         assert!(Chess::new("8/8/8/8/8/8/1N6/K1k5 w - - 0 1").unwrap().is_insufficient_material());
         assert!(Chess::new("8/8/8/8/8/8/8/K1k5 w - - 100 80").unwrap().is_draw_by_fifty_moves());
@@ -1076,7 +1065,7 @@ mod tests {
 
     #[test]
     fn a_full_game_replays_to_the_reviewed_mate() {
-        // Lasker–Thomas, London 1912: REVIEW_MOVES' SANs, played from the start.
+        // Lasker–Thomas, London 1912, played from the start.
         let mut c = Chess::new(DEFAULT_POSITION).unwrap();
         let game = [
             ("d2", "d4"),
@@ -1119,7 +1108,6 @@ mod tests {
         }
         let sans: Vec<&str> = c.history().iter().map(|m| m.san.as_str()).collect();
         assert_eq!(sans.join(" "), "d4 e6 Nf3 f5 Nc3 Nf6 Bg5 Be7 Bxf6 Bxf6 e4 fxe4 Nxe4 b6 Ne5 O-O Bd3 Bb7 Qh5 Qe7 Qxh7+ Kxh7 Nxf6+ Kh6 Neg4+ Kg5 h4+ Kf4 g3+ Kf3 Be2+ Kg2 Rh2+ Kg1");
-        // The board is START_FEN's (its clocks aside).
         assert_eq!(c.fen().split(' ').take(3).collect::<Vec<_>>(), crate::chessboard::START_FEN.split(' ').take(3).collect::<Vec<_>>());
         assert_eq!(c.play(sq("e1"), sq("d2"), None).unwrap().san, "Kd2#");
     }

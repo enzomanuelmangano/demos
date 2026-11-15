@@ -1,39 +1,10 @@
-//! Prequel Slider (src/animations/prequel-slider/src: index.tsx, gl-transition,
-//! components/image-editor, components/donut-circular-progress, components/draggable-slider): a
-//! photo warped by a butterfly-wave transition as a ruler of white ticks is dragged under a
-//! blue-to-orange indicator, with a ring showing the progress.
+//! A photo warped by a butterfly-wave transition, as a ruler of white ticks is dragged under a
+//! blue-to-orange indicator. A ring shows the progress.
 //!
-//! One canvas over the whole screen (black, the container's), laid out as RN lays the views out
-//! (Yoga's pixel grid: each edge rounded to the nearest device pixel, a half up):
-//! - The ImageEditor: a canvas of width W × 0.95, height H × 0.9 − safeBottom × 3 − editorTop,
-//!   editorTop = safeTop + DEMO_BUTTON_ROW_HEIGHT (56), centred, clipped to its continuous r 10
-//!   corners (borderRadius 10, borderCurve continuous, overflow hidden). Its Fill is the
-//!   transition shader (shaders/prequel_slider.wgsl) with uniforms progress and resolution =
-//!   the width and height props, both children the photo (Unsplash's photo-1596501048547,
-//!   3540 × 2360 as DemoImageUrl's `w=3540` serves it: images/, losslessly baseline).
-//! - The bottom column: absolute, bottom safeBottom + 40, height 100, items centred: the
-//!   DonutCircularProgress (35², stroke 4: a circle of r 35 / 2 − 2 rotated −90°, the whole of it
-//!   in rgba(255, 255, 255, 0.25), then 0…progress of it in `color`, both round-capped), then
-//!   the DraggableSlider (W × scrollableAreaHeight 60).
-//! - The slider's canvas: W × maxLineHeight 12 at paddingTop 60 / 2 − 12 / 2 = 24. Lines i =
-//!   0…50 at x = i · 10 + scrollOffset (drawn when on screen), 1.5 wide (getLinesPath's default:
-//!   the lineWidth prop is not passed to it), 12 tall for i % 10 == 0 (white) else 5 (white at
-//!   0.5), centred vertically, rrect r 10 that SkRRect scales to 0.75. Over them the
-//!   BoundaryGradient: #000 → transparent ×3 → #000 across the width.
-//! - The indicator View: lineWidth 2 × 1.4 by maxLineHeight × 1.5 = 18, at left W / 2, top
-//!   60 / 2 − 9, radius 10 continuous, backgroundColor `color` (a View: Display P3).
-//!
-//! Motion audit:
-//!
-//! | value | driver | config | trigger / cancel |
-//! |---|---|---|---|
-//! | scrollOffset | RN: Pan onUpdate clamp(context + translationX, −500 + W / 2, W / 2); here, by the owner's call (phone note 2026-11-15: "scroll like a native scroll view"), W / 2 − contentOffset of a UIScrollView (`ui_scroll`) over the 500 pt ruler: 1:1 from the pan's begin, rubber-banded past the ends | — | a finger down catches it where it is |
-//! | scrollOffset | RN: Pan onEnd withSpring(snapPoint(offset, velocityX, W / 2 − 10 i)) (mass 0.45, damping 10, stiffness 100); here UIKit's release: deceleration at the normal rate (0.998 / ms) onto the projected target moved to the 10 pt tick at or past it in the fling's direction (RN's snapToInterval rule, as RN snaps to the ticks), and the bounce back past an end | — | the next finger down |
-//! | progress | useAnimatedReaction on scrollOffset (not on its first run) | interpolate(offset, [W / 2, W / 2 − 500], [0, 1]), extended | — |
-//! | color | interpolateColor(progress, [0, 1], [#6d9bf1, orange]) (gamma 2.2, clamped) | — | — |
-//!
-//! Haptics: Haptics.selectionAsync when floor(progress · 50) changes to an index ≥ 0
-//! (previousLineIndex starts at −1, so the first move plays one).
+//! - Drag the ruler: it follows the finger 1:1 and rubber-bands past its ends. On release it
+//!   decelerates like a native scroll view, springs back from an end, and otherwise snaps to the
+//!   tick at or past the fling's direction.
+//! - Haptics: a selection per tick index reached, at most one per HAPTIC_GAP_MS.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -45,35 +16,34 @@ use crate::ui_scroll::{Snap, UiScroll, NORMAL};
 use crate::{gfx, shaders};
 use shaders::prequel_slider::{entry, module, Uniforms, GROUP_0, MASK, PHOTO, SMP, U, UI};
 
-/// Lines.
+/// The ruler's tick indices, 0 through LINES.
 const LINES: usize = 50;
-/// SpacePerLine.
+/// Distance between ticks, in points.
 const SPACE: f64 = 10.0;
-/// MaxLineHeight, MinLineHeight.
+/// Tall and short tick heights, in points.
 const MAX_LINE: f32 = 12.0;
 const MIN_LINE: f32 = 5.0;
-/// ScrollableAreHeight = MaxLineHeight × 5.
+/// Height of the slider's area, in points.
 const AREA_H: f32 = MAX_LINE * 5.0;
 /// The shortest gap between two tick haptics, ms.
 const HAPTIC_GAP_MS: f64 = 40.0;
-/// getLinesPath's lineWidth default.
+/// Tick width, in points.
 const LINE_W: f32 = 1.5;
-/// SkRRect's radius for rrect(1.5 × h, 10, 10): scaled to fit the width.
+/// Tick corner radius: half the width.
 const LINE_R: f32 = LINE_W / 2.0;
-/// The LineWidth prop (the indicator's width is 1.4 × it).
+/// The indicator is 1.4 × this wide, in points.
 const INDICATOR_LINE_W: f32 = 2.0;
-/// bigLineIndexOffset.
+/// Every this many ticks is a tall one.
 const BIG_EACH: usize = 10;
-/// DonutCircularProgress: size, strokeWidth.
+/// Progress ring: diameter and stroke, in points.
 const DONUT: f32 = 35.0;
 const DONUT_STROKE: f32 = 4.0;
-/// DEMO_BUTTON_ROW_HEIGHT.
+/// Height of the row above the editor, in points.
 const BUTTON_ROW: f32 = 56.0;
-/// The photo (images/: the JPEG Unsplash serves for DemoImageUrl, transcoded to baseline,
-/// pixel-identical).
+/// The photo: a baseline JPEG in images/.
 static PHOTO_JPEG: &[u8] = include_bytes!("../images/prequel-slider-unsplash-3540.jpg");
 
-/// The demo's surface. Inputs: the safe area's top and bottom (useSafeAreaInsets).
+/// The demo's surface. Inputs: the safe area's top and bottom.
 pub fn surface() -> Box<dyn Surface> {
     Box::new(PrequelSlider::new())
 }
@@ -84,7 +54,7 @@ impl PrequelSlider {
         insets: (0.0, 0.0),
         size: (0.0, 0.0),
         scale: 1.0,
-        // contentOffset 0: scrollOffset W / 2 (useSharedValue(ScreenWidth / 2)).
+        // The ruler starts centred: offset W / 2 at rest.
         scroll: UiScroll::new(0.0, (LINES as f64 * SPACE).round(), 0.0, NORMAL, Snap::Interval(SPACE)),
         last_offset: f64::NAN,
         progress: 0.0,
@@ -112,8 +82,7 @@ impl PrequelSlider {
     }
 }
 
-/// Yoga's rounding of a layout edge to the pixel grid (roundValueToPixelGrid): to the nearest
-/// device pixel, a half up.
+/// Rounds a layout edge to the device pixel grid, a half up.
 fn grid(v: f32, scale: f32) -> f32 {
     let s = (v * scale) as f64;
     let f = s - s.floor();
@@ -127,7 +96,7 @@ fn frame_of(x: f32, y: f32, w: f32, h: f32, scale: f32) -> [f32; 4] {
 }
 
 struct PrequelSlider {
-    /// safeTop, safeBottom.
+    /// Safe-area top and bottom, in points.
     insets: (f32, f32),
     /// The window, in points, and its pixels per point.
     size: (f32, f32),
@@ -136,9 +105,9 @@ struct PrequelSlider {
     scroll: UiScroll,
     /// scrollOffset as the reaction last saw it.
     last_offset: f64,
-    /// progressPercentage.
+    /// The ruler's progress, 0 to 1.
     progress: f64,
-    /// previousLineIndex.
+    /// The last tick index reached, −1 before any.
     line_index: i64,
     /// The latest time seen (a frame's or a pointer's), and when the last tick haptic played.
     now_ms: f64,
@@ -158,14 +127,14 @@ struct Gpu {
     pixels: (u32, u32),
     pipeline: wgpu::RenderPipeline,
     uniforms: wgpu::Buffer,
-    /// The UI layer, the editor's mask.
+    /// Layers: the UI, and the editor's mask.
     layers: [wgpu::TextureView; 2],
     bind: wgpu::BindGroup,
     /// The mask was drawn for this layout.
     masked: bool,
 }
 
-/// Where everything is, in points (RN's layout on the pixel grid).
+/// Where everything is, in points, on the pixel grid.
 struct Layout {
     /// The editor canvas's frame, and its width and height props.
     editor: [f32; 4],
@@ -203,7 +172,7 @@ impl PrequelSlider {
         self.size.0 as f64 / 2.0 - self.scroll.offset
     }
 
-    /// useAnimatedReaction on scrollOffset: onProgressChange.
+    /// Updates the progress and the tick index from the offset. The first value is not a change.
     fn react(&mut self) {
         let offset = self.offset();
         if offset == self.last_offset {
@@ -216,14 +185,12 @@ impl PrequelSlider {
         }
         let w = self.size.0 as f64;
         let progress = interpolate(offset, &[w / 2.0, -(LINES as f64 * SPACE).round() + w / 2.0], &[0.0, 1.0], Extrapolation::Extend);
-        // Past the ruler's ends the scroll bands; RN's clamp never got there, so the line index
-        // (and its haptic) and the progress stop at the ends.
+        // The progress stops at the ends, so the tick index and its haptic do too.
         let progress = progress.clamp(0.0, 1.0);
         let index = ((progress * LINES as f64).floor() as i64).min(LINES as i64);
         if index != self.line_index && index >= 0 {
-            // One selection haptic per HAPTIC_GAP_MS at most, as UIKit's pickers pace theirs: a
-            // fling crosses a tick every frame (up to 200 a second), and each haptic is a message,
-            // a Contract commit and a Taptic call on the main thread (the phone note's stutter).
+            // At most one haptic per HAPTIC_GAP_MS: a fling can cross a tick every frame, and each
+            // haptic is a main-thread call.
             if self.now_ms - self.haptic_at >= HAPTIC_GAP_MS {
                 self.posted.push("haptic:selection".into());
                 self.haptic_at = self.now_ms;
@@ -233,7 +200,7 @@ impl PrequelSlider {
         self.progress = progress;
     }
 
-    /// `color`: interpolateColor(progress, [0, 1], ['#6d9bf1', 'orange']).
+    /// The indicator's colour: blue at 0, orange at 1.
     fn color(&self) -> [u8; 3] {
         let c = interpolate_color(self.progress, &[0.0, 1.0], &[[109.0, 155.0, 241.0, 1.0], [255.0, 165.0, 0.0, 1.0]]);
         [c[0] as u8, c[1] as u8, c[2] as u8]
@@ -248,14 +215,13 @@ impl PrequelSlider {
         // The donut: rotated −90° about its centre, so its circle starts at the top.
         let (dx, dy) = (at.donut[0] + DONUT / 2.0, at.donut[1] + DONUT / 2.0);
         let r = DONUT / 2.0 - DONUT_STROKE / 2.0;
-        // backgroundColor 'rgba(255,255,255,0.25)'.
+        // The track: white at 0.25.
         let ring = Paint::stroke(Color([1.0, 1.0, 1.0, 0.25]), DONUT_STROKE).caps(Cap::Round, Join::Miter);
         c.draw_with(&ring, |b| skia::add_circle(b, dx, dy, r));
         let end = self.progress.clamp(0.0, 1.0) as f32;
         if end > 0.0 {
             let arc = Paint::stroke(Color::rgb8(rgb[0], rgb[1], rgb[2]), DONUT_STROKE).caps(Cap::Round, Join::Miter);
-            // The circle's first `end` of its length from the top (addCircle starts at 3
-            // o'clock, clockwise; the group's −90° turns it to 12).
+            // The arc starts at 12 o'clock and runs clockwise.
             c.draw_with(&arc, |b| skia::add_arc(b, dx - r, dy - r, 2.0 * r, 2.0 * r, -90.0, 360.0 * end));
         }
         // The slider's lines, in the lines canvas (clipped to it).
@@ -269,8 +235,7 @@ impl PrequelSlider {
                 if (i % BIG_EACH == 0) != pass {
                     continue;
                 }
-                // getLinesPath draws a line when the scroll's base −offset + W / 2 is within
-                // W / 2 of it.
+                // Only the ticks on screen are drawn.
                 let offset = (i as f64 * SPACE) as f32;
                 let base = -x0 + w / 2.0;
                 if base < offset - w / 2.0 || base > offset + w / 2.0 {
@@ -285,7 +250,7 @@ impl PrequelSlider {
             c.draw_rect(0.0, top, w, MAX_LINE, g);
         }
         c.restore();
-        // The indicator View: its colour is a View's (Display P3).
+        // The indicator's colour is in Display P3, as a view's is.
         let ind = at.indicator;
         let hex = (rgb[0] as u32) << 16 | (rgb[1] as u32) << 8 | rgb[2] as u32;
         c.draw_continuous_rrect(ind[0], ind[1], ind[2] - ind[0], ind[3] - ind[1], 10.0, &Paint::fill(Color::view_hex(hex)));
@@ -326,7 +291,7 @@ impl Surface for PrequelSlider {
         if self.size.0 <= 0.0 {
             return;
         }
-        // The GestureDetector's view: the slider's W × 60 area, as laid out.
+        // The touch area is the slider's area.
         let area = self.layout(self.scale).area;
         let inside = x >= area[0] && x <= area[2] && y >= area[1] && y <= area[3];
         self.now_ms = self.now_ms.max(at_ms);
@@ -346,7 +311,7 @@ impl Surface for PrequelSlider {
         if self.size != (frame.width, frame.height) {
             self.size = (frame.width, frame.height);
             let w = frame.width;
-            // The rubber band's dimension: the port, the window's width.
+            // The rubber band is the window's width.
             self.scroll.port = w as f64;
             let black = Color::BLACK;
             let clear = Color::TRANSPARENT;
@@ -375,7 +340,7 @@ impl Surface for PrequelSlider {
             self.renderers[1].draw(device, queue, encoder, &self.mask, &gpu.layers[1], GRAPHITE_FORMAT, pw, ph, wgpu::Color::TRANSPARENT);
             gpu.masked = true;
         }
-        // Cover: fitRects("cover", image, (0, 0, width, height)) → rect2rect(src, dst).
+        // Cover-fit the photo to the editor.
         let (iw, ih) = (3540.0f64, 2360.0f64);
         let (ew, eh) = (at.editor_props.0 as f64, at.editor_props.1 as f64);
         let (src_w, src_h) = if ew / eh > iw / ih { (iw, iw * eh / ew) } else { (ih * ew / eh, ih) };
@@ -415,8 +380,7 @@ fn build(device: &wgpu::Device, queue: &wgpu::Queue, format: wgpu::TextureFormat
     Gpu { format, generation, pixels, pipeline, uniforms, layers, bind, masked: false }
 }
 
-/// The photo as Skia holds it: its decoded pixels, one level (the shader reads it without
-/// mipmaps, as `ImageShader`'s default sampling does).
+/// The photo as one mip level: the shader samples it without mipmaps.
 fn photo(device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::TextureView {
     let image = skia::Image::from_jpeg(PHOTO_JPEG).unwrap_or_else(|| skia::Image::from_rgba(1, 1, vec![0, 0, 0, 255]));
     let size = wgpu::Extent3d { width: image.width, height: image.height, depth_or_array_layers: 1 };
@@ -465,33 +429,30 @@ mod tests {
         let (rest, moving) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         gfx::save_over(&rest, "prequel-slider-rest", [0, 0, 0]);
         assert!(!moving);
-        // The editor: x 32…1229 px, y 372…2156 px (H 912, safe 68/34): the photo, opaque.
+        // The editor (x 32…1229 px, y 372…2156 px) is the opaque photo.
         assert_eq!(rest.at(600, 1200)[3], 255);
         assert_eq!(rest.at(20, 1200)[3], 0, "left of the editor");
         assert_eq!(rest.at(34, 374)[3], 0, "the continuous corner");
-        // The indicator at x 630…638 px, y 2382…2436 px, blue (#6d9bf1 as P3).
+        // The indicator, blue.
         let ind = rest.at(634, 2409);
         assert!(ind[2] > 220 && ind[0] < 120, "indicator {ind:?}");
-        // The ring's track, white at 0.25, at the donut's top (centre 630.5 px, r 46.5 px).
+        // The ring's track, at its top.
         let ring = rest.at(631, 2214 + 6);
         assert!(ring[3] > 40 && ring[3] < 90, "ring {ring:?}");
         let before = rest.at(600, 1200);
         let finger = |s: &mut Box<dyn Surface>, phase, x, at_ms| {
             s.input(&InputEvent::Pointer { id: 1, phase, x, y: 2409.0 / 3.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
         };
-        // Drag left slowly, a UIScrollView's drag: it begins on the second move past the 10 pt
-        // hysteresis (x 327) and follows 1:1 from there, no jump: 241.5 pt, offset 210 − 241.5.
+        // The drag follows 1:1 from the second move past the 10 pt slop, with no jump.
         finger(&mut s, PointerPhase::Down, 350.0, 0.0);
         for i in 1..=23 {
             finger(&mut s, PointerPhase::Move, 350.0 - 11.5 * i as f32, 40.0 * i as f64);
         }
-        // A haptic per line index reached, at most one per 40 ms (moves 40 ms apart: one each,
-        // 11.5 pt moves skipping some of the 24 lines).
+        // One haptic per tick index reached, at most one per HAPTIC_GAP_MS.
         let posted = s.messages();
         assert!(posted.iter().filter(|m| *m == "haptic:selection").count() > 15, "{posted:?}");
         assert!(s.agent("").unwrap().starts_with("{\"progress\":0.4830,\"offset\":-31.50,\"lineIndex\":24}"), "{}", s.agent("").unwrap());
-        // The finger eases back 2 pt and rests a second: below ~335 pt/s UIKit reports no
-        // velocity, so the snapToInterval rule rounds the 239.5 pt offset to the 240 tick.
+        // Below ~335 pt/s no release velocity is reported, so the snap goes to the nearest tick.
         finger(&mut s, PointerPhase::Move, 86.5, 960.0);
         finger(&mut s, PointerPhase::Move, 87.5, 1000.0);
         finger(&mut s, PointerPhase::Up, 87.5, 2000.0);
@@ -505,7 +466,7 @@ mod tests {
         gfx::save_over(&img, "prequel-slider-half", [0, 0, 0]);
         assert!(s.agent("").unwrap().starts_with("{\"progress\":0.4800,\"offset\":-30.00"), "{}", s.agent("").unwrap());
         assert_ne!(img.at(600, 1200), before, "the photo is warped");
-        // Half: the ring's arc reaches the bottom; the indicator is between blue and orange.
+        // Half way: the ring's arc reaches the bottom.
         let ring = img.at(631, 2313);
         assert!(ring[3] > 200, "ring's arc at 6 o'clock {ring:?}");
     }
@@ -539,7 +500,7 @@ mod tests {
         }
         assert!(s.scroll.offset > lifted + 50.0, "{} after {lifted}", s.scroll.offset);
         assert_eq!(s.scroll.offset % SPACE, 0.0);
-        // The fling crossed a line or more a frame; its haptics are paced, one per 40 ms at most.
+        // Haptics stay paced: at most one per HAPTIC_GAP_MS.
         let haptics = s.posted.iter().filter(|m| *m == "haptic:selection").count();
         let lines = (s.scroll.offset / SPACE) as usize;
         assert!(haptics as f64 <= (t - 0.0) / HAPTIC_GAP_MS + 1.0 && haptics < lines, "{haptics} haptics for {lines} lines in {t} ms");

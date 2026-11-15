@@ -1,43 +1,18 @@
-//! Paper Folding (src/animations/paper-folding: index.tsx, background-gradient.tsx,
-//! components/index.tsx): a 250 × 330 sheet of paper in three folds over a soft grey sweep; a
-//! tap anywhere folds it (letter-fold, the first fold on top) or unfolds it.
+//! A sheet of paper in three folds over a soft grey sweep. A tap folds it, or unfolds it.
 //!
-//! - BackgroundGradient: a window-sized Rect with SweepGradient about the centre (#eaeaea,
-//!   #e9ebec, #dddddd, #e0e0e0) and Blur 50 (decal).
-//! - Paper (centred): foldHeight = 330 / 3. With progress p, translateY = (h/2 − fh/2)(1 − p);
-//!   fold 0 at top 0 (+ translateY); fold 1 at top h/2 − fh/2, rotated about its top edge by
-//!   rotateX(−π(1 − p)) after translateY; fold 2 hinged on fold 1's bottom edge, rotateX(π(1 −
-//!   p)) more. Fold 2's list is one layer's matrix, so its rotations add up to 0: it stays
-//!   parallel to the screen, full height, hung from fold 1's far edge. Each fold's view is a
-//!   plain layer, which flattens its content (an orthographic projection: rotateX(θ) scales y
-//!   by cos θ). Folds 1 and 2: interpolateColor(p, [0, 1], [#b1b1b1, #ffffff]) under an inner
-//!   Shadow (0, 12, 25, #efefef); fold 0: #ffffff (its drop shadow falls outside its canvas).
-//! - Stacking: each fold's wrapper has transform [perspective(1000000)] about transformOrigin
-//!   (50%, 50%, z = 200, 100, 0) of its 250 × 0 box (the paper's top edge). That matrix moves
-//!   the wrapper's plane to depth z − z/(1 + z/1e6) (0.04, 0.01, 0 pt) and scales it by
-//!   1/(1 + z/1e6) about (125, 0): Core Animation depth-sorts sibling layers, so fold 0 is
-//!   drawn over 1 over 2 at every angle (each wrapper is flat, its depth constant).
-//! - The press (PressableWithoutFeedback over the screen, no global handler): RN springs
-//!   progress to p > 0.5 ? 0 : 1 ({ duration 1000, dampingRatio 1.5 }); three selection haptics,
-//!   at once and 100 and 200 ms later (posted for the app).
+//! - Press: the paper shrinks a little while held.
+//! - Lift: a selection haptic, then the fold runs 610 ms on a quick ease-out and lands with a
+//!   soft impact haptic and a small rebound.
+//! - Selection haptics also fire 100 and 200 ms after the lift.
 //!
-//! Past RN, the owner's phone notes (2026-11-15): "faster, and more like paper". The fold is
-//! timed, not sprung: 230 + 380 ms per unit of travel (610 ms end to end, 39 % under RN's 1000;
-//! the folds' arcs are linear in progress, so the speed is proportional to the arc), on a crisp
-//! ease-out with no tail, then lands: a soft impact haptic and a small damped rebound (2 % of
-//! the travel, gone in 300 ms). The paper (shaders/paper_folding.wgsl): warm off-white with a
-//! fibre grain, creases, Lambert light on the rotating fold, a bright ridge, shadows cast onto
-//! the fold behind and onto the background, the folded edges' thickness.
-//!
-//! The background is drawn and blurred once per size; a frame is one pass and one uniform write.
+//! The paper is shaded in shaders/paper_folding.wgsl. The background is drawn and blurred once
+//! per size; a frame is one pass and one uniform write.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
 use pressto::{Config, PressEvent, Pressable};
 
-/// The owner's call (phone feedback, 2026-11-15), past RN's PressableWithoutFeedback: the paper
-/// shrinks a little while held, on pressto's PressableScale curve (250 ms, bezier(0.25, 0.1,
-/// 0.25, 1), from where it is), about the screen's centre (the paper's).
+/// The paper shrinks a little while held, about the screen's centre.
 const PRESS: Config = Config { active_opacity: 0.5, min_scale: 0.97, base_scale: 1.0 };
 use reanimated::{interpolate_color, Easing, Timing};
 use skia::{point, stops, Blur, Canvas, Color, Paint, Renderer, Shader};
@@ -45,35 +20,31 @@ use skia::{point, stops, Blur, Canvas, Color, Paint, Renderer, Shader};
 use crate::{gfx, shaders};
 use shaders::paper_folding::{entry, module, Uniforms, BACKGROUND, GROUP_0, SMP, U};
 
-/// PaperWidth, PaperHeight.
+/// Paper size in points.
 const WIDTH: f32 = 250.0;
 const HEIGHT: f32 = 330.0;
-/// `<Blur blur={50}>`.
+/// Background blur radius in points.
 const BLUR: f32 = 50.0;
-/// paperFoldingHaptics: selectionAsync now, at 100 ms and at 200 ms.
+/// Selection haptic times after the lift, in ms.
 const HAPTICS_MS: [f64; 3] = [0.0, 100.0, 200.0];
 const LAYER: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
-/// A fold's duration: a floor plus a share per unit of progress it travels (the arcs are linear
-/// in progress). End to end, 610 ms.
+/// Fold duration in ms: FOLD_MS plus FOLD_MS_PER_UNIT per unit of progress travelled.
 const FOLD_MS: f64 = 230.0;
 const FOLD_MS_PER_UNIT: f64 = 380.0;
-/// The landing's rebound: its height (share of the travel), its bounce (half a period) and decay
-/// (ms), and when it is over.
+/// Landing rebound: height (share of the travel), half-period, decay and end, in ms.
 const SETTLE_LIFT: f64 = 0.022;
 const SETTLE_HALF_MS: f64 = 85.0;
 const SETTLE_DECAY_MS: f64 = 55.0;
 const SETTLE_MS: f64 = 300.0;
 
-/// The fold's curve: a short ease-in, then a strong ease-out that arrives without a tail (94 %
-/// of the way at 70 % of the time).
+/// Ease-in, then a strong ease-out with no tail.
 fn fold_easing() -> Easing {
     Easing::bezier(0.3, 0.0, 0.2, 1.0)
 }
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
-    // RN passes `globalHandlers={{}}`, which is no pressto prop (it falls through to the
-    // BaseButton): the intent, no global haptic over its own three, is `skipGlobalHandlers`.
+    // Skip the global haptic: this surface posts its own selection haptics.
     Box::new(PaperFolding { press: Pressable::new().skip_global_handlers().with_config(PRESS), ..Default::default() })
 }
 
@@ -81,16 +52,15 @@ pub fn surface() -> Box<dyn Surface> {
 struct PaperFolding {
     /// The timed fold, from where the paper was to 0 (folded) or 1 (open).
     progress: Timing,
-    /// The travel of the fold in flight, and the landing: its frame time, once known.
+    /// Length of the fold in flight; scales the rebound.
     travel: f64,
     flying: bool,
     landed_at: Option<f64>,
     /// The rebound drawn over `progress` (toward where it came from).
     settle: f64,
-    /// pressto's PressableWithoutFeedback over the screen, the shared `pressto::Pressable`
-    /// (RNGH's BaseButton): onPress at the lift however long it was held or far it moved.
+    /// Press tracking. A press fires on the lift, however long it was held or far it moved.
     press: Pressable,
-    /// Haptics still due: their delay after the press, the press's frame time once known.
+    /// Haptics still due, as delays after the lift.
     due: Vec<f64>,
     pressed_at: Option<f64>,
     pressed: bool,
@@ -110,11 +80,10 @@ struct Gpu {
     bind: wgpu::BindGroup,
 }
 
-/// `perspective: 1000000`.
+/// Perspective distance for the fold stacking, in points.
 const PERSPECTIVE: f32 = 1_000_000.0;
 
-/// Fold `i`'s wrapper's scale about the paper's top centre: perspective(d) about
-/// transformOrigin z = (2 − i) × 100 maps a point of its plane by 1 / (1 + z / d).
+/// Scale of fold `i`'s plane under its perspective: 1 / (1 + z / PERSPECTIVE), z = (2 − i) × 100.
 pub(crate) fn wrapper_scale(i: usize) -> f32 {
     1.0 / (1.0 + (2 - i) as f32 * 100.0 / PERSPECTIVE)
 }
@@ -125,10 +94,10 @@ pub(crate) fn folds(p: f32) -> [(f32, f32); 3] {
     let fh = HEIGHT / 3.0;
     let rest = HEIGHT / 2.0 - fh / 2.0;
     let ty = rest * (1.0 - p);
-    // rotateX(−π(1 − p)) about fold 1's top edge.
+    // Fold 1 turns about its top edge.
     let c1 = (-std::f32::consts::PI * (1.0 - p)).cos();
     let t1 = rest + ty;
-    // Fold 2: rotateX(−π(1 − p)) then rotateX(π(1 − p)) in one matrix, cos(0) = 1.
+    // Fold 2's two turns cancel: it stays full height, parallel to the screen.
     [(ty, fh), (t1, fh * c1), (t1 + fh * c1, fh)]
 }
 
@@ -287,9 +256,7 @@ mod tests {
         assert!((folded[0].0 - 110.0).abs() < 1e-4 && (folded[1].0 - 220.0).abs() < 1e-4);
         assert!((folded[1].1 + 110.0).abs() < 1e-3 && (folded[2].0 - 110.0).abs() < 1e-3 && (folded[2].1 - 110.0).abs() < 1e-3);
         assert_eq!(folds(1.0), [(0.0, 110.0), (110.0, 110.0), (220.0, 110.0)]);
-        // Mid-fold, against RN's transform lists multiplied out as 4 × 4 matrices (p = 0.25:
-        // fold 1 spans 192.5 → 114.718, fold 2 114.718 → 224.718; p = 0.5: fold 1 is edge-on
-        // at 165, fold 2 165 → 275). Fold 2 stays full height: its two rotations cancel.
+        // Mid-fold: fold 2 stays full height, its two turns cancel.
         let quarter = folds(0.25);
         assert!((quarter[0].0 - 82.5).abs() < 1e-3);
         assert!((quarter[1].0 - 192.5).abs() < 1e-3 && (quarter[1].0 + quarter[1].1 - 114.718).abs() < 1e-3);
@@ -311,11 +278,10 @@ mod tests {
         finger(&mut s, PointerPhase::Down, 0.0);
         s.press.step(0.0);
         s.press.step(125.0);
-        // bezier(0.25, 0.1, 0.25, 1) at half time is about 0.8024 of the way to 0.97.
         assert!((s.press.scale() - (1.0 - 0.03 * 0.8024)).abs() < 1e-3, "{}", s.press.scale());
         s.press.step(400.0);
         assert!((s.press.scale() - 0.97).abs() < 1e-9);
-        // The lift folds or unfolds as before and eases the paper back to full size.
+        // The lift eases the paper back to full size.
         finger(&mut s, PointerPhase::Up, 600.0);
         assert_eq!(s.messages(), ["haptic:selection"]);
         s.press.step(616.0);
@@ -346,11 +312,10 @@ mod tests {
             ms += 8.0;
         }
         let at = |t: f64| trace.iter().find(|(x, _)| *x >= t).unwrap().1;
-        // 610 ms end to end (RN's spring: 1000), past half way at 200 ms, 94 % at 430 ms, no tail.
+        // 610 ms end to end, past half way at 200 ms, 94 % at 430 ms, no tail.
         assert!(landed.is_some_and(|t| (710.0..718.0).contains(&t)), "{landed:?}");
         assert!(at(200.0) > 0.5 && at(430.0) > 0.94 && at(560.0) > 0.99, "{} {} {}", at(200.0), at(430.0), at(560.0));
-        // The landing: a soft impact, and a rebound under 2.2 % of the travel, back from the
-        // open side, gone by 300 ms.
+        // The landing: a soft impact, then a rebound under 2.2 % of the travel, gone by 300 ms.
         let mut s = PaperFolding { press: Pressable::new().skip_global_handlers().with_config(PRESS), ..Default::default() };
         s.travel = 1.0;
         s.progress.set(0.0);
@@ -389,11 +354,9 @@ mod tests {
         let (a, animating) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         a.save("paper-folding-folded");
         assert!(!animating);
-        // The paper (left 85, top 291) folded to its middle third, y 401…511: warm off-white on
-        // top (#FBF8F1 under a ±2 % grain), never pure white.
+        // The folded paper's middle third: warm off-white, never pure white.
         let paper = a.at(210, 456);
         assert!(paper[0] >= 240 && paper[0] > paper[2] && paper[1] > paper[2], "{paper:?}");
-        // Above it the background: a light grey, opaque in the middle of the screen.
         let bg = a.at(210, 300);
         assert!(bg[3] == 255 && (200..240).contains(&bg[0]), "{bg:?}");
         // At the screen's corner, the decal blur fades it out.
@@ -416,17 +379,16 @@ mod tests {
                 mid = Some(img);
             }
         }
-        // RN's two later selections, and one soft impact as the fold lands.
+        // Two later selections, and one soft impact as the fold lands.
         assert_eq!(haptics, ["haptic:selection", "haptic:selection", "haptic:impact-soft"]);
         mid.unwrap().save("paper-folding-mid");
         let (b, animating) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         b.save("paper-folding-open");
         assert!(!animating);
         assert!(s.agent("{}").unwrap().starts_with("{\"progress\":1.000"));
-        // Poses at fixed progress, for reading against RN's matrices (fold 2 full height).
+        // Poses at fixed progress (fold 2 full height).
         let mut posed = PaperFolding::default();
-        // The rotating fold (p 0.75: 291 + 110 → + 77.8) turns from the light: darker than fold
-        // 0 above it; fold 2 below it in the shadow of the folds in front.
+        // The rotating fold turns away from the light, so it is darker than fold 0.
         posed.progress.set(0.75);
         let (img, _) = fixture::render(&gpu, &mut posed, &frame(0.0)).unwrap();
         let (f0, f1) = (img.at(210, 360), img.at(210, 440));
@@ -436,12 +398,11 @@ mod tests {
             let (img, _) = fixture::render(&gpu, &mut posed, &frame(0.0)).unwrap();
             img.save(name);
             if p == 0.5 {
-                // Fold 1 edge-on at 291 + 165; fold 2 hangs below it, 456…566, shaded.
+                // Fold 1 is edge-on here; fold 2 hangs below it, shaded.
                 assert!(img.at(210, 510)[0] < 255 && img.at(210, 510)[3] == 255, "{:?}", img.at(210, 510));
             }
         }
-        // Open: paper from its top (291) to its bottom (621); the inner shadow tints the lower
-        // folds' edges #efefef-ward; the creases (401, 511) are faint darker lines.
+        // Open: the inner shadow tints the lower folds' edges; the creases are faint lines.
         let open = b.at(210, 300);
         assert!(open[0] >= 240 && open[0] > open[2], "{open:?}");
         let low = b.at(210, 600);
@@ -453,8 +414,7 @@ mod tests {
         assert!(b.at(210, 640)[0] < 245);
     }
 
-    /// The poses at the phone's 3x, for looking at (`EXACT_GPU_OUT`): at rest open, mid-fold,
-    /// nearly and fully folded, and the landing's rebound.
+    /// Renders the poses at 3x for inspection (written where `EXACT_GPU_OUT` points).
     #[test]
     #[ignore]
     fn poses_at_3x() {

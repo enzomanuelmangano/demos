@@ -1,38 +1,11 @@
-//! Pomodoro Timer (src/animations/pomodoro-timer: src/index.tsx, components/animated-count/*,
-//! components/draggable-slider/*, hooks/useToggle.ts): a ring of 200 ticks (radius 280, its
-//! centre 140 above the screen's bottom) the finger turns from the lower half of the screen,
-//! the seconds it marks rolling in a five-digit counter above; the white button starts a
-//! timer that counts the ticks back, one a second.
+//! A ring of 200 ticks the finger turns from the lower half of the screen, and a five-digit counter
+//! above it showing the seconds it marks. The white button starts a timer that counts the ticks
+//! back, one a second, and stops it again.
 //!
-//! Layout: on black, the counter (AnimatedCount: five 68 × 120 digits in a reversed row,
-//! marginBottom 256, the column centred); the ring box (560 × 560, centred, translateY height /
-//! 2 − 140) holding the orange indicator (3 × 48 at top −20, zIndex 10) and the ticks (1.5 wide;
-//! every 10th 40 tall and white, the others 30 and rgba(255,255,255,0.5); each at its angle,
-//! along the radius) turned together by −progressRadiants; the pan view (the screen's lower
-//! half); the button (pressto PressableScale, 64, white, radius 32, MaterialCommunityIcons
-//! timer / stop 28 #111) at right 32, bottom 48.
-//!
-//! A digit: overflow hidden; its column of "0" … "9" (SF Pro Rounded Bold 100, white, centred,
-//! each 68 × 120) at translateY −120 × digit and scaleX 0.7 while changing; an expo BlurView
-//! (tint default) at intensity 17 × isChangingProgress; black LinearGradients over its top and
-//! bottom third. The column's texts are a layer's backing store moved and squeezed by Core
-//! Animation: baked once, sampled bilinearly. The blur is `skia::backdrop`, per digit.
-//!
-//! Motion audit:
-//!
-//! | value | RN driver / config | here |
-//! |---|---|---|
-//! | progress | Pan: onBegin cancel, onUpdate previous + translationX; onFinalize: > 0 → withTiming(0, 500), else withDecay(velocityX) (ignored while the timer runs) | the same: `PanGesture`, `Timing`, `Decay` |
-//! | seconds | round((radiants − π/2) / (2π / 200)), radiants = π/2 − progress / 280; a change ≥ 0 sets the count and plays Haptics.selectionAsync | the same, `haptic:selection`, at most one per HAPTIC_GAP_MS (past RN, which plays one per tick: a fling crosses a tick every frame) |
-//! | timer | runTimer: count 0 → Alert; progress withTiming(0, 500); after 300 ms, every 1000 ms progress −= 2π·280 / 200 until count ticks; then isTimerEnabled false and an Alert 1000 ms later, whose OK resets | the same, the Alerts in Contract (`alert:invalid`, `alert:done`; OK back as the input `ok`) |
-//! | digit translateY | withSpring(−120 × digit, { mass 0.25, damping 10, stiffness 100 }) | `Spring::retarget` |
-//! | digit scaleX | withSpring(isChanging ? 0.7 : 1) (Gentle) | `Spring::retarget` |
-//! | isChanging | true on each change of the digit (and at mount), false 200 ms after each (setTimeout) | the same |
-//! | blur, opacity, translateX | withTiming(…) (300 ms, inOut quad): intensity 17 × changing, visible ? 1 : 0, −68 × invisible / 2 | `Timing` |
-//! | tick colour | withTiming(isTimerEnabled ? rgba(222,208,208,0.525) : colour), per channel in gamma 2.2 | [`Fade`] |
-//! | button | PressableScale (pressto) | `pressto::Pressable` |
-//!
-//! Input: ok (the completion alert's OK presses, counted).
+//! - Drag in the lower half: turns the ring; a selection haptic per tick, at most one per
+//!   HAPTIC_GAP_MS.
+//! - Lift: past 0 the ring eases back to 0, otherwise a fling decays. A running timer locks the dial.
+//! - Timer end: an alert; its OK turns the timer off and resets the dial.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -51,10 +24,9 @@ const MAX_DIGITS: usize = 5;
 const DIGIT_W: f32 = 68.0;
 const DIGIT_H: f32 = 120.0;
 const BUTTON: f32 = 64.0;
-/// The shortest gap between two tick haptics, ms (UIKit's pickers pace theirs so).
+/// The shortest gap between two tick haptics, in ms.
 const HAPTIC_GAP_MS: f64 = 40.0;
-/// How far past a tick's line (in ticks) the dial turns before its haptic plays: a dial held
-/// on a line does not flap.
+/// Hysteresis around a tick line, in ticks: a dial held on a line does not flap.
 const SLACK: f64 = 0.25;
 const TRANSLATE_SPRING: SpringConfig = SpringConfig { stiffness: 100.0, damping: 10.0, mass: 0.25 };
 const TIMER_ICON: &str = "\u{F13AB}";
@@ -143,7 +115,7 @@ impl Progress {
     }
 }
 
-/// `withTiming` of a colour (300 ms, inOut quad): per channel in gamma 2.2, rounded.
+/// A colour that eases over 300 ms, per channel in gamma 2.2.
 struct Fade {
     from: [f64; 4],
     to: [f64; 4],
@@ -187,7 +159,7 @@ impl Fade {
     }
 }
 
-/// One AnimatedDigit.
+/// One digit of the counter.
 struct Digit {
     digit: Option<u32>,
     visible: Option<bool>,
@@ -243,7 +215,7 @@ impl Digit {
     }
 }
 
-/// getDigitByIndex: the padded string's character at maxDigits − 1 − index.
+/// The digit at `index` from the right, of `count` padded to MAX_DIGITS.
 fn digit_of(count: i64, index: usize) -> u32 {
     let s = format!("{:0>width$}", count, width = MAX_DIGITS);
     s.chars().nth(MAX_DIGITS - 1 - index).and_then(|c| c.to_digit(10)).unwrap_or(0)
@@ -283,9 +255,9 @@ struct Pomodoro {
     progress: Progress,
     previous: f64,
     pan: PanGesture,
-    /// isTimerEnabled (the slider's shared value).
+    /// Whether the dial is locked by a running timer.
     timer_shared: bool,
-    /// isTimerEnabled (the App's state: the icon).
+    /// Whether the timer is started (the button's icon).
     enabled: bool,
     run: Option<Run>,
     alert_at: Option<f64>,
@@ -321,7 +293,7 @@ impl Pomodoro {
         let (w, h) = self.size;
         (self.round((w - DIGIT_W * MAX_DIGITS as f32) / 2.0), self.round((h - (DIGIT_H + 256.0)) / 2.0))
     }
-    /// The ring box's top-left (Yoga) and its translateY.
+    /// The ring box's top-left and its translateY.
     fn ring(&self) -> (f32, f32, f32) {
         let (w, h) = self.size;
         (self.round((w - 560.0) / 2.0), self.round((h - 560.0) / 2.0), h / 2.0 - 140.0)
@@ -338,7 +310,7 @@ impl Pomodoro {
         std::f64::consts::FRAC_PI_2 - self.progress.value / RADIUS
     }
 
-    /// The reaction on progressRadiants → onProgressChange.
+    /// Turns the progress into seconds: haptics, and the count when it changes.
     fn react(&mut self, now: f64) {
         let rad_per_tick = 2.0 * std::f64::consts::PI / LINES as f64;
         let x = (self.radiants() - std::f64::consts::FRAC_PI_2) / rad_per_tick;
@@ -360,7 +332,7 @@ impl Pomodoro {
         }
     }
 
-    /// AnimatedDigit's derived values and reactions after the count changed.
+    /// Updates each digit after the count changed.
     fn count_changed(&mut self, now: f64, mount: bool) {
         let invisible = MAX_DIGITS.saturating_sub(self.count.to_string().len());
         for (i, d) in self.digits.iter_mut().enumerate() {
@@ -371,7 +343,7 @@ impl Pomodoro {
                 } else {
                     d.translate.retarget(-(DIGIT_H as f64) * digit as f64, TRANSLATE_SPRING);
                 }
-                // isChanging = curr !== prev, reset 200 ms later.
+                // The digit flags changing until 200 ms later.
                 d.digit = Some(digit);
                 d.set_changing(true);
                 d.resets.push(now + 200.0);
@@ -677,7 +649,7 @@ fn pass(encoder: &mut wgpu::CommandEncoder, target: &wgpu::TextureView, load: wg
 impl Surface for Pomodoro {
     fn bind(&mut self, inputs: &[Value], _: Option<f64>) -> Result<(), SurfaceError> {
         if let Some(Value::Number(ok)) = inputs.first() {
-            // The completion alert's OK: toggleTimer, then resetTimer.
+            // The completion alert's OK turns the timer off and resets the dial.
             if self.ok.is_some_and(|o| o != *ok) {
                 self.enabled = !self.enabled;
                 self.reset_timer();
@@ -814,7 +786,6 @@ impl Surface for Pomodoro {
             self.renderers[1].draw(device, queue, encoder, c, overlay, GRAPHITE_FORMAT, px.0, px.1, wgpu::Color::TRANSPARENT);
             self.overlay_key = Some(okey);
         }
-        // The digits.
         let sprites = self.sprites.as_ref().unwrap();
         let mut u = vec![0f32; 8 + 5 * 8];
         u[0] = frame.width;
@@ -846,7 +817,7 @@ impl Surface for Pomodoro {
         };
         let g_sprites = group(&sprites.view);
         skia::render::fullscreen_pass(encoder, "pomodoro under", under, &gpu.under, &g_sprites);
-        // The BlurViews: every capture first, then every draw back into the same picture.
+        // Capture every blur first, then draw each back into the same picture.
         let s = frame.scale;
         let mut drawn = Vec::new();
         for (i, d) in self.digits.iter().enumerate() {
@@ -866,7 +837,6 @@ impl Surface for Pomodoro {
         }
         let g_under = group(under);
         skia::render::fullscreen_pass(encoder, "pomodoro", target, &gpu.compose, &g_under);
-        // The ring and the indicator's place.
         let centre = (left as f64 + 280.0, top as f64 + 280.0 + ty as f64);
         let mut t = vec![0f32; 4 + 201 * 8];
         t[0] = frame.width;
@@ -907,7 +877,7 @@ impl Surface for Pomodoro {
 }
 
 impl Pomodoro {
-    /// onFinalize.
+    /// Lift: past 0 the ring eases back to 0, otherwise a fling decays with its velocity.
     fn finalize(&mut self, velocity: f64) {
         if self.progress.value > 0.0 {
             self.progress.timing_to(0.0, 500.0);
@@ -917,8 +887,7 @@ impl Pomodoro {
     }
 }
 
-/// The detent the haptics feel at `v` (in detents, floored), `held` before: it holds until `v`
-/// is SLACK of a detent past either of its edges, so a value hovering on a line does not flap.
+/// The detent at `v` (in ticks), holding `held` while `v` stays within SLACK of its edges.
 fn detent(held: i64, v: f64) -> i64 {
     if held >= 0 && v >= held as f64 - SLACK && v < held as f64 + 1.0 + SLACK {
         held
@@ -967,12 +936,10 @@ mod tests {
         s.bind(&[Value::Number(0.0)], None).unwrap();
         let (rest, _) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         gfx::save_over(&rest, "pomodoro-rest", [0, 0, 0]);
-        // The orange indicator over the ring's top (x 210, y 912 − 140 − 280 − 20 + 4).
+        // The orange indicator over the ring's top.
         let ind = rest.at(3 * 210, 3 * 478);
         assert!(ind[0] > 200 && ind[2] < 80, "{ind:?}");
-        // The tick right of the top one (1.8°, centre x 218.8, y 492.1): its edges are
-        // antialiased, as Core Animation's are under RN's rotate (allowsEdgeAntialiasing), so
-        // a row across it has partial pixels between black and its full grey, not only the two.
+        // The tick right of the top one. Its edges are antialiased, so a row across it has partial pixels.
         let row: Vec<u8> = (640..676).map(|x| rest.at(x, 3 * 492)[0]).collect();
         let full = *row.iter().max().unwrap();
         assert!(full > 60, "{row:?}");

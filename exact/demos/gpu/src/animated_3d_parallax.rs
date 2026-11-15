@@ -1,26 +1,12 @@
-//! Animated 3D Parallax (src/animations/animated-3d-parallax: index.tsx,
-//! hooks/use-3d-rotation-style.ts): a 300² card (#1E2731, radius 10, boxShadow
-//! `0px 0px 10px rgba(0,0,0,0.15)`) on #17202A that tilts toward the finger, and the logo above
-//! it that tilts after it: the same rotation, sprung more loosely (the lag is the parallax).
+//! Animated 3D parallax: a 300-point card that tilts toward the finger, with the logo above it
+//! tilting after it. The logo takes the card's rotation on a looser spring, which gives the
+//! parallax lag.
 //!
-//! - touchX/Y: the finger in the card (onBegin and onUpdate), back to CARD_SIZE / 2 at
-//!   onFinalize / onTouchesUp / onTouchesCancelled. The pan begins only on the card's square.
-//! - The card follows `withSpring(touch)` (Reanimated 4's default, 900/120/4); the content
-//!   `withSpring(touch, { stiffness: 100, damping: 10, mass: 1 })`; both are derived values,
-//!   retargeted from where they are at each move.
-//! - use3DRotationStyle: rotateX = interpolate(y, [0, 300], [18, −18]) deg, rotateY =
-//!   interpolate(x, [0, 300], [−18, 18]) deg (extended past the card), under `perspective` 500.
-//!   The content's transformOrigin is ['50%', '50%', 300]: React Native resolves it as
-//!   translate(0, 0, 300) · M · translate(0, 0, −300), so its plane sits 300 pt behind the
-//!   perspective's origin: drawn at 500 / 800 of its size, and shifted against the tilt.
-//! - The card is its own layer (continuous corners, #1E2731 as P3) sampled through the transform
-//!   with hard edges, as Core Animation draws a 3D-transformed layer.
-//! - The box shadow is σ = 5 (RN's iOS box shadow: shadowRadius = blur / 2), drawn in the card's
-//!   plane and projected with it, as Core Animation projects the shadow sublayer.
-//!
-//! The logo is the demo's own logo.png as expo-image downscales it (600 × 495 px, the contain size
-//! rounded up to points), its coverage kept in images/ (zlib) and mipmapped here (Core Animation's
-//! trilinear minification), drawn in its colour #179CF0 aspect-fitted (200 × 165) in the 200² image view.
+//! - The finger's position sets the tilt. Releasing the finger springs both back to the centre.
+//! - The logo rotates about a point 300 points behind the perspective origin, so it is drawn at
+//!   500 / 800 of its size and shifts against the tilt.
+//! - The card's shadow is blurred once and projected with the card's plane.
+//! - The logo is drawn once as a mipmapped coverage texture, so downscaling stays smooth.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -31,31 +17,28 @@ use skia::{Canvas, Color, Matrix4, Paint, Renderer};
 use crate::{gfx, shaders};
 use shaders::animated_3d_parallax::{entry, module, Uniforms, CARD, GROUP_0, LOGO, SHADOW, SMP, U};
 
-/// CARD_SIZE.
+/// Card side, points.
 const CARD_SIZE: f32 = 300.0;
-/// MAX_CARD_ROTATE_DEG.
+/// Largest tilt, degrees.
 const MAX_ROTATE_DEG: f64 = 18.0;
-/// The `perspective` both views use.
 const PERSPECTIVE: f32 = 500.0;
-/// The content's transformOrigin z.
+/// Depth of the logo's rotation origin, points.
 const ORIGIN_Z: f32 = 300.0;
-/// delayedSpringConfig.
+/// Looser spring for the logo, so it lags the card.
 const DELAYED: SpringConfig = SpringConfig {
     stiffness: 100.0,
     damping: 10.0,
     mass: 1.0,
 };
-/// The shadow layer's margin around the card, in points (3σ and a little).
+/// Shadow layer margin around the card, points.
 const MARGIN: f32 = 20.0;
-/// boxShadow 10 px blur: σ = 5 pt.
+/// Shadow blur sigma, points.
 const SHADOW_SIGMA: f32 = 5.0;
 const LAYER: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
-/// The logo as expo-image hands it to Core Animation: logo.png downscaled into the 600 × 495 px
-/// of its contain size rounded up to points (exact/parity-tools/animated-3d-parallax/logo.swift).
+/// The logo's coverage, pre-scaled to its drawn size and zlib-compressed.
 static LOGO_BITMAP: &[u8] = include_bytes!("../images/parallax-logo-600x495.a8.zlib");
 const LOGO_SIZE: (u32, u32) = (600, 495);
-/// styles.card's #1E2731 and styles.container's #17202A as RN shows them: the app reads View hex
-/// as Display P3 (`RCTColorSpace.displayP3`), measured on the simulator.
+/// Card colour. View hex is read as Display P3, so these bytes are not sRGB.
 const CARD_COLOR: (u8, u8, u8) = (28, 39, 50);
 
 /// The demo's surface.
@@ -75,11 +58,11 @@ struct Parallax {
     size: (f32, f32),
     pan: PanGesture,
     finger: Option<u32>,
-    /// touchX, touchY.
+    /// Finger position in the card, points.
     touch: (f64, f64),
-    /// touchCardX/Y.
+    /// The card's position, following the finger on a spring.
     card: (Spring, Spring),
-    /// touchCardContentX/Y.
+    /// The logo's position, on a looser spring.
     content: (Spring, Spring),
     shadow_layer: Canvas,
     card_layer: Canvas,
@@ -99,8 +82,7 @@ struct Gpu {
     bind: wgpu::BindGroup,
 }
 
-/// use3DRotationStyle's transform about the view's centre, `origin_z` behind it, in the view's
-/// points.
+/// Tilt about the view's centre, with the rotation origin `origin_z` points behind it.
 fn rotation(x: f64, y: f64, origin_z: f32) -> Matrix4 {
     let max = MAX_ROTATE_DEG;
     let rotate_x = interpolate(
@@ -124,7 +106,7 @@ fn rotation(x: f64, y: f64, origin_z: f32) -> Matrix4 {
 }
 
 impl Parallax {
-    /// The card container's top-left in the canvas: centred (styles.container).
+    /// The card's top-left in the canvas, centred.
     fn origin(&self) -> (f32, f32) {
         (
             (self.size.0 - CARD_SIZE) / 2.0,
@@ -299,9 +281,8 @@ impl Parallax {
             side,
             SHADOW_SIGMA * s,
         );
-        // The card's own layer, as Core Animation renders it before projecting it: its continuous
-        // corners at the device scale, sampled through the 3D transform with no edge antialiasing
-        // (allowsEdgeAntialiasing is off on iOS).
+        // Drawn at device scale and sampled with hard edges, as Core Animation draws a
+        // 3D-transformed layer.
         let card_side = (CARD_SIZE * s).ceil() as u32;
         let card =
             skia::render::sampled_target(device, "parallax card", LAYER, card_side, card_side);
@@ -478,15 +459,13 @@ mod tests {
         let (rest, animating) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         rest.save("parallax-rest");
         assert!(!animating);
-        // At rest: the card spans 60…360 × 306…606; the logo, at 5/8 of its size, is centred.
+        // At rest the card is centred, and the logo is centred at 5/8 size.
         assert_eq!(&rest.at(5, 5)[..3], &[20, 32, 43]);
         assert_eq!(&rest.at(70, 320)[..3], &[28, 39, 50]);
         assert_eq!(&rest.at(210, 456)[..3], &[23, 156, 240]);
-        // The bird at 5/8: 125 pt wide about x = 210, so nothing of it at x = 210 ± 70.
         assert_ne!(&rest.at(285, 456)[..3], &[23, 156, 240]);
 
-        // A finger at the card's top-right corner: that corner recedes (the card's edge there moves
-        // inward), and the logo is still on its way while the card has nearly arrived.
+        // A finger at the top-right corner: that corner recedes while the logo still lags behind.
         let pointer = |phase, x, y, at_ms| InputEvent::Pointer {
             id: 1,
             phase,
@@ -507,7 +486,7 @@ mod tests {
         let (tilted, animating) = fixture::render(&gpu, s.as_mut(), &frame(ms + 16.0)).unwrap();
         tilted.save("parallax-tilted");
         assert!(animating);
-        // The top-right corner went in: (358, 308) was card at rest, background now.
+        // The top-right corner recedes into the background.
         assert_eq!(&tilted.at(358, 308)[..3], &[20, 32, 43]);
         // The bottom-left corner came out past the rest edge.
         assert_eq!(&tilted.at(57, 609)[..3], &[28, 39, 50]);

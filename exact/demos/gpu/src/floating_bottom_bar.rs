@@ -1,41 +1,12 @@
-//! Floating Bottom Bar (src/animations/floating-bottom-bar: index.tsx,
-//! components/bottom-tab-bar/{index.tsx, shader-light, animated-opacity-view}): a black floating
-//! tab bar of five icons; a light hangs over the selected one and springs to the tab pressed.
-//! The canvas is the bar (tabBarWidth × 65); its black continuous body is Contract
-//! (demos/floating-bottom-bar), drawn under this.
+//! A floating black tab bar of five icons, with a light that hangs over the selected one and
+//! springs to the tab pressed.
 //!
-//! Layout (RN's Yoga, on the device pixel grid; `px` below):
-//! - The bar: absolute, centred, tabBarWidth = screen × 0.95, paddingHorizontal 5 % of the screen.
-//!   Yoga rounds each node's position relative to its parent (half away from zero), a Text's
-//!   floored, and a Text's measured sides ceiled after an epsilon (24 → 24.333).
-//! - Five cells (`iconContainer`: flex 1, centred), each a PressableScale holding a vector-icon
-//!   Text, size 24, white: Octicons home, Feather bookmark, Ionicons add-circle-outline,
-//!   Octicons person, Ionicons settings-sharp. The Text is ceil(24) wide and ceil(hhea ascent +
-//!   descent) tall, its glyph at its left, the baseline an ascent below its top (TextKit).
-//! - The ShaderLight (zIndex 10, over the icons): absolute at left 0.05 × tabBarWidth, 65 tall,
-//!   translateX selectedAnimatedIndex × singleTabWidth, singleTabWidth = tabBarWidth × 0.9 / 5
-//!   (RN's own figure, a little wider than a cell). A trapezoid (15, 0)–(w − 15, 0) down to
-//!   (w, h)–(0, h), a vertical LinearGradient white → transparent at opacity 0.5; over it a white
-//!   RoundedRect at x 5, w − 10 wide, 7 tall, r 20.
-//!
-//! Motion audit:
-//!
-//! | value | driver | to | trigger |
-//! |---|---|---|---|
-//! | selectedAnimatedIndex (the light's translateX ÷ singleTabWidth) | `useDerivedValue(() => withSpring(currentIndex))`, Gentle (900, 120, 4): from where it is, at its velocity unless that points away, energy measured from x0 alone (config.velocity 0) | the tab | navigate (onPress) |
-//! | tab i opacity | `withTiming(activeIndex === i ? 1 : 0.5)` (300 ms, inOut(quad)), re-run on every frame of the spring; a timing to the same target keeps its start (timing.ts onStart) | 1 only when the spring rests exactly on i | activeIndex's frames |
-//! | tab i scale | pressto PressableScale: 1 → 0.96, 250 ms ease on press in / out | | BaseButton |
-//!
-//! So the tab left fades to 0.5 at once (300 ms, from the spring's second frame, when activeIndex
-//! leaves its integer), and the tab chosen stays at 0.5 until the spring rests (833 ms at 60 Hz)
-//! and then fades to 1. Haptics: pressto's global onPress (selection) on every press.
-//!
-//! Past RN (the owner: "support the pan on the tab bar", as iOS 26's tab bar): a horizontal
-//! drag across the bar (UIKit's 10 pt pan) cancels the press and carries the light under the
-//! finger 1:1 (clamped to the first and last tab), stretched with the finger's speed (up to
-//! 1.3 × at 1500 pt/s, on a spring so it eases back); the tab under it brightens and a
-//! selection haptic plays as it crosses each tab. On release it springs (Gentle, from the
-//! finger's speed) to the nearest tab and selects it.
+//! - The light springs (Gentle) from where it is, so a fast change never snaps. The tab left
+//!   fades to half opacity at once; the chosen tab brightens when the spring comes to rest.
+//! - Each press plays a selection haptic.
+//! - A horizontal drag across the bar cancels the press and carries the light under the finger,
+//!   stretched by the finger's speed (up to 1.3×). The tab under it lights up, with a selection
+//!   haptic as it crosses each tab. On release the light springs to the nearest tab and selects it.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -46,11 +17,11 @@ use skia::{point, stops, Canvas, Color, Font, Paint, Path, Renderer, Shader};
 
 use crate::gfx;
 
-/// shader-light: internalCanvasHorizontalPadding.
+/// Inset of the light from the bar's sides, pt.
 const PADDING: f32 = 5.0;
-/// The bar's height.
+/// Bar height, pt.
 const HEIGHT: f64 = 65.0;
-/// The icons' font size.
+/// Icon font size, pt.
 const ICON_SIZE: f32 = 24.0;
 const TABS: usize = 5;
 
@@ -58,7 +29,7 @@ static OCTICONS: &[u8] = include_bytes!("../fonts/octicons-floating-bar-subset.t
 static FEATHER: &[u8] = include_bytes!("../fonts/feather-bookmark-subset.ttf");
 static IONICONS: &[u8] = include_bytes!("../fonts/ionicons-floating-bar-subset.ttf");
 
-/// getIconByScreenName: (font, glyph) per tab.
+/// Font index and glyph of each tab's icon.
 const ICONS: [(usize, &str); TABS] = [
     (0, "\u{f197}"),
     (1, "\u{f124}"),
@@ -87,8 +58,8 @@ pub fn surface() -> Box<dyn Surface> {
     })
 }
 
-/// Yoga's `roundValueToPixelGrid`: to the device pixel, half away from zero, `floor` for a
-/// Text's position; values within 1e-4 of a pixel snap to it.
+/// Rounds to the device pixel like Yoga: half away from zero, or floored for text positions.
+/// Values within 1e-4 of a pixel snap to it.
 fn grid(v: f64, scale: f64, floor: bool) -> f64 {
     let s = v * scale;
     let f = s - s.floor();
@@ -104,12 +75,12 @@ fn grid(v: f64, scale: f64, floor: bool) -> f64 {
     r / scale
 }
 
-/// A Text's measured side: ceiled to the pixel after an epsilon (an exact 24 measures 24.333).
+/// Rounds a text width up to the pixel; a whole-pixel width still gets one pixel more.
 fn text_side(v: f64, scale: f64) -> f64 {
     (v * scale + 1e-3).ceil() / scale
 }
 
-/// RN's frames in the canvas's points (its origin at the bar's unrounded left, as laid out here).
+/// Frames in the canvas's points, relative to the bar's unrounded left.
 #[derive(Clone, Copy, Debug)]
 struct Layout {
     /// The bar's rounded left minus its unrounded one.
@@ -156,13 +127,13 @@ fn layout(bar: f64, scale: f64, line_heights: [f64; TABS]) -> Layout {
 
 struct FloatingBottomBar {
     fonts: [Option<Font>; 3],
-    /// currentIndex (the navigator's state.index).
+    /// The selected tab.
     index: usize,
-    /// selectedAnimatedIndex.
+    /// The light's position, in tabs.
     light: Spring,
-    /// Each AnimatedOpacityView's opacity.
+    /// Each tab's opacity.
     opacity: [Timing; TABS],
-    /// Each PressableScale.
+    /// Each tab's press state.
     press: [Pressable; TABS],
     /// The drag across the bar, while it holds the light.
     pan: PanGesture,
@@ -178,8 +149,7 @@ struct FloatingBottomBar {
 }
 
 impl FloatingBottomBar {
-    /// The cell under (x, y) at the pressable's current scale (RNGH's inside test is through the
-    /// view's transform).
+    /// Whether (x, y) is inside tab i, at its current pressed scale.
     fn inside(&self, i: usize, x: f32, y: f32) -> bool {
         let Some((_, _, l)) = self.layout else {
             return false;
@@ -199,7 +169,7 @@ impl FloatingBottomBar {
         ((x as f64 - l.shift - l.light_left - l.tab / 2.0) / l.tab).clamp(0.0, (TABS - 1) as f64)
     }
 
-    /// The drag carries the light: under the finger, a haptic per tab crossed.
+    /// The drag moves the light under the finger, with a haptic per tab crossed.
     fn drag_to(&mut self, x: f32, vx: f32) {
         let before = self.light.value.round();
         self.light.set(self.index_at(x));
@@ -220,7 +190,7 @@ impl FloatingBottomBar {
         self.stretch.retarget(1.0, GENTLE);
     }
 
-    /// navigation.navigate(screen): the derived value's withSpring retargets.
+    /// Selects tab i from outside; the light springs to it.
     fn navigate(&mut self, i: usize) {
         if i == self.index {
             return;
@@ -266,7 +236,7 @@ impl Surface for FloatingBottomBar {
             return;
         };
         let phase = gfx::phase(phase);
-        // The drag across the bar (past RN): once it starts, the press is cancelled.
+        // Once the drag starts, the press is cancelled.
         match self.pan.event(id, phase, x, y, at_ms, true) {
             Event::Start(p) => {
                 self.dragging = true;
@@ -329,7 +299,7 @@ impl Surface for FloatingBottomBar {
         let (_, _, l) = self.layout.unwrap();
         let now = frame.now_ms;
 
-        // The derived value's frame, then the style's mapper for every tab (activeIndex === i).
+        // Update the light, then each tab's opacity.
         let mut moving = self.light.step(now) | self.stretch.step(now) | self.dragging;
         let under = self.light.value.round();
         for (i, t) in self.opacity.iter_mut().enumerate() {
@@ -360,7 +330,7 @@ impl Surface for FloatingBottomBar {
 
         let c = &mut self.canvas;
         c.begin(frame.scale);
-        // The icons, each in its PressableScale (scale about the cell's centre, opacity).
+        // Icons, each scaled about its cell's centre.
         for (i, &(font, glyph)) in ICONS.iter().enumerate() {
             let Some(font) = self.fonts[font].as_ref() else {
                 continue;
@@ -378,7 +348,7 @@ impl Surface for FloatingBottomBar {
             c.draw_text(glyph, x, gfx::baseline(font, ty as f32), font, &paint);
             c.restore();
         }
-        // The ShaderLight, over them.
+        // The light, drawn over the icons.
         let lx = (l.shift + l.light_left + self.light.value * l.tab) as f32;
         let path = &self.path.as_ref().unwrap().1;
         let light = Paint::shader(Shader::Linear {
@@ -389,7 +359,7 @@ impl Surface for FloatingBottomBar {
         .with_opacity(0.5);
         c.save();
         c.translate(lx, 0.0);
-        // Stretched about its centre with the finger's speed (past RN).
+        // Stretched about its centre by the finger's speed.
         let k = self.stretch.value as f32;
         c.translate(tab / 2.0, 0.0);
         c.scale(k, 1.0);
@@ -426,7 +396,6 @@ mod tests {
     use exact_gpu::{fixture, PointerKind, PointerPhase};
 
     fn frame(now_ms: f64) -> Frame {
-        // tabBarWidth on a 420 pt screen: 399.
         Frame {
             width: 399.0,
             height: 65.0,
@@ -447,7 +416,6 @@ mod tests {
             3.0,
             [24.28125, 24.65625, 24.609375, 24.28125, 24.609375],
         );
-        // The bar at 10.5 rounds to 10.667; cells at 21 + 71.4 i rounded; texts floored at 23.333.
         assert!((l.shift - 1.0 / 6.0).abs() < 1e-9);
         let lefts: Vec<f64> = l.cells.iter().map(|c| (c.0 * 3.0).round()).collect();
         assert_eq!(lefts, vec![63.0, 277.0, 491.0, 706.0, 920.0]);
@@ -481,7 +449,6 @@ mod tests {
         };
         let mut s = surface();
         fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
-        // Tab 2's centre: 10.667 + 163.667 + 35.7 − 10.5.
         tap(s.as_mut(), 199.5, 10.0);
         assert_eq!(s.messages(), vec!["haptic:selection".to_string()]);
         let at = |s: &mut Box<dyn Surface>, ms: f64| {
@@ -501,14 +468,14 @@ mod tests {
                 .1
                 .clone()
         };
-        // ~300 ms in: tab 0 well on its way down, tab 2 still at 0.5.
+        // Mid-fade: tab 0 is fading out, tab 2 is still at 0.5.
         let mid = state(316.0);
         assert!(mid.contains("\"opacity\":[0.5"), "{mid}");
         assert!(
             mid.contains(",0.500,0.500,0.500]") || mid.contains("0.500,0.500,0.500,0.500]"),
             "{mid}"
         );
-        // Before the rest (frame 50 of the spring) tab 2 has not moved; after, it brightens.
+        // Tab 2 brightens only after the spring rests.
         assert!(
             state(800.0).contains("0.500,0.500,0.500,0.500,0.500"),
             "{}",
@@ -532,10 +499,9 @@ mod tests {
         let (img, animating) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         img.save("floating-bottom-bar");
         assert!(!animating);
-        // The light's bar: x from 10.667 + 20 + 5 − 10.5 = 25.17 pt, 7 tall.
         assert_eq!(img.at(3 * 40, 9)[3], 255);
         assert_eq!(img.at(3 * 24, 9)[3], 0);
-        // An icon's ink in each cell's middle third, none between cells.
+        // Icon ink sits in each cell's middle third.
         let ink = |x0: u32, x1: u32| {
             (x0..x1)
                 .flat_map(|x| (60..135).map(move |y| (x, y)))
@@ -556,7 +522,7 @@ mod tests {
         let finger = |s: &mut Box<dyn Surface>, phase, x: f32, at_ms: f64| {
             s.input(&InputEvent::Pointer { id: 1, phase, x, y: 30.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
         };
-        // From tab 0's centre (≈ 50.4) to past tab 3's (≈ 279), 4 pt a frame.
+        // Drag across all tabs, 4 pt a frame.
         let mut x = 50.0;
         let mut ms = 0.0;
         finger(&mut s, PointerPhase::Down, x, ms);
@@ -566,7 +532,7 @@ mod tests {
             finger(&mut s, PointerPhase::Move, x, ms);
             fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         }
-        // Tabs 1, 2 and 3 crossed: one selection haptic each; no press fired.
+        // Tabs 1 to 3 crossed: one selection haptic each, and no press.
         assert_eq!(s.messages(), vec!["haptic:selection".to_string(); 3]);
         let a = s.agent("").unwrap();
         assert!(a.contains("\"index\":0") && !a.contains("\"held\":true"), "{a}");

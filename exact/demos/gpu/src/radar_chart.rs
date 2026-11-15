@@ -1,38 +1,19 @@
-//! Radar Chart (src/animations/radar-chart/components/radar-chart): a pentagon grid (five
-//! spokes and five rings at 1, 0.8, …, 0.2, stroked 2 in rgba(255,255,255,0.5)), five labels
-//! (Outfit 16, white, each rotated about the centre by its spoke's angle, its baseline at y 20)
-//! and two data polygons (filled rgba(255,255,0,0.2) / rgba(0,255,255,0.3); dots of 8 and an
-//! outline of 4 in their colour `.darken(0.1).hex()`: #E5E600 / #00E5E6).
+//! A pentagon radar chart of two datasets over five labelled axes. Each new dataset springs in, one
+//! axis after the next, so the shape turns into the next one.
 //!
-//! - radius = min(cx, cy) × 0.82 − 8 / 2 (dotStrokeWidth = strokeWidth × 4).
-//! - A point: (cx + sin(a) r v, cy − cos(a) r v), a = i × 2π / 5.
-//! - New data (the inputs: two datasets × five values, in the labels' order): progress from 0
-//!   to 1 on withSpring({ duration 500, dampingRatio 1 }) (stiffness 1087.7, damping 131.9,
-//!   mass 4), each value interpolated from where the last change left it (use-unwrapped-radar-
-//!   values.ts).
-//! - Drawn through `gfx::P3Layer`: RN Skia's 8-bit Display P3 canvas (the grid's half-alpha white
-//!   is 127 there, not 128; the fills and AA edges blend P3 values).
-//!
-//! Design pass, past RN (the owner: "massively improvable"):
-//! - Labels upright, outside their vertex, aligned away from the chart (left of the left spokes,
-//!   right of the right ones, centred at the top), in San Francisco 13 semibold at 80 % white.
-//!   RN rotates each with its spoke, so "Endgame" and "Deflection" read upside down.
-//! - The radius leaves room for the widest side label (at most 0.74 × the half-width).
-//! - The grid recedes: 1 pt rings at 10 % white, the outer ring 22 %, spokes 8 % (RN: 2 pt at
-//!   50 %, as loud as the data).
-//! - The data in iOS's dark-mode yellow and cyan (#FFD60A, #64D2FF): a 2 pt outline with round
-//!   joins, a radial fill from 8 % at the centre to 30 % at the rim (where the values are read),
-//!   vertices as 3.5 pt dots cut out of the fill by a 2 pt black ring.
-//! - The morph: each axis on its own spring (ζ 0.8, 550 ms), 24 ms apart round the chart, so
-//!   the shape turns into the next instead of scaling; a little settle past the target.
+//! - The labels sit upright outside their vertex, aligned away from the chart. The radius leaves
+//!   room for the widest label.
+//! - The grid recedes: rings and spokes are faint white hairlines.
+//! - The data is yellow and cyan: a 2 pt outline, a fill that brightens toward the rim, and a dot
+//!   at each vertex.
+//! - Drawn on a Display P3 layer (`gfx::P3Layer`), so the colours are the P3 values.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
 use reanimated::Spring;
 use skia::{point, stops, Canvas, Cap, Color, Font, Join, Paint, Path, Renderer, Shader};
 
-/// Object.keys of the data's values: generateRandomDataChart builds `{ [key]: v, ...acc }`
-/// over Checkmate…Sacrifice, so the last key comes first.
+/// Axis labels, clockwise from the top. The data's values come in this order.
 const LABELS: [&str; 5] = ["Sacrifice", "Fork", "Endgame", "Deflection", "Checkmate"];
 const N: usize = 5;
 const SETS: usize = 2;
@@ -45,7 +26,7 @@ const LABEL_GAP: f32 = 12.0;
 const EDGE: f32 = 16.0;
 /// iOS dark-mode systemYellow and systemCyan.
 const COLORS: [u32; SETS] = [0xFFD60A, 0x64D2FF];
-/// The morph: per axis, ζ 0.8 over 550 ms, each axis this much after the last.
+/// Each axis morphs over 550 ms with a damping ratio of 0.8, STAGGER_MS after the previous one.
 const MORPH_MS: f64 = 550.0;
 const MORPH_RATIO: f64 = 0.8;
 const STAGGER_MS: f64 = 24.0;
@@ -72,7 +53,7 @@ struct RadarChart {
     grid: Option<(f32, f32, Path, Vec<Path>)>,
     canvas: Canvas,
     renderer: Renderer,
-    /// RN Skia's canvas: an 8-bit Display P3 surface, cleared transparent over the black view.
+    /// An 8-bit Display P3 layer, cleared transparent over the black view.
     p3: crate::gfx::P3Layer,
 }
 
@@ -96,7 +77,7 @@ fn vertex(i: usize, c: f32, r: f32, v: f32) -> skia::Point {
     point(c + a.sin() * r * v, c - a.cos() * r * v)
 }
 
-/// getScaledPolygonPath.
+/// A closed polygon through each value along its axis.
 fn polygon(values: impl Iterator<Item = f32>, c: f32, r: f32) -> Path {
     let mut b = skia::path_builder();
     for (i, v) in values.enumerate() {
@@ -131,8 +112,7 @@ impl Surface for RadarChart {
             self.current = [self.values(0), self.values(1)];
         }
         self.target = next;
-        // RN: progress.set(0); withSpring(1, { duration: 500, dampingRatio: 1 }). Here one
-        // spring per axis, started 24 ms apart from the next frame.
+        // Each axis gets its own spring, started STAGGER_MS apart from the next frame.
         self.progress = [Spring::at(0.0); N];
         self.started = [false; N];
         self.armed = true;
@@ -165,7 +145,7 @@ impl Surface for RadarChart {
             moving |= self.progress[i].step(frame.now_ms) || !self.started[i];
         }
         if !moving {
-            // Every axis at rest: currentData = targetData.
+            // Every axis at rest: the data is the target.
             self.current = self.target;
             self.progress = [Spring::at(1.0); N];
         }
@@ -176,7 +156,7 @@ impl Surface for RadarChart {
             let widest = self.font.as_ref().map_or(0.0, |f| LABELS.iter().map(|l| f.advance_width(l)).fold(0.0, f32::max));
             let side_sin = (std::f32::consts::TAU / N as f32).sin();
             let r = ((c - EDGE - LABEL_GAP - widest) / side_sin).min(c * 0.74).max(c * 0.4);
-            // usePolygonGrid: a line out from the centre per spoke; the rings.
+            // Spokes from the centre, then the rings.
             let mut b = skia::path_builder();
             for i in 0..N {
                 b.begin(point(c, c));
@@ -248,7 +228,7 @@ mod tests {
         };
         let mut s = RadarChart { font: Font::new(OUTFIT, LABEL_SIZE), progress: [Spring::at(1.0); N], ..Default::default() };
         let data = |v: [f64; 10]| v.map(Value::Number);
-        // RN's commented example: yellow 1, 0.6, 0.1, 0.1, 0.5 / cyan 0.2, 0.1, 0.5, 0.9, 0.8.
+        // Yellow, then cyan, five values each.
         s.bind(&data([1.0, 0.6, 0.1, 0.1, 0.5, 0.2, 0.1, 0.5, 0.9, 0.8]), None).unwrap();
         let (img, animating) = fixture::render(&gpu, &mut s, &frame(0.0)).unwrap();
         crate::gfx::save_over(&img, "radar-chart-a", [0, 0, 0]);

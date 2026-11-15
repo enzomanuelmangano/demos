@@ -1,20 +1,17 @@
-//! QR codes as the RN demos make them: node-qrcode 1.5.4's `QRCode.create(text, {
-//! errorCorrectionLevel })` line for line (node_modules/qrcode/lib/core), react-native-qrcode-skia
-//! 0.3.1's `transformMatrixIntoPath` (its default rounded modules), and Skia m157's
-//! `SkDiscretePathEffect` over that path (SkContourMeasure in float, its LCGRandom), for the
-//! qrcode, empty-qrcode, notion-qrcode and cherry-blossom-qrcode surfaces.
+//! QR codes matching node-qrcode 1.5.4 (`QRCode.create(text, { errorCorrectionLevel })`), with the
+//! rounded module path of react-native-qrcode-skia 0.3.1 and Skia's `SkDiscretePathEffect` over it.
+//! The QR demos use these.
 //!
-//! The encoder keeps every quirk that picks the matrix: the regex split into numeric /
-//! alphanumeric / byte runs (Kanji mode is off: no `toSJISFunc`), the version estimated from
-//! that raw split, dijkstrajs 1.0.3's shortest path over the segment graph (its stably sorted
-//! queue, strict relaxations, and `buildGraph`'s shared `lastCount`), the minimum version for
-//! the merged segments, the padding, Reed–Solomon blocks and interleave, and the mask with the
-//! lowest N1–N4 penalty (first on a tie). `exact/parity-tools/qr-matrix.ts` runs the real
-//! library over a corpus; the test below compares every module of every one.
+//! The encoder keeps every quirk that picks the matrix: the regex split into numeric, alphanumeric
+//! and byte runs (Kanji mode is off), the version estimated from that raw split, dijkstrajs's
+//! shortest path over the segment graph (its stably sorted queue, strict relaxations, shared
+//! `lastCount`), the minimum version for the merged segments, the padding, Reed–Solomon blocks and
+//! interleave, and the mask with the lowest N1–N4 penalty (first on a tie). The tests compare every
+//! module against node-qrcode's output.
 
 use skia::{point, Point};
 
-/// An error-correction level (its format-info bits, as node-qrcode's `ECLevel`).
+/// An error-correction level, as node-qrcode's `ECLevel`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Ecl {
     /// 7 %.
@@ -46,7 +43,7 @@ impl Ecl {
     }
 }
 
-/// `QRCode.create(...)`'s symbol: `modules.data` row-major (1 dark), its size, version and mask.
+/// A QR symbol: `data` is row-major, one byte per module (1 is dark).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Symbol {
     /// Modules per side (version × 4 + 17).
@@ -722,8 +719,7 @@ fn penalty(m: &Matrix) -> u32 {
     points + k * 10
 }
 
-/// `QRCode.create(text, { errorCorrectionLevel })`. `None` where it throws: empty text, or more
-/// data than version 40 holds.
+/// Encodes `text`. `None` for empty text, or more data than version 40 holds.
 pub fn create(text: &str, ecl: Ecl) -> Option<Symbol> {
     if text.is_empty() {
         return None;
@@ -929,14 +925,12 @@ pub enum Verb {
     Close,
 }
 
-/// The SVG string's numbers as SkParse reads them: `(float)strtod` of JS's shortest decimal,
-/// which is the f64 itself, then to float.
+/// Narrows a coordinate to f32, as Skia's SVG parser does.
 fn p(x: f64, y: f64) -> Point {
     point(x as f32, y as f32)
 }
 
-/// `Skia.Path.MakeFromSVGString(transformMatrixIntoPath(generateMatrix(...), size).path)`:
-/// each dark module a contour, a rounded corner (a quad through the module's corner) where
+/// Each dark module a contour, with a rounded corner (a quad through the module's corner) where
 /// neither neighbour on that corner is dark, else the corner itself. Appends to `out`.
 pub fn rounded_path(symbol: &Symbol, size: f64, out: &mut Vec<Verb>) {
     let n = symbol.size;
@@ -1358,9 +1352,8 @@ fn seg_to(pts: &[Point], kind: u8, start_t: f32, stop_t: f32, dst: &mut Vec<Verb
     }
 }
 
-/// `<DiscretePathEffect length deviation>` (seed 0) on a filled path: SkDiscretePathEffectImpl's
-/// onFilterPath, written into `dst` (cleared). One LCGRandom for the whole path, seeded from the
-/// first contour's rounded length.
+/// Skia's discrete path effect (seed 0) on a filled path, written into `dst` (cleared). One
+/// LCGRandom for the whole path, seeded from the first contour's rounded length.
 pub fn discrete(src: &[Verb], seg_length: f32, deviation: f32, dst: &mut Vec<Verb>) {
     dst.clear();
     let mut m = Measure::default();
@@ -1442,8 +1435,8 @@ pub fn discrete(src: &[Verb], seg_length: f32, deviation: f32, dst: &mut Vec<Ver
 mod tests {
     use super::*;
 
-    /// exact/parity-tools/qr-matrix.ts's output: per line, the level, the version, the mask,
-    /// the modules as hex (row-major, 4 per digit), and the text as JSON.
+    /// node-qrcode's output over a corpus: per line, the level, the version, the mask, the modules
+    /// as hex (row-major, 4 per digit), and the text as JSON.
     const REFERENCE: &str = include_str!("../../../parity-tools/qr/reference.txt");
 
     fn unjson(s: &str) -> String {
@@ -1505,8 +1498,8 @@ mod tests {
 
     #[test]
     fn discrete_matches_canvaskit() {
-        // parity-tools/qr/discrete.txt: CanvasKit's DiscretePathEffect over the rounded path of
-        // "reactiive.io" at H, size 378, length 10, deviation 3: its SVG string.
+        // CanvasKit's DiscretePathEffect over the rounded path of "reactiive.io" (H, size 378,
+        // length 10, deviation 3).
         const REF: &str = include_str!("../../../parity-tools/qr/discrete.txt");
         let mut lines = REF.lines();
         let header: Vec<f64> = lines

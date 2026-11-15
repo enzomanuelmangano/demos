@@ -1,32 +1,13 @@
-//! Atlas Button (src/animations/atlas-button: index.tsx, atlas-button/index.tsx,
-//! atlas-button/animated-squares.tsx): a 250 × 200 button, the React logo at its centre; held,
-//! it shrinks a little, the logo rises, "React Native" fades in under it, and a disc of blue
-//! squares grows from the centre, its middle randomly hollow.
+//! Atlas button: a 250 × 200 button with the React logo at its centre. Held, it shrinks a little,
+//! the logo rises, a "React Native" label fades in under it, and a disc of blue squares grows
+//! from the centre, its middle randomly hollow.
 //!
-//! - The squares: HSquares 50, SquareContainerSize = floor(250 / 50) = 5, SquareSize 2.5,
-//!   VSquares = floor(200 / 5); square `i` at ((i % 50) · 5, floor(i / 50) · 5), its distance d
-//!   from (125, 100); scale = max(0, 1.5 − d / max(progress · maxRadius, 1e-3)), maxRadius =
-//!   √(250² + 200²) / 2; hidden when scale ≥ 0.9 + random · 0.5 (`randomValues[i] || 1`);
-//!   else RSXform(scale, 0, x, y). A random colour each (TRANSPARENT ×3, LIGHT_BLUE ×2, BLUE,
-//!   BLUE_VARIANT) over the white texture with DstOver: rgb · a + (1 − a), opaque.
-//! - Tap().maxDuration(10000): onTouchesDown isActive = true; onFinalize false (the finger up, out
-//!   of the button, or held 10 s). progress = withSpring(isActive, { duration 1200,
-//!   dampingRatio 1 }).
-//! - The button scales by interpolate(progress, [0, 1], [1, 0.95]) about its centre. Over the
-//!   canvas, centred: the icon (iconSize = 250 × 0.2, the SVG fitted 'contain'), translateY
-//!   interpolate(3p, [0, 1], [0, −25], CLAMP); the label (white, 20, bold, centred over 250,
-//!   absolute at the icon box's top + marginTop 10), opacity 3p (clamped), translateY
-//!   interpolate(3p, [0, 1], [50, 25], CLAMP).
-//! - The label is an RN `<Text>`, so UIKit lays it out: `skia::match_ui_font(20, 700)` (SF at
-//!   its Bold instance, opsz 20, the font's trak tracking and GPOS kerning in the advances;
-//!   checked against Core Text's CTLine, the_label_is_laid_out_as_uikit), not Skia's drawText.
-//! - Math.random(): xorshift64*, 53-bit doubles, seeded by `env.seed` (per launch) and the
-//!   surface's mount count, so each mount draws anew, as RN's useMemo on mount does. The colours are RN Skia's SkColor bytes
-//!   (truncated: [`sk_byte`]).
-//!
-//! The squares' transforms run in the vertex shader (one instance each, their colours and
-//! random values written once); the icon and label are packages/skia, into a layer composited
-//! in the same pass.
+//! - The squares are drawn in the vertex shader, one instance each, with their colour and random
+//!   value written once.
+//! - A hold ends when the finger lifts, leaves the button, or after 10 seconds.
+//! - Random numbers come from a seeded xorshift, so each mount rolls its squares anew. Colours
+//!   truncate to 8 bits per channel, as Skia does.
+//! - The label is laid out by UIKit, not Skia, so its advances match the platform's text.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -37,11 +18,12 @@ use skia::{fit_box, path_from_svg, Canvas, Color, Font, Paint, Path, Rect, Rende
 use crate::{gfx, shaders};
 use shaders::atlas_button::{entry, module, Uniforms, GROUP_0, LAYER, SMP, SQUARES, U};
 
-/// CanvasWidth, CanvasHeight, horizontalSquaresAmount.
+/// Canvas size, points.
 const WIDTH: f32 = 250.0;
 const HEIGHT: f32 = 200.0;
+/// Squares per row.
 const H_SQUARES: u32 = 50;
-/// The colours (index.tsx), as Float32Array [r, g, b, a], repeated for their odds.
+/// Square colours as [r, g, b, a]; repeats set the odds.
 const COLORS: [[f32; 4]; 7] = [
     [0.0, 0.0, 0.0, 1.0],
     [0.0, 0.0, 0.0, 1.0],
@@ -51,7 +33,7 @@ const COLORS: [[f32; 4]; 7] = [
     [0.0, 0.2, 1.0, 0.8],
     [0.3, 0.2, 1.0, 0.8],
 ];
-/// assets/header_logo.svg (112 × 102): a filled circle and three stroked orbits, #61dafb.
+/// The logo: a filled dot and three stroked orbits, in a 112 × 102 box.
 const LOGO_SIZE: (f32, f32) = (112.0, 102.0);
 const LOGO_DOT: &str = "M56 61.832c5.891 0 10.667-4.776 10.667-10.667S61.89 40.498 56 40.498c-5.89 0-10.666 4.776-10.666 10.667S50.108 61.832 56 61.832Z";
 const LOGO_ORBITS: [&str; 3] = [
@@ -63,16 +45,15 @@ const LOGO_STROKE: f32 = 5.333;
 const LABEL: &str = "React Native";
 static OUTFIT: &[u8] = include_bytes!("../fonts/outfit.ttf");
 
-/// How many times the surface has been made (each RN mount rolls anew).
+/// Surfaces made so far: each mount rolls its squares anew.
 static MOUNTS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 /// The demo's surface. Input: `env.seed`.
 pub fn surface() -> Box<dyn Surface> {
     Box::new(AtlasButton {
         mount: MOUNTS.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-        // styles.label is an RN <Text> (Animated.Text): UIKit lays it out (Core Text), the system
-        // face at bold (wght 700, SF's Bold instance) and opsz 20, with its trak tracking and
-        // GPOS kerning in the advances.
+        // The label is a text view, so UIKit lays it out: the system face at bold, with its
+        // tracking and kerning.
         font: skia::match_ui_font(20.0, 700.0).or_else(|| Font::new(OUTFIT, 20.0)),
         dot: path_from_svg(LOGO_DOT),
         orbits: LOGO_ORBITS.iter().filter_map(|d| path_from_svg(d)).collect(),
@@ -87,7 +68,7 @@ struct AtlasButton {
     finger: Option<(u32, f64)>,
     /// Each square's colour and random value, rolled once.
     squares: Vec<[f32; 4]>,
-    /// `env.seed` and this mount's number: Math.random()'s stream.
+    /// Seed and mount number for the random stream.
     seed: f64,
     mount: u64,
     font: Option<Font>,
@@ -96,8 +77,7 @@ struct AtlasButton {
     canvas: Canvas,
     renderer: Renderer,
     gpu: Option<Gpu>,
-    /// Haptics (past RN, whose Tap plays none: the owner's call, as atlas-sphere): a light
-    /// impact at the grab, a soft one when the hold ends.
+    /// Haptics: a light impact at the grab, a soft one when the hold ends.
     posted: Vec<String>,
 }
 
@@ -112,13 +92,13 @@ struct Gpu {
     bind: wgpu::BindGroup,
 }
 
-/// SquareContainerSize, VSquares.
+/// Square side in points, and the number of rows that fit.
 fn grid() -> (f32, u32) {
     let c = (WIDTH / H_SQUARES as f32).floor();
     (c, (HEIGHT / c).floor() as u32)
 }
 
-/// Math.random(), xorshift64* from a seed.
+/// xorshift64* random numbers from a seed.
 struct Random(u64);
 
 impl Random {
@@ -132,19 +112,15 @@ impl Random {
     }
 }
 
-/// RN Skia's Float32Array → SkColor for an Atlas colour (Convertor.h getPropertyValue<SkColor>:
-/// each channel read as a JS number, × 255 in f64, handed to SkColorSetARGB, whose U8CPU
-/// arguments truncate): LIGHT_BLUE's 0.5 is 127, BLUE_VARIANT's 0.3 is 76, 0.8 is 204.
+/// Truncates an Atlas colour channel to 8 bits, as Skia's SkColorSetARGB does: 0.5 is 127,
+/// 0.3 is 76, 0.8 is 204.
 fn sk_byte(v: f32) -> f32 {
     ((v as f64 * 255.0) as u8) as f32 / 255.0
 }
 
-/// The squares' colours and random values (animated-squares.tsx): per square, once per mount
-/// (useMemo), staticColors first — `_colors[Math.floor(Math.random() * 7)]`, uniform over the
-/// seven entries, so TRANSPARENT 3/7, LIGHT_BLUE 2/7, BLUE 1/7, BLUE_VARIANT 1/7 — then
-/// randomValues, one Math.random() each. A colour is the SkColor (8 bits, [`sk_byte`]) blended
-/// as drawAtlas does with DstOver, the sprite the source and the colour the destination
-/// (SkCanvas.h): colour premultiplied + (1 − a) × the white sprite, opaque.
+/// Each square's colour and random value, rolled once per mount. Colours are picked by weight
+/// (transparent 3/7, light blue 2/7, blue 1/7, blue variant 1/7), then blended over the white
+/// sprite as drawAtlas's DstOver does.
 fn roll(seed: u64) -> Vec<[f32; 4]> {
     let (_, rows) = grid();
     let n = (H_SQUARES * rows) as usize;
@@ -170,7 +146,7 @@ impl AtlasButton {
         gfx::spring_to(&mut self.progress, if active { 1.0 } else { 0.0 }, 1200.0, 1.0);
     }
 
-    /// onFinalize.
+    /// Ends the hold.
     fn release(&mut self) {
         if self.finger.take().is_some() {
             self.set_active(false);
@@ -185,7 +161,7 @@ impl AtlasButton {
         let button = 1.0 - 0.05 * p;
         let c = &mut self.canvas;
         c.begin(scale);
-        // rStyle: the whole button scaled about its centre.
+        // Scale the whole button about its centre.
         c.translate(WIDTH / 2.0, HEIGHT / 2.0);
         c.scale(button, button);
         c.translate(-WIDTH / 2.0, -HEIGHT / 2.0);
@@ -205,8 +181,7 @@ impl AtlasButton {
         c.restore();
         let opacity = p3.clamp(0.0, 1.0) as f32;
         if let (Some(font), true) = (&self.font, opacity > 0.0) {
-            // The label's box: the icon box's top, + marginTop 10, + translateY; its line's
-            // baseline an ascent below; centred over the button's width.
+            // The baseline sits one ascent below the label's box top; the label is centred.
             let label_y = interpolate_clamp(p3, &[0.0, 1.0], &[50.0, 25.0]) as f32;
             let baseline = top + 10.0 + label_y - font.metrics().ascent;
             let w = font.advance_width(LABEL);
@@ -235,8 +210,7 @@ impl Surface for AtlasButton {
 
     fn input(&mut self, event: &InputEvent) {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
-        // The Tap is on the view rStyle scales 1 → 0.95 about its centre: RNGH tests the touch
-        // in that view's own coordinates, after the scale.
+        // The touch is tested in the scaled button's own coordinates.
         let k = 1.0 - 0.05 * self.progress.value as f32;
         let (lx, ly) = (WIDTH / 2.0 + (x - WIDTH / 2.0) / k, HEIGHT / 2.0 + (y - HEIGHT / 2.0) / k);
         let inside = (0.0..=WIDTH).contains(&lx) && (0.0..=HEIGHT).contains(&ly);
@@ -246,7 +220,7 @@ impl Surface for AtlasButton {
                 self.set_active(true);
                 self.posted.push("haptic:impact-light".into());
             }
-            // shouldCancelWhenOutside: a finger that leaves the button ends the tap.
+            // Leaving the button ends the hold.
             Phase::Move if self.finger.is_some_and(|(f, _)| f == id) && !inside => self.release(),
             Phase::Up | Phase::Cancel if self.finger.is_some_and(|(f, _)| f == id) => self.release(),
             _ => {}
@@ -262,7 +236,7 @@ impl Surface for AtlasButton {
         target: &wgpu::TextureView,
         format: wgpu::TextureFormat,
     ) -> bool {
-        // maxDuration(10000): held that long, the tap fails.
+        // A hold of 10 seconds ends.
         if self.finger.is_some_and(|(_, at)| frame.now_ms - at >= 10000.0) {
             self.release();
         }
@@ -270,7 +244,7 @@ impl Surface for AtlasButton {
         let (pw, ph) = frame.pixels();
         if self.gpu.as_ref().map(|g| (g.format, g.generation, g.size)) != Some((format, frame.shader_generation, (pw, ph))) {
             if self.squares.is_empty() {
-                // env.seed (a whole number below 2^32) and this mount's number.
+                // The seed's low 32 bits, with the mount number.
                 let seed = (self.seed.abs() as u64 % (1 << 32)) << 32 | (self.mount & 0xFFFF_FFFF);
                 self.squares = roll(seed ^ 0x5DEE_CE66_D1CE_4E5B);
             }
@@ -293,7 +267,7 @@ impl Surface for AtlasButton {
                 view: target,
                 resolve_target: None,
                 depth_slice: None,
-                // The Canvas is transparent over the container's #000000.
+                // The canvas is transparent over black.
                 ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT), store: wgpu::StoreOp::Store },
             })],
             depth_stencil_attachment: None,
@@ -346,7 +320,7 @@ mod tests {
     fn the_colours_are_the_atlas_blend() {
         let squares = roll(7);
         assert_eq!(squares.len(), 50 * 40);
-        // DstOver of the white sprite: TRANSPARENT is black; BLUE 0.8 is (51, 92, 255)…
+        // Each colour is one of these blends over white.
         let rgb = |s: &[f32; 4]| [s[0], s[1], s[2]].map(|v| (v * 255.0).round() as u8);
         for s in &squares {
             assert!([[0, 0, 0], [51, 153, 255], [51, 92, 255], [112, 92, 255]].contains(&rgb(s)), "{:?}", rgb(s));
@@ -355,7 +329,7 @@ mod tests {
         assert!(squares.iter().filter(|s| rgb(s) == [0, 0, 0]).count() > 600);
     }
 
-    /// SkColorSetARGB truncates: the colours RN hands Skia, byte for byte.
+    /// The colours truncate to 8 bits, byte for byte.
     #[test]
     fn colours_are_rn_skias_bytes() {
         let bytes = |c: [f32; 4]| c.map(|v| (sk_byte(v) * 255.0).round() as u8);
@@ -363,7 +337,7 @@ mod tests {
         assert_eq!(bytes(COLORS[3]), [0, 127, 255, 204]);
         assert_eq!(bytes(COLORS[5]), [0, 51, 255, 204]);
         assert_eq!(bytes(COLORS[6]), [76, 51, 255, 204]);
-        // BLUE_VARIANT over white: 76 / 255 × 0.8 + 0.2 = 0.4384 → 112 (113 with rounding).
+        // Blue variant over white is 112.
         let s = roll(11).into_iter().find(|s| s[2] > 0.99 && s[1] < 0.4 && s[0] > 0.3).unwrap();
         assert_eq!((s[0] * 255.0).round() as u8, 112);
         // Uniform over the seven entries (3/7 black), the random values in (0, 1].
@@ -374,9 +348,7 @@ mod tests {
         assert!((mean - 0.5).abs() < 0.01, "{mean}");
     }
 
-    /// The label is UIKit's (an RN <Text>): pen positions and line metrics as Core Text lays
-    /// out "React Native" in the system font at 20 bold (CTLine on macOS's SFNS.ttf, the face
-    /// this test reads; tools/ui-label-ct.swift).
+    /// The label's pen positions and metrics match Core Text's line layout for "React Native".
     #[test]
     fn the_label_is_laid_out_as_uikit() {
         let Some(f) = skia::match_ui_font(20.0, 700.0) else { return eprintln!("no system font; skipped") };
@@ -408,8 +380,7 @@ mod tests {
         let (rest, animating) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         rest.save("atlas-button-rest");
         assert!(!animating);
-        // At rest: only the logo, its dot #61dafb at the centre ((112 / 2) · 0.446 + 100 = 125,
-        // 51.2 · 0.446 + 2.2 + 75 = 100).
+        // At rest only the logo shows: its dot is #61dafb at the centre.
         let c = rest.at(250, 200);
         assert!(c[3] == 255 && (c[2] as i32 - 0xFB).abs() < 3 && (c[1] as i32 - 0xDA).abs() < 3, "{c:?}");
         let blue = |img: &fixture::Pixels| img.count(|p| p[3] == 255 && p[2] == 255 && p[0] < 120 && p[1] < 160);
@@ -433,8 +404,7 @@ mod tests {
         // Blue squares about the hollow centre; the white label below the risen logo.
         assert!(blue(&held) > 2000, "{}", blue(&held));
         assert!(white(&held) > 300, "{}", white(&held));
-        // At its corner a square at half size: (0, 0) to (1.25, 1.25) points, scaled about the
-        // centre by 0.95.
+        // The corner square is drawn, scaled about the centre.
         assert_eq!(held.at(13, 11)[3], 255);
 
         finger(&mut s, PointerPhase::Up, ms);

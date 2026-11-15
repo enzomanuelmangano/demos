@@ -1,39 +1,16 @@
-//! Clock Time Picker (src/animations/clock-time-picker: index.tsx, components/clock.tsx,
-//! components/time-range.tsx): a 100 pt analog clock beside a scrolling list of times (1:00 pm …
-//! 10:30 pm, every 30 minutes); the hands follow the list's scroll offset as it moves.
+//! Clock Time Picker: a 100-point analog clock beside a scrolling list of times, 1:00 pm to
+//! 10:30 pm every 30 minutes. The hands follow the list's scroll offset.
 //!
-//! The canvas is the picker container's content: the clock (100², centred in the 120 tall row)
-//! at x 0, the 32 gap, the list (100 × 120) at x 132.
-//!
-//! - Clock (Skia): face circle r 50 #1e1e1e; twelve ticks (#bfbfbf, width 1, from r − 8 to r)
-//!   under scale 0.9 about the centre; the hour hand (length 15, #e6e6e6, width 3, round caps)
-//!   and the minute hand (32, #d2d2d2, width 2), each with the outer Group's Shadow (black, blur
-//!   10, dx dy 0) as its own image filter, then the centre dot (r 3, white) with its own Group's
-//!   Shadow (the same, replacing the inherited one: RN Skia's savePaint copies the paint and
-//!   materializePaint sets the new filter). The shadows are Graphite blurs of each shape's alpha
-//!   on a layer of its fast bounds, clipped to the clock's canvas.
-//! - Angles: date = interpolate(contentOffset.y, i × 30, dates[i]) (extended past the ends), plus
-//!   the local offset: the wall time as UTC ms, whatever the time zone. hours = ms / 1000 / 60 /
-//!   60, angle = hours · 2π / 12; minutes likewise over 60.
-//! - List: FlatList width 100, contentContainer paddingVertical 45, items 30 tall, text
-//!   format(date, 'h:mm aaa') lowercased, #d8d8d8, Honk-Regular 20, centred (an RN <Text>: UIKit
-//!   layout, match_ui_font's GSUB and GPOS kerning). Two expo LinearGradients over it: #111111 →
-//!   transparent over the top half, transparent → #111111 over the bottom half.
-//! - Scroll: UIScrollView's, vertical (`ui_scroll`, measured: the pan begins on the second move
-//!   past its hysteresis, the drag 1:1 and rubber-banded past the ends; at the lift a finger
-//!   slower than ~335 pt/s (by its last moves) decelerates with no velocity; UIKit projects the
-//!   rest at decelerationRate "fast", 0.99 per ms; past an end it bounces back as UIKit does).
-//!   RCTEnhancedScrollView snaps the projected target to snapToOffsets (velocity > 0: the next
-//!   offset at or past it; < 0: the one before; 0: the nearest), clamped to the content: the
-//!   offsets are i × 30 up to the content's end (570), so `Snap::Interval(30)`.
-//!   disableIntervalMomentum has no effect with snapToOffsets (only snapToInterval reads it).
-//!   A touch that never drags snaps nothing (no scrollViewWillEndDragging).
-//!
-//! Haptics (past RN, which plays none: the owner's haptic language): `haptic:selection` when the
-//! scroll centres another time (offset / 30 rounded, SWITCH past the half-row line so a finger
-//! holding it there does not flap), at most one per HAPTIC_GAP_MS, as UIKit's pickers pace
-//! theirs; `haptic:impact-rigid` when it is pulled or bounces past an end, once per excursion.
-//! Nothing when it comes to rest. No two haptics within HAPTIC_GAP_MS.
+//! - The clock is drawn in Skia: a face, twelve ticks, two hands with soft shadows and a centre
+//!   dot.
+//! - Times come from the list's offset. The hands use UTC, so they do not depend on the device's
+//!   time zone.
+//! - Scrolling is vertical: the list follows the finger, rubber-bands past the ends and decelerates
+//!   to rest on the nearest time, as UIKit's scroll view does. A touch that never drags snaps
+//!   nothing.
+//! - Haptics: a selection each time the scroll centres another time, paced at HAPTIC_GAP_MS, with
+//!   hysteresis at the half-row line so a finger holding there does not flap. A rigid impact when
+//!   the list is pulled or bounces past an end, once per excursion. Nothing at rest.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -45,7 +22,7 @@ use crate::ui_scroll::{Snap, UiScroll, FAST};
 use crate::{gfx, shaders};
 use shaders::clock_time_picker::{entry, module, Uniforms, B0, B1, B2, BASE, DOT, GROUP_0, HOUR, MINUTE, SMP, U};
 
-/// The clock's size, the list's x and size, ITEM_HEIGHT, the item count.
+/// Clock diameter, pt.
 const CLOCK: f32 = 100.0;
 const CLOCK_Y: f32 = 10.0;
 const LIST_X: f32 = 132.0;
@@ -53,9 +30,10 @@ const LIST_W: f32 = 100.0;
 const LIST_H: f32 = 120.0;
 const ITEM: f64 = 30.0;
 const ITEMS: usize = 20;
-/// Date.UTC(2025, 0, 1, 13, 0): dates[0] as wall time.
+/// 2025-01-01 13:00 UTC in milliseconds: the first time.
 const FIRST_MS: f64 = 1_735_736_400_000.0;
 const HALF_HOUR_MS: f64 = 1_800_000.0;
+/// Hand shadow sigma, pt.
 const SHADOW_SIGMA: f32 = 10.0;
 /// The shortest gap between two haptics, ms.
 const HAPTIC_GAP_MS: f64 = 40.0;
@@ -70,7 +48,7 @@ pub fn surface() -> Box<dyn Surface> {
     Box::new(picker())
 }
 
-/// The picker at rest on its first time.
+/// The picker at its starting offset.
 fn picker() -> ClockTimePicker {
     let labels = std::array::from_fn(|i| {
         let h = 13 + i / 2;
@@ -78,7 +56,7 @@ fn picker() -> ClockTimePicker {
     });
     let plan = || GraphitePlan::new([0, 0, 1, 1], [0, 0, 1, 1], 1.0).unwrap();
     ClockTimePicker {
-        // The list's contentOffset.y, as a horizontal UiScroll fed the finger's y.
+        // The list's offset: a UiScroll driven by the finger's y.
         scroll: UiScroll::new(0.0, max_offset(), LIST_H as f64, FAST, Snap::Interval(ITEM)),
         labels,
         font: Font::new(HONK, 20.0).map(Font::with_ui_layout),
@@ -97,7 +75,7 @@ fn picker() -> ClockTimePicker {
 }
 
 struct ClockTimePicker {
-    /// contentOffset.y in `scroll.offset`.
+    /// The list's scroll state.
     scroll: UiScroll,
     labels: [String; ITEMS],
     font: Option<Font>,
@@ -132,13 +110,13 @@ struct Gpu {
     bind: Option<([wgpu::TextureView; 3], wgpu::BindGroup)>,
 }
 
-/// The furthest offset: 20 items and 2 × 45 padding, less the 120 viewport.
-/// `<Line p1 p2 paint>`, as path events (no allocation).
+/// Strokes one segment, as path events (no allocation).
 fn line(c: &mut Canvas, x0: f32, y0: f32, x1: f32, y1: f32, paint: &Paint) {
     let (a, b) = (point(x0, y0), point(x1, y1));
     c.draw_path_events([PathEvent::Begin { at: a }, PathEvent::Line { from: a, to: b }, PathEvent::End { last: b, first: a, close: false }], paint);
 }
 
+/// The furthest offset: the padded content less the viewport.
 fn max_offset() -> f64 {
     ITEMS as f64 * ITEM + 2.0 * (LIST_H as f64 / 2.0 - ITEM / 2.0) - LIST_H as f64
 }
@@ -181,7 +159,7 @@ impl ClockTimePicker {
             line(base, sx, sy, ex, ey, &Paint::stroke(Color::hex(0xBFBFBF), 1.0));
         }
         base.restore();
-        // The list, clipped to its bounds (a ScrollView clips), under its two gradients.
+        // The list, clipped to its bounds and under the two fades.
         base.save();
         base.clip_path(&self.list_clip);
         if let Some(font) = self.font.as_ref() {
@@ -294,7 +272,7 @@ impl Surface for ClockTimePicker {
         if self.gradients.is_none() {
             let dark = Color::hex(0x111111);
             let clear = Color::rgba8(0x11, 0x11, 0x11, 0);
-            // start (0, 0) → end (0, 0.5) and (0, 0.5) → (0, 1) of the 120 tall view.
+            // Top fade over the upper half, bottom fade over the lower half.
             let top = Shader::Linear { start: point(0.0, 0.0), end: point(0.0, LIST_H / 2.0), stops: stops(&[dark, clear]) };
             let bottom = Shader::Linear { start: point(0.0, LIST_H / 2.0), end: point(0.0, LIST_H), stops: stops(&[clear, dark]) };
             self.gradients = Some((Paint::shader(top), Paint::shader(bottom)));
@@ -397,7 +375,7 @@ mod tests {
             }
             posted
         };
-        // A flick: a selection per time centred on the way (paced), nothing at the rest.
+        // A flick: a selection per time centred on the way, paced; nothing at rest.
         let mut s = picker();
         finger(&mut s, PointerPhase::Down, 100.0, 0.0);
         for i in 1..=8 {
@@ -409,7 +387,6 @@ mod tests {
         assert!(posted.len() >= 2 && posted.iter().all(|m| m == "haptic:selection"), "{posted:?}");
         assert_eq!(s.centred, (s.scroll.offset / ITEM).round() as usize);
 
-        // Pulled down past the top: one rigid however far, nothing as it bounces back.
         let mut s = picker();
         finger(&mut s, PointerPhase::Down, 10.0, 0.0);
         for i in 1..=40 {
@@ -426,14 +403,12 @@ mod tests {
         let s = surface();
         drop(s);
         assert_eq!(max_offset(), 570.0);
-        // 13:00 → the hour hand at 1 o'clock (30°), the minute hand at 12.
         let (h, m) = angles(date_at(0.0));
         assert!(((h % std::f64::consts::TAU).to_degrees() - 30.0).abs() < 1e-6);
         assert!(m.cos() > 1.0 - 1e-9, "{m}");
-        // Half way between two items: 15 minutes more.
         let (_, m) = angles(date_at(15.0));
         assert!(((m % std::f64::consts::TAU).to_degrees() - 90.0).abs() < 1e-6);
-        // snapToOffsets i × 30 end at the content's end: ui_scroll's Snap::Interval(30) is their rule.
+        // The snap points run to the content's end.
         assert_eq!((ITEMS - 1) as f64 * ITEM, max_offset());
     }
 
@@ -450,7 +425,6 @@ mod tests {
         let (rest, animating) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         rest.save("clock-time-picker-rest");
         assert!(!animating);
-        // The face's #1e1e1e left of centre; the list's middle row has light text pixels.
         let face = rest.at(3 * 20, 3 * 60);
         assert_eq!(&face[..3], &[0x1E, 0x1E, 0x1E]);
         let text = (3 * 132..3 * 232).filter(|&x| (3 * 52..3 * 68).any(|y| rest.at(x, y)[0] > 150)).count();
@@ -472,13 +446,11 @@ mod tests {
         after.save("clock-time-picker-scrolled");
         assert!(!animating);
         let state = s.agent("{}").unwrap();
-        // It settled on an item (a multiple of 30), past where the finger left it.
         let offset: f64 = state.split("\"offset\":").nth(1).unwrap().split(',').next().unwrap().parse().unwrap();
         assert!(offset > 54.0 && (offset / 30.0 - (offset / 30.0).round()).abs() < 1e-6, "{state}");
         assert_ne!(rest.data, after.data);
 
-        // Flung again and caught by a tap mid-flight: no drag, no scrollViewWillEndDragging, so the
-        // list rests where the tap caught it, between items.
+        // A tap that catches a flick without a drag leaves the list between items.
         finger(&mut s, PointerPhase::Down, 100.0, ms);
         for i in 1..=8 {
             finger(&mut s, PointerPhase::Move, 100.0 - 8.0 * i as f32, ms + 10.0 * i as f64);

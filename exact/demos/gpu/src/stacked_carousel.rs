@@ -1,30 +1,12 @@
-//! Stacked Carousel (src/animations/stacked-carousel: index.tsx,
-//! components/stacked-carousel/index.tsx, components/paginator/index.tsx): twenty white cards in
-//! a pile over an invisible FlatList, and a paginator of dots.
+//! Twenty white cards in a pile, over an invisible horizontal list. Scrolling the list fans the cards
+//! out, and a row of dots shows the page.
 //!
-//! - The FlatList: the window's width × (cardHeight + stackOffset × 6) = 272, centred;
-//!   horizontal, snapToInterval cardWidth (320), decelerationRate "fast",
-//!   disableIntervalMomentum (one page per fling at most), bounces; its content padded left
-//!   (width − 320) / 2, so it scrolls from 0 to 50 + 20 × 320 − width.
-//! - AnimatedCard i, centred (320 × 200, zIndex totalCards × 1000 − index), with
-//!   u = scrollX / 320 − i: scale [0.7, 0.8, 1, 1.5, 1.5] and translateY [65, 35, 0, −100, −100]
-//!   (CLAMP), opacity [0.2, 0.8, 1, −1, −2] (EXTEND), at u = −2 … 2; FAR_RIGHT (u ≤ −3) and
-//!   FAR_LEFT (u ≥ 1) styles; transform [translateY, scale] about its centre. Inside it,
-//!   [perspective 600, rotateX floor(interpolate(u, …, [45, 30, 0, 0, 0], CLAMP)) deg] about
-//!   the inner view's centre (45° at u ≤ −2, 0° at u ≥ 0). The card: white, radius 25
-//!   continuous, boxShadow 0 0 5px rgba(0, 0, 0, 0.05) (σ 2.5, RN iOS's shadowRadius = blur / 2).
-//! - A selection haptic each time round(scrollX / 320) changes (useAnimatedReaction), at most
-//!   one every 50 ms (a fast scrub through pages does not buzz).
-//! - The paginator, in its 40 pt strip 120 below the screen's centre (RN's Paginator box), as
-//!   subtle as RN's (three faint dots, rgba(0, 0, 0, 0.15)) and laid out as UIPageControl does
-//!   with many pages (the owner's call, phone feedback 2026-11-15; a 20-dot row with a capsule
-//!   read as clutter): a window of seven 6 pt dots, 14 pt apart, centred on the screen and on
-//!   the page, sliding with scrollX / 320 as it moves. Dots toward the window's edges shrink
-//!   (1 within two of its centre, then 0.66, 0.33, gone at five) to say there are more pages,
-//!   unless that side has none left: at the first and last pages the window stops and the
-//!   current dot walks to the end instead. Every dot is the same size; the current page's is
-//!   darker (black at 70 % against 25 %), shared between two dots as the page is swiped. Drawn
-//!   in the frame the scroll moves, no commit.
+//! - The list pages one card at a time, with a bounce; a fast fling lands on one page at most.
+//! - Each card scales, rises and tilts by its distance from the front, and fades at the back.
+//! - Haptics: a selection each time the page changes, at most one per HAPTIC_GAP_MS.
+//! - The dots are a window of seven that slides with the page. The dots at the window's edges shrink
+//!   to say there are more pages. The current page's dot is darker, and the two nearest dots share
+//!   the darkness as the page is swiped.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -43,8 +25,7 @@ const PERSPECTIVE: f32 = 600.0;
 /// The card layer's margin around the card (3σ and a little).
 const MARGIN: f32 = 10.0;
 const SLOTS: usize = 5;
-/// A dot's side, the distance between two dots' centres, the window's half-width (seven dots),
-/// and the dots' alphas.
+/// Dot side and pitch, the window's half-width in dots, and the dots' alphas.
 const DOT: f64 = 6.0;
 const PITCH: f64 = 14.0;
 const HALF: f64 = 3.0;
@@ -392,7 +373,6 @@ impl Surface for Carousel {
         let strip = h / 2.0 + 120.0;
         let mut dots = [[0.0f32; 4]; COUNT];
         for (d, (cx, r, alpha)) in dots.iter_mut().zip(self::dots(x / CARD_W)) {
-            // Centre, radius, alpha.
             *d = [
                 (w / 2.0 + cx) as f32,
                 (strip + 20.0) as f32,

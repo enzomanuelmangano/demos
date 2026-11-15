@@ -1,20 +1,13 @@
-//! Miles Bar Chart's week strip (src/animations/miles-bar-chart/src/index.tsx): a horizontal
-//! FlatList of seven week labels, one window-wide page each, under the chart (the bars stay in
-//! the Contract; this surface posts `week:<i>` when activeIndex changes).
+//! A horizontal strip of seven week labels, one window-wide page each, under the chart. The bars
+//! live elsewhere; this surface posts `week:<i>` when the active page changes.
 //!
-//! - The column (the 150 pt chart over the 60 pt list box) is centred in the screen. The list:
-//!   snapToInterval width, decelerationRate "fast", bounces (`ui_scroll`, RCTScrollView's snap:
-//!   the page at or past UIKit's projected rest in the fling's direction), hitSlop 100 in RN;
-//!   here, by the owner's call, a drag anywhere on the screen.
-//! - activeIndex = floor((offset + width / 2) / width), held in 0…6; a selection haptic when it
-//!   changes (useAnimatedReaction).
-//! - Each label: an item view the window's width, 40 tall under the content's paddingTop 20
-//!   (the horizontal content row stretches to the list's 60), the Text centred in it: white
-//!   FiraCode-Regular 16. TextKit lays the Text out at the hhea line height ((1980 + 644) /
-//!   2000 × 16 = 20.992), its baseline the hhea ascender (15.84) below the line's top; RN sizes
-//!   the Text's box to its measured width and height rounded up to the device pixel, and Yoga
-//!   rounds a Text node's position down to the pixel grid (roundLayoutResultsToPixelGrid's
-//!   forceFloor for NodeType::Text), not to the nearest pixel. Inputs: the seven labels.
+//! - The strip snaps one page per fling, in the fling's direction. A drag anywhere on the screen
+//!   scrolls it.
+//! - The active index is floor((offset + width / 2) / width), held in 0…6.
+//! - Labels are white Fira Code 16, centred on their page. Their positions are floored to the
+//!   pixel grid, not rounded, and the baseline lands on the next device pixel row.
+//!
+//! Inputs: the seven labels.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -26,12 +19,12 @@ use crate::ui_scroll::{Snap, UiScroll, FAST};
 static FIRA: &[u8] = include_bytes!("../fonts/fira-code-regular.ttf");
 const WEEKS: usize = 7;
 const SIZE: f32 = 16.0;
-/// The chart's height and the list box's.
+/// Chart and list box heights, pt.
 const CHART: f64 = 150.0;
 const LIST: f64 = 60.0;
 const PAD_TOP: f64 = 20.0;
 
-/// The demo's surface.
+/// The surface.
 pub fn surface() -> Box<dyn Surface> {
     Box::new(Weeks {
         size: (0.0, 0.0),
@@ -139,9 +132,7 @@ impl Surface for Weeks {
             return;
         }
         self.ensure();
-        // The owner's call (phone note, 2026-11-15): the whole screen scrolls the weeks, where
-        // RN's list takes only its 60 pt box and hitSlop 100 (the bars and the empty screen
-        // around them included).
+        // A drag anywhere on the screen scrolls the weeks.
         let inside = true;
         if let Some(s) = &mut self.scroll {
             s.input(id, gfx::phase(phase), x, y, at_ms, inside);
@@ -173,7 +164,7 @@ impl Surface for Weeks {
             let m = font.metrics();
             let line = (-m.ascent + m.descent + m.leading) as f64;
             let text_h = (line * self.scale - 1e-4).ceil() / self.scale;
-            // Yoga floors a Text node's position to the pixel grid (forceFloor for NodeType::Text).
+            // Text positions floor to the pixel grid, as Yoga lays them out.
             let text_top = ((item_top + (item_h - text_h) / 2.0) * self.scale + 1e-4).floor() / self.scale;
             // The baseline lands on the next device pixel row (as record_button's).
             let baseline = (((text_top - m.ascent as f64) * self.scale - 1e-4).ceil() / self.scale) as f32;
@@ -245,8 +236,8 @@ mod tests {
         s.bind(&labels, None).unwrap();
         let (rest, _) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         gfx::save_over(&rest, "miles-weeks-rest", [0x39, 0x2F, 0x40]);
-        // A 100 pt drag left, still moving at ~400 pt/s at the lift: nearest is page 0, RN's
-        // snapToInterval takes page 1 (the fling's direction).
+        // A 100 pt drag left, still moving at ~400 pt/s at the lift: the nearest page is 0, but
+        // the fling's direction takes page 1.
         let mut ms = 16.0;
         s.input(&pointer(PointerPhase::Down, 300.0, ms));
         for k in 1..=10 {

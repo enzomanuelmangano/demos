@@ -1,17 +1,10 @@
-//! A `setTimeout` for a demo: Contract runs timers (`after`) only at the app's root, and the
-//! iOS host ignores a transition's delay, so a demo whose RN code waits before changing a value
-//! (popup-handler's `setTimeout(…, 800)`, a delayed `withTiming`) asks this surface instead.
-//! Inputs: `token` (any number; each new non-zero value arms the timer once) and `ms`. When it
-//! fires it posts `timer:<token>`. It draws nothing (a transparent 1 × 1 canvas) and wants frames
-//! only while a timer is pending: one commit when it fires, none per frame.
-//!
-//! The web host (Exact's JS runtime) delivers no surface message: its `message=` hears only an
-//! iframe's guest, and the GPU glue's `exact.message` is the wasm host's alone, so a post there
-//! throws. On wasm32 the timer publishes instead: `exactSurface("timer")` is `{ "fired": [...] }`,
-//! the last token each live timer fired (the root hands it to the demos as `env.timers`). A
-//! surface name has one publisher, the first live instance, so the instances share the list and
-//! every one renders while any is pending or has not published the latest list. iOS keeps the
-//! message and publishes nothing.
+//! A timer surface: posts `timer:<token>` after `ms` milliseconds, for demos that must wait before
+//! changing a value. Contract runs timers only at the app root and the iOS host ignores a
+//! transition's delay, so demos use this surface instead.
+//! Each new non-zero `token` arms the timer once. It draws nothing and wants frames only while a
+//! timer is pending.
+//! On the web, the host delivers no surface messages, so fired tokens are published as
+//! `{ "fired": [...] }` instead; the instances share that one list.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};

@@ -1,50 +1,17 @@
-//! The Little Prince (src/animations/the-little-prince: index.tsx, text.ts, assets/prince.png;
-//! the generic src/animations/text-image-morph: constants.ts, atlas.ts, layout.ts,
-//! sampling.ts, reveal.tsx, use-text-image-morph.ts, text-image-morph.tsx): a page of the
-//! rose-and-fox farewell whose letters fly together into the prince on his planet, and back.
-//! The whole window, #f7f4ec; the button that toggles it is the Contract's (the input).
+//! The Little Prince: a page of text whose letters fly together into a picture of the prince on
+//! his planet, and back. The toggle button is the Contract's, and it sets the `revealed` input.
 //!
-//! - The atlas (useTexture, at 1× as RN Skia's offscreen surface): every distinct letter in a
-//!   40 pt cell (cols = ⌈√n⌉), drawn in Newsreader 30 at wght 400, opsz 12: the instance
-//!   RN Skia's Core Text font takes on iOS (measured on RN's page: its glyph positions and
-//!   line breaks match opsz 12 to 0.5 px; the file's default, opsz 18, is 6.6 px off), in
-//!   #1c1a17 at (3, 28.8) of its cell.
-//! - The page (buildLayout): margins width × 0.09 and height × 0.13, letters at 0.48 scale,
-//!   advances (not ink) × 0.48, lines 30 × 0.48 × 1.55 apart, paragraphs indented by three
-//!   spaces, words wrapped, stopping at the bottom margin. A letter's point is its cell's centre.
-//! - The picture (computeTargets): Poisson-disc points (min distance 0.014 × the image's long
-//!   side) whose density follows the image's ink (max(1 − luminance, 0.45 × saturation), from
-//!   0.18, to the power 1.4), up to 800 tries per letter; strays with fewer than 6 neighbours
-//!   within 3.2 × that distance re-seeded on kept points; fitted (their bounding box) into
-//!   0.9 × width by 0.7 × height, centred; paired with the letters by angle about each
-//!   centroid; each letter delayed by the smootherstep of its distance to the bottom-right
-//!   corner (× 0.85, plus 0.15 × random).
-//! - Each frame, per letter (reveal.tsx): pe = clamp((p − 0.55 d) / 0.45); the point moves
-//!   page → picture by pe, surges toward the camera (z = sin(pe π) × (85 + 290 × travel /
-//!   width), perspective 820 / (820 − z) about the window's centre), scales 0.48 → 0.44 (× the
-//!   perspective), tilts by sin(pe π) × 0.11 × travel / width toward its direction, and fades to
-//!   1 − 0.42 sin(pe π). Drawn as one atlas, the colour srcIn.
-//! - progress: withSpring(revealed, { dampingRatio 1, duration 2000 }) on each toggle; the
-//!   surface posts `tick` at MORPH_PATTERN's discrete times (0 … 1200 ms) for the haptic.
-//!
-//! Numbers as RN holds them: the page points, the picture points and the delays are
-//! Float32Arrays in RN (pageXY, picXY, delays), so they are rounded to f32 where RN stores them
-//! and every later step reads the rounded values (the centroids, angles, ripple and travel); a
-//! letter's advance is Core Text's at opsz 12 (measured, then Skia's f32), not an f32
-//! product. The colour buffer is RN Skia's: a Float32Array per letter read as JS numbers and
-//! turned into an 8-bit SkColor by truncation (SkColorSetARGB(a × 255, r × 255, …)), so a
-//! letter's alpha is ⌊f32(1 − 0.42 sin(pe π)) × 255⌋. drawAtlas blends it with the sprite as the
-//! source and the colour as the destination (SkCanvas.h), so srcIn is the sprite × the colour's
-//! alpha: the ink is the atlas's #1c1a17 and the buffer's rgb (0.11, 0.102, 0.09) never shows.
-//! Here that is the atlas modulated by white at that alpha.
-//!
-//! Math.random(): a stream named by the launch's seed (`env.seed`, exactTime().seed: a whole
-//! number drawn once per launch) and by this surface's instance, so each mount and each
-//! re-computation (a resize) draws fresh numbers, as RN's Math.random does; 53-bit doubles in
-//! [0, 1), as Math.random's. The image is kept in images/ as prince.png's own 8-bit r, g, b
-//! (what RN's readPixels returns: tools/prince-ink.py), and RN's makeInkProb runs on them here
-//! in f64. The targets are computed at the first frame (RN defers them past its first paint,
-//! the morph a no-op until then).
+//! - The letters are drawn from one atlas. The page is laid out with the font's optical-size-12
+//!   advances, which Core Text uses, so the line breaks match.
+//! - The picture is Poisson-disc samples where the image has ink, pruned of strays and fitted into
+//!   the window. Each letter is paired with a sample by angle, and delayed by its distance from the
+//!   bottom-right corner.
+//! - Each letter flies from page to picture, surges toward the camera, tilts, and fades at mid-flight.
+//!   The progress is a 2 s spring. The surface posts `tick` at the haptic pattern's times.
+//! - Positions are stored as f32 and read back, so later steps see the rounded values. A letter's
+//!   alpha is truncated to 8 bits.
+//! - Math.random is a stream per surface, seeded by the launch, so each mount draws fresh numbers.
+//!   The targets are computed at the first frame.
 
 use std::sync::atomic::{AtomicU32, Ordering};
 
@@ -53,49 +20,55 @@ use exact_gpu::{Frame, Surface, SurfaceError, Value};
 use reanimated::Spring;
 use skia::{Canvas, Color, Font, Images, Paint, Rect, Renderer, RsXform};
 
-
-/// PAGE_BG, INK.
+/// The page colour, and the ink.
 const PAGE_BG: u32 = 0xf7f4ec;
 const INK: u32 = 0x1c1a17;
-/// GLYPH_CELL, GLYPH_FONT_SIZE, GLYPH_PAD.
+/// The atlas cell, glyph size and glyph inset, pt.
 const CELL: f64 = 40.0;
 const FONT_SIZE: f32 = 30.0;
 const PAD: f64 = 3.0;
 const PAGE_SCALE: f64 = 0.48;
 const PICTURE_SCALE: f64 = 0.44;
 const PAGE_MARGIN: f64 = 0.09;
+/// Minimum sample spacing, as a share of the image's long side.
 const MIN_SPACING: f64 = 0.014;
+/// Tries per letter when sampling.
 const MAX_TRIES: usize = 800;
+/// Neighbourhood, in spacings, that pruning counts.
 const PRUNE_RADIUS: f64 = 3.2;
+/// Neighbours a sample needs to stay.
 const PRUNE_MIN: usize = 6;
 const BOX_W: f64 = 0.9;
 const BOX_H: f64 = 0.7;
+/// The share of the flight over which the letters stagger.
 const STAGGER: f64 = 0.55;
+/// The random share of each letter's delay.
 const JITTER: f64 = 0.15;
 const DURATION_MS: f64 = 2000.0;
 const CAMERA_Z: f64 = 820.0;
 const Z_BASE: f64 = 85.0;
 const Z_MOVE: f64 = 290.0;
+/// Tilt in radians per unit of travel.
 const ROT_3D: f64 = 0.11;
+/// Fade at mid-flight.
 const FADE: f64 = 0.42;
-/// MORPH_PATTERN's discrete events (ms).
+/// When the haptic ticks play, ms.
 const TICKS: [f64; 11] = [0.0, 90.0, 180.0, 280.0, 380.0, 490.0, 610.0, 740.0, 880.0, 1030.0, 1200.0];
 const IMAGE: (usize, usize) = (910, 1218);
-/// Newsreader's default instance, only the page's letters.
+/// The font: the page's letters only.
 static NEWSREADER: &[u8] = include_bytes!("../fonts/newsreader-prince-subset.ttf");
-/// prince.png's 8-bit r, g, b per pixel (row major, 910 × 1218; a pixel whose ink probability
-/// is 0 written white, also 0): tools/prince-ink.py.
+/// The picture's pixels as 8-bit r, g, b, row by row.
 static PIXELS: &[u8] = include_bytes!("../images/prince-rgb-910x1218.rgb8.zlib");
-/// constants.ts INK_FLOOR, SAT_WEIGHT, SAMPLE_GAMMA.
+/// The ink curve: floor, saturation weight and gamma.
 const INK_FLOOR: f64 = 0.18;
 const SAT_WEIGHT: f64 = 0.45;
 const SAMPLE_GAMMA: f64 = 1.4;
-/// Newsreader's units per em: an advance is Core Text's hmtx × size / 2000.
+/// Font units per em.
 const UNITS_PER_EM: f64 = 2000.0;
 /// Surfaces made so far: each one's Math.random() stream is its own.
 static INSTANCES: AtomicU32 = AtomicU32::new(0);
 
-/// LITTLE_PRINCE_TEXT.
+/// The page's text.
 const TEXT: &str = "“You are beautiful, but you are empty,” he went on. “One could not die for you. To be \
     sure, an ordinary passerby would think that my rose looked just like you—the rose that \
     belongs to me. But in herself alone she is more important than all the hundreds of you \
@@ -157,7 +130,7 @@ struct Prince {
     /// The window the layout and the targets were made for.
     size: (f64, f64),
     font: Option<Font>,
-    /// atlas.uniqueChars.
+    /// The page's distinct letters, in atlas order.
     unique: Vec<char>,
     cols: usize,
     /// Per letter: its sprite, page point, picture point, delay, normMove, rotSign.
@@ -180,8 +153,7 @@ struct Prince {
     renderer: Renderer,
 }
 
-/// Math.random(): mulberry32 named by (seed, instance), two draws per number as a 53-bit double
-/// in [0, 1) (genrand_res53), the resolution of Math.random's.
+/// A seeded random stream (mulberry32): two draws make a 53-bit double in [0, 1), like Math.random.
 #[derive(Clone)]
 struct Stream(u32);
 
@@ -208,7 +180,7 @@ fn f32r(v: f64) -> f64 {
     v as f32 as f64
 }
 
-/// makeInkProb on a pixel's 8-bit r, g, b, in RN's f64 and order of operations.
+/// The ink probability of a pixel's 8-bit r, g, b, in f64 with the same order of operations.
 fn ink_prob(rgb: &[u8]) -> f64 {
     let r = rgb[0] as f64 / 255.0;
     let g = rgb[1] as f64 / 255.0;
@@ -222,11 +194,8 @@ fn ink_prob(rgb: &[u8]) -> f64 {
     t.powf(SAMPLE_GAMMA)
 }
 
-/// getGlyphWidths at 30 as RN Skia measures on iOS: Core Text's advances for Newsreader at 30
-/// on optical size 12 (CTFontGetAdvancesForGlyphs with the opsz variation 12), f32 as Skia
-/// keeps them. They are the variable font's interpolated advances, fractional: the opsz 12
-/// instance's hmtx rounds each to a font unit, and on this page that rounding moves a line
-/// break ("…said the fox. “But"). Measured with Core Text on the page's characters.
+/// Core Text's advances for the page's characters: Newsreader at 30 on optical size 12. They are
+/// fractional, and rounding them to font units would move a line break.
 const CORE_TEXT_ADVANCES: [(char, f32); 44] = [
     (' ', 7.304999828338623),
     ('(', 9.404999732971191),
@@ -284,9 +253,8 @@ fn core_text_advance(font: &Font, c: char) -> f64 {
     (units * FONT_SIZE as f64 / UNITS_PER_EM) as f32 as f64
 }
 
-/// What a letter's colour does under srcIn: the sprite (the atlas's ink) × the colour's alpha,
-/// the alpha as RN Skia makes the SkColor: val[3] = 1 − fade stored in a Float32Array, read back
-/// as a JS number, × 255, truncated. As a modulating colour: white at that alpha.
+/// A letter's colour: its alpha is 1 − fade, as an f32, truncated to 8 bits.
+/// Only the alpha reaches the screen (srcIn), so this is white at that alpha.
 fn sk_color(fade: f64) -> Color {
     let a = (1.0 - fade) as f32 as f64;
     Color::rgba8(255, 255, 255, (a * 255.0) as u8)
@@ -300,7 +268,7 @@ fn letter_phase(p: f64, d: f64) -> f64 {
 }
 
 impl Prince {
-    /// buildAtlas + buildLayout.
+    /// Lays out the page: each letter's place and its sprite.
     fn layout(&mut self, font: &Font, width: f64, height: f64) {
         self.unique.clear();
         for c in TEXT.chars().filter(|c| *c != ' ' && *c != '\n') {
@@ -368,7 +336,7 @@ impl Prince {
         }
     }
 
-    /// computeTargets: sample → prune → fit → assign.
+    /// Samples the picture, fits it into the window, and gives each letter a target and a delay.
     fn targets(&mut self, width: f64, height: f64) {
         let n = self.page.len();
         let mut random = self.random.clone();
@@ -381,7 +349,7 @@ impl Prince {
         } else {
             Vec::new()
         };
-        // fitToBox.
+        // Fit the picture's box into the window, centred.
         let (mut min_x, mut min_y, mut max_x, mut max_y) = (f64::INFINITY, f64::INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY);
         for &(x, y) in &raw {
             min_x = min_x.min(x);
@@ -407,7 +375,7 @@ impl Prince {
             let y = oy + area_h * (0.4 + random.next() * 0.2);
             raw.push((x, y));
         }
-        // assignTargets.
+        // Pair letters and samples by angle about each centroid.
         let centroid = |pts: &mut dyn Iterator<Item = (f64, f64)>| {
             let (mut sx, mut sy, mut k) = (0.0, 0.0, 0.0);
             for (x, y) in pts {
@@ -446,7 +414,7 @@ impl Prince {
             self.delays[pi] = f32r(e * (1.0 - JITTER) + random.next() * JITTER);
         }
         self.random = random;
-        // reveal.tsx's travel memo.
+        // Each letter's travel, as a share of the width, for the frame loop.
         self.travel = (0..n)
             .map(|i| {
                 let (dx, dy) = (self.picture[i].0 - self.page[i].0, self.picture[i].1 - self.page[i].1);
@@ -479,7 +447,7 @@ impl Prince {
     }
 }
 
-/// sampleInkPoints: Poisson-disc samples where the ink is.
+/// Poisson-disc samples, kept where the picture has ink.
 fn sample(rgb: &[u8], img_w: usize, img_h: usize, count: usize, min_dist: f64, random: &mut Stream) -> Vec<(f64, f64)> {
     let cell = min_dist;
     let gw = (img_w as f64 / cell).ceil() as usize + 1;
@@ -531,7 +499,7 @@ fn sample(rgb: &[u8], img_w: usize, img_h: usize, count: usize, min_dist: f64, r
     raw
 }
 
-/// pruneStrays: drop points with fewer than PRUNE_MIN neighbours, re-seed onto kept ones.
+/// Drops samples with too few neighbours, and re-seeds them near the kept ones.
 fn prune(raw: Vec<(f64, f64)>, min_dist: f64, random: &mut Stream) -> Vec<(f64, f64)> {
     if raw.len() <= 8 {
         return raw;
@@ -664,11 +632,10 @@ impl Surface for Prince {
         }
         let c = &mut self.canvas;
         c.begin(frame.scale);
-        // The page is the View under the Canvas (backgroundColor PAGE_BG): a Display P3 colour,
-        // (248, 244, 235) on screen, not the sRGB (247, 244, 236).
+        // The page colour, as a Display P3 view colour.
         c.fill(Color::view_hex(PAGE_BG));
         if let Some(atlas) = self.atlas.as_ref() {
-            // colorBlendMode="srcIn": the sprite in the colour's alpha (see the header).
+            // srcIn: the sprite, multiplied by each letter's alpha.
             c.draw_atlas(atlas.image(0), &self.sprites, &self.xforms, Some(&self.colors), false);
         }
         let (pw, ph) = frame.pixels();
@@ -696,11 +663,9 @@ mod tests {
         assert!(!moving);
         let letters: usize = s.agent("{}").unwrap().split("\"letters\":").nth(1).unwrap().trim_end_matches('}').parse().unwrap();
         assert!(letters > 900, "{letters}");
-        // Ink on the page's first line (y ≈ 118.6…), none in the margin.
         let first_line = (2 * 40..2 * 380).filter(|&x| page.at(x, 2 * 124)[0] < 150).count();
         assert!(first_line > 20, "{first_line}");
-        // The margin is the View under the Canvas: PAGE_BG in Display P3, shown as sRGB
-        // (248, 244, 235), as RN draws it.
+        // The margin is the page colour, in Display P3.
         assert_eq!(&page.at(10, 10)[..3], &[248, 244, 235]);
         let p3 = Color::view_hex(PAGE_BG).0.map(|c| (c * 255.0).round() as u8);
         assert_eq!(&page.at(10, 10)[..3], &p3[..3]);
@@ -725,13 +690,11 @@ mod tests {
         picture.save("prince-picture");
         assert!(!moving);
         assert_eq!(ticks, TICKS.len());
-        // The page's first line is empty now.
         let first_line = (2 * 40..2 * 380).filter(|&x| picture.at(x, 2 * 124)[0] < 150).count();
         assert!(first_line < 10, "{first_line}");
     }
 
-    /// prince.png through RN's makeInkProb (tools/prince-ink.py, numpy on the PNG's samples):
-    /// the same pixels have ink, and the probabilities sum to the same f64, bit for bit.
+    /// The ink probabilities of the picture's pixels sum to the reference value, bit for bit.
     #[test]
     fn the_ink_is_rns_probability_of_the_pngs_own_pixels() {
         let rgb = miniz_oxide::inflate::decompress_to_vec_zlib(PIXELS).unwrap();
@@ -746,15 +709,12 @@ mod tests {
         }
         assert_eq!(count, 170960);
         assert_eq!(sum, 4419.394717270405);
-        // The 8-bit store this replaces was off by up to 1/510 per pixel: one of RN's
-        // probabilities, (40, 36, 31), is not a multiple of 1/255.
+        // Not a multiple of 1/255, so an 8-bit store would be wrong.
         let p = ink_prob(&[40, 36, 31]);
         assert!(((p * 255.0).round() / 255.0 - p).abs() > 1e-4, "{p}");
     }
 
-    /// The advances RN Skia lays the page out with on iOS: Newsreader at 30 on its opsz 12
-    /// instance (Core Text's default optical size; RN's glyph positions and line breaks match it
-    /// to 0.5 px, the opsz 18 default instance is 6.6 px off), f32 as Skia keeps them.
+    /// The advances match Core Text's: Newsreader at 30 on optical size 12.
     #[test]
     fn advances_are_core_texts() {
         let font = Font::new(NEWSREADER, FONT_SIZE).unwrap();
@@ -767,16 +727,14 @@ mod tests {
         }
     }
 
-    /// reveal.tsx's colour buffer as RN Skia converts it (SkColorSetARGB of the f32 × 255,
-    /// truncated); only its alpha reaches the screen under srcIn.
+    /// The letters' alpha is truncated to 8 bits.
     #[test]
     fn letter_colours_are_rn_skias_truncated_alpha() {
         assert_eq!(sk_color(0.0), Color::rgba8(255, 255, 255, 255));
-        // Mid-flight, sin(pe π) = 1: 1 − 0.42 = 0.58, × 255 = 147.9 → 147.
         assert_eq!(sk_color(FADE), Color::rgba8(255, 255, 255, 147));
     }
 
-    /// Math.random(): a fresh stream per surface (RN draws anew on each mount), 53-bit.
+    /// Each surface draws its own numbers.
     #[test]
     fn each_surface_draws_its_own_numbers() {
         let (mut a, mut b) = (Stream::new(7.0, 0), Stream::new(7.0, 1));
@@ -792,8 +750,7 @@ mod tests {
         assert_ne!(prince().instance, prince().instance);
     }
 
-    /// `PRINCE_DUMP=/tmp/prince.json cargo test -p demos-gpu prince_dump`: the layout and targets
-    /// at a window and stream, for exact/parity-tools/prince-parity.ts to recompute with RN's own code.
+    /// Writes the layout and targets to the `PRINCE_DUMP` path, for an external check.
     #[test]
     fn prince_dump() {
         let Ok(path) = std::env::var("PRINCE_DUMP") else { return };

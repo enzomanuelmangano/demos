@@ -1,40 +1,13 @@
-//! Verification Code Face (src/animations/verification-code-face: screens/verification-code,
-//! components/verification-code/{index, animated-code-number}.tsx, icon-square/*): what RN's
-//! layout animates or draws with Skia, in two canvases of this one surface (`part`).
+//! The verification-code face: a tilting icon square with a mood, and the row of code boxes. Two
+//! canvases of this one surface, chosen by `part`.
 //!
-//! Part 0, the IconSquare: a 96² black view (borderRadius 24 continuous) under
-//! `perspective(300) rotateY(θ) rotateX(−π/8)` about its centre, θ = interpolate(p, [0, 1],
-//! [−π/8, π/8]). Its sublayers (InternalIcon, translate(interpolate(p, [−10, 10]), 10)) are laid
-//! out by Yoga every frame from p: a centred column with gap g = interpolate(p, [7, 3]) holding
-//! the eyebrow row (two 15 × 8 Skia canvases, gap g, marginBottom g), the eye row (two 20²
-//! white circles, gap g, each holding a black view of side interpolate(p, [0.4, 0.8]) × 10,
-//! radius half of it, translate(interpolate(p, [−4, 4]), 3)) and the mouth (a 25 × 20 Skia
-//! canvas). Each node's position rounded to the device pixel relative to its parent, its size
-//! from the unrounded absolute edges (Yoga). The square's layer is drawn flat at the screen's
-//! scale and sampled through the 3D transform, as Core Animation does (aliased quad edges).
-//!
-//! Part 1, the code boxes (AnimatedCodeNumber's container, 80 % × 90 % of each flex-1 cell of
-//! aspect ratio 0.95 in a row with paddingHorizontal 10): white, borderRadius 25 continuous,
-//! boxShadow 0 10 10 rgba(0, 0, 0, 0.05) (RCTBoxShadow: σ 5, a circular rounded rect, outside
-//! the view), border 2.1 (RCTBorderDrawing's ring with circular corners: the view does not clip;
-//! invisible while transparent). The digits and the shake are the Contract's (Core Animation's
-//! own 3D flips); this canvas sits under them inside the shaking row.
-//!
-//! Motion audit:
-//!
-//! | value | RN driver / config | here |
-//! |---|---|---|
-//! | p (codeProgressPercentage) | useDerivedValue(withTiming(code.length / 4, { duration 500 })), inOut(quad) | `Timing`, restarted only for a new target |
-//! | θ, translateX, gap, eye side, eye translateX | interpolate(p, …) every frame | the same, laid out per frame |
-//! | mouth | usePathInterpolation(withTiming(type), [Happy 0, Normal 1, Sad 2]): 300 ms inOut(quad), SkPath.interpolate (linear in the points) | `Timing` on the type, the control point lerped |
-//! | eyebrows | usePathInterpolation(type) with no timing: a jump (useIconPaths passes `progress`, not the `animatedProgress` the mouth gets) | past RN (the owner: "when the eyebrows appear there's a jump"): the mouth's `Timing`, 300 ms inOut(quad), so brows and mouth move together |
-//! | borderColor | withTiming(getColorByStatus(status)): highlighted (index == code.length) #5807a8 first, correct #3171f2, wrong #d62e2e, else transparent; 300 ms inOut(quad), each RGBA channel timed in gamma 2.2 space from the current colour as Reanimated wrote it (8-bit rgb), rgb rounded to 8 bits; Display P3 | four `Timing`s per box, the same rounding, `Color::view_hex` |
-//! | borderWidth | withTiming(2.1): its initial style is the target, so 2.1 throughout | 2.1 |
-//! | reset | setTimeout(1000) after a full code: status inProgress, code [], normal() | at 1000 ms on this surface's clock from the full code's frame |
-//! | face | happy() on the correct code, sad() on a wrong one | the same |
+//! - The face's eyebrows and mouth change with the mood, and the square is drawn flat and sampled
+//!   through its 3D tilt, so its edges alias as a compositor's do.
+//! - Each box's border fades to its status (highlighted, correct or wrong). A full code resets
+//!   after one second.
 //!
 //! Inputs: part, code length, status (0 inProgress, 1 correct, 2 wrong), the check's time (a new
-//! value is a new full code), the window's width and height (the absolute frame Yoga rounds in).
+//! value is a new full code), the window's width and height.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -45,9 +18,9 @@ use skia::{point, Canvas, Color, Matrix4, Paint, Renderer};
 use crate::{gfx, shaders};
 use shaders::verification_code_face::{entry, module, Uniforms, FACE, GROUP_0, SMP, U};
 
-/// index.tsx: correctCode 1111, so maxCodeLength 4.
+/// Digits in a full code.
 const MAX: usize = 4;
-/// IconSquare: 96 square, borderRadius 24 continuous; its wrapper's marginBottom 80.
+/// The icon square's side, corner radius, and the gap below it.
 const SQUARE: f32 = 96.0;
 const SQUARE_RADIUS: f32 = 24.0;
 const ICON_MARGIN: f64 = 80.0;
@@ -57,38 +30,38 @@ pub const FACE_MARGIN: f32 = 12.0;
 pub const BOXES_TOP: f32 = 8.0;
 /// And this far below them.
 pub const BOXES_BOTTOM: f32 = 32.0;
-/// perspective 300, rotateX −π/8, rotateY ±π/8.
+/// Perspective distance, and the tilt limit (π/8).
 const PERSPECTIVE: f32 = 300.0;
 const TILT: f64 = std::f64::consts::PI / 8.0;
-/// useDerivedValue's withTiming duration.
+/// How long the progress takes to move, ms.
 const PROGRESS_MS: f64 = 500.0;
-/// GAP_OUTPUT_RANGE.
+/// The gap between the face's parts: from 7 to 3 pt.
 const GAP: [f64; 2] = [7.0, 3.0];
-/// EYEBROW_CANVAS_SIZE, EYEBROW_STROKE_WIDTH, MOUTH_CANVAS_SIZE, MOUTH_STROKE_WIDTH.
+/// Eyebrow and mouth canvas sizes and stroke widths.
 const BROW: (f64, f64) = (15.0, 8.0);
 const BROW_STROKE: f32 = 1.2;
 const MOUTH: (f64, f64) = (25.0, 20.0);
 const MOUTH_STROKE: f32 = 2.0;
-/// eyeContainer: 20², white, radius 10.
+/// An eye's side, pt.
 const EYE: f64 = 20.0;
-/// VerificationCode: paddingHorizontal 10; codeContainer aspectRatio 0.95; the box 80 % × 90 %.
+/// The code row: horizontal padding, the cell's aspect ratio, and the box's share of its cell.
 const ROW_PAD: f64 = 10.0;
 const ASPECT: f64 = 0.95;
 const BOX_W: f64 = 0.8;
 const BOX_H: f64 = 0.9;
 const BOX_RADIUS: f32 = 25.0;
 const BORDER: f32 = 2.1;
-/// boxShadow '0px 10px 10px rgba(0, 0, 0, 0.05)': RCTBoxShadow's σ is the blur / 2.
+/// Box shadow: 10 pt down, a 10 pt blur as sigma 5.
 const SHADOW_Y: f32 = 10.0;
 const SHADOW_SIGMA: f32 = 5.0;
 const SHADOW_ALPHA: f32 = 0.05;
-/// getColorByStatus.
+/// Box colours by status: highlighted (the next box), correct and wrong.
 const HIGHLIGHT: u32 = 0x5807a8;
 const CORRECT: u32 = 0x3171f2;
 const WRONG: u32 = 0xd62e2e;
-/// resetCode's setTimeout.
+/// The delay before a full code resets, ms.
 const RESET_MS: f64 = 1000.0;
-/// AnimationType.
+/// Moods: happy, normal, sad.
 const HAPPY: f64 = 0.0;
 const NORMAL: f64 = 1.0;
 const SAD: f64 = 2.0;
@@ -113,7 +86,7 @@ pub fn surface() -> Box<dyn Surface> {
     })
 }
 
-/// Yoga's `roundValueToPixelGrid` (half up; within 1e-4 of a pixel snaps to it).
+/// Rounds to the device pixel grid, half up; values within 1e-4 of a pixel snap to it.
 fn grid(v: f64, s: f64) -> f64 {
     let x = v * s;
     let f = x - x.floor();
@@ -163,7 +136,7 @@ fn origins(width: f64, height: f64) -> ((f64, f64), (f64, f64)) {
     )
 }
 
-/// getColorByStatus for box `i` (highlighted = i == code.length), as 0…1 RGBA.
+/// The colour of box `i` for `len` digits and `status`, as 0…1 RGBA.
 fn color_for(i: usize, len: usize, status: u8) -> [f64; 4] {
     let hex = |c: u32| {
         [
@@ -184,19 +157,18 @@ fn color_for(i: usize, len: usize, status: u8) -> [f64; 4] {
     }
 }
 
-/// toLinearSpace (gamma 2.2) of a 0…1 RGBA colour.
+/// Converts to linear light (gamma 2.2), where the colour is timed.
 fn channels(c: [f64; 4]) -> [f64; 4] {
     [c[0].powf(2.2), c[1].powf(2.2), c[2].powf(2.2), c[3]]
 }
 
-/// What Reanimated writes for linear channels `c` (clampRGBA, toGammaSpace,
-/// rgbaArrayToRGBAColor: rgb rounded to 8 bits), as 0…1 RGBA.
+/// Converts linear channels back to what the app writes: gamma-encoded, rgb rounded to 8 bits.
 fn written(c: [f64; 4]) -> [f64; 4] {
     let byte = |v: f64| (v.clamp(0.0, 1.0).powf(1.0 / 2.2) * 255.0).round() / 255.0;
     [byte(c[0]), byte(c[1]), byte(c[2]), c[3].clamp(0.0, 1.0)]
 }
 
-/// The colour a view draws for Reanimated's linear channels (processColor: alpha to 8 bits).
+/// The colour a view draws for linear channels, alpha rounded to 8 bits.
 fn view_color(c: [f64; 4]) -> Option<Color> {
     let w = written(c);
     let a = if w[3] < 0.001 { 0.0 } else { w[3] };
@@ -227,7 +199,7 @@ struct Face {
     /// When resetCode's timeout fires (this surface's clock).
     reset_at: Option<f64>,
     progress: Timing,
-    /// The icon's AnimationType (the mouth and, past RN, the eyebrows time to it).
+    /// The icon's mood. The mouth and the eyebrows time to it.
     mood: f64,
     mouth: Timing,
     /// Each box's borderColor, linear RGBA.
@@ -238,7 +210,7 @@ struct Face {
 }
 
 impl Face {
-    /// The state RN shows for `len` digits at `status`.
+    /// The state shown for `len` digits at `status`.
     fn show(&mut self, len: usize, status: u8) {
         let p = len as f64 / MAX as f64;
         if self.progress.target() != p {
@@ -333,13 +305,12 @@ impl Face {
         c.save();
         c.translate((ip.0 + tx) as f32, (ip.1 + ty) as f32);
         let white = Color::WHITE;
-        // The eyebrows: createPath's quad, its control point at y = type × h / 2 (Happy is
-        // 'Sad', Sad is 'Happy').
+        // The eyebrows: a quad whose control point is set by the mood (Happy is 'Sad', Sad is 'Happy').
         for k in 0..2 {
             let (op, os, _) = node(ba, (k as f64 * (BROW.0 + g), 0.0), BROW, s);
             let (x, y) = ((bp.0 + op.0) as f32, (bp.1 + op.1) as f32);
             let (w, h) = (os.0 as f32, os.1 as f32);
-            // Past RN: on the mouth's timing (RN reads the raw type here and jumps).
+            // Timed with the mouth, so the brows and the mouth move together.
             let qy = (self.mouth.value * BROW.1 / 2.0) as f32;
             c.save();
             c.clip_rect(x, y, w, h);
@@ -354,7 +325,6 @@ impl Face {
             });
             c.restore();
         }
-        // The eyes.
         for k in 0..2 {
             let (op, os, oa) = node(ea, (k as f64 * (EYE + g), 0.0), (EYE, EYE), s);
             let (x, y) = (ep.0 + op.0, ep.1 + op.1);
@@ -415,7 +385,7 @@ impl Face {
         c.begin(s as f32);
         c.translate(0.0, BOXES_TOP);
         for i in 0..MAX {
-            // The row (codeContainer, then VerificationCode's container) at the row's origin.
+            // Each cell sits in the row, then the box sits in its cell.
             let (cp, _, ca) = node(row, (ROW_PAD + i as f64 * cw, 0.0), (cw, ch), s);
             let (bp, bs, _) = node(
                 ca,
@@ -650,7 +620,6 @@ mod tests {
 
     #[test]
     fn yoga_rounds_the_face_and_the_boxes() {
-        // At rest with no digits: gap 7, the icon 47 × 69, centred in 96 (24.5 → 24.667).
         let (abs, row) = origins(W, H);
         let (ip, is, _) = node(
             abs,
@@ -663,7 +632,6 @@ mod tests {
             "{ip:?}"
         );
         assert!((is.0 - 47.0).abs() < 1e-9 && (is.1 - 69.0).abs() < 1e-9);
-        // The cells: (420 − 20) / 4 = 100 wide, 105.263 tall; the box 80 × 94.737 at (10, 5.263 → 5.333).
         let (cw, ch) = cell(W);
         assert!((cw - 100.0).abs() < 1e-9);
         let (cp, _, ca) = node(row, (ROW_PAD, 0.0), (cw, ch), 3.0);
@@ -689,7 +657,6 @@ mod tests {
         }
         step(s.as_mut(), 0.0);
         assert!(s.agent("").unwrap().contains("\"box0\":[88,7,168,1.000]"));
-        // Four ones: correct at 100 ms.
         s.bind(&inputs(1, 4, 1, 100.0), None).unwrap();
         let mut t = 16.0;
         while t < 700.0 {
@@ -731,12 +698,9 @@ mod tests {
         gfx::save_over(&img, "verification-code-face-square", [255, 255, 255]);
         assert!(!animating);
         let m = (3.0 * FACE_MARGIN) as u32;
-        // The centre is black (between the eyes and the mouth: the square's ink).
         let centre = img.at(3 * 60, 3 * 58);
         assert!(centre[3] == 255, "{centre:?}");
-        // Outside the projected square: transparent.
         assert_eq!(img.at(2, 2)[3], 0);
-        // The face's white is drawn (an eye), somewhere in the middle band.
         let mut white = 0;
         for y in m..(m + 288) {
             for x in m..(m + 288) {
@@ -761,7 +725,6 @@ mod tests {
         b.bind(&inputs(1, 0, 0, 0.0), None).unwrap();
         let (img, _) = fixture::render(&gpu, b.as_mut(), &frame(1, 0.0)).unwrap();
         gfx::save_over(&img, "verification-code-face-boxes", [255, 255, 255]);
-        // Box 0's border (#5807a8 in P3) at its left edge, mid height; box 1 has none.
         let y = (3.0 * (BOXES_TOP as f64 + 52.0)) as u32;
         let p = img.at(3 * 20 + 3, y);
         assert!(p[2] > 150 && p[0] < 140 && p[1] < 60, "{p:?}");
@@ -771,7 +734,7 @@ mod tests {
 
     #[test]
     fn the_eyebrows_move_with_the_mouth() {
-        // Past RN: the brows' control point is the mouth's timed value, never the bare type.
+        // The brows follow the mouth's timed value, not the bare mood.
         let src = include_str!("verification_code_face.rs");
         let brows = src.split("// The eyebrows:").nth(1).unwrap().split("// The mouth:").next().unwrap();
         assert!(brows.contains("self.mouth.value * BROW.1"));

@@ -1,34 +1,10 @@
-//! Wheel Picker's DraggableSlider (src/animations/wheel-picker: index.tsx,
-//! components/draggable-slider/index.tsx, boundary-gradient, utils/get-lines-path.ts,
-//! utils/snap-point.ts): a ruler of 51 grey ticks dragged sideways under a fixed orange
-//! indicator, snapping to a tick with a bounce; the expand button respaces the ticks.
+//! A ruler of 51 grey ticks dragged sideways under a fixed orange indicator. Release snaps to a
+//! tick with a bounce, and expanding respaces the ticks while the tick under the indicator stays.
 //!
-//! The canvas is the slider's view: ScreenWidth × scrollableAreaHeight (150). The Skia canvas
-//! (ScreenWidth × maxLineHeight 20) sits at paddingTop 150 / 2 − 20 / 2 = 65; the indicator View
-//! (lineWidth × 1.4 = 2.1 by maxLineHeight × 1.5 = 30, radius 10 continuous, orange) at left
-//! ScreenWidth / 2, top 150 / 2 − 15.
-//!
-//! - Lines (getLinesPath): i = 0…50 at x = i · spacePerLine (+ scrollOffset), width 1.5, height
-//!   20 where i % bigLineIndexOffset (20) == 0 else 10, centred in the 20; rrect radius 10, which
-//!   SkRRect scales to 0.75 (half the width). Both paths #c6c6c6 (the big/small split uses
-//!   isBigLine's default 10 but only picks which path a line joins: same colour, no overlap).
-//! - BoundaryGradient: lineColor is light, so white → transparent ×3 → white across the width.
-//!
-//! Motion audit (each row matched here):
-//! - spacePerLine = withSpring(isExpanded ? 50 : 20, { dampingRatio 1, duration 500 })
-//!   (gfx::spring_to: the stiffness solved per start, mass 4).
-//! - Pan: onBegin context = scrollOffset, cancelAnimation(scrollOffset). onUpdate scrollOffset =
-//!   clamp(context + translationX, −50 · space + W / 2, W / 2), clampedScrollOffset = it. onEnd
-//!   scrollOffset = withSpring(snapPoint(scrollOffset, vx, spacings), { mass 0.45, damping 10,
-//!   stiffness 100 }) (ζ 0.75: it bounces), clampedScrollOffset = withTiming(snapPoint(…), 50 ms,
-//!   inOut(quad)). snapPoint: the spacing nearest value + 0.2 · velocity.
-//! - The spacing reaction: on each change keep the tick: index = round((W / 2 − clamped) / prev),
-//!   both offsets set to clamp(W / 2 − index · space, −50 · space + W / 2, W / 2).
-//! - The progress reaction (on clampedScrollOffset): progress = interpolate(clamped, [W / 2,
-//!   W / 2 − 50 · space], [0, 1]); index = floor(progress · 50): a selection haptic when it
-//!   changes (previousLineIndex starts at −1), at most one per HAPTIC_GAP_MS (past RN, which
-//!   plays one per line: a fast drag crosses one every frame); the count = ceil(progress · 50), posted as
-//!   `count:<n>` for the Contract's numeric text.
+//! - Dragging posts `count:<n>` for the number the Contract shows, and a selection haptic each
+//!   time the drag crosses a tick, paced to HAPTIC_GAP_MS.
+//! - The snap target is the tick nearest the release point, projected ahead by the release
+//!   velocity (0.2 s), so a flick goes further than a slow release.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -49,7 +25,7 @@ const MAX_LINE: f32 = 20.0;
 const MIN_LINE: f32 = 10.0;
 const LINE_W: f32 = 1.5;
 const BIG_EACH: usize = 20;
-/// SkRRect's radius for rrect(1.5 × h, 10, 10): scaled to half the width.
+/// The ticks' corner radius: half the width.
 const LINE_R: f32 = LINE_W / 2.0;
 const SNAP: SpringConfig = SpringConfig { stiffness: 100.0, damping: 10.0, mass: 0.45 };
 
@@ -81,21 +57,21 @@ fn picker() -> WheelPicker {
 struct WheelPicker {
     width: f64,
     expanded: Option<bool>,
-    /// spacePerLine.
+    /// Tick spacing, pt; springs when the picker expands or collapses.
     space: Spring,
-    /// scrollOffset, clampedScrollOffset.
+    /// The scroll offset: follows the drag, then the snap.
     scroll: Spring,
     clamped: Timing,
-    /// clampedScrollOffset as the reaction last saw it.
+    /// The clamped offset as `react` last saw it.
     last_clamped: f64,
-    /// scrollContext.
+    /// The scroll offset when the drag began.
     context: f64,
     pan: PanGesture,
-    /// previousLineIndex.
+    /// The tick the haptics last felt.
     line_index: i64,
     /// When the last tick haptic was posted, ms.
     haptic_at: f64,
-    /// animatedNumber.
+    /// The number shown above the ruler.
     count: i64,
     posted: Vec<String>,
     gradient: Option<Paint>,
@@ -103,7 +79,7 @@ struct WheelPicker {
     renderer: Renderer,
 }
 
-/// snapPoint (redash): the point nearest value + 0.2 · velocity, the first of equals.
+/// The tick nearest `value` + 0.2 · velocity, the first of equals.
 fn snap_point(value: f64, velocity: f64, w: f64, space: f64) -> f64 {
     let p = value + 0.2 * velocity;
     let mut best = w / 2.0;
@@ -130,7 +106,7 @@ impl WheelPicker {
         self.clamped.set(v);
     }
 
-    /// useAnimatedReaction on clampedScrollOffset.
+    /// Runs when the clamped offset changes: the haptics and the count.
     fn react(&mut self, now: f64) {
         let c = self.clamped.value;
         if c == self.last_clamped {
@@ -196,7 +172,7 @@ impl Surface for WheelPicker {
         match self.pan.event(id, gfx::phase(phase), x, y, at_ms, inside) {
             Event::Begin { .. } => {
                 self.context = self.scroll.value;
-                // cancelAnimation(scrollOffset): it stays where it is.
+                // Stop any running snap where it is.
                 let v = self.scroll.value;
                 self.scroll.set(v);
             }
@@ -232,15 +208,8 @@ impl Surface for WheelPicker {
             self.gradient = Some(Paint::shader(Shader::Linear { start: point(0.0, 0.0), end: point(w as f32, 0.0), stops: stops(&[white, clear, clear, clear, white]) }));
         }
         let now = frame.now_ms;
-        // The spacing, then its reaction (keeps the tick), then the offsets and theirs. The
-        // progress reaction hears an offset the spacing reaction set one frame later, against
-        // that frame's progressWidth (Reanimated 4.7.1 mappers.ts: neither reaction has outputs,
-        // so they run in registration order, progress first; the spacing reaction's write marks
-        // it dirty and requestAnimationFrame runs it next frame): count = ceil(tick · prev /
-        // curr). Collapsing at tick 6 reads 7 until the spacing rests (8 on a step over 7 / 6).
-        // Expanding reads 6 at any steady frame rate: a 5 needs the spacing to grow by 6 / 5 in
-        // one step (20 → 24: a frame gap of 40 ms or more, ω 16.49 / s), which the RN Debug
-        // app's stalled main thread at the expand's commit gives and a Release build doesn't.
+        // The spacing's change is heard a frame late, so the count can read one tick off while
+        // the spacing moves. Expanding stays steady at a normal frame rate.
         let prev = self.space.value;
         let mut moving = self.space.step(now);
         self.react(now);
@@ -281,7 +250,7 @@ impl Surface for WheelPicker {
             c.restore();
         }
         c.restore();
-        // The indicator View (RN's 'orange', a Display P3 view colour).
+        // The indicator: a view-space orange.
         let (iw, ih) = (LINE_W * 1.4, MAX_LINE * 1.5);
         c.draw_continuous_rrect(w as f32 / 2.0, AREA_H / 2.0 - ih / 2.0, iw, ih, 10.0, &Paint::fill(Color::view_hex(0xFFA500)));
         let (pw, ph) = frame.pixels();
@@ -320,7 +289,7 @@ mod tests {
 
     #[test]
     fn a_fast_drag_paces_its_tick_haptics() {
-        // 200 pt in 80 ms (190 after UIKit's 10 pt hysteresis: count 8): at most one selection per HAPTIC_GAP_MS.
+        // A fast drag: at most one selection per HAPTIC_GAP_MS.
         let mut s = picker();
         s.width = 420.0;
         s.set_offsets(210.0);
@@ -338,10 +307,9 @@ mod tests {
 
     #[test]
     fn snap_point_is_redashs() {
-        // W 420: spacings 210 − 20 i. 150 + 0.2 · 100 = 170 → 170.
         assert_eq!(snap_point(150.0, 100.0, 420.0, 20.0), 170.0);
         assert_eq!(snap_point(151.0, 0.0, 420.0, 20.0), 150.0);
-        // Beyond the ends: the last.
+        // Beyond the ends: the last tick.
         assert_eq!(snap_point(-2000.0, 0.0, 420.0, 20.0), 210.0 - 1000.0);
     }
 
@@ -359,7 +327,6 @@ mod tests {
         let (rest, animating) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         rest.save("wheel-picker-rest");
         assert!(!animating);
-        // The indicator at x 210…212.1, orange; tick 0 under it (hidden by it), tick 1 at 230.
         let ind = rest.at(421, 150);
         assert!(ind[0] > 240 && ind[1] > 140 && ind[1] < 190 && ind[2] < 40, "{ind:?}");
         let tick = rest.at(461, 150);
@@ -367,9 +334,7 @@ mod tests {
         let finger = |s: &mut Box<dyn Surface>, phase, x, at_ms| {
             s.input(&InputEvent::Pointer { id: 1, phase, x, y: 75.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
         };
-        // Drag left 103 pt slowly; RNGH on iOS leaves UIKit's 10 pt hysteresis out of the
-        // translation: offset 210 − 93 → 4.65 lines; the counts posted, and the haptics paced to
-        // HAPTIC_GAP_MS; lines 0 … 4 each play one (SLACK puts line 1's a frame after line 0's).
+        // A slow drag left: each line passed plays one selection.
         finger(&mut s, PointerPhase::Down, 300.0, 0.0);
         for i in 1..=10 {
             finger(&mut s, PointerPhase::Move, 300.0 - 10.3 * i as f32, 30.0 * i as f64);
@@ -384,11 +349,8 @@ mod tests {
             ms += 16.0;
             fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         }
-        // The finger rested 300 ms, but UIKit's velocity is the last move's (343 pt/s, as on RN):
-        // snapPoint projects 93 + 0.2 · 343 = 161.6 → 8 lines (offset 50): count 8.
+        // The release velocity carries the snap past the nearest tick.
         assert!(s.agent("{}").unwrap().contains("\"count\":8,\"offset\":50.00"), "{}", s.agent("{}").unwrap());
-        // Expanding keeps tick 8 (offset 210 − 400 = −190): the stale read is ceil(8 · prev /
-        // curr), which 16 ms steps never take below 8.
         s.bind(&[Value::Bool(true)], None).unwrap();
         s.messages();
         while ms < 4000.0 {
@@ -400,7 +362,6 @@ mod tests {
         expanded.save("wheel-picker-expanded");
         assert!(!animating);
         assert!(s.agent("{}").unwrap().contains("\"count\":8,\"offset\":-190.00,\"space\":50.00"), "{}", s.agent("{}").unwrap());
-        // Collapsing reads 9 while the spacing shrinks, 8 once it rests.
         s.bind(&[Value::Bool(false)], None).unwrap();
         while ms < 5500.0 {
             ms += 16.0;

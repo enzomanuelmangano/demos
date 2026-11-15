@@ -1,46 +1,36 @@
-//! Family Number Input's number (src/animations/family-number-input/components/animated-number):
-//! the value as `toLocaleString('en-US')`, one glyph per digit and comma (SF-Pro-Rounded-Bold
-//! 90, white, marginHorizontal 2), centred where RN centres its row, scaled by
-//! max(1.05 − 0.05 × characters, 0.45).
+//! The number of the family input: the value with one glyph per digit and comma, centred and
+//! scaled down as it grows longer.
 //!
-//! Drawn here, not in Contract: on the phone every keypress was a Contract commit starting a
-//! dozen keyed transitions, and the iOS host skipped their first frames. The keypad stays in
-//! Contract and hands this surface the digits as one string; the surface diffs it into glyph
-//! identities on its own clock, so a tap costs one input bind and no commit-started motion.
+//! Drawn here rather than in Contract: a keypress as a Contract commit would start a dozen keyed
+//! transitions and stall the host's first frames. The keypad stays in Contract and hands this
+//! surface the digits as one string; the surface diffs them into glyphs on its own clock.
 //!
-//! Motion (Emil Kowalski / Jakub Krehel, beyond RN's FadeInDown / LinearTransition):
-//! - a digit or comma enters from 24 pt below, at 0.9 scale and transparent, over 380 ms on a
-//!   strong ease-out (cubic-bezier(0.23, 1, 0.32, 1)); it leaves faster and subtler: 200 ms,
-//!   12 pt down, to 0.92, fading, on the same curve;
-//! - each glyph's place, the row's width (its centring) and the row's scale follow one
-//!   critically damped spring, ω = 2π / 0.45 s (Motion's { duration 0.45, bounce 0 }): a
-//!   retarget keeps position and velocity, so fast typing never restarts from rest;
-//! - identities: digits keep theirs while the digits before them are unchanged (typing
-//!   appends, backspace pops; 0 → 5 replaces); comma k keeps its identity while there are more
-//!   than k commas, so commas slide as RN's ordinal-keyed commas do.
+//! - A digit or comma enters from 24 pt below, at 0.9 scale and transparent, over 380 ms on
+//!   cubic-bezier(0.23, 1, 0.32, 1). It leaves faster and subtler: 200 ms, 12 pt down, to 0.92.
+//! - Each glyph's place, the row's width and the row's scale follow one critically damped spring
+//!   (ω = 2π / 0.45 s). A retarget keeps position and velocity, so fast typing never restarts.
+//! - Identities: digits keep theirs while the digits before them are unchanged; comma k keeps
+//!   its identity while there are more than k commas, so commas slide rather than pop.
 //!
-//! Inputs: `digits` (a string of 0-9, "0" for zero). Glyphs are their outlines (the digits
-//! subset of the bundled face; the comma's outline from the full face, below), filled through
-//! the canvas transform: crisp at any scale, nothing re-rasterised per frame.
+//! Input: `digits`, a string of 0-9 ("0" for zero). Glyphs are outlines filled through the canvas
+//! transform, so they stay crisp at any scale and nothing is re-rasterised per frame.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
 
 use skia::{point as lpoint, Canvas, Color, Font, Paint, Path, Renderer};
 
-/// assets/fonts/SF-Pro-Rounded-Bold.otf cut to the digits (snake's subset: same outlines and
-/// advances).
+/// The bundled face, cut to the digits.
 static SF_ROUNDED_BOLD: &[u8] = include_bytes!("../fonts/sf-pro-rounded-bold-digits.otf");
-/// styles.character: fontSize 90, marginHorizontal 2.
+/// Glyph size and side margin, pt.
 const SIZE: f32 = 90.0;
 const MARGIN: f32 = 2.0;
-/// The Text's line (hhea (1950 + 494) / 2048 × 90 = 107.40, ceiled to the pixel by RN) and its
-/// baseline below the line's top (1950 / 2048 × 90).
+/// Line height and baseline offset from the line's top, pt.
 const LINE: f32 = 107.666_67;
 const ASCENT: f32 = 85.693_36;
-/// The number's box: number-input.tsx's fillCenter padded 50 at its top; the row centred below.
+/// Space above the number, pt.
 const PAD_TOP: f32 = 50.0;
-/// ',' in SF-Pro-Rounded-Bold: advance 569 of 2048 units, outline (y up) from CoreText.
+/// Comma advance, in font units (2048 per em).
 const COMMA_ADVANCE: f32 = 569.0;
 const COMMA: &[(char, [f32; 6])] = &[
     ('M', [289.0, 267.0, 0.0, 0.0, 0.0, 0.0]),
@@ -54,22 +44,21 @@ const COMMA: &[(char, [f32; 6])] = &[
     ('C', [414.0, 223.0, 365.0, 267.0, 289.0, 267.0]),
 ];
 const UNITS: f32 = 2048.0;
-/// Gaps' ids, apart from the characters' (which the agent and the tests read).
+/// Gap ids, kept apart from the characters' ids.
 const GAP_IDS: u64 = 1 << 62;
 
-/// Enter and exit.
 const ENTER_MS: f64 = 380.0;
 const EXIT_MS: f64 = 200.0;
 const ENTER_Y: f32 = 24.0;
 const ENTER_SCALE: f32 = 0.9;
 const EXIT_Y: f32 = 12.0;
 const EXIT_SCALE: f32 = 0.92;
-/// Motion's spring { duration 0.45, bounce 0 }: critically damped, ω = 2π / 0.45.
+/// Spring frequency: critically damped, ω = 2π / 0.45.
 const OMEGA: f64 = std::f64::consts::TAU / 0.45;
 /// The longest step a frame integrates (a stalled frame does not teleport).
 const MAX_DT: f64 = 1.0 / 30.0;
 
-/// cubic-bezier(0.23, 1, 0.32, 1): Emil's strong ease-out.
+/// Strong ease-out, cubic-bezier(0.23, 1, 0.32, 1).
 fn ease_out(t: f64) -> f64 {
     bezier(0.23, 1.0, 0.32, 1.0, t.clamp(0.0, 1.0))
 }
@@ -90,7 +79,7 @@ fn bezier(x1: f64, y1: f64, x2: f64, y2: f64, x: f64) -> f64 {
         t -= (curve(x1, x2, t) - x) / d;
         t = t.clamp(0.0, 1.0);
     }
-    // Bisection to finish where Newton stalls.
+    // Bisection finishes the solve where Newton stalls.
     let (mut lo, mut hi) = (0.0, 1.0);
     if (curve(x1, x2, t) - x).abs() > 1e-7 {
         for _ in 0..40 {
@@ -105,7 +94,7 @@ fn bezier(x1: f64, y1: f64, x2: f64, y2: f64, x: f64) -> f64 {
     curve(y1, y2, t)
 }
 
-/// A critically damped spring, integrated in closed form: retargeting keeps x and v.
+/// A critically damped spring, integrated in closed form; retargeting keeps position and velocity.
 #[derive(Clone, Copy, Debug)]
 struct Spring {
     x: f64,
@@ -140,8 +129,7 @@ impl Spring {
 enum Kind {
     Digit(u8),
     Comma,
-    /// Where a comma stood before it moved (a digit typed or deleted regroups the number): a
-    /// slot closing behind it, drawn as nothing.
+    /// Where a comma stood before it moved: a slot closing behind it, drawn as nothing.
     Gap,
 }
 
@@ -149,27 +137,24 @@ enum Kind {
 struct Glyph {
     id: u64,
     kind: Kind,
-    /// Its slot's width (its Text's cell). Places are the running sum of the slots. A digit's
-    /// slot is its cell at once (typing appends: nothing before it moves, as in RN); a comma's
-    /// opens from 0 as it enters and closes as it leaves, so it pushes the digits after it
-    /// aside and pulls them back. A leaving digit keeps its place but takes no room.
+    /// Its slot's width. Places are the running sum of the slots. A digit's slot opens at once; a
+    /// comma's opens from 0 as it enters and closes as it leaves, pushing the digits after it aside.
+    /// A leaving digit keeps its place but takes no room.
     w: Spring,
     /// When it entered and (once leaving) when it began to leave, ms.
     born: f64,
     left: Option<f64>,
     /// The glyph it stood after in the row, kept for when it leaves.
     prev: Option<u64>,
-    /// A comma: the digit it follows, and how far it is drawn from its slot (a spring to 0: a
-    /// comma that moves slides from where it was drawn, as RN's ordinal-keyed comma slides).
+    /// A comma: the digit it follows, and how far it is drawn from its slot (a spring to 0), so it
+    /// slides from where it was drawn.
     after: Option<u64>,
     slide: Spring,
-    /// A comma that moved: shown whole while its new slot opens (an entering comma shows as
-    /// much as its slot is open).
+    /// A comma that moved: shown as much as its slot is open.
     moved: bool,
 }
 
-/// The number's state: the glyphs in visual order (leaving ones where they were) and the
-/// row's scale.
+/// The number's state: the glyphs in visual order and the row's scale.
 struct Model {
     digits: String,
     glyphs: Vec<Glyph>,
@@ -181,7 +166,7 @@ struct Model {
     /// The live row's width (the centring) and scale.
     width: Spring,
     scale: Spring,
-    /// The device scale RN rounds Text widths to.
+    /// The device scale that widths are rounded to.
     px: f32,
     advances: [f32; 10],
 }
@@ -223,7 +208,7 @@ impl Model {
         }
     }
 
-    /// A Text's width as Yoga lays it out: the advance ceiled to the device pixel, + margins.
+    /// A digit's width: the advance rounded up to a device pixel, plus margins.
     fn cell(&self, k: Kind) -> f32 {
         (self.advance(k) * self.px).ceil() / self.px + 2.0 * MARGIN
     }
@@ -254,17 +239,15 @@ impl Model {
         !matches!(g.kind, Kind::Digit(_)) || g.left.is_none()
     }
 
-    /// Each glyph's drawn centre x from the row's left (its slide included) and its opacity
-    /// factor from its slot.
+    /// Each glyph's drawn centre x from the row's left, slide included, and its opacity factor.
     fn layout(&self) -> Vec<(f32, f32)> {
         let mut x = 0.0f32;
         let mut out = Vec::with_capacity(self.glyphs.len());
         for g in &self.glyphs {
             let slot = g.w.x as f32;
             let adv = self.advance(g.kind);
-            // A digit's pen is its slot's left + the margin, where RN's Text draws it. A comma
-            // stands in the middle of its slot; entering or leaving, it shows as much as its
-            // slot is open, so it never shows over the digit it is pushing.
+            // A digit's pen is its slot's left plus the margin. A comma stands in the middle of its
+            // slot and shows only as much as the slot is open, so it never overlaps a digit.
             let at = match g.kind {
                 Kind::Digit(_) => (x + MARGIN + adv / 2.0, 1.0),
                 Kind::Comma => {
@@ -285,8 +268,7 @@ impl Model {
         out
     }
 
-    /// The new digits: kept, leaving and entering glyphs, every slot retargeted, the row's
-    /// scale retargeted. `animate` false places everything at once (the first value).
+    /// Applies new digits: slots and scale are retargeted. `animate` false places everything at once.
     fn set(&mut self, digits: &str, now: f64, animate: bool) {
         let digits: String = digits.chars().filter(|c| c.is_ascii_digit()).collect();
         let digits = if digits.is_empty() {
@@ -318,7 +300,7 @@ impl Model {
             self.next += 1;
         }
         self.digits = digits;
-        // Where each comma is drawn now, to slide one that moves from there.
+        // Record where each comma is drawn now, so one that moves slides from there.
         let drawn: Vec<(u64, f64)> = self
             .glyphs
             .iter()
@@ -333,8 +315,7 @@ impl Model {
                 }
             }
         }
-        // The new order: the live characters, each leaving glyph kept right after the glyph
-        // that stood before it (so a leaving comma closes its gap where it was).
+        // Each leaving glyph stays right after the glyph that stood before it.
         let chars = self.chars();
         let mut old_glyphs: Vec<Glyph> = std::mem::take(&mut self.glyphs);
         let mut order: Vec<Glyph> = Vec::with_capacity(old_glyphs.len() + 2);
@@ -347,8 +328,7 @@ impl Model {
                     let mut g = old_glyphs.remove(i);
                     g.w.to = cell;
                     if g.kind == Kind::Comma && g.after != last_digit && animate {
-                        // Regrouped: a gap closes where it stood, its slot opens here, and the
-                        // comma slides across (set below, once the new places are known).
+                        // Regrouped: the comma slides from its old place to its new one.
                         old_glyphs.push(Glyph {
                             id: GAP_IDS + self.gaps,
                             kind: Kind::Gap,
@@ -399,8 +379,7 @@ impl Model {
                 last_digit = Some(*id);
             }
         }
-        // `old_glyphs` now holds the leaving ones, in their old order; `prev` names the id
-        // each stood after in the previous frame's order.
+        // `old_glyphs` now holds the leaving ones; `prev` names the id each stood after.
         for g in old_glyphs {
             let at = g
                 .prev
@@ -421,7 +400,7 @@ impl Model {
                         .iter()
                         .find(|(id, _)| *id == g.id)
                         .map_or(now_at[i], |(_, x)| *x);
-                    // From where it is drawn, keeping the slide's speed.
+                    // Start from where it is drawn, keeping its speed.
                     g.slide.x += was - now_at[i];
                     g.slide.to = 0.0;
                 }
@@ -440,8 +419,7 @@ impl Model {
         }
     }
 
-    /// Advances the springs by `dt` seconds and drops glyphs whose exit ended; true while
-    /// anything moves.
+    /// Advances the springs by `dt` seconds and drops finished exits; true while anything moves.
     fn step(&mut self, now: f64, dt: f64) -> bool {
         let dt = dt.clamp(0.0, MAX_DT);
         self.scale.step(dt);
@@ -463,7 +441,7 @@ impl Model {
     }
 }
 
-/// One glyph's look at `now`: y offset, scale and opacity.
+/// One glyph's y offset, scale and opacity at `now`.
 fn look(g: &Glyph, now: f64) -> (f32, f32, f32) {
     if let Some(t) = g.left {
         let q = ease_out((now - t) / EXIT_MS) as f32;
@@ -481,14 +459,14 @@ fn look(g: &Glyph, now: f64) -> (f32, f32, f32) {
     )
 }
 
-/// The surface.
+/// The number's surface.
 pub fn surface() -> Box<dyn Surface> {
     Box::new(FamilyNumber::default())
 }
 
 #[derive(Default)]
 struct FamilyNumber {
-    /// The digits last bound, applied at the next frame (on the frame clock).
+    /// The digits last bound; applied on the next frame.
     pending: Option<String>,
     model: Option<Model>,
     last: Option<f64>,
@@ -585,7 +563,7 @@ impl Surface for FamilyNumber {
         let dt = self.last.map_or(0.0, |t| (now - t) / 1000.0);
         self.last = Some(now);
         let model = self.model.as_mut().unwrap();
-        // Springs first to this frame, then the new value retargets from where they are.
+        // Advance the springs to this frame first, so a new value retargets from where they are.
         let mut moving = model.step(now, dt);
         if let Some(d) = self.pending.take() {
             model.set(&d, now, !first);
@@ -600,7 +578,7 @@ impl Surface for FamilyNumber {
         let row_scale = model.scale.x as f32;
         let left = -(model.width() as f32) / 2.0;
         let baseline = -LINE / 2.0 + ASCENT;
-        // Glyphs scale about their outline's middle: digits' ink spans about 0.7 em up.
+        // Glyphs scale about the middle of their ink, which sits about 0.7 em up.
         let mid_y = -0.36 * SIZE;
         let mut draws = Vec::with_capacity(model.glyphs.len());
         for (g, (centre, open)) in model.glyphs.iter().zip(model.layout()) {
@@ -687,7 +665,7 @@ mod tests {
             ["d1", "c8", "d2", "d3", "d7"],
             "a retyped digit and comma are new"
         );
-        // Leaving glyphs stay drawn until their exit ends.
+        // Leaving glyphs stay drawn until their exit finishes.
         assert!(m.glyphs.iter().any(|g| g.id == 4 && g.left.is_some()));
         m.step(70.0 + EXIT_MS + 1.0, 0.016);
         assert!(!m.glyphs.iter().any(|g| g.id == 4));
@@ -720,7 +698,6 @@ mod tests {
     fn row_centres_and_scales_like_rn() {
         let mut m = model();
         m.set("1234", 0.0, false);
-        // 1,234: four digits and a comma, scale 1.05 − 0.25.
         assert!((m.scale.to - 0.8).abs() < 1e-9);
         let w: f32 = [1usize, 2, 3, 4]
             .iter()
@@ -759,7 +736,7 @@ mod tests {
         };
         shoot(&mut s, t, "00-rest");
         let mut value = String::new();
-        // Type 1 2 3 4 5 6 7, 90 ms apart (a fast typist), rendering every 1/120 s.
+        // Type 1 to 7, 90 ms apart, rendering every 1/120 s.
         let mut n = 0;
         for d in ["1", "2", "3", "4", "5", "6", "7"] {
             value.push_str(d);
@@ -771,7 +748,6 @@ mod tests {
                 assert!(moving);
             }
         }
-        // Settle.
         let mut settled = false;
         for _ in 0..240 {
             t += 1000.0 / 120.0;
@@ -781,7 +757,7 @@ mod tests {
             }
         }
         assert!(settled, "comes to rest");
-        // Delete three, 70 ms apart (the hold's pace), then retype during the exit.
+        // Delete three, 70 ms apart, then retype during the exit.
         for k in 0..3 {
             value.pop();
             s.bind(&[Value::str(&value)], None).unwrap();

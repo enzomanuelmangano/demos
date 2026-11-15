@@ -1,25 +1,15 @@
-//! Blur Cards (src/animations/blur-cards): five glass cards (300 × 200, radius 20 with Core
-//! Animation's continuous corners, the owner's call over RN's circular arcs, at the
-//! window's centre) over a blurred violet glow; a tap anywhere fans them out in 3D and blurs what
-//! each covers, a second folds them back.
+//! Blur cards: five glass cards at the window's centre, over a blurred violet glow. A press fans
+//! them out in 3D and blurs what each covers. The next press folds them back.
 //!
-//! - The background: a rect of the window with RadialGradient(centre, min(w, h) / 2, violet →
-//!   black) under Blur 100 (decal), over black; drawn and blurred once per size.
-//! - Card `index`: a Group about the window's centre with transform [rotate(−π/2 · p),
-//!   translateX(25 · index · p), perspective(10000), rotateY(π/3 · p), rotate(π/4 · p)];
-//!   inside, the fill, the stroke (opacity p) and BackdropBlur(blur = max(5p, 0), clip = card).
-//! - progress: withSpring(progress > 0.5 ? 0 : 1, { duration, dampingRatio }) at each press of
-//!   the full-screen PressableOpacity, RN's { 1500, 0.7 } made { 600, 0.85 } at the owner's request:
-//!   90 % in 208 ms (RN 350), within 0.5 % from 425 ms (RN 908), overshoot 0.6 % (RN 4.6 %), so no
-//!   lingering tail; the press is the app's (the input counts presses),
-//!   the stiffness solved from where the spring is, as Reanimated does at the animation's start.
+//! - The background is a radial glow, drawn and blurred once per size.
+//! - Each card is a rounded rect with continuous corners, turned about the centre. Its blur covers
+//!   what lies behind it.
+//! - Each press starts the spring. It keeps the running velocity, unless that points away from its
+//!   target.
 //!
-//! Per frame while it moves: one full-screen pass over the blurred background. The backdrop
-//! blurs are analytic (blur_cards.wgsl): what they blur is the glow, which a σ-5 blur leaves as
-//! it is, and the cards' own edges, whose Gaussians are closed forms of their distances. The
-//! earlier port ran a full-resolution Gaussian of the canvas per card and six full-screen passes
-//! a frame (at 3× about 1.5 G texel reads a frame, far over a 120 Hz budget); this is one read
-//! of the background a pixel.
+//! Per frame while it moves, one full-screen pass reads the background once per pixel. The backdrop
+//! blurs are analytic: the glow barely changes under a σ-5 blur, and each card's edges have
+//! closed-form Gaussians. A full-resolution Gaussian per card would not fit a 120 Hz frame.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
@@ -29,7 +19,7 @@ use skia::{point, stops, Canvas, Color, Paint, Renderer, Shader};
 use crate::{gfx, shaders};
 use shaders::blur_cards::{entry, module, Pass, BG, BLURRED, CUR, GROUP_0, SMP, U};
 
-/// The card spring: RN's 1500 ms / ζ 0.7, made about 40 % faster for the owner (module docs).
+/// Card spring: 600 ms, damping ratio 0.85.
 const DURATION_MS: f64 = 600.0;
 const DAMPING_RATIO: f64 = 0.85;
 const CARD_W: f32 = 300.0;
@@ -72,7 +62,7 @@ impl Surface for BlurCards {
                 self.presses = Some(presses);
                 let p = self.progress.value;
                 let to = if p > 0.5 { 0.0 } else { 1.0 };
-                // onStart: the velocity it has, dropped when it points away from the target.
+                // Keep the velocity unless it points away from the target.
                 let v = self.progress.velocity;
                 let v = if (to > p && v < 0.0) || (to < p && v > 0.0) { 0.0 } else { v };
                 self.progress.to(to, v, duration_config(p - to, v, DURATION_MS, DAMPING_RATIO, 4.0));
@@ -117,7 +107,7 @@ impl Surface for BlurCards {
         let gpu = self.gpu.as_ref().unwrap();
         let Some(bg) = self.bg_blur.output() else { return false };
         let p = self.progress.value as f32;
-        // The cards' transforms, σ and the stroke's opacity are the shader's, from p.
+        // The shader derives the cards' transforms, blur and stroke from p.
         let none = [0.0f32; 4];
         let uniforms = Pass {
             prev0: none,
@@ -131,7 +121,7 @@ impl Surface for BlurCards {
             rect: [w / 2.0, h / 2.0, CARD_W / 2.0, CARD_H / 2.0],
         };
         queue.write_buffer(&gpu.uniforms, 0, &uniforms.bytes());
-        // `cur` and `blurred` are the earlier multi-pass driver's; the background stands in.
+        // The shader's other inputs are unused: the background stands in for them.
         let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("blur cards"),
             layout: &gpu.layout,

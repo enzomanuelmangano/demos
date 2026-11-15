@@ -1,44 +1,14 @@
-//! Scrollable Shapes (src/animations/scrollable-shapes: index.tsx, shapes/*, components/
-//! paginator.tsx): 3000 glowing points spinning in perspective on black, morphing between a
-//! sphere, a cube, a torus and a heart as an invisible paged scroll moves; four dots below say
-//! which.
+//! 3000 glowing points spinning in perspective on black, morphing between a sphere, a cube, a torus
+//! and a heart as the paged scroll moves. Four dots below show which page is in view.
 //!
-//! - The glow canvas (static): a Circle at the window's centre, r = W × 0.6, filled with a
-//!   RadialGradient (same centre and radius) #ffffff40 → transparent, under Blur 60 (a Graphite
-//!   blur of a canvas-sized layer: drawn once per size, shaders/scrollable_shapes.wgsl).
-//! - The points canvas: shapes/ generated as RN does (Fibonacci sphere points, mapped per
-//!   shape, normalised to a height of 200, cube × 0.75, torus × 1.2), lerped between shapes idx
-//!   and idx + 1 by the scroll (inputRange i × W), tilted 0.2 rad about x, turned iTime about y,
-//!   perspective 350 / (350 + z) about (W / 2, H / 2); drawPoints with round caps, stroke 1.0
-//!   where the scale > 1.1 else 0.9, the paint a linear gradient (0, 0) → (W, H) of #00d9ff,
-//!   #ffffff, #ff006e (shaders/scrollable_shapes_points.wgsl).
-//! - The Paginator: absolute, left 0, right 0, bottom 60, a centred row with gap 8 of four
-//!   white Views 6 tall, radius 3 continuous; dot i: progress = clamp((scrollX − (i − 1) W) / W,
-//!   0, 2); width 6 + 10 · p and opacity 0.3 + 0.7 · p up to 1, then back down. Laid out per
-//!   frame as Yoga lays it out (edges on the pixel grid). A touch on its row lands on it, not on
-//!   the scroll.
-//! - The ScrollView: absoluteFill, horizontal, content W × 4, snapToInterval W,
-//!   decelerationRate "fast", bouncing (ui_scroll.rs). Past the owner's phone note ("handle the
-//!   overscroll", then "the overscroll drives the animation, not the translation, keeping the
-//!   norm"), the band shows: pulled past the first or last page, the band's overshoot (UIKit's
-//!   (1 − 1 / (x · 0.55 / W + 1)) · W) in pages carries the morph on past its ends (the first
-//!   pair's t below 0, the last pair's above 1), softly limited, each point
-//!   at its interpolated norm; the shape stays in place and morphs back with the bounce. A fling ends on a page, never in the band, as
-//!   snapToInterval's target is (RCTScrollView clamps it to the content).
-//!
-//! Motion audit:
-//!
-//! | value | driver | config | trigger |
-//! |---|---|---|---|
-//! | iTime | withRepeat(withTiming(2π, { duration 10000, Easing.linear }), −1) | each cycle restarts at the frame it ends | mount |
-//! | scrollX | the ScrollView's contentOffset.x (onScroll) | UIScrollView: rubber band 0.55, rate 0.99/ms, snapToInterval W (ceil/floor by velocity) | the finger |
-//! | shape morph | idx, clampedT from scrollX over i × W (per frame) | — | scrollX |
-//! | dot width, opacity | piecewise from scrollX (per frame) | — | scrollX |
-//!
-//! Haptics (past RN, which plays none: the owner's haptic language): `haptic:selection` each time
-//! the page (round(scrollX / W), the shape the dots mark) changes, during the drag and the glide,
-//! at most one per HAPTIC_GAP_MS; `haptic:impact-rigid` once each time the scroll is pulled or
-//! thrown past an end (the rubber band).
+//! - The points are generated once per shape and lerped between the two shapes either side of the
+//!   scroll, tilted and turned, with a perspective and a gradient. The glow is a blurred radial
+//!   gradient behind them, drawn once per size.
+//! - Pulled past the first or last page, the rubber band carries the morph on past its ends,
+//!   softly limited. The shape stays in place and morphs back with the bounce.
+//! - A touch on the dots lands on them, not on the scroll. A fling ends on a page.
+//! - Haptics: a selection each time the page changes, during a drag and its glide, at most one per
+//!   HAPTIC_GAP_MS; a rigid impact once each time the scroll is pulled or thrown past an end.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -50,20 +20,20 @@ use crate::{gfx, shaders};
 use shaders::scrollable_shapes::{entry, module, Uniforms, DOTS, GLOW, GROUP_0, POINTS, SMP, U};
 use shaders::scrollable_shapes_points as points_shader;
 
-/// N_POINTS.
+/// Points per shape.
 const N: usize = 3000;
-/// SHAPES_COUNT.
+/// Shapes: sphere, cube, torus, heart.
 const SHAPES: usize = 4;
-/// TARGET_HEIGHT.
+/// Height of each shape, in points.
 const TARGET_HEIGHT: f64 = 200.0;
-/// The glow's Blur.
+/// Glow blur, in points.
 const GLOW_BLUR: f32 = 60.0;
-/// The paginator: DOT_SIZE, DOT_ACTIVE_WIDTH, DOT_SPACING, its bottom.
+/// Paginator: dot size and active width, spacing, and its bottom, in points.
 const DOT: f32 = 6.0;
 const DOT_ACTIVE: f32 = 16.0;
 const DOT_GAP: f32 = 8.0;
 const DOTS_BOTTOM: f32 = 60.0;
-/// One cycle of iTime.
+/// One spin cycle, ms.
 const SPIN_MS: f64 = 10_000.0;
 /// The most the morph runs on past its ends (in t).
 const OVERMORPH: f64 = 0.35;
@@ -109,14 +79,14 @@ struct P3 {
     z: f64,
 }
 
-/// fibonacciPoint(i, total): (theta, phi).
+/// A point on the Fibonacci sphere: (theta, phi).
 fn fibonacci(i: usize) -> (f64, f64) {
     let golden = (1.0 + 5f64.sqrt()) / 2.0;
     let t = i as f64 / N as f64;
     ((2.0 * std::f64::consts::PI * i as f64) / golden, (1.0 - 2.0 * t).acos())
 }
 
-/// normalizeShape: centred on each axis, scaled uniformly to a height of TARGET_HEIGHT.
+/// Centres a shape and scales it to TARGET_HEIGHT tall.
 fn normalize(points: Vec<P3>) -> Vec<P3> {
     let (mut min, mut max) = ([f64::INFINITY; 3], [f64::NEG_INFINITY; 3]);
     for p in &points {
@@ -195,7 +165,7 @@ fn heart() -> Vec<P3> {
     }).collect())
 }
 
-/// getShapeAxes: per point, its x, y and z in each shape (display order), as the instance data.
+/// Per point, its x, y and z in each shape, as the instance data.
 fn shape_axes() -> Vec<[f32; 12]> {
     let shapes = [sphere(), cube(), torus(), heart()];
     (0..N)
@@ -211,7 +181,7 @@ fn shape_axes() -> Vec<[f32; 12]> {
         .collect()
 }
 
-/// A straight sRGB colour as encoded Display P3 (the skia package's gradient stops).
+/// An sRGB colour converted to encoded Display P3.
 fn srgb_to_p3(rgb: u32) -> [f32; 4] {
     let lin = |c: u32| {
         let v = (c & 0xFF) as f32 / 255.0;
@@ -225,7 +195,7 @@ fn srgb_to_p3(rgb: u32) -> [f32; 4] {
     [enc(0.8225 * r + 0.1774 * g), enc(0.0332 * r + 0.9669 * g), enc(0.0171 * r + 0.0724 * g + 0.9108 * b), 1.0]
 }
 
-/// Yoga's rounding of a layout edge to the pixel grid: to the nearest device pixel, a half up.
+/// Rounds a layout edge to the nearest device pixel, a half up.
 fn grid(v: f32, scale: f32) -> f32 {
     ((v * scale + 0.5 + 1e-4).floor()) / scale
 }
@@ -315,10 +285,9 @@ impl ScrollableShapes {
         }
         let next = (idx + 1).min(SHAPES - 1);
         let t = if idx >= SHAPES - 1 { 1.0 } else { (scroll - w * idx as f64) / (w * next as f64 - w * idx as f64) };
-        // Past an end (the owner's phone note: the overscroll drives the animation, not the
-        // place): the rubber band's overshoot, in pages, carries the morph on past its ends, the
-        // first pair's t below 0, the last pair's above 1, softly limited to OVERMORPH. The
-        // shader keeps each point's norm (WGSL `vs`), so the shape deforms on without growing.
+        // Past an end, the rubber band's overshoot, in pages, carries the morph on: the first pair's
+        // t goes below 0, the last pair's above 1, softly limited to OVERMORPH. The shader keeps each
+        // point's norm, so the shape deforms without growing.
         let over = self.overscroll() / w;
         if over < 0.0 {
             return (0, 1, soft(over));
@@ -412,8 +381,7 @@ impl Surface for ScrollableShapes {
                 gpu.bind = None;
             }
         }
-        // iTime: withRepeat(withTiming(2π, 10 s, linear)), a cycle restarting at the frame
-        // that ends the last.
+        // The spin: a linear 2π per SPIN_MS, restarting at the frame that ends each cycle.
         let start = *self.spin_start.get_or_insert(frame.now_ms);
         let runtime = frame.now_ms - start;
         self.time = if runtime >= SPIN_MS {
@@ -496,7 +464,7 @@ impl Surface for ScrollableShapes {
         }
         self.renderers[1].draw(device, queue, encoder, &self.dots, &gpu.layers[2], GRAPHITE_FORMAT, pw, ph, wgpu::Color::TRANSPARENT);
         skia::render::fullscreen_pass(encoder, "scrollable shapes", target, &gpu.compose, &gpu.bind.as_ref().unwrap().0);
-        // iTime repeats forever.
+        // The spin never settles, so the surface keeps drawing.
         true
     }
 }
@@ -580,7 +548,7 @@ mod tests {
         let s = sphere();
         let (min, max) = s.iter().fold((f64::MAX, f64::MIN), |(a, b), p| (a.min(p.y), b.max(p.y)));
         assert!((max - min - 200.0).abs() < 1e-9);
-        // Torus: 39 minor × 77 major segments ≥ 3000: no fill needed; × 1.2 after normalising.
+        // The torus is 1.2 times the target height.
         let t = torus();
         let (min, max) = t.iter().fold((f64::MAX, f64::MIN), |(a, b), p| (a.min(p.y), b.max(p.y)));
         assert!((max - min - 240.0).abs() < 1e-9, "{}", max - min);
@@ -605,7 +573,7 @@ mod tests {
         assert!(c[0] > 20 && c[3] == 255, "centre {c:?}");
         let lit = img.data.chunks(4).filter(|p| p[2] > 150).count();
         assert!(lit > 2000, "points {lit}");
-        // Dots row 2538…2556 px: dot 0 (16 wide) from x (420 − 46) / 2 = 187.
+        // The first dot is active: wide and white.
         assert!(img.at(3 * 190, 2547)[0] > 240, "dot 0 {:?}", img.at(570, 2547));
         // A slow flick to the left: 30 pt, then release.
         let pointer = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 400.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
@@ -622,8 +590,7 @@ mod tests {
         }
         gfx::save_over(&img, "scrollable-shapes-cube", [0, 0, 0]);
         assert!(s.agent("").unwrap().starts_with("{\"scrollX\":420.00,\"shape\":0,\"next\":1,\"t\":1.0000"), "{}", s.agent("").unwrap());
-        // One page on: one selection. A slow drag right of 600 pt: back one page, then past the
-        // start, one rigid thunk however long it is held.
+        // One page on: one selection.
         assert_eq!(s.messages(), vec!["haptic:selection"]);
         // The bright points' mean x, device pixels.
         let centroid = |img: &fixture::Pixels| {
@@ -649,8 +616,7 @@ mod tests {
             pulled = Some(fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap().0);
         }
         let pulled = pulled.unwrap();
-        // Held past the start (raw 180 pt → (1 − 1 / (180 · 0.55 / 420 + 1)) · 420 ≈ 80 pt of
-        // band, 0.19 page): the morph runs on below 0 (soft: 0.35 · tanh(0.19 / 0.35) ≈ 0.17)
+        // Held 180 pt past the start, the band is 0.19 of a page: the morph runs on below 0 (softly)
         // and the shape stays in place.
         let agent = s.agent("").unwrap();
         let t: f64 = agent.split("\"t\":").nth(1).unwrap().trim_end_matches('}').parse().unwrap();

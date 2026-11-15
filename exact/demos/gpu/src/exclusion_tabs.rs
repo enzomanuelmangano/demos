@@ -1,30 +1,11 @@
-//! Exclusion Tabs (src/animations/exclusion-tabs/src: index.tsx, constants.ts,
-//! components/exclusion-tabs and its hooks): four black tabs melted into one bar; the active one
-//! turns blue with rounded corners and pushes its neighbours 10 pt away, so it stands apart.
+//! Four tabs that melt into one bar. The active tab turns blue with rounded corners and pushes
+//! its neighbours 10 pt away, so it stands apart.
 //!
-//! The canvas: the window's width × 45 (`containerWidth`, `height`), a Touchable.Canvas centred
-//! on white.
-//! - Font: Helvetica bold 13 (matchFont, a Skia font: no kerning); textWidths[i] =
-//!   measureText(tab).width: RN Skia's bounds on iOS (each glyph's rounded out and outset
-//!   by 1), not the ink: skia's `measure_text` does the same.
-//! - Box i: an rrect (boxX, 0, textWidths[i] + 2 · internalBoxPadding (20), 45), radius
-//!   borderRadius; boxX = Σ_{j<i} (textWidths[j] + 40) + animatedTranslateX + horizontalTabsPadding,
-//!   horizontalTabsPadding = max((containerWidth − Σ (textWidths + 40)) / 2, 0). Filled with its
-//!   colour, all four in the gooey layer (Blur 5, ColorMatrix alpha × 15 − 9).
-//! - Text i: white, translated to (boxX + 20, 45 / 2 + 13 / 3), over the layer.
-//! - A tap (the canvas's Tap, on touches up: the first box, in index order, whose path holds the
-//!   finger) plays Haptics.selectionAsync and makes that tab active (React state: the boxes'
-//!   animations start from where they are).
-//!
-//! Motion audit (each a useDerivedValue: a change of the active tab starts it from where it is):
-//!
-//! | value | driver | to | trigger |
-//! |---|---|---|---|
-//! | animatedTranslateX (box and text i) | withTiming default (300 ms, inOut(quad)) | i > active: 10, i < active: −10, else 0 | the active tab |
-//! | borderRadius (box i) | withTiming default | active ? 12 : 0 | the active tab |
-//! | color (box i) | withTiming 150 ms (inOut(quad)), gamma-2.2 channels | active ? #3E82F7 : #000000 | the active tab |
-//!
-//! Haptics: selection on every tap that lands on a box, the active one included.
+//! - Each tab is a box 20 pt padded on each side of its label; the boxes are drawn into a gooey
+//!   layer, so touching boxes merge.
+//! - A tap on a box selects it, plays a selection haptic, and animates from wherever the boxes are.
+//! - Motion: the neighbours slide 10 pt over 300 ms, the active box's corners go to 12 pt over
+//!   300 ms, and its colour fades over 150 ms.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -35,24 +16,20 @@ use skia::{Color, Font, Paint};
 use crate::gfx;
 use crate::gooey::{ColorTiming, Goo, Gooey};
 
-/// The tabs (index.tsx).
 const TABS: [&str; 4] = ["Home", "Changelog", "Career", "About"];
-/// The `height` prop.
 const HEIGHT: f32 = 45.0;
-/// internalBoxPadding.
+/// Padding on each side of a tab's label, pt.
 const PADDING: f32 = 20.0;
 const FONT_SIZE: f32 = 13.0;
-/// The layer's Paint: Blur 5, ColorMatrix alpha × 15 − 9.
+/// Blur and alpha threshold that make the tabs merge.
 const GOO: Goo = Goo { sigma: 5.0, k: 15.0, b: -9.0 };
-/// activeBackgroundColor, backgroundColor.
 const ACTIVE: [u8; 3] = [0x3E, 0x82, 0xF7];
 const INACTIVE: [u8; 3] = [0, 0, 0];
 static HELVETICA_BOLD: &[u8] = include_bytes!("../fonts/helvetica-bold-subset.ttf");
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
-    // react-native-skia-gesture's onTap is a plain Gesture.Tap(): RNGH's iOS default, 500 ms and
-    // no distance limit (the crate's default).
+    // Plain tap: 500 ms at most, no distance limit.
     let tap = TapGesture::default();
     let font = Font::new(HELVETICA_BOLD, FONT_SIZE);
     let widths = TABS.map(|t| font.as_ref().map_or(0.0, |f| f.measure_text(t).width));
@@ -71,7 +48,7 @@ pub fn surface() -> Box<dyn Surface> {
     })
 }
 
-/// useAnimatedBoxX's translateX for tab `i`.
+/// Horizontal offset of tab `i` when tab `active` is selected: neighbours move 10 pt away.
 fn shift(i: usize, active: usize) -> f64 {
     if i > active {
         10.0
@@ -84,17 +61,11 @@ fn shift(i: usize, active: usize) -> f64 {
 
 struct ExclusionTabs {
     font: Option<Font>,
-    /// textWidths.
     widths: [f32; 4],
-    /// containerWidth (the canvas's).
     width: f32,
-    /// activeTabIndex.
     active: usize,
-    /// animatedTranslateX per tab.
     shift: [Timing; 4],
-    /// borderRadius per tab.
     radius: [Timing; 4],
-    /// color per tab.
     colors: [ColorTiming; 4],
     tap: TapGesture,
     gooey: Gooey,
@@ -102,12 +73,11 @@ struct ExclusionTabs {
 }
 
 impl ExclusionTabs {
-    /// horizontalTabsPadding.
+    /// Left margin that centres the tabs, never negative.
     fn padding(&self) -> f32 {
         let total: f32 = self.widths.iter().map(|w| w + PADDING * 2.0).sum();
         ((self.width - total) / 2.0).max(0.0)
     }
-    /// boxX of tab `i`.
     fn box_x(&self, i: usize) -> f32 {
         let before: f32 = self.widths[..i].iter().map(|w| w + PADDING * 2.0).sum();
         before + self.shift[i].value as f32 + self.padding()
@@ -162,7 +132,6 @@ impl Surface for ExclusionTabs {
         Some(format!("{{\"active\":{},\"tab\":\"{}\"}}", self.active, TABS[self.active]))
     }
 
-    /// RN's tabs are Skia Touchable.Path onTap, not pressto: not `pressto::Pressable`.
     fn input(&mut self, event: &InputEvent) {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
         if let Event::Tap { x, y } = self.tap.event(id, gfx::phase(phase), x, y, at_ms, true) {
@@ -230,12 +199,9 @@ mod tests {
         assert!(!moving);
         let blue = |p: [u8; 4]| p[2] > 200 && p[0] < 120 && p[3] > 200;
         let black = |p: [u8; 4]| p[0] < 20 && p[2] < 20 && p[3] > 200;
-        // Tab widths: Home 36.1, Changelog 67.2, Career 41.2, About 37.5 (ink, a little less);
-        // padding ≈ (420 − 342) / 2 ≈ 39: Home's box from ≈ 39.5, blue.
         let tabs = |s: &mut Box<dyn Surface>| s.agent("").unwrap();
         assert!(blue(img.at(3 * 55, 3 * 10)), "Home {:?}", img.at(165, 30));
         assert!(black(img.at(3 * 200, 3 * 10)), "Changelog {:?}", img.at(600, 30));
-        // A tap on Career (box ≈ 195 + 10 … 286 + 10).
         let pointer = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 22.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
         s.input(&pointer(PointerPhase::Down, 260.0, 0.0));
         s.input(&pointer(PointerPhase::Up, 260.0, 50.0));

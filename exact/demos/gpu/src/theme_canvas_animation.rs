@@ -1,25 +1,9 @@
-//! Theme Canvas Animation (src/animations/theme-canvas-animation: index.tsx,
-//! selectable-square/index.tsx): "THEME" on a coloured screen and six round swatches below it; a
-//! tap on a swatch floods the screen with its theme from the swatch outward, as a growing
-//! circle.
+//! A theme picker: "THEME" on a coloured screen with six round swatches below it. A tap on a
+//! swatch floods the screen with that swatch's theme, as a circle growing out from it.
 //!
-//! - SQUARE_SIZE 35; swatch `i` at (W/2 − 17.5 + offsetX · 70, H/2 − 17.5 + offsetY · 70) for
-//!   SQUARE_OFFSETS (−1,0) (0,0) (1,0) (0,1) (−1,1) (1,1), a RoundedRect of r 100 (Skia clamps:
-//!   a circle) in colors[i].background, with a 2-wide stroke in colors[i].text when selected,
-//!   else in its background.
-//! - The screen: a Rect and "THEME" (outfit 40, at W/2 − measureText.width / 2, H/2 − 65) in
-//!   the previous theme; over it, clipped to a circle about the selected swatch's centre of
-//!   `radius`, the same in the selected theme.
-//! - onSelectSquare(i) (i not selected): radius = 0, then withSpring(H, { duration: 1000,
-//!   dampingRatio: 1 }) whose end (finished) sets previous = i and radius = 0; previous = the
-//!   selected one, selected = i.
-//! - A swatch (react-native-skia-gesture): onStart (the canvas pan's onBegin on it) scale =
-//!   withSpring(0.9); onTap (the canvas tap's onTouchesUp on it) scale = withSpring(1) and
-//!   onSelectSquare. Both Reanimated 4's default spring, about the swatch's centre. The tap
-//!   fails past 500 ms (RNGH's maxDuration); RNGH sets no distance for it.
-//! - Drawn through `gfx::P3Layer`, RN Skia's 8-bit Display P3 surface: the background #F7FFF7
-//!   shows as (246, 255, 247) on RN's screen, #F38D68 as (243, 141, 105), and the swatches'
-//!   edges blend in P3 (measured A/B: an sRGB canvas was 1 level off everywhere, 6 on edges).
+//! - A swatch scales in to 0.9 while it is held and springs back on release. A tap fails past
+//!   500 ms.
+//! - Drawn in 8-bit Display P3, so flat colours and swatch edges blend in P3.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -29,23 +13,22 @@ use skia::{Canvas, Color, Font, Paint, Renderer};
 
 use crate::gfx;
 
-/// SQUARE_SIZE.
+/// Swatch edge, pt.
 const SQUARE: f32 = 35.0;
 /// A swatch's touch radius (see `swatch_at`).
 const TOUCH_RADIUS: f32 = 30.0;
-/// APP_TEXT.
+/// The title.
 const APP_TEXT: &str = "THEME";
 const FONT_SIZE: f32 = 40.0;
-/// colors: background, text.
+/// Each theme's background and text colour.
 const COLORS: [(u32, u32); 6] = [(0xF7FFF7, 0x373737), (0x4ECDC4, 0x2C2C2C), (0x1A535C, 0xE8E8E8), (0xEE6C4D, 0xD4D2D2), (0xF38D68, 0x2C2C2C), (0x902D41, 0xDEDEDE)];
-/// SQUARE_OFFSETS.
+/// Swatch positions, in steps of 2 × SQUARE from the centre.
 const OFFSETS: [(f32, f32); 6] = [(-1.0, 0.0), (0.0, 0.0), (1.0, 0.0), (0.0, 1.0), (-1.0, 1.0), (1.0, 1.0)];
 static OUTFIT: &[u8] = include_bytes!("../fonts/outfit.ttf");
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
-    // react-native-skia-gesture's onTap is a plain Gesture.Tap(): RNGH's iOS default, 500 ms and
-    // no distance limit (the crate's default).
+    // A plain tap: it fails past 500 ms, with no distance limit.
     let tap = TapGesture::default();
     Box::new(Theme { font: Font::new(OUTFIT, FONT_SIZE), scales: std::array::from_fn(|_| Spring::at(1.0)), tap, ..Default::default() })
 }
@@ -58,7 +41,7 @@ struct Theme {
     selected: usize,
     previous: usize,
     radius: Spring,
-    /// The radius spring's completion callback is still to run (it was not interrupted).
+    /// The radius spring's completion is still pending.
     flooding: bool,
     scales: [Spring; 6],
     /// The finger the canvas's pan holds.
@@ -66,9 +49,9 @@ struct Theme {
     tap: TapGesture,
     canvas: Canvas,
     renderer: Renderer,
-    /// RN Skia's 8-bit Display P3 surface: flat colours and edges as RN shows them.
+    /// The 8-bit Display P3 surface.
     p3: gfx::P3Layer,
-    /// Haptics for the app to play (`message=buzz`): Haptics.selectionAsync on a select.
+    /// Haptics for the host to play: a selection on each theme change.
     posted: Vec<String>,
 }
 
@@ -79,10 +62,8 @@ impl Theme {
         let (ox, oy) = OFFSETS[i];
         (w / 2.0 - SQUARE / 2.0 + ox * SQUARE * 2.0, h / 2.0 - SQUARE / 2.0 + oy * SQUARE * 2.0)
     }
-    /// The swatch whose touch area holds (x, y) (the nearest, should two ever meet). RN tests the 35 pt
-    /// circle (`isPointInPath`); the owner's call (phone feedback mwhll97x): a TOUCH_RADIUS
-    /// circle round each centre (a 60 pt target, past the 44 pt minimum, within the 70 pt
-    /// spacing), the look unchanged.
+    /// The swatch whose touch area holds (x, y), the nearest if two overlap. The touch area is
+    /// wider than the drawn circle: a 60 pt target, past the 44 pt minimum.
     fn swatch_at(&self, x: f32, y: f32) -> Option<usize> {
         (0..6)
             .map(|i| {
@@ -101,7 +82,6 @@ impl Theme {
         self.radius.set(0.0);
         self.radius.to(h, 0.0, duration_config(-h, 0.0, 1000.0, 1.0, 4.0));
         self.flooding = true;
-        // scheduleOnRN(Haptics.selectionAsync).
         self.posted.push("haptic:selection".into());
         self.previous = self.selected;
         self.selected = index;
@@ -130,11 +110,11 @@ impl Surface for Theme {
         Some(format!("{{\"selected\":{},\"previous\":{},\"radius\":{:.1},\"scales\":[{}]}}", self.selected, self.previous, self.radius.value, scales.join(",")))
     }
 
-    /// RN's squares are Skia touch handlers with withSpring(0.9) / withSpring(1), not pressto: not `pressto::Pressable`.
+    /// Swatches are drawn touch targets with spring scales, not `pressto::Pressable`.
     fn input(&mut self, event: &InputEvent) {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
         let phase = gfx::phase(phase);
-        // The canvas's pan: onBegin on a swatch is its onStart.
+        // A swatch scales in while the finger is down.
         match phase {
             gesture_handler::Phase::Down if self.finger.is_none() => {
                 self.finger = Some(id);
@@ -146,7 +126,7 @@ impl Surface for Theme {
             gesture_handler::Phase::Up | gesture_handler::Phase::Cancel if self.finger == Some(id) => self.finger = None,
             _ => {}
         }
-        // The canvas's tap: onTouchesUp on a swatch is its onTap.
+        // A tap selects the swatch and springs it back.
         if let Event::Tap { x, y } = self.tap.event(id, phase, x, y, at_ms, true) {
             if let Some(i) = self.swatch_at(x, y) {
                 let s = &mut self.scales[i];
@@ -170,7 +150,7 @@ impl Surface for Theme {
         if self.radius.running {
             moving |= self.radius.step(frame.now_ms);
             if !self.radius.running && self.flooding {
-                // withSpring's callback, finished.
+                // The spring has ended: the flood is complete.
                 self.flooding = false;
                 self.previous = self.selected;
                 self.radius.set(0.0);
@@ -238,7 +218,6 @@ mod tests {
         assert_eq!(s.swatch_at(200.0 + 29.0, 400.0), Some(1));
         assert_eq!(s.swatch_at(200.0, 400.0 - 29.0), Some(1));
         assert_eq!(s.swatch_at(200.0, 400.0 - 31.0), None);
-        // Between two (70 apart): the gap's middle 10 pt takes neither, each side its own.
         assert_eq!(s.swatch_at(200.0 - 29.0, 400.0), Some(1));
         assert_eq!(s.swatch_at(200.0 - 35.0, 400.0), None);
         assert_eq!(s.swatch_at(200.0 - 41.0, 400.0), Some(0));
@@ -255,10 +234,8 @@ mod tests {
         let (rest, animating) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         rest.save("theme-canvas-rest");
         assert!(!animating);
-        // #F7FFF7 (246, 255, 247 through P3, as RN shows it) everywhere but the text and the swatches; THEME in #373737 above the centre.
         assert_eq!(&rest.at(10, 10)[..3], &[246, 255, 247]);
         assert!(rest.count(|p| p[..3] == [0x37, 0x37, 0x37]) > 300);
-        // Swatch 2 (offset (1, 0)) centred at (280, 456): #1A535C.
         assert_eq!(&rest.at(280, 456)[..3], &[0x1A, 0x53, 0x5C]);
 
         let finger = |s: &mut Box<dyn Surface>, phase, at_ms| {
@@ -275,7 +252,6 @@ mod tests {
         assert!(s.agent("{}").unwrap().starts_with("{\"selected\":2,\"previous\":0"));
         assert_eq!(s.messages(), ["haptic:selection"]);
         fixture::render(&gpu, s.as_mut(), &frame(166.0)).unwrap();
-        // Half way: a circle of #1A535C about swatch 2, the rest still #F7FFF7.
         let (mid, moving) = fixture::render(&gpu, s.as_mut(), &frame(400.0)).unwrap();
         mid.save("theme-canvas-flooding");
         assert!(moving);
@@ -291,7 +267,6 @@ mod tests {
         done.save("theme-canvas-done");
         assert_eq!(s.agent("{}").unwrap(), "{\"selected\":2,\"previous\":2,\"radius\":0.0,\"scales\":[1.000,1.000,1.000,1.000,1.000,1.000]}");
         assert_eq!(&done.at(10, 10)[..3], &[0x1A, 0x53, 0x5C]);
-        // THEME in #E8E8E8 now; swatch 2 ringed in it, swatch 0 no longer.
         assert!(done.count(|p| p[..3] == [0xE8, 0xE8, 0xE8]) > 300);
         // A tap on the selected swatch does nothing but its press.
         finger(&mut s, PointerPhase::Down, 5000.0);

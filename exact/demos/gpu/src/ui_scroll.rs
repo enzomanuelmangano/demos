@@ -1,35 +1,12 @@
-//! A horizontal UIScrollView, as the demos' Rust surfaces model it (clock_time_picker's and
-//! selectable_grid_list's model, shared): the drag is 1:1 inside the content and rubber-banded
-//! past its ends (UIKit's `(1 − 1 / (x · 0.55 / d + 1)) · d`, d the port's width); at release
-//! UIKit projects the resting offset ((v − 0.00988) / −ln(rate) past the lift, the rate per ms),
-//! the app may move that target (RCTEnhancedScrollView's snapping), and the scroll then
-//! decelerates onto it: e^(−λt), λ = −ln(rate), from the start velocity that lands on the target
-//! as the velocity falls to 0.00988 pt/ms, where it stops (a lift with no velocity whose target
-//! the app moved glides at λ = 0.01464 instead). Measured with exact/demos/tools/scroll-probe
-//! (free flings at 281 and 698 pt/s, RN's snapToInterval rule after flings at 264, 476 and 705
-//! pt/s and after three still lifts): every frame of the eight within 1.1 pt. Released past an end, or with velocity at an
-//! end of a port with no room to scroll (`alwaysBounceHorizontal`), it bounces back, critically
-//! damped (`bounce_velocity`). A finger down catches a moving scroll where it is.
+//! A horizontal scroll view that behaves like UIKit's UIScrollView.
 //!
-//! The bounce, measured on the iOS 27.1 simulator with a bare UIScrollView logging contentOffset
-//! per display frame (exact/demos/tools/scroll-probe, a port-wide scroll with
-//! alwaysBounceHorizontal; releases at rest from 54 and 100 pt of overshoot, flings at 525 and
-//! 788 pt/s released at 69 and 96 pt): x(t) = (x0 + (v0 + w·x0)·t)·e^(−w·t) from the lift, w =
-//! 0.01088 per ms, its start velocity v0 toward the edge 0.00797 × the overshoot plus 1.656 × the
-//! finger's velocity × the band's slope at that overshoot (the content's own velocity), away
-//! from the edge. All four curves within 0.73 pt, every frame. (The earlier model, critically
-//! damped from rest at 0.0125, was 6 pt behind UIKit 33 ms after a rest release.)
-//!
-//! A drag that starts past an end (an offset set out of range, as RN's `contentOffset` prop
-//! leaves it at mount) goes on from where the content is: its raw travel is the band's inverse
-//! of that overshoot.
-//!
-//! `bounces: false` (RN's `bounces={false}`) holds the drag inside [0, max], with no band and no
-//! bounce. `scroll_to` is UIKit's `setContentOffset(_:animated: true)` (RN's animated
-//! `scrollTo` / `scrollToIndex`), measured on the iOS 27 simulator (a probe logging
-//! `contentOffset` per display frame for 100, 420, 932, −300 and 2000 pt): 300 ms whatever the
-//! distance, on a sine ease-in-out (1 − cos πu) / 2, its first frame still at the start.
-//! `take_drag_end` is RN's `onScrollEndDrag`: once, at the lift of a finger that dragged.
+//! - Dragging is 1:1 inside the content and rubber-banded past its ends.
+//! - On release the scroll decelerates onto the resting offset UIKit projects, or onto the snap
+//!   point the surface asks for. A release past an end bounces back, critically damped. A finger
+//!   down catches a moving scroll where it is.
+//! - `bounces: false` holds the drag inside [0, max], with no band and no bounce.
+//! - `scroll_to` is an animated `setContentOffset`: 300 ms on a sine ease-in-out.
+//! - `take_drag_end` reports the lift of a finger that dragged, once.
 
 use gesture_handler::{Event, PanGesture, Phase};
 
@@ -39,41 +16,27 @@ pub const NORMAL: f64 = 0.998;
 pub const FAST: f64 = 0.99;
 /// The rubber band's constant.
 const RUBBER: f64 = 0.55;
-/// The bounce back to an end: critically damped at this rate (per ms), measured.
+/// The bounce back to an end: its rate, per ms.
 const BOUNCE_RATE: f64 = 0.01088;
-/// The bounce's start velocity toward the edge, per pt of overshoot (per ms), measured.
+/// The bounce's pull toward the edge, per pt of overshoot (per ms).
 const BOUNCE_PULL: f64 = 0.00797;
-/// The velocity a deceleration stops at, pt/ms (measured: UIKit's projected rest is
-/// (v − this) / −ln(rate) past the lift, and a changed target is reached with this velocity).
+/// The speed, pt/ms, at which a deceleration stops. Projected rests use it too.
 const STOP_VELOCITY: f64 = 0.00988;
-/// −ln of the per-ms rate a snap glides at when the lift had no velocity and the deceleration
-/// rate is normal (measured; at fast, and RN's 0.8 that UIKit clamps to fast, it glides at the
-/// deceleration rate itself, also measured).
+/// −ln of the rate a snap glides at when the lift had no velocity and the rate is normal.
 const SNAP_LAMBDA: f64 = 0.014644;
 /// One display frame, ms.
 const FRAME_MS: f64 = 1000.0 / 60.0;
-/// How much of the content's velocity at the lift the bounce keeps, measured.
+/// How much of the content's velocity at the lift the bounce keeps.
 const BOUNCE_CARRY: f64 = 1.656;
 
-/// The finger's velocity UIScrollView decelerates with at the lift: the last moves' velocity,
-/// however long the finger then rested (UIKit hears no `touchesMoved` from a finger at rest,
-/// and the pan's estimate keeps no zero-motion samples). Measured on the iOS 27.1 simulator
-/// (2026-11-14) with argent drags then a zero-motion hold (no event, or the same point repeated:
-/// neither reaches UIKit as a move): tools/scroll-probe flung after 0.15-3 s rests
-/// (willEndDragging 0.46 pt/ms after 1 s, 1.21 pt/ms after 1 s and 150 ms for a faster drag), and
-/// RN's FlatList (twitter-tab-bar's feed, scrollEventThrottle 16) flung 260, 294 and 280 pt after
-/// 1 s, 3 s and 0.2 s rests, as far as a lift with no rest (310 pt): RN adds nothing to UIKit's
-/// rule. (The earlier "no fling after a 100 ms rest" came from a hold whose input still moved.)
+/// The velocity UIKit decelerates with at the lift: the last move's, however long the finger
+/// then rested.
 pub fn release_velocity(finger: f32) -> f32 {
     finger
 }
 
-/// UIScrollView's deceleration velocity for a finger released at `finger` pt/s (the crate's
-/// 100 ms estimate), as measured on the RN app (selectable-grid-list's FlatList, iPhone Air
-/// sim, steady drags whose moves reach the app every ~17.6 ms, lifted 34–48 ms after the
-/// last; Exact's estimate logged from the same input): a finger at 313 pt/s does not fling
-/// (nor slower ones), at 360 pt/s it flings 175 pt (Exact 180), at 672 pt/s 340 pt (Exact
-/// 335), at 0.998 per ms. Below the threshold the scroll stops where the finger left it.
+/// The deceleration for a finger released at `finger` pt/s. Below about 335 pt/s there is no
+/// fling: the scroll stops where the finger left it.
 pub fn uiscroll_release(finger: f32) -> f32 {
     let v = release_velocity(finger);
     if v.abs() < 335.0 { 0.0 } else { v }
@@ -84,7 +47,7 @@ pub fn uiscroll_release(finger: f32) -> f32 {
 pub enum Snap {
     /// Where UIKit projects it.
     Free,
-    /// RN's `snapToInterval` (snapToAlignment start): the interval index at or past the target
+    /// The `snapToInterval` rule (snapToAlignment start): the interval index at or past the target
     /// in the velocity's direction (velocity > 0: ceil; < 0: floor; 0: round).
     Interval(f64),
     /// `snapToInterval` with `disableIntervalMomentum`: RCTScrollView takes the fractional
@@ -95,16 +58,13 @@ pub enum Snap {
     Page(f64),
 }
 
-/// UIKit's paging spring for pages `width` wide: (pull per ms², friction per ms). Measured on
-/// UIKit for Mac (exact/parity-tools/github-onboarding/paging-probe.m, the scroll view's
-/// `_pagingSpringPull` / `_pagingFriction`): both linear in the page width over 300…420 pt
-/// (300: 0.00030369, 0.96980; 393: 0.00028652, 0.97073; 420: 0.00028153, 0.97099).
+/// UIKit's paging spring for pages `width` wide: (pull per ms², friction per ms), both linear in
+/// the width.
 pub fn page_spring(width: f64) -> (f64, f64) {
     (0.000_303_693_18 - (width - 300.0) * 1.846_591e-7, 0.969_801_136 + (width - 300.0) * 9.943_182e-6)
 }
 
 /// A paging release's flick threshold, pt/ms: faster lifts turn the page in their direction.
-/// Not measured (the probe's scripted pan carries no velocity); UIKit's rule as commonly observed.
 pub const PAGE_FLICK: f64 = 0.3;
 
 /// UIKit's `setContentOffset(_:animated: true)`: its duration, ms.
@@ -137,7 +97,7 @@ enum State {
 /// One horizontal scroll view.
 #[derive(Clone, Debug)]
 pub struct UiScroll {
-    /// contentOffset.x.
+    /// The offset (contentOffset.x).
     pub offset: f64,
     /// The largest offset in range (content width − port width, ≥ 0).
     pub max: f64,
@@ -147,7 +107,7 @@ pub struct UiScroll {
     pub rate: f64,
     /// Where a release rests.
     pub snap: Snap,
-    /// RN's `bounces` (default true): false holds the content inside its ends.
+    /// `bounces` (default true): false holds the content inside its ends.
     pub bounces: bool,
     state: State,
     /// The pan has crossed its hysteresis once; UIKit begins it on the next move.
@@ -217,9 +177,8 @@ impl UiScroll {
         }
         let was_dragging = self.dragging();
         match self.pan.event(id, phase, x, y, at_ms, inside) {
-            // UIScrollView's pan begins on the second move past the 10 pt hysteresis, and the
-            // content follows from that move (measured with the scroll probe: 7 of 9 argent drags,
-            // 2 to 21 pt per move; the other two began on the first).
+            // The pan begins on the second move past UIKit's 10 pt hysteresis, and the content
+            // follows from that move.
             Event::Start(_) => self.armed = true,
             Event::Update(p) if self.armed => {
                 self.armed = false;
@@ -235,7 +194,7 @@ impl UiScroll {
             Event::End(p) => {
                 self.release(uiscroll_release(p.velocity_x), release_velocity(p.velocity_x));
             }
-            // A touch that never dragged: UIKit calls no scrollViewWillEndDragging, so RN's snap
+            // A touch that never dragged: UIKit calls no scrollViewWillEndDragging, so the snap
             // never runs and a caught scroll rests where it is; only one past an end bounces back.
             Event::Fail => {
                 if self.bounces && (self.offset < 0.0 || self.offset > self.max) {
@@ -251,8 +210,8 @@ impl UiScroll {
         }
     }
 
-    /// Whether a finger that dragged has lifted since the last call (RN's `onScrollEndDrag`,
-    /// after the release has picked where the scroll rests).
+    /// Whether a finger that dragged has lifted since the last call, after the release has picked
+    /// where the scroll rests.
     pub fn take_drag_end(&mut self) -> bool {
         std::mem::take(&mut self.drag_ended)
     }
@@ -262,7 +221,7 @@ impl UiScroll {
     pub fn scroll_to(&mut self, to: f64) {
         self.state = State::Animate { from: self.offset, to, at: f64::NAN };
     }
-    /// `setContentOffset(to, animated: false)` (RN's `scrollTo(…, false)`): there at once, any
+    /// `setContentOffset(to, animated: false)`: there at once, any
     /// deceleration, bounce or animation stopped.
     pub fn set_offset(&mut self, to: f64) {
         self.offset = to;
@@ -271,9 +230,8 @@ impl UiScroll {
         }
     }
 
-    /// The bounce's start velocity (offset per ms) from `offset` past `edge`, for a finger lifted
-    /// at `finger` pt/s (the content moves against it): UIKit's pull toward the edge plus what it
-    /// keeps of the content's banded velocity (see the module's notes).
+    /// The bounce's start velocity (offset per ms) past `edge`, for a finger lifted at `finger`
+    /// pt/s: the pull toward the edge plus the content's banded velocity.
     fn bounce_velocity(&self, offset: f64, edge: f64, finger: f64) -> f64 {
         let x = offset - edge;
         let content = -finger / 1000.0;
@@ -304,15 +262,11 @@ impl UiScroll {
             self.state = State::Page { to, x: offset, v, at: f64::NAN, t: 0.0 };
             return;
         }
-        // UIKit clamps decelerationRate to fast at least (RN's 0.8 runs at 0.99, measured).
+        // UIKit never decelerates slower than fast: a rate of 0.8 runs at 0.99.
         let lambda = -self.rate.max(FAST).ln();
         let projected = offset + v.signum() * (v.abs() - STOP_VELOCITY).max(0.0) / lambda;
-        // A free fling projected past an end does not stop at it: UIKit decelerates freely
-        // (x0 + v / λ · (1 − e^(−λt)), no stop velocity) until the content crosses the end, then
-        // bounces from there with the velocity it crossed at (the bounce below, from 0 overshoot).
-        // Measured with the scroll probe (a fling at 1.05 pt/ms released 150.7 pt from the start:
-        // over to −25 and back in 0.78 s, every frame within 0.5 pt); willEndDragging's target
-        // still says the end.
+        // A free fling projected past an end decelerates freely until it crosses the end, then
+        // bounces from there with the velocity it crossed at. willEndDragging still reports the end.
         if self.snap == Snap::Free && self.bounces && (projected < 0.0 || projected > max) && v != 0.0 {
             let edge = if projected < 0.0 { 0.0 } else { max };
             self.state = State::Fling { from: offset, v, at: f64::NAN, lambda, edge };
@@ -387,8 +341,7 @@ impl UiScroll {
                 true
             }
             State::Page { to, mut x, mut v, at, mut t } => {
-                // The first frame after the lift shows (almost) the lift's offset: the probe's frames
-                // fit the spring begun 1.33 ms before it (within 1.4 pt, 0.5 pt Mac rounding).
+                // The first frame shows about the lift's offset: the spring starts 1.33 ms before it.
                 let at = if at.is_nan() { now - 1.333 } else { at };
                 let (pull, friction) = page_spring(if let Snap::Page(w) = self.snap { w } else { self.port });
                 while t + 1.0 <= now - at {
@@ -444,8 +397,7 @@ mod tests {
 
     #[test]
     fn a_fling_past_the_start_overshoots_and_bounces_back() {
-        // scroll-probe: willEndDragging v −1.0534 pt/ms at 150.667 (content 3 ports, normal
-        // rate); the frames after the lift, 16.67 ms apart from the first.
+        // Frame by frame after a fling past the start, as UIKit's curve.
         let mut s = UiScroll::new(150.6667, 840.0, 420.0, NORMAL, Snap::Free);
         s.release(1053.4, 1053.4);
         let seen = [116.6667, 100.6667, 85.0, 70.0, 55.3333, 41.3333, 27.6667, 14.3333, 1.6667, -9.3333, -16.6667, -21.3333, -24.0, -25.0];
@@ -462,8 +414,7 @@ mod tests {
 
     #[test]
     fn paging_springs_back_as_uikit() {
-        // paging-probe: 420 pt pages, released at rest 99 pt in: the frames after the lift (the
-        // first shows the lift's offset), on UIKit for Mac at 120 Hz.
+        // Frame by frame after a rest release between pages, as UIKit's paging spring.
         let mut s = UiScroll::new(99.0, 1260.0, 420.0, NORMAL, Snap::Page(420.0));
         s.release(0.0, 0.0);
         let seen = [(8.333, 99.0), (50.0, 81.0), (83.333, 60.0), (150.0, 26.0), (250.0, 4.5), (350.0, 0.0)];
@@ -486,8 +437,7 @@ mod tests {
 
     #[test]
     fn interval_current_moves_one_interval_at_most() {
-        // A hard fling from 30 at 3000 pt/s, NORMAL (× 499): projected 30 + 1497 = 1527, so
-        // Interval rests on ceil(5.09) = page 6; IntervalCurrent on ceil(0.1) = page 1.
+        // Interval snaps from the projected rest; IntervalCurrent moves one interval at most.
         let mut a = UiScroll::new(30.0, 7.0 * 300.0, 420.0, NORMAL, Snap::Interval(300.0));
         a.release(-3000.0, -3000.0);
         settle(&mut a, 0.0);
@@ -496,7 +446,6 @@ mod tests {
         b.release(-3000.0, -3000.0);
         settle(&mut b, 0.0);
         assert_eq!(b.offset, 300.0);
-        // No velocity: the nearest, from where it is.
         let mut c = UiScroll::new(160.0, 7.0 * 300.0, 420.0, FAST, Snap::IntervalCurrent(300.0));
         c.release(0.0, 0.0);
         settle(&mut c, 0.0);
@@ -534,7 +483,6 @@ mod tests {
         s.scroll_to(2000.0);
         assert!(s.step(100.0));
         assert_eq!(s.offset, 0.0, "the first frame shows the start");
-        // Measured: 0.25 a third in, 0.5 halfway (2000 pt, frames of 16.67 ms).
         s.step(200.0);
         assert!((s.offset - 500.0).abs() < 1e-6, "{}", s.offset);
         s.step(250.0);
@@ -548,7 +496,7 @@ mod tests {
     fn interval_snaps_in_the_flicks_direction() {
         let mut s = UiScroll::new(0.0, 3.0 * 420.0, 420.0, FAST, Snap::Interval(420.0));
         s.offset = 30.0;
-        // A slow flick toward the next page: projected 30 + 0.3 · 99 = 59.7 → ceil → 420.
+        // A slow flick toward the next page snaps to it.
         s.release(-300.0, -300.0);
         let mut ms = 0.0;
         while s.step(ms) {
@@ -559,8 +507,7 @@ mod tests {
 
     #[test]
     fn the_bounce_is_uikits() {
-        // scroll-probe, iPhone Air sim, iOS 27.1: contentOffset per display frame after the lift,
-        // released at rest 100.33 pt past the left end, and flung at 525 pt/s from 69.33 past it.
+        // Frame by frame after the lift: a rest release and a fling, both past the left end.
         let rest = [-87.67, -76.33, -66.67, -58.0, -50.33, -43.33, -37.67, -32.67, -28.0, -24.33, -21.0, -18.0];
         let fling = [-65.0, -60.33, -55.33, -50.33, -45.33, -40.67, -36.33, -32.33, -28.67, -25.33, -22.33, -19.67];
         for (from, finger, frames) in [(-100.33, 0.0, rest), (-69.33, 525.0, fling)] {
@@ -575,8 +522,7 @@ mod tests {
 
     #[test]
     fn the_deceleration_is_uikits() {
-        // scroll-probe: a free fling at 698.4 pt/s from 306.33 (UIKit's target 650.33), every 6th
-        // frame after the lift; RN's snap from a still lift at 53.67 onto 105 (frames 1, 7, 13).
+        // Frame by frame of a free fling and of a snap, as UIKit's.
         let mut s = UiScroll::new(306.33, 2000.0, 420.0, NORMAL, Snap::Free);
         s.release(-698.4, -698.4);
         s.step(0.0);
@@ -597,9 +543,7 @@ mod tests {
 
     #[test]
     fn rn_s_rate_0_8_is_fast() {
-        // scroll-probe, decelerationRate 0.8 (UIKit reads back 0.99), snapping every 84: a still
-        // lift at 53.67 glides onto 84 at the fast rate (frames 1, 5, 9); a fling at 291.2 pt/s from
-        // 114.33 projects 28 pt (UIKit's target 142.33), then snaps on to 168.
+        // A rate of 0.8 decelerates at fast, and a snap glides at the fast rate.
         let mut s = UiScroll::new(53.67, 1000.0, 420.0, 0.8, Snap::Interval(84.0));
         s.release(0.0, 0.0);
         s.step(0.0);
@@ -615,9 +559,8 @@ mod tests {
 
     #[test]
     fn a_flick_drags_from_the_second_move_past_the_hysteresis() {
-        // scroll-probe, decelerationRate 0.8, snapping every 84: touches at their UITouch times.
-        // UIKit began on the move to 260.33, held 67 at the lift (the lift's own point does not
-        // move the content), reported 952.6 pt/s and rested on 168.
+        // The drag begins on the second move past the hysteresis, and the lift's own point does
+        // not move the content.
         let mut s = UiScroll::new(0.0, 2000.0, 420.0, 0.8, Snap::Interval(84.0));
         let moves = [(18.2, 277.33), (36.9, 260.33), (55.5, 243.67), (73.2, 226.67), (90.2, 210.0), (115.1, 193.33)];
         s.input(1, Phase::Down, 294.0, 10.0, 0.0, true);
@@ -632,8 +575,7 @@ mod tests {
 
     #[test]
     fn a_lift_after_a_still_rest_flings() {
-        // scroll-probe and RN's FlatList: a drag of 210 pt in 400 ms, held still 1 s (the same
-        // point repeated), then lifted, decelerates as a lift with no rest does.
+        // A lift after a still rest decelerates as a lift with no rest does.
         let fling = |rest: f64| {
             let mut s = UiScroll::new(0.0, 10000.0, 420.0, 0.998, Snap::Free);
             s.input(1, Phase::Down, 336.0, 10.0, 0.0, true);

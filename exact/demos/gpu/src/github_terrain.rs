@@ -1,31 +1,11 @@
-//! GitHub Terrain (src/animations/github-terrain: index.tsx, constants.ts, contribution-data.ts,
-//! utils/{height-map, scene-data, spring}.ts, hooks/use-webgpu-renderer.ts, shaders/*.ts): nine
-//! years of GitHub contributions as 3339 blocks plus nine year cards, drawn with
-//! react-native-webgpu, flat as the contribution chart at rest; a tap anywhere springs it into an
-//! isometric mountain range (and back), the Switch springs between the real data and a
-//! synthetic range.
+//! Nine years of GitHub contributions as blocks, drawn flat like the contribution chart. A tap
+//! springs the chart into an isometric mountain range, and back. A switch swaps between the real
+//! data and a synthetic range.
 //!
-//! This surface is the full-screen Pressable and its Canvas (the Switch is the Contract's; its
-//! value is the one input). The WGSL is RN's strings with their constants interpolated by the RN
-//! code itself, and the block buffers are RN's own buildSceneData output for both data sets, bit
-//! for bit (exact/parity-tools/github-terrain/build.ts → gpu/shaders/github_terrain.wgsl,
-//! gpu/images/github-terrain/scene.bin): triangle list, cull none, depth24plus (less, written),
-//! cleared to SURFACE_RGB, 36 vertices × NUM_BLOCKS instances.
-//!
-//! The canvas: `canvas.width = clientWidth × PixelRatio`, `canvas.height = clientHeight ×
-//! PixelRatio` (truncated by the JSI), bgra8unorm, opaque, no colorspace (iOS shows it as sRGB:
-//! the shader's output is sRGB as written). The scene renders into an 8-bit layer of that raster
-//! (the film grain hashes the drawable's own fragCoord), composed over the canvas's device pixels
-//! by cherry-blossom-qrcode's compose (Core Animation's stretch, a texel per pixel when equal).
-//!
-//! Motion audit (RN → here):
-//!
-//! | value | RN | Exact |
-//! |---|---|---|
-//! | progress (flat 1 ↔ 3D 0) | per rAF springStep: critically damped, ω = −ln(0.01) / 0.35 s, dt = min(Δ Date.now() / 1000, 0.05); snapped at |x − t| < 0.001 and |v| < 0.01; starts at 1 | the same, per host frame (after a rest, the first dt one display period, as requestRender restamps lastFrameTime) |
-//! | dataProgress (synthetic 0 ↔ real 1) | the same spring; starts at 1 | the same |
-//! | colour level | select(A, B, dataProgress > 0.5); colours mixed by dataProgress | WGSL verbatim |
-//! | press | RN Pressable (Pressability): onPress on a release inside the canvas grown by the press-rect offsets (20, 20, 20 top, 30 bottom); a long press still presses (no onLongPress); a cancel (the screen's close pan) nothing; one responder | the same; `haptic:impact-light` (Haptics.impactAsync Light) at the press |
+//! - The scene is drawn with WebGPU into an 8-bit layer, composed over the canvas's device pixels.
+//! - The flat/3D and data progress each follow a critically damped spring of 0.35 s.
+//! - A release inside the canvas, extended by 20 pt on the sides and top and 30 pt at the bottom,
+//!   presses it, with a light impact. A cancelled touch presses nothing.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, PointerPhase, Surface, SurfaceError, Value};
@@ -40,24 +20,24 @@ use shaders::github_terrain::{
 /// GRID_COLS × GRID_ROWS + NUM_YEARS.
 const NUM_BLOCKS: usize = 53 * 63 + 9;
 const GRID_CELLS: usize = 53 * 63;
-/// SURFACE_RGB.
+/// Background colour.
 const SURFACE: wgpu::Color = wgpu::Color {
     r: 0.976,
     g: 0.965,
     b: 0.945,
     a: 1.0,
 };
-/// SPRING_DURATION; SPRING_OMEGA = −ln(0.01) / SPRING_DURATION.
+/// Settling time of the springs, s.
 const SPRING_DURATION: f64 = 0.35;
-/// Pressability's DEFAULT_PRESS_RECT_OFFSETS: left, right, top, bottom.
+/// How far the press area extends past the canvas: left, right, top, bottom, pt.
 const PRESS_RECT: (f32, f32, f32, f32) = (20.0, 20.0, 20.0, 30.0);
-/// buildSceneData for both sets, as the renderer uploads them (build.ts).
+/// Scene buffers for both data sets, as the renderer uploads them.
 static SCENE: &[u8] = include_bytes!("../images/github-terrain/scene.bin");
 
 const LAYER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
 
-/// The demo's surface. Input: the Switch's value (useRealData).
+/// The demo's surface. Input: whether the real data is shown.
 pub fn surface() -> Box<dyn Surface> {
     Box::new(GithubTerrain {
         is_flat: true,
@@ -112,7 +92,7 @@ struct Layers {
     bind: wgpu::BindGroup,
 }
 
-/// springStep: x(t) = (x₀ + (v₀ + ω x₀) t) e^(−ω t) + target, in RN's f64.
+/// springStep: x(t) = (x₀ + (v₀ + ω x₀) t) e^(−ω t) + target, in f64.
 pub(crate) fn spring_step(current: f64, velocity: f64, target: f64, dt: f64) -> (f64, f64) {
     let omega = -(0.01f64.ln()) / SPRING_DURATION;
     let displacement = current - target;
@@ -129,7 +109,7 @@ fn entry<'a>(b: &wgpu::BindGroupLayoutEntry, buffer: &'a wgpu::Buffer) -> wgpu::
     }
 }
 
-/// One spring's frame, snapped as isSpringSettled (0.001, 0.01).
+/// One spring frame, snapped to rest once it is close enough.
 fn advance(s: &mut (f64, f64), target: f64, dt: f64) {
     *s = spring_step(s.0, s.1, target, dt);
     if (s.0 - target).abs() < 0.001 && s.1.abs() < 0.01 {
@@ -191,7 +171,7 @@ impl Surface for GithubTerrain {
                 let (l, r, t, b) = PRESS_RECT;
                 let (w, h) = self.size;
                 if x > -l && x < w + r && y > -t && y < h + b {
-                    // handlePress: impactAsync(Light), isFlat = !isFlat, requestRender().
+                    // A press flips flat and 3D, with a light impact.
                     self.posted.push("haptic:impact-light".into());
                     self.is_flat = !self.is_flat;
                 }
@@ -219,7 +199,7 @@ impl Surface for GithubTerrain {
             self.gpu = Some(build(device, format, frame.shader_generation));
             self.drawn = None;
         }
-        // canvas.width = clientWidth × PixelRatio, truncated.
+        // Canvas size in device pixels, truncated.
         let raster = (
             (frame.width * frame.scale) as u32,
             (frame.height * frame.scale) as u32,
@@ -232,7 +212,7 @@ impl Surface for GithubTerrain {
             }
         }
 
-        // The render loop: dt clamped to 50 ms; after a rest, one display period.
+        // dt is clamped to 50 ms.
         if !self.settled() || self.drawn.is_none() {
             let period = if frame.period_ms > 0.0 {
                 frame.period_ms
@@ -409,7 +389,6 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32) ->
     debug_assert_eq!(at, SCENE.len());
     let uniforms = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("github terrain uniforms"),
-        // UNIFORM_BUFFER_SIZE.
         size: 256,
         usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         mapped_at_creation: false,

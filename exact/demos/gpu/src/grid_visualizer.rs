@@ -1,25 +1,11 @@
-//! Grid Visualizer (src/animations/grid-visualizer: index.tsx, grid-visualizer.tsx): a 35 × 50
-//! grid of tiny white squares on black; the squares inside a number's glyphs spring outward and
-//! grow, the others fall back; a tap clears the number and, 700 ms later, shows a random one.
+//! A 35 × 50 grid of small white squares on black. The squares inside a random number's glyphs
+//! spring outward and grow, the others fall back. A tap clears the number; 700 ms later a new
+//! random one shows.
 //!
-//! - Layout (index.tsx): black, `paddingTop: 10`, the 300 × 340 canvas centred under it; behind
-//!   it an absolute full-window canvas (centred the same way: 5 pt down) of a RadialGradient from
-//!   rgba(255,255,255,0.1) to transparent, radius W, at the window's centre (its BlurMask on a
-//!   Fill draws nothing more).
-//! - The squares (grid-visualizer.tsx): an `<Atlas>` of 2.5 pt white sprites, each placed by
-//!   RSXform(scale, 0, tx, ty) between its shrunk spot ((col × 6.571 + (6.571 + 70) / 2, row ×
-//!   5.4 + (5.4 + 70) / 2)) and its scaled one (col × 300 / 35 + half, row × 340 / 50 + half) by
-//!   its progress, scale clamp(0.6 + progress × 0.25, 0.6, 0.85).
-//! - The active squares: the centre of each sprite inside `Skia.Path.MakeFromText(text, 150 −
-//!   width / 2, 170 + height / 2, SF-Pro-Rounded-Heavy 120)` (measureText's bounds). The 100
-//!   possible numbers are computed offline (`generate_masks`, from the full font) into masks.bin.
-//! - The springs, as the demo's own spring sets run them: on each change of the active squares,
-//!   the delay springs advance to now (whole, no 64 ms cap), then each delay spring aims at 1
-//!   (active) or Math.random() − 0.5 (duration 2000, ratio 1, mass 4; its stiffness solved
-//!   later, 100 a frame, unless the rest cache already has it), and each progress spring
-//!   (k 100, c 10, m 2) at its delay's current value (active) or 0. Only the progress springs
-//!   step each frame (64 ms cap); the delays move only when the next change advances them.
-//! - Math.random is the surface's own generator, seeded by the demo's seed.
+//! - The squares are sprites placed between a shrunk and a scaled grid spot by their progress.
+//! - The delay springs advance only when the active squares change, and their stiffness is solved
+//!   for the duration. The progress springs step every frame, with a 64 ms cap.
+//! - Random numbers come from the surface's own seeded generator, so runs repeat.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -37,7 +23,7 @@ const PAD: f64 = 70.0;
 const SQUARE: f64 = 2.5;
 const XS: f64 = (W - PAD) / HS as f64;
 const YS: f64 = (H - PAD) / VS as f64;
-/// setTimeout(…, 700).
+/// Delay before a random number shows after a tap, ms.
 const NEXT_MS: f64 = 700.0;
 
 /// One bit per square for each number 0…99 (row-major, LSB first), from generate_masks.
@@ -81,7 +67,7 @@ fn energy(x: f64, v: f64, k: f64, m: f64) -> f64 {
     0.5 * k * x * x + 0.5 * m * v * v
 }
 
-/// calculateStiffnessToMatchDuration (its bisection).
+/// The stiffness that settles a spring within its duration, found by bisection.
 fn solve_stiffness(x0: f64, v0: f64, c: &Config) -> f64 {
     let settling = c.duration * 1.5 / 1000.0;
     let f = |k: f64| {
@@ -110,7 +96,7 @@ fn solve_stiffness(x0: f64, v0: f64, c: &Config) -> f64 {
     k
 }
 
-/// A SpringSet.
+/// One spring set, struct-of-arrays: one entry per square.
 struct Springs {
     current: Vec<f64>,
     velocity: Vec<f64>,
@@ -147,7 +133,7 @@ impl Springs {
         }
     }
 
-    /// stepSpring: whether it came to rest.
+    /// Advances spring `i`; true once it rests.
     fn step(&mut self, i: usize, now: f64, c: &Config, max_dt: f64) -> bool {
         let to = self.to[i];
         let dt = (now - self.last[i]).max(0.0).min(max_dt);
@@ -189,7 +175,7 @@ impl Springs {
     }
 }
 
-/// The demo's springs and the rest stiffness cache they share (restStiffnessCache).
+/// Both spring sets and the rest stiffness cache they share.
 struct Sim {
     delay: Springs,
     progress: Springs,
@@ -217,7 +203,7 @@ impl Sim {
         self.cache.is_some_and(|(d, _)| d == c.duration)
     }
 
-    /// setSpring.
+    /// Retargets spring `which` (0 delay, 1 progress) to `to`.
     fn set(&mut self, which: u8, i: usize, to: f64, now: f64, c: &Config, defer: bool) {
         let cached = self.cached(c);
         let s = if which == 0 {
@@ -294,7 +280,7 @@ impl Sim {
         s.step(i, now, c, 64.0);
     }
 
-    /// resolveSpring for a delay spring.
+    /// Fixes a deferred delay spring's stiffness and damping once its start is due.
     fn resolve(&mut self, i: usize) {
         let (x0, v) = (self.delay.start_value[i], self.delay.velocity[i]);
         let k = self.stiffness(x0, v, &DELAY);
@@ -362,7 +348,7 @@ impl Sim {
     }
 }
 
-/// The demo's surface: inputs seed.
+/// The surface. Its one input is the random seed.
 pub fn surface() -> Box<dyn Surface> {
     Box::new(Grid {
         random: gfx::Random::new(1.0),
@@ -433,7 +419,7 @@ impl Surface for Grid {
         else {
             return;
         };
-        // onTouchesUp of the 300 × 340 view the Tap's GestureDetector wraps.
+        // A tap clears the number on release; only a press inside the grid starts one.
         let (w, h, scale) = self.window;
         let (ox, oy) = Grid::origin(w, h, scale);
         let inside = (ox..=ox + W).contains(&(x as f64)) && (oy..=oy + H).contains(&(y as f64));
@@ -467,7 +453,7 @@ impl Surface for Grid {
                 cache: None,
                 looping: false,
             };
-            // The first reaction runs before the font loads (no text), then the font's.
+            // Start from no squares, then react to the first number in the same frame.
             sim.react(&vec![false; N], now, &mut self.random);
             self.sim = Some(sim);
         }
@@ -556,7 +542,7 @@ mod tests {
     use super::*;
     use exact_gpu::{fixture, PointerKind, PointerPhase};
 
-    /// Writes masks.bin from the RN demo's font (run with `--ignored` after changing the rule).
+    /// Regenerates masks.bin from the font (run with `--ignored` after changing the rule).
     #[test]
     #[ignore]
     fn generate_masks() {

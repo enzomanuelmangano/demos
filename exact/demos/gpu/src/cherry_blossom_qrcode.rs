@@ -1,67 +1,23 @@
-//! Cherry Blossom QR Code (src/animations/cherry-blossom-qrcode: cherry-blossom-qr-code.tsx,
-//! constants.ts, types.ts, haptics.ts, utils/{block-generator, creeper-model, qr-matrix,
-//! approach}.ts, hooks/use-web-gpu.ts, shaders/*.ts): the QR code of the field's text built as a
-//! voxel cherry tree (light modules dirt, dark ones trunk, blossom, fallen petals or grass),
-//! drawn with react-native-webgpu in an isometric view. A tap folds it flat for scanning (and
-//! back); a long press spawns a creeper that walks in, fuses, blows the tree apart and lets it
-//! reassemble.
+//! Cherry Blossom QR Code: the field's text as a QR code built into a voxel cherry tree. Light
+//! modules become dirt, dark ones trunk, and the canopy blossoms. A tap folds the tree flat for
+//! scanning, and back. A long press sends a creeper that walks in, fuses, blows the tree apart
+//! and lets it reassemble.
 //!
-//! This surface is the Pressable and its WebGPU Canvas (W × 0.6 H, at the top of canvasWrapper,
-//! paddingTop 10 % of the width): use-web-gpu.ts line for line: the block buffers
-//! (generateBlockData over generateQRMatrix, QRCode.create(content || DEFAULT, 'M') through
-//! `qr::create`, its `modules.get(x, y)` transposed as the RN code reads it), the uniforms word
-//! for word, the render loop and its idle skip, the isFlat lerp, the creeper sequence clock and
-//! its one `Math.random()` (pickApproachYaw, `gfx::Random` seeded by env.seed). The WGSL is the RN
-//! strings with their constants interpolated by the RN code itself
-//! (exact/parity-tools/cherry-blossom-qrcode/wgsl.ts → gpu/shaders/cherry_blossom_qrcode.wgsl):
-//! sky, shadow (src-alpha blend), blocks (depth24plus, less, written), dust (when blastT ≥ 0),
-//! cull none, no MSAA, cleared to transparent black. The CPU numbers (validApproachYaws,
-//! approachDestination, generateBlockData's arrays, clampToQRBytes) are checked bit for bit
-//! against the app's Hermes (exact/parity-tools/cherry-blossom-qrcode/reference.txt).
-//!
-//! The canvas: `canvas.width = canvasWidth × PixelRatio`, `canvas.height = canvasHeight ×
-//! PixelRatio` (the JSI's int setter truncates), configured bgra8unorm, premultiplied, no
-//! colorspace (iOS shows it as sRGB: the shader's output is sRGB as written), aspectRatio =
-//! width / height. The scene renders into an 8-bit layer of that raster (blending in encoded
-//! values, as the bgra8unorm drawable does); gpu/shaders/cherry_blossom_qrcode_compose.wgsl
-//! stretches it over the canvas's device pixels with Core Animation's linear filter (1641 rows
-//! over 1642 on a 912 pt phone at 3x), a texel per pixel where the sizes agree.
-//!
-//! The Pressable (RN 0.88 Pressability, delayPressIn 0, delayLongPress 320, no hitSlop): the
-//! responder region is the canvas; a touch inside is PRESS_IN at once; the long-press timer
-//! (320 ms from the grant) is cancelled for good by a move of more than 10 pt from the touch's
-//! activation point or by leaving the region grown by the press-rect offsets (left / right / top
-//! 20, bottom 30, exclusive); back inside, PRESS_IN again. The timer firing in PRESS_IN is
-//! onLongPress (LONG_PRESS_IN); a release in PRESS_IN is onPress, in LONG_PRESS_IN or outside
-//! nothing; a cancel (the screen's close drag taking the touch) is nothing. One responder: other
-//! fingers are ignored.
-//! - onPress: isFlat = !isFlat, Presets.System.impactMedium (`haptic:impact-medium`), focus the
-//!   field (`focus`).
-//! - onLongPress: detonate(), ignored while a creeper is on its way (returns false: no haptic, no
-//!   hint fade); else Presets.System.impactLight (`haptic:impact-light`) and the hint's fade
-//!   (`spawned`).
-//!
-//! What the Contract does for this surface (cherry-blossom-qrcode.contract), from its messages:
-//! the field's first focus INITIAL_FOCUS_DELAY_MS (120) after the first frame (`focus`), the
-//! hint's fade-in HINT_DELAY_MS (2000) after it (`hint`), the field's text clamped to
-//! MAX_QR_CONTENT_BYTES (`text:<clamped>`, when clampToQRBytes changes what was typed), and the
-//! haptics (`haptic:<kind>`).
-//!
-//! Motion audit (RN driver / config → here):
-//!
-//! | value | RN | Exact |
-//! |---|---|---|
-//! | rawProgress | per rAF: dt = min(Δ Date.now() / 1000, 0.05); raw += (target − raw) × min(1, LERP_SPEED 4 × dt); snapped under 0.001; target isFlat ? 1 : 0 | the same per host frame (dt from the frame clock; after a rest the first dt is one display period, as RN's loop keeps lastFrameTime current while it skips) |
-//! | progress | easeInOutCubic(raw) | the same (f64, then f32 as the Float32Array) |
-//! | camera angles, view scale, 2D offsets | mix(ISO, FLAT, progress) in every vertex shader | the WGSL verbatim |
-//! | time | (Date.now() − mount) / 1000 | (now − first frame) / 1000 |
-//! | sequence clock | seq = (now − long press) / 1000: creeperT = seq / 3.2 (walk), fuseT = (seq − 3.2) / 1.8, blastT = seq − 5, rebuildT = min((blastT − 2.6) / 1.7, 1), creeperAlpha; reset at 9.3 | the same; the start is the long press's 320 ms timer |
-//! | creeper spawn, walk, legs, bob, head, turn, swell, shudder, strobe | blocks vertex/fragment from creeperT, fuseT, time, spawnAngle (CREEPER_* constants) | WGSL verbatim |
-//! | debris, shock front, tumble, fade, shake, rebuild stagger, soot, embers, fireball, shadow presence, smoke | blocks / shadow / dust shaders from blastT, rebuildT, time | WGSL verbatim |
-//! | spawnAngle | pickApproachYaw: validApproachYaws(gridSize || 25)[floor(Math.random() × n)] | the same, `gfx::Random` (env.seed) |
-//! | hint opacity | withDelay(2000, withTiming(1, 650 ms, out(quad))) × 0.72; long press: withTiming(0, 260 ms, inOut(quad)) | Contract: `hint` at 2000 ms → transition to 0.72, 650 ms cubic-bezier(1/3, 2/3, 2/3, 1) (out(quad) exactly); `spawned` → 0, 260 ms inOut(quad) linear() |
-//! | hint, input translateY | −keyboardHeight from useKeyboardHandler onMove (the keyboard's frame, per frame) | Contract: a `toolbarPlacement="keyboard"` toolbar under overlays-content: lifted by the keyboard's overlap with a transform set inside the keyboard's own UIView animation (its duration and curve) |
-//! | haptics | onPress impactMedium; onLongPress impactLight; fuse start: CREEPER_BLAST_PATTERN | `haptic:impact-medium`, `haptic:impact-light`; each discrete beat of the pattern at its time from the fuse's first frame as one impact (BEATS); its continuous channel has no Exact equivalent |
+//! - The scene is drawn into an 8-bit layer sized to the canvas's pixels, then stretched over the
+//!   device pixels with a linear filter. The shadow blends with its source alpha; the blocks are
+//!   depth tested.
+//! - Touches: a press that lifts inside the canvas (its area grown by PRESS_RECT) toggles flat.
+//!   A long press fires after DELAY_LONG_PRESS_MS unless the touch moves more than 10 pt first.
+//!   Only one finger is tracked.
+//! - A long press is ignored while a creeper is on its way.
+//! - The Contract shows the hint and focuses the field after fixed delays; both are posted as
+//!   messages.
+//! - Idle frames are skipped: when nothing moves and the progress has settled, the last frame
+//!   stands.
+//! - Haptics: medium on the flat toggle, light on a spawn, and a pattern of impacts through the
+//!   fuse, the heaviest at the blast.
+//! - The sequence runs on one clock: the creeper walks for 3.2 s, fuses for 1.8 s, blasts at 5 s,
+//!   then the tree rebuilds over 1.7 s.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, PointerPhase, Surface, SurfaceError, Value};
@@ -73,46 +29,44 @@ use shaders::cherry_blossom_qrcode::{
 };
 use shaders::cherry_blossom_qrcode_compose as compose;
 
-// --- constants.ts -----------------------------------------------------------------------------
-
-/// DEFAULT_QR_CONTENT.
+/// Default QR content.
 const DEFAULT_QR_CONTENT: &str = "https://enzo.fyi";
-/// BLOCK_SIZE, CUBE_HEIGHT.
+/// Block edge, in world units.
 const BLOCK_SIZE: f64 = 0.0245;
 const CUBE_HEIGHT: f64 = BLOCK_SIZE;
-/// TRUNK_RADIUS, TRUNK_LAYERS, MAX_CANOPY_LAYERS, CANOPY_OUTER_RADIUS_FACTOR.
+/// Trunk radius and height in blocks, canopy limits and size.
 const TRUNK_RADIUS: f64 = 2.5;
 const TRUNK_LAYERS: usize = 12;
 const MAX_CANOPY_LAYERS: f64 = 12.0;
 const CANOPY_OUTER_RADIUS_FACTOR: f64 = 0.46;
-/// MAX_GRID_SIZE, MAX_BLOCKS, MAX_QR_CONTENT_BYTES.
+/// Largest QR grid, block count, and text length in bytes.
 const MAX_GRID_SIZE: usize = 41;
 const MAX_BLOCKS: usize = MAX_GRID_SIZE * MAX_GRID_SIZE * 18;
 const MAX_QR_CONTENT_BYTES: usize = 106;
-/// LERP_SPEED.
+/// How fast the flat transition chases its target, per second.
 const LERP_SPEED: f64 = 4.0;
-/// CREEPER_WALK_DURATION, CREEPER_FUSE_DURATION, CREEPER_TOTAL.
+/// Creeper walk and fuse durations, in seconds.
 const CREEPER_WALK_DURATION: f64 = 3.2;
 const CREEPER_FUSE_DURATION: f64 = 1.8;
 const CREEPER_TOTAL: f64 = CREEPER_WALK_DURATION + CREEPER_FUSE_DURATION;
-/// CREEPER_APPROACH_YAW, CREEPER_APPROACH_SPREAD, CREEPER_SPAWN_MARGIN.
+/// Approach direction and spread in radians; spawn margin in blocks.
 const CREEPER_APPROACH_YAW: f64 = std::f64::consts::PI / 2.0;
 const CREEPER_APPROACH_SPREAD: f64 = 0.9;
 const CREEPER_SPAWN_MARGIN: f64 = 0.5;
-/// CREEPER_STAND_FROM_CENTRE, CREEPER_WALK_BLOCKS, CREEPER_PATH_OFFSET, CREEPER_TRUNK_CLEARANCE.
+/// Creeper stopping distance, walk length, path offset and trunk clearance, in blocks.
 const CREEPER_STAND_FROM_CENTRE: f64 = 6.0;
 const CREEPER_WALK_BLOCKS: f64 = 15.0;
 const CREEPER_PATH_OFFSET: f64 = 6.5;
 const CREEPER_TRUNK_CLEARANCE: f64 = 4.5;
-/// RESISTANCE_BY_TYPE (Dirt, CherryBlossom, Trunk, Grass, FallenPetals, Creeper).
+/// Block resistance by type id.
 const RESISTANCE_BY_TYPE: [f64; 6] = [0.5, 0.2, 2.0, 0.5, 0.2, 0.0];
-/// DEBRIS_SETTLE, REBUILD_DURATION.
+/// Seconds for the debris to settle, and for the rebuild.
 const DEBRIS_SETTLE: f64 = 2.6;
 const REBUILD_DURATION: f64 = 1.7;
-/// use-web-gpu.ts SEQUENCE_DURATION.
+/// Length of the whole sequence, in seconds.
 const SEQUENCE_DURATION: f64 = CREEPER_TOTAL + DEBRIS_SETTLE + REBUILD_DURATION;
 
-/// types.ts BlockType.
+/// Block type ids.
 const DIRT: u32 = 0;
 const CHERRY_BLOSSOM: u32 = 1;
 const TRUNK: u32 = 2;
@@ -120,23 +74,18 @@ const GRASS: u32 = 3;
 const FALLEN_PETALS: u32 = 4;
 const CREEPER: u32 = 5;
 
-// --- cherry-blossom-qr-code.tsx ---------------------------------------------------------------
-
-/// INITIAL_FOCUS_DELAY_MS: the field takes focus this long after the mount.
+/// Ms after mount before the field takes focus.
 const INITIAL_FOCUS_DELAY_MS: f64 = 120.0;
-/// HINT_DELAY_MS: the hint's withDelay.
+/// Ms after mount before the hint shows.
 const HINT_DELAY_MS: f64 = 2000.0;
-/// The Pressable's delayLongPress.
+/// Ms held before a long press fires.
 const DELAY_LONG_PRESS_MS: f64 = 320.0;
-/// Pressability: DEFAULT_LONG_PRESS_DEACTIVATION_DISTANCE and DEFAULT_PRESS_RECT_OFFSETS
-/// (left, right, top, bottom).
+/// Distance, pt, that cancels a long press; the press area's margins (left, right, top, bottom).
 const LONG_PRESS_DEACTIVATION_DISTANCE: f64 = 10.0;
 const PRESS_RECT: [f64; 4] = [20.0, 20.0, 20.0, 30.0];
 
-/// haptics.ts CREEPER_BLAST_PATTERN's discrete beats (ms from the fuse's start, amplitude,
-/// frequency = sharpness) and the impact each is played as: Exact's haptics are UIKit's impact
-/// generators at full intensity, so the dull, faint first ticks are light, the crisp ones from
-/// sharpness 0.62 rigid, the blast heavy and its two fragments medium and soft.
+/// The fuse's beats: ms from its start, amplitude, sharpness, and the impact each plays. Impacts
+/// are full strength, so the faint early beats are light, the crisp ones rigid.
 const BEATS: [(f64, f64, f64, &str); 15] = [
     (0.0, 0.16, 0.4, "haptic:impact-light"),
     (300.0, 0.18, 0.43, "haptic:impact-light"),
@@ -170,9 +119,9 @@ const BEATS: [(f64, f64, f64, &str); 15] = [
     ),
 ];
 
-/// The scene's layer, as the bgra8unorm drawable holds it.
+/// Scene layer format.
 const LAYER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
-/// The depth texture's format (createTexture 'depth24plus').
+/// Depth format.
 const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
 
 /// The demo's surface. Inputs: the window's width and height (useWindowDimensions), env.seed,
@@ -210,10 +159,7 @@ pub fn surface() -> Box<dyn Surface> {
     })
 }
 
-// --- utils/qr-matrix.ts -----------------------------------------------------------------------
-
-/// clampToQRBytes: the longest prefix, whole code points, of at most MAX_QR_CONTENT_BYTES UTF-8
-/// bytes.
+/// The longest prefix, in whole code points, of at most MAX_QR_CONTENT_BYTES UTF-8 bytes.
 pub(crate) fn clamp_to_qr_bytes(text: &str) -> &str {
     let mut bytes = 0;
     let mut end = 0;
@@ -227,9 +173,8 @@ pub(crate) fn clamp_to_qr_bytes(text: &str) -> &str {
     &text[..end]
 }
 
-/// generateQRMatrix: `matrix[y][x] = modules.get(x, y) === 1` (node-qrcode's get(row, col), so
-/// the symbol transposed), level M; the default content when empty, when it throws or when the
-/// grid would pass MAX_GRID_SIZE.
+/// The dark modules as rows, transposed as the app reads them. Falls back to the default content
+/// when the text is empty, cannot be encoded, or makes a grid too large.
 pub(crate) fn generate_qr_matrix(content: &str) -> Vec<Vec<bool>> {
     let text = if content.is_empty() {
         DEFAULT_QR_CONTENT
@@ -244,9 +189,7 @@ pub(crate) fn generate_qr_matrix(content: &str) -> Vec<Vec<bool>> {
     }
 }
 
-// --- utils/block-generator.ts, utils/creeper-model.ts -----------------------------------------
-
-/// BlockData, as the JS arrays hold it (doubles) before the upload.
+/// Block data before upload.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Blocks {
     positions: Vec<f64>,
@@ -258,13 +201,13 @@ pub(crate) struct Blocks {
     creeper_start: usize,
 }
 
-/// pseudoRandom.
+/// Deterministic noise in [0, 1).
 fn pseudo_random(col: f64, row: f64, seed: f64) -> f64 {
     let s = (col * 127.1 + row * 311.7 + seed * 43.7).sin() * 43758.5;
     s - s.floor()
 }
 
-/// generateBlockData: ground, trunk, canopy, then the creeper's shell, in the RN passes' order.
+/// Ground, trunk, canopy, then the creeper's shell, in that order.
 pub(crate) fn generate_block_data(qr_matrix: &[Vec<bool>]) -> Blocks {
     let grid_size = qr_matrix.len();
     let cx = grid_size as f64 / 2.0;
@@ -323,7 +266,7 @@ pub(crate) fn generate_block_data(qr_matrix: &[Vec<bool>]) -> Blocks {
             let d = dist(col, row);
             if d < canopy_outer_radius {
                 let t = 1.0 - d / canopy_outer_radius;
-                // Math.round of a positive number: half up.
+                // Rounds half up.
                 let layers_here =
                     3.0f64.max((MAX_CANOPY_LAYERS * (0.25 + 0.75 * t * t)).round()) as usize;
                 for layer in 0..layers_here {
@@ -360,7 +303,7 @@ pub(crate) fn generate_block_data(qr_matrix: &[Vec<bool>]) -> Blocks {
     b
 }
 
-/// creeper-model.ts BOXES: x0, x1, y0, y1, z0, z1, part (Head, Body, the four legs).
+/// Creeper boxes: x0, x1, y0, y1, z0, z1, part (head, body, four legs).
 const BOXES: [(i32, i32, i32, i32, i32, i32, u32); 6] = [
     (-2, 2, 9, 13, -2, 2, 0),
     (-2, 2, 3, 9, -1, 1, 1),
@@ -370,8 +313,7 @@ const BOXES: [(i32, i32, i32, i32, i32, i32, u32); 6] = [
     (0, 2, 0, 3, -2, 0, 5),
 ];
 
-/// buildCreeperVoxels: every box's voxels (y, z, x order; the first box to claim a cell keeps
-/// it), then only those with a face exposed.
+/// Every box's voxels, then only those with an exposed face. The first box to claim a cell keeps it.
 fn build_creeper_voxels() -> Vec<(i32, i32, i32, u32)> {
     let mut filled = std::collections::HashSet::new();
     let mut all = Vec::new();
@@ -399,14 +341,12 @@ fn build_creeper_voxels() -> Vec<(i32, i32, i32, u32)> {
         .collect()
 }
 
-// --- utils/approach.ts ------------------------------------------------------------------------
-
-/// forwardFor.
+/// Forward direction for a yaw.
 fn forward_for(yaw: f64) -> (f64, f64) {
     (-yaw.sin(), yaw.cos())
 }
 
-/// approachDestination, in blocks from the centre.
+/// Where the creeper stops, in blocks from the centre.
 pub(crate) fn approach_destination() -> (f64, f64) {
     let fwd = forward_for(CREEPER_APPROACH_YAW);
     let right = (-fwd.1, fwd.0);
@@ -416,7 +356,7 @@ pub(crate) fn approach_destination() -> (f64, f64) {
     )
 }
 
-/// spawnFor.
+/// Where the creeper starts, in blocks.
 fn spawn_for(yaw: f64) -> (f64, f64) {
     let dest = approach_destination();
     let fwd = forward_for(yaw);
@@ -426,14 +366,14 @@ fn spawn_for(yaw: f64) -> (f64, f64) {
     )
 }
 
-/// trunkClearance.
+/// Distance from the trunk along the approach.
 fn trunk_clearance(yaw: f64) -> f64 {
     let dest = approach_destination();
     let fwd = forward_for(yaw);
     (dest.0 * fwd.1 - dest.1 * fwd.0).abs()
 }
 
-/// validApproachYaws(gridSize, 64).
+/// Approach yaws that land on the plate and clear the trunk.
 pub(crate) fn valid_approach_yaws(grid_size: f64) -> Vec<f64> {
     let samples = 64;
     let limit = grid_size / 2.0 - CREEPER_SPAWN_MARGIN;
@@ -454,7 +394,7 @@ pub(crate) fn valid_approach_yaws(grid_size: f64) -> Vec<f64> {
     out
 }
 
-/// use-web-gpu.ts easeInOutCubic.
+/// Cubic ease in and out.
 fn ease_in_out_cubic(t: f64) -> f64 {
     if t < 0.5 {
         4.0 * t * t * t
@@ -463,9 +403,7 @@ fn ease_in_out_cubic(t: f64) -> f64 {
     }
 }
 
-// --- the Pressable ----------------------------------------------------------------------------
-
-/// Pressability's touch states past the grant (delayPressIn 0: the grant is PRESS_IN at once).
+/// Touch states: pressed in or out, and the same after a long press.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Touch {
     PressIn,
@@ -478,41 +416,39 @@ enum Touch {
 struct Responder {
     id: u32,
     state: Touch,
-    /// _touchActivatePosition.
+    /// Where the touch started.
     at: (f64, f64),
     /// When the long-press timeout fires; None once cancelled or fired.
     long_press_at: Option<f64>,
 }
 
-// --- the surface ------------------------------------------------------------------------------
-
 struct CherryBlossomQrcode {
-    /// useWindowDimensions() (points).
+    /// Window size, pt.
     window: (f64, f64),
     seed: f64,
     random: gfx::Random,
-    /// qrContent (clamped).
+    /// Text, clamped to the QR limit.
     text: String,
     blocks: Blocks,
-    /// blockDataRef: numBlocks (≤ MAX_BLOCKS), gridSize.
+    /// Block count (capped) and grid size.
     num_blocks: usize,
     grid_size: usize,
     buffers_dirty: bool,
     is_flat: bool,
     raw_progress: f64,
     progress: f64,
-    /// lastDrawnProgress (None: nothing drawn).
+    /// Progress at the last draw; None until drawn.
     last_drawn_progress: Option<f64>,
-    /// lastFrameTimeRef (None after a rest: the next frame takes one display period).
+    /// Last frame's time; None after a rest.
     last_frame_ms: Option<f64>,
-    /// startTimeRef (the first frame).
+    /// Time of the first frame.
     start_ms: Option<f64>,
-    /// sequenceStartRef, spawnAngleRef, blastPosRef, detonatedRef.
+    /// Sequence start, spawn angle, blast point, and whether it has detonated.
     sequence_start: Option<f64>,
     spawn_angle: f64,
     blast_pos: (f64, f64),
     detonated: bool,
-    /// fuseStartedRef: when the fuse's first frame was (the pattern's start).
+    /// When the fuse began; the pattern plays from here.
     fuse_started: Option<f64>,
     /// How many of the pattern's beats have been posted.
     beats: usize,
@@ -554,7 +490,7 @@ struct Layers {
     bind: wgpu::BindGroup,
 }
 
-/// What one frame hands the shaders (use-web-gpu.ts uniformData).
+/// Sequence values for one frame.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 struct Timeline {
     creeper_t: f64,
@@ -596,14 +532,14 @@ impl CherryBlossomQrcode {
         true
     }
 
-    /// onPress.
+    /// A tap: flips the flat state and focuses the field.
     fn pressed(&mut self) {
         self.is_flat = !self.is_flat;
         self.posted.push("haptic:impact-medium".into());
         self.posted.push("focus".into());
     }
 
-    /// onLongPress.
+    /// A long press: starts the creeper, unless one is on its way.
     fn long_pressed(&mut self, at_ms: f64) {
         if !self.detonate(at_ms) {
             return;
@@ -622,14 +558,14 @@ impl CherryBlossomQrcode {
             return;
         }
         r.long_press_at = None;
-        // _handleLongPress: only in PRESS_IN (or LONG_PRESS_IN).
+        // Fires only while pressed in.
         if r.state == Touch::PressIn {
             r.state = Touch::LongPressIn;
             self.long_pressed(due);
         }
     }
 
-    /// _isTouchWithinResponderRegion: the canvas grown by the press-rect offsets, exclusive.
+    /// Whether a point is in the press area: the canvas, grown by PRESS_RECT, exclusive.
     fn within(&self, x: f64, y: f64, canvas: (f64, f64)) -> bool {
         let [l, r, t, b] = PRESS_RECT;
         x > -l && x < canvas.0 + r && y > -t && y < canvas.1 + b
@@ -661,7 +597,7 @@ impl CherryBlossomQrcode {
             t.fuse_t = (seq - CREEPER_WALK_DURATION) / CREEPER_FUSE_DURATION;
             t.creeper_alpha = 1.0;
             if self.fuse_started.is_none() {
-                // onFuseStart: the pattern plays from this frame.
+                // The pattern starts here.
                 self.fuse_started = Some(now);
             }
         } else {
@@ -696,7 +632,7 @@ impl CherryBlossomQrcode {
         }
     }
 
-    /// The drawable: canvas.width / height = canvasWidth / canvasHeight × PixelRatio, truncated.
+    /// The drawable's pixel size: the canvas size times the pixel ratio, truncated.
     fn raster(&self, frame: &Frame) -> (u32, u32) {
         let (w, h) = if self.window.0 > 0.0 {
             self.canvas_points()
@@ -710,7 +646,7 @@ impl CherryBlossomQrcode {
         )
     }
 
-    /// updateBuffers: the blocks in use, as Uint32Array / Float32Array.
+    /// Uploads the blocks in use.
     fn upload(&mut self, queue: &wgpu::Queue) {
         let Some(gpu) = self.gpu.as_ref() else { return };
         let count = self.blocks.num_blocks.min(MAX_BLOCKS);
@@ -1035,7 +971,6 @@ fn draw_scene(encoder: &mut wgpu::CommandEncoder, gpu: &Gpu, num_blocks: usize, 
             view: &layers.color,
             resolve_target: None,
             depth_slice: None,
-            // clearValue { r: 0, g: 0, b: 0, a: 0 }.
             ops: wgpu::Operations {
                 load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
                 store: wgpu::StoreOp::Store,
@@ -1117,7 +1052,7 @@ fn layers(device: &wgpu::Device, gpu: &Gpu, raster: (u32, u32)) -> Layers {
     }
 }
 
-/// createPipeline: triangle list, cull none, depth24plus, one colour target (the layer).
+/// A triangle-list pipeline with no culling, a depth test, and one colour target.
 fn pipeline(
     device: &wgpu::Device,
     shader: &wgpu::ShaderModule,
@@ -1172,9 +1107,8 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32) ->
         bind_group_layouts: &[Some(&layout)],
         immediate_size: 0,
     });
-    // createPipeline's default blend: one, one-minus-src-alpha (colour and alpha).
     let default_blend = wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING;
-    // alphaBlend: colour src-alpha, one-minus-src-alpha; alpha one, one-minus-src-alpha.
+    // The shadow blends with its source alpha.
     let alpha_blend = wgpu::BlendState {
         color: wgpu::BlendComponent {
             src_factor: wgpu::BlendFactor::SrcAlpha,
@@ -1344,7 +1278,7 @@ mod tests {
         out
     }
 
-    /// JSON.stringify's string, back (the reference's texts have no escapes but quotes).
+    /// Undoes JSON string quoting; the reference texts escape only quotes.
     fn unjson(s: &str) -> String {
         s[1..s.len() - 1]
             .replace("\\\"", "\"")
@@ -1446,12 +1380,10 @@ mod tests {
     #[test]
     fn a_tap_flattens_and_a_long_press_spawns_once() {
         let mut s = bound();
-        // A tap: onPress, impactMedium, focus.
         touch(&mut s, PointerPhase::Down, 200.0, 300.0, 1000.0);
         touch(&mut s, PointerPhase::Up, 200.0, 300.0, 1100.0);
         assert_eq!(s.messages(), ["haptic:impact-medium", "focus"]);
         assert!(s.agent("{}").unwrap().contains("\"isFlat\":true"));
-        // Held 320 ms: onLongPress, and the release presses nothing.
         touch(&mut s, PointerPhase::Down, 200.0, 300.0, 2000.0);
         touch(&mut s, PointerPhase::Move, 205.0, 304.0, 2319.0);
         assert!(s.messages().is_empty());
@@ -1462,21 +1394,17 @@ mod tests {
             state.contains("\"isFlat\":true") && state.contains("\"sequence\":true"),
             "{state}"
         );
-        // A second long press while the creeper walks: ignored, and no onPress.
         touch(&mut s, PointerPhase::Down, 200.0, 300.0, 3000.0);
         touch(&mut s, PointerPhase::Up, 200.0, 300.0, 3500.0);
         assert!(s.messages().is_empty());
-        // A move past 10 pt cancels the long press; the release inside still presses.
         touch(&mut s, PointerPhase::Down, 100.0, 100.0, 4000.0);
         touch(&mut s, PointerPhase::Move, 111.0, 100.0, 4050.0);
         touch(&mut s, PointerPhase::Up, 111.0, 100.0, 4600.0);
         assert_eq!(s.messages(), ["haptic:impact-medium", "focus"]);
-        // Out past the retention rect (bottom 30) and released there: nothing.
         touch(&mut s, PointerPhase::Down, 100.0, 540.0, 5000.0);
         touch(&mut s, PointerPhase::Move, 100.0, 547.2 + 31.0, 5050.0);
         touch(&mut s, PointerPhase::Up, 100.0, 547.2 + 31.0, 5100.0);
         assert!(s.messages().is_empty());
-        // Out and back inside the rect: a press again.
         touch(&mut s, PointerPhase::Down, 100.0, 540.0, 6000.0);
         touch(&mut s, PointerPhase::Move, 100.0, 547.2 + 29.0, 6020.0);
         touch(&mut s, PointerPhase::Up, 100.0, 547.2 + 29.0, 6040.0);
@@ -1500,8 +1428,7 @@ mod tests {
         assert_eq!(s.messages(), [format!("text:{}", "🌸".repeat(26))]);
     }
 
-    /// A dark module's top: coloured (blossom, grass, petals, bark), where the path's dirt is a
-    /// near-white grey.
+    /// A pixel reads dark when coloured or dim: the path's dirt is near-white grey.
     fn dark(img: &fixture::Pixels, x: u32, y: u32) -> bool {
         let p = img.at(x, y);
         let (hi, lo) = (p[..3].iter().max().unwrap(), p[..3].iter().min().unwrap());
@@ -1520,17 +1447,14 @@ mod tests {
         let mut s = bound();
         let (rest, animating) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         gfx::save_over(&rest, "cherry-blossom-qrcode-rest", bg);
-        // The timers: focus and the hint still to come.
         assert!(animating);
         let (w, h) = (rest.width, rest.height);
         assert_eq!((w, h), (1260, 1642));
-        // The sky (#f7f7f7) at the corners; the tree in the middle.
         assert_eq!(&rest.at(4, 4)[..3], &[247, 247, 247]);
         assert_eq!(&rest.at(w - 4, h - 4)[..3], &[247, 247, 247]);
         let (_, _) = fixture::render(&gpu, s.as_mut(), &frame(130.0)).unwrap();
         assert_eq!(s.messages(), ["focus"]);
 
-        // A tap: the lerp to flat, settled within ~2 s at 60 fps.
         touch(&mut s, PointerPhase::Down, 200.0, 300.0, 140.0);
         touch(&mut s, PointerPhase::Up, 200.0, 300.0, 200.0);
         s.messages();
@@ -1552,8 +1476,6 @@ mod tests {
         gfx::save_over(&flat, "cherry-blossom-qrcode-flat", bg);
         assert!(s.agent("{}").unwrap().contains("\"progress\":1.0000"));
 
-        // Flat: each module's top face reads dark or light as the QR has it. The flat camera:
-        // x' = (x + X_OFFSET_2D) × 2.1 / max(ar, 1), y' = (z + Y_OFFSET_2D) × 2.1 / max(1 / ar, 1).
         let m = generate_qr_matrix(DEFAULT_QR_CONTENT);
         let n = m.len();
         let ar = 1260.0 / 1641.0;
@@ -1567,7 +1489,6 @@ mod tests {
                     (x + 0.015) * 2.1 / f64::max(ar, 1.0),
                     (z + 0.08) * 2.1 / f64::max(1.0 / ar, 1.0),
                 );
-                // The layer's pixel, stretched 1641 → 1642 rows.
                 let px = ((ndc.0 + 1.0) / 2.0 * 1260.0) as u32;
                 let py = ((1.0 - ndc.1) / 2.0 * 1641.0 * 1642.0 / 1641.0) as u32;
                 if dark(&flat, px, py) != m[row][col] {
@@ -1577,7 +1498,6 @@ mod tests {
         }
         assert_eq!(wrong, 0, "modules read wrong in the flat view");
 
-        // Back to 3D, then a long press: the creeper.
         touch(&mut s, PointerPhase::Down, 200.0, 300.0, ms);
         touch(&mut s, PointerPhase::Up, 200.0, 300.0, ms + 50.0);
         s.messages();
@@ -1599,7 +1519,6 @@ mod tests {
         gfx::save_over(&walk, "cherry-blossom-qrcode-walk", bg);
         let (t, fuse) = frames(&mut s, t, t + 2700.0);
         gfx::save_over(&fuse, "cherry-blossom-qrcode-fuse", bg);
-        // The fuse's ticks so far, then the blast's three.
         let ticks = s.messages();
         assert!(
             !ticks.is_empty() && ticks.iter().all(|m| m.starts_with("haptic:impact-")),
@@ -1615,7 +1534,6 @@ mod tests {
         let (_, after) = frames(&mut s, t, t + 2000.0);
         gfx::save_over(&after, "cherry-blossom-qrcode-after", bg);
         assert!(s.agent("{}").unwrap().contains("\"sequence\":false"));
-        // The rebuilt tree is the tree at rest.
         assert_eq!(after.data, rest.data);
     }
 }

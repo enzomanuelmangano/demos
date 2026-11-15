@@ -1,60 +1,18 @@
-//! Loading Button (src/animations/loading-button: index.tsx, components/loading-button/index.tsx,
-//! activity-indicator.tsx), the whole demo: a pill reading "Check Transaction" that turns into a
-//! spinner and "Analyzing Transaction", then a check and "Transaction Safe" (or a lock and
-//! "Transaction Unsafe", every other time), and back after 1.5 s.
+//! A pill button reading "Check Transaction" that turns into a spinner and "Analyzing
+//! Transaction", then a check and "Transaction Safe" (or a lock and "Transaction Unsafe" on
+//! every other call), and back to idle after 1.5 s.
 //!
-//! Why it is all here: in RN the pill's width follows Yoga every frame (the indicator's box
-//! animates its width, height and marginRight through useAnimatedStyle, 200 ms inOut(quad), and
-//! Reanimated commits each frame's layout), while the title's own width changes at once (a
-//! Text, no layout animation; `key="text"` keeps it mounted, so its FadeIn plays only at
-//! mount). The PressableScale's `layout={LinearTransition.springify()}` moves nothing visible:
-//! on the RN app every recorded frame of every transition (idle → loading mid-growth, loading →
-//! success, success → idle) has the pill centred on Yoga's frame to the pixel (left + right =
-//! 1259 px). The Contract port eased the row and the title through 200 ms layout transitions
-//! and sprang the button: a title change (loading → success) narrowed the pill over 200 ms
-//! where RN's jumps, so its right edge stood out by the eased remainder (about 15 px
-//! mid-animation), and the spring held the pill off centre.
-//!
-//! - The pill: a row, paddingHorizontal 12, 40 tall, radius 16 continuous, background
-//!   Color(activeColor).lighten(0.6) with `transition: 'backgroundColor 200ms'` (CSS ease);
-//!   centred in the white screen (Yoga rounds its edges to the pixel grid).
-//! - The indicator's box: progress = withTiming(status == idle ? 0 : 1, 200 ms); width and
-//!   height 20 × progress, marginRight 6 × progress, clipping the 20 pt canvas; the row centres
-//!   it. The canvas: below.
-//! - The title: bold 14 in activeColor (at once), a Text node (its box the measured size
-//!   rounded up to the pixel, its position floored to the grid, its baseline on the next pixel
-//!   row). FadeIn (300 ms inOut(quad)) at mount.
-//! - PressableScale: scale 0.96 while pressed (250 ms, bezier(0.25, 0.1, 0.25, 1)) about the
-//!   animated frame's centre; a press inside posts the app's selection haptic and runs
-//!   handlePress: ignored while isLoading; else status loading, 2000 ms later success (even
-//!   calls) or error, isLoading false, and 1500 ms after that reset() (idle). The press is the
-//!   shared `pressto::Pressable`. As in RN, a press
-//!   during the outcome starts again and the earlier reset timer still fires.
-//!
-//! Loading Button's ActivityIndicator (src/animations/loading-button/components/loading-button/
-//! activity-indicator.tsx): a 20 pt canvas (size 20, strokeWidth max(2, 20 / 8) = 2.5) in the
-//! status's colour (colorFromStatusMap: idle and loading #47A1E6, success #5BC682, error
-//! #CD5454; it changes at once).
-//!
-//! - Loading group (opacity: withTiming(loading ? 1 : 0, { duration: 200 })): a quarter arc
-//!   (addArc of the oval inset 1.25, 0° to 90°) stroked 2.5 with round caps, turning about the
-//!   centre: withRepeat(withTiming(4π, { duration: 800, easing: linear }), -1) while loading,
-//!   back to 0 at once otherwise; under it the ring (r 8.75, stroke 2.5) at opacity 0.08.
-//! - Icon group (opacity: withTiming(success or error ? 1 : 0, { duration: 200 })): the disc
-//!   (r 8.75, filled) and, for success or error, its white SVG (24 × 24 viewBox) fitted
-//!   ("contain") into a 9 pt square in the middle (iconSize = size × 0.45). The icon follows the
-//!   status at once, so it is gone while the disc fades out.
-//!
-//! The indicator's status colour changes at once; its timers are the demo's (above).
-//!
-//! Beyond RN (the owner's phone feedback, 2026-11-15: "the transitions between the states
-//! stutter"): RN's title swaps at once, so the pill's width jumps by the titles' difference
-//! (loading → success: 33 pt in one frame), the title's colour and the indicator's flip at once,
-//! and Yoga snaps every edge to the pixel grid each frame. Here the titles crossfade on a
-//! critically damped spring (400 ms) that also carries the pill from one title's width to the
-//! other, each title in its own colour; the spinner keeps the loading colour while it fades and
-//! the outcome's disc and icon stay while they fade back to idle; nothing is snapped to the grid
-//! while it moves (only at rest, where the frame is RN's to the pixel).
+//! - The pill's width follows its title and indicator every frame. The title crossfades on a
+//!   critically damped spring (400 ms) that carries the pill from one title's width to the
+//!   other, each title in its own colour.
+//! - Edges snap to the device pixel grid only at rest. A moving edge snapped each frame would
+//!   step.
+//! - The indicator is a 20 pt spinner while loading, then a disc with a check or a lock. The
+//!   spinner keeps the loading colour while it fades, and the outcome's disc and icon stay while
+//!   they fade back to idle.
+//! - A press posts the selection haptic. A press while loading is ignored. Otherwise the status
+//!   turns to loading, then after 2 s to success or error, and 1.5 s after that back to idle.
+//!   A press during the outcome starts again, and the earlier reset timer still fires.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -70,9 +28,9 @@ const STROKE: f32 = 2.5;
 const SVG_SIZE: f32 = 24.0;
 /// One turn of the repeat: 4π in 800 ms.
 const PERIOD_MS: f64 = 800.0;
-/// handleMutation's `wait(2000)`.
+/// Time spent loading before the outcome, ms.
 const WAIT_MS: f64 = 2000.0;
-/// handlePress's `setTimeout(reset, 1500)`.
+/// Time the outcome shows before the reset to idle, ms.
 const RESET_MS: f64 = 1500.0;
 const SUCCESS: &str = "M20.285 2l-11.285 11.567-5.286-5.011-3.714 3.716 9 8.728 15-15.285z";
 const ERROR: &str = "M12 8c-1.062 0-2.073.211-3 .587v-3.587c0-1.654 1.346-3 3-3s3 1.346 3 3v1h2v-1c0-2.761-2.238-5-5-5-2.763 0-5 2.239-5 5v4.761c-1.827 1.466-3 3.714-3 6.239 0 4.418 3.582 8 8 8s8-3.582 8-8-3.582-8-8-8zm0 10c-1.104 0-2-.896-2-2s.896-2 2-2 2 .896 2 2-.896 2-2 2z";
@@ -82,7 +40,7 @@ const PILL_H: f64 = 40.0;
 const PAD: f64 = 12.0;
 const PILL_R: f32 = 16.0;
 const GAP: f64 = 6.0;
-/// A pill end's sprite width: past the continuous corner's reach (1.528 × 16 = 24.4 pt).
+/// Pill end sprite width, pt: past the continuous corner's reach (24.4 pt).
 const CAP: f32 = 26.0;
 /// The atlas's gutter (points) and its sprites' places: the 2 × CAP pill, then the arc, the
 /// success and the error icon (SIZE squares).
@@ -93,7 +51,7 @@ fn sprite_x(k: usize) -> f32 {
         _ => GUTTER + 2.0 * CAP + GUTTER + (k - 1) as f32 * (SIZE + GUTTER),
     }
 }
-/// colorFromStatusMap and Color(c).lighten(0.6).hex() (Display P3 components, 0…255).
+/// Status colours (Display P3, 0…255), and each one lightened for the pill's background.
 const ACTIVE: [u32; 4] = [0x47A1E6, 0x47A1E6, 0x5BC682, 0xCD5454];
 const LIGHT: [u32; 4] = [0xE6F2FC, 0xE6F2FC, 0xDCF3E4, 0xF4DADA];
 const TITLES: [&str; 4] = [
@@ -103,7 +61,7 @@ const TITLES: [&str; 4] = [
     "Transaction Unsafe",
 ];
 
-/// The demo's surface.
+/// The surface.
 pub fn surface() -> Box<dyn Surface> {
     Box::new(LoadingButton::new())
 }
@@ -115,7 +73,7 @@ struct LoadingButton {
     last_now: f64,
     status: u8,
     is_loading: bool,
-    /// i.current.
+    /// Calls so far: even ones succeed, odd ones fail.
     calls: u32,
     /// When the repeat started (at the first frame after the status turned loading).
     spin_from: Option<Option<f64>>,
@@ -148,11 +106,8 @@ struct LoadingButton {
     title: Option<Font>,
     canvas: Canvas,
     renderer: Renderer,
-    /// The shapes no frame tessellates (phone feedback 2026-11-15: "it stutters, it must be
-    /// super fluid"): the pill's continuous ends, the spinner's arc and the two icons, drawn
-    /// once (white, the only path fills, the only MSAA) into an atlas at the frame's scale;
-    /// each frame draws them as tinted sprites (no path, no MSAA) and the pill's middle as an
-    /// analytic rect.
+    /// Shapes drawn once into an atlas at the frame's scale, instead of tessellated each frame:
+    /// the pill's continuous ends, the arc and the two icons. Each frame draws them as sprites.
     sprites: Option<(skia::Images, f32)>,
     sprite_canvas: Canvas,
     sprite_renderer: Renderer,
@@ -252,7 +207,7 @@ impl LoadingButton {
         }
     }
 
-    /// Yoga's pixel grid, at rest only: a moving edge snapped each frame steps.
+    /// Rounds to the pixel grid, at rest only.
     fn round(&self, v: f64) -> f64 {
         if !self.rest {
             return v;
@@ -274,8 +229,7 @@ impl LoadingButton {
         (v * self.scale - 1e-4).ceil() / self.scale
     }
 
-    /// setStatus: the indicator's derived timings and the effect, the box's progress, the
-    /// background's transition.
+    /// Applies a status: the title's crossfade, the indicator's timings and the background.
     fn set_status(&mut self, status: u8) {
         if status == self.status {
             return;
@@ -323,7 +277,7 @@ impl LoadingButton {
         [0, 1, 2].map(|k| from[k] + (to[k] - from[k]) * e)
     }
 
-    /// handlePress.
+    /// A press: ignored while loading; otherwise it starts loading and arms the settle timer.
     fn handle_press(&mut self) {
         if self.is_loading {
             return;
@@ -422,7 +376,7 @@ impl Surface for LoadingButton {
         if self.background.2.is_none() && self.background.0 != self.background.1 {
             self.background.2 = Some(now);
         }
-        // index.tsx's timers.
+        // The settle and reset timers.
         let mut moving = false;
         for k in 0..2 {
             let (slot, delay) = if k == 0 {
@@ -435,8 +389,7 @@ impl Surface for LoadingButton {
                 if now >= due {
                     *slot = None;
                     if k == 0 {
-                        // mutateAsync resolves (even calls) or throws; isLoading false; the
-                        // reset's setTimeout.
+                        // Even calls succeed, odd ones fail; the reset timer is armed next.
                         let outcome = if self.calls % 2 == 0 { 2 } else { 3 };
                         self.calls += 1;
                         self.set_status(outcome);
@@ -521,7 +474,7 @@ impl Surface for LoadingButton {
             );
             a.restore();
             for (k, svg) in [(2, &self.success), (3, &self.error)] {
-                // fitbox('contain', rect(0, 0, 24, 24), rect(offset, offset, iconSize, iconSize)).
+                // Fit the 24-unit icon into a centred square of 45% of the size.
                 let icon_size = SIZE * 0.45;
                 let offset = (SIZE - icon_size) / 2.0;
                 a.save();
@@ -671,7 +624,6 @@ fn draw_indicator(
             SIZE * scale,
         )
     };
-    // <Group opacity={loadingOpacity}>.
     canvas.save();
     canvas.opacity(loading);
     // The arc turned about the centre: the sprite's (scale-sized) centre onto (10, 10).
@@ -692,7 +644,6 @@ fn draw_indicator(
         &Paint::stroke(c, STROKE).with_opacity(0.08),
     );
     canvas.restore();
-    // <Group opacity={iconOpacity}>.
     canvas.save();
     canvas.opacity(icon);
     canvas.draw_circle(center, center, radius, &Paint::fill(color(outcome)));

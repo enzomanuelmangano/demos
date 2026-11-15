@@ -1,15 +1,9 @@
-//! Geometry Button (src/animations/geometry-button): fifty white circles (rounded rects of
-//! `size` 100, corner radius 50) stroked over each other; pressed, they fan out on a ring of
-//! radius 50 as the stroke thins (3 → 0.6 → 0.2) and the button grows from half size to full.
+//! A round button of fifty white circles stroked over each other. Pressed, they fan out on a ring
+//! and their stroke thins, and the button grows from half size to full.
 //!
-//! - `progress`: withSpring(isActive ? 1 : 0, { duration: 600, dampingRatio: 1 }), which is
-//!   stiffness 755.4, damping 109.9, mass 4 (tools/spring.ts 600 1).
-//! - The canvas's scale: withSpring(isActive ? 1 : 0.5), Reanimated 4's default spring.
-//! - The canvas is 200×200 with a border radius of 100: it clips to its circle, scaled with it.
-//! - Tap().maxDuration(20000): active from the finger's down (inside the scaled view's
-//!   rectangle: its radius does not clip RN's hit test) to its lift, its leaving that rectangle
-//!   (Tap cancels outside its view) or 20 s. The heavy haptic is onBegin's: posted at an
-//!   accepted down (`messages`), played by the app.
+//! - Press progress is a critically damped spring of 600 ms; the canvas scales with a default spring.
+//! - A press lasts from touch-down to lift, until the touch leaves the button, or for 20 s at most.
+//!   The haptic is posted on an accepted touch-down, and the app plays it.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, PointerPhase, Surface, SurfaceError, Value};
@@ -29,7 +23,7 @@ pub fn surface() -> Box<dyn Surface> {
 struct GeometryButton {
     size: (f32, f32),
     finger: Option<u32>,
-    /// When the finger went down (Tap's maxDuration 20000 counts from it).
+    /// When the finger went down, for the 20 s limit.
     down_ms: f64,
     /// Haptics for the app to play (`message=buzz`).
     posted: Vec<String>,
@@ -61,7 +55,7 @@ impl Surface for GeometryButton {
         true
     }
 
-    /// RN drives this press with Gesture.Tap and its own withSpring, not pressto: not `pressto::Pressable`.
+    /// A plain tap gesture, not the shared press machine.
     fn input(&mut self, event: &InputEvent) {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
         match phase {

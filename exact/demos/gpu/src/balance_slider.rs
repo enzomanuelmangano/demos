@@ -1,27 +1,15 @@
-//! Balance Slider (src/animations/balance-slider: index.tsx, components/balance-slider,
-//! text-label): a row 50 tall and `width` wide (the window's 0.9) of two boxes (#44220C, #363636,
-//! radius 5) split by a picker (5% of the width, a white pill a quarter of it wide and 80% of its
-//! height), the labels COFFEE / MILK and their percentages over them in FiraCode Medium 16.
+//! Balance slider: a row of two boxes, COFFEE and MILK, split by a picker the finger drags. Each
+//! label shows its side's percentage.
 //!
-//! - x starts at (width + pickerWidth) × 0.5. A finger down anywhere on the row springs it to
-//!   x + pickerWidth / 2 (withSpring, Reanimated 4's default, overshootClamping); the pan's
-//!   updates put it there.
-//! - xPercentage = clamp((x − pickerWidth / 2) / width, 0, 1); the left box is
-//!   xPercentage × 0.95 of the width, the right box the rest past the picker.
-//! - Past 0.33 or 0.72 (leftPercentageLimitBeforeShift / rightPercentageLimitBeforeShift) the
-//!   boxes and the picker spring to 30% of the height (withSpring, the default) and the labels
-//!   rise by height / 5 (withSpring of their translateY, −height / 2 + 10 at rest).
-//! - Each label row sits at the row's bottom, 8 pt in from its side: the label, and the
-//!   percentage (`${round(p × 100)}%`) in a 44 pt box 4 pt away, aligned toward the label's
-//!   side. A ReText is a TextInput: one line of the font's height (ascent + descent), its
-//!   baseline an ascent below its top.
+//! - The split is the picker's position as a fraction of the row, clamped to 0…1. The boxes take
+//!   the split, with the picker between them.
+//! - Past 0.33 or 0.72 the boxes shrink to 30% of the height and the labels rise. The change is
+//!   a spring, not a snap.
+//! - The labels are text inputs: one line tall, with their baselines an ascent below the top.
 //!
-//! Haptics (past RN, which plays none), the essentials only, never per move: one
-//! `haptic:impact-light` when the pan takes the row (its activation, so a tap plays none); one
-//! `haptic:selection` when the split goes out past 0.33 or 0.72 (where the boxes shrink and the
-//! labels rise), none on the way back, re-armed only once it is REARM back inside;
-//! `haptic:impact-rigid` when it reaches an end (0 or 100 %), once per excursion. No two
-//! haptics within HAPTIC_GAP_MS.
+//! Haptics: a light impact when the pan takes the row, so a tap plays none. A selection when the
+//! split crosses 0.33 or 0.72 going out, and none on the way back. A rigid impact when it reaches
+//! an end. No two haptics are posted within HAPTIC_GAP_MS.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -31,15 +19,15 @@ use skia::{Canvas, Color, Font, Paint, Renderer};
 
 use crate::gfx;
 
-/// height.
+/// Row height, points.
 const HEIGHT: f32 = 50.0;
-/// PICKER_WIDTH_PERCENTAGE.
+/// Picker width as a fraction of the row.
 const PICKER: f32 = 0.05;
 const LEFT_LIMIT: f64 = 0.33;
 const RIGHT_LIMIT: f64 = 0.72;
-/// styles.text: fontSize.
+/// Label font size, points.
 const FONT_SIZE: f32 = 16.0;
-/// styles.percentage: width, marginHorizontal.
+/// Percentage box width, points.
 const PERCENT_WIDTH: f32 = 44.0;
 const PERCENT_MARGIN: f32 = 4.0;
 /// The shortest gap between two haptics, ms.
@@ -65,7 +53,7 @@ struct BalanceSlider {
     pan: PanGesture,
     x: Option<Spring>,
     box_height: Spring,
-    /// The labels' translateY (both share it: the same `shifted`).
+    /// The labels' translateY, shared by both.
     label_y: Spring,
     /// The limit's selection played and is not re-armed yet; the split is at an end.
     felt_shifted: bool,
@@ -134,10 +122,9 @@ impl BalanceSlider {
         let x = self.x.as_ref().map_or(0.0, |x| x.value);
         ((x - self.picker_width() as f64 / 2.0) / self.width() as f64).clamp(0.0, 1.0)
     }
-    /// hasReachedBoundaries, and what follows it.
+    /// Moves the boxes and labels to their shifted or resting layout.
     fn update_shift(&mut self) {
         let p = self.x_percentage();
-        // xPercentage < 0.33 || xPercentage > 0.72.
         let shifted = !(LEFT_LIMIT..=RIGHT_LIMIT).contains(&p);
         self.box_height.retarget(if shifted { 0.3 } else { 1.0 }, GENTLE);
         let base = (-HEIGHT / 2.0 + 10.0) as f64;
@@ -212,15 +199,14 @@ impl Surface for BalanceSlider {
         let c = &mut self.canvas;
         c.begin(frame.scale);
         c.draw_rrect(0.0, top, left_w, bh, 5.0, &Paint::fill(Color::view_hex(0x44220C)));
-        // The pill: pickerWidth / 4 wide, 80% of the picker's height, centred; radius 50 (a
-        // capsule once clamped).
+        // The pill: a quarter of the picker's width, 80% of its height, centred.
         let (pill_w, pill_h) = (pw / 4.0, 0.8 * bh);
         c.draw_rrect(left_w + (pw - pill_w) / 2.0, top + (bh - pill_h) / 2.0, pill_w, pill_h, 50.0, &Paint::fill(Color::WHITE));
         c.draw_rrect(left_w + pw, top, right_w, bh, 5.0, &Paint::fill(Color::view_hex(0x363636)));
 
         if let Some(font) = self.font.as_ref() {
             let m = font.metrics();
-            // The row's bottom at the container's (the row's bottom, translated), one line tall.
+            // Labels sit at the row's bottom, one line tall, and rise with the shift.
             let bottom = h + self.label_y.value as f32;
             let baseline = bottom - (m.descent + m.leading);
             let left_pct = &self.percents[(p * 100.0).round() as usize];
@@ -294,8 +280,8 @@ mod tests {
         rest.save("balance-rest");
         assert!(!animating);
         assert_eq!(s.agent("{}").unwrap(), "{\"left\":50,\"right\":50,\"held\":false}");
-        // Full height: the left box from x 0 to 179.55 (0.5 × 0.95 × 378), the picker after it.
-        // #44220C read as Display P3 (an RN View): rgb(73, 32, 5).
+        // At full height the left box ends where the picker starts.
+        // Views read hex as Display P3, so these are not the sRGB bytes.
         assert_eq!(&rest.at(20, 96)[..3], &[73, 32, 5]);
         assert_eq!(&rest.at(2 * 365, 4)[..3], &[0x36, 0x36, 0x36]);
         assert_eq!(&rest.at(2 * 189, 50)[..3], &[255, 255, 255]);

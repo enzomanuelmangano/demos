@@ -1,18 +1,9 @@
-//! BottomBarSkia (src/animations/bottom-bar-skia/components/bottom-tab-bar): a white tab bar
-//! whose bump (a circle of r 50 melted into the bar by Blur 5 + ColorMatrix alpha × 20 − 10)
-//! carries a #7E6CE2 circle (r 43) to the selected tab on withSpring() (Gentle); the selected
-//! icon rises 35 into it (withSpring { duration 400, dampingRatio 1 }: stiffness 1699.6,
-//! damping 164.9, mass 4) and turns white (withTiming 400 ms, interpolateColor #7E6CE2 →
-//! #FFFFFF). The canvas view casts an iOS shadow (rgba(0,0,0,0.2), opacity 0.2, radius 25,
-//! offset (0, −10)) from what it draws.
+//! Bottom bar: a white tab bar whose bump carries a purple circle to the selected tab. The
+//! selected icon rises into the circle and turns white.
 //!
-//! Input: the selected index (Contract owns it, as the navigator does). The taps are the
-//! canvas's: react-native-skia-gesture's Gesture.Tap() (RNGH's iOS tap: 500 ms, no distance
-//! limit), whose onTouchesUp picks the first Touchable.Rect (x tab · i, y 50, a tab wide,
-//! bottomTabBarHeight tall) holding the lift point; the surface posts `tab:<i>` and the
-//! Contract navigates and plays the selection haptic. A hold past 500 ms selects nothing.
-//! The canvas is RN's (`bottomTabBarHeight + 50` tall, bottomTabBarHeight = 65 + bottom
-//! inset / 2) with SHADOW_ROOM points more on top, where the shadow falls.
+//! Input: the selected index, owned by the navigator. A tap on a tab posts `tab:<i>`, and the
+//! navigator changes the tab and plays the selection haptic. A hold past 500 ms selects nothing.
+//! The shadow falls from the drawn shape, so the canvas extends SHADOW_ROOM points above the bar.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -23,18 +14,17 @@ use skia::{fit_box, Canvas, Color, Paint, Path, Rect, Renderer};
 use crate::{gfx, shaders};
 use shaders::bottom_bar_skia::{entry, module, Uniforms, GROUP_0, LAYER, MASK, SMP, TOP, U};
 
-/// BOTTOM_BAR_HEIGHT_OFFSET.
 const OFFSET: f32 = 50.0;
-/// Points above RN's canvas, for the shadow: offset 10 + 3σ (75).
+/// Points above the bar, room for the shadow.
 pub const SHADOW_ROOM: f32 = 85.0;
-/// The layer's padding past the canvas, points: 3σ of Blur 5.
+/// Layer padding past the canvas, points: three sigma of the blur.
 const PAD: f32 = 15.0;
 const TABS: usize = 3;
 const ICON_SIZE: f32 = 30.0;
 const PURPLE: u32 = 0x7E6CE2;
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
-/// svg-icons: HOME_ICON, SEARCH_ICON, USER_ICON and their FitBox `src` (square).
+/// The tab icons' SVG paths, fitted to a square.
 const ICONS: [(&str, f32); TABS] = [
     ("M21.71,11.29l-9-9a1,1,0,0,0-1.42,0l-9,9a1,1,0,0,0-.21,1.09A1,1,0,0,0,3,13H4v7.3A1.77,1.77,0,0,0,5.83,22H8.5a1,1,0,0,0,1-1V16.1a1,1,0,0,1,1-1h3a1,1,0,0,1,1,1V21a1,1,0,0,0,1,1h2.67A1.77,1.77,0,0,0,20,20.3V13h1a1,1,0,0,0,.92-.62A1,1,0,0,0,21.71,11.29Z", 24.0),
     ("M54.734,9.053C39.12,18.067,27.95,32.624,23.284,50.039c-4.667,17.415-2.271,35.606,6.743,51.22
@@ -55,7 +45,7 @@ pub fn surface() -> Box<dyn Surface> {
 struct BottomBarSkia {
     /// The bound index; None before the first bind.
     index: Option<usize>,
-    /// withSpring(currentIndex).
+    /// Spring on the selected index.
     animated: Spring,
     /// Each icon's translateY and colour progress, started at their targets.
     rise: [Spring; TABS],
@@ -70,7 +60,7 @@ struct BottomBarSkia {
     /// The canvas's tap; the screen's width and the tab bar's height it hit-tests against.
     tap: TapGesture,
     size: (f32, f32),
-    /// `tab:<i>` for the Contract (navigate + Haptics.selectionAsync).
+    /// `tab:<i>` for the navigator, which changes tab and plays the haptic.
     posted: Vec<String>,
 }
 
@@ -90,7 +80,7 @@ struct Gpu {
     binds: Option<(wgpu::BindGroup, wgpu::BindGroup)>,
 }
 
-/// baseTranslateY = y + height / 2 − iconSize / 2 − 8, 35 higher when active.
+/// Icon's resting y, centred in the tab; 35 higher when active.
 fn rise_of(bar: f32, active: bool) -> f64 {
     let base = OFFSET + bar / 2.0 - ICON_SIZE / 2.0 - 8.0;
     (if active { base - 35.0 } else { base }) as f64
@@ -106,16 +96,14 @@ impl Surface for BottomBarSkia {
         match self.index {
             None => self.animated = Spring::at(index as f64),
             Some(old) if old != index => {
-                // useDerivedValue(() => withSpring(currentIndex)): a mapper's retarget.
+                // Retarget the spring whenever the selected index changes.
                 self.animated.retarget(index as f64, GENTLE);
                 if let Some(bar) = self.placed {
                     for i in [old, index] {
                         let active = i == index;
-                        // withSpring(…, { duration: 400, dampingRatio: 1 }): Reanimated solves the
-                        // stiffness from where the icon is and how fast it moves at each start.
-                        // A mapper's withSpring: the running velocity carries over (dropped when it
-                        // points away), the frame clock continues, and the rest is measured
-                        // against getEnergy(x0, config.velocity = 0) (`Spring::retarget`).
+                        // A 400 ms critically damped spring. Its stiffness is solved from where the
+                        // icon is at each start, and the running velocity carries over unless it
+                        // points away from the target.
                         let to = rise_of(bar, active);
                         let (p, v) = (self.rise[i].value, self.rise[i].velocity);
                         let v = if (to > p && v < 0.0) || (to < p && v > 0.0) { 0.0 } else { v };
@@ -137,8 +125,7 @@ impl Surface for BottomBarSkia {
     fn input(&mut self, event: &InputEvent) {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
         if let Event::Tap { x, y } = self.tap.event(id, gfx::phase(phase), x, y, at_ms, true) {
-            // findTouchableItem: the first tab whose rect holds the lift (RN's canvas starts
-            // SHADOW_ROOM below this one).
+            // The first tab whose rect holds the lift point.
             let (w, bar) = self.size;
             let tab = w / TABS as f32;
             let y = y - SHADOW_ROOM;
@@ -222,7 +209,7 @@ impl Surface for BottomBarSkia {
         let uniforms = Uniforms { canvas: [pw as f32, ph as f32, gfx::srgb_flag(format), 0.0], pad: [pad as f32, lw as f32, lh as f32, 10.0 * s] };
         queue.write_buffer(&gpu.uniforms, 0, &uniforms.bytes());
         let [blur_layer, blur_shadow] = &mut self.blurs;
-        // Blur 5: σ 5 points; then the shape, thresholded, for the shadow (σ = shadowRadius 25).
+        // The shape, blurred and thresholded, casts the shadow.
         let blurred = blur_layer.run(device, queue, encoder, &gpu.layer, FORMAT, lw, lh, 5.0 * s);
         match gpu.binds.as_ref() {
             Some((goo, _)) => {
@@ -332,7 +319,7 @@ mod tests {
         use exact_gpu::{PointerKind, PointerPhase};
         let mut s = surface();
         s.bind(&[Value::Number(0.0)], None).unwrap();
-        // render() would set this; the 390-wide frame above (bar 82).
+        // Set as render() would.
         let gpu = match fixture::device() {
             Ok(gpu) => gpu,
             Err(error) => return eprintln!("{error}; skipped"),

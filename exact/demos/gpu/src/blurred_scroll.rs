@@ -1,26 +1,10 @@
-//! Blurred Scroll (src/animations/blurred-scroll: index.tsx, components/BlurredItem.tsx): ten
-//! violet rounded cards in a vertical list on black; the one leaving the centre upward shrinks,
-//! tilts and blurs out, then comes back sharp as it leaves the screen.
+//! Blurred scroll: ten violet rounded cards in a vertical list on black. The card leaving the
+//! centre upward shrinks, tilts and blurs out, then comes back sharp as it leaves the screen.
 //!
-//! - The list: an Animated.FlatList (a UIScrollView, `ui_scroll`: no snapping, normal
-//!   deceleration, bounces) of items `itemHeight` = windowHeight × 0.45 tall, padded by
-//!   windowHeight / 2 − itemHeight / 2 at both ends, so item `i` is centred at contentOffsetY =
-//!   i × itemHeight. Yoga rounds each item's edges to the device pixel (half up); UIScrollView
-//!   shows the content on the device pixel.
-//! - Per item, over inputRange [(i − 1) h, i h, (i + 1) h, (i + 2) h] (Extrapolate.CLAMP) of the
-//!   onScroll offset: Blur [0.1, 0.1, 40, 0.1], the Animated.View's rotate [0, 0, π/20, 0] rad
-//!   (about the view's centre), the Group's scale [0.8, 1, 0.8, 1] about (width / 2, 0).
-//! - Inside each item's canvas (its rounded frame; an 8-bit Display P3 surface cleared
-//!   transparent): a white RoundedRect (inset horizontalPadding / 2 = verticalPadding / 2 = 60,
-//!   r 20) in a Blur layer, then a Fill of LinearGradient((0, 0) → (width, itemHeight), #9459F4 →
-//!   #3411E4) with srcIn.
-//!
-//! Each visible item's canvas is drawn as RN Skia draws it, into its own texture: the rect
-//! analytic under the Group's scale, Graphite's blur of the layer (the canvas outset by the
-//! blur's reach; σ = blur × scale × the screen scale, the blur at rest too: Skia's 0.1 leaves a
-//! 0.4 % tail one pixel out), drawn back 8-bit, the gradient srcIn in P3. The canvas is redrawn
-//! only when its blur, scale or size changes; the screen pass rotates it as Core Animation does.
-//! No commit per scroll frame.
+//! - Each card is drawn once into its own texture, and the screen pass rotates and scales it. A
+//!   card is redrawn only when its blur, scale or size changes, so scrolling does not re-record.
+//! - The list keeps the native scroll view's deceleration and bounce. Its offsets land on the
+//!   device pixel.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -33,13 +17,13 @@ use crate::ui_scroll::{self, Snap, UiScroll};
 use crate::{gfx, shaders};
 use shaders::blurred_scroll::{entry, module, Item, GROUP_0, LAYER as LAYER_BINDING, SMP, U};
 
-/// The list's length (`new Array(10)`).
+/// Number of cards.
 const ITEMS: usize = 10;
-/// blurredItemContainerHeight = windowHeight × 0.45.
+/// Item height: 45% of the window.
 const ITEM_HEIGHT: f64 = 0.45;
-/// horizontalPadding / 2 = verticalPadding / 2.
+/// Inset of the white rect inside its item.
 const INSET: f32 = 60.0;
-/// RoundedRect r, drawn with continuous corners (iOS's squircle), not RN Skia's circular arcs.
+/// Corner radius of the card, drawn with continuous corners.
 const RADIUS: f32 = 20.0;
 /// The items one canvas texture each (a screen shows at most four consecutive ones).
 const SLOTS: usize = 4;
@@ -66,7 +50,7 @@ pub(crate) fn item_state(index: usize, scroll: f64, item_height: f64) -> (f64, f
     (blur, rotate, scale)
 }
 
-/// Yoga's rounding of a layout edge to the device pixel (half up), in device pixels.
+/// Rounds a layout edge to the device pixel, half up.
 fn yoga_px(v: f64, s: f64) -> f64 {
     (v * s + 0.5 + 1e-6).floor()
 }
@@ -195,8 +179,7 @@ impl BlurredScroll {
     }
 }
 
-/// A straight sRGB colour as encoded Display P3 (RN Skia converts a gradient's colours to its
-/// surface's space, then mixes them).
+/// Converts an sRGB colour to the surface's Display P3 encoding before mixing.
 fn srgb_to_p3(c: [u8; 3]) -> [f32; 3] {
     let lin = |v: u8| {
         let v = v as f64 / 255.0;
@@ -293,8 +276,7 @@ impl Surface for BlurredScroll {
             .as_mut()
             .is_some_and(|list| list.step(frame.now_ms) || list.moving());
         let s = l.s;
-        // UIScrollView keeps contentOffset on the device pixel (the scroll probe logs thirds of a
-        // point, dragging and decelerating): onScroll reads it so, and the content shows there.
+        // The scroll view keeps its offset on the device pixel, so the content is drawn there.
         let offset = (self.offset() * s).round() / s;
         let (pw, ph) = frame.pixels();
         let size = (l.width_px(), l.max_height_px());
@@ -346,7 +328,7 @@ impl Surface for BlurredScroll {
                 c.translate(w / 2.0, 0.0);
                 c.scale(g, g);
                 c.translate(-w / 2.0, 0.0);
-                // Core Animation's continuous corner (the owner's call over RN's circular arcs).
+                // Continuous corner, as Core Animation draws it.
                 c.draw_continuous_rrect(
                     INSET,
                     INSET,
@@ -406,7 +388,6 @@ impl Surface for BlurredScroll {
                 view: target,
                 resolve_target: None,
                 depth_slice: None,
-                // styles.container: black.
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
                     store: wgpu::StoreOp::Store,
@@ -529,7 +510,7 @@ mod tests {
     #[test]
     fn items_sit_on_yogas_pixels() {
         let l = Layout::new(420.0, 912.0, 3.0);
-        // paddingTop 250.8 pt = 752.4 px → 752; item 1 at 1983.6 → 1984.
+        // Item rows land on whole device pixels.
         assert_eq!(l.edges(0), (752.0, 1984.0));
         assert_eq!(l.edges(1), (1984.0, 3215.0));
         assert!((l.content() - 13817.0 / 3.0).abs() < 1e-9);
@@ -549,7 +530,7 @@ mod tests {
         let (rest, animating) = fixture::render(&gpu, &mut s, &frame(0.0)).unwrap();
         rest.save("blurred-scroll-0");
         assert!(!animating);
-        // Item 0 at Yoga's 251 (250.8 rounded), its card from (60, 311) to (360, 601.4).
+        // Item 0 sits at its rounded position.
         let top = 251.0f32;
         let inside = rest.at(70, (top + 70.0) as u32);
         assert!(
@@ -562,7 +543,7 @@ mod tests {
             &[0, 0, 0],
             "sharp edge"
         );
-        // Item 1 below, at scale 0.8 about its top centre: its card from x 90.
+        // Item 1 below, at scale 0.8 about its top centre.
         let below = 251.0 + h as f32 + 60.0;
         assert!(
             rest.at(100, below as u32)[2] > 150,
@@ -571,7 +552,7 @@ mod tests {
         );
         assert_eq!(&rest.at(85, below as u32)[..3], &[0, 0, 0]);
 
-        // Half way to item 1: item 0 above the centre, blurred (σ 20 × 0.9), tilted, smaller.
+        // Half way to item 1: item 0 is blurred, tilted and smaller.
         s.list.as_mut().unwrap().set_offset(h / 2.0);
         let (mid, _) = fixture::render(&gpu, &mut s, &frame(16.0)).unwrap();
         mid.save("blurred-scroll-half");
@@ -616,7 +597,7 @@ mod probe {
     use exact_gpu::fixture;
 
     /// `BLURRED_SCROLL_AT=<offset pt>`: the screen at 3× at that offset (`EXACT_GPU_OUT`), to
-    /// compare with an RN screenshot at the same offset.
+    /// compare with a reference screenshot at the same offset.
     #[test]
     #[ignore]
     fn render_at_offset() {

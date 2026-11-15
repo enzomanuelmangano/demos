@@ -1,60 +1,17 @@
-//! Empty QR Code (src/animations/empty-qrcode: index.tsx, components/qrcode-share/{index.tsx,
-//! hooks/use-active-qrcode.ts, hooks/use-active-letter.ts}): a 150 × 150 card, tilted −10°,
-//! that cycles the letters of "YOURLOGO" on radial gradients every 650 ms; a tap anywhere on its
-//! row turns it straight, grows it to 1.4 and fades the letter away to show a white QR code of
-//! "https://reactiive.io/demos" on #111. Another tap turns it back.
+//! Empty QR Code: a 150-point card that cycles the letters of "YOURLOGO" on radial gradients
+//! every 650 ms. A tap on its row straightens the card, grows it to 1.4 and fades the letter away
+//! to show a white QR code of "https://reactiive.io/demos" on #111. Another tap turns it back.
 //!
-//! Layout (Yoga's numbers, edges on the device-pixel grid): the container (#fbfbfb, flex 1,
-//! justifyContent center, alignItems stretch) holds the PressableScale (pressto's BaseButton:
-//! the window's width × the card's 150, vertically centred); in it QRCodeShare's Animated.View
-//! (150 × 150, alignSelf center, borderRadius 50 continuous, overflow hidden) carries
-//! `[scale, rotate]` about its centre. Inside it:
-//! - the View (flex 1, #111, centring) and its QRCode (react-native-qrcode-skia 0.3.1: a
-//!   90 × 90 Canvas, size 150 − 2 × 30, at (30, 30)) whose Path is `qr::rounded_path` of
-//!   node-qrcode's ECL H symbol, filled white;
-//! - over it (absoluteFill, zIndex 1) the logo View at its opacity, holding the letter Canvas
-//!   (flex 1: 150 × 150): Rect 150 × 150 with RadialGradient c (75, 75), r 75 of the active
-//!   colour pair; Text of the active letter, white, SF-Pro-Rounded-Bold.otf at 110 (glyph paths
-//!   at this size), at x = −font.measureText(letter).width / 2 + 75, y = 110 / 3 + 75.
-//!   Past RN (the owner: "the letters often don't look perfectly centred"): RN's x takes
-//!   measureText's width but not its left edge, so each letter sits right of centre by about its
-//!   left side bearing (U, R, L ~5 pt, O and G ~3.5), and y = c + size / 3 leaves the capitals
-//!   ~2 pt high. Here each letter's exact ink box (the glyph's outline bounds, read from the font)
-//!   is centred on the card and the cap height (1443 units) centred vertically.
-//! The two Skia canvases are drawn into their own layers (only when they change), and
-//! gpu/shaders/empty_qr_code.wgsl composites the card as Core Animation does: the layers
-//! sampled bilinearly through the inverse of the card's transform, the continuous rounded clip
-//! drawn by the skia package under that transform.
-//!
-//! The press: pressto's PressableScale as designed (the shared `pressto::Pressable`; RN with
-//! RNGH 3.3 shows none, as pressto 0.7 hands its v3 BaseButton `onBegan` / `onEnded`, which it
-//! no longer reads). A touch that starts in the button (UIKit's hit test: the BaseButton's
-//! bounds through its press scale, not the card's transformed overflow) holds it: progress
-//! withTiming 250 ms bezier(0.25, 0.1, 0.25, 1), the whole row scaled 1 → 0.96 about its centre
-//! (the card's too). onPress at a lift inside it (shouldCancelWhenOutside false: sliding off
-//! keeps the press, lifting there presses nothing); a cancelled touch (the screen's close pan
-//! taking it) does nothing. onPress runs toggle(), then the app's PressablesConfig onPress:
-//! Haptics.selectionAsync, posted here as `haptic:selection`.
-//!
-//! The letter: useActiveLetterAnimation's `setInterval(…, 650)` from the mount. RN's iOS timers
-//! (RCTTiming) are checked once per display frame: a repeating timer fires on the first frame
-//! at or after its target and is rescheduled `interval` from that moment, so each tick lands on
-//! the first frame ≥ the previous tick's frame + 650 ms (the drift of a frame per tick is
-//! kept). The index advances by one modulo min(8, 8) per tick.
-//!
-//! Motion audit (every animated value):
-//!
-//! | value | RN driver / config | Exact |
-//! |---|---|---|
-//! | card scale | useAnimatedStyle withSpring(show ? 1.4 : 1), the default (900, 120, 4: ζ = 1); at mount the style updater's first value is the target (no motion) | `Spring::retarget(GENTLE)` from where it is; a velocity pointing away from the new target dropped (Reanimated's onStart); at rest at 1 |
-//! | card rotate | withSpring(show ? '0deg' : '-10deg'), the default | the same, in degrees; at rest at −10 |
-//! | logo opacity | withTiming(show ? 0 : 1): 300 ms, inOut(quad), from where it is | `Timing` (Easing::timing_default), same |
-//! | button scale | pressto PressableScale: withTiming(active, 250 ms, bezier(0.25, 0.1, 0.25, 1)), 1 → 0.96 about the row's centre | `pressto::Pressable` |
-//! | letter, colours, letterX | setInterval 650 ms: index (i + 1) % 8; useDerivedValue | ticks on the first frame ≥ last tick + 650 ms |
-//! | haptic | PressablesConfig onPress: selectionAsync | `haptic:selection` at the lift |
-//!
-//! The interval keeps the surface drawing every frame (a compose pass); the Skia layers are
-//! redrawn only when the letter changes, the clip only when the card moves.
+//! - The card is clipped to continuous rounded corners. The QR code and the letter are drawn into
+//!   their own layers, redrawn only when they change, and composited each frame through the
+//!   card's transform.
+//! - The press shrinks the whole row to 0.96 while held. It toggles only when lifted inside the
+//!   row, so sliding off cancels the tap. A cancelled touch does nothing.
+//! - The letter timer fires on the first display frame at or after each tick, so the timing
+//!   drifts by at most a frame per tick.
+//! - Haptics: a selection on each toggle.
+//! - Between letters nothing moves, so the surface asks for a frame only when the next letter is
+//!   due.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, PointerPhase, Surface, SurfaceError, Value};
@@ -65,29 +22,27 @@ use skia::{point, Canvas, Color, Font, Matrix, Paint, Renderer, Shader};
 use crate::{qr, shaders};
 use shaders::empty_qr_code::{entry, module, Compose, GROUP_0, LETTER, MASK, QR, SMP, U};
 
-/// DEFAULT_QRCODE_SIZE: the card.
+/// Card size, pt.
 const SIZE: f32 = 150.0;
-/// DEFAULT_QRCODE_PADDING: the QR is SIZE − 2 × PADDING.
+/// Padding around the QR code, pt.
 const PADDING: f32 = 30.0;
-/// DEFAULT_FONT_SIZE.
+/// Letter size, pt.
 const FONT_SIZE: f32 = 110.0;
-/// styles.container borderRadius (borderCurve continuous).
+/// Card corner radius, pt, continuous.
 const RADIUS: f32 = 50.0;
-/// index.tsx styles.container backgroundColor and the QR's View backgroundColor (View colours:
-/// Display P3 components).
+/// Background and QR colours, as Display P3 views.
 const BACKGROUND: u32 = 0xFBFBFB;
 const FILL: u32 = 0x111111;
 /// The value QRCodeShare gets.
 const QR_VALUE: &str = "https://reactiive.io/demos";
-/// rStyle's targets: scale and rotate (degrees), shown / hidden.
+/// Scale when shown, and rotation when hidden, in degrees.
 const SCALE_SHOWN: f64 = 1.4;
 const ROTATE_HIDDEN: f64 = -10.0;
-/// useActiveLetterAnimation's timeInterval.
+/// Ms between letters.
 const INTERVAL_MS: f64 = 650.0;
-/// DEFAULT_LETTERS and DEFAULT_COLORS (Skia colours: sRGB).
+/// Letters and their gradient colours.
 const LETTERS: [&str; 8] = ["Y", "O", "U", "R", "L", "O", "G", "O"];
-/// Each letter's ink, left and right, in font units (2048 / em): sf-pro-rounded-bold-yourlogo.otf's
-/// outline bounds (the test checks them against the font).
+/// Each letter's ink bounds, left and right, in font units (2048 per em).
 const LETTER_INK: [(char, f32, f32); 6] =
     [('Y', 59.0, 1304.0), ('O', 75.0, 1467.0), ('U', 120.0, 1329.0), ('R', 120.0, 1233.0), ('L', 120.0, 1071.0), ('G', 75.0, 1410.0)];
 /// The capitals' height, font units.
@@ -109,17 +64,15 @@ const COLORS: [(u32, u32); 8] = [
     (0x3C40C6, 0x575FCF),
     (0x2F80ED, 0x56CCF2),
 ];
-/// Math.min(letters.length, colors.length).
+/// Letters in the cycle.
 const CYCLE: usize = if LETTERS.len() < COLORS.len() {
     LETTERS.len()
 } else {
     COLORS.len()
 };
-/// assets/fonts/SF-Pro-Rounded-Bold.otf, cut to the letters of YOURLOGO (fontTools subset: the
-/// same outlines, advances and metrics).
+/// SF Pro Rounded Bold, subset to the letters of YOURLOGO.
 static SF_ROUNDED_BOLD: &[u8] = include_bytes!("../fonts/sf-pro-rounded-bold-yourlogo.otf");
-/// The clip's layer: a square of this many points about the card's centre holds the card at
-/// any of its scales and angles (75 × 1.4 × √2 < 150).
+/// Half-side of the clip layer, pt: holds the card at its largest scale and turn.
 const MASK_HALF: f32 = 150.0;
 const LAYER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
@@ -128,7 +81,7 @@ pub fn surface() -> Box<dyn Surface> {
     Box::new(EmptyQrCode::new())
 }
 
-/// Yoga's rounding of an absolute edge to the pixel grid (a half rounds up).
+/// Rounds an edge to the device-pixel grid, half up.
 fn grid(v: f32, s: f32) -> f32 {
     ((v * s + 0.5 + 1e-4).floor()) / s
 }
@@ -179,13 +132,11 @@ struct EmptyQrCode {
     /// activeLetterIndex, and when the interval fires next (None until the first frame).
     index: usize,
     next_tick: Option<f64>,
-    /// The last frame drew at this time, and something in it (a spring, the fade, a press) still
-    /// moved; or an input came since: `max_fps` draws every display frame then, and between
-    /// the interval's ticks only as often as it takes to land on the next one.
+    /// The last frame's time, and whether it still moved or an input came since.
     drawn_ms: f64,
     moving: bool,
     touched: bool,
-    /// The PressableScale (the shared pressto machine).
+    /// The press state machine.
     press: Pressable,
     posted: Vec<String>,
     font: Option<Font>,
@@ -248,8 +199,7 @@ impl EmptyQrCode {
         }
     }
 
-    /// toggleQRCodeVisibility: rStyle's springs and rLogoContainerStyle's timing start from
-    /// where they are.
+    /// Toggles the card. Springs and timings start from where they are.
     fn toggle(&mut self) {
         self.show = !self.show;
         self.scale
@@ -274,7 +224,7 @@ impl EmptyQrCode {
             .then(self.press_matrix())
     }
 
-    /// The PressableScale's scale about the row's centre.
+    /// The press scale, about the row's centre.
     fn press_matrix(&self) -> Matrix {
         let l = &self.layout;
         let (cx, cy) = (l.w / 2.0, l.y0 + SIZE / 2.0);
@@ -282,8 +232,7 @@ impl EmptyQrCode {
         Matrix::translate(-cx, -cy).then(Matrix::scale(k, k)).then(Matrix::translate(cx, cy))
     }
 
-    /// UIKit's hit test of the BaseButton: its frame (the window's width × 150) through its
-    /// press scale about its centre.
+    /// Hit test: the row, through its press scale.
     fn hits(&self, x: f32, y: f32) -> bool {
         let l = &self.layout;
         let k = self.press.scale() as f32;
@@ -292,7 +241,7 @@ impl EmptyQrCode {
         x >= 0.0 && x < l.w && y >= l.y0 && y < l.y0 + SIZE
     }
 
-    /// setInterval's ticks up to this frame (at most one per frame, as RCTTiming fires them).
+    /// Advances the letter by each tick due at this frame, at most one per frame.
     fn tick(&mut self, now_ms: f64) {
         match self.next_tick {
             None => self.next_tick = Some(now_ms + INTERVAL_MS),
@@ -304,7 +253,7 @@ impl EmptyQrCode {
         }
     }
 
-    /// A frame at `now`: the interval, the springs and the press, and what `max_fps` reads.
+    /// Advances the timer, the springs and the press to `now`.
     fn advance(&mut self, now: f64) {
         self.tick(now);
         let mut moving = self.scale.step(now);
@@ -329,7 +278,7 @@ impl EmptyQrCode {
         c.draw_rect(0.0, 0.0, SIZE, SIZE, &Paint::shader(gradient));
         if let Some(font) = &self.font {
             let letter = LETTERS[self.index];
-            // Past RN: the ink box centred, the cap height centred.
+            // Centres the letter's ink box and cap height on the card.
             let (l, r) = ink_span(letter, FONT_SIZE);
             let x = SIZE / 2.0 - (l + r) / 2.0;
             let y = SIZE / 2.0 + CAP_HEIGHT / 2.0 / 2048.0 * FONT_SIZE;
@@ -488,14 +437,12 @@ impl Surface for EmptyQrCode {
         let gpu = self.gpu.as_ref().unwrap();
         queue.write_buffer(&gpu.uniforms, 0, &u.bytes());
         skia::render::fullscreen_pass(encoder, "empty qr code", target, &gpu.compose, &gpu.bind);
-        // setInterval runs as long as the demo shows: frames go on, at the rate `max_fps` says.
+        // The letter timer keeps frames coming.
         true
     }
 
-    /// Between two of the interval's letters nothing moves: rather than redraw the same picture
-    /// 78 times in 650 ms, draw again when the next letter is due (the host's deadline is the
-    /// last frame plus 1000 / cap, so the cap is that wait, in at most 200 ms steps). Anything
-    /// moving, a finger, or the last two display frames before the letter: every frame.
+    /// Between letters nothing moves, so ask for the next frame only when the next letter is due.
+    /// Anything moving, or a finger, asks for every frame.
     fn max_fps(&self) -> u32 {
         if self.moving || self.touched {
             return 0;
@@ -603,7 +550,6 @@ mod tests {
         let l = Layout::new(420.0, 912.0, 3.0);
         assert_eq!((l.x0, l.y0), (135.0, 381.0));
         assert_eq!((l.px(SIZE), l.px(SIZE - 2.0 * PADDING)), (450, 270));
-        // An odd window: the card's edges on the 1/3 pt grid.
         let l = Layout::new(393.0, 852.0, 3.0);
         assert_eq!(((l.x0 * 3.0).fract(), l.y0), (0.0, 351.0));
         assert!((l.x0 - 121.666_67).abs() < 1e-3, "{}", l.x0);
@@ -622,7 +568,6 @@ mod tests {
                 last = q.index;
             }
         }
-        // 650 is frame 39 exactly (650.0 ms); each later tick is 39 frames after the last.
         assert!((ticks[0] - 650.0).abs() < 1e-6, "{ticks:?}");
         for w in ticks.windows(2) {
             assert!((w[1] - w[0] - 39.0 * FRAME_MS).abs() < 1e-6, "{ticks:?}");
@@ -634,7 +579,6 @@ mod tests {
         assert_eq!((q.index, q.next_tick), (1, Some(1305.0)));
         q.tick(1300.0);
         assert_eq!(q.index, 1);
-        // Index cycles through the eight letters.
         let mut q = EmptyQrCode::new();
         q.tick(0.0);
         for k in 1..=9 {
@@ -647,12 +591,9 @@ mod tests {
     fn a_touch_on_the_row_presses_and_toggles_when_it_lifts_inside() {
         let mut q = EmptyQrCode::new();
         q.layout = Layout::new(420.0, 912.0, 3.0);
-        // Outside the button's 150-pt row (the card's overflow at 1.4 is not hit-testable).
         q.input(&pointer(PointerPhase::Down, 210.0, 370.0));
         q.input(&pointer(PointerPhase::Up, 210.0, 370.0));
         assert!(!q.show && q.messages().is_empty());
-        // pressto as designed: held, the row scales to 0.96 over 250 ms; lifted outside it
-        // (BaseButton's pointerInside false), no onPress, no haptic.
         q.input(&pointer(PointerPhase::Down, 20.0, 400.0));
         q.press.step(0.0);
         q.press.step(250.0);
@@ -662,7 +603,6 @@ mod tests {
         q.press.step(266.0);
         q.press.step(516.0);
         assert_eq!(q.press.scale(), 1.0);
-        // On the row, beside the card, lifted inside it: a press.
         q.input(&pointer(PointerPhase::Down, 20.0, 400.0));
         q.input(&pointer(PointerPhase::Up, 30.0, 420.0));
         assert!(q.show);
@@ -671,7 +611,6 @@ mod tests {
             (q.scale.target(), q.rotate.target(), q.opacity.target()),
             (1.4, 0.0, 0.0)
         );
-        // A cancelled touch does nothing.
         q.input(&pointer(PointerPhase::Down, 210.0, 456.0));
         q.input(&pointer(PointerPhase::Cancel, 210.0, 456.0));
         assert!(q.show && q.messages().is_empty());
@@ -694,10 +633,7 @@ mod tests {
             "{s} {r} {o}"
         );
         q.toggle();
-        // Reversed from where they are: the springs' velocity pointed away from the new targets,
-        // so it is dropped (from rest, a critical spring moves 2.6 % of the way in a frame,
-        // toward 1, where the kept +1.8/s would have carried it on up); the timing starts over
-        // from its value.
+        // A reversal drops the springs' velocity, since it points away from the new target.
         assert_eq!((q.scale.value, q.rotate.value), (s, r));
         q.scale.step(t);
         q.opacity.step(t);
@@ -752,40 +688,32 @@ mod tests {
         let (rest, wants) = fixture::render(&gpu, &mut s, &frame(0.0)).unwrap();
         rest.save("empty-qr-code-rest");
         assert!(wants, "the interval keeps it drawing");
-        // The background, #fbfbfb in Display P3.
         assert!(
             near(px(&rest, 10.0, 10.0), view(BACKGROUND), 1),
             "{:?}",
             px(&rest, 10.0, 10.0)
         );
-        // The card's centre (210, 456): the gradient's outer colour near the card's bottom edge,
-        // inside the clip (rotated −10°: the bottom-centre point stays inside).
         let edge = px(&rest, 210.0, 456.0 + 70.0);
         assert!(edge[1] > edge[0] && edge[2] > edge[0], "teal: {edge:?}");
-        // The Y's stem below the centre is white.
         assert!(
             near(px(&rest, 210.0, 456.0 + 20.0), [255, 255, 255], 2),
             "{:?}",
             px(&rest, 210.0, 456.0 + 20.0)
         );
-        // Outside the clip's corner (the square's corner, rotated) is background.
         assert!(
             near(px(&rest, 135.5, 381.5), view(BACKGROUND), 1),
             "{:?}",
             px(&rest, 135.5, 381.5)
         );
 
-        // The first tick: an O on orange.
         let (o, _) = fixture::render(&gpu, &mut s, &frame(650.0)).unwrap();
         o.save("empty-qr-code-o");
         assert_eq!(s.index, 1);
         let c = px(&o, 210.0, 456.0 + 70.0);
         assert!(c[0] > c[1] && c[1] > c[2], "orange: {c:?}");
-        // The O's counter, at the centre, shows the gradient.
         let centre = px(&o, 210.0, 456.0 - 8.0);
         assert!(centre[0] > 200 && centre[2] < 120, "{centre:?}");
 
-        // Shown: straight, at 1.4, the letter gone.
         s.toggle();
         let mut t = 700.0;
         let mut mid = None;
@@ -803,7 +731,6 @@ mod tests {
             (s.scale.value, s.rotate.value, s.opacity.value),
             (1.4, 0.0, 0.0)
         );
-        // Module (0, 0) is dark (white), (1, 1) light (#111), in the 90-pt QR at (30, 30).
         let cell = 90.0 / 33.0;
         let at = |i: f32, j: f32| {
             (
@@ -824,13 +751,10 @@ mod tests {
             px(&shown, x, y),
             view(FILL)
         );
-        // The card's edge at 1.4: 105 pt from the centre; just inside is #111, outside background.
         assert!(near(px(&shown, 210.0, 456.0 + 103.0), view(FILL), 1));
         assert!(near(px(&shown, 210.0, 456.0 + 106.0), view(BACKGROUND), 1));
     }
-    /// A host that paces the canvas as exact-gpu's `Cadence` does (a frame is due at the last
-    /// draw plus 1000 / cap, half a display period early allowed): at rest, every letter lands on
-    /// the display frame it lands on at the full rate, with a fraction of the frames drawn.
+    /// A paced host draws each letter on the same frame as a full-rate one, with fewer frames.
     #[test]
     fn at_rest_it_draws_only_to_land_each_letter() {
         let period = 1000.0 / 120.0;
@@ -873,10 +797,8 @@ mod tests {
     fn each_letter_is_centred_on_its_ink() {
         let font = Font::new(SF_ROUNDED_BOLD, 100.0).unwrap();
         for &(ch, l, r) in &LETTER_INK {
-            // The table is the font's: measureText rounds the same bounds out (floor − 1, ceil + 1).
             let m = font.measure_text(&ch.to_string());
             assert_eq!((m.x, m.x + m.width), ((l / 20.48).floor() - 1.0, (r / 20.48).ceil() + 1.0), "{ch}");
-            // Centred: the ink's middle on the card's.
             let (a, b) = ink_span(&ch.to_string(), FONT_SIZE);
             let x = SIZE / 2.0 - (a + b) / 2.0;
             assert!(((x + a + x + b) / 2.0 - SIZE / 2.0).abs() < 1e-4, "{ch}");

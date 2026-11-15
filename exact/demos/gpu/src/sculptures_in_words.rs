@@ -1,39 +1,16 @@
-//! Sculptures in Words (src/animations/sculptures-in-words: index.tsx, layout.ts,
-//! glyph-atlas.ts, hooks/use-portrait-renderer.ts, shaders/glyphs.ts, constants.ts,
-//! paginator.tsx, haptics.ts): three articles — the Venus de Milo, the Victory of Samothrace,
-//! Rodin's Thinker — whose every letter lifts off the column onto its statue at the button's
-//! tap, and back; sideways, while a statue shows, the letters re-seat onto the next figure.
-//! The whole window, on the Contract's white; the button is the Contract's (the input).
+//! Sculptures in Words: three articles (the Venus de Milo, the Victory of Samothrace, Rodin's
+//! Thinker) whose letters lift off the column onto their statue at a tap, and back. While a statue
+//! shows, a sideways drag re-seats the letters onto the next figure. The window is white.
 //!
-//! - The columns: RN Skia Paragraphs, baked (exact/parity-tools/sculptures-in-words/bake.ts:
-//!   RN Skia's Paragraph module run as CanvasKit at every width from 320 to 440, with iOS's
-//!   Core Text advances and its line breaks, checked). Here a column is each mark's glyph (an
-//!   index into the union of glyph ids), its x along its line (f32 of the 16.16 difference
-//!   from the line's first glyph, as SkShaper's positions give it) and its line's baseline; the
-//!   page is drawn as Paragraph::paint draws it (one text blob per line at (originX, originY +
-//!   baseline), Graphite's subpixel masks: `skia::Canvas::draw_glyphs_subpixel`), under RN's
-//!   pageShift (−round(scroll × ratio) / ratio) and columnShift ((i − cross) × width), clipped to
-//!   the column. A width the bake lacks takes the nearest one's lines.
-//! - The figure (WebGPU in RN): RN's WGSL verbatim (shaders/sculptures_in_words.wgsl), one
-//!   instanced quad per mark with a depth buffer, into an rgba8unorm texture cleared
-//!   transparent, composited as RN's <Image> (fit fill) on the Skia canvas. Its instance buffer
-//!   is built as RN builds it (pairByAngle per page here, pairClouds and fitDiagonal baked), its
-//!   uniforms written at RN's offsets, the atlas as buildGlyphAtlas draws it (1.6 em cells, a
-//!   quarter-pixel phase per cell, the glyph at (0.2 em, 1.1 em) of it, in #1c1a17: CoreText's
-//!   masks through `skia::Font::subpixel_mask`).
-//! - The canvas: RN Skia's 8-bit Display P3 surface (`gfx::P3Layer`), cleared to the white View
-//!   under it (PAGE_BG, opaque: see `page_clear`): the column (while the clock ≤ 0.003), the figure's image (from the first
-//!   frame the clock leaves 0), the two eased white fades. The paginator dots are Views over it:
-//!   drawn after, in sRGB, at Yoga's pixel-rounded edges.
-//! - The clock: withSpring(0 | 1, { mass 0.5, stiffness 2.2, damping 2.098 }) on each tap, from
-//!   where it is at the speed it has; the direction (rewind) and the ripple's origin set only
-//!   from rest. The yaw: a turntable (withRepeat(withTiming(+2π, 2π / 0.35 s, linear))) while
-//!   revealed, withSpring(0, { dampingRatio 1, duration 3500 }) back. The haptic pattern's 14
-//!   ticks posted as `haptic:impact-light`.
-//! - The scrolls are UIScrollViews (`ui_scroll`): reading (vertical, the column's height) while
-//!   the clock < 0.1, crossing (horizontal, three pages, snapToInterval width with
-//!   disableIntervalMomentum, decelerationRate fast) while it is > 0.9; a touch stays with the
-//!   scroll it went down on.
+//! - The column: each article is baked into glyph positions per width and drawn as lines of
+//!   glyphs, shifted by the scroll.
+//! - The figure: one instanced quad per letter, in a WGSL shader with a depth buffer, composited
+//!   over the column.
+//! - The clock: a spring from 0 (the column) to 1 (the statue) on each tap. The statue's yaw turns
+//!   while it shows and springs back when it hides.
+//! - Haptics: 14 light impacts spread over the departures.
+//! - Scrolls: vertical while the clock is near 0 (reading), horizontal across the three pages while
+//!   it is near 1 (crossing). A touch stays with the scroll it went down on.
 
 use std::sync::OnceLock;
 
@@ -46,23 +23,20 @@ use crate::gfx;
 use crate::shaders::sculptures_in_words::{entry, GROUP_0};
 use crate::ui_scroll::{Snap, UiScroll};
 
-/// newsreader-sculptures-subset.ttf: Newsreader's glyphs the columns use, at their ids, still
-/// variable (Core Text draws them at opsz 12).
+/// Newsreader's glyphs the columns use (a subset), still variable: Core Text draws them at opsz 12.
 static FONT: &[u8] = include_bytes!("../fonts/newsreader-sculptures-subset.ttf");
-/// bake.ts's sculptures.bin.
+/// The baked columns and figure data, zlib-compressed.
 static BAKED: &[u8] = include_bytes!("../images/sculptures-in-words/sculptures.bin.zlib");
 
-/// constants.ts.
 const PAGE_BG: u32 = 0xffffff;
-/// RN's 12-stop fade: a Skia LinearGradient from `y0` to `y1`, full width.
+/// A linear gradient from `y0` to `y1`, full width.
 fn fade_rect(c: &mut Canvas, w: f32, y0: f32, y1: f32, stops: &[(f32, Color)]) {
     let shader = Shader::Linear { start: point(0.0, y0), end: point(0.0, y1), stops: stops.to_vec() };
     c.draw_rect(0.0, y0.min(y1), w, (y1 - y0).abs(), &Paint::shader(shader));
 }
 
-/// The canvas's clear: PAGE_BG (the screen's View, a P3 hex; white is white in both), opaque.
-/// The surface paints the page itself, so it is opaque: the web's canvas composites over black
-/// (it has no other alpha mode there), where a transparent clear showed the page black.
+/// The canvas's clear: opaque PAGE_BG. The web's canvas composites over black with no other alpha
+/// mode, so a transparent clear would show black.
 fn page_clear() -> wgpu::Color {
     let c = |k: u32| ((PAGE_BG >> k) & 0xff) as f64 / 255.0;
     wgpu::Color { r: c(16), g: c(8), b: c(0), a: 1.0 }
@@ -86,25 +60,24 @@ const CLOCK: reanimated::SpringConfig = reanimated::SpringConfig {
 };
 const MORPH_DURATION_MS: f64 = 3500.0;
 const STAGGER: f64 = 0.5;
-/// index.tsx.
 const BOTTOM_FADE_FRAC: f64 = 0.22;
 const TOP_FADE_FRAC: f64 = 0.14;
 const FADE_STOPS: usize = 12;
-/// fab.tsx FAB_SIZE; paginator.tsx.
+/// Paginator geometry, in points.
 const FAB_SIZE: f64 = 48.0;
 const DOT_SIZE: f64 = 6.0;
 const DOT_ACTIVE_WIDTH: f64 = 16.0;
 const DOT_SPACING: f64 = 8.0;
-/// use-portrait-renderer.ts.
+/// Floats per baked point, per instance and in the uniform block.
 const POINT_STRIDE: usize = 7;
 const INSTANCE_FLOATS: usize = 36;
 const UNIFORM_FLOATS: usize = 52;
 const MAX_PIXEL_RATIO: f32 = 3.0;
-/// glyph-atlas.ts SUBPIXEL_PHASES.
+/// Subpixel phases per glyph in the atlas.
 const PHASES: usize = 4;
-/// haptics.ts: 14 ticks over the departures.
+/// Impact ticks spread over the departures.
 const TICKS: usize = 14;
-/// UIScrollView's normal and fast deceleration rates, per ms.
+/// Scroll deceleration rates, per ms: normal and fast.
 const RATE_NORMAL: f64 = 0.998;
 const RATE_FAST: f64 = 0.99;
 const ARTICLES: usize = 3;
@@ -233,7 +206,7 @@ struct Line {
 }
 
 struct Page {
-    /// Interleaved [x, y] per mark: its origin on the baseline, window points (RN's xy).
+    /// Interleaved [x, y] per mark: its origin on the baseline, in window points.
     xy: Vec<f32>,
     /// getGlyphWidths per mark.
     adv: Vec<f32>,
@@ -270,8 +243,7 @@ fn build_page(a: usize, width: f64, height: f64) -> Page {
             baseline,
         });
         for j in i..i + count {
-            // SkShaper's 16.16 positions, the line's x their difference (exact in f64, f32 as
-            // Skia keeps it); RN's xs: marginX + origin.x + pos.x, top + origin.y + pos.y.
+            // Skia's 16.16 positions, as the difference from the line's first glyph. f32, as Skia keeps them.
             let x = ((art.p[j] - base) as f64 / 65536.0) as f32;
             x_line.push(x);
             xy.push((margin_x + x as f64) as f32);
@@ -314,7 +286,7 @@ fn pair_by_angle(page_xy: &[f32], cloud: &[f32], count: usize) -> Vec<usize> {
             (cloud[i * POINT_STRIDE + 1] as f64 - bcy).atan2(cloud[i * POINT_STRIDE] as f64 - bcx)
         })
         .collect();
-    // Array.prototype.sort with (a, b) => angles[a] − angles[b]: stable.
+    // A stable sort by angle: ties keep their order.
     let order = |angles: &[f64]| {
         let mut o: Vec<usize> = (0..count).collect();
         o.sort_by(|&a, &b| {
@@ -332,7 +304,7 @@ fn pair_by_angle(page_xy: &[f32], cloud: &[f32], count: usize) -> Vec<usize> {
     out
 }
 
-/// The instance buffer, as use-portrait-renderer.ts fills it.
+/// The instance buffer: one instance per point of the largest figure.
 fn build_instances(pages: &[Page]) -> (Vec<f32>, usize) {
     let b = baked();
     let (bust, nike, thinker) = (&b.clouds[0], &b.clouds[1], &b.clouds[2]);
@@ -403,7 +375,7 @@ fn build_instances(pages: &[Page]) -> (Vec<f32>, usize) {
     (out, count)
 }
 
-/// buildGlyphAtlas's geometry at a pixel ratio.
+/// The atlas's grid at a pixel ratio: 1.6 em cells, glyphs at (0.2 em, 1.1 em) in each.
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct AtlasGeo {
     cell: u32,
@@ -489,7 +461,7 @@ fn perspective(fovy: f64, aspect: f64, near: f64, far: f64) -> [f64; 16] {
     ]
 }
 
-/// writeModelMatrix: lean, then the spin about the shape's own axis (a mat3x3f, padded).
+/// The model rotation: lean, then the spin, as a padded mat3x3.
 fn write_model(out: &mut [f32], lean: f64, spin: f64) {
     let (cl, sl, cs, ss) = (lean.cos(), lean.sin(), spin.cos(), spin.sin());
     out[16] = cs as f32;
@@ -524,8 +496,7 @@ impl Yaw {
     }
     fn step(&mut self, now: f64) -> bool {
         match self {
-            // withRepeat(withTiming(from + 2π, { duration, easing: linear }), -1): each turn
-            // starts again from `from` on the frame the last one ended.
+            // A linear turn from `from`, repeating: each turn restarts on the frame the last one ended.
             Yaw::Spin { from, start, value } => {
                 let duration = std::f64::consts::TAU * 1000.0 / IDLE_SPIN;
                 let t0 = *start.get_or_insert(now);
@@ -590,7 +561,7 @@ struct Sculptures {
     /// Tests: draw at this clock.
     #[cfg(test)]
     forced: Option<f64>,
-    /// Tests: leave the column out (RN draws both for clocks up to 0.003).
+    /// Tests: leave the column out.
     #[cfg(test)]
     quads_only: bool,
 }
@@ -647,7 +618,7 @@ impl Sculptures {
         h[lo] + (h[hi] - h[lo]) * (k - lo as f64)
     }
 
-    /// originRef.current(scroll).
+    /// Sets the ripple's origin for a scroll position.
     fn set_origin(&mut self, scroll: f64) {
         let (w, h) = self.size;
         let k = (self.cross().round().max(0.0) as usize).min(ARTICLES - 1);
@@ -732,7 +703,7 @@ impl Sculptures {
         moving |= self.read.step(now);
         moving |= self.crossing.step(now);
         self.read.max = (self.spacer() - self.size.1).max(0.0);
-        // MORPH_PATTERN's discrete ticks.
+        // The impact ticks: each at its time along the departures.
         if let Some((start, next)) = &mut self.ticks {
             let t0 = *start.get_or_insert(now);
             let departures = MORPH_DURATION_MS * STAGGER;
@@ -1025,7 +996,7 @@ impl Sculptures {
         }
     }
 
-    /// The uniforms startFrameLoop writes, at this frame.
+    /// Fills the uniform block for this frame.
     fn write_uniforms(&mut self, ratio: f32, geo: &AtlasGeo) {
         let (w, h) = self.size;
         let (morph, cross, yaw) = (self.morph(), self.cross(), self.yaw.value());
@@ -1066,7 +1037,7 @@ impl Sculptures {
         u[50] = self.rewind as f32;
     }
 
-    /// The canvas RN draws (its Skia part), in points.
+    /// Draws the column and the fades, in points.
     fn draw_canvas(&mut self, scale: f32, clock: f64) {
         let (w, h) = self.size;
         let ratio = scale as f64;
@@ -1147,8 +1118,7 @@ impl Sculptures {
         fade_rect(c, w32, h as f32 - fade, h as f32, &stops);
     }
 
-    /// The paginator's dots (Views): where Yoga puts them at 1 / scale, their widths and
-    /// opacities from the crossing; its layer's opacity from the clock.
+    /// The paginator's dots, their widths and opacities from the crossing. Their layer fades in with the clock.
     fn draw_dots(&mut self, scale: f32, clock: f64, composite: Option<&Images>) {
         let (w, h) = self.size;
         let c = &mut self.top_canvas;
@@ -1189,7 +1159,7 @@ impl Sculptures {
             let paint = Paint::fill(Color::hex(PAPER_INK)).with_opacity((op * layer) as f32);
             let (dw_r, dh_r) = ((r - l) as f32, (b - t) as f32);
             if (dw_r - dh_r).abs() < 1e-3 {
-                // A continuous square whose radius is half its side is Core Animation's circle.
+                // A square with a half-side radius is a circle.
                 c.draw_circle(
                     l as f32 + dw_r / 2.0,
                     t as f32 + dh_r / 2.0,
@@ -1291,7 +1261,7 @@ impl Surface for Sculptures {
             self.fingers.push((id, reading));
         }
         if reading {
-            // A vertical UIScrollView: the horizontal model on swapped axes.
+            // The reading column scrolls vertically: the horizontal model on swapped axes.
             self.read.input(id, phase, y, x, at_ms, true);
         } else {
             self.crossing.input(id, phase, x, y, at_ms, true);
@@ -1357,9 +1327,8 @@ impl Surface for Sculptures {
             let gpu = self.gpu.as_ref().unwrap();
             self.renderer.set_images(&gpu.shape.as_ref().unwrap().1);
         }
-        // The first frame takes the composite path too (nothing of the dots shows at clock 0):
-        // the dots' renderer and the composite target are built at mount, not 0.6 s into the
-        // first reveal, where building them froze the figure ~0.9 s on the simulator.
+        // The first frame takes the composite path too, so the dots' renderer and the composite target
+        // are built at mount. Building them at the first reveal froze the figure for about 0.9 s.
         let dots = ((clock - 0.55) / 0.35).clamp(0.0, 1.0) > 0.0 || !self.warmed;
         self.warmed = true;
         if !dots {
@@ -1449,7 +1418,7 @@ mod tests {
                 assert!(rows.len() <= a.baselines.len());
             }
         }
-        // RN's union, in first-use order, every id once.
+        // The union holds each glyph id once.
         let mut seen = std::collections::HashSet::new();
         assert!(b.union.iter().all(|g| seen.insert(*g)));
     }
@@ -1457,7 +1426,7 @@ mod tests {
     #[test]
     fn pages_are_laid_out_as_the_bake_says() {
         let p = build_page(0, 420.0, 912.0);
-        // The title's first mark follows the em space (HarfBuzz's one em, kerned with the T).
+        // The title's first mark follows the em space.
         assert_eq!(
             p.xy[0],
             (420.0 * 0.09 + baked().articles[0].p[0] as f64 / 65536.0) as f32
@@ -1553,8 +1522,7 @@ mod tests {
         fixture::render(gpu, s, &frame).unwrap().0
     }
 
-    /// At rest the column is Skia's text; from the clock's first step the figure's quads draw
-    /// the same letters on the same pixels (RN's handoff).
+    /// At rest the column is Skia's text; the figure's quads draw the same letters on the same pixels.
     #[cfg(target_vendor = "apple")]
     #[test]
     fn the_handoff_draws_the_same_letters() {
@@ -1591,7 +1559,7 @@ mod tests {
         gfx::save_over(&quads, "sculptures-quads", [255, 255, 255]);
         assert!(ink > 100_000, "{ink} inked pixels");
         let mean = diff as f64 / ink as f64;
-        // Measured: 2261 pixels one level apart (INK's 0.11, 0.102, 0.09 against #1c1a17), none more.
+        // Differences are at most two levels, and the mean is far below one.
         assert!(mean < 0.05 && max <= 2, "mean {mean} max {max}");
         // The statue (the clock at 1, facing as at rest), and half way.
         for (p, name) in [(1.0, "sculptures-figure"), (0.45, "sculptures-flight")] {

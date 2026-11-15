@@ -1,10 +1,8 @@
-//! The Demos app's GPU module: what the RN demos draw with Skia, three.js or WebGPU, drawn
-//! with wgpu, loaded by Exact after the first pixel. One module per demo, named after its
-//! slug; `gfx` and `spring` are what they share.
+//! The Demos app's GPU module: one wgpu module per demo, named after its slug, loaded by Exact
+//! after the first pixel. `gfx` and `spring` are shared by all of them.
 //!
-//! A demo's gestures and motion run here, on the host's frame clock, as RN runs them in
-//! worklets on the UI thread: a touch inside a canvas that asks for input never reaches the
-//! app's runner, and nothing is committed per frame.
+//! A demo's gestures and motion run here, on the host's frame clock: a touch inside a canvas
+//! that asks for input never reaches the app's runner, and nothing is committed per frame.
 
 #![deny(missing_docs)]
 
@@ -23,11 +21,9 @@ pub mod gooey;
 pub mod qr;
 pub mod ui_scroll;
 
-pub mod add_to_cart;
 pub mod airbnb_flip_card;
 pub mod airbnb_flip_pages;
 pub mod airbnb_slider;
-pub mod alert_drawer_card;
 pub mod animated_3d_parallax;
 pub mod animated_clip_box;
 pub mod art_gallery;
@@ -57,7 +53,6 @@ pub mod draggable_panel;
 pub mod duration_slider;
 pub mod empty_qr_code;
 pub mod exclusion_tabs;
-pub mod expandable_mini_player;
 pub mod family_number;
 pub mod fibonacci_shader;
 pub mod fibonacci_shader_grid;
@@ -109,7 +104,6 @@ pub mod story_list;
 pub mod sudoku;
 pub mod swipe_cards;
 pub mod telegram_lottie;
-pub mod telegram_theme_switch;
 pub mod the_little_prince;
 pub mod theme_canvas_animation;
 pub mod threads_holo_ticket;
@@ -122,11 +116,9 @@ pub mod wheel_picker;
 /// The module's surfaces and its reflected shaders.
 pub static REGISTRY: Registry = Registry {
     surfaces: &[
-        ("add_to_cart", 1, add_to_cart::surface),
         ("airbnb_flip_card", 1, airbnb_flip_card::surface),
         ("airbnb_flip_pages", 2, airbnb_flip_pages::surface),
         ("airbnb_slider", 1, airbnb_slider::surface),
-        ("alert_drawer_card", 1, alert_drawer_card::surface),
         ("animated_3d_parallax", 0, animated_3d_parallax::surface),
         ("animated_clip_box", 1, animated_clip_box::surface),
         ("art_gallery", 2, art_gallery::surface),
@@ -156,7 +148,6 @@ pub static REGISTRY: Registry = Registry {
         ("duration_slider", 0, duration_slider::surface),
         ("empty_qr_code", 0, empty_qr_code::surface),
         ("exclusion_tabs", 0, exclusion_tabs::surface),
-        ("expandable_mini_player", 1, expandable_mini_player::surface),
         ("family_number", 1, family_number::surface),
         ("fibonacci_shader", 2, fibonacci_shader::surface),
         ("fibonacci_shader_grid", 0, fibonacci_shader_grid::surface),
@@ -206,9 +197,9 @@ pub static REGISTRY: Registry = Registry {
         ("steddy_graph_interaction", 1, steddy_graph_interaction::surface),
         ("steddy_highlight", 1, steddy_graph_interaction::highlight),
         ("story_list", 0, story_list::surface),
-        ("sudoku", 9, sudoku::surface),
+        ("sudoku", 4, sudoku::surface),
+        ("sudoku_backdrop", 0, sudoku::backdrop),
         ("swipe_cards", 4, swipe_cards::surface),
-        ("telegram_theme_switch", 1, telegram_theme_switch::surface),
         ("the_little_prince", 2, the_little_prince::surface),
         ("theme_canvas_animation", 0, theme_canvas_animation::surface),
         ("threads_holo_ticket", 0, threads_holo_ticket::surface),

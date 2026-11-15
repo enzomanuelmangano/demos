@@ -1,88 +1,18 @@
-//! Snake (src/animations/snake/src: index.tsx, snake-game/{index.tsx, snake-game.ts},
-//! components/animated-count/{animated-count.tsx, animated-digit.tsx}): a white card holding a
-//! "Score" label, an AnimatedCount of the score, and a 10 × 10 Skia board where a snake moves
-//! every 120 ms, turned by four flings, growing on the food; when it bites itself a "Life goes
-//! on..." button fades in over the board and restarts the game.
+//! Snake: a 10 × 10 board on a white card, with a "Score" label and a count. The snake moves every
+//! 120 ms, turned by four flings, and grows when it eats. When it bites itself, a "Life goes on..."
+//! button fades in over the board and restarts the game.
 //!
-//! The surface is the card's content (the canvas inside the card's padding, `boardSize` wide):
-//! the label, the count and the board with its overlay. The card (white, radius 18 continuous,
-//! boxShadow 0 2 10 rgba(92,92,92,0.2), padding 10) and the white screen are the Contract's.
+//! - A fling on the board turns the snake; a refused reversal still plays the turn's tick.
+//! - Haptics: a selection tick per turn (at most one per TURN_MIN_MS), an impact when the snake
+//!   eats, a rigid impact at game over, and a selection when the restart button is pressed.
+//! - The count rolls to each new digit on a spring, and its digits blur while they change.
 //!
-//! Layout (Yoga's numbers; an edge on the device-pixel grid from its unrounded absolute place,
-//! a half rounding up): boardSize = floor(width × 0.7 / 10) × 10 (290 on a 420-pt window),
-//! squareSize = floor(boardSize / 10). statsContainer (alignItems center, marginBottom 8): the
-//! "Score" Text (gray, bold 18, marginBottom 4: TextKit's SF line, 21.48 pt, ceiled to the pixel
-//! as RN measures text) over the count's row-reverse of three 21 × 30 digits. The card is centred
-//! in the window, so the count's left (centred over boardSize) lands on the grid from the
-//! window's width: the surface takes `width` and `height` for that and for the backdrop's grid.
-//!
-//! The game is snake-game.ts line for line ([`SnakeGame`]): rows = cols = 10, wrapping on, the
-//! snake [(⌊W/2⌋, ⌊H/2⌋), (⌊W/2⌋ − sq, ⌊H/2⌋)] going RIGHT, the reversal rule against the
-//! direction it last moved, food by 32 random picks and then a pick among the free cells.
-//! `Math.random()` is [`gfx::Random`] seeded from the Contract's `env.seed` and the mount, so a
-//! game differs between mounts and launches as RN's does.
-//!
-//! When things happen (RN's threads, as frames here):
-//! - useFrameCallback (UI): skipped on its first frame (no timeSincePreviousFrame) and while the
-//!   shown state is over; otherwise when timestamp − lastTimestamp > 120 (lastTimestamp starts at
-//!   0, so the second frame ticks) it schedules updateGame on the JS thread and sets
-//!   lastTimestamp. So a tick lands on the first frame more than 120 ms after the last (125 ms
-//!   at 120 Hz, 133.3 ms at 60 Hz). updateGame (JS, right after that frame) moves the game and
-//!   sets gameState, which reaches the UI thread before the next frame: the board shows the move
-//!   one frame after the tick. A turn (JS too) applies to the next move whose JS runs after it.
-//! - Reactions run in the frame's mapper pass: gameState's score (also on its first run, prev
-//!   null) → scheduleOnRN(onScoreChange) → score.set: the count follows one frame later; its
-//!   isGameOver → onGameOver → isGameOver.set(true): the overlay starts one frame later. So at
-//!   mount the count, shown at useSharedValue(20)'s 20, rolls to 0 on the second frame.
-//! - AnimatedDigit's reaction on its digit (first run included, prev null) sets isChanging true
-//!   and schedules resetIsChanging, a setTimeout(200) on the JS thread: RCTTiming fires it on the
-//!   first frame at or after its target, and isChanging = false reaches the UI the frame after.
-//!   Animations started in a mapper pass start at that frame (their first value is where they
-//!   are); a style re-run with an unchanged target goes on (Reanimated's triggered-twice spring,
-//!   timing's same-target continuity).
-//! - The press: pressto's PressableScale as designed (the shared `pressto::Pressable`; RNGH 3.3
-//!   shows none, as pressto 0.7 hands its v3 BaseButton onBegan/onEnded, which it never reads):
-//!   held from a touch-down in its frame, scale 1 → 0.96 about its centre (withTiming 250 ms,
-//!   bezier(0.25, 0.1, 0.25, 1)); onPress at a lift inside it (sliding off keeps the press;
-//!   lifting there or a cancel does nothing): JS isGameOver.set(false), restart(), with the
-//!   app's PressablesConfig haptic. The overlay takes
-//!   the board's touches (pointerEvents auto) from the frame its style says game over.
-//!
-//! Drawing. The board canvas: RoundedRect (0, 0, rows·sq, cols·sq, r 10, #ebebec); the snake
-//! Path, one addRRect(rrect(segment, sq/2, sq/2)) per segment (an oval: Skia's addOval from its
-//! left, clockwise), #68DE45; the food, addRRect(rrect(food, sq, sq)) (clamped to the same
-//! oval), #e75b5b. The `<BlurMask blur={gameOverBlurMask} />` is a direct child of `<Canvas>`: RN
-//! Skia 3.7's sksg visits it as a root node of its own (Recorder/Visitor.ts visitNode: a
-//! BlurMaskFilter node only pushes a mask filter into its PARENT's paint, and at the root there
-//! is none; Canvas.tsx renders the children with no wrapping Group), so it filters nothing: RN
-//! never blurs the board at game over, and neither does this. The count's digits are the ten
-//! SF-Pro-Rounded-Bold 24 Texts (21 × 30, centred by their Core Text advance, the baseline at
-//! the hhea ascent), the BlurView (tint light, intensity = progress × 10: skia::backdrop's
-//! `Material::Light` at expo-blur's fraction, which never goes under 0.01, so a resting digit is
-//! blurred by σ 0.3 pt), and the two LinearGradients; gpu/shaders/snake.wgsl composites them as
-//! Core Animation does.
-//!
-//! Motion audit (every animated value):
-//!
-//! | value | RN driver / config | Exact |
-//! |---|---|---|
-//! | snake, food, score | useFrameCallback, > 120 ms since the last tick, JS move, shown a frame later | [`SnakeDemo::advance`]: the same frames |
-//! | overlay opacity | useAnimatedStyle withTiming(isGameOver ? 1 : 0, 250 ms), inOut(quad) (Reanimated's default easing) | `Timing` 250 ms, `Easing::timing_default()`, from the frame isGameOver lands |
-//! | overlay pointerEvents | 'auto' when isGameOver, else 'none' | the overlay takes board touches from that frame |
-//! | digit translateY | withSpring(−30 × digit, { mass 0.25, damping 10, stiffness 100 }): ζ = 1 | `Spring::retarget` with that config, critical |
-//! | digit scaleX | withSpring(isChanging ? 0.7 : 1), the default (900, 120, 4) | `Spring::retarget(GENTLE)` |
-//! | digit opacity | useDerivedValue withTiming(isVisible ? 1 : 0): 300 ms inOut(quad) | `Timing`, started when the target changes |
-//! | digit translateX | withTiming(−21 × invisibleDigits / 2): 300 ms inOut(quad) | `Timing`, all three digits |
-//! | isChanging | reaction on the digit (true), setTimeout 200 ms on JS (false) | true in the mapper pass, false the frame after the first frame ≥ +200 ms |
-//! | blur intensity | withTiming(isChanging ? 1 : 0) × 10: 300 ms inOut(quad) | `Timing`, fraction = clamp(i / 100, 0.01, 1) of UIBlurEffect.light |
-//! | board blur | withTiming(isGameOver ? 50 : 0, 1000 ms) on a root BlurMask | nothing (RN draws none, above) |
-//! | button scale | pressto PressableScale: withTiming(active, 250 ms, bezier(0.25, 0.1, 0.25, 1)), 1 → 0.96 about its centre | `pressto::Pressable`; the shader samples the button layer bilinearly through it |
-//! | haptics | onDirectionChange → selectionAsync at each fling's onStart (a refused reversal too); PressablesConfig on the restart press | `haptic:selection` at the recognising move and at the lift |
+//! The game rules are in [`SnakeGame`]. The board's layer and the count's digits are drawn into
+//! layers and composited in one pass.
 
 use std::collections::VecDeque;
 
-/// The haptics (the owner's call, phone feedback mwhoriru): eating, the game's end; a turn's
-/// selection tick at most once per TURN_MIN_MS.
+/// Haptics: eating, the game's end, and turns (at most one tick per TURN_MIN_MS).
 const EAT: &str = "haptic:impact-medium";
 const GAME_OVER: &str = "haptic:impact-rigid";
 const TURN_MIN_MS: f64 = 60.0;
@@ -100,40 +30,39 @@ use crate::shaders::snake::{
     entry, module, Snake as Uniforms, BUTTON, DIGITS, EFFECT, GROUP_0, MAIN_LAYER, SMP, U,
 };
 
-/// SnakeBoard's `n` (rows = columns).
+/// Rows and columns of the board.
 const N: i32 = 10;
-/// useFrameCallback: a move when more than this has passed since the last.
+/// The snake moves when more than this has passed since the last move, ms.
 const TICK_MS: f64 = 120.0;
-/// styles.boardContainer padding.
+/// The card's padding, in points.
 const CARD_PADDING: f32 = 10.0;
-/// styles.scoreText: fontSize 18, bold, marginBottom 4; styles.statsContainer marginBottom 8.
+/// The score label's size, and the gaps below it and below the count, in points.
 const SCORE_SIZE: f32 = 18.0;
 const SCORE_MARGIN: f32 = 4.0;
 const STATS_MARGIN: f32 = 8.0;
-/// `<AnimatedCount maxDigits={3} fontSize={24} textDigitHeight={30} textDigitWidth={21}>`.
+/// The count: three digits, each 21 × 30 points.
 const MAX_DIGITS: usize = 3;
 const DIGIT_W: f32 = 21.0;
 const DIGIT_H: f32 = 30.0;
 const DIGIT_SIZE: f32 = 24.0;
-/// The board's RoundedRect r, and the Skia colours (sRGB).
+/// The board's corner radius, and its colours (sRGB).
 const BOARD_RADIUS: f32 = 10.0;
 const BOARD: u32 = 0xEBEBEC;
 const SNAKE: u32 = 0x68DE45;
 const FOOD: u32 = 0xE75B5B;
-/// styles.scoreText color 'gray'.
+/// The score label's colour.
 const GRAY: u32 = 0x808080;
-/// The restart button: padding 10, paddingHorizontal 20, borderRadius 10 continuous, black; its
-/// Text white, 16, weight 500.
+/// The restart button: black, with white text.
 const LABEL: &str = "Life goes on...";
 const LABEL_SIZE: f32 = 16.0;
 const BUTTON_PAD_X: f32 = 20.0;
 const BUTTON_PAD_Y: f32 = 10.0;
 const BUTTON_RADIUS: f32 = 10.0;
-/// rRestartButtonViewStyle's withTiming duration.
+/// The overlay's fade, in ms.
 const OVERLAY_MS: f64 = 250.0;
-/// resetIsChanging's setTimeout.
+/// How long a digit reads as changing, in ms.
 const RESET_MS: f64 = 200.0;
-/// The digit's translateY spring: { mass: 0.25, damping: 10, stiffness: 100 } (ζ = 1).
+/// The digit's roll spring, critically damped.
 const ROLL: SpringConfig = SpringConfig {
     stiffness: 100.0,
     damping: 10.0,
@@ -141,17 +70,15 @@ const ROLL: SpringConfig = SpringConfig {
 };
 /// scaleX while the digit changes.
 const SQUEEZE: f64 = 0.7;
-/// blurIntensity = isChangingProgress × 10.
+/// The blur's intensity while a digit changes.
 const BLUR_INTENSITY: f64 = 10.0;
-/// TextKit's line of the system font (SF: (1950 + 494) / 2048 of the size), before RN ceils it.
+/// The system font's line height, as a fraction of its size.
 const SF_LINE: f32 = (1950.0 + 494.0) / 2048.0;
-/// assets/fonts/SF-Pro-Rounded-Bold.otf cut to the digits (fontTools subset: the same outlines,
-/// advances and hhea metrics; Core Text applies no tracking to it: a one-digit line's width is
-/// the glyph's advance, measured with CTLine on the full font).
+/// SF Pro Rounded Bold, subset to the digits. Its advances match the full face.
 static SF_ROUNDED_BOLD: &[u8] = include_bytes!("../fonts/sf-pro-rounded-bold-digits.otf");
 const DIGIT_TEXT: [&str; 10] = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
 const LAYER: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
-/// What the backdrops read and write: 8-bit (CA's framebuffer) and unquantised.
+/// The backdrop's source is 8-bit, as Core Animation's framebuffer is; its effect is unquantised.
 const SOURCE: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 const EFFECT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
@@ -184,9 +111,9 @@ pub struct SnakeGame {
     pub direction: u32,
     /// ...and the direction the snake actually moved last.
     pub moved_direction: u32,
-    /// isGameOver.
+    /// Whether the game has ended.
     pub is_game_over: bool,
-    /// score.
+    /// The number of food eaten.
     pub score: u32,
     square_size: i32,
     wrapping_enabled: bool,
@@ -234,7 +161,7 @@ impl SnakeGame {
         });
     }
 
-    /// `move()`.
+    /// Moves the snake one cell, or ends the game.
     pub fn step(&mut self, random: &mut Random) {
         if self.is_game_over {
             return;
@@ -351,7 +278,7 @@ impl SnakeGame {
         self.snake.iter().any(|s| *s == c)
     }
 
-    /// `clear()`.
+    /// Starts a new game.
     pub fn clear(&mut self, random: &mut Random) {
         self.start_snake();
         self.direction = directions::RIGHT;
@@ -362,7 +289,7 @@ impl SnakeGame {
     }
 }
 
-/// `gameState` as the UI thread holds it (`getState()`).
+/// The game state the UI thread draws.
 #[derive(Clone, Debug, Default, PartialEq)]
 struct Shown {
     snake: Vec<Cell>,
@@ -384,18 +311,17 @@ impl Shown {
 /// What JS sent the UI thread since the last frame: it lands at the next.
 #[derive(Clone, Copy, Debug, Default)]
 struct Hop {
-    /// gameState.set (the value is in `staged`).
+    /// A new game state, held in `staged`.
     state: bool,
-    /// App's isGameOver.set.
+    /// The app's game-over flag.
     over: Option<bool>,
-    /// App's score.set.
+    /// The app's score.
     score: Option<u32>,
-    /// A digit's isChanging.set(false).
+    /// Digits whose change ends.
     reset: [bool; MAX_DIGITS],
 }
 
-/// getDigitByIndex: the count padded to `max` digits, the `k`-th from the right (from the left
-/// of a longer count's string, as the RN code indexes it).
+/// The `k`-th digit of `count`, padded to `max` digits, from the right.
 fn digit_of(count: u32, k: usize, max: usize) -> u32 {
     let len = digits_len(count);
     let l = len.max(max);
@@ -416,7 +342,7 @@ fn digits_len(count: u32) -> usize {
     n
 }
 
-/// One AnimatedDigit's state.
+/// One digit of the count.
 #[derive(Clone, Debug)]
 struct Digit {
     value: u32,
@@ -431,7 +357,7 @@ struct Digit {
 }
 
 impl Digit {
-    /// The initial updater run (animations at their targets) for `count`.
+    /// The digit at rest, showing `count`.
     fn new(count: u32, k: usize) -> Digit {
         let value = digit_of(count, k, MAX_DIGITS);
         let invisible = MAX_DIGITS as f64 - digits_len(count) as f64;
@@ -458,8 +384,7 @@ impl Digit {
     }
 }
 
-/// withTiming(to) from a mapper: a new animation only when the target changes (a same-target
-/// re-run keeps its timeline; a value at the target is not set again), started at this frame.
+/// Eases to `to` only when the target changes, so a same-target re-run keeps its timeline.
 fn time_to(t: &mut Timing, to: f64, ms: f64, now: f64) {
     if t.target() != to {
         t.to(to, ms, Easing::timing_default());
@@ -467,18 +392,18 @@ fn time_to(t: &mut Timing, to: f64, ms: f64, now: f64) {
     }
 }
 
-/// withSpring(to) from a mapper, started at this frame (a running spring's clock goes on).
+/// Retargets a spring, keeping a running spring's clock.
 fn spring_to(s: &mut Spring, to: f64, config: SpringConfig, now: f64) {
     s.retarget(to, config);
     s.step(now);
 }
 
-/// Yoga's rounding of an absolute edge to the pixel grid (a half rounds up).
+/// Rounds an edge to the device pixel grid, a half up.
 fn grid(v: f32, s: f32) -> f32 {
     ((v * s + 0.5 + 1e-4).floor()) / s
 }
 
-/// A text measure ceiled to the device pixel, as RN's text layout returns it.
+/// A text's measure, ceiled to the device pixel.
 fn ceil_px(v: f32, s: f32) -> f32 {
     ((v * s - 1e-3).ceil()) / s
 }
@@ -609,17 +534,17 @@ struct SnakeDemo {
     mapped: bool,
     /// The score reaction's previous input.
     score_prev: Option<u32>,
-    /// App's isGameOver and score on the UI thread.
+    /// The app's game-over flag and score, on the UI thread.
     over: bool,
     count: u32,
-    /// rRestartButtonViewStyle: opacity, and pointerEvents auto.
+    /// The overlay's opacity, and whether it takes touches.
     overlay: Timing,
     overlay_auto: bool,
     digits: [Digit; MAX_DIGITS],
-    /// resetIsChanging's timeouts: when, which digit.
+    /// Pending resets: when, and which digit.
     timers: Vec<(f64, usize)>,
     flings: [FlingGesture; 4],
-    /// The restart PressableScale (the shared pressto machine).
+    /// The restart button's press.
     press: Pressable,
     posted: Vec<String>,
     /// The last turn's selection tick, on the pointer's clock.
@@ -711,8 +636,7 @@ impl SnakeDemo {
         }
     }
 
-    /// useConst(() => new SnakeGame(10, 10, squareSize, true)) at the mount, with its
-    /// Math.random() stream.
+    /// Creates the game once the board's size is known.
     fn ensure_game(&mut self) {
         if self.game.is_some() || self.layout.square <= 0 {
             return;
@@ -725,21 +649,19 @@ impl SnakeDemo {
         self.game = Some(game);
     }
 
-    /// A fling's onStart → scheduleOnRN(changeDirectionWrapper): the game turns (JS) and
-    /// onDirectionChange plays Haptics.selectionAsync.
+    /// A fling turns the game, and plays the turn's tick.
     fn turn(&mut self, direction: u32, at_ms: f64) {
         if let Some(g) = self.game.as_mut() {
             g.change_direction(direction);
         }
-        // At most one tick per TURN_MIN_MS of the pointer's clock (the owner's call).
+        // At most one tick per TURN_MIN_MS, on the pointer's clock.
         if self.last_turn_ms.is_none_or(|t| at_ms - t >= TURN_MIN_MS) {
             self.posted.push("haptic:selection".into());
             self.last_turn_ms = Some(at_ms);
         }
     }
 
-    /// The restart press's onPress (JS): isGameOver.set(false); restart(): clear() and
-    /// gameState.set (the app's press haptic is the caller's).
+    /// Restarts the game, on the restart button's press.
     fn restart(&mut self) {
         self.next.over = Some(false);
         if let Some(g) = self.game.as_mut() {
@@ -749,8 +671,8 @@ impl SnakeDemo {
         }
     }
 
-    /// One frame at `now`, as RN's threads run it: what JS sent lands, timers fire, the
-    /// animations and the frame callback run, then the mapper pass.
+    /// Advances one frame: pending state lands, timers fire, the animations and the tick run, then
+    /// the reactions.
     fn advance(&mut self, now: f64) {
         self.ensure_game();
         let hop = std::mem::take(&mut self.next);
@@ -768,8 +690,7 @@ impl SnakeDemo {
         if let Some(c) = hop.score {
             self.count = c;
         }
-        // RCTTiming: a setTimeout fires on the first frame at or after its target (JS), and its
-        // isChanging.set(false) lands at the next.
+        // A reset fires on the first frame at or after its time, and lands on the next.
         let mut k = 0;
         while k < self.timers.len() {
             if now >= self.timers[k].0 - 1e-6 {
@@ -779,21 +700,20 @@ impl SnakeDemo {
                 k += 1;
             }
         }
-        // requestAnimationFrame: the running animations.
+        // Step the running animations.
         self.overlay.step(now);
         for d in &mut self.digits {
             d.step(now);
         }
-        // useFrameCallback.
+        // The snake moves on a tick: more than TICK_MS since the last one.
         if !self.started {
             self.started = true;
         } else if !self.shown.over && self.last_tick.is_none_or(|last| now - last > TICK_MS) {
             if let Some(g) = self.game.as_mut() {
-                // updateGame (JS): move, then gameState.set.
+                // Move the game; the board shows the move on the next frame.
                 let (score, over) = (g.score, g.is_game_over);
                 g.step(&mut self.random);
-                // The owner's calls (phone feedback mwhoriru; RN plays none for these): an
-                // impact as the snake eats, a rigid one as the game ends.
+                // An impact as the snake eats; a rigid one as the game ends.
                 if g.score > score {
                     self.posted.push(EAT.into());
                 }
@@ -805,13 +725,12 @@ impl SnakeDemo {
             }
             self.last_tick = Some(now);
         }
-        // The mapper pass.
         if first || state_changed {
-            // useAnimatedReaction(() => gameState.get().isGameOver): onGameOver (JS).
+            // Game over reaches the app on the next frame.
             if self.shown.over {
                 self.next.over = Some(true);
             }
-            // useAnimatedReaction(() => gameState.get().score): onScoreChange (JS).
+            // A new score reaches the app on the next frame.
             if self.score_prev != Some(self.shown.score) {
                 self.next.score = Some(self.shown.score);
             }
@@ -833,19 +752,17 @@ impl SnakeDemo {
             let value = digit_of(count, k, MAX_DIGITS);
             let digit_changed = first || (count_changed && value != d.value);
             let was = d.changing;
-            // isChanging.set(false) from the timeout landed before this pass.
+            // A reset that fired earlier lands before this pass.
             if hop.reset[k] {
                 d.changing = false;
             }
             if digit_changed {
-                // The digit's reaction: isChanging.set(curr !== prev), true whenever it runs;
-                // scheduleOnRN(resetIsChanging).
+                // A changed digit flags itself as changing, and schedules its reset.
                 d.value = value;
                 d.changing = true;
                 self.timers.push((now + RESET_MS, k));
             }
             if digit_changed || d.changing != was {
-                // rStyle.
                 spring_to(&mut d.ty, -(DIGIT_H as f64) * d.value as f64, ROLL, now);
                 spring_to(
                     &mut d.sx,
@@ -853,7 +770,6 @@ impl SnakeDemo {
                     GENTLE,
                     now,
                 );
-                // isChangingProgress.
                 time_to(
                     &mut d.progress,
                     if d.changing { 1.0 } else { 0.0 },
@@ -862,7 +778,7 @@ impl SnakeDemo {
                 );
             }
             if first || count_changed {
-                // isVisible → opacity; invisibleDigitsAmount → translateX.
+                // Visibility and the hidden-digit shift.
                 d.visible = value != 0 || k < len;
                 time_to(
                     &mut d.opacity,
@@ -889,7 +805,7 @@ impl SnakeDemo {
         p
     }
 
-    /// The Skia layer: the "Score" Text and the board's canvas.
+    /// Draws the score label and the board.
     fn record_main(&mut self) {
         let l = self.layout;
         let c = &mut self.main;
@@ -927,7 +843,7 @@ impl SnakeDemo {
         }
     }
 
-    /// The ten digit Texts (21 × 300) and the button (its frame's size), side by side.
+    /// The ten digits, stacked in a strip 30 points apart.
     fn record_statics(&mut self) {
         let l = self.layout;
         let c = &mut self.statics;
@@ -997,7 +913,7 @@ impl Surface for SnakeDemo {
         }
         let k = self.press.scale() as f32;
         if phase == PointerPhase::Down && self.overlay_auto && l.on_board(x, y) {
-            // The overlay (pointerEvents auto) is hit; in it, the button.
+            // The overlay takes board touches: the button is in it.
             self.press.pointer_down(id, l.on_button(x, y, k));
             return;
         }
@@ -1215,7 +1131,7 @@ impl Surface for SnakeDemo {
             self.drawn_count = Some(pose);
         }
         skia::render::fullscreen_pass(encoder, "snake", target, &gpu.compose, &gpu.bind);
-        // useFrameCallback runs every frame.
+        // The frame callback runs every frame.
         true
     }
 }
@@ -1337,7 +1253,7 @@ mod tests {
         }
     }
 
-    /// A surface laid out on an iPhone Air (420 × 912 at 3×), its game made.
+    /// A surface laid out at 420 × 912 points, at 3×, with its game made.
     fn demo(seed: f64) -> SnakeDemo {
         let mut d = SnakeDemo::new();
         d.bind(
@@ -1376,15 +1292,14 @@ mod tests {
             "{l:?}"
         );
         assert!((l.board_top - l.count_top - 38.0).abs() < 1e-4);
-        // The count centred over 290 at 65 + 113.5 = 178.5 in the window: Yoga rounds it to
-        // 536 / 3, 113.667 in the canvas.
+        // The count is centred over the board, on the pixel grid.
         assert!(
             (l.count_x - (536.0 / 3.0 - 65.0)).abs() < 1e-4,
             "{}",
             l.count_x
         );
         assert_eq!(l.window[0], 65.0);
-        // The button: 110 + 40 wide, SF 16's 19.09 ceiled + 20 tall, centred in the board.
+        // The button: its text plus padding, centred in the board.
         assert!(
             (l.button[2] - 150.0).abs() < 1e-4 && (l.button[3] - (58.0 / 3.0 + 20.0)).abs() < 1e-4
         );
@@ -1505,9 +1420,8 @@ mod tests {
     fn the_count_rolls_from_20_to_0_at_mount() {
         let mut d = demo(2.0);
         let mut t = 0.0;
-        // Frame 0: the first mapper pass. Every digit's reaction runs (prev null): isChanging,
-        // so scaleX heads for 0.7 and the blur rises; the count still shows 20 (020: the
-        // hundreds hidden).
+        // Frame 0: every digit reacts, so each squeezes and blurs. The count still shows 20, with the
+        // hundreds hidden.
         d.advance(t);
         assert_eq!(d.count, 20);
         assert!(d
@@ -1528,7 +1442,7 @@ mod tests {
         );
         assert_eq!(d.digits[1].ty.value, -60.0);
         assert_eq!(d.digits[0].tx.value, -10.5);
-        // Frame 1: onScoreChange(0) landed: the tens roll to 0 and fade, the row slides to −21.
+        // Frame 1: the score change lands. The tens roll to 0 and fade, and the row slides.
         t += F120;
         d.advance(t);
         assert_eq!(d.count, 0);
@@ -1631,7 +1545,7 @@ mod tests {
             d.advance(t);
             assert!(n < 30);
         }
-        // The bite is felt once, rigid (the owner's call).
+        // The bite is felt once, as a rigid impact.
         assert_eq!(d.messages().iter().filter(|m| m.as_str() == GAME_OVER).count(), 1);
         // Shown over at the next frame (the ticks stop); isGameOver the one after.
         t += F120;
@@ -1664,8 +1578,7 @@ mod tests {
             t + 40.0,
         ));
         assert!(d.messages().is_empty());
-        // The button (pressto as designed): a touch that began in it and lifts outside it
-        // presses nothing; one that lifts inside restarts.
+        // The button: a touch that lifts outside it presses nothing; one that lifts inside restarts.
         let (bx, by) = (l.button[0] + 5.0, l.button[1] + 5.0);
         d.input(&pointer(PointerPhase::Down, bx, by, t));
         assert!(d.press.is_pressed());
@@ -1731,7 +1644,7 @@ mod tests {
         assert_eq!(d.game.as_ref().unwrap().direction, UP);
         d.input(&pointer(PointerPhase::Up, 102.0, y - 70.0, 1070.0));
         assert!(d.messages().is_empty(), "one per touch");
-        // A refused reversal still buzzes (onDirectionChange runs regardless).
+        // A refused reversal still ticks.
         d.input(&pointer(PointerPhase::Down, 200.0, y, 2000.0));
         d.input(&pointer(PointerPhase::Move, 140.0, y, 2040.0));
         d.input(&pointer(PointerPhase::Up, 140.0, y, 2050.0));
@@ -1904,8 +1817,7 @@ mod tests {
         }
         assert!(white > 20, "the label: {white}");
 
-        // Held (pressto as designed): 0.96 about its centre at 250 ms, so its left edge moves in
-        // by bw × 0.02 (3 pt): 2 pt in is the board now, 4 pt in still black.
+        // Held, the button shrinks to 0.96 about its centre, so its left edge moves in by 3 pt.
         s.press.pointer_down(9, true);
         let held_from = t;
         while t < held_from + 260.0 {

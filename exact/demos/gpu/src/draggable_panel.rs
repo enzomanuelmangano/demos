@@ -1,58 +1,21 @@
-//! Draggable Panel (src/animations/draggable-panel: index.tsx, components/draggable-panel/
-//! draggable-control-panel.tsx + utils/animation-helpers.ts, components/spring-animation-panel/
-//! index.tsx, collapsed-button.tsx, panel-content.tsx, utils/spring-configs.ts): a white panel
-//! ("Spring Animations", a close button and three spring choices) that a pan throws to the
-//! nearest screen corner on the chosen spring; the close shrinks it into a 64 pt settings button
-//! that a press grows back. The whole screen (#f5f7fa) is this surface.
-//!
-//! - The panel (DraggableControlPanel): `controls` absolute, translated by (translateX,
-//!   translateY), starting at (W − 280 − 30, H − 150 − 100) (useInitialPanelPosition). In it
-//!   `controlPanel`: expanded 280 × 150 / collapsed 64 × 64, white, overflow hidden (Core
-//!   Animation's masksToBounds on a circular cornerRadius, no borderCurve), boxShadow 0 0 24
-//!   rgba(0, 0, 0, 0.05) (RCTBoxShadow: σ 12, outside the view only), content centred.
-//!   borderRadius = interpolate(progress, [0, 1], [32, 16]), progress = withSpring(isCollapsed ?
-//!   0 : 1, { dampingRatio: 1, duration: 500 }) (a mapper: from where it is, its velocity kept);
-//!   Core Animation draws min(r, w / 2, h / 2).
-//! - Its size: `layout={LinearTransition.springify().mass(0.3).damping(20).stiffness(250)}`:
-//!   width and height spring from the current frame (ζ 1.15: Reanimated runs it critically
-//!   damped); its origin in `controls` stays 0. The children are laid out at the final size at
-//!   once (Yoga), the masksToBounds clip follows the animated frame.
-//! - The content swaps by key: entering FadeIn (150 ms collapsed, 180 ms expanded), exiting
-//!   FadeOut 100 ms (from 1, Reanimated's initialValues), both withTiming's default
-//!   inOut(quad); an exiting view keeps its last layout and props (its press scale and colours
-//!   freeze). UIKit's group opacity (allowsGroupOpacity): each content view fades as one layer.
-//! - Pan (RNGH `Gesture.Pan()`, the GestureDetector on `controls`): onBegin (touch-down) keeps
-//!   start = translate (a running spring goes on); onChange translate = start + translation;
-//!   onEnd: snapToCorner(translate, size, W, H, safeTop + 56, velocity) projected by velocity ×
-//!   0.15, the nearest of the four corners (margin 30, top safeTop + DEMO_BUTTON_ROW_HEIGHT,
-//!   bottom 100) by the panel centres, then withSpring({ …config, velocity }) per axis.
-//! - toggleCollapse: snapToCorner of the panel centred at its old centre in the new size, both
-//!   axes withSpring(config) (the running velocity kept, Reanimated's onStart).
-//! - springConfig (spring-configs.ts): elegant { damping 30, stiffness 200, mass 0.7 } (ζ 1.27:
-//!   critically damped), springy { 18, 150, 1 }, super-springy { 15, 120, 1.4 }.
-//! - PanelContent (Yoga, from the panel's 280 × 150): a column, paddingHorizontal 22, centred:
-//!   header row (title Honk-Regular 16 '600' — HonkSans-Medium, its one face — #343a40, flex 1;
-//!   close PressableScale padding 4 with Ionicons close 20 #6c757d), marginBottom 18; the
-//!   options row, gap 8, three flex-1 PressableScale cards (borderRadius 10 continuous,
-//!   paddingHorizontal 8, paddingVertical 12, centred): a 12 pt indicator row of three 8 pt
-//!   dots (gap 2, marginBottom 8), then the label (Honk 13, marginBottom 4). A card's
-//!   background (#fff → its _BG) and label (#495057 → its colour) are interpolateColor of
-//!   withTiming(isActive, 200 ms linear); its borderColor animates too but it has no
-//!   borderWidth. Elegant's dots fade (1, 0.6, 0.3), Springy's (1, 0.8, 0.6) and Super's
-//!   (1, 1.2, 0.8) scale.
-//! - CollapsedButton: a 64 × 64 PressableScale, Ionicons settings-sharp 24 #343a40 centred.
-//! - Text: each RN `<Text>` is its own Core Animation backing store (UIKit layout,
-//!   `with_ui_layout`), drawn once in a sprite atlas at the pixel grid and resampled
-//!   bilinearly under the panel's translate and the press scales, as Core Animation does.
-//!   Yoga: a Text's measured side ceiled after an epsilon, its offset floored; views rounded
-//!   relative to their parent. RN's view colours are Display P3 (`Color::view_hex`).
-//! - Presses (pressto, the app's global onPress posts `haptic:selection`): the pan's
-//!   activation cancels a held press (RNGH: the pan takes the touch).
-//! - Haptics past RN (which plays only the presses'; the owner's haptic language):
-//!   one `haptic:impact-light` when the pan takes the panel (its activation, so a tap plays
-//!   none). Nothing when the thrown panel lands in its corner.
+//! Draggable Panel: a white panel with a close button and three spring choices. A drag throws it
+//! to the nearest screen corner on the chosen spring. Closing shrinks it into a settings button,
+//! and pressing that button grows it back.
 //!
 //! Inputs: safeTop.
+//!
+//! - The panel's size and corner radius animate together. Its content swaps with a fade as it
+//!   expands or collapses. An exiting view keeps its last layout, so its press and colours
+//!   freeze while it fades.
+//! - A drag takes the panel on the pan's activation, and a held press is cancelled then. On
+//!   release the panel is thrown toward the corner nearest its projected landing point, on the
+//!   chosen spring.
+//! - Presses: an option card selects its spring, and the close and settings buttons toggle the
+//!   collapse.
+//! - Text is drawn once into a sprite atlas and resampled under the panel's translate and press
+//!   scales, as Core Animation does. Text sizes are rounded up and offsets down to the pixel grid.
+//! - Haptics: a light impact when the pan takes the panel, so a tap plays none. Presses play a
+//!   selection. Nothing when the thrown panel lands in its corner.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -71,27 +34,32 @@ static IONICONS: &[u8] = include_bytes!("../fonts/ionicons-draggable-panel-subse
 const CLOSE: &str = "\u{F24A}";
 const SETTINGS: &str = "\u{F56D}";
 
-/// DraggableControlPanel's defaults.
+/// Collapsed and expanded panel sizes, pt.
 const COLLAPSED: (f32, f32) = (64.0, 64.0);
 const EXPANDED: (f32, f32) = (280.0, 150.0);
-/// DEMO_BUTTON_ROW_HEIGHT.
+/// Height of the button row above the panel, pt.
 const BUTTON_ROW: f32 = 56.0;
-/// animation-helpers.ts.
+/// How far a release's velocity projects, in seconds.
 const VELOCITY_FACTOR: f32 = 0.15;
+/// Side margin, pt.
 const MARGIN: f32 = 30.0;
+/// Bottom margin, pt.
 const BOTTOM_MARGIN: f32 = 100.0;
+/// The panel's size follows the layout, critically damped.
 const LAYOUT_SPRING: SpringConfig = SpringConfig {
     stiffness: 250.0,
     damping: 20.0,
     mass: 0.3,
 };
+/// Shadow sigma, pt.
 const SHADOW_SIGMA: f32 = 12.0;
+/// Screen background.
 const BACKGROUND: u32 = 0xF5F7FA;
 const TITLE_COLOR: u32 = 0x343A40;
 const CLOSE_COLOR: u32 = 0x6C757D;
 const DEFAULT_TEXT: u32 = 0x495057;
 
-/// One spring option (panel-content.tsx springOptions + springConfigs, spring-configs.ts).
+/// One spring choice: its label, colours, dot fades and spring config.
 struct SpringOption {
     label: &'static str,
     color: u32,
@@ -146,7 +114,7 @@ fn rgba(rgb: u32) -> [f64; 4] {
     ]
 }
 
-/// An interpolated RN view colour (P3 components) as the sRGB colour it shows.
+/// An interpolated view colour (P3 components) as the sRGB colour it shows.
 fn view(c: [f64; 4]) -> Color {
     let p = |v: f64| v.round().clamp(0.0, 255.0) as u32;
     Color::view_hex((p(c[0]) << 16) | (p(c[1]) << 8) | p(c[2])).alpha(c[3] as f32)
@@ -164,7 +132,7 @@ fn floor_px(v: f32, s: f32) -> f32 {
     (v * s + 1e-4).floor() / s
 }
 
-/// snapToCorner (animation-helpers.ts): the corner nearest the velocity-projected panel.
+/// The corner nearest the panel, projected along the release velocity.
 #[allow(clippy::too_many_arguments)]
 pub fn snap_to_corner(
     x: f32,
@@ -237,7 +205,7 @@ struct Fonts {
 #[derive(Clone, Debug)]
 struct Content {
     collapsed: bool,
-    /// Its FadeIn / FadeOut.
+    /// Fades in on entry, out on exit.
     fade: Timing,
     exiting: bool,
     /// collapsed: [the button]; expanded: [close, three options].
@@ -262,7 +230,7 @@ impl Content {
             fade,
             exiting: false,
             presses: (0..n).map(|_| Pressable::new()).collect(),
-            // useDerivedValue's first run: the target at once.
+            // The first value is the target, with no animation.
             active: [0, 1, 2].map(|i| Timing::at(if i == spring_type { 1.0 } else { 0.0 })),
             slot,
         }
@@ -338,7 +306,7 @@ impl Panel {
             })
         })();
         let mut first = Content::new(false, 0, 0);
-        first.fade = Timing::at(1.0); // mounted with the screen: no entering on the first render
+        first.fade = Timing::at(1.0); // Present from the start: no fade-in on the first frame.
         Panel {
             safe_top: 0.0,
             size: (0.0, 0.0, 3.0),
@@ -406,7 +374,7 @@ impl Panel {
             h: ih,
             sprite: 1,
         };
-        // The options: (236 − 2 × 8) / 3 each, from the header's bottom + 18.
+        // Option cards sit 18 pt below the header.
         let lh = line(&f.label);
         let card_h = 12.0 + 12.0 + 8.0 + lh + 4.0 + 12.0;
         let card_w = (inner - 16.0) / 3.0;
@@ -479,8 +447,7 @@ impl Panel {
         ]
     }
 
-    /// Whether (x, y) is on the GestureDetector's view: `controls` (the final size) or the
-    /// panel's animated frame.
+    /// Whether (x, y) is on the panel, at its final size or its animated frame.
     fn on_panel(&self, x: f32, y: f32) -> bool {
         let (px, py) = (self.tx.value as f32, self.ty.value as f32);
         let (fw, fh) = self.final_size();
@@ -566,7 +533,7 @@ impl Panel {
         match event {
             Event::Begin { .. } => {
                 self.start = (self.tx.value as f32, self.ty.value as f32);
-                // The pressable under the finger, in the live content (the panel clips).
+                // The pressable under the finger, in the live content.
                 if let Some(l) = self.layout() {
                     let p = self.panel_rect();
                     let in_panel = x >= p[0] && x <= p[0] + p[2] && y >= p[1] && y <= p[1] + p[3];
@@ -1073,9 +1040,7 @@ mod tests {
     fn yoga_layout_of_the_panel_content() {
         let p = panel();
         let l = p.layout().unwrap();
-        // Honk 16: (984 + 207) / 1000 × 16 = 19.056 → 19.333; Ionicons 20: 525 / 512 × 20 =
-        // 20.508 → 20.667 (+ padding 8: the header 28.667); cards (236 − 16) / 3 = 73.333 ×
-        // 63.667 (Honk 13: 15.667); the content 110.333 tall, its top 19.833 → 20.
+        // Text sizes and offsets as Yoga rounds them.
         assert!((l.close[3] - 28.6667).abs() < 1e-3, "{:?}", l.close);
         assert!((l.title.y - 4.6667).abs() < 1e-3);
         assert!((l.cards[1][0] - 103.3333).abs() < 1e-3 && (l.cards[0][2] - 73.3333).abs() < 1e-3);
@@ -1083,7 +1048,6 @@ mod tests {
         assert_eq!(l.top, 20.0);
         assert!((l.cards[0][1] - 46.6667).abs() < 1e-3);
         assert!((l.dots.0 - 22.6667).abs() < 1e-3);
-        // settings-sharp 24: 24.333 × 24.667 at 19.667.
         assert!(
             (l.settings_icon.x - 19.6667).abs() < 1e-3
                 && (l.settings_icon.y - 19.6667).abs() < 1e-3
@@ -1092,7 +1056,6 @@ mod tests {
 
     #[test]
     fn snaps_to_the_projected_corner() {
-        // From the bottom right, a flick up-left at 2000 pt/s projects 300 pt: top-left wins.
         let (x, y) = snap_to_corner(110.0, 662.0, 280.0, 150.0, W, H, 124.0, -2000.0, -2000.0);
         assert_eq!((x, y), (30.0, 124.0));
         let (x, y) = snap_to_corner(110.0, 662.0, 280.0, 150.0, W, H, 124.0, 0.0, 0.0);
@@ -1121,10 +1084,7 @@ mod tests {
         assert!((p.ty.target() - 124.0).abs() < 1e-6 && (p.tx.target() - 110.0).abs() < 1e-6);
         let t = run(&mut p, t + FRAME, t + 5000.0);
         assert_eq!((p.tx.value, p.ty.value), (110.0, 124.0));
-        // Light when the pan took it, nothing when it landed in the corner.
         assert_eq!(p.messages(), vec!["haptic:impact-light".to_string()]);
-        // The close (top right of the header) collapses it, around its centre, into the
-        // top-right corner: (326, 124).
         let l = p.layout().unwrap();
         let (cx, cy) = (110.0 + l.close[0] + 14.0, 124.0 + l.top + 14.0);
         tap(&mut p, cx, cy, t);
@@ -1166,7 +1126,6 @@ mod tests {
         p.input(&pointer(PointerPhase::Move, x, y - 30.0, 2200.0));
         p.input(&pointer(PointerPhase::Up, x, y - 30.0, 2300.0));
         assert_eq!(p.spring_type, 2);
-        // No press's selection: only the pan's grab.
         assert_eq!(p.messages(), vec!["haptic:impact-light".to_string()]);
     }
 
@@ -1196,7 +1155,6 @@ mod tests {
         // The screen, then the white panel (110, 662) 280 × 150.
         assert_eq!(img.at(3 * 20, 3 * 400)[..3], bg[..3]);
         assert_eq!(img.at(3 * 200, 3 * 670)[..3], [255, 255, 255]);
-        // Elegant's card (active) at (132, 728.667): #f8f4ff in P3.
         let want = Color::view_hex(0xF8F4FF)
             .0
             .map(|v| (v * 255.0).round() as u8);
@@ -1208,7 +1166,6 @@ mod tests {
                 .all(|(a, b)| a.abs_diff(*b) <= 1),
             "{p:?} {want:?}"
         );
-        // The title's ink in its box, nothing in the gap under the header.
         let ink = |x0: u32, y0: u32, x1: u32, y1: u32| {
             let mut n = 0;
             for y in y0..y1 {
@@ -1222,9 +1179,7 @@ mod tests {
         };
         assert!(ink(3 * 132, 3 * 686, 3 * 300, 3 * 706) > 200);
         assert_eq!(ink(3 * 132, 3 * 712, 3 * 380, 3 * 727), 0);
-        // The close icon's ink at its box (110 + 233.333 + 4, 682 + 4).
         assert!(ink(3 * 348, 3 * 687, 3 * 367, 3 * 706) > 50);
-        // Collapsed: the settings icon in the 64 pt circle.
         let mut t = 100.0;
         s.input(&pointer(PointerPhase::Down, 110.0 + 247.5, 682.0 + 14.0, t));
         s.input(&pointer(
@@ -1237,7 +1192,6 @@ mod tests {
             let (img, moving) = fixture::render(&gpu, s.as_mut(), &frame(t)).unwrap();
             if !moving || t > 5000.0 {
                 img.save("draggable-panel-collapsed");
-                // Bottom right: (326, 748), a circle (its corner is the screen's colour).
                 let mut n = 0;
                 for y in 3 * 768..3 * 792 {
                     for x in 3 * 346..3 * 370 {

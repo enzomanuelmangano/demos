@@ -1,12 +1,10 @@
-//! A Skia gooey layer and what the canvas draws over it, shared by the demos that melt shapes
-//! together with `<Group layer={<Paint><Blur blur={σ} /><ColorMatrix … 0, 0, 0, k, b /></Paint>}>`
-//! (delete-button, exclusion-tabs).
+//! A gooey layer: shapes melted together by a blur and an alpha threshold, with the canvas
+//! drawn over it.
 //!
-//! A frame records the layer's shapes into [`Gooey::goo`] and what is drawn after the layer into
-//! [`Gooey::top`]; [`Gooey::draw`] renders both, blurs the layer as Skia Graphite does
-//! (`skia::blur::GraphiteBlur`: the layer is the canvas, transparent outside it, so the blur fades
-//! at the canvas's edges as RN's does), and composes them in one pass (`shaders/gooey.wgsl`).
-//! Its targets, uniforms and bind group are kept between frames.
+//! A frame records the layer's shapes into [`Gooey::goo`] and what is drawn over it into
+//! [`Gooey::top`]. [`Gooey::draw`] blurs the layer and composes both in one pass
+//! (`shaders/gooey.wgsl`). The layer is the canvas, transparent outside it, so the blur fades
+//! at the canvas edges. Targets, uniforms and the bind group are kept between frames.
 
 use exact_gpu::wgpu;
 use exact_gpu::Frame;
@@ -143,9 +141,8 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32, pi
     }
 }
 
-/// Reanimated's `withTiming` on a colour (animation/utilCommon.ts colorOnStart / colorOnFrame):
-/// each channel timed in its gamma-2.2 linear space (value^2.2), shown as `rgba(…)` with each
-/// channel back to 0…255 and rounded; a retarget starts from that rounded colour.
+/// A colour eased in linear light: each channel is timed in gamma 2.2 space (value^2.2) and
+/// shown back at 0…255, rounded. A retarget starts from the rounded colour shown.
 #[derive(Clone, Debug)]
 pub struct ColorTiming {
     channels: [reanimated::Timing; 3],
@@ -158,8 +155,8 @@ impl ColorTiming {
         ColorTiming { channels: rgb.map(|c| reanimated::Timing::at(linear(c as f64))), target: rgb }
     }
 
-    /// `withTiming(to, { duration })` with the default easing (inOut(quad)), from the colour
-    /// shown; no change when already going there.
+    /// Eases to `rgb` over `duration_ms` (ease in-out quad), from the colour shown; no-op when
+    /// already heading there.
     pub fn to(&mut self, rgb: [u8; 3], duration_ms: f64) {
         if self.target == rgb {
             return;

@@ -1,27 +1,14 @@
-//! Magnet Spring (src/animations/magnet-spring/magnet.tsx): a graphite piece (#3b3b3b, radius
-//! CHEESE_RADIUS 25, boxShadow `0px 2px 10px rgba(0,0,0,0.2)`) dragged over nine aluminium
-//! magnets (#c1c1c1, radius MAGNET_RADIUS 10, boxShadow `0px 0px 20px rgba(0,0,0,0.1)`) on
-//! #f5f5f5; each magnet grows toward the piece and the piece snaps to the nearest on release.
+//! A graphite piece dragged over nine aluminium magnets on a light background. Each magnet grows
+//! as the piece nears it, and the piece snaps to the nearest magnet on release.
 //!
-//! - The magnets: createFibonacciPositions(8) (golden-angle spiral about the window's centre,
-//!   radius min(w, h) × 0.0035 × √i × 100, kept 50 pt inside the window) and the centre; the
-//!   piece starts on the first (the centre).
-//! - A magnet's scale: interpolate(distance to the piece, [0, CHEESE_RADIUS × 2], [3, 1], CLAMP),
-//!   every frame; its colour interpolates #c1c1c1 to #c1c1c1 (so it stays).
-//! - The pan begins on the piece's view (its 50² square, scaled); onBegin sets isActive and
-//!   takes the piece's position as context (a spring still running keeps running until the
-//!   first update); onUpdate puts it at context + translation; onEnd springs x and y to the
-//!   nearest magnet ({ mass 0.4, damping 15, stiffness 120 }, the release velocity); onFinalize
-//!   clears isActive.
-//! - The piece's scale: withSpring(isActive ? 1.2 : 1, { mass 0.5, damping 10, stiffness 100 }).
-//! - Box shadows are σ = blur / 2 (RN's iOS shadowRadius = blur / 2), scaled with their view.
-//!
-//! Haptics (past RN, which plays none), the essentials only, never per move: one
-//! `haptic:impact-light` when the pan takes the piece (its activation, so a tap plays none);
-//! one `haptic:selection` when the drag brings the piece nearer another magnet (the one a
-//! release would snap to), with SWITCH of hysteresis so a piece hovering on the line between
-//! two magnets does not flap; nothing when the released piece lands. No two haptics within
-//! HAPTIC_GAP_MS of each other.
+//! - Magnets sit on a golden-angle spiral about the centre, kept 50 pt inside the window. The
+//!   piece starts on the centre magnet.
+//! - A magnet's scale grows from 1 to 3 as the piece closes in, within two piece radii.
+//! - The piece scales to 1.2 on a spring while it is held.
+//! - Haptics, never per move: one `haptic:impact-light` when the pan takes the piece (a tap
+//!   plays none); `haptic:selection` when the drag brings the piece nearer another magnet, with
+//!   SWITCH of hysteresis so a piece hovering between two magnets does not flap. Nothing when
+//!   the released piece lands. No two haptics within HAPTIC_GAP_MS of each other.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -31,11 +18,11 @@ use reanimated::{interpolate_clamp, Spring, SpringConfig};
 use crate::{gfx, shaders};
 use shaders::magnet_spring::{entry, module, Items, Profiles, GROUP_0, PROFILES, U};
 
-/// MAGNET_RADIUS.
+/// Magnet radius, pt.
 const MAGNET_RADIUS: f64 = 10.0;
-/// CHEESE_RADIUS.
+/// Piece radius, pt.
 const CHEESE_RADIUS: f64 = 25.0;
-/// SPRING_CONFIG.
+/// Spring for the snap to a magnet.
 const SNAP: SpringConfig = SpringConfig { stiffness: 120.0, damping: 15.0, mass: 0.4 };
 /// The piece's scale spring.
 const PRESS: SpringConfig = SpringConfig { stiffness: 100.0, damping: 10.0, mass: 0.5 };
@@ -47,7 +34,7 @@ const HAPTIC_GAP_MS: f64 = 40.0;
 /// How much nearer another magnet must be than the current one before it takes over, pt.
 const SWITCH: f64 = 12.0;
 
-/// The demo's surface.
+/// The surface.
 pub fn surface() -> Box<dyn Surface> {
     Box::new(MagnetSpring::new())
 }
@@ -78,7 +65,7 @@ struct Gpu {
     bind: wgpu::BindGroup,
 }
 
-/// createFibonacciPositions(8) and the centre.
+/// The eight spiral magnets, and the centre one first.
 fn magnets(width: f64, height: f64) -> [(f64, f64); 9] {
     let (cx, cy) = (width * 0.5, height * 0.5);
     let scale_factor = width.min(height) * 0.0035;
@@ -155,13 +142,13 @@ impl MagnetSpring {
         }
         self.size = (width, height);
         self.magnets = magnets(width as f64, height as f64);
-        // initialPosition = magnets[0].
+        // The piece starts on the centre magnet.
         let (x, y) = self.magnets[0];
         self.x = Spring::at(x);
         self.y = Spring::at(y);
     }
 
-    /// getNearestMagnet: the first of the closest.
+    /// The nearest magnet to the piece; the first one wins a tie.
     fn nearest(&self) -> (f64, f64) {
         self.magnets[self.nearest_index()]
     }
@@ -288,7 +275,7 @@ fn build(device: &wgpu::Device, queue: &wgpu::Queue, format: wgpu::TextureFormat
     let buffer = |label, size: usize| device.create_buffer(&wgpu::BufferDescriptor { label: Some(label), size: size as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
     let items = buffer("magnet items", Items::SIZE);
     let profiles = buffer("magnet profiles", Profiles::SIZE);
-    // boxShadow blurs 20 and 10: σ 10 and 5.
+    // Shadow blurs of 20 and 10 points, as σ 10 and 5.
     let p = Profiles { magnet: profile(MAGNET_RADIUS, 10.0), piece: profile(CHEESE_RADIUS, 5.0) };
     queue.write_buffer(&profiles, 0, &p.bytes());
     let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {

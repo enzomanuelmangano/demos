@@ -1,48 +1,12 @@
-//! Mobile Input (src/animations/mobile-input: index.tsx, lock-screen.tsx, hooks/use-animated-shake.ts,
-//! components/{AnimatedFace, CircleStroke, PinArea, PinArea/Dots, ButtonsGrid}): a PIN lock screen.
-//! A glowing sweep-gradient ring holds a face; the face opens its eyes at the first digit, smiles
-//! at the right PIN (11111) and frowns at a wrong one, when the PIN area shakes; the backspace key
-//! clears. The whole screen is this surface.
+//! A PIN lock screen. A glowing sweep-gradient ring holds a face: it opens its eyes at the first
+//! digit, smiles at the right PIN (11111) and frowns at a wrong one, when the PIN area shakes.
+//! The backspace key clears. The whole screen is this surface.
 //!
-//! Layout (RN measure, iPhone Air 420 × 912, insets 68 / 34; `nativeFabricUIManager.measureInWindow`):
-//! - styles.container #1C274D (a Display P3 view colour); the Canvas absolute at (0, 0), 100 % ×
-//!   windowWidth · 2. Skia's size = (2W, 0.9H).
-//! - The fill view, padded by the insets: a flex-1 spacer, then a 60 % box (392, 486 tall). In it the
-//!   shaking Animated.View holding PinArea (marginTop 20, marginBottom 15): "Enter PIN Mode" (SF 15,
-//!   rgba(255,255,255,0.9), centred: box 412, 18 tall) and the dots row (marginTop 20, marginBottom
-//!   25, centred: five 8 × 8 white dots, radius 4, marginHorizontal 12: x 142 + 32k, y 450).
-//! - ButtonsGrid (flex 1, row, wrap, alignItems center: 498, 380 tall): twelve keys 30 % × 20 %
-//!   (126 × 76), marginLeft and marginBottom 7/3 % of the width (9.8). Yoga centres each key in its
-//!   85.8 line by the border box (the trailing margin left out): tops 498 + 4.9 + 85.8k (503,
-//!   588.667, 674.667, 760.333), lefts 9.667, 145.667, 281.333. Digits SF 30 white, the backspace
-//!   FontAwesome5 Solid "backspace" (U+F55A) at 24 white, each a Text centred in its key (Yoga's
-//!   floored Text position, the ceiled side). The tenth key is an empty pressable.
-//!
-//! Motion audit (every animated value of the RN source; `reanimated` is Reanimated's math):
-//!
-//! | value | driver | config | trigger | here |
-//! |---|---|---|---|---|
-//! | BlurMask blur | withSequence(withTiming ×3) | 0→10, 10→45, 45→10, 4000 ms each, inOut(quad) | mount | `Chain`, each step from the frame the last ended |
-//! | eyesProgress | withSpring | { dampingRatio 1, duration 400 } | openEyes (a digit, 1-4 long) / reset → 0 | `gfx::spring_to` |
-//! | mouthProgress | withSpring | same | correct → 1, wrong → 0, reset → 0.5 | `gfx::spring_to` |
-//! | eyeRadius | interpolate(eyes, [0, 1], [4, 6]) | extend | | same |
-//! | mouth path | happy.interpolate(sad, mouth) | happy · t + sad · (1 − t) | | same, per point |
-//! | face origin | (centerX + bounds.w / 2 + eyeRadius, centerY − 5) | bounds = control points | | same |
-//! | shake translateX | withRepeat(withTiming(10, 100 ms, bezier(0.36, 0.69, 0.49, 0.71)), 4, reverse) | cancel + 0 first | wrong | `Chain` 0→10→0→10→0 |
-//! | dot opacity | withTiming(active ? 1 : 0.4) | 300 ms inOut(quad) | activeDots changes | `Timing`, re-issued for every dot |
-//! | dot scale | withSpring(active ? 1.4 : 1) | GENTLE (900, 120, 4) | same | `Spring::to` at its velocity |
-//! | key press | pressto progress withTiming(active) | 250 ms bezier(0.25, 0.1, 0.25, 1) | press in / out | [`pressto::Pressable`] |
-//! | key fill | rgba(255,255,255, interpolate(p, [0,1], [0, 0.1]).toFixed(3)) | Reanimated's colour: alpha round(a · 255) | | same |
-//! | key scale | interpolate(p, [0, 1], [1, 0.9]) | about the key's centre | | same |
-//!
-//! The press is pressto's design (the user's decision): `active` true at the touch-down on a key
-//! (RNGH BaseButton's BEGAN), false at the lift or a cancel; onPress — the app's selection haptic,
-//! then the key's action — only for a lift inside the key, tested in the key's own (scaled) bounds
-//! as UIKit's `locationInView:` and RNGestureHandlerButton's strict hit frame do. A finger that
-//! slides off keeps the key pressed (shouldCancelWhenOutside is false) and presses nothing. Each
-//! key takes its own finger (pressto's buttons are not exclusive). RN's app today (pressto 0.7.0 on
-//! RNGH 3.3's v3 BaseButton) passes onBegan/onEnded that v3 drops: no feedback, and onPress on
-//! any uncancelled lift; that bug is not ported. The machine is the shared `pressto` crate's.
+//! - The layout follows the screen size and the safe-area insets.
+//! - A key is pressed on touch-down and fires on a lift inside its own scaled bounds. A finger
+//!   that slides off keeps the key pressed but presses nothing, and a cancel presses nothing.
+//!   Each key takes its own finger.
+//! - The press machine is the shared `pressto` crate's. Each press posts the selection haptic.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -56,9 +20,9 @@ use shaders::mobile_input::{entry, module, Uniforms, BLURRED, COVERAGE, GROUP_0,
 
 static FA5_SOLID: &[u8] = include_bytes!("../fonts/fa5-solid-backspace-subset.ttf");
 
-/// index.tsx correctPin.
+/// The PIN that makes the face smile.
 const CORRECT_PIN: &str = "11111";
-/// ButtonsGrid items: 1…9, null (an empty key), 0, 'backspace'.
+/// Keypad order: 1…9, an empty key, 0, backspace.
 const KEYS: [Key; 12] = [
     Key::Digit(1),
     Key::Digit(2),
@@ -73,14 +37,14 @@ const KEYS: [Key; 12] = [
     Key::Digit(0),
     Key::Backspace,
 ];
-/// FontAwesome5 "backspace".
+/// Backspace glyph (Font Awesome 5).
 const BACKSPACE: &str = "\u{F55A}";
-/// CircleStroke's strokeWidth.
+/// Ring stroke width, pt.
 const RING_STROKE: f32 = 25.0;
-/// AnimatedFace's Path strokeWidth and the Group's scale.
+/// Mouth stroke width, and the face's scale.
 const MOUTH_STROKE: f32 = 3.0;
 const FACE_SCALE: f32 = 1.8;
-/// sadMouth and happyMouth (M, C, C: seven points each).
+/// Mouth control points, sad and happy: seven each.
 const SAD: [[f32; 2]; 7] = [
     [31.2226, 8.20008],
     [27.3898, 4.95606],
@@ -99,10 +63,10 @@ const HAPPY: [[f32; 2]; 7] = [
     [6.8063, 6.30699],
     [3.0, 3.15691],
 ];
-/// runTimingConfig: withSpring's { dampingRatio: 1, duration: 400 }.
+/// Face spring: critically damped, 400 ms.
 const FACE_MS: f64 = 400.0;
 const FACE_DAMPING_RATIO: f64 = 1.0;
-/// PinArea's text, dots row and the PinArea margins.
+/// PIN area text and margins, pt.
 const LABEL: &str = "Enter PIN Mode";
 const LABEL_SIZE: f32 = 15.0;
 const PIN_MARGIN_TOP: f32 = 20.0;
@@ -111,17 +75,16 @@ const DOTS_MARGIN_TOP: f32 = 20.0;
 const DOTS_MARGIN_BOTTOM: f32 = 25.0;
 const DOT: f32 = 8.0;
 const DOT_MARGIN: f32 = 12.0;
-/// ButtonsGrid styles.number, the icon's size, the key's borderRadius.
+/// Digit and icon sizes, and the key corner radius, pt.
 const DIGIT_SIZE: f32 = 30.0;
 const ICON_SIZE: f32 = 24.0;
 const KEY_RADIUS: f32 = 20.0;
 
-/// InputButton's outputs (createAnimatedPressable): scale 1 → 0.9, fill alpha 0 → 0.1. The
-/// progress is pressto's default (no PressablesConfig animation config in app/_layout.tsx).
+/// A key's pressed values: scale 1 → 0.9, fill alpha 0 → 0.1.
 const PRESS_SCALE: f64 = 0.9;
 const PRESS_FILL: f64 = 0.1;
 
-/// The demo's surface (the whole screen). Inputs: the safe area's top and bottom insets.
+/// The surface (the whole screen). Inputs: the safe area's top and bottom insets.
 pub fn surface() -> Box<dyn Surface> {
     Box::new(MobileInput::new())
 }
@@ -133,22 +96,22 @@ enum Key {
     Backspace,
 }
 
-/// Yoga's rounding of a View edge to the pixel grid: to the nearest device pixel, a half up.
+/// Rounds a view edge to the nearest device pixel, halves up, as Yoga does.
 fn grid(v: f32, scale: f32) -> f32 {
     ((v * scale + 0.5 + 1e-4).floor()) / scale
 }
 
-/// A Text node's relative position: floored to the pixel grid (Yoga's textRounding).
+/// Floors a text position to the pixel grid, as Yoga does.
 fn text_grid(v: f32, scale: f32) -> f32 {
     ((v * scale + 1e-4).floor()) / scale
 }
 
-/// A Text's measured side, ceiled to the pixel grid (an exact 24 measures 24.333, as RN's).
+/// A text's measured side, ceiled to the pixel grid: a 24 pt line can measure 24.333.
 fn text_side(v: f32, scale: f32) -> f32 {
     ((v + 0.001) * scale).ceil() / scale
 }
 
-/// JS's `x.toFixed(3)` read back as a number (the nearer thousandth, the larger on a tie).
+/// `x.toFixed(3)` as a number: the nearer thousandth, the larger on a tie.
 fn to_fixed_3(x: f64) -> f64 {
     let k = x * 1000.0;
     let n = if k - k.floor() == 0.5 {
@@ -159,8 +122,7 @@ fn to_fixed_3(x: f64) -> f64 {
     n / 1000.0
 }
 
-/// A sequence of `withTiming`s, each starting at the frame the one before ended (Reanimated's
-/// withSequence and withRepeat start the next animation at that frame's timestamp).
+/// A sequence of timed steps, each starting on the frame the previous one ended.
 #[derive(Clone, Debug)]
 struct Chain {
     timing: Timing,
@@ -207,8 +169,7 @@ impl Chain {
     }
 }
 
-/// pressto's `createAnimatedPressable` on RNGH's BaseButton: the shared press machine
-/// ([`pressto::Pressable`]: its progress and the finger on it) and InputButton's style over it.
+/// The shared press machine, with the key's fill and scale on top.
 #[derive(Clone, Debug, Default)]
 struct Press {
     pressable: pressto::Pressable,
@@ -220,7 +181,7 @@ impl Press {
         self.pressable.finger()
     }
 
-    /// `progress`.
+    /// The press progress: 0 at rest, 1 pressed.
     fn progress(&self) -> f64 {
         self.pressable.progress()
     }
@@ -235,8 +196,7 @@ impl Press {
         ) as f32
     }
 
-    /// `rgba(255,255,255,${interpolate(progress, [0, 1], [0, 0.1]).toFixed(3)})`, its alpha as
-    /// Reanimated's colour parser rounds it (round(a · 255)).
+    /// The fill's alpha, rounded to three decimals and then to 8 bits.
     fn fill(&self) -> u8 {
         let a = to_fixed_3(interpolate(
             self.progress(),
@@ -265,7 +225,7 @@ struct Layout {
 
 impl Layout {
     fn new(w: f32, h: f32, scale: f32, top: f32, bottom: f32, label_h: f32) -> Layout {
-        // The fill view: a spacer (flex 1) over the 60 % box.
+        // The PIN area and keypad fill the bottom 60% of the inner area.
         let inner = h - top - bottom;
         let box_h = inner * 0.6;
         let box_top = top + inner - box_h;
@@ -273,7 +233,7 @@ impl Layout {
         let dots_top = label_top + label_h + DOTS_MARGIN_TOP;
         let grid_top = dots_top + DOT + DOTS_MARGIN_BOTTOM + PIN_MARGIN_BOTTOM;
         let grid_h = box_top + box_h - grid_top;
-        // styles.input: 30 % × 20 %, marginLeft / marginBottom 7/3 % of the width.
+        // Keys are 30% × 20% of the grid, with gaps of 7/3% of the width.
         let (kw, kh, m) = (w * 0.3, grid_h * 0.2, w * (7.0 / 3.0) / 100.0);
         let line = kh + m;
         let keys = std::array::from_fn(|i| {
@@ -296,7 +256,7 @@ impl Layout {
         }
     }
 
-    /// CircleStroke: centre (size.w / 4, size.h / 4 + 20), r size.h / 7.5; size (2W, 0.9H).
+    /// The ring's centre and radius. The canvas is 2W × 0.9H; the ring sits a quarter in.
     fn ring(&self) -> (f32, f32, f32) {
         let (sw, sh) = (2.0 * self.w, 0.9 * self.h);
         (sw / 4.0, sh / 4.0 + 20.0, sh / 7.5)
@@ -398,7 +358,7 @@ impl MobileInput {
         lx >= kx && lx < kx + kw && ly >= ky && ly < ky + kh
     }
 
-    /// pressto's onPress: the app's globalHandlers (Haptics.selectionAsync), then the key's.
+    /// Fires a press: its haptic, then the key's action.
     fn press(&mut self, k: usize, press: pressto::Press) {
         if let Some(m) = press.global_message() {
             self.posted.push(m.into());
@@ -413,7 +373,7 @@ impl MobileInput {
         }
     }
 
-    /// LockScreen's reset: pin [], the face's reset (mouth 0.5, eyes closed).
+    /// Clears the PIN and resets the face: neutral mouth, closed eyes.
     fn reset(&mut self) {
         self.pin.clear();
         self.pin_changed();
@@ -421,7 +381,7 @@ impl MobileInput {
         gfx::spring_to(&mut self.eyes, 0.0, FACE_MS, FACE_DAMPING_RATIO);
     }
 
-    /// The pin's useAnimatedReaction and the dots' styles (activeDots = pin.length).
+    /// Updates the dots and the face for the PIN as it now is.
     fn pin_changed(&mut self) {
         let n = self.pin.len();
         for i in 0..5 {
@@ -500,9 +460,9 @@ impl MobileInput {
         let pts = self.mouth_points();
         let c = &mut self.canvas;
         c.begin(s);
-        // AnimatedFace: Group origin + [scale 1.8, translateX centerX, translateY centerY].
+        // The face is scaled, then moved to its centre.
         let (sw, sh) = (2.0 * l.w, 0.9 * l.h);
-        // getBounds(): the control points' bounds.
+        // The mouth's bounds, from its control points.
         let (minx, maxx) = pts
             .iter()
             .fold((f32::MAX, f32::MIN), |(a, b), p| (a.min(p[0]), b.max(p[0])));
@@ -546,7 +506,7 @@ impl MobileInput {
         // PinArea, moved by the shake.
         c.save();
         c.translate(self.shake.value() as f32, 0.0);
-        // The label: a full-width Text box; TextKit centres the line in it.
+        // The label is centred on the full width.
         let lw = label.advance_width(LABEL);
         c.draw_text(
             LABEL,
@@ -570,7 +530,7 @@ impl MobileInput {
         }
         c.restore();
 
-        // The keys: the InputButton's fill and scale over its content.
+        // Each key: its fill and scale over its content.
         let (dh, ih) = (
             text_side(gfx::line_height(digit), s),
             text_side(gfx::line_height(icon), s),
@@ -603,7 +563,7 @@ impl MobileInput {
             };
             let line = font.advance_width(&text);
             let tw = text_side(line, s);
-            // textAlign 'center': the line centred in the ceiled box.
+            // Centre the line in the ceiled box.
             let x = text_grid((kw - tw) / 2.0, s) + (tw - line) / 2.0;
             c.draw_text(
                 &text,
@@ -751,7 +711,7 @@ impl Surface for MobileInput {
             low: [0.0; 4],
             output: [0.0; 4],
         };
-        // BlurMask(blur, "solid", respectCTM): σ = blur points. MakeBlur(σ ≤ 0) is no filter.
+        // σ is the blur in points; no blur at σ ≤ 0.
         let sigma = self.blur.value() as f32 * s;
         if sigma > 0.0 {
             if self.blurred_sigma != Some(sigma) {
@@ -924,7 +884,7 @@ mod tests {
 
     #[test]
     fn the_layout_is_rns() {
-        // RN's measureInWindow on the iPhone Air (420 × 912, insets 68 / 34).
+        // Expected positions on the iPhone Air (420 × 912, insets 68 / 34).
         let s = placed();
         let l = s.layout;
         assert_eq!(l.label_h, 18.0);

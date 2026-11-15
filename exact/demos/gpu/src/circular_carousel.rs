@@ -1,41 +1,17 @@
-//! Circular Carousel (src/animations/circular-carousel: index.tsx, components/circular-list/
-//! index.tsx, components/circular-list/list-item.tsx): nine round photos on a horizontal FlatList
-//! that bends into an arc as it scrolls; the Scale switch (Contract) springs the arc's scale on
-//! and off. This surface is the list: absolute at the bottom, the window wide, LIST_ITEM_WIDTH × 3
-//! tall.
+//! Circular Carousel: nine round photos on a horizontal strip that bends into an arc as it
+//! scrolls. The scale switch springs the arc's scale on and off.
 //!
-//! - The FlatList: horizontal, pagingEnabled, snapToInterval LIST_ITEM_WIDTH (W / 4), default
-//!   decelerationRate (normal). On iOS snapToInterval overrides pagingEnabled (ScrollView.js), so
-//!   a release snaps to a multiple of W / 4 (RCTEnhancedScrollView's ceil / floor / round by the
-//!   velocity's sign): `ui_scroll`, UIKit's drag, rubber band, bounce and deceleration as
-//!   measured. Content: the nine cells then paddingRight 3 × W / 4, alignItems center.
-//! - Each cell (list-item.tsx): W / 4 square; transform [translateX W / 4 × 1.5, translateY,
-//!   scale] about its centre, opacity. Over (index − 2 … index + 2) × W / 4: translateY [0, −W/12,
-//!   −W/8, −W/12, 0] EXTEND; opacity [0.5, 1, 1, 1, 0.5] CLAMP; scale over the output range
-//!   scaleOutputRange, CLAMP, where scaleOutputRange = withSpring([0.5, 0.9, 1.2, 0.9, 0.5] or
-//!   [1, 1, 1, 1, 1]) (Reanimated's default spring, GENTLE: 900 / 120 / 4) each time the switch
-//!   flips: each of the five outputs springs on its own, from where it is.
-//! - Inside: imageContainer margin 8, borderRadius 100 continuous, boxShadow 0 0 10px
-//!   rgba(0,0,0,0.1) (RCTBoxShadow: blur / 2 sigma, its path the circular rounded rect, outside the
-//!   view only); the image fills it, borderRadius 100 (expo-image ignores borderCurve: circular),
-//!   a 2 pt white Core Animation border over the photo, which is clipped to the outer circle. A
-//!   continuous radius that reaches half the side is a true circle in Core Animation, so all three
-//!   are circles (`draw_circle`): the ring as a white disc, the photo in the border's inner circle
-//!   (the same pixels as the ring over a clipped photo). A cell whose opacity is under 1 is one
-//!   layer (allowsGroupOpacity): drawn whole into a group target, then composited at its opacity;
-//!   cells of one parity are two items apart and never overlap, so two targets serve them all.
-//! - The photos: index.tsx's Unsplash URLs (w=400), bundled (gpu/images/circular-carousel) as
-//!   ImageIO decodes them (zune's decode was ~1 level off in 8 × 8 blocks), and as expo-image
-//!   shows them (ImageView.swift, ImageUtils.swift): idealSize = cover of the 89 pt
-//!   view, rounded up; the 400 × 600 ones (04, 07, 09) are downscaled to it (89 × 134 pt, 267 × 402
-//!   px, UIGraphicsImageRenderer; here CoreGraphics on the Mac) and drawn aspect-fill in the
-//!   unrounded idealSize frame (89 × 133.5, centred), i.e. 1:1 at y −22.5 pt; the others are not
-//!   (400 px is not more than 3 × their idealSize) and are drawn cover, bilinear.
-//! - Haptics (past RN, which plays none: the owner's haptic language): `haptic:selection` each
-//!   time the photo at the arc's crown (round(offset / item)) changes, during the drag and the
-//!   glide, with SWITCH of hysteresis past the half-item line (a finger hovering there does not
-//!   flap) and at most one per HAPTIC_GAP_MS; `haptic:impact-rigid` once each time the strip is
-//!   pulled or thrown past an end (the rubber band).
+//! - A release snaps to a multiple of a quarter of the width. The snap interval, not paging,
+//!   decides the target.
+//! - Each photo's position, scale and opacity come from the scroll offset and the scale outputs.
+//!   Photos are drawn into one offscreen layer, even indices left and odd right, then composited
+//!   at their opacity.
+//! - Photos are bundled pre-decoded, downscaled the way the platform image view does it, so they
+//!   match the platform's output.
+//! - Haptics: a selection each time the photo at the arc's crown changes, during the drag and the
+//!   glide. Hysteresis at the half-item line keeps a hovering finger from flapping, and selections
+//!   come at most one per HAPTIC_GAP_MS. A rigid impact each time the strip is pulled or thrown
+//!   past an end.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -46,13 +22,13 @@ use crate::gfx;
 use crate::ui_scroll::{Snap, UiScroll, NORMAL};
 
 const COUNT: usize = 9;
-/// imageContainer margin.
+/// Photo inset from the cell edge, pt.
 const MARGIN: f64 = 8.0;
-/// borderRadius (clamped to half the side).
+/// Corner radius, pt; clamped to a circle.
 const RADIUS: f32 = 100.0;
-/// The image's borderWidth.
+/// White ring width, pt.
 const BORDER: f32 = 2.0;
-/// boxShadow blur 10px: sigma 5; rgba(0, 0, 0, 0.1).
+/// Shadow sigma, pt.
 const SHADOW_SIGMA: f32 = 5.0;
 const SHADOW_ALPHA: f32 = 0.1;
 const SHOW: [f64; 5] = [0.5, 0.9, 1.2, 0.9, 0.5];
@@ -64,8 +40,7 @@ const PAST_END: f64 = 2.0;
 /// How far past the half-item line the offset goes before the crown changes, pt.
 const SWITCH: f64 = 6.0;
 
-/// Each photo as iOS decodes it (ImageIO), the 400 × 600 ones downscaled as expo-image does:
-/// RGB rows, zlib, and their size (exact/parity-tools/circular-carousel/make.sh).
+/// Each photo as RGB rows, zlib-compressed, with its size.
 static PHOTOS: [(&[u8], u32, u32); COUNT] = [
     (include_bytes!("../images/circular-carousel/01-400x250.rgb8.zlib"), 400, 250),
     (include_bytes!("../images/circular-carousel/02-400x267.rgb8.zlib"), 400, 267),
@@ -77,7 +52,7 @@ static PHOTOS: [(&[u8], u32, u32); COUNT] = [
     (include_bytes!("../images/circular-carousel/08-400x267.rgb8.zlib"), 400, 267),
     (include_bytes!("../images/circular-carousel/09-267x402.rgb8.zlib"), 267, 402),
 ];
-/// The downloaded JPEGs' pixel sizes (expo-image's contentPixelSize).
+/// Pixel sizes of the downloaded photos.
 const DOWNLOADED: [(f64, f64); COUNT] = [(400.0, 250.0), (400.0, 267.0), (400.0, 250.0), (400.0, 600.0), (400.0, 250.0), (400.0, 250.0), (400.0, 600.0), (400.0, 267.0), (400.0, 600.0)];
 
 fn decode(&(bytes, w, h): &(&[u8], u32, u32)) -> skia::Image {
@@ -92,10 +67,8 @@ fn decode(&(bytes, w, h): &(&[u8], u32, u32)) -> skia::Image {
     skia::Image::from_rgba(w, h, rgba)
 }
 
-/// Where expo-image draws photo `index` in its `side` pt square view at `left`, `top` (points),
-/// and the drawn image's size in pixels: ImageView.swift's idealSize (cover), rounded up, the
-/// image downscaled to it when both its sides exceed it × `scale`, then aspect-fill in the
-/// unrounded idealSize frame centred in the view.
+/// Where photo `index` draws in its square view, in points: covered at its ideal size, downscaled
+/// first when both its sides are large, then centred.
 fn photo_rect(index: usize, left: f32, top: f32, side: f32, scale: f32, drawn: (f32, f32)) -> Rect {
     let (iw, ih) = DOWNLOADED[index];
     let side = side as f64;
@@ -135,7 +108,7 @@ struct Circular {
     scroll: UiScroll,
     width: f64,
     enabled: Option<bool>,
-    /// scaleOutputRange, each value springing.
+    /// Scale per arc position, each springing to its target.
     outputs: [Spring; 5],
     canvas: Canvas,
     renderer: Renderer,
@@ -214,7 +187,7 @@ impl Circular {
     }
 }
 
-/// Yoga's pixel grid.
+/// Snaps to the device-pixel grid.
 fn grid(v: f64, scale: f64) -> f64 {
     ((v * scale + 0.5 + 1e-4).floor()) / scale
 }
@@ -223,7 +196,7 @@ impl Surface for Circular {
     fn bind(&mut self, inputs: &[Value], _: Option<f64>) -> Result<(), SurfaceError> {
         let on = inputs.first().and_then(|v| v.as_bool()).unwrap_or(false);
         match self.enabled {
-            // The first value: no spring (useDerivedValue's first run).
+            // First value: no animation.
             None => {
                 let range = if on { SHOW } else { AVOID };
                 for (s, v) in self.outputs.iter_mut().zip(range) {
@@ -232,9 +205,7 @@ impl Surface for Circular {
             }
             Some(was) if was != on => {
                 let range = if on { SHOW } else { AVOID };
-                // useDerivedValue re-run: `withSpring(range)` assigned over the running one,
-                // each element from where it is at its velocity (dropped when it points away),
-                // its rest measured against the distance alone (spring.ts onStart).
+                // Each output springs from where it is, dropping any velocity that points away.
                 for (s, v) in self.outputs.iter_mut().zip(range) {
                     s.retarget(v, GENTLE);
                 }
@@ -262,7 +233,7 @@ impl Surface for Circular {
 
     fn input(&mut self, event: &InputEvent) {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
-        // The FlatList is this canvas.
+        // The strip: the window's width, three quarters of it tall.
         let (w, h) = (self.width as f32, self.width as f32 * 0.75);
         let inside = (0.0..=w).contains(&x) && (0.0..=h).contains(&y);
         self.scroll.input(id, gfx::phase(phase), x, y, at_ms, inside);
@@ -282,7 +253,7 @@ impl Surface for Circular {
         if self.width != w {
             self.width = w;
             self.scroll.port = w;
-            // Nine cells and paddingRight 3 × LIST_ITEM_WIDTH.
+            // Nine cells plus three item widths of trailing padding.
             self.scroll.max = (COUNT as f64 * item + 3.0 * item - w).max(0.0);
             self.scroll.snap = Snap::Interval(item);
         }
@@ -312,7 +283,7 @@ impl Surface for Circular {
         self.canvas.begin(fs);
         self.group_canvas.begin(fs);
         if let (Some(images), Some((layer, _))) = (self.images.as_ref(), self.group.as_ref()) {
-            // alignItems center in the list's height.
+            // Cells are centred vertically.
             let top = grid((h - item) / 2.0, scale);
             for i in 0..COUNT {
                 let (ty, opacity, s) = cell(x, i, item, &outputs);
@@ -374,14 +345,12 @@ mod tests {
         let (img, moving) = fixture::render(&gpu, sf.as_mut(), &frame(0.0)).unwrap();
         gfx::save_over(&img, "circular-rest", [244, 244, 246]);
         assert!(!moving);
-        // Flip the switch: the outputs spring toward the arc's scale.
         sf.bind(&[Value::Bool(true)], None).unwrap();
         let mut ms = 0.0;
         while fixture::render(&gpu, sf.as_mut(), &frame(ms)).unwrap().1 && ms < 5000.0 {
             ms += 16.7;
         }
         assert!(sf.agent("{}").unwrap().contains("[0.5000,0.9000,1.2000,0.9000,0.5000]"), "{}", sf.agent("{}").unwrap());
-        // A slow drag of 40 pt rounds back; a flick moves on.
         let touch = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 150.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
         ms += 100.0;
         sf.input(&touch(PointerPhase::Down, 300.0, ms));
@@ -394,9 +363,7 @@ mod tests {
             ms += 16.7;
         }
         assert!(sf.agent("{}").unwrap().starts_with("{\"contentOffset\":0.00"), "{}", sf.agent("{}").unwrap());
-        // It crossed no photo: no haptic. A slow drag of 80 pt past the half item moves the crown
-        // on (one selection); then a pull the other way past the start (a selection back, one
-        // rigid thunk for the rubber band, however long it is held there).
+        // A slow drag past the half item moves the crown once; a pull past the start is one rigid impact.
         assert!(sf.messages().is_empty());
         let drag = |sf: &mut Box<dyn Surface>, ms: &mut f64, by: f32| {
             sf.input(&touch(PointerPhase::Down, 200.0, *ms));

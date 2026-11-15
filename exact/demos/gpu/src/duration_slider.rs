@@ -1,64 +1,14 @@
-//! Duration Slider (src/animations/duration-slider: src/index.tsx, components/circular-slider.tsx,
-//! donut.tsx, picker.tsx, background-dots.tsx): a soft white dial (0.8 × the window wide) with a
-//! red ring that follows a round knob dragged around it, and the value 1…12 in its middle.
+//! Duration Slider: a soft white dial with a red ring that follows a round knob dragged around
+//! it. The value, 1 to 12, sits in the middle.
 //!
-//! Geometry (circular-slider.tsx): size = 0.8 W, strokeWidth 70, internalOffset 20, initialAngle
-//! π/2, c = size / 2, radius r = (size − 20 − 70) / 2.
-//! - backgroundLayer (static): Group clip(circle r + 35) { layer Blur 30 { circle r + 35 #ebebeb } };
-//!   Group layer(inner Shadow dx 0 dy 20 blur 10 #e9e9e9) { clip(circle r + 37) { layer Blur 10 {
-//!   circle r + 37 #f7f7f7 } } }; BackgroundDots (twelve r 3 dots at r, #656565, the one at
-//!   angle 2π − π/2 left out).
-//! - Donut: the circle (c, r) trimmed 0…progress, stroked 70, RadialGradient (c, r + 70,
-//!   #dc3f69 → #f2384d), under [rotate π/2, scale −1] about c: from the top, clockwise.
-//! - The glow: clip(circle r + 35) { the donut under layer Blur 100; the donut }.
-//! - Picker, clip(circle r + 35): { layer Blur 20 { the knob circle (r 35 at angle θ on r, the
-//!   same gradient) }; the knob; the white r 25 circle with an inner Shadow (dx 0, dy 20,
-//!   blur 10, #d4d4d4) }.
-//! - innerDiscLayer (static): Group opacity 0.5 { layer Blur 20 { disc r − 35 #222222 }; the disc };
-//!   disc r − 35 white.
-//! - Text: String(value), #111, SF-Pro-Rounded-Bold 100 (Skia's own text), x = c − measureText.
-//!   width / 2 − 2, y = c + 100 / 3.
-//!
-//! Every Blur, Shadow and BlurMask-replacement is a Graphite blur (skia::blur::GraphitePlan).
-//! RN Skia's inner shadow is colour · blur(complement of the saturated alpha, offset) · alpha:
-//! the blur of the complement is 1 − the blur of the shape.
-//!
-//! Motion audit: no animation. The Touchable canvas's Pan: onBegin at touch-down on the knob
-//! (its circle path contains the point) sets translate = the finger; onUpdate (from 10 pt of
-//! travel) follows it; progress = (atan2(y − c, x − c) + π/2) mod 2π / 2π; value =
-//! min(round(progress · 12) + 1, 12); each change posts `haptic:selection`
-//! (Haptics.selectionAsync), none at mount.
-//!
-//! Past RN (the owner's note: "at a full rotation it breaks, the text looks off-centre"):
-//! - RN's progress is the finger's angle mod one turn, so the dial wraps at the top: dragging past
-//!   12 empties the ring and shows 1, dragging back past 1 fills it and shows 12, and a touch on
-//!   the resting knob a hair left of the top reads 12. Here the finger's angle is unwrapped (the
-//!   turn nearest the last one) and the ring is clamped to RN's span, 0…1 turn: it stops full at
-//!   12 and empty at 1, and picks up again when the finger comes back across the top. The
-//!   unwrapped turn is held within half a turn of that span, so a finger that keeps circling
-//!   past a stop re-engages the knob as it crosses it; a finger near the centre (where the angle
-//!   is noise) is ignored.
-//! - RN centres the value by its ink box (measureText's rounded bounds, − 2) and sets the baseline
-//!   at c + size / 3. A proportional "1" so sits with its stem right of centre (its flag pulls the
-//!   box left), and the figures stand ~2 pt high. Here the figures are RN's own: SF Pro Rounded
-//!   Bold's proportional digits at their advances (Skia's drawText; the font kerns no digit pair
-//!   a value uses), so "12" is spaced exactly as RN's. The string's exact ink box (the glyphs'
-//!   outline bounds at their pens, not measureText's rounded-out ones) is centred on c, and the
-//!   cap height (1443 units) centred vertically. Each value centres on its own ink, so nothing
-//!   pads a "1". (Tabular figures were tried first: their "1" sits in a full-width cell and left
-//!   "12" loose and lopsided, the owner's second note.)
-//!
-//! Design pass, past RN (the owner asked for it; each one is a single constant to revert):
-//! - Detents: on release the knob springs (ζ 0.85, ~300 ms, from the finger's angular speed) to
-//!   its value's dot, so every value rests on a mark and the ring ends on it.
-//! - Rubber band: past either stop the knob gives a little (at most 0.03 turn, iOS's 0.55
-//!   coefficient) instead of going dead, and springs back on release; the ring stays clamped.
-//! - A `haptic:limit` (impact-rigid in the Contract) when the ring reaches a stop.
-//! - The held knob: its white centre shrinks 25 → 21 pt on a spring while the finger holds it
-//!   (the red ring thickens), and the knob takes a touch within 44 pt of its centre (35 in RN).
-//! - The dots the ring has passed show through it in white at 55 %, so the steps stay countable.
-//! - The figures at 0.55 × the inner disc's diameter (88 pt on a 402 pt phone, RN 100): "12"
-//!   keeps a margin in the disc.
+//! - The ring fills clockwise from the top. The knob sits at the ring's end and follows the finger.
+//!   A finger within 24 pt of the centre moves nothing, since its angle there is noise.
+//! - Past a stop the ring stays clamped: full at 12, empty at 1. It does not wrap. The knob gives
+//!   a little (a rubber band) and springs back on release. A finger that circles past a stop
+//!   re-engages the knob as it crosses back over.
+//! - On release the knob springs to the nearest value's mark, carrying the finger's angular speed.
+//! - Haptics: a selection on each value change, and a limit haptic when the ring reaches a stop.
+//! - The figures are proportional and centred by their ink, so a lone "1" sits centred.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -70,16 +20,18 @@ use skia::{point, stops, Canvas, Color, Font, Paint, PathEvent, Renderer, Shader
 use crate::{gfx, shaders};
 use shaders::duration_slider::{entry, module, Uniforms, GROUP_0, SMP, T0, T1, T2, T3, T4, T5, T6, T7, T8, U};
 
+/// Ring width, pt.
 const STROKE: f32 = 70.0;
+/// Inset of the ring from the dial's edge, pt.
 const INTERNAL_OFFSET: f32 = 20.0;
 const MIN_VAL: f64 = 1.0;
 const MAX_VAL: f64 = 12.0;
+/// Largest figure size, pt.
 const FONT_SIZE: f32 = 100.0;
 const VALUES: [&str; 12] = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
-/// SF Pro Rounded Bold's digits (RN: useFont(SF-Pro-Rounded-Bold.otf, 100)).
+/// SF Pro Rounded Bold, digits only.
 static SF_ROUNDED_BOLD: &[u8] = include_bytes!("../fonts/sf-pro-rounded-bold-digits.otf");
-/// Each digit's advance and ink left and right (font units, 2048 / em), read from the font
-/// (the test checks them against it): what the ink box of a value is made of.
+/// Each digit's advance and ink left and right, in font units (2048 per em).
 const DIGIT_INK: [(f32, f32, f32); 10] = [
     (1343.0, 83.0, 1260.0),
     (983.0, 59.0, 761.0),
@@ -96,8 +48,7 @@ const DIGIT_INK: [(f32, f32, f32); 10] = [
 const CAP_HEIGHT: f32 = 1443.0;
 const UNITS_PER_EM: f32 = 2048.0;
 
-/// A value's ink, left and right of its pen start, in points at `size` (no kerning: Skia's
-/// drawText, as RN's).
+/// A value's ink span, left and right of its pen start, at `size` points. No kerning.
 fn ink_span(value: &str, size: f32) -> (f32, f32) {
     let (mut pen, mut left, mut right) = (0.0f32, f32::MAX, f32::MIN);
     for ch in value.chars() {
@@ -113,15 +64,15 @@ fn ink_span(value: &str, size: f32) -> (f32, f32) {
 const DEAD_ZONE: f64 = 24.0;
 /// How far past either stop (turns) the unwrapped finger is kept.
 const SLACK: f64 = 0.5;
-/// The rubber band past a stop: at most this far (turns), iOS's 0.55 coefficient.
+/// Rubber band past a stop, in turns at most.
 const BAND: f64 = 0.03;
-/// The detent and grip spring: ζ 0.85, ω 18.7 rad/s (about 300 ms).
+/// Detent and grip spring: about 300 ms, damping ratio 0.85.
 const SNAP: Config = Config { stiffness: 1400.0, damping: 127.2, mass: 4.0 };
 /// A touch this near the knob's centre (pt) takes it.
 const HIT: f32 = 44.0;
 /// The white centre shrinks this much (pt) while held.
 const GRIP: f32 = 4.0;
-/// The figures' size over the inner disc's diameter, at most RN's 100.
+/// Figure size as a fraction of the inner disc's diameter.
 const FIGURE_SCALE: f32 = 0.55;
 
 /// The demo's surface (the canvas is size × size).
@@ -152,11 +103,10 @@ fn slider() -> DurationSlider {
 struct DurationSlider {
     size: f32,
     /// The finger's angle from the top, clockwise, in turns, unwrapped across the top and held
-    /// within [−SLACK, 1 + SLACK] (RN: translateX/Y, the angle mod one turn). 0 at mount: RN's
-    /// initial translate (c, 0) is the top.
+    /// within [−SLACK, 1 + SLACK]. 0 at mount.
     turn: f64,
-    /// The knob's angle (turns): the finger's turn rubber-banded past the stops while held, a
-    /// spring to the value's dot after the lift. The ring and the value read it clamped.
+    /// The knob's angle in turns: the finger's turn, rubber-banded past the stops while held, then
+    /// a spring to the value's mark.
     knob_turn: Spring,
     /// 1 while the knob is held.
     grip: Spring,
@@ -238,12 +188,12 @@ fn arc_events(cx: f32, cy: f32, r: f32, sweep: f32, out: &mut [PathEvent; 6]) ->
 }
 
 impl DurationSlider {
-    /// The progress derived value: RN's span, 0…1 turn, without its wrap.
+    /// Progress in turns, clamped to 0…1.
     fn progress(&self) -> f64 {
         self.knob_turn.value.clamp(0.0, 1.0)
     }
 
-    /// The knob's centre (picker.tsx: on the radius, at the progress's angle from the top).
+    /// The knob's centre, on the ring at its angle from the top.
     fn knob(&self) -> (f32, f32) {
         let g = geometry(self.size);
         let theta = self.knob_turn.value * std::f64::consts::TAU - std::f64::consts::FRAC_PI_2;
@@ -284,8 +234,8 @@ impl DurationSlider {
 }
 
 impl DurationSlider {
-    /// The lift: the knob springs to its value's dot (value v at (v − 1) / 12 turn), at the
-    /// finger's angular speed when it left inside the span.
+    /// Springs the knob to its value's mark, carrying the finger's angular speed when it left
+    /// inside the span.
     fn release(&mut self, pan: Option<gesture_handler::Pan>) {
         self.dragging = false;
         self.grip.to(0.0, 0.0, SNAP);
@@ -304,9 +254,9 @@ impl DurationSlider {
     }
 }
 
-/// The finger's turn as the knob shows it: itself inside 0…1, rubber-banded past a stop
-/// (iOS's (1 − 1 / (x · 0.55 / d + 1)) · d), relaxing again as the finger nears half a turn past
-/// (where the unwrapped turn cycles), so the knob never jumps.
+/// The finger's turn as the knob shows it: itself inside 0…1, rubber-banded past a stop. The band
+/// relaxes again toward half a turn past the stop, where the unwrapped turn cycles, so the knob
+/// never jumps.
 fn banded(turn: f64) -> f64 {
     let band = |x: f64| {
         let x = x.min(SLACK - x).max(0.0);
@@ -417,8 +367,7 @@ impl Surface for DurationSlider {
         knob.draw_circle(kx, ky, white_r, &Paint::fill(Color::WHITE));
         text.begin(s);
         if let Some(font) = self.font.as_ref() {
-            // Tabular figures centred by their advance; the figure height centred on c.
-            // The ink box centred on c; the cap height centred vertically.
+            // Centres the ink box on c, and the cap height vertically.
             let (left, right) = ink_span(value, font.size());
             let x = g.c - (left + right) / 2.0;
             let baseline = g.c + CAP_HEIGHT / 2.0 / UNITS_PER_EM * font.size();
@@ -430,8 +379,7 @@ impl Surface for DurationSlider {
             self.renderers[i].draw(device, queue, encoder, &self.canvases[i], view, GRAPHITE_FORMAT, pw, ph, wgpu::Color::TRANSPARENT);
         }
         skia::render::fullscreen_pass(encoder, "duration slider saturate", &gpu.layers[3], &gpu.saturate, &gpu.saturate_bind);
-        // The three blurs: the donut's glow (σ 100) and the knob's (σ 20) on layers the size of
-        // the clip, the knob's inner shadow (σ 10) on the white circle's bounds moved down 20.
+        // Blurs: the donut's glow, the knob's glow, and the knob's inner shadow.
         let clip = circle_bounds(g.c, g.c, g.r + STROKE / 2.0, s);
         let dy = (20.0 * s).round() as i32;
         let white = circle_bounds(kx, ky, white_r, s);
@@ -562,7 +510,7 @@ fn build(device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut wgpu::Command
     };
     let mut blurs: [GraphiteBlur; 3] = Default::default();
     let [ba, bb, bc] = &mut blurs;
-    // backgroundLayer.
+    // Static background, drawn once.
     let mut u = base;
     let disc_clip = circle_bounds(g.c, g.c, outer, s);
     let rim_clip = circle_bounds(g.c, g.c, rim, s);
@@ -575,7 +523,7 @@ fn build(device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut wgpu::Command
     let xs = blur(bc, encoder, &rim_sat, [0, dy], shifted, canvas_rect, 10.0 * s, &mut u, 2);
     let background = target("duration slider background");
     pass(encoder, entry::BACKGROUND, &background, &u, [&a, &x, &xs, &dots, &empty, &empty, &empty, &empty, &empty]);
-    // innerDiscLayer.
+    // Static inner disc, drawn once.
     let mut u = base;
     let mut disc_blur = GraphiteBlur::default();
     let d = blur(&mut disc_blur, encoder, &dark, [0, 0], canvas_rect, canvas_rect, 20.0 * s, &mut u, 0);
@@ -634,11 +582,9 @@ mod tests {
         let mut s = DurationSlider { size: 336.0, ..slider() };
         assert_eq!(s.value(), 0);
         s.value = Some(0);
-        // A quarter turn clockwise (the right): round(0.25 · 12) + 1 = 4.
         walk(&mut s, 0.0, 0.25);
         assert_eq!(s.value() + 1, 4);
         assert_eq!(s.posted.len(), 3);
-        // Just before the top again: min(12 + 1, 12) = 12.
         walk(&mut s, 0.25, 0.995);
         assert_eq!(s.value() + 1, 12);
     }
@@ -649,12 +595,10 @@ mod tests {
         s.value = Some(0);
         walk(&mut s, 0.0, 1.0);
         assert_eq!((s.value() + 1, s.progress()), (12, 1.0));
-        // On past the top (RN: the ring empties and reads 1): held full at 12, no haptic.
         let before = s.posted.len();
         walk(&mut s, 1.0, 1.3);
         assert_eq!((s.value() + 1, s.progress()), (12, 1.0));
         assert_eq!(s.posted.len(), before);
-        // Back: the knob picks up as the finger crosses the top.
         walk(&mut s, 1.3, 0.8);
         assert!((s.progress() - 0.8).abs() < 1e-6, "{}", s.progress());
         assert_eq!(s.value() + 1, 11);
@@ -665,13 +609,11 @@ mod tests {
         let mut s = DurationSlider { size: 336.0, ..slider() };
         s.value = Some(0);
         walk(&mut s, 0.0, 1.0);
-        // Two more turns clockwise: the ring stays full the whole way.
         for k in 0..200 {
             let (x, y) = at(1.0 + k as f64 / 100.0);
             s.set(x, y);
             assert_eq!(s.progress(), 1.0, "at {}", 1.0 + k as f64 / 100.0);
         }
-        // Once the finger has passed the stop it re-engages as it comes back across it.
         walk(&mut s, 2.99, 3.05);
         assert_eq!(s.progress(), 1.0);
         walk(&mut s, 3.05, 2.7);
@@ -682,14 +624,12 @@ mod tests {
     fn backwards_from_rest_stays_at_1() {
         let mut s = DurationSlider { size: 336.0, ..slider() };
         s.value = Some(0);
-        // A touch a hair left of the top (RN: 12, the ring full), then on anticlockwise.
         let (x, y) = at(-0.004);
         s.set(x, y);
         assert_eq!((s.value() + 1, s.progress()), (1, 0.0));
         walk(&mut s, -0.004, -0.3);
         assert_eq!((s.value() + 1, s.progress()), (1, 0.0));
         assert!(s.posted.is_empty());
-        // The centre moves nothing.
         s.set(170.0, 166.0);
         assert_eq!(s.progress(), 0.0);
     }
@@ -698,19 +638,16 @@ mod tests {
     fn the_lift_springs_to_the_dot_and_the_band_gives_a_little() {
         let mut s = DurationSlider { size: 336.0, ..slider() };
         s.value = Some(0);
-        // Released at 0.27 turn (value round(3.24) + 1 = 4): it settles on 4's dot, 0.25.
         walk(&mut s, 0.0, 0.27);
         s.release(None);
         for i in 0..60 {
             s.knob_turn.step(i as f64 * 16.0);
         }
         assert!((s.knob_turn.value - 0.25).abs() < 1e-4, "{}", s.knob_turn.value);
-        // Past the full stop: the knob gives at most BAND, the ring stays full, one limit haptic.
         walk(&mut s, 0.25, 1.2);
         assert!(s.knob_turn.value > 1.0 && s.knob_turn.value <= 1.0 + BAND, "{}", s.knob_turn.value);
         assert_eq!(s.progress(), 1.0);
         assert_eq!(s.posted.iter().filter(|m| *m == "haptic:limit").count(), 1);
-        // The lift: back to 12's dot, 11 / 12.
         s.release(None);
         for i in 0..60 {
             s.knob_turn.step(1000.0 + i as f64 * 16.0);
@@ -723,22 +660,19 @@ mod tests {
     fn figures_are_rns_and_their_ink_is_centred() {
         let s = slider();
         let font = s.font.as_ref().unwrap();
-        // Proportional, as RN's: the advances are the font's, "12" = 983 + 1235 units, no kern.
+        // Advances and ink match the font.
         for (d, &(adv, _, _)) in DIGIT_INK.iter().enumerate() {
             let w = font.advance_width(&d.to_string());
             assert!((w - adv / UNITS_PER_EM * 100.0).abs() < 1e-3, "{d}: {w}");
         }
         assert!((font.advance_width("12") - 2218.0 / UNITS_PER_EM * 100.0).abs() < 1e-3);
-        // The table's ink is the font's: measureText rounds it out by floor − 1 / ceil + 1.
         for d in 0..10 {
             let m = font.measure_text(&d.to_string());
             let (l, r) = ink_span(&d.to_string(), 100.0);
             assert_eq!((m.x, m.x + m.width), ((l.floor() - 1.0), (r.ceil() + 1.0)), "{d}");
         }
-        // "12": ink from 59 to 983 + 1166 units; centred, its middle is on c.
         let (l, r) = ink_span("12", 100.0);
         assert!((l - 59.0 / 20.48).abs() < 1e-3 && (r - 2149.0 / 20.48).abs() < 1e-3);
-        // The cap height centred: the baseline 35.23 pt under c at 100 pt.
         assert!((CAP_HEIGHT / 2.0 / UNITS_PER_EM * 100.0 - 35.2295).abs() < 1e-3);
     }
 
@@ -754,10 +688,8 @@ mod tests {
         let mut s = surface();
         let (rest, _) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         rest.save("duration-slider-rest");
-        // The knob at the top (168, 45): its red ring (25…35 from its centre) at y = 15.
         let knob = rest.at(2 * 168, 2 * 15);
         assert!(knob[0] > 200 && knob[1] < 90, "{knob:?}");
-        // The dial's light face at the right of the ring, near-white.
         let face = rest.at(2 * 300, 2 * 168);
         assert!(face[0] > 200 && face[1] > 200 && face[3] == 255, "{face:?}");
         let finger = |s: &mut Box<dyn Surface>, phase, x, y, at_ms| {
@@ -775,9 +707,7 @@ mod tests {
         let (dragged, animating) = fixture::render(&gpu, s.as_mut(), &frame(400.0)).unwrap();
         dragged.save("duration-slider-dragged");
         assert!(animating);
-        // 1.6 rad of 2π: round(0.2546 · 12) + 1 = 4.
         assert!(s.agent("{}").unwrap().contains("\"value\":4"), "{}", s.agent("{}").unwrap());
-        // The ring is red where it was light: at 45° clockwise from the top, on the radius.
         let a = -std::f32::consts::FRAC_PI_4;
         let ring = dragged.at((2.0 * (168.0 + 123.0 * a.cos())) as u32, (2.0 * (168.0 + 123.0 * a.sin())) as u32);
         assert!(ring[0] > 200 && ring[1] < 90, "{ring:?}");

@@ -1,64 +1,16 @@
-//! Fourier Visualizer (src/animations/fourier-visualizer: index.tsx,
-//! components/fourier-visualizer/{index.tsx, utils/*}): draw a stroke on the #D4D4D4 canvas;
-//! when the finger lifts, the stroke is sampled once per point of its length, its FFT turned
-//! into epicycles, and a chain of them, largest first, retraces it over 20 s. A round button
-//! clears it.
+//! A drawing canvas: draw a stroke, lift the finger, and its Fourier epicycles retrace it.
 //!
-//! The pipeline at the finger's lift (drawPathWrapper → FourierVisualizer.draw), in RN's
-//! precision:
-//! - The stroke goes through `toSVGString` / `MakeFromSVGString`: SkParsePath writes each
-//!   coordinate with 8 significant digits (`%.8g`, measured on CanvasKit: 123.456789 →
-//!   "123.45679"), which Skia parses back to floats.
-//! - `PathGeometry`: Skia's ContourMeasure of the first contour, in float: a line adds a segment
-//!   only when it grows the running length (zero-length lines are skipped), and `getPosTan`
-//!   finds the first segment whose end distance is ≥ d and interpolates in it. Below
-//!   MIN_STROKE_LENGTH (8) the visualizer clears instead.
-//! - getPoints: `Math.round(length)` samples at `(i / n) · length`; fillToPowerOfTwo pads with
-//!   the last point (its nextPowerOfTwo returns 1 for a power of two, and the copy loop then
-//!   grows the array back to n); fft.js 4.0.4's `transform` (radix 4, its own twiddle table),
-//!   ported line for line in f64; extractEpicycles; a stable sort by amplitude, descending.
-//!   exact/parity-tools/fourier-epicycles.ts runs the same on CanvasKit and fft.js: the test
-//!   below checks this port against its numbers.
-//! - Every frame the time changes (the useAnimatedReaction), in f64 as the worklet computes:
-//!   the chain's points (the running sum of `amplitude · (cos, sin)(frequency · t + phase)`),
-//!   a circle of radius `amplitude` about the running sum before each epicycle but the first,
-//!   and the sum's end appended to the trace (moveTo the first time). Skia gets floats.
-//!
-//! Drawing (in the Canvas's order, each Path its own paint, a stroke covering a pixel once):
-//! - The drawn stroke: black, strokeWidth 10, butt caps, miter joins (Paint's defaults), at its
-//!   opacity. The Pan writes moveTo(p) + lineTo(p) at onStart, lineTo(p) at the onChange of the
-//!   activating event, then lineTo per move.
-//! - The chain: rgba(0, 0, 0, 0.2), 2.5. The circles: one path, rgba(0, 0, 0, 0.2), 0.8; each
-//!   circle's stroke is the annulus r ± 0.4 (a disc of r + 0.4 below 0.4), traced here as a
-//!   polygon fine enough to stay within 0.05 device px of it; a zero radius draws nothing (Skia's
-//!   stroker drops a degenerate contour with butt caps). The trace: black, 5 (strokeWidth).
-//!   All three at the visualizer's opacity.
-//! - styles.clearButton: absolute, right 30, `bottom` animated, 64 × 64 (height + aspectRatio
-//!   1), radius 32 (no borderCurve: circular), #111; MaterialIcons "clear" 24 white, centred.
-//!   Edges on the device-pixel grid as Yoga rounds them (the `bottom` is a layout prop, laid out
-//!   every frame). Its opacity is the view's (a group: gpu/shaders/fourier_visualizer.wgsl);
-//!   pressto's scale about its centre.
-//!
-//! Touches: the button is a sibling over the GestureDetector's view, so a touch on it never
-//! reaches the Pan; UIKit's hit test skips it below alpha 0.01, and then the Pan gets it.
-//! The button is RNGH's BaseButton (the shared `pressto::Pressable`): pressto's progress goes to 1 at onBegan and back at
-//! onEnded / onFailed / onCancelled; onPress fires at the lift when the finger is inside the
-//! (scaled) bounds, and posts `press` (the app's selection haptic).
-//!
-//! Motion (the audit):
-//! | value | RN driver | config | trigger | Exact |
-//! |---|---|---|---|---|
-//! | drawn stroke opacity | withTiming | 300 ms, inOut(quad) | → 1 at the Pan's onStart, → 0 at onEnd | `Timing`, same |
-//! | visualizer opacity | set / withTiming | 0 at clear; 300 ms inOut(quad) → 1 at draw; → 0 from the time's finished callback (started in that frame) | draw, clear, the 20 s end | `Timing`, the end's pinned to the finishing frame |
-//! | time | withTiming | 2π − 0.05 over 20000 ms, linear; cancelAnimation + 0 at clear | draw | `Timing` (Linear) |
-//! | chain, circles, trace | useAnimatedReaction | per change of time or the epicycles | — | recomputed when the time steps or the epicycles change |
-//! | button opacity | withTiming(isDrawing ? 1 : 0) | 300 ms, inOut(quad) | isDrawing | `Timing`, same |
-//! | button bottom | withSpring(isDrawing ? 65 : 0) | the default (900, 120, 4: ζ = 1) | isDrawing | `Spring::retarget(GENTLE)` |
-//! | button scale | pressto withTiming(active) | 250 ms, bezier(0.25, 0.1, 0.25, 1), 1 → 0.96 | press in / out | `pressto::Pressable` |
-//! | haptic | PressablesConfig onPress | selection | a press | `press` → haptic("selection") |
-//!
-//! isDrawing: false at the Pan's onStart, at a too-short stroke, at the end of the 20 s and on
-//! a press; true once a stroke is long enough.
+//! - On lift, the stroke is sampled along its length and its FFT is turned into epicycles, largest
+//!   first. The FFT and the contour measuring are line-for-line ports of the JS, so the epicycles
+//!   match the reference exactly.
+//! - The chain of epicycles, their circles and the traced path animate over 20 s; the drawn stroke
+//!   fades out as they start.
+//! - A round button clears the canvas and appears only while drawing. It sits above the canvas, so
+//!   a touch on it does not reach the stroke, unless the button is transparent there (alpha under
+//!   0.01), when the touch falls through.
+//! - Haptics: a light impact as a stroke starts; a selection tick every 12 points of it (at most one
+//!   per 50 ms); a medium impact as the drawn shape becomes epicycles; a soft one as the chain
+//!   completes its loop; and a selection on a press of the button.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -70,39 +22,36 @@ use skia::{point, Canvas, Color, Font, Paint, Point, Renderer, ScratchBuilder};
 use crate::{gfx, shaders};
 use shaders::fourier_visualizer::{entry, module, Uniforms, BUTTON as BUTTON_TEXTURE, GROUP_0, U};
 
-/// MIN_STROKE_LENGTH.
+/// Shortest stroke, pt, that draws epicycles.
 const MIN_STROKE_LENGTH: f64 = 8.0;
-/// The time's target: 2 * Math.PI - 0.05, over 20 s.
+/// The time's end value: 2π − 0.05, over 20 s.
 const TIME_END: f64 = 2.0 * std::f64::consts::PI - 0.05;
-/// RN's 20000 ms; the owner's call (phone feedback mwhp3hdr): 1.8× faster.
+/// Loop duration, ms.
 const TIME_MS: f64 = 20000.0 / 1.8;
-/// The fades between shapes (RN's 300 ms withTiming), 40 % shorter (the owner's call).
+/// Fade duration between shapes, ms.
 const FADE_MS: f64 = 180.0;
-/// The haptics (the owner's call, mwhp3hdr; RN plays only the button's), through the host:
-/// a light impact as a stroke starts, a selection tick every TICK_POINTS points of it (at most
-/// one per TICK_MIN_MS), a medium impact as the drawn shape becomes epicycles, a soft one as
-/// the chain completes its loop.
+/// Haptic messages, posted through the host.
 const START: &str = "haptic:impact-light";
 const TICK: &str = "haptic:selection";
 const COMMIT: &str = "haptic:impact-medium";
 const LOOP: &str = "haptic:impact-soft";
 const TICK_POINTS: usize = 12;
 const TICK_MIN_MS: f64 = 50.0;
-/// styles.canvas backgroundColor.
+/// Canvas background.
 const BACKGROUND: u32 = 0xD4D4D4;
-/// styles.clearButton: right, height (and width, aspectRatio 1), borderRadius, backgroundColor.
+/// Clear button: its inset from the right, its size, corner radius and colour.
 const RIGHT: f32 = 30.0;
 const SIDE: f32 = 64.0;
 const RADIUS: f32 = 32.0;
 const BUTTON_COLOR: u32 = 0x111111;
-/// rClearButton's bottom while drawing.
+/// The button's bottom edge while drawing, pt.
 const BOTTOM_DRAWING: f64 = 65.0;
-/// The Path stroke widths: the drawn stroke, the chain, the circles, the trace.
+/// Stroke widths: drawn stroke, chain, circles, trace.
 const STROKE: f32 = 10.0;
 const CHAIN: f32 = 2.5;
 const CIRCLES: f32 = 0.8;
 const TRACE: f32 = 5.0;
-/// MaterialIcons "clear", size 24.
+/// The clear icon's glyph and size, pt.
 const CLEAR: &str = "\u{E14C}";
 const ICON: f32 = 24.0;
 static MATERIAL: &[u8] = include_bytes!("../fonts/materialicons-subset.ttf");
@@ -149,12 +98,12 @@ fn visualizer() -> FourierVisualizer {
 struct FourierVisualizer {
     size: (f32, f32),
     px: f32,
-    /// drawPath's points (moveTo the first, lineTo the rest).
+    /// The drawn path's points.
     stroke: Vec<Point>,
     /// The drawn Path's opacity.
     stroke_opacity: Timing,
     pan: PanGesture,
-    /// baseEpicycles: [frequency, amplitude, phase, …], sorted by amplitude.
+    /// Epicycles as [frequency, amplitude, phase], largest first.
     epicycles: Vec<f64>,
     time: Timing,
     /// The visualizer's three Paths' opacity.
@@ -165,12 +114,12 @@ struct FourierVisualizer {
     chain: Vec<Point>,
     circles: Vec<[f32; 3]>,
     trace: Vec<Point>,
-    /// isDrawing.
+    /// Whether a long-enough stroke is being shown.
     drawing: bool,
     button_opacity: Timing,
     bottom: Spring,
     /// pressto's progress.
-    /// The button's PressableScale (the shared pressto machine).
+    /// The button's press.
     press: Pressable,
     posted: Vec<String>,
     /// The stroke's length and the pointer's time at the last selection tick.
@@ -195,17 +144,17 @@ struct Gpu {
     layer: wgpu::TextureView,
 }
 
-/// Yoga's rounding of a layout edge to the pixel grid: to the nearest device pixel, a half up.
+/// Rounds a layout edge to the nearest device pixel, halves up.
 fn grid(v: f32, scale: f32) -> f32 {
     ((v * scale + 0.5 + 1e-4).floor()) / scale
 }
 
-/// A Text node's position in its parent: floored to the device pixel (Yoga's textRounding).
+/// Rounds a text's position down to the device pixel grid.
 fn text_grid(v: f32, scale: f32) -> f32 {
     ((v * scale + 1e-4).floor()) / scale
 }
 
-/// A Text's measured side, ceiled to the pixel grid (RN's text measurement).
+/// Rounds a text's measured size up to the pixel grid.
 fn text_side(v: f32, scale: f32) -> f32 {
     ((v + 0.001) * scale).ceil() / scale
 }
@@ -241,9 +190,7 @@ impl FourierVisualizer {
             t: grid(top, s),
             r: grid(left + SIDE, s),
             b: grid(top + SIDE, s),
-            // A Text node's offset in its parent is floored (Yoga's textRounding): the icon's
-            // 24.333 box sits 19.667 into the 64 pt button, not 19.833 rounded to 20 (it was 1 px
-            // right and low).
+            // The icon's text is floored to the pixel grid, as text layout does.
             icon: (grid(left, s) + text_grid((SIDE - tw) / 2.0, s), grid(top, s) + text_grid((SIDE - th) / 2.0, s)),
         }
     }
@@ -266,7 +213,7 @@ impl FourierVisualizer {
         self.button_opacity.value >= 0.01 && self.in_button(x, y)
     }
 
-    /// isDrawing.set(v): rClearButton's withTiming and withSpring start from where they are.
+    /// Sets the drawing state; the button's animations start from where they are.
     fn set_drawing(&mut self, drawing: bool) {
         if self.drawing == drawing {
             return;
@@ -276,7 +223,7 @@ impl FourierVisualizer {
         self.bottom.retarget(if drawing { BOTTOM_DRAWING } else { 0.0 }, GENTLE);
     }
 
-    /// FourierVisualizer's clear().
+    /// Clears the visualizer.
     fn clear(&mut self) {
         self.opacity.set(0.0);
         self.epicycles.clear();
@@ -285,7 +232,7 @@ impl FourierVisualizer {
         self.dirty = true;
     }
 
-    /// drawPathWrapper, at the Pan's onEnd.
+    /// Turns the drawn stroke into epicycles, on lift.
     fn finish_stroke(&mut self) {
         let points: Vec<Point> = self.stroke.iter().map(|p| point(svg_round_trip(p.x), svg_round_trip(p.y))).collect();
         let contour = Contour::measure(&points);
@@ -299,7 +246,7 @@ impl FourierVisualizer {
         self.posted.push(COMMIT.into());
     }
 
-    /// FourierVisualizer's draw().
+    /// Starts the epicycle animation.
     fn draw(&mut self, contour: &Contour) {
         self.opacity.to(1.0, FADE_MS, Easing::timing_default());
         self.epicycles = epicycles(&fill_to_power_of_two(get_points(contour)));
@@ -309,7 +256,7 @@ impl FourierVisualizer {
         self.dirty = true;
     }
 
-    /// The useAnimatedReaction: the chain, the circles and one more point of the trace.
+    /// Recomputes the chain, circles and trace for the current time.
     fn react(&mut self) {
         self.chain.clear();
         self.circles.clear();
@@ -344,8 +291,7 @@ impl FourierVisualizer {
         if timing {
             self.dirty = true;
             if !self.time.running {
-                // The finished callback: opacity.set(withTiming(0)) in this frame, and
-                // onComplete (isDrawing false).
+                // At the end: fade the visualizer out and stop drawing.
                 self.opacity.to(0.0, FADE_MS, Easing::timing_default());
                 self.opacity.step(now);
                 moving = true;
@@ -372,9 +318,7 @@ impl FourierVisualizer {
         }
         if opacity > 0.0 {
             c.draw_with(&Paint::stroke(Color::BLACK.alpha(0.2), CHAIN).with_opacity(opacity), |b| polyline(b, chain));
-            // circlesPath stroked: the union of each circle's annulus, filled (nonzero) as
-            // rings, once. Stroking 2048 polygons through the stroke tessellator was 15 ms a
-            // frame; the rings' fill wedges are a tenth of it, to the same tolerance.
+            // Circles are filled as rings rather than stroked, which is much faster per frame.
             c.draw_with(&Paint::fill(Color::BLACK.alpha(0.2)).with_opacity(opacity), |b| {
                 for &[x, y, r] in circles.iter() {
                     add_circle_ring(b, x, y, r, s);
@@ -384,8 +328,7 @@ impl FourierVisualizer {
         }
     }
 
-    /// The button's view into its layer canvas, whose (0, 0) is the layer's top-left `origin`
-    /// (device px). Returns that origin.
+    /// Draws the button into its layer; returns the layer's origin in device pixels.
     fn draw_button(&mut self) -> (i32, i32) {
         let s = self.px;
         let lay = self.button_layout();
@@ -416,12 +359,8 @@ fn polyline(b: &mut ScratchBuilder<'_>, points: &[Point]) {
     b.end(false);
 }
 
-/// `addCircle(x, y, r)` under a stroke of CIRCLES, as the region that stroke covers: the
-/// annulus r ± CIRCLES / 2 (a disc of r + CIRCLES / 2 when r is under half the width), its
-/// outer edge one way round and its inner edge the other, so that under the nonzero rule every
-/// ring winds once and overlapping rings cover a pixel once, as one stroked path does. Each edge
-/// is a polygon straddling its circle within CIRCLE_TOLERANCE device px. Nothing for r = 0
-/// (Skia's stroker drops a degenerate contour with butt caps).
+/// The region a circle's stroke covers, as a nonzero-filled path: an annulus r ± CIRCLES / 2, or a
+/// disc when r is under half the width. Nothing for r = 0.
 fn add_circle_ring(b: &mut ScratchBuilder<'_>, x: f32, y: f32, r: f32, scale: f32) {
     if r <= 0.0 {
         return;
@@ -429,8 +368,7 @@ fn add_circle_ring(b: &mut ScratchBuilder<'_>, x: f32, y: f32, r: f32, scale: f3
     let half = CIRCLES as f64 / 2.0;
     let (cx, cy) = (x as f64, y as f64);
     let ring = |b: &mut ScratchBuilder<'_>, radius: f64, clockwise: bool| {
-        // An n-gon whose vertices sit at 2ρ / (1 + cos(π / n)) is off the circle by at most
-        // ρ (1 − cos) / (1 + cos) either way.
+        // Vertices at 2ρ / (1 + cos(π / n)) keep the polygon within the tolerance.
         let t = CIRCLE_TOLERANCE / (radius * scale as f64);
         let n = ((std::f64::consts::PI / ((1.0 - t) / (1.0 + t)).clamp(-1.0, 1.0).acos().max(1e-4)).ceil() as usize).clamp(8, 2048);
         let rv = 2.0 * radius / (1.0 + (std::f64::consts::PI / n as f64).cos());
@@ -451,7 +389,7 @@ fn add_circle_ring(b: &mut ScratchBuilder<'_>, x: f32, y: f32, r: f32, scale: f3
     }
 }
 
-/// A coordinate through SkParsePath::ToSVGString (`%.8g`) and back (a double, then a float).
+/// Rounds a coordinate as Skia's SVG path string does, `%.8g`.
 fn svg_round_trip(v: f32) -> f32 {
     if v == 0.0 || !v.is_finite() {
         return v;
@@ -459,11 +397,11 @@ fn svg_round_trip(v: f32) -> f32 {
     format!("{:.7e}", v as f64).parse::<f64>().map_or(v, |d| d as f32)
 }
 
-/// Skia's SkContourMeasure of a polyline's one contour (lines only), in float.
+/// Skia's contour measure of a polyline, in f32.
 struct Contour {
-    /// fPts: the points the segments index.
+    /// The points the segments index.
     pts: Vec<Point>,
-    /// fSegments: each one's end distance and the index of its first point.
+    /// Each segment's end distance and first point index.
     segments: Vec<(f32, usize)>,
     length: f32,
 }
@@ -477,7 +415,7 @@ impl Contour {
             pts.push(first);
         }
         for w in points.windows(2) {
-            // compute_line_seg: SkPoint::Distance, then the running sum in float.
+            // The running length is summed in f32, as Skia does.
             let (dx, dy) = (w[1].x - w[0].x, w[1].y - w[0].y);
             let d = (dx * dx + dy * dy).sqrt();
             let prev = distance;
@@ -487,30 +425,29 @@ impl Contour {
                 pts.push(w[1]);
             }
         }
-        // A contour without segments is skipped: the iterator has none (length 0).
+        // A contour with no segments has length 0.
         let length = if segments.is_empty() { 0.0 } else { distance };
         Contour { pts, segments, length }
     }
 
-    /// getPosTan(distance)'s position.
+    /// The position at distance `d`.
     fn pos(&self, distance: f32) -> Point {
         if self.segments.is_empty() {
             return point(0.0, 0.0);
         }
         let d = distance.clamp(0.0, self.length);
-        // SkTSearch: the first segment whose distance is ≥ d.
+        // The first segment whose end distance is at least d.
         let index = self.segments.partition_point(|s| s.0 < d).min(self.segments.len() - 1);
         let (end, at) = self.segments[index];
         let start = if index > 0 { self.segments[index - 1].0 } else { 0.0 };
-        // startT + (getScalarT() − startT) · (d − startD) / (fDistance − startD), with startT 0 (a
-        // line's previous segment never shares its point) and getScalarT() 1: exact in float.
+        // Linear interpolation within the segment, exact in f32.
         let t = (d - start) / (end - start);
         let (a, b) = (self.pts[at], self.pts[at + 1]);
         point(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)
     }
 }
 
-/// getPoints: Math.round(length) samples, at (i / n) · length.
+/// Samples `round(length)` points along the stroke, at (i / n) · length.
 fn get_points(contour: &Contour) -> Vec<[f64; 2]> {
     let total = contour.length as f64;
     let amount = (total + 0.5).floor() as usize;
@@ -522,7 +459,7 @@ fn get_points(contour: &Contour) -> Vec<[f64; 2]> {
         .collect()
 }
 
-/// fillToPowerOfTwo (with nextPowerOfTwo as the demo writes it).
+/// Pads the samples to a power of two with the last point.
 fn fill_to_power_of_two(mut points: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
     let n = points.len();
     let mut target = 1usize;
@@ -541,7 +478,7 @@ fn fill_to_power_of_two(mut points: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
     points
 }
 
-/// computeFFT + extractEpicycles + the sort, packed as [frequency, amplitude, phase, …].
+/// FFT, epicycle extraction and the sort, packed as [frequency, amplitude, phase, …].
 fn epicycles(points: &[[f64; 2]]) -> Vec<f64> {
     let n = points.len();
     if n < 2 {
@@ -564,12 +501,12 @@ fn epicycles(points: &[[f64; 2]]) -> Vec<f64> {
             [frequency, (x * x + y * y).sqrt() / nf, y.atan2(x)]
         })
         .collect();
-    // sort((a, b) => b.amplitude - a.amplitude): stable, descending.
+    // Stable sort, descending by amplitude.
     list.sort_by(|a, b| b[1].partial_cmp(&a[1]).unwrap_or(std::cmp::Ordering::Equal));
     list.into_iter().flatten().collect()
 }
 
-/// fft.js 4.0.4: the complex radix-4 `transform`, line for line.
+/// Radix-4 complex FFT, a line-for-line port of fft.js.
 struct Fft {
     size: usize,
     table: Vec<f64>,
@@ -598,7 +535,7 @@ impl Fft {
         for (j, rev) in bitrev.iter_mut().enumerate() {
             let mut shift = 0i32;
             while shift < width as i32 {
-                // JS shifts by the count's low five bits (a −1 is 31: only in unused entries).
+                // Shift counts use the low five bits, as JS does.
                 let rev_shift = (width as i32 - shift - 2) as u32 & 31;
                 *rev |= (((j as i32) >> shift) & 3).wrapping_shl(rev_shift);
                 shift += 2;
@@ -687,7 +624,7 @@ impl Fft {
     }
 }
 
-/// fft.js `_singleTransform2` (len 4).
+/// Length-4 step of the FFT.
 fn single_transform2(out: &mut [f64], data: &[f64], out_off: usize, off: usize, step: usize) {
     let (even_r, even_i) = (data[off], data[off + 1]);
     let (odd_r, odd_i) = (data[off + step], data[off + step + 1]);
@@ -697,7 +634,7 @@ fn single_transform2(out: &mut [f64], data: &[f64], out_off: usize, off: usize, 
     out[out_off + 3] = even_i - odd_i;
 }
 
-/// fft.js `_singleTransform4` (len 8).
+/// Length-8 step of the FFT.
 fn single_transform4(out: &mut [f64], data: &[f64], out_off: usize, off: usize, step: usize) {
     let inv = 1.0;
     let (step2, step3) = (step * 2, step * 3);
@@ -758,7 +695,7 @@ impl Surface for FourierVisualizer {
             return;
         }
         let phase = gfx::phase(phase);
-        // The clear button, over the GestureDetector's view.
+        // The clear button, above the canvas.
         if phase == Phase::Down && !self.press.is_pressed() && self.hits_button(x, y) {
             self.press.pointer_down(id, true);
             return;
@@ -766,8 +703,7 @@ impl Surface for FourierVisualizer {
         if self.press.finger() == Some(id) {
             let inside = self.in_button(x, y);
             if let Some(PressEvent::Press(press)) = self.press.pointer(id, phase, inside) {
-                // onPress: isDrawing false, ref.current.clear(), the app's haptic (posted as
-                // `press`: what fourier-visualizer.contract listens for).
+                // A press clears the canvas and posts `press`.
                 self.set_drawing(false);
                 self.clear();
                 if press.global {
@@ -778,14 +714,14 @@ impl Surface for FourierVisualizer {
         }
         match self.pan.event(id, phase, x, y, at_ms, true) {
             Event::Start(p) => {
-                // onStart: clear, isDrawing false, the stroke's opacity back to 1, a new path.
+                // A new stroke clears the previous one and restores the drawn opacity.
                 self.clear();
                 self.set_drawing(false);
                 self.stroke_opacity.to(1.0, FADE_MS, Easing::timing_default());
                 self.stroke.clear();
                 self.stroke.push(point(p.x, p.y));
                 self.stroke.push(point(p.x, p.y));
-                // The activating event's onChange.
+                // The first change of the pan draws the first segment.
                 self.stroke.push(point(p.x, p.y));
                 self.posted.push(START.into());
                 self.last_tick = (self.stroke.len(), at_ms);
@@ -888,7 +824,7 @@ mod tests {
         Frame { width: W, height: H, scale: 1.0, now_ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: exact_gpu::shaders::shader_generation(), headroom: 1.0 }
     }
 
-    /// exact/parity-tools/fourier-epicycles.ts's stroke (f64, then the float Skia keeps).
+    /// The stroke used by the parity test (f64, then f32).
     fn stroke() -> Vec<Point> {
         (0..120)
             .map(|k| {
@@ -909,7 +845,7 @@ mod tests {
         path.extend_from_slice(&s[1..]);
         let rounded: Vec<Point> = path.iter().map(|p| point(svg_round_trip(p.x), svg_round_trip(p.y))).collect();
         let contour = Contour::measure(&rounded);
-        // CanvasKit: length 510.93267822265625, 511 samples, 512 epicycles.
+        // Reference values: length 510.93, 511 samples, 512 epicycles.
         assert_eq!(contour.length, 510.932_678_222_656_25);
         let points = get_points(&contour);
         assert_eq!(points.len(), 511);
@@ -1000,8 +936,7 @@ mod tests {
         let reply = v.agent("").unwrap();
         assert!(reply.contains("\"drawing\":true") && reply.contains("\"epicycles\":512"), "{reply}");
 
-        // 5 s on (60 frames a second): the chain, its circles and the trace so far; the stroke
-        // has faded out and the button has come up to bottom 65.
+        // Five seconds in: chain, circles and trace so far; the stroke has faded and the button is up.
         let start = ms + 16.0;
         let mut t = start;
         while t < start + 5000.0 {
@@ -1017,7 +952,7 @@ mod tests {
         let first = v.trace[0];
         assert!((first.x - s[0].x).abs() < 1.5 && (first.y - s[0].y).abs() < 1.5, "{first:?}");
         assert!(grey(mid_run.at(first.x.round() as u32 + 1, first.y.round() as u32)) < 60);
-        // The button: #111 disc at (299…363, 723…787), the white X at its centre.
+        // The button: a dark disc with a white X.
         assert!((v.bottom.value - 65.0).abs() < 1e-3, "{}", v.bottom.value);
         assert_eq!(&mid_run.at(305, 755)[..3], &[17, 17, 17]);
         assert!(grey(mid_run.at(331, 755)) > 230, "{:?}", mid_run.at(331, 755));
@@ -1054,12 +989,10 @@ mod tests {
         v.advance(t + 16.0);
         let (pressed, _) = fixture::render(&gpu, &mut v, &frame(t + 300.0)).unwrap();
         pressed.save("fourier-visualizer-pressed");
-        // Pressed: scaled to 0.96 about (331, 755): the disc's left edge moves in by 1.28.
+        // Pressed: the button scales to 0.96 about its centre.
         assert_eq!(&pressed.at(299, 755)[..3], &[212, 212, 212]);
         v.input(&pointer(Up, 331.0, 755.0, t + 320.0));
-        // The haptics of the two strokes before the press (the owner's call): each starts with a
-        // light impact, ticks while drawn, and becomes epicycles with a medium one; the first
-        // loop's end is soft. Then the button's own.
+        // Haptics of the two strokes: a light start, ticks, a medium at the epicycles, a soft one at the loop's end.
         let all = v.messages();
         assert_eq!(all.iter().filter(|m| m.as_str() == START).count(), 2, "{all:?}");
         assert_eq!(all.iter().filter(|m| m.as_str() == COMMIT).count(), 2, "{all:?}");

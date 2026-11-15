@@ -1,60 +1,12 @@
-//! Twodos Slide (src/animations/twodos-slide: index.tsx, components/animated-squares,
-//! components/friction-slider, utils/draw-squircle.ts, utils/haptic.ts): two 120 pt squares
-//! fanned out about their bottom-right corner over a "Slide to Unlock →" label; dragging the label
-//! sideways (a horizontal UIScrollView whose content is exactly as wide as the screen, so every
-//! drag is its rubber band) turns the squares and draws a dark outline round the front one.
+//! A slide-to-unlock control: two squares fanned out about their bottom-right corner, over a
+//! "Slide to Unlock" label. Dragging the label sideways turns the squares and draws an outline
+//! round the front one.
 //!
-//! - Layout (index.tsx): two flex 1 halves. The top one centres the squares' 120 × 120 box at its
-//!   bottom (justifyContent flex-end). The bottom one is the ScrollView (iOS: horizontal, bounces,
-//!   decelerationRate "normal", contentOffset { x: INITIAL_SCROLL_POSITION }), its content
-//!   container a row W wide, 200 tall, alignItems flex-start, justifyContent center, holding the
-//!   label row (marginTop 64, alignItems center): "Slide to Unlock" (bold 16, gray, marginRight 5)
-//!   and AntDesign arrow-right (20, gray). On iOS `containerStyle` is not used.
-//! - The squares (animated-squares): absolute, borderRadius 25 continuous, boxShadow 0 0 10px
-//!   rgba(0,0,0,0.1). The back one #f4dbbd (zIndex −1), the front one #DEB986. Each transform
-//!   is [translateY 60, translateX 60, (front: scale 1.04), rotate, translateX −60, translateY
-//!   −60] about the view's centre: a turn (and scale) about its bottom-right corner. The front
-//!   one holds a Skia canvas (Group translate 25.5, 25.5: the squircle of drawSquirclePath
-//!   { smoothing 1, radius 20, 69 × 69 } stroked #f4dbbd 9 wide, then again #2a2a2a with round
-//!   caps, trimmed 0 → pathProgress) and Entypo check (120 / 2.8, #2a2a2a) centred.
-//! - What Core Animation composites: the bodies and their shadows are drawn in the rotated space
-//!   (layer backgrounds; RCTBoxShadow's shadow layer, shadowRadius = blur / 2, its path the
-//!   circular rounded rect, masked even-odd to outside the view's circular rounded rect). The Skia
-//!   canvas and the icon's text are rasterized in the square's own space at the screen's scale and
-//!   then resampled (bilinear) by the turn: drawn here into a texture, then as an image under the
-//!   transform. The label row is rasterized at its pixel-aligned place in the content and moved
-//!   by the scroll's (fractional) offset: a texture too.
-//! - The scroll (ui_scroll.rs): content width = port width, so the range is [0, 0] and any drag
-//!   is rubber-banded; released, it bounces back to 0 (alwaysBounceHorizontal, RN's default for a
-//!   horizontal ScrollView).
-//! - The opening offset: contentOffset={{ x: INITIAL_SCROLL_POSITION }} (94.5 at 420) is set on a
-//!   UIScrollView whose content is exactly as wide as the port, and the demo opens with the label
-//!   centred and the squares at rest (measured on the simulator, RN Fabric, iOS 27.1): the offset
-//!   is clamped to the [0, 0] range before the first frame, with no onScroll. So the scroll opens
-//!   at 0 here.
-//! - onScroll: RCTScrollViewComponentView dispatches it from scrollViewDidScroll (each change of
-//!   the offset, once per frame here) only when more than scrollEventThrottle (16 ms) has passed
-//!   since the last dispatch; beginning or ending a drag, and starting or ending a deceleration,
-//!   force the next one through. scrollOffset = −contentOffset.x.
-//! - realProgress = interpolate(scrollOffset, [−W/4, 0, W/4], [−1, 0, 1], EXTEND) (the squares'
-//!   turn); clampedProgress the same with CLAMP, then clamp(·, 0, 1) for the outline. The
-//!   reaction on realProgress: when it changes and the previous progress is ≥ 1, the light impact
-//!   haptic, through lodash debounce(1000, leading, no trailing): played only when no call came in
-//!   the last 1000 ms.
-//!
-//! Motion audit:
-//!
-//! | value | driver | config | trigger |
-//! |---|---|---|---|
-//! | contentOffset.x | UIScrollView (ui_scroll.rs) | rubber band 0.55 × W, range [0, 0]; release: critically damped bounce, rate 0.0125/ms (decelerationRate normal 0.998/ms, never used: always out of range or with no room) | the finger |
-//! | scrollOffset | onScroll | −contentOffset.x, at most one dispatch per 16 ms (forced at drag begin/end, deceleration begin/end) | didScroll |
-//! | realProgress | useDerivedValue | interpolate [−W/4, 0, W/4] → [−1, 0, 1], EXTEND | scrollOffset |
-//! | clampedProgress | useDerivedValue | same, CLAMP | scrollOffset |
-//! | baseRotation | useDerivedValue | 5 · progress + 5 (deg) | progress |
-//! | front square transform | useAnimatedStyle | about its bottom-right corner: scale 1.04, rotate baseRotation | baseRotation |
-//! | back square transform | useAnimatedStyle | about its bottom-right corner: rotate −1.2 · baseRotation | baseRotation |
-//! | pathProgress (outline end) | useDerivedValue | clamp(clampedProgress, 0, 1) | clampedProgress |
-//! | haptic | Haptics.impactAsync(Light) | debounce 1000 ms, leading, no trailing | realProgress changes while the previous progress ≥ 1 |
+//! - The scroll has no room to move, so every drag is rubber-banded and bounces back to rest.
+//! - The text and the outline are rasterised once in their own space, then turned with the
+//!   squares, as a compositor would.
+//! - Haptics: `haptic:impact-light` when the squares pass their full turn, at most once per quiet
+//!   second.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -63,40 +15,40 @@ use skia::{point, Canvas, Cap, Color, Font, Images, Join, Matrix, MeasuredPath, 
 use crate::gfx;
 use crate::ui_scroll::{Snap, UiScroll, NORMAL};
 
-/// AnimatedSquares `size`.
+/// Square side, pt.
 const SIZE: f32 = 120.0;
-/// strokeWidth.
+/// Outline stroke width, pt.
 const STROKE: f32 = 9.0;
-/// internalSquarePathPadding.
+/// Inset of the outline's squircle, pt.
 const PADDING: f32 = 30.0;
-/// externalBorderRadius.
+/// Square corner radius, pt.
 const RADIUS: f32 = 25.0;
-/// The squircle: borderSmoothing 1, borderRadius 20, SIZE − 2 · PADDING + STROKE square.
+/// The outline's squircle: corner radius 20, smoothing 1, square.
 const SQUIRCLE_RADIUS: f64 = 20.0;
 const SQUIRCLE_SIDE: f64 = (SIZE - PADDING * 2.0 + STROKE) as f64;
-/// boxShadow '0px 0px 10px rgba(0, 0, 0, 0.1)': shadowRadius = blur / 2.
+/// Shadow: a 10 pt blur, as a Gaussian of sigma 5.
 const SHADOW_SIGMA: f32 = 5.0;
 const SHADOW_ALPHA: f32 = 0.1;
 /// The front square's scale.
 const FRONT_SCALE: f32 = 1.04;
 /// The back square turns −1.2× the front's.
 const BACK_TURN: f64 = -1.2;
-/// scrollableView marginTop; the label's marginRight.
+/// The label row's top margin, and the gap between label and arrow.
 const ROW_TOP: f32 = 64.0;
 const LABEL_GAP: f32 = 5.0;
-/// slideActionLabel fontSize (bold); the arrow's size; the check's (size / 2.8).
+/// Font sizes: the label (bold), the arrow, and the check.
 const LABEL_SIZE: f32 = 16.0;
 const ARROW_SIZE: f32 = 20.0;
 const CHECK_SIZE: f32 = SIZE / 2.8;
 const LABEL: &str = "Slide to Unlock";
-/// AntDesign arrow-right, Entypo check.
+/// Icon glyphs: an arrow and a check.
 const ARROW: &str = "\u{F117}";
 const CHECK: &str = "\u{F140}";
-/// scrollEventThrottle (ms).
+/// Scroll events are throttled to one per 16 ms.
 const THROTTLE_MS: f64 = 16.0;
-/// The haptic's debounce wait (ms).
+/// The haptic's debounce, ms.
 const DEBOUNCE_MS: f64 = 1000.0;
-/// Where the scroll opens: RN's INITIAL_SCROLL_POSITION (W / 8 × 1.8) clamped to the [0, 0] range.
+/// Where the scroll opens. Its range is empty, so the opening offset is 0.
 const INITIAL_OFFSET: f64 = 0.0;
 
 static ANTDESIGN_ARROW: &[u8] = include_bytes!("../fonts/antdesign-arrow-right-subset.ttf");
@@ -107,8 +59,7 @@ pub fn surface() -> Box<dyn Surface> {
     Box::new(TwodosSlide::new())
 }
 
-/// getPathParamsForBorder + drawSquirclePath (utils/draw-squircle.ts, react-native-squircle):
-/// four corners of a cubic, a small clockwise arc and a cubic, joined by lines; not closed.
+/// A squircle: four corners of cubics, each joined to the next by a small arc and lines. Not closed.
 pub(crate) fn squircle_path(width: f64, height: f64, border_radius: f64, smoothing: f64) -> Path {
     let max_radius = width.min(height) / 2.0;
     let r = border_radius.min(max_radius);
@@ -130,7 +81,7 @@ pub(crate) fn squircle_path(width: f64, height: f64, border_radius: f64, smoothi
     let (w, h) = (width, height);
     let pt = |x: f64, y: f64| point(x as f32, y as f32);
     let mut path = skia::path_builder();
-    // rArcTo(r, r, 0, useSmallArc true, isCCW false, dx, dy), from where the last cubic ended.
+    // A small arc from where the last curve ended.
     let arc = |b: &mut skia::PathBuilder, from: skia::Point, dx: f64, dy: f64| {
         let r = r as f32;
         skia::add_svg_arc(b, from, pt(from.x as f64 + dx, from.y as f64 + dy), r, r, 0.0, true, false);
@@ -159,26 +110,23 @@ pub(crate) fn squircle_path(width: f64, height: f64, border_radius: f64, smoothi
     path.build()
 }
 
-/// Yoga's rounding of a layout edge to the pixel grid: to the nearest device pixel, a half up.
+/// Rounds a layout edge to the device pixel grid, halves up.
 fn grid(v: f32, scale: f32) -> f32 {
     ((v * scale + 0.5 + 1e-4).floor()) / scale
 }
 
-/// A Text node's position in its parent: Yoga's roundLayoutResultsToPixelGrid floors a Text
-/// node's relative left/top to the pixel grid (textRounding), where a View's rounds (measured:
-/// the label sits 0.667 pt into its 21 pt row, not 1.0).
+/// A text node's position in its parent, floored to the pixel grid (a view's position rounds).
 fn text_grid(v: f32, scale: f32) -> f32 {
     ((v * scale + 1e-4).floor()) / scale
 }
 
-/// A Text's measured box side: Core Text's used size, ceiled to the pixel grid (RN's
-/// internal_roundTextMeasurementToPixelGrid).
+/// A text's measured box side, ceiled to the pixel grid.
 fn text_side(v: f32, scale: f32) -> f32 {
     ((v + 0.001) * scale).ceil() / scale
 }
 
-/// What Core Animation composites as rasters, in one texture: the front square's own-space
-/// content at the top-left, the label row below it (a transparent gap between).
+/// The rasters, in one texture: the front square's own-space content at the top left, the label
+/// row below it.
 struct Layers {
     scale: f32,
     images: Images,
@@ -200,7 +148,7 @@ struct TwodosSlide {
     /// The offset scrollViewDidScroll last saw.
     shown: f64,
     last_dispatch: Option<f64>,
-    /// `_forceDispatchNextScrollEvent`.
+    /// Dispatch the next scroll event regardless of the throttle.
     force: bool,
     /// (dragging, moving) at the last frame: drag and deceleration begin / end.
     was: (bool, bool),
@@ -219,7 +167,7 @@ struct TwodosSlide {
     drawn_path: Option<f32>,
     canvas: Canvas,
     layer_canvas: Canvas,
-    /// The screen, the rasters.
+    /// Renderers for the screen and the rasters.
     renderers: [Renderer; 2],
 }
 
@@ -266,7 +214,7 @@ impl TwodosSlide {
         let (real, clamped) = self.progresses(self.scroll_offset);
         if real != self.progress {
             if self.progress >= 1.0 {
-                // debounce(hapticFeedback, 1000, { leading: true, trailing: false }).
+                // Leading-edge debounce: a buzz, then none until a quiet second.
                 if self.last_call.is_none_or(|t| now - t >= DEBOUNCE_MS) {
                     self.posted.push("haptic:impact-light".into());
                 }
@@ -277,7 +225,7 @@ impl TwodosSlide {
         }
     }
 
-    /// scrollViewDidScroll for this frame's offset, and RN's throttle.
+    /// Dispatches this frame's offset, throttled.
     fn did_scroll(&mut self, now: f64) {
         let (dragging, moving) = (self.scroll.dragging(), self.scroll.moving() && !self.scroll.dragging());
         if dragging != self.was.0 || moving != self.was.1 {
@@ -388,7 +336,7 @@ impl Surface for TwodosSlide {
 
     fn input(&mut self, event: &InputEvent) {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
-        // The ScrollView is the bottom half (its hit test: inside its bounds).
+        // The scroll view is the bottom half.
         let inside = y >= self.size.1 / 2.0 && y <= self.size.1 && (0.0..=self.size.0).contains(&x);
         self.scroll.input(id, gfx::phase(phase), x, y, at_ms, inside);
     }
@@ -409,7 +357,7 @@ impl Surface for TwodosSlide {
             self.scroll.port = w as f64;
             self.scroll.max = 0.0;
             if first {
-                // contentOffset={{ x: INITIAL_SCROLL_POSITION }} at mount, with no onScroll.
+                // The opening offset is set at mount, with no scroll event.
                 self.scroll.offset = INITIAL_OFFSET * w as f64;
                 self.shown = self.scroll.offset;
                 self.last_dispatch = Some(frame.now_ms);
@@ -446,7 +394,7 @@ impl Surface for TwodosSlide {
         let half = grid(h / 2.0, scale);
         let origin = (grid((w - SIZE) / 2.0, scale), grid(half - SIZE, scale));
         let turn = 5.0 * self.progress + 5.0;
-        // The back square (zIndex −1) under the front one.
+        // The back square, under the front one.
         Self::square(c, origin, 1.0, BACK_TURN * turn, 0xF4DBBD);
         c.restore();
         Self::square(c, origin, FRONT_SCALE, turn, 0xDEB986);
@@ -529,7 +477,6 @@ mod tests {
             }
         }
         assert_eq!(dispatched, 5);
-        // Progress follows the dispatched offset: scrollOffset / (W / 4), extended.
         assert!((s.progress - s.scroll_offset / 105.0).abs() < 1e-12);
     }
 
@@ -537,7 +484,6 @@ mod tests {
     fn the_haptic_plays_past_full_progress_once_per_quiet_second() {
         let mut s = TwodosSlide::new();
         s.size = (W, H);
-        // Past progress 1 (scrollOffset > 105): the first change after it buzzes.
         s.on_scroll(-110.0, 0.0);
         assert!(s.posted.is_empty(), "the previous progress was 0");
         s.on_scroll(-112.0, 16.0);
@@ -547,7 +493,6 @@ mod tests {
             s.on_scroll(-112.0 - k as f64, 16.0 * k as f64);
         }
         assert_eq!(s.posted.len(), 1);
-        // A quiet second, then a change while still past 1: again.
         s.on_scroll(-300.0, 16.0 * 99.0 + 1000.0);
         assert_eq!(s.posted.len(), 2);
     }
@@ -562,22 +507,18 @@ mod tests {
         let (rest, animating) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         gfx::save_over(&rest, "twodos-rest", [255, 255, 255]);
         assert!(!animating);
-        // RN opens at contentOffset 0 (INITIAL_SCROLL_POSITION clamped): the squares at progress 0.
         assert_eq!(state(&mut s), "{\"contentOffset\":0.00,\"scrollOffset\":0.00,\"progress\":0.0000,\"pathProgress\":0.0000,\"dragging\":false}");
-        // The label row is centred.
         let row_y = (3.0 * (H / 2.0 + ROW_TOP + 10.0)) as u32;
         let ink: Vec<u32> = (0..(3.0 * W) as u32).filter(|&x| rest.at(x, row_y)[3] > 0 && rest.at(x, row_y)[0] < 200).collect();
         let (l, r) = (*ink.first().unwrap() as f32 / 3.0, *ink.last().unwrap() as f32 / 3.0);
         assert!(((l + r) / 2.0 - W / 2.0).abs() < 3.0, "ink {l}..{r}");
-        // The front square's body (#DEB986 as Display P3) left of the outline, inside the box.
         let (bx, by) = (150.0, 336.0);
         let body = rest.at((3.0 * (bx + 12.0)) as u32, (3.0 * (by + 60.0)) as u32);
         assert!(body[3] == 255 && body[0] > 220 && body[2] < 150, "{body:?}");
-        // No outline drawn yet: the ring at the top centre is the light stroke.
         let ring = rest.at((3.0 * (bx + 62.0)) as u32, (3.0 * (by + 25.5 + 2.0)) as u32);
         assert!(ring[0] > 220, "{ring:?}");
 
-        // Drag 300 pt right (finger right: contentOffset goes negative, progress positive).
+        // A drag right turns the squares: the offset goes negative and progress positive.
         let y = H * 0.75;
         s.input(&pointer(PointerPhase::Down, 60.0, y, 100.0));
         let mut ms = 100.0;
@@ -591,8 +532,6 @@ mod tests {
         let st = state(&mut s);
         let progress: f64 = st.split("\"progress\":").nth(1).unwrap().split(',').next().unwrap().parse().unwrap();
         assert!(progress > 0.3 && progress < 1.5, "{st}");
-        // The outline has started: many more dark (#2a2a2a) pixels over the squares than the
-        // check alone.
         let dark = |img: &fixture::Pixels| {
             let mut n = 0;
             for y in (3.0 * by) as u32..(3.0 * (by + SIZE)) as u32 {
@@ -606,7 +545,6 @@ mod tests {
         let (before, after) = (dark(&rest), dark(&dragged));
         assert!(after > before + 3000, "{before} → {after} {st}");
 
-        // Released, it bounces home: offset 0, progress 0.
         s.input(&pointer(PointerPhase::Up, 360.0, y, ms));
         while ms < 4000.0 {
             ms += 16.67;

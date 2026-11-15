@@ -1,28 +1,14 @@
-//! Sphere Waves (src/animations/sphere-waves/index.tsx): 2000 dots on a Fibonacci sphere,
-//! breathing in waves of depth, filled with a five-colour gradient whose hues turn with time,
-//! on black. A tap on the right half picks a new random `magicalMul` (another pattern), on the
-//! left half goes back in the history of them; a pinch moves the eye nearer or farther.
+//! 2000 dots on a Fibonacci sphere, breathing in waves of depth, filled with a five-colour gradient
+//! whose hues turn with time, on black.
 //!
-//! - drawEnhancedFibonacci, per dot `i` of N = 2000 (CANVAS = the window): a = i / (N / 2) − 1,
-//!   angle = i × magicalMul + iTime, px = cos(angle) √(1 − a²), py = cos(angle + 11) √(1 − a²);
-//!   z = 80 sin(0.1 i + 0.7 t) + 40 cos(0.05 i + 0.3 t) + 20 sin(0.15 i + 1.2 t); scale =
-//!   distance / (distance + z); the dot at (W/2 + px · 0.4 W · scale, H/2 + a · 0.4 W · scale),
-//!   radius clamp((1 − |py|) / (N · 0.01) · 20 · scale, 0.5, 10) · (sin(0.2 i + 2 t) · 0.3 + 1)
-//!   · (sin(0.8 t) · 0.2 + 1).
-//! - The paint: LinearGradient((0, 0) → (W, H)) of hsl(340, 90%, 70%), hsl(280, 85%, 75%),
-//!   hsl(220, 95%, 80%), hsl(160, 88%, 72%), hsl(60, 92%, 78%), each hue + (40 t mod 360)
-//!   (mod 360, to 2 decimals).
-//! - iTime: withRepeat(withTiming(15, { duration: 50000, easing: linear }), −1, true).
-//! - Tap (onEnd): x > W / 2 pushes Math.random() × 100 after the current history entry (the
-//!   entries after it dropped) and shows it; else steps back one entry, if any. INITIAL 2.4.
-//! - Pinch: onStart saves distance (300 at first); onUpdate distance = saved ×
-//!   interpolate(scale, [0.05, 0.2, 0.3, 1, 3], [80, 25, 2, 1, 0.05], CLAMP); onEnd
-//!   withSpring(300) (Reanimated 4's default).
-//! - Haptics, posted for the app (`messages`): selection at each tap's end; heavy while the
-//!   pinch's scale is under 0.3, debounced 500 ms (leading, no trailing).
+//! - A tap on the right half picks a new random pattern after the current one; a tap on the left
+//!   goes back through the history of patterns.
+//! - A pinch moves the eye nearer or farther. The distance springs back on release.
+//! - Haptics: a selection at each tap; a heavy impact while the pinch is tight, at most one per
+//!   DEBOUNCE_MS.
 //!
-//! The dots are computed here in f64, as the worklet does (i × magicalMul reaches 2 × 10⁵ rad,
-//! past f32's precision), and drawn as instances of one quad.
+//! The dots are computed in f64, because the phase grows to about 2 × 10⁵ rad, past f32's
+//! precision. They are drawn as instances of one quad.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -33,16 +19,16 @@ use skia::Color;
 use crate::{gfx, shaders};
 use shaders::sphere_waves::{entry, module, Uniforms, DOTS, GROUP_0, U};
 
-/// N_ITEMS.
+/// Number of dots.
 const N: usize = 2000;
-/// INITIAL_MAGICAL_MUL.
+/// The starting pattern.
 const INITIAL_MAGICAL_MUL: f64 = 2.4;
-/// distance's start and rest.
+/// The eye's distance at rest.
 const DISTANCE: f64 = 300.0;
-/// iTime's withTiming: to 15 over 50 s, linear, back and forth.
+/// Time runs from 0 to 15 over 50 s, then back.
 const TIME_TO: f64 = 15.0;
 const TIME_MS: f64 = 50000.0;
-/// debounce(heavyHapticFeedback, 500, { leading: true, trailing: false }).
+/// Minimum gap between heavy haptics, ms.
 const DEBOUNCE_MS: f64 = 500.0;
 /// The gradient's base hues, saturations and lightnesses.
 const HSL: [(f64, f32, f32); 5] = [(340.0, 90.0, 70.0), (280.0, 85.0, 75.0), (220.0, 95.0, 80.0), (160.0, 88.0, 72.0), (60.0, 92.0, 78.0)];
@@ -73,9 +59,9 @@ struct SphereWaves {
     taps: u64,
     dots: Vec<[f32; 4]>,
     gpu: Option<Gpu>,
-    /// The last call of the debounced heavy haptic (lodash debounce, 500 ms, leading only).
+    /// The last pinch call under 0.3, for the heavy haptic's debounce.
     heavy_at: Option<f64>,
-    /// Haptics for the app to play (`message=buzz`).
+    /// Haptics for the app to play.
     posted: Vec<String>,
 }
 
@@ -181,20 +167,20 @@ impl Surface for SphereWaves {
         ))
     }
 
-    /// RN's tap is Gesture.Tap (maxDuration 500), not pressto: not `pressto::Pressable`.
+    /// A tap is a plain tap gesture (500 ms at most), not a pressable.
     fn input(&mut self, event: &InputEvent) {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
         let phase = gfx::phase(phase);
-        // Gesture.Simultaneous(tap, pinch); the tap is a bare Gesture.Tap(): 500 ms, any distance.
+        // The tap and the pinch run together. The tap allows 500 ms and any distance.
         if let Event::Tap { x, .. } = self.tap.event(id, phase, x, y, at_ms, true) {
-            // onEnd: scheduleOnRN(lightHapticFeedback).
+            // A tap plays a light haptic.
             self.posted.push("haptic:selection".into());
             self.tapped(x, at_ms);
         }
         match self.pinch.event(id, phase, x, y, true) {
             PinchEvent::Start(_) => self.saved_distance = self.distance.value,
             PinchEvent::Update(p) => {
-                // scale < 0.3: debouncedFeedback, which fires on a call after 500 ms of none.
+                // Under 0.3: a heavy haptic, at most one per DEBOUNCE_MS, on the leading edge.
                 if p.scale < 0.3 {
                     if self.heavy_at.is_none_or(|last| at_ms - last >= DEBOUNCE_MS) {
                         self.posted.push("haptic:impact-heavy".into());
@@ -248,7 +234,7 @@ impl Surface for SphereWaves {
                 view: target,
                 resolve_target: None,
                 depth_slice: None,
-                // styles.container: black.
+                // The background is black.
                 ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color::BLACK), store: wgpu::StoreOp::Store },
             })],
             depth_stencil_attachment: None,
@@ -259,7 +245,7 @@ impl Surface for SphereWaves {
         pass.set_pipeline(&gpu.pipeline);
         pass.set_bind_group(0, &gpu.bind, &[]);
         pass.draw(0..6, 0..self.dots.len() as u32);
-        // iTime repeats forever.
+        // The animation never settles, so the surface keeps drawing.
         true
     }
 }
@@ -291,7 +277,7 @@ mod tests {
 
     #[test]
     fn hsl_is_react_natives() {
-        // normalizeColor('hsl(340, 90%, 70%)'): q 0.97, p 0.43 → (247, 110, 156).
+        // The same RGB as the reference colour parser gives for hsl(340, 90%, 70%).
         let c = Color::hsl(340.0, 90.0, 70.0).0;
         assert_eq!([c[0], c[1], c[2]].map(|v| (v * 255.0).round() as u8), [247, 110, 156]);
         assert_eq!(Color::parse("hsl(340.00, 90%, 70%)").0, Color::hsl(340.0, 90.0, 70.0).0);

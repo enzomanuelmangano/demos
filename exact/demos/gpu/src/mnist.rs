@@ -1,33 +1,11 @@
-//! MNIST (src/animations/mnist: components/main.tsx, grid, network, predictions,
-//! neural-network/index.ts): draw a digit on a 28 × 28 grid and a small network (784 → 55
-//! sigmoid → 50 relu → 11 softmax) classifies it on every new cell, its nodes lit by their
-//! activations, the eleven guesses below.
+//! Draw a digit on a 28 × 28 grid and a small network classifies it on every new cell. The
+//! network (784 → 55 sigmoid → 50 relu → 11 softmax) lights its nodes by their activations, and
+//! the eleven guesses sit below it.
 //!
-//! The weights (find-weights/model_weights.json, 1.1 MB of JSON) are converted offline to f64
-//! (`gpu/images/mnist/weights.f64`, the same numbers JS parses) and the prediction runs as the
-//! demo's `predict`, in f64.
-//!
-//! Layout (black; a column centred horizontally): two flex-1 halves. The top centres the
-//! network canvas (the window wide, 240 tall: layers of 55, 50 and 11 nodes, 7 apart, at y 20,
-//! 120, 220; lines for |weight| ≥ 0.35, blue for positive and red for negative, hairlines at
-//! opacity 0.5; each node a white r 2.5 circle at its activation's opacity under a white
-//! hairline ring) over the predictions row (gap 8, centred: each a label, system 14 #d2d2d2,
-//! gap 4 over a 20 pt ring, white border 1, padding 2, its disc at the guess's opacity, white
-//! or #5cd1ff above 0.5 (withTiming)). The bottom half starts with the grid canvas (280 × 280:
-//! 8 × 8 cells 10 apart, #181818; untouched neighbours of touched cells #9e9e9e; touched
-//! #d5d5d5). The eraser (pressto PressableScale, 64, #111, radius 32, boxShadow 0 0 32
-//! rgba(255,255,255,0.1), MaterialCommunityIcons eraser 28 white) at right 40, bottom 40.
-//!
-//! The Skia canvases are Display P3 surfaces (`gfx::P3Layer`); the views are drawn over them.
-//!
-//! Motion audit:
-//!
-//! | value | RN driver / config | here |
-//! |---|---|---|
-//! | touched cells | Pan onBegin and onUpdate (after the 10 pt activation): the cell under the finger, once | `PanGesture::new()`, the same |
-//! | predictions | useAnimatedReaction on the cells: predict on the UI thread | the same, on the input |
-//! | guess colour | withTiming(active ? #5cd1ff : white) (300 ms, inOut quad, gamma 2.2 per channel) | [`Fade`] |
-//! | eraser | PressableScale; onPress clears the cells | `pressto::Pressable` |
+//! - The weights are stored as f64, and the prediction runs in f64, so the numbers match the
+//!   reference model exactly.
+//! - A guess's colour fades to cyan (300 ms) when its output passes 0.5.
+//! - The eraser clears every touched cell.
 //!
 //! No inputs.
 
@@ -59,7 +37,7 @@ pub struct Model {
     w: Vec<f64>,
 }
 
-/// predict's result.
+/// The activations of one prediction.
 #[derive(Clone, Debug, Default)]
 pub struct Prediction {
     /// sigmoid(input · W0 + b0).
@@ -88,7 +66,7 @@ impl Model {
         self.w[Self::W4 + i * 11 + j]
     }
 
-    /// matrixVectorMultiply: result[i] += matrix[j][i] · vector[j], j ascending.
+    /// `vector · matrix`: result[i] += matrix[j][i] · vector[j], summed in ascending j.
     fn layer(&self, at: usize, rows: usize, cols: usize, v: &[f64]) -> Vec<f64> {
         let mut r = vec![0.0; cols];
         for (i, out) in r.iter_mut().enumerate() {
@@ -99,7 +77,7 @@ impl Model {
         r
     }
 
-    /// The demo's `predict` of the grid (row-major, 1 for a touched cell).
+    /// Predicts from the grid (row-major, 1 for a touched cell).
     pub fn predict(&self, input: &[f64]) -> Prediction {
         let h1 = self.layer(Self::W0, 784, 55, input);
         let hidden1: Vec<f64> = h1.iter().enumerate().map(|(i, v)| 1.0 / (1.0 + (-(v + self.w[Self::B0 + i])).exp())).collect();
@@ -114,7 +92,7 @@ impl Model {
     }
 }
 
-/// `withTiming` of a colour (300 ms, inOut quad): per channel in gamma 2.2, rounded.
+/// A colour eased over 300 ms, each channel in gamma 2.2 space, rounded to 8 bits.
 struct Fade {
     from: [f64; 3],
     to: [f64; 3],
@@ -149,7 +127,7 @@ impl Fade {
 const ACTIVE: [u8; 3] = [0x5c, 0xd1, 0xff];
 const WHITE: [u8; 3] = [255, 255, 255];
 
-/// The demo's surface (no inputs).
+/// The surface. Takes no inputs.
 pub fn surface() -> Box<dyn Surface> {
     let model = Model::load();
     let prediction = model.predict(&[0.0; GRID * GRID]);
@@ -190,7 +168,7 @@ struct Mnist {
     scale: f32,
     model: Model,
     prediction: Prediction,
-    /// touchedSquares, in order: (column, row).
+    /// Touched cells in the order they were drawn: (column, row).
     touched: Vec<(usize, usize)>,
     pan: PanGesture,
     press: Pressable,
@@ -206,7 +184,7 @@ struct Mnist {
     gpu: Option<Gpu>,
 }
 
-/// Where the views sit (Yoga, canvas points).
+/// Where the views sit, in points.
 struct Layout {
     net_top: f32,
     row_top: f32,
@@ -248,7 +226,7 @@ impl Mnist {
         (x - bx - BUTTON / 2.0).abs() <= half && (y - by - BUTTON / 2.0).abs() <= half
     }
 
-    /// touchEvent: the cell under (x, y) of the grid, once.
+    /// Marks the cell under (x, y) as touched, once.
     fn touch(&mut self, x: f32, y: f32, now: f64) {
         let l = self.layout();
         let (lx, ly) = (x - l.grid.0, y - l.grid.1);
@@ -280,13 +258,12 @@ impl Mnist {
         }
     }
 
-    /// The two RN Skia canvases (network, grid).
+    /// Draws the network and the grid canvases.
     fn record_canvases(&mut self, l: &Layout) {
         let w = self.size.0;
         let mut c = std::mem::take(&mut self.canvas);
         c.begin(self.scale);
-        // The network.
-        // Each layer centred by its own count, the output by the 50 of outputLayerWeights.
+        // Each layer is centred on its own width; the 11 outputs are centred on the 50-node row.
         let layer = |n: usize, padded: usize, y: f32, extra: f32| -> Vec<(f32, f32)> {
             let pad = (w - padded as f32 * 7.0) / 2.0;
             (0..n).map(|i| (i as f32 * 7.0 + pad + extra, l.net_top + y)).collect()
@@ -326,7 +303,6 @@ impl Mnist {
                 c.draw_circle(x, y, 2.5, &Paint::stroke(Color::WHITE, 0.0));
             }
         }
-        // The grid.
         let (gx, gy) = l.grid;
         let rect = |c: &mut Canvas, i: usize, j: usize, color: u32| {
             c.draw_rect(gx + i as f32 * CELL + 1.0, gy + j as f32 * CELL + 1.0, CELL - 2.0, CELL - 2.0, &Paint::fill(Color::hex(color)));
@@ -467,7 +443,7 @@ impl Surface for Mnist {
         match self.press.pointer(id, phase, on_button) {
             Some(PressEvent::Press(press)) => {
                 self.messages.extend(press.global_message().map(String::from));
-                // gridRef.current?.clear()
+                // The eraser clears the touched cells.
                 self.touched.clear();
                 self.update(at_ms);
                 return;

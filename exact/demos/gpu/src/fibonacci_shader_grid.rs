@@ -1,40 +1,13 @@
-//! Fibonacci Shader Grid (src/animations/fibonacci-shader-grid): on black, a square of the
-//! window's width (marginTop 50) runs XorDev's effect (gpu/shaders/fibonacci_shader_grid.wgsl),
-//! masked in luminance by a white circle of radius width / 2 under Blur(10). Below it, in the
-//! rest of the window less marginBottom 100, the ControlPanel (components/control-panel) sits
-//! centred: a pad `round((width − 90) / 10) × 6` square whose x sets N (the number of circles,
-//! [5, 175]) and y the multiplier ([1.2, 3.6]), both CLAMP.
+//! A grid of cells on black, under a glowing fibonacci sphere. A pad below the sphere sets its
+//! parameters: x is the number of circles and y the multiplier, both clamped.
 //!
-//! The pad, as RN's views draw it (Yoga's layout rounded to the device-pixel grid):
-//! - styles.container: rgba(255,255,255,0.09) on a continuous radius 24 (the background layer
-//!   keeps the borderCurve); its 2 pt rgba(255,255,255,0.4) border is translucent on a view that
-//!   does not clip, so RN draws it as its border image, with circular corners.
-//! - styles.pointer: absolute at the content box (2, 2), 48 square, white, continuous radius
-//!   24, translated to `mapValue − 24` on both axes and scaled about its centre.
-//! - The grid view: `width × height` at (2, 2) (overflowing the border by 2), clipping its 36
-//!   cells (`height / 6 − 0.7` square, a 1 pt rgba(255,255,255,0.1) Core Animation border,
-//!   wrapped six to a row) and its two rgba(255,255,255,0.8) lines (zIndex 10, over the cells):
-//!   the vertical one `left width / 2 − 1, top −2, 2 × height`, the horizontal one
-//!   `left −1, top height / 2 − 1, (width − 1) × 2`.
+//! - The pad's pointer is a white dot that grows while a finger holds it.
+//! - Motion: on touch-down the pointer's springs head for the touch's position; a drag sets them
+//!   at once. Time sweeps 0 to 15 and back, 20 s each way.
 //!
-//! Motion (the audit):
-//! - iTime: withRepeat(withTiming(15, { duration: 20000, easing: linear }), -1, true).
-//! - N, magicalMul: on the Pan's onBegin, withSpring(remap(event), { mass 0.5, damping 10,
-//!   stiffness 100 }) (ζ 0.707: it overshoots, and the shader reads the overshoot); onUpdate
-//!   sets remap(event) at once (cancelling the spring). remap: interpolate(event.x, [0, width],
-//!   [minX, maxX], CLAMP), the same for y.
-//! - The pointer: translate mapValue(x | y) − 24 (interpolate CLAMP back to [0, width]);
-//!   opacity withTiming(isActive ? 0.6 : 1) (300 ms, inOut(quad)); scale withSpring(isActive ?
-//!   1.2 : 1) (the default spring). isActive: true on onBegin, false on onFinalize.
-//!
-//! The GestureDetector wraps the container: RNGH's recognizer gets the touches of the container
-//! and of its children (the grid overflowing it by 2, the pointer wherever it is).
-//!
-//! Haptics (past RN, which plays none: the owner's haptic language): `haptic:impact-light` when
-//! the pan takes the pad (its activation, so a tap plays none); `haptic:selection` each time the
-//! finger crosses into another of the 6 × 6 cells, SWITCH past the line (a finger on a line does
-//! not flap) and at most one per HAPTIC_GAP_MS; `haptic:impact-rigid` once each time it leaves
-//! the pad (where the remap clamps N and the multiplier), re-armed only REARM back inside.
+//! Haptics: a light impact when the pan takes the pad (not on a tap); a selection each time the
+//! finger crosses into another of the 6 × 6 cells, with a small hysteresis at the cell edges and
+//! at most one per 40 ms; a rigid impact each time it leaves the pad, re-armed once it comes back.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -45,35 +18,34 @@ use skia::{add_continuous_rrect, add_rect, add_rrect, add_rrect_hole, Canvas, Co
 use crate::{gfx, shaders};
 use shaders::fibonacci_shader_grid::{entry, module, Uniforms, GROUP_0, U};
 
-/// MIN_CIRCLES_AMOUNT, MAX_CIRCLES_AMOUNT (350 / 2).
+/// Circle count range.
 const MIN_X: f64 = 5.0;
 const MAX_X: f64 = 175.0;
-/// MIN_MAGICAL_MUL, MAX_MAGICAL_MUL.
+/// Multiplier range.
 const MIN_Y: f64 = 1.2;
 const MAX_Y: f64 = 3.6;
-/// The square's marginTop.
+/// Space above the square, pt.
 const TOP: f32 = 50.0;
-/// The panel's View: marginBottom.
+/// Space below the panel, pt.
 const BOTTOM: f32 = 100.0;
-/// BUTTON_RADIUS.
+/// Pointer radius, pt.
 const R: f32 = 24.0;
-/// styles.container borderWidth.
+/// Pad border width, pt.
 const BORDER: f32 = 2.0;
-/// The x / y springs of onBegin.
-/// The shortest gap between two selection haptics, ms.
+/// Shortest gap between two selection haptics, ms.
 const HAPTIC_GAP_MS: f64 = 40.0;
-/// The grid's cells per side.
+/// Cells per side of the grid.
 const CELLS: f32 = 6.0;
-/// How far past a cell's line the finger goes before the felt cell changes, pt.
+/// Hysteresis at a cell edge, pt: the felt cell changes only past it.
 const SWITCH: f32 = 4.0;
-/// How far back inside the pad the finger goes before leaving it plays again, pt.
+/// How far back inside the pad the finger must go before the off-pad rigid can play again, pt.
 const REARM: f32 = 6.0;
 const PAD_SPRING: Config = Config { stiffness: 100.0, damping: 10.0, mass: 0.5 };
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
     Box::new(FibonacciShaderGrid {
-        // INITIAL_CIRCLES_AMOUNT, INITIAL_MAGICAL_MUL.
+        // Initial circles and multiplier.
         x: Spring::at((MAX_X + MIN_X) / 2.0),
         y: Spring::at((MAX_Y + MIN_Y) / 2.0),
         opacity: Timing::at(1.0),
@@ -91,8 +63,7 @@ struct FibonacciShaderGrid {
     opacity: Timing,
     scale: Spring,
     pan: PanGesture,
-    /// The cell under the finger, whether it is off the pad, the last selection's time (their
-    /// haptics).
+    /// The cell under the finger, and the last selection haptic's time.
     cell: (i32, i32),
     past_end: bool,
     haptic_at: f64,
@@ -114,7 +85,7 @@ struct Gpu {
     bind: wgpu::BindGroup,
 }
 
-/// withRepeat(withTiming(15, { duration: 20000, easing: linear }), -1, true).
+/// Shader time: sweeps 0 to 15 and back, 20 s each way.
 fn itime(ms: f64) -> f64 {
     let c = ms.rem_euclid(40000.0);
     if c < 20000.0 {
@@ -125,23 +96,23 @@ fn itime(ms: f64) -> f64 {
 }
 
 impl FibonacciShaderGrid {
-    /// The pad's side: Math.round((SCREEN_WIDTH - 90) / 10) * 6.
+    /// Side of the pad, rounded to a multiple of 6.
     fn side(&self) -> f32 {
         ((self.width - 90.0) / 10.0).round() * 6.0
     }
-    /// The container's top-left corner (unrounded, as Yoga computes it).
+    /// Top-left corner of the pad.
     fn origin(&self) -> (f32, f32) {
         let s = self.side();
         let below = TOP + self.width;
         let space = self.height - below - BOTTOM;
         ((self.width - s) / 2.0, below + (space - s) / 2.0)
     }
-    /// An edge on the device-pixel grid (Yoga's rounding).
+    /// Rounds a coordinate to the device-pixel grid.
     fn snap(&self, v: f32) -> f32 {
         let px = self.px.max(1.0);
         (v * px).round() / px
     }
-    /// A box laid out at (x, y, w, h), its edges snapped.
+    /// A box at (x, y, w, h), with its edges snapped to the pixel grid.
     fn rect(&self, x: f32, y: f32, w: f32, h: f32) -> (f32, f32, f32, f32) {
         let (l, t) = (self.snap(x), self.snap(y));
         (l, t, self.snap(x + w) - l, self.snap(y + h) - t)
@@ -152,7 +123,7 @@ impl FibonacciShaderGrid {
     fn remap_y(&self, v: f32) -> f64 {
         interpolate_clamp(v as f64, &[0.0, self.side() as f64], &[MIN_Y, MAX_Y])
     }
-    /// mapXvalue / mapYvalue: the pointer's centre in the pad, before its box's (2, 2).
+    /// The pointer's centre in the pad.
     fn pointer(&self) -> (f32, f32) {
         let s = self.side() as f64;
         (
@@ -160,7 +131,7 @@ impl FibonacciShaderGrid {
             interpolate_clamp(self.y.value, &[MIN_Y, MAX_Y], &[0.0, s]) as f32,
         )
     }
-    /// Whether a touch at (x, y) lands on the container or a child of it.
+    /// Whether a touch at (x, y) lands on the pad or its pointer.
     fn hit(&self, x: f32, y: f32) -> bool {
         let (ox, oy) = self.origin();
         let s = self.side();
@@ -171,14 +142,13 @@ impl FibonacciShaderGrid {
             || inside(ox + BORDER, oy + BORDER, s, s)
             || inside(ox + BORDER + pcx - half, oy + BORDER + pcy - half, 2.0 * half, 2.0 * half)
     }
-    /// The grid cell under (ex, ey) in the container (clamped to the pad) and whether the
-    /// point is off the pad.
+    /// The grid cell under (ex, ey), clamped to the pad, and whether the point is off the pad.
     fn cell_at(&self, ex: f32, ey: f32) -> ((i32, i32), bool) {
         let s = self.side();
         let k = |v: f32| (v / (s / CELLS)).floor().clamp(0.0, CELLS - 1.0) as i32;
         ((k(ex), k(ey)), ex < 0.0 || ex > s || ey < 0.0 || ey > s)
     }
-    /// The cell the haptics feel at (ex, ey): each axis holds the current cell until the finger
+    /// The cell the haptics feel at (ex, ey): each axis keeps the current cell until the finger
     /// is SWITCH past its edge.
     fn felt_cell(&self, ex: f32, ey: f32) -> (i32, i32) {
         let cs = self.side() / CELLS;
@@ -190,7 +160,7 @@ impl FibonacciShaderGrid {
         };
         (hold(ex, self.cell.0, cell.0), hold(ey, self.cell.1, cell.1))
     }
-    /// The finger is well inside the pad (the off-pad rigid re-arms).
+    /// Whether the finger is well inside the pad.
     fn inside(&self, ex: f32, ey: f32) -> bool {
         let s = self.side();
         ex > REARM && ex < s - REARM && ey > REARM && ey < s - REARM
@@ -222,20 +192,20 @@ impl FibonacciShaderGrid {
         let (opacity, scale) = (self.opacity.value as f32, self.scale.value as f32);
 
         let c = &mut self.canvas;
-        // The container's background, then its border image (circular corners).
+        // Background, then the border image with circular corners.
         c.draw_with(&Paint::fill(Color::WHITE.alpha(0.09)), |b| add_continuous_rrect(b, cx, cy, cw, ch, R));
         c.draw_with(&Paint::fill(Color::WHITE.alpha(0.4)), |b| {
             add_rrect(b, cx, cy, cw, ch, R);
             add_rrect_hole(b, cx + BORDER, cy + BORDER, cw - 2.0 * BORDER, ch - 2.0 * BORDER, R - BORDER);
         });
-        // The pointer: translate, then scale about its centre.
+        // Pointer: translate, then scale about its centre.
         c.save();
         c.translate(pl + mx - R + pw / 2.0, pt + my - R + ph / 2.0);
         c.scale(scale, scale);
         c.opacity(opacity);
         c.draw_with(&Paint::fill(Color::WHITE), |b| add_continuous_rrect(b, -pw / 2.0, -ph / 2.0, pw, ph, R));
         c.restore();
-        // The grid, clipped to its view.
+        // Grid, clipped to the pad.
         c.save();
         c.clip_with(|b| add_rect(b, gx, gy, gw, gh));
         let border = Paint::fill(Color::WHITE.alpha(0.1));
@@ -270,7 +240,7 @@ impl Surface for FibonacciShaderGrid {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
         let hit = self.hit(x, y);
         let (ox, oy) = self.origin();
-        // event.x / event.y: in the container.
+        // Event position relative to the pad.
         let (ex, ey) = (x - ox, y - oy);
         let event = self.pan.event(id, gfx::phase(phase), x, y, at_ms, hit);
         match event {
@@ -379,7 +349,6 @@ impl Surface for FibonacciShaderGrid {
             pass.set_bind_group(0, &gpu.bind, &[]);
             pass.draw(0..3, 0..1);
         }
-        // iTime runs for ever.
         true
     }
 }
@@ -418,23 +387,22 @@ mod tests {
         let (a, animating) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         a.save("fibonacci-shader-grid-rest");
         assert!(animating);
-        // The pad (W 420, H 912): side round(33) × 6 = 198 at (111, 542).
-        // Black above the square and in its corners (outside the mask).
+        // Black outside the mask.
         assert_eq!(&a.at(210, 20)[..3], &[0, 0, 0]);
         assert_eq!(&a.at(3, 53)[..3], &[0, 0, 0]);
         let lit = (50..470).step_by(4).flat_map(|y| (0..420).step_by(4).map(move |x| (x, y))).filter(|&(x, y)| a.at(x, y)[..3].iter().any(|&c| c > 60)).count();
         assert!(lit > 50, "{lit} lit samples");
-        // The pointer (white) at the pad's centre: N 90 and 2.4 map to 99, + 2: (212, 643).
+        // The pointer is white at the pad's centre.
         assert_eq!(&a.at(212 - 10, 643 - 10)[..3], &[255, 255, 255]);
-        // The vertical line (0.8 white) at x 211..213 near the pad's top, over the cells.
+        // The vertical line is drawn over the cells.
         let v = a.at(212, 548);
         assert!(v[0] > 190 && v[0] < 220, "{v:?}");
-        // Outside the pad's corner: black; just inside its left side, the 0.4 border.
+        // Black outside the pad's corner; the border is visible just inside its left side.
         assert_eq!(&a.at(111, 542)[..3], &[0, 0, 0]);
         let b = a.at(112, 643);
         assert!(b[0] > 110 && b[0] < 122, "{b:?}");
 
-        // A touch at the pad's top-left: the springs head for (5, 1.2); a drag sets them at once.
+        // A touch at the pad's top-left heads for the minimum values.
         let p = |phase, x: f32, y: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
         s.input(&p(exact_gpu::PointerPhase::Down, 111.0, 542.0, 10.0));
         for k in 1..=10 {
@@ -447,9 +415,9 @@ mod tests {
         assert_ne!(a.data, b.data);
         s.input(&p(exact_gpu::PointerPhase::Up, 411.0, 542.0, 400.0));
         assert!(s.agent("{}").unwrap().contains("\"active\":false"));
-        // The grab; the cells crossed every 16 ms, paced to one per 40 ms; off the pad once.
+        // The grab, the cell crossings paced to one per 40 ms, and one leave of the pad.
         assert_eq!(s.messages(), vec!["haptic:impact-light", "haptic:selection", "haptic:selection", "haptic:impact-rigid"]);
-        // A touch outside the pad does nothing.
+        // A touch outside the pad is ignored.
         s.input(&p(exact_gpu::PointerPhase::Down, 50.0, 850.0, 900.0));
         assert!(s.agent("{}").unwrap().contains("\"held\":false"));
     }

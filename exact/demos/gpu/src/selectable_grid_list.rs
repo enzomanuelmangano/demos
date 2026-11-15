@@ -1,47 +1,13 @@
-//! Selectable Grid List (src/animations/selectable-grid-list: index.tsx, constants.ts,
-//! components/SelectableGridList, SelectableListItem.tsx): fifty photos in four columns; a tap
-//! toggles one, a drag selects the range from the cell it started on to the cell under the
-//! finger, scrolling near the top; a floating button counts the selection and clears it. The
-//! whole window (#000), the list from safeTop + 56 down.
+//! Fifty photos in four columns. A tap toggles one cell. A drag selects the range from the cell it
+//! started on to the cell under the finger, and dragging near the top or bottom scrolls the list.
+//! A floating button counts the selection and clears it.
 //!
-//! - The list: itemSize = width / 4 square cells (padding 4), rows from the list's top, scrolled
-//!   by `offset`; paddingBottom safeBottom + 10. A cell's index is
-//!   floor(x / itemSize) + 4 × floor((y + offset) / itemSize), clamped to 0…49.
-//! - The pan (Gesture.Exclusive(pan, tap)): onBegin the start index; onUpdate the pending range
-//!   start…index (rebuilt when the cell changes, the current selection losing what it covers),
-//!   and scrollTo(offset ∓ itemSize × 0.15) when y + offset ≤ offset + itemSize or ≥ that + the
-//!   window's height − 2 × itemSize; onEnd a one-cell range toggles it, a longer one joins the
-//!   selection; onFinalize clears the pending range. The tap (maxDelta 5) toggles its cell.
-//! - A cell: the photo (contentFit cover) in a view of radius 10 + border and a border
-//!   (withTiming(active ? 4 : 0), #55D5FF while active, else #000) that clips it; a 24 pt badge
-//!   (#55D5FF, radius 12, AntDesign check 16 black) at the cell's bottom-left, opacity
-//!   withTiming(active), scale withSpring(active) (Reanimated's default).
-//! - The button (bottom 20, right 20, 96 × 64, radius 20, #55D5FF, boxShadow 0 0 20px
-//!   rgba(0,0,0,0.5) → σ 10): MaterialIcons clear 20 and the count (20, black, 32 wide) spaced
-//!   evenly; translateY withSpring(count == 0 ? 150 : 0); a PressableScale (0.96, 250 ms; the
-//!   shared `pressto::Pressable`) whose press (lifted inside it) clears the selection and posts `press` (the app's selection haptic).
-//!
-//! - The FlatList's own scroll: the pan and the UIScrollView's pan recognizer are not
-//!   simultaneous (RNGH's `shouldRecognizeSimultaneouslyWithGestureRecognizer` answers NO for a
-//!   non-RNGH recognizer that is not a `Gesture.Native` dummy), so each drag is one or the
-//!   other. A UIScrollView that can only scroll vertically does not begin on a drag that sets
-//!   off sideways, which the pan then takes; a drag that sets off 30° or more off the
-//!   horizontal scrolls the list (measured on RN: 20° and 27° select, 35° and 45° scroll).
-//!   The scroll is UIScrollView's (`ui_scroll`, measured on this FlatList and the scroll probe):
-//!   it begins on the second move past the 10 pt hysteresis, 1:1 from there, rubber-banded past
-//!   the ends, flings at 0.998 per ms onto UIKit's projected rest, bounces back critically damped.
-//! - scrollTo (Reanimated's dispatches RN's `scrollTo` command): RCTScrollViewComponentView
-//!   clamps the offset into [min(−inset.top, 0), max(contentHeight − boundsHeight + inset.bottom
-//!   + max(inset.top, 0), 0.01)] (no contentInset here: [0, max(content − bounds, 0.01)]).
-//! - expo-image `transition={100}`: each photo, when it is first set, cross-dissolves in over
-//!   100 ms with UIKit's `curveEaseInOut` (cubic-bezier(0.42, 0, 0.58, 1)); skipOnCacheHit is
-//!   `none`, so a cached photo fades too. The cells mount as the FlatList renders them
-//!   (initialNumToRender 20, then batches of 10 every 50 ms).
-//!
-//! The photos are what picsum.photos served for `200/200?key=<i>` (random, cached by RN), kept
-//! in images/ at their 200 px. The button is continuous (`borderCurve: 'continuous'`); its
-//! boxShadow is RN's shadowPath, which RCTBoxShadow builds with circular corners. A cell's outer
-//! continuous view paints nothing (no background, border or clip); its inner view is circular.
+//! - The selection pan and the list's scroll are exclusive: each drag is one or the other. A drag
+//!   less than 30° off the horizontal selects; 30° or more scrolls the list, 1:1 from the second
+//!   move past 10 pt, with UIKit's rubber band and fling.
+//! - Haptics: a light impact when a drag-select starts, a selection tick as cells change (at most
+//!   one per TICK_MS), and a soft impact when it ends.
+//! - Photos cross-dissolve in over FADE_MS as the list renders them. The button is continuous.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -49,11 +15,8 @@ use gesture_handler::{Event, PanGesture, Phase, TapGesture};
 use pressto::{PressEvent, Pressable};
 use reanimated::{duration_config, Easing, Spring, SpringConfig as Config, Timing};
 
-/// Beyond RN (phone feedback 2026-11-15: "faster animations, the haptics are missing"): the
-/// border and badge fade in 200 ms (RN: 300), the badge's scale and the button's rise run
-/// critically damped in 300 / 350 ms (RN: the default spring, ~1 s to rest), and the surface
-/// posts haptics RN has none of: a selection tick as cells turn on or off (at most one per
-/// 40 ms), a light impact when a drag-select starts and a soft one when it ends.
+/// The border and badge fade over FADE_SELECT_MS. The badge and button springs are critically
+/// damped, settling in 300 and 350 ms.
 const FADE_SELECT_MS: f64 = 200.0;
 const TICK_MS: f64 = 40.0;
 fn badge_spring() -> Config {
@@ -67,25 +30,25 @@ use skia::{fit_cover, Canvas, Color, Font, Images, Paint, Rect, Renderer};
 use crate::gfx;
 use crate::ui_scroll::{self, Snap, UiScroll};
 
-/// GridConfig.
+/// Grid columns, and the cells' padding in points.
 const COLUMNS: usize = 4;
 const PADDING: f32 = 4.0;
-/// The data's length.
+/// Photos in the grid.
 const ITEMS: usize = 50;
-/// Palette.primary.
+/// The selection colour.
 const PRIMARY: u32 = 0x55D5FF;
-/// DEMO_BUTTON_ROW_HEIGHT.
+/// Height of the row above the list, in points.
 const BUTTON_ROW: f64 = 56.0;
-/// expo-image `transition={100}`: ms, with UIKit's curveEaseInOut.
+/// Photo cross-dissolve, in ms, with an ease-in-out curve.
 const FADE_MS: f64 = 100.0;
-/// VirtualizedList: initialNumToRender, maxToRenderPerBatch, updateCellsBatchingPeriod.
+/// The list renders INITIAL_RENDER photos at once, then BATCH more every BATCH_MS.
 const INITIAL_RENDER: usize = 20;
 const BATCH: usize = 10;
 const BATCH_MS: f64 = 50.0;
-/// styles.floating.
+/// The floating button's size, in points.
 const FAB_W: f32 = 96.0;
 const FAB_H: f32 = 64.0;
-/// AntDesign check, MaterialIcons clear.
+/// Icon glyphs: a check and a clear.
 const CHECK: &str = "\u{F141}";
 const CLEAR: &str = "\u{E14C}";
 static ANTDESIGN: &[u8] = include_bytes!("../fonts/antdesign-subset.ttf");
@@ -135,7 +98,7 @@ fn grid() -> SelectableGrid {
         last_tick: f64::NEG_INFINITY,
         check: Font::new(ANTDESIGN, 16.0).map(Font::with_ui_layout),
         clear: Font::new(MATERIAL, 20.0).map(Font::with_ui_layout),
-        // ReText: a TextInput, laid out by UIKit (tracking, kerning).
+        // A text input's font, with UIKit's tracking and kerning.
         label: skia::match_ui_font(20.0, 400.0),
         images: None,
         canvas: Canvas::default(),
@@ -147,30 +110,29 @@ struct SelectableGrid {
     size: (f64, f64),
     safe_top: f64,
     safe_bottom: f64,
-    /// The FlatList's UIScrollView (vertical: fed with x and y swapped); its offset is
-    /// contentOffsetY (past the ends while it bounces).
+    /// The list's scroll (vertical, fed with x and y swapped). Its offset goes past the ends while it bounces.
     list: UiScroll,
     /// The finger the selection pan took from the scroll view (not fed to it any more).
     scroller: Option<u32>,
     /// The finger the scroll view took (the pan failed for it).
     scrolling: Option<u32>,
-    /// When the list first drew (the FlatList's mount).
+    /// When the list first drew. Photos load from there.
     opened: Option<f64>,
     /// Each photo's cross-dissolve.
     fade: [Timing; ITEMS],
-    /// currentActiveIndexes.
+    /// The confirmed selection.
     current: [bool; ITEMS],
-    /// pendingIndexes: an inclusive range.
+    /// The drag's pending range, inclusive, shown as selected.
     pending: Option<(usize, usize)>,
-    /// initialSelectedIndex.
+    /// Where the drag started.
     start: Option<usize>,
-    /// lastPendingFinalIndex.
+    /// The drag's last end cell, to skip repeats.
     last_pending: Option<usize>,
     /// Where the finger went down (the pan's translation starts at its activation).
     down: (f32, f32),
     pan: PanGesture,
     tap: TapGesture,
-    /// totalActiveIndexes, per cell, as the items last saw it.
+    /// Whether each cell was selected at the last frame.
     active: [bool; ITEMS],
     border: [Timing; ITEMS],
     badge: [Timing; ITEMS],
@@ -212,7 +174,7 @@ impl SelectableGrid {
         let content = rows * self.item() + self.safe_bottom + 10.0;
         (content - self.bounds()).max(0.01)
     }
-    /// calculateGridItemPosition: (x, y) in the list's view.
+    /// The cell under (x, y) in the list's view.
     fn index_at(&self, x: f64, y: f64) -> usize {
         let item = self.item();
         let index = (x / item).floor() + COLUMNS as f64 * ((y + self.offset()) / item).floor();
@@ -232,9 +194,7 @@ impl SelectableGrid {
         let (w, h) = (self.size.0 as f32, self.size.1 as f32);
         (w - 20.0 - FAB_W, h - 20.0 - FAB_H + self.fab_y.value as f32)
     }
-    /// Reanimated's `scrollTo(ref, 0, y, false)`: RN's command clamps it, and it stops the
-    /// scroll view's own motion (`setContentOffset:animated:NO`).
-    /// The scroll view's range and port from the window's size.
+    /// The list's scroll range and port, from the window's size.
     fn sync_list(&mut self) {
         self.list.max = self.max_offset();
         self.list.port = self.bounds().max(1.0);
@@ -302,8 +262,7 @@ impl Surface for SelectableGrid {
         }
         if self.fab_press.finger() == Some(id) {
             if let Some(PressEvent::Press(press)) = self.fab_press.pointer(id, phase, on_fab) {
-                // gridListRef.current.reset(); the app's haptic, posted as `press` (what
-                // selectable-grid-list.contract listens for).
+                // Clears the selection. The app plays its haptic on `press`.
                 self.current = [false; ITEMS];
                 self.pending = None;
                 if press.global {
@@ -323,11 +282,8 @@ impl Surface for SelectableGrid {
             self.scroller = None;
             self.scrolling = None;
         }
-        // The FlatList's UIScrollView sees every touch on the list (a down catches a fling) until
-        // the selection pan takes a drag that set off sideways.
-        // Measured on RN (sim, slow straight drags from a cell): 20° and 27° off the horizontal
-        // select, 35° and 45° scroll; the UIScrollView takes a drag whose vertical travel is at
-        // least tan 30° of its sideways one when the pan activates.
+        // The list's scroll sees every touch until the selection pan takes a drag that sets off sideways.
+        // A drag 30° or more off the horizontal scrolls the list; less than that selects.
         let mut sideways = false;
         if let Event::Start(e) = event {
             let (dx, dy) = (e.x - self.down.0, e.y - self.down.1);
@@ -336,7 +292,7 @@ impl Surface for SelectableGrid {
                 self.posted.push("haptic:impact-light".into());
             }
             if !sideways {
-                // The UIScrollView began: the pan fails (onFinalize), the list scrolls from here.
+                // The list takes the drag: the pan fails and the list scrolls from here.
                 self.pending = None;
                 self.start = None;
                 self.scrolling = Some(id);
@@ -403,7 +359,7 @@ impl Surface for SelectableGrid {
             }
             _ => {}
         }
-        // The tap, once the pan has failed (Exclusive).
+        // A tap toggles its cell, unless the pan has taken the touch.
         let claim = on_list && !self.pan.active();
         if let Event::Tap { .. } = self.tap.event(id, phase, x, y, at_ms, claim) {
             let i = self.index_at(lx, ly);
@@ -424,7 +380,7 @@ impl Surface for SelectableGrid {
         let now = frame.now_ms;
         self.sync_list();
         let mut moving = self.list.step(now);
-        // The FlatList's mount: the photos' loads (and fades) start with their batch.
+        // The photos start their fades in batches after the list opens.
         let opened = *self.opened.get_or_insert(now);
         for (i, fade) in self.fade.iter_mut().enumerate() {
             let batch = if i < INITIAL_RENDER {
@@ -544,7 +500,7 @@ impl Surface for SelectableGrid {
                         &Paint::fill(Color::view_hex(PRIMARY)),
                     );
                     if let Some(font) = self.check.as_ref() {
-                        // Centred in the 24 pt badge as Yoga places a Text (see `glyph_box`).
+                        // Centred in the badge (see `glyph_box`).
                         let (gx, base) = glyph_box(font, CHECK, 24.0, 24.0, s_px);
                         c.draw_text(
                             CHECK,
@@ -576,7 +532,7 @@ impl Surface for SelectableGrid {
                 20.0,
                 &Paint::fill(Color::view_hex(PRIMARY)),
             );
-            // space-evenly over 76: the icon's Text (its measured 20.333) and the count (32).
+            // The icon and the count are spaced evenly.
             if let Some(font) = self.clear.as_ref() {
                 let iw = text_side(font.advance_width(CLEAR), s_px);
                 let gap = (FAB_W - 20.0 - iw - 32.0) / 3.0;
@@ -586,9 +542,8 @@ impl Surface for SelectableGrid {
                 if let Some(label) = self.label.as_ref() {
                     let text = &self.counts[self.count];
                     let tw = label.advance_width(text);
-                    // ReText is a TextInput: UITextField centres its line one device pixel above
-                    // where a Text would sit (measured: the count was 1 px low).
-                    // A TextInput's edge, Yoga-rounded half up.
+                    // A text input centres its line one device pixel higher than a text does.
+                    // The count's left edge, rounded to the pixel.
                     let x = ((10.0 + 2.0 * gap + iw) * s_px + 1e-4).round() / s_px;
                     let base =
                         gfx::baseline(label, (FAB_H - gfx::line_height(label)) / 2.0) - 1.0 / s_px;
@@ -623,16 +578,12 @@ impl Surface for SelectableGrid {
 fn text_grid(v: f32, s: f32) -> f32 {
     (v * s + 1e-3).floor() / s
 }
-/// A Text's measured side: Yoga ceils it to the device pixel after an epsilon (20 measures 20.333).
+/// A text's measured side, ceiled to the device pixel after an epsilon.
 fn text_side(v: f32, s: f32) -> f32 {
     ((v * s + 1e-4).floor() + 1.0) / s
 }
-/// An icon-font `<Text>` centred in a `w` × `h` box (justify/align center): its x (the box's
-/// floored offset) and its baseline, from the box's top-left. The Text's height is the font's
-/// hhea ascent + descent (no lineGap), ceiled; the baseline an ascent below its top, on the next
-/// device pixel down (CoreGraphics). Measured: the AntDesign check and the MaterialIcons clear
-/// sat 1 px right and 1 px low centred on their advance and unrounded line; both now on RN's
-/// pixels (ink centroids equal).
+/// An icon glyph centred in a `w` × `h` box: its x, and its baseline from the box's top-left. The box
+/// is the font's ascent + descent, ceiled to the pixel; the baseline lands on the next pixel down.
 fn glyph_box(font: &Font, glyph: &str, w: f32, h: f32, s: f32) -> (f32, f32) {
     let m = font.metrics();
     let tw = text_side(font.advance_width(glyph), s);
@@ -815,7 +766,7 @@ mod tests {
         assert_eq!(s.offset(), 0.0);
         s.scroll_to(1e6);
         assert_eq!(s.offset(), s.max_offset());
-        // Content shorter than the list: RN's maxRect keeps 0.01 of room.
+        // Content shorter than the list keeps 0.01 of room.
         s.size = (420.0, 4000.0);
         assert_eq!(s.max_offset(), 0.01);
     }

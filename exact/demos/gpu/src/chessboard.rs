@@ -1,76 +1,15 @@
-//! Chessboard (src/animations/chessboard: src/index.tsx, use-chess-game.ts, state.ts, utils.ts,
-//! constants.ts, theme.ts, haptics.ts, history-sync.tsx, checkmate-aura.tsx, wave-shader.ts,
-//! components/{board,player-card,game-review-card}.tsx; react-native-chessboard 0.2.0 with the
-//! app's patch: state/*, hooks/*, components/skia/*, components/promotion-dialog.tsx; chess.js
-//! 1.4.0: [`chess`]). Lasker–Thomas, London 1912, one move before 18. Kd2#: a live board for
-//! both sides, two player cards with chess clocks, and on checkmate the screen's snapshot swept
-//! by a glass wave into a haze under the game review card.
+//! Chessboard: a live board for both sides, with two player cards and chess clocks, on a puzzle
+//! (Lasker–Thomas, London 1912, after 16. Be2+). On checkmate, a glass wave sweeps the screen's
+//! snapshot into a haze under the game review card.
 //!
-//! The RN source ported: the files' modification times of the user's working tree (2026-11-10
-//! 05:45 for board, game-review-card, constants, move-history, state, theme, types,
-//! use-chess-game, utils; checkmate-aura 2026-11-09 21:43; player-card 2026-10-21; wave-shader
-//! 2026-10-03; index 2026-06-13). `SHOW_CHROME = false` there: no header, status caption, move
-//! history, New Game or play/pause button, so neither the `Alert` nor `togglePlay` can be reached
-//! (pausedRef stays false).
-//!
-//! Layout (Yoga, an iPhone Air 420 × 912): root #0d0e12; content paddingTop 12, paddingBottom 28;
-//! the board zone centres the top group (gap 10): the black card (paddingHorizontal 16), the
-//! board (the screen's width, pieceSize = width / 8), the white card.
-//!
-//! The board is react-native-chessboard's Skia canvas (an 8-bit Display P3 surface:
-//! `gfx::P3Layer`): 64 squares, the labels (matchFont System at pieceSize × 0.15), per square the
-//! last-move and check rects fading over 180 ms linear, the valid-move dots (one path of circles,
-//! r = pieceSize × 0.15, rgba(0,0,0,0.3) at opacity 0.5) and the pieces (one `<Atlas>` of the
-//! 6 × 2 sprite sheet, zIndex-sorted, scaled about the square's centre). The cards, the review card
-//! and the promotion dialog are RN views (Display P3 colours: `Color::view_hex`), Core Animation's.
-//!
-//! Motion audit:
-//!
-//! | value | RN driver / config | here |
-//! |---|---|---|
-//! | piece translateX/Y (move, slide) | withSpring(MOVE_SPRING: 400, 40, 1, energyThreshold 1e-4); the commit rides the axis that travels | `Spring::assign` + `with_threshold`, [`Done`] |
-//! | piece translateX/Y (snap back, promotion cancel) | withSpring(SNAP_BACK_SPRING: 350, 37, 1) | the same |
-//! | piece scale | lift withSpring(1.1, SCALE_SPRING: 600, 49, 1), drop withSpring(1) | the same |
-//! | drag | Pan minDistance 5 (custom criteria): onBegin stores the piece's offset to the finger, onUpdate follows `x − offset − pieceSize / 2` | `PanGesture::min_distance(5)` |
-//! | tap | Tap (no distance limit, 500 ms), simultaneous with the pan: select / deselect / move | `TapGesture` |
-//! | highlights | useDerivedValue(withTiming(flag, 180 linear)) per square | `Timing` per square |
-//! | card active | useAnimatedReaction(!gameOver && turn == side) → withTiming(0/1, 280) | `Timing` |
-//! | turn dot pulse | withRepeat(withTiming(1, 950, inOut(ease)), −1, true); off: withTiming(0, 200) | [`Pulse`] |
-//! | card bg / border | rgba(surface / border, active.toFixed(3)) | the same |
-//! | clock tint, text | opacity active; interpolateColor(active, textMuted → text), RGB gamma 2.2 | the same |
-//! | dot slot | width, marginRight = active × 6 (a layout per frame) | the same |
-//! | clocks | setInterval 1000 from mount: −1 s for the side to move once started, until mate/stalemate | the same |
-//! | aura | onMove(mate) + 580 ms: measureInWindow, show(): snapshot, next frame vis = 1, progress withTiming(1, 3000 linear), breath withRepeat(withTiming(1, 4200, inOut(ease)), −1, true) | the same (a frame per await) |
-//! | review card | setTimeout(round(3000 × 0.55) − 750) after show(); each section enter(d): opacity 0 → 1, translateY 9 → 0, scale 0.985 → 1, withDelay(d, 400 ms bezier(0.16, 0.84, 0.44, 1)) | [`Section`] |
-//! | card blur | filter blur(blurIn × 16), blurIn withTiming(1 → 0, 650, out(cubic)) | none: RN 0.88's iOS view applies `blur` only with `enableSwiftUIBasedFilters` (false by default, not set by the app), so RN shows no blur |
-//! | hide | vis withTiming(0, 360, in(cubic)); at ≤ 0.01 the snapshot and card are dropped | the same |
-//! | Back / Replay | pressto PressableScale: hide + rematch / hide + playSequence | `pressto::Pressable` |
-//! | promotion dialog | Modal fade; FadeIn(200); TouchableOpacity 0.7 (in at once, out 250 inOut(quad)) | [`Promotion`] |
-//! | haptics | moveTick: impactMedium (capture), impactRigid (check), impactLight; mate: MATE_PATTERN (Core Haptics) | `haptic:impact-*`; `haptic:mate` / `haptic:mate-stop` to the `mate-haptic` view; impacts on the web (see [`MATE`]) |
-//!
-//! Not modelled: `flipped` (never set), the board's `highlight()` colours (never called), the
-//! check / stalemate shader effects (`renderEffect` is not passed).
-//!
-//! Past RN (the owner's phone note mwhlpkfj-6464e0, 2026-11-15: "it stutters a lot, the
-//! opponent's move is missing; a concentric Hint / View solution button, as in Patterns"): the
-//! board is a puzzle, as the owner's Patterns app plays one (use-tactic-solver.ts). It opens two
-//! plies before RN's START_FEN, on 16. Be2+ ([`PUZZLE_FEN`]); 900 ms in (RN's START_DELAY) the
-//! opponent's setup move 16...Kg2 slides in, then the user (White, Lasker) plays 17. Rh2+, the
-//! opponent answers 17...Kg1 500 ms after the move (Patterns' replyDelayMs), and 18. Kd2# (or any
-//! other mate) ends it into RN's aura. A legal move off the line is held on its square, shaken,
-//! posts `haptic:error` and springs home (Patterns' "animate the wrong piece back"). The inputs
-//! (hint taps, solution taps: counters from the Contract's glass bar) climb Patterns' ladder: the
-//! hint marks the piece to move (BOARD_HINT_HIGHLIGHT), a second one its square, View solution
-//! plays the move. The surface posts `puzzle:<wait|play|hint1|hint2|done>` on each change (the
-//! first is the Contract's sign that this build has the puzzle).
-//!
-//! Per frame, only what moved is drawn again: the board's squares, labels and highlights, the
-//! pieces (one atlas) and the player cards are three layers, each re-recorded and re-rendered
-//! when its own content changes; the cards' pulsing turn dot is drawn analytically in the
-//! compose pass, so the 950 ms pulse no longer redraws the cards' full-screen MSAA layer every
-//! frame. A drag or a move re-renders the pieces alone.
+//! - Drag: the piece follows the finger and lands on the square it is released on, or springs back.
+//!   Tap: select a piece, then tap a square to move it.
+//! - Haptics: medium on a capture, rigid on a check, light otherwise; a mate pattern at checkmate;
+//!   error on a legal move off the puzzle line.
+//! - A legal move off the line lands, shakes and springs home. Each change posts
+//!   `puzzle:<wait|play|hint1|hint2|done>`.
 
-// chess.js's whole API (reset, isAttacked, isGameOver too), not only what the board calls.
+// Full API: not every item is used by the board.
 #[allow(dead_code)]
 mod chess;
 
@@ -84,33 +23,30 @@ use skia::{Canvas, Color, Font, Image, Images, Matrix, Paint, Renderer, RsXform}
 
 use crate::gfx;
 
-/// constants.ts START_FEN: the position after 17...Kg1.
+/// The position after 17...Kg1.
 pub const START_FEN: &str = "rn3r2/pbppq1p1/1p2pN2/8/3P2NP/6P1/PPP1BP1R/R3K1k1 w Q - 5 18";
-/// PLAYERS.
 const NAME: [&str; 2] = ["lasker", "enzo"];
 const RATING: [&str; 2] = ["IM", "???"];
-/// CLOCK_START (seconds).
+/// Starting clock per side, in seconds.
 const CLOCK_START: [i32; 2] = [74, 23];
-/// REPLAY.
+/// Replay timings, in ms.
 const START_DELAY: f64 = 900.0;
 const MOVE_GAP: f64 = 260.0;
 const AURA_DELAY: f64 = 580.0;
-/// The puzzle's position: after 16. Be2+, Black (the opponent) to play its setup move.
+/// The puzzle's start: after 16. Be2+, Black to play its setup move.
 pub const PUZZLE_FEN: &str = "rn3r2/pbppq1p1/1p2pN2/8/3P2NP/5kP1/PPP1BP2/R3K2R b KQ - 2 16";
-/// The line from PUZZLE_FEN (REVIEW_MOVES' last four plies): 16...Kg2 17. Rh2+ Kg1 18. Kd2#.
-/// The replay (Replay on the review card) plays it all.
+/// The solution from PUZZLE_FEN: 16...Kg2 17. Rh2+ Kg1 18. Kd2#.
 const SOLUTION: [(&str, &str); 4] = [("f3", "g2"), ("h1", "h2"), ("g2", "g1"), ("e1", "d2")];
-/// The side the user plays.
 const USER: Side = Side::W;
-/// Patterns' replyDelayMs: the opponent answers this long after the user's move.
+/// The opponent answers this long after the user's move, in ms.
 const REPLY_DELAY: f64 = 500.0;
-/// A wrong move: its piece lands, shakes from `WRONG_SHAKE_AT` for `WRONG_SHAKE_MS`, then goes home.
+/// Shake timing for a wrong move, in ms.
 const WRONG_SHAKE_AT: f64 = 220.0;
 const WRONG_SHAKE_MS: f64 = 320.0;
-/// A captured piece fades and shrinks as the capturer lands (from `CAPTURE_AT`, `CAPTURE_MS`).
+/// Capture fade timing, in ms.
 const CAPTURE_AT: f64 = 90.0;
 const CAPTURE_MS: f64 = 200.0;
-/// wave-shader.ts.
+/// Checkmate wave and fade timings, in ms.
 const WAVE_MS: f64 = 3000.0;
 const EXIT_MS: f64 = 360.0;
 
@@ -118,7 +54,7 @@ const MOVE_SPRING: Cfg = Cfg { c: SpringConfig { stiffness: 400.0, damping: 40.0
 const SCALE_SPRING: Cfg = Cfg { c: SpringConfig { stiffness: 600.0, damping: 49.0, mass: 1.0 }, threshold: 6e-9 };
 const SNAP_BACK_SPRING: Cfg = Cfg { c: SpringConfig { stiffness: 350.0, damping: 37.0, mass: 1.0 }, threshold: 6e-9 };
 
-/// theme.ts (each a Display P3 view colour on iOS).
+/// Colours as 0xRRGGBB, shown in Display P3 on iOS.
 mod theme {
     pub const BG: u32 = 0x0d0e12;
     pub const SURFACE: u32 = 0x17191f;
@@ -133,17 +69,16 @@ mod theme {
     pub const BOARD_DARK: u32 = 0x818895;
 }
 
-/// REVIEW_MOVES' qualities, ply by ply (even White, odd Black).
+/// Move quality per ply: even plies are White's, odd plies Black's.
 #[rustfmt::skip]
 const REVIEW: [Q; 35] = [
     Q::Book, Q::Book, Q::Book, Q::Book, Q::Book, Q::Book, Q::Book, Q::Good, Q::Good, Q::Good, Q::Excellent, Q::Inaccuracy,
     Q::Best, Q::Mistake, Q::Best, Q::Blunder, Q::Best, Q::Inaccuracy, Q::Great, Q::Miss, Q::Brilliant, Q::Best, Q::Best,
     Q::Best, Q::Best, Q::Best, Q::Best, Q::Best, Q::Best, Q::Best, Q::Best, Q::Best, Q::Best, Q::Best, Q::Best,
 ];
-/// REVIEW_ACCURACY.
 const ACCURACY: [&str; 2] = ["98.1", "64.3"];
 
-/// game-review-card.tsx QUALITY, in TABLE_ORDER.
+/// Quality kinds, in the review table's order.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Q {
     Brilliant,
@@ -202,7 +137,7 @@ impl Q {
     }
 }
 
-/// VALUE.
+/// Material value of a piece, in pawns.
 fn value(k: Kind) -> i32 {
     match k {
         Kind::P => 1,
@@ -213,11 +148,10 @@ fn value(k: Kind) -> i32 {
     }
 }
 
-/// haptics.ts MATE_PATTERN's discrete events (ms, amplitude). On Apple the surface posts
-/// `haptic:mate` (play) and `haptic:mate-stop` (rematch's `mateHaptic.stop()`), which the demo
-/// hands to the app module's `mate-haptic` view (modules/apple/Demos.swift: the whole Core Haptics
-/// pattern, rumble included). Where that view doesn't exist (the web build) each event plays as
-/// the nearest UIKit impact (amplitude ≥ 0.9 heavy, ≥ 0.5 medium, else light).
+/// Mate haptic events (ms, amplitude). On Apple the surface posts `haptic:mate` and
+/// `haptic:mate-stop` for the `mate-haptic` view, which plays the whole Core Haptics pattern.
+/// Without that view (the web build) each event plays as the nearest UIKit impact: amplitude
+/// ≥ 0.9 heavy, ≥ 0.5 medium, else light.
 const MATE: [(f64, f64); 16] = [
     (0.0, 0.45),
     (90.0, 0.25),
@@ -247,7 +181,7 @@ static IONICONS: &[u8] = include_bytes!("../fonts/ionicons-chessboard-subset.ttf
 static MENLO_BOLD: &[u8] = include_bytes!("../fonts/menlo-bold-chessboard-subset.ttf");
 static ZAPF: &[u8] = include_bytes!("../fonts/zapfdingbats-chessboard-subset.ttf");
 
-/// The UI's bitmaps, in [`Images`] order: RN `<Image>` decodes (gpu/images/chessboard/make.sh).
+/// The UI's bitmaps, in [`Images`] order; see gpu/images/chessboard/make.sh.
 static UI_IMAGES: [(&[u8], u32); 22] = [
     (include_bytes!("../images/chessboard/avatar-lasker-120x120.rgba8.zlib"), 120),
     (include_bytes!("../images/chessboard/avatar-enzo-120x120.rgba8.zlib"), 120),
@@ -278,7 +212,6 @@ fn avatar_image(side: Side, big: bool) -> usize {
 fn tray_image(side: Side, k: Kind) -> usize {
     4 + side as usize * 5 + k as usize
 }
-/// PROMOTION_PIECES: q, r, b, n.
 const PROMOTION_PIECES: [Kind; 4] = [Kind::Q, Kind::R, Kind::B, Kind::N];
 fn promo_image(side: Side, i: usize) -> usize {
     14 + side as usize * 4 + i
@@ -299,19 +232,18 @@ struct Cfg {
     threshold: f64,
 }
 
-/// What a spring's completion callback does (move-executor.ts).
+/// What a spring's completion callback does.
 #[derive(Clone, Copy, Debug)]
 enum Done {
-    /// commitMove: on a finished spring the piece lands on `to` and `from` resets; then the move's
-    /// `onAnimationComplete` (resolving the awaited `move()`), finished or not.
+    /// Lands the piece on `to` when the spring finishes, and resets `from`.
+    /// Resolves the awaited move, finished or not.
     Commit { from: i32, to: i32, piece: Option<Piece>, token: Option<u64> },
-    /// The castling rook's commit.
     Rook { from: i32, to: i32, piece: Option<Piece> },
-    /// resetBoard's slide: zIndex back to 0, finished or not.
+    /// Sets zIndex back to 0, finished or not.
     DropZ { sq: i32 },
 }
 
-/// A shared value that a `withSpring` with a callback may drive.
+/// An animated value that a spring with a completion callback may drive.
 #[derive(Clone, Copy)]
 struct Anim {
     s: Spring,
@@ -347,7 +279,7 @@ impl Anim {
     }
 }
 
-/// state/types.ts SquareState, with its highlight worklets' timings.
+/// Per-square state: the piece, its motion and its highlight fades.
 #[derive(Clone)]
 struct SquareState {
     piece: Option<Piece>,
@@ -359,12 +291,12 @@ struct SquareState {
     in_check: bool,
     last_fade: Timing,
     check_fade: Timing,
-    /// A hint's mark (the piece to move, then its square), fading as the highlights do.
+    /// A hint's mark, on the piece to move and then on its square.
     hint: bool,
     hint_fade: Timing,
 }
 
-/// A captured piece on its way out (`at`: the capture).
+/// A captured piece fading out; `at` is when it was taken.
 #[derive(Clone, Copy, Debug)]
 struct Ghost {
     sq: i32,
@@ -372,14 +304,14 @@ struct Ghost {
     at: f64,
 }
 
-/// A wrong move: the piece from `sq` sits on `to`, shakes, and goes home.
+/// A wrong move on `sq`: it shakes from `at`, then goes home.
 #[derive(Clone, Copy, Debug)]
 struct Wrong {
     sq: i32,
     at: f64,
 }
 
-/// withRepeat(withTiming(1, …), −1, true) from where it is, or a plain withTiming.
+/// A timing that repeats back and forth, or runs once.
 #[derive(Clone)]
 struct Pulse {
     t: Timing,
@@ -393,7 +325,7 @@ impl Pulse {
     fn value(&self) -> f64 {
         self.t.value
     }
-    /// withRepeat(withTiming(1, { duration, easing }), -1, true), started at `now`.
+    /// Starts an endless back-and-forth repeat from the current value.
     fn repeat(&mut self, duration: f64, easing: Easing, now: f64) {
         let start = self.t.value;
         self.t.to(1.0, duration, easing.clone());
@@ -408,7 +340,7 @@ impl Pulse {
         let moving = self.t.step(now);
         if !moving {
             if let Some((start, duration, easing)) = self.repeat.clone() {
-                // repeat.ts: reversed, the nested timing restarts at this frame toward the old start.
+                // Each leg reverses toward the start value.
                 let from = self.t.value;
                 self.t.to(start, duration, easing.clone());
                 self.t.step(now);
@@ -427,7 +359,7 @@ struct CardAnim {
     pulse: Pulse,
 }
 
-/// A ply (state.ts Ply).
+/// One move in the history: its SAN, FEN and squares.
 #[derive(Clone, Debug)]
 struct Ply {
     #[allow(dead_code)]
@@ -437,7 +369,7 @@ struct Ply {
     to: i32,
 }
 
-/// The promotion picker (gesture-board.tsx promotionInfoRef + PromotionDialog).
+/// The promotion picker: the pending move and its dialog's fade.
 struct Promotion {
     from: i32,
     to: i32,
@@ -449,7 +381,7 @@ struct Promotion {
     held: Option<(u32, Option<usize>, bool)>,
 }
 
-/// One section of the review card (an `entering={enter(delay)}` view) or one of its buttons.
+/// One section of the review card, or one of its buttons.
 #[derive(Clone, Copy, Debug)]
 struct Section {
     rect: [f32; 4],
@@ -457,7 +389,7 @@ struct Section {
     button: Option<usize>,
 }
 
-/// The checkmate aura (checkmate-aura.tsx) and its review card.
+/// The checkmate aura and its review card.
 struct Aura {
     origin: (f32, f32),
     winner: Side,
@@ -470,7 +402,7 @@ struct Aura {
     card: Option<f64>,
 }
 
-/// The replay (playSequence).
+/// The replay of the line, played move by move.
 #[derive(Clone, Copy, Debug)]
 enum Replay {
     Wait { until: f64, next: usize },
@@ -535,20 +467,20 @@ impl Fonts {
     }
 }
 
-/// Snaps to the device grid as Yoga rounds an edge (half up).
+/// Snaps to the device pixel grid, rounding half up.
 fn snap(v: f32, s: f32) -> f32 {
     (v * s + 1e-4).round() / s
 }
-/// A Text's position (Yoga floors a Text node's offset).
+/// Floors a text position to the device pixel grid.
 fn floor_px(v: f32, s: f32) -> f32 {
     (v * s + 1e-3).floor() / s
 }
-/// A Text's measured size, ceiled to the pixel after an epsilon.
+/// Ceils a text size to the device pixel grid.
 fn ceil_px(v: f32, s: f32) -> f32 {
     (v * s - 1e-3).ceil() / s
 }
 
-/// An RN Text line: drawn with its box top at `top`, its baseline on the next device pixel down.
+/// Draws a text line with its box top at `top`, its baseline on the next device pixel down.
 fn draw_line(c: &mut Canvas, t: &str, x: f32, top: f32, font: &Font, color: Color, spacing: f32, s: f32) {
     let base = ((gfx::baseline(font, top)) * s - 1e-3).ceil() / s;
     c.draw_text_spaced(t, x, base, font, &Paint::fill(color), spacing);
@@ -558,12 +490,12 @@ fn view(hex: u32, a: f32) -> Color {
     Color::view_hex(hex).alpha(a)
 }
 
-/// toRgba's alpha: clamped, toFixed(3).
+/// Clamps an alpha to 0..1, rounded to three decimals.
 fn fixed3(a: f64) -> f32 {
     ((a.clamp(0.0, 1.0) * 1000.0).round() / 1000.0) as f32
 }
 
-/// interpolateColor(v, [0, 1], [a, b]) in RGB with gamma 2.2, each channel rounded.
+/// Mixes two colours in RGB with gamma 2.2, rounding each channel.
 fn mix_gamma(a: u32, b: u32, v: f64) -> u32 {
     let ch = |c: u32, k: u32| ((c >> (16 - 8 * k)) & 0xff) as f64 / 255.0;
     let mut out = 0;
@@ -575,12 +507,11 @@ fn mix_gamma(a: u32, b: u32, v: f64) -> u32 {
     out
 }
 
-/// Square → its top-left in the board (squareToPosition, not flipped).
+/// A square's top-left corner in the board, not flipped.
 fn pos(sq: i32, ps: f32) -> (f32, f32) {
     ((sq & 0xf) as f32 * ps, (sq >> 4) as f32 * ps)
 }
 
-/// positionToSquare.
 fn square_at(x: f32, y: f32, ps: f32) -> i32 {
     let col = (x / ps).floor() as i32;
     let row = (y / ps).floor() as i32;
@@ -605,7 +536,7 @@ struct Gpu {
     sheet: wgpu::TextureView,
     modal: wgpu::TextureView,
     dummy: wgpu::TextureView,
-    /// The passes' bind groups (made once: their textures live as long as this).
+    /// Bind groups, made once: they live as long as the textures.
     groups: Option<[wgpu::BindGroup; 3]>,
 }
 
@@ -615,7 +546,6 @@ pub fn surface() -> Box<dyn Surface> {
 }
 
 struct Chessboard {
-    // react-native-chessboard
     chess: Chess,
     squares: Vec<SquareState>,
     turn: Side,
@@ -630,7 +560,6 @@ struct Chessboard {
     promotion: Option<Promotion>,
     callbacks: Vec<(Done, bool)>,
     js: Vec<Js>,
-    // use-chess-game / state.ts
     plies: Vec<Ply>,
     selected_ply: i32,
     history_prev: (i32, usize),
@@ -648,8 +577,8 @@ struct Chessboard {
     aura_timer: Option<(f64, Side)>,
     show_at: Option<(f64, Side)>,
     mate_haptics: Vec<(f64, &'static str)>,
-    // the puzzle
-    /// When the opponent's next move (the setup move, then each reply) plays.
+    // Puzzle state.
+    /// When the opponent's next move plays: the setup move, then each reply.
     reply_at: Option<f64>,
     /// The hint's rung on this move: 0, 1 (the piece), 2 (its square).
     hint: u8,
@@ -660,7 +589,6 @@ struct Chessboard {
     mode: &'static str,
     /// The inputs' counters as last seen (hint taps, solution taps); None before the first bind.
     seen: Option<(f64, f64)>,
-    // the views
     cards: [CardAnim; 2],
     aura: Option<Aura>,
     busy: bool,
@@ -668,13 +596,12 @@ struct Chessboard {
     buttons: [Pressable; 2],
     held: Option<u32>,
     messages: Vec<String>,
-    // drawing
     size: (f32, f32),
     scale: f32,
     now: f64,
     board_dirty: bool,
     pieces_dirty: bool,
-    /// What the cards' layer was last drawn from (redrawn only when it changes).
+    /// The inputs the cards' layer was last drawn from, redrawn only on change.
     cards_key: Vec<f64>,
     sheet_dirty: bool,
     modal_dirty: bool,
@@ -689,8 +616,7 @@ struct Chessboard {
 }
 
 fn initial_captures() -> [Vec<Kind>; 2] {
-    // capturesFromFen(START_FEN) (PUZZLE_FEN's material is START_FEN's): the opponent's pieces
-    // missing from a full set, by the taker.
+    // Captures are the pieces missing from a full set. PUZZLE_FEN has START_FEN's material.
     let chess = Chess::new(PUZZLE_FEN).unwrap();
     let full = [(Kind::P, 8), (Kind::N, 2), (Kind::B, 2), (Kind::R, 2), (Kind::Q, 1)];
     let mut left = [[0i32; 6]; 2];
@@ -793,7 +719,7 @@ impl Chessboard {
         self.size.0 / 8.0
     }
 
-    /// createSquareStates: every square's piece at its position.
+    /// Creates every square's state from the position.
     fn mount_squares(&mut self) {
         let ps = self.ps();
         for row in 0..8 {
@@ -809,7 +735,6 @@ impl Chessboard {
         self.turn = self.chess.turn();
     }
 
-    // ---- react-native-chessboard: move-executor.ts ----
 
     fn update_highlights_after_move(&mut self, from: i32, to: i32) {
         if let Some((a, b)) = self.last_move {
@@ -839,7 +764,7 @@ impl Chessboard {
         let now = self.now;
         let moving = self.squares[from as usize].piece;
         if mv.captured.is_some() {
-            // Past RN (which drops it at once): the taken piece fades and shrinks as the capturer lands.
+            // The taken piece fades and shrinks as the capturer lands.
             if let Some(piece) = self.squares[to as usize].piece.take() {
                 self.ghosts.push(Ghost { sq: to, piece, at: now });
             }
@@ -870,7 +795,7 @@ impl Chessboard {
             r.ty.spring(rp.1 as f64, MOVE_SPRING, now, None, q);
         }
         if mv.flags.contains('e') {
-            // capturedPawnSquare: to's file, from's rank.
+            // En passant: the captured pawn is on `to`'s file and `from`'s rank.
             let sq = (from & 0x70) | (to & 0xf);
             if let Some(piece) = self.squares[sq as usize].piece.take() {
                 self.ghosts.push(Ghost { sq, piece, at: now });
@@ -897,11 +822,10 @@ impl Chessboard {
         }
     }
 
-    /// tryMove: the move's promise resolves (`Js::Resolved(token)`) once its animation settles,
-    /// at once when it is illegal or abandoned.
+    /// Resolves the move's promise after its animation, or at once if it is refused.
     fn try_move(&mut self, from: i32, to: i32, promotion: Option<Kind>, token: Option<u64>) {
         if self.is_promotion_move(from, to) && promotion.is_none() {
-            // onPromotionRequired: a pending one is abandoned first.
+            // A pending promotion is abandoned first.
             if let Some(old) = self.promotion.take() {
                 if let Some(t) = old.token {
                     self.js.push(Js::Resolved(t));
@@ -916,7 +840,7 @@ impl Chessboard {
     }
 
     fn attempt(&mut self, from: i32, to: i32, promotion: Option<Kind>, token: Option<u64>) {
-        // A user's move (the replay's carry a token) is checked against the line first.
+        // Only the user's own moves are checked against the puzzle line.
         if token.is_none() && !self.running && self.off_line(from, to, promotion) {
             self.reject(from, to);
             return;
@@ -940,16 +864,15 @@ impl Chessboard {
         self.board_dirty = true;
     }
 
-    // ---- the puzzle (Patterns' use-tactic-solver.ts) ----
+    // The puzzle.
 
     /// The move the line expects next, if any.
     fn expected(&self) -> Option<(i32, i32)> {
         SOLUTION.get(self.plies.len()).map(|&(a, b)| (chess::square(a).unwrap(), chess::square(b).unwrap()))
     }
 
-    /// Whether the user's move is legal but off the line (a mate is never off it: any mate
-    /// solves the puzzle, as on Lichess). An illegal one is the board's (it simply fails): a drag
-    /// sends its drop twice (the pan's and the tap's), the second no longer legal.
+    /// Whether a legal move is off the line. Any mate solves the puzzle, so it is never off it.
+    /// A drag's drop arrives twice (pan and tap); the second one is already illegal.
     fn off_line(&self, from: i32, to: i32, promotion: Option<Kind>) -> bool {
         if self.expected() == Some((from, to)) {
             return false;
@@ -1072,7 +995,7 @@ impl Chessboard {
         self.execute_move(from, to, None, None);
     }
 
-    /// What the Contract's bar shows: `wait`, `play`, `hint1`, `hint2` or `done`.
+    /// The mode the bar shows: wait, play, hint1, hint2 or done.
     fn puzzle_mode(&self) -> &'static str {
         if self.game_over || self.aura.is_some() {
             "done"
@@ -1177,14 +1100,13 @@ impl Chessboard {
         }
     }
 
-    // ---- use-board-gesture.ts ----
 
     fn board_input(&mut self, id: u32, phase: Phase, x: f32, y: f32, ms: f64) {
         let ps = self.ps();
         let top = self.board_top();
         let (bx, by) = (x, y - top);
         let inside = bx >= 0.0 && bx < self.size.0 && by >= 0.0 && by < self.size.0;
-        // The puzzle: the board takes a finger only on the user's turn.
+        // The board takes a finger only on the user's turn.
         let enabled = self.promotion.is_none() && self.user_can_move();
         let claim = phase == Phase::Down && inside && enabled;
         let pan = self.pan.event(id, phase, bx, by, ms, claim);
@@ -1221,7 +1143,6 @@ impl Chessboard {
             _ => {}
         }
         if matches!(pan, Event::End(_) | Event::Fail) {
-            // onFinalize.
             if let Some(sq) = self.dragged {
                 let s = &mut self.squares[sq as usize];
                 if s.z > 0 {
@@ -1321,7 +1242,6 @@ impl Chessboard {
         self.valid.clear();
     }
 
-    // ---- use-chess-game.ts ----
 
     fn on_move(&mut self, mv: &chess::Move, fen: String, check: bool, mate: bool, stalemate: bool) {
         let mover = mv.color;
@@ -1347,7 +1267,7 @@ impl Chessboard {
         if mate {
             self.mated_by = Some(mover);
         }
-        // The puzzle: after the user's move, the opponent's reply (the replay plays its own).
+        // After the user's move the opponent answers; a replay plays its own moves.
         if !self.game_over && !self.running && mover == USER && self.plies.len() < SOLUTION.len() {
             self.reply_at = Some(self.now + REPLY_DELAY);
         }
@@ -1380,13 +1300,13 @@ impl Chessboard {
         }
     }
 
-    /// gameResultAtom.
+    /// The side that mated, if the game ended in checkmate.
     fn winner(&self) -> Option<Side> {
-        // The puzzle opens on Black's move, so the ply count's parity no longer says who mated.
+        // The puzzle opens on Black's move, so ply parity cannot say who mated.
         (self.status == "Checkmate").then_some(self.mated_by).flatten()
     }
 
-    /// selectedPlyAtom's writes, with HistorySync's subscription.
+    /// Selects a ply in the history.
     fn set_selected_ply(&mut self, v: i32) {
         if v == self.selected_ply {
             return;
@@ -1411,7 +1331,7 @@ impl Chessboard {
         self.reset_board(&fen, slide, last);
     }
 
-    /// resetGameAtom.
+    /// Resets the game state.
     fn reset_game(&mut self) {
         self.plies.clear();
         self.set_selected_ply(-1);
@@ -1448,7 +1368,7 @@ impl Chessboard {
         self.hide();
         self.reset_board(PUZZLE_FEN, None, None);
         self.reset_game();
-        // The puzzle again: the opponent's setup move after the same beat as on opening.
+        // The setup move comes after the same beat as on opening.
         self.reply_at = Some(self.now + START_DELAY);
     }
 
@@ -1527,7 +1447,7 @@ impl Chessboard {
         }
         if let Some((t, mover)) = self.aura_timer {
             if t <= now {
-                // showAura: measureInWindow resolves a frame later.
+                // The aura shows a frame later, once its position is measured.
                 self.aura_timer = None;
                 self.show_at = Some((now + 16.0, mover));
             }
@@ -1548,7 +1468,7 @@ impl Chessboard {
         self.reply_step();
     }
 
-    /// show(): the snapshot of the screen, the overlay a frame after, the card 900 ms on.
+    /// Takes the screen's snapshot; the overlay follows a frame later and the card 900 ms on.
     fn show(&mut self, mover: Side) {
         if self.busy {
             return;
@@ -1574,7 +1494,7 @@ impl Chessboard {
         });
     }
 
-    /// kingFromFen on the last ply's FEN (the position on the board at the mate).
+    /// The mated king's square, read from the last ply's FEN.
     fn chess_from_fen_king(&self, color: Side) -> Option<i32> {
         let fen = self.plies.last().map(|p| p.fen.as_str()).unwrap_or(PUZZLE_FEN);
         let placement = fen.split(' ').next()?;
@@ -1595,10 +1515,10 @@ impl Chessboard {
         None
     }
 
-    // ---- layout ----
+    // Layout.
 
     fn hair(&self) -> f32 {
-        // StyleSheet.hairlineWidth: PixelRatio.roundToNearestPixel(0.4).
+        // A hairline is 0.4 pt, rounded to whole device pixels, at least one.
         ((0.4 * self.scale).round().max(1.0)) / self.scale
     }
 
@@ -1630,7 +1550,7 @@ impl Chessboard {
         format!("{}:{:02}", s / 60, s % 60)
     }
 
-    // ---- the review card's layout (game-review-card.tsx), at rest ----
+    // The review card's layout at rest.
 
     fn review_rows(&self) -> Vec<(Q, usize, usize)> {
         TABLE_ORDER
@@ -1711,7 +1631,7 @@ impl Chessboard {
         (x - cx).abs() <= w / 2.0 * k && (y - cy).abs() <= h / 2.0 * k
     }
 
-    // ---- the promotion dialog's layout ----
+    // The promotion dialog's layout.
 
     fn modal_rects(&self) -> ([f32; 4], [[f32; 4]; 4]) {
         let (w, h) = (16.0 + 4.0 * (64.0 + 8.0), 80.0);
@@ -1721,7 +1641,7 @@ impl Chessboard {
         ([x, y, w, h], buttons)
     }
 
-    /// Modal fade (crossDissolve) × FadeIn(200), and whether it still shows.
+    /// The dialog's fade, and whether it is still visible.
     fn modal_alpha(&self) -> (f32, f32) {
         let Some(p) = self.promotion.as_ref() else {
             return (0.0, 0.0);
@@ -1833,7 +1753,7 @@ impl Chessboard {
         self.run_callbacks();
     }
 
-    // ---- stepping ----
+    // Stepping.
 
     fn step(&mut self) -> bool {
         let now = self.now;
@@ -1899,7 +1819,7 @@ impl Chessboard {
             moving |= a.breath.step(now);
             let was = a.vis.value;
             moving |= a.vis.step(now);
-            // The reaction on vis: fully hidden → the snapshot and the card go.
+            // Fully hidden: the snapshot and the card are dropped.
             if was > 0.01 && a.vis.value <= 0.01 {
                 self.aura = None;
                 self.busy = false;
@@ -1930,10 +1850,10 @@ impl Chessboard {
     }
 }
 
-// ---- drawing ----
+// Drawing.
 
 impl Chessboard {
-    /// react-native-chessboard's canvas: BoardBackground, SkiaHighlights, SkiaDots, the atlas.
+    /// The board's canvas: background, highlights, dots and the piece atlas.
     fn draw_board(&mut self) {
         let ps = self.ps();
         let s = self.scale;
@@ -1965,13 +1885,9 @@ impl Chessboard {
                 c.draw_text(&(8 - row).to_string(), ps * 0.05, y + ps * 0.18, font, &Paint::fill(color));
             }
         }
-        // The last move, on its from and to squares (the opponent's reply too): Patterns' gold
-        // (packages/theme patterns.ts iceGlacier moveHighlight, the palette nearest this slate
-        // board), the owner's note mwhmyeq3-004cad; RN's BOARD_COLORS.lastMoveHighlight was the
-        // accent at 0.4.
+        // The last move's squares are gold, not the accent, to read on this board.
         let last = Color::parse("rgba(235, 199, 105, 0.5)");
         let check = Color::hex(theme::LOSE);
-        // Patterns' BOARD_HINT_HIGHLIGHT (src/utils/board-highlight.ts).
         let hint = Color::parse("rgba(124, 92, 200, 0.55)");
         for row in 0..8 {
             for col in 0..8 {
@@ -2000,7 +1916,7 @@ impl Chessboard {
         }
     }
 
-    /// The pieces: one atlas over the board's layer (the taken pieces fading out first).
+    /// The pieces: one atlas over the board, with taken pieces fading out first.
     fn draw_pieces(&mut self) {
         let ps = self.ps();
         let mut c = std::mem::take(&mut self.canvas);
@@ -2047,7 +1963,7 @@ impl Chessboard {
         self.canvas = c;
     }
 
-    /// The two player cards (player-card.tsx).
+    /// The two player cards.
     fn draw_cards(&mut self) {
         let mut c = std::mem::take(&mut self.canvas);
         c.begin(self.scale);
@@ -2065,7 +1981,7 @@ impl Chessboard {
         let active = anim.active.value;
         let (x0, y0) = (16.0, self.card_top(side));
         let (w, h) = (self.size.0 - 32.0, self.card_h());
-        // Card: the continuous background layer, RCTBorderDrawing's circular ring over it.
+        // The card's background, then its border ring.
         let a = fixed3(active);
         if a > 0.0 {
             c.draw_continuous_rrect(x0, y0, w, h, 18.0, &Paint::fill(view(theme::SURFACE, a)));
@@ -2073,7 +1989,6 @@ impl Chessboard {
         }
         let (cx, cy) = (x0 + hair + 6.0, y0 + hair + 6.0);
         let cw = w - 2.0 * (hair + 6.0);
-        // Avatar: 40, radius 12 continuous, clipped, Core Animation's hairline border.
         if let Some(images) = self.images.as_ref() {
             c.save();
             c.clip_continuous_rrect(cx, cy, 40.0, 40.0, 12.0);
@@ -2085,7 +2000,6 @@ impl Chessboard {
             skia::add_continuous_rrect(b, cx, cy, 40.0, 40.0, 12.0);
             skia::add_continuous_rrect_hole(b, cx + hair, cy + hair, 40.0 - 2.0 * hair, 40.0 - 2.0 * hair, 12.0 - hair);
         });
-        // Clock: paddings 9, the dot slot (6 × active, margin 6 × active), the 44-wide readout.
         let rt_h = self.line(&f.clock);
         let ch = 18.0 + rt_h;
         let clock_w = 62.0 + 12.0 * active as f32;
@@ -2099,18 +2013,17 @@ impl Chessboard {
             c.draw_rect(clock_l, clock_t, clock_r - clock_l, ch, &Paint::fill(view(theme::ACCENT, 0.15)).with_opacity(active as f32));
         }
         c.restore();
-        // The dot in its slot pulses every frame: the compose pass draws it ([`Self::turn_dot`]).
+        // The turn dot is drawn by the compose pass, not here.
         let slot = 6.0 * active as f32;
         if let Some(font) = f.clock.as_ref() {
             let text = self.clock_text(side);
             let tw = font.advance_width_spaced(&text, 0.3);
             let rl = snap(clock_l + 9.0 + slot + slot, s);
             let color = view(mix_gamma(theme::TEXT_MUTED, theme::TEXT, active), 1.0);
-            // ReText (a UITextField): centred in its 44, a device pixel above a Text's line.
+            // Centred in its 44 pt, a device pixel higher than a text line.
             let top = clock_t + 9.0 - 1.0 / s;
             draw_line(c, &text, rl + (44.0 - tw) / 2.0, top, font, color, 0.3, s);
         }
-        // Info: the name row (name, rating, result tag) and the capture tray, gap 3.
         let info_l = cx + 40.0 + 12.0;
         let name_h = self.line(&f.name);
         let info_t = cy + snap((40.0 - (name_h + 3.0 + 16.0)) / 2.0, s);
@@ -2134,7 +2047,7 @@ impl Chessboard {
             c.draw_continuous_rrect(x, tt, tw, th, 5.0, &Paint::fill(view(hue, 0.15)));
             draw_line(c, label, x + 6.0, tt + 2.0, font, view(hue, 1.0), 0.6, s);
         }
-        // Tray: the foe's pieces, value-sorted, 16 each overlapping 5; the material lead.
+        // Taken pieces, value-sorted and overlapping.
         let tray_t = info_t + name_h + 3.0;
         let mut pieces = self.captured[side as usize].clone();
         pieces.sort_by_key(|&k| value(k));
@@ -2166,8 +2079,8 @@ impl Chessboard {
         }
     }
 
-    /// The turn dot (player-card.tsx's pulsing dot in the clock): its centre, half size, corner
-    /// radius (points, the pulse's scale applied) and opacity; zeros when its slot is closed.
+    /// The turn dot's centre, half size, corner radius (points) and opacity.
+    /// All zero when its slot is closed.
     fn turn_dot(&self, side: Side) -> [f32; 8] {
         let s = self.scale;
         let hair = self.hair();
@@ -2189,14 +2102,14 @@ impl Chessboard {
         let op = (active * (0.45 + pulse * 0.55)) as f32;
         let k = (0.8 + pulse * 0.5) as f32;
         let sw = snap(slot, s);
-        // The rrect (slot_l, top, sw, 6, radius 3) scaled by k about (dx, dy).
+        // Scales the dot's rounded rect about its centre.
         let (dx, dy) = (slot_l + sw / 2.0, clock_t + ch / 2.0);
         let top = snap(clock_t + (ch - 6.0) / 2.0, s);
         let my = dy + (top + 3.0 - dy) * k;
         [dx, my, sw / 2.0 * k, 3.0 * k, (sw / 2.0).min(3.0) * k, op, 0.0, 0.0]
     }
 
-    /// What the cards' layer shows, but the dot: when it changes, the layer is drawn again.
+    /// What the cards' layer shows, without the turn dot. Redrawn when this changes.
     fn cards_key(&self) -> Vec<f64> {
         let mut k = vec![self.size.0 as f64, self.size.1 as f64, self.scale as f64, self.images.is_some() as u8 as f64];
         for side in [Side::W, Side::B] {
@@ -2208,7 +2121,7 @@ impl Chessboard {
         k
     }
 
-    /// The review card's sections at rest (the sheet the composite moves).
+    /// The review card's sections at rest, drawn as one sheet and moved each frame.
     fn draw_sheet(&mut self) {
         let mut c = std::mem::take(&mut self.canvas);
         c.begin(self.scale);
@@ -2305,7 +2218,7 @@ impl Chessboard {
         self.canvas = c;
     }
 
-    /// qGlyph: the system font 11 / 900 (CoreText's fallback for ⌑ and ✕), centred in its 22.
+    /// Centred in its 22 pt box. The ⌑ and ✕ glyphs come from the fallback font.
     fn draw_glyph(&self, c: &mut Canvas, glyph: &str, x: f32, y: f32) {
         let s = self.scale;
         let f = &self.fonts;
@@ -2317,7 +2230,7 @@ impl Chessboard {
         let (Some(font), Some(base)) = (font, f.glyph.as_ref()) else {
             return;
         };
-        // The line: the taller of the system face and the fallback face (usesFontLeading NO).
+        // The line is as tall as the taller of the system and fallback faces.
         let asc = (-base.metrics().ascent).max(-font.metrics().ascent);
         let lh = ceil_px(gfx::line_height(base).max(gfx::line_height(font)), s);
         let w = ceil_px(font.advance_width(glyph), s);
@@ -2682,7 +2595,7 @@ fn bytes(v: &[f32]) -> Vec<u8> {
 }
 
 impl Surface for Chessboard {
-    /// Inputs: the Contract bar's Hint taps and View solution taps (counters: each rise is a tap).
+    /// Inputs: the hint and solution taps, as counters (each rise is one tap).
     fn bind(&mut self, inputs: &[Value], _: Option<f64>) -> Result<(), SurfaceError> {
         let n = |i: usize| inputs.get(i).and_then(|v| v.as_number()).unwrap_or(0.0);
         let (hints, solves) = (n(0), n(1));
@@ -2742,7 +2655,7 @@ impl Surface for Chessboard {
             self.run_js();
             return;
         }
-        // The overlay takes the touches while vis > 0.5 (pointerEvents 'auto'): the card's buttons.
+        // Above half visibility the overlay takes touches for the card's buttons.
         let overlay = self.aura.as_ref().is_some_and(|a| a.vis.value > 0.5);
         if overlay || self.held.is_some() {
             if phase == Phase::Down && self.held.is_none() {
@@ -2782,12 +2695,12 @@ impl Surface for Chessboard {
         if first {
             self.mount_squares();
             self.next_tick = Some(self.now + 1000.0);
-            // The puzzle opens on the opponent's setup move, after RN's beat on the position.
+            // The opponent's setup move comes after a short beat.
             self.reply_at = Some(self.now + START_DELAY);
         }
         if resized {
             if !first {
-                // A flip / resize snaps every piece to its square (use-board-state.ts).
+                // A resize snaps every piece to its square.
                 let ps = self.ps();
                 let mut q = Vec::new();
                 for i in 0..128 {
@@ -2844,21 +2757,19 @@ impl Surface for Chessboard {
             self.sheet_dirty = true;
             self.modal_dirty = true;
         }
-        // The board's canvas.
         if self.board_dirty {
             self.board_dirty = false;
             self.draw_board();
             let gpu = self.gpu.as_ref().unwrap();
             self.p3.draw(&mut self.renderers[0], device, queue, encoder, &self.canvas, &gpu.board, wgpu::TextureFormat::Rgba8Unorm, board_px, board_px, wgpu::Color::TRANSPARENT);
         }
-        // The pieces' canvas, over it.
         if self.pieces_dirty {
             self.pieces_dirty = false;
             self.draw_pieces();
             let gpu = self.gpu.as_ref().unwrap();
             self.p3_pieces.draw(&mut self.renderers[4], device, queue, encoder, &self.canvas, &gpu.pieces, wgpu::TextureFormat::Rgba8Unorm, board_px, board_px, wgpu::Color::TRANSPARENT);
         }
-        // The cards, when they changed (the turn dot is the compose pass's).
+        // Redrawn only when their inputs change; the turn dot is not part of it.
         let key = self.cards_key();
         if key != self.cards_key {
             self.cards_key = key;
@@ -2880,7 +2791,6 @@ impl Surface for Chessboard {
             let gpu = self.gpu.as_ref().unwrap();
             self.renderers[3].draw(device, queue, encoder, &self.canvas, &gpu.modal, wgpu::TextureFormat::Rgba8Unorm, px.0, px.1, wgpu::Color::TRANSPARENT);
         }
-        // Uniforms.
         let (m, mf) = self.modal_alpha();
         let ([_, _, _, _], mbuttons) = self.modal_rects();
         let mut u = vec![0f32; UNIFORM_SIZE / 4];
@@ -2959,7 +2869,7 @@ impl Surface for Chessboard {
         let gpu = self.gpu.as_ref().unwrap();
         let [g_compose, g_wave, g_finish] = gpu.groups.as_ref().unwrap();
         skia::render::fullscreen_pass(encoder, "chessboard compose", &gpu.screen, &gpu.compose, g_compose);
-        // show(): the snapshot of the screen as it is now; the overlay comes in on the next frame.
+        // The overlay appears on the frame after the snapshot is taken.
         let mut wave = false;
         if let Some(a) = self.aura.as_mut() {
             if a.snapshot_at.is_none() {
@@ -3030,15 +2940,12 @@ mod tests {
     #[test]
     fn the_layout_is_yogas() {
         let c = surface_at(0.0);
-        // Cards 52.667 tall, the group (545.333) centred in 872 below 12.
         assert!((c.card_h() - 52.6667).abs() < 1e-3);
         assert!((c.group_top() - 175.3333).abs() < 1e-3, "{}", c.group_top());
         assert!((c.board_top() - 238.0).abs() < 1e-3);
         assert!((c.card_top(Side::W) - 668.0).abs() < 1e-3);
-        // Captures seeded from START_FEN: White took p, p, n, b; Black p, b, q (+5).
         assert_eq!(c.captured[0], vec![Kind::P, Kind::P, Kind::N, Kind::B]);
         assert_eq!(c.captured[1], vec![Kind::P, Kind::B, Kind::Q]);
-        // The review: all ten qualities occur (White, Black).
         let rows = c.review_rows();
         assert_eq!(rows.len(), 10);
         assert_eq!(rows[3], (Q::Best, 10, 7));
@@ -3051,7 +2958,7 @@ mod tests {
         c.input(&touch(id, PointerPhase::Up, x, y, ms + 50.0));
     }
 
-    /// The opening beat, 16...Kg2 (the setup move), 17. Rh2+ tapped, and the reply 17...Kg1.
+    /// Plays the opening beat: 16...Kg2, then 17. Rh2+ and the reply 17...Kg1.
     fn to_the_mate(c: &mut Chessboard) -> f64 {
         c.reply_at = Some(START_DELAY);
         run(c, 0.0, 1000.0);
@@ -3074,14 +2981,12 @@ mod tests {
         let mut c = surface_at(0.0);
         c.reply_at = Some(START_DELAY);
         assert_eq!((c.chess.turn(), c.puzzle_mode()), (Side::B, "wait"));
-        // A finger on the board before the setup move does nothing.
         tap(&mut c, 1, "h1", 100.0);
         assert_eq!(c.selected, None);
         run(&mut c, 0.0, 880.0);
         assert_eq!(c.plies.len(), 0);
         run(&mut c, 880.0, 940.0);
         assert_eq!(c.plies.len(), 1);
-        // It slides (spring) from f3 to g2 on top, with a haptic.
         let f3 = chess::square("f3").unwrap() as usize;
         assert_eq!(c.squares[f3].z, 100);
         assert!(c.messages().contains(&"haptic:impact-light".to_string()));
@@ -3104,7 +3009,6 @@ mod tests {
             c.input(&touch(1, PointerPhase::Move, x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, ms));
             run(&mut c, ms - 16.0, ms);
         }
-        // Lifted: the pan's drop and the tap (no distance limit, under 500 ms) both land on d2.
         assert!(c.valid.contains(&chess::square("d2").unwrap()), "{:?}", c.valid);
         ms += 16.0;
         c.input(&touch(1, PointerPhase::Up, x1, y1, ms));
@@ -3114,10 +3018,8 @@ mod tests {
         assert!(c.game_over && c.started);
         assert_eq!(c.puzzle_mode(), "done");
         run(&mut c, ms, ms + 1000.0);
-        // The king landed (committed) on d2.
         assert_eq!(c.squares[chess::square("d2").unwrap() as usize].piece, Some(Piece { color: Side::W, kind: Kind::K }));
         assert_eq!(c.squares[chess::square("e1").unwrap() as usize].piece, None);
-        // The mated king's square is lit; the aura showed at 580 ms + a frame.
         assert!(c.squares[chess::square("g1").unwrap() as usize].in_check);
         assert!(c.aura.is_some() && c.busy);
         let msgs = c.messages();
@@ -3132,27 +3034,23 @@ mod tests {
         c.reply_at = Some(START_DELAY);
         run(&mut c, 0.0, 1000.0);
         c.messages();
-        // Tap the f6 knight, then d7: Nxd7 is legal but off the line.
         tap(&mut c, 1, "f6", 1000.0);
         assert_eq!(c.selected, chess::square("f6"));
         tap(&mut c, 2, "d7", 1200.0);
         assert_eq!(c.plies.len(), 1, "not played");
         assert_eq!(c.messages(), vec!["haptic:error".to_string()]);
         assert_eq!(c.puzzle_mode(), "wait");
-        // On d7, shaking.
         run(&mut c, 1250.0, 1500.0);
         let f6 = chess::square("f6").unwrap();
         assert!(c.shake(f6).abs() > 0.5, "{}", c.shake(f6));
         let (d7x, _) = pos(chess::square("d7").unwrap(), c.ps());
         assert!((c.squares[f6 as usize].tx.s.value as f32 - d7x).abs() < 6.0, "{}", c.squares[f6 as usize].tx.s.value);
-        // Home again, the d7 pawn untouched, the board the user's again.
         run(&mut c, 1500.0, 3000.0);
         let (hx, hy) = pos(f6, c.ps());
         assert!((c.squares[f6 as usize].tx.s.value as f32 - hx).abs() < 0.5 && (c.squares[f6 as usize].ty.s.value as f32 - hy).abs() < 0.5);
         assert_eq!(c.squares[f6 as usize].z, 0);
         assert_eq!(c.squares[chess::square("d7").unwrap() as usize].piece, Some(Piece { color: Side::B, kind: Kind::P }));
         assert_eq!(c.puzzle_mode(), "play");
-        // White's clock burns from the setup move (0.9 s): 74 → 71 by 3 s (ticks at 1, 2 and 3 s).
         assert_eq!(c.clock[0], 71);
     }
 
@@ -3169,12 +3067,10 @@ mod tests {
         c.bind(&[Value::Number(2.0), Value::Number(0.0)], None).unwrap();
         assert!(c.squares[h1].hint && c.squares[h2].hint);
         assert_eq!(c.puzzle_mode(), "hint2");
-        // A third hint has nothing more to show.
         c.bind(&[Value::Number(3.0), Value::Number(0.0)], None).unwrap();
         assert_eq!(c.hint, 2);
         run(&mut c, 1000.0, 1200.0);
         assert!(c.squares[h1].hint_fade.value > 0.99);
-        // View solution: 17. Rh2+ plays, the marks go, the reply follows.
         c.bind(&[Value::Number(3.0), Value::Number(1.0)], None).unwrap();
         assert_eq!(c.plies.len(), 2);
         assert!(!c.squares[h1].hint && !c.squares[h2].hint && c.hint == 0);
@@ -3203,11 +3099,9 @@ mod tests {
         let mut c = surface_at(0.0);
         c.reset_board("8/4P1k1/8/8/8/8/8/4K3 w - - 0 1", None, None);
         c.select_piece(chess::square("e7").unwrap());
-        // The board's own promotion (the replay's token passes the puzzle's line check).
         c.try_move(chess::square("e7").unwrap(), chess::square("e8").unwrap(), None, Some(9));
         assert!(c.promotion.is_some());
         run(&mut c, 0.0, 400.0);
-        // Tap the knight (the fourth button).
         let (_, buttons) = c.modal_rects();
         let [x, y, w, h] = buttons[3];
         c.input(&touch(3, PointerPhase::Down, x + w / 2.0, y + h / 2.0, 400.0));
@@ -3222,7 +3116,6 @@ mod tests {
     fn castling_mates_too_and_back_restarts_the_puzzle() {
         let mut c = surface_at(0.0);
         let ms = to_the_mate(&mut c);
-        // Tap e1, tap c1: O-O-O#, off the line but a mate, the rook riding from a1 to d1.
         tap(&mut c, 1, "e1", ms);
         tap(&mut c, 2, "c1", ms + 100.0);
         assert_eq!(c.status, "Checkmate");
@@ -3231,7 +3124,6 @@ mod tests {
         assert_eq!(at(&c, "d1"), Some(Piece { color: Side::W, kind: Kind::R }));
         assert_eq!(at(&c, "c1"), Some(Piece { color: Side::W, kind: Kind::K }));
         assert_eq!(at(&c, "a1"), None);
-        // The card is up (the overlay shown, as render() reveals it): Back.
         let a = c.aura.as_mut().unwrap();
         assert!(a.card.is_some());
         a.revealed = true;
@@ -3249,7 +3141,6 @@ mod tests {
         assert_eq!(at(&c, "f3"), Some(Piece { color: Side::B, kind: Kind::K }));
         assert_eq!((c.plies.len(), c.status.as_str(), c.clock), (0, "Black to move", CLOCK_START));
         assert_eq!(c.captured, initial_captures());
-        // The setup move plays again.
         run(&mut c, ms + 1200.0, ms + 2000.0);
         assert_eq!(c.plies.len(), 1);
     }
@@ -3280,14 +3171,11 @@ mod tests {
         let (rest, _) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         assert!(s.messages().contains(&"puzzle:wait".to_string()));
         gfx::save_over(&rest, "chessboard-rest", [13, 14, 18]);
-        // a8 (light) and b8 (dark) at the board's top-left (board top 238).
         let light = rest.at(3 * 4, 3 * 240);
         let dark = rest.at(3 * 60, 3 * 240);
         assert!(light[0] > 210 && dark[0] < 150 && dark[0] > 110, "{light:?} {dark:?}");
-        // The root's colour above the black card.
         let top = rest.at(30, 30);
         assert!(top[0] < 20 && top[2] < 25, "{top:?}");
-        // The setup move, View solution (17. Rh2+), the reply: frames all the way.
         let mut ms = 0.0;
         let frames = |s: &mut Box<dyn Surface>, to: f64, ms: &mut f64| {
             while *ms < to {
@@ -3301,11 +3189,9 @@ mod tests {
         frames(&mut s, 2400.0, &mut ms);
         let agent = s.agent("{}").unwrap();
         assert!(agent.contains("\"plies\":3") && agent.contains("\"mode\":\"play\""), "{agent}");
-        // The pieces' layer: the black king has left f3 (a light square, bare now).
         let (moved, _) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         let (fx, fy) = ((3.0 * 288.75) as u32, (3.0 * 526.75) as u32);
         assert!(rest.at(fx, fy)[0] < 150 && moved.at(fx, fy)[0] > 200, "{:?} {:?}", rest.at(fx, fy), moved.at(fx, fy));
-        // Drag e1 → d2: mate; the aura sweeps; the card comes.
         let p = |ph, x, y, ms| touch(1, ph, x, y, ms);
         let (x0, y0) = (4.5 * 52.5, 238.0 + 7.5 * 52.5);
         let (x1, y1) = (3.5 * 52.5, 238.0 + 6.5 * 52.5);
@@ -3331,7 +3217,6 @@ mod tests {
         assert!(agent.contains("\"status\":\"Checkmate\"") && agent.contains("\"card\":true"), "{agent}");
         let (end, _) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         gfx::save_over(&end, "chessboard-review", [13, 14, 18]);
-        // The Replay button (#f0f2f5) near the bottom right; the haze above it is dark.
         let replay = end.at(3 * 320, 3 * 840);
         assert!(replay[0] > 200, "{replay:?}");
         let haze = end.at(3 * 210, 3 * 150);

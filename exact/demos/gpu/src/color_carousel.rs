@@ -1,33 +1,16 @@
-//! Color Carousel (src/animations/color-carousel): a window-wide square (index.tsx) with a
-//! radial gradient (centre (w/2, w/2), radius w/2, from the active item's accent colour to
-//! BACKGROUND_COLOR #111111) under a paged horizontal strip of 24 items (two empty at each
-//! end, then constants.ts's twenty colours), each `w / 5` wide and `(w / 5) / (3 / 4)` tall,
-//! centred on the square's middle (components/carousel). The strip is a horizontal ScrollView
-//! over the square (ui_scroll.rs: UIKit's drag, rubber band, bounce and deceleration):
-//! decelerationRate 0.8, which UIKit clamps to fast (0.99), and snapToOffsets at every item
-//! (index × itemWidth; on iOS they override pagingEnabled). With evenly spaced offsets
-//! RCTEnhancedScrollView's rule is the interval's: the offset at or past UIKit's projected target
-//! in the velocity's direction (the nearest with none), clamped to the content.
+//! Color Carousel: a square with a radial glow in the active card's colour, over a paged
+//! horizontal strip of colour cards. The centred card is largest; the others shrink and turn
+//! away from the centre in perspective.
 //!
-//! Per item (carousel-item.tsx), from translateX = −scrollX:
-//! - position = index × itemWidth + translateX; distance = |w/2 − ((position + w/2 +
-//!   itemWidth/2) % w)| (JS `%`); n = 1 − distance / (w/2).
-//! - scale = interpolate(n, [0, 1], [2, 0.8], CLAMP); zIndex = floor(interpolate(n, [0, 1],
-//!   [1000, 0], CLAMP)) (drawn back to front, ties in index order).
-//! - rotateY = interpolate(preciseActiveIndex − index − 0.5, [−2, −1, 0, 1, 2], [−25, −20, 0,
-//!   20, 25]) degrees (EXTEND), preciseActiveIndex = 2 + (scrollX + itemWidth/2) / itemWidth.
-//! - transform [scale, perspective 500, rotateY] about the item's centre; the card fills it:
-//!   radius 5, its colour, boxShadow 0 0 5px rgba(0,0,0,0.25).
-//!
-//! The active index is floor(preciseActiveIndex); the gradient's colour follows it with
-//! withTiming (300 ms, inOut(quad)) in Reanimated's colour space (each channel in gamma 2.2,
-//! rounded back to 8 bits), from `Color(c).darken(0.1).hex()`.
-//!
-//! Haptics (past RN, which plays none: the owner's haptic language): `haptic:selection` each
-//! time the active (centred) colour changes, during the drag and the glide, with SWITCH of
-//! hysteresis past the line between two cards (a finger hovering there does not flap) and at
-//! most one per HAPTIC_GAP_MS; `haptic:impact-rigid` once each time the strip is pulled or
-//! thrown past an end (the rubber band).
+//! - The strip snaps to whole cards. A release lands on the card the flick projects to, clamped
+//!   to the content.
+//! - Cards are drawn back to front, by distance from the centre.
+//! - The glow eases to the centred colour over 300 ms, in linear light, so the midpoint is not
+//!   muddy.
+//! - Haptics: a selection each time the centred colour changes, during the drag and the glide.
+//!   Hysteresis past the line between two cards keeps a hovering finger from flapping, and
+//!   selections come at most one per HAPTIC_GAP_MS. A rigid impact each time the strip is pulled
+//!   or thrown past an end.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
@@ -39,27 +22,27 @@ use crate::{gfx, shaders};
 use exact_gpu::InputEvent;
 use shaders::color_carousel::{entry, module, Uniforms, CARDS, GROUP_0, U};
 
-/// The twenty colours (constants.ts).
+/// The twenty card colours.
 const COLORS: [u32; 20] = [
     0x336699, 0x6699CC, 0x99CCFF, 0xCCCCFF, 0x99CC99, 0xCCFFCC, 0xFFFF99, 0xFFCC99, 0xFF9999, 0xFFCCCC, 0xFF99CC, 0xCC99FF,
     0x9966CC, 0x663399, 0xFF9966, 0xFF6600, 0xCC6600, 0x996600, 0xFFCC00, 0xFFFF00,
 ];
-/// `[null, null, ...colors, null, null]`.
+/// Empty cards at each end, plus the colours.
 const ITEMS: usize = COLORS.len() + 4;
-/// BACKGROUND_COLOR.
+/// Background colour, and the glow's outer edge.
 const BACKGROUND: u32 = 0x111111;
 
-/// MAX_RENDERED_ITEMS.
+/// Cards across the square.
 const MAX_RENDERED: f64 = 5.0;
-/// LIST_ITEM_ASPECT_RATIO.
+/// Card height over width.
 const ASPECT: f64 = 3.0 / 4.0;
 const PERSPECTIVE: f64 = 500.0;
 const RADIUS: f32 = 5.0;
-/// boxShadow blur 5px: sigma 2.5.
+/// Shadow sigma, pt.
 const SHADOW_SIGMA: f32 = 2.5;
 /// Floats per card: five vec4s.
 const CARD_FLOATS: usize = 20;
-/// The ScrollView's decelerationRate (UIKit clamps it to fast).
+/// Deceleration rate; UIKit clamps it to fast.
 const DECELERATION: f64 = 0.8;
 /// The shortest gap between two selection haptics, ms.
 const HAPTIC_GAP_MS: f64 = 40.0;
@@ -90,7 +73,7 @@ struct ColorCarousel {
     width: f64,
     scroll_x: f64,
     active: Option<i64>,
-    /// The gradient's colour, per channel in Reanimated's linear space (value^2.2).
+    /// The glow colour per channel, in linear light (value^2.2).
     channels: [Timing; 3],
     cards: Vec<f32>,
     order: Vec<(i64, usize)>,
@@ -113,7 +96,7 @@ struct Gpu {
     bind: wgpu::BindGroup,
 }
 
-/// `data[i]?.accentColor ?? BACKGROUND_COLOR`.
+/// The card's accent colour, or the background past the cards.
 fn accent(index: i64) -> Color {
     match usize::try_from(index - 2).ok().and_then(|i| COLORS.get(i)) {
         Some(&c) => Color::hex(c).darken(0.1),
@@ -121,7 +104,7 @@ fn accent(index: i64) -> Color {
     }
 }
 
-/// JS `%`: the sign of the dividend.
+/// JS `%`: the result takes the dividend's sign.
 fn js_rem(a: f64, b: f64) -> f64 {
     a % b
 }
@@ -143,7 +126,7 @@ impl ColorCarousel {
         }
     }
 
-    /// rgbaArrayToRGBAColor(toGammaSpace(…)): the colour drawn this frame.
+    /// The glow colour drawn this frame, back in gamma space.
     fn color(&self) -> [f32; 4] {
         let c = |k: usize| ((self.channels[k].value.clamp(0.0, 1.0).powf(1.0 / 2.2) * 255.0).round() / 255.0) as f32;
         [c(0), c(1), c(2), 1.0]
@@ -165,7 +148,7 @@ impl Surface for ColorCarousel {
 
     fn input(&mut self, event: &InputEvent) {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
-        // The ScrollView fills the square.
+        // The strip covers the square.
         let w = self.width as f32;
         let inside = (0.0..=w).contains(&x) && (0.0..=w).contains(&y);
         self.scroll.input(id, gfx::phase(phase), x, y, at_ms, inside);
@@ -198,7 +181,7 @@ impl Surface for ColorCarousel {
         let item_height = item_width / ASPECT;
         if self.width != width {
             self.width = width;
-            // [null, null, ...colors, null, null]: ITEMS items in a row, the port the square.
+            // ITEMS cards in a row, viewed through the square.
             self.scroll.port = width;
             self.scroll.max = (ITEMS as f64 * item_width - width).max(0.0);
             self.scroll.snap = Snap::Interval(item_width);
@@ -206,11 +189,10 @@ impl Surface for ColorCarousel {
         let mut moving = self.scroll.step(frame.now_ms);
         self.scroll_x = self.scroll.offset;
         let x = self.scroll_x;
-        // onScroll: activeIndex = floor(2 + (x + itemWidth / 2) / (width / 5)).
+        // The fractional card under the centre, from the offset.
         let precise = (MAX_RENDERED / 2.0).floor() + (x + item_width / 2.0) / (width / MAX_RENDERED);
         let index = precise.floor() as i64;
-        // The haptic's index stays on the colours: the rubber band past an end reaches the empty
-        // items, which are no detent.
+        // The haptic clamps to real cards: the rubber band past an end is not a detent.
         let card = |i: i64| i.clamp(2, ITEMS as i64 - 3);
         let felt = detent(self.felt, precise, SWITCH / item_width);
         if self.felt.is_some_and(|a| card(a) != card(felt)) && frame.now_ms - self.haptic_at >= HAPTIC_GAP_MS {
@@ -251,15 +233,15 @@ impl Surface for ColorCarousel {
             let n = 1.0 - distance / (width / 2.0);
             let scale = interpolate_clamp(n, &[0.0, 1.0], &[2.0, 0.8]);
             let theta = interpolate(precise - index as f64 - 0.5, &[-2.0, -1.0, 0.0, 1.0, 2.0], &[-25.0, -20.0, 0.0, 20.0, 25.0], Extrapolation::Extend).to_radians();
-            // The item's centre in the square; content is centred vertically (alignItems).
+            // The card's centre in the square.
             let (cx, cy) = (position + item_width / 2.0, width / 2.0);
-            // S · P · R_y on (lx, ly, 0, 1): x = s cos θ lx, y = s ly, w = 1 + sin θ lx / 500.
+            // Scale, perspective and turn about y, in one matrix.
             let (sin, cos) = theta.sin_cos();
             let p = sin / PERSPECTIVE;
             let m0 = [k * (scale * cos + cx * p), 0.0, k * cx];
             let m1 = [k * cy * p, k * scale, k * cy];
             let m2 = [p, 0.0, 1.0];
-            // An RN View: its colour is read as Display P3 (`Color::view_hex`).
+            // Card colours are Display P3 (`Color::view_hex`).
             let c = Color::view_hex(rgb).0;
             for row in [m0, m1, m2] {
                 self.cards.extend_from_slice(&[row[0] as f32, row[1] as f32, row[2] as f32, 0.0]);
@@ -361,16 +343,12 @@ mod tests {
         let (a, moving) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         a.save("color-carousel-0");
         assert!(!moving);
-        // Item 2 (#336699, read as Display P3: rgb(27, 104, 157)) is centred at scale 2: 168 x 224
-        // about (210, 210).
+        // Item 2 is centred at scale 2.
         assert_eq!(&a.at(210, 210)[..3], &[27, 104, 157]);
         assert_eq!(&a.at(210, 110)[..3], &[27, 104, 157]);
-        // Its neighbour (#6699CC as P3: rgb(85, 155, 209)) shows past its right edge at 1.52.
         assert_eq!(&a.at(320, 210)[..3], &[85, 155, 209]);
-        // The gradient's corner is BACKGROUND_COLOR.
         assert_eq!(&a.at(2, 2)[..3], &[0x11, 0x11, 0x11]);
         assert!(s.agent("{}").unwrap().contains("#2E5C8A"));
-        // One item on: #6699CC is centred and the glow eases to its accent.
         s.bind(&[Value::Number(84.0)], None).unwrap();
         let (_, moving) = fixture::render(&gpu, s.as_mut(), &frame(16.0)).unwrap();
         assert!(moving);
@@ -383,7 +361,6 @@ mod tests {
             let [r, g, bb, _] = Color::hex(0x6699CC).darken(0.1).0.map(|v| (v * 255.0).round() as u8);
             format!("#{r:02X}{g:02X}{bb:02X}")
         }), "{reply}");
-        // Half an item: the cards turn in perspective.
         s.bind(&[Value::Number(42.0)], None).unwrap();
         let (c, _) = fixture::render(&gpu, s.as_mut(), &frame(800.0)).unwrap();
         c.save("color-carousel-half");
@@ -407,8 +384,7 @@ mod tests {
             ms
         };
         let mut ms = settle(&mut s, 0.0);
-        // A flick left at ~600 pt/s, 50 pt: UIKit projects (0.6 − 0.00988) / 0.01005 ≈ 59 more,
-        // short of the next item past it (84 × 2 = 168), so it rests on 168.
+        // A flick of 50 pt stops on the next card.
         use exact_gpu::PointerPhase::*;
         s.input(&touch(Down, 300.0, ms));
         for k in 1..=6 {
@@ -417,9 +393,7 @@ mod tests {
         s.input(&touch(Up, 240.0, ms + 16.67 * 6.0));
         ms = settle(&mut s, ms + 100.0);
         assert!(s.agent("{}").unwrap().contains("\"scrollX\":168"), "{}", s.agent("{}").unwrap());
-        // Two cards on: two selections, 40 ms apart at least.
         assert_eq!(s.messages(), vec!["haptic:selection", "haptic:selection"]);
-        // A slow drag of 30 pt, held: rounds back to 168.
         s.input(&touch(Down, 300.0, ms));
         for k in 1..=30 {
             s.input(&touch(Move, 300.0 - k as f32, ms + 33.0 * k as f64));
@@ -427,8 +401,6 @@ mod tests {
         s.input(&touch(Up, 270.0, ms + 33.0 * 30.0 + 200.0));
         ms = settle(&mut s, ms + 33.0 * 30.0 + 200.0);
         assert!(s.agent("{}").unwrap().contains("\"scrollX\":168"), "{}", s.agent("{}").unwrap());
-        // Short of half a card: no haptic. A pull right of 300 pt: back two cards, then past the
-        // start, one rigid thunk.
         assert!(s.messages().is_empty());
         s.input(&touch(Down, 60.0, ms));
         for k in 1..=30 {

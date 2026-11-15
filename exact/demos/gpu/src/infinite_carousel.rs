@@ -1,44 +1,13 @@
-//! Infinite Carousel (src/animations/infinite-carousel: index.tsx, constants.ts,
-//! components/infinite-circular-carousel/*, components/list-item-calc, components/
-//! background-gradient): twelve calculator themes on a circular carousel the finger pans (a
-//! Pan driving one translateX that never wraps; each item shifts itself by the list's length),
-//! over a blurred sweep gradient whose colour fades to the centred theme's.
+//! Twelve calculator themes on a circular carousel that the finger pans. The strip never wraps:
+//! each item shifts itself by the list's length. Over it, a blurred sweep gradient fades to the
+//! centred theme's colour.
 //!
-//! Layout (Yoga: each position rounded relative to its parent at the device pixel, sizes from
-//! the unrounded absolute edges): ListItemSize L = width / 4.8; the row (width, translateX
-//! (width − L) / 2) centred vertically; item i at i·L, L wide, its card (L·1.2 × L·1.2 / 0.7,
-//! radius 15 continuous, overflow hidden) centred in it. A card: expo LinearGradient #343f3d →
-//! #242d2b left to right, a flex-2 spacer, then (flex 3, marginBottom 10) a wrapping row of nine
-//! card/3.5 cells, each a padding-2.5 circle (radius 100 continuous: Core Animation's circle):
-//! #CBCBCD for the first two, the theme's primary for every third, its secondary otherwise.
-//!
-//! Each card is a Core Animation layer under `[perspective 500, translateX −8p, scale
-//! 1 − |p|·0.025, rotateY clamp(p, −1, 1)·30°]` about its centre (p: interpolate(−shift,
-//! [i−2 … i+2]·L, [−1, −1.5, 0, 1.5, 1], clamp)), drawn by zIndex floor(|p|·100): its backing
-//! store (baked once at the screen's scale) sampled bilinearly through the 4×4, the quad's edges
-//! not antialiased.
-//!
-//! The background is two RN Skia canvases (Display P3 surfaces) over the screen's #e0be95: a
-//! full-screen Rect of the main colour at 0.75 under one with SweepGradient(centre,
-//! [#CBCBCD, main, main]) and Blur(30), then a Rect at opacity 0.3 of SweepGradient([white,
-//! white, #d9d9d9]) with Blur(10). The blurs are Graphite's (`GraphiteBlur`, decal, the layer the
-//! rect's bounds); the white one once, the coloured one again only while the colour moves.
-//!
-//! Motion audit:
-//!
-//! | value | RN driver / config | here |
-//! |---|---|---|
-//! | translateX | Pan onBegin: cancelAnimation, context; onUpdate: context + translationX | the same, `PanGesture::new()` (UIKit's 10 pt hysteresis) |
-//! | release | onEnd: base + snapPoint(tx % size, velocityX, ±intervals), withSpring (Gentle 900/120/4) | `Spring` from rest |
-//! | card tap | onTouchEnd (a touch the pan never took) → scrollToIndex: the nearest of three destinations, withSpring({ mass 0.25, damping 10, stiffness 100 }) | the same |
-//! | activeIndex | useAnimatedReaction: abs(round((tx % size) / L)) % 12 | the same, each step |
-//! | main colour | useDerivedValue(withTiming(primary, 500, linear)): per channel in gamma 2.2, from the last rounded rgba | [`Fade`] |
-//!
-//! Haptics (past RN, which plays none: the owner's haptic language): `haptic:selection` each
-//! time the centred theme (activeIndex) changes, during the drag, the release's spring and a
-//! tap's scrollToIndex, at most one per HAPTIC_GAP_MS. The ring has no end, so no limit haptic.
-//!
-//! No inputs.
+//! - Cards are baked once per size and posed with perspective, rotateY and scale by their
+//!   distance from the centre, drawn in zIndex order.
+//! - A touch becomes a pan after 10 pt of movement. Release springs to the nearest item, and a
+//!   tap on a card scrolls to it.
+//! - Haptics: `haptic:selection` each time the centred theme changes, at most one per
+//!   HAPTIC_GAP_MS. The ring has no end, so there is no limit haptic.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -49,7 +18,7 @@ use skia::{point, stops, Canvas, Color, Matrix3, Matrix4, Paint, Renderer, Shade
 
 use crate::gfx;
 
-/// constants.ts ThemeData: primary, secondary.
+/// Each theme's primary and secondary colour.
 const THEMES: [(u32, u32); 12] = [
     (0xCB832E, 0x7B6746),
     (0xA37125, 0x756245),
@@ -66,14 +35,14 @@ const THEMES: [(u32, u32); 12] = [
 ];
 const N: usize = THEMES.len();
 const DEFAULT_WHITE: u32 = 0xCBCBCD;
-/// The demo's backdrop (the registry's), under the canvases.
+/// Backdrop colour under the background canvases.
 const BACKDROP: u32 = 0xe0be95;
 const MAX_ROTATE_Y: f64 = 30.0;
 const PERSPECTIVE: f32 = 500.0;
-/// scrollToIndex's spring.
+/// Spring for a tap's scroll to a card.
 const TAP_SPRING: SpringConfig = SpringConfig { stiffness: 100.0, damping: 10.0, mass: 0.25 };
 const FADE_MS: f64 = 500.0;
-/// `<Blur blur={30}>`, `<Blur blur={10}>`: σ in points.
+/// Blur σ of the coloured sweep and of the white one, in points.
 const BLUR_MAIN: f32 = 30.0;
 const BLUR_WHITE: f32 = 10.0;
 const RADIUS: f32 = 15.0;
@@ -81,10 +50,10 @@ const RADIUS: f32 = 15.0;
 const UNIFORM_FLOATS: usize = 8 + N * 16;
 /// The shortest gap between two selection haptics, ms.
 const HAPTIC_GAP_MS: f64 = 40.0;
-/// How far past the half-card line the strip goes before the haptics' card changes, pt.
+/// How far past the half-card line the strip must go before the felt card changes, pt.
 const SWITCH: f64 = 6.0;
 
-/// The demo's surface (no inputs).
+/// The surface. Takes no inputs.
 pub fn surface() -> Box<dyn Surface> {
     Box::new(InfiniteCarousel {
         size: (0.0, 0.0),
@@ -107,9 +76,8 @@ pub fn surface() -> Box<dyn Surface> {
     })
 }
 
-/// Reanimated's `withTiming` of a colour string: each channel timed in gamma-2.2 space
-/// (toLinearSpace), clamped, back to gamma and rounded to 8 bits (rgbaArrayToRGBAColor); a new
-/// timing starts from the last rounded colour.
+/// A colour eased in linear light: each channel is timed in gamma 2.2 space, clamped, then
+/// rounded back to 8 bits. A retarget starts from the last rounded colour shown.
 struct Fade {
     from: [f64; 3],
     to: [f64; 3],
@@ -149,8 +117,7 @@ impl Fade {
     }
 }
 
-/// One card's frame in canvas points (Yoga's), its layer's centre at rest, and its cell in the
-/// bake (pixels).
+/// One card's frame in points, and its cell in the bake (pixels).
 #[derive(Clone, Copy, Debug)]
 struct CardBox {
     left: f32,
@@ -208,23 +175,22 @@ struct InfiniteCarousel {
     context_x: f64,
     active: usize,
     fade: Fade,
-    /// The card a touch went down on (its onTouchEnd's target).
+    /// The card a touch went down on; a tap that the pan never takes scrolls to it.
     down_card: Option<usize>,
     cards: Option<Cards>,
     bg: Background,
     gpu: Option<Gpu>,
     uniforms: Vec<u8>,
-    /// The latest time seen (a frame's or a pointer's), when the last selection haptic played,
-    /// and the messages to post.
+    /// The latest time seen, ms.
     now_ms: f64,
-    /// The card (0 … N − 1, along the strip) the haptics last felt: it holds until the strip is
-    /// SWITCH past the half-card line, so a finger hovering there does not flap.
+    /// The card the haptics last felt; it holds until the strip is SWITCH past the half-card
+    /// line, so a finger hovering there does not flap.
     felt: Option<i64>,
     haptic_at: f64,
     posted: Vec<String>,
 }
 
-/// Yoga's YGRoundValueToPixelGrid at `scale`.
+/// Rounds `v` to the device pixel grid at `scale`, as Yoga's layout does.
 fn round_px(v: f64, scale: f64) -> f64 {
     let x = v * scale;
     let f = x - x.floor();
@@ -246,7 +212,7 @@ impl InfiniteCarousel {
         self.item() * N as f64
     }
 
-    /// CarouselItem's derivedTranslate.
+    /// Item `i`'s translation, using the ring's copy of it nearest the centre.
     fn shift(&self, i: usize) -> f64 {
         let size = self.list();
         let t = self.tx.value % size;
@@ -291,8 +257,8 @@ impl InfiniteCarousel {
             .to_matrix3()
     }
 
-    /// The topmost card in hit-testing order (later siblings first: zIndex is the layer's
-    /// zPosition, which UIKit's hit-test ignores) holding (x, y).
+    /// The topmost card holding (x, y). Later cards are tried first, since zIndex does not
+    /// affect hit-testing.
     fn card_at(&self, x: f32, y: f32) -> Option<usize> {
         let cards = self.cards.as_ref()?;
         (0..N).rev().find(|&i| {
@@ -311,7 +277,7 @@ impl InfiniteCarousel {
         (y >= b.top && y <= b.top + b.h) || self.card_at(x, y).is_some()
     }
 
-    /// useAnimatedReaction on the active index.
+    /// Updates the active index from the strip's position, and fires the selection haptic.
     fn react(&mut self) {
         let l = self.item();
         if l <= 0.0 {
@@ -342,7 +308,7 @@ impl InfiniteCarousel {
         }
     }
 
-    /// The release: snapPoint over ±intervals, a Gentle spring from rest.
+    /// Release: springs to the item boundary nearest where the velocity points.
     fn snap(&mut self, velocity: f64) {
         let l = self.item();
         let size = self.list();
@@ -362,7 +328,7 @@ impl InfiniteCarousel {
         self.tx.to(base + best.1, 0.0, GENTLE);
     }
 
-    /// scrollToIndex(index): the nearest of the three destinations.
+    /// Scrolls to card `index`, via the nearest of its three equivalent positions on the ring.
     fn scroll_to(&mut self, index: usize) {
         let l = self.item();
         let size = self.list();
@@ -379,7 +345,7 @@ impl InfiniteCarousel {
         self.tx.to(best.1, 0.0, TAP_SPRING);
     }
 
-    /// The cards' frames (Yoga) and their bake, once per size and scale.
+    /// Lays out the cards and bakes them into one texture, once per size and scale.
     fn bake(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut wgpu::CommandEncoder) {
         let s = self.scale as f64;
         let (w, h) = (self.size.0 as f64, self.size.1 as f64);
@@ -424,7 +390,7 @@ impl InfiniteCarousel {
                 stops: stops(&[Color::hex(0x343f3d), Color::hex(0x242d2b)]),
             };
             c.draw_rect(0.0, 0.0, b.w, b.h, &Paint::shader(g));
-            // listContainer: below the flex-2 spacer, (ch − 10) · 3/5 tall.
+            // Below the flex-2 spacer: the list starts two fifths of the way down.
             let list_rel = (ch - 10.0) * 0.4;
             let line = (cw - 3.0 * cell) / 2.0;
             for k in 0..9 {
@@ -462,7 +428,7 @@ impl InfiniteCarousel {
     }
 }
 
-/// The blurred image's uv of a layer pixel: uv = p · xy + zw (spiral's).
+/// Maps a layer pixel to the blurred image's uv: uv = p · xy + zw.
 fn low_mapping(plan: &GraphitePlan, origin: [i32; 2], size: [u32; 2]) -> [f32; 4] {
     let src = plan.src_rect.map(|v| v as f32);
     let low = plan.low_bounds;

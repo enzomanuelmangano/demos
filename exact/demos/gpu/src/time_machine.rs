@@ -1,61 +1,16 @@
-//! Time Machine (src/animations/time-machine): a drag-to-sort todo list on a card; every reorder
-//! keeps the old list as a card behind it. Dragging the screen down opens the "time machine": the
-//! cards shrink into a stack over a starfield that sharpens and starts to move, a horizontal
-//! scroll leafs through them, and dragging up closes it on the card in front (a second later the
-//! history keeps only that one). Per-frame springs, a shader, an animated blur and three
-//! competing gestures: the whole demo is this surface.
+//! A drag-to-sort todo list on a card. Each reorder keeps the old list as a card behind it.
+//! Dragging the screen down opens a stack of those cards over a starfield, a horizontal scroll
+//! leafs through them, and dragging up closes the stack on the card in front. A second later the
+//! history keeps only that card.
 //!
-//! Layout (components/*.tsx, time-machine-list/*.tsx, drag-to-sort/components/SortableList/*;
-//! Yoga positions rounded to the device pixel relative to the parent, a Text's floored):
-//! - The root View (flex 1, #000, justifyContent center) under the GestureDetector's Pan; in it
-//!   BackgroundCanvas (absoluteFill: a Rect of the window with shader.ts and `<Blur blur>`) and
-//!   the horizontal ScrollView (flexGrow 1: the window), whose content is SW × n + (W − SW) wide.
-//! - StoryListItem i: absolute at the content's (0, 0), zIndex −i (Fabric mounts by zIndex, so
-//!   card 0 is drawn and hit-tested first), transform [translateX scrollOffset + interpolate(f,
-//!   [i−2, i−1, i, i+1], [120, 60, 0, −SW], clamp), scale interpolate(f, …, [0.8, 0.9, 1, 1],
-//!   clamp)], f = offset / SW, SW = 0.8 W.
-//! - TimeMachineListItem: W × H, boxShadow 0 0 10 #00000088 (RCTBoxShadow: σ 5, cut out of the
-//!   box), opacity (activeIndex == i ? 1 : progress³; a group: Core Animation's group opacity),
-//!   transform [scale interpolate(progress, [0, 1], [1, 0.7]), translateX interpolate(…, [0,
-//!   −30])], pointerEvents none while progress > 0.1. Its content: #f3f3f3, borderRadius 25
-//!   continuous, overflow hidden; PriorityListView centres the list (W × 280).
-//! - SortableList: a ScrollView (clips; scrollEnabled false, but scrollTo moves it) of 4 rows of
-//!   70: per row a background View (absolute, zIndex −50, alignItems center) whose child (flex 1,
-//!   no width) is 2 pt wide: its 1 pt #e0e0e0 border is the whole view, a 2 × 70 line; and the
-//!   item (absolute, left 0 right 0, height 70, translateY top, translateX) holding the row View
-//!   (alignSelf center, 80 %, padding 4) and its content (#f7f7f7, border 1 #f0f0f0, radius 8
-//!   continuous, boxShadow 0 0 10 rgba(0, 0, 0, 0.01), row, paddingHorizontal 16): the emoji Text
-//!   (24, marginRight 12) and the title Text (16, '500', #333333, flex 1), centred.
-//! - Texts are Core Animation layers: their backing stores, drawn once at the screen's scale, are
-//!   resampled under the card's transform (bilinear); the views' rounded rects are geometry.
-//!   The emoji are drawn by CoreText at run time (the device's own Apple Color Emoji, through the
-//!   system font's cascade, as TextKit draws RN's Text); off Apple platforms they are left out.
+//! - The cards sit in a horizontal scroll one window wide, each card 80% of the window. The
+//!   starfield is a shader, blurred as the stack opens.
+//! - Texts are drawn once at the screen's scale and resampled under each card's transform.
+//! - Haptics: a light impact when a row drag starts, `haptic:selection` when the dragged row passes
+//!   another row or the stack's front card changes (at most one per HAPTIC_GAP_MS), and a medium
+//!   impact when a release opens or closes the stack.
 //!
-//! Motion audit:
-//!
-//! | value | RN | here |
-//! |---|---|---|
-//! | timeMachineProgress (tm) | Pan (activeOffsetY ±10, failOffsetX ±20): onBegin prev = tm; onUpdate clamp(prev + ty / 300, 0, 1); onEnd ty > 100 or vy > 500 → 1; ty < −50 or vy < −300 → 0 + onClose; else round at 0.5 (0 → onClose) | the same; translation from the activation (custom criteria) |
-//! | progress | useDerivedValue withSpring(tm, { mass 0.2, damping 15, stiffness 300 }) | `Spring::retarget` per change |
-//! | IsTimeMachineActive | reaction tm > 0.5 | the same frame |
-//! | iTime | withPause(withRepeat(withTiming(10, 100 s, linear), −1, reverse), !active) | active time, a triangle 0 … 10 |
-//! | blur | interpolate(tm, [1, 0], [0, 15]) (σ, points) | `GraphitePlan` on the shader's layer |
-//! | scrollOffset | ScrollView snapToInterval SW, decelerationRate fast, disableIntervalMomentum, scrollEnabled = active | `UiScroll` (`Snap::IntervalCurrent`) |
-//! | activeIndex | round(offset / SW) | the same |
-//! | item drag | Pan activateAfterLongPress(0): active at touch-down; positions[i] = contextY + ty + oy; translateX = tx; scrollTo ±7 at the window's edges; onFinalize translateX withTiming(0) (300, inOut quad), its callback → onDragEnd if positions moved | the same |
-//! | item top | useDerivedValue: active ? positions[i] : withSpring(slot, { mass 0.1, damping 10, stiffness 100 }) (ζ 1.58, run critically damped) | `Spring::retarget` from a per-frame mapper pass |
-//! | zIndex | active 100, last released 50 (until a drag of another item ≠ 0 begins), else 0 | the same |
-//! | onDragEnd | prepend the new order (history ≤ 10), activeKey = it; every card remounts (StoryListItem keyed by index) | lists reset |
-//! | onClose | activeItem = history[activeIndex]; if its key ≠ activeKey: activeKey = it, 1 s later keep only it (scroll back in range) | the same |
-//! | haptic | drag start: impactAsync(Light) | `haptic:impact-light` |
-//!
-//! Haptics past RN (which plays only the drag start's light impact; the owner's haptic
-//! language): `haptic:selection` when the dragged row crosses another (its rank among the
-//! rows changes) and when the open stack's front card changes (activeIndex), at most one per
-//! HAPTIC_GAP_MS; `haptic:impact-medium` when a release of the screen's pan opens or closes the
-//! time machine (not when it falls back to where it was).
-//!
-//! Input: safeTop (SortableItem's containerHeight is the window height − inset.top).
+//! Input: the top safe-area inset.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -68,9 +23,9 @@ use crate::ui_scroll::{Snap, UiScroll, FAST};
 use crate::{gfx, shaders};
 use shaders::time_machine::{entry, module, Uniforms, GROUP_0, LAYER, SMP, U, UNDER};
 
-/// LIST_ITEM_HEIGHT.
+/// Height of a todo row, pt.
 const ROW: f64 = 70.0;
-/// MAX_HISTORY_LENGTH.
+/// The most lists kept in the history.
 const MAX_HISTORY: usize = 10;
 /// The shortest gap between two haptics, ms.
 const HAPTIC_GAP_MS: f64 = 40.0;
@@ -78,19 +33,19 @@ const HAPTIC_GAP_MS: f64 = 40.0;
 const SWITCH: f64 = 6.0;
 /// The time machine pan's maxPanDistance.
 const PAN_DISTANCE: f64 = 300.0;
-/// progress = withSpring(tm, …).
+/// The spring-smoothed progress of the time machine.
 const PROGRESS: SpringConfig = SpringConfig {
     stiffness: 300.0,
     damping: 15.0,
     mass: 0.2,
 };
-/// SortableItem's top spring.
+/// The spring that moves a row to its slot.
 const TOP: SpringConfig = SpringConfig {
     stiffness: 100.0,
     damping: 10.0,
     mass: 0.1,
 };
-/// TODO_ITEMS (priority-list-view.tsx), by item number − 1.
+/// The starting todos, by item number − 1.
 const TODOS: [(&str, &str); 4] = [
     ("🐱", "Feed the cat"),
     ("🤸\u{200d}♂\u{fe0f}", "Flex useless animations"),
@@ -130,7 +85,7 @@ struct List {
     was_last: [bool; 4],
     prev: [f64; 4],
     context_y: f64,
-    /// scrollContentOffsetY.
+    /// The list's scroll offset, pt.
     oy: f64,
     /// A translateX timing whose callback checks for a drag end.
     pending: [bool; 4],
@@ -154,16 +109,14 @@ impl List {
         }
     }
 
-    /// getPosition: the index of the item's position among the sorted positions (indexOf: the
-    /// first equal one), times the row.
+    /// The item's slot: its index among the sorted positions (the first equal one), times the row.
     fn slot(&self, i: usize) -> f64 {
         let mut sorted = self.pos;
         sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
         sorted.iter().position(|&p| p == self.pos[i]).unwrap_or(i) as f64 * ROW
     }
 
-    /// The items' `top` mappers, in registration order, each seeing the positions the earlier
-    /// ones wrote.
+    /// Each item's top is mapped in turn, so each sees the positions written before it.
     fn mappers(&mut self) {
         let mut changed = false;
         for i in 0..4 {
@@ -211,8 +164,7 @@ impl List {
         o
     }
 
-    /// Steps the springs and timings; a finished translateX timing whose positions moved since
-    /// the drag began reports the positions (onDragEnd).
+    /// Steps the springs and timings. A finished drag reports the new order if it moved.
     fn step(&mut self, now: f64) -> (bool, Option<[f64; 4]>) {
         if self.dirty || self.active.is_some() {
             self.mappers();
@@ -279,7 +231,7 @@ impl Layout {
         let row_x = round_px(w * 0.1, s);
         let row_w = round_px(w * 0.1 + w * 0.8, s) - row_x;
         let line_x = round_px((w - 2.0) / 2.0, s);
-        // The content box: border 1 + paddingHorizontal 16; 60 high inside the border.
+        // The content box: 16 pt of side padding, 60 pt high.
         let content_w = row_w - 8.0;
         let (ew, eh) = (ceil_px(emoji.0 + 1e-3, s), ceil_px(emoji.1, s));
         let ex = 17.0;
@@ -302,7 +254,7 @@ impl Layout {
     }
 }
 
-/// SF 16's line: (1950 + 494) / 2048 × 16.
+/// The line height of the system font at 16 pt.
 const TITLE_LINE: f64 = 2444.0 / 2048.0 * 16.0;
 
 struct TimeMachine {
@@ -320,7 +272,7 @@ struct TimeMachine {
     scroll: UiScroll,
     touch: Option<Touch>,
     samples: Vec<(f32, f32, f64)>,
-    /// onClose's setTimeout: at, key.
+    /// When the history is trimmed to the active list: the time and the list.
     prune: Option<(f64, u64)>,
     now: f64,
     layout: Layout,
@@ -414,7 +366,7 @@ impl TimeMachine {
         let max = sw * (self.history.len().max(1) - 1) as f64;
         let mut offset = self.scroll.offset;
         if offset > max {
-            // TimeMachineList's effect: scrollTo(last, animated: false).
+            // Scroll to the newest card, without animation.
             offset = max;
             self.scroll =
                 UiScroll::new(offset, max, self.layout.w, FAST, Snap::IntervalCurrent(sw));
@@ -435,7 +387,7 @@ impl TimeMachine {
 
     fn set_tm(&mut self, v: f64) {
         self.tm = v;
-        // useAnimatedReaction(tm > 0.5) → IsTimeMachineActive (scrollEnabled, the shader's pause).
+        // Active while the stack is open: scrolling is enabled and the shader's time pauses.
         self.active = v > 0.5;
     }
 
@@ -563,12 +515,12 @@ impl TimeMachine {
             }
             self.samples.clear();
             self.sample(x, y, at_ms);
-            // onBegin of the time machine pan (cancelled at once when an item activates).
+            // Begins the time machine pan; an item drag cancels it at once.
             self.prev_tm = self.tm;
             let claim = if let Some((card, row)) = self.hit_item(x, y) {
                 let list = &mut self.lists[card];
                 list.prev = list.pos;
-                // useAnimatedReaction(animatedIndex): `if (currentActiveIndex)` skips row 0.
+                // Row 0 is skipped by the reaction's truthiness check.
                 if row != 0 {
                     for k in 0..4 {
                         list.was_last[k] = k == row;
@@ -611,7 +563,7 @@ impl TimeMachine {
                     list.tx[row].set(dx as f64);
                     list.pos[row] = list.context_y + dy as f64 + list.oy;
                     list.dirty = true;
-                    // scrollLogic.
+                    // Scroll the list when the drag reaches its edge.
                     let lower = 1.5 * ROW;
                     let container = self.layout.h - self.safe_top;
                     let speed = ROW * 0.1;
@@ -640,7 +592,7 @@ impl TimeMachine {
                 } else if dx.abs() > 20.0 {
                     t.claim = Claim::None;
                 } else if dy.abs() > 10.0 {
-                    // Custom criteria: setTranslation(.zero) at the activation.
+                    // The pan's translation restarts at the activation.
                     t.claim = Claim::Machine { origin: (x, y) };
                     if self.active {
                         self.scroll.input(id, Phase::Cancel, x, y, at_ms, true);
@@ -732,7 +684,7 @@ impl TimeMachine {
         moving || self.active || self.touch.is_some()
     }
 
-    /// iTime: the repeat's triangle over the active time.
+    /// The shader's time: a triangle wave over the active time.
     fn itime(&self) -> f64 {
         let c = self.active_ms.rem_euclid(200_000.0);
         if c < 100_000.0 {
@@ -778,7 +730,7 @@ impl TimeMachine {
         let ly = l.list_y as f32;
         c.clip_rect(0.0, ly, w, 4.0 * ROW as f32);
         let oy = list.oy as f32;
-        // The background rows' 2 pt lines (#f8f8f8 under its #e0e0e0 border, all border).
+        // The row separators: 2 pt lines.
         for k in 0..4 {
             let y = ly + k as f32 * ROW as f32 - oy;
             c.draw_continuous_rrect(
@@ -846,9 +798,8 @@ impl TimeMachine {
 
 #[cfg(target_vendor = "apple")]
 mod emoji {
-    //! RN's emoji Text drawn as TextKit draws it: the system font (the cascade picks the UI face
-    //! of Apple Color Emoji), one CTLine, its baseline the line's ascent below the box top, into an
-    //! sRGB premultiplied bitmap at the screen's scale.
+    //! Emoji drawn as TextKit draws them: one CoreText line in the system emoji face, into an sRGB
+    //! premultiplied bitmap at the screen's scale.
     use std::ffi::c_void;
     type Ref = *const c_void;
     #[link(name = "CoreFoundation", kind = "framework")]
@@ -935,7 +886,7 @@ mod emoji {
             let line = CTLineCreateWithAttributedString(a);
             let (mut asc, mut desc, mut lead) = (0.0, 0.0, 0.0);
             let adv = CTLineGetTypographicBounds(line, &mut asc, &mut desc, &mut lead);
-            // Yoga's box: the measure ceiled to the pixel after an epsilon (an exact 24 is 24.333).
+            // The measure, ceiled to the pixel after an epsilon.
             let w = (adv * scale + 1e-3).ceil().max(1.0) as u32;
             let h = ((asc + desc) * scale + 1e-3).ceil().max(1.0) as u32;
             let mut px = vec![0u8; (w * h * 4) as usize];
@@ -966,7 +917,7 @@ mod emoji {
     }
 }
 
-/// The emoji's advance and line height in points (the UI face's: 24 and 28.65 at 24 pt).
+/// The emoji's advance and line height, in points.
 fn emoji_metrics() -> (f64, f64) {
     #[cfg(target_vendor = "apple")]
     if let Some((adv, lh, ..)) = emoji::draw(TODOS[0].0, 24.0, 1.0) {
@@ -1473,7 +1424,6 @@ mod tests {
             (316.0, 42.0, 336.0, 209.0)
         );
         let near = |a: f64, b: f64| (a - b).abs() < 1e-3;
-        // The emoji box 24.333 × 28.667 at (17, 16.667); the title at 53.333, 19.333 high.
         assert!(
             near(l.emoji[2], 24.333) && near(l.emoji[3], 28.667) && near(l.emoji[1], 16.667),
             "{:?}",
@@ -1491,9 +1441,7 @@ mod tests {
         let mut m = machine();
         // Row 0 (Feed the cat) dragged 90 pt down, past row 1.
         let t = drag(&mut m, 210.0, 351.0, 4.0, 90.0, 12, 0.0);
-        // The grab's light impact, then one selection as it passes row 1.
         assert_eq!(m.posted, vec!["haptic:impact-light".to_string(), "haptic:selection".to_string()]);
-        // The slots: the cat on row 1 once the springs settle; the history waits for translateX.
         let t = run(&mut m, t, t + 150.0);
         assert_eq!(m.history.len(), 1);
         run(&mut m, t, t + 400.0);
@@ -1514,24 +1462,20 @@ mod tests {
     #[test]
     fn dragging_the_screen_opens_and_closes_the_time_machine() {
         let mut m = machine();
-        // Outside the list: the time machine's pan. 10 pt of travel activate it, from there.
         let t = drag(&mut m, 210.0, 120.0, 0.0, 160.0, 10, 0.0);
         assert_eq!(m.tm, 1.0);
         assert!(m.active);
         let t = run(&mut m, t, t + 1500.0);
         assert!((m.progress.value - 1.0).abs() < 1e-3);
-        // Horizontal: a fail for the pan, a scroll for the ScrollView (no other card yet).
         let t = drag(&mut m, 300.0, 450.0, -120.0, 0.0, 8, t + 100.0);
         assert_eq!(m.tm, 1.0);
-        // Up: closed.
         let t = drag(&mut m, 210.0, 600.0, 0.0, -120.0, 8, t + 1000.0);
         assert_eq!(m.tm, 0.0);
         assert!(!m.active);
         run(&mut m, t, t + 1500.0);
         assert!(m.progress.value.abs() < 1e-3);
         assert_eq!(m.history.len(), 1);
-        // A medium impact as the release opens it, one as it closes it; the scroll (one card)
-        // changes no front card.
+        // A medium impact as the release opens it, and another as it closes it.
         assert_eq!(m.posted, vec!["haptic:impact-medium".to_string(), "haptic:impact-medium".to_string()]);
     }
 
@@ -1543,7 +1487,6 @@ mod tests {
         assert_eq!(m.history.len(), 2);
         let t = drag(&mut m, 210.0, 120.0, 0.0, 160.0, 10, t);
         let t = run(&mut m, t, t + 1000.0);
-        // Leaf to card 1, then close.
         m.scroll.offset = W as f64 * 0.8;
         let t = drag(&mut m, 210.0, 600.0, 0.0, -120.0, 8, t);
         assert_eq!(m.active_key, m.history[1].key);
@@ -1591,7 +1534,6 @@ mod tests {
         assert_eq!(&a.at(30, 100)[..3], &px(card));
         assert_eq!(&a.at(300, 351)[..3], &px(content));
         assert!(close(a.at(210, 317), line), "{:?}", a.at(210, 317));
-        // The title's ink (#333) in its box, row 0 (x 42 + 4 + 53.3, y 316 + 4 + 21.3).
         let ink = (100..200)
             .flat_map(|x| (341..361).map(move |y| (x, y)))
             .filter(|&(x, y)| a.at(x, y)[0] < 120)
@@ -1617,10 +1559,8 @@ mod tests {
         let (b, animating) = fixture::render(&gpu, s.as_mut(), &frame(t + 16.0)).unwrap();
         b.save("time-machine-open");
         assert!(animating);
-        // Scale 0.7 about (210, 456) shifted 30 × 0.7 left: the card spans x 42 … 357.
         assert_eq!(&b.at(200, 250)[..3], &px(card));
         assert!(b.at(30, 456)[0] < 200 && b.at(380, 456)[0] < 200);
-        // Stars: some lit pixels in the black margin above the card.
         let lit = (0..W as u32)
             .flat_map(|x| (0..130).map(move |y| (x, y)))
             .filter(|&(x, y)| b.at(x, y)[0] > 40)

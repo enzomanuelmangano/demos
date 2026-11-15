@@ -1,42 +1,8 @@
-//! Airbnb Flip Interaction's card (src/animations/airbnb-flip-interaction/flip-interaction/
-//! components/card: index.tsx, front.tsx, back.tsx, profile-avatar.tsx): the coral profile card
-//! that turns half a turn to the white stats card. The canvas sits over FlipCard's box
-//! (cardWidth × cardWidth / 1.6, cardWidth = window − 64) with MARGIN around it for the shadow
-//! and the perspective; the press (pressto's PressableOpacity) is the Contract's.
+//! Airbnb flip card: the coral profile card that turns half a turn to the white stats card. The
+//! canvas sits over the card box, with a margin around it for the shadow and the perspective.
 //!
-//! Each face (cardFace: radius 28 continuous, overflow hidden, boxShadow 0 4 12 rgba(0,0,0,0.1):
-//! RCTBoxShadow, σ 6, the circular rounded rect, outside the view, a sublayer so it turns with
-//! the face) is drawn once into a texture, then shown through its transform about its centre:
-//! `[perspective 1000, rotateY, scale]` (the front rotateY 180·p, the back 180 + 180·p; scale
-//! interpolate(p, [0, 0.5, 1], [1, 0.95, 1]), extended), a face turned away not drawn
-//! (backfaceVisibility hidden), the back over the front (gpu/shaders/airbnb_flip.wgsl).
-//!
-//! Motion audit:
-//!
-//! | value | RN driver / config | here |
-//! |---|---|---|
-//! | progress | useDerivedValue(withSpring(isFlipped ? 1 : 0, { mass 1.2, stiffness 60, damping 12, velocity 0.2 })) | `Spring`, GENTLE replaced by (60, 12, 1.2); onStart's velocity: the running animation's + 0.2 (0.2 from rest), dropped when it points away from the target (so a flip back from rest starts from 0) |
-//! | rotateY, scale | interpolate(progress) as above, every frame | the same, in the faces' 4×4 |
-//! | opacity (press) | pressto PressableOpacity | the Contract's wrapper |
-//!
-//! Faces (Yoga: each position rounded relative to its parent, a Text's floored, sizes from the
-//! rounded absolute edges; Text boxes ceiled to the device pixel after an epsilon):
-//! - Front: expo LinearGradient #FF6B6B → #FF8E53 → #FF6B6B, (0, 0) → (1, 1) of its bounds (a CG
-//!   linear gradient in DeviceRGB: isolines perpendicular to the diagonal), clipped to the face.
-//!   padding 24: "Reactiive" (SF-Pro-Rounded-Heavy 32, letterSpacing −0.5, white, marginBottom
-//!   4), "Verified" (SF-Pro-Rounded-Bold 17, letterSpacing 0.2, rgba(255,255,255,0.95), text
-//!   shadow 0 1 r 1 rgba(0,0,0,0.1)), a flex 1 spacer, the avatar at the bottom right.
-//! - Back: white, radius 28 continuous, padding 24, centred: the avatar and (marginLeft 24)
-//!   "Reactiive" (Heavy 22, −0.3, #1A1D29, marginBottom 4) over "Italy" (Bold 15, 0.1, #6B7280);
-//!   marginTop 8, a row spaced around: "3"/"Trip", "1"/"Review", "4"/"Years" (Heavy 24, −0.5,
-//!   #1A1D29; Bold 13, 0.2, #6B7280, marginTop 4).
-//! - The avatar (80): LinearGradient #4A5568 → #2D3748 top to bottom; the gradient layer masks
-//!   to its bounds, so RN draws Core Animation's border: a circle r 40 with a 3 pt
-//!   rgba(255,255,255,0.3) ring; "R" (Heavy 32, white, text shadow 0 1 r 2 rgba(0,0,0,0.2))
-//!   centred. The badge: 25.6 at bottom −2 right −2, #FF6B6B → #FF5252, radius 12.8, a 3 pt white
-//!   ring; "✓" (the system font 11.2 bold, white, text shadow 0 1 r 1 rgba(0,0,0,0.2)).
-//! - A Text's shadow (NSShadow, blur r): the glyphs in the shadow's colour, offset, blurred
-//!   with σ = r / 2 (Core Graphics' blur), under the glyphs.
+//! Each face is drawn once into a texture, then shown through a perspective rotateY about its
+//! centre. The face turned away is not drawn, and the back is composed over the front.
 //!
 //! Input: isFlipped.
 
@@ -53,15 +19,13 @@ use shaders::airbnb_flip_layer as layer_shader;
 static HEAVY: &[u8] = include_bytes!("../fonts/sf-pro-rounded-heavy-airbnb-subset.otf");
 static BOLD: &[u8] = include_bytes!("../fonts/sf-pro-rounded-bold-airbnb-subset.otf");
 
-/// The canvas's margin around the card box: the box shadow (offset 4 + 3σ 18) and the
-/// perspective's growth (the near edge ×1.2 at 90°).
+/// The canvas's margin around the card box, for its shadow and perspective growth.
 pub const MARGIN: f32 = 56.0;
-/// The face texture's margin around the face: its box shadow's reach.
+/// The face texture's margin around the face, for its box shadow.
 const FACE_MARGIN: f32 = 24.0;
-/// spacing.l + 4.
+/// Corner radius, points.
 const RADIUS: f32 = 28.0;
 const PERSPECTIVE: f32 = 1000.0;
-/// card/index.tsx SPRING_CONFIG.
 const SPRING: SpringConfig = SpringConfig { stiffness: 60.0, damping: 12.0, mass: 1.2 };
 const SPRING_VELOCITY: f64 = 0.2;
 const AVATAR: f32 = 80.0;
@@ -143,12 +107,12 @@ fn draw_run(c: &mut Canvas, r: &Run, dy: f32, color: Color) {
     c.draw_text_spaced(r.text, r.x, gfx::baseline(r.font, r.top + dy), r.font, &Paint::fill(color), r.spacing);
 }
 
-/// A Text's measured width (Core Text's line, NSKern after every glyph), ceiled.
+/// A text's width, ceiled to the device pixel.
 fn text_w(font: &Font, text: &str, spacing: f32, s: f32) -> f32 {
     side(font.advance_width_spaced(text, spacing), s)
 }
 
-/// Where profile-avatar.tsx's pieces sit, relative to the avatar's (x, y).
+/// Positions of the avatar's initial, badge and check, relative to the avatar.
 struct AvatarLayout {
     r: (f32, f32),
     badge: [f32; 4],
@@ -157,17 +121,17 @@ struct AvatarLayout {
 
 /// `abs` is the avatar's unrounded absolute origin in the face, `at` its rounded one.
 fn avatar_layout(f: &Fonts, abs: (f32, f32), s: f32) -> AvatarLayout {
-    // "R": centred in the gradient's content box (border 3: 74 × 74 at 3).
+    // Centred in the avatar's 74 pt content box, inside its 3 pt border.
     let rw = text_w(&f.heavy32, "R", 0.0, s);
     let rh = side(gfx::line_height(&f.heavy32), s);
     let r = (floor(3.0 + (74.0 - rw) / 2.0, s), floor(3.0 + (74.0 - rh) / 2.0, s));
-    // The badge: absolute, right −2, bottom −2, 25.6 square; its size from rounded edges.
+    // Size comes from the rounded edges, so the badge stays on the pixel grid.
     let b = AVATAR * 0.32;
     let rel = AVATAR + 2.0 - b;
     let (bx, by) = (grid(rel, s), grid(rel, s));
     let (ax, ay) = (abs.0 + rel, abs.1 + rel);
     let badge = [bx, by, grid(ax + b, s) - grid(ax, s), grid(ay + b, s) - grid(ay, s)];
-    // "✓": centred in the badge's content box (border 3), unrounded sizes.
+    // Centred in the badge's content box.
     let (cw, ch) = match &f.check {
         Some(font) => (text_w(font, "✓", 0.0, s), side(gfx::line_height(font), s)),
         None => (0.0, 0.0),
@@ -226,13 +190,11 @@ fn shadow_layer(s: f32, w: f32, h: f32, runs: &[(&Run, Color)], r: f32) -> Layer
 
 /// The front face's layers. `w`, `h`: the face's drawn size; `hu`: its unrounded height.
 fn front_layers(f: &Fonts, w: f32, h: f32, hu: f32, s: f32) -> Vec<Layer> {
-    // paddingContainer: padding 24, a column.
     let name_h = side(gfx::line_height(&f.heavy32), s);
     let ver_h = side(gfx::line_height(&f.bold17), s);
     let name = Run { text: "Reactiive", font: &f.heavy32, spacing: -0.5, color: Color::WHITE, x: 24.0, top: 24.0 };
     let verified = Run { text: "Verified", font: &f.bold17, spacing: 0.2, color: Color::WHITE.alpha(0.95), x: 24.0, top: floor(24.0 + name_h + 4.0, s) };
-    // The spacer and avatarSection share what is left (flex 1 each); the avatar at the
-    // section's bottom right.
+    // The spacer and the avatar section share the free height; the avatar sits at the bottom right.
     let left = hu - 48.0 - name_h - 4.0 - ver_h;
     let section_top = 24.0 + name_h + 4.0 + ver_h + left / 2.0;
     let ay_rel = left / 2.0 - AVATAR;
@@ -271,8 +233,7 @@ fn front_layers(f: &Fonts, w: f32, h: f32, hu: f32, s: f32) -> Vec<Layer> {
 fn back_layers(f: &Fonts, w: f32, h: f32, hu: f32, s: f32) -> Vec<Layer> {
     let ink = Color::view_hex(0x1A1D29);
     let grey = Color::view_hex(0x6B7280);
-    // headerSection (80 tall: the avatar) and statsContainer (marginTop 8), centred in the
-    // padding box (24).
+    // Header and stats are centred vertically in the padded card.
     let name_h = side(gfx::line_height(&f.heavy22), s);
     let loc_h = side(gfx::line_height(&f.bold15), s);
     let num_h = side(gfx::line_height(&f.heavy24), s);
@@ -284,13 +245,13 @@ fn back_layers(f: &Fonts, w: f32, h: f32, hu: f32, s: f32) -> Vec<Layer> {
     let stats_y = grid(24.0 + header_rel + AVATAR + 8.0, s);
     let (ax, ay) = (24.0, header_y);
     let al = avatar_layout(f, (24.0, 24.0 + header_rel), s);
-    // profileInfo: marginLeft 24, centred across the row.
+    // Name and location sit beside the avatar, centred on it.
     let info_h = name_h + 4.0 + loc_h;
     let info_y = header_y + grid((AVATAR - info_h) / 2.0, s);
     let info_x = 24.0 + AVATAR + 24.0;
     let name = Run { text: "Reactiive", font: &f.heavy22, spacing: -0.3, color: ink, x: info_x, top: info_y };
     let location = Run { text: "Italy", font: &f.bold15, spacing: 0.1, color: grey, x: info_x, top: info_y + floor(name_h + 4.0, s) };
-    // The stats: space-around over the 308 wide row; each item centres its two Texts.
+    // Stats are spaced evenly across the row; each centres its number and label.
     let stats = [("3", "Trip"), ("1", "Review"), ("4", "Years")];
     let widths: Vec<(f32, f32)> = stats.iter().map(|(n, l)| (text_w(&f.heavy24, n, -0.5, s), text_w(&f.bold13, l, 0.2, s))).collect();
     let row_w = w - 48.0;
@@ -343,7 +304,6 @@ fn build_face(device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut wgpu::Co
     let layout = device.create_bind_group_layout(&layer_shader::GROUP_0);
     let pipeline = skia::render::fullscreen_pipeline(device, &shader, &layout, layer_shader::entry::OVER, GRAPHITE_FORMAT, None);
     let sampler = skia::render::linear_sampler(device);
-    // Start from transparent.
     {
         let _clear = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("airbnb face clear"),
@@ -446,15 +406,13 @@ impl Surface for Card {
         }
         let s = frame.scale;
         let moving = self.step(frame.now_ms);
-        // The card box: the canvas less its margin; the face's drawn height from its rounded
-        // edges (the box's top is on the grid), its layout height unrounded (cardWidth / 1.6).
+        // Card box: the canvas less its margin. Its drawn height is rounded to the pixel grid;
+        // layout uses w / 1.6.
         let w = frame.width - 2.0 * MARGIN;
         let hu = w / 1.6;
-        // The faces' drawing scale. A press scale on the card's box (pressto's 0.96, the owner's
-        // call) reaches the surface as a frame scale that eases every frame: as Core Animation
-        // shows RN's views, the faces drawn at rest are resampled under it, not drawn again each
-        // frame (which recorded every glyph again at each scale and filled the glyph atlas: the
-        // avatar's "R" came out a dash, phone feedback mwhlwwu6).
+        // A press scale reaches here as a frame scale that eases each frame. The faces drawn at
+        // rest are resampled under it, not redrawn: redrawing records every glyph again and fills
+        // the glyph atlas.
         let s_face = match &self.faces {
             Some(((_, _, k), _)) if (*k as f32 / 1000.0 - s).abs() <= s * 0.05 && self.face_width == w => *k as f32 / 1000.0,
             _ => s,
@@ -602,9 +560,8 @@ mod tests {
         gfx::save_over(&mid.unwrap(), "airbnb-card-mid", [255, 255, 255]);
         let (back, _) = fixture::render(&gpu, s.as_mut(), &frame(ms + 16.0)).unwrap();
         gfx::save_over(&back, "airbnb-card-back", [255, 255, 255]);
-        // Back to the front under a press scale easing the frame's scale (3 → 2.88, again and
-        // again): the faces drawn at rest stay, resampled, and the avatar's "R" stays an R
-        // (it came out a dash once every glyph was recorded again at each scale).
+        // Back to the front under a press scale: the faces stay resampled, and the avatar's "R"
+        // stays an R.
         s.bind(&[Value::Bool(false)], None).unwrap();
         for k in 0..64 {
             ms += 1000.0 / 60.0;

@@ -147,20 +147,6 @@ fn cases() -> Vec<Case> {
                 }
             },
         },
-        Case {
-            name: "telegram-theme-switch",
-            make: crate::telegram_theme_switch::surface,
-            size: (420.0, 912.0, 3.0),
-            setup: |s| s.bind(&[Value::Number(34.0)], None).unwrap(),
-            // A tap on the switch every 120 frames: the reveal runs most of the time.
-            tick: |s, i, ms| {
-                if i % 120 == 0 {
-                    let (x, y) = (420.0 - 90.0 + 40.0, 912.0 - 95.0 - 100.0 + 40.0);
-                    s.input(&pointer(1, PointerPhase::Down, x, y, ms));
-                    s.input(&pointer(1, PointerPhase::Up, x, y, ms + 60.0));
-                }
-            },
-        },
     ]
 }
 
@@ -285,8 +271,8 @@ fn audit_inputs(name: &str, arity: usize) -> Vec<Value> {
     let n = Value::Number;
     let b = Value::Bool;
     match name {
-        "add_to_cart" | "calendar_days" | "drag_to_sort" | "expandable_mini_player" => vec![n(62.0)],
-        "airbnb_flip_card" | "alert_drawer_card" | "circular_carousel" | "wheel_picker" => vec![b(false)],
+        "calendar_days" | "drag_to_sort" => vec![n(62.0)],
+        "airbnb_flip_card" | "circular_carousel" | "wheel_picker" => vec![b(false)],
         "airbnb_flip_pages" | "dot_sheet_card" => vec![b(false), n(62.0)],
         "cherry_blossom_qrcode" => vec![n(402.0), n(874.0), n(7.0), Value::str("https://reactiive.io")],
         "gl_transitions" => vec![n(62.0), n(34.0), Value::str("Hello"), n(0.0)],
@@ -298,7 +284,6 @@ fn audit_inputs(name: &str, arity: usize) -> Vec<Value> {
         "sudoku" => vec![n(7.0), n(0.0), n(0.0), n(16.0), n(170.0), n(370.0), n(0.0), n(0.0), n(0.0)],
         "swipe_cards" => vec![n(62.0), n(0.0), n(0.0), n(0.0)],
         "the_little_prince" => vec![n(3.0), b(false)],
-        "telegram_theme_switch" => vec![n(34.0)],
         "timer" => vec![n(0.0), n(250.0)],
         _ => vec![n(0.0); arity],
     }

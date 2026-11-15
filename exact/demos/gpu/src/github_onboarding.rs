@@ -1,35 +1,10 @@
-//! GitHub Onboarding (src/animations/github-onboarding: index.tsx,
-//! components/colorful-onboarding/index.tsx, page.tsx, pagination-dots/*): four cat photos on a
-//! paging FlatList over a Skia gradient whose colours follow the scroll; each page's round badge
-//! turns about its vertical axis and shrinks as it leaves, its title fades, and four pressto dots
-//! page the list.
+//! Four cat photos on a paging list over a gradient whose colours follow the scroll. Each page's
+//! round badge turns and shrinks as it leaves, its title fades, and four dots page the list.
 //!
-//! - Background (index.tsx): an RN Skia `<Rect>` of the window with a `<LinearGradient>` from
-//!   (W / 2, 0) to (W / 2, 2H) of [base, dark]: `interpolateColor(offset / W, [0 … 3], colors)`
-//!   and the same of `Color(c).darken(0.8).hex()` (gamma 2.2, rounded to 8 bits), drawn on RN
-//!   Skia's 8-bit Display P3 surface (each pixel the P3 lerp rounded to 8 bits, then converted to
-//!   sRGB by Core Animation). Here: the UI views drawn into a transparent layer, then one pass
-//!   that computes the gradient per pixel and lays the layer over it.
-//! - The FlatList: horizontal, pagingEnabled, pages W × H: `ui_scroll` with `Snap::Page` (UIKit's
-//!   paging spring, measured). A dot's onPress is `scrollToOffset({ animated: true })`, UIKit's
-//!   `setContentOffset(animated:)`: `UiScroll::scroll_to`.
-//! - A page (page.tsx): a centred column of the badge (0.6 W square, white, padding 10, overflow
-//!   hidden, radius 0.3 W continuous: a circle) holding the photo (expo-image cover, radius 400
-//!   continuous: a circle), and the title 50 below (SF bold 40, letterSpacing 1, white, centred,
-//!   uppercase, marginHorizontal 40). Over [(i − 1) W, i W, (i + 1) W]: rotateY [π/4, 2π, π/4] and
-//!   scale [0.5, 1, 0.5] (extend) as `[rotateY, scale]` with no perspective (an orthographic
-//!   x-scale of s·cos θ about the centre, mirrored past a quarter turn: backfaces show); the
-//!   title's opacity [−1, 1, −1] clamped.
-//! - PaginationDots: a centred row 100 above the bottom; each a PressableScale (hitSlop 5) of a
-//!   paddingHorizontal 5 view holding the 7 pt #D4D4D4 dot, opacity over [i − 0.7, i, i + 0.7] of
-//!   the progress → [0.2, 0.6, 0.2] clamped. A later dot's hitSlop lies over an earlier one.
-//! - Photos: as expo-image hands them to Core Animation for a 232 pt view at 3x
-//!   (exact/parity-tools/github-onboarding/photos.swift): 02 downscaled to 696 × 999, the others
-//!   as decoded.
-//! - Haptics past RN (which plays only the dots' presses; the owner's haptic language): a
-//!   swipe plays `haptic:selection` each time the front page changes (round(offset / W)), at
-//!   most one per HAPTIC_GAP_MS, and `haptic:impact-rigid` once when the finger drags the list
-//!   past either end (the rubber band). A dot's scroll plays only its press's selection.
+//! - The list pages on UIKit's paging spring; a dot's press scrolls to its page.
+//! - The background is computed per pixel from the scroll, in the surface's colour space.
+//! - Haptics: a selection each time the front page changes, at most one per 40 ms; a rigid impact
+//!   when a drag pulls the list past either end. A dot's scroll plays only its press's selection.
 
 use std::f64::consts::PI;
 
@@ -48,7 +23,7 @@ const HAPTIC_GAP_MS: f64 = 40.0;
 const SWITCH: f64 = 6.0;
 /// How far past an end the rubber band pulls before its rigid plays (re-armed back inside), pt.
 const PAST_END: f64 = 2.0;
-/// index.tsx's data: title, colour, photo.
+/// Page data: title, colour and photo.
 const TITLES: [&str; 4] = [
     "Lazy Day Lounger",
     "Whiskered Explorer",
@@ -78,14 +53,14 @@ static PHOTOS: [(&[u8], u32, u32); 4] = [
         960,
     ),
 ];
-/// styles.badge padding.
+/// Badge padding, pt.
 const PADDING: f64 = 10.0;
-/// styles.title marginTop, marginHorizontal, fontSize, letterSpacing.
+/// Title margin, font size and letter spacing, pt.
 const TITLE_TOP: f64 = 50.0;
 const TITLE_MARGIN: f64 = 40.0;
 const TITLE_SIZE: f32 = 40.0;
 const SPACING: f32 = 1.0;
-/// DOT_SIZE, the dot's paddingHorizontal, the row's bottom, hitSlop.
+/// Dot size, spacing, distance from the bottom, and touch slop, pt.
 const DOT: f64 = 7.0;
 const DOT_PAD: f64 = 5.0;
 const DOTS_BOTTOM: f64 = 100.0;
@@ -120,31 +95,29 @@ fn photo(index: usize) -> skia::Image {
     }
 }
 
-/// Yoga's rounding of a View edge to the device pixel grid (half up).
+/// Rounds a view edge to the device pixel grid, halves up.
 fn grid(v: f64, scale: f64) -> f64 {
     (v * scale + 0.5 + 1e-4).floor() / scale
 }
 
-/// A Text's offset: floored to the device pixel.
+/// Rounds a text's offset down to the device pixel grid.
 fn text_grid(v: f64, scale: f64) -> f64 {
     (v * scale + 1e-4).floor() / scale
 }
 
-/// A Text's right (or bottom) edge with a fractional measured side: ceiled to the device pixel.
+/// Rounds a text's far edge up to the device pixel grid.
 fn text_ceil(v: f64, scale: f64) -> f64 {
     (v * scale - 1e-4).ceil() / scale
 }
 
-/// A page's title as TextKit lays it out (uppercase, wrapped in the margins): its lines, their
-/// typographic widths (letterSpacing after every glyph) and the widest.
+/// A page's title as TextKit lays it out: its lines, their widths and the widest.
 struct Title {
     lines: Vec<String>,
     widths: Vec<f64>,
     max: f64,
 }
 
-/// The gradient's two colours at `progress` (0…1 channels, sRGB): `convertToRGBA` of RN's
-/// `interpolateColor`s.
+/// The gradient's two colours at `progress`, in sRGB.
 fn gradient(progress: f64) -> [[f64; 3]; 2] {
     let input = [0.0, 1.0, 2.0, 3.0];
     let rgba = |c: Color| {
@@ -374,7 +347,7 @@ impl Onboarding {
             }
             let (sx, s, opacity) = page_style(x, i, w);
             let title = self.titles.get(i);
-            // Yoga centres the column with the Text's measured (unrounded) height.
+            // Centre the column on the unrounded text height, as Yoga does.
             let text_h = title.map_or(0.0, |t| t.lines.len() as f64) * line_h;
             let top0 = (h - (side + TITLE_TOP + text_h)) / 2.0;
             // The page's views on Yoga's grid inside the content, the content moved by the offset.
@@ -412,10 +385,7 @@ impl Onboarding {
                 c.restore();
             }
             if let (Some(font), Some(title), true) = (self.font.as_ref(), title, opacity > 0.0) {
-                // Yoga centres the Text at its measured (unrounded) width, floors its left and
-                // ceils its right (a fractional width): the box TextKit centres each line in is
-                // a device pixel wider than the ceiled width when the left lands on a half pixel
-                // (WHISKERED's 241.53 pt: 726 px, not 725).
+                // Round the left edge down and the right edge up: a half-pixel left edge needs the extra pixel.
                 let raw_left = (w - title.max) / 2.0;
                 let left = text_grid(raw_left, scale);
                 let box_w = text_ceil(raw_left + title.max, scale) - left;

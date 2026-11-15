@@ -1,52 +1,11 @@
-//! Light on Painting (src/animations/light-on-painting: index.tsx, state.ts, constants.ts,
-//! paintings.ts, hooks/use-relight-renderer.ts, shaders/relight.ts, components/paginator.tsx):
-//! Vermeer's *Girl with a Pearl Earring* and Hopper's *Nighthawks* side by side on black, one
-//! window wide each, relit by a bulb hanging on a cord that the finger carries, swings when let
-//! go and pinches deeper into the scene; a swipe anywhere else pages between them, a double tap
-//! posts `settings` (the Contract opens the sheet whose four switches are this surface's inputs).
+//! Light on Painting: Vermeer's *Girl with a Pearl Earring* and Hopper's *Nighthawks*, one per
+//! page on black, lit by a bulb on a cord. The finger carries the bulb, which swings when let go,
+//! and pinches the light nearer to or farther from the painting.
 //!
-//! The relighting pass (gpu/shaders/light_on_painting.wgsl) is relight.ts line for line, its
-//! uniform buffer word for word (use-relight-renderer.ts startFrameLoop's floats[0..63]), its
-//! textures RN's: the albedo as RN Skia decodes the JPEG (libjpeg-turbo's bytes, unconverted,
-//! rgba8unorm) and the baked surface field's half floats (rgba16float), both linear-filtered,
-//! clamped, one level. Bundled in images/light-on-painting/ (exact/parity-tools/
-//! light-on-painting-assets.py: row deltas under zlib, lossless; the test checks the decoded
-//! bytes' FNV-1a against the RN files'), inflated once at the first frame.
-//!
-//! The canvas is a react-native-webgpu CAMetalLayer: bgra8unorm, no colorspace, which iOS shows
-//! as sRGB (MetalLayerColorSpace.mm), so the shader's output is sRGB as written. Its drawable is
-//! min(PixelRatio, 2) × the canvas's points (MAX_PIXEL_RATIO), stretched over the bounds by Core
-//! Animation's linear filter: the pass renders into an 8-bit layer at that raster, and
-//! gpu/shaders/light_on_painting_compose.wgsl samples it bilinearly at each device pixel, with
-//! the Paginator's views (drawn at the device's pixels) over it. Like RN, the pass runs only
-//! when its uniforms change.
-//!
-//! Gestures, as RNGH on iOS sees them (Gesture.Simultaneous(pan, pinch) on the full canvas):
-//! - Pan().minDistance(0): onBegin at touch-down (grab the bulb within LIGHT_GRAB_RADIUS of it,
-//!   keeping the offset, or start paging); custom criteria activate it at the first move, where
-//!   the translation is zeroed and onStart and onUpdate both fire; onEnd keeps velocityX;
-//!   onFinalize (end, cancel or fail) spots taps (under TAP_SLOP of translation, TAP_DURATION)
-//!   and double taps (TAP_GAP), commits the page, lets go of the bulb.
-//! - Pinch: targetZ = clamp(pinchStart × scale, LIGHT_Z_MIN, LIGHT_Z_MAX), pinchStart taken as
-//!   the pinch begins.
-//!
-//! Motion (the audit; every value advances in the frame loop, as startFrameLoop does with
-//! Date.now() deltas, which here are the host's frame clock):
-//! - light.z: z += (targetZ − z) × min(1, frame × 10), frame = min(dt, 1/15) s.
-//! - light.pageShift: under the finger, pageStart − translationX / width, rubber-banded × 0.35
-//!   past either end; released, settles exponentially on pageTarget (1 − e^(−12 × frame), snapped
-//!   under 0.0005). pageTarget: a flick (|velocityX| > 450) moves one page against it, else a
-//!   move of more than 0.25 pages moves one page with it, clamped.
-//! - light.x / y and the cord: fixed 1/120 s Verlet slices (carry, at most 6 a frame, then the
-//!   backlog is dropped): gravity 24, damping e^(−0.5 × step), 10 passes of distance constraints
-//!   by inverse mass (bulb 8, anchor fixed, the held bulb fixed) and bending 0.22; held, the bulb
-//!   chases the finger's target by 1 − e^(−30 × step); untouched, it hangs at CORD_REST_Y; the
-//!   finger pays the cord out between 0.12 and 1.7. Untethered (no cord), only the chase.
-//! - The Paginator dots: width 6 → 16 → 6 and opacity 0.3 → 1 → 0.3 linear in
-//!   clamp(pageShift − (index − 1), 0, 2), read every frame (useAnimatedStyle on scrollX), laid out
-//!   by Yoga (row, centred, gap 8, bottom 60) on the device-pixel grid.
-//! - The sheet: the platform's (Contract `dialog`); no haptics here (the switches' selection
-//!   haptic is the Contract's).
+//! Gestures:
+//! - A touch near the bulb carries it; a touch anywhere else pages between the paintings.
+//! - A flick, or a drag past a quarter of the width, moves one page.
+//! - Two quick taps ask for the settings sheet.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -57,19 +16,13 @@ use crate::{gfx, shaders};
 use shaders::light_on_painting as relight;
 use shaders::light_on_painting_compose as compose;
 
-// --- constants.ts -----------------------------------------------------------------------------
+// --- Constants ---------------------------------------------------------------------------------
 
-/// SURFACE_FAR_Z.
 const SURFACE_FAR_Z: f64 = -0.32;
-/// LIGHT_Z_MIN.
 const LIGHT_Z_MIN: f64 = SURFACE_FAR_Z + 0.04;
-/// LIGHT_Z_MAX.
 const LIGHT_Z_MAX: f64 = 0.5;
-/// LIGHT_Z_DEFAULT.
 const LIGHT_Z_DEFAULT: f64 = -0.18;
-/// PAINTING_WIDTH_RATIO.
 const PAINTING_WIDTH_RATIO: f64 = 1.0;
-/// DEFAULT_SETTINGS.
 const INTENSITY: f64 = 4.05;
 const EXPOSURE: f64 = 0.085;
 const RELIEF: f64 = 1.25;
@@ -86,64 +39,61 @@ const BULB_CAMERA_Z: f64 = 2.0;
 const BULB_REFERENCE_Z: f64 = 0.42;
 const BULB_SOURCE_SOFTNESS: f64 = 0.08;
 const BULB_SAMPLE_SPREAD: f64 = 0.6;
-/// RelightMode.
+/// Shader output: relit, albedo only, or depth.
 const MODE_RELIT: u32 = 0;
 const MODE_ALBEDO: u32 = 1;
 const MODE_DEPTH: u32 = 2;
-/// LIGHT_GRAB_RADIUS, points.
+/// Grab radius, in points.
 const LIGHT_GRAB_RADIUS: f64 = 64.0;
-/// CORD_NODES.
 const CORD_NODES: usize = 12;
-/// DRAG_FOLLOW.
+/// Rate at which the held bulb chases the finger, per second.
 const DRAG_FOLLOW: f64 = 30.0;
-/// PHYSICS_STEP, PHYSICS_MAX_STEPS.
+/// Fixed physics slice in seconds, and the most slices run per frame.
 const PHYSICS_STEP: f64 = 1.0 / 120.0;
 const PHYSICS_MAX_STEPS: u32 = 6;
-/// CORD_ITERATIONS, CORD_STIFFNESS.
 const CORD_ITERATIONS: usize = 10;
 const CORD_STIFFNESS: f64 = 0.22;
-/// PENDULUM_GRAVITY, PENDULUM_DAMPING, BULB_MASS.
 const PENDULUM_GRAVITY: f64 = 24.0;
 const PENDULUM_DAMPING: f64 = 0.5;
 const BULB_MASS: f64 = 8.0;
-/// CORD_ANCHOR_X, CORD_MIN_LENGTH, CORD_MAX_LENGTH.
 const CORD_ANCHOR_X: f64 = 0.0;
+/// Cord length limits, in world units.
 const CORD_MIN_LENGTH: f64 = 0.12;
 const CORD_MAX_LENGTH: f64 = 1.7;
-/// PAINTING_CENTER_Y, CORD_REST_Y.
 const PAINTING_CENTER_Y: f64 = 0.5;
 const CORD_REST_Y: f64 = -0.25;
-/// TAP_SLOP (points), TAP_DURATION, TAP_GAP (ms).
+/// A tap moves under TAP_SLOP points and lasts under TAP_DURATION ms; a second within TAP_GAP ms
+/// makes a double tap.
 const TAP_SLOP: f64 = 12.0;
 const TAP_DURATION: f64 = 300.0;
 const TAP_GAP: f64 = 320.0;
-/// PAGE_SETTLE_RATE, PAGE_COMMIT_FRACTION, PAGE_FLICK_VELOCITY.
+/// Paging: settle rate per second, commit fraction, flick speed in points per second.
 const PAGE_SETTLE_RATE: f64 = 12.0;
 const PAGE_COMMIT_FRACTION: f64 = 0.25;
 const PAGE_FLICK_VELOCITY: f64 = 450.0;
-/// use-relight-renderer.ts MAX_PIXEL_RATIO.
+/// Largest pixel ratio the pass renders at.
 const MAX_PIXEL_RATIO: f32 = 2.0;
-/// paginator.tsx DOT_SIZE, DOT_ACTIVE_WIDTH, DOT_SPACING; styles.container bottom.
+/// Paginator dot sizes and spacing, in points; the row's distance from the bottom.
 const DOT_SIZE: f64 = 6.0;
 const DOT_ACTIVE_WIDTH: f64 = 16.0;
 const DOT_SPACING: f64 = 8.0;
 const PAGINATOR_BOTTOM: f64 = 60.0;
 
-/// The relit layer and the paginator's layer: 8-bit, sRGB-encoded as RN's drawable is.
+/// The relit and dots layers: 8-bit, sRGB-encoded, like the canvas drawable they compose onto.
 const LAYER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
-// --- paintings.ts -----------------------------------------------------------------------------
+// --- Painting data -----------------------------------------------------------------------------
 
-/// One painting's bundled pixels and facts (PaintingFacts).
+/// One painting's bundled pixels and facts.
 struct Painting {
-    /// The albedo, libjpeg-turbo's RGB rows (row deltas, zlib) and its size.
+    /// RGB rows, each stored as a delta from the row above, zlib-compressed.
     albedo: &'static [u8],
     albedo_size: (u32, u32),
-    /// The surface field's rgba16float half bits (row deltas, byte planes, zlib); its size is
-    /// the field's `meta` (the json).
+    /// The surface field as f16 bits in byte planes, row deltas, zlib-compressed. `meta` is its
+    /// size.
     surface: &'static [u8],
     meta: (u32, u32),
-    /// occludeBulb (default true).
+    /// Whether the surface depth hides the bulb's disc.
     occlude_bulb: bool,
 }
 
@@ -170,7 +120,7 @@ const PAINTINGS: [Painting; 2] = [
     },
 ];
 
-/// halfHeightOf: 0.5 / (meta.width / meta.height).
+/// Half the painting's height, with its width as 1.
 fn half_height(p: &Painting) -> f64 {
     0.5 / (p.meta.0 as f64 / p.meta.1 as f64)
 }
@@ -218,7 +168,7 @@ fn surface_halfs(p: &Painting) -> Vec<u16> {
     out
 }
 
-// --- JS's numbers -----------------------------------------------------------------------------
+// --- Numeric helpers, with JavaScript's semantics ----------------------------------------------
 
 /// Math.round: halves toward +∞.
 fn js_round(x: f64) -> f64 {
@@ -246,7 +196,7 @@ fn hypot_or(dx: f64, dy: f64) -> f64 {
     }
 }
 
-/// state.ts decodeHalf: IEEE half → float.
+/// IEEE half-precision bits to f64.
 fn decode_half(bits: u16) -> f64 {
     let sign = if bits & 0x8000 != 0 { -1.0 } else { 1.0 };
     let exponent = ((bits >> 10) & 0x1f) as i32;
@@ -264,9 +214,8 @@ fn decode_half(bits: u16) -> f64 {
     sign * 2f64.powi(exponent - 15) * (1.0 + fraction / 1024.0)
 }
 
-// --- state.ts ---------------------------------------------------------------------------------
+// --- Light state and physics -------------------------------------------------------------------
 
-/// CordNode.
 #[derive(Clone, Copy, Debug, Default)]
 struct CordNode {
     x: f64,
@@ -275,7 +224,6 @@ struct CordNode {
     previous_y: f64,
 }
 
-/// LightState.
 #[derive(Clone, Debug)]
 struct LightState {
     x: f64,
@@ -299,7 +247,6 @@ struct LightState {
 }
 
 impl Default for LightState {
-    /// createLightState.
     fn default() -> Self {
         LightState {
             x: 0.0,
@@ -324,7 +271,7 @@ impl Default for LightState {
     }
 }
 
-/// LightSettings, as index.tsx's effect translates the sheet's.
+/// Shader inputs derived from the sheet's switches.
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct LightSettings {
     intensity: f64,
@@ -352,13 +299,12 @@ impl LightSettings {
     }
 }
 
-/// cordAnchorY: just off the top of the screen.
+/// The cord's anchor height, just above the top edge.
 fn cord_anchor_y(aspect_height: f64) -> f64 {
     -PAINTING_CENTER_Y * aspect_height - 0.02
 }
 
-/// bulbExposure: how much of the bulb's disc is clear of the scene behind it (nine taps of the
-/// depth field at its nearest texel).
+/// How much of the bulb's disc is unobstructed, from nine depth taps.
 fn bulb_exposure(light: &LightState, fields: &[Vec<u16>]) -> f64 {
     let depth_at = |world_x: f64, world_y: f64| -> f64 {
         let page = js_round(world_x + light.page_shift);
@@ -407,7 +353,6 @@ fn bulb_exposure(light: &LightState, fields: &[Vec<u16>]) -> f64 {
     open / 9.0
 }
 
-/// restCord: the whole cord straight down from the anchor.
 fn rest_cord(light: &mut LightState, anchor_y: f64) {
     light.cord_length = CORD_REST_Y - anchor_y;
     let last = light.cord.len() - 1;
@@ -424,7 +369,6 @@ fn rest_cord(light: &mut LightState, anchor_y: f64) {
     light.target_y = light.y;
 }
 
-/// integrateCord: one fixed slice.
 fn integrate_cord(light: &mut LightState, settings: &LightSettings, step: f64, anchor_y: f64) {
     if !light.paid_out {
         rest_cord(light, anchor_y);
@@ -500,7 +444,6 @@ fn integrate_cord(light: &mut LightState, settings: &LightSettings, step: f64, a
     light.y = cord[last].y;
 }
 
-/// advanceLight: one rendered frame.
 fn advance_light(
     light: &mut LightState,
     settings: &LightSettings,
@@ -530,9 +473,10 @@ fn advance_light(
     }
 }
 
-// --- the surface ------------------------------------------------------------------------------
+// --- The surface ------------------------------------------------------------------------------
 
-/// The demo's surface. Inputs: showBulb, showCord, relight, showDepth (the sheet's switches).
+/// The relit painting surface. Inputs are the sheet's switches: showBulb, showCord, relight,
+/// showDepth.
 pub fn surface() -> Box<dyn Surface> {
     Box::new(LightOnPainting {
         light: LightState::default(),
@@ -541,8 +485,7 @@ pub fn surface() -> Box<dyn Surface> {
         last_tap: 0.0,
         pinch_start: 0.0,
         release_velocity: 0.0,
-        // minDistance(0): custom criteria, activating at the first move (RNPanHandler's
-        // minimumNumberOfTouches 20 holds it at touch-down).
+        // Activates at the first move: a touch-down alone does not start the pan.
         pan: PanGesture::new().min_distance(f32::MIN_POSITIVE),
         pinch: PinchGesture::default(),
         layout: (1.0, 1.0),
@@ -561,20 +504,20 @@ pub fn surface() -> Box<dyn Surface> {
 struct LightOnPainting {
     light: LightState,
     settings: LightSettings,
-    /// `touch` (where and when the finger landed), `lastTap`, `pinchStart`, `releaseVelocity`.
+    /// Touch-down x, y and time in ms.
     touch: (f64, f64, f64),
     last_tap: f64,
     pinch_start: f64,
     release_velocity: f64,
     pan: PanGesture,
     pinch: PinchGesture,
-    /// The container's onLayout, points.
+    /// Canvas size in points.
     layout: (f64, f64),
-    /// The frame loop's `previous`; None until it runs, or after it went idle.
+    /// Time of the last frame; None before the first frame and after rest.
     previous_ms: Option<f64>,
-    /// The depth fields (half bits), for bulbExposure.
+    /// Depth fields as half bits, one per painting.
     fields: Vec<Vec<u16>>,
-    /// The uniform words the relit layer holds, and the paginator's pageShift.
+    /// Uniform words for the relit pass.
     words: [f32; 64],
     presented: Option<[u32; 64]>,
     dots_at: Option<(f64, u32, u32)>,
@@ -599,7 +542,7 @@ struct Gpu {
     compose_uniforms: wgpu::Buffer,
     relight_bind: wgpu::BindGroup,
     sampler: wgpu::Sampler,
-    /// The relit layer (RN's raster) and the paginator's (device pixels), with their sizes.
+    /// Render targets: the relit layer at the raster, the dots at device pixels.
     layers: Option<Layers>,
 }
 
@@ -612,7 +555,7 @@ struct Layers {
 }
 
 impl LightOnPainting {
-    /// onBegin.
+    /// Touch-down: grab the bulb if the touch is near it, else start paging.
     fn pan_begin(&mut self, x: f64, y: f64, at_ms: f64) {
         self.touch = (x, y, at_ms);
         let (width, height) = self.layout;
@@ -635,7 +578,7 @@ impl LightOnPainting {
         state.paging = true;
     }
 
-    /// onUpdate.
+    /// Drag: moves the bulb, or the page with rubber-banding at either end.
     fn pan_update(&mut self, x: f64, y: f64, translation_x: f64) {
         let (width, height) = self.layout;
         let scale = width * PAINTING_WIDTH_RATIO;
@@ -669,7 +612,7 @@ impl LightOnPainting {
         state.target_y = anchor_y + (dy / distance) * state.cord_length;
     }
 
-    /// onFinalize.
+    /// Runs on end, cancel and fail: taps, the page commit, and the bulb release.
     fn pan_finalize(&mut self, translation_x: f64, translation_y: f64, at_ms: f64) {
         let travelled = translation_x.hypot(translation_y);
         if travelled < TAP_SLOP && at_ms - self.touch.2 < TAP_DURATION {
@@ -709,7 +652,7 @@ impl LightOnPainting {
         state.held = false;
     }
 
-    /// startFrameLoop's floats[0..63] for this frame (`raster`: the canvas's pixels).
+    /// Packs the 64 uniform words for this frame; `raster` is the canvas size in pixels.
     fn pack(&mut self, raster: (u32, u32)) {
         let light = &self.light;
         let settings = &self.settings;
@@ -781,8 +724,7 @@ impl LightOnPainting {
         f[39] = max_y as f32;
     }
 
-    /// The Paginator's dots (paginator.tsx), each `(x, y, w, h, opacity)` in points on Yoga's
-    /// device-pixel grid.
+    /// Dot rects `(x, y, w, h, opacity)` in points, snapped to the device-pixel grid.
     fn dots(&self, width: f64, height: f64, px: f64) -> [(f32, f32, f32, f32, f32); 2] {
         let snap = |v: f64| (v * px).round() / px;
         let look = |index: usize| {
@@ -802,8 +744,7 @@ impl LightOnPainting {
             }
         };
         let (a, b) = (look(0), look(1));
-        // styles.container: absolute, left 0, right 0, bottom 60; row, centred, gap 8. Its
-        // height is its tallest child's (6), so the dots' top is height − 60 − 6.
+        // The row sits PAGINATOR_BOTTOM above the bottom edge; its height is one dot.
         let top = height - PAGINATOR_BOTTOM - DOT_SIZE;
         let left = (width - (a.0 + DOT_SPACING + b.0)) / 2.0;
         let mut out = [(0.0, 0.0, 0.0, 0.0, 0.0); 2];
@@ -856,7 +797,7 @@ impl Surface for LightOnPainting {
         let phase = gfx::phase(phase);
         match self.pan.event(id, phase, x, y, at_ms, true) {
             Event::Begin { x, y } => self.pan_begin(x as f64, y as f64, at_ms),
-            // RNGH sends the activation's state change (onStart) and an update (onUpdate).
+            // Activation sends a start and an update; both apply the same position.
             Event::Start(p) | Event::Update(p) => {
                 self.pan_update(p.x as f64, p.y as f64, p.translation_x as f64)
             }
@@ -915,7 +856,6 @@ impl Surface for LightOnPainting {
     ) -> bool {
         self.layout = (frame.width as f64, frame.height as f64);
         let pixels = frame.pixels();
-        // canvas.width = clientWidth × min(PixelRatio, 2).
         let ratio = frame.scale.min(MAX_PIXEL_RATIO);
         let raster = (
             ((frame.width * ratio).round() as u32).max(1),
@@ -934,8 +874,7 @@ impl Surface for LightOnPainting {
             self.dots_at = None;
         }
 
-        // The frame loop: Date.now() deltas; after an idle stretch (RN's loop never stops), one
-        // display frame.
+        // Frame delta: time since the last frame, or one display frame after rest.
         let period = if frame.period_ms > 0.0 {
             frame.period_ms
         } else {
@@ -1005,7 +944,7 @@ impl Surface for LightOnPainting {
         }
         let layers = gpu.layers.as_ref().unwrap();
 
-        // The relit layer, only when its uniforms changed (startFrameLoop's presentedWords).
+        // The relit pass runs only when its uniforms change.
         let bits: [u32; 64] = std::array::from_fn(|i| self.words[i].to_bits());
         let changed = self.presented != Some(bits);
         if changed {
@@ -1020,7 +959,7 @@ impl Surface for LightOnPainting {
                     view: &layers.painting,
                     resolve_target: None,
                     depth_slice: None,
-                    // colorAttachment.clearValue: opaque black.
+                    // Clears to opaque black.
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
                         store: wgpu::StoreOp::Store,
@@ -1038,12 +977,12 @@ impl Surface for LightOnPainting {
             self.presented = Some(bits);
         }
 
-        // The Paginator, when scrollX moved.
+        // Dots are redrawn only when the page shift changes.
         let dots_key = (self.light.page_shift, pixels.0, pixels.1);
         if self.dots_at != Some(dots_key) {
             self.canvas.begin(frame.scale);
             for (x, y, w, h, o) in dots {
-                // backgroundColor white, borderRadius DOT_SIZE / 2, borderCurve continuous.
+                // White pills with continuous corners.
                 self.canvas.draw_continuous_rrect(
                     x,
                     y,
@@ -1177,7 +1116,6 @@ fn build(
     };
     let params = buffer("light on painting params", 256);
     let compose_uniforms = buffer("light on painting compose", compose::Uniforms::SIZE as u64);
-    // The textures: albedo rgba8unorm, surface rgba16float (createTexture / writeTexture).
     let mut albedo = Vec::new();
     let mut surface = Vec::new();
     for p in &PAINTINGS {
@@ -1205,9 +1143,8 @@ fn build(
             8,
         ));
     }
-    // magFilter / minFilter linear, clamp-to-edge.
     let sampler = gfx::linear_sampler(device, "light on painting");
-    // The one pairing two paintings have: slot A the first, slot B the second.
+    // Slots A and B hold the first and second painting.
     let relight_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("light on painting relight"),
         layout: &layout,
@@ -1278,7 +1215,7 @@ mod tests {
 
     #[test]
     fn the_bundled_pixels_are_rns() {
-        // exact/parity-tools/light-on-painting-assets.py: libjpeg-turbo's RGB, the .bin's bytes.
+        // FNV-1a of the decoded albedo and surface bytes, pinning the bundled assets.
         let rgb = |p: &Painting| {
             albedo_texels(p)
                 .chunks_exact(4)
@@ -1313,7 +1250,7 @@ mod tests {
         let mut s = surface();
         let (a, _) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         a.save("light-on-painting-rest");
-        // W 420, H 912: anchorY −0.5 × 912 / 420 − 0.02; the bulb rests at y −0.25: (210, 351).
+        // The bulb rests at (210, 351) on this frame.
         let reply = s.agent("{}").unwrap();
         assert!(
             reply.contains("\"x\":0,") && reply.contains("\"y\":-0.25"),
@@ -1327,8 +1264,7 @@ mod tests {
             a.at(210, 120),
             a.at(240, 120)
         );
-        // The girl spans 2 × 0.592 × 420 = 497 pt about the centre (207.3 to 704.7): black above
-        // and below, away from the bulb's halo.
+        // The painting is black above and below, away from the bulb's halo.
         assert!(lum(a.at(5, 905)) < 12, "{:?}", a.at(5, 905));
         assert!(
             lum(a.at(5, 220)) > lum(a.at(5, 200)),
@@ -1346,8 +1282,7 @@ mod tests {
             .map(|x| lum(a.at(x, 690)))
             .sum::<u32>();
         assert!(near > far, "{near} {far}");
-        // The paginator: dot 0 16 wide at x 195..211 (opacity 1), dot 1 6 wide at 219..225 (0.3),
-        // y 846..852.
+        // Dot 0 is the active 16-point pill; dot 1 is a dim 6-point dot.
         assert!(lum(a.at(203, 849)) > 760, "{:?}", a.at(203, 849));
         let d1 = a.at(222, 849);
         assert!(d1[0] > 70 && d1[0] < 90, "{d1:?}");
@@ -1388,7 +1323,7 @@ mod tests {
             reply.contains("\"held\":true") && reply.contains("\"paidOut\":true"),
             "{reply}"
         );
-        // The bulb is at about (92, 595) now; the painting there brightened, at the old spot dimmed.
+        // Carried to (92, 595), the light brightens that spot and dims the old one.
         assert!(lum(b.at(92, 595)) > 700, "{:?}", b.at(92, 595));
         let around = |img: &fixture::Pixels, cx: u32, cy: u32| {
             (0..9)
@@ -1425,7 +1360,7 @@ mod tests {
             .unwrap();
         assert!(x > -0.28 + 0.02, "{reply}");
 
-        // A swipe left elsewhere pages to Nighthawks (half height 0.273: 341.5 to 570.5).
+        // A swipe left elsewhere pages to Nighthawks.
         t += 400.0;
         s.input(&p(PointerPhase::Down, 380.0, 800.0, t));
         for k in 1..=10 {
@@ -1442,10 +1377,10 @@ mod tests {
         assert!(s.agent("{}").unwrap().contains("\"pageShift\":1,"));
         assert!(lum(c.at(400, 250)) < 12, "{:?}", c.at(400, 250));
         assert!(lum(c.at(400, 500)) > 12, "{:?}", c.at(400, 500));
-        // The dots swapped: dot 1 is the long one (209..225).
+        // Dot 1 is now the active one.
         assert!(lum(c.at(217, 849)) > 760, "{:?}", c.at(217, 849));
 
-        // The shader off: the painting as scanned (relight false: ALBEDO).
+        // Relight off: the painting as scanned.
         s.bind(
             &[
                 Value::Bool(true),

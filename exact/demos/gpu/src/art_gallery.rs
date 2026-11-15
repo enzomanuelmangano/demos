@@ -1,64 +1,25 @@
-//! Art Gallery (src/animations/art-gallery: index.tsx, hooks/use-webgpu-mosaic.ts,
-//! shaders/*, components/zoom-out-button.tsx): 10,000 photos in a 100 × 100 grid that rearrange
-//! into a painting picked from the header menu, on RN's WebGPU canvas. Pinch zooms about the
-//! fingers, a pan moves the zoomed mosaic (cell by cell once a cell fills half the screen), a
-//! double tap zooms into the tapped cell or back out, and a blurred button zooms back out.
+//! Art gallery: 10,000 photos in a 100 × 100 grid that rearrange into a painting picked from the
+//! menu. Pinch zooms about the fingers, a pan moves the zoomed mosaic, a double tap zooms into the
+//! tapped cell or back out, and a blurred button zooms back out.
 //!
-//! What RN computes at run time comes baked (exact/parity-tools/art-gallery/build.ts writes
-//! images/art-gallery/gallery.bin and checks it): the 10,000 photo ids' atlas slots
-//! (atlas-slots.json), and per painting its grid and the photo of each cell, which RN gets by
-//! decoding the JPEG with Skia, averaging each cell (use-painting-analysis.ts) and running its
-//! C++ ColorMatcher. The atlas is RN's own ASTC 10×10 file, uploaded as it is (8000 × 5000, one
-//! mip level, sampled linear: no mipmaps, as RN). Without ASTC on the device RN draws its 1×1
-//! transparent placeholder: black tiles; so does this.
+//! The atlas slots and each painting's cell-to-photo mapping are baked ahead of time
+//! (images/art-gallery/gallery.bin). The atlas is an ASTC 10×10 file, uploaded as it is and sampled
+//! linearly with no mipmaps. Without ASTC support the tiles draw black.
 //!
-//! The drawing is RN's: the background pass (radial gradient, canvas pixels), then the tiles,
-//! one instanced draw with depth, the vertex and fragment code of mosaic-vertex.ts and
-//! mosaic-fragment.ts (shaders/art_gallery.wgsl), into an 8-bit encoded target. The uniforms
-//! are use-webgpu-mosaic.ts's render loop: scale, translate, the rearrange progress
-//! (1 + 9t)·e^(−9t) over 1 s from the buffer swap, the focus dimming's 500 ms ease-out (quad)
-//! fade in / out and its move from cell to cell, contrast 1.4, atlasReveal 7.
+//! The mosaic is one instanced draw with depth, after a radial background pass. A pick rearranges
+//! the tiles over 1 s from the buffer swap, and the focus dims the rest of the grid over 500 ms.
 //!
-//! On a pick (handlePaintingChange): the zoom springs home ({ dampingRatio 1, duration 350 }),
-//! the focus clears, 8 light impacts 100 ms apart then a medium one; new tiles take the photo's
-//! position in the last painting (keyed by photo id, the last cell a photo held winning, as
-//! RN's Map), grow from their centre when new, and the photos left out shrink to their old
-//! centre. A pick of the painting already shown changes no cell (RN's memoised mapping and
-//! cells): only the zoom and the haptics.
+//! Gestures: a double tap races a simultaneous pinch and pan. Pinch and pan are one transform under
+//! the fingers, so the content point under their centroid stays under it as they move. A finger
+//! landing or lifting re-bases the anchor, so one and two fingers never jump.
+//! - Past the limits the transform is rubber-banded, as UIScrollView does. On release it springs
+//!   home, snaps to a centred cell in grid mode, or glides and bounces on each axis.
+//! - A pick springs the zoom home, clears the focus, and plays eight light impacts then a medium
+//!   one. New tiles grow from their centre, and photos left out shrink to their old centre.
+//!   Picking the painting already shown changes no cell, only the zoom and the haptics.
 //!
-//! Gestures: Gesture.Race(doubleTap, Gesture.Simultaneous(pinch, pan)), as index.tsx, but with
-//! RN's pan and pinch fused into one transform under the fingers, as Photos and Maps do it (the
-//! owner: RN's own pair, pan skipped while pinching and resumed from a stale start, felt broken):
-//! - Every finger down counts: the content point under the fingers' centroid stays under it as
-//!   they move and spread (pinch and two-finger pan at once). A finger that lands or lifts
-//!   re-bases the anchor where the content is, so 1 ↔ 2 fingers never jumps.
-//! - A touch-down catches a gliding or springing transform where it is; one finger moves it
-//!   after UIKit's 10 pt hysteresis, only when zoomed in (RN: the pan does nothing at scale ≤ 1).
-//! - Past the limits the transform is rubber-banded, UIScrollView's (1 − 1 / (x · 0.55 / d + 1)) ·
-//!   d: the scale in log space (at most 2× past idealGridScale × 1.2, down to RN's
-//!   MIN_SCALE_RUBBER_BAND 0.5 below 1), the translation past its bound over the screen's side.
-//!   The bound lets any cell be centred once a cell fills half the screen (RN's
-//!   (canvas − cell) / 2 × scale), the content's edges at the screen's edges when zoomed out.
-//! - Release, when the last finger lifts: under SNAP_BACK_THRESHOLD (1.2) springs home; in grid
-//!   mode (a cell ≥ half the screen) snaps to the centred cell, one more along a one-finger
-//!   fling over 300 pt/s (RN); else each axis glides as UIScrollView: past its bound it bounces
-//!   back (critically damped, 0.01088 / ms), a finger faster than 335 pt/s decelerates at 0.998
-//!   / ms and bounces off the bound it reaches (gpu/src/ui_scroll.rs's measured constants).
-//!   A touch that caught motion and lifted without dragging releases the same way, so an
-//!   interrupted snap finishes.
-//! - Double tap (RNGH numberOfTaps 2: each touch within 500 ms, the second down within 500 ms of
-//!   the first lift): zoomed in (> 1.2) springs home, else snaps to the tapped cell.
-//! - snapToCell: a light impact, scale to idealGridScale = 0.7 × screen / cellWidth, the cell
-//!   centred (clamped), the focus on it.
-//! - The zoom-out button: opacity interpolate(scale, [1, 1.5], [0, 1], clamp), touchable above
-//!   0.5; pressto PressableScale (the global selection haptic, then resetZoom: a light impact and
-//!   the springs home). A 56 pt circle 40 pt from the bottom and 20 from the right, its BlurView
-//!   (intensity 60, tint dark: UIBlurEffectStyleDark, the chain skia::backdrop measured as
-//!   `.regular` in dark: blur 20, saturate 1.8, a 0.11 grey at 0.73, at fraction 0.6) inside its
-//!   hairline border (rgba(255, 255, 255, 0.2)), Ionicons contract-outline 24 white centred.
-//!
-//! The header (gradient, "Gallery") and the painting menu are Contract
-//! (demos/art-gallery/art-gallery.contract): a pick arrives as the inputs (painting id, picks).
+//! The header and the painting menu are Contract-owned: a pick arrives as the inputs (painting id,
+//! picks).
 
 use std::sync::OnceLock;
 
@@ -75,22 +36,20 @@ use shaders::art_gallery::{GROUP_0, Uniforms, entry};
 use shaders::art_gallery_present::{GROUP_0 as PRESENT_GROUP, Present, entry as present_entry};
 
 static GALLERY: &[u8] = include_bytes!("../images/art-gallery/gallery.bin");
-/// RN's assets/atlases/deduped-atlas.astc, byte for byte.
+/// The atlas file, byte for byte.
 static ATLAS: &[u8] = include_bytes!("../images/art-gallery/deduped-atlas.astc");
-/// Ionicons.ttf cut to contract-outline (U+F28A), bounds kept.
+/// The zoom-out icon's glyph (U+F28A) from the icon font.
 static IONICONS: &[u8] = include_bytes!("../fonts/ionicons-contract-outline-subset.ttf");
 const CONTRACT_OUTLINE: &str = "\u{F28A}";
 
-/// use-photo-atlas.ts PHOTO_SIZE, ATLAS_COLS.
+/// Photo tile size and atlas columns.
 const PHOTO_SIZE: f64 = 200.0;
-/// use-webgpu-mosaic.ts CONTRAST, ATLAS_COUNT (all tiles revealed), FLOATS_PER_TILE.
+/// Contrast, the reveal count for all tiles, and floats per tile.
 const CONTRAST: f32 = 1.4;
 const ATLAS_COUNT: f32 = 7.0;
 const FLOATS_PER_TILE: usize = 12;
-/// The focus overlay's ANIM_DURATION.
+/// Focus animation length, ms.
 const FOCUS_MS: f64 = 500.0;
-/// index.tsx: DEFAULT_GRID_COLS/ROWS, CANVAS_WIDTH_RATIO, GRID_MODE_THRESHOLD, GRID_MODE_TARGET,
-/// SNAP_BACK_THRESHOLD, MIN_SCALE_RUBBER_BAND, SPRING_CONFIG, the pan's swipeThreshold.
 const DEFAULT_GRID: usize = 100;
 const CANVAS_WIDTH_RATIO: f64 = 0.95;
 const GRID_MODE_THRESHOLD: f64 = 0.5;
@@ -100,12 +59,9 @@ const MIN_SCALE_RUBBER_BAND: f64 = 0.5;
 const SPRING_MS: f64 = 350.0;
 const SPRING_RATIO: f64 = 1.0;
 const SWIPE_THRESHOLD: f32 = 300.0;
-/// UIKit's pan hysteresis (pt).
+/// Pan slop before the pan starts, points.
 const SLOP: f64 = 10.0;
-/// UIScrollView, as gpu/src/ui_scroll.rs measured it: the normal deceleration rate (per ms), the
-/// velocity a deceleration stops at (pt/ms), the slowest finger that flings (pt/s), the rubber
-/// band's constant, the bounce's rate (per ms), its pull per pt of overshoot (per ms) and the
-/// share of the content's velocity it keeps.
+/// UIScrollView's constants: deceleration, rubber band and bounce rates, and the fling threshold.
 const DECELERATION: f64 = 0.998;
 const STOP_VELOCITY: f64 = 0.00988;
 const FLING_MIN: f64 = 335.0;
@@ -113,12 +69,12 @@ const RUBBER: f64 = 0.55;
 const BOUNCE_RATE: f64 = 0.01088;
 const BOUNCE_PULL: f64 = 0.00797;
 const BOUNCE_CARRY: f64 = 1.656;
-/// The scale's rubber band, in ln(scale): at most 2× past the top, 0.5 (RN's
+/// The lowest scale the rubber band pulls down towards, below 1.
 /// MIN_SCALE_RUBBER_BAND) below 1.
 const SCALE_BAND: f64 = std::f64::consts::LN_2;
-/// RNGH Tap's defaultMaxDuration and defaultMaxDelay.
+/// Tap timeouts: the default maximum duration and delay.
 const TAP_MAX_MS: f64 = 500.0;
-/// zoom-out-button.tsx: 56 × 56, radius 28, a hairline border; styles.fab bottom 40, right 20.
+/// Zoom-out button: 56 points, 40 from the bottom and 20 from the right.
 const FAB: f64 = 56.0;
 const FAB_BOTTOM: f64 = 40.0;
 const FAB_RIGHT: f64 = 20.0;
@@ -152,14 +108,14 @@ struct Painting {
     height: f64,
     cols: usize,
     rows: usize,
-    /// The photo of each cell, row-major; `EMPTY` where RN's matcher left none.
+    /// The photo of each cell, row-major; `EMPTY` where the matcher left none.
     photos: Vec<u16>,
 }
 
 const EMPTY: u16 = 0xFFFF;
 
 struct Gallery {
-    /// atlas-slots.json: each photo id's slot.
+    /// Each photo id's slot in the atlas.
     slots: Vec<u16>,
     atlas_rows: usize,
     atlas_cols: usize,
@@ -217,7 +173,7 @@ fn parse(b: &[u8]) -> Gallery {
     }
 }
 
-/// index.tsx's grid for what is shown (None: the atlas), on a screen `sw` points wide.
+/// The grid shown for a painting (None: the atlas), on a screen `sw` points wide.
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct Grid {
     cols: usize,
@@ -262,13 +218,11 @@ fn grid(shown: Option<usize>, sw: f64) -> Grid {
     }
 }
 
-/// A tile as use-webgpu-mosaic.ts's PhotoTileData (x, y, w, h, uv x, y, w, h, atlas index),
-/// already the Float32Array's values.
+/// A tile: position, size, atlas UVs and atlas index, as the shader reads them.
 type Tile = [f32; 9];
 
-/// The tile buffers for `shown`, from the previous painting's photo positions `prev` (by photo
-/// id, `order` their Map insertion order): (tiles, old tiles, count, whether it animates); `prev`
-/// and `order` become this painting's.
+/// The tile buffers for `shown`, from the previous painting's photo positions `prev`.
+/// `prev` and `order` become this painting's.
 fn build_tiles(
     shown: Option<usize>,
     sw: f64,
@@ -364,8 +318,7 @@ fn build_tiles(
             p[8],
         ]);
     }
-    // currentPositions: Map.set per valid cell (a photo's first set fixes its order, its last
-    // set its value).
+    // A photo keeps its first position in the order, and its last cell as its value.
     prev.clear();
     prev.resize(photo_count, None);
     order.clear();
@@ -379,7 +332,7 @@ fn build_tiles(
     (tiles, old, total, animate)
 }
 
-/// The focus overlay's animation (use-webgpu-mosaic.ts render()).
+/// The focus overlay's animation.
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum FocusAnim {
     FadeIn,
@@ -626,9 +579,7 @@ struct Grab {
     u0: (f64, f64),
 }
 
-/// RNGH's iOS Tap with numberOfTaps(2) (RNBetterTapGestureRecognizer): every touch-down arms a
-/// maxDuration (500 ms) cancel, every lift short of the count a maxDelay (500 ms) one; no
-/// distance limit; a second finger fails it.
+/// A double tap: two taps within 500 ms each, with no distance limit. A second finger fails it.
 #[derive(Clone, Debug, Default)]
 struct DoubleTap {
     taps: u32,
@@ -840,7 +791,7 @@ impl ArtGallery {
         self.grid().cell_w * self.scale.value >= self.size.0 * GRID_MODE_THRESHOLD
     }
 
-    /// handlePaintingChange.
+    /// A pick of a painting.
     fn pick(&mut self, painting: Option<usize>) {
         self.home();
         self.haptics_pending = true;
@@ -861,7 +812,7 @@ impl ArtGallery {
         )
     }
 
-    /// The highest scale (RN's pinch clamp, idealGridScale × 1.2), never under 1.
+    /// The highest scale (the pinch clamp, idealGridScale × 1.2), never under 1.
     fn max_scale(&self) -> f64 {
         (self.ideal_grid_scale() * 1.2).max(1.0)
     }
@@ -891,7 +842,7 @@ impl ArtGallery {
     }
 
     /// How far the mosaic may move from the centre at scale `s`, per axis. Once a cell fills half
-    /// the screen, RN's cell bound ((canvas − cell) / 2 × s: any cell can be centred); zoomed out,
+    /// the screen, the cell bound ((canvas − cell) / 2 × s: any cell can be centred); zoomed out,
     /// the content's edges at the screen's edges (Photos); between, blended by the cell's share
     /// of half the screen, so the bound never jumps as the scale changes.
     fn bounds(&self, s: f64) -> (f64, f64) {
@@ -1024,7 +975,7 @@ impl ArtGallery {
         }
         let g = self.grid();
         if self.in_grid_mode() && g.cols > 0 && g.rows > 0 {
-            // RN: the centred cell; a one-finger fling over 300 pt/s one cell further.
+            // The centred cell; a one-finger fling over 300 pt/s goes one cell further.
             let (mut row, mut col) = self.centred_cell();
             if !self.pinched && vx.abs().max(vy.abs()) > SWIPE_THRESHOLD as f64 {
                 if vx.abs() > vy.abs() {
@@ -1087,7 +1038,7 @@ impl ArtGallery {
                 self.fingers[k] = (id, x, y);
                 if self.grab.is_none() {
                     let (dx, dy) = (x - self.down_at.0, y - self.down_at.1);
-                    // One finger: RN's pan moves nothing at scale ≤ 1.
+                    // One finger moves nothing at scale ≤ 1.
                     if dx.hypot(dy) >= SLOP && self.scale.value > 1.0 + 1e-9 {
                         self.take();
                         took = true;
@@ -1174,8 +1125,7 @@ impl ArtGallery {
     }
 
     fn fab_hit(&self, x: f32, y: f32) -> bool {
-        // RNGestureHandlerButton's bounds through its transform (the press scale), and
-        // pointerEvents 'auto' only above 0.5.
+        // The button takes touches through its transformed bounds, only above 0.5 opacity.
         if self.fab_opacity() <= 0.5 {
             return false;
         }
@@ -1677,8 +1627,8 @@ fn mosaic_bind(device: &wgpu::Device, gpu: &Gpu) -> wgpu::BindGroup {
     })
 }
 
-/// The atlas as RN uploads it: the .astc file's blocks into an ASTC 10×10 texture (its
-/// 16-byte header holds the size); with no ASTC on the device, RN's 1×1 transparent placeholder.
+/// The atlas: the .astc file's blocks as an ASTC 10×10 texture (its 16-byte header holds the size).
+/// Without ASTC on the device, a 1×1 transparent placeholder.
 fn atlas(device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::TextureView {
     let dim = |o: usize| ATLAS[o] as u32 | (ATLAS[o + 1] as u32) << 8 | (ATLAS[o + 2] as u32) << 16;
     let (w, h) = (dim(7), dim(10));
@@ -1833,7 +1783,7 @@ fn build(
         })
     };
     let (tile_buf, old_buf) = (buf("art gallery tiles"), buf("art gallery old tiles"));
-    // RN's sampler: linear min and mag, clamp to edge (WebGPU's defaults), no mipmaps.
+    // Linear min and mag, clamped to the edge, no mipmaps.
     let sampler = gfx::linear_sampler(device, "art gallery");
     let atlas = atlas(device, queue);
     let blank = gfx::target(device, "art gallery blank", SCENE, 1, 1);
@@ -1941,7 +1891,7 @@ mod tests {
 
     #[test]
     fn every_transition_fits_rns_tile_buffers() {
-        // RN's buffers hold 15000 tiles: new + disappearing from any shown painting to any other.
+        // The buffers hold 15000 tiles: new and disappearing ones, between any two paintings.
         let n = gallery().paintings.len();
         let shows: Vec<Option<usize>> = std::iter::once(None).chain((0..n).map(Some)).collect();
         for &a in &shows {
@@ -2174,8 +2124,7 @@ mod tests {
 
     #[test]
     fn a_pinch_keeps_the_content_under_moving_fingers() {
-        // The old pinch froze the focal point at its start and dropped the fingers' travel:
-        // the content slid out from under them.
+        // A pinch must keep the focal point under the fingers, or the content slides out from under them.
         let mut g = at(4.0, 100.0, -50.0);
         put(&mut g, 1, PointerPhase::Down, 150.0, 400.0, 0.0);
         put(&mut g, 2, PointerPhase::Down, 250.0, 400.0, 5.0);
@@ -2210,8 +2159,7 @@ mod tests {
 
     #[test]
     fn one_and_two_fingers_hand_over_without_a_jump() {
-        // The old pan restarted from where it began before the pinch: lifting one finger of a
-        // pinch threw the mosaic back by the pinch's whole travel.
+        // Lifting one finger of a pinch must not throw the content back by the pinch's travel.
         let mut g = at(4.0, 0.0, 0.0);
         put(&mut g, 1, PointerPhase::Down, 200.0, 400.0, 0.0);
         for i in 1..=5 {

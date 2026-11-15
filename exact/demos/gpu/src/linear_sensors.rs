@@ -1,24 +1,10 @@
-//! Linear Sensors (src/animations/linear-sensors: index.tsx, react-logo.tsx): a dark rounded
-//! square (170², radius 35) with the React logo's three ovals, tilting in 3D as the phone tilts,
-//! its shadow moving against the tilt, over a soft #252525 glow.
+//! A dark rounded square with the React logo's three ovals, tilting in 3D as the phone tilts.
+//! Its shadow moves against the tilt, over a soft glow.
 //!
-//! - The glow: a Fill of RadialGradient(window centre, width / 1.5, #252525 → #000000) under
-//!   Blur 50 (decal), drawn and blurred once per size.
-//! - The 500² canvas, centred: a Group about its centre with [perspective 200, rotateY, rotateX].
-//!   Inside, a Group of the #101010 square, the same square filled with LinearGradient((0, 0) →
-//!   (0, 500 / 1.8), #2e2e2e → #0e0e0e) under Blur 10, an inner Shadow (#4c4c4c, dy 0.8) and a
-//!   drop Shadow (#000000, blur 3.5, dx, dy); then the ovals (x −60, y −24, 120 × 48, #cecece,
-//!   stroke 2, rotated 0, π/3, 2π/3 about the centre) under BlurMask 3 "solid". The group's
-//!   filters run in its own plane, then the plane is projected: everything but the shadow's
-//!   offset is drawn once per size; a frame is one pass.
-//! - rotateY = interpolate(roll, [−1, 0, 1], [π/8, 0, −π/8], CLAMP), the ROTATION sensor's roll
-//!   (CoreMotion's attitude.roll); rotateX = interpolate(z, [−10, −6, −1], [−π/8, 0, π/8], CLAMP),
-//!   the GRAVITY sensor's z in m/s² (CoreMotion's gravity × 9.81). Both come here from one
-//!   sensor, `gravity` (startSensorInput from the Contract, 50 Hz as `interval: 20`): the W3C
-//!   reading is CoreMotion's × −9.80665, and with the device's z vertical in the reference frame
-//!   the roll is atan2(g.x, −g.z) of CoreMotion's gravity.
-//! - shadowDx = interpolate(rotateY, [−π/8, 0, π/8], [10, 0, −10], CLAMP), shadowDy =
-//!   interpolate(rotateX, [−π/8, 0, π/8], [7, 0, 10], CLAMP).
+//! - Both tilt angles come from one gravity sensor: the roll is atan2 of its x and −z, and the
+//!   z sets the pitch. Each angle is clamped to ±π/8.
+//! - The sensor reports the W3C sign, the opposite of CoreMotion's, so its values are negated.
+//! - The layers are drawn once per size; a frame is one projected compose pass.
 
 use std::f64::consts::PI;
 
@@ -31,31 +17,30 @@ use crate::{gfx, shaders};
 use shaders::linear_sensors::{Compose, GLOW, LAYER as LAYER_TEX, LAYER_BLUR, OVALS, OVALS_BLUR, SMP, U};
 use shaders::linear_sensors_inner::{Inner, GRADIENT, SQUARE};
 
-/// CanvasSize.
+/// Side of the tilting canvas, pt.
 const CANVAS: f32 = 500.0;
-/// SquareSize.
+/// Side of the square, pt.
 const SQUARE_SIZE: f32 = 170.0;
-/// The window of the canvas kept in textures: (100, 100), 300² (the square, its blurs and the
-/// shadow's travel).
+/// The part of the canvas kept in textures: a 300 pt window at (100, 100), holding the square,
+/// its blurs and the shadow's travel.
 const WINDOW: f32 = 100.0;
 const SIDE: f32 = 300.0;
-/// react-logo.tsx SIZE, OVAL_HEIGHT_RATIO.
+/// Logo size in pt, and the oval's width-to-height ratio.
 const SIZE: f32 = 60.0;
 const OVAL_HEIGHT_RATIO: f32 = 2.5;
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
-/// CoreMotion's G in Reanimated's sensor (m/s² per g) and the W3C's.
+/// m/s² per g: 9.81 for the tilt, 9.80665 for the raw sensor values.
 const REANIMATED_G: f64 = 9.81;
 const STANDARD_G: f64 = 9.80665;
 
-/// The demo's surface.
+/// The surface.
 pub fn surface() -> Box<dyn Surface> {
     Box::new(LinearSensors::default())
 }
 
 #[derive(Default)]
 struct LinearSensors {
-    /// CoreMotion's gravity (g, device frame); zero until the first sample, as Reanimated's
-    /// sensor value starts.
+    /// Gravity in g, device frame; zero until the first sample.
     gravity: [f64; 3],
     layers: [Canvas; 4],
     renderers: [Renderer; 4],
@@ -158,11 +143,10 @@ impl LinearSensors {
 
         let [square, gradient, ovals, glow] = &mut self.layers;
         let x = CANVAS / 2.0 - SQUARE_SIZE / 2.0;
-        // GoodOldSquare.
         square.begin(s);
         square.translate(-WINDOW, -WINDOW);
         square.draw_rrect(x, x, SQUARE_SIZE, SQUARE_SIZE, 35.0, &Paint::fill(Color::hex(0x101010)));
-        // GoodOldSquare with its gradient (blurred below).
+        // The gradient is blurred below.
         gradient.begin(s);
         gradient.translate(-WINDOW, -WINDOW);
         let fill = Shader::Linear { start: point(0.0, 0.0), end: point(0.0, CANVAS / 1.8), stops: stops(&[Color::hex(0x2e2e2e), Color::hex(0x0e0e0e)]) };
@@ -179,7 +163,6 @@ impl LinearSensors {
             ovals.draw_path(&oval, &Paint::stroke(Color::WHITE, 2.0));
             ovals.restore();
         }
-        // The glow's Fill.
         glow.begin(s);
         let radial = Shader::Radial { center: point(w / 2.0, h / 2.0), radius: w / 1.5, stops: stops(&[Color::hex(0x252525), Color::hex(0x000000)]) };
         glow.draw_rect(0.0, 0.0, w, h, &Paint::shader(radial));

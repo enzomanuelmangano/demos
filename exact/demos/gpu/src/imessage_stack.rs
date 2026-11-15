@@ -1,28 +1,10 @@
-//! iMessage Stack (src/animations/imessage-stack: index.tsx, card.tsx): ten pastel cards in a
-//! fanned stack driven by an invisible horizontal FlatList; a swipe brings the next card to the
-//! front, the one leaving swinging aside and tucking behind.
+//! Ten pastel cards in a fanned stack, driven by an invisible horizontal list: a swipe brings the
+//! next card to the front, and the card leaving swings aside and tucks behind.
 //!
-//! - The FlatList: horizontal, `inverted` (a scaleX −1 flip: the finger's x runs mirrored in
-//!   its UIScrollView), snapToInterval CARD_WIDTH with disableIntervalMomentum (one card per fling
-//!   at most, from the offset at the lift: `Snap::IntervalCurrent`), decelerationRate fast;
-//!   pagingEnabled is overridden by the interval. Its content: paddingHorizontal CARD_WIDTH and
-//!   ten CARD_WIDTH cells, so the offset runs 0 … 9 · CARD_WIDTH. It sits in a 0-tall wrapper
-//!   (marginBottom CARD_HEIGHT) centred on the screen: top (H − CARD_HEIGHT) / 2, CARD_HEIGHT +
-//!   50 tall, the width of the screen. scrollOffset = contentOffset.x.
-//! - CARD_WIDTH = window width / 3 and CARD_HEIGHT = CARD_WIDTH / 3 · 4 (module constants).
-//! - Each card (index 9 − i for the i-th of CARDS): absolute at left (W − CARD_WIDTH) / 2, top
-//!   25 in the cards' layer, radius 20 continuous, its colour (Display P3), boxShadow 0 5 10
-//!   rgba(0, 0, 0, 0.08) (RCTBoxShadow: σ 5, circular, outside the view); transform
-//!   [translateX, translateY, translateX (swap), scale, rotate, rotateY] interpolated (CLAMP) over
-//!   (index − 3 … index + 3) · CARD_WIDTH (the swap and rotateY also at the half steps). Its
-//!   wrapper's transformOrigin z is the interpolated zIndex under perspective 10000000: the
-//!   cards are depth-sorted on that unrounded value (the perspective itself is below 0.01 px),
-//!   and rotateY under no perspective is a horizontal cos θ about the centre. The fans' ties at
-//!   the half steps are broken so that no card behind ever swaps mid-swipe: see `depth`.
-//! - Haptics (past RN, which plays none: the owner's haptic language): `haptic:selection` each
-//!   time the front card (round(offset / CARD_WIDTH)) changes, during the drag and the glide, at
-//!   most one per HAPTIC_GAP_MS; `haptic:impact-rigid` once each time the list is pulled or thrown
-//!   past an end (the rubber band).
+//! - The list is `inverted`, so the finger's x runs mirrored. It snaps one card per fling, from
+//!   the offset at the lift, and its offset runs 0 … 9 · card width.
+//! - Haptics: `haptic:selection` when the front card changes (at most one per HAPTIC_GAP_MS),
+//!   and `haptic:impact-rigid` once per pull or throw past an end.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -32,24 +14,24 @@ use skia::{Canvas, Color, Paint, Renderer};
 use crate::gfx;
 use crate::ui_scroll::{Snap, UiScroll, FAST};
 
-/// index.tsx CARDS.
+/// Card colours, first to last in the stack.
 const COLORS: [u32; 10] = [
     0xF1EEE0, 0xF3D9BC, 0xF4ACB7, 0xF6DFEB, 0xE2F0CB, 0xC7E3D4, 0xAFCBFF, 0xE3DFFF, 0xFFE5E0,
     0xFFD1DC,
 ];
-/// VerticalListPadding.
+/// Vertical padding around the cards, pt.
 const PAD: f64 = 25.0;
 const RADIUS: f32 = 20.0;
 const SHADOW_SIGMA: f32 = 5.0;
 const PI: f64 = std::f64::consts::PI;
 /// The shortest gap between two selection haptics, ms.
 const HAPTIC_GAP_MS: f64 = 40.0;
-/// How far past the half-way line the offset goes before the haptics' item changes, pt.
+/// How far past the half-way line the offset must go before the front card changes, pt.
 const SWITCH: f64 = 6.0;
 /// How far past an end (points) the rubber band must pull before its haptic.
 const PAST_END: f64 = 2.0;
 
-/// The demo's surface (the whole screen).
+/// The surface: the whole screen.
 pub fn surface() -> Box<dyn Surface> {
     Box::new(Stack {
         size: (0.0, 0.0),
@@ -75,8 +57,8 @@ struct Stack {
     posted: Vec<String>,
 }
 
-/// A card's transform at `u` = scrollOffset / CARD_WIDTH − index: (translateX, translateY,
-/// scale, rotate (rad), rotateY (rad), zIndex).
+/// A card's pose at `u` (the scroll offset in cards, minus the card's index): (translateX,
+/// translateY, scale, rotate in rad, rotateY in rad, zIndex).
 pub fn card(u: f64, cw: f64, ch: f64) -> (f64, f64, f64, f64, f64, f64) {
     let seven = [-3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0];
     let nine = [-3.0, -2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0, 3.0];
@@ -126,22 +108,13 @@ pub fn card(u: f64, cw: f64, ch: f64) -> (f64, f64, f64, f64, f64, f64) {
     (tx + swap, ty, scale, rotate, rotate_y, z)
 }
 
-/// A card's place in the drawing order at `u` with interpolated zIndex `z`: (group, z), drawn
-/// in ascending order. RN's zIndex alone is symmetric in u, so the two fans' cards tie at every
-/// half step (u = −1.5 and +1.5 both 250) and swap there, while the two front cards have swung
-/// apart and the gap between them shows both fans: a card behind popped in front mid-swipe
-/// (phone feedback, 2026-11-15). The fans are kept apart instead: the right one (the cards
-/// passed, u ≥ 1) under the left one (the cards to come, u ≤ −1), each in zIndex order, and the
-/// two cards swapping places (|u| < 1, zIndex above 300) over both, in zIndex order. A card
-/// changes group only at |u| = 1, where the front card covers every place the fans overlap, and
-/// the two front cards cross at u = ±0.5, apart; no change of order is ever seen.
+/// A card's place in the drawing order at `u`, with its zIndex `z`: (group, z, -|u|), drawn in
+/// ascending order.
 ///
-/// Within a group, zIndex ties past |u| = 3, where every card is clamped to the same pose: the
-/// nearer card (the smaller |u|) is on top there. Tied on the mounting order, the right fan's
-/// farthest card came over the one arriving at u = 3 and the card showing at the fan's end
-/// changed colour at each page (phone feedback, 2026-11-15). Drawn from the cards' shapes, a
-/// sweep of pages 0 … 9 in 0.01 steps, each frame drawn in the order before and after every
-/// change of order, finds no pixel that changes.
+/// The zIndex alone ties the two fans at each half step, so a card behind would pop in front
+/// mid-swipe. The right fan (u ≥ 1) therefore draws under the left (u ≤ -1), and the two cards
+/// swapping places (|u| < 1) draw over both. Within a group the nearer card is on top, which
+/// keeps the order stable past |u| = 3, where the poses clamp.
 fn depth(u: f64, z: f64) -> (u8, f64, f64) {
     let group = if u.abs() < 1.0 {
         2
@@ -154,8 +127,7 @@ fn depth(u: f64, z: f64) -> (u8, f64, f64) {
 }
 
 impl Stack {
-    /// Every haptic this surface plays goes through here (`haptic:<name>`, which the
-    /// Contract's `heard` plays), so a cheaper haptic path can replace it in one place.
+    /// Queues `haptic:<name>`. Every haptic goes through here.
     fn haptic(&mut self, name: &str) {
         self.posted.push(format!("haptic:{name}"));
     }
@@ -264,7 +236,7 @@ impl Surface for Stack {
         let top = (h - ch) / 2.0;
         let inside =
             (0.0..=w).contains(&(x as f64)) && (top..=top + ch + 2.0 * PAD).contains(&(y as f64));
-        // `inverted`: the list is flipped, so its pan reads the finger mirrored.
+        // The list is inverted: the finger's x is mirrored.
         if let Some(s) = &mut self.scroll {
             s.input(
                 id,
@@ -294,7 +266,7 @@ impl Surface for Stack {
         let (w, h) = self.size;
         let (cw, ch) = self.dims();
         let (left, top) = ((w - cw) / 2.0, (h - ch) / 2.0 + PAD);
-        // Each card's transform, back to front: `depth` (see there).
+        // Cards are drawn back to front in `depth` order.
         let mut cards: Vec<(usize, (f64, f64, f64, f64, f64, f64))> = (0..COLORS.len())
             .map(|i| (i, card(offset / cw - (9 - i) as f64, cw, ch)))
             .collect();
@@ -469,7 +441,7 @@ mod tests {
             });
             v
         };
-        // Either side of the half step 1.5, where RN's zIndex ties the fans' top cards (7.5 ±
+        // Either side of the half step 1.5, where the zIndex ties the fans' top cards (7.5 ±
         // 1.5 = cards 6 and 9): the card to come (6, left) stays over the card passed (9, right).
         for page in [1.4, 1.45, 1.5, 1.55, 1.6] {
             let o = order(page);

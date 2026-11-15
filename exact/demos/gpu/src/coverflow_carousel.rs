@@ -1,30 +1,12 @@
-//! Coverflow Carousel (src/animations/coverflow-carousel: index.tsx, constants.ts,
-//! components/coverflow-carousel/index.tsx, carousel-item.tsx): eleven photos on a horizontal
-//! FlatList; the centred one is full size, the others shrink to slivers, squash and fan out as they
-//! leave the centre.
+//! Coverflow Carousel: eleven photos on a horizontal strip. The centred photo is full size; the
+//! others shrink to slivers, squash and fan out as they leave the centre.
 //!
-//! - Layout (index.tsx): white, the 250 pt `coverflow` box centred on the screen; the FlatList
-//!   (horizontal, pagingEnabled, snapToInterval ItemWidth 160, decelerationRate 'fast') pads its
-//!   content by paddingHorizontal = round((W − 160) / 2) each side, alignItems center. On iOS
-//!   snapToInterval overrides pagingEnabled (ScrollView.js), so a release snaps to a multiple of
-//!   160 (RCTEnhancedScrollView: ceil / floor of UIKit's projected target by the velocity's sign,
-//!   round with none): `ui_scroll` (UIKit's drag, rubber band, bounce, deceleration, measured).
-//! - Each cell (carousel-item.tsx) is 160 wide and centres the image's Animated.View: width
-//!   round(160 × scaleX), 120 tall (the 160-wide image's aspectRatio 4 / 3), overflow hidden with
-//!   continuous corners of the interpolated radius, so it shows the 160 × 120 image (expo-image,
-//!   contentFit cover) from its own left edge. Its transform is [translateX, scaleY] about its
-//!   centre, and its opacity fades. Cells draw in index order.
-//! - Interpolations of the scroll offset over (index − 3 … index + 3) × 160: scaleX [0.1, 0.125,
-//!   0.2, 1, 0.2, 0.125, 0.1] CLAMP; scaleY [0.6, 0.8, 0.9, 1, 0.9, 0.8, 0.6] EXTEND; translateX
-//!   [−1.9w, −w/0.93, −w/3.3, 0, w/3.3, w/0.93, 1.9w] EXTEND; borderRadius [25, 25, 25, 15, 25, 25,
-//!   25] EXTEND (Core Animation draws a corner at most half the side); opacity over [(i − 3) × w −
-//!   100, …, (i + 3) × w + 100] → [0, 1 …, 1, 0] CLAMP.
-//! - Pixels: Yoga puts each view on the 1 / scale grid inside the scrolled content; the scroll's
-//!   offset moves the content by fractions. The photos are constants.ts's Unsplash URLs (w=640),
-//!   bundled (gpu/images/coverflow-carousel).
-//! - Haptics (past RN, which plays none: the owner's haptic language): `haptic:selection` each
-//!   time the centred photo (round(offset / 160)) changes, during the drag and the glide, at most
-//!   one per HAPTIC_GAP_MS; `haptic:impact-rigid` once each time the strip is pulled or thrown past
+//! - A release snaps to a multiple of the cell width (160 pt). The snap interval, not paging,
+//!   decides the target.
+//! - Each cell's scale, translation, corner radius and opacity come from the scroll offset alone,
+//!   so cells draw in index order with no per-cell state.
+//! - Haptics: a selection each time the centred photo changes, at most one per HAPTIC_GAP_MS,
+//!   during the drag and the glide. A rigid impact each time the strip is pulled or thrown past
 //!   an end (the rubber band).
 
 use exact_gpu::wgpu;
@@ -35,11 +17,11 @@ use skia::{fit_cover, Canvas, Images, Matrix, Paint, Rect, Renderer};
 use crate::gfx;
 use crate::ui_scroll::{Snap, UiScroll, FAST};
 
-/// ItemWidth.
+/// Cell width, pt.
 const ITEM: f64 = 160.0;
-/// The image's height: 160 at aspectRatio 4 / 3.
+/// Photo height, pt.
 const IMAGE_H: f64 = 120.0;
-/// styles.coverflow height.
+/// Strip height, pt.
 const LIST_H: f64 = 250.0;
 const COUNT: usize = 11;
 /// The shortest gap between two selection haptics, ms.
@@ -113,11 +95,11 @@ fn style(x: f64, index: usize) -> Style {
         k => input[k - 1],
     });
     let opacity = interpolate(x, &fade, &[0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0], Extrapolation::Clamp);
-    // Math.round(itemWidth * scaleX).
+    // Whole points.
     Style { width: (ITEM * scale_x + 0.5).floor(), scale_y, translate_x, radius, opacity }
 }
 
-/// Yoga's pixel grid.
+/// Snaps a value to the device-pixel grid.
 fn grid(v: f64, scale: f64) -> f64 {
     ((v * scale + 0.5 + 1e-4).floor()) / scale
 }
@@ -179,7 +161,7 @@ impl Surface for Coverflow {
 
     fn input(&mut self, event: &InputEvent) {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
-        // The FlatList: the window's width, the coverflow box's 250 pt.
+        // The strip: full width, LIST_H tall, centred vertically.
         let top = (self.size.1 - LIST_H) / 2.0;
         let inside = (0.0..=self.size.0).contains(&(x as f64)) && (top..=top + LIST_H).contains(&(y as f64));
         self.scroll.input(id, gfx::phase(phase), x, y, at_ms, inside);
@@ -223,7 +205,7 @@ impl Surface for Coverflow {
                 if s.opacity <= 0.0 {
                     continue;
                 }
-                // The cell in the content, the view centred in it (Yoga's grid), then the scroll.
+                // The cell's view, centred in the cell, then moved by the scroll.
                 let cell = pad + i as f64 * ITEM;
                 let left = grid(cell + (ITEM - s.width) / 2.0, scale) - x;
                 let y0 = grid(top + (LIST_H - IMAGE_H) / 2.0, scale);
@@ -266,10 +248,8 @@ mod tests {
         let mut s = surface();
         let (img, _) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         gfx::save_over(&img, "coverflow-rest", [255, 255, 255]);
-        // The centred photo spans 130 … 290 at the list's middle, opaque.
         let p = img.at(3 * 210, 3 * 456);
         assert!(p[3] == 255 && !(p[0] > 250 && p[1] > 250 && p[2] > 250), "{p:?}");
-        // A flick left: the next multiple of 160.
         let mut ms = 100.0;
         s.input(&touch(PointerPhase::Down, 300.0, ms));
         for k in 1..=6 {
@@ -281,8 +261,7 @@ mod tests {
             ms += 16.7;
         }
         assert_eq!(s.agent("{}").unwrap(), "{\"contentOffset\":160.00}");
-        // One photo on: one selection. A slow pull right of 300 pt: back one photo, then past the
-        // start, one rigid thunk however long it is held.
+        // One selection per photo change; one rigid impact past the start.
         assert_eq!(s.messages(), vec!["haptic:selection"]);
         ms += 100.0;
         s.input(&touch(PointerPhase::Down, 60.0, ms));

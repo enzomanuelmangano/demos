@@ -1,46 +1,13 @@
-//! Animated Clip Box (src/animations/animated-clip-box: index.tsx,
-//! components/clip-box-button/{index.tsx, expanded-circle.tsx}): a card whose corner circle
-//! floods it while held, its text turning white with it, and shrinks back on release. One
-//! canvas per card (boxWidth × 250); the card's white body and shadow are Contract
-//! (demos/animated-clip-box), drawn under this. Input: the card (0 Explore Demos, blue; 1 Learn
-//! More, orange).
+//! Animated clip box: a card whose corner circle floods it while held, the text turning white
+//! with it, and shrinking back on release. Input: the card (0 Explore Demos, blue; 1 Learn More,
+//! orange).
 //!
-//! Layout (RN's Yoga, on the device pixel grid; the card's origin is on it):
-//! - circleMargin cm = boxWidth × 0.12, initialRadius 35, circleCenter = cm + 17.5,
-//!   canvasAreaHeight = 2 cm + 35.
-//! - The card's PressableOpacity: absoluteFill, overflow hidden, holding
-//!   - the main circle: height r × 2, aspectRatio 1, left = top = circleCenter − r / 2 − cm / 2,
-//!     borderRadius 200 continuous (Core Animation draws min(200, side / 2)), primaryColor;
-//!     Yoga rounds its edges every frame r moves;
-//!   - the secondary circle: 70 × 70 at circleCenter − 17.5 − cm / 2, its colour
-//!     interpolateColor(r, [35, boxWidth / 2], [primary, highlight]), an AntDesign "twitter"
-//!     Text (40, white) centred in it.
-//! - The description: a View (flex 1, marginHorizontal cm / 2, marginTop canvasAreaHeight,
-//!   pointerEvents none) holding a Text (15). The View is what is left of the 250 above the
-//!   action (51.92 pt on a 420 pt screen): the Text is measured at most that tall, so TextKit
-//!   lays out only the lines that fit (2) and the last one takes the rest of the text, clipped
-//!   by the Text's frame (NSTextContainer's lineBreakMode is clipping): RN shows
-//!   "…a new idea, or cre".
-//! - The action: a PressableOpacity (margin cm / 2) holding a bold 14 Text (paddingVertical 5).
-//!
-//! Motion audit:
-//!
-//! | value | driver | config | trigger |
-//! |---|---|---|---|
-//! | r | withSpring(boxWidth) | k 80, c 20, m 1 (ζ 1.12: run critically damped, ω0 √(k/m)) | card onPressIn |
-//! | r | withSpring(30) | k 120, c 25, m 1.2 (ζ 1.04: critical) | card onPressOut |
-//! | main circle frame | r | height 2r, left/top circleCenter − r/2 − cm/2 | |
-//! | secondary colour | interpolateColor(r, [35, boxWidth/2]) RGB γ 2.2, clamped | primary → highlight | |
-//! | text colour | interpolateColor(clamp(r / (boxWidth/3)), [0, 1]) | black → white | |
-//! | card / action opacity | pressto PressableOpacity: 1 → 0.5, 250 ms ease | | press in / out |
-//!
-//! Each new withSpring takes the running velocity unless it points away from its target
-//! (Reanimated's onStart). Haptics: pressto's global onPress (selection) on a press of either.
-//!
-//! The PressableOpacity's opacity is its layer's: the circles and the icon composite opaque, then
-//! fade over the card. The card under them is white, so every colour drawn in it is premixed
-//! with white instead (α c + (1 − α) white, opaque): source-over is affine, so the result is the
-//! layer's, edges included.
+//! - Press in springs the circle to the card's width. Release springs it back to 30 points.
+//! - The circles and the icon composite opaque, then fade with the card. The card is white under
+//!   them, so each colour is premixed with white at the layer's alpha. This gives the same result
+//!   as fading the layer.
+//! - Each new spring keeps the running velocity, unless the velocity points away from its target.
+//! - Haptics: a selection on each press.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -52,34 +19,34 @@ use skia::{Canvas, Color, Font, Paint, Renderer};
 use crate::gfx;
 
 static ANTDESIGN: &[u8] = include_bytes!("../fonts/antdesign-twitter-subset.ttf");
-/// AntDesign "twitter" (62076).
+/// The AntDesign "twitter" glyph.
 const TWITTER: &str = "\u{f27c}";
 
-/// initialRadius.
+/// Resting circle radius, points.
 const INITIAL_R: f64 = 35.0;
-/// styles.button.height.
+/// Card height, points.
 const HEIGHT: f64 = 250.0;
-/// The secondary circle's side: initialR × 2.
+/// Secondary circle side, points.
 const SMALL: f64 = INITIAL_R * 2.0;
 const ICON_SIZE: f32 = 40.0;
 const DESCRIPTION_SIZE: f32 = 15.0;
 const ACTION_SIZE: f32 = 14.0;
-/// onPressIn's spring.
+/// Spring on press in.
 const IN: Config = Config {
     stiffness: 80.0,
     damping: 20.0,
     mass: 1.0,
 };
-/// onPressOut's spring.
+/// Spring on release.
 const OUT: Config = Config {
     stiffness: 120.0,
     damping: 25.0,
     mass: 1.2,
 };
-/// onPressOut's target.
+/// Circle radius after release, points.
 const RELEASED: f64 = 30.0;
 
-/// The two ClipBoxButtons: primaryColor, highlightColor, actionTitle, description.
+/// Each card: primary colour, highlight colour, action title, description.
 const CARDS: [(u32, u32, &str, &str); 2] = [
     (
         0x4BA2E4,
@@ -112,8 +79,7 @@ pub fn surface() -> Box<dyn Surface> {
     })
 }
 
-/// Yoga's `roundValueToPixelGrid`: to the device pixel, half away from zero, `floor` for a
-/// Text's position; values within 1e-4 of a pixel snap to it.
+/// Rounds to the device pixel as Yoga does, flooring text positions.
 fn grid(v: f64, scale: f64, floor: bool) -> f64 {
     let s = v * scale;
     let f = s - s.floor();
@@ -129,7 +95,7 @@ fn grid(v: f64, scale: f64, floor: bool) -> f64 {
     r / scale
 }
 
-/// A Text's measured side: ceiled to the pixel after an epsilon (an exact 40 measures 40.333).
+/// A text's side, ceiled to the pixel after an epsilon.
 fn text_side(v: f64, scale: f64) -> f64 {
     (v * scale + 1e-3).ceil() / scale
 }
@@ -182,10 +148,10 @@ fn wrap(font: &Font, text: &str, width: f32) -> Vec<(usize, usize)> {
     out
 }
 
-/// RN's frames in the card's points.
+/// Frames in the card's points.
 #[derive(Clone, Debug)]
 struct Layout {
-    /// circleMargin.
+    /// Margin around the circles, points.
     cm: f64,
     /// The secondary circle's rounded left (= top) and side.
     small: (f64, f64),
@@ -213,15 +179,16 @@ fn layout(w: f64, s: f64, icon: &Font, description: &Font, action: &Font, text: 
         grid((SMALL - iw) / 2.0, s, true),
         grid((SMALL - ih) / 2.0, s, true),
     );
-    // The action: margin cm / 2 round a Text of paddingVertical 5 and one bold line.
+    // The action's height: its line plus 10 points of padding.
     let action_h = 10.0 + text_side(gfx::line_height(action) as f64, s);
     let action_top = HEIGHT - cm / 2.0 - action_h;
-    // The description's View: what is left between canvasAreaHeight and the action's margin.
+    // The description gets the room between the header and the action.
     let top = 2.0 * cm + INITIAL_R;
     let room = action_top - cm / 2.0 - top;
     let (l, r) = (grid(cm / 2.0, s, false), grid(w - cm / 2.0, s, false));
     let line = gfx::line_height(description) as f64;
     let mut lines = wrap(description, text, (r - l) as f32);
+    // Only the lines that fit; the last takes the rest of the text, clipped to the box.
     let fit = (((room + 1e-6) / line).floor() as usize).max(1);
     if lines.len() > fit {
         let start = lines[fit - 1].0;
@@ -261,10 +228,8 @@ fn over_white(c: Color, alpha: f32) -> Color {
     Color([m(c.0[0]), m(c.0[1]), m(c.0[2]), 1.0])
 }
 
-/// A square at (x, x) of `side` with a continuous `borderRadius` r. Core Animation draws a
-/// continuous corner whose radius reaches half the side as a circle (measured on RN's 70 pt
-/// circle: within AA of a true circle, mean coverage error 0.006); packages/skia's overlapping
-/// continuous corners are a different, flatter shape there.
+/// A square at (x, x) of `side` with a continuous corner radius `r`. A radius of half the side
+/// is drawn as a true circle, as Core Animation draws it; the Skia continuous corner is flatter.
 fn rounded_square(c: &mut Canvas, x: f32, side: f32, r: f32, paint: &Paint) {
     if r >= side / 2.0 {
         c.draw_circle(x + side / 2.0, x + side / 2.0, side / 2.0, paint);
@@ -278,7 +243,7 @@ struct AnimatedClipBox {
     icon: Option<Font>,
     description: Option<Font>,
     action: Option<Font>,
-    /// The ClipBoxButton's `r`.
+    /// Circle radius, points.
     r: Spring,
     /// The card's PressableOpacity.
     press: Pressable,
@@ -344,12 +309,10 @@ impl Surface for AnimatedClipBox {
         let phase = gfx::phase(phase);
         let w = self.layout.as_ref().map_or(0.0, |l| l.0 as f64);
         if phase == gesture_handler::Phase::Down {
-            // The action is the later sibling: it takes the touches in its frame; the
-            // description is pointerEvents none.
+            // The action is on top: it takes touches in its frame.
             if self.in_action(x, y) {
                 self.action_press.pointer_down(id, true);
             } else if self.press.pointer_down(id, self.in_card(x, y)) {
-                // onPressIn.
                 self.r.retarget(w, IN);
             }
             return;
@@ -405,7 +368,7 @@ impl Surface for AnimatedClipBox {
         let c = &mut self.canvas;
         c.begin(s);
 
-        // The PressableOpacity's layer, clipped to the card.
+        // The card's layer, clipped to the card.
         c.save();
         c.clip_rect(0.0, 0.0, w, HEIGHT as f32);
         let left = l.cm + INITIAL_R / 2.0 - r / 2.0 - l.cm / 2.0;
@@ -437,7 +400,7 @@ impl Surface for AnimatedClipBox {
         );
         c.restore();
 
-        // progress = clamp(r / (boxWidth / 3)); the Texts' colour.
+        // Text colour fades to white as the circle grows.
         let progress = (r / (wd / 3.0)).clamp(0.0, 1.0);
         let ink = interpolate_color(progress, &[0.0, 1.0], &[rgb(0x000000), rgb(0xFFFFFF)]);
         let ink = Color::view_hex(packed(ink));
@@ -510,7 +473,7 @@ mod tests {
     fn rn_s_yoga_frames() {
         let (i, d, a) = fonts();
         let l = layout(378.0, 3.0, &i, &d, &a, CARDS[0].3);
-        // The secondary circle at 22.68 → 22.667, 70 wide; the icon Text 40.333 wide, floored.
+        // Positions snap to the pixel grid.
         assert!((l.small.0 - 68.0 / 3.0).abs() < 1e-9, "{:?}", l.small);
         assert!((l.small.1 - 70.0).abs() < 1e-9);
         assert!((l.icon.0 - 44.0 / 3.0).abs() < 1e-9, "{:?}", l.icon);
@@ -523,8 +486,7 @@ mod tests {
             "{:?}",
             l.text
         );
-        // The action's pressable ends at 250 − 22.68 → 227.333 (its top hangs on the font's line
-        // height: 200.333 on iOS's SF, the Mac's SF differs).
+        // The action ends on the pixel grid, at its line height.
         assert!(
             (l.action.1 + l.action.3 - 682.0 / 3.0).abs() < 1e-9,
             "{:?}",

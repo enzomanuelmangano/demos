@@ -1,19 +1,15 @@
-//! A surface's haptics, played by the host with no Contract commit.
+//! Haptics for a surface, played by the host without a Contract commit.
 //!
-//! The surfaces post `"haptic:<kind>"` (`selection`, `impact-light`, …, the names of
-//! Contract's `haptic()`), and every `messages()` hands its list through [`host`] on the
-//! way out. There each kind becomes an `exact_gpu::haptics` pattern, a message the host
-//! consumes before the app sees it (Core Haptics on iOS, one engine for the page): no
-//! `message=` action, no logic turn, no plan applied, no `UIFeedbackGenerator` made per tick.
-//! A drag's selection ticks (25 a second in atlas-sphere and prequel-slider) used to cost
-//! a whole action commit each on the main thread, inside a 8.3 ms frame.
+//! Surfaces post `"haptic:<kind>"`, and [`host`] turns each kind into an `exact_gpu::haptics`
+//! pattern that the host consumes before the app sees it (one haptic engine for the page):
+//! - no action, no logic turn, no plan applied, no feedback generator made per tick;
+//! - drag ticks (25 a second) would otherwise each cost a full commit on the main thread,
+//!   inside an 8.3 ms frame.
 //!
-//! The demos' own aliases (audio-player's `grab`/`tick`/`release`, duration-slider's
-//! `limit`) map to the kinds their Contract played; anything else (chessboard's
-//! `haptic:mate`, which the Contract counts) passes through untouched.
+//! The aliases `grab`, `tick`, `release` and `limit` map to the kinds they stand for; any
+//! other kind (chessboard's `haptic:mate`) passes through untouched.
 //!
-//! Under `cargo test` [`host`] keeps the kinds, so each surface's tests still read
-//! `"haptic:selection"`; [`translate`] is what runs everywhere else, tested below.
+//! Under `cargo test` [`host`] keeps the kinds; [`translate`] is what runs everywhere else.
 
 use exact_gpu::haptics::{Event, Haptic, Pattern};
 
@@ -45,9 +41,8 @@ fn tap(time: f32, intensity: f32, sharpness: f32) -> Event {
     }
 }
 
-/// The kind's pattern, close to what `UIFeedbackGenerator` plays for it: transients whose
-/// intensity follows light < medium < heavy, whose sharpness is soft's low and rigid's high,
-/// and the notifications' two and three taps.
+/// The kind's pattern, close to the iOS feedback generators: intensity rises light < medium <
+/// heavy, sharpness is low for soft and high for rigid, notifications are two or three taps.
 fn pattern(kind: &str) -> Option<Pattern> {
     let events = match kind {
         "selection" | "tick" => vec![tap(0.0, 0.45, 0.85)],

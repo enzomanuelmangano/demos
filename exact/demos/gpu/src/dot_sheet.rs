@@ -1,9 +1,6 @@
-//! Dot Sheet's background (src/animations/dot-sheet/src/components/background-gradient.tsx):
-//! a window-sized canvas whose `<Fill>` is a SweepGradient about the centre (GRADIENT_COLORS:
-//! #cda2a8, #daacb2, #A9828D, #d5b1b7, #cfb5b9, #eac5bd, #F0EEF1, #F0EEF1, #FFFFFF, evenly
-//! spaced, clockwise from +x) under `<Blur blur={55} />` (sigma 55 points, decal: the fill
-//! fades to transparent at the canvas's edges, where the demo's backdrop shows). It never
-//! moves: drawn and blurred once per size, then only put into the target.
+//! Dot Sheet's background: a window-sized sweep gradient about the centre, blurred. It fades
+//! to transparent at the edges, where the backdrop shows. It never moves: drawn and blurred
+//! once per size, then only put into the target.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
@@ -13,7 +10,7 @@ use crate::{gfx, shaders};
 use shaders::dot_sheet::{entry, module, Uniforms, GLOW, GROUP_0, SMP, U};
 
 const GRADIENT_COLORS: [&str; 9] = ["#cda2a8", "#daacb2", "#A9828D", "#d5b1b7", "#cfb5b9", "#eac5bd", "#F0EEF1", "#F0EEF1", "#FFFFFF"];
-/// `<Blur blur={55} />`.
+/// Blur sigma in points.
 const BLUR: f32 = 55.0;
 const LAYER: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
@@ -104,15 +101,11 @@ mod tests {
         let (a, moving) = fixture::render(&gpu, s.as_mut(), &frame).unwrap();
         a.save("dot-sheet");
         assert!(!moving);
-        // Inside, opaque; at a corner about a quarter covered (decal on two sides).
         assert_eq!(a.at(210, 456)[3], 255);
         let corner = a.at(0, 0)[3];
         assert!((40..100).contains(&corner), "{corner}");
-        // Below the centre (90°: between #daacb2 and #A9828D) is pinker and darker than above
-        // it (270°: #F0EEF1 to #FFFFFF).
         let (below, above) = (a.at(210, 800), a.at(210, 110));
         assert!(below[1] < above[1], "{below:?} {above:?}");
-        // Redrawn the same, without blurring again.
         let (b, _) = fixture::render(&gpu, s.as_mut(), &frame).unwrap();
         assert_eq!(a.data, b.data);
     }

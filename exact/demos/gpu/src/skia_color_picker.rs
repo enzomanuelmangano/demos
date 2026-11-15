@@ -1,36 +1,14 @@
-//! Skia Color Picker (src/animations/skia-color-picker: index.tsx, components/color-picker/
-//! index.tsx, shader.ts, utils/*): a hue/saturation wheel the width of the screen, on black, with
-//! a soft cyan-magenta-yellow halo; a drop-shaped picker follows the finger (clamped to the wheel)
-//! and fills with the colour under its tip.
+//! A hue and saturation wheel the width of the screen, on black, with a soft cyan-magenta-yellow
+//! halo. A drop-shaped picker follows the finger, clamped to the wheel, and fills with the colour
+//! under its tip.
 //!
-//! - canvasSize W = window width. DEFAULT_PICKER_SHAPE's bounds (SkPath::getBounds, control
-//!   points included): (0.167, 0.889)–(43.833, 59.111), 43.666 × 58.222. maxColorPickerSize
-//!   m = W − 2 · 58.222.
-//! - The wheel ([`shaders::skia_color_picker`] `wheel`, drawn once): Group [translateX h,
-//!   translateY h, scale m / W] (h = the bounds' height) over the sweep circle and the runtime
-//!   shader circle, both under the group's BlurMask(blur 20, "solid", respectCTM): σ = 20 · m / W
-//!   points. The blur of the circle's coverage is Graphite's (skia::blur::GraphitePlan).
-//! - The pan (Gesture.Pan on the view over both canvases): onBegin (touch-down) and onUpdate
-//!   (from activation, 10 pt) move the picker to the finger clamped to the circle (centre W / 2,
-//!   radius m / 2: clampToCircle). No spring: the picker is where the finger is.
-//! - The picker: Group [translateX x − 43.666 / 2, translateY y − 58.222]; the shape stroked
-//!   white, width 5 (miter join, butt cap), under <Shadow dx 0 dy 0 blur 20 black> (an image
-//!   filter: the stroke's alpha blurred by σ 20 in black, the stroke over it, on a layer the size
-//!   of the stroke's fast bounds, rounded out: Graphite's blur again, run each frame the picker
-//!   moves); then the shape filled with rgba(r, g, b, 1): hsvToRgb(hue, saturation, 100) of the
-//!   picker's offset from the centre (getHueFromPosition, getSaturationFromPosition with radius
-//!   m / 2), each channel Math.round()ed.
-//!
-//! Each frame the picker moves: two small canvases (the stroke; the stroke and the fill), one
-//! blur, one composite. Nothing is allocated once warm.
-//!
-//! Haptics (past RN, which plays none: the owner's haptic language): `haptic:impact-light` when
-//! the pan activates (the picker jumps to the touch, but a tap plays nothing);
-//! `haptic:selection` when the picker's hue crosses a 30° step (twelve around the wheel), HUE_SWITCH
-//! past the line so a finger on it does not flap, while it is out past half the radius, at most
-//! one per HAPTIC_GAP_MS;
-//! `haptic:impact-rigid` when the finger leaves the wheel and the picker stops at its rim, once
-//! per excursion (re-armed back inside RIM_REARM of the radius). No two within HAPTIC_GAP_MS.
+//! - The pan moves the picker to the finger, clamped to the wheel. There is no spring: the picker is
+//!   where the finger is.
+//! - Haptics: a light impact when the pan activates (a tap plays nothing); a selection each time the
+//!   hue crosses a 30° step while the picker is past half the radius; a rigid impact when the finger
+//!   leaves the wheel and the picker stops at its rim, once per excursion. No two within
+//!   HAPTIC_GAP_MS.
+//! - The wheel is drawn once. Each frame the picker moves, its stroke and shadow are redrawn.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -41,15 +19,15 @@ use skia::{path_from_svg, Canvas, Color, Paint, Path, Renderer};
 use crate::{gfx, shaders};
 use shaders::skia_color_picker::{entry, module, Uniforms, BASE, BLURRED, GROUP_0, PICKER, SMP, U};
 
-/// DEFAULT_PICKER_SHAPE.
+/// The picker's outline, as an SVG path.
 const SHAPE: &str = "M22 .889C9.943.889.167 10.664.167 22.723C.167 37.127 22 59.111 22 59.111S43.833 37.43 43.833 22.723C43.833 10.664 34.057.889 22 .889z";
 /// Its control-point bounds (l, t, r, b).
 const BOUNDS: [f32; 4] = [0.167, 0.889, 43.833, 59.111];
-/// ColorPicker blur, the Shadow's blur, the stroke's width.
+/// Blur of the wheel and of the picker's shadow, and the stroke width, in points.
 const WHEEL_BLUR: f32 = 20.0;
 const SHADOW_BLUR: f32 = 20.0;
 const STROKE: f32 = 5.0;
-/// SkStrokeRec::GetInflationRadius for a miter join (limit 4): width / 2 × 4.
+/// The stroke's reach past the path: half its width times the miter limit of 4.
 const STROKE_OUTSET: f32 = STROKE / 2.0 * 4.0;
 /// Transparent texels around the picker's layer (bilinear reads past it see 0).
 const MARGIN: i32 = 4;
@@ -83,7 +61,7 @@ fn picker() -> ColorPicker {
         both: Canvas::default(),
         stroke_renderer: Renderer::default(),
         both_renderer: {
-            // The picker's canvas is 8-bit Display P3 (the fill's sRGB rgba converted to it).
+            // The picker is drawn in 8-bit Display P3.
             let mut r = Renderer::default();
             r.p3 = true;
             r
@@ -98,9 +76,9 @@ fn picker() -> ColorPicker {
 
 struct ColorPicker {
     shape: Option<Path>,
-    /// W.
+    /// The wheel's width, in points.
     size: f32,
-    /// pickerX, pickerY (None until the first frame places it at the centre).
+    /// The picker's centre. None until the first frame places it at the centre.
     picker: Option<(f64, f64)>,
     pan: PanGesture,
     dirty: bool,
@@ -141,13 +119,13 @@ fn bounds_size() -> (f32, f32) {
     (BOUNDS[2] - BOUNDS[0], BOUNDS[3] - BOUNDS[1])
 }
 
-/// maxColorPickerSize.
+/// The wheel's diameter for a window width `w`.
 fn max_size(w: f32) -> f32 {
     let (bw, bh) = bounds_size();
     w - bw.max(bh) * 2.0
 }
 
-/// clampToCircle, in f64 as the worklet runs it.
+/// Clamps (x, y) to the circle, computed in f64.
 fn clamp_to_circle(x: f64, y: f64, cx: f64, cy: f64, radius: f64) -> (f64, f64) {
     let (dx, dy) = (x - cx, y - cy);
     if dx * dx + dy * dy > radius.powi(2) {
@@ -158,7 +136,7 @@ fn clamp_to_circle(x: f64, y: f64, cx: f64, cy: f64, radius: f64) -> (f64, f64) 
     }
 }
 
-/// hsvToRgb(h, s, v): each channel Math.round(c × 255).
+/// HSV to RGB, with `h` in degrees and `s` and `v` in percent; each channel is rounded.
 fn hsv_to_rgb(h: f64, s: f64, v: f64) -> [u8; 3] {
     let mut h = h % 360.0;
     if h < 0.0 {
@@ -186,7 +164,7 @@ fn hsv_to_rgb(h: f64, s: f64, v: f64) -> [u8; 3] {
     [r, g, b].map(|c| (c * 255.0 + 0.5).floor() as u8)
 }
 
-/// The `rgba` derived value: the colour under the picker at (x, y).
+/// The colour under the picker at (x, y).
 fn color_at(x: f64, y: f64, w: f64) -> [u8; 3] {
     let (dx, dy) = (x - w / 2.0, y - w / 2.0);
     let hue = (180.0 + dy.atan2(dx) * 180.0 / std::f64::consts::PI + 360.0) % 360.0;
@@ -296,7 +274,7 @@ impl Surface for ColorPicker {
                 self.on_move(x, y);
                 self.feel(x, y, at_ms, false);
             }
-            // Activation sends onUpdate too (RNGH's ACTIVE event).
+            // Activation also reports an update.
             Event::Start(p) | Event::Update(p) => {
                 if matches!(event, Event::Start(_)) {
                     self.haptic("impact-light", at_ms);

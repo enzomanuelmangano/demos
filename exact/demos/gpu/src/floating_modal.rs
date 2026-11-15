@@ -1,58 +1,16 @@
-//! Floating Modal (src/animations/floating-modal: index.tsx, components/FloatingModal/
-//! index.tsx, constants.ts, AddCloseIcon, AnimatedBackdrop, Modal): a white 64 pt "+" button in
-//! the bottom-right corner that opens into a centred square modal ("New", a "Done" button) and
-//! is dragged away to close; the whole window, over the Contract's rgba(0,0,0,0.1).
+//! A white "+" button in the bottom-right corner. Pressing it opens a floating sheet ("New" and a
+//! "Done" button) from the corner; dragging the sheet away, or pressing "Done", closes it.
 //!
-//! - progress = withTiming(isOpened ? 1 : 0) (300 ms, inOut(quad)). size = 64 → 0.9 × width,
-//!   right = 32 → 0.05 × width, bottom = 32 → height / 2 − size / 2 (the size of this frame: a
-//!   quadratic path), borderRadius 32 → 15, all clamped; white, boxShadow `0px 12px 12px
-//!   rgba(0,0,0,0.2)` (σ 6, RN's iOS blur / 2), drawn with the view.
-//! - transform [scale, translateX, translateY] about the view's centre, scale = 1 − √(x² + y²) /
-//!   √(width² + height²). The pan (on the modal) sets x, y = translation while opened; at
-//!   onFinalize a downward drag with scale < 0.95 closes it, and x, y spring back to 0
-//!   (withSpring, Reanimated's default, overshootClamping).
-//! - isVisible = progress === 1: the backdrop (rgba(0,0,0,0.4)) fades to it (withTiming,
-//!   300 ms) and closes the modal on touch start while visible; the content fades to it
-//!   (100 ms) and takes touches only while visible.
-//! - The content (absoluteFill, centred): "New" (20 bold) in a 64 tall row; at the bottom an
-//!   80 tall row holding the "Done" button (margin 10, #111, radius 12, "Done" 20 / 700 white).
-//! - The "+" (AntDesign plus, 28, black) in a 64² PressableScale at the modal's top-left,
-//!   rotated by progress × π/4; pressing it toggles isOpened.
-//! - PressableScale (pressto, the shared `pressto::Pressable`): scale 1 → 0.96 on
-//!   withTiming(250 ms, bezier(0.25, 0.1, 0.25, 1)) while pressed; a press lifted inside the
-//!   button posts `press` (the app's selection haptic); a pan that activates cancels it.
-//!
-//! - The "+"'s `transform` has two writers: the icon's rotate style and pressto's scale style,
-//!   both animated styles of the same view. Reanimated sends each style's changed props when its
-//!   mapper runs and `transform` is replaced whole, so the view shows the last one written: a
-//!   frame where only the press moves shows [scale] (unrotated), one where the progress moves
-//!   shows [rotate] (scale 1). In a frame where both move, the mappers run in Reanimated's
-//!   topological order (mappers.ts `updateMappersOrder`, a DFS over registration order):
-//!   pressto's (registered in its own effect, a child's, first), then the icon's, which wins.
-//!   Before any write it is pressto's initial [scale 1] (last in the style array). Every
-//!   pressto style reads the provider's `lastTouchedPressable`, which each onPress sets (no
-//!   equality check in Reanimated's setter): pressing "Done" re-runs the "+"'s pressto mapper
-//!   too, so the open modal's "×" shows as an upright "+" until the progress moves again.
-//! - Text is RN `<Text>`, laid out by UIKit (`skia::match_ui_font`: tracking, kerning). The
-//!   modal has no borderCurve (circular); the "Done" button is continuous. The boxShadow's path
-//!   is RCTBoxShadow's circular rounded rect.
-//!
-//! Beyond RN (the owner's phone feedback, 2026-11-15: "improve this component's layout and
-//! transitions"): the modal opens as an iOS 26 floating sheet, 10 pt from the display's sides
-//! and bottom, its corners concentric with the display's (62 − 10 = 52 pt, circular: analytic, no MSAA frame) and the
-//! Done button's with the sheet's (a 30 pt pill); it opens and closes on a critically damped
-//! spring (500 ms) instead of a 300 ms timing; the scrim follows the progress (and thins as the
-//! sheet is dragged down) instead of waiting for the end; the content fades in over the last
-//! 40 % of the way; a drag rubber-bands up and sideways and closes on a flick down as well;
-//! Done dismisses it (RN's does nothing);
-//! `open` and `close` are posted for a haptic.
-//!
-//! Haptics past RN (which plays only the presses'; the owner's haptic language):
-//! one `haptic:impact-light` when a drag takes the open sheet (the pan's activation, so a tap
-//! plays none); one `haptic:impact-medium` when a release dismisses it (the commit; `close`
-//! is posted too but plays nothing, nor does `open`: the press's selection already did).
-//! Nothing when a drag released short of dismissing springs back home. The rubber band (up
-//! and sideways) is soft-edged, with no limit to hit: no haptic.
+//! - The button and sheet morph as one: size, corner radius and position follow the open progress.
+//! - Opening and closing run on a critically damped spring (500 ms). The scrim follows the
+//!   progress, and thins as the sheet is dragged down. The content fades in over the last 40% of the way.
+//! - A drag rubber-bands up and sideways, and closes on a flick down.
+//! - Haptics: the presses' selection; a light impact when a drag takes the open sheet (not on a
+//!   tap); a medium impact when a release dismisses the sheet. A release short of dismissing
+//!   springs back with no haptic, and the rubber band is silent.
+//! - The "+" has two transform writers, the rotation and the press scale. Reanimated replaces the
+//!   whole transform, so the last write wins: the press scale while pressed, else the rotation.
+//!   Pressing "Done" re-runs the "+" press mapper too, so the "×" shows upright until the progress moves.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -63,16 +21,12 @@ use skia::{Canvas, Color, Font, Images, Matrix, Paint, Renderer};
 
 use crate::gfx;
 
-/// FLOATING_BUTTON_SIZE.
+/// Button size, pt.
 const BUTTON: f64 = 64.0;
-/// The open sheet's inset from the display's sides and bottom, and the display's corner radius
-/// (iPhone 17: 62 pt): the sheet's radius is concentric with it.
+/// Open sheet inset from the display's sides and bottom, pt. Its corners are concentric with the display's 62 pt radius.
 const INSET: f64 = 10.0;
 const DISPLAY_RADIUS: f64 = 62.0;
-/// The sheet's content (phone feedback 2026-11-15, "this layout is awful"), on a 4 pt grid:
-/// the "×" row (64, the morphing "+"), the title centred on it, a two-line subtitle, and a
-/// full-width capsule, concentric with the sheet: 50 tall (radius 25), inset 52 − 25 = 27 from
-/// the sheet's sides and bottom. The sheet is as tall as that content.
+/// Sheet content: a 64 pt title row, a two-line subtitle and a full-width capsule. The sheet is as tall as that content.
 const ROW: f64 = 64.0;
 const SUBTITLE_TOP: f64 = 4.0;
 const SUBTITLE_LINE: f64 = 20.0;
@@ -85,22 +39,21 @@ const CAPSULE_INSET: f64 = 52.0 - CAPSULE_H / 2.0;
 const SUBTITLE_TO_CAPSULE: f64 = 28.0;
 const SHEET_H: f64 =
     ROW + SUBTITLE_TOP + 2.0 * SUBTITLE_LINE + SUBTITLE_TO_CAPSULE + CAPSULE_H + CAPSULE_INSET;
-/// The grabber: 36 × 5, 6 below the top, the system's tertiary label grey.
 const GRABBER: (f32, f32, f32) = (36.0, 5.0, 6.0);
-/// iOS's rubber band: (1 − 1 / (d · 0.55 / dim + 1)) · dim.
+/// iOS-style rubber band: resists the drag more as it grows.
 fn rubber(d: f64, dim: f64) -> f64 {
     if dim <= 0.0 {
         return 0.0;
     }
     d.signum() * (1.0 - 1.0 / (d.abs() * 0.55 / dim + 1.0)) * dim
 }
-/// AntDesign "plus" (U+F21A), size 28.
+/// The "+" glyph and its size, pt.
 const PLUS: &str = "\u{F21A}";
 static ANTDESIGN: &[u8] = include_bytes!("../fonts/antdesign-subset.ttf");
-/// The transparent margin around each text layer in the atlas, device pixels.
+/// Transparent margin around each text layer in the atlas, device pixels.
 const GUTTER: f32 = 2.0;
 
-/// pressto's press animation (`pressto::timing_easing`), for the surfaces that ease like it.
+/// The press easing, for surfaces that should ease like a press.
 pub(crate) fn press_easing() -> Easing {
     pressto::timing_easing()
 }
@@ -145,19 +98,18 @@ fn modal() -> FloatingModal {
 struct Gpu {
     generation: u32,
     scale: f32,
-    /// The three text layers ("+", "New", "Done"), each its box at device pixels.
+    /// The three text layers, each as its box in device pixels.
     atlas: Images,
     /// Where each layer's box starts in the atlas (pixels).
     origins: [[f32; 2]; 3],
-    /// What is composited from bitmaps, in screen pixels: the content view's subtree (its
-    /// group opacity applied when this is drawn) on top, the "+" in a strip below the screen.
+    /// What is composited from bitmaps, in screen pixels: the content on top, the "+" in a strip below the screen.
     group: Images,
     group_view: wgpu::TextureView,
     group_size: (u32, u32),
 }
 
 struct FloatingModal {
-    /// Where the pan's finger went down (onEnd reads translationY even when it never activated).
+    /// Where the pan's finger went down.
     down_y: f64,
     size: (f64, f64),
     /// Device pixels per point.
@@ -170,8 +122,7 @@ struct FloatingModal {
     content: Timing,
     visible: bool,
     pan: PanGesture,
-    /// The "+" and "Done" PressableScales (the shared pressto machine); a finger is on one
-    /// until it lifts, moves away as a pan, or is cancelled.
+    /// The "+" and "Done" presses; a finger is on one until it lifts, moves away, or is cancelled.
     plus_press: Pressable,
     done_press: Pressable,
     /// The "+"'s transform as last written: (rotate, scale).
@@ -181,8 +132,7 @@ struct FloatingModal {
     posted: Vec<String>,
     plus: Option<Font>,
     title: Option<Font>,
-    /// The subtitle (15, regular) and the capsule's label (17, semibold): iOS's subheadline and
-    /// headline.
+    /// Subtitle and capsule label fonts, as iOS's subheadline and headline.
     subtitle: Option<Font>,
     label: Option<Font>,
     canvas: Canvas,
@@ -194,17 +144,17 @@ struct FloatingModal {
     gpu: Option<Gpu>,
 }
 
-/// Yoga's rounding of a View's edge to the pixel grid: the nearest device pixel, a half up.
+/// Rounds a view edge to the nearest device pixel, halves up.
 fn grid(v: f64, s: f64) -> f64 {
     (v * s + 0.5 + 1e-4).floor() / s
 }
 
-/// A Text node's position in its parent: floored to the pixel grid (Yoga's textRounding).
+/// Rounds a text's position down to the pixel grid.
 fn text_grid(v: f64, s: f64) -> f64 {
     (v * s + 1e-4).floor() / s
 }
 
-/// A Text's measured side: Core Text's size ceiled to the pixel grid (an exact 28 is 28.333).
+/// Rounds a text's measured size up to the pixel grid.
 fn text_side(v: f64, s: f64) -> f64 {
     ((v + 0.001) * s).ceil() / s
 }
@@ -240,12 +190,10 @@ impl FloatingModal {
         ]
     }
 
-    /// rOpenedModalStyle's frame at `p` and the content laid out in it, as Yoga rounds them
-    /// (positions relative to the parent, sizes from the unrounded absolute edges).
+    /// The open modal's frame at `p`, and the content laid out in it.
     fn layout(&self, p: f64) -> Layout {
         let (w, h, s) = (self.size.0, self.size.1, self.s);
-        // The floating sheet: the display's width less the insets, 0.9 × width tall (RN's
-        // square's height), at the bottom; from the 64 pt button at right 32, bottom 32.
+        // The sheet: the display's width less the insets, at the bottom.
         let sw = interpolate_clamp(p, &[0.0, 1.0], &[BUTTON, w - 2.0 * INSET]);
         let size = interpolate_clamp(p, &[0.0, 1.0], &[BUTTON, SHEET_H]);
         let right = interpolate_clamp(p, &[0.0, 1.0], &[BUTTON / 2.0, INSET]);
@@ -261,8 +209,7 @@ impl FloatingModal {
             grid(t0 + size, s) - grid(t0, s),
         );
         let [plus, new, done] = self.text_boxes();
-        // The content (absoluteFill, alignItems center): the title row as wide as its Text,
-        // centred, 64 tall; the 80 tall button row at the bottom, its button inset 10.
+        // Content: the title row, centred, and the button row at the bottom.
         let new_at = (
             grid((sw - new.0) / 2.0, s),
             text_grid((BUTTON - new.1) / 2.0, s),
@@ -291,9 +238,7 @@ impl FloatingModal {
         }
     }
 
-    /// RN shrank the modal with the drag's distance (1 − distance / the screen's diagonal); the
-    /// phone's clip showed the sheet shrinking and sliding sideways off its 10 pt float while
-    /// dragged (feedback 2026-11-15, "full of problems"). An iOS sheet only translates.
+    /// The sheet only translates while dragged; it never shrinks or slides sideways.
     fn scale(&self) -> f64 {
         1.0
     }
@@ -353,9 +298,7 @@ impl FloatingModal {
         self.progress.value.clamp(0.0, 1.0) * (1.0 - drag)
     }
 
-    /// The content's opacity (phone clip: an empty white box opened before the content, and
-    /// the fading Done read grey): in over the open's first 60 ms, while the sheet is still
-    /// small; on a close it stays whole, shrinking with the sheet, and goes in the last 15 %.
+    /// The content's opacity: fades in over the open's first 60 ms, and on close stays whole until the last 15%.
     fn content_opacity(&self) -> f64 {
         if self.opened {
             self.content.value
@@ -369,8 +312,7 @@ impl FloatingModal {
         self.plus_press.is_pressed() || self.done_press.is_pressed()
     }
 
-    /// UIKit's hit test of a screen point, through each view's transform: (on the modal or its
-    /// "+" (the pan's views), on the "+", on the Done button while the content takes touches).
+    /// Hit test of a screen point through each view's transform.
     fn hits(&self, px: f64, py: f64) -> (bool, bool, bool) {
         let l = self.layout(self.progress.value);
         let m = self.modal_matrix(&l).invert();
@@ -468,14 +410,12 @@ impl Surface for FloatingModal {
                 }
             }
             Event::End(p) => self.finalize(p.translation_y as f64, p.velocity_y as f64),
-            // RN's onEnd checks event.translationY even for a pan that never activated.
+            // A pan that never activated still reads its translation at the end.
             Event::Fail => self.finalize(y as f64 - self.down_y, 0.0),
             _ => {}
         }
         if phase != gesture_handler::Phase::Down {
-            // onPress (lifted inside, in the view's transformed bounds): the app's haptic,
-            // posted as `press` (what floating-modal.contract listens for); the "+" toggles
-            // isOpened.
+            // A lift inside the button posts `press` and toggles the sheet.
             if let Some(PressEvent::Press(press)) = self.plus_press.pointer(id, phase, on_plus) {
                 if press.global {
                     self.posted.push("press".into());
@@ -488,8 +428,7 @@ impl Surface for FloatingModal {
                     self.posted.push("press".into());
                 }
                 self.touched = true;
-                // Beyond RN (whose Done does nothing): Done dismisses the sheet, on the same
-                // spring as the scrim, the flick and the "×".
+                // Done dismisses the sheet, on the same spring as the flick.
                 if self.opened {
                     self.toggle();
                 }
@@ -546,8 +485,7 @@ impl Surface for FloatingModal {
         let content = self.content_opacity() as f32;
         let plus_m = self.plus_matrix().then(modal);
         let strip = plus_bounds(plus_m, s, pw, ph);
-        // The content laid out in the open sheet and scaled with the sheet as one picture (about
-        // its centre, by the smaller of the two ratios), so it is inside it at every frame.
+        // The content scales with the sheet as one picture, so it stays inside it every frame.
         let lo = self.layout(1.0);
         let button_m = self.button_matrix(&lo);
         let (_, _, sw1, sh1) = lo.frame;
@@ -564,7 +502,6 @@ impl Surface for FloatingModal {
             g.concat(snapshot);
             let l = lo;
             let sw = sw1 as f32;
-            // The grabber.
             let (gw, gh, gy) = GRABBER;
             g.draw_rrect(
                 (sw - gw) / 2.0,
@@ -604,7 +541,7 @@ impl Surface for FloatingModal {
                     centred(g, f, line, px(mid), 0.0, sw, &paint);
                 }
             }
-            // The capsule (analytic: no path, no MSAA), pressed by pressto's scale.
+            // The capsule, drawn analytically and scaled by its press.
             g.concat(button_m);
             let (bx, by, bw, bh) = l.button;
             g.draw_rrect(
@@ -680,8 +617,7 @@ impl Surface for FloatingModal {
             6.0,
             Color::rgba8(0, 0, 0, 255).alpha(0.2),
         );
-        // Analytic (Graphite's rrect step): a continuous rrect is a path, which turns the whole
-        // full-screen frame into 4x MSAA every frame of the motion (3x: 1206 x 2622 x 4).
+        // Analytic rounded rects: a path would turn the full-screen frame into 4x MSAA.
         c.draw_rrect(0.0, 0.0, fw, fh, radius, &Paint::fill(Color::WHITE));
         c.restore();
         // The content as one group at its opacity (allowsGroupOpacity), then the "+", 1:1.
@@ -754,9 +690,7 @@ fn strip_height(s: f32) -> u32 {
     (BUTTON as f32 * std::f32::consts::SQRT_2 * s).ceil() as u32 + 6
 }
 
-/// Draws a text layer from the atlas: its box `frame` (points, untransformed) from `origin`
-/// (pixels), sampled bilinearly through the canvas's transform, as Core Animation shows a
-/// Text's backing store.
+/// Draws a text layer from the atlas, sampled bilinearly through the canvas transform.
 fn composite(c: &mut Canvas, atlas: &Images, origin: [f32; 2], frame: [f32; 4], s: f32) {
     let g = GUTTER / s;
     let to = Matrix::translate(-frame[0], -frame[1])
@@ -894,8 +828,7 @@ mod tests {
 
     #[test]
     fn the_plus_presses_only_when_lifted_inside_it() {
-        // pressto's BaseButton: onPress needs pointerInside at the lift (shouldCancelWhenOutside
-        // false keeps the press on while the finger is off it, but lifting there presses nothing).
+        // A press needs the finger inside the button at the lift.
         let pointer = |phase, x: f32, y: f32, at_ms| InputEvent::Pointer {
             id: 1,
             phase,
@@ -954,7 +887,6 @@ mod tests {
         let (closed, moving) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         closed.save("floating-modal-closed");
         assert!(!moving);
-        // The button: 324…388 × 816…880, white; the window around it clear.
         assert_eq!(closed.at(2 * 330, 2 * 860), [255, 255, 255, 255]);
         assert_eq!(closed.at(2 * 100, 2 * 100)[3], 0);
 
@@ -971,14 +903,12 @@ mod tests {
         open.save("floating-modal-open");
         assert!(!moving);
         assert!(s.agent("{}").unwrap().contains("\"opened\":true"));
-        // The floating sheet: x 10…410, 213 tall, 10 above the bottom (y 689…902); the scrim
-        // darkens the rest; the "Done" capsule (x 37…383, y 825…875) is #111.
+        // The sheet's frame; the scrim darkens the rest.
         assert_eq!(open.at(2 * 30, 2 * 700), [255, 255, 255, 255]);
         assert_eq!(open.at(2 * 10, 2 * 100)[3], 102);
         assert_eq!(&open.at(2 * 60, 2 * 862)[..3], &[0x11, 0x11, 0x11]);
 
-        // Drag it down 210 (RNGH on iOS leaves UIKit's 10 pt hysteresis out: translation 200):
-        // it shrinks, and the release closes it.
+        // Drag down 210: the sheet shrinks, and the release closes it.
         s.input(&pointer(PointerPhase::Down, 210.0, 700.0, ms));
         for k in 1..=21 {
             ms += 16.0;
@@ -1010,8 +940,7 @@ mod tests {
 
     #[test]
     fn a_short_drag_grabs_and_lands_the_sheet() {
-        // Open, at rest; drag down 40 (30 after the hysteresis) and let go slowly: it stays
-        // open and springs home, one light impact at the grab, nothing at the landing.
+        // Drag down 40 and let go slowly: it springs home and stays open, with one grab haptic.
         let pointer = |phase, y: f32, at_ms| InputEvent::Pointer {
             id: 1,
             phase,
@@ -1086,7 +1015,7 @@ mod tests {
         assert_eq!(m.plus_shown.0, 0.0);
         assert!(m.plus_shown.1 < 1.0);
         m.input(&pointer(PointerPhase::Up, 356.0, 848.0, ms));
-        // The 500 ms critically damped spring rests (Reanimated's energy threshold) ~1 s on.
+        // The spring rests about 1 s later.
         while ms < 1500.0 {
             ms += 16.0;
             let before = m.progress.value;
@@ -1103,8 +1032,7 @@ mod tests {
             m.progress.value,
             m.progress.running
         );
-        // Opened, press the "+" (now at the modal's top-left) and hold: the press rewrites the
-        // transform as [scale], the rotation is gone while held.
+        // Press the "+" while open: the press rewrites the transform as [scale].
         let (fx, fy, _, _) = m.layout(1.0).frame;
         m.input(&pointer(
             PointerPhase::Down,
@@ -1157,9 +1085,7 @@ mod tests {
             fixture::render(&gpu, &mut m, &frame(ms)).unwrap();
         }
         assert!((m.plus_shown.0 - std::f64::consts::FRAC_PI_4).abs() < 1e-9);
-        // "Done" (the sheet's capsule, y 825…875): its onPress sets
-        // lastTouchedPressable (the "+"'s pressto style writes [scale] over the rotate) and
-        // dismisses the sheet, whose closing rotate is then written last.
+        // "Done" dismisses the sheet, and its press re-runs the "+" style.
         m.input(&pointer(PointerPhase::Down, 210.0, 862.0, ms));
         m.input(&pointer(PointerPhase::Up, 210.0, 862.0, ms + 80.0));
         assert_eq!(

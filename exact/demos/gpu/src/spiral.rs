@@ -1,19 +1,13 @@
-//! Spiral (src/animations/spiral): `floor(height × 1.8)` circles on a logarithmic spiral
-//! (utils.ts: `a = i / 4`, `k = 0.005`, at `angle × i`), each of radius `1.2 − d / dmax`
-//! (d its distance from the centre, dmax the half diagonal), filled with a sweep gradient
-//! (cyan, magenta, yellow, cyan) and glowing (`ImageFilter.MakeMerge([MakeBlur(5, 5), null])`)
-//! on #010101. A tap anywhere picks a random angle; every coordinate springs to the new spiral
-//! (`withSpring({ duration: 3000, dampingRatio: 1 })`, spring-array.ts: reanimated's
-//! `SpringArray`).
+//! A spiral of `floor(height × 1.8)` circles on a logarithmic curve, filled with a sweep gradient of
+//! cyan, magenta and yellow, and glowing, on near-black. A tap anywhere picks a random angle, and
+//! every circle springs to the new spiral.
 //!
-//! Drawn as RN draws it: ONE path of `addCircle` conics (packages/skia: Graphite's 4× MSAA
-//! fill, so the overlaps are a union and the outer, sub-pixel circles take quarter coverages),
-//! into the Group's layer, which is encoded Display P3 as RN Skia's surface is: the gradient
-//! mixes its stops in P3 (the arms' in-between hues: RN's (220, 93, 255), not sRGB's
-//! (191, 64, 255)) and the blur mixes P3 values (an sRGB blur of the glow was up to 18 levels
-//! off). The layer reaches the blur's radius past the canvas, as Skia sizes a filtered layer,
-//! so the circles just off screen glow into its edges. Graphite's blur (`GraphiteBlur`), the
-//! merge and the canvas in `spiral.wgsl`, converted to sRGB once.
+//! - The circles are one path, filled in Display P3: the gradient and the glow mix in P3, which an
+//!   sRGB mix would shift by up to 18 levels.
+//! - The glow's layer reaches the blur's radius past the canvas, so circles just off screen still
+//!   glow into its edges.
+//! - A press that lifts turns the spiral, however long it was held or far it moved. It plays the
+//!   app's selection haptic.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -26,7 +20,7 @@ use crate::{gfx, shaders};
 use shaders::spiral::{entry, module, Uniforms, BLURRED, CONTENT, GROUP_0, SMP, U};
 
 const DURATION: f64 = 3000.0;
-/// `MakeBlur(5, 5, …)`: σ in points.
+/// Glow blur σ, in points.
 const SIGMA: f32 = 5.0;
 
 /// The demo's surface.
@@ -61,10 +55,8 @@ fn positions(angle: f64, count: usize) -> Vec<f64> {
 struct Spiral {
     springs: Option<SpringArray>,
     count: usize,
-    /// pressto's PressableWithoutFeedback (absoluteFill), the shared `pressto::Pressable`
-    /// (RNGH's BaseButton): onPress at the finger's lift unless cancelled, however long it was
-    /// held or far it moved (shouldCancelWhenOutside: false, and the button covers the screen).
-    /// It draws no feedback; its press posts the app's global selection haptic.
+    /// Press tracking. A press that lifts turns the spiral. The press draws nothing; it posts the
+    /// app's selection haptic.
     press: Pressable,
     posted: Vec<String>,
     taps: u64,
@@ -139,7 +131,7 @@ impl Surface for Spiral {
         target: &wgpu::TextureView,
         format: wgpu::TextureFormat,
     ) -> bool {
-        // RN reads the window once: the circle count is the screen's height × 1.8.
+        // The circle count follows the window's height × 1.8.
         let count = (frame.height as f64 * 1.8).floor() as usize;
         if self.springs.is_none() || count != self.count {
             self.count = count;
@@ -262,7 +254,7 @@ impl Surface for Spiral {
     }
 }
 
-/// The blurred image's uv of a layer pixel: uv = p · xy + zw (as email-demo's).
+/// The blurred image's uv of a layer pixel: uv = p · xy + zw.
 fn low_mapping(plan: &GraphitePlan, origin: [i32; 2], size: [u32; 2]) -> [f32; 4] {
     let src = plan.src_rect.map(|v| v as f32);
     let low = plan.low_bounds;
@@ -352,8 +344,7 @@ mod tests {
             .count();
         // At π/2 the spiral is a cross: its four arms.
         assert!(lit > 100, "{lit} lit samples");
-        // The lower arm sits a quarter of the sweep along, cyan → magenta mixed in Display P3:
-        // RN's (220, 93, 255) on device, where an sRGB ramp is (191, 64, 255).
+        // The lower arm's mix is in Display P3: (220, 93, 255), where an sRGB mix would be (191, 64, 255).
         let core = (520..700)
             .map(|y| a.at(210, y))
             .max_by_key(|p| p[0] as u32 + p[1] as u32 + p[2] as u32)
@@ -388,7 +379,7 @@ mod tests {
         let (c, moving) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         c.save("spiral-settled");
         assert!(!moving);
-        // BaseButton's onPress: a press held 900 ms that wandered 80 pt still turns it.
+        // A press held 900 ms that wandered 80 pt still turns it.
         let at = |phase, x, at_ms| InputEvent::Pointer {
             id: 2,
             phase,

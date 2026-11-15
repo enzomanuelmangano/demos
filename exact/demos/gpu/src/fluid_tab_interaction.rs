@@ -1,41 +1,12 @@
-//! Fluid Tab Interaction (src/animations/fluid-tab-interaction: src/index.tsx, src/constants.ts,
-//! src/components/segmented-control/index.tsx, components/animated-blur-view.tsx): a three-cell
-//! segmented control (Accounts, Deposits, Funds) whose highlighted pill slides to the cell pressed
-//! while the labels' colours cross over and expo-blur's BlurViews pulse. The whole screen.
+//! A three-cell segmented control (Accounts, Deposits, Funds). Its highlighted pill slides to the
+//! cell pressed, the labels cross-fade their colours, and a blur pulses over the control.
 //!
-//! - Layout (RN measure, iPhone Air): the white screen centres the control, `windowWidth − 40` ×
-//!   50 (20, 431), baseGray05 #F5F3EE, border 1 baseGray05, radius 30 continuous, padding 5,
-//!   a row. Its three cells (PressableScale, flex 1, a centred row, gap 5, zIndex 2) are each
-//!   (width − 12) / 3 wide, 38 tall, 6 in. In a cell: MaterialCommunityIcons wallet-outline / bank
-//!   / chart-bar at 13 (a 13.333 Text box) and the label (Honk-Regular 14: HonkSans-Medium, a
-//!   17 pt box), each Text at Yoga's floored position (icon 20.333, 12.333; "Accounts" 38.667,
-//!   10.333; the label's textAlign center sets its line half the ceiled box's slack right: 0.0967
-//!   pt for "Accounts"), and an absoluteFill `<BlurView tint="light">` over them (zIndex 1 in the cell).
-//! - The pill (zIndex 1): absolute, left 0, alignSelf center: x = 1 + translateX, y 5 in the
-//!   border box, cellBackgroundWidth − 5 / 3 × 40 (125 × 40), #F9F8F4, border 1 baseGray05,
-//!   radius 30 continuous (20 drawn), boxShadow 0 1 2 rgba(0, 0, 0, 0.1) (RCTBoxShadow: σ 1, the
-//!   circular rounded rect, outside the view). translateX = withTiming(cbw · index +
-//!   interpolate(index, [0, 2], [5, −5]), TimingConfig), cbw = width / 3.
-//! - The blur cell: absolute, left 0, alignSelf center, cbw × 50; its style array ends on
-//!   highlightedCellBlurContent's zIndex 1, so it draws over the pill and under the cells (the
-//!   recordings: a label over it stays sharp). translateX = withTiming(cbw · index). In it a
-//!   `<BlurView tint="light">` of intensity interpolate(blurProgress, [0, 0.5, 1], [0, 15, 0]).
-//! - Each cell's BlurView: interpolate(activeIndexes ∋ i ? blurProgress : 0, [0, 0.5, 1],
-//!   [0, 10, 0]). Each label's and icon's colour: withTiming(selected ? #312F2D : #9B9893,
-//!   TimingConfig), Reanimated's colour timing (each channel in a gamma 2.2 space, rounded).
-//!   TimingConfig: 1000 ms, Easing.bezier(0.4, 0, 0.2, 1). RN's colours are Display P3.
-//! - onPress(i): setSelected; if i was selected, nothing more. Else activeIndexes = [prev, i];
-//!   cancelAnimation(blurProgress) — which runs a running pulse's callback (blurProgress 0,
-//!   activeIndexes [] : an interrupting pulse blurs no cell) and puts back the value read before
-//!   it — then blurProgress = withTiming(1, TimingConfig, () => { 0; [] }).
-//! - Touches: iOS Fabric applies zIndex as the layers' zPosition, which hit-testing ignores: the
-//!   pill and the blur cell, later siblings than the cells, take every touch inside them (the
-//!   recordings: a held press on the selected cell does not scale it). A cell (RNGH BaseButton,
-//!   pressto; the shared `pressto::Pressable`): scale 1 → 0.96 while held (withTiming 250 ms, bezier(0.25, 0.1, 0.25, 1)), onPress
-//!   on a lift inside it, with the app's selection haptic.
-//! - The blurs (`skia::backdrop`, UIBlurEffect.light at intensity / 100; 0 is none, as measured
-//!   at rest): each reads what lies under its frame: the blur cell the screen, the control and
-//!   the pill; a cell's the same plus the blur cell's result and its own glyphs.
+//! - Selecting a cell slides the pill, cross-fades the labels over one second, and pulses the blur.
+//!   Pressing the selected cell does nothing more.
+//! - Each cell scales to 0.96 while held, and selects on a lift inside it, with a selection haptic.
+//! - The pill and the blur layer are later siblings than the cells, and hit-testing ignores
+//!   zIndex here, so they take every touch inside them: a press on the selected cell lands on the pill.
+//! - The blurs read what lies under them: the control and the pill, and the cells' glyphs.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -50,16 +21,15 @@ use crate::gfx;
 static HONK: &[u8] = include_bytes!("../fonts/honk-regular-fluid-tab-subset.otf");
 static MCI: &[u8] = include_bytes!("../fonts/mci-fluid-tab-subset.ttf");
 
-/// src/index.tsx Data.
 const NAMES: [&str; 3] = ["Accounts", "Deposits", "Funds"];
-/// MaterialCommunityIcons wallet-outline, bank, chart-bar.
+/// Icon glyphs: wallet, bank, chart.
 const ICONS: [&str; 3] = ["\u{F0BDD}", "\u{F0070}", "\u{F0128}"];
-/// constants.ts Palette.
+/// Control, pill, and selected and unselected label colours, 0xRRGGBB.
 const BASE_GRAY05: u32 = 0xF5F3EE;
 const BACKGROUND: u32 = 0xF9F8F4;
 const HIGHLIGHT_LABEL: u32 = 0x312F2D;
 const BASE_LABEL: u32 = 0x9B9893;
-/// width = windowWidth − 40, height 50, internalPadding 5, the border 1.
+/// Control inset from the window's sides, its height, padding and border, pt.
 const MARGIN: f32 = 40.0;
 const HEIGHT: f32 = 50.0;
 const PADDING: f32 = 5.0;
@@ -68,7 +38,7 @@ const RADIUS: f32 = 30.0;
 const GAP: f32 = 5.0;
 const ICON_SIZE: f32 = 13.0;
 const LABEL_SIZE: f32 = 14.0;
-/// TimingConfig.
+/// Colour and blur timing, ms.
 const TIMING_MS: f64 = 1000.0;
 const LAYER: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 const UNIFORM: u64 = 256;
@@ -82,17 +52,17 @@ pub fn surface() -> Box<dyn Surface> {
     Box::new(FluidTab::new())
 }
 
-/// Yoga's rounding of a View edge to the pixel grid: to the nearest device pixel, a half up.
+/// Rounds a view edge to the nearest device pixel, halves up.
 fn grid(v: f32, scale: f32) -> f32 {
     ((v * scale + 0.5 + 1e-4).floor()) / scale
 }
 
-/// A Text node's relative position: floored to the pixel grid (Yoga's textRounding).
+/// Rounds a text's position down to the pixel grid.
 fn text_grid(v: f32, scale: f32) -> f32 {
     ((v * scale + 1e-4).floor()) / scale
 }
 
-/// A Text's measured side, ceiled to the pixel grid (an exact 13 measures 13.333, as RN's).
+/// Rounds a text's measured width up to the pixel grid.
 fn text_side(v: f32, scale: f32) -> f32 {
     ((v + 0.001) * scale).ceil() / scale
 }
@@ -122,7 +92,7 @@ struct Layout {
     x: f32,
     y: f32,
     w: f32,
-    /// cellBackgroundWidth.
+    /// Width of one cell.
     cbw: f32,
     /// Each cell's left edge, and the last one's right; their top and height.
     cells: [f32; 4],
@@ -150,7 +120,7 @@ impl Layout {
         }
     }
 
-    /// rCellMessageStyle's target for `index`.
+    /// The pill's translateX for cell `index`.
     fn pill_target(&self, index: usize) -> f64 {
         let i = index as f64;
         self.cbw as f64 * i
@@ -223,7 +193,7 @@ struct Gpu {
 struct FluidTab {
     layout: Layout,
     selected: usize,
-    /// rCellMessageStyle's and rCellBlurMessageStyle's translateX.
+    /// translateX of the cell content and of the blur cell.
     pill_tx: Timing,
     blur_tx: Timing,
     /// blurProgress, activeIndexes.
@@ -231,7 +201,7 @@ struct FluidTab {
     active: Vec<usize>,
     /// Each label's colour: its timing's progress, from, to.
     colour: [(Timing, [f64; 4], [f64; 4]); 3],
-    /// Each cell's PressableScale (the shared pressto machine).
+    /// Each cell's press.
     press: [Pressable; 3],
     placed: bool,
     label: Option<Font>,
@@ -272,7 +242,7 @@ impl FluidTab {
         }
     }
 
-    /// A label's colour now: Reanimated's colour timing.
+    /// A label's colour now.
     fn label_colour(&self, i: usize) -> [f64; 4] {
         let (t, from, to) = &self.colour[i];
         interpolate_color(t.value, &[0.0, 1.0], &[*from, *to])
@@ -285,7 +255,7 @@ impl FluidTab {
             || inside(l.blur_cell(self.blur_tx.value as f32), x, y)
     }
 
-    /// The cell's onPress (after the app's selection haptic).
+    /// Handles a press on cell `i`.
     fn select(&mut self, i: usize) {
         let prev = self.selected;
         if prev == i {
@@ -304,8 +274,7 @@ impl FluidTab {
             t.to(1.0, TIMING_MS, timing_easing());
             self.colour[k] = (t, from, to);
         }
-        // activeIndexes.set([prev, i]); cancelAnimation(blurProgress): a running pulse's callback
-        // clears them and the value read before it is put back.
+        // Pulse the previous and the new cell; an interrupted pulse's callback clears them.
         self.active = vec![prev, i];
         if self.blur.running {
             self.active.clear();
@@ -438,7 +407,7 @@ impl FluidTab {
         let c = &mut self.canvas;
         c.begin(l.scale);
         c.fill(Color::WHITE);
-        // backgroundContainer: its border is its own colour.
+        // Control background; its border has its own colour.
         c.draw_continuous_rrect(
             l.x,
             l.y,
@@ -449,8 +418,7 @@ impl FluidTab {
         );
         let [px, py, pw, ph] = l.pill(self.pill_tx.value as f32);
         let r = RADIUS.min(pw / 2.0).min(ph / 2.0);
-        // RCTBoxShadow: the circular rounded rect's shadow (blur 2: σ 1), offset 0 1, outside
-        // the view.
+        // Pill shadow, drawn outside the pill.
         c.save();
         c.clip_with(|b| {
             skia::add_rect(b, px - 20.0, py - 20.0, pw + 40.0, ph + 40.0);
@@ -458,7 +426,7 @@ impl FluidTab {
         });
         c.draw_rrect_shadow(px, py + 1.0, pw, ph, r, 1.0, Color::BLACK.alpha(0.1));
         c.restore();
-        // The border (Core Animation's, continuous), then the background inside it.
+        // Border, then the background inside it.
         c.draw_continuous_rrect(
             px,
             py,
@@ -515,8 +483,7 @@ impl FluidTab {
             );
             c.draw_text(
                 NAMES[i],
-                // textAlign 'center': TextKit centres the line in the ceiled box ("Accounts" 0.29 px
-                // right, which carries its o, u and s past a pixel edge).
+                // Centre the line as TextKit does; the sub-pixel offset matters for glyph edges.
                 text_grid(left + iw + GAP, s) + (lw - line) / 2.0,
                 gfx::baseline(label, text_grid((ch - lh) / 2.0, s)),
                 label,
@@ -733,9 +700,7 @@ impl Surface for FluidTab {
     }
 }
 
-/// A BlurView (tint light) of `intensity` over `frame_pt` of `src`: its effect, and its slot (the
-/// pixel rect, the mapping, on) written; `None` at intensity 0. The canvas is at the window's
-/// origin.
+/// A light BlurView of `intensity` over `frame_pt` of `src`; `None` at intensity 0.
 #[allow(clippy::too_many_arguments)]
 fn run_blur(
     blur: &mut BackdropBlur,
@@ -871,7 +836,7 @@ mod tests {
         let mut s = FluidTab::new();
         s.layout = Layout::new(420.0, 912.0, 3.0);
         s.placed = true;
-        // The selected cell is under the pill and the blur cell: the press is theirs.
+        // A press on the selected cell lands on the pill, not the cell.
         tap(&mut s, 84.0, 456.0, 0.0);
         assert!(s.messages().is_empty());
         tap(&mut s, 210.0, 456.0, 0.0);
@@ -898,7 +863,7 @@ mod tests {
         };
         let mut s = FluidTab::new();
         let (img, _) = fixture::render(&gpu, &mut s, &frame(0.0)).unwrap();
-        // The control's grey between the cells, the screen's white above it.
+        // Grey control between the cells, white screen above it.
         let at = |x: f32, y: f32| img.at((x * 3.0) as u32, (y * 3.0) as u32);
         assert_eq!(at(210.0, 420.0)[..3], [255, 255, 255]);
         assert!(at(400.0 - 30.0, 456.0)[0] < 250);

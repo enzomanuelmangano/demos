@@ -104,8 +104,7 @@ pub fn phase(phase: exact_gpu::PointerPhase) -> gesture_handler::Phase {
     }
 }
 
-/// `Math.random()` for a surface: a seeded stream (mulberry32), so a demo's random layout is
-/// the same for a seed (the Contract's `env.seed`) and differs between launches.
+/// Seeded random numbers (mulberry32): one seed gives one layout, and each launch differs.
 #[derive(Clone, Debug)]
 pub struct Random(u32);
 
@@ -124,15 +123,13 @@ impl Random {
     }
 }
 
-/// Where a one-line RN `<Text>` box's baseline sits: an ascent below its top (TextKit's line
-/// fragment starts at the box top; measured by exact/parity-tools/text-probe).
+/// Baseline of a one-line text box: an ascent below its top.
 pub fn baseline(font: &skia::Font, top: f32) -> f32 {
     top - font.metrics().ascent
 }
 
 
-/// TextKit's word wrapping with `letterSpacing` (NSKern after every glyph): a break after spaces
-/// (which hang) and after a hyphen between letters; a line holds what fits in `width`.
+/// Word wrapping with letter spacing: breaks after spaces and hyphens; a line holds what fits in `width`.
 pub(crate) fn wrap_spaced(font: &skia::Font, text: &str, spacing: f32, width: f32, out: &mut Vec<(usize, usize)>) {
     out.clear();
     let mut breaks: Vec<(usize, usize)> = Vec::new();
@@ -195,8 +192,7 @@ pub(crate) fn wrap_spaced(font: &skia::Font, text: &str, spacing: f32, width: f3
 }
 
 
-/// TextKit's word wrapping of an RN `<Text>` `width` wide: breaks after spaces (hanging) and
-/// after a hyphen between letters; the lines as byte ranges, trailing spaces left out.
+/// Word wrapping at `width`: breaks after spaces and hyphens; returns the lines as byte ranges.
 pub fn wrap(font: &skia::Font, text: &str, width: f32) -> Vec<(usize, usize)> {
     let mut out = Vec::new();
     let chars: Vec<(usize, char)> = text.char_indices().collect();
@@ -258,24 +254,19 @@ pub fn wrap(font: &skia::Font, text: &str, width: f32) -> Vec<(usize, usize)> {
     out
 }
 
-/// The height of one line of `font` (an RN `<Text>` with no `lineHeight`): ascent + descent.
-/// RN's NSLayoutManager has `usesFontLeading = NO`, so the hhea line gap is not in the line
-/// (AntDesign, Entypo and Ionicons have one: their boxes were a lineGap too tall).
+/// The height of one line of `font`: ascent plus descent. The font's line gap is left out.
 pub fn line_height(font: &skia::Font) -> f32 {
     font.ui_line_height()
 }
 
-/// `v.set(withSpring(to, { duration, dampingRatio }))`: from where `spring` is, at its velocity
-/// (dropped when it points away from `to`, as Reanimated's onStart), with the stiffness solved
-/// for this start (mass 4, Reanimated's default).
+/// Retargets `v` to `to` with a spring of mass 4, keeping its velocity unless that points away from `to`.
 pub fn spring_to(spring: &mut reanimated::Spring, to: f64, duration_ms: f64, damping_ratio: f64) {
     let (x, v) = (spring.value, spring.velocity);
     let v = if !spring.running || (to > x && v < 0.0) || (to < x && v > 0.0) { 0.0 } else { v };
     spring.to(to, v, reanimated::duration_config(x - to, v, duration_ms, damping_ratio, 4.0));
 }
 
-/// A fixture image (premultiplied) composited over the opaque `background` colour, written as
-/// `EXACT_GPU_OUT/<name>.ppm` (what the demo looks like on its screen's colour).
+/// Writes a fixture image over an opaque background to `EXACT_GPU_OUT/<name>.ppm`.
 #[cfg(all(test, not(target_arch = "wasm32")))]
 pub fn save_over(img: &exact_gpu::fixture::Pixels, name: &str, background: [u8; 3]) {
     let Some(dir) = std::env::var_os("EXACT_GPU_OUT") else { return };
@@ -289,17 +280,11 @@ pub fn save_over(img: &exact_gpu::fixture::Pixels, name: &str, background: [u8; 
     let _ = std::fs::write(std::path::Path::new(&dir).join(format!("{name}.ppm")), out);
 }
 
-/// RN Skia's canvas on iOS: an 8-bit Display P3 surface that Core Animation converts to the
-/// screen. Every flat colour takes a rounded P3 round trip (#F7FFF7 shows as (246, 255, 247),
-/// #F38D68 as (243, 141, 105)) and antialiased edges, glyphs and clips blend P3 values (a
-/// half-covered #4ECDC4 edge over #F7FFF7: RN (169, 231, 222), an sRGB blend 163 in red).
-/// `draw` renders the canvas into an Rgba8Unorm layer with `renderer.p3` set, then converts each
-/// pixel to sRGB, unpremultiplied, into the target (theme-canvas-animation, measured).
+/// The Skia canvas on iOS is an 8-bit Display P3 surface that Core Animation converts to sRGB.
+/// `draw` renders the canvas into a P3 layer and converts it to sRGB, unpremultiplied, into the target.
 ///
-/// `over_black`: the converted canvas composited over opaque black (alpha 1 out), as Core
-/// Animation shows a transparent RN Skia canvas on a black view. A transparent surface lets
-/// what lies under the canvas through to the keyboard's glass (qr-code-generator: the home's
-/// colours glinted in it).
+/// `over_black`: the converted canvas composited over opaque black, as Core Animation shows a
+/// transparent canvas on a black view.
 #[derive(Default)]
 pub struct P3Layer {
     /// Composite over opaque black (alpha 1 out).
@@ -356,8 +341,7 @@ fn resolve(pos: vec4<f32>) -> vec4<f32> {
 "#;
 
 impl P3Layer {
-    /// Draws `canvas` as RN Skia would show it: into the P3 layer (cleared to `clear`), then
-    /// converted into `target` (`width`×`height` pixels).
+    /// Draws `canvas` into the P3 layer (cleared to `clear`), then converts it into `target`.
     #[allow(clippy::too_many_arguments)]
     pub fn draw(
         &mut self,

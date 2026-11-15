@@ -1,33 +1,14 @@
-//! Airbnb Flip Interaction's description (src/animations/airbnb-flip-interaction/index.tsx and
-//! flip-interaction/components/card/pages/{MainPage,SecondPage}.tsx): the page under the card,
-//! swapped with Reanimated Keyframes when the card flips, under an AnimatedBlurView whose
-//! intensity pulses with the flip. The canvas spans the window's width from the card box's top
-//! (on the pixel grid), under the card's canvas; it draws nothing over the card.
+//! Airbnb flip description: the text page under the flipping card. Each page is drawn once into a
+//! texture; keyframes move and fade the pages as the card flips, and a backdrop blur pulses with
+//! the flip. The canvas draws nothing over the card.
 //!
-//! - descriptionSection: paddingHorizontal 32, its top cardHeight + 24 below the card box's
-//!   (Yoga-rounded). The page container (radius 12 continuous, overflow hidden) at (32, top),
-//!   356 wide: paddingBottom 32; each section marginBottom 12, paddingVertical 8: the title
-//!   (SF-Pro-Rounded-Bold 20, #000, marginBottom 8) and the text (Source Sans Pro, "regular", 16,
-//!   lineHeight 24, #1A1D29: each line's baseline (24 − UIFont.lineHeight) / 2 below TextKit's,
-//!   wrapped as TextKit wraps). Each page is drawn once into its layer; Core Animation moves
-//!   that layer (translateY) and fades it (opacity), as the Keyframes animate the View.
-//! - Keyframes (linear between keys): SecondPage enters enteringFront (400 ms: 0 → opacity 0,
-//!   ty −5; 60 % → 0.45, −2; 100 % → 1, 0) and exits exitingFront (250 ms: 0 → 1, 0; 30 % →
-//!   0.45, 2; 100 % → 0, 5); MainPage enters enteringBack (ty +5, +2, 0) and exits exitingBack
-//!   (ty 0, −2, −5). A page mounts on the first frame (entering), and each flip mounts the other
-//!   one and keeps the old one where it was until its exit ends; a later sibling over an earlier.
-//! - The AnimatedBlurView: absoluteFill of the section (the window wide, the entering page's
-//!   height), zIndex 1, rgba(255,255,255,0.5) behind the effect, tint light (UIBlurEffect.light,
-//!   `skia::backdrop`), intensity = interpolate(progress, [0, 0.2, 0.5, 0.8, 1], [0, 10, 20, 10, 0])
-//!   (extended), as expo-blur's fraction (intensity / 100, clamped to 0.01 … 1).
-//!
-//! Motion audit:
-//!
-//! | value | RN driver / config | here |
-//! |---|---|---|
-//! | progress | useDerivedValue(withSpring(isFlipped ? 1 : 0, { mass 1.2, stiffness 80, damping 12, velocity 0.3 })) | `Spring` (80, 12, 1.2); onStart: the running velocity + 0.3 (0.3 from rest), dropped when it points away from the target |
-//! | intensity | interpolate(progress, …) above | the same, `expo_fraction` |
-//! | page opacity / translateY | Keyframes above, from the commit that swaps the page | `Ghost`s, the same keys |
+//! - Keyframes, linear between keys: the page coming to the front fades in over 400 ms and rises
+//!   from 5 pt above; the page leaving the front fades out over 250 ms and drops 5 pt. The back
+//!   page moves the mirror way.
+//! - A page mounts on the first frame. A flip mounts the other page and keeps the old one where
+//!   it was until its exit ends, so both pages are drawn during the swap.
+//! - The blur intensity goes 0 → 20 → 0 over the spring. At zero the blur is skipped, so the page
+//!   under it stays sharp.
 //!
 //! Inputs: isFlipped, safeTop (the canvas's top in the window is safeTop + 56).
 
@@ -172,7 +153,6 @@ fn record_page(c: &mut Canvas, page: usize, width: f32, title: &Font, body: &Fon
         y = top + grid(section_h + 12.0, s);
         let _ = k;
     }
-    // The container: its sections (each with marginBottom 12) and paddingBottom 32.
     y + 32.0
 }
 
@@ -227,7 +207,7 @@ impl Surface for Pages {
         let (pw, ph) = frame.pixels();
         let moving = self.step(frame.now_ms);
         let width = frame.width - 2.0 * PAD_X;
-        // The section's top: the card box (cardWidth / 1.6) and cardSection's paddingBottom 24.
+        // Pages start below the card: its height plus 24.
         let card_h = (frame.width - 64.0) / 1.6;
         let top = grid(card_h + 24.0, s);
         let tex = ((width * s).round() as u32, (PAGE_TEX_H * s).round() as u32);
@@ -301,10 +281,8 @@ impl Surface for Pages {
         // Pass 1: what the effect sees (its own background included).
         let first = bind(&textures[0]);
         skia::render::fullscreen_pass(encoder, "airbnb under", under, &gpu.under, &first);
-        // The effect over the section.
         let intensity = interpolate(self.progress.value, &[0.0, 0.2, 0.5, 0.8, 1.0], &[0.0, 10.0, 20.0, 10.0, 0.0], Extrapolation::Extend);
-        // expo-blur clamps the fraction to 0.01, but an intensity of 0 shows no effect (measured
-        // at rest: the page under the veil is sharp, as fluid-tab-interaction's cells).
+        // Zero intensity skips the blur, so the page stays sharp.
         let blurred = if intensity > 0.0 {
             let params = Material::Light.chain().at(expo_fraction(intensity));
             let region = [section[0] as i32, section[1] as i32, section[2] as i32, section[3] as i32];
@@ -355,7 +333,7 @@ mod tests {
             assert!(h + 5.0 < PAGE_TEX_H, "{h}");
             assert!(h > 250.0, "{h}");
         }
-        // MainPage's first text: five lines at 356, as RN wraps it.
+        // The first body text wraps to five lines at this width.
         assert_eq!(gfx::wrap(&body, PAGES[0][0].1, 356.0).len(), 5);
     }
 

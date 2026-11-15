@@ -1,30 +1,11 @@
-//! Slide To Reveal (src/animations/slide-to-reveal: index.tsx, components/slide-to-reveal.tsx,
-//! components/text-code.tsx): a dark rounded card (`width` = window × 0.6, 80 tall) showing the
-//! code 112358 blurred; where the finger goes, the digits come out sharp and grow.
+//! A dark rounded card showing the code 112358, blurred. Where the finger goes, the digits come out
+//! sharp and grow.
 //!
-//! - text = "1  1  2  3  5  8" (the digits joined by two spaces), SF Compact Rounded Medium 34.
-//!   textWidth = measureText(text).width; digit at index i (spaces skipped) is drawn at
-//!   x = i × textWidth / text.length + (width − textWidth) / 2 − 5, y = textY − 5 with
-//!   textY = 34 / 2 + 80 / 2.
-//! - Each digit scales by interpolate(distance, [0, 80], [1, 0.5], CLAMP) about
-//!   (x + measureText(digit).width / 2, y − 34 / 3); distance from (x, y) to the finger while
-//!   it is down, else withTiming(80) (from where it was).
-//! - The pan (Gesture.Pan on the canvas): onBegin the mask is on and the point is the finger's,
-//!   onUpdate follows it, onFinalize turns the mask off. maskOpacity = withTiming(on ? 1 : 0).
-//! - The content's opacity: withTiming(1) once the font has loaded (from 0, at mount here).
-//! - Drawn: the RoundedRect (#0F0F0F, r 20); the digits blurred (BlurMask 7) under an alpha
-//!   Mask whose white circle (r = width) covers the canvas (its black circle at the finger adds
-//!   no alpha: the blurred digits show everywhere); the sharp digits under a luminance Mask of a
-//!   white circle (r 60, BlurMask 15, opacity maskOpacity) at the finger.
-//!
-//! The blurred digits are blurred once at scale 1 (BlurMask respects the transform, so a digit
-//! scaled by k blurred by 7k is the blurred digit scaled by k); the circle is blurred once.
-//!
-//! Haptics (past RN, which plays none: the owner's haptic language): `haptic:impact-light` when
-//! the pan activates (the lens comes up at the touch, but a tap plays nothing); one
-//! `haptic:selection` each time the finger comes nearest another digit (the one it reveals),
-//! SWITCH nearer than the current one so a finger between two does not flap, at most one per
-//! HAPTIC_GAP_MS. The lift only fades the lens: no haptic.
+//! - The digits are set with two spaces between them, in a rounded medium face. Each digit's scale
+//!   eases from 1 under the finger to 0.5 far from it.
+//! - Haptics: a light impact when the pan activates (a tap plays nothing); one selection each time
+//!   the finger comes nearest another digit, with a SWITCH hysteresis so a finger between two does
+//!   not flap, at most one per HAPTIC_GAP_MS. The lift only fades the lens: no haptic.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -35,15 +16,15 @@ use skia::{Canvas, Color, Font, Paint, Renderer};
 use crate::{gfx, shaders};
 use shaders::slide_to_reveal::{entry, module, Uniforms, ATLAS, GROUP_0, SHARP, SMP, SPOT, U};
 
-/// The `code` prop.
+/// The code the card shows.
 const CODE: &str = "112358";
-/// fontSize.
+/// Digit font size, in points.
 const FONT_SIZE: f32 = 34.0;
-/// The canvas's height.
+/// The card's height, in points.
 const HEIGHT: f32 = 80.0;
-/// The digits' BlurMask.
+/// Blur of the digits, in points.
 const TEXT_BLUR: f32 = 7.0;
-/// The finger's circle: BlurMask 15; r 76, a third over RN's 60 at the owner's ask (a wider reveal).
+/// The reveal circle's radius and blur, in points.
 const SPOT_RADIUS: f32 = 76.0;
 const SPOT_BLUR: f32 = 15.0;
 /// The spot texture: the circle and 3σ around it.
@@ -57,8 +38,7 @@ const HAPTIC_GAP_MS: f64 = 40.0;
 /// How much nearer another digit must be than the revealed one before it takes over, pt.
 const SWITCH: f32 = 4.0;
 const LAYER: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
-/// SF-Compact-Rounded-Medium.otf, its digits and space (fontTools subset: same outlines, same
-/// metrics).
+/// SF Compact Rounded Medium: the digits and the space, subset from the full face.
 static SF_COMPACT_ROUNDED: &[u8] = include_bytes!("../fonts/sf-compact-rounded-medium-digits.otf");
 
 /// The demo's surface.
@@ -78,7 +58,7 @@ struct SlideToReveal {
     font: Option<Font>,
     text: String,
     digits: Vec<Digit>,
-    /// textWidth.
+    /// Width of the whole text, in points.
     text_width: f32,
     /// The canvas's width, in points.
     width: f32,
@@ -387,7 +367,7 @@ mod tests {
             Ok(gpu) => gpu,
             Err(error) => return eprintln!("{error}; skipped"),
         };
-        // windowWidth 420 × 0.6.
+        // A 420 pt window: the card is 60 % of it.
         let frame = |now_ms| Frame { width: 252.0, height: 80.0, scale: 3.0, now_ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: exact_gpu::shaders::shader_generation(), headroom: 1.0 };
         let mut s = surface();
         let (first, animating) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();

@@ -1,34 +1,28 @@
-//! Metaball (src/animations/metaball/index.tsx): two circles (RADIUS 80) whose union is
-//! blurred (BLUR 30) and thresholded into one liquid shape, filled with a sweep gradient from
-//! the canvas's corner (cyan, blue, cyan) on #0A0A0A. Both start at the screen's centre; each
-//! follows a finger. The first stays where it is dropped; the second springs back to the centre
-//! (`withSpring`, Reanimated 4's default). A touch goes to the first circle if it is under the
-//! finger, else to the second (RN's Touchable order: "the first one registered, i.e. rendered").
+//! Two circles (radius 80) whose union is thresholded into one liquid shape, filled with a cyan
+//! and blue sweep gradient on near-black. Both start at the screen's centre, and each follows a
+//! finger. The first stays where it is dropped; the second springs back to the centre. A touch
+//! goes to the first circle if it is under the finger, else to the second.
 //!
-//! Everything runs in this surface: the pans, the springs and the drawing. The owner's call
-//! (phone feedback mwhp8vhc): not RN Skia's Blur 30 + ColorMatrix alpha threshold, but an
-//! analytic SDF in one pass (`shaders/metaball.wgsl`): each circle's signed distance, the two
-//! merged by a polynomial smooth minimum of K, the edge covered over one device pixel, crisp at
-//! rest; the neck forms and breaks analytically, at centres SPLIT_AT = 2R + K/2 apart (RN's
-//! blurred union pinches at about 2R + 40). The fill stays RN's sweep gradient in Display P3.
+//! Everything runs in this surface: the pans, the springs and the drawing. The shape is an
+//! analytic signed-distance field in one pass (`shaders/metaball.wgsl`): each circle's distance,
+//! merged by a polynomial smooth minimum of K, with the edge covered over one device pixel. That
+//! keeps it crisp at rest. The neck forms and breaks at centres SPLIT_AT = 2R + K/2 apart.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
 use gesture_handler::{Event, PanGesture};
 use reanimated::{Spring, SpringConfig};
 
-/// The release spring (the owner's call, phone feedback mwh5j03c / mwhlionx): damping ratio 1,
-/// SwiftUI's `.spring(duration: 0.55, bounce: 0)`: mass 1, stiffness (2π / 0.55)², damping 2√k.
+/// The release spring: critically damped, a 0.55 s period, mass 1: stiffness (2π / 0.55)²,
+/// damping 2√k.
 const RELEASE: SpringConfig = SpringConfig { stiffness: 130.507_165_634_239_4, damping: 22.848_165_582_471_224, mass: 1.0 };
 
-// The haptics (the owner's calls, mwhlionx and mwhp8vhc; RN plays none), through the host:
+// Haptics:
 // - a light impact at the grab;
-// - while a blob is dragged, a texture of selection ticks spaced by the distance it travels:
-//   sparse near the centre (TICK_SPACING_NEAR pt), dense as the tension rises toward the pinch
-//   (TICK_SPACING_FAR), at most one per TICK_MIN_MS;
-// - one medium "snap" the moment the neck breaks (the smooth minimum's field leaves the
-//   midpoint: centres past SPLIT_AT), one soft "merge" when the blobs touch again;
-// - a soft impact when a released blob's spring settles.
+// - while a blob moves, selection ticks spaced by the distance it travels: sparse near the
+//   centre, denser under tension, at most one per TICK_MIN_MS;
+// - a medium impact when the neck breaks (centres past SPLIT_AT), a soft one when the blobs
+//   merge again, and a soft one when a released blob settles.
 const GRAB: &str = "haptic:impact-light";
 const TICK: &str = "haptic:selection";
 const SNAP: &str = "haptic:impact-medium";
@@ -42,8 +36,7 @@ fn tick_spacing(d: f32) -> f32 {
     let k = (d / SPLIT_AT).clamp(0.0, 1.0);
     TICK_SPACING_NEAR + (TICK_SPACING_FAR - TICK_SPACING_NEAR) * k
 }
-/// The smooth minimum's k (pt): the neck's reach once the centres are 2R apart (it grows with
-/// the gap from 0, so the blobs at rest are one circle of radius R: see metaball.wgsl).
+/// Smooth-minimum radius, pt. At rest the two circles read as one of radius R.
 const K: f32 = 80.0;
 /// Where the merged field's midpoint crosses zero: smin(g, g, K) = g − K/4 with g = d/2 − R.
 const SPLIT_AT: f32 = 2.0 * RADIUS + K / 2.0;
@@ -54,7 +47,7 @@ use crate::{gfx, shaders};
 use shaders::metaball::{entry, module, Uniforms, GROUP_0, U};
 
 const RADIUS: f32 = 80.0;
-/// The demo's surface.
+/// The surface.
 pub fn surface() -> Box<dyn Surface> {
     Box::new(Metaball::default())
 }
@@ -63,14 +56,14 @@ pub fn surface() -> Box<dyn Surface> {
 struct Metaball {
     size: (f32, f32),
     first: (f32, f32),
-    /// The first circle's way back to the centre after a lift (the owner's call: RN leaves it
-    /// where it is dropped); `first_springs` while it runs.
+    /// The first circle's way back to the centre after a lift; `first_springs` while it runs.
     first_spring: (Spring, Spring),
     first_springs: bool,
-    /// Haptics due to be posted, the last tick (its time and where the dragged blob was), whether
-    /// the blobs are apart, and a release spring running (its settle is felt).
+    /// Haptics waiting to be posted.
     posted: Vec<String>,
+    /// Whether the blobs are apart (centres past SPLIT_AT).
     apart: bool,
+    /// A release is settling; its settle haptic is due when it rests.
     released: bool,
     second: (Spring, Spring),
     first_pan: PanGesture,
@@ -78,7 +71,7 @@ struct Metaball {
     first_from: (f32, f32),
     second_from: (f32, f32),
     /// Whether a finger has moved a circle yet: until then both sit at the canvas's centre,
-    /// whatever size the canvas is laid out at (RN reads the window's size once).
+    /// whatever its size.
     touched: bool,
     dirty: bool,
     gpu: Option<Gpu>,
@@ -181,14 +174,13 @@ impl Surface for Metaball {
                 self.touched = true;
                 self.posted.push(GRAB.into());
             }
-            // onActive (the pan's onUpdate).
             Event::Start(p) | Event::Update(p) => {
                 self.first_springs = false;
                 self.first = (self.first_from.0 + p.translation_x, self.first_from.1 + p.translation_y);
                 self.dirty = true;
             }
-            // RN's circleGesture has no onEnd: the lift leaves it. The owner's call (mwhlionx):
-            // it springs back to the centre as the second does, with the finger's velocity.
+            // The lift springs it back to the centre, as the second circle does, with the finger's
+            // velocity.
             Event::End(p) => {
                 let (cx, cy) = self.centre();
                 let v = |s: &Spring, springs: bool, finger: f32| if finger != 0.0 { finger as f64 } else if springs && s.running { s.velocity } else { 0.0 };
@@ -218,8 +210,8 @@ impl Surface for Metaball {
             _ => {}
         }
         match self.second_pan.event(id, phase, x, y, at_ms, on_second) {
-            // onStart (the pan's onBegin) only keeps the context: a spring back still running goes
-            // on until onActive sets the values.
+            // Begin only keeps the context: a spring back still running goes on until the first
+            // update sets the position.
             Event::Begin { .. } => {
                 self.touched = true;
                 self.second_from = second;
@@ -230,9 +222,8 @@ impl Surface for Metaball {
                 self.second.1.set((self.second_from.1 + p.translation_y) as f64);
                 self.dirty = true;
             }
-            // The lift: back to the centre on a critically damped spring (the owner's call, phone
-            // feedback mwh5j03c: RN's withSpring() starts from rest) carrying the finger's release
-            // velocity, whichever way it points.
+            // The lift: back to the centre on a critically damped spring, carrying the release
+            // velocity.
             Event::End(p) => {
                 let (cx, cy) = self.centre();
                 // A lift with no drag (the pan never moved) keeps a running spring's velocity.
@@ -295,7 +286,7 @@ impl Surface for Metaball {
     }
 }
 
-/// The blurred image's uv of a device pixel: uv = p · xy + zw (as spiral's).
+/// Builds the compose pipeline and its uniforms.
 fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32) -> Gpu {
     let shader = device.create_shader_module(module());
     let layout = device.create_bind_group_layout(&GROUP_0);
@@ -343,8 +334,7 @@ mod tests {
         assert!(!lit(&img, 105, 100), "above {:?}", img.at(105, 100));
         let pointer = |phase, x, y, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
         s.input(&pointer(exact_gpu::PointerPhase::Down, 105.0, 228.0, 10.0));
-        // RNGH on iOS leaves UIKit's 10 pt hysteresis out of the translation (a pan that begins 90 ms or more after touch-down): 130 pt
-        // of travel translate it 120.
+        // The pan's translation leaves out UIKit's 10 pt hysteresis: 130 pt of travel moves it 120.
         for i in 1..=11 {
             s.input(&pointer(exact_gpu::PointerPhase::Move, 105.0, 228.0 - (12.0 * i as f32).min(130.0), 100.0 + 8.0 * i as f64));
         }
@@ -357,7 +347,7 @@ mod tests {
         img.save("metaball-bridge");
         assert!(lit(&img, 105, 168), "bridge {:?}", img.at(105, 168));
         assert!(!lit(&img, 20, 168), "beside the bridge {:?}", img.at(20, 168));
-        // The lift at another point than the last move: circleGesture has no onEnd.
+        // A lift does not move the circle: it stays at the last move's position.
         s.input(&pointer(exact_gpu::PointerPhase::Down, 105.0, 108.0, 400.0));
         s.input(&pointer(exact_gpu::PointerPhase::Move, 105.0, 96.0, 496.0));
         s.input(&pointer(exact_gpu::PointerPhase::Move, 105.0, 86.0, 504.0));

@@ -1,35 +1,12 @@
-//! Calendar Days (src/animations/calendar-days: index.tsx, components/animated-slider.tsx,
-//! components/calendar-card/*): a 190 × 190 tear-off calendar ("ON THE" on a #f5655b header, a
-//! white body showing a day number) over a slider; dragging the slider flips the pages up, one
-//! per 1/30 of its travel, each on its own spring, with a selection haptic per 1/31.
+//! Calendar days: a 190-point tear-off calendar over a slider. Dragging the slider flips the pages
+//! up, one per day of the slider's travel, each on its own spring, with a selection haptic per day.
 //!
-//! Layout (Yoga, centred column): the card, then the slider 60 below it (window width − 80, 4
-//! tall). The card: header 50 (radius 24 top, continuous), body 140 (white, radius 20 bottom),
-//! under `boxShadow: 0 0 20 rgba(0,0,0,0.1)` (σ 10, outside the radius-24 box only). The body
-//! holds the static top page (1, its top half; a gradient safeTop tall to rgba(0,0,0,0.03) and a
-//! 1 pt rgba(0,0,0,0.08) divider), the static bottom page (31, its bottom half; a 15 pt gradient
-//! from rgba(0,0,0,0.04)), and 30 pages over the bottom half. Page `i` (front: i + 1's bottom
-//! half, back: i + 2's top half, mirrored) turns about its top edge: perspective 400,
-//! translateY −35, rotateX(p × 180°), translateY 35, origin (50 %, 50 %, 0.005); its front shows
-//! while p < 0.5, its back after; zIndex 30 − i, then i + 31. Each face: white, radius 20 bottom
-//! (continuous), a 10 pt fold gradient (0.04 black, at its top on the front, its bottom on the
-//! back), the number (SF-Pro-Rounded-Bold 90, black, centred in a 140 box), and DepthShadow
-//! (rgba(0,0,0,0.1) under a 70 pt gradient from rgba(0,0,0,0.3), at opacity
-//! interpolate(p, [0, 0.5], [0, 0.3]) on the front, [0.5, 1] → [0.3, 0] on the back).
-//!
-//! The faces are Core Animation layers under a 3D transform: their backing stores (drawn here
-//! once into one texture at the screen's scale) sampled bilinearly through each page's
-//! homography, the quad's edges not antialiased (UIViewEdgeAntialiasing is off).
-//!
-//! Motion audit:
-//!
-//! | value | RN driver / config | here |
-//! |---|---|---|
-//! | slider translateX | Pan (plain: UIKit's 10 pt hysteresis) onUpdate: contextX + translationX; contextX = clamped x at onBegin | the same, `PanGesture::new()` |
-//! | progress | clamp(translateX, 0, w) / w, re-set on every pan update | the same |
-//! | picker scale | onBegin withSpring(1), onFinalize withSpring(0.8) (Gentle 900/120/4, ζ = 1) | [`RnSpring`], Reanimated's onStart/onFrame |
-//! | page flip p | every progress set: if p ≠ target (progress × 30 > i), withSpring(target, { duration 1100, dampingRatio 1 }) | [`RnSpring`]: a fresh start solves the stiffness; a restart toward the same running target continues it (isTriggeredTwice), its rest measured at the default stiffness 900 |
-//! | haptic | round(progress × 31) changes → Haptics.selectionAsync | `haptic:selection`, at most one per HAPTIC_GAP_MS (past RN, which plays one per day: a fast drag crosses one every frame) |
+//! - The card's faces are drawn once into one texture. Each page turns about its top edge with a
+//!   perspective transform, showing its front until it passes halfway and its back after.
+//! - Each page's target follows the slider's progress, and each page runs a critically damped
+//!   spring toward it.
+//! - A haptic plays when the slider crosses a day's line. A small slack keeps a finger held on a
+//!   line from buzzing.
 //!
 //! Input: safeTop (the top page's gradient height).
 
@@ -41,22 +18,22 @@ use skia::{point, Canvas, Color, Font, Paint, Renderer, Shader};
 
 use crate::gfx;
 
-/// TOTAL_PAGES (the haptic's) and the card's pages (totalPages − 1).
+/// Days in the month, for the haptic. The card has one page fewer.
 const TOTAL: f64 = 31.0;
 const PAGES: usize = 30;
-/// The shortest gap between two day haptics, ms (UIKit's pickers pace theirs so).
+/// Shortest gap between two day haptics, ms.
 const HAPTIC_GAP_MS: f64 = 40.0;
 /// How far past a day's line (in days) the slider goes before its haptic plays: a finger held
 /// on a line does not flap.
 const SLACK: f64 = 0.25;
-/// SIZE, HEADER_HEIGHT, BODY_HEIGHT, PAGE_SIZE.
+/// Card size and its parts, points.
 const SIZE: f32 = 190.0;
 const HEADER: f32 = 50.0;
 const BODY: f32 = 140.0;
 const PAGE: f32 = 70.0;
 const HEADER_COLOR: u32 = 0xf5655b;
 const BACKGROUND: u32 = 0xfcfcfc;
-/// sliderWrapper marginTop, the slider's height, pickerSize.
+/// Gap between the card and the slider, points.
 const SLIDER_GAP: f32 = 60.0;
 const TRACK: f32 = 4.0;
 const PICKER: f32 = 40.0;
@@ -73,7 +50,7 @@ const BAKE: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 /// Globals (12 floats) + 30 pages × 16.
 const UNIFORM_FLOATS: usize = 12 + PAGES * 16;
 
-/// assets/fonts/SF-Pro-Rounded-Bold.otf cut to the digits (snake's subset).
+/// Bold rounded digits, subset to the numbers used.
 static SF_ROUNDED_BOLD: &[u8] = include_bytes!("../fonts/sf-pro-rounded-bold-digits.otf");
 
 /// The demo's surface: input `safeTop`.
@@ -103,12 +80,12 @@ pub fn surface() -> Box<dyn Surface> {
     })
 }
 
-/// A Reanimated 4 `withSpring` on one shared value, ζ ≥ 1 (both of this demo's configs are
-/// critically damped), as spring.ts runs it: onStart from the running animation, onFrame
-/// stepping from the current value and velocity by each frame's delta (≤ 64 ms).
+/// A spring on one shared value, critically damped (both configs here
+/// are ζ ≥ 1). A restart keeps the running velocity; each frame steps by its own delta, capped
+/// at 64 ms.
 #[derive(Clone, Copy, Debug)]
 pub struct RnSpring {
-    /// `animation.current`.
+    /// The spring's current value.
     pub value: f64,
     velocity: f64,
     to: f64,
@@ -123,12 +100,12 @@ pub struct RnSpring {
     pub running: bool,
 }
 
-/// What `withSpring` was given.
+/// The spring configs used here.
 #[derive(Clone, Copy, Debug)]
 enum Config {
-    /// `withSpring(v)`: Gentle, 900 / 120 / 4.
+    /// Gentle: stiffness 900, damping 120, mass 4.
     Gentle,
-    /// `{ duration, dampingRatio: 1 }`, mass 4.
+    /// Duration-based, critically damped, mass 4.
     Duration(f64),
 }
 
@@ -151,7 +128,7 @@ impl RnSpring {
         }
     }
 
-    /// `sv.set(withSpring(to, config))` at `now` (ms).
+    /// Sets a new target at `now` (ms).
     fn start(&mut self, to: f64, config: Config, now: f64) {
         let previous = self.running;
         let twice = previous && self.last != 0.0 && self.start != 0.0 && self.to == to;
@@ -164,7 +141,7 @@ impl RnSpring {
         if (to > self.value && v < 0.0) || (to < self.value && v > 0.0) {
             v = 0.0;
         }
-        // config.stiffness: the default's unless a fresh duration spring solves it.
+        // A fresh duration spring solves its stiffness; otherwise the config's stands.
         self.energy_k = GENTLE_K;
         if !twice {
             let k = match config {
@@ -359,7 +336,7 @@ impl CalendarDays {
             c.clip_rect(0.0, 0.0, SIZE, PAGE);
             c.clip_continuous_rrect(0.0, -40.0, SIZE, PAGE + 40.0, 20.0);
             c.draw_rect(0.0, 0.0, SIZE, PAGE, &Paint::fill(Color::WHITE));
-            // FoldGradient: 10 tall, its 0.04 end at the fold.
+            // Fold gradient: 10 points tall.
             let (g0, g1) = if front {
                 (0.0, 10.0)
             } else {
@@ -482,9 +459,8 @@ fn lin(c: vec3<f32>) -> vec3<f32> {
 }
 "#;
 
-/// The text box of `n` in the 190 × 140 number box at `scale`: the glyphs' x and baseline.
-/// numberContainer is centred (a View: rounded); the Text in it at 0, its line centred in the
-/// box it ceils to (textAlign center); the line centred in 140, floored (a Text node).
+/// The glyphs' x and baseline for day `n`, centred in the 190 × 140 number box at `scale` and
+/// snapped to the pixel grid.
 fn number_origin(font: &Font, n: &str, scale: f32) -> (f32, f32) {
     let ceil = |v: f32| (v * scale - 1e-3).ceil() / scale;
     let width = font.advance_width(n);
@@ -577,8 +553,7 @@ impl Surface for CalendarDays {
         let cxp = self.clamped_x() as f32;
         let c = &mut self.canvas;
         c.begin(frame.scale);
-        // cardShadow: outside its radius-24 box only (the body's radius-20 corners show the
-        // screen there).
+        // The card's shadow falls outside its box only.
         c.draw_rrect_shadow(
             cx,
             cy,

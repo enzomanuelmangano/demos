@@ -1,26 +1,13 @@
-//! Blur Circles (src/animations/blur-circles): a sweep-gradient circle (cyan, magenta, yellow,
-//! cyan about (50, 128)) and a glass circle, both RADIUS 80, wandering about the screen's
-//! centre on simplex noise (constants.ts: FREQUENCY 1800, A 30; the glass at 2×FREQUENCY and
-//! 3×A, each on its own permutation table). The clock runs 0 → 20000 → 0 forever
-//! (withRepeat(withTiming(20000, { duration: 20000 }), -1, true): Easing.inOut(quad)).
+//! Blur circles: a sweep-gradient circle and a glass circle, both wandering about the screen's
+//! centre on simplex noise. The clock runs 0 → 20000 → 0 forever, eased in and out.
 //!
-//! Drawn as RN Skia's Graphite draws it into the canvas's 8-bit Display P3 surface
-//! (`shaders/blur_circles.wgsl` composes the draws in order, each stored in 8 bits):
-//! - `<Group clip={glass}><Circle>{sweep}</Circle><Blur blur={10} /></Group>`: the clip (RN
-//!   Skia's native recorder clips without antialiasing, so Graphite snaps the rrect's device
-//!   bounds to whole pixels before its analytic clip: measured, the edge exact only so), then
-//!   the filtered layer, sized as Skia sizes it (the clip's device bounds outset by the blur's
-//!   ceil(3σ)); the sweep circle drawn into it in P3, clipped only to the layer's bounds (a
-//!   layer device's clip starts as its bounds), Graphite's blur of it (`skia::blur::GraphiteBlur`,
-//!   σ 30 px at 3×), drawn back through the glass's clip.
-//! - the same circle under `invertClip`.
-//! - the glass, rgba(0,0,0,0.08) through `<BlurMask blur={20} style="inner" />`: Graphite turns
-//!   the mask filter into an image filter on a coverage layer (the circle's rounded-out device
-//!   bounds), Blur(σ 60 px) then DstIn with the coverage, and draws the paint through it.
-//! - the white hairline, rgba(255,255,255,0.25), 1 pt.
+//! - The glass clips without antialiasing, so its bounds snap to whole pixels first.
+//! - The sweep circle is blurred inside a layer sized from the clip's bounds, then drawn back
+//!   through the glass's clip. The glass is a blurred inner mask over its own coverage.
+//! - The noise tables are built once per run, so every open follows the same path.
 //!
-//! `-blurCirclesAt cx,cy,cx2,cy2` (a launch argument) pins both centres and stops the clock:
-//! the parity stills, against RN's values read from its shared values at a frozen clock.
+//! `-blurCirclesAt cx,cy,cx2,cy2` (a launch argument) pins both centres and stops the clock, for
+//! comparison stills.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
@@ -39,7 +26,7 @@ use shaders::blur_circles::{
 const RADIUS: f32 = 80.0;
 const FREQUENCY: f64 = 1800.0;
 const A: f64 = 30.0;
-/// `<Blur blur={10} />` and `<BlurMask blur={20} />`: σ in points (both follow the CTM).
+/// Blur sigmas, points, following the transform.
 const BLUR: f32 = 10.0;
 const MASK_BLUR: f32 = 20.0;
 
@@ -112,12 +99,11 @@ struct Gpu {
     bind: Option<([wgpu::TextureView; 2], wgpu::BindGroup)>,
 }
 
-/// constants.ts's two permutation tables: built once when the module loads, so every open of
-/// the demo in one run of the app follows the same path (a new run, new tables).
+/// The two noise permutation tables, built once per run.
 static TABLES: std::sync::OnceLock<(Noise2D, Noise2D)> = std::sync::OnceLock::new();
 
-/// useVec's two centres at clock `t` about (cx, cy): the circle (A, FREQUENCY, noiseTables)
-/// and the glass (3A, 2·FREQUENCY, secondNoiseTables).
+/// The two centres at clock `t` about (cx, cy): the circle at amplitude A, the glass at 3A and
+/// twice the frequency.
 fn centres(tables: &(Noise2D, Noise2D), t: f64, cx: f64, cy: f64) -> [[f64; 2]; 2] {
     let at = |n: &Noise2D, a: f64, f: f64| [a * n.at(t / f, 0.0) + cx, a * n.at(0.0, t / f) + cy];
     [
@@ -126,7 +112,7 @@ fn centres(tables: &(Noise2D, Noise2D), t: f64, cx: f64, cy: f64) -> [[f64; 2]; 
     ]
 }
 
-/// withRepeat(withTiming(20000, { duration: 20000 }), -1, true).
+/// Clock: 0 to 20000 and back, 20 s each way, eased in and out.
 fn clock(ms: f64) -> f64 {
     let ease = Easing::timing_default();
     let c = ms.rem_euclid(40000.0);
@@ -137,7 +123,7 @@ fn clock(ms: f64) -> f64 {
     }
 }
 
-/// The blurred image's uv of a device pixel: uv = p · xy + zw (as metaball's).
+/// The blurred image's uv of a device pixel: uv = p · xy + zw.
 fn low_mapping(plan: &GraphitePlan, origin: [i32; 2], size: [u32; 2]) -> [f32; 4] {
     let src = plan.src_rect.map(|v| v as f32);
     let low = plan.low_bounds;
@@ -181,7 +167,7 @@ impl Surface for BlurCircles {
                         Noise2D::new(|| random.next()),
                     )
                 });
-                // constants.ts's `center`: the window's centre (the canvas fills it).
+                // The window's centre; the canvas fills the window.
                 let [c1, c2] = centres(
                     tables,
                     clock(frame.now_ms - start),
@@ -206,10 +192,9 @@ impl Surface for BlurCircles {
         let gpu = self.gpu.as_mut().unwrap();
         let screen = [0, 0, pw as i32, ph as i32];
         let glass = [c2.0 - RADIUS, c2.1 - RADIUS, c2.0 + RADIUS, c2.1 + RADIUS];
-        // RN Skia's native Group clips with `clipRRect(rrect, op)`, no antialiasing: Graphite
-        // snaps the clip's device bounds to whole pixels (SkRect::round).
+        // Clips without antialiasing, so the clip's device bounds snap to whole pixels.
         let clip = glass.map(|v| (v * s + 0.5).floor() as i32);
-        // The SweepGradient, built once (useMemo).
+        // The sweep gradient, built once.
         let sweep = &*self.paint.get_or_insert_with(|| {
             Paint::shader(Shader::Sweep {
                 center: point(50.0, 128.0),
@@ -241,9 +226,8 @@ impl Surface for BlurCircles {
             f.canvas.begin(s);
             f.canvas
                 .translate(-layer[0] as f32 / s, -layer[1] as f32 / s);
-            // A layer's device starts with its own bounds as the clip: the glass's shape is
-            // not in it, so the circle is blurred whole within the layer (RN: colour up to
-            // the glass's edge, not faded at it).
+            // The layer starts with its own bounds as the clip, so the circle is blurred whole,
+            // with colour up to the glass's edge.
             let l = layer.map(|v| v as f32 / s);
             f.canvas.clip_rect(l[0], l[1], l[2] - l[0], l[3] - l[1]);
             f.canvas.draw_circle(c1.0, c1.1, RADIUS, sweep);
@@ -272,7 +256,7 @@ impl Surface for BlurCircles {
             }
         }
 
-        // Group 2's circle (its inverse clip is the compose's).
+        // The second circle, clipped by the inverse of the glass.
         let (canvas, renderer) = &mut self.sweep;
         renderer.p3 = true;
         canvas.begin(s);
@@ -442,8 +426,7 @@ mod tests {
         assert_ne!(a.data, b.data);
     }
 
-    /// RN's centres at clock 3000 (read from its shared values with the clock frozen), at 3×:
-    /// the parity still, against RN's screenshot.
+    /// Centres at clock 3000, at 3×, for the comparison still.
     #[test]
     fn pinned_still() {
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
@@ -473,8 +456,7 @@ mod tests {
         assert!(!animating);
     }
 
-    /// RN's own tables (read from the app's constants module) give RN's centres (read from its
-    /// shared values with the clock frozen), to within 1e-9 pt (Hermes' last bit).
+    /// The reference tables give the reference centres to within 1e-9 points.
     #[test]
     fn rn_path() {
         const RN_PERM: [[u8; 256]; 2] = [

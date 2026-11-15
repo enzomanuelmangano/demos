@@ -1,23 +1,10 @@
-//! Fluid Slider (src/animations/fluid-slider/components/fluid-slider): a #007AFF bar (12 tall,
-//! r 6, `sliderSize.width` = width × 0.95) and a metaball circle (r 20) melted together by the
-//! layer's Blur 4 + ColorMatrix (alpha × 50 − 25); over the layer a white circle (r 16) with the
-//! value 0…100 in Outfit 12 (black, Skia's default paint).
+//! A blue slider bar with a metaball picker that melts into it, and the value 0 to 100 on the picker.
 //!
-//! - The canvas is `width` × 100, moved right by (width − sliderWidth) / 2 (its translateX,
-//!   10.5 pt on a 420 pt screen: 31.5 px at 3×). Core Animation draws the canvas's layer upright
-//!   and moves it as a bitmap, bilinear: a half-pixel shift softens every vertical edge. Here the
-//!   canvas is drawn unshifted (its own pixels, as RN Skia's surface) and the compose pass samples
-//!   it at the shift.
-//! - As RN Skia draws it: an 8-bit Display P3 surface cleared transparent; the Group layer
-//!   (Blur 4 + ColorMatrix) is the canvas outset by the blur's reach, blurred by Graphite
-//!   (`skia::blur::GraphiteBlur`: σ 12 px at 3× is downscaled), as metaball.rs.
-//! - A touch down on the bar (Touchable.RoundedRect, its path) puts the picker at the finger
-//!   (onStart: pickerX = x, isSliding = true); the pan's updates (once active) follow it; its
-//!   finalize ends the slide. The picker's x is clamped to [r, sliderWidth − r].
-//! - pickerY: withSpring(isSliding ? 100 / 2 − 25 : 100 / 2, { stiffness 200, damping 20,
-//!   mass 0.8 }).
-//! - The value: round(interpolate(x, [r, sliderWidth − r], [0, 100], CLAMP)), centred on the
-//!   picker by its measured ink width, its baseline at pickerY + 12 / 3.
+//! - The picker is raised while a finger slides it, and its goo bridges it back to the bar.
+//! - A touch far from the picker springs the picker to the finger, and a drag then carries on from
+//!   where the picker is, without a snap. A touch near the picker moves it at once.
+//! - Haptics: a light impact at the grab, a selection tick per value step (at most one per 40 ms),
+//!   a rigid tap at 0 and 100, and a soft one where a far touch's spring lands.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -30,35 +17,29 @@ use skia::{Canvas, Color, Font, Paint, PathEvent, Renderer};
 use crate::{gfx, shaders};
 use shaders::fluid_slider::{entry, module, Uniforms, GOO, GROUP_0, SMP, TOP, U};
 
-/// Blur's sigma, points.
+/// Blur sigma, pt.
 const BLUR: f32 = 4.0;
 
-/// DISTANCE_BETWEEN_SLIDER_AND_METABALL.
+/// Gap between the bar and the picker, pt.
 const DISTANCE: f32 = 10.0;
-/// The `color` prop's default.
+/// Bar colour.
 const COLOR: u32 = 0x007AFF;
-/// sliderHeight.
+/// Bar height, pt.
 const SLIDER_HEIGHT: f32 = 12.0;
-/// fontSize.
+/// Value font size, pt.
 const FONT_SIZE: f32 = 12.0;
-/// usePickerLayout's pickerY spring.
-/// The bar's touch area (the owner's call, phone feedback 2026-11-15; RN takes the 12 pt bar's
-/// path alone): 16 past it every way, a 44 pt tall track with room at the ends.
+/// The bar's touch area: 16 pt past it on every side, so the track is 44 pt tall.
 const BAR_SLOP: HitSlop = HitSlop::all(16.0);
-/// A touch farther than this from the picker springs it there (the owner's call: RN puts it at
-/// the finger at once). Nearer, the picker is at the finger, as RN.
+/// A touch farther than this from the picker springs it there; nearer, the picker jumps to the finger.
 const CHASE_FROM: f32 = 20.0;
-/// The haptics (the owner's call, phone feedback mwhp5atg; RN plays none), through the host: a
-/// light impact at the grab, a selection tick per value step (at most one per TICK_MIN_MS), a
-/// rigid tap at 0 and 100, a soft one where a far touch's spring lands.
+/// Haptic messages, posted through the host.
 const GRAB: &str = "haptic:impact-light";
 const TICK: &str = "haptic:selection";
 const LIMIT: &str = "haptic:impact-rigid";
 const LANDED: &str = "haptic:impact-soft";
 const TICK_MIN_MS: f64 = 40.0;
 
-/// The ink box of `text` drawn at (0, 0) with its baseline at 0: [left, top, right, bottom], the
-/// glyph outlines' own extent (curves sampled finely), not measureText's rounded-out bounds.
+/// The ink box of `text` drawn at (0, 0) with its baseline at 0: [left, top, right, bottom].
 fn ink_box(font: &Font, text: &str) -> [f32; 4] {
     let mut b = [f32::MAX, f32::MAX, f32::MIN, f32::MIN];
     let mut add = |x: f32, y: f32| {
@@ -107,9 +88,7 @@ struct FluidSlider {
     pan: PanGesture,
     /// pickerX, in the RN canvas's points.
     picker_x: f32,
-    /// pickerX's motion toward the finger after a touch far from the picker: Reanimated's
-    /// default withSpring (GENTLE), retargeted to the finger at every move until it catches up,
-    /// so a drag begun with that touch carries on from where the picker is, with no snap.
+    /// Spring that chases the finger after a far touch, retargeted at every move until it catches up.
     picker: Spring,
     chasing: bool,
     sliding: bool,
@@ -117,10 +96,10 @@ struct FluidSlider {
     /// The value's text, rebuilt only when it changes.
     label: String,
     label_value: i32,
-    /// The label's ink, left and right of its pen (see `ink_box`), and the cap height.
+    /// The label's ink extent, left and right of its pen, and its cap height.
     label_ink: (f32, f32),
     cap: Option<f32>,
-    /// Haptics due to be posted; the value last felt and when; the chase's landing to feel.
+    /// Haptics to post, the value last felt and when, and the chase's landing.
     posted: Vec<String>,
     felt_value: i32,
     felt_ms: f64,
@@ -168,27 +147,26 @@ struct Gpu {
     layout: wgpu::BindGroupLayout,
     uniforms: wgpu::Buffer,
     sampler: wgpu::Sampler,
-    /// The goo layer before its blur (the canvas + the blur's reach on every side), and what is
-    /// drawn over it (the canvas).
+    /// The goo layer before its blur, and what is drawn over it.
     views: [wgpu::TextureView; 2],
     empty: wgpu::TextureView,
     bind: Option<(wgpu::TextureView, wgpu::BindGroup)>,
 }
 
 impl FluidSlider {
-    /// sliderSize.width.
+    /// Width of the bar.
     fn slider_width(&self) -> f32 {
         self.size.0 * 0.95
     }
-    /// The canvas's translateX.
+    /// Horizontal offset of the canvas.
     fn offset(&self) -> f32 {
         (self.size.0 - self.slider_width()) / 2.0
     }
-    /// metaballRadius: min(20, (height − DISTANCE / 2) / 3).
+    /// Picker radius: at most 20 pt.
     fn radius(&self) -> f32 {
         20f32.min((self.size.1 - DISTANCE / 2.0) / 3.0)
     }
-    /// The bar's top: height / 2 − sliderHeight / 2 + 1.
+    /// Top of the bar, centred vertically.
     fn bar_y(&self) -> f32 {
         self.size.1 / 2.0 - SLIDER_HEIGHT / 2.0 + 1.0
     }
@@ -199,31 +177,29 @@ impl FluidSlider {
         self.sliding = sliding;
         let h = self.size.1 as f64;
         if let Some(y) = self.picker_y.as_mut() {
-            // A mapper's withSpring (useDerivedValue on isSliding): the running velocity kept
-            // (dropped when it points away), the rest measured from the distance alone.
+            // Spring to the slide's target, keeping the running velocity.
             y.retarget(if sliding { h / 2.0 - 25.0 } else { h / 2.0 }, PICKER_Y);
         }
     }
-    /// Whether (x, y), in the RN canvas's points, takes the bar: its rect grown by BAR_SLOP.
+    /// Whether (x, y) takes the bar, including its touch slop.
     fn on_bar(&self, x: f32, y: f32) -> bool {
         BAR_SLOP.contains(0.0, self.bar_y() as f64, self.slider_width() as f64, SLIDER_HEIGHT as f64, x as f64, y as f64)
     }
-    /// The chase's frame: whether the picker still springs.
+    /// Advances the chase; true while the picker still springs.
     fn step_chase(&mut self, now_ms: f64) -> bool {
         if !self.chasing {
             return false;
         }
         let running = self.picker.step(now_ms);
         self.picker_x = self.picker.value as f32;
-        // Caught up with the finger (or at rest at the lift's target): the finger leads again.
+        // Once caught up, the finger leads again.
         if !running || (self.sliding && (self.picker.value - self.picker.target()).abs() < 0.5) {
             self.chasing = false;
             self.land = true;
         }
         running
     }
-    /// The value's haptics at this frame: a tick per step while a finger slides or the picker
-    /// chases (rate-limited), a rigid tap arriving at an end, a soft one as a chase lands.
+    /// The value's haptics at this frame: a tick per step, a rigid tap at an end, a soft one as a chase lands.
     fn feel(&mut self, value: i32, now_ms: f64) {
         if std::mem::take(&mut self.land) {
             self.posted.push(LANDED.into());
@@ -241,7 +217,7 @@ impl FluidSlider {
         self.felt_value = value;
         self.felt_ms = now_ms;
     }
-    /// The finger is at `x`: the picker there, or springing there while it chases.
+    /// The finger is at `x`: the picker moves there, or springs there while it chases.
     fn follow(&mut self, x: f32) {
         if self.chasing {
             self.picker.retarget(x as f64, GENTLE);
@@ -278,7 +254,7 @@ impl Surface for FluidSlider {
                 let (lo, hi) = (self.radius(), self.slider_width() - self.radius());
                 self.chasing = (x.clamp(lo, hi) - self.clamped_x()).abs() > CHASE_FROM;
                 if self.chasing {
-                    // From where the picker shows (its clamped x), not from a finger past the end.
+                    // Start from where the picker shows, not from a finger past the end.
                     self.picker.set(self.clamped_x() as f64);
                 }
                 self.follow(x);
@@ -321,7 +297,7 @@ impl Surface for FluidSlider {
             if let Some(font) = &self.font {
                 let b = ink_box(font, &self.label);
                 self.label_ink = (b[0], b[2]);
-                // The cap height: a flat-topped figure's ink top (the font's own, read once).
+                // Cap height: the ink top of a flat-topped figure, read once.
                 self.cap.get_or_insert_with(|| -ink_box(font, "H")[1]);
             }
         }
@@ -340,7 +316,7 @@ impl Surface for FluidSlider {
         let gpu = self.gpu.as_mut().unwrap();
         let color = Paint::fill(Color::hex(COLOR));
         let [goo, top] = &mut self.layers;
-        // The layer's texel (0, 0) is the canvas's device (−reach, −reach).
+        // The layer's texel (0, 0) is the canvas's device pixel (−reach, −reach).
         goo.begin(scale);
         goo.translate(reach as f32 / scale, reach as f32 / scale);
         goo.draw_rrect(0.0, bar_y, w, SLIDER_HEIGHT, 6.0, &color);
@@ -348,9 +324,7 @@ impl Surface for FluidSlider {
         top.begin(scale);
         top.draw_circle(x, py, r * 0.8, &Paint::fill(Color::WHITE));
         if let Some(font) = &self.font {
-            // The owner's call (phone feedback mwhp5atg): the value's ink box centred on the picker,
-            // its cap height centred vertically (RN centres measureText's rounded-out width and
-            // sets the baseline at pickerY + 12 / 3, which leaves the figures off centre).
+            // The value's ink is centred on the picker, both horizontally and by its cap height.
             let (l, r_ink) = self.label_ink;
             let cap = self.cap.unwrap_or(FONT_SIZE * 0.7);
             top.draw_text(&self.label, x - (l + r_ink) / 2.0, py + cap / 2.0, font, &Paint::fill(Color::BLACK));
@@ -358,7 +332,7 @@ impl Surface for FluidSlider {
         self.renderers[0].draw(device, queue, encoder, goo, &gpu.views[0], GRAPHITE_FORMAT, layer.0, layer.1, wgpu::Color::TRANSPARENT);
         self.renderers[1].draw(device, queue, encoder, top, &gpu.views[1], GRAPHITE_FORMAT, pw, ph, wgpu::Color::TRANSPARENT);
         let mut u = Uniforms {
-            // The canvas's translateX in device pixels.
+            // Horizontal offset in device pixels.
             canvas: [pw as f32, ph as f32, gfx::srgb_flag(format), shift],
             low: [0.0; 4],
             out: [0.0; 4],
@@ -392,7 +366,7 @@ impl Surface for FluidSlider {
     }
 }
 
-/// The blurred image's uv of a canvas pixel: uv = p · xy + zw (as metaball's).
+/// The blurred image's uv of a canvas pixel: uv = p · xy + zw.
 fn low_mapping(plan: &GraphitePlan, origin: [i32; 2], size: [u32; 2]) -> [f32; 4] {
     let src = plan.src_rect.map(|v| v as f32);
     let low = plan.low_bounds;
@@ -437,14 +411,13 @@ mod tests {
         for text in ["0", "1", "47", "100"] {
             let b = ink_box(&font, text);
             assert!(b[2] > b[0] && b[2] - b[0] < font.measure_text(text).width + 1.0, "{text} {b:?}");
-            // Drawn at x − (l + r) / 2, the ink's middle is on x.
+            // Drawn at x − (l + r) / 2, so the ink's middle lands on x.
             let x = 50.0 - (b[0] + b[2]) / 2.0;
             assert!(((x + b[0]) + (x + b[2]) - 100.0).abs() < 1e-4);
         }
         let cap = -ink_box(&font, "H")[1];
         assert!((cap - FONT_SIZE * 0.7).abs() < 1.5, "{cap}");
-        // A figure's ink top is the cap height (Outfit's lining figures), so baseline py + cap / 2
-        // puts it centred on py.
+        // A figure's ink top is the cap height, so baseline py + cap / 2 centres it on py.
         let one = ink_box(&font, "1");
         assert!((-one[1] - cap).abs() < 0.3 && one[3].abs() < 0.3, "{one:?}");
     }
@@ -456,18 +429,18 @@ mod tests {
         s.input(&pointer(PointerPhase::Down, 30.0, 51.0, 0.0));
         assert_eq!(s.posted, [GRAB]);
         s.posted.clear();
-        // Value steps 0 → 5 within 40 ms: one tick, then nothing until 40 ms passed.
+        // Steps within 40 ms give one tick.
         s.feel(1, 0.0);
         s.feel(2, 16.0);
         s.feel(3, 41.0);
         assert_eq!(s.posted, [TICK, TICK]);
         s.posted.clear();
-        // An end: rigid, whatever the time since.
+        // An end plays rigid, whatever the time since.
         s.feel(100, 45.0);
         s.feel(100, 100.0);
         assert_eq!(s.posted, [LIMIT]);
         s.posted.clear();
-        // Let go: nothing more; a chase that lands is soft.
+        // A release plays nothing more; a chase that lands is soft.
         s.input(&pointer(PointerPhase::Up, 30.0, 51.0, 200.0));
         s.feel(50, 300.0);
         assert!(s.posted.is_empty());
@@ -480,7 +453,7 @@ mod tests {
     fn a_touch_far_from_the_picker_springs_it_there_and_a_drag_carries_on() {
         let mut s = FluidSlider { size: (400.0, 100.0), picker_y: Some(Spring::at(50.0)), ..Default::default() };
         let pointer = |phase, x, y, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
-        // 16 below the bar's bottom (bar 45 to 57 in the canvas) still takes it.
+        // 16 pt below the bar's bottom still takes the touch.
         s.input(&pointer(PointerPhase::Down, 210.0, 72.0, 0.0));
         assert!(s.sliding && s.chasing);
         let mut last = s.clamped_x();
@@ -488,14 +461,14 @@ mod tests {
         let mut ms = 0.0;
         let mut frames = 0;
         while s.step_chase(ms) && s.chasing {
-            // No jump: each frame moves part of the way, never past the finger (200, then 250).
+            // No jump: each frame moves part of the way, never past the finger.
             assert!(s.clamped_x() >= last && s.clamped_x() as f64 <= s.picker.target() + 1e-3, "{} after {last}", s.clamped_x());
             assert!(s.clamped_x() - last < 60.0, "a jump of {}", s.clamped_x() - last);
             last = s.clamped_x();
             ms += 16.0;
             frames += 1;
             if frames == 6 {
-                // A drag begun with the touch: the picker goes on from where it is.
+                // A drag begun with the touch carries on from where the picker is.
                 let before = s.clamped_x();
                 s.input(&pointer(PointerPhase::Move, 260.0, 51.0, ms));
                 assert_eq!(s.clamped_x(), before);
@@ -503,10 +476,10 @@ mod tests {
         }
         assert!(frames > 6, "{frames}");
         assert!((s.picker_x - 250.0).abs() < 0.5, "{}", s.picker_x);
-        // Caught up: the finger leads again, 1:1.
+        // Caught up: the finger leads again, one to one.
         s.input(&pointer(PointerPhase::Move, 280.0, 51.0, ms));
         assert_eq!(s.picker_x, 270.0);
-        // A touch near the picker puts it at the finger at once (RN's onStart).
+        // A touch near the picker moves it to the finger at once.
         s.input(&pointer(PointerPhase::Up, 280.0, 51.0, ms));
         s.input(&pointer(PointerPhase::Down, 290.0, 51.0, ms + 500.0));
         assert!(!s.chasing);
@@ -528,8 +501,7 @@ mod tests {
         let mut s = surface();
         let (img, _) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         img.save("fluid-slider-rest");
-        // At rest: the picker at x = r (20) from the bar's start (offset 10): a white disc on
-        // the blue at (30, 50), the bar blue at (200, 51).
+        // At rest: a white disc on the blue bar.
         let blue = |p: [u8; 4]| p[2] > 200 && p[0] < 60 && p[3] > 200;
         assert!(blue(img.at(400, 102)), "bar {:?}", img.at(400, 102));
         assert_eq!(img.at(60 + 26, 100)[..3], [255, 255, 255], "{:?}", img.at(86, 100));
@@ -546,8 +518,7 @@ mod tests {
             img = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap().0;
         }
         img.save("fluid-slider-sliding");
-        // Sliding: the picker at x 300 (290 + the offset), raised to y 25; the goo bridges it
-        // to the bar.
+        // Sliding: the picker is raised, and the goo bridges it to the bar.
         assert!(blue(img.at(600, 14)), "picker rim {:?}", img.at(600, 14));
         assert_eq!(img.at(576, 50)[..3], [255, 255, 255], "picker disc {:?}", img.at(576, 50));
         assert!(!blue(img.at(100, 50)), "above the bar far from it {:?}", img.at(100, 50));

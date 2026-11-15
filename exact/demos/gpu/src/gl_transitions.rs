@@ -1,70 +1,17 @@
-//! GL Transitions (src/animations/gl-transitions: src/index.tsx, providers/gl-transitions/
-//! {provider.tsx, hooks.ts, utils/transition.ts, utils/shader-lib.ts}, the-magic/
-//! directional-warp.ts, screens/{home-screen, add-note-screen}.tsx, atoms/notes.ts,
-//! constants/theme.ts; src/components/make-image-from-view.ts): a notes app whose way back from
-//! the "new note" screen is a GL transition (gl-transitions' DirectionalWarp, a Skia runtime
-//! effect) between two snapshots of the screen.
+//! A notes app whose way back from the "new note" screen is a GL transition: a directional warp
+//! between two snapshots of the screen, from the screen being left to the home screen.
 //!
-//! The whole demo is drawn here, so each screen can be drawn again as the snapshot RN's
-//! provider takes of it (`makeImageFromView`: drawViewHierarchyInRect into a DeviceRGB context,
-//! W·scale × H·scale pixels, the views' Display P3 colours stored as sRGB, which `view_hex`
-//! gives). A snapshot is the live scene rendered into a texture on the frame it is taken (once
-//! per navigation); the transition samples the two textures. Only the text field (with its
-//! keyboard) and the "Empty Note" alert are the Contract's (gl-transitions.contract): the field
-//! is mounted over the canvas once the screen has slid up (`presented`), and its text comes back
-//! as the `text` input, so the snapshot draws it where the field shows it.
-//!
-//! - Palette (constants/theme.ts): background #f0f0f0, surface #fff, primary #EB6439, text #333
-//!   (RN View/Text colours: Display P3, `Color::view_hex`).
-//! - Home (screens/home-screen.tsx): MasonryList, a ScrollView (no indicator, bounces) whose
-//!   content has paddingTop safeTop + DEMO_BUTTON_ROW_HEIGHT (56), paddingBottom safeBottom.
-//!   Header row: 50 tall, marginBottom 16, paddingHorizontal 16: "ADD NOTE" (20, semibold,
-//!   letterSpacing 0.6, uppercase, primary) centred vertically in its flex 1 box; the 48 × 48
-//!   circular primary PressableScale with AntDesign plus 24 white, at the row's top right. Two
-//!   flex ½ columns, note i in column i % 2: marginLeft gap, marginRight gap on odd i,
-//!   marginBottom gap (gap = 35 / 3), white, radius 10 continuous, boxShadow 0 0 10
-//!   rgba(0,0,0,0.05) (σ 5, RCTBoxShadow's circular rounded rect), text 16 semibold #333,
-//!   lineHeight 24 (RN's baseline offset (24 − font line height) / 2), padding 15, wrapped as
-//!   TextKit wraps it (at spaces and after hyphens, widths in Core Text advances).
-//! - Add note (screens/add-note-screen.tsx), presented as a native-stack `containedModal`
-//!   (UIModalPresentationCurrentContext, cover vertical): #f0f0f0, paddingHorizontal 8, the
-//!   expo-linear-gradient (rgba(255,0,0,0.05) → transparent → transparent, top to bottom: a
-//!   CGGradient in DeviceRGB, unpremultiplied, rendered into an 8-bit image). Row at paddingTop
-//!   safeTop + 56: the close PressableScale (48², AntDesign close 32 #333), "Create a new Note"
-//!   (18, #333) centred, the check PressableScale (48², primary, AntDesign check 24 white). The
-//!   container (white, radius 8 continuous, marginTop 16, minHeight 200, padding 16): "ADD A NEW
-//!   NOTE" (12, medium, primary, marginTop 8, marginBottom 4) and the TextInput (20, #333,
-//!   marginTop 16; UIKit's placeholder colour).
-//! - Text boxes: TextKit line heights (hhea), each box rounded up to the device pixel, edges on
-//!   Yoga's pixel grid; icon glyphs half the font's lineGap below the box top + ascender.
-//! - The flow: + (prepareTransition: the Home snapshot, then navigate) slides the screen up;
-//!   the check (empty: `alert`) or the close runs runTransition: the screen's snapshot, then
-//!   progress withTiming(1, { duration 1500, easing linear }); goBack 1000 ms later (the field
-//!   is dismissed, its keyboard goes down; the screen slides down under the canvas); at the end
-//!   the canvas drops behind (progress 0) and the check's note is prepended (setNotes in
-//!   onCompleted, with the text the field held).
-//! - The canvas (provider.tsx): zIndex −10 while progress is 0 (the live screen shows), 10
-//!   otherwise (it covers everything and takes the touches). Its Fill: DirectionalWarp over
-//!   image1 = the second snapshot (getFromColor) and image2 = the first (getToColor), so it warps
-//!   from the screen being left to the Home as it was at +. gpu/shaders/gl_transitions.wgsl.
-//! - MasonryList keys each note's View by id inside its column, so a prepend moves every note to
-//!   the other column: every old card leaves (FadeOutDown at its place) and every card enters
-//!   (FadeInDown.delay(i × 100)), as on the first mount. No card keeps its column, so the
-//!   LinearTransition never runs.
-//!
-//! Motion audit:
-//!
-//! | value | RN driver / config | here |
-//! |---|---|---|
-//! | card enter opacity, translateY | FadeInDown.delay(i × 100): withDelay(i × 100, withTiming(1 / 0, 300 ms, inOut(quad))) from 0 / 25 (no delay at i = 0) | `enter`, same timing and curve, from the frame the card mounts |
-//! | card exit opacity, translateY | FadeOutDown: withTiming(0 / 25, 300 ms, inOut(quad)) | `exit`, same |
-//! | card layout | LinearTransition (300 ms inOut(quad)) | never triggered (no card keeps its column) |
-//! | button press scale | pressto PressableScale: withTiming(1 → 0.96, 250 ms, bezier(0.25, 0.1, 0.25, 1)) while held; onPress at a lift inside | `pressto::Pressable` |
-//! | progress | withTiming(1, { duration 1500, easing linear }), set to 0 at its end | `Run::progress` |
-//! | goBack | setTimeout 1000 ms after runTransition resolved | at the transition's start + 1000 ms |
-//! | present / dismiss | UIKit cover vertical (UIModalPresentationCurrentContext) | 500 ms, critically damped spring (`gfx::spring_to`); NOT measured |
-//! | list scroll | UIScrollView (drag 1:1, rubber band, deceleration 0.998 / ms, bounce) | `ui_scroll::UiScroll` on y |
-//! | haptics | the app's PressablesConfig onPress: selection | `haptic:selection` per press |
+//! - The whole demo is drawn here, so each screen can be drawn again as a snapshot. A snapshot is
+//!   the live scene rendered into a texture on the frame it is taken.
+//! - The text field and the "Empty Note" alert belong to the Contract. The field's text comes back
+//!   as an input, so the snapshot draws it where the field shows it.
+//! - "+" slides the add-note screen up. The check saves the note and runs the transition; the close
+//!   runs it without saving. An empty note shows an alert instead.
+//! - Cards: the masonry keys each card by its id inside its column, so a new note moves every card to
+//!   the other column. Every card leaves and re-enters with a stagger, as on the first mount.
+//! - Motion: cards fade and slide 25 pt in and out over 300 ms. The transition runs for 1.5 s, and the
+//!   screen goes back 1 s in. The add-note screen slides up over 500 ms on a critically damped spring.
+//!   That timing is not measured against the device.
 
 use std::rc::Rc;
 
@@ -80,35 +27,34 @@ use crate::ui_scroll::{self, UiScroll};
 use crate::{gfx, shaders};
 use shaders::gl_transitions::{entry, module, Uniforms, GROUP_0, IMAGE1, IMAGE2, SMP, U};
 
-/// Palette (constants/theme.ts).
+/// Palette.
 const BACKGROUND: u32 = 0xF0F0F0;
 const SURFACE: u32 = 0xFFFFFF;
 const PRIMARY: u32 = 0xEB6439;
 const TEXT: u32 = 0x333333;
-/// DEMO_BUTTON_ROW_HEIGHT.
+/// Height of the top button row, pt.
 const BUTTON_ROW: f32 = 56.0;
-/// The buttons: 48², radius 24.
+/// Button size and corner radius, pt.
 const BUTTON: f32 = 48.0;
-/// Home: the header row, its marginBottom and paddingHorizontal.
+/// Header row spacing, pt.
 const HEADER: f32 = 50.0;
 const HEADER_BELOW: f32 = 16.0;
 const HEADER_PAD: f32 = 16.0;
-/// letterSpacing of "ADD NOTE".
+/// Letter spacing of the title, pt.
 const TITLE_SPACING: f32 = 0.6;
-/// Home's `gap`.
+/// Gap between note columns and rows, pt.
 const GAP: f32 = 35.0 / 3.0;
-/// The notes: radius, padding, lineHeight; the boxShadow's σ (blur 10 / 2) and alpha.
+/// Note card corner radius, padding, line height and shadow.
 const CARD_RADIUS: f32 = 10.0;
 const CARD_PAD: f32 = 15.0;
 const CARD_LINE: f32 = 24.0;
 const SHADOW_SIGMA: f32 = 5.0;
 const SHADOW_ALPHA: f32 = 0.05;
-/// FadeInDown / FadeOutDown: duration, translateY; the stagger per index.
+/// Enter and exit animations: duration, offset and stagger per card.
 const FADE_MS: f64 = 300.0;
 const FADE_DY: f32 = 25.0;
 const STAGGER_MS: f64 = 100.0;
-/// Add note: paddingHorizontal; the container's marginTop, radius, minHeight, padding; the
-/// label's margins; the input's marginTop.
+/// Add-note screen spacing, pt.
 const ADD_PAD: f32 = 8.0;
 const BOX_TOP: f32 = 16.0;
 const BOX_RADIUS: f32 = 8.0;
@@ -118,22 +64,21 @@ const LABEL_TOP: f32 = 8.0;
 const LABEL_BELOW: f32 = 4.0;
 const INPUT_TOP: f32 = 16.0;
 const PLACEHOLDER: &str = "Write your ideas here...";
-/// runTransition's timing, and the goBack after it.
+/// Timing of the transition, and when the screen goes back.
 const TRANSITION_MS: f64 = 1500.0;
 const BACK_MS: f64 = 1000.0;
-/// The cover-vertical presentation and dismissal (UIKit's; not measured).
+/// Presentation and dismissal, not measured against the device.
 const PRESENT_MS: f64 = 500.0;
-/// UIColor.placeholderTextColor (light): #3C3C43 at 0.3.
+/// The text field's placeholder colour.
 const PLACEHOLDER_RGBA: [f32; 4] = [60.0 / 255.0, 60.0 / 255.0, 67.0 / 255.0, 0.3];
 
-/// AntDesign (@expo/vector-icons 15's AntDesign.ttf), cut to plus U+F21A, close U+F430 and
-/// check U+F141.
+/// Icon font, cut to the plus, close and check glyphs.
 static ANTDESIGN: &[u8] = include_bytes!("../fonts/antdesign-gl-transitions-subset.ttf");
 const PLUS: &str = "\u{F21A}";
 const CLOSE: &str = "\u{F430}";
 const CHECK: &str = "\u{F141}";
 
-/// atoms/notes.ts InitialNotes (ids "0"…"19").
+/// Starting notes.
 const NOTES: [&str; 20] = [
     "Remember to buy groceries on the way back home from work. Don't forget the milk and eggs.",
     "Research new investment opportunities in the tech sector. Look into emerging startups and trends.",
@@ -162,39 +107,37 @@ pub fn surface() -> Box<dyn Surface> {
     Box::new(GlTransitions::new())
 }
 
-/// Yoga's rounding of a layout edge to the pixel grid: to the nearest device pixel, a half up.
+/// Rounds a layout edge to the nearest device pixel, halves up.
 fn grid(v: f32, scale: f32) -> f32 {
     ((v * scale + 0.5 + 1e-4).floor()) / scale
 }
 
-/// A Text's measured side, rounded up to the device pixel (a value already on it stays).
+/// Rounds a text's measured size up to the device pixel.
 fn ceil_grid(v: f32, scale: f32) -> f32 {
     ((v * scale - 1e-3).ceil()) / scale
 }
 
-/// An RN Text's line height: hhea ascender + descender (RN's NSLayoutManager leaves the lineGap
-/// out: exact/parity-tools/text-probe).
+/// A text line's height: ascender plus descender, without the line gap.
 fn natural(font: &Font) -> f32 {
     gfx::line_height(font)
 }
 
-/// The baseline of a vector-icon glyph in a box of its line height whose top is `top`: the
-/// hhea ascender below it (TextKit's line fragment starts at the box top).
+/// Baseline of an icon glyph in a line box whose top is `top`.
 fn icon_baseline(font: &Font, top: f32) -> f32 {
     top - font.metrics().ascent
 }
 
-/// The demo's fonts (None where the system face can't be read: the web).
+/// The demo's fonts; None where the system face cannot be read.
 struct Fonts {
-    /// "ADD NOTE": 20, 600.
+    /// Title font.
     title: Font,
-    /// A note: 16, 600.
+    /// Note font.
     card: Font,
-    /// "Create a new Note": 18.
+    /// Heading font.
     heading: Font,
-    /// "ADD A NEW NOTE": 12, 500.
+    /// Label font.
     label: Font,
-    /// The TextInput: 20.
+    /// Text input font.
     input: Font,
 }
 
@@ -210,15 +153,14 @@ impl Fonts {
     }
 }
 
-/// The AntDesign glyphs at 24 and 32.
+/// Icon glyphs at 24 and 32 pt.
 struct Icons {
     small: Font,
     large: Font,
 }
 
-/// Where a wrapped note's lines break: TextKit's word wrapping (a break after spaces and after a
-/// hyphen between letters; a line holds what fits in `width`, its trailing spaces hanging; a
-/// word wider than the line is broken between characters). Byte ranges into `text`.
+/// Where a wrapped note breaks into lines: at spaces and after hyphens. A word wider than the
+/// line breaks between characters. Byte ranges into `text`.
 fn wrap(font: &Font, text: &str, width: f32, out: &mut Vec<(usize, usize)>) {
     out.clear();
     let chars: Vec<(usize, char)> = text.char_indices().collect();
@@ -300,7 +242,7 @@ struct Card {
     w: f32,
     h: f32,
     lines: Vec<(usize, usize)>,
-    /// When it mounted (NaN: at the next frame), its FadeInDown delay; when it began to leave.
+    /// When it mounted (NaN: at the next frame), and when it began to leave.
     enter_at: f64,
     delay: f64,
     exit_at: f64,
@@ -317,7 +259,7 @@ enum Route {
     Dismissing,
 }
 
-/// A runTransition.
+/// A running transition.
 struct Run {
     progress: Timing,
     /// Its first frame (the snapshot's; NaN until then).
@@ -370,7 +312,7 @@ impl Layout {
         let title_top = grid(row + (HEADER - title_h) / 2.0, scale);
         let plus_x = grid(w - HEADER_PAD - BUTTON, scale);
         let cards = content_top;
-        // fillCenter: between the two buttons, the text centred both ways.
+        // Centre the text between the two buttons, both ways.
         let (cx0, cw) = (ADD_PAD + BUTTON, w - 2.0 * (ADD_PAD + BUTTON));
         let heading = (
             grid(cx0 + (cw - heading_w) / 2.0, scale),
@@ -446,9 +388,7 @@ fn masonry(
             wrap(f, text, w - 2.0 * CARD_PAD, &mut lines);
         }
         let n = lines.len().max(1) as f32;
-        // The Text's box: TextKit measures the lines a hair over n × lineHeight and Fabric rounds
-        // the box up, so it is one device pixel taller (RN capture: 5, 6 and 7 line notes are
-        // 451, 523 and 595 px at one threshold where n × 24 + 30 gives 450, 522, 594).
+        // TextKit measures a hair over n × lineHeight, and the box rounds up to a whole pixel.
         let h = 2.0 * CARD_PAD + ceil_grid(n * CARD_LINE, s) + 1.0 / s;
         let (left, top) = (grid(x0, s), grid(cursor[col], s));
         cards.push(Card {
@@ -577,15 +517,12 @@ fn build(
 
 struct GlTransitions {
     safe_top: f32,
-    /// Inputs 4 and 5 (beyond RN, phone feedback 2026-11-15): the demo screen's Back count and
-    /// whether its glass close button is the add-note screen's way back. Then the screen's own
-    /// close is not drawn and its title sits centred on the glass buttons' row; a new count
-    /// closes the screen as its close does.
+    /// Inputs 4 and 5: the Back count, and whether the glass close button is the way back. When it is,
+    /// the screen's own close is not drawn.
     chrome_back: bool,
     backs: Option<f64>,
-    /// Inputs 6 and 7 (phone feedback 2026-11-15, "integrate it with the header"): the glass
-    /// header's add and check presses. Given the glass header, the screens draw no header
-    /// row of their own: the titles sit on the glass row and the content starts under it.
+    /// Inputs 6 and 7: the glass header's add and check presses. With the glass header, the screens
+    /// draw no header row of their own.
     adds: Option<f64>,
     checks: Option<f64>,
     safe_bottom: f32,
@@ -595,7 +532,7 @@ struct GlTransitions {
     layout: Layout,
     home: Home,
     scroll: UiScroll,
-    /// The PressableScales (the shared pressto machine).
+    /// The button presses.
     plus: Pressable,
     close: Pressable,
     check: Pressable,
@@ -679,8 +616,8 @@ impl GlTransitions {
         self.scroll.max = (content - self.layout.h).max(0.0) as f64;
     }
 
-    /// onCompleted of the check's transition: setNotes([{ title }, …prev]). Every card leaves
-    /// its column and enters the other (MasonryList's keys), staggered by its new index.
+/// Adds the checked note to the front: every card moves to the other column, so each re-enters,
+/// staggered by its new index.
     fn add_note(&mut self, title: String) {
         self.home.notes.insert(0, Rc::from(title));
         let leaving = std::mem::take(&mut self.home.cards);
@@ -776,8 +713,7 @@ impl GlTransitions {
             draw_card(c, card, font, &l, scroll, p, FADE_DY * (1.0 - p));
         }
         if glass {
-            // The scroll edge: the list fades out under the glass header (the background, opaque
-            // at the top, gone 16 under the row), and the title sits on the row.
+        // The list fades out under the glass header, and the title sits on the row.
             let edge = l.cards;
             let bands = 32;
             for k in 0..bands {
@@ -874,8 +810,7 @@ impl GlTransitions {
                 &Paint::fill(Color::view_hex(PRIMARY)),
             );
             if draw_field {
-                // UITextField: the line centred in its bounds; an overflowing line scrolled to its
-                // end (editing), clipped.
+                // An overflowing line scrolls to its end, as a text field does, and is clipped.
                 let [x, y, w, h] = l.input;
                 let baseline = y + (h - natural(&f.input)) / 2.0 - f.input.metrics().ascent;
                 if self.text.is_empty() {
@@ -918,8 +853,7 @@ impl GlTransitions {
     }
 }
 
-/// An AntDesign glyph centred in a 48² button at the origin (its Text box: the advance wide, the
-/// font's line height rounded up to the pixel, both centred and on the grid).
+/// An icon glyph centred in a 48 pt button.
 fn draw_icon(c: &mut Canvas, font: &Font, glyph: &str, scale: f32, color: Color) {
     let w = font.advance_width(glyph);
     let h = ceil_grid(natural(font), scale);
@@ -927,9 +861,7 @@ fn draw_icon(c: &mut Canvas, font: &Font, glyph: &str, scale: f32, color: Color)
     c.draw_text(glyph, x, icon_baseline(font, y), font, &Paint::fill(color));
 }
 
-/// The LinearGradient (absoluteFill): rgba(255,0,0,0.05) → transparent → transparent, top to
-/// bottom, as CGGradient draws it into its 8-bit image (unpremultiplied red → black in
-/// DeviceRGB at each pixel row's centre, stored premultiplied), runs of equal rows as one rect.
+/// The gradient overlay drawn over the add-note screen.
 fn draw_gradient(c: &mut Canvas, w: f32, h: f32, scale: f32) {
     let rows = (h * scale).round() as i32;
     let at = |r: i32| -> (u8, u8) {
@@ -1104,10 +1036,9 @@ impl Surface for GlTransitions {
         }
         let chrome_back = matches!(inputs.get(5), Some(Value::Bool(true)));
         if chrome_back && !self.chrome_back {
-            // The Contract hands the add-note screen's way back to the glass button only once
-            // the surface says it takes it (a build without this keeps the screen's own close).
+            // The glass back button replaces the screen's own close only when the surface takes it.
             self.posted.push("glass-back".into());
-            // …and the glass header (inputs 6 and 7), likewise only once a build has it.
+            // The glass header takes its inputs the same way.
             self.posted.push("glass-header".into());
         }
         self.chrome_back = chrome_back;
@@ -1155,8 +1086,7 @@ impl Surface for GlTransitions {
         let phase = gfx::phase(phase);
         let l = self.layout;
         if !self.settled() {
-            // UIKit holds touches during a presentation; the canvas (zIndex 10) takes them during
-            // a transition. A finger already down is let go.
+            // The canvas takes touches during a transition; a finger already down is released.
             if matches!(phase, Phase::Up | Phase::Cancel) {
                 for p in [&mut self.plus, &mut self.close, &mut self.check] {
                     if p.finger() == Some(id) {
@@ -1723,7 +1653,7 @@ mod tests {
         );
         let (after, _) = render_to(&gpu, &mut s, ms + 16.0, ms + 2600.0);
         gfx::save_over(&after, "gl-transitions-home-after", [0, 0, 0]);
-        // The new note is the first card (one line: shorter), the old first one now in column 2.
+        // The new note is the first card, one line tall; the old first card moves to column 2.
         let ink = (0..150).any(|i| {
             (0..20)
                 .any(|j| rgb(&after, GAP + 15.0 + i as f32, cards_top + 15.0 + j as f32)[0] < 120)

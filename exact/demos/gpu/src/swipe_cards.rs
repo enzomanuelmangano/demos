@@ -1,43 +1,14 @@
-//! Swipe Cards' stack (src/animations/swipe-cards: index.tsx, components/Card/index.tsx,
-//! hooks/use-swipe-controls.ts): nine photos, the front one following the finger.
+//! Swipe cards: nine photos in a stack, the front one following the finger and thrown when it is
+//! released far enough. Inputs: safeTop, then three counters the buttons bump (swipe left, swipe
+//! right, reset).
 //!
-//! - Each card: the flex-7 box (7 / 9 of the window) under its marginTop safeTop +
-//!   DEMO_BUTTON_ROW_HEIGHT − CENTRED_SLACK, centred in it, 90 % × 75 % of it, radius 25
-//!   continuous, the photo `contentFit="cover"` (centred), zIndex −index.
-//! - rCardStyle, in RN's order about the card's centre: `rotate(rotate)`, `translateY(transY)`,
-//!   `scale(scale)`, `translateX(translateX)`, `translateY(translateY)`. So the drag moves along
-//!   the card's tilted, scaled axes, as RN's does. `rotate` = interpolate(translateX,
-//!   [−w/3, 0, w/3], [−π/20, 0, π/20], CLAMP). opacity, transY and scale are withTiming (300 ms,
-//!   inOut(quad)) of (index − activeIndex < 5 ? 1 : 0), (index − activeIndex) × 23 and
-//!   1 − 0.07 × (index − activeIndex); a timing to an unchanged target keeps its timeline
-//!   (Reanimated's withTiming onStart), and on mount the style is at its targets.
-//! - The pan (one GestureDetector per card; the touch goes to the topmost card under it, its
-//!   transform and its alpha ≥ 0.01 as UIKit's hit test): onBegin currentActiveIndex =
-//!   floor(activeIndex); onUpdate (RNGH reports `translationInView:` of the window, UIKit's
-//!   pan as gesture_handler models it; the card's own transform plays no part:
-//!   exact/parity-tools/pan-probe, transformed as RN's and still, same numbers) on the active
-//!   card sets translateX / translateY to the
-//!   translation and nextActiveIndex = interpolate(sign(x) · (nx² + nv²), [−1, 0, 1],
-//!   [a + 1, a, a + 1], CLAMP), nx = x / (w/3), nv = vx / ((w/3) / 0.1); onFinalize, when
-//!   nextActiveIndex == activeIndex + 1 it throws by sign(translationX) (0 throws left), else
-//!   both springs to 0. nextActiveIndex is kept per card between gestures, as RN's shared value
-//!   (a tap on a card that was thrown and reset throws it again, left).
-//! - swipeRight / swipeLeft: translateX withSpring(±1.5 w) (Gentle), translateY where it is,
-//!   activeIndex + 1. reset: activeIndex 0 at once; card i after i × 100 ms (setTimeout): if its
-//!   translateX ≠ 0, both translates withSpring(0) (the second test reads translateX again).
-//!   Every spring here starts at velocity 0: a drag sets the values (no animation to inherit)
-//!   and reset cancels the running one first.
-//!
-//! Haptics (past RN, which plays none), the essentials only, never per move: one
-//! `haptic:impact-light` when the pan takes the front card (its activation, so a tap plays
-//! none); one `haptic:selection` when the drag first goes past the throw line
-//! |translationX| = w/3 (where a slow release commits), none on the way back, and again only
-//! after it went REARM back under the line; one `haptic:impact-medium` when the card is
-//! thrown. Nothing when a card springs back. The buttons' presses keep the app's selection
-//! (pressablesOnPress); their throws post nothing more.
-//!
-//! Inputs: safeTop, then three counters the buttons bump (swipe left, swipe right, reset).
-//! The photos are the RN assets resampled to cover the card at 3× (images/swipe-cards).
+//! - The drag moves the card along its tilted, scaled axes. A release past the throw line (a third
+//!   of the width, or a fast flick) throws the card; otherwise it springs back.
+//! - Buttons throw the active card. Reset returns the cards one after another, 100 ms apart.
+//! - Haptics, never per move: `haptic:impact-light` when a drag takes the front card (a tap plays
+//!   none); `haptic:selection` when the drag first crosses the throw line, and again only after it
+//!   returns REARM back under it; `haptic:impact-medium` when a card is thrown. A spring back
+//!   plays nothing.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -48,10 +19,11 @@ use skia::{fit_cover, Canvas, Images, Paint, Rect, Renderer};
 use crate::gfx;
 
 const COUNT: usize = 9;
-/// DEMO_BUTTON_ROW_HEIGHT, CENTRED_SLACK.
+/// Height of the button row, pt.
 const BUTTON_ROW: f64 = 56.0;
+/// How far the card area rises into the button row, pt.
 const CENTRED_SLACK: f64 = 40.0;
-/// FLICK_DURATION, s.
+/// The time scale of a flick's velocity, s.
 const FLICK: f64 = 0.1;
 /// The shortest gap between two selection haptics, ms.
 const HAPTIC_GAP_MS: f64 = 40.0;
@@ -81,9 +53,9 @@ struct Card {
     opacity: Timing,
     lift: Timing,
     scale: Timing,
-    /// nextActiveIndex.
+    /// Where a release would throw the card: the next active index.
     next: f64,
-    /// reset()'s setTimeout: due at (None until the next frame stamps it).
+    /// When the reset reaches this card (None until the next frame stamps it).
     reset_due: Option<Option<f64>>,
 }
 
@@ -94,8 +66,7 @@ struct SwipeCards {
     /// The buttons' counters, as last bound (None before the first bind).
     counters: Option<[f64; 3]>,
     active: f64,
-    /// currentActiveIndex (one value per card in RN; every card sets it at onBegin of its own
-    /// gesture, and only the touched card's matters).
+    /// The active index when the current gesture began.
     current: f64,
     cards: Vec<Card>,
     pan: PanGesture,
@@ -149,7 +120,7 @@ impl SwipeCards {
         }
     }
 
-    /// Yoga's pixel rounding of an edge.
+    /// Rounds an edge to the device pixel grid.
     fn round(&self, v: f64) -> f64 {
         (v * self.scale_px).round() / self.scale_px
     }
@@ -170,13 +141,13 @@ impl SwipeCards {
         self.size.0 / 3.0
     }
 
-    /// The derived rotate.
+    /// The card's tilt, from its horizontal drag.
     fn rotate(&self, i: usize) -> f64 {
         let t = self.third();
         interpolate(self.cards[i].x.value, &[-t, 0.0, t], &[-std::f64::consts::PI / 20.0, 0.0, std::f64::consts::PI / 20.0], Extrapolation::Clamp)
     }
 
-    /// Whether card i's transformed box holds the point (UIKit's hit test of the Animated.View).
+    /// Whether the point lands on card i's transformed box. A faded-out card takes no touches.
     fn hits(&self, i: usize, px: f64, py: f64) -> bool {
         let c = &self.cards[i];
         if c.opacity.value < 0.01 {
@@ -196,7 +167,7 @@ impl SwipeCards {
         qx.abs() <= w / 2.0 && qy.abs() <= h / 2.0
     }
 
-    /// rCardStyle's withTimings, to the targets of the current activeIndex.
+    /// Animates each card's fade, offset and scale to its place for the active index.
     fn restack(&mut self) {
         let a = self.active;
         let easing = Easing::timing_default();
@@ -211,7 +182,7 @@ impl SwipeCards {
         }
     }
 
-    /// The card's swipeRight / swipeLeft.
+    /// Throws card i to the right (sign 1) or the left (sign -1).
     fn throw(&mut self, i: usize, sign: f64) {
         let max = self.size.0 * 1.5;
         self.cards[i].x.to(sign * max, 0.0, GENTLE);
@@ -219,7 +190,7 @@ impl SwipeCards {
         self.restack();
     }
 
-    /// useSwipeControls' swipeRight / swipeLeft: refs[activeIndex], none past the last.
+    /// A button throws the active card; none past the last.
     fn button_throw(&mut self, sign: f64) {
         let a = self.active;
         if a >= 0.0 && (a as usize) < COUNT && a.fract() == 0.0 {
@@ -296,8 +267,8 @@ impl Surface for SwipeCards {
                     self.posted.push("haptic:impact-light".into());
                 }
                 let (tx, vx) = (p.translation_x as f64, p.velocity_x as f64);
-                // The throw line: past it a release throws whatever the speed. One selection on
-                // the way out; re-armed only REARM back under the line, silently.
+                // Past the throw line a release throws at any speed. One selection on the way out,
+                // re-armed only REARM back under the line.
                 if !self.past_line && tx.abs() >= third {
                     self.past_line = true;
                     if at_ms - self.haptic_at >= HAPTIC_GAP_MS {
@@ -344,7 +315,7 @@ impl Surface for SwipeCards {
             self.images = Some(images);
         }
         let now = frame.now_ms;
-        // reset()'s timeouts: card i's ref.reset() at i × 100 ms.
+        // Reset staggers the cards: card i at i × 100 ms.
         let mut moving = false;
         let start = *self.reset_at.get_or_insert(now);
         for (i, c) in self.cards.iter_mut().enumerate() {
@@ -398,7 +369,7 @@ impl Surface for SwipeCards {
 }
 
 impl SwipeCards {
-    /// onFinalize on card i.
+    /// Release on card i: throws it if the drag reached the next index, else springs it back.
     fn finalize(&mut self, i: usize, translation_x: f64) {
         self.touched = None;
         if self.current != i as f64 {
@@ -460,8 +431,7 @@ mod tests {
         let mut s = SwipeCards::new();
         s.size = (420.0, 912.0);
         s.safe_top = 68.0;
-        // A drag of 140 right: rotate = 140 / 140 × π/20 = 9°; the card's centre moves by
-        // R(9°) · (140, 0): (138.3, 21.9) on the screen, not (140, 0).
+        // The drag follows the card's tilted axes, not the screen's.
         s.cards[0].x.set(140.0);
         let (x, y, w, h) = s.layout();
         let (cx, cy) = (x + w / 2.0, y + h / 2.0);
@@ -488,13 +458,11 @@ mod tests {
         }
         let posted = s.messages();
         assert_eq!(posted, vec!["haptic:impact-light", "haptic:selection"], "{posted:?}");
-        // Well back under the line (REARM) and out again: one more.
         for x2 in [300.0, 260.0, 300.0, 360.0] {
             ms += 50.0;
             s.input(&pointer(PointerPhase::Move, x2, 400.0, ms));
         }
         assert_eq!(s.messages(), vec!["haptic:selection"]);
-        // A second finger while held: nothing.
         s.input(&InputEvent::Pointer { id: 2, phase: PointerPhase::Down, x: 100.0, y: 400.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: ms });
         assert!(s.messages().is_empty());
         let _ = x;
@@ -511,7 +479,6 @@ mod tests {
         let (rest, moving) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         gfx::save_over(&rest, "swipe-cards-rest", [0x24, 0x28, 0x31]);
         assert!(!moving);
-        // A drag to the right, fast: thrown.
         let mut ms = 16.0;
         s.input(&pointer(PointerPhase::Down, 210.0, 400.0, ms));
         for k in 1..=8 {
@@ -520,14 +487,12 @@ mod tests {
         }
         s.input(&pointer(PointerPhase::Up, 370.0, 400.0, ms + 8.0));
         assert!(state(&mut s).contains("\"activeIndex\":1"), "{}", state(&mut s));
-        // The grab, the throw line crossed at 140 (once), the throw.
         assert_eq!(s.messages(), vec!["haptic:impact-light", "haptic:selection", "haptic:impact-medium"]);
         while ms < 2000.0 {
             ms += 16.0;
             fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         }
         assert!(state(&mut s).contains("\"x\":[630.0,"), "{}", state(&mut s));
-        // A slow, short drag on the next card springs back.
         s.input(&pointer(PointerPhase::Down, 210.0, 400.0, ms));
         for k in 1..=10 {
             ms += 50.0;
@@ -535,8 +500,6 @@ mod tests {
         }
         s.input(&pointer(PointerPhase::Up, 250.0, 400.0, ms + 200.0));
         assert!(state(&mut s).contains("\"activeIndex\":1"));
-        // The grab only: it never reached the line, nothing is thrown, and the spring back home
-        // plays nothing.
         assert_eq!(s.messages(), vec!["haptic:impact-light"]);
         let t0 = ms;
         while ms < t0 + 1000.0 {
@@ -544,7 +507,6 @@ mod tests {
             fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         }
         assert!(s.messages().is_empty());
-        // Reset (the third counter).
         s.bind(&[Value::Number(68.0), Value::Number(0.0), Value::Number(0.0), Value::Number(1.0)], None).unwrap();
         assert!(state(&mut s).contains("\"activeIndex\":0"));
         let t0 = ms;
@@ -555,12 +517,10 @@ mod tests {
         let (back, moving) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         assert!(!moving);
         assert_eq!(back.data, rest.data);
-        // A tap on the front card now: its nextActiveIndex is still 1 (from its throw), so RN
-        // throws it again, to the left (sign of a zero translation).
+        // next survives the reset, so a tap throws the card again, to the left.
         s.input(&pointer(PointerPhase::Down, 210.0, 400.0, ms));
         s.input(&pointer(PointerPhase::Up, 210.0, 400.0, ms + 50.0));
         assert!(state(&mut s).contains("\"activeIndex\":1"), "{}", state(&mut s));
-        // A button throw right (the second counter).
         s.bind(&[Value::Number(68.0), Value::Number(0.0), Value::Number(1.0), Value::Number(1.0)], None).unwrap();
         assert!(state(&mut s).contains("\"activeIndex\":2"));
     }

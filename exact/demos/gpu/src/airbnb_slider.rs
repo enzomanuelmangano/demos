@@ -1,25 +1,10 @@
-//! Airbnb Slider's price (src/animations/airbnb-slider: index.tsx, components/animated-count.tsx,
-//! animated-digit.tsx): the "$" and four rolling digits above the slider, from the price the
-//! demo's Contract slider sets (the surface's input).
+//! Airbnb slider price: the "$" and four rolling digits above the slider, showing the price the
+//! slider sets (the surface's input).
 //!
-//! - The row (index.tsx): `flexDirection: 'row'`, centred in the screen's column; it holds the
-//!   absolute "$" Text (SF bold 30, Palette.primary) and AnimatedCount: a `row-reverse` of four
-//!   19 × 36 digit boxes (overflow hidden), so the row is 76 wide and the ones digit rightmost.
-//! - "$": translateX `withSpring((missing × 19) / 2 − 19 − 2.5)` (Reanimated's default spring),
-//!   `missing` = 4 − the price's digit count; its style re-runs on every price change.
-//! - Each digit (animated-digit.tsx): its column of ten Texts "0"…"9" (each 19 × 36, centred)
-//!   moves translateY `withSpring(−36 × digit, { duration: 200, dampingRatio: 3 })`, re-run
-//!   when that digit changes. The box: opacity `withTiming(visible ? 1 : 0)` (300 ms,
-//!   inOut(quad)), set when its visibility changes; translateX `withSpring(−19 × invisible / 2,
-//!   { dampingRatio: 1, duration: 200 })` in the same style as the opacity, so that style (and
-//!   its spring) re-runs on every frame the opacity moves (toward the same target: spring.ts
-//!   "triggered twice", the running spring goes on unchanged), and whenever `invisible` changes.
-//!   A digit is visible when it is not 0, or when it lies inside the price's digits.
-//! - At mount every value rests on its target (useAnimatedStyle's first style is the target).
-//! - Each Text is its backing store moved by Core Animation: the "$" and the ten digit Texts are
-//!   drawn once into an atlas (TextKit's line at the box's top; a digit wider than its 19 pt box,
-//!   bold 0 and 4, starts at the box's left instead of centring) and composited bilinearly at the
-//!   translates, which sit on half pixels (−28.5, −9.5, −2.5, −21.5).
+//! - Each digit rolls to its value on a spring. Digit boxes fade with the price's length, and the
+//!   "$" slides to stay beside the number.
+//! - Every glyph is drawn once into an atlas and composited at its offset. The offsets fall on
+//!   half pixels, so the compositor samples the atlas bilinearly.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
@@ -28,25 +13,22 @@ use skia::{Canvas, Color, Font, Images, Matrix, Paint, Renderer};
 
 use crate::gfx;
 
-/// maxDigits, textDigitWidth, textDigitHeight, fontSize.
 const DIGITS: usize = 4;
 const DIGIT_W: f64 = 19.0;
 const DIGIT_H: f64 = 36.0;
 const FONT_SIZE: f32 = 30.0;
-/// Palette.primary.
 const PRIMARY: u32 = 0x27303F;
-/// An atlas cell: the "$" Text's box (its 19.80 pt line ceiled to the pixel, 36 tall) holds a
-/// digit's 19 × 36 too.
+/// Atlas cell width, points: the "$" box is the widest glyph box.
 const CELL_W: f32 = 20.0;
 /// The transparent margin around each atlas cell, device pixels.
 const GUTTER: f32 = 2.0;
 
-/// `count.toString().length`.
+/// Number of digits in `price`.
 fn length(price: i64) -> usize {
     price.max(0).to_string().len()
 }
 
-/// getDigitByIndex.
+/// Decimal digit at `index` (0 is the ones digit).
 fn digit(price: i64, index: usize) -> i64 {
     (price / 10_i64.pow(index as u32)) % 10
 }
@@ -66,10 +48,8 @@ fn digit_x(price: i64) -> f64 {
     -DIGIT_W * (DIGITS - length(price)) as f64 / 2.0
 }
 
-/// `withSpring(to, { duration, dampingRatio })` started (or restarted) from where `s` is, as a
-/// re-run style starts it (spring.ts onStart): toward the running spring's own target it is
-/// "triggered twice" and goes on unchanged (same x0, stiffness, clock); toward a new one its
-/// velocity is kept when it points at `to` and the stiffness is solved for it.
+/// Starts or retargets a spring from where it is. Retargeting to the running spring's own target
+/// leaves it unchanged; otherwise the velocity is kept when it points at `to`.
 fn chase(s: &mut Spring, to: f64, duration_ms: f64, damping_ratio: f64) {
     if s.running && s.target() == to {
         return;
@@ -192,15 +172,14 @@ impl Price {
             };
             let [ox, oy] = cell(i, s).map(|v| v / s);
             let w = if i < 10 { DIGIT_W as f32 } else { CELL_W };
-            // textAlign center in the 19 pt box: TextKit centres a line that fits; a wider one
-            // (bold 0: 20.07, 4: 19.82) starts at the box's left. "$" is left-aligned.
+            // A digit wider than its box (bold 0 and 4) starts at the box's left instead of centring.
             let adv = font.advance_width(&label);
             let x = if i < 10 && adv <= w {
                 (w - adv) / 2.0
             } else {
                 0.0
             };
-            // RN's Text draws in its own frame: ink past it is cut.
+            // Ink past the text's box is clipped.
             c.save();
             c.clip_rect(ox, oy, w, DIGIT_H as f32);
             c.draw_text(&label, ox + x, gfx::baseline(font, oy), font, &paint);
@@ -228,7 +207,6 @@ impl Price {
         if old == price {
             return;
         }
-        // index.tsx's style: re-run on every price change.
         self.currency.retarget(currency_x(price), GENTLE);
         let changed_length = length(old) != length(price);
         for (i, d) in self.digits.iter_mut().enumerate() {
@@ -298,19 +276,18 @@ impl Surface for Price {
         let mut moving = self.currency.step(now);
         for d in &mut self.digits {
             let fading = d.opacity.step(now);
-            // The box's style re-runs while its opacity moves, toward the same translateX: a
-            // running spring goes on (triggered twice), a resting one stays.
+            // A running spring toward the same target keeps running unchanged.
             moving |= d.y.step(now) | d.x.step(now) | fading;
         }
         self.atlas(frame, device, queue, encoder);
         let (w, s) = (frame.width as f64, frame.scale);
-        // The row, 76 wide, centred on Yoga's grid; the canvas is the screen's width.
+        // The row is 76 wide, centred and snapped to the pixel grid.
         let row =
             (((w - DIGITS as f64 * DIGIT_W) / 2.0) * s as f64 + 0.5 + 1e-4).floor() / s as f64;
         let c = &mut self.canvas;
         c.begin(s);
         if let Some((_, _, atlas)) = self.atlas.as_ref() {
-            // The "$" view: absolute at the row's top-left, moved by its translateX.
+            // The "$" sits at the row's left, moved by its spring.
             let x = (row + self.currency.value) as f32;
             composite(
                 c,
@@ -324,7 +301,7 @@ impl Surface for Price {
                 if d.opacity.value <= 0.0 {
                     continue;
                 }
-                // The digit box (overflow hidden) moved by its translateX; its column by translateY.
+                // Clip to the digit box; its column scrolls inside it.
                 let left = (row + (DIGITS - 1 - i) as f64 * DIGIT_W + d.x.value) as f32;
                 c.save();
                 c.clip_rect(left, 0.0, DIGIT_W as f32, DIGIT_H as f32);

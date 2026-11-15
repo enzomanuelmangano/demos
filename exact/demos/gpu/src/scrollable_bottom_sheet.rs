@@ -1,35 +1,13 @@
-//! Scrollable Bottom Sheet (src/animations/scrollable-bottom-sheet: index.tsx,
-//! components/BottomSheetPage/index.tsx, components/BottomSheet/{BottomSheet.tsx,
-//! ScrollableBottomSheet.tsx, Backdrop/index.tsx}): a gradient button opens a dark sheet over
-//! three horizontal pages (pagingEnabled); every scroll event springs the sheet's height toward
-//! the page heights interpolated at the offset, the last page's button closes it, a drag down
-//! past 100 or the backdrop closes it too.
+//! A gradient button opens a dark sheet over three horizontal pages, and the sheet's height follows
+//! the page in view. The last page's button closes it, as does a drag down past 100 or a tap on the
+//! backdrop.
 //!
-//! | value | driver | config | trigger |
-//! |---|---|---|---|
-//! | translateY | `.set(withSpring(dest))` (an assignment: restarted at each call) | damping 25, stiffness 180, mass 0.9 | scrollToY: the button (−350), each scroll event while active (−interpolate(x, [0, w, 2w], [350, 500, 250], CLAMP)), close (0), the pan's end |
-//! | translateY (drag) | Pan onUpdate, only while translationY > 0 | max(translationY + context, −H + 50), no spring | a drag on the sheet (UIKit's pan: 10 pt set-off left out) |
-//! | pages opacity | mapper withTiming | 150 ms inOut(quad), active ? 1 : 0 | active set |
-//! | backdrop opacity | mapper withTiming | 300 ms inOut(quad), active ? 1 : 0; touchable while active, onTouchStart closes | active set |
-//! | pages offset | UIScrollView, pagingEnabled | `ui_scroll` Snap::Page; Next Page: animated scrollTo (300 ms); close: scrollTo(0) 500 ms later | a drag, a press |
-//! | presses | pressto PressableScale | `Pressable` (scale, 250 ms), haptic selection | the round button, the page buttons |
+//! - A drag on the sheet moves it 1:1. A release past CLOSE_DRAG closes it; otherwise it springs back.
+//! - Haptics: a light impact when a drag takes the sheet; a selection when the pull passes
+//!   CLOSE_DRAG (re-armed REARM under it) and when a drag or its glide brings another page into view,
+//!   at most one per HAPTIC_GAP_MS; a medium impact when a release closes the sheet.
 //!
-//! Haptics: RN's own (pressto's selection) on the presses. Past RN, which plays none for the
-//! drags (the owner's haptic language): `haptic:impact-light` when the pan takes the sheet;
-//! `haptic:selection` when the pull goes past CLOSE_DRAG (where a release closes), none on the
-//! way back, re-armed only REARM back under it, and when a drag of the pages, or its paging
-//! glide, brings another page into view (SWITCH past the half-page line; a press's scrollTo
-//! and the close's reset play none), at most one per HAPTIC_GAP_MS; `haptic:impact-medium`
-//! when a release closes the sheet. Nothing when a sheet sprung back lands.
-//!
-//! Layout (Yoga; the sheet is SCREEN_HEIGHT tall at top SCREEN_HEIGHT, moved by translateY): the
-//! line 75 × 4 at 15, the pages from 34 to the spacer's top (H + translateY tall), so a page is
-//! −translateY − 34 tall and its button centred in it; the ScrollView clips them. The sheet's
-//! radius interpolation (25 → 5 past −H + 100) is never reached: a drag only moves it down.
-//! Colours: Views Display P3 (`Color::view_hex`), expo-linear-gradient a CGGradient of the sRGB
-//! colours drawn into an 8-bit image (DeviceRGB, from start × size to end × size, each pixel at
-//! its centre) under Core Animation's circular corner mask. Each pressable (gradient and Text)
-//! is one backing store drawn once into an atlas, moved and scaled as Core Animation shows it.
+//! The layout is on the pixel grid. Views are Display P3; the gradients are drawn once into an atlas.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -41,37 +19,36 @@ use skia::{Canvas, Color, Font, Image, Images, Matrix, Paint, Renderer};
 use crate::gfx;
 use crate::ui_scroll::{self, Snap, UiScroll};
 
-/// index.tsx FIRST_PAGE_HEIGHT, SECOND_PAGE_HEIGHT, THIRD_PAGE_HEIGHT.
+/// Page heights, in points: the sheet's height at each page.
 const PAGES: [f64; 3] = [350.0, 500.0, 250.0];
-/// scrollToY's spring.
+/// The sheet's spring.
 const SPRING: Config = Config {
     stiffness: 180.0,
     damping: 25.0,
     mass: 0.9,
 };
-/// styles.line: 75 × 4, marginVertical 15: the pages start 34 down.
+/// Grab line: 75 × 4, 15 below the top. The pages start 34 below the top.
 const LINE_W: f32 = 75.0;
 const LINE_H: f32 = 4.0;
 const LINE_TOP: f32 = 15.0;
 const PAGES_TOP: f32 = 34.0;
 /// The sheet's radius (continuous).
 const RADIUS: f32 = 25.0;
-/// index.tsx styles.button: 50 × 50, radius 25; BottomSheetPage styles.button: 200 × 50, radius
-/// 40 (Core Animation's circular mask, at most half the height).
+/// The round button is 50 × 50. The page buttons are 200 × 50, with the half-height radius.
 const ROUND: f32 = 50.0;
 const PILL_W: f32 = 200.0;
 const PILL_H: f32 = 50.0;
 /// The gradients' colours.
 const FROM: u32 = 0x4E65FF;
 const TO: u32 = 0x92EFFD;
-/// The fades.
+/// Fade durations, ms.
 const PAGES_FADE_MS: f64 = 150.0;
 const BACKDROP_FADE_MS: f64 = 300.0;
-/// Backdrop rgba(255,255,255,0.05).
+/// Backdrop alpha: 5 % white.
 const BACKDROP_ALPHA: u8 = 13;
-/// scrollToX(0, 500) after a close.
+/// Delay before the pages scroll back to the first page after a close, ms.
 const RESET_MS: f64 = 500.0;
-/// scrollEventThrottle.
+/// Scroll events are throttled to this interval, ms.
 const THROTTLE_MS: f64 = 16.0;
 /// The drag's pull past 100 closes.
 const CLOSE_DRAG: f32 = 100.0;
@@ -88,17 +65,17 @@ const CELL_ROUND: usize = 0;
 const CELL_NEXT: usize = 1;
 const CELL_CLOSE: usize = 2;
 
-/// The demo's surface: `scrollable_bottom_sheet()`.
+/// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
     Box::new(Sheet::new())
 }
 
-/// Yoga's rounding of a layout edge to the pixel grid: to the nearest device pixel, a half up.
+/// Rounds a layout edge to the nearest device pixel, a half up.
 fn grid(v: f32, scale: f32) -> f32 {
     ((v * scale + 0.5 + 1e-4).floor()) / scale
 }
 
-/// A Text node's position in its parent: Yoga floors it (textRounding).
+/// A text's position: floored to the device pixel.
 fn text_grid(v: f32, scale: f32) -> f32 {
     ((v * scale + 1e-4).floor()) / scale
 }
@@ -112,8 +89,8 @@ fn channel(rgb: u32, shift: u32) -> f64 {
     ((rgb >> shift) & 0xFF) as f64
 }
 
-/// expo-linear-gradient's image, `w × h` pixels: `FROM` → `TO` from `start` to `end` (fractions
-/// of the box), each pixel's colour at its centre's projection on that axis, rounded to 8 bits.
+/// The gradient from `FROM` to `TO`, from `start` to `end` (fractions of the box), as a `w × h`
+/// image: each pixel's colour at its centre's projection, rounded to 8 bits.
 fn gradient_image(w: u32, h: u32, start: (f64, f64), end: (f64, f64)) -> Image {
     let (wf, hf) = (w as f64, h as f64);
     let (sx, sy) = (start.0 * wf, start.1 * hf);
@@ -139,9 +116,9 @@ fn gradient_image(w: u32, h: u32, start: (f64, f64), end: (f64, f64)) -> Image {
 enum Owner {
     /// Not decided: the pan and the scroll view both wait for 10 pt.
     Undecided,
-    /// The GestureDetector's Pan (the sheet follows the finger down).
+    /// The sheet's pan: the sheet follows the finger down.
     Sheet,
-    /// The pages' UIScrollView (a horizontal set-off).
+    /// The pages' scroll view: a horizontal set-off.
     Scroll,
 }
 
@@ -166,7 +143,7 @@ struct Sheet {
     scale: f32,
     translate_y: Spring,
     active: bool,
-    /// The Pan's context (translateY at onStart).
+    /// The sheet's translateY when the pan began.
     context: f64,
     pages_opacity: Timing,
     backdrop_opacity: Timing,
@@ -176,7 +153,7 @@ struct Sheet {
     /// The scroll event last reported: offset, when.
     reported: f64,
     reported_at: f64,
-    /// scrollToX(0, 500)'s deadlines.
+    /// When the pages scroll back to the first page.
     resets: Vec<f64>,
     /// The round button, then the three page buttons.
     press: [Pressable; 4],
@@ -251,7 +228,7 @@ impl Sheet {
         }
     }
 
-    /// scrollToY(destination): active, the reset 500 ms after a close, and the spring.
+    /// Slides the sheet to `destination`, and arms the reset after a close.
     fn scroll_to_y(&mut self, destination: f64, now: f64) {
         self.active = destination != 0.0;
         if destination == 0.0 {
@@ -260,7 +237,7 @@ impl Sheet {
         self.translate_y.assign(destination, SPRING, now);
     }
 
-    /// The mappers on `active`: withTiming toward the same target keeps the running timing.
+    /// Fades follow `active`. A fade toward the same target keeps its running timing.
     fn sync_fades(&mut self) {
         let to = if self.active { 1.0 } else { 0.0 };
         for (t, ms) in [
@@ -273,7 +250,7 @@ impl Sheet {
         }
     }
 
-    /// A scroll event (scrollViewDidScroll, throttled to 16 ms): the scroll handler.
+    /// A scroll event: moves the sheet to the height of the page at the offset.
     fn scrolled(&mut self, at_ms: f64) {
         let x = self.pages.offset;
         if x == self.reported || at_ms - self.reported_at <= THROTTLE_MS {
@@ -333,7 +310,7 @@ impl Sheet {
         (0.0..=self.w).contains(&x) && y >= top && y < top + self.h
     }
 
-    /// The pages are hit-tested only above UIKit's alpha 0.01, inside the ScrollView's bounds.
+    /// The pages take touches only while they are visible (opacity 0.01 and up).
     fn on_pages(&self, y: f32) -> bool {
         let top = self.sheet_top();
         self.pages_opacity.value >= 0.01 && y >= top + PAGES_TOP && y < top + self.pages_bottom()
@@ -489,7 +466,7 @@ impl Sheet {
         };
         let (px_w, px_h) = ((PILL_W * s).round(), (PILL_H * s).round());
         let round_px = (ROUND * s).round();
-        // index.tsx: top to bottom (expo's default start / end); the pages: (0, 1) → (1, 0).
+        // The round button: top to bottom. The pills run from bottom left to top right.
         let round = gradient_image(round_px as u32, round_px as u32, (0.5, 0.0), (0.5, 1.0));
         let pill = gradient_image(px_w as u32, px_h as u32, (0.0, 1.0), (1.0, 0.0));
         let gradients = Images::upload(device, queue, &[&round, &pill]);
@@ -501,7 +478,7 @@ impl Sheet {
         let l = &mut self.layer_canvas;
         l.begin(s);
         let g = GUTTER / s;
-        // The round button: the PressableScale clips its gradient to radius 25.
+        // The round button: its gradient clipped to a circle.
         let oy = |cell_i: usize| (GUTTER + cell.1 * cell_i as f32) / s;
         let to_px = |ox: f32, oy: f32| Matrix::translate(-ox, -oy).then(Matrix::scale(s, s));
         let (ox, y0) = (g, oy(CELL_ROUND));
@@ -661,7 +638,7 @@ impl Surface for Sheet {
     }
 
     fn max_fps(&self) -> u32 {
-        // Waiting only for a scrollToX(0, 500): wake at its deadline; never while anything moves.
+        // Only waiting for a scheduled reset: wake at its deadline.
         if self.moving || self.finger.is_some() || self.press.iter().any(Pressable::is_pressed) {
             return 0;
         }
@@ -715,7 +692,7 @@ impl Surface for Sheet {
                 }
                 self.sheet_finger(f, phase, x, y, at_ms);
             } else if self.active {
-                // The Backdrop: onTouchStart closes.
+                // The backdrop closes the sheet on touch.
                 self.scroll_to_y(0.0, self.now);
             } else if self.on_press(0, x, y) {
                 self.press[0].pointer_down(id, true);
@@ -739,8 +716,7 @@ impl Surface for Sheet {
         format: wgpu::TextureFormat,
     ) -> bool {
         let now = frame.now_ms;
-        // What the scroll view did since the last frame reached onScroll between the frames: its
-        // spring starts then, and this frame already moves it (Reanimated's onStart timestamp).
+        // A scroll between frames starts its spring then, so this frame already moves it.
         let between = if self.now > 0.0 {
             self.now.min(now)
         } else {
@@ -888,9 +864,9 @@ mod tests {
             st.contains("\"translateY\":-500.00,\"offset\":420.00"),
             "{st}"
         );
-        // The second page came into view: one selection (the pages are no grab).
+        // The second page came into view: one selection.
         assert_eq!(s.messages(), vec!["haptic:selection"]);
-        // Next Page: the third page, 250 tall. Its button: (912 − 500) + 34 + 208 + 25.
+        // Next Page is the third page, 250 tall.
         ms = tap(&gpu, &mut s, 210.0, 679.0, ms);
         ms = run(&gpu, &mut s, ms, ms + 1500.0);
         let st = state(&mut s);

@@ -1,42 +1,10 @@
-//! 3D Scroll Transition (src/animations/3d-scroll-transition: index.tsx,
-//! components/blurred-list-item.tsx): the numbers 99 … 0 on an inverted FlatList on black, one
-//! item (window width × 0.55 tall) centred; each tips back about its centre as it leaves the
-//! middle, fading and blurring.
+//! A column of the numbers 99 … 0 on black, with one item centred at a time. Each item tips back
+//! about its centre as it leaves the middle, fading and blurring.
 //!
-//! The list: inverted (scaleY −1 on the list and on each cell), paddingVertical height / 2 −
-//! size / 2, snapToInterval size, decelerationRate fast (`ui_scroll` on the vertical axis, its
-//! finger read upside down). scrollY is its contentOffset.y.
-//!
-//! An item: `<Animated.View style={{ opacity, transform: [{ perspective: 200 }, { rotateX }] }}>`
-//! around an RN Skia Canvas (window width × size, a Display P3 surface): a Group whose layer is
-//! Blur(blur) holding a Mask (a layer: a Fill of SweepGradient((width / 2, size / 2), [cyan,
-//! magenta, yellow, cyan]), then the mask's layer with dstIn: the Text in white, SF Pro Rounded
-//! Bold 175 at (width / 2 − measureText.width / 2, size / 2 + 175 / 4)); the Group's BlurMask
-//! (σ 4, solid) is the paint every drawing in it inherits, so the text's coverage is
-//! solid-blurred (inside kept, a σ 4 glow outside). With inputRange [s(i−1), s(i−1) + 20, s·i,
-//! s(i+1) − 20, s(i+1)]: blur [0, 6, 0, 6, 0] and opacity [0, .5, 1, .5, 0] clamped, rotateX
-//! [−π/2, −π/2, 0, −π/2, −π/2] extended.
-//!
-//! Here: each number's masked sweep is baked once (it scrolls into view: the text's coverage,
-//! Graphite's blur of it for the solid mask filter, the sweep kept where it lands); per frame the
-//! two items in view (only they have opacity) are blurred by their σ when it is not 0, resolved
-//! to sRGB as Core Animation shows the canvas, and drawn through their layer's 4×4.
-//!
-//! Motion audit:
-//!
-//! | value | RN driver / config | here |
-//! |---|---|---|
-//! | scrollY | FlatList onScroll (UIScrollView, snapToInterval, fast) | `UiScroll` (Snap::Interval, FAST) |
-//! | blur, opacity, rotateX | interpolate(scrollY) per item | the same, every frame |
-//!
-//! The leave is past RN's (the owner's phone note: the number flattened edge-on near the top):
-//! see LEAVE_* and `render`: a 58° tilt at most, the fade, Gaussian blur and shrink on one
-//! smootherstep from a quarter of an item out, symmetric both ways.
-//!
-//! Haptics (past RN, which plays none: the owner's haptic language): `haptic:selection` each time
-//! the centred number (round(scrollY / size)) changes, during the drag and the glide, at most one
-//! per HAPTIC_GAP_MS; `haptic:impact-rigid` once each time the list is pulled or thrown past an
-//! end (the rubber band).
+//! - The list is inverted and snaps one item at a time; a drag moves it 1:1.
+//! - Each number is a sweep-coloured glyph set with a solid glow, drawn in a perspective layer.
+//! - Haptics: a selection each time the centred number changes; a rigid impact once per pull past
+//!   an end.
 //!
 //! No inputs.
 
@@ -53,11 +21,10 @@ use crate::ui_scroll::{Snap, UiScroll, FAST};
 const COUNT: usize = 100;
 const PERSPECTIVE: f32 = 200.0;
 const FONT_SIZE: f32 = 175.0;
-/// BlurMask blur (σ, points).
+/// Glow blur (σ, points) around the number's glyphs.
 const GLOW: f32 = 4.0;
-/// The leave (past RN's, by the owner's call): the largest tilt (rad, 58°), where the fade, blur
-/// and shrink begin and end (fractions of an item from the centre), the blur at its end (σ, pt)
-/// and the scale.
+/// The leave: the largest tilt (rad), the range over which it fades (fractions of an item from
+/// the centre), the blur at its end (σ, pt) and the scale at its end.
 const LEAVE_TILT: f64 = 58.0 * std::f64::consts::PI / 180.0;
 const LEAVE_FROM: f64 = 0.25;
 const LEAVE_TO: f64 = 0.85;
@@ -138,9 +105,7 @@ struct ScrollTransition {
     bakes: HashMap<usize, wgpu::TextureView>,
     /// The sweep filling the canvas, (size, scale) and its texture.
     sweep: Option<((u32, u32), wgpu::TextureView)>,
-    /// The text's coverage, drawn per bake.
-    /// Per bake slot (an item's parity: the two in view never share one, as each resource is
-    /// written once a frame).
+    /// The text's coverage, one slot per item parity; each slot is written once a frame.
     text: [Option<((u32, u32), wgpu::TextureView)>; 2],
     glow: [(GraphiteBlur, Option<GraphitePlan>); 2],
     renderers: [Renderer; 2],
@@ -166,7 +131,7 @@ impl ScrollTransition {
         let s = self.scale as f64;
         (v * s + 1e-6).round() / s
     }
-    /// Item i's cell in the content (Yoga): top and height.
+    /// Item i's top and height in the content, on the pixel grid.
     fn cell(&self, i: usize) -> (f64, f64) {
         let top = self.pad() + i as f64 * self.item();
         let t = self.round(top);
@@ -333,7 +298,7 @@ fn buffer(device: &wgpu::Device, size: u64) -> wgpu::Buffer {
 fn bytes(v: &[f32]) -> Vec<u8> {
     v.iter().flat_map(|f| f.to_le_bytes()).collect()
 }
-/// The blurred image's uv of a layer pixel (spiral's).
+/// The blurred image's uv for a layer pixel.
 fn low_mapping(plan: &GraphitePlan, origin: [i32; 2], size: [u32; 2]) -> [f32; 4] {
     let src = plan.src_rect.map(|v| v as f32);
     let low = plan.low_bounds;
@@ -429,7 +394,7 @@ impl ScrollTransition {
         let text_view = self.text[k].as_ref().unwrap().1.clone();
         self.renderers[k].p3 = true;
         self.renderers[k].draw(device, queue, encoder, &self.canvas, &text_view, GRAPHITE_FORMAT, px.0, px.1, wgpu::Color::TRANSPARENT);
-        // The solid BlurMask: Graphite's blur of the coverage, the glyphs over it.
+        // The glow: a solid blur of the coverage, under the glyphs.
         let sigma = GLOW * self.scale;
         let reach = ceil_size(3.0 * sigma);
         let bounds = [0, 0, px.0 as i32, px.1 as i32];
@@ -527,21 +492,17 @@ impl Surface for ScrollTransition {
         let mut draws = Vec::new();
         let several = visible.len() > 1;
         for &i in &visible {
-            // The leave, redesigned (the owner's phone note: it flattened edge-on toward the top):
-            // d, how far the number is from the centre (0 … 1 of an item, either way). It tips back
-            // at most LEAVE_TILT, easing in; from a quarter out it fades, blurs (Graphite's
-            // Gaussian, up to LEAVE_BLUR) and shrinks toward LEAVE_SCALE on one smootherstep, gone
-            // before the tilt could read as a flat sheet. Symmetric above and below.
+            // The leave: d is how far the number is from the centre, 0 to 1 of an item either way. It
+            // tips back at most LEAVE_TILT, easing in. From a quarter out it fades, blurs and shrinks on
+            // one smootherstep, gone before the tilt could read as a flat sheet. Symmetric both ways.
             let d = ((offset - s * i as f64).abs() / s).min(1.0);
             let k = smootherstep(LEAVE_FROM, LEAVE_TO, d);
             let opacity = 1.0 - k;
             if opacity <= 0.0 {
                 continue;
             }
-            // While two numbers show, each takes the blur path (σ at least 0.2 pt, invisible in
-            // motion): a slot that drops from a blur to none while the other slot blurs drew
-            // nothing that frame (found here; the number vanished a quarter out). At rest the one
-            // number is unblurred.
+            // With two numbers on screen each takes the blur path (σ at least 0.2 pt): a slot that
+            // drops its blur while the other blurs draws nothing that frame.
             let blur = if several { (LEAVE_BLUR * k).max(0.2) } else { LEAVE_BLUR * k };
             let rotate = -LEAVE_TILT * smootherstep(0.0, 1.0, d);
             let shrink = 1.0 - (1.0 - LEAVE_SCALE) * k;
@@ -674,7 +635,7 @@ mod tests {
         let (rest, animating) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         gfx::save_over(&rest, "scroll3d-rest", [0, 0, 0]);
         assert!(!animating);
-        // "99" centred at 456: its sweep-coloured ink; the screen's top black.
+        // "99" is centred and inked; the top of the screen is black.
         let ink = (3 * 420..3 * 490).flat_map(|y| (3 * 120..3 * 300).map(move |x| (x, y))).filter(|&(x, y)| rest.at(x, y)[..3].iter().map(|&c| c as u32).sum::<u32>() > 200).count();
         assert!(ink > 3000, "{ink}");
         assert_eq!(&rest.at(10, 10)[..3], &[0, 0, 0]);
@@ -698,8 +659,8 @@ mod tests {
             fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         }
         assert_eq!(s.agent("{}").unwrap(), "{\"offset\":231.00,\"number\":98,\"moving\":false}");
-        // One number on: one selection. A slow drag up of 300 pt: back one number, then past the
-        // start, one rigid thunk however long it is held.
+        // One selection per item change. Dragging past the start gives one rigid impact, however long
+        // it is held.
         assert_eq!(s.messages(), vec!["haptic:selection"]);
         s.input(&p(PointerPhase::Down, 600.0, ms));
         for k in 1..=30 {
@@ -726,9 +687,8 @@ mod tests {
         };
         let mut s = new();
         fixture::render(&gpu, &mut s, &frame(0.0)).unwrap();
-        // "99" (item 0) at d = 0, .25, .5, .75 and 1 of an item from the centre: the list moved
-        // by d · item (231 pt at 420 wide), 99 leaving downward (the list is inverted), 98 coming
-        // in from above; the lit pixels below the centre (99's alone).
+        // "99" at d = 0 … 1 of an item from the centre: it leaves downward (the list is inverted) and
+        // 98 comes in from above. The lit pixels below the centre are 99's.
         let mut ink = Vec::new();
         for (n, d) in [0.0f64, 0.25, 0.5, 0.75, 1.0].iter().enumerate() {
             s.scroll.set_offset(231.0 * d);
@@ -738,8 +698,7 @@ mod tests {
             let lit = (img.height / 2 + 60..img.height).step_by(3).flat_map(|y| (0..img.width).step_by(3).map(move |x| (x, y))).filter(|&(x, y)| img.at(x, y)[..3].iter().map(|&c| c as u32).sum::<u32>() > 150).count();
             ink.push(lit);
         }
-        // A quarter out still whole (it has moved into the measured band), then fading and
-        // blurring, nearly gone at three quarters (at a whole item the band holds only 98's lower half).
+        // A quarter out it is still whole, then it fades and blurs, nearly gone at three quarters.
         assert!(ink[1] > ink[0], "{ink:?}");
         assert!(ink[1] > 0 && ink[3] < ink[2] / 3, "{ink:?}");
     }

@@ -1,20 +1,12 @@
-//! Scroll Progress's article (src/animations/scroll-progress: index.tsx renderSection,
-//! constants.ts sections): the sections' column inside the ScrollView, drawn as UIKit lays and
-//! draws its Texts, so every line sits on RN's pixel (the host rounds a text's lines 2+ to the
-//! nearest pixel from its snapped origin; CoreGraphics puts each line's baseline on the next
-//! device pixel down).
+//! The article's column of titled sections, laid out and drawn the way UIKit lays out and draws
+//! text, so every line sits on a device pixel.
 //!
-//! - A section (styles.textContainer, marginBottom 20): the title (#EEE, SF 20 bold, marginBottom
-//!   10), then the description (#999, SF 14). No lineHeight: TextKit's lines are UIFont.lineHeight
-//!   apart (SF's hhea ascent + descent, unrounded: 23.8671875 at 20, 16.70703125 at 14), the
-//!   first baseline an ascent below the box's top, each drawn on the next device pixel down.
-//! - Yoga: each Text's height is its lines' height ceiled to the device pixel after an epsilon
-//!   (RCTTextLayoutManager), so every box starts on a whole pixel; word wrapping at the content
-//!   width (`gfx::wrap`, TextKit's).
-//! - The column's height (the sum, each section's margin included) is posted once as
-//!   `height:<pt>` for the Contract to size the canvas: the scroll's content then measures as RN's.
+//! - A section is a title and a description, word-wrapped at the content width. Lines are the
+//!   font's line height apart, each baseline on the next device pixel down.
+//! - Each text box is ceiled to a whole device pixel, so every box starts on one.
+//! - The column's total height is posted once as `height:<pt>`, so the scroll view sizes to it.
 //!
-//! Input: the content width (the screen less paddingHorizontal 32 × 2).
+//! Input: the content width.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
@@ -22,7 +14,7 @@ use skia::{Canvas, Color, Font, Paint, Renderer};
 
 use crate::gfx;
 
-/// constants.ts sections: (title, description).
+/// The article: (title, description) per section.
 pub const SECTIONS: [(&str, &str); 15] = [
     ("Introduction", "Chess openings are the first few moves of a chess game. There are many different chess openings, and each one has its own set of ideas and strategies. Here are some of the most popular chess openings:"),
     ("The Ruy Lopez", "his opening is named after the 16th-century Spanish bishop Ruy López de Segura. It starts with the moves 1.e4 e5 2.Nf3 Nc6 3.Bb5, and it is known for its focus on controlling the center of the board and attacking the black king."),
@@ -41,10 +33,10 @@ pub const SECTIONS: [(&str, &str); 15] = [
     ("The Four Knights Game", "This opening is named after the 16th-century English chess master, who was known for his love of chess. It starts with the moves 1.e4 e5 2.Nf3 Nc6 3.Nc3 Nf6, and it is known for its focus on controlling the center of the board."),
 ];
 
-/// styles.title fontSize, 'bold'; styles.description fontSize.
+/// Title and description font sizes, in points.
 const TITLE_SIZE: f32 = 20.0;
 const DESCRIPTION_SIZE: f32 = 14.0;
-/// styles.title marginBottom, styles.textContainer marginBottom.
+/// Gap below a title, and between sections, in points.
 const TITLE_GAP: f32 = 10.0;
 const SECTION_GAP: f32 = 20.0;
 
@@ -66,7 +58,7 @@ struct ScrollProgressText {
     renderer: Renderer,
 }
 
-/// RCTTextLayoutManager's measured side (internal_roundTextMeasurementToPixelGrid).
+/// A text's measured side, ceiled to the device pixel after an epsilon.
 fn text_side(v: f32, s: f32) -> f32 {
     ((v + 0.001) * s).ceil() / s
 }
@@ -78,9 +70,8 @@ fn text_box<'a>(font: &Font, text: &'a str, width: f32, s: f32) -> (Vec<&'a str>
     (lines, h)
 }
 
-/// The column's layout at `width` and scale `s`: per Text its top, lines and font (0 title,
-/// 1 description); and the column's height. Every edge is a whole device pixel (the margins
-/// are whole points), so the sums are kept in pixels.
+/// Each text's top, lines and font (0 title, 1 description), and the column's height. Sums
+/// are kept in device pixels, so every edge is a whole pixel.
 fn layout<'a>(fonts: &(Font, Font), width: f32, s: f32) -> (Vec<(f32, Vec<&'a str>, usize)>, f32) {
     let mut out = Vec::with_capacity(2 * SECTIONS.len());
     let px = |v: f32| (v * s).round() as i64;
@@ -158,7 +149,7 @@ mod tests {
     #[test]
     fn the_column_measures_as_yoga_lays_it_out() {
         let Some(f) = fonts() else { return eprintln!("no system font; skipped") };
-        // iPhone Air: 420 − 64 wide, 3×.
+        // A 420 pt screen less 32 pt of padding on each side, at 3×.
         let (texts, height) = layout(&f, 356.0, 3.0);
         assert_eq!(texts.len(), 30);
         for (top, lines, k) in &texts {
@@ -168,10 +159,9 @@ mod tests {
                 assert_eq!(lines.len(), 1, "{lines:?}");
             }
         }
-        // A description's lines: TextKit's 16.707 apart, the box ceiled (4 lines: 66.83 → 67).
+        // Four description lines, ceiled to whole pixels.
         assert!((text_side(4.0 * 16.70703125, 3.0) - 67.0).abs() < 1e-4);
-        // (The Mac's SF has other metrics than iOS's: on the simulator the column is 1931.667 tall,
-        // the Contract's default.)
+        // Font metrics differ by host, so the height is only checked to a range.
         assert!(height > 1500.0 && height < 2500.0, "{height}");
     }
 }

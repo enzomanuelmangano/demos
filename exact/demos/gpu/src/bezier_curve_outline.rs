@@ -1,50 +1,16 @@
-//! Bezier Curve Outline (src/animations/bezier-curve-outline/src: index.tsx,
-//! components/bezier-outline.tsx, constants.ts, hooks/useAnimateThroughPath, components/
-//! animated-square): a chess-board square on #efefef that, pressed, grows from 64 to 180 while
-//! it travels along a cubic Bézier and blurs on the way; "Outline Mode" (the Contract's button)
-//! crossfades to the curve itself on #111111, whose four control points can be dragged.
+//! Bezier curve outline: a chessboard square that, when pressed, grows and travels along a cubic
+//! Bézier, blurring on the way. "Outline mode" crossfades to the curve itself, whose four control
+//! points can be dragged.
 //!
-//! The whole screen below the button and the full-screen blur is this surface:
-//! - The outline (BezierOutline, opacity outlineModeProgress): #111111; the cubic first →
-//!   (second, third) → fourth stroked rgba(255,255,255,0.4) width 1; the lines first–second and
-//!   third–fourth rgba(255,255,255,0.1) width 1; per point a circle (r 12 for first and fourth,
-//!   else 10) stroked width 2 (white 0.4 / 0.2) then filled #202020. InitialPoints: first (140,
-//!   H − 200), second (W − 100, H − 300), third (W − 100, 300), fourth (200, 200).
-//!   Touchable.Canvas: onBegin at touch-down, the first circle (in registration order) whose path
-//!   holds the finger is set to it; onUpdate (from 10 pt) follows the finger. Touches reach it
-//!   only while outlineModeProgress > 0 (the main content takes them at 0).
-//! - The main content (opacity 1 − outlineModeProgress): #efefef; the square at
-//!   (cx − size / 2, cy − size / 2), size = interpolate(progress, [0, 1], [64, 180]); (cx, cy)
-//!   walks the contour sampled every 1 pt of length (getPosTan(i), i < length), progress × len
-//!   into those points as useAnimateThroughPath reads them (extended one step past the end).
-//!   The square (PressableScale): boxShadow 0 2 10 rgba(0,0,0,0.2), #a5a5a5, radius 20
-//!   continuous; clipped: the 8 × 8 chessboard (#ECD9B9 / #AD8969, flex cells on the pixel grid),
-//!   the icon container (#AD8969, opacity 1 − progress) with the pawn (48², marginBottom 4,
-//!   contentFit cover), and the BlurView (tint default: .regular) over both.
-//!
-//! Motion audit:
-//! - outlineModeProgress = withSpring(outlineMode) (Reanimated's default: 900, 120, 4).
-//! - progress: start (progress === 0) cancels, sets 0 and withSpring(1, { duration 1500,
-//!   dampingRatio 1 }); else cancel and withSpring(0, …) (no velocity: cancelled first).
-//! - pressto on the square (the shared `pressto::Pressable`): withTiming(active, 250 ms,
-//!   bezier(0.25, 0.1, 0.25, 1)), scale 1 → 0.96 about its centre; onPress (lifted inside)
-//!   posts `haptic:selection` then toggles.
-//! - The square's BlurView (zIndex 100: over the chessboard and the icon) intensity
-//!   interpolate(progress, [0, 0.7, 1], [0, 40, 0]), expo-blur's animator fraction intensity /
-//!   100 clamped to 0.01…1: skia::backdrop's `.regular` chain over the square's bounds (as
-//!   pressed: its radius scaled with the press), clipped to the square's corners.
-//! - The full-screen BlurView (zIndex 100: over the outline and the main content, under the
-//!   button), tint systemUltraThinMaterialLight, intensity withTiming(held ? 65 : 0, 300 ms,
-//!   linear) (the Contract's button sends `held`): skia::backdrop's chain over the whole screen
-//!   at that fraction, never below 0.01 (a BlurView at intensity 0 still blurs at 1 %).
-//! - At intensity 0 (both BlurViews at rest) a chain runs at fraction 0, the identity: a 1:1
-//!   copy. expo-blur clamps the fraction to 0.01, but an intensity of 0 shows no effect on the
-//!   iPhone (as airbnb-flip-interaction's, interaction-appearance's and the home grids' measured
-//!   rest). The 1 % chain resamples at scale 0.99 and blurs σ 0.2 pt, twice over the square (its
-//!   BlurView, then the screen's): the resting pawn and its tile read soft at 3x where RN's are
-//!   crisp (phone feedback, 2026-11-15).
-//! - Points are re-sampled whenever the curve changes while the square can be seen
-//!   (outlineModeProgress < 1) and at each start.
+//! - The outline: a dark panel with the curve, its four control points drawn as grab targets.
+//!   Touches reach it only while outline mode is on.
+//! - The content: the chessboard, and the square travelling along the curve. Its position is
+//!   sampled from the curve every point of length, and the square reads those samples.
+//! - The square is pressable and scales down while held. Its blur and the full-screen blur are
+//!   skia::backdrop chains, and a blur at zero intensity is the identity, so resting content
+//!   stays sharp.
+//! - Points are re-sampled whenever the curve changes while the square is visible, and at each
+//!   start.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -63,10 +29,10 @@ use shaders::bezier_curve_outline::{entry, module, Uniforms, BASE, BLURRED, GROU
 const SMALL: f64 = 64.0;
 const BIG: f64 = 180.0;
 const RADIUS: f32 = 20.0;
-/// A control point's grab radius: 72 pt across (the owner's call, raised from 44 after a phone try; RN grabs the drawn disc).
+/// Grab radius of a control point, points: wider than the drawn disc, so it is easy to hit.
 const GRAB_RADIUS: f64 = 36.0;
 const ICON: f32 = 48.0;
-/// assets/pawn.svg (viewBox 50): its four paths.
+/// The pawn's SVG paths (viewBox 50).
 const PAWN: [&str; 4] = [
     "M25 11.961c-3.39 0-6.032 2.505-6.032 5.818 0 1.704.716 3.333 1.976 4.514-3.896 1.692-3.644 2.322-3.236 6.479h3.776c-1.66 8.227-9.02 6.338-8.862 15.47h24.755c.16-9.132-7.201-7.242-8.861-15.47h3.776c.408-4.157.66-4.787-3.237-6.48a6.189 6.189 0 0 0 1.976-4.513c0-3.313-2.64-5.818-6.031-5.818z",
     "M24.999 11.96c-.594 0-1.164.081-1.702.226 8.042 1.26 6.731 8.948 2.355 10.106 1.836.664 3.7 1.606 4.342 2.453.58.767.142 2.534.142 2.534l-12.555.204.128 1.02 5.694.021c1.711 8.098 14.126 6.628 13.968 15.718.158-9.09-7.118-7.642-8.829-15.74h3.752c.309-4.98 1.019-3.604-3.238-6.21a6.198 6.198 0 0 0 1.976-4.513c0-3.314-2.643-5.82-6.033-5.82z",
@@ -154,7 +120,7 @@ fn cubic(p: &[(f64, f64); 4], t: f64) -> (f64, f64) {
 }
 
 /// getPathPoints: the contour's position at each whole length 0, 1, … < length (the cubic
-/// measured along 1024 chords). Fills `out` (its capacity kept).
+/// sampled along 1024 chords). Fills `out` (its capacity kept).
 fn sample(points: &[(f64, f64); 4], out: &mut Vec<(f64, f64)>) {
     out.clear();
     const N: usize = 1024;
@@ -250,7 +216,7 @@ impl BezierOutline {
         under.fill(Color::view_hex(0xEFEFEF));
         under.save();
         place(under);
-        // boxShadow 0 2 10: σ 5 (RN's iOS blur / 2) on RCTBoxShadow's circular rounded rect.
+        // Shadow sigma 5. The shadow's rounded rect has circular corners.
         under.draw_rrect_shadow(0.0, 2.0, size, size, RADIUS, 5.0, Color::BLACK.alpha(0.2));
         under.draw_continuous_rrect(0.0, 0.0, size, size, RADIUS, &Paint::fill(Color::view_hex(0xA5A5A5)));
         under.clip_continuous_rrect(0.0, 0.0, size, size, RADIUS);
@@ -301,8 +267,7 @@ impl Surface for BezierOutline {
             self.outline_progress.retarget(if outline { 1.0 } else { 0.0 }, GENTLE);
         }
         self.outline = Some(outline);
-        // onPressIn / onPressOut: blurIntensity.set(65 / 0), its prop withTiming(…, 300 ms,
-        // Easing.linear) from where it is.
+        // The full-screen blur eases to 65 or 0 over 300 ms, linearly, from where it is.
         let held = inputs.get(1).and_then(|v| v.as_bool()).unwrap_or(false);
         if held != self.held {
             self.held = held;
@@ -335,10 +300,8 @@ impl Surface for BezierOutline {
         let phase = gfx::phase(phase);
         let (xf, yf) = (x as f64, y as f64);
         if self.outline_progress.value > 0.0 {
-            // The outline's Touchable canvas.
-            // RN's Touchable circles take a touch on the drawn disc (r 12 / 10); the owner's call
-            // (phone feedback, 2026-11-15): a 72 pt grab, r 36 round each point, the nearest
-            // point taking a touch two grabs share. The look is unchanged.
+            // The outline's touch canvas. Each point takes touches within 36 points, and the
+            // nearest point wins where two overlap. The look is unchanged.
             let grab = |p: &[(f64, f64); 4]| {
                 (0..4)
                     .map(|i| (i, (xf - p[i].0).hypot(yf - p[i].1)))

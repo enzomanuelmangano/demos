@@ -1,59 +1,20 @@
-//! Motion Blur (src/animations/motion-blur): a black + button adds a random transaction card
-//! (emoji, amount, address) to a list showing the last three; the new card pops in, the others
-//! slide up on a spring and the oldest fades out upwards. This surface is the list (the
-//! BlurredList View: the window's width × maxVisibleItems · 110, clipped); the + stays Contract.
-//! Past RN (the owner's ask): holding the + fires in bursts. The press adds one card (the
-//! Contract's count), then from `BURST_DELAY_MS` this surface keeps adding, every
-//! `BURST_FIRST_MS` shrinking by `BURST_RAMP` to `BURST_MIN_MS`, until the release, posting
-//! `haptic:impact-light` per card.
+//! A list of the last three random transaction cards, each with an emoji, an amount and an
+//! address. A + button adds one: the new card pops in, the others slide up on a spring, and the
+//! oldest fades out upwards. This surface is the list; the + lives outside it.
 //!
-//! The owner asked for a REAL motion blur here, past RN. RN's "motion blur" is an expo-blur
-//! BlurView (tint extraLight) over each card whose intensity runs 50 → 0 linearly in 500 ms after
-//! the card mounts (and 0 → 50 in 150 ms as it leaves): an isotropic frosted blur on a timer,
-//! the same on a card that is still and on one that moves, in no direction. Here each card is
-//! blurred by its own motion, as a film camera records it:
+//! - Holding the + adds cards in bursts: the first after BURST_DELAY_MS, then at intervals that
+//!   shrink from BURST_FIRST_MS to BURST_MIN_MS, until the release. Each burst card posts
+//!   `haptic:impact-light`.
+//! - The blur is real motion blur: each card is blurred along its own motion, as a camera
+//!   records it. The shutter is EXPOSURE_MS (1/15 s), centred on the frame's instant. A card's
+//!   transform is sampled at instants across the shutter and averaged in linear light (a box
+//!   shutter), so a still card is drawn exactly and a moving one smears along its path.
+//! - Debug input `slow` runs the clock at SLOW_RATE and shows a HUD with the pixel scale, the
+//!   frame's dt, the samples a pixel took and the longest smear since the last press.
 //!
-//! - The shutter: 1/15 s (`EXPOSURE_MS`, 66.7 ms; a 360° shutter at 15 fps), Hann-weighted,
-//!   centred on the frame's instant (Blender's "centre on frame"), the same on a 60 Hz and a
-//!   120 Hz display. The slide's spring peaks at ~600 pt/s (5 pt, 15 px a 120 Hz frame): a 40 pt
-//!   smear, the pop-in's ~50 pt. 180° at 24 fps (20.8 ms) and 360° at 24 fps (41.7 ms) both read
-//!   as no blur on the phone.
-//! - Debug (input 3, `slow`): the demo's clock runs at `SLOW_RATE` (10× slower, the shutter in
-//!   the demo's time, so each frame's smear is the same, held 10× longer) and a HUD in the
-//!   list's top-left corner reads what the device gives the surface: its pixel scale, the
-//!   frame's dt, the samples a pixel took and the longest smear (device px) since the last press.
-//! - The integral: the card's layer (drawn once into an atlas slot) under its transform at N
-//!   instants across the shutter, its opacity then, averaged in linear light (a box shutter: an
-//!   ideal global shutter). Transforms are the analytic motion (keyframe, spring, exit) evaluated
-//!   at N + 1 knots; N is the swept path of the slot's corners in device pixels, so samples land
-//!   at most half a pixel apart, capped at `MAX_SAMPLES`. Between knots the shader samples at a
-//!   per-pixel offset (interleaved gradient noise) and fetches bilinearly: no banding, no ghosts.
-//! - A card still over the whole shutter is one sample, its texels exactly (no resampling at
-//!   rest: offsets are whole pixels); when no card moves `render` returns false and the host
-//!   draws nothing.
-//!
-//! Layout and motion (blurred-list/index.tsx, list-item/index.tsx):
-//! - Card k: itemContainer (absolute, full width, 90 tall) at calculateTop(k, n, 3) = (k −
-//!   max(n − 3, 0)) · 110, top withSpring (Reanimated's default: k 900, c 120, m 4, critically
-//!   damped), starting at its target when it mounts; its content 80 % wide, centred, white,
-//!   radius 20 continuous, boxShadow 0 0 10 rgba(0, 0, 0, 0.05), and iOS shadow (black)
-//!   offset 20 → 10, opacity 0.03 → 0.02, radius 10 → 5 as it becomes the last (withTiming, 300
-//!   ms inOut(quad)). ListItem: a row, padding 10 (stretched, as the Contract port measured),
-//!   the emoji circle (60, #F4F4F4, the emoji 25), ItemDetails (flex 1, marginLeft 10, flex-end):
-//!   amount Honk-Bold 22 letterSpacing 1, address Honk-Regular 14 marginTop 5 opacity 0.3.
-//! - Entering, past RN (the owner's ask; RN drops it in with a Keyframe of scale 0.5 →
-//!   1 and translateY 100 → 0 about the list's top centre): dealt from under the card above, its
-//!   top springing from half a card above its slot (the default spring), its scale 0.92 → 1
-//!   with it, fading in over 120 ms, drawn under the others while it comes out.
-//! - The canvas reaches `LIST_TOP` above the list and `LIST_BOTTOM` below it (the list's
-//!   clip cut the top card's corners and shadow): the list's points are `LIST_TOP` down.
-//! - Exiting (k < n − 3): FadeOutUp 400 ms inOut(quad): opacity 1 → 0, translateY 0 → −25, at
-//!   the top it had.
-//!
-//! Inputs: count (the presses of the +), seed (`env.seed`: the items' rolls, as the Contract's
-//! `roll`), held (the + is down; absent: false). The list shows count + the bursts' cards. Every
-//! change starts at the next frame's instant (`Frame::now_ms`), never at the bind's stamp: a
-//! stamp on another clock would start the motion in the past (no motion, no blur).
+//! Inputs: count, seed, held, slow. Every change starts at the next frame's instant
+//! (`Frame::now_ms`), never at the bind's stamp: a stamp on another clock would start the motion
+//! in the past.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
@@ -62,32 +23,32 @@ use skia::{Canvas, Color, Font, Images, Matrix, Paint, Renderer, Shader};
 use crate::{gfx, shaders};
 use shaders::motion_blur::{entry, module, Uniforms, ATLAS, GROUP_0, SMP, U};
 
-/// LIST_ITEM_HEIGHT.
+/// Card height, pt.
 const CARD_H: f64 = 90.0;
-/// The canvas reaches this far above the list (pt), so the top card's corners and shadow and
-/// the leaving card's rise are not cut at the list's edge; and this far below it.
+/// How far the canvas reaches above the list, pt: the top card's shadow and a leaving card's
+/// rise are not cut at the list's edge.
 pub const LIST_TOP: f64 = 24.0;
-/// The canvas's reach below the list (pt): the bottom card's shadow.
+/// How far the canvas reaches below the list, pt: the bottom card's shadow.
 pub const LIST_BOTTOM: f64 = 30.0;
-/// The new card: its top starts this many card heights above its slot, under the card above …
+/// A new card starts this many card heights above its slot, under the card above.
 const ENTER_RISE: f64 = 0.5;
-/// … at this scale …
+/// A new card starts at this scale.
 const ENTER_SCALE: f64 = 0.92;
-/// … fading in over this …
+/// A new card fades in over this long, ms.
 const ENTER_FADE_MS: f64 = 120.0;
-/// … and drawn under the others for this long.
+/// A new card is drawn under the others for this long, ms.
 const ENTER_UNDER_MS: f64 = 450.0;
-/// LIST_ITEM_HEIGHT + LIST_ITEM_MARGIN_BOTTOM.
+/// Row pitch: card height plus gap, pt.
 const ROW: f64 = 110.0;
-/// maxVisibleItems.
+/// Cards shown at once.
 const MAX_VISIBLE: usize = 3;
-/// FadeOutUp.duration(400).
+/// Exit fade, ms.
 const EXIT_MS: f64 = 400.0;
-/// isLastItemProgress's withTiming (default: 300 ms, inOut(quad)).
+/// Shadow change when a card becomes the last, ms.
 const SHADOW_MS: f64 = 300.0;
-/// The shutter: 1/15 s, a photographer's slow shutter for motion (a 360° shutter at 15 fps).
+/// Shutter time: 1/15 s, a 360° shutter at 15 fps.
 pub const EXPOSURE_MS: f64 = 1000.0 / 15.0;
-/// The debug slow motion's rate (input 3).
+/// The clock's rate in slow motion (input 3).
 pub const SLOW_RATE: f64 = 0.1;
 /// The debug HUD's font size.
 const HUD_SIZE: f32 = 12.0;
@@ -112,7 +73,7 @@ const KNOTS: usize = SLOTS * (MAX_SAMPLES + 1);
 const MARGIN_X: f64 = 30.0;
 const MARGIN_TOP: f64 = 15.0;
 const MARGIN_BOTTOM: f64 = 50.0;
-/// Reanimated's default spring (GentleSpringConfig): ω = √(900 / 4), ζ = 120 / (2√3600) = 1.
+/// The card spring: ω = √(900 / 4), critically damped (ζ = 1).
 const OMEGA: f64 = 15.0;
 const STIFFNESS: f64 = 900.0;
 const MASS: f64 = 4.0;
@@ -120,14 +81,14 @@ const MASS: f64 = 4.0;
 static HONK_BOLD: &[u8] = include_bytes!("../../assets/fonts/Honk-Bold.otf");
 static HONK: &[u8] = include_bytes!("../../assets/fonts/Honk-Regular.otf");
 
-/// generate-random-item.ts's emojis.
+/// The emojis the cards draw from.
 const EMOJIS: [&str; 36] = [
     "🫠", "💪", "🤔", "😎", "🚀", "💡", "🌈", "🍕", "🎉", "🦄", "🌟", "🍀", "🎸", "🏆", "🌺", "🍦",
     "🐱", "🐶", "🦋", "🌴", "⚡️", "🔥", "❄️", "🌊", "🎨", "📚", "🧠", "🧘", "🏄", "🚴", "🏋️", "🧗",
     "🎭", "🎬", "🎧", "📷",
 ];
 
-/// The demo's surface.
+/// The surface.
 pub fn surface() -> Box<dyn Surface> {
     Box::new(MotionBlur::default())
 }
@@ -139,7 +100,7 @@ fn ceil_px(v: f64, s: f64) -> f64 {
     (v * s - 1e-4).ceil() / s
 }
 
-/// env.contract's `roll(seed, k, n)`: integer arithmetic in doubles, as every host rolls it.
+/// `roll(seed, k, n)`: a deterministic integer roll in doubles, the same on every host.
 pub fn roll(seed: f64, k: f64, n: f64) -> f64 {
     fn turn(x: f64) -> f64 {
         (x % 65536.0) * 32768.0 + (x / 65536.0).floor()
@@ -154,7 +115,7 @@ pub fn roll(seed: f64, k: f64, n: f64) -> f64 {
         .floor()
 }
 
-/// generateRandomItem(k + 1) as the Contract rolls it: (emoji index, amount, address).
+/// The k-th card's (emoji index, amount, address).
 pub fn item(seed: f64, k: usize) -> (usize, String, String) {
     let k = k as f64;
     let cents = roll(seed, k * 4.0, 1_000_000.0) as u64;
@@ -271,7 +232,7 @@ struct Layout {
 
 impl Layout {
     fn new(w: f64, s: f64) -> Layout {
-        // alignSelf center, width 80 %: Yoga rounds both edges to the pixel.
+        // Centred at 80% width; both edges round to the pixel.
         let card_x = round_px(w * 0.1, s);
         let card_w = round_px(w * 0.9, s) - card_x;
         Layout {
@@ -316,10 +277,9 @@ impl Card {
             .map_or(1.0, |f| f.at(t))
     }
     fn pose(&self, l: &Layout, t: f64) -> Pose {
-        // Dealt from under the card above (the owner's ask, past RN's drop-in keyframe): its
-        // top springs from half a card above its slot (`tops`), its scale with the same
-        // critically damped step from ENTER_SCALE, about the card's centre, and it fades in
-        // over ENTER_FADE_MS, drawn under the others (`live`). Before it mounts: transparent.
+        // A new card is dealt from under the card above: its top springs from half a card above
+        // its slot (`tops`), its scale grows from ENTER_SCALE, and it fades in. Before it mounts
+        // it is transparent.
         let s = ENTER_SCALE + (1.0 - ENTER_SCALE) * self.pose_scale(t);
         let mut alpha = if t < self.added {
             0.0
@@ -350,7 +310,7 @@ impl Card {
         }
         let dt = ((t - self.added) / 1000.0).max(0.0);
         let step = 1.0 - (-OMEGA * dt).exp() * (1.0 + OMEGA * dt);
-        // At rest once a hundredth of a device pixel off (Reanimated's threshold, in scale).
+        // At rest once within a hundredth of a device pixel.
         if (1.0 - step) * (1.0 - ENTER_SCALE) * 400.0 < 0.01 {
             1.0
         } else {
@@ -372,7 +332,7 @@ impl Card {
     }
 }
 
-/// calculateTop(k, n, 3).
+/// Top of card `k` of `n`: the last three sit in the list.
 fn top_of(k: usize, n: usize) -> f64 {
     k as f64 * ROW - n.saturating_sub(MAX_VISIBLE) as f64 * ROW
 }
@@ -400,8 +360,8 @@ pub fn plan(
             (p.ox + p.s * lw, p.oy + p.s * lh),
         ]
     };
-    // The swept path of the corners (device px), probed at 16 steps; opacity counted alone
-    // needs no extra samples (its mean is the centre's to within a level).
+    // The corners' swept path in device pixels, probed at 16 steps. Opacity needs no samples
+    // of its own.
     const PROBES: usize = 16;
     let probe: Vec<Pose> = (0..=PROBES)
         .map(|i| pose(t - EXPOSURE_MS / 2.0 + EXPOSURE_MS * i as f64 / PROBES as f64))
@@ -453,7 +413,7 @@ struct MotionBlur {
     dt: f64,
     peak_samples: usize,
     peak_smear: f64,
-    /// The Contract's count, the burst's cards since, whether the + is held.
+    /// Presses so far, burst cards since, and whether the + is held.
     presses: usize,
     bursts: usize,
     held: bool,
@@ -593,8 +553,7 @@ impl MotionBlur {
         let s = l.s;
         let (x, y) = (l.mx as f32, l.mt as f32);
         let w = l.card_w as f32;
-        // contentStyle's iOS shadow (σ = shadowRadius, as the Contract port's CSS blur of 2r)
-        // and the boxShadow, under the opaque card.
+        // The card's two shadows, under the opaque card.
         let off = 20.0 - 10.0 * lp;
         let sigma = 10.0 - 5.0 * lp;
         let op = 0.03 - 0.01 * lp;
@@ -686,8 +645,8 @@ impl Surface for MotionBlur {
             self.bursts = 0;
             self.drawn.clear();
         }
-        // Applied at the next frame's instant: `at_ms` is not taken, as it may be on another
-        // clock than `Frame::now_ms` (an idle surface's clock also stands still).
+        // Applied at the next frame's instant. `at_ms` is not used: it may be on another clock
+        // than `Frame::now_ms`.
         let _ = at_ms;
         self.pending = Some((n, held, slow));
         Ok(())
@@ -999,9 +958,9 @@ fn build(
 
 #[cfg(target_vendor = "apple")]
 mod emoji_text {
-    //! RN's emoji Text as TextKit draws it (time_machine.rs's recipe): the system font (its
-    //! cascade picks Apple Color Emoji), one CTLine, the baseline the line's ascent below the box
-    //! top, into an sRGB premultiplied bitmap at the screen's scale, the box Yoga's (ceiled).
+    //! An emoji line drawn as TextKit draws it: the system font (its cascade picks Apple Color
+    //! Emoji), one CTLine, the baseline one ascent below the box top, into a premultiplied sRGB
+    //! bitmap at the screen's scale. The box is rounded up to whole pixels.
     use std::ffi::c_void;
     type Ref = *const c_void;
     #[link(name = "CoreFoundation", kind = "framework")]
@@ -1349,7 +1308,7 @@ mod tests {
         };
         bind(&mut s, 0.0, false);
         fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
-        // The press adds one (the Contract's count) and holds; the bind's stamp is ignored.
+        // The press adds one card and holds; the bind's stamp is ignored.
         bind(&mut s, 1.0, true);
         let mut haptics = 0;
         let mut ms = 1000.0;

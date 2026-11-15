@@ -1,49 +1,13 @@
-//! iOS Home Bouncy (src/animations/ios-home-bouncy): a 4-column ScrollView of 28 metallic app
-//! squares that spring in from 12× as iOS's home screen does after unlock; a tap replays it, a
-//! long press opens a spring customizer (a fading transparent Modal over an extraLight BlurView)
-//! whose two tabs hold mass / damping / stiffness sliders for the opening and closing springs,
-//! and a pull down dismisses it. Every value moves per frame (a shared progress through
-//! interpolate, an animated blur intensity, finger-driven sliders), so the whole demo is this
-//! surface.
+//! iOS home screen bounce: a 4-column grid of 28 metallic app squares that spring in from 12×
+//! after unlock. A tap replays the animation. A long press opens a spring customizer: a blurred
+//! modal with mass, damping and stiffness sliders for the opening and closing springs. Pulling
+//! it down dismisses it.
 //!
-//! Layout (screens/home: SPACING 8, NUM_COLUMNS 4, itemSize = floor((W − 16 − 24) / 4)): the
-//! ScrollView's content has padding top safeTop + 4, sides 8, bottom 300; rows (marginBottom 8,
-//! justifyContent flex-start, zIndex round(7 − |row − 3.5|)) of BouncyViews, each a View of
-//! width itemSize, padding 14 (marginRight 8 but the last) around the AppItem (aspectRatio 1,
-//! the colour View flex 1, borderRadius 16 continuous) on #fafafa.
-//!
-//! BouncyView (components/bouncy-item): measure() at mount gives x (relative to the row: the
-//! demo's own quirk, the content's 8 pt padding is left out) and pageY; translate (W/2 − cx,
-//! H/2 − cy), scale, translate back, about the view's centre: every square scales about the same
-//! point (W/2 + 8, H/2) of the content. scale = interpolate(progress, [0, 1, 2], [12,
-//! interpolate(distance, [0, diagonal / 2], [1, 0]), 1]) (extended).
-//!
-//! Motion audit (animations/bouncy.ts, Reanimated 4.7.1):
-//!
-//! | value | RN | here |
-//! |---|---|---|
-//! | progress | startAnimation: cancel, withSequence(withSpring(0, { 80, 120, 240 }), withDelay(800, withSequence(withSpring(1, { ...opening, energyThreshold 10 }), withSpring(2, closing)))) | `Seq`: the same steps, frame for frame |
-//! | opening spring | energyThreshold 10: its first onFrame (dt 0, energy ratio 1 ≤ 10) ends it at 1 | p = 1 on the delay's last frame, the closing spring starting there |
-//! | closing spring | its config read when startAnimation runs; rest thresholds ignored by 4.7 (energyThreshold 6e-9) | `Spring` |
-//! | Pressable | onPress → startAnimation, onLongPress (500 ms, cancelled past 10 pt) → Modal | `Press` |
-//! | ScrollView | UIScrollView, bounces | `UiScroll` (vertical) |
-//! | Modal | transparent, animationType fade: UIModalTransitionStyleCrossDissolve; stays rendered until onDismiss | `fade`: 400 ms ease-in-out (UIKit's default transition, unmeasured) |
-//! | translateY | pan onUpdate: ty = translationY when > 0; > 120 once → startAnimation; onEnd: ty > 80 or vy > 800 → close, else withSpring(0, { 0.4, 10, 100 }) | `Spring` |
-//! | content | opacity interpolate(min(ty / 150, 1), [0, 1], [1, 0], clamp), translateY ty (group opacity) | offscreen layer |
-//! | blur | tint extraLight, intensity interpolate(ty, [0, 150], [70, 0]) (extended) | `skia::backdrop` |
-//! | tab indicator | useDerivedValue(withSpring(index, { 0.8, 20, 200 })) | `Spring::retarget` |
-//! | slider cards | Keyframes 500 ms on bezier(0.25, 0.46, 0.45, 0.94); LayoutAnimationConfig skipEntering | `Card`, the exiting card above |
-//! | slider | Pan on the thumb: clamp(startX + translationX, 0, 256) → round(v / step) × step | the same |
-//!
-//! Input: safeTop.
-//!
-//! Haptics (past RN, which plays none: the owner's haptic language): `haptic:impact-light` when
-//! the long press opens the customizer and when a thumb's pan activates (a tap on it plays
-//! none); `haptic:selection` per value step a thumb moves (STEP_SLACK of a step past its half
-//! line, so a thumb held there does not flap; at most one per HAPTIC_GAP_MS) and once when a
-//! pull goes past the 80 pt line past which a release dismisses (none on the way back, re-armed
-//! REARM back under it); `haptic:impact-medium` when a release dismisses the customizer. No two
-//! within HAPTIC_GAP_MS; taps play none.
+//! Haptics:
+//! - Light impact when the long press opens the customizer and when a slider thumb is grabbed.
+//! - Selection at each slider step, and once when a pull crosses the dismiss line.
+//! - Medium impact when a release dismisses the customizer.
+//! - Haptics are at least 40 ms apart. Taps play none.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -55,10 +19,10 @@ use skia::{Canvas, Color, Font, Images, Matrix, Paint, Renderer, Shader};
 use crate::gfx;
 use crate::ui_scroll::{Snap, UiScroll, NORMAL};
 
-/// SF-Pro-Rounded-Bold (the app's bundled font) cut to the customizer's strings, no `trak`.
+/// Bold rounded UI font, subset to the customizer's strings.
 static BOLD: &[u8] = include_bytes!("../fonts/sf-pro-rounded-bold-bouncy-subset.otf");
 
-/// APPS_DATA (constants.ts).
+/// Each square's colour, row by row.
 const APPS: [u32; 28] = [
     0xE6E8EA, 0xDDE1E4, 0xCFD2D5, 0xDCE0E3, 0xE4E6E9, 0xD9DCDF, 0xCDD1D4, 0xE1E3E6, 0xDFE1E3,
     0xD0D3D6, 0xE8EAEC, 0xD8DADD, 0xDADDE0, 0xDFE2E5, 0xCBCED1, 0xD6D9DC, 0xD9DCDE, 0xE6E8EB,
@@ -69,14 +33,14 @@ const SPACING: f32 = 8.0;
 const COLUMNS: usize = 4;
 const LIST_BG: u32 = 0xFAFAFA;
 
-/// The first step of startAnimation.
+/// The spring that takes the progress to 0 before each replay.
 const ZERO_SPRING: SpringConfig = SpringConfig {
     mass: 80.0,
     damping: 120.0,
     stiffness: 240.0,
 };
 const DELAY_MS: f64 = 800.0;
-/// DefaultOpeningSpringConfig, DefaultClosingSpringConfig: [mass, damping, stiffness].
+/// Opening and closing spring defaults: [mass, damping, stiffness].
 const DEFAULTS: [[f64; 3]; 2] = [[20.0, 80.0, 180.0], [1.4, 18.0, 100.0]];
 const SNAP_BACK: SpringConfig = SpringConfig {
     mass: 0.4,
@@ -88,7 +52,7 @@ const INDICATOR: SpringConfig = SpringConfig {
     damping: 20.0,
     stiffness: 200.0,
 };
-/// Pressability's DEFAULT_LONG_PRESS_DELAY_MS and its allowed movement.
+/// Long press time, and how far a finger may drift before the press cancels.
 const LONG_PRESS_MS: f64 = 500.0;
 const LONG_PRESS_SLOP: f32 = 10.0;
 /// The shortest gap between two haptics, ms.
@@ -99,15 +63,15 @@ const DISMISS_PULL: f64 = 80.0;
 const REARM: f64 = 24.0;
 /// How far (in steps) past a step's half line a thumb goes before its selection plays.
 const STEP_SLACK: f64 = 0.15;
-/// The Modal's cross dissolve (UIKit's default transition duration; not measured).
+/// Modal fade duration, ms.
 const FADE_MS: f64 = 400.0;
-/// The keyframes' duration and Offset (screens/spring-customizer/animations.ts).
+/// Slider card keyframe duration, ms, and the horizontal slide distance.
 const KEYFRAME_MS: f64 = 500.0;
 const OFFSET: f64 = 20.0;
-/// SLIDER_WIDTH, THUMB_SIZE.
+/// Slider track width and thumb size, pt.
 const SLIDER: f32 = 280.0;
 const THUMB: f32 = 24.0;
-/// The sliders: label, min, max, step (spring-slider-container.tsx).
+/// The sliders: label, min, max, step.
 const SLIDERS: [(&str, f64, f64, f64); 3] = [
     ("Mass", 0.1, 100.0, 0.1),
     ("Damping", 1.0, 200.0, 1.0),
@@ -117,9 +81,7 @@ const TABS: [&str; 2] = ["Opening", "Closing"];
 /// Card layers an animating slider card can take at once.
 const CARD_LAYERS: usize = 4;
 
-/// tint="extraLight" (UIBlurEffectStyleExtraLight): not yet probed by exact/parity-tools/
-/// blur-probe; UIKit's UltraLight backdrop settings (blur 20, saturation 1.8, a 0.97 grey at
-/// 0.8 over it), the family `.light`'s measured chain belongs to (blur 30, 1.8, white 0.3).
+/// UIKit's extraLight blur. These are UltraLight's settings, not yet measured on device.
 const EXTRA_LIGHT: Chain = Chain {
     radius: 20.0,
     scale: 0.125,
@@ -130,7 +92,7 @@ const EXTRA_LIGHT: Chain = Chain {
     tint: Some((0.97, 0.8)),
 };
 
-/// kCAMediaTimingFunctionEaseInEaseOut, UIKit's default animation curve.
+/// UIKit's default ease-in-out curve.
 fn ease_in_out() -> Easing {
     Easing::bezier(0.42, 0.0, 0.58, 1.0)
 }
@@ -138,15 +100,15 @@ fn keyframe_easing(t: f64) -> f64 {
     Easing::bezier(0.25, 0.46, 0.45, 0.94).at(t.clamp(0.0, 1.0))
 }
 
-/// Yoga's pixel rounding (half up).
+/// Rounds to the pixel grid, halves up.
 fn round_px(v: f32, s: f32) -> f32 {
     (v * s + 0.5 + 1e-4).floor() / s
 }
-/// A Text's measured side: ceiled to the pixel after an epsilon.
+/// Rounds a text size up to the pixel grid.
 fn ceil_px(v: f32, s: f32) -> f32 {
     ((v + 0.001) * s).ceil() / s
 }
-/// A Text's offset inside its parent: floored.
+/// Rounds a text offset down to the pixel grid.
 fn floor_px(v: f32, s: f32) -> f32 {
     (v * s + 1e-4).floor() / s
 }
@@ -155,7 +117,7 @@ fn item_size(width: f32) -> f32 {
     ((width - 2.0 * SPACING - SPACING * (COLUMNS - 1) as f32) / COLUMNS as f32).floor()
 }
 
-/// The rows in the order Core Animation draws them: zIndex round(7 − |row − 3.5|), stable.
+/// Row indices in draw order: the middle rows are drawn last, on top.
 fn row_order() -> Vec<usize> {
     let n = APPS.len().div_ceil(COLUMNS);
     let z = |i: usize| (n as f64 - (i as f64 - n as f64 / 2.0).abs() + 0.5).floor() as i64;
@@ -164,7 +126,7 @@ fn row_order() -> Vec<usize> {
     rows
 }
 
-/// One square: its colour View's frame in the content (x, y, side) and its second scale.
+/// A square's frame in the content (x, y, side) and its second-stage scale.
 fn squares(width: f32, height: f32, safe_top: f32) -> Vec<([f32; 3], f64)> {
     let item = item_size(width);
     let diagonal = ((width * width + height * height) as f64).sqrt();
@@ -172,7 +134,7 @@ fn squares(width: f32, height: f32, safe_top: f32) -> Vec<([f32; 3], f64)> {
         .map(|k| {
             let (i, j) = ((k / COLUMNS) as f32, (k % COLUMNS) as f32);
             let row_y = safe_top + 4.0 + i * (item + SPACING);
-            // The BouncyView: its own width holds its child's marginRight.
+            // The gap to the right is part of the cell, except at the row's end.
             let last = k % COLUMNS == COLUMNS - 1 || k == APPS.len() - 1;
             let bw = if last { item } else { item + SPACING };
             let bx = j * (item + SPACING);
@@ -196,25 +158,25 @@ fn content_height(width: f32, safe_top: f32) -> f32 {
     safe_top + 4.0 + rows * (item_size(width) + SPACING) + 300.0
 }
 
-/// startAnimation's sequence.
+/// The replay's stages.
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Seq {
     Idle,
-    /// withSpring(0, …) started on the frame at `at`; its closing config read then.
+    /// Spring to 0, started at `at`. The closing config is read here.
     ToZero {
         at: f64,
         closing: SpringConfig,
     },
-    /// withDelay(800) since the frame at `at`.
+    /// An 800 ms pause from `at`.
     Delay {
         at: f64,
         closing: SpringConfig,
     },
-    /// withSpring(2, closing).
+    /// Spring to 2 with the closing config.
     Closing,
 }
 
-/// The root Pressable's touch.
+/// The touch on the grid, for the tap and the long press.
 #[derive(Clone, Copy, Debug)]
 struct Press {
     id: u32,
@@ -225,7 +187,7 @@ struct Press {
     armed: bool,
 }
 
-/// One mounted SpringSliderContainer view.
+/// One slider card, possibly fading or sliding out.
 #[derive(Clone, Copy, Debug)]
 struct Card {
     tab: usize,
@@ -280,14 +242,13 @@ impl Card {
 /// Who a modal finger drives.
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Grab {
-    /// The PullToDismiss pan (and maybe a tab's Pressable).
+    /// The pull-to-dismiss pan, with a tab tap still possible.
     Pull { tab: Option<usize> },
-    /// Slider `i`'s thumb pan: the thumb's x and the value at its start, and the value its
-    /// selection haptic last felt (with STEP_SLACK of hysteresis).
+    /// Slider `i`'s thumb pan: the thumb's start x, and the value its last haptic felt.
     Thumb { i: usize, start_x: f64, felt: f64 },
 }
 
-/// The SpringCustomizer while rendered.
+/// The customizer while it is shown.
 struct Modal {
     ty: Spring,
     triggered: bool,
@@ -296,7 +257,7 @@ struct Modal {
     grab: Option<(u32, Grab)>,
     tab: usize,
     indicator: Spring,
-    /// The tab chosen since the last frame (the commit's).
+    /// A tab was chosen since the last frame.
     retarget: bool,
     cards: Vec<Card>,
 }
@@ -354,13 +315,13 @@ impl Layout {
     fn header(&self, i: usize) -> f32 {
         self.card[1] + 25.0 + i as f32 * (16.0 + self.header_h + 44.0 + 12.0) + 16.0
     }
-    /// Slider `i`'s sliderContainer (x, y).
+    /// Slider `i`'s track origin (x, y).
     fn slider(&self, i: usize) -> (f32, f32) {
         (self.card[0] + 25.0, self.header(i) + self.header_h)
     }
 }
 
-/// The haptics posted to the Contract, paced.
+/// Haptics queued for the host, spaced by HAPTIC_GAP_MS.
 #[derive(Default)]
 struct Haptics {
     /// When the last one played.
@@ -378,7 +339,7 @@ impl Haptics {
     }
 }
 
-/// The surface.
+/// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
     Box::new(Bouncy::new())
 }
@@ -389,13 +350,13 @@ struct Bouncy {
     now: f64,
     progress: Spring,
     seq: Seq,
-    /// startAnimation called since the last frame.
+    /// A replay was requested since the last frame.
     start: bool,
     configs: [[f64; 3]; 2],
     scroll: UiScroll,
     press: Option<Press>,
     modal: Option<Modal>,
-    /// showCustomizer, and the Modal's dissolve (1 shown).
+    /// Customizer shown (the fade runs to 1) or hidden (to 0).
     visible: bool,
     fade: Timing,
     bold16: Option<Font>,
@@ -408,7 +369,7 @@ struct Bouncy {
 
 struct Gpu {
     pixels: (u32, u32, u32),
-    /// 0: the home, then its blur; 1: the customizer's content.
+    /// 0: the blurred home; 1: the customizer's content.
     layers: Images,
     /// The Modal as one group: the blur and the content at its opacity.
     modal: Images,
@@ -491,7 +452,7 @@ impl Bouncy {
         let mut moving = self.scroll.step(now);
         if self.start {
             self.start = false;
-            // cancelAnimation, then withSpring(0) from where it is, at rest.
+            // Restart from the current value, at rest, towards 0.
             let v = self.progress.value;
             self.progress.set(v);
             self.progress.to(0.0, 0.0, ZERO_SPRING);
@@ -511,7 +472,7 @@ impl Bouncy {
             }
             Seq::Delay { at, closing } => {
                 if now - at >= DELAY_MS {
-                    // withSpring(1, energyThreshold 10) ends on its first frame, at 1.
+                    // The opening spring ends on this frame, at 1.
                     self.progress.set(1.0);
                     self.progress.to(2.0, 0.0, closing);
                     self.progress.step(now);
@@ -583,10 +544,10 @@ impl Bouncy {
     }
 
     fn home_pointer(&mut self, id: u32, phase: Phase, x: f32, y: f32, at_ms: f64) {
-        // The ScrollView: the content drags with the finger (y as the scroll's axis).
+        // The grid scrolls with the finger.
         self.scroll.input(id, phase, y, x, at_ms, true);
         if self.scroll.dragging() {
-            // The native scroll cancels the Pressable's touch.
+            // A scroll cancels the press.
             self.press = None;
         }
         match phase {
@@ -685,7 +646,6 @@ impl Bouncy {
                     Event::Start(p) => {
                         start_x = (self.configs[tab][i] - min) / (max - min) * span;
                         felt = self.configs[tab][i];
-                        // The pan takes the thumb.
                         self.haptics.play("impact-light", at_ms);
                         Some(p)
                     }
@@ -713,7 +673,7 @@ impl Bouncy {
                 let mut close = false;
                 match m.pan.event(id, phase, x, y, at_ms, true) {
                     Event::Start(p) | Event::Update(p) => {
-                        // The pan's activation cancels the Pressable.
+                        // The pan's start cancels a tab tap.
                         tab = None;
                         if p.translation_y > 0.0 {
                             m.ty.set(p.translation_y as f64);
@@ -742,7 +702,7 @@ impl Bouncy {
                 let m = self.modal.as_mut().unwrap();
                 if phase == Phase::Up {
                     if let Some(k) = tab {
-                        // Pressability: the release inside the tab's press rect (20 pt out).
+                        // A release within 20 pt of a tab counts as a tap on it.
                         let tw = l.tabs[2] / 2.0;
                         let tx = l.tabs[0] + k as f32 * tw;
                         let ty = l.tabs[1] + m.ty.value as f32;
@@ -783,7 +743,7 @@ impl Bouncy {
         }
     }
 
-    /// The ScrollView's content: #fafafa, the squares in Core Animation's order.
+    /// Draws the grid in draw order on the list background.
     fn record_home(&self, c: &mut Canvas) {
         let (w, h, _) = self.size;
         c.draw_rect(0.0, 0.0, w, h, &Paint::fill(Color::view_hex(LIST_BG)));
@@ -817,7 +777,7 @@ impl Bouncy {
         }
     }
 
-    /// An outset boxShadow (σ = blur / 2), cut out of its box.
+    /// An outer shadow, drawn only outside its box.
     fn shadow(
         c: &mut Canvas,
         b: [f32; 4],
@@ -841,7 +801,7 @@ impl Bouncy {
         c.restore();
     }
 
-    /// RCTBorderDrawing's ring (circular corners) of width `bw`.
+    /// A ring of width `bw` inside the box edge.
     fn ring(c: &mut Canvas, b: [f32; 4], r: f32, bw: f32, color: Color) {
         c.draw_with(&Paint::fill(color), |p| {
             skia::add_rrect(p, b[0], b[1], b[2], b[3], r);
@@ -856,7 +816,7 @@ impl Bouncy {
         });
     }
 
-    /// The customizer's content but the slider cards, at translateY ty.
+    /// The customizer's tabs and indicator, moved by the pull.
     fn record_content(&self, c: &mut Canvas, m: &Modal) {
         let l = self.layout();
         let s = self.size.2;
@@ -872,7 +832,6 @@ impl Bouncy {
             2.0,
             &Paint::fill(Color::view_hex(0xE5E7EB)),
         );
-        // TabSelector: the container's shadow, the indicator, the labels.
         let t = l.tabs;
         Self::shadow(
             c,
@@ -920,7 +879,7 @@ impl Bouncy {
         c.restore();
     }
 
-    /// One SpringSliderContainer (at its translateX, without its opacity).
+    /// One slider card at the given offset; the caller applies its opacity.
     fn record_card(&self, c: &mut Canvas, card: &Card, tx: f32, ty: f32) {
         let l = self.layout();
         let s = self.size.2;
@@ -961,7 +920,7 @@ impl Bouncy {
                     -0.2,
                 );
             }
-            // The ReText (a TextInput): minWidth 70, border 1, padding 10 / 6, centred.
+            // The value box: at least 70 pt wide.
             if let Some(f) = self.bold16.as_ref() {
                 let text = format!("{v:.1}");
                 let tw = f.advance_width(&text);
@@ -990,14 +949,13 @@ impl Bouncy {
                     &Paint::fill(Color::view_hex(0x9CA3AF).alpha(0.06)),
                 );
                 Self::ring(c, vb, 12.0, 1.0, Color::view_hex(0xD1D5DB).alpha(0.3));
-                // UITextField centres its line a device pixel above where a Text would sit.
+                // UIKit centres the value a device pixel above a Text's line.
                 let x = vb[0] + 11.0 + (vb[2] - 22.0 - tw) / 2.0;
                 let top = vb[1] + 7.0 - 1.0 / s;
                 c.draw_text(&text, x, gfx::baseline(f, top), f, &Paint::fill(grey));
             }
             let (sx, sy) = l.slider(i);
             let t = ((v - min) / (max - min)) as f32 * (SLIDER - THUMB);
-            // The track: shadow, background, the clipped fill, Core Animation's border on top.
             let tr = [sx, sy + 18.0, SLIDER, 8.0];
             Self::shadow(
                 c,
@@ -1043,7 +1001,7 @@ impl Bouncy {
             );
             c.restore();
             Self::ring(c, tr, 4.0, 1.0, Color::view_hex(0xF3F4F6));
-            // The thumb: a circle (continuous at half its side is Core Animation's circle).
+            // Continuous corners at half the side make a circle.
             let th = [sx + t, sy + 10.0, THUMB, THUMB];
             Self::shadow(
                 c,
@@ -1198,11 +1156,11 @@ impl Surface for Bouncy {
                     [pw, ph],
                 );
             }
-            // The animating slider cards, each a group in its own layer.
+            // Animating cards each render to a layer.
             let ty = m.ty.value as f32;
             let mut direct = Vec::new();
             let mut layered = Vec::new();
-            // Core Animation's order: the mounted card, then the exiting ones above it.
+            // The mounted card first, exiting cards above it.
             let mut order: Vec<&Card> = m.cards.iter().filter(|c| c.exit.is_none()).collect();
             order.extend(m.cards.iter().filter(|c| c.exit.is_some()));
             for card in order {
@@ -1229,7 +1187,7 @@ impl Surface for Bouncy {
                 let v = gpu.cards.as_ref().unwrap().render_view_layer(k as u32);
                 r.draw(device, queue, encoder, c, &v, fmt, pw, ph, clear);
             }
-            // The content as one group (its pull opacity), in layer 1.
+            // The content as one group, in layer 1.
             let c = &mut gpu.content.0;
             c.begin(s);
             self.record_content(c, m);
@@ -1263,7 +1221,7 @@ impl Surface for Bouncy {
                 ph,
                 clear,
             );
-            // The Modal: the blur, the content at its opacity; then dissolved over the home.
+            // Blur and content, then the modal fades over the home.
             let c = &mut gpu.compose.0;
             c.begin(s);
             if blurred {
@@ -1304,7 +1262,7 @@ impl Surface for Bouncy {
                 gpu.bound[0] = true;
             }
         } else if gpu.cards.is_some() {
-            // The customizer left: its layers go.
+            // Drop the card layers once the customizer is gone.
             gpu.cards = None;
             gpu.card.clear();
             gpu.content.1 = Renderer::default();
@@ -1367,13 +1325,12 @@ mod tests {
 
     #[test]
     fn the_grid_is_rns() {
-        // itemSize floor((420 − 16 − 24) / 4) = 95: the square 67 at 8 + 14, rows 103 apart.
+        // Squares sit 14 pt into a 95 pt cell; rows are 103 pt apart.
         let sq = squares(W, H, 68.0);
         assert_eq!(sq.len(), 28);
         assert_eq!(sq[0].0, [22.0, 86.0, 67.0]);
         assert_eq!(sq[5].0, [22.0 + 103.0, 86.0 + 103.0, 67.0]);
         assert_eq!(content_height(W, 68.0), 72.0 + 7.0 * 103.0 + 300.0);
-        // zIndex 4, 5, 6, 7, 7, 6, 5.
         assert_eq!(row_order(), vec![0, 1, 6, 2, 5, 3, 4]);
     }
 
@@ -1409,7 +1366,7 @@ mod tests {
             over = over.max(b.progress.value);
             u += FRAME;
         }
-        // The closing spring (ζ 0.76) overshoots 2 by e^(−πζ/√(1 − ζ²)) ≈ 2.5 %, then rests.
+        // The closing spring overshoots 2 by about 2.5 %.
         assert!((over - 2.025).abs() < 0.002, "{over}");
         assert_eq!(b.progress.value, 2.0);
     }
@@ -1440,7 +1397,6 @@ mod tests {
         b.open();
         let t = run(&mut b, 0.0, 600.0);
         assert!(!b.fade.running);
-        // Switch to Closing.
         let l = b.layout();
         let (cx, cy) = (l.tabs[0] + l.tabs[2] * 0.75, l.tabs[1] + 10.0);
         b.input(&pointer(PointerPhase::Down, cx, cy, t));
@@ -1449,7 +1405,7 @@ mod tests {
         let m = b.modal.as_ref().unwrap();
         assert_eq!((m.tab, m.cards.len()), (1, 1));
         assert!((m.indicator.value - 1.0).abs() < 1e-9);
-        // Mass 1.4 → the thumb at 1.3 / 99.9 × 256; drag it 110 pt right (100 past the 10).
+        // Drag the mass thumb 110 pt right.
         let f = b.thumb_frame(0).unwrap();
         let (x, y) = (f[0] + 12.0, f[1] + 12.0);
         b.input(&pointer(PointerPhase::Down, x, y, t));
@@ -1538,14 +1494,13 @@ mod tests {
         let mut s = surface();
         s.bind(&[Value::Number(68.0)], None).unwrap();
         let mut t = 0.0;
-        // Scale 12 at first: the screen centre is inside a magnified square or its gap.
         let (first, _) = fixture::render(&gpu, s.as_mut(), &frame(t)).unwrap();
         first.save("ios-home-bouncy-start");
         loop {
             let (img, moving) = fixture::render(&gpu, s.as_mut(), &frame(t)).unwrap();
             if !moving || t > 15000.0 {
                 img.save("ios-home-bouncy-rest");
-                // The first square's centre (55.5, 119.5) and the list beside it.
+                // The first square's centre, and the list beside it.
                 let p = img.at(111, 239);
                 assert!(
                     p[0].abs_diff(0xE6) <= 3 && p[2].abs_diff(0xEA) <= 3,

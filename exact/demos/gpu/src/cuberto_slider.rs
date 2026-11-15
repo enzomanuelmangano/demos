@@ -1,32 +1,13 @@
-//! Cuberto Slider (src/animations/cuberto-slider/components/slider.tsx): a 300 × 4 track
-//! (#E5E5E5, radius 5), its progress (#6141B9) and a round picker (pickerSize 50, white with a
-//! #6141B9 border); dragging it grows the picker (scale 0.7 → 1), thins its border
-//! (floor(50 / 3) = 16 → 4) and rounds it (50 / 2.5 = 20 → 25), all withSpring() (Gentle), and
-//! a balloon (the Skia path in a 65 × 91 FitBox, the value in white bold 20 inside) trails the
-//! picker on withSpring(), leaning toward it.
+//! Cuberto Slider: a 300-point track with a round picker and a balloon that shows the value.
+//! Dragging the picker grows it, thins its border and rounds it; the balloon trails the picker.
 //!
-//! RN draws the track, the bar and the picker as Views and the balloon in a Skia canvas inside
-//! a View; they all move per frame from one pan, so the whole slider is this surface, on a
-//! full-screen canvas whose centre is the track's (styles.container centres it).
-//!
-//! - Pan().onBegin: the springs to their pressed values, contextX = clamped x; onUpdate:
-//!   translateX = contextX + translationX, clamped to [0, 300]; onTouchesUp: springs back.
-//! - The balloon: 65 wide (pickerSize + 15), × 1.4 tall, its bottom 40 (pickerSize × 0.8) above
-//!   the track's bottom, centred on balloonX; rotated by
-//!   −(−π/2 + atan2(91 + 40, balloonX − x)) about its centre.
-//! - The value: floor(interpolate(x, [0, 300], [0, 100], CLAMP)), a TextInput (ReText) filling
-//!   the balloon less 10 at the bottom: centred both ways (UITextField centres its line), in
-//!   the system font, bold, 20, laid out by UIKit (`match_ui_font`).
-//!
-//! How Core Animation shows RN's views (measured against RN on the simulator):
-//! - Yoga rounds the balloon view's `left: −32.5` to the device pixel (half up): the canvas and
-//!   the TextInput sit in that rounded box, 0.5 px right of the unrounded one at 3x.
-//! - The balloon's canvas and its TextInput are layers inside the balloon view, drawn upright;
-//!   the view's translateX and rotate move those bitmaps, resampled bilinearly. So the balloon
-//!   and its value are drawn upright into a layer, then placed with the view's transform.
-//! - The picker is a View with a uniform border: Core Animation's own border and cornerRadius,
-//!   with `allowsEdgeAntialiasing` NO. Under the scale its straight edges take the pixels whose
-//!   centres they hold, aliased; the corner arcs stay antialiased.
+//! - The track, bar, picker and balloon are drawn into one full-screen canvas, centred on the
+//!   track. Pan begin presses the picker (its springs go to the pressed values). Pan update moves
+//!   it by the drag, clamped to the track. Touch-up releases it.
+//! - The balloon hangs above the track and leans toward the picker.
+//! - Pixels: the picker's straight edges are aliased to the whole pixels whose centres they
+//!   hold (edge antialiasing off); its corners stay antialiased. The balloon is drawn upright into
+//!   a layer, then placed with its transform, so the value is not resampled.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, PointerPhase, Surface, SurfaceError, Value};
@@ -40,26 +21,25 @@ const PRIMARY_COLOR: u32 = 0x6141B9;
 const PICKER_SIZE: f32 = 50.0;
 const SLIDER_HEIGHT: f32 = 4.0;
 const SLIDER_WIDTH: f32 = 300.0;
-/// The haptic ticks' spacing at the least.
+/// Minimum ms between selection ticks.
 const TICK_MIN_MS: f64 = 35.0;
 const DEFAULT_SCALE: f64 = 0.7;
-/// pickerSize / 2.5.
+/// Picker corner radius at rest, pt.
 const DEFAULT_RADIUS: f64 = PICKER_SIZE as f64 / 2.5;
-/// floor(pickerSize / 3).
+/// Picker border width at rest, pt.
 const DEFAULT_BORDER: f64 = 16.0;
-/// pickerSize + 15.
+/// Balloon width, pt.
 const BALLOON_WIDTH: f32 = PICKER_SIZE + 15.0;
-/// balloonWidth × 1.4.
+/// Balloon height, pt.
 const BALLOON_HEIGHT: f32 = BALLOON_WIDTH * 1.4;
-/// pickerSize × 0.8.
+/// Gap between the balloon and the track, pt.
 const BALLOON_BOTTOM: f32 = PICKER_SIZE * 0.8;
 const BALLOON_PATH: &str = "M250.035 633.212C191.503 601.79 -40.8238 460.104 6.50042 212.662C60.5479 -69.9336 480.586 -71.6198 536.5 212.662C584.398 456.188 349.649 596.016 281.356 631.103L323.681 686.551C329.675 694.404 325.058 705.72 315.247 706.885C300.617 708.622 281.362 710.5 266.5 710.5C251.638 710.5 232.383 708.622 217.753 706.885C207.942 705.72 203.325 694.404 209.319 686.551L250.035 633.212Z";
 static OUTFIT: &[u8] = include_bytes!("../fonts/outfit.ttf");
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
-    // fontWeight 'bold', fontSize 20: San Francisco Bold as UIKit lays it out, where the
-    // platform's file is readable.
+    // System bold 20 pt, laid out as UIKit lays it out; falls back to the bundled font.
     let font = skia::match_ui_font(20.0, 700.0).or_else(|| Font::new(OUTFIT, 20.0).map(Font::with_ui_layout));
     Box::new(CubertoSlider {
         font,
@@ -81,9 +61,8 @@ struct CubertoSlider {
     pan: PanGesture,
     translate_x: f32,
     context_x: f32,
-    /// Haptics due to be posted (the owner's call, phone feedback mwhlj5bc; RN plays none): a
-    /// light impact at the grab, a selection tick per value step (at most one per
-    /// TICK_MIN_MS), a rigid tap where the picker meets either end.
+    /// Haptics to post: a light impact at the grab, a selection tick per value step (at most one
+    /// per TICK_MIN_MS), a rigid tap where the picker meets either end.
     posted: Vec<String>,
     last_value: i32,
     last_tick_ms: f64,
@@ -96,7 +75,7 @@ struct CubertoSlider {
     label_value: i32,
     canvas: Canvas,
     renderer: Renderer,
-    /// The balloon view's content (the canvas and the TextInput), upright, in device pixels.
+    /// The balloon's upright content, in device pixels.
     layer: Canvas,
     layer_renderer: Renderer,
     /// The layer's texture, its pixel size and the label and shader generation it holds.
@@ -104,25 +83,23 @@ struct CubertoSlider {
     layer_label: Option<i32>,
 }
 
-/// Yoga's rounding of an edge to the device pixel (half up).
+/// Rounds an edge to the device pixel, half up.
 fn round_px(v: f32, scale: f32) -> f32 {
     (v * scale + 0.5).floor() / scale
 }
 
-/// A pixel row or column a Core Animation layer with `allowsEdgeAntialiasing` NO starts at, for an
-/// edge at `v` points: the first whose centre lies past it, in points.
+/// The first whole-pixel edge whose centre lies past `v` (points), with edge antialiasing off.
 fn alias(v: f32, scale: f32) -> f32 {
     (v * scale - 0.5).ceil() / scale
 }
 
 impl CubertoSlider {
-    /// The track's top-left corner: the screen's centre less half the track, on Yoga's pixel.
+    /// The track's top-left corner, centred on the screen and pixel-snapped.
     fn origin(&self, scale: f32) -> (f32, f32) {
         (round_px((self.size.0 - SLIDER_WIDTH) / 2.0, scale), round_px((self.size.1 - SLIDER_HEIGHT) / 2.0, scale))
     }
-    /// A rounded rect of a Core Animation layer with `allowsEdgeAntialiasing` NO: the corners
-    /// antialiased where they are, the straight edges aliased to the pixels whose centres they
-    /// hold (`alias`).
+    /// Draws a rounded rect with edge antialiasing off: corners antialiased, straight edges on
+    /// whole pixels (`alias`).
     fn layer_rrect(c: &mut Canvas, sp: f32, (l, t, r, b): (f32, f32, f32, f32), radius: f32, paint: &Paint) {
         let (al, at, ar, ab) = (alias(l, sp), alias(t, sp), alias(r, sp), alias(b, sp));
         if ar <= al || ab <= at {
@@ -142,7 +119,7 @@ impl CubertoSlider {
             c.draw_rect(il, at, ir - il, ab - at, paint);
         }
     }
-    /// The shown value: floor(interpolate(x, [0, 300], [0, 100], CLAMP)).
+    /// The shown value, 0 to 100.
     fn value(&self) -> i32 {
         interpolate_clamp(self.clamped() as f64, &[0.0, SLIDER_WIDTH as f64], &[0.0, 100.0]).floor() as i32
     }
@@ -166,8 +143,7 @@ impl CubertoSlider {
     }
     fn press(&mut self, down: bool) {
         let (s, r, b) = if down { (1.0, PICKER_SIZE as f64 / 2.0, 4.0) } else { (DEFAULT_SCALE, DEFAULT_RADIUS, DEFAULT_BORDER) };
-        // sv.set(withSpring(v)) over a running spring: spring.ts onStart keeps its velocity (not
-        // one pointing away), its clock, and measures the rest against getEnergy(x0, 0).
+        // Retargets the running springs, keeping their velocity.
         self.scale.retarget(s, GENTLE);
         self.radius.retarget(r, GENTLE);
         self.border.retarget(b, GENTLE);
@@ -187,7 +163,6 @@ impl Surface for CubertoSlider {
         Some(format!("{{\"value\":{},\"x\":{},\"balloonX\":{}}}", self.label_value, self.clamped(), self.balloon_x.value))
     }
 
-    /// RN's press is a Gesture.Pan's onBegin / onFinalize with its own springs, not pressto: not `pressto::Pressable`.
     fn messages(&mut self) -> Vec<String> {
         crate::haptic::host(std::mem::take(&mut self.posted))
     }
@@ -213,7 +188,7 @@ impl Surface for CubertoSlider {
                 self.felt(at_ms);
             }
             Event::End(_) | Event::Fail => {
-                // onTouchesUp (a cancelled touch lets go the same way).
+                // Release on touch-up; a cancelled touch releases too.
                 if matches!(phase, PointerPhase::Up | PointerPhase::Cancel) {
                     self.press(false);
                 }
@@ -235,7 +210,7 @@ impl Surface for CubertoSlider {
         let sp = frame.scale;
         self.scale_px = sp;
         let x = self.clamped();
-        // balloonSliderX: withSpring(clampedTranslateX), re-run as x moves.
+        // The balloon follows the picker on a spring.
         self.balloon_x.retarget(x as f64, GENTLE);
         let now = frame.now_ms;
         let moving = self.scale.step(now) | self.radius.step(now) | self.border.step(now) | self.balloon_x.step(now);
@@ -247,12 +222,11 @@ impl Surface for CubertoSlider {
             self.label_value = value;
         }
         let (ox, oy) = self.origin(sp);
-        // The balloon is a Skia Path (sRGB); the bar and the picker's border are RN Views,
-        // whose colour the app reads as Display P3 (`Color::view_hex`).
+        // The balloon is sRGB; the bar and the picker are Display P3 (`Color::view_hex`).
         let color = Paint::fill(Color::hex(PRIMARY_COLOR));
         let view_color = Paint::fill(Color::view_hex(PRIMARY_COLOR));
 
-        // The balloon view's content, upright: the canvas's FitBox path and the TextInput.
+        // The balloon's content, drawn upright: the path and the value.
         let (lw, lh) = ((BALLOON_WIDTH * sp).ceil() as u32, (BALLOON_HEIGHT * sp).ceil() as u32);
         if self.layer_gpu.as_ref().is_none_or(|g| g.2 != (lw, lh) || g.3 != frame.shader_generation) {
             let images = Images::target(device, lw, lh);
@@ -272,8 +246,7 @@ impl Surface for CubertoSlider {
                 l.restore();
             }
             if let Some(font) = &self.font {
-                // The TextInput: the balloon less 10 at the bottom; UITextField centres its one
-                // line (ascent + descent) in it, and the text across it.
+                // The value: centred in the balloon, 10 pt above its bottom edge.
                 let top = (BALLOON_HEIGHT - 10.0 - gfx::line_height(font)) / 2.0;
                 let w = font.advance_width(&self.label);
                 l.draw_text(&self.label, BALLOON_WIDTH / 2.0 - w / 2.0, gfx::baseline(font, top), font, &Paint::fill(Color::WHITE));
@@ -284,10 +257,8 @@ impl Surface for CubertoSlider {
 
         let c = &mut self.canvas;
         c.begin(sp);
-        // The track: #E5E5E5, radius 5 (continuous; 4 tall, so 2).
         c.draw_rrect(ox, oy, SLIDER_WIDTH, SLIDER_HEIGHT, 5.0, &Paint::fill(Color::hex(0xE5E5E5)));
-        // The balloon view, behind the bar and the picker: left −32.5 and bottom 40 on Yoga's
-        // pixels, moved by translateX(balloonX) and rotate(−r) about its centre.
+        // The balloon, behind the bar and the picker, leaning toward it.
         let bx = self.balloon_x.value as f32;
         let rotate = -std::f32::consts::FRAC_PI_2 + (BALLOON_HEIGHT + BALLOON_BOTTOM).atan2(bx - x);
         let (vl, vt) = (round_px(ox - BALLOON_WIDTH / 2.0, sp), round_px(oy + SLIDER_HEIGHT - BALLOON_BOTTOM - BALLOON_HEIGHT, sp));
@@ -299,10 +270,9 @@ impl Surface for CubertoSlider {
             c.draw_rect(0.0, 0.0, BALLOON_WIDTH, BALLOON_HEIGHT, &Paint::image(images.image(0), Matrix::scale(sp, sp)));
         }
         c.set_matrix(saved);
-        // The progress: the full-width bar scaled from its left edge.
+        // Progress: from the left edge to the picker.
         c.draw_rect(ox, oy, x, SLIDER_HEIGHT, &view_color);
-        // The picker: 50 square at the clamped x, scaled about its centre; Core Animation's border
-        // over its white background.
+        // The picker: a border drawn over a white fill.
         let (s, r, b) = (self.scale.value as f32, self.radius.value as f32, self.border.value as f32);
         let (cx, cy) = (ox + x, oy + SLIDER_HEIGHT / 2.0);
         let half = PICKER_SIZE / 2.0 * s;
@@ -335,20 +305,16 @@ mod tests {
         let (img, animating) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         img.save("cuberto-rest");
         assert!(!animating);
-        // #6141B9: the balloon (Skia) as is, the bar and the picker (Views) read as P3.
         let purple = |p: [u8; 4]| p[0] == 0x61 && p[1] == 0x41 && p[2] == 0xB9;
         let view_purple = |p: [u8; 4]| p[..3] == [103, 63, 192];
-        // The track from x 50 to 350 at y 198–202; the picker at x 50, its border 16 × 0.7.
         assert_eq!(img.at(500, 400)[..3], [0xE5, 0xE5, 0xE5], "{:?}", img.at(500, 400));
         assert!(view_purple(img.at(100 - 30, 400)), "border {:?}", img.at(70, 400));
         assert_eq!(img.at(100, 400)[..3], [255, 255, 255], "inside {:?}", img.at(100, 400));
-        // The balloon over the picker: its body's centre 40 + ~43 above the track.
         assert!(purple(img.at(100, 180)), "balloon {:?}", img.at(100, 180));
         let pointer = |phase, x, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 200.0, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
         s.input(&pointer(PointerPhase::Down, 50.0, 0.0));
         let mut ms = 100.0;
-        // RNGH on iOS leaves UIKit's 10 pt hysteresis out of the translation (a pan that begins 90 ms or more after touch-down): 160 pt of
-        // travel translate the picker 150.
+        // The pan begins 10 pt late (UIKit hysteresis), so 160 pt of travel moves the picker 150.
         for i in 1..=10 {
             s.input(&pointer(PointerPhase::Move, 50.0 + 16.0 * i as f32, ms));
             ms += 16.0;
@@ -356,7 +322,6 @@ mod tests {
         }
         let (img, _) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         img.save("cuberto-dragging");
-        // Mid-drag: the picker grown (border 4) at x 200, the balloon behind it, leaning.
         let report: String = s.agent("{}").unwrap();
         assert!(report.starts_with("{\"value\":50,\"x\":150,"), "{report}");
         assert!(view_purple(img.at(300, 400)), "progress {:?}", img.at(300, 400));
@@ -371,7 +336,6 @@ mod tests {
             animating = a;
         }
         last.save("cuberto-dropped");
-        // At rest: the balloon upright over the picker at x 200.
         assert!(purple(last.at(400, 180)), "balloon {:?}", last.at(400, 180));
         assert!(!purple(last.at(300, 180)), "left of the balloon {:?}", last.at(300, 180));
     }

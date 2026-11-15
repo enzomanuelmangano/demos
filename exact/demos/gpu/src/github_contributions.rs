@@ -1,38 +1,24 @@
-//! GitHub Contributions' grid (src/animations/github-contributions/contribution-calendar): every
-//! square of the calendar and its animation, on the host's frame clock.
+//! The grid of GitHub-style contribution squares. Each square animates on its own spring, on the frame clock.
 //!
-//! - contribution-square.tsx: one `progress` per square. startAnimation:
-//!   `progress.set(withDelay(45 · (weekIndex + (6 − dayIndex)), withSpring(1, { mass 1.1,
-//!   damping 13, stiffness 150 })))`, the animation it replaces still running through the delay
-//!   (delay.ts steps its previousAnimation until it starts). resetAnimation: `cancelAnimation`,
-//!   then `withDelay(Math.random() · 500, withSpring(0, { mass 0.9, damping 10, stiffness 60 }))`,
-//!   so the square holds where it was through its delay. Either spring starts from rest: the
-//!   animation before it is a withDelay, which has no velocity (spring.ts onStart:
-//!   `previousAnimation.velocity + config.velocity || 0`). `restSpeedThreshold` plays no part in
-//!   Reanimated 4: a spring rests on its energy (6e-9 of its start).
-//! - rStyle: scale `interpolate(progress, [0, 0.5, 1], [1, 0.4, 1])` (extended past both ends),
-//!   about the square's centre; backgroundColor `interpolateColor(progress, [0, 1], [level0,
-//!   level colour], 'RGB')`: clamped, gamma 2.2, rounded to 8 bits.
-//! - The app sets `RCTColorSpace.displayP3`, so a View's `rgba(r, g, b)` is that Display P3
-//!   colour: the target is extended sRGB (`high_dynamic_range`), which holds the greens outside
-//!   sRGB (levels 2–4) exactly.
-//! - styles.square: 14 × 14, radius 2 continuous, 3 apart (marginBottom; a week's marginRight).
-//!   An empty square (outside the data's range) is transparent.
+//! - A press starts a square's spring after a delay that staggers the grid by weekday and week.
+//!   A reset springs it back to empty after a random delay, from wherever it is.
+//! - A square scales down to 0.4 and back up as it fills, and its colour blends from the empty
+//!   level to its own level.
+//! - Colours are Display P3, so the target is extended sRGB, which keeps the greens outside sRGB.
 //!
-//! Inputs: levels (one character per calendar day, week by week from Monday: `0`–`4`, or `.` for
-//! an empty square), toggles (each new count is one press: toggleAnimation), seed (the reset's
-//! Math.random()).
+//! Inputs: levels, one character per calendar day, week by week from Monday: `0` to `4`, or `.` for
+//! an empty square; toggles, one per new count; and a seed for the reset's random delays.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
 use reanimated::{interpolate, interpolate_color, Extrapolation, Spring, SpringConfig as Config};
 use skia::{Canvas, Color, Paint, Renderer};
 
-/// styles.square: side, gap, radius.
+/// Square side, step between squares, and corner radius, pt.
 const SIDE: f32 = 14.0;
 const STEP: f32 = 17.0;
 const RADIUS: f32 = 2.0;
-/// SpringConfig and the reset's.
+/// Springs for filling and for resetting.
 const IN: Config = Config {
     stiffness: 150.0,
     damping: 13.0,
@@ -43,7 +29,7 @@ const OUT: Config = Config {
     damping: 10.0,
     mass: 0.9,
 };
-/// COLOR_SCHEMES.github, level0 … level4 (Display P3 components, as the app reads them).
+/// The GitHub palette, levels 0 to 4, as Display P3 components.
 const LEVELS: [[f64; 4]; 5] = [
     [235.0, 237.0, 240.0, 1.0],
     [155.0, 233.0, 168.0, 1.0],
@@ -64,7 +50,7 @@ struct Square {
     day: usize,
     level: usize,
     progress: Spring,
-    /// A withDelay waiting: when (ms on the frame clock), to what, on which spring.
+    /// A delayed spring: when it starts (ms on the frame clock), its target, and its spring.
     pending: Option<(f64, f64, Config)>,
 }
 
@@ -75,14 +61,14 @@ struct Grid {
     toggles: f64,
     seed: f64,
     animating: bool,
-    /// A press not yet stamped by a frame: whether it starts (true) or resets.
+    /// A press not yet stamped by a frame: true to fill, false to reset.
     press: Option<bool>,
     presses: u32,
     canvas: Canvas,
     renderer: Renderer,
 }
 
-/// A deterministic Math.random() for the reset: 0 ≤ r < 1 from the seed, the press and the square.
+/// A deterministic random number in [0, 1) for the reset, from the seed, the press and the square.
 fn random(seed: f64, press: u32, index: usize) -> f64 {
     let mut x =
         (seed as u64) ^ ((press as u64) << 32) ^ (index as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15);
@@ -94,8 +80,7 @@ fn random(seed: f64, press: u32, index: usize) -> f64 {
     (x >> 11) as f64 / (1u64 << 53) as f64
 }
 
-/// Display P3 components (0…255) as encoded extended sRGB: linear P3 → linear sRGB, the sRGB
-/// curve mirrored below 0.
+/// Display P3 components (0 to 255) as extended sRGB. Values below 0 mean outside sRGB.
 pub fn p3_to_extended_srgb(c: [f64; 3]) -> [f64; 3] {
     let lin = |v: f64| {
         let v = v / 255.0;
@@ -122,7 +107,7 @@ pub fn p3_to_extended_srgb(c: [f64; 3]) -> [f64; 3] {
     ]
 }
 
-/// A square's scale and colour (Display P3 components, 0…255) at `progress`.
+/// A square's scale and colour at `progress`.
 pub fn style(progress: f64, level: usize) -> (f64, [f64; 4]) {
     let scale = interpolate(
         progress,
@@ -166,7 +151,6 @@ impl Surface for Grid {
             self.rebuild();
         }
         if toggles != self.toggles {
-            // toggleAnimation: isAnimating decides, then flips.
             self.toggles = toggles;
             self.animating = !self.animating;
             self.press = Some(self.animating);
@@ -205,7 +189,7 @@ impl Surface for Grid {
                     let delay = 45.0 * (s.week as f64 + (6.0 - s.day as f64));
                     s.pending = Some((now + delay, 1.0, IN));
                 } else {
-                    // cancelAnimation: held where it is through the delay.
+                    // Hold the square where it is through the delay.
                     s.progress = Spring::at(s.progress.value);
                     let delay = random(self.seed, self.presses, i) * 500.0;
                     s.pending = Some((now + delay, 0.0, OUT));
@@ -275,7 +259,7 @@ mod tests {
         assert_eq!((s, c), (1.0, [64.0, 196.0, 99.0, 1.0]));
         let (s, c) = style(0.5, 0);
         assert!((s - 0.4).abs() < 1e-12 && c == [235.0, 237.0, 240.0, 1.0]);
-        // Display P3 rgb(64, 196, 99) is outside sRGB: its red is below 0.
+        // This green is outside sRGB, so its red is below 0.
         assert!(p3_to_extended_srgb([64.0, 196.0, 99.0])[0] < 0.0);
         // White stays white.
         let w = p3_to_extended_srgb([255.0, 255.0, 255.0]);
@@ -295,7 +279,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(g.squares.len(), 12);
-        // Sunday of week 0 waits 0 ms, Monday 270, week 1's Sunday 45.
+        // Delays stagger by weekday and week.
         g.press.take();
         assert!(g.animating);
     }
@@ -329,10 +313,10 @@ mod tests {
         )
         .unwrap();
         let (rest, _) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
-        // Week 0's Monday: level0's grey; week 1's Tuesday: empty.
+        // Week 0's Monday is the empty grey; week 1's Tuesday has no level.
         assert_eq!(&rest.at(7, 7)[..3], &[235, 237, 240]);
         assert_eq!(rest.at(24, 24)[3], 0);
-        // A press: Sunday of week 0 starts at once, week 1's Sunday 45 ms on.
+        // A press: week 0's Sunday starts at once, week 1's Sunday 45 ms later.
         s.bind(
             &[
                 Value::from("0000000".to_string() + "1.....4"),
@@ -350,8 +334,7 @@ mod tests {
         }
         assert!(!animating, "settles");
         let (done, _) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
-        // Level 1 on Monday of week 1: Display P3 rgb(155, 233, 168), in sRGB's gamut as
-        // (129, 236, 162).
+        // Level 1 in Display P3 lands inside sRGB at (129, 236, 162).
         let p = done.at(24, 7);
         assert_eq!(&p[..3], &[129, 236, 162]);
     }

@@ -1,45 +1,11 @@
-//! Interaction Appearance (src/animations/interaction-appearance: src/screens/movie-detail.tsx,
-//! src/components/*, src/theme/*): a movie page ("Past Lives", its poster and review) whose
-//! floating sun button switches the light and dark themes; while it is held the page shrinks,
-//! the poster's glow fades and a blur rises over everything.
+//! A movie page whose floating sun button switches the light and dark themes. While the button
+//! is held, the page shrinks, the poster's glow fades and a blur rises over everything.
 //!
-//! Layout (the root fills the screen):
-//! - FloatingButtonTheme (zIndex 999): pressto PressableScale, absolute (RN: right 32, bottom 32 +
-//!   safeBottom; here concentric with the display's corner at the owner's request: right and
-//!   bottom 30, see DISPLAY_CORNER), 64 × 64, radius 32 (Core Animation's circle), a 1 pt border of `border` over
-//!   `card`, MaterialIcons "sunny" 20 in `primary` centred.
-//! - ThemeBlurView (zIndex 5): expo BlurView (tint default: `.regular`) over the screen,
-//!   intensity withTiming(switching ? 15 : 0, 350), opacity 0 while the intensity is 0.
-//! - The page: `background`, then ThemeRescaler (scale withSpring(switching ? 0.95 : 1,
-//!   { dampingRatio 1, duration 600 }) about its centre) holding: the blurred MovieImage (a
-//!   Skia canvas, the window wide, canvasHeight + 500 tall, opacity withTiming(switching ? 0 :
-//!   1, switching ? 350 : 1000)): the poster cover-fit into (32, imageY, 200, 250) under
-//!   Blur(500); the ScrollView: the sharp MovieImage (the poster in a radius-20 rrect clip, drawn
-//!   with continuous corners at the owner's request) over
-//!   a canvasHeight spacer, then (paddingHorizontal 32) the title (system 32, `primary`) and the
-//!   review (system 16, lineHeight 22, marginTop 16, marginRight 32, `text`), paddingBottom
-//!   200; BottomLinearGradient (a Skia canvas, absolute, the last 400 pt: [transparent,
-//!   transparent, background] top to bottom). canvasHeight = 300 + safeTop + 32, imageY =
-//!   (canvasHeight − 250) / 2 + 32.
-//!
-//! The rescaler has no height of its own and does not shrink (Yoga: flexShrink 0), so it is as
-//! tall as the ScrollView's content and the ScrollView as tall as its content: it does not
-//! scroll, it only bounces (alwaysBounceVertical; `ui_scroll` with no room). Its centre, the
-//! scale's origin, lies below the screen.
-//!
-//! Colour spaces: the Skia canvases are Display P3 surfaces (the blur mixes P3, Core Animation
-//! shows each pixel unpremultiplied); views and text take the app's P3 colours (`view_hex`).
-//!
-//! Motion audit:
-//!
-//! | value | RN driver / config | here |
-//! |---|---|---|
-//! | isSwitchingTheme | pressto onPressIn true, onPressOut false; onPress toggles the theme | `pressto::Pressable` |
-//! | button scale | PressableScale (pressto timing 250 ms) | `Pressable::scale` |
-//! | blur intensity | withTiming(15 / 0, 350, inOut quad) | `Timing`, `skia::backdrop` at intensity / 100 |
-//! | page scale | withSpring(0.95 / 1, { duration 600, dampingRatio 1 }) | `gfx::spring_to` |
-//! | glow opacity | withTiming(0, 350) / withTiming(1, 1000) | `Timing` |
-//! | bounce | the ScrollView's (no room: drag banded, bounce back) | `UiScroll` |
+//! - The button is concentric with the display's corner, so it sits 30 pt from the sides and
+//!   the bottom, not above the home indicator.
+//! - The page has no height of its own beyond its content, so it does not scroll; it only
+//!   bounces. The scale's origin, the page's centre, lies below the screen.
+//! - The blur is taken over a Display P3 surface; views and text use the app's P3 colours.
 //!
 //! Inputs: safeTop, safeBottom.
 
@@ -67,13 +33,11 @@ const IMAGE_X: f32 = 32.0;
 const BLUR: f32 = 500.0;
 const GRADIENT_H: f32 = 400.0;
 const BUTTON: f32 = 64.0;
-/// The display's corner radius (demos/env.contract displayCorner: the iPhone 17 / Air's). The
-/// button is concentric with it (the owner's rule for bottom floating UI): its centre on the
-/// corner's centre, so it sits displayCorner − BUTTON / 2 = 30 pt from the side and the bottom of
-/// the display, not above the home indicator.
+/// The display's corner radius (iPhone 17 / Air). The button is concentric with it, so it sits
+/// DISPLAY_CORNER − BUTTON / 2 = 30 pt from the sides and the bottom of the display.
 const DISPLAY_CORNER: f32 = 62.0;
 
-/// palette.ts: primary, background, card, border (rgb, alpha), text.
+/// Theme colours: primary, background, card, border (rgb, alpha), text.
 struct Palette {
     primary: u32,
     background: u32,
@@ -84,7 +48,7 @@ struct Palette {
 const LIGHT: Palette = Palette { primary: 0x000000, background: 0xFCFCFC, card: 0xf0f0f0, border: (0xA0A0A0, 0.05), text: 0xA0A0A0 };
 const DARK: Palette = Palette { primary: 0xFFFFFF, background: 0x090909, card: 0x1D1D1F, border: (0x2C2C2C, 1.0), text: 0x808080 };
 
-/// The demo's surface: inputs safeTop, safeBottom.
+/// The surface. Inputs: safeTop, safeBottom.
 pub fn surface() -> Box<dyn Surface> {
     Box::new(Appearance {
         safe: (0.0, 0.0),
@@ -187,7 +151,7 @@ impl Appearance {
         (self.size.0 - inset - BUTTON, self.size.1 - inset - BUTTON)
     }
     fn in_button(&self, x: f32, y: f32) -> bool {
-        // RNGestureHandlerButton tests the point in its own (scaled) bounds.
+        // The press tests the point in the button's scaled bounds.
         let (bx, by) = self.button_box();
         let (cx, cy) = (bx + BUTTON / 2.0, by + BUTTON / 2.0);
         let half = BUTTON / 2.0 * self.press.scale() as f32;
@@ -221,7 +185,7 @@ impl Appearance {
         let iy = self.image_y();
         if let Some(img) = poster {
             let m = fit_cover(Rect::new(0.0, 0.0, img.width, img.height), Rect::new(IMAGE_X, iy, IMAGE_W, IMAGE_H));
-            // Core Animation's continuous corner (the owner's call over RN's circular rrect clip).
+            // Continuous corners: the poster's clip is not circular.
             c.draw_continuous_rrect(IMAGE_X, iy, IMAGE_W, IMAGE_H, 20.0, &Paint::image(img, m.invert()));
         }
         let (Some(title), Some(body)) = (self.title.as_ref(), self.body.as_ref()) else { return ch };
@@ -475,7 +439,7 @@ impl Surface for Appearance {
             }
             None => {}
         }
-        // The ScrollView (its frame covers the screen; vertical: the axes swapped).
+        // The scroll view covers the screen; its axes are swapped for the vertical pan.
         self.scroll.input(id, phase, y, x, at_ms, !inside);
     }
 
@@ -542,7 +506,7 @@ impl Surface for Appearance {
             self.content_key = Some(key);
         }
         self.canvas = c;
-        // The blurred MovieImage: once.
+        // The blurred poster glow: redrawn when its size changes.
         if self.glow_key != Some(glow_px) {
             let iy = self.image_y();
             let c = &mut self.canvas;
@@ -634,8 +598,7 @@ mod tests {
         let bg = rest.at(3 * 400, 3 * 300);
         assert!(bg[..3].iter().all(|&c| (240..=252).contains(&c)), "{bg:?}");
         assert!(rest.at(3 * 130, 3 * 270)[..3].iter().any(|&c| c < 200));
-        // The button (centre 358, 850: concentric with the display's corner, 62 from its sides): its
-        // card colour.
+        // The button (centre 358, 850): its card colour.
         let card = rest.at(3 * 347, 3 * 836);
         assert!((230..=245).contains(&card[0]), "{card:?}");
 

@@ -1,38 +1,15 @@
-//! Staggered Card Number's sixteen digits (src/animations/staggered-card-number/components/
-//! card-info/hideable-number.tsx), each with its two expo-blur BlurViews: the row of
-//! HideableNumbers inside the card's `numbers` row (the Contract draws the card, the title and the
-//! eye button).
+//! Staggered Card Number's sixteen digits. Each cell is a hideable number: a dot and a digit that
+//! swap, each with a blur behind it. The cells stagger in when toggled.
 //!
-//! - Cell i: an 11 × 25 View, overflow hidden, at x = 11·i + 8·⌊i / 4⌋ (marginRight 8 after each
-//!   group of four). In it two absolute boxes (`styles.box`: 25 tall, the content centred,
-//!   shrink-wrapped to the content's width):
-//!   - the dot: Octicons dot-fill 14 black with paddingTop 3 (box 14 wide, wider than the cell),
-//!     opacity progress³, translateY −25·(1 − progress), and over it a `<BlurView tint="light">`
-//!     (absoluteFill) of intensity 25·(1 − progress);
-//!   - the digit: FiraCode-Regular 20 (box 12 wide), opacity (1 − progress)³, translateY
-//!     25·progress, and over it a `<BlurView>` (tint default: `.regular`, the app's dark
-//!     appearance) of intensity 25·progress.
-//! - progress = withDelay(25·i, withSpring(hidden ? 1 : 0, { duration: 700, dampingRatio: 1 })),
-//!   hidden = toggled and i < 12. As Reanimated's withDelay: the previous animation runs on
-//!   through the delay; the spring then starts from where it is with velocity 0 (the delay object
-//!   it inherits has none) and its constants solved for that start.
-//! - The blur (`skia::backdrop`): the repo's expo-blur patch sets `fractionComplete` straight
-//!   from intensity / 100 after the first value (only the initial one is clamped to 0.01), so 0 is
-//!   no effect. Each box's opacity composites as a group: bg·(1 − a) + a·E, E the chain over what
-//!   lies under the box with the group's own glyph at full opacity (blur-probe, `.light`). Under
-//!   the digit's box lies the card and the dot's composite; under the dot's, only the card: a
-//!   cell's boxes reach into the next cell (dot 14, digit 12 wide), which UIKit draws later, so
-//!   each backdrop reads a layer holding cells of one parity only.
-//! - The glyphs are each Text's raster at rest moved by Core Animation: a fractional translateY
-//!   samples the layer bilinearly. Text boxes: the line (hhea ascender + descender + lineGap)
-//!   rounded up to the device pixel and clamped to the box (Fabric's measure clamps to its
-//!   constraints: the digit's 26.24 pt line is 25 tall, its baseline 19.8 below the box's top,
-//!   not the overflowing line's 19.13 — 60 px on the RN capture), its top floored to the pixel
-//!   grid (a Text node's), the baseline on the next pixel row; TextKit sets an icon glyph half the
-//!   font's lineGap lower.
+//! - Cell i is 11 points wide, with 8 points more after every fourth cell. Its dot and digit are
+//!   25 points tall, and move up and down with the progress.
+//! - Each cell's progress is a spring delayed by 25 ms per cell, so the row sweeps across. The first
+//!   12 cells hide.
+//! - The blur behind each box is `skia::backdrop`. The glyphs are drawn once at rest and moved by
+//!   the layer, as Core Animation moves them.
 //!
-//! Inputs: toggled, the canvas's window origin (x, y, points). The canvas is the numbers row,
-//! 208 × 25 (sixteen cells, three gaps and the last cell's trailing 8).
+//! Inputs: toggled, and the canvas's origin in the window (points). The canvas is the numbers row,
+//! 208 × 25 points.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
@@ -48,19 +25,19 @@ static OCTICONS: &[u8] = include_bytes!("../fonts/octicons-dot-fill-subset.ttf")
 const DOT: &str = "\u{f155}";
 const DIGITS: &str = "2223000048400011";
 const CELLS: usize = 16;
-/// HIDDEN_INDEXES: the first 12.
+/// The cells that hide: the first 12.
 const TOGGLED: usize = 12;
-/// HideableNumberHeight; the cell's width.
+/// The row's height, and the cell's width, in points.
 const H: f32 = 25.0;
 const CELL_W: f32 = 11.0;
-/// MaxBlurIntensity.
+/// The blur's intensity at full change.
 const MAX_INTENSITY: f64 = 25.0;
-/// DotSize; styles.cardNumber.fontSize.
+/// Dot and digit font sizes, in points.
 const DOT_SIZE: f32 = 14.0;
 const DIGIT_SIZE: f32 = 20.0;
-/// The dot Text's paddingTop.
+/// The dot's top padding, in points.
 const DOT_PAD: f32 = 3.0;
-/// The layers' margin above and below the row (points): a box moves up to 25 out of its cell.
+/// Margin above and below the row, in points: a box moves up to 25 out of its cell.
 const PAD: f32 = 25.0;
 const LAYER: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 const COMPOSE_SLOT: u64 = 512;
@@ -91,7 +68,7 @@ fn digits() -> Digits {
     }
 }
 
-/// The cell's left edge (points): `marginRight: index !== 0 && (index + 1) % 4 === 0 ? 8 : 0`.
+/// The cell's left edge, in points: a gap of 8 after every fourth cell.
 pub fn cell_x(i: usize) -> f32 {
     i as f32 * CELL_W + 8.0 * (i / 4) as f32
 }
@@ -115,7 +92,7 @@ pub fn cell_state(p: f64) -> [f64; 6] {
 fn text_baseline(font: &Font, pad_top: f32, gap: f32, scale: f32) -> f32 {
     let m = font.metrics();
     let line = -m.ascent + m.descent + m.leading;
-    // Fabric clamps the measured size to the constraints: the digit's 26.24 pt line is 25 tall.
+    // The line is clamped to the box: a line taller than 25 pt is 25 pt tall.
     let text_h = (pad_top + ((line * scale - 1e-4).ceil() / scale)).min(H);
     let top = (((H - text_h) / 2.0) * scale + 1e-4).floor() / scale;
     ((top + pad_top + gap - m.ascent) * scale - 1e-4).ceil() / scale
@@ -740,9 +717,7 @@ mod tests {
     use super::*;
     use exact_gpu::fixture;
 
-    /// The row with every cell at progress `p`, as the iPhone Air shows it (the canvas at (46,
-    /// 456.33): the card's left 21 + paddingHorizontal 25; its top 416 + paddingTop 15 + the
-    /// title's 61 px + marginTop 5).
+    /// The row with every cell at progress `p`, placed as on the card.
     fn row(
         render: &mut dyn FnMut(&mut Digits, &Frame) -> fixture::Pixels,
         p: f64,

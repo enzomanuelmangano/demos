@@ -1,28 +1,16 @@
-//! Steddy Graph Interaction (src/animations/steddy-graph-interaction/components/graph/index.tsx):
-//! the graph under the segmented control, a purple line of 27 scores that springs to the
-//! scores of the difficulty picked (the input: 0 Light, 1 Standard, 2 Pro).
+//! A line graph of 27 scores under the segmented control. Picking a difficulty springs the line to
+//! that difficulty's scores: the input is the index, 0 Light, 1 Standard, 2 Pro.
+//! Each score is its own spring, so the line settles with its own motion.
 //!
-//! - The canvas: the window's width × 200 (canvasHeight), padding 50, maxValue 100 → 110,
-//!   lineScore 70: lineY = (1 − 70 / 110) × 200.
-//! - A dashed Line (0, lineY) → (W, lineY): rgba(0,0,0,0.1), stroke 2, DashPathEffect [4, 4].
-//! - Text "70 pts" at (W − 80, lineY + 40), SF-Compact-Rounded-Medium 18, rgba(0,0,0,0.5).
-//! - The Path: moveTo(50, y(s₀)), then lineTo(50 + i · (W − 100) / 26, y(sᵢ)) for every i
-//!   (the first a zero-length segment), y(s) = 200 (1 − s / 110); stroke 3, round caps,
-//!   #8A40FF (Palette.primary), CornerPathEffect r 20.
-//! - rRawScores = withSpring(scores): each score its own default spring (Gentle), from where it
-//!   is at its velocity; on mount at the scores.
-//!
-//! A spring frame allocates nothing: the dashes (one path of 4 × 2 rects, as the dashed 2-wide
-//! butt stroke is) are built once per width, the label and its glyph outlines once, and the
-//! line is rewritten in place in a `PathBuffer` kept between frames and drawn from its events
-//! (`Canvas::draw_path_events`). The test `a_spring_frame_allocates_nothing` counts.
+//! A spring frame allocates nothing: the dashes and the label are built once, and the line's path
+//! is rewritten in place in a buffer kept between frames.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
 use reanimated::{Spring, GENTLE};
 use skia::{point, Canvas, Color, Font, Paint, Path, PathBuffer, Point, Renderer};
 
-/// LIGHT_GRAPH_SCORES, STANRDARD_GRAPH_SCORES, PRO_GRAPH_SCORES (constants/graph-scores.ts).
+/// Scores for Light, Standard and Pro.
 const SCORES: [[f64; 27]; 3] = [
     [100., 53., 82., 59., 43., 63., 51., 66., 54., 62., 72., 81., 89., 100., 100., 100., 96., 98., 100., 100., 100., 100., 100., 93., 97., 100., 100.],
     [84., 42., 67., 48., 35., 54., 43., 57., 47., 53., 61., 68., 77., 85., 87., 93., 82., 84., 88., 87., 95., 91., 90., 77., 82., 87., 92.],
@@ -30,10 +18,10 @@ const SCORES: [[f64; 27]; 3] = [
 ];
 const HEIGHT: f32 = 200.0;
 const PADDING: f32 = 50.0;
-/// maxValue + 10.
+/// Scale top, 10 above the best score.
 const MAX: f32 = 110.0;
 const LINE_SCORE: f32 = 70.0;
-/// SF-Compact-Rounded-Medium.otf, its ASCII (fontTools subset: same outlines, same metrics).
+/// The label font: an ASCII subset of SF Compact Rounded Medium.
 static SF_COMPACT_ROUNDED: &[u8] = include_bytes!("../../assets/fonts/SF-Compact-Rounded-Medium.otf");
 
 /// The demo's surface.
@@ -41,22 +29,10 @@ pub fn surface() -> Box<dyn Surface> {
     Box::new(graph())
 }
 
-/// The segmented control's highlight (components/segmented-control/index.tsx, CELL BACKGROUND),
-/// on a canvas over the control's padding box, under the labels (zIndex 1 < 2). Input: the
-/// selected index.
+/// The highlight behind the selected segment, drawn under the labels. Input: the selected index.
 ///
-/// - Frame: absolute, left 0, alignSelf center, (cellBackgroundWidth − 5 / 3) × (56 − 10),
-///   cellBackgroundWidth = (windowWidth − 30) / 3: in the padding box (the control's border 1
-///   in), x = translateX, y = (54 − 10 − 46) / 2 + 5 = 4.
-/// - translateX = withSpring(cbw · index + interpolate(index, [0, 2], [5, −5])), Gentle: linear
-///   in the index ((cbw − 5) · index + 5), so the index itself springs (a spring's motion and its
-///   rest test are linear) and Reanimated's onStart rule applies in either unit: the running
-///   velocity is kept on a retarget only when it points toward the new target.
-/// - Palette.background #F1EEE8 on a continuous radius 12 (the background layer RN shapes with
-///   the view's cornerCurve); border 1 baseGray05 #E5E2DC: opaque and not clipping, so not Core
-///   Animation's: RCTBorderDrawing's ring with circular corners over it.
-/// - boxShadow 0 1 2 rgba(0, 0, 0, 0.1): RCTBoxShadow, σ 1, the circular rounded rect, outside
-///   the view.
+/// The spring runs on the index, so the highlight's x is linear in it. Background is a continuous
+/// rounded rect with a 1 pt ring and a soft shadow.
 pub fn highlight() -> Box<dyn Surface> {
     Box::new(Highlight::default())
 }
@@ -74,7 +50,7 @@ struct Highlight {
 }
 
 impl Highlight {
-    /// The highlight's frame in the padding box of a canvas `width` wide (the control's width − 2).
+    /// The highlight's frame in the padding box of a canvas `width` wide.
     fn frame(&self, width: f32) -> [f32; 4] {
         let cbw = (width + 2.0) / 3.0;
         let x = (cbw - 5.0) * self.spring.value as f32 + 5.0;
@@ -178,7 +154,7 @@ fn corner_path(points: &[Point], radius: f32, out: &mut PathBuffer) {
     b.begin(first);
     for pair in points.windows(2) {
         let (a, c) = (pair[0], pair[1]);
-        // ComputeStep.
+        // Skia's compute step: a corner takes at most half of each segment.
         let d = c - a;
         let dist = d.length();
         let (step, segment) = if dist <= radius * 2.0 { (d * 0.5, false) } else { (d * (radius / dist), true) };
@@ -194,8 +170,7 @@ fn corner_path(points: &[Point], radius: f32, out: &mut PathBuffer) {
     b.build();
 }
 
-/// The dashes of `<Line p1={(0, y)} p2={(width, y)} strokeWidth={2}>` with `DashPathEffect
-/// [4, 4]`: 4 on from x 0, 4 off, the last cut at the line's end, butt caps (2 tall rects).
+/// The dashed rule across `width`: 4 on, 4 off, as 2-pt-tall rects, the last cut at the end.
 fn dash_path(width: f32, y: f32) -> Path {
     let mut b = skia::path_builder();
     let mut x = 0.0;
@@ -207,7 +182,7 @@ fn dash_path(width: f32, y: f32) -> Path {
 }
 
 impl Graph {
-    /// lineY.
+    /// The y of the line score.
     fn line_y() -> f32 {
         (1.0 - LINE_SCORE / MAX) * HEIGHT
     }
@@ -290,7 +265,7 @@ impl Surface for Graph {
         }
         let moving = self.update(frame);
         let (pw, ph) = frame.pixels();
-        // The Canvas is transparent over the container's Palette.background.
+        // Transparent: the container paints the background.
         self.renderer.draw(device, queue, encoder, &self.canvas, target, format, pw, ph, wgpu::Color::TRANSPARENT);
         moving
     }
@@ -350,8 +325,6 @@ pub(crate) mod tests {
     fn a_spring_frame_allocates_nothing() {
         let mut g = graph();
         g.bind(&[Value::Number(1.0)], None).unwrap();
-        // Every switch between the difficulties, each spring run to rest. Returns the frames
-        // and, when counting, the allocations of the worst frame.
         let mut ms = 0.0;
         let mut cycle = |g: &mut Graph, count: bool| {
             let (mut frames, mut worst) = (0, 0);
@@ -411,11 +384,8 @@ pub(crate) mod tests {
         standard.save("steddy-graph-standard");
         assert!(!animating);
         let purple = |p: [u8; 4]| p[3] > 200 && p[2] > 200 && p[0] > 100 && p[1] < 100;
-        // Score 84 at x 50: y = 200 (1 − 84 / 110) = 47.3 (device ×2).
         assert!(purple(standard.at(100, 95)), "{:?}", standard.at(100, 95));
-        // The dash at lineY 72.7: on at x 0–4, off at 4–8 (device ×2).
         assert!(standard.at(4, 145)[3] > 0 && standard.at(12, 145)[3] == 0, "{:?} {:?}", standard.at(4, 145), standard.at(12, 145));
-        // "70 pts" grey below it at the right.
         assert!(standard.count(|p| p[3] > 100 && p[0] < 10 && p[1] < 10 && p[2] < 10) > 100);
 
         s.bind(&[Value::Number(0.0)], None).unwrap();
@@ -429,7 +399,6 @@ pub(crate) mod tests {
         let (light, _) = fixture::render(&gpu, s.as_mut(), &frame(ms + 16.0)).unwrap();
         light.save("steddy-graph-light");
         assert!(s.agent("{}").unwrap().starts_with("{\"difficulty\":0,\"scores\":[100.00,53.00"));
-        // Score 100 at x 50: y 18.2.
         assert!(purple(light.at(100, 37)), "{:?}", light.at(100, 37));
         assert!(!purple(light.at(100, 95)));
     }
@@ -438,10 +407,8 @@ pub(crate) mod tests {
     fn the_highlight_retargets_as_reanimated() {
         let mut h = Highlight::default();
         h.bind(&[Value::Number(1.0)], None).unwrap();
-        // iPhone Air: control 390, canvas 388; Standard at x = 125 + 5 = 130.
+        // Reversing mid-flight starts from rest; a retarget along the motion keeps its velocity.
         assert_eq!(h.frame(388.0), [130.0, 4.0, 130.0 - 5.0 / 3.0, 46.0]);
-        // Pro, then back to Light mid-flight: the velocity toward Pro points away from Light,
-        // so the reversal starts from rest.
         h.bind(&[Value::Number(2.0)], None).unwrap();
         let mut ms = 0.0;
         h.spring.step(ms);
@@ -454,12 +421,9 @@ pub(crate) mod tests {
         h.bind(&[Value::Number(0.0)], None).unwrap();
         ms += 1000.0 / 60.0;
         h.spring.step(ms);
-        // The first frame is the clock's 0 step; the next starts moving toward 0 from rest.
         ms += 1000.0 / 60.0;
         h.spring.step(ms);
         assert!(h.spring.value < at, "{} {}", h.spring.value, at);
-        // A retarget along the motion keeps it: Light → Pro, then Standard while still short of
-        // it, the velocity toward Standard carried over.
         let mut g = Highlight::default();
         g.bind(&[Value::Number(0.0)], None).unwrap();
         g.bind(&[Value::Number(2.0)], None).unwrap();
@@ -476,7 +440,6 @@ pub(crate) mod tests {
         t += 1000.0 / 60.0;
         let before = g.spring.value;
         g.spring.step(t);
-        // Kept inertia: it moves more than a start from rest would in one frame.
         let mut rest = Spring::at(before);
         rest.to(1.0, 0.0, GENTLE);
         rest.step(0.0);

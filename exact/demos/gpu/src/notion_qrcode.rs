@@ -1,86 +1,8 @@
-//! Notion QR Code (src/animations/notion-qrcode: index.tsx, constants.ts, create-picture.ts,
-//! hooks/use-shape-data.ts, utils/{shape-generation.ts, hungarian-match.ts, qr-generation.ts,
-//! transforms.ts, haptics.ts}, components/toggle-button.tsx, data/skia-objects.ts): 348 avatars
-//! from a 5 × 4 sprite on a rotating 3D torus; the round button morphs them, in a wave, into
-//! the QR code of "https://www.reactiive.io" and back, with four light haptics on the way out;
-//! the button's icon and label cross-fade, and it pulses once the QR has settled.
+//! Notion QR code: 348 avatars on a rotating 3D torus. The round button morphs them, in a wave,
+//! into the QR code of a URL and back.
 //!
-//! Everything is this one surface: the Skia picture, the two expo-linear-gradients over it and
-//! the ToggleButton (its scale pulse, icons and labels all follow `progress` per frame, as the
-//! picture does, and the pulse is a Reanimated style-updater quirk a Contract transition can't
-//! express). The screen's #f5f5f5 (styles.container, a View hex: Display P3) is this surface's
-//! clear: the surface is opaque, as the screen under it is (the web's canvas has no other
-//! alpha mode than opaque, so a transparent clear showed black there).
-//!
-//! Shape data (hooks/use-shape-data.ts computeShapeData, f64 line for line): node-qrcode's
-//! `QRCode.create(text, 'M')` (`qr::create`, bit for bit), read as qr-generation.ts reads it:
-//! `modules.get(x, y)` is BitMatrix's get(row = x, col = y), so the code is transposed; the
-//! Fibonacci torus (110, 80) normalized to 0.65 × the window's height, the QR's points
-//! normalized to 220; `sortTorusByFlow` and `sortBySpiral` are Array.prototype.sort with
-//! comparators that are not orders (the flow's 0.1 tolerance is intransitive), so the result
-//! is the engine's sort's: RN runs Hermes (hermes-engine 260318099.0.4, RN 0.88's), whose sort
-//! is lib/VM/JSLib/Sorting.cpp `quickSort`: an introsort (median of three, insertion sort at
-//! ≤ 6, heapsort below 2 log₂ n levels) made stable by an index tiebreak, ported here with its
-//! exact comparator calls (V8 and JSC give other orders: exact/parity-tools/notion-qrcode).
-//! Then the greedy `hungarianMatch`, avatar i % 20, the sprite's 128-point cells. The data
-//! arrives as RN's does: computed after requestAnimationFrame + setTimeout(0) and shown at the
-//! commit after (the third frame of the first mount; module-cached later, the second frame,
-//! once the sprite has loaded): the screen is empty until then.
-//!
-//! The picture (create-picture.ts, every frame, f64 as the worklet computes): the stagger angle
-//! from the frozen rotation, the wave delay, the cubic in-out, the lerp, the rotation with its
-//! transitionBoost, the perspective (DISTANCE 800, centre W/2, H/2), the size and its pulse, the
-//! smoothstep front fade, the corner radius, the depth sort (z descending, index ascending).
-//! Per point, back to front, as Skia records it: drawRRect of the background (x − 1, y − 1,
-//! size + 1, size + 1, radius (size + 1) / 2), its colour the `hsl(220, s%, l%)` string RN Skia's
-//! CSSColorParser parses (in float, the strings formatted as JS's Number#toString does), alpha
-//! setAlphaf(max(imageOpacity, morph)); then, when imageOpacity > 0, clipRRect (antialiased) and
-//! drawImageRect of the avatar's cell, sampled nearest (`SkSamplingOptions()`, strict: Graphite's
-//! nearest path inside the src rect, `skia::Shader::ImageNearest`), alpha imageOpacity. The
-//! sprite is avatars-sprite.png (images/, straight RGBA; premultiplied as Skia's PNG decode).
-//! `exact/parity-tools/notion-qrcode` runs the RN files themselves in Hermes (shape and picture
-//! digests, reference.txt) and RN Skia's own CSSColorParser; the tests below match them.
-//!
-//! Core Animation's composition over the canvas:
-//! - The LinearGradients (expo-linear-gradient: a CGGradient of the sRGB colours drawn into an
-//!   8-bit image, each pixel row at its centre): top 150 tall, white at alpha 1, 0.8, 0 at 0,
-//!   0.4, 1; bottom 280 tall, 0, 0.9, 1 at 0, 0.6, 1 (processColor's alpha bytes 204 and 230).
-//! - ToggleButton: the container absolute, bottom 50, centred, as wide as max(64, "CONNECT");
-//!   its Animated.View (scale about its centre) holds the PressableScale: 64 × 64, white,
-//!   circular radius 32 (no borderCurve), RCTBorderDrawing's 1 pt rgba(0,0,0,0.06) ring,
-//!   boxShadow '0px 7px 12px rgba(0,0,0,0.08)' (RCTBoxShadow: σ 6, alpha byte 20). The Ionicons
-//!   "scan" and "qr-code" (28, #1a1a1a, UIKit layout: the hhea ascent below their box top)
-//!   centred inside the border, and the labels CONNECT / SHARE (15, 600, letterSpacing 0.5,
-//!   #1a1a1a) centred in a 20-tall box 12 below. Text layers are Core Animation layers: their
-//!   bitmaps are drawn once, on the pixel grid, and composited (bilinear) at their opacity,
-//!   translateY and the button's scale. Layout is Yoga's (pixel grid, text sizes ceiled).
-//!
-//! The press: pressto's PressableScale as designed (the shared `pressto::Pressable`; pressto 0.7
-//! on RNGH 3.3 shows none, its v3 BaseButton never reading onBegan/onEnded): a touch that
-//! begins on it (UIKit's hit test of its bounds through the pulse's and its own scale) holds
-//! it, scale 1 → 0.96 about its centre inside the pulse (withTiming 250 ms, bezier(0.25, 0.1,
-//! 0.25, 1)); onPress at a lift inside those bounds, not outside, not on a cancel; the app's
-//! PressablesConfig plays the selection haptic.
-//! toggle() runs on the JS thread at the lift: it reads iTime's last UI value.
-//!
-//! Motion audit (every animated value):
-//!
-//! | value | RN driver / config | here |
-//! |---|---|---|
-//! | iTime | withTiming(2π × 1000, { duration 40 s × 1000, Easing.linear }) from mount | `itime_at`, from the first frame |
-//! | progress | withSpring(showQR ? 1 : 0, { duration showQR ? 6000 : 4000, dampingRatio 1 }): mass 4, stiffness by calculateNewStiffnessToMatchDuration, critically damped, stepped per frame from the current state (springOnFrame), dt capped at 64, a cancelled spring's lastTimestamp and velocity carried, velocity away from the target dropped, done at energy ≤ 6e-9 of 0.5 k x0² | `Progress`, line for line; started at the lift with the synchronous first step |
-//! | staggerBaseTime, frozenRotationTime | set at toggle to iTime % 2π | `stagger`, `frozen` |
-//! | per point x, y, size, radius, opacities, colour | createPicture of progress, iTime, the frozen angles | `Picture::compute` |
-//! | scan icon opacity | interpolate(progress, [0, .25], [1, 0], CLAMP) | `icon_opacities` |
-//! | qr-code icon opacity | interpolate(progress, [.2, .45], [0, 1], CLAMP) | same |
-//! | CONNECT opacity, translateY | [0, .2] → [1, 0], [0, 8], CLAMP | `label_styles` |
-//! | SHARE opacity, translateY | [.25, .5] → [0, 1], [8, 0], CLAMP | same |
-//! | button scale | useAnimatedStyle: progress > 0.95 ? withRepeat(withSequence(withTiming(1.05, 1000), withTiming(1, 1000)), −1, true) : withTiming(1, 300) (inOut(quad)), re-run at every progress set: the style updater restarts the animation from its current value each time (a timing to the same target keeps its start time); with the spring's frame first in the rAF queue a restart is evaluated at once at runtime 0, so the scale holds while progress moves and pulses from the frame the spring settles; reverse has no effect on a sequence | `Pulse`, with the rAF queue's order (`style_first`) |
-//! | haptics | useAnimatedReaction on progress: a forward crossing of 0.05, 0.12, 0.21, 0.32 with index > lastHapticIndex → impactAsync(Light); reset below 0.05 when not increasing; lastHapticIndex = −1 at toggle; the press's selectionAsync | `haptic:impact-light`, `haptic:selection` |
-//!
-//! Frame order (react-native-worklets' rAF queue, microtasks drained after each callback): the
-//! iTime step, then the spring's step and the mappers it triggers (picture, styles, reaction)
-//! and the button style's frame callback, in the order they were queued.
+//! Haptics: a light impact as the morph passes 5%, 12%, 21% and 32% going forward, and a
+//! selection tick on press. The button pulses once the QR has settled.
 
 use std::f64::consts::PI;
 use std::fmt::Write as _;
@@ -94,52 +16,51 @@ use skia::{Canvas, Color, Font, Image, ImageRef, Images, Matrix, Paint, Renderer
 
 use crate::{gfx, qr};
 
-/// NotionQRCode's qrData.
+/// The URL the QR code encodes.
 const QR_DATA: &str = "https://www.reactiive.io";
-/// constants.ts: DISTANCE, DEFAULT_AVATAR_SIZE, DEFAULT_QR_TARGET_HEIGHT, DEFAULT_TORUS
-/// (majorRadius, minorRadius, targetHeight = SCREEN_HEIGHT × 0.65).
+/// Camera distance, avatar size, QR height and torus radii, in points.
 const DISTANCE: f64 = 800.0;
 const AVATAR_SIZE: f64 = 28.0;
 const QR_TARGET_HEIGHT: f64 = 220.0;
 const MAJOR_RADIUS: f64 = 110.0;
 const MINOR_RADIUS: f64 = 80.0;
 const TORUS_HEIGHT: f64 = 0.65;
-/// DEFAULT_COLORS: hue, saturationRange, lightnessRange.
+/// Avatar background: hue, and the saturation and lightness ranges (percent).
 const HUE: f64 = 220.0;
 const SATURATION: [f64; 2] = [30.0, 70.0];
 const LIGHTNESS: [f64; 2] = [70.0, 85.0];
-/// DEFAULT_SPRITE: cols, cellSize, numAvatars (640 × 512, 5 × 4).
+/// Sprite sheet: 5 columns of 128 px cells, 20 avatars.
 const SPRITE_COLS: usize = 5;
 const CELL: f64 = 128.0;
 const AVATARS: usize = 20;
 const SPRITE_W: u32 = 640;
 const SPRITE_H: u32 = 512;
 static SPRITE: &[u8] = include_bytes!("../images/notion-qrcode-avatars-640x512.rgba8.zlib");
-/// HAPTIC_THRESHOLDS.
+/// Morph progress at which each light impact fires.
 const HAPTIC_THRESHOLDS: [f64; 4] = [0.05, 0.12, 0.21, 0.32];
-/// The rotation: 40 s per turn, 1000 turns.
+/// Rotation: 40 s per turn, 1000 turns.
 const TURN_MS: f64 = 40000.0;
 const TURNS: f64 = 1000.0;
-/// toggle()'s springs: duration (showQR ? 6000 : 4000), dampingRatio 1; Reanimated's mass 4 and
-/// energyThreshold.
+/// Morph spring durations in ms, critically damped.
 const FORWARD_MS: f64 = 6000.0;
 const BACK_MS: f64 = 4000.0;
 const MASS: f64 = 4.0;
+/// A spring is settled when its energy falls below this share of the start.
 const ENERGY_THRESHOLD: f64 = 6e-9;
-/// buttonPulseStyle: progress > 0.95 → 1.05 and back over 1000 ms each, else 1 in 300 ms.
+/// Button pulse: past 0.95 progress it breathes 1 → 1.05 → 1, 1 s each way; else it settles to 1.
 const PULSE_FROM: f64 = 0.95;
 const PULSE_TO: f64 = 1.05;
 const PULSE_MS: f64 = 1000.0;
 const SETTLE_MS: f64 = 300.0;
-/// ToggleButton: button 64, border 1, radius 32, boxShadow 0 7 12 rgba(0,0,0,0.08) (σ = 6,
-/// alpha byte round(0.08 × 255)), the ring's rgba(0,0,0,0.06) (byte 15), bottom 50, the
-/// label box 20 tall 12 below, labels 15 / 600 / letterSpacing 0.5, icons 28, #1a1a1a.
+/// Round button: 64 pt across, 1 pt ring, 50 pt above the bottom edge.
 const BUTTON: f32 = 64.0;
 const BORDER: f32 = 1.0;
 const RADIUS: f32 = 32.0;
+/// Shadow: y offset, blur sigma, alpha byte.
 const SHADOW: (f32, f32, u8) = (7.0, 6.0, 20);
 const RING_A: u8 = 15;
 const BOTTOM: f32 = 50.0;
+/// The label box's height, and its gap below the button.
 const LABEL_BOX: f32 = 20.0;
 const LABEL_TOP: f32 = 12.0;
 const LABEL_SIZE: f32 = 15.0;
@@ -147,10 +68,10 @@ const LABEL_WEIGHT: f32 = 600.0;
 const LABEL_SPACING: f32 = 0.5;
 const ICON_SIZE: f32 = 28.0;
 const INK: u32 = 0x1A1A1A;
-/// The LinearGradients: height and (location, processColor alpha byte) stops.
+/// Gradient overlays: height, and (location, alpha byte) stops.
 const TOP_GRADIENT: (f32, [(f32, u8); 3]) = (150.0, [(0.0, 255), (0.4, 204), (1.0, 0)]);
 const BOTTOM_GRADIENT: (f32, [(f32, u8); 3]) = (280.0, [(0.0, 0), (0.6, 230), (1.0, 255)]);
-/// Ionicons (@expo/vector-icons 15) cut to "scan" (U+F556) and "qr-code" (U+F4FC).
+/// Icon font subset: the scan and qr-code glyphs.
 static IONICONS: &[u8] = include_bytes!("../fonts/ionicons-scan-qr-code-subset.ttf");
 const SCAN: &str = "\u{F556}";
 const QR_CODE: &str = "\u{F4FC}";
@@ -161,7 +82,7 @@ pub fn surface() -> Box<dyn Surface> {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Math as Hermes calls it (libm's pow, never a multiplication LLVM might put in its place).
+// Math as Hermes calls it: its pow is libm's, and powf can round differently.
 
 #[cfg(target_vendor = "apple")]
 fn pow(x: f64, y: f64) -> f64 {
@@ -178,9 +99,8 @@ fn pow(x: f64, y: f64) -> f64 {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Hermes's Array.prototype.sort (lib/VM/JSLib/Sorting.cpp quickSort over StandardSortModel):
-// `_less(i, j)` is the comparator's sign, ties broken by the elements' original indices; every
-// swap moves the index along.
+// Hermes's Array.prototype.sort (quickSort in its Sorting.cpp). The comparators here are not
+// orders, so the result depends on the algorithm: ties break by original index.
 
 struct HermesSort<'a, T, F: FnMut(&T, &T) -> f64> {
     v: &'a mut [T],
@@ -190,7 +110,7 @@ struct HermesSort<'a, T, F: FnMut(&T, &T) -> f64> {
 
 impl<T, F: FnMut(&T, &T) -> f64> HermesSort<'_, T, F> {
     fn less(&mut self, i: usize, j: usize) -> bool {
-        // StandardSortModel::compare: (res < 0) ? -1 : (res > 0 ? 1 : 0) (NaN is 0).
+        // NaN counts as a tie.
         let res = (self.cmp)(&self.v[i], &self.v[j]);
         if res < 0.0 {
             true
@@ -260,7 +180,7 @@ impl<T, F: FnMut(&T, &T) -> f64> HermesSort<'_, T, F> {
         }
     }
 
-    /// [l] <= [l+1] <= [r], [l+1] the pivot: its final place.
+    /// Partitions [l..=r] around the pivot at l+1, and returns the pivot's final index.
     fn partition(&mut self, l: usize, r: usize) -> usize {
         let pivot = l + 1;
         let (mut i, mut j) = (pivot + 1, r);
@@ -295,7 +215,7 @@ impl<T, F: FnMut(&T, &T) -> f64> HermesSort<'_, T, F> {
             if limit <= 0 {
                 return self.heap_sort(l, r + 1);
             }
-            // Median of three: the middle to [l+1], then sort [l], [l+1], [r].
+            // Median of three into [l], [l+1], [r].
             self.swap(l + 1, l + ((r - l) >> 1));
             if self.less(r, l + 1) {
                 self.swap(r, l + 1);
@@ -338,10 +258,10 @@ impl<T, F: FnMut(&T, &T) -> f64> HermesSort<'_, T, F> {
     }
 }
 
-/// Sorting.cpp's INSERTION_THRESHOLD.
+/// Below this length, insertion sort.
 const INSERTION_THRESHOLD: usize = 6;
 
-/// `array.sort((a, b) => cmp(a, b))` as Hermes runs it.
+/// Sorts like Hermes's `array.sort(cmp)`.
 fn hermes_sort<T>(v: &mut [T], cmp: impl FnMut(&T, &T) -> f64) {
     let len = v.len();
     let mut s = HermesSort {
@@ -350,7 +270,7 @@ fn hermes_sort<T>(v: &mut [T], cmp: impl FnMut(&T, &T) -> f64) {
         cmp,
     };
     if len > INSERTION_THRESHOLD {
-        // llvh::Log2_32(len) * 2.
+        // Depth limit: 2 × log2(len).
         let log2 = 31 - (len as u32).leading_zeros();
         s.quick_sort(log2 as i32 * 2, 0, len - 1);
     } else {
@@ -359,7 +279,7 @@ fn hermes_sort<T>(v: &mut [T], cmp: impl FnMut(&T, &T) -> f64) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// hooks/use-shape-data.ts computeShapeData and utils/, line for line in f64.
+// Shape data: the torus, the QR points and their matching, in f64.
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 struct P3 {
@@ -368,12 +288,12 @@ struct P3 {
     z: f64,
 }
 
-/// ShapeData.
+/// Torus and QR points, matched, with each avatar's sprite cell.
 #[derive(Debug)]
 struct ShapeData {
     torus: Vec<P3>,
     qr: Vec<P3>,
-    /// qrSize (read by the parity test).
+    /// Read by the tests only.
     #[cfg_attr(not(test), allow(dead_code))]
     qr_size: usize,
     qr_module_size: f64,
@@ -381,7 +301,7 @@ struct ShapeData {
     sprite: [[f64; 4]; AVATARS],
 }
 
-/// generateTorusPoints: Fibonacci angles (θ = 2πi / φ, ϕ = acos(1 − 2i/n)), v = 2ϕ.
+/// Points on a torus at Fibonacci angles.
 fn torus_points(count: usize, major: f64, minor: f64) -> Vec<P3> {
     let golden = (1.0 + 5f64.sqrt()) / 2.0;
     (0..count)
@@ -400,7 +320,7 @@ fn torus_points(count: usize, major: f64, minor: f64) -> Vec<P3> {
         .collect()
 }
 
-/// generateQRPointsFromModules: a 200-wide grid centred on 0.
+/// Module centres on a 200-wide grid centred on 0.
 fn qr_points(modules: &[(usize, usize)], matrix_size: usize) -> Vec<P3> {
     let size = 200.0;
     let module_size = size / matrix_size as f64;
@@ -415,7 +335,7 @@ fn qr_points(modules: &[(usize, usize)], matrix_size: usize) -> Vec<P3> {
         .collect()
 }
 
-/// normalizeShape: centred on its bounds, scaled to `target_height` tall.
+/// Centres the points on their bounds, scaled to `target_height` tall.
 fn normalize(points: &[P3], target_height: f64) -> Vec<P3> {
     let (mut min_x, mut max_x) = (f64::INFINITY, f64::NEG_INFINITY);
     let (mut min_y, mut max_y) = (f64::INFINITY, f64::NEG_INFINITY);
@@ -446,7 +366,7 @@ fn normalize(points: &[P3], target_height: f64) -> Vec<P3> {
         .collect()
 }
 
-/// sortTorusByFlow's comparator: by angle about y, within 0.1 rad by y.
+/// Orders torus points by angle about y; within 0.1 rad, by height.
 fn flow(a: &P3, b: &P3) -> f64 {
     let angle_a = a.z.atan2(a.x);
     let angle_b = b.z.atan2(b.x);
@@ -456,7 +376,7 @@ fn flow(a: &P3, b: &P3) -> f64 {
     a.y - b.y
 }
 
-/// sortBySpiral's comparator: distance × 0.1 + angle.
+/// Orders QR points on a spiral from the centre.
 fn spiral(a: &P3, b: &P3) -> f64 {
     let dist_a = (a.x * a.x + a.y * a.y).sqrt();
     let dist_b = (b.x * b.x + b.y * b.y).sqrt();
@@ -467,7 +387,7 @@ fn spiral(a: &P3, b: &P3) -> f64 {
     spiral_a - spiral_b
 }
 
-/// hungarianMatch: for each source point in turn, the nearest unused target (strictly nearer).
+/// Greedy matching: each source point takes the nearest unused target.
 fn greedy_match(source: &[P3], target: &[P3]) -> Vec<P3> {
     let n = source.len();
     let mut used = vec![false; n];
@@ -494,7 +414,7 @@ fn greedy_match(source: &[P3], target: &[P3]) -> Vec<P3> {
 
 /// computeShapeData for a window `height` tall.
 fn compute_shape_data(height: f64) -> ShapeData {
-    // generateQRMatrix + getQRBlackModules: matrix[y][x] = modules.get(x, y) (row x, col y).
+    // The code is transposed: BitMatrix's get(row = x, col = y).
     let symbol = qr::create(QR_DATA, qr::Ecl::M).expect("the QR fits");
     let size = symbol.size;
     let mut modules = Vec::new();
@@ -533,10 +453,10 @@ fn compute_shape_data(height: f64) -> ShapeData {
     }
 }
 
-/// The module-level shapeDataCache (keyed by the torus's target height).
+/// The last shape computed, keyed by the torus height.
 static SHAPE_CACHE: Mutex<Option<(u64, Arc<ShapeData>)>> = Mutex::new(None);
 
-/// The cached data for `height`, and whether it was cached already.
+/// The shape for `height`, and whether it came from the cache.
 fn shape_data(height: f64) -> (Arc<ShapeData>, bool) {
     let mut cache = SHAPE_CACHE.lock().unwrap();
     let key = (height * TORUS_HEIGHT).to_bits();
@@ -551,12 +471,10 @@ fn shape_data(height: f64) -> (Arc<ShapeData>, bool) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Colours: backgroundColorString, then Skia.Color's CSSColorParser (react-native-skia 3.7.2,
-// cpp/api/third_party/CSSColorParser.cpp) in float, as clang compiles it for arm64 (its
-// `a * b + c` fused). JsiSkColor's round trip through a Float32Array (byte × (1/255f), then
-// × 255 truncated) gives every byte back (checked below).
+// Colours: Skia's CSS hsl() parse in f32, with fused multiply-adds as clang compiles it for
+// arm64. The byte round trip through f32 gives every byte back (tested below).
 
-/// backgroundColorString's saturation and lightness (percent) for an avatar at `boost`.
+/// Saturation and lightness (percent) of an avatar at `boost`.
 fn background_hsl(avatar: usize, boost: f64) -> (f64, f64) {
     let [sat_min, sat_max] = SATURATION;
     let [light_min, light_max] = LIGHTNESS;
@@ -569,8 +487,7 @@ fn background_hsl(avatar: usize, boost: f64) -> (f64, f64) {
     (sat, light)
 }
 
-/// A number as JS's template literal writes it (the shortest round trip; no exponent in the
-/// demo's ranges), parsed back by strtof: the float CSSColorParser reads. No allocation.
+/// `v` through its JS string form, as f32. No allocation.
 fn strtof(v: f64) -> f32 {
     struct Digits {
         buf: [u8; 48],
@@ -599,7 +516,7 @@ fn strtof(v: f64) -> f32 {
         .unwrap_or(0.0)
 }
 
-/// css_hue_to_rgb.
+/// The CSS spec's hue_to_rgb.
 fn hue_to_rgb(m1: f32, m2: f32, mut h: f32) -> f32 {
     if h < 0.0 {
         h += 1.0;
@@ -618,12 +535,12 @@ fn hue_to_rgb(m1: f32, m2: f32, mut h: f32) -> f32 {
     m1
 }
 
-/// clamp_css_byte: rounded half away from zero, clamped.
+/// Rounds half away from zero, clamped to a byte.
 fn css_byte(v: f32) -> u8 {
     v.round().clamp(0.0, 255.0) as u8
 }
 
-/// CSSColorParser::parse of `hsl(HUE, sat%, light%)`.
+/// Parses `hsl(HUE, sat%, light%)` to bytes.
 fn hsl_bytes(sat: f64, light: f64) -> [u8; 3] {
     let h = (strtof(HUE) / 360.0).fract();
     let s = (strtof(sat) / 100.0).clamp(0.0, 1.0);
@@ -641,8 +558,7 @@ fn hsl_bytes(sat: f64, light: f64) -> [u8; 3] {
     ]
 }
 
-/// The paint colour of an avatar's background at `boost`: SkPaint::setColor(SkColor), each
-/// byte × (1 / 255f).
+/// Paint colour of an avatar's background at `boost`.
 fn background_color(avatar: usize, boost: f64) -> Color {
     let (sat, light) = background_hsl(avatar, boost);
     let [r, g, b] = hsl_bytes(sat, light);
@@ -651,15 +567,15 @@ fn background_color(avatar: usize, boost: f64) -> Color {
 }
 
 // ---------------------------------------------------------------------------------------------
-// create-picture.ts: one frame's transforms, line for line in f64.
+// One frame's transforms, in f64.
 
-/// transforms.ts smoothstep.
+/// Smoothstep between edge0 and edge1, in either order.
 fn smoothstep(edge0: f64, edge1: f64, x: f64) -> f64 {
     let t = 0f64.max(1f64.min((x - edge0) / (edge1 - edge0)));
     t * t * (3.0 - 2.0 * t)
 }
 
-/// The per-point arrays createPicture fills, and its depth order (kept between frames).
+/// Per-point arrays for a frame, and their back-to-front order (kept between frames).
 #[derive(Default)]
 struct Picture {
     xs: Vec<f64>,
@@ -673,7 +589,7 @@ struct Picture {
 }
 
 impl Picture {
-    /// STEP 2 and 3 for `progress`, `i_time`, `stagger_time`, `frozen` on a `w × h` canvas.
+    /// Fills the arrays for a frame on a `w × h` canvas, then sorts them back to front.
     #[allow(clippy::too_many_arguments)]
     fn compute(
         &mut self,
@@ -713,7 +629,7 @@ impl Picture {
         for index in 0..n {
             let t = shape.torus[index];
             let q = shape.qr[index];
-            // 2a: the wave delay from the frozen rotation.
+            // The wave delay follows the point's angle around the torus.
             let tilted_z = t.y * stagger_tilt_sin + t.z * stagger_tilt_cos;
             let rotated_x = t.x * stagger_cos + tilted_z * stagger_sin;
             let rotated_z = -t.x * stagger_sin + tilted_z * stagger_cos;
@@ -721,17 +637,15 @@ impl Picture {
             let normalized_angle = (angle + PI) / (2.0 * PI);
             let wave_delay = normalized_angle * 0.25;
             let staggered = 1f64.min(0f64.max((progress - wave_delay) / (1.0 - wave_delay)));
-            // 2b: cubic in-out.
             let eased = if staggered < 0.5 {
                 4.0 * pow(staggered, 3.0)
             } else {
                 1.0 - pow(-2.0 * staggered + 2.0, 3.0) / 2.0
             };
-            // 2c.
             let base_x = t.x + (q.x - t.x) * eased;
             let base_y = t.y + (q.y - t.y) * eased;
             let base_z = t.z + (q.z - t.z) * eased;
-            // 2d.
+            // The spin peaks mid-morph and is zero at both ends.
             let transition_boost = (eased * PI).sin() * 0.6;
             let rotation_amount = (frozen + rotation_delta) * (1.0 - eased) + transition_boost;
             let tilt_amount = 0.3 * (1.0 - eased);
@@ -744,18 +658,16 @@ impl Picture {
             let px = base_x * rot_cos + t_z * rot_sin;
             let py = t_y;
             let pz = -base_x * rot_sin + t_z * rot_cos;
-            // 2e.
             let scale = DISTANCE / (DISTANCE + pz);
             let screen_x = center_x + px * scale;
             let screen_y = center_y + py * scale;
-            // 2f.
+            // The size swells mid-morph and settles back.
             let avatar_scale = AVATAR_SIZE * scale;
             let qr_scale = shape.qr_module_size * scale * 0.9;
             let base_size = avatar_scale + (qr_scale - avatar_scale) * eased;
             let pulse_phase = eased * PI;
             let scale_pulse = 1.0 + pulse_phase.sin() * pow(1.0 - eased, 0.5) * 0.3;
             let size = base_size * scale_pulse;
-            // 2g.
             let front_fade = smoothstep(100.0, -150.0, pz);
             let transition_opacity = 1.0 - eased;
             self.xs[index] = screen_x - size / 2.0;
@@ -766,7 +678,7 @@ impl Picture {
             self.zs[index] = pz;
             self.morph[index] = eased;
         }
-        // STEP 3: order.sort((a, b) => zs[b] - zs[a] || a - b), a total order.
+        // Back to front, ties by index: a total order, so the sort is deterministic.
         self.order.clear();
         self.order.extend(0..n as u32);
         let zs = &self.zs;
@@ -780,17 +692,16 @@ impl Picture {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Reanimated 4.7.1, as the demo drives it.
+// Animations: the morph spring, and the button's timing and pulse.
 
-/// getEnergy (springUtils.ts).
+/// Spring energy: potential plus kinetic.
 fn energy(displacement: f64, velocity: f64, stiffness: f64, mass: f64) -> f64 {
     let potential = 0.5 * stiffness * pow(displacement, 2.0);
     let kinetic = 0.5 * mass * pow(velocity, 2.0);
     potential + kinetic
 }
 
-/// calculateNewStiffnessToMatchDuration with dampingRatio 1, mass 4: bisectRoot over
-/// [Number.EPSILON, 8e3], 100 iterations, precision energyThreshold × 1e-3.
+/// The stiffness that settles in `duration_ms`, found by bisection.
 fn stiffness_for(x0: f64, v0: f64, duration_ms: f64) -> f64 {
     let zeta = 1.0;
     let diff = |stiffness: f64| {
@@ -820,7 +731,7 @@ fn stiffness_for(x0: f64, v0: f64, duration_ms: f64) -> f64 {
     current
 }
 
-/// One withSpring({ duration, dampingRatio: 1 }) animation object.
+/// A critically damped spring towards `to`.
 #[derive(Clone, Copy, Debug)]
 struct SpringAnim {
     to: f64,
@@ -833,7 +744,7 @@ struct SpringAnim {
     finished: bool,
 }
 
-/// The `progress` shared value: its value and its `_animation` (kept after it finishes).
+/// The morph progress: its value, and its spring (kept after it finishes).
 #[derive(Clone, Copy, Debug, Default)]
 struct Progress {
     value: f64,
@@ -845,13 +756,11 @@ impl Progress {
         self.anim.is_some_and(|a| !a.finished)
     }
 
-    /// `progress.set(withSpring(to, { duration, dampingRatio: 1 }))` run on the UI thread at
-    /// `now` (valueSetter): the previous animation cancelled, onStart, the synchronous first
-    /// step. Whether the value was set (the mappers then run).
+    /// Starts a spring to `to` at `now`, cancelling the previous one. A cancelled spring's
+    /// velocity carries over unless it reverses. Returns false when already at `to`.
     fn start(&mut self, to: f64, duration_ms: f64, now: f64) -> bool {
         let previous = self.anim.take();
         if self.value == to {
-            // valueSetter: the target is the value already: nothing starts.
             return false;
         }
         let value = self.value;
@@ -877,7 +786,7 @@ impl Progress {
         true
     }
 
-    /// springOnFrame at `now` (critically damped); sets the value. Whether it finished.
+    /// Advances the spring to `now` and sets the value. Returns whether it has finished.
     fn step(&mut self, now: f64) -> bool {
         let Some(a) = self.anim.as_mut().filter(|a| !a.finished) else {
             return true;
@@ -906,7 +815,7 @@ impl Progress {
     }
 }
 
-/// Easing.inOut(Easing.quad).
+/// Quadratic in-out easing.
 fn in_out_quad(t: f64) -> f64 {
     let quad = |t: f64| t * t;
     if t < 0.5 {
@@ -916,7 +825,7 @@ fn in_out_quad(t: f64) -> f64 {
     }
 }
 
-/// A withTiming object (timing.ts), default easing.
+/// A timing towards `to`, with quadratic in-out easing.
 #[derive(Clone, Copy, Debug)]
 struct Timed {
     to: f64,
@@ -926,7 +835,7 @@ struct Timed {
 }
 
 impl Timed {
-    /// onStart: continuity with a running timing to the same target, else from `value`.
+    /// Continues a running timing to the same target, else starts from `value`.
     fn start(to: f64, duration: f64, value: f64, now: f64, previous: Option<Timed>) -> Timed {
         match previous {
             Some(p) if p.to == to && p.start != 0.0 => Timed {
@@ -944,7 +853,7 @@ impl Timed {
         }
     }
 
-    /// onFrame: (current, finished).
+    /// Returns (current value, finished).
     fn frame(&mut self, now: f64) -> (f64, bool) {
         let mut runtime = now - self.start;
         if runtime < 0.0 {
@@ -961,18 +870,17 @@ impl Timed {
     }
 }
 
-/// What buttonPulseStyle's transform holds.
+/// The button's running pulse animation.
 #[derive(Clone, Copy, Debug)]
 enum PulseAnim {
-    /// withTiming(1, { duration: 300 }).
+    /// Settles to 1 in 300 ms.
     Settle(Timed),
-    /// withRepeat(withSequence(withTiming(1.05, 1000), withTiming(1, 1000)), -1, true): the
-    /// sequence's running child (0 or 1).
+    /// Breathes 1 → 1.05 → 1 forever: the running child (0 or 1).
     Pulse(usize, Timed),
 }
 
-/// buttonPulseStyle's style updater (useAnimatedStyleCommon.ts styleUpdater): the animation
-/// it runs, its current value, whether its frame callback is queued.
+/// The button's scale: its animation, its current value, and whether its frame callback
+/// is queued.
 #[derive(Clone, Copy, Debug)]
 struct Pulse {
     anim: Option<PulseAnim>,
@@ -981,15 +889,13 @@ struct Pulse {
 }
 
 impl Pulse {
-    /// The updater at a `progress` set at `now`: prepareAnimation from the current value (the
-    /// running animation's, or the last one's end), then the frame callback at once if none
-    /// is queued. Whether it queued one now.
+    /// Handles a `progress` set at `now`, starting from the current value. Runs a frame at
+    /// once when none is queued. Returns whether it queued one now.
     fn mapper(&mut self, progress: f64, now: f64) -> bool {
         let value = self.current;
         let previous = self.anim;
         self.anim = Some(if progress > PULSE_FROM {
-            // withRepeat → withSequence → withTiming(1.05).onStart: its previous animation is
-            // never a timing to 1.05 with a start time.
+            // A pulse never continues a previous timing.
             PulseAnim::Pulse(0, Timed::start(PULSE_TO, PULSE_MS, value, now, None))
         } else {
             let previous = match previous {
@@ -1006,7 +912,7 @@ impl Pulse {
         true
     }
 
-    /// The frame callback at `now`.
+    /// Advances the animation to `now`.
     fn frame(&mut self, now: f64) {
         let Some(anim) = self.anim.as_mut() else {
             self.running = false;
@@ -1030,7 +936,7 @@ impl Pulse {
                         *child = 1;
                         *t = Timed::start(1.0, PULSE_MS, v, now, None);
                     } else {
-                        // The repeat (reverse, which a sequence ignores): the sequence again.
+                        // The repeat restarts the sequence; its reverse flag does nothing here.
                         *child = 0;
                         *t = Timed::start(PULSE_TO, PULSE_MS, v, now, None);
                     }
@@ -1041,9 +947,9 @@ impl Pulse {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Layout: Yoga's pixel grid (React Native 0.88: roundLayoutResultsToPixelGrid).
+// Layout on the pixel grid, as Yoga rounds it.
 
-/// roundValueToPixelGrid.
+/// Rounds `value` to the pixel grid at `scale`, up or down when asked.
 fn round_px(value: f64, scale: f64, ceil: bool, floor: bool) -> f64 {
     let scaled = value * scale;
     let mut fraction = scaled % 1.0;
@@ -1070,7 +976,7 @@ fn round_px(value: f64, scale: f64, ceil: bool, floor: bool) -> f64 {
     rounded / scale
 }
 
-/// RCTTextLayoutManager's rounding of a measured text side.
+/// Rounds a measured text side up to the pixel grid, with a small tolerance.
 fn text_round(v: f32, scale: f32) -> f32 {
     (((v as f64 + 0.001) * scale as f64).ceil() / scale as f64) as f32
 }
@@ -1084,7 +990,7 @@ struct R {
     h: f32,
 }
 
-/// A laid-out node: its unrounded absolute origin and its window frame (rounded lefts summed).
+/// A laid-out node: its unrounded origin, and its rounded frame (rounded offsets summed).
 #[derive(Clone, Copy, Debug)]
 struct Node {
     ax: f64,
@@ -1106,7 +1012,7 @@ impl Node {
         }
     }
 
-    /// A child at (x, y) relative, `w × h` unrounded; `text`: a measure-func node.
+    /// A child at (x, y) relative to this node; `text` marks a measured text node.
     fn child(&self, s: f64, x: f64, y: f64, w: f64, h: f64, text: bool) -> Node {
         let (ax, ay) = (self.ax + x, self.ay + y);
         let off = |v: f64| {
@@ -1130,21 +1036,19 @@ impl Node {
     }
 }
 
-/// ToggleButton's frames.
+/// Frames of the button and its labels.
 #[derive(Clone, Copy, Debug, Default)]
 struct Layout {
-    /// The PressableScale (and its Animated.View).
+    /// The button itself.
     button: R,
-    /// The icons' Text frames (the iconContainers hug them).
+    /// The icon text frames.
     scan: R,
     qr: R,
-    /// The labels.
     connect: R,
     share: R,
 }
 
-/// The measured text sizes (Core Text's widths with the letterSpacing after each glyph, the
-/// line heights), unrounded.
+/// Measured text sizes, unrounded. Widths include the letter spacing after each glyph.
 #[derive(Clone, Copy, Debug)]
 struct Sizes {
     icon: (f32, f32),
@@ -1160,8 +1064,8 @@ impl Layout {
         let (cw, chh) = t(sizes.connect);
         let (sw, sh) = t(sizes.share);
         let root = Node::root(w, h);
-        // buttonContainer: absolute, bottom 50, alignSelf center; a column of the 64 × 64
-        // Animated.View and the labelContainer (marginTop 12, height 20, CONNECT's width).
+        // The button and its label box: a column centred at the bottom, as wide as CONNECT
+        // or the button.
         let width = (BUTTON as f64).max(cw);
         let height = BUTTON as f64 + LABEL_TOP as f64 + LABEL_BOX as f64;
         let container = root.child(
@@ -1181,8 +1085,7 @@ impl Layout {
             false,
         );
         let button = pulse.child(sd, 0.0, 0.0, BUTTON as f64, BUTTON as f64, false);
-        // iconContainer: absolute, centred in the padding box (inside the 1 pt border); the
-        // Ionicons Text at its origin.
+        // Icons centred inside the 1 pt ring.
         let inner = (BUTTON - 2.0 * BORDER) as f64;
         let icon = |n: &Node| {
             let c = n.child(
@@ -1232,7 +1135,7 @@ impl Layout {
 // ---------------------------------------------------------------------------------------------
 // The surface.
 
-/// The demo's fonts (None where the system face can't be read: the web).
+/// The fonts, or None where the system font can't be read (the web).
 struct Fonts {
     label: Font,
     icon: Font,
@@ -1259,9 +1162,8 @@ impl Fonts {
     }
 }
 
-/// The layer texture: the sprite at its origin (sampled by the picture), and under it the
-/// four text layers (scan, qr-code, CONNECT, SHARE) as Core Animation keeps them: drawn once
-/// on the pixel grid, composited every frame.
+/// Offscreen texture: the sprite at its origin, with the four text layers under it. The text
+/// is drawn once and composited every frame.
 struct Layers {
     pixels: (u32, u32, u32),
     images: Images,
@@ -1274,8 +1176,7 @@ struct Layers {
 
 /// The surface's state.
 struct NotionQrCode {
-    /// The first frame (the mount: iTime's start), the frames since, the frame the picture
-    /// first shows at.
+    /// The mount time, the frame count, and the frame the picture first shows at.
     first: Option<f64>,
     frames: u32,
     visible_from: u32,
@@ -1283,22 +1184,22 @@ struct NotionQrCode {
     size: (f32, f32, f32),
     shape: Option<Arc<ShapeData>>,
     picture: Picture,
-    /// isShowingQR, progress, iTime (its last frame's value), the frozen angles.
+    /// The morph target, progress, the rotation time, and the frozen angles.
     showing_qr: bool,
     progress: Progress,
     itime: f64,
     stagger: f64,
     frozen: f64,
-    /// buttonPulseStyle, and whether its frame callback runs before the spring's.
+    /// The button's pulse, and whether its frame runs before the spring's.
     pulse: Pulse,
     style_first: bool,
-    /// The haptic reaction: lastHapticIndex and its previous value.
+    /// The last haptic threshold index, and the previous progress.
     haptic_index: i32,
     reaction_prev: Option<f64>,
-    /// The PressableScale (the shared pressto machine).
+    /// The press state.
     press: Pressable,
     posted: Vec<String>,
-    /// The resting colours (createBackgroundColors: morph 0 and 1).
+    /// Background colours at rest: morph 0 and morph 1.
     resting: [[Color; AVATARS]; 2],
     fonts: Option<Fonts>,
     layout: Option<Layout>,
@@ -1349,7 +1250,7 @@ impl NotionQrCode {
         }
     }
 
-    /// iTime at `now`: withTiming(2π × 1000, { duration: 40 s × 1000, linear }) from the mount.
+    /// Rotation time at `now`: 1000 turns of 40 s each, from the mount.
     fn itime_at(&self, now: f64) -> f64 {
         let start = self.first.unwrap_or(now);
         let to = PI * 2.0 * TURNS;
@@ -1357,9 +1258,8 @@ impl NotionQrCode {
         0.0 + (to - 0.0) * normalized
     }
 
-    /// The mappers a progress set triggers: the haptic reaction, then buttonPulseStyle (the
-    /// picture and the icon / label styles read progress when drawn). Whether the style's
-    /// frame callback was queued now.
+    /// Runs what a progress set triggers: the haptic check, then the pulse. Returns whether
+    /// the pulse queued a frame callback.
     fn mappers(&mut self, now: f64) -> bool {
         let current = self.progress.value;
         if let Some(previous) = self.reaction_prev {
@@ -1378,13 +1278,13 @@ impl NotionQrCode {
         self.reaction_prev = Some(current);
         let queued = self.pulse.mapper(current, now);
         if queued {
-            // Its rAF now follows the spring's.
+            // The pulse's frame now runs after the spring's.
             self.style_first = false;
         }
         queued
     }
 
-    /// toggle() at the lift, as the UI thread runs its sets at `at`.
+    /// Toggles the morph at the lift time `at`.
     fn toggle(&mut self, at: f64) {
         let at = at.max(self.last_now);
         self.showing_qr = !self.showing_qr;
@@ -1392,7 +1292,7 @@ impl NotionQrCode {
         let rotation = self.itime % (2.0 * PI);
         self.stagger = rotation;
         self.frozen = rotation;
-        // The new spring's rAF is queued after a running style's.
+        // The new spring's frame runs after a running pulse's.
         self.style_first = self.pulse.running;
         let (to, ms) = if self.showing_qr {
             (1.0, FORWARD_MS)
@@ -1404,12 +1304,12 @@ impl NotionQrCode {
         }
     }
 
-    /// One display frame at `now`: iTime, then the spring (and its mappers) and the style's
-    /// frame callback in their queue order.
+    /// One display frame at `now`. The order matters: the rotation, then the spring and the
+    /// pulse, in queue order.
     fn advance(&mut self, now: f64) {
         if self.first.is_none() {
             self.first = Some(now);
-            // The style updater's first run at mount: withTiming(1, 300) from 1.
+            // The pulse runs once at mount.
             self.pulse.mapper(self.progress.value, now);
         }
         self.itime = self.itime_at(now);
@@ -1447,12 +1347,12 @@ impl NotionQrCode {
         self.layout = Some(Layout::new(w, h, s, sizes));
     }
 
-    /// The button's scale: the pulse's Animated.View, then the PressableScale's own.
+    /// The button's scale: the pulse, then the press.
     fn button_scale(&self) -> f32 {
         (self.pulse.current * self.press.scale()) as f32
     }
 
-    /// UIKit's hit test of the PressableScale's bounds through the pulse's and its own scale.
+    /// Hit test of the button's bounds, through the pulse's and the press's scale.
     fn hit(&self, x: f32, y: f32) -> bool {
         let Some(l) = self.layout.as_ref() else {
             return false;
@@ -1463,7 +1363,7 @@ impl NotionQrCode {
         x - cx >= -hw && x - cx < hw && y - cy >= -hh && y - cy < hh
     }
 
-    /// The icons' opacities (teamIconStyle: scan, scanIconStyle: qr-code).
+    /// Opacities of the scan and qr-code icons.
     fn icon_opacities(&self) -> (f32, f32) {
         let p = self.progress.value;
         (
@@ -1472,7 +1372,7 @@ impl NotionQrCode {
         )
     }
 
-    /// The labels' (opacity, translateY): CONNECT, SHARE.
+    /// Opacity and vertical offset of CONNECT and SHARE.
     fn label_styles(&self) -> [(f32, f32); 2] {
         let p = self.progress.value;
         [
@@ -1487,14 +1387,14 @@ impl NotionQrCode {
         ]
     }
 
-    /// The layer texture's text layers, drawn once (canvas 0, the sprite's renderer).
+    /// Draws the sprite and the text layers into the offscreen texture, once.
     fn record_layers(&mut self, s: f32) {
         let (Some(l), Some(layers)) = (self.layout, self.layers.as_ref()) else {
             return;
         };
         let c = &mut self.canvases[0];
         c.begin(s);
-        // The sprite, texel for texel.
+        // The sprite at one texel per pixel.
         let sprite = ImageRef {
             layer: 0,
             width: SPRITE_W as f32,
@@ -1521,7 +1421,7 @@ impl NotionQrCode {
             c.save();
             c.clip_rect(x, y, r.w, r.h);
             if k < 2 {
-                // Ionicons: TextKit's baseline the hhea ascent below the box top (no lineGap).
+                // Icon baseline: the font's ascent below the box top, with no line gap.
                 let glyph = if k == 0 { SCAN } else { QR_CODE };
                 c.draw_text(glyph, x, gfx::baseline(&f.icon, y), &f.icon, &ink);
             } else {
@@ -1539,7 +1439,7 @@ impl NotionQrCode {
         }
     }
 
-    /// The screen (canvas 1, the layer texture's renderer).
+    /// Draws the picture, the gradients and the button on the screen canvas.
     fn record_main(&mut self, s: f32) {
         let (w, h, _) = self.size;
         let (scan_op, qr_op) = self.icon_opacities();
@@ -1548,7 +1448,6 @@ impl NotionQrCode {
         let tex = layers.images.image(0);
         let c = &mut self.canvases[1];
         c.begin(s);
-        // The Picture.
         if let Some(shape) = self
             .shape
             .as_ref()
@@ -1617,11 +1516,10 @@ impl NotionQrCode {
                 }
             }
         }
-        // The LinearGradients.
         draw_gradient(c, 0.0, w, TOP_GRADIENT, s);
         draw_gradient(c, h - BOTTOM_GRADIENT.0, w, BOTTOM_GRADIENT, s);
         let Some(l) = self.layout else { return };
-        // The button, under its Animated.View's scale and the PressableScale's.
+        // The button, scaled by the pulse and the press.
         let b = l.button;
         let k = (self.pulse.current * self.press.scale()) as f32;
         let (cx, cy) = (b.x + b.w / 2.0, b.y + b.h / 2.0);
@@ -1652,14 +1550,13 @@ impl NotionQrCode {
                 );
             },
         );
-        // The icon layers (iconContainer opacities), in the button.
+        // Icons, inside the button's scale.
         for (k, (r, op)) in [(l.scan, scan_op), (l.qr, qr_op)].into_iter().enumerate() {
             if op > 0.0 {
                 layer(c, tex, layers.origins[k], r, 0.0, op, s);
             }
         }
         c.restore();
-        // The labels: opacity and translateY.
         for (k, (r, (op, ty))) in [(l.connect, labels[0]), (l.share, labels[1])]
             .into_iter()
             .enumerate()
@@ -1671,8 +1568,7 @@ impl NotionQrCode {
     }
 }
 
-/// A text layer `r` (its bitmap at `origin` in the layer texture) composited `dy` lower at
-/// `opacity`, through the canvas's transform, sampled bilinearly (Core Animation's filter).
+/// Composites text layer `r` from the texture, `dy` lower, bilinearly sampled.
 fn layer(c: &mut Canvas, tex: ImageRef, origin: (f32, f32), r: R, dy: f32, opacity: f32, s: f32) {
     let y = r.y + dy;
     let to_image = Matrix([s, 0.0, 0.0, s, origin.0 - r.x * s, origin.1 - y * s]);
@@ -1685,8 +1581,7 @@ fn layer(c: &mut Canvas, tex: ImageRef, origin: (f32, f32), r: R, dy: f32, opaci
     );
 }
 
-/// RCTBoxShadow's outset shadow of a view `r` with circular corners `radius`: the offset rounded
-/// rect blurred by σ, masked to outside the view's rounded rect (and inside the padded one).
+/// Outer shadow of a rounded view `r`: blurred, and masked to outside the view.
 fn box_shadow(c: &mut Canvas, r: R, radius: f32, (dy, sigma, a): (f32, f32, u8)) {
     let blur = 2.0 * sigma;
     let pad = 2.0 * (blur + 1.0);
@@ -1714,8 +1609,7 @@ fn box_shadow(c: &mut Canvas, r: R, radius: f32, (dy, sigma, a): (f32, f32, u8))
     c.restore();
 }
 
-/// expo-linear-gradient's image: white at the stops' alphas top to bottom over `h` from `top`,
-/// each pixel row's alpha at its centre rounded to 8 bits; runs of equal rows one rect.
+/// White fading top to bottom over `h` from `top`. One rect per run of equal 8-bit rows.
 fn draw_gradient(c: &mut Canvas, top: f32, w: f32, (h, stops): (f32, [(f32, u8); 3]), s: f32) {
     let rows = (h * s).round() as i32;
     let at = |r: i32| -> u8 {
@@ -1750,6 +1644,7 @@ impl Surface for NotionQrCode {
         Ok(())
     }
 
+    // The web canvas has no alpha mode but opaque: a transparent clear shows black.
     fn opaque(&self) -> bool {
         true
     }
@@ -1789,8 +1684,7 @@ impl Surface for NotionQrCode {
         if let Some(PressEvent::Press(press)) =
             self.press.pointer(id, crate::gfx::phase(phase), inside)
         {
-            // BaseButton's onPress: the app's PressablesConfig haptic, then
-            // animationRef.current.toggle().
+            // The press haptic first, then the toggle.
             self.posted.extend(press.global_message().map(String::from));
             self.toggle(at_ms);
         }
@@ -1812,11 +1706,10 @@ impl Surface for NotionQrCode {
             self.size = size;
             self.layout = None;
             self.layers = None;
-            // computeShapeData for this window (module-cached by its height).
+            // The shape for this window height, cached by height.
             let (shape, cached) = shape_data(frame.height as f64);
             if self.shape.is_none() {
-                // The commit after requestAnimationFrame + setTimeout(0), or at once when
-                // cached (the sprite's load the frame after).
+                // The shape shows two frames in, or one when cached.
                 self.visible_from = if cached { 1 } else { 2 };
             }
             self.shape = Some(shape);
@@ -1895,7 +1788,7 @@ impl Surface for NotionQrCode {
             }
         }
         self.record_main(s);
-        // styles.container's #f5f5f5 under everything (encoded, or linear on an sRGB target).
+        // The screen's #f5f5f5 clear, converted to linear on an sRGB target.
         let bg = Color::view_hex(0xF5F5F5).0.map(|v| {
             let v = v as f64;
             if format.is_srgb() {
@@ -1925,7 +1818,7 @@ impl Surface for NotionQrCode {
             },
         );
         self.frames += 1;
-        // iTime turns forever: the picture is redrawn every frame.
+        // The rotation never stops, so every frame redraws.
         true
     }
 }
@@ -1938,9 +1831,9 @@ mod tests {
     const W: f32 = 420.0;
     const H: f32 = 912.0;
     const FRAME_MS: f64 = 1000.0 / 60.0;
-    /// exact/parity-tools/notion-qrcode: the RN files run in Hermes, and RN Skia's parser.
+    /// Hermes's reference digests.
     const REFERENCE: &str = include_str!("../../../parity-tools/notion-qrcode/reference.txt");
-    /// parity.ts's states: name, progress, iTime, staggerBaseTime, frozenRotationTime.
+    /// Test frames: name, progress, iTime, stagger and frozen angles.
     const FRAMES: [(&str, f64, f64, f64, f64); 8] = [
         ("rest", 0.0, 1.234, 0.0, 0.0),
         ("rest-wrap", 0.0, 5.5, 0.0, 0.0),
@@ -1952,7 +1845,7 @@ mod tests {
         ("back-08", 0.08, 13.25, 0.2, 0.2),
     ];
 
-    /// What parity.ts hashes: numbers as float64 bytes, strings' bytes then a 0 (FNV-1a 32).
+    /// FNV-1a hash: numbers as f64 bytes, strings as their bytes and a 0.
     #[derive(Default)]
     struct Fnv(u32, usize);
     impl Fnv {
@@ -2003,8 +1896,7 @@ mod tests {
         format!("hsl({HUE}, {sat}%, {light}%)")
     }
 
-    /// createPicture's Skia calls for a state, as stubs.ts records them (the hash and the
-    /// colour strings in draw order).
+    /// The Skia calls for a frame, hashed in draw order, with the colour strings seen.
     fn record(
         shape: &ShapeData,
         p: &mut Picture,
@@ -2085,7 +1977,7 @@ mod tests {
                 "{w:?}"
             );
         }
-        // Below the insertion threshold, and the heapsort fallback's sizes.
+        // Sizes below and above the insertion threshold.
         for n in [0usize, 1, 2, 6, 7, 100, 1000] {
             let mut v: Vec<f64> = (0..n).map(|i| ((i * 2654435761) % 1009) as f64).collect();
             hermes_sort(&mut v, |a, b| a - b);
@@ -2110,7 +2002,7 @@ mod tests {
             assert_eq!(ops, count, "{name}: draws");
             assert_eq!(h.hex(), hash, "{name}: the picture differs from Hermes's");
         }
-        // Every hsl() string, through CSSColorParser and JsiSkColor's round trip.
+        // Every colour string, through the parser and the byte round trip.
         let mut h = Fnv(0x811c_9dc5, 1);
         for (_, avatar, morph) in &colors {
             let (sat, light) = background_hsl(*avatar, *morph);
@@ -2130,7 +2022,7 @@ mod tests {
 
     #[test]
     fn jsi_colour_round_trips_every_byte() {
-        // toValue: byte × (1 / 255f) into a Float32Array; fromValue: × 255, truncated.
+        // Each byte as f32 × (1 / 255), back × 255 and truncated.
         for k in 0..=255u32 {
             let f = k as f32 * (1.0f32 / 255.0);
             assert_eq!((f * 255.0) as u32, k);
@@ -2191,7 +2083,7 @@ mod tests {
 
     #[test]
     fn the_toggle_scales_while_held_and_presses_only_lifted_inside() {
-        // pressto as designed: 0.96 at 250 ms on the bezier; lifted outside, no onPress.
+        // Scales to 0.96 at 250 ms. Lifted outside, it does not press.
         let mut s = mounted();
         let b = s.layout.unwrap().button;
         let (x, y) = (b.x + 32.0, b.y + 32.0);
@@ -2240,19 +2132,19 @@ mod tests {
         assert_eq!(haptics, vec!["haptic:impact-light".to_string(); 4]);
         assert_eq!(s.progress.value, 1.0);
         let settled = settled.unwrap();
-        // Critically damped to 6e-9 of its energy at 1.5 × 6000 ms.
+        // Settles near 1.5 × the forward duration.
         assert!(
             (8500.0..9600.0).contains(&(settled - 1008.0)),
             "{}",
             settled - 1008.0
         );
-        // The style restarts each frame and is evaluated at once: no pulse while it moves.
+        // No pulse while the spring moves.
         assert!(!pulse_while_moving.is_empty() && pulse_while_moving.iter().all(|&v| v == 1.0));
-        // Then 1 → 1.05 over 1000 ms (inOut(quad)), back over 1000 ms, again.
+        // Then the pulse: 1 → 1.05 → 1, one second each way.
         let mut t = settled + FRAME_MS;
         let mut values = Vec::new();
         let mut s3 = mounted();
-        // Re-run from the settle frame on a copy of the state to read the pulse in time.
+        // Replays the pulse from the settle frame on a copy of the state.
         s3.progress = s.progress;
         s3.pulse = Pulse {
             anim: Some(PulseAnim::Pulse(
@@ -2279,8 +2171,7 @@ mod tests {
         assert!((at(1000.0) - 1.05).abs() < 1e-3, "{}", at(1000.0));
         assert!((at(2000.0) - 1.0).abs() < 1e-3, "{}", at(2000.0));
         assert!((at(3000.0) - 1.05).abs() < 1e-3, "{}", at(3000.0));
-        // Back: the spring's rAF follows the running style's, so the restarts creep, then
-        // withTiming(1, 300) from where it was.
+        // Back: the pulse keeps restarting while the spring moves, then settles to 1.
         s.advance(13000.0);
         let before = s.pulse.current;
         press(&mut s, 13010.0);
@@ -2304,7 +2195,7 @@ mod tests {
         let mut s = mounted();
         run(&mut s, 0.0, 500.0, |_, _| {});
         press(&mut s, 505.0);
-        // valueSetter's guard: the target is the value: the forward spring is cancelled.
+        // Setting the value it already has cancels the spring.
         press(&mut s, 506.0);
         run(&mut s, 500.0 + FRAME_MS, 1500.0, |s, _| {
             assert_eq!(s.progress.value, 0.0)
@@ -2334,7 +2225,7 @@ mod tests {
         if s.fonts.is_none() {
             return eprintln!("no system font; skipped");
         }
-        // Mount: nothing but the gradients and the button until the shape data's commit.
+        // At mount only the gradients and the button show.
         let (first, _) = fixture::render(&gpu, &mut s, &frame(0.0)).unwrap();
         let l = s.layout.unwrap();
         let centre = (l.button.x + 32.0, l.button.y + 32.0);
@@ -2380,7 +2271,7 @@ mod tests {
         }
         save(&img, "notion-qrcode-qr");
         assert_eq!(s.progress.value, 1.0);
-        // The QR: its dot centres span 220 about the centre (the first row at H / 2 − 110).
+        // The QR is 220 pt across, centred, so its first row sits at H / 2 − 110.
         let dots = (0..250)
             .filter(|i| px(&img, W / 2.0 - 125.0 + *i as f32, H / 2.0 - 110.0)[3] > 200)
             .count();

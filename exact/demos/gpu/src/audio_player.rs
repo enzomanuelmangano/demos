@@ -1,35 +1,11 @@
-//! Audio Player (src/animations/audio-player: index.tsx, constants.ts, helpers/,
-//! components/waveform-scrubber/index.tsx, waveform-sample/index.tsx,
-//! use-current-playing-value.ts): a 22 s waveform of 50 bars that plays itself and is scrubbed
-//! with a finger, on #1D1B2B, the whole window.
+//! Audio player: a 22 s waveform of 50 bars that plays itself and is scrubbed with a finger.
 //!
-//! - Layout: a column centred in the window: a row the scrubber's width (window × 0.95) of two
-//!   pills (16:9 of 35 tall, radius 10, #474069, 15 below them) with the time ("0:ss", live) and
-//!   "0:22" (14 bold, #D4D4D4, centred), then the scrubber (80 tall, radius 15, #474069,
-//!   paddingHorizontal 18): 50 flex cells, a 3 pt bar (#D4D4D4, radius 15) centred in each,
-//!   45 × max(value, 0.1) tall. Every frame is Yoga's, rounded to the device pixel (`Layout`):
-//!   the bars' edges are whole pixels, the Texts' frames floored left and ceiled right.
-//! - Colours are RN View colours: the app sets `RCTColorSpace.displayP3`, so each hex is P3
-//!   (`Color::view_hex`: #474069 shows as 72, 64, 108).
-//! - The samples: pickNValuesFromDistribution(0, √½, 50) (Box–Muller of Math.random(), here a
-//!   stream seeded by the canvas's input) normalised to 0…1.
-//! - currentX: withTiming(contentWidth, 22 s, linear) at mount, contentWidth = scrubber − 20
-//!   (waveformPaddingHorizontal, not the 36 of padding). A bar's `position` is
-//!   contentWidth / 50 × i.
-//! - The pan (on the scrubber): onBegin isDragging and touchedX = clamp(x, 0, contentWidth),
-//!   onUpdate touchedX; a changed touchedX while dragging cancels the timing and sets currentX;
-//!   onFinalize ends the drag and currentX times on to contentWidth over what remains, linear.
-//! - Each bar, when its target changes: opacity withTiming(currentX > position ? 1 : 0.6) (300 ms,
-//!   inOut(quad)); scaleY withSpring (Reanimated's default) of getNextScaleY: 1 unless dragging;
-//!   1.4 near the finger (|currentX − position| < 20) and played, 0.9 played, 0.7 ahead. The
-//!   scale is the view's, about its centre (the corners scale with it).
-//! - The time: `0:${zeroPad(min(floor(currentX / contentWidth × 22), 22), 2)}`.
-//! - The pills and the scrubber are `borderCurve: 'continuous'` (Apple's corner); the bars have
-//!   no borderCurve (circular). Both times (a ReText TextInput and a Text) are laid out by UIKit
-//!   (`skia::match_ui_font`: SF's tracking for 14 pt and its kerning).
-//! - The waveform is computed when RN evaluates the demo's module, once per app launch: the
-//!   stream is `env.seed`, also once per launch, so a second visit shows the same waveform in
-//!   both.
+//! - The playhead runs linearly over the track. A drag takes over the playhead, and on release it
+//!   runs on from the finger's position to the end.
+//! - Each bar's height and opacity follow its place against the playhead. Bars near the finger
+//!   grow while it drags.
+//! - The time labels are text inputs laid out by UIKit, so their metrics match the system font.
+//! - The waveform is seeded once per app launch, so a second visit shows the same waveform.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -39,33 +15,32 @@ use skia::{Canvas, Color, Font, Paint, Renderer};
 
 use crate::gfx;
 
-/// Palette.
 const PRIMARY: u32 = 0x474069;
 const BODY: u32 = 0xD4D4D4;
 const BACKGROUND: u32 = 0x1D1B2B;
-/// DURATION (s).
+/// Track length, seconds.
 const DURATION: f64 = 22.0;
-/// N_SAMPLES.
+/// Number of bars.
 const N: usize = 50;
-/// styles.timeContainer: height, aspectRatio, borderRadius, marginBottom.
+/// Time pill height, points.
 const PILL_H: f32 = 35.0;
 const PILL_W: f32 = 35.0 * 16.0 / 9.0;
 const PILL_RADIUS: f32 = 10.0;
 const PILL_GAP: f32 = 15.0;
-/// styles.samplesContainer: height, borderRadius, paddingHorizontal.
+/// Scrubber height, points.
 const ROW_H: f32 = 80.0;
 const ROW_RADIUS: f32 = 15.0;
 const ROW_PADDING: f32 = 18.0;
-/// waveformPaddingHorizontal.
+/// Inset of the bars from the scrubber's edges, points.
 const CONTENT_INSET: f64 = 20.0;
-/// styles.sample: width, borderRadius; the 45 of its height.
+/// Bar width, points.
 const BAR_W: f32 = 3.0;
 const BAR_RADIUS: f32 = 15.0;
 const BAR_MAX: f32 = 45.0;
 
-/// The demo's surface. Input: a seed for the waveform (Math.random()).
+/// The demo's surface. Input: a seed for the waveform.
 pub fn surface() -> Box<dyn Surface> {
-    // The two times: an RN Text and a ReText (a TextInput), both laid out by UIKit.
+    // The two times are laid out by UIKit, in the system font.
     let font = skia::match_ui_font(14.0, 700.0);
     let labels = (0..=DURATION as usize)
         .map(|s| format!("0:{s:02}"))
@@ -105,7 +80,7 @@ struct AudioPlayer {
     height: f32,
     /// Device pixels per point.
     pixel_scale: f32,
-    /// RN's layout of the column as Yoga rounds it to the device pixel grid (on a size change).
+    /// The column's layout, rounded to the device pixel grid.
     layout: Layout,
     current: Timing,
     started: bool,
@@ -146,8 +121,7 @@ fn waveform(seed: f64) -> [f64; N] {
     out
 }
 
-/// Yoga's `roundValueToPixelGrid`: half up on the device grid, a Text's left floored and its
-/// right ceiled.
+/// Rounds to the device pixel: half up, with text left edges floored and right edges ceiled.
 fn grid(v: f64, scale: f64, ceil: bool, floor: bool) -> f64 {
     let s = v * scale;
     let f = s.rem_euclid(1.0);
@@ -167,8 +141,8 @@ fn grid(v: f64, scale: f64, ceil: bool, floor: bool) -> f64 {
     r / scale
 }
 
-/// RN's frames (window points, as drawn): each node's position rounded relative to its parent,
-/// its size from its rounded absolute edges (Yoga's roundLayoutResultsToPixelGrid).
+/// Frames in window points. Each position is rounded against its parent, and each size comes
+/// from the rounded edges.
 struct Layout {
     content_width: f64,
     left_pill: (f32, f32, f32, f32),
@@ -289,8 +263,7 @@ impl Surface for AudioPlayer {
     }
 
     fn opaque(&self) -> bool {
-        // Asked before the first bind, when the mode is not known yet: the card's waveform is
-        // transparent over the glass (the legacy demo fills its frame anyway).
+        // Before the first bind the mode is unknown; the card's waveform is transparent over the glass.
         false
     }
 
@@ -344,7 +317,7 @@ impl Surface for AudioPlayer {
         let clamp = |v: f64, w: f64| v.clamp(0.0, w);
         let w = self.content_width();
         let touch = |s: &mut AudioPlayer, v: f64| {
-            // useAnimatedReaction on touchedX: only a change moves currentX.
+            // Only a change of touchedX moves the playhead.
             if v != s.touched && s.dragging {
                 s.current.set(v);
             }
@@ -352,7 +325,7 @@ impl Surface for AudioPlayer {
         };
         match self.pan.event(id, gfx::phase(phase), x, y, at_ms, on_row) {
             Event::Begin { .. } => {
-                // onBegin: touchedX then isDragging; the reaction sees both.
+                // Set the touch before dragging, so the change reads as a scrub.
                 let v = clamp(local_x, w);
                 self.dragging = true;
                 let changed = v != self.touched;
@@ -393,7 +366,7 @@ impl Surface for AudioPlayer {
         }
         let now = frame.now_ms;
         if !self.started {
-            // The mount effect: withTiming(contentWidth, { duration: 22000, linear }).
+            // The playhead runs linearly to the end over the track's length.
             self.started = true;
             let to = self.content_width();
             self.current.to(to, DURATION * 1000.0, Easing::Linear);
@@ -401,8 +374,7 @@ impl Surface for AudioPlayer {
         let mut moving = self.current.step(now);
         let x = self.current.value;
         for i in 0..N {
-            // Reanimated's frame: the running animations step first, then the reactions start
-            // new ones from that frame's value (and, for withSpring, velocity) at its timestamp.
+            // Running animations step first; reactions then start new ones from that frame's value.
             self.opacity[i].step(now);
             self.scale[i].step(now);
             let position = self.position(i);
@@ -427,8 +399,7 @@ impl Surface for AudioPlayer {
             };
             match self.scale_target[i] {
                 None => self.scale[i].set(scale),
-                // `scaleY.set(withSpring(target))` over a running spring: its velocity (dropped
-                // when it points away), the start energy without it (spring.ts onStart).
+                // A new target keeps the running spring's velocity, unless it points away.
                 Some(t) if t != scale => self.scale[i].retarget(scale, GENTLE),
                 _ => {}
             }
@@ -459,8 +430,7 @@ impl Surface for AudioPlayer {
                 let lw = font.advance_width(label);
                 let mut tx = bx + (bw - lw) / 2.0;
                 if field {
-                    // The time is a ReText (a UITextField): its centred line starts on a whole
-                    // device pixel (measured: 1/9 pt left of a Text's in the same frame).
+                    // The time input's centred line starts on a whole device pixel.
                     tx = (tx * frame.scale).floor() / frame.scale;
                 }
                 c.draw_text(label, tx, baseline, font, &body);
@@ -502,25 +472,20 @@ impl Surface for AudioPlayer {
 }
 
 // ---------------------------------------------------------------------------------------------
-// The music player (the owner's phone note: "migliora il layout, Liquid Glass, musica vera,
-// play/pausa, haptics sul pan"). audio-player.contract lays out the card (artwork, title, glass
-// controls) and passes `audio_player(seed, "card", playing, duration, skip, wave, sync)`; this
-// surface draws only the waveform and the two times, transparent, in its own frame, and owns
-// the playhead so nothing commits per frame:
+// The music player's card (artwork, title, controls) is laid out by the Contract, which passes
+// `audio_player(seed, "card", playing, duration, skip, wave, sync)`. This surface draws only the
+// waveform and the two times, transparent, and owns the playhead so nothing commits per frame.
 //
-// - inputs: `playing` (bool), `duration` (seconds as text; "" until the `audio-track` native
-//   view has read the file: NOMINAL), `skip` ("<token>:<seconds>", a new token moves the
-//   playhead by that much), `wave` (50 comma-separated levels 0…1 the native view measured
-//   from the file; "" keeps the seed's waveform), `sync` ("<token>:<seconds>", the player's
-//   own clock about twice a second: a drift over 0.25 s is corrected, not within 0.8 s of a
-//   seek of ours, whose answer may still be on the way).
-// - messages: "audio-player:2" at the first bind (the Contract switches from the legacy
-//   frame), "haptic:grab" at touch-down on the waveform, "haptic:tick" each bar the finger
-//   crosses (at most one per 28 ms), "haptic:release" at the lift, "seek:<s>" when a scrub or a
-//   skip moves the playhead, "ended" when it reaches the end while playing.
-// - the bars: RN's look kept: played at full opacity, the rest at 0.35, each change over
-//   300 ms inOut(quad); while a finger is down RN's scales (1.4 near it, 0.9 played, 0.7 ahead)
-//   on the gentle spring; a new waveform grows each bar's height on the same spring.
+// - Inputs: `playing` (bool); `duration` (seconds as text, "" until the native audio-track view
+//   has read the file); `skip` ("<token>:<seconds>", a new token moves the playhead by that much);
+//   `wave` (50 levels 0…1 from the file, "" keeps the seed's waveform); `sync` ("<token>:<seconds>",
+//   the player's clock, about twice a second: a drift over 0.25 s is corrected, but not within
+//   0.8 s of our own seek, whose answer may still be on the way).
+// - Messages: "audio-player:2" at the first bind, "haptic:grab" at touch-down, "haptic:tick" as
+//   the finger crosses each bar (at most one per 28 ms), "haptic:release" at the lift,
+//   "seek:<s>" when a scrub or skip moves the playhead, and "ended" at the end while playing.
+// - Bars: played at full opacity, the rest at 0.35, each change over 300 ms. While a finger is
+//   down, bars near it grow on a spring.
 
 /// The length shown before the file has reported its own (no file: the UI still plays).
 const NOMINAL: f64 = 180.0;
@@ -530,7 +495,7 @@ const CARD_BAR_W: f32 = 3.0;
 const CARD_BAR_MAX: f32 = 44.0;
 const TIME_GAP: f32 = 8.0;
 const AHEAD_OPACITY: f64 = 0.35;
-/// The finger's halo: bars within this many points of it grow (RN: 20).
+/// Finger halo: bars within this many points of it grow.
 const HALO: f64 = 20.0;
 const TICK_MIN_MS: f64 = 28.0;
 const SYNC_TOLERANCE: f64 = 0.25;
@@ -928,8 +893,7 @@ mod tests {
         let (start, moving) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         start.save("audio-player-start");
         assert!(moving, "it plays");
-        // The background, the left pill (x 10.5…72.7, y 391…426), the scrubber below it, in the
-        // sRGB that RN's Display P3 hex makes (#1D1B2B, #474069).
+        // The background and pills, in the sRGB values that the Display P3 hex colours map to.
         assert_eq!(&start.at(4, 4)[..3], &[29, 27, 44]);
         assert_eq!(&start.at(2 * 14, 2 * 395)[..3], &[72, 64, 108]);
         assert_eq!(&start.at(2 * 210, 2 * 444)[..3], &[72, 64, 108]);
