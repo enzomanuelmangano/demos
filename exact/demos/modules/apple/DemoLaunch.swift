@@ -3,8 +3,9 @@
 // Open: a card holding the app grows out of the tapped icon; its width, aspect and centre each run
 // their own spring. The icon's artwork cross-fades into it, the corners overshoot the display radius
 // and settle, the card is a slight trapezoid that straightens as it lands, and the home behind
-// shrinks, blurs and dims. Close: a drag shrinks the card under the finger; a throw (or a pull past
-// a fifth of the screen) flies it into its icon, a shorter pull springs back.
+// shrinks, blurs and dims. Close: a drag shrinks the card under the finger (a still of the demo takes its
+// place for the pull, rounded by its own layer: no offscreen pass; the demo keeps running hidden behind it);
+// a throw (or a pull past a fifth of the screen) flies it into its icon, a shorter pull springs back.
 //
 // `present(_:animated:completion:)` is swizzled once (`installLaunch`) so the presented
 // `.overFullScreen` controller gets this file's transitioning delegate, named by the icon the finger
@@ -47,6 +48,10 @@ private enum K {
     static let dragMinScale: CGFloat = 0.3
     static let failSideways: CGFloat = 30
     static let activeOffsetY: CGFloat = 10
+    /// The still of the demo is taken (and the home shown behind) this far into the pull, before the card moves.
+    static let prepareOffsetY: CGFloat = 6
+    /// A demo that owns its drags still gives a pull from this much of the screen's top to the close.
+    static let stripFraction: CGFloat = 0.1
     /// A release closes when it is a throw down, or lands past a fifth of the screen.
     static let closeVelocity: CGFloat = 400
     static let closeTravel: CGFloat = 0.2
@@ -210,31 +215,128 @@ private enum BlurCalibration {
     static let gainAtFull: Double = 0.56
 }
 
+// MARK: - The drag's timings (launch argument `-panTrace YES`; one NSLog line when the finger lifts)
+
+private enum PanTrace {
+    static let on = UserDefaults.standard.bool(forKey: "panTrace")
+    private static var base = mach_timebase_info_data_t()
+    private static var stats: [String: (n: Int, sum: Double, max: Double)] = [:]
+    private static var last: TimeInterval?
+    private static var gaps: [Double] = []
+    static func now() -> UInt64 { on ? mach_absolute_time() : 0 }
+    static func ms(_ t0: UInt64) -> Double {
+        if base.denom == 0 { mach_timebase_info(&base) }
+        return Double(mach_absolute_time() - t0) * Double(base.numer) / Double(base.denom) / 1e6
+    }
+    static func record(_ name: String, _ since: UInt64) {
+        guard on else { return }
+        let v = ms(since)
+        let o = stats[name] ?? (0, 0, 0)
+        stats[name] = (o.n + 1, o.sum + v, Swift.max(o.max, v))
+    }
+    static func gap(_ t: TimeInterval) {
+        guard on else { return }
+        if let l = last { gaps.append((t - l) * 1000) }
+        last = t
+    }
+    static func flush() {
+        guard on else { return }
+        let g = gaps.sorted()
+        let line = stats.sorted { $0.key < $1.key }.map { String(format: "%@ n=%d mean=%.3f max=%.3f", $0.key, $0.value.n, $0.value.sum / Double($0.value.n), $0.value.max) }
+        NSLog("[PAN] %@ | event gap ms median=%.2f max=%.2f n=%d", line.joined(separator: " | "),
+              g.isEmpty ? 0 : g[g.count / 2], g.last ?? 0, g.count)
+        stats = [:]; gaps = []; last = nil
+    }
+}
+
 // MARK: - The close drag: a pan held until it moves down (activeOffsetY 10, failOffsetX ±30)
 
-private final class ClosePan: UIPanGestureRecognizer {
-    override init(target: Any?, action: Selector?) {
-        super.init(target: target, action: action)
-        maximumNumberOfTouches = Int.max
+/// Tracks its first finger itself (UIPanGestureRecognizer's translation does not move while its minimum
+/// touch count is unmet), reads nothing but the touch in the handler and keeps the samples its velocity needs.
+private final class ClosePan: UIGestureRecognizer {
+    weak var session: LaunchSession?
+    private var touch: UITouch?
+    private var origin = CGPoint.zero
+    private var samples: [(t: TimeInterval, p: CGPoint)] = []
+    private var prepared = false
+    private(set) var translation = CGPoint.zero
+    private(set) var velocity = CGPoint.zero
+    /// Where the finger went down: the point of the card that stays under it.
+    var location: CGPoint { origin }
+    /// What the finger had moved when the pull took hold: the card does not jump by it, it catches up over `catchUp`.
+    private var lag = CGPoint.zero
+    private static let catchUp: CGFloat = 50
+
+    private func eased(_ tr: CGPoint) -> CGPoint {
+        let left = max(0, 1 - max(0, tr.y - lag.y) / ClosePan.catchUp)
+        return CGPoint(x: tr.x - lag.x * left, y: tr.y - lag.y * left)
     }
+
+    override func reset() {
+        abort()
+        touch = nil; samples = []; prepared = false
+        translation = .zero; velocity = .zero; lag = .zero
+    }
+
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
-        // Keeps the pan from beginning until touchesMoved decides.
-        super.minimumNumberOfTouches = 20
-        super.touchesBegan(touches, with: event)
-    }
-    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent) {
-        super.touchesMoved(touches, with: event)
-        guard state == .possible else { return }
-        let trans = translation(in: nil)
-        if trans.x < -K.failSideways || trans.x > K.failSideways { state = .failed; return }
-        if trans.y > K.activeOffsetY {
-            super.minimumNumberOfTouches = 1
-            if numberOfTouches >= 1 {
-                state = .began
-                setTranslation(.zero, in: nil)
-            }
+        if touch != nil || touches.count > 1 {
+            // A second finger is a pinch or a different gesture, never the close.
+            if state == .possible { state = .failed; abort() }
+            return
         }
+        guard let t = touches.first else { return }
+        touch = t
+        origin = t.location(in: nil)
+        samples = [(t.timestamp, origin)]
+        // The strip is the close's whatever the demo: nothing moves under a finger there, so the still is taken now.
+        if session?.stripTouch == true { prepared = true; session?.dragPrepare() }
     }
+
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent) {
+        guard let t = touch, touches.contains(t) else { return }
+        let t0 = PanTrace.now()
+        let p = t.location(in: nil)
+        samples.append((t.timestamp, p))
+        if samples.count > 16 { samples.removeFirst(samples.count - 16) }
+        let tr = CGPoint(x: p.x - origin.x, y: p.y - origin.y)
+        switch state {
+        case .possible:
+            if abs(tr.x) > K.failSideways { state = .failed; abort(); return }
+            if tr.y > K.prepareOffsetY, !prepared { prepared = true; session?.dragPrepare() }
+            if tr.y > K.activeOffsetY {
+                lag = tr
+                translation = eased(tr)
+                state = .began
+            }
+        case .began, .changed:
+            translation = eased(tr)
+            state = .changed
+        default: break
+        }
+        PanTrace.record("touchesMoved", t0)
+        PanTrace.gap(t.timestamp)
+    }
+
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent) {
+        guard let t = touch, touches.contains(t) else { return }
+        let p = t.location(in: nil)
+        samples.append((t.timestamp, p))
+        if state == .possible { state = .failed; abort(); return }
+        translation = eased(CGPoint(x: p.x - origin.x, y: p.y - origin.y))
+        // The finger's speed over its last 80 ms, up to the lift: a finger that rested before it lifted is at rest.
+        let end = t.timestamp
+        let from = samples.last(where: { $0.t <= end - 0.08 }) ?? samples[0]
+        let dt = max(end - from.t, 1.0 / 120)
+        velocity = CGPoint(x: (p.x - from.p.x) / dt, y: (p.y - from.p.y) / dt)
+        state = .ended
+    }
+
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent) {
+        guard let t = touch, touches.contains(t) else { return }
+        if state == .possible { state = .failed; abort() } else { state = .cancelled }
+    }
+
+    private func abort() { if prepared { session?.dragAbort() } }
 }
 
 /// The strip over the status bar: its drags are always the close's and never reach the demo.
@@ -252,6 +354,9 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
     private var ownsHome: Bool { LaunchSession.homeOwner == nil || LaunchSession.homeOwner === self }
     private static var live: [LaunchSession] = []
     static let shownChanged = Notification.Name("DemosLaunchShownChanged")
+
+    /// Made and warmed before the finger lifts: a generator made at the release costs a frame.
+    private static let thump = UIImpactFeedbackGenerator(style: .medium)
 
     private enum Phase { case opening, open, dragging, returning, closing, landed }
 
@@ -285,6 +390,8 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
     private weak var zoom: UIView?
     private var zoomCenter = CGPoint.zero
     private var snapshot: UIView?
+    /// The still the pull took ahead of the card moving (the live demo stays hidden behind it meanwhile).
+    private var pulled: UIView?
     private var content: UIView? { snapshot ?? controller?.view }
     private var detached = false
     private weak var cardHost: UIView?
@@ -476,6 +583,7 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         self.grab = grab
         // On the window: a GPU canvas's touches never reach recognizers on the presented view.
         let pan = ClosePan(target: self, action: #selector(dragged(_:)))
+        pan.session = self
         pan.delegate = self
         (view.window ?? view).addGestureRecognizer(pan)
         self.pan = pan
@@ -499,6 +607,7 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
             cardView.layer.cornerRadius = 0
         }
         moving(false)
+        liveAgain()
         if let view = controller?.view {
             view.transform = .identity
             view.frame = CGRect(origin: .zero, size: screen)
@@ -555,13 +664,12 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         guard !closing else { return }
         closing = true
         if LaunchSession.current === self { LaunchSession.current = nil }
-        controller?.view.isUserInteractionEnabled = false
         guard grouped else {
+            controller?.view.isUserInteractionEnabled = false
             closed(haptic: haptic)
             leave()
             return
         }
-        if let pan { pan.view?.removeGestureRecognizer(pan) }
         phase = .closing
         releaseRadius = radius
         let v = velocity ?? (0, 0, 0, 0)
@@ -580,6 +688,9 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         fly()
         // Committed: the card moves on the first frame after the release.
         CATransaction.flush()
+        // What is not the card waits until it is on its way: the demo stops taking touches, the pan goes.
+        controller?.view.isUserInteractionEnabled = false
+        if let pan { pan.view?.removeGestureRecognizer(pan) }
         closed(haptic: haptic)
         if dismissing != nil, detached { DispatchQueue.main.async { [self] in leave() } }
         else { routeAt = K.routeLeaves }
@@ -587,7 +698,7 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
 
     /// What the close does that is not the card: the haptic, the keyboard, the buttons.
     private func closed(haptic: Bool) {
-        if haptic { UIImpactFeedbackGenerator(style: .medium).impactOccurred() }
+        if haptic { LaunchSession.thump.impactOccurred() }
         controller?.view.window?.endEditing(true)
         NotificationCenter.default.post(name: LaunchSession.shownChanged, object: self)
     }
@@ -615,8 +726,13 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
 
     /// A still of the demo in the card, to fly home once the route is handed back (its views go with the route).
     private func pictureContent() {
-        guard snapshot == nil, let view = controller?.view, let cardView,
-              let picture = LaunchSession.picture(of: view) else { return }
+        guard snapshot == nil, let view = controller?.view, let picture = LaunchSession.picture(of: view) else { return }
+        adopt(picture)
+    }
+
+    /// The still takes the live demo's place in the card; the demo keeps running, hidden.
+    private func adopt(_ picture: UIView) {
+        guard snapshot == nil, let view = controller?.view, let cardView else { return }
         picture.isUserInteractionEnabled = false
         picture.bounds = view.bounds
         picture.layer.anchorPoint = view.layer.anchorPoint
@@ -627,6 +743,14 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         view.layer.removeAnimation(forKey: LaunchSession.flightKey + ".b")
         view.isHidden = true
         snapshot = picture
+    }
+
+    /// The live demo takes the card back from the still of a pull that sprang back.
+    private func liveAgain() {
+        guard !closing, let still = snapshot, let view = controller?.view else { return }
+        still.removeFromSuperview()
+        snapshot = nil
+        view.isHidden = false
     }
 
     /// A still image of `view` from the render server, drawn at once (a GPU canvas included). A `snapshotView`
@@ -714,22 +838,88 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
 
     // MARK: drag
 
+    /// The card's scale and centre where the pull took hold, and the point of the card under the finger.
+    private var dragFrom = (s: CGFloat(1), c: CGPoint.zero)
+    private var dragHeld = CGPoint.zero
+
     private func dragPose(_ t: CGPoint) -> (s: CGFloat, x: CGFloat, y: CGFloat) {
         let d = max(0, t.y)
-        let s = max(K.dragMinScale, 1 - d / (K.dragTravel * screen.height))
-        let x = dragAnchor.x + t.x + (screen.width / 2 - dragAnchor.x) * s
-        let y = dragAnchor.y + d + (screen.height / 2 - dragAnchor.y) * s
-        return (s, x, y)
+        let s = max(K.dragMinScale, dragFrom.s - d / (K.dragTravel * screen.height))
+        return (s, dragAnchor.x + t.x - dragHeld.x * s, dragAnchor.y + d - dragHeld.y * s)
     }
 
-    @objc private func dragged(_ pan: UIPanGestureRecognizer) {
+    /// Where the card is while a flight runs (the open, or the spring back), or nil.
+    private func flightCard() -> (w: Double, cx: Double, cy: Double)? {
+        guard let f = flight, !f.poses.isEmpty else { return nil }
+        let x = max(0, CACurrentMediaTime() - f.start) * Flight.rate
+        let i = min(Int(x), f.poses.count - 1), j = min(i + 1, f.poses.count - 1), u = x - Double(i)
+        let a = f.poses[i], b = f.poses[j]
+        return (lerp(a.w, b.w, u), lerp(a.cx, b.cx, u), lerp(a.cy, b.cy, u))
+    }
+
+    /// The first pixels of a downward pull: the still is taken and the home is shown behind the card,
+    /// a frame or two before the card moves, so neither lands in the card's first frames.
+    fileprivate func dragPrepare() {
+        guard grouped, !closing, pulled == nil else { return }
+        let t0 = PanTrace.now()
+        switch phase {
+        case .open: break
+        case .opening: guard let c = flightCard(), c.w >= 0.75 * Double(screen.width) else { return }
+        case .returning: return
+        default: return
+        }
+        if snapshot == nil, let view = controller?.view { pulled = LaunchSession.picture(of: view) }
+        if phase == .open {
+            home?.isHidden = false
+            blur?.isHidden = false
+            dim?.isHidden = false
+        }
+        PanTrace.record("prepare", t0)
+    }
+
+    /// The finger lifted before the pull took hold.
+    fileprivate func dragAbort() {
+        if phase != .dragging { pulled?.removeFromSuperview() }
+        pulled = nil
+        guard phase == .open, !closing else { return }
+        blur?.isHidden = true
+        dim?.isHidden = true
+        if ownsHome { home?.isHidden = true }
+    }
+
+    @objc private func dragged(_ pan: ClosePan) {
         switch pan.state {
         case .began:
-            // Only a card at rest is taken (one springing back finishes first).
-            guard phase == .open || phase == .opening, grouped, !closing else { return }
-            if phase == .opening { flight = nil; removeFlight(); completePresentation() }
+            let t0 = PanTrace.now()
+            defer { PanTrace.record("began", t0) }
+            guard phase == .open || phase == .opening || phase == .returning, grouped, !closing else { return }
+            var from = (s: CGFloat(1), c: CGPoint(x: screen.width / 2, y: screen.height / 2))
+            if phase != .open {
+                // Taken from where the card shows: an open that has nearly landed, or a spring back.
+                guard let c = flightCard(), c.w >= 0.75 * Double(screen.width) else { return }
+                from = (CGFloat(c.w) / screen.width, CGPoint(x: c.cx, y: c.cy))
+                flight = nil
+                removeFlight()
+                completePresentation()
+            }
             unrest()
-            dragAnchor = pan.location(in: nil)
+            LaunchSession.thump.prepare()
+            if snapshot == nil, let view = controller?.view {
+                if let still = pulled ?? LaunchSession.picture(of: view) { adopt(still) }
+            }
+            pulled = nil
+            // The still rounds itself: a layer of nothing but contents clips without an offscreen pass, the
+            // live demo's subtree under a clipping card would not.
+            if let layer = snapshot?.layer {
+                layer.cornerRadius = screenCornerRadius
+                layer.cornerCurve = .continuous
+                layer.masksToBounds = true
+                cardView?.layer.masksToBounds = false
+                cardView?.layer.allowsEdgeAntialiasing = false
+            }
+            dragFrom = from
+            dragAnchor = pan.location
+            dragHeld = CGPoint(x: (dragAnchor.x - from.c.x) / from.s, y: (dragAnchor.y - from.c.y) / from.s)
             phase = .dragging
             moveDrag(pan)
         case .changed:
@@ -737,7 +927,9 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
             moveDrag(pan)
         case .ended, .cancelled, .failed:
             guard phase == .dragging else { return }
-            let t = pan.translation(in: nil), v = pan.velocity(in: nil)
+            let t0 = PanTrace.now()
+            defer { PanTrace.record("release", t0); PanTrace.flush() }
+            let t = pan.translation, v = pan.velocity
             let d = max(0, t.y)
             let thrown = d + max(0, v.y) * K.throwProjection
             let held = dragPose(t)
@@ -745,6 +937,7 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
             let vw = Double(screen.width) * ds, vh = Double(screen.height) * ds
             let vx = Double(v.x) + Double(screen.width / 2 - dragAnchor.x) * ds
             let vy = (d > 0 ? Double(v.y) : 0) + Double(screen.height / 2 - dragAnchor.y) * ds
+            flightClip()
             if pan.state == .ended, v.y > -100, v.y > K.closeVelocity || thrown > K.closeTravel * screen.height {
                 commit(haptic: true, velocity: (vw, vh, vx, vy))
             } else {
@@ -758,15 +951,31 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         }
     }
 
-    private func moveDrag(_ pan: UIPanGestureRecognizer) {
-        let d = dragPose(pan.translation(in: nil))
+    /// Back from the still's own rounding to the card's clip, which the flight animates.
+    private func flightClip() {
+        if let layer = snapshot?.layer { layer.masksToBounds = false; layer.cornerRadius = 0 }
+        moving(true)
+    }
+
+    /// Per touch: the springs hold the pose for the release, the still moves. Nothing else changes in a pull
+    /// (the card, the home and the blur stand), so this sets two properties of one layer.
+    private func moveDrag(_ pan: ClosePan) {
+        let t0 = PanTrace.now()
+        let d = dragPose(pan.translation)
         w.set(Double(screen.width * d.s)); h.set(Double(screen.height * d.s))
         cx.set(Double(d.x)); cy.set(Double(d.y))
         radius = Double(screenCornerRadius * d.s)
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        put(pose(at: 0))
-        CATransaction.commit()
+        if let layer = snapshot?.layer {
+            CATransaction.setDisableActions(true)
+            layer.position = CGPoint(x: d.x, y: d.y)
+            layer.transform = CATransform3DMakeScale(d.s, d.s, 1)
+        } else {
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            put(pose(at: 0))
+            CATransaction.commit()
+        }
+        PanTrace.record("moveDrag", t0)
     }
 
     // MARK: the flight, handed to Core Animation
@@ -1074,7 +1283,9 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
 extension LaunchSession: UIGestureRecognizerDelegate {
     /// A demo whose drags own the screen keeps every touch below the strip.
     func gestureRecognizer(_ g: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
-        let inStrip = touch.view is GrabZone || touch.location(in: nil).y < (grab?.bounds.height ?? 0)
+        // The strip is the status bar's height, but a finger rarely lands on the status bar itself (the system keeps
+        // the touches there): a drag down from the top tenth of the screen is the close's as well.
+        let inStrip = touch.view is GrabZone || touch.location(in: nil).y < max(grab?.bounds.height ?? 0, screen.height * K.stripFraction)
         stripTouch = inStrip
         return !owns || inStrip
     }
