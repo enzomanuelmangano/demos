@@ -250,7 +250,11 @@ private struct GlassBody: View {
 
     var body: some View {
         styled(SwiftUI.Button(model.label, systemImage: model.symbol, role: role, action: press)
-            .labelStyle(.iconOnly))
+            .labelStyle(.iconOnly)
+            // A demo's sub-page turns the close into Back (demo-screen.contract): the symbols
+            // swap with SF Symbols' replace (the outgoing one blurs and shrinks out, the new one in).
+            .contentTransition(.symbolEffect(.replace))
+            .animation(.snappy(duration: 0.3), value: model.symbol))
             .buttonBorderShape(.circle)
             .controlSize(.large)
             .opacity(model.visible ? 1 : 0)

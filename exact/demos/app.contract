@@ -150,9 +150,17 @@ component Demos
   // the app (app/_layout.tsx): pressto's default timing and config, and the global onPress.
   action pressablesOnPress
     haptic("selection")
+  // A demo in a sub-page (dot-sheet's open sheet) names the field whose blur takes it back, so
+  // the demo screen's close button turns into Back (home/demo-screen.contract provides its own
+  // pair); elsewhere (the atlas) nothing takes it, and the demo keeps its own back button.
+  state noSubpage = ""
+  action demoSubpage(field: string)
+    noSubpage = field
   provide
     pressto = defaultPressablesConfig()
     pressablesOnPress
+    demoSubpage
+    demoBackChrome = false
   view
     main testId="root" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow
       navigationHistory=(desk and stack(nav).length == 1 ? "none" : "back forward")

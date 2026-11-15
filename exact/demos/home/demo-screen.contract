@@ -17,6 +17,26 @@ component DemoScreen
   state bottom = 0
   // The Inspiration sheet is up.
   state inspiring = false
+  // A demo's sub-page (phone feedback 2026-11-15, dot-sheet): the field whose blur takes the
+  // demo back ("" while it is at its first page). The close button turns into Back meanwhile.
+  state subField = ""
+  // When the sub-page last ended: a tap on Back can take the field's focus first (the web does),
+  // so the field's blur has already gone back by the time the press arrives.
+  state subEnded = -1000
+  action demoSubpage(field: string)
+    if field == "" and subField != ""
+      subEnded = performanceNow()
+    subField = field
+  action closeOrBack
+    if subField != ""
+      haptic("selection")
+      blur(subField)
+    else
+      if performanceNow() - subEnded > 400
+        leave()
+  provide
+    demoSubpage
+    demoBackChrome = true
   action inspire
     haptic("impact-light")
     inspiring = true
@@ -60,7 +80,11 @@ component DemoScreen
         // demo-close-button.tsx: the close role on liquid glass, 16 pt from the leading edge, at
         // the safe top. RN's is a real SwiftUI Button (@expo/ui), so is this: `glass-button`
         // (modules/apple/Demos.swift), the button at the box's top-left as Host matchContents.
-        glass-button press=leave caption="Close" symbol="xmark" aria-label="Close"
+        // In a demo's sub-page it is Back (chevron.backward), and a tap plays the demo's own way
+        // back instead of closing (the symbol's replace transition is the module's).
+        glass-button press=closeOrBack caption=(subField != "" ? "Back" : "Close")
+          symbol=(subField != "" ? "chevron.backward" : "xmark")
+          aria-label=(subField != "" ? "Back" : "Close")
           testId="close" position="absolute" top=top left=16 width=48 height=48
         // demo-inspiration.tsx: the info button mirroring the close button (16 pt from the
         // trailing edge), when the demo credits someone; it opens the Inspiration sheet.
