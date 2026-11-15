@@ -141,6 +141,14 @@ final class LaunchIcons {
     private(set) var touched: (slug: String, at: CFTimeInterval)?
     func touch(_ view: UIView) {
         guard let slug = views.first(where: { $0.value.view === view })?.key else { return }
+        rowSource = nil
+        touched = (slug, CACurrentMediaTime())
+        GpuWarm.prioritize(slug)
+    }
+    /// A source that is not a home icon (a search result's icon): `view(slug)` answers it until a home icon is touched.
+    private var rowSource: (slug: String, view: WeakView)?
+    func touch(_ view: UIView, slug: String) {
+        rowSource = (slug, WeakView(view: view))
         touched = (slug, CACurrentMediaTime())
         GpuWarm.prioritize(slug)
     }
@@ -151,6 +159,7 @@ final class LaunchIcons {
         return t.slug
     }
     func view(_ slug: String) -> UIView? {
+        if let r = rowSource, r.slug == slug, let v = r.view.view, v.window != nil { return v }
         guard let v = views[slug]?.view, v.window != nil else { return nil }
         return v
     }
