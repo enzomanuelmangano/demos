@@ -56,9 +56,14 @@ component AirbnbSlider
         // The owner's call (phone feedback, 2026-11-15): the Slider's unfilled track (white at a
         // low alpha, as RN's) all but vanished on Palette.background. A neutral track sits under
         // it, where the phone's capture puts the native one (6 pt tall, its centre at 479.3 of 874
-        // pt, the full width): the blue fill and the thumb cover it as RN's do. The thumb and
-        // the track are centred on each other by the Slider itself (within half a point).
-        view position="absolute" left=0 right=0 top=26.333 height=6 border-radius=3
+        // pt), from past the thumb to the end: the liquid-glass thumb is see-through, so nothing
+        // may lie under it (phone feedback, 2026-11-15). The thumb's centre is 18.5 + progress ×
+        // (width − 37) (its capsule 37 pt wide on the capture, at each end at rest); the track
+        // starts 26 pt past it, room for the thumb grown under a finger. The thumb and the track
+        // are centred on each other by the Slider itself (within half a point). Next build: the
+        // native maximum-track tint replaces this.
+        view position="absolute" right=0 top=26.333 height=6 border-radius=3
+          left=(18.5 + min(max(progress, 0), 1) * (env.width - 90 - 37) + 26)
           background-color="rgba(60, 60, 67, 0.18)" pointer-events="none" aria-hidden=true
         swift-slider progress="0" change=moved width=env.width - 90 height=32 flex-shrink=0
           role="slider" aria-label="Price" testId="airbnb-slider-range"
