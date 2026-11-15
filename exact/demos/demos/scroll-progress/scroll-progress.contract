@@ -53,6 +53,13 @@ keyframes spFill
 keyframes spOn
   from opacity=0
   to opacity=1
+// The percentage as one roll: "0%" … "100%" stacked 18 apart, moved by the scroll timeline on a
+// staircase (Math.round: label k from (k − 0.5) % to (k + 0.5) %), one animated node where 100
+// labels each ran their own timeline animation (the stutter while scrolling, 2026-11-15).
+keyframes spRoll
+  from translate="0px 0px"
+  to translate="0px -1800px"
+fn rollStairs(): string = `linear(0 0%, ${range(100).map(k => `${k / 100} ${k + 0.5}%, ${(k + 1) / 100} ${k + 0.5}%`).join(", ")}, 1 100%)`
 
 // Reanimated's withTiming default curve, Easing.inOut(Easing.quad), as its cubic-bezier.
 // The pill's width (500 ms) moves every box inside it on the same curve, as Yoga relays
@@ -175,18 +182,17 @@ component BottomProgress
         background-color="color(display-p3 0.1804 0.1765 0.1804)" justify-content="center" align-items="center"
         opacity=(isExpanded(progress) ? 1 : 0)
         transition="opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)" testId="progress-bar-area"
-        // ReText: #9E9E9E, 15, width 50, centred. "0%" in the row, "1%" … "100%" stacked over it,
-        // each on the bar area's colour, turned on by the timeline at (k − 0.5) % (see pctRange).
+        // ReText: #9E9E9E, 15, width 50, centred: the roll above (spRoll), the label k showing
+        // from (k − 0.5) % to (k + 0.5) % of the scroll, as Math.round.
         // ReText is a TextInput: UITextField centres its line its own way, a device pixel above
         // a Text's (measured: "100%" 1 px low); half a pixel up lands on it (host snap).
         view class=PillMotion position="relative" flex-shrink=0 width=50 testId="progress-percent"
-          text "0%" color="#9E9E9E" font-size=15 text-align="center" width=50 position="relative"
-            top="-0.16667px"
-          for k in range(100) key=k
-            text `${k + 1}%` color="#9E9E9E" font-size=15 text-align="center" position="absolute"
-              top="-0.16667px" left=0 width=50 height="100%" background-color="color(display-p3 0.1804 0.1765 0.1804)"
-              animation="spOn 1s linear both" animation-timeline="--sp" animation-range=pctRange(k + 1)
-              aria-hidden=true
+          view position="relative" width=50 height=18 overflow="hidden" top="-0.16667px"
+            column position="absolute" left=0 top=0 width=50
+              animation=`spRoll 1s ${rollStairs()} both` animation-timeline="--sp" testId="progress-roll"
+              for k in range(101) key=k
+                text `${k}%` color="#9E9E9E" font-size=15 text-align="center" width=50 height=18
+                  line-height="18px" aria-hidden=(k != 0)
           text "100%" color="#9E9E9E" font-size=15 text-align="center" position="absolute"
             top="-0.16667px" left=0 width=50 height="100%" background-color="color(display-p3 0.1804 0.1765 0.1804)"
             opacity=(frozen ? 1 : 0) aria-hidden=true
