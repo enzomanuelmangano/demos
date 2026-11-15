@@ -45,9 +45,12 @@ const iconOf = (slug: string) => {
   return `assets/app-icons/${file}`;
 };
 
+// Demos the owner dropped from the Exact app (their code stays, unlisted).
+const dropped = new Set(['shake-to-delete']);
+
 const q = (s: string) => JSON.stringify(s);
 const rows = order
-  .filter(slug => meta[slug] !== undefined)
+  .filter(slug => meta[slug] !== undefined && !dropped.has(slug))
   .reverse()
   .map(slug => {
     const m = meta[slug] as { name: string; displayName?: string; alert?: boolean };
