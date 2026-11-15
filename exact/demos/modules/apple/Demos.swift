@@ -50,6 +50,9 @@
 //
 // `painting-menu` is art-gallery's PaintingMenu (PaintingMenu.swift), on iOS and on macOS.
 //
+// `glass-pane` is expo-glass-effect's GlassView (GlassPane.swift): iOS 26's UIGlassEffect
+// (liquid-glass-playground's clear, tinted pane), on iOS and on macOS.
+//
 // `variable-blur` is a progressive blur of the backdrop (VariableBlur.swift): clerk-toast's
 // backdrop behind the toasts, iOS only.
 import Foundation
@@ -69,7 +72,8 @@ final class DemosModule: ExactModule {
          "mate-haptic": ExactNativeFactory { props, events in MateHaptic(props: props, events: events) },
          "swift-slider": ExactNativeFactory { props, events in SwiftSlider(props: props, events: events) },
          "painting-menu": ExactNativeFactory { props, events in PaintingMenu(props: props, events: events) },
-         "variable-blur": ExactNativeFactory { props, events in VariableBlur(props: props, events: events) }]
+         "variable-blur": ExactNativeFactory { props, events in VariableBlur(props: props, events: events) },
+         "glass-pane": ExactNativeFactory { props, events in GlassPane(props: props, events: events) }]
     }
 
     override func element(_ element: ExactElement) {
@@ -433,7 +437,8 @@ private final class MateHaptic: ExactNativeInstance {
 let exactModule: ExactModule.Type = DemosModule.self
 final class DemosModule: ExactModule {
     override class var views: [String: ExactNativeFactory] {
-        ["painting-menu": ExactNativeFactory { props, events in PaintingMenu(props: props, events: events) }]
+        ["painting-menu": ExactNativeFactory { props, events in PaintingMenu(props: props, events: events) },
+         "glass-pane": ExactNativeFactory { props, events in GlassPane(props: props, events: events) }]
     }
 }
 #endif
