@@ -1,24 +1,13 @@
-//! Text as Graphite draws it: glyph masks in an atlas, one quad per glyph.
+//! Glyph masks in an atlas, one quad per glyph: the atlas, the strike keys and the coverage pre-blend table.
 //!
-//! From Skia m157 (google/skia, chrome/m157):
-//! - `SubRunContainer::MakeInAlloc`: a run whose approximate device text size
-//!   (`ApproximateTransformedTextSize`: the font size × the matrix's max scale) is below
-//!   `SubRunControl::maxSize()` (`fGlyphsAsPathsFontSize` = 324 on iOS) is drawn from the atlas,
-//!   as SDFT when `isSDFT` (in [`MIN_SDFT`], 324] for a fill: `useSDFTForSmallText` is the surface's
-//!   `isUseDeviceIndependentFonts`, false for RN's default `SkSurfaceProps`, so the minimum is
-//!   `kLargeDFFontLimit`), else as direct masks; glyphs a direct mask can't take (wider or taller
-//!   than `kSkSideTooBigForAtlas` = 256), and every glyph of a larger run, are paths.
-//! - `prepare_for_direct_mask_drawing`: each glyph's position through the position matrix plus
-//!   (½, ½) (`SkFont` is not subpixel by default: `HalfAxisSampleFreq`), floored; its quad is its
-//!   mask bounds there.
-//! - `SkScalerContext::MakeRecAndEffects` + `PreprocessRec`: the strike is the font size and the
-//!   matrix's 2×2, each entry `sk_relax`ed to 1/1024; the A8 luminance is the paint colour's
-//!   (`ComputeLuminanceColor`, grey 0.5 for a shader), `SkComputeLuminance`, kept to 3 bits
-//!   (`SkTMaskGamma<3, 3, 3>`). The device gamma is `SK_GAMMA_EXPONENT` (0: sRGB, the RN
-//!   surface's P3 transfer isn't linear, so `kFakeGamma` stays) and the Mac typeface sets the
-//!   contrast to 0: [`preblend`].
-//! - `BitmapTextRenderStep`: the atlas sampled nearest (`SkFilterMode::kNearest`), the coverage
-//!   its red channel (`bitmap_text_coverage_fn`), one depth for the run, no MSAA.
+//! - A run whose device text size (font size × the matrix's max scale) is under [`MIN_SDFT`] is drawn
+//!   from the atlas; larger runs, and glyphs wider or taller than 256 px, are filled as paths.
+//! - Each glyph's position is the position matrix plus (½, ½), floored (no subpixel positioning);
+//!   its quad is its mask bounds there.
+//! - A strike is the font size and the matrix's 2×2, each entry rounded to 1/1024. The coverage is
+//!   pre-blended through a 3-bit luminance table from the paint's colour (grey 0.5 for a shader),
+//!   with the contrast and gamma constants Skia's mask gamma uses ([`preblend`]).
+//! - The atlas is sampled nearest, the coverage is its red channel, one depth per run, no MSAA.
 //!
 //! The masks come from CoreText ([`crate::coretext`]) on Apple targets. Elsewhere (the web, for
 //! tests) there is no platform scaler: text stays filled glyph outlines.
@@ -28,18 +17,18 @@
 use std::collections::HashMap;
 use std::cell::RefCell;
 
-/// `kLargeDFFontLimit`: the smallest device text size drawn as SDFT.
+/// The device text size from which a run is drawn as paths instead of from the atlas.
 pub(crate) const MIN_SDFT: f32 = 162.0;
-/// `fGlyphsAsPathsFontSize` (iOS): from this device text size glyphs are paths.
+/// The device text size above which Skia always draws glyphs as paths (unused: runs from [`MIN_SDFT`] are paths already).
 #[allow(dead_code)]
 pub(crate) const MAX_ATLAS_TEXT: f32 = 324.0;
-/// `SkGlyphDigest::kSkSideTooBigForAtlas`.
+/// The largest mask side, in px, the atlas takes.
 pub(crate) const TOO_BIG: u32 = 256;
 /// The atlas's width; it grows in height to [`ATLAS_MAX_H`].
 pub(crate) const ATLAS_W: u32 = 2048;
 pub(crate) const ATLAS_MAX_H: u32 = 2048;
 
-/// `SkMatrix::getMaxScale` of a 2×2 `[scaleX, skewX, skewY, scaleY]`.
+/// The largest scale of a 2×2 `[scaleX, skewX, skewY, scaleY]`.
 pub(crate) fn max_scale(m: [f32; 4]) -> f32 {
     let [sx, kx, ky, sy] = m;
     if kx == 0.0 && ky == 0.0 {
@@ -64,7 +53,7 @@ pub(crate) fn max_scale(m: [f32; 4]) -> f32 {
     r.max(0.0).sqrt()
 }
 
-/// `sk_relax`.
+/// Rounds to a multiple of 1/1024, so near-equal matrices share a strike.
 fn relax(x: f32) -> f32 {
     ((x as f64 * 1024.0 + 0.5).floor() as f32) / 1024.0
 }
@@ -73,7 +62,7 @@ fn relax(x: f32) -> f32 {
 /// luminance table.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct StrikeKey {
-    /// 0: Skia's text (SkScalerContext_Mac); 1: UIKit's (an RN `<Text>`).
+    /// 0: masks with the pre-blend; 1: raw coverage, as a UIKit label draws it; 2: subpixel-positioned masks.
     pub mode: u8,
     pub font: u64,
     pub size: u32,
@@ -81,22 +70,20 @@ pub(crate) struct StrikeKey {
     pub lum: u8,
 }
 
-/// `fPost2x2` for a device matrix `[a, b, c, d]` (lib's `Matrix`: x' = a x + c y): scaleX a,
-/// skewX c, skewY b, scaleY d.
+/// The 2×2 of a device matrix `[a, b, c, d]` (x' = a x + c y) as `[scaleX, skewX, skewY, scaleY]`.
 pub(crate) fn post2x2(m: &crate::Matrix) -> [f32; 4] {
     let [a, b, c, d, ..] = m.0;
     [relax(a), relax(c), relax(b), relax(d)]
 }
 
-/// `computeMatrices(kVertical)`: the CoreText text size and the remaining 2×2 (`sA`), and
-/// whether it is invertible; `None` for a singular matrix.
+/// The text size CoreText rasterises at (the vertical scale taken out) and the remaining 2×2, and whether it is invertible; `None` for a singular matrix.
 pub(crate) fn compute_matrices(size: f32, post: [f32; 4]) -> Option<(f32, [f32; 4], bool)> {
-    // A = post2x2 · Scale(size): scaleX, skewX, skewY, scaleY.
+    // A = post · Scale(size): scaleX, skewX, skewY, scaleY.
     let [p00, p01, p10, p11] = post;
     let a = [p00 * size, p01 * size, p10 * size, p11 * size];
     let skewed = a[1] != 0.0 || a[2] != 0.0 || a[0] < 0.0 || a[3] < 0.0;
     let ga = if skewed {
-        // SkComputeGivensRotation(h = A·(1, 0) = (scaleX, skewY)).
+        // The Givens rotation of A · (1, 0) = (scaleX, skewY).
         let (ha, hb) = (a[0], a[2]);
         let (c, s);
         if hb == 0.0 {
@@ -116,7 +103,7 @@ pub(crate) fn compute_matrices(size: f32, post: [f32; 4]) -> Option<(f32, [f32; 
             c = 1.0 / u;
             s = -c * t;
         }
-        // G = setSinCos(s, c) = [c, -s; s, c]; GA = G · A.
+        // G = [c, -s; s, c]; GA = G · A.
         [c * a[0] + -s * a[2], c * a[1] + -s * a[3], s * a[0] + c * a[2], s * a[1] + c * a[3]]
     } else {
         a
@@ -139,22 +126,21 @@ pub(crate) fn compute_matrices(size: f32, post: [f32; 4]) -> Option<(f32, [f32; 
     Some((ys, sa, det != 0.0 && det.is_finite()))
 }
 
-/// `SkMaskGamma::CanonicalColor` of one channel (3 bits).
+/// One 8-bit channel reduced to its top 3 bits, spread back to 8.
 fn canonical(c: u32) -> u32 {
     let base = (c >> 5) << 5;
     base | (base >> 3) | (base >> 6)
 }
 
-/// The pre-blend table index for a paint: `ComputeLuminanceColor` (its colour, grey 0.5 for a
-/// shader) made canonical per channel (`setLuminanceColor`), scaled by `onFilterRec` for the
-/// smoothing behaviour (½ for `some`, ¾ for `subpixel`), canonical again, then A8's
-/// `SkComputeLuminance` grey, canonical: its top 3 bits.
+/// The pre-blend table index for a paint: its luminance colour (grey 0.5 for a shader) reduced per
+/// channel to 3 bits, scaled for the smoothing behaviour (½ for `some`, ¾ for `subpixel`), reduced
+/// again, then taken as a grey luminance and reduced to its top 3 bits.
 pub(crate) fn luminance_index(paint: &crate::Paint, smoothing: u8) -> u8 {
     let rgb = match &paint.shader {
         crate::Shader::Solid(c) => [c.0[0], c.0[1], c.0[2]],
         _ => [0.5, 0.5, 0.5],
     };
-    // SkColor4f::toSkColor (Sk4f_toL32: pin(x · 255 + 0.5), truncated).
+    // Pin to 0…255 with rounding, then truncate.
     let mut c = rgb.map(|v| canonical((v * 255.0 + 0.5).clamp(0.0, 255.0) as u32));
     if smoothing == 1 {
         c = c.map(|v| canonical(v / 2));
@@ -165,11 +151,9 @@ pub(crate) fn luminance_index(paint: &crate::Paint, smoothing: u8) -> u8 {
     (canonical(lum) >> 5) as u8
 }
 
-/// What the smoothing behaviour makes of a strike (`SkTypeface_Mac::onFilterRec` with
-/// `SK_GAMMA_APPLY_TO_A8` defined): `(requestSmooth, luminance scaling, contrast)`. With no
-/// smoothing (iOS) the glyph is unhinted A8 and the rec keeps `MakeRecAndEffects`'s contrast,
-/// `SK_GAMMA_CONTRAST` 0.5 stored as 128 / 255; otherwise hinting stays normal, the luminance
-/// colour is scaled (½, ¾) and the contrast is 0.
+/// What the smoothing behaviour makes of a strike: `(requestSmooth, luminance scaling, contrast)`.
+/// With no smoothing (iOS) the glyph is unhinted A8 and the contrast is 0.5 (stored as 128 / 255);
+/// otherwise hinting stays normal, the luminance colour is scaled (½, ¾) and the contrast is 0.
 pub(crate) fn scaler_settings(smoothing: u8) -> (bool, u8, f32) {
     match smoothing {
         0 => (false, 0, 128.0 / 255.0),
@@ -177,12 +161,11 @@ pub(crate) fn scaler_settings(smoothing: u8) -> (bool, u8, f32) {
     }
 }
 
-/// `SkTMaskGamma<3, 3, 3>(contrast, deviceGamma 0)`'s table `index`
-/// (`SkTMaskGamma_build_correcting_lut` with the sRGB luminance).
+/// The pre-blend table for `index` and `contrast`: a lookup from coverage to corrected coverage, built with sRGB luminance.
 pub(crate) fn preblend(index: u8, contrast: f32) -> [u8; 256] {
     let to_luma = |v: f32| if v <= 0.04045f32 { v / 12.92f32 } else { ((v + 0.055f32) / 1.055f32).powf(2.4f32) };
     let from_luma = |v: f32| if v <= 0.0031308f32 { v * 12.92f32 } else { 1.055f32 * v.powf(1.0f32 / 2.4f32) - 0.055f32 };
-    // sk_t_scale255<3>.
+    // Scale the 3-bit index to 8 bits.
     let base = (index as u32) << 5;
     let lum = base | (base >> 3) | (base >> 6);
     let src = lum as f32 / 255.0f32;
@@ -224,7 +207,7 @@ pub(crate) struct Slot {
 /// What a glyph of a strike is.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum Digest {
-    /// No pixels (`kDrop`).
+    /// No pixels.
     Empty,
     /// Too big for the atlas, or it didn't fit: drawn as a path.
     Path,
@@ -245,7 +228,7 @@ pub(crate) struct Atlas {
     /// An allocation failed: clear at the next frame's start.
     pub full: bool,
     luts: [Option<Box<[u8; 256]>>; 8],
-    /// `SkCTFontGetSmoothBehavior` (0 none, 1 some, 2 subpixel), probed once.
+    /// The system's font smoothing (0 none, 1 some, 2 subpixel), probed once.
     pub smoothing: u8,
     #[cfg(target_vendor = "apple")]
     pub(crate) offscreen: crate::coretext::Offscreen,
@@ -362,14 +345,12 @@ mod tests {
 
     #[test]
     fn the_preblend_is_skias_table() {
-        // Index 0 (black text): out = from(lin(0)·a + (1 − a)·lin(1)) through (out − 1)/(0 − 1).
+        // Index 0 (black text).
         let t = preblend(0, 0.0);
         assert_eq!((t[0], t[255]), (0, 255));
-        // Black text darkens mid coverage: a = 0.5 → linOut = 0.5 → 0.7354 → 255 · 0.2646.
+        // Black text darkens mid coverage: 0.5 becomes 68.
         assert_eq!(t[128], 68, "{:?}", &t[120..136]);
-        // With iOS's contrast (128 / 255, tapering with the destination's linear luminance, 1
-        // for black text): a = 0.502 + 0.498 · 0.502 · 0.502 = 0.6274 → linOut 0.3726 → 0.6442,
-        // 255 · 0.3558 = 90.74.
+        // With the contrast iOS uses (128 / 255) the same coverage becomes 91.
         assert_eq!(preblend(0, 128.0 / 255.0)[128], 91);
         // White text (index 7) lightens coverage.
         let w = preblend(7, 0.0);
@@ -397,11 +378,10 @@ mod tests {
         assert!((max_scale([c * 2.0, -sn * 2.0, sn * 2.0, c * 2.0]) - 2.0).abs() < 1e-5);
     }
 
-    /// Glyph masks from [`crate::coretext`] against Skia's own code for them
-    /// (tools/coretext_reference.c, built with the system's `cc`): the smoothing behaviour, the
-    /// luminance table, bounds and every byte, with this machine's behaviour and both forced
-    /// (iOS's `none` and macOS's `some`).
-    #[cfg(all(target_os = "macos", feature = "repo-tests"))]
+    /// Glyph masks from [`crate::coretext`] against a C reference program (`tools/coretext_reference.c`,
+    /// built with the system's `cc`): the smoothing behaviour, the luminance table, bounds and every
+    /// byte, with this machine's behaviour and with both `none` and `some` forced.
+    #[cfg(target_os = "macos")]
     #[test]
     fn coretext_masks_are_skias() {
         use crate::{Font, Matrix};
@@ -507,7 +487,7 @@ mod tests {
     }
 }
 
-#[cfg(all(test, target_vendor = "apple", feature = "repo-tests"))]
+#[cfg(all(test, target_vendor = "apple"))]
 mod timing {
     #[test]
     #[ignore = "timing"]

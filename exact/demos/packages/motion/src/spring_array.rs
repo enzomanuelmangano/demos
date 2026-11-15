@@ -1,8 +1,7 @@
-//! `withSpring(target, { duration, dampingRatio: 1 })` over a whole array of numbers, stepped
-//! together: the RN demos' spring-array.ts (src/animations/spiral/spring-array.ts), itself
-//! Reanimated 4.7's critically damped duration spring per element. The stiffness is solved per
-//! element (one solve for every element at rest), a velocity pointing away from the new target
-//! is dropped, and each element rests once its energy falls under 6e-9 of its start.
+//! A critically damped duration spring over a whole array of numbers, stepped together. The
+//! stiffness is solved per element (one solve for every element at rest), a velocity pointing away
+//! from the new target is dropped, and each element rests once its energy falls under 6e-9 of its
+//! start.
 
 const MASS: f64 = 4.0;
 const ENERGY_THRESHOLD: f64 = 6e-9;
@@ -76,7 +75,7 @@ impl SpringArray {
         }
     }
 
-    /// Points every element at its new target, as starting withSpring would.
+    /// Points every element at its new target and restarts the spring.
     pub fn retarget(&mut self, target: &[f64], duration_ms: f64) {
         let rest = solve_stiffness(1.0, 0.0, duration_ms);
         for (i, &to) in target.iter().enumerate() {

@@ -1,60 +1,60 @@
-//! `Easing` (Easing.ts) and `Easing.bezier` (Bezier.ts).
+//! Easing curves on 0…1: the usual named set and cubic Béziers.
 
 /// An easing curve, evaluated on 0…1.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Easing {
-    /// `Easing.linear`.
+    /// Linear.
     Linear,
-    /// `Easing.ease`: `Bezier(0.42, 0, 1, 1)`.
+    /// Ease: `Bezier(0.42, 0, 1, 1)`.
     Ease,
-    /// `Easing.quad`.
+    /// Quadratic.
     Quad,
-    /// `Easing.cubic`.
+    /// Cubic.
     Cubic,
-    /// `Easing.poly(n)`.
+    /// Power of `n`.
     Poly(f64),
-    /// `Easing.sin`.
+    /// Sine.
     Sin,
-    /// `Easing.circle`.
+    /// Circular.
     Circle,
-    /// `Easing.exp`.
+    /// Exponential.
     Exp,
-    /// `Easing.elastic(bounciness)`.
+    /// Elastic, with its bounciness.
     Elastic(f64),
-    /// `Easing.back(s)`.
+    /// Back: overshoots by `s`.
     Back(f64),
-    /// `Easing.bounce`.
+    /// Bounce.
     Bounce,
-    /// `Easing.bezier(x1, y1, x2, y2)`.
+    /// Cubic Bézier through (x1, y1) and (x2, y2).
     Bezier(Bezier),
-    /// `Easing.in(e)`.
+    /// `e` as ease-in.
     In(Box<Easing>),
-    /// `Easing.out(e)`.
+    /// `e` mirrored as ease-out.
     Out(Box<Easing>),
-    /// `Easing.inOut(e)`.
+    /// `e` as ease-in-out.
     InOut(Box<Easing>),
-    /// `Easing.steps(n, roundToNextStep)`.
+    /// `n` steps, optionally rounding to the next step.
     Steps(u32, bool),
 }
 
 impl Easing {
-    /// `Easing.bezier(x1, y1, x2, y2)`.
+    /// Cubic Bézier through (x1, y1) and (x2, y2).
     pub fn bezier(x1: f64, y1: f64, x2: f64, y2: f64) -> Easing {
         Easing::Bezier(Bezier::new(x1, y1, x2, y2))
     }
-    /// `Easing.in(e)`.
+    /// `e` as ease-in.
     pub fn r#in(e: Easing) -> Easing {
         Easing::In(Box::new(e))
     }
-    /// `Easing.out(e)`.
+    /// `e` mirrored as ease-out.
     pub fn out(e: Easing) -> Easing {
         Easing::Out(Box::new(e))
     }
-    /// `Easing.inOut(e)`.
+    /// `e` as ease-in-out.
     pub fn in_out(e: Easing) -> Easing {
         Easing::InOut(Box::new(e))
     }
-    /// `withTiming`'s default: `Easing.inOut(Easing.quad)`.
+    /// The timing default: quadratic ease-in-out.
     pub fn timing_default() -> Easing {
         Easing::in_out(Easing::Quad)
     }
@@ -116,7 +116,7 @@ const SUBDIVISION_MAX_ITERATIONS: usize = 10;
 const TABLE: usize = 11;
 const STEP: f64 = 1.0 / (TABLE as f64 - 1.0);
 
-/// A cubic Bézier easing, its sample table precomputed (Bezier.ts).
+/// A cubic Bézier easing with its sample table precomputed.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Bezier {
     x1: f64,
@@ -143,7 +143,7 @@ fn slope(t: f64, a1: f64, a2: f64) -> f64 {
 }
 
 impl Bezier {
-    /// `Bezier(x1, y1, x2, y2)`; the x values must lie in 0…1.
+    /// The curve through (x1, y1) and (x2, y2); the x values must lie in 0…1.
     pub fn new(x1: f64, y1: f64, x2: f64, y2: f64) -> Bezier {
         let mut samples = [0.0; TABLE];
         for (i, s) in samples.iter_mut().enumerate() {

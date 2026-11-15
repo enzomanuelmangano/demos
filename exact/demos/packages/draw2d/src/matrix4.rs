@@ -1,12 +1,8 @@
-//! 3D transforms as RN Skia's `Matrix4.ts` builds them for a `<Group transform>` with
-//! `perspective`, `rotateX` or `rotateY` (`processTransform3d`): 4×4 row-major matrices acting
-//! on column vectors, a list's first operation outermost, so the last one meets a point first.
-//! React Native's own view transforms (`transform: [{ perspective }, { rotateX }, …]` with a
-//! `transformOrigin`) compose to the same matrices (ReactCommon Transform.cpp, which stores the
-//! transpose and multiplies the other way round).
+//! 3D transforms (perspective, rotations, translation, scale): 4×4 row-major matrices acting on
+//! column vectors, a list's first operation outermost, so the last one meets a point first.
 //!
-//! A drawing at z = 0 seen through one is [`Matrix4::to_matrix3`] (Skia's `toMatrix3`): a
-//! projective 3×3 a shader inverts to find, per pixel, the local point it shows.
+//! A drawing at z = 0 seen through one is [`Matrix4::to_matrix3`]: a projective 3×3 a shader
+//! inverts to find, per pixel, the local point it shows.
 
 use crate::{point, Point};
 
@@ -15,39 +11,38 @@ use crate::{point, Point};
 pub struct Matrix4(pub [f32; 16]);
 
 impl Matrix4 {
-    /// `Matrix4()`.
+    /// The identity.
     pub const IDENTITY: Matrix4 = Matrix4([1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]);
 
-    /// `translate(x, y, z)`.
+    /// A translation.
     pub fn translate(x: f32, y: f32, z: f32) -> Matrix4 {
         Matrix4([1.0, 0.0, 0.0, x, 0.0, 1.0, 0.0, y, 0.0, 0.0, 1.0, z, 0.0, 0.0, 0.0, 1.0])
     }
-    /// `perspective(p)`: w = 1 − z / p.
+    /// A perspective of distance `p`: w = 1 − z / p.
     pub fn perspective(p: f32) -> Matrix4 {
         Matrix4([1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0 / p, 1.0])
     }
-    /// `scale(sx, sy, sz)`.
+    /// A scale.
     pub fn scale(sx: f32, sy: f32, sz: f32) -> Matrix4 {
         Matrix4([sx, 0.0, 0.0, 0.0, 0.0, sy, 0.0, 0.0, 0.0, 0.0, sz, 0.0, 0.0, 0.0, 0.0, 1.0])
     }
-    /// `rotateX(radians)`: a positive angle takes the top (y < 0) away from the viewer.
+    /// A rotation about x: a positive angle takes the top (y < 0) away from the viewer.
     pub fn rotate_x(radians: f32) -> Matrix4 {
         let (s, c) = radians.sin_cos();
         Matrix4([1.0, 0.0, 0.0, 0.0, 0.0, c, -s, 0.0, 0.0, s, c, 0.0, 0.0, 0.0, 0.0, 1.0])
     }
-    /// `rotateY(radians)`: a positive angle takes the right (x > 0) away from the viewer.
+    /// A rotation about y: a positive angle takes the right (x > 0) away from the viewer.
     pub fn rotate_y(radians: f32) -> Matrix4 {
         let (s, c) = radians.sin_cos();
         Matrix4([c, 0.0, s, 0.0, 0.0, 1.0, 0.0, 0.0, -s, 0.0, c, 0.0, 0.0, 0.0, 0.0, 1.0])
     }
-    /// `rotate` / `rotateZ(radians)`: clockwise on screen.
+    /// A rotation about z, clockwise on screen.
     pub fn rotate_z(radians: f32) -> Matrix4 {
         let (s, c) = radians.sin_cos();
         Matrix4([c, -s, 0.0, 0.0, s, c, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0])
     }
 
-    /// `multiply4(self, b)`: `b` meets a point first. `processTransform3d([A, B])` is
-    /// `A.multiply(B)`.
+    /// `self` then `b`: `b` meets a point first, so a list `[A, B]` is `A.multiply(B)`.
     pub fn multiply(self, b: Matrix4) -> Matrix4 {
         let (a, b) = (self.0, b.0);
         let mut r = [0.0; 16];
@@ -59,20 +54,19 @@ impl Matrix4 {
         Matrix4(r)
     }
 
-    /// `pivot(m, p)`, a `<Group origin>`: `self` about (x, y).
+    /// `self` about the pivot (x, y).
     pub fn pivot(self, x: f32, y: f32) -> Matrix4 {
         Matrix4::translate(x, y, 0.0).multiply(self).multiply(Matrix4::translate(-x, -y, 0.0))
     }
 
-    /// `toMatrix3`: what it does to the plane z = 0.
+    /// What it does to the plane z = 0.
     pub fn to_matrix3(&self) -> Matrix3 {
         let m = self.0;
         Matrix3([m[0], m[1], m[3], m[4], m[5], m[7], m[12], m[13], m[15]])
     }
 }
 
-/// A projective 3×3 transform (Skia's `SkMatrix` with perspective), row-major, acting on
-/// column vectors `(x, y, 1)`.
+/// A projective 3×3 transform, row-major, acting on column vectors `(x, y, 1)`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Matrix3(pub [f32; 9]);
 

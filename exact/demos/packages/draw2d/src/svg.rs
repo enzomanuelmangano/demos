@@ -1,5 +1,4 @@
-//! `Skia.Path.MakeFromSVGString(d)`: an SVG path's `d` attribute (every command, absolute and
-//! relative, arcs included) as a [`Path`].
+//! Parses an SVG path's `d` attribute (every command, absolute and relative, arcs included) into a [`Path`].
 
 use lyon::math::{point, vector};
 use lyon::path::builder::SvgPathBuilder;
@@ -72,7 +71,7 @@ impl Tokens<'_> {
     }
 }
 
-/// `Skia.Path.MakeFromSVGString(d)`; `None` where `d` does not parse, as Skia's null.
+/// Parses an SVG path `d` string; `None` where it does not parse.
 pub fn path_from_svg(d: &str) -> Option<Path> {
     let mut svg = Path::builder().with_svg();
     parse(d, &mut svg)?;
@@ -145,7 +144,7 @@ fn parse(d: &str, b: &mut Svg) -> Option<()> {
                 let (rx, ry, rot) = (t.number()?, t.number()?, t.number()?);
                 let flags = ArcFlags { large_arc: t.flag()?, sweep: t.flag()? };
                 let (x, y) = (t.number()?, t.number()?);
-                // SkParsePath: arcTo(r, angle, largeArc, sweep ? kCW : kCCW, end), as Skia's conics.
+                // An SVG arc: the sweep flag picks clockwise or counter-clockwise; built as conics.
                 let from = b.current_position();
                 let end = if rel { point(from.x + x, from.y + y) } else { point(x, y) };
                 crate::conics::svg_arc_to(b as &mut dyn SvgPathBuilder, from, rx, ry, rot, flags.large_arc, !flags.sweep, end);

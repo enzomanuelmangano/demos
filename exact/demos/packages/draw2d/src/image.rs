@@ -1,12 +1,11 @@
-//! Images, as `useImage` gives them to `<Image>`, an image shader and `<Atlas>`: decoded once
-//! ([`Image::from_jpeg`], [`Image::from_rgba`]) and uploaded once as one mipmapped texture
-//! array ([`Images::upload`]) that a [`crate::Renderer`] samples ([`crate::Renderer::set_images`]).
-//! A texture a canvas drew into once (`useTexture`, an atlas of glyphs) is [`Images::target`].
+//! Images: decoded once ([`Image::from_jpeg`], [`Image::from_rgba`]) and uploaded once as one
+//! mipmapped texture array ([`Images::upload`]) that a [`crate::Renderer`] samples
+//! ([`crate::Renderer::set_images`]). A texture a canvas drew into once (an atlas of glyphs, an
+//! offscreen layer) is [`Images::target`].
 //!
 //! Every layer is padded to the largest image's size by repeating its edge pixels, so the
 //! coarser mip levels never bleed transparent padding into an image's border. Texels are
-//! premultiplied, sRGB-encoded (as Skia keeps an `SkImage` in an sRGB surface); filtering
-//! happens in that encoding, as Skia's does.
+//! premultiplied and sRGB-encoded, and filtering happens in that encoding.
 
 use crate::wgpu;
 
@@ -56,8 +55,8 @@ pub struct ImageRef {
     pub width: f32,
     /// Pixels down.
     pub height: f32,
-    /// Its texels are encoded Display P3 (an RN Skia surface kept as RN stores it, 8-bit P3):
-    /// a P3 target takes them as they are, an sRGB one converts them.
+    /// Its texels are encoded Display P3: a P3 target takes them as they are, an sRGB one
+    /// converts them.
     pub p3: bool,
 }
 
@@ -136,9 +135,8 @@ impl Images {
         Images { texture, view, sizes: images.iter().map(|i| (i.width, i.height)).collect() }
     }
 
-    /// One image as one level, no mip chain: what `<Image>` / `drawImageRect` sample with RN
-    /// Skia's default `SkSamplingOptions(SkFilterMode::kLinear)` (bilinear at level 0, however
-    /// far it is scaled down), and no CPU time spent on levels nothing reads.
+    /// One image as one level, no mip chain: bilinear at level 0 however far it is scaled down,
+    /// and no CPU time spent on levels nothing reads.
     pub fn upload_unmipped(device: &wgpu::Device, queue: &wgpu::Queue, image: &Image) -> Images {
         let (w, h) = (image.width.max(1), image.height.max(1));
         let texture = device.create_texture(&wgpu::TextureDescriptor {
@@ -164,7 +162,7 @@ impl Images {
     }
 
     /// One layer of `width`×`height` a canvas draws into ([`Images::render_view`]), then sampled
-    /// as image 0 (`useTexture`, `drawAsImage`). One mip level.
+    /// as image 0. One mip level.
     pub fn target(device: &wgpu::Device, width: u32, height: u32) -> Images {
         let (width, height) = (width.max(1), height.max(1));
         let texture = device.create_texture(&wgpu::TextureDescriptor {

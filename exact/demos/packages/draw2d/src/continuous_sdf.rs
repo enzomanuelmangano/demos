@@ -1,14 +1,14 @@
-//! The signed distance to a rounded rect with continuous corners (Core Animation's
-//! `kCACornerCurveContinuous`, iOS's squircle): the shape [`crate::add_continuous_rrect`] fills,
-//! for a shader that covers, anti-aliases or blurs an edge by its distance.
+//! The signed distance to a rounded rect with continuous corners (the squircle corner of iOS):
+//! the shape [`crate::add_continuous_rrect`] fills, for a shader that covers, anti-aliases or
+//! blurs an edge by its distance.
 //!
-//! Analytic, no table: folded into one corner and across its diagonal (Apple's corner is
-//! symmetric about it), a point is projected onto the corner's own cubics (the first, and the
-//! half of the second up to the diagonal: [`crate::CONTINUOUS_CORNER`]) by a coarse sample and
-//! Newton's method, or onto the straight side, which is nearest wherever the curve cannot be.
-//! Only points within about 3 r of a corner take the projection. [`CONTINUOUS_RRECT_SDF_WGSL`]
-//! is the same function for a shader, step for step; a shader carries a copy of its text (a
-//! `.wgsl` is one file), which its demo's test checks is verbatim.
+//! Analytic, no table: folded into one corner and across its diagonal (the corner is symmetric
+//! about it), a point is projected onto the corner's own cubics (the first, and the half of the
+//! second up to the diagonal: `CONTINUOUS_CORNER`) by a coarse sample and Newton's
+//! method, or onto the straight side, which is nearest wherever the curve cannot be. Only points
+//! within about 3 r of a corner take the projection. [`CONTINUOUS_RRECT_SDF_WGSL`] is the same
+//! function for a shader, step for step; a shader carries a copy of its text (a `.wgsl` is one
+//! file), which its demo's test checks is verbatim.
 
 use crate::{CONTINUOUS_CORNER, CONTINUOUS_EXTENT};
 
@@ -147,8 +147,7 @@ mod tests {
     use super::*;
     use crate::continuous_rrect_path;
 
-    /// The path (Apple's, filled by Core Animation to within 0.001 pt) flattened finely, with
-    /// the brute-force distance and the even-odd inside test.
+    /// The path flattened finely, with the brute-force distance and the even-odd inside test.
     fn reference(w: f32, h: f32, r: f32) -> Vec<(V, V)> {
         let path = continuous_rrect_path(-w / 2.0, -h / 2.0, w, h, r);
         let mut segs = Vec::new();

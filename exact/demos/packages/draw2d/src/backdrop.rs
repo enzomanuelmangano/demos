@@ -1,74 +1,66 @@
-//! UIKit's partially animated blur: expo-blur's `<BlurView intensity tint>` on iOS, a
-//! `UIVisualEffectView` whose `UIBlurEffect` is set inside a paused `UIViewPropertyAnimator`
-//! (`fractionComplete` = intensity / 100, clamped to 0.01…1). Measured on the iOS 27.0 Simulator
-//! by `exact/parity-tools/blur-probe` (the layer tree under the animator, and screenshots over
-//! step edges and colour patches):
+//! A partially animated backdrop blur like the one iOS draws behind a translucent material: a
+//! blur of what is under an area, with saturation, brightness and a tint, scaled by an intensity.
 //!
-//! - The effect is a `UICABackdropLayer` with a chain of CAFilters and a capture `scale`. The
-//!   animator runs one linear `CABasicAnimation` per parameter, from its identity to its value,
-//!   paused at the fraction: the blur radius from 0, `colorSaturate` from 1,
-//!   `luminanceCurveMap`'s amount and `colorBrightness` from 0, the backdrop's `scale` from 1,
-//!   and the tint layer's opacity (a `sourceOver` sublayer, `.regular` only) from 0.
-//! - The backdrop reads only what is under its own bounds (`inputNormalizeEdges`: the Gaussian's
-//!   weights renormalised inside them; nothing outside bleeds in), downsampled to `scale` (an area
-//!   average over cells of 1/scale pixels on a grid anchored at the WINDOW's origin, cut by the
-//!   bounds), filtered there in the chain's order, and drawn back up bilinearly on that grid.
-//! - Everything works on the gamma-encoded sRGB values (the blur's midpoint over a black–white
-//!   edge is 128). The Gaussian's σ is `inputRadius` points. `colorSaturate` is the Rec. 709
-//!   luminance matrix, clamped to 0…1; `luminanceCurveMap` maps the Rec. 709 luminance through the
-//!   cubic Bézier of its four `inputValues` to a grey, mixed in by its amount; `colorBrightness`
-//!   adds its amount.
+//! The effect is a chain of filters run on a low-resolution capture of the backdrop:
+//! - The backdrop reads only what is under its own bounds: the Gaussian's weights are
+//!   renormalised inside them, so nothing outside bleeds in. It is downsampled to a `scale` (an
+//!   area average over cells of 1/scale pixels on a grid anchored at the window's origin, cut by
+//!   the bounds), filtered there in the chain's order, and drawn back up bilinearly on that grid.
+//! - Everything works on gamma-encoded sRGB values (the blur's midpoint over a black–white edge is
+//!   128). σ is the radius in points. Saturation is the Rec. 709 luminance matrix, clamped to
+//!   0…1; the luminance curve maps the Rec. 709 luminance through a cubic Bézier of four values
+//!   to a grey, mixed in by its amount; brightness adds its amount.
+//! - An intensity runs every parameter linearly from its identity (no blur, saturation 1, no
+//!   tint) to its full value.
 //!
-//! [`BackdropBlur`] runs that chain on a texture the caller drew (what is under the effect), and
+//! [`BackdropBlur`] runs the chain on a texture the caller drew (what is under the effect), and
 //! [`BACKDROP_WGSL`] samples the result back up in the caller's shader (or [`BackdropBlur::draw`]
-//! writes it into a target). Not reproduced: the materials' `inputDither` (±½ of an 8-bit step of
-//! noise).
+//! writes it into a target). The materials' dither is not reproduced.
 
 use crate::wgpu;
 
-/// A `UIBlurEffect.Style` as expo-blur maps a `tint` to it, in the Demos app's dark appearance.
+/// A material: the set of filter parameters a look uses (the dark appearance).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Material {
-    /// `tint="default"` → `.regular` (dark).
+    /// The default regular material (dark).
     Regular,
-    /// `tint="systemMaterialDark"`.
+    /// The dark system material.
     SystemMaterialDark,
-    /// `tint="systemUltraThinMaterialLight"`.
+    /// The ultra-thin light system material.
     SystemUltraThinMaterialLight,
-    /// `tint="light"` → `.light` (not adaptive: the same in either appearance).
+    /// The light material (the same in either appearance).
     Light,
 }
 
-/// A style's backdrop at full strength, as the probe read it from the layer tree.
+/// A material's backdrop at full strength.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Chain {
-    /// `gaussianBlur.inputRadius`, points (σ).
+    /// The blur's σ, points.
     pub radius: f32,
-    /// `CABackdropLayer.scale`.
+    /// The capture scale (the low-resolution size over the source's).
     pub scale: f32,
     /// The blur is the chain's first filter (`.regular`), else its last.
     pub blur_first: bool,
-    /// `luminanceCurveMap`: `inputAmount` and `inputValues`.
+    /// The luminance curve's amount and its four Bézier values.
     pub curve: Option<(f32, [f32; 4])>,
-    /// `colorSaturate.inputAmount`.
+    /// The saturation amount.
     pub saturation: f32,
-    /// `colorBrightness.inputAmount`.
+    /// The brightness amount.
     pub brightness: f32,
-    /// The tint sublayer: its grey (extended-sRGB gray) and alpha.
+    /// The tint layer: its grey and alpha.
     pub tint: Option<(f32, f32)>,
 }
 
 impl Material {
-    /// The measured chain.
+    /// The chain of this material at full strength.
     pub const fn chain(self) -> Chain {
         match self {
-            // [gaussianBlur 20, colorSaturate 1.8], scale 0.125; a gray 0.11 α 0.73 layer.
+            // blur 20, saturation 1.8, scale 0.125; a grey 0.11, alpha 0.73 tint.
             Material::Regular => Chain { radius: 20.0, scale: 0.125, blur_first: true, curve: None, saturation: 1.8, brightness: 0.0, tint: Some((0.11, 0.73)) },
-            // [luminanceCurveMap 0.75 (0.16, 0.26, 0.10, 0.10), colorSaturate 1.5,
-            // gaussianBlur 29.5], scale 0.25.
+            // luminance curve 0.75 (0.16, 0.26, 0.10, 0.10), saturation 1.5, blur 29.5, scale 0.25.
             Material::SystemMaterialDark => Chain { radius: 29.5, scale: 0.25, blur_first: false, curve: Some((0.75, [0.16, 0.26, 0.10, 0.10])), saturation: 1.5, brightness: 0.0, tint: None },
-            // [luminanceCurveMap 0.5 (0.45, 0.55, 0.65, 0.68), colorSaturate 1.1,
-            // colorBrightness 0.12, gaussianBlur 22.5], scale 0.25.
+            // luminance curve 0.5 (0.45, 0.55, 0.65, 0.68), saturation 1.1, brightness 0.12, blur
+            // 22.5, scale 0.25.
             Material::SystemUltraThinMaterialLight => Chain {
                 radius: 22.5,
                 scale: 0.25,
@@ -78,21 +70,17 @@ impl Material {
                 brightness: 0.12,
                 tint: None,
             },
-            // [gaussianBlur 30, colorSaturate 1.8], scale 0.125; a white (extended gray 1.0)
-            // α 0.3 `sourceOver` layer whose opacity the animator runs from 0, like `.regular`'s
-            // (blur-probe dump, iOS 27.0 Simulator, fractions 0.01 … 1). Under an ancestor with
-            // alpha a < 1 the effect view is not switched off: the ancestor composites as a
-            // group, so the pixel is bg × (1 − a) + a × E, E the chain over what is behind the
-            // effect at full opacity, the group's own earlier content included (probe: a black
-            // circle in and behind a parent of alpha 0.5 and 0.2 at fractions 0.125 and 0.25,
-            // centre 141 / 210 vs 0.5 × 255 + 0.5 × 28 and 0.8 × 255 + 0.2 × 28).
+            // Blur 30, saturation 1.8, scale 0.125; a white, alpha 0.3 tint whose opacity runs from 0
+            // like the regular material's. Under an ancestor with alpha a < 1 the effect stays on:
+            // the ancestor composites as a group, so the pixel is bg × (1 − a) + a × E, E the chain
+            // over what is behind the effect at full opacity.
             Material::Light => Chain { radius: 30.0, scale: 0.125, blur_first: true, curve: None, saturation: 1.8, brightness: 0.0, tint: Some((1.0, 0.3)) },
         }
     }
 }
 
-/// expo-blur's fraction for an `intensity` (0…100): `intensity / 100` clamped to 0.01…1
-/// (`BlurEffectView`'s `@Clamping`): an intensity of 0 still blurs at 1 %.
+/// The animator fraction for an `intensity` (0…100): `intensity / 100` clamped to 0.01…1, so an
+/// intensity of 0 still blurs at 1 %.
 pub fn expo_fraction(intensity: f64) -> f32 {
     (intensity / 100.0).clamp(0.01, 1.0) as f32
 }
@@ -106,13 +94,13 @@ pub struct Params {
     pub scale: f32,
     /// The blur comes first.
     pub blur_first: bool,
-    /// `luminanceCurveMap.inputAmount`.
+    /// The luminance curve's amount.
     pub curve_amount: f32,
-    /// `luminanceCurveMap.inputValues`.
+    /// The luminance curve's four Bézier values.
     pub curve: [f32; 4],
-    /// `colorSaturate.inputAmount`.
+    /// The saturation amount.
     pub saturation: f32,
-    /// `colorBrightness.inputAmount`.
+    /// The brightness amount.
     pub brightness: f32,
     /// The tint layer's grey.
     pub tint_grey: f32,
@@ -140,7 +128,7 @@ impl Chain {
     }
 }
 
-/// Rec. 709 luminance, `colorSaturate`'s and `luminanceCurveMap`'s weights.
+/// Rec. 709 luminance weights, used by the saturation and the luminance curve.
 pub const LUMA: [f32; 3] = [0.2126, 0.7152, 0.0722];
 
 impl Params {
@@ -510,8 +498,8 @@ mod tests {
 
     #[test]
     fn light_is_the_probes_chain() {
-        // The probe's presentation values at 0.2 and 0.65: radius 6 / 19.5, saturate 1.16 /
-        // 1.52, scale 0.825 / 0.43125, the white layer's opacity 0.2 / 0.65 of its 0.3.
+        // Presentation values at fractions 0.2 and 0.65: radius 6 / 19.5, saturate 1.16 / 1.52,
+        // scale 0.825 / 0.43125, the white layer's opacity 0.2 / 0.65 of its 0.3.
         let p = Material::Light.chain().at(0.2);
         assert!((p.radius - 6.0).abs() < 1e-5 && (p.saturation - 1.16).abs() < 1e-6 && (p.scale - 0.825).abs() < 1e-6);
         assert!((p.tint_grey - 1.0).abs() < 1e-6 && (p.tint_alpha - 0.06).abs() < 1e-6);
@@ -519,7 +507,7 @@ mod tests {
         assert!((p.radius - 19.5).abs() < 1e-4 && (p.saturation - 1.52).abs() < 1e-6);
     }
 
-    /// The probe's patch means: (kind, style, fraction) → 24 colours.
+    /// Reference patch means: (kind, style, fraction) → 24 colours.
     fn patches() -> Vec<(String, String, String, Vec<[f32; 3]>)> {
         include_str!("../tests/backdrop/patches.txt")
             .lines()
@@ -539,7 +527,7 @@ mod tests {
 
     #[test]
     fn the_animator_interpolates_each_parameter_linearly() {
-        // The probe's presentation values at 0.4 / 0.65.
+        // Presentation values at 0.4 / 0.65.
         let p = Material::SystemMaterialDark.chain().at(0.65);
         assert!((p.radius - 19.175).abs() < 1e-3 && (p.saturation - 1.325).abs() < 1e-4 && (p.curve_amount - 0.4875).abs() < 1e-4);
         let p = Material::Regular.chain().at(0.4);
@@ -563,11 +551,11 @@ mod tests {
                 }
             }
         }
-        // The captures carry the materials' dither (±1) and 8-bit rounding.
+        // The references carry the materials' dither (±1) and 8-bit rounding.
         assert!(worst < 2.2, "worst {worst}");
     }
 
-    /// The probe's step pattern (one channel): left half black, right white, a white band
+    /// The reference step pattern (one channel): left half black, right white, a white band
     /// (0…630 × 900…1020 px), a white bar above the effect (180…630 × 330…450) and a black one
     /// below it (630…1080 × 2250…2370). 1260 × 2736, the effect over 180…1080 × 450…2250.
     fn step_scene() -> Vec<u8> {
@@ -589,7 +577,6 @@ mod tests {
         px
     }
 
-    #[cfg(feature = "repo-tests")]
     #[test]
     fn step_edges_match_the_probe_captures_pixel_for_pixel() {
         let gpu = match exact_gpu::fixture::device() {
@@ -652,9 +639,8 @@ mod tests {
                 }
                 let mean = sum as f64 / count as f64;
                 report += &format!("{} {f}: max {worst}, mean {mean:.2}\n", style_name(*m));
-                // At 1 % the blur is under a pixel and a hard edge's sub-pixel phase on the
-                // capture grid decides a few levels; elsewhere the captures' dither and 8-bit
-                // steps.
+                // At 1 % the blur is under a pixel and a hard edge's sub-pixel phase on the capture
+                // grid decides a few levels; elsewhere the dither and 8-bit steps.
                 let limit = if *f < 0.05 { 7 } else { 4 };
                 if worst > limit || mean > 1.2 {
                     failed = true;

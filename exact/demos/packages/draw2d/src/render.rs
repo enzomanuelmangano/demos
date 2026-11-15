@@ -1,13 +1,13 @@
-//! The canvas into a surface's target, as Graphite renders it: a single-sampled pass unless a
-//! draw needs MSAA (a path, a stroke of a path, a clip drawn into depth), then 4× with a resolve;
-//! painter's order and clips in the depth buffer (each draw its own depth, tested LESS and
+//! Draws a [`crate::Canvas`] into a surface's target with wgpu: a single-sampled pass unless a draw
+//! needs MSAA (a path, a stroke of a path, a clip drawn into depth), then 4× with a resolve.
+//! Painter's order and clips live in the depth buffer (each draw its own depth, tested LESS and
 //! written, so a sample takes each draw once); path winding in the stencil; rects, rounded rects,
-//! circles and lines through AnalyticRRectRenderStep's mesh and coverage.
+//! circles and lines through an analytic mesh with per-pixel coverage (see [`crate::graphite`]).
 
 use crate::graphite::{reference, RRectInstance};
 use crate::{wgpu, Canvas, GpuPaint, Op, Vertex};
 
-/// `ContextOptions::fInternalMultisampleCount`.
+/// The sample count of the multisampled pass.
 const MSAA: u32 = 4;
 const DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::Depth24PlusStencil8;
 
@@ -583,9 +583,9 @@ pub struct Renderer {
     atlas: Option<(wgpu::Texture, wgpu::TextureView, u32)>,
     atlas_epoch: u64,
     atlas_seen: usize,
-    /// The target holds encoded Display P3, as an RN Skia layer does (the surface's colour
-    /// space): gradients stay in P3, every other colour is converted to it. A filter that runs
-    /// on such a layer (a blur) then mixes P3 values, as Skia does; convert once at the end.
+    /// The target holds encoded Display P3: gradients stay in P3, every other colour is converted
+    /// to it. A filter that runs on such a layer (a blur) then mixes P3 values; convert once at
+    /// the end.
     pub p3: bool,
 }
 
@@ -609,7 +609,7 @@ struct Built {
     blank: wgpu::TextureView,
     blank_mask: wgpu::TextureView,
     sampler: wgpu::Sampler,
-    /// AnalyticRRectRenderStep's static vertex and index buffers.
+    /// The static vertex and index buffers of the analytic rounded-rect mesh.
     template: wgpu::Buffer,
     strip: wgpu::Buffer,
 }
@@ -1010,18 +1010,17 @@ fn build(device: &wgpu::Device, queue: &wgpu::Queue, format: wgpu::TextureFormat
     let pipes = |samples: u32| Pipes {
         tri: pipeline(Desc { vs: "vs", fs: "fs", buffers: &canvas_buffers, strip: false, color: true, depth_write: true, lequal: true, front: keep, back: keep }, samples),
         tri_once: pipeline(Desc { vs: "vs", fs: "fs", buffers: &canvas_buffers, strip: false, color: true, depth_write: true, lequal: false, front: keep, back: keep }, samples),
-        // kWindingStencilPass: increment front faces, decrement back faces (wrapping); depth
-        // tested, not written.
+        // Winding pass: increment front faces, decrement back faces (wrapping); depth tested, not written.
         stencil: pipeline(
             Desc { vs: "vs", fs: "clip", buffers: &canvas_buffers, strip: false, color: false, depth_write: false, lequal: false, front: face(C::Always, S::Keep, S::Keep, S::IncrementWrap), back: face(C::Always, S::Keep, S::Keep, S::DecrementWrap) },
             samples,
         ),
-        // kRegularCoverPass: where the winding isn't 0, then reset it.
+        // Cover pass: where the winding isn't 0, then reset it.
         cover: pipeline(
             Desc { vs: "vs", fs: "fs", buffers: &canvas_buffers, strip: false, color: true, depth_write: true, lequal: false, front: face(C::NotEqual, S::Keep, S::Zero, S::Zero), back: face(C::NotEqual, S::Keep, S::Zero, S::Zero) },
             samples,
         ),
-        // kInverseCoverPass, depth only: a clip element's outside.
+        // Inverse cover, depth only: a clip element's outside.
         clip_cover: pipeline(
             Desc { vs: "vs", fs: "clip", buffers: &canvas_buffers, strip: false, color: false, depth_write: true, lequal: false, front: face(C::Equal, S::Zero, S::Keep, S::Keep), back: face(C::Equal, S::Zero, S::Keep, S::Keep) },
             samples,

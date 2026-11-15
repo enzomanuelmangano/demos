@@ -1,27 +1,18 @@
-//! Glyph masks from CoreText/CoreGraphics, as RN Skia's iOS scaler makes them
-//! (`SkScalerContext_Mac`, src/ports/SkScalerContext_mac_ct.cpp, Skia m157), through raw FFI.
+//! Glyph masks from CoreText and CoreGraphics through raw FFI (Apple targets only).
 //!
-//! What Skia does for an RN `<Text>` (default `SkFont`: antialiased edging, normal hinting, no
-//! subpixel positioning; default `SkSurfaceProps`: unknown pixel geometry):
-//! - `SkCTFontGetSmoothBehavior` ([`smooth_behavior`]) probes CoreGraphics once: Skia's spider
-//!   glyph drawn smoothed and unsmoothed. `none` (they're the same: iOS has no font smoothing)
-//!   makes `SkTypeface_Mac::onFilterRec` turn the hinting off, so the mask is plain A8 drawn with
-//!   smoothing off; `some` (macOS's stem darkening) keeps normal hinting, so the A8 mask is drawn
-//!   smoothed, linearised by `gLinearCoverageFromCGLCDValue`, and its luminance colour halved.
-//!   `SK_GAMMA_APPLY_TO_A8` is defined (BUILD.gn `skia_private`), so the pre-blend stays, with
-//!   contrast 0.
-//! - `Offscreen::getCG`: a `CGBitmapContextCreate` of 32-bit host-order `NoneSkipFirst` pixels in
-//!   DeviceRGB, each dimension the next power of two of the glyph's; font subpixel quantization
-//!   off, subpixel positioning on, text drawing mode fill, gray fill colour 0 (black, on white),
-//!   antialiasing on, font smoothing off (`requestSmooth` is false for unhinted glyphs), the text
-//!   matrix the strike's remaining transform; the glyph's rows at the bitmap's bottom, erased to
-//!   white, drawn by `CTFontDrawGlyphs` at (−left, top + height) through the inverse transform.
-//! - `RGBToA8<true>`: each pixel's coverage is 255 minus its channels, reduced by
-//!   `SkComputeLuminance` and looked up in the pre-blend table.
-//! - `generateMetrics`: `CTFontGetBoundingRectsForGlyphs` through the transform, y flipped,
-//!   rounded out, outset by 1; empty bounds (or a zero advance with an empty path) draw nothing.
-//! - The strike's font is `SkCTFontCreateExactCopy`: the typeface's CTFont at the device text
-//!   size, its optical size kept (`NSCTFontOpticalSizeAttribute`), no tracking.
+//! This module wraps Apple's CoreText; it does not rasterise text itself. Each glyph is drawn into a
+//! CoreGraphics bitmap and reduced to an A8 coverage mask through the pre-blend table of [`crate::glyphs`].
+//! - [`smooth_behavior`] probes CoreGraphics once with a glyph drawn smoothed and unsmoothed. `none`
+//!   (iOS has no font smoothing) draws plain unhinted A8 with smoothing off; `some` (macOS stem
+//!   darkening) keeps normal hinting, draws smoothed, linearises the coverage and halves the
+//!   luminance colour.
+//! - The bitmap is 32-bit host-order `NoneSkipFirst` DeviceRGB, each side the next power of two of the
+//!   glyph's. The glyph is drawn black on white at (−left, top + height) through the inverse
+//!   transform, antialiased, with subpixel quantization off.
+//! - Coverage is 255 minus a pixel's channels, reduced to luminance and looked up in the pre-blend table.
+//! - Bounds are CoreText's bounding rect through the transform, y flipped, rounded out and outset by 1;
+//!   empty bounds draw nothing. The strike's font is the typeface's CTFont at the device text size,
+//!   its optical size kept, no tracking.
 
 #![allow(non_upper_case_globals, non_snake_case)]
 
@@ -118,10 +109,10 @@ const kCFNumberDoubleType: isize = 13;
 const kCFStringEncodingUTF8: u32 = 0x0800_0100;
 const kCTFontOrientationHorizontal: u32 = 1;
 const kCGTextFill: i32 = 0;
-/// `kCGBitmapByteOrder32Host` (little-endian) | `kCGImageAlphaNoneSkipFirst`.
+/// Bitmap info: 32-bit little-endian host order, alpha skipped (first).
 const BITMAP_INFO: u32 = (2 << 12) | 6;
 
-/// `SkCTFontSmoothBehavior`.
+/// How CoreGraphics smooths glyphs on this platform.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Smooth {
     None,
@@ -129,8 +120,7 @@ pub(crate) enum Smooth {
     Subpixel,
 }
 
-/// `SkCTFontGetSmoothBehavior`: glyph 3 of Skia's spider font (src/utils/mac/SkCTFont.cpp's
-/// `kSpiderSymbol_ttf`) at 16 pt, at (0, 3), white on black, smoothed and not.
+/// Probes the smoothing behaviour: glyph 3 of a spider symbol font at 16 pt, white on black, drawn smoothed and not.
 pub(crate) fn smooth_behavior() -> Smooth {
     static BEHAVIOR: std::sync::OnceLock<Smooth> = std::sync::OnceLock::new();
     *BEHAVIOR.get_or_init(|| unsafe {
@@ -173,10 +163,9 @@ pub(crate) fn smooth_behavior() -> Smooth {
 }
 
 impl Strike {
-    /// How many glyph positions per pixel CoreGraphics' subpixel quantization keeps for this
-    /// strike (it depends on the size: 4 at 3 pt, 3 at 4 pt, 2 up to about 11 pt, 1 from 12 pt
-    /// at 3×), measured: `glyph` drawn 1/L px right of its origin, from L = 8 down, until the
-    /// image differs from the unshifted one.
+    /// How many glyph positions per pixel CoreGraphics' subpixel quantization keeps for this strike (it
+    /// depends on the size), found by drawing `glyph` 1/L px right of its origin, from L = 8 down, until
+    /// the image differs from the unshifted one.
     pub(crate) fn subpixel_levels(&self, glyph: u16, offscreen: &mut Offscreen) -> u8 {
         let Some(b) = self.bounds(glyph) else { return 1 };
         let b = (b.0, b.1, b.2 + 1, b.3);
@@ -196,7 +185,7 @@ impl Strike {
     }
 }
 
-/// `gLinearCoverageFromCGLCDValue`: (i² + 128) / 255.
+/// Linearises a CoreGraphics coverage value: (i² + 128) / 255.
 fn linear_from_cg(i: u32) -> u32 {
     (i * i + 128) / 255
 }
@@ -226,11 +215,10 @@ fn cf_dict() -> Cf {
     unsafe { Cf(CFDictionaryCreateMutable(std::ptr::null(), 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks)) }
 }
 
-/// A typeface's CTFont: `SkFontMgr::makeFromData` (`CTFontManagerCreateFontDescriptorFromData`,
-/// `CTFontCreateWithFontDescriptor(desc, 0)`, so 12 pt) at the font's variation.
+/// A typeface's CTFont made from font data (at 12 pt) at the font's variation.
 pub(crate) struct Typeface {
     font: Cf,
-    /// `SkTypeface_Mac::fOpszVariation`: the `opsz` the typeface was made with, if any.
+    /// The `opsz` the typeface was made with, if any.
     opsz: Option<f64>,
 }
 
@@ -272,7 +260,7 @@ impl Typeface {
     }
 }
 
-/// A strike's font and transform (`SkScalerContext_Mac`'s `fCTFont`, `fTransform`).
+/// A strike's font and transform.
 pub(crate) struct Strike {
     font: Cf,
     transform: CGAffineTransform,
@@ -284,15 +272,14 @@ pub(crate) struct Strike {
 unsafe impl Send for Strike {}
 
 impl Strike {
-    /// The strike for a text size (the vertical scale `computeMatrices(kVertical)` takes out)
-    /// and the remaining 2×2 (`sA`, as `[scaleX, skewX, skewY, scaleY]`).
+    /// The strike for a text size and the remaining 2×2 `[scaleX, skewX, skewY, scaleY]`.
     pub(crate) fn new(typeface: &Typeface, text_size: f32, sa: [f32; 4], invertible: bool) -> Option<Strike> {
         let [sx, kx, ky, sy] = sa.map(|v| v as f64);
-        // MatrixToCGAffineTransform.
+        // The 2×2 as a CoreGraphics affine transform.
         let transform = CGAffineTransform { a: sx, b: -ky, c: -kx, d: sy, tx: 0.0, ty: 0.0 };
         let inverse = if invertible { unsafe { CGAffineTransformInvert(transform) } } else { transform };
         unsafe {
-            // SkCTFontCreateExactCopy.
+            // An exact copy of the typeface's font at the device text size, its optical size kept.
             let attributes = cf_dict();
             let opsz_key = cf_string("NSCTFontOpticalSizeAttribute");
             let opsz = match typeface.opsz {
@@ -322,14 +309,13 @@ impl Strike {
         }
     }
 
-    /// `generateMetrics`'s mask bounds: (left, top, width, height), `None` when empty.
+    /// The mask bounds (left, top, width, height), `None` when empty.
     pub(crate) fn bounds(&self, glyph: u16) -> Option<(i32, i32, u32, u32)> {
         self.bounds_sub(glyph, 0.0)
     }
 
-    /// [`Strike::bounds`] of a subpixel-positioned glyph `sub_x` px right of its whole-pixel
-    /// origin (`fDoSubPosition`): "the top left must not move", so only the right edge grows by
-    /// it before the bounds are rounded out.
+    /// [`Strike::bounds`] of a glyph `sub_x` px right of its whole-pixel origin: the top left must not
+    /// move, so only the right edge grows by it before the bounds are rounded out.
     pub(crate) fn bounds_sub(&self, glyph: u16, sub_x: f32) -> Option<(i32, i32, u32, u32)> {
         unsafe {
             let mut advance = CGSize::default();
@@ -348,11 +334,11 @@ impl Strike {
                     return None;
                 }
             }
-            // SkCGRectIsEmpty.
+            // An empty rect.
             if rect.size.width <= 0.0 || rect.size.height <= 0.0 {
                 return None;
             }
-            // SkRect::MakeXYWH(x, -y - h, w, h) in SkScalars, then roundOut and outset(1, 1).
+            // Flip y, round out and outset by 1.
             let l = rect.origin.x as f32;
             let t = (-rect.origin.y - rect.size.height) as f32;
             let r = l + rect.size.width as f32 + sub_x;
@@ -363,7 +349,7 @@ impl Strike {
     }
 }
 
-/// `SkScalerContext_Mac::Offscreen`: the CG bitmap glyphs are drawn into, grown to powers of two.
+/// The CoreGraphics bitmap glyphs are drawn into, grown to powers of two.
 pub(crate) struct Offscreen {
     space: Ref,
     context: Ref,
@@ -395,15 +381,13 @@ impl Drop for Offscreen {
 }
 
 impl Offscreen {
-    /// `generateImage` for an A8 glyph of the given bounds, pre-blended by `lut`, into `out`
-    /// (`width × height` bytes, rows top down). `smooth` is `requestSmooth` (normal hinting,
-    /// which `onFilterRec` keeps unless the smoothing behaviour is `none`).
+    /// Draws an A8 glyph of the given bounds, pre-blended by `lut`, into `out` (`width × height` bytes,
+    /// rows top down). `smooth` turns font smoothing on (normal hinting).
     pub(crate) fn draw(&mut self, strike: &Strike, glyph: u16, bounds: (i32, i32, u32, u32), lut: &[u8; 256], smooth: bool, out: &mut [u8]) {
         self.draw_at(strike, glyph, bounds, lut, smooth, None, out)
     }
 
-    /// [`Offscreen::draw`] of a subpixel-positioned glyph (`getCG`'s `fDoSubPosition`): drawn
-    /// at (−left + sub_x, top + height), Skia's context settings (no quantisation).
+    /// [`Offscreen::draw`] of a subpixel-positioned glyph: drawn at (−left + sub_x, top + height) with subpixel quantization off.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn draw_sub(&mut self, strike: &Strike, glyph: u16, bounds: (i32, i32, u32, u32), lut: &[u8; 256], smooth: bool, sub_x: f64, out: &mut [u8]) {
         self.sub_x = sub_x;
@@ -411,10 +395,9 @@ impl Offscreen {
         self.sub_x = 0.0;
     }
 
-    /// [`Offscreen::draw`], or with `uikit` = `Some(sub_x)` as UIKit's own drawing does it (a
-    /// UILabel / RN `<Text>` backing store: CoreGraphics' default font subpixel positioning and
-    /// quantization, smoothing off): the glyph `sub_x` px right of its whole-pixel origin, the
-    /// coverage as drawn.
+    /// [`Offscreen::draw`], or with `uikit` = `Some(sub_x)` as a UIKit label's backing store is drawn:
+    /// CoreGraphics' default font subpixel positioning and quantization, smoothing off. The glyph is
+    /// `sub_x` px right of its whole-pixel origin and its coverage is as drawn.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn draw_at(&mut self, strike: &Strike, glyph: u16, bounds: (i32, i32, u32, u32), lut: &[u8; 256], smooth: bool, uikit: Option<f64>, out: &mut [u8]) {
         let (left, top, gw, gh) = (bounds.0, bounds.1, bounds.2 as usize, bounds.3 as usize);
@@ -447,8 +430,7 @@ impl Offscreen {
             CGContextSetShouldSmoothFonts(c, smooth);
             CGContextSetAllowsFontSubpixelQuantization(c, uikit.is_some());
             CGContextSetShouldSubpixelQuantizeFonts(c, uikit.is_some());
-            // One offscreen serves every strike (Skia keeps one per scaler context, whose
-            // transform never changes): the text matrix is the strike's.
+            // One offscreen serves every strike: the text matrix is set to the strike's.
             CGContextSetTextMatrix(c, strike.transform);
             let width = self.size.0;
             let first = (self.size.1 - gh) * width;

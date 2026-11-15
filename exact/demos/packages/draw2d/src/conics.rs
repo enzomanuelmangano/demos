@@ -1,15 +1,11 @@
-//! Skia's arcs, ovals and circles as it builds them in a path: conics (google/skia chrome/m157:
-//! `SkPathBuilder::addArc`, `arcTo(oval, start, sweep, forceMoveTo)`, the SVG `arcTo`,
-//! `addOval`, `addCircle`; `SkConic::BuildUnitArc` in SkGeometry.cpp; the oval's points from
-//! `SkPath_OvalPointIterator` / `SkPath_RectPointIterator`; `SkMatrix`'s concat and mapping
-//! arithmetic, which decides each conic point's last bit).
+//! Arcs, ovals and circles built as conics (rational quadratics), the way Skia builds them.
 //!
-//! lyon paths have no conics, so a conic goes into a lyon builder as its cubic approximation
-//! (the control points 4w / (3(1 + w)) of the way along the conic's tangents, the usual circular
-//! cubic) and is remembered here, by the cubic's exact points; the canvas turns that cubic back
-//! into the conic when it draws, so Graphite tessellates the conic (Wang's formula for conics)
-//! as it does in RN. Anything else that reads the path (lyon's measuring, trimming, a demo's own
-//! code) sees the cubic. A path transformed point by point loses the conics (its cubics are new).
+//! lyon paths have no conics, so a conic goes into a lyon builder as its cubic approximation (the
+//! control points 4w / (3(1 + w)) of the way along the conic's tangents, the usual circular cubic)
+//! and is remembered here by the cubic's exact points. The canvas turns that cubic back into the
+//! conic when it draws, so the conic is tessellated as a conic. Anything else that reads the path
+//! (lyon's measuring, trimming, a demo's own code) sees the cubic. A path transformed point by point
+//! loses the conics (its cubics are new).
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -18,9 +14,9 @@ use lyon::math::{point, Point};
 use lyon::path::builder::NoAttributes;
 use lyon::path::traits::PathBuilder;
 
-/// `SK_ScalarRoot2Over2`.
+/// The square root of 2, over 2.
 pub(crate) const ROOT2_OVER2: f32 = 0.707106781;
-/// `SK_ScalarNearlyZero`.
+/// Below this a length counts as zero.
 const NEARLY_ZERO: f32 = 1.0 / 4096.0;
 /// The cubics remembered as conics, in two generations: a lookup keeps an entry young, so a
 /// path built once (and drawn every frame) outlives a stream of per-frame arcs.
@@ -94,9 +90,9 @@ pub(crate) fn conic_to<S: Sink + ?Sized>(b: &mut S, p0: Point, p1: Point, p2: Po
     b.cubic(c1, c2, p2);
 }
 
-/// The part of `SkMatrix` the arc builders use: `[scaleX, skewX, transX, skewY, scaleY,
-/// transY]`, and whether its type is known (`setSinCos` leaves it unknown, so a concat with it
-/// is never the trivial-identity shortcut).
+/// A small affine matrix with Skia's arithmetic, which decides each conic point's last bit:
+/// `[scaleX, skewX, transX, skewY, scaleY, transY]`, and whether its type is known (a matrix built
+/// from a sine and cosine has an unknown type, so concatenating it never takes the identity shortcut).
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct SkM {
     m: [f32; 6],
@@ -110,11 +106,11 @@ impl SkM {
     fn scale(sx: f32, sy: f32) -> SkM {
         SkM { m: [sx, 0.0, 0.0, 0.0, sy, 0.0], known: true }
     }
-    /// `setSinCos(sin, cos)` about the origin.
+    /// Rotation by the given sine and cosine about the origin.
     fn sin_cos(s: f32, c: f32) -> SkM {
         SkM { m: [c, -s, 0.0, s, c, 0.0], known: false }
     }
-    /// `setRotate(degrees)`.
+    /// Rotation by `deg` degrees.
     fn rotate(deg: f32) -> SkM {
         let rad = deg * (std::f32::consts::PI / 180.0);
         SkM::sin_cos(sin_snap(rad), cos_snap(rad))
@@ -134,13 +130,13 @@ impl SkM {
     fn is_identity(&self) -> bool {
         !self.translates() && !self.scales() && !self.affine()
     }
-    /// `postTranslate`.
+    /// Translates after.
     fn post_translate(mut self, dx: f32, dy: f32) -> SkM {
         self.m[2] += dx;
         self.m[5] += dy;
         self
     }
-    /// `preScale(sx, sy)`.
+    /// Scales before.
     fn pre_scale(mut self, sx: f32, sy: f32) -> SkM {
         if sx == 1.0 && sy == 1.0 {
             return self;
@@ -151,7 +147,7 @@ impl SkM {
         self.m[4] *= sy;
         self
     }
-    /// `setConcat(a, b)`: a · b.
+    /// The product a · b.
     fn concat(a: &SkM, b: &SkM) -> SkM {
         if a.trivially_identity() {
             return *b;
@@ -177,7 +173,7 @@ impl SkM {
             known: true,
         }
     }
-    /// `mapPoints` (`Trans_pts`, `Scale_pts`, `Affine_vpts`).
+    /// Maps a point.
     fn map(&self, p: [f32; 2]) -> [f32; 2] {
         let [sx, kx, tx, ky, sy, ty] = self.m;
         if self.affine() {
@@ -192,7 +188,7 @@ impl SkM {
     }
 }
 
-/// `SkScalarSinSnapToZero`, `SkScalarCosSnapToZero`.
+/// Sine and cosine with a value near zero snapped to exactly zero.
 fn sin_snap(r: f32) -> f32 {
     let v = r.sin();
     if v.abs() <= 1.0 / 65536.0 {
@@ -213,8 +209,7 @@ fn cos_snap(r: f32) -> f32 {
 /// A conic: three points and a weight.
 pub(crate) type Conic = ([[f32; 2]; 3], f32);
 
-/// `SkConic::BuildUnitArc`: up to five conics from `start` to `stop` (unit vectors), clockwise
-/// unless `ccw`, through `user`.
+/// Up to five conics from `start` to `stop` (unit vectors), clockwise unless `ccw`, mapped through `user`.
 pub(crate) fn build_unit_arc(start: [f32; 2], stop: [f32; 2], ccw: bool, user: &SkM, dst: &mut [Conic; 5]) -> usize {
     let x = start[0] * stop[0] + start[1] * stop[1];
     let mut y = start[0] * stop[1] - start[1] * stop[0];
@@ -252,13 +247,13 @@ pub(crate) fn build_unit_arc(start: [f32; 2], stop: [f32; 2], ccw: bool, user: &
     if dot < 1.0 {
         let mut off = [last_q[0] + x, last_q[1] + y];
         let cos_half = ((1.0 + dot) / 2.0).sqrt();
-        // setLength(1 / cos_half), in doubles.
+        // The length in doubles.
         let len = 1.0 / cos_half;
         let (xx, yy) = (off[0] as f64, off[1] as f64);
         let scale = len as f64 / (xx * xx + yy * yy).sqrt();
         off = [(xx * scale) as f32, (yy * scale) as f32];
         let (dx, dy) = (last_q[0] - off[0], last_q[1] - off[1]);
-        // !EqualsWithinTolerance(lastQ, offCurve): CanNormalize(lastQ − offCurve).
+        // Skip the off-curve point when it coincides with the last (it cannot be normalised).
         if dx.is_finite() && dy.is_finite() && (dx != 0.0 || dy != 0.0) {
             dst[count] = ([last_q, off, final_p], cos_half);
             count += 1;
@@ -277,7 +272,7 @@ pub(crate) fn build_unit_arc(start: [f32; 2], stop: [f32; 2], ccw: bool, user: &
     count
 }
 
-/// `SkRect::centerX/Y`: the midpoint in doubles.
+/// The midpoint in doubles.
 fn mid(a: f32, b: f32) -> f32 {
     (0.5 * (a as f64 + b as f64)) as f32
 }
@@ -286,8 +281,7 @@ fn pt(p: [f32; 2]) -> Point {
     point(p[0], p[1])
 }
 
-/// `SkPathRawShapes::Oval(oval, dir, index)`: the start and four quarter conics (control, end),
-/// weight √2/2 (`set_as_oval`: `SkPath_OvalPointIterator`, `SkPath_RectPointIterator`).
+/// The start and four quarter conics (control, end) of an oval, weight √2/2, from the box's start point `index`.
 pub(crate) fn oval_conics(r: [f32; 4], ccw: bool, index: u32) -> (Point, [(Point, Point); 4]) {
     let (cx, cy) = (mid(r[0], r[2]), mid(r[1], r[3]));
     let oval = [[cx, r[1]], [r[2], cy], [cx, r[3]], [r[0], cy]];
@@ -305,7 +299,7 @@ pub(crate) fn oval_conics(r: [f32; 4], ccw: bool, index: u32) -> (Point, [(Point
     (start, out)
 }
 
-/// `addOval(oval, dir, index)` as a new closed contour.
+/// Appends an oval as a new closed contour.
 pub(crate) fn add_oval<B: PathBuilder>(b: &mut NoAttributes<B>, r: [f32; 4], ccw: bool, index: u32) {
     let (start, quarters) = oval_conics(r, ccw, index);
     b.begin(start);
@@ -317,11 +311,10 @@ pub(crate) fn add_oval<B: PathBuilder>(b: &mut NoAttributes<B>, r: [f32; 4], ccw
     b.end(true);
 }
 
-/// `addArc(oval, startAngle, sweepAngle)`: an oval when the sweep is a full turn from a
-/// quadrant, else `arcTo(oval, start, sweep, forceMoveTo = true)`; a contour of its own, open.
+/// Appends an arc of the oval `oval` as a new open contour; a full turn from a quadrant is an oval.
 pub(crate) fn add_arc<B: PathBuilder>(b: &mut NoAttributes<B>, oval: [f32; 4], start: f32, sweep: f32) {
     let (w, h) = (oval[2] - oval[0], oval[3] - oval[1]);
-    // oval.isEmpty() || sweep == 0.
+    // An empty oval or no sweep: nothing.
     if !(w > 0.0 && h > 0.0) || sweep == 0.0 {
         return;
     }
@@ -337,7 +330,7 @@ pub(crate) fn add_arc<B: PathBuilder>(b: &mut NoAttributes<B>, oval: [f32; 4], s
         }
     }
     let start = start % 360.0;
-    // arc_is_lone_point.
+    // A zero sweep from 0 or 360 degrees is a lone point.
     if sweep == 0.0 && (start == 0.0 || start == 360.0) {
         b.begin(point(oval[2], mid(oval[1], oval[3])));
         b.end(false);
@@ -365,7 +358,7 @@ pub(crate) fn add_arc<B: PathBuilder>(b: &mut NoAttributes<B>, oval: [f32; 4], s
         b.end(false);
         return;
     }
-    // build_arc_conics: setScale(w/2, h/2).postTranslate(centre).
+    // Scale to the oval's radii, then translate to its centre.
     let user = SkM::scale(w / 2.0, h / 2.0).post_translate(mid(oval[0], oval[2]), mid(oval[1], oval[3]));
     let mut conics = [([[0.0; 2]; 3], 0.0); 5];
     let count = build_unit_arc(start_v, stop_v, ccw, &user, &mut conics);
@@ -402,7 +395,7 @@ pub(crate) fn svg_arc_to<S: Sink + ?Sized>(b: &mut S, from: Point, rx: f32, ry: 
         rx *= radii_scale;
         ry *= radii_scale;
     }
-    // setScale(1/rx, 1/ry).preRotate(−angle) (preConcat skips an identity rotation).
+    // Scale by 1/rx, 1/ry after rotating by −angle (an identity rotation is skipped).
     let mut pt_xf = SkM::scale(1.0 / rx, 1.0 / ry);
     let r = SkM::rotate(-angle);
     if !r.is_identity() {
@@ -436,7 +429,7 @@ pub(crate) fn svg_arc_to<S: Sink + ?Sized>(b: &mut S, from: Point, rx: f32, ry: 
         b.line(end);
         return;
     }
-    // setRotate(angle).preScale(rx, ry).
+    // Rotate by the angle after scaling by rx, ry.
     let pt_xf = SkM::rotate(angle).pre_scale(rx, ry);
     let segments = (theta_arc / (2.0 * pi / 3.0)).abs().ceil() as i32;
     let theta_width = theta_arc / segments as f32;
@@ -460,7 +453,7 @@ pub(crate) fn svg_arc_to<S: Sink + ?Sized>(b: &mut S, from: Point, rx: f32, ry: 
                 *p = p.map(|v| (v as f64 + 0.5).floor() as f32);
             }
         }
-        // The final point is the input point (`fPts.back() = endPt`).
+        // The final point is the input point exactly.
         let to = if i + 1 == segments { end } else { pt(mapped[1]) };
         conic_to(b, at, pt(mapped[0]), to, w);
         at = to;

@@ -1,35 +1,28 @@
-//! What Skia Graphite (RN Skia 3.7.2 = Skia m157, Graphite on Dawn/Metal) decides for a draw,
-//! replayed on the CPU: the transform's class and AA radius, rounded rects, the
-//! AnalyticRRectRenderStep's instance data, the tessellated path renderers' curve
-//! subdivision, and the clip stack's analytic clips.
+//! Graphite-style draw decisions computed on the CPU: transform class and antialiasing radius,
+//! rounded rects, the instance data of the analytic rounded-rect shader, curve subdivision for
+//! paths and strokes, and the clip stack's analytic clips.
 //!
-//! The sources (google/skia, branch chrome/m157):
-//! - `Device::chooseRenderer` / `is_simple_shape` (src/gpu/graphite/Device.cpp): filled rects,
-//!   rrects (any radii) and lines, hairline rects and rrects, stroked rects and stroked rrects with
-//!   circular corners go to `analyticRRect()`; a filled rect whose device rect is within 0.0039 px
-//!   of whole pixels under a rect-stays-rect transform, and flood fills, to `nonAABounds()`;
-//!   everything else to the path strategy.
-//! - `RendererProvider` (RendererProvider.cpp): with no Vello and no sparse strips in the build,
-//!   `fInternalMultisampleCount = 4` and `fMinimumPathSizeForMSAA = 0` (RN's ContextOptions are
-//!   the defaults), the strategy is `kTessellation`: paths are stencil-and-cover (or convex
-//!   wedges) with 4× MSAA, strokes are the hardware stroke tessellator with 4× MSAA.
-//! - A render pass is multisampled only when one of its draws `requiresMSAA()` (RenderPassDesc).
-//! - `AnalyticRRectRenderStep.cpp` + `analytic_rrect_vertex_fn` (sksl_graphite_vert.sksl) +
-//!   `analytic_rrect_coverage_fn` (sksl_graphite_frag.sksl): the 36-vertex, 69-index strip and
-//!   its coverage, ported to WGSL in `render.rs` and to Rust in [`mod@reference`].
-//! - `TessellateWedgesRenderStep` + `tessellate_filled_curve` + `PatchWriter`: each curve becomes
-//!   2^L chords at T = k / 2^L, L = ceil(log2(Wang's formula, precision 4)) ≤ 5 (chopped on the
-//!   CPU past 32 segments); a wedge per curve fans from the contour's mean point.
-//! - `ClipStack.cpp`: per clip element, an intersection folded into a rect/rrect draw, a scissor
-//!   for a pixel-aligned device rect, one analytic rect/rrect clip (`sk_analytic_clip`), or a
-//!   depth-only MSAA draw of the element.
+//! Not a reimplementation of Skia: it follows the approach and constants of Skia's Graphite
+//! renderer so the demos keep their antialiased edges.
+//!
+//! - Filled rects, rounded rects and lines, hairlines, and strokes with circular corners go to the
+//!   analytic rounded-rect step; a filled rect within 0.0039 px of whole pixels and floods are
+//!   drawn without antialiasing; everything else is a path.
+//! - Paths are stencil-and-cover (or convex wedges) with 4x MSAA, and a pass is multisampled only
+//!   when one of its draws needs it. Each curve becomes 2^L chords, L = ceil(log2(Wang's formula,
+//!   precision 4)) <= 5 (chopped past 32 segments); a wedge per curve fans from the contour's mean
+//!   point.
+//! - Strokes are tessellated on the CPU the way the hardware stroke tessellator does it.
+//! - A clip is folded into the draw, a scissor for a pixel-aligned rect, one analytic rect or
+//!   rounded-rect clip, or a depth-only MSAA draw of the element.
+//! - [`mod@reference`] runs the analytic step on the CPU, for tests.
 
 use crate::{point, Matrix, Point};
 
-/// `Shape::kDefaultPixelTolerance`: (1 − 0.001) / 255.
+/// The pixel tolerance for treating a rect as pixel-aligned: (1 − 0.001) / 255.
 pub(crate) const PIXEL_TOLERANCE: f32 = 0.0039;
 
-/// `Transform::Type`.
+/// How much a transform can do, from the identity up to a perspective.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum Kind {
     Identity,
@@ -39,7 +32,7 @@ pub(crate) enum Kind {
     Invalid,
 }
 
-/// `skgpu::graphite::Transform` for a 2D affine matrix: its class and scale factors.
+/// A 2D affine matrix with its class and scale factors.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Xf {
     pub m: Matrix,
@@ -48,7 +41,7 @@ pub(crate) struct Xf {
     pub max_scale: f32,
 }
 
-/// `compute_svd`: the singular values of [m00 m01; m10 m11] as (min, max).
+/// The singular values of [m00 m01; m10 m11] as (min, max).
 fn compute_svd(m00: f32, m01: f32, m10: f32, m11: f32) -> (f32, f32) {
     let s1 = m00 * m00 + m01 * m01 + m10 * m10 + m11 * m11;
     let e = m00 * m00 + m01 * m01 - m10 * m10 - m11 * m11;
@@ -85,13 +78,14 @@ impl Xf {
         self.kind != Kind::Invalid
     }
 
-    /// `Transform::localAARadius`: 1 / the minimum scale factor (infinite when it is 0).
+    /// The antialiasing radius in local units: 1 / the minimum scale factor (infinite when it is
+    /// 0).
     pub fn local_aa_radius(&self) -> f32 {
         let r = 1.0 / self.min_scale;
         if r.is_finite() { r } else { f32::INFINITY }
     }
 
-    /// `Transform::mapRect` (ltrb).
+    /// Maps a rect (ltrb).
     pub fn map_rect(&self, r: [f32; 4]) -> [f32; 4] {
         let [a, b, c, d, e, f] = self.m.0;
         match self.kind {
@@ -113,12 +107,13 @@ impl Xf {
     }
 }
 
-/// `Rect::nearlyEquals(makeRound(), tol)`.
+/// Whether the rect is within the tolerance of whole pixels.
 pub(crate) fn nearly_pixel_aligned(r: [f32; 4]) -> bool {
     r.iter().all(|v| (v - (v + 0.5).floor()).abs() <= PIXEL_TOLERANCE)
 }
 
-/// An `SkRRect`: `rect` ltrb, per-corner (x, y) radii TL, TR, BR, BL.
+/// A rounded rect: `rect` as ltrb, per-corner (x, y) radii in the order top-left, top-right,
+/// bottom-right, bottom-left.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct RRect {
     pub rect: [f32; 4],
@@ -132,7 +127,8 @@ impl RRect {
     pub fn height(&self) -> f32 {
         self.rect[3] - self.rect[1]
     }
-    /// `SkRRect::setRectXY(rect, r, r)`: `None` when it is a plain rect (r ≤ 0) or empty.
+    /// A rounded rect with radii `rx`, `ry`, clamped to fit; a plain rect when a radius is 0 or
+    /// less, or the rect is empty.
     pub fn xy(rect: [f32; 4], rx: f32, ry: f32) -> RRect {
         let (w, h) = (rect[2] - rect[0], rect[3] - rect[1]);
         let (mut rx, mut ry) = (rx, ry);
@@ -151,7 +147,7 @@ impl RRect {
         }
         RRect { rect, radii: [[rx, ry]; 4] }
     }
-    /// `SkRRect::MakeOval`.
+    /// The oval inscribed in `rect`.
     pub fn oval(rect: [f32; 4]) -> RRect {
         let (hw, hh) = ((rect[2] - rect[0]) * 0.5, (rect[3] - rect[1]) * 0.5);
         RRect { rect, radii: [[hw, hh]; 4] }
@@ -162,11 +158,11 @@ impl RRect {
     pub fn is_empty(&self) -> bool {
         !(self.width() > 0.0 && self.height() > 0.0)
     }
-    /// `SkRRectPriv::AllCornersRelativelyCircular`.
+    /// Whether every corner is circular within `tol`.
     pub fn all_corners_circular(&self, tol: f32) -> bool {
         self.radii.iter().all(|r| is_relatively_circular(r[0], r[1], tol))
     }
-    /// `SkRRect::transform` under a rect-stays-rect matrix (scale, translate, 90° turns, mirrors).
+    /// The rounded rect under a rect-stays-rect matrix (scale, translate, 90° turns, mirrors).
     pub fn transform(&self, xf: &Xf) -> Option<RRect> {
         let [a, b, c, d, ..] = xf.m.0;
         let rect = xf.map_rect(self.rect);
@@ -176,8 +172,8 @@ impl RRect {
         let mut radii = self.radii.map(|r| if swap { [(r[1] * sx).abs(), (r[0] * sy).abs()] } else { [(r[0] * sx).abs(), (r[1] * sy).abs()] });
         let (flip_x, flip_y) = if swap { (c < 0.0, b < 0.0) } else { (a < 0.0, d < 0.0) };
         if swap {
-            // (x, y) → (c y, b x): TL goes to TL when both positive... corner (sx', sy') of the
-            // source corner (u, v) is (sign c · v, sign b · u).
+            // Mirrors and turns map each source corner to another slot: the new corner's signs come
+            // from the matrix's b and c.
             let src = radii;
             for (i, (u, v)) in [(-1, -1), (1, -1), (1, 1), (-1, 1)].into_iter().enumerate() {
                 let (x, y) = (if c < 0.0 { -v } else { v }, if b < 0.0 { -u } else { u });
@@ -193,7 +189,7 @@ impl RRect {
         let rr = RRect { rect, radii };
         (!rr.is_empty()).then_some(rr)
     }
-    /// `SkRRectPriv::InnerBounds`.
+    /// The largest rect inside the rounded rect that touches no corner curve.
     pub fn inner_bounds(&self) -> [f32; 4] {
         if self.is_empty() || self.is_rect() {
             return self.rect;
@@ -218,7 +214,7 @@ impl RRect {
             [l + K * left, t + K * top, r - K * right, b - K * bottom]
         }
     }
-    /// `SkRRect::checkCornerContainment`.
+    /// Whether (x, y) is inside the corner's curve.
     fn corner_contains(&self, x: f32, y: f32) -> bool {
         let [l, t, r, b] = self.rect;
         let [tl, tr, br, bl] = self.radii;
@@ -247,12 +243,12 @@ fn corner_index(x: i32, y: i32) -> usize {
     }
 }
 
-/// `SkRRectPriv::IsRelativelyCircular` (non-legacy).
+/// Whether the radii are equal within `tol` (relative to their size).
 pub(crate) fn is_relatively_circular(rx: f32, ry: f32, tol: f32) -> bool {
     (rx <= tol && ry <= tol) || (rx - ry).abs() <= tol * rx.max(ry)
 }
 
-/// `SkRRectPriv::ConservativeIntersect`: the intersection as an rrect, or `None`.
+/// The intersection of two rounded rects as a rounded rect, or `None` when it is not one.
 pub(crate) fn conservative_intersect(a: &RRect, b: &RRect) -> Option<RRect> {
     let rect = [a.rect[0].max(b.rect[0]), a.rect[1].max(b.rect[1]), a.rect[2].min(b.rect[2]), a.rect[3].min(b.rect[3])];
     if !(rect[0] < rect[2] && rect[1] < rect[3]) {
@@ -299,7 +295,7 @@ pub(crate) fn conservative_intersect(a: &RRect, b: &RRect) -> Option<RRect> {
         }
     }
     let rr = RRect { rect, radii };
-    // AreRectAndRadiiValid + no scaling needed.
+    // Valid radii that need no scaling.
     let (w, h) = (rr.width(), rr.height());
     if radii[0][0] + radii[1][0] > w || radii[3][0] + radii[2][0] > w || radii[0][1] + radii[3][1] > h || radii[1][1] + radii[2][1] > h {
         return None;
@@ -308,20 +304,20 @@ pub(crate) fn conservative_intersect(a: &RRect, b: &RRect) -> Option<RRect> {
 }
 
 // ---------------------------------------------------------------------------------------------
-// AnalyticRRectRenderStep's instance
+// The analytic rounded-rect instance
 
-/// One AnalyticRRectRenderStep instance, as `writeVertices` writes it, plus the transform, the
-/// draw's depth and its paint.
+/// One instance of the analytic rounded-rect step, with the transform, the draw's depth and its
+/// paint.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct RRectInstance {
-    /// `xRadiiOrFlags`.
+    /// Per-corner x radii, or flags.
     pub xr: [f32; 4],
-    /// `radiiOrQuadXs`.
+    /// Radii, or the quad's xs.
     pub rq: [f32; 4],
-    /// `ltrbOrQuadYs`.
+    /// The rect as ltrb, or the quad's ys.
     pub lq: [f32; 4],
-    /// `center` (xy), `centerWeight`, local AA radius (or −1).
+    /// The centre (xy), the centre weight and the local antialiasing radius (or −1).
     pub center: [f32; 4],
     /// Columns of the 3×3 local-to-device matrix.
     pub mat: [[f32; 3]; 3],
@@ -340,7 +336,7 @@ pub(crate) enum Simple {
 }
 
 impl Simple {
-    /// `Shape::bounds`.
+    /// The shape's bounds (ltrb).
     pub fn bounds(&self) -> [f32; 4] {
         match *self {
             Simple::Rect(r) => r,
@@ -350,8 +346,8 @@ impl Simple {
     }
 }
 
-/// How a stroke is drawn: `StrokeStyle` (half width, join limit: miter limit > 0, 0 bevel, −1
-/// round) and its cap (0 butt, 1 round, 2 square).
+/// How a stroke is drawn: its half width, its join limit (miter limit > 0, 0 bevel, −1 round) and
+/// its cap (0 butt, 1 round, 2 square).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct Stroke {
     pub half_width: f32,
@@ -364,7 +360,7 @@ const STROKE_INTERIOR: f32 = 0.0;
 const FILLED_STROKE_INTERIOR: f32 = -1.0;
 const COMPLEX_AA_INSETS: f32 = -1.0;
 
-/// `AnalyticRRectRenderStep::writeVertices` for a shape (not an EdgeAAQuad).
+/// The instance for a rect, rounded rect or line, filled or stroked.
 pub(crate) fn rrect_instance(shape: &Simple, stroke: Option<Stroke>, xf: &Xf, depth: f32, paint: u32) -> RRectInstance {
     let bounds = shape.bounds();
     let mut aa_radius = xf.local_aa_radius();
@@ -440,7 +436,7 @@ pub(crate) fn rrect_instance(shape: &Simple, stroke: Option<Stroke>, xf: &Xf, de
             Simple::Line(..) => unreachable!("a filled line draws nothing"),
         },
     }
-    // opposite_insets_intersect
+    // Whether the opposite insets intersect.
     let intersect = match *shape {
         Simple::Line(..) => stroke_inset <= aa_radius,
         Simple::Rect(r) => {
@@ -472,9 +468,9 @@ pub(crate) fn rrect_instance(shape: &Simple, stroke: Option<Stroke>, xf: &Xf, de
 }
 
 // ---------------------------------------------------------------------------------------------
-// Path tessellation (TessellateWedgesRenderStep)
+// Path tessellation (wedges)
 
-/// A path verb in local coordinates, conics included (Skia's circles and arcs are conics).
+/// A path verb in local coordinates, conics included (circles and arcs are conics).
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum Verb {
     Move(Point),
@@ -497,26 +493,26 @@ fn mix(a: Point, b: Point, t: f32) -> Point {
     point(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)
 }
 
-/// The 2×2 of the matrix applied to a vector (`VectorXform`).
+/// The 2×2 of the matrix applied to a vector.
 fn vx(m: &Matrix, v: [f32; 2]) -> [f32; 2] {
     let [a, b, c, d, ..] = m.0;
     [a * v[0] + c * v[1], b * v[0] + d * v[1]]
 }
 
-/// `wangs_formula::cubic_p4` with precision 4.
+/// Wang's formula for a cubic at precision 4.
 fn cubic_p4(m: &Matrix, p0: Point, p1: Point, p2: Point, p3: Point) -> f32 {
     let v0 = vx(m, [-2.0 * p1.x + p0.x + p2.x, -2.0 * p1.y + p0.y + p2.y]);
     let v1 = vx(m, [-2.0 * p2.x + p1.x + p3.x, -2.0 * p2.y + p1.y + p3.y]);
-    // length_term_p2<3>(4) = (3·2/8 · 4)² = 9.
+    // The length term at precision 4 for a cubic: (3·2/8 · 4)² = 9.
     (v0[0] * v0[0] + v0[1] * v0[1]).max(v1[0] * v1[0] + v1[1] * v1[1]) * 9.0
 }
-/// `wangs_formula::quadratic_p4` with precision 4.
+/// Wang's formula for a quadratic at precision 4.
 fn quad_p4(m: &Matrix, p0: Point, p1: Point, p2: Point) -> f32 {
     let v = vx(m, [-2.0 * p1.x + p0.x + p2.x, -2.0 * p1.y + p0.y + p2.y]);
-    // length_term_p2<2>(4) = (2·1/8 · 4)² = 1.
+    // The length term at precision 4 for a quadratic: (2·1/8 · 4)² = 1.
     v[0] * v[0] + v[1] * v[1]
 }
-/// `wangs_formula::conic_p2` with precision 4 (points mapped by the 2×2 first).
+/// Wang's formula for a conic at precision 4 (the points mapped by the 2×2 first).
 fn conic_p2(m: &Matrix, p0: Point, p1: Point, p2: Point, w: f32) -> f32 {
     let [p0, p1, p2] = [p0, p1, p2].map(|p| vx(m, [p.x, p.y]));
     conic_p2_mapped(p0, p1, p2, w)
@@ -541,8 +537,8 @@ struct Patch {
     w: f32,
 }
 
-/// `$wangs_formula_cubic_log2` / `$wangs_formula_conic_log2` as the vertex shader evaluates
-/// them (`fma` is a plain multiply-add here).
+/// The log2 of the segment count the vertex shader picks for a patch (`fma` is a plain multiply-add
+/// here).
 fn shader_level(m: &Matrix, patch: &Patch) -> i32 {
     let level = if patch.w >= 0.0 {
         let [p0, p1, p2] = [patch.p[0], patch.p[1], patch.p[2]].map(|p| vx(m, [p.x, p.y]));
@@ -553,14 +549,13 @@ fn shader_level(m: &Matrix, patch: &Patch) -> i32 {
         let d0 = vx(m, [-2.0 * p1.x + p2.x + p0.x, -2.0 * p1.y + p2.y + p0.y]);
         let d1 = vx(m, [-2.0 * p2.x + p3.x + p1.x, -2.0 * p2.y + p3.y + p1.y]);
         let mm = (d0[0] * d0[0] + d0[1] * d0[1]).max(d1[0] * d1[0] + d1[1] * d1[1]);
-        // kLengthTermPow2 = 9.
+        // The length term of a cubic at precision 4 is 9.
         ((9.0 * mm).max(1.0).log2() * 0.25).ceil()
     };
     (level as i32).clamp(0, MAX_RESOLVE_LEVEL)
 }
 
-/// `tessellate_filled_curve`'s points for one patch, after its first (p0): appended in local
-/// coordinates.
+/// The points of one patch after its first (p0), appended in local coordinates.
 fn patch_points(m: &Matrix, patch: &Patch, out: &mut impl FnMut(Point)) {
     let level = shader_level(m, patch);
     let n = 1 << level;
@@ -586,7 +581,7 @@ fn patch_points(m: &Matrix, patch: &Patch, out: &mut impl FnMut(Point)) {
     }
 }
 
-/// `PatchWriter::accountForCurve`: 0 (no chop) or the number of patches.
+/// How a curve is chopped: 0 (no chop) or the number of patches.
 fn chops(n4: f32) -> i32 {
     if n4 <= MAX_SEGMENTS_P4 {
         0
@@ -602,7 +597,7 @@ fn quad_patch(p0: Point, p1: Point, p2: Point) -> Patch {
     cubic_patch(p0, mix(p0, p1, 2.0 / 3.0), mix(p2, p1, 2.0 / 3.0), p2)
 }
 
-/// Writes a cubic as `PatchWriter::writeCubic` does (chopping when it needs > 32 segments).
+/// Writes a cubic as one patch, chopping it when it needs more than 32 segments.
 fn write_cubic(m: &Matrix, p0: Point, p1: Point, p2: Point, p3: Point, emit: &mut impl FnMut(&Patch)) {
     let n = chops(cubic_p4(m, p0, p1, p2, p3));
     if n == 0 {
@@ -692,12 +687,12 @@ fn write_conic(m: &Matrix, p0: Point, p1: Point, p2: Point, w: f32, emit: &mut i
     emit(&Patch { p: [proj(h0), proj(h1), point(h2[0], h2[1]), point(h2[0], h2[1])], w: h1[2] / h0[2].sqrt() });
 }
 
-/// One contour flattened as Graphite's wedges flatten it: its device-space points (the start
-/// first, the contour closed implicitly) and its fan point (the mean of its on-curve points).
+/// One contour flattened as the wedges flatten it: its device-space points (the start first, the
+/// contour closed implicitly) and its fan point (the mean of its on-curve points).
 pub(crate) fn flatten(verbs: &[Verb], m: &Matrix, mut contour: impl FnMut(Point, &[Point]), scratch: &mut Vec<Point>) {
     let mut i = 0;
     while i < verbs.len() {
-        // A contour: a Move then everything up to the next Move.
+        // A contour: a move then everything up to the next move.
         let start = match verbs[i] {
             Verb::Move(p) => p,
             _ => {
@@ -709,8 +704,8 @@ pub(crate) fn flatten(verbs: &[Verb], m: &Matrix, mut contour: impl FnMut(Point,
         while end < verbs.len() && !matches!(verbs[end], Verb::Move(_)) {
             end += 1;
         }
-        // MidpointContourParser: the mean of each verb's last point, plus the start when the
-        // contour does not end on it.
+        // The fan point: the mean of each verb's last point, plus the start when the contour does
+        // not end on it.
         let (mut sum, mut count, mut last) = (point(0.0, 0.0), 0u32, start);
         let mut geometry = false;
         for v in &verbs[i + 1..end] {
@@ -763,8 +758,7 @@ pub(crate) fn flatten(verbs: &[Verb], m: &Matrix, mut contour: impl FnMut(Point,
     }
 }
 
-/// `SkPath::RRect(rrect)` (clockwise from the top-left corner's end, conic corners with w =
-/// √2/2) as verbs.
+/// A rounded rect as verbs (clockwise from the top-left corner's end, conic corners with w = √2/2).
 pub(crate) fn rrect_verbs(rr: &RRect, out: &mut Vec<Verb>) {
     const W: f32 = std::f32::consts::FRAC_1_SQRT_2;
     let [l, t, r, b] = rr.rect;
@@ -789,7 +783,7 @@ pub(crate) fn rrect_verbs(rr: &RRect, out: &mut Vec<Verb>) {
     out.push(Verb::Close);
 }
 
-/// The polygon is convex: one contour, every turn the same way.
+/// Whether the polygon is convex: one contour, every turn the same way.
 pub(crate) fn convex(points: &[Point]) -> bool {
     let n = points.len();
     if n < 3 {
@@ -814,9 +808,9 @@ pub(crate) fn convex(points: &[Point]) -> bool {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Path strokes (TessellateStrokesRenderStep: the hardware stroke tessellator, run on the CPU)
+// Path strokes (the hardware stroke tessellator, run on the CPU)
 
-/// A stroke patch: a cubic (w < 0) or a conic, and its join control point (`prevPoint`).
+/// A stroke patch: a cubic (w < 0) or a conic, and its join control point.
 #[derive(Clone, Copy, Debug)]
 struct StrokePatch {
     p: [Point; 4],
@@ -855,7 +849,7 @@ fn norm2(a: [f32; 2]) -> [f32; 2] {
     let l = 1.0 / dot2(a, a).sqrt();
     [a[0] * l, a[1] * l]
 }
-/// `$robust_normalize_diff`.
+/// A normalized difference of two vectors that stays finite when they are equal.
 fn rnd(a: [f32; 2], b: [f32; 2]) -> [f32; 2] {
     let d = sub2(a, b);
     if d == [0.0, 0.0] {
@@ -864,7 +858,7 @@ fn rnd(a: [f32; 2], b: [f32; 2]) -> [f32; 2] {
     let inv = 1.0 / d[0].abs().max(d[1].abs());
     norm2(mul2(d, inv))
 }
-/// `$unchecked_mix`: fma(b − a, T, a).
+/// A mix without the rounding checks: fma(b − a, T, a).
 fn umix(a: [f32; 2], b: [f32; 2], t: f32) -> [f32; 2] {
     [(b[0] - a[0]).mul_add(t, a[0]), (b[1] - a[1]).mul_add(t, a[1])]
 }
@@ -876,13 +870,13 @@ fn aff2(m: [f32; 4], v: [f32; 2]) -> [f32; 2] {
     [m[0] * v[0] + m[2] * v[1], m[1] * v[0] + m[3] * v[1]]
 }
 
-/// `$num_radial_segments_per_radian`.
+/// Radial segments per radian for a stroke of radius `r`.
 fn radial_per_radian(r: f32) -> f32 {
     0.5 / (1.0 - (1.0 / PRECISION) / r).max(-1.0).acos()
 }
 
-/// The shader's per-patch counts for the stroke section: (numEdgesInJoin, numCombinedSegments).
-/// And `tessellate_stroked_curve` for one edge: the device position and the local position.
+/// The per-patch counts for the stroke section (edges in the join, combined segments), and the
+/// device and local position of one edge.
 fn stroke_vertex(edge_id: f32, aff: [f32; 4], translate: [f32; 2], max_scale: f32, patch: &StrokePatch, params: [f32; 2]) -> ([f32; 2], [f32; 2], f32, f32) {
     const MAX_EDGES: f32 = 16383.0;
     let [mut p0, mut p1, mut p2, mut p3] = patch.p.map(v2);
@@ -998,7 +992,7 @@ fn stroke_vertex(edge_id: f32, aff: [f32; 4], translate: [f32; 2], max_scale: f3
         stroke_outset = 0.0;
     }
     if edge_id.abs() == 2.0 && join_type > 0.0 {
-        // $miter_extent
+        // Miter extent.
         let x = cos_theta.mul_add(0.5, 0.5);
         stroke_outset *= if x * join_type * join_type >= 1.0 { 1.0 / x.sqrt() } else { x.sqrt() };
     }
@@ -1088,9 +1082,8 @@ fn stroke_vertex(edge_id: f32, aff: [f32; 4], translate: [f32; 2], max_scale: f3
     (dev, local, num_edges_in_join, num_combined)
 }
 
-/// The stroke `PatchWriter` (TrackJoinControlPoints, ReplicateLineEndPoints): patches with
-/// their join control points, the first of each contour deferred until its join is known, caps
-/// as circle and square patches.
+/// The stroke patch writer: patches with their join control points, the first of each contour
+/// deferred until its join is known, caps as circle and square patches.
 struct StrokeWriter<'a, F: FnMut(&StrokePatch)> {
     m: &'a Matrix,
     emit: F,
@@ -1102,7 +1095,7 @@ struct StrokeWriter<'a, F: FnMut(&StrokePatch)> {
     last: Point,
 }
 
-/// 0 cubic, 1 conic.
+/// A patch kind: 0 cubic, 1 conic.
 const CUBIC: f32 = 0.0;
 const CONIC: f32 = 1.0;
 
@@ -1195,7 +1188,7 @@ impl<F: FnMut(&StrokePatch)> StrokeWriter<'_, F> {
     }
 }
 
-/// `FindCubicConvex180Chops`: up to two T values, and whether they are cusps.
+/// Up to two T values where a cubic turns through 180°, and whether they are cusps.
 fn convex_180_chops(p: [Point; 4]) -> (usize, [f32; 2], bool) {
     const EPS: f32 = 1.0 / 2048.0;
     let in_range = |r: f32| r - EPS >= 0.0 && r - EPS < 1.0 - 2.0 * EPS;
@@ -1245,7 +1238,7 @@ fn convex_180_chops(p: [Point; 4]) -> (usize, [f32; 2], bool) {
     (0, [0.0; 2], are_cusps)
 }
 
-/// `SkChopCubicAt`.
+/// Splits a cubic at `t`.
 fn chop_cubic(p: [Point; 4], t: f32) -> ([Point; 4], [Point; 4]) {
     let ab = mix(p[0], p[1], t);
     let bc = mix(p[1], p[2], t);
@@ -1256,9 +1249,9 @@ fn chop_cubic(p: [Point; 4], t: f32) -> ([Point; 4], [Point; 4]) {
     ([p[0], ab, abc, abcd], [abcd, bcd, cd, p[3]])
 }
 
-/// The path stroked as Graphite's TessellateStrokesRenderStep strokes it: for each patch, the
-/// triangle strip of its edges, as (device position, local position) vertices to `vertex` and
-/// strips' starts to `strip` (a strip of `n` vertices follows each call).
+/// The path stroked: for each patch, the triangle strip of its edges, as (device position, local
+/// position) vertices to `vertex` and the strips' starts to `strip` (a strip of `n` vertices
+/// follows each call).
 pub(crate) fn stroke(verbs: &[Verb], m: &Matrix, half_width: f32, join_limit: f32, cap: u8, mut strip: impl FnMut(&mut dyn Iterator<Item = ([f32; 2], [f32; 2])>)) {
     let xf = Xf::new(*m);
     let [a, b, c, d, e, f] = m.0;
@@ -1353,10 +1346,10 @@ pub(crate) fn stroke(verbs: &[Verb], m: &Matrix, half_width: f32, join_limit: f3
 }
 
 // ---------------------------------------------------------------------------------------------
-// Analytic clips (ClipStack's can_apply_analytic_clip, non-legacy)
+// Analytic clips
 
-/// `AnalyticClip`: the device-to-local 2×2, the rect (translation folded in), the per-corner
-/// radii, already encoded as `sk_analytic_clip` reads them.
+/// An analytic clip: the device-to-local 2×2, the rect (translation folded in) and the per-corner
+/// radii, encoded as the shader reads them.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct AnalyticClip {
     pub xform: [f32; 4],
@@ -1364,7 +1357,7 @@ pub(crate) struct AnalyticClip {
     pub radii_with_inverse: [f32; 4],
 }
 
-/// `can_apply_analytic_clip` for an intersect element.
+/// The analytic clip for an intersecting element, if it has one.
 pub(crate) fn analytic_clip(rect: [f32; 4], rr: Option<&RRect>, xf: &Xf) -> Option<AnalyticClip> {
     if xf.kind > Kind::Affine {
         return None;
@@ -1408,17 +1401,17 @@ pub(crate) fn analytic_clip(rect: [f32; 4], rr: Option<&RRect>, xf: &Xf) -> Opti
 }
 
 // ---------------------------------------------------------------------------------------------
-// A CPU reference of the analytic step, for tests and for surfaces that bake a Graphite drawing.
+// A CPU reference of the analytic step, for tests and for surfaces that bake a drawing.
 
-/// The AnalyticRRectRenderStep run on the CPU: its static vertices, `analytic_rrect_vertex_fn`,
-/// rasterization at pixel centres (vertices snapped to 1/256 px, the top-left rule, the first
-/// triangle of the strip covering a centre winning: the depth test) and
-/// `analytic_rrect_coverage_fn`. What a single-sampled Graphite pass writes as coverage.
+/// The analytic step run on the CPU: its static vertices, the vertex function, rasterization at
+/// pixel centres (vertices snapped to 1/256 px, the top-left rule, the strip's first triangle
+/// covering a centre winning) and the coverage function. What a single-sampled pass writes as
+/// coverage.
 #[doc(hidden)]
 pub mod reference {
     use super::RRectInstance;
 
-    /// The 9 per-corner template vertices: position, normal, normalScale, centerWeight.
+    /// The 9 per-corner template vertices: position, normal, normal scale, centre weight.
     pub const TEMPLATE: [([f32; 2], [f32; 2], f32, f32); 9] = {
         const H: f32 = 0.5 * std::f32::consts::SQRT_2;
         [
@@ -1492,7 +1485,7 @@ pub mod reference {
         [v[0] * m[0] + v[1] * m[1], v[0] * m[2] + v[1] * m[3]]
     }
 
-    /// `analytic_rrect_vertex_fn`.
+    /// The vertex function for one corner of an instance.
     pub fn vertex(corner: usize, t: ([f32; 2], [f32; 2], f32, f32), inst: &RRectInstance) -> Varyings {
         let (position, normal, normal_scale, center_weight) = t;
         let next = (corner + 1) % 4;
@@ -1612,7 +1605,7 @@ pub mod reference {
         }
         let mut edge: V4 = std::array::from_fn(|i| dy[i] * (xs[i] - local[0]) - dx[i] * (ys[i] - local[1]) + edge_bias[i]);
         let [m0, m1, m2] = inst.mat;
-        // inverse of the 3×3 (columns m0, m1, m2).
+        // The inverse of the 3×3 (columns m0, m1, m2).
         let inv = inverse3([m0, m1, m2]);
         let dev3 = [
             m0[0] * local[0] + m1[0] * local[1] + m2[0],
@@ -1724,7 +1717,7 @@ pub mod reference {
         }
     }
 
-    /// `analytic_rrect_coverage_fn` (w = 1).
+    /// The coverage function (w = 1).
     pub fn coverage(v: &Varyings) -> f32 {
         let (j, e, sp, ppc) = (v.jacobian, v.edge, v.stroke, v.ppc);
         let sat = |x: f32| x.clamp(0.0, 1.0);
@@ -1768,7 +1761,7 @@ pub mod reference {
         sat(scale * ((d[0] + outset).min(-d[1]) + bias))
     }
 
-    /// `sk_analytic_clip` at a device pixel centre.
+    /// The analytic clip's coverage at a device pixel centre.
     #[allow(dead_code)]
     pub(crate) fn analytic_clip_alpha(c: &super::AnalyticClip, frag: [f32; 2]) -> f32 {
         let x = c.xform;

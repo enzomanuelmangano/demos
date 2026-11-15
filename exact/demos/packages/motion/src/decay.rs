@@ -1,9 +1,8 @@
-//! `withDecay` (animation/decay): deceleration 0.998, velocityFactor 1, the rigid decay or,
-//! with `rubber_band_factor`, the rubber band past a clamp. As rigidDecay.ts and
-//! rubberBandDecay.ts, each frame multiplies the velocity it LEFT (not the initial one) by
-//! exp(−(1 − deceleration) × (now − start) × SLOPE_FACTOR): the fade compounds, so a fling
-//! stops far sooner than v0 × exp(−k t) would carry it (threads-holo-ticket: about +90° where
-//! the plain exponential spun several turns).
+//! A fling that slows down: a rigid decay or, with a rubber band, a decay that pulls back past a clamp.
+//!
+//! Each frame multiplies the velocity it left (not the initial one) by
+//! exp(−(1 − deceleration) × (now − start) × SLOPE_FACTOR). The fade compounds, so a fling stops
+//! far sooner than v0 × exp(−k t) would carry it.
 
 const SLOPE_FACTOR: f64 = 0.1;
 const VELOCITY_EPS: f64 = 1.0;
@@ -12,13 +11,13 @@ const DERIVATIVE_EPS: f64 = 0.1;
 /// A value flung at a velocity, slowing down.
 #[derive(Clone, Copy, Debug)]
 pub struct Decay {
-    /// `deceleration`.
+    /// Per-ms velocity retention (0.998 by default).
     pub deceleration: f64,
-    /// `velocityFactor`.
+    /// Scales the velocity into distance (1 by default).
     pub velocity_factor: f64,
-    /// `clamp`.
+    /// The range the value is held in.
     pub clamp: Option<[f64; 2]>,
-    /// `rubberBandEffect` with its `rubberBandFactor` (0.6 by default).
+    /// Rubber band past the clamp, with its factor (0.6 by default).
     pub rubber_band: Option<f64>,
     v0: f64,
     start_ms: Option<f64>,
@@ -33,7 +32,7 @@ pub struct Decay {
 }
 
 impl Decay {
-    /// At rest at `value`, with withDecay's defaults.
+    /// At rest at `value`, with the default deceleration.
     pub fn at(value: f64) -> Decay {
         Decay {
             deceleration: 0.998,
@@ -50,7 +49,7 @@ impl Decay {
         }
     }
 
-    /// `withDecay({ velocity })` from where it is.
+    /// Flings it from where it is at `velocity`.
     pub fn fling(&mut self, velocity: f64) {
         self.v0 = velocity;
         self.velocity = velocity;
@@ -121,8 +120,7 @@ mod tests {
 
     #[test]
     fn the_fade_compounds_as_rigid_decay_ts() {
-        // rigidDecay.ts at 60 fps from 195.49 (deceleration 0.998), computed line for line:
-        // 67.4291640632 moved, done on the 56th frame after the start.
+        // Reference run at 60 fps from 195.49: 67.4291640632 moved, done on the 56th frame.
         let mut d = Decay::at(0.0);
         d.fling(195.49);
         let mut frames = 0;

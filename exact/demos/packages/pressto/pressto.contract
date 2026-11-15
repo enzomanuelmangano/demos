@@ -1,47 +1,39 @@
-// pressto 0.7.0 for Exact: the press system every demo's pressable uses, as pressto is
-// designed (node_modules/pressto/src). RN today shows no feedback at all: pressto 0.7.0 passes
-// onBegan/onEnded to RNGH 3.3's v3 BaseButton, which reads only onBegin/onFinalize. That is an
-// RN bug, not copied here.
+// The press system every demo's pressable uses: pressto's pressables for Exact.
 //
-// pressto: `active` turns on at touch-down (BaseButton onBegin) and off at the lift or a cancel
-// (onFinalize); shouldCancelWhenOutside is false, so sliding off keeps it on; onPress only when
-// the lift is inside. progress = withTiming(active ? 1 : 0, 250 ms, bezier(0.25, 0.1, 0.25, 1))
-// (or withSpring per config), retargeting from where it is; each pressable's style is linear
-// in progress (`interpolate(progress, [0, 1], [rest, pressed])`), so it is a transition of
-// that property between the two ends on the same curve.
+// A pressable is on from the touch-down to the lift or a cancel; sliding off keeps it on; a press
+// counts only when the lift is inside. Its progress runs 0 → 1 over 250 ms on
+// cubic-bezier(0.25, 0.1, 0.25, 1) (or a spring), retargeting from where it is, and each style is
+// linear in progress, so it is a transition of that property between its two ends.
 //
-// Not the host's `:active`: the iOS host eases it over a fixed 120 ms on
-// cubic-bezier(.16, 1, .3, 1) (exact2 host/apple/Sources/ExactKit/PressFeedback.swift
-// `duration`/`timing`; no transition or property changes it). So the pressed state is the
-// component's, from `pointerdown`/`pointerup` (every ancestor of the touched node hears them,
-// the up wherever the finger lifts, a cancel is an up, and neither takes anything from
-// `press`, which the host fires only for a lift inside): 2 commits a press.
+// Not the host's `:active`: the iOS host eases it over a fixed 120 ms that no transition or
+// property changes. So the pressed state is the component's, from `pointerdown` / `pointerup`
+// (every ancestor of the touched node hears them, the up wherever the finger lifts, a cancel is
+// an up, and neither takes anything from `press`, which the host fires only for a lift inside).
 //
-// Use: the components at the end of this file (PressableScale, PressableOpacity,
-// PressableWithoutFeedback, AnimatedPressable, and the *Layout variants), around the caller's
+// Use the components at the end of this file (PressableScale, PressableOpacity,
+// PressableWithoutFeedback, AnimatedPressable and the *Layout variants) around the caller's
 // nodes. The functions below are their machine.
 
-// PressablesConfig (provider/index.tsx): the animation and pressto's `config`. The root
-// provides one (`pressto`), with the app's global onPress (`pressablesOnPress`).
+// The animation and the pressables' config. The root provides one (`pressto`), with the app's
+// global press handler (`pressablesOnPress`).
 shape PressablesConfig
-  // The progress curve, as a transition's timing (DefaultAnimationConfigs).
+  // The progress curve, as a transition's timing.
   animation: string
-  // DefaultPressableConfig.
+  // The scales and opacity a pressed pressable moves to.
   minScale: number
   baseScale: number
   activeOpacity: number
 
-// DefaultAnimationConfigs.timing: withTiming 250 ms on Easing.bezier(0.25, 0.1, 0.25, 1),
-// which is CSS `ease` exactly.
+// The default timing: 250 ms on cubic-bezier(0.25, 0.1, 0.25, 1), which is CSS `ease`.
 fn pressTiming(): string = "250ms cubic-bezier(0.25, 0.1, 0.25, 1)"
-// DefaultAnimationConfigs.spring { mass 1, damping 30, stiffness 200 }: ζ = 30 / (2√200) > 1,
-// which Reanimated runs critically damped, so damping 2√(200 · 1).
+// The default spring (mass 1, damping 30, stiffness 200): ζ = 30 / (2√200) > 1, run critically
+// damped, so damping 2√(200 · 1).
 fn pressSpring(): string = "-exact-spring(200, 28.284271247461902, 1)"
 
-// <PressablesConfig> with no props: animationType 'timing', DefaultPressableConfig.
+// The default config: timing, min scale 0.96, active opacity 0.5.
 fn defaultPressablesConfig(): PressablesConfig =
   PressablesConfig(animation=pressTiming(), minScale=0.96, baseScale=1, activeOpacity=0.5)
-// animationType="spring" with its default config.
+// The default config with the spring.
 fn springPressablesConfig(): PressablesConfig =
   PressablesConfig(animation=pressSpring(), minScale=0.96, baseScale=1, activeOpacity=0.5)
 
@@ -52,32 +44,30 @@ shape Press
   odd: bool
 
 fn pressNone(): Press = Press(key=-1, odd=false)
-// onPressIn: pressable `key` goes active.
+// Pressable `key` goes active.
 fn pressDown(p: Press, key: number): Press = Press(key=key, odd=not p.odd)
-// onPressOut / onPress / a cancel: none active.
+// A press-out, a press or a cancel: none active.
 fn pressUp(p: Press): Press = Press(key=-1, odd=p.odd)
-// isPressed.
+// Whether pressable `key` is held.
 fn isPressed(p: Press, key: number): bool = p.key == key
 
 // A transition that returns to the value it started from is CSS's reversing case (CSS
-// Transitions §3.2, exact2 motion/src/engine.rs): it runs for only a share of the duration.
-// Reanimated's withTiming always runs the full 250 ms from where it is. So every other press
-// aims a millionth off toward the other end (0.001 px across 1000 device px, one f32 step is
-// 6e-8): no target ever equals the start of the transition it interrupts, and each retarget
-// is a fresh full run from the current value.
+// Transitions §3.2): it runs for only a share of the duration. A press always runs the full
+// 250 ms from where it is, so every other press aims a millionth off toward the other end
+// (0.001 px across 1000 device px, one f32 step is 6e-8): no target ever equals the start of
+// the transition it interrupts, and each retarget is a fresh full run from the current value.
 fn pressNudge(p: Press, rest: number, pressed: number): number =
   p.odd ? (pressed < rest ? -0.000001 : 0.000001) : 0
 
-// createAnimatedPressable for a style linear in progress: the value of a property that is
-// `rest` idle and `pressed` held (interpolate(progress, [0, 1], [rest, pressed])). Give the
+// The value of a property that is `rest` idle and `pressed` held, linear in progress. Give the
 // property `transition=pressTransition(<property>, pressto)`.
 fn animatedPressable(p: Press, key: number, rest: number, pressed: number): number =
   isPressed(p, key) ? pressed - pressNudge(p, rest, pressed) : rest + pressNudge(p, rest, pressed)
 
-// PressableScale: interpolate(progress, [0, 1], [baseScale, minScale]).
+// The scale of a scale pressable: baseScale → minScale.
 fn pressableScale(p: Press, key: number, c: PressablesConfig): number =
   animatedPressable(p, key, c.baseScale, c.minScale)
-// PressableOpacity: interpolate(progress, [0, 1], [1, activeOpacity]).
+// The opacity of an opacity pressable: 1 → activeOpacity.
 fn pressableOpacity(p: Press, key: number, c: PressablesConfig): number =
   animatedPressable(p, key, 1, c.activeOpacity)
 
@@ -85,41 +75,37 @@ fn pressableOpacity(p: Press, key: number, c: PressablesConfig): number =
 fn pressTransition(property: string, c: PressablesConfig): string = `${property} ${c.animation}`
 
 
-// createAnimatedPressable for a colour (interpolateColor(progress, [0, 1], [rest, pressed])):
-// the colour idle or held, with `transition=pressTransition("background-color", pressto)`.
-// Not nudged, so a colour released mid-flight takes CSS's shortened reverse; Exact blends in
-// Oklab, Reanimated in gamma-2.2 RGB.
+// The colour of a pressable: `rest` idle or `pressed` held, with
+// `transition=pressTransition("background-color", pressto)`. Not nudged, so a colour released
+// mid-flight takes CSS's shortened reverse; Exact blends in Oklab.
 fn animatedPressableColor(p: Press, key: number, rest: string, pressed: string): string =
   isPressed(p, key) ? pressed : rest
 
 
 // ── The components: pressto's API ──────────────────────────────────────────────────────────
 //
-// Each wraps the caller's nodes (its `slot`) in one press box, as pressto's BaseButton wraps a
-// pressable's children, and owns its press (one `Press` state a pressable, as each RN pressable
-// owns its `active` shared value):
+// Each wraps the caller's nodes (its `slot`) in one press box and owns its press (one `Press`
+// state a pressable):
 //
 //   PressableScale(press=save)
 //     row height=60 border-radius=30 background-color="#0c86f7" …
 //       text "Continue"
 //
-// - `press` is the pressable's onPress. The app's global onPress (`pressablesOnPress`, the
-//   root's PressablesConfig globalHandlers) runs first, then `press`, as BasePressable calls
-//   `onPressProvider` before `onPress`. It runs only for a lift inside the box (BaseButton
-//   onPress(pointerInside), pointerInside true).
-// - The box fills the box its caller gives it (flex column, grown and stretched), as an RN
-//   pressable's style places it: write the pressable's place (position, size, flex, margins,
-//   `-exact-layout-transition`) on a `view` around it, its look (background, radius, padding,
-//   layout of its content) on the node in the slot. The box draws nothing and has no padding,
-//   so the scale turns about the centre of the caller's box, as RN's does.
+// - `press` is the pressable's press. The app's global handler (`pressablesOnPress`, the root's
+//   PressablesConfig) runs first, then `press`, only for a lift inside the box.
+// - The box fills the box its caller gives it (flex column, grown and stretched): write the
+//   pressable's place (position, size, flex, margins, `-exact-layout-transition`) on a `view`
+//   around it, its look (background, radius, padding, layout of its content) on the node in the
+//   slot. The box draws nothing and has no padding, so the scale turns about the centre of the
+//   caller's box.
 // - The box is `role="button"`: a view, not a `button`, so it adds no text style (a `button`'s
 //   tag centres its text and sets its font) to the caller's nodes.
 //
-// RN's provider (PressablesConfig) stays the root's `provide`: a slot's fill keeps its caller's
-// providers, so a wrapping component cannot provide to it. The root provides
+// The provider stays the root's `provide`: a slot's fill keeps its caller's providers, so a
+// wrapping component cannot provide to it. The root provides
 // `pressto = defaultPressablesConfig()` and `pressablesOnPress` (app.contract).
 
-// PressableScale (custom/scale.ts): scale baseScale → minScale.
+// A pressable that scales from baseScale to minScale.
 component PressableScale
   inject
     pressto: PressablesConfig
@@ -130,8 +116,8 @@ component PressableScale
   state pressing = pressNone()
   action pressIn
     pressing = pressDown(pressing, 0)
-    // The innermost pressable takes the touch, as RNGH's innermost button does (UIKit hands the
-    // touch to the deepest UIControl): a pressable around this one does not press in.
+    // The innermost pressable takes the touch (UIKit hands it to the deepest control): a pressable
+    // around this one does not press in.
     stopPropagation()
   action pressOut
     pressing = pressUp(pressing)
@@ -144,9 +130,8 @@ component PressableScale
       scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
       children
 
-// PressableScale whose box moves with a layout animation (RN's `layout={…}` on the pressable):
-// `layout` is the box's `-exact-layout-transition`, so the scale turns about the moving box's
-// centre, as Reanimated's layout animation and pressto's transform share RN's one view.
+// A scale pressable whose box moves with a layout animation: `layout` is the box's
+// `-exact-layout-transition`, so the scale turns about the moving box's centre.
 component PressableScaleLayout
   inject
     pressto: PressablesConfig
@@ -158,8 +143,8 @@ component PressableScaleLayout
   state pressing = pressNone()
   action pressIn
     pressing = pressDown(pressing, 0)
-    // The innermost pressable takes the touch, as RNGH's innermost button does (UIKit hands the
-    // touch to the deepest UIControl): a pressable around this one does not press in.
+    // The innermost pressable takes the touch (UIKit hands it to the deepest control): a pressable
+    // around this one does not press in.
     stopPropagation()
   action pressOut
     pressing = pressUp(pressing)
@@ -173,7 +158,7 @@ component PressableScaleLayout
       scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
       children
 
-// PressableOpacity (custom/opacity.ts): opacity 1 → activeOpacity.
+// A pressable that fades from 1 to activeOpacity.
 component PressableOpacity
   inject
     pressto: PressablesConfig
@@ -184,8 +169,8 @@ component PressableOpacity
   state pressing = pressNone()
   action pressIn
     pressing = pressDown(pressing, 0)
-    // The innermost pressable takes the touch, as RNGH's innermost button does (UIKit hands the
-    // touch to the deepest UIControl): a pressable around this one does not press in.
+    // The innermost pressable takes the touch (UIKit hands it to the deepest control): a pressable
+    // around this one does not press in.
     stopPropagation()
   action pressOut
     pressing = pressUp(pressing)
@@ -198,7 +183,7 @@ component PressableOpacity
       opacity=pressableOpacity(pressing, 0, pressto) transition=pressTransition("opacity", pressto)
       children
 
-// PressableOpacity whose box moves with a layout animation (as PressableScaleLayout).
+// An opacity pressable whose box moves with a layout animation (as PressableScaleLayout).
 component PressableOpacityLayout
   inject
     pressto: PressablesConfig
@@ -223,7 +208,7 @@ component PressableOpacityLayout
       opacity=pressableOpacity(pressing, 0, pressto) transition=pressTransition("opacity", pressto)
       children
 
-// PressableWithoutFeedback (custom/withoutFeedback.ts): no look, the press and its haptic.
+// A pressable with no look: the press and its haptic.
 component PressableWithoutFeedback
   inject
     pressablesOnPress: action
@@ -238,9 +223,8 @@ component PressableWithoutFeedback
       display="flex" flex-direction="column" flex-grow=1 align-self="stretch"
       children
 
-// What a createAnimatedPressable style is at progress 0 (`rest`) and 1 (`pressed`), for the
-// styles the demos write: interpolate(progress, [0, 1], [rest, pressed]) of the scale and the
-// opacity, interpolateColor of the background. The corner is the box's own (the same in both).
+// What an animated pressable's style is at rest (progress 0) and pressed (progress 1): the scale,
+// the opacity and the background, interpolated. The corner is the box's own (the same in both).
 shape PressLook
   scale: number
   opacity: number
@@ -248,8 +232,7 @@ shape PressLook
   radius: number
   continuous: bool
 
-// createAnimatedPressable(progress => ({ transform: [{ scale }], opacity, backgroundColor,
-// borderRadius })).
+// A pressable with a custom look: its scale, opacity and background at rest and pressed.
 component AnimatedPressable
   inject
     pressto: PressablesConfig
@@ -262,8 +245,8 @@ component AnimatedPressable
   state pressing = pressNone()
   action pressIn
     pressing = pressDown(pressing, 0)
-    // The innermost pressable takes the touch, as RNGH's innermost button does (UIKit hands the
-    // touch to the deepest UIControl): a pressable around this one does not press in.
+    // The innermost pressable takes the touch (UIKit hands it to the deepest control): a pressable
+    // around this one does not press in.
     stopPropagation()
   action pressOut
     pressing = pressUp(pressing)

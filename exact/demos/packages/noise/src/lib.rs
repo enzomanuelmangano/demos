@@ -1,5 +1,22 @@
-//! simplex-noise 4.0.3 (node_modules/simplex-noise/dist/esm/simplex-noise.js): the permutation
-//! table `buildPermutationTable(random)` shuffles, and `createNoise2D`'s noise over it.
+//! 2D simplex noise over a seeded permutation table, for GPU surfaces.
+//!
+//! Not a reimplementation of the simplex-noise package: the same constants and the same table
+//! shuffle, so a field built from the same random sequence gives the same values.
+//!
+//! ```
+//! use noise::{Noise2D, Random};
+//!
+//! let mut random = Random::new(42);
+//! let field = Noise2D::new(|| random.next());
+//! let v = field.at(0.5, 1.5);
+//! assert!((-1.0..=1.0).contains(&v));
+//! ```
+//!
+//! Types: [`Noise2D`] (the field) and [`Random`] (a seeded generator to shuffle it with).
+//!
+//! # Credits
+//!
+//! Constants and algorithm after simplex-noise 4.x by Jonas Wagner (MIT).
 
 #![deny(missing_docs)]
 
@@ -7,7 +24,7 @@ const F2: f64 = 0.366_025_403_784_438_6; // 0.5 * (sqrt(3) - 1)
 const G2: f64 = 0.211_324_865_405_187_1; // (3 - sqrt(3)) / 6
 const GRAD2: [f64; 24] = [1., 1., -1., 1., 1., -1., -1., -1., 1., 0., -1., 0., 1., 0., -1., 0., 0., 1., 0., -1., 0., 1., 0., -1.];
 
-/// A 2D simplex noise field (`createNoise2D(random)`).
+/// A 2D simplex noise field.
 #[derive(Clone, Debug)]
 pub struct Noise2D {
     perm: [u8; 512],
@@ -16,7 +33,7 @@ pub struct Noise2D {
 }
 
 impl Noise2D {
-    /// The field `random` (Math.random's stand-in, 0…1) shuffles.
+    /// The field whose table `random` shuffles; `random` returns numbers in 0…1.
     pub fn new(mut random: impl FnMut() -> f64) -> Noise2D {
         let mut perm = [0u8; 512];
         for (i, p) in perm.iter_mut().take(256).enumerate() {
@@ -76,12 +93,12 @@ impl Noise2D {
     }
 }
 
-/// Math.random for a surface: xorshift64*, seeded once (e.g. from the host clock's bits).
+/// A small seeded random generator (xorshift64*), for shuffling a [`Noise2D`].
 #[derive(Clone, Debug)]
 pub struct Random(u64);
 
 impl Random {
-    /// Seeded; a zero seed is replaced.
+    /// A generator from `seed`; a zero seed is replaced.
     pub fn new(seed: u64) -> Random {
         Random(seed.max(1).wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1)
     }

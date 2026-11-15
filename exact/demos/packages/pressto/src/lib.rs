@@ -1,77 +1,82 @@
-//! pressto 0.7.0's `BasePressable` for GPU surfaces: one press machine every surface that draws
-//! a pressto pressable (PressableScale, PressableOpacity, PressableWithoutFeedback, a
-//! `createAnimatedPressable`) runs, so they all press alike. Ported from
-//! node_modules/pressto/src (pressables/base.tsx, provider/constants.ts).
+//! The press machine behind pressto's pressables, for GPU surfaces: touch in, press out, a
+//! progress that eases from 0 to 1 while held, a toggle and a group.
 //!
-//! As DESIGNED, not as the RN app runs today: pressto 0.7.0 hands RNGH 3.3's v3 BaseButton
-//! `onBegan` / `onEnded`, which it no longer reads (it reads `onBegin` / `onFinalize`), so the RN
-//! app shows no press feedback. Here the feedback is what pressto means:
+//! One machine runs every pressable (scale, opacity, no feedback, custom), so they all press
+//! alike. These are pressto's own conventions (its API names and defaults), not a reimplementation
+//! of another library.
 //!
-//! - RNGH's iOS BaseButton: `active` turns on at a touch-down inside the button (onBegin with
-//!   pointerInside); `shouldCancelWhenOutside` is false, so sliding off keeps it on; the lift
-//!   turns it off and fires `onPress` only when the finger lifts inside the button's bounds; a
-//!   cancel (a scroll or another gesture takes the touch) turns it off with no `onPress`. No
-//!   maximum duration and no maximum distance (a held, wandering press still presses).
-//! - `progress = withTiming(active ? 1 : 0, { duration: 250, easing: bezier(0.25, 0.1, 0.25, 1) })`
-//!   (`DefaultAnimationConfigs.timing`), or `withSpring(…, { mass: 1, damping: 30,
-//!   stiffness: 200 })` (`DefaultAnimationConfigs.spring`; ζ = 30 / (2√200) ≈ 1.06, which
-//!   Reanimated runs critically damped, as `motion::Spring` does). A `useDerivedValue`
-//!   starts its new animation at the next frame, from the value the last frame left: a release
-//!   mid-flight eases back from there over a fresh full 250 ms (not a CSS reversal).
-//! - `DefaultPressableConfig`: minScale 0.96, baseScale 1, activeOpacity 0.5;
-//!   PressableScale is `interpolate(progress, [0, 1], [baseScale, minScale])`, PressableOpacity
-//!   `interpolate(progress, [0, 1], [1, activeOpacity])`.
-//! - `isToggled` flips on every onPress (`initialToggled` first); a [`Group`]
-//!   (PressablesGroup) remembers the last pressable pressed (`isSelected`).
-//! - The app's `PressablesConfig` `globalHandlers.onPress` is `Haptics.selectionAsync()`
-//!   (app/_layout.tsx): every [`Press`] carries [`GLOBAL_ON_PRESS`] (`"haptic:selection"`) for
-//!   the surface to post, unless the pressable set `skipGlobalHandlers`.
+//! ```
+//! use pressto::Pressable;
 //!
-//! The surface hit-tests (which button a point is in) and feeds the pointer events of its canvas
-//! (`InputEvent::Pointer`) as [`Pressable::pointer`] or the per-phase calls; `render()` calls
-//! [`Pressable::step`] with the frame's clock and draws with [`Pressable::scale`] /
-//! [`Pressable::opacity`] / [`Pressable::progress`], returning true while
-//! [`Pressable::is_animating`].
+//! let mut button = Pressable::new();
+//! assert!(button.pointer_down(1, true));
+//! let mut now_ms = 0.0;
+//! while button.step(now_ms) {
+//!     now_ms += 16.0;
+//! }
+//! assert_eq!(button.scale(), 0.96);
+//! assert!(button.pointer_up(1, true).is_some());
+//! ```
 //!
-//! `gesture-handler`'s `TapGesture` is not used under it: everything it adds (maxDuration 500,
-//! maxDist) is off for a BaseButton; only its [`Phase`] is shared.
+//! - A touch-down inside the button turns the press on; sliding off keeps it; the lift turns it
+//!   off and presses only when the finger lifts inside the bounds; a cancel (a scroll or another
+//!   gesture takes the touch) turns it off without a press. No maximum duration or distance.
+//! - `progress` eases to 1 over 250 ms on `bezier(0.25, 0.1, 0.25, 1)`, or springs (mass 1,
+//!   damping 30, stiffness 200). Each change of target starts a fresh full run from the current
+//!   value on the next frame.
+//! - Defaults: min scale 0.96, base scale 1, active opacity 0.5; the scale and opacity are
+//!   interpolated from `progress`.
+//! - `is_toggled` flips on every press; a [`Group`] remembers the last pressable pressed.
+//! - Every [`Press`] carries [`GLOBAL_ON_PRESS`] (`"haptic:selection"`) for the surface to post,
+//!   unless the pressable skips the global handlers.
+//!
+//! The surface hit-tests which button a point is in and passes the pointer events to
+//! [`Pressable::pointer`] (or the per-phase calls). Each frame it calls [`Pressable::step`] with
+//! the clock and draws with [`Pressable::scale`], [`Pressable::opacity`] and
+//! [`Pressable::progress`]; `step` and [`Pressable::is_animating`] say whether to keep drawing.
+//!
+//! Types: [`Pressable`], [`Press`] / [`PressEvent`], [`Config`], [`Animation`], [`HitSlop`], [`Group`].
+//!
+//! # Credits
+//!
+//! The timing curve and the spring use the same constants as `motion`, which follows
+//! react-native-reanimated 4.x's `withTiming` and `withSpring` (MIT).
 
 #![deny(missing_docs)]
 
 pub use gestures::Phase;
 use motion::{Easing, Spring, SpringConfig, Timing};
 
-/// What the app's `PressablesConfig` `globalHandlers.onPress` does: `Haptics.selectionAsync()`,
-/// as the message a surface posts.
+/// The message a surface posts on every press, unless the pressable skips the global handlers.
 pub const GLOBAL_ON_PRESS: &str = "haptic:selection";
 
-/// `DefaultAnimationConfigs.timing.duration`.
+/// The default timing duration, in ms.
 pub const TIMING_MS: f64 = 250.0;
 
-/// `DefaultAnimationConfigs.timing.easing`: `Easing.bezier(0.25, 0.1, 0.25, 1)`.
+/// The default timing curve: `bezier(0.25, 0.1, 0.25, 1)`.
 pub fn timing_easing() -> Easing {
     Easing::bezier(0.25, 0.1, 0.25, 1.0)
 }
 
-/// `DefaultAnimationConfigs.spring`: `{ mass: 1, damping: 30, stiffness: 200 }`.
+/// The default spring: mass 1, damping 30, stiffness 200.
 pub const SPRING: SpringConfig = SpringConfig {
     stiffness: 200.0,
     damping: 30.0,
     mass: 1.0,
 };
 
-/// `PressableConfig`: what PressableScale and PressableOpacity interpolate to.
+/// What a scale or opacity pressable interpolates to while pressed.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Config {
-    /// `activeOpacity`: PressableOpacity's opacity when pressed.
+    /// The opacity of an opacity pressable when pressed.
     pub active_opacity: f64,
-    /// `minScale`: PressableScale's scale when pressed.
+    /// The scale of a scale pressable when pressed.
     pub min_scale: f64,
-    /// `baseScale`: PressableScale's scale at rest.
+    /// The scale of a scale pressable at rest.
     pub base_scale: f64,
 }
 
-/// `DefaultPressableConfig`.
+/// The default config: active opacity 0.5, min scale 0.96, base scale 1.
 pub const DEFAULT_CONFIG: Config = Config {
     active_opacity: 0.5,
     min_scale: 0.96,
@@ -84,29 +89,29 @@ impl Default for Config {
     }
 }
 
-/// `animationType` + `animationConfig`.
+/// How the progress animates.
 #[derive(Clone, Debug)]
 pub enum Animation {
-    /// `'timing'`: `withTiming(…, { duration, easing })`.
+    /// A timed run over a duration with an easing curve.
     Timing {
-        /// ms.
+        /// The duration, in ms.
         duration_ms: f64,
         /// The curve.
         easing: Easing,
     },
-    /// `'spring'`: `withSpring(…, config)`.
+    /// A spring.
     Spring(SpringConfig),
 }
 
 impl Animation {
-    /// `'timing'` with `DefaultAnimationConfigs.timing` (pressto's default).
+    /// The default timing: 250 ms on `bezier(0.25, 0.1, 0.25, 1)`.
     pub fn timing() -> Animation {
         Animation::Timing {
             duration_ms: TIMING_MS,
             easing: timing_easing(),
         }
     }
-    /// `'spring'` with `DefaultAnimationConfigs.spring`.
+    /// The default spring ([`SPRING`]).
     pub fn spring() -> Animation {
         Animation::Spring(SPRING)
     }
@@ -124,43 +129,43 @@ enum Progress {
     Spring(Spring),
 }
 
-/// An `onPress`: the finger lifted inside the button. The press-out came with it.
+/// A press: the finger lifted inside the button. The press-out came with it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Press {
-    /// `isToggled` after this press flipped it.
+    /// The toggle state after this press flipped it.
     pub is_toggled: bool,
-    /// Whether the global handlers run (no `skipGlobalHandlers`).
+    /// Whether the global handlers run (the pressable did not skip them).
     pub global: bool,
 }
 
 impl Press {
-    /// The global onPress's message ([`GLOBAL_ON_PRESS`]), unless `skipGlobalHandlers`.
+    /// The global press message ([`GLOBAL_ON_PRESS`]), unless the pressable skips the global handlers.
     pub fn global_message(&self) -> Option<&'static str> {
         self.global.then_some(GLOBAL_ON_PRESS)
     }
 }
 
-/// What a pointer event did to a pressable (the handler pressto would call).
+/// What a pointer event did to a pressable.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PressEvent {
-    /// `onPressIn`: a touch-down inside it.
+    /// A touch-down inside it.
     PressIn,
-    /// `onPressOut` without `onPress`: lifted outside, or cancelled.
+    /// The press ended without a press: lifted outside, or cancelled.
     PressOut,
-    /// `onPress` (with its press-out).
+    /// A press, with its press-out.
     Press(Press),
 }
 
-/// One pressto pressable: its BaseButton press, its progress, its `isToggled`.
+/// One pressable: its press, its progress and its toggle state.
 #[derive(Clone, Debug)]
 pub struct Pressable {
-    /// Its `PressableConfig`.
+    /// What it interpolates to while pressed.
     pub config: Config,
     animation: Animation,
     skip_global_handlers: bool,
     enabled: bool,
     finger: Option<u32>,
-    /// pointerInside at the press's last event.
+    /// Whether the finger was inside the bounds at the press's last event.
     inside: bool,
     is_toggled: bool,
     progress: Progress,
@@ -187,13 +192,13 @@ impl Pressable {
         }
     }
 
-    /// `config` (merged over `DefaultPressableConfig` by the caller).
+    /// Sets the config (the caller merges it over [`DEFAULT_CONFIG`]).
     pub fn with_config(mut self, config: Config) -> Pressable {
         self.config = config;
         self
     }
 
-    /// `animationType` / `animationConfig`.
+    /// Sets how the progress animates, keeping its current value.
     pub fn with_animation(mut self, animation: Animation) -> Pressable {
         let p = self.progress();
         self.progress = match animation {
@@ -204,20 +209,19 @@ impl Pressable {
         self
     }
 
-    /// `skipGlobalHandlers`: its presses carry no [`GLOBAL_ON_PRESS`].
+    /// Its presses carry no [`GLOBAL_ON_PRESS`].
     pub fn skip_global_handlers(mut self) -> Pressable {
         self.skip_global_handlers = true;
         self
     }
 
-    /// `initialToggled`.
+    /// Sets the toggle state it starts in.
     pub fn initial_toggled(mut self, toggled: bool) -> Pressable {
         self.is_toggled = toggled;
         self
     }
 
-    /// `enabled` / `disabled`: a disabled button takes no touch-down; disabling one under a
-    /// finger cancels its press.
+    /// A disabled button takes no touch-down; disabling one under a finger cancels its press.
     pub fn set_enabled(&mut self, enabled: bool) {
         self.enabled = enabled;
         if !enabled {
@@ -249,8 +253,8 @@ impl Pressable {
         }
     }
 
-    /// A touch-down; `inside` = in the button's bounds. Returns whether it is this press's
-    /// (onPressIn): only one finger, only inside, only when enabled.
+    /// A touch-down; `inside` = in the button's bounds. Returns whether it is this press's:
+    /// only one finger, only inside, only when enabled.
     pub fn pointer_down(&mut self, id: u32, inside: bool) -> bool {
         if self.finger.is_some() || !inside || !self.enabled {
             return false;
@@ -261,16 +265,15 @@ impl Pressable {
         true
     }
 
-    /// The finger moved; `inside` = it is in the button's bounds. Sliding off keeps the press
-    /// (`shouldCancelWhenOutside` false).
+    /// The finger moved; `inside` = it is in the button's bounds. Sliding off keeps the press.
     pub fn pointer_move(&mut self, id: u32, inside: bool) {
         if self.finger == Some(id) {
             self.inside = inside;
         }
     }
 
-    /// The finger lifted at a point `inside` the button or not. `Some` is onPress (it flips
-    /// `isToggled`); `None` if it was not this press's or it lifted outside (press-out only:
+    /// The finger lifted at a point `inside` the button or not. `Some` is a press (it flips the
+    /// toggle); `None` if it was not this press's or it lifted outside (press-out only:
     /// check [`Pressable::is_pressed`] before, or use [`Pressable::pointer`]).
     pub fn pointer_up(&mut self, id: u32, inside: bool) -> Option<Press> {
         if self.finger != Some(id) {
@@ -290,7 +293,7 @@ impl Pressable {
     }
 
     /// The touch was taken (a scroll began, another gesture won, the platform cancelled):
-    /// press-out, no onPress. Returns whether a press was held.
+    /// press-out, no press. Returns whether a press was held.
     pub fn cancel(&mut self) -> bool {
         if self.finger.take().is_none() {
             return false;
@@ -299,7 +302,7 @@ impl Pressable {
         true
     }
 
-    /// A pointer event, as one call: what pressto would call for it.
+    /// A pointer event, as one call: what it did to the pressable, if anything.
     pub fn pointer(&mut self, id: u32, phase: Phase, inside: bool) -> Option<PressEvent> {
         match phase {
             Phase::Down => self.pointer_down(id, inside).then_some(PressEvent::PressIn),
@@ -330,7 +333,7 @@ impl Pressable {
         }
     }
 
-    /// `progress`: 0 at rest, 1 pressed.
+    /// The progress: 0 at rest, 1 pressed.
     pub fn progress(&self) -> f64 {
         match &self.progress {
             Progress::Timing(t) => t.value,
@@ -338,18 +341,18 @@ impl Pressable {
         }
     }
 
-    /// PressableScale: `interpolate(progress, [0, 1], [baseScale, minScale])`.
+    /// The scale of a scale pressable: `progress` interpolated from `base_scale` to `min_scale`.
     pub fn scale(&self) -> f64 {
         let p = self.progress();
         self.config.base_scale + (self.config.min_scale - self.config.base_scale) * p
     }
 
-    /// PressableOpacity: `interpolate(progress, [0, 1], [1, activeOpacity])`.
+    /// The opacity of an opacity pressable: `progress` interpolated from 1 to `active_opacity`.
     pub fn opacity(&self) -> f64 {
         1.0 + (self.config.active_opacity - 1.0) * self.progress()
     }
 
-    /// `isPressed` (`active`): a finger holds it.
+    /// Whether a finger holds it.
     pub fn is_pressed(&self) -> bool {
         self.finger.is_some()
     }
@@ -359,12 +362,12 @@ impl Pressable {
         self.finger
     }
 
-    /// pointerInside at the press's last event.
+    /// Whether the finger was inside the bounds at the press's last event.
     pub fn pointer_inside(&self) -> bool {
         self.finger.is_some() && self.inside
     }
 
-    /// `isToggled`.
+    /// Whether it is toggled on.
     pub fn is_toggled(&self) -> bool {
         self.is_toggled
     }
@@ -379,10 +382,9 @@ impl Pressable {
     }
 }
 
-/// A pressable's `hitSlop` (RNGH's `hitTestEdgeInsets`, negated): how far past its bounds a
-/// touch still reaches it. RNGestureHandlerButton grows its hit frame by it in `pointInside`
-/// (the touch-down) and in `continueTrackingWithTouch` / `endTrackingWithTouch` (inside, and so
-/// onPress at the lift), all in the button's own coordinates.
+/// How far past its bounds a touch still reaches a pressable. It grows the hit frame for the
+/// touch-down and for the lift (so a lift in the slop still presses), in the button's own
+/// coordinates.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct HitSlop {
     /// Past the top edge.
@@ -396,7 +398,7 @@ pub struct HitSlop {
 }
 
 impl HitSlop {
-    /// `hitSlop={n}`: the same on every side.
+    /// The same slop `n` on every side.
     pub const fn all(n: f64) -> HitSlop {
         HitSlop { top: n, right: n, bottom: n, left: n }
     }
@@ -407,8 +409,7 @@ impl HitSlop {
     }
 }
 
-/// `PressablesGroup`: which pressable of a group was pressed last (`isSelected`). The app's
-/// `PressablesConfig` wraps everything in one.
+/// Which pressable of a group was pressed last.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Group {
     last: Option<usize>,
@@ -419,15 +420,15 @@ impl Group {
     pub fn new() -> Group {
         Group { last: None }
     }
-    /// `lastTouchedPressable.set(key)`: the pressable `key` was pressed (onPress).
+    /// The pressable `key` was pressed.
     pub fn press(&mut self, key: usize) {
         self.last = Some(key);
     }
-    /// `isSelected` for `key`.
+    /// Whether `key` was the last pressed.
     pub fn is_selected(&self, key: usize) -> bool {
         self.last == Some(key)
     }
-    /// The last pressed.
+    /// The key of the last pressed, if any.
     pub fn last(&self) -> Option<usize> {
         self.last
     }
@@ -446,13 +447,13 @@ mod tests {
         let mut p = Pressable::new();
         assert!(p.pointer_down(1, true));
         assert!(p.is_pressed() && p.is_animating());
-        // The animation starts at the next frame (its first step).
+        // The animation starts at the next frame.
         p.step(0.0);
         assert_eq!(p.progress(), 0.0);
         p.step(125.0);
         let e = timing_easing();
         assert!(close(p.progress(), e.at(0.5)), "{}", p.progress());
-        // bezier(0.25, 0.1, 0.25, 1) at x = 0.5 is about 0.8024 (CSS `ease`).
+        // bezier(0.25, 0.1, 0.25, 1) at x = 0.5 is about 0.8024.
         assert!((p.progress() - 0.8024).abs() < 1e-3, "{}", p.progress());
         p.step(62.5 * 3.0);
         assert!(close(p.progress(), e.at(0.75)));
@@ -480,7 +481,7 @@ mod tests {
                 global: true
             })
         );
-        // The new withTiming starts at the next frame from the last frame's value.
+        // The new run starts at the next frame from the last frame's value.
         p.step(116.0);
         assert!(close(p.progress(), v));
         p.step(116.0 + 125.0);
@@ -489,7 +490,7 @@ mod tests {
             "{}",
             p.progress()
         );
-        // Not done at 100 + 250 (no CSS reversal of the 100 ms it came): a full 250 from 116.
+        // Not done at 100 + 250: a full 250 ms from 116, not shortened by the 100 ms it came.
         assert!(p.step(350.0));
         assert!(p.progress() > 0.0);
         assert!(!p.step(366.0));
@@ -637,10 +638,9 @@ mod tests {
         assert_eq!(p.progress(), 0.0);
     }
 
-    /// A quick tap: active for one frame (onBegin, then onFinalize before the next frame), as
-    /// base.tsx's `progress = useDerivedValue(() => withAnimation(active.get() ? 1 : 0))` sees it:
-    /// the frame the press began at shows 0 (the new timing's start), the next one frame of the
-    /// curve; the release then eases back from there over a full 250 ms from its own first frame.
+    /// A quick tap: active for one frame. The frame the press began at shows 0 (the new run's
+    /// start), the next one frame of the curve; the release then eases back from there over a full
+    /// 250 ms from its own first frame.
     #[test]
     fn a_quick_tap_dips_and_returns_over_a_full_250_ms_from_where_it_was() {
         let e = timing_easing();
@@ -658,15 +658,14 @@ mod tests {
         assert!(close(p.progress(), dip));
         p.step(32.0 + 125.0);
         assert!(close(p.progress(), dip * (1.0 - e.at(0.5))), "{}", p.progress());
-        // Full 250 ms from 32, not shortened to the 16 ms the press ran (CSS's reversing case).
+        // A full 250 ms from 32, not shortened to the 16 ms the press ran.
         assert!(p.step(32.0 + 249.0));
         assert!(p.progress() > 0.0);
         assert!(!p.step(32.0 + 250.0));
         assert_eq!(p.progress(), 0.0);
     }
 
-    /// Down and up before any frame: the mapper only ever sees `active` false, so nothing moves
-    /// (base.tsx: the derived value re-runs once, withTiming(0) from 0).
+    /// Down and up before any frame: the press is never seen as active, so nothing moves.
     #[test]
     fn a_tap_inside_one_frame_never_moves() {
         let mut p = Pressable::new();
@@ -680,8 +679,8 @@ mod tests {
         assert_eq!(p.progress(), 0.0);
     }
 
-    /// A re-press during the release: withTiming(1) from the current value, its first frame
-    /// holding it, then a full 250 ms forward (no reversing shortcut).
+    /// A re-press during the release: a run to 1 from the current value, its first frame holding
+    /// it, then a full 250 ms forward (no reversing shortcut).
     #[test]
     fn a_re_press_during_the_release_eases_forward_over_a_full_250_ms() {
         let e = timing_easing();
@@ -705,9 +704,8 @@ mod tests {
         assert_eq!(p.progress(), 1.0);
     }
 
-    /// RNGestureHandlerButton.mm endTrackingWithTouch: the lift's own location decides
-    /// TouchUpInside / TouchUpOutside, and v3 BaseButton's onFinalize calls onPress(pointerInside):
-    /// a finger that was inside on its last move and lifts outside presses nothing.
+    /// The lift's own location decides the press: a finger that was inside on its last move and
+    /// lifts outside presses nothing.
     #[test]
     fn the_lift_location_alone_decides_the_press() {
         let mut p = Pressable::new();

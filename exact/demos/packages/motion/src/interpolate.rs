@@ -1,4 +1,4 @@
-//! `interpolate` and `Extrapolation` (interpolation.ts).
+//! Piecewise-linear interpolation of numbers and colours, with a choice of extrapolation.
 
 /// What happens outside the input range.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -11,7 +11,7 @@ pub enum Extrapolation {
     Identity,
 }
 
-/// `interpolate(value, input, output, { extrapolateLeft: left, extrapolateRight: right })`.
+/// Maps `value` from the `input` points to the `output` points, extrapolating each side as asked.
 pub fn interpolate_with(value: f64, input: &[f64], output: &[f64], left: Extrapolation, right: Extrapolation) -> f64 {
     let n = input.len();
     debug_assert!(n >= 2 && output.len() == n);
@@ -49,12 +49,12 @@ pub fn interpolate_with(value: f64, input: &[f64], output: &[f64], left: Extrapo
     }
 }
 
-/// `interpolate(value, input, output, type)`: one extrapolation on both sides.
+/// [`interpolate`] with one extrapolation on both sides.
 pub fn interpolate(value: f64, input: &[f64], output: &[f64], kind: Extrapolation) -> f64 {
     interpolate_with(value, input, output, kind, kind)
 }
 
-/// `interpolate(value, input, output, Extrapolation.CLAMP)`.
+/// [`interpolate`] clamped on both sides.
 pub fn interpolate_clamp(value: f64, input: &[f64], output: &[f64]) -> f64 {
     interpolate(value, input, output, Extrapolation::Clamp)
 }
@@ -73,9 +73,9 @@ mod tests {
     }
 }
 
-/// `interpolateColor(value, input, output)` in its default RGB space (interpolateColor.ts):
-/// each channel interpolated (clamped) in a gamma-2.2 linear space, rounded back to 0…255;
-/// alpha linearly. Colours are `[r, g, b, a]`, channels 0…255 and alpha 0…1.
+/// Maps `value` onto a ramp of colours: each channel is interpolated (clamped) in a gamma-2.2
+/// linear space and rounded back to 0…255; alpha is linear. Colours are `[r, g, b, a]`, channels
+/// 0…255 and alpha 0…1.
 pub fn interpolate_color(value: f64, input: &[f64], output: &[[f64; 4]]) -> [f64; 4] {
     const GAMMA: f64 = 2.2;
     let mut out = [0.0; 4];

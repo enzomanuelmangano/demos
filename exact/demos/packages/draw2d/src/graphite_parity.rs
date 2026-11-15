@@ -1,8 +1,7 @@
-//! The renderer against Graphite's own formulas: each analytic draw's coverage, read back from
-//! the GPU, against [`graphite::reference`] (AnalyticRRectRenderStep run on the CPU) and against
-//! values worked out by hand from `analytic_rrect_coverage_fn`; MSAA path fills against the 4×
-//! standard sample pattern over Graphite's curve subdivision; analytic clips against
-//! `sk_analytic_clip`.
+//! GPU render tests against reference numbers: each analytic draw's coverage, read back from the
+//! GPU, against [`graphite::reference`] (the analytic step run on the CPU) and against values
+//! worked out by hand; MSAA path fills against the 4× sample pattern over the curve subdivision;
+//! analytic clips; text; gradients.
 
 use crate::graphite::{self, reference};
 use crate::*;
@@ -129,8 +128,8 @@ fn analytic_coverage_is_graphites() {
     assert!(worst <= 0.5 / 255.0 + 1e-4, "{worst}");
 }
 
-/// Values worked out by hand from Graphite's formulas, which a straight area or distance
-/// estimate would not give.
+/// Values worked out by hand from the coverage formula, which a straight area or distance estimate
+/// would not give.
 #[test]
 fn analytic_coverage_matches_hand_values() {
     let Some(gpu) = gpu() else { return };
@@ -160,7 +159,7 @@ fn analytic_coverage_matches_hand_values() {
     assert!(close(a, 0.25), "{a}");
 }
 
-/// A pixel-aligned filled rect is Graphite's non-AA bounds draw: whole pixels, no instance.
+/// A pixel-aligned filled rect is the non-antialiased bounds draw: whole pixels, no instance.
 #[test]
 fn a_pixel_aligned_rect_is_not_antialiased() {
     let Some(gpu) = gpu() else { return };
@@ -193,9 +192,9 @@ fn winding(polys: &[Vec<Point>], p: Point) -> i32 {
     w
 }
 
-/// A path fill is Graphite's stencil-and-cover with 4× MSAA: per pixel, the standard 4-sample
-/// pattern ((0.375, 0.125), (0.875, 0.375), (0.125, 0.625), (0.625, 0.875)) inside the polygon
-/// Graphite's wedges make of the curves, averaged.
+/// A path fill is stencil-and-cover with 4× MSAA: per pixel, the standard 4-sample pattern ((0.375,
+/// 0.125), (0.875, 0.375), (0.125, 0.625), (0.625, 0.875)) inside the polygon the wedges make of
+/// the curves, averaged.
 #[test]
 fn path_fills_are_4x_msaa_of_graphites_tessellation() {
     let Some(gpu) = gpu() else { return };
@@ -233,8 +232,8 @@ fn path_fills_are_4x_msaa_of_graphites_tessellation() {
     assert!(partial > 50, "edges are antialiased: {partial}");
 }
 
-/// A rotated rounded-rect clip under a draw in another rotation is `sk_analytic_clip`; a flood
-/// under a rounded-rect clip becomes the rounded rect itself.
+/// A rotated rounded-rect clip under a draw in another rotation is one analytic clip; a flood under
+/// a rounded-rect clip becomes the rounded rect itself.
 #[test]
 fn clips_are_graphites() {
     let Some(gpu) = gpu() else { return };
@@ -256,7 +255,7 @@ fn clips_are_graphites() {
     let worst = compare(&px, |x, y| reference::analytic_clip_alpha(&clip, [x as f32 + 0.5, y as f32 + 0.5]).clamp(0.0, 1.0), "analytic-clip");
     assert!(worst <= 0.5 / 255.0 + 1e-4, "{worst}");
 
-    // <Fill> under clipRRect at 3×: drawn as the rrect.
+    // A fill under a rounded-rect clip at 3×: drawn as the rounded rect.
     let mut a = Canvas::default();
     a.begin(3.0);
     a.save();
@@ -291,7 +290,8 @@ fn clips_are_graphites() {
     assert_eq!(px.at(87, 62)[3], 255);
 }
 
-/// A shape built with lyon's helpers is drawn as Skia draws `addCircle` / `addRRect` paths.
+/// A shape built with lyon's helpers is drawn like the same circle or rounded rect built as a conic
+/// path.
 #[test]
 fn shape_paths_take_the_analytic_step() {
     let mut c = Canvas::default();
@@ -330,9 +330,9 @@ fn in_convex(poly: &[Point], p: Point) -> bool {
     !(pos && neg)
 }
 
-/// A polyline stroked with straight segments, bevel and miter joins and butt caps: Graphite's
-/// stroke tessellator puts its edges exactly on the offset lines, so 4× MSAA of the exact stroke
-/// (segment rects, the bevel triangle, the miter wedge) is what the GPU writes.
+/// A polyline stroked with straight segments, bevel and miter joins and butt caps: the stroke
+/// tessellator puts its edges exactly on the offset lines, so 4× MSAA of the exact stroke (segment
+/// rects, the bevel triangle, the miter wedge) is what the GPU writes.
 #[test]
 fn straight_strokes_are_4x_msaa_of_the_exact_outline() {
     let Some(gpu) = gpu() else { return };
@@ -397,9 +397,8 @@ fn straight_strokes_are_4x_msaa_of_the_exact_outline() {
     }
 }
 
-/// A curved stroke with round caps and joins: its chords stay within Graphite's precision
-/// (1/4 px) of the exact offset curve, so a pixel is at most two samples off the exact stroke's
-/// and nearly all are exact.
+/// A curved stroke with round caps and joins: its chords stay within 1/4 px of the exact offset
+/// curve, so a pixel is at most two samples off the exact stroke's and nearly all are exact.
 #[test]
 fn curved_strokes_follow_the_offset_curve() {
     let Some(gpu) = gpu() else { return };
@@ -435,9 +434,9 @@ fn curved_strokes_follow_the_offset_curve() {
 }
 
 
-/// Text below SDFT sizes as BitmapTextRenderStep draws it: each glyph's A8 mask at its floored
-/// device position (+ ½), sampled 1:1, the paint times the coverage, no MSAA. The expected
-/// picture is the atlas's own masks composited on the CPU.
+/// Text below the signed-distance-field sizes: each glyph's A8 mask at its floored device position
+/// (+ ½), sampled 1:1, the paint times the coverage, no MSAA. The expected picture is the atlas's
+/// own masks composited on the CPU.
 #[cfg(target_vendor = "apple")]
 #[test]
 fn text_is_graphites_direct_masks() {
@@ -479,14 +478,14 @@ fn text_is_graphites_direct_masks() {
     }
 }
 
-/// Arcs, SVG arcs and circles inside a bigger path are Skia's conics, tessellated as Graphite
-/// tessellates conics (Wang's conic formula): 4× MSAA of that subdivision sample for sample, and
-/// its points on the true circle within f32 rounding (where a cubic stand-in is 2.7e-4 r off).
+/// Arcs, SVG arcs and circles inside a bigger path are conics, tessellated with Wang's conic
+/// formula: 4× MSAA of that subdivision sample for sample, and its points on the true circle within
+/// f32 rounding (a cubic stand-in is 2.7e-4 r off).
 #[test]
 fn arcs_and_circles_in_paths_are_conics() {
     let Some(gpu) = gpu() else { return };
     let mut b = Path::builder();
-    // addArc: 200° of an oval, closed by a line back.
+    // 200° of an oval, closed by a line back.
     add_arc(&mut b, 8.3, 6.1, 50.2, 44.7, -30.0, 200.0);
     // A circle and a rect in the same path (not a lone oval: no analytic draw).
     add_circle(&mut b, 70.4, 52.3, 17.9);
@@ -553,10 +552,10 @@ fn arcs_and_circles_in_paths_are_conics() {
     assert!(e_cubic > 5e-3, "{e_cubic}");
 }
 
-/// Our drawing of RN `<Text>` runs against UIKit's, as exact/parity-tools/text-probe dumps it:
-/// `TEXT_PROBE=<dump> cargo test -p skia text_probe -- --ignored --nocapture`. Each case is
-/// drawn in a box of the probe's size at its origin, white, and compared pixel for pixel
-/// (also at the best whole-pixel shift).
+/// Text drawn against UIKit's reference output, as the text probe tool dumps it: `TEXT_PROBE=<dump>
+/// cargo test -p draw2d text_probe -- --ignored --nocapture`. Each case is drawn in a box of the
+/// probe's size at its origin, white, and compared pixel for pixel (also at the best whole-pixel
+/// shift).
 #[test]
 #[ignore = "needs a text-probe dump"]
 fn text_probe() {
@@ -633,7 +632,7 @@ fn text_probe() {
         gpu.queue.submit([enc.finish()]);
         let px = fixture::read(&gpu, &tex).unwrap();
         if colored {
-            // Written for the screenshot comparison (tools: the probe's composite).
+            // Written for a screenshot comparison.
             let name = format!("probe-{}-{}", f[0].replace('.', "_"), f[4].replace('.', "_"));
             if let Ok(dir) = std::env::var("TEXT_PROBE_OUT") {
                 std::fs::write(format!("{dir}/{name}.ppm"), px.ppm()).unwrap();
@@ -663,10 +662,9 @@ fn text_probe() {
     }
 }
 
-/// An RN `<Text>` font (`with_ui_layout`) is drawn as UIKit draws it: against
-/// tools/uikit_text_reference.c (CoreGraphics with UIKit's backing-store settings, whose output
-/// the iOS Simulator matches byte for byte), at sizes across CoreGraphics' 4, 2 and 1 subpixel
-/// levels and box origins on each third of a point; and TextKit's measured metrics.
+/// A text font with UIKit's layout is drawn as UIKit draws it: against tools/uikit_text_reference.c
+/// (CoreGraphics with UIKit's backing-store settings), at sizes across CoreGraphics' 4, 2 and 1
+/// subpixel levels and box origins on each third of a point; and TextKit's metrics.
 #[cfg(target_os = "macos")]
 #[test]
 fn uikit_text_is_coregraphics() {
@@ -685,8 +683,8 @@ fn uikit_text_is_coregraphics() {
     static OUTFIT: &[u8] = include_bytes!("../../../gpu/fonts/outfit.ttf");
     static ANTDESIGN: &[u8] = include_bytes!("../../../gpu/fonts/antdesign-arrow-right-subset.ttf");
     static SFC: &[u8] = include_bytes!("../../../assets/fonts/SF-Compact-Rounded-Medium.otf");
-    // TextKit's numbers for AntDesign 20 (the probe's UIFont and NSLayoutManager): hhea, not the
-    // USE_TYPO_METRICS typo ascender; the line without the gap.
+    // TextKit's numbers for the AntDesign font at 20: the hhea ascender, not the typo ascender; the
+    // line without the gap.
     let ad = Font::new(ANTDESIGN, 20.0).unwrap().with_ui_layout();
     assert_eq!(-ad.metrics().ascent, 17.773438);
     assert_eq!(ad.ui_line_height(), 20.9375);
@@ -731,10 +729,9 @@ fn uikit_text_is_coregraphics() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-/// A continuous circle (r past half the side: the corners overlap along every side) fills as
-/// Core Animation does with no crack: 89 × 89 at r 100, white on black at 3×, every pixel more
-/// than one in from the edge fully covered along the middle row and column. Its rows match
-/// CA's nonzero fill (path_tests::continuous_corners_fill_as_core_animation).
+/// A continuous circle (r past half the side: the corners overlap along every side) fills with no
+/// crack: 89 × 89 at r 100, white on black at 3×, every pixel more than one in from the edge fully
+/// covered along the middle row and column.
 #[test]
 fn a_continuous_circle_has_no_msaa_crack() {
     let Some(gpu) = gpu() else { return };
@@ -761,7 +758,7 @@ fn a_continuous_circle_has_no_msaa_crack() {
     gpu.queue.submit([enc.finish()]);
     let px = fixture::read(&gpu, &tex).unwrap();
     px.save("parity-continuous-circle");
-    // The middle (y 54.5 pt = 163 px) row from the left edge (30 px), the middle column from the
+    // The middle row (y 54.5 pt = 163 px) from the left edge (30 px), the middle column from the
     // bottom (297 px), and the top row and right column.
     let mid = 163;
     let row: Vec<u8> = (28..40).map(|x| px.at(x, mid)[0]).collect();
@@ -793,8 +790,8 @@ fn long_stops(n: usize) -> Vec<Stop> {
     out
 }
 
-/// Skia's gradient colour at `t` (clamped): the first stop at or past `t` and the one before,
-/// lerped in encoded Display P3, then back to encoded sRGB, as the renderer's sRGB target holds it.
+/// The gradient colour at `t` (clamped): the first stop at or past `t` and the one before, lerped
+/// in encoded Display P3, then back to encoded sRGB, as the renderer's sRGB target holds it.
 fn skia_ramp(stops: &[Stop], t: f64) -> [f64; 3] {
     let lin = |c: f64| if c <= 0.04045 { c / 12.92 } else { ((c + 0.055) / 1.055).powf(2.4) };
     let enc = |c: f64| {
@@ -820,8 +817,8 @@ fn skia_ramp(stops: &[Stop], t: f64) -> [f64; 3] {
     [enc(1.2249 * l[0] - 0.2247 * l[1]), enc(-0.0420 * l[0] + 1.0419 * l[1]), enc(-0.0197 * l[0] - 0.0786 * l[1] + 1.0979 * l[2])]
 }
 
-/// Linear, radial and sweep gradients of 8, 12 and 20 stops, one draw each (no split), against
-/// Skia's formula per pixel centre: within a level of 255, the long ones as the 8-stop one.
+/// Linear, radial and sweep gradients of 8, 12 and 20 stops, one draw each (no split), against the
+/// formula per pixel centre: within a level of 255, the long ones as the 8-stop one.
 #[test]
 fn long_gradients_are_skias_ramp() {
     let Some(gpu) = gpu() else { return };

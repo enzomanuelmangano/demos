@@ -1,35 +1,37 @@
-//! @shopify/react-native-skia's drawing for the Demos app's GPU surfaces.
+//! A small 2D drawing layer on lyon and wgpu for GPU surfaces: antialiased paths, shapes,
+//! gradients, images, shadows, blurs and text.
 //!
-//! A demo records its Skia `<Canvas>` into a [`Canvas`] each frame, as its JSX declares it:
-//! paths (fill or stroke), circles, rects and rounded rects, with a [`Paint`] (a colour or a
-//! linear, radial or sweep gradient), under transforms, opacity and clips. [`Renderer::draw`]
-//! puts the frame into the surface's target, antialiased as RN Skia's Graphite (Skia m157 on
-//! Dawn/Metal) does it ([`graphite`]): rects, rounded rects, circles, ovals and lines, filled
-//! or stroked, through AnalyticRRectRenderStep's mesh and coverage; paths through its curve
-//! subdivision, stencil-and-cover fills and stroke tessellator with 4× MSAA, the pass
-//! multisampled only when such a draw is in it; clips folded into the draw, scissored, one
-//! analytic, or drawn into depth. Everything is tessellated on the CPU, so nothing needs compute
-//! or indirect dispatch: it runs the same on a phone and in the iOS Simulator. Gradients are
-//! evaluated per pixel in the shader, interpolated as Skia does (unpremultiplied sRGB).
+//! Not a reimplementation of Skia or react-native-skia: lyon tessellates on the CPU and wgpu draws
+//! it, and the antialiasing, gradients and text masks follow Skia Graphite's approach and constants
+//! so the demos keep their pixels. Nothing needs compute or indirect dispatch.
 //!
-//! Text is [`Font`] + [`Canvas::draw_text`]: as Graphite's direct-mask text, glyph masks that
-//! CoreText rasterises as RN Skia's iOS scaler does, drawn from an atlas (no MSAA); runs of 162
-//! device pixels and more (SDFT and path sizes in Graphite) and non-Apple targets fill the glyph
-//! outlines as paths. SVG path strings
-//! are [`path_from_svg`]; `<FitBox>` is [`fit_box`]; `<CornerPathEffect>` on a polyline is
-//! [`corner_polyline`]. A `<Group transform>` with `perspective`,
-//! `rotateX` or `rotateY` is [`Matrix4`] (its plane's [`Matrix3`] inverted in a demo's shader).
+//! A frame is recorded into a [`Canvas`]: paths (fill or stroke), circles, rects and rounded
+//! rects with a [`Paint`] (a colour, a linear, radial or sweep gradient, or an image), under
+//! transforms, opacity and clips. [`Renderer::draw`] puts it into a wgpu target.
 //!
-//! Images are [`Images`] (decoded once, one mipmapped texture array) painted with
-//! [`Shader::Image`] (`<Image fit>`, an image shader) or [`Canvas::draw_atlas`] (`<Atlas>`); a
-//! view's Gaussian box shadow is [`Canvas::draw_rrect_shadow`], evaluated per pixel (no pass); a
-//! rotated or scaled view's is [`Canvas::draw_rrect_shadow_local`], in its own space.
+//! ```ignore
+//! use draw2d::{Canvas, Color, Paint, Renderer};
 //!
-//! What a demo needs beyond this (Skia's image filters, runtime shaders) is its own wgpu pass.
+//! let mut renderer = Renderer::default();
+//! let mut canvas = Canvas::default();
+//! canvas.begin(3.0); // device pixels per point
+//! canvas.draw_rrect(10.0, 10.0, 120.0, 80.0, 16.0, &Paint::fill(Color::hex(0x0c86f7)));
+//! // `device`, `queue`, `encoder`, `target` and `format` come from the host's wgpu surface.
+//! renderer.draw(&device, &queue, &mut encoder, &canvas, &target, format, width, height, wgpu::Color::WHITE);
+//! ```
+//!
+//! Modules: [`graphite`] (the renderer's plan: shapes, paths, clips), [`render`] (the wgpu
+//! passes), [`text`] (fonts and glyph masks), [`image`] (decoded images and atlases), [`svg`]
+//! (SVG path strings), [`blur`] and [`backdrop`] (blur passes), [`matrix4`] (perspective
+//! transforms), [`color`] and [`continuous_sdf`] (continuous rounded corners as a shader).
+//!
+//! # Credits
+//!
+//! Gradient interpolation, antialiasing constants and glyph-mask handling follow Skia (BSD-3-Clause).
 
 #![deny(missing_docs)]
 
-pub use wgpu;
+pub use exact_gpu::wgpu;
 pub use lyon::math::{point, vector, Point, Vector};
 pub use lyon::path::{Path, PathBuffer, PathEvent, PathSlice};
 
@@ -76,13 +78,13 @@ impl Matrix {
     pub fn scale(x: f32, y: f32) -> Matrix {
         Matrix([x, 0.0, 0.0, y, 0.0, 0.0])
     }
-    /// A rotation about the origin, radians (clockwise on screen, as Skia's).
+    /// A rotation about the origin, radians (clockwise on screen).
     pub fn rotate(radians: f32) -> Matrix {
         let (s, c) = radians.sin_cos();
         Matrix([c, s, -s, c, 0.0, 0.0])
     }
-    /// `self` then `next` (a point goes through `self` first): Skia's `concat` order is the
-    /// reverse, so `canvas.concat(m)` is `m.then(current)`.
+    /// `self` then `next` (a point goes through `self` first). [`Canvas::concat`] applies its
+    /// argument first, so `canvas.concat(m)` is `m.then(current)`.
     pub fn then(self, next: Matrix) -> Matrix {
         let [a, b, c, d, e, f] = self.0;
         let [a2, b2, c2, d2, e2, f2] = next.0;
@@ -117,7 +119,7 @@ impl Matrix {
     }
 }
 
-/// `rect(x, y, width, height)`.
+/// A rectangle: its top-left corner and its size.
 #[allow(missing_docs)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Rect {
@@ -128,14 +130,13 @@ pub struct Rect {
 }
 
 impl Rect {
-    /// `rect(x, y, width, height)`.
+    /// A rectangle from its top-left corner and size.
     pub const fn new(x: f32, y: f32, width: f32, height: f32) -> Rect {
         Rect { x, y, width, height }
     }
 }
 
-/// `<FitBox src dst>` with its default `fit="contain"`: `src` scaled uniformly to fit inside
-/// `dst`, centred (Skia's `fitRects` / `rect2rect` for "contain").
+/// The transform that scales `src` uniformly to fit inside `dst`, centred.
 pub fn fit_box(src: Rect, dst: Rect) -> Matrix {
     let s = (dst.width / src.width).min(dst.height / src.height);
     let tx = dst.x + (dst.width - src.width * s) / 2.0 - src.x * s;
@@ -143,8 +144,8 @@ pub fn fit_box(src: Rect, dst: Rect) -> Matrix {
     Matrix([s, 0.0, 0.0, s, tx, ty])
 }
 
-/// `fit="cover"` (`contentFit="cover"`, `resizeMode="cover"`): `src` scaled uniformly to cover
-/// `dst`, centred (the part outside `dst` is the caller's clip).
+/// The transform that scales `src` uniformly to cover `dst`, centred (the part outside `dst` is
+/// the caller's clip).
 pub fn fit_cover(src: Rect, dst: Rect) -> Matrix {
     let s = (dst.width / src.width).max(dst.height / src.height);
     let tx = dst.x + (dst.width - src.width * s) / 2.0 - src.x * s;
@@ -161,41 +162,39 @@ pub type Stop = (f32, Color);
 pub enum Shader {
     /// A colour.
     Solid(Color),
-    /// `<LinearGradient start end colors positions>`.
+    /// A linear gradient from `start` to `end`.
     Linear { start: Point, end: Point, stops: Vec<Stop> },
-    /// `<RadialGradient c r colors positions>`.
+    /// A radial gradient around `center`.
     Radial { center: Point, radius: f32, stops: Vec<Stop> },
-    /// `<SweepGradient c colors positions>`: from the +x axis, clockwise.
+    /// A sweep gradient around `center`: from the +x axis, clockwise.
     Sweep { center: Point, stops: Vec<Stop> },
     /// An image of the renderer's [`Images`]: `to_image` maps the shape's local points to the
     /// image's pixels (the inverse of where the image is drawn: `fit_cover(…).invert()`).
-    /// Outside the image its edge repeats (clamp).
+    /// Outside the image its edge repeats.
     Image { image: ImageRef, to_image: Matrix },
-    /// [`Shader::Image`] sampled nearest, as `canvas.drawImageRect(image, src, dst, paint)`
-    /// samples in RN Skia (`SkSamplingOptions()`: no filtering, no mipmaps, and
-    /// `kStrict_SrcRectConstraint`): Graphite's `sk_image_shader` nearest path, the texel under
-    /// the local point, clamped to `subset` (the src rect, image pixels `[l, t, r, b]`).
+    /// [`Shader::Image`] sampled nearest: the texel under the local point, clamped to `subset` (the
+    /// source rect, image pixels `[l, t, r, b]`). No filtering, no mipmaps.
     ImageNearest { image: ImageRef, to_image: Matrix, subset: [f32; 4] },
 }
 
-/// Evenly spaced stops for `colors`, as Skia places them without `positions`.
+/// Evenly spaced stops for `colors`.
 pub fn stops(colors: &[Color]) -> Vec<Stop> {
     let n = colors.len().max(2) - 1;
     colors.iter().enumerate().map(|(i, c)| (i as f32 / n as f32, *c)).collect()
 }
 
-/// A Skia paint: a shader, fill or stroke, and the stroke's width, cap and join.
+/// What to draw with: a shader, fill or stroke, and the stroke's width, cap and join.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Paint {
     /// What it paints with.
     pub shader: Shader,
-    /// `style="stroke"` with this width; `None` fills.
+    /// The stroke width; `None` fills.
     pub stroke: Option<f32>,
-    /// `strokeCap`.
+    /// The stroke's line cap.
     pub cap: LineCap,
-    /// `strokeJoin`.
+    /// The stroke's line join.
     pub join: LineJoin,
-    /// The paint's own opacity (`opacity` on the shape), times the colour's alpha.
+    /// The paint's own opacity, times the colour's alpha.
     pub opacity: f32,
 }
 
@@ -221,7 +220,7 @@ impl Paint {
         self.stroke = Some(width);
         self
     }
-    /// This paint with `strokeCap` / `strokeJoin`.
+    /// This paint with the stroke's cap and join.
     pub fn caps(mut self, cap: LineCap, join: LineJoin) -> Paint {
         self.cap = cap;
         self.join = join;
@@ -286,8 +285,7 @@ pub(crate) struct GpuPaint {
     pub offsets: [[f32; 4]; 2],
     /// Each stop's straight colour (encoded P3 for a gradient), unused over [`MAX_STOPS`] stops.
     pub colors: [[f32; 4]; MAX_STOPS],
-    /// The draw's analytic clip (`sk_analytic_clip`'s xform, rect, radiiWithInverse); radii all
-    /// 0 for none.
+    /// The draw's analytic clip: transform, rect and radii with their inverse; radii all 0 for none.
     pub clip: [[f32; 4]; 3],
 }
 
@@ -304,9 +302,9 @@ pub(crate) enum Op {
     Cover { start: u32, end: u32, scissor: Option<[u32; 4]> },
     /// A clip element's outside written into depth (after its `Stencil`).
     ClipCover { start: u32, end: u32 },
-    /// AnalyticRRectRenderStep instances `first..first + count`.
+    /// Analytic rounded-rect instances `first..first + count`.
     RRects { first: u32, count: u32, scissor: Option<[u32; 4]> },
-    /// BitmapTextRenderStep: glyph quads `start..end` (indices), each vertex's `color` its atlas
+    /// Glyph quads `start..end` (indices), each vertex's `color` its atlas
     /// texel (x | y << 16), the mask sampled nearest (depth LEQUAL: a run may overlap itself).
     #[cfg_attr(not(target_vendor = "apple"), allow(dead_code))]
     Glyphs { start: u32, end: u32, scissor: Option<[u32; 4]> },
@@ -344,13 +342,13 @@ struct State {
     clip_verbs: usize,
 }
 
-/// What a draw is, before Graphite picks its renderer.
+/// What a draw is, before the renderer for it is picked.
 #[derive(Clone, Copy, Debug)]
 enum Geo {
     Rect([f32; 4]),
     RRect(graphite::RRect),
     Line(Point, Point),
-    /// `drawPaint`: everything under the clip.
+    /// Everything under the clip.
     Flood,
     /// The verbs in [`Canvas::verbs`].
     Path,
@@ -504,10 +502,10 @@ impl lyon::path::builder::PathBuilder for Matcher<'_> {
     }
 }
 
-/// What `SkPath::isLine`, `isOval`, `isRRect` and `isRect` find in a path: Skia's `isOval` and
-/// `isRRect` are true for the paths `addOval`/`addCircle`/`addRRect` build, which here are the
-/// curves lyon's `add_circle`, `add_ellipse` and `add_rounded_rectangle` emit (matched within
-/// 1e-5 of their size); `isRect` is geometric. The second value: the contour is closed.
+/// Finds a line, oval, rounded rect or rect in a path, so it can be drawn as that shape. Ovals
+/// and rounded rects are recognised in the curves [`add_oval`], [`add_circle`] and lyon's
+/// `add_circle`, `add_ellipse` and `add_rounded_rectangle` emit (matched within 1e-5 of their
+/// size); a rect is geometric. The second value: the contour is closed.
 fn detect(verbs: &[graphite::Verb]) -> Option<(Geo, bool)> {
     use graphite::Verb;
     let n = verbs.len();
@@ -517,13 +515,13 @@ fn detect(verbs: &[graphite::Verb]) -> Option<(Geo, bool)> {
     }
     let closed = matches!(verbs.last(), Some(Verb::Close));
     let body = &verbs[1..if closed { n - 1 } else { n }];
-    // isLine: a move and a line, not closed.
+    // A line: a move and a line, not closed.
     if !closed && body.len() == 1 {
         if let Verb::Line(to) = body[0] {
             return Some((Geo::Line(start, to), false));
         }
     }
-    // isRect: 3 or 4 axis-aligned lines around a rect (a 4th back to the start or the close).
+    // A rect: 3 or 4 axis-aligned lines around it (a 4th back to the start, or the close).
     if body.iter().all(|v| matches!(v, Verb::Line(_))) && (body.len() == 3 || body.len() == 4) {
         let mut pts = [start; 5];
         for (i, v) in body.iter().enumerate() {
@@ -550,7 +548,7 @@ fn detect(verbs: &[graphite::Verb]) -> Option<(Geo, bool)> {
         let m = b.into_inner();
         m.ok && m.at == n
     };
-    // addOval / addCircle (conics::add_oval): four quarter conics of the on-curve points' box,
+    // An oval or circle (`conics::add_oval`): four quarter conics of the on-curve points' box,
     // from one of its four starts, either way round.
     if body.len() == 4 && body.iter().all(|v| matches!(v, Verb::Conic(_, _, w) if *w == conics::ROOT2_OVER2)) {
         let mut r = [start.x, start.y, start.x, start.y];
@@ -573,7 +571,7 @@ fn detect(verbs: &[graphite::Verb]) -> Option<(Geo, bool)> {
             }
         }
     }
-    // add_circle: begins at (cx − r, cy), four cubics, the second ending at (cx + r, cy).
+    // lyon's `add_circle`: begins at (cx − r, cy), four cubics, the second ending at (cx + r, cy).
     if body.len() == 4 && body.iter().all(|v| matches!(v, Verb::Cubic(..))) {
         if let Verb::Cubic(_, _, right) = body[1] {
             let (cx, cy, r) = ((start.x + right.x) * 0.5, start.y, (right.x - start.x).abs() * 0.5);
@@ -613,7 +611,7 @@ fn detect(verbs: &[graphite::Verb]) -> Option<(Geo, bool)> {
         return None;
     }
     let tol = 1e-5 * w.max(h).max(1.0);
-    // add_ellipse: quadratics around the centre of the on-curve points.
+    // lyon's `add_ellipse`: quadratics around the centre of the on-curve points.
     if body.iter().all(|v| matches!(v, Verb::Quad(..))) {
         let (cx, cy) = ((on[0] + on[2]) * 0.5, (on[1] + on[3]) * 0.5);
         let r = vector((on[2] - on[0]) * 0.5, (on[3] - on[1]) * 0.5);
@@ -623,7 +621,7 @@ fn detect(verbs: &[graphite::Verb]) -> Option<(Geo, bool)> {
             }
         }
     }
-    // add_rounded_rectangle with one radius: it begins at (left, top + r).
+    // lyon's `add_rounded_rectangle` with one radius: it begins at (left, top + r).
     if matches!(body.first(), Some(Verb::Cubic(..))) && (start.x - bb[0]).abs() <= tol {
         let r = start.y - bb[1];
         let rect = lyon::math::Box2D::new(point(bb[0], bb[1]), point(bb[2], bb[3]));
@@ -657,17 +655,17 @@ impl Canvas {
         self.atlas_epoch = 0;
     }
 
-    /// `canvas.save()` / a `<Group>`'s start.
+    /// Saves the transform, opacity and clips until the matching [`Canvas::restore`].
     pub fn save(&mut self) {
         self.saved.push(self.state);
     }
 
-    /// `canvas.restore()` / a `<Group>`'s end: its transform, opacity and clips undone (a clip
+    /// Undoes the transform, opacity and clips since the matching [`Canvas::save`] (a clip
     /// is depth: the draws after it are nearer than what it wrote, so nothing is undrawn).
     pub fn restore(&mut self) {
         if let Some(state) = self.saved.pop() {
             self.state = state;
-            // Draws after a clip element come after its depth (`updateNextDepthForClipping`).
+            // Draws after a clip element come after its depth.
             for e in &self.clip_elems[state.clips.min(self.clip_elems.len())..] {
                 if e.drawn.is_some() {
                     self.z = self.z.max(e.max_z + 1);
@@ -678,24 +676,23 @@ impl Canvas {
         }
     }
 
-    /// Pre-multiplies the current transform by `m` (Skia's `concat`: `m` applies first).
+    /// Pre-multiplies the current transform by `m` (`m` applies first).
     pub fn concat(&mut self, m: Matrix) {
         self.state.matrix = m.then(self.state.matrix);
     }
-    /// `translate`.
+    /// Translates the transform.
     pub fn translate(&mut self, x: f32, y: f32) {
         self.concat(Matrix::translate(x, y));
     }
-    /// `scale`.
+    /// Scales the transform.
     pub fn scale(&mut self, x: f32, y: f32) {
         self.concat(Matrix::scale(x, y));
     }
-    /// `rotate`, radians.
+    /// Rotates the transform, radians.
     pub fn rotate(&mut self, radians: f32) {
         self.concat(Matrix::rotate(radians));
     }
-    /// A `<Group opacity>`: multiplies every later draw's alpha (each shape on its own, not
-    /// the group as one layer).
+    /// Multiplies every later draw's alpha (each shape on its own, not the group as one layer).
     pub fn opacity(&mut self, opacity: f32) {
         self.state.opacity *= opacity;
     }
@@ -708,14 +705,14 @@ impl Canvas {
         self.state.matrix = m;
     }
 
-    /// `<Path path paint>`.
+    /// Draws a path.
     pub fn draw_path(&mut self, path: &Path, paint: &Paint) {
         self.draw_path_events(path.iter(), paint);
     }
 
     /// [`Canvas::draw_path`] of a path given as its events (a `lyon` `PathBuffer`'s slice, a
-    /// path a demo refills every frame without allocating). As Graphite's `Device::drawPath`, a
-    /// path that is a line, an oval, a rounded rect or a rect is drawn as that shape.
+    /// path a demo refills every frame without allocating). A path that is a line, an oval, a
+    /// rounded rect or a rect is drawn as that shape.
     pub fn draw_path_events<I: IntoIterator<Item = lyon::path::PathEvent>>(&mut self, path: I, paint: &Paint) {
         let mut verbs = std::mem::take(&mut self.verbs);
         verbs.clear();
@@ -735,7 +732,7 @@ impl Canvas {
         self.draw_geo(geo, paint);
     }
 
-    /// `<Circle cx cy r paint>`: `drawCircle` → `drawOval` → `drawRRect(MakeOval)`.
+    /// Draws a circle.
     pub fn draw_circle(&mut self, cx: f32, cy: f32, r: f32, paint: &Paint) {
         let rect = [cx - r, cy - r, cx + r, cy + r];
         if !(rect[0] < rect[2]) {
@@ -744,13 +741,13 @@ impl Canvas {
         self.draw_geo(Geo::RRect(graphite::RRect::oval(rect)), paint);
     }
 
-    /// `<Oval x y width height paint>`.
+    /// Draws an oval inscribed in the rect.
     pub fn draw_oval(&mut self, x: f32, y: f32, w: f32, h: f32, paint: &Paint) {
         let rect = [x.min(x + w), y.min(y + h), x.max(x + w), y.max(y + h)];
         self.draw_geo(Geo::RRect(graphite::RRect::oval(rect)), paint);
     }
 
-    /// `<Line p1 p2 paint>` (`drawLine`: always a stroke).
+    /// Draws a line from `p1` to `p2` (always a stroke).
     pub fn draw_line(&mut self, p1: Point, p2: Point, paint: &Paint) {
         let width = paint.stroke.unwrap_or(0.0);
         self.draw_geo(Geo::Line(p1, p2), &Paint { stroke: Some(width), ..paint.clone() });
@@ -770,30 +767,30 @@ impl Canvas {
         self.scratch = buffer;
     }
 
-    /// `<Rect x y width height paint>`.
+    /// Draws a rect.
     pub fn draw_rect(&mut self, x: f32, y: f32, w: f32, h: f32, paint: &Paint) {
         let r = [x.min(x + w), y.min(y + h), x.max(x + w), y.max(y + h)];
         self.draw_geo(Geo::Rect(r), paint);
     }
 
-    /// `<RoundedRect x y width height r paint>` (`SkRRect::setRectXY(r, r)`).
+    /// Draws a rounded rect with circular corners of radius `r`.
     pub fn draw_rrect(&mut self, x: f32, y: f32, w: f32, h: f32, r: f32, paint: &Paint) {
         let rect = [x.min(x + w), y.min(y + h), x.max(x + w), y.max(y + h)];
         let rr = graphite::RRect::xy(rect, r, r);
         self.draw_geo(if rr.is_rect() { Geo::Rect(rect) } else { Geo::RRect(rr) }, paint);
     }
 
-    /// `<Fill color>`: the whole canvas (under the current clip).
+    /// Fills the whole canvas (under the current clip).
     pub fn fill(&mut self, color: Color) {
         self.draw_geo(Geo::Flood, &Paint::fill(color));
     }
 
-    /// `<Group clip={path}>` (until the matching restore): later draws only inside `path`.
+    /// Clips later draws to `path` (until the matching restore).
     pub fn clip_path(&mut self, path: &Path) {
         self.clip_events(path.iter());
     }
 
-    /// [`Canvas::clip_path`] of a path given as its events. As `SkCanvas::clipPath`, under a
+    /// [`Canvas::clip_path`] of a path given as its events. Under a
     /// rect-stays-rect transform a path that is a rect, an oval or a rounded rect clips as one.
     pub fn clip_events<I: IntoIterator<Item = lyon::path::PathEvent>>(&mut self, path: I) {
         let start = self.clip_verbs.len();
@@ -818,14 +815,14 @@ impl Canvas {
         self.add_clip(ElemShape::Path(start as u32, end as u32));
     }
 
-    /// A rounded-rect clip (`clipRRect`).
+    /// A rounded-rect clip.
     pub fn clip_rrect(&mut self, x: f32, y: f32, w: f32, h: f32, r: f32) {
         let rect = [x.min(x + w), y.min(y + h), x.max(x + w), y.max(y + h)];
         let rr = graphite::RRect::xy(rect, r, r);
         self.add_clip(if rr.is_rect() { ElemShape::Rect(rect) } else { ElemShape::RRect(rr) });
     }
 
-    /// A rect clip (`clipRect`).
+    /// A rect clip.
     pub fn clip_rect(&mut self, x: f32, y: f32, w: f32, h: f32) {
         self.add_clip(ElemShape::Rect([x.min(x + w), y.min(y + h), x.max(x + w), y.max(y + h)]));
     }
@@ -843,7 +840,7 @@ impl Canvas {
         self.scratch = buffer;
     }
 
-    /// `ClipStack::clipShape` for an intersection: the element pre-transformed to device space
+    /// Adds a clip element: pre-transformed to device space
     /// when it is a rect or rrect under a rect-stays-rect transform, then simplified against the
     /// elements of the same save.
     fn add_clip(&mut self, shape: ElemShape) {
@@ -930,7 +927,7 @@ impl Canvas {
         [-1.0e6, -1.0e6, 1.0e6, 1.0e6]
     }
 
-    /// `ClipStack::visitClipStackForDraw` for a draw whose device bounds are `outer` (and,
+    /// Applies the clips to a draw whose device bounds are `outer` (and,
     /// when its geometry may be replaced, `inner`): clips folded into `geo`, a scissor, one
     /// analytic clip, the rest drawn into depth with MSAA. `false` when it is clipped out.
     fn visit_clips(&mut self, geo: &mut Geo, xf: &graphite::Xf, modifiable: bool, outer: [f32; 4], inner: [f32; 4], out: &mut DrawClip) -> bool {
@@ -992,7 +989,7 @@ impl Canvas {
         true
     }
 
-    /// `intersect_shape`: the element folded into a rect, rrect or flood draw when their
+    /// Folds the element into a rect, rrect or flood draw when their
     /// relative transform keeps rects rects.
     fn intersect_shape(&self, e: &ClipElem, geo: &mut Geo, xf: &graphite::Xf) -> bool {
         if !matches!(geo, Geo::Rect(_) | Geo::RRect(_) | Geo::Flood) {
@@ -1003,7 +1000,7 @@ impl Canvas {
             ElemShape::RRect(rr) => (rr.rect, Some(rr)),
             ElemShape::Path(..) => return false,
         };
-        // localToOther: the element in the draw's space.
+        // The element in the draw's space.
         let to_local = if e.xf.m == xf.m {
             graphite::Xf::new(Matrix::IDENTITY)
         } else if e.xf.kind == graphite::Kind::Identity && xf.kind <= graphite::Kind::RectStaysRect {
@@ -1069,7 +1066,7 @@ impl Canvas {
         }
     }
 
-    /// The depth of painter's depth `z` (`DrawOrder::depthAsFloat`: decreasing, tested LESS).
+    /// The depth of painter's depth `z` (decreasing, tested LESS).
     fn depth_of(z: u32) -> f32 {
         1.0 - z as f32 * (1.0 / 1_048_576.0)
     }
@@ -1081,7 +1078,7 @@ impl Canvas {
     }
 
     /// Draws (once) or re-depths the MSAA clip elements a draw uses: an element writes the depth
-    /// one past the last draw that uses it (`fMaxZ.next()`), so those draws fail outside it.
+    /// one past the last draw that uses it, so those draws fail outside it.
     fn use_msaa_clips(&mut self, clip: &DrawClip, _draw_depth: f32) {
         let depth = Self::depth_of(self.z + 1);
         for &i in &clip.msaa[..clip.count] {
@@ -1124,8 +1121,8 @@ impl Canvas {
         }
     }
 
-    /// Fan triangles (wedges) of `verbs` under `m`, as Graphite's TessellateWedgesRenderStep
-    /// subdivides them. Returns the device bounds.
+    /// Fan triangles (wedges) of `verbs` under `m`, subdivided by curve flatness.
+    /// Returns the device bounds.
     fn fan(&mut self, verbs: &[graphite::Verb], m: &Matrix, depth: f32, paint: u32, to_image: Option<Matrix>) -> ([f32; 4], bool) {
         let mut points = std::mem::take(&mut self.points);
         let mut bounds = EMPTY;
@@ -1188,7 +1185,7 @@ impl Canvas {
         }
     }
 
-    /// One draw: the clip stack's decisions, then Graphite's renderer for what remains.
+    /// One draw: the clip stack's decisions, then the renderer for what remains.
     fn draw_geo(&mut self, mut geo: Geo, paint: &Paint) {
         let m = self.state.matrix;
         let xf = graphite::Xf::new(m);
@@ -1287,7 +1284,7 @@ impl Canvas {
             _ => None,
         };
         let scissor = clip.scissor;
-        // nonAABounds: a flood, or a filled rect on whole pixels.
+        // Drawn without antialiasing: a flood, or a filled rect on whole pixels.
         let bounds_draw = match geo {
             Geo::Flood => Some(self.device_bounds()),
             Geo::Rect(r) if stroke.is_none() && xf.kind <= graphite::Kind::RectStaysRect => {
@@ -1310,7 +1307,7 @@ impl Canvas {
             self.push_tri(start, scissor);
             return;
         }
-        // is_simple_shape → analyticRRect.
+        // A simple shape: the analytic rounded-rect renderer.
         let simple = match geo {
             Geo::Rect(r) => Some(graphite::Simple::Rect(r)),
             Geo::Line(a, b) => Some(graphite::Simple::Line(a, b)),
@@ -1330,7 +1327,7 @@ impl Canvas {
             }
             return;
         }
-        // The path renderers (kTessellation): MSAA.
+        // The path renderers: tessellated, with MSAA.
         self.msaa = true;
         let mut verbs = std::mem::take(&mut self.verbs);
         match geo {
@@ -1360,7 +1357,7 @@ impl Canvas {
                 let start = self.indices.len() as u32;
                 let (bounds, convex) = self.fan(&verbs, &m, depth, paint_index, to_image);
                 let mid = self.indices.len() as u32;
-                // One convex contour: convexTessellatedWedges, shaded directly.
+                // One convex contour: tessellated wedges, shaded directly.
                 if convex {
                     self.push_tri(start, scissor);
                 } else if mid > start {
@@ -1380,7 +1377,7 @@ impl Canvas {
                 }
             }
             Some(_) => {
-                // tessellatedStrokes: Graphite's stroke tessellator, each sample once (LESS).
+                // Tessellated strokes, each sample once (LESS).
                 let s = stroke.unwrap();
                 let start = self.indices.len() as u32;
                 let t = to_image.unwrap_or(Matrix::IDENTITY);
@@ -1409,10 +1406,9 @@ impl Canvas {
         if let Some(c) = clip {
             gpu.clip = [c.xform, c.rect, c.radii_with_inverse];
         }
-        // RN Skia on iOS draws into a Display P3 surface (the app's colour space), so a gradient
-        // interpolates between its stops' P3 values: the stops go in as encoded P3 and the
-        // shader turns each interpolated colour back into sRGB (`head.w` = 1). Measured on
-        // Blur Circles' sweep: within 2.3 levels of RN, against 23 for an sRGB ramp.
+        // The surface is Display P3, so a gradient interpolates between its stops' P3 values: the
+        // stops go in as encoded P3 and the shader turns each interpolated colour back into sRGB
+        // (`head.w` = 1).
         // Over MAX_STOPS stops, the gradient's colours and offsets go to the frame's stop buffer.
         let long = &mut self.stops;
         let mut put = |stops: &[Stop]| {
@@ -1481,10 +1477,10 @@ impl Canvas {
     }
 }
 
-/// `SkPaint`'s default miter limit.
+/// The default stroke miter limit.
 const MITER_LIMIT: f32 = 4.0;
 
-/// `path.contains(x, y)` for a path of the default fill type (winding).
+/// Whether (x, y) is inside `path`, under the nonzero (winding) rule.
 pub fn path_contains(path: &Path, x: f32, y: f32) -> bool {
     lyon::algorithms::hit_test::hit_test_path(&point(x, y), path.iter(), lyon::path::FillRule::NonZero, 0.01)
 }
@@ -1496,7 +1492,7 @@ pub fn rect_path(x: f32, y: f32, w: f32, h: f32) -> Path {
     b.build()
 }
 
-/// A rounded rect as a path (Skia's `rrect`: circular corners of radius `r`).
+/// A rounded rect as a path: circular corners of radius `r`.
 pub fn rrect_path(x: f32, y: f32, w: f32, h: f32, r: f32) -> Path {
     let r = r.min(w / 2.0).min(h / 2.0).max(0.0);
     let mut b = Path::builder();
@@ -1505,48 +1501,45 @@ pub fn rrect_path(x: f32, y: f32, w: f32, h: f32, r: f32) -> Path {
 }
 
 /// How far along each side a continuous corner of radius `r` reaches: 1.52866483 r (the
-/// extent of Apple's continuous corner: CoreAnimation's `kCACornerCurveContinuous`, RN's
-/// `borderCurve: 'continuous'`, UIKit's and SwiftUI's continuous rounded rects).
+/// extent of Apple's continuous corner, as Core Animation's continuous corner curve and
+/// SwiftUI's continuous rounded rects draw it).
 pub const CONTINUOUS_EXTENT: f32 = 1.528_665;
 
 /// One continuous corner, in its own frame: `(a, b)` is `a` radii back along the side coming
 /// into the corner and `b` radii along the side leaving it, from the corner's point. Three
-/// cubics from the incoming side to the outgoing one: the elements of Apple's path (dumped from
-/// SwiftUI's `RoundedRectangle(cornerRadius:style: .continuous)` on macOS 27, which Core
-/// Animation's continuous layer fills to within 0.001 pt: see the tests).
+/// cubics from the incoming side to the outgoing one: the elements of Apple's continuous
+/// corner (SwiftUI's `RoundedRectangle(cornerRadius:style: .continuous)`, which Core Animation's
+/// continuous layer fills to within 0.001 pt: see the tests).
 pub(crate) const CONTINUOUS_CORNER: [[[f32; 2]; 3]; 3] = [
     [[1.088_493, 0.0], [0.868_407, 0.0], [0.631_494, 0.074_911]],
     [[0.372_824, 0.169_060], [0.169_060, 0.372_824], [0.074_911, 0.631_494]],
     [[0.0, 0.868_407], [0.0, 1.088_493], [0.0, CONTINUOUS_EXTENT]],
 ];
 
-/// The radius a continuous corner is drawn at: `r`, at most half the shorter side (RN's
-/// `resolveBorderMetrics` scales radii so adjacent ones don't overlap, which for one radius is
-/// this). Core Animation does not shorten the curve past `min(w, h) / 2 / 1.52866483`: the
-/// corners' curves then overlap along the side, and the path fills with the nonzero rule.
+/// The radius a continuous corner is drawn at: `r`, at most half the shorter side. It is not
+/// shortened further, as Core Animation does not: past `min(w, h) / 2 / 1.52866483` the corners'
+/// curves overlap along the side, and the path fills with the nonzero rule.
 pub fn continuous_radius(w: f32, h: f32, r: f32) -> f32 {
     r.min(w.min(h).max(0.0) / 2.0).max(0.0)
 }
 
-/// Appends a rounded rect with continuous corners (RN's `borderRadius` + `borderCurve:
-/// 'continuous'`, iOS's squircle) to a builder, clockwise from the top edge, for a fill or a
-/// clip.
+/// Appends a rounded rect with continuous corners (Apple's squircle) to a builder, clockwise
+/// from the top edge, for a fill or a clip.
 ///
 /// When the corners overlap along a side (a circle or a pill: the side shorter than 2 ×
 /// 1.52866 r), Apple's path runs that side's straight part backwards and Core Animation fills
-/// it with the nonzero rule. That region is drawn here as its own outline, which fills the same
+/// it with the nonzero rule. This draws that region as its own outline, which fills the same
 /// points without the overlap: per such side, the main contour goes from one corner's curve to
 /// the next at the point where they cross (the side's middle, by symmetry), and a second
-/// contour is the strip between the side and the two curves' outer halves (the backward line's
-/// part of the fill). Tessellating the overlap as it stands left a crack of MSAA samples just
-/// inside the side, where the two curves' chords cross.
+/// contour is the strip between the side and the two curves' outer halves. Tessellating the
+/// overlap as it stands leaves a crack of MSAA samples just inside the side.
 pub fn add_continuous_rrect<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, x: f32, y: f32, w: f32, h: f32, r: f32) {
     continuous_rrect_wound(b, x, y, w, h, r, false);
 }
 
 /// [`add_continuous_rrect`] wound the other way (mirrored about its horizontal centre line, the
-/// same shape): a hole under the nonzero rule, as the inner edge of a Core Animation border
-/// (the continuous rounded rect less the one inset by the border's width).
+/// same shape): a hole under the nonzero rule, as the inner edge of a border (the continuous
+/// rounded rect less the one inset by the border's width).
 pub fn add_continuous_rrect_hole<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, x: f32, y: f32, w: f32, h: f32, r: f32) {
     continuous_rrect_wound(b, x, y, w, h, r, true);
 }
@@ -1629,7 +1622,7 @@ fn continuous_rrect_wound<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path
     // The main contour, from corner 0's first curve.
     match cross[prev(0)] {
         Some(t) => b.begin(cut(cubic(0, 0), 1.0 - t, 1.0)[0]),
-        // From the top side's left end, as Apple's path.
+        // From the top side's left end.
         None => b.begin(frame(3, [0.0, CONTINUOUS_EXTENT])),
     };
     for k in 0..4 {
@@ -1676,21 +1669,19 @@ pub fn continuous_rrect_path(x: f32, y: f32, w: f32, h: f32, r: f32) -> Path {
 }
 
 impl Canvas {
-    /// A view with `borderRadius` and `borderCurve: 'continuous'`: [`continuous_rrect_path`].
+    /// Draws a rounded rect with continuous corners: [`continuous_rrect_path`].
     pub fn draw_continuous_rrect(&mut self, x: f32, y: f32, w: f32, h: f32, r: f32, paint: &Paint) {
         self.draw_with(paint, |b| add_continuous_rrect(b, x, y, w, h, r));
     }
 
-    /// A continuous rounded-rect clip (`overflow: 'hidden'` on a continuous view).
+    /// A continuous rounded-rect clip.
     pub fn clip_continuous_rrect(&mut self, x: f32, y: f32, w: f32, h: f32, r: f32) {
         self.clip_with(|b| add_continuous_rrect(b, x, y, w, h, r));
     }
 }
 
-/// A border RN draws itself (RCTBorderDrawing's border image, used when a view's border is not
-/// Core Animation's: translucent and not clipping): the ring between the rounded rect of radius
-/// `r` and the one inset by `width` with radius `r − width`, both with circular corners
-/// (`RCTPathCreateWithRoundedRect`), whatever the view's `borderCurve`.
+/// A border ring: the ring between the rounded rect of radius `r` and the one inset by `width`
+/// with radius `r − width`, both with circular corners, whatever the view's corner curve.
 pub fn border_ring_path(x: f32, y: f32, w: f32, h: f32, r: f32, width: f32) -> Path {
     let mut b = Path::builder();
     let r = r.min(w / 2.0).min(h / 2.0).max(0.0);
@@ -1712,57 +1703,52 @@ pub type PathBuilder = lyon::path::path::Builder;
 /// The builder [`Canvas::draw_with`] and [`Canvas::clip_with`] hand out.
 pub type ScratchBuilder<'a> = lyon::path::builder::NoAttributes<lyon::path::path_buffer::Builder<'a>>;
 
-/// A path builder, for demos that build paths point by point (Skia's `PathBuilder`).
+/// A path builder, for building paths point by point.
 pub fn path_builder() -> lyon::path::path::Builder {
     Path::builder()
 }
 
-/// Appends a rounded rect to a builder (`PathBuilder.addRRect`).
+/// Appends a rounded rect to a builder.
 pub fn add_rrect<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, x: f32, y: f32, w: f32, h: f32, r: f32) {
     let r = r.min(w / 2.0).min(h / 2.0).max(0.0);
     b.add_rounded_rectangle(&lyon::math::Box2D::new(point(x, y), point(x + w, y + h)), &BorderRadii::new(r), Winding::Positive);
 }
 
-/// Appends a rect to a builder (`PathBuilder.addRect`).
+/// Appends a rect to a builder.
 pub fn add_rect<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, x: f32, y: f32, w: f32, h: f32) {
     b.add_rectangle(&lyon::math::Box2D::new(point(x, y), point(x + w, y + h)), Winding::Positive);
 }
 
-/// Appends an oval to a builder (`<Oval x y width height>`, `PathBuilder.addOval`): the ellipse
-/// inscribed in the rect, as Skia builds it (four quarter conics from the right, clockwise).
+/// Appends an oval to a builder: the ellipse inscribed in the rect, as four quarter conics from
+/// the right, clockwise.
 pub fn add_oval<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, x: f32, y: f32, w: f32, h: f32) {
     conics::add_oval(b, [x.min(x + w), y.min(y + h), x.max(x + w), y.max(y + h)], false, 1);
 }
 
-/// [`add_oval`] from Skia's start point `index` of the box (0 top, 1 right, 2 bottom, 3 left),
-/// clockwise (`addOval(oval, kCW, index)`). `PathBuilder.addRRect` of a rounded rect whose radii
-/// make it an oval (`rrect(rect, r, r)` with r ≥ half of each side: `SkRRect::setRectXY` clamps
-/// it to an oval) is this with index 3: addRRect's clockwise start 6, halved by
-/// `SkPathPriv::SimplifyRRect`.
+/// [`add_oval`] from the start point `index` of the box (0 top, 1 right, 2 bottom, 3 left),
+/// clockwise. A rounded rect whose radii make it an oval (r ≥ half of each side) is this with
+/// index 3.
 pub fn add_oval_from<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, x: f32, y: f32, w: f32, h: f32, index: u32) {
     conics::add_oval(b, [x.min(x + w), y.min(y + h), x.max(x + w), y.max(y + h)], false, index);
 }
 
-/// Appends a circle to a builder (`PathBuilder.addCircle`): Skia's four quarter conics from
-/// (cx + r, cy), clockwise.
+/// Appends a circle to a builder: four quarter conics from (cx + r, cy), clockwise.
 pub fn add_circle<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, cx: f32, cy: f32, r: f32) {
     if r >= 0.0 {
         conics::add_oval(b, [cx - r, cy - r, cx + r, cy + r], false, 1);
     }
 }
 
-/// Appends an arc of the oval inscribed in a rect (`PathBuilder.addArc(oval, startAngle,
-/// sweepAngle)`): a new contour from `start_deg`, sweeping `sweep_deg` (degrees, clockwise on
-/// screen as Skia's), as Skia's conics (a quadrant each, the rest in one more); a full turn from
-/// a quadrant is the oval.
+/// Appends an arc of the oval inscribed in a rect: a new contour from `start_deg`, sweeping
+/// `sweep_deg` (degrees, clockwise on screen), as conics (a quadrant each, the rest in one more);
+/// a full turn from a quadrant is the oval.
 pub fn add_arc<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, x: f32, y: f32, w: f32, h: f32, start_deg: f32, sweep_deg: f32) {
     conics::add_arc(b, [x, y, x + w, y + h], start_deg, sweep_deg);
 }
 
-/// Appends `PathBuilder.arcTo(rx, ry, xAxisRotateInDegrees, useSmallArc, isCCW, x, y)` (an SVG
-/// arc, Skia's `SkPath::arcTo` with `ArcSize` and `PathDirection`) from `from` to `to`, as
-/// Skia's conics (at most 120° each) on the current contour; `rArcTo` is the same with
-/// `to = from + (dx, dy)`.
+/// Appends an SVG-style elliptical arc from `from` to `to` (radii, x-axis rotation in degrees,
+/// small or large arc, direction) on the current contour, as conics of at most 120° each; the
+/// relative form is the same with `to = from + (dx, dy)`.
 #[allow(clippy::too_many_arguments)]
 pub fn add_svg_arc<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, from: Point, to: Point, rx: f32, ry: f32, x_rotation_deg: f32, small_arc: bool, ccw: bool) {
     conics::svg_arc_to(b, from, rx, ry, x_rotation_deg, !small_arc, ccw, to);
@@ -1775,23 +1761,22 @@ pub fn add_rrect_hole<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::bu
     b.add_rounded_rectangle(&lyon::math::Box2D::new(point(x, y), point(x + w, y + h)), &BorderRadii::new(r), Winding::Negative);
 }
 
-/// Appends a circle exactly as Skia's `addCircle` draws it: its four quarter conics (in a lyon
-/// reader's eyes, their cubics). `hole` winds it the other way (`SkPathDirection::kCCW`: an
-/// inverted clip with a rect around it).
+/// Appends a circle as its four quarter conics (cubics, to lyon). `hole` winds it the other way
+/// (an inverted clip with a rect around it).
 pub fn add_circle_fine<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, cx: f32, cy: f32, r: f32, hole: bool) {
     let r = r.abs();
     conics::add_oval(b, [cx - r, cy - r, cx + r, cy + r], hole, 1);
 }
 
 /// A path measured once, to be drawn trimmed every frame without allocating
-/// ([`Canvas::draw_trimmed`], `<Path path start end>` with an animated `end`).
+/// ([`Canvas::draw_trimmed`]).
 pub struct MeasuredPath {
     path: Path,
     measurements: lyon::algorithms::measure::PathMeasurements,
 }
 
 impl MeasuredPath {
-    /// `path`, measured as [`trim`] measures it.
+    /// Measures `path` the way [`trim`] does.
     pub fn new(path: Path) -> MeasuredPath {
         let measurements = lyon::algorithms::measure::PathMeasurements::from_path(&path, 0.01);
         MeasuredPath { path, measurements }
@@ -1803,8 +1788,8 @@ impl MeasuredPath {
 }
 
 impl Canvas {
-    /// `<Path path start end paint>` ([`trim`]) of a [`MeasuredPath`], built in the canvas's kept
-    /// buffer: nothing when `end <= start`.
+    /// Draws the part of a [`MeasuredPath`] between the fractions `start` and `end` ([`trim`]),
+    /// built in the canvas's kept buffer: nothing when `end <= start`.
     pub fn draw_trimmed(&mut self, path: &MeasuredPath, start: f32, end: f32, paint: &Paint) {
         let (start, end) = (start.clamp(0.0, 1.0), end.clamp(0.0, 1.0));
         if end <= start {
@@ -1815,8 +1800,7 @@ impl Canvas {
     }
 }
 
-/// `<Path path start end>`: the part of `path` between the fractions `start` and `end` of its
-/// length (Skia's trim path effect, `SkTrimPathEffect` in normal mode), as a new path; empty
+/// The part of `path` between the fractions `start` and `end` of its length, as a new path; empty
 /// when `end <= start`.
 pub fn trim(path: &Path, start: f32, end: f32) -> Path {
     let (start, end) = (start.clamp(0.0, 1.0), end.clamp(0.0, 1.0));
@@ -1829,11 +1813,10 @@ pub fn trim(path: &Path, start: f32, end: f32) -> Path {
     b.build()
 }
 
-/// `<CornerPathEffect r>` on an open polyline (`moveTo(points[0])`, then `lineTo` each of
-/// `points[1..]`), as `SkCornerPathEffect` filters it: each corner becomes a quadratic whose
-/// control point is the corner, from `radius` before it to `radius` after it along the
-/// segments (half a segment when it is shorter than `2 × radius`, which then has no straight
-/// part), and the last segment runs on to the last point.
+/// Rounds the corners of an open polyline: each corner becomes a quadratic whose control point is
+/// the corner, from `radius` before it to `radius` after it along the segments (half a segment
+/// when it is shorter than `2 × radius`, which then has no straight part), and the last segment
+/// runs on to the last point.
 pub fn corner_polyline(points: &[Point], radius: f32) -> Path {
     let mut b = Path::builder();
     let Some(&first) = points.first() else { return b.build() };
@@ -1847,11 +1830,11 @@ pub fn corner_polyline(points: &[Point], radius: f32) -> Path {
     }
     for pair in points.windows(2) {
         let (a, c) = (pair[0], pair[1]);
-        // ComputeStep.
+        // The step along the segment: `radius`, or half of it when it is short.
         let d = c - a;
         let dist = d.length();
         let (step, segment) = if dist <= radius * 2.0 { (d * 0.5, false) } else { (d * (radius / dist), true) };
-        // The previous corner (a first segment's start is the moveTo, already valid).
+        // The previous corner (the first segment's start is the move-to, already valid).
         b.quadratic_bezier_to(a, a + step);
         if segment {
             b.line_to(c - step);
@@ -1887,7 +1870,7 @@ mod path_tests {
     #[test]
     fn continuous_corners_are_apples_path() {
         use lyon::path::Event;
-        // 200 × 100 at (10, 20), radius 20: SwiftUI's continuous RoundedRectangle on macOS 27
+        // 200 × 100 at (10, 20), radius 20: SwiftUI's continuous RoundedRectangle
         // gives, for its corners (here the top-right), a side ending 1.52866 r from the corner
         // and three cubics: (21.7698, 0) (17.36814, 0) → (12.62988, 1.49823), then
         // (7.45648, 3.38120) (3.38120, 7.45648) → (1.49823, 12.62988), then (0, 17.36814)
@@ -1944,8 +1927,8 @@ mod path_tests {
 
     #[test]
     fn continuous_corners_fill_as_core_animation() {
-        // Rows of a CALayer (cornerCurve .continuous, a white background) rendered by Core
-        // Animation on macOS 27 at 64×: (row centre, covered width). 58 × 58 at radius 29 and
+        // Rows of a CALayer (continuous corner curve, a white background) rendered by Core
+        // Animation at 64×: (row centre, covered width). 58 × 58 at radius 29 and
         // 200 × 100 at 40 are past min/2/1.52866 (corners overlapping), 96 × 64 at 20 within it.
         let cases: [(f32, f32, f32, &[(f32, f32)]); 3] = [
             (58.0, 58.0, 29.0, &[(0.257812, 0.6505), (1.00781, 12.0493), (3.00781, 25.4397), (8.00781, 40.1782), (15.0078, 50.7338), (25.0078, 56.8257)]),
@@ -1987,7 +1970,7 @@ mod path_tests {
         let mut b = Path::builder();
         add_circle_fine(&mut b, 10.0, 20.0, 950.0, false);
         let p = b.build();
-        // What the canvas draws: Skia's four quarter conics, on the circle.
+        // What the canvas draws: four quarter conics, on the circle.
         let mut verbs = Vec::new();
         push_verbs(p.iter(), &mut verbs);
         let mut worst: f64 = 0.0;
@@ -2023,7 +2006,7 @@ mod path_tests {
 
     #[test]
     fn a_small_clockwise_arc_bulges_out_of_a_corner() {
-        // rArcTo(10, 10, 0, true, false, 10, 10) from (0, 0): the quarter circle about (0, 10),
+        // A relative arc of radius 10 to (10, 10) from (0, 0): the quarter circle about (0, 10),
         // through (7.07, 2.93) (clockwise on screen), not the one about (10, 0).
         let mut b = Path::builder();
         b.begin(point(0.0, 0.0));
@@ -2054,13 +2037,13 @@ mod path_tests {
     }
 }
 
-/// `path.transform(m)` / `PathBuilder.transform(m)`: `path` with every point mapped by `m`.
+/// `path` with every point mapped by `m`.
 pub fn transform_path(path: &Path, m: &Matrix) -> Path {
     let [a, b, c, d, e, f] = m.0;
     path.clone().transformed(&lyon::math::Transform::new(a, b, c, d, e, f))
 }
 
-/// An `RSXform` (`<Atlas transforms>`): a sprite's point (x, y) lands at
+/// A sprite's rotation, scale and translation: its point (x, y) lands at
 /// (scos·x − ssin·y + tx, ssin·x + scos·y + ty).
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct RsXform {
@@ -2104,11 +2087,9 @@ impl Canvas {
         Some((clip, depth))
     }
 
-    /// `<Atlas image sprites transforms colors colorBlendMode>`: each sprite (a rect of the
-    /// image's pixels) drawn by its [`RsXform`]. With `colors`, each sprite's colour is blended
-    /// with it: `src_in` (`colorBlendMode="srcIn"`) paints the colour in the image's alpha;
-    /// otherwise it multiplies the image (`modulate`). As Graphite's drawAtlas (vertices), the
-    /// sprites are not anti-aliased.
+    /// Draws each sprite (a rect of the image's pixels) by its [`RsXform`]. With `colors`, each
+    /// sprite's colour is blended with it: `src_in` paints the colour in the image's alpha;
+    /// otherwise it multiplies the image (modulate). Sprites are not anti-aliased.
     pub fn draw_atlas(&mut self, image: ImageRef, sprites: &[Rect], transforms: &[RsXform], colors: Option<&[Color]>, src_in: bool) {
         let at = |x: &RsXform, px: f32, py: f32| point(x.scos * px - x.ssin * py + x.tx, x.ssin * px + x.scos * py + x.ty);
         let mut b = EMPTY;
@@ -2140,9 +2121,8 @@ impl Canvas {
         self.push_tri(start, clip.scissor);
     }
 
-    /// A view's box shadow (RN's `boxShadow` / iOS `shadow*` on a rounded view, Skia's
-    /// `<Shadow>` of a rounded rect): the rounded rect `x, y, w, h, r` blurred by a Gaussian of
-    /// σ = `sigma` points, in `color`, evaluated per pixel (Evan Wallace's closed form: exact
+    /// A box shadow: the rounded rect `x, y, w, h, r` blurred by a Gaussian of
+    /// σ = `sigma` points, in `color`, evaluated per pixel (a closed form: exact
     /// across, four samples down). For axis-aligned transforms (scale and translate).
     #[allow(clippy::too_many_arguments)]
     pub fn draw_rrect_shadow(&mut self, x: f32, y: f32, w: f32, h: f32, r: f32, sigma: f32, color: Color) {
@@ -2172,8 +2152,7 @@ impl Canvas {
 
     /// [`Canvas::draw_rrect_shadow`] under any transform: the shadow is evaluated in the rounded
     /// rect's own space (σ and `r` in its units) and drawn through the current transform, as Core
-    /// Animation draws a rotated or scaled layer's shadow (RN's `boxShadow` on a view with a
-    /// `rotate` / `scale` transform: RCTBoxShadow's shadow layer is a sublayer of the view's).
+    /// Animation draws a rotated or scaled layer's shadow.
     #[allow(clippy::too_many_arguments)]
     pub fn draw_rrect_shadow_local(&mut self, x: f32, y: f32, w: f32, h: f32, r: f32, sigma: f32, color: Color) {
         let sigma = sigma.max(1e-3);
@@ -2224,5 +2203,5 @@ mod shadow_tests {
     }
 }
 
-#[cfg(all(test, feature = "repo-tests", not(target_arch = "wasm32")))]
+#[cfg(all(test, not(target_arch = "wasm32")))]
 mod graphite_parity;

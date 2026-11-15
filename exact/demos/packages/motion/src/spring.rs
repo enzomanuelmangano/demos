@@ -1,20 +1,18 @@
-//! Reanimated 4's `withSpring`, frame by frame, as `springOnFrame` runs it
-//! (react-native-reanimated/src/animation/spring/spring.ts, springUtils.ts): the analytic
-//! under- or critically damped step from the animation's start, a frame's time capped at 64 ms,
-//! done when its energy falls under `energyThreshold` (6e-9) of the start's.
+//! A spring stepped frame by frame: the analytic under- or critically damped solution from the
+//! start, a frame's time capped at 64 ms, done when its energy falls under 6e-9 of the start's.
 
-/// A spring's constants. `GENTLE` is `withSpring`'s default.
+/// A spring's constants. [`GENTLE`] is the default.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Config {
-    /// k.
+    /// Stiffness (k).
     pub stiffness: f64,
-    /// c.
+    /// Damping (c).
     pub damping: f64,
-    /// m.
+    /// Mass (m).
     pub mass: f64,
 }
 
-/// Reanimated 4's default (`GentleSpringConfig`).
+/// The default spring: stiffness 900, damping 120, mass 4.
 pub const GENTLE: Config = Config { stiffness: 900.0, damping: 120.0, mass: 4.0 };
 
 /// One animated value.
@@ -34,16 +32,15 @@ pub struct Spring {
     pub velocity: f64,
     /// False once at rest.
     pub running: bool,
-    /// `overshootClamping`: done the moment it leaves the span from its start to its target.
+    /// Done the moment it leaves the span from its start to its target.
     overshoot_clamping: bool,
-    /// `energyThreshold`: done when the energy falls under this fraction of the start's.
+    /// Done when the energy falls under this fraction of the start's.
     threshold: f64,
 }
 
-/// `withSpring(to, { duration, dampingRatio, mass })`: the constants Reanimated solves when the
-/// animation starts (springUtils.ts `calculateNewStiffnessToMatchDuration`), from the distance
-/// `x0` (value − target) and the velocity `v0` it starts with: the stiffness whose energy falls
-/// to 6e-9 of its start by 1.5 × duration (bisection, as Reanimated's), damping 2ζ√(km).
+/// The constants of a spring that settles in `duration_ms`, from the distance `x0` (value −
+/// target) and the velocity `v0` it starts with: the stiffness whose energy falls to 6e-9 of its
+/// start by 1.5 × duration (found by bisection), damping 2ζ√(km).
 pub fn duration_config(x0: f64, v0: f64, duration_ms: f64, damping_ratio: f64, mass: f64) -> Config {
     let threshold = 6e-9;
     let energy = |x: f64, v: f64, k: f64| 0.5 * k * x * x + 0.5 * mass * v * v;
@@ -78,7 +75,7 @@ impl Spring {
         Spring { config: GENTLE, from: value, to: value, v0: 0.0, t: 0.0, last_ms: None, energy0: 0.0, value, velocity: 0.0, running: false, overshoot_clamping: false, threshold: 6e-9 }
     }
 
-    /// `energyThreshold` (6e-9 by default), kept across later starts.
+    /// The fraction of the start energy under which it rests (6e-9 by default), kept across later starts.
     pub fn with_threshold(mut self, threshold: f64) -> Spring {
         self.threshold = threshold;
         self
@@ -89,11 +86,10 @@ impl Spring {
         *self = Spring::at(value).with_threshold(self.threshold);
     }
 
-    /// `sv.value = withSpring(to, config)` at `now_ms` (an assignment, not a mapper): from where
-    /// it is, at the running spring's velocity (dropped when it points away from `to`, as
-    /// [`Spring::to`]), its rest measured against the start's distance alone (spring.ts onStart:
-    /// `getEnergy(x0, config.velocity)`), its clock started at `now_ms`. A running spring is
-    /// restarted even toward the same target.
+    /// Starts a spring to `to` at `now_ms`, from where it is, at the running spring's velocity
+    /// (dropped when it points away from `to`, as [`Spring::to`]). Its rest is measured against
+    /// the start's distance alone, and its clock starts at `now_ms`. A running spring is restarted
+    /// even toward the same target.
     pub fn assign(&mut self, to: f64, config: Config, now_ms: f64) {
         let v = if self.running { self.velocity } else { 0.0 };
         self.to(to, v, config);
@@ -108,8 +104,7 @@ impl Spring {
     }
 
     /// Off to `to` from where it is, at `velocity` whichever way it points (a flick away from
-    /// `to` carries on, slows and comes back, as UIKit's and SwiftUI's springs do; Reanimated's
-    /// [`Spring::to`] drops it).
+    /// `to` carries on, slows and comes back; [`Spring::to`] drops it).
     pub fn launch(&mut self, to: f64, velocity: f64, config: Config) {
         self.to(to, 0.0, config);
         let x0 = self.value - to;
@@ -122,8 +117,8 @@ impl Spring {
         }
     }
 
-    /// Off to `to` from where it is, at `velocity`. As Reanimated's `onStart`, a velocity that
-    /// points away from `to` is dropped (only inertia toward the target is kept).
+    /// Off to `to` from where it is, at `velocity`. A velocity that points away from `to` is
+    /// dropped (only inertia toward the target is kept).
     pub fn to(&mut self, to: f64, velocity: f64, config: Config) {
         let velocity = if (to > self.value && velocity < 0.0) || (to < self.value && velocity > 0.0) { 0.0 } else { velocity };
         self.overshoot_clamping = false;
@@ -142,16 +137,14 @@ impl Spring {
         }
     }
 
-    /// [`Spring::to`] with `overshootClamping: true`: it ends at `to` as soon as it passes it.
+    /// [`Spring::to`] with overshoot clamping: it ends at `to` as soon as it passes it.
     pub fn to_clamped(&mut self, to: f64, velocity: f64, config: Config) {
         self.to(to, velocity, config);
         self.overshoot_clamping = true;
     }
 
-    /// `withSpring(to)` from a mapper (`useDerivedValue(() => withSpring(x.get()))`) when its
-    /// input changes: from where it is, at its velocity, its clock going on from the last frame
-    /// (Reanimated starts the new animation at that frame's timestamp), so a target that moves
-    /// every frame is still chased.
+    /// Re-aims at `to` when the target changes: from where it is, at its velocity, its clock going
+    /// on from the last frame, so a target that moves every frame is still chased.
     pub fn retarget(&mut self, to: f64, config: Config) {
         if self.running && self.to == to && self.config == config {
             return;
@@ -159,8 +152,7 @@ impl Spring {
         let last = if self.running { self.last_ms } else { None };
         self.to(to, self.velocity, config);
         self.last_ms = last;
-        // spring.ts onStart: `initialEnergy = getEnergy(x0, config.velocity, …)`; the inherited
-        // velocity moves the spring but is not in the energy its rest is measured against.
+        // The inherited velocity moves the spring but is not in the energy its rest is measured against.
         let x0 = self.from - to;
         self.energy0 = 0.5 * config.stiffness * x0 * x0;
         self.running = self.energy0 > 0.0;
@@ -237,7 +229,7 @@ mod tests {
             assert!(ms < 3000.0);
         }
         assert_eq!(s.value, 100.0);
-        // GentleSpringConfigWithDuration says 550 ms perceptual, 1.5x to rest.
+        // 550 ms perceptual, 1.5x to rest.
         assert!((700.0..1000.0).contains(&ms), "{ms}");
     }
 }

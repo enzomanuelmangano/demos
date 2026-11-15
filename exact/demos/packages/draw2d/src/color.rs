@@ -1,5 +1,5 @@
-//! Colours as Skia reads them in RN: straight (unpremultiplied) sRGB, from `#rgb`, `#rrggbb`,
-//! `#rrggbbaa`, `rgb(…)`, `rgba(…)` or a CSS name.
+//! Colours: straight (unpremultiplied) sRGB, parsed from `#rgb`, `#rrggbb`, `#rrggbbaa`,
+//! `rgb(…)`, `rgba(…)`, `hsl(…)` or a CSS name.
 
 /// A straight sRGB colour, each channel 0…1.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -25,9 +25,8 @@ impl Color {
     pub fn hex(rgb: u32) -> Color {
         Color::rgb8((rgb >> 16) as u8, (rgb >> 8) as u8, rgb as u8)
     }
-    /// `0xRRGGBB` as an RN View draws it in the demos app, whose AppDelegate sets
-    /// `RCTColorSpace.displayP3`: the components are Display P3's, shown here as the sRGB colour
-    /// they make (linear P3 → linear sRGB, clipped to the gamut). Skia's own paints stay `hex`.
+    /// `0xRRGGBB` read as Display P3 components and shown as the sRGB colour they make (linear
+    /// P3 → linear sRGB, clipped to the gamut). [`Color::hex`] reads the same value as sRGB.
     pub fn view_hex(rgb: u32) -> Color {
         let lin = |c: u32| {
             let c = (c & 0xFF) as f64 / 255.0;
@@ -45,25 +44,24 @@ impl Color {
             enc(-0.0197 * r - 0.0786 * g + 1.0979 * b),
         )
     }
-    /// This colour at alpha `a` (0…1), as `Color(c).alpha(a)`.
+    /// This colour at alpha `a` (0…1).
     pub fn alpha(self, a: f32) -> Color {
         Color([self.0[0], self.0[1], self.0[2], a])
     }
 
-    /// The `color` package's `Color(c).lighten(ratio).hex()` (color 4, color-convert): HSL
-    /// lightness × (1 + ratio), then each channel rounded to 8 bits as `.hex()` writes it; alpha
-    /// kept. In f64 and in color-convert's order of operations, so the rounding is the same.
+    /// HSL lightness × (1 + ratio), then each channel rounded to 8 bits; alpha kept. Computed in
+    /// f64 in the usual HSL conversion order, so the rounding matches the `color` npm package's.
     pub fn lighten(self, ratio: f64) -> Color {
         self.scale_lightness(1.0, ratio)
     }
 
-    /// The `color` package's `Color(c).darken(ratio).hex()`: HSL lightness × (1 − ratio).
+    /// HSL lightness × (1 − ratio), rounded like [`Color::lighten`].
     pub fn darken(self, ratio: f64) -> Color {
         self.scale_lightness(-1.0, ratio)
     }
 
     fn scale_lightness(self, sign: f64, ratio: f64) -> Color {
-        // convert.rgb.hsl, from the 8-bit channels.
+        // RGB to HSL, from the 8-bit channels.
         let [r, g, b] = [0, 1, 2].map(|i| (self.0[i] as f64 * 255.0).round() / 255.0);
         let (max, min) = (r.max(g).max(b), r.min(g).min(b));
         let delta = max - min;
@@ -83,9 +81,9 @@ impl Color {
         let l = (min + max) / 2.0;
         let s = if max == min { 0.0 } else if l <= 0.5 { delta / (max + min) } else { delta / (2.0 - max - min) };
         let (s100, mut l100) = (s * 100.0, l * 100.0);
-        // lighten / darken: hsl.color[2] ± hsl.color[2] * ratio.
+        // lightness ± lightness * ratio.
         l100 += sign * (l100 * ratio);
-        // convert.hsl.rgb.
+        // HSL back to RGB.
         let (h, s, l) = (h / 360.0, s100 / 100.0, l100 / 100.0);
         let mut rgb = [l * 255.0; 3];
         if s != 0.0 {
@@ -115,9 +113,8 @@ impl Color {
         Color([r, g, b, self.0[3]])
     }
 
-    /// `hsl(h, s%, l%)` as React Native's normalizeColor converts it (what `Skia.Color` parses
-    /// a CSS `hsl()` string with): hue in degrees, saturation and lightness 0…100, each channel
-    /// rounded to 8 bits.
+    /// `hsl(h, s%, l%)`: hue in degrees, saturation and lightness 0…100, each channel rounded to
+    /// 8 bits.
     pub fn hsl(h: f32, s: f32, l: f32) -> Color {
         let h = (h % 360.0 + 360.0) % 360.0 / 360.0;
         let (s, l) = ((s / 100.0).clamp(0.0, 1.0), (l / 100.0).clamp(0.0, 1.0));
@@ -139,7 +136,7 @@ impl Color {
         Color([channel(h + 1.0 / 3.0), channel(h), channel(h - 1.0 / 3.0), 1.0])
     }
 
-    /// A CSS colour string as `Skia.Color(…)` parses it; black when it cannot.
+    /// A CSS colour string; black when it cannot be parsed.
     pub fn parse(s: &str) -> Color {
         let s = s.trim();
         if let Some(args) = s.strip_prefix("hsl(").and_then(|r| r.strip_suffix(')')) {
@@ -203,7 +200,7 @@ mod tests {
 
     #[test]
     fn lighten_and_darken_match_the_color_package() {
-        // What color 4.2.3 prints (node): radar-chart's #E5E600 and #00E5E6 among them.
+        // Reference values from the `color` npm package 4.2.3.
         assert_eq!(hex(Color::parse("#ffff00").darken(0.1)), "#E5E600");
         assert_eq!(hex(Color::parse("#00ffff").darken(0.1)), "#00E5E6");
         assert_eq!(hex(Color::parse("#336699").darken(0.1)), "#2E5C8A");

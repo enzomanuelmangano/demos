@@ -1,4 +1,4 @@
-//! `withTiming` (animation/timing.ts): duration 300 ms and `Easing.inOut(Easing.quad)` by default.
+//! A value timed from where it is to a target: 300 ms and a quadratic ease-in-out by default.
 
 use crate::easing::Easing;
 
@@ -22,14 +22,14 @@ impl Timing {
         Timing { from: value, to: value, duration_ms: 300.0, easing: Easing::timing_default(), start_ms: None, value, running: false }
     }
 
-    /// Set at once, as an assignment without `withTiming`.
+    /// Set at once, with no animation.
     pub fn set(&mut self, value: f64) {
         self.value = value;
         self.to = value;
         self.running = false;
     }
 
-    /// `withTiming(to, { duration, easing })` from where it is; it starts at the next frame.
+    /// Times it from where it is to `to` over `duration` with `easing`; it starts at the next frame.
     pub fn to(&mut self, to: f64, duration_ms: f64, easing: Easing) {
         self.from = self.value;
         self.to = to;

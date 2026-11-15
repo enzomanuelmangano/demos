@@ -1,12 +1,26 @@
-//! react-native-reanimated 4.7.1, for GPU surfaces: what a worklet runs on the UI thread,
-//! stepped here on the host's frame clock. Ported line for line from
-//! node_modules/react-native-reanimated/src, so a demo's numbers carry over unchanged.
+//! Spring, timing, easing, decay and interpolation functions stepped on the host's frame clock.
 //!
-//! - [`spring`]: `withSpring` (animation/spring).
-//! - [`timing`]: `withTiming` (animation/timing.ts) and [`easing`]: `Easing` (Easing.ts, Bezier.ts).
-//! - [`decay`]: `withDecay` (animation/decay).
-//! - [`spring_array`]: a duration spring over a whole array at once.
-//! - [`interpolate`]: `interpolate` and `Extrapolation` (interpolation.ts).
+//! Not a reimplementation of react-native-reanimated: a small folder of the same constants and
+//! methods its timing and spring functions use, so the demos keep their numbers.
+//!
+//! ```
+//! use motion::{Spring, GENTLE};
+//!
+//! let mut spring = Spring::at(0.0);
+//! spring.to(100.0, 0.0, GENTLE);
+//! let mut now_ms = 0.0;
+//! while spring.step(now_ms) {
+//!     now_ms += 1000.0 / 60.0;
+//! }
+//! assert_eq!(spring.value, 100.0);
+//! ```
+//!
+//! Modules: [`spring`], [`timing`], [`easing`], [`decay`], [`spring_array`], [`mod@interpolate`].
+//!
+//! # Credits
+//!
+//! Same constants as react-native-reanimated 4.x's `withSpring`, `withTiming`, `withDecay`, `Easing`
+//! and `interpolate` (MIT).
 
 #![deny(missing_docs)]
 
@@ -24,5 +38,5 @@ pub use spring::{duration_config, Config as SpringConfig, Spring, GENTLE};
 pub use spring_array::SpringArray;
 pub use timing::Timing;
 
-/// The frame clock's longest step (`Math.min(…, 64)` in every animation's onFrame).
+/// The longest step, in ms, one frame advances an animation.
 pub const MAX_STEP_MS: f64 = 64.0;

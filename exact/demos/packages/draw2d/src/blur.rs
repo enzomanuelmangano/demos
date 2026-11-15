@@ -1,8 +1,10 @@
-//! Skia's `Blur` image filter (`ImageFilter.MakeBlur(σ, σ, TileMode.Decal)`) for a layer a demo
-//! drew into a texture: a separable Gaussian, run at a lower resolution where σ is large (the
-//! result is smooth, so a bilinear read back up is exact to the eye), outside the texture
-//! transparent (decal), or its edge repeated outward ([`Blur::clamped`], `TileMode.Clamp`: the
-//! `<Blur mode="clamp">` a photo's edges keep their colour with).
+//! A Gaussian blur for a layer drawn into a texture: separable, run at a lower resolution where σ
+//! is large (the result is smooth, so a bilinear read back up is exact to the eye). Outside the
+//! texture is transparent, or with [`Blur::clamped`] the edge pixels repeated outward.
+//!
+//! Two forms: [`Blur`], a plain two-pass blur, and [`GraphitePlan`] / [`GraphiteBlur`], which
+//! plan and run the blur with the same geometry and kernels as Skia Graphite's blur image filter
+//! so a blurred demo keeps its pixels.
 
 use crate::wgpu;
 
@@ -39,8 +41,7 @@ fn tap(uv: vec2<f32>) -> vec4<f32> {
 /// A blur's textures and pipelines, kept between frames.
 #[derive(Default)]
 pub struct Blur {
-    /// `TileMode.Clamp`: outside the texture is its nearest edge pixel (`Blur::default()` is
-    /// `TileMode.Decal`, outside transparent).
+    /// Outside the texture is its nearest edge pixel (the default is transparent).
     pub clamp: bool,
     built: Option<Built>,
     size: (u32, u32),
@@ -58,7 +59,7 @@ struct Built {
 }
 
 impl Blur {
-    /// `<Blur mode="clamp">`: a blur whose source's edges extend outward.
+    /// A blur whose source's edges extend outward.
     pub fn clamped() -> Blur {
         Blur { clamp: true, ..Blur::default() }
     }
@@ -163,22 +164,15 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat) -> Built {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Skia m157 Graphite's blur image filter, step for step.
+// The planned blur: where every step lands, in layer pixels.
 //
-// RN Skia 3.7.2 builds Skia m157 with Graphite on Dawn. `SkImageFilters::Blur(σ, σ, kDecal)` on
-// a layer runs `FilterResult::Builder::blur` (src/core/SkImageFilterTypes.cpp) with Graphite's
-// blur engine, `SkShaderBlurAlgorithm` (src/gpu/graphite/TextureUtils.cpp), whose
-// `maxSigma()` is `kMaxLinearSigma` = 4. A larger σ is not blurred at full resolution: the
-// layer is first downscaled (`FilterResult::rescale`: halvings about the centre, then one step
-// between ½ and 1, each a bilinear draw into an 8-bit surface), blurred there with σ ≤ 4 by
-// two 1-D passes of a linear-sampled discrete Gaussian (`Compute1DBlurLinearKernel`), and the
+// A σ above 4 is not blurred at full resolution: the layer is first downscaled (halvings about
+// the centre, then one step between ½ and 1, each a bilinear draw into an 8-bit surface),
+// blurred there with σ ≤ 4 by two 1-D passes of a linear-sampled discrete Gaussian, and the
 // low-resolution result is drawn back up with bilinear sampling. [`GraphitePlan`] is that
-// geometry (the same float and integer rect math, `kRoundEpsilon` and all), and
-// [`GraphiteBlur`] runs its passes. Outside each surface is transparent (decal), as Skia's
-// transparent boundaries and decal tiling make it; [`GraphitePlan::clamped`] is
-// `SkImageFilters::Blur(σ, σ, kClamp)` (`<Blur mode="clamp">`), Skia's clamp path: each rescale
-// surface padded by one pixel that `draw_tiled_border` fills with the edge, every read clamped
-// to the previous image, the 1-D passes clamp-tiled, the result filling the desired output.
+// geometry (the rect rounding is Skia's, epsilon and all) and [`GraphiteBlur`] runs its passes.
+// Outside each surface is transparent; [`GraphitePlan::clamped`] pads each rescale surface by
+// one pixel filled with the edge and clamps every read instead.
 // ---------------------------------------------------------------------------------------------
 
 /// An integer rect, left, top, right, bottom.
@@ -186,28 +180,28 @@ pub type IRect = [i32; 4];
 /// A float rect, left, top, right, bottom.
 pub type FRect = [f32; 4];
 
-/// `kRoundEpsilon` (SkImageFilterTypes.cpp).
+/// Rect edges within this of a whole pixel round to it.
 const ROUND_EPSILON: f32 = 1e-3;
-/// `SkShaderBlurAlgorithm::kMaxLinearSigma`.
+/// The largest σ one blur pass takes at full resolution.
 pub const MAX_LINEAR_SIGMA: f32 = 4.0;
 
-/// `skif::RoundOut`: the rect inset by `kRoundEpsilon`, then rounded out.
+/// The rect inset by a small epsilon, then rounded out.
 pub fn round_out(r: FRect) -> IRect {
     [(r[0] + ROUND_EPSILON).floor() as i32, (r[1] + ROUND_EPSILON).floor() as i32, (r[2] - ROUND_EPSILON).ceil() as i32, (r[3] - ROUND_EPSILON).ceil() as i32]
 }
 
-/// `LayerSpace<SkSize>::ceil`.
+/// A size rounded up, with the same epsilon.
 pub fn ceil_size(v: f32) -> i32 {
     (v - ROUND_EPSILON).ceil() as i32
 }
 
-/// `SkIRect::intersect`, `None` when empty.
+/// The intersection of two rects, `None` when empty.
 pub fn intersect(a: IRect, b: IRect) -> Option<IRect> {
     let r = [a[0].max(b[0]), a[1].max(b[1]), a[2].min(b[2]), a[3].min(b[3])];
     (r[0] < r[2] && r[1] < r[3]).then_some(r)
 }
 
-/// `SkIRect::outset`.
+/// The rect grown by `dx` and `dy` on each side.
 pub fn outset(r: IRect, dx: i32, dy: i32) -> IRect {
     [r[0] - dx, r[1] - dy, r[2] + dx, r[3] + dy]
 }
@@ -224,10 +218,10 @@ fn to_f(r: IRect) -> FRect {
     r.map(|v| v as f32)
 }
 
-/// `downscale_step_count` (SkImageFilterTypes.cpp).
+/// How many rescale steps bring `scale` (the ratio of the target σ to the original) to 1: halvings, then a last step.
 pub fn downscale_step_count(scale: f32) -> u32 {
     let n = (1.0 / scale).ceil() as i32;
-    // SkNextLog2: the smallest k with 2^k ≥ n.
+    // The smallest k with 2^k ≥ n.
     let mut steps = if n <= 1 { 0 } else { 32 - ((n - 1) as u32).leading_zeros() };
     if steps > 0 {
         let final_step = scale * (1u32 << (steps - 1)) as f32;
@@ -239,15 +233,14 @@ pub fn downscale_step_count(scale: f32) -> u32 {
     steps
 }
 
-/// `scale_about_center`: the rect's coordinates relative to its centre, scaled (a new pixel
-/// space centred on 0).
+/// The rect's coordinates relative to its centre, scaled (a new pixel space centred on 0).
 fn scale_about_center(r: FRect, sx: f32, sy: f32) -> FRect {
     let cx = if sx == 1.0 { 0.0 } else { 0.5 * r[0] + 0.5 * r[2] };
     let cy = if sy == 1.0 { 0.0 } else { 0.5 * r[1] + 0.5 * r[3] };
     [(r[0] - cx) * sx, (r[1] - cy) * sy, (r[2] - cx) * sx, (r[3] - cy) * sy]
 }
 
-/// One `rescale` iteration: the image over `from` (the previous step's space) drawn into the
+/// One rescale iteration: the image over `from` (the previous step's space) drawn into the
 /// surface `pixels` of the new space, `from` mapping onto `to`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RescaleStep {
@@ -261,14 +254,14 @@ pub struct RescaleStep {
     pub sample: IRect,
 }
 
-/// Where everything of one Graphite blur lands, in layer pixels.
+/// Where everything of one blur lands, in layer pixels.
 #[derive(Clone, Debug, PartialEq)]
 pub struct GraphitePlan {
     /// σ in layer pixels.
     pub sigma: f32,
     /// The blur's radius, `ceil(3σ)`.
     pub radius: i32,
-    /// `srcRect`: the part of the layer image that is rescaled.
+    /// The part of the layer image that is rescaled.
     pub src_rect: IRect,
     /// The rescale's draws, in order (none when σ ≤ 4).
     pub steps: Vec<RescaleStep>,
@@ -281,25 +274,24 @@ pub struct GraphitePlan {
     pub low_sigma: f32,
     /// That kernel's radius.
     pub low_radius: i32,
-    /// The pixels of the layer the result is drawn into (`fLayerBounds` of the result).
+    /// The pixels of the layer the result is drawn into.
     pub output: IRect,
-    /// `SkTileMode::kClamp` (else decal).
+    /// Clamp the edges outward (else transparent).
     pub clamp: bool,
     /// Clamp: the source image's pixels (the layer), which the first rescale draw clamps to.
     pub image: IRect,
 }
 
 impl GraphitePlan {
-    /// `FilterResult::Builder::blur` for a source image covering `layer` (transparent outside),
-    /// a desired output `desired` (the device clip, in layer pixels) and `sigma`.
+    /// Plans a blur of an image covering `layer` (transparent outside) into a desired output
+    /// `desired` (the device clip, in layer pixels) with `sigma`.
     pub fn new(layer: IRect, desired: IRect, sigma: f32) -> Option<GraphitePlan> {
         Self::build(layer, desired, sigma, Vec::new())
     }
 
-    /// `SkImageFilters::Blur(σ, σ, kClamp)` with no crop on a source image covering `layer`:
-    /// the legacy tiling crops the input to its layer bounds with clamp
-    /// (SkBlurImageFilter::onFilterImage), so the edge pixels extend outward and the result
-    /// fills the desired output within the kernel's reach of the layer.
+    /// Plans a clamped blur of an image covering `layer`: the input is cropped to its layer
+    /// bounds with clamp, so the edge pixels extend outward and the result fills the desired
+    /// output within the kernel's reach of the layer.
     pub fn clamped(layer: IRect, desired: IRect, sigma: f32) -> Option<GraphitePlan> {
         Self::build_clamped(layer, desired, sigma, Vec::new())
     }
@@ -319,13 +311,12 @@ impl GraphitePlan {
     fn build_clamped(layer: IRect, desired: IRect, sigma: f32, mut steps: Vec<RescaleStep>) -> Option<GraphitePlan> {
         steps.clear();
         let radius = ceil_size(3.0 * sigma);
-        // onFilterImage: maxOutput = kernelBounds(child layer bounds) ∩ desired, the builder's
-        // desired output; Builder::blur's outputBounds of a layer-filling (clamp) image is it.
+        // The output is the kernel's reach around the layer, within the desired output.
         let output = intersect(outset(layer, radius, radius), desired)?;
         let sample_bounds = outset(output, radius, radius);
         let scale = if sigma > MAX_LINEAR_SIGMA { MAX_LINEAR_SIGMA / sigma } else { 1.0 };
-        // rescale(): tiling deferred, srcRect the image's pixels, relevantSubset(sampleBounds,
-        // kClamp): the intersection, or the closest edge row / column / corner when disjoint.
+        // The rescaled part is the layer ∩ the sampled bounds, or the closest edge row / column /
+        // corner of the layer when they are disjoint.
         let src_rect = match intersect(layer, sample_bounds) {
             Some(r) => r,
             None => {
@@ -378,7 +369,7 @@ impl GraphitePlan {
         let output_bounds = intersect(max_output, desired)?;
         let sample_bounds = outset(output_bounds, radius, radius);
         let scale = if sigma > MAX_LINEAR_SIGMA { MAX_LINEAR_SIGMA / sigma } else { 1.0 };
-        // rescale(): visibleLayerBounds ∩ desired, decal, not periodic so no overscaling.
+        // The rescaled part is the visible layer ∩ the desired output.
         let src_rect = intersect(layer, sample_bounds)?;
         let src = to_f(src_rect);
         let mut x_steps = downscale_step_count(scale);
@@ -430,14 +421,14 @@ impl GraphitePlan {
         [s[0] + (p[0] - l[0]) * (width(s) / width(l)), s[1] + (p[1] - l[1]) * (height(s) / height(l))]
     }
 
-    /// `Compute1DBlurLinearKernel(low_sigma, low_radius)`: `low_radius + 1` taps, each an
-    /// (offset, weight) pair read with bilinear sampling.
+    /// The linear kernel of (`low_sigma`, `low_radius`): `low_radius + 1` taps, each an (offset,
+    /// weight) pair read with bilinear sampling.
     pub fn linear_kernel(&self) -> Vec<(f32, f32)> {
         linear_kernel(self.low_sigma, self.low_radius)
     }
 }
 
-/// `Compute1DBlurKernel`: the normalised discrete Gaussian of `2·radius + 1` taps.
+/// The normalised discrete Gaussian of `2·radius + 1` taps.
 pub fn gaussian_kernel(sigma: f32, radius: i32) -> Vec<f32> {
     let denom = if radius > 0 { 1.0 / (2.0 * sigma * sigma) } else { 1.0 };
     let full: Vec<f32> = (0..2 * radius + 1)
@@ -451,7 +442,7 @@ pub fn gaussian_kernel(sigma: f32, radius: i32) -> Vec<f32> {
     full.into_iter().map(|w| w * scale).collect()
 }
 
-/// `SkShaderBlurAlgorithm::Compute1DBlurLinearKernel`, ordered as the shader reads it.
+/// The linear-sampled form of the Gaussian kernel (two texels per tap), ordered as the shader reads it.
 pub fn linear_kernel(sigma: f32, radius: i32) -> Vec<(f32, f32)> {
     let full = gaussian_kernel(sigma, radius);
     let half_size = (radius + 1) as usize;
@@ -543,9 +534,9 @@ const STEP_MARGIN: i32 = 4;
 /// One slot's uniforms: `Down` at 0, `Blur1D` at 256.
 const PARAMS: u64 = 432;
 
-/// [`GraphitePlan`]'s passes on the GPU, 8-bit premultiplied surfaces as Skia's. Its targets,
-/// uniform buffers and bind groups are kept between runs: a blur run every frame (a filtered
-/// shape that moves) allocates nothing once its sizes have been seen.
+/// [`GraphitePlan`]'s passes on the GPU, on 8-bit premultiplied surfaces. Its targets, uniform
+/// buffers and bind groups are kept between runs: a blur run every frame (a filtered shape that
+/// moves) allocates nothing once its sizes have been seen.
 #[derive(Default)]
 pub struct GraphiteBlur {
     built: Option<GraphiteBuilt>,
@@ -586,7 +577,7 @@ pub struct Blurred<'a> {
     pub size: [u32; 2],
 }
 
-/// The format of every Graphite surface here: BGRA8 premultiplied in RN, the same bytes.
+/// The format of every blur surface: BGRA8, premultiplied.
 pub const GRAPHITE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
 impl GraphiteBlur {
@@ -726,9 +717,9 @@ impl GraphiteBlur {
     }
 
     /// [`GraphiteBlur::run`], then the result drawn back into `target` (texel (0, 0) at
-    /// `target_origin` in the layer, `target_size` texels) as FilterResult::draw does: the
-    /// low-resolution image sampled bilinearly through its transform, over `plan.output`,
-    /// transparent elsewhere (Src). A blur drawn once (an offscreen image) is then read 1:1.
+    /// `target_origin` in the layer, `target_size` texels): the low-resolution image sampled
+    /// bilinearly through its transform, over `plan.output`, transparent elsewhere. A blur drawn
+    /// once (an offscreen image) is then read 1:1.
     #[allow(clippy::too_many_arguments)]
     pub fn run_into(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut wgpu::CommandEncoder, source: Placed<'_>, plan: &GraphitePlan, target: &wgpu::TextureView, target_origin: [i32; 2], target_size: [u32; 2]) {
         let (origin, size) = {
@@ -739,7 +730,7 @@ impl GraphiteBlur {
         while self.params.len() <= slot {
             self.params.push(device.create_buffer(&wgpu::BufferDescriptor { label: Some("graphite blur"), size: PARAMS, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false }));
         }
-        // The `down` draw with the spaces swapped: from the low-resolution bounds onto srcRect.
+        // The `down` draw with the spaces swapped: from the low-resolution bounds onto the source rect.
         let (l, r) = (plan.low_bounds, plan.src_rect.map(|v| v as f32));
         let o = plan.output.map(|v| v as f32);
         let v = [
@@ -793,7 +784,7 @@ mod graphite_tests {
 
     #[test]
     fn step_counts_follow_skia() {
-        // σ 75 (25 pt at 3×): 4/75 → ceil(18.75) = 19 → 5 steps (the last 0.853 < 0.9 stays).
+        // σ 75: 4/75 → ceil(18.75) = 19 → 5 steps (the last 0.853 < 0.9 stays).
         assert_eq!(downscale_step_count(4.0 / 75.0), 5);
         // σ 50 (2×): 4/50 → 13 → 4 steps, the last 0.64.
         assert_eq!(downscale_step_count(4.0 / 50.0), 4);
@@ -828,8 +819,8 @@ mod graphite_tests {
 
     #[test]
     fn the_plan_of_the_fractal_glass_blur() {
-        // iPhone Air 3×: the pane (40, 306, 380, 606) pt = (120, 918, 1140, 1818) px; the
-        // circle at (180, 270) r 100 → (240, 510, 840, 1110) px; σ 75 → R 225.
+        // A 3× pane (40, 306, 380, 606) pt = (120, 918, 1140, 1818) px; a circle at (180, 270)
+        // r 100 → (240, 510, 840, 1110) px; σ 75 → R 225.
         let desired = [120, 918, 1140, 1818];
         let layer = intersect(outset(desired, 225, 225), round_out([240.0, 510.0, 840.0, 1110.0])).unwrap();
         assert_eq!(layer, [240, 693, 840, 1110]);
@@ -852,8 +843,8 @@ mod graphite_tests {
 
     #[test]
     fn the_clamp_plan_of_the_bottom_sheet_photo() {
-        // skia-bottom-sheet: the cover photo at the canvas's pixels (iPhone Air 1260 × 2736),
-        // Blur 10 pt clamp at 3× = σ 30: 4/30 → 3 steps (½, ½, 0.533), each padded by a pixel.
+        // A cover photo at the canvas's pixels (1260 × 2736), clamp blur σ 30: 4/30 → 3 steps
+        // (½, ½, 0.533), each padded by a pixel.
         let full = [0, 0, 1260, 2736];
         let plan = GraphitePlan::clamped(full, full, 30.0).unwrap();
         assert!(plan.clamp);
@@ -872,7 +863,7 @@ mod graphite_tests {
         assert_eq!(decal.steps.iter().map(|s| s.pixels).collect::<Vec<_>>(), plan.steps.iter().map(|s| s.sample).collect::<Vec<_>>());
     }
 
-    /// Skia's clamp path on the CPU, one channel, 8-bit surfaces: the rescale draws (clamped
+    /// The clamp path on the CPU, one channel, 8-bit surfaces: the rescale draws (clamped
     /// reads, tiled border), the clamp-tiled 1-D passes, the bilinear draw back.
     fn clamp_reference(img: &[f32], w: i32, h: i32, plan: &GraphitePlan) -> Vec<f32> {
         struct Img { r: IRect, px: Vec<f32> }
@@ -940,7 +931,6 @@ mod graphite_tests {
         out
     }
 
-    #[cfg(feature = "repo-tests")]
     #[test]
     fn the_clamp_blur_runs_skias_clamp_path() {
         let gpu = match exact_gpu::fixture::device() {

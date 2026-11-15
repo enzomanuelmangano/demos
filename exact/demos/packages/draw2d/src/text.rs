@@ -1,20 +1,18 @@
-//! Text as `<Text x y text font>` draws it: a [`Font`] (a typeface at a size, `useFont` /
-//! `matchFont`) whose glyphs are filled as paths. As Skia's `SkFont`, there is no shaping and
-//! no kerning: each character's glyph from the font's cmap, placed at the advance of the last.
+//! Fonts and text: a [`Font`] (a typeface at a size) and [`Canvas::draw_text`].
 //!
-//! A [`match_ui_font`] font lays text out as UIKit does an RN `<Text>` (Core Text): its glyphs
-//! go through the GSUB features Core Text turns on by default (`ccmp`, `locl`, `rlig`, `liga`,
-//! `calt`: SF's raised colon between digits, its ligatures), its advances carry the font's `trak`
-//! tracking for the point size and the `kern` feature's GPOS pair adjustments (variation deltas
-//! included), and its optical size follows the point size ([`Font::set_size`] re-applies it as
-//! an animated `fontSize` changes).
+//! A plain font has no shaping and no kerning: each character's glyph comes from the font's cmap and
+//! is placed at the advance of the last. A [`match_ui_font`] font lays text out as a UIKit label
+//! does: its glyphs go through the GSUB features Core Text turns on by default (`ccmp`, `locl`,
+//! `rlig`, `liga`, `calt`: SF's raised colon between digits, its ligatures), its advances carry the
+//! font's `trak` tracking for the point size and the `kern` feature's GPOS pair adjustments
+//! (variation deltas included), and its optical size follows the point size ([`Font::set_size`]
+//! re-applies it as an animated `fontSize` changes).
 //!
-//! [`Canvas::draw_text`] draws as Graphite does on iOS ([`crate::glyphs`]): below 162 device
-//! pixels, glyph masks rasterised by CoreText as RN Skia's Mac scaler does ([`crate::coretext`])
-//! from an atlas, one quad per glyph; larger runs (and every run where there is no CoreText: the
-//! web) as glyph outlines, read with ttf-parser (TrueType and CFF, variable fonts at the axis
-//! values the font was made with), cached per glyph in font units, and filled through the
-//! canvas's transform.
+//! [`Canvas::draw_text`] draws below 162 device pixels from a glyph atlas, one quad per glyph, with
+//! masks rasterised by CoreText (the private `coretext` and `glyphs` modules). Larger runs, and every run
+//! where there is no CoreText (the web), are glyph outlines read with ttf-parser (TrueType and CFF,
+//! variable fonts at the axis values the font was made with), cached per glyph in font units, and
+//! filled through the canvas's transform.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -27,7 +25,7 @@ use crate::{Canvas, Matrix, Paint, Rect};
 #[cfg(target_vendor = "apple")]
 use crate::{DrawClip, Geo, Op, Shader, Vertex, EMPTY};
 
-/// A typeface at a size: RN Skia's `SkFont`.
+/// A typeface at a size.
 pub struct Font {
     face: Face<'static>,
     #[cfg_attr(not(target_vendor = "apple"), allow(dead_code))]
@@ -65,7 +63,7 @@ struct UiLayout {
     shaped: RefCell<HashMap<String, Vec<GlyphId>>>,
 }
 
-/// `getMetrics()`: in points, y down (ascent negative, as Skia's).
+/// A font's vertical metrics, in points, y down (ascent negative).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FontMetrics {
     /// Above the baseline: negative.
@@ -77,11 +75,9 @@ pub struct FontMetrics {
 }
 
 impl Font {
-    /// `useFont(require(file), size)`: the first face of a TrueType/OpenType file, for RN Skia's
-    /// `<Text>` (Skia's glyph masks and gamma pre-blend). A font standing in for an RN `<Text>`
-    /// (a label, an @expo/vector-icons glyph, a ReText) must be `.with_ui_layout()`: UIKit draws
-    /// those with raw coverage, and Skia's pre-blend makes them 5-20 % heavier (measured against
-    /// the text probe's colour cases).
+    /// A font from the first face of a TrueType/OpenType file, drawn with the atlas's gamma pre-blend.
+    /// A font that stands in for a UIKit label or an icon-font glyph must be `.with_ui_layout()`, which
+    /// draws raw coverage: the pre-blend makes such text 5-20 % heavier.
     pub fn new(data: &'static [u8], size: f32) -> Option<Font> {
         Font::with_variations(data, size, &[])
     }
@@ -150,12 +146,12 @@ impl Font {
         }
     }
 
-    /// The tracking a UIKit font adds after each glyph, in points (0 for a Skia font).
+    /// The tracking a UIKit font adds after each glyph, in points (0 for a plain font).
     pub fn tracking(&self) -> f32 {
         self.ui.as_ref().map_or(0.0, |ui| ui.tracking * self.units)
     }
 
-    /// The GPOS `kern` adjustment between two characters, in points (0 for a Skia font).
+    /// The GPOS `kern` adjustment between two characters, in points (0 for a plain font).
     pub fn kerning(&self, first: char, second: char) -> f32 {
         self.pair(self.glyph(first), self.glyph(second)) * self.units
     }
@@ -180,9 +176,8 @@ impl Font {
         total
     }
 
-    /// `getMetrics()`: the font's hhea ascender, descender and line gap, as CoreText reads them
-    /// (`CTFontGetAscent` / `Descent` / `Leading`, Skia's on iOS, and UIKit's `UIFont`): not the
-    /// OS/2 typo metrics a font's USE_TYPO_METRICS flag asks for (AntDesign, Entypo set it).
+    /// The font's hhea ascender, descender and line gap, as CoreText reads them: not the OS/2 typo
+    /// metrics a font's USE_TYPO_METRICS flag asks for.
     pub fn metrics(&self) -> FontMetrics {
         let t = self.face.tables();
         let typo = t.os2.is_some_and(|o| o.use_typographic_metrics());
@@ -197,9 +192,8 @@ impl Font {
         FontMetrics { ascent: -asc * self.units, descent: -desc * self.units, leading: gap * self.units }
     }
 
-    /// The line an RN `<Text>` with no `lineHeight` lays out (RN's `NSLayoutManager` has
-    /// `usesFontLeading = NO`): ascent + descent, the line gap left out; the baseline is the
-    /// ascent below the line's top (measured by exact/parity-tools/text-probe).
+    /// The line height of a label with no explicit line height: ascent + descent, the line gap left
+    /// out; the baseline is the ascent below the line's top.
     pub fn ui_line_height(&self) -> f32 {
         let m = self.metrics();
         -m.ascent + m.descent
@@ -255,11 +249,9 @@ impl Font {
         self.layout(text, |_, _| {})
     }
 
-    /// `measureText(text)`: the bounds of `text` drawn at the origin (y down), as RN Skia
-    /// returns them on iOS: each glyph's Core Text bounds rounded out to whole points and
-    /// outset by 1 (its antialiasing margin) about its pen position, unioned. So `width` is
-    /// neither the ink's nor the advance's: Helvetica bold 13 "Home" is 37.888 (ink 34.77,
-    /// advance 36.12), as the RN app's measureText returns it (read on the simulator).
+    /// The bounds of `text` drawn at the origin (y down): each glyph's Core Text bounds rounded out to
+    /// whole points and outset by 1 (its antialiasing margin) about its pen position, unioned. So `width`
+    /// is neither the ink's nor the advance's.
     pub fn measure_text(&self, text: &str) -> Rect {
         let (mut l, mut t, mut r, mut b) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
         self.layout(text, |g, pen| {
@@ -276,9 +268,9 @@ impl Font {
         Rect::new(l, t, r - l, b - t)
     }
 
-    /// [`Font::advance_width`] with RN's `letterSpacing` (Core Text's `NSKern`): measured with
-    /// Core Text, a non-zero kern keeps the font's tracking and pair kerning and adds `spacing`
-    /// after every glyph, the last one included (the line's typographic width).
+    /// [`Font::advance_width`] with letter spacing (Core Text's `NSKern`): a non-zero kern keeps the
+    /// font's tracking and pair kerning and adds `spacing` after every glyph, the last one included (the
+    /// line's typographic width).
     pub fn advance_width_spaced(&self, text: &str, spacing: f32) -> f32 {
         let mut n = 0;
         let width = self.layout(text, |_, _| n += 1);
@@ -412,8 +404,7 @@ fn tracking(face: &Face<'static>, size: f32) -> f32 {
         let (s1, v1) = at(i);
         let (sa, va) = at(i - 1);
         if size <= s1 {
-            // Core Text keeps whole font units, truncated toward zero (measured by
-            // exact/parity-tools/text-probe: SF at 26.5 pt tracks 19, not 19.75).
+            // Core Text keeps whole font units, truncated toward zero (SF at 26.5 pt tracks 19, not 19.75).
             return (va + (v1 - va) * (size - sa) / (s1 - sa)).trunc();
         }
     }
@@ -657,32 +648,27 @@ impl OutlineBuilder for Outline {
     }
 }
 
-/// `matchFont({ fontFamily: "System", fontSize, fontWeight })`: the platform's system UI face
-/// (San Francisco on Apple: iOS's `Core/SFUI.ttf`, the Simulator's runtime copy, macOS's
-/// `SFNS.ttf`) at `weight` (100…900) and the optical size Core Text picks for `size`. `None`
-/// where the file cannot be read (the web, other platforms).
+/// The platform's system UI face (San Francisco on Apple) at `weight` (100…900) and the optical
+/// size Core Text picks for `size`. `None` where the file cannot be read (the web, other platforms).
 pub fn match_system_font(size: f32, weight: f32) -> Option<Font> {
     let data = system_face()?;
     Font::with_variations(data, size, &[(b"wght", weight), (b"opsz", size)])
 }
 
-/// An RN `<Text>` in the system font (`fontSize`, `fontWeight`), as UIKit lays it out: the
-/// system face at `weight` and the optical size of `size` ([`match_system_font`]), with the
-/// font's tracking for the size, its default GSUB substitutions, and its kerning in the advances
-/// ([`Font::with_ui_layout`]). GPOS mark positioning is not applied (the demos' labels have no
-/// combining marks: `Ó` is its own glyph). RN maps `fontWeight` to a `UIFontWeight` (`'600'` is
-/// `.semibold`), which San Francisco draws at its named instance's `wght`, not at the CSS number:
-/// [`ui_weight`].
+/// A label in the system font, as UIKit lays it out: the system face at `weight` and the optical
+/// size of `size` ([`match_system_font`]), with the font's tracking for the size, its default GSUB
+/// substitutions, and its kerning in the advances ([`Font::with_ui_layout`]). GPOS mark positioning
+/// is not applied (the demos' labels have no combining marks: `Ó` is its own glyph). A weight maps
+/// to a named UIKit weight, which San Francisco draws at its named instance's `wght`, not at the CSS
+/// number: [`ui_weight`].
 pub fn match_ui_font(size: f32, weight: f32) -> Option<Font> {
     let data = system_face()?;
     Font::with_variations(data, size, &[(b"wght", ui_weight(weight)), (b"opsz", size)]).map(Font::with_ui_layout)
 }
 
-/// The `wght` San Francisco (`SFUI.ttf`'s fvar instances) draws an RN `fontWeight` at: RN's
-/// RCTFont maps 100…900 to UIFontWeight ultraLight, thin, light, regular, medium, semibold, bold,
-/// heavy, black, whose instances are 30.925, 110.725, 274.315, 400, 510, 590, 700, 860, 1000
-/// (a semibold `'600'` drawn at 600 was a hair heavy: expandable-mini-player's "Demo"). Weights
-/// between the hundreds interpolate.
+/// The `wght` San Francisco draws a font weight at: 100…900 map to the named weights ultraLight,
+/// thin, light, regular, medium, semibold, bold, heavy, black, whose instances are 30.925, 110.725,
+/// 274.315, 400, 510, 590, 700, 860, 1000. Weights between the hundreds interpolate.
 pub fn ui_weight(weight: f32) -> f32 {
     const WGHT: [f32; 9] = [30.925, 110.725, 274.315, 400.0, 510.0, 590.0, 700.0, 860.0, 1000.0];
     let k = ((weight / 100.0).clamp(1.0, 9.0)) - 1.0;
@@ -720,7 +706,7 @@ pub struct GlyphMask {
     pub coverage: Vec<u8>,
 }
 
-/// The strike a subpixel-positioned run draws with (Skia's text, mode 2 of the atlas's keys).
+/// The strike a subpixel-positioned run draws with (mode 2 of the atlas's keys).
 #[cfg(target_vendor = "apple")]
 struct SubpixelStrike {
     key: crate::glyphs::StrikeKey,
@@ -803,8 +789,7 @@ impl Font {
         self.layout(text, |g, pen| out.push((g.0, pen)));
     }
 
-    /// `Skia.Path.MakeFromText(text, x, y, font)`: each glyph's outline at its pen, the
-    /// baseline's start at (x, y).
+    /// Each glyph's outline at its pen, the baseline's start at (x, y).
     pub fn text_path(&self, text: &str, x: f32, y: f32) -> Path {
         let mut run = Vec::new();
         self.glyph_run(text, &mut run);
@@ -836,9 +821,8 @@ impl Font {
         }
     }
 
-    /// The variation as `SkTypeface_Mac::MakeFromStream` gives it to CoreText
-    /// (`ctvariation_from_SkFontArguments`): none when the font was made without one, else every
-    /// axis, at the value asked for pinned to its range, or at its default.
+    /// The variation handed to CoreText: none when the font was made without one, else every axis, at
+    /// the value asked for pinned to its range, or at its default.
     #[cfg_attr(not(target_vendor = "apple"), allow(dead_code))]
     pub(crate) fn ct_axes(&self) -> Vec<([u8; 4], f32)> {
         if self.axes.is_empty() {
@@ -884,15 +868,13 @@ impl Font {
 }
 
 impl Canvas {
-    /// `<Text x y text font paint>`: `text` with its baseline's start at (x, y). As Graphite
-    /// draws a glyph run ([`crate::glyphs`]): from the glyph atlas below 162 device pixels (where
-    /// CoreText rasterises the masks), the glyphs it can't take and larger runs as paths.
+    /// Draws `text` with its baseline's start at (x, y): from the glyph atlas below 162 device pixels
+    /// (where CoreText rasterises the masks), the glyphs it can't take and larger runs as paths.
     pub fn draw_text(&mut self, text: &str, x: f32, y: f32, font: &Font, paint: &Paint) {
         self.draw_text_spaced(text, x, y, font, paint, 0.0);
     }
 
-    /// [`Canvas::draw_text`] with RN's `letterSpacing` ([`Font::advance_width_spaced`]): `spacing`
-    /// added after every glyph, the run drawn as [`Canvas::draw_text`] draws it.
+    /// [`Canvas::draw_text`] with letter spacing ([`Font::advance_width_spaced`]): `spacing` added after every glyph.
     pub fn draw_text_spaced(&mut self, text: &str, x: f32, y: f32, font: &Font, paint: &Paint, spacing: f32) {
         let mut run = std::mem::take(&mut self.glyph_run);
         font.glyph_run(text, &mut run);
@@ -919,12 +901,10 @@ impl Canvas {
         self.glyph_run = run;
     }
 
-    /// `drawGlyphs` (a text blob) of a subpixel-positioned font: `SkFont::setSubpixel(true)`, as
-    /// SkParagraph sets every run's font. Each glyph's origin is its own (x, y) in the canvas's
-    /// space. As Graphite draws it on iOS: under a scale and translation, below 162 device px,
-    /// from the glyph atlas with Skia's axis-aligned subpixel positioning (the origin's x + 1/8
-    /// quantised to a quarter pixel, its y + 1/2 to a whole one), each quarter's mask drawn by
-    /// CoreText at that offset ([`Font::subpixel_mask`]); otherwise (and off Apple) the outlines.
+    /// Draws glyphs of a subpixel-positioned font, each at its own (x, y) in the canvas's space. Under
+    /// a scale and translation, below 162 device px, they come from the glyph atlas: the origin's x + 1/8
+    /// is quantised to a quarter pixel and its y + 1/2 to a whole one, and each quarter's mask is drawn by
+    /// CoreText at that offset ([`Font::subpixel_mask`]). Otherwise (and off Apple) they are outlines.
     pub fn draw_glyphs_subpixel(&mut self, glyphs: &[(u16, f32, f32)], font: &Font, paint: &Paint) {
         #[cfg(target_vendor = "apple")]
         if self.draw_subpixel_masks(glyphs, font, paint) {
@@ -993,9 +973,8 @@ impl Canvas {
         true
     }
 
-    /// The direct-mask sub run of a glyph run (`prepare_for_direct_mask_drawing`): one draw, its
-    /// glyphs' quads from the atlas. Leaves in `run` the glyphs that are paths and returns
-    /// whether there are any.
+    /// The direct-mask sub run of a glyph run: one draw, its glyphs' quads from the atlas. Leaves in
+    /// `run` the glyphs that are paths and returns whether there are any.
     #[cfg(target_vendor = "apple")]
     fn draw_glyph_masks(&mut self, run: &mut Vec<(u16, f32)>, x: f32, y: f32, font: &Font, paint: &Paint) -> bool {
         use crate::glyphs::{self, Atlas, Digest, StrikeKey};
@@ -1007,10 +986,9 @@ impl Canvas {
         }
         let [a, b, c, d, e, f] = m.0;
         let device_size = font.size * glyphs::max_scale([a, c, b, d]);
-        // An RN `<Text>` (a UIKit-laid-out font) under a scale and translation: drawn as UIKit
-        // draws a label's glyphs.
+        // A UIKit-laid-out font under a scale and translation: drawn as UIKit draws a label's glyphs.
         let uikit = font.ui.is_some() && b == 0.0 && c == 0.0 && a > 0.0 && d > 0.0 && paint.stroke.is_none();
-        // A hairline or stroked run, an SDFT-sized one (not ported yet) or a path-sized one.
+        // A hairline or stroked run, or one at 162 device pixels and more: paths.
         if !uikit && (paint.stroke.is_some() || !(device_size > 0.0) || device_size >= glyphs::MIN_SDFT) {
             return true;
         }
@@ -1026,7 +1004,7 @@ impl Canvas {
         if uikit {
             return self.draw_uikit_glyphs(run, x, y, font, paint, key, text_size, sa, invertible);
         }
-        // positionMatrix = drawMatrix.preTranslate(origin), then postTranslate(½, ½).
+        // The position matrix applied to the origin, plus (½, ½) so that flooring rounds to the nearest pixel.
         let tx = a * x + c * y + e + 0.5;
         let ty = b * x + d * y + f + 0.5;
         let mut quads = std::mem::take(&mut self.glyph_quads);
@@ -1110,13 +1088,11 @@ impl Canvas {
         self.glyph_quads = quads;
     }
 
-    /// An RN `<Text>` run as UIKit draws it (`NSLayoutManager drawGlyphsForGlyphRange:` into the
-    /// text view's backing store, measured on the iOS Simulator by exact/parity-tools/text-probe):
-    /// each glyph drawn by CoreGraphics at its device position with the context's default
-    /// subpixel positioning and quantization (the x fraction kept to the strike's
-    /// [`crate::coretext::Strike::subpixel_levels`], floored; y floored in CoreGraphics'
-    /// y-up space, so the baseline rounds down the screen), its coverage as drawn (no Skia
-    /// pre-blend). A run's glyphs blend over each other as CoreGraphics' do.
+    /// A UIKit label's run as UIKit draws it: each glyph drawn by CoreGraphics at its device position
+    /// with the context's default subpixel positioning and quantization (the x fraction kept to the
+    /// strike's [`crate::coretext::Strike::subpixel_levels`], floored; y floored in CoreGraphics' y-up
+    /// space, so the baseline rounds down the screen), its coverage as drawn (no pre-blend). A run's
+    /// glyphs blend over each other as CoreGraphics' do.
     #[cfg(target_vendor = "apple")]
     #[allow(clippy::too_many_arguments)]
     fn draw_uikit_glyphs(&mut self, run: &mut Vec<(u16, f32)>, x: f32, y: f32, font: &Font, paint: &Paint, key: crate::glyphs::StrikeKey, text_size: f32, sa: [f32; 4], invertible: bool) -> bool {
@@ -1188,8 +1164,8 @@ impl Canvas {
 mod tests {
     use super::*;
 
-    /// The face `match_system_font` reads, at a size of one font unit per point (`opsz` given
-    /// separately, so the outlines are the text-size ones).
+    /// The system face at a size of one font unit per point (`opsz` given separately, so the outlines
+    /// are the text-size ones).
     fn face_at_units(opsz: f32) -> Option<Font> {
         let data = system_face()?;
         let upem = Face::parse(data, 0).ok()?.units_per_em() as f32;
@@ -1199,9 +1175,8 @@ mod tests {
     #[test]
     fn ui_layout_kerns_as_harfbuzz_and_core_text() {
         let Some(font) = face_at_units(17.0) else { return eprintln!("no system font; skipped") };
-        // hb-shape --variations=opsz=17,wght=400 --font-size=2048 SFNS.ttf: the advances with
-        // GPOS kern applied (no GSUB change for these strings), in font units, rounded as hb
-        // prints them. Tracking is per glyph on top, removed here.
+        // Advances with GPOS kern applied (no GSUB change for these strings), in font units, from a
+        // reference shaper at opsz 17, wght 400. Tracking is per glyph on top, removed here.
         let cases: [(&str, &[i32]); 2] = [
             ("Happiness does not wait", &[1520, 1130, 1250, 1250, 506, 1195, 1170, 1052, 1072, 576, 1258, 1210, 1170, 1072, 576, 1195, 1210, 744, 576, 1556, 1130, 506, 744]),
             ("Ólafur Arnalds", &[1580, 518, 1130, 741, 1195, 780, 576, 1380, 800, 1195, 1130, 518, 1258, 1072]),
@@ -1223,9 +1198,8 @@ mod tests {
 
     #[test]
     fn ui_layout_substitutes_as_harfbuzz() {
-        // Core Text's default GSUB features (ccmp, locl, rlig, liga, calt): SF raises the colon
-        // between digits (colon.uc) and leaves letters alone. Glyph ids from hb-shape
-        // --variations=opsz=17,wght=400 --no-glyph-names on SFNS.ttf, which the tests read.
+        // Core Text's default GSUB features: SF raises the colon between digits (colon.uc) and leaves
+        // letters alone. Glyph ids come from a reference shaper at opsz 17, wght 400.
         let Some(font) = face_at_units(17.0) else { return eprintln!("no system font; skipped") };
         if system_face().map(|d| d.len()) != std::fs::metadata("/System/Library/Fonts/SFNS.ttf").ok().map(|m| m.len() as usize) {
             return eprintln!("not macOS's SFNS.ttf; skipped");
@@ -1241,7 +1215,7 @@ mod tests {
             font.layout(text, |g, _| got.push(g.0));
             assert_eq!(got, want, "{text}");
         }
-        // A Skia font (SkFont's drawText) maps characters only.
+        // A plain font maps characters only.
         let plain = Font::with_variations(system_face().unwrap(), 17.0, &[(b"opsz", 17.0)]).unwrap();
         let mut got = Vec::new();
         plain.layout("0:22", |g, _| got.push(g.0));
@@ -1250,8 +1224,8 @@ mod tests {
 
     #[test]
     fn ui_tracking_is_apples_table() {
-        // The HIG's SF tracking: 14 pt −0.15, 17 pt −0.43, 12 pt 0 (trak's track 0: −22, −52, 0
-        // units of 2048 at those sizes), linear between the listed sizes.
+        // SF tracking: 14 pt −0.15, 17 pt −0.43, 12 pt 0 (−22, −52, 0 units of 2048 at those sizes),
+        // linear between the listed sizes.
         let Some(mut font) = match_ui_font(14.0, 400.0) else { return eprintln!("no system font; skipped") };
         assert!((font.tracking() + 22.0 * 14.0 / 2048.0).abs() < 1e-4, "{}", font.tracking());
         font.set_size(17.0);
@@ -1261,7 +1235,7 @@ mod tests {
         font.set_size(18.5);
         let units = -52.0 + (-46.0 + 52.0) * (18.5 - 17.0) / 3.0;
         assert!((font.tracking() - units * 18.5 / 2048.0).abs() < 1e-4, "{}", font.tracking());
-        // A Skia font has none.
+        // A plain font has none.
         assert_eq!(match_system_font(14.0, 400.0).unwrap().tracking(), 0.0);
     }
 

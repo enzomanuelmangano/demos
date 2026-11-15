@@ -1,44 +1,38 @@
-//! react-native-gesture-handler's Pan, Tap, Pinch and Fling, recognised from the pointer events a canvas
-//! that asks for input receives (exact-gpu's `InputEvent::Pointer`, in canvas points with the
-//! host's clock). A surface keeps one recognizer per gesture and asks it, per event, what the
-//! RNGH callbacks would have been told.
+//! Pan, Tap, Pinch and Fling recognizers fed by raw pointer events, for GPU surfaces.
 //!
-//! What RNGH's iOS handlers do, kept here:
-//! - Pan begins on the first move `min_distance` or more from touch-down (RNGH's `minDist`,
-//!   UIKit's 10 pt hysteresis by default). A plain `Gesture.Pan()` is UIKit's own
-//!   UIPanGestureRecognizer: RNGH (RNPanHandler.m) adds nothing to it without custom criteria
-//!   (`failOffset*` alone is none) and reports `translationInView:` of the window. Its translation
-//!   depends on when that move comes (exact/parity-tools/pan-probe, iOS 27 Simulator, a bare
-//!   recognizer; argent moves of 2 to 15.6 pt, 0.6 and 2 s drags, and a single 12 pt move at
-//!   10 to 130 ms):
-//!   - from about 90 ms after touch-down, the pan begins inside that move and the translation
-//!     leaves out exactly the 10 pt along the direction it set off in (2.00 at a 12 pt begin;
-//!     140 pt → 130.00 at every move size in 2 s drags). Agent-measured on the RN app (slow
-//!     drags): 104.5 → 94.3, 140 → 130.2, 99.95 → 90.1;
-//!   - earlier, UIKit defers it to the next update and zeroes the translation at the finger
-//!     (0.00 at a 12 pt begin at 30, 50, 70 ms; 0.6 s drags of 140 pt: 126.00, 129.67, 126.00,
-//!     124.33 for 2, 3.5, 7, 15.6 pt moves). Not modelled: twice (moves 12 pt at ~12 ms and at
-//!     ~88 ms) the deferred pan began only at the next move, and once a 110 ms move zeroed.
-//!   RNGH's custom criteria (`minDist` here) instead `setTranslation(.zero)` at activation
-//!   (RNPanHandler.m): from that point. The demo screen's close Pan (activeOffsetY 10,
-//!   failOffsetX ±30) does not delay a demo's pan. The RN Debug app loses more on fast drags
-//!   (swipe-cards: 113 for 140 pt in 0.6 s, 127.9 in 2 s): its busy main thread, not RN's
-//!   rule; parity follows UIKit (Release).
-//! - Velocity is points per second, from the last 100 ms of samples (UIKit's estimate), only
-//!   from samples where the finger moved: UIKit hears no `touchesMoved` from a finger at rest, so a drag held still keeps its last velocity at the lift (measured on the RN app:
-//!   a ruler dragged at ~100 pt/s, held 600 ms, then lifted still flings one more tick).
-//! - Tap is RNGH's iOS `RNBetterTapGestureRecognizer`: it ends within `max_duration_ms` (500,
-//!   `defaultMaxDuration`) and has no distance limit unless one is set (`maxDist`, `maxDeltaX`,
-//!   `maxDeltaY` are NaN by default, RNTapHandler.m), measured in the window from touch-down.
-//!   `maxDist` is a radius, `maxDeltaX`/`maxDeltaY` bound each axis on its own.
-//! - Pinch is two fingers: it starts when one of them moves while both are down, and its
-//!   `scale` is their distance over the distance when the second came down (UIKit's
-//!   `UIPinchGestureRecognizer.scale`, 1 at the start); it ends when either lifts.
-//! - Fling is UIKit's `UISwipeGestureRecognizer` with its own thresholds ([`FlingGesture`]).
+//! A surface keeps one recognizer per gesture and passes it every pointer event (id, phase, canvas
+//! position, time in ms); it answers with what happened (begin, start, update, end, fail). Not a
+//! reimplementation of react-native-gesture-handler: it uses the same callback names and payload
+//! shapes, and iOS's own recognizer thresholds, so the demos keep their feel.
+//!
+//! ```
+//! use gestures::{Event, PanGesture, Phase};
+//!
+//! let mut pan = PanGesture::new();
+//! pan.event(1, Phase::Down, 0.0, 0.0, 0.0, true);
+//! let Event::Start(p) = pan.event(1, Phase::Move, 20.0, 0.0, 132.0, true) else { panic!() };
+//! assert_eq!(p.translation_x, 10.0);
+//! ```
+//!
+//! - [`PanGesture`] begins on the first move `min_distance` (10 pt) or more from touch-down. By
+//!   default its translation leaves out that 10 pt, except when it begins within
+//!   [`UIKIT_DEFERRED_BEGIN_MS`] of touch-down, where it starts at 0. With `.min_distance(d)` set,
+//!   the translation always starts at 0 where the pan activates.
+//! - Pan velocity is points per second over the last 100 ms of samples, taken only from moves: a
+//!   finger held still keeps its last velocity at the lift.
+//! - [`TapGesture`] ends within `max_duration_ms` (500) and has no distance limit unless one is
+//!   set (`max_distance` is a radius, `max_delta` bounds each axis).
+//! - [`PinchGesture`] needs two fingers; its `scale` is their distance over the distance when the
+//!   second came down.
+//! - [`FlingGesture`] follows iOS's swipe recognizer and its thresholds.
+//!
+//! # Credits
+//!
+//! Callback names and payloads follow react-native-gesture-handler 3.x (MIT).
 
 #![deny(missing_docs)]
 
-/// A pointer's phase, as exact-gpu's `PointerPhase` names it.
+/// A pointer's phase.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Phase {
     /// Down.
@@ -56,22 +50,22 @@ pub enum Phase {
 pub enum Event {
     /// Nothing for this gesture.
     None,
-    /// `onBegin`: a finger it may claim is down at (x, y).
+    /// A finger it may claim is down at (x, y).
     Begin {
         /// Canvas x.
         x: f32,
         /// Canvas y.
         y: f32,
     },
-    /// `onStart`: the pan is active.
+    /// The pan is active.
     Start(Pan),
-    /// `onUpdate` / `onChange`.
+    /// The pan moved.
     Update(Pan),
-    /// `onEnd`: the finger lifted while active.
+    /// The finger lifted while the pan was active.
     End(Pan),
-    /// `onFinalize` without activating (lifted or cancelled before the pan began).
+    /// The gesture failed: the finger lifted or was cancelled before the pan began, or a tap broke a limit.
     Fail,
-    /// A tap's `onEnd` (success) at (x, y).
+    /// A tap succeeded at (x, y).
     Tap {
         /// Canvas x.
         x: f32,
@@ -80,24 +74,24 @@ pub enum Event {
     },
 }
 
-/// A pan's payload (RNGH `PanGestureHandlerEventPayload`).
+/// A pan's payload.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Pan {
-    /// `x`, `y`: the finger in the canvas.
+    /// The finger's x in the canvas.
     pub x: f32,
-    /// See `x`.
+    /// The finger's y in the canvas.
     pub y: f32,
-    /// `translationX/Y`: from where the pan activated (0 on `onStart`).
+    /// Horizontal travel from where the pan activated (0 on start).
     pub translation_x: f32,
-    /// See `translation_x`.
+    /// Vertical travel from where the pan activated.
     pub translation_y: f32,
-    /// `changeX/Y`: since the last update.
+    /// Horizontal travel since the last update.
     pub change_x: f32,
-    /// See `change_x`.
+    /// Vertical travel since the last update.
     pub change_y: f32,
-    /// `velocityX/Y`: points per second.
+    /// Horizontal velocity, points per second.
     pub velocity_x: f32,
-    /// See `velocity_x`.
+    /// Vertical velocity, points per second.
     pub velocity_y: f32,
 }
 
@@ -108,21 +102,21 @@ struct Sample {
     ms: f64,
 }
 
-/// UIKit's pan: a begin this soon after touch-down (ms) zeroes the translation at the finger;
-/// a later one leaves out the hysteresis along the set-off (pan-probe: 83 ms zeroed, 97 ms did not).
+/// A pan that begins this soon after touch-down (ms) starts its translation at 0 at the finger; a
+/// later one leaves out the `min_distance` travelled along the direction it set off in.
 pub const UIKIT_DEFERRED_BEGIN_MS: f64 = 90.0;
 
 /// A one-finger pan.
 #[derive(Clone, Debug)]
 pub struct PanGesture {
-    /// RNGH `minDist`.
+    /// Travel from touch-down, in points, before the pan begins.
     pub min_distance: f32,
     id: Option<u32>,
     start: (f32, f32),
     /// The touch-down's time.
     down_ms: f64,
     origin: (f32, f32),
-    /// `.min_distance(d)` was set: RNGH's custom criteria, translation from the activation.
+    /// `.min_distance(d)` was set: the translation counts from the activation.
     custom: bool,
     last: (f32, f32),
     active: bool,
@@ -136,17 +130,16 @@ impl Default for PanGesture {
 }
 
 impl PanGesture {
-    /// `Gesture.Pan()`: activates after 10 pt of travel, as UIKit's pan does.
+    /// A pan that activates after 10 pt of travel.
     pub fn new() -> PanGesture {
         PanGesture { min_distance: 10.0, id: None, start: (0.0, 0.0), down_ms: 0.0, origin: (0.0, 0.0), custom: false, last: (0.0, 0.0), active: false, samples: Vec::with_capacity(16) }
     }
-    /// The former opt-in, now the only behaviour: a no-op kept so callers written against it
-    /// still build (swipe_cards); drop the call.
+    /// A no-op kept for callers that still chain it; drop the call.
     #[doc(hidden)]
     pub fn uikit(self) -> PanGesture {
         self
     }
-    /// `.minDistance(d)`.
+    /// Sets the travel before the pan begins; the translation then counts from the activation.
     pub fn min_distance(mut self, d: f32) -> PanGesture {
         self.min_distance = d;
         self.custom = true;
@@ -191,7 +184,7 @@ impl PanGesture {
 
     fn sample(&mut self, x: f32, y: f32, ms: f64) {
         if self.samples.last().is_some_and(|s| s.x == x && s.y == y) {
-            return; // a finger at rest: UIKit hears no move, its velocity stays
+            return; // a finger at rest sends no move, so its velocity stays
         }
         self.samples.retain(|s| ms - s.ms <= 150.0);
         self.samples.push(Sample { x, y, ms });
@@ -230,10 +223,10 @@ impl PanGesture {
                     if (dx * dx + dy * dy).sqrt() >= self.min_distance {
                         self.active = true;
                         self.origin = if self.custom || ms - self.down_ms < UIKIT_DEFERRED_BEGIN_MS {
-                            // RNGH's setTranslation(.zero), or UIKit's deferred begin.
+                            // A custom distance, or a begin right after touch-down: translation from the finger.
                             (x, y)
                         } else {
-                            // UIKit: the touch-down point moved 10 pt along the set-off.
+                            // The touch-down point moved `min_distance` along the set-off.
                             let d = (dx * dx + dy * dy).sqrt();
                             (self.start.0 + dx / d * self.min_distance, self.start.1 + dy / d * self.min_distance)
                         };
@@ -265,11 +258,11 @@ impl PanGesture {
 /// A single tap.
 #[derive(Clone, Debug)]
 pub struct TapGesture {
-    /// RNGH `maxDuration`.
+    /// The longest a tap may take from touch-down to lift, in ms.
     pub max_duration_ms: f64,
-    /// RNGH `maxDist` (a radius); infinite (RNGH's NaN) by default.
+    /// The farthest the finger may move from touch-down, a radius; unlimited by default.
     pub max_distance: f32,
-    /// RNGH `maxDeltaX`, `maxDeltaY`: |dx|, |dy| each; infinite by default.
+    /// The farthest the finger may move along each axis, |dx| and |dy|; unlimited by default.
     pub max_delta: (f32, f32),
     id: Option<u32>,
     start: (f32, f32, f64),
@@ -283,17 +276,17 @@ impl Default for TapGesture {
 }
 
 impl TapGesture {
-    /// `.maxDist(d)`: moving farther than `d` from touch-down fails it.
+    /// Moving farther than `d` from touch-down fails the tap.
     pub fn max_distance(mut self, d: f32) -> TapGesture {
         self.max_distance = d;
         self
     }
-    /// `.maxDeltaX(dx).maxDeltaY(dy)`: moving farther than `dx` across or `dy` down fails it.
+    /// Moving farther than `dx` across or `dy` down fails the tap.
     pub fn max_delta(mut self, dx: f32, dy: f32) -> TapGesture {
         self.max_delta = (dx, dy);
         self
     }
-    /// `.maxDuration(ms)`: a tap held longer fails.
+    /// A tap held longer than `ms` fails.
     pub fn max_duration(mut self, ms: f64) -> TapGesture {
         self.max_duration_ms = ms;
         self
@@ -313,7 +306,7 @@ impl TapGesture {
             Phase::Move => {
                 if self.id == Some(id) {
                     let (dx, dy) = (x - self.start.0, y - self.start.1);
-                    // shouldFailUnderCustomCriteria: each test only when its limit is set.
+                    // Each limit is tested only when it is set.
                     if dx.abs() > self.max_delta.0 || dy.abs() > self.max_delta.1 || (dx * dx + dy * dy).sqrt() > self.max_distance {
                         self.failed = true;
                     }
@@ -340,26 +333,26 @@ impl TapGesture {
 pub enum PinchEvent {
     /// Nothing for this gesture.
     None,
-    /// `onStart`: both fingers down and moving.
+    /// Both fingers are down and moving.
     Start(Pinch),
-    /// `onUpdate` / `onChange`.
+    /// The pinch changed.
     Update(Pinch),
-    /// `onEnd`: a finger lifted (or was cancelled) while active.
+    /// A finger lifted or was cancelled while the pinch was active.
     End(Pinch),
 }
 
-/// A pinch's payload (RNGH `PinchGestureHandlerEventPayload`).
+/// A pinch's payload.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Pinch {
-    /// `scale`: the fingers' distance over their distance when the second came down.
+    /// The fingers' distance over their distance when the second came down.
     pub scale: f32,
-    /// `focalX/Y`: the point between the fingers, in the canvas.
+    /// The x of the point between the fingers, in the canvas.
     pub focal_x: f32,
-    /// See `focal_x`.
+    /// The y of the point between the fingers, in the canvas.
     pub focal_y: f32,
 }
 
-/// A two-finger pinch (`Gesture.Pinch()`).
+/// A two-finger pinch.
 #[derive(Clone, Debug, Default)]
 pub struct PinchGesture {
     /// The fingers down on it: id and where it is.
@@ -427,16 +420,15 @@ impl PinchGesture {
     }
 }
 
-/// RNGH's `Directions` (`Directions.RIGHT` …), the bits of UIKit's
-/// `UISwipeGestureRecognizerDirection` that RNFlingHandler hands its recognizer.
+/// Fling directions, as bits of a mask.
 pub mod directions {
-    /// `Directions.RIGHT`.
+    /// Rightward.
     pub const RIGHT: u32 = 1;
-    /// `Directions.LEFT`.
+    /// Leftward.
     pub const LEFT: u32 = 2;
-    /// `Directions.UP`.
+    /// Upward.
     pub const UP: u32 = 4;
-    /// `Directions.DOWN`.
+    /// Downward.
     pub const DOWN: u32 = 8;
 }
 
@@ -445,21 +437,21 @@ pub mod directions {
 pub enum FlingEvent {
     /// Nothing for this gesture.
     None,
-    /// `onBegin`: RNBetterSwipeGestureRecognizer's touchesBegan sends BEGAN at the first touch.
+    /// A touch is down at (x, y); sent at the first touch, before anything is recognised.
     Begin {
         /// Canvas x.
         x: f32,
         /// Canvas y.
         y: f32,
     },
-    /// `onStart` (then `onEnd`): the swipe recognised on this move.
+    /// The swipe was recognised on this move.
     Start {
         /// Canvas x.
         x: f32,
         /// Canvas y.
         y: f32,
     },
-    /// `onFinalize` without activating.
+    /// The touch ended without a swipe.
     Fail,
 }
 
@@ -470,28 +462,20 @@ enum Swipe {
     Failed,
 }
 
-/// `Gesture.Fling().direction(d)` on iOS: RNGH 3.3's RNFlingHandler is UIKit's
-/// `UISwipeGestureRecognizer` (RNBetterSwipeGestureRecognizer only adds the BEGAN at touch-down),
-/// so this is UIKit's swipe as UIKitCore runs it (`-[UISwipeGestureRecognizer touchesMoved:]` and
-/// `_checkForSwipeWithDelta:time:currentPositionChange:currentTimeChange:indirect:`, read from
-/// the arm64 code and the defaults a fresh recognizer holds: exact/parity-tools/swipe-probe):
-/// - `maximumDuration` 0.5 s: a move later than that from the touch-down fails it.
+/// A swipe recognizer with iOS's swipe thresholds.
+/// - A move later than `MAX_DURATION` (0.5 s) from the touch-down fails it.
 /// - On each move, with t = min(time since touch-down, 0.5) and (dx, dy) the travel from the
-///   touch-down: the needed primary travel is `minimumPrimaryMovement` 50 pt × (1 − t × (1 −
-///   `rateOfMinimumMovementDecay` 0.06)) and the allowed sideways travel
-///   `maximumSecondaryMovement` 50 pt × (1 − t × (1 − `rateOfMaximumMovementDecay` 0.02));
-///   `maximumPrimaryMovement` is FLT_MAX, `minimumSecondaryMovement` and
-///   `minimumPrimaryMovementRate` 0. A single direction fails at any travel against it
-///   (`maximumOppositeMovement` 0: dx < 0 for RIGHT, dx > 0 for LEFT, dy < 0 for DOWN, dy > 0 for
-///   UP) and at a sideways travel past the allowance; it is recognised on the first move whose
-///   primary travel reaches the need.
-/// - `numberOfTouchesRequired` (RNGH `numberOfPointers`, 1): one more touch fails it; a lift
-///   before it is recognised fails it. It resets when all its touches are up.
+///   touch-down, the needed primary travel is `MIN_PRIMARY` × (1 − t × (1 − `MIN_DECAY`)) and the
+///   allowed sideways travel is `MAX_SECONDARY` × (1 − t × (1 − `MAX_DECAY`)).
+/// - A single direction fails at any travel against it and at a sideways travel past the
+///   allowance; it is recognised on the first move whose primary travel reaches the need.
+/// - One more touch than `number_of_pointers` fails it, and so does a lift before it is
+///   recognised. It resets when all its touches are up.
 #[derive(Clone, Debug)]
 pub struct FlingGesture {
-    /// `.direction(d)`: a mask of [`directions`].
+    /// The directions that count, a mask of [`directions`].
     pub direction: u32,
-    /// `.numberOfPointers(n)`.
+    /// The number of touches required.
     pub number_of_pointers: usize,
     /// The touches it follows: id, where it came down, where it is.
     touches: Vec<(u32, f64, f64, f64, f64)>,
@@ -502,18 +486,18 @@ pub struct FlingGesture {
 }
 
 impl FlingGesture {
-    /// `minimumPrimaryMovement`, points.
+    /// The travel needed along the direction at touch-down, points.
     pub const MIN_PRIMARY: f64 = 50.0;
-    /// `maximumSecondaryMovement`, points.
+    /// The sideways travel allowed at touch-down, points.
     pub const MAX_SECONDARY: f64 = 50.0;
-    /// `rateOfMinimumMovementDecay`.
+    /// How fast the needed travel decays: the share left after one second.
     pub const MIN_DECAY: f64 = 0.06;
-    /// `rateOfMaximumMovementDecay`.
+    /// How fast the allowed sideways travel decays: the share left after one second.
     pub const MAX_DECAY: f64 = 0.02;
-    /// `maximumDuration`, seconds (also the cap on the decays' time).
+    /// The longest a swipe may take, seconds (also the cap on the decays' time).
     pub const MAX_DURATION: f64 = 0.5;
 
-    /// `Gesture.Fling().direction(direction)` (one pointer).
+    /// A one-finger fling in `direction`.
     pub fn new(direction: u32) -> FlingGesture {
         FlingGesture { direction, number_of_pointers: 1, touches: Vec::with_capacity(4), down: Vec::with_capacity(4), start_ms: 0.0, state: Swipe::Possible }
     }
@@ -523,7 +507,7 @@ impl FlingGesture {
         !self.down.is_empty()
     }
 
-    /// `_checkForSwipeWithDelta:…:indirect:NO` for one touch: `Some(true)` recognised, `Some(false)`
+    /// Judges one touch's travel (dx, dy) after `time_s`: `Some(true)` recognised, `Some(false)`
     /// failed (too much movement), `None` still possible.
     pub fn check(direction: u32, dx: f64, dy: f64, time_s: f64) -> Option<bool> {
         let t = time_s.min(0.5);
@@ -653,7 +637,7 @@ mod tests {
         let Event::End(p) = pan.event(1, Phase::Up, 40.0, 0.0, 148.0, true) else { panic!() };
         assert_eq!(p.translation_x, 30.0);
         assert!(p.velocity_x > 500.0, "{}", p.velocity_x);
-        // RNGH's custom criteria zero the translation where the pan activates.
+        // With a custom distance the translation counts from the activation.
         let mut pan = PanGesture::new().min_distance(10.0);
         pan.event(1, Phase::Down, 0.0, 0.0, 0.0, true);
         let Event::Start(p) = pan.event(1, Phase::Move, 0.0, 20.0, 16.0, true) else { panic!() };
@@ -662,7 +646,7 @@ mod tests {
 
     #[test]
     fn uikit_zeroes_a_pan_that_begins_early() {
-        // pan-probe: a 12 pt move 30 to 83 ms after touch-down begins at 0; from ~97 ms at 2.
+        // A 12 pt move within 90 ms of touch-down begins at 0; a later one begins at 2.
         for (ms, want) in [(30.0, 0.0), (70.0, 0.0), (97.0, 2.0), (130.0, 2.0)] {
             let mut pan = PanGesture::new();
             pan.event(1, Phase::Down, 0.0, 0.0, 0.0, true);
@@ -671,7 +655,7 @@ mod tests {
             let Event::Update(p) = pan.event(1, Phase::Move, 60.0, 0.0, ms + 250.0, true) else { panic!() };
             assert_eq!(p.translation_x, 48.0 + want, "{ms} ms");
         }
-        // 0.6 s drags of 140 pt (probe): 7 pt moves begin at 14 pt after ~66 ms → 126.
+        // A 0.6 s drag of 140 pt in 7 pt moves begins at 14 pt after about 66 ms → 126.
         let mut pan = PanGesture::new();
         pan.event(1, Phase::Down, 0.0, 0.0, 0.0, true);
         let mut last = Event::None;
@@ -713,7 +697,6 @@ mod tests {
 
     #[test]
     fn tap_has_no_distance_limit_by_default() {
-        // RNGH's iOS Tap: maxDist / maxDeltaX / maxDeltaY are NaN unless set.
         let mut tap = TapGesture::default();
         tap.event(1, Phase::Down, 0.0, 0.0, 0.0, true);
         tap.event(1, Phase::Move, 300.0, 200.0, 50.0, true);
@@ -742,7 +725,7 @@ mod tests {
 
     #[test]
     fn tap_max_delta_bounds_each_axis() {
-        // .maxDeltaX(5).maxDeltaY(5): a 4.5 pt diagonal (6.4 pt away) still taps; 5.5 across fails.
+        // With a 5 pt limit per axis, a 4.5 pt diagonal (6.4 pt away) still taps; 5.5 across fails.
         let mut tap = TapGesture::default().max_delta(5.0, 5.0);
         tap.event(1, Phase::Down, 0.0, 0.0, 0.0, true);
         tap.event(1, Phase::Move, 4.5, 4.5, 50.0, true);
@@ -755,7 +738,7 @@ mod tests {
     #[test]
     fn fling_is_uikits_swipe() {
         use directions::*;
-        // 50 pt at touch-down, decaying by 0.94 / s of it: 45.3 pt at 0.1 s, 26.5 pt at 0.5 s.
+        // The needed travel is 50 pt at touch-down, 45.3 pt at 0.1 s, 26.5 pt at 0.5 s.
         let mut f = FlingGesture::new(RIGHT);
         assert!(matches!(f.event(1, Phase::Down, 0.0, 0.0, 0.0, true), FlingEvent::Begin { .. }));
         assert_eq!(f.event(1, Phase::Move, 45.0, 0.0, 100.0, true), FlingEvent::None);
