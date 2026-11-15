@@ -4,7 +4,8 @@
 //!
 //! - The column (the 150 pt chart over the 60 pt list box) is centred in the screen. The list:
 //!   snapToInterval width, decelerationRate "fast", bounces (`ui_scroll`, RCTScrollView's snap:
-//!   the page at or past UIKit's projected rest in the fling's direction), hitSlop 100.
+//!   the page at or past UIKit's projected rest in the fling's direction), hitSlop 100 in RN;
+//!   here, by the owner's call, a drag anywhere on the screen.
 //! - activeIndex = floor((offset + width / 2) / width), held in 0…6; a selection haptic when it
 //!   changes (useAnimatedReaction).
 //! - Each label: an item view the window's width, 40 tall under the content's paddingTop 20
@@ -29,7 +30,6 @@ const SIZE: f32 = 16.0;
 const CHART: f64 = 150.0;
 const LIST: f64 = 60.0;
 const PAD_TOP: f64 = 20.0;
-const HIT_SLOP: f64 = 100.0;
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
@@ -139,10 +139,10 @@ impl Surface for Weeks {
             return;
         }
         self.ensure();
-        let top = self.list_top();
-        let w = self.size.0;
-        let inside = (-HIT_SLOP..=w + HIT_SLOP).contains(&(x as f64))
-            && (top - HIT_SLOP..=top + LIST + HIT_SLOP).contains(&(y as f64));
+        // The owner's call (phone note, 2026-11-15): the whole screen scrolls the weeks, where
+        // RN's list takes only its 60 pt box and hitSlop 100 (the bars and the empty screen
+        // around them included).
+        let inside = true;
         if let Some(s) = &mut self.scroll {
             s.input(id, gfx::phase(phase), x, y, at_ms, inside);
         }
