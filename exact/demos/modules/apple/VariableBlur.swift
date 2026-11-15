@@ -1,0 +1,188 @@
+// `variable-blur`: a progressive (variable-radius) blur of whatever lies under the view, as iOS
+// draws its own (the edges of Photos, Maps, the iOS 26 tab and toolbar scroll edges): one
+// Gaussian whose radius is read per pixel from a mask, run by the render server on the live
+// backdrop. No stacked layers (no seams), no steps of radius (no banding), no material tint.
+//
+// How: a UIVisualEffectView's backdrop layer (UICABackdropLayer) gets Core Animation's
+// `variableBlur` filter in place of the material's chain: `inputRadius` the radius where the
+// mask is opaque, `inputMaskImage` an alpha ramp stretched over the layer's bounds,
+// `inputNormalizeEdges` on (the weights renormalised inside the bounds: nothing outside bleeds
+// in). The backdrop's `scale` is the screen's, so where the radius is 0 the content stays sharp
+// (a material samples at a fraction of it). The tint and highlight subviews are hidden.
+// CAFilter is not public API; the class and selector are looked up by name, and when either is
+// missing (or `variableBlur` is) the view falls back to the old look: an ultra-thin light
+// material faded in by the same ramp.
+//
+// Props (all optional):
+//   radius     the largest radius, points (σ of the Gaussian); default 20
+//   start/end  where the ramp runs, as fractions of the view's height; default 0 and 1
+//   direction  "down" (sharp at the top, blurred toward the bottom; default) or "up"
+// The ramp between start and end is smootherstep (6t⁵ − 15t⁴ + 10t³): flat at both ends, so
+// neither the onset nor the full-radius line shows. The mask is 8-bit alpha, 1024 rows: a step
+// of radius under 0.08 pt, interpolated between rows.
+#if os(iOS)
+import UIKit
+
+final class VariableBlur: ExactNativeInstance {
+    private let blur = VariableBlurView()
+
+    init(props: [String: String], events: ExactNativeEvents) {
+        super.init(events: events)
+        try? setProps(props)
+    }
+
+    override var view: ExactNativeView { blur }
+
+    override func setProps(_ props: [String: String]) throws {
+        func number(_ key: String, _ fallback: CGFloat) -> CGFloat {
+            guard let text = props[key], let value = Double(text), value.isFinite else { return fallback }
+            return CGFloat(value)
+        }
+        blur.configure(VariableBlurView.Ramp(
+            radius: max(0, number("radius", 20)),
+            start: min(max(number("start", 0), 0), 1),
+            end: min(max(number("end", 1), 0), 1),
+            up: props["direction"] == "up"))
+    }
+}
+
+final class VariableBlurView: UIView {
+    struct Ramp: Equatable {
+        var radius: CGFloat = 20
+        var start: CGFloat = 0
+        var end: CGFloat = 1
+        var up = false
+    }
+
+    private static let maskRows = 1024
+
+    private let effect = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterialLight))
+    private var ramp = Ramp()
+    private var filter: NSObject?
+    private var fallbackMask: CAGradientLayer?
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isUserInteractionEnabled = false
+        backgroundColor = .clear
+        effect.frame = bounds
+        effect.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        effect.isUserInteractionEnabled = false
+        addSubview(effect)
+        filter = Self.makeVariableBlur()
+        if filter == nil {
+            let mask = CAGradientLayer()
+            effect.layer.mask = mask
+            fallbackMask = mask
+        }
+        apply()
+        registerForTraitChanges([UITraitDisplayScale.self, UITraitUserInterfaceStyle.self]) { (view: VariableBlurView, _) in
+            view.install()
+        }
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
+
+    func configure(_ next: Ramp) {
+        guard next != ramp else { return }
+        ramp = next
+        apply()
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        fallbackMask?.frame = effect.bounds
+        // UIKit rebuilds a visual effect's layers on some trait and layout changes: keep ours.
+        install()
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        install()
+    }
+
+
+    // MARK: - The filter
+
+    /// `[CAFilter filterWithType:@"variableBlur"]`, or nil where the runtime lacks it.
+    private static func makeVariableBlur() -> NSObject? {
+        guard let type = NSClassFromString(["CA", "Filter"].joined()) as? NSObject.Type else { return nil }
+        let make = NSSelectorFromString(["filter", "With", "Type:"].joined())
+        guard type.responds(to: make),
+              let made = type.perform(make, with: "variableBlur")?.takeUnretainedValue() as? NSObject
+        else { return nil }
+        // An unknown type still makes a filter on some releases: it must take our keys.
+        guard made.responds(to: NSSelectorFromString("setValue:forKey:")) else { return nil }
+        return made
+    }
+
+    private func apply() {
+        if let filter {
+            filter.setValue(ramp.radius, forKey: "inputRadius")
+            filter.setValue(Self.maskImage(ramp), forKey: "inputMaskImage")
+            filter.setValue(true, forKey: "inputNormalizeEdges")
+            // A filter already on the layer is a copy: put the new one on.
+            backdropLayer()?.setValue(nil, forKey: "filters")
+            install()
+        } else if let mask = fallbackMask {
+            let stops = 16
+            mask.colors = (0...stops).map { i in
+                UIColor(white: 0, alpha: Self.alpha(CGFloat(i) / CGFloat(stops), ramp)).cgColor
+            }
+            mask.locations = (0...stops).map { NSNumber(value: Double($0) / Double(stops)) }
+            mask.startPoint = CGPoint(x: 0.5, y: 0)
+            mask.endPoint = CGPoint(x: 0.5, y: 1)
+        }
+    }
+
+    /// The backdrop layer of the effect view: the subview whose layer is a backdrop layer.
+    private func backdropLayer() -> CALayer? {
+        effect.subviews.first { NSStringFromClass(type(of: $0.layer)).contains("Backdrop") }?.layer
+    }
+
+    private func install() {
+        guard let filter, let backdrop = backdropLayer() else { return }
+        let current = backdrop.value(forKey: "filters") as? [NSObject]
+        if current?.count != 1 || current?.first?.value(forKey: "name") as? String != filter.value(forKey: "name") as? String
+            || (current?.first?.value(forKey: "inputRadius") as? NSNumber)?.doubleValue != Double(ramp.radius) {
+            backdrop.setValue([filter], forKey: "filters")
+        }
+        // Sample at the screen's scale: where the radius is 0 the content stays sharp.
+        let scale = window?.screen.scale ?? traitCollection.displayScale
+        if scale > 0 { backdrop.setValue(scale, forKey: "scale") }
+        // No material: the tint and highlight layers are the effect's other subviews.
+        for view in effect.subviews where view.layer !== backdrop {
+            view.isHidden = true
+        }
+    }
+
+    // MARK: - The mask
+
+    /// The blur's weight at `y` (0 top … 1 bottom of the view).
+    static func alpha(_ y: CGFloat, _ ramp: Ramp) -> CGFloat {
+        let y = ramp.up ? 1 - y : y
+        let span = ramp.end - ramp.start
+        let t: CGFloat
+        if span <= 0.0001 { t = y >= ramp.start ? 1 : 0 } else { t = min(max((y - ramp.start) / span, 0), 1) }
+        return t * t * t * (t * (t * 6 - 15) + 10)
+    }
+
+    /// One column of the ramp, black with the blur's weight as alpha (premultiplied), top row
+    /// first; the filter stretches it over the layer.
+    static func maskImage(_ ramp: Ramp) -> CGImage? {
+        let rows = maskRows
+        var pixels = [UInt8](repeating: 0, count: rows * 4)
+        for row in 0..<rows {
+            let a = alpha((CGFloat(row) + 0.5) / CGFloat(rows), ramp)
+            pixels[row * 4 + 3] = UInt8((a * 255).rounded())
+        }
+        let data = Data(pixels) as CFData
+        guard let provider = CGDataProvider(data: data) else { return nil }
+        return CGImage(width: 1, height: rows, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: 4,
+                       space: CGColorSpaceCreateDeviceRGB(),
+                       bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                       provider: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent)
+    }
+}
+#endif

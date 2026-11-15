@@ -49,6 +49,9 @@
 // starts it, a new `stops` value cancels it (demos/chessboard/chessboard.contract).
 //
 // `painting-menu` is art-gallery's PaintingMenu (PaintingMenu.swift), on iOS and on macOS.
+//
+// `variable-blur` is a progressive blur of the backdrop (VariableBlur.swift): clerk-toast's
+// backdrop behind the toasts, iOS only.
 import Foundation
 #if os(iOS)
 import CoreHaptics
@@ -65,7 +68,8 @@ final class DemosModule: ExactModule {
          "glass-button": ExactNativeFactory { props, events in GlassButton(props: props, events: events) },
          "mate-haptic": ExactNativeFactory { props, events in MateHaptic(props: props, events: events) },
          "swift-slider": ExactNativeFactory { props, events in SwiftSlider(props: props, events: events) },
-         "painting-menu": ExactNativeFactory { props, events in PaintingMenu(props: props, events: events) }]
+         "painting-menu": ExactNativeFactory { props, events in PaintingMenu(props: props, events: events) },
+         "variable-blur": ExactNativeFactory { props, events in VariableBlur(props: props, events: events) }]
     }
 
     override func element(_ element: ExactElement) {
