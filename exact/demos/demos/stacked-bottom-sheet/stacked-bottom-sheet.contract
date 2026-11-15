@@ -27,6 +27,15 @@ fn sheetTiming(): string = "300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756
 // (bun tools/spring.ts 250 1).
 fn sheetThrow(): string = "-exact-spring(4350.9397, 263.8467, 4)"
 
+// Past RN (the owner's note: "reduce the distance, the trays must be concentric"): the trays
+// float as iOS 26 sheets, 10 pt from the sides and the bottom of the display, their corners
+// concentric with its corner: radius = display corner − inset. Exact exposes no display corner
+// radius, so it is the iPhone 17 / Air's 62 pt (home/atlas.contract airCorner). The trays
+// behind are the front one scaled (1 − id × 0.05), so their corners scale with them. 52 stays
+// under half the shortest tray (140).
+fn sheetInset(): number = 10
+fn sheetCorner(): number = 62 - sheetInset()
+
 // The mount: `bottom` starts at -componentHeight and springs to BaseSafeArea + bottomHeight, so
 // the sheet rises biggest + 50 px (biggest: the tallest sheet in the list then, one of eight
 // heights, so eight keyframes). The default spring is critically damped (ω = √(900 / 4) = 15),
@@ -171,9 +180,9 @@ component StackedBottomSheet
           -exact-drag-timeline="--sheetSwipe y"
           for key, i in keys key=key
             if sheetNum(vGone, i) == 0 and sheetNewer(vGone, i) == 0
-              view position="absolute" left=(w * 0.05)
-                bottom=(50 + sheetLift(biggest, sheetHeightOf(sheetNum(cfgs, i)), 0))
-                width=(w * 0.9) height=sheetHeightOf(sheetNum(cfgs, i)) pointer-events="auto"
+              view position="absolute" left=sheetInset()
+                bottom=(sheetInset() + sheetLift(biggest, sheetHeightOf(sheetNum(cfgs, i)), 0))
+                width=(w - 2 * sheetInset()) height=sheetHeightOf(sheetNum(cfgs, i)) pointer-events="auto"
                 touch-action="none" transformDragFor="sheet-drag" transformgeometry=began(key)
                 transformrelease=released aria-label="Swipe the sheet down"
                 testId=`sheet-handle-${key}`
@@ -181,7 +190,7 @@ component StackedBottomSheet
                 // sheet's row, so the press lands where the wand is drawn.
                 if sheetNum(cfgs, i) == 2
                   column position="absolute" inset=0
-                    SheetContent(cfg=2, ghost=true, width=(w * 0.9), magic=push(true))
+                    SheetContent(cfg=2, ghost=true, width=(w - 2 * sheetInset()), magic=push(true))
 
 component StackedSheetCard
   props
@@ -198,8 +207,9 @@ component StackedSheetCard
   derive w = env.width
   derive h = sheetHeightOf(cfg)
   view
-    // The Animated.View: 0.9 w at left 0.05 w, bottom BaseSafeArea (50), zIndex 100 - id.
-    column position="absolute" left=(w * 0.05) bottom=50 width=(w * 0.9) z-index=(100 - id)
+    // The Animated.View (RN: 0.9 w at left 0.05 w, bottom BaseSafeArea 50): the inset on three
+    // sides; zIndex 100 - id.
+    column position="absolute" left=sheetInset() bottom=sheetInset() width=(w - 2 * sheetInset()) z-index=(100 - id)
       pointer-events="none" testId=`sheet-${sheetKey}`
       column animation=`${sheetEnterName(mountBiggest)} ${sheetEnterTiming()}`
         // transform: translateY -(bottom - BaseSafeArea), withSpring as bottomHeight changes;
@@ -210,24 +220,24 @@ component StackedSheetCard
             column translate=(goneMode >= 1 ? `0px ${goneY}px` : "0px 0px")
               animation=(dragged ? "sheetSwipeY 1s linear both" : "none")
               animation-timeline=(dragged ? "--sheetSwipe" : "auto") animation-range="0px 2000px"
-              column translate=(goneMode >= 1 ? `0px ${h + 50 - goneY}px` : "0px 0px")
+              column translate=(goneMode >= 1 ? `0px ${h + sheetInset() - goneY}px` : "0px 0px")
                 transition=`translate ${sheetThrow()}`
-                // styles.container: white, radius 35 continuous, boxShadow 0 0 10px 3 % black;
+                // styles.container: white, radius 35 continuous (here sheetCorner()), boxShadow 0 0 10px 3 % black;
                 // rShadowStyle's layer shadow (RN's default offset 0, -3, black) withTiming to
                 // radius max(10 - id × 2.5, 2) (CSS blur twice that), opacity max(0.1 - id ×
                 // 0.025, 0.05).
-                column background-color="#ffffff" border-radius=35 corner-shape="-exact-continuous"
+                column background-color="#ffffff" border-radius=sheetCorner() corner-shape="-exact-continuous"
                   box-shadow=`0px 0px 10px rgba(0, 0, 0, 0.03), 0px -3px ${2 * max(10 - id * 2.5, 2)}px rgba(0, 0, 0, ${max(0.1 - id * 0.025, 0.05)})`
                   transition=`box-shadow ${sheetTiming()}`
                   // rVisibleContainerStyle: opacity withTiming(id <= 1 ? 1 : 0); 0.9 w ×
                   // componentHeight, radius 35 continuous, clipped.
-                  column width=(w * 0.9) height=h border-radius=35 corner-shape="-exact-continuous"
+                  column width=(w - 2 * sheetInset()) height=h border-radius=sheetCorner() corner-shape="-exact-continuous"
                     overflow="hidden" position="relative" opacity=(id <= 1 ? 1 : 0)
                     transition=`opacity ${sheetTiming()}`
                     SheetGrabber(light=false)
                     // The children render for id <= 2.
                     if id <= 2
-                      SheetContent(cfg=cfg, ghost=false, width=(w * 0.9), magic=magic)
+                      SheetContent(cfg=cfg, ghost=false, width=(w - 2 * sheetInset()), magic=magic)
 
 // stacked-sheet-handle.tsx: centred, absolute at top 7.5, 50 × 2, radius 5, rgba(0,0,0,0.08);
 // the wand's sheet draws its own over the Spiral, rgba(255,255,255,0.5), zIndex 2.
