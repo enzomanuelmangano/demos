@@ -29,9 +29,17 @@
 //! So the tab left fades to 0.5 at once (300 ms, from the spring's second frame, when activeIndex
 //! leaves its integer), and the tab chosen stays at 0.5 until the spring rests (833 ms at 60 Hz)
 //! and then fades to 1. Haptics: pressto's global onPress (selection) on every press.
+//!
+//! Past RN (the owner: "support the pan on the tab bar", as iOS 26's tab bar): a horizontal
+//! drag across the bar (UIKit's 10 pt pan) cancels the press and carries the light under the
+//! finger 1:1 (clamped to the first and last tab), stretched with the finger's speed (up to
+//! 1.3 × at 1500 pt/s, on a spring so it eases back); the tab under it brightens and a
+//! selection haptic plays as it crosses each tab. On release it springs (Gentle, from the
+//! finger's speed) to the nearest tab and selects it.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
+use gesture_handler::{Event, PanGesture};
 use pressto::{PressEvent, Pressable};
 use reanimated::{spring::GENTLE, Easing, Spring, Timing};
 use skia::{point, stops, Canvas, Color, Font, Paint, Path, Renderer, Shader};
@@ -68,6 +76,9 @@ pub fn surface() -> Box<dyn Surface> {
         light: Spring::at(0.0),
         opacity: std::array::from_fn(|i| Timing::at(if i == 0 { 1.0 } else { 0.5 })),
         press: std::array::from_fn(|_| Pressable::new()),
+        pan: PanGesture::new(),
+        dragging: false,
+        stretch: Spring::at(1.0),
         layout: None,
         path: None,
         posted: Vec::new(),
@@ -153,6 +164,11 @@ struct FloatingBottomBar {
     opacity: [Timing; TABS],
     /// Each PressableScale.
     press: [Pressable; TABS],
+    /// The drag across the bar, while it holds the light.
+    pan: PanGesture,
+    dragging: bool,
+    /// The light's horizontal stretch (1 at rest).
+    stretch: Spring,
     layout: Option<(f32, f32, Layout)>,
     /// The trapezoid, for the size it was built at.
     path: Option<((f32, f32), Path)>,
@@ -173,6 +189,35 @@ impl FloatingBottomBar {
         let cx = l.shift + cl + cw / 2.0;
         let (x, y) = (x as f64, y as f64);
         (x - cx).abs() <= cw * s / 2.0 && (y - HEIGHT / 2.0).abs() <= HEIGHT * s / 2.0
+    }
+
+    /// The light's index under a finger at canvas x, clamped to the tabs.
+    fn index_at(&self, x: f32) -> f64 {
+        let Some((_, _, l)) = self.layout else {
+            return self.light.value;
+        };
+        ((x as f64 - l.shift - l.light_left - l.tab / 2.0) / l.tab).clamp(0.0, (TABS - 1) as f64)
+    }
+
+    /// The drag carries the light: under the finger, a haptic per tab crossed.
+    fn drag_to(&mut self, x: f32, vx: f32) {
+        let before = self.light.value.round();
+        self.light.set(self.index_at(x));
+        if self.light.value.round() != before {
+            self.posted.push(pressto::GLOBAL_ON_PRESS.into());
+        }
+        let k = 1.0 + (vx.abs() as f64 / 1500.0).min(1.0) * 0.3;
+        self.stretch.retarget(k, GENTLE);
+    }
+
+    /// The lift: to the nearest tab on the spring, selected.
+    fn drop_at(&mut self, vx: f32) {
+        self.dragging = false;
+        let tab = self.layout.map_or(1.0, |(_, _, l)| l.tab);
+        let n = self.light.value.round();
+        self.index = n as usize;
+        self.light.to(n, vx as f64 / tab, GENTLE);
+        self.stretch.retarget(1.0, GENTLE);
     }
 
     /// navigation.navigate(screen): the derived value's withSpring retargets.
@@ -215,12 +260,37 @@ impl Surface for FloatingBottomBar {
 
     fn input(&mut self, event: &InputEvent) {
         let InputEvent::Pointer {
-            id, phase, x, y, ..
+            id, phase, x, y, at_ms, ..
         } = *event
         else {
             return;
         };
         let phase = gfx::phase(phase);
+        // The drag across the bar (past RN): once it starts, the press is cancelled.
+        match self.pan.event(id, phase, x, y, at_ms, true) {
+            Event::Start(p) => {
+                self.dragging = true;
+                for press in &mut self.press {
+                    press.pointer(id, gesture_handler::Phase::Cancel, false);
+                }
+                self.drag_to(p.x, p.velocity_x);
+                return;
+            }
+            Event::Update(p) if self.dragging => {
+                self.drag_to(p.x, p.velocity_x);
+                return;
+            }
+            Event::End(p) if self.dragging => {
+                self.drop_at(p.velocity_x);
+                return;
+            }
+            Event::Fail if self.dragging => {
+                self.drop_at(0.0);
+                return;
+            }
+            _ if self.dragging => return,
+            _ => {}
+        }
         if phase == gesture_handler::Phase::Down {
             if let Some(i) = (0..TABS).find(|&i| self.inside(i, x, y)) {
                 self.press[i].pointer_down(id, true);
@@ -260,9 +330,10 @@ impl Surface for FloatingBottomBar {
         let now = frame.now_ms;
 
         // The derived value's frame, then the style's mapper for every tab (activeIndex === i).
-        let mut moving = self.light.step(now);
+        let mut moving = self.light.step(now) | self.stretch.step(now) | self.dragging;
+        let under = self.light.value.round();
         for (i, t) in self.opacity.iter_mut().enumerate() {
-            let to = if self.light.value == i as f64 {
+            let to = if self.light.value == i as f64 || (self.dragging && under == i as f64) {
                 1.0
             } else {
                 0.5
@@ -318,6 +389,11 @@ impl Surface for FloatingBottomBar {
         .with_opacity(0.5);
         c.save();
         c.translate(lx, 0.0);
+        // Stretched about its centre with the finger's speed (past RN).
+        let k = self.stretch.value as f32;
+        c.translate(tab / 2.0, 0.0);
+        c.scale(k, 1.0);
+        c.translate(-tab / 2.0, 0.0);
         c.draw_path(path, &light);
         c.draw_rrect(
             PADDING,
@@ -467,5 +543,41 @@ mod tests {
         };
         assert!(ink(3 * 120, 3 * 140), "bookmark");
         assert!(!ink(3 * 150, 3 * 160), "between bookmark and add");
+    }
+
+    #[test]
+    fn a_drag_across_the_bar_carries_the_light_and_selects_where_it_lifts() {
+        let gpu = match fixture::device() {
+            Ok(gpu) => gpu,
+            Err(error) => return eprintln!("{error}; skipped"),
+        };
+        let mut s = surface();
+        fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
+        let finger = |s: &mut Box<dyn Surface>, phase, x: f32, at_ms: f64| {
+            s.input(&InputEvent::Pointer { id: 1, phase, x, y: 30.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
+        };
+        // From tab 0's centre (≈ 50.4) to past tab 3's (≈ 279), 4 pt a frame.
+        let mut x = 50.0;
+        let mut ms = 0.0;
+        finger(&mut s, PointerPhase::Down, x, ms);
+        while x < 285.0 {
+            x += 4.0;
+            ms += 16.7;
+            finger(&mut s, PointerPhase::Move, x, ms);
+            fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+        }
+        // Tabs 1, 2 and 3 crossed: one selection haptic each; no press fired.
+        assert_eq!(s.messages(), vec!["haptic:selection".to_string(); 3]);
+        let a = s.agent("").unwrap();
+        assert!(a.contains("\"index\":0") && !a.contains("\"held\":true"), "{a}");
+        finger(&mut s, PointerPhase::Up, x, ms);
+        let mut moving = true;
+        while moving && ms < 3000.0 {
+            ms += 16.7;
+            moving = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap().1;
+        }
+        let a = s.agent("").unwrap();
+        assert!(a.contains("\"index\":3") && a.contains("\"light\":3.0000"), "{a}");
+        assert!(s.messages().is_empty());
     }
 }
