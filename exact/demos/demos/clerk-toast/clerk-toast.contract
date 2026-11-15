@@ -106,12 +106,10 @@ component ClerkToast
   derive w = env.width
   derive live = gone.filter(g => g == 0).length
 
-  // Bumped by each toast, so the timer surface fires `landed` as it arrives.
-  state landToken = 0
-
   // The capsule's press (RN's card press, hook.tsx onPress): the next toast, id 0, the others
   // one place back. Haptics (past RN, which plays none), one per event: the press is pressto's
-  // global selection; the toast landing a soft impact (`landed`); a swipe-dismiss medium.
+  // global selection; a swipe-dismiss medium. Nothing when the toast lands: a soft impact
+  // 435 ms after the press's selection stacked on it.
   action showToast
     let now = performanceNow()
     let keep = range(keys.length).filter(j => clerkStays(gone, goneAt, goneK, j, now))
@@ -124,12 +122,6 @@ component ClerkToast
     serial = serial + 1
     pressed = pressed + 1
     shiftDelay = 0
-    landToken = landToken + 1
-
-  // The mount's spring (clerkEnter, critically damped, ω 8.944) has covered 90 % of its 105 px
-  // at 435 ms: the toast reads as arrived there.
-  action landed(m: string)
-    haptic("impact-soft")
 
   // The eighth toast's x (clearAllStackedToasts): every toast leaves, FadeOutLeft.delay(120 × id).
   // The x's PressableScale plays pressto's global haptic (the app's onPress) first.
@@ -209,9 +201,6 @@ component ClerkToast
               box-shadow="0px 8px 24px rgba(0, 0, 0, 0.22), 0px 1px 3px rgba(0, 0, 0, 0.12)"
               image "symbol:sf/bell.badge" font-size=17 color="#000000" aria-hidden=true
               text "Show toast" color="#000000" font-family="ui-rounded" font-weight=600 font-size=17
-      // Arms once per toast; posts `landed` (gpu/src/timer.rs).
-      canvas surface=timer(landToken, 435) message=landed width=1 height=1 position="absolute"
-        left=0 top=0 pointer-events="none" aria-hidden=true
       for key, i in keys key=key
         ClerkToastCard(env=env, toastKey=key, kind=clerkNum(kinds, i), k=clerkId(gone, goneK, i),
           goneMode=clerkNum(gone, i), goneX=clerkNum(goneX, i), dragged=(key == dragKey),
