@@ -176,8 +176,11 @@ component Toast
     dragKey = key
 
   // Pan onBegin / onFinalize: isSwiping (the front toast's scale × 0.96).
+  // Haptics (past RN, which plays none): light when the finger takes the toast, medium when a
+  // release past -50 throws it away.
   action touched
     swiping = true
+    haptic("impact-light")
   action untouched
     swiping = false
 
@@ -201,6 +204,7 @@ component Toast
       let nGone = toastSet(vGone, i, 1)
       let nl = toastLive(nGone)
       let wasCounting = dragKey == vAutoKey and vAutoE >= 0
+      haptic("impact-medium")
       goneK = toastSet(vGoneK, i, toastNewer(vGone, i))
       gone = nGone
       goneX = toastSet(vGoneX, i, x)
