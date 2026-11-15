@@ -2,6 +2,10 @@
 //! (emoji, amount, address) to a list showing the last three; the new card pops in, the others
 //! slide up on a spring and the oldest fades out upwards. This surface is the list (the
 //! BlurredList View: the window's width × maxVisibleItems · 110, clipped); the + stays Contract.
+//! Past RN (the owner's ask): holding the + fires in bursts. The press adds one card (the
+//! Contract's count), then from `BURST_DELAY_MS` this surface keeps adding, every
+//! `BURST_FIRST_MS` shrinking by `BURST_RAMP` to `BURST_MIN_MS`, until the release, posting
+//! `haptic:impact-light` per card.
 //!
 //! The owner asked for a REAL motion blur here, past RN. RN's "motion blur" is an expo-blur
 //! BlurView (tint extraLight) over each card whose intensity runs 50 → 0 linearly in 500 ms after
@@ -9,9 +13,11 @@
 //! the same on a card that is still and on one that moves, in no direction. Here each card is
 //! blurred by its own motion, as a film camera records it:
 //!
-//! - The shutter: 180° at 24 fps, open `EXPOSURE_MS` (20.8 ms) centred on the frame's instant
-//!   (Blender's "centre on frame"), the same on a 60 Hz and a 120 Hz display. A 180° shutter of a
-//!   120 Hz frame (4.2 ms) would leave a 600 pt/s spring a 2.5 pt smear nobody sees.
+//! - The shutter: 360° at 24 fps (fully open), `EXPOSURE_MS` (41.7 ms) centred on the frame's
+//!   instant (Blender's "centre on frame"), the same on a 60 Hz and a 120 Hz display. The
+//!   slide's spring peaks at ~600 pt/s (5 pt, 15 px a 120 Hz frame): a 25 pt smear, the pop-in's
+//!   ~32 pt. A 180° shutter of a 120 Hz frame (4.2 ms) would leave 2.5 pt nobody sees; 180° at
+//!   24 fps (20.8 ms) read as barely blurred on the phone.
 //! - The integral: the card's layer (drawn once into an atlas slot) under its transform at N
 //!   instants across the shutter, its opacity then, averaged in linear light (a box shutter: an
 //!   ideal global shutter). Transforms are the analytic motion (keyframe, spring, exit) evaluated
@@ -36,11 +42,10 @@
 //! - Exiting (k < n − 3): FadeOutUp 400 ms inOut(quad): opacity 1 → 0, translateY 0 → −25, at
 //!   the top it had.
 //!
-//! Inputs: count (the items added), seed (`env.seed`: the items' rolls, as the Contract's
-//! `roll`). Contract, once built: in motion-blur.contract, the list `view` (height 330, clipped)
-//! holds `canvas surface=motion_blur(count, env.seed) width="100%" height=(maxVisible() *
-//! rowHeight()) aria-hidden=true testId="motion-blur-canvas"` in place of the `for` of
-//! MotionBlurItem (REGISTRY row: ("motion_blur", 2, motion_blur::surface)).
+//! Inputs: count (the presses of the +), seed (`env.seed`: the items' rolls, as the Contract's
+//! `roll`), held (the + is down; absent: false). The list shows count + the bursts' cards. Every
+//! change starts at the next frame's instant (`Frame::now_ms`), never at the bind's stamp: a
+//! stamp on another clock would start the motion in the past (no motion, no blur).
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
@@ -61,8 +66,16 @@ const ENTER_MS: f64 = 200.0;
 const EXIT_MS: f64 = 400.0;
 /// isLastItemProgress's withTiming (default: 300 ms, inOut(quad)).
 const SHADOW_MS: f64 = 300.0;
-/// The shutter: 180° at 24 fps.
-pub const EXPOSURE_MS: f64 = 1000.0 / 48.0;
+/// The shutter: 360° at 24 fps.
+pub const EXPOSURE_MS: f64 = 1000.0 / 24.0;
+/// Holding the +: the first burst card this long after the press.
+pub const BURST_DELAY_MS: f64 = 300.0;
+/// Then one every this long at first…
+pub const BURST_FIRST_MS: f64 = 120.0;
+/// … each interval this much of the last …
+pub const BURST_RAMP: f64 = 0.88;
+/// … down to this.
+pub const BURST_MIN_MS: f64 = 70.0;
 /// The most samples a card takes in a frame.
 pub const MAX_SAMPLES: usize = 64;
 /// Cards drawn at once (the shader's arrays).
@@ -359,7 +372,16 @@ pub fn knots(pose: impl Fn(f64) -> Pose, t: f64, layer: (f64, f64), scale: f64) 
 struct MotionBlur {
     count: Option<usize>,
     seed: f64,
-    pending: Option<usize>,
+    /// The last inputs (count, held), applied at the next frame.
+    pending: Option<(usize, bool)>,
+    /// The Contract's count, the burst's cards since, whether the + is held.
+    presses: usize,
+    bursts: usize,
+    held: bool,
+    /// The next burst card's instant, and the interval after it.
+    next_burst: Option<f64>,
+    interval: f64,
+    posted: Vec<String>,
     cards: Vec<Card>,
     canvas: Canvas,
     renderer: Renderer,
@@ -559,17 +581,20 @@ impl Surface for MotionBlur {
             .unwrap_or(0.0)
             .max(0.0) as usize;
         let seed = inputs.get(1).and_then(|v| v.as_number()).unwrap_or(0.0);
+        let held = inputs
+            .get(2)
+            .and_then(|v| v.as_bool().or(v.as_number().map(|x| x != 0.0)))
+            .unwrap_or(false);
         if seed != self.seed {
             self.seed = seed;
             self.count = None;
+            self.bursts = 0;
             self.drawn.clear();
         }
-        // An unstamped change starts at the next frame's instant (the clock may have stood
-        // still since the last frame: an idle surface draws none).
-        match at_ms {
-            Some(t) => self.apply(n, t),
-            None => self.pending = Some(n),
-        }
+        // Applied at the next frame's instant: `at_ms` is not taken, as it may be on another
+        // clock than `Frame::now_ms` (an idle surface's clock also stands still).
+        let _ = at_ms;
+        self.pending = Some((n, held));
         Ok(())
     }
 
@@ -577,8 +602,10 @@ impl Surface for MotionBlur {
         let ks: Vec<String> = self.cards.iter().map(|c| c.k.to_string()).collect();
         let ns: Vec<String> = self.samples.iter().map(|n| n.to_string()).collect();
         Some(format!(
-            "{{\"count\":{},\"cards\":[{}],\"samples\":[{}]}}",
+            "{{\"count\":{},\"bursts\":{},\"held\":{},\"cards\":[{}],\"samples\":[{}]}}",
             self.count.unwrap_or(0),
+            self.bursts,
+            self.held,
             ks.join(","),
             ns.join(",")
         ))
@@ -594,8 +621,27 @@ impl Surface for MotionBlur {
         format: wgpu::TextureFormat,
     ) -> bool {
         let t = frame.now_ms;
-        if let Some(n) = self.pending.take() {
-            self.apply(n, t);
+        if let Some((n, held)) = self.pending.take() {
+            if n < self.presses {
+                self.bursts = 0;
+            }
+            self.presses = n;
+            if held && !self.held {
+                self.next_burst = Some(t + BURST_DELAY_MS);
+                self.interval = BURST_FIRST_MS;
+            }
+            if !held {
+                self.next_burst = None;
+            }
+            self.held = held;
+            self.apply(self.presses + self.bursts, t);
+        }
+        while let Some(at) = self.next_burst.filter(|&at| at <= t) {
+            self.bursts += 1;
+            self.apply(self.presses + self.bursts, at);
+            self.posted.push("haptic:impact-light".into());
+            self.next_burst = Some(at + self.interval);
+            self.interval = (self.interval * BURST_RAMP).max(BURST_MIN_MS);
         }
         self.prune(t);
         let (pw, ph) = frame.pixels();
@@ -698,7 +744,11 @@ impl Surface for MotionBlur {
         queue.write_buffer(&gpu.uniforms, 0, &u.bytes());
         skia::render::fullscreen_pass(encoder, "motion blur", target, &gpu.pipeline, &gpu.bind);
         self.gpu = Some(owned);
-        self.cards.iter().any(|c| c.moving(t - EXPOSURE_MS))
+        self.held || self.cards.iter().any(|c| c.moving(t - EXPOSURE_MS))
+    }
+
+    fn messages(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.posted)
     }
 }
 
@@ -992,7 +1042,7 @@ mod tests {
             knots(|t| rest.pose(&l, t), 1000.0, l.layer(), S as f64).len(),
             1
         );
-        // Mid-slide, near the spring's peak speed (~600 pt/s): ~12.6 pt over the shutter, ~38 px:
+        // Mid-slide, near the spring's peak speed (~600 pt/s): ~25 pt over the shutter, ~75 px:
         // the cap.
         let slide = Card {
             k: 0,
@@ -1007,10 +1057,10 @@ mod tests {
             exit: None,
         };
         let ks = knots(|t| slide.pose(&l, t), 1000.0 / 15.0, l.layer(), S as f64);
-        assert!((60..=64).contains(&(ks.len() - 1)), "{}", ks.len());
-        // Samples at most 0.6 device px apart (38 px over 64 samples).
+        assert_eq!(ks.len() - 1, MAX_SAMPLES);
+        // Samples ~1.2 device px apart (75 px over 64 samples), dithered between.
         for w in ks.windows(2) {
-            assert!(((w[1].oy - w[0].oy) * S as f64).abs() <= 0.6);
+            assert!(((w[1].oy - w[0].oy) * S as f64).abs() <= 1.25);
         }
     }
 
@@ -1056,7 +1106,7 @@ mod tests {
     #[test]
     fn cards_rest_sharp_and_blur_along_their_motion() {
         // Three cards at rest, then a fourth: the others slide up, the oldest leaves.
-        let shots = [1500.0, 1520.0, 1560.0, 1600.0, 1650.0, 3000.0];
+        let shots = [1450.0, 1520.0, 1560.0, 1600.0, 1650.0, 3000.0];
         let px = render_seq("motion-blur", &[0.0, 500.0, 1000.0, 1500.0], &shots);
         if px.is_empty() {
             return;
@@ -1119,5 +1169,56 @@ mod tests {
         let (still, moving) = fixture::render(&gpu, fresh.as_mut(), &frame(5000.0)).unwrap();
         assert!(!moving);
         assert_eq!(still.data, px[5].data);
+    }
+
+    #[test]
+    fn holding_the_plus_fires_in_bursts_until_the_release() {
+        let Some(gpu) = gpu() else { return };
+        let mut s = surface();
+        let bind = |s: &mut Box<dyn Surface>, n: f64, held: bool| {
+            s.bind(
+                &[Value::Number(n), Value::Number(7.0), Value::Bool(held)],
+                Some(-1e9),
+            )
+            .unwrap()
+        };
+        bind(&mut s, 0.0, false);
+        fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
+        // The press adds one (the Contract's count) and holds; the bind's stamp is ignored.
+        bind(&mut s, 1.0, true);
+        let mut haptics = 0;
+        let mut ms = 1000.0;
+        let mut shot = None;
+        while ms <= 2000.0 {
+            let (px, moving) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+            assert!(moving);
+            haptics += s
+                .messages()
+                .iter()
+                .filter(|m| *m == "haptic:impact-light")
+                .count();
+            if ms >= 1800.0 && shot.is_none() {
+                shot = Some(px);
+            }
+            ms = ((ms + 1000.0 / 120.0) * 1000.0).round() / 1000.0;
+        }
+        if let Some(px) = shot {
+            gfx::save_over(&px, "motion-blur-burst-800", [255, 255, 255]);
+        }
+        // Cards at 300, 420, 525.6, 618.5, 700.3, 772.3, then every 70 ms: 9 by 1000 ms.
+        let state = s.agent("{}").unwrap();
+        assert!(state.contains("\"bursts\":9,"), "{state}");
+        assert_eq!(haptics, 9);
+        // The release stops it; the list then settles.
+        bind(&mut s, 1.0, false);
+        let mut t = 2010.0;
+        let mut moving = true;
+        while moving && t < 4000.0 {
+            moving = fixture::render(&gpu, s.as_mut(), &frame(t)).unwrap().1;
+            t += 1000.0 / 120.0;
+        }
+        assert!(!moving);
+        assert!(s.agent("{}").unwrap().contains("\"bursts\":9,"));
+        assert!(s.messages().is_empty());
     }
 }
