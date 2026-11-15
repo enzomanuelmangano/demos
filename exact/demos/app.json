@@ -20,7 +20,8 @@
     "glass-pane",
     "inspiration-sheet",
     "audio-track",
-    "system-alert"
+    "system-alert",
+    "toggle-sheet"
   ],
   "host": {
     "web": {},

@@ -50,6 +50,25 @@
 //!
 //! Not modelled: `flipped` (never set), the board's `highlight()` colours (never called), the
 //! check / stalemate shader effects (`renderEffect` is not passed).
+//!
+//! Past RN (the owner's phone note mwhlpkfj-6464e0, 2026-11-15: "it stutters a lot, the
+//! opponent's move is missing; a concentric Hint / View solution button, as in Patterns"): the
+//! board is a puzzle, as the owner's Patterns app plays one (use-tactic-solver.ts). It opens two
+//! plies before RN's START_FEN, on 16. Be2+ ([`PUZZLE_FEN`]); 900 ms in (RN's START_DELAY) the
+//! opponent's setup move 16...Kg2 slides in, then the user (White, Lasker) plays 17. Rh2+, the
+//! opponent answers 17...Kg1 500 ms after the move (Patterns' replyDelayMs), and 18. Kd2# (or any
+//! other mate) ends it into RN's aura. A legal move off the line is held on its square, shaken,
+//! posts `haptic:error` and springs home (Patterns' "animate the wrong piece back"). The inputs
+//! (hint taps, solution taps: counters from the Contract's glass bar) climb Patterns' ladder: the
+//! hint marks the piece to move (BOARD_HINT_HIGHLIGHT), a second one its square, View solution
+//! plays the move. The surface posts `puzzle:<wait|play|hint1|hint2|done>` on each change (the
+//! first is the Contract's sign that this build has the puzzle).
+//!
+//! Per frame, only what moved is drawn again: the board's squares, labels and highlights, the
+//! pieces (one atlas) and the player cards are three layers, each re-recorded and re-rendered
+//! when its own content changes; the cards' pulsing turn dot is drawn analytically in the
+//! compose pass, so the 950 ms pulse no longer redraws the cards' full-screen MSAA layer every
+//! frame. A drag or a move re-renders the pieces alone.
 
 // chess.js's whole API (reset, isAttacked, isGameOver too), not only what the board calls.
 #[allow(dead_code)]
@@ -76,8 +95,21 @@ const CLOCK_START: [i32; 2] = [74, 23];
 const START_DELAY: f64 = 900.0;
 const MOVE_GAP: f64 = 260.0;
 const AURA_DELAY: f64 = 580.0;
-/// REPLAY_MOVES: 18. Kd2#.
-const REPLAY_MOVES: [(&str, &str); 1] = [("e1", "d2")];
+/// The puzzle's position: after 16. Be2+, Black (the opponent) to play its setup move.
+pub const PUZZLE_FEN: &str = "rn3r2/pbppq1p1/1p2pN2/8/3P2NP/5kP1/PPP1BP2/R3K2R b KQ - 2 16";
+/// The line from PUZZLE_FEN (REVIEW_MOVES' last four plies): 16...Kg2 17. Rh2+ Kg1 18. Kd2#.
+/// The replay (Replay on the review card) plays it all.
+const SOLUTION: [(&str, &str); 4] = [("f3", "g2"), ("h1", "h2"), ("g2", "g1"), ("e1", "d2")];
+/// The side the user plays.
+const USER: Side = Side::W;
+/// Patterns' replyDelayMs: the opponent answers this long after the user's move.
+const REPLY_DELAY: f64 = 500.0;
+/// A wrong move: its piece lands, shakes from `WRONG_SHAKE_AT` for `WRONG_SHAKE_MS`, then goes home.
+const WRONG_SHAKE_AT: f64 = 220.0;
+const WRONG_SHAKE_MS: f64 = 320.0;
+/// A captured piece fades and shrinks as the capturer lands (from `CAPTURE_AT`, `CAPTURE_MS`).
+const CAPTURE_AT: f64 = 90.0;
+const CAPTURE_MS: f64 = 200.0;
 /// wave-shader.ts.
 const WAVE_MS: f64 = 3000.0;
 const EXIT_MS: f64 = 360.0;
@@ -327,6 +359,24 @@ struct SquareState {
     in_check: bool,
     last_fade: Timing,
     check_fade: Timing,
+    /// A hint's mark (the piece to move, then its square), fading as the highlights do.
+    hint: bool,
+    hint_fade: Timing,
+}
+
+/// A captured piece on its way out (`at`: the capture).
+#[derive(Clone, Copy, Debug)]
+struct Ghost {
+    sq: i32,
+    piece: Piece,
+    at: f64,
+}
+
+/// A wrong move: the piece from `sq` sits on `to`, shakes, and goes home.
+#[derive(Clone, Copy, Debug)]
+struct Wrong {
+    sq: i32,
+    at: f64,
 }
 
 /// withRepeat(withTiming(1, …), −1, true) from where it is, or a plain withTiming.
@@ -547,6 +597,7 @@ struct Gpu {
     sampler: wgpu::Sampler,
     px: (u32, u32),
     board: wgpu::TextureView,
+    pieces: wgpu::TextureView,
     ui: wgpu::TextureView,
     screen: wgpu::TextureView,
     snapshot: wgpu::TextureView,
@@ -554,6 +605,8 @@ struct Gpu {
     sheet: wgpu::TextureView,
     modal: wgpu::TextureView,
     dummy: wgpu::TextureView,
+    /// The passes' bind groups (made once: their textures live as long as this).
+    groups: Option<[wgpu::BindGroup; 3]>,
 }
 
 /// The demo's surface.
@@ -595,6 +648,18 @@ struct Chessboard {
     aura_timer: Option<(f64, Side)>,
     show_at: Option<(f64, Side)>,
     mate_haptics: Vec<(f64, &'static str)>,
+    // the puzzle
+    /// When the opponent's next move (the setup move, then each reply) plays.
+    reply_at: Option<f64>,
+    /// The hint's rung on this move: 0, 1 (the piece), 2 (its square).
+    hint: u8,
+    wrong: Option<Wrong>,
+    ghosts: Vec<Ghost>,
+    mated_by: Option<Side>,
+    /// The last `puzzle:` mode posted.
+    mode: &'static str,
+    /// The inputs' counters as last seen (hint taps, solution taps); None before the first bind.
+    seen: Option<(f64, f64)>,
     // the views
     cards: [CardAnim; 2],
     aura: Option<Aura>,
@@ -608,20 +673,25 @@ struct Chessboard {
     scale: f32,
     now: f64,
     board_dirty: bool,
+    pieces_dirty: bool,
+    /// What the cards' layer was last drawn from (redrawn only when it changes).
+    cards_key: Vec<f64>,
     sheet_dirty: bool,
     modal_dirty: bool,
     fonts: Fonts,
     canvas: Canvas,
-    renderers: [Renderer; 4],
+    renderers: [Renderer; 5],
     p3: gfx::P3Layer,
+    p3_pieces: gfx::P3Layer,
     sprite: Option<Images>,
     images: Option<Images>,
     gpu: Option<Gpu>,
 }
 
 fn initial_captures() -> [Vec<Kind>; 2] {
-    // capturesFromFen(START_FEN): the opponent's pieces missing from a full set, by the taker.
-    let chess = Chess::new(START_FEN).unwrap();
+    // capturesFromFen(START_FEN) (PUZZLE_FEN's material is START_FEN's): the opponent's pieces
+    // missing from a full set, by the taker.
+    let chess = Chess::new(PUZZLE_FEN).unwrap();
     let full = [(Kind::P, 8), (Kind::N, 2), (Kind::B, 2), (Kind::R, 2), (Kind::Q, 1)];
     let mut left = [[0i32; 6]; 2];
     for row in chess.board() {
@@ -635,7 +705,7 @@ fn initial_captures() -> [Vec<Kind>; 2] {
 
 impl Chessboard {
     fn new() -> Chessboard {
-        let chess = Chess::new(START_FEN).unwrap();
+        let chess = Chess::new(PUZZLE_FEN).unwrap();
         let card = || CardAnim { to_move: None, active: Timing::at(0.0), pulse: Pulse::at(0.0) };
         let mut c = Chessboard {
             chess,
@@ -660,8 +730,8 @@ impl Chessboard {
             replay: None,
             next_token: 1,
             captured: initial_captures(),
-            status: "White to move".into(),
-            turn_sv: Side::W,
+            status: "Black to move".into(),
+            turn_sv: Side::B,
             game_over: false,
             started: false,
             clock: CLOCK_START,
@@ -669,6 +739,13 @@ impl Chessboard {
             aura_timer: None,
             show_at: None,
             mate_haptics: Vec::new(),
+            reply_at: None,
+            hint: 0,
+            wrong: None,
+            ghosts: Vec::new(),
+            mated_by: None,
+            mode: "",
+            seen: None,
             cards: [card(), card()],
             aura: None,
             busy: false,
@@ -680,12 +757,15 @@ impl Chessboard {
             scale: 0.0,
             now: 0.0,
             board_dirty: true,
+            pieces_dirty: true,
+            cards_key: Vec::new(),
             sheet_dirty: true,
             modal_dirty: true,
             fonts: Fonts::new(),
             canvas: Canvas::default(),
-            renderers: [Renderer::default(), Renderer::default(), Renderer::default(), Renderer::default()],
+            renderers: std::array::from_fn(|_| Renderer::default()),
             p3: gfx::P3Layer::default(),
+            p3_pieces: gfx::P3Layer::default(),
             sprite: None,
             images: None,
             gpu: None,
@@ -701,6 +781,8 @@ impl Chessboard {
                 in_check: false,
                 last_fade: Timing::at(0.0),
                 check_fade: Timing::at(0.0),
+                hint: false,
+                hint_fade: Timing::at(0.0),
             };
             128
         ];
@@ -757,8 +839,12 @@ impl Chessboard {
         let now = self.now;
         let moving = self.squares[from as usize].piece;
         if mv.captured.is_some() {
-            self.squares[to as usize].piece = None;
+            // Past RN (which drops it at once): the taken piece fades and shrinks as the capturer lands.
+            if let Some(piece) = self.squares[to as usize].piece.take() {
+                self.ghosts.push(Ghost { sq: to, piece, at: now });
+            }
         }
+        self.clear_hint();
         let to_pos = pos(to, ps);
         let from_pos = pos(from, ps);
         self.squares[from as usize].z = 100;
@@ -786,13 +872,16 @@ impl Chessboard {
         if mv.flags.contains('e') {
             // capturedPawnSquare: to's file, from's rank.
             let sq = (from & 0x70) | (to & 0xf);
-            self.squares[sq as usize].piece = None;
+            if let Some(piece) = self.squares[sq as usize].piece.take() {
+                self.ghosts.push(Ghost { sq, piece, at: now });
+            }
         }
         self.turn = self.chess.turn();
         self.selected = None;
         self.valid.clear();
         self.update_highlights_after_move(from, to);
         self.board_dirty = true;
+        self.pieces_dirty = true;
         let is_checkmate = self.chess.is_checkmate();
         let is_stalemate = self.chess.is_stalemate();
         let is_check = self.chess.is_check();
@@ -827,6 +916,11 @@ impl Chessboard {
     }
 
     fn attempt(&mut self, from: i32, to: i32, promotion: Option<Kind>, token: Option<u64>) {
+        // A user's move (the replay's carry a token) is checked against the line first.
+        if token.is_none() && !self.running && self.off_line(from, to, promotion) {
+            self.reject(from, to);
+            return;
+        }
         if self.execute_move(from, to, promotion, token).is_none() {
             if let Some(t) = token {
                 self.js.push(Js::Resolved(t));
@@ -846,6 +940,149 @@ impl Chessboard {
         self.board_dirty = true;
     }
 
+    // ---- the puzzle (Patterns' use-tactic-solver.ts) ----
+
+    /// The move the line expects next, if any.
+    fn expected(&self) -> Option<(i32, i32)> {
+        SOLUTION.get(self.plies.len()).map(|&(a, b)| (chess::square(a).unwrap(), chess::square(b).unwrap()))
+    }
+
+    /// Whether the user's move is legal but off the line (a mate is never off it: any mate
+    /// solves the puzzle, as on Lichess). An illegal one is the board's (it simply fails): a drag
+    /// sends its drop twice (the pan's and the tap's), the second no longer legal.
+    fn off_line(&self, from: i32, to: i32, promotion: Option<Kind>) -> bool {
+        if self.expected() == Some((from, to)) {
+            return false;
+        }
+        let mut probe = self.chess.clone();
+        probe.play(from, to, promotion).is_some() && !probe.is_checkmate()
+    }
+
+    /// The board takes the user's move: their turn, nothing pending, no card over it.
+    fn user_can_move(&self) -> bool {
+        !self.running && !self.game_over && self.reply_at.is_none() && self.wrong.is_none() && self.aura.is_none() && self.chess.turn() == USER
+    }
+
+    /// A legal move off the line: the piece lands on `to`, shakes, then springs home.
+    fn reject(&mut self, from: i32, to: i32) {
+        let ps = self.ps();
+        let now = self.now;
+        let tp = pos(to, ps);
+        let q = &mut self.callbacks;
+        let s = &mut self.squares[from as usize];
+        if s.piece.is_none() {
+            return;
+        }
+        s.z = 100;
+        s.tx.spring(tp.0 as f64, MOVE_SPRING, now, None, q);
+        s.ty.spring(tp.1 as f64, MOVE_SPRING, now, None, q);
+        self.selected = None;
+        self.valid.clear();
+        self.wrong = Some(Wrong { sq: from, at: now });
+        self.messages.push("haptic:error".into());
+        self.board_dirty = true;
+        self.pieces_dirty = true;
+    }
+
+    /// The wrong move's horizontal shake at `now` (points), on its square's piece.
+    fn shake(&self, sq: i32) -> f32 {
+        let Some(w) = self.wrong.filter(|w| w.sq == sq) else {
+            return 0.0;
+        };
+        let t = (self.now - w.at - WRONG_SHAKE_AT) / WRONG_SHAKE_MS;
+        if !(0.0..1.0).contains(&t) {
+            return 0.0;
+        }
+        // Three decaying swings, 6 pt at first.
+        (6.0 * (t * 3.0 * std::f64::consts::TAU).sin() * (1.0 - t)) as f32
+    }
+
+    /// The wrong move's piece goes home once its shake is over.
+    fn wrong_step(&mut self) -> bool {
+        let Some(w) = self.wrong else {
+            return false;
+        };
+        if self.now < w.at + WRONG_SHAKE_AT + WRONG_SHAKE_MS {
+            return true;
+        }
+        self.wrong = None;
+        let home = pos(w.sq, self.ps());
+        let now = self.now;
+        let q = &mut self.callbacks;
+        let s = &mut self.squares[w.sq as usize];
+        let drop = Done::DropZ { sq: w.sq };
+        s.tx.spring(home.0 as f64, SNAP_BACK_SPRING, now, Some(drop), q);
+        s.ty.spring(home.1 as f64, SNAP_BACK_SPRING, now, None, q);
+        true
+    }
+
+    /// The opponent's move (the setup move, then each reply), when it is due.
+    fn reply_step(&mut self) {
+        let Some(t) = self.reply_at else {
+            return;
+        };
+        if self.now < t {
+            return;
+        }
+        self.reply_at = None;
+        if self.running || self.game_over || self.chess.turn() == USER {
+            return;
+        }
+        if let Some((from, to)) = self.expected() {
+            self.selected = None;
+            self.valid.clear();
+            self.execute_move(from, to, None, None);
+        }
+    }
+
+    fn clear_hint(&mut self) {
+        self.hint = 0;
+        for s in self.squares.iter_mut() {
+            s.hint = false;
+        }
+        self.board_dirty = true;
+    }
+
+    /// Hint: the piece to move, then (a second tap) its square.
+    fn hint_request(&mut self) {
+        if !self.user_can_move() || self.hint >= 2 {
+            return;
+        }
+        let Some((from, to)) = self.expected() else {
+            return;
+        };
+        self.hint += 1;
+        self.squares[from as usize].hint = true;
+        if self.hint == 2 {
+            self.squares[to as usize].hint = true;
+        }
+        self.board_dirty = true;
+    }
+
+    /// View solution: the line's move plays (the opponent then answers as after any move).
+    fn solve_request(&mut self) {
+        if !self.user_can_move() || self.pan.tracking() || self.dragged.is_some() {
+            return;
+        }
+        let Some((from, to)) = self.expected() else {
+            return;
+        };
+        self.selected = None;
+        self.valid.clear();
+        self.execute_move(from, to, None, None);
+    }
+
+    /// What the Contract's bar shows: `wait`, `play`, `hint1`, `hint2` or `done`.
+    fn puzzle_mode(&self) -> &'static str {
+        if self.game_over || self.aura.is_some() {
+            "done"
+        } else if !self.user_can_move() {
+            "wait"
+        } else {
+            ["play", "hint1", "hint2"][self.hint.min(2) as usize]
+        }
+    }
+
     fn reset_board(&mut self, fen: &str, slide: Option<(i32, i32)>, last_move: Option<(i32, i32)>) {
         if !self.chess.load(fen) {
             return;
@@ -863,6 +1100,7 @@ impl Chessboard {
                 s.scale.set(1.0);
                 s.last_move = last_move.is_some_and(|(a, b)| sq == a || sq == b);
                 s.in_check = false;
+                s.hint = false;
                 match slide {
                     Some((from, to)) if sq == to => {
                         let fp = pos(from, ps);
@@ -893,6 +1131,10 @@ impl Chessboard {
         }
         self.king_in_check = king;
         self.board_dirty = true;
+        self.pieces_dirty = true;
+        self.hint = 0;
+        self.wrong = None;
+        self.ghosts.clear();
     }
 
     /// The completion callbacks the last steps and assignments queued, in order.
@@ -930,7 +1172,7 @@ impl Chessboard {
                     }
                     Done::DropZ { sq } => self.squares[sq as usize].z = 0,
                 }
-                self.board_dirty = true;
+                self.pieces_dirty = true;
             }
         }
     }
@@ -942,7 +1184,8 @@ impl Chessboard {
         let top = self.board_top();
         let (bx, by) = (x, y - top);
         let inside = bx >= 0.0 && bx < self.size.0 && by >= 0.0 && by < self.size.0;
-        let enabled = self.promotion.is_none();
+        // The puzzle: the board takes a finger only on the user's turn.
+        let enabled = self.promotion.is_none() && self.user_can_move();
         let claim = phase == Phase::Down && inside && enabled;
         let pan = self.pan.event(id, phase, bx, by, ms, claim);
         let tap = self.tap.event(id, phase, bx, by, ms, claim);
@@ -988,6 +1231,7 @@ impl Chessboard {
             }
             self.dragged = None;
             self.board_dirty = true;
+            self.pieces_dirty = true;
         }
         if let Event::Tap { x, y } = tap {
             self.tap_end(x, y);
@@ -1001,7 +1245,7 @@ impl Chessboard {
         let s = &mut self.squares[sq as usize];
         s.tx.set((x - ox - ps / 2.0) as f64, q);
         s.ty.set((y - oy - ps / 2.0) as f64, q);
-        self.board_dirty = true;
+        self.pieces_dirty = true;
     }
 
     fn pan_end(&mut self, ms: f64) {
@@ -1100,6 +1344,13 @@ impl Chessboard {
         self.turn_sv = mover.other();
         self.game_over = mate || stalemate;
         self.started = true;
+        if mate {
+            self.mated_by = Some(mover);
+        }
+        // The puzzle: after the user's move, the opponent's reply (the replay plays its own).
+        if !self.game_over && !self.running && mover == USER && self.plies.len() < SOLUTION.len() {
+            self.reply_at = Some(self.now + REPLY_DELAY);
+        }
         if mate && !cfg!(target_arch = "wasm32") {
             self.messages.push("haptic:mate".into());
             self.aura_timer = Some((self.now + AURA_DELAY, mover));
@@ -1131,7 +1382,8 @@ impl Chessboard {
 
     /// gameResultAtom.
     fn winner(&self) -> Option<Side> {
-        (self.status == "Checkmate").then(|| if self.plies.len() % 2 == 1 { Side::W } else { Side::B })
+        // The puzzle opens on Black's move, so the ply count's parity no longer says who mated.
+        (self.status == "Checkmate").then_some(self.mated_by).flatten()
     }
 
     /// selectedPlyAtom's writes, with HistorySync's subscription.
@@ -1155,7 +1407,7 @@ impl Chessboard {
         } else {
             None
         };
-        let fen = if to < 0 { START_FEN.to_string() } else { self.plies[to as usize].fen.clone() };
+        let fen = if to < 0 { PUZZLE_FEN.to_string() } else { self.plies[to as usize].fen.clone() };
         self.reset_board(&fen, slide, last);
     }
 
@@ -1164,8 +1416,9 @@ impl Chessboard {
         self.plies.clear();
         self.set_selected_ply(-1);
         self.captured = initial_captures();
-        self.status = "White to move".into();
-        self.turn_sv = Side::W;
+        self.status = "Black to move".into();
+        self.turn_sv = Side::B;
+        self.mated_by = None;
         self.game_over = false;
         self.started = false;
         self.clock = CLOCK_START;
@@ -1177,8 +1430,9 @@ impl Chessboard {
         }
         self.replay_gen += 1;
         self.running = true;
-        self.reset_board(START_FEN, None, None);
+        self.reset_board(PUZZLE_FEN, None, None);
         self.reset_game();
+        self.reply_at = None;
         self.replay = Some((self.replay_gen, Replay::Wait { until: self.now + START_DELAY, next: 0 }));
     }
 
@@ -1192,8 +1446,10 @@ impl Chessboard {
             self.messages.push("haptic:mate-stop".into());
         }
         self.hide();
-        self.reset_board(START_FEN, None, None);
+        self.reset_board(PUZZLE_FEN, None, None);
         self.reset_game();
+        // The puzzle again: the opponent's setup move after the same beat as on opening.
+        self.reply_at = Some(self.now + START_DELAY);
     }
 
     fn hide(&mut self) {
@@ -1214,12 +1470,12 @@ impl Chessboard {
             if self.now < until {
                 return;
             }
-            if next >= REPLAY_MOVES.len() {
+            if next >= SOLUTION.len() {
                 self.replay = None;
                 self.running = false;
                 return;
             }
-            let (a, b) = REPLAY_MOVES[next];
+            let (a, b) = SOLUTION[next];
             let token = self.next_token;
             self.next_token += 1;
             self.replay = Some((gen, Replay::Move { index: next, token }));
@@ -1289,6 +1545,7 @@ impl Chessboard {
             }
         }
         self.replay_step();
+        self.reply_step();
     }
 
     /// show(): the snapshot of the screen, the overlay a frame after, the card 900 ms on.
@@ -1319,7 +1576,7 @@ impl Chessboard {
 
     /// kingFromFen on the last ply's FEN (the position on the board at the mate).
     fn chess_from_fen_king(&self, color: Side) -> Option<i32> {
-        let fen = self.plies.last().map(|p| p.fen.as_str()).unwrap_or(START_FEN);
+        let fen = self.plies.last().map(|p| p.fen.as_str()).unwrap_or(PUZZLE_FEN);
         let placement = fen.split(' ').next()?;
         let target = if color == Side::W { 'K' } else { 'k' };
         for (row, rank) in placement.split('/').enumerate() {
@@ -1582,15 +1839,16 @@ impl Chessboard {
         let now = self.now;
         let mut moving = false;
         let mut board = false;
+        let mut pieces = false;
         for i in 0..128usize {
             if i & 0x88 != 0 {
                 continue;
             }
             let q = &mut self.callbacks;
             let s = &mut self.squares[i];
-            board |= s.tx.step(now, q);
-            board |= s.ty.step(now, q);
-            board |= s.scale.step(now);
+            pieces |= s.tx.step(now, q);
+            pieces |= s.ty.step(now, q);
+            pieces |= s.scale.step(now);
             let last = if s.last_move { 1.0 } else { 0.0 };
             if s.last_fade.target() != last {
                 s.last_fade.to(last, 180.0, Easing::Linear);
@@ -1599,14 +1857,26 @@ impl Chessboard {
             if s.check_fade.target() != check {
                 s.check_fade.to(check, 180.0, Easing::Linear);
             }
+            let hint = if s.hint { 1.0 } else { 0.0 };
+            if s.hint_fade.target() != hint {
+                s.hint_fade.to(hint, 180.0, Easing::Linear);
+            }
             board |= s.last_fade.step(now);
             board |= s.check_fade.step(now);
+            board |= s.hint_fade.step(now);
         }
+        let ghosts = self.ghosts.len();
+        self.ghosts.retain(|g| now < g.at + CAPTURE_AT + CAPTURE_MS);
+        pieces |= !self.ghosts.is_empty() || self.ghosts.len() != ghosts;
+        pieces |= self.wrong_step();
         self.run_callbacks();
         if board {
             self.board_dirty = true;
         }
-        moving |= board;
+        if pieces {
+            self.pieces_dirty = true;
+        }
+        moving |= board || pieces;
         for side in [Side::W, Side::B] {
             let to_move = !self.game_over && self.turn_sv == side;
             let c = &mut self.cards[side as usize];
@@ -1697,6 +1967,8 @@ impl Chessboard {
         }
         let last = Color::parse("rgba(58, 145, 248, 0.4)");
         let check = Color::hex(theme::LOSE);
+        // Patterns' BOARD_HINT_HIGHLIGHT (src/utils/board-highlight.ts).
+        let hint = Color::parse("rgba(124, 92, 200, 0.55)");
         for row in 0..8 {
             for col in 0..8 {
                 let sq = &self.squares[at(col, row) as usize];
@@ -1706,6 +1978,9 @@ impl Chessboard {
                 }
                 if sq.check_fade.value > 0.0 {
                     c.draw_rect(x, y, ps, ps, &Paint::fill(check).with_opacity(sq.check_fade.value as f32));
+                }
+                if sq.hint_fade.value > 0.0 {
+                    c.draw_rect(x, y, ps, ps, &Paint::fill(hint).with_opacity(sq.hint_fade.value as f32));
                 }
             }
         }
@@ -1719,7 +1994,31 @@ impl Chessboard {
                 }
             });
         }
+    }
+
+    /// The pieces: one atlas over the board's layer (the taken pieces fading out first).
+    fn draw_pieces(&mut self) {
+        let ps = self.ps();
+        let mut c = std::mem::take(&mut self.canvas);
+        c.begin(self.scale);
         if let Some(sprite) = self.sprite.as_ref() {
+            let cell = 128.0;
+            let mut rects = Vec::with_capacity(4);
+            let mut xf = Vec::with_capacity(4);
+            let mut colors = Vec::with_capacity(4);
+            for g in self.ghosts.iter() {
+                let t = ((self.now - g.at - CAPTURE_AT) / CAPTURE_MS).clamp(0.0, 1.0);
+                let e = Easing::bezier(0.23, 1.0, 0.32, 1.0).at(t) as f32;
+                let k = (1.0 - 0.25 * e) * ps / cell;
+                let (x, y) = pos(g.sq, ps);
+                let (cx, cy) = (x + ps / 2.0, y + ps / 2.0);
+                rects.push(skia::Rect { x: g.piece.kind.column() as f32 * cell, y: g.piece.color as usize as f32 * cell, width: cell, height: cell });
+                xf.push(RsXform { scos: k, ssin: 0.0, tx: cx - cell / 2.0 * k, ty: cy - cell / 2.0 * k });
+                colors.push(Color::rgba8(255, 255, 255, 255).alpha(1.0 - e));
+            }
+            if !rects.is_empty() {
+                c.draw_atlas(sprite.image(0), &rects, &xf, Some(&colors), false);
+            }
             let mut pieces: Vec<(i32, i32, Piece)> = Vec::new();
             for row in 0..8 {
                 for col in 0..8 {
@@ -1730,18 +2029,18 @@ impl Chessboard {
                 }
             }
             pieces.sort_by_key(|p| p.0);
-            let cell = 128.0;
             let mut rects = Vec::with_capacity(pieces.len());
             let mut xf = Vec::with_capacity(pieces.len());
             for (_, sq, p) in pieces {
                 let st = &self.squares[sq as usize];
                 rects.push(skia::Rect { x: p.kind.column() as f32 * cell, y: p.color as usize as f32 * cell, width: cell, height: cell });
                 let k = st.scale.value as f32 * ps / cell;
-                let (cx, cy) = (st.tx.s.value as f32 + ps / 2.0, st.ty.s.value as f32 + ps / 2.0);
+                let (cx, cy) = (st.tx.s.value as f32 + ps / 2.0 + self.shake(sq), st.ty.s.value as f32 + ps / 2.0);
                 xf.push(RsXform { scos: k, ssin: 0.0, tx: cx - cell / 2.0 * k, ty: cy - cell / 2.0 * k });
             }
             c.draw_atlas(sprite.image(0), &rects, &xf, None, false);
         }
+        self.canvas = c;
     }
 
     /// The two player cards (player-card.tsx).
@@ -1760,7 +2059,6 @@ impl Chessboard {
         let f = &self.fonts;
         let anim = &self.cards[side as usize];
         let active = anim.active.value;
-        let pulse = anim.pulse.value();
         let (x0, y0) = (16.0, self.card_top(side));
         let (w, h) = (self.size.0 - 32.0, self.card_h());
         // Card: the continuous background layer, RCTBorderDrawing's circular ring over it.
@@ -1797,17 +2095,8 @@ impl Chessboard {
             c.draw_rect(clock_l, clock_t, clock_r - clock_l, ch, &Paint::fill(view(theme::ACCENT, 0.15)).with_opacity(active as f32));
         }
         c.restore();
+        // The dot in its slot pulses every frame: the compose pass draws it ([`Self::turn_dot`]).
         let slot = 6.0 * active as f32;
-        let slot_l = snap(clock_l + 9.0, s);
-        if slot > 0.0 {
-            let op = (active * (0.45 + pulse * 0.55)) as f32;
-            let k = (0.8 + pulse * 0.5) as f32;
-            let (dx, dy) = (slot_l + snap(slot, s) / 2.0, clock_t + ch / 2.0);
-            c.save();
-            c.concat(Matrix::translate(-dx, -dy).then(Matrix::scale(k, k)).then(Matrix::translate(dx, dy)));
-            c.draw_continuous_rrect(slot_l, snap(clock_t + (ch - 6.0) / 2.0, s), snap(slot, s), 6.0, 3.0, &Paint::fill(view(theme::ACCENT, 1.0)).with_opacity(op));
-            c.restore();
-        }
         if let Some(font) = f.clock.as_ref() {
             let text = self.clock_text(side);
             let tw = font.advance_width_spaced(&text, 0.3);
@@ -1871,6 +2160,48 @@ impl Chessboard {
                 draw_line(c, &format!("+{lead}"), tx, tray_t + floor_px((16.0 - lh) / 2.0, s), font, view(theme::TEXT_MUTED, 1.0), 0.0, s);
             }
         }
+    }
+
+    /// The turn dot (player-card.tsx's pulsing dot in the clock): its centre, half size, corner
+    /// radius (points, the pulse's scale applied) and opacity; zeros when its slot is closed.
+    fn turn_dot(&self, side: Side) -> [f32; 8] {
+        let s = self.scale;
+        let hair = self.hair();
+        let anim = &self.cards[side as usize];
+        let (active, pulse) = (anim.active.value, anim.pulse.value());
+        let slot = 6.0 * active as f32;
+        if slot <= 0.0 {
+            return [0.0; 8];
+        }
+        let (x0, y0) = (16.0, self.card_top(side));
+        let w = self.size.0 - 32.0;
+        let (cx, cy) = (x0 + hair + 6.0, y0 + hair + 6.0);
+        let cw = w - 2.0 * (hair + 6.0);
+        let ch = 18.0 + self.line(&self.fonts.clock);
+        let clock_w = 62.0 + 12.0 * active as f32;
+        let clock_l = snap(cx + cw - clock_w, s);
+        let clock_t = cy + snap((40.0 - ch) / 2.0, s);
+        let slot_l = snap(clock_l + 9.0, s);
+        let op = (active * (0.45 + pulse * 0.55)) as f32;
+        let k = (0.8 + pulse * 0.5) as f32;
+        let sw = snap(slot, s);
+        // The rrect (slot_l, top, sw, 6, radius 3) scaled by k about (dx, dy).
+        let (dx, dy) = (slot_l + sw / 2.0, clock_t + ch / 2.0);
+        let top = snap(clock_t + (ch - 6.0) / 2.0, s);
+        let my = dy + (top + 3.0 - dy) * k;
+        [dx, my, sw / 2.0 * k, 3.0 * k, (sw / 2.0).min(3.0) * k, op, 0.0, 0.0]
+    }
+
+    /// What the cards' layer shows, but the dot: when it changes, the layer is drawn again.
+    fn cards_key(&self) -> Vec<f64> {
+        let mut k = vec![self.size.0 as f64, self.size.1 as f64, self.scale as f64, self.images.is_some() as u8 as f64];
+        for side in [Side::W, Side::B] {
+            k.push(fixed3(self.cards[side as usize].active.value) as f64);
+            k.push(self.clock[side as usize] as f64);
+            k.push(self.captured[side as usize].len() as f64);
+        }
+        k.push(self.winner().map_or(-1.0, |w| w as usize as f64));
+        k
     }
 
     /// The review card's sections at rest (the sheet the composite moves).
@@ -2056,6 +2387,9 @@ struct U {
     buttons: array<vec4<f32>, 4>,
     opacity: vec4<f32>,
     layers: array<Layer, 20>,
+    // The two turn dots: (centre, half size), (radius, opacity, 0, 0); the accent's rgb.
+    dots: array<vec4<f32>, 4>,
+    accent: vec4<f32>,
 };
 @group(0) @binding(0) var<uniform> u: U;
 @group(0) @binding(1) var ta: texture_2d<f32>;
@@ -2086,16 +2420,31 @@ fn over(top: vec4<f32>, under: vec4<f32>) -> vec4<f32> {
     return top + under * (1.0 - top.a);
 }
 
-// The screen: the root's colour, the board's canvas (converted from P3) and the views.
+// The screen: the root's colour, the board's canvas (converted from P3): its squares, then its
+// pieces; the views, and the turn dots over them.
 @fragment fn compose(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
     var c = vec4<f32>(u.bg.rgb, 1.0);
     let p = vec2<i32>(pos.xy);
     let top = i32(round(u.board.x * u.screen.z));
     let side = i32(round(u.board.y * u.screen.z));
     if (p.y >= top && p.y < top + side && p.x < side) {
-        c = over(textureLoad(ta, vec2<i32>(p.x, p.y - top), 0), c);
+        let q = vec2<i32>(p.x, p.y - top);
+        c = over(textureLoad(ta, q, 0), c);
+        c = over(textureLoad(tc, q, 0), c);
     }
     c = over(textureLoad(tb, p, 0), c);
+    for (var i = 0; i < 2; i++) {
+        let g = u.dots[i * 2];
+        let h = u.dots[i * 2 + 1];
+        if (h.y > 0.0 && g.z > 0.0) {
+            // A rounded box's distance, in device pixels: its coverage.
+            let s = u.screen.z;
+            let d = abs(pos.xy - g.xy * s) - g.zw * s + vec2<f32>(h.x * s);
+            let dist = length(max(d, vec2<f32>(0.0))) + min(max(d.x, d.y), 0.0) - h.x * s;
+            let a = clamp(0.5 - dist, 0.0, 1.0) * h.y;
+            c = over(vec4<f32>(u.accent.rgb * a, a), c);
+        }
+    }
     return vec4<f32>(c.rgb, 1.0);
 }
 
@@ -2267,7 +2616,9 @@ fn in_rect(p: vec2<f32>, r: vec4<f32>) -> bool {
 }
 "#;
 
-const UNIFORM_SIZE: usize = 16 * (6 + 4 + 1) + 20 * 48;
+const UNIFORM_SIZE: usize = 16 * (6 + 4 + 1) + 20 * 48 + 16 * 5;
+/// The dots' and the accent's place in the uniforms (after the 20 layers).
+const U_DOTS: usize = (16 * (6 + 4 + 1) + 20 * 48) / 4;
 
 fn build(device: &wgpu::Device, format: wgpu::TextureFormat, px: (u32, u32), board_px: u32) -> Gpu {
     let module = device.create_shader_module(wgpu::ShaderModuleDescriptor { label: Some("chessboard"), source: wgpu::ShaderSource::Wgsl(WGSL.into()) });
@@ -2310,6 +2661,7 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat, px: (u32, u32), boa
         layout,
         px,
         board: skia::render::sampled_target(device, "chessboard board", rgba, board_px, board_px),
+        pieces: skia::render::sampled_target(device, "chessboard pieces", rgba, board_px, board_px),
         ui: t("chessboard ui"),
         screen: t("chessboard screen"),
         snapshot: t("chessboard snapshot"),
@@ -2317,6 +2669,7 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat, px: (u32, u32), boa
         sheet: t("chessboard sheet"),
         modal: t("chessboard modal"),
         dummy: skia::render::sampled_target(device, "chessboard dummy", rgba, 1, 1),
+        groups: None,
     }
 }
 
@@ -2325,7 +2678,22 @@ fn bytes(v: &[f32]) -> Vec<u8> {
 }
 
 impl Surface for Chessboard {
-    fn bind(&mut self, _inputs: &[Value], _: Option<f64>) -> Result<(), SurfaceError> {
+    /// Inputs: the Contract bar's Hint taps and View solution taps (counters: each rise is a tap).
+    fn bind(&mut self, inputs: &[Value], _: Option<f64>) -> Result<(), SurfaceError> {
+        let n = |i: usize| inputs.get(i).and_then(|v| v.as_number()).unwrap_or(0.0);
+        let (hints, solves) = (n(0), n(1));
+        if let Some((h, v)) = self.seen {
+            if self.size.0 > 0.0 {
+                if hints > h {
+                    self.hint_request();
+                }
+                if solves > v {
+                    self.solve_request();
+                    self.run_callbacks();
+                }
+            }
+        }
+        self.seen = Some((hints, solves));
         Ok(())
     }
 
@@ -2341,7 +2709,7 @@ impl Surface for Chessboard {
         let fen = self.chess.fen();
         let sq = |s: Option<i32>| s.map_or("null".to_string(), |s| format!("\"{}\"", chess::algebraic(s)));
         Some(format!(
-            "{{\"fen\":\"{fen}\",\"plies\":{},\"status\":\"{}\",\"selected\":{},\"valid\":{},\"clocks\":[{},{}],\"aura\":{},\"card\":{},\"promotion\":{},\"held\":{}}}",
+            "{{\"fen\":\"{fen}\",\"plies\":{},\"status\":\"{}\",\"selected\":{},\"valid\":{},\"clocks\":[{},{}],\"aura\":{},\"card\":{},\"promotion\":{},\"held\":{},\"mode\":\"{}\"}}",
             self.plies.len(),
             self.status,
             sq(self.selected),
@@ -2351,7 +2719,8 @@ impl Surface for Chessboard {
             self.aura.as_ref().map_or(0.0, |a| a.vis.value),
             self.aura.as_ref().is_some_and(|a| a.card.is_some()),
             self.promotion.is_some(),
-            self.pan.tracking() || self.held.is_some()
+            self.pan.tracking() || self.held.is_some(),
+            self.puzzle_mode()
         ))
     }
 
@@ -2409,6 +2778,8 @@ impl Surface for Chessboard {
         if first {
             self.mount_squares();
             self.next_tick = Some(self.now + 1000.0);
+            // The puzzle opens on the opponent's setup move, after RN's beat on the position.
+            self.reply_at = Some(self.now + START_DELAY);
         }
         if resized {
             if !first {
@@ -2427,6 +2798,7 @@ impl Surface for Chessboard {
             self.layout_sections();
             self.fonts.board = None;
             self.board_dirty = true;
+            self.pieces_dirty = true;
             self.sheet_dirty = true;
             self.modal_dirty = true;
         }
@@ -2436,6 +2808,12 @@ impl Surface for Chessboard {
         self.run_js();
         moving |= self.started && !self.game_over;
         moving |= self.replay.is_some() || self.aura_timer.is_some() || self.show_at.is_some() || !self.mate_haptics.is_empty();
+        moving |= self.reply_at.is_some() || self.wrong.is_some();
+        let mode = self.puzzle_mode();
+        if mode != self.mode {
+            self.mode = mode;
+            self.messages.push(format!("puzzle:{mode}"));
+        }
         moving |= self.aura.is_some();
         moving |= self.pan.tracking() || self.held.is_some();
 
@@ -2449,13 +2827,16 @@ impl Surface for Chessboard {
             let refs: Vec<&Image> = ui.iter().collect();
             self.images = Some(Images::upload(device, queue, &refs));
             self.renderers[0].set_images(self.sprite.as_ref().unwrap());
-            for r in self.renderers[1..].iter_mut() {
+            self.renderers[4].set_images(self.sprite.as_ref().unwrap());
+            for r in self.renderers[1..4].iter_mut() {
                 r.set_images(self.images.as_ref().unwrap());
             }
         }
         if self.gpu.as_ref().map(|g| (g.format, g.px)) != Some((format, px)) {
             self.gpu = Some(build(device, format, px, board_px));
             self.board_dirty = true;
+            self.pieces_dirty = true;
+            self.cards_key.clear();
             self.sheet_dirty = true;
             self.modal_dirty = true;
         }
@@ -2466,9 +2847,18 @@ impl Surface for Chessboard {
             let gpu = self.gpu.as_ref().unwrap();
             self.p3.draw(&mut self.renderers[0], device, queue, encoder, &self.canvas, &gpu.board, wgpu::TextureFormat::Rgba8Unorm, board_px, board_px, wgpu::Color::TRANSPARENT);
         }
-        // The cards.
-        self.draw_cards();
-        {
+        // The pieces' canvas, over it.
+        if self.pieces_dirty {
+            self.pieces_dirty = false;
+            self.draw_pieces();
+            let gpu = self.gpu.as_ref().unwrap();
+            self.p3_pieces.draw(&mut self.renderers[4], device, queue, encoder, &self.canvas, &gpu.pieces, wgpu::TextureFormat::Rgba8Unorm, board_px, board_px, wgpu::Color::TRANSPARENT);
+        }
+        // The cards, when they changed (the turn dot is the compose pass's).
+        let key = self.cards_key();
+        if key != self.cards_key {
+            self.cards_key = key;
+            self.draw_cards();
             let gpu = self.gpu.as_ref().unwrap();
             self.renderers[1].draw(device, queue, encoder, &self.canvas, &gpu.ui, wgpu::TextureFormat::Rgba8Unorm, px.0, px.1, wgpu::Color::TRANSPARENT);
         }
@@ -2529,8 +2919,15 @@ impl Surface for Chessboard {
             }
         }
         u[11] = n as f32;
-        let gpu = self.gpu.as_ref().unwrap();
+        for (i, side) in [Side::B, Side::W].into_iter().enumerate() {
+            let d = self.turn_dot(side);
+            u[U_DOTS + i * 8..U_DOTS + i * 8 + 8].copy_from_slice(&d);
+        }
+        let accent = view(theme::ACCENT, 1.0).0;
+        u[U_DOTS + 16..U_DOTS + 19].copy_from_slice(&accent[..3]);
+        let gpu = self.gpu.as_mut().unwrap();
         queue.write_buffer(&gpu.buffer, 0, &bytes(&u));
+        let gpu = &*gpu;
         let group = |a: &wgpu::TextureView, b: &wgpu::TextureView, c: &wgpu::TextureView, d: &wgpu::TextureView| {
             device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("chessboard"),
@@ -2545,14 +2942,25 @@ impl Surface for Chessboard {
                 ],
             })
         };
-        let g_compose = group(&gpu.board, &gpu.ui, &gpu.dummy, &gpu.dummy);
-        skia::render::fullscreen_pass(encoder, "chessboard compose", &gpu.screen, &gpu.compose, &g_compose);
+        let groups = gpu.groups.is_none().then(|| {
+            [
+                group(&gpu.board, &gpu.ui, &gpu.pieces, &gpu.dummy),
+                group(&gpu.snapshot, &gpu.dummy, &gpu.dummy, &gpu.dummy),
+                group(&gpu.screen, &gpu.wave_out, &gpu.sheet, &gpu.modal),
+            ]
+        });
+        if let Some(g) = groups {
+            self.gpu.as_mut().unwrap().groups = Some(g);
+        }
+        let gpu = self.gpu.as_ref().unwrap();
+        let [g_compose, g_wave, g_finish] = gpu.groups.as_ref().unwrap();
+        skia::render::fullscreen_pass(encoder, "chessboard compose", &gpu.screen, &gpu.compose, g_compose);
         // show(): the snapshot of the screen as it is now; the overlay comes in on the next frame.
         let mut wave = false;
         if let Some(a) = self.aura.as_mut() {
             if a.snapshot_at.is_none() {
                 a.snapshot_at = Some(self.now);
-                skia::render::fullscreen_pass(encoder, "chessboard snapshot", &gpu.snapshot, &gpu.compose, &g_compose);
+                skia::render::fullscreen_pass(encoder, "chessboard snapshot", &gpu.snapshot, &gpu.compose, g_compose);
             } else if !a.revealed {
                 a.revealed = true;
                 a.vis.set(1.0);
@@ -2565,11 +2973,9 @@ impl Surface for Chessboard {
             wave = a.revealed && a.vis.value > 0.0;
         }
         if wave {
-            let g_wave = group(&gpu.snapshot, &gpu.dummy, &gpu.dummy, &gpu.dummy);
-            skia::render::fullscreen_pass(encoder, "chessboard wave", &gpu.wave_out, &gpu.wave, &g_wave);
+            skia::render::fullscreen_pass(encoder, "chessboard wave", &gpu.wave_out, &gpu.wave, g_wave);
         }
-        let g_finish = group(&gpu.screen, &gpu.wave_out, &gpu.sheet, &gpu.modal);
-        skia::render::fullscreen_pass(encoder, "chessboard", target, &gpu.finish, &g_finish);
+        skia::render::fullscreen_pass(encoder, "chessboard", target, &gpu.finish, g_finish);
         moving || modal
     }
 }
@@ -2635,13 +3041,59 @@ mod tests {
         assert_eq!(rows[2], (Q::Book, 4, 3));
     }
 
+    fn tap(c: &mut Chessboard, id: u32, name: &str, ms: f64) {
+        let (x, y) = centre(c, name);
+        c.input(&touch(id, PointerPhase::Down, x, y, ms));
+        c.input(&touch(id, PointerPhase::Up, x, y, ms + 50.0));
+    }
+
+    /// The opening beat, 16...Kg2 (the setup move), 17. Rh2+ tapped, and the reply 17...Kg1.
+    fn to_the_mate(c: &mut Chessboard) -> f64 {
+        c.reply_at = Some(START_DELAY);
+        run(c, 0.0, 1000.0);
+        assert_eq!(c.plies.len(), 1, "the setup move");
+        tap(c, 1, "h1", 1000.0);
+        tap(c, 2, "h2", 1100.0);
+        assert_eq!(c.plies.len(), 2, "17. Rh2+");
+        assert_eq!(c.puzzle_mode(), "wait");
+        run(c, 1150.0, 1500.0);
+        assert_eq!(c.plies.len(), 2, "the reply waits REPLY_DELAY");
+        run(c, 1500.0, 2200.0);
+        assert_eq!(c.plies.len(), 3, "17...Kg1");
+        assert_eq!(c.chess.fen(), START_FEN);
+        assert_eq!(c.puzzle_mode(), "play");
+        2200.0
+    }
+
+    #[test]
+    fn the_puzzle_opens_on_the_opponents_move() {
+        let mut c = surface_at(0.0);
+        c.reply_at = Some(START_DELAY);
+        assert_eq!((c.chess.turn(), c.puzzle_mode()), (Side::B, "wait"));
+        // A finger on the board before the setup move does nothing.
+        tap(&mut c, 1, "h1", 100.0);
+        assert_eq!(c.selected, None);
+        run(&mut c, 0.0, 880.0);
+        assert_eq!(c.plies.len(), 0);
+        run(&mut c, 880.0, 940.0);
+        assert_eq!(c.plies.len(), 1);
+        // It slides (spring) from f3 to g2 on top, with a haptic.
+        let f3 = chess::square("f3").unwrap() as usize;
+        assert_eq!(c.squares[f3].z, 100);
+        assert!(c.messages().contains(&"haptic:impact-light".to_string()));
+        run(&mut c, 940.0, 1600.0);
+        assert_eq!(c.squares[chess::square("g2").unwrap() as usize].piece, Some(Piece { color: Side::B, kind: Kind::K }));
+        assert_eq!(c.squares[f3].piece, None);
+    }
+
     #[test]
     fn a_dragged_king_mates_and_the_aura_follows() {
         let mut c = surface_at(0.0);
+        let mut ms = to_the_mate(&mut c);
+        c.messages();
         let (x0, y0) = centre(&c, "e1");
         let (x1, y1) = centre(&c, "d2");
-        c.input(&touch(1, PointerPhase::Down, x0, y0, 10.0));
-        let mut ms = 10.0;
+        c.input(&touch(1, PointerPhase::Down, x0, y0, ms));
         for k in 1..=10 {
             ms += 16.0;
             let t = k as f32 / 10.0;
@@ -2653,9 +3105,10 @@ mod tests {
         ms += 16.0;
         c.input(&touch(1, PointerPhase::Up, x1, y1, ms));
         assert_eq!(c.status, "Checkmate");
-        assert_eq!(c.plies.len(), 1);
+        assert_eq!(c.plies.len(), 4);
         assert_eq!(c.winner(), Some(Side::W));
         assert!(c.game_over && c.started);
+        assert_eq!(c.puzzle_mode(), "done");
         run(&mut c, ms, ms + 1000.0);
         // The king landed (committed) on d2.
         assert_eq!(c.squares[chess::square("d2").unwrap() as usize].piece, Some(Piece { color: Side::W, kind: Kind::K }));
@@ -2665,28 +3118,80 @@ mod tests {
         assert!(c.aura.is_some() && c.busy);
         let msgs = c.messages();
         assert_eq!(msgs.iter().filter(|m| *m == "haptic:mate").count(), 1, "{msgs:?}");
+        assert!(c.reply_at.is_none());
     }
 
     #[test]
-    fn tap_select_move_capture_and_the_clock() {
+    fn a_wrong_move_shakes_and_goes_home_and_the_clock_burns() {
         let mut c = surface_at(0.0);
         c.next_tick = Some(1000.0);
-        // Tap the f6 knight, then h7: Nxh7 isn't legal (h7 empty, not a knight move); g8 is.
-        let (fx, fy) = centre(&c, "f6");
-        c.input(&touch(1, PointerPhase::Down, fx, fy, 0.0));
-        c.input(&touch(1, PointerPhase::Up, fx, fy, 60.0));
+        c.reply_at = Some(START_DELAY);
+        run(&mut c, 0.0, 1000.0);
+        c.messages();
+        // Tap the f6 knight, then d7: Nxd7 is legal but off the line.
+        tap(&mut c, 1, "f6", 1000.0);
         assert_eq!(c.selected, chess::square("f6"));
-        // Nxe8? no: the targets: d7 (capture), d5, e4, g8, h7, h5, e8, g4 is own.
-        let (dx, dy) = centre(&c, "d7");
-        c.input(&touch(2, PointerPhase::Down, dx, dy, 200.0));
-        c.input(&touch(2, PointerPhase::Up, dx, dy, 260.0));
-        assert_eq!(c.plies.len(), 1);
-        assert_eq!(c.captured[0].last(), Some(&Kind::P));
+        tap(&mut c, 2, "d7", 1200.0);
+        assert_eq!(c.plies.len(), 1, "not played");
+        assert_eq!(c.messages(), vec!["haptic:error".to_string()]);
+        assert_eq!(c.puzzle_mode(), "wait");
+        // On d7, shaking.
+        run(&mut c, 1250.0, 1500.0);
+        let f6 = chess::square("f6").unwrap();
+        assert!(c.shake(f6).abs() > 0.5, "{}", c.shake(f6));
+        let (d7x, _) = pos(chess::square("d7").unwrap(), c.ps());
+        assert!((c.squares[f6 as usize].tx.s.value as f32 - d7x).abs() < 6.0, "{}", c.squares[f6 as usize].tx.s.value);
+        // Home again, the d7 pawn untouched, the board the user's again.
+        run(&mut c, 1500.0, 3000.0);
+        let (hx, hy) = pos(f6, c.ps());
+        assert!((c.squares[f6 as usize].tx.s.value as f32 - hx).abs() < 0.5 && (c.squares[f6 as usize].ty.s.value as f32 - hy).abs() < 0.5);
+        assert_eq!(c.squares[f6 as usize].z, 0);
+        assert_eq!(c.squares[chess::square("d7").unwrap() as usize].piece, Some(Piece { color: Side::B, kind: Kind::P }));
+        assert_eq!(c.puzzle_mode(), "play");
+        // White's clock burns from the setup move (0.9 s): 74 → 71 by 3 s (ticks at 1, 2 and 3 s).
+        assert_eq!(c.clock[0], 71);
+    }
+
+    #[test]
+    fn hint_then_solution_climb_the_ladder() {
+        let mut c = surface_at(0.0);
+        assert!(c.bind(&[Value::Number(0.0), Value::Number(0.0)], None).is_ok());
+        c.reply_at = Some(START_DELAY);
+        run(&mut c, 0.0, 1000.0);
+        let (h1, h2) = (chess::square("h1").unwrap() as usize, chess::square("h2").unwrap() as usize);
+        c.bind(&[Value::Number(1.0), Value::Number(0.0)], None).unwrap();
+        assert!(c.squares[h1].hint && !c.squares[h2].hint);
+        assert_eq!(c.puzzle_mode(), "hint1");
+        c.bind(&[Value::Number(2.0), Value::Number(0.0)], None).unwrap();
+        assert!(c.squares[h1].hint && c.squares[h2].hint);
+        assert_eq!(c.puzzle_mode(), "hint2");
+        // A third hint has nothing more to show.
+        c.bind(&[Value::Number(3.0), Value::Number(0.0)], None).unwrap();
+        assert_eq!(c.hint, 2);
+        run(&mut c, 1000.0, 1200.0);
+        assert!(c.squares[h1].hint_fade.value > 0.99);
+        // View solution: 17. Rh2+ plays, the marks go, the reply follows.
+        c.bind(&[Value::Number(3.0), Value::Number(1.0)], None).unwrap();
+        assert_eq!(c.plies.len(), 2);
+        assert!(!c.squares[h1].hint && !c.squares[h2].hint && c.hint == 0);
+        run(&mut c, 1200.0, 1800.0);
+        assert_eq!(c.plies.len(), 3);
+        c.bind(&[Value::Number(3.0), Value::Number(2.0)], None).unwrap();
+        assert_eq!(c.status, "Checkmate");
+    }
+
+    #[test]
+    fn a_capture_fades_its_piece_out() {
+        let mut c = surface_at(0.0);
+        c.reset_board("4k3/8/8/3p4/4P3/8/8/4K3 w - - 0 1", None, None);
+        c.running = true;
+        c.try_move(chess::square("e4").unwrap(), chess::square("d5").unwrap(), None, Some(7));
+        assert_eq!(c.ghosts.len(), 1);
         assert_eq!(c.messages(), vec!["haptic:impact-medium".to_string()]);
-        assert_eq!(c.turn_sv, Side::B);
-        run(&mut c, 260.0, 2100.0);
-        // Black's clock burns: 23 → 21 by 2.1 s (ticks at 1 s and 2 s).
-        assert_eq!(c.clock, [74, 21]);
+        run(&mut c, 0.0, 200.0);
+        assert_eq!(c.ghosts.len(), 1);
+        run(&mut c, 200.0, 400.0);
+        assert!(c.ghosts.is_empty());
     }
 
     #[test]
@@ -2694,7 +3199,8 @@ mod tests {
         let mut c = surface_at(0.0);
         c.reset_board("8/4P1k1/8/8/8/8/8/4K3 w - - 0 1", None, None);
         c.select_piece(chess::square("e7").unwrap());
-        c.try_move(chess::square("e7").unwrap(), chess::square("e8").unwrap(), None, None);
+        // The board's own promotion (the replay's token passes the puzzle's line check).
+        c.try_move(chess::square("e7").unwrap(), chess::square("e8").unwrap(), None, Some(9));
         assert!(c.promotion.is_some());
         run(&mut c, 0.0, 400.0);
         // Tap the knight (the fourth button).
@@ -2709,17 +3215,14 @@ mod tests {
     }
 
     #[test]
-    fn castling_slides_the_rook_and_back_resets_the_game() {
+    fn castling_mates_too_and_back_restarts_the_puzzle() {
         let mut c = surface_at(0.0);
-        // Tap e1, tap c1: O-O-O#, the rook riding from a1 to d1 with the king.
-        let (ex, ey) = centre(&c, "e1");
-        c.input(&touch(1, PointerPhase::Down, ex, ey, 0.0));
-        c.input(&touch(1, PointerPhase::Up, ex, ey, 50.0));
-        let (cx, cy) = centre(&c, "c1");
-        c.input(&touch(2, PointerPhase::Down, cx, cy, 100.0));
-        c.input(&touch(2, PointerPhase::Up, cx, cy, 150.0));
+        let ms = to_the_mate(&mut c);
+        // Tap e1, tap c1: O-O-O#, off the line but a mate, the rook riding from a1 to d1.
+        tap(&mut c, 1, "e1", ms);
+        tap(&mut c, 2, "c1", ms + 100.0);
         assert_eq!(c.status, "Checkmate");
-        run(&mut c, 150.0, 1800.0);
+        run(&mut c, ms + 150.0, ms + 1800.0);
         let at = |c: &Chessboard, n: &str| c.squares[chess::square(n).unwrap() as usize].piece;
         assert_eq!(at(&c, "d1"), Some(Piece { color: Side::W, kind: Kind::R }));
         assert_eq!(at(&c, "c1"), Some(Piece { color: Side::W, kind: Kind::K }));
@@ -2729,22 +3232,26 @@ mod tests {
         assert!(a.card.is_some());
         a.revealed = true;
         a.vis.set(1.0);
-        run(&mut c, 1800.0, 2400.0);
+        let ms = ms + 1800.0;
+        run(&mut c, ms, ms + 600.0);
         let back = c.sections.iter().find(|s| s.button == Some(0)).unwrap().rect;
         let (bx, by) = (back[0] + back[2] / 2.0, back[1] + back[3] / 2.0);
-        c.input(&touch(3, PointerPhase::Down, bx, by, 2400.0));
-        c.input(&touch(3, PointerPhase::Up, bx, by, 2460.0));
+        c.input(&touch(3, PointerPhase::Down, bx, by, ms + 600.0));
+        c.input(&touch(3, PointerPhase::Up, bx, by, ms + 660.0));
         assert!(c.messages().contains(&"haptic:selection".to_string()));
-        run(&mut c, 2460.0, 3000.0);
+        run(&mut c, ms + 660.0, ms + 1200.0);
         assert!(c.aura.is_none() && !c.busy);
-        assert_eq!(c.chess.fen(), START_FEN);
-        assert_eq!(at(&c, "e1"), Some(Piece { color: Side::W, kind: Kind::K }));
-        assert_eq!((c.plies.len(), c.status.as_str(), c.clock), (0, "White to move", CLOCK_START));
+        assert_eq!(c.chess.fen(), PUZZLE_FEN);
+        assert_eq!(at(&c, "f3"), Some(Piece { color: Side::B, kind: Kind::K }));
+        assert_eq!((c.plies.len(), c.status.as_str(), c.clock), (0, "Black to move", CLOCK_START));
         assert_eq!(c.captured, initial_captures());
+        // The setup move plays again.
+        run(&mut c, ms + 1200.0, ms + 2000.0);
+        assert_eq!(c.plies.len(), 1);
     }
 
     #[test]
-    fn replay_plays_the_mate_after_its_delay() {
+    fn replay_plays_the_line_after_its_delay() {
         let mut c = surface_at(0.0);
         c.play_sequence();
         assert!(c.running);
@@ -2752,7 +3259,9 @@ mod tests {
         assert_eq!(c.plies.len(), 0);
         run(&mut c, 880.0, 940.0);
         assert_eq!(c.plies.len(), 1);
-        run(&mut c, 940.0, 2000.0);
+        run(&mut c, 940.0, 6000.0);
+        assert_eq!(c.plies.len(), 4);
+        assert_eq!(c.status, "Checkmate");
         assert!(!c.running);
     }
 
@@ -2763,7 +3272,9 @@ mod tests {
             Err(error) => return eprintln!("{error}; skipped"),
         };
         let mut s = surface();
+        assert!(s.bind(&[Value::Number(0.0), Value::Number(0.0)], None).is_ok());
         let (rest, _) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
+        assert!(s.messages().contains(&"puzzle:wait".to_string()));
         gfx::save_over(&rest, "chessboard-rest", [13, 14, 18]);
         // a8 (light) and b8 (dark) at the board's top-left (board top 238).
         let light = rest.at(3 * 4, 3 * 240);
@@ -2772,12 +3283,29 @@ mod tests {
         // The root's colour above the black card.
         let top = rest.at(30, 30);
         assert!(top[0] < 20 && top[2] < 25, "{top:?}");
+        // The setup move, View solution (17. Rh2+), the reply: frames all the way.
+        let mut ms = 0.0;
+        let frames = |s: &mut Box<dyn Surface>, to: f64, ms: &mut f64| {
+            while *ms < to {
+                *ms += 8.0;
+                fixture::render(&gpu, s.as_mut(), &frame(*ms)).unwrap();
+            }
+        };
+        frames(&mut s, 1400.0, &mut ms);
+        assert!(s.messages().contains(&"puzzle:play".to_string()));
+        s.bind(&[Value::Number(0.0), Value::Number(1.0)], None).unwrap();
+        frames(&mut s, 2400.0, &mut ms);
+        let agent = s.agent("{}").unwrap();
+        assert!(agent.contains("\"plies\":3") && agent.contains("\"mode\":\"play\""), "{agent}");
+        // The pieces' layer: the black king has left f3 (a light square, bare now).
+        let (moved, _) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+        let (fx, fy) = ((3.0 * 288.75) as u32, (3.0 * 526.75) as u32);
+        assert!(rest.at(fx, fy)[0] < 150 && moved.at(fx, fy)[0] > 200, "{:?} {:?}", rest.at(fx, fy), moved.at(fx, fy));
         // Drag e1 → d2: mate; the aura sweeps; the card comes.
         let p = |ph, x, y, ms| touch(1, ph, x, y, ms);
         let (x0, y0) = (4.5 * 52.5, 238.0 + 7.5 * 52.5);
         let (x1, y1) = (3.5 * 52.5, 238.0 + 6.5 * 52.5);
-        s.input(&p(PointerPhase::Down, x0, y0, 16.0));
-        let mut ms = 16.0;
+        s.input(&p(PointerPhase::Down, x0, y0, ms));
         for k in 1..=10 {
             ms += 16.0;
             let t = k as f32 / 10.0;
@@ -2786,10 +3314,12 @@ mod tests {
         }
         ms += 16.0;
         s.input(&p(PointerPhase::Up, x1, y1, ms));
-        while ms < 4500.0 {
+        let end = ms + 4500.0;
+        let wave_at = ms + 1700.0;
+        while ms < end {
             ms += 16.0;
             let (img, _) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
-            if (1700.0..1716.0).contains(&ms) {
+            if (wave_at..wave_at + 16.0).contains(&ms) {
                 gfx::save_over(&img, "chessboard-wave", [13, 14, 18]);
             }
         }

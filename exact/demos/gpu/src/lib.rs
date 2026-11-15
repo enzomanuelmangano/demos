@@ -158,7 +158,7 @@ pub static REGISTRY: Registry = Registry {
         ("card_shader_reflections", 0, card_shader_reflections::surface),
         ("circular_carousel", 1, circular_carousel::surface),
         ("cherry_blossom_qrcode", 4, cherry_blossom_qrcode::surface),
-        ("chessboard", 0, chessboard::surface),
+        ("chessboard", 2, chessboard::surface),
         ("clock_time_picker", 0, clock_time_picker::surface),
         ("color_carousel", 0, color_carousel::surface),
         ("coverflow_carousel", 0, coverflow_carousel::surface),
