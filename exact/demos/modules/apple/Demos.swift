@@ -26,6 +26,7 @@
 // `page-dots` (PageDots.swift): the home's page dots, following the pager's scroll offset
 //   (the `page-scroller` hatch names the pager's scroll view).
 // `search-reveal` (SearchReveal.swift): the home's pull-to-search, driven by the same pager.
+// `still-art` (StillArt.swift): a bundled picture predecoded at launch, in the frame its node first shows in.
 import Foundation
 #if os(iOS)
 import CoreHaptics
@@ -36,6 +37,7 @@ let exactModule: ExactModule.Type = DemosModule.self
 
 final class DemosModule: ExactModule {
     override class var views: [String: ExactNativeFactory] {
+        StillArt.warm()
         installLaunch()
         // Each native view is named for the layers overlay (LayerSkeleton.swift) when it is made.
         func native(_ tag: String, _ make: @escaping ([String: String], ExactNativeEvents) -> ExactNativeInstance) -> ExactNativeFactory {
@@ -59,8 +61,14 @@ final class DemosModule: ExactModule {
          "system-alert": native("system-alert") { SystemAlert(props: $0, events: $1) },
          "music-tabbar": native("music-tabbar") { MusicTabBar(props: $0, events: $1) },
          "native-tabbar": native("native-tabbar") { MusicTabBar(props: $0, events: $1, accessory: false) },
-         "page-dots": native("page-dots") { PageDots(props: $0, events: $1) },
-         "search-reveal": native("search-reveal") { SearchReveal(props: $0, events: $1) }]
+         // The dots join the home's first frame (a cheap view: no plan, a KVO on the pager).
+         "page-dots": ExactNativeFactory(firstFrame: true) { props, events in
+             let instance = PageDots(props: props, events: events)
+             LayerSkeleton.tag(instance.view, "page-dots")
+             return instance
+         },
+         "search-reveal": native("search-reveal") { SearchReveal(props: $0, events: $1) },
+         "still-art": ExactNativeFactory(firstFrame: true) { props, events in StillArtInstance(props: props, events: events) }]
     }
 
     override func element(_ element: ExactElement) {

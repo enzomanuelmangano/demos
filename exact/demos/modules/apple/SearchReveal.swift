@@ -401,24 +401,9 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         if dataChanged { preload() }
     }
 
-    /// The artwork decoded off the main thread, so a row appearing at the commit costs no decode.
-    private static let images = NSCache<NSString, UIImage>()
-    private static func image(_ file: String) -> UIImage? {
-        if let hit = images.object(forKey: file as NSString) { return hit }
-        for base in [Bundle.main.resourceURL, Bundle.main.bundleURL].compactMap({ $0 }) {
-            let path = base.appendingPathComponent(file).path
-            if let image = UIImage(contentsOfFile: path) {
-                let ready = image.preparingForDisplay() ?? image
-                images.setObject(ready, forKey: file as NSString)
-                return ready
-            }
-        }
-        return nil
-    }
-    private func preload() {
-        let files = rows.map(\.icon)
-        DispatchQueue.global(qos: .utility).async { for file in files { _ = Self.image(file) } }
-    }
+    /// The artwork the home's icons show (StillArt.swift): decoded once for both, at launch, so a row costs no decode.
+    private static func image(_ file: String) -> UIImage? { StillArt.image(file) }
+    private func preload() { StillArt.warm() }
 
     // MARK: layout
 

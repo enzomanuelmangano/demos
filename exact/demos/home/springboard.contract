@@ -20,6 +20,10 @@ component Springboard
     demos: Demo[]
     approved: string[]
     changed: string[]
+    // The pages mounted so far and the pages whose long-press menus are mounted (app.contract stages both after the first
+    // frame): the first commit holds page 1 alone, ~110 nodes a page with its menus where the whole grid was ~1,700.
+    mounted: number
+    menuPages: number
     open: action
   state boxW = 0
   state boxH = 0
@@ -39,8 +43,9 @@ component Springboard
     column position="absolute" inset=0 testId="springboard"
       // A static wallpaper, edge to edge. It never scales: the launch (DemoLaunch.swift) zooms
       // `springboard-zoom` alone, as SpringBoard zooms its icons over a still wallpaper.
-      image "assets/home-wallpaper.png" position="absolute" inset=0 width="100%" height="100%"
-        object-fit="cover" aria-hidden=true
+      // A native picture (StillArt.swift), predecoded at launch: an `image` node lands a frame or many later.
+      still-art art="assets/home-wallpaper.png" mode="cover" position="absolute" inset=0 width="100%" height="100%"
+        aria-hidden=true
       column flex=1 min-height=0 resize=fit position="relative"
         padding-top="env(safe-area-inset-top)" padding-bottom="env(safe-area-inset-bottom)"
         testId="springboard-zoom"
@@ -52,8 +57,9 @@ component Springboard
             column id=`page-${p}` width=boxW height="100%" flex-shrink=0 scroll-snap-align="start"
               scroll-snap-stop="always" padding="16px 22px 0" box-sizing="border-box"
               row flex-wrap="wrap" row-gap=22 align-content="flex-start"
-                for d in demos.slice(p * per, (p + 1) * per) key=d.slug
-                  AppIcon(demo=d, cell=cellWidth(boxW), size=iconSize(boxW), approved=approved.includes(d.slug), changed=changed.includes(d.slug), open=open)
+                if p < mounted
+                  for d in demos.slice(p * per, (p + 1) * per) key=d.slug
+                    AppIcon(demo=d, cell=cellWidth(boxW), size=iconSize(boxW), approved=approved.includes(d.slug), changed=changed.includes(d.slug), menu=(p < menuPages), open=open)
         // Page dots: native, they read the pager's offset in the same frame as the scroll (PageDots.swift).
         if pages.length > 1
           page-dots scroller="pager" count=pages.length height=44 flex-shrink=0 aria-hidden=true
@@ -72,6 +78,7 @@ component AppIcon
     size: number
     approved: bool
     changed: bool
+    menu: bool
     open: action
   action openLink(url: string)
     openURL(url)
@@ -88,8 +95,8 @@ component AppIcon
         // shadow: each of those is an offscreen pass on every scroll and launch-zoom frame. The node keeps
         // the matching continuous radius for the launch's frame and the lift's outline; it clips nothing.
         view id=`icon-${demo.slug}` hatch="launch-icon" data-slug=demo.slug width=size height=size border-radius=(size * 0.2237) corner-shape="-exact-continuous"
-          contextPopover=`menu-${demo.slug}`
-          image demo.icon width=size height=size object-fit="cover" aria-hidden=true
+          contextPopover=(menu ? `menu-${demo.slug}` : "")
+          still-art art=demo.icon mode="cover" width=size height=size aria-hidden=true
       // Badges over the icon's top-right corner, siblings of the button so the launch square and
       // the long-press lift stay the bare squircle. Orange: changed since the last open, shown
       // over the green one; opening the demo clears it. Green: approved from the phone.
@@ -109,16 +116,17 @@ component AppIcon
       text demo.label margin-top=6 max-width="100%" font-size=11 font-weight=600
         color="rgba(255,255,255,0.92)" text-align="center" white-space="nowrap" overflow="hidden"
         text-overflow="ellipsis"
-      column id=`menu-${demo.slug}` popover="auto" role="menu" aria-label=demo.name
-        if demo.inspiration != ""
-          button press=openLink(demo.inspiration) popovertarget=`menu-${demo.slug}` popovertargetaction="hide"
-            text "Inspiration"
-            image "symbol:sparkles"
-        button press=shareDemo popovertarget=`menu-${demo.slug}` popovertargetaction="hide"
-          text "Share"
-          image "symbol:share"
-        button press=openLink(sourceUrl(demo.slug)) popovertarget=`menu-${demo.slug}` popovertargetaction="hide"
-          text "View Code"
-          image "symbol:document"
+      if menu
+        column id=`menu-${demo.slug}` popover="auto" role="menu" aria-label=demo.name
+          if demo.inspiration != ""
+            button press=openLink(demo.inspiration) popovertarget=`menu-${demo.slug}` popovertargetaction="hide"
+              text "Inspiration"
+              image "symbol:sparkles"
+          button press=shareDemo popovertarget=`menu-${demo.slug}` popovertargetaction="hide"
+            text "Share"
+            image "symbol:share"
+          button press=openLink(sourceUrl(demo.slug)) popovertarget=`menu-${demo.slug}` popovertargetaction="hide"
+            text "View Code"
+            image "symbol:document"
 
 fn sourceUrl(slug: string): string = `https://github.com/enzomanuelmangano/demos/tree/main/src/animations/${slug}`
