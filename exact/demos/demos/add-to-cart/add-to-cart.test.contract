@@ -1,7 +1,35 @@
 at "/demo/add-to-cart"
 
-// The web host gives a surface no touches: the list, the taps, the flight, the confirm press
-// and its haptic are the Rust tests' (gpu/src/add_to_cart.rs); here what the Contract holds.
-test "the canvas fills the white screen"
+test "twenty product cards, each with its cart button"
   expect tree has "add-to-cart"
-  expect tree has "add-to-cart-canvas"
+  expect tree has "card-0"
+  expect tree has "buy-0"
+  expect tree has "card-19"
+  expect tree missing "sheet-photo"
+
+test "the cart button opens the product's sheet, and the backdrop closes it without adding"
+  tap "buy-3"
+  clock settle
+  expect tree has "sheet-photo"
+  expect tree has "add-to-cart-confirm"
+  expect text "sheet-title" == "Item 3"
+  expect tree missing "card-3"
+  tap "add-to-cart-backdrop"
+  clock settle
+  expect tree missing "sheet-photo"
+  expect tree has "card-3"
+  expect tree missing "badge-3"
+
+test "confirming counts the product on its cart badge"
+  tap "card-5"
+  clock settle
+  expect text "sheet-title" == "Item 5"
+  tap "add-to-cart-confirm"
+  clock settle
+  expect tree missing "sheet-photo"
+  expect text "badge-5" == "1"
+  tap "buy-5"
+  clock settle
+  tap "add-to-cart-confirm"
+  clock settle
+  expect text "badge-5" == "2"

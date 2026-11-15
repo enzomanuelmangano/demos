@@ -1,22 +1,224 @@
-// Add to Cart: a list of 20 product rows, each with a black cart button; a tap flies a button
-// from the row to the bottom of the screen, where it grows into "ADD TO CART" over a dimmed
-// backdrop and a white sheet; confirming counts the item (a red badge) and flies it back.
+// Add to Cart: a list of 20 product cards, each with a photo, a title, two lines of copy and a
+// black cart button. Opening a product (the card or its cart button) morphs the card into a
+// confirmation sheet floating at the bottom: the white card grows into the sheet, the photo into
+// its hero, the cart button into the wide "Add to Cart" button, all on one critically damped
+// spring over a dimming backdrop. Confirming flies all three back home, plays a haptic as the
+// product lands and pops the cart's red badge with the new count; tapping the backdrop flies them
+// back without adding.
 // RN: src/animations/add-to-cart (index.tsx, components/list-item, confirm-button, backdrop,
-// bottom-sheet). Everything is one Rust surface, gpu/src/add_to_cart.rs: the FlatList
-// (UIScrollView), the rows, the buttons' Tap and pressto press, the progress spring, the
-// ConfirmButton's per-frame Yoga layout, the backdrop and the sheet. It posts
-// `haptic:selection` at the ConfirmButton's press (the app's PressablesConfig onPress).
-use DemoEnv from "../env.contract"
+// bottom-sheet): the same content and flow, reworked on the owner's phone notes into real shared
+// transitions (mwhlki71) with a 4/8 pt grid and concentric corners (mwhlkwr6).
+//
+// The morph is Exact's shared-element flight (`sharedElement=`, exact2 kernel/src/handoff.rs and
+// host/apple/.../FlightsIOS.swift): a name that leaves one node and arrives at another in one
+// commit flies the arriver itself, live, from the leaver's rect and radius to its own slot, on the
+// arriver's `-exact-layout-transition`. An `image` flies by its frame (rect, corner radius and its
+// image's crop interpolated); any other box flies scaled whole by width, which a 44 pt square
+// cannot become a 354 × 56 button by. So every surface that morphs is an image: the photo, and the
+// card and the button as 1 × 1 white and black pixels stretched (`object-fit="fill"`). What sits
+// on them (text, the cart glyph, the badge) is not shared: it fades in as its surface lands.
+// A pair needs its leaver DESTROYED and its arriver CREATED in one commit, so the row's card and
+// the sheet's surfaces live in `if` arms with fixed-size slots around them, and no arm that holds
+// a shared surface has an exit animation (its leaver would stay drawn under the flight).
+use PressableScale from "pressto"
+use DemoEnv, demoButtonRow, displayCorner, concentricRadius from "../env.contract"
+
+fn whitePixel(): string = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4//8/AAX+Av4N70a4AAAAAElFTkSuQmCC"
+fn blackPixel(): string = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNgYGAAAAAEAAH2FzhVAAAAAElFTkSuQmCC"
+// RN's photo (index.tsx items[].imageUri), cropped square at the source so the thumbnail and the
+// hero show the same pixels (Exact's cover pins a vertical crop to the top; a square needs none):
+// 64 pt at 3x, and the hero's ~354 pt at 3x.
+fn thumbUri(): string = "https://images.unsplash.com/photo-1662880195918-63fecf8a8b71?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=200&q=80"
+fn heroUri(): string = "https://images.unsplash.com/photo-1662880195918-63fecf8a8b71?ixlib=rb-4.0.3&auto=format&fit=crop&w=1080&h=1080&q=80"
+fn description(): string = "Lorem, ipsum dolor sit amet consectetur adipisicing elit. Vitae itaque quae, deleniti distinctio laudantium, doloremque debitis, fugiat ea alias sint dolor qui? Quo tempore, ab aliquam repellendus veritatis aspernatur cupiditate."
+
+// The grid (4/8 pt). The card: 24 continuous, padded 12, so what touches its padding is
+// 24 − 12 = 12: the 64 pt photo and the 44 pt cart button (a full touch target).
+fn cardRadius(): number = 24
+fn cardPad(): number = 12
+fn cardInner(): number = cardRadius() - cardPad()
+fn thumb(): number = 64
+fn cardHeight(): number = thumb() + 2 * cardPad()
+fn buyButton(): number = 44
+fn listSide(): number = 16
+fn listGap(): number = 12
+// The sheet floats concentric with the display: 8 from the sides and the bottom, radius 62 − 8;
+// padded 16, so the hero is 54 − 16 = 38 and the 56 pt button a capsule (28 = h / 2).
+fn sheetInset(): number = 8
+fn sheetPad(): number = 16
+fn sheetRadius(): number = displayCorner() - sheetInset()
+fn sheetInner(): number = sheetRadius() - sheetPad()
+fn confirmHeight(): number = 56
+// The copy under the hero: eyebrow 16 + 4 + title 28 + 4 + two body lines of 20.
+fn sheetCopy(): number = 92
+fn sheetHeight(hero: number): number = 2 * sheetPad() + hero + 20 + sheetCopy() + 24 + confirmHeight()
+fn heroSide(w: number, h: number): number = min(w - 2 * sheetInset() - 2 * sheetPad(), h * 0.42)
+
+// One spring for every flight: critically damped, settling in ~500 ms (RN's
+// withSpring({ dampingRatio: 1, duration: 500 }), `bun tools/spring.ts 500 1`).
+fn flight(): string = "-exact-spring(1087.7349, 131.9234, 4)"
+// iOS's sheet curve for what fades with the flight.
+fn sheetEase(): string = "cubic-bezier(0.32, 0.72, 0, 1)"
+
+fn ink(): string = "#000000"
+fn secondary(): string = "rgba(60, 60, 67, 0.6)"
+fn badgeRed(): string = "#D12727"
+fn countAt(counts: number[], i: number): number = match counts.at(i) { case some(c) => c, case none => 0 }
+
+// What lands fades in as its surface arrives; the badge pops when the product reaches it.
+keyframes settle
+  from opacity=0
+keyframes copyIn
+  from opacity=0 translate="0px 8px"
+keyframes copyOut
+  to opacity=0
+keyframes pop
+  0% opacity=0 scale=0.4
+  55% opacity=1 scale=1.25
+  80% scale=0.94
+  100% opacity=1 scale=1
 
 component AddToCart
   props
     env: DemoEnv
-  action buzz(m: string)
-    if m == "haptic:selection"
-      haptic("selection")
+  // The product the sheet shows (kept while it flies home), whether it is open, each product's
+  // count, the row flying home (its copy fades in), the row whose count just grew (its badge
+  // pops), and the landing timer's token.
+  state open = false
+  state pick = 0
+  state counts = range(20).map(i => 0)
+  state back = -1
+  state added = -1
+  state landToken = 0
+  derive hero = heroSide(env.width, env.height)
+  // Opening is the press's: pressto's global haptic (selection).
+  action show(i: number)
+    pick = i
+    back = -1
+    added = -1
+    open = true
+  action dismiss
+    back = pick
+    open = false
+  // index.tsx onConfirm: the count grows and the sheet flies home. The press plays pressto's
+  // selection haptic; the timer plays success as the product lands in its cart.
+  action confirm
+    counts = range(20).map(j => j == pick ? countAt(counts, j) + 1 : countAt(counts, j))
+    back = pick
+    added = pick
+    open = false
+    landToken = landToken + 1
+  action landed(m: string)
+    haptic("success")
   view
-    // styles.container: white, flex 1.
     column position="absolute" inset=0 background-color="#ffffff" testId="add-to-cart"
-      canvas surface=add_to_cart(env.safeTop) message=buzz position="absolute" top=0 left=0
-        width=env.width height=env.height touch-action="none" testId="add-to-cart-canvas"
-        aria-label="Products; tap a cart button to add the item to your cart"
+      scroll position="absolute" left=0 top=0 width=env.width height=env.height overflow-y="scroll"
+        testId="add-to-cart-list"
+        column width=env.width box-sizing="border-box"
+          padding-top=(env.safeTop + demoButtonRow()) padding-bottom=(env.safeBottom + 24)
+          padding-left=listSide() padding-right=listSide() gap=listGap()
+          for i in range(20) key=i
+            view height=cardHeight() position="relative" flex-shrink=0
+              if not (open and pick == i)
+                Card(i=i, count=countAt(counts, i), returning=(back == i), bumped=(added == i),
+                  press=show(i))
+      // components/backdrop: the screen dims under the sheet; a tap flies the product home.
+      view position="absolute" inset=0 background-color="rgba(0, 0, 0, 0.4)" opacity=(open ? 1 : 0)
+        transition=`opacity 450ms ${sheetEase()}` pointer-events=(open ? "auto" : "none")
+        press=dismiss aria-label="Close"
+        // The dimmed screen above the sheet (what a tap there lands on).
+        view position="absolute" left=0 right=0 top=0
+          height=(env.height - sheetInset() - sheetHeight(hero)) testId="add-to-cart-backdrop"
+      // The sheet: fixed-size slots, so its frame is the same open or closed and each surface
+      // lands where it laid out.
+      column position="absolute" left=sheetInset() right=sheetInset() bottom=sheetInset()
+        padding=sheetPad() gap=0 pointer-events=(open ? "auto" : "none") testId="add-to-cart-sheet"
+        view position="absolute" inset=0
+          if open
+            image whitePixel() position="absolute" left=0 top=0 width="100%" height="100%" object-fit="fill"
+              border-radius=sheetRadius() corner-shape="-exact-continuous"
+              sharedElement=`card-${pick}` -exact-layout-transition=flight() aria-hidden=true
+        view width=hero height=hero align-self="center" flex-shrink=0
+          if open
+            image heroUri() width=hero height=hero object-fit="cover"
+              border-radius=sheetInner() corner-shape="-exact-continuous"
+              sharedElement=`img-${pick}` -exact-layout-transition=flight()
+              aria-label=`Item ${pick}` testId="sheet-photo"
+        // components/bottom-sheet's copy, named for the product it confirms.
+        view height=sheetCopy() margin-top=20 flex-shrink=0
+          if open
+            column gap=4 animation=`copyIn 360ms ${sheetEase()} 140ms both`
+              -exact-exit-animation="copyOut 120ms ease-in both"
+              text "PAYMENT CONFIRMATION" font-size=13 font-weight=600 letter-spacing=0.6
+                line-height="16px" color=secondary()
+              text `Item ${pick}` font-size=24 font-weight=700 line-height="28px" color=ink()
+                role="heading" aria-level=2 testId="sheet-title"
+              text "Are you sure you want to add this item to your cart?" font-size=15
+                line-height="20px" color=secondary() line-clamp=2
+        // components/confirm-button: the cart button grown into "Add to Cart".
+        view height=confirmHeight() margin-top=24 flex-shrink=0 position="relative"
+          if open
+            PressableScale(press=confirm)
+              view height=confirmHeight() position="relative" aria-label="Add to Cart"
+                testId="add-to-cart-confirm"
+                image blackPixel() position="absolute" left=0 top=0 width="100%" height="100%" object-fit="fill"
+                  border-radius=(confirmHeight() / 2) corner-shape="-exact-continuous"
+                  sharedElement=`buy-${pick}` -exact-layout-transition=flight() aria-hidden=true
+                row position="absolute" inset=0 align-items="center" justify-content="center" gap=8
+                  animation=`settle 220ms ease-out 260ms both`
+                  -exact-exit-animation="copyOut 80ms ease-in both"
+                  image "symbol:sf/cart.fill" font-size=17 font-weight=600 color="#FFFFFF" aria-hidden=true
+                  text "Add to Cart" font-size=17 font-weight=600 line-height="22px" color="#FFFFFF"
+      // The landing: a haptic as the product reaches its cart (gpu/src/timer.rs; iOS only).
+      canvas surface=timer(landToken, 320) message=landed width=1 height=1 position="absolute"
+        left=0 top=0 pointer-events="none" aria-hidden=true
+
+// components/list-item: the card (white, soft shadow), its photo, title and two lines, and the
+// black cart button with the red count badge. The whole card opens the product too.
+component Card
+  props
+    i: number
+    count: number
+    returning: bool
+    bumped: bool
+    press: action
+  derive arrive = returning ? `settle 240ms ease-out 220ms both` : "none"
+  view
+    view position="absolute" inset=0
+      PressableScale(press=press)
+        view height=cardHeight() position="relative" testId=`card-${i}` aria-label=`Item ${i}`
+          // The resting card's shadow on a white face that lands with the flying one.
+          view position="absolute" inset=0 background-color="#ffffff" border-radius=cardRadius()
+            corner-shape="-exact-continuous" box-shadow="0px 4px 16px rgba(0, 0, 0, 0.10)"
+            animation=arrive
+          image whitePixel() position="absolute" left=0 top=0 width="100%" height="100%" object-fit="fill"
+            border-radius=cardRadius() corner-shape="-exact-continuous"
+            sharedElement=`card-${i}` -exact-layout-transition=flight() aria-hidden=true
+          row position="absolute" inset=0 padding=cardPad() gap=12 align-items="center"
+            image thumbUri() width=thumb() height=thumb() flex-shrink=0 object-fit="cover"
+              border-radius=cardInner() corner-shape="-exact-continuous"
+              sharedElement=`img-${i}` -exact-layout-transition=flight() aria-hidden=true
+            column flex=1 min-width=0 gap=2 animation=arrive
+              text `Item ${i}` font-size=16 font-weight=600 line-height="20px" color=ink()
+                line-clamp=1
+              text description() font-size=14 line-height="18px" color=secondary() line-clamp=2
+            // The cart button: 44 pt, 12 concentric with the card; the badge rides its corner.
+            view width=buyButton() height=buyButton() flex-shrink=0 position="relative"
+              PressableScale(press=press)
+                view width=buyButton() height=buyButton() position="relative"
+                  aria-label=`Add Item ${i} to cart` testId=`buy-${i}`
+                  image blackPixel() position="absolute" left=0 top=0 width="100%" height="100%" object-fit="fill"
+                    border-radius=cardInner() corner-shape="-exact-continuous"
+                    sharedElement=`buy-${i}` -exact-layout-transition=flight() aria-hidden=true
+                  view position="absolute" inset=0 align-items="center" justify-content="center"
+                    display="flex" animation=arrive
+                    image "symbol:sf/cart" font-size=17 font-weight=600 color="#FFFFFF" aria-hidden=true
+              if count > 0
+                for c in [count] key=c
+                  view position="absolute" top=-6 right=-6 min-width=20 height=20 padding="0px 5px"
+                    box-sizing="border-box" border-radius=10 background-color=badgeRed()
+                    border="2px solid #ffffff" display="flex" align-items="center"
+                    justify-content="center" pointer-events="none"
+                    animation=(bumped ? "pop 460ms cubic-bezier(0.2, 0.8, 0.2, 1) 300ms both" : arrive)
+                    text `${c}` font-size=11 font-weight=700 line-height="13px" color="#FFFFFF"
+                      font-variant-numeric="tabular-nums" testId=`badge-${i}`
