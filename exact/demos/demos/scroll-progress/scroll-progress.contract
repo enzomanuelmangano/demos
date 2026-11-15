@@ -93,6 +93,10 @@ component ScrollProgress
       let p = y / max(1, float32(e.scrollHeight) - e.clientHeight)
       let q = p >= 1 ? 1 : (p > 0 ? 0.5 : 0)
       if q != progress
+        // Pulled past the article's end, the pill turns into the up arrow: one rigid tap for
+        // the limit (past RN, which plays none), once per pull.
+        if q == 1
+          haptic("impact-rigid")
         progress = q
       if frozen
         frozen = false
