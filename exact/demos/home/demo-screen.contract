@@ -88,6 +88,9 @@ component DemoScreen
           column gap=16 padding="23px 24px 24px" align-items="stretch"
             text "Inspiration" font="-exact-title2" font-weight=700 color="#ffffff"
             text demo.story font="-exact-body" color="#ffffff"
-            button press=follow buttonStyle="prominent-glass" testId="inspiration-action"
-              margin-top=8
-              text demo.actionLabel
+            // RN's glassProminent capsule, controlSize large, the sheet's full width: 50 tall,
+            // headline (17 semibold) in white on the system blue.
+            button press=follow appearance="none" testId="inspiration-action" margin-top=8
+              height=50 border-radius=25 background-color="-exact-system-blue" display="flex"
+              align-items="center" justify-content="center"
+              text demo.actionLabel font-size=17 font-weight=600 color="#ffffff"
