@@ -50,6 +50,8 @@
 //
 // `painting-menu` is art-gallery's PaintingMenu (PaintingMenu.swift), on iOS and on macOS.
 // `inspiration-sheet` is the demo screen's Inspiration sheet (InspirationSheet.swift), iOS.
+// `system-alert` is RN's Alert.alert / ActionSheetIOS (SystemAlert.swift): a real
+// UIAlertController presented from the top-most view controller, iOS.
 //
 // `glass-pane` is expo-glass-effect's GlassView (GlassPane.swift): iOS 26's UIGlassEffect
 // (liquid-glass-playground's clear, tinted pane), on iOS and on macOS.
@@ -79,7 +81,8 @@ final class DemosModule: ExactModule {
          "variable-blur": ExactNativeFactory { props, events in VariableBlur(props: props, events: events) },
          "audio-track": ExactNativeFactory { props, events in AudioTrack(props: props, events: events) },
          "glass-pane": ExactNativeFactory { props, events in GlassPane(props: props, events: events) },
-         "inspiration-sheet": ExactNativeFactory { props, events in InspirationSheet(props: props, events: events) }]
+         "inspiration-sheet": ExactNativeFactory { props, events in InspirationSheet(props: props, events: events) },
+         "system-alert": ExactNativeFactory { props, events in SystemAlert(props: props, events: events) }]
     }
 
     override func element(_ element: ExactElement) {
