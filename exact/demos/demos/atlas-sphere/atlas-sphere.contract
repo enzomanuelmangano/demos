@@ -12,10 +12,19 @@ fn canvasHeight(h: number): number = h - 200
 component AtlasSphere
   props
     env: DemoEnv
+  // The surface's haptics (the owner's call; RN's demo has none): the grab, the roll's ticks,
+  // the rest after the release.
+  action heard(m: string)
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-soft"
+      haptic("impact-soft")
   view
     // styles.container (both): black, flex 1, centred, paddingTop 70.
     column position="absolute" inset=0 box-sizing="border-box" padding-top=70 background-color="#000000"
       align-items="center" justify-content="center" testId="atlas-sphere"
-      canvas surface=atlas_sphere() width=canvasWidth(env.width) height=canvasHeight(env.height)
+      canvas surface=atlas_sphere() message=heard width=canvasWidth(env.width) height=canvasHeight(env.height)
         flex-shrink=0 touch-action="none" testId="atlas-sphere-canvas"
         aria-label="Drag to gather the dots into a sphere"

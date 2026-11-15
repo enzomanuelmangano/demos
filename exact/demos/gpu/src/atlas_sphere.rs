@@ -22,6 +22,12 @@
 //!
 //! The transforms are computed in the vertex shader, one instance per sprite: a frame writes
 //! one uniform buffer.
+//!
+//! Haptics (the owner's call, phone feedback 2026-11-15; RN's demo has none): `haptic:impact-light`
+//! on the grab (onBegin); `haptic:selection` ticks as the sphere rolls under the finger, one per
+//! 15° of arc on a sphere of SCALE_DISTANCE's radius (that many points of finger travel), at most
+//! one every 40 ms (25 a second: a quick drag does not buzz, the travel past the limit is
+//! dropped); `haptic:impact-soft` when the dots have spread back to rest after the release.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -35,6 +41,10 @@ use shaders::atlas_sphere::{entry, module, Uniforms, CIRCLE, GROUP_0, SMP, U};
 const COLUMNS: u32 = 40;
 /// SQUARE_SIZE: the circle's diameter, the sprite's side.
 const SQUARE_SIZE: f32 = 3.0;
+/// The roll a selection tick marks: 15°.
+const TICK_ANGLE: f32 = std::f32::consts::PI / 12.0;
+/// The shortest time between two ticks: 25 a second.
+const TICK_GAP_MS: f64 = 40.0;
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
@@ -48,6 +58,13 @@ struct AtlasSphere {
     progress: Spring,
     pan: PanGesture,
     gpu: Option<Gpu>,
+    /// Finger travel since the last tick, points.
+    rolled: f32,
+    /// When the last tick was posted.
+    ticked_at: Option<f64>,
+    /// Released and spreading back: the soft impact is owed when the spring rests.
+    settling: bool,
+    messages: Vec<String>,
 }
 
 struct Gpu {
@@ -250,6 +267,26 @@ fn coverage(e: [f32; 4], r: f32, ppc: [f32; 2]) -> f32 {
 
 impl AtlasSphere {
     /// SQUARE_CONTAINER_SIZE, the rows, SCALE_DISTANCE.
+    /// The finger moved `d` points at `at_ms`: a selection tick per TICK_ANGLE of roll, rate-limited.
+    fn roll(&mut self, d: f32, at_ms: f64) {
+        let step = self.grid().2 * TICK_ANGLE;
+        if step <= 0.0 {
+            return;
+        }
+        self.rolled += d;
+        if self.rolled < step {
+            return;
+        }
+        if self.ticked_at.is_some_and(|t| at_ms - t < TICK_GAP_MS) {
+            // Too soon: the roll past one step is dropped, one tick stays owed.
+            self.rolled = self.rolled.min(step);
+            return;
+        }
+        self.rolled = (self.rolled - step).min(step);
+        self.ticked_at = Some(at_ms);
+        self.messages.push("haptic:selection".into());
+    }
+
     fn grid(&self) -> (f32, u32, f32) {
         let (w, h) = self.size;
         let c = (w / COLUMNS as f32).max(1.0);
@@ -267,6 +304,10 @@ impl Surface for AtlasSphere {
         true
     }
 
+    fn messages(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.messages)
+    }
+
     fn agent(&mut self, _request: &str) -> Option<String> {
         let (x, y) = self.point.unwrap_or((-1.0, -1.0));
         Some(format!("{{\"progress\":{:.3},\"point\":[{x:.1},{y:.1}],\"held\":{}}}", self.progress.value, self.pan.tracking()))
@@ -280,13 +321,22 @@ impl Surface for AtlasSphere {
             Event::Begin { x, y } => {
                 gfx::spring_to(&mut self.progress, 1.0, 600.0, 1.0);
                 self.point = Some((x, y));
+                self.messages.push("haptic:impact-light".into());
+                self.rolled = 0.0;
+                self.settling = false;
             }
-            Event::Start(p) | Event::Update(p) => self.point = Some((p.x, p.y)),
+            Event::Start(p) | Event::Update(p) => {
+                if let Some((x, y)) = self.point {
+                    self.roll((p.x - x).hypot(p.y - y), at_ms);
+                }
+                self.point = Some((p.x, p.y));
+            }
             _ => {}
         }
         // onTouchesUp: the pan's finger lifted (a system cancel fires no onTouchesUp).
         if was && !self.pan.tracking() && matches!(phase, Phase::Up) {
             gfx::spring_to(&mut self.progress, 0.0, 1000.0, 1.0);
+            self.settling = true;
         }
     }
 
@@ -301,6 +351,10 @@ impl Surface for AtlasSphere {
     ) -> bool {
         self.size = (frame.width, frame.height);
         let moving = self.progress.step(frame.now_ms);
+        if self.settling && !moving && !self.pan.tracking() {
+            self.settling = false;
+            self.messages.push("haptic:impact-soft".into());
+        }
         let (c, rows, scale_distance) = self.grid();
         // SQUARE_TEXTURE_SIZE: MakeOffscreen(C, C) takes whole pixels.
         let side = c as u32;
@@ -455,6 +509,7 @@ mod tests {
             s.input(&InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
         };
         finger(&mut s, PointerPhase::Down, 160.0, 356.0, 10.0);
+        assert_eq!(s.messages(), ["haptic:impact-light"]);
         let mut ms = 0.0;
         while ms < 1200.0 {
             ms += 16.0;
@@ -474,8 +529,44 @@ mod tests {
             ms += 16.0;
             fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         }
+        // Spread back to rest: one soft impact, no ticks (the finger never moved).
+        assert_eq!(s.messages(), ["haptic:impact-soft"]);
         let (back, animating) = fixture::render(&gpu, s.as_mut(), &frame(ms + 16.0)).unwrap();
         assert!(!animating);
         assert_eq!(back.data, rest.data);
+    }
+
+    #[test]
+    fn a_drag_ticks_once_per_fifteen_degrees_of_roll_at_most_twenty_five_a_second() {
+        let mut s = AtlasSphere { pan: PanGesture::new(), size: (320.0, 712.0), ..Default::default() };
+        // SCALE_DISTANCE = √(320² + 712²) / 4 = 195.1: a tick per 51.1 pt.
+        let step = s.grid().2 * TICK_ANGLE;
+        assert!((step - 51.08).abs() < 0.05, "{step}");
+        let finger = |s: &mut AtlasSphere, phase, y: f32, at_ms| {
+            s.input(&InputEvent::Pointer { id: 1, phase, x: 160.0, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
+        };
+        finger(&mut s, PointerPhase::Down, 100.0, 0.0);
+        assert_eq!(s.messages(), ["haptic:impact-light"]);
+        // Slowly: 4 pt every 16 ms down 400 pt, 7 whole steps after the pan's 10 pt slop.
+        let mut y = 100.0;
+        let mut ms = 0.0;
+        for _ in 0..100 {
+            y += 4.0;
+            ms += 16.0;
+            finger(&mut s, PointerPhase::Move, y, ms);
+        }
+        let slow = s.messages();
+        assert!(slow.iter().all(|m| m == "haptic:selection"));
+        assert!((6..=7).contains(&slow.len()), "{slow:?}");
+        // A fling: 2000 pt in 160 ms (40 steps' travel) ticks at most every 40 ms: 4 or 5.
+        for _ in 0..10 {
+            y -= 200.0;
+            ms += 16.0;
+            finger(&mut s, PointerPhase::Move, y, ms);
+        }
+        let fast = s.messages();
+        assert!((3..=5).contains(&fast.len()), "{fast:?}");
+        finger(&mut s, PointerPhase::Up, y, ms + 16.0);
+        assert!(s.messages().is_empty());
     }
 }
