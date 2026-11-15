@@ -381,7 +381,7 @@ mod tests {
     /// Glyph masks from [`crate::coretext`] against a C reference program (`tools/coretext_reference.c`,
     /// built with the system's `cc`): the smoothing behaviour, the luminance table, bounds and every
     /// byte, with this machine's behaviour and with both `none` and `some` forced.
-    #[cfg(target_os = "macos")]
+    #[cfg(all(target_os = "macos", feature = "repo-tests"))]
     #[test]
     fn coretext_masks_are_skias() {
         use crate::{Font, Matrix};
@@ -487,7 +487,7 @@ mod tests {
     }
 }
 
-#[cfg(all(test, target_vendor = "apple"))]
+#[cfg(all(test, target_vendor = "apple", feature = "repo-tests"))]
 mod timing {
     #[test]
     #[ignore = "timing"]

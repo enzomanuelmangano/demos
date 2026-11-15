@@ -31,7 +31,7 @@
 
 #![deny(missing_docs)]
 
-pub use exact_gpu::wgpu;
+pub use wgpu;
 pub use lyon::math::{point, vector, Point, Vector};
 pub use lyon::path::{Path, PathBuffer, PathEvent, PathSlice};
 
@@ -2203,5 +2203,5 @@ mod shadow_tests {
     }
 }
 
-#[cfg(all(test, not(target_arch = "wasm32")))]
+#[cfg(all(test, feature = "repo-tests", not(target_arch = "wasm32")))]
 mod graphite_parity;

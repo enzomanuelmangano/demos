@@ -931,6 +931,7 @@ mod graphite_tests {
         out
     }
 
+    #[cfg(feature = "repo-tests")]
     #[test]
     fn the_clamp_blur_runs_skias_clamp_path() {
         let gpu = match exact_gpu::fixture::device() {
