@@ -54,6 +54,8 @@ const MAX_LINE: f32 = 12.0;
 const MIN_LINE: f32 = 5.0;
 /// ScrollableAreHeight = MaxLineHeight × 5.
 const AREA_H: f32 = MAX_LINE * 5.0;
+/// The shortest gap between two tick haptics, ms.
+const HAPTIC_GAP_MS: f64 = 40.0;
 /// getLinesPath's lineWidth default.
 const LINE_W: f32 = 1.5;
 /// SkRRect's radius for rrect(1.5 × h, 10, 10): scaled to fit the width.
@@ -87,6 +89,8 @@ impl PrequelSlider {
         last_offset: f64::NAN,
         progress: 0.0,
         line_index: -1,
+        now_ms: 0.0,
+        haptic_at: f64::NEG_INFINITY,
         posted: Vec::new(),
         gradient: None,
         ui: Canvas::default(),
@@ -136,6 +140,9 @@ struct PrequelSlider {
     progress: f64,
     /// previousLineIndex.
     line_index: i64,
+    /// The latest time seen (a frame's or a pointer's), and when the last tick haptic played.
+    now_ms: f64,
+    haptic_at: f64,
     posted: Vec<String>,
     gradient: Option<Paint>,
     ui: Canvas,
@@ -214,7 +221,13 @@ impl PrequelSlider {
         let progress = progress.clamp(0.0, 1.0);
         let index = ((progress * LINES as f64).floor() as i64).min(LINES as i64);
         if index != self.line_index && index >= 0 {
-            self.posted.push("haptic:selection".into());
+            // One selection haptic per HAPTIC_GAP_MS at most, as UIKit's pickers pace theirs: a
+            // fling crosses a tick every frame (up to 200 a second), and each haptic is a message,
+            // a Contract commit and a Taptic call on the main thread (the phone note's stutter).
+            if self.now_ms - self.haptic_at >= HAPTIC_GAP_MS {
+                self.posted.push("haptic:selection".into());
+                self.haptic_at = self.now_ms;
+            }
             self.line_index = index;
         }
         self.progress = progress;
@@ -316,6 +329,7 @@ impl Surface for PrequelSlider {
         // The GestureDetector's view: the slider's W × 60 area, as laid out.
         let area = self.layout(self.scale).area;
         let inside = x >= area[0] && x <= area[2] && y >= area[1] && y <= area[3];
+        self.now_ms = self.now_ms.max(at_ms);
         self.scroll.input(id, gfx::phase(phase), x, y, at_ms, inside);
         self.react();
     }
@@ -341,6 +355,7 @@ impl Surface for PrequelSlider {
                 gpu.masked = false;
             }
         }
+        self.now_ms = self.now_ms.max(frame.now_ms);
         let moving = self.scroll.step(frame.now_ms);
         self.react();
         let scale = frame.scale;
@@ -470,7 +485,8 @@ mod tests {
         for i in 1..=23 {
             finger(&mut s, PointerPhase::Move, 350.0 - 11.5 * i as f32, 40.0 * i as f64);
         }
-        // A haptic per line index reached (11.5 pt moves skip some of the 26).
+        // A haptic per line index reached, at most one per 40 ms (moves 40 ms apart: one each,
+        // 11.5 pt moves skipping some of the 24 lines).
         let posted = s.messages();
         assert!(posted.iter().filter(|m| *m == "haptic:selection").count() > 15, "{posted:?}");
         assert!(s.agent("").unwrap().starts_with("{\"progress\":0.4830,\"offset\":-31.50,\"lineIndex\":24}"), "{}", s.agent("").unwrap());
@@ -511,11 +527,22 @@ mod tests {
         let lifted = s.scroll.offset;
         finger(&mut s, PointerPhase::Up, 300.0 - 19.2 * 6.0, at + 1.0);
         let mut t = at;
-        while s.scroll.step(t) {
-            t += 16.0;
+        loop {
+            // A frame at 120 Hz, as render steps it.
+            s.now_ms = s.now_ms.max(t);
+            let more = s.scroll.step(t);
+            s.react();
+            if !more {
+                break;
+            }
+            t += 8.33;
         }
         assert!(s.scroll.offset > lifted + 50.0, "{} after {lifted}", s.scroll.offset);
         assert_eq!(s.scroll.offset % SPACE, 0.0);
+        // The fling crossed a line or more a frame; its haptics are paced, one per 40 ms at most.
+        let haptics = s.posted.iter().filter(|m| *m == "haptic:selection").count();
+        let lines = (s.scroll.offset / SPACE) as usize;
+        assert!(haptics as f64 <= (t - 0.0) / HAPTIC_GAP_MS + 1.0 && haptics < lines, "{haptics} haptics for {lines} lines in {t} ms");
         // Dragged right past the start: banded (less than the finger), then back to 0.
         let mut s = PrequelSlider::new_for_test();
         at = t + 100.0;
