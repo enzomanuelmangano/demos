@@ -1,6 +1,6 @@
 //! Drag to Sort (src/animations/drag-to-sort: index.tsx, constants.ts, utils/haptics.ts,
 //! components/SortableList/{index,SortableItem,types}.tsx, components/ListItem/index.tsx): nine
-//! habit rows on a ScrollView; a row held 500 ms lifts (a light haptic, rounder corners) and
+//! habit rows on a ScrollView; a row held 250 ms lifts (a light haptic, rounder corners) and
 //! follows the finger, the others sliding into the order its position makes; the list scrolls
 //! when the row is dragged near its top or bottom edge.
 //!
@@ -10,7 +10,7 @@
 //! - Each SortableItem (92 tall): a background View at index × 92 (zIndex −50) holding the
 //!   rgba(0,0,0,0.1) rounded rect (margin 6, radius 10 continuous), and the item View moved by
 //!   translateY = `top` and translateX; zIndex 100 while dragged, 50 for the last dragged one.
-//! - The pan: `activateAfterLongPress(500)` (RNPanHandler: a move past 10 pt first fails it and
+//! - The pan: a long press of 250 ms (a move past 10 pt first fails it and
 //!   the ScrollView takes the touch). onStart: contextY = positions[i] − scrollY, a light haptic.
 //!   onUpdate: translateX = translationX, positions[i] = contextY + translationY + scrollY, then
 //!   scrollLogic: absoluteY ≤ 1.5 × 92 scrolls up 9.2 (not below 0), absoluteY ≥ H − safeTop
@@ -51,7 +51,8 @@ const ITEM: f64 = HEIGHT + PADDING * 2.0;
 const MAX_RADIUS: f64 = 10.0;
 /// DEMO_BUTTON_ROW_HEIGHT.
 const BUTTON_ROW: f64 = 56.0;
-const LONG_PRESS_MS: f64 = 500.0;
+/// How long a finger holds a row before it lifts, ms: short enough to feel immediate.
+const LONG_PRESS_MS: f64 = 250.0;
 /// The lift: the held row's scale, its shadow's drop (pt), and the shadow's rings.
 const LIFT_SCALE: f64 = 0.05;
 const LIFT_DROP: f32 = 8.0;
@@ -710,7 +711,7 @@ mod tests {
         s.bind(&[Value::Number(68.0)], None).unwrap();
         let (img, _) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         img.save("drag-to-sort-rest");
-        // Row 0 spans 124 … 216 on screen; held 500 ms, it lifts.
+        // Row 0 spans 124 … 216 on screen; held 250 ms, it lifts.
         let mut ms = 100.0;
         s.input(&touch(PointerPhase::Down, 170.0, ms));
         while ms < 620.0 {
