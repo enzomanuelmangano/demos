@@ -82,6 +82,17 @@ const PILL_H: f64 = 40.0;
 const PAD: f64 = 12.0;
 const PILL_R: f32 = 16.0;
 const GAP: f64 = 6.0;
+/// A pill end's sprite width: past the continuous corner's reach (1.528 × 16 = 24.4 pt).
+const CAP: f32 = 26.0;
+/// The atlas's gutter (points) and its sprites' places: the 2 × CAP pill, then the arc, the
+/// success and the error icon (SIZE squares).
+const GUTTER: f32 = 1.0;
+fn sprite_x(k: usize) -> f32 {
+    match k {
+        0 => GUTTER,
+        _ => GUTTER + 2.0 * CAP + GUTTER + (k - 1) as f32 * (SIZE + GUTTER),
+    }
+}
 /// colorFromStatusMap and Color(c).lighten(0.6).hex() (Display P3 components, 0…255).
 const ACTIVE: [u32; 4] = [0x47A1E6, 0x47A1E6, 0x5BC682, 0xCD5454];
 const LIGHT: [u32; 4] = [0xE6F2FC, 0xE6F2FC, 0xDCF3E4, 0xF4DADA];
@@ -137,6 +148,14 @@ struct LoadingButton {
     title: Option<Font>,
     canvas: Canvas,
     renderer: Renderer,
+    /// The shapes no frame tessellates (phone feedback 2026-11-15: "it stutters, it must be
+    /// super fluid"): the pill's continuous ends, the spinner's arc and the two icons, drawn
+    /// once (white, the only path fills, the only MSAA) into an atlas at the frame's scale;
+    /// each frame draws them as tinted sprites (no path, no MSAA) and the pill's middle as an
+    /// analytic rect.
+    sprites: Option<(skia::Images, f32)>,
+    sprite_canvas: Canvas,
+    sprite_renderer: Renderer,
 }
 
 fn color(status: u8) -> Color {
@@ -227,6 +246,9 @@ impl LoadingButton {
             title: skia::match_ui_font(14.0, 700.0),
             canvas: Canvas::default(),
             renderer: Renderer::default(),
+            sprites: None,
+            sprite_canvas: Canvas::default(),
+            sprite_renderer: Renderer::default(),
         }
     }
 
@@ -475,6 +497,57 @@ impl Surface for LoadingButton {
             self.ceil(t - m.ascent as f64) as f32
         });
 
+        let sc = frame.scale;
+        if self.sprites.as_ref().is_none_or(|(_, k)| *k != sc) {
+            let aw = ((sprite_x(4) + GUTTER) * sc).ceil() as u32;
+            let ah = ((PILL_H as f32 + 2.0 * GUTTER) * sc).ceil() as u32;
+            let images = skia::Images::target(device, aw, ah);
+            let a = &mut self.sprite_canvas;
+            a.begin(sc);
+            let white = Paint::fill(Color::WHITE);
+            a.draw_continuous_rrect(
+                sprite_x(0),
+                GUTTER,
+                2.0 * CAP,
+                PILL_H as f32,
+                PILL_R,
+                &white,
+            );
+            a.save();
+            a.translate(sprite_x(1), GUTTER);
+            a.draw_path(
+                &self.arc,
+                &Paint::stroke(Color::WHITE, STROKE).caps(skia::Cap::Round, skia::Join::Miter),
+            );
+            a.restore();
+            for (k, svg) in [(2, &self.success), (3, &self.error)] {
+                // fitbox('contain', rect(0, 0, 24, 24), rect(offset, offset, iconSize, iconSize)).
+                let icon_size = SIZE * 0.45;
+                let offset = (SIZE - icon_size) / 2.0;
+                a.save();
+                a.translate(sprite_x(k), GUTTER);
+                a.concat(fit_box(
+                    Rect::new(0.0, 0.0, SVG_SIZE, SVG_SIZE),
+                    Rect::new(offset, offset, icon_size, icon_size),
+                ));
+                a.draw_path(svg, &white);
+                a.restore();
+            }
+            self.sprite_renderer.draw(
+                device,
+                queue,
+                encoder,
+                &self.sprite_canvas,
+                &images.render_view(),
+                wgpu::TextureFormat::Rgba8Unorm,
+                aw,
+                ah,
+                wgpu::Color::TRANSPARENT,
+            );
+            self.renderer.set_images(&images);
+            self.sprites = Some((images, sc));
+        }
+        let atlas = self.sprites.as_ref().unwrap().0.image(0);
         let c = &mut self.canvas;
         c.begin(frame.scale);
         c.fill(Color::WHITE);
@@ -483,7 +556,41 @@ impl Surface for LoadingButton {
         c.translate((ox + ow / 2.0) as f32, top + PILL_H as f32 / 2.0);
         c.scale(press, press);
         c.translate(-(ow / 2.0) as f32, -(PILL_H as f32) / 2.0);
-        c.draw_continuous_rrect(0.0, 0.0, pill_w, PILL_H as f32, PILL_R, &Paint::fill(bg));
+        // The pill: its two continuous ends as sprites in the background colour, the middle an
+        // analytic rect overlapping each by half a point.
+        let px = |v: f32| v * sc;
+        let k = 1.0 / sc;
+        let ends = [
+            skia::Rect::new(px(sprite_x(0)), px(GUTTER), px(CAP), px(PILL_H as f32)),
+            skia::Rect::new(
+                px(sprite_x(0) + CAP),
+                px(GUTTER),
+                px(CAP),
+                px(PILL_H as f32),
+            ),
+        ];
+        let at = [
+            skia::RsXform {
+                scos: k,
+                ssin: 0.0,
+                tx: 0.0,
+                ty: 0.0,
+            },
+            skia::RsXform {
+                scos: k,
+                ssin: 0.0,
+                tx: pill_w - CAP,
+                ty: 0.0,
+            },
+        ];
+        c.draw_atlas(atlas, &ends, &at, Some(&[bg, bg]), true);
+        c.draw_rect(
+            CAP - 0.5,
+            0.0,
+            (pill_w - 2.0 * CAP + 1.0).max(0.0),
+            PILL_H as f32,
+            &Paint::fill(bg),
+        );
         // The indicator's box, clipping its 20 pt canvas.
         if boxw > 0.0 {
             c.save();
@@ -491,13 +598,12 @@ impl Surface for LoadingButton {
             c.clip_rect(0.0, 0.0, boxw as f32, boxw as f32);
             draw_indicator(
                 c,
+                atlas,
+                sc,
                 outcome,
                 rotation,
                 self.loading.value as f32,
                 self.icon.value as f32,
-                &self.arc,
-                &self.success,
-                &self.error,
             );
             c.restore();
         }
@@ -540,35 +646,45 @@ impl Surface for LoadingButton {
     }
 }
 
-/// The ActivityIndicator's canvas, at its origin.
+/// The ActivityIndicator's canvas, at its origin: the arc and the icons as the atlas's sprites
+/// (white, tinted), the ring and the disc analytic circles.
 #[allow(clippy::too_many_arguments)]
 fn draw_indicator(
     canvas: &mut Canvas,
+    atlas: skia::ImageRef,
+    scale: f32,
     outcome: u8,
     rotation: f64,
     loading: f32,
     icon: f32,
-    arc: &Path,
-    success: &Path,
-    error: &Path,
 ) {
     // The spinner is only ever the loading colour; the disc and icon are the last outcome's, so
     // neither changes colour (nor the icon vanishes) while it fades.
     let c = color(1);
     let center = SIZE / 2.0;
     let radius = center - STROKE / 2.0;
+    let sprite = |k: usize| {
+        skia::Rect::new(
+            sprite_x(k) * scale,
+            GUTTER * scale,
+            SIZE * scale,
+            SIZE * scale,
+        )
+    };
     // <Group opacity={loadingOpacity}>.
     canvas.save();
     canvas.opacity(loading);
-    canvas.save();
-    canvas.translate(center, center);
-    canvas.rotate(rotation as f32);
-    canvas.translate(-center, -center);
-    canvas.draw_path(
-        arc,
-        &Paint::stroke(c, STROKE).caps(skia::Cap::Round, skia::Join::Miter),
-    );
-    canvas.restore();
+    // The arc turned about the centre: the sprite's (scale-sized) centre onto (10, 10).
+    let (sin, cos) = (rotation as f32).sin_cos();
+    let (sc, ss) = (cos / scale, sin / scale);
+    let h = SIZE * scale / 2.0;
+    let xf = skia::RsXform {
+        scos: sc,
+        ssin: ss,
+        tx: center - (sc * h - ss * h),
+        ty: center - (ss * h + sc * h),
+    };
+    canvas.draw_atlas(atlas, &[sprite(1)], &[xf], Some(&[c]), true);
     canvas.draw_circle(
         center,
         center,
@@ -580,22 +696,20 @@ fn draw_indicator(
     canvas.save();
     canvas.opacity(icon);
     canvas.draw_circle(center, center, radius, &Paint::fill(color(outcome)));
-    let svg = match outcome {
-        2 => Some(success),
-        3 => Some(error),
-        _ => None,
-    };
-    if let Some(svg) = svg {
-        // fitbox('contain', rect(0, 0, 24, 24), rect(offset, offset, iconSize, iconSize)).
-        let icon_size = SIZE * 0.45;
-        let offset = (SIZE - icon_size) / 2.0;
-        canvas.save();
-        canvas.concat(fit_box(
-            Rect::new(0.0, 0.0, SVG_SIZE, SVG_SIZE),
-            Rect::new(offset, offset, icon_size, icon_size),
-        ));
-        canvas.draw_path(svg, &Paint::fill(Color::WHITE));
-        canvas.restore();
+    if outcome == 2 || outcome == 3 {
+        let xf = skia::RsXform {
+            scos: 1.0 / scale,
+            ssin: 0.0,
+            tx: 0.0,
+            ty: 0.0,
+        };
+        canvas.draw_atlas(
+            atlas,
+            &[sprite(outcome as usize)],
+            &[xf],
+            Some(&[Color::WHITE]),
+            true,
+        );
     }
     canvas.restore();
 }
