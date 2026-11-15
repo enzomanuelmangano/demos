@@ -39,7 +39,7 @@
 //!
 //! Beyond RN (the owner's phone feedback, 2026-11-15: "improve this component's layout and
 //! transitions"): the modal opens as an iOS 26 floating sheet, 10 pt from the display's sides
-//! and bottom, its continuous corners concentric with the display's (62 − 10 = 52 pt) and the
+//! and bottom, its corners concentric with the display's (62 − 10 = 52 pt, circular: analytic, no MSAA frame) and the
 //! Done button's with the sheet's (a 30 pt pill); it opens and closes on a critically damped
 //! spring (500 ms) instead of a 300 ms timing; the scrim follows the progress (and thins as the
 //! sheet is dragged down) instead of waiting for the end; the content fades in over the last
@@ -592,7 +592,9 @@ impl Surface for FloatingModal {
             6.0,
             Color::rgba8(0, 0, 0, 255).alpha(0.2),
         );
-        c.draw_continuous_rrect(0.0, 0.0, fw, fh, radius, &Paint::fill(Color::WHITE));
+        // Analytic (Graphite's rrect step): a continuous rrect is a path, which turns the whole
+        // full-screen frame into 4x MSAA every frame of the motion (3x: 1206 x 2622 x 4).
+        c.draw_rrect(0.0, 0.0, fw, fh, radius, &Paint::fill(Color::WHITE));
         c.restore();
         // The content as one group at its opacity (allowsGroupOpacity), then the "+", 1:1.
         if content > 0.0 {
