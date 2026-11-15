@@ -15,7 +15,8 @@
     "glass-button",
     "mate-haptic",
     "swift-slider",
-    "painting-menu"
+    "painting-menu",
+    "variable-blur"
   ],
   "host": {
     "web": {},
