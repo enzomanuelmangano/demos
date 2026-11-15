@@ -4,7 +4,8 @@
 // the backdrop, the pan, the presses and their timings are Rust: gpu/src/floating_modal.rs,
 // over styles.container's rgba(0, 0, 0, 0.1). The surface posts `press` for each press:
 // pressto's global onPress (the app's selection haptic), and `open` / `close` as the sheet
-// presents and dismisses (beyond RN: an impact for each).
+// presents and dismisses (no haptic of their own: the press's selection already played; a
+// drag's dismissal posts its own medium).
 use DemoEnv from "../env.contract"
 
 component FloatingModal
@@ -15,15 +16,11 @@ component FloatingModal
   action heard(m: string)
     if m == "press"
       pressablesOnPress()
-    if m == "open"
-      haptic("impact-light")
-    if m == "close"
-      haptic("impact-soft")
-    // Past RN: the drag's grab of the sheet, and its landing home after a short drag.
+    // Past RN: the drag's grab of the sheet, and the release that dismisses it.
     if m == "haptic:impact-light"
       haptic("impact-light")
-    if m == "haptic:impact-soft"
-      haptic("impact-soft")
+    if m == "haptic:impact-medium"
+      haptic("impact-medium")
   view
     canvas surface=floating_modal() message=heard position="absolute" top=0 left=0 width=env.width
       height=env.height background-color="rgba(0, 0, 0, 0.1)" touch-action="none"
