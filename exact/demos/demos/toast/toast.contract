@@ -176,11 +176,11 @@ component Toast
     dragKey = key
 
   // Pan onBegin / onFinalize: isSwiping (the front toast's scale × 0.96).
-  // Haptics (past RN, which plays none): light when the finger takes the toast, medium when a
-  // release past -50 throws it away.
+  // Haptics (past RN, which plays none): one medium when a release past -50 throws it away.
+  // No grab haptic: pointerdown is a touch-down, so a mere tap (and a second finger) played it,
+  // and a transform drag has no activation event to move it to.
   action touched
     swiping = true
-    haptic("impact-light")
   action untouched
     swiping = false
 
