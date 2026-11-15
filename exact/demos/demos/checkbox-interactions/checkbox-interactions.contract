@@ -1,5 +1,7 @@
-// Checkbox Interactions: twenty "Italian" chips; a tap checks one, its check fades in and the
+// Checkbox Interactions: twenty cuisine chips; a tap checks one, its check fades in and the
 // chip reflows. RN: src/animations/checkbox-interactions (src/index.tsx, components/checkbox.tsx).
+// RN's constants.ts names every chip "Italian"; the owner asked for twenty different cuisines,
+// each with its emoji (2026-11-15).
 use PressableScaleLayout from "pressto"
 use DemoEnv, demoButtonRow from "../env.contract"
 
@@ -8,6 +10,13 @@ keyframes checkIn
   from opacity=0
 keyframes checkOut
   to opacity=0
+
+// The chips, in order (the owner's list).
+fn cuisines(): string[] = ["🍝 Italian", "🍣 Japanese", "🌮 Mexican", "🍛 Indian", "🌶️ Thai",
+  "🥐 French", "🫒 Greek", "🍲 Korean", "🥟 Chinese", "🥘 Spanish", "🧆 Lebanese", "🍜 Vietnamese",
+  "🥙 Turkish", "🍔 American", "🥩 Brazilian", "🫓 Ethiopian", "🫖 Moroccan", "🐟 Peruvian",
+  "🥨 German", "🥥 Caribbean"]
+fn cuisineAt(i: number): string = match cuisines().at(i) { case some(c) => c, case none => "" }
 
 component CheckboxInteractions
   props
@@ -23,7 +32,7 @@ component CheckboxInteractions
         color="#ffffff"
       row flex-wrap="wrap" gap=12 margin-top=24
         for i in range(20) key=i
-          Checkbox(label="Italian", checked=checked.includes(i), press=toggle(i), testId=`cuisine-${i}`)
+          Checkbox(label=cuisineAt(i), checked=checked.includes(i), press=toggle(i), testId=`cuisine-${i}`)
 
 component Checkbox
   props
@@ -38,18 +47,25 @@ component Checkbox
       PressableScaleLayout(press=press, layout="-exact-spring(250, 30, 1)")
         row testId=testId aria-pressed=checked text-align="center"
           align-items="center" justify-content="center"
-          // borderRadius 36 is drawn at half the height: 24 here (12 + 21 + 12 + 3; RN's 48.667 box
-          // makes it 24.333), because the host paints a layout transition's resize with Core Animation's corner only when the authored radius fits the box.
-          padding=(checked ? "12px 14px 12px 24px" : "12px 24px") border-radius=24 corner-shape="-exact-continuous"
+          // The height is RN's, fixed: 12 + the label's 21.667 (SF Rounded Bold 18: CoreText
+          // ascent 17.14 + descent 4.34, ceiled to the pixel) + 12 + the two 1.5 borders = 48.667;
+          // the check (Ionicons 20, a 20 pt line) never makes it taller. Before, the SF Symbol's own
+          // box (taller than the label's line) grew the checked chip, and its height sprang on
+          // every toggle. borderRadius 36 is drawn at half of it, 24.333: the host paints a layout
+          // transition's resize with Core Animation's corner only when the authored radius fits
+          // the box at every frame, so the height must not move either.
+          height=48.667 box-sizing="border-box"
+          padding=(checked ? "0px 14px 0px 24px" : "0px 24px") border-radius=24.333 corner-shape="-exact-continuous"
           border-width=1.5 border-style="solid"
           border-color=(checked ? "color(display-p3 0.9373 0.5569 0.3216 / 0.1)" : "color(display-p3 0.702 0.6941 0.7059 / 0.1)")
           background-color=(checked ? "color(display-p3 0.9373 0.5569 0.3216 / 0.1)" : "color(display-p3 0.9373 0.5569 0.3216 / 0)")
           // LinearTransition.springify(): mass 1, damping 30, stiffness 250.
           -exact-layout-transition="-exact-spring(250, 30, 1)"
-          text label font-family="ui-rounded" font-weight=700 font-size=18
+          text label font-family="ui-rounded" font-weight=700 font-size=18 white-space="nowrap"
             color=(checked ? "color(display-p3 0.9373 0.5569 0.3216)" : "color(display-p3 0.702 0.6941 0.7059)")
           if checked
-            image "symbol:sf/checkmark.circle.fill" testId=`${testId}-check` margin-left=10 font-size=20 color="color(display-p3 0.9373 0.5569 0.3216)"
+            image "symbol:sf/checkmark.circle.fill" testId=`${testId}-check` margin-left=10 font-size=20
+              width=20 height=20 flex-shrink=0 color="color(display-p3 0.9373 0.5569 0.3216)"
               aria-hidden=true
               animation="checkIn 150ms cubic-bezier(0.895, 0.03, 0.685, 0.22) both"
               -exact-exit-animation="checkOut 150ms cubic-bezier(0.895, 0.03, 0.685, 0.22) both"
