@@ -53,6 +53,10 @@ fn clerkThrow(): string = "-exact-spring(2219.9, 188.5, 4)"
 fn clerkBackdropSpring(): string = "-exact-spring(1087.7349, 131.9234, 4)"
 // use-gradient-height.ts: min(min(count, 3) × (TOAST_HEIGHT + 90), windowHeight / 2).
 fn clerkGradient(count: number, h: number): number = min(min(count, 3) * 145, h / 2)
+// The blur's strip (the owner's call, phone feedback 2026-11-15, "the blur is too big"): from 50
+// pt above the topmost toast (BaseSafeArea 50 + its slot min(n - 1, 2) × 70 + TOAST_HEIGHT 55)
+// down to the screen's bottom, so the stack's middle always sits at half the strip.
+fn clerkBlurH(count: number): number = count <= 0 ? 0 : 50 + clerkBottom(count - 1) + 55 + 50
 
 // The mount: `bottom` starts at -TOAST_HEIGHT and springs to BaseSafeArea (105 px) on the
 // spring above, from rest, critically damped: 1 - (1 + ωt)e^{-ωt}, ω 8.944, sampled (denser
@@ -182,11 +186,11 @@ component ClerkToast
       // on the screen's bottom, its height on RN's backdrop spring. iOS only: the web draws no
       // backdrop.
       view position="absolute" left=0 right=0 bottom=0 pointer-events="none" aria-hidden=true
-        height=clerkGradient(live, env.height)
+        height=clerkBlurH(live)
         transition=`height ${clerkBackdropSpring()} ${shiftDelay}ms` testId="clerk-backdrop"
-        // RN's mask ramps 0 → 1 over the top 0.55 of the box; BlurView intensity 80 is 0.8 of
-        // the chrome material's blur (≈ 30 pt): 24 pt at full.
-        variable-blur ramp-from="0" ramp-to="0.55" blur-radius="24" position="absolute" left=0
+        // Sharp at the strip's top (50 pt above the stack), the full 14 pt at the stack's middle
+        // (half the strip), smootherstep between; full radius below.
+        variable-blur ramp-from="0" ramp-to="0.5" blur-radius="14" position="absolute" left=0
           right=0 top=0 bottom=0 aria-hidden=true testId="clerk-blur"
       for key, i in keys key=key
         ClerkToastCard(env=env, toastKey=key, kind=clerkNum(kinds, i), k=clerkId(gone, goneK, i),
