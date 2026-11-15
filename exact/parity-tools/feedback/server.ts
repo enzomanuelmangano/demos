@@ -61,6 +61,26 @@ export function approved(): string[] {
   return [...state].filter(([, ok]) => ok).map(([slug]) => slug);
 }
 
+// When the owner last looked at each demo on the phone: seen.json (POST /seen, each open), and
+// for the time before it any phone event on the demo (a note, approve, clip is sent from inside it).
+const SEEN = resolve(import.meta.dir, "seen.json");
+const seenAt = (): Record<string, string> => (existsSync(SEEN) ? JSON.parse(readFileSync(SEEN, "utf8")) : {});
+// A live fix is a "resolved" event (resolve.ts without --build); "⏳ next build" stays "open",
+// since that change is not on the phone yet.
+export function changed(): string[] {
+  const seen = new Map(Object.entries(seenAt()));
+  const fixed = new Map<string, string>();
+  if (existsSync(INBOX)) for (const line of readFileSync(INBOX, "utf8").split("\n")) {
+    let e: { kind?: string; slug?: string; source?: string; ts?: string; received?: string; at?: string };
+    try { e = JSON.parse(line); } catch { continue; }
+    if (!safe(e.slug ?? "")) continue;
+    const t = String(e.received ?? e.ts ?? e.at ?? "");
+    if (e.source === "phone" && t > (seen.get(e.slug!) ?? "")) seen.set(e.slug!, t);
+    if (e.kind === "resolved" && t > (fixed.get(e.slug!) ?? "")) fixed.set(e.slug!, t);
+  }
+  return [...fixed].filter(([slug, t]) => t > (seen.get(slug) ?? "")).map(([slug]) => slug);
+}
+
 const idle = new Map<string, number>();
 const waiters = new Map<string, (() => void)[]>();
 const json = (v: unknown, status = 200) =>
@@ -77,6 +97,15 @@ Bun.serve({
     // The phone's home badges (app.contract approvedDemos): every slug "✅ Looks good" on the
     // phone, unless a later note or parity report on it reopened it. Read from inbox.jsonl.
     if (url.pathname === "/approved") return json({ slugs: approved() });
+    // The phone's orange badges (app.contract changedDemos / demoSeen): a demo opened on the
+    // phone is seen now; one is changed while a live fix landed after its last look.
+    if (url.pathname === "/changed") return json({ slugs: changed() });
+    if (url.pathname === "/seen" && req.method === "POST") {
+      const b = await req.json().catch(() => ({}));
+      if (!safe(b.slug ?? "")) return json({ error: "slug" }, 400);
+      writeFileSync(SEEN, JSON.stringify({ ...seenAt(), [b.slug]: new Date().toISOString() }, null, 2) + "\n");
+      return json({ ok: true });
+    }
     // The snap route's idle beacon (app.contract snapIdle) and gen-snapshots.ts's wait on it.
     if (url.pathname === "/snap-idle" && req.method === "POST") {
       const b = await req.json().catch(() => ({}));

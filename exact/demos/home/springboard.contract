@@ -28,6 +28,7 @@ component Springboard
   props
     demos: Demo[]
     approved: string[]
+    changed: string[]
     open: action
   state boxW = 0
   state boxH = 0
@@ -58,7 +59,7 @@ component Springboard
               scroll-snap-stop="always" padding="16px 22px 0" box-sizing="border-box"
               row flex-wrap="wrap" row-gap=22 align-content="flex-start"
                 for d in demos.slice(p * per, (p + 1) * per) key=d.slug
-                  AppIcon(demo=d, cell=cellWidth(boxW), size=iconSize(boxW), approved=approved.includes(d.slug), open=open)
+                  AppIcon(demo=d, cell=cellWidth(boxW), size=iconSize(boxW), approved=approved.includes(d.slug), changed=changed.includes(d.slug), open=open)
         // page-dots.tsx: equal round dots, the shown one brightened. Each follows the pager's
         // offset on the compositor (UIPageControl's interpolation as the finger drags): full at
         // its own page, 0.35 a page either side.
@@ -78,6 +79,7 @@ component AppIcon
     cell: number
     size: number
     approved: bool
+    changed: bool
     open: action
   action openLink(url: string)
     openURL(url)
@@ -98,7 +100,15 @@ component AppIcon
       // Approved on the phone ("✅ Looks good"): a green notification-style badge over the icon's
       // top-right corner, a sibling of the button so the launch square and the long-press lift
       // stay the bare squircle.
-      if approved
+      // Changed since the last open (a live fix landed): orange, over the green, as it asks for a
+      // re-look; opening the demo clears it.
+      if changed
+        view testId=`changed-${demo.slug}` position="absolute" top=-6 left=((cell + size) / 2 - 14)
+          width=20 height=20 border-radius=10 box-sizing="border-box" border="1.5px solid #ffffff"
+          background-color="#FF9F0A" align-items="center" justify-content="center"
+          pointer-events="none" aria-label="Changed"
+          image "symbol:sf/sparkle" font-size=10 font-weight=800 color="#FFFFFF" aria-hidden=true
+      if approved and not changed
         view testId=`approved-${demo.slug}` position="absolute" top=-6 left=((cell + size) / 2 - 14)
           width=20 height=20 border-radius=10 box-sizing="border-box" border="1.5px solid #ffffff"
           background-color="#34C759" align-items="center" justify-content="center"
