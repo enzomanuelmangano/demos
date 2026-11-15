@@ -15,12 +15,6 @@ style IconPress
   :active
     opacity = 0.85
 
-// A page dot: 1 on its own page, 0.35 a page away.
-keyframes pageDot
-  0% opacity=0.35
-  50% opacity=1
-  100% opacity=0.35
-
 component Springboard
   props
     demos: Demo[]
@@ -42,28 +36,22 @@ component Springboard
       // `springboard-zoom` alone, as SpringBoard zooms its icons over a still wallpaper.
       image "assets/home-wallpaper.png" position="absolute" inset=0 width="100%" height="100%"
         object-fit="cover" aria-hidden=true
-      column flex=1 min-height=0 resize=fit position="relative" timeline-scope="--pager"
+      column flex=1 min-height=0 resize=fit position="relative"
         padding-top="env(safe-area-inset-top)" padding-bottom="env(safe-area-inset-bottom)"
         testId="springboard-zoom"
         // Native paging: every page is a snap stop the width of the pager, so a fling is
-        // interruptible. A `row`, not a `scroll` tag: a `scroll` tag's timeline drives nothing on iOS.
-        row testId="pager" flex=1 min-height=0 overflow-x="auto" overflow-y="hidden"
-          scroll-snap-type="x mandatory" scrollbar-width="none" scroll-timeline="--pager x"
+        // interruptible. The hatch hands the scroll view to the page dots (PageDots.swift).
+        row testId="pager" hatch="page-scroller" data-scroller="pager" flex=1 min-height=0 overflow-x="auto" overflow-y="hidden"
+          scroll-snap-type="x mandatory" scrollbar-width="none"
           for p in pages key=p
             column id=`page-${p}` width=boxW height="100%" flex-shrink=0 scroll-snap-align="start"
               scroll-snap-stop="always" padding="16px 22px 0" box-sizing="border-box"
               row flex-wrap="wrap" row-gap=22 align-content="flex-start"
                 for d in demos.slice(p * per, (p + 1) * per) key=d.slug
                   AppIcon(demo=d, cell=cellWidth(boxW), size=iconSize(boxW), approved=approved.includes(d.slug), changed=changed.includes(d.slug), open=open)
-        // Page dots. Each follows the pager's offset on the compositor, so it interpolates as the
-        // finger drags: full at its own page, 0.35 a page either side.
+        // Page dots: native, they read the pager's offset in the same frame as the scroll (PageDots.swift).
         if pages.length > 1
-          row height=44 align-items="center" justify-content="center" flex-shrink=0 pointer-events="none"
-            aria-hidden=true
-            for p in pages key=p
-              view width=7 height=7 border-radius=3.5 corner-shape="-exact-continuous" margin="0 3.5px" background-color="#ffffff"
-                opacity=0.35 animation="pageDot 1s linear both" animation-timeline="--pager"
-                animation-range=`${(p - 1) * boxW}px ${(p + 1) * boxW}px`
+          page-dots scroller="pager" count=pages.length height=44 flex-shrink=0 aria-hidden=true
 
 // The squircle icon and its label under it; a long press offers the demo's inspiration, a share
 // and its code.

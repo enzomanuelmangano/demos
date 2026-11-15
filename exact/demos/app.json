@@ -23,7 +23,8 @@
     "system-alert",
     "toggle-sheet",
     "music-tabbar",
-    "native-tabbar"
+    "native-tabbar",
+    "page-dots"
   ],
   "host": {
     "web": {},
@@ -64,10 +65,14 @@
   "hatches": {
     "launch-icon": [
       "ios"
+    ],
+    "page-scroller": [
+      "ios"
     ]
   },
   "data": [
-    "slug"
+    "slug",
+    "scroller"
   ],
   "commands": {
     "phone": [

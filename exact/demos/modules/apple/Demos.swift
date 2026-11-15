@@ -23,6 +23,8 @@
 //   `variable-blur` (VariableBlur.swift), `audio-track` (AudioTrack.swift).
 // `music-tabbar` (MusicTabBar.swift): a SwiftUI TabView with a mini player as its bottom
 //   accessory; `native-tabbar` is the same bar without the accessory.
+// `page-dots` (PageDots.swift): the home's page dots, following the pager's scroll offset
+//   (the `page-scroller` hatch names the pager's scroll view).
 import Foundation
 #if os(iOS)
 import CoreHaptics
@@ -55,15 +57,18 @@ final class DemosModule: ExactModule {
          "toggle-sheet": native("toggle-sheet") { ToggleSheet(props: $0, events: $1) },
          "system-alert": native("system-alert") { SystemAlert(props: $0, events: $1) },
          "music-tabbar": native("music-tabbar") { MusicTabBar(props: $0, events: $1) },
-         "native-tabbar": native("native-tabbar") { MusicTabBar(props: $0, events: $1, accessory: false) }]
+         "native-tabbar": native("native-tabbar") { MusicTabBar(props: $0, events: $1, accessory: false) },
+         "page-dots": native("page-dots") { PageDots(props: $0, events: $1) }]
     }
 
     override func element(_ element: ExactElement) {
         if element.hatch == .launchIcon { launchIconHatch(element) }
+        if element.hatch == .pageScroller { pageScrollerHatch(element) }
     }
 
     override func elementEnded(_ element: ExactElement) {
         if element.hatch == .launchIcon { launchIconHatchEnded(element) }
+        if element.hatch == .pageScroller { pageScrollerHatchEnded(element) }
     }
 }
 
