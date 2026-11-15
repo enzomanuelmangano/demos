@@ -1,6 +1,7 @@
-// `music-tabbar`: iOS 26 Apple Music's bottom chrome, native: a SwiftUI TabView (the floating
-// glass tab bar) with `.tabViewBottomAccessory` holding the mini player (artwork, title,
-// artist, play/pause, next). expandable-mini-player draws its page in Contract behind it: every
+// `music-tabbar` / `native-tabbar`: iOS 26's native bottom chrome: a SwiftUI TabView (the
+// floating glass tab bar), and for `music-tabbar` (Apple Music) `.tabViewBottomAccessory` holding
+// the mini player (artwork, title, artist, play/pause, next). `native-tabbar` is the same bar
+// with no accessory (telegram-theme-switch); so is a `music-tabbar` with no track-title. expandable-mini-player draws its page in Contract behind it: every
 // tab's content is clear and takes no touch, and this view answers only touches on the bar and
 // the accessory, so the page under the box still scrolls and taps.
 //
@@ -18,6 +19,8 @@
 //   artwork-file   the artwork, relative to the app bundle (the app's assets/ tree is copied
 //                  into it as `assets/`)
 //   is-playing     "true" shows pause, anything else play
+//   bar-appearance "dark" or "light": the bar's own appearance (an app theme, not the
+//                  system's); dark by default
 // Events (`change`): "tab:<index>" when the person picks a tab, "accessory" for a tap on the
 // mini player, "play" for its play/pause button, "next" for its next button.
 #if os(iOS)
@@ -33,6 +36,7 @@ final class MusicTabBarModel: ObservableObject {
     @Published var artist = ""
     @Published var artwork: UIImage?
     @Published var playing = false
+    @Published var accessory = true
     var artworkFile = ""
 
     static func color(_ hex: String?) -> Color? {
@@ -132,9 +136,21 @@ struct MusicTabBarBody: View {
 
     var body: some View {
         if #available(iOS 26.0, *) {
-            TabView(selection: selection) { tabs() }
-                .tabViewBottomAccessory { MusicMiniPlayer(model: model, send: send) }
-                .tint(model.tint)
+            if model.accessory && !model.title.isEmpty {
+                TabView(selection: selection) { tabs() }
+                    .tabViewBottomAccessory { MusicMiniPlayer(model: model, send: send) }
+                    .tint(model.tint)
+            } else {
+                TabView(selection: selection) { tabs() }
+                    .tint(model.tint)
+            }
+        } else if !model.accessory || model.title.isEmpty {
+            VStack(spacing: 0) {
+                Spacer(minLength: 0)
+                TabView(selection: selection) { tabs() }
+                    .tint(model.tint)
+                    .frame(height: 84)
+            }
         } else {
             VStack(spacing: 8) {
                 Spacer(minLength: 0)
@@ -166,10 +182,12 @@ final class MusicTabBarHost: UIView {
 
 final class MusicTabBar: ExactNativeInstance {
     private let model = MusicTabBarModel()
+    /// `native-tabbar`: no accessory, whatever the props say.
     private let box = MusicTabBarHost()
     private var host: UIHostingController<MusicTabBarBody>?
 
-    init(props: [String: String], events: ExactNativeEvents) {
+    init(props: [String: String], events: ExactNativeEvents, accessory: Bool = true) {
+        model.accessory = accessory
         box.backgroundColor = .clear
         super.init(events: events)
         let events = self.events
@@ -206,6 +224,8 @@ final class MusicTabBar: ExactNativeInstance {
         }
         let playing = props["is-playing"] == "true"
         if playing != model.playing { model.playing = playing }
+        let style: UIUserInterfaceStyle = props["bar-appearance"] == "light" ? .light : .dark
+        if host?.overrideUserInterfaceStyle != style { host?.overrideUserInterfaceStyle = style }
     }
 
     override func destroy() {
