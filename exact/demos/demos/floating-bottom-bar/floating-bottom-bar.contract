@@ -5,13 +5,14 @@
 // gpu/src/floating_bottom_bar.rs (one canvas over the body): the tab chosen fades in on the frame
 // the light's spring rests and the tab left fades out at once (withTiming keeps its start while
 // its target holds), which needs the spring's own frames.
-use DemoEnv, floatingWidth, concentricRadius from "../env.contract"
+use DemoEnv, floatingWidth, concentricInset, concentricRadius from "../env.contract"
 
-// Past RN (the owner: "make this tab bar concentric with the device"; RN: screenWidth × 0.95
-// above the home indicator, radius 20): it floats barInset() from the display's sides and
-// bottom, its corners concentric with the display's (env.contract concentricRadius: 62 − 10,
-// capped at half its 65 pt height, so a continuous capsule, as iOS 26's tab bar).
-fn barInset(): number = 10
+// Past RN (the owner: "make this tab bar concentric with the device", then "the border isn't
+// concentric at all", mwhpanxs; RN: screenWidth × 0.95 above the home indicator, radius 20): a
+// continuous capsule (radius 32.5, its 65 pt height's half: the Rust canvas is 65 tall) whose
+// ends share their centre with the display corner's arc, so it floats 62 − 32.5 = 29.5 from the
+// display's sides and bottom (env.contract concentricInset), as iOS 26's tab bar (~25 in).
+fn barInset(): number = concentricInset(65)
 fn barWidth(w: number): number = floatingWidth(w, barInset())
 
 component FloatingBottomBar
