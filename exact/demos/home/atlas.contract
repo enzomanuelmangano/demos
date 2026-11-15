@@ -197,8 +197,12 @@ component Atlas
   state by = "order"
   state scale = 0.36
   // "hover": live are the last `cap` tiles the pointer moved over; "visible": the tiles on screen.
-  state mode = "hover"
-  state cap = 2
+  // "near" (the default): the `cap` tiles in view nearest the middle of the grid run live, and
+  // the hovered one; picked again only when a scroll ends, so no demo mounts mid-scroll.
+  state mode = "near"
+  state cap = 12
+  state scrolling = false
+  state settled: string[] = []
   state recent: string[] = []
   state paused = false
   state focused = ""
@@ -219,11 +223,22 @@ component Atlas
   state picked = ""
   state words = ""
   derive shown = sorted(demos.filter(d => d.ported and matches(d, q, status)), by)
-  derive live = (paused or not active or focused != "") ? [] : mode == "hover" ? recent.filter(s => inView.includes(s)).slice(0, cap) : shown.filter(d => inView.includes(d.slug)).slice(0, cap).map(d => d.slug)
+  derive visible = shown.filter(d => inView.includes(d.slug)).map(d => d.slug)
+  derive middle = visible.slice(max(0, floor((visible.length - cap) / 2)), max(0, floor((visible.length - cap) / 2)) + cap)
+  derive hovered = recent.slice(0, 1).filter(s => inView.includes(s))
+  derive nearSet = scrolling ? settled.filter(s => inView.includes(s)) : middle
+  derive live = (paused or not active or focused != "") ? [] : mode == "hover" ? recent.filter(s => inView.includes(s)).slice(0, cap) : mode == "near" ? nearSet.concat(hovered.filter(s => not nearSet.includes(s))) : visible.slice(0, cap)
   derive focusScale = min(1, max(0.3, (env.height - 140) / airH()))
 
   action typed(v: string)
     q = v.toLowerCase()
+  // The grid's scroll: the first event marks it moving (one commit), its end re-picks.
+  action scrolled(x: number, y: number)
+    if not scrolling
+      settled = middle
+      scrolling = true
+  action scrollDone
+    scrolling = false
   action seen(slug: string, e: IntersectionObserverEntry)
     if e.isIntersecting and not inView.includes(slug)
       inView = inView.concat([slug])
@@ -235,6 +250,13 @@ component Atlas
     by = s
   action sized(v: number)
     scale = v
+  // ⌘− / ⌘= / ⌘0 (View): tiles from very small (many per row) up to near full size.
+  action zoomOut
+    scale = max(0.12, round(scale / 1.25 * 100) / 100)
+  action zoomIn
+    scale = min(0.9, round(scale * 1.25 * 100) / 100)
+  action zoomReset
+    scale = 0.36
   action liveAs(m: string, n: number)
     mode = m
     cap = n
@@ -338,7 +360,7 @@ component Atlas
               text (s == "all" ? "All" : s == "done" ? "Done" : s == "open" ? "Open" : "Unverified")
         button popovertarget="atlas-sort" aria-label=`Sort: ${sortLabel(by)}` testId="atlas-sort"
           image "symbol:sf/arrow.up.arrow.down"
-        button popovertarget="atlas-live" aria-label=(mode == "hover" ? "Live on Hover" : "Live When Visible") testId="atlas-live"
+        button popovertarget="atlas-live" aria-label=(mode == "near" ? "12 Live" : mode == "hover" ? "Live on Hover" : "Live When Visible") testId="atlas-live"
           image "symbol:sf/square.grid.3x3"
         button press=pause aria-label=(paused ? "Resume Atlas" : "Pause Atlas") testId="atlas-pause"
           -exact-menu="view" aria-keyshortcuts="Meta+Shift+P"
@@ -353,6 +375,9 @@ component Atlas
             popovertargetaction="hide" testId=`atlas-sort-${s}`
             text sortLabel(s)
       column id="atlas-live" popover="auto" role="menu" position="absolute" aria-label="Live Tiles"
+        button press=liveAs("near", 12) role="menuitemradio" aria-checked=(mode == "near" and cap == 12) popovertarget="atlas-live"
+          popovertargetaction="hide" testId="atlas-live-near-12"
+          text "12 Live, Nearest the Middle"
         button press=liveAs("hover", 1) role="menuitemradio" aria-checked=(mode == "hover" and cap == 1) popovertarget="atlas-live"
           popovertargetaction="hide" testId="atlas-live-hover-1"
           text "Live on Hover: 1"
@@ -384,6 +409,7 @@ component Atlas
       // Below the window's bar: nothing scrolls under it.
       column flex=1 min-height=0 position="relative" margin-top="var(--exact-safe-area-inset-top)"
         scroll flex=1 min-height=0 overflow-y="auto" overflow-x="hidden" testId="atlas-grid"
+          scroll=scrolled scrollend=scrollDone
           row flex-wrap="wrap" column-gap=28 row-gap=30 padding="28px 32px 40px" align-content="flex-start" justify-content="center"
             for d in shown key=d.slug
               column width=(airW() * scale) gap=10 align-items="center" position="relative" z-index=(draft == d.slug ? 2 : 0)
@@ -462,9 +488,16 @@ component Atlas
         border-top-style="solid" border-color="-exact-separator" background-color="-exact-background"
         text (paused ? "Paused" : armed ? "Click a demo to leave feedback · Esc to cancel" : `${live.length} of ${cap} live`)
           font-size=11 color="-exact-secondary-label" margin-right="auto"
-        image "symbol:sf/rectangle.grid.3x2" width=12 height=12 color="-exact-secondary-label"
-        input type="range" min=0.2 max=0.7 step=0.01 value=scale input=sized aria-label="Tile size" width=120 testId="atlas-size"
-        image "symbol:sf/rectangle.grid.1x2" width=14 height=14 color="-exact-secondary-label"
+        button appearance="none" press=zoomOut -exact-menu="view" aria-keyshortcuts="Meta+-" aria-label="Zoom Out"
+          testId="atlas-zoom-out" padding=0 border-width=0 background-color="transparent"
+          image "symbol:sf/rectangle.grid.3x2" width=12 height=12 color="-exact-secondary-label"
+        input type="range" min=0.12 max=0.9 step=0.01 value=scale input=sized aria-label="Tile size" width=120 testId="atlas-size"
+        button appearance="none" press=zoomIn -exact-menu="view" aria-keyshortcuts="Meta+=" aria-label="Zoom In"
+          testId="atlas-zoom-in" padding=0 border-width=0 background-color="transparent"
+          image "symbol:sf/rectangle.grid.1x2" width=14 height=14 color="-exact-secondary-label"
+        button appearance="none" press=zoomReset -exact-menu="view" aria-keyshortcuts="Meta+0" aria-label="Actual Size"
+          testId="atlas-zoom-reset" display="none"
+          text "Actual Size"
 
 fn demoName(ds: Demo[], slug: string): string = match first(ds.filter(d => d.slug == slug)) {
   case some(d) => d.name,
