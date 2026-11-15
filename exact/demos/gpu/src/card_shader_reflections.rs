@@ -1,66 +1,19 @@
-//! Card Shader Reflections (src/animations/card-shader-reflections: src/components/card-carousel/
-//! card-carousel.tsx, card/*, utils/constants.ts): four metal cards (Metal, Silver, Gold,
-//! Platinum) in a horizontal FlatList on #111, each tilted 18°, turning about y as it scrolls
-//! away from the centre; each card's face is getCardShader (a lit, brushed-metal SkSL effect)
-//! whose light follows the turn.
+//! Four metal cards (Metal, Silver, Gold, Platinum) in a horizontally snapping list on a #111
+//! background. Each card is tilted 18 degrees and turns about y as it scrolls away from the centre.
 //!
-//! Layout (Yoga's numbers, each edge on the device-pixel grid): CARD_WIDTH = round(W × 0.7),
-//! CARD_HEIGHT = round(CARD_WIDTH × 1.58), SPACING 20. styles.container centres a View of height
-//! CARD_HEIGHT × 1.2 (the FlatList: full width, contentContainer paddingHorizontal
-//! (W − CARD_WIDTH) / 2). Item i (cardContainer: CARD_WIDTH × (CARD_HEIGHT + 20), paddingTop 20)
-//! holds the Animated.View (flex 1, padding 16: CARD_WIDTH × CARD_HEIGHT) and in it styles.card
-//! (radius 20, overflow hidden, padding 30, boxShadow `0px 10px 20px rgba(0,0,0,0.3)`):
-//! - CardCanvas: absoluteFill but CARD_WIDTH × CARD_HEIGHT, so it overflows the card, which clips
-//!   it; resolution [CARD_WIDTH, CARD_HEIGHT], cardType = the item's id
-//!   (past RN: shaded in the compose pass itself, below).
-//! - cardContent (flex 1, opacity 0.7): CardChip (chipContainer 0.15 × 0.12 CARD_WIDTH; chip:
-//!   0.5 pt #A8A8A8 Core Animation border, continuous radius 4, clipping, padding 2; chipGrid
-//!   rgba(255,255,255,0.1), padding 2, three rows 28 % tall spaced between, each a 25 % and a
-//!   65 % contact: rgba(255,255,255,0.15) under RN's 0.5 pt rgba(255,255,255,0.4) border image),
-//!   and titleWrapper (absolute, left 20, bottom 20, height 40, `[rotate −90deg, translateY 10,
-//!   translateX −20]` about its left bottom) with the uppercase title (System bold 16,
-//!   letterSpacing −1, black, opacity 0.9).
-//! - The card's corners: RN moves the children of an `overflow: hidden` view with a boxShadow
-//!   into a container view whose layer gets the radius but not the cornerCurve: the clip is
-//!   circular. The shadow (RCTBoxShadow) is its circular rounded rect offset (0, 10),
-//!   shadowRadius 10 (σ 10), black 0.3, masked to outside the bounds' rounded rect.
-//!
-//! The card's transform about the Animated.View's centre: `[rotate 18deg, perspective 1200,
-//! translateY, rotateY]` (Matrix4, as React Native composes it); Core Animation flattens each
-//! cardContainer, so cards paint in index order; back faces show (mirrored).
-//! gpu/shaders/card_shader_reflections_compose.wgsl draws every visible card per pixel.
-//!
-//! Motion audit (every animated value; i is the card's index, CW = CARD_WIDTH):
-//!
-//! | value | RN driver / config | Exact |
-//! |---|---|---|
-//! | scrollX | FlatList onScroll (useAnimatedScrollHandler, scrollEventThrottle 8): contentOffset.x of a UIScrollView, snapToInterval CW, decelerationRate "fast" | `UiScroll` (rubber band, rate 0.99/ms, interval snap by velocity), read every frame |
-//! | rotateY | interpolate(scrollX, [(i−1), i, (i+1)] × CW, [180, 0, −180], CLAMP) deg | the same, per frame |
-//! | translateY | interpolate(scrollX, [(i−1), (i−½), i, (i+½), (i+1)] × CW, [0, −6, 0, −6, 0], CLAMP) | the same |
-//! | card opacity | interpolate(scrollX, [(i−1), i, (i+1)] × CW, [0.5, 1, 0.5], CLAMP) | the same |
-//! | chip opacity | interpolate(…, [0.2, 0.6, 0.2], CLAMP) | the same (× cardContent's 0.7) |
-//! | title opacity | Math.round(interpolate(…, [0, 1, 0], CLAMP)) | the same (half up) |
-//! | shader rotate | useAnimatedReaction: interpolate(…, [−π, 0, π], CLAMP), written only when it changes | the card's turn in its room frame, per frame |
-//!
-//! Past RN (the owner's ask for premium, physical cards): one analytic pass draws the screen
-//! (card_shader_reflections_compose.wgsl): each visible card is a lit metal card (brushed or
-//! anodised metal under a studio's softboxes, Ward's anisotropic highlight, a Fresnel bevel on a
-//! continuous outline, a thin-film hologram, an engraved chip, contactless mark and title, grain)
-//! shaded where it shows, its shadow analytic; pixels past a card's shadow skip it. The cards'
-//! face layers and their per-card pass are gone (a slow scroll redrew two 787 × 1300 layers a
-//! frame, then composed them: the stutter the owner saw); the brushing's noise is a 256² tile
-//! made once ([`noise_tile`]).
-//! The lights stay in the room: each card's frame there (`frame`: x axis, y axis, normal) is the
-//! phone's turn (Core Motion's `relativeOrientation`, its CMAttitude pitch and roll, clamped to
-//! ±ATTITUDE_RANGE, scaled by ATTITUDE_GAIN and smoothed on the critically damped ATTITUDE_SPRING) · the 18° roll · the
-//! scroll's turn · the finger's tilt. Tilting the phone sweeps the highlights and the foil's
-//! colours across the card. A finger dragging the list tilts the centred card about x toward
-//! where it is (MAX_TILT at the card's top / bottom edge) on TILT_SPRING, settled back on the
-//! lift; each card takes it by its nearness to the centre. A tap (within TAP_SLOP) does nothing:
-//! no tilt, no scale, no haptic.
-//! The compose pass gets the shadow's offset (slot.yz: the turn and the tilt push it). A sensor
-//! sample that moves the smoothed target less than ATTITUDE_DEADBAND asks for no frame, so a
-//! phone at rest leaves the screen at rest. No timers: at rest nothing renders.
+//! - One analytic pass (card_shader_reflections_compose.wgsl) draws every visible card per pixel:
+//!   brushed or anodised metal under softboxes, an anisotropic highlight, a Fresnel bevel, a
+//!   thin-film hologram, an engraved chip, contactless mark and title, grain, and an analytic shadow.
+//! - The chip, the four titles and the shadow are recorded once into an atlas; the brushing noise
+//!   is a 256 x 256 tile made once (`noise_tile`).
+//! - The lights stay in the room: each card's frame there is the phone's turn (Core Motion
+//!   attitude, clamped, scaled by ATTITUDE_GAIN, smoothed on ATTITUDE_SPRING) x the 18 degree roll
+//!   x the scroll's turn x the finger's tilt, so tilting the phone sweeps the highlights.
+//! - A finger dragging the list tilts the centred card about x toward the finger (up to MAX_TILT
+//!   at its top or bottom edge) and settles back on release; a tap (within TAP_SLOP) does nothing.
+//! - A sensor sample that moves the smoothed target less than ATTITUDE_DEADBAND asks for no frame,
+//!   so a phone at rest leaves the screen at rest. No haptics, no timers.
+//! - Cards paint in index order and show their back faces mirrored.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, SensorKind, Surface, SurfaceError, Value};
@@ -72,27 +25,26 @@ use crate::ui_scroll::{Snap, UiScroll, FAST};
 use crate::{gfx, shaders};
 use shaders::card_shader_reflections_compose::{entry, module, Uniforms, ATLAS, GROUP_0, SMP, TILE, U};
 
-/// CARD_DATA: (id = cardType, title), in list order.
+/// Each card's shader type and title, in list order.
 const CARDS: [(f32, &str); 4] = [(3.0, "Metal"), (0.0, "Silver"), (1.0, "Gold"), (2.0, "Platinum")];
-/// SPACING.
+/// Gap around the cards, pt.
 const SPACING: f32 = 20.0;
-/// The Animated.View's padding.
+/// Padding between a card's slot and its face, pt.
 const VIEW_PADDING: f32 = 16.0;
-/// styles.card padding (SPACING × 1.5) and radius.
+/// The card's inner padding and corner radius, pt.
 const CARD_PADDING: f32 = SPACING * 1.5;
 const CARD_RADIUS: f32 = 20.0;
-/// The base tilt and the perspective.
+/// The base tilt, degrees, and the perspective distance, pt.
 const TILT_DEG: f32 = 18.0;
 const PERSPECTIVE: f32 = 1200.0;
-/// boxShadow '0px 10px 20px rgba(0, 0, 0, 0.3)': offset, σ = shadowRadius = blur / 2, alpha;
-/// RCTBoxShadow's mask pads the shadow rect by 2 × (blur + 1).
+/// The card shadow: y offset, σ (half the 20 pt blur), alpha, and the padding of its mask region.
 const SHADOW_DY: f32 = 10.0;
 const SHADOW_SIGMA: f32 = 10.0;
 const SHADOW_ALPHA: f32 = 0.3;
 const SHADOW_PAD: f32 = 2.0 * (20.0 + 1.0);
-/// cardContent's opacity.
+/// Opacity of the chip and title over the card.
 const CONTENT_OPACITY: f32 = 0.7;
-/// The chip: border width, radius, padding; chipGrid padding; the rows and the contacts.
+/// The chip's border, radius and padding, the contact grid's padding, row height and contact widths (fractions).
 const CHIP_BORDER: f32 = 0.5;
 const CHIP_RADIUS: f32 = 4.0;
 const CHIP_PADDING: f32 = 2.0;
@@ -101,7 +53,7 @@ const ROW_HEIGHT: f32 = 0.28;
 const SMALL: f32 = 0.25;
 const LARGE: f32 = 0.65;
 const CONTACT_BORDER: f32 = 0.5;
-/// styles.titleWrapper: left, bottom, height; its transform; cardTitle.
+/// The rotated title's placement, size, weight, letter spacing and opacity.
 const TITLE_LEFT: f32 = SPACING;
 const TITLE_BOTTOM: f32 = SPACING;
 const TITLE_BOX: f32 = 40.0;
@@ -114,24 +66,23 @@ const TITLE_OPACITY: f32 = 0.9;
 /// Transparent device pixels between the atlas's regions.
 const GAP: u32 = 4;
 const LAYER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
-/// The finger's tilt at the card's top or bottom edge (radians: 8°).
+/// The finger's tilt at the card's top or bottom edge, radians (8 degrees).
 const MAX_TILT: f64 = 8.0 * std::f64::consts::PI / 180.0;
 /// A finger that stays within this many points of where it landed is a tap: it moves nothing.
 const TAP_SLOP: f32 = 8.0;
-/// The tilt's spring: quick to follow the finger, a small overshoot on the settle (ζ ≈ 0.62).
+/// The tilt's spring: quick to follow, a small overshoot on the settle.
 const TILT_SPRING: SpringConfig = SpringConfig { stiffness: 260.0, damping: 20.0, mass: 1.0 };
-/// The phone's turn that moves the light: CMAttitude pitch and roll, each clamped to ±25°.
+/// The phone's pitch and roll that move the light, each clamped to +-25 degrees (radians).
 const ATTITUDE_RANGE: f64 = 25.0 * std::f64::consts::PI / 180.0;
-/// How much of the phone's turn the room's light sees: half, so a hand's small sway shades the
-/// card instead of flickering it (the owner: "it sparkles too much").
+/// How much of the phone's turn the light sees: half, so a hand's sway shades instead of flickering.
 const ATTITUDE_GAIN: f64 = 0.5;
-/// Their smoothing: critically damped (ζ = 1), settled in ~0.5 s (ω = 10 rad/s).
+/// Attitude smoothing: critically damped, settled in about 0.5 s.
 const ATTITUDE_SPRING: SpringConfig = SpringConfig { stiffness: 100.0, damping: 20.0, mass: 1.0 };
-/// A sample that moves a target less than this (radians, ~0.11°) is a hand's tremor: no frame.
+/// A sample that moves a target less than this (radians) is a hand's tremor: no frame.
 const ATTITUDE_DEADBAND: f64 = 0.002;
-/// The noise tile's side (texels).
+/// The noise tile's side, texels.
 const TILE_SIDE: u32 = 256;
-/// The shadow's push in the card's plane per unit of sin(turn) and sin(tilt), points.
+/// The shadow's push in the card's plane per unit of sin(turn) and sin(tilt), pt.
 const SHADOW_TURN: f32 = 10.0;
 const SHADOW_TILT: f32 = 14.0;
 
@@ -154,12 +105,12 @@ pub fn surface() -> Box<dyn Surface> {
     })
 }
 
-/// Yoga's rounding of an absolute edge to the pixel grid (a half rounds up).
+/// Rounds an edge to the device-pixel grid (half up).
 fn grid(v: f32, s: f32) -> f32 {
     ((v * s + 0.5 + 1e-4).floor()) / s
 }
 
-/// Yoga's rounding of a text node's left / top edge (floored).
+/// Rounds a text edge down to the device-pixel grid.
 fn grid_floor(v: f32, s: f32) -> f32 {
     ((v * s + 1e-4).floor()) / s
 }
@@ -170,15 +121,14 @@ struct Layout {
     w: f32,
     h: f32,
     s: f32,
-    /// CARD_WIDTH, CARD_HEIGHT.
+    /// Card width and height.
     cw: f32,
     ch: f32,
-    /// The list's View: top and bottom (rounded).
+    /// The list's top and bottom (rounded).
     list: (f32, f32),
-    /// Card 0's Animated.View: left (in the scroll content, which starts at x 0), top, width,
-    /// height (rounded).
+    /// Card 0's slot: left (in the scroll content), top, width, height (rounded).
     view: [f32; 4],
-    /// styles.card in the Animated.View: left, top, width, height.
+    /// The card's face in its slot: left, top, width, height.
     card: [f32; 4],
     /// The card's absolute (unrounded) top-left, for its children's rounding.
     card_abs: (f32, f32),
@@ -191,7 +141,7 @@ impl Layout {
         let list_h = ch * 1.2;
         let list_top = (h - list_h) / 2.0;
         let pad = (w - cw) / 2.0;
-        // cardContainer at (pad + i·CW, list top); the Animated.View below its paddingTop.
+        // Card i's container starts at (pad + i * cw, list top); its slot sits below SPACING.
         let (ax, ay) = (pad, list_top + SPACING);
         let (vx, vy) = (grid(ax, s), grid(ay, s));
         let view = [vx, vy, grid(ax + cw, s) - vx, grid(ay + ch, s) - vy];
@@ -213,8 +163,7 @@ impl Layout {
         grid(self.card_abs.1 + v, self.s) - grid(self.card_abs.1, self.s)
     }
 
-    /// The shadow's region in the card's points: left, top, width, height (RCTBoxShadow's
-    /// padded mask).
+    /// The shadow's padded region in the card's points: left, top, width, height.
     fn shadow(&self) -> [f32; 4] {
         let [_, _, w, h] = self.card;
         [-SHADOW_PAD, SHADOW_DY - SHADOW_PAD, w + 2.0 * SHADOW_PAD, h + 2.0 * SHADOW_PAD]
@@ -257,7 +206,7 @@ struct Pose {
     opacity: f64,
     chip: f64,
     title: f64,
-    /// The shader's `rotate` (radians).
+    /// The shader's `rotate`, radians.
     rotate: f32,
     /// How centred the card is (1 centred, 0 a card away): its share of the tilt.
     near: f64,
@@ -273,7 +222,7 @@ fn pose(index: usize, scroll_x: f64, cw: f64) -> Pose {
         translate_y: interpolate_clamp(scroll_x, &full, &[0.0, -6.0, 0.0, -6.0, 0.0]),
         opacity: interpolate_clamp(scroll_x, &input, &[0.5, 1.0, 0.5]),
         chip: interpolate_clamp(scroll_x, &input, &[0.2, 0.6, 0.2]),
-        // Math.round: half up.
+        // Rounds half up.
         title: (interpolate_clamp(scroll_x, &input, &[0.0, 1.0, 0.0]) + 0.5).floor(),
         rotate: interpolate_clamp(scroll_x, &input, &[-pi, 0.0, pi]) as f32,
         near: (1.0 - (scroll_x / cw - i).abs()).max(0.0),
@@ -315,7 +264,7 @@ struct Gpu {
 }
 
 impl CardShaderReflections {
-    /// Card `k`'s plane (styles.card's points) → the screen, at the current scroll.
+    /// Card `k`'s plane in points to the screen, at the current scroll.
     fn matrix(&self, k: usize, pose: &Pose) -> skia::Matrix3 {
         let l = &self.layout;
         let tilt = self.held(pose);
@@ -355,8 +304,8 @@ impl CardShaderReflections {
         (self.tilt.value * pose.near) as f32
     }
 
-    /// Card `pose`'s frame in the room: its x axis, y axis and normal (the shader's lights and
-    /// eye stay put): the phone's turn · Rz(18°) · Ry(turn) · Rx(the finger's tilt).
+    /// Card `pose`'s frame in the room (x axis, y axis, normal; the lights and eye stay put):
+    /// the phone's turn, the base roll, the scroll's turn, the finger's tilt.
     fn room_frame(&self, pose: &Pose) -> [[f32; 3]; 3] {
         let tilt = self.held(pose);
         let m = Matrix4::rotate_x((-self.pitch.value * ATTITUDE_GAIN) as f32)
@@ -368,8 +317,8 @@ impl CardShaderReflections {
         [[m[0], m[4], m[8]], [m[1], m[5], m[9]], [m[2], m[6], m[10]]]
     }
 
-    /// A Core Motion attitude sample: CMAttitude's pitch and roll, clamped, chased by the
-    /// springs; whether it moved a target past the deadband.
+    /// Takes a Core Motion attitude sample: pitch and roll, clamped, chased by the springs.
+    /// Returns whether it moved a target past the deadband.
     fn attitude(&mut self, q: [f32; 4]) -> bool {
         let (p, r) = pitch_roll(q.map(|v| v as f64));
         let p = if p.is_nan() { 0.0 } else { p.clamp(-ATTITUDE_RANGE, ATTITUDE_RANGE) };
@@ -430,14 +379,14 @@ impl CardShaderReflections {
     }
 }
 
-/// CardChip, in the card's points, at full opacity (its group's alpha is the compose pass's).
+/// The chip in the card's points at full opacity (the compose pass applies its alpha).
 fn draw_chip(c: &mut Canvas, l: &Layout) {
     let [x0, y0, x1, y1] = l.chip();
     let (w, h) = (x1 - x0, y1 - y0);
-    // chipContainer: CARD_WIDTH × 0.15 by CARD_WIDTH × 0.12 at the content box's corner.
+    // The chip box: 0.15 x 0.12 of the card width at the content corner.
     let (ux, uy) = (CARD_PADDING, CARD_PADDING);
     let (uw, uh) = (l.cw * 0.15, l.cw * 0.12);
-    // chipGrid: inside the chip's border and padding; its padding box holds the rows.
+    // The contact grid sits inside the chip's border and padding.
     let inset = CHIP_BORDER + CHIP_PADDING;
     let (gx, gy, gw, gh) = (ux + inset, uy + inset, uw - 2.0 * inset, uh - 2.0 * inset);
     let (rx, ry, rw, rh) = (gx + GRID_PADDING, gy + GRID_PADDING, gw - 2.0 * GRID_PADDING, gh - 2.0 * GRID_PADDING);
@@ -445,7 +394,7 @@ fn draw_chip(c: &mut Canvas, l: &Layout) {
     let gap = (rh - 3.0 * row_h) / 2.0;
 
     c.save();
-    // The chip clips its children to its continuous radius 4.
+    // The chip clips its contents to its rounded corners.
     c.clip_with(|b| add_continuous_rrect(b, x0, y0, w, h, CHIP_RADIUS));
     let (gl, gt) = (l.gx(gx), l.gy(gy));
     c.draw_rect(gl, gt, l.gx(gx + gw) - gl, l.gy(gy + gh) - gt, &Paint::fill(Color::WHITE.alpha(0.1)));
@@ -460,20 +409,20 @@ fn draw_chip(c: &mut Canvas, l: &Layout) {
             let (bl, bt) = (l.gx(left), l.gy(top));
             let (bw, bh) = (l.gx(left + width) - bl, l.gy(top + row_h) - bt);
             c.draw_rect(bl, bt, bw, bh, &fill);
-            // RN's border image (translucent, not clipping): a ring inside the box.
+            // A translucent ring inside the contact.
             c.draw_path(&skia::border_ring_path(bl, bt, bw, bh, 0.0, CONTACT_BORDER), &border);
         }
     }
     c.restore();
-    // Core Animation's border, in front of the content, with the continuous curve.
+    // The chip's border, in front of the content.
     let outer = continuous_rrect_path(x0, y0, w, h, CHIP_RADIUS);
     let inner = continuous_rrect_path(x0 + CHIP_BORDER, y0 + CHIP_BORDER, w - 2.0 * CHIP_BORDER, h - 2.0 * CHIP_BORDER, CHIP_RADIUS - CHIP_BORDER);
     c.draw_path_events(outer.iter().chain(inner.reversed()), &Paint::fill(Color::hex(0xA8A8A8)));
 }
 
-/// The title: titleWrapper's transform about its left bottom, the Text at its top-left.
+/// The title, rotated -90 degrees about its left bottom.
 fn draw_title(c: &mut Canvas, l: &Layout, font: &Font, text: &str) {
-    // cardContent (the card's content box) → titleWrapper: left 20, bottom 20, height 40.
+    // The title box sits TITLE_LEFT and TITLE_BOTTOM in from the content box.
     let bottom = l.ch - 2.0 * VIEW_PADDING - CARD_PADDING - TITLE_BOTTOM;
     let left = CARD_PADDING + TITLE_LEFT;
     let (ox, oy) = (l.gx(left), l.gy(bottom));
@@ -486,7 +435,7 @@ fn draw_title(c: &mut Canvas, l: &Layout, font: &Font, text: &str) {
     c.translate(-ox, -oy);
     let baseline = gfx::baseline(font, top);
     let paint = Paint::fill(Color::BLACK.alpha(TITLE_OPACITY));
-    // letterSpacing −1 (NSKern): added to every glyph's advance, kerning and tracking kept.
+    // Letter spacing is added to every glyph's advance; kerning is kept.
     let chars: Vec<char> = text.chars().collect();
     let mut prefix = String::with_capacity(text.len());
     for (k, ch) in chars.iter().enumerate() {
@@ -539,7 +488,7 @@ impl Surface for CardShaderReflections {
             return;
         };
         self.changed = true;
-        // The FlatList's frame: the full width, the list View's height.
+        // The list's frame: the full width, the list's height.
         let (top, bottom) = self.layout.list;
         let inside = y >= top && y < bottom && x >= 0.0 && x <= self.layout.w;
         let phase = gfx::phase(phase);
@@ -643,8 +592,7 @@ impl Surface for CardShaderReflections {
             let turn = (pose.rotate_y_deg as f32).to_radians();
             let off = (-turn.sin() * SHADOW_TURN, tilt.sin() * SHADOW_TILT);
             u.slot[k] = [lefts[k] as f32, off.0, off.1, 0.0];
-            // Its quad: the card grown by its shadow's reach (the compose pass's ambient shadow:
-            // its offset, then 1.9 σ), projected.
+            // The card's quad grown by its shadow's reach, projected.
             let [_, _, w, h] = layout.card;
             let reach = 4.0 + ((3.0 + off.0).abs() + (12.0 + off.1).abs()) + 1.9 * 18.0 + 2.0;
             let c = [(-reach, -reach), (w + reach, -reach), (w + reach, h + reach), (-reach, h + reach)].map(|(x, y)| m.map(x, y));
@@ -662,8 +610,7 @@ impl Surface for CardShaderReflections {
         u.canvas = [frame.pixels().0 as f32, frame.pixels().1 as f32, s, gfx::srgb_flag(format)];
         let gpu = self.gpu.as_ref().unwrap();
         queue.write_buffer(&gpu.uniforms, 0, &u.bytes());
-        // styles.container's #111, then each visible card's quad over it.
-        // (A target that encodes sRGB takes linear values: #11's (17 / 255 / 12.92 … the curve).)
+        // #111 background, then each visible card's quad. An sRGB target takes the linear value.
         let v = 17.0_f64 / 255.0;
         let bg = if format.is_srgb() { ((v + 0.055) / 1.055).powf(2.4) } else { v };
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -722,8 +669,7 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32, la
     Gpu { format, generation, layout, tile, tile_written: false, atlas, atlas_drawn: false, compose, uniforms, bind }
 }
 
-/// CMAttitude's pitch and roll (Z-X'-Y'') of Core Motion's attitude quaternion `[x, y, z, w]`
-/// (as threads_holo_ticket reads it).
+/// Pitch and roll of Core Motion's attitude quaternion `[x, y, z, w]`.
 fn pitch_roll(q: [f64; 4]) -> (f64, f64) {
     let [x, y, z, w] = q;
     let pitch = (2.0 * (w * x + y * z)).clamp(-1.0, 1.0).asin();
@@ -753,8 +699,8 @@ fn tiled_noise(x: u32, y: u32, side: u32, cells: (u32, u32), seed: u32) -> f32 {
     top + (bottom - top) * ty
 }
 
-/// The cards' noise, a `side`² RGBA8 tile read per plane device pixel: r the brushing's lines
-/// (long along x, ~1.3 a pixel across, three octaves), g the bead-blast's tooth, b the grain.
+/// The cards' noise as a `side` x `side` RGBA8 tile: r the brushing lines (long along x),
+/// g the bead-blast tooth, b the grain.
 fn noise_tile(side: u32) -> Vec<u8> {
     let mut out = Vec::with_capacity((side * side * 4) as usize);
     for y in 0..side {
@@ -776,13 +722,13 @@ mod tests {
 
     #[test]
     fn layout_is_yogas() {
-        // iPhone Air: 420 × 912 at 3×.
+        // 420 x 912 at 3x.
         let l = Layout::new(420.0, 912.0, 3.0);
         assert_eq!((l.cw, l.ch), (294.0, 465.0));
         assert_eq!(l.list, (177.0, 735.0));
         assert_eq!(l.view, [63.0, 197.0, 294.0, 465.0]);
         assert_eq!(l.card, [16.0, 16.0, 262.0, 433.0]);
-        // chipContainer: 44.1 × 35.28 at (30, 30), on the 1/3 pt grid.
+        // The chip box is 44.1 x 35.28 at (30, 30), on the 1/3 pt grid.
         let chip = l.chip();
         assert_eq!(chip[0], 30.0);
         assert!((chip[2] - 74.0).abs() < 1e-4 && (chip[3] - (65.0 + 1.0 / 3.0)).abs() < 1e-4, "{chip:?}");
@@ -795,7 +741,7 @@ mod tests {
         assert_eq!(p.rotate, -std::f32::consts::PI);
         let p = pose(1, 147.0, 294.0);
         assert_eq!((p.rotate_y_deg, p.translate_y, p.opacity), (90.0, -6.0, 0.75));
-        // Math.round(0.5) is 1.
+        // Half rounds up.
         assert_eq!(p.title, 1.0);
         let p = pose(0, 0.0, 294.0);
         assert_eq!((p.rotate_y_deg, p.opacity, p.title, p.rotate), (0.0, 1.0, 1.0, 0.0));
@@ -818,11 +764,10 @@ mod tests {
         // #111 away from the cards.
         assert_eq!(&px(&rest, 5.0, 5.0)[..3], &[17, 17, 17]);
         assert_eq!(&px(&rest, 210.0, 900.0)[..3], &[17, 17, 17]);
-        // Card 0's face at its centre (210, 429.5): lit metal, not the background.
+        // Card 0's face at its centre: lit metal, not the background.
         let centre = px(&rest, 210.0, 429.5);
         assert!(centre[0] > 40, "{centre:?}");
-        // The 18° tilt: the unrotated card's top-left corner (84, 218) is background now; the
-        // rotated top-left corner sits near (152, 183): just inside it, the card.
+        // The 18 degree tilt: the unrotated top-left corner is background; just inside the rotated one is the card.
         assert_eq!(&px(&rest, 84.0, 218.0)[..3], &[17, 17, 17]);
         let corner = px(&rest, 160.0, 195.0);
         assert!(corner[0] > 25, "{corner:?}");
@@ -899,7 +844,7 @@ mod tests {
         };
         let frame = |now_ms| Frame { width: 420.0, height: 912.0, scale: 3.0, now_ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: exact_gpu::shaders::shader_generation(), headroom: 1.0 };
         let sensor = |pitch: f32, roll: f32, at_ms| {
-            // Roll about y, then pitch about x (small angles: CMAttitude's pitch and roll back).
+            // Roll about y, then pitch about x.
             let (sp, cp) = (pitch / 2.0).sin_cos();
             let (sr, cr) = (roll / 2.0).sin_cos();
             InputEvent::Sensor { sensor: SensorKind::RelativeOrientation, values: [sp * cr, cp * sr, -sp * sr, cp * cr], dropped: 0, at_ms }
@@ -929,8 +874,7 @@ mod tests {
         s.input(&sensor(-15.0 * deg, -40.0 * deg, 8000.0));
         let left = settle(s.as_mut(), 8000.0);
         left.save("card-shader-reflections-phone-left");
-        // The card's face changed under the light (gently: ATTITUDE_GAIN halves the sweep); the
-        // background did not.
+        // The face changed under the light (gently, ATTITUDE_GAIN halves the sweep); the background did not.
         let px = |img: &fixture::Pixels, x: f32, y: f32| img.at((x * 3.0) as u32, (y * 3.0) as u32);
         let changed = |a: &fixture::Pixels, b: &fixture::Pixels| {
             [(150.0, 300.0), (210.0, 429.5), (260.0, 560.0)].iter().map(|&(x, y)| (px(a, x, y)[1] as i32 - px(b, x, y)[1] as i32).abs()).max().unwrap()
@@ -940,7 +884,7 @@ mod tests {
         assert_eq!(&px(&left, 5.0, 5.0)[..3], &[17, 17, 17]);
     }
 
-    /// The surface at the iPhone Air's layout, without a GPU.
+    /// The surface at a 420 x 912 layout, without a GPU.
     fn surface_with_layout() -> Option<CardShaderReflections> {
         let layout = Layout::new(420.0, 912.0, 3.0);
         let s = CardShaderReflections {

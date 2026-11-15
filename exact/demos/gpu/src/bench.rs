@@ -1,10 +1,8 @@
-//! CPU time per frame of the heaviest Skia surfaces: what `Surface::render` costs on the CPU
-//! (recording the canvas, tessellating it, writing its buffers and encoding its passes), the
-//! GPU's own time excluded. Each surface runs a scripted interaction so that it redraws
-//! something that moves.
+//! CPU and GPU time per frame of the heaviest Skia surfaces, plus an audit of every surface.
+//! Each case runs a scripted interaction so that it redraws something that moves.
 //!
 //! `cargo test --release -p demos-gpu bench -- --ignored --nocapture` prints, per surface, the
-//! minimum, median and 90th percentile of the thread's CPU time in microseconds over `BENCH_FRAMES` frames (default 300).
+//! min, median and p90 over `BENCH_FRAMES` frames (default 300); `BENCH_ONLY` filters by name.
 
 use exact_gpu::{fixture, wgpu, Frame, InputEvent, PointerKind, PointerPhase, Surface, Value};
 
@@ -14,7 +12,6 @@ fn cpu_us() -> f64 {
     extern "C" {
         fn clock_gettime_nsec_np(clock: u32) -> u64;
     }
-    // CLOCK_THREAD_CPUTIME_ID.
     unsafe { clock_gettime_nsec_np(16) as f64 / 1e3 }
 }
 #[cfg(not(target_vendor = "apple"))]
@@ -48,9 +45,7 @@ fn cases() -> Vec<Case> {
             make: crate::card_shader_reflections::surface,
             size: (420.0, 912.0, 3.0),
             setup: |_| {},
-            // A finger held on the list, dragging 0.8 pt a frame (a slow scroll: every visible
-            // card turns, so each one's face redraws every frame), lifted and put down again
-            // every 150 frames.
+            // A finger dragging 0.8 pt a frame (every visible card redraws), re-pressed every 150 frames.
             tick: |s, i, ms| {
                 let k = i % 150;
                 let x = 360.0 - 0.8 * k as f32;
@@ -105,9 +100,9 @@ fn cases() -> Vec<Case> {
             name: "fibonacci-shader",
             make: crate::fibonacci_shader::surface,
             size: (402.0, 874.0, 3.0),
-            // The native slider's layout at its top end: 350 points over the whole screen.
+            // 350 points over the whole screen.
             setup: |s| s.bind(&[Value::Number(2.4), Value::Number(350.0)], None).unwrap(),
-            // The slider dragged across its top range, one new N a frame.
+            // A new N every frame across the top range.
             tick: |s, i, _| s.bind(&[Value::Number(2.4), Value::Number(300.0 + 50.0 * ((i as f64 * 0.1).sin() * 0.5 + 0.5))], None).unwrap(),
         },
         Case {
@@ -145,8 +140,8 @@ fn cases() -> Vec<Case> {
             make: crate::fourier_visualizer::surface,
             size: (402.0, 874.0, 3.0),
             setup: |_| {},
-            // A finger draws a 2.5 s figure-eight (~1500 pt, 2048 epicycles once padded) and
-            // lifts; the epicycles then retrace it (20 s). Run with BENCH_FRAMES=1200.
+            // A finger draws a 2.5 s figure-eight and lifts; the epicycles then retrace it (20 s).
+            // Run with BENCH_FRAMES=1200.
             tick: |s, i, ms| {
                 if i <= 150 {
                     let t = i as f32 / 150.0 * std::f32::consts::TAU;
@@ -275,7 +270,7 @@ fn bench_cpu_per_frame() {
     }
 }
 
-/// The inputs the app binds a surface with (app values: iPhone 17, safe areas 62/34).
+/// The inputs each surface is bound with (iPhone 17 screen, safe areas 62/34).
 fn audit_inputs(name: &str, arity: usize) -> Vec<Value> {
     let n = Value::Number;
     let b = Value::Bool;
@@ -298,10 +293,9 @@ fn audit_inputs(name: &str, arity: usize) -> Vec<Value> {
     }
 }
 
-/// Every registered surface, offscreen at the phone's full screen (402 x 874 @3, 120 Hz steps):
-/// whether it still asks for frames after 4 s untouched (a redraw at rest), and the CPU time and
-/// heap allocations of one `render` at rest and under a finger dragging across it.
-/// `cargo test --release -p demos-gpu audit -- --ignored --nocapture` (`BENCH_ONLY` filters).
+/// Every registered surface at 402 x 874 @3, 120 Hz steps: whether it still asks for frames
+/// after 4 s untouched, and the CPU time and heap allocations of one `render` at rest and under
+/// a drag. Run with `cargo test --release -p demos-gpu audit -- --ignored --nocapture`.
 #[test]
 #[ignore = "an audit: run with --release --ignored --nocapture"]
 fn audit_every_surface() {

@@ -1,51 +1,19 @@
-//! Fractal Glass (src/animations/fractal-glass/index.tsx, components/fractal-glass-mask.tsx): an
-//! orange circle (r 100) dragged behind a pane of "fluted" glass; through the pane it is
-//! blurred and shaded by a 4 × 4 grid of gradient cells.
+//! An orange circle dragged behind a pane of reeded glass: per flute a cylindrical lens refracts
+//! the sharp circle and its blur (the frosting), with dispersion, a specular line and a groove shadow.
 //!
-//! - The pane: x 40, height 300, y = (H − 300) / 2, width = W − 80 (the canvas is the window).
-//! - The circle: centre (180, 270) at first; sharp outside the pane; inside it blurred (Blur 25,
-//!   decal) and masked (mode "alpha") by each cell's LinearGradient, white → rgba(0,0,0,0.45),
-//!   from the cell's top left to its bottom right less 5 pt.
-//! - Pan on the circle's box (an Animated.View 200 × 200 at (cx − 100, cy − 100), above the
-//!   canvas; its borderRadius and borderCurve draw nothing and don't shape the hit area, which
-//!   is the view's rect): onBegin saves the centre; onUpdate centre = saved + translation.
-//! - Theme (this surface's input: 0 light, 1 dark; + 2 for the button's instance): the
-//!   background withTiming white ↔ black, the circle withTiming orange ↔ #78C0E0 (300 ms,
-//!   inOut(quad)), in Reanimated's colour space: each channel value^2.2, back with ^(1/2.2)
-//!   and rounded to 8 bits (rgbaArrayToRGBAColor). A toggle mid-way starts the new timing
-//!   from the current colour string, re-read: the rounded colour, linearised again.
-//! - The theme button's fill (styles.floatingContent: 58 × 58, borderRadius 29, borderCurve
-//!   'continuous', backgroundColor circleColor) is this surface's second instance (input + 2),
-//!   so its colour is the circle's own timing, frame for frame.
+//! - Input 0 is the theme (0 light, 1 dark; +2 for the theme button's fill instance, which draws
+//!   the circle's colour in a rounded square). The theme animates over 300 ms in a gamma-2.2 colour space.
+//! - Pan on the circle's 200 x 200 box: the drawn circle follows the finger through a spring; a
+//!   release carries its velocity on to a rest point kept on screen.
+//! - Haptics: light when the pan takes the circle (a tap plays none); selection when the drag
+//!   carries its centre behind the pane, re-armed once the centre is REARM outside it. Never two
+//!   within HAPTIC_GAP_MS; the flutes, the release and the landing play none.
+//! - Untouched and settled, the lights still drift: IDLE_FPS frames a second (`max_fps`), every
+//!   frame while a finger, a spring or the theme moves.
 //!
-//! The pane is no longer RN's 4 × 4 mask (the owner: not real fractal glass). It is reeded
-//! glass (fractal_glass.wgsl): per flute a cylindrical lens refracting the sharp circle and
-//! its blur (the frosting), with dispersion, a specular line and a groove shadow.
-//!
-//! One full-screen pass draws all of it, with no offscreen target:
-//! - the circle is evaluated in the shader, with the coverage Skia's AnalyticRRect step writes
-//!   (one device pixel of edge), not drawn into a canvas-sized surface first;
-//! - `<Blur blur={25}>` (σ 25 pt, decal) of a disc is a function of the distance to its centre
-//!   alone: the disc convolved with the Gaussian. `blurred_disc` integrates it once into
-//!   PROFILE_N values (a tiny texture); Graphite's 8-bit rescale-and-blur chain it replaces
-//!   agrees with it within a few 8-bit levels (the test `the_profile_is_the_graphite_blur`);
-//! - what depends on the clock alone (the second light's centre, the key light's vectors, the
-//!   highlight's phase) is evaluated here, once a frame, not per pixel.
-//!
-//! Haptics (past RN, which plays none: the owner's haptic language): `haptic:impact-light` when
-//! the pan takes the circle (its activation, so a tap plays none); `haptic:selection` when the
-//! drag carries its centre behind the glass (the pane's edge), none on the way out, re-armed
-//! only once the centre is REARM outside the pane. Never two within HAPTIC_GAP_MS, whichever.
-//! The flutes play none (crossing them under a drag would buzz); nothing when the finger lets
-//! go or the circle lands.
-//!
-//! Motion (past RN, the owner's ask): the circle drawn follows the finger through a spring
-//! (FOLLOW: a hair of lag and settle), and a release carries its velocity on: the rest point is
-//! the lift's projected PROJECTION_S ahead, kept on screen, reached by a spring launched at the
-//! finger's velocity (SETTLE). The glass's idle clock (seconds wrapped at 60) drives its lights,
-//! which drift with nothing touched: untouched and settled, the surface draws IDLE_FPS frames a
-//! second (`max_fps`: the drift is a slow phase), and every frame while a finger, a spring or
-//! the theme moves.
+//! One full-screen pass, no offscreen target: the circle is evaluated in the shader, its blur is a
+//! function of the distance to its centre (`blurred_disc`, integrated once into PROFILE_N values),
+//! and what depends on the clock alone is evaluated once a frame, not per pixel.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -55,27 +23,26 @@ use reanimated::{Easing, Spring, SpringConfig, Timing};
 use crate::{gfx, shaders};
 use shaders::fractal_glass::{entry, module, Uniforms, GROUP_0, PROFILE, SMP, U};
 
-/// CircleRadius.
+/// The circle's radius, pt.
 const RADIUS: f32 = 100.0;
-/// `<Blur blur={25}>`: σ in points.
+/// The blur's σ, pt.
 const SIGMA: f32 = 25.0;
-/// The pane: x, height (y and width follow the window).
+/// The pane's left inset and height, pt; its y and width follow the window.
 const PANE_X: f32 = 40.0;
 const PANE_HEIGHT: f32 = 300.0;
 /// A flute's width in points, about: the pane holds a whole number of them.
 const FLUTE: f32 = 17.0;
-/// styles.floatingContent's borderRadius.
+/// Corner radius of the theme button's fill, pt.
 const BUTTON_RADIUS: f32 = 29.0;
-/// 'white' / 'black' and 'orange' / '#78C0E0'.
+/// Background and circle colours per theme: white and orange, black and #78C0E0.
 const LIGHT: ([f64; 3], [f64; 3]) = ([255.0, 255.0, 255.0], [255.0, 165.0, 0.0]);
 const DARK: ([f64; 3], [f64; 3]) = ([0.0, 0.0, 0.0], [120.0, 192.0, 224.0]);
-/// The blurred circle's profile: PROFILE_N alpha values from the centre out to REACH points
-/// (the radius and four σ, past which the blur is under 1/255 of nothing).
+/// The blurred circle's profile: PROFILE_N alpha values from the centre out to REACH pt
+/// (the radius plus four σ, past which the blur is under 1/255).
 const PROFILE_N: usize = 256;
 const REACH: f32 = RADIUS + 4.0 * SIGMA;
 
-/// The shortest gap between two haptics of this surface, ms: the activation's and the pane's
-/// edge's never read as one buzz.
+/// The shortest gap between two haptics, ms, so the grab and the pane's edge never read as one buzz.
 const HAPTIC_GAP_MS: f64 = 150.0;
 /// How far outside the pane the circle's centre goes before going behind it plays again, pt.
 const REARM: f32 = 16.0;
@@ -87,10 +54,9 @@ const SETTLE: SpringConfig = SpringConfig { stiffness: 200.0, damping: 20.0, mas
 const PROJECTION_S: f32 = 0.16;
 /// The rest point keeps this much of the circle's radius on screen.
 const KEEP: f32 = 0.5;
-/// The idle clock's period, seconds (every motion in the shader divides it).
+/// The idle clock's period, seconds.
 const CLOCK_S: f64 = 60.0;
-/// Frames a second while nothing but the lights drifts (their fastest phase turns in 10 s: a
-/// step of this size moves a highlight under a quarter of a grey level).
+/// Frames a second while only the lights drift (slow enough that a step is under a quarter grey level).
 const IDLE_FPS: u32 = 20;
 
 /// The demo's surface.
@@ -124,7 +90,7 @@ struct FractalGlass {
     theme: Option<bool>,
     /// The theme button's fill instance.
     button: bool,
-    /// Background then circle, per channel in Reanimated's linear space (value^2.2).
+    /// Background then circle, per channel in linear space (value^2.2).
     channels: [Timing; 6],
     /// Where the finger puts the circle (or, released, where it comes to rest).
     center: (f32, f32),
@@ -154,22 +120,20 @@ struct Gpu {
     bind: wgpu::BindGroup,
 }
 
-/// rgbaArrayToRGBAColor ∘ toGammaSpace: a linear channel as the 8-bit value the colour
-/// string holds.
+/// A linear channel as its 8-bit gamma-encoded value.
 fn gamma8(linear: f64) -> f64 {
     (linear.clamp(0.0, 1.0).powf(1.0 / 2.2) * 255.0).round()
 }
 
-/// erf, Abramowitz and Stegun 7.1.26 (absolute error under 1.5e-7).
+/// The error function (Abramowitz-Stegun 7.1.26).
 fn erf(x: f64) -> f64 {
     let t = 1.0 / (1.0 + 0.3275911 * x.abs());
     let y = 1.0 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * (-x * x).exp();
     y.copysign(x)
 }
 
-/// The alpha of a disc of radius `RADIUS` under a Gaussian of σ `SIGMA`, at distance `d` from
-/// its centre (decal: nothing beyond the disc). Along x the point (d, 0) sees the disc's chord
-/// of half-length √(R² − x²), of which the Gaussian across y keeps erf(L / σ√2); x = R sin θ.
+/// The alpha of a disc of radius `RADIUS` blurred by a Gaussian of σ `SIGMA`, at distance `d`
+/// from its centre (decal: nothing beyond the disc).
 fn blurred_disc(d: f64) -> f64 {
     let (r, s) = (RADIUS as f64, SIGMA as f64);
     let steps = 512;
@@ -183,7 +147,7 @@ fn blurred_disc(d: f64) -> f64 {
     (sum * std::f64::consts::PI / steps as f64).clamp(0.0, 1.0)
 }
 
-/// An f32 in 0…1 as half-float bits (round to nearest; below the smallest normal, 0).
+/// An f32 in 0..1 as half-float bits (round to nearest; below the smallest normal, 0).
 fn half_bits(v: f32) -> u16 {
     let bits = v.clamp(0.0, 1.0).to_bits();
     let exponent = ((bits >> 23) & 0xff) as i32 - 127 + 15;
@@ -208,7 +172,7 @@ impl FractalGlass {
             if immediately {
                 ch.set(linear);
             } else {
-                // colorOnStart: from the current colour string, re-linearised.
+                // A mid-flight toggle restarts from the colour shown, re-linearised.
                 ch.value = (gamma8(ch.value) / 255.0).powf(2.2);
                 ch.to(linear, 300.0, Easing::timing_default());
                 self.moving = true;
@@ -216,7 +180,7 @@ impl FractalGlass {
         }
     }
 
-    /// Channel `k` as drawn (0…1, 8-bit values).
+    /// Channel `k` as drawn (0..1, on the 8-bit grid).
     fn channel(&self, k: usize) -> f32 {
         (gamma8(self.channels[k].value) / 255.0) as f32
     }
@@ -278,7 +242,7 @@ impl Surface for FractalGlass {
         self.button = v >= 1.5;
         let dark = (v % 2.0) > 0.5;
         if self.theme != Some(dark) {
-            // A derived withTiming starts where it is going.
+            // The first theme applies at once, with no fade.
             let first = self.theme.is_none();
             self.theme = Some(dark);
             self.retarget(dark, first);
@@ -287,8 +251,7 @@ impl Surface for FractalGlass {
     }
 
     fn opaque(&self) -> bool {
-        // Not known before the first bind, and the button's corners are transparent: never
-        // declared opaque (the main instance writes alpha 1 everywhere anyway).
+        // The button's corners are transparent, so never declared opaque.
         false
     }
 
@@ -386,7 +349,7 @@ impl Surface for FractalGlass {
         let (pw, ph) = frame.pixels();
         let color = [self.channel(3), self.channel(4), self.channel(5)];
         if self.button {
-            // styles.floatingContent: the whole canvas, radius 29, continuous corners.
+            // The button fill: the whole canvas, continuous corners.
             let (w, h) = self.size;
             self.canvas.begin(frame.scale);
             self.canvas.draw_continuous_rrect(0.0, 0.0, w, h, BUTTON_RADIUS, &skia::Paint::fill(skia::Color([color[0], color[1], color[2], 1.0])));
@@ -400,9 +363,8 @@ impl Surface for FractalGlass {
         let (cx, cy) = self.drawn();
         let glass = [PANE_X, (h - PANE_HEIGHT) / 2.0, w - PANE_X * 2.0, PANE_HEIGHT];
         let flutes = (glass[2] / FLUTE).round().max(1.0);
-        // The lights, from the clock (seconds wrapped at CLOCK_S): the second one's centre on
-        // its Lissajous (periods 20 s and 15 s), the key light swaying (12 s), the highlight's
-        // phase (10 s).
+        // The lights from the clock (seconds wrapped at CLOCK_S): the second light's Lissajous
+        // centre, the swaying key light, the highlight's phase.
         let t = (frame.now_ms / 1000.0).rem_euclid(CLOCK_S);
         let tau = std::f64::consts::TAU;
         let ambient = [
@@ -427,7 +389,7 @@ impl Surface for FractalGlass {
         let gpu = self.gpu.as_ref().unwrap();
         queue.write_buffer(&gpu.uniforms, 0, &uniforms.bytes());
         skia::render::fullscreen_pass(encoder, "fractal glass", target, &gpu.pipeline, &gpu.bind);
-        // The lights drift with nothing touched; `max_fps` paces the host.
+        // Always true: the lights drift; `max_fps` paces the host.
         true
     }
 }
@@ -474,8 +436,7 @@ mod tests {
     use exact_gpu::{fixture, PointerKind, PointerPhase};
     use skia::blur::{intersect, outset, round_out, GraphitePlan, IRect};
 
-    /// The filter layer: the device clip outset by ⌈3σ⌉ (SkBlurImageFilter's input bounds) ∩ the
-    /// oval's bounds rounded out (the draw's content bounds), in device pixels.
+    /// The blur's filter layer in device pixels: the clip outset by 3σ, intersected with the oval's bounds.
     fn filter_layer(clip: IRect, oval: [f32; 4], radius: i32) -> Option<IRect> {
         intersect(outset(clip, radius, radius), round_out(oval))
     }
@@ -523,7 +484,7 @@ mod tests {
         finger(&mut s, PointerPhase::Down, 200.0, 300.0, 40.0);
         finger(&mut s, PointerPhase::Move, 200.0, 400.0, 140.0);
         finger(&mut s, PointerPhase::Move, 220.0, 480.0, 160.0);
-        // The pan begins 90 ms after touch-down, so its translation is the full drag.
+        // The pan begins 90 ms after touch-down.
         assert!(s.agent("{}").unwrap().contains("\"cx\":200.0,\"cy\":440.0"), "{}", s.agent("{}").unwrap());
         finger(&mut s, PointerPhase::Up, 220.0, 480.0, 170.0);
         // The release carries on down (the finger was moving down), and stays on screen.
@@ -580,7 +541,7 @@ mod tests {
         v.map(|c| (c.clamp(0.0, 1.0) * 255.0).round() / 255.0)
     }
 
-    /// Reference model of Graphite's path on the CPU, in f64, for the pixel tests.
+    /// CPU reference of Graphite's blur chain, in f64.
     fn reference(center: (f32, f32), w: f32, h: f32, xs: &[(u32, u32)]) -> Vec<f64> {
         let s = 1.0f32;
         let clip = pane_clip(w, h, s);
@@ -589,7 +550,7 @@ mod tests {
         let layer = filter_layer(clip, oval, skia::blur::ceil_size(3.0 * sigma)).unwrap();
         let plan = GraphitePlan::new(layer, clip, sigma).unwrap();
         let orange = [1.0, 165.0 / 255.0, 0.0];
-        // The layer: the circle's coverage (the identity CPU replay of the step), only within it.
+        // The layer: the circle's coverage within it.
         let side = (layer[2].max(layer[3]) + 2) as u32;
         let cov = crate::atlas_sphere::rrect_coverage(oval, RADIUS, side);
         let (lw, lh) = (layer[2] - layer[0], layer[3] - layer[1]);
@@ -657,12 +618,8 @@ mod tests {
 
     #[test]
     fn the_profile_is_the_graphite_blur() {
-        // The blurred circle's alpha, from the profile (what the shader reads), against the
-        // CPU replay of Graphite's chain (8-bit rescales, the linear kernel, the draw up) at
-        // every 3rd pixel of the pane but its outermost pixels (the blur's own edge, under the
-        // pane's bevel and rim), for circles whose whole disc lies within 3σ of the pane (past
-        // that Graphite's layer cuts the source: a circle dragged off the screen's edge fades
-        // by up to 5 % over the pane's outer 4 pt, which the shader does not).
+        // The profile against the CPU replay of Graphite's chain, for circles whose disc lies
+        // within 3σ of the pane (past that Graphite's layer cuts the source and fades the edge).
         let (w, h) = (420.0f32, 912.0f32);
         for (cx, cy) in [(183.3f32, 341.7f32), (140.4, 420.2), (300.0, 250.0)] {
             let points: Vec<(u32, u32)> = (309..603).step_by(3).flat_map(|y| (43..377).step_by(3).map(move |x| (x, y))).collect();
@@ -686,8 +643,7 @@ mod tests {
 
     #[test]
     fn the_blurred_disc_has_the_right_shape() {
-        // Centre: nearly the whole disc (σ 25 inside r 100); at the edge, a little under half
-        // (the disc's curvature); far out, nothing; the table's last value is the reach's.
+        // Nearly full at the centre, a little under half at the edge, nothing at the reach.
         assert!(blurred_disc(0.0) > 0.99, "{}", blurred_disc(0.0));
         assert!((blurred_disc(100.0) - 0.45).abs() < 0.05, "{}", blurred_disc(100.0));
         assert!(blurred_disc(REACH as f64) < 1.0 / 255.0, "{}", blurred_disc(REACH as f64));
@@ -705,13 +661,12 @@ mod tests {
         }
     }
 
-    /// This thread's CPU time, microseconds.
+    /// This thread's CPU time, us.
     #[cfg(target_vendor = "apple")]
     fn cpu_us() -> f64 {
         extern "C" {
             fn clock_gettime_nsec_np(clock: u32) -> u64;
         }
-        // CLOCK_THREAD_CPUTIME_ID.
         unsafe { clock_gettime_nsec_np(16) as f64 / 1e3 }
     }
     #[cfg(not(target_vendor = "apple"))]
@@ -780,8 +735,7 @@ mod tests {
                 v.sort_by(|a, b| a.partial_cmp(b).unwrap());
                 v[v.len() * p / 100]
             };
-            // The GPU's own time per frame: 20 frames in one submission, so the submit-to-idle
-            // floor (about 0.3 ms) is shared.
+            // GPU time per frame: 20 frames in one submission share the submit-to-idle floor.
             if !dragging {
                 let mut per = Vec::new();
                 for round in 0..40usize {
@@ -816,9 +770,8 @@ mod tests {
         }
     }
 
-    /// A drag from (180, 270), above the pane (306…606), down behind it and back out, then a
-    /// hover across the pane's top edge: every haptic with its time. `step` is the ms between
-    /// moves.
+    /// A drag from above the pane down behind it and back out, then a hover across its top edge:
+    /// every haptic with its time. `step` is the ms between moves.
     fn haptics_of_a_drag(step: f64) -> Vec<(f64, String)> {
         let mut s = surface_struct();
         s.size = (420.0, 912.0);
@@ -866,7 +819,7 @@ mod tests {
                 assert!(pair[1].0 - pair[0].0 >= HAPTIC_GAP_MS, "{step}: {played:?}");
             }
             assert!(played.iter().all(|p| p.1 == "haptic:impact-light" || p.1 == "haptic:selection"), "{played:?}");
-            // At most one a 150 ms window, so a hover of ~1 s plays a handful at the most.
+            // At most one per 150 ms window.
             assert!(played.len() <= 8, "{step}: {played:?}");
         }
         // A drag slow enough to cross the edge after the grab plays the selection once going
@@ -930,7 +883,7 @@ mod tests {
         step(&mut s, 0.0);
         step(&mut s, 150.0);
         let mid = circle(&s);
-        // inOut(quad) at ½ is ½: each channel half way in value^2.2, rounded.
+        // Half way: each channel mid-point in value^2.2, rounded.
         let half = |a: f64, b: f64| gamma8(((a / 255.0).powf(2.2) + (b / 255.0).powf(2.2)) / 2.0) as i32;
         assert_eq!(mid, [half(255.0, 120.0), half(165.0, 192.0), half(0.0, 224.0)]);
         s.bind(&[Value::Number(0.0)], None).unwrap();
@@ -939,7 +892,7 @@ mod tests {
         assert_eq!(circle(&s), mid);
         step(&mut s, 166.0);
         let next = circle(&s);
-        // From the re-read colour toward orange: inOut(quad)(16/300) of the way.
+        // From the re-read colour toward orange, 16 ms into 300 on inOut(quad).
         let e = { let t = 16.0f64 / 300.0; if t < 0.5 { 2.0 * t * t } else { 1.0 - (-2.0 * t + 2.0).powi(2) / 2.0 } };
         let want = |from: i32, to: f64| gamma8((from as f64 / 255.0).powf(2.2) + ((to / 255.0).powf(2.2) - (from as f64 / 255.0).powf(2.2)) * e) as i32;
         assert_eq!(next, [want(mid[0], 255.0), want(mid[1], 165.0), want(mid[2], 0.0)]);

@@ -1,22 +1,13 @@
 //! A glowing fibonacci sphere on black, with a slider below it that sets the number of circles.
-//! The sphere is a square of the window's width, masked to a circle and blurred at its edge.
 //!
-//! - The slider is a track 0.8 × width, with a white picker that grows while a finger holds it.
-//!   Dragging the picker maps its travel to N in [5, 350].
-//! - Shader time sweeps 0 to 15 and back, 20 s each way; `magicalMul` is the input, 2.4 by default.
-//!
-//! Haptics: a light impact when the pan takes the picker (not on a tap); a rigid impact each time
-//! the drag pushes past an end of the track, re-armed only once the drag comes back inside.
-//! Steps of N play nothing, since 345 of them in the track's width would buzz.
-//!
-//! Native slider: when the Contract passes a second input N, it owns the slider. The surface then
-//! draws no slider, takes no touches, and runs the sphere full-bleed with no square or mask, its
-//! centre between the top row and the floating bar. It reports `native` once.
-//!
-//! Cost: each point's position and weight are solved once a frame here (zero allocations), not per
-//! pixel. Full-bleed, the field is split by distance (see the shader's RC): a smooth far part at a
-//! sixteenth of the pixels plus a quad per point for its near part, so a pixel pays for the points
-//! near it and not for all 350. The result matches the single-pass sum to one 8-bit step.
+//! - The slider is a track 0.8 x width with a white picker that grows while held; its travel maps to N in [5, 350].
+//! - Shader time sweeps 0 to 15 and back, 20 s each way; `magicalMul` is input 0, 2.4 by default.
+//! - Haptics: light when the pan takes the picker (not on a tap); rigid each time the drag pushes
+//!   past an end, re-armed once it comes back inside. Steps of N play nothing.
+//! - A second input N hands the slider to the Contract: no slider or touches, the sphere runs
+//!   full-bleed and unmasked between the top row and the floating bar, and `native` is reported once.
+//! - Each point is solved once per frame on the CPU, not per pixel; full-bleed, the field is a
+//!   low-res far part plus a quad per point for its near part (matches the single pass to one 8-bit step).
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -50,7 +41,7 @@ const FAR_DIV: f32 = 4.0;
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
-    // Each point's colour does not move: cos(i + 0, 2, 4) + 1, solved once, as unorm8 over 0 to 2.
+    // Per-point colours never change: cos(i + 0, 2, 4) + 1 packed as unorm8 over 0 to 2.
     let colors = (0..MAX_N as usize)
         .map(|i| {
             let c = [0.0, 2.0, 4.0].map(|k| ((((i as f64 + k).cos() + 1.0) / 2.0) * 255.0).round() as u32);
@@ -66,7 +57,7 @@ struct FibonacciShader {
     /// N from the Contract's native slider (input 1); when set, the layout is full-bleed.
     native: Option<f64>,
     said_native: bool,
-    /// Picker offset, unclamped, and its value at the start of the drag.
+    /// Picker offset, unclamped, and the clamped offset at drag start.
     translate_x: f64,
     context_x: f64,
     scale: Spring,
@@ -74,8 +65,7 @@ struct FibonacciShader {
     /// The drag is past an end of the track, and its rigid haptic has played.
     past_end: bool,
     posted: Vec<String>,
-    /// Per point, its colour; and the points as the shader reads them (kept, so a frame
-    /// allocates nothing).
+    /// Per-point colours, and the points as the shader reads them (kept so a frame allocates nothing).
     colors: Vec<u32>,
     points: Vec<[f32; 4]>,
     start_ms: Option<f64>,
@@ -147,9 +137,8 @@ fn itime(ms: f64) -> f64 {
     }
 }
 
-/// The effect's loop body, solved here for the `n` points instead of in the shader for every
-/// pixel: each point's position and weight depend on nothing but the time, N and the multiplier.
-/// Writes one vec4 a point (see the shader) and returns the loop's trip count, ceil(N).
+/// Solves each point's position and weight once (they depend only on time, N and the multiplier).
+/// Writes one vec4 a point and returns the point count, ceil(N).
 fn solve(out: &mut Vec<[f32; 4]>, colors: &[u32], t: f64, n: f64, mul: f64) -> usize {
     out.clear();
     let count = (n.ceil() as usize).min(colors.len());
@@ -194,12 +183,12 @@ impl Surface for FibonacciShader {
     }
 
     fn input(&mut self, event: &InputEvent) {
-        // The native slider takes the touches when present.
+        // The Contract's slider takes the touches.
         if self.native.is_some() {
             return;
         }
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
-        // Picker hit area: a 35 pt square at the bar's end, scaled.
+        // Picker hit area: a square at the bar's end, scaled with the picker.
         let (tx, ty) = self.track();
         let (cx, cy) = (tx + self.clamped() as f32, ty + TRACK / 2.0);
         let half = PICKER / 2.0 * self.scale.value as f32;
@@ -306,9 +295,8 @@ impl Surface for FibonacciShader {
 }
 
 impl FibonacciShader {
-    /// Full-bleed layout: the sphere over the whole canvas, unmasked, centred between the top row
-    /// and the bar. Three passes: the far field at a sixteenth of the pixels, the near parts
-    /// as quads around the points, and the sum onto the target.
+    /// Full-bleed layout in three passes: the far field at low res, the near parts as quads around
+    /// the points, and the sum onto the target.
     #[allow(clippy::too_many_arguments)]
     fn render_full_bleed(
         &mut self,
@@ -483,7 +471,7 @@ mod tests {
         assert!(animating);
         // No drawn slider: the track's row holds no white bar or picker.
         assert!((20..400).all(|x| a.at(x, 602)[..3] != [255, 255, 255]));
-        // Full-bleed: the glow reaches past the old circle, with no hard edge at the old square's top.
+        // Full-bleed: the glow reaches past the mask circle, with no hard edge at the square's top.
         let lit = |y0: u32, y1: u32| (y0..y1).step_by(4).flat_map(|y| (0..420).step_by(4).map(move |x| (x, y))).filter(|&(x, y)| a.at(x, y)[..3].iter().any(|&c| c > 60)).count();
         assert!(lit(300, 640) > 100, "{} lit samples", lit(300, 640));
         let row = |y: u32| (0..420).map(|x| a.at(x, y)[..3].iter().map(|&c| c as i32).sum::<i32>()).sum::<i32>();
@@ -494,8 +482,7 @@ mod tests {
         assert_ne!(a.data, b.data);
     }
 
-    /// The full-bleed layout as one pass summing every point at every pixel (the shader's `fs`,
-    /// unmasked): what the split into far and near parts must reproduce.
+    /// Full-bleed as one pass summing every point at every pixel: the reference the far/near split must match.
     struct Direct(FibonacciShader);
 
     impl Surface for Direct {

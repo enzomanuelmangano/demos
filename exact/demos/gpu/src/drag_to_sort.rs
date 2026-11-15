@@ -1,38 +1,11 @@
-//! Drag to Sort (src/animations/drag-to-sort: index.tsx, constants.ts, utils/haptics.ts,
-//! components/SortableList/{index,SortableItem,types}.tsx, components/ListItem/index.tsx): nine
-//! habit rows on a ScrollView; a row held 250 ms lifts (a light haptic, rounder corners) and
-//! follows the finger, the others sliding into the order its position makes; the list scrolls
-//! when the row is dragged near its top or bottom edge.
+//! Nine habit rows on a scrolling list; a row held for 250 ms lifts and follows the finger while
+//! the others slide into the order its position makes.
 //!
-//! - The ScrollView (vertical, `ui_scroll` on swapped axes): paddingTop safeTop + 56 (the demo
-//!   button row); its content container 9 × 92 tall with paddingBottom 9 × 92 + 2 × 92, which
-//!   Yoga resolves to 1012 (a box is never smaller than its padding): content safeTop + 1068.
-//! - Each SortableItem (92 tall): a background View at index × 92 (zIndex −50) holding the
-//!   rgba(0,0,0,0.1) rounded rect (margin 6, radius 10 continuous), and the item View moved by
-//!   translateY = `top` and translateX; zIndex 100 while dragged, 50 for the last dragged one.
-//! - The pan: a long press of 250 ms (a move past 10 pt first fails it and
-//!   the ScrollView takes the touch). onStart: contextY = positions[i] − scrollY, a light haptic.
-//!   onUpdate: translateX = translationX, positions[i] = contextY + translationY + scrollY, then
-//!   scrollLogic: absoluteY ≤ 1.5 × 92 scrolls up 9.2 (not below 0), absoluteY ≥ H − safeTop
-//!   scrolls down 9.2 (unclamped), `scrollTo(…, false)`. onFinalize: translateX withTiming(0).
-//! - `top`: the dragged row's positions[i]; any other row's rank among all positions × 92
-//!   (written back to positions), `withTiming(…, { duration: 200 })` (inOut(quad)).
-//! - ListItem: white, margin 6, height 80, paddingHorizontal 10, borderRadius `withTiming(active
-//!   ? 10 : 5)` (300 ms; the active index reaches it through JS); the 44 pt icon circle of the
-//!   item's colour with its emoji (pre-rendered by exact/parity-tools/drag-to-sort/emoji.swift,
-//!   TextKit's own drawing of the Text box), title (SF bold 16) and subtitle (14, gray), and five
-//!   25 pt squares (radius 10 continuous) spaced around, inactive ones at 0.6 and scale 0.3.
-//! - The top LinearGradient (safeTop × 3 tall, white at 1, 0.05, 0.025) lies over the list.
-//!
-//! Past RN (the owner: "on long press you should see the shadow, something to show it's
-//! lifted"): the held row lifts as iOS's drag lift does: it scales to 1.05 about its centre,
-//! casts a shadow (18 % black, a 16 pt blur's falloff, 8 pt down) built from fixed translucent
-//! rings whose alphas compose to a Gaussian edge (no blur, nothing re-rasterised), and the rest
-//! of the list fades under a 35 % white veil, all on one `lift` value: a critically damped 200 ms
-//! spring up, and on the drop a spring back (ζ 0.7, 350 ms). The row stays above its
-//! neighbours (zIndex 50) while it settles. A soft impact plays on the drop
-//! (`haptic:impact-soft`), as the light one on the lift. (The first cut, 1.04 and ~10 % rings,
-//! read as nothing on the phone: a white row on a white screen under the finger.)
+//! - A move past 10 pt before the long press fails it and the list scrolls instead.
+//! - The list scrolls while the held row is dragged near its top or bottom edge.
+//! - Lift: the row scales to 1.05 about its centre and casts a soft shadow, and the rest of the
+//!   list fades under a white veil, all on one `lift` spring (200 ms up, a 350 ms spring back).
+//! - Haptics: light on lift, soft on drop.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -44,19 +17,18 @@ use crate::gfx;
 use crate::ui_scroll::{Snap, UiScroll, NORMAL};
 
 const COUNT: usize = 9;
-/// PADDING, HEIGHT, ITEM_HEIGHT, MAX_BORDER_RADIUS.
 const PADDING: f64 = 6.0;
 const HEIGHT: f64 = 80.0;
 const ITEM: f64 = HEIGHT + PADDING * 2.0;
 const MAX_RADIUS: f64 = 10.0;
-/// DEMO_BUTTON_ROW_HEIGHT.
+/// Height of the demo button row above the list, pt.
 const BUTTON_ROW: f64 = 56.0;
 /// How long a finger holds a row before it lifts, ms: short enough to feel immediate.
 const LONG_PRESS_MS: f64 = 250.0;
-/// The lift: the held row's scale, its shadow's drop (pt), and the shadow's rings.
+/// Extra scale of the lifted row, and how far its shadow drops (pt).
 const LIFT_SCALE: f64 = 0.05;
 const LIFT_DROP: f32 = 8.0;
-/// The shadow: its opacity, the blur radius it imitates (σ = blur / 2), and its rings.
+/// The shadow's opacity, the blur radius it imitates (σ = blur / 2), and its ring count.
 const SHADOW_ALPHA: f64 = 0.18;
 const SHADOW_BLUR: f64 = 16.0;
 const SHADOW_RINGS: usize = 14;
@@ -68,7 +40,7 @@ const VEIL: f32 = 0.35;
 /// compose to SHADOW_ALPHA × (1 − Φ(d / σ)): a Gaussian-blurred edge, from fixed shapes.
 fn shadow_rings() -> [(f32, f32); SHADOW_RINGS] {
     let sigma = SHADOW_BLUR / 2.0;
-    // Φ by Abramowitz–Stegun 7.1.26 (|error| < 1.5e-7).
+    // Normal CDF (Abramowitz-Stegun 7.1.26).
     let phi = |x: f64| {
         let z = x.abs() / std::f64::consts::SQRT_2;
         let t = 1.0 / (1.0 + 0.3275911 * z);
@@ -89,7 +61,7 @@ fn shadow_rings() -> [(f32, f32); SHADOW_RINGS] {
     out
 }
 
-/// constants.ts: title, activeValues, color (r, g, b, a), squareColor.
+/// A habit row: title, which of the five squares are on, icon colour and square colour (rgb, alpha).
 struct Habit {
     title: &'static str,
     active: [bool; 5],
@@ -154,7 +126,7 @@ const HABITS: [Habit; COUNT] = [
     },
 ];
 
-/// The emoji Text boxes, 76 × 70 px (25.333 × 23.333 pt), premultiplied RGBA.
+/// The emoji images, 76 x 70 px, premultiplied RGBA, zlib-compressed.
 static EMOJI: [&[u8]; COUNT] = [
     include_bytes!("../images/drag-to-sort/emoji-0-76x70.rgba.zlib"),
     include_bytes!("../images/drag-to-sort/emoji-1-76x70.rgba.zlib"),
@@ -185,7 +157,7 @@ fn emoji(i: usize) -> skia::Image {
     }
 }
 
-/// Yoga's rounding of a View edge (half up), a Text's offset (floor) and a Text's side (ceil).
+/// Layout rounding to the pixel grid: a view edge (half up), a text offset (floor), a text side (ceil).
 fn grid(v: f64, s: f64) -> f64 {
     (v * s + 0.5 + 1e-4).floor() / s
 }
@@ -273,7 +245,7 @@ impl Sort {
         }
     }
 
-    /// Rows in drawing order (zIndex, then index).
+    /// Rows in drawing order (the dragged row last).
     fn order(&self) -> Vec<usize> {
         let mut o: Vec<usize> = (0..COUNT).collect();
         o.sort_by_key(|&i| (self.z(i), i));
@@ -290,8 +262,7 @@ impl Sort {
         })
     }
 
-    /// Every row but the dragged one takes its rank × 92 (getPosition, written back), and its
-    /// `top` times there when that changes.
+    /// Every row but the dragged one takes its rank x 92, and its `top` animates there when that changes.
     fn settle(&mut self) {
         for _ in 0..COUNT * 2 {
             let mut changed = false;
@@ -347,7 +318,7 @@ impl Sort {
         self.translate_x[i] = Timing::at(x - down.0);
         self.positions[i] = context + (y - down.1) + self.scroll.offset;
         self.top[i] = Timing::at(self.positions[i]);
-        // scrollLogic.
+        // Edge scrolling: near the top or bottom the list scrolls.
         let speed = ITEM * 0.1;
         if y <= 1.5 * ITEM {
             self.scroll.offset = (self.scroll.offset - speed).max(0.0);
@@ -383,7 +354,7 @@ impl Sort {
             self.size.1 as f32,
             &Paint::fill(Color::WHITE),
         );
-        // The background items (zIndex −50): at their index.
+        // The slot backgrounds, fixed at each index.
         for i in 0..COUNT {
             let y = grid(content + i as f64 * ITEM + PADDING, scale);
             c.draw_continuous_rrect(
@@ -401,10 +372,9 @@ impl Sort {
             let (dx, dy) = (self.translate_x[i].value, content + self.top[i].value);
             c.save();
             c.translate(dx as f32, dy as f32);
-            // Inside the item View: the ListItem at (6, 6), its children on Yoga's grid.
+            // The card sits PADDING in from its slot.
             let (x0, y0) = (PADDING, PADDING);
-            // The lift: a soft shadow from fixed rings under the card, then the card scaled
-            // about its centre.
+            // The lift: a shadow of fixed rings under the card, then the card scaled about its centre.
             let lift = self.lift[i].value.max(0.0) as f32;
             if lift > 0.001 {
                 // The rest of the list under a veil, the lifted row above it.
@@ -416,7 +386,6 @@ impl Sort {
                 }
                 let (cw, chh) = ((w - 2.0 * PADDING) as f32, HEIGHT as f32);
                 let s = 1.0 + (LIFT_SCALE as f32) * lift;
-                // The shadow under the scaled card: its rings about the scaled box.
                 let (sw, sh) = (cw * s, chh * s);
                 let (sx, sy) = (x0 as f32 + (cw - sw) / 2.0, y0 as f32 + (chh - sh) / 2.0 + LIFT_DROP * lift);
                 for (spread, a) in shadow_rings() {
@@ -491,7 +460,7 @@ impl Sort {
                     &Paint::fill(Color::view_hex(0x808080)),
                 );
             }
-            // statusContainer: space-around of five 25 pt squares.
+            // Five 25 pt squares spaced evenly.
             let gap = (half - 5.0 * 25.0) / 5.0;
             let sx0 = left + half;
             for (k, &on) in h.active.iter().enumerate() {
@@ -512,7 +481,7 @@ impl Sort {
             }
             c.restore();
         }
-        // The LinearGradient over the list.
+        // A fade from the top edge over the list.
         let gh = (self.safe_top * 3.0) as f32;
         if gh > 0.0 {
             let g = Shader::Linear {
@@ -604,7 +573,7 @@ impl Surface for Sort {
             }
             _ => {}
         }
-        // The ScrollView, vertical: its pan reads the swapped axes.
+        // The list scrolls vertically: its pan takes the axes swapped.
         self.scroll.input(id, phase, y, x, at_ms, true);
     }
 
@@ -638,7 +607,7 @@ impl Surface for Sort {
         if let Some(hold) = self.hold {
             if now - hold.at >= LONG_PRESS_MS && !self.scroll.dragging() {
                 self.hold = None;
-                // The pan takes the touch: the ScrollView's own pan is cancelled.
+                // The drag takes the touch: the list's own pan is cancelled.
                 self.scroll.input(
                     hold.id,
                     Phase::Cancel,
@@ -711,7 +680,7 @@ mod tests {
         s.bind(&[Value::Number(68.0)], None).unwrap();
         let (img, _) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         img.save("drag-to-sort-rest");
-        // Row 0 spans 124 … 216 on screen; held 250 ms, it lifts.
+        // Held 250 ms, row 0 lifts.
         let mut ms = 100.0;
         s.input(&touch(PointerPhase::Down, 170.0, ms));
         while ms < 620.0 {
@@ -719,7 +688,7 @@ mod tests {
             ms += 16.7;
         }
         assert_eq!(s.messages(), vec!["haptic:impact-light".to_string()]);
-        // The long-press moment, the lift settled (250 ms on): row 0 lifted over a veiled list.
+        // The lift settles: row 0 over a veiled list.
         let mut held = ms;
         while held < ms + 250.0 {
             fixture::render(&gpu, s.as_mut(), &frame(held)).unwrap();
@@ -727,8 +696,7 @@ mod tests {
         }
         let (lifted, _) = fixture::render(&gpu, s.as_mut(), &frame(held)).unwrap();
         lifted.save("drag-to-sort-lifted");
-        // Row 0 spans 124 … 216; 1.05 about its centre, its card's bottom near 216 − 6 + 2.
-        // Just under it, the shadow (~11 % there, 2 pt inside its 8 pt-lower edge): grey on white.
+        // Just under the lifted card: grey shadow on white.
         let under = lifted.at(3 * 210, 3 * 218);
         assert!(under[0] < 235 && under[0] > 150, "shadow {under:?}");
         // The neighbours veiled: row 1's dark title is lighter than black.

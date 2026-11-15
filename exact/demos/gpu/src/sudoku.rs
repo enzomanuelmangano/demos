@@ -1,29 +1,18 @@
-//! Sudoku: a card holding a Start Game button; started, a 9 x 9 board whose cells fade in on a
-//! diagonal, then a number pad, with New Game, Undo and Notes as small buttons. The title solves
-//! the board. A cell selects, the pad fills it, a solved board plays the celebration and asks
-//! "Genius!".
+//! Sudoku: a 9 x 9 board whose cells fade in on a diagonal, with a number pad, Undo, Erase and
+//! Notes driven from the Contract. A cell selects, the pad fills it, a solved board plays the
+//! celebration and asks "Genius!".
 //!
-//! Two surfaces. `backdrop` draws the screen's dithered gradient behind the Contract's views
-//! (demos/sudoku/sudoku.contract), which lay out the title, the card, the buttons and the pad.
-//! `surface` is the board alone, a square canvas inside the card: the 2 pt border, the cells,
-//! their digits and pencil marks. It lives from a Start Game to the next New Game.
+//! Two surfaces: `backdrop` draws the screen's dithered gradient behind the Contract's views, and
+//! `surface` is the board alone (border, cells, digits, pencil marks), alive from Start to New Game.
 //!
-//! Inputs, in bind order: `seed` (a new value is a new puzzle), `cmd` and `token` (the pad: 1-9 a
-//! digit, 10 Erase, 11 Undo, 12 solve, applied once per new token) and `notes` (1 while pencil
-//! marks are on).
-//!
-//! Messages: `remain:<nine digits>` (how many of each number are still to place), `hl:<n>` (the
-//! selected cell's number, 0 for none: the pad key to light), `pad` (the pad appears), `solved`,
-//! `alert:genius`, and the haptics as `haptic:<kind>` (played by the host, no commit): selection
-//! on a cell, light on an entry, success when a row, column or box completes, error on a wrong
-//! digit, and the celebration (light x3, medium x3, heavy x2, success) at the end.
-//!
-//! The board: the cells on the card's colour, 0.5 pt cell lines, 2 pt box lines in a faint blue,
-//! a 2 pt blue border with continuous corners. Givens are slate, the user's digits white, a wrong
-//! one red with a short damped shake. A selected empty cell takes a blue tint; every cell holding
-//! the selected number gets a circle that springs in. Motion is transforms and opacity of what
-//! is drawn: the cells fade in on a diagonal after Start, a completed unit runs a wave, the
-//! solved puzzle a wave over the whole board.
+//! - Inputs, in bind order: `seed` (a new value is a new puzzle), `cmd` and `token` (the pad: 1-9 a
+//!   digit, 10 Erase, 11 Undo, 12 solve, applied once per new token), `notes` (1 while pencil marks are on).
+//! - Messages: `remain:<nine digits>` (how many of each number are left), `hl:<n>` (the selected
+//!   number, 0 for none), `pad` (the pad appears), `solved`, `alert:genius`, and `haptic:<kind>`.
+//! - Haptics: selection on a cell, light on an entry, success when a row, column or box completes,
+//!   error on a wrong digit, and a celebration at the end (light x3, medium x3, heavy x2, success).
+//! - Givens are slate, the user's digits white, a wrong one red with a short shake. A selected
+//!   empty cell takes a blue tint; every cell holding the selected number gets a springing circle.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, PointerPhase, Surface, SurfaceError, Value};
@@ -31,7 +20,7 @@ use skia::{Canvas, Color, Font, Paint, Renderer};
 
 use crate::gfx::Random;
 
-/// The Sudoku board surface (inputs and messages in the module docs).
+/// The board surface (inputs and messages in the module docs).
 pub fn surface() -> Box<dyn Surface> {
     Box::new(Sudoku::new())
 }
@@ -44,7 +33,7 @@ pub fn backdrop() -> Box<dyn Surface> {
 // ---------------------------------------------------------------------------------------------
 // Look.
 
-/// The screen's gradient, top to bottom, and the card's colour.
+/// The gradient's top colour and the card's colour.
 const BACKGROUND: u32 = 0x0A1222;
 const SURFACE: u32 = 0x121D33;
 const PRIMARY: u32 = 0x3B82F6;
@@ -54,7 +43,7 @@ const MUTED: u32 = 0x94A3B8;
 const WHITE: u32 = 0xFFFFFF;
 const ERROR: u32 = 0xDC2626;
 
-/// The board's border (2 pt, continuous corners).
+/// The board's corner radius and border width, pt.
 const BOARD_R: f32 = 8.0;
 const BORDER: f32 = 2.0;
 /// Each cell's own edge, and the thicker one on the right and bottom of every third.
@@ -68,27 +57,26 @@ const CIRCLE_A: f32 = 0.35;
 
 /// The board's border fades in over this long at Start.
 const FRAME_MS: f64 = 200.0;
-/// The cells begin after this, each fading over `FADE_MS` and starting `STEP_MS` per step of
-/// row + column later; the pad appears `PAD_MS` after Start.
+/// The cells begin after this, each fading over `FADE_MS` and starting `STEP_MS` later per step
+/// of row + column; the pad appears `PAD_MS` after Start.
 const REVEAL_MS: f64 = 600.0;
 const STEP_MS: f64 = 75.0;
 const FADE_MS: f64 = 350.0;
 const PAD_MS: f64 = 2200.0;
-/// The selected-number circle: a critically damped spring (rate per ms), its opacity's fade, and
-/// when it counts as at rest.
+/// The selected-number circle: spring rate per ms, opacity fade, and when it counts as at rest.
 const CIRCLE_RATE: f64 = 15.0 / 1000.0;
 const CIRCLE_FADE_MS: f64 = 150.0;
 const CIRCLE_REST_MS: f64 = 700.0;
-/// A wrong digit's shake: its length, amplitude (pt) and half-swings.
+/// A wrong digit's shake: length, amplitude (pt) and half-swings.
 const SHAKE_MS: f64 = 420.0;
 const SHAKE_PX: f32 = 5.0;
 const SHAKE_SWINGS: f64 = 6.0;
-/// A completed unit's wave: each cell's pulse and the step between neighbours.
+/// A completed unit's wave: each cell's pulse and the delay per neighbour.
 const WAVE_MS: f64 = 460.0;
 const WAVE_STEP_MS: f64 = 38.0;
-/// The solved board's wave: the step per cell of distance from the last entry.
+/// The solved board's wave: delay per cell of distance from the last entry.
 const SOLVE_STEP_MS: f64 = 30.0;
-/// After the solved board's wave, the Genius alert.
+/// Delay from solving to the Genius alert.
 const GENIUS_MS: f64 = 1500.0;
 
 /// The celebration: each haptic and the wait after it.
@@ -110,7 +98,7 @@ const CMD_UNDO: u8 = 11;
 const CMD_SOLVE: u8 = 12;
 
 // ---------------------------------------------------------------------------------------------
-// The puzzle: generated with 45 cells removed and a unique solution.
+// The puzzle: 45 cells removed, a unique solution.
 
 type Grid = [[u8; 9]; 9];
 type Notes = [[u16; 9]; 9];
@@ -501,10 +489,10 @@ struct Sudoku {
     /// The board's side in points: its canvas.
     side: f32,
     game: Game,
-    /// The first frame of this puzzle (the reveal runs from there); None until drawn.
+    /// The first frame of this puzzle, where the reveal starts; None until drawn.
     started: Option<f64>,
     solved_at: Option<f64>,
-    /// The last frame's time: what `bind` and the pointer stamp their work with (a pointer's
+    /// The last frame's time, which `bind` and the pointer stamp their work with (a pointer's
     /// `at_ms` is not on the frame clock).
     now: f64,
     shake: [[f64; 9]; 9],
@@ -939,8 +927,8 @@ fn grid_lines(c: &mut Canvas, cell: f32, fade: Option<&dyn Fn(usize, usize) -> f
     }
 }
 
-/// The gradient's runs of equal device rows, each channel error-diffused down the rows (so the
-/// 8-bit steps dissolve into one-level alternations, invisible at 3x): (first row, end, colour).
+/// The gradient as runs of equal device rows, each channel error-diffused down the rows so 8-bit
+/// banding dissolves: (first row, end, colour).
 fn gradient_rows(h: f32, scale: f32, from: u32, to: u32) -> Vec<(i32, i32, [u8; 3])> {
     let rows = (h * scale).round() as i32;
     let ch = |v: u32, k: u32| ((v >> k) & 0xFF) as f32;
@@ -995,8 +983,7 @@ impl Surface for Sudoku {
         let InputEvent::Pointer { phase, x, y, .. } = *event else {
             return;
         };
-        // The selection follows the finger down, on the touch (no wait for the lift), once the
-        // cells are there.
+        // Selects on touch-down, once the cells have appeared.
         let shown = self.started.is_some_and(|s| self.now - s >= REVEAL_MS);
         if phase == PointerPhase::Down && shown && self.solved_at.is_none() {
             if let Some(cell) = self.at(x, y) {
@@ -1128,7 +1115,7 @@ mod tests {
     use super::*;
     use exact_gpu::{fixture, PointerKind};
 
-    /// The board canvas's side (a 402 pt phone: 402 - 48).
+    /// The board canvas's side, pt.
     const SIDE: f32 = 354.0;
 
     fn frame(now_ms: f64) -> Frame {
@@ -1603,7 +1590,7 @@ mod tests {
         out("sudoku-6-solved-wave", &solved);
         let done = run(&mut d.s, t + 1600.0, &mut t);
         out("sudoku-7-solved", &done);
-        // The celebration's timed haptics and the alert are due for a while yet.
+        // Drop the pending celebration events.
         d.s.due.clear();
         let (_, moving) = fixture::render(&gpu, &mut d.s, &frame(t + 2000.0)).unwrap();
         assert!(!moving, "a solved board rests");
