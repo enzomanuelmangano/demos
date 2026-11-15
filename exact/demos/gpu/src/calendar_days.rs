@@ -29,7 +29,7 @@
 //! | progress | clamp(translateX, 0, w) / w, re-set on every pan update | the same |
 //! | picker scale | onBegin withSpring(1), onFinalize withSpring(0.8) (Gentle 900/120/4, ζ = 1) | [`RnSpring`], Reanimated's onStart/onFrame |
 //! | page flip p | every progress set: if p ≠ target (progress × 30 > i), withSpring(target, { duration 1100, dampingRatio 1 }) | [`RnSpring`]: a fresh start solves the stiffness; a restart toward the same running target continues it (isTriggeredTwice), its rest measured at the default stiffness 900 |
-//! | haptic | round(progress × 31) changes → Haptics.selectionAsync | `haptic:selection` |
+//! | haptic | round(progress × 31) changes → Haptics.selectionAsync | `haptic:selection`, at most one per HAPTIC_GAP_MS (past RN, which plays one per day: a fast drag crosses one every frame) |
 //!
 //! Input: safeTop (the top page's gradient height).
 
@@ -44,6 +44,8 @@ use crate::gfx;
 /// TOTAL_PAGES (the haptic's) and the card's pages (totalPages − 1).
 const TOTAL: f64 = 31.0;
 const PAGES: usize = 30;
+/// The shortest gap between two day haptics, ms (UIKit's pickers pace theirs so).
+const HAPTIC_GAP_MS: f64 = 40.0;
 /// SIZE, HEADER_HEIGHT, BODY_HEIGHT, PAGE_SIZE.
 const SIZE: f32 = 190.0;
 const HEADER: f32 = 50.0;
@@ -84,6 +86,7 @@ pub fn surface() -> Box<dyn Surface> {
         picker: RnSpring::at(PICKER_REST),
         pages: [RnSpring::at(0.0); PAGES],
         haptic_page: 0,
+        haptic_at: f64::NEG_INFINITY,
         messages: Vec::new(),
         header_font: skia::match_ui_font(20.0, 600.0),
         number_font: Font::new(SF_ROUNDED_BOLD, 90.0).map(Font::with_ui_layout),
@@ -232,6 +235,8 @@ struct CalendarDays {
     picker: RnSpring,
     pages: [RnSpring; PAGES],
     haptic_page: i64,
+    /// When the last day haptic was posted, ms.
+    haptic_at: f64,
     messages: Vec<String>,
     header_font: Option<Font>,
     number_font: Option<Font>,
@@ -291,7 +296,10 @@ impl CalendarDays {
         let haptic = (self.progress() * TOTAL).round() as i64;
         if haptic != self.haptic_page {
             self.haptic_page = haptic;
-            self.messages.push("haptic:selection".into());
+            if now - self.haptic_at >= HAPTIC_GAP_MS {
+                self.messages.push("haptic:selection".into());
+                self.haptic_at = now;
+            }
         }
     }
 
@@ -974,9 +982,12 @@ mod tests {
             fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
             ms += 16.0;
         }
+        // 15 days crossed in 464 ms: paced to one per HAPTIC_GAP_MS (48 ms at 16 ms moves).
         let haptics = s.messages();
         assert!(
-            haptics.iter().all(|m| m == "haptic:selection") && haptics.len() >= 10,
+            haptics.iter().all(|m| m == "haptic:selection")
+                && haptics.len() >= 7
+                && haptics.len() as f64 <= 464.0 / HAPTIC_GAP_MS + 1.0,
             "{haptics:?}"
         );
         let (mid, _) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
