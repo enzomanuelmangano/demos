@@ -31,8 +31,11 @@ fn flip(): string = "1384ms linear(0, 0.0185, 0.0649, 0.128, 0.2, 0.2755, 0.3506
 // motion) and, once a later press comes, its box leaves (the top copy's motion) from wherever
 // the copy inside has got to. One press from rest is exactly RN's flip: the resting letter (run
 // 0) leaves as the new one arrives. Presses in quick succession add waves that compose, nothing
-// restarts. The last four runs are kept: a run two presses old has left by then (opacity under
-// 0.06 at 0.5 s past its letter's delay).
+// restarts. A run must stay mounted until its last letter has left: the next press plus that
+// letter's delay (up to 600 ms) plus the leave (opacity under 0.06 0.5 s in), about 1.2 s. Four
+// runs were too few at the owner's 5–8 taps a second: the late letters' runs were dropped before
+// they had arrived and those letters vanished while tapping (phone feedback, 2026-11-15). Ten
+// runs cover 8 taps a second.
 keyframes leave
   from opacity=1 translate="0px 0px" rotate=0
   to opacity=0 translate="0px -27.5px" rotate=90
@@ -40,23 +43,25 @@ keyframes arrive
   from opacity=0 translate="0px 27.5px" rotate=-90
   to opacity=1 translate="0px 0px" rotate=0
 
-// The runs on screen: the last four press numbers (0 = the letters at rest before any press).
-fn runs(plays: number): number[] = range(4).map(k => plays - 3 + k).filter(k => k >= 0)
+// The runs on screen: the last ten press numbers (0 = the letters at rest before any press).
+fn runs(plays: number): number[] = range(10).map(k => plays - 9 + k).filter(k => k >= 0)
 
 component EverybodyCanCook
   // How many taps: 0 = never animated (progress 0, the top copies shown).
   state plays = 0
-  // PressableWithoutFeedback onPress: reset() and animate() both texts. The app's
-  // PressablesConfig plays the selection haptic on every pressto press.
+  // PressableWithoutFeedback onPress (reset() and animate() both texts), the owner's way: every
+  // tap is a new wave the moment the finger lands (a press waits for the lift, and quick taps
+  // read as one), each with a light impact (phone feedback, 2026-11-15; RN's PressablesConfig
+  // plays the selection haptic on each press).
   action play
-    haptic("selection")
+    haptic("impact-light")
     plays = plays + 1
   view
     // styles.fill: black.
     column position="absolute" inset=0 background-color="#000000" testId="everybody-can-cook"
       // styles.container (the PressableWithoutFeedback): flex 1, centred vertically,
       // paddingHorizontal 42.
-      column flex=1 justify-content="center" padding="0px 42px" press=play testId="cook"
+      column flex=1 justify-content="center" padding="0px 42px" pointerdown=play testId="cook"
         aria-label="Everybody can cook."
         StaggeredText(text="Everybody", delay=0, plays=plays, testId="everybody")
         // delay={280}
