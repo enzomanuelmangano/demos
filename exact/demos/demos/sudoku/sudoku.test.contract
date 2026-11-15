@@ -1,33 +1,30 @@
 at "/demo/sudoku"
 
-test "the board, the header, the digits and the tools are there"
+// The web host gives a surface no touches: the game, the pad's appearance, the haptics and the
+// celebration are the Rust fixture tests' (gpu/src/sudoku.rs); here what the Contract holds.
+test "the title and Start Game are there, the board is not"
   expect tree has "sudoku"
-  expect tree has "sudoku-canvas"
-  expect tree has "sudoku-header"
-  expect tree has "sudoku-mistakes"
-  expect tree has "sudoku-time"
-  expect tree has "sudoku-key-1"
-  expect tree has "sudoku-key-9"
-  expect tree has "sudoku-undo"
-  expect tree has "sudoku-erase"
-  expect tree has "sudoku-notes"
+  expect tree has "sudoku-title"
+  expect tree has "sudoku-card"
+  expect tree has "sudoku-start"
+  expect tree missing "sudoku-canvas"
+  expect tree missing "sudoku-new-game"
 
-test "Notes toggles pencil marks"
-  expect text "sudoku-notes-caption" == "Notes"
-  tap "sudoku-notes"
+test "Start Game shows the board and New Game"
+  tap "sudoku-start"
   clock settle
-  expect text "sudoku-notes-caption" == "Notes On"
-  tap "sudoku-notes"
-  clock settle
-  expect text "sudoku-notes-caption" == "Notes"
+  expect tree has "sudoku-canvas"
+  expect tree has "sudoku-new-game"
+  expect tree missing "sudoku-start"
 
 test "the Genius alert is declared, closed"
   clock settle
   expect tree has "genius-alert"
   expect tree missing "genius-alert-confirm"
 
-test "New Game is a glass button on the top row that asks first"
-  expect tree has "sudoku-new-game"
+test "New Game asks first and goes back to Start Game"
+  tap "sudoku-start"
+  clock settle
   expect tree missing "new-game-alert-cancel"
   tap "sudoku-new-game"
   clock settle
@@ -35,3 +32,10 @@ test "New Game is a glass button on the top row that asks first"
   tap "new-game-alert-cancel"
   clock settle
   expect tree missing "new-game-alert-cancel"
+  expect tree has "sudoku-canvas"
+  tap "sudoku-new-game"
+  clock settle
+  tap "new-game-alert-confirm"
+  clock settle
+  expect tree has "sudoku-start"
+  expect tree missing "sudoku-canvas"

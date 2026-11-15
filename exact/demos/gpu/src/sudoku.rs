@@ -1,28 +1,29 @@
-//! Sudoku, redesigned from the owner's phone feedback (2026-11-15, "terrible layout, and haptics
-//! are missing"; notes mwhonvzk-e2cc0a, mwhn456m-c9c3f7). The RN demo (src/animations/sudoku) is
-//! the starting point for the game, not the look: no card, no blue border, no header block, no
-//! start screen. This surface draws the screen's dithered gradient and the board; the Contract
-//! (demos/sudoku/sudoku.contract) lays out the header, the glass number pad and the glass tools,
-//! and hands the board's frame and every pad press in through `bind`.
+//! Sudoku: a card holding a Start Game button; started, a 9 x 9 board whose cells fade in on a
+//! diagonal, then a number pad, with New Game, Undo and Notes as small buttons. The title solves
+//! the board. A cell selects, the pad fills it, a solved board plays the celebration and asks
+//! "Genius!".
 //!
-//! Inputs, in bind order: `seed`, `reset` (a token: New Game), `ok` (a token: the Genius alert's
-//! OK, also a new game), the board's `left`, `top` and `size` in points, `cmd` and `token` (the
-//! pad: 1–9 a digit, 10 Erase, 11 Undo, applied once per new token) and `notes` (1 while pencil
+//! Two surfaces. `backdrop` draws the screen's dithered gradient behind the Contract's views
+//! (demos/sudoku/sudoku.contract), which lay out the title, the card, the buttons and the pad.
+//! `surface` is the board alone, a square canvas inside the card: the 2 pt border, the cells,
+//! their digits and pencil marks. It lives from a Start Game to the next New Game.
+//!
+//! Inputs, in bind order: `seed` (a new value is a new puzzle), `cmd` and `token` (the pad: 1-9 a
+//! digit, 10 Erase, 11 Undo, 12 solve, applied once per new token) and `notes` (1 while pencil
 //! marks are on).
 //!
-//! Messages: `remain:<nine digits>` (how many of each number are still to place, for the pad),
-//! `mistakes:<n>`, `time:<seconds>` (once a second while the puzzle is open), `solved`,
-//! `alert:genius`, and the haptics as `haptic:<kind>` (played by the host, no commit):
-//! selection on a cell, light on an entry, success when a row, column or box completes, error on
-//! a wrong digit, and the celebration (light ×3, medium ×3, heavy ×2, success) at the end.
+//! Messages: `remain:<nine digits>` (how many of each number are still to place), `hl:<n>` (the
+//! selected cell's number, 0 for none: the pad key to light), `pad` (the pad appears), `solved`,
+//! `alert:genius`, and the haptics as `haptic:<kind>` (played by the host, no commit): selection
+//! on a cell, light on an entry, success when a row, column or box completes, error on a wrong
+//! digit, and the celebration (light x3, medium x3, heavy x2, success) at the end.
 //!
-//! The board: a full-width square with continuous corners, a faint fill, one-device-pixel cell
-//! lines and 2 pt box lines (and outer ring). Given digits white semibold, the user's in system
-//! blue, a wrong one in system red with a short damped shake. The selected cell is tinted blue;
-//! its row, column and box take a light tint, and every cell holding its number a blue one.
-//! Motion is transforms and opacity of what is drawn, nothing laid out: the cells fade in on a
-//! diagonal at each new puzzle, a completed unit runs a wave (a tint and a small scale, cell
-//! after cell from the entry), the solved puzzle a wave over the whole board.
+//! The board: the cells on the card's colour, 0.5 pt cell lines, 2 pt box lines in a faint blue,
+//! a 2 pt blue border with continuous corners. Givens are slate, the user's digits white, a wrong
+//! one red with a short damped shake. A selected empty cell takes a blue tint; every cell holding
+//! the selected number gets a circle that springs in. Motion is transforms and opacity of what
+//! is drawn: the cells fade in on a diagonal after Start, a completed unit runs a wave, the
+//! solved puzzle a wave over the whole board.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, PointerPhase, Surface, SurfaceError, Value};
@@ -30,43 +31,54 @@ use skia::{Canvas, Color, Font, Paint, Renderer};
 
 use crate::gfx::Random;
 
-/// The Sudoku surface (inputs and messages in the module docs).
+/// The Sudoku board surface (inputs and messages in the module docs).
 pub fn surface() -> Box<dyn Surface> {
     Box::new(Sudoku::new())
+}
+
+/// The screen's gradient, behind everything.
+pub fn backdrop() -> Box<dyn Surface> {
+    Box::new(Backdrop::default())
 }
 
 // ---------------------------------------------------------------------------------------------
 // Look.
 
-/// theme.ts COLORS.background → COLORS.surface: the screen's gradient, top to bottom.
+/// The screen's gradient, top to bottom, and the card's colour.
 const BACKGROUND: u32 = 0x0A1222;
 const SURFACE: u32 = 0x121D33;
-/// UIKit's dark systemBlue, systemRed and secondaryLabel (as sRGB).
-const BLUE: u32 = 0x0A84FF;
-const RED: u32 = 0xFF453A;
-const SECONDARY: u32 = 0x98989F;
+const PRIMARY: u32 = 0x3B82F6;
+const PRIMARY_LIGHT: u32 = 0x60A5FA;
+/// Cell lines, given digits and pencil marks.
+const MUTED: u32 = 0x94A3B8;
 const WHITE: u32 = 0xFFFFFF;
+const ERROR: u32 = 0xDC2626;
 
-/// The board's continuous corner radius.
-const BOARD_R: f32 = 14.0;
-/// The box lines and the outer ring.
-const BOX_LINE: f32 = 2.0;
-const BOX_LINE_A: f32 = 0.42;
-/// The cell lines: one device pixel.
-const CELL_LINE_A: f32 = 0.13;
-const BOARD_FILL_A: f32 = 0.035;
-/// The tints: the selected cell, the cells holding its number, its row, column and box.
-const SELECTED_A: f32 = 0.20;
-const SAME_A: f32 = 0.15;
-/// The selected cell's ring: its width, inset and corner radius.
-const RING: f32 = 2.0;
-const RING_INSET: f32 = 1.5;
-const RING_R: f32 = 7.0;
-const PEER_A: f32 = 0.055;
+/// The board's border (2 pt, continuous corners).
+const BOARD_R: f32 = 8.0;
+const BORDER: f32 = 2.0;
+/// Each cell's own edge, and the thicker one on the right and bottom of every third.
+const LINE: f32 = 0.5;
+const THIRD: f32 = 2.0;
+const LINE_A: f32 = 0.25;
+const THIRD_A: f32 = 80.0 / 255.0;
+/// The selected empty cell's tint, and the circle on the cells of the selected number.
+const SELECTED_A: f32 = 0.25;
+const CIRCLE_A: f32 = 0.35;
 
-/// The diagonal fade at each new puzzle: per step of r + c, and each cell's fade.
-const MOUNT_STEP_MS: f64 = 14.0;
-const MOUNT_FADE_MS: f64 = 240.0;
+/// The board's border fades in over this long at Start.
+const FRAME_MS: f64 = 200.0;
+/// The cells begin after this, each fading over `FADE_MS` and starting `STEP_MS` per step of
+/// row + column later; the pad appears `PAD_MS` after Start.
+const REVEAL_MS: f64 = 600.0;
+const STEP_MS: f64 = 75.0;
+const FADE_MS: f64 = 350.0;
+const PAD_MS: f64 = 2200.0;
+/// The selected-number circle: a critically damped spring (rate per ms), its opacity's fade, and
+/// when it counts as at rest.
+const CIRCLE_RATE: f64 = 15.0 / 1000.0;
+const CIRCLE_FADE_MS: f64 = 150.0;
+const CIRCLE_REST_MS: f64 = 700.0;
 /// A wrong digit's shake: its length, amplitude (pt) and half-swings.
 const SHAKE_MS: f64 = 420.0;
 const SHAKE_PX: f32 = 5.0;
@@ -79,8 +91,7 @@ const SOLVE_STEP_MS: f64 = 30.0;
 /// After the solved board's wave, the Genius alert.
 const GENIUS_MS: f64 = 1500.0;
 
-/// The celebration at the puzzle's end (index.tsx playCelebrationHaptics): each haptic and the
-/// wait after it.
+/// The celebration: each haptic and the wait after it.
 const CELEBRATION: [(&str, f64); 9] = [
     ("haptic:impact-light", 50.0),
     ("haptic:impact-light", 50.0),
@@ -96,9 +107,10 @@ const CELEBRATION: [(&str, f64); 9] = [
 /// The pad's commands (`cmd`).
 const CMD_ERASE: u8 = 10;
 const CMD_UNDO: u8 = 11;
+const CMD_SOLVE: u8 = 12;
 
 // ---------------------------------------------------------------------------------------------
-// logic/sudoku.ts (generateSudoku('medium'), 45 cells removed with a unique solution).
+// The puzzle: generated with 45 cells removed and a unique solution.
 
 type Grid = [[u8; 9]; 9];
 type Notes = [[u16; 9]; 9];
@@ -302,6 +314,17 @@ impl Game {
         left
     }
 
+    /// The number in the selected cell (0 for none): what the pad and the circles light.
+    fn highlighted(&self) -> u8 {
+        self.selected.map_or(0, |(r, c)| self.board[r][c])
+    }
+
+    /// Every cell at its answer.
+    fn fill(&mut self) {
+        self.board = self.solution;
+        self.notes = [[0; 9]; 9];
+    }
+
     fn editable(&self) -> Option<(usize, usize)> {
         self.selected.filter(|&(r, c)| self.initial[r][c] == 0)
     }
@@ -386,24 +409,6 @@ impl Game {
 // ---------------------------------------------------------------------------------------------
 // The surface.
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-struct Board {
-    left: f32,
-    top: f32,
-    size: f32,
-}
-
-impl Board {
-    fn cell(&self) -> f32 {
-        self.size / 9.0
-    }
-
-    fn at(&self, x: f32, y: f32) -> Option<(usize, usize)> {
-        let (cx, cy) = ((x - self.left) / self.cell(), (y - self.top) / self.cell());
-        ((0.0..9.0).contains(&cx) && (0.0..9.0).contains(&cy)).then(|| (cy as usize, cx as usize))
-    }
-}
-
 struct Fonts {
     /// The cell size they were made for.
     cell: f32,
@@ -417,10 +422,9 @@ struct Fonts {
 
 impl Fonts {
     fn new(cell: f32) -> Option<Fonts> {
-        let digit = (cell * 0.56).round();
         let note = (cell * 0.25).round().max(8.0);
-        let given = skia::match_ui_font(digit, 600.0)?;
-        let user = skia::match_ui_font(digit, 500.0)?;
+        let given = skia::match_ui_font(20.0, 500.0)?;
+        let user = skia::match_ui_font(20.0, 600.0)?;
         let note_font = skia::match_ui_font(note, 500.0)?;
         let note_strong = skia::match_ui_font(note, 700.0)?;
         let mut centres = [[(0.0, 0.0); 10]; 4];
@@ -444,7 +448,45 @@ impl Fonts {
     }
 }
 
-/// A timed event: a haptic of the celebration, or the Genius alert.
+/// A cell's selected-number circle: its scale and opacity easing from where they were toward
+/// the new target (1 on, 0 off) from the moment it changed.
+#[derive(Clone, Copy)]
+struct Circle {
+    from: (f32, f32),
+    to: f32,
+    at: f64,
+}
+
+impl Circle {
+    const REST: Circle = Circle {
+        from: (0.0, 0.0),
+        to: 0.0,
+        at: -1.0e9,
+    };
+
+    /// (scale, opacity, at rest).
+    fn value(&self, now: f64) -> (f32, f32, bool) {
+        let t = (now - self.at).max(0.0);
+        let k = ((1.0 + CIRCLE_RATE * t) * (-CIRCLE_RATE * t).exp()) as f32;
+        let scale = self.to + (self.from.0 - self.to) * k;
+        let q = ease_in_out((t / CIRCLE_FADE_MS).min(1.0)) as f32;
+        let opacity = self.from.1 + (self.to - self.from.1) * q;
+        (scale, opacity, t >= CIRCLE_REST_MS)
+    }
+
+    fn aim(&mut self, to: f32, now: f64) {
+        if to != self.to {
+            let (s, o, _) = self.value(now);
+            *self = Circle {
+                from: (s, o),
+                to,
+                at: now,
+            };
+        }
+    }
+}
+
+/// A timed event: a haptic of the celebration, the pad, or the Genius alert.
 struct Due {
     at: f64,
     message: &'static str,
@@ -453,27 +495,26 @@ struct Due {
 struct Sudoku {
     rng: Random,
     seeded: bool,
-    tokens: (f64, f64, f64),
+    seed: f64,
+    token: f64,
     notes_on: bool,
-    board: Board,
+    /// The board's side in points: its canvas.
+    side: f32,
     game: Game,
-    /// The puzzle's first frame (its fade and its clock start there); None until drawn.
+    /// The first frame of this puzzle (the reveal runs from there); None until drawn.
     started: Option<f64>,
-    /// When the puzzle was solved (the clock stops).
     solved_at: Option<f64>,
     /// The last frame's time: what `bind` and the pointer stamp their work with (a pointer's
     /// `at_ms` is not on the frame clock).
     now: f64,
     shake: [[f64; 9]; 9],
     wave: [[(f64, f32); 9]; 9],
+    circle: [[Circle; 9]; 9],
     due: Vec<Due>,
     posted: Vec<String>,
     sent_remain: String,
-    sent_mistakes: i64,
-    sent_time: i64,
-    fps: u32,
+    sent_hl: i8,
     size: (f32, f32, f32),
-    gradient: Vec<(i32, i32, [u8; 3])>,
     fonts: Option<Fonts>,
     canvas: Canvas,
     renderer: Renderer,
@@ -481,32 +522,25 @@ struct Sudoku {
 
 impl Sudoku {
     fn new() -> Sudoku {
-        let mut rng = Random::new(0.0);
-        let game = Game::new(generate_sudoku(&mut rng));
         Sudoku {
-            rng,
+            rng: Random::new(0.0),
             seeded: false,
-            tokens: (0.0, 0.0, 0.0),
+            seed: 0.0,
+            token: 0.0,
             notes_on: false,
-            board: Board {
-                left: 16.0,
-                top: 160.0,
-                size: 370.0,
-            },
-            game,
+            side: 354.0,
+            game: Game::new(([[0; 9]; 9], [[0; 9]; 9])),
             started: None,
             solved_at: None,
             now: 0.0,
             shake: [[f64::NEG_INFINITY; 9]; 9],
             wave: [[(f64::NEG_INFINITY, 0.0); 9]; 9],
+            circle: [[Circle::REST; 9]; 9],
             due: Vec::new(),
             posted: Vec::new(),
             sent_remain: String::new(),
-            sent_mistakes: -1,
-            sent_time: -1,
-            fps: 0,
+            sent_hl: -1,
             size: (0.0, 0.0, 0.0),
-            gradient: Vec::new(),
             fonts: None,
             canvas: Canvas::default(),
             renderer: Renderer::default(),
@@ -519,12 +553,21 @@ impl Sudoku {
         self.solved_at = None;
         self.shake = [[f64::NEG_INFINITY; 9]; 9];
         self.wave = [[(f64::NEG_INFINITY, 0.0); 9]; 9];
+        self.circle = [[Circle::REST; 9]; 9];
         self.due.clear();
-        self.sent_time = -1;
+        self.sent_remain.clear();
+        self.sent_hl = -1;
         self.report();
     }
 
-    /// The pad's state and the mistakes, posted when they change.
+    /// The cell under a point of the canvas.
+    fn at(&self, x: f32, y: f32) -> Option<(usize, usize)> {
+        let cell = self.side / 9.0;
+        let (cx, cy) = (x / cell, y / cell);
+        ((0.0..9.0).contains(&cx) && (0.0..9.0).contains(&cy)).then(|| (cy as usize, cx as usize))
+    }
+
+    /// The pad's state and the selected number, posted when they change.
     fn report(&mut self) {
         let remain: String = self
             .game
@@ -536,10 +579,10 @@ impl Sudoku {
             self.posted.push(format!("remain:{remain}"));
             self.sent_remain = remain;
         }
-        let mistakes = self.game.mistakes as i64;
-        if mistakes != self.sent_mistakes {
-            self.posted.push(format!("mistakes:{mistakes}"));
-            self.sent_mistakes = mistakes;
+        let hl = self.game.highlighted() as i8;
+        if hl != self.sent_hl {
+            self.posted.push(format!("hl:{hl}"));
+            self.sent_hl = hl;
         }
     }
 
@@ -547,6 +590,7 @@ impl Sudoku {
         if self.game.selected != Some(cell) {
             self.game.selected = Some(cell);
             self.posted.push("haptic:selection".into());
+            self.report();
         }
     }
 
@@ -564,6 +608,10 @@ impl Sudoku {
                     self.posted.push("haptic:impact-light".into());
                 }
                 Entry::None
+            }
+            CMD_SOLVE => {
+                self.game.fill();
+                Entry::Solved
             }
             _ => Entry::None,
         };
@@ -628,137 +676,112 @@ impl Sudoku {
         }
     }
 
-    fn elapsed(&self, now: f64) -> f64 {
-        match self.started {
-            Some(s) => (self.solved_at.unwrap_or(now) - s).max(0.0),
-            None => 0.0,
-        }
-    }
-
-    /// Draws everything; true while something on the board moves.
+    /// Draws the board; true while something on it moves.
     fn record(&mut self, now: f64) -> bool {
-        let (w, h, s) = self.size;
-        let mut moving = false;
-        let b = self.board;
-        let cell = b.cell();
+        let s = self.size.2;
+        let size = self.side;
+        let cell = size / 9.0;
         if self.fonts.as_ref().is_none_or(|f| f.cell != cell) {
             self.fonts = Fonts::new(cell);
         }
-        let c = &mut self.canvas;
-        c.begin(s);
-        for &(r0, r1, col) in &self.gradient {
-            c.draw_rect(
-                0.0,
-                r0 as f32 / s,
-                w,
-                (r1 - r0) as f32 / s,
-                &Paint::fill(Color::rgb8(col[0], col[1], col[2])),
-            );
-        }
-        let _ = h;
         let since = now - self.started.unwrap_or(now);
-        // The board's lines and fill fade in with the first cells.
-        let frame_a = ease_out((since / 200.0).clamp(0.0, 1.0)) as f32;
-        moving |= since < 200.0;
-        c.draw_continuous_rrect(
-            b.left,
-            b.top,
-            b.size,
-            b.size,
-            BOARD_R,
-            &Paint::fill(Color::hex(WHITE).alpha(BOARD_FILL_A * frame_a)),
-        );
+        let cascading = since < REVEAL_MS + 16.0 * STEP_MS + FADE_MS;
+        let mut moving = cascading;
+        let frame_a = ease_in_out((since / FRAME_MS).clamp(0.0, 1.0)) as f32;
+        let fade = |r: usize, c: usize| -> f32 {
+            ease_in_out(((since - REVEAL_MS - (r + c) as f64 * STEP_MS) / FADE_MS).clamp(0.0, 1.0))
+                as f32
+        };
 
-        // The tints, clipped to the board's corners.
         let g = &self.game;
         let sel = g.selected;
-        let sel_value = sel.map_or(0, |(r, c)| g.board[r][c]);
+        let hl = g.highlighted();
+        for r in 0..9 {
+            for c in 0..9 {
+                let on = hl != 0 && g.board[r][c] == hl;
+                self.circle[r][c].aim(if on { 1.0 } else { 0.0 }, now);
+            }
+        }
+
+        let c = &mut self.canvas;
+        c.begin(s);
         c.save();
-        c.clip_continuous_rrect(b.left, b.top, b.size, b.size, BOARD_R);
+        c.clip_continuous_rrect(0.0, 0.0, size, size, BOARD_R);
         for i in 0..81 {
             let (r, col) = (i / 9, i % 9);
-            let (x, y) = (b.left + col as f32 * cell, b.top + r as f32 * cell);
-            let mut tints: [(u32, f32); 4] = [(0, 0.0); 4];
-            if let Some(sc) = sel {
-                if sc == (r, col) {
-                    tints[0] = (BLUE, SELECTED_A);
-                } else if sel_value != 0 && g.board[r][col] == sel_value {
-                    tints[0] = (BLUE, SAME_A);
-                } else if peers(sc, (r, col)) {
-                    tints[0] = (WHITE, PEER_A);
-                }
+            let f = fade(r, col);
+            if f <= 0.0 {
+                continue;
             }
+            let (x, y) = (col as f32 * cell, r as f32 * cell);
+            // The selected empty cell; a selected number takes circles instead.
+            if sel == Some((r, col)) && hl == 0 {
+                c.draw_rect(
+                    x,
+                    y,
+                    cell,
+                    cell,
+                    &Paint::fill(Color::hex(PRIMARY).alpha(SELECTED_A * f)),
+                );
+            }
+            let (scale, opacity, rest) = self.circle[r][col].value(now);
+            if !rest {
+                moving = true;
+            }
+            if scale > 0.001 && opacity > 0.001 {
+                let d = cell * scale;
+                c.draw_continuous_rrect(
+                    x + (cell - d) / 2.0,
+                    y + (cell - d) / 2.0,
+                    d,
+                    d,
+                    d / 2.0,
+                    &Paint::fill(
+                        Color::hex(PRIMARY).alpha(CIRCLE_A * opacity * scale.min(1.0) * f),
+                    ),
+                );
+            }
+            // A unit's wave and a wrong digit's flash.
             let (wave_at, k) = self.wave[r][col];
             let p = (now - wave_at) / WAVE_MS;
             if (0.0..1.0).contains(&p) {
-                tints[1] = (BLUE, 0.30 * k.min(1.0) * bump(p));
+                c.draw_rect(
+                    x,
+                    y,
+                    cell,
+                    cell,
+                    &Paint::fill(Color::hex(PRIMARY).alpha(0.30 * k.min(1.0) * bump(p) * f)),
+                );
                 moving = true;
             } else if p < 0.0 {
                 moving = true;
             }
             let t = now - self.shake[r][col];
             if (0.0..SHAKE_MS).contains(&t) {
-                tints[2] = (RED, 0.22 * (1.0 - (t / SHAKE_MS) as f32));
+                c.draw_rect(
+                    x,
+                    y,
+                    cell,
+                    cell,
+                    &Paint::fill(Color::hex(ERROR).alpha(0.22 * (1.0 - (t / SHAKE_MS) as f32) * f)),
+                );
                 moving = true;
             }
-            for (hex, a) in tints {
-                if a > 0.0 {
-                    c.draw_rect(
-                        x,
-                        y,
-                        cell,
-                        cell,
-                        &Paint::fill(Color::hex(hex).alpha(a * frame_a)),
-                    );
-                }
-            }
         }
-        // The selected cell's ring, over its tint.
-        if let Some((r, col)) = sel {
-            let (x, y) = (
-                b.left + col as f32 * cell + RING_INSET,
-                b.top + r as f32 * cell + RING_INSET,
-            );
-            let side = cell - 2.0 * RING_INSET;
-            c.draw_with(&Paint::fill(Color::hex(BLUE).alpha(frame_a)), |p| {
-                skia::add_continuous_rrect(p, x, y, side, side, RING_R);
-                skia::add_continuous_rrect_hole(
-                    p,
-                    x + RING,
-                    y + RING,
-                    side - 2.0 * RING,
-                    side - 2.0 * RING,
-                    RING_R - RING,
-                );
-            });
-        }
+        let fading: &dyn Fn(usize, usize) -> f32 = &fade;
+        grid_lines(c, cell, cascading.then_some(fading));
         c.restore();
 
-        // The cell lines (one device pixel) and the box lines, on the pixel grid.
-        let snap = |v: f32| (v * s).round() / s;
-        let hair = 1.0 / s;
-        for i in 1..9 {
-            let (width, a) = if i % 3 == 0 {
-                (BOX_LINE, BOX_LINE_A)
-            } else {
-                (hair, CELL_LINE_A)
-            };
-            let paint = Paint::fill(Color::hex(WHITE).alpha(a * frame_a));
-            let x = snap(b.left + i as f32 * cell - width / 2.0);
-            let y = snap(b.top + i as f32 * cell - width / 2.0);
-            c.draw_rect(x, b.top, width, b.size, &paint);
-            c.draw_rect(b.left, y, b.size, width, &paint);
-        }
-        let ring = Color::hex(WHITE).alpha(BOX_LINE_A * frame_a);
-        c.draw_with(&Paint::fill(ring), |p| {
-            skia::add_continuous_rrect(p, b.left, b.top, b.size, b.size, BOARD_R);
+        // The border, over the cells' outer edges.
+        c.draw_with(&Paint::fill(Color::hex(PRIMARY).alpha(frame_a)), |p| {
+            skia::add_continuous_rrect(p, 0.0, 0.0, size, size, BOARD_R);
             skia::add_continuous_rrect_hole(
                 p,
-                b.left + BOX_LINE,
-                b.top + BOX_LINE,
-                b.size - 2.0 * BOX_LINE,
-                b.size - 2.0 * BOX_LINE,
-                BOARD_R - BOX_LINE,
+                BORDER,
+                BORDER,
+                size - 2.0 * BORDER,
+                size - 2.0 * BORDER,
+                BOARD_R - BORDER,
             );
         });
 
@@ -768,25 +791,20 @@ impl Sudoku {
         };
         for i in 0..81 {
             let (r, col) = (i / 9, i % 9);
-            let delay = (r + col) as f64 * MOUNT_STEP_MS;
-            let fade = ease_out(((since - delay) / MOUNT_FADE_MS).clamp(0.0, 1.0)) as f32;
-            if fade < 1.0 {
-                moving = true;
-            }
-            if fade <= 0.0 {
+            let fd = fade(r, col);
+            if fd <= 0.0 {
                 continue;
             }
-            let (x, y) = (b.left + col as f32 * cell, b.top + r as f32 * cell);
+            let (x, y) = (col as f32 * cell, r as f32 * cell);
             let (cx, cy) = (x + cell / 2.0, y + cell / 2.0);
             let v = g.board[r][col];
             if v != 0 {
-                let given = g.initial[r][col] != 0;
-                let (font, centre, hex) = if given {
-                    (&f.given, f.centres[0][v as usize], WHITE)
+                let (font, centre, hex) = if g.initial[r][col] != 0 {
+                    (&f.given, f.centres[0][v as usize], MUTED)
                 } else if g.wrong(r, col) {
-                    (&f.user, f.centres[1][v as usize], RED)
+                    (&f.user, f.centres[1][v as usize], ERROR)
                 } else {
-                    (&f.user, f.centres[1][v as usize], BLUE)
+                    (&f.user, f.centres[1][v as usize], WHITE)
                 };
                 let (wave_at, k) = self.wave[r][col];
                 let p = (now - wave_at) / WAVE_MS;
@@ -810,15 +828,15 @@ impl Sudoku {
                     c.scale(1.0 + grow, 1.0 + grow);
                 }
                 c.draw_text(
-                    &DIGITS[v as usize],
+                    DIGITS[v as usize],
                     -centre.0,
                     -centre.1,
                     font,
-                    &Paint::fill(Color::hex(hex).alpha(fade)),
+                    &Paint::fill(Color::hex(hex).alpha(fd)),
                 );
                 c.restore();
             } else if g.notes[r][col] != 0 {
-                // The marks on a 3 × 3 grid pulled in from the cell's lines.
+                // The marks on a 3 x 3 grid pulled in from the cell's lines.
                 let step = cell * 0.29;
                 for d in 1..=9u8 {
                     if g.notes[r][col] & (1 << d) == 0 {
@@ -827,18 +845,17 @@ impl Sudoku {
                     let k = (d - 1) as f32;
                     let nx = cx + (k % 3.0 - 1.0) * step;
                     let ny = cy + ((k / 3.0).floor() - 1.0) * step;
-                    let strong = d == sel_value;
-                    let (font, centre, hex) = if strong {
-                        (&f.note_strong, f.centres[3][d as usize], BLUE)
+                    let (font, centre, hex) = if d == hl {
+                        (&f.note_strong, f.centres[3][d as usize], PRIMARY_LIGHT)
                     } else {
-                        (&f.note, f.centres[2][d as usize], SECONDARY)
+                        (&f.note, f.centres[2][d as usize], MUTED)
                     };
                     c.draw_text(
-                        &DIGITS[d as usize],
+                        DIGITS[d as usize],
                         nx - centre.0,
                         ny - centre.1,
                         font,
-                        &Paint::fill(Color::hex(hex).alpha(fade)),
+                        &Paint::fill(Color::hex(hex).alpha(fd)),
                     );
                 }
             }
@@ -849,19 +866,81 @@ impl Sudoku {
 
 const DIGITS: [&str; 10] = ["", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
 
-/// A pulse over p in [0, 1): 0 → 1 → 0, smooth at both ends.
+/// A pulse over p in [0, 1): 0 -> 1 -> 0, smooth at both ends.
 fn bump(p: f64) -> f32 {
     let s = (p * std::f64::consts::PI).sin();
     (s * s) as f32
 }
 
-/// Ease-out cubic.
-fn ease_out(t: f64) -> f64 {
-    1.0 - (1.0 - t).powi(3)
+/// Ease in and out, quadratic.
+fn ease_in_out(t: f64) -> f64 {
+    if t < 0.5 {
+        2.0 * t * t
+    } else {
+        1.0 - (-2.0 * t + 2.0).powi(2) / 2.0
+    }
+}
+
+/// The cell lines and the box lines. Each boundary is two pieces side by side, one belonging to
+/// the cell before it (thicker and bluer on a box line) and one to the cell after; the
+/// horizontal ones stop at the vertical ones, so no point is drawn twice. With `fade`, every
+/// piece takes its cell's opacity, drawn per cell; without, whole lines.
+fn grid_lines(c: &mut Canvas, cell: f32, fade: Option<&dyn Fn(usize, usize) -> f32>) {
+    let size = cell * 9.0;
+    let lo = |i: usize| match i {
+        0 => 0.0,
+        9 => size,
+        _ => i as f32 * cell - if i % 3 == 0 { THIRD } else { LINE },
+    };
+    let hi = |i: usize| match i {
+        0 => 0.0,
+        9 => size,
+        _ => i as f32 * cell + LINE,
+    };
+    let a = |r: usize, col: usize| fade.map_or(1.0, |f| f(r, col));
+    for i in 1..9 {
+        let p = i as f32 * cell;
+        let third = i % 3 == 0;
+        // (start, end, colour, alpha, the piece's cell offset along the cross axis)
+        let pieces = [
+            (
+                lo(i),
+                p,
+                if third { PRIMARY } else { MUTED },
+                if third { THIRD_A } else { LINE_A },
+                1,
+            ),
+            (p, hi(i), MUTED, LINE_A, 0),
+        ];
+        for (from, to, hex, alpha, after) in pieces {
+            let w = to - from;
+            let idx = i - 1 + after;
+            // The vertical piece, per row when fading.
+            if fade.is_some() {
+                for r in 0..9 {
+                    let paint = Paint::fill(Color::hex(hex).alpha(alpha * a(r, idx)));
+                    c.draw_rect(from, r as f32 * cell, w, cell, &paint);
+                }
+            } else {
+                c.draw_rect(
+                    from,
+                    0.0,
+                    w,
+                    size,
+                    &Paint::fill(Color::hex(hex).alpha(alpha)),
+                );
+            }
+            // The horizontal piece, between the vertical ones.
+            for col in 0..9 {
+                let paint = Paint::fill(Color::hex(hex).alpha(alpha * a(idx, col)));
+                c.draw_rect(hi(col), from, lo(col + 1) - hi(col), w, &paint);
+            }
+        }
+    }
 }
 
 /// The gradient's runs of equal device rows, each channel error-diffused down the rows (so the
-/// 8-bit steps dissolve into one-level alternations, invisible at 3×): (first row, end, colour).
+/// 8-bit steps dissolve into one-level alternations, invisible at 3x): (first row, end, colour).
 fn gradient_rows(h: f32, scale: f32, from: u32, to: u32) -> Vec<(i32, i32, [u8; 3])> {
     let rows = (h * scale).round() as i32;
     let ch = |v: u32, k: u32| ((v >> k) & 0xFF) as f32;
@@ -885,37 +964,27 @@ fn gradient_rows(h: f32, scale: f32, from: u32, to: u32) -> Vec<(i32, i32, [u8; 
 }
 
 impl Surface for Sudoku {
-    fn max_fps(&self) -> u32 {
-        self.fps
-    }
-
     fn bind(&mut self, inputs: &[Value], _: Option<f64>) -> Result<(), SurfaceError> {
-        let n = |i: usize, or: f64| inputs.get(i).and_then(|v| v.as_number()).unwrap_or(or);
-        let (seed, reset, ok) = (n(0, 0.0), n(1, 0.0), n(2, 0.0));
-        if !self.seeded {
+        let n = |i: usize| inputs.get(i).and_then(|v| v.as_number()).unwrap_or(0.0);
+        let (seed, cmd, token) = (n(0), n(1), n(2));
+        self.notes_on = n(3) != 0.0;
+        if !self.seeded || seed != self.seed {
             self.seeded = true;
+            self.seed = seed;
             self.rng = Random::new(seed);
-            self.tokens = (reset, ok, n(7, 0.0));
+            self.token = token;
             self.new_game();
-        }
-        let size = n(5, 0.0);
-        if size > 0.0 {
-            self.board = Board {
-                left: n(3, 16.0) as f32,
-                top: n(4, 160.0) as f32,
-                size: size as f32,
-            };
-        }
-        self.notes_on = n(8, 0.0) != 0.0;
-        let (r0, o0, t0) = self.tokens;
-        let token = n(7, 0.0);
-        self.tokens = (reset, ok, token);
-        if reset != r0 || ok != o0 {
-            self.new_game();
-        } else if token != t0 {
-            self.command(n(6, 0.0) as u8);
+        } else if token != self.token {
+            self.token = token;
+            self.command(cmd as u8);
         }
         Ok(())
+    }
+
+    fn size(&mut self, width: f32, _height: f32) -> bool {
+        let changed = self.side != width;
+        self.side = width;
+        changed
     }
 
     fn wants_input(&self) -> bool {
@@ -926,9 +995,11 @@ impl Surface for Sudoku {
         let InputEvent::Pointer { phase, x, y, .. } = *event else {
             return;
         };
-        // The selection follows the finger down, on the touch (no wait for the lift).
-        if phase == PointerPhase::Down && self.solved_at.is_none() {
-            if let Some(cell) = self.board.at(x, y) {
+        // The selection follows the finger down, on the touch (no wait for the lift), once the
+        // cells are there.
+        let shown = self.started.is_some_and(|s| self.now - s >= REVEAL_MS);
+        if phase == PointerPhase::Down && shown && self.solved_at.is_none() {
+            if let Some(cell) = self.at(x, y) {
                 self.select(cell);
             }
         }
@@ -944,14 +1015,13 @@ impl Surface for Sudoku {
             |m: &Grid| -> String { m.iter().flatten().map(|&v| char::from(b'0' + v)).collect() };
         let (sr, sc) = g.selected.map_or((-1, -1), |(r, c)| (r as i32, c as i32));
         Some(format!(
-            "{{\"board\":\"{}\",\"solution\":\"{}\",\"selected\":[{sr},{sc}],\"mistakes\":{},\"remain\":\"{}\",\"notes\":{},\"solved\":{},\"seconds\":{}}}",
+            "{{\"board\":\"{}\",\"solution\":\"{}\",\"selected\":[{sr},{sc}],\"mistakes\":{},\"remain\":\"{}\",\"notes\":{},\"solved\":{}}}",
             grid(&g.board),
             grid(&g.solution),
             g.mistakes,
             self.sent_remain,
             self.notes_on,
             self.solved_at.is_some(),
-            (self.elapsed(self.now) / 1000.0).floor()
         ))
     }
 
@@ -969,21 +1039,16 @@ impl Surface for Sudoku {
             let _ = self.bind(&[], None);
         }
         self.now = now;
-        let size = (frame.width, frame.height, frame.scale);
-        if self.size != size {
-            self.size = size;
-            self.gradient = gradient_rows(size.1, size.2, BACKGROUND, SURFACE);
-        }
+        self.side = frame.width;
+        self.size = (frame.width, frame.height, frame.scale);
         if self.started.is_none() {
             self.started = Some(now);
+            self.due.push(Due {
+                at: now + PAD_MS,
+                message: "pad",
+            });
         }
         self.fire(now);
-        // The clock, once a second while the puzzle is open.
-        let secs = (self.elapsed(now) / 1000.0).floor() as i64;
-        if secs != self.sent_time {
-            self.sent_time = secs;
-            self.posted.push(format!("time:{secs}"));
-        }
         let moving = self.record(now);
         let (pw, ph) = frame.pixels();
         self.renderer.draw(
@@ -997,17 +1062,63 @@ impl Surface for Sudoku {
             ph,
             wgpu::Color::TRANSPARENT,
         );
-        if moving || !self.due.is_empty() {
-            self.fps = 0;
-            return true;
+        moving || !self.due.is_empty()
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// The backdrop.
+
+#[derive(Default)]
+struct Backdrop {
+    gradient: Vec<(i32, i32, [u8; 3])>,
+    size: (f32, f32, f32),
+    canvas: Canvas,
+    renderer: Renderer,
+}
+
+impl Surface for Backdrop {
+    fn bind(&mut self, _: &[Value], _: Option<f64>) -> Result<(), SurfaceError> {
+        Ok(())
+    }
+
+    fn render(
+        &mut self,
+        frame: &Frame,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        encoder: &mut wgpu::CommandEncoder,
+        target: &wgpu::TextureView,
+        format: wgpu::TextureFormat,
+    ) -> bool {
+        let size = (frame.width, frame.height, frame.scale);
+        if self.size != size {
+            self.size = size;
+            self.gradient = gradient_rows(size.1, size.2, BACKGROUND, SURFACE);
         }
-        if self.solved_at.is_none() {
-            // Only the clock waits: wake at its next second, not 120 times a second.
-            let left = 1000.0 - self.elapsed(now) % 1000.0;
-            self.fps = (1000.0 / left.max(1.0)).ceil().clamp(1.0, 120.0) as u32;
-            return true;
+        let c = &mut self.canvas;
+        c.begin(size.2);
+        for &(r0, r1, col) in &self.gradient {
+            c.draw_rect(
+                0.0,
+                r0 as f32 / size.2,
+                size.0,
+                (r1 - r0) as f32 / size.2,
+                &Paint::fill(Color::rgb8(col[0], col[1], col[2])),
+            );
         }
-        self.fps = 0;
+        let (pw, ph) = frame.pixels();
+        self.renderer.draw(
+            device,
+            queue,
+            encoder,
+            &self.canvas,
+            target,
+            format,
+            pw,
+            ph,
+            wgpu::Color::TRANSPARENT,
+        );
         false
     }
 }
@@ -1017,16 +1128,13 @@ mod tests {
     use super::*;
     use exact_gpu::{fixture, PointerKind};
 
-    const W: f32 = 420.0;
-    const H: f32 = 912.0;
-    const LEFT: f32 = 16.0;
-    const TOP: f32 = 170.0;
-    const SIZE: f32 = 388.0;
+    /// The board canvas's side (a 402 pt phone: 402 - 48).
+    const SIDE: f32 = 354.0;
 
     fn frame(now_ms: f64) -> Frame {
         Frame {
-            width: W,
-            height: H,
+            width: SIDE,
+            height: SIDE,
             scale: 3.0,
             now_ms,
             seekable: true,
@@ -1037,20 +1145,17 @@ mod tests {
         }
     }
 
-    fn inputs(reset: f64, cmd: f64, token: f64, notes: bool) -> Vec<Value> {
-        [
-            7.0,
-            reset,
-            0.0,
-            LEFT as f64,
-            TOP as f64,
-            SIZE as f64,
-            cmd,
-            token,
-            notes as u8 as f64,
-        ]
-        .map(Value::Number)
-        .to_vec()
+    fn inputs(seed: f64, cmd: f64, token: f64, notes: bool) -> Vec<Value> {
+        [seed, cmd, token, notes as u8 as f64]
+            .map(Value::Number)
+            .to_vec()
+    }
+
+    fn haptics(messages: Vec<String>) -> Vec<String> {
+        messages
+            .into_iter()
+            .filter(|m| m.starts_with("haptic:"))
+            .collect()
     }
 
     struct Driver {
@@ -1060,10 +1165,12 @@ mod tests {
     }
 
     impl Driver {
+        /// A puzzle whose reveal is over, so the cells take touches.
         fn new() -> Driver {
             let mut s = Sudoku::new();
-            s.size(W, H);
-            s.bind(&inputs(0.0, 0.0, 0.0, false), Some(0.0)).unwrap();
+            s.size(SIDE, SIDE);
+            s.bind(&inputs(7.0, 0.0, 0.0, false), Some(0.0)).unwrap();
+            s.started = Some(-REVEAL_MS - 1.0);
             Driver {
                 s,
                 token: 0.0,
@@ -1074,7 +1181,7 @@ mod tests {
         fn press(&mut self, cmd: u8) -> Vec<String> {
             self.token += 1.0;
             self.s
-                .bind(&inputs(0.0, cmd as f64, self.token, self.notes), None)
+                .bind(&inputs(7.0, cmd as f64, self.token, self.notes), None)
                 .unwrap();
             self.s.messages()
         }
@@ -1082,16 +1189,11 @@ mod tests {
         fn notes(&mut self, on: bool) {
             self.notes = on;
             self.s
-                .bind(&inputs(0.0, 0.0, self.token, on), None)
+                .bind(&inputs(7.0, 0.0, self.token, on), None)
                 .unwrap();
         }
 
-        fn tap(&mut self, (r, c): (usize, usize)) -> Vec<String> {
-            let cell = SIZE / 9.0;
-            let (x, y) = (
-                LEFT + (c as f32 + 0.5) * cell,
-                TOP + (r as f32 + 0.5) * cell,
-            );
+        fn touch(&mut self, x: f32, y: f32) -> Vec<String> {
             self.s.input(&InputEvent::Pointer {
                 id: 1,
                 phase: PointerPhase::Down,
@@ -1104,6 +1206,11 @@ mod tests {
                 at_ms: 0.0,
             });
             self.s.messages()
+        }
+
+        fn tap(&mut self, (r, c): (usize, usize)) -> Vec<String> {
+            let cell = SIDE / 9.0;
+            self.touch((c as f32 + 0.5) * cell, (r as f32 + 0.5) * cell)
         }
 
         fn empty(&self) -> Vec<(usize, usize)> {
@@ -1141,23 +1248,36 @@ mod tests {
     fn a_cell_selects_on_the_touch_with_a_selection_tick() {
         let mut d = Driver::new();
         let _ = d.s.messages();
-        assert_eq!(d.tap((2, 3)), vec!["haptic:selection"]);
+        assert_eq!(haptics(d.tap((2, 3))), vec!["haptic:selection"]);
         assert_eq!(d.s.game.selected, Some((2, 3)));
         // The same cell again: no second tick.
         assert!(d.tap((2, 3)).is_empty());
         // Outside the board: nothing.
-        d.s.input(&InputEvent::Pointer {
-            id: 1,
-            phase: PointerPhase::Down,
-            x: 200.0,
-            y: 40.0,
-            dx: 0.0,
-            dy: 0.0,
-            kind: PointerKind::Touch,
-            buttons: 1,
-            at_ms: 0.0,
-        });
+        d.touch(SIDE + 5.0, 40.0);
         assert_eq!(d.s.game.selected, Some((2, 3)));
+    }
+
+    #[test]
+    fn the_cells_take_no_touch_before_they_appear() {
+        let mut d = Driver::new();
+        d.s.started = Some(-100.0);
+        let _ = d.s.messages();
+        assert!(d.tap((2, 3)).is_empty());
+        assert_eq!(d.s.game.selected, None);
+    }
+
+    #[test]
+    fn the_pad_reports_the_selected_number() {
+        let mut d = Driver::new();
+        let given = (0..81)
+            .map(|i| (i / 9, i % 9))
+            .find(|&(r, c)| d.s.game.initial[r][c] != 0)
+            .unwrap();
+        let v = d.s.game.initial[given.0][given.1];
+        assert!(d.tap(given).contains(&format!("hl:{v}")));
+        let empty = d.empty()[0];
+        assert!(d.tap(empty).contains(&"hl:0".to_string()));
+        assert_eq!(d.s.game.highlighted(), 0);
     }
 
     #[test]
@@ -1168,7 +1288,7 @@ mod tests {
         let wrong = d.wrong_for(cell);
         let m = d.press(wrong);
         assert!(m.contains(&"haptic:error".to_string()), "{m:?}");
-        assert!(m.contains(&"mistakes:1".to_string()), "{m:?}");
+        assert_eq!(d.s.game.mistakes, 1);
         assert!(d.s.shake[cell.0][cell.1].is_finite());
         assert!(d.s.game.wrong(cell.0, cell.1));
         let before = d.s.game.remaining();
@@ -1215,7 +1335,7 @@ mod tests {
             .expect("an empty peer");
         d.notes(true);
         d.tap(b);
-        assert_eq!(d.press(digit), vec!["haptic:impact-light"]);
+        assert_eq!(haptics(d.press(digit)), vec!["haptic:impact-light"]);
         assert_eq!(d.s.game.notes[b.0][b.1], 1 << digit);
         d.press(digit);
         assert_eq!(d.s.game.notes[b.0][b.1], 0);
@@ -1239,7 +1359,7 @@ mod tests {
         let cell = d.empty()[0];
         d.tap(cell);
         d.press(d.wrong_for(cell));
-        assert_eq!(d.press(CMD_ERASE), vec!["haptic:impact-light"]);
+        assert_eq!(haptics(d.press(CMD_ERASE)), vec!["haptic:impact-light"]);
         assert_eq!(d.s.game.board[cell.0][cell.1], 0);
         d.press(CMD_UNDO);
         assert!(d.s.game.wrong(cell.0, cell.1));
@@ -1284,6 +1404,17 @@ mod tests {
         }
     }
 
+    fn celebration(d: &mut Driver) -> Vec<String> {
+        let mut all = Vec::new();
+        let mut t = 0.0;
+        while t < 2000.0 {
+            d.s.fire(t);
+            all.extend(d.s.messages());
+            t += 10.0;
+        }
+        all
+    }
+
     #[test]
     fn the_last_digit_celebrates_then_asks() {
         let mut d = Driver::new();
@@ -1293,41 +1424,62 @@ mod tests {
             d.press(d.answer(cell));
         }
         assert!(d.s.solved_at.is_some());
-        let mut all = Vec::new();
-        let mut t = 0.0;
-        while t < 2000.0 {
-            d.s.fire(t);
-            all.extend(d.s.messages());
-            t += 10.0;
-        }
+        let all = celebration(&mut d);
         let haptics: Vec<_> = all.iter().filter(|m| m.starts_with("haptic:")).collect();
         assert_eq!(haptics.len(), CELEBRATION.len());
         assert_eq!(haptics.last().unwrap().as_str(), "haptic:success");
         assert!(all.contains(&"alert:genius".to_string()));
-        // New Game: a fresh puzzle.
-        d.s.bind(&inputs(1.0, 0.0, d.token, false), None).unwrap();
+        // A new seed: a fresh puzzle.
+        d.s.bind(&inputs(8.0, 0.0, d.token, false), None).unwrap();
         assert!(d.s.solved_at.is_none());
         assert_eq!(d.empty().len(), 45);
     }
 
     #[test]
-    fn the_clock_ticks_once_a_second_and_rests_between() {
+    fn the_title_solves_the_board() {
+        let mut d = Driver::new();
+        let m = d.press(CMD_SOLVE);
+        assert!(m.contains(&"solved".to_string()), "{m:?}");
+        assert!(d.s.game.solved());
+        let all = celebration(&mut d);
+        assert!(all.contains(&"alert:genius".to_string()));
+    }
+
+    #[test]
+    fn the_circle_springs_in_and_out() {
+        let mut c = Circle::REST;
+        assert_eq!(c.value(0.0), (0.0, 0.0, true));
+        c.aim(1.0, 100.0);
+        let (s, o, rest) = c.value(150.0);
+        assert!(s > 0.0 && s < 1.0 && o > 0.0 && o < 1.0 && !rest);
+        let (s, o, rest) = c.value(100.0 + CIRCLE_REST_MS);
+        assert!(s > 0.999 && o == 1.0 && rest);
+        // Turned back mid-flight it leaves from where it is.
+        c.aim(0.0, 1000.0);
+        let (s, _, _) = c.value(1000.0);
+        assert!((s - 1.0).abs() < 0.01);
+        assert!(c.value(2000.0).0 < 0.001);
+    }
+
+    #[test]
+    fn the_pad_comes_after_start_and_the_board_then_rests() {
         let Some(gpu) = fixture::device_or_skip(fixture::device()) else {
             return;
         };
         let mut s = Sudoku::new();
-        s.size(W, H);
-        s.bind(&inputs(0.0, 0.0, 0.0, false), Some(0.0)).unwrap();
+        s.size(SIDE, SIDE);
+        s.bind(&inputs(7.0, 0.0, 0.0, false), Some(0.0)).unwrap();
         let mut t = 0.0;
-        let mut times = Vec::new();
-        while t < 3100.0 {
-            fixture::render(&gpu, &mut s, &frame(t)).unwrap();
-            times.extend(s.messages().into_iter().filter(|m| m.starts_with("time:")));
+        let mut pads = Vec::new();
+        let mut moving = true;
+        while t < PAD_MS + 600.0 {
+            (_, moving) = fixture::render(&gpu, &mut s, &frame(t)).unwrap();
+            pads.extend(s.messages().into_iter().filter(|m| m == "pad").map(|_| t));
             t += 1000.0 / 120.0;
         }
-        assert_eq!(times, vec!["time:0", "time:1", "time:2", "time:3"]);
-        // At rest (the fade done) only the clock wakes it: a low frame rate.
-        assert!(s.max_fps() > 0 && s.max_fps() < 120, "{}", s.max_fps());
+        assert_eq!(pads.len(), 1);
+        assert!(pads[0] >= PAD_MS && pads[0] < PAD_MS + 20.0, "{pads:?}");
+        assert!(!moving, "a board at rest asks for no frames");
     }
 
     fn out(name: &str, img: &fixture::Pixels) {
@@ -1336,14 +1488,15 @@ mod tests {
         }
     }
 
-    /// The board's states, rendered (`EXACT_GPU_OUT=<dir>`): rest, a selection, a pencil-marked
-    /// cell and an entry, a wrong digit mid-shake, a unit's wave and the solved board's wave.
+    /// The board's states, rendered (`EXACT_GPU_OUT=<dir>`): the cascade, rest, a selection,
+    /// a pencil-marked cell and an entry, a wrong digit, a unit's wave and the solved board.
     #[test]
     fn renders_the_board_states() {
         let Some(gpu) = fixture::device_or_skip(fixture::device()) else {
             return;
         };
         let mut d = Driver::new();
+        d.s.started = None;
         let mut t = 0.0;
         let run = |s: &mut Sudoku, until: f64, t: &mut f64| -> fixture::Pixels {
             loop {
@@ -1354,46 +1507,40 @@ mod tests {
                 *t += 1000.0 / 120.0;
             }
         };
-        let rest = run(&mut d.s, 600.0, &mut t);
+        let cascade = run(&mut d.s, 1200.0, &mut t);
+        out("sudoku-0-cascade", &cascade);
+        let rest = run(&mut d.s, 2600.0, &mut t);
         out("sudoku-1-rest", &rest);
+        let cell = SIDE / 9.0;
         let px = |img: &fixture::Pixels, (r, c): (usize, usize), fx: f32, fy: f32| {
-            let cell = SIZE / 9.0;
-            let x = ((LEFT + (c as f32 + fx) * cell) * 3.0) as u32;
-            let y = ((TOP + (r as f32 + fy) * cell) * 3.0) as u32;
+            let x = ((c as f32 + fx) * cell * 3.0) as u32;
+            let y = ((r as f32 + fy) * cell * 3.0) as u32;
             img.at(x, y)
         };
-        // A given digit is white ink at its centre column somewhere; the box line is brighter than
-        // a cell line.
+        // A box line is stronger than a cell line.
         let box_line = rest.at(
-            ((LEFT + 3.0 * SIZE / 9.0) * 3.0) as u32,
-            ((TOP + SIZE / 18.0) * 3.0) as u32,
+            ((3.0 * cell - 1.0) * 3.0) as u32,
+            ((cell / 2.0) * 3.0) as u32,
         );
-        let cell_line = rest.at(
-            ((LEFT + SIZE / 9.0) * 3.0).round() as u32,
-            ((TOP + SIZE / 18.0) * 3.0) as u32,
-        );
-        assert!(
-            box_line[0] > cell_line[0] + 20,
-            "{box_line:?} vs {cell_line:?}"
-        );
+        let cell_line = rest.at(((cell - 0.25) * 3.0) as u32, ((cell / 2.0) * 3.0) as u32);
+        assert!(box_line[3] > cell_line[3], "{box_line:?} vs {cell_line:?}");
 
-        // Select an empty cell whose box holds the same number elsewhere as a given.
+        // Select an empty cell: it takes the blue tint.
         let empty = d.empty();
-        let cell = empty[empty.len() / 2];
-        d.tap(cell);
+        let target = empty[empty.len() / 2];
+        d.tap(target);
         let sel = run(&mut d.s, t + 20.0, &mut t);
         out("sudoku-2-selection", &sel);
-        let at_sel = px(&sel, cell, 0.12, 0.12);
-        let at_rest = px(&rest, cell, 0.12, 0.12);
         assert!(
-            at_sel[2] > at_rest[2] + 30,
-            "the selected cell is blue: {at_sel:?} vs {at_rest:?}"
+            px(&sel, target, 0.12, 0.12)[3] > px(&rest, target, 0.12, 0.12)[3] + 30,
+            "the selected cell is tinted"
         );
 
-        // Pencil marks in another empty cell, then a right entry in the selected one.
+        // Pencil marks in another empty cell, then a right entry in the selected one: circles
+        // on every cell of its number.
         let other = *empty
             .iter()
-            .find(|&&p| p != cell && !peers(p, cell))
+            .find(|&&p| p != target && !peers(p, target))
             .unwrap();
         d.notes(true);
         d.tap(other);
@@ -1401,12 +1548,14 @@ mod tests {
             d.press(k);
         }
         d.notes(false);
-        d.tap(cell);
-        d.press(d.answer(cell));
+        d.tap(target);
+        d.press(d.answer(target));
         let entry = run(&mut d.s, t + 700.0, &mut t);
         out("sudoku-3-entry", &entry);
+        let ring = px(&entry, target, 0.5, 0.1);
+        assert!(ring[3] > 40, "the entry's circle is drawn: {ring:?}");
 
-        // A wrong digit, mid-shake.
+        // A wrong digit, then settled: red ink.
         let wrong_cell = *d.empty().iter().find(|&&p| p != other).unwrap();
         d.tap(wrong_cell);
         d.press(d.wrong_for(wrong_cell));
@@ -1414,7 +1563,7 @@ mod tests {
         out("sudoku-4-error", &shake);
         let settled = run(&mut d.s, t + 600.0, &mut t);
         out("sudoku-4b-error-settled", &settled);
-        let red = settled.count(|p| p[0] > 200 && p[1] < 120 && p[2] < 110);
+        let red = settled.count(|p| p[0] > 150 && p[1] < 90 && p[2] < 90 && p[3] > 200);
         assert!(red > 50, "the wrong digit is red: {red}");
         d.press(CMD_ERASE);
 
@@ -1454,6 +1603,8 @@ mod tests {
         out("sudoku-6-solved-wave", &solved);
         let done = run(&mut d.s, t + 1600.0, &mut t);
         out("sudoku-7-solved", &done);
+        // The celebration's timed haptics and the alert are due for a while yet.
+        d.s.due.clear();
         let (_, moving) = fixture::render(&gpu, &mut d.s, &frame(t + 2000.0)).unwrap();
         assert!(!moving, "a solved board rests");
     }
