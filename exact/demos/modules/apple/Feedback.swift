@@ -116,11 +116,12 @@ struct RecentNote: Identifiable { let id: String; let n: Int; let comment: Strin
 
 final class SheetModel: ObservableObject {
     let slug: String, name: String, shot: UIImage
+    let architecture: DemoArchitecture?
     @Published var point: CGPoint?
     @Published var text = ""
     @Published var recent: [RecentNote] = []
     var close: () -> Void = {}
-    init(slug: String, name: String, shot: UIImage) { self.slug = slug; self.name = name; self.shot = shot }
+    init(slug: String, name: String, shot: UIImage) { self.slug = slug; self.name = name; self.shot = shot; architecture = DemoArchitecture.bySlug[slug] }
 
     func send(_ kind: String, image: Bool = true) {
         FeedbackQueue.shared.send(kind: kind, slug: slug, name: name, text: kind == "note" ? text : "",
@@ -160,6 +161,7 @@ private struct FeedbackSheet: View {
                         command("✅ Looks good") { model.send("approve", image: false) }
                     }
                 }
+                if let architecture = model.architecture { ArchitectureCard(architecture: architecture) }
                 TextField("What's off? (dictation works)", text: $model.text, axis: .vertical)
                     .lineLimit(2...6)
                     .textFieldStyle(.roundedBorder)
@@ -213,6 +215,87 @@ private struct FeedbackSheet: View {
     private func command(_ title: String, action: @escaping () -> Void) -> some View {
         Button(action: action) { Text(title).font(.subheadline).frame(maxWidth: .infinity, alignment: .leading) }
             .buttonStyle(.bordered)
+    }
+}
+
+// MARK: - How it's built
+
+/// Contract -> Rust -> Native, each layer with the number that says how much of the demo it carries.
+/// Static: the facts are a dictionary lookup (Architecture.generated.swift), nothing is computed here.
+private struct ArchitectureCard: View {
+    let architecture: DemoArchitecture
+
+    var body: some View {
+        let a = architecture
+        let views = a.nativeViews + a.systemAPIs
+        VStack(alignment: .leading, spacing: 8) {
+            Text("How it's built").font(.subheadline.weight(.semibold))
+            HStack(spacing: 4) {
+                LayerTile(symbol: "doc.text", title: "Contract", role: "UI, state and gestures", tint: .blue,
+                          count: a.contractLines, unit: "lines",
+                          details: ["\(a.contractComponents) component\(a.contractComponents == 1 ? "" : "s")"]
+                              + (a.contractActions > 0 ? ["\(a.contractActions) action\(a.contractActions == 1 ? "" : "s")"] : [])
+                              + (a.contractDerives > 0 ? ["\(a.contractDerives) derive\(a.contractDerives == 1 ? "" : "s")"] : []))
+                arrow
+                LayerTile(symbol: "cpu", title: "Rust", role: "Per-frame GPU drawing", tint: .orange,
+                          count: a.rustFiles.isEmpty ? nil : a.rustLines, unit: "lines",
+                          details: (a.rustFiles.count > 1 ? ["\(a.rustFiles.count) files"] : [])
+                              + (a.shaders.isEmpty ? [] : ["\(a.shaders.count) shader\(a.shaders.count == 1 ? "" : "s")"])
+                              + (a.hostHaptics ? ["haptics"] : []))
+                arrow
+                LayerTile(symbol: "iphone", title: "Native", role: "Swift views and system APIs", tint: .green,
+                          count: views.isEmpty ? nil : views.count, unit: views.count == 1 ? "piece" : "pieces",
+                          details: Array(views.prefix(3)) + (views.count > 3 ? ["+\(views.count - 3) more"] : []))
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            Text(a.summary).font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var arrow: some View {
+        Image(systemName: "chevron.right").font(.caption2.weight(.bold)).foregroundStyle(.tertiary)
+            .accessibilityHidden(true)
+    }
+}
+
+private struct LayerTile: View {
+    let symbol: String, title: String, role: String
+    let tint: Color
+    /// nil: the demo does not use this layer.
+    let count: Int?
+    let unit: String
+    let details: [String]
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Image(systemName: symbol).font(.title3.weight(.semibold)).foregroundStyle(count == nil ? Color.secondary : tint)
+                .padding(.bottom, 2)
+            Text(title).font(.caption.weight(.bold))
+            if let count {
+                Text(grouped(count)).font(.system(.title3, design: .rounded).weight(.bold)).monospacedDigit()
+                Text(unit).font(.caption2).foregroundStyle(.secondary)
+            } else {
+                Text("not used").font(.footnote.weight(.medium)).foregroundStyle(.secondary)
+                Text(" ").font(.caption2)
+            }
+            Text(role).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true).padding(.top, 2)
+            if count != nil {
+                ForEach(details, id: \.self) { Text($0).font(.caption2.weight(.medium)).lineLimit(1).minimumScaleFactor(0.8) }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 6).padding(.vertical, 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .opacity(count == nil ? 0.5 : 1)
+    }
+
+    private func grouped(_ n: Int) -> String {
+        var out = "", digits = String(n)
+        while digits.count > 3 { out = "," + digits.suffix(3) + out; digits.removeLast(3) }
+        return digits + out
     }
 }
 
