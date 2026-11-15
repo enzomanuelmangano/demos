@@ -353,8 +353,10 @@ struct Layout {
 }
 
 impl Layout {
-    fn new(w: f32, h: f32, scale: f32, safe_top: f32, fonts: Option<&Fonts>) -> Layout {
+    fn new(w: f32, h: f32, scale: f32, safe_top: f32, fonts: Option<&Fonts>, glass: bool) -> Layout {
+        // Under the glass header the screens' own rows go: the content starts 16 under it.
         let row = grid(safe_top + BUTTON_ROW, scale);
+        let content_top = if glass { safe_top + BUTTON + 16.0 } else { row + HEADER + HEADER_BELOW };
         let (title_h, heading_w, heading_h, label_h, input_h) = match fonts {
             Some(f) => (
                 ceil_grid(natural(&f.title), scale),
@@ -367,14 +369,14 @@ impl Layout {
         };
         let title_top = grid(row + (HEADER - title_h) / 2.0, scale);
         let plus_x = grid(w - HEADER_PAD - BUTTON, scale);
-        let cards = row + HEADER + HEADER_BELOW;
+        let cards = content_top;
         // fillCenter: between the two buttons, the text centred both ways.
         let (cx0, cw) = (ADD_PAD + BUTTON, w - 2.0 * (ADD_PAD + BUTTON));
         let heading = (
             grid(cx0 + (cw - heading_w) / 2.0, scale),
             grid(row + (BUTTON - heading_h) / 2.0, scale),
         );
-        let box_y = row + BUTTON + BOX_TOP;
+        let box_y = if glass { content_top } else { row + BUTTON + BOX_TOP };
         let label_top = box_y + BOX_PAD + LABEL_TOP;
         let input_y = label_top + label_h + LABEL_BELOW + INPUT_TOP;
         let content = BOX_PAD + LABEL_TOP + label_h + LABEL_BELOW + INPUT_TOP + input_h + BOX_PAD;
@@ -581,6 +583,11 @@ struct GlTransitions {
     /// closes the screen as its close does.
     chrome_back: bool,
     backs: Option<f64>,
+    /// Inputs 6 and 7 (phone feedback 2026-11-15, "integrate it with the header"): the glass
+    /// header's add and check presses. Given the glass header, the screens draw no header
+    /// row of their own: the titles sit on the glass row and the content starts under it.
+    adds: Option<f64>,
+    checks: Option<f64>,
     safe_bottom: f32,
     /// The field's text (the Contract's `text`), and whether the field is mounted over the canvas.
     text: String,
@@ -616,6 +623,8 @@ impl GlTransitions {
             safe_top: 0.0,
             chrome_back: false,
             backs: None,
+            adds: None,
+            checks: None,
             safe_bottom: 0.0,
             text: String::new(),
             field: false,
@@ -720,7 +729,8 @@ impl GlTransitions {
         );
         let scroll = self.scroll.offset as f32;
         let row = l.row - scroll;
-        if let Some(f) = self.fonts.as_ref() {
+        let glass = self.chrome_back;
+        if let (Some(f), false) = (self.fonts.as_ref(), glass) {
             c.draw_text_spaced(
                 "ADD NOTE",
                 HEADER_PAD,
@@ -730,9 +740,12 @@ impl GlTransitions {
                 TITLE_SPACING,
             );
         }
-        // The + (PressableScale about its centre).
+        // The + (PressableScale about its centre); the glass header's + stands for it.
         let k = self.plus.scale() as f32;
         c.save();
+        if glass {
+            c.opacity(0.0);
+        }
         c.translate(l.plus_x + BUTTON / 2.0, row + BUTTON / 2.0);
         c.scale(k, k);
         c.translate(-BUTTON / 2.0, -BUTTON / 2.0);
@@ -762,6 +775,23 @@ impl GlTransitions {
             };
             draw_card(c, card, font, &l, scroll, p, FADE_DY * (1.0 - p));
         }
+        if glass {
+            // The scroll edge: the list fades out under the glass header (the background, opaque
+            // at the top, gone 16 under the row), and the title sits on the row.
+            let edge = l.cards;
+            let bands = 32;
+            for k in 0..bands {
+                let t = k as f32 / bands as f32;
+                let a = (1.0 - t) * (1.0 - t);
+                c.draw_rect(0.0, edge * t, l.w, edge / bands as f32 + 0.5, &Paint::fill(Color::view_hex(BACKGROUND)).with_opacity(a));
+            }
+            if let Some(f) = self.fonts.as_ref() {
+                let lh = natural(&f.heading);
+                let x = (l.w - f.heading.advance_width("Notes")) / 2.0;
+                let top = self.safe_top + (BUTTON - lh) / 2.0;
+                c.draw_text("Notes", x, gfx::baseline(&f.heading, top), &f.heading, &Paint::fill(Color::view_hex(TEXT)));
+            }
+        }
     }
 
     fn draw_add_note(&mut self, top: f32, draw_field: bool) {
@@ -789,9 +819,13 @@ impl GlTransitions {
             draw_icon(c, &icons.large, CLOSE, s, Color::view_hex(TEXT));
             c.restore();
         }
-        // The check.
+        // The check (the glass header's checkmark stands for it when there is one).
         let k = self.check.scale() as f32;
+        let glass = self.chrome_back;
         c.save();
+        if glass {
+            c.opacity(0.0);
+        }
         c.translate(l.check_x + BUTTON / 2.0, row + BUTTON / 2.0);
         c.scale(k, k);
         c.translate(-BUTTON / 2.0, -BUTTON / 2.0);
@@ -1045,11 +1079,36 @@ impl Surface for GlTransitions {
         if backs.is_some() {
             self.backs = backs;
         }
+        let adds = number(6, "adds")?;
+        if let (Some(seen), Some(now)) = (self.adds, adds) {
+            if now != seen && self.route == Route::Home && self.run.is_none() {
+                // The + press: prepareTransition (the snapshot), then navigate('AddNote').
+                self.snap_first = true;
+            }
+        }
+        if adds.is_some() {
+            self.adds = adds;
+        }
+        let checks = number(7, "checks")?;
+        if let (Some(seen), Some(now)) = (self.checks, checks) {
+            if now != seen && self.route == Route::AddNote && self.run.is_none() {
+                if self.text.is_empty() {
+                    self.posted.push("alert".into());
+                } else {
+                    self.run_transition(true);
+                }
+            }
+        }
+        if checks.is_some() {
+            self.checks = checks;
+        }
         let chrome_back = matches!(inputs.get(5), Some(Value::Bool(true)));
         if chrome_back && !self.chrome_back {
             // The Contract hands the add-note screen's way back to the glass button only once
             // the surface says it takes it (a build without this keeps the screen's own close).
             self.posted.push("glass-back".into());
+            // …and the glass header (inputs 6 and 7), likewise only once a build has it.
+            self.posted.push("glass-header".into());
         }
         self.chrome_back = chrome_back;
         Ok(())
@@ -1113,8 +1172,9 @@ impl Surface for GlTransitions {
         match self.route {
             Route::Home => {
                 let scroll = self.scroll.offset as f32;
+                let glass = self.chrome_back;
                 if phase == Phase::Down && !self.scroll.moving() {
-                    self.plus.pointer_down(id, l.on_plus(x, y, scroll));
+                    self.plus.pointer_down(id, !glass && l.on_plus(x, y, scroll));
                 }
                 // The ScrollView: vertical, so its axis is fed as the crate's x.
                 self.scroll.input(id, phase, y, x, at_ms, true);
@@ -1124,7 +1184,7 @@ impl Surface for GlTransitions {
                 }
                 if phase != Phase::Down {
                     if let Some(PressEvent::Press(press)) =
-                        self.plus.pointer(id, phase, l.on_plus(x, y, scroll))
+                        self.plus.pointer(id, phase, !glass && l.on_plus(x, y, scroll))
                     {
                         // prepareTransition (the snapshot), then navigate('AddNote').
                         self.posted.extend(press.global_message().map(String::from));
@@ -1138,7 +1198,7 @@ impl Surface for GlTransitions {
                         .close
                         .pointer_down(id, !self.chrome_back && l.on_close(x, y))
                     {
-                        self.check.pointer_down(id, l.on_check(x, y));
+                        self.check.pointer_down(id, !self.chrome_back && l.on_check(x, y));
                     }
                     return;
                 }
@@ -1149,7 +1209,7 @@ impl Surface for GlTransitions {
                     self.posted.extend(press.global_message().map(String::from));
                     self.run_transition(false);
                 } else if let Some(PressEvent::Press(press)) =
-                    self.check.pointer(id, phase, l.on_check(x, y))
+                    self.check.pointer(id, phase, !self.chrome_back && l.on_check(x, y))
                 {
                     self.posted.extend(press.global_message().map(String::from));
                     if self.text.is_empty() {
@@ -1179,6 +1239,7 @@ impl Surface for GlTransitions {
             frame.scale,
             self.safe_top,
             self.fonts.as_ref(),
+            self.chrome_back,
         );
         self.scroll.port = frame.height as f64;
         if self.home.width != frame.width {
@@ -1748,47 +1809,55 @@ mod tests {
     }
 
     #[test]
-    fn the_glass_back_closes_the_add_note_screen() {
+    fn the_glass_header_adds_checks_and_goes_back() {
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
         exact_gpu::shaders::load_dir(&dir, &crate::REGISTRY).unwrap();
         let gpu = match fixture::device() {
             Ok(gpu) => gpu,
             Err(error) => return eprintln!("{error}; skipped"),
         };
-        let with = |s: &mut Box<dyn Surface>, field: bool, backs: f64| {
+        let with = |s: &mut Box<dyn Surface>, text: &str, field: bool, n: [f64; 3]| {
             s.bind(
                 &[
                     Value::Number(SAFE_TOP),
                     Value::Number(SAFE_BOTTOM),
-                    Value::str(""),
+                    Value::str(text),
                     Value::Bool(field),
-                    Value::Number(backs),
+                    Value::Number(n[0]),
                     Value::Bool(true),
+                    Value::Number(n[1]),
+                    Value::Number(n[2]),
                 ],
                 None,
             )
             .unwrap();
         };
         let mut s = surface();
-        with(&mut s, false, 0.0);
-        assert_eq!(s.messages(), vec!["glass-back".to_string()]);
-        let (_, ms) = render_to(&gpu, &mut s, 0.0, 2400.0);
+        with(&mut s, "", false, [0.0; 3]);
+        assert_eq!(s.messages(), vec!["glass-back".to_string(), "glass-header".to_string()]);
+        let (home, ms) = render_to(&gpu, &mut s, 0.0, 2400.0);
+        home.save("gl-glass-home");
+        // The screen's own + is not drawn nor pressed under the glass header.
         let row = SAFE_TOP as f32 + 56.0;
         tap(&mut s, W - 40.0, row + 24.0, ms + 10.0);
+        assert!(s.messages().is_empty());
+        // The glass +: the add-note screen slides up.
+        with(&mut s, "", false, [0.0, 1.0, 0.0]);
         let (_, ms) = render_to(&gpu, &mut s, ms + 70.0, ms + 900.0);
         assert!(s.messages().contains(&"presented".to_string()));
-        with(&mut s, true, 0.0);
-        // The screen's own close is not there under the glass Back.
+        with(&mut s, "", true, [0.0, 1.0, 0.0]);
+        let (add, ms) = render_to(&gpu, &mut s, ms + 10.0, ms + 100.0);
+        add.save("gl-glass-add");
+        // Its own close is not there; the glass check on an empty note asks for text.
         tap(&mut s, 32.0, row + 24.0, ms + 10.0);
         assert!(s.messages().is_empty());
-        // The demo screen's Back: the close's warp, no note.
-        with(&mut s, true, 1.0);
+        with(&mut s, "", true, [0.0, 1.0, 1.0]);
+        assert_eq!(s.messages(), vec!["alert".to_string()]);
+        // The glass Back: the close's warp, no note.
+        with(&mut s, "", true, [1.0, 1.0, 1.0]);
         let (_, _) = render_to(&gpu, &mut s, ms + 80.0, ms + 80.0 + 1530.0);
         assert!(s.messages().contains(&"dismiss".to_string()));
         let agent = s.agent("").unwrap();
-        assert!(
-            agent.starts_with("{\"route\":\"home\",\"progress\":0.0000,\"notes\":20,"),
-            "{agent}"
-        );
+        assert!(agent.starts_with("{\"route\":\"home\",\"progress\":0.0000,\"notes\":20,"), "{agent}");
     }
 }
