@@ -137,11 +137,17 @@ component ClerkToast
     goneK = keep.map(j => clerkNum(goneK, j))
     dragKey = key
 
+  // Haptics (past RN, which plays none): light when the finger takes a toast (pointerdown on
+  // its handle), medium when a release past -50 dismisses it.
+  action grabbed
+    haptic("impact-light")
+
   // Pan onEnd: past -50 dismissItem (the spring to -windowWidth, then onDismiss); else
   // translateX withSpring(0) (the layer's own spring home, which the toast follows).
   action released(x: number, y: number, scale: number, vx: number, vy: number, vscale: number)
     let i = keys.indexOf(dragKey)
     if i >= 0 and x < -50 and clerkNum(gone, i) == 0
+      haptic("impact-medium")
       goneK = clerkSet(goneK, i, clerkNewer(gone, i))
       gone = clerkSet(gone, i, 1)
       goneX = clerkSet(goneX, i, x)
@@ -194,7 +200,7 @@ component ClerkToast
               view position="absolute" left=(w * 0.05) bottom=(50 + clerkBottom(clerkNewer(gone, i)))
                 width=(w * 0.9) height=55 pointer-events="auto" touch-action="none"
                 transformDragFor="clerk-drag" transformgeometry=began(key)
-                transformrelease=released aria-label="Swipe the toast away"
+                transformrelease=released pointerdown=grabbed aria-label="Swipe the toast away"
                 testId=`clerk-handle-${key}`
                 // The eighth toast's x is a PressableScale inside the gesture: an unseen copy of
                 // its row, so the press lands where the x is drawn.
