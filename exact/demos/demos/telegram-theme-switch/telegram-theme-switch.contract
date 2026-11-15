@@ -12,10 +12,15 @@ use DemoEnv from "../env.contract"
 component TelegramThemeSwitch
   props
     env: DemoEnv
-  // The app's PressablesConfig onPress: Haptics.selectionAsync().
+  // The app's PressablesConfig onPress: Haptics.selectionAsync(); the redesign's switch: a light
+  // impact at the button's touch, a soft one as the reveal lands.
   action heard(m: string)
     if m == "haptic:selection"
       haptic("selection")
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+    if m == "haptic:impact-soft"
+      haptic("impact-soft")
   view
     // The tab bar's paddingBottom is safeBottom / 2.
     canvas surface=telegram_theme_switch(env.safeBottom) message=heard position="absolute" top=0
