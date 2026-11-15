@@ -40,7 +40,7 @@ component DemoScreen
   action inspire
     haptic("impact-light")
     inspiring = true
-  action uninspire
+  action sheetChanged(v: string)
     inspiring = false
   action follow
     inspiring = false
@@ -92,29 +92,10 @@ component DemoScreen
           glass-button press=inspire caption="Inspiration" symbol="info" edge="trailing"
             aria-label="Inspiration" testId="inspiration" position="absolute" top=top right=16 width=48
             height=48
-      // The sheet, sized to its content (BottomSheet fitToContents, dark, a grabber): title2 bold,
-      // the story in body, the action as a large capsule button; inset 24. Drawn in the route, not
-      // presented: a `dialog`'s showModal from the full-screen demo route never appeared on the
-      // phone. A tap outside, or a drag down on the sheet, closes it.
+      // The Inspiration sheet: RN's @expo/ui BottomSheet (fitToContents, a grabber, dark), a real
+      // UIKit sheet presented from the top-most controller: `inspiration-sheet`
+      // (modules/apple/InspirationSheet.swift). Its action opens the post; a drag closes it.
       if demo.story != ""
-        view position="absolute" inset=0 background-color="rgba(0, 0, 0, 0.3)"
-          opacity=(inspiring ? 1 : 0) transition="opacity 300ms ease-out"
-          pointer-events=(inspiring ? "auto" : "none") press=uninspire aria-hidden=true
-          testId="inspiration-scrim"
-        column position="absolute" left=8 right=8 bottom=8 color-scheme="dark"
-          backgroundMaterial="regular" border-radius=40 corner-shape="-exact-continuous"
-          translate=`0px ${inspiring ? 0 : env.height}px`
-          transition="translate 450ms cubic-bezier(0.32, 0.72, 0, 1)"
-          pointer-events=(inspiring ? "auto" : "none") aria-label="Inspiration"
-          aria-hidden=(not inspiring) testId="inspiration-sheet"
-          view width=36 height=5 border-radius=2.5 background-color="rgba(255, 255, 255, 0.3)"
-            align-self="center" margin-top=5 aria-hidden=true
-          column gap=16 padding="23px 24px 24px" align-items="stretch"
-            text "Inspiration" font="-exact-title2" font-weight=700 color="#ffffff"
-            text demo.story font="-exact-body" color="#ffffff"
-            // RN's glassProminent capsule, controlSize large, the sheet's full width: 50 tall,
-            // headline (17 semibold) in white on the system blue.
-            button press=follow appearance="none" testId="inspiration-action" margin-top=8
-              height=50 border-radius=25 background-color="-exact-system-blue" display="flex"
-              align-items="center" justify-content="center"
-              text demo.actionLabel font-size=17 font-weight=600 color="#ffffff"
+        inspiration-sheet open=(inspiring ? "true" : "false") caption="Inspiration" story=demo.story
+          action-label=demo.actionLabel press=follow change=sheetChanged position="absolute" left=0
+          top=0 width=0 height=0 aria-hidden=true testId="inspiration-sheet"
