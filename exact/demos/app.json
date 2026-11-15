@@ -24,7 +24,8 @@
     "toggle-sheet",
     "music-tabbar",
     "native-tabbar",
-    "page-dots"
+    "page-dots",
+    "search-reveal"
   ],
   "host": {
     "web": {},

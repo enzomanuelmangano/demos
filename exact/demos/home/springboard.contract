@@ -25,6 +25,11 @@ component Springboard
   state boxH = 0
   derive per = perPage(boxW, boxH)
   derive pages = boxW > 0 and boxH > 0 ? range(pageCount(demos.length, per)) : []
+  // The pull-to-search's rows, as the native view takes them: one "|" list per field.
+  derive searchSlugs = demos.map(d => d.slug).join("|")
+  derive searchNames = demos.map(d => d.name).join("|")
+  derive searchLabels = demos.map(d => d.label).join("|")
+  derive searchIcons = demos.map(d => d.icon).join("|")
 
   action fit(w: number, h: number)
     boxW = w
@@ -52,6 +57,11 @@ component Springboard
         // Page dots: native, they read the pager's offset in the same frame as the scroll (PageDots.swift).
         if pages.length > 1
           page-dots scroller="pager" count=pages.length height=44 flex-shrink=0 aria-hidden=true
+        // Pull down on the pager to search: a native overlay (SearchReveal.swift) blurs the home, shows the field
+        // and the results, and filters as you type, all off the plan. It passes every touch through until
+        // the search is committed; a tapped result arrives here as `change(slug)` and opens like an icon.
+        search-reveal scroller="pager" slugs=searchSlugs names=searchNames labels=searchLabels icons=searchIcons
+          icon-size=iconSize(boxW) side-margin=22 change=open position="absolute" inset=0 testId="search"
 
 // The squircle icon and its label under it; a long press offers the demo's inspiration, a share
 // and its code.

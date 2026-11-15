@@ -32,6 +32,8 @@ func pageScrollerHatchEnded(_ element: ExactElement) {
 
 final class PageScrollers {
     static let shared = PageScrollers()
+    /// Posted when a scroller is named or leaves (`userInfo["name"]`): other views that follow a pager.
+    static let changed = Notification.Name("DemosPageScrollerChanged")
     private final class Weak<T: AnyObject> { weak var value: T?; init(_ v: T) { value = v } }
     private var scrollers: [String: Weak<UIScrollView>] = [:]
     private var waiting: [Weak<PageDotsView>] = []
@@ -57,12 +59,14 @@ final class PageScrollers {
         scrollers[name] = Weak(scroll)
         waiting.removeAll { $0.value == nil }
         for dots in waiting.compactMap(\.value) where dots.scrollerName == name { dots.attach(scroll) }
+        NotificationCenter.default.post(name: Self.changed, object: nil, userInfo: ["name": name])
     }
 
     func remove(_ name: String, element: ExactElement) {
         guard let current = scrollers[name]?.value, current === Self.scrollView(in: element) else { return }
         scrollers[name] = nil
         for dots in waiting.compactMap(\.value) where dots.scrollerName == name { dots.attach(nil) }
+        NotificationCenter.default.post(name: Self.changed, object: nil, userInfo: ["name": name])
     }
 
     func wait(_ dots: PageDotsView) {

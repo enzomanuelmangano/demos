@@ -25,6 +25,7 @@
 //   accessory; `native-tabbar` is the same bar without the accessory.
 // `page-dots` (PageDots.swift): the home's page dots, following the pager's scroll offset
 //   (the `page-scroller` hatch names the pager's scroll view).
+// `search-reveal` (SearchReveal.swift): the home's pull-to-search, driven by the same pager.
 import Foundation
 #if os(iOS)
 import CoreHaptics
@@ -58,7 +59,8 @@ final class DemosModule: ExactModule {
          "system-alert": native("system-alert") { SystemAlert(props: $0, events: $1) },
          "music-tabbar": native("music-tabbar") { MusicTabBar(props: $0, events: $1) },
          "native-tabbar": native("native-tabbar") { MusicTabBar(props: $0, events: $1, accessory: false) },
-         "page-dots": native("page-dots") { PageDots(props: $0, events: $1) }]
+         "page-dots": native("page-dots") { PageDots(props: $0, events: $1) },
+         "search-reveal": native("search-reveal") { SearchReveal(props: $0, events: $1) }]
     }
 
     override func element(_ element: ExactElement) {
