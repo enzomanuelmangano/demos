@@ -1,9 +1,11 @@
 at "/demo/action-tray"
 
-test "the + opens the tray; Continue steps through three headings and closes it"
+test "the + presents the tray; its button steps through three headings and dismisses it"
   expect tree has "action-tray"
+  expect tree has "backdrop-idle"
   tap "toggle"
   clock settle
+  expect tree has "backdrop"
   expect text "title" == "Heading 1"
   expect text "continue-label" == "Continue"
   expect tree has "step-0"
@@ -16,21 +18,27 @@ test "the + opens the tray; Continue steps through three headings and closes it"
   tap "continue"
   clock settle
   expect text "title" == "Heading 3"
+  expect text "continue-label" == "Accept 2"
   expect tree has "step-2"
   tap "continue"
   clock settle
+  expect tree has "backdrop-idle"
+  tap "toggle"
+  clock settle
   expect text "title" == "Heading 1"
 
-test "the close button and the backdrop close the tray"
+test "the close button and the scrim dismiss the tray"
   tap "toggle"
   clock settle
   tap "continue"
   clock settle
   tap "close"
   clock settle
-  expect text "title" == "Heading 1"
+  expect tree has "backdrop-idle"
   tap "toggle"
   clock settle
+  expect text "title" == "Heading 1"
   tap "backdrop"
   clock settle
-  expect tree has "toggle"
+  expect tree has "backdrop-idle"
+
