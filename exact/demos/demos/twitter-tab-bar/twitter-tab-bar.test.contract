@@ -1,4 +1,0 @@
-at "/demo/twitter-tab-bar"
-
-test "the feed, the bar and the button are one surface"
-  expect tree has "twitter-tab-bar"

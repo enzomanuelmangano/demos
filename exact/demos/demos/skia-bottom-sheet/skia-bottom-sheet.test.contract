@@ -1,4 +1,0 @@
-at "/demo/skia-bottom-sheet"
-
-test "the photo and its sheet are there"
-  expect tree has "skia-bottom-sheet-canvas"

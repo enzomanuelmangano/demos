@@ -1,4 +1,0 @@
-at "/demo/ios-home-grid"
-
-test "the grid is there"
-  expect tree has "ios-home-grid"

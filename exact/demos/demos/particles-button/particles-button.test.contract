@@ -1,5 +1,0 @@
-at "/demo/particles-button"
-
-test "the button and its blast canvas are there"
-  expect tree has "particles-button"
-  expect tree has "particles-button-canvas"

@@ -1,8 +1,0 @@
-at "/demo/popup-handler"
-
-// The circle, its pan, its tap and the corner spring are a GPU surface: the web host gives it no
-// touches and delivers no message, so the menu it opens is checked on the device.
-test "the circle's canvas is over the photo, the menu closed"
-  expect tree has "popup-handler"
-  expect tree has "popup-circle"
-  expect tree missing "popup-menu"

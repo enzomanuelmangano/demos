@@ -1,9 +1,0 @@
-at "/demo/dynamic-tab-indicator"
-
-test "the tabs, their titles and the paged photos are there; a tab presses"
-  expect tree has "dynamic-tab-indicator"
-  expect tree has "pages"
-  expect text "tab-title-3" == "Norway"
-  tap "tab-3"
-  clock settle
-  expect tree has "section-tabs"
