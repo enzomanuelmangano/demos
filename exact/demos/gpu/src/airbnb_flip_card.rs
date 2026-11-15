@@ -68,7 +68,7 @@ const AVATAR: f32 = 80.0;
 
 /// The card's surface.
 pub fn surface() -> Box<dyn Surface> {
-    Box::new(Card { flipped: None, progress: Spring::default(), faces: None, gpu: None })
+    Box::new(Card { flipped: None, progress: Spring::default(), faces: None, face_width: 0.0, gpu: None })
 }
 
 struct Card {
@@ -76,6 +76,8 @@ struct Card {
     progress: Spring,
     /// The two faces' textures, for (face width, height, scale).
     faces: Option<((u32, u32, u32), [wgpu::TextureView; 2])>,
+    /// The width the faces were drawn for.
+    face_width: f32,
     gpu: Option<Gpu>,
 }
 
@@ -448,13 +450,23 @@ impl Surface for Card {
         // edges (the box's top is on the grid), its layout height unrounded (cardWidth / 1.6).
         let w = frame.width - 2.0 * MARGIN;
         let hu = w / 1.6;
-        let h = grid(hu, s);
-        let tex = (((w + 2.0 * FACE_MARGIN) * s).round() as u32, ((h + 2.0 * FACE_MARGIN) * s).round() as u32);
-        let key = (tex.0, tex.1, (s * 100.0) as u32);
+        // The faces' drawing scale. A press scale on the card's box (pressto's 0.96, the owner's
+        // call) reaches the surface as a frame scale that eases every frame: as Core Animation
+        // shows RN's views, the faces drawn at rest are resampled under it, not drawn again each
+        // frame (which recorded every glyph again at each scale and filled the glyph atlas: the
+        // avatar's "R" came out a dash, phone feedback mwhlwwu6).
+        let s_face = match &self.faces {
+            Some(((_, _, k), _)) if (*k as f32 / 1000.0 - s).abs() <= s * 0.05 && self.face_width == w => *k as f32 / 1000.0,
+            _ => s,
+        };
+        self.face_width = w;
+        let h = grid(hu, s_face);
+        let tex = (((w + 2.0 * FACE_MARGIN) * s_face).round() as u32, ((h + 2.0 * FACE_MARGIN) * s_face).round() as u32);
+        let key = (tex.0, tex.1, (s_face * 1000.0).round() as u32);
         if self.faces.as_ref().map(|f| f.0) != Some(key) {
             let Some(fonts) = Fonts::new() else { return false };
-            let front = build_face(device, queue, encoder, &front_layers(&fonts, w, h, hu, s), tex, s);
-            let back = build_face(device, queue, encoder, &back_layers(&fonts, w, h, hu, s), tex, s);
+            let front = build_face(device, queue, encoder, &front_layers(&fonts, w, h, hu, s_face), tex, s_face);
+            let back = build_face(device, queue, encoder, &back_layers(&fonts, w, h, hu, s_face), tex, s_face);
             self.faces = Some((key, [front, back]));
             if let Some(g) = self.gpu.as_mut() {
                 g.bind = None;
@@ -497,7 +509,8 @@ impl Surface for Card {
             back0: b[0],
             back1: b[1],
             back2: b[2],
-            tex: [tex.0 as f32, tex.1 as f32, 0.0, 0.0],
+            // The shader maps a point by the frame's scale: the faces' size in those pixels.
+            tex: [tex.0 as f32 * s / s_face, tex.1 as f32 * s / s_face, 0.0, 0.0],
         };
         let gpu = self.gpu.as_mut().unwrap();
         queue.write_buffer(&gpu.uniforms, 0, &u.bytes());
@@ -526,7 +539,7 @@ mod tests {
 
     #[test]
     fn a_flip_back_from_rest_drops_the_config_velocity() {
-        let mut c = Card { flipped: None, progress: Spring::default(), faces: None, gpu: None };
+        let mut c = Card { flipped: None, progress: Spring::default(), faces: None, face_width: 0.0, gpu: None };
         c.bind(&[Value::Bool(false)], None).unwrap();
         c.bind(&[Value::Bool(true)], None).unwrap();
         c.step(0.0);
@@ -589,6 +602,19 @@ mod tests {
         gfx::save_over(&mid.unwrap(), "airbnb-card-mid", [255, 255, 255]);
         let (back, _) = fixture::render(&gpu, s.as_mut(), &frame(ms + 16.0)).unwrap();
         gfx::save_over(&back, "airbnb-card-back", [255, 255, 255]);
+        // Back to the front under a press scale easing the frame's scale (3 → 2.88, again and
+        // again): the faces drawn at rest stay, resampled, and the avatar's "R" stays an R
+        // (it came out a dash once every glyph was recorded again at each scale).
+        s.bind(&[Value::Bool(false)], None).unwrap();
+        for k in 0..64 {
+            ms += 1000.0 / 60.0;
+            let sc = 3.0 * (1.0 - 0.04 * ((k % 16) as f32 / 15.0));
+            fixture::render(&gpu, s.as_mut(), &Frame { scale: sc, ..frame(ms) }).unwrap();
+        }
+        let (again, _) = fixture::render(&gpu, s.as_mut(), &frame(ms + 16.0)).unwrap();
+        gfx::save_over(&again, "airbnb-card-front-again", [255, 255, 255]);
+        let ink = (1010..1075).flat_map(|x| (610..680).map(move |y| (x, y))).filter(|&(x, y)| again.at(x, y)[..3].iter().all(|&c| c > 230)).count();
+        assert!(ink > 400, "the avatar's R: {ink} white px");
         let c = back.at((MARGIN as u32 + 300) * 3, ((MARGIN + 30.0) * 3.0) as u32);
         assert!(c[0] > 245 && c[1] > 245 && c[2] > 245, "{c:?}");
     }
