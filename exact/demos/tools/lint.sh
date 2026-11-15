@@ -86,23 +86,33 @@ lint_ts() {
   echo "${yellow}parity-tools (tsconfig.parity.json, not gating): $n errors${off}"
 }
 
-# The generated files, as one stamp: a checksum of each, before and after regeneration.
+# The generated files. Each generator rewrites its file in place, so the originals are copied aside
+# first and always put back: the check reports a stale file, it never leaves a regenerated one
+# behind (a generator that is out of step with the committed file could break the build). The
+# regenerated copies are kept in $OUT for diffing.
 GENERATED=(demos.contract demos/index.contract modules/apple/Architecture.generated.swift home/atlas-data.contract)
-stamp() { for f in "${GENERATED[@]}"; do [ -f "$f" ] && shasum "$f" || echo "missing $f"; done; }
 
 lint_generated() {
-  step "generated: regenerate and compare"
-  local before after
-  before="$(stamp)"
+  step "generated: regenerate into a scratch copy and compare"
+  local keep out stale=() f
+  keep="$(mktemp -d)"; out="${TMPDIR:-/tmp}/lint-generated"
+  rm -rf "$out"; mkdir -p "$out"
+  for f in "${GENERATED[@]}"; do mkdir -p "$keep/$(dirname "$f")" "$out/$(dirname "$f")"; cp "$f" "$keep/$f"; done
+  restore() { for f in "${GENERATED[@]}"; do cp "$keep/$f" "$f"; done; rm -rf "$keep"; }
+  trap restore RETURN
   bun tools/gen-demos.ts >/dev/null
   bun tools/gen-index.ts >/dev/null
   bun tools/gen-architecture.ts >/dev/null
   bun ../parity-tools/screen-atlas/gen-atlas-data.ts >/dev/null
-  after="$(stamp)"
-  if [ "$before" != "$after" ]; then
-    echo "${red}generated files are stale: regenerated, and they changed${off}"
-    diff <(echo "$before") <(echo "$after") || true
-    echo "run: bun tools/gen-demos.ts && bun tools/gen-index.ts && bun tools/gen-architecture.ts && bun ../parity-tools/screen-atlas/gen-atlas-data.ts, and commit the result"
+  for f in "${GENERATED[@]}"; do
+    cp "$f" "$out/$f"
+    cmp -s "$f" "$keep/$f" || stale+=("$f")
+  done
+  if [ ${#stale[@]} -gt 0 ]; then
+    echo "${red}generated files out of date: ${stale[*]}${off}"
+    for f in "${stale[@]}"; do diff -u "$keep/$f" "$out/$f" | cut -c1-200 | head -30 || true; done
+    echo "regenerated copies: $out (the files in the tree were left as they are)"
+    echo "to refresh: bun tools/gen-demos.ts && bun tools/gen-index.ts && bun tools/gen-architecture.ts && bun ../parity-tools/screen-atlas/gen-atlas-data.ts"
     return 1
   fi
   echo "generated files are up to date"

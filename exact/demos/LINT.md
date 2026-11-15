@@ -20,10 +20,10 @@ bun run lint | lint:contract | lint:rust | lint:fix     # the same, as package s
 |---|---|---|---|
 | Contract linter vs baseline, rule tests | `lint.sh contract` | yes | no |
 | Contract compiler | `bun exact.mjs contract build app.contract --errors-only` (inside `lint.sh contract`) | no | yes |
-| rustfmt on changed `.rs` files | `lint.sh rust` | yes | no |
+| rustfmt on changed `.rs` files | `lint.sh rust` | yes, informational until the `cargo fmt` commit | no |
 | clippy counts vs `tools/rust-lint-baseline.txt` | `lint.sh rust` | no | yes (cargo resolves the workspace through the checkout) |
 | TypeScript of the Bun tooling | `lint.sh ts` | yes | no |
-| generated files are up to date | `lint.sh generated` | yes | no |
+| generated files are up to date | `lint.sh generated` | yes, informational (see below) | no |
 
 `lint.sh` skips what the checkout gates when it is missing and says so; set `EXACT=<path>` when it is not where `Cargo.toml`
 says. The workflow in CI is the "no checkout" column.
@@ -125,18 +125,23 @@ measured; the numbers are at the top of the file) and the `[workspace.lints]` ta
 
 ## TypeScript
 
-`exact/tsconfig.json` covers `exact/demos/tools` (the linter included, strict) and `exact/demos/app.ts`, and passes.
-`exact/tsconfig.parity.json` covers `exact/parity-tools`, which does not pass today (39 errors) and is reported, not gating:
+`exact/tsconfig.json` covers `exact/demos/tools` (the linter included, strict) and passes. `exact/demos/app.ts` is left out: it imports
+`app.contract.d.ts`, which `contract build` writes and git ignores, so it cannot be checked on a bare checkout.
+`exact/tsconfig.parity.json` covers `exact/parity-tools`, which does not pass today (39 errors here, about 60 on a bare checkout without the repo's node_modules) and is reported, not gating:
 Bun's API is declared `any` in `exact/types/bun-min.d.ts` because `bun-types` is not installed (callbacks of `Bun.build` /
 `Bun.serve` are implicit any), the feedback JSON is untyped, and `notion-qrcode/parity.ts` imports `computeShapeData`, which the
 RN demo no longer exports (a real stale import). Installing `bun-types` and typing the JSON clears most of it.
 
 ## Generated files
 
-`lint.sh generated` runs `tools/gen-demos.ts`, `tools/gen-index.ts`, `tools/gen-architecture.ts` and
+`lint.sh generated` runs, on scratch copies, `tools/gen-demos.ts`, `tools/gen-index.ts`, `tools/gen-architecture.ts` and
 `../parity-tools/screen-atlas/gen-atlas-data.ts`, and fails when `demos.contract`, `demos/index.contract`,
-`modules/apple/Architecture.generated.swift` or `home/atlas-data.contract` changes. It compares checksums before and after,
-so uncommitted but consistent files pass. It rewrites a stale file in place: commit the result.
+`modules/apple/Architecture.generated.swift` or `home/atlas-data.contract` would change. The generators write in place, so the
+originals are copied aside and always put back; the regenerated copies are left in `$TMPDIR/lint-generated` to diff or copy over.
+**It fails today** (so it is informational in CI): the committed `demos/index.contract` names `ExpandableMiniPlayer` and
+`TelegramThemeSwitch` where `gen-index.ts` writes `MpArt` and `TtsPhoto` (it takes the first component of a file), and
+`Architecture.generated.swift` differs in order and two entries. Fix the generator or regenerate, then drop `continue-on-error` in
+the workflow.
 
 ## Follow-ups
 

@@ -1,6 +1,7 @@
 {
-  // The Bun tooling of the Exact app: exact/demos/tools (the Contract linter included) and
-  // exact/demos/app.ts. exact/parity-tools is checked separately by tsconfig.parity.json.
+  // The Bun tooling of the Exact app: exact/demos/tools (the Contract linter included).
+  // exact/demos/app.ts is not here: it imports app.contract.d.ts, which `contract build` writes (and
+  // git ignores), so it cannot be checked on a bare checkout. exact/parity-tools: tsconfig.parity.json.
   // It is its own project: the React Native app's tsconfig (../tsconfig.json) excludes exact/.
   // Check it with `bun x tsc -p exact/tsconfig.json --noEmit` (or `exact/demos/tools/lint.sh ts`).
   "compilerOptions": {
@@ -23,6 +24,6 @@
     "types": ["node"],
     "typeRoots": ["../node_modules/@types"]
   },
-  "include": ["demos/app.ts", "demos/tools/**/*.ts", "types/**/*.d.ts"],
+  "include": ["demos/tools/**/*.ts", "types/**/*.d.ts"],
   "exclude": ["**/node_modules", "demos/node_modules", "demos/target", "parity-tools/**/out"]
 }
