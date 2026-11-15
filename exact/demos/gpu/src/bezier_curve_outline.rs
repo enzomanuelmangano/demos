@@ -37,6 +37,12 @@
 //!   button), tint systemUltraThinMaterialLight, intensity withTiming(held ? 65 : 0, 300 ms,
 //!   linear) (the Contract's button sends `held`): skia::backdrop's chain over the whole screen
 //!   at that fraction, never below 0.01 (a BlurView at intensity 0 still blurs at 1 %).
+//! - At intensity 0 (both BlurViews at rest) a chain runs at fraction 0, the identity: a 1:1
+//!   copy. expo-blur clamps the fraction to 0.01, but an intensity of 0 shows no effect on the
+//!   iPhone (as airbnb-flip-interaction's, interaction-appearance's and the home grids' measured
+//!   rest). The 1 % chain resamples at scale 0.99 and blurs σ 0.2 pt, twice over the square (its
+//!   BlurView, then the screen's): the resting pawn and its tile read soft at 3x where RN's are
+//!   crisp (phone feedback, 2026-11-15).
 //! - Points are re-sampled whenever the curve changes while the square can be seen
 //!   (outlineModeProgress < 1) and at each start.
 
@@ -282,7 +288,7 @@ impl BezierOutline {
 
     /// The square's blur fraction: expo-blur's intensity / 100, clamped to 0.01…1.
     fn blur_fraction(&self) -> f32 {
-        expo_fraction(interpolate(self.progress.value, &[0.0, 0.7, 1.0], &[0.0, 40.0, 0.0], Extrapolation::Extend))
+        resting(interpolate(self.progress.value, &[0.0, 0.7, 1.0], &[0.0, 40.0, 0.0], Extrapolation::Extend))
     }
 }
 
@@ -428,10 +434,20 @@ impl Surface for BezierOutline {
         }
         skia::render::fullscreen_pass(encoder, "bezier compose", &gpu.layers[5], &gpu.compose, &gpu.bind.as_ref().unwrap().1);
         // The full-screen BlurView over all of it, then the target.
-        let screen = expo_fraction(self.intensity.value);
+        let screen = resting(self.intensity.value);
         self.screen_blur.run(device, queue, encoder, &gpu.layers[5], [0, 0, pw as i32, ph as i32], [0.0, 0.0], &Material::SystemUltraThinMaterialLight.chain().at(screen), s);
         self.screen_blur.draw(device, queue, encoder, target, format, [0.0, 0.0], [0, 0], [pw, ph]);
         moving || self.press.is_animating() || self.pan.tracking()
+    }
+}
+
+/// A BlurView's chain fraction for an `intensity`: expo-blur's, except that intensity 0 is the
+/// identity chain (fraction 0), a 1:1 copy, so what rests under it stays crisp (see the audit).
+fn resting(intensity: f64) -> f32 {
+    if intensity > 0.0 {
+        expo_fraction(intensity)
+    } else {
+        0.0
     }
 }
 
@@ -536,9 +552,9 @@ mod tests {
         }
         let (outline, _) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         outline.save("bezier-outline");
-        // #111111 under the full-screen BlurView at intensity 0 (fraction 0.01).
+        // #111111 under the full-screen BlurView at rest: the identity chain, unchanged.
         let flat = |c: u8, f: f32| (Material::SystemUltraThinMaterialLight.chain().at(f).flat([c as f32 / 255.0; 3])[0] * 255.0).round() as u8;
-        assert_eq!(&outline.at(10, 10)[..3], &[flat(0x11, 0.01); 3]);
+        assert_eq!(&outline.at(10, 10)[..3], &[0x11; 3]);
         // Holding the button: the BlurView's intensity runs to 65 in 300 ms, linearly.
         s.bind(&[Value::Bool(true), Value::Bool(true)], None).unwrap();
         let start = ms;
