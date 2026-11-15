@@ -8,8 +8,13 @@ use DemoEnv from "../env.contract"
 component InfiniteCarousel
   props
     env: DemoEnv
+  // The ring's haptics (gpu/src/infinite_carousel.rs, past RN): selection as the centred theme
+  // changes.
+  action heard(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
   view
     column position="absolute" inset=0 testId="infinite-carousel"
-      canvas surface=infinite_carousel() position="absolute" top=0 left=0 width=env.width height=env.height
+      canvas surface=infinite_carousel() message=heard position="absolute" top=0 left=0 width=env.width height=env.height
         touch-action="none" testId="infinite-carousel-canvas"
         aria-label="Theme carousel: drag sideways or tap a card"
