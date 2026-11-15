@@ -286,8 +286,8 @@ impl ScrollableShapes {
         let next = (idx + 1).min(SHAPES - 1);
         let t = if idx >= SHAPES - 1 { 1.0 } else { (scroll - w * idx as f64) / (w * next as f64 - w * idx as f64) };
         // Past an end, the rubber band's overshoot, in pages, carries the morph on: the first pair's
-        // t goes below 0, the last pair's above 1, softly limited to OVERMORPH. The shader keeps each
-        // point's norm, so the shape deforms without growing.
+        // t goes below 0, the last pair's above 1, softly limited to OVERMORPH. The shader goes on
+        // with the same lerp, at the same rate per page as inside the range.
         let over = self.overscroll() / w;
         if over < 0.0 {
             return (0, 1, soft(over));
