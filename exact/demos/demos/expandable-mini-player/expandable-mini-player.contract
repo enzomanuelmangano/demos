@@ -12,6 +12,16 @@ component ExpandableMiniPlayer
   action heard(m: string)
     if m == "press"
       haptic("selection")
+    // The drag's haptics (gpu/src/expandable_mini_player.rs, past RN): light on the grab,
+    // selection across the release's threshold, medium on a collapse, soft when it lands.
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-medium"
+      haptic("impact-medium")
+    if m == "haptic:impact-soft"
+      haptic("impact-soft")
   view
     canvas surface=expandable_mini_player(env.safeTop) message=heard position="absolute" top=0 left=0
       width=env.width height=env.height background-color="#000000" touch-action="none"
