@@ -6,7 +6,7 @@
 // src/stacked-toast-manager/{constants.ts, hooks.ts, stacked-toast-provider.tsx,
 // stacked-toast.tsx, backdrop/index.tsx, backdrop/use-gradient-height.ts}).
 use PressableScale from "pressto"
-use DemoEnv from "../env.contract"
+use DemoEnv, floatingWidth, concentricInset, concentricRadius from "../env.contract"
 
 // hook.tsx toasts: the thirteen titles, taken in turn (toastIndex % 13).
 fn clerkTitle(kind: number): string = match ["This is a Custom Toast message", "Strongly inspired by Emil Kowalski", "It works with React Native and Expo!", "Can you guess the main library used here?", "Reanimated - of course!", "Wait! Too many Toasts here!", "Let's swipe them away!", "Actually, let's clear quickly everything", "What about the source code?", "You can find it at reactiive.io/demos", "You're still here?", "Ok, last one!", "Thanks for watching!"].at(kind) { case some(t) => t, case none => "" }
@@ -37,6 +37,11 @@ fn clerkStays(gone: number[], goneAt: number[], goneK: number[], j: number, now:
 // constants.ts TOAST_HEIGHT 55, MAX_VISIBLE_TOASTS 3; hooks.ts bottomHeight =
 // min(id, MAX_VISIBLE_TOASTS - 1) × (TOAST_HEIGHT + 15). stacked-toast.tsx BaseSafeArea 50.
 fn clerkBottom(id: number): number = min(id, 2) * 70
+// Past RN (BaseSafeArea 50, 0.9 w at 0.05 w, radius 35): the front toast is a 55 pt continuous
+// capsule concentric with the display's corners, its ends centred on the corner arc's centre,
+// so 62 − 27.5 = 34.5 from the display's sides and bottom (env.contract concentricInset).
+fn clerkInset(): number = concentricInset(55)
+fn clerkW(w: number): number = floatingWidth(w, clerkInset())
 // The bottom's withSpring { mass 1, damping 100, stiffness 80 }: ζ 5.59, which Reanimated runs
 // as critically damped at ω0 = √(k/m) = 8.944, so the damping here is 2√(k·m).
 fn clerkSpring(): string = "-exact-spring(80, 17.889, 1)"
@@ -49,17 +54,17 @@ fn clerkBackdropSpring(): string = "-exact-spring(1087.7349, 131.9234, 4)"
 // use-gradient-height.ts: min(min(count, 3) × (TOAST_HEIGHT + 90), windowHeight / 2).
 fn clerkGradient(count: number, h: number): number = min(min(count, 3) * 145, h / 2)
 // The blur's strip (the owner's call, phone feedback 2026-11-15, "the blur is too big"): from 50
-// pt above the topmost toast (BaseSafeArea 50 + its slot min(n - 1, 2) × 70 + TOAST_HEIGHT 55)
+// pt above the topmost toast (clerkInset() + its slot min(n - 1, 2) × 70 + TOAST_HEIGHT 55)
 // down to the screen's bottom, so the stack's middle always sits at half the strip.
-fn clerkBlurH(count: number): number = count <= 0 ? 0 : 50 + clerkBottom(count - 1) + 55 + 50
+fn clerkBlurH(count: number): number = count <= 0 ? 0 : clerkInset() + clerkBottom(count - 1) + 55 + 50
 
-// The mount: `bottom` starts at -TOAST_HEIGHT and springs to BaseSafeArea (105 px) on the
+// The mount: `bottom` starts at -TOAST_HEIGHT and springs to clerkInset() (89.5 px) on the
 // spring above, from rest, critically damped: 1 - (1 + ωt)e^{-ωt}, ω 8.944, sampled (denser
 // early) over the 1383 ms Reanimated takes to settle it (energy below 6e-9 of the start). A later id
 // change is the translate transition one wrapper in: the spring is linear, so the two sum to
 // RN's retargeted spring.
 keyframes clerkEnter
-  from translate="0px 105px"
+  from translate="0px 89.5px"
   to translate="0px 0px"
 fn clerkEnterTiming(): string = "1383ms linear(0, 0.0006 0.27%, 0.0049 0.83%, 0.0169 1.59%, 0.0393 2.51%, 0.0737 3.59%, 0.12 4.81%, 0.1771 6.15%, 0.2428 7.61%, 0.3145 9.19%, 0.3893 10.88%, 0.4645 12.67%, 0.5377 14.57%, 0.6068 16.56%, 0.6705 18.64%, 0.7277 20.82%, 0.7781 23.08%, 0.8216 25.43%, 0.8584 27.87%, 0.889 30.39%, 0.9141 32.99%, 0.9343 35.67%, 0.9503 38.42%, 0.9629 41.25%, 0.9726 44.16%, 0.9799 47.14%, 0.9855 50.2%, 0.9896 53.32%, 0.9926 56.51%, 0.9948 59.78%, 0.9964 63.11%, 0.9975 66.51%, 0.9983 69.98%, 0.9989 73.51%, 0.9992 77.1%, 0.9995 80.76%, 0.9997 84.49%, 0.9998 88.27%, 0.9999 92.12%, 0.9999 96.03%, 1 100%) both"
 
@@ -220,8 +225,8 @@ component ClerkToast
           -exact-drag-timeline="--clerkSwipe x"
           for key, i in keys key=key
             if clerkNum(gone, i) == 0 and clerkNewer(gone, i) <= 2
-              view position="absolute" left=(w * 0.05) bottom=(50 + clerkBottom(clerkNewer(gone, i)))
-                width=(w * 0.9) height=55 pointer-events="auto" touch-action="none"
+              view position="absolute" left=clerkInset() bottom=(clerkInset() + clerkBottom(clerkNewer(gone, i)))
+                width=clerkW(w) height=55 pointer-events="auto" touch-action="none"
                 transformDragFor="clerk-drag" transformgeometry=began(key)
                 transformrelease=released aria-label="Swipe the toast away"
                 testId=`clerk-handle-${key}`
@@ -245,9 +250,9 @@ component ClerkToastCard
     clear: action
   derive w = env.width
   view
-    // The Animated.View: width 0.9 w, left 0.05 w, absolute, zIndex 100 - id; `bottom` is a
+    // The Animated.View (RN 0.9 w at 0.05 w; here clerkW at clerkInset), zIndex 100 - id; `bottom` is a
     // static BaseSafeArea and the translates below.
-    column position="absolute" left=(w * 0.05) bottom=50 width=(w * 0.9) height=55
+    column position="absolute" left=clerkInset() bottom=clerkInset() width=clerkW(w) height=55
       z-index=(100 - k) pointer-events="none" class=ClerkOut testId=`clerk-toast-${toastKey}`
       column flex=1 animation=`clerkEnter ${clerkEnterTiming()}`
         column flex=1 translate=`0px ${0 - clerkBottom(k)}px`
@@ -265,7 +270,7 @@ component ClerkToastCard
                 // offset 0, -3, black; the shape of what it draws) withTiming to radius
                 // max(10 - id × 2.5, 2) (CSS blur twice that) and opacity id > 3 ? 0.1 - id ×
                 // 0.025 : 0.08.
-                column flex=1 border-radius=35 overflow="hidden" opacity=(k < 3 ? 1 : 0)
+                column flex=1 border-radius=concentricRadius(clerkInset(), 55) corner-shape="-exact-continuous" overflow="hidden" opacity=(k < 3 ? 1 : 0)
                   box-shadow=`0px -3px ${2 * max(10 - k * 2.5, 2)}px rgba(0, 0, 0, ${k > 3 ? max(0, 0.1 - k * 0.025) : 0.08})`
                   transition=`opacity ${clerkTiming()} ${shiftDelay}ms, box-shadow ${clerkTiming()} ${shiftDelay}ms`
                   // The children render for id <= MAX_VISIBLE_TOASTS × 1.5.
