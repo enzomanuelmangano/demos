@@ -22,6 +22,11 @@
 //! The active index is floor(preciseActiveIndex); the gradient's colour follows it with
 //! withTiming (300 ms, inOut(quad)) in Reanimated's colour space (each channel in gamma 2.2,
 //! rounded back to 8 bits), from `Color(c).darken(0.1).hex()`.
+//!
+//! Haptics (past RN, which plays none: the owner's haptic language): `haptic:selection` each
+//! time the active (centred) colour changes, during the drag and the glide, at most one per
+//! HAPTIC_GAP_MS; `haptic:impact-rigid` once each time the strip is pulled or thrown past an end
+//! (the rubber band).
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
@@ -55,10 +60,14 @@ const SHADOW_SIGMA: f32 = 2.5;
 const CARD_FLOATS: usize = 20;
 /// The ScrollView's decelerationRate (UIKit clamps it to fast).
 const DECELERATION: f64 = 0.8;
+/// The shortest gap between two selection haptics, ms.
+const HAPTIC_GAP_MS: f64 = 40.0;
+/// How far past an end (points) the rubber band must pull before its haptic.
+const PAST_END: f64 = 2.0;
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
-    let mut s = ColorCarousel { scroll: UiScroll::new(0.0, 0.0, 0.0, DECELERATION, Snap::Free), width: 0.0, scroll_x: 0.0, active: None, channels: Default::default(), cards: Vec::with_capacity(ITEMS * CARD_FLOATS), order: Vec::with_capacity(ITEMS), gpu: None };
+    let mut s = ColorCarousel { scroll: UiScroll::new(0.0, 0.0, 0.0, DECELERATION, Snap::Free), width: 0.0, scroll_x: 0.0, active: None, channels: Default::default(), cards: Vec::with_capacity(ITEMS * CARD_FLOATS), order: Vec::with_capacity(ITEMS), gpu: None, past_end: false, haptic_at: f64::NEG_INFINITY, posted: Vec::new() };
     s.retarget(2, true);
     Box::new(s)
 }
@@ -74,6 +83,10 @@ struct ColorCarousel {
     cards: Vec<f32>,
     order: Vec<(i64, usize)>,
     gpu: Option<Gpu>,
+    /// Whether the strip is past an end, the last selection haptic, the messages to post.
+    past_end: bool,
+    haptic_at: f64,
+    posted: Vec<String>,
 }
 
 struct Gpu {
@@ -148,6 +161,10 @@ impl Surface for ColorCarousel {
         true
     }
 
+    fn messages(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.posted)
+    }
+
     fn agent(&mut self, _request: &str) -> Option<String> {
         let [r, g, b, _] = self.color().map(|v| (v * 255.0).round() as u8);
         Some(format!("{{\"scrollX\":{},\"activeIndex\":{},\"color\":\"#{r:02X}{g:02X}{b:02X}\"}}", self.scroll_x, self.active.unwrap_or(2)))
@@ -177,7 +194,23 @@ impl Surface for ColorCarousel {
         let x = self.scroll_x;
         // onScroll: activeIndex = floor(2 + (x + itemWidth / 2) / (width / 5)).
         let precise = (MAX_RENDERED / 2.0).floor() + (x + item_width / 2.0) / (width / MAX_RENDERED);
-        self.retarget(precise.floor() as i64, false);
+        let index = precise.floor() as i64;
+        // The haptic's index stays on the colours: the rubber band past an end reaches the empty
+        // items, which are no detent.
+        let card = |i: i64| i.clamp(2, ITEMS as i64 - 3);
+        if self.active.is_some_and(|a| card(a) != card(index)) && frame.now_ms - self.haptic_at >= HAPTIC_GAP_MS {
+            self.posted.push("haptic:selection".into());
+            self.haptic_at = frame.now_ms;
+        }
+        self.retarget(index, false);
+        if x < -PAST_END || x > self.scroll.max + PAST_END {
+            if !self.past_end {
+                self.posted.push("haptic:impact-rigid".into());
+            }
+            self.past_end = true;
+        } else if (0.0..=self.scroll.max).contains(&x) {
+            self.past_end = false;
+        }
         for ch in &mut self.channels {
             moving |= ch.step(frame.now_ms);
         }
@@ -354,13 +387,26 @@ mod tests {
         s.input(&touch(Up, 240.0, ms + 16.67 * 6.0));
         ms = settle(&mut s, ms + 100.0);
         assert!(s.agent("{}").unwrap().contains("\"scrollX\":168"), "{}", s.agent("{}").unwrap());
+        // Two cards on: two selections, 40 ms apart at least.
+        assert_eq!(s.messages(), vec!["haptic:selection", "haptic:selection"]);
         // A slow drag of 30 pt, held: rounds back to 168.
         s.input(&touch(Down, 300.0, ms));
         for k in 1..=30 {
             s.input(&touch(Move, 300.0 - k as f32, ms + 33.0 * k as f64));
         }
         s.input(&touch(Up, 270.0, ms + 33.0 * 30.0 + 200.0));
-        settle(&mut s, ms + 33.0 * 30.0 + 200.0);
+        ms = settle(&mut s, ms + 33.0 * 30.0 + 200.0);
         assert!(s.agent("{}").unwrap().contains("\"scrollX\":168"), "{}", s.agent("{}").unwrap());
+        // Short of half a card: no haptic. A pull right of 300 pt: back two cards, then past the
+        // start, one rigid thunk.
+        assert!(s.messages().is_empty());
+        s.input(&touch(Down, 60.0, ms));
+        for k in 1..=30 {
+            s.input(&touch(Move, 60.0 + 10.0 * k as f32, ms + 33.0 * k as f64));
+            fixture::render(&gpu, s.as_mut(), &frame(ms + 33.0 * k as f64)).unwrap();
+        }
+        s.input(&touch(Up, 360.0, ms + 33.0 * 30.0 + 200.0));
+        settle(&mut s, ms + 33.0 * 30.0 + 200.0);
+        assert_eq!(s.messages(), vec!["haptic:selection", "haptic:selection", "haptic:impact-rigid"]);
     }
 }

@@ -9,6 +9,13 @@ use DemoEnv from "../env.contract"
 component ColorCarousel
   props
     env: DemoEnv
+  // The strip's haptics (gpu/src/color_carousel.rs, past RN): selection as the centred card
+  // changes, rigid when the strip is pulled past an end.
+  action heard(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-rigid"
+      haptic("impact-rigid")
   view
     // styles.container: #111111 (BACKGROUND_COLOR), centred.
     column position="absolute" inset=0 background-color="#111111" align-items="center"
@@ -16,5 +23,5 @@ component ColorCarousel
       // width 100%, aspectRatio 1: the canvas under the carousel (StyleSheet.absoluteFill).
       view position="relative" width=env.width height=env.width flex-shrink=0
         // The canvas draws the cards and owns the ScrollView over the square.
-        canvas surface=color_carousel() position="absolute" top=0 left=0 width=env.width
+        canvas surface=color_carousel() message=heard position="absolute" top=0 left=0 width=env.width
           height=env.width touch-action="none" aria-label="Colours" testId="color-carousel-canvas"
