@@ -22,7 +22,8 @@
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
 use gesture_handler::{Event, PanGesture};
-use reanimated::{interpolate_clamp, Spring, SpringConfig};
+use pressto::HitSlop;
+use reanimated::{interpolate_clamp, Spring, SpringConfig, GENTLE};
 use skia::blur::{ceil_size, outset, GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
 use skia::{Canvas, Color, Font, Paint, Renderer};
 
@@ -41,6 +42,12 @@ const SLIDER_HEIGHT: f32 = 12.0;
 /// fontSize.
 const FONT_SIZE: f32 = 12.0;
 /// usePickerLayout's pickerY spring.
+/// The bar's touch area (the owner's call, phone feedback 2026-11-15; RN takes the 12 pt bar's
+/// path alone): 16 past it every way, a 44 pt tall track with room at the ends.
+const BAR_SLOP: HitSlop = HitSlop::all(16.0);
+/// A touch farther than this from the picker springs it there (the owner's call: RN puts it at
+/// the finger at once). Nearer, the picker is at the finger, as RN.
+const CHASE_FROM: f32 = 20.0;
 const PICKER_Y: SpringConfig = SpringConfig { stiffness: 200.0, damping: 20.0, mass: 0.8 };
 static OUTFIT: &[u8] = include_bytes!("../fonts/outfit.ttf");
 
@@ -60,6 +67,11 @@ struct FluidSlider {
     pan: PanGesture,
     /// pickerX, in the RN canvas's points.
     picker_x: f32,
+    /// pickerX's motion toward the finger after a touch far from the picker: Reanimated's
+    /// default withSpring (GENTLE), retargeted to the finger at every move until it catches up,
+    /// so a drag begun with that touch carries on from where the picker is, with no snap.
+    picker: Spring,
+    chasing: bool,
     sliding: bool,
     picker_y: Option<Spring>,
     /// The value's text, rebuilt only when it changes.
@@ -79,6 +91,8 @@ impl Default for FluidSlider {
             font: None,
             pan: PanGesture::default(),
             picker_x: 0.0,
+            picker: Spring::at(0.0),
+            chasing: false,
             sliding: false,
             picker_y: None,
             label: String::new(),
@@ -136,15 +150,31 @@ impl FluidSlider {
             y.retarget(if sliding { h / 2.0 - 25.0 } else { h / 2.0 }, PICKER_Y);
         }
     }
-    /// Whether (x, y), in the RN canvas's points, is on the bar's rounded rect.
+    /// Whether (x, y), in the RN canvas's points, takes the bar: its rect grown by BAR_SLOP.
     fn on_bar(&self, x: f32, y: f32) -> bool {
-        let (w, top, r) = (self.slider_width(), self.bar_y(), SLIDER_HEIGHT / 2.0);
-        if x < 0.0 || x > w || y < top || y > top + SLIDER_HEIGHT {
+        BAR_SLOP.contains(0.0, self.bar_y() as f64, self.slider_width() as f64, SLIDER_HEIGHT as f64, x as f64, y as f64)
+    }
+    /// The chase's frame: whether the picker still springs.
+    fn step_chase(&mut self, now_ms: f64) -> bool {
+        if !self.chasing {
             return false;
         }
-        let cx = x.clamp(r, w - r);
-        let cy = y.clamp(top + r, top + SLIDER_HEIGHT - r);
-        (x - cx).hypot(y - cy) <= r
+        let running = self.picker.step(now_ms);
+        self.picker_x = self.picker.value as f32;
+        // Caught up with the finger (or at rest at the lift's target): the finger leads again.
+        if !running || (self.sliding && (self.picker.value - self.picker.target()).abs() < 0.5) {
+            self.chasing = false;
+        }
+        running
+    }
+    /// The finger is at `x`: the picker there, or springing there while it chases.
+    fn follow(&mut self, x: f32) {
+        if self.chasing {
+            self.picker.retarget(x as f64, GENTLE);
+        } else {
+            self.picker.set(x as f64);
+            self.picker_x = x;
+        }
     }
 }
 
@@ -167,10 +197,16 @@ impl Surface for FluidSlider {
         let hit = self.on_bar(x, y);
         match self.pan.event(id, gfx::phase(phase), x, y, at_ms, hit) {
             Event::Begin { x, .. } => {
-                self.picker_x = x;
+                let (lo, hi) = (self.radius(), self.slider_width() - self.radius());
+                self.chasing = (x.clamp(lo, hi) - self.clamped_x()).abs() > CHASE_FROM;
+                if self.chasing {
+                    // From where the picker shows (its clamped x), not from a finger past the end.
+                    self.picker.set(self.clamped_x() as f64);
+                }
+                self.follow(x);
                 self.slide(true);
             }
-            Event::Start(p) | Event::Update(p) => self.picker_x = p.x,
+            Event::Start(p) | Event::Update(p) => self.follow(p.x),
             Event::End(_) | Event::Fail => self.slide(false),
             _ => {}
         }
@@ -193,6 +229,7 @@ impl Surface for FluidSlider {
         }
         let moving = picker_y.step(frame.now_ms);
         let py = picker_y.value as f32;
+        let chasing = self.step_chase(frame.now_ms);
         let (r, w) = (self.radius(), self.slider_width());
         let x = self.clamped_x();
         let value = interpolate_clamp(x as f64, &[r as f64, (w - r) as f64], &[0.0, 100.0]).round() as i32;
@@ -260,7 +297,7 @@ impl Surface for FluidSlider {
             gpu.bind = Some((view, group));
         }
         skia::render::fullscreen_pass(encoder, "fluid slider", target, &gpu.compose, &gpu.bind.as_ref().unwrap().1);
-        moving || self.pan.tracking()
+        moving || chasing || self.pan.tracking()
     }
 }
 
@@ -301,6 +338,47 @@ mod tests {
 
     fn frame(now_ms: f64) -> Frame {
         Frame { width: 400.0, height: 100.0, scale: 2.0, now_ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: exact_gpu::shaders::shader_generation(), headroom: 1.0 }
+    }
+
+    #[test]
+    fn a_touch_far_from_the_picker_springs_it_there_and_a_drag_carries_on() {
+        let mut s = FluidSlider { size: (400.0, 100.0), picker_y: Some(Spring::at(50.0)), ..Default::default() };
+        let pointer = |phase, x, y, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
+        // 16 below the bar's bottom (bar 45 to 57 in the canvas) still takes it.
+        s.input(&pointer(PointerPhase::Down, 210.0, 72.0, 0.0));
+        assert!(s.sliding && s.chasing);
+        let mut last = s.clamped_x();
+        assert_eq!(last, 20.0);
+        let mut ms = 0.0;
+        let mut frames = 0;
+        while s.step_chase(ms) && s.chasing {
+            // No jump: each frame moves part of the way, never past the finger (200, then 250).
+            assert!(s.clamped_x() >= last && s.clamped_x() as f64 <= s.picker.target() + 1e-3, "{} after {last}", s.clamped_x());
+            assert!(s.clamped_x() - last < 60.0, "a jump of {}", s.clamped_x() - last);
+            last = s.clamped_x();
+            ms += 16.0;
+            frames += 1;
+            if frames == 6 {
+                // A drag begun with the touch: the picker goes on from where it is.
+                let before = s.clamped_x();
+                s.input(&pointer(PointerPhase::Move, 260.0, 51.0, ms));
+                assert_eq!(s.clamped_x(), before);
+            }
+        }
+        assert!(frames > 6, "{frames}");
+        assert!((s.picker_x - 250.0).abs() < 0.5, "{}", s.picker_x);
+        // Caught up: the finger leads again, 1:1.
+        s.input(&pointer(PointerPhase::Move, 280.0, 51.0, ms));
+        assert_eq!(s.picker_x, 270.0);
+        // A touch near the picker puts it at the finger at once (RN's onStart).
+        s.input(&pointer(PointerPhase::Up, 280.0, 51.0, ms));
+        s.input(&pointer(PointerPhase::Down, 290.0, 51.0, ms + 500.0));
+        assert!(!s.chasing);
+        assert_eq!(s.picker_x, 280.0);
+        // Far above the bar's slop: nothing.
+        s.input(&pointer(PointerPhase::Up, 290.0, 51.0, ms + 600.0));
+        s.input(&pointer(PointerPhase::Down, 50.0, 20.0, ms + 900.0));
+        assert!(!s.sliding);
     }
 
     #[test]
