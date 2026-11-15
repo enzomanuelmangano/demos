@@ -11,6 +11,9 @@ component DurationSlider
   action buzz(m: string)
     if m == "haptic:selection"
       haptic("selection")
+    // Past RN: the ring reaching a stop (12 full, or back to 1) bumps like a detent's end.
+    if m == "haptic:limit"
+      haptic("impact-rigid")
   view
     // styles.container: white, flex 1, centred; the canvas is windowWidth × 0.8 square.
     column position="absolute" inset=0 background-color="color(display-p3 1 1 1)" align-items="center"
