@@ -342,6 +342,11 @@ impl FloatingModal {
         self.opened = !self.opened;
         let to = if self.opened { 1.0 } else { 0.0 };
         gfx::spring_to(&mut self.progress, to, 500.0, 1.0);
+        // The content is part of the sheet from its first frame: in over 60 ms as it opens.
+        self.content = Timing::at(0.0);
+        if self.opened {
+            self.content.to(1.0, 60.0, Easing::timing_default());
+        }
         self.posted
             .push(if self.opened { "open" } else { "close" }.into());
     }
@@ -360,9 +365,15 @@ impl FloatingModal {
         self.progress.value.clamp(0.0, 1.0) * (1.0 - drag)
     }
 
-    /// The content's opacity: the last 40 % of the progress.
+    /// The content's opacity (phone clip: an empty white box opened before the content, and
+    /// the fading Done read grey): in over the open's first 60 ms, while the sheet is still
+    /// small; on a close it stays whole, shrinking with the sheet, and goes in the last 15 %.
     fn content_opacity(&self) -> f64 {
-        ((self.progress.value - 0.6) / 0.4).clamp(0.0, 1.0)
+        if self.opened {
+            self.content.value
+        } else {
+            (self.progress.value / 0.15).clamp(0.0, 1.0)
+        }
     }
 
     /// A finger is on one of the buttons.
@@ -520,7 +531,6 @@ impl Surface for FloatingModal {
             self.visible = visible;
             let v = if visible { 1.0 } else { 0.0 };
             self.backdrop.to(v, 300.0, Easing::timing_default());
-            self.content.to(v, 100.0, Easing::timing_default());
         }
         moving |= self.backdrop.step(now) | self.content.step(now);
         moving |= self.plus_press.step(now) | self.done_press.step(now);
@@ -550,14 +560,24 @@ impl Surface for FloatingModal {
         let content = self.content_opacity() as f32;
         let plus_m = self.plus_matrix().then(modal);
         let strip = plus_bounds(plus_m, s, pw, ph);
-        let button_m = self.button_matrix(&l);
+        // The content laid out in the open sheet and scaled with the sheet as one picture (about
+        // its centre, by the smaller of the two ratios), so it is inside it at every frame.
+        let lo = self.layout(1.0);
+        let button_m = self.button_matrix(&lo);
+        let (_, _, sw1, sh1) = lo.frame;
+        let (_, _, fw0, fh0) = l.frame;
+        let snap_k = ((fw0 / sw1).min(fh0 / sh1)) as f32;
+        let snapshot = Matrix::translate(-(sw1 / 2.0) as f32, -(sh1 / 2.0) as f32)
+            .then(Matrix::scale(snap_k, snap_k))
+            .then(Matrix::translate((fw0 / 2.0) as f32, (fh0 / 2.0) as f32));
         let g = &mut self.group_canvas;
         g.begin(s);
         if content > 0.0 {
             g.save();
             g.concat(modal);
-            let (_, _, sw, _) = l.frame;
-            let sw = sw as f32;
+            g.concat(snapshot);
+            let l = lo;
+            let sw = sw1 as f32;
             // The grabber.
             let (gw, gh, gy) = GRABBER;
             g.draw_rrect(
