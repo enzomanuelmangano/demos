@@ -6,8 +6,15 @@
 // are Rust: gpu/src/scrollable_shapes.rs, gpu/src/ui_scroll.rs.
 
 component ScrollableShapes
+  // The scroll's haptics (gpu/src/scrollable_shapes.rs, past RN): selection as the page (the
+  // shape) changes, rigid when the scroll is pulled past an end.
+  action heard(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-rigid"
+      haptic("impact-rigid")
   view
     // styles.container: black, flex 1; both canvases and the ScrollView are absoluteFill.
     column position="absolute" inset=0 background-color="color(display-p3 0 0 0)" testId="scrollable-shapes"
-      canvas surface=scrollable_shapes() position="absolute" top=0 left=0 width="100%" height="100%"
+      canvas surface=scrollable_shapes() message=heard position="absolute" top=0 left=0 width="100%" height="100%"
         touch-action="none" testId="scrollable-shapes-canvas" aria-label="Swipe to morph the shape"
