@@ -8,6 +8,7 @@ component DemoScreen
     demo: Demo
     env: DemoEnv
     ownsDrags: bool
+    zone: string
     leave: action
   // Demos pad their own top: the route keeps the whole screen (`-exact-safe-area="none"`) and
   // `demo-safe`, a box at the safe-area insets, gives the demo its safeTop and safeBottom.
@@ -73,7 +74,7 @@ component DemoScreen
               text "Not on Exact yet." font-size=15 color="#8e8e93" text-align="center" testId="not-ported"
         // The card in the demo's backdrop, with the demo fading in once painted, and the launch
         // around it (open, close drag, flight home): `demo-card` (modules/apple/DemoLaunch.swift).
-        demo-card press=leave slug=demo.slug caption=demo.name tint=demo.backdrop owns=(ownsDrags ? "drags" : "")
+        demo-card press=leave slug=demo.slug caption=demo.name tint=demo.backdrop zone=zone owns=(ownsDrags ? "drags" : "")
           position="absolute" inset=0 pointer-events="none" aria-hidden=true
         // The close button: a real SwiftUI glass button (`glass-button`, modules/apple/Demos.swift).
         // In a demo's sub-page it is Back and plays the demo's own way back instead of closing.

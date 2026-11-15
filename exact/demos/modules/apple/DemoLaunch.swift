@@ -50,8 +50,9 @@ private enum K {
     static let activeOffsetY: CGFloat = 10
     /// The still of the demo is taken (and the home shown behind) this far into the pull, before the card moves.
     static let prepareOffsetY: CGFloat = 6
-    /// A demo that owns its drags still gives a pull from this much of the screen's top to the close.
-    static let stripFraction: CGFloat = 0.1
+    /// A demo whose own drags need the whole screen still gives a pull from this much of the screen's top
+    /// (and from the status-bar inset above it) to the close.
+    static let stripFraction: CGFloat = 0.18
     /// A release closes when it is a throw down, or lands past a tenth of the screen: a short pull is enough, as on iOS.
     static let closeVelocity: CGFloat = 250
     static let closeTravel: CGFloat = 0.1
@@ -362,8 +363,11 @@ private final class ClosePan: UIGestureRecognizer {
         switch state {
         case .possible:
             if abs(tr.x) > K.failSideways { state = .failed; abort(); return }
+            // A pull up from the strip is the demo's: it waits on this pan, so the pan lets go at once.
+            if session?.stripTouch == true, tr.y < -K.activeOffsetY { state = .failed; abort(); return }
             if tr.y > K.prepareOffsetY, !prepared { prepared = true; session?.dragPrepare() }
-            if tr.y > K.activeOffsetY {
+            // Vertical-dominant: a mostly sideways drag with some drift down is the demo's (a slider), not the close.
+            if tr.y > K.activeOffsetY, tr.y > abs(tr.x) {
                 lag = tr
                 translation = eased(tr)
                 state = .began
@@ -402,6 +406,30 @@ private final class ClosePan: UIGestureRecognizer {
 /// The strip over the status bar: its drags are always the close's and never reach the demo.
 private final class GrabZone: UIView {}
 
+/// Where a demo lets the swipe-down close start (app.contract `closeZone`): space-separated words,
+/// none = anywhere (RN's CloseGesture over the whole screen). `strip` = only the top strip (the demo's own
+/// drags need the screen); `x0,y0,x1,y1` = a rect, in fractions of the screen, where the demo's own vertical
+/// drags live and the close must not start. A vertical scroller needs no word: see `LaunchSession.scrollers`.
+struct CloseZone {
+    private(set) var strip = false
+    private(set) var blocked: [CGRect] = []
+
+    init(_ spec: String = "") {
+        for word in spec.split(separator: " ") {
+            if word == "strip" { strip = true; continue }
+            let v = word.split(separator: ",").compactMap { Double($0) }
+            if v.count == 4 { blocked.append(CGRect(x: v[0], y: v[1], width: v[2] - v[0], height: v[3] - v[1])) }
+        }
+    }
+
+    /// Whether a touch at `p` (window points) outside the top strip may start the close.
+    func allows(_ p: CGPoint, in screen: CGSize) -> Bool {
+        if strip { return false }
+        let f = CGPoint(x: p.x / max(screen.width, 1), y: p.y / max(screen.height, 1))
+        return !blocked.contains { $0.contains(f) }
+    }
+}
+
 /// The card: a plain clipping view around the presented view.
 private final class CardView: UIView {}
 
@@ -429,7 +457,9 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
     private var dismissed = false
     private weak var controller: UIViewController?
     private weak var card: DemoCardView?
-    private var owns: Bool { card?.ownsDrags ?? false }
+    private var zone: CloseZone { card?.zone ?? CloseZone() }
+    /// The vertical scrollers under the finger that sit at their top: the pull takes them over (`beganScrollers`).
+    private var scrollers: [UIScrollView] = []
 
     private var phase = Phase.opening
     private var grouped = false
@@ -1007,6 +1037,7 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
                 removeFlight()
                 completePresentation()
             }
+            beganScrollers()
             unrest()
             LaunchSession.thump.prepare()
             if snapshot == nil, let view = controller?.view {
@@ -1386,18 +1417,49 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
 }
 
 extension LaunchSession: UIGestureRecognizerDelegate {
-    /// A demo whose drags own the screen keeps every touch below the strip.
+    /// Where the close may start: the strip over the status bar always; below it anywhere the demo's zone
+    /// (`CloseZone`) allows and no vertical scroller under the finger is scrolled into its content.
     func gestureRecognizer(_ g: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
         // The strip is the status bar's height, but a finger rarely lands on the status bar itself (the system keeps
-        // the touches there): a drag down from the top tenth of the screen is the close's as well.
-        let inStrip = touch.view is GrabZone || touch.location(in: nil).y < max(grab?.bounds.height ?? 0, screen.height * K.stripFraction)
+        // the touches there): a drag down from the top of the screen is the close's as well.
+        let p = touch.location(in: nil)
+        let inStrip = touch.view is GrabZone || p.y < max(grab?.bounds.height ?? 0, screen.height * K.stripFraction)
         stripTouch = inStrip
-        return !owns || inStrip
+        scrollers = []
+        if inStrip { return true }
+        guard zone.allows(p, in: screen) else { return false }
+        // iOS's hand-off: a scroller at its top gives the pull to the close, one scrolled into its content keeps it.
+        var at = touch.view
+        while let v = at {
+            if let s = v as? UIScrollView, LaunchSession.scrollsVertically(s) {
+                guard s.contentOffset.y <= -s.adjustedContentInset.top + 1 else { scrollers = []; return false }
+                scrollers.append(s)
+            }
+            at = v.superview
+        }
+        return true
+    }
+
+    private static func scrollsVertically(_ s: UIScrollView) -> Bool {
+        guard s.isScrollEnabled else { return false }
+        let room = s.bounds.height - s.adjustedContentInset.top - s.adjustedContentInset.bottom
+        return s.contentSize.height > room + 1 || s.alwaysBounceVertical
     }
 
     /// A touch in the strip never reaches the demo: its recognizers wait for the close to fail.
     func gestureRecognizer(_ g: UIGestureRecognizer, shouldBeRequiredToFailBy other: UIGestureRecognizer) -> Bool {
         stripTouch
+    }
+
+    /// A scroller at its top recognizes its own pan on the same pull: both run until the close begins, which cancels it.
+    func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
+        scrollers.contains { $0.panGestureRecognizer === other }
+    }
+
+    /// The pull took hold: the scrollers under it let go (toggling a recognizer cancels it) and spring back behind the still.
+    fileprivate func beganScrollers() {
+        for s in scrollers { s.panGestureRecognizer.isEnabled = false; s.panGestureRecognizer.isEnabled = true }
+        scrollers = []
     }
 }
 
@@ -1407,7 +1469,7 @@ extension LaunchSession: UIGestureRecognizerDelegate {
 final class DemoCardView: UIView {
     var slug = ""
     var name = ""
-    var ownsDrags = false
+    var zone = CloseZone()
     var onLeave: (() -> Void)?
     func leave() { onLeave?() }
     override func didMoveToWindow() {

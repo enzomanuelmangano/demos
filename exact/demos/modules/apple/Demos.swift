@@ -211,7 +211,7 @@ private final class DemoCard: ExactNativeInstance {
     override func setProps(_ props: [String: String]) throws {
         card.slug = props["slug"] ?? card.slug
         card.name = props["caption"] ?? card.name
-        card.ownsDrags = props["owns"] == "drags"
+        card.zone = CloseZone(props["zone"] ?? "")
         if let hex = props["tint"], let color = RollingCount.uiColor(hex) { card.backgroundColor = color }
     }
 }

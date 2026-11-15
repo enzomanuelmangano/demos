@@ -74,11 +74,56 @@ source snapIdle(slug: string) as shape SnapAck
   method "POST"
   body json
 
-// Demos whose drags own the whole screen: their swipe-down close starts only in RN's grab strip
-// over the status bar (the close button stays). RN lets a demo keep a touch it claimed
-// (demo-screen.tsx CloseGesture); the close cannot ask the canvas mid-gesture, and switching it
-// per touch costs a commit that holds the canvas's first frames.
-fn ownsDrags(slug: string): bool = ["metaball", "magnet-spring", "swipe-cards", "animated-3d-parallax", "sphere-waves", "atlas-sphere", "floating-modal", "expandable-mini-player", "selectable-grid-list", "skia-color-picker", "duration-slider", "clock-time-picker", "wheel-picker", "bezier-curve-outline", "prequel-slider", "scrollable-shapes", "twodos-slide", "color-carousel", "coverflow-carousel", "circular-carousel", "fibonacci-shader-grid", "fourier-visualizer", "card-shader-reflections", "threads-holo-ticket", "light-on-painting", "gl-transitions", "imessage-stack", "add-to-cart", "calendar-days", "github-onboarding", "drag-to-sort", "infinite-carousel", "scroll-transition-3d", "pomodoro-timer", "mnist", "chessboard", "art-gallery", "sculptures-in-words", "time-machine", "ios-home-bouncy", "draggable-panel", "scrollable-bottom-sheet", "blurred-scroll", "liquid-glass-playground", "fractal-glass", "fibonacci-shader", "snake"].includes(slug)
+// Where a demo lets the swipe-down close start. RN's CloseGesture is a pan over the whole screen that a
+// demo's own gesture can claim first; here the demo's canvas takes touches natively and the close cannot
+// ask it mid-gesture (switching per touch costs a commit that holds the canvas's first frames), so each
+// demo says where its own vertical or free 2D drags live (exact/demos/tools/close-gesture.md has the table).
+// Words, space-separated (read by CloseZone in modules/apple/DemoLaunch.swift): "" = from anywhere;
+// "x0,y0,x1,y1" = a rect in fractions of the screen where the close must not start; "strip" = only the
+// top strip (the demo's drags need the whole screen). A real vertical scroller needs no word: the close
+// takes over from it at its top and never from the middle of its content.
+fn closeZone(slug: string): string = (
+  slug == "action-tray" ? "0,0.56,1,1" :
+  slug == "animated-3d-parallax" ? "0.09,0.31,0.91,0.69" :
+  slug == "art-gallery" ? "strip" :
+  slug == "atlas-sphere" ? "strip" :
+  slug == "audio-player" ? "0.04,0.75,0.96,0.89" :
+  slug == "balance-slider" ? "0.04,0.45,0.96,0.55" :
+  slug == "bezier-curve-outline" ? "strip" :
+  slug == "blurred-scroll" ? "strip" :
+  slug == "calendar-days" ? "0.05,0.60,0.95,0.69" :
+  slug == "chessboard" ? "0,0.24,1,0.74" :
+  slug == "clock-time-picker" ? "0.50,0.41,0.83,0.59" :
+  slug == "drag-to-sort" ? "strip" :
+  slug == "draggable-panel" ? "strip" :
+  slug == "duration-slider" ? "0.07,0.30,0.93,0.70" :
+  slug == "expandable-mini-player" ? "0,0.37,1,1" :
+  slug == "fibonacci-shader-grid" ? "0.20,0.56,0.80,0.84" :
+  slug == "floating-bottom-bar" ? "0,0.88,1,0.97" :
+  slug == "floating-modal" ? "0,0.73,1,1" :
+  slug == "fourier-visualizer" ? "strip" :
+  slug == "fractal-glass" ? "strip" :
+  slug == "gl-transitions" ? "strip" :
+  slug == "ios-home-bouncy" ? "strip" :
+  slug == "light-on-painting" ? "0.27,0,0.73,1" :
+  slug == "liquid-glass-playground" ? "strip" :
+  slug == "magnet-spring" ? "strip" :
+  slug == "metaball" ? "0.24,0.37,0.76,0.63" :
+  slug == "mnist" ? "0.12,0.48,0.88,0.84" :
+  slug == "scroll-transition-3d" ? "strip" :
+  slug == "scrollable-bottom-sheet" ? "0,0.41,1,1" :
+  slug == "sculptures-in-words" ? "strip" :
+  slug == "selectable-grid-list" ? "strip" :
+  slug == "skia-color-picker" ? "0,0.25,1,0.75" :
+  slug == "slide-to-reveal" ? "0.15,0.43,0.85,0.57" :
+  slug == "snake" ? "0.12,0.36,0.88,0.71" :
+  slug == "stacked-bottom-sheet" ? "0,0.57,1,1" :
+  slug == "swipe-cards" ? "0.02,0.16,0.98,0.71" :
+  slug == "time-machine" ? "strip" :
+  slug == "toast" ? "0.02,0.85,0.98,0.96" :
+  "")
+// The route's platform dismissal is refused for every demo whose close is restricted.
+fn ownsDrags(slug: string): bool = closeZone(slug) != ""
 
 // The keyboard over a demo: RN on iOS never resizes the screen for it. A demo that moves for
 // the keys does so itself (cherry-blossom-qrcode's input riding useKeyboardHandler's height as
@@ -261,4 +306,4 @@ component Demos
           column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" navigationPresentation="fullscreen"
             position="absolute" inset=0
             background-color=demoOf(e.params.slug).backdrop closedby=(ownsDrags(e.params.slug) ? "none" : "closerequest")
-            DemoScreen(demo=demoOf(e.params.slug), env=env, ownsDrags=ownsDrags(e.params.slug), leave=back)
+            DemoScreen(demo=demoOf(e.params.slug), env=env, ownsDrags=ownsDrags(e.params.slug), zone=closeZone(e.params.slug), leave=back)
