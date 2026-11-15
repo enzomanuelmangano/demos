@@ -103,17 +103,18 @@ component AppIcon
       // Changed since the last open (a live fix landed): orange, over the green, as it asks for a
       // re-look; opening the demo clears it.
       if changed
-        view testId=`changed-${demo.slug}` position="absolute" top=-6 left=((cell + size) / 2 - 14)
+        column testId=`changed-${demo.slug}` position="absolute" top=-6 left=((cell + size) / 2 - 14)
           width=20 height=20 border-radius=10 box-sizing="border-box" border="1.5px solid #ffffff"
           background-color="#FF9F0A" align-items="center" justify-content="center"
           pointer-events="none" aria-label="Changed"
-          image "symbol:sf/sparkle" width=12 height=12 font-size=10 font-weight=800 color="#FFFFFF" aria-hidden=true
       if approved and not changed
-        view testId=`approved-${demo.slug}` position="absolute" top=-6 left=((cell + size) / 2 - 14)
+        column testId=`approved-${demo.slug}` position="absolute" top=-6 left=((cell + size) / 2 - 14)
           width=20 height=20 border-radius=10 box-sizing="border-box" border="1.5px solid #ffffff"
           background-color="#34C759" align-items="center" justify-content="center"
           pointer-events="none" aria-label="Approved"
-          image "symbol:sf/checkmark" width=12 height=12 font-size=10 font-weight=800 color="#FFFFFF" aria-hidden=true
+          view width=6 height=11 box-sizing="border-box" transform="translate(0px, -2px) rotate(45deg)"
+            border-right-width=2 border-right-style="solid" border-right-color="#FFFFFF"
+            border-bottom-width=2 border-bottom-style="solid" border-bottom-color="#FFFFFF" aria-hidden=true
       text demo.label margin-top=6 max-width="100%" font-size=11 font-weight=600
         color="rgba(255,255,255,0.92)" text-align="center" white-space="nowrap" overflow="hidden"
         text-overflow="ellipsis"
