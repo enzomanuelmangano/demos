@@ -13,7 +13,15 @@ fn barWidth(i: number): number = (i + 1) * 10 + i * 20 + 20
 
 // step-buttons/index.tsx: BUTTON_HEIGHT 60, PADDING_HORIZONTAL 20, GAP 10,
 // BACK_BUTTON_WIDTH_RATIO 0.25, ICON_WIDTH 22, ICON_MARGIN_RIGHT 6.
-fn backWidth(w: number): number = (w - 20 * 2 - 10) * 0.25
+// The owner's ask (2026-11-15): the buttons concentric with the phone's bottom corners, as iOS 26's
+// floating controls: the same inset from the sides and the physical bottom (no safe area), the
+// pill's radius the display's corner radius less that inset. A 60 pt pill is drawn at radius 30,
+// so with the display's 62 (iPhone 17) the inset is 62 - 30 = 32 (RN: 20 at the sides, 64 above
+// the bottom).
+fn displayRadius(): number = 62
+fn edgeInset(): number = displayRadius() - 30
+// BACK_BUTTON_WIDTH_RATIO 0.25 of the row's inner width (RN's paddingHorizontal is the inset).
+fn backWidth(w: number): number = (w - edgeInset() * 2 - 10) * 0.25
 // SPRING_CONFIG { duration 250, dampingRatio 1.5 }: bun tools/spring.ts 250 1.5. Both progresses
 // (back: activeIndex > 0, icon: activeIndex == 2) ride it; every value interpolated on them
 // (width, marginRight, opacity) is linear in the progress, so each rides the same spring.
@@ -35,7 +43,7 @@ component Steps
   view
     // src/index.tsx styles.container: white, centred, content at the bottom, paddingBottom 64.
     column position="absolute" inset=0 background-color="#fff" align-items="center"
-      justify-content="flex-end" padding-bottom=64 testId="steps"
+      justify-content="flex-end" padding-bottom=edgeInset() testId="steps"
       // Dots: a row, paddingHorizontal externalSpacing / 2, gap dotSpacing.
       row padding-left=10 padding-right=10 gap=20 align-items="center" position="relative"
         testId="dots"
@@ -54,7 +62,7 @@ component Steps
             testId=`dot-${i}`
       // StepButtons styles.container: a row, BUTTON_HEIGHT, marginTop 48, paddingHorizontal 20,
       // width 100 %.
-      row height=60 margin-top=48 padding-left=20 padding-right=20 align-self="stretch"
+      row height=60 margin-top=48 padding-left=edgeInset() padding-right=edgeInset() align-self="stretch"
         // rBackButtonStyle: width 0 → backButtonWidth, marginRight 0 → GAP, clipped.
         view width=(activeIndex > 0 ? backWidth(env.width) : 0)
           margin-right=(activeIndex > 0 ? 10 : 0) overflow="hidden"
@@ -74,7 +82,7 @@ component Steps
           PressableScaleLayout(press=onContinue, layout=stepSpring())
             // Its fill is PillFill (pill-fill.contract): the button resizes as Back comes and goes
             // with no fill of its own, so its corner never goes through the host's resize surface.
-            // Radius 30 (half of 60); caps 50 (the corner reaches 46; the button is 264 to 362 wide).
+            // Radius 30 (half of 60); caps 50 (the corner reaches 46; the button is about 240 to 338 wide).
             row testId="continue" text-align="center" position="relative"
               flex=1 height=60
               display="flex" flex-direction="row" align-items="center" justify-content="center"
