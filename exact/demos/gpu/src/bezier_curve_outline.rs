@@ -63,8 +63,8 @@ use shaders::bezier_curve_outline::{entry, module, Uniforms, BASE, BLURRED, GROU
 const SMALL: f64 = 64.0;
 const BIG: f64 = 180.0;
 const RADIUS: f32 = 20.0;
-/// A control point's grab radius: 44 pt across (the owner's call; RN grabs the drawn disc).
-const GRAB_RADIUS: f64 = 22.0;
+/// A control point's grab radius: 72 pt across (the owner's call, raised from 44 after a phone try; RN grabs the drawn disc).
+const GRAB_RADIUS: f64 = 36.0;
 const ICON: f32 = 48.0;
 /// assets/pawn.svg (viewBox 50): its four paths.
 const PAWN: [&str; 4] = [
@@ -337,7 +337,7 @@ impl Surface for BezierOutline {
         if self.outline_progress.value > 0.0 {
             // The outline's Touchable canvas.
             // RN's Touchable circles take a touch on the drawn disc (r 12 / 10); the owner's call
-            // (phone feedback, 2026-11-15): a 44 pt grab, r 22 round each point, the nearest
+            // (phone feedback, 2026-11-15): a 72 pt grab, r 36 round each point, the nearest
             // point taking a touch two grabs share. The look is unchanged.
             let grab = |p: &[(f64, f64); 4]| {
                 (0..4)
