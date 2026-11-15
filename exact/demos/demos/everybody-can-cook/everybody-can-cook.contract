@@ -18,7 +18,13 @@ fn flip(): string = "1384ms linear(0, 0.0185, 0.0649, 0.128, 0.2, 0.2755, 0.3506
 // staggered-digit.tsx (DefaultFontSize 50, DefaultFontHeight 55):
 // top copy: opacity 1 - p, perspective(1000) translateY(-p · 55 / 2) rotateX(p · 90deg);
 // bottom copy: opacity p, translateY(interpolate p → [27.5, 0]) rotateX(interpolate p → [-90, 0]).
-// Keyframes animate the angle; the axis (x) is each copy's own `rotate`. Two names for each:
+// Keyframes animate the angle; the axis (x) is each copy's own `rotate`. The iOS host lowers a
+// box's rotate keyframes to Core Animation's `transform.rotation.z` whatever the axis (exact2
+// host/apple/src/svg_lower.rs `specs_in`): the letters turned flat in the screen's plane (phone
+// feedback 2026-11-15). A transform-origin off the centre makes the host sample the node instead
+// (`box_eligible`), and the sampled rotate goes through its 3D axis (SpaceTransform.swift). The
+// origin is `left center`: a turn about x is the same about any point on the centre line, so RN's
+// centred rotateX is unchanged. Two names for each:
 // a tap swaps them, which restarts the animation from p = 0 (RN's reset() then animate()).
 keyframes topA
   from opacity=1 translate="0px 0px" rotate=0
@@ -71,8 +77,9 @@ component StaggeredText
           // on a wrapper the size of this copy, its vanishing point the copy's centre.
           view perspective=1000
             text c font-family="Honk-Regular" font-size=50 color="#ffffff" white-space="pre"
-              rotate="x 0deg" animation=flipOf("top", plays, i * 40 + delay)
+              rotate="x 0deg" transform-origin="left center" animation=flipOf("top", plays, i * 40 + delay)
           // The second copy, absolute over the first, at p = 0 before the first tap.
           text c position="absolute" left=0 top=0 font-family="Honk-Regular" font-size=50
             color="#ffffff" white-space="pre" opacity=0 translate="0px 27.5px" rotate="x -90deg"
+            transform-origin="left center"
             animation=flipOf("bottom", plays, i * 40 + delay)
