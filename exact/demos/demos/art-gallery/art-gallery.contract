@@ -7,81 +7,18 @@
 // menus of toggles) are here. A pick reaches the surface as (painting, picks).
 use DemoEnv from "../env.contract"
 
-// src/animations/art-gallery/paintings.ts ART_MOVEMENTS: movement → painter → painting.
-shape Painting
-  id: string
-  name: string
-
-shape Painter
-  id: string
-  name: string
-  paintings: Painting[]
-
-shape Movement
-  id: string
-  name: string
-  painters: Painter[]
-
-fn movements(): Movement[] = [
-  Movement(id="renaissance", name="Renaissance", painters=[
-    Painter(id="da-vinci", name="Leonardo da Vinci", paintings=[Painting(id="mona-lisa", name="Mona Lisa"), Painting(id="last-supper", name="The Last Supper")]),
-    Painter(id="michelangelo", name="Michelangelo", paintings=[Painting(id="creation-of-adam", name="The Creation of Adam")]),
-    Painter(id="raphael", name="Raphael", paintings=[Painting(id="school-of-athens", name="The School of Athens")]),
-    Painter(id="botticelli", name="Sandro Botticelli", paintings=[Painting(id="birth-of-venus", name="The Birth of Venus"), Painting(id="primavera", name="Primavera")])]),
-  Movement(id="dutch-golden-age", name="Dutch Golden Age", painters=[
-    Painter(id="vermeer", name="Johannes Vermeer", paintings=[Painting(id="girl-with-pearl-earring", name="Girl with a Pearl Earring"), Painting(id="the-milkmaid", name="The Milkmaid")]),
-    Painter(id="rembrandt", name="Rembrandt", paintings=[Painting(id="the-night-watch", name="The Night Watch"), Painting(id="self-portrait-rembrandt", name="Self Portrait")])]),
-  Movement(id="romanticism", name="Romanticism", painters=[
-    Painter(id="friedrich", name="Caspar David Friedrich", paintings=[Painting(id="wanderer-above-sea-of-fog", name="Wanderer Above the Sea of Fog")]),
-    Painter(id="delacroix", name="Eugène Delacroix", paintings=[Painting(id="liberty-leading-the-people", name="Liberty Leading the People")])]),
-  Movement(id="impressionism", name="Impressionism", painters=[
-    Painter(id="monet", name="Claude Monet", paintings=[Painting(id="water-lilies", name="Water Lilies"), Painting(id="impression-sunrise", name="Impression, Sunrise")])]),
-  Movement(id="post-impressionism", name="Post-Impressionism", painters=[
-    Painter(id="van-gogh", name="Vincent van Gogh", paintings=[Painting(id="starry-night", name="The Starry Night"), Painting(id="sunflowers", name="Sunflowers"), Painting(id="cafe-terrace", name="Café Terrace at Night")])]),
-  Movement(id="art-nouveau", name="Art Nouveau", painters=[
-    Painter(id="klimt", name="Gustav Klimt", paintings=[Painting(id="the-kiss", name="The Kiss")])]),
-  Movement(id="fauvism", name="Fauvism", painters=[
-    Painter(id="matisse", name="Henri Matisse", paintings=[Painting(id="the-dance", name="The Dance"), Painting(id="the-music", name="The Music")])]),
-  Movement(id="expressionism", name="Expressionism", painters=[
-    Painter(id="munch", name="Edvard Munch", paintings=[Painting(id="the-scream", name="The Scream")])]),
-  Movement(id="surrealism", name="Surrealism", painters=[
-    Painter(id="magritte", name="René Magritte", paintings=[Painting(id="the-lovers", name="The Lovers")]),
-    Painter(id="dali", name="Salvador Dalí", paintings=[Painting(id="persistence-of-memory", name="The Persistence of Memory")])]),
-  Movement(id="american-realism", name="American Realism", painters=[
-    Painter(id="hopper", name="Edward Hopper", paintings=[Painting(id="nighthawks", name="Nighthawks"), Painting(id="morning-sun", name="Morning Sun")])]),
-  Movement(id="ukiyo-e", name="Ukiyo-e", painters=[
-    Painter(id="hokusai", name="Katsushika Hokusai", paintings=[Painting(id="the-great-wave", name="The Great Wave off Kanagawa")])])]
+// src/animations/art-gallery/paintings.ts ART_MOVEMENTS, in order, for PaintingMenu.swift: `m <id> <name>` a
+// movement, `p` a painter of the last movement, `t` a painting of the last painter, `|` between.
+fn paintingItems(): string = "m renaissance Renaissance|p da-vinci Leonardo da Vinci|t mona-lisa Mona Lisa|t last-supper The Last Supper|p michelangelo Michelangelo|t creation-of-adam The Creation of Adam|p raphael Raphael|t school-of-athens The School of Athens|p botticelli Sandro Botticelli|t birth-of-venus The Birth of Venus|t primavera Primavera|m dutch-golden-age Dutch Golden Age|p vermeer Johannes Vermeer|t girl-with-pearl-earring Girl with a Pearl Earring|t the-milkmaid The Milkmaid|p rembrandt Rembrandt|t the-night-watch The Night Watch|t self-portrait-rembrandt Self Portrait|m romanticism Romanticism|p friedrich Caspar David Friedrich|t wanderer-above-sea-of-fog Wanderer Above the Sea of Fog|p delacroix Eugène Delacroix|t liberty-leading-the-people Liberty Leading the People|m impressionism Impressionism|p monet Claude Monet|t water-lilies Water Lilies|t impression-sunrise Impression, Sunrise|m post-impressionism Post-Impressionism|p van-gogh Vincent van Gogh|t starry-night The Starry Night|t sunflowers Sunflowers|t cafe-terrace Café Terrace at Night|m art-nouveau Art Nouveau|p klimt Gustav Klimt|t the-kiss The Kiss|m fauvism Fauvism|p matisse Henri Matisse|t the-dance The Dance|t the-music The Music|m expressionism Expressionism|p munch Edvard Munch|t the-scream The Scream|m surrealism Surrealism|p magritte René Magritte|t the-lovers The Lovers|p dali Salvador Dalí|t persistence-of-memory The Persistence of Memory|m american-realism American Realism|p hopper Edward Hopper|t nighthawks Nighthawks|t morning-sun Morning Sun|m ukiyo-e Ukiyo-e|p hokusai Katsushika Hokusai|t the-great-wave The Great Wave off Kanagawa"
 
 component ArtGallery
   props
     env: DemoEnv
   state painting = ""
   state picks = 0
-  // The menu (in the route: the popover menus never opened on the phone): open, and the
-  // movement and painter it has gone into ("" at its top).
-  state menuOpen = false
-  state inMovement = ""
-  state inPainter = ""
   action pick(id: string)
     painting = id
     picks = picks + 1
-    menuOpen = false
-  action toggleMenu
-    menuOpen = not menuOpen
-    inMovement = ""
-    inPainter = ""
-  action closeMenu
-    menuOpen = false
-  action enterMovement(id: string)
-    inMovement = id
-    inPainter = ""
-  action enterPainter(id: string)
-    inPainter = id
-  action up
-    if inPainter != ""
-      inPainter = ""
-    else
-      inMovement = ""
   action buzz(m: string)
     if m == "haptic:selection"
       haptic("selection")
@@ -103,56 +40,13 @@ component ArtGallery
       row position="absolute" top=env.safeTop left=0 right=0 height=44 align-items="center"
         justify-content="center" pointer-events="none"
         text "Gallery" font-size=17 font-weight=600 color="#ffffff" testId="art-gallery-title"
-      // PaintingMenu: the close button's twin, 16 pt from the trailing edge at the safe top, a
-      // glass circle with an ellipsis (Image size 17) in the app's dark appearance, over the canvas.
-      // (The SwiftUI menu itself is modules/apple/PaintingMenu.swift, `painting-menu`, once the
-      // app ships that tag.)
-      button press=toggleMenu buttonStyle="glass" position="absolute"
+      // PaintingMenu (RN Release: EXPO_PUBLIC_LIQUID_GLASS_ENABLED): @expo/ui's SwiftUI Menu in a
+      // matchContents Host (colorScheme dark) 16 pt from the trailing edge at the safe top, the
+      // close button's twin: a liquid-glass circle with an ellipsis opening nested menus (Default,
+      // then movement → painter → painting, each a Toggle; a pick closes the menu). Real SwiftUI
+      // on iOS and macOS: `painting-menu` (modules/apple/PaintingMenu.swift), the button at the
+      // box's top-trailing corner; its `change` is the picked painting's id ("" for Default).
+      // The web shows an empty box.
+      painting-menu change=pick selected=painting items=paintingItems() position="absolute"
         top=env.safeTop right=16 width=48 height=48 z-index=1000 aria-label="Choose a painting"
-        aria-expanded=menuOpen testId="painting-menu"
-        image "symbol:sf/ellipsis" font-size=17
-      // The menu as SwiftUI's opens it, dark: Default, then movement → painter → painting (a
-      // check on the one shown), each level replacing the last with a back row; a pick or a tap
-      // outside closes it.
-      if menuOpen
-        view position="absolute" inset=0 z-index=1001 press=closeMenu aria-hidden=true
-          testId="painting-menu-scrim"
-        column position="absolute" top=(env.safeTop + 56) right=16 width=260 z-index=1002
-          color-scheme="dark" backgroundMaterial="regular" border-radius=26
-          corner-shape="-exact-continuous" padding="6px 0px" role="menu" overflow="hidden"
-          testId="painting-menu-list"
-          if inMovement == ""
-            button press=pick("") role="menuitemcheckbox" aria-checked=(painting == "")
-              appearance="none" testId="painting-default"
-              row height=44 align-items="center" gap=10 padding="0px 16px"
-                text (painting == "" ? "✓" : "") width=16 font-size=17 font-weight=600 color="#ffffff"
-                text "Default" font-size=17 color="#ffffff" flex=1
-            for m in movements() key=m.id
-              button press=enterMovement(m.id) appearance="none" testId=`movement-${m.id}`
-                row height=44 align-items="center" gap=10 padding="0px 16px"
-                  view width=16
-                  text m.name font-size=17 color="#ffffff" flex=1
-                  image "symbol:sf/chevron.right" font-size=13 color="rgba(235, 235, 245, 0.6)"
-          for m in movements().filter(m => m.id == inMovement and inPainter == "") key=m.id
-            button press=up appearance="none" testId="menu-back"
-              row height=44 align-items="center" gap=10 padding="0px 16px"
-                image "symbol:sf/chevron.left" font-size=15 color="#ffffff"
-                text m.name font-size=17 font-weight=600 color="#ffffff" flex=1
-            for p in m.painters key=p.id
-              button press=enterPainter(p.id) appearance="none" testId=`painter-${p.id}`
-                row height=44 align-items="center" gap=10 padding="0px 16px"
-                  view width=16
-                  text p.name font-size=17 color="#ffffff" flex=1
-                  image "symbol:sf/chevron.right" font-size=13 color="rgba(235, 235, 245, 0.6)"
-          for m in movements().filter(m => m.id == inMovement and inPainter != "") key=m.id
-            for p in m.painters.filter(p => p.id == inPainter) key=p.id
-              button press=up appearance="none" testId="menu-back"
-                row height=44 align-items="center" gap=10 padding="0px 16px"
-                  image "symbol:sf/chevron.left" font-size=15 color="#ffffff"
-                  text p.name font-size=17 font-weight=600 color="#ffffff" flex=1
-              for x in p.paintings key=x.id
-                button press=pick(x.id) role="menuitemcheckbox" aria-checked=(painting == x.id)
-                  appearance="none" testId=`painting-${x.id}`
-                  row height=44 align-items="center" gap=10 padding="0px 16px"
-                    text (painting == x.id ? "✓" : "") width=16 font-size=17 font-weight=600 color="#ffffff"
-                    text x.name font-size=17 color="#ffffff" flex=1
+        testId="painting-menu"
