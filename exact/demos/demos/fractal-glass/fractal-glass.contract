@@ -16,10 +16,17 @@ component FractalGlass
   state theme = "light"
   action toggle
     theme = theme == "light" ? "dark" : "light"
+  // The circle's haptics (gpu/src/fractal_glass.rs, past RN): light on the grab, selection as
+  // it passes behind the glass or out from it.
+  action heard(m: string)
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+    if m == "haptic:selection"
+      haptic("selection")
   view
     // styles.fill: the window; its background is drawn by the canvas (withTiming white/black).
     column position="absolute" inset=0 testId="fractal-glass"
-      canvas surface=fractal_glass(theme == "dark" ? 1 : 0) position="absolute" top=0 left=0 width="100%"
+      canvas surface=fractal_glass(theme == "dark" ? 1 : 0) message=heard position="absolute" top=0 left=0 width="100%"
         height="100%" touch-action="none" testId="fractal-glass-canvas"
         aria-label="Drag the circle behind the glass"
       // styles.floatingButton: absolute, bottom 64, right 64, 58 tall, square; PressableScale.

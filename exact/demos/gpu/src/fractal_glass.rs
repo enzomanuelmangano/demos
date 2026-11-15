@@ -28,6 +28,11 @@
 //! - The pane is no longer RN's 4 × 4 mask (the owner: not real fractal glass). It is reeded
 //!   glass (fractal_glass.wgsl): per flute a cylindrical lens refracting the sharp circle and
 //!   this blur (the frosting), with dispersion, a specular line and a groove shadow.
+//!
+//! Haptics (past RN, which plays none: the owner's haptic language): `haptic:impact-light` when
+//! a finger takes the circle (onBegin); `haptic:selection` each time the drag carries its centre
+//! behind the glass or out from it (the pane's edge), at most one per HAPTIC_GAP_MS. The flutes
+//! play none (crossing them under a drag would buzz) and a release lands nothing (no spring).
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -54,6 +59,9 @@ const DARK: ([f64; 3], [f64; 3]) = ([0.0, 0.0, 0.0], [120.0, 192.0, 224.0]);
 /// The filter layer's transparent margin here (Skia pads 1; past it is decal, transparent).
 const LAYER_MARGIN: i32 = 4;
 
+/// The shortest gap between two selection haptics, ms.
+const HAPTIC_GAP_MS: f64 = 40.0;
+
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
     surface_struct()
@@ -68,6 +76,9 @@ fn surface_struct() -> Box<FractalGlass> {
         center: (180.0, 270.0),
         saved: (0.0, 0.0),
         pan: PanGesture::new(),
+        behind: false,
+        haptic_at: f64::NEG_INFINITY,
+        posted: Vec::new(),
         blur: GraphiteBlur::default(),
         canvas: skia::Canvas::default(),
         renderer: skia::Renderer::default(),
@@ -85,6 +96,10 @@ struct FractalGlass {
     center: (f32, f32),
     saved: (f32, f32),
     pan: PanGesture,
+    /// The circle's centre is behind the pane, and the last selection's time (their haptics).
+    behind: bool,
+    haptic_at: f64,
+    posted: Vec<String>,
     blur: GraphiteBlur,
     canvas: skia::Canvas,
     renderer: skia::Renderer,
@@ -150,6 +165,14 @@ impl FractalGlass {
         (gamma8(self.channels[k].value) / 255.0) as f32
     }
 
+    /// Whether the circle's centre is behind the pane (x 40, width W − 80, 300 tall, centred).
+    fn behind_pane(&self) -> bool {
+        let (w, h) = self.size;
+        let (x, y) = self.center;
+        let top = (h - 300.0) / 2.0;
+        x >= 40.0 && x <= w - 40.0 && y >= top && y <= top + 300.0
+    }
+
     fn on_circle(&self, x: f32, y: f32) -> bool {
         (x - self.center.0).abs() <= RADIUS && (y - self.center.1).abs() <= RADIUS
     }
@@ -179,6 +202,10 @@ impl Surface for FractalGlass {
         !self.button
     }
 
+    fn messages(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.posted)
+    }
+
     fn agent(&mut self, _request: &str) -> Option<String> {
         let hex = |o: usize| (0..3).map(|k| format!("{:02X}", (self.channel(o + k) * 255.0).round() as u8)).collect::<String>();
         Some(format!(
@@ -198,8 +225,22 @@ impl Surface for FractalGlass {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
         let claim = self.on_circle(x, y);
         match self.pan.event(id, gfx::phase(phase), x, y, at_ms, claim) {
-            Event::Begin { .. } => self.saved = self.center,
-            Event::Start(p) | Event::Update(p) => self.center = (self.saved.0 + p.translation_x, self.saved.1 + p.translation_y),
+            Event::Begin { .. } => {
+                self.saved = self.center;
+                self.behind = self.behind_pane();
+                self.posted.push("haptic:impact-light".into());
+            }
+            Event::Start(p) | Event::Update(p) => {
+                self.center = (self.saved.0 + p.translation_x, self.saved.1 + p.translation_y);
+                let behind = self.behind_pane();
+                if behind != self.behind {
+                    self.behind = behind;
+                    if at_ms - self.haptic_at >= HAPTIC_GAP_MS {
+                        self.posted.push("haptic:selection".into());
+                        self.haptic_at = at_ms;
+                    }
+                }
+            }
             _ => {}
         }
     }
@@ -631,6 +672,24 @@ mod tests {
         let b = |x: u32, y: u32| img.at(x, y)[2] as i32;
         assert!(b(540, 930) < b(540, 1100) && b(540, 1100) < b(540, 1300), "{} {} {}", b(540, 930), b(540, 1100), b(540, 1300));
         assert_eq!(&img.at(540, 810)[..3], &[255, 165, 0]);
+    }
+
+    #[test]
+    fn the_drag_plays_the_grab_and_the_pane_edge() {
+        let mut s = surface_struct();
+        s.size = (420.0, 912.0);
+        let p = |phase, y: f32, at_ms| InputEvent::Pointer { id: 1, phase, x: 180.0, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        // From (180, 270), above the pane (306…606): down behind it, then back up out of it.
+        s.input(&p(PointerPhase::Down, 270.0, 0.0));
+        for k in 1..=10 {
+            s.input(&p(PointerPhase::Move, 270.0 + 10.0 * k as f32, 100.0 + 16.0 * k as f64));
+        }
+        for k in 1..=10 {
+            s.input(&p(PointerPhase::Move, 370.0 - 15.0 * k as f32, 300.0 + 16.0 * k as f64));
+        }
+        s.input(&p(PointerPhase::Up, 220.0, 480.0));
+        assert!(!s.behind_pane());
+        assert_eq!(s.messages(), vec!["haptic:impact-light", "haptic:selection", "haptic:selection"]);
     }
 
     #[test]
