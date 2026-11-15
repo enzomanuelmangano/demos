@@ -67,6 +67,12 @@ One commit per haptic event, never per frame.
 
 ## Traps the compiler only catches in the whole app
 
+- Bottom floating UI is concentric with the display (the owner's rule, iOS 26: sheets, tab
+  bars, trays, mini-players): `inset` from the DISPLAY's sides and bottom (not above the home
+  indicator), radius = display corner − inset, continuous, capped at half the box's height (a
+  capsule), an inner pill padded `p` at concentricRadius(inset + p, its height). Use
+  demos/env.contract `floatingWidth` / `concentricRadius` (display corner 62: Exact exposes
+  none). Past RN, so say so in the demo's comment.
 - Text in a surface standing for an RN `<Text>` (not RN Skia `<Text>`): its font MUST be
   `.with_ui_layout()` (or `match_ui_font`). `Font::new` alone takes Skia's path with gamma
   pre-blend: 5–20 % heavier ink than TextKit. With it, the text probe matches UIKit at 0 diff.
