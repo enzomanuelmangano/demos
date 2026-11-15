@@ -24,22 +24,35 @@ fn bottomHeight(id: number): number = min(id, 2) + 15 * id
 fn modalSpring(): string = "-exact-spring(740, 86.0233, 2.5)"
 
 // On mount `bottom` springs from (windowHeight - 200) / 2 - 110 (bottomOffset) to its place
-// and baseOpacity from 0 to 1, on that spring (overdamped, ζ 1.16): its curve from rest,
-// 1 - (r₂e^{r₁t} - r₁e^{r₂t}) / (r₂ - r₁) with r = -9.80, -30.20, sampled every 25 ms over 1 s
-// (8e-5 of the travel left).
+// and baseOpacity from 0 to 1, on that spring. Reanimated runs it critically damped (ω₀ =
+// √(740 / 2.5) = 17.2 /s): 1 - (1 + ω₀t)e^{-ω₀t}, sampled at stops placed so each linear
+// segment stays within 3e-4 of the curve (0.03 px of the 110, under a colour level) over
+// 750 ms (3e-5 left).
 keyframes modalIn
   from translate="0px 110px" opacity=0
   to translate="0px 0px" opacity=1
-fn modalInTiming(): string = "1000ms linear(0, 0.0671, 0.1992, 0.3401, 0.4679, 0.5762, 0.6649, 0.7361, 0.7927, 0.8374, 0.8726, 0.9002, 0.9218, 0.9388, 0.9521, 0.9625, 0.9706, 0.977, 0.982, 0.9859, 0.989, 0.9914, 0.9933, 0.9947, 0.9959, 0.9968, 0.9975, 0.998, 0.9984, 0.9988, 0.999, 0.9993, 0.9994, 0.9995, 0.9996, 0.9997, 0.9998, 0.9998, 0.9999, 0.9999, 1) both"
+fn modalInTiming(): string = "750ms linear(0 0%, 0.0012205 0.3894%, 0.0049738 0.7999%, 0.011423 1.235%, 0.020774 1.698%, 0.033301 2.196%, 0.049377 2.735%, 0.069539 3.326%, 0.094626 3.987%, 0.1261 4.748%, 0.16711 5.675%, 0.22894 7.005%, 0.34607 9.487%, 0.40606 10.8%, 0.45652 11.96%, 0.50158 13.05%, 0.54282 14.1%, 0.58106 15.13%, 0.61677 16.17%, 0.65025 17.2%, 0.68172 18.25%, 0.71134 19.32%, 0.73922 20.42%, 0.76544 21.54%, 0.79009 22.7%, 0.81321 23.91%, 0.83486 25.17%, 0.85507 26.48%, 0.87388 27.87%, 0.89131 29.33%, 0.90738 30.89%, 0.92211 32.56%, 0.93553 34.37%, 0.94765 36.33%, 0.95848 38.5%, 0.96804 40.92%, 0.97633 43.68%, 0.98336 46.88%, 0.98914 50.71%, 0.99368 55.52%, 0.997 62.04%, 0.99908 72.31%, 0.99996 98.65%, 1 100%) both"
 
 // FadeOutDown.delay(60 × id): opacity to 0 and translateY 25, 300 ms on Reanimated's default
 // curve, Easing.inOut(Easing.quad), as its cubic-bezier.
 keyframes modalOut
   to opacity=0 translate="0px 25px"
 
-// rContentStyle: opacity = isActiveStackedModalProgress ** 1.5, the progress springing to 1
-// for the front modal. A hidden box translated by progress × 100 px on the same spring is a
-// drag timeline these stops follow (host-driven, no commit per frame).
+// rContentStyle: opacity = isActiveStackedModalProgress ** 1.5, the progress springing
+// (withCustomSpring, critically damped) to 1 for the front modal and to 0 behind it. A new
+// front card starts at 1 (Reanimated's first value is the target). The curves of p^1.5 are
+// state-switched keyframes: a drag timeline moved only by a transition jumps to its end on iOS
+// (port-demo Traps), which blanked the card behind in one frame as the new one came in.
+keyframes contentOut
+  from opacity=1
+  to opacity=0
+keyframes contentIn
+  from opacity=0
+  to opacity=1
+fn contentOutTiming(): string = "750ms linear(0 0%, 0.0012168 0.3165%, 0.0049432 0.6471%, 0.011315 0.9942%, 0.020508 1.36%, 0.03275 1.75%, 0.04835 2.166%, 0.067748 2.618%, 0.0916 3.114%, 0.12099 3.672%, 0.15798 4.325%, 0.20789 5.157%, 0.36848 7.743%, 0.42785 8.733%, 0.47792 9.607%, 0.5226 10.43%, 0.56341 11.22%, 0.60117 12%, 0.63635 12.77%, 0.66926 13.55%, 0.70012 14.34%, 0.72909 15.14%, 0.75629 15.96%, 0.7818 16.8%, 0.80571 17.67%, 0.82807 18.57%, 0.84893 19.51%, 0.86834 20.5%, 0.88632 21.54%, 0.90291 22.64%, 0.91812 23.81%, 0.93199 25.08%, 0.94453 26.45%, 0.95576 27.95%, 0.96569 29.61%, 0.97434 31.5%, 0.98172 33.66%, 0.98783 36.23%, 0.99269 39.41%, 0.99631 43.6%, 0.9987 49.87%, 0.99986 62.98%, 1 100%) both"
+fn contentInTiming(): string = "750ms linear(0 0%, 0.00080311 1.066%, 0.0035171 1.8%, 0.0082686 2.46%, 0.015182 3.093%, 0.024401 3.718%, 0.036103 4.348%, 0.050512 4.992%, 0.067923 5.661%, 0.088741 6.366%, 0.11356 7.123%, 0.14334 7.953%, 0.17983 8.899%, 0.22715 10.06%, 0.30733 11.93%, 0.39998 14.1%, 0.45805 15.51%, 0.50685 16.74%, 0.55024 17.9%, 0.58977 19.02%, 0.62625 20.12%, 0.66016 21.22%, 0.69181 22.32%, 0.72143 23.43%, 0.74917 24.57%, 0.77515 25.73%, 0.79948 26.93%, 0.82222 28.17%, 0.84344 29.46%, 0.86318 30.81%, 0.88149 32.23%, 0.8984 33.73%, 0.91394 35.33%, 0.92813 37.05%, 0.941 38.91%, 0.95256 40.95%, 0.96284 43.2%, 0.97183 45.74%, 0.97957 48.65%, 0.98605 52.07%, 0.99128 56.25%, 0.99528 61.64%, 0.99806 69.34%, 0.99961 83.14%, 1 100%) both"
+fn contentAnimation(id: number, fresh: bool): string = id > 0 ? `contentOut ${contentOutTiming()}` : (fresh ? "none" : `contentIn ${contentInTiming()}`)
+
 // FadeOutDown, for a modal removed alone (clearModal: the front one, delay 60 × 0). The backdrop
 // clears them all with each one's delay 60 × id: an exit animation is one literal, so those stay
 // mounted (`leaving`, ids frozen) and play modalOut with their delay (an animation delay holds on
@@ -47,29 +60,6 @@ keyframes modalOut
 fn modalOutOf(id: number): string = `modalOut 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) ${60 * id}ms both`
 style ModalOut
   -exact-exit-animation="modalOut 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) both"
-
-keyframes contentPow
-  0% opacity=0
-  5% opacity=0.0112
-  10% opacity=0.0316
-  15% opacity=0.0581
-  20% opacity=0.0894
-  25% opacity=0.125
-  30% opacity=0.1643
-  35% opacity=0.2071
-  40% opacity=0.253
-  45% opacity=0.3019
-  50% opacity=0.3536
-  55% opacity=0.4079
-  60% opacity=0.4648
-  65% opacity=0.524
-  70% opacity=0.5857
-  75% opacity=0.6495
-  80% opacity=0.7155
-  85% opacity=0.7837
-  90% opacity=0.8538
-  95% opacity=0.9259
-  100% opacity=1
 
 // Backdrop: opacity withTiming(any modal ? 1 : 0), 300 ms on Reanimated's default
 // Easing.inOut(Easing.quad), from wherever it is. In RN the cards' exits (FadeOutDown) start at
@@ -174,6 +164,7 @@ component StackedModals
       // One list, so a modal that starts leaving keeps its instance (no remount).
       for pair in stack.map((e, i) => [e, i, 0]).concat(shownLeaving.map(p => [leaveEntry(p), leaveId(p), 1])) key=(leaveEntry(pair) - modalOf(leaveEntry(pair))) / 10
         Modal(entry=leaveEntry(pair), id=leaveId(pair), width=env.width, height=env.height,
+          fresh=((leaveEntry(pair) - modalOf(leaveEntry(pair))) / 10 == serial - 1),
           leaving=(leaveFlag(pair) == 1), confirm=answer(leaveEntry(pair), false),
           dismiss=answer(leaveEntry(pair), true))
       // Backdrop: absoluteFill, #0000006f, opacity withTiming(any modal ? 1 : 0), touchable only
@@ -193,6 +184,7 @@ component Modal
     entry: number
     id: number
     leaving: bool
+    fresh: bool
     width: number
     height: number
     confirm: action
@@ -208,11 +200,8 @@ component Modal
       // part (the shadow): when the leaving modal unmounts, the outer box's literal exit replays
       // over nothing.
       column border-radius=35 corner-shape="-exact-continuous"
-        box-shadow="0px 0px 10px rgba(0, 0, 0, 0.03)" timeline-scope="--active"
+        box-shadow="0px 0px 10px rgba(0, 0, 0, 0.03)"
         animation=(leaving ? modalOutOf(id) : "none")
-        view position="absolute" left=0 top=0 width=0 height=0 pointer-events="none" aria-hidden=true
-          translate=`${id == 0 ? 100 : 0}px 0px` transition=`translate ${modalSpring()}`
-          -exact-drag-timeline="--active x"
         // bottom: withCustomSpring(… + bottomHeight) as the id changes.
         column translate=`0px ${0 - bottomHeight(id)}px` transition=`translate ${modalSpring()}`
           // The mount: bottomOffset 110 and baseOpacity.
@@ -228,8 +217,7 @@ component Modal
               box-shadow=`0px -3px ${2 * max(10 - id, 2)}px rgba(0, 0, 0, ${id > 3 ? 0.1 - id * 0.01 : 0.08})`
               transition=`opacity ${modalSpring()}, translate ${modalSpring()}, scale ${modalSpring()}, box-shadow ${modalSpring()}`
               column flex=1 border-radius=10 corner-shape="-exact-continuous" overflow="hidden"
-                column flex=1 animation="contentPow 1s linear both" animation-timeline="--active"
-                  animation-range="0px 100px"
+                column flex=1 animation=contentAnimation(id, fresh)
                   // The content is rendered for id <= MAX_VISIBLE_MODALS × 1.5.
                   if id <= 4
                     ModalContent(index=modalOf(entry), confirm=confirm, dismiss=dismiss)
