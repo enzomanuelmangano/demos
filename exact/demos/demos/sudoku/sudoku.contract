@@ -109,7 +109,7 @@ component Sudoku
             view margin-top=16 animation=`sdkFade 400ms ${sdkEase()} both`
               SudokuButton(title="New Game", press=askNewGame, testId="sudoku-new-game", filled=false,
                 size=14, padX=12, padY=6, minW=64)
-        column width=sdkCardW(env.width) min-height=160 padding=16 align-items="center"
+        column width=sdkCardW(env.width) min-height=160 padding=16 box-sizing="border-box" align-items="center"
           justify-content="center" background-color="#121D33" border-radius=16
           corner-shape="-exact-continuous" border-width=1 border-style="solid"
           border-color="rgba(148, 163, 184, 0.25)" box-shadow="0px 3px 6px rgba(0, 0, 0, 0.23)"
