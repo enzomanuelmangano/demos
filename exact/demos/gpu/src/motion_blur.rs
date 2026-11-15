@@ -76,8 +76,10 @@ pub const BURST_FIRST_MS: f64 = 120.0;
 pub const BURST_RAMP: f64 = 0.88;
 /// … down to this.
 pub const BURST_MIN_MS: f64 = 70.0;
-/// The most samples a card takes in a frame.
+/// The most knots (intervals) a card takes in a frame.
 pub const MAX_SAMPLES: usize = 64;
+/// The most samples a pixel takes for one card (its cost at the fastest moves).
+pub const MAX_TOTAL: usize = 96;
 /// Cards drawn at once (the shader's arrays).
 const SLOTS: usize = 8;
 /// Knots in the uniform.
@@ -331,6 +333,18 @@ fn top_of(k: usize, n: usize) -> f64 {
 
 /// The samples one card takes over the shutter centred at `t`, and its knots.
 pub fn knots(pose: impl Fn(f64) -> Pose, t: f64, layer: (f64, f64), scale: f64) -> Vec<Pose> {
+    plan(pose, t, layer, scale).0
+}
+
+/// [`knots`] and the samples the shader takes in each interval between two knots (M): N · M
+/// instants across the shutter, half a device pixel apart along the swept path up to
+/// `MAX_TOTAL` samples.
+pub fn plan(
+    pose: impl Fn(f64) -> Pose,
+    t: f64,
+    layer: (f64, f64),
+    scale: f64,
+) -> (Vec<Pose>, usize) {
     let (lw, lh) = layer;
     let corners = |p: &Pose| {
         [
@@ -346,26 +360,30 @@ pub fn knots(pose: impl Fn(f64) -> Pose, t: f64, layer: (f64, f64), scale: f64) 
     let probe: Vec<Pose> = (0..=PROBES)
         .map(|i| pose(t - EXPOSURE_MS / 2.0 + EXPOSURE_MS * i as f64 / PROBES as f64))
         .collect();
+    // The path as long as its fastest stretch makes it (samples are even in time, so the
+    // spacing is set where the card moves fastest).
     let mut path: f64 = 0.0;
     for c in 0..4 {
-        let mut len = 0.0;
         for w in probe.windows(2) {
             let (a, b) = (corners(&w[0])[c], corners(&w[1])[c]);
-            len += ((b.0 - a.0).powi(2) + (b.1 - a.1).powi(2)).sqrt();
+            let step = ((b.0 - a.0).powi(2) + (b.1 - a.1).powi(2)).sqrt();
+            path = path.max(step * PROBES as f64 * scale);
         }
-        path = path.max(len * scale);
     }
     let visible = probe.iter().any(|p| p.alpha > 0.0);
     if !visible {
-        return Vec::new();
+        return (Vec::new(), 1);
     }
-    let n = ((2.0 * path).ceil() as usize).clamp(1, MAX_SAMPLES);
-    if n == 1 || path < 0.05 {
-        return vec![pose(t)];
+    let total = ((2.0 * path).ceil() as usize).clamp(1, MAX_TOTAL);
+    if total == 1 || path < 0.05 {
+        return (vec![pose(t)], 1);
     }
-    (0..=n)
+    let m = total.div_ceil(MAX_SAMPLES);
+    let n = total.div_ceil(m);
+    let knots = (0..=n)
         .map(|j| pose(t - EXPOSURE_MS / 2.0 + EXPOSURE_MS * j as f64 / n as f64))
-        .collect()
+        .collect();
+    (knots, m)
 }
 
 #[derive(Default)]
@@ -707,16 +725,16 @@ impl Surface for MotionBlur {
         let mut next = 0;
         let mut samples = Vec::new();
         for (i, card) in live.iter().enumerate() {
-            let ks = knots(|tt| card.pose(&layout, tt), t, (lw, lh), s);
+            let (ks, m) = plan(|tt| card.pose(&layout, tt), t, (lw, lh), s);
             if ks.is_empty() || next + ks.len() > KNOTS {
                 samples.push(0);
                 continue;
             }
             let n = if ks.len() == 1 { 1 } else { ks.len() - 1 };
-            samples.push(n);
+            samples.push(n * m);
             let (x0, y0) = slot_origin(i, gpu.slot_size);
             u.slots[i] = [x0 as f32, y0 as f32, sw as f32, sh as f32];
-            u.info[i] = [n as f32, next as f32, 0.0, 0.0];
+            u.info[i] = [n as f32, next as f32, m as f32, 0.0];
             let mut b = [f64::MAX, f64::MAX, f64::MIN, f64::MIN];
             for (j, p) in ks.iter().enumerate() {
                 u.knots[next + j] = [
@@ -1056,11 +1074,17 @@ mod tests {
             shadow: vec![],
             exit: None,
         };
-        let ks = knots(|t| slide.pose(&l, t), 1000.0 / 15.0, l.layer(), S as f64);
-        assert_eq!(ks.len() - 1, MAX_SAMPLES);
-        // Samples ~1.2 device px apart (75 px over 64 samples), dithered between.
+        let (ks, m) = plan(|t| slide.pose(&l, t), 1000.0 / 15.0, l.layer(), S as f64);
+        assert_eq!((ks.len() - 1) * m, MAX_TOTAL);
+        // Samples ≤ 0.8 device px apart (75 px over 96 samples), dithered between.
         for w in ks.windows(2) {
-            assert!(((w[1].oy - w[0].oy) * S as f64).abs() <= 1.25);
+            assert!(((w[1].oy - w[0].oy) * S as f64).abs() / m as f64 <= 0.8);
+        }
+        // A slower slide (late in the spring) is sampled every half pixel.
+        let (ks, m) = plan(|t| slide.pose(&l, t), 250.0, l.layer(), S as f64);
+        assert_eq!(m, 1);
+        for w in ks.windows(2) {
+            assert!(((w[1].oy - w[0].oy) * S as f64).abs() <= 0.51);
         }
     }
 

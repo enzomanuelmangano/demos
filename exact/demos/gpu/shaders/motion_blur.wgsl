@@ -4,9 +4,10 @@
 // an open shutter would record: the card's radiance over the exposure, each sample the card
 // under its transform at one instant (scale s, offset o: screen px = s · slot px + o) times its
 // opacity then. The CPU evaluates the analytic motion (the keyframe, the spring, the exit) at
-// N + 1 knots across the shutter, N chosen so consecutive samples land at most half a device
-// pixel apart; the shader samples between knots at a per-pixel offset (interleaved gradient noise),
-// so the comb never bands, and fetches bilinearly (a tent filter in space). The integral is
+// N + 1 knots across the shutter and M samples in each interval between them, N · M chosen so
+// consecutive samples land well under a device pixel apart; every sample is shifted by a
+// per-pixel offset (interleaved gradient noise), so no comb survives, weighted by a tent over
+// the shutter, and fetched bilinearly (a tent filter in space). The integral is
 // taken in linear light; the card's result goes back to sRGB and composites over the cards
 // drawn before it as Core Animation blends (in the encoded values). A still card is one sample:
 // its texels exactly, unchanged from a plain draw.
@@ -16,7 +17,8 @@ struct Uniforms {
     bounds: array<vec4<f32>, 8>,
     // Per card: its slot in the atlas (x, y, w, h, px).
     slots: array<vec4<f32>, 8>,
-    // Per card: the samples N, the index of its first knot.
+    // Per card: the knot intervals N, the index of its first knot, the samples per interval
+    // M (0 reads as 1).
     info: array<vec4<f32>, 8>,
     // The knots: scale, offset x, offset y (device px), opacity. One knot when N is 1 (the
     // frame's instant), else N + 1 spanning the shutter.
@@ -71,29 +73,49 @@ fn compose(in: Out) -> @location(0) vec4<f32> {
         let slot = u.slots[c];
         let n = i32(u.info[c].x);
         let base = i32(u.info[c].y);
-        var xi = 0.0;
-        if (n > 1) {
-            xi = ign(p);
-        }
+        let m = max(i32(u.info[c].z), 1);
         var acc = vec4<f32>(0.0);
-        for (var j = 0; j < n; j = j + 1) {
-            var k = u.knots[base + j];
-            if (n > 1) {
-                k = mix(k, u.knots[base + j + 1], xi);
-            }
-            if (k.w <= 0.0) {
-                continue;
-            }
+        if (n <= 1) {
+            // Still over the shutter: its texels, once.
+            let k = u.knots[base];
             let q = (p - k.yz) / k.x;
-            if (q.x < 0.0 || q.y < 0.0 || q.x > slot.z || q.y > slot.w) {
-                continue;
+            if (k.w > 0.0 && q.x >= 0.0 && q.y >= 0.0 && q.x <= slot.z && q.y <= slot.w) {
+                let t = textureSampleLevel(atlas, smp, (slot.xy + q) / size, 0.0);
+                if (t.a > 0.0) {
+                    acc = vec4<f32>(to_linear(t.rgb / t.a) * t.a, t.a) * k.w;
+                }
             }
-            let t = textureSampleLevel(atlas, smp, (slot.xy + q) / size, 0.0);
-            if (t.a > 0.0) {
-                acc = acc + vec4<f32>(to_linear(t.rgb / t.a) * t.a, t.a) * k.w;
+        } else {
+            // N · M stratified instants across the shutter, all shifted by the pixel's noise
+            // (what steps remain become grain), each weighted by a tent over the exposure (the
+            // streak fades in and out instead of ending on a hard copy).
+            let xi = ign(p);
+            let total = f32(n * m);
+            var wsum = 0.0;
+            for (var j = 0; j < n; j = j + 1) {
+                let k0 = u.knots[base + j];
+                let k1 = u.knots[base + j + 1];
+                for (var i = 0; i < m; i = i + 1) {
+                    let f = (f32(i) + xi) / f32(m);
+                    let tau = (f32(j * m + i) + xi) / total;
+                    let w = 1.0 - abs(2.0 * tau - 1.0);
+                    wsum = wsum + w;
+                    let k = mix(k0, k1, f);
+                    if (k.w <= 0.0) {
+                        continue;
+                    }
+                    let q = (p - k.yz) / k.x;
+                    if (q.x < 0.0 || q.y < 0.0 || q.x > slot.z || q.y > slot.w) {
+                        continue;
+                    }
+                    let t = textureSampleLevel(atlas, smp, (slot.xy + q) / size, 0.0);
+                    if (t.a > 0.0) {
+                        acc = acc + vec4<f32>(to_linear(t.rgb / t.a) * t.a, t.a) * (k.w * w);
+                    }
+                }
             }
+            acc = acc / max(wsum, 1e-6);
         }
-        acc = acc / f32(n);
         if (acc.a > 1e-5) {
             let e = vec4<f32>(to_srgb(clamp(acc.rgb / acc.a, vec3<f32>(0.0), vec3<f32>(1.0))) * acc.a, acc.a);
             res = e + res * (1.0 - e.a);
