@@ -23,11 +23,19 @@
 //!   TextKit's own drawing of the Text box), title (SF bold 16) and subtitle (14, gray), and five
 //!   25 pt squares (radius 10 continuous) spaced around, inactive ones at 0.6 and scale 0.3.
 //! - The top LinearGradient (safeTop × 3 tall, white at 1, 0.05, 0.025) lies over the list.
+//!
+//! Past RN (the owner: "on long press you should see the shadow, something to show it's
+//! lifted"): the held row lifts as iOS's drag lift does: it scales to 1.04 about its centre and
+//! casts a soft shadow, 8 pt down, from fixed translucent rings (no blur, nothing re-rasterised),
+//! both on one `lift` value: a critically damped 200 ms spring up, and on the drop a spring
+//! back (ζ 0.7, 350 ms) that settles with a hint of give. The row stays above its neighbours
+//! (zIndex 50) while it settles. A soft impact plays on the drop (`haptic:impact-soft`), as the
+//! light one on the lift.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
 use gesture_handler::Phase;
-use reanimated::{Easing, Timing};
+use reanimated::{Easing, Spring, Timing};
 use skia::{point, stops, Canvas, Color, Font, Images, Matrix, Paint, Renderer, Shader};
 
 use crate::gfx;
@@ -42,6 +50,10 @@ const MAX_RADIUS: f64 = 10.0;
 /// DEMO_BUTTON_ROW_HEIGHT.
 const BUTTON_ROW: f64 = 56.0;
 const LONG_PRESS_MS: f64 = 500.0;
+/// The lift: the held row's scale, its shadow's drop (pt), and the shadow's rings.
+const LIFT_SCALE: f64 = 0.04;
+const LIFT_DROP: f32 = 8.0;
+const SHADOW_RINGS: usize = 8;
 
 /// constants.ts: title, activeValues, color (r, g, b, a), squareColor.
 struct Habit {
@@ -172,6 +184,7 @@ pub fn surface() -> Box<dyn Surface> {
         top: std::array::from_fn(|i| Timing::at(i as f64 * ITEM)),
         radius: std::array::from_fn(|_| Timing::at(5.0)),
         translate_x: std::array::from_fn(|_| Timing::at(0.0)),
+        lift: [Spring::at(0.0); COUNT],
         active: None,
         last_active: None,
         hold: None,
@@ -192,6 +205,8 @@ struct Sort {
     top: [Timing; COUNT],
     radius: [Timing; COUNT],
     translate_x: [Timing; COUNT],
+    /// 0 at rest, 1 lifted (the scale and the shadow).
+    lift: [Spring; COUNT],
     active: Option<usize>,
     last_active: Option<usize>,
     hold: Option<Hold>,
@@ -283,6 +298,7 @@ impl Sort {
         self.translate_x[i] = Timing::at(finger.0 - hold.down.0);
         self.top[i] = Timing::at(self.positions[i]);
         self.radius[i].to(MAX_RADIUS, 300.0, Easing::timing_default());
+        gfx::spring_to(&mut self.lift[i], 1.0, 200.0, 1.0);
         self.posted.push("haptic:impact-light".into());
     }
 
@@ -309,6 +325,8 @@ impl Sort {
             self.translate_x[i].to(0.0, 300.0, Easing::timing_default());
             self.radius[i].to(5.0, 300.0, Easing::timing_default());
             self.top[i] = Timing::at(self.positions[i]);
+            gfx::spring_to(&mut self.lift[i], 0.0, 350.0, 0.7);
+            self.posted.push("haptic:impact-soft".into());
         }
         self.drag = None;
         self.settle();
@@ -347,6 +365,27 @@ impl Sort {
             c.translate(dx as f32, dy as f32);
             // Inside the item View: the ListItem at (6, 6), its children on Yoga's grid.
             let (x0, y0) = (PADDING, PADDING);
+            // The lift: a soft shadow from fixed rings under the card, then the card scaled
+            // about its centre.
+            let lift = self.lift[i].value.max(0.0) as f32;
+            if lift > 0.001 {
+                let (cw, chh) = ((w - 2.0 * PADDING) as f32, HEIGHT as f32);
+                for k in 0..SHADOW_RINGS {
+                    let spread = 2.0 * (k as f32 + 1.0) * lift;
+                    let a = 0.022 * lift * (1.0 - k as f32 / SHADOW_RINGS as f32);
+                    c.draw_continuous_rrect(
+                        x0 as f32 - spread,
+                        y0 as f32 - spread + LIFT_DROP * lift,
+                        cw + 2.0 * spread,
+                        chh + 2.0 * spread,
+                        MAX_RADIUS as f32 + spread,
+                        &Paint::fill(Color::BLACK.alpha(a)),
+                    );
+                }
+            }
+            let s = 1.0 + (LIFT_SCALE * self.lift[i].value) as f32;
+            let (ccx, ccy) = ((x0 + (w - 2.0 * PADDING) / 2.0) as f32, (y0 + HEIGHT / 2.0) as f32);
+            c.concat(Matrix::translate(-ccx, -ccy).then(Matrix::scale(s, s)).then(Matrix::translate(ccx, ccy)));
             c.draw_rrect(
                 x0 as f32,
                 y0 as f32,
@@ -565,8 +604,10 @@ impl Surface for Sort {
         }
         let mut moving = self.scroll.step(now) || self.hold.is_some() || self.drag.is_some();
         for i in 0..COUNT {
-            moving |=
-                self.top[i].step(now) | self.radius[i].step(now) | self.translate_x[i].step(now);
+            moving |= self.top[i].step(now)
+                | self.radius[i].step(now)
+                | self.translate_x[i].step(now)
+                | self.lift[i].step(now);
         }
         self.draw(scale);
         let (pw, ph) = frame.pixels();
@@ -643,6 +684,9 @@ mod tests {
         );
         let (img, _) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         img.save("drag-to-sort-drag");
+        // Lifted: the shadow darkens the white just under the held row (row 0, now at y ≈ 370).
+        let under = img.at(2 * 210, 2 * (370 - 30 + 92 - 6 + 4));
+        assert!(under[0] < 250, "{under:?}");
         s.input(&touch(PointerPhase::Up, 370.0, ms));
         while fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap().1 && ms < 5000.0 {
             ms += 16.7;
@@ -651,6 +695,8 @@ mod tests {
             s.agent("{}").unwrap(),
             "{\"order\":[1,2,0,3,4,5,6,7,8],\"active\":-1,\"contentOffset\":0.00}"
         );
+        // The drop: a soft impact, and the lift settled back to rest.
+        assert_eq!(s.messages(), vec!["haptic:impact-soft".to_string()]);
         // A quick drag scrolls the list instead.
         s.input(&touch(PointerPhase::Down, 600.0, ms));
         for k in 1..=10 {

@@ -13,6 +13,9 @@ component DragToSort
   action heard(m: string)
     if m == "haptic:impact-light"
       haptic("impact-light")
+    // Past RN: the drop settles with a soft impact.
+    if m == "haptic:impact-soft"
+      haptic("impact-soft")
   view
     canvas surface=drag_to_sort(env.safeTop) message=heard position="absolute" top=0 left=0
       width=env.width height=env.height touch-action="none" testId="drag-to-sort"
