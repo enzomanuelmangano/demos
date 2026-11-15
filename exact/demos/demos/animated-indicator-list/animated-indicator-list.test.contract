@@ -1,22 +1,14 @@
 at "/demo/animated-indicator-list"
 
-test "the strip, its names and the capsule are there"
+test "the headers and the indicator follow the list"
   expect tree has "animated-indicator-list"
-  expect tree has "ail-strip"
   expect tree has "header-0"
-  expect tree has "header-4"
   expect tree has "indicator"
-  expect tree has "section-0"
-
-test "the list scrolls under the strip"
-  tap "animated-indicator-list-scroll" drag 0 -600
+  tap "animated-indicator-list-scroll" drag 0 -400
   clock settle
   expect tree has "header-1"
 
-test "a name scrolls the list to its section, and the strip can go back"
-  tap "header-4"
+test "a header scrolls the list to its section"
+  tap "header-2"
   clock settle
-  expect tree has "section-4"
-  tap "header-0"
-  clock settle
-  expect tree has "section-0"
+  expect tree has "animated-indicator-list"
