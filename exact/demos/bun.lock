@@ -11,19 +11,19 @@
     },
     "packages/gestures": {
       "name": "gestures",
-      "version": "2.28.0",
+      "version": "0.1.0",
     },
     "packages/pressto": {
       "name": "pressto",
-      "version": "0.7.0",
+      "version": "0.1.0",
     },
     "packages/motion": {
       "name": "motion",
-      "version": "4.7.1",
+      "version": "0.1.0",
     },
     "packages/noise": {
       "name": "noise",
-      "version": "4.0.3",
+      "version": "0.1.0",
     },
   },
   "packages": {

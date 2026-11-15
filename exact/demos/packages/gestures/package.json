@@ -1,6 +1,12 @@
 {
   "name": "gestures",
-  "version": "2.28.0",
+  "version": "0.1.0",
   "private": true,
-  "description": "A Rust crate of Pan and Tap recognizers fed by a canvas's raw pointer events, for GPU surfaces."
+  "description": "A Rust crate of Pan and Tap recognizers fed by a canvas's raw pointer events, for GPU surfaces.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/enzomanuelmangano/demos.git",
+    "directory": "exact/demos/packages/gestures"
+  }
 }

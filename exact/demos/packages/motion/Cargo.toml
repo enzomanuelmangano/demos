@@ -6,7 +6,12 @@ name = "motion"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Spring, timing, easing and decay functions with the same constants as react-native-reanimated, for GPU surfaces"
+repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+keywords = ["animation", "spring", "easing", "reanimated", "interpolation"]
+categories = ["algorithms", "game-development"]
+description = "Spring, timing, easing and decay animations with the same constants as react-native-reanimated, stepped on a frame clock"
 publish = false
 
 [lib]

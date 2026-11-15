@@ -23,10 +23,10 @@ noise = { path = "../packages/noise" }
 miniz_oxide = "0.9"
 # Decodes the photo skia-bottom-sheet draws (images/), once, when it first draws.
 zune-jpeg = "0.5"
-exact-gpu = { path = "../../../../../../../.exact/exact2/730abad161c2a5f6cd1f34ea164cda8d9ad6b358/gpu" }
+exact-gpu = { workspace = true }
 
 [build-dependencies]
-exact-gpu-reflect = { path = "../../../../../../../.exact/exact2/730abad161c2a5f6cd1f34ea164cda8d9ad6b358/gpu/reflect" }
+exact-gpu-reflect = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "0.2"

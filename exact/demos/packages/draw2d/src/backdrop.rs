@@ -589,6 +589,7 @@ mod tests {
         px
     }
 
+    #[cfg(feature = "repo-tests")]
     #[test]
     fn step_edges_match_the_probe_captures_pixel_for_pixel() {
         let gpu = match exact_gpu::fixture::device() {

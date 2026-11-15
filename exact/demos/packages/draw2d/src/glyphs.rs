@@ -401,7 +401,7 @@ mod tests {
     /// (tools/coretext_reference.c, built with the system's `cc`): the smoothing behaviour, the
     /// luminance table, bounds and every byte, with this machine's behaviour and both forced
     /// (iOS's `none` and macOS's `some`).
-    #[cfg(target_os = "macos")]
+    #[cfg(all(target_os = "macos", feature = "repo-tests"))]
     #[test]
     fn coretext_masks_are_skias() {
         use crate::{Font, Matrix};
@@ -507,7 +507,7 @@ mod tests {
     }
 }
 
-#[cfg(all(test, target_vendor = "apple"))]
+#[cfg(all(test, target_vendor = "apple", feature = "repo-tests"))]
 mod timing {
     #[test]
     #[ignore = "timing"]

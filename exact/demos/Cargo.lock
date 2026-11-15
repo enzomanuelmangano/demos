@@ -523,9 +523,11 @@ name = "draw2d"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
+ "draw2d",
  "exact-gpu",
  "lyon",
  "ttf-parser",
+ "wgpu",
  "zune-jpeg",
 ]
 

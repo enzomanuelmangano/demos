@@ -7,12 +7,17 @@ name = "pressto"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "pressto's BasePressable (BaseButton press, progress, isToggled, global haptic), frame by frame"
+repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+keywords = ["press", "button", "pressable", "animation", "input"]
+categories = ["gui", "game-development"]
+description = "pressto's BasePressable press machine (press, progress, isToggled, haptic callback), frame by frame, fed pointer events"
 publish = false
 
 [lib]
 name = "pressto"
 
 [dependencies]
-motion = { path = "../motion" }
-gestures = { path = "../gestures" }
+motion = { workspace = true }
+gestures = { workspace = true }

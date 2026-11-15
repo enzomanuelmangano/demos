@@ -7,16 +7,35 @@ name = "draw2d"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "2D drawing on lyon and wgpu for GPU surfaces: antialiased paths, shapes, gradients, blurs and text"
+repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+keywords = ["2d", "graphics", "wgpu", "lyon", "vector"]
+categories = ["graphics", "rendering"]
+description = "2D drawing on lyon and wgpu with the same shapes and numbers as the Skia API the RN demos use: antialiased paths, shapes, gradients, blurs and text, no Skia code"
 publish = false
 
 [lib]
 name = "draw2d"
 
+[features]
+# Tests that need this repository: the parity tests render on a headless device from exact-gpu's
+# `fixture` and read the app's fonts (../../gpu/fonts) and C references. Off in a published crate
+# (and in the packaged tarball); on in this workspace through the self dev-dependency below.
+repo-tests = []
+
 [dependencies]
-exact-gpu = { path = "../../../../../../../../.exact/exact2/730abad161c2a5f6cd1f34ea164cda8d9ad6b358/gpu" }
+# The one GPU API, from crates.io. exact-gpu re-exports this same crate (it resolves to one wgpu in
+# any build that also links exact-gpu), so draw2d's `wgpu` is the `exact_gpu::wgpu` a surface sees.
+# No backend features: the host picks them (exact-gpu turns on metal, vulkan, dx12 or webgpu).
+wgpu = { version = "30", default-features = false, features = ["wgsl"] }
 lyon = "1.0"
 ttf-parser = { version = "0.25", default-features = false, features = ["std", "variable-fonts", "gvar-alloc", "opentype-layout", "apple-layout"] }
 bytemuck = { version = "1", features = ["derive"] }
 # Decodes the JPEGs a demo bundles (`Image::from_jpeg`), pure Rust, the same on the web.
 zune-jpeg = "0.5"
+
+[dev-dependencies]
+# Only the workspace sees these two (a path without a version is dropped from the packaged crate).
+exact-gpu = { workspace = true }
+draw2d = { path = ".", features = ["repo-tests"] }

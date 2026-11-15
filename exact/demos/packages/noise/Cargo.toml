@@ -5,7 +5,12 @@ name = "noise"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "2D simplex noise with a seeded permutation table, for GPU surfaces"
+repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+keywords = ["noise", "simplex", "procedural", "random"]
+categories = ["algorithms", "graphics"]
+description = "2D simplex noise with a seeded permutation table, line for line the simplex-noise npm package"
 publish = false
 
 [lib]

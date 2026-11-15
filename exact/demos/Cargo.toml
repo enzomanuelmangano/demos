@@ -8,6 +8,20 @@ resolver = "2"
 edition = "2021"
 version = "0.1.0"
 license = "MIT"
+repository = "https://github.com/enzomanuelmangano/demos"
+homepage = "https://github.com/enzomanuelmangano/demos"
+
+# Where the app names a crate that is not on crates.io, once. exact-gpu is Exact's GPU crate, found
+# by path in the exact2 checkout. `bun exact.mjs update` re-settles only [patch.crates-io] below, not
+# these paths: when the checkout moves, edit them here (the only place). When exact-gpu is published,
+# swapping the line for `exact-gpu = "<version>"` (or a git dependency) moves every member.
+# The helper crates are named here with their version, so a member that depends on another packages
+# (`cargo package`) as `motion = "0.1.0"` and builds in the workspace from the path.
+[workspace.dependencies]
+exact-gpu = { path = "../../../../../../.exact/exact2/730abad161c2a5f6cd1f34ea164cda8d9ad6b358/gpu" }
+exact-gpu-reflect = { path = "../../../../../../.exact/exact2/730abad161c2a5f6cd1f34ea164cda8d9ad6b358/gpu/reflect" }
+motion = { path = "packages/motion", version = "0.1.0" }
+gestures = { path = "packages/gestures", version = "0.1.0" }
 
 [patch.crates-io]
 accesskit_windows = { path = "../../../../../../.exact/exact2/730abad161c2a5f6cd1f34ea164cda8d9ad6b358/vendor/accesskit-windows" }

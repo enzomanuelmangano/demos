@@ -6,7 +6,12 @@ name = "gestures"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Pan and Tap gesture recognizers fed by raw pointer events, for GPU surfaces"
+repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+keywords = ["gestures", "pan", "pinch", "input", "pointer"]
+categories = ["gui", "game-development"]
+description = "Pan, tap, pinch and fling recognizers built from raw pointer events, with react-native-gesture-handler's values"
 publish = false
 
 [lib]
