@@ -3,7 +3,9 @@
 // the close button folds it back.
 // The owner's ask (2026-11-15): at the bottom of the screen as an iOS 26 floating sheet,
 // continuous and concentric with the display: the card 10 from the sides and the physical
-// bottom, radius concentricRadius(10, 300); its buttons 16 inside it, concentric in turn. The
+// bottom, radius concentricRadius(10, 300); its 50 pt capsule buttons concentric in turn: their
+// ends share the card corner's centre, so they sit 52 − 25 = 27 inside it (37 from the display,
+// concentricInset(50)), 12 apart (past RN's 0.4 w, which left a 6 pt gap there). The
 // card slides up from below on RN's (critically damped) spring, a scrim on the same spring;
 // the Continue pill stays where the card's Continue lands and narrows into it (PillFill:
 // nothing filled resizes). Translates only; RN's card grew from the pill in the middle of the
@@ -11,7 +13,7 @@
 // src/components/alert-drawer/index.tsx, styles.ts). The card's body, whose radius interpolates
 // with the spring, is a Rust surface: gpu/src/alert_drawer_card.rs.
 use PressableScale, PressableScaleLayout from "pressto"
-use DemoEnv, floatingWidth, concentricRadius from "../env.contract"
+use DemoEnv, floatingWidth, concentricInset, concentricRadius from "../env.contract"
 use PillFill from "../pill-fill.contract"
 
 // fonts.ts 'Honk-Regular': assets/fonts/honk-regular.otf. Its one face: RN's fontWeight 'bold'
@@ -20,7 +22,10 @@ use PillFill from "../pill-fill.contract"
 // styles.ts: BUTTON_HEIGHT 50, BUTTON_WIDTH 0.82 w, MIN_BUTTON_WIDTH 0.4 w,
 // EXPANDED_CARD_WIDTH 0.9 w, EXPANDED_CARD_HEIGHT 300, ALERT_COLOR #f0212b.
 fn buttonWidth(w: number): number = w * 0.82
-fn minButtonWidth(w: number): number = w * 0.4
+fn minButtonWidth(w: number): number = (floatingWidth(w, btnInset()) - 12) / 2
+// The buttons' inset from the display (concentric 50 pt capsules) and from the card (10 in).
+fn btnInset(): number = concentricInset(50)
+fn btnPad(): number = btnInset() - 10
 fn cardWidth(w: number): number = w * 0.9
 // padding at progress 1: (EXPANDED_CARD_WIDTH - BUTTON_WIDTH) / 2.
 fn inset(w: number): number = (cardWidth(w) - buttonWidth(w)) / 2
@@ -78,12 +83,12 @@ component AlertDrawer
       view position="absolute" inset=0 background-color="rgba(0, 0, 0, 0.2)"
         opacity=(isExpanded ? 1 : 0) transition=`opacity ${drawerSpring()}`
         pointer-events=(isExpanded ? "auto" : "none") press=fold aria-hidden=true testId="scrim"
-      // The card: floatingWidth × 300, 10 from the physical bottom, white, radius
-      // concentricRadius(10, 300) continuous, styles.card's shadow 0 2 30 10 % black; below the
+      // The card: floatingWidth × 311 (EXPANDED_CARD_HEIGHT + the 11 the concentric buttons rose),
+      // 10 from the physical bottom, white, radius concentricRadius(10, 311) = 52 continuous, styles.card's shadow 0 2 30 10 % black; below the
       // screen when folded.
-      column position="absolute" left=10 bottom=10 width=floatingWidth(w, 10) height=300
+      column position="absolute" left=10 bottom=10 width=floatingWidth(w, 10) height=311
         box-sizing="border-box" padding=16 background-color="#ffffff"
-        border-radius=concentricRadius(10, 300) corner-shape="-exact-continuous"
+        border-radius=concentricRadius(10, 311) corner-shape="-exact-continuous"
         box-shadow="0px 2px 30px rgba(0, 0, 0, 0.1)"
         translate=`0px ${isExpanded ? 0 : 360}px` transition=`translate ${drawerSpring()}`
         pointer-events=(isExpanded ? "auto" : "none") aria-hidden=(not isExpanded) testId="card"
@@ -114,29 +119,30 @@ component AlertDrawer
                 font-family="Honk-Regular" font-size=15 letter-spacing=0.5 margin-top=8
                 color="#999999"
           // styles.button + cancelButton: MIN_BUTTON_WIDTH × 50, #dfdfdf, paddingHorizontal 20;
-          // radius concentricRadius(26, 50) continuous (26 = the card's 10 + its 16).
-          view position="absolute" left=16 bottom=16 width=minButtonWidth(w) height=50
+          // a capsule, btnPad() (27) from the card's left and bottom: concentric.
+          view position="absolute" left=btnPad() bottom=btnPad() width=minButtonWidth(w) height=50
             display="flex" flex-direction="column"
             PressableScale(press=toggleExpansion)
               row testId="cancel" height=50 text-align="center"
-                border-radius=concentricRadius(26, 50) corner-shape="-exact-continuous"
+                border-radius=concentricRadius(btnInset(), 50) corner-shape="-exact-continuous"
                 background-color="#dfdfdf" padding-left=20 padding-right=20 box-sizing="border-box"
                 align-items="center" justify-content="center"
                 // styles.buttonLabel + cancelButtonLabel: Honk 16 bold, #111.
                 text "Cancel" font-family="Honk-Regular" font-size=16 color="#111111"
-      // The pill (styles.button): 26 from the right and the bottom (the card's Continue place),
-      // BUTTON_WIDTH-wide row folded (floatingWidth − 32), MIN_BUTTON_WIDTH open, on the spring.
-      view position="absolute" right=26 bottom=26
-        width=(isExpanded ? minButtonWidth(w) : floatingWidth(w, 26)) height=50
+      // The pill (styles.button): btnInset() (37) from the right and the bottom (the card's Continue
+      // place, a capsule concentric with the display), floatingWidth(w, 37) folded, half the pair
+      // open, on the spring.
+      view position="absolute" right=btnInset() bottom=btnInset()
+        width=(isExpanded ? minButtonWidth(w) : floatingWidth(w, btnInset())) height=50
         display="flex" flex-direction="column" z-index=2
         -exact-layout-transition=drawerSpring()
         PressableScaleLayout(press=pressMain, layout=drawerSpring())
           row testId="continue" height=50 text-align="center" position="relative"
             padding-left=20 padding-right=20 box-sizing="border-box" align-items="center"
             justify-content="center" -exact-layout-transition=drawerSpring()
-            // Its fill is PillFill: radius concentricRadius(26, 50) (25); caps 40 (the corner
-            // reaches 38; the pill is 0.4 w to w − 52 wide).
-            PillFill(color="color(display-p3 0.9412 0.1294 0.1686)", radius=concentricRadius(26, 50), cap=40,
+            // Its fill is PillFill: radius concentricRadius(37, 50) (25); caps 40 (the corner
+            // reaches 38).
+            PillFill(color="color(display-p3 0.9412 0.1294 0.1686)", radius=concentricRadius(btnInset(), 50), cap=40,
               spring=drawerSpring())
             // styles.buttonLabel: white, Honk 16 bold.
             text "Continue" font-family="Honk-Regular" font-size=16 color="#ffffff"
