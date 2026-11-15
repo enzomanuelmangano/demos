@@ -97,6 +97,9 @@ component StackedBottomSheet
   // (gpu/src/timer.rs), as the iOS host ignores a transition's delay.
   state timerToken = 0
   state dragKey = -1
+  // The settle haptic's timer (gpu/src/timer.rs): armed by each push, fires once when the
+  // sheet's 800 ms rise lands.
+  state settleToken = 0
   // Each swiped sheet's timer token. On the web the timer publishes its token instead of posting
   // `dismissed` (gpu/src/timer.rs): a sheet swiped with a token the timer has fired is
   // dismissed (gone 2), read from env.timers until the next action keeps it. (iOS: `gone`.)
@@ -110,10 +113,20 @@ component StackedBottomSheet
   // onPress) shows the next config, the last one again past the seventh; the wand a 300 px
   // sheet with the Spiral. A sheet gone past its 250 ms spring leaves the list (onDismiss).
   // Both are pressto PressableScales, which play the global haptic before calling it.
+  //
+  // Haptics (past RN, which plays none; one per event, never per frame): impact-light when the
+  // first tray opens, selection when a tray pushes onto a stack (pressto's own selection plays
+  // at the press too), impact-soft when the new tray's rise lands (the timer, 800 ms), light
+  // when the finger takes the front tray, medium when a swipe dismisses it.
   action push(wand: bool)
     let cfg = wand ? 7 : min(increment, 6)
     let now = performanceNow()
     let keep = range(keys.length).filter(j => sheetNum(vGone, j) == 0 or now < sheetNum(goneAt, j) + 250)
+    if keep.filter(j => sheetNum(vGone, j) == 0).length == 0
+      haptic("impact-light")
+    else
+      haptic("selection")
+    settleToken = settleToken + 1
     let hs = keep.filter(j => sheetNum(vGone, j) != 2).map(j => sheetHeightOf(sheetNum(cfgs, j))).concat([sheetHeightOf(cfg)])
     keys = keep.map(j => sheetNum(keys, j)).concat([serial])
     cfgs = keep.map(j => sheetNum(cfgs, j)).concat([cfg])
@@ -151,6 +164,11 @@ component StackedBottomSheet
       timerToken = timerToken + 1
       dragKey = -1
 
+  // The new tray's rise has landed.
+  action settled(m: string)
+    if m == `timer:${settleToken}`
+      haptic("impact-soft")
+
   // onDismiss: every sheet that has slid for its 250 ms leaves the stack.
   action dismissed(m: string)
     let now = performanceNow()
@@ -162,6 +180,8 @@ component StackedBottomSheet
       justify-content="center" overflow="hidden" timeline-scope="--sheetSwipe"
       testId="stacked-bottom-sheet"
       canvas surface=timer(timerToken, 250) message=dismissed width=1 height=1 position="absolute"
+        left=0 top=0 aria-hidden=true pointer-events="none"
+      canvas surface=timer(settleToken, 800) message=settled width=1 height=1 position="absolute"
         left=0 top=0 aria-hidden=true pointer-events="none"
       // styles.button: #111, radius 25 continuous, a 1 px border, marginBottom 20, padding 25 ×
       // 18; styles.textButton: white, SF-Pro-Rounded-Bold (its one face is the bold), letterSpacing 1.2, uppercase (14).
