@@ -54,14 +54,13 @@
 //! phone's turn (Core Motion's `relativeOrientation`, its CMAttitude pitch and roll, clamped to
 //! ±ATTITUDE_RANGE, scaled by ATTITUDE_GAIN and smoothed on the critically damped ATTITUDE_SPRING) · the 18° roll · the
 //! scroll's turn · the finger's tilt. Tilting the phone sweeps the highlights and the foil's
-//! colours across the card. A finger on the list tilts the centred card about x toward where it
-//! presses (MAX_TILT at the card's top / bottom edge) and lifts it (PRESS_SCALE), both on
-//! TILT_SPRING, settled back on the lift; each card takes them by its nearness to the centre.
-//! The compose pass gets the shadow's offset (slot.yz: the turn and the tilt push it) and the
-//! press (slot.w). A sensor sample that moves the smoothed target less than ATTITUDE_DEADBAND
-//! asks for no frame, so a phone at rest leaves the screen at rest.
-//! Haptics: `haptic:impact-light` when a finger lands on the list, `haptic:impact-soft` when it
-//! lifts. No timers: at rest nothing renders.
+//! colours across the card. A finger dragging the list tilts the centred card about x toward
+//! where it is (MAX_TILT at the card's top / bottom edge) on TILT_SPRING, settled back on the
+//! lift; each card takes it by its nearness to the centre. A tap (within TAP_SLOP) does nothing:
+//! no tilt, no scale, no haptic.
+//! The compose pass gets the shadow's offset (slot.yz: the turn and the tilt push it). A sensor
+//! sample that moves the smoothed target less than ATTITUDE_DEADBAND asks for no frame, so a
+//! phone at rest leaves the screen at rest. No timers: at rest nothing renders.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, SensorKind, Surface, SurfaceError, Value};
@@ -115,11 +114,11 @@ const TITLE_OPACITY: f32 = 0.9;
 /// Transparent device pixels between the atlas's regions.
 const GAP: u32 = 4;
 const LAYER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
-/// The finger's tilt at the card's top or bottom edge (radians: 8°), and the press's lift.
+/// The finger's tilt at the card's top or bottom edge (radians: 8°).
 const MAX_TILT: f64 = 8.0 * std::f64::consts::PI / 180.0;
-const PRESS_SCALE: f32 = 0.025;
-/// The tilt's and the press's spring: quick to follow the finger, a small overshoot on the
-/// settle (ζ ≈ 0.62).
+/// A finger that stays within this many points of where it landed is a tap: it moves nothing.
+const TAP_SLOP: f32 = 8.0;
+/// The tilt's spring: quick to follow the finger, a small overshoot on the settle (ζ ≈ 0.62).
 const TILT_SPRING: SpringConfig = SpringConfig { stiffness: 260.0, damping: 20.0, mass: 1.0 };
 /// The phone's turn that moves the light: CMAttitude pitch and roll, each clamped to ±25°.
 const ATTITUDE_RANGE: f64 = 25.0 * std::f64::consts::PI / 180.0;
@@ -146,9 +145,9 @@ pub fn surface() -> Box<dyn Surface> {
         renderer: Renderer::default(),
         gpu: None,
         tilt: Spring::at(0.0),
-        press: Spring::at(0.0),
         finger: None,
-        posted: Vec::new(),
+        down: (0.0, 0.0),
+        dragging: false,
         pitch: Spring::at(0.0),
         roll: Spring::at(0.0),
         changed: true,
@@ -260,7 +259,7 @@ struct Pose {
     title: f64,
     /// The shader's `rotate` (radians).
     rotate: f32,
-    /// How centred the card is (1 centred, 0 a card away): its share of the tilt and press.
+    /// How centred the card is (1 centred, 0 a card away): its share of the tilt.
     near: f64,
 }
 
@@ -288,12 +287,12 @@ struct CardShaderReflections {
     atlas: Canvas,
     renderer: Renderer,
     gpu: Option<Gpu>,
-    /// The finger's tilt about x (radians) and the press (0…1), on TILT_SPRING.
+    /// The finger's tilt about x (radians), on TILT_SPRING.
     tilt: Spring,
-    press: Spring,
-    /// The finger holding the list.
+    /// The finger holding the list, where it landed, and whether it has left TAP_SLOP.
     finger: Option<u32>,
-    posted: Vec<String>,
+    down: (f32, f32),
+    dragging: bool,
     /// The phone's CMAttitude pitch and roll (radians, clamped), on ATTITUDE_SPRING.
     pitch: Spring,
     roll: Spring,
@@ -319,8 +318,7 @@ impl CardShaderReflections {
     /// Card `k`'s plane (styles.card's points) → the screen, at the current scroll.
     fn matrix(&self, k: usize, pose: &Pose) -> skia::Matrix3 {
         let l = &self.layout;
-        let (tilt, press) = self.held(pose);
-        let lift = 1.0 + PRESS_SCALE * press;
+        let tilt = self.held(pose);
         let [vx, vy, vw, vh] = l.view;
         let x = vx + k as f32 * l.cw - self.scroll.offset as f32;
         let (cx, cy) = (vw / 2.0, vh / 2.0);
@@ -330,7 +328,6 @@ impl CardShaderReflections {
             .multiply(Matrix4::translate(0.0, pose.translate_y as f32, 0.0))
             .multiply(Matrix4::rotate_y((pose.rotate_y_deg as f32).to_radians()))
             .multiply(Matrix4::rotate_x(tilt))
-            .multiply(Matrix4::scale(lift, lift, 1.0))
             .multiply(Matrix4::translate(-cx + l.card[0], -cy + l.card[1], 0.0))
             .to_matrix3()
     }
@@ -353,15 +350,15 @@ impl CardShaderReflections {
         r > 0.0 && l < self.layout.w && b > 0.0 && t < self.layout.h
     }
 
-    /// The finger's tilt (radians) and press as card `pose` takes them.
-    fn held(&self, pose: &Pose) -> (f32, f32) {
-        ((self.tilt.value * pose.near) as f32, (self.press.value.clamp(0.0, 1.0) * pose.near) as f32)
+    /// The finger's tilt (radians) as card `pose` takes it.
+    fn held(&self, pose: &Pose) -> f32 {
+        (self.tilt.value * pose.near) as f32
     }
 
     /// Card `pose`'s frame in the room: its x axis, y axis and normal (the shader's lights and
     /// eye stay put): the phone's turn · Rz(18°) · Ry(turn) · Rx(the finger's tilt).
     fn room_frame(&self, pose: &Pose) -> [[f32; 3]; 3] {
-        let (tilt, _) = self.held(pose);
+        let tilt = self.held(pose);
         let m = Matrix4::rotate_x((-self.pitch.value * ATTITUDE_GAIN) as f32)
             .multiply(Matrix4::rotate_y((self.roll.value * ATTITUDE_GAIN) as f32))
             .multiply(Matrix4::rotate_z(TILT_DEG.to_radians()))
@@ -550,27 +547,25 @@ impl Surface for CardShaderReflections {
         match phase {
             Phase::Down if inside && self.finger.is_none() => {
                 self.finger = Some(id);
-                let to = self.tilt_for(y);
-                self.tilt.retarget(to, TILT_SPRING);
-                self.press.retarget(1.0, TILT_SPRING);
-                self.posted.push("haptic:impact-light".into());
+                self.down = (x, y);
+                self.dragging = false;
             }
             Phase::Move if self.finger == Some(id) => {
-                let to = self.tilt_for(y);
-                self.tilt.retarget(to, TILT_SPRING);
+                self.dragging |= (x - self.down.0).hypot(y - self.down.1) > TAP_SLOP;
+                if self.dragging {
+                    let to = self.tilt_for(y);
+                    self.tilt.retarget(to, TILT_SPRING);
+                }
             }
             Phase::Up | Phase::Cancel if self.finger == Some(id) => {
                 self.finger = None;
-                self.tilt.retarget(0.0, TILT_SPRING);
-                self.press.retarget(0.0, TILT_SPRING);
-                self.posted.push("haptic:impact-soft".into());
+                if self.dragging {
+                    self.tilt.retarget(0.0, TILT_SPRING);
+                }
+                self.dragging = false;
             }
             _ => {}
         }
-    }
-
-    fn messages(&mut self) -> Vec<String> {
-        crate::haptic::host(std::mem::take(&mut self.posted))
     }
 
     fn input_changed(&self) -> bool {
@@ -598,7 +593,6 @@ impl Surface for CardShaderReflections {
         moving |= self.tilt.step(frame.now_ms);
         moving |= self.pitch.step(frame.now_ms);
         moving |= self.roll.step(frame.now_ms);
-        moving |= self.press.step(frame.now_ms);
 
         if self.gpu.as_ref().map(|g| (g.format, g.generation, g.layout)) != Some((format, frame.shader_generation, layout)) {
             self.gpu = Some(build(device, format, frame.shader_generation, layout));
@@ -632,7 +626,7 @@ impl Surface for CardShaderReflections {
             let pose = &poses[k];
             let m = self.matrix(k, pose);
             let visible = self.visible(&m);
-            let (tilt, press) = self.held(pose);
+            let tilt = self.held(pose);
             let axes = self.room_frame(pose);
             u.frame[3 * k] = [axes[0][0], axes[0][1], axes[0][2], CARDS[k].0];
             u.frame[3 * k + 1] = [axes[1][0], axes[1][1], axes[1][2], 0.0];
@@ -645,14 +639,14 @@ impl Surface for CardShaderReflections {
                 CONTENT_OPACITY * pose.chip as f32,
                 CONTENT_OPACITY * pose.title as f32,
             ];
-            // The shadow leans away from the turn and drops with the tilt and the press.
+            // The shadow leans away from the turn and drops with the tilt.
             let turn = (pose.rotate_y_deg as f32).to_radians();
-            let off = (-turn.sin() * SHADOW_TURN, tilt.sin() * SHADOW_TILT + 4.0 * press);
-            u.slot[k] = [lefts[k] as f32, off.0, off.1, press];
+            let off = (-turn.sin() * SHADOW_TURN, tilt.sin() * SHADOW_TILT);
+            u.slot[k] = [lefts[k] as f32, off.0, off.1, 0.0];
             // Its quad: the card grown by its shadow's reach (the compose pass's ambient shadow:
             // its offset, then 1.9 σ), projected.
             let [_, _, w, h] = layout.card;
-            let reach = 4.0 + ((3.0 + off.0).abs() + (12.0 + off.1).abs()) * (1.0 + 0.6 * press) + 1.9 * (18.0 + 8.0 * press) + 2.0;
+            let reach = 4.0 + ((3.0 + off.0).abs() + (12.0 + off.1).abs()) + 1.9 * 18.0 + 2.0;
             let c = [(-reach, -reach), (w + reach, -reach), (w + reach, h + reach), (-reach, h + reach)].map(|(x, y)| m.map(x, y));
             u.quad[2 * k] = [c[0].x, c[0].y, c[1].x, c[1].y];
             u.quad[2 * k + 1] = [c[2].x, c[2].y, c[3].x, c[3].y];
@@ -859,8 +853,8 @@ mod tests {
         // Card 1 now centred, facing; card 0 turned away on the left.
         let centre = px(&img, 210.0, 429.5);
         assert!(centre[0] > 40, "{centre:?}");
-        // The flick's finger: light on the grab, soft on the lift.
-        assert_eq!(s.messages(), vec!["haptic:impact-light", "haptic:impact-soft"]);
+        // No haptic on the flick.
+        assert!(s.messages().is_empty());
         // A touch below the list does not scroll.
         let below = InputEvent::Pointer { id: 2, phase: PointerPhase::Down, x: 200.0, y: 850.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: 5000.0 };
         s.input(&below);
@@ -869,24 +863,30 @@ mod tests {
     }
 
     #[test]
-    fn a_finger_tilts_the_card_and_it_settles() {
+    fn a_drag_tilts_the_card_and_a_tap_does_nothing() {
         let mut s = match surface_with_layout() {
             Some(s) => s,
             None => return,
         };
         let pointer = |phase, y: f32, at_ms| InputEvent::Pointer { id: 1, phase, x: 210.0, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
-        // Near the card's top: the top goes away (a positive rotateX).
+        // A tap, even with a small slip: no tilt, no message.
         s.input(&pointer(PointerPhase::Down, 240.0, 0.0));
+        s.input(&pointer(PointerPhase::Move, 244.0, 10.0));
+        assert_eq!(s.tilt.target(), 0.0);
+        s.input(&pointer(PointerPhase::Up, 244.0, 50.0));
+        assert_eq!(s.tilt.target(), 0.0);
+        // A drag near the card's top: the top goes away (a positive rotateX).
+        s.input(&pointer(PointerPhase::Down, 300.0, 100.0));
+        s.input(&pointer(PointerPhase::Move, 240.0, 120.0));
         assert!(s.tilt.target() > 0.1, "{}", s.tilt.target());
-        assert_eq!(s.press.target(), 1.0);
-        s.input(&pointer(PointerPhase::Up, 240.0, 50.0));
-        assert_eq!((s.tilt.target(), s.press.target()), (0.0, 0.0));
-        let mut ms = 50.0;
-        while (s.tilt.step(ms) | s.press.step(ms)) && ms < 3000.0 {
+        s.input(&pointer(PointerPhase::Up, 240.0, 150.0));
+        assert_eq!(s.tilt.target(), 0.0);
+        let mut ms = 150.0;
+        while s.tilt.step(ms) && ms < 3000.0 {
             ms += 16.0;
         }
-        assert!(ms < 3000.0 && s.tilt.value == 0.0 && s.press.value == 0.0);
-        assert_eq!(s.messages(), vec!["haptic:impact-light", "haptic:impact-soft"]);
+        assert!(ms < 3000.0 && s.tilt.value == 0.0);
+        assert!(s.messages().is_empty());
     }
 
     #[test]
@@ -951,9 +951,9 @@ mod tests {
             renderer: Renderer::default(),
             gpu: None,
             tilt: Spring::at(0.0),
-            press: Spring::at(0.0),
             finger: None,
-            posted: Vec::new(),
+            down: (0.0, 0.0),
+            dragging: false,
             pitch: Spring::at(0.0),
             roll: Spring::at(0.0),
             changed: true,
