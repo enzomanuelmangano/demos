@@ -78,7 +78,8 @@ component DotSheet
   action heard(m: string)
     if m == "card:rest"
       still = true
-    if m == "card:moving"
+    // `opened` already set it: this message changes nothing, so no commit lands mid-animation.
+    if m == "card:moving" and still
       still = false
     if m == "card:ms:350"
       cardMs = 350
@@ -86,6 +87,9 @@ component DotSheet
   action opened
     pinH = max(pinH, env.height)
     open = true
+    // The card moves from this commit (the surface's `card:moving` would otherwise commit on
+    // its first frame, mid-animation: the phone's hitch).
+    still = false
     demoSubpage("dot-input")
   action closed
     open = false
@@ -151,16 +155,19 @@ component DotSheet
             align-items="center" justify-content="center" testId="dot-start"
             text "Start your Journey" color="#ffffff" font-size=16 font-weight=700 line-height="19.09375px"
               position="relative" top=0.3333
-      // The send arrow, in the open sheet's top-right corner: 36 pt, concentric with the sheet's
-      // 32 pt corner (inset 32 − 18 = 14); dimmed until there is a note.
-      view position="absolute" z-index=3 width=36 height=36
-        left=(env.width - 1 - 14 - 36) top=(cardTop(h, env.safeTop, true) + 14)
+      // The send arrow (phone feedback 2026-11-15, "not aligned"): a 36 pt disc, its right edge
+      // 16 from the sheet's (the glass X's inset from the screen's), centred on the field's
+      // first line (its box at 24 + the baseline padding, 28.8 tall: centre 44 under the
+      // sheet's top); a 44 pt touch target around it.
+      view position="absolute" z-index=3 width=44 height=44
+        left=(env.width - 1 - 16 - 36 - 4) top=(cardTop(h, env.safeTop, true) + 44 - 22)
         opacity=(open ? (note.trim() != "" ? 1 : 0.35) : 0) transition=`opacity ${cardSpring(cardMs)}`
         pointer-events=(open and note.trim() != "" ? "auto" : "none") display="flex" flex-direction="column"
         PressableScale(press=submit)
-          column flex-grow=1 border-radius=18 background-color="#323232" align-items="center"
-            justify-content="center" aria-label="Send" testId="dot-send"
-            image "symbol:sf/arrow.up" font-size=17 font-weight=600 color="#ffffff" aria-hidden=true
+          column flex-grow=1 align-items="center" justify-content="center" aria-label="Send" testId="dot-send"
+            column width=36 height=36 border-radius=18 background-color="#323232" align-items="center"
+              justify-content="center"
+              image "symbol:sf/arrow.up" font-size=17 font-weight=600 color="#ffffff" aria-hidden=true
       // The card (zIndex 1): top, left, width, height, radius and rotate all interpolate the
       // progress: from (h / 2.8 × 3/4) × h / 2.8 centred 35 below the middle at -4° and radius
       // 16, to the window's width less 2 and its height, below the header, upright, radius 32.
