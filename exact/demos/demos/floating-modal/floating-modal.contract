@@ -19,6 +19,11 @@ component FloatingModal
       haptic("impact-light")
     if m == "close"
       haptic("impact-soft")
+    // Past RN: the drag's grab of the sheet, and its landing home after a short drag.
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+    if m == "haptic:impact-soft"
+      haptic("impact-soft")
   view
     canvas surface=floating_modal() message=heard position="absolute" top=0 left=0 width=env.width
       height=env.height background-color="rgba(0, 0, 0, 0.1)" touch-action="none"
