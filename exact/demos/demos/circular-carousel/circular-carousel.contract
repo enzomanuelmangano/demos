@@ -16,6 +16,13 @@ component CircularCarousel
   state scaleEnabled = false
   action setScale(on: bool)
     scaleEnabled = on
+  // The strip's haptics (gpu/src/circular_carousel.rs, past RN): selection as the photo at the
+  // crown changes, rigid when the strip is pulled past an end.
+  action heard(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-rigid"
+      haptic("impact-rigid")
   view
     // index.tsx container: centred; the backdrop (#f4f4f6) shows through.
     column position="absolute" inset=0 align-items="center" justify-content="center"
@@ -33,6 +40,6 @@ component CircularCarousel
         input type="checkbox" switch checked=scaleEnabled change=setScale accent-color="#111111"
           aria-label="Scale" testId="scale-switch" position="relative" left=1 top="0.1666px"
       // circular-list styles.list: absolute, bottom 0, the window wide, LIST_ITEM_WIDTH * 3 tall.
-      canvas surface=circular_carousel(scaleEnabled) position="absolute" left=0 bottom=0
+      canvas surface=circular_carousel(scaleEnabled) message=heard position="absolute" left=0 bottom=0
         width=env.width height=(itemWidth(env.width) * 3) touch-action="none"
         testId="circular-list" aria-label="Photos: drag sideways"

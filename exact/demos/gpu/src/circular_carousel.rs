@@ -31,6 +31,10 @@
 //!   px, UIGraphicsImageRenderer; here CoreGraphics on the Mac) and drawn aspect-fill in the
 //!   unrounded idealSize frame (89 × 133.5, centred), i.e. 1:1 at y −22.5 pt; the others are not
 //!   (400 px is not more than 3 × their idealSize) and are drawn cover, bilinear.
+//! - Haptics (past RN, which plays none: the owner's haptic language): `haptic:selection` each
+//!   time the photo at the arc's crown (round(offset / item)) changes, during the drag and the
+//!   glide, at most one per HAPTIC_GAP_MS; `haptic:impact-rigid` once each time the strip is
+//!   pulled or thrown past an end (the rubber band).
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -52,6 +56,10 @@ const SHADOW_SIGMA: f32 = 5.0;
 const SHADOW_ALPHA: f32 = 0.1;
 const SHOW: [f64; 5] = [0.5, 0.9, 1.2, 0.9, 0.5];
 const AVOID: [f64; 5] = [1.0; 5];
+/// The shortest gap between two selection haptics, ms.
+const HAPTIC_GAP_MS: f64 = 40.0;
+/// How far past an end (points) the rubber band must pull before its haptic.
+const PAST_END: f64 = 2.0;
 
 /// Each photo as iOS decodes it (ImageIO), the 400 × 600 ones downscaled as expo-image does:
 /// RGB rows, zlib, and their size (exact/parity-tools/circular-carousel/make.sh).
@@ -113,6 +121,10 @@ pub fn surface() -> Box<dyn Surface> {
         group_size: (0, 0),
         group_canvas: Canvas::default(),
         group_renderer: Renderer::default(),
+        centred: None,
+        past_end: false,
+        haptic_at: f64::NEG_INFINITY,
+        posted: Vec::new(),
     })
 }
 
@@ -131,6 +143,11 @@ struct Circular {
     group_size: (u32, u32),
     group_canvas: Canvas,
     group_renderer: Renderer,
+    /// The photo at the crown, and whether the strip is past an end (their haptics).
+    centred: Option<i64>,
+    past_end: bool,
+    haptic_at: f64,
+    posted: Vec<String>,
 }
 
 /// One cell's style at offset `x` for item width `item` and the scale outputs.
@@ -167,6 +184,27 @@ fn draw_cell(c: &mut Canvas, images: &Images, i: usize, left: f64, top: f64, ite
     let placed = Matrix::scale(r.width / photo.width, r.height / photo.height).then(Matrix::translate(r.x, r.y));
     c.draw_circle(cx, cy, round.min(RADIUS) - BORDER, &Paint::image(photo, placed.invert()));
     c.restore();
+}
+
+impl Circular {
+    /// A selection when the photo at the crown changes (one per HAPTIC_GAP_MS at most), a rigid
+    /// thunk once per pull past an end.
+    fn haptics(&mut self, x: f64, item: f64, now: f64) {
+        let centred = (x / item).round().clamp(0.0, (COUNT - 1) as f64) as i64;
+        if self.centred.is_some_and(|c| c != centred) && now - self.haptic_at >= HAPTIC_GAP_MS {
+            self.posted.push("haptic:selection".into());
+            self.haptic_at = now;
+        }
+        self.centred = Some(centred);
+        if x < -PAST_END || x > self.scroll.max + PAST_END {
+            if !self.past_end {
+                self.posted.push("haptic:impact-rigid".into());
+            }
+            self.past_end = true;
+        } else if (0.0..=self.scroll.max).contains(&x) {
+            self.past_end = false;
+        }
+    }
 }
 
 /// Yoga's pixel grid.
@@ -209,6 +247,10 @@ impl Surface for Circular {
 
     fn agent(&mut self, _request: &str) -> Option<String> {
         Some(format!("{{\"contentOffset\":{:.2},\"scaleOutputRange\":[{}]}}", self.scroll.offset, self.outputs.iter().map(|s| format!("{:.4}", s.value)).collect::<Vec<_>>().join(",")))
+    }
+
+    fn messages(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.posted)
     }
 
     fn input(&mut self, event: &InputEvent) {
@@ -258,6 +300,7 @@ impl Surface for Circular {
         }
         let outputs: [f64; 5] = std::array::from_fn(|k| self.outputs[k].value);
         let x = self.scroll.offset;
+        self.haptics(x, item, frame.now_ms);
         let fs = frame.scale;
         self.canvas.begin(fs);
         self.group_canvas.begin(fs);
@@ -344,5 +387,27 @@ mod tests {
             ms += 16.7;
         }
         assert!(sf.agent("{}").unwrap().starts_with("{\"contentOffset\":0.00"), "{}", sf.agent("{}").unwrap());
+        // It crossed no photo: no haptic. A slow drag of 80 pt past the half item moves the crown
+        // on (one selection); then a pull the other way past the start (a selection back, one
+        // rigid thunk for the rubber band, however long it is held there).
+        assert!(sf.messages().is_empty());
+        let drag = |sf: &mut Box<dyn Surface>, ms: &mut f64, by: f32| {
+            sf.input(&touch(PointerPhase::Down, 200.0, *ms));
+            for k in 1..=40 {
+                sf.input(&touch(PointerPhase::Move, 200.0 - by * k as f32 / 40.0, *ms + 30.0 * k as f64));
+                fixture::render(&gpu, sf.as_mut(), &frame(*ms + 30.0 * k as f64)).unwrap();
+            }
+            sf.input(&touch(PointerPhase::Up, 200.0 - by, *ms + 1500.0));
+            *ms += 1500.0;
+            while fixture::render(&gpu, sf.as_mut(), &frame(*ms)).unwrap().1 && *ms < 40_000.0 {
+                *ms += 16.7;
+            }
+        };
+        ms += 100.0;
+        drag(&mut sf, &mut ms, 80.0);
+        assert_eq!(sf.messages(), vec!["haptic:selection"]);
+        ms += 100.0;
+        drag(&mut sf, &mut ms, -150.0);
+        assert_eq!(sf.messages(), vec!["haptic:selection", "haptic:impact-rigid"]);
     }
 }
