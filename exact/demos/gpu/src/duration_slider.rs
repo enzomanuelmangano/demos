@@ -28,6 +28,23 @@
 //! travel) follows it; progress = (atan2(y − c, x − c) + π/2) mod 2π / 2π; value =
 //! min(round(progress · 12) + 1, 12); each change posts `haptic:selection`
 //! (Haptics.selectionAsync), none at mount.
+//!
+//! Past RN (the owner's note: "at a full rotation it breaks, the text looks off-centre"):
+//! - RN's progress is the finger's angle mod one turn, so the dial wraps at the top: dragging past
+//!   12 empties the ring and shows 1, dragging back past 1 fills it and shows 12, and a touch on
+//!   the resting knob a hair left of the top reads 12. Here the finger's angle is unwrapped (the
+//!   turn nearest the last one) and the ring is clamped to RN's span, 0…1 turn: it stops full at
+//!   12 and empty at 1, and picks up again when the finger comes back across the top. The
+//!   unwrapped turn is held within half a turn of that span, so a finger that keeps circling
+//!   past a stop re-engages the knob as it crosses it; a finger near the centre (where the angle
+//!   is noise) is ignored.
+//! - RN centres the value by its ink box (measureText's rounded bounds, − 2) and sets the baseline
+//!   at c + size / 3. A proportional "1" so sits with its stem right of centre (its flag pulls the
+//!   box left), "11" is narrow and "10" wide, and the figures stand ~2 pt high. Here the digits
+//!   are SF Pro Rounded Bold's tabular figures (gpu/fonts/sf-pro-rounded-bold-digits-tnum.otf:
+//!   the .tnum glyphs on the digits' code points), centred by their advance (the cell the type
+//!   designer centred each figure in optically), with the figure height (−32…1476 units)
+//!   centred on c.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -44,7 +61,17 @@ const MIN_VAL: f64 = 1.0;
 const MAX_VAL: f64 = 12.0;
 const FONT_SIZE: f32 = 100.0;
 const VALUES: [&str; 12] = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
-static SF_ROUNDED_BOLD: &[u8] = include_bytes!("../fonts/sf-pro-rounded-bold-digits.otf");
+/// SF Pro Rounded Bold's tabular figures (each 1325 / 2048 em wide).
+static SF_ROUNDED_BOLD_TNUM: &[u8] = include_bytes!("../fonts/sf-pro-rounded-bold-digits-tnum.otf");
+/// The figures' ink, top and bottom, in font units (2048 / em) above the baseline: 0 and 6 reach
+/// 1476, the round bottoms −32.
+const FIGURE_TOP: f32 = 1476.0;
+const FIGURE_BOTTOM: f32 = -32.0;
+const UNITS_PER_EM: f32 = 2048.0;
+/// A finger nearer the centre than this (pt) moves nothing: its angle is noise there.
+const DEAD_ZONE: f64 = 24.0;
+/// How far past either stop (turns) the unwrapped finger is kept.
+const SLACK: f64 = 0.5;
 
 /// The demo's surface (the canvas is size × size).
 pub fn surface() -> Box<dyn Surface> {
@@ -54,12 +81,12 @@ pub fn surface() -> Box<dyn Surface> {
 fn slider() -> DurationSlider {
     DurationSlider {
         size: 0.0,
-        translate: None,
+        turn: 0.0,
         pan: PanGesture::new(),
         dragging: false,
         value: None,
         posted: Vec::new(),
-        font: Font::new(SF_ROUNDED_BOLD, FONT_SIZE),
+        font: Font::new(SF_ROUNDED_BOLD_TNUM, FONT_SIZE),
         canvases: Default::default(),
         renderers: Default::default(),
         blurs: Default::default(),
@@ -71,8 +98,10 @@ fn slider() -> DurationSlider {
 
 struct DurationSlider {
     size: f32,
-    /// translateX, translateY (None: the initial (c, 0)).
-    translate: Option<(f64, f64)>,
+    /// The finger's angle from the top, clockwise, in turns, unwrapped across the top and held
+    /// within [−SLACK, 1 + SLACK] (RN: translateX/Y, the angle mod one turn). 0 at mount: RN's
+    /// initial translate (c, 0) is the top.
+    turn: f64,
     pan: PanGesture,
     /// The knob holds the finger.
     dragging: bool,
@@ -151,28 +180,27 @@ fn arc_events(cx: f32, cy: f32, r: f32, sweep: f32, out: &mut [PathEvent; 6]) ->
 }
 
 impl DurationSlider {
-    fn translate(&self) -> (f64, f64) {
-        self.translate.unwrap_or((self.size as f64 / 2.0, 0.0))
-    }
-
-    /// The progress derived value.
+    /// The progress derived value: RN's span, 0…1 turn, without its wrap.
     fn progress(&self) -> f64 {
-        let c = self.size as f64 / 2.0;
-        let (x, y) = self.translate();
-        let mut theta = (y - c).atan2(x - c) + std::f64::consts::FRAC_PI_2;
-        if theta < 0.0 {
-            theta += std::f64::consts::TAU;
-        }
-        theta / std::f64::consts::TAU
+        self.turn.clamp(0.0, 1.0)
     }
 
-    /// The knob's centre (picker.tsx: theta normalised, on the radius).
+    /// The knob's centre (picker.tsx: on the radius, at the progress's angle from the top).
     fn knob(&self) -> (f32, f32) {
         let g = geometry(self.size);
-        let (x, y) = self.translate();
+        let theta = self.progress() * std::f64::consts::TAU - std::f64::consts::FRAC_PI_2;
         let c = g.c as f64;
-        let theta = ((y - c).atan2(x - c) + std::f64::consts::TAU) % std::f64::consts::TAU;
         ((g.r as f64 * theta.cos() + c) as f32, (g.r as f64 * theta.sin() + c) as f32)
+    }
+
+    /// The finger's angle from the top, clockwise, in [0, 1) turn; None near the centre.
+    fn finger_turn(&self, x: f32, y: f32) -> Option<f64> {
+        let c = self.size as f64 / 2.0;
+        let (dx, dy) = (x as f64 - c, y as f64 - c);
+        if dx.hypot(dy) < DEAD_ZONE {
+            return None;
+        }
+        Some(((dy.atan2(dx) + std::f64::consts::FRAC_PI_2) / std::f64::consts::TAU).rem_euclid(1.0))
     }
 
     /// animatedValue: an index into VALUES.
@@ -180,8 +208,10 @@ impl DurationSlider {
         ((self.progress() * MAX_VAL).round() + MIN_VAL).min(MAX_VAL) as usize - 1
     }
 
+    /// The finger at (x, y): the turn nearest the last one (continuous across the top).
     fn set(&mut self, x: f32, y: f32) {
-        self.translate = Some((x as f64, y as f64));
+        let Some(a) = self.finger_turn(x, y) else { return };
+        self.turn = (a + (self.turn - a).round()).clamp(-SLACK, 1.0 + SLACK);
         let v = self.value();
         if self.value.is_some_and(|old| old != v) {
             self.posted.push("haptic:selection".into());
@@ -238,7 +268,7 @@ impl Surface for DurationSlider {
         let s = frame.scale;
         if self.size != frame.width {
             self.size = frame.width;
-            self.translate = None;
+            self.turn = 0.0;
             self.value = Some(self.value());
             let shader = gradient(&geometry(self.size));
             self.paints = Some((Paint::shader(shader.clone()).stroked(STROKE), Paint::shader(shader)));
@@ -265,8 +295,10 @@ impl Surface for DurationSlider {
         knob.draw_circle(kx, ky, STROKE / 2.0 - 10.0, &Paint::fill(Color::WHITE));
         text.begin(s);
         if let Some(font) = self.font.as_ref() {
-            let x = g.c - font.measure_text(value).width / 2.0 - 2.0;
-            text.draw_text(value, x, g.c + FONT_SIZE / 3.0, font, &Paint::fill(Color::hex(0x111111)));
+            // Tabular figures centred by their advance; the figure height centred on c.
+            let x = g.c - font.advance_width(value) / 2.0;
+            let baseline = g.c + (FIGURE_TOP + FIGURE_BOTTOM) / 2.0 / UNITS_PER_EM * font.size();
+            text.draw_text(value, x, baseline, font, &Paint::fill(Color::hex(0x111111)));
         }
         let gpu = self.gpu.as_mut().unwrap();
         for i in 0..4 {
@@ -458,18 +490,98 @@ mod tests {
         assert_eq!((9.0 * std::f64::consts::PI) / 6.0, 2.0 * std::f64::consts::PI - std::f64::consts::FRAC_PI_2);
     }
 
+    /// The finger on the 123 pt radius at `turns` clockwise from the top.
+    fn at(turns: f64) -> (f32, f32) {
+        let a = turns * std::f64::consts::TAU - std::f64::consts::FRAC_PI_2;
+        ((168.0 + 123.0 * a.cos()) as f32, (168.0 + 123.0 * a.sin()) as f32)
+    }
+
+    /// The finger walked from `from` to `to` turns in 1/100-turn steps.
+    fn walk(s: &mut DurationSlider, from: f64, to: f64) {
+        let n = ((to - from).abs() * 100.0).ceil() as usize;
+        for i in 1..=n {
+            let (x, y) = at(from + (to - from) * i as f64 / n as f64);
+            s.set(x, y);
+        }
+    }
+
     #[test]
     fn values_follow_the_angle() {
         let mut s = DurationSlider { size: 336.0, ..slider() };
         assert_eq!(s.value(), 0);
         s.value = Some(0);
         // A quarter turn clockwise (the right): round(0.25 · 12) + 1 = 4.
-        s.set(336.0, 168.0);
+        walk(&mut s, 0.0, 0.25);
         assert_eq!(s.value() + 1, 4);
-        assert_eq!(s.posted, vec!["haptic:selection".to_string()]);
+        assert_eq!(s.posted.len(), 3);
         // Just before the top again: min(12 + 1, 12) = 12.
-        s.set(167.0, 0.0);
+        walk(&mut s, 0.25, 0.995);
         assert_eq!(s.value() + 1, 12);
+    }
+
+    #[test]
+    fn a_full_turn_stops_at_12_and_does_not_wrap() {
+        let mut s = DurationSlider { size: 336.0, ..slider() };
+        s.value = Some(0);
+        walk(&mut s, 0.0, 1.0);
+        assert_eq!((s.value() + 1, s.progress()), (12, 1.0));
+        // On past the top (RN: the ring empties and reads 1): held full at 12, no haptic.
+        let before = s.posted.len();
+        walk(&mut s, 1.0, 1.3);
+        assert_eq!((s.value() + 1, s.progress()), (12, 1.0));
+        assert_eq!(s.posted.len(), before);
+        // Back: the knob picks up as the finger crosses the top.
+        walk(&mut s, 1.3, 0.8);
+        assert!((s.progress() - 0.8).abs() < 1e-6, "{}", s.progress());
+        assert_eq!(s.value() + 1, 11);
+    }
+
+    #[test]
+    fn circling_on_past_a_stop_reengages_at_the_stop() {
+        let mut s = DurationSlider { size: 336.0, ..slider() };
+        s.value = Some(0);
+        walk(&mut s, 0.0, 1.0);
+        // Two more turns clockwise: the ring stays full the whole way.
+        for k in 0..200 {
+            let (x, y) = at(1.0 + k as f64 / 100.0);
+            s.set(x, y);
+            assert_eq!(s.progress(), 1.0, "at {}", 1.0 + k as f64 / 100.0);
+        }
+        // Once the finger has passed the stop it re-engages as it comes back across it.
+        walk(&mut s, 2.99, 3.05);
+        assert_eq!(s.progress(), 1.0);
+        walk(&mut s, 3.05, 2.7);
+        assert!((s.progress() - 0.7).abs() < 1e-6, "{}", s.progress());
+    }
+
+    #[test]
+    fn backwards_from_rest_stays_at_1() {
+        let mut s = DurationSlider { size: 336.0, ..slider() };
+        s.value = Some(0);
+        // A touch a hair left of the top (RN: 12, the ring full), then on anticlockwise.
+        let (x, y) = at(-0.004);
+        s.set(x, y);
+        assert_eq!((s.value() + 1, s.progress()), (1, 0.0));
+        walk(&mut s, -0.004, -0.3);
+        assert_eq!((s.value() + 1, s.progress()), (1, 0.0));
+        assert!(s.posted.is_empty());
+        // The centre moves nothing.
+        s.set(170.0, 166.0);
+        assert_eq!(s.progress(), 0.0);
+    }
+
+    #[test]
+    fn figures_are_tabular_and_centred() {
+        let s = slider();
+        let font = s.font.as_ref().unwrap();
+        // Every figure 1325 / 2048 em: "1" … "9" one width, "10" … "12" another.
+        let one = font.advance_width("1");
+        assert!((one - 1325.0 / 2048.0 * 100.0).abs() < 1e-3, "{one}");
+        for v in VALUES {
+            assert!((font.advance_width(v) - one * v.len() as f32).abs() < 1e-3, "{v}");
+        }
+        // The figure height (−32…1476) centred on c: the baseline 35.25 pt below it at 100 pt.
+        assert!(((FIGURE_TOP + FIGURE_BOTTOM) / 2.0 / UNITS_PER_EM * 100.0 - 35.2539).abs() < 1e-3);
     }
 
     #[test]
