@@ -33,4 +33,25 @@ const r = spawnSync(process.execPath, [resolve(exact2, 'host/apple/build.mjs'), 
   ...(phone ? ['--phone', phone] : []), ...(url ? ['--url', url] : []), ...(run ? ['--run'] : []), ...(release ? ['--release'] : [])], {
   cwd: exact2, stdio: 'inherit', env: { ...process.env, EXACT_APP_DIR: process.cwd() },
 });
+// A development client only follows a dev server its opening link admits (build.mjs
+// developmentAdmission: `<scheme>://open?url=<page>&token=<this build's token>`, kept in the
+// bundle's receipt.json). `--run` alone launches the app on its embedded plan, so open the link:
+// the phone then connects to `url` and takes every edit live.
+if (r.status === 0 && run && url && phone) {
+  try {
+    const { readdirSync, readFileSync, existsSync } = await import('node:fs');
+    const clients = resolve(process.cwd(), 'target/clients');
+    const receipt = readdirSync(clients).flatMap((d) => readdirSync(resolve(clients, d)).map((b) =>
+      resolve(clients, d, b, 'ios/aarch64-apple-ios/embedded/development/standalone/Demos.app/receipt.json')))
+      .find((f) => existsSync(f));
+    const dev = receipt && JSON.parse(readFileSync(receipt, 'utf8')).development;
+    if (dev?.scheme && dev?.token) {
+      const page = new URL('/', url).href;
+      const link = `${dev.scheme}://open?url=${encodeURIComponent(page)}&token=${dev.token}`;
+      const bundle = JSON.parse(readFileSync(resolve(process.cwd(), 'app.json'), 'utf8')).app?.id ?? 'com.reactiive.demos.exact';
+      spawnSync('xcrun', ['devicectl', 'device', 'process', 'launch', '--device', phone, '--payload-url', link, bundle], { stdio: 'inherit' });
+      console.log(`phone: opened the dev link, live from ${page}`);
+    }
+  } catch (e) { console.error(`phone: could not open the dev link (${e.message}); open the app from the dev server's page`); }
+}
 process.exit(r.status ?? 1);
