@@ -155,13 +155,49 @@ final class LaunchIcons {
     /// The demo a presentation now opens out of: an icon touched in the last two seconds.
     func takeTouched() -> String? {
         defer { touched = nil }
-        guard let t = touched, CACurrentMediaTime() - t.at < 2 else { return nil }
+        guard let t = touched, CACurrentMediaTime() - t.at < 2 else {
+            // No icon named: the launch will be ungrouped (the demo simply appears, no pull, the close button is the route's own).
+            LaunchTrace.log("no icon touched in the last 2 s (touched \(touched.map { "\($0.slug) \(CACurrentMediaTime() - $0.at) s ago" } ?? "never"))")
+            return nil
+        }
         return t.slug
     }
     func view(_ slug: String) -> UIView? {
         if let r = rowSource, r.slug == slug, let v = r.view.view, v.window != nil { return v }
         guard let v = views[slug]?.view, v.window != nil else { return nil }
         return v
+    }
+
+    // An icon is hidden while its launch flies, and a hidden view takes no touch: a finger that lands on it reaches the
+    // button around it, which opens the demo with no icon named (the launch would be ungrouped: no pull, no flight home).
+    // So the demo's own route names it (`heldSlug`), and the icon is shown again only by the launch that hid it.
+    private var hiddenBy: [ObjectIdentifier: Int] = [:]
+    func hide(_ view: UIView, by gen: Int) {
+        view.isHidden = true
+        hiddenBy[ObjectIdentifier(view)] = gen
+    }
+    /// A launch from before the one that holds the icon now (its landing comes late) leaves it hidden.
+    func show(_ view: UIView, by gen: Int) {
+        guard hiddenBy[ObjectIdentifier(view)] == gen else {
+            if let owner = hiddenBy[ObjectIdentifier(view)] { LaunchTrace.log("launch \(gen) leaves an icon that launch \(owner) holds") }
+            return
+        }
+        hiddenBy[ObjectIdentifier(view)] = nil
+        view.isHidden = false
+    }
+    /// The demo of `route` when its home icon is hidden by a launch that is still landing, else nil.
+    func heldSlug(of route: UIViewController) -> String? {
+        guard let root = route.viewIfLoaded else { return nil }
+        var queue = [root], at = 0
+        while at < queue.count {
+            let v = queue[at]; at += 1
+            if let card = v as? DemoCardView, !card.slug.isEmpty {
+                guard let icon = view(card.slug), hiddenBy[ObjectIdentifier(icon)] != nil else { return nil }
+                return card.slug
+            }
+            queue.append(contentsOf: v.subviews)
+        }
+        return nil
     }
 }
 
@@ -255,6 +291,21 @@ private enum PanTrace {
         NSLog("[PAN] %@ | event gap ms median=%.2f max=%.2f n=%d", line.joined(separator: " | "),
               g.isEmpty ? 0 : g[g.count / 2], g.last ?? 0, g.count)
         stats = [:]; gaps = []; last = nil
+    }
+}
+
+// MARK: - The launch's state, traced (launch arguments `-launchTrace YES`, `-launchStrict YES`)
+
+/// Every step of a session (adopt, open, commit, leave, land) with its generation, and the states in which a shown demo
+/// would answer neither the pull nor the close button. A fault is always logged (rare, free until it happens);
+/// `-launchStrict YES` traps on it, so a stress run (tools/launch-stress.md) stops at the first divergence.
+enum LaunchTrace {
+    static let on = UserDefaults.standard.bool(forKey: "launchTrace")
+    static let strict = UserDefaults.standard.bool(forKey: "launchStrict")
+    static func log(_ line: @autoclosure () -> String) { if on { NSLog("[LAUNCH] %@", line()) } }
+    static func fault(_ line: @autoclosure () -> String) {
+        NSLog("[LAUNCH-FAULT] %@", line())
+        if strict { fatalError("launch fault: " + line()) }
     }
 }
 
@@ -358,6 +409,8 @@ private final class CardView: UIView {}
 
 final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
     static weak var current: LaunchSession?
+    /// Counts the sessions made: a delayed block of an older one is told by its `gen`.
+    private static var generation = 0
     /// The session that last opened over the home: the only one that moves or shows it.
     private static weak var homeOwner: LaunchSession?
     private var ownsHome: Bool { LaunchSession.homeOwner == nil || LaunchSession.homeOwner === self }
@@ -371,6 +424,9 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
 
     /// The tapped icon's demo (nil: a deep link, which simply appears).
     let slug: String?
+    fileprivate let gen: Int
+    /// UIKit's dismissal of the route has ended: the delegate is needed until then (`retire`).
+    private var dismissed = false
     private weak var controller: UIViewController?
     private weak var card: DemoCardView?
     private var owns: Bool { card?.ownsDrags ?? false }
@@ -420,6 +476,8 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
     init(controller: UIViewController, slug: String?) {
         self.controller = controller
         self.slug = slug
+        LaunchSession.generation += 1
+        gen = LaunchSession.generation
         super.init()
     }
 
@@ -427,6 +485,9 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
 
     static func adopt(_ controller: UIViewController, slug: String?) {
         let session = LaunchSession(controller: controller, slug: slug)
+        // A session that has landed and whose route is gone for good (a flying one stays: it lands the card and the icon).
+        live.removeAll { $0.phase == .landed && $0.controller == nil }
+        LaunchTrace.log("session \(session.gen) adopted for \(slug ?? "no icon"), \(live.count) other(s) still live")
         live.append(session)
         current = session
         controller.transitioningDelegate = session
@@ -439,6 +500,16 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         }) ?? current else { return }
         session.card = card
         if session.shown { card.alpha = 0 }
+    }
+
+    /// The session whose route holds `view`: the close button asks this and not `current`, which any other session's
+    /// commit or adoption moves (a shown demo must close through its own launch, whatever came before it).
+    static func owning(_ view: UIView?) -> LaunchSession? {
+        guard let view else { return current }
+        return live.last(where: { s in
+            guard let v = s.controller?.viewIfLoaded else { return false }
+            return view.isDescendant(of: v)
+        }) ?? current
     }
 
     static func holds(_ controller: UIViewController) -> Bool {
@@ -494,6 +565,7 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         view.frame = cardView.bounds
         // The icon it opens out of: a deep link has none, and the demo simply appears.
         guard let slug, let icon = LaunchIcons.shared.view(slug), let host = container.superview else {
+            LaunchTrace.log("session \(gen) opens ungrouped: slug \(slug ?? "nil"), icon \(slug.flatMap { LaunchIcons.shared.view($0) } != nil ? "found" : "missing")")
             cardView.addSubview(view)
             grouped = false
             phase = .open
@@ -532,7 +604,7 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
             // Stands in for the demo until it is in the card (below), so a card committed first shows no hole.
             cardView.backgroundColor = (art as? UIImageView)?.image.flatMap(LaunchSession.averageColor)
         }
-        icon.isHidden = true
+        LaunchIcons.shared.hide(icon, by: gen)
         moving(true)
         w.set(Double(iconFrame.width)); w.run(to: Double(screen.width), K.openWidth)
         aspect.set(Double(iconFrame.height / iconFrame.width))
@@ -672,6 +744,7 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
     private func commit(haptic: Bool, velocity: (w: Double, h: Double, x: Double, y: Double)?) {
         guard !closing else { return }
         closing = true
+        LaunchTrace.log("session \(gen) closes from \(phase), \(grouped ? "grouped" : "ungrouped")")
         if LaunchSession.current === self { LaunchSession.current = nil }
         guard grouped else {
             controller?.view.isUserInteractionEnabled = false
@@ -789,7 +862,16 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
     private func leave() {
         guard !routeGone else { return }
         routeGone = true
-        if dismissing == nil { card?.leave() }
+        LaunchTrace.log("session \(gen) hands the route back")
+        if dismissing == nil {
+            // The route's back pops the top route, whichever card asked: with a newer session open over this one it
+            // would take that one's route, and with no card it takes none (the route stays, presented and unseen).
+            if LaunchSession.live.contains(where: { $0.gen > gen && !$0.closing }) {
+                LaunchTrace.fault("session \(gen) hands its route back while a newer session is open: the back would pop that one")
+            }
+            if card == nil { LaunchTrace.fault("session \(gen) hands its route back but its card never attached: nothing leaves") }
+            card?.leave()
+        }
         finishDismissal()
     }
 
@@ -810,12 +892,23 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         ctx.view(forKey: .from)?.removeFromSuperview()
         ctx.completeTransition(true)
         keepCard()
+        dismissed = true
         if !grouped { land() }
-        if phase == .landed || !grouped { LaunchSession.live.removeAll { $0 === self } }
+        retire()
+    }
+
+    /// The session leaves `live` (and is freed: UIKit holds its delegate weakly) once the card has landed AND UIKit's
+    /// dismissal of the route has ended. Dropping it at the landing alone freed it while the dismissal was still to come
+    /// whenever the main thread ran late (the route handed back and the card landed in one tick): UIKit then dismissed
+    /// with no delegate, and a session that is gone answers nothing.
+    private func retire() {
+        guard phase == .landed, routeGone, dismissed || controller == nil else { return }
+        LaunchTrace.log("session \(gen) retired")
+        LaunchSession.live.removeAll { $0 === self }
     }
 
     private func landCard() {
-        icon?.isHidden = false
+        if let icon { LaunchIcons.shared.show(icon, by: gen) }
         art?.removeFromSuperview()
         art = nil
         cardView?.isHidden = true
@@ -842,7 +935,7 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         link?.invalidate()
         link = nil
         if grouped, !routeGone { DispatchQueue.main.async { [self] in leave() } }
-        if routeGone { LaunchSession.live.removeAll { $0 === self } }
+        retire()
     }
 
     // MARK: drag
@@ -901,7 +994,10 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         case .began:
             let t0 = PanTrace.now()
             defer { PanTrace.record("began", t0) }
-            guard phase == .open || phase == .opening || phase == .returning, grouped, !closing else { return }
+            guard phase == .open || phase == .opening || phase == .returning, grouped, !closing else {
+                LaunchTrace.log("session \(gen) pull refused in \(phase): grouped \(grouped), closing \(closing)")
+                return
+            }
             var from = (s: CGFloat(1), c: CGPoint(x: screen.width / 2, y: screen.height / 2))
             if phase != .open {
                 // Taken from where the card shows: an open that has nearly landed, or a spring back.
@@ -1335,7 +1431,7 @@ extension UIViewController {
     @objc func demosLaunchPresent(_ presented: UIViewController, animated: Bool, completion: (() -> Void)?) {
         if presented.modalPresentationStyle == .overFullScreen, presented.transitioningDelegate == nil,
            !LaunchSession.holds(self) {
-            LaunchSession.adopt(presented, slug: LaunchIcons.shared.takeTouched())
+            LaunchSession.adopt(presented, slug: LaunchIcons.shared.takeTouched() ?? LaunchIcons.shared.heldSlug(of: presented))
         }
         demosLaunchPresent(presented, animated: animated, completion: completion)
     }

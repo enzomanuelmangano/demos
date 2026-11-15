@@ -269,6 +269,9 @@ private struct GlassBody: View {
 }
 
 private final class GlassButton: ExactNativeInstance {
+    /// The button's view, for the closure that is made before the view exists.
+    private final class Anchor { weak var view: UIView? }
+    private let anchor: Anchor
     private let model = GlassModel()
     private let host: UIHostingController<GlassBody>
 
@@ -277,11 +280,18 @@ private final class GlassButton: ExactNativeInstance {
         // The close goes through the launch (haptic, then the flight home); with no launch
         // (a demo it does not hold) it falls back to the route's own leave.
         // A close right after a sub-page's Back (the same button) is ignored, as the route's own guard does.
+        let anchor = Anchor()
+        self.anchor = anchor
         host = UIHostingController(rootView: GlassBody(model: model, press: {
-            if model.close, let session = LaunchSession.current {
+            // The session whose route holds this button, not the last one adopted.
+            if model.close, let session = LaunchSession.owning(anchor.view) {
                 if CACurrentMediaTime() - model.closeSince > 0.4 { session.closeFromButton() }
-            } else { events.press() }
+            } else {
+                if model.close { LaunchTrace.fault("the close button fell back to the route's back: no launch session holds it") }
+                events.press()
+            }
         }))
+        anchor.view = host.view
         host.safeAreaRegions = []
         host.view.backgroundColor = .clear
         // The buttons are always drawn on a dark surface.
