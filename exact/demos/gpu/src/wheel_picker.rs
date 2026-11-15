@@ -26,7 +26,8 @@
 //!   both offsets set to clamp(W / 2 − index · space, −50 · space + W / 2, W / 2).
 //! - The progress reaction (on clampedScrollOffset): progress = interpolate(clamped, [W / 2,
 //!   W / 2 − 50 · space], [0, 1]); index = floor(progress · 50): a selection haptic when it
-//!   changes (previousLineIndex starts at −1); the count = ceil(progress · 50), posted as
+//!   changes (previousLineIndex starts at −1), at most one per HAPTIC_GAP_MS (past RN, which
+//!   plays one per line: a fast drag crosses one every frame); the count = ceil(progress · 50), posted as
 //!   `count:<n>` for the Contract's numeric text.
 
 use exact_gpu::wgpu;
@@ -38,6 +39,8 @@ use skia::{point, stops, Canvas, Color, Paint, Renderer, Shader};
 use crate::gfx;
 
 const LINES: usize = 50;
+/// The shortest gap between two tick haptics, ms (UIKit's pickers pace theirs so).
+const HAPTIC_GAP_MS: f64 = 40.0;
 const AREA_H: f32 = 150.0;
 const MAX_LINE: f32 = 20.0;
 const MIN_LINE: f32 = 10.0;
@@ -49,7 +52,11 @@ const SNAP: SpringConfig = SpringConfig { stiffness: 100.0, damping: 10.0, mass:
 
 /// The demo's surface. Input: isExpanded.
 pub fn surface() -> Box<dyn Surface> {
-    Box::new(WheelPicker {
+    Box::new(picker())
+}
+
+fn picker() -> WheelPicker {
+    WheelPicker {
         width: 0.0,
         expanded: None,
         space: Spring::at(20.0),
@@ -59,12 +66,13 @@ pub fn surface() -> Box<dyn Surface> {
         context: 0.0,
         pan: PanGesture::new(),
         line_index: -1,
+        haptic_at: f64::NEG_INFINITY,
         count: 0,
         posted: Vec::new(),
         gradient: None,
         canvas: Canvas::default(),
         renderer: Renderer::default(),
-    })
+    }
 }
 
 struct WheelPicker {
@@ -82,6 +90,8 @@ struct WheelPicker {
     pan: PanGesture,
     /// previousLineIndex.
     line_index: i64,
+    /// When the last tick haptic was posted, ms.
+    haptic_at: f64,
     /// animatedNumber.
     count: i64,
     posted: Vec<String>,
@@ -118,7 +128,7 @@ impl WheelPicker {
     }
 
     /// useAnimatedReaction on clampedScrollOffset.
-    fn react(&mut self) {
+    fn react(&mut self, now: f64) {
         let c = self.clamped.value;
         if c == self.last_clamped {
             return;
@@ -136,7 +146,10 @@ impl WheelPicker {
         }
         let index = (progress * LINES as f64).floor() as i64;
         if index != self.line_index {
-            self.posted.push("haptic:selection".into());
+            if now - self.haptic_at >= HAPTIC_GAP_MS {
+                self.posted.push("haptic:selection".into());
+                self.haptic_at = now;
+            }
             self.line_index = index;
         }
         let count = (progress * LINES as f64).ceil() as i64;
@@ -187,7 +200,7 @@ impl Surface for WheelPicker {
             Event::Start(p) | Event::Update(p) => {
                 let (lo, hi) = self.bounds();
                 self.set_offsets((self.context + p.translation_x as f64).clamp(lo, hi));
-                self.react();
+                self.react(at_ms);
             }
             Event::End(p) => {
                 let (w, s, vx) = (self.width, self.space.value, p.velocity_x as f64);
@@ -227,7 +240,7 @@ impl Surface for WheelPicker {
         // app's stalled main thread at the expand's commit gives and a Release build doesn't.
         let prev = self.space.value;
         let mut moving = self.space.step(now);
-        self.react();
+        self.react(now);
         if self.space.value != prev {
             let curr = self.space.value;
             let tick = ((w / 2.0 - self.clamped.value) / prev).round();
@@ -238,7 +251,7 @@ impl Surface for WheelPicker {
         moving |= self.clamped.step(now);
         if self.space.value == prev {
             // A pan's or the snap's offsets are heard this frame (the spacing is at rest).
-            self.react();
+            self.react(now);
         }
         moving |= self.clamped.value != self.last_clamped;
 
@@ -280,6 +293,24 @@ mod tests {
     use exact_gpu::{fixture, PointerKind, PointerPhase};
 
     #[test]
+    fn a_fast_drag_paces_its_tick_haptics() {
+        // 200 pt in 80 ms (190 after UIKit's 10 pt hysteresis: count 8): at most one selection per HAPTIC_GAP_MS.
+        let mut s = picker();
+        s.width = 420.0;
+        s.set_offsets(210.0);
+        let finger = |s: &mut WheelPicker, phase, x, at_ms| {
+            s.input(&InputEvent::Pointer { id: 1, phase, x, y: 75.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
+        };
+        finger(&mut s, PointerPhase::Down, 300.0, 0.0);
+        for i in 1..=5 {
+            finger(&mut s, PointerPhase::Move, 300.0 - 40.0 * i as f32, 16.0 * i as f64);
+        }
+        let haptics = s.posted.iter().filter(|m| *m == "haptic:selection").count();
+        assert!((1..=3).contains(&haptics), "{:?}", s.posted);
+        assert!(s.posted.contains(&"count:8".to_string()), "{:?}", s.posted);
+    }
+
+    #[test]
     fn snap_point_is_redashs() {
         // W 420: spacings 210 − 20 i. 150 + 0.2 · 100 = 170 → 170.
         assert_eq!(snap_point(150.0, 100.0, 420.0, 20.0), 170.0);
@@ -311,7 +342,8 @@ mod tests {
             s.input(&InputEvent::Pointer { id: 1, phase, x, y: 75.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
         };
         // Drag left 103 pt slowly; RNGH on iOS leaves UIKit's 10 pt hysteresis out of the
-        // translation: offset 210 − 93 → 4.65 lines; the haptics and counts posted.
+        // translation: offset 210 − 93 → 4.65 lines; the counts posted, and the haptics paced to
+        // HAPTIC_GAP_MS (lines 0 and 1 are crossed 30 ms apart: one of them plays).
         finger(&mut s, PointerPhase::Down, 300.0, 0.0);
         for i in 1..=10 {
             finger(&mut s, PointerPhase::Move, 300.0 - 10.3 * i as f32, 30.0 * i as f64);
@@ -319,7 +351,7 @@ mod tests {
         finger(&mut s, PointerPhase::Move, 197.0, 600.0);
         let posted = s.messages();
         assert!(posted.contains(&"count:5".to_string()), "{posted:?}");
-        assert_eq!(posted.iter().filter(|m| *m == "haptic:selection").count(), 5, "{posted:?}");
+        assert_eq!(posted.iter().filter(|m| *m == "haptic:selection").count(), 4, "{posted:?}");
         finger(&mut s, PointerPhase::Up, 197.0, 700.0);
         let mut ms = 700.0;
         while ms < 2500.0 {
