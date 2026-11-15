@@ -1,4 +1,4 @@
-// Generates demos.contract (the launcher's list) and assets/app-icons/ from the
+// Generates demos.contract (the launcher's list) and assets/app-icons/ (shaped by gen-icons.ts) from the
 // React Native app's registry, so both apps list the same demos in the same order.
 //
 //   bun tools/gen-demos.ts
@@ -11,6 +11,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from
 import { resolve } from 'node:path';
 
 import { getInspirationCopy } from '../../../src/navigation/home/inspiration-copy';
+import { bakeIcons } from './gen-icons';
 
 const APP = resolve(import.meta.dir, '..');
 const RN = resolve(APP, '../..');
@@ -81,4 +82,6 @@ fn allDemos(): Demo[] =
 ${rows.join(',\n')}
   ]
 `);
+// The copies above are square; the home draws the icon shape from the alpha (gen-icons.ts).
+await bakeIcons();
 console.log(`${rows.length} demos, ${ported.size} ported`);
