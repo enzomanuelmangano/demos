@@ -38,7 +38,9 @@ component Checkbox
       PressableScaleLayout(press=press, layout="-exact-spring(250, 30, 1)")
         row testId=testId aria-pressed=checked text-align="center"
           align-items="center" justify-content="center"
-          padding=(checked ? "12px 14px 12px 24px" : "12px 24px") border-radius=36 corner-shape="-exact-continuous"
+          // borderRadius 36 is drawn at half the height: 24 here (12 + 21 + 12 + 3; RN's 48.667 box
+          // makes it 24.333), because the host paints a layout transition's resize with Core Animation's corner only when the authored radius fits the box.
+          padding=(checked ? "12px 14px 12px 24px" : "12px 24px") border-radius=24 corner-shape="-exact-continuous"
           border-width=1.5 border-style="solid"
           border-color=(checked ? "color(display-p3 0.9373 0.5569 0.3216 / 0.1)" : "color(display-p3 0.702 0.6941 0.7059 / 0.1)")
           background-color=(checked ? "color(display-p3 0.9373 0.5569 0.3216 / 0.1)" : "color(display-p3 0.9373 0.5569 0.3216 / 0)")

@@ -101,6 +101,13 @@ One commit per haptic event, never per frame.
   and ease-out half `cubic-bezier(1/3, 2/3, 2/3, 1)`, with the value linear in progress inside
   each half. Any polynomial easing of degree ≤ 3 is an exact cubic Bézier this way; out(cubic)
   = 1-(1-t)³ is `cubic-bezier(1/3, 1, 2/3, 1)`.
+- Pill radius > half the box → wrong corner during layout transitions; author h/2. While a
+  `-exact-layout-transition` resizes a box, the host paints it on a surface layer that takes
+  Core Animation's corner only when the AUTHORED radius is ≤ half the box (exact2 Surface.swift
+  paintSurface skips CSS reduction). `border-radius=999` / 50 on a 50 pt pill redraws on the
+  CPU with the kernel's continuous outline every frame (a different curve, and jank). Write the
+  radius RN draws, min(r, w/2, h/2) at every frame (online-offline 22, alert-drawer 25). See
+  exact/parity-tools/exact-issues/radius-reduced.md.
 - Corners: RN `borderCurve: 'continuous'` = `corner-shape="-exact-continuous"` (CALayer
   cornerCurve .continuous), pills and circles included: CA draws it unclamped at min(r, w/2, h/2),
   so a continuous pill's ends are flatter than a semicircle. `squircle` is the CSS superellipse,

@@ -147,7 +147,9 @@ component BottomProgress
     // the device pixel (the children start 0.667 in) and RCTBorderDrawing's ring covers those
     // 2 px fully (measured): 0.66667 here, where 0.5 drew 1 px and the inner pill 1 px early.
     column class=PillMotion position="absolute" bottom=50 left=left width=pillWidth(progress) height=70
-      box-sizing="border-box" border-radius=40 background-color="color(display-p3 0.1333 0.1294 0.1373)" border-width=0.66667
+      // Radius 40 is drawn at half the height (35), and the inner pills' at half their 59 (29.5),
+      // the bar's at 2.5: authored so, because the host paints a layout transition's resize with Core Animation's corner only when the authored radius fits the box.
+      box-sizing="border-box" border-radius=35 background-color="color(display-p3 0.1333 0.1294 0.1373)" border-width=0.66667
       border-style="solid" border-color="rgba(255, 255, 255, 0.1)" z-index=100 testId="progress-pill"
       // ProgressBarArea: flex 1, margin 5, #2E2D2E, paddingHorizontal 10, radius 40 continuous,
       // a centred row; opacity withTiming(expanded ? 1 : 0).
@@ -156,7 +158,7 @@ component BottomProgress
       // right and bottom (measured: a 177 px circle). Here the ring is 0.667 thick, hence 5 and
       // 4.667; the padding (10) is 9.833 and 10.167 so the content box is RN's unrounded
       // [15.5, 184.5], where the bar's edges round as Yoga's do (it ended 1 px long).
-      row class=PillMotion flex=1 margin-top=5 margin-left=5 margin-right=4.66667 margin-bottom=4.66667 padding-left=9.83333 padding-right=10.16667 border-radius=40 corner-shape="-exact-continuous"
+      row class=PillMotion flex=1 margin-top=5 margin-left=5 margin-right=4.66667 margin-bottom=4.66667 padding-left=9.83333 padding-right=10.16667 border-radius=29.5 corner-shape="-exact-continuous"
         background-color="color(display-p3 0.1804 0.1765 0.1804)" justify-content="center" align-items="center"
         opacity=(isExpanded(progress) ? 1 : 0)
         transition="opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)" testId="progress-bar-area"
@@ -178,7 +180,7 @@ component BottomProgress
         // The bar: 5 tall, 70% wide, white, radius 40, clipping: the #1A1A1A track and the
         // #9E9E9E fill, scaleX(progress) from its left (the same pixels as the fill slid in
         // from the left by (progress - 1) × its width, clipped by the bar).
-        view class=PillMotion height=5 width="70%" background-color="#ffffff" border-radius=40
+        view class=PillMotion height=5 width="70%" background-color="#ffffff" border-radius=2.5
           overflow="hidden" position="relative"
           view class=PillMotion position="absolute" inset=0 background-color="#1A1A1A"
           view class=PillMotion position="absolute" inset=0 background-color="#9E9E9E"
@@ -186,7 +188,7 @@ component BottomProgress
           view class=PillMotion position="absolute" inset=0 background-color="#9E9E9E" opacity=(frozen ? 1 : 0)
       // CollapsedArea: absoluteFill, margin 5, #2E2D2E, radius 40 continuous; opacity
       // withTiming(INITIAL or END ? 1 : 0).
-      view class=PillMotion position="absolute" top=5 left=5 right=4.66667 bottom=4.66667 border-radius=40 corner-shape="-exact-continuous"
+      view class=PillMotion position="absolute" top=5 left=5 right=4.66667 bottom=4.66667 border-radius=29.5 corner-shape="-exact-continuous"
         background-color="color(display-p3 0.1804 0.1765 0.1804)"
         opacity=(isExpanded(progress) ? 0 : 1)
         transition="opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)" testId="collapsed-area"

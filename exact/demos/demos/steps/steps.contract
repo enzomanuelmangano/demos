@@ -37,9 +37,9 @@ component Steps
       row padding-left=10 padding-right=10 gap=20 align-items="center" position="relative"
         testId="dots"
         // styles.bar: absolute (no insets: Yoga puts it at the row's border edge, centred on the
-        // row), #66e070, radius 100 continuous.
+        // row), #66e070, radius 100 continuous: drawn at 15, half the height (15 here: the host paints a layout transition's resize with Core Animation's corner only when the authored radius fits the box).
         view position="absolute" left=0 top=-10 height=30 width=barWidth(activeIndex)
-          background-color="color(display-p3 0.4 0.8784 0.4392)" border-radius=100 corner-shape="-exact-continuous"
+          background-color="color(display-p3 0.4 0.8784 0.4392)" border-radius=15 corner-shape="-exact-continuous"
           -exact-layout-transition="-exact-spring(900, 120, 4)" testId="bar"
         // dot.tsx: dotSize, radius dotSize / 2 continuous; backgroundColor withTiming(white or
         // rgba(0,0,0,0.15), 200 ms) on Reanimated's default curve inOut(quad).

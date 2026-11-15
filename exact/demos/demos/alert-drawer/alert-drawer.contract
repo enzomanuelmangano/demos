@@ -106,27 +106,28 @@ component AlertDrawer
                     font-family="Honk-Regular" font-size=15 letter-spacing=0.5 margin-top=8
                     color="#999999"
               // styles.button + styles.cancelButton: absolute, bottom 0, MIN_BUTTON_WIDTH x 50,
-              // radius 50 continuous, #dfdfdf, paddingHorizontal 20.
+              // radius 50 continuous (drawn at 25, half the height: 25 here, as the host paints a layout transition's resize with Core Animation's corner only when the authored radius fits the box),
+              // #dfdfdf, paddingHorizontal 20.
               // The pressable's place; PressableScaleLayout's box fills it and moves with it.
               view position="absolute" left=0 bottom=0 width=minButtonWidth(w) height=50
                 display="flex" flex-direction="column"
                 -exact-layout-transition="-exact-spring(1699.5858, 164.9042, 4)"
                 PressableScaleLayout(press=toggleExpansion, layout="-exact-spring(1699.5858, 164.9042, 4)")
                   row testId="cancel" height=50 text-align="center"
-                    border-radius=50 background-color="#dfdfdf"
+                    border-radius=25 corner-shape="-exact-continuous" background-color="#dfdfdf"
                     padding-left=20 padding-right=20 box-sizing="border-box" align-items="center"
                     justify-content="center" -exact-layout-transition="-exact-spring(1699.5858, 164.9042, 4)"
                     // styles.buttonLabel + cancelButtonLabel: Honk 16 bold, #111.
                     text "Cancel" font-family="Honk-Regular" font-size=16 color="#111111"
         // The pill (styles.button): right (EXPANDED_CARD_WIDTH - BUTTON_WIDTH) / 2; bottom
-        // padding; width BUTTON_WIDTH → MIN_BUTTON_WIDTH.
+        // padding; width BUTTON_WIDTH → MIN_BUTTON_WIDTH. Radius 50 continuous, drawn at 25.
         // The pill's place; PressableScaleLayout's box fills it and moves with it.
         view position="absolute" right=inset(w) bottom=(isExpanded ? inset(w) : 0)
           width=(isExpanded ? minButtonWidth(w) : buttonWidth(w)) height=50
           display="flex" flex-direction="column"
           -exact-layout-transition="-exact-spring(1699.5858, 164.9042, 4)"
           PressableScaleLayout(press=pressMain, layout="-exact-spring(1699.5858, 164.9042, 4)")
-            row testId="continue" height=50 border-radius=50 text-align="center"
+            row testId="continue" height=50 border-radius=25 text-align="center"
               corner-shape="-exact-continuous" background-color="color(display-p3 0.9412 0.1294 0.1686)" padding-left=20 padding-right=20
               box-sizing="border-box" align-items="center" justify-content="center"
               -exact-layout-transition="-exact-spring(1699.5858, 164.9042, 4)"
