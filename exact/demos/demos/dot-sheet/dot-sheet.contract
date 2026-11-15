@@ -5,7 +5,7 @@
 // drawn once in Rust: gpu/src/dot_sheet.rs; the card (its frame, rotation, animated continuous
 // radius and shadow on RN's spring) is gpu/src/dot_sheet_card.rs; the field and the rest are here.
 use PressableScale from "pressto"
-use DemoEnv, demoButtonRow, floatingWidth, concentricRadius from "../env.contract"
+use DemoEnv, demoButtonRow, floatingWidth, concentricInset, concentricRadius from "../env.contract"
 
 
 // card-input.tsx: progress = withSpring(focused ? 1 : 0, { duration: 800, dampingRatio: 1 }).
@@ -145,12 +145,12 @@ component DotSheet
               opacity=(open ? 1 : 0) transition=`opacity ${cardSpring(cardMs)}` aria-label="Back" testId="dot-back"
               image "symbol:sf/chevron.backward" font-size=24 color="#323232" aria-hidden=true
       // The bottom button (phone feedback 2026-11-15, "make it concentric"): RN's is 85 % wide,
-      // 52 tall, radius 30, safe bottom + 16. Here a capsule floating 16 pt from the display's
-      // sides and bottom, its continuous corners concentric with the display's.
-      view position="absolute" top=(h - 16 - 52) left=16
-        width=floatingWidth(env.width, 16) height=52 z-index=(not open and still ? 2 : 0) display="flex" flex-direction="column"
+      // 52 tall, radius 30, safe bottom + 16. Here a continuous capsule whose ends share their
+      // centre with the display corner's arc: 62 − 26 = 36 from its sides and bottom.
+      view position="absolute" top=(h - concentricInset(52) - 52) left=concentricInset(52)
+        width=floatingWidth(env.width, concentricInset(52)) height=52 z-index=(not open and still ? 2 : 0) display="flex" flex-direction="column"
         PressableScale(press=start)
-          row flex-grow=1 border-radius=concentricRadius(16, 52) corner-shape="-exact-continuous"
+          row flex-grow=1 border-radius=concentricRadius(concentricInset(52), 52) corner-shape="-exact-continuous"
             background-color="rgba(55, 55, 55, 0.2)" text-align="center"
             align-items="center" justify-content="center" testId="dot-start"
             text "Start your Journey" color="#ffffff" font-size=16 font-weight=700 line-height="19.09375px"
