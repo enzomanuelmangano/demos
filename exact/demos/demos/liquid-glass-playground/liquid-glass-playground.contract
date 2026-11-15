@@ -89,6 +89,9 @@ component LiquidGlassPlayground
           transition=paneMotion(dragging) aria-hidden=true testId="glass"
           glass-pane glass-style="clear" pane-tint="rgba(0,0,0,0.5)" corner-size="50"
             interactive="false" continuous="true" position="absolute" inset=0 aria-hidden=true
+            // Its own pointer-events, not only its wrapper's: the host skips a node's native
+            // views as touch targets only under that node's own `none`.
+            pointer-events="none"
         // The GestureDetector: on the pane's Animated.View, so it moves with the pane (the
         // strip a pulled pane uncovers takes no drag).
         view position="absolute" inset=0 touch-action="none" pan=drag panrelease=release
