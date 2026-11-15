@@ -1,16 +1,31 @@
-// Chessboard: Lasker–Thomas, London 1912, one move before 18. Kd2#. A live board for both
-// sides (drag or tap a piece; castling, en passant and promotion with its picker), the two
-// player cards with their chess clocks and turn dots, and on checkmate the screen swept by a
-// glass wave into a haze under the game review card (Back resets, Replay plays the mate again).
+// Chessboard: Lasker–Thomas, London 1912, as a puzzle. A live board (drag or tap a piece;
+// castling, en passant and promotion with its picker), the two player cards with their chess
+// clocks and turn dots, and on checkmate the screen swept by a glass wave into a haze under the
+// game review card (Back resets, Replay plays the line again).
 // RN: src/animations/chessboard (src/index.tsx, use-chess-game.ts, checkmate-aura.tsx,
 // components/*; react-native-chessboard and chess.js). All of it is one Rust surface
-// (gpu/src/chessboard.rs); here the haptics it posts.
+// (gpu/src/chessboard.rs); here the haptics it posts and the puzzle's bar.
+//
+// Past RN (the owner's phone note mwhlpkfj-6464e0: "add a concentric button at the bottom saying
+// Hint and View solution, as on Patterns"): the board is a puzzle as the owner's Patterns app plays
+// one. The opponent's setup move slides in, the user answers, the opponent replies, until the mate.
+// The bar at the bottom is concentric with the display (env.contract: 10 from its sides and
+// bottom, radius concentricRadius(10, 56) = 28: a capsule), liquid glass, two halves: Hint (the
+// piece to move, then a second tap its square) and View solution (plays the move). Each tap raises
+// a counter the surface reads; the press is pressto's (its selection haptic). The surface posts
+// `puzzle:<wait|play|hint1|hint2|done>`: a build without the puzzle never does, so the bar shows
+// only once one arrives.
 //
 // The mate's Core Haptics pattern (haptics.ts MATE_PATTERN) is `mate-haptic` in
 // modules/apple/Demos.swift: the surface posts "haptic:mate" / "haptic:mate-stop", counted here
 // into its `plays` and `stops`. The web build has no such view; there the surface posts the
 // pattern's taps as UIKit impacts instead.
-use DemoEnv from "../env.contract"
+use DemoEnv, floatingWidth, concentricRadius from "../env.contract"
+use PressableScale from "pressto"
+
+// The bar: inset from the display's sides and bottom, its height (Patterns' dock pill).
+fn barInset(): number = 10
+fn barHeight(): number = 56
 
 component Chessboard
   props
@@ -18,11 +33,20 @@ component Chessboard
   // MATE_PATTERN's plays and stops (the `mate-haptic` view starts or cancels it on a new value).
   state mate = 0
   state stop = 0
+  // The surface's puzzle mode ("" until it posts one).
+  state mode = ""
+  // Taps on Hint and on View solution: the surface acts on each rise.
+  state hints = 0
+  state solves = 0
   action heard(m: string)
+    if m.startsWith("puzzle:")
+      mode = m.slice(7)
     if m == "haptic:mate"
       mate = mate + 1
     if m == "haptic:mate-stop"
       stop = stop + 1
+    if m == "haptic:error"
+      haptic("error")
     if m == "haptic:selection"
       haptic("selection")
     if m == "haptic:impact-light"
@@ -33,10 +57,42 @@ component Chessboard
       haptic("impact-rigid")
     if m == "haptic:impact-heavy"
       haptic("impact-heavy")
+  action hint
+    if mode == "play" or mode == "hint1"
+      hints = hints + 1
+  action solve
+    if mode == "play" or mode == "hint1" or mode == "hint2"
+      solves = solves + 1
   view
     // styles.root: theme.bg.
     column position="absolute" inset=0 background-color="#0d0e12" testId="chessboard"
-      canvas surface=chessboard() message=heard position="absolute" top=0 left=0
+      canvas surface=chessboard(hints, solves) message=heard position="absolute" top=0 left=0
         width=env.width height=env.height touch-action="none" testId="chessboard-canvas"
         aria-label="Chessboard: drag or tap a piece to move it"
       mate-haptic plays=mate stops=stop width=0 height=0
+      if mode != ""
+        // Hidden under the review card once the puzzle is solved; back with the next one.
+        row position="absolute" z-index=10 left=barInset() bottom=barInset()
+          width=floatingWidth(env.width, barInset()) height=barHeight()
+          border-radius=concentricRadius(barInset(), barHeight()) corner-shape="-exact-continuous"
+          backgroundMaterial="glass" -exact-glass-tint="rgba(23, 25, 31, 0.35)" align-items="center"
+          opacity=(mode == "done" ? 0 : 1) translate=(mode == "done" ? "0 16px" : "0 0")
+          transition="opacity 220ms cubic-bezier(0.23, 1, 0.32, 1), translate 220ms cubic-bezier(0.23, 1, 0.32, 1)"
+          pointer-events=(mode == "done" ? "none" : "auto") testId="puzzle-bar"
+          view flex=1 height=barHeight()
+            PressableScale(press=hint)
+              row flex-grow=1 align-items="center" justify-content="center" gap=8
+                opacity=(mode == "play" or mode == "hint1" ? 1 : 0.38) transition="opacity 200ms ease"
+                aria-label="Hint" testId="puzzle-hint"
+                image "symbol:sf/lightbulb" font-size=17 color="#f0f2f5"
+                text (mode == "hint1" ? "Show square" : "Hint") font-size=16 font-weight=600
+                  color="#f0f2f5"
+          // The hairline between the halves.
+          view width=1 height=24 background-color="rgba(255, 255, 255, 0.14)"
+          view flex=1 height=barHeight()
+            PressableScale(press=solve)
+              row flex-grow=1 align-items="center" justify-content="center" gap=8
+                opacity=(mode == "wait" ? 0.38 : 1) transition="opacity 200ms ease"
+                aria-label="View solution" testId="puzzle-solution"
+                image "symbol:sf/eye" font-size=17 color="#f0f2f5"
+                text "View solution" font-size=16 font-weight=600 color="#f0f2f5"

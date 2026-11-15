@@ -6,3 +6,8 @@ at "/demo/chessboard"
 test "the canvas fills the screen"
   expect tree has "chessboard"
   expect tree has "chessboard-canvas"
+
+// The bar shows once the surface posts its puzzle mode: a build without the puzzle (and the web,
+// whose host hears no surface message) never does.
+test "the puzzle bar waits for the surface"
+  expect tree missing "puzzle-bar"
