@@ -1,25 +1,67 @@
 at "/demo/family-number-input"
 
-test "keys type a number with commas, backspace removes, a long press clears"
+// Keys are insertion ids (d<id> a digit, c<id> a comma): a character keeps its key while it
+// stays, and a digit typed where one is leaving is a new node. "number" reads its characters
+// joined, as value.toLocaleString("en-US").
+test "typing keeps every character's key and adds a comma at four digits"
   expect tree has "family-number-input"
-  expect tree has "char-digit-0"
-  expect tree missing "char-digit-1"
+  expect text "char-d0" == "0"
+  tap "key-1"
+  tap "key-2"
+  tap "key-3"
+  clock settle
+  expect tree missing "char-d0"
+  expect text "char-d1" == "1"
+  expect text "char-d3" == "3"
+  expect tree missing "char-c5"
+  tap "key-4"
+  clock settle
+  expect text "char-d1" == "1"
+  expect text "char-d2" == "2"
+  expect text "char-d3" == "3"
+  expect text "char-d4" == "4"
+  expect text "char-c5" == ","
+  expect text "number" == "1,234"
+
+test "deleting removes the last digit and its comma, typing again gives new keys"
   tap "key-1"
   tap "key-2"
   tap "key-3"
   tap "key-4"
-  clock settle
-  expect tree has "char-digit-3"
-  expect tree has "char-comma-0"
   tap "key--2"
   clock settle
-  expect tree missing "char-digit-3"
-  expect tree missing "char-comma-0"
-  expect tree has "char-digit-2"
+  expect tree missing "char-d4"
+  expect tree missing "char-c5"
+  expect text "char-d3" == "3"
+  expect text "number" == "123"
+  tap "key-9"
+  clock settle
+  expect text "char-d7" == "9"
+  expect text "char-c8" == ","
+  expect text "char-d1" == "1"
+  expect tree missing "char-d4"
+  expect text "number" == "1,239"
+
+test "zero: typing 0 changes nothing, deleting the last digit leaves a new 0, a long press clears"
+  tap "key-0"
+  clock settle
+  expect text "char-d0" == "0"
+  tap "key-5"
+  tap "key--2"
+  clock settle
+  expect tree missing "char-d1"
+  expect text "char-d2" == "0"
+  tap "key--2"
+  clock settle
+  expect text "char-d2" == "0"
+  tap "key-7"
+  tap "key-7"
+  tap "key-7"
+  tap "key-7"
   tap "key--2" contextmenu
   clock settle
-  expect tree has "char-digit-0"
-  expect tree missing "char-digit-1"
+  expect text "number" == "0"
+  expect tree missing "char-d3"
 
 test "the number stops at eleven digits"
   tap "key-9"
@@ -35,6 +77,4 @@ test "the number stops at eleven digits"
   tap "key-9"
   tap "key-9"
   clock settle
-  expect tree has "char-digit-10"
-  expect tree missing "char-digit-11"
-  expect tree has "char-comma-2"
+  expect text "number" == "99,999,999,999"

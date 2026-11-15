@@ -3,47 +3,101 @@
 // Backspace removes the last digit, a long press on it clears. RN:
 // src/animations/family-number-input (number-input.tsx, components/animated-number,
 // components/buttons-grid).
+//
+// Frame cost (rewritten for 120 Hz after the phone's "it stutters"): nothing here is laid out
+// per frame. RN's LinearTransition on the row and on every character became
+// `-exact-layout-transition`s, which the iOS host shows a frame late from the new layout and
+// re-projects at every commit (three a tap: pressIn, press, pressOut), so a fast typist saw the
+// row jump and restart. Here every character is an absolute box placed by `translate` from
+// numbers the commit computes (the font's own advances), so a commit changes only transform
+// targets and per frame the host moves layers:
+// - the row: one `translate` (−width / 2, the centring) and one `scale` (rContainerStyle);
+// - a character: its place (`translate` x on the text), its entrance and exit (keyframes of
+//   `translate` y and `opacity` on its wrapper, FadeInDown / FadeOutDown).
+// Places move on a critically damped spring, not RN's 300 ms timing: a tap during a slide
+// retargets it with its velocity kept instead of restarting from rest, which is what a fast
+// typist feels as fluid. Characters are keyed by insertion id, never by position: a digit typed
+// where one is still leaving is a new node that enters, and the leaving one finishes its exit.
 use DemoEnv from "../env.contract"
 use AnimatedPressable, PressLook from "pressto"
 
 // buttons-grid/index.tsx items: 1…9, an empty key, 0, backspace (-1 empty, -2 backspace).
 fn keys(): number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, -1, 0, -2]
 
-// animated-number: value.toLocaleString('en-US') split into characters, digits keyed
-// `digit-<n>` and commas `comma-<n>` by their left-to-right ordinal.
-shape Ch
-  char: string
-  key: string
+// A typed digit and the id it got when typed (its node's key for its whole life).
+shape Dig
+  id: number
+  d: number
+
+// styles.character: SF-Pro-Rounded-Bold 90, marginHorizontal 2. Each Text is as wide as its
+// glyph's advance (Core Text, the bundled face at 90 pt) ceiled to the device pixel (3x), plus
+// the two margins.
+fn advanceOf(d: number): number = match [59.0185546875, 43.1982421875, 54.2724609375, 56.689453125, 58.271484375, 56.25, 57.8759765625, 51.50390625, 58.7109375, 58.0517578125].at(d) { case some(v) => v, case none => 0 }
+fn cellOf(d: number): number = ceil(advanceOf(d) * 3) / 3 + 4
+// ',' advances 25.0048828125.
+fn commaCell(): number = ceil(25.0048828125 * 3) / 3 + 4
+
+// value.toLocaleString('en-US'): a comma after digit j of n when the digits right of it are a
+// multiple of three.
 fn firstGroup(n: number): number = ((n - 1) % 3) + 1
 fn commaAfter(j: number, n: number): bool = j < n - 1 and j + 1 >= firstGroup(n) and (j + 1 - firstGroup(n)) % 3 == 0
-fn charsOfText(s: string): Ch[] = range(s.length).map(j => commaAfter(j, s.length) ? [Ch(char=s.slice(j, j + 1), key=`digit-${j}`), Ch(char=",", key=`comma-${(j + 1 - firstGroup(s.length)) / 3}`)] : [Ch(char=s.slice(j, j + 1), key=`digit-${j}`)]).flat()
-fn charsOf(value: number): Ch[] = charsOfText(value.toString())
+fn commaCount(n: number): number = floor((n - 1) / 3)
+fn commasBefore(j: number, n: number): number = j >= firstGroup(n) ? floor((j - firstGroup(n)) / 3) + 1 : 0
+
+// One character on screen: its key, its glyph, and its left edge in the row (the margin in).
+shape Ch
+  key: string
+  char: string
+  x: number
+fn digitX(ds: Dig[], j: number): number = sum(ds.slice(0, j).map(g => cellOf(g.d))) + commasBefore(j, ds.length) * commaCell()
+fn commaKey(cs: number[], k: number): string = match cs.at(k) { case some(v) => `c${v}`, case none => `c-${k}` }
+fn charsOf(ds: Dig[], cs: number[]): Ch[] = ds.map((g, j) => commaAfter(j, ds.length) ? [Ch(key=`d${g.id}`, char=`${g.d}`, x=digitX(ds, j) + 2), Ch(key=commaKey(cs, commasBefore(j, ds.length)), char=",", x=digitX(ds, j) + cellOf(g.d) + 2)] : [Ch(key=`d${g.id}`, char=`${g.d}`, x=digitX(ds, j) + 2)]).flat()
+fn rowWidth(ds: Dig[]): number = sum(ds.map(g => cellOf(g.d))) + commaCount(ds.length) * commaCell()
+fn textOf(ds: Dig[]): string = ds.map(g => `${g.d}`).join("")
 // rContainerStyle: scale withTiming(max(1.05 - 0.05 * characters.length, 0.45)).
-fn rowScale(count: number): number = max(1.05 - 0.05 * count, 0.45)
+fn rowScale(ds: Dig[]): number = max(1.05 - 0.05 * (ds.length + commaCount(ds.length)), 0.45)
+// The commas' ids after the digits change: kept while they stay, new ones for new commas.
+fn commasFor(cs: number[], n: number, next: number): number[] = cs.length >= commaCount(n) ? cs.slice(0, commaCount(n)) : cs.concat(range(commaCount(n) - cs.length).map(i => next + i))
 
 // FadeInDown / FadeOutDown: opacity and translateY 25, Reanimated's default timing (300 ms,
-// Easing.inOut(Easing.quad)).
+// Easing.inOut(Easing.quad), written as an exact linear()).
 keyframes charIn
   from opacity=0 translate="0px 25px"
 keyframes charOut
   to opacity=0 translate="0px 25px"
 
 // InputButton (createAnimatedPressable): pressed, a white 10% fill and scale 0.9, radius 20.
-// pressto's AnimatedPressable (packages/pressto) runs the app's global onPress before `press`.
+// pressto's AnimatedPressable (packages/pressto) runs the app's global onPress (its haptic)
+// before `press`.
 
 component FamilyNumberInput
   props
     env: DemoEnv
-  state input = 0
+  // The number as its digits ("0" is one digit 0), the commas' ids, the next id to give.
+  state digits: Dig[] = [Dig(id=0, d=0)]
+  state commas: number[] = []
+  state nextId = 1
   action press(k: number)
-    if k >= 0 and (input * 10 + k).toString().length <= 11
-      input = input * 10 + k
-    if k == -2
-      input = floor(input / 10)
+    let zero = digits.length == 1 and textOf(digits) == "0"
+    // A digit: `+${input}${label}`, refused past 11 digits (onMaxReached). On 0 it replaces
+    // the 0 (RN swaps the Text's string; here the 0 leaves and the digit enters).
+    if k >= 0 and not (zero and k == 0) and (zero or digits.length < 11)
+      let next = zero ? [Dig(id=nextId, d=k)] : digits.concat([Dig(id=nextId, d=k)])
+      digits = next
+      commas = commasFor(commas, next.length, nextId + 1)
+      nextId = nextId + 1 + commaCount(next.length)
+    // Backspace: floor(input / 10); the last digit gone gives a new 0.
+    if k == -2 and not zero
+      let next = digits.length > 1 ? digits.slice(0, digits.length - 1) : [Dig(id=nextId, d=0)]
+      digits = next
+      commas = commasFor(commas, next.length, nextId + 1)
+      nextId = nextId + 1
   // onLongPress on backspace: onReset.
   action hold(k: number)
-    if k == -2
-      input = 0
+    if k == -2 and textOf(digits) != "0"
+      digits = [Dig(id=nextId, d=0)]
+      commas = []
+      nextId = nextId + 1
   view
     // styles.container: black, padded by the safe area top and bottom.
     column position="absolute" inset=0 background-color="#000000" padding-top=env.safeTop
@@ -51,14 +105,14 @@ component FamilyNumberInput
       // styles.fillCenter, with the number in a second fillCenter padded 50 at its top.
       column flex=1 align-items="center" justify-content="center" position="relative"
         column flex=1 align-self="stretch" align-items="center" justify-content="center" padding-top=50
-          AnimatedNumber(value=input)
+          AnimatedNumber(digits=digits, commas=commas)
         // styles.gradient: bottom 38%, ['transparent', '#000', '#000', '#000'].
         view position="absolute" left=0 right=0 bottom=0 height="38%" pointer-events="none"
           background-image="linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, #000000 33.333%, #000000 66.667%, #000000 100%)"
       // ButtonsGrid: styles.container wraps a row of keys 30% wide, 20% tall, margined
       // 7/3% left and bottom.
       row flex=1 flex-wrap="wrap" align-items="center" align-content="flex-start"
-        for k, i in keys() key=i
+        for k in keys() key=k
           // The key's place (30% × 20%, margined 7/3% left and bottom) on the view; the press box,
           // radius 20, fills it.
           view display="flex" flex-direction="column"
@@ -70,7 +124,7 @@ component FamilyNumberInput
                 aria-label=(k >= 0 ? `${k}` : (k == -2 ? "Delete" : "")) testId=`key-${k}`
                 if k >= 0
                   // styles.number: SF-Pro-Rounded-Bold 30, white, centred.
-                  text `${k}` font-family="ui-rounded" font-weight=700 font-size=30 color="#ffffff"
+                  text `${k}` font-family="SF-Pro-Rounded-Bold" font-size=30 color="#ffffff"
                     text-align="center"
                 if k == -2
                   // FontAwesome5 "backspace", 24, white.
@@ -78,18 +132,23 @@ component FamilyNumberInput
 
 component AnimatedNumber
   props
-    value: number
+    digits: Dig[]
+    commas: number[]
   view
-    // styles.row, layout={LinearTransition} and the scale timing.
-    row -exact-layout-transition="300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
-      scale=rowScale(charsOf(value).length)
-      transition="scale 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
-      testId="number" aria-label=`${value}`
-      for c in charsOf(value) key=c.key
-        // styles.character: SF-Pro-Rounded-Bold 90, white, marginHorizontal 2;
-        // LinearTransition, FadeInDown, FadeOutDown.
-        text c.char font-family="ui-rounded" font-weight=700 font-size=90 color="#ffffff"
-          margin-left=2 margin-right=2 aria-hidden=true testId=`char-${c.key}`
-          -exact-layout-transition="300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
-          animation="charIn 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) both"
-          -exact-exit-animation="charOut 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) both"
+    // styles.row's centre: a zero-wide anchor as tall as the Text (hhea 1950 + 494 of 2048 at
+    // 90, ceiled to the pixel), centred where RN centres the row. The row scales about it.
+    view width=0 height="107.66667px" position="relative" flex-shrink=0
+      scale=rowScale(digits) transition="scale -exact-spring(1024, 128, 4)"
+      testId="number" aria-label=textOf(digits)
+      // The row's left edge, half its width left of the centre: RN's row frame, sliding as
+      // LinearTransition slides it when the width changes.
+      view position="absolute" left=0 top=0 width=0 height="107.66667px"
+        translate=`${-rowWidth(digits) / 2}px 0px` transition="translate -exact-spring(1024, 128, 4)"
+        for c in charsOf(digits, commas) key=c.key
+          // FadeInDown / FadeOutDown on the wrapper (y and opacity only); the place on the text.
+          view position="absolute" left=0 top=0 testId=`char-${c.key}` aria-hidden=true
+            animation="charIn 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) both"
+            -exact-exit-animation="charOut 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) both"
+            text c.char font-family="SF-Pro-Rounded-Bold" font-size=90 color="#ffffff"
+              line-height="107.40234375px" white-space="nowrap"
+              translate=`${c.x}px 0px` transition="translate -exact-spring(1024, 128, 4)"
