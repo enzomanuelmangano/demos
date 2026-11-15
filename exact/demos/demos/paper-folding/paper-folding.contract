@@ -2,12 +2,15 @@
 // it or folds it back, with three light haptics. Inspired by @k_wagner. RN:
 // src/animations/paper-folding (index.tsx, background-gradient.tsx, components/index.tsx). The
 // background, the folds, the press and its spring are Rust (gpu/src/paper_folding.rs), which
-// posts the haptics (paperFoldingHaptics: selection now, at 100 ms and at 200 ms).
+// posts the haptics (paperFoldingHaptics: selection now, at 100 ms and at 200 ms) and, past RN
+// (the owner's phone note: faster, more like paper), a soft impact as each fold lands.
 
 component PaperFolding
   action buzz(m: string)
     if m == "haptic:selection"
       haptic("selection")
+    if m == "haptic:impact-soft"
+      haptic("impact-soft")
   view
     // styles.container: flex 1 over the demo's backdrop; the canvases and the press overlay
     // (styles.canvasContainer) fill it.
