@@ -12,11 +12,13 @@
 //   no display corner radius, so it is the iPhone 17 / Air's 62 pt (stacked-bottom-sheet's
 //   sheetCorner()). Inner elements are concentric with it: the button 24 in has radius 52 − 24,
 //   the close circle sits on the corner's own centre (52, 52).
-// - Motion: only transforms on critically damped springs, never a layout transition. The tray
-//   is two pieces: an upper body (top corners) translated by how much shorter than its frame
-//   the tray is, clipped just above a fixed bottom cap (bottom corners); the height change is
-//   that translate. Each step's copy is mounted all along and crossfades (opacity + 8 pt of
-//   travel); its laid-out height (frame()) sizes the tray, so it fits the text on any width.
+// - Motion: only transforms on critically damped springs and constant transitions, never a
+//   layout transition. The tray is two pieces: an upper body (top corners) translated by how
+//   much shorter than its frame the tray is, clipped just above a fixed bottom cap (bottom
+//   corners); the height change is that translate, in the same commit as the crossfade. Each
+//   step's title, copy and button label + glyph stay mounted and crossfade (TrayFade: out up,
+//   in settling, 40 ms apart); the copy's laid-out height (frame()) sizes the tray, so it fits
+//   the text on any width.
 // - The drag: down 1:1, up rubber-banded (iOS's (1 − 1/(x·c/d + 1))·d, c 0.55, d 110); a
 //   release past 120 pt (or 35 % of the tray) or a flick dismisses. The scrim's opacity is the
 //   same drag timeline, so it tracks presenting, dismissing and the finger.
@@ -58,13 +60,14 @@ fn trayFill(): string = "rgba(118, 118, 128, 0.12)"
 fn presentSpring(): string = "-exact-spring(900, 120, 4)"
 fn dismissSpring(): string = "-exact-spring(1296, 144, 4)"
 fn heightSpring(): string = "-exact-spring(1024, 128, 4)"
-// The copy: in on a strong ease-out, out quicker.
-fn fadeIn(): string = "opacity 260ms cubic-bezier(0.23, 1, 0.32, 1)"
-fn fadeOut(): string = "opacity 120ms cubic-bezier(0.23, 1, 0.32, 1)"
-// A crossfading node's transition and travel: the current step at rest, the one before it 8 pt
-// up, the ones after 8 pt down (none under reduced motion). `snap` (a reopen) jumps.
-fn copyTransition(k: number, step: number, snap: bool): string = snap ? "opacity 0ms linear, translate 0ms linear" : `${k == step ? fadeIn() : fadeOut()}, translate ${heightSpring()}`
-fn copyTravel(k: number, step: number, still: bool): string = still or k == step ? "0px 0px" : (k < step ? "0px -8px" : "0px 8px")
+// The crossfade between steps (TrayFade): the outgoing layer leaves on a strong ease-out
+// (220 ms), the incoming one arrives over 340 ms on the same curve held for its first 40 ms (the
+// stagger: the iOS host plays no transition delay, so the hold is in the curve).
+fn leaveCurve(): string = "220ms cubic-bezier(0.23, 1, 0.32, 1)"
+fn arriveCurve(): string = "340ms linear(0 0%, 0 11.76%, 0.0859 13.53%, 0.2098 16.18%, 0.3626 19.71%, 0.5277 24.12%, 0.6819 29.41%, 0.8052 35.59%, 0.8911 42.65%, 0.9491 51.47%, 0.9796 61.18%, 0.9938 71.76%, 0.9991 84.12%, 1 100%)"
+fn leaveT(): string = `opacity ${leaveCurve()}, translate ${leaveCurve()}, scale ${leaveCurve()}`
+fn arriveT(): string = `opacity ${arriveCurve()}, translate ${arriveCurve()}, scale ${arriveCurve()}`
+fn trayGlyphOf(step: number): string = step == 0 ? "symbol:sf/arrow.right" : (step == 1 ? "symbol:sf/checkmark" : "symbol:sf/checkmark.circle.fill")
 
 // The drag up: the drawn tray counters the layer (−1000 … 0 px) to iOS's rubber band,
 // (1 − 1/(|y|·0.55/110 + 1))·110 up for a finger |y| up.
@@ -96,8 +99,6 @@ component ActionTray
     env: DemoEnv
   state opened = false
   state step = 0
-  // A reopen starts at step 0 with no crossfade (the tray is off screen then).
-  state snap = true
   // Each step's copy height, read from its laid-out frame on open and on each step (these
   // are iPhone 17's).
   state bodyH = [22, 154, 176]
@@ -111,7 +112,6 @@ component ActionTray
   action measureCopy
     bodyH = [frame("tray-body-0").height, frame("tray-body-1").height, frame("tray-body-2").height]
   action present
-    snap = true
     step = 0
     measureCopy()
     opened = true
@@ -131,14 +131,13 @@ component ActionTray
       opened = false
       haptic("success")
     else
-      snap = false
       measureCopy()
       step = step + 1
   // The drag's release: y is the layer's translate (0 at rest). Past 120 pt or 35 % of the
   // tray, or a downward flick, dismisses; else the layer springs home.
   // The drag's binding (a transform drag needs it with the release); nothing to keep.
   action bound(bw: number, bh: number, pw: number, ph: number)
-    snap = snap
+    opened = opened
   action release(x: number, y: number, scale: number, vx: number, vy: number, vscale: number)
     if opened and (y > min(120, trayH * 0.35) or (vy > 600 and y > 12))
       dismiss()
@@ -191,61 +190,61 @@ component ActionTray
                 background-color="#FFFFFF" border-top-left-radius=trayCorner()
                 border-top-right-radius=trayCorner() corner-shape="-exact-continuous"
                 translate=`0px ${frameH - trayH}px`
-                transition=(snap ? "translate 0ms linear" : `translate ${heightSpring()}`)
+                transition=`translate ${heightSpring()}`
             // The bottom cap: bottom corners, fixed.
             view position="absolute" left=0 bottom=0 width=trayW height=trayCap()
               background-color="#FFFFFF" border-bottom-left-radius=trayCorner()
               border-bottom-right-radius=trayCorner() corner-shape="-exact-continuous"
-            // The header and the copy ride the upper body (same translate, same spring).
-            column position="absolute" left=0 top=0 width=trayW height=frameH
-              translate=`0px ${frameH - trayH}px`
-              transition=(snap ? "translate 0ms linear" : `translate ${heightSpring()}`)
-              // Title 2-ish: 22 semibold, its line centred on the corner's centre (52).
-              view position="absolute" left=trayPad() top=38 right=88 height=28
-                for k in [0, 1, 2] key=k
-                  text titleOf(k) position="absolute" left=0 top=0 font-size=22 line-height="28px"
-                    font-weight=600 color=trayLabel() white-space="nowrap"
-                    opacity=(k == step ? 1 : 0) translate=copyTravel(k, step, env.reducedMotion)
-                    transition=copyTransition(k, step, snap) aria-hidden=(k != step)
-                    testId=(k == step ? "title" : `title-idle-${k}`)
-              // The close button: a 40 pt circle on the corner's centre (52, 52): concentric.
-              view position="absolute" top=32 right=32 width=40 height=40 pointer-events="auto"
-                PressableScale(press=dismiss)
-                  column width=40 height=40 border-radius=20 background-color=trayFill()
-                    align-items="center" justify-content="center" aria-label="Close"
-                    testId="close"
-                    glass-pane glass-style="regular" corner-size="20" interactive="false"
-                      continuous="true" position="absolute" inset=0 pointer-events="none"
-                      aria-hidden=true
-                    image "symbol:sf/xmark" font-size=15 font-weight=600
-                      color="rgba(60, 60, 67, 0.85)" aria-hidden=true
-              // The copy: body 17 / 22, secondary label; each step mounted, read, faded. `pre-line`
-              // keeps RN's line breaks.
-              column id="tray-body-0" position="absolute" left=trayPad() top=trayBodyTop()
-                width=(trayW - 2 * trayPad()) opacity=(step == 0 ? 1 : 0)
-                translate=copyTravel(0, step, env.reducedMotion)
-                transition=copyTransition(0, step, snap) aria-hidden=(step != 0)
-                testId=(step == 0 ? "step-0" : "step-0-idle")
-                text "Content here" font-size=17 line-height="22px" color=traySecondary()
-              column id="tray-body-1" position="absolute" left=trayPad() top=trayBodyTop()
-                width=(trayW - 2 * trayPad()) opacity=(step == 1 ? 1 : 0)
-                translate=copyTravel(1, step, env.reducedMotion)
-                transition=copyTransition(1, step, snap) aria-hidden=(step != 1)
-                testId=(step == 1 ? "step-1" : "step-1-idle")
-                text "You know what? I really don't know what to write here.\n\nI just want to make this text long enough to test the animation. So I am just typing some random words here.\nI hope this is enough."
-                  font-size=17 line-height="22px" color=traySecondary() white-space="pre-line"
-              column id="tray-body-2" position="absolute" left=trayPad() top=trayBodyTop()
-                width=(trayW - 2 * trayPad()) opacity=(step == 2 ? 1 : 0)
-                translate=copyTravel(2, step, env.reducedMotion)
-                transition=copyTransition(2, step, snap) aria-hidden=(step != 2)
-                testId=(step == 2 ? "step-2" : "step-2-idle")
-                text "Waaait a second! Actually I have something to say.\n\nIf you are reading this, you're probably searching for the source code!\n\nIf I'm right, you can find it here:"
-                  font-size=17 line-height="22px" color=traySecondary() white-space="pre-line"
-                // RN's nested bold Text: a link, systemBlue semibold.
-                text "reactiive.io/demos" font-size=17 line-height="22px" font-weight=600
-                  color=trayBlue()
+            // The header and the copy ride the upper body (same translate, same spring), clipped
+            // 12 pt above the button, so a growing step's copy never shows under it.
+            column position="absolute" left=0 top=0 width=trayW bottom=(trayPad() + 56 + 12)
+              overflow="hidden"
+              column position="absolute" left=0 top=0 width=trayW height=frameH
+                translate=`0px ${frameH - trayH}px`
+                transition=`translate ${heightSpring()}`
+                // Title 2-ish: 22 semibold, its line centred on the corner's centre (52).
+                view position="absolute" left=trayPad() top=38 right=88 height=28
+                  for k in [0, 1, 2] key=k
+                    column position="absolute" left=0 top=0 aria-hidden=(k != step)
+                      TrayFade(k=k, step=step, still=env.reducedMotion)
+                        text titleOf(k) font-size=22 line-height="28px" font-weight=600
+                          color=trayLabel() white-space="nowrap"
+                          testId=(k == step ? "title" : `title-idle-${k}`)
+                // The close button: a 40 pt circle on the corner's centre (52, 52): concentric.
+                view position="absolute" top=32 right=32 width=40 height=40 pointer-events="auto"
+                  PressableScale(press=dismiss)
+                    column width=40 height=40 border-radius=20 background-color=trayFill()
+                      align-items="center" justify-content="center" aria-label="Close"
+                      testId="close"
+                      glass-pane glass-style="regular" corner-size="20" interactive="false"
+                        continuous="true" position="absolute" inset=0 pointer-events="none"
+                        aria-hidden=true
+                      image "symbol:sf/xmark" font-size=15 font-weight=600
+                        color="rgba(60, 60, 67, 0.85)" aria-hidden=true
+                // The copy: body 17 / 22, secondary label; each step mounted, read, faded. `pre-line`
+                // keeps RN's line breaks.
+                column id="tray-body-0" position="absolute" left=trayPad() top=trayBodyTop()
+                  width=(trayW - 2 * trayPad()) aria-hidden=(step != 0)
+                  testId=(step == 0 ? "step-0" : "step-0-idle")
+                  TrayFade(k=0, step=step, still=env.reducedMotion)
+                    text "Content here" font-size=17 line-height="22px" color=traySecondary()
+                column id="tray-body-1" position="absolute" left=trayPad() top=trayBodyTop()
+                  width=(trayW - 2 * trayPad()) aria-hidden=(step != 1)
+                  testId=(step == 1 ? "step-1" : "step-1-idle")
+                  TrayFade(k=1, step=step, still=env.reducedMotion)
+                    text "You know what? I really don't know what to write here.\n\nI just want to make this text long enough to test the animation. So I am just typing some random words here.\nI hope this is enough."
+                      font-size=17 line-height="22px" color=traySecondary() white-space="pre-line"
+                column id="tray-body-2" position="absolute" left=trayPad() top=trayBodyTop()
+                  width=(trayW - 2 * trayPad()) aria-hidden=(step != 2)
+                  testId=(step == 2 ? "step-2" : "step-2-idle")
+                  TrayFade(k=2, step=step, still=env.reducedMotion)
+                    text "Waaait a second! Actually I have something to say.\n\nIf you are reading this, you're probably searching for the source code!\n\nIf I'm right, you can find it here:"
+                      font-size=17 line-height="22px" color=traySecondary() white-space="pre-line"
+                    // RN's nested bold Text: a link, systemBlue semibold.
+                    text "reactiive.io/demos" font-size=17 line-height="22px" font-weight=600
+                      color=trayBlue()
             // The primary button: 56 tall, 24 in, radius 28 (52 − 24: concentric, a pill),
-            // systemBlue under tinted glass; its label crossfades with the step.
+            // systemBlue under tinted glass; its label and glyph crossfade with the step.
             view position="absolute" left=trayPad() right=trayPad() bottom=trayPad() height=56
               pointer-events="auto" display="flex" flex-direction="column"
               border-radius=28 corner-shape="-exact-continuous" overflow="hidden"
@@ -256,10 +255,31 @@ component ActionTray
                   glass-pane glass-style="regular" pane-tint="#0088FF" corner-size="28"
                     interactive="false" continuous="true" position="absolute" inset=0
                     pointer-events="none" aria-hidden=true
+                  // Label and glyph morph together with the copy.
                   for k in [0, 1, 2] key=k
-                    text actionOf(k) position="absolute" font-size=17 line-height="22px"
-                      font-weight=600 color="#FFFFFF" white-space="nowrap"
-                      opacity=(k == step ? 1 : 0) translate=copyTravel(k, step, env.reducedMotion)
-                      transition=copyTransition(k, step, snap) aria-hidden=(k != step)
-                      testId=(k == step ? "continue-label" : `continue-label-idle-${k}`)
+                    column position="absolute" aria-hidden=(k != step)
+                      TrayFade(k=k, step=step, still=env.reducedMotion)
+                        row align-items="center" gap=8
+                          text actionOf(k) font-size=17 line-height="22px" font-weight=600
+                            color="#FFFFFF" white-space="nowrap"
+                            testId=(k == step ? "continue-label" : `continue-label-idle-${k}`)
+                          image trayGlyphOf(k) font-size=15 font-weight=600 color="#FFFFFF"
+                            aria-hidden=true
+
+// One step's layer pair. Every transition here is constant (a row that changes in the same
+// commit as its value doesn't play on iOS): the outer layer leaves once the step has passed it
+// (fade, 8 pt up, 0.98), the inner one arrives once the step reaches it (fade, settling from 8 pt
+// below and 0.98). Both stay mounted; only the current step shows (no travel under reduced motion).
+component TrayFade
+  props
+    k: number
+    step: number
+    still: bool
+  slot
+  view
+    column opacity=(k >= step ? 1 : 0) translate=(still or k >= step ? "0px 0px" : "0px -8px")
+      scale=(still or k >= step ? 1 : 0.98) transition=leaveT()
+      column opacity=(k <= step ? 1 : 0) translate=(still or k <= step ? "0px 0px" : "0px 8px")
+        scale=(still or k <= step ? 1 : 0.98) transition=arriveT()
+        children
 at "/demo/action-tray"
