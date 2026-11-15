@@ -51,6 +51,8 @@
 // `painting-menu` is art-gallery's PaintingMenu (PaintingMenu.swift), on iOS and on macOS.
 // `inspiration-sheet` is the demo screen's Inspiration sheet (InspirationSheet.swift), iOS.
 // `toggle-sheet` is a native sheet of switches (ToggleSheet.swift): light-on-painting's Light sheet.
+// `music-tabbar` is iOS 26 Music's bottom chrome (MusicTabBar.swift): a SwiftUI TabView with the
+// mini player as its bottom accessory, for expandable-mini-player.
 // `system-alert` is RN's Alert.alert / ActionSheetIOS (SystemAlert.swift): a real
 // UIAlertController presented from the top-most view controller, iOS.
 //
@@ -84,7 +86,8 @@ final class DemosModule: ExactModule {
          "glass-pane": ExactNativeFactory { props, events in GlassPane(props: props, events: events) },
          "inspiration-sheet": ExactNativeFactory { props, events in InspirationSheet(props: props, events: events) },
          "toggle-sheet": ExactNativeFactory { props, events in ToggleSheet(props: props, events: events) },
-         "system-alert": ExactNativeFactory { props, events in SystemAlert(props: props, events: events) }]
+         "system-alert": ExactNativeFactory { props, events in SystemAlert(props: props, events: events) },
+         "music-tabbar": ExactNativeFactory { props, events in MusicTabBar(props: props, events: events) }]
     }
 
     override func element(_ element: ExactElement) {
