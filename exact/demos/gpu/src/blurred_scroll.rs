@@ -39,7 +39,7 @@ const ITEMS: usize = 10;
 const ITEM_HEIGHT: f64 = 0.45;
 /// horizontalPadding / 2 = verticalPadding / 2.
 const INSET: f32 = 60.0;
-/// RoundedRect r.
+/// RoundedRect r, drawn with continuous corners (iOS's squircle), not RN Skia's circular arcs.
 const RADIUS: f32 = 20.0;
 /// The items one canvas texture each (a screen shows at most four consecutive ones).
 const SLOTS: usize = 4;
@@ -346,7 +346,8 @@ impl Surface for BlurredScroll {
                 c.translate(w / 2.0, 0.0);
                 c.scale(g, g);
                 c.translate(-w / 2.0, 0.0);
-                c.draw_rrect(
+                // Core Animation's continuous corner (the owner's call over RN's circular arcs).
+                c.draw_continuous_rrect(
                     INSET,
                     INSET,
                     w - 2.0 * INSET,

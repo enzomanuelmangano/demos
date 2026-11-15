@@ -36,6 +36,7 @@ pub use lyon::path::{Path, PathBuffer, PathEvent, PathSlice};
 pub mod backdrop;
 pub mod blur;
 pub mod color;
+pub mod continuous_sdf;
 mod conics;
 #[cfg(target_vendor = "apple")]
 mod coretext;
@@ -48,6 +49,7 @@ pub mod svg;
 pub mod text;
 
 pub use color::Color;
+pub use continuous_sdf::{continuous_rrect_sdf, CONTINUOUS_RRECT_SDF_WGSL};
 pub use matrix4::{Matrix3, Matrix4};
 pub use blur::Blur;
 pub use image::{Image, ImageRef, Images};
@@ -1512,7 +1514,7 @@ pub const CONTINUOUS_EXTENT: f32 = 1.528_665;
 /// cubics from the incoming side to the outgoing one: the elements of Apple's path (dumped from
 /// SwiftUI's `RoundedRectangle(cornerRadius:style: .continuous)` on macOS 27, which Core
 /// Animation's continuous layer fills to within 0.001 pt: see the tests).
-const CONTINUOUS_CORNER: [[[f32; 2]; 3]; 3] = [
+pub(crate) const CONTINUOUS_CORNER: [[[f32; 2]; 3]; 3] = [
     [[1.088_493, 0.0], [0.868_407, 0.0], [0.631_494, 0.074_911]],
     [[0.372_824, 0.169_060], [0.169_060, 0.372_824], [0.074_911, 0.631_494]],
     [[0.0, 0.868_407], [0.0, 1.088_493], [0.0, CONTINUOUS_EXTENT]],

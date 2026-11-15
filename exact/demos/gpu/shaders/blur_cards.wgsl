@@ -1,7 +1,8 @@
 // Blur Cards (src/animations/blur-cards): five glass cards, drawn in order, each one
 // <Path> fill (rgba(255,255,255,0.1)), <Path> stroke (2, rgba(255,255,255,0.2), opacity =
 // progress) and a <BackdropBlur blur={5p} clip={card}> that blurs everything drawn so far (its own
-// fill and stroke too) inside the card. A card is a rounded rect (300 × 200, radius 20) seen
+// fill and stroke too) inside the card. A card is a rounded rect (300 × 200, radius 20, Core
+// Animation's continuous corner: the owner's call over RN's circular arcs) seen
 // through its group's 3D transform: a pixel finds the card's point with the inverse projective
 // 3×3 and covers by the rounded rect's distance there.
 //
@@ -55,9 +56,56 @@ fn to_linear(c: vec3<f32>) -> vec3<f32> {
     return select(pow((c + 0.055) / 1.055, vec3<f32>(2.4)), c / 12.92, c <= vec3<f32>(0.04045));
 }
 
-fn rrect(p: vec2<f32>, b: vec2<f32>, r: f32) -> f32 {
-    let q = abs(p) - b + vec2<f32>(r);
-    return length(max(q, vec2<f32>(0.0))) + min(max(q.x, q.y), 0.0) - r;
+// continuous_rrect_sdf: packages/skia/src/continuous_sdf.rs (Core Animation's continuous corner).
+const CRR_E: f32 = 1.528665;
+
+struct CrrHit { d2: f32, side: f32 };
+
+fn crr_project(p0: vec2<f32>, p1: vec2<f32>, p2: vec2<f32>, p3: vec2<f32>, end: f32, q: vec2<f32>) -> CrrHit {
+    var t = 0.0;
+    var best = 1e30;
+    for (var i = 0; i < 5; i = i + 1) {
+        let s = end * f32(i) / 4.0;
+        let ms = 1.0 - s;
+        let c = ms * ms * ms * p0 + 3.0 * ms * ms * s * p1 + 3.0 * ms * s * s * p2 + s * s * s * p3;
+        let d = dot(c - q, c - q);
+        if (d < best) { best = d; t = s; }
+    }
+    for (var i = 0; i < 3; i = i + 1) {
+        let mt = 1.0 - t;
+        let c = mt * mt * mt * p0 + 3.0 * mt * mt * t * p1 + 3.0 * mt * t * t * p2 + t * t * t * p3;
+        let d1 = 3.0 * (mt * mt * (p1 - p0) + 2.0 * mt * t * (p2 - p1) + t * t * (p3 - p2));
+        let d2 = 6.0 * (mt * (p2 - 2.0 * p1 + p0) + t * (p3 - 2.0 * p2 + p1));
+        let o = c - q;
+        let h = dot(d1, d1) + dot(o, d2);
+        if (h > 1e-6) { t = clamp(t - dot(o, d1) / h, 0.0, end); }
+    }
+    let mt = 1.0 - t;
+    let c = mt * mt * mt * p0 + 3.0 * mt * mt * t * p1 + 3.0 * mt * t * t * p2 + t * t * t * p3;
+    let d1 = 3.0 * (mt * mt * (p1 - p0) + 2.0 * mt * t * (p2 - p1) + t * t * (p3 - p2));
+    let o = q - c;
+    return CrrHit(dot(o, o), d1.x * o.y - d1.y * o.x);
+}
+
+// The signed distance (negative inside) from `p` to the continuous rounded rect centred at the
+// origin, half size `half`, corner radius `r` (drawn at min(r, w / 2, h / 2)); corners that do
+// not overlap (2 × 1.52866 r ≤ min(w, h)).
+fn continuous_rrect_sdf(p: vec2<f32>, half: vec2<f32>, r_in: f32) -> f32 {
+    let r = max(min(r_in, min(half.x, half.y)), 0.0);
+    let qq = half - abs(p);
+    let a = max(qq.x, qq.y);
+    let b = min(qq.x, qq.y);
+    let e = CRR_E * r;
+    if (r <= 0.0 || a - e >= max(b, 0.0) || b >= 3.0 * r) { return -b; }
+    let q = vec2<f32>(a, b) / r;
+    let h1 = crr_project(vec2<f32>(CRR_E, 0.0), vec2<f32>(1.088493, 0.0), vec2<f32>(0.868407, 0.0), vec2<f32>(0.631494, 0.074911), 1.0, q);
+    let h2 = crr_project(vec2<f32>(0.631494, 0.074911), vec2<f32>(0.372824, 0.169060), vec2<f32>(0.169060, 0.372824), vec2<f32>(0.074911, 0.631494), 0.5, q);
+    var hit = h2;
+    if (h1.d2 < h2.d2) { hit = h1; }
+    let sx = max(CRR_E - q.x, 0.0);
+    let side = sx * sx + q.y * q.y;
+    if (side < hit.d2) { return select(sqrt(side), -sqrt(side), q.y > 0.0) * r; }
+    return select(sqrt(hit.d2), -sqrt(hit.d2), hit.side < 0.0) * r;
 }
 
 // Φ, the standard normal CDF (logistic approximation, |error| < 2e-4).
@@ -68,7 +116,7 @@ fn phi(x: f32) -> f32 {
 
 const PI: f32 = 3.14159265;
 
-// Card `i`'s signed distance (its points) at screen point `pt`, its group at progress `p`:
+// Card `i`'s signed distance (its points; continuous corners) at screen point `pt`, its group at progress `p`:
 // [rotate(−π/2·p), translateX(25·i·p), perspective(10000), rotateY(π/3·p), rotate(π/4·p)] about
 // the window's centre, its plane's projective 3×3 inverted by the adjugate; behind the eye, far.
 fn card(i: f32, p: f32, pt: vec2<f32>) -> f32 {
@@ -86,7 +134,7 @@ fn card(i: f32, p: f32, pt: vec2<f32>) -> f32 {
     let c1 = cross(rw, r0);
     let c2 = cross(r0, r1);
     let q = (c0 * pt.x + c1 * pt.y + c2) / dot(r0, c0);
-    return select(1e6, rrect(q.xy / q.z, u.rect.zw, 20.0), q.z > 0.0);
+    return select(1e6, continuous_rrect_sdf(q.xy / q.z, u.rect.zw, 20.0), q.z > 0.0);
 }
 
 // A card's fill (x) and 2 pt stroke (y) coverage at distance `d` (its points; `fw` its

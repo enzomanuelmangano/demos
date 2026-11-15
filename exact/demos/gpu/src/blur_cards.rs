@@ -1,4 +1,5 @@
-//! Blur Cards (src/animations/blur-cards): five glass cards (300 × 200, radius 20, at the
+//! Blur Cards (src/animations/blur-cards): five glass cards (300 × 200, radius 20 with Core
+//! Animation's continuous corners, the owner's call over RN's circular arcs, at the
 //! window's centre) over a blurred violet glow; a tap anywhere fans them out in 3D and blurs what
 //! each covers, a second folds them back.
 //!
@@ -161,6 +162,12 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32, si
 mod tests {
     use super::*;
     use exact_gpu::fixture;
+
+    #[test]
+    fn the_shader_carries_skias_continuous_corner_verbatim() {
+        let wgsl = include_str!("../shaders/blur_cards.wgsl");
+        assert!(wgsl.contains(skia::CONTINUOUS_RRECT_SDF_WGSL), "paste skia::CONTINUOUS_RRECT_SDF_WGSL into blur_cards.wgsl again");
+    }
 
     #[test]
     fn a_press_fans_the_cards_out_and_another_folds_them() {
