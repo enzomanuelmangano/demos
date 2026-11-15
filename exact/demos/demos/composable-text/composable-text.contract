@@ -2,6 +2,7 @@
 // places as it toggles to "Using Max". RN: src/animations/composable-text (index.tsx,
 // composable-text.tsx).
 use PressableScaleLayout from "pressto"
+use PillFill from "../pill-fill.contract"
 
 // index.tsx Variants: base / active.
 fn labelOf(active: bool): string = active ? "Using Max" : "Use Max"
@@ -43,13 +44,14 @@ component ComposableText
           column testId="toggle" aria-label=labelOf(active) aria-pressed=active text-align="center"
             -exact-layout-transition="-exact-spring(100, 12, 0.4)"
             // styles.textContainer: #181818, borderRadius 32 continuous, padding 16, paddingHorizontal 22;
-            // the same springify() layout as the button. The 32 is drawn at half the height
-            // (16 + 24 pt bold's 28.64 line + 16 = 60.667 in RN): 30.333 here, because while the
-            // layout transition resizes the row the host paints it on a surface that takes Core
-            // Animation's continuous corner only when the AUTHORED radius fits the box; 32 fell
-            // back to the host's own continuous outline, a different curve, during the spring.
-            row background-color="#181818" border-radius=30.333 corner-shape="-exact-continuous" padding="16px 22px"
+            // the same springify() layout as the button. RN's box is 60.667 tall (16 + 24 pt bold's
+            // 28.64 line, ceiled, + 16), fixed here; the fill is PillFill (pill-fill.contract): the
+            // row itself resizes with no fill of its own, so the corner never goes through the
+            // host's resize surface (it showed square on the phone). The two halves are 100 wide:
+            // the pill runs from about 140 ("Use Max") to 175 ("Using Max").
+            row position="relative" height=60.667 box-sizing="border-box" align-items="center" padding="0px 22px"
               -exact-layout-transition="-exact-spring(100, 12, 0.4)" testId="label"
+              PillFill(color="#181818", radius=32, half=100, spring="-exact-spring(100, 12, 0.4)")
               for c, i in labelOf(active).split("") key=keyOf(labelOf(active), c, i)
                 // styles.text: fontSize 24, bold; colour withTiming 200 ms linear. Each letter's
                 // layout: springify().mass(0.3).damping(12).stiffness(80).

@@ -1,0 +1,30 @@
+// An opaque rounded fill for a box whose WIDTH springs by `-exact-layout-transition`, drawn so no
+// filled box ever resizes. While a layout transition resizes a box, the iOS host paints it on a
+// surface layer that keeps Core Animation's corner only in some cases (exact2 Surface.swift
+// paintSurface; parity-tools/exact-issues/radius-reduced.md): the phone showed square or
+// re-curved corners for the whole spring (composable-text, 2026-11-15).
+//
+// Two clips of a fixed width, `half`, each holding a long pill of the colour and radius: one
+// pinned to the box's left edge (it rides the box's own layout offset), one to its right edge
+// (its own layout transition, the box's spring, moves it as the edge moves). Neither resizes,
+// so both keep the layer's own corner; they overlap in the middle (an opaque colour: the overlap
+// does not show). `half` must be at least half the widest box and at most the narrowest, or
+// a clip shows past the far end. The box: `position="relative"`, this as its first child, the
+// height fixed for the spring (only the width moves).
+
+component PillFill
+  props
+    color: string
+    radius: number
+    half: number
+    // The box's own -exact-layout-transition.
+    spring: string
+  view
+    view position="absolute" left=0 top=0 bottom=0 width=half overflow="hidden"
+      pointer-events="none" aria-hidden=true
+      view position="absolute" left=0 top=0 bottom=0 width=2000 background-color=color
+        border-radius=radius corner-shape="-exact-continuous"
+    view position="absolute" right=0 top=0 bottom=0 width=half overflow="hidden"
+      pointer-events="none" aria-hidden=true -exact-layout-transition=spring
+      view position="absolute" right=0 top=0 bottom=0 width=2000 background-color=color
+        border-radius=radius corner-shape="-exact-continuous"
