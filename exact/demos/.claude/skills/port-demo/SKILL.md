@@ -191,7 +191,7 @@ One commit per haptic event, never per frame.
   activation; at the lift it decelerates (0.998/ms) only from a finger faster than ~335 pt/s,
   even after a still rest: a finger at rest sends no moves, so the last moves' velocity stands
   (probe and RN's FlatList alike, rests 0.15-3 s, zero-motion argent holds; 2026-11-14). Below that it stops under the finger.
-- UIScrollView bounce and deceleration (measured with `tools/scroll-probe`, a bare UIScrollView
+- UIScrollView bounce and deceleration (measured with `parity-tools/measure/scroll-probe`, a bare UIScrollView
   logging contentOffset per display frame; drive it with argent at y 0.6): the bounce is critically
   damped at 0.01088/ms from a start velocity of 0.00797 × the overshoot toward the edge (plus the
   banded content velocity), not from rest; UIKit projects a fling (v − 0.00988) / −ln(rate) and

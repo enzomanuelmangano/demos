@@ -14,7 +14,7 @@ probability is also exactly 0: the stream is smaller and every probability is un
 Also prints the checksum the Rust test asserts (the count of pixels with p > 0 and the f64 sum
 of p, in row-major order).
 
-    python3 tools/prince-ink.py            # from exact/demos
+    python3 parity-tools/measure/prince-ink.py     # from exact/
 """
 import sys
 import zlib
