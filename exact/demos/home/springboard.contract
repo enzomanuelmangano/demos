@@ -18,48 +18,56 @@ style IconPress
   :active
     opacity = 0.85
 
+// The shown page's dot: 0.35 a page away, 1 on its page (page-dots.tsx's two opacities).
+keyframes pageDot
+  0% opacity=0.35
+  50% opacity=1
+  100% opacity=0.35
+
 component Springboard
   props
     demos: Demo[]
     open: action
   state boxW = 0
   state boxH = 0
-  state shown = 0
   derive per = perPage(boxW, boxH)
   derive pages = boxW > 0 and boxH > 0 ? range(pageCount(demos.length, per)) : []
 
   action fit(w: number, h: number)
     boxW = w
     boxH = h
-  // Where the pager came to rest: the first page's offset says which page shows.
-  action settle
-    let g = frame("page-0")
-    if not g.unavailable and boxW > 0
-      shown = round(0 - g.x / boxW)
 
   view
     column position="absolute" inset=0 testId="springboard"
       // background.tsx: a static dark wallpaper (a glowing loupe ring on black), edge to edge.
+      // It never scales: the launch (DemoLaunch.swift) zooms `springboard-zoom` alone, as
+      // SpringBoard zooms its icons over a still wallpaper.
       image "assets/home-wallpaper.png" position="absolute" inset=0 width="100%" height="100%"
         object-fit="cover" aria-hidden=true
-      column flex=1 min-height=0 resize=fit position="relative"
+      column flex=1 min-height=0 resize=fit position="relative" timeline-scope="--pager"
         padding-top="env(safe-area-inset-top)" padding-bottom="env(safe-area-inset-bottom)"
-        scroll testId="pager" flex=1 min-height=0 overflow-x="scroll" overflow-y="hidden"
-          scroll-snap-type="x mandatory" scrollbar-width="none" scrollend=settle
-          row height="100%"
-            for p in pages key=p
-              column id=`page-${p}` width=boxW height="100%" flex-shrink=0 scroll-snap-align="start"
-                padding="16px 22px 0" box-sizing="border-box"
-                row flex-wrap="wrap" row-gap=22 align-content="flex-start"
-                  for d in demos.slice(p * per, (p + 1) * per) key=d.slug
-                    AppIcon(demo=d, cell=cellWidth(boxW), size=iconSize(boxW), open=open)
-        // page-dots.tsx: equal round dots, the shown one brightened.
+        testId="springboard-zoom"
+        // UIScrollView's own paging (isPagingEnabled): every page a snap stop the width of the
+        // pager, so a fling is interruptible and nothing commits while it scrolls. A `row`, not
+        // a `scroll` tag: a `scroll` tag's timeline drives nothing on iOS.
+        row testId="pager" flex=1 min-height=0 overflow-x="auto" overflow-y="hidden"
+          scroll-snap-type="x mandatory" scrollbar-width="none" scroll-timeline="--pager x"
+          for p in pages key=p
+            column id=`page-${p}` width=boxW height="100%" flex-shrink=0 scroll-snap-align="start"
+              scroll-snap-stop="always" padding="16px 22px 0" box-sizing="border-box"
+              row flex-wrap="wrap" row-gap=22 align-content="flex-start"
+                for d in demos.slice(p * per, (p + 1) * per) key=d.slug
+                  AppIcon(demo=d, cell=cellWidth(boxW), size=iconSize(boxW), open=open)
+        // page-dots.tsx: equal round dots, the shown one brightened. Each follows the pager's
+        // offset on the compositor (UIPageControl's interpolation as the finger drags): full at
+        // its own page, 0.35 a page either side.
         if pages.length > 1
           row height=44 align-items="center" justify-content="center" flex-shrink=0 pointer-events="none"
             aria-hidden=true
             for p in pages key=p
               view width=7 height=7 border-radius=3.5 corner-shape="-exact-continuous" margin="0 3.5px" background-color="#ffffff"
-                opacity=(p == shown ? 1 : 0.35) transition="opacity 200ms ease"
+                opacity=0.35 animation="pageDot 1s linear both" animation-timeline="--pager"
+                animation-range=`${(p - 1) * boxW}px ${(p + 1) * boxW}px`
 
 // app-icon.tsx: the squircle icon and its label under it; a long press offers the demo's
 // inspiration, a share and its code.
@@ -75,11 +83,13 @@ component AppIcon
     share(text=`${demo.name} — ${sourceUrl(demo.slug)}`, url=sourceUrl(demo.slug))
   view
     column width=cell height=(size + 26) align-items="center"
-      contextPopover=`menu-${demo.slug}`
       button appearance="none" press=open(demo.slug) aria-label=`Open ${demo.name}` testId=`icon-${demo.slug}`
         class=IconPress width=size height=size padding=0 border-width=0 background-color="transparent"
         // launch-icon.tsx: the square the demo opens out of and closes into (DemoLaunch.swift).
+        // The long press lifts this squircle alone, as SpringBoard lifts an icon: UIKit clips the
+        // lift to the node's own corners (the label and the cell's box would lift on black).
         view id=`icon-${demo.slug}` hatch="launch-icon" data-slug=demo.slug width=size height=size border-radius=(size * 0.2237) corner-shape="-exact-continuous"
+          contextPopover=`menu-${demo.slug}`
           box-shadow="0px 5px 9px rgba(27, 34, 51, 0.18)"
           image demo.icon width=size height=size border-radius=(size * 0.2237) corner-shape="-exact-continuous"
             overflow="hidden" background-color="#1c1c1e" object-fit="cover" aria-hidden=true
