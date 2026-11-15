@@ -36,8 +36,9 @@ const CHASE_FROM: f32 = 20.0;
 const GRAB: &str = "haptic:impact-light";
 const TICK: &str = "haptic:selection";
 const LIMIT: &str = "haptic:impact-rigid";
-const LANDED: &str = "haptic:impact-soft";
-const TICK_MIN_MS: f64 = 40.0;
+/// The value steps between two ticks, and the least time between them, ms.
+const TICK_EVERY: i32 = 10;
+const TICK_MIN_MS: f64 = 60.0;
 
 /// The ink box of `text` drawn at (0, 0) with its baseline at 0: [left, top, right, bottom].
 fn ink_box(font: &Font, text: &str) -> [f32; 4] {
@@ -99,11 +100,11 @@ struct FluidSlider {
     /// The label's ink extent, left and right of its pen, and its cap height.
     label_ink: (f32, f32),
     cap: Option<f32>,
-    /// Haptics to post, the value last felt and when, and the chase's landing.
+    /// Haptics to post, the value last felt and when, and whether it sat at an end.
     posted: Vec<String>,
     felt_value: i32,
     felt_ms: f64,
-    land: bool,
+    at_end: bool,
     layers: [Canvas; 2],
     renderers: [Renderer; 2],
     blur: GraphiteBlur,
@@ -129,7 +130,7 @@ impl Default for FluidSlider {
             posted: Vec::new(),
             felt_value: 0,
             felt_ms: f64::NEG_INFINITY,
-            land: false,
+            at_end: false,
             layers: Default::default(),
             renderers: Default::default(),
             blur: GraphiteBlur::default(),
@@ -195,27 +196,26 @@ impl FluidSlider {
         // Once caught up, the finger leads again.
         if !running || (self.sliding && (self.picker.value - self.picker.target()).abs() < 0.5) {
             self.chasing = false;
-            self.land = true;
         }
         running
     }
-    /// The value's haptics at this frame: a tick per step, a rigid tap at an end, a soft one as a chase lands.
+    /// The value's haptics at this frame: a tick each time it crosses a multiple of TICK_EVERY, one
+    /// rigid tap on reaching an end.
     fn feel(&mut self, value: i32, now_ms: f64) {
-        if std::mem::take(&mut self.land) {
-            self.posted.push(LANDED.into());
-        }
-        if !(self.sliding || self.chasing) || value == self.felt_value {
+        if !(self.sliding || self.chasing) {
             return;
         }
-        if value == 0 || value == 100 {
-            self.posted.push(LIMIT.into());
-        } else if now_ms - self.felt_ms >= TICK_MIN_MS {
+        let end = value <= 0 || value >= 100;
+        if end {
+            if !self.at_end {
+                self.posted.push(LIMIT.into());
+            }
+        } else if value / TICK_EVERY != self.felt_value / TICK_EVERY && now_ms - self.felt_ms >= TICK_MIN_MS {
             self.posted.push(TICK.into());
-        } else {
-            return;
+            self.felt_ms = now_ms;
         }
+        self.at_end = end;
         self.felt_value = value;
-        self.felt_ms = now_ms;
     }
     /// The finger is at `x`: the picker moves there, or springs there while it chases.
     fn follow(&mut self, x: f32) {
@@ -261,6 +261,7 @@ impl Surface for FluidSlider {
                 self.slide(true);
                 self.posted.push(GRAB.into());
                 self.felt_value = self.label_value;
+                self.at_end = self.label_value <= 0 || self.label_value >= 100;
             }
             Event::Start(p) | Event::Update(p) => self.follow(p.x),
             Event::End(_) | Event::Fail => self.slide(false),
@@ -423,30 +424,30 @@ mod tests {
     }
 
     #[test]
-    fn the_value_s_steps_ends_grab_and_landing_are_felt() {
+    fn a_grab_ticks_at_tens_and_ends_are_felt_once() {
         let mut s = FluidSlider { size: (400.0, 100.0), picker_y: Some(Spring::at(50.0)), ..Default::default() };
         let pointer = |phase, x, y, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
         s.input(&pointer(PointerPhase::Down, 30.0, 51.0, 0.0));
         assert_eq!(s.posted, [GRAB]);
         s.posted.clear();
-        // Steps within 40 ms give one tick.
-        s.feel(1, 0.0);
-        s.feel(2, 16.0);
-        s.feel(3, 41.0);
+        // Steps inside a tens band play nothing; crossing one plays a tick, paced.
+        s.feel(3, 0.0);
+        s.feel(9, 16.0);
+        assert!(s.posted.is_empty());
+        s.feel(10, 100.0);
+        s.feel(20, 110.0);
+        s.feel(30, 200.0);
         assert_eq!(s.posted, [TICK, TICK]);
         s.posted.clear();
-        // An end plays rigid, whatever the time since.
-        s.feel(100, 45.0);
-        s.feel(100, 100.0);
+        // An end plays rigid once per visit, whatever the time since.
+        s.feel(100, 300.0);
+        s.feel(100, 400.0);
         assert_eq!(s.posted, [LIMIT]);
         s.posted.clear();
-        // A release plays nothing more; a chase that lands is soft.
-        s.input(&pointer(PointerPhase::Up, 30.0, 51.0, 200.0));
-        s.feel(50, 300.0);
+        // A release plays nothing more, and a chase that lands is silent.
+        s.input(&pointer(PointerPhase::Up, 30.0, 51.0, 500.0));
+        s.feel(50, 600.0);
         assert!(s.posted.is_empty());
-        s.land = true;
-        s.feel(50, 316.0);
-        assert_eq!(s.posted, [LANDED]);
     }
 
     #[test]
