@@ -16,11 +16,36 @@ fn cardHeight(h: number, open: bool): number = open ? h : h / 2.8
 fn cardWidth(w: number, h: number, open: bool): number = open ? w - 2 : h / 2.8 * (3 / 4)
 fn cardTop(h: number, safeTop: number, open: bool): number = open ? safeTop + demoButtonRow() + header() : (h - h / 2.8) / 2 + 35
 fn cardLeft(w: number, h: number, open: bool): number = open ? 1 : (w - h / 2.8 * (3 / 4)) / 2
+fn cardCentreX(w: number, h: number, open: bool): number = cardLeft(w, h, open) + cardWidth(w, h, open) / 2
+fn cardCentreY(h: number, safeTop: number, open: bool): number = cardTop(h, safeTop, open) + cardHeight(h, open) / 2
+
+// The field (rTextInputStyle: marginTop 16 → 24, fontSize 14 → 24, margins 16 / 12, flex 1) by
+// transforms, not layout: fontSize can't animate and a layout transition on the card's box
+// showed its new size (and the field its new font) on the commit's first frame, the motion
+// starting frames later. The field is laid out once at the open size and font 24; a box at the
+// card's centre turns with it, and the field inside is scaled by fontSize / 24 about its centre
+// and placed from the card's centre. Every one is linear in the progress, so translates, scale
+// and rotate on the card's spring keep it on the card the surface draws.
+fn fieldW(w: number): number = w - 2 - 28
+fn fieldH(h: number): number = h - 24
+fn fieldScale(open: bool): number = open ? 1 : 14 / 24
+// The first-baseline fix (see the textarea): padding-top at 24, and the closed one carried by
+// the field's place (the padding scales with the field).
+fn padOpen(): number = 24 * 461 / 2048 - 1 / 3
+fn padClosed(): number = 14 * 461 / 2048 + 5 / 3
+fn fieldTop(open: bool): number = open ? 24 : 16 + padClosed() - 14 / 24 * padOpen()
+fn fieldX(w: number, h: number, open: bool): number = 16 - cardWidth(w, h, open) / 2 - (1 - fieldScale(open)) * fieldW(w) / 2
+fn fieldY(h: number, open: bool): number = fieldTop(open) - cardHeight(h, open) / 2 - (1 - fieldScale(open)) * fieldH(h) / 2
 
 component DotSheet
   props
     env: DemoEnv
   state open = false
+  // The screen's height when the field took focus: on the phone the keys shortened the demo's
+  // box (the title rose 80 pt into the header, the canvases resized each keyboard frame: the
+  // flicker). Everything below is laid out on this height, as RN, which never resizes for keys.
+  state pinH = 0
+  derive h = max(env.height, pinH)
   // progress === 0: the card's surface says when its spring has landed closed.
   state still = true
   action heard(m: string)
@@ -30,21 +55,24 @@ component DotSheet
       still = false
   // onFocus / onBlur of the field drive the card.
   action opened
+    pinH = max(pinH, env.height)
     open = true
   action closed
     open = false
   // The card's onTouchEnd: focus only while progress is exactly 0 (not on a card still closing).
   action tapCard
     if not open and still
+      pinH = max(pinH, env.height)
       focus("dot-input")
   action start
+    pinH = max(pinH, env.height)
     focus("dot-input")
   action back
     blur("dot-input")
   view
-    column position="absolute" inset=0 testId="dot-sheet"
+    column position="absolute" top=0 left=0 width=env.width height=h testId="dot-sheet"
       // <BackgroundGradient style={{ height: '100%', position: 'absolute' }} />.
-      canvas surface=dot_sheet() position="absolute" top=0 left=0 width="100%" height="100%"
+      canvas surface=dot_sheet() position="absolute" top=0 left=0 width=env.width height=h
         aria-hidden=true testId="dot-sheet-canvas"
       // styles.fillCenter, then styles.fill. Positioned, so it paints over the absolute canvas
       // (an in-flow box paints under a positioned sibling, whatever the order).
@@ -63,21 +91,25 @@ component DotSheet
           position="relative" top=0.3333 margin-top=12 max-width="60%"
           text-align="center"
       column flex=1
-      // The back button: top = safe area + DEMO_BUTTON_ROW_HEIGHT, left 16, 32 square, its
-      // opacity the progress; it blurs the field. The card's canvas (full screen, later) takes the
+      // The back button: RN's is 32 square at left 16, top = safe area + DEMO_BUTTON_ROW_HEIGHT;
+      // its opacity the progress; it blurs the field. Under our 48 pt glass close button (left
+      // 16, at the safe top) RN's place sat 8 pt left of the close's centre and high in the
+      // header: here it is centred under the close (x 40) and in the band between the close's
+      // bottom (safeTop + 48) and the open card's top (safeTop + 108), as a nav bar's back
+      // chevron sits on the bar's centre line. The card's canvas (full screen, later) takes the
       // touches under it on iOS whatever its pointer-events, so both buttons rise above it where
-      // the card never covers them: the back button always (the open card starts 20 below it),
-      // the bottom one while the card rests closed (RN's card, zIndex 1, covers it otherwise).
+      // the card never covers them: the back button always, the bottom one while the card rests
+      // closed (RN's card, zIndex 1, covers it otherwise).
       // hitSlop 4: the press box reaches 4 past the 32 pt button (its place 4 out each way,
       // the button 4 in), for the touch and the lift alike, as RNGH's hitTestEdgeInsets.
-      view position="absolute" top=(env.safeTop + demoButtonRow() - 4) left=12 width=40 height=40
+      view position="absolute" top=(env.safeTop + 62 - 4) left=20 width=40 height=40
         z-index=2 display="flex" flex-direction="column"
         PressableScale(press=back)
           row flex-grow=1 margin=4 align-items="center" justify-content="center" text-align="center"
             opacity=(open ? 1 : 0) transition=`opacity ${cardSpring()}` aria-label="Back" testId="dot-back"
             image "symbol:sf/chevron.backward" font-size=24 color="#323232" aria-hidden=true
       // The bottom button: safe bottom + 16, centred, 85% wide, 52 tall, radius 30.
-      view position="absolute" bottom="calc(env(safe-area-inset-bottom) + 16px)" left="7.5%"
+      view position="absolute" top=(h - env.safeBottom - 16 - 52) left="7.5%"
         width="85%" height=52 z-index=(not open and still ? 2 : 0) display="flex" flex-direction="column"
         PressableScale(press=start)
           row flex-grow=1 border-radius=30 background-color="rgba(55, 55, 55, 0.2)" text-align="center"
@@ -88,22 +120,31 @@ component DotSheet
       // progress: from (h / 2.8 × 3/4) × h / 2.8 centred 35 below the middle at -4° and radius
       // 16, to the window's width less 2 and its height, below the header, upright, radius 32.
       canvas surface=dot_sheet_card(open, env.safeTop) message=heard position="absolute" top=0 left=0
-        width="100%" height="100%" z-index=1 pointer-events="none" aria-hidden=true
+        width=env.width height=h z-index=1 pointer-events="none" aria-hidden=true
         testId="dot-card-canvas"
-      // The card's box for the field and the touches; the surface above draws it.
-      column position="absolute" z-index=1 top=cardTop(env.height, env.safeTop, open)
-        left=cardLeft(env.width, env.height, open) width=cardWidth(env.width, env.height, open)
-        height=cardHeight(env.height, open) rotate=(open ? "0deg" : "-4deg") -exact-layout-transition=cardSpring()
-        transition=`rotate ${cardSpring()}` press=tapCard testId="dot-card"
-        // The multiline field: marginTop 16 → 24, fontSize 14 → 24. The host's field sets its first
-        // baseline at AddingtonCF's typo ascender (USE_TYPO_METRICS), UITextView at the hhea one:
-        // 461 / 2048 em lower; against RN on the iPhone Air the line then sat 1 px low open (24, text and
-        // placeholder alike) and 5 px high closed (14): a third of a point up open, five thirds down closed.
-        textarea id="dot-input" placeholder="Hello there 👋" autocorrect="off" autocapitalize="none"
-          focus=opened blur=closed font-family="AddingtonCF-Light" font-size=(open ? 24 : 14)
-          margin="0px 12px 0px 16px" margin-top=(open ? 24 : 16) flex=1 min-height=0
-          background-color="transparent" border="none" padding=0 color="#000000" outline="none"
-          padding-top=(open ? 24 * 461 / 2048 - 1 / 3 : 14 * 461 / 2048 + 5 / 3)
-          resize="none" -exact-layout-transition=cardSpring() aria-label="Note" testId="dot-input"
-          ::placeholder
-            color="#b4b4b4"
+      // The card's box for the touches (onTouchEnd), at its target frame: the surface above
+      // draws it, the field below moves with it.
+      column position="absolute" z-index=1 top=cardTop(h, env.safeTop, open)
+        left=cardLeft(env.width, h, open) width=cardWidth(env.width, h, open)
+        height=cardHeight(h, open) rotate=(open ? "0deg" : "-4deg") press=tapCard testId="dot-card"
+      // The field, on the card: a box at the card's centre turned with it (zero-size, so it turns
+      // about its own place).
+      view position="absolute" z-index=1 top=0 left=0 width=0 height=0
+        translate=`${cardCentreX(env.width, h, open)}px ${cardCentreY(h, env.safeTop, open)}px`
+        rotate=(open ? "0deg" : "-4deg") transition=`translate ${cardSpring()}, rotate ${cardSpring()}`
+        column position="absolute" top=0 left=0 width=fieldW(env.width) height=fieldH(h)
+          translate=`${fieldX(env.width, h, open)}px ${fieldY(h, open)}px` scale=fieldScale(open)
+          transition=`translate ${cardSpring()}, scale ${cardSpring()}`
+          pointer-events=(open ? "auto" : "none")
+          // The multiline field at fontSize 24. The host's field sets its first baseline at
+          // AddingtonCF's typo ascender (USE_TYPO_METRICS), UITextView at the hhea one: 461 / 2048
+          // em lower; against RN on the iPhone Air the line then sat 1 px low open (text and
+          // placeholder alike) and 5 px high closed (14): a third of a point up open, five thirds
+          // down closed (fieldTop).
+          textarea id="dot-input" placeholder="Hello there 👋" autocorrect="off" autocapitalize="none"
+            focus=opened blur=closed font-family="AddingtonCF-Light" font-size=24
+            flex=1 min-height=0 margin=0
+            background-color="transparent" border="none" padding=0 color="#000000" outline="none"
+            padding-top=padOpen() resize="none" aria-label="Note" testId="dot-input"
+            ::placeholder
+              color="#b4b4b4"
