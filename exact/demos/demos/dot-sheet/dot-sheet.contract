@@ -5,7 +5,7 @@
 // drawn once in Rust: gpu/src/dot_sheet.rs; the card (its frame, rotation, animated continuous
 // radius and shadow on RN's spring) is gpu/src/dot_sheet_card.rs; the field and the rest are here.
 use PressableScale from "pressto"
-use DemoEnv, demoButtonRow from "../env.contract"
+use DemoEnv, demoButtonRow, floatingWidth, concentricRadius from "../env.contract"
 
 
 // card-input.tsx: progress = withSpring(focused ? 1 : 0, { duration: 800, dampingRatio: 1 }).
@@ -52,6 +52,20 @@ component DotSheet
     demoSubpage: action
     demoBackChrome: bool
   state open = false
+  // The note (phone feedback 2026-11-15, "I can't submit"): RN's field has no way out but the
+  // chevron. Here return ("Send") or the send arrow submits it: a success haptic, the keyboard
+  // goes down and the sheet closes on its card, the note kept on it.
+  state note = ""
+  action typed(v: string)
+    if v.endsWith("\n")
+      note = v.slice(0, v.length - 1)
+      submit()
+    else
+      note = v
+  action submit
+    if note.trim() != ""
+      haptic("success")
+      blur("dot-input")
   // The card's spring duration, as its surface reports it (800 until it says otherwise).
   state cardMs = 800
   // The screen's height when the field took focus: on the phone the keys shortened the demo's
@@ -126,14 +140,27 @@ component DotSheet
             row flex-grow=1 margin=4 align-items="center" justify-content="center" text-align="center"
               opacity=(open ? 1 : 0) transition=`opacity ${cardSpring(cardMs)}` aria-label="Back" testId="dot-back"
               image "symbol:sf/chevron.backward" font-size=24 color="#323232" aria-hidden=true
-      // The bottom button: safe bottom + 16, centred, 85% wide, 52 tall, radius 30.
-      view position="absolute" top=(h - env.safeBottom - 16 - 52) left="7.5%"
-        width="85%" height=52 z-index=(not open and still ? 2 : 0) display="flex" flex-direction="column"
+      // The bottom button (phone feedback 2026-11-15, "make it concentric"): RN's is 85 % wide,
+      // 52 tall, radius 30, safe bottom + 16. Here a capsule floating 16 pt from the display's
+      // sides and bottom, its continuous corners concentric with the display's.
+      view position="absolute" top=(h - 16 - 52) left=16
+        width=floatingWidth(env.width, 16) height=52 z-index=(not open and still ? 2 : 0) display="flex" flex-direction="column"
         PressableScale(press=start)
-          row flex-grow=1 border-radius=30 background-color="rgba(55, 55, 55, 0.2)" text-align="center"
+          row flex-grow=1 border-radius=concentricRadius(16, 52) corner-shape="-exact-continuous"
+            background-color="rgba(55, 55, 55, 0.2)" text-align="center"
             align-items="center" justify-content="center" testId="dot-start"
             text "Start your Journey" color="#ffffff" font-size=16 font-weight=700 line-height="19.09375px"
               position="relative" top=0.3333
+      // The send arrow, in the open sheet's top-right corner: 36 pt, concentric with the sheet's
+      // 32 pt corner (inset 32 − 18 = 14); dimmed until there is a note.
+      view position="absolute" z-index=3 width=36 height=36
+        left=(env.width - 1 - 14 - 36) top=(cardTop(h, env.safeTop, true) + 14)
+        opacity=(open ? (note.trim() != "" ? 1 : 0.35) : 0) transition=`opacity ${cardSpring(cardMs)}`
+        pointer-events=(open and note.trim() != "" ? "auto" : "none") display="flex" flex-direction="column"
+        PressableScale(press=submit)
+          column flex-grow=1 border-radius=18 background-color="#323232" align-items="center"
+            justify-content="center" aria-label="Send" testId="dot-send"
+            image "symbol:sf/arrow.up" font-size=17 font-weight=600 color="#ffffff" aria-hidden=true
       // The card (zIndex 1): top, left, width, height, radius and rotate all interpolate the
       // progress: from (h / 2.8 × 3/4) × h / 2.8 centred 35 below the middle at -4° and radius
       // 16, to the window's width less 2 and its height, below the header, upright, radius 32.
@@ -160,9 +187,10 @@ component DotSheet
           // placeholder alike) and 5 px high closed (14): a third of a point up open, five thirds
           // down closed (fieldTop).
           textarea id="dot-input" placeholder="Hello there 👋" autocorrect="off" autocapitalize="none"
+            value=note input=typed enterkeyhint="send"
             focus=opened blur=closed font-family="AddingtonCF-Light" font-size=24
             flex=1 min-height=0 margin=0
-            background-color="transparent" border="none" padding=0 color="#000000" outline="none"
+            background-color="transparent" border="none" padding=0 color="#000000" outline="none" padding-right=44
             padding-top=padOpen() resize="none" aria-label="Note" testId="dot-input"
             ::placeholder
               color="#b4b4b4"
