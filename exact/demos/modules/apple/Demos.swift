@@ -479,10 +479,14 @@ private final class MateHaptic: ExactNativeInstance {
     }
 }
 #else
+import AppKit
 let exactModule: ExactModule.Type = DemosModule.self
 final class DemosModule: ExactModule {
     override class var views: [String: ExactNativeFactory] {
-        ["painting-menu": ExactNativeFactory { props, events in PaintingMenu(props: props, events: events) },
+        // The desktop atlas is a light canvas: keep the window (and its toolbar) in the light
+        // appearance whatever the system's, so the toolbar isn't a dark grey band over it.
+        DispatchQueue.main.async { NSApp?.appearance = NSAppearance(named: .aqua) }
+        return ["painting-menu": ExactNativeFactory { props, events in PaintingMenu(props: props, events: events) },
          "glass-pane": ExactNativeFactory { props, events in GlassPane(props: props, events: events) }]
     }
 }
