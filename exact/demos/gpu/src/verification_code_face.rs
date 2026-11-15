@@ -27,7 +27,7 @@
 //! | p (codeProgressPercentage) | useDerivedValue(withTiming(code.length / 4, { duration 500 })), inOut(quad) | `Timing`, restarted only for a new target |
 //! | θ, translateX, gap, eye side, eye translateX | interpolate(p, …) every frame | the same, laid out per frame |
 //! | mouth | usePathInterpolation(withTiming(type), [Happy 0, Normal 1, Sad 2]): 300 ms inOut(quad), SkPath.interpolate (linear in the points) | `Timing` on the type, the control point lerped |
-//! | eyebrows | usePathInterpolation(type) with no timing: a jump | the type itself |
+//! | eyebrows | usePathInterpolation(type) with no timing: a jump (useIconPaths passes `progress`, not the `animatedProgress` the mouth gets) | past RN (the owner: "when the eyebrows appear there's a jump"): the mouth's `Timing`, 300 ms inOut(quad), so brows and mouth move together |
 //! | borderColor | withTiming(getColorByStatus(status)): highlighted (index == code.length) #5807a8 first, correct #3171f2, wrong #d62e2e, else transparent; 300 ms inOut(quad), each RGBA channel timed in gamma 2.2 space from the current colour as Reanimated wrote it (8-bit rgb), rgb rounded to 8 bits; Display P3 | four `Timing`s per box, the same rounding, `Color::view_hex` |
 //! | borderWidth | withTiming(2.1): its initial style is the target, so 2.1 throughout | 2.1 |
 //! | reset | setTimeout(1000) after a full code: status inProgress, code [], normal() | at 1000 ms on this surface's clock from the full code's frame |
@@ -227,7 +227,7 @@ struct Face {
     /// When resetCode's timeout fires (this surface's clock).
     reset_at: Option<f64>,
     progress: Timing,
-    /// The icon's AnimationType (the eyebrows follow it at once).
+    /// The icon's AnimationType (the mouth and, past RN, the eyebrows time to it).
     mood: f64,
     mouth: Timing,
     /// Each box's borderColor, linear RGBA.
@@ -339,7 +339,8 @@ impl Face {
             let (op, os, _) = node(ba, (k as f64 * (BROW.0 + g), 0.0), BROW, s);
             let (x, y) = ((bp.0 + op.0) as f32, (bp.1 + op.1) as f32);
             let (w, h) = (os.0 as f32, os.1 as f32);
-            let qy = (self.mood * BROW.1 / 2.0) as f32;
+            // Past RN: on the mouth's timing (RN reads the raw type here and jumps).
+            let qy = (self.mouth.value * BROW.1 / 2.0) as f32;
             c.save();
             c.clip_rect(x, y, w, h);
             c.translate(x, y);
@@ -766,5 +767,14 @@ mod tests {
         assert!(p[2] > 150 && p[0] < 140 && p[1] < 60, "{p:?}");
         let q = img.at(3 * 120 + 3, y);
         assert!(q[0] == 255 && q[1] == 255 && q[2] == 255, "{q:?}");
+    }
+
+    #[test]
+    fn the_eyebrows_move_with_the_mouth() {
+        // Past RN: the brows' control point is the mouth's timed value, never the bare type.
+        let src = include_str!("verification_code_face.rs");
+        let brows = src.split("// The eyebrows:").nth(1).unwrap().split("// The mouth:").next().unwrap();
+        assert!(brows.contains("self.mouth.value * BROW.1"));
+        assert!(!brows.contains("self.mood *"));
     }
 }
