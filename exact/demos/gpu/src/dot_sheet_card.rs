@@ -14,6 +14,10 @@
 //!   ignores a tap on a card still closing.
 //!
 //! Inputs: open (the field has focus), safeTop.
+//!
+//! Beyond RN (phone feedback 2026-11-15, "faster"): the spring is 350 ms, not 800. The surface
+//! posts `card:ms:350` once, so the Contract (the text field riding the card) takes the same
+//! spring only on a build that has this one.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
@@ -26,12 +30,16 @@ use crate::gfx;
 const BUTTON_ROW: f64 = 56.0;
 const HEADER: f64 = 52.0;
 const SHADOW_SIGMA: f32 = 10.0;
+/// The open/close spring's duration (dampingRatio 1); RN's is 800.
+const SPRING_MS: f64 = 350.0;
 
 /// The card's surface.
 pub fn surface() -> Box<dyn Surface> {
     Box::new(Card {
         open: false,
         safe_top: 0.0,
+        ms: SPRING_MS,
+        told_ms: None,
         progress: Spring::at(0.0),
         at_rest: true,
         posted: Vec::new(),
@@ -43,6 +51,9 @@ pub fn surface() -> Box<dyn Surface> {
 struct Card {
     open: bool,
     safe_top: f64,
+    /// The spring's duration (dampingRatio 1), and the one last posted.
+    ms: f64,
+    told_ms: Option<f64>,
     progress: Spring,
     at_rest: bool,
     posted: Vec<String>,
@@ -76,9 +87,18 @@ impl Surface for Card {
     fn bind(&mut self, inputs: &[Value], _: Option<f64>) -> Result<(), SurfaceError> {
         let open = inputs.first().and_then(|v| v.as_bool()).unwrap_or(false);
         self.safe_top = inputs.get(1).and_then(|v| v.as_number()).unwrap_or(0.0);
+        if self.told_ms != Some(self.ms) {
+            self.told_ms = Some(self.ms);
+            self.posted.push(format!("card:ms:{}", self.ms));
+        }
         if open != self.open {
             self.open = open;
-            gfx::spring_to(&mut self.progress, if open { 1.0 } else { 0.0 }, 800.0, 1.0);
+            gfx::spring_to(
+                &mut self.progress,
+                if open { 1.0 } else { 0.0 },
+                self.ms,
+                1.0,
+            );
         }
         Ok(())
     }
@@ -185,5 +205,6 @@ mod tests {
         c.bind(&[Value::Bool(true), Value::Number(68.0)], None)
             .unwrap();
         assert!(c.agent("").unwrap().contains("\"open\":true"));
+        assert_eq!(c.messages(), vec!["card:ms:350".to_string()]);
     }
 }

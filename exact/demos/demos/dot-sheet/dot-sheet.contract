@@ -9,9 +9,15 @@ use DemoEnv, demoButtonRow from "../env.contract"
 
 
 // card-input.tsx: progress = withSpring(focused ? 1 : 0, { duration: 800, dampingRatio: 1 }).
-fn cardSpring(): string = "-exact-spring(424.9, 82.5, 4)"
+// Phone feedback 2026-11-15 ("faster"): 350 ms (bun tools/spring.ts 350 1), once the card's
+// surface says it runs the same (`card:ms:350`; a build without it keeps RN's 800 for both).
+fn cardSpring(ms: number): string = ms == 350 ? "-exact-spring(2219.8672, 188.4619, 4)" : "-exact-spring(424.9, 82.5, 4)"
 // potentialHeaderHeight.
-fn header(): number = 52
+// RN's potentialHeaderHeight (52) dropped (phone feedback: "taller, the sheet under the
+// header"): the open sheet's top sits right under the button row (safeTop + 56), and the demo
+// screen's buttons stay above it. The surface adds 56 + 52 to the safe top it is given.
+fn header(): number = 0
+fn sheetLift(): number = 52
 fn cardHeight(h: number, open: bool): number = open ? h : h / 2.8
 fn cardWidth(w: number, h: number, open: bool): number = open ? w - 2 : h / 2.8 * (3 / 4)
 fn cardTop(h: number, safeTop: number, open: bool): number = open ? safeTop + demoButtonRow() + header() : (h - h / 2.8) / 2 + 35
@@ -46,6 +52,8 @@ component DotSheet
     demoSubpage: action
     demoBackChrome: bool
   state open = false
+  // The card's spring duration, as its surface reports it (800 until it says otherwise).
+  state cardMs = 800
   // The screen's height when the field took focus: on the phone the keys shortened the demo's
   // box (the title rose 80 pt into the header, the canvases resized each keyboard frame: the
   // flicker). Everything below is laid out on this height, as RN, which never resizes for keys.
@@ -58,6 +66,8 @@ component DotSheet
       still = true
     if m == "card:moving"
       still = false
+    if m == "card:ms:350"
+      cardMs = 350
   // onFocus / onBlur of the field drive the card.
   action opened
     pinH = max(pinH, env.height)
@@ -114,7 +124,7 @@ component DotSheet
           z-index=2 display="flex" flex-direction="column"
           PressableScale(press=back)
             row flex-grow=1 margin=4 align-items="center" justify-content="center" text-align="center"
-              opacity=(open ? 1 : 0) transition=`opacity ${cardSpring()}` aria-label="Back" testId="dot-back"
+              opacity=(open ? 1 : 0) transition=`opacity ${cardSpring(cardMs)}` aria-label="Back" testId="dot-back"
               image "symbol:sf/chevron.backward" font-size=24 color="#323232" aria-hidden=true
       // The bottom button: safe bottom + 16, centred, 85% wide, 52 tall, radius 30.
       view position="absolute" top=(h - env.safeBottom - 16 - 52) left="7.5%"
@@ -127,7 +137,7 @@ component DotSheet
       // The card (zIndex 1): top, left, width, height, radius and rotate all interpolate the
       // progress: from (h / 2.8 × 3/4) × h / 2.8 centred 35 below the middle at -4° and radius
       // 16, to the window's width less 2 and its height, below the header, upright, radius 32.
-      canvas surface=dot_sheet_card(open, env.safeTop) message=heard position="absolute" top=0 left=0
+      canvas surface=dot_sheet_card(open, env.safeTop - sheetLift()) message=heard position="absolute" top=0 left=0
         width=env.width height=h z-index=1 pointer-events="none" aria-hidden=true
         testId="dot-card-canvas"
       // The card's box for the touches (onTouchEnd), at its target frame: the surface above
@@ -139,10 +149,10 @@ component DotSheet
       // about its own place).
       view position="absolute" z-index=1 top=0 left=0 width=0 height=0
         translate=`${cardCentreX(env.width, h, open)}px ${cardCentreY(h, env.safeTop, open)}px`
-        rotate=(open ? "0deg" : "-4deg") transition=`translate ${cardSpring()}, rotate ${cardSpring()}`
+        rotate=(open ? "0deg" : "-4deg") transition=`translate ${cardSpring(cardMs)}, rotate ${cardSpring(cardMs)}`
         column position="absolute" top=0 left=0 width=fieldW(env.width) height=fieldH(h)
           translate=`${fieldX(env.width, h, open)}px ${fieldY(h, open)}px` scale=fieldScale(open)
-          transition=`translate ${cardSpring()}, scale ${cardSpring()}`
+          transition=`translate ${cardSpring(cardMs)}, scale ${cardSpring(cardMs)}`
           pointer-events=(open ? "auto" : "none")
           // The multiline field at fontSize 24. The host's field sets its first baseline at
           // AddingtonCF's typo ascender (USE_TYPO_METRICS), UITextView at the hhea one: 461 / 2048
