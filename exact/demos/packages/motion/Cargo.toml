@@ -16,3 +16,6 @@ publish = false
 
 [lib]
 name = "motion"
+
+[lints]
+workspace = true

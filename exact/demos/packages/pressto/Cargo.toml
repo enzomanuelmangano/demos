@@ -21,3 +21,6 @@ name = "pressto"
 [dependencies]
 motion = { workspace = true }
 gestures = { workspace = true }
+
+[lints]
+workspace = true

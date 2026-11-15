@@ -16,3 +16,6 @@ publish = false
 
 [lib]
 name = "gestures"
+
+[lints]
+workspace = true

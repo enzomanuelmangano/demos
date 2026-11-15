@@ -39,3 +39,6 @@ zune-jpeg = "0.5"
 # Only the workspace sees these two (a path without a version is dropped from the packaged crate).
 exact-gpu = { workspace = true }
 draw2d = { path = ".", features = ["repo-tests"] }
+
+[lints]
+workspace = true

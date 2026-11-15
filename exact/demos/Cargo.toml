@@ -11,6 +11,49 @@ license = "MIT"
 repository = "https://github.com/enzomanuelmangano/demos"
 homepage = "https://github.com/enzomanuelmangano/demos"
 
+# Lints of gpu/ and packages/* (each has `[lints] workspace = true`; the generated hosts web/ and apple/ do not).
+# The table holds what is clean today, so a plain `cargo build` / `cargo clippy` stays quiet, plus the allow
+# list for numeric and graphics code. The lints that still fire (the debt) are not here: tools/rust-lint.sh
+# turns them on with -W flags and ratchets their counts against tools/rust-lint-baseline.txt.
+[workspace.lints.rust]
+# A dropped Result or a discarded #[must_use] value is a bug (0 findings today).
+unused_must_use = "deny"
+# An unsafe call inside an unsafe fn still needs its own unsafe block (0 findings today).
+unsafe_op_in_unsafe_fn = "warn"
+
+[workspace.lints.clippy]
+# Likely bugs. 3 correctness lints fire today (almost_swapped 1, approx_constant 1, eq_op 2): a deny would
+# break `cargo clippy`, so they sit at warn below until fixed (their counts are in the baseline).
+correctness = { level = "deny", priority = -1 }
+suspicious = { level = "deny", priority = -1 }
+perf = { level = "warn", priority = -1 }
+almost_swapped = "warn"
+approx_constant = "warn"
+eq_op = "warn"
+# Leftovers that must not land (0 findings today).
+dbg_macro = "warn"
+todo = "warn"
+unimplemented = "warn"
+redundant_clone = "warn"
+# What numeric and graphics code needs.
+# Render and draw helpers take the whole state as arguments (device, queue, encoder, target, scale, ...).
+too_many_arguments = "allow"
+# Nested closures and tuples of GPU handles read worse behind a type alias.
+type_complexity = "allow"
+# Constants are copied digit for digit from the RN source (Skia, Reanimated), more digits than an f32 holds.
+excessive_precision = "allow"
+# Index loops over several parallel arrays (pixels, vertices, matrices) are clearer than zips.
+needless_range_loop = "allow"
+# `!(a >= b)` is not `a < b` for NaN: the negated form is deliberate.
+neg_cmp_op_on_partial_ord = "allow"
+# Math code names things x, y, z, w, u, v, t.
+many_single_char_names = "allow"
+# `as` between f32, f64 and integers is how pixel math is written.
+cast_possible_truncation = "allow"
+cast_precision_loss = "allow"
+cast_sign_loss = "allow"
+cast_lossless = "allow"
+
 # Where the app names a crate that is not on crates.io, once. exact-gpu is Exact's GPU crate, found
 # by path in the exact2 checkout. `bun exact.mjs update` re-settles only [patch.crates-io] below, not
 # these paths: when the checkout moves, edit them here (the only place). When exact-gpu is published,

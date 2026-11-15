@@ -15,3 +15,6 @@ publish = false
 
 [lib]
 name = "noise"
+
+[lints]
+workspace = true
