@@ -17,7 +17,8 @@
     "swift-slider",
     "painting-menu",
     "variable-blur",
-    "glass-pane"
+    "glass-pane",
+    "inspiration-sheet"
   ],
   "host": {
     "web": {},
