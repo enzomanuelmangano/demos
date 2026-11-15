@@ -7,14 +7,81 @@
 // menus of toggles) are here. A pick reaches the surface as (painting, picks).
 use DemoEnv from "../env.contract"
 
+// src/animations/art-gallery/paintings.ts ART_MOVEMENTS: movement → painter → painting.
+shape Painting
+  id: string
+  name: string
+
+shape Painter
+  id: string
+  name: string
+  paintings: Painting[]
+
+shape Movement
+  id: string
+  name: string
+  painters: Painter[]
+
+fn movements(): Movement[] = [
+  Movement(id="renaissance", name="Renaissance", painters=[
+    Painter(id="da-vinci", name="Leonardo da Vinci", paintings=[Painting(id="mona-lisa", name="Mona Lisa"), Painting(id="last-supper", name="The Last Supper")]),
+    Painter(id="michelangelo", name="Michelangelo", paintings=[Painting(id="creation-of-adam", name="The Creation of Adam")]),
+    Painter(id="raphael", name="Raphael", paintings=[Painting(id="school-of-athens", name="The School of Athens")]),
+    Painter(id="botticelli", name="Sandro Botticelli", paintings=[Painting(id="birth-of-venus", name="The Birth of Venus"), Painting(id="primavera", name="Primavera")])]),
+  Movement(id="dutch-golden-age", name="Dutch Golden Age", painters=[
+    Painter(id="vermeer", name="Johannes Vermeer", paintings=[Painting(id="girl-with-pearl-earring", name="Girl with a Pearl Earring"), Painting(id="the-milkmaid", name="The Milkmaid")]),
+    Painter(id="rembrandt", name="Rembrandt", paintings=[Painting(id="the-night-watch", name="The Night Watch"), Painting(id="self-portrait-rembrandt", name="Self Portrait")])]),
+  Movement(id="romanticism", name="Romanticism", painters=[
+    Painter(id="friedrich", name="Caspar David Friedrich", paintings=[Painting(id="wanderer-above-sea-of-fog", name="Wanderer Above the Sea of Fog")]),
+    Painter(id="delacroix", name="Eugène Delacroix", paintings=[Painting(id="liberty-leading-the-people", name="Liberty Leading the People")])]),
+  Movement(id="impressionism", name="Impressionism", painters=[
+    Painter(id="monet", name="Claude Monet", paintings=[Painting(id="water-lilies", name="Water Lilies"), Painting(id="impression-sunrise", name="Impression, Sunrise")])]),
+  Movement(id="post-impressionism", name="Post-Impressionism", painters=[
+    Painter(id="van-gogh", name="Vincent van Gogh", paintings=[Painting(id="starry-night", name="The Starry Night"), Painting(id="sunflowers", name="Sunflowers"), Painting(id="cafe-terrace", name="Café Terrace at Night")])]),
+  Movement(id="art-nouveau", name="Art Nouveau", painters=[
+    Painter(id="klimt", name="Gustav Klimt", paintings=[Painting(id="the-kiss", name="The Kiss")])]),
+  Movement(id="fauvism", name="Fauvism", painters=[
+    Painter(id="matisse", name="Henri Matisse", paintings=[Painting(id="the-dance", name="The Dance"), Painting(id="the-music", name="The Music")])]),
+  Movement(id="expressionism", name="Expressionism", painters=[
+    Painter(id="munch", name="Edvard Munch", paintings=[Painting(id="the-scream", name="The Scream")])]),
+  Movement(id="surrealism", name="Surrealism", painters=[
+    Painter(id="magritte", name="René Magritte", paintings=[Painting(id="the-lovers", name="The Lovers")]),
+    Painter(id="dali", name="Salvador Dalí", paintings=[Painting(id="persistence-of-memory", name="The Persistence of Memory")])]),
+  Movement(id="american-realism", name="American Realism", painters=[
+    Painter(id="hopper", name="Edward Hopper", paintings=[Painting(id="nighthawks", name="Nighthawks"), Painting(id="morning-sun", name="Morning Sun")])]),
+  Movement(id="ukiyo-e", name="Ukiyo-e", painters=[
+    Painter(id="hokusai", name="Katsushika Hokusai", paintings=[Painting(id="the-great-wave", name="The Great Wave off Kanagawa")])])]
+
 component ArtGallery
   props
     env: DemoEnv
   state painting = ""
   state picks = 0
+  // The menu (in the route: the popover menus never opened on the phone): open, and the
+  // movement and painter it has gone into ("" at its top).
+  state menuOpen = false
+  state inMovement = ""
+  state inPainter = ""
   action pick(id: string)
     painting = id
     picks = picks + 1
+    menuOpen = false
+  action toggleMenu
+    menuOpen = not menuOpen
+    inMovement = ""
+    inPainter = ""
+  action closeMenu
+    menuOpen = false
+  action enterMovement(id: string)
+    inMovement = id
+    inPainter = ""
+  action enterPainter(id: string)
+    inPainter = id
+  action up
+    if inPainter != ""
+      inPainter = ""
+    else
+      inMovement = ""
   action buzz(m: string)
     if m == "haptic:selection"
       haptic("selection")
@@ -38,175 +105,54 @@ component ArtGallery
         text "Gallery" font-size=17 font-weight=600 color="#ffffff" testId="art-gallery-title"
       // PaintingMenu: the close button's twin, 16 pt from the trailing edge at the safe top, a
       // glass circle with an ellipsis (Image size 17) in the app's dark appearance, over the canvas.
-      button popovertarget="paintings" buttonStyle="glass" position="absolute"
+      // (The SwiftUI menu itself is modules/apple/PaintingMenu.swift, `painting-menu`, once the
+      // app ships that tag.)
+      button press=toggleMenu buttonStyle="glass" position="absolute"
         top=env.safeTop right=16 width=48 height=48 z-index=1000 aria-label="Choose a painting"
-        testId="painting-menu"
+        aria-expanded=menuOpen testId="painting-menu"
         image "symbol:sf/ellipsis" font-size=17
-      // The menu: Default, then movement → painter → painting, each painting a toggle (a check on
-      // the one shown); a pick closes the whole menu, as SwiftUI's.
-      column id="paintings" popover="auto" role="menu" color-scheme="dark"
-        button press=pick("") role="menuitemcheckbox" aria-checked=(painting == "") popovertarget="paintings"
-          popovertargetaction="hide" testId="painting-default"
-          text "Default"
-        button popovertarget="m-renaissance" testId="movement-renaissance"
-          text "Renaissance"
-        button popovertarget="m-dutch-golden-age" testId="movement-dutch-golden-age"
-          text "Dutch Golden Age"
-        button popovertarget="m-romanticism" testId="movement-romanticism"
-          text "Romanticism"
-        button popovertarget="m-impressionism" testId="movement-impressionism"
-          text "Impressionism"
-        button popovertarget="m-post-impressionism" testId="movement-post-impressionism"
-          text "Post-Impressionism"
-        button popovertarget="m-art-nouveau" testId="movement-art-nouveau"
-          text "Art Nouveau"
-        button popovertarget="m-fauvism" testId="movement-fauvism"
-          text "Fauvism"
-        button popovertarget="m-expressionism" testId="movement-expressionism"
-          text "Expressionism"
-        button popovertarget="m-surrealism" testId="movement-surrealism"
-          text "Surrealism"
-        button popovertarget="m-american-realism" testId="movement-american-realism"
-          text "American Realism"
-        button popovertarget="m-ukiyo-e" testId="movement-ukiyo-e"
-          text "Ukiyo-e"
-      column id="m-renaissance" popover="auto" role="menu" aria-label="Renaissance" color-scheme="dark"
-        button popovertarget="p-da-vinci" testId="painter-da-vinci"
-          text "Leonardo da Vinci"
-        button popovertarget="p-michelangelo" testId="painter-michelangelo"
-          text "Michelangelo"
-        button popovertarget="p-raphael" testId="painter-raphael"
-          text "Raphael"
-        button popovertarget="p-botticelli" testId="painter-botticelli"
-          text "Sandro Botticelli"
-      column id="m-dutch-golden-age" popover="auto" role="menu" aria-label="Dutch Golden Age" color-scheme="dark"
-        button popovertarget="p-vermeer" testId="painter-vermeer"
-          text "Johannes Vermeer"
-        button popovertarget="p-rembrandt" testId="painter-rembrandt"
-          text "Rembrandt"
-      column id="m-romanticism" popover="auto" role="menu" aria-label="Romanticism" color-scheme="dark"
-        button popovertarget="p-friedrich" testId="painter-friedrich"
-          text "Caspar David Friedrich"
-        button popovertarget="p-delacroix" testId="painter-delacroix"
-          text "Eugène Delacroix"
-      column id="m-impressionism" popover="auto" role="menu" aria-label="Impressionism" color-scheme="dark"
-        button popovertarget="p-monet" testId="painter-monet"
-          text "Claude Monet"
-      column id="m-post-impressionism" popover="auto" role="menu" aria-label="Post-Impressionism" color-scheme="dark"
-        button popovertarget="p-van-gogh" testId="painter-van-gogh"
-          text "Vincent van Gogh"
-      column id="m-art-nouveau" popover="auto" role="menu" aria-label="Art Nouveau" color-scheme="dark"
-        button popovertarget="p-klimt" testId="painter-klimt"
-          text "Gustav Klimt"
-      column id="m-fauvism" popover="auto" role="menu" aria-label="Fauvism" color-scheme="dark"
-        button popovertarget="p-matisse" testId="painter-matisse"
-          text "Henri Matisse"
-      column id="m-expressionism" popover="auto" role="menu" aria-label="Expressionism" color-scheme="dark"
-        button popovertarget="p-munch" testId="painter-munch"
-          text "Edvard Munch"
-      column id="m-surrealism" popover="auto" role="menu" aria-label="Surrealism" color-scheme="dark"
-        button popovertarget="p-magritte" testId="painter-magritte"
-          text "René Magritte"
-        button popovertarget="p-dali" testId="painter-dali"
-          text "Salvador Dalí"
-      column id="m-american-realism" popover="auto" role="menu" aria-label="American Realism" color-scheme="dark"
-        button popovertarget="p-hopper" testId="painter-hopper"
-          text "Edward Hopper"
-      column id="m-ukiyo-e" popover="auto" role="menu" aria-label="Ukiyo-e" color-scheme="dark"
-        button popovertarget="p-hokusai" testId="painter-hokusai"
-          text "Katsushika Hokusai"
-      column id="p-da-vinci" popover="auto" role="menu" aria-label="Leonardo da Vinci" color-scheme="dark"
-        button press=pick("mona-lisa") role="menuitemcheckbox" aria-checked=(painting == "mona-lisa")
-          popovertarget="paintings" popovertargetaction="hide" testId="painting-mona-lisa"
-          text "Mona Lisa"
-        button press=pick("last-supper") role="menuitemcheckbox" aria-checked=(painting == "last-supper")
-          popovertarget="paintings" popovertargetaction="hide" testId="painting-last-supper"
-          text "The Last Supper"
-      column id="p-michelangelo" popover="auto" role="menu" aria-label="Michelangelo" color-scheme="dark"
-        button press=pick("creation-of-adam") role="menuitemcheckbox" aria-checked=(painting == "creation-of-adam")
-          popovertarget="paintings" popovertargetaction="hide" testId="painting-creation-of-adam"
-          text "The Creation of Adam"
-      column id="p-raphael" popover="auto" role="menu" aria-label="Raphael" color-scheme="dark"
-        button press=pick("school-of-athens") role="menuitemcheckbox" aria-checked=(painting == "school-of-athens")
-          popovertarget="paintings" popovertargetaction="hide" testId="painting-school-of-athens"
-          text "The School of Athens"
-      column id="p-botticelli" popover="auto" role="menu" aria-label="Sandro Botticelli" color-scheme="dark"
-        button press=pick("birth-of-venus") role="menuitemcheckbox" aria-checked=(painting == "birth-of-venus")
-          popovertarget="paintings" popovertargetaction="hide" testId="painting-birth-of-venus"
-          text "The Birth of Venus"
-        button press=pick("primavera") role="menuitemcheckbox" aria-checked=(painting == "primavera")
-          popovertarget="paintings" popovertargetaction="hide" testId="painting-primavera"
-          text "Primavera"
-      column id="p-vermeer" popover="auto" role="menu" aria-label="Johannes Vermeer" color-scheme="dark"
-        button press=pick("girl-with-pearl-earring") role="menuitemcheckbox" aria-checked=(painting == "girl-with-pearl-earring")
-          popovertarget="paintings" popovertargetaction="hide" testId="painting-girl-with-pearl-earring"
-          text "Girl with a Pearl Earring"
-        button press=pick("the-milkmaid") role="menuitemcheckbox" aria-checked=(painting == "the-milkmaid")
-          popovertarget="paintings" popovertargetaction="hide" testId="painting-the-milkmaid"
-          text "The Milkmaid"
-      column id="p-rembrandt" popover="auto" role="menu" aria-label="Rembrandt" color-scheme="dark"
-        button press=pick("the-night-watch") role="menuitemcheckbox" aria-checked=(painting == "the-night-watch")
-          popovertarget="paintings" popovertargetaction="hide" testId="painting-the-night-watch"
-          text "The Night Watch"
-        button press=pick("self-portrait-rembrandt") role="menuitemcheckbox" aria-checked=(painting == "self-portrait-rembrandt")
-          popovertarget="paintings" popovertargetaction="hide" testId="painting-self-portrait-rembrandt"
-          text "Self Portrait"
-      column id="p-friedrich" popover="auto" role="menu" aria-label="Caspar David Friedrich" color-scheme="dark"
-        button press=pick("wanderer-above-sea-of-fog") role="menuitemcheckbox" aria-checked=(painting == "wanderer-above-sea-of-fog")
-          popovertarget="paintings" popovertargetaction="hide" testId="painting-wanderer-above-sea-of-fog"
-          text "Wanderer Above the Sea of Fog"
-      column id="p-delacroix" popover="auto" role="menu" aria-label="Eugène Delacroix" color-scheme="dark"
-        button press=pick("liberty-leading-the-people") role="menuitemcheckbox" aria-checked=(painting == "liberty-leading-the-people")
-          popovertarget="paintings" popovertargetaction="hide" testId="painting-liberty-leading-the-people"
-          text "Liberty Leading the People"
-      column id="p-monet" popover="auto" role="menu" aria-label="Claude Monet" color-scheme="dark"
-        button press=pick("water-lilies") role="menuitemcheckbox" aria-checked=(painting == "water-lilies")
-          popovertarget="paintings" popovertargetaction="hide" testId="painting-water-lilies"
-          text "Water Lilies"
-        button press=pick("impression-sunrise") role="menuitemcheckbox" aria-checked=(painting == "impression-sunrise")
-          popovertarget="paintings" popovertargetaction="hide" testId="painting-impression-sunrise"
-          text "Impression, Sunrise"
-      column id="p-van-gogh" popover="auto" role="menu" aria-label="Vincent van Gogh" color-scheme="dark"
-        button press=pick("starry-night") role="menuitemcheckbox" aria-checked=(painting == "starry-night")
-          popovertarget="paintings" popovertargetaction="hide" testId="painting-starry-night"
-          text "The Starry Night"
-        button press=pick("sunflowers") role="menuitemcheckbox" aria-checked=(painting == "sunflowers")
-          popovertarget="paintings" popovertargetaction="hide" testId="painting-sunflowers"
-          text "Sunflowers"
-        button press=pick("cafe-terrace") role="menuitemcheckbox" aria-checked=(painting == "cafe-terrace")
-          popovertarget="paintings" popovertargetaction="hide" testId="painting-cafe-terrace"
-          text "Café Terrace at Night"
-      column id="p-klimt" popover="auto" role="menu" aria-label="Gustav Klimt" color-scheme="dark"
-        button press=pick("the-kiss") role="menuitemcheckbox" aria-checked=(painting == "the-kiss")
-          popovertarget="paintings" popovertargetaction="hide" testId="painting-the-kiss"
-          text "The Kiss"
-      column id="p-matisse" popover="auto" role="menu" aria-label="Henri Matisse" color-scheme="dark"
-        button press=pick("the-dance") role="menuitemcheckbox" aria-checked=(painting == "the-dance")
-          popovertarget="paintings" popovertargetaction="hide" testId="painting-the-dance"
-          text "The Dance"
-        button press=pick("the-music") role="menuitemcheckbox" aria-checked=(painting == "the-music")
-          popovertarget="paintings" popovertargetaction="hide" testId="painting-the-music"
-          text "The Music"
-      column id="p-munch" popover="auto" role="menu" aria-label="Edvard Munch" color-scheme="dark"
-        button press=pick("the-scream") role="menuitemcheckbox" aria-checked=(painting == "the-scream")
-          popovertarget="paintings" popovertargetaction="hide" testId="painting-the-scream"
-          text "The Scream"
-      column id="p-magritte" popover="auto" role="menu" aria-label="René Magritte" color-scheme="dark"
-        button press=pick("the-lovers") role="menuitemcheckbox" aria-checked=(painting == "the-lovers")
-          popovertarget="paintings" popovertargetaction="hide" testId="painting-the-lovers"
-          text "The Lovers"
-      column id="p-dali" popover="auto" role="menu" aria-label="Salvador Dalí" color-scheme="dark"
-        button press=pick("persistence-of-memory") role="menuitemcheckbox" aria-checked=(painting == "persistence-of-memory")
-          popovertarget="paintings" popovertargetaction="hide" testId="painting-persistence-of-memory"
-          text "The Persistence of Memory"
-      column id="p-hopper" popover="auto" role="menu" aria-label="Edward Hopper" color-scheme="dark"
-        button press=pick("nighthawks") role="menuitemcheckbox" aria-checked=(painting == "nighthawks")
-          popovertarget="paintings" popovertargetaction="hide" testId="painting-nighthawks"
-          text "Nighthawks"
-        button press=pick("morning-sun") role="menuitemcheckbox" aria-checked=(painting == "morning-sun")
-          popovertarget="paintings" popovertargetaction="hide" testId="painting-morning-sun"
-          text "Morning Sun"
-      column id="p-hokusai" popover="auto" role="menu" aria-label="Katsushika Hokusai" color-scheme="dark"
-        button press=pick("the-great-wave") role="menuitemcheckbox" aria-checked=(painting == "the-great-wave")
-          popovertarget="paintings" popovertargetaction="hide" testId="painting-the-great-wave"
-          text "The Great Wave off Kanagawa"
+      // The menu as SwiftUI's opens it, dark: Default, then movement → painter → painting (a
+      // check on the one shown), each level replacing the last with a back row; a pick or a tap
+      // outside closes it.
+      if menuOpen
+        view position="absolute" inset=0 z-index=1001 press=closeMenu aria-hidden=true
+          testId="painting-menu-scrim"
+        column position="absolute" top=(env.safeTop + 56) right=16 width=260 z-index=1002
+          color-scheme="dark" backgroundMaterial="regular" border-radius=26
+          corner-shape="-exact-continuous" padding="6px 0px" role="menu" overflow="hidden"
+          testId="painting-menu-list"
+          if inMovement == ""
+            button press=pick("") role="menuitemcheckbox" aria-checked=(painting == "")
+              appearance="none" testId="painting-default"
+              row height=44 align-items="center" gap=10 padding="0px 16px"
+                text (painting == "" ? "✓" : "") width=16 font-size=17 font-weight=600 color="#ffffff"
+                text "Default" font-size=17 color="#ffffff" flex=1
+            for m in movements() key=m.id
+              button press=enterMovement(m.id) appearance="none" testId=`movement-${m.id}`
+                row height=44 align-items="center" gap=10 padding="0px 16px"
+                  view width=16
+                  text m.name font-size=17 color="#ffffff" flex=1
+                  image "symbol:sf/chevron.right" font-size=13 color="rgba(235, 235, 245, 0.6)"
+          for m in movements().filter(m => m.id == inMovement and inPainter == "") key=m.id
+            button press=up appearance="none" testId="menu-back"
+              row height=44 align-items="center" gap=10 padding="0px 16px"
+                image "symbol:sf/chevron.left" font-size=15 color="#ffffff"
+                text m.name font-size=17 font-weight=600 color="#ffffff" flex=1
+            for p in m.painters key=p.id
+              button press=enterPainter(p.id) appearance="none" testId=`painter-${p.id}`
+                row height=44 align-items="center" gap=10 padding="0px 16px"
+                  view width=16
+                  text p.name font-size=17 color="#ffffff" flex=1
+                  image "symbol:sf/chevron.right" font-size=13 color="rgba(235, 235, 245, 0.6)"
+          for m in movements().filter(m => m.id == inMovement and inPainter != "") key=m.id
+            for p in m.painters.filter(p => p.id == inPainter) key=p.id
+              button press=up appearance="none" testId="menu-back"
+                row height=44 align-items="center" gap=10 padding="0px 16px"
+                  image "symbol:sf/chevron.left" font-size=15 color="#ffffff"
+                  text p.name font-size=17 font-weight=600 color="#ffffff" flex=1
+              for x in p.paintings key=x.id
+                button press=pick(x.id) role="menuitemcheckbox" aria-checked=(painting == x.id)
+                  appearance="none" testId=`painting-${x.id}`
+                  row height=44 align-items="center" gap=10 padding="0px 16px"
+                    text (painting == x.id ? "✓" : "") width=16 font-size=17 font-weight=600 color="#ffffff"
+                    text x.name font-size=17 color="#ffffff" flex=1
