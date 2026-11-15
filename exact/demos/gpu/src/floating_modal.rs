@@ -571,9 +571,9 @@ impl Surface for FloatingModal {
             wgpu::Color::TRANSPARENT,
         );
 
+        let scrim = self.scrim();
         let c = &mut self.canvas;
         c.begin(s);
-        let scrim = self.scrim();
         if scrim > 0.0 {
             c.save();
             c.opacity(scrim as f32);
