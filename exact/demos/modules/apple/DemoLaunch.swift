@@ -14,6 +14,7 @@
 // way (`routeLeaves`), so the release costs no picture and no unmount; a close that UIKit asked for
 // has its route going at once and flies a touch-transparent still picture instead.
 #if os(iOS)
+import MachO
 import ObjectiveC
 import UIKit
 import UIKit.UIGestureRecognizerSubclass
@@ -136,6 +137,7 @@ final class LaunchIcons {
     func touch(_ view: UIView) {
         guard let slug = views.first(where: { $0.value.view === view })?.key else { return }
         touched = (slug, CACurrentMediaTime())
+        GpuWarm.prioritize(slug)
     }
     /// The demo a presentation now opens out of: an icon touched in the last two seconds.
     func takeTouched() -> String? {
@@ -146,6 +148,29 @@ final class LaunchIcons {
     func view(_ slug: String) -> UIView? {
         guard let v = views[slug]?.view, v.window != nil else { return nil }
         return v
+    }
+}
+
+// MARK: - The GPU module's warm-up
+
+/// gpu/src/warm.rs compiles every demo's pipelines in the background; a finger on an icon moves that
+/// demo to the front. The module is `dlopen`ed privately, so its entry is found among the loaded images.
+private enum GpuWarm {
+    private typealias Prioritize = @convention(c) (UnsafePointer<UInt8>?, Int) -> Void
+    private static var entry: Prioritize?
+
+    static func prioritize(_ slug: String) {
+        if entry == nil {
+            for i in 0..<_dyld_image_count() {
+                guard let name = _dyld_get_image_name(i), String(cString: name).hasSuffix("libexact_gpu.dylib"),
+                      let handle = dlopen(name, RTLD_LAZY | RTLD_NOLOAD),
+                      let symbol = dlsym(handle, "demos_gpu_prioritize") else { continue }
+                entry = unsafeBitCast(symbol, to: Prioritize.self)
+                break
+            }
+        }
+        let bytes = Array(slug.utf8)
+        bytes.withUnsafeBufferPointer { entry?($0.baseAddress, bytes.count) }
     }
 }
 

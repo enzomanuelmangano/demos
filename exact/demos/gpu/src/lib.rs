@@ -111,6 +111,7 @@ pub mod time_machine;
 pub mod timer;
 pub mod twodos_slide;
 pub mod verification_code_face;
+pub mod warm;
 pub mod wheel_picker;
 
 /// The module's surfaces and its reflected shaders.
@@ -207,6 +208,7 @@ pub static REGISTRY: Registry = Registry {
         ("timer", 2, timer::surface),
         ("twodos_slide", 0, twodos_slide::surface),
         ("verification_code_face", 6, verification_code_face::surface),
+        ("warm", 0, warm::surface),
         ("wheel_picker", 1, wheel_picker::surface),
     ],
     shaders: shaders::SHADERS,

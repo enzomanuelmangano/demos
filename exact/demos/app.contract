@@ -122,6 +122,14 @@ component Demos
   derive approvedSlugs = failed(approved) ? [] : approved
   task approvedOnHome when homeShown key=top(nav).id
     after(1500, refreshApproved)
+  // The GPU module loads when the first canvas exists (shader registry, device: ~85 ms on the simulator),
+  // which was the first Rust demo's open. A 1 px canvas on the home, mounted once the home has settled,
+  // loads it there, and its surface (gpu/src/warm.rs) then compiles every demo's pipelines in the background.
+  state gpuWarm = false
+  action warmGpu
+    gpuWarm = true
+  task warmingGpu when homeShown and not gpuWarm key=top(nav).id
+    after(2500, warmGpu)
   resource changed = changedDemos() when homeShown as shape string[] else empty() transient
   derive changedSlugs = failed(changed) ? [] : changed
   action refreshApproved
@@ -229,6 +237,9 @@ component Demos
         if e.name == "home" and not desk
           column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" position="absolute" inset=0
             Springboard(demos=demos, approved=approvedSlugs, changed=changedSlugs, open=open)
+            if gpuWarm
+              canvas surface=warm() width=1 height=1 position="absolute" left=0 top=0 pointer-events="none"
+                aria-hidden=true testId="gpu-warm"
             // A Mac (a fine pointer) files this under View; the iPhone's home is unchanged.
             if host.pointer == "fine"
               button press=openAtlas -exact-menu="view" aria-keyshortcuts="Meta+Shift+A" aria-label="Demo Atlas"
