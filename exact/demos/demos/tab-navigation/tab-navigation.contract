@@ -1,6 +1,6 @@
 // Tab navigation: four pill tabs in a row. The chosen one widens, its icon slides left and its
 // label fades in.
-use PressableScale from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
 use DemoEnv from "../env.contract"
 
 shape TabData
@@ -77,26 +77,53 @@ fn tabLeft(i: number, active: number, w: number): number = 10 + i * (minTabWidth
 fn tabWidth(on: bool, w: number): number = on ? 170 : minTabWidth(w)
 fn tabCentre(i: number, active: number, w: number): number = tabLeft(i, active, w) + tabWidth(i == active, w) / 2
 
+// A box Core Animation plays (the render server, no main-thread frame) holds nothing that takes
+// input, so the tabs are two layers: the moving, scaling pill, label and icon, which take no
+// touches, and above them a box per tab that takes the touch and holds the pressto press. The
+// touch boxes sit at the tabs' final places at once.
 component TabNavigation
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
   props
     env: DemoEnv
   state activeTabIndex = 0
   // The tab active before the last change (-1 for none). Its label fades out.
   state previousTabIndex = -1
+  // pressto's active pressable: the held tab.
+  state pressing = pressNone()
+  derive tabs = [TabData(label="Accounts", icon="user-add"), TabData(label="Home", icon="home"), TabData(label="Payments", icon="wallet"), TabData(label="Transfers", icon="swap")]
   action choose(i: number)
     if i != activeTabIndex
       previousTabIndex = activeTabIndex
       activeTabIndex = i
+  // The tab is chosen on finger-down, so the springs start before the lift.
+  action pressIn(i: number)
+    pressing = pressDown(pressing, i)
+    choose(i)
+  action pressOut
+    pressing = pressUp(pressing)
+  action pressed(i: number)
+    pressablesOnPress()
+    choose(i)
   view
     column position="absolute" inset=0 background-color="#ffffff" align-items="center" justify-content="center"
       testId="tab-navigation"
       view position="relative" width=env.width height=60
-        for tab, i in [TabData(label="Accounts", icon="user-add"), TabData(label="Home", icon="home"), TabData(label="Payments", icon="wallet"), TabData(label="Transfers", icon="swap")] key=i
+        for tab, i in tabs key=i
           Tab(label=tab.label, icon=tab.icon, isActive=(i == activeTabIndex),
             wasActive=(i == previousTabIndex), changed=(previousTabIndex >= 0),
-            centre=tabCentre(i, activeTabIndex, env.width), width=tabWidth(i == activeTabIndex, env.width), press=choose(i), testId=`tab-${i}`)
+            centre=tabCentre(i, activeTabIndex, env.width), width=tabWidth(i == activeTabIndex, env.width),
+            pressScale=pressableScale(pressing, i, pressto), testId=`tab-${i}`)
+        for tab, i in tabs key=i
+          view role="button" position="absolute" top=0 left=tabLeft(i, activeTabIndex, env.width)
+            width=tabWidth(i == activeTabIndex, env.width) height=60
+            testId=`tab-${i}` aria-label=tab.label aria-pressed=(i == activeTabIndex)
+            press=pressed(i) pointerdown=pressIn(i) pointerup=pressOut
 
 component Tab
+  inject
+    pressto: PressablesConfig
   props
     label: string
     icon: string
@@ -105,42 +132,39 @@ component Tab
     changed: bool
     centre: number
     width: number
-    press: action
+    pressScale: number
     testId: string
   view
     // The tab's box, positioned by its centre so that scaling pivots about the centre.
-    view position="absolute" top=0 left=(0 - width / 2)
+    view position="absolute" top=0 left=(0 - width / 2) pointer-events="none"
       width=width height=60 display="flex" flex-direction="column"
-      translate=`${centre}px 0px` transition=`translate ${tabSpring()}`
-      // The tab is chosen on finger-down, so the springs start before the lift.
-      PressableScale(press=press)
-        column position="relative" width="100%" height=60 testId=testId aria-label=label aria-pressed=isActive
-          pointerdown=press
-          // Everything below is placed from the tab's centre.
-          view position="absolute" left="50%" top=0 width=0 height=60 pointer-events="none"
-            // The pill is two halves, each clipped at the centre so they meet with no gap.
-            view position="absolute" left=-90 top=0 width=92 height=60 overflow="hidden"
-              view position="absolute" left=0 top=0 width=170 height=60 background-color="#f1f1f1"
-                border-radius=15 corner-shape="-exact-continuous"
-                translate=`${90 - width / 2}px 0px` transition=`translate ${tabSpring()}`
-            view position="absolute" left=-2 top=0 width=92 height=60 overflow="hidden"
-              view position="absolute" left=0 top=0 width=170 height=60 background-color="#f1f1f1"
-                border-radius=15 corner-shape="-exact-continuous"
-                translate=`${width / 2 - 168}px 0px` transition=`translate ${tabSpring()}`
-            // The label, clipped to the tab. It slides right as the tab opens.
-            view position="absolute" left=-400 top=0 width=400 height=60 overflow="hidden"
-              translate=`${width / 2}px 0px` transition=`translate ${tabSpring()}`
-              view position="absolute" left=0 top=0 width=400 height=60 overflow="hidden"
-                translate=`${400 - width}px 0px` transition=`translate ${tabSpring()}`
-                row position="absolute" left=-150 top=0 width=300 height=60 align-items="center" justify-content="center"
-                  translate=`${(isActive ? 7.5 : 0) + width / 2}px 0px`
-                  transition=`translate ${tabSpring()}`
-                  text label font-size=16 font-weight=500 white-space="nowrap" line-clamp=1
-                    color="#000000" opacity=(isActive ? 1 : 0)
-                    animation=(changed and isActive ? "labelOn 600ms linear both" : (wasActive ? "labelOff 600ms linear both" : "none"))
-                    testId=`${testId}-label`
-            // The icon, drawn over the label. It slides left as the tab opens.
-            view position="absolute" left=0 top=20 width=20 height=20 background-color="#f1f1f1"
-              translate=`${isActive ? -65 : -10}px 0px` transition=`translate ${tabSpring()}`
-              svg width=20 height=(20 * 536 / 512) viewBox="0 0 512 536" aria-hidden=true
-                path d=iconPath(icon) fill="#000000"
+      translate=`${centre}px 0px` scale=pressScale
+      transition=`translate ${tabSpring()}, ${pressTransition("scale", pressto)}`
+      // Everything below is placed from the tab's centre.
+      view position="absolute" left="50%" top=0 width=0 height=60 pointer-events="none"
+        // The pill is two halves, each clipped at the centre so they meet with no gap.
+        view position="absolute" left=-90 top=0 width=92 height=60 overflow="hidden"
+          view position="absolute" left=0 top=0 width=170 height=60 background-color="#f1f1f1"
+            border-radius=15 corner-shape="-exact-continuous"
+            translate=`${90 - width / 2}px 0px` transition=`translate ${tabSpring()}`
+        view position="absolute" left=-2 top=0 width=92 height=60 overflow="hidden"
+          view position="absolute" left=0 top=0 width=170 height=60 background-color="#f1f1f1"
+            border-radius=15 corner-shape="-exact-continuous"
+            translate=`${width / 2 - 168}px 0px` transition=`translate ${tabSpring()}`
+        // The label, clipped to the tab. It slides right as the tab opens.
+        view position="absolute" left=-400 top=0 width=400 height=60 overflow="hidden"
+          translate=`${width / 2}px 0px` transition=`translate ${tabSpring()}`
+          view position="absolute" left=0 top=0 width=400 height=60 overflow="hidden"
+            translate=`${400 - width}px 0px` transition=`translate ${tabSpring()}`
+            row position="absolute" left=-150 top=0 width=300 height=60 align-items="center" justify-content="center"
+              translate=`${(isActive ? 7.5 : 0) + width / 2}px 0px`
+              transition=`translate ${tabSpring()}`
+              text label font-size=16 font-weight=500 white-space="nowrap" line-clamp=1
+                color="#000000" opacity=(isActive ? 1 : 0)
+                animation=(changed and isActive ? "labelOn 600ms linear both" : (wasActive ? "labelOff 600ms linear both" : "none"))
+                testId=`${testId}-label`
+        // The icon, drawn over the label. It slides left as the tab opens.
+        view position="absolute" left=0 top=20 width=20 height=20 background-color="#f1f1f1"
+          translate=`${isActive ? -65 : -10}px 0px` transition=`translate ${tabSpring()}`
+          svg width=20 height=(20 * 536 / 512) viewBox="0 0 512 536" aria-hidden=true
+            path d=iconPath(icon) fill="#000000"
