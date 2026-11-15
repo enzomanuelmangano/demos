@@ -133,6 +133,15 @@ component ScrollProgress
       view position="absolute" left=0 right=0 top=0 height=(env.safeTop + 16) z-index=10
         pointer-events="none" aria-hidden=true
         background-image="linear-gradient(180deg, #111111 0%, rgba(17, 17, 17, 0) 100%)"
+      // The owner's ask (2026-11-15): the text that scrolls under the pill fades out: a progressive
+      // blur (variable-blur, sharp at its top, 12 pt at the screen's bottom) under a scrim of the
+      // page's #111 from clear to 0.85. Not RN's (it has neither).
+      view position="absolute" left=0 right=0 bottom=0 height=(env.safeBottom + 150) z-index=99
+        pointer-events="none" aria-hidden=true testId="scroll-progress-fade"
+        variable-blur blur-radius="12" ramp-from="0" ramp-to="1" position="absolute" left=0 top=0
+          width="100%" height="100%" aria-hidden=true
+        view position="absolute" inset=0
+          background-image="linear-gradient(180deg, rgba(17, 17, 17, 0) 0%, rgba(17, 17, 17, 0.55) 55%, rgba(17, 17, 17, 0.85) 100%)"
       BottomProgress(left=((env.width - pillWidth(progress)) / 2), progress=progress, frozen=frozen, reset=reset)
 
 component BottomProgress
@@ -180,12 +189,17 @@ component BottomProgress
         // The bar: 5 tall, 70% wide, white, radius 40, clipping: the #1A1A1A track and the
         // #9E9E9E fill, scaleX(progress) from its left (the same pixels as the fill slid in
         // from the left by (progress - 1) × its width, clipped by the bar).
+        // Only the bar itself springs with the pill (its clip follows its shown size); the track
+        // and the fill inside it take no layout transition of their own. Each had one: while the
+        // pill resized, the fill was a second resizing surface whose scroll-driven translate
+        // (-100 % of its laid-out width) fought its own resize under the bar's clip, the flicker
+        // on the phone (2026-11-15).
         view class=PillMotion height=5 width="70%" background-color="#ffffff" border-radius=2.5
           overflow="hidden" position="relative"
-          view class=PillMotion position="absolute" inset=0 background-color="#1A1A1A"
-          view class=PillMotion position="absolute" inset=0 background-color="#9E9E9E"
+          view position="absolute" inset=0 background-color="#1A1A1A"
+          view position="absolute" inset=0 background-color="#9E9E9E"
             animation="spFill 1s linear both" animation-timeline="--sp" testId="progress-fill"
-          view class=PillMotion position="absolute" inset=0 background-color="#9E9E9E" opacity=(frozen ? 1 : 0)
+          view position="absolute" inset=0 background-color="#9E9E9E" opacity=(frozen ? 1 : 0)
       // CollapsedArea: absoluteFill, margin 5, #2E2D2E, radius 40 continuous; opacity
       // withTiming(INITIAL or END ? 1 : 0).
       view class=PillMotion position="absolute" top=5 left=5 right=4.66667 bottom=4.66667 border-radius=29.49 corner-shape="-exact-continuous"
