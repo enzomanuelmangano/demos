@@ -76,6 +76,18 @@ keyframes labelOff
   50% opacity=0.0000
   100% opacity=0.0000
 
+// Geometry (tabs/index.tsx's row: paddingHorizontal 10, gap 10, the active tab 170 wide, the
+// others minTabWidth) as transforms: Yoga's per-frame width became `-exact-layout-transition`
+// on the tab, its clip row and the label's margin, and on iOS a layout transition shows the
+// clip box's new size on the commit's first frame and starts the motion frames later (port-demo
+// Traps: animated-grid-list), the stutter on every tap. Every position below is linear in the
+// tabs' progress, so translates on the same spring move them as Yoga's layout did, with no
+// layout per frame.
+// The tab's left edge: 10 + i × (minWidth + 10), plus the active tab's extra width before it.
+fn tabLeft(i: number, active: number, w: number): number = 10 + i * (minTabWidth(w) + 10) + (active < i ? 170 - minTabWidth(w) : 0)
+fn tabWidth(on: bool, w: number): number = on ? 170 : minTabWidth(w)
+fn tabCentre(i: number, active: number, w: number): number = tabLeft(i, active, w) + tabWidth(i == active, w) / 2
+
 component TabNavigation
   props
     env: DemoEnv
@@ -91,44 +103,64 @@ component TabNavigation
     // src/index.tsx styles.container: white, centred.
     column position="absolute" inset=0 background-color="#ffffff" align-items="center" justify-content="center"
       testId="tab-navigation"
-      row width=env.width box-sizing="border-box" gap=10 padding="0px 10px"
+      view position="relative" width=env.width height=60
         for tab, i in [TabData(label="Accounts", icon="user-add"), TabData(label="Home", icon="home"), TabData(label="Payments", icon="wallet"), TabData(label="Transfers", icon="swap")] key=i
-          Tab(label=tab.label, icon=tab.icon, minWidth=minTabWidth(env.width), isActive=(i == activeTabIndex),
+          Tab(label=tab.label, icon=tab.icon, isActive=(i == activeTabIndex),
             wasActive=(i == previousTabIndex), changed=(previousTabIndex >= 0),
-            press=choose(i), testId=`tab-${i}`)
+            centre=tabCentre(i, activeTabIndex, env.width), width=tabWidth(i == activeTabIndex, env.width), press=choose(i), testId=`tab-${i}`)
 
 component Tab
   props
     label: string
     icon: string
-    minWidth: number
     isActive: bool
     wasActive: bool
     changed: bool
+    centre: number
+    // The tab's target width (170 active, else minWidth).
+    width: number
     press: action
     testId: string
   view
-    // pressto's PressableScale, in a box of the tab's own size (the row's item).
-    view display="flex" flex-direction="column"
+    // pressto's PressableScale turns about the tab's centre: its box is the tab's target size,
+    // centred on the moving centre by a translate (its layout left and width keep the centre at
+    // the origin, so the commit moves nothing).
+    view position="absolute" top=0 left=(0 - width / 2)
+      width=width height=60 display="flex" flex-direction="column"
+      translate=`${centre}px 0px` transition=`translate ${tabSpring()}`
       PressableScale(press=press)
-        // styles.container: #f1f1f1, borderRadius 15 continuous, height 60, justifyContent center;
-        // width interpolate(progress, [0, 1], [minWidth, maxWidth 170]) on the progress spring.
-        column width=(isActive ? 170 : minWidth) height=60 justify-content="center" background-color="#f1f1f1" text-align="center"
-          border-radius=15 corner-shape="-exact-continuous" -exact-layout-transition=tabSpring()
-          testId=testId aria-label=label aria-pressed=isActive
-          // styles.innerContainer: row, centred, overflow hidden, width 100%.
-          row align-items="center" justify-content="center" overflow="hidden" width="100%"
-            -exact-layout-transition=tabSpring()
-            // styles.iconContainer: 20 × 20 (IconSize), #f1f1f1, absolute at left 0 (centred on the
-            // cross axis, as Yoga places it), zIndex 100; translateX from (minWidth - 20) / 2 to 20.
-            view position="absolute" left=0 top="50%" margin-top=-10 width=20 height=20 background-color="#f1f1f1"
-              z-index=100 translate=`${isActive ? 20 : (minWidth - 20) / 2}px 0px`
-              transition=`translate ${tabSpring()}`
+        column position="relative" width="100%" height=60 testId=testId aria-label=label aria-pressed=isActive
+          // Everything below is placed from the tab's centre (w = the animated width).
+          view position="absolute" left="50%" top=0 width=0 height=60 pointer-events="none"
+            // styles.container: #f1f1f1, borderRadius 15 continuous, height 60, width from
+            // minWidth to 170. Two halves of a 170-wide pill, each clipped at the centre (2 pt
+            // overlap, the same opaque colour): the left one at -w/2, the right one ending at w/2.
+            view position="absolute" left=-90 top=0 width=92 height=60 overflow="hidden"
+              view position="absolute" left=0 top=0 width=170 height=60 background-color="#f1f1f1"
+                border-radius=15 corner-shape="-exact-continuous"
+                translate=`${90 - width / 2}px 0px` transition=`translate ${tabSpring()}`
+            view position="absolute" left=-2 top=0 width=92 height=60 overflow="hidden"
+              view position="absolute" left=0 top=0 width=170 height=60 background-color="#f1f1f1"
+                border-radius=15 corner-shape="-exact-continuous"
+                translate=`${width / 2 - 168}px 0px` transition=`translate ${tabSpring()}`
+            // styles.innerContainer (overflow hidden, the tab's width) as two clips: A ends at
+            // w/2, B (inside it) starts at -w/2. styles.label: fontSize 16, weight 500, one line,
+            // centred with marginLeft 0 → 15: its centre at 7.5 × progress from the tab's.
+            view position="absolute" left=-400 top=0 width=400 height=60 overflow="hidden"
+              translate=`${width / 2}px 0px` transition=`translate ${tabSpring()}`
+              view position="absolute" left=0 top=0 width=400 height=60 overflow="hidden"
+                translate=`${400 - width}px 0px` transition=`translate ${tabSpring()}`
+                row position="absolute" left=-150 top=0 width=300 height=60 align-items="center" justify-content="center"
+                  translate=`${(isActive ? 7.5 : 0) + width / 2}px 0px`
+                  transition=`translate ${tabSpring()}`
+                  text label font-size=16 font-weight=500 white-space="nowrap" line-clamp=1
+                    color="#000000" opacity=(isActive ? 1 : 0)
+                    animation=(changed and isActive ? "labelOn 600ms linear both" : (wasActive ? "labelOff 600ms linear both" : "none"))
+                    testId=`${testId}-label`
+            // styles.iconContainer: 20 × 20, #f1f1f1, over the label, centred on the 60 (Yoga
+            // centres the absolute box in the row); translateX from (minWidth - 20) / 2 to 20
+            // from the tab's left edge: -10 - 55 × progress from its centre.
+            view position="absolute" left=0 top=20 width=20 height=20 background-color="#f1f1f1"
+              translate=`${isActive ? -65 : -10}px 0px` transition=`translate ${tabSpring()}`
               svg width=20 height=(20 * 536 / 512) viewBox="0 0 512 536" aria-hidden=true
                 path d=iconPath(icon) fill="#000000"
-            // styles.label: fontSize 16, weight 500, zIndex 100, one line; marginLeft from 0 to 15.
-            text label font-size=16 font-weight=500 z-index=100 white-space="nowrap" line-clamp=1
-              color="#000000" margin-left=(isActive ? 15 : 0) -exact-layout-transition=tabSpring()
-              opacity=(isActive ? 1 : 0)
-              animation=(changed and isActive ? "labelOn 600ms linear both" : (wasActive ? "labelOff 600ms linear both" : "none"))
-              testId=`${testId}-label`
