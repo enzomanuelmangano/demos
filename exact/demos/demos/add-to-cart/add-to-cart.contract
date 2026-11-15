@@ -43,15 +43,20 @@ fn buyButton(): number = 44
 fn listSide(): number = 16
 fn listGap(): number = 12
 // The sheet floats concentric with the display: 8 from the sides and the bottom, radius 62 − 8;
-// padded 16, so the hero is 54 − 16 = 38 and the 56 pt button a capsule (28 = h / 2).
+// padded 16, so the hero is 54 − 16 = 38. The 56 pt button is a capsule (28 = h / 2), so to be
+// concentric with the sheet (and the display) its ends must share the corner's centre: it sits
+// 54 − 28 = 26 in from the sheet's sides and bottom (34 from the display's), 10 inside the
+// padding (the owner, mwhp9rou: "the button isn't concentric" at 16 in).
 fn sheetInset(): number = 8
 fn sheetPad(): number = 16
 fn sheetRadius(): number = displayCorner() - sheetInset()
 fn sheetInner(): number = sheetRadius() - sheetPad()
 fn confirmHeight(): number = 56
+fn confirmInset(): number = sheetRadius() - confirmHeight() / 2
+fn confirmExtra(): number = confirmInset() - sheetPad()
 // The copy under the hero: eyebrow 16 + 4 + title 28 + 4 + two body lines of 20.
 fn sheetCopy(): number = 92
-fn sheetHeight(hero: number): number = 2 * sheetPad() + hero + 20 + sheetCopy() + 24 + confirmHeight()
+fn sheetHeight(hero: number): number = 2 * sheetPad() + hero + 20 + sheetCopy() + 24 + confirmHeight() + confirmExtra()
 fn heroSide(w: number, h: number): number = min(w - 2 * sheetInset() - 2 * sheetPad(), h * 0.42)
 
 // One spring for every flight: critically damped, settling in ~500 ms (RN's
@@ -156,7 +161,8 @@ component AddToCart
               text "Are you sure you want to add this item to your cart?" font-size=15
                 line-height="20px" color=secondary() line-clamp=2
         // components/confirm-button: the cart button grown into "Add to Cart".
-        view height=confirmHeight() margin-top=24 flex-shrink=0 position="relative"
+        view height=confirmHeight() margin-top=24 margin-left=confirmExtra() margin-right=confirmExtra()
+          margin-bottom=confirmExtra() flex-shrink=0 position="relative"
           if open
             PressableScale(press=confirm)
               view height=confirmHeight() position="relative" aria-label="Add to Cart"
