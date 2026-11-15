@@ -10,7 +10,9 @@
 // crops it at the bottom). The icon's artwork, stretched to the card, cross-fades into it by a
 // third of the screen's width. The card's corners grow past the display's radius mid-flight and
 // settle on it; the card is a slight trapezoid (wider at the top) that straightens as it lands.
-// Behind it the home shrinks to 0.912, blurs (Gaussian, σ 25 pt) and dims (× 0.445).
+// Behind it the home's icons shrink to 0.912 (the wallpaper stays still, edge to edge:
+// springboard.contract's `springboard-zoom` is all that scales), and the home blurs
+// (Gaussian, σ 25 pt) and dims (× 0.445).
 //
 // The close: a drag shrinks the card under the finger (scale 1 − travel / 0.7 screen
 // heights, the grabbed point staying under the finger, corners at the display radius × scale,
@@ -26,6 +28,13 @@
 // card: bounds, cornerRadius + cornerCurve + masksToBounds, a projective transform for the
 // taper): no mask layer, no rasterization. At rest the card is the screen (no clipping, identity)
 // and the home, its blur and its dimming are hidden under it.
+//
+// Touches are never held for the motion's tail. The presentation completes as soon as the demo
+// shows (or the card fills the screen), not when the home behind has settled, since UIKit
+// ignores touches while a transition runs; a close or a drag may interrupt the open from where
+// it is. A close hands the route back at once: the card flies on as a picture of the demo
+// (moved out of the presentation's container, touch-transparent), so the home under it takes
+// taps during the flight, as SpringBoard's does.
 #if os(iOS)
 import ObjectiveC
 import UIKit
@@ -250,6 +259,10 @@ private final class CardView: UIView {}
 final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
     /// The demo on screen (not closing): its card and buttons read it.
     static weak var current: LaunchSession?
+    /// The session that last opened over the home: the only one that moves or shows it (a close
+    /// still landing leaves it to the next open).
+    private static weak var homeOwner: LaunchSession?
+    private var ownsHome: Bool { LaunchSession.homeOwner == nil || LaunchSession.homeOwner === self }
     /// Sessions alive: a close still landing while the next opens.
     private static var live: [LaunchSession] = []
     static let shownChanged = Notification.Name("DemosLaunchShownChanged")
@@ -282,6 +295,17 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
     // What it adds.
     private weak var icon: UIView?
     private weak var home: UIView?
+    /// What scales on the home: its icons, not its wallpaper (`springboard-zoom`); the home
+    /// itself where that is not found.
+    private weak var zoom: UIView?
+    private var zoomCenter = CGPoint.zero      // the zoom's centre in window points
+    /// The demo as it flies home: a picture of it, once its route has been handed back.
+    private var snapshot: UIView?
+    /// What the card scales: the picture once there is one, else the demo itself.
+    private var content: UIView? { snapshot ?? controller?.view }
+    /// The card is out of the presentation's container (`detachCard`).
+    private var detached = false
+    private weak var cardHost: UIView?
     private var cardView: CardView?
     private var art: UIView?
     private var blur: HomeBlur?
@@ -331,6 +355,17 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         return false
     }
 
+    /// The first view under `root` whose identifier (a node's testId) is `id`.
+    fileprivate static func find(_ id: String, in root: UIView) -> UIView? {
+        var queue = [root]
+        while !queue.isEmpty {
+            let v = queue.removeFirst()
+            if v.accessibilityIdentifier == id { return v }
+            queue.append(contentsOf: v.subviews)
+        }
+        return nil
+    }
+
     // MARK: transitioning delegate
 
     func animationController(forPresented presented: UIViewController, presenting: UIViewController,
@@ -377,6 +412,11 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         self.icon = icon
         grouped = true
         home = ctx.viewController(forKey: .from)?.view ?? host.subviews.first
+        zoom = home.flatMap { LaunchSession.find("springboard-zoom", in: $0) } ?? home
+        LaunchSession.homeOwner = self
+        if let zoom { zoomCenter = zoom.convert(CGPoint(x: zoom.bounds.midX, y: zoom.bounds.midY), to: nil) }
+        // A close still landing may have the icons part way back: start from where they show.
+        let shownScale = Double(zoom?.layer.presentation()?.transform.m11 ?? 1)
         iconFrame = icon.convert(icon.bounds, to: nil)
         iconRadius = iconFrame.width * K.iconRadiusRatio
         let blur = HomeBlur()
@@ -391,7 +431,7 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         host.insertSubview(dim, belowSubview: container)
         self.dim = dim
         // The icon's artwork, lifted into the card (the card clips it to its corners).
-        if let art = icon.snapshotView(afterScreenUpdates: false) {
+        if let art = LaunchSession.picture(of: icon) {
             art.isUserInteractionEnabled = false
             art.bounds = CGRect(origin: .zero, size: iconFrame.size)
             cardView.addSubview(art)
@@ -405,7 +445,7 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         h.set(w.x * aspect.x)
         cx.set(Double(iconFrame.midX)); cx.run(to: Double(screen.width / 2), K.openCenterX)
         cy.set(Double(iconFrame.midY)); cy.run(to: Double(screen.height / 2), K.openCenterY)
-        homeScale.set(1); homeScale.run(to: K.homeScale, K.openHomeScale)
+        homeScale.set(shownScale > 0 ? shownScale : 1); homeScale.run(to: K.homeScale, K.openHomeScale)
         homeBlur.set(0); homeBlur.run(to: 1, K.openHomeBlur)
         homeDim.set(0); homeDim.run(to: 1, K.openHomeDim)
         phase = .opening
@@ -415,9 +455,23 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
 
     /// The card is the screen: the transition completes, and what it covers stops drawing.
     private func opened() {
-        guard let view = controller?.view else { return }
         phase = .open
         rest()
+        completePresentation()
+        installGestures()
+    }
+
+    /// The presentation is over for UIKit, which until then ignores every touch: as soon as the
+    /// demo shows, while the home behind may still be settling.
+    private func completePresentation() {
+        guard let ctx = presenting else { return }
+        presenting = nil
+        ctx.completeTransition(!ctx.transitionWasCancelled)
+    }
+
+    /// The grab strip and the close drag, once the card is the screen.
+    private func installGestures() {
+        guard pan == nil, !closing, let view = controller?.view else { return }
         let grab = GrabZone(frame: CGRect(x: 0, y: 0, width: view.bounds.width,
                                           height: view.window?.safeAreaInsets.top ?? 0))
         grab.autoresizingMask = [.flexibleWidth]
@@ -459,7 +513,7 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         art?.layer.opacity = 0
         blur?.isHidden = true
         dim?.isHidden = true
-        home?.isHidden = true
+        if ownsHome { home?.isHidden = true }
         CATransaction.commit()
     }
 
@@ -479,10 +533,32 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
 
     /// The close button: the card flies home from full screen.
     func closeFromButton() {
-        guard phase == .open || !grouped else { return }
+        guard phase == .open || phase == .opening || !grouped else { return }
         if closing { return }
-        if grouped { unrest() }
-        commit(haptic: true, velocity: nil)
+        var velocity: (w: Double, h: Double, x: Double, y: Double)?
+        if grouped { if phase == .opening { velocity = interruptOpen() } else { unrest() } }
+        commit(haptic: true, velocity: velocity)
+    }
+
+    /// The open stopped where it shows now: the springs take the flight's pose and its velocity
+    /// (a close or a drag goes on from there, no jump), and UIKit's transition ends.
+    private func interruptOpen() -> (w: Double, h: Double, x: Double, y: Double)? {
+        defer { completePresentation() }
+        guard phase == .opening, let f = flight, !f.poses.isEmpty else { unrest(); return nil }
+        let x = max(0, CACurrentMediaTime() - f.start) * Flight.rate
+        let i = min(Int(x), f.poses.count - 1), j = min(i + 1, f.poses.count - 1), u = x - Double(i)
+        let a = f.poses[i], b = f.poses[j]
+        func at(_ k: KeyPath<Pose, Double>) -> Double { lerp(a[keyPath: k], b[keyPath: k], u) }
+        func rate(_ k: KeyPath<Pose, Double>) -> Double { (b[keyPath: k] - a[keyPath: k]) * Flight.rate }
+        flight = nil
+        home?.isHidden = false
+        blur?.isHidden = false
+        dim?.isHidden = false
+        moving(true)
+        w.set(at(\.w)); h.set(at(\.h)); cx.set(at(\.cx)); cy.set(at(\.cy))
+        radius = at(\.radius)
+        homeScale.set(at(\.homeScale)); homeBlur.set(at(\.blur)); homeDim.set(at(\.hd))
+        return (rate(\.w), rate(\.h), rate(\.cx), rate(\.cy))
     }
 
     /// Let go: the card flies into the icon from the pose it is in, keeping the throw.
@@ -511,13 +587,78 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         homeDim.run(to: 0, K.closeHomeDim)
         homeBlur.target = 0
         retargetIcon()
+        pictureContent()
+        if snapshot != nil { detachCard() }
         fly()
+        // The route goes now, its picture flying on: the home takes taps under the flight.
+        if detached {
+            CATransaction.flush()
+            DispatchQueue.main.async { [self] in leave() }
+        }
+    }
+
+    /// The card out of the presentation's container, which UIKit takes away with the route, into
+    /// the view under it, at the same place: touch-transparent, so the home takes the taps.
+    private func detachCard() {
+        guard !detached, let cardView, let container = cardView.superview, let host = container.superview else { return }
+        let origin = container.frame.origin
+        host.insertSubview(cardView, aboveSubview: container)
+        if origin != .zero { cardView.center = CGPoint(x: cardView.center.x + origin.x, y: cardView.center.y + origin.y) }
+        cardView.isUserInteractionEnabled = false
+        cardHost = host
+        detached = true
+    }
+
+    /// UIKit's end of the dismissal takes the detached card out of the window with the route
+    /// (seen on the simulator, iOS 27), and Core Animation its flight with it: both go back, on
+    /// the flight's own clock, so not a frame is lost.
+    private func keepCard() {
+        guard detached, phase == .closing, let cardView, cardView.superview == nil, let host = cardHost else { return }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        host.addSubview(cardView)
+        if let f = flight { removeFlight(); animate(f) }
+        CATransaction.commit()
+    }
+
+    /// The demo as it shows now, in its place in the card: what flies home once the route is
+    /// handed back (a demo's views go with its route). None, and the route stays to the landing.
+    private func pictureContent() {
+        guard snapshot == nil, let view = controller?.view, let cardView,
+              let picture = LaunchSession.picture(of: view) else { return }
+        picture.isUserInteractionEnabled = false
+        picture.bounds = view.bounds
+        picture.layer.anchorPoint = view.layer.anchorPoint
+        picture.layer.position = view.layer.position
+        picture.layer.transform = view.layer.transform
+        cardView.insertSubview(picture, aboveSubview: view)
+        view.layer.removeAnimation(forKey: LaunchSession.flightKey + ".a")
+        view.layer.removeAnimation(forKey: LaunchSession.flightKey + ".b")
+        view.isHidden = true
+        snapshot = picture
+    }
+
+    /// What `view` shows now, as a still image: the render server's picture of it (a GPU canvas
+    /// included), drawn at once. A `snapshotView` is taken at the next commit, so it comes out
+    /// empty when its view is hidden or leaves in the same transaction, as the icon and the
+    /// demo do here.
+    fileprivate static func picture(of view: UIView) -> UIView? {
+        let size = view.bounds.size
+        guard size.width >= 1, size.height >= 1, view.window != nil else { return nil }
+        let format = UIGraphicsImageRendererFormat.preferred()
+        format.scale = view.window?.screen.scale ?? UIScreen.main.scale
+        let image = UIGraphicsImageRenderer(size: size, format: format).image { _ in
+            _ = view.drawHierarchy(in: CGRect(origin: .zero, size: size), afterScreenUpdates: false)
+        }
+        let picture = UIImageView(image: image)
+        picture.frame = CGRect(origin: .zero, size: size)
+        return picture
     }
 
     /// The icon where the home now draws it (the home grows back under the flight).
     private func retargetIcon() {
         let s = homeScale.x
-        let mid = CGPoint(x: screen.width / 2, y: screen.height / 2)
+        let mid = zoom != nil ? zoomCenter : CGPoint(x: screen.width / 2, y: screen.height / 2)
         w.target = Double(iconFrame.width) * s
         h.target = Double(iconFrame.height) * s
         cx.target = Double(mid.x) + (Double(iconFrame.midX) - Double(mid.x)) * s
@@ -535,17 +676,20 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         dismissing = ctx
         if routeGone || !grouped { finishDismissal() }
         else if !closing {
-            if phase == .open { unrest() }
-            commit(haptic: false, velocity: nil)
+            var velocity: (w: Double, h: Double, x: Double, y: Double)?
+            if phase == .opening { velocity = interruptOpen() } else if phase == .open { unrest() }
+            commit(haptic: false, velocity: velocity)
         }
     }
 
     private func finishDismissal() {
         guard let ctx = dismissing else { return }
         dismissing = nil
+        // A detached card flies on to its landing (`land` takes it away).
+        if !detached || phase == .landed { cardView?.removeFromSuperview() }
         ctx.view(forKey: .from)?.removeFromSuperview()
-        cardView?.removeFromSuperview()
         ctx.completeTransition(true)
+        keepCard()
         if !grouped { land() }
         if phase == .landed || !grouped { LaunchSession.live.removeAll { $0 === self } }
     }
@@ -567,8 +711,16 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         blur = nil
         dim?.removeFromSuperview()
         dim = nil
-        home?.transform = .identity
-        home?.isHidden = false
+        if ownsHome {
+            zoom?.layer.transform = CATransform3DIdentity
+            home?.isHidden = false
+            LaunchSession.homeOwner = nil
+        }
+        if detached {
+            snapshot?.removeFromSuperview()
+            snapshot = nil
+            cardView?.removeFromSuperview()
+        }
         link?.invalidate()
         link = nil
         if grouped, !routeGone { DispatchQueue.main.async { [self] in leave() } }
@@ -590,7 +742,8 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         switch pan.state {
         case .began:
             // Only a card at rest is taken (one springing back finishes first).
-            guard phase == .open, grouped, !closing else { return }
+            guard phase == .open || phase == .opening, grouped, !closing else { return }
+            if phase == .opening { flight = nil; removeFlight(); completePresentation() }
             unrest()
             dragAnchor = pan.location(in: nil)
             phase = .dragging
@@ -640,6 +793,7 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
     private struct Pose {
         var w = 0.0, h = 0.0, cx = 0.0, cy = 0.0, radius = 0.0, taper = 0.0, art = 0.0
         var homeScale = 1.0, dim = 0.0, blur = 0.0
+        var hd = 0.0              // the dimming spring itself (dim is the layer's opacity)
     }
 
     /// The pose of the springs as they are, `since` seconds into the phase.
@@ -658,6 +812,7 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         let gain = 1 - (1 - K.homeGain) * clamp01(homeDim.x)
         let blurGain = 1 - (1 - BlurCalibration.gainAtFull) * p.blur
         p.dim = clamp01(1 - gain / max(blurGain, 0.01))
+        p.hd = homeDim.x
         return p
     }
 
@@ -758,7 +913,8 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
     private static let flightKey = "launch"
 
     private func removeFlight() {
-        for layer in [cardView?.layer, controller?.view.layer, art?.layer, home?.layer, dim?.layer] {
+        let homeLayer = ownsHome ? zoom?.layer : nil
+        for layer in [cardView?.layer, content?.layer, art?.layer, homeLayer, dim?.layer] {
             layer?.removeAnimation(forKey: LaunchSession.flightKey + ".a")
             layer?.removeAnimation(forKey: LaunchSession.flightKey + ".b")
             layer?.removeAnimation(forKey: LaunchSession.flightKey + ".c")
@@ -807,13 +963,13 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
             c.bounds = l.cardBounds; c.position = l.cardPosition; c.transform = l.cardTransform
             c.cornerRadius = l.radius
         }
-        if let v = controller?.view.layer {
+        if let v = content?.layer {
             v.transform = l.contentTransform; v.position = l.contentPosition
         }
         if let a = art?.layer {
             a.position = l.artPosition; a.transform = l.artTransform; a.opacity = l.artOpacity
         }
-        home?.layer.transform = l.homeTransform
+        if ownsHome { zoom?.layer.transform = l.homeTransform }
         dim?.layer.opacity = l.dimOpacity
         blur?.amount = p.blur
     }
@@ -841,13 +997,13 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         add(card, "position", ".b", ls.map { NSValue(cgPoint: $0.cardPosition) })
         add(card, "transform", ".c", ls.map { NSValue(caTransform3D: $0.cardTransform) })
         add(card, "cornerRadius", ".d", ls.map { $0.radius })
-        let content = controller?.view.layer
+        let content = self.content?.layer
         add(content, "transform", ".a", ls.map { NSValue(caTransform3D: $0.contentTransform) })
         add(content, "position", ".b", ls.map { NSValue(cgPoint: $0.contentPosition) })
         add(art?.layer, "position", ".a", ls.map { NSValue(cgPoint: $0.artPosition) })
         add(art?.layer, "transform", ".b", ls.map { NSValue(caTransform3D: $0.artTransform) })
         add(art?.layer, "opacity", ".c", ls.map { $0.artOpacity })
-        add(home?.layer, "transform", ".a", ls.map { NSValue(caTransform3D: $0.homeTransform) })
+        add(ownsHome ? zoom?.layer : nil, "transform", ".a", ls.map { NSValue(caTransform3D: $0.homeTransform) })
         add(dim?.layer, "opacity", ".a", ls.map { $0.dimOpacity })
     }
 
@@ -882,15 +1038,18 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
             switch phase {
             case .opening:
                 if !shown, revealCountdown == nil, t >= f.mount { revealCountdown = K.firstPaintFrames + 1 }
+                // Touches from the moment the demo shows or the card fills the screen, not once
+                // the home behind has settled too.
+                if shown || t >= f.cardDone { completePresentation() }
+                if t >= f.cardDone { installGestures() }
                 if t >= f.end {
                     flight = nil
-                    presenting?.completeTransition(!(presenting?.transitionWasCancelled ?? false))
-                    presenting = nil
                     opened()
                 }
             case .returning:
                 if t >= f.end { flight = nil; phase = .open; rest() }
             case .closing:
+                keepCard()
                 // Covered by the artwork: the demo stops drawing; its route goes once all is still.
                 if t >= f.covered, controller?.view.isHidden == false { controller?.view.isHidden = true }
                 if t >= f.cardDone, cardView?.isHidden == false { landCard() }
