@@ -65,6 +65,16 @@ const W: f64 = 300.0;
 const H: f64 = 400.0;
 /// rTicketStyle's perspective.
 const PERSPECTIVE: f32 = 1000.0;
+/// Beyond RN (phone feedback 2026-11-15: "it jams in this state", edge-on, and "make it look
+/// three-dimensional"): a fling settles on a face (the decay's landing rounded to 180°, a
+/// critically damped spring carrying the throw); the ticket is a slab THICKNESS deep whose
+/// facing edge shows at grazing angles; a soft contact shadow under it follows its projected
+/// width; a specular band sweeps across the face with the turn and the tilt; and the sensor
+/// adds a slight parallax (at most PARALLAX_MAX degrees about each axis).
+const THICKNESS: f32 = 3.0;
+const SETTLE_MS: f64 = 900.0;
+const PARALLAX_MAX: f64 = 8.0;
+const PARALLAX_GAIN: f64 = 0.35;
 /// styles.container's backgroundColor (a View: Display P3 components).
 const BACKGROUND: u32 = 0x070018;
 /// The HolographicCard's colour (#FFF5EEFF) and the RoundedRect's r.
@@ -594,20 +604,41 @@ impl ThreadsHoloTicket {
         self.x % 360.0
     }
 
+    /// The sensor's parallax (deg about x, about y), clamped: never near edge-on.
+    fn parallax(&self) -> (f64, f64) {
+        let (p, r) = self.attitude.unwrap_or((0.0, 0.0));
+        let k = |v: f64| (v.to_degrees() * PARALLAX_GAIN).clamp(-PARALLAX_MAX, PARALLAX_MAX);
+        (-k(p), k(r))
+    }
+
     fn is_front(&self) -> bool {
         let a = self.rotate_y().abs();
         a < 90.0 || a > 270.0
     }
 
-    /// The ticket's plane (its points) → the screen.
-    fn matrix(&self) -> skia::Matrix3 {
+    /// The ticket's 3D transform (its points, z toward the viewer → the screen), with the
+    /// parallax.
+    fn matrix4(&self) -> Matrix4 {
         let l = &self.layout;
         let (cx, cy) = ((W / 2.0) as f32, (H / 2.0) as f32);
+        let (px, py) = self.parallax();
         Matrix4::translate(l.x0 as f32 + cx, l.y0 as f32 + cy, 0.0)
             .multiply(Matrix4::perspective(PERSPECTIVE))
-            .multiply(Matrix4::rotate_y(self.rotate_y().to_radians() as f32))
+            .multiply(Matrix4::rotate_x(px.to_radians() as f32))
+            .multiply(Matrix4::rotate_y((self.rotate_y() + py).to_radians() as f32))
             .multiply(Matrix4::translate(-cx, -cy, 0.0))
-            .to_matrix3()
+    }
+
+    /// The face that shows, at its side of the slab (front at +½ thickness, back at −½).
+    fn matrix(&self) -> skia::Matrix3 {
+        let z = if self.is_front() { THICKNESS / 2.0 } else { -THICKNESS / 2.0 };
+        self.matrix4().multiply(Matrix4::translate(0.0, 0.0, z)).to_matrix3()
+    }
+
+    /// An edge of the slab (x = `x0`) as a plane in (z, y): z across the thickness.
+    fn side_matrix(&self, x0: f32) -> skia::Matrix3 {
+        let basis = Matrix4([0.0, 0.0, 0.0, x0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]);
+        self.matrix4().multiply(basis).to_matrix3()
     }
 
     /// UIKit's hit test: the zIndex View's frame, then the ticket's transformed bounds.
@@ -616,14 +647,9 @@ impl ThreadsHoloTicket {
         if !(x >= l.x0 && x < l.x0 + W && y >= l.y0 && y < l.y0 + H) {
             return false;
         }
-        let Some(inv) = self.matrix().invert() else { return false };
-        let m = inv.0;
-        let (xf, yf) = (x as f32, y as f32);
-        if m[6] * xf + m[7] * yf + m[8] <= 0.0 {
-            return false;
-        }
-        let p = inv.map(xf, yf);
-        p.x >= 0.0 && (p.x as f64) < W && p.y >= 0.0 && (p.y as f64) < H
+        // The zIndex View's frame takes the touch whatever the turn: an edge-on ticket (a few
+        // points wide on screen) could otherwise never be grabbed again (the phone's "jam").
+        true
     }
 
     fn step(&mut self, now_ms: f64) -> bool {
@@ -646,6 +672,36 @@ impl ThreadsHoloTicket {
                 moving
             }
         }
+    }
+
+    /// The slab's edges: thickness, whether the left (x = 0, outward −x) or right edge faces the
+    /// viewer (its outward normal turned toward +z), and how squarely (|sin| of the turn).
+    fn slab(&self) -> [f32; 4] {
+        let (_, py) = self.parallax();
+        let sin = (self.rotate_y() + py).to_radians().sin() as f32;
+        // Square-on (|sin| tiny) neither edge shows, and its plane's map is near singular.
+        [THICKNESS, if sin > 0.02 { 1.0 } else { 0.0 }, if sin < -0.02 { 1.0 } else { 0.0 }, sin.abs()]
+    }
+
+    /// The contact shadow: under the face's projected bounds, 28 pt lower, a little narrower,
+    /// never thinner than a finger.
+    fn shadow(&self) -> [f32; 4] {
+        let m = self.matrix();
+        let pts = [(0.0, 0.0), (W as f32, 0.0), (0.0, H as f32), (W as f32, H as f32)].map(|(x, y)| m.map(x, y));
+        let (x0, x1) = pts.iter().fold((f32::MAX, f32::MIN), |a, p| (a.0.min(p.x), a.1.max(p.x)));
+        let (y0, y1) = pts.iter().fold((f32::MAX, f32::MIN), |a, p| (a.0.min(p.y), a.1.max(p.y)));
+        let hw = ((x1 - x0) / 2.0 * 0.86).max(14.0);
+        [(x0 + x1) / 2.0, (y0 + y1) / 2.0 + 28.0, hw, (y1 - y0) / 2.0 * 0.9]
+    }
+
+    /// The shadow's blur and opacity, the specular band's centre (0…1 across the face) and
+    /// strength: the band sweeps with the turn and the roll, brightest at a three-quarter turn.
+    fn light(&self) -> [f32; 4] {
+        let (_, py) = self.parallax();
+        let t = (self.rotate_y() + py).to_radians();
+        let band = 0.5 - 0.9 * t.sin() + py / 60.0;
+        let strength = 0.3 * t.sin().abs();
+        [34.0, 0.5, band as f32, strength as f32]
     }
 
     /// The canvas's values now: the tilt reaches them only while the mask shows.
@@ -698,11 +754,21 @@ impl ThreadsHoloTicket {
                 t.sample(x, y, ms);
                 if t.origin.is_some() {
                     // onEnd: the decay from where it is.
+                    // Where RN's decay would land (the same decay, run ahead), rounded to a face;
+                    // a critically damped spring carries the throw there.
+                    let v = t.velocity_x() * DECAY_VELOCITY;
                     let mut d = Decay::at(self.x);
                     d.deceleration = DECAY_DECELERATION;
                     d.clamp = Some([self.x - DECAY_CLAMP, self.x + DECAY_CLAMP]);
-                    d.fling(t.velocity_x() * DECAY_VELOCITY);
-                    self.motion = Motion::Decay(d);
+                    d.fling(v);
+                    let mut ahead = 0.0;
+                    while d.step(ahead) && ahead < 10_000.0 {
+                        ahead += 16.0;
+                    }
+                    let face = (d.value / 180.0).round() * 180.0;
+                    let mut s = Spring::at(self.x);
+                    s.to(face, v, reanimated::duration_config(self.x - face, v, SETTLE_MS, 1.0, 4.0));
+                    self.motion = if s.running { Motion::Spring(s) } else { Motion::Rest };
                 } else if phase == Phase::Up && !t.tap_failed && ms - t.down.2 <= TAP_MAX_MS {
                     // onStart / onEnd: cancelAnimation, the haptic, the flip spring from rest.
                     let normalized = (self.x / 180.0 + 0.5).floor() * 180.0;
@@ -822,6 +888,11 @@ impl Surface for ThreadsHoloTicket {
             tex: [tw as f32, th as f32, qp, qp],
             background: [bg[0], bg[1], bg[2], 1.0],
             canvas: [frame.pixels().0 as f32, frame.pixels().1 as f32, s, gfx::srgb_flag(format)],
+            left: self.side_matrix(0.0).invert().unwrap_or(skia::Matrix3([0.0; 9])).rows(),
+            right: self.side_matrix(W as f32).invert().unwrap_or(skia::Matrix3([0.0; 9])).rows(),
+            slab: self.slab(),
+            shadow: self.shadow(),
+            light: self.light(),
         };
         let gpu = self.gpu.as_ref().unwrap();
         queue.write_buffer(&gpu.uniforms, 0, &u.bytes());
@@ -1075,9 +1146,12 @@ mod tests {
         // The ticket (60…360 × 256…656): seashell inside, the notches are background.
         assert!(near(px(&rest, 330.0, 450.0), [255, 245, 238], 1), "{:?}", px(&rest, 330.0, 450.0));
         assert_eq!(px(&rest, 210.0, 260.0), bg);
-        assert_eq!(px(&rest, 210.0, 652.0), bg);
+        // The bottom notch shows the glow pooled under the ticket, not the ticket.
+        let notch = px(&rest, 210.0, 652.0);
+        assert!(notch[0] < 80 && notch[2] > notch[0], "{notch:?}");
         assert!(near(px(&rest, 236.0, 260.0), [255, 245, 238], 1));
-        assert_eq!(px(&rest, 58.0, 450.0), bg);
+        // Beside the ticket: the background, the glow under it just reaching (a level or two).
+        assert!(near(px(&rest, 58.0, 450.0), bg, 3), "{:?}", px(&rest, 58.0, 450.0));
         // The front's text: a value's glyphs are dark (TUE 14 JAN, at the section's value line).
         let mut dark = 0;
         for k in 0..240 {
@@ -1134,8 +1208,8 @@ mod tests {
         }
         let reply = s.agent("").unwrap();
         assert!(reply.contains("\"moving\":false,\"held\":false"), "{reply}");
-        // rigidDecay.ts compounds its fade: the fling stops at 326.433, well short of the clamp.
-        assert!(reply.starts_with("{\"translateX\":326.433,"), "{reply}");
+        // rigidDecay.ts's fling would stop at 326.433; it settles on the nearest face, 360.
+        assert!(reply.starts_with("{\"translateX\":360.000,"), "{reply}");
 
         // A tap flips the ticket half a turn: the back's QR shows, the haptic is posted.
         let tap = |s: &mut Box<dyn Surface>, at: f64| {
@@ -1143,7 +1217,7 @@ mod tests {
             s.input(&p(PointerPhase::Down));
             s.input(&InputEvent::Pointer { id: 2, phase: PointerPhase::Up, x: 211.0, y: 450.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: at + 80.0 });
         };
-        // From translateX 326.433: round(326.433 / 180) × 180 + 180 = 540.
+        // From translateX 360: round(360 / 180) × 180 + 180 = 540.
         tap(&mut s, ms + 100.0);
         assert_eq!(s.messages(), vec!["haptic:selection".to_string()]);
         let mut t = ms + 200.0;
@@ -1165,4 +1239,5 @@ mod tests {
         s.input(&InputEvent::Pointer { id: 3, phase: PointerPhase::Down, x: 30.0, y: 450.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: t + 100.0 });
         assert!(s.agent("").unwrap().ends_with("\"held\":false}"));
     }
+
 }
