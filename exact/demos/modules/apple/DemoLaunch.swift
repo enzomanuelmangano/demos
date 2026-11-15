@@ -838,12 +838,14 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         put(last)
         f.start = CACurrentMediaTime()
         animate(f)
+        // The blur is scrubbed by the link, not by the keyframes: it starts at the flight's first pose, or
+        // the first committed frame shows the flight's last (the home fully blurred).
+        blur?.amount = f.poses[0].blur
         CATransaction.commit()
         // The open runs inside the host's apply, which then mounts the demo's route on this thread
         // (100–300 ms for a GPU demo): commit now so the flight starts under the finger.
         if phase == .opening { CATransaction.flush() }
         flight = f
-        blur?.amount = f.poses[0].blur
         startLink()
     }
 
