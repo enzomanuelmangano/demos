@@ -25,12 +25,14 @@
 //! - The top LinearGradient (safeTop × 3 tall, white at 1, 0.05, 0.025) lies over the list.
 //!
 //! Past RN (the owner: "on long press you should see the shadow, something to show it's
-//! lifted"): the held row lifts as iOS's drag lift does: it scales to 1.04 about its centre and
-//! casts a soft shadow, 8 pt down, from fixed translucent rings (no blur, nothing re-rasterised),
-//! both on one `lift` value: a critically damped 200 ms spring up, and on the drop a spring
-//! back (ζ 0.7, 350 ms) that settles with a hint of give. The row stays above its neighbours
-//! (zIndex 50) while it settles. A soft impact plays on the drop (`haptic:impact-soft`), as the
-//! light one on the lift.
+//! lifted"): the held row lifts as iOS's drag lift does: it scales to 1.05 about its centre,
+//! casts a shadow (18 % black, a 16 pt blur's falloff, 8 pt down) built from fixed translucent
+//! rings whose alphas compose to a Gaussian edge (no blur, nothing re-rasterised), and the rest
+//! of the list fades under a 35 % white veil, all on one `lift` value: a critically damped 200 ms
+//! spring up, and on the drop a spring back (ζ 0.7, 350 ms). The row stays above its
+//! neighbours (zIndex 50) while it settles. A soft impact plays on the drop
+//! (`haptic:impact-soft`), as the light one on the lift. (The first cut, 1.04 and ~10 % rings,
+//! read as nothing on the phone: a white row on a white screen under the finger.)
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -51,9 +53,40 @@ const MAX_RADIUS: f64 = 10.0;
 const BUTTON_ROW: f64 = 56.0;
 const LONG_PRESS_MS: f64 = 500.0;
 /// The lift: the held row's scale, its shadow's drop (pt), and the shadow's rings.
-const LIFT_SCALE: f64 = 0.04;
+const LIFT_SCALE: f64 = 0.05;
 const LIFT_DROP: f32 = 8.0;
-const SHADOW_RINGS: usize = 8;
+/// The shadow: its opacity, the blur radius it imitates (σ = blur / 2), and its rings.
+const SHADOW_ALPHA: f64 = 0.18;
+const SHADOW_BLUR: f64 = 16.0;
+const SHADOW_RINGS: usize = 14;
+/// The white veil over the rest of the list at full lift.
+const VEIL: f32 = 0.35;
+
+/// The shadow's rings, outermost first: (spread past the card's edge, alpha). Painted over one
+/// another, a point `d` past the edge is covered by the rings reaching it, and their alphas
+/// compose to SHADOW_ALPHA × (1 − Φ(d / σ)): a Gaussian-blurred edge, from fixed shapes.
+fn shadow_rings() -> [(f32, f32); SHADOW_RINGS] {
+    let sigma = SHADOW_BLUR / 2.0;
+    // Φ by Abramowitz–Stegun 7.1.26 (|error| < 1.5e-7).
+    let phi = |x: f64| {
+        let z = x.abs() / std::f64::consts::SQRT_2;
+        let t = 1.0 / (1.0 + 0.3275911 * z);
+        let y = 1.0 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * (-z * z).exp();
+        0.5 * (1.0 + if x < 0.0 { -y } else { y })
+    };
+    let target = |d: f64| SHADOW_ALPHA * (1.0 - phi(d / sigma));
+    let (outer, inner) = (2.5 * sigma, -sigma);
+    let mut out = [(0.0f32, 0.0f32); SHADOW_RINGS];
+    let mut covered = 0.0;
+    for (k, ring) in out.iter_mut().enumerate() {
+        let d = outer + (inner - outer) * k as f64 / (SHADOW_RINGS - 1) as f64;
+        let want = target(d);
+        let a = 1.0 - (1.0 - want) / (1.0 - covered);
+        covered = want;
+        *ring = (d as f32, a.max(0.0) as f32);
+    }
+    out
+}
 
 /// constants.ts: title, activeValues, color (r, g, b, a), squareColor.
 struct Habit {
@@ -185,6 +218,7 @@ pub fn surface() -> Box<dyn Surface> {
         radius: std::array::from_fn(|_| Timing::at(5.0)),
         translate_x: std::array::from_fn(|_| Timing::at(0.0)),
         lift: [Spring::at(0.0); COUNT],
+        order_top: None,
         active: None,
         last_active: None,
         hold: None,
@@ -207,6 +241,8 @@ struct Sort {
     translate_x: [Timing; COUNT],
     /// 0 at rest, 1 lifted (the scale and the shadow).
     lift: [Spring; COUNT],
+    /// The row drawn last (the veil goes under it).
+    order_top: Option<usize>,
     active: Option<usize>,
     last_active: Option<usize>,
     hold: Option<Hold>,
@@ -336,6 +372,7 @@ impl Sort {
         let (w, _) = self.size;
         let content = self.content_top();
         let order = self.order();
+        self.order_top = order.last().copied();
         let c = &mut self.canvas;
         c.begin(scale as f32);
         c.draw_rect(
@@ -369,17 +406,27 @@ impl Sort {
             // about its centre.
             let lift = self.lift[i].value.max(0.0) as f32;
             if lift > 0.001 {
+                // The rest of the list under a veil, the lifted row above it.
+                if self.order_top == Some(i) {
+                    c.save();
+                    c.translate(-dx as f32, -dy as f32);
+                    c.draw_rect(0.0, 0.0, w as f32, self.size.1 as f32, &Paint::fill(Color::WHITE.alpha(VEIL * lift.min(1.0))));
+                    c.restore();
+                }
                 let (cw, chh) = ((w - 2.0 * PADDING) as f32, HEIGHT as f32);
-                for k in 0..SHADOW_RINGS {
-                    let spread = 2.0 * (k as f32 + 1.0) * lift;
-                    let a = 0.022 * lift * (1.0 - k as f32 / SHADOW_RINGS as f32);
+                let s = 1.0 + (LIFT_SCALE as f32) * lift;
+                // The shadow under the scaled card: its rings about the scaled box.
+                let (sw, sh) = (cw * s, chh * s);
+                let (sx, sy) = (x0 as f32 + (cw - sw) / 2.0, y0 as f32 + (chh - sh) / 2.0 + LIFT_DROP * lift);
+                for (spread, a) in shadow_rings() {
+                    let r = (MAX_RADIUS as f32 * s + spread).max(0.0);
                     c.draw_continuous_rrect(
-                        x0 as f32 - spread,
-                        y0 as f32 - spread + LIFT_DROP * lift,
-                        cw + 2.0 * spread,
-                        chh + 2.0 * spread,
-                        MAX_RADIUS as f32 + spread,
-                        &Paint::fill(Color::BLACK.alpha(a)),
+                        sx - spread,
+                        sy - spread,
+                        sw + 2.0 * spread,
+                        sh + 2.0 * spread,
+                        r.min((sh + 2.0 * spread) / 2.0),
+                        &Paint::fill(Color::BLACK.alpha(a * lift.min(1.0))),
                     );
                 }
             }
@@ -671,6 +718,26 @@ mod tests {
             ms += 16.7;
         }
         assert_eq!(s.messages(), vec!["haptic:impact-light".to_string()]);
+        // The long-press moment, the lift settled (250 ms on): row 0 lifted over a veiled list.
+        let mut held = ms;
+        while held < ms + 250.0 {
+            fixture::render(&gpu, s.as_mut(), &frame(held)).unwrap();
+            held += 16.7;
+        }
+        let (lifted, _) = fixture::render(&gpu, s.as_mut(), &frame(held)).unwrap();
+        lifted.save("drag-to-sort-lifted");
+        // Row 0 spans 124 … 216; 1.05 about its centre, its card's bottom near 216 − 6 + 2.
+        // Just under it, the shadow (~11 % there, 2 pt inside its 8 pt-lower edge): grey on white.
+        let under = lifted.at(3 * 210, 3 * 218);
+        assert!(under[0] < 235 && under[0] > 150, "shadow {under:?}");
+        // The neighbours veiled: row 1's dark title is lighter than black.
+        let mut darkest = 255;
+        for x in 72..126 {
+            for y in 230..260 {
+                darkest = darkest.min(lifted.at(3 * x, 3 * y)[0]);
+            }
+        }
+        assert!(darkest > 60 && darkest < 140, "veiled title {darkest}");
         // Down past rows 1 and 2.
         for k in 1..=20 {
             ms += 16.7;
