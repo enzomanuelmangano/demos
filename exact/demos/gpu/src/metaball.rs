@@ -17,9 +17,42 @@ use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
 use gesture_handler::{Event, PanGesture};
 use reanimated::{Spring, SpringConfig};
 
-/// The release spring (the owner's call): damping ratio 1, SwiftUI's `.spring(duration: 0.5,
-/// bounce: 0)`: mass 1, stiffness (2π / 0.5)², damping 2√k.
-const RELEASE: SpringConfig = SpringConfig { stiffness: 157.913_670_417_429_7, damping: 25.132_741_228_718_345, mass: 1.0 };
+/// The release spring (the owner's call, phone feedback mwh5j03c / mwhlionx): damping ratio 1,
+/// SwiftUI's `.spring(duration: 0.55, bounce: 0)`: mass 1, stiffness (2π / 0.55)², damping 2√k.
+const RELEASE: SpringConfig = SpringConfig { stiffness: 130.507_165_634_239_4, damping: 22.848_165_582_471_224, mass: 1.0 };
+
+// The haptics (the owner's call, mwhlionx; RN plays none), posted for the canvas's `message`:
+// a light impact at a grab; while a blob is dragged, soft ticks whose rate and weight rise with
+// its distance from the centre (at most one per TICK_MIN_MS, and only when it moved); an impact
+// when the two pinch apart or melt back together; a soft impact when a released blob settles.
+const GRAB: &str = "haptic:impact-light";
+const SPLIT: &str = "haptic:impact-medium";
+const JOIN: &str = "haptic:impact-rigid";
+const SETTLE: &str = "haptic:impact-soft";
+const TICK_MIN_MS: f64 = 35.0;
+const TICK_MAX_MS: f64 = 140.0;
+/// The distance from the centre at which the ticks are fastest and heaviest.
+const TICK_FAR: f32 = 300.0;
+/// The tick's kind at a distance from the centre: a selection tick near, soft, then light far.
+fn tick_kind(d: f32) -> &'static str {
+    if d < 100.0 {
+        "haptic:selection"
+    } else if d < 220.0 {
+        "haptic:impact-soft"
+    } else {
+        "haptic:impact-light"
+    }
+}
+/// The ticks' spacing at a distance from the centre.
+fn tick_ms(d: f32) -> f64 {
+    let k = (d / TICK_FAR).clamp(0.0, 1.0) as f64;
+    TICK_MAX_MS + (TICK_MIN_MS - TICK_MAX_MS) * k
+}
+/// Where the shape pinches into two (centres this far apart): each disc's alpha, blurred by σ
+/// 30, crosses the ColorMatrix's 0.5 midway between them at about 2R + 40. Hysteresis of 4 pt
+/// either way, so a hand held at the threshold does not rattle.
+const SPLIT_AT: f32 = 2.0 * RADIUS + 40.0;
+const SPLIT_HYSTERESIS: f32 = 4.0;
 use skia::blur::{ceil_size, intersect, outset, round_out, GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
 use skia::{point, stops, Canvas, Color, Paint, Renderer, Shader};
 
@@ -58,6 +91,16 @@ impl Default for Draw {
 struct Metaball {
     size: (f32, f32),
     first: (f32, f32),
+    /// The first circle's way back to the centre after a lift (the owner's call: RN leaves it
+    /// where it is dropped); `first_springs` while it runs.
+    first_spring: (Spring, Spring),
+    first_springs: bool,
+    /// Haptics due to be posted, the last tick (its time and where the dragged blob was), whether
+    /// the blobs are apart, and a release spring running (its settle is felt).
+    posted: Vec<String>,
+    last_tick: Option<(f64, (f32, f32))>,
+    apart: bool,
+    released: bool,
     second: (Spring, Spring),
     first_pan: PanGesture,
     second_pan: PanGesture,
@@ -88,6 +131,49 @@ struct Gpu {
 impl Metaball {
     fn centre(&self) -> (f32, f32) {
         (self.size.0 / 2.0, self.size.1 / 2.0)
+    }
+
+    /// The springs' frame and the haptics it makes; whether anything still springs.
+    fn step(&mut self, now_ms: f64) -> bool {
+        let mut moving = self.second.0.step(now_ms) | self.second.1.step(now_ms);
+        if self.first_springs {
+            let first = self.first_spring.0.step(now_ms) | self.first_spring.1.step(now_ms);
+            self.first = (self.first_spring.0.value as f32, self.first_spring.1.value as f32);
+            self.first_springs = first;
+            moving |= first;
+        }
+        let second = (self.second.0.value as f32, self.second.1.value as f32);
+        // Apart or together: the pinch-off and the melt.
+        let gap = (self.first.0 - second.0).hypot(self.first.1 - second.1);
+        if !self.apart && gap > SPLIT_AT + SPLIT_HYSTERESIS {
+            self.apart = true;
+            self.posted.push(SPLIT.into());
+        } else if self.apart && gap < SPLIT_AT - SPLIT_HYSTERESIS {
+            self.apart = false;
+            self.posted.push(JOIN.into());
+        }
+        // The stretch ticks: the dragged blob, from the centre.
+        let held = if self.first_pan.tracking() { Some(self.first) } else if self.second_pan.tracking() { Some(second) } else { None };
+        if let Some(at) = held {
+            let (cx, cy) = self.centre();
+            let d = (at.0 - cx).hypot(at.1 - cy);
+            let due = match self.last_tick {
+                None => true,
+                Some((t, from)) => now_ms - t >= tick_ms(d) && (at.0 - from.0).hypot(at.1 - from.1) > 2.0,
+            };
+            if d > 8.0 && due {
+                self.posted.push(tick_kind(d).into());
+                self.last_tick = Some((now_ms, at));
+            } else if self.last_tick.is_none() {
+                self.last_tick = Some((now_ms, at));
+            }
+        }
+        // A released blob settles at the centre.
+        if self.released && !moving && held.is_none() {
+            self.released = false;
+            self.posted.push(SETTLE.into());
+        }
+        moving
     }
 }
 
@@ -122,10 +208,41 @@ impl Surface for Metaball {
             Event::Begin { .. } => {
                 self.first_from = self.first;
                 self.touched = true;
+                self.posted.push(GRAB.into());
+                self.last_tick = None;
             }
-            // onActive (the pan's onUpdate); circleGesture has no onEnd, so the lift moves nothing.
+            // onActive (the pan's onUpdate).
             Event::Start(p) | Event::Update(p) => {
+                self.first_springs = false;
                 self.first = (self.first_from.0 + p.translation_x, self.first_from.1 + p.translation_y);
+                self.dirty = true;
+            }
+            // RN's circleGesture has no onEnd: the lift leaves it. The owner's call (mwhlionx):
+            // it springs back to the centre as the second does, with the finger's velocity.
+            Event::End(p) => {
+                let (cx, cy) = self.centre();
+                let v = |s: &Spring, springs: bool, finger: f32| if finger != 0.0 { finger as f64 } else if springs && s.running { s.velocity } else { 0.0 };
+                let (vx, vy) = (v(&self.first_spring.0, self.first_springs, p.velocity_x), v(&self.first_spring.1, self.first_springs, p.velocity_y));
+                if !self.first_springs {
+                    self.first_spring = (Spring::at(self.first.0 as f64), Spring::at(self.first.1 as f64));
+                }
+                self.first_spring.0.launch(cx as f64, vx, RELEASE);
+                self.first_spring.1.launch(cy as f64, vy, RELEASE);
+                self.first_springs = true;
+                self.released = true;
+                self.dirty = true;
+            }
+            Event::Fail => {
+                let (cx, cy) = self.centre();
+                if !self.first_springs {
+                    self.first_spring = (Spring::at(self.first.0 as f64), Spring::at(self.first.1 as f64));
+                }
+                for (s, to) in [(&mut self.first_spring.0, cx), (&mut self.first_spring.1, cy)] {
+                    let v = if s.running { s.velocity } else { 0.0 };
+                    s.launch(to as f64, v, RELEASE);
+                }
+                self.first_springs = true;
+                self.released = true;
                 self.dirty = true;
             }
             _ => {}
@@ -136,6 +253,8 @@ impl Surface for Metaball {
             Event::Begin { .. } => {
                 self.touched = true;
                 self.second_from = second;
+                self.posted.push(GRAB.into());
+                self.last_tick = None;
             }
             Event::Start(p) | Event::Update(p) => {
                 self.second.0.set((self.second_from.0 + p.translation_x) as f64);
@@ -152,6 +271,7 @@ impl Surface for Metaball {
                 let (vx, vy) = (v(&self.second.0, p.velocity_x), v(&self.second.1, p.velocity_y));
                 self.second.0.launch(cx as f64, vx, RELEASE);
                 self.second.1.launch(cy as f64, vy, RELEASE);
+                self.released = true;
                 self.dirty = true;
             }
             // A cancel: the same spring from where it is, at the velocity it has.
@@ -161,10 +281,15 @@ impl Surface for Metaball {
                     let v = if s.running { s.velocity } else { 0.0 };
                     s.launch(to as f64, v, RELEASE);
                 }
+                self.released = true;
                 self.dirty = true;
             }
             _ => {}
         }
+    }
+
+    fn messages(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.posted)
     }
 
     fn render(
@@ -182,7 +307,7 @@ impl Surface for Metaball {
             self.first = (cx, cy);
             self.second = (Spring::at(cx as f64), Spring::at(cy as f64));
         }
-        let moving = self.second.0.step(frame.now_ms) | self.second.1.step(frame.now_ms);
+        let moving = self.step(frame.now_ms);
         let (pw, ph) = frame.pixels();
         let scale = frame.scale;
         let sigma = BLUR * scale;
@@ -330,6 +455,58 @@ mod tests {
         s.input(&pointer(exact_gpu::PointerPhase::Move, 105.0, 86.0, 504.0));
         s.input(&pointer(exact_gpu::PointerPhase::Up, 105.0, 78.0, 512.0));
         assert_eq!(s.first, (105.0, 96.0));
+    }
+
+    #[test]
+    fn grab_ticks_split_join_and_settle_are_felt_and_the_first_springs_back() {
+        let mut s = Metaball { size: (400.0, 800.0), touched: true, first: (200.0, 400.0), ..Default::default() };
+        s.second = (Spring::at(200.0), Spring::at(400.0));
+        let pointer = |phase, x, y, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
+        s.input(&pointer(exact_gpu::PointerPhase::Down, 200.0, 400.0, 0.0));
+        assert_eq!(s.messages(), [GRAB]);
+        // Dragged down 400 pt over 400 ms, a frame each 16 ms.
+        let mut all = vec![];
+        let mut ms = 0.0;
+        let mut last_tick = -1000.0;
+        for i in 1..=25 {
+            ms = 16.0 * i as f64;
+            s.input(&pointer(exact_gpu::PointerPhase::Move, 200.0, 400.0 + 16.0 * i as f32, ms));
+            s.step(ms);
+            for m in s.messages() {
+                if m.starts_with("haptic:selection") || m == "haptic:impact-soft" || m == "haptic:impact-light" {
+                    assert!(ms - last_tick >= TICK_MIN_MS, "two ticks {} ms apart", ms - last_tick);
+                    last_tick = ms;
+                }
+                all.push(m);
+            }
+        }
+        // Ticks that get heavier the farther it goes (a fast drag: past 100 pt before the second).
+        let ticks: Vec<&String> = all.iter().filter(|m| m.as_str() != SPLIT).collect();
+        assert!(ticks.len() >= 4 && ticks[0] == "haptic:impact-soft" && ticks.last().unwrap().as_str() == "haptic:impact-light", "{all:?}");
+        assert_eq!(tick_kind(50.0), "haptic:selection");
+        assert!(tick_ms(0.0) > tick_ms(150.0) && tick_ms(400.0) == TICK_MIN_MS);
+        assert_eq!(all.iter().filter(|m| m.as_str() == SPLIT).count(), 1, "{all:?}");
+        // Let go: the first springs back to the centre, melts into the second, settles.
+        s.input(&pointer(exact_gpu::PointerPhase::Up, 200.0, 800.0, ms + 16.0));
+        assert!(s.first_springs);
+        let mut joined = false;
+        let mut settled = false;
+        let mut t = ms + 16.0;
+        while t < ms + 3000.0 {
+            t += 16.0;
+            s.step(t);
+            for m in s.messages() {
+                joined |= m == JOIN;
+                settled |= m == SETTLE;
+            }
+            if settled {
+                break;
+            }
+        }
+        assert!(joined && settled);
+        assert!((s.first.1 - 400.0).abs() < 0.5, "{:?}", s.first);
+        // ~0.55 s critically damped: settled well within 1.5 s of the lift.
+        assert!(t - ms < 1500.0, "{}", t - ms);
     }
 
     #[test]

@@ -40,6 +40,8 @@ const PRIMARY_COLOR: u32 = 0x6141B9;
 const PICKER_SIZE: f32 = 50.0;
 const SLIDER_HEIGHT: f32 = 4.0;
 const SLIDER_WIDTH: f32 = 300.0;
+/// The haptic ticks' spacing at the least.
+const TICK_MIN_MS: f64 = 35.0;
 const DEFAULT_SCALE: f64 = 0.7;
 /// pickerSize / 2.5.
 const DEFAULT_RADIUS: f64 = PICKER_SIZE as f64 / 2.5;
@@ -79,6 +81,13 @@ struct CubertoSlider {
     pan: PanGesture,
     translate_x: f32,
     context_x: f32,
+    /// Haptics due to be posted (the owner's call, phone feedback mwhlj5bc; RN plays none): a
+    /// light impact at the grab, a selection tick per value step (at most one per
+    /// TICK_MIN_MS), a rigid tap where the picker meets either end.
+    posted: Vec<String>,
+    last_value: i32,
+    last_tick_ms: f64,
+    at_end: bool,
     scale: Spring,
     radius: Spring,
     border: Spring,
@@ -133,6 +142,25 @@ impl CubertoSlider {
             c.draw_rect(il, at, ir - il, ab - at, paint);
         }
     }
+    /// The shown value: floor(interpolate(x, [0, 300], [0, 100], CLAMP)).
+    fn value(&self) -> i32 {
+        interpolate_clamp(self.clamped() as f64, &[0.0, SLIDER_WIDTH as f64], &[0.0, 100.0]).floor() as i32
+    }
+    /// The drag moved the picker: a tick for a new value, a tap at an end.
+    fn felt(&mut self, at_ms: f64) {
+        let end = self.translate_x <= 0.0 || self.translate_x >= SLIDER_WIDTH;
+        let value = self.value();
+        if end && !self.at_end {
+            self.posted.push("haptic:impact-rigid".into());
+            self.last_tick_ms = at_ms;
+            self.last_value = value;
+        } else if !end && value != self.last_value && at_ms - self.last_tick_ms >= TICK_MIN_MS {
+            self.posted.push("haptic:selection".into());
+            self.last_tick_ms = at_ms;
+            self.last_value = value;
+        }
+        self.at_end = end;
+    }
     fn clamped(&self) -> f32 {
         self.translate_x.clamp(0.0, SLIDER_WIDTH)
     }
@@ -160,6 +188,10 @@ impl Surface for CubertoSlider {
     }
 
     /// RN's press is a Gesture.Pan's onBegin / onFinalize with its own springs, not pressto: not `pressto::Pressable`.
+    fn messages(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.posted)
+    }
+
     fn input(&mut self, event: &InputEvent) {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
         // The picker's box (50 × 50 at the clamped x, scaled about its centre) is its hit area.
@@ -171,8 +203,15 @@ impl Surface for CubertoSlider {
             Event::Begin { .. } => {
                 self.press(true);
                 self.context_x = self.clamped();
+                self.posted.push("haptic:impact-light".into());
+                self.last_value = self.value();
+                self.at_end = self.translate_x <= 0.0 || self.translate_x >= SLIDER_WIDTH;
+                self.last_tick_ms = at_ms;
             }
-            Event::Start(p) | Event::Update(p) => self.translate_x = self.context_x + p.translation_x,
+            Event::Start(p) | Event::Update(p) => {
+                self.translate_x = self.context_x + p.translation_x;
+                self.felt(at_ms);
+            }
             Event::End(_) | Event::Fail => {
                 // onTouchesUp (a cancelled touch lets go the same way).
                 if matches!(phase, PointerPhase::Up | PointerPhase::Cancel) {
