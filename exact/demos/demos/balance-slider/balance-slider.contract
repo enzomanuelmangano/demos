@@ -7,10 +7,19 @@ use DemoEnv from "../env.contract"
 component BalanceSlider
   props
     env: DemoEnv
+  // The row's haptics (gpu/src/balance_slider.rs, past RN): light on the grab, selection across
+  // the 33 % / 72 % limits, rigid at an end.
+  action heard(m: string)
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-rigid"
+      haptic("impact-rigid")
   view
     // styles.container: black, centred.
     column position="absolute" inset=0 background-color="#000000" align-items="center"
       justify-content="center" testId="balance-slider"
       // <BalanceSlider width={windowWidth * 0.9} height={50} />.
-      canvas surface=balance_slider() width=(env.width * 0.9) height=50 flex-shrink=0
+      canvas surface=balance_slider() message=heard width=(env.width * 0.9) height=50 flex-shrink=0
         touch-action="none" testId="balance-canvas" aria-label="Coffee and milk balance"

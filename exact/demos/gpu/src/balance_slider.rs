@@ -15,6 +15,11 @@
 //!   percentage (`${round(p × 100)}%`) in a 44 pt box 4 pt away, aligned toward the label's
 //!   side. A ReText is a TextInput: one line of the font's height (ascent + descent), its
 //!   baseline an ascent below its top.
+//!
+//! Haptics (past RN, which plays none: the owner's haptic language): `haptic:impact-light` when
+//! a finger takes the row; `haptic:selection` when the split crosses 0.33 or 0.72 (where the boxes
+//! shrink and the labels rise, either way); `haptic:impact-rigid` when it reaches an end (0 or
+//! 100 %), once per excursion. No two haptics within HAPTIC_GAP_MS.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -35,19 +40,15 @@ const FONT_SIZE: f32 = 16.0;
 /// styles.percentage: width, marginHorizontal.
 const PERCENT_WIDTH: f32 = 44.0;
 const PERCENT_MARGIN: f32 = 4.0;
+/// The shortest gap between two haptics, ms.
+const HAPTIC_GAP_MS: f64 = 40.0;
+/// How far from an end the split re-arms its limit haptic.
+const END_REARM: f64 = 0.02;
 static FIRA_CODE_MEDIUM: &[u8] = include_bytes!("../fonts/fira-code-medium.ttf");
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
-    let base = (-HEIGHT / 2.0 + 10.0) as f64;
-    Box::new(BalanceSlider {
-        font: Font::new(FIRA_CODE_MEDIUM, FONT_SIZE).map(Font::with_ui_layout),
-        percents: (0..=100).map(|p| format!("{p}%")).collect(),
-        box_height: Spring::at(1.0),
-        label_y: Spring::at(base),
-        x: None,
-        ..Default::default()
-    })
+    Box::new(BalanceSlider::new())
 }
 
 #[derive(Default)]
@@ -62,11 +63,55 @@ struct BalanceSlider {
     box_height: Spring,
     /// The labels' translateY (both share it: the same `shifted`).
     label_y: Spring,
+    /// Whether the split was past a limit (shifted) and at an end, when last felt.
+    felt_shifted: bool,
+    at_end: bool,
+    haptic_at: f64,
+    posted: Vec<String>,
     canvas: Canvas,
     renderer: Renderer,
 }
 
 impl BalanceSlider {
+    fn new() -> BalanceSlider {
+        let base = (-HEIGHT / 2.0 + 10.0) as f64;
+        BalanceSlider {
+            font: Font::new(FIRA_CODE_MEDIUM, FONT_SIZE).map(Font::with_ui_layout),
+            percents: (0..=100).map(|p| format!("{p}%")).collect(),
+            box_height: Spring::at(1.0),
+            label_y: Spring::at(base),
+            x: None,
+            haptic_at: f64::NEG_INFINITY,
+            ..Default::default()
+        }
+    }
+    /// Posts `kind` unless another haptic played under HAPTIC_GAP_MS ago.
+    fn haptic(&mut self, kind: &str, at_ms: f64) {
+        if at_ms - self.haptic_at >= HAPTIC_GAP_MS {
+            self.posted.push(format!("haptic:{kind}"));
+            self.haptic_at = at_ms;
+        }
+    }
+    /// The split's detents and ends, felt where it is now.
+    fn feel(&mut self, at_ms: f64) {
+        if self.width() <= 0.0 || self.x.is_none() {
+            return;
+        }
+        let p = self.x_percentage();
+        let shifted = !(LEFT_LIMIT..=RIGHT_LIMIT).contains(&p);
+        let end = p <= 0.0 || p >= 1.0;
+        if end && !self.at_end {
+            self.haptic("impact-rigid", at_ms);
+        } else if shifted != self.felt_shifted {
+            self.haptic("selection", at_ms);
+        }
+        self.felt_shifted = shifted;
+        if end {
+            self.at_end = true;
+        } else if p > END_REARM && p < 1.0 - END_REARM {
+            self.at_end = false;
+        }
+    }
     fn width(&self) -> f32 {
         self.size.0
     }
@@ -101,6 +146,10 @@ impl Surface for BalanceSlider {
         true
     }
 
+    fn messages(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.posted)
+    }
+
     fn agent(&mut self, _request: &str) -> Option<String> {
         let p = self.x_percentage();
         Some(format!("{{\"left\":{},\"right\":{},\"held\":{}}}", (p * 100.0).round(), ((1.0 - p) * 100.0).round(), self.pan.tracking()))
@@ -115,8 +164,12 @@ impl Surface for BalanceSlider {
                 let spring = self.x();
                 let velocity = spring.velocity;
                 spring.to_clamped(x as f64 + half, velocity, GENTLE);
+                self.haptic("impact-light", at_ms);
             }
-            Event::Start(p) | Event::Update(p) => self.x().set(p.x as f64 + half),
+            Event::Start(p) | Event::Update(p) => {
+                self.x().set(p.x as f64 + half);
+                self.feel(at_ms);
+            }
             _ => {}
         }
     }
@@ -133,6 +186,7 @@ impl Surface for BalanceSlider {
         self.size = (frame.width, frame.height);
         let now = frame.now_ms;
         let mut moving = self.x().step(now);
+        self.feel(now);
         self.update_shift();
         moving |= self.box_height.step(now) | self.label_y.step(now);
 
@@ -180,6 +234,32 @@ impl Surface for BalanceSlider {
 mod tests {
     use super::*;
     use exact_gpu::{fixture, PointerKind, PointerPhase};
+
+    #[test]
+    fn haptics_on_the_grab_the_limits_and_the_end() {
+        let mut s = BalanceSlider::new();
+        s.size = (378.0, 50.0);
+        s.x();
+        s.feel(0.0);
+        let pointer = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 25.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        s.input(&pointer(PointerPhase::Down, 189.0, 0.0));
+        assert_eq!(s.messages(), vec!["haptic:impact-light"]);
+        // Left past 0.33 (one selection), on to the end (one rigid), held there (nothing more).
+        let mut ms = 0.0;
+        for k in 1..=40 {
+            ms += 16.0;
+            s.input(&pointer(PointerPhase::Move, (189.0 - 220.0 * k as f32 / 30.0).max(-20.0), ms));
+        }
+        assert_eq!(s.messages(), vec!["haptic:selection", "haptic:impact-rigid"]);
+        // Back across 0.33 to the middle: one selection, the end re-armed.
+        for k in 1..=20 {
+            ms += 16.0;
+            s.input(&pointer(PointerPhase::Move, 189.0 * k as f32 / 20.0, ms));
+        }
+        s.input(&pointer(PointerPhase::Up, 189.0, ms));
+        assert_eq!(s.messages(), vec!["haptic:selection"]);
+        assert!(!s.at_end);
+    }
 
     #[test]
     fn dragging_moves_the_split_and_shrinks_past_the_limits() {
