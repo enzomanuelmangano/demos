@@ -122,7 +122,7 @@ impl Surface for Theme {
     }
 
     fn messages(&mut self) -> Vec<String> {
-        std::mem::take(&mut self.posted)
+        crate::haptic::host(std::mem::take(&mut self.posted))
     }
 
     fn agent(&mut self, _request: &str) -> Option<String> {

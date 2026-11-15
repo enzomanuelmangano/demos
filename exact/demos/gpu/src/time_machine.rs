@@ -49,6 +49,12 @@
 //! | onClose | activeItem = history[activeIndex]; if its key ≠ activeKey: activeKey = it, 1 s later keep only it (scroll back in range) | the same |
 //! | haptic | drag start: impactAsync(Light) | `haptic:impact-light` |
 //!
+//! Haptics past RN (which plays only the drag start's light impact; the owner's haptic
+//! language): `haptic:selection` when the dragged row crosses another (its rank among the
+//! rows changes) and when the open stack's front card changes (activeIndex), at most one per
+//! HAPTIC_GAP_MS; `haptic:impact-medium` when a release of the screen's pan opens or closes the
+//! time machine (not when it falls back to where it was).
+//!
 //! Input: safeTop (SortableItem's containerHeight is the window height − inset.top).
 
 use exact_gpu::wgpu;
@@ -66,6 +72,8 @@ use shaders::time_machine::{entry, module, Uniforms, GROUP_0, LAYER, SMP, U, UND
 const ROW: f64 = 70.0;
 /// MAX_HISTORY_LENGTH.
 const MAX_HISTORY: usize = 10;
+/// The shortest gap between two haptics, ms.
+const HAPTIC_GAP_MS: f64 = 40.0;
 /// The time machine pan's maxPanDistance.
 const PAN_DISTANCE: f64 = 300.0;
 /// progress = withSpring(tm, …).
@@ -189,6 +197,11 @@ impl List {
         }
     }
 
+    /// Item i's rank among the rows by position (how many are above it).
+    fn rank(&self, i: usize) -> usize {
+        (0..4).filter(|&k| k != i && self.pos[k] < self.pos[i]).count()
+    }
+
     /// Draw (and hit) order: zIndex, then index.
     fn order(&self) -> [usize; 4] {
         let mut o = [0, 1, 2, 3];
@@ -310,6 +323,11 @@ struct TimeMachine {
     now: f64,
     layout: Layout,
     posted: Vec<String>,
+    /// When the last haptic was posted, ms.
+    haptic_at: f64,
+    /// The dragged row's rank, and the stack's front card, as their haptics last saw them.
+    item_rank: usize,
+    card_index: usize,
     title_font: Option<Font>,
     gpu: Option<Gpu>,
 }
@@ -367,6 +385,9 @@ impl TimeMachine {
             now: 0.0,
             layout: Layout::default(),
             posted: Vec::new(),
+            haptic_at: f64::NEG_INFINITY,
+            item_rank: 0,
+            card_index: 0,
             title_font: skia::match_ui_font(16.0, 500.0),
             gpu: None,
         }
@@ -398,6 +419,16 @@ impl TimeMachine {
         } else {
             self.scroll.max = max;
         }
+        self.card_index = self.active_index();
+    }
+
+    /// A haptic at `at` (ms); a selection only HAPTIC_GAP_MS after the last one.
+    fn haptic(&mut self, kind: &str, at: f64) {
+        if kind == "selection" && at - self.haptic_at < HAPTIC_GAP_MS {
+            return;
+        }
+        self.posted.push(format!("haptic:{kind}"));
+        self.haptic_at = at;
     }
 
     fn set_tm(&mut self, v: f64) {
@@ -546,7 +577,8 @@ impl TimeMachine {
                 list.tx[row].set(0.0);
                 list.pending[row] = false;
                 list.dirty = true;
-                self.posted.push("haptic:impact-light".into());
+                self.item_rank = list.rank(row);
+                self.haptic("impact-light", at_ms);
                 Claim::Item { card, row }
             } else {
                 if self.active {
@@ -568,6 +600,8 @@ impl TimeMachine {
         self.sample(x, y, at_ms);
         let (dx, dy) = (x - t.down.0, y - t.down.1);
         let lift = matches!(phase, Phase::Up | Phase::Cancel);
+        // The dragged row's rank after this move.
+        let mut rank = None;
         match t.claim {
             Claim::Item { card, row } => {
                 let list = &mut self.lists[card];
@@ -584,6 +618,7 @@ impl TimeMachine {
                     } else if y as f64 + list.oy >= list.oy + container {
                         list.oy = (list.oy + speed).max(0.0);
                     }
+                    rank = Some(list.rank(row));
                 } else {
                     list.tx[row].to(0.0, 300.0, Easing::timing_default());
                     list.pending[row] = true;
@@ -629,9 +664,19 @@ impl TimeMachine {
                         }
                         self.set_tm(to);
                     }
+                    if (self.tm > 0.5) != (self.prev_tm > 0.5) {
+                        // The release opens or closes the time machine.
+                        self.haptic("impact-medium", at_ms);
+                    }
                 }
             }
             Claim::None => {}
+        }
+        if let Some(rank) = rank {
+            if rank != self.item_rank {
+                self.item_rank = rank;
+                self.haptic("selection", at_ms);
+            }
         }
         self.touch = if lift { None } else { Some(t) };
     }
@@ -648,6 +693,13 @@ impl TimeMachine {
         }
         let mut moving = self.progress.step(now);
         moving |= self.scroll.step(now);
+        let index = self.active_index();
+        if index != self.card_index {
+            self.card_index = index;
+            if self.active {
+                self.haptic("selection", now);
+            }
+        }
         let mut ended = None;
         for (i, list) in self.lists.iter_mut().enumerate() {
             let (m, end) = list.step(now);
@@ -947,7 +999,7 @@ impl Surface for TimeMachine {
     }
 
     fn messages(&mut self) -> Vec<String> {
-        std::mem::take(&mut self.posted)
+        crate::haptic::host(std::mem::take(&mut self.posted))
     }
 
     fn agent(&mut self, _request: &str) -> Option<String> {
@@ -1433,7 +1485,8 @@ mod tests {
         let mut m = machine();
         // Row 0 (Feed the cat) dragged 90 pt down, past row 1.
         let t = drag(&mut m, 210.0, 351.0, 4.0, 90.0, 12, 0.0);
-        assert_eq!(m.posted, vec!["haptic:impact-light".to_string()]);
+        // The grab's light impact, then one selection as it passes row 1.
+        assert_eq!(m.posted, vec!["haptic:impact-light".to_string(), "haptic:selection".to_string()]);
         // The slots: the cat on row 1 once the springs settle; the history waits for translateX.
         let t = run(&mut m, t, t + 150.0);
         assert_eq!(m.history.len(), 1);
@@ -1471,6 +1524,9 @@ mod tests {
         run(&mut m, t, t + 1500.0);
         assert!(m.progress.value.abs() < 1e-3);
         assert_eq!(m.history.len(), 1);
+        // A medium impact as the release opens it, one as it closes it; the scroll (one card)
+        // changes no front card.
+        assert_eq!(m.posted, vec!["haptic:impact-medium".to_string(), "haptic:impact-medium".to_string()]);
     }
 
     #[test]

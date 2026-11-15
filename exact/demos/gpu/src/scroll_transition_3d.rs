@@ -29,6 +29,11 @@
 //! | scrollY | FlatList onScroll (UIScrollView, snapToInterval, fast) | `UiScroll` (Snap::Interval, FAST) |
 //! | blur, opacity, rotateX | interpolate(scrollY) per item | the same, every frame |
 //!
+//! Haptics (past RN, which plays none: the owner's haptic language): `haptic:selection` each time
+//! the centred number (round(scrollY / size)) changes, during the drag and the glide, at most one
+//! per HAPTIC_GAP_MS; `haptic:impact-rigid` once each time the list is pulled or thrown past an
+//! end (the rubber band).
+//!
 //! No inputs.
 
 use std::collections::HashMap;
@@ -47,6 +52,10 @@ const PERSPECTIVE: f32 = 200.0;
 const FONT_SIZE: f32 = 175.0;
 /// BlurMask blur (σ, points).
 const GLOW: f32 = 4.0;
+/// The shortest gap between two selection haptics, ms.
+const HAPTIC_GAP_MS: f64 = 40.0;
+/// How far past an end (points) the rubber band must pull before its haptic.
+const PAST_END: f64 = 2.0;
 
 static SF_ROUNDED_BOLD: &[u8] = include_bytes!("../fonts/sf-pro-rounded-bold-digits.otf");
 
@@ -66,6 +75,10 @@ pub fn surface() -> Box<dyn Surface> {
         renderer: Renderer::default(),
         canvas: Canvas::default(),
         gpu: None,
+        centred: None,
+        past_end: false,
+        haptic_at: f64::NEG_INFINITY,
+        posted: Vec::new(),
     })
 }
 
@@ -111,6 +124,11 @@ struct ScrollTransition {
     renderer: Renderer,
     canvas: Canvas,
     gpu: Option<Gpu>,
+    /// The centred item, and whether the list is past an end (their haptics).
+    centred: Option<i64>,
+    past_end: bool,
+    haptic_at: f64,
+    posted: Vec<String>,
 }
 
 impl ScrollTransition {
@@ -135,6 +153,26 @@ impl ScrollTransition {
         let i = i as f64;
         [s * (i - 1.0), s * (i - 1.0) + 20.0, s * i, s * (i + 1.0) - 20.0, s * (i + 1.0)]
     }
+    /// A selection when the centred number changes (one per HAPTIC_GAP_MS at most), a rigid thunk
+    /// once per pull past an end.
+    fn haptics(&mut self, now: f64) {
+        let (offset, max) = (self.scroll.offset, self.scroll.max);
+        let centred = (offset / self.item()).round().clamp(0.0, (COUNT - 1) as f64) as i64;
+        if self.centred.is_some_and(|c| c != centred) && now - self.haptic_at >= HAPTIC_GAP_MS {
+            self.posted.push("haptic:selection".into());
+            self.haptic_at = now;
+        }
+        self.centred = Some(centred);
+        if offset < -PAST_END || offset > max + PAST_END {
+            if !self.past_end {
+                self.posted.push("haptic:impact-rigid".into());
+            }
+            self.past_end = true;
+        } else if (0.0..=max).contains(&offset) {
+            self.past_end = false;
+        }
+    }
+
     fn configure(&mut self) {
         let item = self.item();
         let port = self.size.1 as f64;
@@ -423,6 +461,10 @@ impl Surface for ScrollTransition {
         ))
     }
 
+    fn messages(&mut self) -> Vec<String> {
+        crate::haptic::host(std::mem::take(&mut self.posted))
+    }
+
     fn input(&mut self, event: &InputEvent) {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else {
             return;
@@ -450,6 +492,7 @@ impl Surface for ScrollTransition {
             self.gpu = Some(build(device, format));
         }
         let moving = self.scroll.step(frame.now_ms);
+        self.haptics(frame.now_ms);
         let offset = self.scroll.offset;
         let s = self.item();
         let pxw = (frame.width * frame.scale).round() as u32;
@@ -614,5 +657,23 @@ mod tests {
             fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         }
         assert_eq!(s.agent("{}").unwrap(), "{\"offset\":231.00,\"number\":98,\"moving\":false}");
+        // One number on: one selection. A slow drag up of 300 pt: back one number, then past the
+        // start, one rigid thunk however long it is held.
+        assert_eq!(s.messages(), vec!["haptic:selection"]);
+        s.input(&p(PointerPhase::Down, 600.0, ms));
+        for k in 1..=30 {
+            ms += 33.0;
+            s.input(&p(PointerPhase::Move, 600.0 - 10.0 * k as f32, ms));
+            fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+        }
+        ms += 200.0;
+        s.input(&p(PointerPhase::Up, 300.0, ms));
+        let end = ms + 4000.0;
+        while ms < end {
+            ms += 16.0;
+            fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+        }
+        assert_eq!(s.agent("{}").unwrap(), "{\"offset\":0.00,\"number\":99,\"moving\":false}");
+        assert_eq!(s.messages(), vec!["haptic:selection", "haptic:impact-rigid"]);
     }
 }

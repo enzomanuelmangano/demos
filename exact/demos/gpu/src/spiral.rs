@@ -115,7 +115,7 @@ impl Surface for Spiral {
     }
 
     fn messages(&mut self) -> Vec<String> {
-        std::mem::take(&mut self.posted)
+        crate::haptic::host(std::mem::take(&mut self.posted))
     }
 
     fn input(&mut self, event: &InputEvent) {

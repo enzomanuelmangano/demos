@@ -508,7 +508,7 @@ impl Surface for CalendarDays {
     }
 
     fn messages(&mut self) -> Vec<String> {
-        std::mem::take(&mut self.messages)
+        crate::haptic::host(std::mem::take(&mut self.messages))
     }
 
     fn agent(&mut self, _request: &str) -> Option<String> {

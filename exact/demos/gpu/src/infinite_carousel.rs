@@ -34,6 +34,10 @@
 //! | activeIndex | useAnimatedReaction: abs(round((tx % size) / L)) % 12 | the same, each step |
 //! | main colour | useDerivedValue(withTiming(primary, 500, linear)): per channel in gamma 2.2, from the last rounded rgba | [`Fade`] |
 //!
+//! Haptics (past RN, which plays none: the owner's haptic language): `haptic:selection` each
+//! time the centred theme (activeIndex) changes, during the drag, the release's spring and a
+//! tap's scrollToIndex, at most one per HAPTIC_GAP_MS. The ring has no end, so no limit haptic.
+//!
 //! No inputs.
 
 use exact_gpu::wgpu;
@@ -75,6 +79,8 @@ const BLUR_WHITE: f32 = 10.0;
 const RADIUS: f32 = 15.0;
 /// Header (8 floats) + 12 cards × 16.
 const UNIFORM_FLOATS: usize = 8 + N * 16;
+/// The shortest gap between two selection haptics, ms.
+const HAPTIC_GAP_MS: f64 = 40.0;
 
 /// The demo's surface (no inputs).
 pub fn surface() -> Box<dyn Surface> {
@@ -92,6 +98,9 @@ pub fn surface() -> Box<dyn Surface> {
         bg: Background::default(),
         gpu: None,
         uniforms: vec![0u8; UNIFORM_FLOATS * 4],
+        now_ms: 0.0,
+        haptic_at: f64::NEG_INFINITY,
+        posted: Vec::new(),
     })
 }
 
@@ -202,6 +211,11 @@ struct InfiniteCarousel {
     bg: Background,
     gpu: Option<Gpu>,
     uniforms: Vec<u8>,
+    /// The latest time seen (a frame's or a pointer's), when the last selection haptic played,
+    /// and the messages to post.
+    now_ms: f64,
+    haptic_at: f64,
+    posted: Vec<String>,
 }
 
 /// Yoga's YGRoundValueToPixelGrid at `scale`.
@@ -302,6 +316,10 @@ impl InfiniteCarousel {
         if index != self.active {
             self.active = index;
             self.fade.to(THEMES[index].0);
+            if self.now_ms - self.haptic_at >= HAPTIC_GAP_MS {
+                self.posted.push("haptic:selection".into());
+                self.haptic_at = self.now_ms;
+            }
         }
     }
 
@@ -675,6 +693,10 @@ impl Surface for InfiniteCarousel {
         true
     }
 
+    fn messages(&mut self) -> Vec<String> {
+        crate::haptic::host(std::mem::take(&mut self.posted))
+    }
+
     fn agent(&mut self, _request: &str) -> Option<String> {
         let size = self.list();
         let offset = if size > 0.0 { -(self.tx.value % size) / self.item() + 0.0 } else { 0.0 };
@@ -685,6 +707,7 @@ impl Surface for InfiniteCarousel {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else {
             return;
         };
+        self.now_ms = self.now_ms.max(at_ms);
         let phase = gfx::phase(phase);
         let claim = phase == Phase::Down && self.claims(x, y);
         if claim {
@@ -733,6 +756,7 @@ impl Surface for InfiniteCarousel {
             self.started = true;
         }
         let now = frame.now_ms;
+        self.now_ms = self.now_ms.max(now);
         let mut moving = self.tx.step(now);
         self.react();
         moving |= self.fade.step(now);
@@ -935,6 +959,8 @@ mod tests {
         gfx::save_over(&done, "infinite-next", [0, 0, 0]);
         assert!(!animating);
         assert_eq!(s.agent("{}").unwrap(), "{\"active\":2,\"offset\":2.000,\"moving\":false,\"held\":false}");
+        // Two themes on: a selection as each comes to the centre.
+        assert_eq!(s.messages(), vec!["haptic:selection", "haptic:selection"]);
 
         // A tap on the card left of centre (theme 1, around x 134) scrolls back to it.
         s.input(&pointer(PointerPhase::Down, 118.0, ms));
@@ -944,5 +970,6 @@ mod tests {
             fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         }
         assert_eq!(s.agent("{}").unwrap(), "{\"active\":1,\"offset\":1.000,\"moving\":false,\"held\":false}");
+        assert_eq!(s.messages(), vec!["haptic:selection"]);
     }
 }

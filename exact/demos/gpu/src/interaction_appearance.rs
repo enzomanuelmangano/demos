@@ -13,7 +13,8 @@
 //!   { dampingRatio 1, duration 600 }) about its centre) holding: the blurred MovieImage (a
 //!   Skia canvas, the window wide, canvasHeight + 500 tall, opacity withTiming(switching ? 0 :
 //!   1, switching ? 350 : 1000)): the poster cover-fit into (32, imageY, 200, 250) under
-//!   Blur(500); the ScrollView: the sharp MovieImage (the poster in a radius-20 rrect clip) over
+//!   Blur(500); the ScrollView: the sharp MovieImage (the poster in a radius-20 rrect clip, drawn
+//!   with continuous corners at the owner's request) over
 //!   a canvasHeight spacer, then (paddingHorizontal 32) the title (system 32, `primary`) and the
 //!   review (system 16, lineHeight 22, marginTop 16, marginRight 32, `text`), paddingBottom
 //!   200; BottomLinearGradient (a Skia canvas, absolute, the last 400 pt: [transparent,
@@ -213,7 +214,8 @@ impl Appearance {
         let iy = self.image_y();
         if let Some(img) = poster {
             let m = fit_cover(Rect::new(0.0, 0.0, img.width, img.height), Rect::new(IMAGE_X, iy, IMAGE_W, IMAGE_H));
-            c.draw_rrect(IMAGE_X, iy, IMAGE_W, IMAGE_H, 20.0, &Paint::image(img, m.invert()));
+            // Core Animation's continuous corner (the owner's call over RN's circular rrect clip).
+            c.draw_continuous_rrect(IMAGE_X, iy, IMAGE_W, IMAGE_H, 20.0, &Paint::image(img, m.invert()));
         }
         let (Some(title), Some(body)) = (self.title.as_ref(), self.body.as_ref()) else { return ch };
         // CoreGraphics puts a line's baseline on the next device pixel down.
@@ -429,7 +431,7 @@ impl Surface for Appearance {
     }
 
     fn messages(&mut self) -> Vec<String> {
-        std::mem::take(&mut self.messages)
+        crate::haptic::host(std::mem::take(&mut self.messages))
     }
 
     fn agent(&mut self, _request: &str) -> Option<String> {

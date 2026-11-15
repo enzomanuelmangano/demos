@@ -4,7 +4,8 @@
 //!
 //! The canvas: (width + additionalWidth) × height = (150 + 80) × 50 (index.tsx's props), in a
 //! Touchable.Canvas, centred on white.
-//! - The gooey layer (useGooeyLayer: Blur 10, ColorMatrix alpha × 18 − 10):
+//! - The gooey layer (useGooeyLayer: Blur 10, ColorMatrix alpha × 18 − 10), drawn analytically
+//!   (see "The merge" below):
 //!   - a RoundedRect (deleteButtonRectX, 0, 150, 50, r 20) in deleteButtonColor, in a Group
 //!     scaled by `scale` about (width / 2, height / 2) = (75, 25);
 //!   - a Circle (closeIconCircleX, 25, r 25) in deleteButtonColor, in a Group at opacity
@@ -44,6 +45,16 @@
 //!
 //! Text x follows deleteButtonRectX each frame (no animation of its own). Haptics: selection on
 //! each onTap that lands on a shape.
+//!
+//! The merge (the owner's call over RN's blur and threshold, whose soft rims read as a grey halo):
+//! one pass (shaders/delete_button.wgsl), each shape a signed distance, joined by a polynomial
+//! smooth minimum with k = [`NECK`] while the circle is on its way, falling to 0 over the last
+//! [`PARTING`] of its travel, so at rest they are two crisp shapes with one pixel of analytic
+//! anti-aliasing. The neck breaks where the gooey layer's does: the smooth minimum bridges a gap
+//! g while g < k / 2, and two σ-10 edges' summed blur stays over the threshold (10.5 / 18) while
+//! 2 Φ(−g / 2σ) ≥ 0.583, g ≤ 11 pt. The circle's opacity shrinks it as the threshold would: its
+//! edge sits where opacity × Φ(−d / σ) meets the threshold, σ (Φ⁻¹(T / o) − Φ⁻¹(T)) inside its
+//! radius, nothing below o = T. Timings are RN's (the table above).
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -51,8 +62,9 @@ use gesture_handler::{Event, Phase, TapGesture};
 use reanimated::{Easing, Spring, Timing, GENTLE};
 use skia::{Color, Font, Matrix, Paint, Path};
 
-use crate::gfx;
-use crate::gooey::{ColorTiming, Goo, Gooey};
+use crate::gooey::ColorTiming;
+use crate::{gfx, shaders};
+use shaders::delete_button::{entry, module, Uniforms, GROUP_0, TOP, U};
 
 /// The `width` prop.
 const WIDTH: f32 = 150.0;
@@ -71,8 +83,16 @@ const BAR_THICKNESS: f32 = 2.0;
 /// initialText, confirmText.
 const DELETE: &str = "Delete";
 const CONFIRM: &str = "Confirm";
-/// useGooeyLayer's defaults: blurRadius 10, alphaMultiplier 18, alphaOffset −10.
-const GOO: Goo = Goo { sigma: 10.0, k: 18.0, b: -10.0 };
+/// useGooeyLayer's defaults: blurRadius 10, alphaMultiplier 18, alphaOffset −10: the blur's σ
+/// and the alpha a coverage of one half needs, (0.5 + 10) / 18.
+const SIGMA: f32 = 10.0;
+const THRESHOLD: f32 = 10.5 / 18.0;
+/// The smooth minimum's k while the circle travels: a neck across gaps up to k / 2 = 11 pt, the
+/// gooey layer's.
+const NECK: f32 = 22.0;
+/// The last part of the circle's travel over which k falls to 0 (the neck has broken by then:
+/// the gap is 11 pt at 96.5 %).
+const PARTING: f32 = 0.035;
 const RED: [u8; 3] = [255, 0, 0];
 const BLACK: [u8; 3] = [0, 0, 0];
 /// Helvetica Bold (face 1 of iOS's Helvetica.ttc), the glyphs of the labels both Helvetica demos
@@ -101,7 +121,7 @@ pub fn surface() -> Box<dyn Surface> {
         confirm_opacity: Timing::at(0.0),
         finger: None,
         tap,
-        gooey: Gooey::new(GOO),
+        melt: Melt::default(),
         posted: Vec::new(),
     })
 }
@@ -146,7 +166,7 @@ struct DeleteButton {
     /// The canvas pan's finger and the shape its onBegin landed on.
     finger: Option<(u32, Option<Shape>)>,
     tap: TapGesture,
-    gooey: Gooey,
+    melt: Melt,
     /// Haptics for the app to play.
     posted: Vec<String>,
 }
@@ -198,6 +218,91 @@ fn in_rrect(x: f32, y: f32, rx: f32, ry: f32, w: f32, h: f32, r: f32) -> bool {
     (x - cx).hypot(y - cy) <= r
 }
 
+/// How far inside its radius the circle's edge sits at opacity `o` (points): where o · Φ(−d / σ)
+/// meets the threshold, less where it does at o = 1; past its radius (gone) below the threshold.
+fn opacity_inset(o: f32) -> f32 {
+    if o >= 1.0 {
+        return 0.0;
+    }
+    if o <= THRESHOLD + 1e-4 {
+        return HEIGHT;
+    }
+    (SIGMA * (probit(THRESHOLD / o) - probit(THRESHOLD))).min(HEIGHT)
+}
+
+/// Φ⁻¹, the standard normal quantile (Acklam's rational approximation, |error| < 1.2e-9).
+fn probit(p: f32) -> f32 {
+    let p = (p as f64).clamp(1e-9, 1.0 - 1e-9);
+    let a = [-3.969683028665376e1, 2.209460984245205e2, -2.759285104469687e2, 1.383577518672690e2, -3.066479806614716e1, 2.506628277459239];
+    let b = [-5.447609879822406e1, 1.615858368580409e2, -1.556989798598866e2, 6.680131188771972e1, -1.328068155288572e1];
+    let c = [-7.784894002430293e-3, -3.223964580411365e-1, -2.400758277161838, -2.549732539343734, 4.374664141464968, 2.938163982698783];
+    let d = [7.784695709041462e-3, 3.224671290700398e-1, 2.445134137142996, 3.754408661907416];
+    let tail = |q: f64| (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1.0);
+    let x = if p < 0.02425 {
+        tail((-2.0 * p.ln()).sqrt())
+    } else if p > 1.0 - 0.02425 {
+        -tail((-2.0 * (1.0 - p).ln()).sqrt())
+    } else {
+        let q = p - 0.5;
+        let r = q * q;
+        (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1.0)
+    };
+    x as f32
+}
+
+/// The merged shapes and what is drawn over them, and their GPU state (kept between frames).
+#[derive(Default)]
+struct Melt {
+    /// What the canvas draws after the layer (the labels, the cross), recorded each frame.
+    top: skia::Canvas,
+    renderer: skia::Renderer,
+    gpu: Option<MeltGpu>,
+}
+
+struct MeltGpu {
+    format: wgpu::TextureFormat,
+    generation: u32,
+    pixels: (u32, u32),
+    pipeline: wgpu::RenderPipeline,
+    uniforms: wgpu::Buffer,
+    top: wgpu::TextureView,
+    bind: wgpu::BindGroup,
+}
+
+impl Melt {
+    #[allow(clippy::too_many_arguments)]
+    fn draw(&mut self, frame: &Frame, device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut wgpu::CommandEncoder, target: &wgpu::TextureView, format: wgpu::TextureFormat, uniforms: &Uniforms) {
+        let (pw, ph) = frame.pixels();
+        if self.gpu.as_ref().map(|g| (g.format, g.generation, g.pixels)) != Some((format, frame.shader_generation, (pw, ph))) {
+            let shader = device.create_shader_module(module());
+            let layout = device.create_bind_group_layout(&GROUP_0);
+            let buffer = device.create_buffer(&wgpu::BufferDescriptor { label: Some("delete button"), size: Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
+            let top = skia::render::sampled_target(device, "delete button top", skia::blur::GRAPHITE_FORMAT, pw, ph);
+            let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("delete button"),
+                layout: &layout,
+                entries: &[
+                    wgpu::BindGroupEntry { binding: U.binding, resource: buffer.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: TOP.binding, resource: wgpu::BindingResource::TextureView(&top) },
+                ],
+            });
+            self.gpu = Some(MeltGpu {
+                format,
+                generation: frame.shader_generation,
+                pixels: (pw, ph),
+                pipeline: skia::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None),
+                uniforms: buffer,
+                top,
+                bind,
+            });
+        }
+        let gpu = self.gpu.as_ref().unwrap();
+        self.renderer.draw(device, queue, encoder, &self.top, &gpu.top, skia::blur::GRAPHITE_FORMAT, pw, ph, wgpu::Color::TRANSPARENT);
+        queue.write_buffer(&gpu.uniforms, 0, &uniforms.bytes());
+        skia::render::fullscreen_pass(encoder, "delete button", target, &gpu.pipeline, &gpu.bind);
+    }
+}
+
 impl Surface for DeleteButton {
     fn bind(&mut self, _: &[Value], _: Option<f64>) -> Result<(), SurfaceError> {
         Ok(())
@@ -208,7 +313,7 @@ impl Surface for DeleteButton {
     }
 
     fn messages(&mut self) -> Vec<String> {
-        std::mem::take(&mut self.posted)
+        crate::haptic::host(std::mem::take(&mut self.posted))
     }
 
     fn agent(&mut self, _request: &str) -> Option<String> {
@@ -279,29 +384,27 @@ impl Surface for DeleteButton {
         let rect_x = self.rect_x.value as f32;
         let close_x = self.close_x.value as f32;
         let close_opacity = self.close_opacity.value as f32;
-        let color = Paint::fill(self.color.color());
-        self.gooey.begin(frame);
-        let goo = &mut self.gooey.goo;
         // The rect's group: scale about (width / 2, height / 2).
         let (s, ox, oy) = (self.scale.value as f32, WIDTH / 2.0, HEIGHT / 2.0);
-        goo.save();
-        goo.translate(ox, oy);
-        goo.scale(s, s);
-        goo.translate(-ox, -oy);
-        goo.draw_rrect(rect_x, 0.0, WIDTH, HEIGHT, RECT_RADIUS, &color);
-        goo.restore();
-        // The circle's group: opacity, scale about (width + additionalWidth / 2, height / 2).
-        if close_opacity > 0.0 {
-            let (s, ox) = (self.close_scale.value as f32, WIDTH + ADDITIONAL / 2.0);
-            goo.save();
-            goo.opacity(close_opacity);
-            goo.translate(ox, oy);
-            goo.scale(s, s);
-            goo.translate(-ox, -oy);
-            goo.draw_circle(close_x, HEIGHT / 2.0, HEIGHT / 2.0, &color);
-            goo.restore();
-        }
-        let top = &mut self.gooey.top;
+        let rect = [ox + (rect_x + WIDTH / 2.0 - ox) * s, oy, WIDTH / 2.0 * s, HEIGHT / 2.0 * s];
+        // The circle's group: scale about (width + additionalWidth / 2, height / 2); its opacity
+        // moves its edge in.
+        let (cs, cox) = (self.close_scale.value as f32, WIDTH + ADDITIONAL / 2.0);
+        let radius = HEIGHT / 2.0 * cs - opacity_inset(close_opacity);
+        let circle = [cox + (close_x - cox) * cs, oy];
+        // Along its way out (115 → 190), k holds the neck, then lets go.
+        let from = WIDTH / 2.0 + ADDITIONAL / 2.0;
+        let along = (close_x - from) / (WIDTH + ADDITIONAL / 2.0 - from);
+        let k = NECK * ((1.0 - along) / PARTING).clamp(0.0, 1.0);
+        let [r, g, b] = self.color.rgb();
+        let uniforms = Uniforms {
+            rect,
+            shape: [RECT_RADIUS * s, circle[0], circle[1], radius],
+            merge: [k, frame.scale, gfx::srgb_flag(format), 0.0],
+            color: [r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0, 1.0],
+        };
+        let top = &mut self.melt.top;
+        top.begin(frame.scale);
         if let Some(font) = &self.font {
             let baseline = FONT_SIZE / 3.0 + HEIGHT / 2.0;
             for (text, width, opacity) in [(DELETE, self.widths.0, self.delete_opacity.value), (CONFIRM, self.widths.1, self.confirm_opacity.value)] {
@@ -316,7 +419,7 @@ impl Surface for DeleteButton {
             top.draw_path(&self.cross, &Paint::fill(Color::WHITE).with_opacity(close_opacity));
             top.restore();
         }
-        self.gooey.draw(frame, device, queue, encoder, target, format);
+        self.melt.draw(frame, device, queue, encoder, target, format, &uniforms);
         moving || self.finger.is_some()
     }
 }
@@ -346,14 +449,18 @@ mod tests {
         let (img, moving) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         gfx::save_over(&img, "delete-button-rest", [255, 255, 255]);
         assert!(!moving);
-        // At rest: the red pill from x 40 to 190 (the layer's blur and alpha × 18 − 10 eat
-        // its top and bottom edges), white text in its middle, nothing past it.
+        // At rest: the red pill from x 40 to 190, crisp (one pixel of anti-aliasing, no halo),
+        // white text in its middle, nothing past it.
         let red = |p: [u8; 4]| p[0] > 200 && p[1] < 40 && p[3] > 200;
         assert!(red(img.at(3 * 60, 75)), "pill {:?}", img.at(180, 75));
         assert!(red(img.at(3 * 175, 75)), "pill right {:?}", img.at(525, 75));
         assert_eq!(img.at(3 * 20, 75)[3], 0, "left of it");
         assert_eq!(img.at(3 * 215, 75)[3], 0, "right of it");
-        assert_eq!(img.at(3 * 115, 3)[3], 0, "the top edge is eaten by the goo");
+        assert!(red(img.at(3 * 115, 1)), "the top edge is the rect's {:?}", img.at(345, 1));
+        // Across the left edge (x = 40 pt = 120 px): one partly covered pixel at most (none here:
+        // the edge is on a pixel boundary).
+        let row: Vec<u8> = (114..126).map(|x| img.at(x, 75)[3]).collect();
+        assert!(row.iter().filter(|&&a| a > 0 && a < 255).count() <= 1, "{row:?}");
         let white = img.data.chunks(4).filter(|p| p[0] > 200 && p[1] > 200 && p[3] > 200).count();
         assert!(white > 300, "the white label, {white} px");
 
@@ -367,6 +474,11 @@ mod tests {
         while moving && ms < 4000.0 {
             ms += 16.0;
             (img, moving) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+            for at in [96.0, 192.0, 288.0, 400.0] {
+                if ms == at {
+                    gfx::save_over(&img, &format!("delete-button-split-{at}"), [255, 255, 255]);
+                }
+            }
         }
         gfx::save_over(&img, "delete-button-confirm", [255, 255, 255]);
         assert!(s.agent("").unwrap().contains("\"toggled\":true"));
@@ -375,11 +487,31 @@ mod tests {
         assert!(black(img.at(3 * 20, 75)), "pill {:?}", img.at(60, 75));
         assert!(black(img.at(3 * 172, 75)), "circle's rim {:?}", img.at(516, 75));
         assert_eq!(img.at(3 * 190, 75)[..3], [255, 255, 255], "the cross's centre");
+        // Parted: white across the gap (150 → 165 pt), on the axis too.
+        assert_eq!(img.at(3 * 157, 75)[3], 0, "the gap {:?}", img.at(471, 75));
 
         // The cross: back to Delete.
         s.input(&pointer(PointerPhase::Down, 190.0, ms));
         s.input(&pointer(PointerPhase::Up, 190.0, ms + 60.0));
         assert_eq!(s.messages(), vec!["haptic:selection".to_string()]);
         assert!(s.agent("").unwrap().contains("\"toggled\":false"));
+        let mut t = ms + 60.0;
+        while t < ms + 1200.0 {
+            t += 16.0;
+            let (img, _) = fixture::render(&gpu, s.as_mut(), &frame(t)).unwrap();
+            for at in [96.0, 192.0, 288.0] {
+                if (t - ms - 60.0 - at).abs() < 8.0 {
+                    gfx::save_over(&img, &format!("delete-button-join-{at}"), [255, 255, 255]);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn the_circle_fades_in_as_the_threshold_would() {
+        assert_eq!(opacity_inset(1.0), 0.0);
+        assert_eq!(opacity_inset(0.5), HEIGHT);
+        assert!(opacity_inset(0.9) > 0.0 && opacity_inset(0.9) < opacity_inset(0.7));
+        assert!((probit(0.975) - 1.959964).abs() < 1e-4);
     }
 }

@@ -9,7 +9,17 @@ use DemoEnv from "../env.contract"
 component IosHomeBouncy
   props
     env: DemoEnv
+  // The surface's haptics (gpu/src/ios_home_bouncy.rs, past RN): light on the long press and a
+  // thumb's take, selection per slider step and across the pull's dismiss line, medium on the
+  // dismiss.
+  action heard(m: string)
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-medium"
+      haptic("impact-medium")
   view
-    canvas surface=ios_home_bouncy(env.safeTop) position="absolute" top=0 left=0 width=env.width
+    canvas surface=ios_home_bouncy(env.safeTop) message=heard position="absolute" top=0 left=0 width=env.width
       height=env.height background-color="#fafafa" touch-action="none"
       testId="ios-home-bouncy" aria-label="App grid: tap to replay the bounce, long press to tune its springs"

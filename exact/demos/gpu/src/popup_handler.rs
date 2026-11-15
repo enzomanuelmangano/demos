@@ -153,7 +153,7 @@ impl Surface for PopupHandler {
     }
 
     fn messages(&mut self) -> Vec<String> {
-        std::mem::take(&mut self.posted)
+        crate::haptic::host(std::mem::take(&mut self.posted))
     }
 
     fn max_fps(&self) -> u32 {

@@ -22,6 +22,10 @@
 //! - Pixels: Yoga puts each view on the 1 / scale grid inside the scrolled content; the scroll's
 //!   offset moves the content by fractions. The photos are constants.ts's Unsplash URLs (w=640),
 //!   bundled (gpu/images/coverflow-carousel).
+//! - Haptics (past RN, which plays none: the owner's haptic language): `haptic:selection` each
+//!   time the centred photo (round(offset / 160)) changes, during the drag and the glide, at most
+//!   one per HAPTIC_GAP_MS; `haptic:impact-rigid` once each time the strip is pulled or thrown past
+//!   an end (the rubber band).
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -38,6 +42,10 @@ const IMAGE_H: f64 = 120.0;
 /// styles.coverflow height.
 const LIST_H: f64 = 250.0;
 const COUNT: usize = 11;
+/// The shortest gap between two selection haptics, ms.
+const HAPTIC_GAP_MS: f64 = 40.0;
+/// How far past an end (points) the rubber band must pull before its haptic.
+const PAST_END: f64 = 2.0;
 
 static PHOTOS: [&[u8]; COUNT] = [
     include_bytes!("../images/coverflow-carousel/01.jpg"),
@@ -61,6 +69,10 @@ pub fn surface() -> Box<dyn Surface> {
         canvas: Canvas::default(),
         renderer: Renderer::default(),
         images: None,
+        centred: None,
+        past_end: false,
+        haptic_at: f64::NEG_INFINITY,
+        posted: Vec::new(),
     })
 }
 
@@ -70,6 +82,11 @@ struct Coverflow {
     canvas: Canvas,
     renderer: Renderer,
     images: Option<Images>,
+    /// The centred photo, and whether the strip is past an end (their haptics).
+    centred: Option<i64>,
+    past_end: bool,
+    haptic_at: f64,
+    posted: Vec<String>,
 }
 
 /// One cell's animated style at scroll offset `x`.
@@ -110,6 +127,25 @@ impl Coverflow {
     fn list_top(&self, scale: f64) -> f64 {
         grid((self.size.1 - LIST_H) / 2.0, scale)
     }
+
+    /// A selection when the centred photo changes (one per HAPTIC_GAP_MS at most), a rigid thunk
+    /// once per pull past an end.
+    fn haptics(&mut self, x: f64, now: f64) {
+        let centred = (x / ITEM).round().clamp(0.0, (COUNT - 1) as f64) as i64;
+        if self.centred.is_some_and(|c| c != centred) && now - self.haptic_at >= HAPTIC_GAP_MS {
+            self.posted.push("haptic:selection".into());
+            self.haptic_at = now;
+        }
+        self.centred = Some(centred);
+        if x < -PAST_END || x > self.scroll.max + PAST_END {
+            if !self.past_end {
+                self.posted.push("haptic:impact-rigid".into());
+            }
+            self.past_end = true;
+        } else if (0.0..=self.scroll.max).contains(&x) {
+            self.past_end = false;
+        }
+    }
 }
 
 impl Surface for Coverflow {
@@ -127,6 +163,10 @@ impl Surface for Coverflow {
 
     fn agent(&mut self, _request: &str) -> Option<String> {
         Some(format!("{{\"contentOffset\":{:.2}}}", self.scroll.offset))
+    }
+
+    fn messages(&mut self) -> Vec<String> {
+        crate::haptic::host(std::mem::take(&mut self.posted))
     }
 
     fn input(&mut self, event: &InputEvent) {
@@ -164,6 +204,7 @@ impl Surface for Coverflow {
         }
         let moving = self.scroll.step(frame.now_ms);
         let x = self.scroll.offset;
+        self.haptics(x, frame.now_ms);
         let (pad, top) = (self.pad(), self.list_top(scale));
         let c = &mut self.canvas;
         c.begin(frame.scale);
@@ -232,5 +273,21 @@ mod tests {
             ms += 16.7;
         }
         assert_eq!(s.agent("{}").unwrap(), "{\"contentOffset\":160.00}");
+        // One photo on: one selection. A slow pull right of 300 pt: back one photo, then past the
+        // start, one rigid thunk however long it is held.
+        assert_eq!(s.messages(), vec!["haptic:selection"]);
+        ms += 100.0;
+        s.input(&touch(PointerPhase::Down, 60.0, ms));
+        for k in 1..=30 {
+            s.input(&touch(PointerPhase::Move, 60.0 + 10.0 * k as f32, ms + 33.0 * k as f64));
+            fixture::render(&gpu, s.as_mut(), &frame(ms + 33.0 * k as f64)).unwrap();
+        }
+        ms += 33.0 * 30.0 + 200.0;
+        s.input(&touch(PointerPhase::Up, 360.0, ms));
+        while fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap().1 && ms < 10_000.0 {
+            ms += 16.7;
+        }
+        assert_eq!(s.agent("{}").unwrap(), "{\"contentOffset\":0.00}");
+        assert_eq!(s.messages(), vec!["haptic:selection", "haptic:impact-rigid"]);
     }
 }

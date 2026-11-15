@@ -21,6 +21,11 @@ component MotionBlur
   state count = 0
   state held = false
   state pressing = pressNone()
+  // Debug: a tap on the list runs the demo 10× slower and shows the surface's HUD (pixel
+  // scale, frame dt, samples, smear), so the blur and what the device gives it can be seen.
+  state slow = false
+  action toggleSlow
+    slow = not slow
   action holdOn
     pressing = pressDown(pressing, 0)
     count = count + 1
@@ -40,10 +45,10 @@ component MotionBlur
       column flex=1 justify-content="center"
         // BlurredList: maxVisibleItems × 110 tall, clipped.
         view height=(maxVisible() * rowHeight()) overflow="hidden" position="relative"
-          testId="motion-blur-list"
-          // The cards, their motion, the bursts and a real motion blur (a 360° shutter at 24
-          // fps, integrated per pixel along each card's own motion): gpu/src/motion_blur.rs.
-          canvas surface=motion_blur(count, env.seed, held) width="100%"
+          press=toggleSlow aria-label="Toggle slow motion" testId="motion-blur-list"
+          // The cards, their motion, the bursts and a real motion blur (a 1/15 s tent shutter,
+          // integrated per pixel along each card's own motion): gpu/src/motion_blur.rs.
+          canvas surface=motion_blur(count, env.seed, held, slow) width="100%"
             height=(maxVisible() * rowHeight()) message=buzz aria-hidden=true
             testId="motion-blur-canvas"
         // styles.buttonContainer: centred, top -50.

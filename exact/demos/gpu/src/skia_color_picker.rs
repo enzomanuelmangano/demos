@@ -23,6 +23,12 @@
 //!
 //! Each frame the picker moves: two small canvases (the stroke; the stroke and the fill), one
 //! blur, one composite. Nothing is allocated once warm.
+//!
+//! Haptics (past RN, which plays none: the owner's haptic language): `haptic:impact-light` when
+//! a finger takes the picker; `haptic:selection` when the picker's hue crosses a 30° step (twelve
+//! around the wheel) while it is out past half the radius, at most one per HAPTIC_GAP_MS;
+//! `haptic:impact-rigid` when the finger leaves the wheel and the picker stops at its rim, once
+//! per excursion (re-armed back inside RIM_REARM of the radius). No two within HAPTIC_GAP_MS.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -45,10 +51,23 @@ const STROKE: f32 = 5.0;
 const STROKE_OUTSET: f32 = STROKE / 2.0 * 4.0;
 /// Transparent texels around the picker's layer (bilinear reads past it see 0).
 const MARGIN: i32 = 4;
+/// The shortest gap between two haptics, ms.
+const HAPTIC_GAP_MS: f64 = 40.0;
+/// The hue step a selection haptic marks, degrees.
+const HUE_STEP: f64 = 30.0;
+/// The share of the radius past which hue steps are felt (nearer the centre they all crowd in).
+const HUE_FELT: f64 = 0.5;
+/// The share of the radius a finger comes back inside to re-arm the rim haptic.
+const RIM_REARM: f64 = 0.95;
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
-    Box::new(ColorPicker {
+    Box::new(picker())
+}
+
+/// The picker at the wheel's centre.
+fn picker() -> ColorPicker {
+    ColorPicker {
         shape: path_from_svg(SHAPE),
         size: 0.0,
         picker: None,
@@ -65,8 +84,12 @@ pub fn surface() -> Box<dyn Surface> {
             r.p3 = true;
             r
         },
+        on_rim: false,
+        hue_step: None,
+        haptic_at: f64::NEG_INFINITY,
+        posted: Vec::new(),
         gpu: None,
-    })
+    }
 }
 
 struct ColorPicker {
@@ -83,6 +106,12 @@ struct ColorPicker {
     both: Canvas,
     stroke_renderer: Renderer,
     both_renderer: Renderer,
+    /// The finger is past the rim (its limit haptic played).
+    on_rim: bool,
+    /// The hue step the picker was in when last felt (none near the centre).
+    hue_step: Option<i64>,
+    haptic_at: f64,
+    posted: Vec<String>,
     gpu: Option<Gpu>,
 }
 
@@ -163,6 +192,45 @@ fn color_at(x: f64, y: f64, w: f64) -> [u8; 3] {
 }
 
 impl ColorPicker {
+    /// Posts `kind` unless another haptic played under HAPTIC_GAP_MS ago.
+    fn haptic(&mut self, kind: &str, at_ms: f64) -> bool {
+        if at_ms - self.haptic_at < HAPTIC_GAP_MS {
+            return false;
+        }
+        self.posted.push(format!("haptic:{kind}"));
+        self.haptic_at = at_ms;
+        true
+    }
+
+    /// The rim and hue-step haptics for a finger at (x, y), the picker moved there (clamped).
+    fn feel(&mut self, x: f32, y: f32, at_ms: f64) {
+        let c = self.size as f64 / 2.0;
+        let radius = max_size(self.size) as f64 / 2.0;
+        let finger = (x as f64 - c).hypot(y as f64 - c);
+        if finger > radius && !self.on_rim {
+            self.on_rim = true;
+            self.haptic("impact-rigid", at_ms);
+        } else if finger < radius * RIM_REARM {
+            self.on_rim = false;
+        }
+        let (px, py) = self.picker.unwrap_or((c, c));
+        let (dx, dy) = (px - c, py - c);
+        let step = if dx.hypot(dy) > radius * HUE_FELT {
+            let hue = (180.0 + dy.atan2(dx).to_degrees() + 360.0) % 360.0;
+            Some((hue / HUE_STEP).floor() as i64)
+        } else {
+            None
+        };
+        match (self.hue_step, step) {
+            (Some(a), Some(b)) if a != b => {
+                if self.haptic("selection", at_ms) {
+                    self.hue_step = step;
+                }
+            }
+            _ => self.hue_step = step,
+        }
+    }
+
     fn on_move(&mut self, x: f32, y: f32) {
         let c = self.size as f64 / 2.0;
         self.picker = Some(clamp_to_circle(x as f64, y as f64, c, c, max_size(self.size) as f64 / 2.0));
@@ -194,6 +262,10 @@ impl Surface for ColorPicker {
         true
     }
 
+    fn messages(&mut self) -> Vec<String> {
+        crate::haptic::host(std::mem::take(&mut self.posted))
+    }
+
     fn agent(&mut self, _request: &str) -> Option<String> {
         let (x, y) = self.picker.unwrap_or((self.size as f64 / 2.0, self.size as f64 / 2.0));
         let [r, g, b] = color_at(x, y, self.size as f64);
@@ -206,9 +278,16 @@ impl Surface for ColorPicker {
             return;
         }
         match self.pan.event(id, gfx::phase(phase), x, y, at_ms, true) {
-            Event::Begin { x, y } => self.on_move(x, y),
+            Event::Begin { x, y } => {
+                self.on_move(x, y);
+                self.haptic("impact-light", at_ms);
+                self.feel(x, y, at_ms);
+            }
             // Activation sends onUpdate too (RNGH's ACTIVE event).
-            Event::Start(p) | Event::Update(p) => self.on_move(p.x, p.y),
+            Event::Start(p) | Event::Update(p) => {
+                self.on_move(p.x, p.y);
+                self.feel(p.x, p.y, at_ms);
+            }
             _ => {}
         }
     }
@@ -411,6 +490,34 @@ mod tests {
         for (a, e) in [l, t, r, b].iter().zip(BOUNDS) {
             assert!((a - e).abs() < 1e-4, "{a} {e}");
         }
+    }
+
+    #[test]
+    fn haptics_on_the_grab_the_rim_and_each_hue_step() {
+        let mut s = picker();
+        s.size = 420.0;
+        let r = max_size(420.0) as f64 / 2.0;
+        let finger = |s: &mut ColorPicker, phase, x: f64, y: f64, at_ms| {
+            s.input(&InputEvent::Pointer { id: 1, phase, x: x as f32, y: y as f32, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
+        };
+        finger(&mut s, PointerPhase::Down, 210.0, 210.0, 0.0);
+        assert_eq!(s.messages(), vec!["haptic:impact-light"]);
+        // Straight out to the right and past the rim: one rigid, however far past.
+        let mut ms = 0.0;
+        for k in 1..=30 {
+            ms += 16.0;
+            finger(&mut s, PointerPhase::Move, 210.0 + 7.0 * k as f64, 210.0, ms);
+        }
+        assert_eq!(s.messages(), vec!["haptic:impact-rigid"]);
+        // Once around inside the rim: a selection per 30° step, nothing else.
+        for k in 0..=120 {
+            ms += 16.0;
+            let a = std::f64::consts::TAU * k as f64 / 120.0;
+            finger(&mut s, PointerPhase::Move, 210.0 + 0.9 * r * a.cos(), 210.0 + 0.9 * r * a.sin(), ms);
+        }
+        finger(&mut s, PointerPhase::Up, 210.0 + 0.9 * r, 210.0, ms + 16.0);
+        let steps = s.messages();
+        assert!((11..=12).contains(&steps.len()) && steps.iter().all(|m| m == "haptic:selection"), "{steps:?}");
     }
 
     #[test]

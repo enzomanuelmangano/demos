@@ -96,6 +96,9 @@ struct AtlasButton {
     canvas: Canvas,
     renderer: Renderer,
     gpu: Option<Gpu>,
+    /// Haptics (past RN, whose Tap plays none: the owner's call, as atlas-sphere): a light
+    /// impact at the grab, a soft one when the hold ends.
+    posted: Vec<String>,
 }
 
 struct Gpu {
@@ -171,6 +174,7 @@ impl AtlasButton {
     fn release(&mut self) {
         if self.finger.take().is_some() {
             self.set_active(false);
+            self.posted.push("haptic:impact-soft".into());
         }
     }
 
@@ -221,6 +225,10 @@ impl Surface for AtlasButton {
         true
     }
 
+    fn messages(&mut self) -> Vec<String> {
+        crate::haptic::host(std::mem::take(&mut self.posted))
+    }
+
     fn agent(&mut self, _request: &str) -> Option<String> {
         Some(format!("{{\"active\":{},\"progress\":{:.3}}}", self.finger.is_some(), self.progress.value))
     }
@@ -236,6 +244,7 @@ impl Surface for AtlasButton {
             Phase::Down if self.finger.is_none() && inside => {
                 self.finger = Some((id, at_ms));
                 self.set_active(true);
+                self.posted.push("haptic:impact-light".into());
             }
             // shouldCancelWhenOutside: a finger that leaves the button ends the tap.
             Phase::Move if self.finger.is_some_and(|(f, _)| f == id) && !inside => self.release(),
@@ -439,3 +448,26 @@ mod tests {
     }
 }
 
+#[cfg(test)]
+mod haptic_tests {
+    use super::*;
+    use exact_gpu::{PointerKind, PointerPhase};
+
+    fn finger(s: &mut AtlasButton, phase: PointerPhase, x: f32, y: f32) {
+        s.input(&InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: 0.0 });
+    }
+
+    /// The grab plays a light impact and the hold's end a soft one; a touch outside plays none.
+    #[test]
+    fn the_hold_plays_its_grab_and_its_release() {
+        let mut s = AtlasButton::default();
+        finger(&mut s, PointerPhase::Down, 300.0, 100.0);
+        assert!(s.messages().is_empty());
+        finger(&mut s, PointerPhase::Down, 125.0, 100.0);
+        assert_eq!(s.messages(), ["haptic:impact-light"]);
+        finger(&mut s, PointerPhase::Up, 125.0, 100.0);
+        assert_eq!(s.messages(), ["haptic:impact-soft"]);
+        finger(&mut s, PointerPhase::Up, 125.0, 100.0);
+        assert!(s.messages().is_empty());
+    }
+}

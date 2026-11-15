@@ -36,6 +36,12 @@
 //! | slider | Pan on the thumb: clamp(startX + translationX, 0, 256) → round(v / step) × step | the same |
 //!
 //! Input: safeTop.
+//!
+//! Haptics (past RN, which plays none: the owner's haptic language): `haptic:impact-light` when
+//! the long press opens the customizer and when a finger takes a slider's thumb;
+//! `haptic:selection` per value step a thumb moves (at most one per HAPTIC_GAP_MS) and when a pull
+//! crosses the 80 pt line past which a release dismisses (either way); `haptic:impact-medium`
+//! when a release dismisses the customizer. No two within HAPTIC_GAP_MS; taps play none.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -83,6 +89,10 @@ const INDICATOR: SpringConfig = SpringConfig {
 /// Pressability's DEFAULT_LONG_PRESS_DELAY_MS and its allowed movement.
 const LONG_PRESS_MS: f64 = 500.0;
 const LONG_PRESS_SLOP: f32 = 10.0;
+/// The shortest gap between two haptics, ms.
+const HAPTIC_GAP_MS: f64 = 40.0;
+/// The pull past which a release dismisses the customizer, pt.
+const DISMISS_PULL: f64 = 80.0;
 /// The Modal's cross dissolve (UIKit's default transition duration; not measured).
 const FADE_MS: f64 = 400.0;
 /// The keyframes' duration and Offset (screens/spring-customizer/animations.ts).
@@ -343,6 +353,24 @@ impl Layout {
     }
 }
 
+/// The haptics posted to the Contract, paced.
+#[derive(Default)]
+struct Haptics {
+    /// When the last one played.
+    at: f64,
+    posted: Vec<String>,
+}
+
+impl Haptics {
+    /// Posts `kind` unless another haptic played under HAPTIC_GAP_MS ago.
+    fn play(&mut self, kind: &str, at_ms: f64) {
+        if at_ms - self.at >= HAPTIC_GAP_MS {
+            self.posted.push(format!("haptic:{kind}"));
+            self.at = at_ms;
+        }
+    }
+}
+
 /// The surface.
 pub fn surface() -> Box<dyn Surface> {
     Box::new(Bouncy::new())
@@ -365,6 +393,9 @@ struct Bouncy {
     fade: Timing,
     bold16: Option<Font>,
     bold17: Option<Font>,
+    haptics: Haptics,
+    /// The current pull is past DISMISS_PULL (a release would dismiss).
+    past_dismiss: bool,
     gpu: Option<Gpu>,
 }
 
@@ -402,6 +433,8 @@ impl Bouncy {
             fade: Timing::at(0.0),
             bold16: Font::new(BOLD, 16.0).map(Font::with_ui_layout),
             bold17: Font::new(BOLD, 17.0).map(Font::with_ui_layout),
+            haptics: Haptics { at: f64::NEG_INFINITY, posted: Vec::new() },
+            past_dismiss: false,
             gpu: None,
         }
     }
@@ -491,6 +524,7 @@ impl Bouncy {
             if p.armed && now - p.at >= LONG_PRESS_MS {
                 self.press = None;
                 self.open();
+                self.haptics.play("impact-light", now);
             }
             moving = true;
         }
@@ -614,10 +648,12 @@ impl Bouncy {
             if let Some(i) = thumb {
                 m.grab = Some((id, Grab::Thumb { i, start_x: 0.0 }));
                 m.thumb.event(id, phase, x, y, at_ms, true);
+                self.haptics.play("impact-light", at_ms);
             } else {
                 m.grab = Some((id, Grab::Pull { tab }));
                 // onBegin.
                 m.triggered = false;
+                self.past_dismiss = false;
                 m.pan.event(id, phase, x, y, at_ms, true);
             }
             return;
@@ -649,7 +685,11 @@ impl Bouncy {
                 if let Some(p) = update {
                     let nx = (start_x + p.translation_x as f64).clamp(0.0, span);
                     let v = min + nx / span * (max - min);
+                    let old = self.configs[tab][i];
                     self.configs[tab][i] = (v / step).round() * step;
+                    if self.configs[tab][i] != old {
+                        self.haptics.play("selection", at_ms);
+                    }
                 }
                 let m = self.modal.as_mut().unwrap();
                 m.grab = if done {
@@ -671,11 +711,17 @@ impl Bouncy {
                                 m.triggered = true;
                                 self.start = true;
                             }
+                            let past = m.ty.value > DISMISS_PULL;
+                            if past != self.past_dismiss {
+                                self.past_dismiss = past;
+                                self.haptics.play("selection", at_ms);
+                            }
                         }
                     }
                     Event::End(p) => {
-                        if m.ty.value > 80.0 || p.velocity_y > 800.0 {
+                        if m.ty.value > DISMISS_PULL || p.velocity_y > 800.0 {
                             close = true;
+                            self.haptics.play("impact-medium", at_ms);
                         } else {
                             m.ty.to(0.0, 0.0, SNAP_BACK);
                         }
@@ -1016,6 +1062,10 @@ impl Surface for Bouncy {
 
     fn wants_input(&self) -> bool {
         true
+    }
+
+    fn messages(&mut self) -> Vec<String> {
+        crate::haptic::host(std::mem::take(&mut self.haptics.posted))
     }
 
     fn input(&mut self, event: &InputEvent) {
@@ -1413,6 +1463,40 @@ mod tests {
         assert!(!b.visible);
         run(&mut b, t + 310.0, t + 900.0);
         assert!(b.modal.is_none());
+    }
+
+    #[test]
+    fn haptics_on_the_long_press_the_slider_and_the_dismiss() {
+        let mut b = bouncy();
+        let t = run(&mut b, 0.0, 4000.0);
+        // A tap plays none; the long press opens the customizer with a light one.
+        b.input(&pointer(PointerPhase::Down, 200.0, 400.0, t));
+        b.input(&pointer(PointerPhase::Up, 200.0, 400.0, t + 80.0));
+        let t = run(&mut b, t + 90.0, t + 200.0);
+        assert!(b.messages().is_empty());
+        b.input(&pointer(PointerPhase::Down, 200.0, 400.0, t));
+        run(&mut b, t, t + 520.0);
+        b.input(&pointer(PointerPhase::Up, 200.0, 400.0, t + 530.0));
+        assert_eq!(b.messages(), vec!["haptic:impact-light"]);
+        let t = run(&mut b, t + 540.0, t + 1200.0);
+        // The mass thumb: light on the take, a selection per step it moves (paced).
+        let f = b.thumb_frame(0).unwrap();
+        let (x, y) = (f[0] + 12.0, f[1] + 12.0);
+        b.input(&pointer(PointerPhase::Down, x, y, t));
+        b.input(&pointer(PointerPhase::Move, x + 20.0, y, t + 100.0));
+        b.input(&pointer(PointerPhase::Move, x + 110.0, y, t + 200.0));
+        b.input(&pointer(PointerPhase::Up, x + 110.0, y, t + 300.0));
+        let slid = b.messages();
+        assert_eq!(slid[0], "haptic:impact-light", "{slid:?}");
+        assert!((2..=3).contains(&slid.len()) && slid[1..].iter().all(|m| m == "haptic:selection"), "{slid:?}");
+        // A pull of 150 pt: a selection across the 80 pt line, medium when the release dismisses.
+        let t = t + 400.0;
+        b.input(&pointer(PointerPhase::Down, 200.0, 700.0, t));
+        b.input(&pointer(PointerPhase::Move, 200.0, 800.0, t + 100.0));
+        b.input(&pointer(PointerPhase::Move, 200.0, 860.0, t + 200.0));
+        b.input(&pointer(PointerPhase::Up, 200.0, 860.0, t + 300.0));
+        assert_eq!(b.messages(), vec!["haptic:selection", "haptic:impact-medium"]);
+        assert!(!b.visible);
     }
 
     #[test]

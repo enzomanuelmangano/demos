@@ -11,6 +11,10 @@
 //!   translateX = interpolate(activeIndex, [i − 2, i − 1, i, i + 1], [70, 35, 0,
 //!   −itemWidth − paddingLeft × 2], CLAMP), scale = … [0.8, 0.9, 1, 1], CLAMP, about its
 //!   centre; the expo-image covers it (centred), radius 25 continuous.
+//! - Haptics (past RN, which plays none: the owner's haptic language): `haptic:selection` each
+//!   time the front card (round(offset / itemWidth)) changes, during the drag and the glide, at
+//!   most one per HAPTIC_GAP_MS; `haptic:impact-rigid` once each time the list is pulled or
+//!   thrown past an end (the rubber band).
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -21,6 +25,10 @@ use crate::gfx;
 use crate::ui_scroll::{Snap, UiScroll, FAST};
 
 const COUNT: usize = 8;
+/// The shortest gap between two selection haptics, ms.
+const HAPTIC_GAP_MS: f64 = 40.0;
+/// How far past an end (points) the rubber band must pull before its haptic.
+const PAST_END: f64 = 2.0;
 static IMAGE_01: &[u8] = include_bytes!("../images/story-list/image_01-800x600.rgb8.zlib");
 static JPEGS: [&[u8]; 3] = [
     include_bytes!("../images/story-list/image_02.jpg"),
@@ -37,6 +45,10 @@ pub fn surface() -> Box<dyn Surface> {
         images: None,
         canvas: Canvas::default(),
         renderer: Renderer::default(),
+        front: None,
+        past_end: false,
+        haptic_at: f64::NEG_INFINITY,
+        posted: Vec::new(),
     })
 }
 
@@ -47,6 +59,11 @@ struct StoryList {
     images: Option<Images>,
     canvas: Canvas,
     renderer: Renderer,
+    /// The front card, and whether the list is past an end (their haptics).
+    front: Option<i64>,
+    past_end: bool,
+    haptic_at: f64,
+    posted: Vec<String>,
 }
 
 impl StoryList {
@@ -59,6 +76,25 @@ impl StoryList {
         let (w, h) = self.size;
         let item = w * 0.7;
         (self.round((h - w) / 2.0), item, (w - item) / 4.0)
+    }
+
+    /// A selection when the front card changes (one per HAPTIC_GAP_MS at most), a rigid thunk
+    /// once per pull past an end.
+    fn haptics(&mut self, offset: f64, item: f64, max: f64, now: f64) {
+        let front = (offset / item).round().clamp(0.0, (COUNT - 1) as f64) as i64;
+        if self.front.is_some_and(|f| f != front) && now - self.haptic_at >= HAPTIC_GAP_MS {
+            self.posted.push("haptic:selection".into());
+            self.haptic_at = now;
+        }
+        self.front = Some(front);
+        if offset < -PAST_END || offset > max + PAST_END {
+            if !self.past_end {
+                self.posted.push("haptic:impact-rigid".into());
+            }
+            self.past_end = true;
+        } else if (0.0..=max).contains(&offset) {
+            self.past_end = false;
+        }
     }
 
     fn ensure_scroll(&mut self) {
@@ -90,6 +126,10 @@ impl Surface for StoryList {
 
     fn wants_input(&self) -> bool {
         true
+    }
+
+    fn messages(&mut self) -> Vec<String> {
+        crate::haptic::host(std::mem::take(&mut self.posted))
     }
 
     fn agent(&mut self, _request: &str) -> Option<String> {
@@ -165,6 +205,8 @@ impl Surface for StoryList {
         let moving = self.scroll.as_mut().is_some_and(|s| s.step(frame.now_ms));
         let offset = self.scroll.as_ref().map_or(0.0, |s| s.offset);
         let (top, item, pad) = self.layout();
+        let max = self.scroll.as_ref().map_or(0.0, |s| s.max);
+        self.haptics(offset, item, max, frame.now_ms);
         let w = self.size.0;
         let (left, right) = (self.round(pad), self.round(pad + item));
         let (cw, ch) = ((right - left) as f32, w as f32);
@@ -268,5 +310,24 @@ mod tests {
         }
         let state = s.agent("{}").unwrap();
         assert!(state.contains("\"offset\":294.00"), "{state}");
+        // One card on: one selection. A slow pull right of 450 pt: back one card, then past the
+        // start, one rigid thunk however long it is held.
+        assert_eq!(s.messages(), vec!["haptic:selection"]);
+        ms += 100.0;
+        s.input(&pointer(PointerPhase::Down, 20.0, ms));
+        for k in 1..=30 {
+            s.input(&pointer(PointerPhase::Move, 20.0 + 15.0 * k as f32, ms + 33.0 * k as f64));
+            fixture::render(&gpu, s.as_mut(), &frame(ms + 33.0 * k as f64)).unwrap();
+        }
+        ms += 33.0 * 30.0 + 200.0;
+        s.input(&pointer(PointerPhase::Up, 470.0, ms));
+        let end = ms + 3000.0;
+        while ms < end {
+            ms += 16.0;
+            fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+        }
+        let state = s.agent("{}").unwrap();
+        assert!(state.contains("\"offset\":0.00"), "{state}");
+        assert_eq!(s.messages(), vec!["haptic:selection", "haptic:impact-rigid"]);
     }
 }

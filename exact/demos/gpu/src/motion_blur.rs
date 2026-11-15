@@ -13,11 +13,15 @@
 //! the same on a card that is still and on one that moves, in no direction. Here each card is
 //! blurred by its own motion, as a film camera records it:
 //!
-//! - The shutter: 360° at 24 fps (fully open), `EXPOSURE_MS` (41.7 ms) centred on the frame's
-//!   instant (Blender's "centre on frame"), the same on a 60 Hz and a 120 Hz display. The
-//!   slide's spring peaks at ~600 pt/s (5 pt, 15 px a 120 Hz frame): a 25 pt smear, the pop-in's
-//!   ~32 pt. A 180° shutter of a 120 Hz frame (4.2 ms) would leave 2.5 pt nobody sees; 180° at
-//!   24 fps (20.8 ms) read as barely blurred on the phone.
+//! - The shutter: 1/15 s (`EXPOSURE_MS`, 66.7 ms; a 360° shutter at 15 fps), tent-weighted,
+//!   centred on the frame's instant (Blender's "centre on frame"), the same on a 60 Hz and a
+//!   120 Hz display. The slide's spring peaks at ~600 pt/s (5 pt, 15 px a 120 Hz frame): a 40 pt
+//!   smear, the pop-in's ~50 pt. 180° at 24 fps (20.8 ms) and 360° at 24 fps (41.7 ms) both read
+//!   as no blur on the phone.
+//! - Debug (input 3, `slow`): the demo's clock runs at `SLOW_RATE` (10× slower, the shutter in
+//!   the demo's time, so each frame's smear is the same, held 10× longer) and a HUD in the
+//!   list's top-left corner reads what the device gives the surface: its pixel scale, the
+//!   frame's dt, the samples a pixel took and the longest smear (device px) since the last press.
 //! - The integral: the card's layer (drawn once into an atlas slot) under its transform at N
 //!   instants across the shutter, its opacity then, averaged in linear light (a box shutter: an
 //!   ideal global shutter). Transforms are the analytic motion (keyframe, spring, exit) evaluated
@@ -66,8 +70,12 @@ const ENTER_MS: f64 = 200.0;
 const EXIT_MS: f64 = 400.0;
 /// isLastItemProgress's withTiming (default: 300 ms, inOut(quad)).
 const SHADOW_MS: f64 = 300.0;
-/// The shutter: 360° at 24 fps.
-pub const EXPOSURE_MS: f64 = 1000.0 / 24.0;
+/// The shutter: 1/15 s, a photographer's slow shutter for motion (a 360° shutter at 15 fps).
+pub const EXPOSURE_MS: f64 = 1000.0 / 15.0;
+/// The debug slow motion's rate (input 3).
+pub const SLOW_RATE: f64 = 0.1;
+/// The debug HUD's font size.
+const HUD_SIZE: f32 = 12.0;
 /// Holding the +: the first burst card this long after the press.
 pub const BURST_DELAY_MS: f64 = 300.0;
 /// Then one every this long at first…
@@ -79,7 +87,7 @@ pub const BURST_MIN_MS: f64 = 70.0;
 /// The most knots (intervals) a card takes in a frame.
 pub const MAX_SAMPLES: usize = 64;
 /// The most samples a pixel takes for one card (its cost at the fastest moves).
-pub const MAX_TOTAL: usize = 96;
+pub const MAX_TOTAL: usize = 160;
 /// Cards drawn at once (the shader's arrays).
 const SLOTS: usize = 8;
 /// Knots in the uniform.
@@ -344,7 +352,7 @@ pub fn plan(
     t: f64,
     layer: (f64, f64),
     scale: f64,
-) -> (Vec<Pose>, usize) {
+) -> (Vec<Pose>, usize, f64) {
     let (lw, lh) = layer;
     let corners = |p: &Pose| {
         [
@@ -362,36 +370,49 @@ pub fn plan(
         .collect();
     // The path as long as its fastest stretch makes it (samples are even in time, so the
     // spacing is set where the card moves fastest).
-    let mut path: f64 = 0.0;
+    let (mut path, mut swept): (f64, f64) = (0.0, 0.0);
     for c in 0..4 {
+        let mut len = 0.0;
         for w in probe.windows(2) {
             let (a, b) = (corners(&w[0])[c], corners(&w[1])[c]);
             let step = ((b.0 - a.0).powi(2) + (b.1 - a.1).powi(2)).sqrt();
             path = path.max(step * PROBES as f64 * scale);
+            len += step * scale;
         }
+        swept = swept.max(len);
     }
     let visible = probe.iter().any(|p| p.alpha > 0.0);
     if !visible {
-        return (Vec::new(), 1);
+        return (Vec::new(), 1, 0.0);
     }
     let total = ((2.0 * path).ceil() as usize).clamp(1, MAX_TOTAL);
     if total == 1 || path < 0.05 {
-        return (vec![pose(t)], 1);
+        return (vec![pose(t)], 1, swept);
     }
     let m = total.div_ceil(MAX_SAMPLES);
     let n = total.div_ceil(m);
     let knots = (0..=n)
         .map(|j| pose(t - EXPOSURE_MS / 2.0 + EXPOSURE_MS * j as f64 / n as f64))
         .collect();
-    (knots, m)
+    (knots, m, swept)
 }
 
 #[derive(Default)]
 struct MotionBlur {
     count: Option<usize>,
     seed: f64,
-    /// The last inputs (count, held), applied at the next frame.
-    pending: Option<(usize, bool)>,
+    /// The last inputs (count, held, slow), applied at the next frame.
+    pending: Option<(usize, bool, bool)>,
+    /// The demo's clock: at host time `clock.0` it read `clock.1`, running at `rate`.
+    clock: (f64, f64),
+    rate: f64,
+    slow: bool,
+    /// The debug HUD's readings: the last host frame time, its dt, the most samples and the
+    /// longest smear (device px) since the last press.
+    last_host: Option<f64>,
+    dt: f64,
+    peak_samples: usize,
+    peak_smear: f64,
     /// The Contract's count, the burst's cards since, whether the + is held.
     presses: usize,
     bursts: usize,
@@ -421,6 +442,8 @@ struct Gpu {
     layout: Layout,
     bold: Font,
     regular: Font,
+    /// The debug HUD's face.
+    hud: Font,
     emoji: Option<Images>,
 }
 
@@ -510,7 +533,7 @@ impl MotionBlur {
     fn live(&self) -> Vec<Card> {
         let mut live: Vec<Card> = self.cards.clone();
         live.sort_by_key(|c| c.k);
-        let skip = live.len().saturating_sub(SLOTS);
+        let skip = live.len().saturating_sub(SLOTS - self.slow as usize);
         live.split_off(skip)
     }
 
@@ -603,6 +626,10 @@ impl Surface for MotionBlur {
             .get(2)
             .and_then(|v| v.as_bool().or(v.as_number().map(|x| x != 0.0)))
             .unwrap_or(false);
+        let slow = inputs
+            .get(3)
+            .and_then(|v| v.as_bool().or(v.as_number().map(|x| x != 0.0)))
+            .unwrap_or(false);
         if seed != self.seed {
             self.seed = seed;
             self.count = None;
@@ -612,7 +639,7 @@ impl Surface for MotionBlur {
         // Applied at the next frame's instant: `at_ms` is not taken, as it may be on another
         // clock than `Frame::now_ms` (an idle surface's clock also stands still).
         let _ = at_ms;
-        self.pending = Some((n, held));
+        self.pending = Some((n, held, slow));
         Ok(())
     }
 
@@ -638,8 +665,29 @@ impl Surface for MotionBlur {
         target: &wgpu::TextureView,
         format: wgpu::TextureFormat,
     ) -> bool {
-        let t = frame.now_ms;
-        if let Some((n, held)) = self.pending.take() {
+        let host = frame.now_ms;
+        if self.rate == 0.0 {
+            self.rate = 1.0;
+            self.clock = (host, host);
+        }
+        self.dt = self.last_host.map_or(0.0, |l| host - l);
+        self.last_host = Some(host);
+        let anim = |c: (f64, f64), rate: f64| c.1 + (host - c.0) * rate;
+        if let Some((_, _, slow)) = self.pending {
+            if slow != self.slow {
+                self.clock = (host, anim(self.clock, self.rate));
+                self.rate = if slow { SLOW_RATE } else { 1.0 };
+                self.slow = slow;
+                self.drawn.clear();
+            }
+        }
+        // Every motion below runs on the demo's clock (the host's, or 10× slower in debug).
+        let t = anim(self.clock, self.rate);
+        if let Some((n, held, _)) = self.pending.take() {
+            if n != self.presses || held != self.held {
+                self.peak_samples = 0;
+                self.peak_smear = 0.0;
+            }
             if n < self.presses {
                 self.bursts = 0;
             }
@@ -678,10 +726,23 @@ impl Surface for MotionBlur {
         let gpu = &owned;
         let live = self.live();
         // The atlas: re-drawn when its cards or a shadow change.
-        let want: Vec<(usize, i64)> = live
+        let mut want: Vec<(usize, i64)> = live
             .iter()
             .map(|c| (c.k, (c.shadow_at(t) * 1024.0).round() as i64))
             .collect();
+        let hud = self.slow.then(|| {
+            format!(
+                "slow-mo 10x  {:.0}x  dt {:.1} ms  {} samples  smear {:.0} px",
+                s, self.dt, self.peak_samples, self.peak_smear
+            )
+        });
+        if let Some(h) = &hud {
+            // The HUD's text in the key (its hash), so a new reading redraws the atlas.
+            use std::hash::{Hash, Hasher};
+            let mut hasher = std::collections::hash_map::DefaultHasher::new();
+            h.hash(&mut hasher);
+            want.push((usize::MAX, hasher.finish() as i64));
+        }
         if want != self.drawn {
             let c = &mut self.canvas;
             c.begin(s as f32);
@@ -694,6 +755,14 @@ impl Surface for MotionBlur {
                 ));
                 MotionBlur::record_card(c, gpu, self.seed, card, card.shadow_at(t));
                 c.restore();
+            }
+            if let Some(h) = &hud {
+                let (ox, oy) = slot_origin(SLOTS - 1, gpu.slot_size);
+                let (x, y) = ((ox as f64 / s) as f32, (oy as f64 / s) as f32);
+                let w = gpu.hud.advance_width(h) + 12.0;
+                c.draw_rrect(x, y, w, 20.0, 10.0, &Paint::fill(Color::BLACK.alpha(0.75)));
+                let base = gfx::baseline(&gpu.hud, y + (20.0 - gfx::line_height(&gpu.hud)) / 2.0);
+                c.draw_text(h, x + 6.0, base, &gpu.hud, &Paint::fill(Color::WHITE));
             }
             self.renderer.draw(
                 device,
@@ -725,13 +794,15 @@ impl Surface for MotionBlur {
         let mut next = 0;
         let mut samples = Vec::new();
         for (i, card) in live.iter().enumerate() {
-            let (ks, m) = plan(|tt| card.pose(&layout, tt), t, (lw, lh), s);
+            let (ks, m, smear) = plan(|tt| card.pose(&layout, tt), t, (lw, lh), s);
+            self.peak_smear = self.peak_smear.max(smear);
             if ks.is_empty() || next + ks.len() > KNOTS {
                 samples.push(0);
                 continue;
             }
             let n = if ks.len() == 1 { 1 } else { ks.len() - 1 };
             samples.push(n * m);
+            self.peak_samples = self.peak_samples.max(n * m);
             let (x0, y0) = slot_origin(i, gpu.slot_size);
             u.slots[i] = [x0 as f32, y0 as f32, sw as f32, sh as f32];
             u.info[i] = [n as f32, next as f32, m as f32, 0.0];
@@ -759,6 +830,16 @@ impl Surface for MotionBlur {
             next += ks.len();
         }
         self.samples = samples;
+        if hud.is_some() && next < KNOTS {
+            // The HUD: the last slot, still, 4 pt into the list's top-left corner.
+            let i = SLOTS - 1;
+            let (x0, y0) = slot_origin(i, gpu.slot_size);
+            u.slots[i] = [x0 as f32, y0 as f32, sw as f32, (24.0 * s) as f32];
+            u.info[i] = [1.0, next as f32, 1.0, 0.0];
+            let o = (4.0 * s).round() as f32;
+            u.knots[next] = [1.0, o, o, 1.0];
+            u.bounds[i] = [o, o, o + sw as f32, o + (24.0 * s) as f32];
+        }
         queue.write_buffer(&gpu.uniforms, 0, &u.bytes());
         skia::render::fullscreen_pass(encoder, "motion blur", target, &gpu.pipeline, &gpu.bind);
         self.gpu = Some(owned);
@@ -766,7 +847,7 @@ impl Surface for MotionBlur {
     }
 
     fn messages(&mut self) -> Vec<String> {
-        std::mem::take(&mut self.posted)
+        crate::haptic::host(std::mem::take(&mut self.posted))
     }
 }
 
@@ -856,6 +937,9 @@ fn build(
             .expect("Honk-Bold")
             .with_ui_layout(),
         regular: Font::new(HONK, 14.0)
+            .expect("Honk-Regular")
+            .with_ui_layout(),
+        hud: Font::new(HONK, HUD_SIZE)
             .expect("Honk-Regular")
             .with_ui_layout(),
         emoji,
@@ -1074,17 +1158,21 @@ mod tests {
             shadow: vec![],
             exit: None,
         };
-        let (ks, m) = plan(|t| slide.pose(&l, t), 1000.0 / 15.0, l.layer(), S as f64);
-        assert_eq!((ks.len() - 1) * m, MAX_TOTAL);
-        // Samples ≤ 0.8 device px apart (75 px over 96 samples), dithered between.
+        let (ks, m, _) = plan(|t| slide.pose(&l, t), 1000.0 / 15.0, l.layer(), S as f64);
+        assert!(
+            ((ks.len() - 1) * m).abs_diff(MAX_TOTAL) < m,
+            "{} × {m}",
+            ks.len() - 1
+        );
+        // Samples ≤ 0.8 device px apart at the shutter's fastest instant (the cap), dithered between.
         for w in ks.windows(2) {
             assert!(((w[1].oy - w[0].oy) * S as f64).abs() / m as f64 <= 0.8);
         }
         // A slower slide (late in the spring) is sampled every half pixel.
-        let (ks, m) = plan(|t| slide.pose(&l, t), 250.0, l.layer(), S as f64);
-        assert_eq!(m, 1);
+        let (ks, m, _) = plan(|t| slide.pose(&l, t), 300.0, l.layer(), S as f64);
+        assert!((ks.len() - 1) * m < MAX_TOTAL);
         for w in ks.windows(2) {
-            assert!(((w[1].oy - w[0].oy) * S as f64).abs() <= 0.51);
+            assert!(((w[1].oy - w[0].oy) * S as f64).abs() / m as f64 <= 0.51);
         }
     }
 
@@ -1244,5 +1332,42 @@ mod tests {
         assert!(!moving);
         assert!(s.agent("{}").unwrap().contains("\"bursts\":9,"));
         assert!(s.messages().is_empty());
+    }
+
+    #[test]
+    fn slow_motion_runs_the_clock_ten_times_slower_and_shows_the_hud() {
+        let Some(gpu) = gpu() else { return };
+        let mut s = surface();
+        let bind = |s: &mut Box<dyn Surface>, n: f64, slow: bool| {
+            s.bind(
+                &[
+                    Value::Number(n),
+                    Value::Number(7.0),
+                    Value::Bool(false),
+                    Value::Bool(slow),
+                ],
+                None,
+            )
+            .unwrap()
+        };
+        bind(&mut s, 3.0, true);
+        fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
+        bind(&mut s, 4.0, true);
+        // 1 s of host time is 100 ms of the demo's: still mid-slide, still blurred.
+        let mut ms = 1000.0 / 120.0;
+        let mut last = None;
+        while ms <= 1000.0 {
+            let (px, moving) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+            assert!(moving);
+            last = Some(px);
+            ms += 1000.0 / 120.0;
+        }
+        let px = last.unwrap();
+        gfx::save_over(&px, "motion-blur-slow-1000", [255, 255, 255]);
+        let state = s.agent("{}").unwrap();
+        assert!(!state.contains("\"samples\":[1,1,1"), "{state}");
+        // The HUD: a dark pill in the top-left corner.
+        let p = px.at(30, 30);
+        assert!(p[3] > 150 && p[0] < 80, "{p:?}");
     }
 }

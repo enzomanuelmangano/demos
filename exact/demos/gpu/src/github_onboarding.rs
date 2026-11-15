@@ -26,6 +26,10 @@
 //! - Photos: as expo-image hands them to Core Animation for a 232 pt view at 3x
 //!   (exact/parity-tools/github-onboarding/photos.swift): 02 downscaled to 696 × 999, the others
 //!   as decoded.
+//! - Haptics past RN (which plays only the dots' presses; the owner's haptic language): a
+//!   swipe plays `haptic:selection` each time the front page changes (round(offset / W)), at
+//!   most one per HAPTIC_GAP_MS, and `haptic:impact-rigid` once when the finger drags the list
+//!   past either end (the rubber band). A dot's scroll plays only its press's selection.
 
 use std::f64::consts::PI;
 
@@ -38,6 +42,8 @@ use skia::{fit_cover, Canvas, Color, Font, Images, Matrix, Paint, Rect, Renderer
 use crate::gfx;
 use crate::ui_scroll::{Snap, UiScroll, NORMAL};
 
+/// The shortest gap between two page haptics, ms.
+const HAPTIC_GAP_MS: f64 = 40.0;
 /// index.tsx's data: title, colour, photo.
 const TITLES: [&str; 4] = [
     "Lazy Day Lounger",
@@ -271,6 +277,10 @@ pub fn surface() -> Box<dyn Surface> {
         images: None,
         gpu: None,
         posted: Vec::new(),
+        page: 0,
+        swiping: false,
+        banded: false,
+        haptic_at: f64::NEG_INFINITY,
     })
 }
 
@@ -288,9 +298,37 @@ struct Onboarding {
     images: Option<Images>,
     gpu: Option<Gpu>,
     posted: Vec<String>,
+    /// The front page as its haptic last saw it.
+    page: i64,
+    /// A finger's swipe moves the list (until it rests): its page changes play.
+    swiping: bool,
+    /// The finger has the list past an end (its rigid haptic played).
+    banded: bool,
+    /// When the last haptic was posted, ms.
+    haptic_at: f64,
 }
 
 impl Onboarding {
+    /// The swipe's haptics for the list's offset now: the page it crossed, the end it hit.
+    fn swipe_haptics(&mut self, now: f64) {
+        let page = (self.scroll.offset / self.size.0.max(1.0)).round() as i64;
+        if page != self.page {
+            self.page = page;
+            if self.swiping && now - self.haptic_at >= HAPTIC_GAP_MS {
+                self.posted.push("haptic:selection".into());
+                self.haptic_at = now;
+            }
+        }
+        let out = self.scroll.offset < -0.5 || self.scroll.offset > self.scroll.max + 0.5;
+        if !out {
+            self.banded = false;
+        } else if self.scroll.dragging() && !self.banded {
+            self.banded = true;
+            self.posted.push("haptic:impact-rigid".into());
+            self.haptic_at = now;
+        }
+    }
+
     /// The row of dots: its left and top.
     fn dots_origin(&self) -> (f64, f64) {
         let row = 4.0 * (DOT + 2.0 * DOT_PAD);
@@ -426,7 +464,7 @@ impl Surface for Onboarding {
     }
 
     fn messages(&mut self) -> Vec<String> {
-        std::mem::take(&mut self.posted)
+        crate::haptic::host(std::mem::take(&mut self.posted))
     }
 
     fn input(&mut self, event: &InputEvent) {
@@ -461,6 +499,7 @@ impl Surface for Onboarding {
                     && (top - HIT_SLOP..=top + DOT + HIT_SLOP).contains(&py)
             };
             if let Some(pressto::PressEvent::Press(p)) = self.dots[i].pointer(id, phase, inside) {
+                self.swiping = false;
                 self.scroll.scroll_to(i as f64 * self.size.0);
                 if let Some(m) = p.global_message() {
                     self.posted.push(m.to_string());
@@ -473,6 +512,9 @@ impl Surface for Onboarding {
         }
         let inside = (0.0..=self.size.0).contains(&px) && (0.0..=self.size.1).contains(&py);
         self.scroll.input(id, phase, x, y, at_ms, inside);
+        if self.scroll.dragging() {
+            self.swiping = true;
+        }
     }
 
     fn render(
@@ -514,6 +556,10 @@ impl Surface for Onboarding {
             self.images = Some(images);
         }
         let mut moving = self.scroll.step(frame.now_ms);
+        self.swipe_haptics(frame.now_ms);
+        if !moving && !self.scroll.dragging() {
+            self.swiping = false;
+        }
         for dot in &mut self.dots {
             moving |= dot.step(frame.now_ms);
         }
@@ -740,5 +786,8 @@ mod tests {
         assert_eq!(s.agent("{}").unwrap(), "{\"contentOffset\":840.00}");
         drag(&mut s, 400.0, &mut ms);
         assert_eq!(s.agent("{}").unwrap(), "{\"contentOffset\":840.00}");
+        // A selection as the first swipe turns to page 4, one as the second turns back to 3;
+        // the short one turns none.
+        assert_eq!(s.messages(), vec!["haptic:selection".to_string(), "haptic:selection".to_string()]);
     }
 }

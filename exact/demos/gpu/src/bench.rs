@@ -44,6 +44,25 @@ struct Case {
 fn cases() -> Vec<Case> {
     vec![
         Case {
+            name: "card-shader-reflections",
+            make: crate::card_shader_reflections::surface,
+            size: (420.0, 912.0, 3.0),
+            setup: |_| {},
+            // A finger held on the list, dragging 0.8 pt a frame (a slow scroll: every visible
+            // card turns, so each one's face redraws every frame), lifted and put down again
+            // every 150 frames.
+            tick: |s, i, ms| {
+                let k = i % 150;
+                let x = 360.0 - 0.8 * k as f32;
+                let phase = match k {
+                    0 => PointerPhase::Down,
+                    149 => PointerPhase::Up,
+                    _ => PointerPhase::Move,
+                };
+                s.input(&pointer(1, phase, x, 430.0 + 0.3 * k as f32, ms));
+            },
+        },
+        Case {
             name: "spiral",
             make: crate::spiral::surface,
             size: (420.0, 912.0, 3.0),
@@ -186,6 +205,62 @@ fn measure(gpu: &exact_gpu::Gpu, case: &Case, frames: usize) -> (f64, f64, f64) 
     }
     times.sort_by(|a, b| a.partial_cmp(b).unwrap());
     (times[0], times[frames / 2], times[frames * 9 / 10])
+}
+
+/// Minimum, median and p90 wall microseconds from submitting a frame of `case` to the GPU
+/// going idle: the GPU's time for it (plus the driver's, small), the CPU's recording excluded.
+fn measure_gpu(gpu: &exact_gpu::Gpu, case: &Case, frames: usize) -> (f64, f64, f64) {
+    let (w, h, scale) = case.size;
+    let format = wgpu::TextureFormat::Rgba8Unorm;
+    let texture = gpu.device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("bench"),
+        size: wgpu::Extent3d { width: (w * scale) as u32, height: (h * scale) as u32, depth_or_array_layers: 1 },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+        view_formats: &[],
+    });
+    let view = texture.create_view(&Default::default());
+    let mut s = (case.make)();
+    (case.setup)(s.as_mut());
+    let mut times = Vec::with_capacity(frames);
+    for i in 0..frames + 30 {
+        let ms = i as f64 * 16.67;
+        (case.tick)(s.as_mut(), i, ms);
+        let _ = s.messages();
+        let mut encoder = gpu.device.create_command_encoder(&Default::default());
+        s.render(&frame(w, h, scale, ms), &gpu.device, &gpu.queue, &mut encoder, &view, format);
+        let buffer = encoder.finish();
+        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+        let t = std::time::Instant::now();
+        gpu.queue.submit([buffer]);
+        s.submitted();
+        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+        if i >= 30 {
+            times.push(t.elapsed().as_secs_f64() * 1e6);
+        }
+    }
+    times.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    (times[0], times[frames / 2], times[frames * 9 / 10])
+}
+
+#[test]
+#[ignore = "a benchmark: run with --release --ignored --nocapture"]
+fn bench_gpu_per_frame() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
+    exact_gpu::shaders::load_dir(&dir, &crate::REGISTRY).unwrap();
+    let Some(gpu) = fixture::device_or_skip(fixture::device()) else { return };
+    let frames = std::env::var("BENCH_FRAMES").ok().and_then(|v| v.parse().ok()).unwrap_or(300);
+    let only = std::env::var("BENCH_ONLY").ok();
+    for case in cases() {
+        if only.as_deref().is_some_and(|o| !case.name.contains(o)) {
+            continue;
+        }
+        let (min, median, p90) = measure_gpu(&gpu, &case, frames);
+        println!("bench-gpu {:<22} min {:>7.1}  median {:>7.1}  p90 {:>7.1} us (submit to idle)", case.name, min, median, p90);
+    }
 }
 
 #[test]

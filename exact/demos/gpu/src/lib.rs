@@ -18,6 +18,7 @@ pub mod shaders {
 #[cfg(test)]
 mod bench;
 pub mod gfx;
+pub mod haptic;
 pub mod gooey;
 pub mod qr;
 pub mod ui_scroll;
@@ -203,7 +204,7 @@ pub static REGISTRY: Registry = Registry {
         ("miles_bar_chart", 7, miles_bar_chart::surface),
         ("mnist", 0, mnist::surface),
         ("mobile_input", 2, mobile_input::surface),
-        ("motion_blur", 3, motion_blur::surface),
+        ("motion_blur", 4, motion_blur::surface),
         ("notion_qrcode", 0, notion_qrcode::surface),
         ("paper_folding", 0, paper_folding::surface),
         ("particles_button", 1, particles_button::surface),

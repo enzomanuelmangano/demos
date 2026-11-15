@@ -18,7 +18,11 @@
 //!   frame as Yoga lays it out (edges on the pixel grid). A touch on its row lands on it, not on
 //!   the scroll.
 //! - The ScrollView: absoluteFill, horizontal, content W × 4, snapToInterval W,
-//!   decelerationRate "fast", bouncing (ui_scroll.rs).
+//!   decelerationRate "fast", bouncing (ui_scroll.rs). Past the owner's phone note ("handle the
+//!   overscroll"), the band shows: pulled past the first or last page, the shape moves with the
+//!   content by the band's overshoot (UIKit's (1 − 1 / (x · 0.55 / W + 1)) · W) and rides the
+//!   critically damped bounce back on release. A fling ends on a page, never in the band, as
+//!   snapToInterval's target is (RCTScrollView clamps it to the content).
 //!
 //! Motion audit:
 //!
@@ -28,6 +32,11 @@
 //! | scrollX | the ScrollView's contentOffset.x (onScroll) | UIScrollView: rubber band 0.55, rate 0.99/ms, snapToInterval W (ceil/floor by velocity) | the finger |
 //! | shape morph | idx, clampedT from scrollX over i × W (per frame) | — | scrollX |
 //! | dot width, opacity | piecewise from scrollX (per frame) | — | scrollX |
+//!
+//! Haptics (past RN, which plays none: the owner's haptic language): `haptic:selection` each time
+//! the page (round(scrollX / W), the shape the dots mark) changes, during the drag and the glide,
+//! at most one per HAPTIC_GAP_MS; `haptic:impact-rigid` once each time the scroll is pulled or
+//! thrown past an end (the rubber band).
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -54,6 +63,10 @@ const DOT_GAP: f32 = 8.0;
 const DOTS_BOTTOM: f32 = 60.0;
 /// One cycle of iTime.
 const SPIN_MS: f64 = 10_000.0;
+/// The shortest gap between two selection haptics, ms.
+const HAPTIC_GAP_MS: f64 = 40.0;
+/// How far past an end (points) the rubber band must pull before its haptic.
+const PAST_END: f64 = 2.0;
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
@@ -70,6 +83,10 @@ pub fn surface() -> Box<dyn Surface> {
         blur: GraphiteBlur::default(),
         plan: GraphitePlan::new([0, 0, 1, 1], [0, 0, 1, 1], 1.0).unwrap(),
         gpu: None,
+        page: None,
+        past_end: false,
+        haptic_at: f64::NEG_INFINITY,
+        posted: Vec::new(),
     })
 }
 
@@ -215,6 +232,42 @@ struct ScrollableShapes {
     blur: GraphiteBlur,
     plan: GraphitePlan,
     gpu: Option<Gpu>,
+    /// The page, and whether the scroll is past an end (their haptics).
+    page: Option<i64>,
+    past_end: bool,
+    haptic_at: f64,
+    posted: Vec<String>,
+}
+
+impl ScrollableShapes {
+    /// How far the scroll is past an end (negative before the first page), points.
+    fn overscroll(&self) -> f64 {
+        let (offset, max) = (self.scroll.offset, self.scroll.max.max(0.0));
+        offset - offset.clamp(0.0, max)
+    }
+
+    /// A selection when the page changes (one per HAPTIC_GAP_MS at most), a rigid thunk once per
+    /// pull past an end.
+    fn haptics(&mut self, now: f64) {
+        let (offset, max, w) = (self.scroll.offset, self.scroll.max, self.size.0 as f64);
+        if w <= 0.0 {
+            return;
+        }
+        let page = (offset / w).round().clamp(0.0, (SHAPES - 1) as f64) as i64;
+        if self.page.is_some_and(|p| p != page) && now - self.haptic_at >= HAPTIC_GAP_MS {
+            self.posted.push("haptic:selection".into());
+            self.haptic_at = now;
+        }
+        self.page = Some(page);
+        if offset < -PAST_END || offset > max + PAST_END {
+            if !self.past_end {
+                self.posted.push("haptic:impact-rigid".into());
+            }
+            self.past_end = true;
+        } else if (0.0..=max).contains(&offset) {
+            self.past_end = false;
+        }
+    }
 }
 
 struct Gpu {
@@ -299,6 +352,10 @@ impl Surface for ScrollableShapes {
         Some(format!("{{\"scrollX\":{:.2},\"shape\":{idx},\"next\":{next},\"t\":{t:.4}}}", self.scroll.offset))
     }
 
+    fn messages(&mut self) -> Vec<String> {
+        crate::haptic::host(std::mem::take(&mut self.posted))
+    }
+
     fn input(&mut self, event: &InputEvent) {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
         let (top, bottom) = self.dots_row();
@@ -337,6 +394,7 @@ impl Surface for ScrollableShapes {
             std::f64::consts::TAU * runtime / SPIN_MS
         };
         self.scroll.step(frame.now_ms);
+        self.haptics(frame.now_ms);
 
         let (pw, ph) = frame.pixels();
         if self.gpu.as_ref().map(|g| (g.format, g.generation, g.pixels)) != Some((format, frame.shader_generation, (pw, ph))) {
@@ -379,9 +437,12 @@ impl Surface for ScrollableShapes {
         }
         self.record_dots(scale);
         let (idx, next, t) = self.morph();
+        let overscroll = self.overscroll() as f32;
         let gpu = self.gpu.as_mut().unwrap();
         let pu = points_shader::Uniforms {
-            center: [w / 2.0, h / 2.0, scale, 0.0],
+            // Past an end the rubber band moves the shape with the content (the owner's phone note:
+            // "handle the overscroll"); RN's invisible ScrollView showed nothing there.
+            center: [w / 2.0 - overscroll, h / 2.0, scale, 0.0],
             view: [pw as f32, ph as f32, w, h],
             morph: [idx as f32, next as f32, t as f32, 0.0],
             spin: [self.time.cos() as f32, self.time.sin() as f32, 0.2f64.cos() as f32, 0.2f64.sin() as f32],
@@ -535,5 +596,44 @@ mod tests {
         }
         gfx::save_over(&img, "scrollable-shapes-cube", [0, 0, 0]);
         assert!(s.agent("").unwrap().starts_with("{\"scrollX\":420.00,\"shape\":0,\"next\":1,\"t\":1.0000"), "{}", s.agent("").unwrap());
+        // One page on: one selection. A slow drag right of 600 pt: back one page, then past the
+        // start, one rigid thunk however long it is held.
+        assert_eq!(s.messages(), vec!["haptic:selection"]);
+        // The bright points' mean x, device pixels.
+        let centroid = |img: &fixture::Pixels| {
+            let (mut sum, mut n) = (0.0f64, 0.0f64);
+            for y in (0..img.height).step_by(4) {
+                for x in (0..img.width).step_by(4) {
+                    let p = img.at(x, y);
+                    if p[0] as u32 + p[1] as u32 + p[2] as u32 > 450 {
+                        sum += x as f64;
+                        n += 1.0;
+                    }
+                }
+            }
+            sum / n.max(1.0)
+        };
+        let (rest, _) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+        let rest_x = centroid(&rest);
+        s.input(&pointer(PointerPhase::Down, 10.0, ms));
+        let mut pulled = rest;
+        for k in 1..=40 {
+            ms += 33.0;
+            s.input(&pointer(PointerPhase::Move, 10.0 + 15.0 * k as f32, ms));
+            pulled = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap().0;
+        }
+        // Held past the start: the shape rides the band, the band's overshoot to the right
+        // (raw 180 pt → (1 − 1 / (180 · 0.55 / 420 + 1)) · 420 ≈ 80 pt, 240 px).
+        let moved = centroid(&pulled) - rest_x;
+        assert!(moved > 150.0 && moved < 330.0, "the shape moved {moved} px with the band");
+        ms += 200.0;
+        s.input(&pointer(PointerPhase::Up, 610.0, ms));
+        let end = ms + 3000.0;
+        while ms < end {
+            ms += 16.0;
+            fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+        }
+        assert!(s.agent("").unwrap().starts_with("{\"scrollX\":0.00,"), "{}", s.agent("").unwrap());
+        assert_eq!(s.messages(), vec!["haptic:selection", "haptic:impact-rigid"]);
     }
 }

@@ -189,7 +189,7 @@ impl Surface for CubertoSlider {
 
     /// RN's press is a Gesture.Pan's onBegin / onFinalize with its own springs, not pressto: not `pressto::Pressable`.
     fn messages(&mut self) -> Vec<String> {
-        std::mem::take(&mut self.posted)
+        crate::haptic::host(std::mem::take(&mut self.posted))
     }
 
     fn input(&mut self, event: &InputEvent) {

@@ -3,13 +3,13 @@
 // Animation draws them: a pixel shows the point of the card's plane its inverse transform
 // finds there. A card is its layer (the white continuous rounded rect over its box shadow,
 // drawn once in the card's points with MARGIN around it), times the card's opacity, drawn back
-// to front over #eeeeee. Then the paginator's dots: rgba(0, 0, 0, 0.15) circles, each at its
-// scale and opacity, clipped to the paginator's 40 pt strip.
+// to front over #eeeeee. Then the paginator: black capsules 6 pt tall (a dot is one of no
+// length), each at its alpha, clipped to the paginator's 40 pt strip.
 struct Uniforms {
     // Per card slot: screen points → the card's points (the inverse projective 3×3, three rows;
     // the first row's w is the card's opacity, 0 for an empty slot).
     cards: array<vec4<f32>, 15>,
-    // Per dot: centre x, centre y, radius (with its scale), opacity.
+    // Per dot: centre x, centre y, the capsule's straight half-length, alpha.
     dots: array<vec4<f32>, 20>,
     // The target (device pixels), device pixels per point, whether the target encodes sRGB.
     canvas: vec4<f32>,
@@ -69,11 +69,12 @@ fn compose(in: Out) -> @location(0) vec4<f32> {
         let px = 1.0 / u.canvas.z;
         for (var i = 0; i < 20; i = i + 1) {
             let d = u.dots[i];
-            if (d.w <= 0.0 || d.z <= 0.0) {
+            if (d.w <= 0.0) {
                 continue;
             }
-            let dist = length(p - d.xy) - d.z;
-            let cover = clamp(0.5 - dist / px, 0.0, 1.0) * 0.15 * d.w;
+            let q = p - d.xy;
+            let dist = length(vec2<f32>(max(abs(q.x) - d.z, 0.0), q.y)) - 3.0;
+            let cover = clamp(0.5 - dist / px, 0.0, 1.0) * d.w;
             c = c * (1.0 - cover);
         }
     }

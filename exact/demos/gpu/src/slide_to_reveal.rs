@@ -19,6 +19,11 @@
 //!
 //! The blurred digits are blurred once at scale 1 (BlurMask respects the transform, so a digit
 //! scaled by k blurred by 7k is the blurred digit scaled by k); the circle is blurred once.
+//!
+//! Haptics (past RN, which plays none: the owner's haptic language): `haptic:impact-light` when
+//! a finger touches the card (the lens comes up); `haptic:selection` each time the finger comes
+//! nearest another digit (the one it reveals), at most one per HAPTIC_GAP_MS. The lift only
+//! fades the lens: no haptic.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -46,6 +51,8 @@ const SPOT_SIZE: f32 = 2.0 * (SPOT_RADIUS + 3.0 * SPOT_BLUR);
 const CELL: f32 = 72.0;
 const PEN: f32 = 26.0;
 const DIGITS: usize = 6;
+/// The shortest gap between two haptics, ms.
+const HAPTIC_GAP_MS: f64 = 40.0;
 const LAYER: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 /// SF-Compact-Rounded-Medium.otf, its digits and space (fontTools subset: same outlines, same
 /// metrics).
@@ -53,13 +60,7 @@ static SF_COMPACT_ROUNDED: &[u8] = include_bytes!("../fonts/sf-compact-rounded-m
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
-    let text = CODE.chars().map(String::from).collect::<Vec<_>>().join("  ");
-    Box::new(SlideToReveal {
-        font: Font::new(SF_COMPACT_ROUNDED, FONT_SIZE),
-        text,
-        distance: std::array::from_fn(|_| Timing::at(80.0)),
-        ..Default::default()
-    })
+    Box::new(SlideToReveal::new())
 }
 
 /// A digit: the character, its index in the text, its width (ink).
@@ -85,6 +86,10 @@ struct SlideToReveal {
     distance: [Timing; DIGITS],
     mask_opacity: Timing,
     content: Option<Timing>,
+    /// The digit nearest the finger when last felt.
+    revealing: Option<usize>,
+    haptic_at: f64,
+    posted: Vec<String>,
     sharp_layer: Canvas,
     atlas_layer: Canvas,
     spot_layer: Canvas,
@@ -105,6 +110,37 @@ struct Gpu {
 }
 
 impl SlideToReveal {
+    fn new() -> SlideToReveal {
+        let text = CODE.chars().map(String::from).collect::<Vec<_>>().join("  ");
+        SlideToReveal {
+            font: Font::new(SF_COMPACT_ROUNDED, FONT_SIZE),
+            text,
+            distance: std::array::from_fn(|_| Timing::at(80.0)),
+            haptic_at: f64::NEG_INFINITY,
+            ..Default::default()
+        }
+    }
+    /// Posts `kind` unless another haptic played under HAPTIC_GAP_MS ago.
+    fn haptic(&mut self, kind: &str, at_ms: f64) -> bool {
+        if at_ms - self.haptic_at < HAPTIC_GAP_MS {
+            return false;
+        }
+        self.posted.push(format!("haptic:{kind}"));
+        self.haptic_at = at_ms;
+        true
+    }
+    /// The digit whose centre is nearest the finger, once laid out.
+    fn nearest(&self) -> Option<usize> {
+        let distance = |d: &Digit| (self.digit_x(d) + d.ink / 2.0 - self.finger.0).abs();
+        (0..self.digits.len()).min_by(|&a, &b| distance(&self.digits[a]).total_cmp(&distance(&self.digits[b])))
+    }
+    /// A selection when the finger comes nearest another digit.
+    fn feel(&mut self, at_ms: f64) {
+        let k = self.nearest();
+        if k.is_some() && k != self.revealing && self.haptic("selection", at_ms) {
+            self.revealing = k;
+        }
+    }
     /// The baseline: textY − 5.
     fn baseline() -> f32 {
         FONT_SIZE / 2.0 + HEIGHT / 2.0 - 5.0
@@ -152,6 +188,10 @@ impl Surface for SlideToReveal {
         true
     }
 
+    fn messages(&mut self) -> Vec<String> {
+        crate::haptic::host(std::mem::take(&mut self.posted))
+    }
+
     fn agent(&mut self, _request: &str) -> Option<String> {
         let scales: Vec<String> = self.distance.iter().map(|d| format!("{:.3}", interpolate_clamp(d.value, &[0.0, 80.0], &[1.0, 0.5]))).collect();
         Some(format!("{{\"active\":{},\"maskOpacity\":{:.3},\"scales\":[{}]}}", self.active, self.mask_opacity.value, scales.join(",")))
@@ -165,10 +205,13 @@ impl Surface for SlideToReveal {
                 self.finger = (x, y);
                 self.mask_opacity.to(1.0, 300.0, Easing::timing_default());
                 self.follow();
+                self.revealing = self.nearest();
+                self.haptic("impact-light", at_ms);
             }
             Event::Start(p) | Event::Update(p) => {
                 self.finger = (p.x, p.y);
                 self.follow();
+                self.feel(at_ms);
             }
             Event::End(_) | Event::Fail => self.release(),
             _ => {}
@@ -278,6 +321,34 @@ impl Surface for SlideToReveal {
 mod tests {
     use super::*;
     use exact_gpu::{fixture, PointerKind, PointerPhase};
+
+    #[test]
+    fn haptics_on_the_touch_and_each_digit_reached() {
+        let mut s = SlideToReveal::new();
+        s.width = 252.0;
+        s.layout();
+        assert_eq!(s.digits.len(), DIGITS);
+        let finger = |s: &mut SlideToReveal, phase, x: f32, at_ms| {
+            s.input(&InputEvent::Pointer { id: 1, phase, x, y: 45.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
+        };
+        finger(&mut s, PointerPhase::Down, 10.0, 0.0);
+        assert_eq!(s.messages(), vec!["haptic:impact-light"]);
+        // A slow slide across the card: one selection per digit after the first, none on the lift.
+        let mut ms = 0.0;
+        for k in 1..=60 {
+            ms += 16.0;
+            finger(&mut s, PointerPhase::Move, 10.0 + 232.0 * k as f32 / 60.0, ms);
+        }
+        finger(&mut s, PointerPhase::Up, 242.0, ms + 16.0);
+        assert_eq!(s.messages(), vec!["haptic:selection"; DIGITS - 1]);
+        // A fast one (all six in three moves) is paced: one per 40 ms at most.
+        finger(&mut s, PointerPhase::Down, 10.0, 2000.0);
+        s.messages();
+        for k in 1..=3 {
+            finger(&mut s, PointerPhase::Move, 10.0 + 232.0 * k as f32 / 3.0, 2000.0 + 8.0 * k as f64);
+        }
+        assert!(s.messages().len() <= 1);
+    }
 
     #[test]
     fn the_finger_sharpens_and_grows_the_digits_under_it() {

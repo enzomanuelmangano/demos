@@ -8,8 +8,10 @@
 //! - Card `index`: a Group about the window's centre with transform [rotate(−π/2 · p),
 //!   translateX(25 · index · p), perspective(10000), rotateY(π/3 · p), rotate(π/4 · p)];
 //!   inside, the fill, the stroke (opacity p) and BackdropBlur(blur = max(5p, 0), clip = card).
-//! - progress: withSpring(progress > 0.5 ? 0 : 1, { duration: 1500, dampingRatio: 0.7 }) at each
-//!   press of the full-screen PressableOpacity; the press is the app's (the input counts presses),
+//! - progress: withSpring(progress > 0.5 ? 0 : 1, { duration, dampingRatio }) at each press of
+//!   the full-screen PressableOpacity, RN's { 1500, 0.7 } made { 600, 0.85 } at the owner's request:
+//!   90 % in 208 ms (RN 350), within 0.5 % from 425 ms (RN 908), overshoot 0.6 % (RN 4.6 %), so no
+//!   lingering tail; the press is the app's (the input counts presses),
 //!   the stiffness solved from where the spring is, as Reanimated does at the animation's start.
 //!
 //! Per frame while it moves: one full-screen pass over the blurred background. The backdrop
@@ -27,6 +29,9 @@ use skia::{point, stops, Canvas, Color, Paint, Renderer, Shader};
 use crate::{gfx, shaders};
 use shaders::blur_cards::{entry, module, Pass, BG, BLURRED, CUR, GROUP_0, SMP, U};
 
+/// The card spring: RN's 1500 ms / ζ 0.7, made about 40 % faster for the owner (module docs).
+const DURATION_MS: f64 = 600.0;
+const DAMPING_RATIO: f64 = 0.85;
 const CARD_W: f32 = 300.0;
 const CARD_H: f32 = 200.0;
 const LAYER: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
@@ -70,7 +75,7 @@ impl Surface for BlurCards {
                 // onStart: the velocity it has, dropped when it points away from the target.
                 let v = self.progress.velocity;
                 let v = if (to > p && v < 0.0) || (to < p && v > 0.0) { 0.0 } else { v };
-                self.progress.to(to, v, duration_config(p - to, v, 1500.0, 0.7, 4.0));
+                self.progress.to(to, v, duration_config(p - to, v, DURATION_MS, DAMPING_RATIO, 4.0));
             }
             _ => {}
         }

@@ -13,20 +13,21 @@
 //!   [perspective 600, rotateX floor(interpolate(u, …, [45, 30, 0, 0, 0], CLAMP)) deg] about
 //!   the inner view's centre (45° at u ≤ −2, 0° at u ≥ 0). The card: white, radius 25
 //!   continuous, boxShadow 0 0 5px rgba(0, 0, 0, 0.05) (σ 2.5, RN iOS's shadowRadius = blur / 2).
-//! - A selection haptic each time round(scrollX / 320) changes (useAnimatedReaction).
-//! - The Paginator: its 40 pt strip 120 below the screen's centre (the carousel box is its
-//!   paddingVertical 80, the paginator's box from cardHeight to its bottom); a centred row of
-//!   twenty 10 pt dots (rgba(0, 0, 0, 0.15), round) with marginRight 10, translateX
-//!   withSpring(centerOffset − currentPosition, { damping 15, stiffness 100, mass 0.5 }); each
-//!   dot opacity withTiming(currentPageIndex == i ? 1 : visible ? 0.75 : 0, 500 ms linear) and
-//!   scale withSpring(currentPageIndex == i ? 1 : 0.75, the same config). currentIndex =
-//!   round(currentPageIndex); the window of three dots starts at max(current − 1, 0), moved back
-//!   to end at the last page. currentPageIndex == index is RN's float equality: a dot is active
-//!   only while the scroll rests exactly on its page. Everything starts at its target.
+//! - A selection haptic each time round(scrollX / 320) changes (useAnimatedReaction), at most
+//!   one every 50 ms (a fast scrub through pages does not buzz).
+//! - The paginator, in its 40 pt strip 120 below the screen's centre (RN's Paginator box). The
+//!   owner's call (phone feedback, 2026-11-15: RN's three faint 10 pt dots, the active one only
+//!   a little larger, read as barely there): an iOS page control. Twenty dots 6 pt round, 8 pt
+//!   apart, black at 20 %; the current page's dot a capsule 18 × 6 at 80 %. Each dot's share
+//!   t = clamp(1 − |page − i|, 0, 1) of the swipe sets its width (6 + 12 t) and alpha
+//!   (0.2 + 0.6 t), page = scrollX / 320 as it moves, so the capsule flows from dot to dot with
+//!   the finger and the fling. The shares of any page sum to 1, so the row's width is constant
+//!   (19 × 6 + 18 + 19 × 8 = 284) and it stays centred. Drawn in the frame the scroll moves,
+//!   no commit.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use reanimated::{interpolate, Easing, Extrapolation, Spring, SpringConfig, Timing};
+use reanimated::{interpolate, Extrapolation};
 use skia::{Canvas, Color, Matrix4, Paint, Renderer};
 
 use crate::ui_scroll::{Snap, UiScroll, FAST};
@@ -41,15 +42,14 @@ const PERSPECTIVE: f32 = 600.0;
 /// The card layer's margin around the card (3σ and a little).
 const MARGIN: f32 = 10.0;
 const SLOTS: usize = 5;
-/// The paginator's SpringConfig.
-const DOT_SPRING: SpringConfig = SpringConfig {
-    stiffness: 100.0,
-    damping: 15.0,
-    mass: 0.5,
-};
-const DOT: f64 = 10.0;
-const SPACING: f64 = 10.0;
-const VISIBLE: i64 = 3;
+/// A dot's side, the current page's capsule length, the gap between them, and their alphas.
+const DOT: f64 = 6.0;
+const ACTIVE: f64 = 18.0;
+const GAP: f64 = 8.0;
+const DOT_ALPHA: f64 = 0.2;
+const ACTIVE_ALPHA: f64 = 0.8;
+/// The shortest time between two page haptics.
+const HAPTIC_GAP_MS: f64 = 50.0;
 const LAYER: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
 /// The demo's surface.
@@ -63,9 +63,10 @@ struct Carousel {
     scroll: Option<UiScroll>,
     /// round(scrollX / cardWidth) as last heard.
     page: Option<i64>,
-    row: Option<Spring>,
-    dot_opacity: Vec<Timing>,
-    dot_scale: Vec<Spring>,
+    /// When the last page haptic was posted.
+    buzzed_at: Option<f64>,
+    /// The latest event or frame time.
+    now_ms: f64,
     posted: Vec<String>,
     layer_canvas: Canvas,
     renderer: Renderer,
@@ -109,24 +110,19 @@ fn card_style(u: f64) -> (f64, f64, f64, f64) {
     (ty, s, o, rx)
 }
 
-/// visibleDotsIndices: (start, end, currentIndex).
-fn window(page: f64) -> (i64, i64, i64) {
-    let current = page.round() as i64;
-    let mut start = (current - VISIBLE / 2).max(0);
-    let end = (start + VISIBLE).min(COUNT as i64);
-    if end == COUNT as i64 {
-        start = (COUNT as i64 - VISIBLE).max(0);
+/// The paginator at `page` (scrollX / 320): per dot its centre x from the row's left edge, its
+/// width and its alpha; and the row's width.
+fn dots(page: f64) -> ([(f64, f64, f64); COUNT], f64) {
+    let page = page.clamp(0.0, (COUNT - 1) as f64);
+    let mut out = [(0.0, 0.0, 0.0); COUNT];
+    let mut x = 0.0;
+    for (i, d) in out.iter_mut().enumerate() {
+        let t = (1.0 - (page - i as f64).abs()).clamp(0.0, 1.0);
+        let w = DOT + (ACTIVE - DOT) * t;
+        *d = (x + w / 2.0, w, DOT_ALPHA + (ACTIVE_ALPHA - DOT_ALPHA) * t);
+        x += w + GAP;
     }
-    (start, end, current)
-}
-
-/// containerAnimatedStyle's translateX target.
-fn row_target(current: i64) -> f64 {
-    let n = COUNT as f64;
-    let full = DOT * 2.5;
-    let total = (n - 1.0) * DOT + full;
-    let center = (total + SPACING * (n - 1.0)) / 2.0;
-    center - (current as f64 * (DOT + SPACING) + full / 2.0)
+    (out, x - GAP)
 }
 
 impl Carousel {
@@ -152,23 +148,7 @@ impl Carousel {
                 ))
             }
         }
-        if self.row.is_none() {
-            let (start, end, current) = window(0.0);
-            self.row = Some(Spring::at(row_target(current)));
-            self.dot_opacity = (0..COUNT as i64)
-                .map(|i| {
-                    Timing::at(if i == 0 {
-                        1.0
-                    } else if i >= start && i < end {
-                        0.75
-                    } else {
-                        0.0
-                    })
-                })
-                .collect();
-            self.dot_scale = (0..COUNT)
-                .map(|i| Spring::at(if i == 0 { 1.0 } else { 0.75 }))
-                .collect();
+        if self.page.is_none() {
             self.page = Some(0);
         }
     }
@@ -179,29 +159,16 @@ impl Carousel {
         let page = x / CARD_W;
         let rounded = page.round() as i64;
         if self.page.is_some_and(|p| p != rounded) {
-            self.posted.push("haptic:selection".into());
+            // Rate-limited: a page crossed within the gap is not buzzed.
+            if self
+                .buzzed_at
+                .is_none_or(|t| self.now_ms - t >= HAPTIC_GAP_MS)
+            {
+                self.posted.push("haptic:selection".into());
+                self.buzzed_at = Some(self.now_ms);
+            }
         }
         self.page = Some(rounded);
-        let (start, end, current) = window(page);
-        if let Some(row) = &mut self.row {
-            row.retarget(row_target(current), DOT_SPRING);
-        }
-        for i in 0..COUNT {
-            let active = page == i as f64;
-            let visible = (i as i64) >= start && (i as i64) < end;
-            let o = if active {
-                1.0
-            } else if visible {
-                0.75
-            } else {
-                0.0
-            };
-            let t = &mut self.dot_opacity[i];
-            if t.target() != o {
-                t.to(o, 500.0, Easing::Linear);
-            }
-            self.dot_scale[i].retarget(if active { 1.0 } else { 0.75 }, DOT_SPRING);
-        }
     }
 
     /// Card i's screen → card-points matrix rows, and its opacity.
@@ -326,7 +293,7 @@ impl Surface for Carousel {
     }
 
     fn messages(&mut self) -> Vec<String> {
-        std::mem::take(&mut self.posted)
+        crate::haptic::host(std::mem::take(&mut self.posted))
     }
 
     fn agent(&mut self, _request: &str) -> Option<String> {
@@ -354,6 +321,7 @@ impl Surface for Carousel {
             return;
         }
         self.ensure();
+        self.now_ms = at_ms;
         let (w, h) = self.size;
         let list_h = CARD_H + STACK_OFFSET * 6.0;
         let top = (h - list_h) / 2.0;
@@ -376,17 +344,9 @@ impl Surface for Carousel {
         self.size = (frame.width as f64, frame.height as f64);
         self.ensure();
         let now = frame.now_ms;
-        let mut moving = self.scroll.as_mut().is_some_and(|s| s.step(now));
+        self.now_ms = now;
+        let moving = self.scroll.as_mut().is_some_and(|s| s.step(now));
         self.react();
-        if let Some(row) = &mut self.row {
-            moving |= row.step(now);
-        }
-        for t in &mut self.dot_opacity {
-            moving |= t.step(now);
-        }
-        for s in &mut self.dot_scale {
-            moving |= s.step(now);
-        }
         let (pw, ph) = frame.pixels();
         if self.gpu.as_ref().map(|g| (g.format, g.generation, g.size))
             != Some((format, frame.shader_generation, (pw, ph)))
@@ -410,17 +370,16 @@ impl Surface for Carousel {
         }
         let (w, h) = self.size;
         let strip = h / 2.0 + 120.0;
-        let row_x = self.row.as_ref().map_or(0.0, |r| r.value);
-        let row_w = COUNT as f64 * (DOT + SPACING);
-        let left = (w - row_w) / 2.0 + row_x;
+        let (row, row_w) = self::dots(x / CARD_W);
+        let left = (w - row_w) / 2.0;
         let mut dots = [[0.0f32; 4]; COUNT];
-        for (i, d) in dots.iter_mut().enumerate() {
-            let cx = left + i as f64 * (DOT + SPACING) + DOT / 2.0;
+        for (d, (cx, dw, alpha)) in dots.iter_mut().zip(row) {
+            // Centre, the capsule's straight half-length (its ends are DOT / 2 round), alpha.
             *d = [
-                cx as f32,
+                (left + cx) as f32,
                 (strip + 20.0) as f32,
-                (DOT / 2.0 * self.dot_scale[i].value) as f32,
-                self.dot_opacity[i].value as f32,
+                ((dw - DOT) / 2.0) as f32,
+                alpha as f32,
             ];
         }
         let gpu = self.gpu.as_ref().unwrap();
@@ -454,8 +413,42 @@ mod tests {
         // u = −1.5: rotateX floor(37.5) = 37.
         assert_eq!(card_style(-1.5).3, 37.0);
         assert!(card_style(0.5).2 == 0.0);
-        assert_eq!(window(19.0), (17, 20, 19));
-        assert_eq!(row_target(0), (19.0 * 10.0 + 25.0 + 190.0) / 2.0 - 12.5);
+    }
+
+    #[test]
+    fn the_capsule_flows_with_the_page_and_the_row_keeps_its_width() {
+        let (at0, w0) = dots(0.0);
+        assert_eq!(w0, 19.0 * 6.0 + 18.0 + 19.0 * 8.0);
+        assert_eq!(at0[0], (9.0, 18.0, 0.8));
+        assert_eq!(at0[1], (18.0 + 8.0 + 3.0, 6.0, 0.2));
+        // Half way to page 1: two 12 pt capsules at 50 %; the same row width.
+        let (half, wh) = dots(0.5);
+        assert_eq!(wh, w0);
+        assert_eq!((half[0].1, half[1].1), (12.0, 12.0));
+        assert!((half[0].2 - 0.5).abs() < 1e-9 && (half[1].2 - 0.5).abs() < 1e-9);
+        assert_eq!(half[2].1, 6.0);
+        // Overscroll is held at the ends.
+        assert_eq!(dots(-0.3).0, at0);
+        assert_eq!(dots(19.4).0[19].1, 18.0);
+    }
+
+    #[test]
+    fn page_haptics_are_rate_limited() {
+        let mut c = Carousel {
+            size: (420.0, 912.0),
+            ..Default::default()
+        };
+        c.ensure();
+        let at = |c: &mut Carousel, offset: f64, ms: f64| {
+            c.scroll.as_mut().unwrap().offset = offset;
+            c.now_ms = ms;
+            c.react();
+            c.posted.len()
+        };
+        assert_eq!(at(&mut c, 320.0, 100.0), 1);
+        // Two more pages within 50 ms: one is dropped.
+        assert_eq!(at(&mut c, 640.0, 120.0), 1);
+        assert_eq!(at(&mut c, 960.0, 160.0), 2);
     }
 
     #[test]

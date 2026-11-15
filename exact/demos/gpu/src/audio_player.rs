@@ -296,7 +296,7 @@ impl Surface for AudioPlayer {
 
     fn messages(&mut self) -> Vec<String> {
         match self.card.as_mut() {
-            Some(card) => std::mem::take(&mut card.posted),
+            Some(card) => crate::haptic::host(std::mem::take(&mut card.posted)),
             None => Vec::new(),
         }
     }

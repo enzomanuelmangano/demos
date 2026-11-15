@@ -12,8 +12,7 @@
 //! (radius 20, overflow hidden, padding 30, boxShadow `0px 10px 20px rgba(0,0,0,0.3)`):
 //! - CardCanvas: absoluteFill but CARD_WIDTH × CARD_HEIGHT, so it overflows the card, which clips
 //!   it; resolution [CARD_WIDTH, CARD_HEIGHT], cardType = the item's id
-//!   (gpu/shaders/card_shader_reflections.wgsl, drawn into one 8-bit layer per card at device
-//!   pixels, redrawn only when its `rotate` uniform changes, as RN's canvas is).
+//!   (past RN: shaded in the compose pass itself, below).
 //! - cardContent (flex 1, opacity 0.7): CardChip (chipContainer 0.15 × 0.12 CARD_WIDTH; chip:
 //!   0.5 pt #A8A8A8 Core Animation border, continuous radius 4, clipping, padding 2; chipGrid
 //!   rgba(255,255,255,0.1), padding 2, three rows 28 % tall spaced between, each a 25 % and a
@@ -41,30 +40,38 @@
 //! | card opacity | interpolate(scrollX, [(i−1), i, (i+1)] × CW, [0.5, 1, 0.5], CLAMP) | the same |
 //! | chip opacity | interpolate(…, [0.2, 0.6, 0.2], CLAMP) | the same (× cardContent's 0.7) |
 //! | title opacity | Math.round(interpolate(…, [0, 1, 0], CLAMP)) | the same (half up) |
-//! | shader rotate | useAnimatedReaction: interpolate(…, [−π, 0, π], CLAMP), written only when it changes | the card's layer is redrawn only when this value changes |
+//! | shader rotate | useAnimatedReaction: interpolate(…, [−π, 0, π], CLAMP), written only when it changes | the card's turn in its room frame, per frame |
 //!
-//! Past RN (the owner's ask for premium, physical cards): the face is a lit card, not RN's
-//! getCardShader (card_shader_reflections.wgsl: brushed or anodised metal under a studio's
-//! softboxes, Ward's anisotropic highlight, a Fresnel bevel on a continuous outline, a thin-film
-//! hologram, an engraved chip, contactless mark and title, grain). A finger on the list tilts
-//! the centred card about x toward where it presses (MAX_TILT at the card's top / bottom edge)
-//! and lifts it (PRESS_SCALE), both on TILT_SPRING, which settles them back on the lift; the
-//! shader gets the tilt and the press (params.w, res.z) and the compose pass the shadow's
-//! offset (slot.yz: the turn and the tilt push it) and the press (slot.w). Each card takes them
-//! by its nearness to the centre, so a card leaving under the finger levels out.
+//! Past RN (the owner's ask for premium, physical cards): one analytic pass draws the screen
+//! (card_shader_reflections_compose.wgsl): each visible card is a lit metal card (brushed or
+//! anodised metal under a studio's softboxes, Ward's anisotropic highlight, a Fresnel bevel on a
+//! continuous outline, a thin-film hologram, an engraved chip, contactless mark and title, grain)
+//! shaded where it shows, its shadow analytic; pixels past a card's shadow skip it. The cards'
+//! face layers and their per-card pass are gone (a slow scroll redrew two 787 × 1300 layers a
+//! frame, then composed them: the stutter the owner saw); the brushing's noise is a 256² tile
+//! made once ([`noise_tile`]).
+//! The lights stay in the room: each card's frame there (`frame`: x axis, y axis, normal) is the
+//! phone's turn (Core Motion's `relativeOrientation`, its CMAttitude pitch and roll, clamped to
+//! ±ATTITUDE_RANGE and smoothed on the critically damped ATTITUDE_SPRING) · the 18° roll · the
+//! scroll's turn · the finger's tilt. Tilting the phone sweeps the highlights and the foil's
+//! colours across the card. A finger on the list tilts the centred card about x toward where it
+//! presses (MAX_TILT at the card's top / bottom edge) and lifts it (PRESS_SCALE), both on
+//! TILT_SPRING, settled back on the lift; each card takes them by its nearness to the centre.
+//! The compose pass gets the shadow's offset (slot.yz: the turn and the tilt push it) and the
+//! press (slot.w). A sensor sample that moves the smoothed target less than ATTITUDE_DEADBAND
+//! asks for no frame, so a phone at rest leaves the screen at rest.
 //! Haptics: `haptic:impact-light` when a finger lands on the list, `haptic:impact-soft` when it
 //! lifts. No timers: at rest nothing renders.
 
 use exact_gpu::wgpu;
-use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
+use exact_gpu::{Frame, InputEvent, SensorKind, Surface, SurfaceError, Value};
 use gesture_handler::Phase;
 use reanimated::{interpolate_clamp, Spring, SpringConfig};
 use skia::{add_continuous_rrect, add_rect, add_rrect, continuous_rrect_path, Canvas, Color, Font, Matrix4, Paint, Renderer};
 
 use crate::ui_scroll::{Snap, UiScroll, FAST};
 use crate::{gfx, shaders};
-use shaders::card_shader_reflections as card_shader;
-use shaders::card_shader_reflections_compose::{entry, module, Uniforms, ATLAS, GROUP_0, LAYERS, SMP, U};
+use shaders::card_shader_reflections_compose::{entry, module, Uniforms, ATLAS, GROUP_0, SMP, TILE, U};
 
 /// CARD_DATA: (id = cardType, title), in list order.
 const CARDS: [(f32, &str); 4] = [(3.0, "Metal"), (0.0, "Silver"), (1.0, "Gold"), (2.0, "Platinum")];
@@ -114,6 +121,14 @@ const PRESS_SCALE: f32 = 0.025;
 /// The tilt's and the press's spring: quick to follow the finger, a small overshoot on the
 /// settle (ζ ≈ 0.62).
 const TILT_SPRING: SpringConfig = SpringConfig { stiffness: 260.0, damping: 20.0, mass: 1.0 };
+/// The phone's turn that moves the light: CMAttitude pitch and roll, each clamped to ±25°.
+const ATTITUDE_RANGE: f64 = 25.0 * std::f64::consts::PI / 180.0;
+/// Their smoothing: critically damped (ζ = 1), settled in ~0.35 s (ω = 14 rad/s).
+const ATTITUDE_SPRING: SpringConfig = SpringConfig { stiffness: 196.0, damping: 28.0, mass: 1.0 };
+/// A sample that moves a target less than this (radians, ~0.06°) is sensor noise: no frame.
+const ATTITUDE_DEADBAND: f64 = 0.001;
+/// The noise tile's side (texels).
+const TILE_SIDE: u32 = 256;
 /// The shadow's push in the card's plane per unit of sin(turn) and sin(tilt), points.
 const SHADOW_TURN: f32 = 10.0;
 const SHADOW_TILT: f32 = 14.0;
@@ -126,12 +141,14 @@ pub fn surface() -> Box<dyn Surface> {
         font: None,
         atlas: Canvas::default(),
         renderer: Renderer::default(),
-        drawn: [None; 4],
         gpu: None,
         tilt: Spring::at(0.0),
         press: Spring::at(0.0),
         finger: None,
         posted: Vec::new(),
+        pitch: Spring::at(0.0),
+        roll: Spring::at(0.0),
+        changed: true,
     })
 }
 
@@ -192,15 +209,6 @@ impl Layout {
     }
     fn gy(&self, v: f32) -> f32 {
         grid(self.card_abs.1 + v, self.s) - grid(self.card_abs.1, self.s)
-    }
-
-    /// The canvas layer's size in device pixels: the canvas (CW × CH at the card's origin) as
-    /// far as the card shows it, plus one pixel for the bilinear filter at the clip's edge.
-    fn layer_pixels(&self) -> (u32, u32) {
-        let s = self.s;
-        let canvas = ((self.gx(self.cw) * s).round() as u32, (self.gy(self.ch) * s).round() as u32);
-        let shown = ((self.card[2] * s).ceil() as u32 + 1, (self.card[3] * s).ceil() as u32 + 1);
-        (canvas.0.min(shown.0).max(1), canvas.1.min(shown.1).max(1))
     }
 
     /// The shadow's region in the card's points: left, top, width, height (RCTBoxShadow's
@@ -276,8 +284,6 @@ struct CardShaderReflections {
     font: Option<Option<Font>>,
     atlas: Canvas,
     renderer: Renderer,
-    /// The `rotate`, tilt and press each card's layer was last drawn with.
-    drawn: [Option<[f32; 3]>; 4],
     gpu: Option<Gpu>,
     /// The finger's tilt about x (radians) and the press (0…1), on TILT_SPRING.
     tilt: Spring,
@@ -285,17 +291,20 @@ struct CardShaderReflections {
     /// The finger holding the list.
     finger: Option<u32>,
     posted: Vec<String>,
+    /// The phone's CMAttitude pitch and roll (radians, clamped), on ATTITUDE_SPRING.
+    pitch: Spring,
+    roll: Spring,
+    /// Whether the last input changed what the screen shows.
+    changed: bool,
 }
 
 struct Gpu {
     format: wgpu::TextureFormat,
     generation: u32,
     layout: Layout,
-    card_pipeline: wgpu::RenderPipeline,
-    card_uniforms: [wgpu::Buffer; 4],
-    card_binds: [wgpu::BindGroup; 4],
-    /// Each card's canvas layer, as a render target.
-    layer_views: [wgpu::TextureView; 4],
+    /// The noise tile, written on the first frame.
+    tile: wgpu::Texture,
+    tile_written: bool,
     atlas: wgpu::TextureView,
     atlas_drawn: bool,
     compose: wgpu::RenderPipeline,
@@ -344,6 +353,35 @@ impl CardShaderReflections {
     /// The finger's tilt (radians) and press as card `pose` takes them.
     fn held(&self, pose: &Pose) -> (f32, f32) {
         ((self.tilt.value * pose.near) as f32, (self.press.value.clamp(0.0, 1.0) * pose.near) as f32)
+    }
+
+    /// Card `pose`'s frame in the room: its x axis, y axis and normal (the shader's lights and
+    /// eye stay put): the phone's turn · Rz(18°) · Ry(turn) · Rx(the finger's tilt).
+    fn room_frame(&self, pose: &Pose) -> [[f32; 3]; 3] {
+        let (tilt, _) = self.held(pose);
+        let m = Matrix4::rotate_x(-self.pitch.value as f32)
+            .multiply(Matrix4::rotate_y(self.roll.value as f32))
+            .multiply(Matrix4::rotate_z(TILT_DEG.to_radians()))
+            .multiply(Matrix4::rotate_y((pose.rotate_y_deg as f32).to_radians()))
+            .multiply(Matrix4::rotate_x(tilt))
+            .0;
+        [[m[0], m[4], m[8]], [m[1], m[5], m[9]], [m[2], m[6], m[10]]]
+    }
+
+    /// A Core Motion attitude sample: CMAttitude's pitch and roll, clamped, chased by the
+    /// springs; whether it moved a target past the deadband.
+    fn attitude(&mut self, q: [f32; 4]) -> bool {
+        let (p, r) = pitch_roll(q.map(|v| v as f64));
+        let p = if p.is_nan() { 0.0 } else { p.clamp(-ATTITUDE_RANGE, ATTITUDE_RANGE) };
+        let r = if r.is_nan() { 0.0 } else { r.clamp(-ATTITUDE_RANGE, ATTITUDE_RANGE) };
+        let mut moved = false;
+        for (spring, to) in [(&mut self.pitch, p), (&mut self.roll, r)] {
+            if (spring.target() - to).abs() >= ATTITUDE_DEADBAND {
+                spring.retarget(to, ATTITUDE_SPRING);
+                moved = true;
+            }
+        }
+        moved
     }
 
     /// The tilt toward a finger at `y`: the card's top goes away under a finger on it.
@@ -492,7 +530,15 @@ impl Surface for CardShaderReflections {
     }
 
     fn input(&mut self, event: &InputEvent) {
-        let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
+        if let InputEvent::Sensor { sensor: SensorKind::RelativeOrientation, values, .. } = *event {
+            self.changed = self.attitude(values);
+            return;
+        }
+        let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else {
+            self.changed = false;
+            return;
+        };
+        self.changed = true;
         // The FlatList's frame: the full width, the list View's height.
         let (top, bottom) = self.layout.list;
         let inside = y >= top && y < bottom && x >= 0.0 && x <= self.layout.w;
@@ -521,7 +567,11 @@ impl Surface for CardShaderReflections {
     }
 
     fn messages(&mut self) -> Vec<String> {
-        std::mem::take(&mut self.posted)
+        crate::haptic::host(std::mem::take(&mut self.posted))
+    }
+
+    fn input_changed(&self) -> bool {
+        self.changed
     }
 
     fn render(
@@ -543,11 +593,23 @@ impl Surface for CardShaderReflections {
         }
         let mut moving = self.scroll.step(frame.now_ms);
         moving |= self.tilt.step(frame.now_ms);
+        moving |= self.pitch.step(frame.now_ms);
+        moving |= self.roll.step(frame.now_ms);
         moving |= self.press.step(frame.now_ms);
 
         if self.gpu.as_ref().map(|g| (g.format, g.generation, g.layout)) != Some((format, frame.shader_generation, layout)) {
             self.gpu = Some(build(device, format, frame.shader_generation, layout));
-            self.drawn = [None; 4];
+        }
+        if !self.gpu.as_ref().unwrap().tile_written {
+            let gpu = self.gpu.as_mut().unwrap();
+            let side = TILE_SIDE;
+            queue.write_texture(
+                wgpu::TexelCopyTextureInfo { texture: &gpu.tile, mip_level: 0, origin: wgpu::Origin3d::ZERO, aspect: wgpu::TextureAspect::All },
+                &noise_tile(side),
+                wgpu::TexelCopyBufferLayout { offset: 0, bytes_per_row: Some(4 * side), rows_per_image: Some(side) },
+                wgpu::Extent3d { width: side, height: side, depth_or_array_layers: 1 },
+            );
+            gpu.tile_written = true;
         }
         if !self.gpu.as_ref().unwrap().atlas_drawn {
             self.record_atlas();
@@ -560,21 +622,18 @@ impl Surface for CardShaderReflections {
         let poses = self.poses();
         let mut u = Uniforms::default();
         let s = layout.s;
-        let (lw, lh) = layout.layer_pixels();
         let ((aw, ah), _, slot_px, lefts) = layout.atlas();
+        // The visible cards, in paint order.
+        let mut drawn: Vec<u32> = Vec::with_capacity(4);
         for k in 0..4 {
             let pose = &poses[k];
             let m = self.matrix(k, pose);
             let visible = self.visible(&m);
             let (tilt, press) = self.held(pose);
-            let key = [pose.rotate, tilt, press];
-            if visible && self.drawn[k] != Some(key) {
-                let gpu = self.gpu.as_ref().unwrap();
-                let cu = card_shader::Uniforms { params: [pose.rotate, CARDS[k].0, 1.0 / s, tilt], res: [layout.cw, layout.ch, press, 0.0] };
-                queue.write_buffer(&gpu.card_uniforms[k], 0, &cu.bytes());
-                skia::render::fullscreen_pass(encoder, "card shader reflections card", &gpu.layer_views[k], &gpu.card_pipeline, &gpu.card_binds[k]);
-                self.drawn[k] = Some(key);
-            }
+            let axes = self.room_frame(pose);
+            u.frame[3 * k] = [axes[0][0], axes[0][1], axes[0][2], CARDS[k].0];
+            u.frame[3 * k + 1] = [axes[1][0], axes[1][1], axes[1][2], 0.0];
+            u.frame[3 * k + 2] = [axes[2][0], axes[2][1], axes[2][2], 0.0];
             let rows = m.invert().unwrap_or(skia::Matrix3([0.0; 9])).rows();
             u.inv[3 * k..3 * k + 3].copy_from_slice(&rows);
             u.look[k] = [
@@ -585,65 +644,72 @@ impl Surface for CardShaderReflections {
             ];
             // The shadow leans away from the turn and drops with the tilt and the press.
             let turn = (pose.rotate_y_deg as f32).to_radians();
-            u.slot[k] = [lefts[k] as f32, -turn.sin() * SHADOW_TURN, tilt.sin() * SHADOW_TILT + 4.0 * press, press];
+            let off = (-turn.sin() * SHADOW_TURN, tilt.sin() * SHADOW_TILT + 4.0 * press);
+            u.slot[k] = [lefts[k] as f32, off.0, off.1, press];
+            // Its quad: the card grown by its shadow's reach (the compose pass's ambient shadow:
+            // its offset, then 1.9 σ), projected.
+            let [_, _, w, h] = layout.card;
+            let reach = 4.0 + ((3.0 + off.0).abs() + (12.0 + off.1).abs()) * (1.0 + 0.6 * press) + 1.9 * (18.0 + 8.0 * press) + 2.0;
+            let c = [(-reach, -reach), (w + reach, -reach), (w + reach, h + reach), (-reach, h + reach)].map(|(x, y)| m.map(x, y));
+            u.quad[2 * k] = [c[0].x, c[0].y, c[1].x, c[1].y];
+            u.quad[2 * k + 1] = [c[2].x, c[2].y, c[3].x, c[3].y];
+            if visible {
+                drawn.push(k as u32);
+            }
         }
         let [_, _, cw, chh] = layout.card;
         u.card = [cw, chh, CARD_RADIUS, layout.split()];
-        u.tex = [lw as f32, lh as f32, aw as f32, ah as f32];
-        u.shadow = layout.shadow();
+        u.tex = [TILE_SIDE as f32, TILE_SIDE as f32, aw as f32, ah as f32];
+        u.light = [layout.cw, 0.0, 0.0, 0.0];
         u.overlay = [slot_px as f32 / s, chh, 0.0, 0.0];
         u.canvas = [frame.pixels().0 as f32, frame.pixels().1 as f32, s, gfx::srgb_flag(format)];
         let gpu = self.gpu.as_ref().unwrap();
         queue.write_buffer(&gpu.uniforms, 0, &u.bytes());
-        skia::render::fullscreen_pass(encoder, "card shader reflections", target, &gpu.compose, &gpu.bind);
+        // styles.container's #111, then each visible card's quad over it.
+        // (A target that encodes sRGB takes linear values: #11's (17 / 255 / 12.92 … the curve).)
+        let v = 17.0_f64 / 255.0;
+        let bg = if format.is_srgb() { ((v + 0.055) / 1.055).powf(2.4) } else { v };
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("card shader reflections"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: target,
+                resolve_target: None,
+                depth_slice: None,
+                ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color { r: bg, g: bg, b: bg, a: 1.0 }), store: wgpu::StoreOp::Store },
+            })],
+            depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
+            multiview_mask: None,
+        });
+        pass.set_pipeline(&gpu.compose);
+        pass.set_bind_group(0, &gpu.bind, &[]);
+        for k in drawn {
+            pass.draw(0..6, k..k + 1);
+        }
         moving
     }
 }
 
 fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32, layout: Layout) -> Gpu {
-    // The cards' canvas layers: one array layer each.
-    let (lw, lh) = layout.layer_pixels();
-    let layers = device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("card shader reflections layers"),
-        size: wgpu::Extent3d { width: lw, height: lh, depth_or_array_layers: 4 },
+    let tile = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("card shader reflections noise"),
+        size: wgpu::Extent3d { width: TILE_SIDE, height: TILE_SIDE, depth_or_array_layers: 1 },
         mip_level_count: 1,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: LAYER_FORMAT,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
         view_formats: &[],
     });
-    let layer_views = std::array::from_fn(|k| {
-        layers.create_view(&wgpu::TextureViewDescriptor {
-            label: Some("card shader reflections layer"),
-            dimension: Some(wgpu::TextureViewDimension::D2),
-            base_array_layer: k as u32,
-            array_layer_count: Some(1),
-            ..Default::default()
-        })
-    });
-    let array_view = layers.create_view(&wgpu::TextureViewDescriptor { label: Some("card shader reflections layers"), dimension: Some(wgpu::TextureViewDimension::D2Array), ..Default::default() });
-
-    let card_module = device.create_shader_module(card_shader::module());
-    let card_layout = device.create_bind_group_layout(&card_shader::GROUP_0);
-    let card_pipeline = skia::render::fullscreen_pipeline(device, &card_module, &card_layout, card_shader::entry::FS, LAYER_FORMAT, None);
-    let card_uniforms: [wgpu::Buffer; 4] = std::array::from_fn(|_| {
-        device.create_buffer(&wgpu::BufferDescriptor { label: Some("card shader reflections card"), size: card_shader::Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false })
-    });
-    let card_binds = std::array::from_fn(|k| {
-        device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("card shader reflections card"),
-            layout: &card_layout,
-            entries: &[wgpu::BindGroupEntry { binding: card_shader::U.binding, resource: card_uniforms[k].as_entire_binding() }],
-        })
-    });
+    let tile_view = tile.create_view(&Default::default());
 
     let ((aw, ah), ..) = layout.atlas();
     let atlas = skia::render::sampled_target(device, "card shader reflections atlas", LAYER_FORMAT, aw, ah);
 
     let shader = device.create_shader_module(module());
     let group = device.create_bind_group_layout(&GROUP_0);
-    let compose = skia::render::fullscreen_pipeline(device, &shader, &group, entry::COMPOSE, format, None);
+    let compose = skia::render::fullscreen_pipeline(device, &shader, &group, entry::COMPOSE, format, Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING));
     let uniforms = device.create_buffer(&wgpu::BufferDescriptor { label: Some("card shader reflections"), size: Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
     let sampler = skia::render::linear_sampler(device);
     let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -651,12 +717,59 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32, la
         layout: &group,
         entries: &[
             wgpu::BindGroupEntry { binding: U.binding, resource: uniforms.as_entire_binding() },
-            wgpu::BindGroupEntry { binding: LAYERS.binding, resource: wgpu::BindingResource::TextureView(&array_view) },
+            wgpu::BindGroupEntry { binding: TILE.binding, resource: wgpu::BindingResource::TextureView(&tile_view) },
             wgpu::BindGroupEntry { binding: ATLAS.binding, resource: wgpu::BindingResource::TextureView(&atlas) },
             wgpu::BindGroupEntry { binding: SMP.binding, resource: wgpu::BindingResource::Sampler(&sampler) },
         ],
     });
-    Gpu { format, generation, layout, card_pipeline, card_uniforms, card_binds, layer_views, atlas, atlas_drawn: false, compose, uniforms, bind }
+    Gpu { format, generation, layout, tile, tile_written: false, atlas, atlas_drawn: false, compose, uniforms, bind }
+}
+
+/// CMAttitude's pitch and roll (Z-X'-Y'') of Core Motion's attitude quaternion `[x, y, z, w]`
+/// (as threads_holo_ticket reads it).
+fn pitch_roll(q: [f64; 4]) -> (f64, f64) {
+    let [x, y, z, w] = q;
+    let pitch = (2.0 * (w * x + y * z)).clamp(-1.0, 1.0).asin();
+    let roll = (2.0 * (w * y - x * z)).atan2(1.0 - 2.0 * (x * x + y * y));
+    (pitch, roll)
+}
+
+/// A hash of a lattice point in [0, 1).
+fn hash(x: u32, y: u32, seed: u32) -> f32 {
+    let mut h = x.wrapping_mul(0x8da6_b343) ^ y.wrapping_mul(0xd816_3841) ^ seed.wrapping_mul(0xcb1a_b31f);
+    h ^= h >> 13;
+    h = h.wrapping_mul(0x5bd1_e995);
+    h ^= h >> 15;
+    (h & 0xff_ffff) as f32 / 16_777_216.0
+}
+
+/// Value noise that tiles a `side` square: `cells` lattice cells across each axis.
+fn tiled_noise(x: u32, y: u32, side: u32, cells: (u32, u32), seed: u32) -> f32 {
+    let fx = x as f32 * cells.0 as f32 / side as f32;
+    let fy = y as f32 * cells.1 as f32 / side as f32;
+    let (ix, iy) = (fx.floor() as u32, fy.floor() as u32);
+    let smooth = |t: f32| t * t * (3.0 - 2.0 * t);
+    let (tx, ty) = (smooth(fx.fract()), smooth(fy.fract()));
+    let at = |i: u32, j: u32| hash(i % cells.0, j % cells.1, seed);
+    let top = at(ix, iy) + (at(ix + 1, iy) - at(ix, iy)) * tx;
+    let bottom = at(ix, iy + 1) + (at(ix + 1, iy + 1) - at(ix, iy + 1)) * tx;
+    top + (bottom - top) * ty
+}
+
+/// The cards' noise, a `side`² RGBA8 tile read per plane device pixel: r the brushing's lines
+/// (long along x, ~1.3 a pixel across, three octaves), g the bead-blast's tooth, b the grain.
+fn noise_tile(side: u32) -> Vec<u8> {
+    let mut out = Vec::with_capacity((side * side * 4) as usize);
+    for y in 0..side {
+        for x in 0..side {
+            let lines = tiled_noise(x, y, side, (1, side), 1) * 0.5 + tiled_noise(x, y, side, (3, side / 2), 2) * 0.2 + tiled_noise(x, y, side, (2, side / 8), 3) * 0.1 + 0.1;
+            let tooth = tiled_noise(x, y, side, (side * 7 / 10, side * 7 / 10), 4);
+            let grain = hash(x, y, 5);
+            out.extend([lines, tooth, grain].map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8));
+            out.push(255);
+        }
+    }
+    out
 }
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
@@ -773,21 +886,73 @@ mod tests {
         assert_eq!(s.messages(), vec!["haptic:impact-light", "haptic:impact-soft"]);
     }
 
+    #[test]
+    fn the_phone_turn_moves_the_light() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
+        exact_gpu::shaders::load_dir(&dir, &crate::REGISTRY).unwrap();
+        let gpu = match fixture::device() {
+            Ok(gpu) => gpu,
+            Err(error) => return eprintln!("{error}; skipped"),
+        };
+        let frame = |now_ms| Frame { width: 420.0, height: 912.0, scale: 3.0, now_ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: exact_gpu::shaders::shader_generation(), headroom: 1.0 };
+        let sensor = |pitch: f32, roll: f32, at_ms| {
+            // Roll about y, then pitch about x (small angles: CMAttitude's pitch and roll back).
+            let (sp, cp) = (pitch / 2.0).sin_cos();
+            let (sr, cr) = (roll / 2.0).sin_cos();
+            InputEvent::Sensor { sensor: SensorKind::RelativeOrientation, values: [sp * cr, cp * sr, -sp * sr, cp * cr], dropped: 0, at_ms }
+        };
+        let settle = |s: &mut dyn Surface, from: f64| {
+            let mut ms = from;
+            let (mut img, mut moving) = fixture::render(&gpu, s, &frame(ms)).unwrap();
+            while moving && ms < from + 3000.0 {
+                ms += 16.0;
+                (img, moving) = fixture::render(&gpu, s, &frame(ms)).unwrap();
+            }
+            assert!(!moving, "settles");
+            img
+        };
+        let mut s = surface();
+        let rest = settle(s.as_mut(), 0.0);
+        rest.save("card-shader-reflections-phone-level");
+        // Sensor noise asks for no frame.
+        s.input(&sensor(0.0003, 0.0, 10.0));
+        assert!(!s.input_changed());
+        // The phone rolled 20° right: the highlights move; the clamp holds 40° at 25°.
+        let deg = std::f32::consts::PI / 180.0;
+        s.input(&sensor(0.0, 20.0 * deg, 20.0));
+        assert!(s.input_changed());
+        let right = settle(s.as_mut(), 4000.0);
+        right.save("card-shader-reflections-phone-right");
+        s.input(&sensor(-15.0 * deg, -40.0 * deg, 8000.0));
+        let left = settle(s.as_mut(), 8000.0);
+        left.save("card-shader-reflections-phone-left");
+        // The card's face changed under the light; the background did not.
+        let px = |img: &fixture::Pixels, x: f32, y: f32| img.at((x * 3.0) as u32, (y * 3.0) as u32);
+        let changed = |a: &fixture::Pixels, b: &fixture::Pixels| {
+            [(150.0, 300.0), (210.0, 429.5), (260.0, 560.0)].iter().map(|&(x, y)| (px(a, x, y)[1] as i32 - px(b, x, y)[1] as i32).abs()).max().unwrap()
+        };
+        assert!(changed(&rest, &right) > 12, "{}", changed(&rest, &right));
+        assert!(changed(&right, &left) > 12, "{}", changed(&right, &left));
+        assert_eq!(&px(&left, 5.0, 5.0)[..3], &[17, 17, 17]);
+    }
+
     /// The surface at the iPhone Air's layout, without a GPU.
     fn surface_with_layout() -> Option<CardShaderReflections> {
         let layout = Layout::new(420.0, 912.0, 3.0);
-        let mut s = CardShaderReflections {
+        let s = CardShaderReflections {
             layout,
             scroll: UiScroll::new(0.0, 3.0 * layout.cw as f64, layout.w as f64, FAST, Snap::Interval(layout.cw as f64)),
             font: None,
             atlas: Canvas::default(),
             renderer: Renderer::default(),
-            drawn: [None; 4],
             gpu: None,
             tilt: Spring::at(0.0),
             press: Spring::at(0.0),
             finger: None,
             posted: Vec::new(),
+            pitch: Spring::at(0.0),
+            roll: Spring::at(0.0),
+            changed: true,
         };
         Some(s)
     }

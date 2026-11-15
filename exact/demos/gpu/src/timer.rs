@@ -144,7 +144,7 @@ impl Surface for Timer {
     }
 
     fn messages(&mut self) -> Vec<String> {
-        std::mem::take(&mut self.posted)
+        crate::haptic::host(std::mem::take(&mut self.posted))
     }
 
     #[cfg(target_arch = "wasm32")]

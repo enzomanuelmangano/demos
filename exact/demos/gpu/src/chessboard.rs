@@ -1965,7 +1965,11 @@ impl Chessboard {
                 c.draw_text(&(8 - row).to_string(), ps * 0.05, y + ps * 0.18, font, &Paint::fill(color));
             }
         }
-        let last = Color::parse("rgba(58, 145, 248, 0.4)");
+        // The last move, on its from and to squares (the opponent's reply too): Patterns' gold
+        // (packages/theme patterns.ts iceGlacier moveHighlight, the palette nearest this slate
+        // board), the owner's note mwhmyeq3-004cad; RN's BOARD_COLORS.lastMoveHighlight was the
+        // accent at 0.4.
+        let last = Color::parse("rgba(235, 199, 105, 0.5)");
         let check = Color::hex(theme::LOSE);
         // Patterns' BOARD_HINT_HIGHLIGHT (src/utils/board-highlight.ts).
         let hint = Color::parse("rgba(124, 92, 200, 0.55)");
@@ -2702,7 +2706,7 @@ impl Surface for Chessboard {
     }
 
     fn messages(&mut self) -> Vec<String> {
-        std::mem::take(&mut self.messages)
+        crate::haptic::host(std::mem::take(&mut self.messages))
     }
 
     fn agent(&mut self, _request: &str) -> Option<String> {

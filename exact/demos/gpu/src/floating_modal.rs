@@ -46,6 +46,12 @@
 //! 40 % of the way; a drag rubber-bands up and sideways and closes on a flick down as well;
 //! Done dismisses it (RN's does nothing);
 //! `open` and `close` are posted for a haptic.
+//!
+//! Haptics past RN (which plays only the presses'; the owner's haptic language):
+//! `haptic:impact-light` when a drag takes the open sheet, `haptic:impact-soft` once when a
+//! drag released short of dismissing has sprung back home (within LANDED of it; a drag shorter
+//! than 2 × LANDED plays none). A dismissal keeps its `close`. The rubber band (up and
+//! sideways) is soft-edged, with no limit to hit: no haptic.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -58,6 +64,8 @@ use crate::gfx;
 
 /// FLOATING_BUTTON_SIZE.
 const BUTTON: f64 = 64.0;
+/// A sheet sprung back from a drag has landed within this of home, pt.
+const LANDED: f64 = 3.0;
 /// The open sheet's inset from the display's sides and bottom, and the display's corner radius
 /// (iPhone 17: 62 pt): the sheet's radius is concentric with it.
 const INSET: f64 = 10.0;
@@ -120,6 +128,7 @@ fn modal() -> FloatingModal {
         done_press: Pressable::new(),
         plus_shown: (0.0, 1.0),
         touched: false,
+        homing: false,
         posted: Vec::new(),
         plus: Font::new(ANTDESIGN, 28.0).map(Font::with_ui_layout),
         title: skia::match_ui_font(20.0, 700.0),
@@ -171,6 +180,8 @@ struct FloatingModal {
     plus_shown: (f64, f64),
     /// A press set pressto's `lastTouchedPressable` since the last frame.
     touched: bool,
+    /// Sprung back home from a drag and not yet landed (its soft haptic due).
+    homing: bool,
     posted: Vec<String>,
     plus: Option<Font>,
     title: Option<Font>,
@@ -333,6 +344,14 @@ impl FloatingModal {
             .push(if self.opened { "open" } else { "close" }.into());
     }
 
+    /// A sheet sprung back from a drag lands home: its soft haptic, once.
+    fn land(&mut self) {
+        if self.homing && self.x.value.hypot(self.y.value) < LANDED {
+            self.homing = false;
+            self.posted.push("haptic:impact-soft".into());
+        }
+    }
+
     /// The scrim's opacity: the progress, thinned as the open sheet is dragged down.
     fn scrim(&self) -> f64 {
         let drag = (self.y.value.max(0.0) / 400.0).clamp(0.0, 1.0);
@@ -381,7 +400,7 @@ impl Surface for FloatingModal {
     }
 
     fn messages(&mut self) -> Vec<String> {
-        std::mem::take(&mut self.posted)
+        crate::haptic::host(std::mem::take(&mut self.posted))
     }
 
     fn agent(&mut self, _request: &str) -> Option<String> {
@@ -424,7 +443,8 @@ impl Surface for FloatingModal {
                 self.done_press.pointer_down(id, on_done);
             }
         }
-        match self.pan.event(id, phase, x, y, at_ms, on_modal) {
+        let event = self.pan.event(id, phase, x, y, at_ms, on_modal);
+        match event {
             Event::Begin { y: by, .. } => self.down_y = by as f64,
             Event::Start(p) | Event::Update(p) => {
                 // The pan activates: the button under the finger is cancelled.
@@ -435,6 +455,11 @@ impl Surface for FloatingModal {
                     self.done_press.cancel();
                 }
                 if self.opened {
+                    if matches!(event, Event::Start(_)) {
+                        // The finger takes the sheet.
+                        self.posted.push("haptic:impact-light".into());
+                        self.homing = false;
+                    }
                     // Down follows the finger; up and sideways rubber-band.
                     let (_, _, fw, fh) = self.layout(1.0).frame;
                     let ty = p.translation_y as f64;
@@ -487,6 +512,7 @@ impl Surface for FloatingModal {
         let (p0, k0) = (self.progress.value, self.plus_press.progress());
         let mut moving = self.progress.step(now);
         moving |= self.x.step(now) | self.y.step(now);
+        self.land();
         let visible = self.opened && self.progress.value > 0.9;
         if visible != self.visible {
             self.visible = visible;
@@ -844,6 +870,8 @@ impl FloatingModal {
         }
         if translation_y > 0.0 && (self.scale() < 0.95 || velocity_y > 800.0) {
             self.toggle();
+        } else {
+            self.homing = self.x.value.hypot(self.y.value) >= 2.0 * LANDED;
         }
         self.x.to_clamped(0.0, 0.0, GENTLE);
         self.y.to_clamped(0.0, 0.0, GENTLE);
@@ -966,6 +994,45 @@ mod tests {
         assert!(!moving);
         assert!(s.agent("{}").unwrap().contains("\"opened\":false"));
         assert_eq!(back.data, closed.data);
+        // The grab's light impact, then the dismissal (no landing: it closed).
+        assert_eq!(s.messages(), vec!["haptic:impact-light".to_string(), "close".to_string()]);
+    }
+
+    #[test]
+    fn a_short_drag_grabs_and_lands_the_sheet() {
+        // Open, at rest; drag down 40 (30 after the hysteresis) and let go slowly: it stays
+        // open and springs home, one light impact at the grab, one soft at the landing.
+        let pointer = |phase, y: f32, at_ms| InputEvent::Pointer {
+            id: 1,
+            phase,
+            x: 210.0,
+            y,
+            dx: 0.0,
+            dy: 0.0,
+            kind: PointerKind::Touch,
+            buttons: 1,
+            at_ms,
+        };
+        let mut m = modal();
+        m.size = (420.0, 912.0);
+        m.s = 2.0;
+        m.opened = true;
+        m.progress = Spring::at(1.0);
+        m.input(&pointer(PointerPhase::Down, 760.0, 0.0));
+        for k in 1..=4 {
+            m.input(&pointer(PointerPhase::Move, 760.0 + 10.0 * k as f32, 100.0 * k as f64));
+        }
+        m.input(&pointer(PointerPhase::Up, 800.0, 500.0));
+        assert!(m.opened);
+        assert_eq!(m.messages(), vec!["haptic:impact-light".to_string()]);
+        let mut ms = 500.0;
+        while ms < 2500.0 {
+            ms += 16.0;
+            m.x.step(ms);
+            m.y.step(ms);
+            m.land();
+        }
+        assert_eq!(m.messages(), vec!["haptic:impact-soft".to_string()]);
     }
 
     #[test]
