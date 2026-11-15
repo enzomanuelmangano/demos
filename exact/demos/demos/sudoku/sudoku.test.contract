@@ -14,3 +14,13 @@ test "the New Game alert is declared, closed"
 test "the Genius alert is declared, closed"
   clock settle
   expect tree has "genius-alert"
+
+test "New Game is a glass button on the top row that asks first"
+  expect tree has "sudoku-new-game"
+  expect tree missing "new-game-alert-cancel"
+  tap "sudoku-new-game"
+  clock settle
+  expect tree has "new-game-alert-cancel"
+  tap "new-game-alert-cancel"
+  clock settle
+  expect tree missing "new-game-alert-cancel"

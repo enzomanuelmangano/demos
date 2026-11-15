@@ -18,6 +18,10 @@ component Sudoku
   // the demo route never showed on the phone, so New Game did nothing).
   state asking = false
   state genius = false
+  // New Game on the demo screen's glass row (phone feedback 2026-11-15): it asks first.
+  action askNewGame
+    haptic("selection")
+    asking = true
   action heard(m: string)
     if m == "haptic:selection"
       haptic("selection")
@@ -49,6 +53,12 @@ component Sudoku
       canvas surface=sudoku(env.seed, reset, ok) position="absolute" top=0 left=0 width=env.width height=env.height
         touch-action="none" message=heard testId="sudoku-canvas"
         aria-label="Sudoku: Start Game, then tap a cell and a number"
+      // New Game as a glass icon button at the top right of the demo's glass row (where the info
+      // button sits in a demo that credits someone: right 16, 48 pt, at the safe top), above the
+      // canvas (a full-screen canvas takes the touches under it).
+      glass-button press=askNewGame caption="New Game" symbol="arrow.clockwise" edge="trailing"
+        aria-label="New Game" testId="sudoku-new-game" position="absolute" top=env.safeTop right=16
+        width=48 height=48 z-index=10
       // Alert.alert('New Game', …, [Cancel (cancel), New Game (destructive)]).
       RouteAlert(shown=asking, title="New Game",
         message="Are you sure you want to start a new game? Your current progress will be lost.",
