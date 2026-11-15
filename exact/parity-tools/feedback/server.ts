@@ -49,6 +49,18 @@ async function crop(slug: string, id: string, x: number, y: number): Promise<str
   return out;
 }
 
+export function approved(): string[] {
+  const state = new Map<string, boolean>();
+  if (existsSync(INBOX)) for (const line of readFileSync(INBOX, "utf8").split("\n")) {
+    let e: { kind?: string; slug?: string };
+    try { e = JSON.parse(line); } catch { continue; }
+    if (!safe(e.slug ?? "")) continue;
+    if (e.kind === "approve") state.set(e.slug!, true);
+    else if (e.kind === "note" || e.kind === "parity") state.set(e.slug!, false);
+  }
+  return [...state].filter(([, ok]) => ok).map(([slug]) => slug);
+}
+
 const idle = new Map<string, number>();
 const waiters = new Map<string, (() => void)[]>();
 const json = (v: unknown, status = 200) =>
@@ -62,6 +74,9 @@ Bun.serve({
     if (req.method === "OPTIONS") return new Response(null, { headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type" } });
     if (url.pathname === "/notes") return json({ notes: safe(url.searchParams.get("slug") ?? "") ? read(url.searchParams.get("slug")!) : all() });
     if (url.pathname === "/phone" && req.method === "POST") return phone(req);
+    // The phone's home badges (app.contract approvedDemos): every slug "✅ Looks good" on the
+    // phone, unless a later note or parity report on it reopened it. Read from inbox.jsonl.
+    if (url.pathname === "/approved") return json({ slugs: approved() });
     // The snap route's idle beacon (app.contract snapIdle) and gen-snapshots.ts's wait on it.
     if (url.pathname === "/snap-idle" && req.method === "POST") {
       const b = await req.json().catch(() => ({}));

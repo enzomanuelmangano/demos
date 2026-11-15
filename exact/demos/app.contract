@@ -47,6 +47,13 @@ source feedbackEdit(slug: string, id: string, comment: string, status: string) a
   method "POST"
   body json
 
+// The demos the owner marked "✅ Looks good" from the phone's feedback sheet, on the Mac's LAN
+// address (the phone's feedback host): a green check on each one's home icon. With the server
+// unreachable, no badges.
+source approvedDemos() as shape string[]
+  url "http://192.168.1.206:5350/approved"
+  pointer "/slugs"
+
 // The snap route's "idle now": gen-snapshots.ts waits on the server for it, then captures.
 shape SnapAck
   ok: bool
@@ -94,6 +101,16 @@ component Demos
   resource feedback = feedbackNotes() when atlasShown as shape FeedbackNote[] else empty()
   mutation noted as shape FeedbackNote refreshes feedback
   derive desk = host.pointer == "fine" and host.width >= 600
+  // The phone's home badges: asked when the home shows again and every 20 s while it shows.
+  derive homeShown = top(nav).name == "home" and not desk
+  resource approved = approvedDemos() when homeShown as shape string[] else empty() transient
+  derive approvedSlugs = failed(approved) ? [] : approved
+  task approvedOnHome when homeShown key=top(nav).id
+    after(1, refreshApproved)
+  task approvedPoll when homeShown key=top(nav).id
+    every(20000, refreshApproved)
+  action refreshApproved
+    refresh approved
   derive atlasShown = desk or stack(nav).map(e => e.name).includes("atlas")
   derive demos = showUnstable ? allDemos() : allDemos().filter(d => not d.unstable)
 
@@ -180,7 +197,7 @@ component Demos
             closable=false, leave=back, notes=feedback, add=addNote, edit=editNote)
         if e.name == "home" and not desk
           column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" position="absolute" inset=0
-            Springboard(demos=demos, open=open)
+            Springboard(demos=demos, approved=approvedSlugs, open=open)
             // A Mac (a fine pointer) files this under View; the iPhone's home is unchanged.
             if host.pointer == "fine"
               button press=openAtlas -exact-menu="view" aria-keyshortcuts="Meta+Shift+A" aria-label="Demo Atlas"

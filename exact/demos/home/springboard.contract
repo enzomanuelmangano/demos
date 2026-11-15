@@ -27,6 +27,7 @@ keyframes pageDot
 component Springboard
   props
     demos: Demo[]
+    approved: string[]
     open: action
   state boxW = 0
   state boxH = 0
@@ -57,7 +58,7 @@ component Springboard
               scroll-snap-stop="always" padding="16px 22px 0" box-sizing="border-box"
               row flex-wrap="wrap" row-gap=22 align-content="flex-start"
                 for d in demos.slice(p * per, (p + 1) * per) key=d.slug
-                  AppIcon(demo=d, cell=cellWidth(boxW), size=iconSize(boxW), open=open)
+                  AppIcon(demo=d, cell=cellWidth(boxW), size=iconSize(boxW), approved=approved.includes(d.slug), open=open)
         // page-dots.tsx: equal round dots, the shown one brightened. Each follows the pager's
         // offset on the compositor (UIPageControl's interpolation as the finger drags): full at
         // its own page, 0.35 a page either side.
@@ -76,13 +77,14 @@ component AppIcon
     demo: Demo
     cell: number
     size: number
+    approved: bool
     open: action
   action openLink(url: string)
     openURL(url)
   action shareDemo
     share(text=`${demo.name} — ${sourceUrl(demo.slug)}`, url=sourceUrl(demo.slug))
   view
-    column width=cell height=(size + 26) align-items="center"
+    column width=cell height=(size + 26) align-items="center" position="relative"
       button appearance="none" press=open(demo.slug) aria-label=`Open ${demo.name}` testId=`icon-${demo.slug}`
         class=IconPress width=size height=size padding=0 border-width=0 background-color="transparent"
         // launch-icon.tsx: the square the demo opens out of and closes into (DemoLaunch.swift).
@@ -93,6 +95,15 @@ component AppIcon
           box-shadow="0px 5px 9px rgba(27, 34, 51, 0.18)"
           image demo.icon width=size height=size border-radius=(size * 0.2237) corner-shape="-exact-continuous"
             overflow="hidden" background-color="#1c1c1e" object-fit="cover" aria-hidden=true
+      // Approved on the phone ("✅ Looks good"): a green notification-style badge over the icon's
+      // top-right corner, a sibling of the button so the launch square and the long-press lift
+      // stay the bare squircle.
+      if approved
+        view testId=`approved-${demo.slug}` position="absolute" top=-6 left=((cell + size) / 2 - 14)
+          width=20 height=20 border-radius=10 box-sizing="border-box" border="1.5px solid #ffffff"
+          background-color="#34C759" align-items="center" justify-content="center"
+          pointer-events="none" aria-label="Approved"
+          image "symbol:sf/checkmark" font-size=10 font-weight=800 color="#FFFFFF" aria-hidden=true
       text demo.label margin-top=6 max-width="100%" font-size=11 font-weight=600
         color="rgba(255,255,255,0.92)" text-align="center" white-space="nowrap" overflow="hidden"
         text-overflow="ellipsis"
