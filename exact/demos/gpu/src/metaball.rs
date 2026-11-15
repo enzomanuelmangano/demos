@@ -15,7 +15,11 @@
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
 use gesture_handler::{Event, PanGesture};
-use reanimated::{Spring, GENTLE};
+use reanimated::{Spring, SpringConfig};
+
+/// The release spring (the owner's call): damping ratio 1, SwiftUI's `.spring(duration: 0.5,
+/// bounce: 0)`: mass 1, stiffness (2π / 0.5)², damping 2√k.
+const RELEASE: SpringConfig = SpringConfig { stiffness: 157.913_670_417_429_7, damping: 25.132_741_228_718_345, mass: 1.0 };
 use skia::blur::{ceil_size, intersect, outset, round_out, GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
 use skia::{point, stops, Canvas, Color, Paint, Renderer, Shader};
 
@@ -138,13 +142,24 @@ impl Surface for Metaball {
                 self.second.1.set((self.second_from.1 + p.translation_y) as f64);
                 self.dirty = true;
             }
-            Event::End(_) | Event::Fail => {
-                // withSpring(width / 2), withSpring(height / 2); a spring still running hands its
-                // velocity on (Reanimated's onStart).
+            // The lift: back to the centre on a critically damped spring (the owner's call, phone
+            // feedback mwh5j03c: RN's withSpring() starts from rest) carrying the finger's release
+            // velocity, whichever way it points.
+            Event::End(p) => {
+                let (cx, cy) = self.centre();
+                // A lift with no drag (the pan never moved) keeps a running spring's velocity.
+                let v = |s: &Spring, finger: f32| if finger != 0.0 { finger as f64 } else if s.running { s.velocity } else { 0.0 };
+                let (vx, vy) = (v(&self.second.0, p.velocity_x), v(&self.second.1, p.velocity_y));
+                self.second.0.launch(cx as f64, vx, RELEASE);
+                self.second.1.launch(cy as f64, vy, RELEASE);
+                self.dirty = true;
+            }
+            // A cancel: the same spring from where it is, at the velocity it has.
+            Event::Fail => {
                 let (cx, cy) = self.centre();
                 for (s, to) in [(&mut self.second.0, cx), (&mut self.second.1, cy)] {
                     let v = if s.running { s.velocity } else { 0.0 };
-                    s.to(to as f64, v, GENTLE);
+                    s.launch(to as f64, v, RELEASE);
                 }
                 self.dirty = true;
             }
@@ -327,17 +342,38 @@ mod tests {
         s.input(&pointer(exact_gpu::PointerPhase::Move, 105.0, 400.0, 16.0));
         s.input(&pointer(exact_gpu::PointerPhase::Up, 105.0, 400.0, 32.0));
         assert!(s.second.1.running);
+        // The lift carries the finger's velocity (down, away from the centre): the blob goes on
+        // past where it was let go, then comes back, critically damped (no swing past the centre).
         s.second.1.step(32.0);
-        s.second.1.step(132.0);
+        s.second.1.step(48.0);
+        assert!(s.second.1.value > 400.0, "{}", s.second.1.value);
+        let mut ms = 48.0;
+        let mut peak: f64 = 0.0;
+        while s.second.1.value > 300.0 {
+            ms += 16.0;
+            s.second.1.step(ms);
+            peak = peak.max(s.second.1.value);
+            assert!(ms < 3000.0);
+        }
+        assert!(peak > 400.0);
+        s.second.1.step(ms + 16.0);
         let mid = s.second.1.value;
         assert!(mid < 400.0 && mid > 228.0, "{mid}");
         // Held still on it (the pan not active yet): the spring goes on.
-        s.input(&pointer(exact_gpu::PointerPhase::Down, 105.0, mid as f32, 140.0));
+        s.input(&pointer(exact_gpu::PointerPhase::Down, 105.0, mid as f32, ms + 20.0));
         assert!(s.second.1.running);
-        s.second.1.step(200.0);
+        s.second.1.step(ms + 70.0);
         assert!(s.second.1.value < mid);
-        // Lifted without a drag (onFinalize → onEnd): withSpring again, from where it is.
-        s.input(&pointer(exact_gpu::PointerPhase::Up, 105.0, mid as f32, 210.0));
+        // Lifted without a drag: the spring again, from where it is, at the velocity it has.
+        s.input(&pointer(exact_gpu::PointerPhase::Up, 105.0, mid as f32, ms + 80.0));
         assert!(s.second.1.running && s.second.1.velocity < 0.0);
+        // It settles at the centre without passing it (ζ = 1).
+        let mut t = ms + 80.0;
+        while s.second.1.running {
+            t += 16.0;
+            s.second.1.step(t);
+            assert!(s.second.1.value >= 228.0 - 0.5, "{}", s.second.1.value);
+            assert!(t < ms + 5000.0);
+        }
     }
 }

@@ -107,6 +107,21 @@ impl Spring {
         self.last_ms = Some(now_ms);
     }
 
+    /// Off to `to` from where it is, at `velocity` whichever way it points (a flick away from
+    /// `to` carries on, slows and comes back, as UIKit's and SwiftUI's springs do; Reanimated's
+    /// [`Spring::to`] drops it).
+    pub fn launch(&mut self, to: f64, velocity: f64, config: Config) {
+        self.to(to, 0.0, config);
+        let x0 = self.value - to;
+        self.from = self.value;
+        self.v0 = velocity;
+        self.energy0 = 0.5 * config.stiffness * x0 * x0 + 0.5 * config.mass * velocity * velocity;
+        self.running = self.energy0 > 0.0;
+        if self.running {
+            self.velocity = velocity;
+        }
+    }
+
     /// Off to `to` from where it is, at `velocity`. As Reanimated's `onStart`, a velocity that
     /// points away from `to` is dropped (only inertia toward the target is kept).
     pub fn to(&mut self, to: f64, velocity: f64, config: Config) {
