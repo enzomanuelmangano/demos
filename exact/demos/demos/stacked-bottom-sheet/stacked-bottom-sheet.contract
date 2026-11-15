@@ -131,11 +131,18 @@ component StackedBottomSheet
   action began(key: number, bw: number, bh: number, pw: number, ph: number)
     dragKey = key
 
+  // Haptics (past RN, which plays none): light when the finger takes the front sheet
+  // (pointerdown on its handle; the wand's press stops it and plays pressto's own), medium when
+  // a release past 50 down dismisses it.
+  action grabbed
+    haptic("impact-light")
+
   // Pan onEnd: past 50 down dismissItem (the spring to componentHeight + BaseSafeArea, then
   // onDismiss); else translateY withSpring(0) (the layer's own spring home, which it follows).
   action released(x: number, y: number, scale: number, vx: number, vy: number, vscale: number)
     let i = keys.indexOf(dragKey)
     if i >= 0 and y > 50 and sheetNum(vGone, i) == 0
+      haptic("impact-medium")
       goneL = sheetSet(goneL, i, sheetLift(biggest, sheetHeightOf(sheetNum(cfgs, i)), 0))
       gone = sheetSet(vGone, i, 1)
       goneY = sheetSet(goneY, i, y)
@@ -191,7 +198,7 @@ component StackedBottomSheet
                 bottom=(sheetInset() + sheetLift(biggest, sheetHeightOf(sheetNum(cfgs, i)), 0) + sheetHeightOf(sheetNum(cfgs, i)) - sheetGripOf(sheetNum(cfgs, i)))
                 width=(w - 2 * sheetInset()) height=sheetGripOf(sheetNum(cfgs, i)) pointer-events="auto"
                 touch-action="none" transformDragFor="sheet-drag" transformgeometry=began(key)
-                transformrelease=released aria-label="Swipe the sheet down"
+                transformrelease=released pointerdown=grabbed aria-label="Swipe the sheet down"
                 testId=`sheet-handle-${key}`
                 // The wand is a PressableScale inside the gesture: an unseen copy of the third
                 // sheet's row, so the press lands where the wand is drawn.
