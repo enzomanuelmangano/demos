@@ -31,6 +31,8 @@ use crate::gfx;
 
 /// SQUARE_SIZE.
 const SQUARE: f32 = 35.0;
+/// A swatch's touch radius (see `swatch_at`).
+const TOUCH_RADIUS: f32 = 30.0;
 /// APP_TEXT.
 const APP_TEXT: &str = "THEME";
 const FONT_SIZE: f32 = 40.0;
@@ -77,12 +79,19 @@ impl Theme {
         let (ox, oy) = OFFSETS[i];
         (w / 2.0 - SQUARE / 2.0 + ox * SQUARE * 2.0, h / 2.0 - SQUARE / 2.0 + oy * SQUARE * 2.0)
     }
-    /// The swatch under (x, y), first in order (`isPointInPath` of its circle).
+    /// The swatch whose touch area holds (x, y) (the nearest, should two ever meet). RN tests the 35 pt
+    /// circle (`isPointInPath`); the owner's call (phone feedback mwhll97x): a TOUCH_RADIUS
+    /// circle round each centre (a 60 pt target, past the 44 pt minimum, within the 70 pt
+    /// spacing), the look unchanged.
     fn swatch_at(&self, x: f32, y: f32) -> Option<usize> {
-        (0..6).find(|&i| {
-            let (cx, cy) = self.corner(i);
-            (x - cx - SQUARE / 2.0).hypot(y - cy - SQUARE / 2.0) <= SQUARE / 2.0
-        })
+        (0..6)
+            .map(|i| {
+                let (cx, cy) = self.corner(i);
+                (i, (x - cx - SQUARE / 2.0).hypot(y - cy - SQUARE / 2.0))
+            })
+            .filter(|&(_, d)| d <= TOUCH_RADIUS)
+            .min_by(|a, b| a.1.total_cmp(&b.1))
+            .map(|(i, _)| i)
     }
     fn select(&mut self, index: usize) {
         if index == self.selected {
@@ -220,6 +229,20 @@ impl Surface for Theme {
 mod tests {
     use super::*;
     use exact_gpu::{fixture, PointerKind, PointerPhase};
+
+    #[test]
+    fn a_swatch_takes_a_touch_30_pt_round_its_centre() {
+        let mut s = Theme::default();
+        s.size = (400.0, 800.0);
+        // Swatch 1 is at the centre (200, 400); swatch 0, 70 to its left.
+        assert_eq!(s.swatch_at(200.0 + 29.0, 400.0), Some(1));
+        assert_eq!(s.swatch_at(200.0, 400.0 - 29.0), Some(1));
+        assert_eq!(s.swatch_at(200.0, 400.0 - 31.0), None);
+        // Between two (70 apart): the gap's middle 10 pt takes neither, each side its own.
+        assert_eq!(s.swatch_at(200.0 - 29.0, 400.0), Some(1));
+        assert_eq!(s.swatch_at(200.0 - 35.0, 400.0), None);
+        assert_eq!(s.swatch_at(200.0 - 41.0, 400.0), Some(0));
+    }
 
     #[test]
     fn a_tap_on_a_swatch_floods_the_screen_with_its_theme() {
