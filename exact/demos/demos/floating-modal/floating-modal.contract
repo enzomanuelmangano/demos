@@ -3,7 +3,8 @@
 // src/animations/floating-modal (index.tsx, components/FloatingModal). The modal, its content,
 // the backdrop, the pan, the presses and their timings are Rust: gpu/src/floating_modal.rs,
 // over styles.container's rgba(0, 0, 0, 0.1). The surface posts `press` for each press:
-// pressto's global onPress (the app's selection haptic).
+// pressto's global onPress (the app's selection haptic), and `open` / `close` as the sheet
+// presents and dismisses (beyond RN: an impact for each).
 use DemoEnv from "../env.contract"
 
 component FloatingModal
@@ -14,6 +15,10 @@ component FloatingModal
   action heard(m: string)
     if m == "press"
       pressablesOnPress()
+    if m == "open"
+      haptic("impact-light")
+    if m == "close"
+      haptic("impact-soft")
   view
     canvas surface=floating_modal() message=heard position="absolute" top=0 left=0 width=env.width
       height=env.height background-color="rgba(0, 0, 0, 0.1)" touch-action="none"

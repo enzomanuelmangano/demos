@@ -36,6 +36,15 @@
 //! - Text is RN `<Text>`, laid out by UIKit (`skia::match_ui_font`: tracking, kerning). The
 //!   modal has no borderCurve (circular); the "Done" button is continuous. The boxShadow's path
 //!   is RCTBoxShadow's circular rounded rect.
+//!
+//! Beyond RN (the owner's phone feedback, 2026-11-15: "improve this component's layout and
+//! transitions"): the modal opens as an iOS 26 floating sheet, 10 pt from the display's sides
+//! and bottom, its continuous corners concentric with the display's (62 − 10 = 52 pt) and the
+//! Done button's with the sheet's (a 30 pt pill); it opens and closes on a critically damped
+//! spring (500 ms) instead of a 300 ms timing; the scrim follows the progress (and thins as the
+//! sheet is dragged down) instead of waiting for the end; the content fades in over the last
+//! 40 % of the way; a drag rubber-bands up and sideways and closes on a flick down as well;
+//! `open` and `close` are posted for a haptic.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -48,6 +57,17 @@ use crate::gfx;
 
 /// FLOATING_BUTTON_SIZE.
 const BUTTON: f64 = 64.0;
+/// The open sheet's inset from the display's sides and bottom, and the display's corner radius
+/// (iPhone 17: 62 pt): the sheet's radius is concentric with it.
+const INSET: f64 = 10.0;
+const DISPLAY_RADIUS: f64 = 62.0;
+/// iOS's rubber band: (1 − 1 / (d · 0.55 / dim + 1)) · dim.
+fn rubber(d: f64, dim: f64) -> f64 {
+    if dim <= 0.0 {
+        return 0.0;
+    }
+    d.signum() * (1.0 - 1.0 / (d.abs() * 0.55 / dim + 1.0)) * dim
+}
 /// AntDesign "plus" (U+F21A), size 28.
 const PLUS: &str = "\u{F21A}";
 static ANTDESIGN: &[u8] = include_bytes!("../fonts/antdesign-subset.ttf");
@@ -70,7 +90,7 @@ fn modal() -> FloatingModal {
         size: (0.0, 0.0),
         s: 3.0,
         opened: false,
-        progress: Timing::at(0.0),
+        progress: Spring::at(0.0),
         x: Spring::at(0.0),
         y: Spring::at(0.0),
         backdrop: Timing::at(0.0),
@@ -115,7 +135,7 @@ struct FloatingModal {
     /// Device pixels per point.
     s: f64,
     opened: bool,
-    progress: Timing,
+    progress: Spring,
     x: Spring,
     y: Spring,
     backdrop: Timing,
@@ -192,22 +212,27 @@ impl FloatingModal {
     /// (positions relative to the parent, sizes from the unrounded absolute edges).
     fn layout(&self, p: f64) -> Layout {
         let (w, h, s) = (self.size.0, self.size.1, self.s);
+        // The floating sheet: the display's width less the insets, 0.9 × width tall (RN's
+        // square's height), at the bottom; from the 64 pt button at right 32, bottom 32.
+        let sw = interpolate_clamp(p, &[0.0, 1.0], &[BUTTON, w - 2.0 * INSET]);
         let size = interpolate_clamp(p, &[0.0, 1.0], &[BUTTON, w * 0.9]);
-        let right = interpolate_clamp(p, &[0.0, 1.0], &[BUTTON / 2.0, w * 0.05]);
-        let bottom = interpolate_clamp(p, &[0.0, 1.0], &[BUTTON / 2.0, h / 2.0 - size / 2.0]);
-        let radius = interpolate_clamp(p, &[0.0, 1.0], &[32.0, 15.0]);
-        let (l0, t0) = (w - right - size, h - bottom - size);
+        let right = interpolate_clamp(p, &[0.0, 1.0], &[BUTTON / 2.0, INSET]);
+        let bottom = interpolate_clamp(p, &[0.0, 1.0], &[BUTTON / 2.0, INSET]);
+        let radius = interpolate_clamp(p, &[0.0, 1.0], &[BUTTON / 2.0, DISPLAY_RADIUS - INSET])
+            .min(size / 2.0)
+            .min(sw / 2.0);
+        let (l0, t0) = (w - right - sw, h - bottom - size);
         let frame = (
             grid(l0, s),
             grid(t0, s),
-            grid(l0 + size, s) - grid(l0, s),
+            grid(l0 + sw, s) - grid(l0, s),
             grid(t0 + size, s) - grid(t0, s),
         );
         let [plus, new, done] = self.text_boxes();
         // The content (absoluteFill, alignItems center): the title row as wide as its Text,
         // centred, 64 tall; the 80 tall button row at the bottom, its button inset 10.
         let new_at = (
-            grid((size - new.0) / 2.0, s),
+            grid((sw - new.0) / 2.0, s),
             text_grid((BUTTON - new.1) / 2.0, s),
         );
         let row_top = grid(size - 80.0, s);
@@ -215,11 +240,11 @@ impl FloatingModal {
         let button = (
             10.0,
             row_top + 10.0,
-            grid(bl + size - 20.0, s) - grid(bl, s),
+            grid(bl + sw - 20.0, s) - grid(bl, s),
             grid(bt + 60.0, s) - grid(bt, s),
         );
         let done_at = (
-            button.0 + text_grid((size - 20.0 - done.0) / 2.0, s),
+            button.0 + text_grid((sw - 20.0 - done.0) / 2.0, s),
             button.1 + text_grid((60.0 - done.1) / 2.0, s),
         );
         let plus_at = (
@@ -279,11 +304,21 @@ impl FloatingModal {
 
     fn toggle(&mut self) {
         self.opened = !self.opened;
-        self.progress.to(
-            if self.opened { 1.0 } else { 0.0 },
-            300.0,
-            Easing::timing_default(),
-        );
+        let to = if self.opened { 1.0 } else { 0.0 };
+        gfx::spring_to(&mut self.progress, to, 500.0, 1.0);
+        self.posted
+            .push(if self.opened { "open" } else { "close" }.into());
+    }
+
+    /// The scrim's opacity: the progress, thinned as the open sheet is dragged down.
+    fn scrim(&self) -> f64 {
+        let drag = (self.y.value.max(0.0) / 400.0).clamp(0.0, 1.0);
+        self.progress.value.clamp(0.0, 1.0) * (1.0 - drag)
+    }
+
+    /// The content's opacity: the last 40 % of the progress.
+    fn content_opacity(&self) -> f64 {
+        ((self.progress.value - 0.6) / 0.4).clamp(0.0, 1.0)
     }
 
     /// A finger is on one of the buttons.
@@ -304,7 +339,8 @@ impl FloatingModal {
             (0.0..=BUTTON as f32).contains(&pq.x) && (0.0..=BUTTON as f32).contains(&pq.y);
         let bq = self.button_matrix(&l).invert().apply(q);
         let (bx, by, bw, bh) = l.button;
-        let on_done = self.visible
+        let on_done = self.opened
+            && self.progress.value > 0.9
             && in_modal
             && (bx..=bx + bw).contains(&(bq.x as f64))
             && (by..=by + bh).contains(&(bq.y as f64));
@@ -355,8 +391,8 @@ impl Surface for FloatingModal {
         let phase = gfx::phase(phase);
         if phase == gesture_handler::Phase::Down {
             if !on_modal {
-                // The backdrop's onTouchStart, while it takes touches.
-                if self.visible {
+                // The scrim's touch, while the sheet is open (or opening).
+                if self.opened {
                     self.toggle();
                 }
                 return;
@@ -376,13 +412,16 @@ impl Surface for FloatingModal {
                     self.done_press.cancel();
                 }
                 if self.opened {
-                    self.x.set(p.translation_x as f64);
-                    self.y.set(p.translation_y as f64);
+                    // Down follows the finger; up and sideways rubber-band.
+                    let (_, _, fw, fh) = self.layout(1.0).frame;
+                    let ty = p.translation_y as f64;
+                    self.x.set(rubber(p.translation_x as f64, fw));
+                    self.y.set(if ty > 0.0 { ty } else { rubber(ty, fh) });
                 }
             }
-            Event::End(p) => self.finalize(p.translation_y as f64),
+            Event::End(p) => self.finalize(p.translation_y as f64, p.velocity_y as f64),
             // RN's onEnd checks event.translationY even for a pan that never activated.
-            Event::Fail => self.finalize(y as f64 - self.down_y),
+            Event::Fail => self.finalize(y as f64 - self.down_y, 0.0),
             _ => {}
         }
         if phase != gesture_handler::Phase::Down {
@@ -420,7 +459,7 @@ impl Surface for FloatingModal {
         let (p0, k0) = (self.progress.value, self.plus_press.progress());
         let mut moving = self.progress.step(now);
         moving |= self.x.step(now) | self.y.step(now);
-        let visible = self.progress.value == 1.0;
+        let visible = self.opened && self.progress.value > 0.9;
         if visible != self.visible {
             self.visible = visible;
             let v = if visible { 1.0 } else { 0.0 };
@@ -452,7 +491,7 @@ impl Surface for FloatingModal {
         let px = |v: f64| v as f32;
 
         // The bitmaps, in screen pixels: the content's subtree, then the "+" in the strip.
-        let content = self.content.value as f32;
+        let content = self.content_opacity() as f32;
         let plus_m = self.plus_matrix().then(modal);
         let strip = plus_bounds(plus_m, s, pw, ph);
         let button_m = self.button_matrix(&l);
@@ -477,12 +516,13 @@ impl Surface for FloatingModal {
                 );
                 g.concat(button_m);
                 let (bx, by, bw, bh) = l.button;
+                // Concentric with the sheet: its radius less the 10 pt margin, a pill at most.
                 g.draw_continuous_rrect(
                     px(bx),
                     px(by),
                     px(bw),
                     px(bh),
-                    12.0,
+                    ((l.radius - 10.0) as f32).clamp(12.0, px(bh) / 2.0),
                     &Paint::fill(Color::hex(0x111111)),
                 );
                 composite(
@@ -533,9 +573,10 @@ impl Surface for FloatingModal {
 
         let c = &mut self.canvas;
         c.begin(s);
-        if self.backdrop.value > 0.0 {
+        let scrim = self.scrim();
+        if scrim > 0.0 {
             c.save();
-            c.opacity(self.backdrop.value as f32);
+            c.opacity(scrim as f32);
             c.fill(Color::rgba8(0, 0, 0, 255).alpha(0.4));
             c.restore();
         }
@@ -551,7 +592,7 @@ impl Surface for FloatingModal {
             6.0,
             Color::rgba8(0, 0, 0, 255).alpha(0.2),
         );
-        c.draw_rrect(0.0, 0.0, fw, fh, radius, &Paint::fill(Color::WHITE));
+        c.draw_continuous_rrect(0.0, 0.0, fw, fh, radius, &Paint::fill(Color::WHITE));
         c.restore();
         // The content as one group at its opacity (allowsGroupOpacity), then the "+", 1:1.
         if content > 0.0 {
@@ -741,11 +782,11 @@ impl FloatingModal {
     }
 
     /// onFinalize.
-    fn finalize(&mut self, translation_y: f64) {
+    fn finalize(&mut self, translation_y: f64, velocity_y: f64) {
         if !self.opened {
             return;
         }
-        if translation_y > 0.0 && self.scale() < 0.95 {
+        if translation_y > 0.0 && (self.scale() < 0.95 || velocity_y > 800.0) {
             self.toggle();
         }
         self.x.to_clamped(0.0, 0.0, GENTLE);
@@ -783,7 +824,7 @@ mod tests {
         assert!(!m.opened);
         m.input(&pointer(PointerPhase::Down, 356.0, 848.0, 200.0));
         m.input(&pointer(PointerPhase::Up, 360.0, 850.0, 1500.0));
-        assert_eq!(m.messages(), vec!["press".to_string()]);
+        assert_eq!(m.messages(), vec!["press".to_string(), "open".to_string()]);
         assert!(m.opened);
     }
 
@@ -827,7 +868,7 @@ mod tests {
         // Tap the "+": it opens.
         s.input(&pointer(PointerPhase::Down, 356.0, 848.0, 0.0));
         s.input(&pointer(PointerPhase::Up, 356.0, 848.0, 80.0));
-        assert_eq!(s.messages(), vec!["press".to_string()]);
+        assert_eq!(s.messages(), vec!["press".to_string(), "open".to_string()]);
         let mut ms = 0.0;
         while ms < 800.0 {
             ms += 16.0;
@@ -837,20 +878,21 @@ mod tests {
         open.save("floating-modal-open");
         assert!(!moving);
         assert!(s.agent("{}").unwrap().contains("\"opened\":true"));
-        // 378² centred: x 21…399, y 267…645; the backdrop darkens the rest; "Done" is #111.
-        assert_eq!(open.at(2 * 30, 2 * 300), [255, 255, 255, 255]);
+        // The floating sheet: x 10…410, 378 tall, 10 above the bottom (y 524…902); the scrim
+        // darkens the rest; "Done" (y 832…892) is #111.
+        assert_eq!(open.at(2 * 30, 2 * 700), [255, 255, 255, 255]);
         assert_eq!(open.at(2 * 10, 2 * 100)[3], 102);
-        assert_eq!(&open.at(2 * 40, 2 * 590)[..3], &[0x11, 0x11, 0x11]);
+        assert_eq!(&open.at(2 * 60, 2 * 862)[..3], &[0x11, 0x11, 0x11]);
 
         // Drag it down 210 (RNGH on iOS leaves UIKit's 10 pt hysteresis out: translation 200):
         // it shrinks, and the release closes it.
-        s.input(&pointer(PointerPhase::Down, 210.0, 400.0, ms));
+        s.input(&pointer(PointerPhase::Down, 210.0, 650.0, ms));
         for k in 1..=21 {
             ms += 16.0;
             s.input(&pointer(
                 PointerPhase::Move,
                 210.0,
-                400.0 + 10.0 * k as f32,
+                650.0 + 10.0 * k as f32,
                 ms,
             ));
             fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
@@ -859,7 +901,7 @@ mod tests {
         dragged.save("floating-modal-dragged");
         let state = s.agent("{}").unwrap();
         assert!(state.contains("\"scale\":0.8008"), "{state}");
-        s.input(&pointer(PointerPhase::Up, 210.0, 610.0, ms));
+        s.input(&pointer(PointerPhase::Up, 210.0, 860.0, ms));
         while ms < 3000.0 {
             ms += 16.0;
             fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
@@ -978,11 +1020,14 @@ mod tests {
             fixture::render(&gpu, &mut m, &frame(ms)).unwrap();
         }
         assert!((m.plus_shown.0 - std::f64::consts::FRAC_PI_4).abs() < 1e-9);
-        // "Done" (the bottom row of the 378 modal at 21, 267): its onPress sets
+        // "Done" (the bottom row of the floating sheet, y 832…892): its onPress sets
         // lastTouchedPressable, and the "+"'s pressto style writes [scale] over the rotate.
-        m.input(&pointer(PointerPhase::Down, 210.0, 600.0, ms));
-        m.input(&pointer(PointerPhase::Up, 210.0, 600.0, ms + 80.0));
-        assert_eq!(m.messages(), vec!["press".to_string(), "press".to_string()]);
+        m.input(&pointer(PointerPhase::Down, 210.0, 862.0, ms));
+        m.input(&pointer(PointerPhase::Up, 210.0, 862.0, ms + 80.0));
+        assert_eq!(
+            m.messages(),
+            vec!["press".to_string(), "open".to_string(), "press".to_string()]
+        );
         while ms < 2000.0 {
             ms += 16.0;
             fixture::render(&gpu, &mut m, &frame(ms)).unwrap();
