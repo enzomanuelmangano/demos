@@ -12,14 +12,25 @@ component LightOnPainting
   state showCord = true
   state relight = true
   state showDepth = false
-  // The Light sheet, drawn in the route as the demo screen's Inspiration sheet: a `dialog`'s
-  // showModal from the full-screen demo route is never presented on the phone.
+  // The Light sheet is up (toggle-sheet).
   state settingsOpen = false
   action closeSettings
     settingsOpen = false
   action heard(m: string)
     if m == "settings"
       settingsOpen = true
+  // From toggle-sheet: "<id>:true|false" (it played the haptic), or "dismissed".
+  action switched(v: string)
+    if v == "dismissed"
+      settingsOpen = false
+    if v == "bulb:true" or v == "bulb:false"
+      showBulb = v == "bulb:true"
+    if v == "cord:true" or v == "cord:false"
+      showCord = v == "cord:true"
+    if v == "shader:true" or v == "shader:false"
+      relight = v == "shader:true"
+    if v == "depth:true" or v == "depth:false"
+      showDepth = v == "depth:true"
   // settings-sheet.ios.tsx toggle(): Haptics.selectionAsync, then the change.
   action setBulb(on: bool)
     haptic("selection")
@@ -40,37 +51,11 @@ component LightOnPainting
         position="absolute" top=0 left=0 width="100%" height="100%" touch-action="none"
         aria-label="A painting relit by a bulb: drag the bulb, swipe to page, double tap for settings"
         testId="light-on-painting-canvas"
-      // SettingsSheet: a SwiftUI BottomSheet fitToContents in the dark scheme; VStack spacing 20,
-      // padding 22; "Light" in title3 semibold; four Toggles tinted LAMP_TINT (#FFC280).
-      // A tap above it closes it, as the sheet's own dismissal.
-      view position="absolute" inset=0 z-index=1000 background-color="rgba(0, 0, 0, 0.3)"
-        opacity=(settingsOpen ? 1 : 0) transition="opacity 300ms ease-out"
-        pointer-events=(settingsOpen ? "auto" : "none") press=closeSettings aria-hidden=true
-        testId="light-settings-scrim"
-      column position="absolute" left=8 right=8 bottom=8 z-index=1001 color-scheme="dark"
-        backgroundMaterial="regular" border-radius=40 corner-shape="-exact-continuous"
-        translate=`0px ${settingsOpen ? 0 : 900}px`
-        transition="translate 450ms cubic-bezier(0.32, 0.72, 0, 1)"
-        pointer-events=(settingsOpen ? "auto" : "none") aria-label="Light"
-        aria-hidden=(not settingsOpen) testId="light-settings"
-        view width=36 height=5 border-radius=2.5 background-color="rgba(255, 255, 255, 0.3)"
-          align-self="center" margin-top=5 aria-hidden=true
-        column gap=20 padding=22 align-items="center" width="100%" box-sizing="border-box" color="#ffffff"
-          text "Light" font="-exact-title3" font-weight=600
-          row align-self="stretch" align-items="center" justify-content="space-between"
-            text "Bulb" font="-exact-body"
-            input type="checkbox" switch checked=showBulb change=setBulb accent-color="#FFC280"
-              aria-label="Bulb" testId="bulb-switch"
-          row align-self="stretch" align-items="center" justify-content="space-between"
-            text "Cord" font="-exact-body"
-            // isOn: showCord && showBulb (a cord with no bulb reads as a stray line).
-            input type="checkbox" switch checked=(showCord && showBulb) change=setCord
-              accent-color="#FFC280" aria-label="Cord" testId="cord-switch"
-          row align-self="stretch" align-items="center" justify-content="space-between"
-            text "Shader" font="-exact-body"
-            input type="checkbox" switch checked=relight change=setRelight accent-color="#FFC280"
-              aria-label="Shader" testId="shader-switch"
-          row align-self="stretch" align-items="center" justify-content="space-between"
-            text "Show depth" font="-exact-body"
-            input type="checkbox" switch checked=showDepth change=setDepth accent-color="#FFC280"
-              aria-label="Show depth" testId="depth-switch"
+      // SettingsSheet: a SwiftUI BottomSheet fitToContents in the dark scheme (a real UIKit sheet,
+      // presented from the top-most controller): `toggle-sheet` (modules/apple/ToggleSheet.swift),
+      // "Light" in title3 semibold over four Toggles tinted LAMP_TINT (#FFC280), VStack spacing
+      // 20, padding 22. The sheet plays each toggle's selection haptic itself.
+      toggle-sheet open=(settingsOpen ? "true" : "false") caption="Light"
+        switches=`bulb:${showBulb ? 1 : 0}:Bulb|cord:${showCord && showBulb ? 1 : 0}:Cord|shader:${relight ? 1 : 0}:Shader|depth:${showDepth ? 1 : 0}:Show depth`
+        switch-tint="#FFC280" change=switched position="absolute" left=0 top=0 width=0 height=0
+        aria-hidden=true testId="light-settings"
