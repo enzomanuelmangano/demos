@@ -27,7 +27,9 @@ component DemoScreen
     openURL(demo.actionUrl)
   action placed(w: number, h: number)
     let g = frame("demo-safe")
-    if not g.unavailable
+    // Read once, at the first placement: the keys (which shorten and may scroll a full-screen
+    // route on the phone) never move the buttons or a demo's safe area, as in RN.
+    if not g.unavailable and top == 0 and bottom == 0
       top = g.y
       bottom = max(0, env.height - g.y - g.height)
   view

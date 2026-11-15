@@ -134,12 +134,14 @@ component VerificationCodeFace
                   border-style="solid" border-color="transparent" perspective=500 testId=`box-${i}`
                   for g in glyphs.filter(g => g.box == i) key=g.key
                     CodeDigit(digit=g.digit, leaving=g.leaving, late=g.late, testId=`digit-${i}`)
-      // The invisible TextInput: number pad, autofocus, 50 below the screen.
+      // The invisible TextInput: number pad, autofocus. RN's sits 50 below the screen; here a 1 pt
+      // transparent box at the top-left, on screen: a focused field below the screen made the
+      // phone host scroll the route to show it, moving the whole demo.
       // (one-time-code: a number pad with no Done bar over it, as RN's has none.)
       input id="code-field" value=field input=typed inputmode="numeric" autofocus=(not env.tile)
         autocomplete="one-time-code" focus=keyboardUp blur=keyboardDown
-        aria-label="Verification code" testId="code-field" position="absolute" bottom=-50 left=0
-        color="#000000" background-color="transparent" border="none"
+        aria-label="Verification code" testId="code-field" position="absolute" top=0 left=0 width=1 height=1
+        padding=0 color="transparent" caret-color="transparent" background-color="transparent" border="none"
 
 // The reset's exit as keyframes (a transition's delay does not hold on the iOS host; an
 // animation's does): FlipOutXDown.duration(500) on bezier(0.6, 0.1, 0.4, 0.8) and
