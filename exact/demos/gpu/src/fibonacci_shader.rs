@@ -9,6 +9,11 @@
 //!
 //! - iTime: withRepeat(withTiming(15, { duration: 20000, easing: linear }), -1, true).
 //! - magicalMul: the input (Math.random() × 100 from the 🪄 button, in the Contract), 2.4 first.
+//!
+//! Haptics (past RN, which plays none: the owner's haptic language): `haptic:impact-light` when
+//! a finger takes the picker; `haptic:impact-rigid` once each time the drag pushes it past an
+//! end of the track (clampedTranslateX's limit: N at 5 or 350). N's steps play none: 345 of them
+//! in the track's ~340 pt would buzz.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -47,6 +52,9 @@ struct FibonacciShader {
     context_x: f64,
     scale: Spring,
     pan: PanGesture,
+    /// The drag holds the picker past an end of the track (its rigid haptic played).
+    past_end: bool,
+    posted: Vec<String>,
     start_ms: Option<f64>,
     width: f32,
     canvas: Canvas,
@@ -117,8 +125,17 @@ impl Surface for FibonacciShader {
             Event::Begin { .. } => {
                 self.scale.to(1.0, self.scale.velocity, GENTLE);
                 self.context_x = self.clamped();
+                self.past_end = false;
+                self.posted.push("haptic:impact-light".into());
             }
-            Event::Start(p) | Event::Update(p) => self.translate_x = self.context_x + p.translation_x as f64,
+            Event::Start(p) | Event::Update(p) => {
+                self.translate_x = self.context_x + p.translation_x as f64;
+                let past = self.translate_x < 0.0 || self.translate_x > self.slider_width();
+                if past && !self.past_end {
+                    self.posted.push("haptic:impact-rigid".into());
+                }
+                self.past_end = past;
+            }
             Event::End(p) => {
                 self.translate_x = self.context_x + p.translation_x as f64;
                 self.scale.to(REST_SCALE, self.scale.velocity, GENTLE);
@@ -126,6 +143,10 @@ impl Surface for FibonacciShader {
             Event::Fail => self.scale.to(REST_SCALE, self.scale.velocity, GENTLE),
             _ => {}
         }
+    }
+
+    fn messages(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.posted)
     }
 
     fn agent(&mut self, _request: &str) -> Option<String> {
@@ -241,6 +262,8 @@ mod tests {
             s.input(&p(exact_gpu::PointerPhase::Move, 42.0 + k as f32 * 20.0, 10.0 + k as f64 * 16.0));
         }
         s.input(&p(exact_gpu::PointerPhase::Up, 420.0, 400.0));
+        // The grab, then the track's end (once, however far past it the finger goes).
+        assert_eq!(s.messages(), vec!["haptic:impact-light", "haptic:impact-rigid"]);
         let reply = s.agent("{}").unwrap();
         assert!(reply.contains("\"n\":350"), "{reply}");
         let (b, _) = fixture::render(&gpu, s.as_mut(), &frame(5000.0)).unwrap();
