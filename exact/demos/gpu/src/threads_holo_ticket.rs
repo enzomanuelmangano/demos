@@ -81,6 +81,12 @@ const THICKNESS: f32 = 3.0;
 const SETTLE_MS: f64 = 900.0;
 const PARALLAX_MAX: f64 = 8.0;
 const PARALLAX_GAIN: f64 = 0.35;
+const PARALLAX_DEADBAND: f64 = 0.05;
+const PARALLAX_TAU_MS: f64 = 120.0;
+/// The slab's edges show only past this |sin| of the turn: nearer square-on an edge is under a
+/// point wide and its plane's map too ill-conditioned to draw (a dashed line far below the
+/// ticket on the phone).
+const EDGE_MIN_SIN: f32 = 0.15;
 /// styles.container's backgroundColor (a View: Display P3 components).
 const BACKGROUND: u32 = 0x070018;
 /// The HolographicCard's colour (#FFF5EEFF) and the RoundedRect's r.
@@ -190,6 +196,8 @@ pub fn surface() -> Box<dyn Surface> {
         context: 0.0,
         touch: None,
         attitude: None,
+        par: (0.0, 0.0),
+        par_ms: None,
         tilt: (0.0, 0.0),
         posted: Vec::new(),
         side_front: true,
@@ -580,6 +588,11 @@ struct ThreadsHoloTicket {
     touch: Option<Touch>,
     /// The sensor's latest (pitch, roll); `None` before its first sample (Reanimated's 0).
     attitude: Option<(f64, f64)>,
+    /// The parallax as drawn (deg about x, about y): the sensor's, through a 0.05° deadband
+    /// and a 120 ms smoothing, so its jitter never moves the ticket, its edge or its glow
+    /// frame to frame (the phone's "strange flicker"), and its last frame time.
+    par: (f64, f64),
+    par_ms: Option<f64>,
     /// smoothPitch, smoothRoll.
     tilt: (f64, f64),
     posted: Vec<String>,
@@ -626,9 +639,31 @@ impl ThreadsHoloTicket {
 
     /// The sensor's parallax (deg about x, about y), clamped: never near edge-on.
     fn parallax(&self) -> (f64, f64) {
+        self.par
+    }
+
+    /// The sensor's parallax target (deg), clamped.
+    fn parallax_target(&self) -> (f64, f64) {
         let (p, r) = self.attitude.unwrap_or((0.0, 0.0));
         let k = |v: f64| (v.to_degrees() * PARALLAX_GAIN).clamp(-PARALLAX_MAX, PARALLAX_MAX);
         (-k(p), k(r))
+    }
+
+    /// Moves the drawn parallax toward the sensor's: changes under the deadband are ignored, the
+    /// rest eased exponentially (time constant PARALLAX_TAU_MS). Whether it still moves.
+    fn smooth_parallax(&mut self, now_ms: f64) -> bool {
+        let dt = self.par_ms.map_or(0.0, |last| (now_ms - last).clamp(0.0, 64.0));
+        self.par_ms = Some(now_ms);
+        let (tx, ty) = self.parallax_target();
+        let k = 1.0 - (-dt / PARALLAX_TAU_MS).exp();
+        let mut moving = false;
+        for (v, t) in [(&mut self.par.0, tx), (&mut self.par.1, ty)] {
+            if (t - *v).abs() >= PARALLAX_DEADBAND {
+                *v += (t - *v) * k;
+                moving = true;
+            }
+        }
+        moving
     }
 
     fn is_front(&self) -> bool {
@@ -727,7 +762,7 @@ impl ThreadsHoloTicket {
         let (_, py) = self.parallax();
         let sin = (self.rotate_y() + py).to_radians().sin() as f32;
         // Square-on (|sin| tiny) neither edge shows, and its plane's map is near singular.
-        [THICKNESS, if sin > 0.02 { 1.0 } else { 0.0 }, if sin < -0.02 { 1.0 } else { 0.0 }, sin.abs()]
+        [THICKNESS, if sin > EDGE_MIN_SIN { 1.0 } else { 0.0 }, if sin < -EDGE_MIN_SIN { 1.0 } else { 0.0 }, sin.abs()]
     }
 
     /// The contact shadow: under the face's projected bounds, 28 pt lower, a little narrower,
@@ -893,7 +928,7 @@ impl Surface for ThreadsHoloTicket {
     ) -> bool {
         let layout = Layout::new(frame.width, frame.height, frame.scale);
         self.layout = layout;
-        let moving = self.step(frame.now_ms);
+        let moving = self.step(frame.now_ms) | self.smooth_parallax(frame.now_ms);
         if self.gpu.as_ref().map(|g| (g.format, g.generation, g.layout)) != Some((format, frame.shader_generation, layout)) {
             self.gpu = Some(build(device, queue, format, frame.shader_generation, layout));
             self.drawn = None;
@@ -1300,4 +1335,55 @@ mod tests {
         assert!(s.agent("").unwrap().ends_with("\"held\":false}"));
     }
 
+
+    #[test]
+    fn a_jittery_sensor_leaves_the_background_still() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
+        exact_gpu::shaders::load_dir(&dir, &crate::REGISTRY).unwrap();
+        let Ok(gpu) = fixture::device() else { return };
+        let frame = |now_ms| Frame { width: 402.0, height: 874.0, scale: 3.0, now_ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: exact_gpu::shaders::shader_generation(), headroom: 1.0 };
+        let mut s = surface();
+        // The back, as on the phone: a tap flips it.
+        fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
+        let p = |phase, at_ms| InputEvent::Pointer { id: 1, phase, x: 201.0, y: 437.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        s.input(&p(PointerPhase::Down, 16.0));
+        s.input(&p(PointerPhase::Up, 80.0));
+        // A held phone: pitch 0.3 rad, roll 0.2 rad, with Core Motion's jitter (±0.0005 rad).
+        let sensor = |s: &mut Box<dyn Surface>, k: usize, at: f64| {
+            let j = if k % 2 == 0 { 0.0005 } else { -0.0005 };
+            let (hp, hr) = ((0.3 + j) / 2.0, (0.2 - j) / 2.0);
+            let (sp, cp, sr, cr) = (f64::sin(hp), f64::cos(hp), f64::sin(hr), f64::cos(hr));
+            let q = [sp * cr, cp * sr, -sp * sr, cp * cr];
+            s.input(&InputEvent::Sensor { sensor: SensorKind::RelativeOrientation, values: q.map(|v| v as f32), dropped: 0, at_ms: at });
+        };
+        let mut ms = 100.0;
+        for k in 0..240 {
+            sensor(&mut s, k, ms);
+            fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+            ms += 16.0;
+        }
+        // Settled: frame after frame of jitter, every pixel stays put.
+        let mut last: Option<fixture::Pixels> = None;
+        for k in 0..30 {
+            sensor(&mut s, k, ms);
+            let (img, _) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+            if let Some(prev) = last.as_ref() {
+                assert!(prev.data == img.data, "frame {k} changed under the jitter");
+            }
+            if k == 0 {
+                img.save("holo-jitter");
+            }
+            last = Some(img);
+            ms += 16.0;
+        }
+        // Nothing stray below the ticket (the phone's dashed line): the background there.
+        let img = last.unwrap();
+        let bg = img.at(3 * 200, 3 * 860);
+        for y in (720..870).step_by(4) {
+            for x in (40..380).step_by(4) {
+                let px = img.at(3 * x, 3 * y);
+                assert!((0..3).all(|c| (px[c] as i32 - bg[c] as i32).abs() <= 24), "({x}, {y}) {px:?} vs {bg:?}");
+            }
+        }
+    }
 }
