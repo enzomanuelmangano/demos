@@ -30,7 +30,7 @@ const DOT: f64 = 6.0;
 const PITCH: f64 = 14.0;
 const HALF: f64 = 3.0;
 const DOT_ALPHA: f64 = 0.25;
-const ACTIVE_ALPHA: f64 = 0.7;
+const ACTIVE_ALPHA: f64 = 0.5;
 /// The shortest time between two page haptics.
 const HAPTIC_GAP_MS: f64 = 50.0;
 const LAYER: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
