@@ -5,16 +5,17 @@
 //
 // The owner's redesign (phone feedback, 2026-11-15: "the slider fights the navigation and should
 // be native"; "the wand, and the whole layout, is embarrassing"): the sphere runs full-bleed and
-// the controls are one floating glass bar, concentric with the display (10 from its edges): the
+// the controls are one floating glass bar, concentric with the display (30 from its edges): the
 // count, SwiftUI's Slider (`swift-slider`, 5 to 350) and a glass `sparkles` button for a new
 // spiral. The surface says `native` once it takes N from the slider (a build with the second
 // input); until then this keeps RN's layout: the drawn slider and the round 🪄 button.
 use PressableScale from "pressto"
-use DemoEnv, roll, floatingWidth, concentricRadius from "../env.contract"
+use DemoEnv, roll, floatingWidth, concentricInset, concentricRadius from "../env.contract"
 
-// The bar: 10 from the display's edges, 64 tall (a capsule: concentricRadius(10, 64) = 32); the
-// button 48 round, 8 inside it (concentric: concentricRadius(18, 48) = 24).
-fn fibInset(): number = 10
+// The bar: a 64 tall capsule (radius 32) whose ends share their centre with the display corner's
+// arc, so 62 − 32 = 30 from the display's edges (concentricInset); the button 48 round, 8 inside
+// it, its centre on that same point (30 + 8 + 24 = 62).
+fn fibInset(): number = concentricInset(fibBarH())
 fn fibBarH(): number = 64
 fn fibButton(): number = 48
 // The slider's 0…1 as N, RN's [5, 350] CLAMP.
