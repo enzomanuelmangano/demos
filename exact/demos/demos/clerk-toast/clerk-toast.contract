@@ -171,15 +171,21 @@ component ClerkToast
               margin-left=20 margin-right=20 margin-top=10 margin-bottom=10
               PressableScale(press=showToast)
                 ClerkCard(p=clerkPhoto(n), w=(w - 40), n=n)
-      // Backdrop: absoluteFill, translateY withSpring(windowHeight - gradientHeight); a
-      // MaskedView windowHeight / 2 tall, its mask a LinearGradient (white 0 → 1 at 0 → 0.55),
-      // over a BlurView (intensity 80, systemChromeMaterialLight). Not exact: the material is
-      // drawn at its full strength (expo-blur's 80 is 0.8 of the effect).
-      view position="absolute" left=0 right=0 top=0 pointer-events="none" aria-hidden=true
-        translate=`0px ${env.height - clerkGradient(live, env.height)}px`
-        transition=`translate ${clerkBackdropSpring()} ${shiftDelay}ms` testId="clerk-backdrop"
-        view height=(env.height / 2) width="100%" backgroundMaterial="chrome-light"
-          mask-image="linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 1) 55%)"
+      // Backdrop: RN's is absoluteFill, translateY withSpring(windowHeight - gradientHeight)
+      // ({ dampingRatio 1, duration 500 }), a MaskedView windowHeight / 2 tall whose mask (a
+      // LinearGradient 0 → 1 at 0 → 0.55) fades in a BlurView (intensity 80,
+      // systemChromeMaterialLight): one blur faded in, which reads as a grey wash.
+      // The owner's call (phone feedback, 2026-11-15, "a serious variable blur"): a real
+      // progressive blur, `variable-blur` (modules/apple/VariableBlur.swift), no tint, its
+      // radius ramping 0 → 20 pt (smootherstep) from its top to its bottom edge. So the full
+      // radius sits at the screen's bottom, the box is the visible strip, gradientHeight tall
+      // on the screen's bottom, its height on RN's backdrop spring. iOS only: the web draws no
+      // backdrop.
+      view position="absolute" left=0 right=0 bottom=0 pointer-events="none" aria-hidden=true
+        height=clerkGradient(live, env.height)
+        transition=`height ${clerkBackdropSpring()} ${shiftDelay}ms` testId="clerk-backdrop"
+        variable-blur position="absolute" left=0 right=0 top=0 bottom=0 aria-hidden=true
+          testId="clerk-blur"
       for key, i in keys key=key
         ClerkToastCard(env=env, toastKey=key, kind=clerkNum(kinds, i), k=clerkId(gone, goneK, i),
           goneMode=clerkNum(gone, i), goneX=clerkNum(goneX, i), dragged=(key == dragKey),
