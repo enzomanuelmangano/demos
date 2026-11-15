@@ -7,7 +7,8 @@
 // Props (all text):
 //   file     the file, relative to the app bundle; default "assets/audio/track.m4a" (the app's
 //            assets/ tree is copied into the bundle as `assets/`)
-//   playing  "true" plays, anything else pauses
+//   play-state  "true" plays, anything else pauses (Contract refuses `playing` on a native tag:
+//               it is a known event; `playing` is still read for an old contract)
 //   seek     "<token>:<seconds>": a new token moves the playhead there (the waveform's scrub
 //            release and the ±15 s buttons, through the surface's "seek:<s>")
 // Messages (events.message), each a "<kind>:<value>":
@@ -105,7 +106,7 @@ final class AudioTrack: ExactNativeInstance {
                 }
             }
         }
-        wantsPlay = props["playing"] == "true"
+        wantsPlay = (props["play-state"] ?? props["playing"]) == "true"
         apply()
     }
 
