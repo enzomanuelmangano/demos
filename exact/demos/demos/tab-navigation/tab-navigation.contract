@@ -128,8 +128,13 @@ component Tab
     view position="absolute" top=0 left=(0 - width / 2)
       width=width height=60 display="flex" flex-direction="column"
       translate=`${centre}px 0px` transition=`translate ${tabSpring()}`
+      // Beyond RN (phone feedback 2026-11-15, "still stutters on a tab change"): the tab is
+      // chosen as the finger goes down, so the springs start before pressto's lift (RN: on the
+      // lift, ~100 ms later) and never in the same commit as the press-out; the lift's press is
+      // the same choice again (nothing).
       PressableScale(press=press)
         column position="relative" width="100%" height=60 testId=testId aria-label=label aria-pressed=isActive
+          pointerdown=press
           // Everything below is placed from the tab's centre (w = the animated width).
           view position="absolute" left="50%" top=0 width=0 height=60 pointer-events="none"
             // styles.container: #f1f1f1, borderRadius 15 continuous, height 60, width from
