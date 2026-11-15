@@ -17,9 +17,11 @@ component DemoScreen
   state bottom = 0
   // The Inspiration sheet is up.
   state inspiring = false
-  // A demo's sub-page (phone feedback 2026-11-15, dot-sheet): the field whose blur takes the
-  // demo back ("" while it is at its first page). The close button turns into Back meanwhile.
+  // A demo's sub-page (phone feedback 2026-11-15, dot-sheet, gl-transitions): the field whose
+  // blur takes the demo back, or a name starting with "#" for a demo that counts the Backs
+  // (demoBacks) itself; "" while it is at its first page. The close button is Back meanwhile.
   state subField = ""
+  state backs = 0
   // When the sub-page last ended: a tap on Back can take the field's focus first (the web does),
   // so the field's blur has already gone back by the time the press arrives.
   state subEnded = -1000
@@ -30,13 +32,17 @@ component DemoScreen
   action closeOrBack
     if subField != ""
       haptic("selection")
-      blur(subField)
+      if subField.startsWith("#")
+        backs = backs + 1
+      else
+        blur(subField)
     else
       if performanceNow() - subEnded > 400
         leave()
   provide
     demoSubpage
     demoBackChrome = true
+    demoBacks = backs
   action inspire
     haptic("impact-light")
     inspiring = true

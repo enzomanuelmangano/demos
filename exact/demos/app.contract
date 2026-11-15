@@ -161,6 +161,7 @@ component Demos
     pressablesOnPress
     demoSubpage
     demoBackChrome = false
+    demoBacks = 0
   view
     main testId="root" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow
       navigationHistory=(desk and stack(nav).length == 1 ? "none" : "back forward")
