@@ -422,19 +422,19 @@ mod tests {
         for (i, r) in [(0, 3.0), (3, 3.0), (5, 3.0), (6, 1.98), (7, 0.99), (8, 0.0)] {
             assert!(near(at0[i].1, r), "{i}: {:?}", at0[i]);
         }
-        assert!(near(at0[0].2, 0.7) && near(at0[1].2, 0.25));
+        assert!(near(at0[0].2, 0.5) && near(at0[1].2, 0.25));
         // Mid-list: the page at the centre, both sides shrinking.
         let mid = dots(10.0);
-        assert!(near(mid[10].0, 0.0) && near(mid[10].1, 3.0) && near(mid[10].2, 0.7));
+        assert!(near(mid[10].0, 0.0) && near(mid[10].1, 3.0) && near(mid[10].2, 0.5));
         assert!(near(mid[7].1, 1.98) && near(mid[13].1, 1.98) && near(mid[15].1, 0.0));
         // Half a page on: the window slides 7 pt, the two dots share the dark, same size.
         let half = dots(10.5);
         assert!(near(half[10].0, -7.0));
-        assert!(near(half[10].2, 0.475) && near(half[11].2, 0.475));
+        assert!(near(half[10].2, 0.375) && near(half[11].2, 0.375));
         assert!((9..=12).all(|i| near(half[i].1, 3.0)));
         // The last page: the window stops; dot 19 whole and dark three pitches right.
         let end = dots(19.0);
-        assert!(near(end[19].0, 42.0) && near(end[19].1, 3.0) && near(end[19].2, 0.7));
+        assert!(near(end[19].0, 42.0) && near(end[19].1, 3.0) && near(end[19].2, 0.5));
     }
 
     #[test]
