@@ -32,9 +32,15 @@ component DemoScreen
       bottom = max(0, env.height - g.y - g.height)
   view
     column id="demo-route" position="absolute" inset=0 resize=placed testId=`demo-${demo.slug}`
-      view id="demo-safe" position="absolute" left=0 right=0 top="env(safe-area-inset-top)"
-        bottom="env(safe-area-inset-bottom)" pointer-events="none" aria-hidden=true
-      column position="absolute" inset=0 background-color=demo.backdrop
+      // The demo keeps the whole screen's height while the keys are up: the host ends a
+      // full-screen route's box at them whatever `interactive-widget` says, but RN never
+      // resizes a screen for the keyboard (app.contract overlaysKeyboard). env.height is the
+      // viewport's, which overlays-content leaves whole.
+      view position="absolute" top=0 left=0 width=env.width height=env.height pointer-events="none"
+        aria-hidden=true
+        view id="demo-safe" position="absolute" left=0 right=0 top="env(safe-area-inset-top)"
+          bottom="env(safe-area-inset-bottom)" pointer-events="none" aria-hidden=true
+      column position="absolute" top=0 left=0 width=env.width height=env.height background-color=demo.backdrop
         if demo.ported
           PortedDemo(slug=demo.slug, env=DemoEnv(env, safeTop=top, safeBottom=bottom))
         else

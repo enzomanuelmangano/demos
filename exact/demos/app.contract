@@ -60,12 +60,15 @@ source snapIdle(slug: string) as shape SnapAck
 // over the status bar (the close button stays). RN lets a demo keep a touch it claimed
 // (demo-screen.tsx CloseGesture); the close cannot ask the canvas mid-gesture, and switching it
 // per touch costs a commit that holds the canvas's first frames.
-fn ownsDrags(slug: string): bool = ["metaball", "magnet-spring", "swipe-cards", "animated-3d-parallax", "record-button", "sphere-waves", "skia-bottom-sheet", "atlas-sphere", "floating-modal", "expandable-mini-player", "selectable-grid-list", "skia-color-picker", "duration-slider", "clock-time-picker", "wheel-picker", "bezier-curve-outline", "prequel-slider", "scrollable-shapes", "twodos-slide", "color-carousel", "coverflow-carousel", "circular-carousel", "fibonacci-shader-grid", "fourier-visualizer", "card-shader-reflections", "threads-holo-ticket", "light-on-painting", "gl-transitions", "imessage-stack", "qr-code-generator", "add-to-cart", "image-cropper", "calendar-days", "github-onboarding", "drag-to-sort", "infinite-carousel", "scroll-transition-3d", "pomodoro-timer", "mnist", "chessboard", "art-gallery", "sculptures-in-words", "ios-home-grid", "time-machine", "ios-home-bouncy", "draggable-panel", "twitter-tab-bar", "popup-handler", "animated-grid-list", "scrollable-bottom-sheet", "blurred-scroll"].includes(slug)
+fn ownsDrags(slug: string): bool = ["metaball", "magnet-spring", "swipe-cards", "animated-3d-parallax", "record-button", "sphere-waves", "skia-bottom-sheet", "atlas-sphere", "floating-modal", "expandable-mini-player", "selectable-grid-list", "skia-color-picker", "duration-slider", "clock-time-picker", "wheel-picker", "bezier-curve-outline", "prequel-slider", "scrollable-shapes", "twodos-slide", "color-carousel", "coverflow-carousel", "circular-carousel", "fibonacci-shader-grid", "fourier-visualizer", "card-shader-reflections", "threads-holo-ticket", "light-on-painting", "gl-transitions", "imessage-stack", "qr-code-generator", "add-to-cart", "image-cropper", "calendar-days", "github-onboarding", "drag-to-sort", "infinite-carousel", "scroll-transition-3d", "pomodoro-timer", "mnist", "chessboard", "art-gallery", "sculptures-in-words", "ios-home-grid", "time-machine", "ios-home-bouncy", "draggable-panel", "twitter-tab-bar", "popup-handler", "animated-grid-list", "scrollable-bottom-sheet", "blurred-scroll", "liquid-glass-playground"].includes(slug)
 
-// The keyboard over a demo: RN moves nothing for it unless a demo says so (KeyboardAvoidingView,
-// or cherry-blossom-qrcode's input riding useKeyboardHandler's height, which a keyboard toolbar
-// is here), where the host's default resizes the screen above the keys.
-fn overlaysKeyboard(slug: string): bool = ["dot-sheet", "cherry-blossom-qrcode", "qr-code-generator"].includes(slug)
+// The keyboard over a demo: RN on iOS never resizes the screen for it. A demo that moves for
+// the keys does so itself (cherry-blossom-qrcode's input riding useKeyboardHandler's height as
+// a keyboard toolbar here; verification-code(-face) lifting by half of it; KeyboardAvoidingView
+// nowhere): gl-transitions, dot-sheet, qrcode and qr-code-generator let the keys cover. So every
+// demo overlays the keys (`overlays-content`), and DemoScreen lays the demo out at the screen's
+// full height (the host still ends a full-screen route's own box at the keys).
+fn overlaysKeyboard(slug: string): bool = true
 // Demos whose GPU surface reads the gravity sensor while it shows (RN: useAnimatedSensor).
 fn tilts(slug: string): bool = slug == "linear-sensors"
 // Demos whose GPU surface reads the attitude (RN: useAnimatedSensor(SensorType.ROTATION)).
@@ -154,11 +157,11 @@ component Demos
     main testId="root" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow
       navigationHistory=(desk and stack(nav).length == 1 ? "none" : "back forward")
       width="100%" height="100%" color-scheme="dark" viewport-fit="cover"
-      // A demo that overlays the keys is presented full screen, and the host still ends a
-      // presented route at the keys and paints under them the colour at the bottom of the page
-      // beneath it (this one): the demo's backdrop there, not black (cherry-blossom-qrcode's
-      // keys showed black through their glass).
-      background-color=(top(nav).name == "demo" and overlaysKeyboard(top(nav).params.slug) ? demoOf(top(nav).params.slug).backdrop : "#000000")
+      // A demo is presented full screen, and the host ends a presented route at the keys and
+      // paints under them the colour at the bottom of the page beneath it (this one): the demo's
+      // backdrop there, not black (cherry-blossom-qrcode's and verification-code-face's keys
+      // showed black through their glass).
+      background-color=(top(nav).name == "demo" and not desk ? demoOf(top(nav).params.slug).backdrop : "#000000")
       interactive-widget=(top(nav).name == "demo" and overlaysKeyboard(top(nav).params.slug) ? "overlays-content" : "resizes-content")
       for e in stack(nav) key=e.id
         // The Mac (a fine pointer in a window wider than a phone) has the atlas as its home, the
