@@ -1,6 +1,6 @@
 // Clerk Toast: one full-screen photo (RN's are ten plain black rows in a scroll; the owner's call,
 // phone feedback 2026-11-15: a photo, edge to edge, so the blur behind the toasts reads); the
-// "Show toast" glass capsule at the top stacks the next dark pill toast at the bottom over a progressive blur (three slots 70 px apart, older ones hidden under the third). Any of
+// "Show toast" white capsule at the screen's centre stacks the next dark pill toast at the bottom over a progressive blur (three slots 70 px apart, older ones hidden under the third). Any of
 // the three front toasts swipes left to dismiss; the eighth's x clears them all, each fading left
 // in turn. RN: src/animations/clerk-toast (src/index.tsx, src/hook.tsx, src/hooks/use-toast.tsx,
 // src/stacked-toast-manager/{constants.ts, hooks.ts, stacked-toast-provider.tsx,
@@ -190,21 +190,20 @@ component ClerkToast
         // (half the strip), smootherstep between; full radius below.
         variable-blur ramp-from="0" ramp-to="0.5" blur-radius="14" position="absolute" left=0
           right=0 top=0 bottom=0 aria-hidden=true testId="clerk-blur"
-      // The trigger (the owner's call, phone feedback 2026-11-15, "add a button"): a glass
-      // capsule centred in the close and info buttons' row (the safe top, 48 tall), far from the
-      // stack at the bottom. `glass-pane` (UIGlassEffect regular, a light dark tint for the white
-      // label on the photo) under a bell.badge symbol and "Show toast".
-      view position="absolute" top=env.safeTop left=0 right=0 height=48 display="flex"
+      // The trigger (the owner's calls, phone feedback 2026-11-15, "add a button", then "centred
+      // and more visible"): the screen's primary action, a solid white capsule 56 tall at its
+      // centre (bell.badge and "Show toast", black, 17 semibold) with a soft shadow, legible over
+      // any part of the photo. The toasts still stack at the bottom.
+      view position="absolute" top=(env.height / 2 - 28) left=0 right=0 height=56 display="flex"
         flex-direction="row" justify-content="center" align-items="center" pointer-events="none"
-        view height=44 pointer-events="auto" testId="clerk-show"
+        view height=56 pointer-events="auto" testId="clerk-show"
           PressableScale(press=showToast)
-            view aria-label="Show toast" position="relative" height=44 display="flex"
-              flex-direction="row" align-items="center" gap=8 padding-left=18 padding-right=20
-              glass-pane glass-style="regular" pane-tint="rgba(0,0,0,0.22)" corner-size="22"
-                interactive="false" continuous="true" position="absolute" inset=0
-                pointer-events="none" aria-hidden=true
-              image "symbol:sf/bell.badge" font-size=15 color="#ffffff" aria-hidden=true
-              text "Show toast" color="#ffffff" font-family="ui-rounded" font-weight=600 font-size=15
+            view aria-label="Show toast" height=56 display="flex" flex-direction="row"
+              align-items="center" gap=10 padding-left=26 padding-right=28 border-radius=28
+              background-color="#FFFFFF"
+              box-shadow="0px 8px 24px rgba(0, 0, 0, 0.22), 0px 1px 3px rgba(0, 0, 0, 0.12)"
+              image "symbol:sf/bell.badge" font-size=17 color="#000000" aria-hidden=true
+              text "Show toast" color="#000000" font-family="ui-rounded" font-weight=600 font-size=17
       // Arms once per toast; posts `landed` (gpu/src/timer.rs).
       canvas surface=timer(landToken, 435) message=landed width=1 height=1 position="absolute"
         left=0 top=0 pointer-events="none" aria-hidden=true
