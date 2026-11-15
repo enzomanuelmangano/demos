@@ -35,7 +35,10 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use pressto::{PressEvent, Pressable};
+use pressto::{HitSlop, PressEvent, Pressable};
+
+/// The button's hit slop (the owner's call; see `input`).
+const HIT_SLOP: HitSlop = HitSlop::all(16.0);
 use reanimated::{interpolate, interpolate_clamp, Extrapolation, Spring, SpringConfig};
 use skia::{Canvas, Color, Font, Image, Images, Paint, Rect, Renderer, RsXform};
 
@@ -302,7 +305,10 @@ impl Surface for ParticlesButton {
     fn input(&mut self, event: &InputEvent) {
         let InputEvent::Pointer { id, phase, x, y, .. } = *event else { return };
         let o = button_origin();
-        let inside = (o..=o + SIZE).contains(&x) && (o..=o + SIZE).contains(&y);
+        // RN sets no hitSlop on this PressableScale; the owner's call (phone feedback,
+        // 2026-11-15): 16 round the 48 pt button (an 80 pt target, the FABs' HIT_SLOP), for the
+        // touch-down and the lift alike, as RNGH's hitTestEdgeInsets.
+        let inside = HIT_SLOP.contains(o as f64, o as f64, SIZE as f64, SIZE as f64, x as f64, y as f64);
         if let Some(PressEvent::Press(press)) = self.press.pointer(id, gfx::phase(phase), inside) {
             self.posted.extend(press.global_message().map(String::from));
             self.pressed = true;

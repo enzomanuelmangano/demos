@@ -379,6 +379,34 @@ impl Pressable {
     }
 }
 
+/// A pressable's `hitSlop` (RNGH's `hitTestEdgeInsets`, negated): how far past its bounds a
+/// touch still reaches it. RNGestureHandlerButton grows its hit frame by it in `pointInside`
+/// (the touch-down) and in `continueTrackingWithTouch` / `endTrackingWithTouch` (inside, and so
+/// onPress at the lift), all in the button's own coordinates.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct HitSlop {
+    /// Past the top edge.
+    pub top: f64,
+    /// Past the right edge.
+    pub right: f64,
+    /// Past the bottom edge.
+    pub bottom: f64,
+    /// Past the left edge.
+    pub left: f64,
+}
+
+impl HitSlop {
+    /// `hitSlop={n}`: the same on every side.
+    pub const fn all(n: f64) -> HitSlop {
+        HitSlop { top: n, right: n, bottom: n, left: n }
+    }
+    /// Whether (x, y) is in the box at (x0, y0) of `w` x `h`, grown by the slop.
+    pub fn contains(&self, x0: f64, y0: f64, w: f64, h: f64, x: f64, y: f64) -> bool {
+        (x0 - self.left..=x0 + w + self.right).contains(&x)
+            && (y0 - self.top..=y0 + h + self.bottom).contains(&y)
+    }
+}
+
 /// `PressablesGroup`: which pressable of a group was pressed last (`isSelected`). The app's
 /// `PressablesConfig` wraps everything in one.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -689,6 +717,18 @@ mod tests {
         p.pointer(2, Phase::Down, true);
         p.pointer(2, Phase::Move, false);
         assert!(matches!(p.pointer(2, Phase::Up, true), Some(PressEvent::Press(_))));
+    }
+
+    #[test]
+    fn hit_slop_grows_the_frame_for_the_down_and_the_lift() {
+        let slop = HitSlop::all(16.0);
+        assert!(slop.contains(10.0, 10.0, 48.0, 48.0, -5.0, 30.0));
+        assert!(!slop.contains(10.0, 10.0, 48.0, 48.0, -7.0, 30.0));
+        assert!(slop.contains(10.0, 10.0, 48.0, 48.0, 73.0, 74.0));
+        assert!(!HitSlop::default().contains(10.0, 10.0, 48.0, 48.0, 9.0, 30.0));
+        let mut p = Pressable::new();
+        assert!(p.pointer_down(1, slop.contains(10.0, 10.0, 48.0, 48.0, 0.0, 0.0)));
+        assert!(p.pointer_up(1, slop.contains(10.0, 10.0, 48.0, 48.0, 70.0, 70.0)).is_some());
     }
 
     #[test]

@@ -74,9 +74,12 @@ component BezierCurveOutline
       // styles.button: absolute, bottom 48, centred (alignSelf), zIndex 2000; styles.text 14,
       // centred, its colour on the outline spring.
       row position="absolute" left=0 right=0 bottom=48 justify-content="center" pointer-events="none"
-        view pointer-events="auto"
+        // The owner's call (phone feedback, 2026-11-15): a hit slop of 14 round the label (RN sets
+        // none), so the 14 pt text takes a 44 pt tall touch: the press box reaches 14 past it
+        // (its place 14 out each way, the label 14 in), for the touch and the lift alike.
+        view pointer-events="auto" margin=-14
           PressableScale(press=toggle)
-            row pointerdown=pressIn pointerup=pressOut testId="bezier-curve-outline-toggle" text-align="center"
+            row margin=14 pointerdown=pressIn pointerup=pressOut testId="bezier-curve-outline-toggle" text-align="center"
               aria-label="Outline Mode"
               text "Outline Mode" font-size=14 text-align="center" color="#202020"
                 animation="labelInk 1s linear both" animation-timeline="--outlineMode" animation-range="0px 100px"

@@ -335,13 +335,16 @@ component AppItem
             testId=`app-${id}-tile`
             // styles.deleteButtonContainer: absolute at -4, -4, zIndex 1; opacity
             // withTiming(isShaking ? 1 : 0), touchable only while shaking.
-            view position="absolute" left=-4 top=-4 z-index=1 opacity=(shaking ? 1 : 0)
+            // DeleteButtonHitSlop 10 each side: the press box reaches 10 past the button (its
+            // place 10 out each way, the button 10 in), as RNGH's hitTestEdgeInsets do for the
+            // touch and the lift alike.
+            view position="absolute" left=-14 top=-14 z-index=1 opacity=(shaking ? 1 : 0)
               pointer-events=(shaking ? "auto" : "none")
               transition="opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
               // styles.deleteButton: 20 × 20, rgba(255,255,255,0.8), radius 100; Ionicons "remove"
               // 12 black.
               PressableOpacity(press=remove)
-                column width=20 height=20 border-radius=100
+                column margin=10 width=20 height=20 border-radius=100
                   background-color="rgba(255, 255, 255, 0.8)" align-items="center" justify-content="center"
                   aria-label="Delete" testId=`app-${id}-delete`
                   // Ionicons "remove" 12: the vector-icons glyph (512 × 525 units of 512 to the em).

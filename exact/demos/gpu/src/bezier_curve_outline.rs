@@ -63,6 +63,8 @@ use shaders::bezier_curve_outline::{entry, module, Uniforms, BASE, BLURRED, GROU
 const SMALL: f64 = 64.0;
 const BIG: f64 = 180.0;
 const RADIUS: f32 = 20.0;
+/// A control point's grab radius: 44 pt across (the owner's call; RN grabs the drawn disc).
+const GRAB_RADIUS: f64 = 22.0;
 const ICON: f32 = 48.0;
 /// assets/pawn.svg (viewBox 50): its four paths.
 const PAWN: [&str; 4] = [
@@ -334,10 +336,19 @@ impl Surface for BezierOutline {
         let (xf, yf) = (x as f64, y as f64);
         if self.outline_progress.value > 0.0 {
             // The outline's Touchable canvas.
-            let at = |i: usize, p: &[(f64, f64); 4]| (xf - p[i].0).hypot(yf - p[i].1) <= if i == 0 || i == 3 { 12.0 } else { 10.0 };
+            // RN's Touchable circles take a touch on the drawn disc (r 12 / 10); the owner's call
+            // (phone feedback, 2026-11-15): a 44 pt grab, r 22 round each point, the nearest
+            // point taking a touch two grabs share. The look is unchanged.
+            let grab = |p: &[(f64, f64); 4]| {
+                (0..4)
+                    .map(|i| (i, (xf - p[i].0).hypot(yf - p[i].1)))
+                    .filter(|&(_, d)| d <= GRAB_RADIUS)
+                    .min_by(|a, b| a.1.total_cmp(&b.1))
+                    .map(|(i, _)| i)
+            };
             match self.pan.event(id, phase, x, y, at_ms, true) {
                 Event::Begin { x, y } => {
-                    self.dragging = (0..4).find(|&i| at(i, &self.points));
+                    self.dragging = grab(&self.points);
                     if let Some(i) = self.dragging {
                         self.points[i] = (x as f64, y as f64);
                         self.stale = true;

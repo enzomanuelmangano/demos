@@ -25,7 +25,12 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use pressto::{PressEvent, Pressable};
+use pressto::{Config, PressEvent, Pressable};
+
+/// The owner's call (phone feedback, 2026-11-15), past RN's PressableWithoutFeedback: the paper
+/// shrinks a little while held, on pressto's PressableScale curve (250 ms, bezier(0.25, 0.1,
+/// 0.25, 1), from where it is), about the screen's centre (the paper's).
+const PRESS: Config = Config { active_opacity: 0.5, min_scale: 0.97, base_scale: 1.0 };
 use reanimated::{interpolate_color, Spring};
 use skia::{point, stops, Blur, Canvas, Color, Paint, Renderer, Shader};
 
@@ -45,7 +50,7 @@ const LAYER: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 pub fn surface() -> Box<dyn Surface> {
     // RN passes `globalHandlers={{}}`, which is no pressto prop (it falls through to the
     // BaseButton): the intent, no global haptic over its own three, is `skipGlobalHandlers`.
-    Box::new(PaperFolding { press: Pressable::new().skip_global_handlers(), ..Default::default() })
+    Box::new(PaperFolding { press: Pressable::new().skip_global_handlers().with_config(PRESS), ..Default::default() })
 }
 
 #[derive(Default)]
@@ -135,6 +140,8 @@ impl Surface for PaperFolding {
         format: wgpu::TextureFormat,
     ) -> bool {
         let moving = self.progress.step(frame.now_ms);
+        self.press.step(frame.now_ms);
+        let held = self.press.scale() as f32;
         if std::mem::take(&mut self.pressed) {
             self.pressed_at = Some(frame.now_ms);
         }
@@ -167,16 +174,16 @@ impl Surface for PaperFolding {
         let shade = interpolate_color(p as f64, &[0.0, 1.0], &[[177.0, 177.0, 177.0, 1.0], [255.0, 255.0, 255.0, 1.0]]);
         let uniforms = Uniforms {
             canvas: [pw as f32, ph as f32, frame.scale, gfx::srgb_flag(format)],
-            paper: [(frame.width - WIDTH) / 2.0, (frame.height - HEIGHT) / 2.0, WIDTH, HEIGHT / 3.0],
+            paper: [(frame.width - WIDTH * held) / 2.0, (frame.height - HEIGHT * held) / 2.0, WIDTH * held, HEIGHT / 3.0 * held],
             folds: [0, 1, 2].map(|i| {
                 let k = wrapper_scale(i);
-                [f[i].0 * k, f[i].1 * k, k, 0.0]
+                [f[i].0 * k * held, f[i].1 * k * held, k, 0.0]
             }),
             shade: [(shade[0] / 255.0) as f32, (shade[1] / 255.0) as f32, (shade[2] / 255.0) as f32, 1.0],
         };
         queue.write_buffer(&gpu.uniforms, 0, &uniforms.bytes());
         skia::render::fullscreen_pass(encoder, "paper folding", target, &gpu.pipeline, &gpu.bind);
-        moving || !self.due.is_empty()
+        moving || !self.due.is_empty() || self.press.is_animating()
     }
 }
 
@@ -223,6 +230,27 @@ mod tests {
         // The wrappers: 1/(1 + 200/1e6), 1/(1 + 100/1e6), 1.
         assert!((wrapper_scale(0) - 0.999_8).abs() < 1e-6 && (wrapper_scale(1) - 0.999_9).abs() < 1e-6);
         assert_eq!(wrapper_scale(2), 1.0);
+    }
+
+    #[test]
+    fn the_paper_shrinks_while_held_on_presstos_curve() {
+        let mut s = PaperFolding { press: Pressable::new().skip_global_handlers().with_config(PRESS), ..Default::default() };
+        let finger = |s: &mut PaperFolding, phase, at_ms| {
+            s.input(&InputEvent::Pointer { id: 1, phase, x: 50.0, y: 100.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
+        };
+        finger(&mut s, PointerPhase::Down, 0.0);
+        s.press.step(0.0);
+        s.press.step(125.0);
+        // bezier(0.25, 0.1, 0.25, 1) at half time is about 0.8024 of the way to 0.97.
+        assert!((s.press.scale() - (1.0 - 0.03 * 0.8024)).abs() < 1e-3, "{}", s.press.scale());
+        s.press.step(400.0);
+        assert!((s.press.scale() - 0.97).abs() < 1e-9);
+        // The lift folds or unfolds as before and eases the paper back to full size.
+        finger(&mut s, PointerPhase::Up, 600.0);
+        assert_eq!(s.messages(), ["haptic:selection"]);
+        s.press.step(616.0);
+        s.press.step(900.0);
+        assert_eq!(s.press.scale(), 1.0);
     }
 
     #[test]

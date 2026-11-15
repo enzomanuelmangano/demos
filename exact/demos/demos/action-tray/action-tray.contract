@@ -131,11 +131,12 @@ component ActionTray
                 row align-items="center"
                   text titleOf(step) font-size=20 font-weight=600 color="#000000" testId="title"
                   view flex=1
-                  // styles.closeButton: 24 × 24, radius 20, #F1F1F4, hitSlop 8;
+                  // styles.closeButton: 24 × 24, radius 20, #F1F1F4, hitSlop 8 (the press box
+                  // reaches 8 past it: its place 8 out each way, the button 8 in);
                   // MaterialCommunityIcons close-thick 15 #B3B3B6.
-                  view pointer-events="auto" width=24 height=24
+                  view pointer-events="auto" width=40 height=40 margin=-8
                     PressableScale(press=close)
-                      column width=24 height=24
+                      column margin=8 width=24 height=24
                         border-radius=20 background-color="color(display-p3 0.9451 0.9451 0.9569)" align-items="center"
                         justify-content="center" aria-label="Close"
                         testId="close"
