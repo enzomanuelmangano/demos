@@ -345,9 +345,9 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         container.addSubview(cardView)
         self.cardView = cardView
         view.frame = cardView.bounds
-        cardView.addSubview(view)
         // The icon it opens out of: a deep link has none, and the demo simply appears.
         guard let slug, let icon = LaunchIcons.shared.view(slug), let host = container.superview else {
+            cardView.addSubview(view)
             grouped = false
             phase = .open
             revealCountdown = K.firstPaintFrames + 1
@@ -382,6 +382,8 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
             art.bounds = CGRect(origin: .zero, size: iconFrame.size)
             cardView.addSubview(art)
             self.art = art
+            // Stands in for the demo until it is in the card (below), so a card committed first shows no hole.
+            cardView.backgroundColor = (art as? UIImageView)?.image.flatMap(LaunchSession.averageColor)
         }
         icon.isHidden = true
         moving(true)
@@ -397,6 +399,26 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         phase = .opening
         presenting = ctx
         fly()
+        // The demo joins the card only now: moving its route into the window lays it out (a few ms on
+        // a fast Mac, 30-90 ms on a phone), which used to hold the first frame of the flight back. The
+        // flight above is already committed, so the card moves on the first frame after the tap.
+        if let content = controller.view, content.superview == nil {
+            cardView.insertSubview(content, at: 0)
+            cardView.backgroundColor = nil
+        }
+    }
+
+    /// The artwork's mean colour: a 1 x 1 redraw.
+    fileprivate static func averageColor(_ image: UIImage) -> UIColor? {
+        guard let cg = image.cgImage else { return nil }
+        var px = [UInt8](repeating: 0, count: 4)
+        guard let ctx = CGContext(data: &px, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                                  space: CGColorSpaceCreateDeviceRGB(),
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        ctx.interpolationQuality = .medium
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+        let a = max(CGFloat(px[3]) / 255, 0.001)
+        return UIColor(red: CGFloat(px[0]) / 255 / a, green: CGFloat(px[1]) / 255 / a, blue: CGFloat(px[2]) / 255 / a, alpha: 1)
     }
 
     private func opened() {
