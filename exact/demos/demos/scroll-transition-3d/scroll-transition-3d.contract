@@ -8,9 +8,16 @@ use DemoEnv from "../env.contract"
 component ScrollTransition3D
   props
     env: DemoEnv
+  // The list's haptics (gpu/src/scroll_transition_3d.rs, past RN): selection as the centred
+  // number changes, rigid when the list is pulled past an end.
+  action heard(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-rigid"
+      haptic("impact-rigid")
   view
     // styles.container: #000, the list filling it.
     column position="absolute" inset=0 background-color="#000000" testId="scroll-transition-3d"
-      canvas surface=scroll_transition_3d() position="absolute" top=0 left=0 width=env.width height=env.height
+      canvas surface=scroll_transition_3d() message=heard position="absolute" top=0 left=0 width=env.width height=env.height
         touch-action="none" testId="scroll-transition-3d-canvas"
         aria-label="Numbers: drag up or down to scroll"
