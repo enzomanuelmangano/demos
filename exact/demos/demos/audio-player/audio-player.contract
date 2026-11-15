@@ -22,9 +22,16 @@ use DemoEnv, demoButtonRow from "../env.contract"
 fn trackTitle(): string = "Run"
 fn trackArtist(): string = "Hania Rani"
 
-// The card's insets: the screen's 20 and the card's own 22.
+// The artwork's side inset (20). The card floats as iOS 26's bottom UI does: concentric with the
+// display's corners (radius 62 on the iPhone 17 family), 10 from the sides and the bottom, past
+// the home indicator's safe area, so its radius is 62 − 10 = 52; what it holds is concentric in
+// turn at 52 − its padding 22 = 30.
 fn audioSideInset(): number = 20
+fn audioScreenRadius(): number = 62
+fn audioFloatInset(): number = 10
+fn audioCardRadius(): number = audioScreenRadius() - audioFloatInset()
 fn audioCardInset(): number = 22
+fn audioInnerRadius(): number = audioCardRadius() - audioCardInset()
 // The waveform's slot: the bars (52) and the times under them.
 fn audioSlotHeight(): number = 80
 
@@ -78,10 +85,10 @@ component AudioPlayer
     skipN = skipN + 1
     skip = `${skipN}:15`
   derive top = env.safeTop + demoButtonRow() + 8
-  derive bottom = env.safeBottom + 12
-  derive slotWidth = env.width - 2 * audioSideInset() - 2 * audioCardInset()
-  // The card: title block 50, the slot, the controls 72, gaps 18 + 14, insets 22 + 18.
-  derive cardHeight = 50 + audioSlotHeight() + 72 + 18 + 14 + 22 + 18
+  derive bottom = audioFloatInset()
+  derive slotWidth = env.width - 2 * audioFloatInset() - 2 * audioCardInset()
+  // The card: title block 50, the slot, the controls 72, gaps 18 + 14, insets 22 + 22.
+  derive cardHeight = 50 + audioSlotHeight() + 72 + 18 + 14 + 2 * audioCardInset()
   derive art = min(env.width - 2 * audioSideInset() - 24, env.height - top - bottom - cardHeight - 32)
   // A build without card mode: RN's whole column (window × 0.95 wide, 130 tall) scaled so its
   // purple row is the slot, the row 50 below the column's top.
@@ -89,10 +96,11 @@ component AudioPlayer
   view
     column position="absolute" inset=0 background-color="#15110f"
       background-image="radial-gradient(95% 55% at 50% 22%, rgba(184, 146, 108, 0.55) 0%, rgba(184, 146, 108, 0) 100%), radial-gradient(90% 50% at 85% 95%, rgba(78, 66, 120, 0.5) 0%, rgba(78, 66, 120, 0) 100%), radial-gradient(70% 40% at 0% 70%, rgba(150, 92, 70, 0.35) 0%, rgba(150, 92, 70, 0) 100%)"
-      padding-top=top padding-bottom=bottom padding-left=audioSideInset() padding-right=audioSideInset()
+      padding-top=top padding-bottom=bottom padding-left=audioFloatInset() padding-right=audioFloatInset()
       color-scheme="dark" testId="audio-player"
       // The artwork: drawn, not a record sleeve. It breathes with playback, as Music's does.
       column flex=1 align-items="center" justify-content="center"
+        padding-left=(audioSideInset() - audioFloatInset()) padding-right=(audioSideInset() - audioFloatInset())
         column width=art height=art border-radius=30 corner-shape="-exact-continuous"
           background-color="#2a221d"
           background-image="radial-gradient(110% 80% at 18% 8%, rgba(240, 222, 196, 0.95) 0%, rgba(240, 222, 196, 0) 62%), radial-gradient(90% 70% at 100% 100%, rgba(84, 70, 128, 0.85) 0%, rgba(84, 70, 128, 0) 70%), linear-gradient(165deg, #8a6f57 0%, #3b2f28 55%, #1b1614 100%)"
@@ -104,10 +112,10 @@ component AudioPlayer
             color="rgba(30, 22, 18, 0.72)" text-transform="uppercase" aria-hidden=true
           text trackTitle() font-family="AddingtonCF-Light" font-size=(art * 0.3) line-height=1
             color="rgba(255, 248, 238, 0.94)" letter-spacing=-1 aria-hidden=true
-      // The card: liquid glass over the warm backdrop.
-      column backgroundMaterial="glass" -exact-glass-tint="rgba(24, 18, 15, 0.32)" border-radius=34
-        corner-shape="-exact-continuous" margin-top=32 padding-top=audioCardInset()
-        padding-bottom=18 padding-left=audioCardInset() padding-right=audioCardInset() gap=18
+      // The card: liquid glass over the warm backdrop, concentric with the screen's corners.
+      column backgroundMaterial="glass" -exact-glass-tint="rgba(24, 18, 15, 0.32)"
+        border-radius=audioCardRadius() corner-shape="-exact-continuous" margin-top=32
+        padding-top=audioCardInset() padding-bottom=audioCardInset() padding-left=audioCardInset() padding-right=audioCardInset() gap=18
         testId="audio-card"
         column gap=2 height=50 justify-content="center"
           text trackTitle() font-size=22 font-weight=700 color="#ffffff" testId="audio-title"
