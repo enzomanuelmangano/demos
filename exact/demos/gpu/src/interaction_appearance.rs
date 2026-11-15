@@ -241,7 +241,7 @@ impl Appearance {
                 line += 1;
                 continue;
             }
-            crate::email_demo::wrap(body, paragraph, 0.0, width, &mut ranges);
+            crate::gfx::wrap_spaced(body, paragraph, 0.0, width, &mut ranges);
             for &(a, b) in &ranges {
                 let y = top + line as f32 * 22.0;
                 c.draw_text(paragraph[a..b].trim_end(), 32.0, snap(gfx::baseline(body, y + offset)), body, &ink);

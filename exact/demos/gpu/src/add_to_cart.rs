@@ -704,7 +704,7 @@ fn truncate_tail(font: &Font, text: &str, width: f32, out: &mut String) {
 
 /// Lines `text` takes wrapped at `width` (TextKit's word wrap).
 fn line_count(font: &Font, text: &str, width: f64, scratch: &mut Vec<(usize, usize)>) -> usize {
-    crate::email_demo::wrap(font, text, 0.0, width as f32, scratch);
+    crate::gfx::wrap_spaced(font, text, 0.0, width as f32, scratch);
     scratch.len().max(1)
 }
 
@@ -769,7 +769,7 @@ impl AddToCart {
         self.scroll.offset = self.scroll.offset.min(max);
         if let Some(f) = self.fonts.as_ref() {
             let width = self.layout.rows[0].description.size[0] as f32;
-            crate::email_demo::wrap(&f.body, DESCRIPTION, 0.0, width, &mut self.scratch);
+            crate::gfx::wrap_spaced(&f.body, DESCRIPTION, 0.0, width, &mut self.scratch);
             self.description_lines = self.scratch.len().min(2);
             self.description = self.scratch.first().copied().unwrap_or((0, 0));
             self.description_tail.clear();
@@ -782,7 +782,7 @@ impl AddToCart {
                 );
             }
             let mw = self.layout.sheet.message.size[0] as f32;
-            crate::email_demo::wrap(&f.body, SHEET_MESSAGE, 0.0, mw, &mut self.message_lines);
+            crate::gfx::wrap_spaced(&f.body, SHEET_MESSAGE, 0.0, mw, &mut self.message_lines);
             // The message's Text box: its lines (one, the layout assumed).
             let n = self.message_lines.len().max(1) as f64;
             let sh = self.layout.sheet;
@@ -1436,7 +1436,7 @@ impl AddToCart {
                 } else if let Some(f) = fonts {
                     // Wrapped (a narrow window): the lines drawn as they are.
                     let t = g.text;
-                    crate::email_demo::wrap(
+                    crate::gfx::wrap_spaced(
                         &f.bold,
                         CTA,
                         0.0,
@@ -1947,7 +1947,7 @@ mod tests {
             return eprintln!("no system font; skipped");
         };
         let mut lines = Vec::new();
-        crate::email_demo::wrap(&f.body, DESCRIPTION, 0.0, 188.0, &mut lines);
+        crate::gfx::wrap_spaced(&f.body, DESCRIPTION, 0.0, 188.0, &mut lines);
         assert!(lines.len() > 2);
         // The Mac's TextKit at 188: "Lorem, ipsum dolor sit amet" / "consectetur adipisicing elit…".
         assert_eq!(

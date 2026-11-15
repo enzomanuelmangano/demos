@@ -130,6 +130,71 @@ pub fn baseline(font: &skia::Font, top: f32) -> f32 {
     top - font.metrics().ascent
 }
 
+
+/// TextKit's word wrapping with `letterSpacing` (NSKern after every glyph): a break after spaces
+/// (which hang) and after a hyphen between letters; a line holds what fits in `width`.
+pub(crate) fn wrap_spaced(font: &skia::Font, text: &str, spacing: f32, width: f32, out: &mut Vec<(usize, usize)>) {
+    out.clear();
+    let mut breaks: Vec<(usize, usize)> = Vec::new();
+    let bytes: Vec<(usize, char)> = text.char_indices().collect();
+    let n = bytes.len();
+    let byte = |i: usize| if i < n { bytes[i].0 } else { text.len() };
+    let mut i = 0;
+    while i < n {
+        let c = bytes[i].1;
+        if c == ' ' {
+            let mut j = i;
+            while j < n && bytes[j].1 == ' ' {
+                j += 1;
+            }
+            if j < n {
+                breaks.push((i, j));
+            }
+            i = j;
+            continue;
+        }
+        if c == '-' && i > 0 && i + 1 < n && bytes[i - 1].1.is_alphanumeric() && bytes[i + 1].1.is_alphanumeric() {
+            breaks.push((i + 1, i + 1));
+        }
+        i += 1;
+    }
+    breaks.push((n, n));
+    let fits = |a: usize, b: usize| font.advance_width_spaced(&text[byte(a)..byte(b)], spacing) <= width + 1e-3;
+    let mut start = 0;
+    let mut k = 0;
+    while start < n {
+        let mut last = None;
+        while k < breaks.len() {
+            let (end, next) = breaks[k];
+            if end <= start {
+                k += 1;
+                continue;
+            }
+            if fits(start, end) {
+                last = Some((end, next));
+                k += 1;
+            } else {
+                break;
+            }
+        }
+        match last {
+            Some((end, next)) => {
+                out.push((byte(start), byte(end)));
+                start = next;
+            }
+            None => {
+                let mut end = start + 1;
+                while end < n && fits(start, end + 1) {
+                    end += 1;
+                }
+                out.push((byte(start), byte(end)));
+                start = end;
+            }
+        }
+    }
+}
+
+
 /// TextKit's word wrapping of an RN `<Text>` `width` wide: breaks after spaces (hanging) and
 /// after a hyphen between letters; the lines as byte ranges, trailing spaces left out.
 pub fn wrap(font: &skia::Font, text: &str, width: f32) -> Vec<(usize, usize)> {

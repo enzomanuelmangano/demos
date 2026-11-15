@@ -30,8 +30,6 @@ pub mod airbnb_slider;
 pub mod alert_drawer_card;
 pub mod animated_3d_parallax;
 pub mod animated_clip_box;
-pub mod animated_count_digit;
-pub mod animated_grid_list;
 pub mod art_gallery;
 pub mod atlas_button;
 pub mod atlas_sphere;
@@ -40,7 +38,6 @@ pub mod balance_slider;
 pub mod bezier_curve_outline;
 pub mod blur_cards;
 pub mod blur_circles;
-pub mod blurred_bottom_bar;
 pub mod blurred_scroll;
 pub mod bottom_bar_skia;
 pub mod calendar_days;
@@ -58,9 +55,6 @@ pub mod dot_sheet_card;
 pub mod drag_to_sort;
 pub mod draggable_panel;
 pub mod duration_slider;
-pub mod dynamic_tab_indicator;
-pub mod dynamic_blur_tabs;
-pub mod email_demo;
 pub mod empty_qr_code;
 pub mod exclusion_tabs;
 pub mod expandable_mini_player;
@@ -79,12 +73,10 @@ pub mod github_onboarding;
 pub mod github_terrain;
 pub mod gl_transitions;
 pub mod grid_visualizer;
-pub mod image_cropper;
 pub mod imessage_stack;
 pub mod infinite_carousel;
 pub mod interaction_appearance;
 pub mod ios_home_bouncy;
-pub mod ios_home_grid;
 pub mod light_on_painting;
 pub mod linear_sensors;
 pub mod loading_button;
@@ -96,20 +88,15 @@ pub mod mobile_input;
 pub mod motion_blur;
 pub mod notion_qrcode;
 pub mod paper_folding;
-pub mod particles_button;
 pub mod pomodoro_timer;
-pub mod popup_handler;
 pub mod prequel_slider;
-pub mod qr_code_generator;
 pub mod radar_chart;
-pub mod record_button;
 pub mod scroll_progress_text;
 pub mod scroll_transition_3d;
 pub mod scrollable_bottom_sheet;
 pub mod scrollable_shapes;
 pub mod sculptures_in_words;
 pub mod selectable_grid_list;
-pub mod skia_bottom_sheet;
 pub mod skia_color_picker;
 pub mod slide_to_reveal;
 pub mod snake;
@@ -128,7 +115,6 @@ pub mod theme_canvas_animation;
 pub mod threads_holo_ticket;
 pub mod time_machine;
 pub mod timer;
-pub mod twitter_tab_bar;
 pub mod twodos_slide;
 pub mod verification_code_face;
 pub mod wheel_picker;
@@ -143,8 +129,6 @@ pub static REGISTRY: Registry = Registry {
         ("alert_drawer_card", 1, alert_drawer_card::surface),
         ("animated_3d_parallax", 0, animated_3d_parallax::surface),
         ("animated_clip_box", 1, animated_clip_box::surface),
-        ("animated_count_digit", 1, animated_count_digit::surface),
-        ("animated_grid_list", 4, animated_grid_list::surface),
         ("art_gallery", 2, art_gallery::surface),
         ("atlas_button", 1, atlas_button::surface),
         ("atlas_sphere", 0, atlas_sphere::surface),
@@ -153,7 +137,6 @@ pub static REGISTRY: Registry = Registry {
         ("bezier_curve_outline", 2, bezier_curve_outline::surface),
         ("blur_cards", 1, blur_cards::surface),
         ("blur_circles", 0, blur_circles::surface),
-        ("blurred_bottom_bar", 6, blurred_bottom_bar::surface),
         ("blurred_scroll", 0, blurred_scroll::surface),
         ("bottom_bar_skia", 1, bottom_bar_skia::surface),
         ("calendar_days", 1, calendar_days::surface),
@@ -171,9 +154,6 @@ pub static REGISTRY: Registry = Registry {
         ("drag_to_sort", 1, drag_to_sort::surface),
         ("draggable_panel", 1, draggable_panel::surface),
         ("duration_slider", 0, duration_slider::surface),
-        ("dynamic_tab_indicator", 13, dynamic_tab_indicator::surface),
-        ("dynamic_blur_tabs", 7, dynamic_blur_tabs::surface),
-        ("email_row", 2, email_demo::surface),
         ("empty_qr_code", 0, empty_qr_code::surface),
         ("exclusion_tabs", 0, exclusion_tabs::surface),
         ("expandable_mini_player", 1, expandable_mini_player::surface),
@@ -192,12 +172,10 @@ pub static REGISTRY: Registry = Registry {
         ("github_terrain", 1, github_terrain::surface),
         ("gl_transitions", 4, gl_transitions::surface),
         ("grid_visualizer", 1, grid_visualizer::surface),
-        ("image_cropper", 0, image_cropper::surface),
         ("imessage_stack", 0, imessage_stack::surface),
         ("infinite_carousel", 0, infinite_carousel::surface),
         ("interaction_appearance", 2, interaction_appearance::surface),
         ("ios_home_bouncy", 1, ios_home_bouncy::surface),
-        ("ios_home_grid", 1, ios_home_grid::surface),
         ("light_on_painting", 4, light_on_painting::surface),
         ("linear_sensors", 0, linear_sensors::surface),
         ("loading_button", 0, loading_button::surface),
@@ -209,20 +187,15 @@ pub static REGISTRY: Registry = Registry {
         ("motion_blur", 4, motion_blur::surface),
         ("notion_qrcode", 0, notion_qrcode::surface),
         ("paper_folding", 0, paper_folding::surface),
-        ("particles_button", 1, particles_button::surface),
         ("pomodoro_timer", 1, pomodoro_timer::surface),
-        ("popup_handler", 3, popup_handler::surface),
         ("prequel_slider", 2, prequel_slider::surface),
-        ("qr_code_generator", 3, qr_code_generator::surface),
         ("radar_chart", 10, radar_chart::surface),
-        ("record_button", 1, record_button::surface),
         ("scroll_progress_text", 1, scroll_progress_text::surface),
         ("scroll_transition_3d", 0, scroll_transition_3d::surface),
         ("scrollable_bottom_sheet", 0, scrollable_bottom_sheet::surface),
         ("scrollable_shapes", 0, scrollable_shapes::surface),
         ("sculptures_in_words", 1, sculptures_in_words::surface),
         ("selectable_grid_list", 1, selectable_grid_list::surface),
-        ("skia_bottom_sheet", 0, skia_bottom_sheet::surface),
         ("skia_color_picker", 0, skia_color_picker::surface),
         ("slide_to_reveal", 0, slide_to_reveal::surface),
         ("snake", 3, snake::surface),
@@ -241,7 +214,6 @@ pub static REGISTRY: Registry = Registry {
         ("threads_holo_ticket", 0, threads_holo_ticket::surface),
         ("time_machine", 1, time_machine::surface),
         ("timer", 2, timer::surface),
-        ("twitter_tab_bar", 1, twitter_tab_bar::surface),
         ("twodos_slide", 0, twodos_slide::surface),
         ("verification_code_face", 6, verification_code_face::surface),
         ("wheel_picker", 1, wheel_picker::surface),
