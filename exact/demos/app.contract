@@ -3,7 +3,7 @@
 use Demo, allDemos from "./demos.contract"
 use Springboard from "./home/springboard.contract"
 use DemoScreen from "./home/demo-screen.contract"
-use Atlas, SnapFrame, FeedbackNote from "./home/atlas.contract"
+use Atlas, SnapFrame, DeskDemo, FeedbackNote from "./home/atlas.contract"
 use DemoEnv from "./demos/env.contract"
 use startSensorInput, stopSensorInput, SensorInput from "@exact/motion"
 use defaultPressablesConfig from "pressto"
@@ -160,7 +160,10 @@ component Demos
         if e.name == "snap"
           column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" position="absolute" inset=0
             SnapFrame(slug=e.params.slug, backdrop=demoOf(e.params.slug).backdrop, env=env)
-        if e.name == "demo"
+        if e.name == "demo" and desk
+          DeskDemo(slug=e.params.slug, name=demoOf(e.params.slug).name, backdrop=demoOf(e.params.slug).backdrop, env=env,
+            routeKey=`${e.id}`, leave=back)
+        if e.name == "demo" and not desk
           // The open out of the icon and the close into it are RN's launch, drawn by the app's
           // module (DemoLaunch.swift) on UIKit's fullscreen presentation, not UIKit's zoom.
           column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" navigationPresentation="fullscreen"

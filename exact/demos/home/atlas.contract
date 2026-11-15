@@ -59,6 +59,32 @@ component SnapFrame
           left=(0 - airW() * (1 - snapScale()) / 2) top=(0 - airH() * (1 - snapScale()) / 2) scale=snapScale()
           PortedDemo(slug=slug, env=airEnv(env))
 
+// A demo route on the Mac (a link, demos-exact://demo/<slug>): the atlas's large view as a
+// route, the demo as an iPhone Air at the window's height, never stretched to the window.
+component DeskDemo
+  props
+    slug: string
+    name: string
+    backdrop: string
+    env: DemoEnv
+    routeKey: string
+    leave: action
+  derive k = min(1, max(0.3, (env.height - 120) / airH()))
+  view
+    column navigationKey=routeKey position="absolute" inset=0 background-color="-exact-secondary-background"
+      color-scheme="light" testId="desk-demo"
+      header display="flex" flex-direction="row" align-items="center"
+        button id="back" press=leave aria-label="Back to Atlas" aria-keyshortcuts="Escape" testId="desk-demo-close"
+          image "symbol:back"
+        text name role="heading" aria-level=2
+      column flex=1 align-items="center" justify-content="center"
+        view width=(airW() * k) height=(airH() * k) position="relative" overflow="hidden" border-radius=(airCorner() * k)
+          corner-shape="-exact-continuous" background-color=backdrop border-width=1 border-style="solid"
+          border-color="-exact-separator" box-shadow="0px 2px 8px rgba(0,0,0,0.08), 0px 24px 60px rgba(0,0,0,0.16)"
+          column position="absolute" width=airW() height=airH() background-color=backdrop
+            left=(0 - airW() * (1 - k) / 2) top=(0 - airH() * (1 - k) / 2) scale=k
+            PortedDemo(slug=slug, env=airEnv(env))
+
 keyframes atlasReveal
   from opacity=0
   88% opacity=0
@@ -87,9 +113,12 @@ fn demoHit(ids: string[]): string = match first(ids.filter(i => not i.startsWith
   case none => ""
 }
 
-style Tile
+// A tile's lift: the frame around the screen (not the screen, whose children change as it goes
+// live) eases its shadow and scale on the host, one layer, its shadow path its rounded rect.
+style Lift
   :hover
-    box-shadow = "0px 2px 6px rgba(0,0,0,0.10), 0px 14px 36px rgba(0,0,0,0.14)"
+    box-shadow = "0px 3px 8px rgba(0,0,0,0.10), 0px 16px 36px rgba(0,0,0,0.15)"
+    scale = 1.015
 
 // A demo's pins over its frame (w×h on screen): numbered, the comment as the tooltip; a click
 // opens the note.
@@ -357,26 +386,29 @@ component Atlas
             for d in shown key=d.slug
               column width=(airW() * scale) gap=10 align-items="center" position="relative" z-index=(draft == d.slug ? 2 : 0)
                 // The screen: a scaled iPhone Air display, hairline-edged, softly lifted.
-                view class=Tile width=(airW() * scale) height=(airH() * scale) position="relative" overflow="hidden"
-                  border-radius=(airCorner() * scale) corner-shape="-exact-continuous" background-color=d.backdrop
-                  border-width=1 border-style="solid" border-color="-exact-separator"
+                view class=Lift width=(airW() * scale) height=(airH() * scale) position="relative"
+                  border-radius=(airCorner() * scale) corner-shape="-exact-continuous"
                   box-shadow="0px 1px 2px rgba(0,0,0,0.06), 0px 6px 18px rgba(0,0,0,0.07)"
-                  intersect=seen(d.slug) pointermove=hover(d.slug) testId=`atlas-tile-${d.slug}` id=`atlas-tile-${d.slug}`
-                  contextmenu=menuAt(d.slug, `atlas-tile-${d.slug}`) contextPopover="atlas-menu"
-                  image `assets/atlas/${d.slug}.jpg` position="absolute" inset=0 width="100%" height="100%"
-                    object-fit="cover" aria-hidden=true
-                  // The frame gen-snapshots.ts last wrote, from the feedback server (no build needed).
-                  image `${frameServer()}/snap/${d.slug}.jpg?v=${env.epoch}` position="absolute" inset=0 width="100%" height="100%"
-                    object-fit="cover" aria-hidden=true
-                  if live.includes(d.slug)
-                    column position="absolute" width=airW() height=airH()
-                      left=(0 - airW() * (1 - scale) / 2) top=(0 - airH() * (1 - scale) / 2) scale=scale
-                      background-color=d.backdrop animation="atlasReveal 1350ms linear both"
-                      PortedDemo(slug=d.slug, env=airEnv(env))
-                  if armed
-                    view position="absolute" inset=0 cursor="crosshair" testId=`atlas-drop-${d.slug}`
-                      pointerdown=armedClick(d.slug, `atlas-tile-${d.slug}`)
-                  Pins(notes=notesOf(notes, d.slug), w=(airW() * scale), h=(airH() * scale), open=openNote)
+                  transition="scale 200ms ease-out, box-shadow 200ms ease-out"
+                  view width=(airW() * scale) height=(airH() * scale) position="relative" overflow="hidden"
+                    border-radius=(airCorner() * scale) corner-shape="-exact-continuous" background-color=d.backdrop
+                    border-width=1 border-style="solid" border-color="-exact-separator"
+                    intersect=seen(d.slug) pointermove=hover(d.slug) testId=`atlas-tile-${d.slug}` id=`atlas-tile-${d.slug}`
+                    contextmenu=menuAt(d.slug, `atlas-tile-${d.slug}`) contextPopover="atlas-menu"
+                    image `assets/atlas/${d.slug}.jpg` position="absolute" inset=0 width="100%" height="100%"
+                      object-fit="cover" aria-hidden=true
+                    // The frame gen-snapshots.ts last wrote, from the feedback server (no build needed).
+                    image `${frameServer()}/snap/${d.slug}.jpg?v=${env.epoch}` position="absolute" inset=0 width="100%" height="100%"
+                      object-fit="cover" aria-hidden=true
+                    if live.includes(d.slug)
+                      column position="absolute" width=airW() height=airH()
+                        left=(0 - airW() * (1 - scale) / 2) top=(0 - airH() * (1 - scale) / 2) scale=scale
+                        background-color=d.backdrop animation="atlasReveal 1350ms linear both"
+                        PortedDemo(slug=d.slug, env=airEnv(env))
+                    if armed
+                      view position="absolute" inset=0 cursor="crosshair" testId=`atlas-drop-${d.slug}`
+                        pointerdown=armedClick(d.slug, `atlas-tile-${d.slug}`)
+                    Pins(notes=notesOf(notes, d.slug), w=(airW() * scale), h=(airH() * scale), open=openNote)
                 // The open-feedback count, at the frame's corner.
                 if openCount(notes, d.slug) > 0
                   text `${openCount(notes, d.slug)}` position="absolute" top=-6 right=-6 min-width=18 height=18

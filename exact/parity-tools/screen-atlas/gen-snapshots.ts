@@ -24,15 +24,20 @@ const tmp = "/tmp/atlas-snaps";
 mkdirSync(dir, { recursive: true });
 mkdirSync(tmp, { recursive: true });
 
-// The Demos window's frame on screen, in points (CoreGraphics' window list).
+// The Demos window's frame on screen, in points (CoreGraphics' window list), read before each
+// capture (the window may move); the reader is compiled once.
+const reader = join(tmp, "window-frame");
 function windowFrame(): { x: number; y: number; w: number; h: number } {
   const f = join(tmp, "frame.swift");
+  if (!existsSync(reader)) {
   writeFileSync(f, `import CoreGraphics
 let l = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as! [[String: Any]]
 for w in l where (w["kCGWindowOwnerName"] as? String) == "Demos" && (w["kCGWindowLayer"] as? Int) == 0 {
   let b = w["kCGWindowBounds"] as! [String: Any]; print(b["X"]!, b["Y"]!, b["Width"]!, b["Height"]!); break }
 `);
-  const out = Bun.spawnSync(["swift", f]).stdout.toString().trim().split(/\s+/).map(Number);
+  Bun.spawnSync(["swiftc", "-O", "-o", reader, f]);
+  }
+  const out = Bun.spawnSync([reader]).stdout.toString().trim().split(/\s+/).map(Number);
   if (out.length < 4 || out.some(isNaN)) throw new Error("no Demos window on screen: launch the Mac app (bun exact.mjs mac --run --url …)");
   return { x: out[0], y: out[1], w: out[2], h: out[3] };
 }
@@ -45,12 +50,12 @@ let n = 0, bytes = 0;
 const failed: string[] = [];
 open("demos-exact:///");
 await sleep(800);
-const win = windowFrame();
 const t0 = Date.now();
 for (const s of slugs) {
   open(`demos-exact://snap/${s}`);
   await sleep(LAG + IDLE);
   const png = join(tmp, `${s}.png`);
+  const win = windowFrame();
   Bun.spawnSync(["screencapture", "-x", `-R${win.x + LEFT},${win.y + TOP},${420 * SCALE},${912 * SCALE}`, png]);
   open("demos-exact:///");
   if (!existsSync(png)) { failed.push(s); continue; }

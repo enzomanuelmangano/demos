@@ -147,3 +147,22 @@ Override the Mac without a rebuild: launch argument `-feedbackHost <ip[:port]>`.
   recordings of RN drop frames heavily (often 3-15 fps): time nothing from them.
 - If argent's touches fail ("CoreDevice transport is dead"), `stop-simulator-server` for
   the device and retry.
+
+## Desktop atlas (macOS)
+
+- Launch: `bun exact.mjs mac --run --url http://localhost:5341` (the web dev server, `bun exact.mjs
+  web --port 5341`, must be up and building cleanly). On a Mac window (fine pointer, ≥ 600 pt wide)
+  home is the atlas (home/atlas.contract), its header the window's native toolbar.
+- Hot: `.contract` and `app.ts` edits. The app logs `reloaded generation ← localhost` per push
+  (~1–2 s). The dev server stops pushing after a failed build until its next save is seen; on
+  this machine its file watcher can miss saves, so if no new generation arrives, press `r` +
+  Enter in the dev server's terminal (or restart it). Any agent's Contract error blocks everyone's
+  reload: check `contract build app.contract --errors-only` first.
+- Not hot (one native build, batched with the integrator): Swift (`modules/`), Rust (`gpu/`),
+  `app.json`, bundled `assets/`, fonts. A `gpu/` change needs the rebuild and a relaunch.
+- Never run `agent macos` while the person uses the app: it rebuilds when anything is stale and
+  replaces the running app.
+- Feedback: `bun exact/parity-tools/feedback/server.ts` (:5350) before opening the atlas;
+  right-click a tile → Add Feedback Here…; `bun exact/parity-tools/feedback/list.ts --since 15m`;
+  `inbox.jsonl` has one line per event. The server also serves `assets/atlas/*.jpg` to the atlas at
+  runtime (`/snap/<slug>.jpg`), so regenerated frames need no build.
