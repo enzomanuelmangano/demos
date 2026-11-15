@@ -7,14 +7,34 @@
 // springs and fades, are gpu/src/airbnb_slider.rs, given the price.
 use DemoEnv from "../env.contract"
 
+// The price a slider value shows, and its digit count (the number re-centres when it changes).
+fn priceOf(v: number): number = round(min(max(v, 0), 1) * 4500)
+fn digitsOf(p: number): number = p >= 1000 ? 4 : (p >= 100 ? 3 : (p >= 10 ? 2 : 1))
+fn atEnd(p: number): bool = p == 0 or p == 4500
+
 component AirbnbSlider
   props
     env: DemoEnv
   // The slider's value (0…1): `sliderProgress`.
   state progress = 0
+  // Haptics (past RN, which plays none): the price last felt, and whether it rests on an end
+  // (it starts on $0, so leaving it is silent).
+  state felt = 0
+  state ended = true
   // onSliderValueChange: price.set(Math.round(interpolate(value, [0, 1], [0, 4500], CLAMP))).
+  // Haptics, one per change at most: impact-rigid when the price reaches $0 or $4500 (once per
+  // excursion), else selection when its digit count changes (9 → 10, 99 → 100, 999 → 1000:
+  // the number re-centres and a digit fades in or out). Only a few crossings in the whole
+  // range, so no rate limit is needed.
   action moved(v: string)
     progress = match parseNumber(v) { case some(n) => n, case none => progress }
+    if atEnd(priceOf(progress)) and not ended
+      haptic("impact-rigid")
+    else
+      if digitsOf(priceOf(progress)) != digitsOf(felt)
+        haptic("selection")
+    ended = atEnd(priceOf(progress))
+    felt = priceOf(progress)
   view
     // styles.container: Palette.background, centred.
     column position="absolute" inset=0 background-color="color(display-p3 0.8902 0.9255 0.9804)"
