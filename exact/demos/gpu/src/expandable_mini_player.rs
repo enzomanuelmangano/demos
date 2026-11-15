@@ -26,7 +26,14 @@
 //!   with progress < 0.8 posts `press` and springs progress to 1 (withSpring { dampingRatio 1,
 //!   duration 600 }); onFinalize untaps. The pan (with it): only when progress ≠ 0 at its
 //!   start; onUpdate progress = interpolate(translationY, [0, height], [1, 0]) (extended); at
-//!   onFinalize it springs (the same config) to progress > 0.8 ? 1 : 0.
+//!   onFinalize it springs (the same config) to progress > 0.8 ? 1 : 0. One departure, so a
+//!   tap opens it on every cycle: the collapse spring rests (exactly 0) only ~910 ms after the
+//!   finger lifts, ~230 ms after it looks still; a tap in that tail found progress ≠ 0, so the
+//!   pan (begun at touch-down) was enabled and its finalize, after the tap's onTouchesUp (RNGH
+//!   sends it from reset), sprang the sheet back to 0, each retry re-arming another 910 ms
+//!   tail. A pan that never activated no longer undoes the tap of the same touch. A blur (focus
+//!   left, the app resigned) cancels the held touches: the host drops them without a lift, and
+//!   the gestures would keep waiting for it and ignore every later touch.
 //!
 //! The cover is the video's thumbnail (maxresdefault.jpg) at 3× its largest drawn size, in
 //! images/. The labels are RN `<Text>`s whose fontSize animates: UIKit lays each frame out at
@@ -82,6 +89,7 @@ pub fn surface() -> Box<dyn Surface> {
         tap: TapGesture::default(),
         pan: PanGesture::new(),
         pan_enabled: false,
+        held: Vec::new(),
         tab_press: std::array::from_fn(|_| Pressable::new()),
         group: Group::new(),
         posted: Vec::new(),
@@ -104,6 +112,8 @@ struct MiniPlayer {
     tap: TapGesture,
     pan: PanGesture,
     pan_enabled: bool,
+    /// The pointers down, where they last were (cancelled on a blur).
+    held: Vec<(u32, f32, f32, f64)>,
     /// Each tab's createAnimatedPressable (the shared pressto machine).
     tab_press: [Pressable; 4],
     /// The app's PressablesGroup: the last tab pressed is `isSelected`.
@@ -160,11 +170,22 @@ impl Surface for MiniPlayer {
     }
 
     fn input(&mut self, event: &InputEvent) {
+        if let InputEvent::Blur { .. } = *event {
+            for (id, x, y, at_ms) in std::mem::take(&mut self.held) {
+                let phase = exact_gpu::PointerPhase::Cancel;
+                self.input(&InputEvent::Pointer { id, phase, x, y, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 0, at_ms });
+            }
+            return;
+        }
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
         if self.size.0 <= 0.0 {
             return;
         }
         let phase = gfx::phase(phase);
+        self.held.retain(|h| h.0 != id);
+        if matches!(phase, Phase::Down | Phase::Move) {
+            self.held.push((id, x, y, at_ms));
+        }
         let (sx, sy, sw, sh, _) = self.sheet();
         let (px, py) = (x as f64, y as f64);
         let on_sheet = (sx..=sx + sw).contains(&px) && (sy..=sy + sh).contains(&py);
@@ -190,6 +211,7 @@ impl Surface for MiniPlayer {
             }
         }
         let p = self.progress.value;
+        let mut opened = false;
         match self.tap.event(id, phase, x, y, at_ms, on_sheet) {
             Event::Begin { .. } => {
                 if p < THRESHOLD {
@@ -200,6 +222,7 @@ impl Surface for MiniPlayer {
                 if p < THRESHOLD {
                     self.posted.push("press".into());
                     self.spring_to(1.0);
+                    opened = true;
                 }
                 self.tapped.retarget(1.0, GENTLE);
             }
@@ -214,6 +237,8 @@ impl Surface for MiniPlayer {
                     self.progress.set(interpolate(e.translation_y as f64, &[0.0, h], &[1.0, 0.0], Extrapolation::Extend));
                 }
             }
+            // A pan that never activated: the tap of this touch, if it opened the sheet, wins.
+            Event::Fail if opened => self.pan_enabled = false,
             Event::End(_) | Event::Fail => {
                 if self.pan_enabled {
                     self.pan_enabled = false;
@@ -424,5 +449,69 @@ mod tests {
         // Back to the mini player, the first tab now selected (opaque).
         assert_eq!(&back.at(2 * 300, 2 * 800)[..3], &[0x22, 0x22, 0x22]);
         assert_ne!(back.data, mini.data);
+    }
+
+    /// Expand (tap) → collapse (drag) → expand, many times: every tap animates the sheet open and
+    /// lands at 1, whether it comes as the collapse still settles (200, 500, 800 ms after the
+    /// lift) or once it rests, after a slow drag or a quick one (whose tap also fires); and a
+    /// blur in the middle of a touch leaves no finger held.
+    #[test]
+    fn every_cycle_expands() {
+        let gpu = match fixture::device() {
+            Ok(gpu) => gpu,
+            Err(error) => return eprintln!("{error}; skipped"),
+        };
+        // The phone: 120 Hz.
+        let frame = |now_ms| Frame { width: 420.0, height: 912.0, scale: 3.0, now_ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: 0, headroom: 1.0 };
+        let pointer = |phase, x: f32, y: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let progress = |s: &mut Box<dyn Surface>| {
+            let state = s.agent("{}").unwrap();
+            state.split("\"progress\":").nth(1).unwrap().split(',').next().unwrap().parse::<f64>().unwrap()
+        };
+        let mut s = surface();
+        s.bind(&[Value::Number(62.0)], None).unwrap();
+        let mut ms = 0.0;
+        fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+        let mut run = |s: &mut Box<dyn Surface>, ms: &mut f64, until: f64| {
+            while *ms < until {
+                *ms += 8.333;
+                fixture::render(&gpu, s.as_mut(), &frame(*ms)).unwrap();
+            }
+        };
+        for (cycle, (gap, quick, blur)) in [(2000.0, false, false), (200.0, false, false), (500.0, true, false), (800.0, false, true), (300.0, true, false), (2000.0, false, false)].into_iter().enumerate() {
+            let before = progress(&mut s);
+            // The tap on the mini player.
+            s.input(&pointer(PointerPhase::Down, 300.0, 796.0, ms));
+            ms += 80.0;
+            s.input(&pointer(PointerPhase::Up, 300.0, 796.0, ms));
+            assert_eq!(s.messages(), vec!["press".to_string()], "cycle {cycle}");
+            let t0 = ms;
+            run(&mut s, &mut ms, t0 + 150.0);
+            let mid = progress(&mut s);
+            assert!(mid > before + 0.1 && mid < 0.95, "cycle {cycle}: the expand animates ({before} → {mid} at 150 ms)");
+            run(&mut s, &mut ms, t0 + 1500.0);
+            assert_eq!(progress(&mut s), 1.0, "cycle {cycle}: the expand lands");
+            if blur {
+                // A finger down on the sheet, then the canvas loses focus without a lift.
+                s.input(&pointer(PointerPhase::Down, 210.0, 400.0, ms));
+                s.input(&InputEvent::Blur { at_ms: ms + 10.0 });
+                assert!(!s.agent("{}").unwrap().contains("\"held\":true"), "cycle {cycle}: blur releases");
+                ms += 50.0;
+            }
+            // The drag down that collapses it: slow (0.5 s) or quick (0.2 s, the tap fires too).
+            let (steps, step_ms) = if quick { (12, 16.0) } else { (30, 16.667) };
+            s.input(&pointer(PointerPhase::Down, 210.0, 300.0, ms));
+            for k in 1..=steps {
+                ms += step_ms;
+                s.input(&pointer(PointerPhase::Move, 210.0, 300.0 + 450.0 * k as f32 / steps as f32, ms));
+                fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+            }
+            assert!(progress(&mut s) < 0.8, "cycle {cycle}");
+            s.input(&pointer(PointerPhase::Up, 210.0, 750.0, ms));
+            s.messages();
+            let lift = ms;
+            run(&mut s, &mut ms, lift + gap);
+            assert!(progress(&mut s) < 0.15, "cycle {cycle}: collapsing");
+        }
     }
 }
