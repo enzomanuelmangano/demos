@@ -54,13 +54,17 @@ component SplitButton
   // Toggles so far: the nudge cycles with it.
   state n = 0
   // Left onPress: onLeft (none given), setActive(false); the global onPress first.
+  // Beyond RN (phone feedback 2026-11-15, "it stutters"): a haptic as the chips split and as
+  // they merge, over the press's own selection tick.
   action pressLeft
     if activated
       n = n + 1
+      haptic("impact-soft")
     activated = false
   // Right onPress: activates; activated, deactivates (onRight: none given).
   action pressRight
     n = n + 1
+    haptic(activated ? "impact-soft" : "impact-light")
     activated = not activated
   view
     // index.tsx styles.container: flex 1, centred. Its parent is the demo screen, whose
@@ -78,11 +82,14 @@ component SplitButton
           PressableScale(press=pressLeft)
             column position="relative" text-align="center"
               column aria-label="Google" testId="left-press"
-                // styles.chip (+ activeChip: the same border, width 120): 60 tall, 140 wide, radius
+                // styles.chip (+ activeChip: the same border, width 120): 60 tall, radius
                 // 16 continuous, shadow 0 1 5 10% black. The view doesn't clip, so RN draws its 1 pt
                 // #D9D6D1 border as RCTBorderDrawing's ring with CIRCULAR corners over the layer
                 // (which keeps the continuous curve, and the shadow its shape).
-                column width=(activated ? 120 : 140) height=60 border-radius=16
+                // RN's chip is 140 while hidden and turns 120 at once: on a merge that jumped
+                // 10 pt each side while it was still fading out (the stutter). It is always 120
+                // here; hidden, it lies under the 140 pt right chip either way.
+                column width=120 height=60 border-radius=16
                   corner-shape="-exact-continuous" box-shadow="0px 1px 5px rgba(0, 0, 0, 0.1)"
                   view position="absolute" inset=0 border="1px solid" border-color=border()
                     border-radius=16 pointer-events="none"
@@ -90,8 +97,7 @@ component SplitButton
               // paddingHorizontal 36 while activated (it only exists then). entering FadeIn,
               // exiting FadeOut, layout LinearTransition (its box never moves). Mounted throughout:
               // an exit inside the press tree played nothing on iOS, and RN's exiting view keeps
-              // its last frame, 120 wide from the chip's left edge, while the chip widens to 140
-              // about its centre (measured: the G stays 155 px right of the chip's edge).
+              // its last frame, 120 wide from the chip's left edge (the chip stays 120 here).
               row position="absolute" left=0 top=0 width=120 height=60 box-sizing="border-box"
                 align-items="center" justify-content="center" padding="17px 37px"
                 pointer-events="none" opacity=0
@@ -114,21 +120,28 @@ component SplitButton
               position="relative" width=140 height=60 padding=1 box-sizing="border-box"
               border-radius=16 corner-shape="-exact-continuous"
               background-color=(activated ? "#000000" : background())
-              box-shadow=(activated ? "none" : "0px 1px 5px rgba(0, 0, 0, 0.1)")
+              box-shadow=(activated ? "0px 1px 5px rgba(0, 0, 0, 0)" : "0px 1px 5px rgba(0, 0, 0, 0.1)")
+              // Beyond RN (which swaps at once): the colour and shadow turn over 200 ms.
+              transition=`background-color 200ms ${inOutQuad()}, box-shadow 200ms ${inOutQuad()}`
               view position="absolute" inset=0 border="1px solid" border-color=border()
                 border-radius=16 pointer-events="none"
-              // styles.chipContent, paddingHorizontal on the duration spring.
-              row flex=1 align-items="center" justify-content="center"
-                padding=`16px ${activated ? 36 : 24}px` -exact-layout-transition=padSpring()
-                if activated
-                  // AntDesign apple, 21, colors.background (inside the chip's Text): its box's
-                  // left on Yoga's floored pixel, 59.333 where the svg centres at 59.5.
-                  svg width=21 height=(21 * 536 / 512) viewBox="0 0 512 536" aria-hidden=true
-                    position="relative" left="-0.16667px" testId="right-icon"
-                    path d=applePath() fill=background()
-                else
-                  // styles.chipText: fontSize 20, weight 600 (RN's default black). Yoga floors
-                  // the Text's left and top and CoreGraphics ceils its baseline: one device pixel
-                  // up and left of the host's line.
-                  text "Start" font-size=20 font-weight=600 color="#000000" position="relative"
-                    top="-0.33333px" left="-0.33333px" testId="start-label"
+              // styles.chipContent: its paddingHorizontal spring (24 ↔ 36) moves nothing on screen
+              // (the content is centred in the fixed chip), and as a layout transition it held the
+              // commit's first frames: dropped. Beyond RN, which swaps "Start" and the Apple logo at
+              // once: both stay mounted, centred, and crossfade over 200 ms.
+              row position="absolute" inset=0 align-items="center" justify-content="center"
+                opacity=(activated ? 1 : 0) transition=`opacity 200ms ${inOutQuad()}` pointer-events="none"
+                aria-hidden=(not activated)
+                // AntDesign apple, 21, colors.background (inside the chip's Text): its box's
+                // left on Yoga's floored pixel, 59.333 where the svg centres at 59.5.
+                svg width=21 height=(21 * 536 / 512) viewBox="0 0 512 536" aria-hidden=true
+                  position="relative" left="-0.16667px" testId="right-icon"
+                  path d=applePath() fill=background()
+              row position="absolute" inset=0 align-items="center" justify-content="center"
+                opacity=(activated ? 0 : 1) transition=`opacity 200ms ${inOutQuad()}` pointer-events="none"
+                aria-hidden=activated
+                // styles.chipText: fontSize 20, weight 600 (RN's default black). Yoga floors
+                // the Text's left and top and CoreGraphics ceils its baseline: one device pixel
+                // up and left of the host's line.
+                text "Start" font-size=20 font-weight=600 color="#000000" position="relative"
+                  top="-0.33333px" left="-0.33333px" testId="start-label"
