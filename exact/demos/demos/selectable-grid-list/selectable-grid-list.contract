@@ -13,6 +13,14 @@ component SelectableGridList
   action heard(m: string)
     if m == "press"
       haptic("selection")
+    // Beyond RN (phone feedback 2026-11-15): a tick per selection change (the surface keeps
+    // them 40 ms apart), an impact as a drag-select starts and a softer one as it ends.
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+    if m == "haptic:impact-soft"
+      haptic("impact-soft")
   view
     canvas surface=selectable_grid_list(env.safeTop, env.safeBottom) message=heard position="absolute" top=0 left=0
       width=env.width height=env.height background-color="#000000" touch-action="none"

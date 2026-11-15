@@ -47,7 +47,21 @@ use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
 use gesture_handler::{Event, PanGesture, Phase, TapGesture};
 use pressto::{PressEvent, Pressable};
-use reanimated::{Easing, Spring, Timing, GENTLE};
+use reanimated::{duration_config, Easing, Spring, SpringConfig as Config, Timing};
+
+/// Beyond RN (phone feedback 2026-11-15: "faster animations, the haptics are missing"): the
+/// border and badge fade in 200 ms (RN: 300), the badge's scale and the button's rise run
+/// critically damped in 300 / 350 ms (RN: the default spring, ~1 s to rest), and the surface
+/// posts haptics RN has none of: a selection tick as cells turn on or off (at most one per
+/// 40 ms), a light impact when a drag-select starts and a soft one when it ends.
+const FADE_SELECT_MS: f64 = 200.0;
+const TICK_MS: f64 = 40.0;
+fn badge_spring() -> Config {
+    duration_config(1.0, 0.0, 300.0, 1.0, 4.0)
+}
+fn fab_spring() -> Config {
+    duration_config(150.0, 0.0, 350.0, 1.0, 4.0)
+}
 use skia::{fit_cover, Canvas, Color, Font, Images, Paint, Rect, Renderer};
 
 use crate::gfx;
@@ -81,8 +95,10 @@ macro_rules! photos {
     ($($n:literal),*) => { [$(include_bytes!(concat!("../images/selectable-grid-list/", $n, ".jpg")).as_slice()),*] };
 }
 static PHOTOS: [&[u8]; ITEMS] = photos!(
-    "00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24",
-    "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49"
+    "00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15",
+    "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31",
+    "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47",
+    "48", "49"
 );
 
 /// The demo's surface. Inputs: the safe area's top and bottom insets.
@@ -116,6 +132,7 @@ fn grid() -> SelectableGrid {
         fab_y: Spring::at(150.0),
         fab_press: Pressable::new(),
         posted: Vec::new(),
+        last_tick: f64::NEG_INFINITY,
         check: Font::new(ANTDESIGN, 16.0).map(Font::with_ui_layout),
         clear: Font::new(MATERIAL, 20.0).map(Font::with_ui_layout),
         // ReText: a TextInput, laid out by UIKit (tracking, kerning).
@@ -161,6 +178,8 @@ struct SelectableGrid {
     count: usize,
     counts: Vec<String>,
     fab_y: Spring,
+    /// The last selection tick (frame time).
+    last_tick: f64,
     /// The button's PressableScale (the shared pressto machine).
     fab_press: Pressable,
     posted: Vec<String>,
@@ -200,7 +219,10 @@ impl SelectableGrid {
         index.clamp(0.0, (ITEMS - 1) as f64) as usize
     }
     fn total(&self, i: usize) -> bool {
-        self.current[i] || self.pending.is_some_and(|(a, b)| (a.min(b)..=a.max(b)).contains(&i))
+        self.current[i]
+            || self
+                .pending
+                .is_some_and(|(a, b)| (a.min(b)..=a.max(b)).contains(&i))
     }
     fn toggle(&mut self, i: usize) {
         self.current[i] = !self.current[i];
@@ -243,12 +265,30 @@ impl Surface for SelectableGrid {
     }
 
     fn agent(&mut self, _request: &str) -> Option<String> {
-        let selected: Vec<String> = (0..ITEMS).filter(|&i| self.total(i)).map(|i| i.to_string()).collect();
-        Some(format!("{{\"selected\":[{}],\"offset\":{:.2},\"held\":{}}}", selected.join(","), self.offset(), self.pan.tracking() || self.fab_press.is_pressed()))
+        let selected: Vec<String> = (0..ITEMS)
+            .filter(|&i| self.total(i))
+            .map(|i| i.to_string())
+            .collect();
+        Some(format!(
+            "{{\"selected\":[{}],\"offset\":{:.2},\"held\":{}}}",
+            selected.join(","),
+            self.offset(),
+            self.pan.tracking() || self.fab_press.is_pressed()
+        ))
     }
 
     fn input(&mut self, event: &InputEvent) {
-        let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
+        let InputEvent::Pointer {
+            id,
+            phase,
+            x,
+            y,
+            at_ms,
+            ..
+        } = *event
+        else {
+            return;
+        };
         if self.size.0 <= 0.0 {
             return;
         }
@@ -292,6 +332,9 @@ impl Surface for SelectableGrid {
         if let Event::Start(e) = event {
             let (dx, dy) = (e.x - self.down.0, e.y - self.down.1);
             sideways = dy.abs() < dx.abs() * 0.5773502691896258;
+            if sideways {
+                self.posted.push("haptic:impact-light".into());
+            }
             if !sideways {
                 // The UIScrollView began: the pan fails (onFinalize), the list scrolls from here.
                 self.pending = None;
@@ -348,6 +391,7 @@ impl Surface for SelectableGrid {
                         for i in start.min(end)..=start.max(end) {
                             self.current[i] = true;
                         }
+                        self.posted.push("haptic:impact-soft".into());
                     }
                 }
                 self.pending = None;
@@ -383,37 +427,58 @@ impl Surface for SelectableGrid {
         // The FlatList's mount: the photos' loads (and fades) start with their batch.
         let opened = *self.opened.get_or_insert(now);
         for (i, fade) in self.fade.iter_mut().enumerate() {
-            let batch = if i < INITIAL_RENDER { 0.0 } else { ((i - INITIAL_RENDER) / BATCH + 1) as f64 * BATCH_MS };
+            let batch = if i < INITIAL_RENDER {
+                0.0
+            } else {
+                ((i - INITIAL_RENDER) / BATCH + 1) as f64 * BATCH_MS
+            };
             if fade.value == 0.0 && !fade.running && now >= opened + batch {
                 fade.to(1.0, FADE_MS, Easing::bezier(0.42, 0.0, 0.58, 1.0));
             }
             moving |= fade.step(now) || fade.value < 1.0;
         }
         if self.images.is_none() {
-            let decoded: Vec<skia::Image> = PHOTOS.iter().map(|b| skia::Image::from_jpeg(b).unwrap_or(skia::Image { width: 1, height: 1, pixels: vec![40, 40, 40, 255] })).collect();
+            let decoded: Vec<skia::Image> = PHOTOS
+                .iter()
+                .map(|b| {
+                    skia::Image::from_jpeg(b).unwrap_or(skia::Image {
+                        width: 1,
+                        height: 1,
+                        pixels: vec![40, 40, 40, 255],
+                    })
+                })
+                .collect();
             let refs: Vec<&skia::Image> = decoded.iter().collect();
             let images = Images::upload(device, queue, &refs);
             self.renderer.set_images(&images);
             self.images = Some(images);
         }
         let mut count = 0;
+        let mut changed = false;
         for i in 0..ITEMS {
             let active = self.total(i);
             count += active as usize;
             if active != self.active[i] {
                 self.active[i] = active;
+                changed = true;
                 let v = if active { 1.0 } else { 0.0 };
-                self.border[i].to(4.0 * v, 300.0, Easing::timing_default());
-                self.badge[i].to(v, 300.0, Easing::timing_default());
-                self.badge_scale[i].retarget(v, GENTLE);
+                self.border[i].to(4.0 * v, FADE_SELECT_MS, Easing::timing_default());
+                self.badge[i].to(v, FADE_SELECT_MS, Easing::timing_default());
+                self.badge_scale[i].retarget(v, badge_spring());
             }
-            moving |= self.border[i].step(now) | self.badge[i].step(now) | self.badge_scale[i].step(now);
+            moving |=
+                self.border[i].step(now) | self.badge[i].step(now) | self.badge_scale[i].step(now);
         }
         if count != self.count || (count == 0) != (self.fab_y.target() == 150.0) {
             self.count = count;
-            self.fab_y.retarget(if count == 0 { 150.0 } else { 0.0 }, GENTLE);
+            self.fab_y
+                .retarget(if count == 0 { 150.0 } else { 0.0 }, fab_spring());
         }
         moving |= self.fab_y.step(now) | self.fab_press.step(now);
+        if changed && now - self.last_tick >= TICK_MS {
+            self.last_tick = now;
+            self.posted.push("haptic:selection".into());
+        }
 
         let (w, h) = (frame.width, frame.height);
         let item = self.item() as f32;
@@ -440,7 +505,11 @@ impl Surface for SelectableGrid {
                 let (ix, iy) = (x + PADDING, y + PADDING);
                 let bw = self.border[i].value as f32;
                 if bw > 0.0 {
-                    let color = if self.active[i] { Color::view_hex(PRIMARY) } else { Color::BLACK };
+                    let color = if self.active[i] {
+                        Color::view_hex(PRIMARY)
+                    } else {
+                        Color::BLACK
+                    };
                     c.draw_rrect(ix, iy, side, side, 10.0 + bw, &Paint::fill(color));
                 }
                 if let Some(images) = self.images.as_ref() {
@@ -449,7 +518,14 @@ impl Surface for SelectableGrid {
                     let placed = fit_cover(Rect::new(0.0, 0.0, photo.width, photo.height), inner);
                     let fade = self.fade[i].value as f32;
                     if fade > 0.0 {
-                        c.draw_rrect(inner.x, inner.y, inner.width, inner.height, 10.0, &Paint::image(photo, placed.invert()).with_opacity(fade));
+                        c.draw_rrect(
+                            inner.x,
+                            inner.y,
+                            inner.width,
+                            inner.height,
+                            10.0,
+                            &Paint::image(photo, placed.invert()).with_opacity(fade),
+                        );
                     }
                 }
                 let opacity = self.badge[i].value as f32;
@@ -459,11 +535,24 @@ impl Surface for SelectableGrid {
                     c.translate(x + 12.0, y + item - 12.0);
                     c.scale(s, s);
                     c.opacity(opacity);
-                    c.draw_rrect(-12.0, -12.0, 24.0, 24.0, 12.0, &Paint::fill(Color::view_hex(PRIMARY)));
+                    c.draw_rrect(
+                        -12.0,
+                        -12.0,
+                        24.0,
+                        24.0,
+                        12.0,
+                        &Paint::fill(Color::view_hex(PRIMARY)),
+                    );
                     if let Some(font) = self.check.as_ref() {
                         // Centred in the 24 pt badge as Yoga places a Text (see `glyph_box`).
                         let (gx, base) = glyph_box(font, CHECK, 24.0, 24.0, s_px);
-                        c.draw_text(CHECK, gx - 12.0, base - 12.0, font, &Paint::fill(Color::BLACK));
+                        c.draw_text(
+                            CHECK,
+                            gx - 12.0,
+                            base - 12.0,
+                            font,
+                            &Paint::fill(Color::BLACK),
+                        );
                     }
                     c.restore();
                 }
@@ -479,7 +568,14 @@ impl Surface for SelectableGrid {
             c.scale(k, k);
             c.translate(-FAB_W / 2.0, -FAB_H / 2.0);
             c.draw_rrect_shadow(0.0, 0.0, FAB_W, FAB_H, 20.0, 10.0, Color::BLACK.alpha(0.5));
-            c.draw_continuous_rrect(0.0, 0.0, FAB_W, FAB_H, 20.0, &Paint::fill(Color::view_hex(PRIMARY)));
+            c.draw_continuous_rrect(
+                0.0,
+                0.0,
+                FAB_W,
+                FAB_H,
+                20.0,
+                &Paint::fill(Color::view_hex(PRIMARY)),
+            );
             // space-evenly over 76: the icon's Text (its measured 20.333) and the count (32).
             if let Some(font) = self.clear.as_ref() {
                 let iw = text_side(font.advance_width(CLEAR), s_px);
@@ -494,14 +590,31 @@ impl Surface for SelectableGrid {
                     // where a Text would sit (measured: the count was 1 px low).
                     // A TextInput's edge, Yoga-rounded half up.
                     let x = ((10.0 + 2.0 * gap + iw) * s_px + 1e-4).round() / s_px;
-                    let base = gfx::baseline(label, (FAB_H - gfx::line_height(label)) / 2.0) - 1.0 / s_px;
-                    c.draw_text(text, x + (32.0 - tw) / 2.0, base, label, &Paint::fill(Color::BLACK));
+                    let base =
+                        gfx::baseline(label, (FAB_H - gfx::line_height(label)) / 2.0) - 1.0 / s_px;
+                    c.draw_text(
+                        text,
+                        x + (32.0 - tw) / 2.0,
+                        base,
+                        label,
+                        &Paint::fill(Color::BLACK),
+                    );
                 }
             }
             c.restore();
         }
         let (pw, ph) = frame.pixels();
-        self.renderer.draw(device, queue, encoder, &self.canvas, target, format, pw, ph, wgpu::Color::BLACK);
+        self.renderer.draw(
+            device,
+            queue,
+            encoder,
+            &self.canvas,
+            target,
+            format,
+            pw,
+            ph,
+            wgpu::Color::BLACK,
+        );
         moving || self.pan.tracking() || self.fab_press.is_animating()
     }
 }
@@ -539,10 +652,31 @@ mod tests {
             Ok(gpu) => gpu,
             Err(error) => return eprintln!("{error}; skipped"),
         };
-        let frame = |now_ms| Frame { width: 420.0, height: 912.0, scale: 2.0, now_ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: 0, headroom: 1.0 };
-        let pointer = |phase, x: f32, y: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let frame = |now_ms| Frame {
+            width: 420.0,
+            height: 912.0,
+            scale: 2.0,
+            now_ms,
+            seekable: true,
+            period_ms: 0.0,
+            children_generation: 0,
+            shader_generation: 0,
+            headroom: 1.0,
+        };
+        let pointer = |phase, x: f32, y: f32, at_ms| InputEvent::Pointer {
+            id: 1,
+            phase,
+            x,
+            y,
+            dx: 0.0,
+            dy: 0.0,
+            kind: PointerKind::Touch,
+            buttons: 1,
+            at_ms,
+        };
         let mut s = surface();
-        s.bind(&[Value::Number(62.0), Value::Number(34.0)], None).unwrap();
+        s.bind(&[Value::Number(62.0), Value::Number(34.0)], None)
+            .unwrap();
         // The photos fade in (100 ms each, the last batch 150 ms after the mount).
         let (first, moving) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         assert!(moving);
@@ -556,10 +690,17 @@ mod tests {
         rest.save("grid-rest");
         assert!(!moving);
         // Cell 0's photo: black at the mount, half-way (ease-in-out at 0.5 is 0.5) at 50 ms.
-        let (p0, p1, p2) = (first.at(2 * 50, 2 * 170), half.at(2 * 50, 2 * 170), rest.at(2 * 50, 2 * 170));
+        let (p0, p1, p2) = (
+            first.at(2 * 50, 2 * 170),
+            half.at(2 * 50, 2 * 170),
+            rest.at(2 * 50, 2 * 170),
+        );
         assert_eq!(&p0[..3], &[0, 0, 0]);
         for k in 0..3 {
-            assert!((p1[k] as f32 - p2[k] as f32 * 0.5).abs() <= 2.0, "{p1:?} vs {p2:?}");
+            assert!(
+                (p1[k] as f32 - p2[k] as f32 * 0.5).abs() <= 2.0,
+                "{p1:?} vs {p2:?}"
+            );
         }
         // The list from 118; cells 105 wide; the photo of cell 0 inside 4…101 × 122…219.
         assert_eq!(&rest.at(2 * 50, 2 * 60)[..3], &[0, 0, 0]);
@@ -574,10 +715,21 @@ mod tests {
         s.input(&pointer(PointerPhase::Down, 50.0, 380.0, ms));
         for k in 1..=10 {
             ms += 16.0;
-            s.input(&pointer(PointerPhase::Move, 50.0 + 25.0 * k as f32, 380.0 + 11.0 * k as f32, ms));
+            s.input(&pointer(
+                PointerPhase::Move,
+                50.0 + 25.0 * k as f32,
+                380.0 + 11.0 * k as f32,
+                ms,
+            ));
             fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         }
-        assert!(s.agent("{}").unwrap().contains("\"selected\":[5,8,9,10,11,12,13,14]"), "{}", s.agent("{}").unwrap());
+        assert!(
+            s.agent("{}")
+                .unwrap()
+                .contains("\"selected\":[5,8,9,10,11,12,13,14]"),
+            "{}",
+            s.agent("{}").unwrap()
+        );
         s.input(&pointer(PointerPhase::Up, 300.0, 490.0, ms));
         while ms < 1500.0 {
             ms += 16.0;
@@ -590,6 +742,24 @@ mod tests {
         assert_eq!(&selected.at(2 * 110, 2 * 270)[..3], &[0, 216, 255]);
         // (330, 860) is the clear glyph's centre, where CoreText's mask leaves half coverage.
         assert_eq!(&selected.at(2 * 322, 2 * 860)[..3], &[0, 216, 255]);
+
+        // The drag-select's haptics: an impact as it starts, ticks as cells change (40 ms
+        // apart at most), a soft impact as it ends.
+        let haptics = s.messages();
+        assert_eq!(
+            haptics.first().map(String::as_str),
+            Some("haptic:impact-light"),
+            "{haptics:?}"
+        );
+        assert_eq!(
+            haptics.last().map(String::as_str),
+            Some("haptic:impact-soft"),
+            "{haptics:?}"
+        );
+        assert!(
+            haptics.iter().any(|m| m == "haptic:selection"),
+            "{haptics:?}"
+        );
 
         // The button clears.
         s.input(&pointer(PointerPhase::Down, 352.0, 860.0, ms));
@@ -611,12 +781,26 @@ mod tests {
         s.size = (420.0, 912.0);
         s.safe_top = 62.0;
         s.list.offset = 200.0;
-        let pointer = |phase, x: f32, y: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let pointer = |phase, x: f32, y: f32, at_ms| InputEvent::Pointer {
+            id: 1,
+            phase,
+            x,
+            y,
+            dx: 0.0,
+            dy: 0.0,
+            kind: PointerKind::Touch,
+            buttons: 1,
+            at_ms,
+        };
         // Sideways (a vertical drag would scroll the list itself), in the top row.
         s.input(&pointer(PointerPhase::Down, 50.0, 200.0, 0.0));
         s.input(&pointer(PointerPhase::Move, 70.0, 201.0, 16.0));
         // y 83 in the list ≤ itemSize: up by 15.75.
-        assert!((s.offset() - (200.0 - 105.0 * 0.15)).abs() < 1e-9, "{}", s.offset());
+        assert!(
+            (s.offset() - (200.0 - 105.0 * 0.15)).abs() < 1e-9,
+            "{}",
+            s.offset()
+        );
     }
 
     #[test]
@@ -642,11 +826,26 @@ mod tests {
         s.size = (420.0, 912.0);
         s.safe_top = 62.0;
         s.safe_bottom = 34.0;
-        let pointer = |phase, x: f32, y: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let pointer = |phase, x: f32, y: f32, at_ms| InputEvent::Pointer {
+            id: 1,
+            phase,
+            x,
+            y,
+            dx: 0.0,
+            dy: 0.0,
+            kind: PointerKind::Touch,
+            buttons: 1,
+            at_ms,
+        };
         // Up 200 over 200 ms, then let go: the list scrolls (no selection), then flings on.
         s.input(&pointer(PointerPhase::Down, 200.0, 700.0, 0.0));
         for k in 1..=20 {
-            s.input(&pointer(PointerPhase::Move, 200.0, 700.0 - 10.0 * k as f32, 10.0 * k as f64));
+            s.input(&pointer(
+                PointerPhase::Move,
+                200.0,
+                700.0 - 10.0 * k as f32,
+                10.0 * k as f64,
+            ));
         }
         // UIScrollView began on the second move past its 10 pt: 180 of content, 1:1.
         assert!((s.offset() - 180.0).abs() < 1e-6, "{}", s.offset());
@@ -665,9 +864,18 @@ mod tests {
         u.safe_top = 62.0;
         u.input(&pointer(PointerPhase::Down, 50.0, 170.0, 0.0));
         for k in 1..=10 {
-            u.input(&pointer(PointerPhase::Move, 50.0 + 25.0 * k as f32, 170.0 + 2.0 * k as f32, 16.0 * k as f64));
+            u.input(&pointer(
+                PointerPhase::Move,
+                50.0 + 25.0 * k as f32,
+                170.0 + 2.0 * k as f32,
+                16.0 * k as f64,
+            ));
         }
         assert_eq!(u.offset(), 0.0);
-        assert!(u.agent("{}").unwrap().contains("\"selected\":[0,1,2]"), "{}", u.agent("{}").unwrap());
+        assert!(
+            u.agent("{}").unwrap().contains("\"selected\":[0,1,2]"),
+            "{}",
+            u.agent("{}").unwrap()
+        );
     }
 }
