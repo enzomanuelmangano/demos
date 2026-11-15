@@ -29,8 +29,9 @@ component AirbnbSlider
       // Host puts the Slider at its top-leading corner, so the thumb sat 14 pt above the box's
       // middle and the price + slider group above the screen's centre. The Host's place stays
       // 60 tall; the Slider gets its own height (32: the iPhone's 24 pt thumb, 4 pt over and
-      // under, measured on the phone's capture) centred in it. Across it was already centred
-      // (45 pt each side).
+      // under, measured on the phone's capture) centred in it, and its width in points: a
+      // native view given `100%` took a narrower box on the phone (the track ended at ~55 %).
+      // RN's Host: windowWidth − 90, centred (45 pt each side).
       column width=env.width - 90 height=60 flex-shrink=0 justify-content="center"
-        swift-slider progress="0" change=moved width="100%" height=32 flex-shrink=0
+        swift-slider progress="0" change=moved width=env.width - 90 height=32 flex-shrink=0
           role="slider" aria-label="Price" testId="airbnb-slider-range"
