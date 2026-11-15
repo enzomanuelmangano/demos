@@ -1,16 +1,10 @@
-// Feedback from the phone, in any open demo: shake the phone, or long-press with two fingers, and
-// a small sheet opens over the demo with its name and slug, a screenshot taken at the trigger
-// (tap it to mark a point), a text note (the system keyboard, dictation included) and quick
-// commands: Screenshot, Record 5 s, Same as RN?, Looks good. Each command is one POST /phone to
-// the Mac's feedback server (exact/parity-tools/feedback/server.ts + phone.ts), which appends it
-// to inbox.jsonl with `source: "phone"`. Nothing shows and nothing runs until the trigger: one
-// event-type check per UIEvent and one idle two-finger recognizer on the demo's window.
-//
-// The Mac: `feedback-host/mac.json` in the bundle ({ hosts, port }, written by tools/phone.mjs
-// at build time), else the launch argument `-feedbackHost <ip[:port]>` (UserDefaults). Raw
-// HTTP/1.1 over Network.framework, so App Transport Security never refuses a cleartext LAN IP.
-// A command that can't be delivered stays queued in Application Support/exact-feedback and is
-// retried every 20 s and on the next trigger, until the server answers 2xx: a note is never lost.
+// Feedback from the phone, in any open demo: shake, or long-press with two fingers, to open a sheet
+// with the demo's name and slug, a screenshot taken at the trigger (tap it to mark a point), a note
+// and quick commands. Each command is one `POST /phone` to the Mac's feedback server, which appends
+// it to inbox.jsonl. The Mac is found by the launch argument `-feedbackHost <ip[:port]>`, else by
+// `feedback-host/mac.json` in the bundle. Requests are raw HTTP/1.1 over Network.framework so App
+// Transport Security never refuses a cleartext LAN IP; an undelivered command stays queued on disk
+// and is retried every 20 s and on the next trigger, until the server answers 2xx.
 import Foundation
 #if os(iOS)
 import AVFoundation
@@ -25,7 +19,6 @@ enum PhoneFeedback {
     private static var open = false
     static var recording = false
 
-    /// A demo-card in a window: that demo is the one feedback is about.
     static func attach(_ card: DemoCardView) {
         installShake()
         self.card = card
@@ -83,7 +76,6 @@ enum PhoneFeedback {
         }
     }
 
-    /// Five seconds of the screen (ReplayKit), H.264 at 540 points wide, then one `clip` command.
     static func record(slug: String, name: String) {
         guard !recording else { return }
         recording = true
@@ -299,7 +291,6 @@ final class FeedbackQueue {
             .filter { $0.pathExtension == "json" }.sorted { $0.lastPathComponent < $1.lastPathComponent }
     }
 
-    /// Where the Mac is: the launch argument, then the bundle's mac.json, then the last that answered.
     private func hosts() -> [(String, UInt16)] {
         var out: [(String, UInt16)] = []
         if let good { out.append(good) }
@@ -372,7 +363,6 @@ final class FeedbackQueue {
         }
     }
 
-    /// One request to the first host that answers.
     private func request(_ method: String, _ path: String, _ body: Data?, _ hosts: [(String, UInt16)],
                          _ done: @escaping (Int?, Data?) -> Void) {
         guard let (host, port) = hosts.first else { DispatchQueue.main.async { done(nil, nil) }; return }

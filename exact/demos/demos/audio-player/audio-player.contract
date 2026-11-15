@@ -1,50 +1,40 @@
-// Audio Player, redesigned from the owner's phone note ("migliora il layout, magari Liquid Glass,
-// musica vera di Hania Rani 'Run', config per pausa e play, haptics sul pan"). RN's original
-// (src/animations/audio-player) is the waveform of fifty bars that a finger scrubs; here it sits
-// in an iOS 26 now-playing screen: the artwork, then a liquid-glass card with the title and
-// artist, the waveform with its two times, and glass controls (back 15 s, play / pause,
-// forward 15 s).
+// Audio Player: a now-playing screen with the artwork, then a liquid-glass card holding the title,
+// the waveform with its two times, and glass controls (back 15 s, play / pause, forward 15 s).
 //
-// Who does what, so nothing commits per frame:
-// - The waveform, its times, the playhead's clock and the scrub are Rust: gpu/src/audio_player.rs
-//   in card mode (the second input is "card"). It posts "haptic:grab" / "haptic:tick" (each bar
-//   the finger crosses) / "haptic:release", "seek:<s>" when a scrub or skip moves the playhead,
-//   "ended", and "audio-player:2" at mount. A build older than card mode posts nothing and
-//   draws RN's demo (pills, purple row, a 22 s loop) over the whole frame: until it says
-//   "audio-player:2" the canvas is laid out so that only RN's purple row shows, clipped.
-// - The sound is the `audio-track` native view (modules/apple/AudioTrack.swift): the bundled
-//   assets/audio/track.m4a (not in git: the owner adds it) on AVAudioPlayer, `.playback` while it
-//   plays. It answers "ready:<s>", "wave:<50 levels>", "time:<s>", "ended:", "paused:",
-//   "missing:<file>". Without the file (or before the build that ships the tag) the UI plays
-//   on a nominal 3:00, silently.
+// Nothing commits per frame:
+// - The waveform, its times, the playhead and the scrub are a Rust surface (gpu/src/audio_player.rs)
+//   in card mode. It posts haptics on the grab, on each bar the finger crosses and on release,
+//   "seek:<s>" when the playhead moves, "ended", and "audio-player:2" at mount. An older build
+//   draws the legacy row instead, so the canvas is clipped to that row until the mount message.
+// - The sound is the `audio-track` native view (modules/apple/AudioTrack.swift), playing
+//   assets/audio/track.m4a. The file is not in git. Without it, the UI plays on a nominal 3:00,
+//   silently.
 use DemoEnv, demoButtonRow from "../env.contract"
 
 fn trackTitle(): string = "Now, Run"
 fn trackArtist(): string = "Hania Rani"
-// The owner's cover, beside the track (gitignored, bundled by a native build). Until it loads
-// (or with no file) the drawn artwork and the warm gradients stand in.
+// The cover, beside the track (gitignored, bundled by a native build). Until it loads, or with
+// no file, the drawn artwork stands in.
 fn coverSource(): string = "assets/audio/cover.jpg"
 
-// The artwork's side inset (20). The card floats as iOS 26's bottom UI does: concentric with the
-// display's corners (radius 62 on the iPhone 17 family), 10 from the sides and the bottom, past
-// the home indicator's safe area, so its radius is 62 − 10 = 52; what it holds is concentric in
-// turn at 52 − its padding 22 = 30.
+// The card floats like iOS 26's bottom UI: 10 pt from the sides and the bottom, concentric with
+// the display's 62 pt corner, so its radius is 52. Its content is concentric in turn: 52 − 22 = 30.
 fn audioSideInset(): number = 20
 fn audioScreenRadius(): number = 62
 fn audioFloatInset(): number = 10
 fn audioCardRadius(): number = audioScreenRadius() - audioFloatInset()
 fn audioCardInset(): number = 22
 fn audioInnerRadius(): number = audioCardRadius() - audioCardInset()
-// The waveform's slot: the bars (52) and the times under them.
+// The waveform's slot: the bars and the times under them.
 fn audioSlotHeight(): number = 80
 
 component AudioPlayer
   props
     env: DemoEnv
-  // The surface speaks card mode (a build with it).
+  // Set when the surface reports card mode.
   state cardMode = false
   state playing = false
-  // The artwork's size follows the press, not the player's answer: set in the same action.
+  // The artwork grows with the press, in the same action, not on the player's reply.
   state big = false
   state coverReady = false
   // From `audio-track`: the file's length, its 50 levels, its clock ("<n>:<s>").
@@ -100,18 +90,17 @@ component AudioPlayer
   derive top = env.safeTop + demoButtonRow() + 8
   derive bottom = audioFloatInset()
   derive slotWidth = env.width - 2 * audioFloatInset() - 2 * audioCardInset()
-  // The card: title block 50, the slot, the controls 72, gaps 18 + 14, insets 22 + 22.
+  // Title block 50, slot, controls 72, gaps 18 and 14, insets 22 on each side.
   derive cardHeight = 50 + audioSlotHeight() + 72 + 18 + 14 + 2 * audioCardInset()
   derive art = min(env.width - 2 * audioSideInset() - 24, env.height - top - bottom - cardHeight - 32)
-  // A build without card mode: RN's whole column (window × 0.95 wide, 130 tall) scaled so its
-  // purple row is the slot, the row 50 below the column's top.
+  // Without card mode, the legacy row is scaled to fill the slot.
   derive legacyWidth = slotWidth / 0.95
   view
     column position="absolute" inset=0 background-color="#15110f"
       background-image="radial-gradient(95% 55% at 50% 22%, rgba(184, 146, 108, 0.55) 0%, rgba(184, 146, 108, 0) 100%), radial-gradient(90% 50% at 85% 95%, rgba(78, 66, 120, 0.5) 0%, rgba(78, 66, 120, 0) 100%), radial-gradient(70% 40% at 0% 70%, rgba(150, 92, 70, 0.35) 0%, rgba(150, 92, 70, 0) 100%)"
       padding-top=top padding-bottom=bottom padding-left=audioFloatInset() padding-right=audioFloatInset()
       color-scheme="dark" testId="audio-player"
-      // Apple Music's backdrop: the cover filling the screen under a dark blur, dimmed.
+      // Backdrop: the cover filling the screen, under a dark blur and a dim.
       if coverReady
         image coverSource() position="absolute" top=0 left=0 width=env.width height=env.height
           object-fit="cover" aria-hidden=true
@@ -119,11 +108,11 @@ component AudioPlayer
           backgroundMaterial="dark" aria-hidden=true
         view position="absolute" top=0 left=0 width=env.width height=env.height
           background-color="rgba(0, 0, 0, 0.22)" aria-hidden=true
-      // The artwork: drawn, not a record sleeve. It breathes with playback, as Music's does.
+      // The artwork is drawn. It grows while playing.
       column flex=1 align-items="center" justify-content="center"
         padding-left=(audioSideInset() - audioFloatInset()) padding-right=(audioSideInset() - audioFloatInset())
-        // Only this box scales, on Core Animation: no layout, no shadow or clip to redraw, a
-        // critically damped spring (c = 2·√(k·m)) started by the press's own commit.
+        // Only this box scales, on Core Animation, so nothing lays out or redraws. The spring is
+        // critically damped.
         view width=art height=art scale=(big ? 1 : 0.9)
           transition="scale -exact-spring(200, 28.2843, 1)"
           aria-label=`${trackTitle()} by ${trackArtist()}` testId="audio-artwork"
@@ -147,7 +136,7 @@ component AudioPlayer
         column gap=2 height=50 justify-content="center"
           text trackTitle() font-size=22 font-weight=700 color="#ffffff" testId="audio-title"
           text trackArtist() font-size=17 color="rgba(255, 255, 255, 0.62)" testId="audio-artist"
-        // The waveform. In card mode the surface fills the slot; before it, RN's row is clipped.
+        // The waveform. Before card mode, the legacy row is clipped to the slot.
         view position="relative" width=slotWidth height=audioSlotHeight() overflow="hidden"
           border-radius=(cardMode ? 0 : 15) corner-shape="-exact-continuous"
           canvas surface=audio_player(env.seed, "card", playing, duration, skip, wave, sync)
@@ -155,7 +144,6 @@ component AudioPlayer
             top=(cardMode ? 0 : -50) width=(cardMode ? slotWidth : legacyWidth)
             height=(cardMode ? audioSlotHeight() : 130) touch-action="none" testId="audio-waveform"
             aria-label="Waveform: drag to scrub"
-        // The real sound: `audio-track` (modules/apple/AudioTrack.swift).
         audio-track play-state=(playing ? "true" : "false") seek=seek message=track
           position="absolute" width=1 height=1 aria-hidden=true
         row justify-content="center" align-items="center" gap=28 glassGroup=28 margin-top=-4

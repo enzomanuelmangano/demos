@@ -1,19 +1,15 @@
-// Airbnb Slider: a price from $0 to $4500 set by a slider; each digit rolls to its value, the
-// leading zeros fade out and the number re-centres, the "$" following it. RN:
-// src/animations/airbnb-slider (index.tsx, constants.ts, components/animated-count.tsx,
-// animated-digit.tsx, components/animated-slider/index.liquid.tsx: the variant the
-// liquid-glass resolver picks on iOS 26 and later, @expo/ui's SwiftUI Slider). The slider is
-// SwiftUI's Slider through the `swift-slider` native view (as @expo/ui hosts it); the "$" and the digits, with their
-// springs and fades, are gpu/src/airbnb_slider.rs, given the price.
+// Airbnb Slider: a price from $0 to $4500 set by a slider. Each digit rolls to its value, the
+// leading zeros fade out and the number re-centres. The price is a Rust surface
+// (gpu/src/airbnb_slider.rs); the slider is SwiftUI's Slider, hosted by the `swift-slider` view.
 use DemoEnv from "../env.contract"
 
 // The price a slider value shows, and its digit count (the number re-centres when it changes).
 fn priceOf(v: number): number = round(min(max(v, 0), 1) * 4500)
 fn digitsOf(p: number): number = p >= 1000 ? 4 : (p >= 100 ? 3 : (p >= 10 ? 2 : 1))
 fn atEnd(p: number): bool = p == 0 or p == 4500
-// The haptics' hysteresis, dollars (about 2 pt of the slider): the digit count they feel
-// changes only once the price is this far past the line (10, 100, 1000), and an end re-arms
-// only this far from it, so a price hovering on $999 / $1000 (or an end) does not flap.
+// Haptic hysteresis, in dollars (about 2 pt of the slider). A digit-count change is felt only
+// once the price passes its line (10, 100, 1000) by this much, and an end re-arms only this far
+// from it. A price hovering at $999/$1000 or an end therefore does not flap.
 fn hapticGap(): number = 30
 fn feltDigits(p: number, d: number): number =
   digitsOf(max(p - hapticGap(), 0)) > d ? digitsOf(max(p - hapticGap(), 0)) : (digitsOf(p + hapticGap()) < d ? digitsOf(p + hapticGap()) : d)
@@ -23,15 +19,13 @@ component AirbnbSlider
     env: DemoEnv
   // The slider's value (0…1): `sliderProgress`.
   state progress = 0
-  // Haptics (past RN, which plays none): the digit count last felt, and whether an end's rigid
-  // played and is not re-armed yet (it starts on $0, so leaving it is silent).
+  // The digit count last felt, and whether an end's rigid has played and is not re-armed yet.
+  // It starts on $0, so leaving that end is silent.
   state felt = 1
   state ended = true
-  // onSliderValueChange: price.set(Math.round(interpolate(value, [0, 1], [0, 4500], CLAMP))).
-  // Haptics, one per change at most: impact-rigid when the price reaches $0 or $4500 (once per
-  // excursion, re-armed hapticGap() away from it), else selection when its digit count changes
-  // (9 → 10, 99 → 100, 999 → 1000: the number re-centres and a digit fades in or out), felt
-  // with hapticGap() of hysteresis. Only a few crossings in the whole range, no rate limit.
+  // Haptics, at most one per change: impact-rigid when the price reaches $0 or $4500 (once per
+  // excursion), else selection when the digit count changes (9 → 10, 99 → 100, 999 → 1000).
+  // There are only a few crossings in the whole range, so no rate limit is needed.
   action moved(v: string)
     progress = match parseNumber(v) { case some(n) => n, case none => progress }
     if atEnd(priceOf(progress)) and not ended
@@ -42,32 +36,17 @@ component AirbnbSlider
     felt = atEnd(priceOf(progress)) ? digitsOf(priceOf(progress)) : feltDigits(priceOf(progress), felt)
     ended = atEnd(priceOf(progress)) or (ended and (priceOf(progress) < hapticGap() or priceOf(progress) > 4500 - hapticGap()))
   view
-    // styles.container: Palette.background, centred.
     column position="absolute" inset=0 background-color="color(display-p3 0.8902 0.9255 0.9804)"
       align-items="center" justify-content="center" testId="airbnb-slider"
-      // The price row (marginBottom 50): 36 tall, drawn across the screen's width.
+      // The price row: 36 pt tall, 50 pt above the slider.
       canvas surface=airbnb_slider(round(min(max(progress, 0), 1) * 4500)) width=env.width height=36
         margin-bottom=50 flex-shrink=0 testId="airbnb-slider-price" aria-label="Price"
-      // The Host (width windowWidth − 90, height 60) and its SwiftUI Slider: `swift-slider`
-      // (modules/apple/Demos.swift), expo-ui's Host and SliderView, the Slider at the Host's
-      // top-leading corner (RN's justifyContent acts on no Yoga child).
-      // The owner's call (phone feedback, 2026-11-15, "the slider isn't really centred"): RN's
-      // Host puts the Slider at its top-leading corner, so the thumb sat 14 pt above the box's
-      // middle and the price + slider group above the screen's centre. The Host's place stays
-      // 60 tall; the Slider gets its own height (32: the iPhone's 24 pt thumb, 4 pt over and
-      // under, measured on the phone's capture) centred in it, and its width in points: a
-      // native view given `100%` took a narrower box on the phone (the track ended at ~55 %).
-      // RN's Host: windowWidth − 90, centred (45 pt each side).
+      // The host is 60 pt tall and inset 45 pt on each side. The Slider is 32 pt tall (the 24 pt
+      // thumb plus 4 pt above and below), centred in it. Its width is in points: a native view
+      // given 100% takes a narrower box.
       column position="relative" width=env.width - 90 height=60 flex-shrink=0 justify-content="center"
-        // The owner's call (phone feedback, 2026-11-15): the Slider's unfilled track (white at a
-        // low alpha, as RN's) all but vanished on Palette.background. A neutral track sits under
-        // it, where the phone's capture puts the native one (6 pt tall, its centre at 479.3 of 874
-        // pt), from past the thumb to the end: the liquid-glass thumb is see-through, so nothing
-        // may lie under it (phone feedback, 2026-11-15). The thumb's centre is 18.5 + progress ×
-        // (width − 37) (its capsule 37 pt wide on the capture, at each end at rest); the track
-        // starts 26 pt past it, room for the thumb grown under a finger. The thumb and the track
-        // are centred on each other by the Slider itself (within half a point). Next build: the
-        // native maximum-track tint replaces this.
+        // The unfilled track. The liquid-glass thumb is see-through, so nothing may lie under it:
+        // the track starts 26 pt past the thumb's centre, which is 18.5 + progress × (width − 37).
         view position="absolute" right=0 top=26.333 height=6 border-radius=3
           left=(18.5 + min(max(progress, 0), 1) * (env.width - 90 - 37) + 26)
           background-color="rgba(60, 60, 67, 0.18)" pointer-events="none" aria-hidden=true

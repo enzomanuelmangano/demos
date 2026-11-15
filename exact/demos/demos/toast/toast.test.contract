@@ -14,7 +14,6 @@ test "each press stacks the next toast, the front one swipeable"
   expect tree has "toast-0"
 
 test "past the fifth the spam toast, and no more than six in the list"
-  // Each test starts on a fresh page: the fifth press is "And if you're lazy" (key 4).
   tap "toast-button"
   tap "toast-button"
   tap "toast-button"

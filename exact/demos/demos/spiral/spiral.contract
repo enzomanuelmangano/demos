@@ -1,8 +1,8 @@
-// Spiral: ~1640 glowing circles on a logarithmic spiral; a tap anywhere springs them to a new
-// angle. RN: src/animations/spiral (Skia). Drawn and sprung in Rust: gpu/src/spiral.rs.
+// Spiral: about 1640 glowing circles on a logarithmic spiral. A tap anywhere springs them to a new
+// angle. Drawn and sprung in Rust (gpu/src/spiral.rs).
 
 component Spiral
-  // pressto's PressableWithoutFeedback: the surface posts the app's global onPress.
+  // The surface posts the selection haptic on each tap.
   action heard(m: string)
     if m == "haptic:selection"
       haptic("selection")

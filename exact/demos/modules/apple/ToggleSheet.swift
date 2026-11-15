@@ -1,18 +1,13 @@
-// `toggle-sheet`: a real UIKit sheet of switches, light-on-painting's SettingsSheet
-// (src/animations/light-on-painting/components/settings-sheet.ios.tsx) as @expo/ui draws it: a
-// BottomSheet fitToContents (UISheetPresentationController, a detent fitted to the content, the
-// grabber, drag to dismiss) in a Host colorScheme dark, holding a VStack(spacing: 20) padded 22 all
-// round: the title in title3 semibold, then one Toggle per switch, tinted.
+// `toggle-sheet`: a real UIKit sheet of switches (content-fitted detent, grabber, dark appearance):
+// a title, then one tinted Toggle per switch. The view is an empty box; the sheet is presented from
+// the top-most view controller, because a full-screen demo route cannot present one.
 //
-// The view itself is an empty box; the sheet is presented from the top-most view controller (a
-// full-screen demo route cannot present one). Props (all text; Contract binds `title`, `color`
-// and the like to the box, so the names are the module's own):
+// Props (all text):
 //   open          "true" presents it, anything else dismisses it
 //   caption       the title
 //   switches      the rows, "|" between them, each "<id>:<1|0>:<label>"
 //   switch-tint   the toggles' tint, #rrggbb
-// Events: `change("<id>:true|false")` when a switch flips (the sheet keeps the new state until the
-// props say otherwise), `change("dismissed")` when the person drags it away.
+// Events: `change("<id>:true|false")` when a switch flips, `change("dismissed")` when dragged away.
 #if os(iOS)
 import SwiftUI
 import UIKit
@@ -56,7 +51,6 @@ struct ToggleSheetBody: View {
                     get: { model.rows.first { $0.id == row.id }?.on ?? false },
                     set: { on in
                         if let i = model.rows.firstIndex(where: { $0.id == row.id }) { model.rows[i].on = on }
-                        // settings-sheet.ios.tsx toggle(): Haptics.selectionAsync, then the change.
                         UISelectionFeedbackGenerator().selectionChanged()
                         flipped(row.id, on)
                     }))
@@ -67,7 +61,6 @@ struct ToggleSheetBody: View {
     }
 }
 
-/// The sheet's dismissal, reported (an NSObject, as UIKit's delegates are).
 private final class ToggleSheetDismissal: NSObject, UISheetPresentationControllerDelegate {
     var dismissed: () -> Void = {}
     func presentationControllerDidDismiss(_ presentationController: UIPresentationController) { dismissed() }

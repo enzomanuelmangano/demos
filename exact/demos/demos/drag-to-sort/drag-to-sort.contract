@@ -1,19 +1,16 @@
 // Drag to Sort: nine habit rows on a scroll view; a row held 500 ms lifts and follows the finger,
-// the others sliding into the order its position makes, the list scrolling near its edges.
-// RN: src/animations/drag-to-sort (index.tsx, constants.ts, utils/haptics.ts,
-// components/SortableList/*, components/ListItem/index.tsx). The whole demo is one Rust surface
-// (gpu/src/drag_to_sort.rs): the ScrollView (ui_scroll), the long-press pan, each row's timings
-// and corner radius, the rows' content (the emoji pre-rendered by TextKit) and the top gradient.
+// the others sliding into the order its position makes, the list scrolling near its edges. One
+// canvas draws the rows and owns the scroll.
 use DemoEnv from "../env.contract"
 
 component DragToSort
   props
     env: DemoEnv
-  // lightHapticFeedback: the row lifts.
+  // Haptics: a light impact as the row lifts, a soft one as the drop settles.
   action heard(m: string)
     if m == "haptic:impact-light"
       haptic("impact-light")
-    // Past RN: the drop settles with a soft impact.
+    // The drop settles with a soft impact.
     if m == "haptic:impact-soft"
       haptic("impact-soft")
   view

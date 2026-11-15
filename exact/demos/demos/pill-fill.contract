@@ -1,19 +1,11 @@
-// An opaque rounded fill for a box whose WIDTH springs by `-exact-layout-transition`, drawn so no
-// filled box ever resizes. While a layout transition resizes a box, the iOS host paints it on a
-// surface layer that keeps Core Animation's corner only in some cases (exact2 Surface.swift
-// paintSurface; parity-tools/exact-issues/radius-reduced.md): the phone showed square or
-// re-curved corners for the whole spring (composable-text, 2026-11-15).
+// An opaque rounded fill for a box whose width springs with a layout transition. On iOS, a fill
+// that resizes can lose its corner shape mid-spring, so the fill is built from pieces that never
+// resize: two end caps pinned to the box's edges, and a plain rectangle between them.
 //
-// Two clips of a fixed width, `cap`, each holding a long pill of the colour and radius: one
-// pinned to the box's left edge (it rides the box's own layout offset), one to its right edge
-// (its own layout transition, the box's spring, moves it as the edge moves). Neither resizes,
-// so both keep the layer's own corner. Between them a plain rectangle (radius 0: the resize
-// surface draws it as the layer does) fills the straight middle, 1 pt into each cap; the
-// pieces overlap (an opaque colour: the overlap does not show).
-// `cap` must hold the whole corner curve (a continuous corner reaches about 1.53 × the drawn
-// radius along the edge: 1.6 × min(radius, h/2) is safe) and leave room for the far end's:
-// cap ≤ narrowest width − 1.53 × the drawn radius. The box: `position="relative"`, this as its
-// first child, its height fixed for the spring (only the width moves).
+// `cap` must hold the whole corner curve (a continuous corner reaches about 1.53 times the
+// radius along the edge) and leave room for the far end's: cap <= narrowest width - 1.53 * radius.
+// The pieces overlap by 1 pt; the opaque colour hides the seam.
+// The box must be `position="relative"`, with this as its first child and a fixed height.
 
 component PillFill
   props

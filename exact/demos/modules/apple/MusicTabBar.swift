@@ -1,28 +1,20 @@
-// `music-tabbar` / `native-tabbar`: iOS 26's native bottom chrome: a SwiftUI TabView (the
-// floating glass tab bar), and for `music-tabbar` (Apple Music) `.tabViewBottomAccessory` holding
-// the mini player (artwork, title, artist, play/pause, next). `native-tabbar` is the same bar
-// with no accessory (telegram-theme-switch); so is a `music-tabbar` with no track-title. expandable-mini-player draws its page in Contract behind it: every
-// tab's content is clear and takes no touch, and this view answers only touches on the bar and
-// the accessory, so the page under the box still scrolls and taps.
+// `music-tabbar` / `native-tabbar`: iOS 26's native bottom chrome, a SwiftUI TabView (the floating
+// glass bar). `music-tabbar` adds a mini-player accessory (artwork, title, artist, play/pause,
+// next); `native-tabbar`, or a `music-tabbar` with no track-title, has none. The page is drawn in
+// the Contract behind it. Before iOS 26: a plain TabView bar, the mini player a capsule above it.
 //
-// Before iOS 26 (no bottom accessory, no glass bar): a plain TabView bar with the mini player
-// as a material capsule above it, so the demo still works.
-//
-// Props (all text; Contract binds `title`, `tint` and the like to the box, so the names are the
-// module's own; each was tried in a scratch contract build):
+// Props (all text):
 //   tab-titles     the tabs' titles, "|" between them
 //   tab-symbols    their SF Symbols, "|" between them, in the same order
 //   selected-tab   the selected tab's index
-//   tab-tint       the selected tab's tint, #rrggbb (Music: #FA2D48)
+//   tab-tint       the selected tab's tint, #rrggbb
 //   track-title    the mini player's title
 //   track-artist   its subtitle
-//   artwork-file   the artwork, relative to the app bundle (the app's assets/ tree is copied
-//                  into it as `assets/`)
+//   artwork-file   the artwork, relative to the app bundle
 //   is-playing     "true" shows pause, anything else play
-//   bar-appearance "dark" or "light": the bar's own appearance (an app theme, not the
-//                  system's); dark by default
-// Events (`change`): "tab:<index>" when the person picks a tab, "accessory" for a tap on the
-// mini player, "play" for its play/pause button, "next" for its next button.
+//   bar-appearance "dark" or "light": the bar's own appearance, not the system's; default dark
+// Events (`change`): "tab:<index>" for a picked tab, "accessory" for a tap on the mini player,
+// "play" and "next" for its buttons.
 #if os(iOS)
 import SwiftUI
 import UIKit
@@ -47,7 +39,6 @@ final class MusicTabBarModel: ObservableObject {
                      blue: Double(v & 0xFF) / 255, opacity: 1)
     }
 
-    /// A file of the app bundle (its resources, then its root), as AudioTrack finds its track.
     static func image(_ file: String) -> UIImage? {
         guard !file.isEmpty else { return nil }
         for base in [Bundle.main.resourceURL, Bundle.main.bundleURL].compactMap({ $0 }) {
@@ -124,7 +115,6 @@ struct MusicTabBarBody: View {
 
     @ViewBuilder private func tabs() -> some View {
         ForEach(Array(model.titles.enumerated()), id: \.offset) { index, title in
-            // The page is Contract's, behind this view: every tab's content is clear.
             Color.clear
                 .allowsHitTesting(false)
                 .tabItem {
@@ -166,15 +156,13 @@ struct MusicTabBarBody: View {
     }
 }
 
-/// Takes a touch only where SwiftUI drew something that answers it (the bar, the accessory):
-/// a hit on the hosting view itself (its clear content) passes to the Contract page under it.
+/// Takes a touch only on the bar and the accessory; hits on its clear content pass to the page below.
 final class MusicTabBarHost: UIView {
     weak var hosted: UIView?
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         guard let hit = super.hitTest(point, with: event), hit !== self, hit !== hosted else { return nil }
-        // UIKit's TabView container views that fill the box (the tab's transition view, the
-        // clear content's hosting) are not targets either: only the bar and the accessory are.
+        // TabView's full-size container views are not targets either.
         if let hosted, hit.bounds.size == hosted.bounds.size, hit.isDescendant(of: hosted) { return nil }
         return hit
     }
@@ -182,7 +170,6 @@ final class MusicTabBarHost: UIView {
 
 final class MusicTabBar: ExactNativeInstance {
     private let model = MusicTabBarModel()
-    /// `native-tabbar`: no accessory, whatever the props say.
     private let box = MusicTabBarHost()
     private var host: UIHostingController<MusicTabBarBody>?
 

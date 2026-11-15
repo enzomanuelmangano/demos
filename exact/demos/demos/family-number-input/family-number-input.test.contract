@@ -1,7 +1,6 @@
 at "/demo/family-number-input"
 
-// The number is drawn by the family_number surface (its glyph identities, enter / exit and
-// comma slides are gpu/src/family_number.rs's tests); "number" is the en-US grouped value.
+// The number is drawn by the surface; "number" is its grouped text value.
 test "typing groups the number with commas"
   expect tree has "family-number-input"
   expect text "number" == "0"

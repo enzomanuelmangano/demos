@@ -1,8 +1,5 @@
 at "/demo/sudoku"
 
-// The web host gives a surface no touches: the game, the selection, the entries, the waves and
-// the haptics are the Rust fixture tests' (gpu/src/sudoku.rs); here the Contract's layout and
-// controls.
 test "the board, the header, the digits and the tools are there"
   expect tree has "sudoku"
   expect tree has "sudoku-canvas"

@@ -1,26 +1,7 @@
-// Telegram Theme Switch: a Telegram chat list whose theme the round button switches, the new
-// theme growing in a circle from the button over the whole screen. RN:
-// src/animations/telegram-theme-switch (index.tsx, components/switch-theme,
-// components/bottom-tab-bar, components/theme-provider, constants/, screens/).
-//
-// Past RN (the owner: "massively improvable"; RN shows an empty screen), redesigned as iOS 26
-// Telegram, all Contract (gpu/src/telegram_theme_switch.rs, RN's port, is no longer drawn):
-// - Content: the Chats screen, a large title, a search field and nine chats (avatars: the app's
-//   photos for groups and channels, Telegram's gradient initials for people), each with its
-//   last message, time, and an unread badge or a read tick. Every element takes the theme's
-//   palette (Telegram's Day and Night).
-// - Bars: a floating glass tab bar (Contacts, Calls, Chats, Settings) and, beside it, the theme
-//   button: a glass circle as tall as the bar, both 10 pt from the display's edges, the bar's
-//   ends and the circle concentric with each other (radius 31). Its symbol is the theme to come
-//   (sun in the night, moon in the day), turning in as the new theme reaches it.
-// - Reveal: the screen is drawn twice, the old theme under, the new one inside a circle centred
-//   on the button that grows to the farthest corner (650 ms, ease-in-out cubic), bars included.
-//   The circle is a round, clipping box scaled from 0.012 to 1 while the screen inside it is
-//   scaled by the inverse (30 keyframes each, both linear between stops: the screen inside
-//   stays within 4.4 pt of still mid-flight, exact at rest). When it lands (the timer surface)
-//   the new theme becomes the base and the copy goes.
-// - Haptics: impact-medium on the tap, impact-soft as the reveal lands (pressto's selection at
-//   every press, the tabs' and the button's).
+// Telegram theme switch: a chat list with a floating tab bar and a round theme button. Tapping
+// the button grows the new theme in a circle from it, over the whole screen.
+// The reveal draws the screen twice: the new copy is clipped by the circle, and it is scaled by
+// the inverse of the circle so it stays still. When the reveal lands, the new theme becomes the base.
 use PressableScale from "pressto"
 use DemoEnv, floatingWidth, concentricRadius from "../env.contract"
 
@@ -29,8 +10,7 @@ fn ttsBarH(): number = 62
 fn ttsGap(): number = 8
 fn ttsRevealMs(): number = 650
 
-// Telegram's Day and Night palettes: background, primary text, secondary text, separator,
-// search fill, accent, badge, glass tint, the bar's resting fill (what the web shows).
+// Telegram's Day and Night palettes.
 fn ttsBg(dark: bool): string = dark ? "#18222D" : "#FFFFFF"
 fn ttsText(dark: bool): string = dark ? "#FFFFFF" : "#000000"
 fn ttsSecondary(dark: bool): string = dark ? "#7D8B99" : "#8E8E93"
@@ -64,7 +44,7 @@ fn ttsChats(): TtsChat[] = [
   TtsChat(name="Ocean Club", message="Tide's out at 6", time="Sat", unread=0, muted=false, photo="assets/demos/shared-transitions/thumbnails/09.jpg", pw=630, ph=788, hue=0),
 ]
 
-// Telegram's avatar gradients (top → bottom).
+// Avatar gradients, one per hue.
 fn ttsAvatar(h: number): string = h == 1 ? "linear-gradient(180deg, #FF885E 0%, #FF516A 100%)" : (h == 2 ? "linear-gradient(180deg, #72D5FD 0%, #2A9EF1 100%)" : (h == 3 ? "linear-gradient(180deg, #A0DE7E 0%, #54CB68 100%)" : "linear-gradient(180deg, #E0A2F3 0%, #D669ED 100%)"))
 fn ttsInitials(name: string): string = name.slice(0, 1)
 
@@ -139,7 +119,7 @@ keyframes ttsSymbolIn
   45% rotate="-90deg" scale=0.4 opacity=0
   100% rotate="0deg" scale=1 opacity=1
 
-// A photo laid out as `cover` in a round clip, centred (the iOS host pins object-fit to the top).
+// A photo cropped to fill a round clip. It is sized by hand, since the host pins object-fit to the top.
 component TtsPhoto
   props
     src: string
@@ -153,8 +133,7 @@ component TtsPhoto
       image src position="absolute" left=((size - iw * k) / 2) top=((size - ih * k) / 2)
         width=(iw * k) height=(ih * k) aria-hidden=true
 
-// The whole screen in one theme. `live` is the copy that takes touches (the base); the reveal's
-// copy draws only, with no test ids, and its symbol turns in.
+// The whole screen in one theme. `live` is the interactive copy; the reveal's copy only draws.
 component TtsScreen
   props
     env: DemoEnv
@@ -216,9 +195,7 @@ component TtsScreen
                       align-items="center" justify-content="center"
                       text `${c.unread}` font-size=14 line-height="18px" font-weight=600
                         color="#FFFFFF" font-variant-numeric="tabular-nums"
-      // The tab bar: native on the live copy (modules/apple/MusicTabBar.swift, `native-tabbar`:
-      // iOS 26's SwiftUI TabView, in this theme's appearance); drawn on the reveal's copy, so the
-      // circle shows the new theme's bar too.
+      // Tab bar: native on the live copy, drawn on the reveal's copy so the circle shows it too.
       if live
         native-tabbar tab-titles="Contacts|Calls|Chats|Settings"
           tab-symbols="person.crop.circle.fill|phone.fill|bubble.left.and.bubble.right.fill|gearshape.fill"
@@ -226,7 +203,7 @@ component TtsScreen
           change=native position="absolute" left=0 bottom=0 width=(barW + ttsInset())
           height=(ttsBarH() + 2 * ttsInset() + 24) testId="tts-tabs"
       else
-        // The tab bar: glass under the tabs (never their parent), touch-transparent.
+        // Glass behind the tabs. It takes no touches.
         view position="absolute" left=ttsInset() bottom=ttsInset() width=barW height=ttsBarH()
           border-radius=radius corner-shape="-exact-continuous" background-color=ttsBarFill(dark)
           box-shadow="0px 8px 24px rgba(0, 0, 0, 0.12)" pointer-events="none" aria-hidden=true
@@ -244,7 +221,7 @@ component TtsScreen
                     aria-hidden=true
                   text ttsTabName(i) font-size=10 line-height="12px" font-weight=600
                     color=(tab == i ? ttsAccent(dark) : ttsSecondary(dark))
-      // The theme button: a glass circle as tall as the bar, beside it; the label above the glass.
+      // The theme button: a glass circle beside the tab bar.
       view position="absolute" right=ttsInset() bottom=ttsInset() width=ttsBarH() height=ttsBarH()
         border-radius=radius background-color=ttsBarFill(dark)
         box-shadow="0px 8px 24px rgba(0, 0, 0, 0.12)" pointer-events="none" aria-hidden=true
@@ -264,15 +241,15 @@ component TtsScreen
 component TelegramThemeSwitch
   props
     env: DemoEnv
-  // The theme drawn as the base, the one revealing over it, and the reveal's serial (its key
-  // remounts the circle, so each switch plays from the start; 0: none).
+  // The theme drawn as the base, and the one revealing over it. The reveal's serial remounts the
+  // circle, so each switch plays from the start (0 means none).
   state dark = true
   state target = true
   state reveal = 0
   state tab = 2
   derive cx = env.width - ttsInset() - ttsBarH() / 2
   derive cy = env.height - ttsInset() - ttsBarH() / 2
-  // At least the distance to the farthest corner (top left): √(a² + b²) ≤ a + b² / 2a ≤ a + b / 2.
+  // Radius that reaches the farthest corner, with a small margin.
   derive R = ceil(max(cx, cy) + min(cx, cy) / 2) + 2
 
   action toggle
@@ -294,8 +271,7 @@ component TelegramThemeSwitch
       canvas surface=timer(reveal, ttsRevealMs()) message=landed width=1 height=1
         position="absolute" left=0 top=0 aria-hidden=true pointer-events="none"
       TtsScreen(env=env, dark=dark, live=true, tab=tab, toggle=toggle, pick=pick)
-      // The reveal: a round clipping box on the button, scaled up, the screen inside it scaled
-      // down by the same factor (pinned where it is), in the theme to come.
+      // The reveal: a round box that grows from the button, in the new theme.
       if reveal != 0
         view position="absolute" left=(cx - R) top=(cy - R) width=(2 * R) height=(2 * R)
           border-radius=R overflow="hidden" pointer-events="none"

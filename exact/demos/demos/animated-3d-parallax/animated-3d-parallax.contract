@@ -1,7 +1,6 @@
-// Animated 3D Parallax: a 300² card that tilts in 3D toward the finger, its logo tilting after
-// it on a looser spring (the lag is the parallax). RN: src/animations/animated-3d-parallax
-// (index.tsx, hooks/use-3d-rotation-style.ts). The card, its shadow, the logo, the pan and both
-// springs are Rust: gpu/src/animated_3d_parallax.rs (on styles.container's #17202A).
+// Animated 3D Parallax: a 300 pt card that tilts in 3D toward the finger. Its logo tilts after it
+// on a looser spring, so the logo lags behind the card. The card, logo, pan and springs are a
+// Rust surface (gpu/src/animated_3d_parallax.rs).
 
 component Animated3dParallax
   view

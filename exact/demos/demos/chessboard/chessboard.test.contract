@@ -1,13 +1,12 @@
 at "/demo/chessboard"
 
-// The web host gives a surface no touches: the rules (perft, castling, en passant, promotion,
-// mate, stalemate), the drag, the tap, the clocks, the aura and the review card are the Rust tests'
-// (gpu/src/chessboard.rs, gpu/src/chessboard/chess.rs); here what the Contract holds.
+// The web host gives a surface no touches, so the rules, the drag, the clocks and the review card
+// are checked by the Rust tests (gpu/src/chessboard.rs, gpu/src/chessboard/chess.rs). Here only
+// the screen is checked.
 test "the canvas fills the screen"
   expect tree has "chessboard"
   expect tree has "chessboard-canvas"
 
-// The bar shows once the surface posts its puzzle mode: a build without the puzzle (and the web,
-// whose host hears no surface message) never does.
+// The bar appears only once the surface posts a puzzle mode, which the web never does.
 test "the puzzle bar waits for the surface"
   expect tree missing "puzzle-bar"

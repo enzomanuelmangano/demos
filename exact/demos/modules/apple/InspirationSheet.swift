@@ -1,17 +1,13 @@
-// `inspiration-sheet`: the demo screen's Inspiration sheet (src/navigation/home/demo-inspiration.tsx)
-// as @expo/ui's BottomSheet presents it: a real UIKit sheet (UISheetPresentationController) with a
-// detent fitted to its content (fitToContents), the grabber (presentationDragIndicator visible),
-// the system background in the dark appearance (Host colorScheme dark) and drag to dismiss.
-// Its content is RN's VStack(alignment: .leading, spacing: 16): the title in title2 bold, the story
-// in body (fixedSize vertical), and the action, a large capsule on glassProminent
-// (borderedProminent before iOS 26) at the sheet's full width, 8 pt more air above it; inset 24
-// all round.
+// `inspiration-sheet`: the demo screen's Inspiration sheet, a real UIKit sheet
+// (UISheetPresentationController) with a detent fitted to its content, a grabber, the system
+// background in the dark appearance and drag to dismiss. Content: a bold title, the story, and a
+// full-width capsule action (glassProminent from iOS 26, borderedProminent earlier).
 //
-// The view itself is an empty box; the sheet is presented from the top-most view controller (the
-// full-screen demo route cannot present a dialog, LLP: showModal from it never appeared). Props:
-// `open` ("true" presents it, anything else dismisses it), `caption` (the title), `story`,
-// `action-label` (the action's; Contract refuses `label` on a native tag). Events: `press` when the action is tapped (the route opens the URL and
-// closes the sheet), `change("dismissed")` when the person drags it away.
+// The view itself is an empty box; the sheet is presented from the top-most view controller,
+// because the full-screen demo route cannot present a dialog itself. Props: `open` ("true"
+// presents, anything else dismisses), `caption` (the title), `story`, `action-label` (the Contract
+// refuses `label` on a native tag). Events: `press` when the action is tapped (the route opens
+// the URL and closes the sheet), `change("dismissed")` when the person drags it away.
 #if os(iOS)
 import SwiftUI
 import UIKit
@@ -43,7 +39,7 @@ struct InspirationBody: View {
         .padding(.bottom, 24)
     }
 
-    /// buttonStyle(LIQUID_GLASS ? 'glassProminent' : 'borderedProminent').
+    /// Glass from iOS 26, bordered prominent on earlier versions.
     @ViewBuilder
     private func styled<V: View>(_ button: V) -> some View {
         if #available(iOS 26.0, *) {
@@ -105,11 +101,9 @@ final class InspirationSheet: ExactNativeInstance {
         let events = self.events
         let host = UIHostingController(rootView: InspirationBody(model: model, action: { events.press() }))
         host.overrideUserInterfaceStyle = .dark
-        // iOS 26's sheet floats inset from the display's corners; its content keeps no safe area
-        // under it, so the action sits one inset (24) above the sheet's bottom edge, as on the
-        // sides, and its capsule (50 tall, radius 25) is concentric with the sheet's corners
-        // (their radius less the inset) and so with the display's (the owner's phone note: "See
-        // Post lower, concentric with the device"). RN's content kept the bottom safe area.
+        // iOS 26's sheet floats inset from the display's corners. With no bottom safe area the
+        // action sits one inset (24) above the sheet's edge, so its capsule is concentric with the
+        // sheet's corners and the display's.
         host.safeAreaRegions = []
         host.view.backgroundColor = .clear
         host.modalPresentationStyle = .pageSheet

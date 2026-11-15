@@ -1,8 +1,6 @@
-// Animated Indicator List: a list of films grouped by actor under a row of the actors' names;
-// as the list scrolls, the row slides to keep the current section's name at the left and the
+// Animated Indicator List: a list of films grouped by actor, under a row of the actors' names.
+// As the list scrolls, the row slides to keep the current section's name at the left, and the
 // black bar under it stretches to that name's width. Tapping a name scrolls to its section.
-// RN: src/animations/animated-indicator-list (index.tsx, constants.ts,
-// components/SectionListItem.tsx, hooks/useHeaderLayout.ts, hooks/useHeaderStyle.ts).
 use DemoEnv, demoButtonRow from "../env.contract"
 
 // constants.ts data: a header row, then its films.
@@ -25,19 +23,17 @@ fn data(): ListEntry[] = [
   f("Once Upon a Time... in Hollywood"), f("The Curious Case of Benjamin Button"),
 ]
 fn headers(): string[] = data().filter(e => e.header).map(e => e.label)
-// The index of each header in `data` (scrollToIndex's target).
+// The row index of each header, for scrolling to it.
 fn headerRows(): number[] = [0, 7, 13, 19, 25]
 
-// index.tsx: HeaderHeight 65, ItemHeight 50. headersLayoutY: each header's offset in the list
-// (the interpolation's input range): 0, 65 + 6 × 50, … .
+// Header rows are 65 pt, item rows 50 pt. Each header's offset in the list is an input of the
+// interpolation below.
 fn headerY(): number[] = [0, 365, 680, 995, 1310]
 
 fn nth(xs: number[], i: number): number = match xs.at(i) { case some(v) => v, case none => 0 }
-// interpolate(contentOffsetY, headersLayoutY, outs, Extrapolation.CLAMP) over five points is
-// out0 + Σ_k (out_k+1 − out_k) × clamp((y − y_k) / (y_k+1 − y_k), 0, 1): each segment is a box
-// |Δ| wide that a scroll-driven animation translates by 0 → ∓100 % of itself over
-// [y_k, y_k+1] (linear, `both` fill = CLAMP), nested so the translates add. Zero commits: the
-// host moves them in the scroll's own frame (was a `scroll=` action, a commit per frame).
+// The five-point clamped interpolation is a sum of segments. Each segment is a box as wide as its
+// change, translated by a scroll-driven animation over its own range. The segments nest, so the
+// translates add. Nothing commits per frame: the host moves them in the scroll's frame.
 fn delta(outs: number[], k: number): number = nth(outs, k + 1) - nth(outs, k)
 // Yoga ceils a Text's measured width to the device pixel (3x).
 fn ceilPx(v: number): number = ceil(v * 3 - 0.001) / 3
@@ -57,35 +53,28 @@ component AnimatedIndicatorList
   // headersLayoutXData before the headers are measured: x = i, width 0.
   state xs = [0, 1, 2, 3, 4]
   state widths = [0, 0, 0, 0, 0]
-  // useMounted: RN measures the headers 100 ms after mount ("otherwise the layout isn't
-  // correct"), x relative to their row. A demo is no root and declares no timer: the row's
-  // `intersect`, delivered once it is laid out after mounting, measures them instead.
-  // RN's header is padding 20 around a Text that Yoga measures ceiled to the device pixel
-  // (JOE PESCI: 81.81 → 82), the row's x the sum of those: the host's text stays unceiled, so
-  // the headers take RN's widths here and the measures are computed from them.
+  // The headers are measured once the row is laid out, through its `intersect`.
+  // Each width is the label ceiled to the device pixel, plus 20 pt of padding on each side. The
+  // host's text is not ceiled, so the widths are computed here.
   action measureHeaders(entry: IntersectionObserverEntry)
     let t0 = frame("label-0")
     let t1 = frame("label-1")
     let t2 = frame("label-2")
     let t3 = frame("label-3")
     let t4 = frame("label-4")
-    // `frame` is the box as drawn, every transform applied, and the row first intersects while
-    // the demo's card is still zooming open (DemoLaunch scales the whole demo): the names were
-    // measured at the card's scale (≈ 0.15), set as the labels' widths and kept, so the names
-    // overlapped and the bar was a stub (phone feedback, 2026-11-15). A 100 pt ruler under the
-    // same transform gives that scale; the widths are divided back to points.
+    // frame() includes transforms, and the row can intersect while the demo's open zoom is still
+    // running. So the text is measured through a 100 pt ruler under the same transform, and the
+    // widths are divided back to points.
     let ruler = frame("ail-ruler")
     if not (ruler.unavailable or ruler.width <= 0 or t0.unavailable or t1.unavailable or t2.unavailable or t3.unavailable or t4.unavailable)
       let k = ruler.width / 100
       let w = [ceilPx(t0.width / k) + 40, ceilPx(t1.width / k) + 40, ceilPx(t2.width / k) + 40, ceilPx(t3.width / k) + 40, ceilPx(t4.width / k) + 40]
       widths = w
       xs = [0, nth(w, 0), nth(w, 0) + nth(w, 1), nth(w, 0) + nth(w, 1) + nth(w, 2), nth(w, 0) + nth(w, 1) + nth(w, 2) + nth(w, 3)]
-  // onSelectHeaderItem: scrollToIndex({ index }), animated.
+  // Scrolls to the section, animated.
   action select(i: number)
     scrollIntoView(`row-${nth(headerRows(), i)}`, behavior="smooth")
   view
-    // styles.container: white, flex 1, overflow hidden; paddingTop safeTop +
-    // DEMO_BUTTON_ROW_HEIGHT, paddingBottom the bottom inset.
     column position="absolute" inset=0 background-color="#ffffff" overflow="hidden" timeline-scope="--ail"
       padding-top=(env.safeTop + demoButtonRow()) padding-bottom="env(safe-area-inset-bottom)"
       testId="animated-indicator-list"
@@ -97,26 +86,21 @@ component AnimatedIndicatorList
             animation=segAnim(delta(xs, 2), -1) animation-timeline="--ail" animation-range=segRange(2)
             column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(xs, 3)
               animation=segAnim(delta(xs, 3), -1) animation-timeline="--ail" animation-range=segRange(3)
-              // The header row: translateX −interpolate(offset, headersLayoutY, headersX), the
-              // segments above.
-              // The ruler `measureHeaders` reads the demo's drawn scale from: 100 pt, unpainted (no fill), over
-              // the labels' own lines (padding 20, the 14 pt line), as the open's taper scales
-              // each height of the card by its own amount.
+              // The header row slides by the segments above. The ruler is an unpainted 100 pt box
+              // that measureHeaders reads the drawn scale from.
               row id="header-row" position="relative" flex-shrink=0 intersect=measureHeaders
                 view id="ail-ruler" position="absolute" left=0 top=20 width=100 height=17
                   pointer-events="none" aria-hidden=true
                 for name, i in headers() key=name
-                  // MeasureableAnimatedView: padding 20; onTouchStart selects the header.
+                  // Padding 20. A touch selects the header.
                   view id=`header-${i}` flex-shrink=0 padding=20 pointerdown=select(i) role="button"
                     aria-label=name testId=`header-${i}`
-                    // fontSize 14, bold, uppercase, letterSpacing 1.
                     text name id=`label-${i}` font-size=14 font-weight=700 text-transform="uppercase" letter-spacing=1
                       white-space="nowrap" color="#000000" flex-shrink=0
                       width=(nth(widths, i) > 0 ? `${nth(widths, i) - 40}px` : "auto")
-      // rIndicatorStyle: a 3 tall black bar from the left edge, `width` wide (RN draws it as
-      // 100 wide scaled by width / 100 from its left). A box takes no per-axis scale, so the
-      // same pixels are boxes that only translate: a clip 1000 wide whose right edge is at
-      // `width`, holding a 1000 wide bar put back at the left edge.
+      // The bar is 3 pt tall, from the left edge. A box takes no per-axis scale, so the bar is
+      // a clip 1000 pt wide whose right edge sits at the width, holding a 1000 pt bar that is
+      // moved back to the left edge.
       column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(widths, 0)
         animation=segAnim(delta(widths, 0), 1) animation-timeline="--ail" animation-range=segRange(0) testId="indicator"
         column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(widths, 1)
@@ -125,8 +109,7 @@ component AnimatedIndicatorList
             animation=segAnim(delta(widths, 2), 1) animation-timeline="--ail" animation-range=segRange(2)
             column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(widths, 3)
               animation=segAnim(delta(widths, 3), 1) animation-timeline="--ail" animation-range=segRange(3)
-              // The clip: right edge at width(offset); the bar inside is put back at the left edge
-              // by the same segments negated.
+              // The clip's right edge is at the width. The segments, negated, move the bar back.
               view flex-shrink=0 width=1000 height=3 overflow="hidden" translate=`${nth(widths, 0) - 1000}px 0px`
                 column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(widths, 0)
                   animation=segAnim(delta(widths, 0), -1) animation-timeline="--ail" animation-range=segRange(0)
@@ -137,21 +120,16 @@ component AnimatedIndicatorList
                       column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(widths, 3)
                         animation=segAnim(delta(widths, 3), -1) animation-timeline="--ail" animation-range=segRange(3)
                         view width=1000 height=3 background-color="#000000" translate=`${1000 - nth(widths, 0)}px 0px`
-      // The FlatList: paddingBottom 400.
       column flex=1 min-height=0 overflow-y="auto" scroll-timeline="--ail y" testId="animated-indicator-list-scroll"
         column padding-bottom=400
           for e, i in data() key=i
             if e.header
-              // headerContainer: height 65, rgba(0,0,0,0.1), centred; text 20 bold, spacing 1,
-              // paddingLeft 15.
               column id=`row-${i}` height=65 flex-shrink=0 justify-content="center"
                 background-color="rgba(0, 0, 0, 0.1)"
-                // TextKit: Yoga floors the 23.87-tall line's top to 20.333 and CoreGraphics ceils the
-                // baseline; the host's rounded line sits a device pixel lower: put it back.
+                // Text baseline rounding leaves the line one device pixel low, so nudge it up.
                 text e.label font-size=20 font-weight=700 letter-spacing=1 padding-left=15 color="#000000"
                   position="relative" top="-0.3333px"
             else
-              // itemContainer: height 50, white, a row centred, paddingLeft 15; text 15.
               row id=`row-${i}` height=50 flex-shrink=0 align-items="center" background-color="#ffffff"
                 padding-left=15
                 text e.label font-size=15 color="#000000"

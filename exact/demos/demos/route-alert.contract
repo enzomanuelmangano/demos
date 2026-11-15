@@ -1,18 +1,8 @@
-// RN's Alert.alert. On iOS it is UIKit's own alert: `system-alert` (modules/apple/SystemAlert.swift)
-// presents a real UIAlertController from the top-most view controller, as RN's RCTAlertManager
-// does, in the app's dark appearance (RN's userInterfaceStyle 'dark'), the cancel action first
-// as RN's array order puts it. A `dialog` opened with showModal from the full-screen demo route is
-// never presented on the phone (the route's owner controller already presents it), so a demo that
-// asked would not respond at all (sudoku's New Game).
+// Alert: UIKit's own alert on iOS (`system-alert` presents a real UIAlertController), or an alert
+// drawn in the demo's route elsewhere. A `dialog` opened with showModal from the full-screen demo
+// route never shows on the phone, so the native alert is the one that works there.
 //
-// Where the view is an empty box (the web, the Mac, a build without it) it never says
-// "system-alert:1", and the alert is drawn in the demo's own route instead: iOS 26's alert, a
-// glass panel 300 wide with continuous corners, the title (17 semibold) and message (15)
-// leading-aligned, the actions as capsules side by side (a cancel action first), a destructive
-// action's label in systemRed. It appears scaled from 1.1 with a fade over a dimmed screen and
-// leaves with a fade. A tap outside does nothing, as UIKit's alert.
-//
-// The drawn one is above everything in the demo (z-index 1000): a full-screen canvas takes the
+// The drawn alert sits above everything in the demo (z-index 1000): a full-screen canvas takes the
 // touches under it on iOS whatever its pointer-events.
 
 keyframes routeAlertIn
@@ -32,7 +22,7 @@ component RouteAlert
     dismiss: action
     accept: action
     testId: string
-  // True once `system-alert` said it is UIKit's (iOS): the drawn alert then never shows.
+  // True once the native alert reports itself: the drawn alert then never shows.
   state native = false
   action heard(m: string)
     if m == "system-alert:1"

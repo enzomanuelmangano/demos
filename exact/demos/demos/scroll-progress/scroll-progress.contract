@@ -1,9 +1,5 @@
-// Scroll Progress: an article on chess openings with a pill floating at the bottom: at the top
-// it is a circle with the reading time; while scrolling it widens into a percentage and a
-// progress bar; at the end it shrinks to an up arrow that scrolls back to the top.
-// RN: src/animations/scroll-progress (index.tsx, constants.ts, section-content-list/index.tsx,
-// section-content-list/bottom-progress/index.tsx, progress-bar-area.tsx, collapsed-area.tsx,
-// utils/get-reading-time.ts).
+// Reading-progress pill over an article: a circle with the reading time at the top, a percentage
+// and progress bar while scrolling, an up arrow at the end that scrolls back to the top.
 use PressableOpacityLayout from "pressto"
 use DemoEnv, demoButtonRow, concentricInset from "../env.contract"
 
@@ -12,7 +8,6 @@ shape Section
   description: string
 
 fn s(title: string, description: string): Section = Section(title=title, description=description)
-// constants.ts sections.
 fn sections(): Section[] = [
   s("Introduction", "Chess openings are the first few moves of a chess game. There are many different chess openings, and each one has its own set of ideas and strategies. Here are some of the most popular chess openings:"),
   s("The Ruy Lopez", "his opening is named after the 16th-century Spanish bishop Ruy López de Segura. It starts with the moves 1.e4 e5 2.Nf3 Nc6 3.Bb5, and it is known for its focus on controlling the center of the board and attacking the black king."),
@@ -30,22 +25,18 @@ fn sections(): Section[] = [
   s("The English Opening", "This opening is named after the 16th-century English chess master, who was known for his love of chess. It starts with the moves 1.c4 e5, and it is known for its focus on controlling the center of the board."),
   s("The Four Knights Game", "This opening is named after the 16th-century English chess master, who was known for his love of chess. It starts with the moves 1.e4 e5 2.Nf3 Nc6 3.Nc3 Nf6, and it is known for its focus on controlling the center of the board."),
 ]
-// getReadingTime: ceil(words / 200) per section (wordsPerMinute 200), summed: `${time} min`.
+// Reading time: ceil(words / 200) per section, summed.
 fn readingTime(): string = `${sum(sections().map(x => ceil(x.description.split(" ").length / 200)))} min`
 
-// Math.fround of a content height between 1024 and 4096 pt: the nearest float32, 2^-13 or
-// 2^-12 apart there.
+// Rounds to float32, the precision the host reports the content height in.
 fn float32(v: number): number = v >= 2048 ? round(v * 4096) / 4096 : round(v * 8192) / 8192
-// BottomProgressState: INITIAL at progress 0, END at 1, else EXPANDED.
+// Pill state: initial at progress 0, end at 1, expanded in between.
 fn isInitial(p: number): bool = p == 0
 fn isEnd(p: number): bool = p == 1
 fn isExpanded(p: number): bool = p != 0 and p != 1
-// rAnimatedStyle: width withTiming(expanded ? 200 : 70, { duration: 500 }).
 fn pillWidth(p: number): number = isExpanded(p) ? 200 : 70
-// The percentage label, `${Math.round(progress × 100)}%`, and the bar's scaleX follow the scroll
-// with no commit: a scroll-driven animation on the scroller's timeline (`--sp`, its progress is
-// y / (contentHeight − viewHeight), RN's ratio, clamped as RN's clamp). Label k (1…100) is an
-// opaque copy over label k − 1 that turns on where Math.round reaches k, (k − 0.5) %.
+// The percentage label and the bar follow the scroll on a scroll timeline (`--sp`), with no commit
+// per frame. Label k is an opaque copy over label k - 1 from (k - 0.5)%.
 fn pctRange(k: number): string = `${k - 0.5}% ${k - 0.5 + 0.0001}%`
 keyframes spFill
   from translate="-100% 0px"
@@ -53,37 +44,28 @@ keyframes spFill
 keyframes spOn
   from opacity=0
   to opacity=1
-// The percentage as one roll: "0%" … "100%" stacked 18 apart, moved by the scroll timeline on a
-// staircase (Math.round: label k from (k − 0.5) % to (k + 0.5) %), one animated node where 100
-// labels each ran their own timeline animation (the stutter while scrolling, 2026-11-15).
+// The percentage as one column of labels "0%" to "100%", 18 apart, stepped by the scroll timeline:
+// one animated node instead of 100.
 keyframes spRoll
   from translate="0px 0px"
   to translate="0px -1800px"
 fn rollStairs(): string = `linear(0 0%, ${range(100).map(k => `${k / 100} ${k + 0.5}%, ${(k + 1) / 100} ${k + 0.5}%`).join(", ")}, 1 100%)`
 
-// Reanimated's withTiming default curve, Easing.inOut(Easing.quad), as its cubic-bezier.
-// The pill's width (500 ms) moves every box inside it on the same curve, as Yoga relays
-// them out each frame.
+// Ease-in-out quad over 500 ms; the pill's width moves every box inside it on the same curve.
 style PillMotion
   -exact-layout-transition="500ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
-// PillMotion's layout transition, for the PressableOpacityLayout that carries it.
 fn pillMotion(): string = "500ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
 
 component ScrollProgress
   props
     env: DemoEnv
-  // progress: clamp(y / max(1, contentHeight - viewHeight), 0, 1) as the pill's state reads it:
-  // 0 (INITIAL), 0.5 (any value between: EXPANDED) or 1 (END). Written only when the state
-  // changes, never per scroll frame (the label and the bar follow the timeline).
+  // 0 = initial, 0.5 = expanded, 1 = end. Written only when the state changes, never per scroll frame.
   state progress = 0
-  // RN's progress stays at 1 from the up arrow's press until the first scroll event after the
-  // reset (the events of the scroll to the top are ignored): the label and the bar show 100 %
-  // over the timeline's copies meanwhile (seen while the bar area fades out).
+  // Holds the label and bar at 100% from the up arrow's press until the first scroll after the reset.
   state frozen = false
-  // isResetting: set by the up arrow; scroll events leave progress alone until the scroll
-  // reaches 0 (the event at 0 is ignored too, as RN's reaction clears the flag after it).
+  // Set by the up arrow: scroll events are ignored until the scroll reaches 0.
   state resetting = false
-  // The article column's height, from the surface (`height:<pt>`).
+  // Article column height in points, posted by the surface (`height:<pt>`).
   state articleHeight = 1931.66667
   action sized(m: string)
     if m.indexOf("height:") == 0
@@ -93,22 +75,18 @@ component ScrollProgress
       if y == 0
         resetting = false
     else
-      // RN's scrollHeight is onContentSizeChange's height, a float32 (2189.666748046875 for a
-      // 2189.6667 content, read on the simulator): at rest at the bottom y / (that − 912) is
-      // 0.99999994, so RN shows "100%" EXPANDED there and turns to END (the up arrow) only while
-      // the content is pulled past its end. The same ratio here.
+      // The content height is a float32, so at rest at the bottom the ratio is 0.99999994: still expanded
+      // (100%). The end state (up arrow) shows only while the content is pulled past its end.
       let p = y / max(1, float32(e.scrollHeight) - e.clientHeight)
       let q = p >= 1 ? 1 : (p > 0 ? 0.5 : 0)
       if q != progress
-        // Pulled past the article's end, the pill turns into the up arrow: one rigid tap for
-        // the limit (past RN, which plays none), once per pull.
+        // One rigid tap when pulled past the end, once per pull.
         if q == 1
           haptic("impact-rigid")
         progress = q
       if frozen
         frozen = false
-  // RN clears the flag on onBeginDrag (a drag interrupting the animated scroll); Exact's scroll
-  // has no drag-begin event: the end of that drag's scroll clears it.
+  // Exact's scroll has no drag-begin event: the end of a drag's scroll clears the flag.
   action ended
     resetting = false
   action reset
@@ -117,36 +95,26 @@ component ScrollProgress
       frozen = true
       scrollIntoView("scroll-progress-top", behavior="smooth")
   view
-    // index.tsx styles.container: #111, flex 1.
     column position="absolute" inset=0 background-color="#111111" timeline-scope="--sp" testId="scroll-progress"
-      // The ScrollView: content padded safeTop + DEMO_BUTTON_ROW_HEIGHT at the top,
-      // safeBottom + 100 at the bottom, 32 at the sides.
-      // (A `column overflow-y="auto"`: a `scroll` tag's timeline drives nothing on iOS.)
+      // A `column overflow-y="auto"`: a `scroll` tag's timeline drives nothing on iOS.
       column position="absolute" top=0 left=0 width="100%" height="100%" overflow-y="auto"
         scroll-timeline="--sp y" scroll=scrolled scrollend=ended testId="scroll-progress-scroll"
         view id="scroll-progress-top" height=0
         column padding-bottom="env(safe-area-inset-bottom)"
           column padding-top=(env.safeTop + demoButtonRow()) padding-bottom=100 padding-left=32
             padding-right=32
-            // The sections (title #EEE 20 bold, marginBottom 10; description #999 14; each
-            // marginBottom 20) as UIKit lays and draws them: gpu/src/scroll_progress_text.rs.
-            // The host rounds a text's lines 2+ to the nearest pixel where CoreGraphics puts each
-            // baseline on the next one down (a description's lines 2-5 sat 1 px high): the
-            // surface draws every line on RN's pixel and posts the column's height (Yoga's sum:
-            // each Text ceiled to the pixel), which sizes the scroll's content as RN's. Until it
-            // does (and on the web, where no surface message arrives) the column is the iPhone
-            // Air's, 1931.667.
+            // The article is drawn by a surface line by line on whole pixels: the host rounds lines 2+ of a text
+            // otherwise. It posts the column's height, which sizes the scroll content; until then (and on web)
+            // the column is 1931.667.
             canvas surface=scroll_progress_text(env.width - 64) message=sized
               width=(env.width - 64) height=articleHeight
               aria-label=sections().map(x => `${x.title}. ${x.description}`).join(" ")
               testId="scroll-progress-article"
-      // The top gradient: ['#111111', '#11111100'], safeTop + 16 tall, zIndex 10.
       view position="absolute" left=0 right=0 top=0 height=(env.safeTop + 16) z-index=10
         pointer-events="none" aria-hidden=true
         background-image="linear-gradient(180deg, #111111 0%, rgba(17, 17, 17, 0) 100%)"
-      // The owner's ask (2026-11-15): the text that scrolls under the pill fades out: a progressive
-      // blur (variable-blur, sharp at its top, 12 pt at the screen's bottom) under a scrim of the
-      // page's #111 from clear to 0.85. Not RN's (it has neither).
+      // Text scrolling under the pill fades: a progressive blur (sharp at the top, 12 pt at the bottom)
+      // under a scrim from clear to 0.85.
       view position="absolute" left=0 right=0 bottom=0 height=(env.safeBottom + 150) z-index=99
         pointer-events="none" aria-hidden=true testId="scroll-progress-fade"
         variable-blur blur-radius="12" ramp-from="0" ramp-to="1" position="absolute" left=0 top=0
@@ -162,32 +130,20 @@ component BottomProgress
     frozen: bool
     reset: action
   view
-    // styles.container: radius 40, height 70, the width above; absolute at bottom 50, centred,
-    // #222123, zIndex 100, a 0.5 border rgba(255,255,255,0.1). Yoga rounds the 0.5 inset to
-    // the device pixel (the children start 0.667 in) and RCTBorderDrawing's ring covers those
-    // 2 px fully (measured): 0.66667 here, where 0.5 drew 1 px and the inner pill 1 px early.
-    // Past RN (the owner, mwhpb99e: "the button should be lower"): not RN's bottom 50 but where a
-    // 70 pt capsule is concentric with the display's corners, 62 − 35 = 27 (concentricInset).
+    // The bottom inset makes the 70 pt capsule concentric with the display's corners. The 0.66667 border
+    // is the 0.5 ring rounded to the device pixel.
     column class=PillMotion position="absolute" bottom=concentricInset(70) left=left width=pillWidth(progress) height=70
-      // Radius 40 is drawn at half the height (35), and the inner pills' a hair under half their 59 (29.49: their height is a sum of insets, so it may land a float under 59),
-      // the bar's at 2.5: authored so, because the host paints a layout transition's resize with Core Animation's corner only when the authored radius fits the box.
+      // Radii sit at or just under half the box: the host draws a layout transition's resize with the native
+      // corner only when the authored radius fits the box.
       box-sizing="border-box" border-radius=35 background-color="color(display-p3 0.1333 0.1294 0.1373)" border-width=0.66667
       border-style="solid" border-color="rgba(255, 255, 255, 0.1)" z-index=100 testId="progress-pill"
-      // ProgressBarArea: flex 1, margin 5, #2E2D2E, paddingHorizontal 10, radius 40 continuous,
-      // a centred row; opacity withTiming(expanded ? 1 : 0).
-      // Yoga lays the 0.5 border + 5 margin out unrounded and rounds the edges (16.5 px → 17,
-      // 193.5 → 194): the inner pill is 59 pt, 5.667 in from the left and top, 5.333 from the
-      // right and bottom (measured: a 177 px circle). Here the ring is 0.667 thick, hence 5 and
-      // 4.667; the padding (10) is 9.833 and 10.167 so the content box is RN's unrounded
-      // [15.5, 184.5], where the bar's edges round as Yoga's do (it ended 1 px long).
+      // The 5 / 4.667 and 9.833 / 10.167 insets put the inner pill and the bar on whole device pixels, with the ring.
       row class=PillMotion flex=1 margin-top=5 margin-left=5 margin-right=4.66667 margin-bottom=4.66667 padding-left=9.83333 padding-right=10.16667 border-radius=29.49 corner-shape="-exact-continuous"
         background-color="color(display-p3 0.1804 0.1765 0.1804)" justify-content="center" align-items="center"
         opacity=(isExpanded(progress) ? 1 : 0)
         transition="opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)" testId="progress-bar-area"
-        // ReText: #9E9E9E, 15, width 50, centred: the roll above (spRoll), the label k showing
-        // from (k − 0.5) % to (k + 0.5) % of the scroll, as Math.round.
-        // ReText is a TextInput: UITextField centres its line its own way, a device pixel above
-        // a Text's (measured: "100%" 1 px low); half a pixel up lands on it (host snap).
+        // Label k shows from (k - 0.5)% to (k + 0.5)% of the scroll. Shifted up 1/6 pt: a text field
+        // centres its line a device pixel off a text.
         view class=PillMotion position="relative" flex-shrink=0 width=50 testId="progress-percent"
           view position="relative" width=50 height=18 overflow="hidden" top="-0.16667px"
             column position="absolute" left=0 top=0 width=50
@@ -198,46 +154,31 @@ component BottomProgress
           text "100%" color="#9E9E9E" font-size=15 text-align="center" position="absolute"
             top="-0.16667px" left=0 width=50 height="100%" background-color="color(display-p3 0.1804 0.1765 0.1804)"
             opacity=(frozen ? 1 : 0) aria-hidden=true
-        // The bar: 5 tall, 70% wide, white, radius 40, clipping: the #1A1A1A track and the
-        // #9E9E9E fill, scaleX(progress) from its left (the same pixels as the fill slid in
-        // from the left by (progress - 1) × its width, clipped by the bar).
-        // Only the bar itself springs with the pill (its clip follows its shown size); the track
-        // and the fill inside it take no layout transition of their own. Each had one: while the
-        // pill resized, the fill was a second resizing surface whose scroll-driven translate
-        // (-100 % of its laid-out width) fought its own resize under the bar's clip, the flicker
-        // on the phone (2026-11-15).
+        // Progress bar: the fill slides in with the scroll timeline. Only the bar takes the layout transition;
+        // a transitioning fill fights its own scroll-driven translate under the clip and flickers.
         view class=PillMotion height=5 width="70%" background-color="#ffffff" border-radius=2.5
           overflow="hidden" position="relative"
           view position="absolute" inset=0 background-color="#1A1A1A"
           view position="absolute" inset=0 background-color="#9E9E9E"
             animation="spFill 1s linear both" animation-timeline="--sp" testId="progress-fill"
           view position="absolute" inset=0 background-color="#9E9E9E" opacity=(frozen ? 1 : 0)
-      // CollapsedArea: absoluteFill, margin 5, #2E2D2E, radius 40 continuous; opacity
-      // withTiming(INITIAL or END ? 1 : 0).
       view class=PillMotion position="absolute" top=5 left=5 right=4.66667 bottom=4.66667 border-radius=29.49 corner-shape="-exact-continuous"
         background-color="color(display-p3 0.1804 0.1765 0.1804)"
         opacity=(isExpanded(progress) ? 0 : 1)
         transition="opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)" testId="collapsed-area"
-        // The reading time, shown at INITIAL: #9E9E9E, marginHorizontal 5, one line, shrunk to
-        // fit (adjustsFontSizeToFit).
+        // Reading time, shown at initial, shrunk to fit one line.
         column class=PillMotion position="absolute" inset=0 align-items="center" justify-content="center"
           opacity=(isInitial(progress) ? 1 : 0)
           transition="opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
-          // RN's default fontSize, 14 (Exact's iOS default is 17).
-          // Yoga floors the Text's left in that 59 pt box (measured on device: half a pixel back
-          // from the centred box lands on RN's pixel; a whole one overshoots by the host's snap).
+          // Font size 14 (the default is 17), shifted back 1/6 pt to land on the device pixel.
           text class=PillMotion readingTime() color="#9E9E9E" font-size=14 margin-left=5 margin-right=5 white-space="nowrap"
             -exact-fit="shrink" position="relative" left="-0.16667px" testId="reading-time"
-        // The up arrow, shown at END: PressableOpacity, AntDesign arrow-up 24 #9E9E9E; pressed,
-        // it scrolls to the top (only at END).
+        // Up arrow, shown at end: a press scrolls to the top.
         column class=PillMotion position="absolute" inset=0 opacity=(isEnd(progress) ? 1 : 0)
           transition="opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
-          // The PressableOpacity fills the pill's place (the view around it) and moves with it;
-          // the arrow is its look.
           view class=PillMotion display="flex" flex-direction="column" flex=1
             PressableOpacityLayout(press=reset, layout=pillMotion())
               column class=PillMotion flex-grow=1 align-items="center" justify-content="center"
                 aria-label="Back to the top" testId="reset"
-                // AntDesign "arrow-up" 24: the vector-icons glyph (512 × 536 units of 512 to the em).
                 svg class=PillMotion width=24 height=25.125 viewBox="0 0 512 536" aria-hidden=true
                   path d="M249 59Q245 61 241 65Q236 70 144.5 176Q53 282 52 283Q51 285 52 287L54 289H79Q105 289 106.5 288.5Q108 288 171 216L233 143L234 305Q234 466 235.5 467.5Q237 469 256 469Q275 469 276.5 467.5Q278 466 278 305L279 143L341 216Q404 288 405.5 288.5Q407 289 433 289H458L460 287Q461 285 460 283Q459 282 367.5 176.5Q276 71 271 65Q260 54 249 59Z" fill="#9E9E9E"

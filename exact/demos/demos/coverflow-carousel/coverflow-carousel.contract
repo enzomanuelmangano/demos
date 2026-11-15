@@ -1,24 +1,18 @@
 // Coverflow Carousel: eleven photos on a horizontal strip snapping every 160 pt; the centred one is
-// full size and the others shrink to slivers, squash and fan out as they leave the centre.
-// RN: src/animations/coverflow-carousel (index.tsx, constants.ts,
-// components/coverflow-carousel/index.tsx, carousel-item.tsx). The whole demo is one Rust surface
-// (gpu/src/coverflow_carousel.rs): the FlatList's UIScrollView (ui_scroll: UIKit's drag, rubber
-// band, deceleration at 'fast', RN's snapToInterval), each cell's animated width, radius,
-// translateX, scaleY and opacity, and the photos (bundled from constants.ts's Unsplash URLs).
+// full size and the others shrink, squash and fan out as they leave the centre. One canvas draws
+// the strip and owns its scroll.
 use DemoEnv from "../env.contract"
 
 component CoverflowCarousel
   props
     env: DemoEnv
-  // The strip's haptics (gpu/src/coverflow_carousel.rs, past RN): selection as the centred photo
-  // changes, rigid when the strip is pulled past an end.
+  // Haptics: selection as the centred photo changes, rigid when pulled past an end.
   action heard(m: string)
     if m == "haptic:selection"
       haptic("selection")
     if m == "haptic:impact-rigid"
       haptic("impact-rigid")
   view
-    // index.tsx: white, the 250 pt coverflow box centred.
     canvas surface=coverflow_carousel() message=heard position="absolute" top=0 left=0 width=env.width
       height=env.height touch-action="none" testId="coverflow-carousel"
       aria-label="Photos: drag sideways"

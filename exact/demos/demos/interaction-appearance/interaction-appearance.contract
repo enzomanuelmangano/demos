@@ -1,9 +1,5 @@
 // Interaction Appearance: a movie page whose floating sun button switches the light and dark
 // themes; while it is held the page shrinks, the poster's glow fades and a blur rises over it.
-// RN: src/animations/interaction-appearance (src/screens/movie-detail.tsx, src/components/*,
-// src/theme/*). The page, its Skia canvases, the animated expo-blur, the pressto button and
-// their timings are one Rust surface (gpu/src/interaction_appearance.rs); it posts the press's
-// haptic.
 use DemoEnv, demoButtonRow from "../env.contract"
 
 component InteractionAppearance
@@ -14,8 +10,7 @@ component InteractionAppearance
       haptic("selection")
   view
     column position="absolute" inset=0 testId="interaction-appearance"
-      // The page's safeTop is the demo's button row's bottom (safeTop + demoButtonRow()), so the
-      // poster and the title start clear of the close and info buttons (the owner's call).
+      // The page starts below the demo's button row, clear of the close and info buttons.
       canvas surface=interaction_appearance(env.safeTop + demoButtonRow(), env.safeBottom) position="absolute" top=0 left=0
         width=env.width height=env.height touch-action="none" message=buzz
         testId="interaction-appearance-canvas"

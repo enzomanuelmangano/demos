@@ -1,21 +1,11 @@
-// Family Number Input: a keypad under a big number; each digit (and thousands comma) rises in,
-// drops out, and the commas slide as the number regroups, while the row shrinks as it grows.
-// Backspace removes the last digit; held, it repeats. RN: src/animations/family-number-input
-// (number-input.tsx, components/animated-number, components/buttons-grid).
-//
-// The number is the `family_number` surface (gpu/src/family_number.rs): every digit and comma
-// is a glyph with its own springs on the surface's frame clock, so a keypress is one input bind,
-// never a commit that starts transitions (the Contract versions stuttered on the phone: the iOS
-// host skipped the first frames of commit-started transitions on a dozen keyed nodes). The
-// motion (enter, exit, comma slide, centring, scale) is described there.
-//
-// Holding backspace repeats it (as iOS's keyboard does): after 400 ms, one digit every 100 ms,
-// quickening toward 50 ms, a light haptic each; reaching 0 ends it with a medium one. Releasing
-// stops it. The clock is the `timer` surface (gpu/src/timer.rs): only the app's root has timers.
+// Family Number Input: a keypad under a big number; each digit and thousands comma rises in, drops
+// out, and the commas slide as the number regroups. Holding backspace repeats it, quickening.
+// The number is one canvas surface with its own springs, so a keypress is one input bind; a commit
+// would start transitions the iOS host can skip the first frames of.
 use DemoEnv from "../env.contract"
 use AnimatedPressable, PressLook from "pressto"
 
-// buttons-grid/index.tsx items: 1…9, an empty key, 0, backspace (-1 empty, -2 backspace).
+// Keys: 1…9, an empty key, 0, then backspace (-1 is empty, -2 is backspace).
 fn keys(): number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, -1, 0, -2]
 
 // value.toLocaleString('en-US') of the digits: a comma before every group of three from the
@@ -23,28 +13,23 @@ fn keys(): number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, -1, 0, -2]
 fn grouped(s: string): string = range(s.length).map(j => (j > 0 and (s.length - j) % 3 == 0 ? "," : "") + s.slice(j, j + 1)).join("")
 // The hold's next step: 100 ms, then 15 % shorter each time, toward 50 ms (50 + 50 × 0.85ⁿ).
 fn repeatMs(n: number): number = match [100, 92.5, 86.13, 80.71, 76.1, 72.19, 68.86, 66.03, 63.62, 61.58, 59.84, 58.37].at(n) { case some(v) => v, case none => 50 }
-// floor(input / 10) on the digits.
 fn dropLast(s: string): string = s.length > 1 ? s.slice(0, s.length - 1) : "0"
-
-// InputButton (createAnimatedPressable): pressed, a white 10% fill and scale 0.9, radius 20.
-// pressto's AnimatedPressable (packages/pressto) runs the app's global onPress (its haptic)
-// before `press`.
 
 component FamilyNumberInput
   props
     env: DemoEnv
-  // The number's digits ("0" for zero).
+  // The digits, "0" for zero.
   state input = "0"
-  // The backspace hold: down, the timer's token and wait, deletes it made.
+  // Backspace hold: the timer's token, the wait before the next delete, and whether it has repeated.
   state holding = false
   state holdToken = 0
   state holdMs = 400
   state repeats = 0
   action press(k: number)
-    // A digit: `+${input}${label}`, refused past 11 digits (onMaxReached); on 0 it replaces it.
+    // Refused past 11 digits; a digit typed over a 0 replaces it.
     if k >= 0 and not (input == "0" and k == 0) and (input == "0" or input.length < 11)
       input = input == "0" ? `${k}` : `${input}${k}`
-    // Backspace: floor(input / 10). The release that ends a hold which repeated deletes no more.
+    // The release that ends a repeated hold deletes nothing.
     if k == -2 and repeats > 0
       repeats = 0
     else if k == -2
@@ -72,28 +57,23 @@ component FamilyNumberInput
         holdMs = repeatMs(repeats - 1)
         holdToken = holdToken + 1
   view
-    // styles.container: black, padded by the safe area top and bottom.
     column position="absolute" inset=0 background-color="#000000" padding-top=env.safeTop
       padding-bottom="env(safe-area-inset-bottom)" testId="family-number-input"
-      // styles.fillCenter: the top half. The surface covers it and centres the row where RN's
-      // second fillCenter (padded 50 at its top) does.
+      // The surface fills the top half and centres the row in it.
       column flex=1 position="relative"
         canvas surface=family_number(input) position="absolute" top=0 left=0 width=env.width
           height=((env.height - env.safeTop - env.safeBottom) / 2) aria-hidden=true
         // The number for VoiceOver and tests, not drawn.
         text grouped(input) testId="number" position="absolute" top=0 left=0 opacity=0
           pointer-events="none"
-        // styles.gradient: bottom 38%, ['transparent', '#000', '#000', '#000'].
+        // Fades the bottom into black.
         view position="absolute" left=0 right=0 bottom=0 height="38%" pointer-events="none"
           background-image="linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, #000000 33.333%, #000000 66.667%, #000000 100%)"
       canvas surface=timer(holding ? holdToken : 0, holdMs) message=tick width=1 height=1 position="absolute"
         pointer-events="none" aria-hidden=true
-      // ButtonsGrid: styles.container wraps a row of keys 30% wide, 20% tall, margined
-      // 7/3% left and bottom.
       row flex=1 flex-wrap="wrap" align-items="center" align-content="flex-start"
         for k in keys() key=k
-          // The key's place (30% × 20%, margined 7/3% left and bottom) on the view; the press box,
-          // radius 20, fills it.
+          // The press box fills the key's place.
           view display="flex" flex-direction="column"
             width="30%" height="20%" margin-left="2.3333%" margin-bottom="2.3333%"
             AnimatedPressable(press=press(k),
@@ -103,9 +83,7 @@ component FamilyNumberInput
                 pointerdown=holdStart(k) pointerup=holdEnd(k)
                 aria-label=(k >= 0 ? `${k}` : (k == -2 ? "Delete" : "")) testId=`key-${k}`
                 if k >= 0
-                  // styles.number: SF-Pro-Rounded-Bold 30, white, centred.
                   text `${k}` font-family="SF-Pro-Rounded-Bold" font-size=30 color="#ffffff"
                     text-align="center"
                 if k == -2
-                  // FontAwesome5 "backspace", 24, white.
                   image "symbol:sf/delete.left.fill" font-size=24 color="#ffffff" aria-hidden=true

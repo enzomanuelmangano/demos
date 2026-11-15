@@ -1,27 +1,16 @@
-// `glass-pane`: expo-glass-effect's GlassView (node_modules/expo-glass-effect/ios/GlassView.swift)
-// as RN draws it on iOS 26: a UIVisualEffectView whose effect is a UIGlassEffect of the given
-// style, its `tintColor` and `isInteractive` set and the effect assigned again (UIKit ignores
-// changes to an effect already set), the corners on the effect view's `cornerConfiguration`
-// and the layer's `cornerCurve`. As expo does, the effect is installed only from
-// `layoutSubviews`, once the view is in a window and visible enough (UIKit silently skips a glass
-// effect created at low opacity, and never installs it later), and installed again on returning
-// to a window. liquid-glass-playground's Overlay (overlay.liquid.tsx): style "clear", tint
-// rgba(0,0,0,0.5), not interactive, radius 50 continuous.
+// `glass-pane`: a glass (or blur) pane that sits behind other content.
 //
-// Before iOS 26 (no UIGlassEffect), RN's overlay.ios.tsx: expo-blur's BlurView tint "dark" at
-// intensity 50 (UIBlurEffect .dark, its animator stopped at 0.5) with a hairline
-// rgba(255,255,255,0.5) border.
+// iOS 26: a UIVisualEffectView with a UIGlassEffect. UIKit skips a glass effect created at low
+// opacity and never installs it later, so it is installed from `layoutSubviews` once the view is
+// in a window and visible, and again on returning to a window. Before iOS 26: a dark UIBlurEffect
+// with a hairline white border. macOS 26+: NSGlassEffectView; earlier, a dark NSVisualEffectView.
 //
-// On macOS 26 and later, NSGlassEffectView (style .clear / .regular, tintColor, cornerRadius);
-// earlier, an NSVisualEffectView (.hudWindow, dark).
-//
-// Props (all optional; Contract binds `glass`, `tint` and `radius` to the box, so these names
-// are the module's own):
-//   glass-style "clear" | "regular" | "none"; default "regular" (GlassView's default)
+// Props (all optional):
+//   glass-style "clear" | "regular" | "none"; default "regular"
 //   pane-tint   the tint colour, #rrggbb, #rrggbbaa or rgba(r, g, b, a); none by default
 //   interactive "true" | "false"; default false
 //   corner-size the corner radius in points; default 0
-//   continuous  "true" | "false": borderCurve continuous; default true
+//   continuous  "true" | "false": continuous corner curve; default true
 import Foundation
 
 /// `#rrggbb`, `#rrggbbaa` or `rgba(r, g, b, a)` (0-255, alpha 0-1) as sRGB components.
@@ -43,7 +32,6 @@ func glassPaneColor(_ text: String?) -> (CGFloat, CGFloat, CGFloat, CGFloat)? {
             CGFloat(parts.count == 4 ? parts[3] : 1))
 }
 
-/// The props, parsed once per `setProps`.
 struct GlassPaneStyle: Equatable {
     var glass = "regular"
     var tint: [CGFloat]? = nil
@@ -87,13 +75,10 @@ final class GlassPaneView: UIView {
 
     deinit { visibilityLink?.invalidate() }
 
-    /// Decorative: never a touch target, whatever the host's container or a later UIKit change to
-    /// the effect view does, so the demo's own pan under it (liquid-glass-playground) hears the
-    /// finger.
+    /// Decorative, never a touch target, so a pan on the demo underneath hears the finger.
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? { nil }
 
-    /// iOS 26's glass, when UIKit has it (expo checks the class at runtime too: early iOS 26
-    /// betas crashed in its initialiser).
+    /// Checked at runtime: early iOS 26 betas crashed in the glass initialiser.
     private static var hasGlass: Bool {
         if #available(iOS 26.0, *) {
             guard let cls = NSClassFromString("UIGlassEffect") as? NSObject.Type else { return false }
@@ -114,12 +99,11 @@ final class GlassPaneView: UIView {
             installed = false
             stopWaiting()
         } else {
-            // The effect must be made in layoutSubviews; a return to a window may not lay out.
             setNeedsLayout()
         }
     }
 
-    /// In a window, shown, and above the opacity UIKit draws glass at (expo's 0.02).
+    /// In a window, shown, and above the opacity UIKit draws glass at (0.02).
     private var renderable: Bool {
         guard window != nil else { return false }
         var opacity: CGFloat = 1
@@ -151,7 +135,6 @@ final class GlassPaneView: UIView {
     private func install() {
         installed = true
         stopWaiting()
-        // A stale effect torn down first, or a re-assigned glass draws wrong (expo#43732).
         effectView.effect = UIVisualEffect()
         restyle(effectChanged: true)
     }
@@ -176,7 +159,6 @@ final class GlassPaneView: UIView {
             effectView.cornerConfiguration = .corners(topLeftRadius: r, topRightRadius: r,
                                                       bottomLeftRadius: r, bottomRightRadius: r)
         } else {
-            // overlay.ios.tsx: BlurView tint "dark", intensity 50, a hairline white 0.5 border.
             if effectView.effect == nil || effectChanged { effectView.effect = UIBlurEffect(style: .dark) }
             effectView.layer.cornerRadius = style.radius
             effectView.clipsToBounds = style.radius > 0

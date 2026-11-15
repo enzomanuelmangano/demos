@@ -1,13 +1,9 @@
-// Circular Carousel: nine round photos on a horizontal paged strip that bends into an arc as it
-// scrolls; the Scale switch springs the arc's scale effect on and off.
-// RN: src/animations/circular-carousel (index.tsx, components/circular-list/index.tsx,
-// components/circular-list/list-item.tsx). The list is one Rust surface
-// (gpu/src/circular_carousel.rs): the FlatList's UIScrollView (ui_scroll: UIKit's drag and
-// deceleration, RN's snapToInterval), the arc, the springing scale output range, the shadows,
-// borders and the photos (bundled from index.tsx's Unsplash URLs, w=400). The label and the Switch stay here.
+// Circular Carousel: nine round photos on a paged strip that bends into an arc as it scrolls.
+// The Scale switch turns the arc's scale effect on and off. The strip, arc, shadows and photos
+// are a Rust surface (gpu/src/circular_carousel.rs). The label and the switch are Contract.
 use DemoEnv from "../env.contract"
 
-// LIST_ITEM_WIDTH = windowWidth / 4.
+// An item is a quarter of the window wide.
 fn itemWidth(w: number): number = w / 4
 
 component CircularCarousel
@@ -16,30 +12,25 @@ component CircularCarousel
   state scaleEnabled = false
   action setScale(on: bool)
     scaleEnabled = on
-  // The strip's haptics (gpu/src/circular_carousel.rs, past RN): selection as the photo at the
-  // crown changes, rigid when the strip is pulled past an end.
+  // Haptics: selection as the photo at the crown changes, rigid when the strip is pulled past an end.
   action heard(m: string)
     if m == "haptic:selection"
       haptic("selection")
     if m == "haptic:impact-rigid"
       haptic("impact-rigid")
   view
-    // index.tsx container: centred; the backdrop (#f4f4f6) shows through.
     column position="absolute" inset=0 align-items="center" justify-content="center"
       testId="circular-carousel"
-      // styles.label: fontSize 18, bold, letterSpacing 1, marginBottom 8, uppercase. TextKit's line
-      // (SF: 2444 / 2048 × 18 = 21.48), Yoga's box ceiled to the pixel (21.667); the glyphs put
-      // back on RN's pixels (Yoga floors the Text's left; CG ceils the baseline).
+      // The line height and the nudge put the glyphs on the same pixels as the host's text.
       text "Scale" font-size=18 font-weight=700 letter-spacing=1 margin-bottom=8
         text-transform="uppercase" color="#000000" height="21.666667px"
         line-height="21.48046875px" position="relative" left="-0.3333px"
-      // The Switch's box is RCTSwitchSize + 2 wide (IOSSwitchShadowNode: 63 + 2 = 65, 28), the
-      // UISwitch 1 pt in; the host's sits a device pixel higher in its box: put back on RN's.
+      // The host's switch sits a device pixel high, so it is nudged down.
       view width=65 align-items="flex-start"
-        // trackColor { false: '#ccc', true: '#111' }.
+        // Grey track when off, near-black when on.
         input type="checkbox" switch checked=scaleEnabled change=setScale accent-color="#111111"
           aria-label="Scale" testId="scale-switch" position="relative" left=1 top="0.1666px"
-      // circular-list styles.list: absolute, bottom 0, the window wide, LIST_ITEM_WIDTH * 3 tall.
+      // The strip is three item-widths tall, along the bottom.
       canvas surface=circular_carousel(scaleEnabled) message=heard position="absolute" left=0 bottom=0
         width=env.width height=(itemWidth(env.width) * 3) touch-action="none"
         testId="circular-list" aria-label="Photos: drag sideways"

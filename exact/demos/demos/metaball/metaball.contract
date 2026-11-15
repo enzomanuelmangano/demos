@@ -1,9 +1,8 @@
 // Metaball: two circles that melt into one, each dragged by a finger; let go, each springs back
-// to the centre. RN: src/animations/metaball/index.tsx (Skia). Drawn, dragged and sprung in Rust:
-// gpu/src/metaball.rs, which also posts the haptics (the owner's call: RN plays none).
+// to the centre. Drawn, dragged and sprung in Rust (gpu/src/metaball.rs).
 
 component Metaball
-  // The surface's haptics: a grab, the stretch's ticks, the pinch-off and the melt, the settle.
+  // The surface's haptics: grab, stretch ticks, pinch-off and melt, settle.
   action buzz(m: string)
     if m == "haptic:selection"
       haptic("selection")

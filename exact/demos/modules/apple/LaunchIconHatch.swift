@@ -1,7 +1,6 @@
-// The `launch-icon` hatch on Apple: each home icon's square (springboard.contract's AppIcon, RN
-// launch-icon.tsx's LaunchIcon wrapper) hands its view to the launch (DemoLaunch.swift), which
-// measures it as the frame a demo opens out of and closes into, and hides it while its artwork
-// flies (RN's choreography lifts the artwork out of the home for the whole session).
+// The `launch-icon` hatch on Apple: each home icon's square (springboard.contract's AppIcon)
+// hands its view to the launch (DemoLaunch.swift), which measures it as the frame a demo opens
+// out of and closes into, and hides it while its artwork flies.
 #if os(iOS)
 import UIKit
 import UIKit.UIGestureRecognizerSubclass

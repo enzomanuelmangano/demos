@@ -1,8 +1,6 @@
 at "/demo/interaction-appearance"
 
-// The web host gives a surface no touches: the press, the theme switch, the blur, the page's
-// spring and the glow's fade are the Rust fixture test's (gpu/src/interaction_appearance.rs);
-// here what the Contract holds.
+// Press, theme switch, blur and glow are covered by the Rust test; this checks the rest.
 test "the canvas fills the screen"
   expect tree has "interaction-appearance"
   expect tree has "interaction-appearance-canvas"

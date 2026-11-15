@@ -1,5 +1,4 @@
 // A demo, opened out of its icon: the demo itself and the way out over it.
-// RN: src/navigation/home/demo-screen.tsx, demo-close-button.tsx.
 use Demo from "../demos.contract"
 use PortedDemo from "../demos/index.contract"
 use DemoEnv from "../demos/env.contract"
@@ -10,20 +9,17 @@ component DemoScreen
     env: DemoEnv
     ownsDrags: bool
     leave: action
-  // RN's demos are full screen and pad their own top: the route keeps the whole screen
-  // (`-exact-safe-area="none"` in app.contract) and `demo-safe`, a box at the safe-area
-  // insets, gives the demo its safeTop and safeBottom.
+  // Demos pad their own top: the route keeps the whole screen (`-exact-safe-area="none"`) and
+  // `demo-safe`, a box at the safe-area insets, gives the demo its safeTop and safeBottom.
   state top = 0
   state bottom = 0
-  // The Inspiration sheet is up.
   state inspiring = false
-  // A demo's sub-page (phone feedback 2026-11-15, dot-sheet, gl-transitions): the field whose
-  // blur takes the demo back, or a name starting with "#" for a demo that counts the Backs
-  // (demoBacks) itself; "" while it is at its first page. The close button is Back meanwhile.
+  // A demo's sub-page: the field whose blur takes the demo back, or a name starting with "#" for a
+  // demo that counts the Backs (demoBacks) itself; "" on its first page. Close is Back meanwhile.
   state subField = ""
   state backs = 0
-  // When the sub-page last ended: a tap on Back can take the field's focus first (the web does),
-  // so the field's blur has already gone back by the time the press arrives.
+  // When the sub-page last ended: a tap on Back can blur the field first (on the web), so the
+  // press must not also close the demo.
   state subEnded = -1000
   action demoSubpage(field: string)
     if field == "" and subField != ""
@@ -53,17 +49,14 @@ component DemoScreen
     openURL(demo.actionUrl)
   action placed(w: number, h: number)
     let g = frame("demo-safe")
-    // Read once, at the first placement: the keys (which shorten and may scroll a full-screen
-    // route on the phone) never move the buttons or a demo's safe area, as in RN.
+    // Read once: the keyboard never moves the buttons or a demo's safe area.
     if not g.unavailable and top == 0 and bottom == 0
       top = g.y
       bottom = max(0, env.height - g.y - g.height)
   view
     column id="demo-route" position="absolute" inset=0 resize=placed testId=`demo-${demo.slug}`
-      // The demo keeps the whole screen's height while the keys are up: the host ends a
-      // full-screen route's box at them whatever `interactive-widget` says, but RN never
-      // resizes a screen for the keyboard (app.contract overlaysKeyboard). env.height is the
-      // viewport's, which overlays-content leaves whole.
+      // The host ends a full-screen route's box at the keyboard whatever `interactive-widget` says;
+      // env.height is the viewport's, which stays whole, so the demo keeps the full screen height.
       view position="absolute" top=0 left=0 width=env.width height=env.height pointer-events="none"
         aria-hidden=true
         view id="demo-safe" position="absolute" left=0 right=0 top="env(safe-area-inset-top)"
@@ -78,29 +71,22 @@ component DemoScreen
               image demo.icon width=96 height=96 border-radius=21.5 corner-shape="-exact-continuous" aria-hidden=true
               text demo.name font-size=22 font-weight=700 color="#ffffff" text-align="center" margin-top=4
               text "Not on Exact yet." font-size=15 color="#8e8e93" text-align="center" testId="not-ported"
-        // demo-screen.tsx DemoLaunch: the card in the demo's backdrop, the demo fading in over it
-        // once it has painted, and the launch around it (open, close drag, flight home, the
-        // home's blur): `demo-card` (modules/apple/DemoLaunch.swift). Under the buttons.
+        // The card in the demo's backdrop, with the demo fading in once painted, and the launch
+        // around it (open, close drag, flight home): `demo-card` (modules/apple/DemoLaunch.swift).
         demo-card press=leave slug=demo.slug caption=demo.name tint=demo.backdrop owns=(ownsDrags ? "drags" : "")
           position="absolute" inset=0 pointer-events="none" aria-hidden=true
-        // demo-close-button.tsx: the close role on liquid glass, 16 pt from the leading edge, at
-        // the safe top. RN's is a real SwiftUI Button (@expo/ui), so is this: `glass-button`
-        // (modules/apple/Demos.swift), the button at the box's top-left as Host matchContents.
-        // In a demo's sub-page it is Back (chevron.backward), and a tap plays the demo's own way
-        // back instead of closing (the symbol's replace transition is the module's).
+        // The close button: a real SwiftUI glass button (`glass-button`, modules/apple/Demos.swift).
+        // In a demo's sub-page it is Back and plays the demo's own way back instead of closing.
         glass-button press=closeOrBack caption=(subField != "" ? "Back" : "Close")
           symbol=(subField != "" ? "chevron.backward" : "xmark")
           aria-label=(subField != "" ? "Back" : "Close")
           testId="close" position="absolute" top=top left=16 width=48 height=48
-        // demo-inspiration.tsx: the info button mirroring the close button (16 pt from the
-        // trailing edge), when the demo credits someone; it opens the Inspiration sheet.
+        // The info button, when the demo credits someone: it opens the Inspiration sheet.
         if demo.story != ""
           glass-button press=inspire caption="Inspiration" symbol="info" edge="trailing"
             aria-label="Inspiration" testId="inspiration" position="absolute" top=top right=16 width=48
             height=48
-      // The Inspiration sheet: RN's @expo/ui BottomSheet (fitToContents, a grabber, dark), a real
-      // UIKit sheet presented from the top-most controller: `inspiration-sheet`
-      // (modules/apple/InspirationSheet.swift). Its action opens the post; a drag closes it.
+      // The Inspiration sheet: a real UIKit sheet (`inspiration-sheet`, modules/apple/InspirationSheet.swift).
       if demo.story != ""
         inspiration-sheet open=(inspiring ? "true" : "false") caption="Inspiration" story=demo.story
           action-label=demo.actionLabel press=follow change=sheetChanged position="absolute" left=0

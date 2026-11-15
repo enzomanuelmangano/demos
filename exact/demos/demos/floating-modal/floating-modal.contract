@@ -1,11 +1,5 @@
-// Floating Modal: a "+" button in the corner grows into a centred modal ("New", "Done"); drag
-// the modal and it shrinks with the distance, let go far enough down and it closes. RN:
-// src/animations/floating-modal (index.tsx, components/FloatingModal). The modal, its content,
-// the backdrop, the pan, the presses and their timings are Rust: gpu/src/floating_modal.rs,
-// over styles.container's rgba(0, 0, 0, 0.1). The surface posts `press` for each press:
-// pressto's global onPress (the app's selection haptic), and `open` / `close` as the sheet
-// presents and dismisses (no haptic of their own: the press's selection already played; a
-// drag's dismissal posts its own medium).
+// Floating Modal: a "+" button in the corner grows into a centred modal; dragging it shrinks it
+// with the distance, and letting go far enough down closes it. One canvas draws the modal.
 use DemoEnv from "../env.contract"
 
 component FloatingModal
@@ -13,10 +7,11 @@ component FloatingModal
     env: DemoEnv
   inject
     pressablesOnPress: action
+  // A press plays pressto's selection; open and close add no haptic of their own.
   action heard(m: string)
     if m == "press"
       pressablesOnPress()
-    // Past RN: the drag's grab of the sheet, and the release that dismisses it.
+    // The drag's grab of the sheet, and the release that dismisses it.
     if m == "haptic:impact-light"
       haptic("impact-light")
     if m == "haptic:impact-medium"

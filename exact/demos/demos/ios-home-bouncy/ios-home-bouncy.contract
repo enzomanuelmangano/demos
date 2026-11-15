@@ -1,17 +1,12 @@
-// iOS Home Bouncy: 28 metallic app squares spring in from 12x, each by its distance from the
-// screen's centre, as iOS's home after unlock; a tap replays it, a long press opens a spring
-// customizer (a fading Modal over an extraLight blur: Opening / Closing tabs, mass, damping and
-// stiffness sliders) that a pull down dismisses. RN: src/animations/ios-home-bouncy. The
-// ScrollView, the Pressable, the shared progress, the Modal, its blur, pan, tabs, keyframed
-// cards and sliders are one Rust surface (gpu/src/ios_home_bouncy.rs).
+// iOS Home Bouncy: 28 metallic app squares spring in, each by its distance from the screen's
+// centre, as iOS's home after unlock. A tap replays it; a long press opens a spring tuner that a
+// pull down dismisses. One canvas draws the grid and the tuner.
 use DemoEnv from "../env.contract"
 
 component IosHomeBouncy
   props
     env: DemoEnv
-  // The surface's haptics (gpu/src/ios_home_bouncy.rs, past RN): light on the long press and a
-  // thumb's take, selection per slider step and across the pull's dismiss line, medium on the
-  // dismiss.
+  // Light on the long press and a thumb's take; selection per slider step; medium on dismiss.
   action heard(m: string)
     if m == "haptic:impact-light"
       haptic("impact-light")

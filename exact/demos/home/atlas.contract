@@ -1,12 +1,8 @@
-// The atlas: every ported demo as an iPhone Air screen (420×912 points) scaled into a tile, in
-// one process (one GPU device for all of them). A tile shows the demo's static frame
-// (assets/atlas/<slug>.jpg: the demo at rest on the Mac, exact/parity-tools/screen-atlas/gen-snapshots.ts)
-// until the pointer moves over it, which mounts the demo live; the last `cap` hovered stay live
-// (or, in "visible" mode, every tile on screen up to `cap`). A tile's name opens it large (the
-// focus view); a live tile takes clicks and drags. A right-click on a tile or the large view
-// leaves feedback (a numbered pin and a comment) for exact/parity-tools/feedback.
+// The atlas: every demo as an iPhone Air screen (420x912 points) scaled into a tile, all in one
+// process. A tile shows the demo's static frame (assets/atlas/<slug>.jpg) until the pointer moves
+// over it, which mounts the demo live. A tile's name opens it large (the focus view). A right-click
+// on a tile or the large view leaves feedback: a numbered pin and a comment.
 // On the Mac the atlas is the window's root (app.contract); elsewhere `demos-exact://atlas`.
-// The web twin is exact/parity-tools/screen-atlas.
 use Demo from "../demos.contract"
 use PortedDemo from "../demos/index.contract"
 use DemoEnv from "../demos/env.contract"
@@ -19,7 +15,7 @@ fn airTop(): number = 62
 fn airBottom(): number = 34
 fn airCorner(): number = 62
 
-// done, open, or unverified (a claimed demo is unverified until it is done).
+// A claimed demo counts as unverified until it is done.
 fn statusOf(slug: string): string = atlasStatus(slug) == "claimed" ? "unverified" : atlasStatus(slug)
 fn statusLabel(slug: string): string = atlasStatus(slug) == "done" ? "Done" : atlasStatus(slug) == "open" ? "Open" : atlasStatus(slug) == "claimed" ? "In progress" : "Unverified"
 fn statusDot(slug: string): string = statusOf(slug) == "done" ? "-exact-system-green" : statusOf(slug) == "open" ? "-exact-system-orange" : "-exact-tertiary-label"
@@ -30,21 +26,17 @@ fn sorted(ds: Demo[], by: string): Demo[] =
   by == "name" ? sortBy(ds, d => d.name) : by == "status" ? sortBy(ds, d => statusRank(d.slug)) : by == "score" ? sortBy(ds, d => atlasScore(d.slug), "desc") : ds
 fn sortLabel(by: string): string = by == "name" ? "Name" : by == "status" ? "Status" : by == "score" ? "Parity Score" : "App Order"
 fn detail(slug: string): string = atlasScore(slug) >= 0 ? `${statusLabel(slug)} · Δ ${atlasScore(slug).toFixed(1)}` : statusLabel(slug)
-// A demo's env inside a tile: the iPhone Air's screen, whatever the window is, and one seed for
-// every launch, so a random demo lays out as its static frame shows.
+// A demo's env inside a tile: the iPhone Air's screen, and one seed so a random demo lays out as its static frame.
 fn airEnv(env: DemoEnv): DemoEnv = DemoEnv(env, width=airW(), height=airH(), safeTop=airTop(), safeBottom=airBottom(), seed=atlasSeed(), tile=true)
 fn atlasSeed(): number = 20260101
-// A tile's static frame is the demo `idleMs()` after it mounts on the Mac (gen-snapshots.ts,
-// under the agent's clock): entrances done, a looping demo at a fixed time. A live tile stays
-// under its frame until that moment, then shows over a 150 ms fade, so going live is no jump.
+// A tile's static frame is the demo `idleMs()` after it mounts: entrances done, a looping demo at
+// a fixed time. A live tile stays under its frame until then, then fades in.
 fn idleMs(): number = 1200
 
 fn frameServer(): string = "http://127.0.0.1:5350"
 
-// gen-snapshots.ts's frame: one demo as a tile mounts it, at `snapScale()`, `snapLeft()`,
-// `snapTop()` points into the window (demos-exact://snap/<slug>), captured from the agent's own
-// window (screencapture -l: the window's own pixels, never the screen's) when the app reports
-// the demo idle (app.contract's snapIdle, `idleMs()` after it mounts) to the feedback server.
+// The route the snapshot tool captures (demos-exact://snap/<slug>): one demo as a tile mounts it, at
+// `snapScale()`, `snapLeft()`, `snapTop()` points into the window, captured once the app reports it idle.
 fn snapScale(): number = 0.8
 fn snapLeft(): number = 20
 fn snapTop(): number = 64
@@ -61,8 +53,7 @@ component SnapFrame
           left=(0 - airW() * (1 - snapScale()) / 2) top=(0 - airH() * (1 - snapScale()) / 2) scale=snapScale()
           PortedDemo(slug=slug, env=airEnv(env))
 
-// A demo route on the Mac (a link, demos-exact://demo/<slug>): the atlas's large view as a
-// route, the demo as an iPhone Air at the window's height, never stretched to the window.
+// A demo route on the Mac (demos-exact://demo/<slug>): an iPhone Air at the window's height.
 component DeskDemo
   props
     slug: string
@@ -92,7 +83,7 @@ keyframes atlasReveal
   88% opacity=0
   to opacity=1
 
-// Feedback, kept by exact/parity-tools/feedback/server.ts (app.contract's feedback sources).
+// Feedback, kept by the feedback server (app.contract's feedback sources).
 shape FeedbackNote
   id: string
   slug: string
@@ -115,15 +106,13 @@ fn demoHit(ids: string[]): string = match first(ids.filter(i => not i.startsWith
   case none => ""
 }
 
-// A tile's lift: the frame around the screen (not the screen, whose children change as it goes
-// live) eases its shadow and scale on the host, one layer, its shadow path its rounded rect.
+// A tile's lift: the frame around the screen (whose children change as it goes live) eases as one layer.
 style Lift
   :hover
     box-shadow = "0px 3px 8px rgba(0,0,0,0.10), 0px 16px 36px rgba(0,0,0,0.15)"
     scale = 1.015
 
-// A demo's pins over its frame (w×h on screen): numbered, the comment as the tooltip; a click
-// opens the note.
+// A demo's pins over its frame (w×h on screen): numbered, the comment as the tooltip; a click opens the note.
 component Pins
   props
     notes: FeedbackNote[]
@@ -139,8 +128,7 @@ component Pins
         box-shadow="0px 1px 3px rgba(0,0,0,0.3)" display="flex" align-items="center" justify-content="center"
         text `${n.n}` font-size=10 font-weight=700 color="#ffffff"
 
-// The comment field at the pin (x, y on screen, inside a w-wide box): Return saves, Esc cancels;
-// an existing note also resolves (or reopens) and deletes.
+// The comment field at the pin: Return saves, Esc cancels; an existing note also resolves (or reopens) and deletes.
 component NoteEditor
   props
     x: number
@@ -196,9 +184,8 @@ component Atlas
   state status = "all"
   state by = "order"
   state scale = 0.36
-  // "hover": live are the last `cap` tiles the pointer moved over; "visible": the tiles on screen.
-  // "near" (the default): the `cap` tiles in view nearest the middle of the grid run live, and
-  // the hovered one; picked again only when a scroll ends, so no demo mounts mid-scroll.
+  // "hover": the last `cap` tiles the pointer moved over are live; "visible": the tiles on screen.
+  // "near" (default): the `cap` tiles nearest the grid's middle, and the hovered one, re-picked only when a scroll ends.
   state mode = "near"
   state cap = 12
   state scrolling = false
@@ -206,10 +193,9 @@ component Atlas
   state recent: string[] = []
   state paused = false
   state focused = ""
-  // Slugs whose tiles intersect the scroller, in no order.
   state inView: string[] = []
-  // Feedback: where the last right-click (or F's click) was, in the demo's 420×912 frame, and the
-  // demo's element under it; `draft` is the demo whose editor is open, `picked` the note it edits.
+  // Feedback: where the last right-click (or F's click) was, in the demo's frame, and the element under it;
+  // `draft` is the demo whose editor is open, `picked` the note it edits.
   state armed = false
   state at = ""
   state draft = ""
@@ -250,7 +236,6 @@ component Atlas
     by = s
   action sized(v: number)
     scale = v
-  // ⌘− / ⌘= / ⌘0 (View): tiles from very small (many per row) up to near full size.
   action zoomOut
     scale = max(0.12, round(scale / 1.25 * 100) / 100)
   action zoomIn
@@ -278,7 +263,6 @@ component Atlas
     else if closable
       leave()
 
-  // The point under a pointer event on `box` (a tile or the large view), in the demo's frame.
   action point(slug: string, box: string, e: PointerEvent)
     let f = frame(box)
     let k = f.width / airW()
@@ -297,7 +281,6 @@ component Atlas
     draft = at
     picked = ""
     words = ""
-  // F: the next click on a tile drops a pin there.
   action arm
     armed = not armed
   action armedClick(slug: string, box: string, e: PointerEvent)
@@ -341,9 +324,8 @@ component Atlas
   view
     column navigationKey=routeKey -exact-safe-area="top" position="absolute" inset=0 color-scheme="light" background-color="-exact-background" color="-exact-label"
       font-family="system-ui" testId="atlas"
-      // The window's title bar and toolbar on the Mac (the route's first child, so AppKit's own
-      // items, not a page drawn under the title bar): title, subtitle, sort and live menus,
-      // status segments, pause, feedback, search. Back only where there is somewhere to go back to.
+      // The window's title bar and toolbar on the Mac (the route's first child, so they are AppKit's own items):
+      // title, subtitle, sort and live menus, status segments, pause, feedback, search.
       header display="flex" flex-direction="row" align-items="center" gap=8 padding="8px 16px" flex-shrink=0
         if closable
           button id="back" press=goBack aria-label=(focused != "" ? "Back to Atlas" : "Close Atlas")
@@ -413,7 +395,6 @@ component Atlas
           row flex-wrap="wrap" column-gap=28 row-gap=30 padding="28px 32px 40px" align-content="flex-start" justify-content="center"
             for d in shown key=d.slug
               column width=(airW() * scale) gap=10 align-items="center" position="relative" z-index=(draft == d.slug ? 2 : 0)
-                // The screen: a scaled iPhone Air display, hairline-edged, softly lifted.
                 view class=Lift width=(airW() * scale) height=(airH() * scale) position="relative"
                   border-radius=(airCorner() * scale) corner-shape="-exact-continuous"
                   box-shadow="0px 1px 2px rgba(0,0,0,0.06), 0px 6px 18px rgba(0,0,0,0.07)"
@@ -425,7 +406,6 @@ component Atlas
                     contextmenu=menuAt(d.slug, `atlas-tile-${d.slug}`) contextPopover="atlas-menu"
                     image `assets/atlas/${d.slug}.jpg` position="absolute" inset=0 width="100%" height="100%"
                       object-fit="cover" aria-hidden=true
-                    // The frame gen-snapshots.ts last wrote, from the feedback server (no build needed).
                     image `${frameServer()}/snap/${d.slug}.jpg?v=${env.epoch}` position="absolute" inset=0 width="100%" height="100%"
                       object-fit="cover" aria-hidden=true
                     if live.includes(d.slug)
@@ -437,7 +417,6 @@ component Atlas
                       view position="absolute" inset=0 cursor="crosshair" testId=`atlas-drop-${d.slug}`
                         pointerdown=armedClick(d.slug, `atlas-tile-${d.slug}`)
                     Pins(notes=notesOf(notes, d.slug), w=(airW() * scale), h=(airH() * scale), open=openNote)
-                // The open-feedback count, at the frame's corner.
                 if openCount(notes, d.slug) > 0
                   text `${openCount(notes, d.slug)}` position="absolute" top=-6 right=-6 min-width=18 height=18
                     padding="0px 5px" border-radius=9 background-color="-exact-system-orange" color="#ffffff"
@@ -447,7 +426,6 @@ component Atlas
                   NoteEditor(x=(dx * airW() * scale), y=(dy * airH() * scale), w=(airW() * scale), h=(airH() * scale),
                     hit=hit, editing=(picked != ""), status=noteStatus(notes, picked), words=words, typed=typedWords,
                     save=saveNote, cancel=closeNote, mark=markNote)
-                // The caption: the name, the status (a dot) and the parity score under it. Opens the focus view.
                 button appearance="none" press=focus(d.slug) aria-label=`Focus ${d.name}` testId=`atlas-open-${d.slug}`
                   padding=0 border-width=0 background-color="transparent" max-width="100%"
                   column gap=2 align-items="center" max-width="100%"
@@ -457,7 +435,6 @@ component Atlas
                       view width=6 height=6 border-radius=3 background-color=statusDot(d.slug)
                       text detail(d.slug) font-size=11 color="-exact-secondary-label"
 
-        // The focus view: the demo at full size (as far as the window allows), centred, live.
         if focused != ""
           column position="absolute" inset=0 background-color="-exact-secondary-background" align-items="center"
             justify-content="center" gap=14 testId="atlas-focus"
@@ -483,7 +460,6 @@ component Atlas
                   typed=typedWords, save=saveNote, cancel=closeNote, mark=markNote)
             text `${detail(focused)} · Esc to close · right-click to leave feedback` font-size=11 color="-exact-tertiary-label"
 
-      // The status bar (Finder's): the tile size.
       row flex-shrink=0 align-items="center" justify-content="flex-end" gap=10 padding="6px 16px" border-top-width=1
         border-top-style="solid" border-color="-exact-separator" background-color="-exact-background"
         text (paused ? "Paused" : armed ? "Click a demo to leave feedback · Esc to cancel" : `${live.length} of ${cap} live`)

@@ -1,23 +1,18 @@
-// Slide To Reveal: a dark card showing the code 112358 blurred; the finger reveals the digits
-// under it, sharp and grown. RN: src/animations/slide-to-reveal (index.tsx,
-// components/slide-to-reveal.tsx, components/text-code.tsx). The card, its masks, the digits and
-// the pan are Rust: gpu/src/slide_to_reveal.rs.
+// Slide to reveal: a dark card shows the code 112358 blurred. The finger reveals the digits under
+// it, sharp and grown. Drawn in Rust (gpu/src/slide_to_reveal.rs).
 use DemoEnv from "../env.contract"
 
 component SlideToReveal
   props
     env: DemoEnv
-  // The card's haptics (gpu/src/slide_to_reveal.rs, past RN): light on the touch, selection at
-  // each digit the finger reaches.
+  // Light on the touch, selection at each digit the finger reaches.
   action heard(m: string)
     if m == "haptic:impact-light"
       haptic("impact-light")
     if m == "haptic:selection"
       haptic("selection")
   view
-    // styles.container: black, centred.
     column position="absolute" inset=0 background-color="#000000" align-items="center"
       justify-content="center" testId="slide-to-reveal"
-      // <SlideToReveal code={112358} width={windowWidth * 0.6} height={80} />.
       canvas surface=slide_to_reveal() message=heard width=(env.width * 0.6) height=80 touch-action="none"
         testId="slide-to-reveal-canvas" aria-label="Slide to reveal the code"

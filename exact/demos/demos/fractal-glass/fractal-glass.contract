@@ -1,34 +1,24 @@
 // Fractal Glass: an orange circle dragged behind a pane of reeded (fluted) glass, each flute a
-// lens that refracts and frosts it (RN's 4 × 4 gradient mask was not real fractal glass); a
-// liquid-glass button switches the light theme (white, orange) and the dark one (black,
-// #78C0E0). RN: src/animations/fractal-glass (index.tsx, components/fractal-glass-mask.tsx).
-// The canvas, the circle's drag and the theme's colour timings are Rust
-// (gpu/src/fractal_glass.rs).
+// lens that refracts and frosts it. A liquid-glass button switches the light and dark themes.
 use displayCorner from "../env.contract"
 
 component FractalGlass
   state theme = "light"
   action toggle
     theme = theme == "light" ? "dark" : "light"
-  // The circle's haptics (gpu/src/fractal_glass.rs, past RN): light on the grab, selection as
-  // it passes behind the glass or out from it.
+  // Haptics: light on the grab, selection as the circle passes behind the glass or out from it.
   action heard(m: string)
     if m == "haptic:impact-light"
       haptic("impact-light")
     if m == "haptic:selection"
       haptic("selection")
   view
-    // styles.fill: the window; its background is drawn by the canvas (withTiming white/black).
+    // The canvas draws the background, fading between white and black.
     column position="absolute" inset=0 testId="fractal-glass"
       canvas surface=fractal_glass(theme == "dark" ? 1 : 0) message=heard position="absolute" top=0 left=0 width="100%"
         height="100%" touch-action="none" testId="fractal-glass-canvas"
         aria-label="Drag the circle behind the glass"
-      // The theme button (past RN's 58 pt circle filled with the circle's colour, whose
-      // continuous corners at half its size drew a lumpy squircle): the app's liquid-glass
-      // button, as the close button is, a true 48 pt circle. Floating at the bottom, it is
-      // concentric with the display's corner: its centre on the corner arc's, so it sits
-      // displayCorner - 24 from the right and the bottom. The moon switches to dark, the sun
-      // back to light.
+      // A 48 pt circle, concentric with the display's corner: displayCorner - 24 from the right and the bottom.
       glass-button press=toggle caption=(theme == "light" ? "Dark theme" : "Light theme")
         symbol=(theme == "light" ? "moon.fill" : "sun.max.fill") edge="trailing"
         aria-label=(theme == "light" ? "Dark theme" : "Light theme") testId="fractal-glass-theme"

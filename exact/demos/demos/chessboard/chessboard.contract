@@ -1,39 +1,22 @@
-// Chessboard: Lasker–Thomas, London 1912, as a puzzle. A live board (drag or tap a piece;
-// castling, en passant and promotion with its picker), the two player cards with their chess
-// clocks and turn dots, and on checkmate the screen swept by a glass wave into a haze under the
-// game review card (Back resets, Replay plays the line again).
-// RN: src/animations/chessboard (src/index.tsx, use-chess-game.ts, checkmate-aura.tsx,
-// components/*; react-native-chessboard and chess.js). All of it is one Rust surface
-// (gpu/src/chessboard.rs); here the haptics it posts and the puzzle's bar.
+// Chessboard: Lasker–Thomas, London 1912, as a puzzle. Drag or tap a piece to move it; castling,
+// en passant and promotion are supported. On checkmate the screen is swept by a glass wave into a
+// haze under the game review card (Back resets, Replay plays the line again). The board is a
+// Rust surface (gpu/src/chessboard.rs).
 //
-// Past RN (the owner's phone note mwhlpkfj-6464e0: "add a concentric button at the bottom saying
-// Hint and View solution, as on Patterns"): the board is a puzzle as the owner's Patterns app plays
-// one. The opponent's setup move slides in, the user answers, the opponent replies, until the mate.
-// The control at the bottom is Patterns' puzzle dock (modules/dock-segmented-control/ios:
-// DockSegmentedControlLogic.swift, DockSegmentedControlView+Appearance.swift / +Transition.swift;
-// src/components/navigation/morphing-dock.tsx, dock-metrics.ts): one liquid-glass pill, 60 tall
-// (surfaceHeight), a word and no icon, in the dock's semibold at 14 (fontSize.sm), its ink the
-// accent while it can be pressed and the muted grey while the opponent moves (applyPrimaryInk).
-// The word climbs Patterns' ladder: Hint (marks the piece) → View solution (marks its square,
-// Patterns' arrow) → Play solution (plays the move); the pill is padding-led at 104 for Hint and
-// 148 for the other two (hintWidth, solutionWidth), resized on the dock's spring (342, 30.3), the
-// words crossed over 240 ms (wordChangeDuration). Glass: regular, tinted white at 0.07 (the dark
-// scheme's dock.surface). A continuous capsule (radius 30) at the height a capsule concentric with
-// the display sits: 62 − 30 = 32 above the display's bottom (env.contract concentricInset; the
-// owner, mwhpcftp: "the bottom button isn't concentric" at Patterns' 20). Patterns' leading pill (the
-// history arrows) has no counterpart here: the demo keeps no move history. Each tap raises a
-// counter the surface reads; the press is pressto's scale and selection haptic. The surface posts
-// `puzzle:<wait|play|hint1|hint2|done>`: a build without the puzzle never does, so the pill shows
-// only once one arrives.
+// The puzzle plays as the opponent's setup move, then the user's answers and the opponent's
+// replies, up to the mate. The bottom control is a Patterns-style dock: one glass pill, 60 pt tall,
+// whose word climbs Hint, then View solution, then Play solution. Glass is regular, tinted white
+// at 0.07. Its bottom gap is concentric with the display (62 − 30 = 32 pt). Each tap raises a
+// counter that the surface reads. The surface posts `puzzle:<wait|play|hint1|hint2|done>`, and the
+// pill shows only once one arrives.
 //
-// The mate's Core Haptics pattern (haptics.ts MATE_PATTERN) is `mate-haptic` in
-// modules/apple/Demos.swift: the surface posts "haptic:mate" / "haptic:mate-stop", counted here
-// into its `plays` and `stops`. The web build has no such view; there the surface posts the
-// pattern's taps as UIKit impacts instead.
+// The mate's haptic pattern is `mate-haptic` (modules/apple/Demos.swift). The surface posts
+// "haptic:mate" and "haptic:mate-stop", counted here into `plays` and `stops`. The web build has
+// no such view, so the surface posts the pattern's taps as impacts instead.
 use DemoEnv, concentricInset, concentricRadius from "../env.contract"
 use PressableScale from "pressto"
 
-// Patterns' dock: its bottom gap (concentric), the pill's height, its widths.
+// The dock: its bottom gap, the pill's height and its widths.
 fn dockInset(): number = concentricInset(dockHeight())
 fn dockHeight(): number = 60
 fn dockWidth(mode: string): number = mode == "hint1" or mode == "hint2" ? 148 : 104
@@ -43,12 +26,12 @@ fn dockWord(mode: string): string = mode == "hint1" ? "View solution" : (mode ==
 component Chessboard
   props
     env: DemoEnv
-  // MATE_PATTERN's plays and stops (the `mate-haptic` view starts or cancels it on a new value).
+  // The mate pattern starts on a new `plays` and cancels on a new `stops`.
   state mate = 0
   state stop = 0
   // The surface's puzzle mode ("" until it posts one).
   state mode = ""
-  // Taps on Hint and on View solution: the surface acts on each rise.
+  // Taps on Hint and View solution. The surface acts on each change.
   state hints = 0
   state solves = 0
   action heard(m: string)
@@ -77,7 +60,6 @@ component Chessboard
     if mode == "hint2"
       solves = solves + 1
   view
-    // styles.root: theme.bg.
     column position="absolute" inset=0 background-color="#0d0e12" testId="chessboard"
       canvas surface=chessboard(hints, solves) message=heard position="absolute" top=0 left=0
         width=env.width height=env.height touch-action="none" testId="chessboard-canvas"

@@ -1,26 +1,19 @@
-// Sudoku, redesigned from the owner's phone feedback (2026-11-15, notes mwhonvzk-e2cc0a and
-// mwhn456m-c9c3f7: "terrible layout, and haptics are missing"). RN: src/animations/sudoku (the
-// game; the look is new). A compact header ("Sudoku", the mistakes, the clock) over a full-width
-// board, the glass number pad and the glass Undo / Erase / Notes at the bottom, concentric with
-// the display; New Game is a glass icon button on the demo's top row and asks first.
-//
-// The board is the Rust surface (gpu/src/sudoku.rs): the gradient, the grid, the digits, the
-// selection and its tints, the shake, the waves, the game and every haptic. The pad hands each
-// press in as `cmd` + a new `token` (1-9 a digit, 10 Erase, 11 Undo) with `notes`; the surface
-// says what the pad shows (`remain:`, `mistakes:`, `time:`) and asks for the Genius alert.
+// Sudoku: a board with a glass number pad, and Undo, Erase and Notes below it. A header shows
+// the mistakes and the clock. New Game asks first.
+// The board is drawn by the canvas surface, which also plays the haptics. The pad sends each
+// press as `cmd` plus a new `token` (1-9 a digit, 10 Erase, 11 Undo).
 use DemoEnv, floatingWidth, concentricRadius from "../env.contract"
 use RouteAlert from "../route-alert.contract"
 use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
 
-// The bottom controls: 16 from the display's sides and bottom (env.contract's concentric rule),
-// the tools row (56) under the digits (64), 10 apart.
+// The bottom controls sit 16 from the display's sides and bottom.
 fn sdkInset(): number = 16
 fn sdkToolsH(): number = 56
 fn sdkKeyH(): number = 64
 fn sdkGap(): number = 10
 fn sdkKeysBottom(): number = sdkInset() + sdkToolsH() + sdkGap()
-// The board: the full width less 16 a side (at most 480 on a wide window), the header 28 tall
-// and 14 above it; the pair centred between the glass row and the digits.
+// The board is the width less 16 a side, at most 480. The header and board are centred vertically
+// between the top row and the digits.
 fn sdkBoard(w: number): number = min(w - 2 * sdkInset(), 480)
 fn sdkHeaderH(): number = 28
 fn sdkHeaderGap(): number = 14
@@ -30,12 +23,12 @@ fn sdkGroupTop(w: number, h: number, safeTop: number): number =
   max(sdkRegionTop(safeTop), sdkRegionTop(safeTop) + floor((sdkRegionBottom(h) - sdkRegionTop(safeTop) - sdkHeaderH() - sdkHeaderGap() - sdkBoard(w)) / 2))
 fn sdkBoardTop(w: number, h: number, safeTop: number): number = sdkGroupTop(w, h, safeTop) + sdkHeaderH() + sdkHeaderGap()
 fn sdkBoardLeft(w: number): number = (w - sdkBoard(w)) / 2
-// A digit key's count ("" until the surface says), and whether its number is all placed.
+// How many of this digit are left to place. Empty until the surface reports it.
 fn sdkLeft(remain: string, d: number): string = remain == "" ? "" : remain.slice(d - 1, d)
 fn sdkDone(remain: string, d: number): bool = sdkLeft(remain, d) == "0"
-// m:ss.
+// Formats seconds as m:ss.
 fn sdkClock(s: number): string = `${floor(s / 60)}:${s % 60 < 10 ? "0" : ""}${s % 60}`
-// UIKit's dark systemBlue / systemRed / secondaryLabel.
+// iOS dark-mode system colours.
 fn sdkBlue(): string = "#0A84FF"
 fn sdkRed(): string = "#FF453A"
 fn sdkSecondary(): string = "rgba(235, 235, 245, 0.6)"
@@ -47,15 +40,14 @@ component Sudoku
     env: DemoEnv
   state reset = 0
   state ok = 0
-  // The pad's last press: its command and a token that changes with every press.
+  // The pad's last press: its command, and a token that changes with every press.
   state cmd = 0
   state token = 0
   state notes = false
-  // What the surface said: each number's count still to place, the mistakes, the clock.
+  // Reported by the surface: each number's count left to place, the mistakes, the clock.
   state remain = ""
   state mistakes = 0
   state seconds = 0
-  // The two Alert.alerts (route-alert.contract: UIKit's own on the phone).
   state asking = false
   state genius = false
   action heard(m: string)
@@ -67,7 +59,7 @@ component Sudoku
       seconds = match parseNumber(m.slice(5)) { case some(n) => n, case none => seconds }
     if m == "alert:genius"
       genius = true
-    // The host plays a surface's haptics itself; these only run where it does not.
+    // Haptics: the host plays these only where the surface cannot.
     if m == "haptic:selection"
       haptic("selection")
     if m == "haptic:impact-light"
@@ -80,8 +72,7 @@ component Sudoku
       haptic("success")
     if m == "haptic:error"
       haptic("error")
-  // A digit, Erase or Undo: the surface plays its haptic (light, error, success) once it knows
-  // what the entry did, so the press itself plays none.
+  // The surface plays the haptic once it knows what the entry did, so the press plays none.
   action send(c: number)
     cmd = c
     token = token + 1
@@ -97,7 +88,7 @@ component Sudoku
     reset = reset + 1
   action keepGame
     asking = false
-  // The Genius alert's OK: a new puzzle.
+  // Genius alert OK: starts a new puzzle.
   action geniusOk
     genius = false
     notes = false
@@ -108,7 +99,7 @@ component Sudoku
         position="absolute" top=0 left=0 width=env.width height=env.height touch-action="none"
         message=heard testId="sudoku-canvas"
         aria-label="Sudoku board: tap a cell, then a number"
-      // The header: one line over the board, its edges the board's.
+      // The header, aligned to the board's edges.
       row position="absolute" left=sdkBoardLeft(env.width) width=sdkBoard(env.width)
         top=sdkGroupTop(env.width, env.height, env.safeTop) height=sdkHeaderH() align-items="center"
         justify-content="space-between" pointer-events="none" z-index=10 testId="sudoku-header"
@@ -123,12 +114,11 @@ component Sudoku
             image "symbol:sf/clock" font-size=13 color=sdkSecondary() aria-hidden=true
             text sdkClock(seconds) font-size=15 font-weight=600 font-variant-numeric="tabular-nums"
               color=sdkSecondary() testId="sudoku-time"
-      // New Game on the demo screen's glass row, where the info button sits.
+      // New Game, in the top corner.
       glass-button press=askNewGame caption="New Game" symbol="arrow.clockwise" edge="trailing"
         aria-label="New Game" testId="sudoku-new-game" position="absolute" top=env.safeTop right=16
         width=48 height=48 z-index=10
-      // The digits: nine glass keys, each with the count still to place; a number all placed
-      // fades and shrinks away (opacity and scale only, its place kept).
+      // The digit keys. A digit with none left fades and shrinks away, keeping its place.
       row position="absolute" left=sdkInset() bottom=sdkKeysBottom()
         width=floatingWidth(env.width, sdkInset()) height=sdkKeyH() gap=6 z-index=10
         testId="sudoku-keys"
@@ -141,7 +131,7 @@ component Sudoku
                   line-height="30px"
                 text sdkLeft(remain, d) font-size=11 font-weight=600 color=sdkSecondary()
                   line-height="13px" font-variant-numeric="tabular-nums" testId=`sudoku-left-${d}`
-      // The tools: Undo, Erase, Notes, the bottom-most row, concentric with the display.
+      // The tool keys: Undo, Erase and Notes.
       row position="absolute" left=sdkInset() bottom=sdkInset()
         width=floatingWidth(env.width, sdkInset()) height=sdkToolsH() gap=sdkGap() z-index=10
         testId="sudoku-tools"
@@ -167,9 +157,7 @@ component Sudoku
         cancelLabel="", confirm="New Game", destructive=false, dismiss=geniusOk, accept=geniusOk,
         testId="genius-alert")
 
-// A glass key: pressto's scale (250 ms on press in and out), the glass a touch-transparent
-// background sibling under the content. `tint` tints the glass ("" for none); `gone` fades and
-// shrinks it away and takes it out of the touches. The press plays no haptic of its own.
+// A glass key. `tint` colours the glass ("" for none). `gone` fades it out and stops touches.
 component SudokuKey
   inject
     pressto: PressablesConfig
@@ -202,7 +190,7 @@ component SudokuKey
           continuous="true" position="absolute" inset=0 pointer-events="none" aria-hidden=true
       children
 
-// A tool's face: its symbol over its caption.
+// A tool key's icon over its caption.
 component SudokuTool
   props
     symbol: string

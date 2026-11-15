@@ -1,19 +1,12 @@
-// Bezier Curve Outline: a chess-board square that, pressed, grows while it travels along a cubic
-// Bézier and blurs on the way; "Outline Mode" crossfades to the curve itself, whose four control
-// points can be dragged, and the screen blurs while the button is held. RN:
-// src/animations/bezier-curve-outline (src/index.tsx, components/bezier-outline.tsx,
-// components/animated-square, hooks/useAnimateThroughPath). The outline, the square (its walk
-// along the contour, press, chessboard, pawn, BlurView) and both crossfades are Rust:
-// gpu/src/bezier_curve_outline.rs, which posts the square's press haptic, and so is the
-// full-screen BlurView (it blurs what the surface draws; `held` drives its intensity). The
-// button is here.
+// Bezier Curve Outline: a chess square that, pressed, grows as it travels along a cubic Bézier
+// and blurs on the way. "Outline Mode" crossfades to the curve itself, whose four control points
+// can be dragged. The screen blurs while the button is held. The outline, the square and both
+// crossfades are a Rust surface (gpu/src/bezier_curve_outline.rs). The button is here.
 use DemoEnv from "../env.contract"
 use PressableScale from "pressto"
 
-// rLabelColorStyle: interpolateColor(outlineModeProgress, [0, 1], ['#202020', 'white']),
-// Reanimated's RGB with gamma 2.2, each channel rounded: these stops, on a timeline the hidden
-// box below drives with the same spring (withSpring's default, 900 / 120 / 4). Greys: the same
-// numbers in Display P3 and sRGB.
+// The label's ink, from #202020 to white, sampled as stops. The hidden box below drives the
+// timeline with the same spring (900 / 120 / 4).
 keyframes labelInk
   0% color="#202020"
   1% color="#2B2B2B"
@@ -49,8 +42,7 @@ component BezierCurveOutline
   props
     env: DemoEnv
   state outline = false
-  // pressto's PressableScale (packages/pressto) presses; `held` is its isPressed (the same
-  // pointerdown / pointerup, heard on the node inside it), for the surface's blur.
+  // `held` is true while the button is pressed. It drives the surface's blur.
   state held = false
   action heard(m: string)
     if m == "haptic:selection"
@@ -66,17 +58,13 @@ component BezierCurveOutline
       view position="absolute" left=0 top=0 width=0 height=0 pointer-events="none" aria-hidden=true
         translate=(outline ? "100px 0px" : "0px 0px") transition="translate -exact-spring(900, 120, 4)"
         -exact-drag-timeline="--outlineMode x"
-      // The surface also draws the AnimatedBlurView (absoluteFill, zIndex 100, untouchable, tint
-      // systemUltraThinMaterialLight, intensity withTiming(held ? 65 : 0, 300 ms, linear)).
+      // The surface also draws the full-screen blur: intensity 65 while held, 0 otherwise, over 300 ms.
       canvas surface=bezier_curve_outline(outline, held) message=heard position="absolute" top=0 left=0
         width=env.width height=env.height touch-action="none" testId="bezier-curve-outline-canvas"
         aria-label="Press the square; in outline mode, drag the curve's points"
-      // styles.button: absolute, bottom 48, centred (alignSelf), zIndex 2000; styles.text 14,
-      // centred, its colour on the outline spring.
+      // The label's ink follows the outline spring.
       row position="absolute" left=0 right=0 bottom=48 justify-content="center" pointer-events="none"
-        // The owner's call (phone feedback, 2026-11-15): a hit slop of 14 round the label (RN sets
-        // none), so the 14 pt text takes a 44 pt tall touch: the press box reaches 14 past it
-        // (its place 14 out each way, the label 14 in), for the touch and the lift alike.
+        // The 14 pt label gets a 44 pt touch target: the press box reaches 14 pt past it on each side.
         view pointer-events="auto" margin=-14
           PressableScale(press=toggle)
             row margin=14 pointerdown=pressIn pointerup=pressOut testId="bezier-curve-outline-toggle" text-align="center"

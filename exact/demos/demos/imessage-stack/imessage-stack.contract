@@ -1,23 +1,17 @@
-// iMessage Stack: ten pastel cards in a fanned stack; a paged horizontal swipe brings the next
-// card to the front, the one leaving swinging aside and tucking behind. RN:
-// src/animations/imessage-stack (index.tsx, card.tsx). The whole demo is one Rust surface
-// (gpu/src/imessage_stack.rs): the inverted FlatList as UIKit's scroll with RN's snapToInterval
-// and disableIntervalMomentum (one card per fling), and the cards' interpolated transforms,
-// shadows and depth order.
+// iMessage Stack: ten pastel cards in a fanned stack; a horizontal swipe brings the next card to
+// the front, the one leaving swinging aside. One canvas handles the swipe, one card per fling.
 use DemoEnv from "../env.contract"
 
 component ImessageStack
   props
     env: DemoEnv
-  // The stack's haptics (gpu/src/imessage_stack.rs, past RN): selection as the front card
-  // changes, rigid when the list is pulled past an end.
+  // Haptics: selection as the front card changes, rigid when pulled past an end.
   action heard(m: string)
     if m == "haptic:selection"
       haptic("selection")
     if m == "haptic:impact-rigid"
       haptic("impact-rigid")
   view
-    // styles.container: black.
     column position="absolute" inset=0 background-color="#000" testId="imessage-stack"
       canvas surface=imessage_stack() message=heard position="absolute" top=0 left=0 width=env.width
         height=env.height touch-action="none" aria-label="Cards: swipe sideways"

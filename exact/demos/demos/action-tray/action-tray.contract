@@ -1,47 +1,22 @@
-// Action Tray: a blue + button (it turns to ×) presents a floating tray over a dimmed page; its
+// Action Tray: a blue + button (it turns to ×) opens a floating tray over a dimmed page. Its
 // button steps through three headings, the tray growing to fit each; a drag down, the close
 // button or the scrim dismisses it.
-// RN: src/animations/action-tray (index.tsx, constants/palette.ts,
-// components/ActionTray/index.tsx, components/ActionTray/Backdrop/index.tsx).
 //
-// Past RN (the owner's note: "improve this tray massively; it must be concentric with the
-// phone's edge"): an iOS 26 floating sheet. RN's flow and copy are kept; the look and motion are
-// redesigned:
-// - Shape: 10 pt from the sides and the bottom of the display, the home indicator ignored (as
-//   iOS 26's floating sheets), corner radius = display corner − inset, continuous. Exact exposes
-//   no display corner radius, so it is the iPhone 17 / Air's 62 pt (stacked-bottom-sheet's
-//   sheetCorner()). Inner elements are concentric with it: the button 24 in has radius 52 − 24,
-//   the close circle sits on the corner's own centre (52, 52).
-// - Motion: only transforms on critically damped springs and constant transitions, never a
-//   layout transition. The tray is two pieces: an upper body (top corners) translated by how
-//   much shorter than its frame the tray is, clipped just above a fixed bottom cap (bottom
-//   corners); the height change is that translate, in the same commit as the crossfade. Each
-//   step's title, copy and button label + glyph stay mounted and crossfade (TrayFade: out up,
-//   in settling, 40 ms apart); the copy's laid-out height (frame()) sizes the tray, so it fits
-//   the text on any width.
-// - The drag: down 1:1, up rubber-banded (iOS's (1 − 1/(x·c/d + 1))·d, c 0.55, d 110); a
-//   release past 120 pt (or 35 % of the tray) or a flick dismisses. The scrim's opacity is the
-//   same drag timeline, so it tracks presenting, dismissing and the finger.
-// - Glass (iOS 26): the + toggle, the primary button (tinted, as .glassProminent) and the close
-//   circle (regular) are `glass-pane` over their fill; the web shows the fill.
-// - Haptics: open soft, dismiss light, the last step's Accept a success (presses keep pressto's
-//   selection).
-// - Not here: the crossfade's blur. Contract's `filter` doesn't animate (kernel schema: no
-//   transition or keyframe property for it); it needs host support (Swift/Rust).
+// The shape is an iOS 26 floating sheet. Its drag is down 1:1 and up rubber-banded.
+// Glass panes sit over the fills; the web shows the fills.
+// Not here: the crossfade's blur. `filter` does not animate in Contract, so it needs host support.
 use PressableScale from "pressto"
 use DemoEnv from "../env.contract"
 
-// The display's corner (iPhone 17 / Air), the tray's inset from it, the tray's corner, and the
-// content's inset (its concentric radius: trayCorner() − trayPad()).
+// The display corner is 62 pt (iPhone 17 / Air); the tray's corner is that less the 10 pt inset,
+// so the inner elements stay concentric with it.
 fn displayCorner(): number = 62
 fn trayInset(): number = 10
 fn trayCorner(): number = displayCorner() - trayInset()
 fn trayPad(): number = 24
-// The bottom cap: the bottom corners, taller than twice the radius (Core Animation draws a
-// radius only up to half the box). The upper body is clipped 4 pt inside it.
+// Taller than twice the radius: Core Animation draws a radius only up to half the box.
 fn trayCap(): number = 112
-// Layout, top to bottom: the header's centre line on the corner's centre (52), the copy from 80,
-// 24 to the button (56), 24 under it.
+// The header's centre sits on the corner's centre (52).
 fn trayBodyTop(): number = 80
 fn trayChrome(): number = trayBodyTop() + trayPad() + 56 + trayPad()
 
@@ -55,22 +30,19 @@ fn trayLabel(): string = "#000000"
 fn traySecondary(): string = "rgba(60, 60, 67, 0.6)"
 fn trayFill(): string = "rgba(118, 118, 128, 0.12)"
 
-// Critically damped springs (ζ = c / (2√(k·m)) = 1), mass 4: presenting ω 15 (response ≈ 0.42 s),
-// dismissing ω 18 (quicker out than in), the height and the copy's travel ω 16.
+// Critically damped springs, mass 4. Dismissing is quicker than presenting.
 fn presentSpring(): string = "-exact-spring(900, 120, 4)"
 fn dismissSpring(): string = "-exact-spring(1296, 144, 4)"
 fn heightSpring(): string = "-exact-spring(1024, 128, 4)"
-// The crossfade between steps (TrayFade): the outgoing layer leaves on a strong ease-out
-// (220 ms), the incoming one arrives over 340 ms on the same curve held for its first 40 ms (the
-// stagger: the iOS host plays no transition delay, so the hold is in the curve).
+// Step crossfade (TrayFade): the outgoing layer leaves in 220 ms; the incoming one arrives over
+// 340 ms, its first 40 ms held in the curve, since iOS plays no transition delay.
 fn leaveCurve(): string = "220ms cubic-bezier(0.23, 1, 0.32, 1)"
 fn arriveCurve(): string = "340ms linear(0 0%, 0 11.76%, 0.0859 13.53%, 0.2098 16.18%, 0.3626 19.71%, 0.5277 24.12%, 0.6819 29.41%, 0.8052 35.59%, 0.8911 42.65%, 0.9491 51.47%, 0.9796 61.18%, 0.9938 71.76%, 0.9991 84.12%, 1 100%)"
 fn leaveT(): string = `opacity ${leaveCurve()}, translate ${leaveCurve()}, scale ${leaveCurve()}`
 fn arriveT(): string = `opacity ${arriveCurve()}, translate ${arriveCurve()}, scale ${arriveCurve()}`
 fn trayGlyphOf(step: number): string = step == 0 ? "symbol:sf/arrow.right" : (step == 1 ? "symbol:sf/checkmark" : "symbol:sf/checkmark.circle.fill")
 
-// The drag up: the drawn tray counters the layer (−1000 … 0 px) to iOS's rubber band,
-// (1 − 1/(|y|·0.55/110 + 1))·110 up for a finger |y| up.
+// Drag up: iOS's rubber band, (1 − 1/(|y|·0.55/110 + 1))·110 for a finger |y| up, as keyframes.
 keyframes trayRubber
   0% translate="0px 908.33px"
   24% translate="0px 672.92px"
@@ -99,14 +71,12 @@ component ActionTray
     env: DemoEnv
   state opened = false
   state step = 0
-  // Each step's copy height, read from its laid-out frame on open and on each step (these
-  // are iPhone 17's).
+  // Each step's copy height, measured on open and on each step. These are iPhone 17's defaults.
   state bodyH = [22, 154, 176]
   derive trayW = env.width - 2 * trayInset()
-  // The drawn frame: as tall as the tray may get; the tray shows its bottom `trayH`.
+  // The drawn frame is as tall as the tray may get; the tray shows its bottom `trayH`.
   derive frameH = max(env.height - env.safeTop - 2 * trayInset(), 400)
   derive trayH = trayChrome() + trayNum(bodyH, step)
-  // Off screen: the tray and its inset, and a margin.
   derive closedY = trayH + trayInset() + 24
 
   action measureCopy
@@ -125,7 +95,7 @@ component ActionTray
       dismiss()
     else
       present()
-  // RN's Continue / Accept: the next step, the last one closes (the flow's outcome).
+  // Continue and Accept: the next step; the last one closes the tray.
   action next
     if step == 2
       opened = false
@@ -133,9 +103,9 @@ component ActionTray
     else
       measureCopy()
       step = step + 1
-  // The drag's release: y is the layer's translate (0 at rest). Past 120 pt or 35 % of the
-  // tray, or a downward flick, dismisses; else the layer springs home.
-  // The drag's binding (a transform drag needs it with the release); nothing to keep.
+  // y is the layer's translate (0 at rest). Past 120 pt or 35 % of the tray, or a downward
+  // flick, dismisses; otherwise the layer springs home.
+  // The drag binding needs an action; this one has nothing to record.
   action bound(bw: number, bh: number, pw: number, ph: number)
     opened = opened
   action release(x: number, y: number, scale: number, vx: number, vy: number, vscale: number)
@@ -145,8 +115,7 @@ component ActionTray
   view
     column position="absolute" inset=0 background-color="#FFFFFF" align-items="center"
       justify-content="center" timeline-scope="--tray" testId="action-tray"
-      // RN's toggle (marginTop 200, centred): a 56 pt circle in systemBlue under tinted glass;
-      // the + turns to × on the presenting spring.
+      // Toggle: a 56 pt systemBlue circle under tinted glass; the + turns to × on the presenting spring.
       view width=56 height=56 margin-top=200
         PressableScale(press=toggle)
           column width=56 height=56 border-radius=28 background-color=trayBlue()
@@ -158,15 +127,14 @@ component ActionTray
               interactive="false" continuous="true" position="absolute" inset=0
               pointer-events="none" aria-hidden=true
             image "symbol:sf/plus" font-size=24 font-weight=600 color="#FFFFFF" aria-hidden=true
-      // The scrim: its opacity is the tray's drag timeline (0 at rest … closedY off screen).
-      // RN's Backdrop: a touch closes.
+      // The scrim: its opacity follows the tray's drag timeline (full at rest, clear once off screen).
       view position="absolute" inset=0 background-color="rgba(0, 0, 0, 0.24)"
         animation="trayScrim 1s linear both" animation-timeline="--tray"
         animation-range=`0px ${closedY}px`
         pointer-events=(opened ? "auto" : "none") pointerdown=dismiss
         aria-label="Close the tray" testId=(opened ? "backdrop" : "backdrop-idle")
-      // The tray's layer: its translate is the presentation (0 open, closedY dismissed) and
-      // the drag's target, under an untransformed, clipping parent.
+      // The layer's translate is the presentation (0 open, closedY dismissed) and the drag target.
+      // Its parent is untransformed and clips.
       column position="absolute" inset=0 overflow="hidden" pointer-events="none"
         column id="action-tray-layer" width="100%" height="100%" box-sizing="border-box"
           position="relative" translate=`0px ${opened ? 0 : closedY}px`
@@ -182,8 +150,8 @@ component ActionTray
           column position="absolute" left=trayInset() bottom=trayInset() width=trayW height=frameH
             pointer-events="none" animation="trayRubber 1s linear both"
             animation-timeline="--tray" animation-range="-1000px 0px" testId="tray"
-            // The upper body: top corners, slid down by frameH − trayH, clipped 4 pt inside
-            // the bottom cap.
+            // The upper body (top corners) slides down by frameH − trayH and is clipped 4 pt
+            // inside the bottom cap.
             column position="absolute" left=0 top=0 width=trayW bottom=(trayCap() - 4)
               overflow="hidden"
               view position="absolute" left=0 top=0 width=trayW height=frameH
@@ -191,18 +159,17 @@ component ActionTray
                 border-top-right-radius=trayCorner() corner-shape="-exact-continuous"
                 translate=`0px ${frameH - trayH}px`
                 transition=`translate ${heightSpring()}`
-            // The bottom cap: bottom corners, fixed.
             view position="absolute" left=0 bottom=0 width=trayW height=trayCap()
               background-color="#FFFFFF" border-bottom-left-radius=trayCorner()
               border-bottom-right-radius=trayCorner() corner-shape="-exact-continuous"
-            // The header and the copy ride the upper body (same translate, same spring), clipped
-            // 12 pt above the button, so a growing step's copy never shows under it.
+            // The header and copy ride the upper body. They are clipped 12 pt above the button,
+            // so a growing step's copy never shows under it.
             column position="absolute" left=0 top=0 width=trayW bottom=(trayPad() + 56 + 12)
               overflow="hidden"
               column position="absolute" left=0 top=0 width=trayW height=frameH
                 translate=`0px ${frameH - trayH}px`
                 transition=`translate ${heightSpring()}`
-                // Title 2-ish: 22 semibold, its line centred on the corner's centre (52).
+                // Title: 22 semibold, centred on the corner's centre (52).
                 view position="absolute" left=trayPad() top=38 right=88 height=28
                   for k in [0, 1, 2] key=k
                     column position="absolute" left=0 top=0 aria-hidden=(k != step)
@@ -210,7 +177,7 @@ component ActionTray
                         text titleOf(k) font-size=22 line-height="28px" font-weight=600
                           color=trayLabel() white-space="nowrap"
                           testId=(k == step ? "title" : `title-idle-${k}`)
-                // The close button: a 40 pt circle on the corner's centre (52, 52): concentric.
+                // Close: a 40 pt circle centred on the corner's centre (52, 52), so concentric.
                 view position="absolute" top=32 right=32 width=40 height=40 pointer-events="auto"
                   PressableScale(press=dismiss)
                     column width=40 height=40 border-radius=20 background-color=trayFill()
@@ -221,8 +188,7 @@ component ActionTray
                         aria-hidden=true
                       image "symbol:sf/xmark" font-size=15 font-weight=600
                         color="rgba(60, 60, 67, 0.85)" aria-hidden=true
-                // The copy: body 17 / 22, secondary label; each step mounted, read, faded. `pre-line`
-                // keeps RN's line breaks.
+                // Copy: body 17 / 22. Every step stays mounted; `pre-line` keeps the line breaks.
                 column id="tray-body-0" position="absolute" left=trayPad() top=trayBodyTop()
                   width=(trayW - 2 * trayPad()) aria-hidden=(step != 0)
                   testId=(step == 0 ? "step-0" : "step-0-idle")
@@ -240,11 +206,10 @@ component ActionTray
                   TrayFade(k=2, step=step, still=env.reducedMotion)
                     text "Waaait a second! Actually I have something to say.\n\nIf you are reading this, you're probably searching for the source code!\n\nIf I'm right, you can find it here:"
                       font-size=17 line-height="22px" color=traySecondary() white-space="pre-line"
-                    // RN's nested bold Text: a link, systemBlue semibold.
+                    // The link: systemBlue, semibold.
                     text "reactiive.io/demos" font-size=17 line-height="22px" font-weight=600
                       color=trayBlue()
-            // The primary button: 56 tall, 24 in, radius 28 (52 − 24: concentric, a pill),
-            // systemBlue under tinted glass; its label and glyph crossfade with the step.
+            // Primary button: 56 pt, 24 pt in, radius 28 (52 − 24, concentric), systemBlue under tinted glass.
             view position="absolute" left=trayPad() right=trayPad() bottom=trayPad() height=56
               pointer-events="auto" display="flex" flex-direction="column"
               border-radius=28 corner-shape="-exact-continuous" overflow="hidden"
@@ -255,7 +220,6 @@ component ActionTray
                   glass-pane glass-style="regular" pane-tint="#0088FF" corner-size="28"
                     interactive="false" continuous="true" position="absolute" inset=0
                     pointer-events="none" aria-hidden=true
-                  // Label and glyph morph together with the copy.
                   for k in [0, 1, 2] key=k
                     column position="absolute" aria-hidden=(k != step)
                       TrayFade(k=k, step=step, still=env.reducedMotion)
@@ -266,10 +230,10 @@ component ActionTray
                           image trayGlyphOf(k) font-size=15 font-weight=600 color="#FFFFFF"
                             aria-hidden=true
 
-// One step's layer pair. Every transition here is constant (a row that changes in the same
-// commit as its value doesn't play on iOS): the outer layer leaves once the step has passed it
-// (fade, 8 pt up, 0.98), the inner one arrives once the step reaches it (fade, settling from 8 pt
-// below and 0.98). Both stay mounted; only the current step shows (no travel under reduced motion).
+// One step's layer pair. Transitions are constant, not springs: iOS does not play a transition
+// on a value changed in the same commit. The outer layer leaves once the step has passed it
+// (fade, 8 pt up, 0.98); the inner one arrives once the step reaches it. Both stay mounted; only
+// the current step shows, and reduced motion drops the travel.
 component TrayFade
   props
     k: number

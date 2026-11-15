@@ -1,22 +1,17 @@
-// Story List: a deck of eight story cards; scrolling sideways throws the front card off to the
-// left while the ones behind step forward and grow. RN: src/animations/story-list (index.tsx,
-// components/story-list/index.tsx, story-item.tsx). The ScrollView (snapToInterval with
-// disableIntervalMomentum: one card per fling at most) and the cards it drives are Rust:
-// gpu/src/story_list.rs.
+// Story list: a deck of eight story cards. Scrolling sideways throws the front card off to the
+// left while the ones behind step forward and grow.
 use DemoEnv from "../env.contract"
 
 component StoryList
   props
     env: DemoEnv
-  // The list's haptics (gpu/src/story_list.rs, past RN): selection as the front card changes,
-  // rigid when the list is pulled past an end.
+  // Haptics: selection as the front card changes, rigid when pulled past an end.
   action heard(m: string)
     if m == "haptic:selection"
       haptic("selection")
     if m == "haptic:impact-rigid"
       haptic("impact-rigid")
   view
-    // styles.container: #2D3045; the list box (the window's width square) centred.
     column position="absolute" inset=0 background-color="color(display-p3 0.1765 0.1882 0.2706)"
       testId="story-list"
       canvas surface=story_list() message=heard position="absolute" top=0 left=0 width=env.width height=env.height

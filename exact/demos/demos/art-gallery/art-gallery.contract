@@ -1,14 +1,12 @@
-// Art Gallery: 10,000 photos in a grid that rearrange into a famous painting picked from the
-// header menu; pinch, pan and double tap zoom through it, a blurred button zooms back out.
-// RN: src/animations/art-gallery (index.tsx, components/painting-menu.tsx). The mosaic, its
-// gestures, springs and haptics and the zoom-out button are one Rust surface
-// (gpu/src/art_gallery.rs) over RN's own ASTC atlas and the baked painting mappings; the
-// header gradient, the title and the SwiftUI menu (a glass ellipsis button opening nested
-// menus of toggles) are here. A pick reaches the surface as (painting, picks).
+// Art Gallery: 10,000 photos in a grid that rearranges into a famous painting picked from the
+// header menu. Pinch, pan and double tap zoom through it; a blurred button zooms back out.
+// The mosaic, its gestures, springs and haptics are one Rust surface (gpu/src/art_gallery.rs).
+// The header gradient, the title and the menu are Contract. A pick reaches the surface as
+// (painting, picks).
 use DemoEnv from "../env.contract"
 
-// src/animations/art-gallery/paintings.ts ART_MOVEMENTS, in order, for PaintingMenu.swift: `m <id> <name>` a
-// movement, `p` a painter of the last movement, `t` a painting of the last painter, `|` between.
+// The menu's items, in order: `m <id> <name>` a movement, `p` a painter of the last movement,
+// `t` a painting of the last painter, `|` a separator.
 fn paintingItems(): string = "m renaissance Renaissance|p da-vinci Leonardo da Vinci|t mona-lisa Mona Lisa|t last-supper The Last Supper|p michelangelo Michelangelo|t creation-of-adam The Creation of Adam|p raphael Raphael|t school-of-athens The School of Athens|p botticelli Sandro Botticelli|t birth-of-venus The Birth of Venus|t primavera Primavera|m dutch-golden-age Dutch Golden Age|p vermeer Johannes Vermeer|t girl-with-pearl-earring Girl with a Pearl Earring|t the-milkmaid The Milkmaid|p rembrandt Rembrandt|t the-night-watch The Night Watch|t self-portrait-rembrandt Self Portrait|m romanticism Romanticism|p friedrich Caspar David Friedrich|t wanderer-above-sea-of-fog Wanderer Above the Sea of Fog|p delacroix Eugène Delacroix|t liberty-leading-the-people Liberty Leading the People|m impressionism Impressionism|p monet Claude Monet|t water-lilies Water Lilies|t impression-sunrise Impression, Sunrise|m post-impressionism Post-Impressionism|p van-gogh Vincent van Gogh|t starry-night The Starry Night|t sunflowers Sunflowers|t cafe-terrace Café Terrace at Night|m art-nouveau Art Nouveau|p klimt Gustav Klimt|t the-kiss The Kiss|m fauvism Fauvism|p matisse Henri Matisse|t the-dance The Dance|t the-music The Music|m expressionism Expressionism|p munch Edvard Munch|t the-scream The Scream|m surrealism Surrealism|p magritte René Magritte|t the-lovers The Lovers|p dali Salvador Dalí|t persistence-of-memory The Persistence of Memory|m american-realism American Realism|p hopper Edward Hopper|t nighthawks Nighthawks|t morning-sun Morning Sun|m ukiyo-e Ukiyo-e|p hokusai Katsushika Hokusai|t the-great-wave The Great Wave off Kanagawa"
 
 component ArtGallery
@@ -27,26 +25,20 @@ component ArtGallery
     if m == "haptic:impact-medium"
       haptic("impact-medium")
   view
-    // styles.container: black; the canvas the window's size.
     column position="absolute" inset=0 background-color="#000000" testId="art-gallery"
       canvas surface=art_gallery(painting, picks) position="absolute" top=0 left=0 width=env.width
         height=env.height touch-action="none" message=buzz testId="art-gallery-canvas"
         aria-label="Mosaic: pinch or double tap to zoom, drag to move"
-      // styles.headerGradient: rgba(0,0,0,0.8) → rgba(0,0,0,0.4) → transparent, safeTop + 180.
+      // A dark fade behind the header.
       column position="absolute" top=0 left=0 right=0 height=(env.safeTop + 180) pointer-events="none"
         background-image="linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0))"
         aria-hidden=true
-      // styles.header: 44 tall at the safe top, the title centred: 17, '600', white.
       row position="absolute" top=env.safeTop left=0 right=0 height=44 align-items="center"
         justify-content="center" pointer-events="none"
         text "Gallery" font-size=17 font-weight=600 color="#ffffff" testId="art-gallery-title"
-      // PaintingMenu (RN Release: EXPO_PUBLIC_LIQUID_GLASS_ENABLED): @expo/ui's SwiftUI Menu in a
-      // matchContents Host (colorScheme dark) 16 pt from the trailing edge at the safe top, the
-      // close button's twin: a liquid-glass circle with an ellipsis opening nested menus (Default,
-      // then movement → painter → painting, each a Toggle; a pick closes the menu). Real SwiftUI
-      // on iOS and macOS: `painting-menu` (modules/apple/PaintingMenu.swift), the button at the
-      // box's top-trailing corner; its `change` is the picked painting's id ("" for Default).
-      // The web shows an empty box.
+      // A liquid-glass menu button: a SwiftUI menu (modules/apple/PaintingMenu.swift) with nested
+      // menus of toggles, movement, then painter, then painting. A pick closes it. Its change is
+      // the picked painting's id, "" for Default. The web shows an empty box.
       painting-menu change=pick selected=painting items=paintingItems() position="absolute"
         top=env.safeTop right=16 width=48 height=48 z-index=1000 aria-label="Choose a painting"
         testId="painting-menu"

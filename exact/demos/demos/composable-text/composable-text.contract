@@ -1,24 +1,18 @@
 // Composable Text: a "Use Max" pill whose letters spring in, fade out and slide to their new
-// places as it toggles to "Using Max". RN: src/animations/composable-text (index.tsx,
-// composable-text.tsx).
+// places as it toggles to "Using Max".
 use PressableScaleLayout from "pressto"
 use PillFill from "../pill-fill.contract"
 
-// index.tsx Variants: base / active.
 fn labelOf(active: bool): string = active ? "Using Max" : "Use Max"
 fn colorOf(active: bool): string = active ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,1)"
-// composable-text.tsx buildKeys: a character and how many of it came before ('a-0', 'a-1').
+// Keys pair a character with its occurrence index, so repeated letters stay distinct.
 fn keyOf(text: string, c: string, i: number): string = `${c}-${text.slice(0, i).split(c).length - 1}`
 
-// CharacterEntering: opacity 0 → 1 and scale 0.5 → 1, each withSpring(CharacterSpringConfig
-// { mass: 0.3, damping: 12, stiffness: 80 }). An `animation` takes no spring, so the spring's
-// own curve from rest is sampled into `linear()` (48 steps over the 757 ms it takes to reach
-// Reanimated's energy cutoff 6e-9). ζ is 1.22, which Reanimated runs as critically damped at
-// ω0 = √(k/m): 1 - (1 + ωt)e^{-ωt}, no overshoot.
+// Entering letters spring from opacity 0 and scale 0.5. An animation takes no spring, so the
+// spring's curve is sampled into linear() over 757 ms, the time it takes to settle.
 keyframes charIn
   from opacity=0 scale=0.5
   to opacity=1 scale=1
-// exiting: FadeOut.duration(200), Reanimated's default timing easing Easing.inOut(Easing.quad).
 keyframes charOut
   to opacity=0
 
@@ -26,10 +20,8 @@ fn charInRow(): string = "charIn 757ms linear(0, 0.028, 0.0949, 0.1815, 0.2755, 
 
 component ComposableText
   state active = false
-  // LayoutAnimationConfig skipEntering: the first letters do not spring in. They mount with
-  // the entering animation already over (a delay of minus its duration); after the first
-  // press the same animation (same name, so no restart for a letter that stays) runs whole
-  // for each new letter.
+  // The first letters skip the entering spring: they mount already settled (negative delay).
+  // Later letters run it whole.
   state pressed = false
   action toggle
     active = not active
@@ -37,24 +29,17 @@ component ComposableText
   view
     column position="absolute" inset=0 background-color="#0c0c0c" align-items="center" justify-content="center"
       testId="composable-text"
-      // PressableScale, layout LinearTransition.springify().mass(0.4).damping(12).stiffness(100):
-      // its place (content-sized, centred) on the view, the press box moving with it.
+      // The press box moves with the pill's spring layout.
       view -exact-layout-transition="-exact-spring(100, 12, 0.4)"
         PressableScaleLayout(press=toggle, layout="-exact-spring(100, 12, 0.4)")
           column testId="toggle" aria-label=labelOf(active) aria-pressed=active text-align="center"
             -exact-layout-transition="-exact-spring(100, 12, 0.4)"
-            // styles.textContainer: #181818, borderRadius 32 continuous, padding 16, paddingHorizontal 22;
-            // the same springify() layout as the button. RN's box is 60.667 tall (16 + 24 pt bold's
-            // 28.64 line, ceiled, + 16), fixed here; the fill is PillFill (pill-fill.contract): the
-            // row itself resizes with no fill of its own, so the corner never goes through the
-            // host's resize surface (it showed square on the phone). Caps 50 wide (the corner,
-            // drawn at 30.333, reaches 46 along the edge; the pill is 140 to 161 wide).
+            // Fixed height. PillFill draws the rounded corner: the resizing row alone showed it square on device.
             row position="relative" height=60.667 box-sizing="border-box" align-items="center" padding="0px 22px"
               -exact-layout-transition="-exact-spring(100, 12, 0.4)" testId="label"
               PillFill(color="#181818", radius=32, cap=50, spring="-exact-spring(100, 12, 0.4)")
               for c, i in labelOf(active).split("") key=keyOf(labelOf(active), c, i)
-                // styles.text: fontSize 24, bold; colour withTiming 200 ms linear. Each letter's
-                // layout: springify().mass(0.3).damping(12).stiffness(80).
+                // Each letter slides to its new place on its own spring.
                 text c font-size=24 font-weight=700 white-space="pre" color=colorOf(active)
                   transition="color 200ms linear" aria-hidden=true
                   -exact-layout-transition="-exact-spring(80, 9.798, 0.3)"

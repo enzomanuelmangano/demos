@@ -1,13 +1,7 @@
-// Light on Painting: Vermeer's Girl with a Pearl Earring and Hopper's Nighthawks on black,
-// relit by a bulb on a cord that the finger carries, swings when let go and pinches deeper
-// into the scene; a swipe elsewhere pages between them, a double tap opens the Light sheet.
-// RN: src/animations/light-on-painting (index.tsx, state.ts, constants.ts, paintings.ts,
-// hooks/use-relight-renderer.ts, shaders/relight.ts, components/{paginator,settings-sheet.ios}).
-// The canvas, its gestures, physics and paginator are Rust: gpu/src/light_on_painting.rs; the
-// surface posts `settings` on a double tap.
+// Light on Painting: two paintings on black, relit by a bulb on a cord that the finger carries and
+// swings when let go. A swipe pages between paintings; a double tap opens the Light sheet.
 
 component LightOnPainting
-  // components/settings.ts defaultSheetSettings (intensity is fixed at 4.05 in the surface).
   state showBulb = true
   state showCord = true
   state relight = true
@@ -19,7 +13,7 @@ component LightOnPainting
   action heard(m: string)
     if m == "settings"
       settingsOpen = true
-  // From toggle-sheet: "<id>:true|false" (it played the haptic), or "dismissed".
+  // Sheet values: "<id>:true|false", or "dismissed". The sheet plays its own haptics.
   action switched(v: string)
     if v == "dismissed"
       settingsOpen = false
@@ -31,7 +25,7 @@ component LightOnPainting
       relight = v == "shader:true"
     if v == "depth:true" or v == "depth:false"
       showDepth = v == "depth:true"
-  // settings-sheet.ios.tsx toggle(): Haptics.selectionAsync, then the change.
+  // Each toggle plays a selection haptic, then changes.
   action setBulb(on: bool)
     haptic("selection")
     showBulb = on
@@ -45,16 +39,12 @@ component LightOnPainting
     haptic("selection")
     showDepth = on
   view
-    // styles.container: black, flex 1; the Canvas fills it (StyleSheet.absoluteFill).
     column position="absolute" inset=0 background-color="#000000" testId="light-on-painting"
       canvas surface=light_on_painting(showBulb, showCord, relight, showDepth) message=heard
         position="absolute" top=0 left=0 width="100%" height="100%" touch-action="none"
         aria-label="A painting relit by a bulb: drag the bulb, swipe to page, double tap for settings"
         testId="light-on-painting-canvas"
-      // SettingsSheet: a SwiftUI BottomSheet fitToContents in the dark scheme (a real UIKit sheet,
-      // presented from the top-most controller): `toggle-sheet` (modules/apple/ToggleSheet.swift),
-      // "Light" in title3 semibold over four Toggles tinted LAMP_TINT (#FFC280), VStack spacing
-      // 20, padding 22. The sheet plays each toggle's selection haptic itself.
+      // Native sheet with four toggles, tinted #FFC280.
       toggle-sheet open=(settingsOpen ? "true" : "false") caption="Light"
         switches=`bulb:${showBulb ? 1 : 0}:Bulb|cord:${showCord && showBulb ? 1 : 0}:Cord|shader:${relight ? 1 : 0}:Shader|depth:${showDepth ? 1 : 0}:Show depth`
         switch-tint="#FFC280" change=switched position="absolute" left=0 top=0 width=0 height=0

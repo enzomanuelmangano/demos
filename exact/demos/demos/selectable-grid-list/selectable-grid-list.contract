@@ -1,10 +1,6 @@
-// Selectable Grid List: fifty photos in four columns; tap one to select it, drag across the
-// grid to select a range (scrolling near the top), and the floating button counts the
-// selection and clears it. RN: src/animations/selectable-grid-list (index.tsx,
-// components/SelectableGridList, SelectableListItem.tsx). The pan hit-tests the grid on every
-// move, so the grid, its scroll, the borders and badges, the button and their animations are
-// Rust: gpu/src/selectable_grid_list.rs (the photos picsum served RN, bundled there). The
-// surface posts `press` when the button clears (the selection haptic).
+// Selectable grid list: fifty photos in four columns. Tap one to select it, or drag across the
+// grid to select a range, scrolling near the top. The floating button counts the selection and
+// clears it. Drawn in Rust (gpu/src/selectable_grid_list.rs), which posts press when the button clears.
 use DemoEnv from "../env.contract"
 
 component SelectableGridList
@@ -13,8 +9,8 @@ component SelectableGridList
   action heard(m: string)
     if m == "press"
       haptic("selection")
-    // Beyond RN (phone feedback 2026-11-15): a tick per selection change (the surface keeps
-    // them 40 ms apart), an impact as a drag-select starts and a softer one as it ends.
+    // A tick per selection change (kept 40 ms apart), an impact as a drag-select starts, and a
+    // softer one as it ends.
     if m == "haptic:selection"
       haptic("selection")
     if m == "haptic:impact-light"

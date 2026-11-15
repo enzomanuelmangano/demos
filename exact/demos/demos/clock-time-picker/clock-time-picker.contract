@@ -1,12 +1,8 @@
-// Clock Time Picker: an analog clock beside a list of times (1:00 pm … 10:30 pm); scrolling the
-// list turns the hands with it and settles on a time. RN: src/animations/clock-time-picker
-// (index.tsx, components/clock.tsx, components/time-range.tsx). The picker's content (the Skia
-// clock with its shadows, the FlatList's text, gradients and UIScrollView snapping) is Rust:
-// gpu/src/clock_time_picker.rs, so the hands follow the scroll with no commit per frame.
+// Clock Time Picker: an analog clock beside a list of times; scrolling the list turns the hands
+// and settles on a time. The canvas draws both, so the hands follow the scroll without a commit per frame.
 
 component ClockTimePicker
-  // The list's haptics (gpu/src/clock_time_picker.rs, past RN): selection per time centred, rigid
-  // past an end, soft when it comes to rest after a drag.
+  // Haptics: selection per time centred, rigid past an end, soft when a drag comes to rest.
   action heard(m: string)
     if m == "haptic:selection"
       haptic("selection")
@@ -15,12 +11,9 @@ component ClockTimePicker
     if m == "haptic:impact-soft"
       haptic("impact-soft")
   view
-    // styles.container: #111, flex 1, centred.
     column position="absolute" inset=0 background-color="color(display-p3 0.0667 0.0667 0.0667)"
       align-items="center" justify-content="center" testId="clock-time-picker"
-      // styles.pickerContainer: #111111, border 1 #222222, radius 24 continuous, padding 32, a
-      // row centred with gap 32 (the clock 100², the list 100 × 120: one 232 × 120 canvas);
-      // boxShadow 0 0 0 #000 draws nothing.
+      // Clock and list share one 232 x 120 canvas.
       row background-color="color(display-p3 0.0667 0.0667 0.0667)"
         border="1px solid color(display-p3 0.1333 0.1333 0.1333)" border-radius=24
         corner-shape="-exact-continuous" padding=32 align-items="center" justify-content="center"

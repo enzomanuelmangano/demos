@@ -1,7 +1,6 @@
 at "/demo/scroll-transition-3d"
 
-// The web host gives a surface no touches: the scroll, its snap and the items' tilt, fade and
-// blur are the Rust fixture test's (gpu/src/scroll_transition_3d.rs); here what the Contract holds.
+// Checks the canvas is present. Scroll, snap, tilt, fade and blur are covered by the Rust tests.
 test "the canvas fills the screen"
   expect tree has "scroll-transition-3d"
   expect tree has "scroll-transition-3d-canvas"

@@ -1,11 +1,9 @@
-// Blurred Scroll: ten violet cards in a vertical list on black; the card leaving the centre
-// upward shrinks, tilts and blurs out. RN: src/animations/blurred-scroll (index.tsx,
-// components/BlurredItem.tsx). The Animated.FlatList (its UIScrollView: gpu/src/ui_scroll.rs)
-// and the cards (blur, tilt and scale per scroll offset) are drawn in Rust:
-// gpu/src/blurred_scroll.rs. No commit per scroll frame.
+// Blurred Scroll: ten violet cards in a vertical list on black. The card leaving the centre
+// upward shrinks, tilts and blurs out. The list and cards are a Rust surface
+// (gpu/src/blurred_scroll.rs), so a scroll frame commits nothing.
 use DemoEnv from "../env.contract"
 
-// Reanimated's FadeIn on the FlatList: 300 ms on withTiming's default curve, Easing.inOut(Easing.quad).
+// The list fades in over 300 ms on an ease-in-out quad curve.
 keyframes listFadeIn
   from opacity=0
   to opacity=1
@@ -14,7 +12,6 @@ component BlurredScroll
   props
     env: DemoEnv
   view
-    // styles.container: black, flex 1.
     column position="absolute" inset=0 background-color="#000000" testId="blurred-scroll"
       canvas surface=blurred_scroll() position="absolute" top=0 left=0 width=env.width
         height=env.height touch-action="none" testId="blurred-scroll-canvas"

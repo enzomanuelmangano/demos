@@ -1,17 +1,13 @@
-// Checkbox Interactions: twenty cuisine chips; a tap checks one, its check fades in and the
-// chip reflows. RN: src/animations/checkbox-interactions (src/index.tsx, components/checkbox.tsx).
-// RN's constants.ts names every chip "Italian"; the owner asked for twenty different cuisines,
-// each with its emoji (2026-11-15).
+// Twenty cuisine chips: a tap checks one, its check fades in and the chips reflow.
 use PressableScaleLayout from "pressto"
 use DemoEnv, demoButtonRow from "../env.contract"
 
-// FadeIn / FadeOut 150 ms on bezier(0.895, 0.03, 0.685, 0.22).
+// Fades in and out over 150 ms.
 keyframes checkIn
   from opacity=0
 keyframes checkOut
   to opacity=0
 
-// The chips, in order (the owner's list).
 fn cuisines(): string[] = ["🍝 Italian", "🍣 Japanese", "🌮 Mexican", "🍛 Indian", "🌶️ Thai",
   "🥐 French", "🫒 Greek", "🍲 Korean", "🥟 Chinese", "🥘 Spanish", "🧆 Lebanese", "🍜 Vietnamese",
   "🥙 Turkish", "🍔 American", "🥩 Brazilian", "🫓 Ethiopian", "🫖 Moroccan", "🐟 Peruvian",
@@ -25,7 +21,7 @@ component CheckboxInteractions
   props
     env: DemoEnv
   state checked: number[] = []
-  // The chip's PressableScale plays pressto's global haptic (the app's onPress) first.
+  // Pressto plays the selection haptic before this action runs.
   action toggle(i: number)
     checked = checked.includes(i) ? checked.filter(c => c != i) : checked.concat([i])
   view
@@ -44,30 +40,20 @@ component Checkbox
     press: action
     testId: string
   view
-    // The chip's place in the wrapping row (content-sized, on the chip's spring);
-    // PressableScaleLayout's box fills it and moves with it.
+    // The chip's place in the wrapping row, on the chip's spring. The press box fills it.
     view -exact-layout-transition="-exact-spring(250, 30, 1)"
       PressableScaleLayout(press=press, layout="-exact-spring(250, 30, 1)")
         row testId=testId aria-pressed=checked text-align="center"
           align-items="center" justify-content="center"
-          // The height is RN's, fixed: 12 + the label's 21.667 (SF Rounded Bold 18: CoreText
-          // ascent 17.14 + descent 4.34, ceiled to the pixel) + 12 + the two 1.5 borders = 48.667;
-          // the check (Ionicons 20, a 20 pt line) never makes it taller. Before, the SF Symbol's own
-          // box (taller than the label's line) grew the checked chip, and its height sprang on
-          // every toggle. borderRadius 36 is drawn at half of it, 24.333: the host paints a layout
-          // transition's resize with Core Animation's corner only when the authored radius fits
-          // the box at every frame, so the height must not move either.
+          // Fixed height: the check must not grow the chip, or its corner radius jumps mid-transition.
           height=48.667 box-sizing="border-box"
-          // The owner's ask (2026-11-15): the emoji and the check nearly concentric with the
-          // chip's caps, each in a square whose gap to the chip's edge equals its gap above and
-          // below: the emoji's 24 box (48.667 − 24) / 2 = 12.333 from the left edge (10.833 of
-          // padding inside the 1.5 border), the check's 20 box 14.333 from the right (12.833).
-          // Unchecked, the name ends RN's 24 from the right.
+          // The padding centres the emoji and the check in the chip's end caps. Unchecked, the name
+          // ends 24 pt from the right.
           padding=(checked ? "0px 12.833px 0px 10.833px" : "0px 24px 0px 10.833px") border-radius=24.333 corner-shape="-exact-continuous"
           border-width=1.5 border-style="solid"
           border-color=(checked ? "color(display-p3 0.9373 0.5569 0.3216 / 0.1)" : "color(display-p3 0.702 0.6941 0.7059 / 0.1)")
           background-color=(checked ? "color(display-p3 0.9373 0.5569 0.3216 / 0.1)" : "color(display-p3 0.9373 0.5569 0.3216 / 0)")
-          // LinearTransition.springify(): mass 1, damping 30, stiffness 250.
+          // Spring: mass 1, damping 30, stiffness 250.
           -exact-layout-transition="-exact-spring(250, 30, 1)"
           column width=24 height=24 flex-shrink=0 align-items="center" justify-content="center"
             margin-right=8 aria-hidden=true
@@ -81,5 +67,5 @@ component Checkbox
               aria-hidden=true
               animation="checkIn 150ms cubic-bezier(0.895, 0.03, 0.685, 0.22) both"
               -exact-exit-animation="checkOut 150ms cubic-bezier(0.895, 0.03, 0.685, 0.22) both"
-              // The check's own layout={Layout} (the chip's spring).
+              // The check moves on the chip's spring.
               -exact-layout-transition="-exact-spring(250, 30, 1)"

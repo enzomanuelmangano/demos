@@ -1,26 +1,15 @@
-// `variable-blur`: a progressive (variable-radius) blur of whatever lies under the view, as iOS
-// draws its own (the edges of Photos, Maps, the iOS 26 tab and toolbar scroll edges): one
-// Gaussian whose radius is read per pixel from a mask, run by the render server on the live
-// backdrop. No stacked layers (no seams), no steps of radius (no banding), no material tint.
+// `variable-blur`: a progressive blur of whatever lies under the view: one Gaussian whose radius
+// is read per pixel from an alpha mask, run by the render server on the live backdrop.
 //
-// How: a UIVisualEffectView's backdrop layer (UICABackdropLayer) gets Core Animation's
-// `variableBlur` filter in place of the material's chain: `inputRadius` the radius where the
-// mask is opaque, `inputMaskImage` an alpha ramp stretched over the layer's bounds,
-// `inputNormalizeEdges` on (the weights renormalised inside the bounds: nothing outside bleeds
-// in). The backdrop's `scale` is the screen's, so where the radius is 0 the content stays sharp
-// (a material samples at a fraction of it). The tint and highlight subviews are hidden.
-// CAFilter is not public API; the class and selector are looked up by name, and when either is
-// missing (or `variableBlur` is) the view falls back to the old look: an ultra-thin light
-// material faded in by the same ramp.
+// A UIVisualEffectView's backdrop layer gets Core Animation's private `variableBlur` CAFilter in
+// place of the material's chain. CAFilter is looked up by name; when it or `variableBlur` is
+// missing the view falls back to an ultra-thin light material faded in by the same ramp.
 //
-// Props (all optional; Contract binds `radius`, `start`, `end` and `direction` to the box, so the
-// module's names are its own):
-//   blur-radius         the largest radius, points (σ of the Gaussian); default 20
+// Props (all optional):
+//   blur-radius         the largest radius, points; default 20
 //   ramp-from, ramp-to  where the ramp runs, as fractions of the view's height; default 0 and 1
 //   ramp-up             "true": blurred at the top, sharp toward the bottom; default false
-// The ramp between start and end is smootherstep (6t⁵ − 15t⁴ + 10t³): flat at both ends, so
-// neither the onset nor the full-radius line shows. The mask is 8-bit alpha, 1024 rows: a step
-// of radius under 0.08 pt, interpolated between rows.
+// The ramp is smootherstep, so neither its onset nor its full-radius line shows.
 #if os(iOS)
 import UIKit
 
@@ -48,7 +37,7 @@ final class VariableBlur: ExactNativeInstance {
 }
 
 final class VariableBlurView: UIView {
-    /// Decorative: never a touch target (clerk-toast's photo and toasts under it take the taps).
+    /// Decorative, never a touch target: what lies under it takes the taps.
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? { nil }
     struct Ramp: Equatable {
         var radius: CGFloat = 20
@@ -151,10 +140,8 @@ final class VariableBlurView: UIView {
             || (current?.first?.value(forKey: "inputRadius") as? NSNumber)?.doubleValue != Double(ramp.radius) {
             backdrop.setValue([filter], forKey: "filters")
         }
-        // Sample at the screen's scale: where the radius is 0 the content stays sharp.
         let scale = window?.screen.scale ?? traitCollection.displayScale
         if scale > 0 { backdrop.setValue(scale, forKey: "scale") }
-        // No material: the tint and highlight layers are the effect's other subviews.
         for view in effect.subviews where view.layer !== backdrop {
             view.isHidden = true
         }
@@ -171,8 +158,7 @@ final class VariableBlurView: UIView {
         return t * t * t * (t * (t * 6 - 15) + 10)
     }
 
-    /// One column of the ramp, black with the blur's weight as alpha (premultiplied), top row
-    /// first; the filter stretches it over the layer.
+    /// One column of the ramp as premultiplied alpha, top row first; the filter stretches it over the layer.
     static func maskImage(_ ramp: Ramp) -> CGImage? {
         let rows = maskRows
         var pixels = [UInt8](repeating: 0, count: rows * 4)

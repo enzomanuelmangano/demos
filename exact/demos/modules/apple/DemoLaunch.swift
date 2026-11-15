@@ -1,40 +1,16 @@
-// The demo screen's open and close, as iOS 27's SpringBoard draws an app's launch and its
-// swipe home. Every number here was measured frame by frame on the owner's recording of the
-// real SpringBoard (iPhone 17, 402 × 874 pt, 60 fps:
-// exact/parity-tools/ios-launch-reference, kept out of git; the port-demo skill's Traps list
-// what was measured and how).
+// The demo screen's open and close, drawn like iOS's app launch and its swipe home.
 //
-// The open: a card of the app grows out of the tapped icon. Its width, its aspect (height /
-// width), its centre x and its centre y each run their own spring from the icon's frame to the
-// screen's. The app's content is scaled to the card's width and pinned to its top (the card
-// crops it at the bottom). The icon's artwork, stretched to the card, cross-fades into it by a
-// third of the screen's width. The card's corners grow past the display's radius mid-flight and
-// settle on it; the card is a slight trapezoid (wider at the top) that straightens as it lands.
-// Behind it the home's icons shrink to 0.912 (the wallpaper stays still, edge to edge:
-// springboard.contract's `springboard-zoom` is all that scales), and the home blurs
-// (Gaussian, σ 25 pt) and dims (× 0.445).
+// Open: a card holding the app grows out of the tapped icon; its width, aspect and centre each run
+// their own spring. The icon's artwork cross-fades into it, the corners overshoot the display radius
+// and settle, the card is a slight trapezoid that straightens as it lands, and the home behind
+// shrinks, blurs and dims. Close: a drag shrinks the card under the finger; a throw (or a pull past
+// a fifth of the screen) flies it into its icon, a shorter pull springs back.
 //
-// The close: a drag shrinks the card under the finger (scale 1 − travel / 0.7 screen
-// heights, the grabbed point staying under the finger, corners at the display radius × scale,
-// the home still blurred). Let go with a throw (or past a fifth of the screen) and the card flies
-// into its icon on softer springs that keep the throw's velocity, cross-fading back into the
-// artwork; the home's blur and dimming clear and it grows back to full size. Let go short of it
-// and the card springs back to full screen on the open's springs.
-//
-// The Exact route is UIKit's `.overFullScreen` presentation. Its controller is made inside the
-// host's present, so `present(_:animated:completion:)` is wrapped once (`installLaunch`) to give
-// it this file's transitioning delegate before UIKit asks for one, named by the icon the finger
-// went down on (LaunchIconHatch.swift). The presented view goes into a plain clipping view (the
-// card: bounds, cornerRadius + cornerCurve + masksToBounds, a projective transform for the
-// taper): no mask layer, no rasterization. At rest the card is the screen (no clipping, identity)
-// and the home, its blur and its dimming are hidden under it.
-//
-// Touches are never held for the motion's tail. The presentation completes as soon as the demo
-// shows (or the card fills the screen), not when the home behind has settled, since UIKit
-// ignores touches while a transition runs; a close or a drag may interrupt the open from where
-// it is. A close hands the route back at once: the card flies on as a picture of the demo
-// (moved out of the presentation's container, touch-transparent), so the home under it takes
-// taps during the flight, as SpringBoard's does.
+// `present(_:animated:completion:)` is swizzled once (`installLaunch`) so the presented
+// `.overFullScreen` controller gets this file's transitioning delegate, named by the icon the finger
+// last touched (LaunchIconHatch.swift). Touches are never held for the motion's tail: the
+// presentation completes as soon as the demo shows, and a close may interrupt the open mid-flight;
+// a close hands the route back at once and the card flies on as a touch-transparent still picture.
 #if os(iOS)
 import ObjectiveC
 import UIKit
@@ -42,25 +18,21 @@ import UIKit.UIGestureRecognizerSubclass
 
 // MARK: - The measured numbers
 
-/// A spring by its natural frequency ω (rad/s) and damping ratio ζ, mass 1: stiffness ω²,
-/// damping 2ζω.
+/// A spring by natural frequency ω (rad/s) and damping ratio ζ, mass 1.
 struct SpringParams { let omega: Double, zeta: Double }
 
 private enum K {
-    // The open (two launches fitted; each row is the mean, rms error ≤ 1.1 pt).
-    static let openWidth = SpringParams(omega: 22.6, zeta: 0.977)      // k 511, c 44.2
-    static let openAspect = SpringParams(omega: 34.6, zeta: 1.088)     // k 1197, c 75.3
-    static let openCenterX = SpringParams(omega: 26.9, zeta: 1.02)     // k 724, c 54.9
-    static let openCenterY = SpringParams(omega: 32.1, zeta: 0.892)    // k 1030, c 57.3
-    // The flight home after a throw (two closes fitted, the throw's velocity kept).
-    static let closeWidth = SpringParams(omega: 15.7, zeta: 0.867)     // k 246, c 27.2
-    static let closeHeight = SpringParams(omega: 25.7, zeta: 0.948)    // k 660, c 48.7
-    static let closeCenterX = SpringParams(omega: 12.6, zeta: 0.67)    // k 159, c 16.9
-    static let closeCenterY = SpringParams(omega: 13.6, zeta: 0.72)    // k 185, c 19.6
-    // The home behind the card.
+    static let openWidth = SpringParams(omega: 22.6, zeta: 0.977)
+    static let openAspect = SpringParams(omega: 34.6, zeta: 1.088)
+    static let openCenterX = SpringParams(omega: 26.9, zeta: 1.02)
+    static let openCenterY = SpringParams(omega: 32.1, zeta: 0.892)
+    static let closeWidth = SpringParams(omega: 15.7, zeta: 0.867)
+    static let closeHeight = SpringParams(omega: 25.7, zeta: 0.948)
+    static let closeCenterX = SpringParams(omega: 12.6, zeta: 0.67)
+    static let closeCenterY = SpringParams(omega: 13.6, zeta: 0.72)
     static let homeScale = 0.912
     static let homeBlurSigma = 25.0          // pt, Gaussian
-    static let homeGain = 0.445              // its brightness under the open card
+    static let homeGain = 0.445
     static let openHomeScale = SpringParams(omega: 11, zeta: 1)
     static let openHomeBlur = SpringParams(omega: 10.5, zeta: 1)
     static let openHomeDim = SpringParams(omega: 25, zeta: 1)
@@ -68,7 +40,6 @@ private enum K {
     static let closeHomeDim = SpringParams(omega: 8.7, zeta: 0.73)
     /// The blur clears exponentially once the card is let go: σ × e^(−12.6 t).
     static let closeBlurRate = 12.6
-    // The drag.
     static let dragTravel: CGFloat = 0.7     // × screen height for the card to vanish
     static let dragMinScale: CGFloat = 0.3
     static let failSideways: CGFloat = 30
@@ -77,26 +48,22 @@ private enum K {
     static let closeVelocity: CGFloat = 400
     static let closeTravel: CGFloat = 0.2
     static let throwProjection: CGFloat = 0.15
-    // The icon's artwork: opaque at a fifth of the screen's width, gone at 0.42.
+    // The icon's artwork fades out between these fractions of the screen's width.
     static let artGone = (from: 0.2, to: 0.42)
-    // The taper: the width shrinks by k per pt down the card, k = taper × (1 − q) / screen width
-    // (8.3e-4 /pt at 402 pt), q the card's width progress from the icon (0) to the screen (1).
+    // The card narrows by k per pt down its height: k = taper * (1 - q) / screen width.
     static let taper: Double = 0.334
-    /// After a release the taper comes in over this long.
     static let taperIn = 0.065
-    /// The open's corner radius against its width progress q, × the display radius (q = 0 is
-    /// the icon's own radius).
+    /// The open's corner radius against its width progress q, × the display radius.
     static let openRadius: [(q: Double, r: Double)] = [
         (0.14, 0.53), (0.35, 0.84), (0.45, 1.0), (0.5, 1.18), (0.6, 1.27), (0.7, 1.29), (0.8, 1.26),
         (0.85, 1.23), (0.9, 1.16), (0.95, 1.10), (0.98, 1.056), (1, 1),
     ]
     /// The close keeps the release's radius down to this q, then rounds into the icon's.
     static let closeRadiusFrom = 0.35
-    // The demo's own reveal (RN's card: its backdrop until the demo has painted).
+    // The reveal: the card covers the demo until it has painted.
     static let contentFade: Double = 200
     static let firstPaintFrames = 4
     static let mountAt = 0.85
-    /// springboard.contract's icon radius ratio.
     static let iconRadiusRatio: CGFloat = 0.2237
 }
 
@@ -141,7 +108,6 @@ private struct Spring {
             v = r1 * c1 * e1 + r2 * c2 * e2
         }
     }
-    /// Within `tolerance` of its target and nearly still.
     func settled(_ tolerance: Double) -> Bool { abs(x - target) < tolerance && abs(v) < tolerance * 8 }
 }
 
@@ -162,7 +128,6 @@ final class LaunchIcons {
         views[slug] = WeakView(view: view)
     }
     func remove(view: UIView) { views = views.filter { $0.value.view !== view && $0.value.view != nil } }
-    /// The icon a finger last went down on, and when: the tap that names a launch.
     private(set) var touched: (slug: String, at: CFTimeInterval)?
     func touch(_ view: UIView) {
         guard let slug = views.first(where: { $0.value.view === view })?.key else { return }
@@ -184,7 +149,6 @@ final class LaunchIcons {
 
 private final class HomeBlur: UIVisualEffectView {
     private var animator: UIViewPropertyAnimator?
-    /// 0 … 1 of the blur at its full radius: the paused animator's fraction.
     var amount: Double = 0 { didSet { if amount != oldValue { apply() } } }
     init() {
         super.init(effect: nil)
@@ -209,14 +173,11 @@ private final class HomeBlur: UIVisualEffectView {
     private func apply() { animator?.fractionComplete = CGFloat(clamp01(amount) * BlurCalibration.fullFraction) }
 }
 
-/// What the effect view gives, measured on the simulator (a held drag, the home fitted as
-/// gain × blur_σ(scale × home) + offset): at fraction 1 this material is σ 31 pt and gain 0.48, so
-/// the reference's σ 25 pt is fraction 0.85 (checked: σ 23.5 at 0.8), where the material's own
-/// gain is 0.56; the dimming view supplies the rest of the reference's 0.445.
+/// At fraction 1 this material blurs at sigma 31 pt, so the 25 pt target is fraction 0.85;
+/// the dimming view supplies the remaining darkness.
 private enum BlurCalibration {
     static let style: UIBlurEffect.Style = .systemUltraThinMaterialDark
     static let fullFraction: Double = 0.85
-    /// The material's own brightness gain at amount 1 (linear in the amount).
     static let gainAtFull: Double = 0.56
 }
 
@@ -228,7 +189,7 @@ private final class ClosePan: UIPanGestureRecognizer {
         maximumNumberOfTouches = Int.max
     }
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
-        // Held from beginning on its own until the criteria are met.
+        // Keeps the pan from beginning until touchesMoved decides.
         super.minimumNumberOfTouches = 20
         super.touchesBegan(touches, with: event)
     }
@@ -247,8 +208,7 @@ private final class ClosePan: UIPanGestureRecognizer {
     }
 }
 
-/// The grab strip over the status bar: above the demo, so a drag there is always the close's
-/// and a touch there never reaches the demo.
+/// The strip over the status bar: its drags are always the close's and never reach the demo.
 private final class GrabZone: UIView {}
 
 /// The card: a plain clipping view around the presented view.
@@ -257,13 +217,10 @@ private final class CardView: UIView {}
 // MARK: - One demo's launch session
 
 final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
-    /// The demo on screen (not closing): its card and buttons read it.
     static weak var current: LaunchSession?
-    /// The session that last opened over the home: the only one that moves or shows it (a close
-    /// still landing leaves it to the next open).
+    /// The session that last opened over the home: the only one that moves or shows it.
     private static weak var homeOwner: LaunchSession?
     private var ownsHome: Bool { LaunchSession.homeOwner == nil || LaunchSession.homeOwner === self }
-    /// Sessions alive: a close still landing while the next opens.
     private static var live: [LaunchSession] = []
     static let shownChanged = Notification.Name("DemosLaunchShownChanged")
 
@@ -283,27 +240,21 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
 
     // Geometry, in window points.
     private var screen = CGSize.zero
-    private var iconFrame = CGRect.zero        // the icon at the home's full size
+    private var iconFrame = CGRect.zero
     private var iconRadius: CGFloat = 0
     private var w = Spring(0), h = Spring(0), aspect = Spring(1), cx = Spring(0), cy = Spring(0)
     private var radius: Double = 0
     private var releaseRadius: Double = 0
-    private var dragAnchor = CGPoint.zero      // where the finger took the card
-    // The home.
+    private var dragAnchor = CGPoint.zero
     private var homeScale = Spring(1), homeBlur = Spring(0), homeDim = Spring(0)
 
-    // What it adds.
     private weak var icon: UIView?
     private weak var home: UIView?
-    /// What scales on the home: its icons, not its wallpaper (`springboard-zoom`); the home
-    /// itself where that is not found.
+    /// What scales on the home: its icons (`springboard-zoom`), or the home itself.
     private weak var zoom: UIView?
-    private var zoomCenter = CGPoint.zero      // the zoom's centre in window points
-    /// The demo as it flies home: a picture of it, once its route has been handed back.
+    private var zoomCenter = CGPoint.zero
     private var snapshot: UIView?
-    /// What the card scales: the picture once there is one, else the demo itself.
     private var content: UIView? { snapshot ?? controller?.view }
-    /// The card is out of the presentation's container (`detachCard`).
     private var detached = false
     private weak var cardHost: UIView?
     private var cardView: CardView?
@@ -316,7 +267,6 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
     private var presenting: UIViewControllerContextTransitioning?
     private var dismissing: UIViewControllerContextTransitioning?
 
-    // The content reveal.
     private var revealCountdown: Int?
     private(set) var shown = false
 
@@ -335,7 +285,6 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         controller.transitioningDelegate = session
     }
 
-    /// The route's `demo-card`, made once the presentation is under way.
     static func attach(_ card: DemoCardView) {
         guard let session = live.last(where: { s in
             guard let v = s.controller?.viewIfLoaded else { return false }
@@ -345,7 +294,6 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         if session.shown { card.alpha = 0 }
     }
 
-    /// Whether `controller` is (or is inside) a demo the launch holds.
     static func holds(_ controller: UIViewController) -> Bool {
         var at: UIViewController? = controller
         while let c = at {
@@ -355,7 +303,6 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         return false
     }
 
-    /// The first view under `root` whose identifier (a node's testId) is `id`.
     fileprivate static func find(_ id: String, in root: UIView) -> UIView? {
         var queue = [root]
         while !queue.isEmpty {
@@ -430,7 +377,6 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         dim.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         host.insertSubview(dim, belowSubview: container)
         self.dim = dim
-        // The icon's artwork, lifted into the card (the card clips it to its corners).
         if let art = LaunchSession.picture(of: icon) {
             art.isUserInteractionEnabled = false
             art.bounds = CGRect(origin: .zero, size: iconFrame.size)
@@ -453,7 +399,6 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         fly()
     }
 
-    /// The card is the screen: the transition completes, and what it covers stops drawing.
     private func opened() {
         phase = .open
         rest()
@@ -461,15 +406,13 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         installGestures()
     }
 
-    /// The presentation is over for UIKit, which until then ignores every touch: as soon as the
-    /// demo shows, while the home behind may still be settling.
+    /// UIKit ignores touches until the presentation completes, so it ends as soon as the demo shows.
     private func completePresentation() {
         guard let ctx = presenting else { return }
         presenting = nil
         ctx.completeTransition(!ctx.transitionWasCancelled)
     }
 
-    /// The grab strip and the close drag, once the card is the screen.
     private func installGestures() {
         guard pan == nil, !closing, let view = controller?.view else { return }
         let grab = GrabZone(frame: CGRect(x: 0, y: 0, width: view.bounds.width,
@@ -478,23 +421,20 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         grab.backgroundColor = .clear
         view.addSubview(grab)
         self.grab = grab
-        // On the window, as RN's CloseGesture wraps the whole screen: a GPU canvas's touches
-        // never pass through the presented view's recognizers.
+        // On the window: a GPU canvas's touches never reach recognizers on the presented view.
         let pan = ClosePan(target: self, action: #selector(dragged(_:)))
         pan.delegate = self
         (view.window ?? view).addGestureRecognizer(pan)
         self.pan = pan
     }
 
-    /// The card's bounds move every frame while it flies: the demo inside is not laid out again
-    /// for them. At rest it fills the screen and follows it.
+    /// While it flies the card's bounds move each frame and the demo inside is not laid out for them.
     private func moving(_ on: Bool) {
         cardView?.autoresizesSubviews = !on
         cardView?.layer.masksToBounds = on
         cardView?.layer.allowsEdgeAntialiasing = on
     }
 
-    /// At rest: the card unclipped and untransformed, the home and its blur hidden under it.
     private func rest() {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -517,7 +457,6 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         CATransaction.commit()
     }
 
-    /// The home, its blur and dimming back on screen at the open's full state, for a close.
     private func unrest() {
         home?.isHidden = false
         blur?.isHidden = false
@@ -531,7 +470,6 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
 
     // MARK: close
 
-    /// The close button: the card flies home from full screen.
     func closeFromButton() {
         guard phase == .open || phase == .opening || !grouped else { return }
         if closing { return }
@@ -540,8 +478,7 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         commit(haptic: true, velocity: velocity)
     }
 
-    /// The open stopped where it shows now: the springs take the flight's pose and its velocity
-    /// (a close or a drag goes on from there, no jump), and UIKit's transition ends.
+    /// Stops the open where it shows: the springs take the flight's pose and velocity, and UIKit's transition ends.
     private func interruptOpen() -> (w: Double, h: Double, x: Double, y: Double)? {
         defer { completePresentation() }
         guard phase == .opening, let f = flight, !f.poses.isEmpty else { unrest(); return nil }
@@ -561,7 +498,6 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         return (rate(\.w), rate(\.h), rate(\.cx), rate(\.cy))
     }
 
-    /// Let go: the card flies into the icon from the pose it is in, keeping the throw.
     private func commit(haptic: Bool, velocity: (w: Double, h: Double, x: Double, y: Double)?) {
         guard !closing else { return }
         closing = true
@@ -571,7 +507,6 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         controller?.view.window?.endEditing(true)
         NotificationCenter.default.post(name: LaunchSession.shownChanged, object: self)
         guard grouped else {
-            // No icon to fly to (a deep link): the plain back.
             leave()
             return
         }
@@ -597,8 +532,7 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         }
     }
 
-    /// The card out of the presentation's container, which UIKit takes away with the route, into
-    /// the view under it, at the same place: touch-transparent, so the home takes the taps.
+    /// Moves the card out of the presentation's container, which UIKit takes away with the route, so the home takes taps.
     private func detachCard() {
         guard !detached, let cardView, let container = cardView.superview, let host = container.superview else { return }
         let origin = container.frame.origin
@@ -609,9 +543,7 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         detached = true
     }
 
-    /// UIKit's end of the dismissal takes the detached card out of the window with the route
-    /// (seen on the simulator, iOS 27), and Core Animation its flight with it: both go back, on
-    /// the flight's own clock, so not a frame is lost.
+    /// UIKit's dismissal takes the detached card and its flight out of the window: both go back on the flight's clock.
     private func keepCard() {
         guard detached, phase == .closing, let cardView, cardView.superview == nil, let host = cardHost else { return }
         CATransaction.begin()
@@ -621,8 +553,7 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         CATransaction.commit()
     }
 
-    /// The demo as it shows now, in its place in the card: what flies home once the route is
-    /// handed back (a demo's views go with its route). None, and the route stays to the landing.
+    /// A still of the demo in the card, to fly home once the route is handed back (its views go with the route).
     private func pictureContent() {
         guard snapshot == nil, let view = controller?.view, let cardView,
               let picture = LaunchSession.picture(of: view) else { return }
@@ -638,10 +569,8 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         snapshot = picture
     }
 
-    /// What `view` shows now, as a still image: the render server's picture of it (a GPU canvas
-    /// included), drawn at once. A `snapshotView` is taken at the next commit, so it comes out
-    /// empty when its view is hidden or leaves in the same transaction, as the icon and the
-    /// demo do here.
+    /// A still image of `view` from the render server, drawn at once (a GPU canvas included). A `snapshotView`
+    /// is taken at the next commit, so it is empty when its view is hidden or leaves in the same transaction.
     fileprivate static func picture(of view: UIView) -> UIView? {
         let size = view.bounds.size
         guard size.width >= 1, size.height >= 1, view.window != nil else { return nil }
@@ -655,7 +584,6 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         return picture
     }
 
-    /// The icon where the home now draws it (the home grows back under the flight).
     private func retargetIcon() {
         let s = homeScale.x
         let mid = zoom != nil ? zoomCenter : CGPoint(x: screen.width / 2, y: screen.height / 2)
@@ -685,7 +613,6 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
     private func finishDismissal() {
         guard let ctx = dismissing else { return }
         dismissing = nil
-        // A detached card flies on to its landing (`land` takes it away).
         if !detached || phase == .landed { cardView?.removeFromSuperview() }
         ctx.view(forKey: .from)?.removeFromSuperview()
         ctx.completeTransition(true)
@@ -694,7 +621,6 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         if phase == .landed || !grouped { LaunchSession.live.removeAll { $0 === self } }
     }
 
-    /// The artwork is the icon, in its place: the icon takes over, the card goes.
     private func landCard() {
         icon?.isHidden = false
         art?.removeFromSuperview()
@@ -702,7 +628,6 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         cardView?.isHidden = true
     }
 
-    /// Everything at rest: the blur and dimming gone, then the route's unmount on a still screen.
     private func land() {
         phase = .landed
         removeFlight()
@@ -732,7 +657,6 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
     private func dragPose(_ t: CGPoint) -> (s: CGFloat, x: CGFloat, y: CGFloat) {
         let d = max(0, t.y)
         let s = max(K.dragMinScale, 1 - d / (K.dragTravel * screen.height))
-        // The grabbed point stays under the finger.
         let x = dragAnchor.x + t.x + (screen.width / 2 - dragAnchor.x) * s
         let y = dragAnchor.y + d + (screen.height / 2 - dragAnchor.y) * s
         return (s, x, y)
@@ -757,7 +681,6 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
             let d = max(0, t.y)
             let thrown = d + max(0, v.y) * K.throwProjection
             let held = dragPose(t)
-            // The card's own velocities: d(scale)/dt = −v / travel while the finger is past start.
             let ds = d > 0 && held.s > K.dragMinScale ? -Double(v.y) / Double(K.dragTravel * screen.height) : 0
             let vw = Double(screen.width) * ds, vh = Double(screen.height) * ds
             let vx = Double(v.x) + Double(screen.width / 2 - dragAnchor.x) * ds
@@ -765,7 +688,6 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
             if pan.state == .ended, v.y > -100, v.y > K.closeVelocity || thrown > K.closeTravel * screen.height {
                 commit(haptic: true, velocity: (vw, vh, vx, vy))
             } else {
-                // Short of it: back to full screen on the open's springs.
                 phase = .returning
                 w.run(to: Double(screen.width), K.openWidth, velocity: vw)
                 cx.run(to: Double(screen.width / 2), K.openCenterX, velocity: vx)
@@ -789,14 +711,12 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
 
     // MARK: the flight, handed to Core Animation
 
-    /// Everything one frame shows.
     private struct Pose {
         var w = 0.0, h = 0.0, cx = 0.0, cy = 0.0, radius = 0.0, taper = 0.0, art = 0.0
         var homeScale = 1.0, dim = 0.0, blur = 0.0
         var hd = 0.0              // the dimming spring itself (dim is the layer's opacity)
     }
 
-    /// The pose of the springs as they are, `since` seconds into the phase.
     private func pose(at since: Double) -> Pose {
         var p = Pose(w: w.x, h: max(h.x, 1), cx: cx.x, cy: cy.x, radius: radius, taper: 0,
                      art: artAlpha(), homeScale: homeScale.x, dim: 0, blur: clamp01(homeBlur.x))
@@ -808,7 +728,6 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
                 * smoothstep(0, 0.08, q)
         default: break
         }
-        // The home's brightness: 1 → 0.445 with the dimming; the blur's own tint is part of it.
         let gain = 1 - (1 - K.homeGain) * clamp01(homeDim.x)
         let blurGain = 1 - (1 - BlurCalibration.gainAtFull) * p.blur
         p.dim = clamp01(1 - gain / max(blurGain, 0.01))
@@ -816,7 +735,6 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         return p
     }
 
-    /// One step of the phase's springs.
     private func step(_ dt: Double) {
         switch phase {
         case .opening:
@@ -859,7 +777,7 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         var start = 0.0
         var poses: [Pose] = []
         var cardDone = 0.0        // the card has landed (closing) or fills the screen (opening)
-        var end = 0.0             // the home is still too
+        var end = 0.0
         var covered = Double.infinity   // closing: the artwork is opaque over the demo
         var mount = Double.infinity     // opening: the demo is mounted far enough to show
         func blur(at t: Double) -> Double {
@@ -872,9 +790,8 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
     }
     private var flight: Flight?
 
-    /// Runs the phase's springs to rest ahead of time and gives Core Animation the whole path: the
-    /// render server draws it, so a busy main thread (the demo mounting, unmounting) can't drop
-    /// its frames. The link only scrubs the blur and acts at the flight's moments.
+    /// Runs the springs to rest ahead of time and hands Core Animation the whole path, so a busy main
+    /// thread can't drop frames. The link only scrubs the blur and acts at the flight's moments.
     private func fly() {
         let dt = 1 / Flight.rate
         var f = Flight()
@@ -890,7 +807,6 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
             if cardDone == nil, cardSettled { cardDone = t }
             if cardDone != nil, homeSettled { break }
         }
-        // The last pose is the rest the springs reach.
         f.cardDone = cardDone ?? t
         f.end = t
         let last = f.poses[f.poses.count - 1]
@@ -901,9 +817,8 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         f.start = CACurrentMediaTime()
         animate(f)
         CATransaction.commit()
-        // The open is made inside the host's apply, which goes on to mount the demo's route on
-        // this thread (100–300 ms for a GPU demo). Commit the flight now so the render server
-        // starts it under the finger instead of when the mount is done.
+        // The open runs inside the host's apply, which then mounts the demo's route on this thread
+        // (100–300 ms for a GPU demo): commit now so the flight starts under the finger.
         if phase == .opening { CATransaction.flush() }
         flight = f
         blur?.amount = f.poses[0].blur
@@ -922,7 +837,6 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         }
     }
 
-    /// The layer values of one pose.
     private struct LayerPose {
         var cardBounds: CGRect, cardPosition: CGPoint, cardTransform: CATransform3D, radius: CGFloat
         var contentTransform: CATransform3D, contentPosition: CGPoint
@@ -932,15 +846,13 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
 
     private func layerPose(_ p: Pose) -> LayerPose {
         let W = CGFloat(p.w), H = CGFloat(p.h), k = CGFloat(p.taper)
-        // The taper is a projective transform about the card's centre (w = 1 + k·y). Solve the
-        // unprojected height and centre that land its top and bottom where the springs say.
+        // Projective taper about the card's centre (w = 1 + k·y): solve the unprojected height and centre.
         let top = CGFloat(p.cy) - H / 2, bottom = CGFloat(p.cy) + H / 2
         var half = H / 2
         if k != 0 { for _ in 0..<4 { half = (bottom - top) / 2 * (1 - k * k * half * half) } }
         let centerY = k != 0 ? top + half / (1 - k * half) : CGFloat(p.cy)
         var cardTransform = CATransform3DIdentity
         cardTransform.m24 = k
-        // The app, scaled to the card's width and pinned to its top.
         let s = W / screen.width
         let hs = CGFloat(p.homeScale)
         let iconW = max(iconFrame.width, 1), iconH = max(iconFrame.height, 1)
@@ -956,7 +868,6 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
             homeTransform: CATransform3DMakeScale(hs, hs, 1), dimOpacity: Float(p.dim))
     }
 
-    /// Sets the layers to a pose (the drag, and the model values under a flight).
     private func put(_ p: Pose) {
         let l = layerPose(p)
         if let c = cardView?.layer {
@@ -988,7 +899,6 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
             a.beginTime = f.start
             a.fillMode = .both
             a.isRemovedOnCompletion = true
-            // A spatial transition asks for the panel's full rate (80–120 on ProMotion).
             a.preferredFrameRateRange = CAFrameRateRange(minimum: min(80, fastest), maximum: fastest, preferred: fastest)
             layer.add(a, forKey: LaunchSession.flightKey + key)
         }
@@ -1012,8 +922,7 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
     private func startLink() {
         guard link == nil else { return }
         let link = CADisplayLink(target: LinkTarget(self), selector: #selector(LinkTarget.tick(_:)))
-        // A spatial transition asks for the panel's full rate: at `.default` a ProMotion
-        // iPhone paces this link at 60 Hz.
+        // A spatial transition asks for the panel's full rate: at `.default` a ProMotion iPhone paces this at 60 Hz.
         let fastest = Float(controller?.view.window?.screen.maximumFramesPerSecond ?? UIScreen.main.maximumFramesPerSecond)
         link.preferredFrameRateRange = CAFrameRateRange(minimum: min(80, fastest), maximum: fastest, preferred: fastest)
         link.add(to: .main, forMode: .common)
@@ -1038,8 +947,7 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
             switch phase {
             case .opening:
                 if !shown, revealCountdown == nil, t >= f.mount { revealCountdown = K.firstPaintFrames + 1 }
-                // Touches from the moment the demo shows or the card fills the screen, not once
-                // the home behind has settled too.
+                // Touches from the moment the demo shows or the card fills the screen, not once the home settles.
                 if shown || t >= f.cardDone { completePresentation() }
                 if t >= f.cardDone { installGestures() }
                 if t >= f.end {
@@ -1057,7 +965,6 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
             default: flight = nil
             }
         }
-        // The demo shows once it has painted: its cover fades out (200 ms, out(quad)).
         if let n = revealCountdown {
             busy = true
             if n <= 0 {
@@ -1069,7 +976,6 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
                     a.fromValue = 1
                     a.toValue = 0
                     a.duration = K.contentFade / 1000
-                    // out(quad) = 1 − (1 − x)², a cubic Bézier exactly: (1/3, 2/3), (2/3, 1).
                     a.timingFunction = CAMediaTimingFunction(controlPoints: 1.0 / 3, 2.0 / 3, 2.0 / 3, 1)
                     card.layer.add(a, forKey: "reveal")
                     card.alpha = 0
@@ -1110,8 +1016,7 @@ extension LaunchSession: UIGestureRecognizerDelegate {
         return !owns || inStrip
     }
 
-    /// A touch in the strip never reaches the demo: what the demo's own recognizers would make
-    /// of it waits for the close to fail.
+    /// A touch in the strip never reaches the demo: its recognizers wait for the close to fail.
     func gestureRecognizer(_ g: UIGestureRecognizer, shouldBeRequiredToFailBy other: UIGestureRecognizer) -> Bool {
         stripTouch
     }
@@ -1119,8 +1024,7 @@ extension LaunchSession: UIGestureRecognizerDelegate {
 
 // MARK: - The card in the route (`demo-card`)
 
-/// The demo's cover until it has painted (its backdrop until the demo fades in over it), and the
-/// route's hold on the launch: `press` is the route's leave.
+/// The route's `demo-card`: covers the demo until it has painted; `leave` is the route's close.
 final class DemoCardView: UIView {
     var slug = ""
     var name = ""
@@ -1146,7 +1050,6 @@ func installLaunch() {
 
 extension UIViewController {
     @objc func demosLaunchPresent(_ presented: UIViewController, animated: Bool, completion: (() -> Void)?) {
-        // A demo route: Exact's fullscreen presentation over the home, not one a demo presents.
         if presented.modalPresentationStyle == .overFullScreen, presented.transitioningDelegate == nil,
            !LaunchSession.holds(self) {
             LaunchSession.adopt(presented, slug: LaunchIcons.shared.takeTouched())

@@ -1,70 +1,28 @@
-// The demos app's native module. Its one view, `rolling-count`, is RN wheel-picker's
-// AnimatedCount (src/animations/wheel-picker/components/animated-count/index.ios.tsx) as
-// @expo/ui draws it: a SwiftUI `Host` (a ZStack aligned top-leading, filling the box) holding
-// expo-ui's `TextView` with the modifiers RN passes, in RN's order:
-//   contentTransition('numericText')  → .contentTransition(.numericText(countsDown: false))
-//                                        (ContentTransitionModifier: countsDown defaults false)
-//   font({ size, weight: 'bold', design: 'rounded' }) → .font(.system(size:weight:design:))
-//   monospacedDigit()                 → .monospacedDigit()
-//   frame({ maxWidth: 9999, alignment: 'center' })
-//   foregroundStyle(color)
-//   { $type: 'animation', animation: { type: 'spring', duration: 0.3 }, animatedValue: count }
-//                                     → .animation(.spring(duration: 0.3, bounce: 0,
-//                                        blendDuration: 0), value: Double(count))
-// So the number always rolls up (countsDown false), on a 0.3 s bounce-free spring.
-// Optional props, absent in wheel-picker (which stays as above): `family` (a registered
-// PostScript name, fixed size: no Dynamic Type), `weight` and `design` (SwiftUI's names) for the
-// system font; `tracking` (pt); `anchor="top-leading"` (the Text at its natural size at the box's
-// top-leading corner, overflowing it, instead of centred in a 9999-wide frame); `down`
-// ("true": numericText(countsDown: true)); `seconds`, `bounce`, `delay` (s) for the spring.
-// The transition runs on every change of `count`'s text. Each instance sends
-// `message("rolling-count:2")` once after its first props, so a Contract can tell this build
-// from one whose rolling-count knows none of these props (staggered-card-number).
+// The demos app's native module: the views the Contracts reach through native tags (iOS, and
+// macOS where noted). Every view is registered in `DemosModule.views` below.
 //
-// `demo-card` is the demo screen's card (src/navigation/home/demo-screen.tsx styles.card and
-// DemoLaunch): its open out of the icon, the close drag, the flight home, the home's blur, all
-// in DemoLaunch.swift. The view itself is the demo's backdrop over the demo until it has painted.
-//
-// `glass-button` is the demo screen's close and info buttons (demo-close-button.tsx,
-// demo-inspiration.tsx): @expo/ui's Button in a matchContents Host with colorScheme dark,
-// SwiftUI.Button(label, systemImage:, role:) with RN's modifiers in RN's order:
-//   labelStyle('iconOnly') buttonStyle('glass') buttonBorderShape('circle') controlSize('large')
-//   opacity(visible) animation(Animation.easeOut({ duration: 0.22 }), visible)
-// `role="close"` is the close role (iOS 26: LIQUID_GLASS). RN fades it in once the demo has
-// painted (demo-screen.tsx `shown`): here once SwiftUI shows it.
-//
-// `swift-slider` is airbnb-slider's AnimatedSlider on iOS 26 (components/animated-slider/
-// index.liquid.tsx): @expo/ui's Host (a ZStack aligned top-leading, filling the box) holding its
-// SliderView: `Slider(value:onEditingChanged:)` (no range, no step) on a clamped binding to the
-// view's own @State value, each change sent once SwiftUI has applied it (`onChange(of: value)`,
-// as onValueChanged) through `change`. `progress` is its value at mount (initialProgress). RN
-// echoes each value back through animatedProps and, with no mostRecentEventCount, a stale echo
-// pulls the thumb back while JS lags: not ported (the slider's design follows the finger).
-//
-// `mate-haptic` is chessboard's checkmate crescendo (src/animations/chessboard/src/haptics.ts
-// MATE_PATTERN) as react-native-pulsar's PatternComposer plays it: the discrete points as
-// transient events (intensity = amplitude, sharpness = frequency), the continuous points as one
-// continuous event (intensity 1, sharpness 0) for the curves' length under an intensity-control
-// and a sharpness-control curve (a first point at 0 when the first is later). A new `plays` value
-// starts it, a new `stops` value cancels it (demos/chessboard/chessboard.contract).
-//
-// `painting-menu` is art-gallery's PaintingMenu (PaintingMenu.swift), on iOS and on macOS.
-// `inspiration-sheet` is the demo screen's Inspiration sheet (InspirationSheet.swift), iOS.
-// `toggle-sheet` is a native sheet of switches (ToggleSheet.swift): light-on-painting's Light sheet.
-// `music-tabbar` is iOS 26 Music's bottom chrome (MusicTabBar.swift): a SwiftUI TabView with the
-// mini player as its bottom accessory, for expandable-mini-player; `native-tabbar` is the same
-// bar with no accessory (telegram-theme-switch).
-// `system-alert` is RN's Alert.alert / ActionSheetIOS (SystemAlert.swift): a real
-// UIAlertController presented from the top-most view controller, iOS.
-//
-// `glass-pane` is expo-glass-effect's GlassView (GlassPane.swift): iOS 26's UIGlassEffect
-// (liquid-glass-playground's clear, tinted pane), on iOS and on macOS.
-//
-// `variable-blur` is a progressive blur of the backdrop (VariableBlur.swift): clerk-toast's
-// backdrop behind the toasts, iOS only.
-//
-// `audio-track` is audio-player's real playback (AudioTrack.swift): an AVAudioPlayer on the
-// bundled assets/audio/track.m4a under a `.playback` session, iOS only.
+// `rolling-count`: SwiftUI text whose digits roll (`.numericText`) when `count` changes, on a
+//   0.3 s bounce-free spring. Props: `count`, `points`, `tint`, plus optional `family` (a
+//   registered PostScript name, fixed size), `weight` and `design` (SwiftUI names), `tracking` (pt),
+//   `anchor="top-leading"` (natural size at the top-leading corner instead of centred), `down`
+//   ("true" rolls downward), `seconds`, `bounce`, `delay` for the spring. Each instance sends
+//   `message("rolling-count:2")` once after its first props, so a Contract can tell a build that
+//   knows these props from one that does not.
+// `demo-card`: the demo screen's card; the open, close drag and flight home live in DemoLaunch.swift.
+//   The view itself is the demo's backdrop until the demo has painted.
+// `glass-button`: the demo screen's close and info buttons, a SwiftUI glass button; `role="close"`
+//   is the system close role (iOS 26). It fades in once the demo has painted.
+// `swift-slider`: a SwiftUI Slider (0...1) whose changes arrive as `change`; `progress` is the
+//   value at mount, `max-track-tint` the unfilled track's colour.
+// `mate-haptic`: a Core Haptics crescendo; a new `plays` value starts it, a new `stops` value
+//   cancels it. Discrete points are transient events, continuous ones one event under an
+//   intensity and a sharpness curve.
+// `painting-menu` (PaintingMenu.swift, iOS and macOS), `inspiration-sheet` (InspirationSheet.swift),
+//   `toggle-sheet` (ToggleSheet.swift), `system-alert` (SystemAlert.swift: a UIAlertController
+//   presented from the top-most controller), `glass-pane` (GlassPane.swift, iOS and macOS),
+//   `variable-blur` (VariableBlur.swift), `audio-track` (AudioTrack.swift).
+// `music-tabbar` (MusicTabBar.swift): a SwiftUI TabView with a mini player as its bottom
+//   accessory; `native-tabbar` is the same bar without the accessory.
 import Foundation
 #if os(iOS)
 import CoreHaptics
@@ -132,7 +90,7 @@ private struct CountBody: View {
                 text.frame(maxWidth: 9999, alignment: .center)
             }
         }
-        // HostView's FillAlignmentModifier: the host fills its box, content at top-leading.
+        // Fill the host's box, content at top-leading.
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .animation(.spring(duration: model.seconds, bounce: model.bounce, blendDuration: 0)
             .delay(model.delay), value: model.text)
@@ -220,9 +178,8 @@ private final class RollingCount: ExactNativeInstance {
                        blue: CGFloat(v & 0xff) / 255, alpha: 1)
     }
 }
-/// `demo-card`: the demo's cover in its backdrop until the demo has painted, and the route's hold
-/// on the launch (DemoLaunch.swift). `press` is the route's leave, which the launch fires when
-/// the close lets the route go.
+/// `demo-card`: the demo's backdrop until it has painted, and the route's hold on the launch
+/// (DemoLaunch.swift). `press` fires when the launch lets the route go.
 private final class DemoCard: ExactNativeInstance {
     private let card = DemoCardView()
 
@@ -259,26 +216,25 @@ private struct GlassBody: View {
         styled(SwiftUI.Button(model.label, systemImage: model.symbol, role: role, action: press)
             .labelStyle(.iconOnly)
             // A demo's sub-page turns the close into Back (demo-screen.contract): the symbols
-            // swap with SF Symbols' replace (the outgoing one blurs and shrinks out, the new one in).
+            // swap with SF Symbols' replace effect.
             .contentTransition(.symbolEffect(.replace))
             .animation(.snappy(duration: 0.3), value: model.symbol))
             .buttonBorderShape(.circle)
             .controlSize(.large)
             .opacity(model.visible ? 1 : 0)
             .animation(.easeOut(duration: 0.22), value: model.visible)
-            // RN's `visible={shown && !closing}`: in once the demo has painted, out at the close.
+            // Visible once the demo has painted, hidden at the close.
             .onAppear { DispatchQueue.main.async { model.visible = LaunchSession.current?.buttonsVisible ?? true } }
             .onReceive(NotificationCenter.default.publisher(for: LaunchSession.shownChanged)) { note in
                 guard let session = note.object as? LaunchSession else { return }
                 model.visible = session.buttonsVisible
             }
-            // RN's Host sits at left 16 (close) or right 16 (info) at its content's own size;
-            // the box here is rounded to whole points, so the button keeps to that edge.
+            // The box is rounded to whole points, so the button keeps to its edge.
             .frame(maxWidth: .infinity, maxHeight: .infinity,
                    alignment: model.trailing ? .topTrailing : .topLeading)
     }
 
-    /// buttonStyle(LIQUID_GLASS ? 'glass' : 'bordered').
+    /// Glass from iOS 26, bordered on earlier versions.
     @ViewBuilder
     private func styled<V: View>(_ button: V) -> some View {
         if #available(iOS 26.0, *) {
@@ -301,14 +257,14 @@ private final class GlassButton: ExactNativeInstance {
 
     init(props: [String: String], events: ExactNativeEvents) {
         let model = self.model
-        // The close is the launch's (closeFromButton: haptic, then the flight home); without one
-        // (a demo the launch does not hold) the route's own leave.
+        // The close goes through the launch (haptic, then the flight home); with no launch
+        // (a demo it does not hold) it falls back to the route's own leave.
         host = UIHostingController(rootView: GlassBody(model: model, press: {
             if model.close, let session = LaunchSession.current { session.closeFromButton() } else { events.press() }
         }))
         host.safeAreaRegions = []
         host.view.backgroundColor = .clear
-        // Host colorScheme="dark".
+        // The buttons are always drawn on a dark surface.
         host.overrideUserInterfaceStyle = .dark
         super.init(events: events)
         try? setProps(props)
@@ -327,7 +283,7 @@ private final class SliderModel: ObservableObject {
     /// The value at mount (props `progress`).
     @Published var progress: Float = 0
 }
-/// expo-ui's SliderView with no min, max, step or labels, in HostView's ZStack.
+/// A bare SwiftUI Slider (0...1, no step or labels) filling the box.
 private struct SliderBody: View {
     @ObservedObject var model: SliderModel
     let changed: (Float) -> Void
@@ -354,10 +310,9 @@ private final class SwiftSlider: ExactNativeInstance {
         try? setProps(props)
     }
     override var view: ExactNativeView { host.view }
-    /// `max-track-tint`: the unfilled track's colour, `#RRGGBB` or `#RRGGBBAA` (airbnb-slider:
-    /// the default white at a low alpha vanishes on the page's light blue). SwiftUI's Slider has
-    /// no such modifier; on iOS it is a UISlider inside the hosting view, so the tint is set on
-    /// that, once it exists (the first layout) and again on each change.
+    /// `max-track-tint`: the unfilled track's colour, `#RRGGBB` or `#RRGGBBAA`. SwiftUI's Slider has
+    /// no modifier for it, so it is set on the UISlider inside the hosting view once that exists
+    /// (after the first layout) and again on each change.
     private var maxTrack: UIColor?
     override func setProps(_ props: [String: String]) throws {
         if let p = props["progress"].flatMap(Float.init) { model.progress = p }
@@ -384,7 +339,7 @@ private final class SwiftSlider: ExactNativeInstance {
     }
 }
 
-/// `mate-haptic`: MATE_PATTERN on Core Haptics (see the header).
+/// `mate-haptic`: a checkmate crescendo on Core Haptics (see the header).
 private final class MateHaptic: ExactNativeInstance {
     /// (ms, amplitude, frequency).
     private static let discrete: [(Double, Float, Float)] = [

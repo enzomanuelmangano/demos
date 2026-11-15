@@ -1,42 +1,29 @@
-// Split Button: a "Start" chip that, tapped, turns black with an Apple logo and slides right
-// while a bordered Google chip fades in and slides out to its left; either chip folds them back.
-// RN: src/animations/split-button (index.tsx, constants.ts, components/split-button/index.tsx).
+// Split button: a "Start" chip that, when tapped, turns black with an Apple logo and slides right.
+// A bordered Google chip fades in and slides out to its left. Either chip folds them back.
 use PressableScale from "pressto"
 
-// No background of its own (RN's container is transparent): the demo screen's backdrop
-// (#f1eee8) shows through, as in RN.
+// Transparent: the demo screen's backdrop shows through.
 
-// constants.ts colors.
 fn almostBlack(): string = "color(display-p3 0.0941 0.0941 0.0902)"
 fn border(): string = "color(display-p3 0.851 0.8392 0.8196)"
 fn background(): string = "color(display-p3 0.9451 0.9333 0.9098)"
 
-// SplitButton defaults: buttonWidth 120, maxSpacing 13; offset = buttonWidth / 2 + maxSpacing.
+// Chips move half the button width plus a 13-point gap.
 fn offset(): number = 120 / 2 + 13
 
-// translateX: withSpring(!activated ? 0 : ±offset), Reanimated 4's default (900, 120, 4;
-// critically damped, ω 15 rad/s). Each toggle re-runs the style with the running animation as
-// the previous one, and spring.ts onStart drops a velocity that points away from the new target:
-// a two-state toggle always reverses, so every run is the spring FROM REST from where the chip
-// is, 833 ms to rest at 60 Hz. One eased transition from the current value
-// (bun tools/easing.ts gentleFromRest), not `-exact-spring`, which keeps the reversing velocity.
+// The slide is a critically damped spring restarted from rest on each toggle: one eased curve from
+// the current position. A -exact-spring would keep the reversing velocity.
 fn slide(): string = "translate 833.333ms linear(0 0%, 0.00066 0.29515%, 0.00259 0.5903%, 0.00569 0.88544%, 0.00987 1.18059%, 0.0165 1.54953%, 0.02455 1.91846%, 0.03386 2.2874%, 0.04432 2.65633%, 0.05881 3.1175%, 0.07468 3.57867%, 0.09172 4.03984%, 0.1144 4.6163%, 0.13832 5.19276%, 0.16953 5.91333%, 0.20992 6.81405%, 0.33569 9.56283%, 0.38591 10.68873%, 0.42485 11.58945%, 0.46247 12.49017%, 0.49859 13.39089%, 0.52635 14.11147%, 0.55304 14.83204%, 0.57865 15.55262%, 0.60316 16.2732%, 0.62657 16.99377%, 0.6489 17.71435%, 0.67015 18.43492%, 0.69035 19.1555%, 0.71414 20.05622%, 0.73638 20.95694%, 0.75712 21.85766%, 0.77644 22.75838%, 0.7944 23.6591%, 0.81106 24.55982%, 0.82651 25.46054%, 0.84081 26.36126%, 0.85403 27.26198%, 0.86915 28.38788%, 0.88281 29.51378%, 0.89514 30.63968%, 0.90625 31.76558%, 0.91625 32.89148%, 0.92735 34.29885%, 0.93704 35.70623%, 0.94549 37.1136%, 0.95455 38.87282%, 0.96215 40.63204%, 0.96852 42.39126%, 0.97505 44.59028%, 0.98025 46.78931%, 0.98529 49.53809%, 0.98907 52.28686%, 0.99235 55.56569%, 0.99547 60.33678%, 0.99749 65.66029%, 0.99909 74.66224%, 0.99986 90.87841%, 1 100%)"
-// paddingHorizontal: withSpring(24 | 36, WithTimingConfig { duration: 300 }), dampingRatio 1
-// (GentleSpringConfigWithDuration): bun tools/spring.ts 300 1. Its box is centred in a fixed
-// chip, so it moves nothing on screen.
+// The padding change is invisible: the content is centred in the fixed chip.
 fn padSpring(): string = "-exact-spring(3021.5, 219.9, 4)"
-// Reanimated's withTiming default curve, Easing.inOut(Easing.quad): the left chip's opacity
-// (WithTimingConfig 300 ms, from the current value, the full 300 ms on every toggle), and
-// FadeIn / FadeOut / LinearTransition (300 ms) on its icon.
+// Ease-in-out over 300 ms for the left chip's opacity and its icon's fades.
 fn inOutQuad(): string = "linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
 
-// The host shortens a transition that reverses to its start (CSS §3.2); Reanimated runs the
-// full curve from where it is. A target off by 10⁻⁴ px (10⁻⁶ in opacity) cycling with the
-// toggle count is never the running start.
+// The host shortens a reversing transition, so each toggle adds a tiny offset that keeps every run
+// a real new start.
 fn nudge(n: number): number = (n % 3) * 0.0001
 
-// FadeIn / FadeOut on the Google icon. The icon stays mounted and these play on each toggle:
-// FadeOut always starts at 1 (its initial values), whatever the entrance had reached.
+// The Google icon fades in on each toggle. Its exit always starts from fully shown.
 keyframes iconIn
   from opacity=0
   to opacity=1
@@ -44,8 +31,6 @@ keyframes iconOut
   from opacity=1
   to opacity=0
 
-// AntDesign glyphs (the vector-icons font: 512 units to the em, ascent 455, descent 81, so a
-// Text box 536 units tall).
 fn applePath(): string = "M343 27Q349 26 352.5 26.0Q356 26 356 28Q359 39 353 62Q345 87 323.5 109.0Q302 131 279 137Q261 141 258 138Q257 138 257.0 130.0Q257 122 258 115Q262 91 278.0 69.5Q294 48 318 36Q331 30 343 27ZM335 140Q337 139 351 140Q388 141 417 160Q432 170 441 183L444 187L438 190Q406 211 395 244Q386 273 394 303Q399 322 411 339Q427 359 451 371Q456 374 456 375Q456 380 442 408Q410 474 373 493Q359 500 346 500Q333 500 308 491Q286 483 274 482Q251 481 221 492Q198 500 185 500Q165 500 143 482Q123 464 102.0 430.0Q81 396 70 363Q52 306 58.5 256.5Q65 207 95 176Q130 141 177 141Q194 141 220 150Q250 160 256.5 161.0Q263 162 276 157Q319 142 335 140ZM356 179Q372 181 380 184L384 186L378 193Q364 213 357 236Q352 254 352 277Q352 300 359 322Q369 353 395 378L407 391L404 398Q387 429 369 447Q354 462 345 462Q342 462 331 458Q323 455 311 451Q289 443 266 444Q248 444 237.5 446.0Q227 448 200 458Q186 463 179 460Q168 455 154 437Q120 395 105 344Q96 313 96 282Q96 258 101 241Q109 215 129.0 198.0Q149 181 175 180Q187 179 215 189Q244 199 257 200Q271 200 296 191Q325 181 336 179Q346 177 356 179Z"
 fn googlePath(): string = "M243 45Q178 50 125 90Q106 105 90 125Q61 161 49 205Q33 265 50 324Q66 381 109.0 422.0Q152 463 209 476Q233 482 262 482Q290 482 313 477Q397 458 440 387Q480 321 469 237Q468 227 467.5 225.5Q467 224 363 224H260V266V308H319Q378 308 378.0 309.5Q378 311 376 318Q361 369 308 387Q272 400 236 393Q198 385 170.0 357.0Q142 329 134 291Q128 263 134 235Q141 202 164.5 175.0Q188 148 221 138Q238 132 261 132Q279 132 288 134Q316 140 338 159L344 164L376 133L407 101L403 98Q394 89 379 79Q339 52 290 46Q265 43 243 45Z"
 
@@ -53,95 +38,69 @@ component SplitButton
   state activated = false
   // Toggles so far: the nudge cycles with it.
   state n = 0
-  // Left onPress: onLeft (none given), setActive(false); the global onPress first.
-  // Beyond RN (phone feedback 2026-11-15, "it stutters"): a haptic as the chips split and as
-  // they merge, over the press's own selection tick.
+  // Left chip: deactivates. Its selection tick comes from the press handler.
+  // Impact haptics as the chips split and merge.
   action pressLeft
     if activated
       n = n + 1
       haptic("impact-soft")
     activated = false
-  // Right onPress: activates; activated, deactivates (onRight: none given).
+  // Right chip: activates, or deactivates when already active.
   action pressRight
     n = n + 1
     haptic(activated ? "impact-soft" : "impact-light")
     activated = not activated
   view
-    // index.tsx styles.container: flex 1, centred. Its parent is the demo screen, whose
-    // backdrop RN paints as the P3 colour #F1EEE8 (RCTColorSpace displayP3): painted here.
     column position="absolute" inset=0 align-items="center" justify-content="center"
       background-color=background() testId="split-button"
-      // styles.container: height 100, width 100%, centred.
       column position="relative" height=100 width="100%" align-items="center" justify-content="center"
-        // Left button: opacity withTiming(activated, 300 ms), translateX withSpring(0 | -offset).
+        // Left chip: fades and slides with the toggle.
         view opacity=(activated ? 1 - nudge(n) / 100 : nudge(n) / 100)
           translate=`${(activated ? 0 - offset() : 0) + nudge(n)}px 0px`
           transition=`opacity 300ms ${inOutQuad()}, ${slide()}` testId="left"
-          // The PressableScale: its scale carries the chip and the icon (the icon's box, absolute
-          // in the relative column, takes no touch).
+          // The icon box takes no touches.
           PressableScale(press=pressLeft)
             column position="relative" text-align="center"
               column aria-label="Google" testId="left-press"
-                // styles.chip (+ activeChip: the same border, width 120): 60 tall, radius
-                // 16 continuous, shadow 0 1 5 10% black. The view doesn't clip, so RN draws its 1 pt
-                // #D9D6D1 border as RCTBorderDrawing's ring with CIRCULAR corners over the layer
-                // (which keeps the continuous curve, and the shadow its shape).
-                // RN's chip is 140 while hidden and turns 120 at once: on a merge that jumped
-                // 10 pt each side while it was still fading out (the stutter). It is always 120
-                // here; hidden, it lies under the 140 pt right chip either way.
+                // The border is a circular ring over the layer's continuous corner. The chip stays
+                // 120 wide while hidden: a width change caused a visible jump on merge.
                 column width=120 height=60 border-radius=16
                   corner-shape="-exact-continuous" box-shadow="0px 1px 5px rgba(0, 0, 0, 0.1)"
                   view position="absolute" inset=0 border="1px solid" border-color=border()
                     border-radius=16 pointer-events="none"
-              // styles.chipContent: row, flex 1, centred, paddingVertical 16 (+ the border);
-              // paddingHorizontal 36 while activated (it only exists then). entering FadeIn,
-              // exiting FadeOut, layout LinearTransition (its box never moves). Mounted throughout:
-              // an exit inside the press tree played nothing on iOS, and RN's exiting view keeps
-              // its last frame, 120 wide from the chip's left edge (the chip stays 120 here).
+              // Stays mounted throughout: an exit inside the press tree did not play on iOS.
               row position="absolute" left=0 top=0 width=120 height=60 box-sizing="border-box"
                 align-items="center" justify-content="center" padding="17px 37px"
                 pointer-events="none" opacity=0
                 animation=(n == 0 ? "none" : (activated ? `iconIn 300ms ${inOutQuad()} both` : `iconOut 300ms ${inOutQuad()} both`))
                 testId="left-icon"
-                // AntDesign google, 22, almostBlack. Its Text box is Yoga's: 22 ceiled to 22.333,
-                // its left floored (48.667 where the svg centres at 49), its baseline on the next
-                // pixel down (CoreGraphics: 38.0 where the snapped svg puts 37.884, 2.698 units).
                 svg width=22 height=(22 * 536 / 512) viewBox="0 -2.698 512 536" aria-hidden=true
                   position="relative" left="-0.33333px"
                   path d=googlePath() fill=almostBlack()
-        // Right button: styles.rightChipContainer (absolute, zIndex 100), translateX
-        // withSpring(0 | offset).
+        // Right chip: sits above the left one.
         view position="absolute" z-index=100 translate=`${(activated ? offset() : 0) + nudge(n)}px 0px`
           transition=slide() testId="right"
           PressableScale(press=pressRight)
-            // styles.chip + rightChip (#F1EEE8); activeRightChip: black, its shadow 0 0 0 (hidden
-            // under the chip: none). The border as the left chip's: a circular ring.
+            // The black fill and shadow are on the activated chip.
             column aria-label=(activated ? "Apple" : "Start") testId="right-press" text-align="center"
               position="relative" width=140 height=60 padding=1 box-sizing="border-box"
               border-radius=16 corner-shape="-exact-continuous"
               background-color=(activated ? "#000000" : background())
               box-shadow=(activated ? "0px 1px 5px rgba(0, 0, 0, 0)" : "0px 1px 5px rgba(0, 0, 0, 0.1)")
-              // Beyond RN (which swaps at once): the colour and shadow turn over 200 ms.
+              // Colour and shadow crossfade over 200 ms.
               transition=`background-color 200ms ${inOutQuad()}, box-shadow 200ms ${inOutQuad()}`
               view position="absolute" inset=0 border="1px solid" border-color=border()
                 border-radius=16 pointer-events="none"
-              // styles.chipContent: its paddingHorizontal spring (24 ↔ 36) moves nothing on screen
-              // (the content is centred in the fixed chip), and as a layout transition it held the
-              // commit's first frames: dropped. Beyond RN, which swaps "Start" and the Apple logo at
-              // once: both stay mounted, centred, and crossfade over 200 ms.
+              // Both labels stay mounted and crossfade over 200 ms.
               row position="absolute" inset=0 align-items="center" justify-content="center"
                 opacity=(activated ? 1 : 0) transition=`opacity 200ms ${inOutQuad()}` pointer-events="none"
                 aria-hidden=(not activated)
-                // AntDesign apple, 21, colors.background (inside the chip's Text): its box's
-                // left on Yoga's floored pixel, 59.333 where the svg centres at 59.5.
                 svg width=21 height=(21 * 536 / 512) viewBox="0 0 512 536" aria-hidden=true
                   position="relative" left="-0.16667px" testId="right-icon"
                   path d=applePath() fill=background()
               row position="absolute" inset=0 align-items="center" justify-content="center"
                 opacity=(activated ? 0 : 1) transition=`opacity 200ms ${inOutQuad()}` pointer-events="none"
                 aria-hidden=activated
-                // styles.chipText: fontSize 20, weight 600 (RN's default black). Yoga floors
-                // the Text's left and top and CoreGraphics ceils its baseline: one device pixel
-                // up and left of the host's line.
+                // Sub-pixel offset to line the label up with the native text.
                 text "Start" font-size=20 font-weight=600 color="#000000" position="relative"
                   top="-0.33333px" left="-0.33333px" testId="start-label"

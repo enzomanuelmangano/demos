@@ -1,7 +1,6 @@
 at "/demo/pomodoro-timer"
 
-// The web host gives a surface no touches: the ring's pan, the counter, the timer and the button
-// are the Rust fixture tests' (gpu/src/pomodoro_timer.rs); here what the Contract holds.
+// Checks the canvas is present. The ring, counter, timer and button are covered by the Rust tests.
 test "the canvas fills the screen"
   expect tree has "pomodoro-timer"
   expect tree has "pomodoro-timer-canvas"

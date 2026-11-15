@@ -1,13 +1,6 @@
-// Scrollable Bottom Sheet: a gradient button opens a dark sheet holding three horizontal pages;
-// paging across them springs the sheet's height to each page's (350, 500, 250), the last
-// page's button closes it; a drag down or the backdrop closes it too.
-// RN: src/animations/scrollable-bottom-sheet (index.tsx, components/BottomSheetPage/index.tsx,
-// components/BottomSheet/{BottomSheet.tsx, ScrollableBottomSheet.tsx, Backdrop/index.tsx}).
-// Every scroll event restarts the sheet's spring toward the height interpolated at the offset,
-// the pages are laid out at the sheet's height each frame and clipped by their ScrollView, and
-// the pan and the scroll view share one finger: the whole demo is Rust,
-// gpu/src/scrollable_bottom_sheet.rs. The surface posts `haptic:selection` on a press (the
-// app's PressablesConfig onPress).
+// Scrollable bottom sheet: a gradient button opens a dark sheet of three horizontal pages. Paging
+// springs the sheet's height to each page's. The last page's button closes it, and a drag down or
+// a tap on the backdrop closes it too. Drawn in Rust (gpu/src/scrollable_bottom_sheet.rs).
 use DemoEnv from "../env.contract"
 
 component ScrollableBottomSheet
@@ -16,8 +9,7 @@ component ScrollableBottomSheet
   action heard(m: string)
     if m == "haptic:selection"
       haptic("selection")
-    // The drag's haptics (gpu/src/scrollable_bottom_sheet.rs, past RN): light on the grab,
-    // medium when a pull closes it, soft when it springs back and lands.
+    // Light on grab, medium when a pull closes the sheet, soft when it springs back and lands.
     if m == "haptic:impact-light"
       haptic("impact-light")
     if m == "haptic:impact-medium"

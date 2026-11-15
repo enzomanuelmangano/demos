@@ -1,19 +1,10 @@
-// `painting-menu`: art-gallery's PaintingMenu (src/animations/art-gallery/components/
-// painting-menu.tsx) as @expo/ui draws it on RN's Release (EXPO_PUBLIC_LIQUID_GLASS_ENABLED): a
-// `Host matchContents colorScheme="dark"` at right 16, top safeTop, holding SwiftUI's
-//   Menu(label: Image(systemName: "ellipsis").font(size 17).frame(15, 15)) {
-//     Toggle("Default", isOn: selected == nil)
-//     Menu(movement) { Menu(painter) { Toggle(painting, isOn: id == selected) … } … } …
-//   }
-//   .accessibilityLabel("Choose a painting") .menuStyle(.button)
-//   .buttonStyle(LIQUID_GLASS ? .glass : .bordered) .buttonBorderShape(.circle)
-//   .controlSize(.large) .menuIndicator(.hidden)
-// in RN's modifier order. iOS and macOS share it; on macOS 26 and later the label is the same
-// liquid-glass circle and the menu AppKit's own (in the dark appearance).
+// `painting-menu`: a circular glass button (an ellipsis) that opens a three-level SwiftUI Menu:
+// movement > painter > painting, plus a "Default" entry. iOS and macOS share it; on macOS 26 and
+// later the label is the same glass circle and the menu is AppKit's own, in the dark appearance.
 //
 // Props: `items`, the tree, one entry per `|`: `m <id> <name>` a movement, `p <id> <name>` a
 // painter of the last movement, `t <id> <name>` a painting of the last painter; `selected`, the
-// painting shown ("" for Default). A toggle sends `change` with its painting's id ("" for Default),
+// painting shown ("" for Default). A toggle sends `change` with its painting's id ("" for Default)
 // and the menu closes, as SwiftUI's does.
 import Foundation
 import SwiftUI
@@ -81,22 +72,21 @@ struct PaintingMenuBody: View {
         .controlSize(.large)
         .menuIndicator(.hidden)
         .environment(\.colorScheme, .dark)
-        // RN's Host sits at right 16 at its content's own size; the box is whole points, so the
-        // button keeps to its top-trailing corner.
+        // The box is whole points, so the button keeps to its top-trailing corner.
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
     }
 
     private func toggle(_ label: String, id: String) -> some View {
         Toggle(label, isOn: Binding(
             get: { model.selected == id },
-            // onIsOnChange: onPaintingChange(id), whichever way it flips.
+            // Picking reports the painting whichever way the toggle flips.
             set: { _ in
                 model.selected = id
                 pick(id)
             }))
     }
 
-    /// buttonStyle(LIQUID_GLASS ? 'glass' : 'bordered').
+    /// Glass from iOS/macOS 26, bordered on earlier versions.
     @ViewBuilder
     private func styled<V: View>(_ menu: V) -> some View {
         if #available(iOS 26.0, macOS 26.0, *) {
@@ -119,7 +109,7 @@ final class PaintingMenu: ExactNativeInstance {
         let body = PaintingMenuBody(model: model, pick: { events.change($0) })
         #if os(macOS)
         host = NSHostingView(rootView: body)
-        // Host colorScheme="dark": the label and AppKit's menu.
+        // Dark for the label and AppKit's menu.
         host.appearance = NSAppearance(named: .darkAqua)
         #else
         host = UIHostingController(rootView: body)

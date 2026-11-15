@@ -1,9 +1,7 @@
 // The launcher: an iOS Home Screen of demo icons, paged sideways.
-// RN: src/navigation/home/springboard.tsx, use-grid-layout.ts, app-icon.tsx, page-dots.tsx,
-// background.tsx, press-opacity.ts.
 use Demo from "../demos.contract"
 
-// use-grid-layout.ts: the icon keeps one physical size; columns and rows follow the screen.
+// The icon keeps one physical size; columns and rows follow the screen.
 fn gridCols(w: number): number = min(6, max(3, floor((w - 44 + 22) / (62 + 22))))
 fn cellWidth(w: number): number = (w - 44) / gridCols(w)
 fn iconSize(w: number): number = min(62, cellWidth(w) - 8)
@@ -12,13 +10,12 @@ fn gridRows(w: number, h: number): number = max(1, floor((h - 16 - 44 + 22) / (i
 fn perPage(w: number, h: number): number = gridCols(w) * gridRows(w, h)
 fn pageCount(n: number, per: number): number = per > 0 ? ceil(n / per) : 0
 
-// press-opacity.ts: a pressed icon dims to 0.85 (80 ms in, 220 ms out). Exact's custom press
-// eases over its own 120 ms either way.
+// A pressed icon dims to 0.85.
 style IconPress
   :active
     opacity = 0.85
 
-// The shown page's dot: 0.35 a page away, 1 on its page (page-dots.tsx's two opacities).
+// A page dot: 1 on its own page, 0.35 a page away.
 keyframes pageDot
   0% opacity=0.35
   50% opacity=1
@@ -41,17 +38,15 @@ component Springboard
 
   view
     column position="absolute" inset=0 testId="springboard"
-      // background.tsx: a static dark wallpaper (a glowing loupe ring on black), edge to edge.
-      // It never scales: the launch (DemoLaunch.swift) zooms `springboard-zoom` alone, as
-      // SpringBoard zooms its icons over a still wallpaper.
+      // A static wallpaper, edge to edge. It never scales: the launch (DemoLaunch.swift) zooms
+      // `springboard-zoom` alone, as SpringBoard zooms its icons over a still wallpaper.
       image "assets/home-wallpaper.png" position="absolute" inset=0 width="100%" height="100%"
         object-fit="cover" aria-hidden=true
       column flex=1 min-height=0 resize=fit position="relative" timeline-scope="--pager"
         padding-top="env(safe-area-inset-top)" padding-bottom="env(safe-area-inset-bottom)"
         testId="springboard-zoom"
-        // UIScrollView's own paging (isPagingEnabled): every page a snap stop the width of the
-        // pager, so a fling is interruptible and nothing commits while it scrolls. A `row`, not
-        // a `scroll` tag: a `scroll` tag's timeline drives nothing on iOS.
+        // Native paging: every page is a snap stop the width of the pager, so a fling is
+        // interruptible. A `row`, not a `scroll` tag: a `scroll` tag's timeline drives nothing on iOS.
         row testId="pager" flex=1 min-height=0 overflow-x="auto" overflow-y="hidden"
           scroll-snap-type="x mandatory" scrollbar-width="none" scroll-timeline="--pager x"
           for p in pages key=p
@@ -60,9 +55,8 @@ component Springboard
               row flex-wrap="wrap" row-gap=22 align-content="flex-start"
                 for d in demos.slice(p * per, (p + 1) * per) key=d.slug
                   AppIcon(demo=d, cell=cellWidth(boxW), size=iconSize(boxW), approved=approved.includes(d.slug), changed=changed.includes(d.slug), open=open)
-        // page-dots.tsx: equal round dots, the shown one brightened. Each follows the pager's
-        // offset on the compositor (UIPageControl's interpolation as the finger drags): full at
-        // its own page, 0.35 a page either side.
+        // Page dots. Each follows the pager's offset on the compositor, so it interpolates as the
+        // finger drags: full at its own page, 0.35 a page either side.
         if pages.length > 1
           row height=44 align-items="center" justify-content="center" flex-shrink=0 pointer-events="none"
             aria-hidden=true
@@ -71,8 +65,8 @@ component Springboard
                 opacity=0.35 animation="pageDot 1s linear both" animation-timeline="--pager"
                 animation-range=`${(p - 1) * boxW}px ${(p + 1) * boxW}px`
 
-// app-icon.tsx: the squircle icon and its label under it; a long press offers the demo's
-// inspiration, a share and its code.
+// The squircle icon and its label under it; a long press offers the demo's inspiration, a share
+// and its code.
 component AppIcon
   props
     demo: Demo
@@ -89,19 +83,17 @@ component AppIcon
     column width=cell height=(size + 26) align-items="center" position="relative"
       button appearance="none" press=open(demo.slug) aria-label=`Open ${demo.name}` testId=`icon-${demo.slug}`
         class=IconPress width=size height=size padding=0 border-width=0 background-color="transparent"
-        // launch-icon.tsx: the square the demo opens out of and closes into (DemoLaunch.swift).
-        // The long press lifts this squircle alone, as SpringBoard lifts an icon: UIKit clips the
-        // lift to the node's own corners (the label and the cell's box would lift on black).
+        // The square the demo opens out of and closes into (DemoLaunch.swift). The long press lifts
+        // this squircle alone, as SpringBoard lifts an icon: UIKit clips the lift to the node's own
+        // corners, so the label and the cell's box would lift on black.
         view id=`icon-${demo.slug}` hatch="launch-icon" data-slug=demo.slug width=size height=size border-radius=(size * 0.2237) corner-shape="-exact-continuous"
           contextPopover=`menu-${demo.slug}`
           box-shadow="0px 5px 9px rgba(27, 34, 51, 0.18)"
           image demo.icon width=size height=size border-radius=(size * 0.2237) corner-shape="-exact-continuous"
             overflow="hidden" background-color="#1c1c1e" object-fit="cover" aria-hidden=true
-      // Approved on the phone ("✅ Looks good"): a green notification-style badge over the icon's
-      // top-right corner, a sibling of the button so the launch square and the long-press lift
-      // stay the bare squircle.
-      // Changed since the last open (a live fix landed): orange, over the green, as it asks for a
-      // re-look; opening the demo clears it.
+      // Badges over the icon's top-right corner, siblings of the button so the launch square and
+      // the long-press lift stay the bare squircle. Orange: changed since the last open, shown
+      // over the green one; opening the demo clears it. Green: approved from the phone.
       if changed
         column testId=`changed-${demo.slug}` position="absolute" top=-6 left=((cell + size) / 2 - 14)
           width=20 height=20 border-radius=10 box-sizing="border-box" border="1.5px solid #ffffff"
