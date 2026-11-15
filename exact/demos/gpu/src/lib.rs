@@ -91,6 +91,7 @@ pub mod metaball;
 pub mod miles_bar_chart;
 pub mod mnist;
 pub mod mobile_input;
+pub mod motion_blur;
 pub mod notion_qrcode;
 pub mod paper_folding;
 pub mod particles_button;
@@ -202,6 +203,7 @@ pub static REGISTRY: Registry = Registry {
         ("miles_bar_chart", 7, miles_bar_chart::surface),
         ("mnist", 0, mnist::surface),
         ("mobile_input", 2, mobile_input::surface),
+        ("motion_blur", 2, motion_blur::surface),
         ("notion_qrcode", 0, notion_qrcode::surface),
         ("paper_folding", 0, paper_folding::surface),
         ("particles_button", 1, particles_button::surface),
