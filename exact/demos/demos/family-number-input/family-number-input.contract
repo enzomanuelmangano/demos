@@ -1,33 +1,13 @@
-// Family Number Input: a keypad under a big number; each digit (and thousands comma) fades in
-// from below, leaves downwards, and slides into place, while the row shrinks as it grows.
-// Backspace removes the last digit, a long press on it clears. RN:
-// src/animations/family-number-input (number-input.tsx, components/animated-number,
-// components/buttons-grid).
+// Family Number Input: a keypad under a big number; each digit (and thousands comma) rises in,
+// drops out, and the commas slide as the number regroups, while the row shrinks as it grows.
+// Backspace removes the last digit; held, it repeats. RN: src/animations/family-number-input
+// (number-input.tsx, components/animated-number, components/buttons-grid).
 //
-// Frame cost (rewritten for 120 Hz after the phone's "it stutters"): nothing here is laid out
-// per frame. RN's LinearTransition on the row and on every character became
-// `-exact-layout-transition`s, which the iOS host shows a frame late from the new layout and
-// re-projects at every commit (three a tap: pressIn, press, pressOut), so a fast typist saw the
-// row jump and restart. Here every character is an absolute box placed by `translate` from
-// numbers the commit computes (the font's own advances), so a commit changes only transform
-// targets and per frame the host moves layers:
-// - the row: one `translate` (−width / 2, the centring) and one `scale` (rContainerStyle);
-// - a character: its place (`translate` x on the text), its entrance and exit (keyframes of
-//   `translate` y and `opacity` on its wrapper, FadeInDown / FadeOutDown).
-// Places move on a spring without bounce (below), not RN's 300 ms timing: a tap during a slide
-// retargets it with its velocity kept instead of restarting from rest, which is what a fast
-// typist feels as fluid. Characters are keyed by insertion id, never by position: a digit typed
-// where one is still leaving is a new node that enters, and the leaving one finishes its exit.
-//
-// Motion (beyond RN, after the owner's "study Emil Kowalski and Jakub Krehel"): a digit enters
-// with ease-out, never RN's inOut(quad) whose slow start reads as lag: up from 24 px and from
-// 0.9 scale, faded in, 380 ms cubic-bezier(0.23, 1, 0.32, 1) (Emil's strong ease-out; Jakub's
-// enter is opacity + blur + y). It leaves subtler and faster than it came (Jakub: exits softer
-// than enters): 12 px down, to 0.92, faded, 200 ms on the same curve. Jakub's blur is left out:
-// Contract animates no `filter` (lower-keyframe-property), and the scale carries the softening.
-// Places, the row's centring and its scale share one spring with no bounce, Motion's
-// { duration 0.45, bounce 0 } (Jakub's spring): stiffness (2π / 0.45)² × 4 = 780, damping
-// 2√(780 × 4) = 111.7, mass 4; it keeps its velocity when a tap retargets it.
+// The number is the `family_number` surface (gpu/src/family_number.rs): every digit and comma
+// is a glyph with its own springs on the surface's frame clock, so a keypress is one input bind,
+// never a commit that starts transitions (the Contract versions stuttered on the phone: the iOS
+// host skipped the first frames of commit-started transitions on a dozen keyed nodes). The
+// motion (enter, exit, comma slide, centring, scale) is described there.
 //
 // Holding backspace repeats it (as iOS's keyboard does): after 400 ms, one digit every 100 ms,
 // quickening toward 50 ms, a light haptic each; reaching 0 ends it with a medium one. Releasing
@@ -38,49 +18,13 @@ use AnimatedPressable, PressLook from "pressto"
 // buttons-grid/index.tsx items: 1…9, an empty key, 0, backspace (-1 empty, -2 backspace).
 fn keys(): number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, -1, 0, -2]
 
-// A typed digit and the id it got when typed (its node's key for its whole life).
-shape Dig
-  id: number
-  d: number
-
-// styles.character: SF-Pro-Rounded-Bold 90, marginHorizontal 2. Each Text is as wide as its
-// glyph's advance (Core Text, the bundled face at 90 pt) ceiled to the device pixel (3x), plus
-// the two margins.
-fn advanceOf(d: number): number = match [59.0185546875, 43.1982421875, 54.2724609375, 56.689453125, 58.271484375, 56.25, 57.8759765625, 51.50390625, 58.7109375, 58.0517578125].at(d) { case some(v) => v, case none => 0 }
-fn cellOf(d: number): number = ceil(advanceOf(d) * 3) / 3 + 4
-// ',' advances 25.0048828125.
-fn commaCell(): number = ceil(25.0048828125 * 3) / 3 + 4
-
-// value.toLocaleString('en-US'): a comma after digit j of n when the digits right of it are a
-// multiple of three.
-fn firstGroup(n: number): number = ((n - 1) % 3) + 1
-fn commaAfter(j: number, n: number): bool = j < n - 1 and j + 1 >= firstGroup(n) and (j + 1 - firstGroup(n)) % 3 == 0
-fn commaCount(n: number): number = floor((n - 1) / 3)
-fn commasBefore(j: number, n: number): number = j >= firstGroup(n) ? floor((j - firstGroup(n)) / 3) + 1 : 0
-
-// One character on screen: its key, its glyph, and its left edge in the row (the margin in).
-shape Ch
-  key: string
-  char: string
-  x: number
-fn digitX(ds: Dig[], j: number): number = sum(ds.slice(0, j).map(g => cellOf(g.d))) + commasBefore(j, ds.length) * commaCell()
-fn commaKey(cs: number[], k: number): string = match cs.at(k) { case some(v) => `c${v}`, case none => `c-${k}` }
-fn charsOf(ds: Dig[], cs: number[]): Ch[] = ds.map((g, j) => commaAfter(j, ds.length) ? [Ch(key=`d${g.id}`, char=`${g.d}`, x=digitX(ds, j) + 2), Ch(key=commaKey(cs, commasBefore(j, ds.length)), char=",", x=digitX(ds, j) + cellOf(g.d) + 2)] : [Ch(key=`d${g.id}`, char=`${g.d}`, x=digitX(ds, j) + 2)]).flat()
-fn rowWidth(ds: Dig[]): number = sum(ds.map(g => cellOf(g.d))) + commaCount(ds.length) * commaCell()
-fn textOf(ds: Dig[]): string = ds.map(g => `${g.d}`).join("")
-// rContainerStyle: scale withTiming(max(1.05 - 0.05 * characters.length, 0.45)).
-fn rowScale(ds: Dig[]): number = max(1.05 - 0.05 * (ds.length + commaCount(ds.length)), 0.45)
-// The commas' ids after the digits change: kept while they stay, new ones for new commas.
-fn commasFor(cs: number[], n: number, next: number): number[] = cs.length >= commaCount(n) ? cs.slice(0, commaCount(n)) : cs.concat(range(commaCount(n) - cs.length).map(i => next + i))
-
-// RN's FadeInDown / FadeOutDown direction (in from below, out downwards), timed as above.
-keyframes charIn
-  from opacity=0 translate="0px 24px" scale=0.9
-keyframes charOut
-  to opacity=0 translate="0px 12px" scale=0.92
-
+// value.toLocaleString('en-US') of the digits: a comma before every group of three from the
+// right (what the surface draws, for tests and VoiceOver).
+fn grouped(s: string): string = range(s.length).map(j => (j > 0 and (s.length - j) % 3 == 0 ? "," : "") + s.slice(j, j + 1)).join("")
 // The hold's next step: 100 ms, then 15 % shorter each time, toward 50 ms (50 + 50 × 0.85ⁿ).
 fn repeatMs(n: number): number = match [100, 92.5, 86.13, 80.71, 76.1, 72.19, 68.86, 66.03, 63.62, 61.58, 59.84, 58.37].at(n) { case some(v) => v, case none => 50 }
+// floor(input / 10) on the digits.
+fn dropLast(s: string): string = s.length > 1 ? s.slice(0, s.length - 1) : "0"
 
 // InputButton (createAnimatedPressable): pressed, a white 10% fill and scale 0.9, radius 20.
 // pressto's AnimatedPressable (packages/pressto) runs the app's global onPress (its haptic)
@@ -89,33 +33,22 @@ fn repeatMs(n: number): number = match [100, 92.5, 86.13, 80.71, 76.1, 72.19, 68
 component FamilyNumberInput
   props
     env: DemoEnv
-  // The number as its digits ("0" is one digit 0), the commas' ids, the next id to give.
-  state digits: Dig[] = [Dig(id=0, d=0)]
-  state commas: number[] = []
-  state nextId = 1
+  // The number's digits ("0" for zero).
+  state input = "0"
   // The backspace hold: down, the timer's token and wait, deletes it made.
   state holding = false
   state holdToken = 0
   state holdMs = 400
   state repeats = 0
   action press(k: number)
-    let zero = digits.length == 1 and textOf(digits) == "0"
-    // A digit: `+${input}${label}`, refused past 11 digits (onMaxReached). On 0 it replaces
-    // the 0 (RN swaps the Text's string; here the 0 leaves and the digit enters).
-    if k >= 0 and not (zero and k == 0) and (zero or digits.length < 11)
-      let next = zero ? [Dig(id=nextId, d=k)] : digits.concat([Dig(id=nextId, d=k)])
-      digits = next
-      commas = commasFor(commas, next.length, nextId + 1)
-      nextId = nextId + 1 + commaCount(next.length)
-    // Backspace: floor(input / 10); the last digit gone gives a new 0. The release that ends a
-    // hold which repeated deletes nothing more.
+    // A digit: `+${input}${label}`, refused past 11 digits (onMaxReached); on 0 it replaces it.
+    if k >= 0 and not (input == "0" and k == 0) and (input == "0" or input.length < 11)
+      input = input == "0" ? `${k}` : `${input}${k}`
+    // Backspace: floor(input / 10). The release that ends a hold which repeated deletes no more.
     if k == -2 and repeats > 0
       repeats = 0
-    else if k == -2 and not zero
-      let next = digits.length > 1 ? digits.slice(0, digits.length - 1) : [Dig(id=nextId, d=0)]
-      digits = next
-      commas = commasFor(commas, next.length, nextId + 1)
-      nextId = nextId + 1
+    else if k == -2
+      input = dropLast(input)
   action holdStart(k: number)
     if k == -2
       holding = true
@@ -127,13 +60,11 @@ component FamilyNumberInput
       holding = false
   // The timer fired: delete one, then arm the next step, unless released or at 0.
   action tick(m: string)
-    if holding and m == `timer:${holdToken}` and textOf(digits) != "0"
-      let next = digits.length > 1 ? digits.slice(0, digits.length - 1) : [Dig(id=nextId, d=0)]
-      digits = next
-      commas = commasFor(commas, next.length, nextId + 1)
-      nextId = nextId + 1
+    if holding and m == `timer:${holdToken}` and input != "0"
+      let next = dropLast(input)
+      input = next
       repeats = repeats + 1
-      if textOf(next) == "0"
+      if next == "0"
         holding = false
         haptic("impact-medium")
       else
@@ -144,17 +75,21 @@ component FamilyNumberInput
     // styles.container: black, padded by the safe area top and bottom.
     column position="absolute" inset=0 background-color="#000000" padding-top=env.safeTop
       padding-bottom="env(safe-area-inset-bottom)" testId="family-number-input"
-      // styles.fillCenter, with the number in a second fillCenter padded 50 at its top.
-      column flex=1 align-items="center" justify-content="center" position="relative"
-        column flex=1 align-self="stretch" align-items="center" justify-content="center" padding-top=50
-          AnimatedNumber(digits=digits, commas=commas)
+      // styles.fillCenter: the top half. The surface covers it and centres the row where RN's
+      // second fillCenter (padded 50 at its top) does.
+      column flex=1 position="relative"
+        canvas surface=family_number(input) position="absolute" top=0 left=0 width=env.width
+          height=((env.height - env.safeTop - env.safeBottom) / 2) aria-hidden=true
+        // The number for VoiceOver and tests, not drawn.
+        text grouped(input) testId="number" position="absolute" top=0 left=0 opacity=0
+          pointer-events="none"
         // styles.gradient: bottom 38%, ['transparent', '#000', '#000', '#000'].
         view position="absolute" left=0 right=0 bottom=0 height="38%" pointer-events="none"
           background-image="linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, #000000 33.333%, #000000 66.667%, #000000 100%)"
-      // ButtonsGrid: styles.container wraps a row of keys 30% wide, 20% tall, margined
-      // 7/3% left and bottom.
       canvas surface=timer(holding ? holdToken : 0, holdMs) message=tick width=1 height=1 position="absolute"
         pointer-events="none" aria-hidden=true
+      // ButtonsGrid: styles.container wraps a row of keys 30% wide, 20% tall, margined
+      // 7/3% left and bottom.
       row flex=1 flex-wrap="wrap" align-items="center" align-content="flex-start"
         for k in keys() key=k
           // The key's place (30% × 20%, margined 7/3% left and bottom) on the view; the press box,
@@ -174,26 +109,3 @@ component FamilyNumberInput
                 if k == -2
                   // FontAwesome5 "backspace", 24, white.
                   image "symbol:sf/delete.left.fill" font-size=24 color="#ffffff" aria-hidden=true
-
-component AnimatedNumber
-  props
-    digits: Dig[]
-    commas: number[]
-  view
-    // styles.row's centre: a zero-wide anchor as tall as the Text (hhea 1950 + 494 of 2048 at
-    // 90, ceiled to the pixel), centred where RN centres the row. The row scales about it.
-    view width=0 height="107.66667px" position="relative" flex-shrink=0
-      scale=rowScale(digits) transition="scale -exact-spring(780, 111.7, 4)"
-      testId="number" aria-label=textOf(digits)
-      // The row's left edge, half its width left of the centre: RN's row frame, sliding as
-      // LinearTransition slides it when the width changes.
-      view position="absolute" left=0 top=0 width=0 height="107.66667px"
-        translate=`${-rowWidth(digits) / 2}px 0px` transition="translate -exact-spring(780, 111.7, 4)"
-        for c in charsOf(digits, commas) key=c.key
-          // Enter / exit on the wrapper (y, scale, opacity); the place on the text.
-          view position="absolute" left=0 top=0 testId=`char-${c.key}` aria-hidden=true
-            animation="charIn 380ms cubic-bezier(0.23, 1, 0.32, 1) both"
-            -exact-exit-animation="charOut 200ms cubic-bezier(0.23, 1, 0.32, 1) both"
-            text c.char font-family="SF-Pro-Rounded-Bold" font-size=90 color="#ffffff"
-              line-height="107.40234375px" white-space="nowrap"
-              translate=`${c.x}px 0px` transition="translate -exact-spring(780, 111.7, 4)"

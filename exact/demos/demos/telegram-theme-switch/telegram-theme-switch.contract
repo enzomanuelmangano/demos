@@ -166,6 +166,16 @@ component TtsScreen
   derive W = env.width
   derive barW = floatingWidth(W, ttsInset()) - ttsBarH() - ttsGap()
   derive radius = concentricRadius(ttsInset(), ttsBarH())
+  // The native bar's tab events: "tab:<index>".
+  action native(m: string)
+    if m == "tab:0"
+      pick(0)
+    if m == "tab:1"
+      pick(1)
+    if m == "tab:2"
+      pick(2)
+    if m == "tab:3"
+      pick(3)
   view
     view position="absolute" left=0 top=0 width=W height=env.height background-color=ttsBg(dark)
       pointer-events=(live ? "auto" : "none") overflow="hidden"
@@ -206,24 +216,34 @@ component TtsScreen
                       align-items="center" justify-content="center"
                       text `${c.unread}` font-size=14 line-height="18px" font-weight=600
                         color="#FFFFFF" font-variant-numeric="tabular-nums"
-      // The tab bar: glass under the tabs (never their parent), touch-transparent.
-      view position="absolute" left=ttsInset() bottom=ttsInset() width=barW height=ttsBarH()
-        border-radius=radius corner-shape="-exact-continuous" background-color=ttsBarFill(dark)
-        box-shadow="0px 8px 24px rgba(0, 0, 0, 0.12)" pointer-events="none" aria-hidden=true
-        glass-pane glass-style="regular" pane-tint=ttsGlassTint(dark) corner-size=`${radius}`
-          interactive="false" continuous="true" position="absolute" inset=0 pointer-events="none"
-          aria-hidden=true
-      row position="absolute" left=ttsInset() bottom=ttsInset() width=barW height=ttsBarH()
-        align-items="center" padding="0px 6px"
-        for i in [0, 1, 2, 3] key=i
-          view flex=1 height=ttsBarH() display="flex" flex-direction="column"
-            PressableScale(press=pick(i))
-              column flex-grow=1 align-items="center" justify-content="center" gap=3
-                aria-label=ttsTabName(i) testId=(live ? `tts-tab-${i}` : `tts-ghost-tab-${i}`)
-                image ttsTabIcon(i) font-size=21 color=(tab == i ? ttsAccent(dark) : ttsSecondary(dark))
-                  aria-hidden=true
-                text ttsTabName(i) font-size=10 line-height="12px" font-weight=600
-                  color=(tab == i ? ttsAccent(dark) : ttsSecondary(dark))
+      // The tab bar: native on the live copy (modules/apple/MusicTabBar.swift, `native-tabbar`:
+      // iOS 26's SwiftUI TabView, in this theme's appearance); drawn on the reveal's copy, so the
+      // circle shows the new theme's bar too.
+      if live
+        native-tabbar tab-titles="Contacts|Calls|Chats|Settings"
+          tab-symbols="person.crop.circle.fill|phone.fill|bubble.left.and.bubble.right.fill|gearshape.fill"
+          selected-tab=`${tab}` tab-tint=ttsAccent(dark) bar-appearance=(dark ? "dark" : "light")
+          change=native position="absolute" left=0 bottom=0 width=(barW + ttsInset())
+          height=(ttsBarH() + 2 * ttsInset() + 24) testId="tts-tabs"
+      else
+        // The tab bar: glass under the tabs (never their parent), touch-transparent.
+        view position="absolute" left=ttsInset() bottom=ttsInset() width=barW height=ttsBarH()
+          border-radius=radius corner-shape="-exact-continuous" background-color=ttsBarFill(dark)
+          box-shadow="0px 8px 24px rgba(0, 0, 0, 0.12)" pointer-events="none" aria-hidden=true
+          glass-pane glass-style="regular" pane-tint=ttsGlassTint(dark) corner-size=`${radius}`
+            interactive="false" continuous="true" position="absolute" inset=0 pointer-events="none"
+            aria-hidden=true
+        row position="absolute" left=ttsInset() bottom=ttsInset() width=barW height=ttsBarH()
+          align-items="center" padding="0px 6px"
+          for i in [0, 1, 2, 3] key=i
+            view flex=1 height=ttsBarH() display="flex" flex-direction="column"
+              PressableScale(press=pick(i))
+                column flex-grow=1 align-items="center" justify-content="center" gap=3
+                  aria-label=ttsTabName(i) testId=(live ? `tts-tab-${i}` : `tts-ghost-tab-${i}`)
+                  image ttsTabIcon(i) font-size=21 color=(tab == i ? ttsAccent(dark) : ttsSecondary(dark))
+                    aria-hidden=true
+                  text ttsTabName(i) font-size=10 line-height="12px" font-weight=600
+                    color=(tab == i ? ttsAccent(dark) : ttsSecondary(dark))
       // The theme button: a glass circle as tall as the bar, beside it; the label above the glass.
       view position="absolute" right=ttsInset() bottom=ttsInset() width=ttsBarH() height=ttsBarH()
         border-radius=radius background-color=ttsBarFill(dark)

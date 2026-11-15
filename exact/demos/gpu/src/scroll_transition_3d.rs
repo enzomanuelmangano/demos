@@ -29,6 +29,10 @@
 //! | scrollY | FlatList onScroll (UIScrollView, snapToInterval, fast) | `UiScroll` (Snap::Interval, FAST) |
 //! | blur, opacity, rotateX | interpolate(scrollY) per item | the same, every frame |
 //!
+//! The leave is past RN's (the owner's phone note: the number flattened edge-on near the top):
+//! see LEAVE_* and `render`: a 58° tilt at most, the fade, Gaussian blur and shrink on one
+//! smootherstep from a quarter of an item out, symmetric both ways.
+//!
 //! Haptics (past RN, which plays none: the owner's haptic language): `haptic:selection` each time
 //! the centred number (round(scrollY / size)) changes, during the drag and the glide, at most one
 //! per HAPTIC_GAP_MS; `haptic:impact-rigid` once each time the list is pulled or thrown past an
@@ -40,7 +44,6 @@ use std::collections::HashMap;
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use reanimated::{interpolate, Extrapolation};
 use skia::blur::{ceil_size, outset, GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
 use skia::{point, stops, Canvas, Color, Font, Matrix4, Paint, Renderer, Shader};
 
@@ -52,6 +55,21 @@ const PERSPECTIVE: f32 = 200.0;
 const FONT_SIZE: f32 = 175.0;
 /// BlurMask blur (σ, points).
 const GLOW: f32 = 4.0;
+/// The leave (past RN's, by the owner's call): the largest tilt (rad, 58°), where the fade, blur
+/// and shrink begin and end (fractions of an item from the centre), the blur at its end (σ, pt)
+/// and the scale.
+const LEAVE_TILT: f64 = 58.0 * std::f64::consts::PI / 180.0;
+const LEAVE_FROM: f64 = 0.25;
+const LEAVE_TO: f64 = 0.85;
+const LEAVE_BLUR: f64 = 12.0;
+const LEAVE_SCALE: f64 = 0.86;
+
+/// 6t⁵ − 15t⁴ + 10t³ of t = (x − a) / (b − a) clamped: flat at both ends.
+fn smootherstep(a: f64, b: f64, x: f64) -> f64 {
+    let t = ((x - a) / (b - a)).clamp(0.0, 1.0);
+    t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
+}
+
 /// The shortest gap between two selection haptics, ms.
 const HAPTIC_GAP_MS: f64 = 40.0;
 /// How far past an end (points) the rubber band must pull before its haptic.
@@ -61,7 +79,11 @@ static SF_ROUNDED_BOLD: &[u8] = include_bytes!("../fonts/sf-pro-rounded-bold-dig
 
 /// The demo's surface (no inputs).
 pub fn surface() -> Box<dyn Surface> {
-    Box::new(ScrollTransition {
+    Box::new(new())
+}
+
+fn new() -> ScrollTransition {
+    ScrollTransition {
         size: (0.0, 0.0),
         scale: 0.0,
         scroll: UiScroll::new(0.0, 0.0, 0.0, FAST, Snap::Free),
@@ -79,7 +101,7 @@ pub fn surface() -> Box<dyn Surface> {
         past_end: false,
         haptic_at: f64::NEG_INFINITY,
         posted: Vec::new(),
-    })
+    }
 }
 
 #[derive(Default)]
@@ -147,11 +169,6 @@ impl ScrollTransition {
         let top = self.pad() + i as f64 * self.item();
         let t = self.round(top);
         (t, self.round(top + self.item()) - t)
-    }
-    fn inputs(&self, i: usize) -> [f64; 5] {
-        let s = self.item();
-        let i = i as f64;
-        [s * (i - 1.0), s * (i - 1.0) + 20.0, s * i, s * (i + 1.0) - 20.0, s * (i + 1.0)]
     }
     /// A selection when the centred number changes (one per HAPTIC_GAP_MS at most), a rigid thunk
     /// once per pull past an end.
@@ -500,15 +517,26 @@ impl Surface for ScrollTransition {
         let visible: Vec<usize> = (0..COUNT).filter(|&i| (offset - s * i as f64).abs() < s).collect();
         self.bakes.retain(|k, _| visible.contains(k));
         let mut draws = Vec::new();
+        let several = visible.len() > 1;
         for &i in &visible {
-            let input = self.inputs(i);
-            let opacity = interpolate(offset, &input, &[0.0, 0.5, 1.0, 0.5, 0.0], Extrapolation::Clamp);
+            // The leave, redesigned (the owner's phone note: it flattened edge-on toward the top):
+            // d, how far the number is from the centre (0 … 1 of an item, either way). It tips back
+            // at most LEAVE_TILT, easing in; from a quarter out it fades, blurs (Graphite's
+            // Gaussian, up to LEAVE_BLUR) and shrinks toward LEAVE_SCALE on one smootherstep, gone
+            // before the tilt could read as a flat sheet. Symmetric above and below.
+            let d = ((offset - s * i as f64).abs() / s).min(1.0);
+            let k = smootherstep(LEAVE_FROM, LEAVE_TO, d);
+            let opacity = 1.0 - k;
             if opacity <= 0.0 {
                 continue;
             }
-            let blur = interpolate(offset, &input, &[0.0, 6.0, 0.0, 6.0, 0.0], Extrapolation::Clamp);
-            let half = std::f64::consts::FRAC_PI_2;
-            let rotate = interpolate(offset, &input, &[-half, -half, 0.0, -half, -half], Extrapolation::Extend);
+            // While two numbers show, each takes the blur path (σ at least 0.2 pt, invisible in
+            // motion): a slot that drops from a blur to none while the other slot blurs drew
+            // nothing that frame (found here; the number vanished a quarter out). At rest the one
+            // number is unblurred.
+            let blur = if several { (LEAVE_BLUR * k).max(0.2) } else { LEAVE_BLUR * k };
+            let rotate = -LEAVE_TILT * smootherstep(0.0, 1.0, d);
+            let shrink = 1.0 - (1.0 - LEAVE_SCALE) * k;
             let (top, h) = self.cell(i);
             let px = (pxw, (h * frame.scale as f64).round() as u32);
             if !self.bakes.contains_key(&i) {
@@ -557,7 +585,12 @@ impl Surface for ScrollTransition {
             let screen_top = frame.height as f64 - (top + h - offset);
             let (w, hf) = (frame.width, h as f32);
             let m = Matrix4::translate(0.0, screen_top as f32, 0.0)
-                .multiply(Matrix4::perspective(PERSPECTIVE).multiply(Matrix4::rotate_x(rotate as f32)).pivot(w / 2.0, hf / 2.0))
+                .multiply(
+                    Matrix4::perspective(PERSPECTIVE)
+                        .multiply(Matrix4::rotate_x(rotate as f32))
+                        .multiply(Matrix4::scale(shrink as f32, shrink as f32, 1.0))
+                        .pivot(w / 2.0, hf / 2.0),
+                )
                 .to_matrix3()
                 .rows();
             let mut q = [0f32; 24];
@@ -675,5 +708,31 @@ mod tests {
         }
         assert_eq!(s.agent("{}").unwrap(), "{\"offset\":0.00,\"number\":99,\"moving\":false}");
         assert_eq!(s.messages(), vec!["haptic:selection", "haptic:impact-rigid"]);
+    }
+
+    #[test]
+    fn the_leave_fades_and_blurs_before_it_tilts_flat() {
+        let gpu = match fixture::device() {
+            Ok(gpu) => gpu,
+            Err(error) => return eprintln!("{error}; skipped"),
+        };
+        let mut s = new();
+        fixture::render(&gpu, &mut s, &frame(0.0)).unwrap();
+        // "99" (item 0) at d = 0, .25, .5, .75 and 1 of an item from the centre: the list moved
+        // by d · item (231 pt at 420 wide), 99 leaving downward (the list is inverted), 98 coming
+        // in from above; the lit pixels below the centre (99's alone).
+        let mut ink = Vec::new();
+        for (n, d) in [0.0f64, 0.25, 0.5, 0.75, 1.0].iter().enumerate() {
+            s.scroll.set_offset(231.0 * d);
+            fixture::render(&gpu, &mut s, &frame(10.0 + n as f64)).unwrap();
+            let (img, _) = fixture::render(&gpu, &mut s, &frame(10.5 + n as f64)).unwrap();
+            gfx::save_over(&img, &format!("scroll3d-leave-{n}"), [0, 0, 0]);
+            let lit = (img.height / 2 + 60..img.height).step_by(3).flat_map(|y| (0..img.width).step_by(3).map(move |x| (x, y))).filter(|&(x, y)| img.at(x, y)[..3].iter().map(|&c| c as u32).sum::<u32>() > 150).count();
+            ink.push(lit);
+        }
+        // A quarter out still whole (it has moved into the measured band), then fading and
+        // blurring, nearly gone at three quarters (at a whole item the band holds only 98's lower half).
+        assert!(ink[1] > ink[0], "{ink:?}");
+        assert!(ink[1] > 0 && ink[3] < ink[2] / 3, "{ink:?}");
     }
 }

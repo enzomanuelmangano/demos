@@ -14,6 +14,13 @@
 //! a finger takes the picker; `haptic:impact-rigid` once each time the drag pushes it past an
 //! end of the track (clampedTranslateX's limit: N at 5 or 350). N's steps play none: 345 of them
 //! in the track's ~340 pt would buzz.
+//!
+//! Native controls (the owner's redesign, phone feedback 2026-11-15: the drawn slider fought the
+//! screen's navigation and should be native): a second input, N from the Contract's
+//! `swift-slider`, hands the slider to the Contract. With it the surface draws no slider, takes
+//! no touches, and runs the sphere full-bleed: no square, no circle mask, the glow fading out on
+//! the screen's black, its centre between the close button's row and the floating bar. It says
+//! `native` once, so a Contract on a build without this keeps the old layout.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -38,6 +45,12 @@ const TRACK: f32 = 4.0;
 const PICKER: f32 = 35.0;
 /// defaultScale.
 const REST_SCALE: f64 = 0.8;
+/// Full-bleed: the room the demo's top row (safe area + close button) and the floating bar
+/// (10 + 64 + 10) take; the sphere centres between them.
+const TOP_ROOM: f32 = 112.0;
+const BAR_ROOM: f32 = 84.0;
+/// Full-bleed: the sphere's square is this many widths (the glow, unmasked, runs past it).
+const FULL_BLEED_SCALE: f32 = 1.2;
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
@@ -47,6 +60,9 @@ pub fn surface() -> Box<dyn Surface> {
 #[derive(Default)]
 struct FibonacciShader {
     magic: f64,
+    /// N from the Contract's native slider (input 1): no drawn slider, full-bleed.
+    native: Option<f64>,
+    said_native: bool,
     /// translateX (unclamped, as RN's shared value) and the context at onBegin.
     translate_x: f64,
     context_x: f64,
@@ -80,6 +96,9 @@ impl FibonacciShader {
     }
     /// N, from the reaction on clampedTranslateX.
     fn n(&self) -> f64 {
+        if let Some(n) = self.native {
+            return n.clamp(MIN_N, MAX_N);
+        }
         interpolate_clamp(self.clamped(), &[0.0, self.slider_width()], &[MIN_N, MAX_N])
     }
     /// The track's top-left corner in the canvas.
@@ -103,6 +122,13 @@ impl Surface for FibonacciShader {
         if let Some(m) = inputs.first().and_then(|v| v.as_number()) {
             self.magic = m;
         }
+        if let Some(n) = inputs.get(1).and_then(|v| v.as_number()) {
+            self.native = Some(n);
+            if !self.said_native {
+                self.said_native = true;
+                self.posted.push("native".into());
+            }
+        }
         Ok(())
     }
 
@@ -115,6 +141,10 @@ impl Surface for FibonacciShader {
     }
 
     fn input(&mut self, event: &InputEvent) {
+        // The native slider has the touches.
+        if self.native.is_some() {
+            return;
+        }
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
         // The GestureDetector wraps the picker: a 35 pt square at the bar's end, scaled.
         let (tx, ty) = self.track();
@@ -150,7 +180,7 @@ impl Surface for FibonacciShader {
     }
 
     fn agent(&mut self, _request: &str) -> Option<String> {
-        Some(format!("{{\"n\":{},\"magicalMul\":{},\"held\":{}}}", self.n(), self.magic, self.pan.tracking()))
+        Some(format!("{{\"n\":{},\"magicalMul\":{},\"held\":{},\"native\":{}}}", self.n(), self.magic, self.pan.tracking(), self.native.is_some()))
     }
 
     fn render(
@@ -166,6 +196,10 @@ impl Surface for FibonacciShader {
         let start = *self.start_ms.get_or_insert(frame.now_ms);
         self.scale.step(frame.now_ms);
         let (pw, ph) = frame.pixels();
+
+        if self.native.is_some() {
+            return self.render_full_bleed(frame, device, queue, encoder, target, format, start);
+        }
 
         // The slider, on the container's black.
         let (tx, ty) = self.track();
@@ -211,6 +245,54 @@ impl Surface for FibonacciShader {
             pass.set_bind_group(0, &gpu.bind, &[]);
             pass.draw(0..3, 0..1);
         }
+        // iTime runs for ever.
+        true
+    }
+}
+
+impl FibonacciShader {
+    /// The native layout: the sphere over the whole canvas, unmasked (params.w = 1), its square
+    /// (1.2 widths) centred between the top row and the bar.
+    #[allow(clippy::too_many_arguments)]
+    fn render_full_bleed(
+        &mut self,
+        frame: &Frame,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        encoder: &mut wgpu::CommandEncoder,
+        target: &wgpu::TextureView,
+        format: wgpu::TextureFormat,
+        start: f64,
+    ) -> bool {
+        if self.gpu.as_ref().map(|g| (g.format, g.generation)) != Some((format, frame.shader_generation)) {
+            self.gpu = Some(build(device, format, frame.shader_generation));
+        }
+        let gpu = self.gpu.as_ref().unwrap();
+        let (pw, ph) = frame.pixels();
+        let side = (frame.width * FULL_BLEED_SCALE).min((frame.height - TOP_ROOM - BAR_ROOM).max(1.0));
+        let centre = (TOP_ROOM + frame.height - BAR_ROOM) / 2.0;
+        let uniforms = Uniforms {
+            canvas: [pw as f32, ph as f32, frame.scale, gfx::srgb_flag(format)],
+            square: [(frame.width - side) / 2.0, centre - side / 2.0, side, 0.0],
+            params: [itime(frame.now_ms - start) as f32, self.n() as f32, self.magic as f32, 1.0],
+        };
+        queue.write_buffer(&gpu.uniforms, 0, &uniforms.bytes());
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("fibonacci shader"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: target,
+                resolve_target: None,
+                depth_slice: None,
+                ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color::BLACK), store: wgpu::StoreOp::Store },
+            })],
+            depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
+            multiview_mask: None,
+        });
+        pass.set_pipeline(&gpu.pipeline);
+        pass.set_bind_group(0, &gpu.bind, &[]);
+        pass.draw(0..3, 0..1);
         // iTime runs for ever.
         true
     }
@@ -271,5 +353,48 @@ mod tests {
         assert_ne!(a.data, b.data);
         // The bar is white to the end; the picker sits at its end (x 378).
         assert_eq!(&b.at(300, 602)[..3], &[255, 255, 255]);
+    }
+
+    #[test]
+    fn a_native_n_hands_over_the_slider_and_goes_full_bleed() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
+        exact_gpu::shaders::load_dir(&dir, &crate::REGISTRY).unwrap();
+        let gpu = match fixture::device() {
+            Ok(gpu) => gpu,
+            Err(error) => return eprintln!("{error}; skipped"),
+        };
+        let frame = |now_ms| Frame { width: 420.0, height: 912.0, scale: 1.0, now_ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: exact_gpu::shaders::shader_generation(), headroom: 1.0 };
+        let mut s = surface();
+        // One input: the drawn slider, no `native`.
+        s.bind(&[Value::Number(2.4)], None).unwrap();
+        assert!(s.messages().is_empty());
+        // N from the native slider: `native` once, however often it binds.
+        s.bind(&[Value::Number(2.4), Value::Number(120.0)], None).unwrap();
+        s.bind(&[Value::Number(2.4), Value::Number(400.0)], None).unwrap();
+        assert_eq!(s.messages(), vec!["native"]);
+        let reply = s.agent("{}").unwrap();
+        assert!(reply.contains("\"n\":350") && reply.contains("\"native\":true"), "{reply}");
+        // Touches on the old track do nothing (no grab haptic, N unchanged).
+        let p = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 602.0, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
+        s.input(&p(exact_gpu::PointerPhase::Down, 378.0, 10.0));
+        s.input(&p(exact_gpu::PointerPhase::Move, 42.0, 30.0));
+        s.input(&p(exact_gpu::PointerPhase::Up, 42.0, 50.0));
+        assert!(s.messages().is_empty());
+        s.bind(&[Value::Number(2.4), Value::Number(120.0)], None).unwrap();
+        let (a, animating) = fixture::render(&gpu, s.as_mut(), &frame(3000.0)).unwrap();
+        a.save("fibonacci-shader-native-120");
+        assert!(animating);
+        // No drawn slider: the old track's row (y 602) holds no white bar or picker.
+        assert!((20..400).all(|x| a.at(x, 602)[..3] != [255, 255, 255]));
+        // Full-bleed: the glow reaches past the old circle (no mask) and the screen's centre band
+        // is lit; no hard edge where the old square began (y 100).
+        let lit = |y0: u32, y1: u32| (y0..y1).step_by(4).flat_map(|y| (0..420).step_by(4).map(move |x| (x, y))).filter(|&(x, y)| a.at(x, y)[..3].iter().any(|&c| c > 60)).count();
+        assert!(lit(300, 640) > 100, "{} lit samples", lit(300, 640));
+        let row = |y: u32| (0..420).map(|x| a.at(x, y)[..3].iter().map(|&c| c as i32).sum::<i32>()).sum::<i32>();
+        assert!((row(99) - row(101)).abs() < 2000, "{} {}", row(99), row(101));
+        s.bind(&[Value::Number(3.0), Value::Number(350.0)], None).unwrap();
+        let (b, _) = fixture::render(&gpu, s.as_mut(), &frame(3000.0)).unwrap();
+        b.save("fibonacci-shader-native-350");
+        assert_ne!(a.data, b.data);
     }
 }

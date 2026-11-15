@@ -16,7 +16,10 @@
 // - the Animated.View's opacity over the group.
 // The lights and the eye stay in the room while the card turns with the scroll, tilts under the
 // finger, and turns with the phone (Core Motion's attitude, smoothed): `frame`, from Rust.
-// The brushing's noise is a 256² tile (Rust makes it once), read per plane device pixel.
+// The brushing's noise is a 256² tile (Rust makes it once), read per plane device pixel. Held
+// back to read as Apple Card titanium, not glitter (the owner: "it sparkles too much"): the
+// brushing only shades, it barely moves the normal; the highlight is broad and low; the foil is
+// a soft, faint band of colour on satin metal.
 // Each card's colour is Display P3 (RN's surfaces), turned into sRGB before it blends.
 struct Uniforms {
     // Per card, three rows: screen points → the card's plane points (inverse projective 3×3).
@@ -155,7 +158,7 @@ fn material(t: f32) -> Material {
     }
     // Platinum: finely brushed, a pearl film on it.
     if (t < 2.5) {
-        return Material(vec3<f32>(0.66, 0.65, 0.64), vec3<f32>(0.09, 0.088, 0.086), vec2<f32>(0.06, 0.18), 0.45, 0.10);
+        return Material(vec3<f32>(0.66, 0.65, 0.64), vec3<f32>(0.09, 0.088, 0.086), vec2<f32>(0.06, 0.18), 0.45, 0.05);
     }
     // Metal: dark titanium, bead-blasted then brushed.
     return Material(vec3<f32>(0.15, 0.15, 0.162), vec3<f32>(0.010, 0.010, 0.012), vec2<f32>(0.09, 0.30), 1.0, 0.0);
@@ -171,7 +174,7 @@ fn strip(q: vec2<f32>, c: vec2<f32>, n: vec2<f32>, hw: f32, len: f32, t2: vec2<f
     let across = abs(dot(d, n)) - hw;
     let along_dir = vec2<f32>(-n.y, n.x);
     let along = abs(dot(d, along_dir)) - len;
-    let w1 = length(vec2<f32>(dot(n, t2) * sig.x, dot(n, b2) * sig.y)) + 0.004;
+    let w1 = length(vec2<f32>(dot(n, t2) * sig.x, dot(n, b2) * sig.y)) + 0.03;
     let w2 = length(vec2<f32>(dot(along_dir, t2) * sig.x, dot(along_dir, b2) * sig.y)) + 0.05;
     return (1.0 - smoothstep(-w1, w1, across)) * (1.0 - smoothstep(-w2, w2, along));
 }
@@ -182,15 +185,14 @@ fn studio(r: vec3<f32>, t2: vec2<f32>, b2: vec2<f32>, sig: vec2<f32>) -> vec3<f3
     let z = max(r.z, 0.06);
     let q = r.xy / z;
     let toward = smoothstep(-0.05, 0.35, r.z);
-    let sky = mix(0.035, 0.16, smoothstep(0.9, -0.9, q.y)) * (0.75 + 0.25 * smoothstep(1.2, 0.0, abs(q.x)));
+    let sky = mix(0.03, 0.13, smoothstep(0.9, -0.9, q.y)) * (0.75 + 0.25 * smoothstep(1.2, 0.0, abs(q.x)));
     var c = vec3<f32>(sky) * vec3<f32>(0.98, 0.99, 1.02);
     let n1 = vec2<f32>(0.95393920, -0.30123345);
-    c += vec3<f32>(1.9, 1.87, 1.80) * strip(q, vec2<f32>(-0.075, -0.10), n1, 0.032, 0.55, t2, b2, sig);
-    c += vec3<f32>(0.8) * strip(q, vec2<f32>(0.10, -0.02), n1, 0.008, 0.45, t2, b2, sig);
-    c += vec3<f32>(1.15, 1.14, 1.12) * strip(q, vec2<f32>(0.48, -0.1), n1, 0.05, 0.9, t2, b2, sig);
-    c += vec3<f32>(0.95, 0.96, 1.0) * strip(q, vec2<f32>(-0.52, -0.1), n1, 0.045, 0.9, t2, b2, sig);
-    c += vec3<f32>(1.1) * strip(q, vec2<f32>(1.12, 0.2), n1, 0.10, 1.4, t2, b2, sig * 1.5);
-    c += vec3<f32>(0.95) * strip(q, vec2<f32>(-1.15, -0.3), n1, 0.10, 1.4, t2, b2, sig * 1.5);
+    c += vec3<f32>(1.45, 1.43, 1.38) * strip(q, vec2<f32>(-0.075, -0.10), n1, 0.06, 0.6, t2, b2, sig);
+    c += vec3<f32>(0.8, 0.79, 0.78) * strip(q, vec2<f32>(0.48, -0.1), n1, 0.05, 0.9, t2, b2, sig);
+    c += vec3<f32>(0.66, 0.67, 0.7) * strip(q, vec2<f32>(-0.52, -0.1), n1, 0.045, 0.9, t2, b2, sig);
+    c += vec3<f32>(0.8) * strip(q, vec2<f32>(1.12, 0.2), n1, 0.10, 1.4, t2, b2, sig * 1.5);
+    c += vec3<f32>(0.7) * strip(q, vec2<f32>(-1.15, -0.3), n1, 0.10, 1.4, t2, b2, sig * 1.5);
     c += vec3<f32>(0.7) * strip(q, vec2<f32>(2.3, 0.6), n1, 0.35, 2.5, t2, b2, sig * 3.0);
     c += vec3<f32>(0.6) * strip(q, vec2<f32>(-2.4, -0.6), n1, 0.35, 2.5, t2, b2, sig * 3.0);
     let n2 = vec2<f32>(0.85285, -0.52215);
@@ -268,14 +270,14 @@ fn face(p: vec2<f32>, k: u32, aa: f32, s: f32) -> vec3<f32> {
     let nz = textureLoad(tile, texel, 0);
     let lines = nz.r;
     let tooth = nz.g - 0.5;
-    var nn = normalize(n + by * (lines - 0.5) * 0.035 * m.brush + (tx + by) * tooth * 0.012);
+    var nn = normalize(n + by * (lines - 0.5) * 0.008 * m.brush + (tx + by) * tooth * 0.002);
 
     // The bevel: the outline's normal tips outward over its last 1.4 pt.
     let card_d = squircle(local, size * 0.5, u.card.z);
     let bevel = smoothstep(-BEVEL, 0.0, card_d);
     if (bevel > 0.0) {
         let g = squircle_dir(local, size * 0.5, u.card.z);
-        nn = normalize(nn + (tx * g.x + by * g.y) * bevel * bevel * 1.6);
+        nn = normalize(nn + (tx * g.x + by * g.y) * bevel * bevel * 0.8);
     }
 
     // The chip: polished, gold (palladium on the light cards), its contacts engraved.
@@ -302,25 +304,27 @@ fn face(p: vec2<f32>, k: u32, aa: f32, s: f32) -> vec3<f32> {
     }
     var chip_f0 = vec3<f32>(0.98, 0.76, 0.40);
     if (t < 0.5 || (t > 1.5 && t < 2.5)) {
-        chip_f0 = vec3<f32>(0.86, 0.85, 0.82);
+        chip_f0 = vec3<f32>(0.70, 0.69, 0.67);
     }
 
     // --- light -------------------------------------------------------------------------------
     let t2 = normalize(tx.xy + vec2<f32>(1e-5));
     let b2 = normalize(by.xy + vec2<f32>(1e-5));
-    let alpha = mix(m.alpha, vec2<f32>(0.05, 0.07), in_chip);
-    let sig = vec2<f32>(alpha.x * 0.35, alpha.y * 0.30);
+    // Broad and low: Ward's lobe 1.8× wider than the brushing's own, the env's blur doubled.
+    let alpha = mix(m.alpha * 1.8, vec2<f32>(0.09, 0.12), in_chip);
+    let sig = vec2<f32>(alpha.x * 0.45, alpha.y * 0.40);
 
     let r = reflect(-v, nn);
     let env = studio(r, t2, b2, sig);
     let key = vec3<f32>(-200.0, -320.0, 900.0);
     let fill = vec3<f32>(420.0, 420.0, 520.0);
-    let spec = vec3<f32>(1.0, 0.98, 0.95) * ward(pos, v, nn, tx, by, key, alpha) * 0.55
-        + vec3<f32>(0.70, 0.78, 0.90) * ward(pos, v, nn, tx, by, fill, alpha) * 0.18;
+    let spec = vec3<f32>(1.0, 0.98, 0.95) * ward(pos, v, nn, tx, by, key, alpha) * 0.32
+        + vec3<f32>(0.70, 0.78, 0.90) * ward(pos, v, nn, tx, by, fill, alpha) * 0.10;
 
     let nv = max(dot(nn, v), 0.0);
     var f0 = mix(m.f0, chip_f0, in_chip);
-    f0 = f0 * (0.955 + 0.09 * lines);
+    // The brushing shows as shading of the reflectance (it cannot glitter), not as normals.
+    f0 = f0 * (1.0 + 0.10 * (lines - 0.5) * m.brush);
     let fr = fresnel(f0, nv);
     let ln = normalize(key - pos);
     let lambert = max(dot(nn, ln), 0.0);
@@ -364,18 +368,21 @@ fn face(p: vec2<f32>, k: u32, aa: f32, s: f32) -> vec3<f32> {
         let radial = normalize(holo_l + vec2<f32>(1e-4));
         let gdir = tx * radial.x + by * radial.y;
         let ring = length(holo_l);
-        let path = 1500.0 * dot(h, gdir) + ring * 34.0 + 380.0 + 50.0 * lines;
-        var holo = mix(film(path), film(path * 1.31 + 200.0), 0.5);
-        holo = mix(vec3<f32>(dot(holo, vec3<f32>(0.333))), holo, 0.65);
+        let path = 900.0 * dot(h, gdir) + ring * 22.0 + 380.0;
+        var holo = film(path);
+        holo = mix(vec3<f32>(dot(holo, vec3<f32>(0.333))), holo, 0.45);
+        // The colour lives in a soft band across the foil, where the half vector meets it.
+        let sweep = dot(h, tx) * 7.0 + holo_l.x / holo_s.x;
+        let band_w = exp(-sweep * sweep * 1.5);
         let crest = 0.5 + 0.5 * cos(ring * 2.2);
-        let lit = 0.28 + 0.85 * env.g + spec.g * 0.6;
-        var hc = (0.7 * holo + 0.3 * vec3<f32>(0.85, 0.86, 0.88)) * lit * (0.85 + 0.25 * crest);
-        hc = hc * (1.0 - 0.45 * smoothstep(-0.8, 0.0, holo_d));
+        let satin = col * 1.08 + vec3<f32>(0.02);
+        var hc = mix(satin, satin * (0.7 + 0.6 * holo), 0.7 * band_w) * (0.96 + 0.06 * crest);
+        hc = hc * (1.0 - 0.25 * smoothstep(-0.8, 0.0, holo_d));
         col = mix(col, hc, in_holo);
     }
 
     // The press: the card lifts toward the light a touch. The grain: fixed to the card.
-    col = col * (1.0 + 0.06 * press) * (1.0 + (nz.b - 0.5) * 0.035);
+    col = col * (1.0 + 0.06 * press) * (1.0 + (nz.b - 0.5) * 0.012);
     return encode(col);
 }
 

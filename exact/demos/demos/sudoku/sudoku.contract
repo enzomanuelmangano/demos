@@ -1,28 +1,73 @@
-// Sudoku: "SUDOKU" over a card with Start Game; started, the board fades in cell by cell, then a
-// number pad; a cell selects (its number's cells get a spring circle), the pad fills it, a solved
-// board blasts confetti with a haptic celebration; the title solves it ("Genius!" 2.1 s later),
-// New Game asks first. RN: src/animations/sudoku (index.tsx, theme.ts, logic/, components/).
-// Everything drawn, every press, timer and animation is one Rust surface (gpu/src/sudoku.rs):
-// it posts the haptics (the app's PressablesConfig selection, playCelebrationHaptics' impacts and
-// success) and asks for the two Alert.alerts, whose buttons come back as the `reset` (New Game)
-// and `ok` (Genius OK) tokens.
-use DemoEnv from "../env.contract"
+// Sudoku, redesigned from the owner's phone feedback (2026-11-15, notes mwhonvzk-e2cc0a and
+// mwhn456m-c9c3f7: "terrible layout, and haptics are missing"). RN: src/animations/sudoku (the
+// game; the look is new). A compact header ("Sudoku", the mistakes, the clock) over a full-width
+// board, the glass number pad and the glass Undo / Erase / Notes at the bottom, concentric with
+// the display; New Game is a glass icon button on the demo's top row and asks first.
+//
+// The board is the Rust surface (gpu/src/sudoku.rs): the gradient, the grid, the digits, the
+// selection and its tints, the shake, the waves, the game and every haptic. The pad hands each
+// press in as `cmd` + a new `token` (1-9 a digit, 10 Erase, 11 Undo) with `notes`; the surface
+// says what the pad shows (`remain:`, `mistakes:`, `time:`) and asks for the Genius alert.
+use DemoEnv, floatingWidth, concentricRadius from "../env.contract"
 use RouteAlert from "../route-alert.contract"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+
+// The bottom controls: 16 from the display's sides and bottom (env.contract's concentric rule),
+// the tools row (56) under the digits (64), 10 apart.
+fn sdkInset(): number = 16
+fn sdkToolsH(): number = 56
+fn sdkKeyH(): number = 64
+fn sdkGap(): number = 10
+fn sdkKeysBottom(): number = sdkInset() + sdkToolsH() + sdkGap()
+// The board: the full width less 16 a side (at most 480 on a wide window), the header 28 tall
+// and 14 above it; the pair centred between the glass row and the digits.
+fn sdkBoard(w: number): number = min(w - 2 * sdkInset(), 480)
+fn sdkHeaderH(): number = 28
+fn sdkHeaderGap(): number = 14
+fn sdkRegionTop(safeTop: number): number = safeTop + 48 + 8
+fn sdkRegionBottom(h: number): number = h - sdkKeysBottom() - sdkKeyH() - 16
+fn sdkGroupTop(w: number, h: number, safeTop: number): number =
+  max(sdkRegionTop(safeTop), sdkRegionTop(safeTop) + floor((sdkRegionBottom(h) - sdkRegionTop(safeTop) - sdkHeaderH() - sdkHeaderGap() - sdkBoard(w)) / 2))
+fn sdkBoardTop(w: number, h: number, safeTop: number): number = sdkGroupTop(w, h, safeTop) + sdkHeaderH() + sdkHeaderGap()
+fn sdkBoardLeft(w: number): number = (w - sdkBoard(w)) / 2
+// A digit key's count ("" until the surface says), and whether its number is all placed.
+fn sdkLeft(remain: string, d: number): string = remain == "" ? "" : remain.slice(d - 1, d)
+fn sdkDone(remain: string, d: number): bool = sdkLeft(remain, d) == "0"
+// m:ss.
+fn sdkClock(s: number): string = `${floor(s / 60)}:${s % 60 < 10 ? "0" : ""}${s % 60}`
+// UIKit's dark systemBlue / systemRed / secondaryLabel.
+fn sdkBlue(): string = "#0A84FF"
+fn sdkRed(): string = "#FF453A"
+fn sdkSecondary(): string = "rgba(235, 235, 245, 0.6)"
 
 component Sudoku
+  inject
+    pressablesOnPress: action
   props
     env: DemoEnv
   state reset = 0
   state ok = 0
-  // The two Alert.alerts, drawn in the route (route-alert.contract: a `dialog`'s showModal from
-  // the demo route never showed on the phone, so New Game did nothing).
+  // The pad's last press: its command and a token that changes with every press.
+  state cmd = 0
+  state token = 0
+  state notes = false
+  // What the surface said: each number's count still to place, the mistakes, the clock.
+  state remain = ""
+  state mistakes = 0
+  state seconds = 0
+  // The two Alert.alerts (route-alert.contract: UIKit's own on the phone).
   state asking = false
   state genius = false
-  // New Game on the demo screen's glass row (phone feedback 2026-11-15): it asks first.
-  action askNewGame
-    haptic("selection")
-    asking = true
   action heard(m: string)
+    if m.startsWith("remain:")
+      remain = m.slice(7)
+    if m.startsWith("mistakes:")
+      mistakes = match parseNumber(m.slice(9)) { case some(n) => n, case none => mistakes }
+    if m.startsWith("time:")
+      seconds = match parseNumber(m.slice(5)) { case some(n) => n, case none => seconds }
+    if m == "alert:genius"
+      genius = true
+    // The host plays a surface's haptics itself; these only run where it does not.
     if m == "haptic:selection"
       haptic("selection")
     if m == "haptic:impact-light"
@@ -33,38 +78,138 @@ component Sudoku
       haptic("impact-heavy")
     if m == "haptic:success"
       haptic("success")
-    if m == "alert:new-game"
-      asking = true
-    if m == "alert:genius"
-      genius = true
-  // The New Game alert's New Game: setSudoku(generateSudoku('medium')), setHasStarted(false).
+    if m == "haptic:error"
+      haptic("error")
+  // A digit, Erase or Undo: the surface plays its haptic (light, error, success) once it knows
+  // what the entry did, so the press itself plays none.
+  action send(c: number)
+    cmd = c
+    token = token + 1
+  action toggleNotes
+    pressablesOnPress()
+    notes = not notes
+  action askNewGame
+    pressablesOnPress()
+    asking = true
   action newGame
     asking = false
+    notes = false
     reset = reset + 1
   action keepGame
     asking = false
-  // The Genius alert's OK: setHasStarted(false).
+  // The Genius alert's OK: a new puzzle.
   action geniusOk
     genius = false
+    notes = false
     ok = ok + 1
   view
-    // styles.safeArea: COLORS.background (#0A1222, a View colour: Display P3), under the canvas.
-    column position="absolute" inset=0 background-color="color(display-p3 0.039216 0.070588 0.133333)" testId="sudoku"
-      canvas surface=sudoku(env.seed, reset, ok) position="absolute" top=0 left=0 width=env.width height=env.height
-        touch-action="none" message=heard testId="sudoku-canvas"
-        aria-label="Sudoku: Start Game, then tap a cell and a number"
-      // New Game as a glass icon button at the top right of the demo's glass row (where the info
-      // button sits in a demo that credits someone: right 16, 48 pt, at the safe top), above the
-      // canvas (a full-screen canvas takes the touches under it).
+    column position="absolute" inset=0 background-color="#0A1222" testId="sudoku"
+      canvas surface=sudoku(env.seed, reset, ok, sdkBoardLeft(env.width), sdkBoardTop(env.width, env.height, env.safeTop), sdkBoard(env.width), cmd, token, notes ? 1 : 0)
+        position="absolute" top=0 left=0 width=env.width height=env.height touch-action="none"
+        message=heard testId="sudoku-canvas"
+        aria-label="Sudoku board: tap a cell, then a number"
+      // The header: one line over the board, its edges the board's.
+      row position="absolute" left=sdkBoardLeft(env.width) width=sdkBoard(env.width)
+        top=sdkGroupTop(env.width, env.height, env.safeTop) height=sdkHeaderH() align-items="center"
+        justify-content="space-between" pointer-events="none" z-index=10 testId="sudoku-header"
+        text "Sudoku" font-family="ui-rounded" font-size=22 font-weight=700 color="#ffffff"
+        row align-items="center" gap=14
+          row align-items="center" gap=4 aria-label=`${mistakes} ${mistakes == 1 ? "mistake" : "mistakes"}` testId="sudoku-mistakes"
+            image "symbol:sf/xmark.circle" font-size=13 aria-hidden=true
+              color=(mistakes > 0 ? sdkRed() : sdkSecondary())
+            text `${mistakes}` font-size=15 font-weight=600 font-variant-numeric="tabular-nums"
+              color=(mistakes > 0 ? sdkRed() : sdkSecondary())
+          row align-items="center" gap=4 aria-label="Time" testId="sudoku-clock"
+            image "symbol:sf/clock" font-size=13 color=sdkSecondary() aria-hidden=true
+            text sdkClock(seconds) font-size=15 font-weight=600 font-variant-numeric="tabular-nums"
+              color=sdkSecondary() testId="sudoku-time"
+      // New Game on the demo screen's glass row, where the info button sits.
       glass-button press=askNewGame caption="New Game" symbol="arrow.clockwise" edge="trailing"
         aria-label="New Game" testId="sudoku-new-game" position="absolute" top=env.safeTop right=16
         width=48 height=48 z-index=10
-      // Alert.alert('New Game', …, [Cancel (cancel), New Game (destructive)]).
+      // The digits: nine glass keys, each with the count still to place; a number all placed
+      // fades and shrinks away (opacity and scale only, its place kept).
+      row position="absolute" left=sdkInset() bottom=sdkKeysBottom()
+        width=floatingWidth(env.width, sdkInset()) height=sdkKeyH() gap=6 z-index=10
+        testId="sudoku-keys"
+        for d in [1, 2, 3, 4, 5, 6, 7, 8, 9] key=d
+          view flex=1 height=sdkKeyH() display="flex"
+            SudokuKey(press=send(d), label=`${d}`, testId=`sudoku-key-${d}`,
+              radius=concentricRadius(sdkInset(), sdkKeyH()), tint="", gone=sdkDone(remain, d))
+              column flex-grow=1 align-items="center" justify-content="center"
+                text `${d}` font-family="ui-rounded" font-size=26 font-weight=600 color="#ffffff"
+                  line-height="30px"
+                text sdkLeft(remain, d) font-size=11 font-weight=600 color=sdkSecondary()
+                  line-height="13px" font-variant-numeric="tabular-nums" testId=`sudoku-left-${d}`
+      // The tools: Undo, Erase, Notes, the bottom-most row, concentric with the display.
+      row position="absolute" left=sdkInset() bottom=sdkInset()
+        width=floatingWidth(env.width, sdkInset()) height=sdkToolsH() gap=sdkGap() z-index=10
+        testId="sudoku-tools"
+        view flex=1 height=sdkToolsH() display="flex"
+          SudokuKey(press=send(11), label="Undo", testId="sudoku-undo",
+            radius=concentricRadius(sdkInset(), sdkToolsH()), tint="", gone=false)
+            SudokuTool(symbol="arrow.uturn.backward", caption="Undo", on=false, testId="sudoku-undo-caption")
+        view flex=1 height=sdkToolsH() display="flex"
+          SudokuKey(press=send(10), label="Erase", testId="sudoku-erase",
+            radius=concentricRadius(sdkInset(), sdkToolsH()), tint="", gone=false)
+            SudokuTool(symbol="eraser", caption="Erase", on=false, testId="sudoku-erase-caption")
+        view flex=1 height=sdkToolsH() display="flex"
+          SudokuKey(press=toggleNotes, label=(notes ? "Notes on" : "Notes off"), testId="sudoku-notes",
+            radius=concentricRadius(sdkInset(), sdkToolsH()), tint=(notes ? sdkBlue() : ""), gone=false)
+            SudokuTool(symbol=(notes ? "pencil.circle.fill" : "pencil"), caption=(notes ? "Notes On" : "Notes"), on=notes,
+              testId="sudoku-notes-caption")
       RouteAlert(shown=asking, title="New Game",
         message="Are you sure you want to start a new game? Your current progress will be lost.",
         cancelLabel="Cancel", confirm="New Game", destructive=true, dismiss=keepGame, accept=newGame,
         testId="new-game-alert")
-      // Alert.alert('Genius!', 'Ready for another challenge?', [OK]).
-      RouteAlert(shown=genius, title="Genius!", message="Ready for another challenge?",
-        cancelLabel="", confirm="OK", destructive=false, dismiss=geniusOk, accept=geniusOk,
+      RouteAlert(shown=genius, title="Genius!",
+        message=`Solved in ${sdkClock(seconds)}. Ready for another challenge?`,
+        cancelLabel="", confirm="New Game", destructive=false, dismiss=geniusOk, accept=geniusOk,
         testId="genius-alert")
+
+// A glass key: pressto's scale (250 ms on press in and out), the glass a touch-transparent
+// background sibling under the content. `tint` tints the glass ("" for none); `gone` fades and
+// shrinks it away and takes it out of the touches. The press plays no haptic of its own.
+component SudokuKey
+  inject
+    pressto: PressablesConfig
+  props
+    press: action
+    label: string
+    testId: string
+    radius: number
+    tint: string
+    gone: bool
+  slot
+  state pressing = pressNone()
+  action pressIn
+    pressing = pressDown(pressing, 0)
+    stopPropagation()
+  action pressOut
+    pressing = pressUp(pressing)
+  action pressed
+    press()
+  view
+    view role="button" aria-label=label testId=testId press=pressed pointerdown=pressIn
+      pointerup=pressOut display="flex" flex-direction="column" flex-grow=1 align-self="stretch"
+      position="relative" pointer-events=(gone ? "none" : "auto") aria-hidden=gone
+      scale=(gone ? 0.82 : pressableScale(pressing, 0, pressto)) opacity=(gone ? 0 : 1)
+      transition=`${pressTransition("scale", pressto)}, opacity 200ms ease-out`
+      view position="absolute" inset=0 border-radius=radius corner-shape="-exact-continuous"
+        background-color=(tint != "" ? "rgba(10, 132, 255, 0.35)" : "rgba(255, 255, 255, 0.07)")
+        pointer-events="none" aria-hidden=true
+        glass-pane glass-style="regular" pane-tint=tint corner-size=`${radius}` interactive="false"
+          continuous="true" position="absolute" inset=0 pointer-events="none" aria-hidden=true
+      children
+
+// A tool's face: its symbol over its caption.
+component SudokuTool
+  props
+    symbol: string
+    caption: string
+    on: bool
+    testId: string
+  view
+    column flex-grow=1 align-items="center" justify-content="center" gap=3
+      image `symbol:sf/${symbol}` font-size=19 color="#ffffff" aria-hidden=true
+      text caption font-size=11 font-weight=600 color=(on ? "#ffffff" : sdkSecondary()) testId=testId

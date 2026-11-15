@@ -32,12 +32,19 @@
 //! Haptics (past RN, which plays none: the owner's haptic language): `haptic:impact-light` when
 //! a finger takes the circle (onBegin); `haptic:selection` each time the drag carries its centre
 //! behind the glass or out from it (the pane's edge), at most one per HAPTIC_GAP_MS. The flutes
-//! play none (crossing them under a drag would buzz) and a release lands nothing (no spring).
+//! play none (crossing them under a drag would buzz); `haptic:release` when the finger lets go.
+//!
+//! Motion (past RN, the owner's ask): the circle drawn follows the finger through a spring
+//! (FOLLOW: a hair of lag and settle), and a release carries its velocity on: the rest point is
+//! the lift's projected PROJECTION_S ahead, kept on screen, reached by a spring launched at the
+//! finger's velocity (SETTLE). The glass's idle clock (seconds wrapped at 60) rides in the
+//! uniform background's w, so its lights drift with nothing touched: the surface draws every
+//! frame (one cheap pass).
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
 use gesture_handler::{Event, PanGesture};
-use reanimated::{Easing, Timing};
+use reanimated::{Easing, Spring, SpringConfig, Timing};
 use skia::blur::{intersect, outset, round_out, GraphiteBlur, GraphitePlan, IRect, Placed, GRAPHITE_FORMAT};
 
 use crate::{gfx, shaders};
@@ -61,6 +68,16 @@ const LAYER_MARGIN: i32 = 4;
 
 /// The shortest gap between two selection haptics, ms.
 const HAPTIC_GAP_MS: f64 = 40.0;
+/// The drawn circle chasing the finger (ζ ≈ 0.75).
+const FOLLOW: SpringConfig = SpringConfig { stiffness: 520.0, damping: 34.0, mass: 1.0 };
+/// A release, to its projected rest (ζ ≈ 0.7: one soft overshoot).
+const SETTLE: SpringConfig = SpringConfig { stiffness: 200.0, damping: 20.0, mass: 1.0 };
+/// How far ahead a release is projected, seconds of its velocity.
+const PROJECTION_S: f32 = 0.16;
+/// The rest point keeps this much of the circle's radius on screen.
+const KEEP: f32 = 0.5;
+/// The idle clock's period, seconds (every motion in the shader divides it).
+const CLOCK_S: f64 = 60.0;
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
@@ -74,9 +91,11 @@ fn surface_struct() -> Box<FractalGlass> {
         button: false,
         channels: Default::default(),
         center: (180.0, 270.0),
+        shown: [Spring::at(180.0), Spring::at(270.0)],
         saved: (0.0, 0.0),
         pan: PanGesture::new(),
         behind: false,
+        grabbed: false,
         haptic_at: f64::NEG_INFINITY,
         posted: Vec::new(),
         blur: GraphiteBlur::default(),
@@ -93,11 +112,16 @@ struct FractalGlass {
     button: bool,
     /// Background then circle, per channel in Reanimated's linear space (value^2.2).
     channels: [Timing; 6],
+    /// Where the finger puts the circle (or, released, where it comes to rest).
     center: (f32, f32),
+    /// The circle drawn: x and y, springing to `center`.
+    shown: [Spring; 2],
     saved: (f32, f32),
     pan: PanGesture,
     /// The circle's centre is behind the pane, and the last selection's time (their haptics).
     behind: bool,
+    /// A finger took the circle (its release plays one haptic).
+    grabbed: bool,
     haptic_at: f64,
     posted: Vec<String>,
     blur: GraphiteBlur,
@@ -173,8 +197,30 @@ impl FractalGlass {
         x >= 40.0 && x <= w - 40.0 && y >= top && y <= top + 300.0
     }
 
+    /// The circle as drawn.
+    fn drawn(&self) -> (f32, f32) {
+        (self.shown[0].value as f32, self.shown[1].value as f32)
+    }
+
     fn on_circle(&self, x: f32, y: f32) -> bool {
-        (x - self.center.0).abs() <= RADIUS && (y - self.center.1).abs() <= RADIUS
+        let (cx, cy) = self.drawn();
+        (x - cx).abs() <= RADIUS && (y - cy).abs() <= RADIUS
+    }
+
+    /// A release at velocity (vx, vy) pt/s: on to the projected rest, kept on screen.
+    fn release(&mut self, vx: f32, vy: f32) {
+        let (w, h) = self.size;
+        let keep = RADIUS * KEEP;
+        let rest = |c: f32, v: f32, size: f32| {
+            let r = c + v * PROJECTION_S;
+            if size > 2.0 * keep { r.clamp(keep, size - keep) } else { r }
+        };
+        self.center = (rest(self.center.0, vx, w), rest(self.center.1, vy, h));
+        self.shown[0].launch(self.center.0 as f64, vx as f64, SETTLE);
+        self.shown[1].launch(self.center.1 as f64, vy as f64, SETTLE);
+        if std::mem::take(&mut self.grabbed) {
+            self.posted.push("haptic:release".into());
+        }
     }
 }
 
@@ -209,10 +255,12 @@ impl Surface for FractalGlass {
     fn agent(&mut self, _request: &str) -> Option<String> {
         let hex = |o: usize| (0..3).map(|k| format!("{:02X}", (self.channel(o + k) * 255.0).round() as u8)).collect::<String>();
         Some(format!(
-            "{{\"theme\":\"{}\",\"cx\":{:.1},\"cy\":{:.1},\"background\":\"#{}\",\"circle\":\"#{}\"}}",
+            "{{\"theme\":\"{}\",\"cx\":{:.1},\"cy\":{:.1},\"x\":{:.1},\"y\":{:.1},\"background\":\"#{}\",\"circle\":\"#{}\"}}",
             if self.theme == Some(true) { "dark" } else { "light" },
             self.center.0,
             self.center.1,
+            self.shown[0].value,
+            self.shown[1].value,
             hex(0),
             hex(3)
         ))
@@ -226,12 +274,20 @@ impl Surface for FractalGlass {
         let claim = self.on_circle(x, y);
         match self.pan.event(id, gfx::phase(phase), x, y, at_ms, claim) {
             Event::Begin { .. } => {
+                // Caught where it is drawn, mid-flight or not.
+                let (cx, cy) = self.drawn();
+                self.shown[0].set(cx as f64);
+                self.shown[1].set(cy as f64);
+                self.center = (cx, cy);
                 self.saved = self.center;
+                self.grabbed = true;
                 self.behind = self.behind_pane();
                 self.posted.push("haptic:impact-light".into());
             }
             Event::Start(p) | Event::Update(p) => {
                 self.center = (self.saved.0 + p.translation_x, self.saved.1 + p.translation_y);
+                self.shown[0].retarget(self.center.0 as f64, FOLLOW);
+                self.shown[1].retarget(self.center.1 as f64, FOLLOW);
                 let behind = self.behind_pane();
                 if behind != self.behind {
                     self.behind = behind;
@@ -239,6 +295,12 @@ impl Surface for FractalGlass {
                         self.posted.push("haptic:selection".into());
                         self.haptic_at = at_ms;
                     }
+                }
+            }
+            Event::End(p) => self.release(p.velocity_x, p.velocity_y),
+            Event::Fail => {
+                if std::mem::take(&mut self.grabbed) {
+                    self.posted.push("haptic:release".into());
                 }
             }
             _ => {}
@@ -263,6 +325,9 @@ impl Surface for FractalGlass {
         for ch in self.channels.iter_mut() {
             moving |= ch.step(frame.now_ms);
         }
+        for sp in self.shown.iter_mut() {
+            sp.step(frame.now_ms);
+        }
         let (pw, ph) = frame.pixels();
         let color = [self.channel(3), self.channel(4), self.channel(5)];
         if self.button {
@@ -278,9 +343,11 @@ impl Surface for FractalGlass {
         }
         let (w, h) = self.size;
         let s = frame.scale;
-        let background = [self.channel(0), self.channel(1), self.channel(2), 1.0];
+        // w: the glass's idle clock, seconds wrapped at CLOCK_S.
+        let clock = ((frame.now_ms / 1000.0).rem_euclid(CLOCK_S)) as f32;
+        let background = [self.channel(0), self.channel(1), self.channel(2), clock];
+        let (cx, cy) = self.drawn();
         let gpu = self.gpu.as_mut().unwrap();
-        let (cx, cy) = self.center;
         let oval = [(cx - RADIUS) * s, (cy - RADIUS) * s, (cx + RADIUS) * s, (cy + RADIUS) * s];
         let mesh = |target: [f32; 4]| {
             let mut m = rrect::Mesh::default();
@@ -342,7 +409,8 @@ impl Surface for FractalGlass {
             ],
         });
         skia::render::fullscreen_pass(encoder, "fractal glass", target, &gpu.pipeline, &bind);
-        moving || self.pan.tracking()
+        // The glass's lights drift with nothing touched: every frame is a new one.
+        true
     }
 }
 
@@ -467,10 +535,12 @@ mod tests {
         s.bind(&[Value::Number(0.0)], None).unwrap();
         let (a, animating) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         a.save("fractal-glass-light");
-        assert!(!animating);
+        // The glass's lights drift: it draws every frame.
+        assert!(animating);
         // White; the circle sharp orange above the pane (y 306); refracted through it. Points
         // at a flute's centre (x 184.5), clear of its specular line.
-        assert_eq!(&a.at(10, 10)[..3], &[255, 255, 255]);
+        // The corner: white, a breath of the second light at most.
+        assert!(a.at(10, 10)[..3].iter().all(|&c| c >= 245), "{:?}", a.at(10, 10));
         assert_eq!(&a.at(180, 250)[..3], &[255, 165, 0]);
         assert_eq!(&a.at(180, 290)[..3], &[255, 165, 0]);
         let under = a.at(184, 320);
@@ -489,26 +559,42 @@ mod tests {
         finger(&mut s, PointerPhase::Down, 200.0, 300.0, 40.0);
         finger(&mut s, PointerPhase::Move, 200.0, 400.0, 140.0);
         finger(&mut s, PointerPhase::Move, 220.0, 480.0, 160.0);
-        finger(&mut s, PointerPhase::Up, 220.0, 480.0, 170.0);
         // RNGH on iOS leaves UIKit's 10 pt hysteresis (along the set-off, down) out of a pan that
         // begins 90 ms or more after touch-down: (20, 170).
         assert!(s.agent("{}").unwrap().contains("\"cx\":200.0,\"cy\":440.0"), "{}", s.agent("{}").unwrap());
-        let (b, _) = fixture::render(&gpu, s.as_mut(), &frame(100.0)).unwrap();
+        finger(&mut s, PointerPhase::Up, 220.0, 480.0, 170.0);
+        // The release carries on down (the finger was moving down), and stays on screen.
+        let rest = s.agent("{}").unwrap();
+        let (rx, ry) = (field(&rest, "cx"), field(&rest, "cy"));
+        assert!(ry > 440.0 && ry <= 912.0 - RADIUS * KEEP, "{rest}");
+        // The drawn circle springs there and settles.
+        let mut ms = 100.0;
+        while ms < 2600.0 {
+            ms += 16.0;
+            fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+        }
+        let settled = s.agent("{}").unwrap();
+        assert!((field(&settled, "x") - rx).abs() < 0.5 && (field(&settled, "y") - ry).abs() < 0.5, "{settled}");
+        let (b, _) = fixture::render(&gpu, s.as_mut(), &frame(ms + 16.0)).unwrap();
         b.save("fractal-glass-moved");
-        // Wholly behind the pane: no sharp orange anywhere.
-        assert_eq!(b.count(|p| p[..3] == [255, 165, 0]), 0);
 
         s.bind(&[Value::Number(1.0)], None).unwrap();
-        let mut ms = 100.0;
-        let mut moving = true;
-        while moving && ms < 1000.0 {
+        let end = ms + 1000.0;
+        while ms < end {
             ms += 16.0;
-            moving = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap().1;
+            fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         }
         let (c, _) = fixture::render(&gpu, s.as_mut(), &frame(ms + 16.0)).unwrap();
         c.save("fractal-glass-dark");
         assert!(s.agent("{}").unwrap().ends_with("\"background\":\"#000000\",\"circle\":\"#78C0E0\"}"));
-        assert_eq!(&c.at(10, 10)[..3], &[0, 0, 0]);
+        // Black, a breath of the second light at most.
+        assert!(c.at(10, 10)[..3].iter().all(|&v| v <= 12), "{:?}", c.at(10, 10));
+    }
+
+    /// A number field of the agent's JSON.
+    fn field(json: &str, key: &str) -> f32 {
+        let at = json.find(&format!("\"{key}\":")).unwrap() + key.len() + 3;
+        json[at..].split(|c| c == ',' || c == '}').next().unwrap().parse().unwrap()
     }
 
     /// Bilinear read of an 8-bit RGBA image placed at `origin`, transparent outside (decal).
@@ -689,7 +775,7 @@ mod tests {
         }
         s.input(&p(PointerPhase::Up, 220.0, 480.0));
         assert!(!s.behind_pane());
-        assert_eq!(s.messages(), vec!["haptic:impact-light", "haptic:selection", "haptic:selection"]);
+        assert_eq!(s.messages(), vec!["haptic:impact-light", "haptic:selection", "haptic:selection", "haptic:release"]);
     }
 
     #[test]

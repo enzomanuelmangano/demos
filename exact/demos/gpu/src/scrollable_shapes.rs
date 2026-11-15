@@ -19,9 +19,11 @@
 //!   the scroll.
 //! - The ScrollView: absoluteFill, horizontal, content W × 4, snapToInterval W,
 //!   decelerationRate "fast", bouncing (ui_scroll.rs). Past the owner's phone note ("handle the
-//!   overscroll"), the band shows: pulled past the first or last page, the shape moves with the
-//!   content by the band's overshoot (UIKit's (1 − 1 / (x · 0.55 / W + 1)) · W) and rides the
-//!   critically damped bounce back on release. A fling ends on a page, never in the band, as
+//!   overscroll", then "the overscroll drives the animation, not the translation, keeping the
+//!   norm"), the band shows: pulled past the first or last page, the band's overshoot (UIKit's
+//!   (1 − 1 / (x · 0.55 / W + 1)) · W) in pages carries the morph on past its ends (the first
+//!   pair's t below 0, the last pair's above 1), softly limited, each point
+//!   at its interpolated norm; the shape stays in place and morphs back with the bounce. A fling ends on a page, never in the band, as
 //!   snapToInterval's target is (RCTScrollView clamps it to the content).
 //!
 //! Motion audit:
@@ -63,6 +65,14 @@ const DOT_GAP: f32 = 8.0;
 const DOTS_BOTTOM: f32 = 60.0;
 /// One cycle of iTime.
 const SPIN_MS: f64 = 10_000.0;
+/// The most the morph runs on past its ends (in t).
+const OVERMORPH: f64 = 0.35;
+
+/// `x` softly limited to ±OVERMORPH: linear near 0, flat at the limit (tanh).
+fn soft(x: f64) -> f64 {
+    OVERMORPH * (x / OVERMORPH).tanh()
+}
+
 /// The shortest gap between two selection haptics, ms.
 const HAPTIC_GAP_MS: f64 = 40.0;
 /// How far past an end (points) the rubber band must pull before its haptic.
@@ -297,6 +307,17 @@ impl ScrollableShapes {
         }
         let next = (idx + 1).min(SHAPES - 1);
         let t = if idx >= SHAPES - 1 { 1.0 } else { (scroll - w * idx as f64) / (w * next as f64 - w * idx as f64) };
+        // Past an end (the owner's phone note: the overscroll drives the animation, not the
+        // place): the rubber band's overshoot, in pages, carries the morph on past its ends, the
+        // first pair's t below 0, the last pair's above 1, softly limited to OVERMORPH. The
+        // shader keeps each point's norm (WGSL `vs`), so the shape deforms on without growing.
+        let over = self.overscroll() / w;
+        if over < 0.0 {
+            return (0, 1, soft(over));
+        }
+        if over > 0.0 {
+            return (SHAPES - 2, SHAPES - 1, 1.0 + soft(over));
+        }
         (idx, next, t.clamp(0.0, 1.0))
     }
 
@@ -437,12 +458,9 @@ impl Surface for ScrollableShapes {
         }
         self.record_dots(scale);
         let (idx, next, t) = self.morph();
-        let overscroll = self.overscroll() as f32;
         let gpu = self.gpu.as_mut().unwrap();
         let pu = points_shader::Uniforms {
-            // Past an end the rubber band moves the shape with the content (the owner's phone note:
-            // "handle the overscroll"); RN's invisible ScrollView showed nothing there.
-            center: [w / 2.0 - overscroll, h / 2.0, scale, 0.0],
+            center: [w / 2.0, h / 2.0, scale, 0.0],
             view: [pw as f32, ph as f32, w, h],
             morph: [idx as f32, next as f32, t as f32, 0.0],
             spin: [self.time.cos() as f32, self.time.sin() as f32, 0.2f64.cos() as f32, 0.2f64.sin() as f32],
@@ -616,16 +634,22 @@ mod tests {
         let (rest, _) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         let rest_x = centroid(&rest);
         s.input(&pointer(PointerPhase::Down, 10.0, ms));
-        let mut pulled = rest;
+        let mut pulled = None;
         for k in 1..=40 {
             ms += 33.0;
             s.input(&pointer(PointerPhase::Move, 10.0 + 15.0 * k as f32, ms));
-            pulled = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap().0;
+            pulled = Some(fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap().0);
         }
-        // Held past the start: the shape rides the band, the band's overshoot to the right
-        // (raw 180 pt → (1 − 1 / (180 · 0.55 / 420 + 1)) · 420 ≈ 80 pt, 240 px).
+        let pulled = pulled.unwrap();
+        // Held past the start (raw 180 pt → (1 − 1 / (180 · 0.55 / 420 + 1)) · 420 ≈ 80 pt of
+        // band, 0.19 page): the morph runs on below 0 (soft: 0.35 · tanh(0.19 / 0.35) ≈ 0.17)
+        // and the shape stays in place.
+        let agent = s.agent("").unwrap();
+        let t: f64 = agent.split("\"t\":").nth(1).unwrap().trim_end_matches('}').parse().unwrap();
+        assert!(t < -0.12 && t > -0.22, "{agent}");
         let moved = centroid(&pulled) - rest_x;
-        assert!(moved > 150.0 && moved < 330.0, "the shape moved {moved} px with the band");
+        assert!(moved.abs() < 40.0, "the shape moved {moved} px");
+        assert_ne!(pulled.data, rest.data, "the shape deforms");
         ms += 200.0;
         s.input(&pointer(PointerPhase::Up, 610.0, ms));
         let end = ms + 3000.0;

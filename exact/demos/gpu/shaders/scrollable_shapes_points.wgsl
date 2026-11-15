@@ -31,9 +31,24 @@ fn vs(@builtin(vertex_index) vi: u32, @location(0) xs: vec4<f32>, @location(1) y
     let i = u32(u.morph.x);
     let j = u32(u.morph.y);
     let t = u.morph.z;
-    let x = xs[i] + (xs[j] - xs[i]) * t;
-    let y = ys[i] + (ys[j] - ys[i]) * t;
-    let z = zs[i] + (zs[j] - zs[i]) * t;
+    var x = xs[i] + (xs[j] - xs[i]) * t;
+    var y = ys[i] + (ys[j] - ys[i]) * t;
+    var z = zs[i] + (zs[j] - zs[i]) * t;
+    // Past the morph's ends (an overscroll carries t outside 0…1): the point goes on in the
+    // morph's direction at the norm it has at the nearest end, so the shape deforms without
+    // growing or shrinking.
+    if (t < 0.0 || t > 1.0) {
+        let e = clamp(t, 0.0, 1.0);
+        let edge = vec3<f32>(xs[i] + (xs[j] - xs[i]) * e, ys[i] + (ys[j] - ys[i]) * e, zs[i] + (zs[j] - zs[i]) * e);
+        let p = vec3<f32>(x, y, z);
+        let n = length(p);
+        if (n > 1e-4) {
+            let q = p * (length(edge) / n);
+            x = q.x;
+            y = q.y;
+            z = q.z;
+        }
+    }
     // rotateX (tilt), then rotateY (time).
     let y1 = y * u.spin.z - z * u.spin.w;
     let z1 = y * u.spin.w + z * u.spin.z;

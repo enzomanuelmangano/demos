@@ -28,13 +28,13 @@
 //!   Every spring here starts at velocity 0: a drag sets the values (no animation to inherit)
 //!   and reset cancels the running one first.
 //!
-//! Haptics (past RN, which plays none: the owner's haptic language): `haptic:impact-light`
-//! when a finger takes the front card; `haptic:selection` when the drag crosses the throw
-//! line |translationX| = w/3 (where a slow release commits) and when it comes back under it
-//! (HYSTERESIS below), at most one per HAPTIC_GAP_MS; `haptic:impact-medium` when a drag
-//! throws its card; `haptic:impact-soft` when a card sprung back lands (within LANDED of its
-//! place). The buttons' presses keep the app's selection (pressablesOnPress); their throws post
-//! nothing more.
+//! Haptics (past RN, which plays none), the essentials only, never per move: one
+//! `haptic:impact-light` when the pan takes the front card (its activation, so a tap plays
+//! none); one `haptic:selection` when the drag first goes past the throw line
+//! |translationX| = w/3 (where a slow release commits), none on the way back, and again only
+//! after it went REARM back under the line; one `haptic:impact-medium` when the card is
+//! thrown. Nothing when a card springs back. The buttons' presses keep the app's selection
+//! (pressablesOnPress); their throws post nothing more.
 //!
 //! Inputs: safeTop, then three counters the buttons bump (swipe left, swipe right, reset).
 //! The photos are the RN assets resampled to cover the card at 3× (images/swipe-cards).
@@ -55,11 +55,8 @@ const CENTRED_SLACK: f64 = 40.0;
 const FLICK: f64 = 0.1;
 /// The shortest gap between two selection haptics, ms.
 const HAPTIC_GAP_MS: f64 = 40.0;
-/// How far back under the throw line the drag goes before it counts as back, pt.
-const HYSTERESIS: f64 = 6.0;
-/// A card sprung back has landed within this of its place, pt; a release nearer than
-/// 2 × LANDED (a tap, a nudge) plays no landing.
-const LANDED: f64 = 6.0;
+/// How far back under the throw line the drag must go before a new crossing plays again, pt.
+const REARM: f64 = 24.0;
 
 static PHOTOS: [&[u8]; COUNT] = [
     include_bytes!("../images/swipe-cards/01.jpg"),
@@ -88,8 +85,6 @@ struct Card {
     next: f64,
     /// reset()'s setTimeout: due at (None until the next frame stamps it).
     reset_due: Option<Option<f64>>,
-    /// Sprung back from a drag and not yet landed (its soft haptic due).
-    homing: bool,
 }
 
 struct SwipeCards {
@@ -108,7 +103,7 @@ struct SwipeCards {
     touched: Option<usize>,
     reset_at: Option<f64>,
     now: f64,
-    /// The drag is past the throw line (its selection played), and when the last one played.
+    /// The drag's throw-line selection played and is not re-armed yet, and when it played.
     past_line: bool,
     haptic_at: f64,
     posted: Vec<String>,
@@ -130,7 +125,6 @@ impl SwipeCards {
                     scale: Timing::at(1.0 - 0.07 * k),
                     next: 0.0,
                     reset_due: None,
-                    homing: false,
                 }
             })
             .collect();
@@ -219,7 +213,6 @@ impl SwipeCards {
 
     /// The card's swipeRight / swipeLeft.
     fn throw(&mut self, i: usize, sign: f64) {
-        self.cards[i].homing = false;
         let max = self.size.0 * 1.5;
         self.cards[i].x.to(sign * max, 0.0, GENTLE);
         self.active += 1.0;
@@ -288,28 +281,31 @@ impl Surface for SwipeCards {
         }
         let Some(i) = self.touched else { return };
         let third = self.third();
-        match self.pan.event(id, phase, x, y, at_ms, true) {
+        let event = self.pan.event(id, phase, x, y, at_ms, true);
+        let event_kind = if matches!(event, Event::Start(_)) { Kind::Start } else { Kind::Other };
+        match event {
             Event::Begin { .. } => {
                 self.current = self.active.floor();
                 self.past_line = false;
-                if self.current == i as f64 {
-                    self.cards[i].homing = false;
-                    self.posted.push("haptic:impact-light".into());
-                }
             }
             Event::Start(p) | Event::Update(p) => {
                 if self.current != i as f64 {
                     return;
                 }
+                if matches!(event_kind, Kind::Start) {
+                    self.posted.push("haptic:impact-light".into());
+                }
                 let (tx, vx) = (p.translation_x as f64, p.velocity_x as f64);
-                // The throw line: past it a release throws whatever the speed.
-                let past = if self.past_line { tx.abs() >= third - HYSTERESIS } else { tx.abs() >= third };
-                if past != self.past_line {
-                    self.past_line = past;
+                // The throw line: past it a release throws whatever the speed. One selection on
+                // the way out; re-armed only REARM back under the line, silently.
+                if !self.past_line && tx.abs() >= third {
+                    self.past_line = true;
                     if at_ms - self.haptic_at >= HAPTIC_GAP_MS {
                         self.posted.push("haptic:selection".into());
                         self.haptic_at = at_ms;
                     }
+                } else if self.past_line && tx.abs() < third - REARM {
+                    self.past_line = false;
                 }
                 self.cards[i].x.set(tx);
                 self.cards[i].y.set(p.translation_y as f64);
@@ -367,10 +363,6 @@ impl Surface for SwipeCards {
         }
         for c in &mut self.cards {
             moving |= c.x.step(now) | c.y.step(now) | c.opacity.step(now) | c.lift.step(now) | c.scale.step(now);
-            if c.homing && c.x.value.hypot(c.y.value) < LANDED {
-                c.homing = false;
-                self.posted.push("haptic:impact-soft".into());
-            }
         }
 
         let (lx, ly, lw, lh) = self.layout();
@@ -417,12 +409,16 @@ impl SwipeCards {
             self.throw(i, if sign == 1.0 { 1.0 } else { -1.0 });
             self.posted.push("haptic:impact-medium".into());
         } else {
-            let c = &mut self.cards[i];
-            c.homing = c.x.value.hypot(c.y.value) >= 2.0 * LANDED;
             self.cards[i].x.to(0.0, 0.0, GENTLE);
             self.cards[i].y.to(0.0, 0.0, GENTLE);
         }
     }
+}
+
+/// Which pan event an input brought (Start plays the grab).
+enum Kind {
+    Start,
+    Other,
 }
 
 /// JavaScript's Math.sign (0 for 0, where f64::signum gives 1).
@@ -477,6 +473,34 @@ mod tests {
     }
 
     #[test]
+    fn hovering_at_the_throw_line_plays_one_selection() {
+        let mut s = SwipeCards::new();
+        s.size = (420.0, 912.0);
+        s.safe_top = 68.0;
+        let mut ms = 0.0;
+        s.input(&pointer(PointerPhase::Down, 210.0, 400.0, ms));
+        // Slowly out to the line (140), then back and forth across it by 10 pt, many times.
+        let mut x = 210.0;
+        for k in 0..60 {
+            ms += 50.0;
+            x = if k < 16 { 210.0 + 10.0 * k as f32 } else if k % 2 == 0 { 355.0 } else { 345.0 };
+            s.input(&pointer(PointerPhase::Move, x, 400.0, ms));
+        }
+        let posted = s.messages();
+        assert_eq!(posted, vec!["haptic:impact-light", "haptic:selection"], "{posted:?}");
+        // Well back under the line (REARM) and out again: one more.
+        for x2 in [300.0, 260.0, 300.0, 360.0] {
+            ms += 50.0;
+            s.input(&pointer(PointerPhase::Move, x2, 400.0, ms));
+        }
+        assert_eq!(s.messages(), vec!["haptic:selection"]);
+        // A second finger while held: nothing.
+        s.input(&InputEvent::Pointer { id: 2, phase: PointerPhase::Down, x: 100.0, y: 400.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: ms });
+        assert!(s.messages().is_empty());
+        let _ = x;
+    }
+
+    #[test]
     fn a_fling_throws_and_reset_brings_the_cards_back() {
         let gpu = match fixture::device() {
             Ok(gpu) => gpu,
@@ -511,15 +535,15 @@ mod tests {
         }
         s.input(&pointer(PointerPhase::Up, 250.0, 400.0, ms + 200.0));
         assert!(state(&mut s).contains("\"activeIndex\":1"));
-        // The grab only: it never reached the line, and nothing is thrown.
+        // The grab only: it never reached the line, nothing is thrown, and the spring back home
+        // plays nothing.
         assert_eq!(s.messages(), vec!["haptic:impact-light"]);
         let t0 = ms;
         while ms < t0 + 1000.0 {
             ms += 16.0;
             fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         }
-        // It lands back once.
-        assert_eq!(s.messages(), vec!["haptic:impact-soft"]);
+        assert!(s.messages().is_empty());
         // Reset (the third counter).
         s.bind(&[Value::Number(68.0), Value::Number(0.0), Value::Number(0.0), Value::Number(1.0)], None).unwrap();
         assert!(state(&mut s).contains("\"activeIndex\":0"));

@@ -6,7 +6,7 @@
 // opacity then. The CPU evaluates the analytic motion (the keyframe, the spring, the exit) at
 // N + 1 knots across the shutter and M samples in each interval between them, N · M chosen so
 // consecutive samples land well under a device pixel apart; every sample is shifted by a
-// per-pixel offset (interleaved gradient noise), so no comb survives, weighted by a tent over
+// per-pixel offset (interleaved gradient noise), so no comb survives, weighted by a Hann window over
 // the shutter, and fetched bilinearly (a tent filter in space). The integral is
 // taken in linear light; the card's result goes back to sRGB and composites over the cards
 // drawn before it as Core Animation blends (in the encoded values). A still card is one sample:
@@ -87,8 +87,8 @@ fn compose(in: Out) -> @location(0) vec4<f32> {
             }
         } else {
             // N · M stratified instants across the shutter, all shifted by the pixel's noise
-            // (what steps remain become grain), each weighted by a tent over the exposure (the
-            // streak fades in and out instead of ending on a hard copy).
+            // (what steps remain become grain), each weighted by a Hann window over the
+            // exposure (the streak fades in and out instead of ending on a hard copy).
             let xi = ign(p);
             let total = f32(n * m);
             var wsum = 0.0;
@@ -98,7 +98,9 @@ fn compose(in: Out) -> @location(0) vec4<f32> {
                 for (var i = 0; i < m; i = i + 1) {
                     let f = (f32(i) + xi) / f32(m);
                     let tau = (f32(j * m + i) + xi) / total;
-                    let w = 1.0 - abs(2.0 * tau - 1.0);
+                    // A Hann shutter: opening and closing smoothly, a soft-ended streak
+                    // (Gaussian-like, no hard copy at either end).
+                    let w = 0.5 - 0.5 * cos(6.2831853 * tau);
                     wsum = wsum + w;
                     let k = mix(k0, k1, f);
                     if (k.w <= 0.0) {

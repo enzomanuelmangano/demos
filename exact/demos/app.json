@@ -21,7 +21,9 @@
     "inspiration-sheet",
     "audio-track",
     "system-alert",
-    "toggle-sheet"
+    "toggle-sheet",
+    "music-tabbar",
+    "native-tabbar"
   ],
   "host": {
     "web": {},

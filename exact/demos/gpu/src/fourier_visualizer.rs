@@ -74,7 +74,20 @@ use shaders::fourier_visualizer::{entry, module, Uniforms, BUTTON as BUTTON_TEXT
 const MIN_STROKE_LENGTH: f64 = 8.0;
 /// The time's target: 2 * Math.PI - 0.05, over 20 s.
 const TIME_END: f64 = 2.0 * std::f64::consts::PI - 0.05;
-const TIME_MS: f64 = 20000.0;
+/// RN's 20000 ms; the owner's call (phone feedback mwhp3hdr): 1.8× faster.
+const TIME_MS: f64 = 20000.0 / 1.8;
+/// The fades between shapes (RN's 300 ms withTiming), 40 % shorter (the owner's call).
+const FADE_MS: f64 = 180.0;
+/// The haptics (the owner's call, mwhp3hdr; RN plays only the button's), through the host:
+/// a light impact as a stroke starts, a selection tick every TICK_POINTS points of it (at most
+/// one per TICK_MIN_MS), a medium impact as the drawn shape becomes epicycles, a soft one as
+/// the chain completes its loop.
+const START: &str = "haptic:impact-light";
+const TICK: &str = "haptic:selection";
+const COMMIT: &str = "haptic:impact-medium";
+const LOOP: &str = "haptic:impact-soft";
+const TICK_POINTS: usize = 12;
+const TICK_MIN_MS: f64 = 50.0;
 /// styles.canvas backgroundColor.
 const BACKGROUND: u32 = 0xD4D4D4;
 /// styles.clearButton: right, height (and width, aspectRatio 1), borderRadius, backgroundColor.
@@ -123,6 +136,7 @@ fn visualizer() -> FourierVisualizer {
         bottom: Spring::at(0.0),
         press: Pressable::new(),
         posted: Vec::new(),
+        last_tick: (0, 0.0),
         icon: Font::new(MATERIAL, ICON).map(Font::with_ui_layout),
         canvas: Canvas::default(),
         renderer: Renderer::default(),
@@ -159,6 +173,8 @@ struct FourierVisualizer {
     /// The button's PressableScale (the shared pressto machine).
     press: Pressable,
     posted: Vec<String>,
+    /// The stroke's length and the pointer's time at the last selection tick.
+    last_tick: (usize, f64),
     icon: Option<Font>,
     canvas: Canvas,
     renderer: Renderer,
@@ -280,11 +296,12 @@ impl FourierVisualizer {
         }
         self.set_drawing(true);
         self.draw(&contour);
+        self.posted.push(COMMIT.into());
     }
 
     /// FourierVisualizer's draw().
     fn draw(&mut self, contour: &Contour) {
-        self.opacity.to(1.0, 300.0, Easing::timing_default());
+        self.opacity.to(1.0, FADE_MS, Easing::timing_default());
         self.epicycles = epicycles(&fill_to_power_of_two(get_points(contour)));
         self.trace.clear();
         self.time.set(0.0);
@@ -329,9 +346,10 @@ impl FourierVisualizer {
             if !self.time.running {
                 // The finished callback: opacity.set(withTiming(0)) in this frame, and
                 // onComplete (isDrawing false).
-                self.opacity.to(0.0, 300.0, Easing::timing_default());
+                self.opacity.to(0.0, FADE_MS, Easing::timing_default());
                 self.opacity.step(now);
                 moving = true;
+                self.posted.push(LOOP.into());
                 self.set_drawing(false);
             }
         }
@@ -763,16 +781,25 @@ impl Surface for FourierVisualizer {
                 // onStart: clear, isDrawing false, the stroke's opacity back to 1, a new path.
                 self.clear();
                 self.set_drawing(false);
-                self.stroke_opacity.to(1.0, 300.0, Easing::timing_default());
+                self.stroke_opacity.to(1.0, FADE_MS, Easing::timing_default());
                 self.stroke.clear();
                 self.stroke.push(point(p.x, p.y));
                 self.stroke.push(point(p.x, p.y));
                 // The activating event's onChange.
                 self.stroke.push(point(p.x, p.y));
+                self.posted.push(START.into());
+                self.last_tick = (self.stroke.len(), at_ms);
             }
-            Event::Update(p) => self.stroke.push(point(p.x, p.y)),
+            Event::Update(p) => {
+                self.stroke.push(point(p.x, p.y));
+                let (n, t) = self.last_tick;
+                if self.stroke.len() >= n + TICK_POINTS && at_ms - t >= TICK_MIN_MS {
+                    self.posted.push(TICK.into());
+                    self.last_tick = (self.stroke.len(), at_ms);
+                }
+            }
             Event::End(_) => {
-                self.stroke_opacity.to(0.0, 300.0, Easing::timing_default());
+                self.stroke_opacity.to(0.0, FADE_MS, Easing::timing_default());
                 self.finish_stroke();
             }
             _ => {}
@@ -1030,7 +1057,16 @@ mod tests {
         // Pressed: scaled to 0.96 about (331, 755): the disc's left edge moves in by 1.28.
         assert_eq!(&pressed.at(299, 755)[..3], &[212, 212, 212]);
         v.input(&pointer(Up, 331.0, 755.0, t + 320.0));
-        assert_eq!(v.messages(), vec!["press".to_string()]);
+        // The haptics of the two strokes before the press (the owner's call): each starts with a
+        // light impact, ticks while drawn, and becomes epicycles with a medium one; the first
+        // loop's end is soft. Then the button's own.
+        let all = v.messages();
+        assert_eq!(all.iter().filter(|m| m.as_str() == START).count(), 2, "{all:?}");
+        assert_eq!(all.iter().filter(|m| m.as_str() == COMMIT).count(), 2, "{all:?}");
+        assert_eq!(all.iter().filter(|m| m.as_str() == LOOP).count(), 1, "{all:?}");
+        assert!(all.iter().filter(|m| m.as_str() == TICK).count() >= 4, "{all:?}");
+        assert_eq!(all.first().map(String::as_str), Some(START));
+        assert_eq!(all.last().map(String::as_str), Some("press"));
         let reply = v.agent("").unwrap();
         assert!(reply.contains("\"drawing\":false") && reply.contains("\"epicycles\":0") && reply.contains("\"held\":false"), "{reply}");
 

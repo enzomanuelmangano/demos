@@ -142,6 +142,26 @@ component ExpandableMiniPlayer
       haptic("impact-light")
   action pick(i: number)
     tab = i
+  // The native chrome's events: a tab, the accessory (expand), play/pause, next (its buttons
+  // play their own haptics).
+  action chrome(m: string)
+    if m == "accessory"
+      expand()
+    if m == "play"
+      playing = not playing
+      if playing
+        tickToken = tickToken + 1
+    if m == "next"
+      elapsed = 0
+      tickToken = tickToken + 1
+    if m == "tab:0"
+      tab = 0
+    if m == "tab:1"
+      tab = 1
+    if m == "tab:2"
+      tab = 2
+    if m == "tab:3"
+      tab = 3
   // The sheet's drag: a binding needs the release too; nothing to keep.
   action bound(bw: number, bh: number, pw: number, ph: number)
     tab = tab
@@ -183,71 +203,15 @@ component ExpandableMiniPlayer
           opacity=(expanded ? 0.45 : 0) transition=`opacity ${mpPageSpring()}` pointer-events="none"
           aria-hidden=true
 
-      // The tab bar: a floating glass capsule, concentric with the display. Its glass is a
-      // background sibling under the tabs (never their parent), touch-transparent.
-      view position="absolute" left=mpInset() bottom=mpInset() width=floatingWidth(W, mpInset())
-        height=mpTabH() border-radius=concentricRadius(mpInset(), mpTabH())
-        corner-shape="-exact-continuous" background-color="rgba(30, 30, 30, 0.55)"
-        pointer-events="none" aria-hidden=true
-        glass-pane glass-style="regular" corner-size=`${concentricRadius(mpInset(), mpTabH())}`
-          interactive="false" continuous="true" position="absolute" inset=0 pointer-events="none"
-          aria-hidden=true
-      row position="absolute" left=mpInset() bottom=mpInset() width=floatingWidth(W, mpInset())
-        height=mpTabH() align-items="center" padding="0px 8px" pointer-events="auto"
-        testId="mp-tabs"
-        for i in [0, 1, 2, 3] key=i
-          view flex=1 height=mpTabH() display="flex" flex-direction="column"
-            PressableScale(press=pick(i))
-              column flex-grow=1 align-items="center" justify-content="center" gap=3
-                aria-label=mpTabName(i) testId=`mp-tab-${i}`
-                image mpTabIcon(i) font-size=20 color=(tab == i ? mpAccent() : mpLabel())
-                  aria-hidden=true
-                text mpTabName(i) font-size=10 line-height="12px" font-weight=600
-                  color=(tab == i ? mpAccent() : mpLabel())
-
-      // The mini player: a glass capsule 8 above the tab bar. Its thumbnail is the flying cover
-      // (in the sheet's layer, below); here a tap anywhere but the buttons expands.
-      view position="absolute" left=mpInset() bottom=mpMiniBottom() width=floatingWidth(W, mpInset())
-        height=mpMiniH() pointer-events="none" aria-hidden=true
-        view position="absolute" inset=0 border-radius=concentricRadius(mpInset(), mpMiniH())
-          corner-shape="-exact-continuous" background-color="rgba(30, 30, 30, 0.55)"
-          overflow="hidden" pointer-events="none"
-          glass-pane glass-style="regular" corner-size=`${concentricRadius(mpInset(), mpMiniH())}`
-            interactive="false" continuous="true" position="absolute" inset=0
-            pointer-events="none" aria-hidden=true
-          // The progress hairline along the bottom, inside the capsule's straight run.
-          view position="absolute" left=30 right=30 bottom=3 height=2 border-radius=1
-            background-color="rgba(255, 255, 255, 0.16)" overflow="hidden"
-            view position="absolute" left=0 top=0 bottom=0 width="100%" border-radius=1
-              background-color="rgba(255, 255, 255, 0.85)"
-              translate=`${(fraction - 1) * (floatingWidth(W, mpInset()) - 60)}px 0px`
-              transition="translate 1000ms linear" testId="mp-mini-progress"
-      // The mini player's touches: a pressable over the whole capsule expands; its two
-      // buttons sit above it.
-      view position="absolute" left=mpInset() bottom=mpMiniBottom() width=floatingWidth(W, mpInset())
-        height=mpMiniH() pointer-events="auto" display="flex" flex-direction="column"
-        PressableScale(press=expand)
-          column flex-grow=1 aria-label="Now playing: tap to expand" testId="mp-mini"
-      view position="absolute" left=mpInset() bottom=mpMiniBottom() width=floatingWidth(W, mpInset())
-        height=mpMiniH() pointer-events="none"
-        row position="absolute" left=(mpThumbPad() + mpThumb() + 12) right=8 top=0 bottom=0
-          align-items="center" gap=4 pointer-events="none"
-          column flex=1 min-width=0
-            text "Happiness Does Not Wait" font-size=15 line-height="20px" font-weight=600
-              color=mpLabel() white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
-            text "Ólafur Arnalds" font-size=13 line-height="18px" color=mpSecondary()
-              white-space="nowrap"
-          view width=40 height=40 pointer-events="auto" display="flex" flex-direction="column"
-            PressableScale(press=toggle)
-              column flex-grow=1 align-items="center" justify-content="center"
-                aria-label=(playing ? "Pause" : "Play") testId="mp-mini-play"
-                image (playing ? "symbol:sf/pause.fill" : "symbol:sf/play.fill") font-size=20
-                  color=mpLabel() aria-hidden=true
-          view width=40 height=40 pointer-events="auto" display="flex" flex-direction="column"
-            PressableScale(press=next)
-              column flex-grow=1 align-items="center" justify-content="center"
-                aria-label="Next" testId="mp-mini-next"
-                image "symbol:sf/forward.fill" font-size=20 color=mpLabel() aria-hidden=true
+      // The bottom chrome, native (modules/apple/MusicTabBar.swift): iOS 26's SwiftUI TabView,
+      // its floating glass bar, the mini player as its bottom accessory. It answers touches only
+      // on the bar and the accessory; the page above stays Contract's.
+      music-tabbar tab-titles="Home|New|Radio|Library"
+        tab-symbols="house.fill|square.grid.2x2.fill|dot.radiowaves.left.and.right|music.note.square.stack.fill"
+        selected-tab=`${tab}` tab-tint=mpAccent() track-title="Happiness Does Not Wait"
+        track-artist="Ólafur Arnalds" artwork-file=mpCover() is-playing=(playing ? "true" : "false")
+        change=chrome position="absolute" left=0 right=0 bottom=0 height=(mpMiniBottom() + mpMiniH() + 24)
+        testId="mp-chrome"
 
       // The sheet's layer: 0 open, H collapsed, the drag's target, under a clipping parent.
       column position="absolute" inset=0 overflow="hidden" pointer-events="none"
@@ -272,8 +236,9 @@ component ExpandableMiniPlayer
           // sheet's spring); paused, it settles smaller.
           view position="absolute" left=mpSide() top=coverTop width=cover height=cover
             translate=(expanded ? "0px 0px" : `${flyX}px ${flyY}px`)
-            scale=(expanded ? 1 : flyK) transition=`translate ${mpSheetSpring()}, scale ${mpSheetSpring()}`
-            pointer-events="none" testId="mp-cover"
+            scale=(expanded ? 1 : flyK)
+            transition=`translate ${mpSheetSpring()}, scale ${mpSheetSpring()}, opacity 220ms cubic-bezier(0.23, 1, 0.32, 1)`
+            opacity=(expanded ? 1 : 0) pointer-events="none" testId="mp-cover"
             view position="absolute" inset=0 scale=(expanded and not playing ? 0.86 : 1)
               transition=`scale ${mpCoverSpring()}`
               // Its shadow, open only.

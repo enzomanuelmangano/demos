@@ -5,12 +5,12 @@
 //! (`withSpring`, Reanimated 4's default). A touch goes to the first circle if it is under the
 //! finger, else to the second (RN's Touchable order: "the first one registered, i.e. rendered").
 //!
-//! Everything runs in this surface: the pans, the spring and the drawing, as RN Skia draws it:
-//! the circles one path (`addCircle` twice: Graphite's 4× MSAA) with the SweepGradient mixed in
-//! Display P3, into an 8-bit layer; the layer is the Group's clip (`layerClip`, the circles'
-//! bounds + LAYER_MARGIN, within the screen) outset by the blur's reach, as Skia sizes a filtered
-//! layer; Graphite's blur of it (`skia::blur::GraphiteBlur`: downscaled to σ 4, σ 90 px at 3×),
-//! then the ColorMatrix and Core Animation's P3 → sRGB (`shaders/metaball.wgsl`).
+//! Everything runs in this surface: the pans, the springs and the drawing. The owner's call
+//! (phone feedback mwhp8vhc): not RN Skia's Blur 30 + ColorMatrix alpha threshold, but an
+//! analytic SDF in one pass (`shaders/metaball.wgsl`): each circle's signed distance, the two
+//! merged by a polynomial smooth minimum of K, the edge covered over one device pixel, crisp at
+//! rest; the neck forms and breaks analytically, at centres SPLIT_AT = 2R + K/2 apart (RN's
+//! blurred union pinches at about 2R + 40). The fill stays RN's sweep gradient in Display P3.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -21,70 +21,42 @@ use reanimated::{Spring, SpringConfig};
 /// SwiftUI's `.spring(duration: 0.55, bounce: 0)`: mass 1, stiffness (2π / 0.55)², damping 2√k.
 const RELEASE: SpringConfig = SpringConfig { stiffness: 130.507_165_634_239_4, damping: 22.848_165_582_471_224, mass: 1.0 };
 
-// The haptics (the owner's call, mwhlionx; RN plays none), posted for the canvas's `message`:
-// a light impact at a grab; while a blob is dragged, soft ticks whose rate and weight rise with
-// its distance from the centre (at most one per TICK_MIN_MS, and only when it moved); an impact
-// when the two pinch apart or melt back together; a soft impact when a released blob settles.
+// The haptics (the owner's calls, mwhlionx and mwhp8vhc; RN plays none), through the host:
+// - a light impact at the grab;
+// - while a blob is dragged, a texture of selection ticks spaced by the distance it travels:
+//   sparse near the centre (TICK_SPACING_NEAR pt), dense as the tension rises toward the pinch
+//   (TICK_SPACING_FAR), at most one per TICK_MIN_MS;
+// - one medium "snap" the moment the neck breaks (the smooth minimum's field leaves the
+//   midpoint: centres past SPLIT_AT), one soft "merge" when the blobs touch again;
+// - a soft impact when a released blob's spring settles.
 const GRAB: &str = "haptic:impact-light";
-const SPLIT: &str = "haptic:impact-medium";
-const JOIN: &str = "haptic:impact-rigid";
+const TICK: &str = "haptic:selection";
+const SNAP: &str = "haptic:impact-medium";
+const MERGE: &str = "haptic:impact-soft";
 const SETTLE: &str = "haptic:impact-soft";
 const TICK_MIN_MS: f64 = 35.0;
-const TICK_MAX_MS: f64 = 140.0;
-/// The distance from the centre at which the ticks are fastest and heaviest.
-const TICK_FAR: f32 = 300.0;
-/// The tick's kind at a distance from the centre: a selection tick near, soft, then light far.
-fn tick_kind(d: f32) -> &'static str {
-    if d < 100.0 {
-        "haptic:selection"
-    } else if d < 220.0 {
-        "haptic:impact-soft"
-    } else {
-        "haptic:impact-light"
-    }
+const TICK_SPACING_NEAR: f32 = 36.0;
+const TICK_SPACING_FAR: f32 = 8.0;
+/// The tick spacing (pt of travel) at a tension of `d` (the blobs' gap) out of SPLIT_AT.
+fn tick_spacing(d: f32) -> f32 {
+    let k = (d / SPLIT_AT).clamp(0.0, 1.0);
+    TICK_SPACING_NEAR + (TICK_SPACING_FAR - TICK_SPACING_NEAR) * k
 }
-/// The ticks' spacing at a distance from the centre.
-fn tick_ms(d: f32) -> f64 {
-    let k = (d / TICK_FAR).clamp(0.0, 1.0) as f64;
-    TICK_MAX_MS + (TICK_MIN_MS - TICK_MAX_MS) * k
-}
-/// Where the shape pinches into two (centres this far apart): each disc's alpha, blurred by σ
-/// 30, crosses the ColorMatrix's 0.5 midway between them at about 2R + 40. Hysteresis of 4 pt
-/// either way, so a hand held at the threshold does not rattle.
-const SPLIT_AT: f32 = 2.0 * RADIUS + 40.0;
-const SPLIT_HYSTERESIS: f32 = 4.0;
-use skia::blur::{ceil_size, intersect, outset, round_out, GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
-use skia::{point, stops, Canvas, Color, Paint, Renderer, Shader};
+/// The smooth minimum's k (pt): the neck's reach once the centres are 2R apart (it grows with
+/// the gap from 0, so the blobs at rest are one circle of radius R: see metaball.wgsl).
+const K: f32 = 80.0;
+/// Where the merged field's midpoint crosses zero: smin(g, g, K) = g − K/4 with g = d/2 − R.
+const SPLIT_AT: f32 = 2.0 * RADIUS + K / 2.0;
+/// A rejoin needs the gap this far back under SPLIT_AT (no rattle at the threshold).
+const MERGE_HYSTERESIS: f32 = 2.0;
 
 use crate::{gfx, shaders};
-use shaders::metaball::{entry, module, Uniforms, BLURRED, GROUP_0, SMP, U};
+use shaders::metaball::{entry, module, Uniforms, GROUP_0, U};
 
 const RADIUS: f32 = 80.0;
-const BLUR: f32 = 30.0;
-/// `RADIUS + 3 * BLUR + 2`: the layer clip's margin around the circles' centres.
-const LAYER_MARGIN: f32 = RADIUS + 3.0 * BLUR + 2.0;
-/// The ColorMatrix's alpha row: 60 a − 30.
-const ALPHA_SCALE: f32 = 60.0;
-const ALPHA_BIAS: f32 = -30.0;
-
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
     Box::new(Metaball::default())
-}
-
-struct Draw {
-    canvas: Canvas,
-    renderer: Renderer,
-    blur: GraphiteBlur,
-    plan: GraphitePlan,
-}
-
-impl Default for Draw {
-    fn default() -> Draw {
-        let mut renderer = Renderer::default();
-        renderer.p3 = true;
-        Draw { canvas: Canvas::default(), renderer, blur: GraphiteBlur::default(), plan: GraphitePlan::new([0, 0, 1, 1], [0, 0, 1, 1], 1.0).unwrap() }
-    }
 }
 
 #[derive(Default)]
@@ -98,7 +70,6 @@ struct Metaball {
     /// Haptics due to be posted, the last tick (its time and where the dragged blob was), whether
     /// the blobs are apart, and a release spring running (its settle is felt).
     posted: Vec<String>,
-    last_tick: Option<(f64, (f32, f32))>,
     apart: bool,
     released: bool,
     second: (Spring, Spring),
@@ -110,22 +81,19 @@ struct Metaball {
     /// whatever size the canvas is laid out at (RN reads the window's size once).
     touched: bool,
     dirty: bool,
-    draw: Draw,
     gpu: Option<Gpu>,
+    /// The dragged blob's travel since the last tick (pt), and where it was last frame.
+    travel: f32,
+    last_at: Option<(f32, f32)>,
+    last_tick_ms: f64,
 }
 
 struct Gpu {
     format: wgpu::TextureFormat,
     generation: u32,
-    /// The layer texture's size: the canvas + the blur's reach on every side, px.
-    size: (u32, u32),
     compose: wgpu::RenderPipeline,
-    layout: wgpu::BindGroupLayout,
     uniforms: wgpu::Buffer,
-    layer: wgpu::TextureView,
-    empty: wgpu::TextureView,
-    sampler: wgpu::Sampler,
-    bind: Option<(wgpu::TextureView, wgpu::BindGroup)>,
+    bind: wgpu::BindGroup,
 }
 
 impl Metaball {
@@ -143,29 +111,32 @@ impl Metaball {
             moving |= first;
         }
         let second = (self.second.0.value as f32, self.second.1.value as f32);
-        // Apart or together: the pinch-off and the melt.
+        // Apart or together: the neck breaks where the merged field's midpoint crosses zero.
         let gap = (self.first.0 - second.0).hypot(self.first.1 - second.1);
-        if !self.apart && gap > SPLIT_AT + SPLIT_HYSTERESIS {
+        if !self.apart && gap > SPLIT_AT {
             self.apart = true;
-            self.posted.push(SPLIT.into());
-        } else if self.apart && gap < SPLIT_AT - SPLIT_HYSTERESIS {
+            self.posted.push(SNAP.into());
+        } else if self.apart && gap < SPLIT_AT - MERGE_HYSTERESIS {
             self.apart = false;
-            self.posted.push(JOIN.into());
+            self.posted.push(MERGE.into());
         }
-        // The stretch ticks: the dragged blob, from the centre.
+        // The stretch's texture: ticks by distance travelled, denser as the gap grows.
         let held = if self.first_pan.tracking() { Some(self.first) } else if self.second_pan.tracking() { Some(second) } else { None };
-        if let Some(at) = held {
-            let (cx, cy) = self.centre();
-            let d = (at.0 - cx).hypot(at.1 - cy);
-            let due = match self.last_tick {
-                None => true,
-                Some((t, from)) => now_ms - t >= tick_ms(d) && (at.0 - from.0).hypot(at.1 - from.1) > 2.0,
-            };
-            if d > 8.0 && due {
-                self.posted.push(tick_kind(d).into());
-                self.last_tick = Some((now_ms, at));
-            } else if self.last_tick.is_none() {
-                self.last_tick = Some((now_ms, at));
+        match held {
+            Some(at) => {
+                let step = self.last_at.map_or(0.0, |from| (at.0 - from.0).hypot(at.1 - from.1));
+                self.travel += step;
+                self.last_at = Some(at);
+                // Only while it moves: a blob held still is silent.
+                if step > 0.0 && self.travel >= tick_spacing(gap) && now_ms - self.last_tick_ms >= TICK_MIN_MS {
+                    self.posted.push(TICK.into());
+                    self.travel = 0.0;
+                    self.last_tick_ms = now_ms;
+                }
+            }
+            None => {
+                self.last_at = None;
+                self.travel = 0.0;
             }
         }
         // A released blob settles at the centre.
@@ -209,7 +180,6 @@ impl Surface for Metaball {
                 self.first_from = self.first;
                 self.touched = true;
                 self.posted.push(GRAB.into());
-                self.last_tick = None;
             }
             // onActive (the pan's onUpdate).
             Event::Start(p) | Event::Update(p) => {
@@ -254,7 +224,6 @@ impl Surface for Metaball {
                 self.touched = true;
                 self.second_from = second;
                 self.posted.push(GRAB.into());
-                self.last_tick = None;
             }
             Event::Start(p) | Event::Update(p) => {
                 self.second.0.set((self.second_from.0 + p.translation_x) as f64);
@@ -309,95 +278,34 @@ impl Surface for Metaball {
         }
         let moving = self.step(frame.now_ms);
         let (pw, ph) = frame.pixels();
-        let scale = frame.scale;
-        let sigma = BLUR * scale;
-        let reach = ceil_size(3.0 * sigma);
-        let size = (pw + 2 * reach as u32, ph + 2 * reach as u32);
-        if self.gpu.as_ref().map(|g| (g.format, g.generation, g.size)) != Some((format, frame.shader_generation, size)) {
-            self.gpu = Some(build(device, format, frame.shader_generation, size));
+        if self.gpu.as_ref().map(|g| (g.format, g.generation)) != Some((format, frame.shader_generation)) {
+            self.gpu = Some(build(device, format, frame.shader_generation));
         }
+        let gpu = self.gpu.as_ref().unwrap();
         let (c1, c2) = (self.first, (self.second.0.value as f32, self.second.1.value as f32));
-        // layerClip: the circles' bounds + LAYER_MARGIN; the device clip is it rounded out,
-        // within the screen; the layer, that clip outset by the blur's reach.
-        let clip = [
-            c1.0.min(c2.0) - LAYER_MARGIN,
-            c1.1.min(c2.1) - LAYER_MARGIN,
-            c1.0.max(c2.0) + LAYER_MARGIN,
-            c1.1.max(c2.1) + LAYER_MARGIN,
-        ];
-        let device_clip = intersect(round_out(clip.map(|v| v * scale)), [0, 0, pw as i32, ph as i32]);
-        let draw = &mut self.draw;
-        // The layer texture's texel (0, 0) is device (−reach, −reach).
-        draw.canvas.begin(scale);
-        draw.canvas.translate(reach as f32 / scale, reach as f32 / scale);
-        let colors = [Color::rgb8(0, 255, 255), Color::rgb8(0, 0, 255), Color::rgb8(0, 255, 255)];
-        let paint = Paint::shader(Shader::Sweep { center: point(0.0, 0.0), stops: stops(&colors) });
-        draw.canvas.draw_with(&paint, |b| {
-            skia::add_circle(b, c1.0, c1.1, RADIUS);
-            skia::add_circle(b, c2.0, c2.1, RADIUS);
-        });
-        let gpu = self.gpu.as_mut().unwrap();
-        draw.renderer.draw(device, queue, encoder, &draw.canvas, &gpu.layer, GRAPHITE_FORMAT, size.0, size.1, wgpu::Color::TRANSPARENT);
-        let mut u = Uniforms {
-            canvas: [pw as f32, ph as f32, scale, gfx::srgb_flag(format)],
-            low: [0.0; 4],
-            out: [0.0; 4],
-            layer: [0.0, ALPHA_SCALE, ALPHA_BIAS, 0.0],
+        let u = Uniforms {
+            canvas: [pw as f32, ph as f32, frame.scale, gfx::srgb_flag(format)],
+            blobs: [c1.0, c1.1, c2.0, c2.1],
+            shape: [RADIUS, K, 0.0, 0.0],
         };
-        let mut view = gpu.empty.clone();
-        if let Some(desired) = device_clip {
-            if draw.plan.update(outset(desired, reach, reach), desired, sigma) {
-                let out = draw.blur.run(device, queue, encoder, Placed { view: &gpu.layer, origin: [-reach, -reach], size: [size.0, size.1] }, &draw.plan);
-                u.low = low_mapping(&draw.plan, out.origin, out.size);
-                u.out = draw.plan.output.map(|v| v as f32);
-                u.layer[0] = 1.0;
-                view = out.view.clone();
-            }
-        }
         queue.write_buffer(&gpu.uniforms, 0, &u.bytes());
-        if gpu.bind.as_ref().is_none_or(|(v, _)| *v != view) {
-            let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("metaball"),
-                layout: &gpu.layout,
-                entries: &[
-                    wgpu::BindGroupEntry { binding: U.binding, resource: gpu.uniforms.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: BLURRED.binding, resource: wgpu::BindingResource::TextureView(&view) },
-                    wgpu::BindGroupEntry { binding: SMP.binding, resource: wgpu::BindingResource::Sampler(&gpu.sampler) },
-                ],
-            });
-            gpu.bind = Some((view, group));
-        }
-        skia::render::fullscreen_pass(encoder, "metaball", target, &gpu.compose, &gpu.bind.as_ref().unwrap().1);
+        skia::render::fullscreen_pass(encoder, "metaball", target, &gpu.compose, &gpu.bind);
         self.dirty = false;
         moving || self.first_pan.tracking() || self.second_pan.tracking()
     }
 }
 
 /// The blurred image's uv of a device pixel: uv = p · xy + zw (as spiral's).
-fn low_mapping(plan: &GraphitePlan, origin: [i32; 2], size: [u32; 2]) -> [f32; 4] {
-    let src = plan.src_rect.map(|v| v as f32);
-    let low = plan.low_bounds;
-    let kx = (low[2] - low[0]) / (src[2] - src[0]);
-    let ky = (low[3] - low[1]) / (src[3] - src[1]);
-    let (sw, sh) = (size[0] as f32, size[1] as f32);
-    [kx / sw, ky / sh, (low[0] - src[0] * kx - origin[0] as f32) / sw, (low[1] - src[1] * ky - origin[1] as f32) / sh]
-}
-
-fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32, size: (u32, u32)) -> Gpu {
+fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32) -> Gpu {
     let shader = device.create_shader_module(module());
     let layout = device.create_bind_group_layout(&GROUP_0);
-    Gpu {
-        format,
-        generation,
-        size,
-        compose: skia::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None),
-        layout,
-        uniforms: device.create_buffer(&wgpu::BufferDescriptor { label: Some("metaball"), size: Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false }),
-        layer: skia::render::sampled_target(device, "metaball layer", GRAPHITE_FORMAT, size.0, size.1),
-        empty: skia::render::sampled_target(device, "metaball empty", GRAPHITE_FORMAT, 1, 1),
-        sampler: skia::render::linear_sampler(device),
-        bind: None,
-    }
+    let uniforms = device.create_buffer(&wgpu::BufferDescriptor { label: Some("metaball"), size: Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
+    let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("metaball"),
+        layout: &layout,
+        entries: &[wgpu::BindGroupEntry { binding: U.binding, resource: uniforms.as_entire_binding() }],
+    });
+    Gpu { format, generation, compose: skia::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None), uniforms, bind }
 }
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
@@ -458,55 +366,102 @@ mod tests {
     }
 
     #[test]
-    fn grab_ticks_split_join_and_settle_are_felt_and_the_first_springs_back() {
+    fn grab_texture_snap_merge_and_settle_are_felt_and_the_first_springs_back() {
         let mut s = Metaball { size: (400.0, 800.0), touched: true, first: (200.0, 400.0), ..Default::default() };
         s.second = (Spring::at(200.0), Spring::at(400.0));
         let pointer = |phase, x, y, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
         s.input(&pointer(exact_gpu::PointerPhase::Down, 200.0, 400.0, 0.0));
         assert_eq!(s.messages(), [GRAB]);
-        // Dragged down 400 pt over 400 ms, a frame each 16 ms.
-        let mut all = vec![];
+        // Dragged down 400 pt at 4 pt a frame: the ticks come by distance, denser as the gap grows.
+        let mut ticks = vec![];
+        let mut snaps = vec![];
         let mut ms = 0.0;
-        let mut last_tick = -1000.0;
-        for i in 1..=25 {
+        for i in 1..=100 {
             ms = 16.0 * i as f64;
-            s.input(&pointer(exact_gpu::PointerPhase::Move, 200.0, 400.0 + 16.0 * i as f32, ms));
+            s.input(&pointer(exact_gpu::PointerPhase::Move, 200.0, 400.0 + 4.0 * i as f32, ms));
             s.step(ms);
             for m in s.messages() {
-                if m.starts_with("haptic:selection") || m == "haptic:impact-soft" || m == "haptic:impact-light" {
-                    assert!(ms - last_tick >= TICK_MIN_MS, "two ticks {} ms apart", ms - last_tick);
-                    last_tick = ms;
+                if m == TICK {
+                    if let Some(&(t, _)) = ticks.last() {
+                        assert!(ms - t >= TICK_MIN_MS, "two ticks {} ms apart", ms - t);
+                    }
+                    ticks.push((ms, s.first.1 - 400.0));
+                } else if m == SNAP {
+                    snaps.push(s.first.1 - 400.0);
+                } else {
+                    panic!("{m}");
                 }
-                all.push(m);
             }
         }
-        // Ticks that get heavier the farther it goes (a fast drag: past 100 pt before the second).
-        let ticks: Vec<&String> = all.iter().filter(|m| m.as_str() != SPLIT).collect();
-        assert!(ticks.len() >= 4 && ticks[0] == "haptic:impact-soft" && ticks.last().unwrap().as_str() == "haptic:impact-light", "{all:?}");
-        assert_eq!(tick_kind(50.0), "haptic:selection");
-        assert!(tick_ms(0.0) > tick_ms(150.0) && tick_ms(400.0) == TICK_MIN_MS);
-        assert_eq!(all.iter().filter(|m| m.as_str() == SPLIT).count(), 1, "{all:?}");
-        // Let go: the first springs back to the centre, melts into the second, settles.
-        s.input(&pointer(exact_gpu::PointerPhase::Up, 200.0, 800.0, ms + 16.0));
+        // One snap, where the neck breaks: the gap just past 2R + K/2.
+        assert_eq!(snaps.len(), 1, "{snaps:?}");
+        assert!(snaps[0] > SPLIT_AT && snaps[0] <= SPLIT_AT + 4.0, "{snaps:?}");
+        // Sparse near the centre, denser under tension: the gaps between ticks shrink.
+        let first = ticks[1].1 - ticks[0].1;
+        let late: Vec<f32> = ticks.windows(2).filter(|w| w[0].1 > 150.0 && w[1].1 < SPLIT_AT).map(|w| w[1].1 - w[0].1).collect();
+        assert!(first > 25.0 && !late.is_empty() && late.iter().all(|&d| d < first * 0.6), "{first} {late:?}");
+        // Held still: no texture.
+        for k in 1..=10 {
+            s.step(ms + 16.0 * k as f64);
+        }
+        assert!(s.messages().is_empty());
+        // Let go: the first springs back to the centre, merges once (soft), settles (soft).
+        s.input(&pointer(exact_gpu::PointerPhase::Up, 200.0, 800.0, ms + 200.0));
         assert!(s.first_springs);
-        let mut joined = false;
-        let mut settled = false;
-        let mut t = ms + 16.0;
+        let mut felt = vec![];
+        let mut t = ms + 200.0;
         while t < ms + 3000.0 {
             t += 16.0;
             s.step(t);
-            for m in s.messages() {
-                joined |= m == JOIN;
-                settled |= m == SETTLE;
-            }
-            if settled {
+            felt.extend(s.messages());
+            if felt.len() == 2 {
                 break;
             }
         }
-        assert!(joined && settled);
+        assert_eq!(felt, [MERGE, SETTLE]);
         assert!((s.first.1 - 400.0).abs() < 0.5, "{:?}", s.first);
-        // ~0.55 s critically damped: settled well within 1.5 s of the lift.
-        assert!(t - ms < 1500.0, "{}", t - ms);
+        assert!(t - ms < 1700.0, "{}", t - ms);
+    }
+
+    #[test]
+    fn the_sdf_draws_rest_a_stretch_a_thin_neck_and_the_pinch_off_crisply() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
+        exact_gpu::shaders::load_dir(&dir, &crate::REGISTRY).unwrap();
+        let gpu = match fixture::device() {
+            Ok(gpu) => gpu,
+            Err(error) => return eprintln!("{error}; skipped"),
+        };
+        let f = Frame { width: 300.0, height: 600.0, scale: 2.0, ..frame(0.0) };
+        let mut s = Metaball { size: (300.0, 600.0), touched: true, ..Default::default() };
+        let lit = |img: &fixture::Pixels, x: f32, y: f32| img.at((x * 2.0) as u32, (y * 2.0) as u32)[2] > 128;
+        for (name, gap) in [("rest", 0.0), ("stretch", 150.0), ("neck", 196.0), ("pinched", 206.0)] {
+            s.first = (150.0, 200.0);
+            s.second = (Spring::at(150.0), Spring::at(200.0 + gap as f64));
+            let (img, _) = fixture::render(&gpu, &mut s, &f).unwrap();
+            img.save(&format!("metaball-sdf-{name}"));
+            // The neck's middle: lit while the centres are under SPLIT_AT apart, dark past it.
+            assert_eq!(lit(&img, 150.0, 200.0 + gap / 2.0), gap < SPLIT_AT, "{name}");
+            // Beside the neck (at its middle, a radius and 4 pt off the axis): never lit.
+            assert!(!lit(&img, 150.0 - RADIUS - 4.0, 200.0 + gap / 2.0), "{name}");
+            // A crisp edge at rest: the circle's rim goes from lit to background within 2 device px.
+            if gap == 0.0 {
+                let row = 400u32;
+                let edge: Vec<u8> = (2 * 150 - 160 - 3..2 * 150 - 160 + 3).map(|x| img.at(x as u32, row)[2]).collect();
+                assert!(edge[0] < 40 && edge[5] > 200, "{edge:?}");
+                assert!(edge.iter().filter(|&&v| v > 40 && v < 200).count() <= 2, "{edge:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn the_neck_breaks_where_the_smooth_minimum_s_midpoint_leaves_the_shape() {
+        let smin = |a: f32, b: f32| {
+            let h = (0.5 + 0.5 * (b - a) / K).clamp(0.0, 1.0);
+            b + (a - b) * h - K * h * (1.0 - h)
+        };
+        let mid = |gap: f32| smin(gap / 2.0 - RADIUS, gap / 2.0 - RADIUS);
+        assert!(mid(SPLIT_AT - 0.5) < 0.0 && mid(SPLIT_AT + 0.5) > 0.0);
+        assert_eq!(SPLIT_AT, 200.0);
     }
 
     #[test]

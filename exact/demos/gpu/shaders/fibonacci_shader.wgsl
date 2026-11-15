@@ -7,7 +7,7 @@ struct Uniforms {
     canvas: vec4<f32>,
     // The square's top-left corner and side, in points; unused.
     square: vec4<f32>,
-    // iTime, N, magicalMul; unused.
+    // iTime, N, magicalMul, and 1 for the full-bleed layout (no circle mask).
     params: vec4<f32>,
 };
 
@@ -84,7 +84,10 @@ fn fs(in: Out) -> @location(0) vec4<f32> {
     }
     // The layer stores the shader's (premultiplied) colour clamped; the mask keeps it where
     // the blurred circle's luminance (its coverage, white) is.
-    let m = blurred_disk(length(fc - res * 0.5), size * 0.5);
+    var m = 1.0;
+    if (u.params.w < 0.5) {
+        m = blurred_disk(length(fc - res * 0.5), size * 0.5);
+    }
     var rgb = clamp(o.rgb, vec3<f32>(0.0), vec3<f32>(1.0)) * m;
     if (u.canvas.w > 0.5) { rgb = to_linear(rgb); }
     return vec4<f32>(rgb, 1.0);

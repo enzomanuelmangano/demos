@@ -354,8 +354,33 @@ private final class SwiftSlider: ExactNativeInstance {
         try? setProps(props)
     }
     override var view: ExactNativeView { host.view }
+    /// `max-track-tint`: the unfilled track's colour, `#RRGGBB` or `#RRGGBBAA` (airbnb-slider:
+    /// the default white at a low alpha vanishes on the page's light blue). SwiftUI's Slider has
+    /// no such modifier; on iOS it is a UISlider inside the hosting view, so the tint is set on
+    /// that, once it exists (the first layout) and again on each change.
+    private var maxTrack: UIColor?
     override func setProps(_ props: [String: String]) throws {
         if let p = props["progress"].flatMap(Float.init) { model.progress = p }
+        if let hex = props["max-track-tint"] {
+            maxTrack = Self.rgba(hex)
+            applyTint()
+            DispatchQueue.main.async { [weak self] in self?.applyTint() }
+        }
+    }
+    private func applyTint() {
+        guard let maxTrack else { return }
+        func walk(_ v: UIView) {
+            if let slider = v as? UISlider { slider.maximumTrackTintColor = maxTrack; return }
+            v.subviews.forEach(walk)
+        }
+        walk(host.view)
+    }
+    private static func rgba(_ hex: String) -> UIColor? {
+        let s = hex.hasPrefix("#") ? String(hex.dropFirst()) : hex
+        guard s.count == 6 || s.count == 8, let v = UInt32(s, radix: 16) else { return nil }
+        let (rgb, a): (UInt32, CGFloat) = s.count == 8 ? (v >> 8, CGFloat(v & 0xff) / 255) : (v, 1)
+        return UIColor(red: CGFloat((rgb >> 16) & 0xff) / 255, green: CGFloat((rgb >> 8) & 0xff) / 255,
+                       blue: CGFloat(rgb & 0xff) / 255, alpha: a)
     }
 }
 

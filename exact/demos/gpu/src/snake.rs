@@ -81,6 +81,12 @@
 
 use std::collections::VecDeque;
 
+/// The haptics (the owner's call, phone feedback mwhoriru): eating, the game's end; a turn's
+/// selection tick at most once per TURN_MIN_MS.
+const EAT: &str = "haptic:impact-medium";
+const GAME_OVER: &str = "haptic:impact-rigid";
+const TURN_MIN_MS: f64 = 60.0;
+
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, PointerPhase, Surface, SurfaceError, Value};
 use gesture_handler::{directions, FlingEvent, FlingGesture};
@@ -616,6 +622,8 @@ struct SnakeDemo {
     /// The restart PressableScale (the shared pressto machine).
     press: Pressable,
     posted: Vec<String>,
+    /// The last turn's selection tick, on the pointer's clock.
+    last_turn_ms: Option<f64>,
     score_font: Option<Font>,
     label_font: Option<Font>,
     digit_font: Option<Font>,
@@ -686,6 +694,7 @@ impl SnakeDemo {
             ],
             press: Pressable::new(),
             posted: Vec::new(),
+            last_turn_ms: None,
             score_font: skia::match_ui_font(SCORE_SIZE, 700.0),
             label_font: skia::match_ui_font(LABEL_SIZE, 500.0),
             digit_font: Font::new(SF_ROUNDED_BOLD, DIGIT_SIZE),
@@ -718,11 +727,15 @@ impl SnakeDemo {
 
     /// A fling's onStart → scheduleOnRN(changeDirectionWrapper): the game turns (JS) and
     /// onDirectionChange plays Haptics.selectionAsync.
-    fn turn(&mut self, direction: u32) {
+    fn turn(&mut self, direction: u32, at_ms: f64) {
         if let Some(g) = self.game.as_mut() {
             g.change_direction(direction);
         }
-        self.posted.push("haptic:selection".into());
+        // At most one tick per TURN_MIN_MS of the pointer's clock (the owner's call).
+        if self.last_turn_ms.is_none_or(|t| at_ms - t >= TURN_MIN_MS) {
+            self.posted.push("haptic:selection".into());
+            self.last_turn_ms = Some(at_ms);
+        }
     }
 
     /// The restart press's onPress (JS): isGameOver.set(false); restart(): clear() and
@@ -777,7 +790,16 @@ impl SnakeDemo {
         } else if !self.shown.over && self.last_tick.is_none_or(|last| now - last > TICK_MS) {
             if let Some(g) = self.game.as_mut() {
                 // updateGame (JS): move, then gameState.set.
+                let (score, over) = (g.score, g.is_game_over);
                 g.step(&mut self.random);
+                // The owner's calls (phone feedback mwhoriru; RN plays none for these): an
+                // impact as the snake eats, a rigid one as the game ends.
+                if g.score > score {
+                    self.posted.push(EAT.into());
+                }
+                if g.is_game_over && !over {
+                    self.posted.push(GAME_OVER.into());
+                }
                 self.staged.capture(g);
                 self.next.state = true;
             }
@@ -991,7 +1013,7 @@ impl Surface for SnakeDemo {
         for i in 0..self.flings.len() {
             if let FlingEvent::Start { .. } = self.flings[i].event(id, phase, x, y, at_ms, claim) {
                 let direction = self.flings[i].direction;
-                self.turn(direction);
+                self.turn(direction, at_ms);
             }
         }
     }
@@ -1609,6 +1631,8 @@ mod tests {
             d.advance(t);
             assert!(n < 30);
         }
+        // The bite is felt once, rigid (the owner's call).
+        assert_eq!(d.messages().iter().filter(|m| m.as_str() == GAME_OVER).count(), 1);
         // Shown over at the next frame (the ticks stop); isGameOver the one after.
         t += F120;
         d.advance(t);
@@ -1666,6 +1690,30 @@ mod tests {
         d.input(&pointer(PointerPhase::Down, bx, by, t));
         d.input(&pointer(PointerPhase::Cancel, bx, by, t + 10.0));
         assert!(d.messages().is_empty());
+    }
+
+    #[test]
+    fn eating_the_apple_is_felt() {
+        let mut d = demo(1.0);
+        let mut t = 0.0;
+        d.advance(t);
+        {
+            let g = d.game.as_mut().unwrap();
+            let head = g.snake[0];
+            g.direction = RIGHT;
+            g.moved_direction = RIGHT;
+            g.food = Some(Cell { x: head.x + g.square_size, y: head.y });
+        }
+        d.messages();
+        let score = d.game.as_ref().unwrap().score;
+        let mut n = 0;
+        while d.game.as_ref().unwrap().score == score {
+            t += F120;
+            n += 1;
+            d.advance(t);
+            assert!(n < 30);
+        }
+        assert_eq!(d.messages(), vec![EAT.to_string()]);
     }
 
     #[test]

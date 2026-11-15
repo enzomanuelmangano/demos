@@ -297,7 +297,7 @@ fn audit_inputs(name: &str, arity: usize) -> Vec<Value> {
         "radar_chart" => [1.0, 0.6, 0.1, 0.1, 0.5, 0.2, 0.1, 0.5, 0.9, 0.8].map(n).to_vec(),
         "snake" => vec![n(7.0), n(402.0), n(874.0)],
         "staggered_card_number" => vec![b(false), n(45.1), n(417.3)],
-        "sudoku" => vec![n(7.0), n(0.0), n(0.0)],
+        "sudoku" => vec![n(7.0), n(0.0), n(0.0), n(16.0), n(170.0), n(370.0), n(0.0), n(0.0), n(0.0)],
         "swipe_cards" => vec![n(62.0), n(0.0), n(0.0), n(0.0)],
         "the_little_prince" => vec![n(3.0), b(false)],
         "telegram_theme_switch" => vec![n(34.0)],

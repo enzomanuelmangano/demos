@@ -64,6 +64,7 @@ pub mod email_demo;
 pub mod empty_qr_code;
 pub mod exclusion_tabs;
 pub mod expandable_mini_player;
+pub mod family_number;
 pub mod fibonacci_shader;
 pub mod fibonacci_shader_grid;
 pub mod floating_bottom_bar;
@@ -176,7 +177,8 @@ pub static REGISTRY: Registry = Registry {
         ("empty_qr_code", 0, empty_qr_code::surface),
         ("exclusion_tabs", 0, exclusion_tabs::surface),
         ("expandable_mini_player", 1, expandable_mini_player::surface),
-        ("fibonacci_shader", 1, fibonacci_shader::surface),
+        ("family_number", 1, family_number::surface),
+        ("fibonacci_shader", 2, fibonacci_shader::surface),
         ("fibonacci_shader_grid", 0, fibonacci_shader_grid::surface),
         ("floating_bottom_bar", 0, floating_bottom_bar::surface),
         ("floating_modal", 0, floating_modal::surface),
@@ -231,7 +233,7 @@ pub static REGISTRY: Registry = Registry {
         ("steddy_graph_interaction", 1, steddy_graph_interaction::surface),
         ("steddy_highlight", 1, steddy_graph_interaction::highlight),
         ("story_list", 0, story_list::surface),
-        ("sudoku", 3, sudoku::surface),
+        ("sudoku", 9, sudoku::surface),
         ("swipe_cards", 4, swipe_cards::surface),
         ("telegram_theme_switch", 1, telegram_theme_switch::surface),
         ("the_little_prince", 2, the_little_prince::surface),

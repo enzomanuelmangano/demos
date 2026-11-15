@@ -1,25 +1,20 @@
-// Metaball (src/animations/metaball/index.tsx): the Group's layer (Blur 30 + ColorMatrix) composed
-// onto the canvas. `blurred` is Graphite's blur (skia::blur::GraphiteBlur) of the layer as
-// packages/skia drew it: the two circles as one path (Graphite's 4× MSAA), the SweepGradient
-// about (0, 0) interpolated in Display P3, premultiplied ENCODED DISPLAY P3 in 8 bits, as RN
-// Skia's layer in the surface's colour space. The ColorMatrix runs on the unpremultiplied colour
-// (RGB kept, alpha 60 a − 30, clamped); the result lands in the canvas's 8-bit P3 surface, which
-// is cleared transparent; Core Animation converts it to sRGB per pixel, unpremultiplied, and
-// lays it over the View's #0A0A0A.
+// Metaball (src/animations/metaball/index.tsx), as an analytic SDF (the owner's call, phone
+// feedback mwhp8vhc, in place of RN's Blur 30 + ColorMatrix alpha threshold): each circle is a
+// circle's signed distance, the two merged by a polynomial smooth minimum (k), the shape's edge
+// covered over one device pixel. A neck forms while the centres are under 2R + k/2 apart and
+// breaks there, as RN's blurred union does at about 2R + 40 (k = 80). The fill: RN's
+// SweepGradient about (0, 0) (cyan, blue, cyan), interpolated in Display P3, stored in the
+// canvas's 8-bit P3 surface, converted to sRGB by Core Animation, over the View's #0A0A0A.
 struct Uniforms {
     // The canvas (device px), its scale, whether the target encodes sRGB itself.
     canvas: vec4<f32>,
-    // The blurred image: uv = p · low.xy + low.zw (p in device px).
-    low: vec4<f32>,
-    // The blur result's bounds (ltrb, device px): transparent outside.
-    out: vec4<f32>,
-    // .x: 1 when there is a blur; .y, .z: the ColorMatrix's alpha row (scale, bias).
-    layer: vec4<f32>,
+    // The two centres (pt): first.xy, second.xy.
+    blobs: vec4<f32>,
+    // .x: the radius (pt); .y: the smooth minimum's k (pt).
+    shape: vec4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> u: Uniforms;
-@group(0) @binding(1) var blurred: texture_2d<f32>;
-@group(0) @binding(2) var smp: sampler;
 
 @vertex
 fn vs(@builtin(vertex_index) i: u32) -> @builtin(position) vec4<f32> {
@@ -42,23 +37,36 @@ fn p3_to_srgb(c: vec3<f32>) -> vec3<f32> {
         -0.0420 * l.r + 1.0419 * l.g,
         -0.0197 * l.r - 0.0786 * l.g + 1.0979 * l.b));
 }
-// An 8-bit surface's store.
 fn q8(c: vec4<f32>) -> vec4<f32> {
     return round(clamp(c, vec4<f32>(0.0), vec4<f32>(1.0)) * 255.0) / 255.0;
 }
 
+// The polynomial smooth minimum (Quilez): a and b blended over k.
+fn smin(a: f32, b: f32, k: f32) -> f32 {
+    let h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
+    return mix(b, a, h) - k * h * (1.0 - h);
+}
+
 @fragment
 fn compose(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
-    let p = pos.xy;
-    var g = vec4<f32>(0.0);
-    if (u.layer.x > 0.5 && all(p >= u.out.xy) && all(p <= u.out.zw)) {
-        g = textureSampleLevel(blurred, smp, p * u.low.xy + u.low.zw, 0.0);
-    }
-    // SkColorFilters::Matrix: unpremultiplied in, RGB kept, alpha k · a + b, clamped.
-    var rgb = vec3<f32>(0.0);
-    if (g.a > 0.0) { rgb = g.rgb / g.a; }
-    let a = clamp(u.layer.y * g.a + u.layer.z, 0.0, 1.0);
-    let canvas = q8(vec4<f32>(rgb * a, a));
+    let s = u.canvas.z;
+    let p = pos.xy / s;
+    let r = u.shape.x;
+    // The neck's reach grows with the gap up to k at 2R apart: a smooth minimum of two equal
+    // fields would swell the shape by k/4 everywhere, so coincident circles stay one circle of
+    // radius R (as RN's blurred union of them is), and the neck is k's from 2R on.
+    let gap = length(u.blobs.zw - u.blobs.xy);
+    let k = max(u.shape.y * clamp(gap / (2.0 * r), 0.0, 1.0), 1e-3);
+    let d = smin(length(p - u.blobs.xy) - r, length(p - u.blobs.zw) - r, k);
+    // One device pixel of analytic coverage across the edge (the field is a distance, its
+    // gradient 1 away from the neck and close to it there).
+    let a = clamp(0.5 - d * s, 0.0, 1.0);
+    // SweepGradient about (0, 0): its angle clockwise from +x over a turn; stops at 0, 0.5, 1.
+    let t = fract(atan2(p.y, p.x) / 6.283185307179586 + 1.0);
+    let cyan = vec3<f32>(0.0, 1.0, 1.0);
+    let blue = vec3<f32>(0.0, 0.0, 1.0);
+    let g = select(mix(blue, cyan, (t - 0.5) * 2.0), mix(cyan, blue, t * 2.0), t < 0.5);
+    let canvas = q8(vec4<f32>(g * a, a));
     var src = vec3<f32>(0.0);
     if (canvas.a > 0.0) { src = p3_to_srgb(canvas.rgb / canvas.a) * canvas.a; }
     let bg = vec3<f32>(10.0 / 255.0);

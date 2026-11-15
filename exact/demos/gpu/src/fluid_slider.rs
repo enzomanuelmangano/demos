@@ -25,7 +25,7 @@ use gesture_handler::{Event, PanGesture};
 use pressto::HitSlop;
 use reanimated::{interpolate_clamp, Spring, SpringConfig, GENTLE};
 use skia::blur::{ceil_size, outset, GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
-use skia::{Canvas, Color, Font, Paint, Renderer};
+use skia::{Canvas, Color, Font, Paint, PathEvent, Renderer};
 
 use crate::{gfx, shaders};
 use shaders::fluid_slider::{entry, module, Uniforms, GOO, GROUP_0, SMP, TOP, U};
@@ -48,6 +48,46 @@ const BAR_SLOP: HitSlop = HitSlop::all(16.0);
 /// A touch farther than this from the picker springs it there (the owner's call: RN puts it at
 /// the finger at once). Nearer, the picker is at the finger, as RN.
 const CHASE_FROM: f32 = 20.0;
+/// The haptics (the owner's call, phone feedback mwhp5atg; RN plays none), through the host: a
+/// light impact at the grab, a selection tick per value step (at most one per TICK_MIN_MS), a
+/// rigid tap at 0 and 100, a soft one where a far touch's spring lands.
+const GRAB: &str = "haptic:impact-light";
+const TICK: &str = "haptic:selection";
+const LIMIT: &str = "haptic:impact-rigid";
+const LANDED: &str = "haptic:impact-soft";
+const TICK_MIN_MS: f64 = 40.0;
+
+/// The ink box of `text` drawn at (0, 0) with its baseline at 0: [left, top, right, bottom], the
+/// glyph outlines' own extent (curves sampled finely), not measureText's rounded-out bounds.
+fn ink_box(font: &Font, text: &str) -> [f32; 4] {
+    let mut b = [f32::MAX, f32::MAX, f32::MIN, f32::MIN];
+    let mut add = |x: f32, y: f32| {
+        b = [b[0].min(x), b[1].min(y), b[2].max(x), b[3].max(y)];
+    };
+    for e in font.text_path(text, 0.0, 0.0).iter() {
+        match e {
+            PathEvent::Begin { at } => add(at.x, at.y),
+            PathEvent::Line { to, .. } => add(to.x, to.y),
+            PathEvent::Quadratic { from, ctrl, to } => {
+                for i in 1..=32 {
+                    let t = i as f32 / 32.0;
+                    let u = 1.0 - t;
+                    add(u * u * from.x + 2.0 * u * t * ctrl.x + t * t * to.x, u * u * from.y + 2.0 * u * t * ctrl.y + t * t * to.y);
+                }
+            }
+            PathEvent::Cubic { from, ctrl1, ctrl2, to } => {
+                for i in 1..=32 {
+                    let t = i as f32 / 32.0;
+                    let u = 1.0 - t;
+                    let (a, bb, c, d) = (u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t);
+                    add(a * from.x + bb * ctrl1.x + c * ctrl2.x + d * to.x, a * from.y + bb * ctrl1.y + c * ctrl2.y + d * to.y);
+                }
+            }
+            PathEvent::End { .. } => {}
+        }
+    }
+    if b[0] > b[2] { [0.0; 4] } else { b }
+}
 const PICKER_Y: SpringConfig = SpringConfig { stiffness: 200.0, damping: 20.0, mass: 0.8 };
 static OUTFIT: &[u8] = include_bytes!("../fonts/outfit.ttf");
 
@@ -77,6 +117,14 @@ struct FluidSlider {
     /// The value's text, rebuilt only when it changes.
     label: String,
     label_value: i32,
+    /// The label's ink, left and right of its pen (see `ink_box`), and the cap height.
+    label_ink: (f32, f32),
+    cap: Option<f32>,
+    /// Haptics due to be posted; the value last felt and when; the chase's landing to feel.
+    posted: Vec<String>,
+    felt_value: i32,
+    felt_ms: f64,
+    land: bool,
     layers: [Canvas; 2],
     renderers: [Renderer; 2],
     blur: GraphiteBlur,
@@ -97,6 +145,12 @@ impl Default for FluidSlider {
             picker_y: None,
             label: String::new(),
             label_value: 0,
+            label_ink: (0.0, 0.0),
+            cap: None,
+            posted: Vec::new(),
+            felt_value: 0,
+            felt_ms: f64::NEG_INFINITY,
+            land: false,
             layers: Default::default(),
             renderers: Default::default(),
             blur: GraphiteBlur::default(),
@@ -164,8 +218,28 @@ impl FluidSlider {
         // Caught up with the finger (or at rest at the lift's target): the finger leads again.
         if !running || (self.sliding && (self.picker.value - self.picker.target()).abs() < 0.5) {
             self.chasing = false;
+            self.land = true;
         }
         running
+    }
+    /// The value's haptics at this frame: a tick per step while a finger slides or the picker
+    /// chases (rate-limited), a rigid tap arriving at an end, a soft one as a chase lands.
+    fn feel(&mut self, value: i32, now_ms: f64) {
+        if std::mem::take(&mut self.land) {
+            self.posted.push(LANDED.into());
+        }
+        if !(self.sliding || self.chasing) || value == self.felt_value {
+            return;
+        }
+        if value == 0 || value == 100 {
+            self.posted.push(LIMIT.into());
+        } else if now_ms - self.felt_ms >= TICK_MIN_MS {
+            self.posted.push(TICK.into());
+        } else {
+            return;
+        }
+        self.felt_value = value;
+        self.felt_ms = now_ms;
     }
     /// The finger is at `x`: the picker there, or springing there while it chases.
     fn follow(&mut self, x: f32) {
@@ -187,6 +261,10 @@ impl Surface for FluidSlider {
         true
     }
 
+    fn messages(&mut self) -> Vec<String> {
+        crate::haptic::host(std::mem::take(&mut self.posted))
+    }
+
     fn agent(&mut self, _request: &str) -> Option<String> {
         Some(format!("{{\"value\":{},\"sliding\":{}}}", self.label_value, self.sliding))
     }
@@ -205,6 +283,8 @@ impl Surface for FluidSlider {
                 }
                 self.follow(x);
                 self.slide(true);
+                self.posted.push(GRAB.into());
+                self.felt_value = self.label_value;
             }
             Event::Start(p) | Event::Update(p) => self.follow(p.x),
             Event::End(_) | Event::Fail => self.slide(false),
@@ -238,7 +318,14 @@ impl Surface for FluidSlider {
             self.label.clear();
             let _ = write!(self.label, "{value}");
             self.label_value = value;
+            if let Some(font) = &self.font {
+                let b = ink_box(font, &self.label);
+                self.label_ink = (b[0], b[2]);
+                // The cap height: a flat-topped figure's ink top (the font's own, read once).
+                self.cap.get_or_insert_with(|| -ink_box(font, "H")[1]);
+            }
         }
+        self.feel(value, frame.now_ms);
 
         let (pw, ph) = frame.pixels();
         let scale = frame.scale;
@@ -261,8 +348,12 @@ impl Surface for FluidSlider {
         top.begin(scale);
         top.draw_circle(x, py, r * 0.8, &Paint::fill(Color::WHITE));
         if let Some(font) = &self.font {
-            let ink = font.measure_text(&self.label);
-            top.draw_text(&self.label, x - ink.width / 2.0, py + FONT_SIZE / 3.0, font, &Paint::fill(Color::BLACK));
+            // The owner's call (phone feedback mwhp5atg): the value's ink box centred on the picker,
+            // its cap height centred vertically (RN centres measureText's rounded-out width and
+            // sets the baseline at pickerY + 12 / 3, which leaves the figures off centre).
+            let (l, r_ink) = self.label_ink;
+            let cap = self.cap.unwrap_or(FONT_SIZE * 0.7);
+            top.draw_text(&self.label, x - (l + r_ink) / 2.0, py + cap / 2.0, font, &Paint::fill(Color::BLACK));
         }
         self.renderers[0].draw(device, queue, encoder, goo, &gpu.views[0], GRAPHITE_FORMAT, layer.0, layer.1, wgpu::Color::TRANSPARENT);
         self.renderers[1].draw(device, queue, encoder, top, &gpu.views[1], GRAPHITE_FORMAT, pw, ph, wgpu::Color::TRANSPARENT);
@@ -338,6 +429,51 @@ mod tests {
 
     fn frame(now_ms: f64) -> Frame {
         Frame { width: 400.0, height: 100.0, scale: 2.0, now_ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: exact_gpu::shaders::shader_generation(), headroom: 1.0 }
+    }
+
+    #[test]
+    fn the_value_s_ink_is_centred_and_its_cap_height_too() {
+        let font = Font::new(OUTFIT, FONT_SIZE).unwrap();
+        for text in ["0", "1", "47", "100"] {
+            let b = ink_box(&font, text);
+            assert!(b[2] > b[0] && b[2] - b[0] < font.measure_text(text).width + 1.0, "{text} {b:?}");
+            // Drawn at x − (l + r) / 2, the ink's middle is on x.
+            let x = 50.0 - (b[0] + b[2]) / 2.0;
+            assert!(((x + b[0]) + (x + b[2]) - 100.0).abs() < 1e-4);
+        }
+        let cap = -ink_box(&font, "H")[1];
+        assert!((cap - FONT_SIZE * 0.7).abs() < 1.5, "{cap}");
+        // A figure's ink top is the cap height (Outfit's lining figures), so baseline py + cap / 2
+        // puts it centred on py.
+        let one = ink_box(&font, "1");
+        assert!((-one[1] - cap).abs() < 0.3 && one[3].abs() < 0.3, "{one:?}");
+    }
+
+    #[test]
+    fn the_value_s_steps_ends_grab_and_landing_are_felt() {
+        let mut s = FluidSlider { size: (400.0, 100.0), picker_y: Some(Spring::at(50.0)), ..Default::default() };
+        let pointer = |phase, x, y, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
+        s.input(&pointer(PointerPhase::Down, 30.0, 51.0, 0.0));
+        assert_eq!(s.posted, [GRAB]);
+        s.posted.clear();
+        // Value steps 0 → 5 within 40 ms: one tick, then nothing until 40 ms passed.
+        s.feel(1, 0.0);
+        s.feel(2, 16.0);
+        s.feel(3, 41.0);
+        assert_eq!(s.posted, [TICK, TICK]);
+        s.posted.clear();
+        // An end: rigid, whatever the time since.
+        s.feel(100, 45.0);
+        s.feel(100, 100.0);
+        assert_eq!(s.posted, [LIMIT]);
+        s.posted.clear();
+        // Let go: nothing more; a chase that lands is soft.
+        s.input(&pointer(PointerPhase::Up, 30.0, 51.0, 200.0));
+        s.feel(50, 300.0);
+        assert!(s.posted.is_empty());
+        s.land = true;
+        s.feel(50, 316.0);
+        assert_eq!(s.posted, [LANDED]);
     }
 
     #[test]

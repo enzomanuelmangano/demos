@@ -15,15 +15,16 @@
 //!   continuous, boxShadow 0 0 5px rgba(0, 0, 0, 0.05) (σ 2.5, RN iOS's shadowRadius = blur / 2).
 //! - A selection haptic each time round(scrollX / 320) changes (useAnimatedReaction), at most
 //!   one every 50 ms (a fast scrub through pages does not buzz).
-//! - The paginator, in its 40 pt strip 120 below the screen's centre (RN's Paginator box). The
-//!   owner's call (phone feedback, 2026-11-15: RN's three faint 10 pt dots, the active one only
-//!   a little larger, read as barely there): an iOS page control. Twenty dots 6 pt round, 8 pt
-//!   apart, black at 20 %; the current page's dot a capsule 18 × 6 at 80 %. Each dot's share
-//!   t = clamp(1 − |page − i|, 0, 1) of the swipe sets its width (6 + 12 t) and alpha
-//!   (0.2 + 0.6 t), page = scrollX / 320 as it moves, so the capsule flows from dot to dot with
-//!   the finger and the fling. The shares of any page sum to 1, so the row's width is constant
-//!   (19 × 6 + 18 + 19 × 8 = 284) and it stays centred. Drawn in the frame the scroll moves,
-//!   no commit.
+//! - The paginator, in its 40 pt strip 120 below the screen's centre (RN's Paginator box), as
+//!   subtle as RN's (three faint dots, rgba(0, 0, 0, 0.15)) and laid out as UIPageControl does
+//!   with many pages (the owner's call, phone feedback 2026-11-15; a 20-dot row with a capsule
+//!   read as clutter): a window of seven 6 pt dots, 14 pt apart, centred on the screen and on
+//!   the page, sliding with scrollX / 320 as it moves. Dots toward the window's edges shrink
+//!   (1 within two of its centre, then 0.66, 0.33, gone at five) to say there are more pages,
+//!   unless that side has none left: at the first and last pages the window stops and the
+//!   current dot walks to the end instead. Every dot is the same size; the current page's is
+//!   darker (black at 70 % against 25 %), shared between two dots as the page is swiped. Drawn
+//!   in the frame the scroll moves, no commit.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -42,12 +43,13 @@ const PERSPECTIVE: f32 = 600.0;
 /// The card layer's margin around the card (3σ and a little).
 const MARGIN: f32 = 10.0;
 const SLOTS: usize = 5;
-/// A dot's side, the current page's capsule length, the gap between them, and their alphas.
+/// A dot's side, the distance between two dots' centres, the window's half-width (seven dots),
+/// and the dots' alphas.
 const DOT: f64 = 6.0;
-const ACTIVE: f64 = 18.0;
-const GAP: f64 = 8.0;
-const DOT_ALPHA: f64 = 0.2;
-const ACTIVE_ALPHA: f64 = 0.8;
+const PITCH: f64 = 14.0;
+const HALF: f64 = 3.0;
+const DOT_ALPHA: f64 = 0.25;
+const ACTIVE_ALPHA: f64 = 0.7;
 /// The shortest time between two page haptics.
 const HAPTIC_GAP_MS: f64 = 50.0;
 const LAYER: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
@@ -110,19 +112,37 @@ fn card_style(u: f64) -> (f64, f64, f64, f64) {
     (ty, s, o, rx)
 }
 
-/// The paginator at `page` (scrollX / 320): per dot its centre x from the row's left edge, its
-/// width and its alpha; and the row's width.
-fn dots(page: f64) -> ([(f64, f64, f64); COUNT], f64) {
-    let page = page.clamp(0.0, (COUNT - 1) as f64);
+/// The paginator at `page` (scrollX / 320): per dot its centre x from the screen's centre, its
+/// radius and its alpha.
+fn dots(page: f64) -> [(f64, f64, f64); COUNT] {
+    let last = (COUNT - 1) as f64;
+    let page = page.clamp(0.0, last);
+    // The window's centre: the page, held HALF from each end.
+    let c = page.clamp(HALF, last - HALF);
+    // How far the window has left each end (0 at the end, 1 a page on): the shrink on that
+    // side comes in over that page.
+    let (left, right) = ((c - HALF).min(1.0), (last - HALF - c).min(1.0));
     let mut out = [(0.0, 0.0, 0.0); COUNT];
-    let mut x = 0.0;
     for (i, d) in out.iter_mut().enumerate() {
+        let at = i as f64 - c;
+        let shrink = interpolate(
+            at.abs(),
+            &[0.0, 2.0, 3.0, 4.0, 5.0],
+            &[1.0, 1.0, 0.66, 0.33, 0.0],
+            Extrapolation::Clamp,
+        );
+        let room = if at < 0.0 { left } else { right };
+        // With no pages beyond, the window's edge dot stays whole (up to HALF away).
+        let full = if at.abs() <= HALF { 1.0 } else { 0.0 };
+        let scale = full + (shrink - full) * room;
         let t = (1.0 - (page - i as f64).abs()).clamp(0.0, 1.0);
-        let w = DOT + (ACTIVE - DOT) * t;
-        *d = (x + w / 2.0, w, DOT_ALPHA + (ACTIVE_ALPHA - DOT_ALPHA) * t);
-        x += w + GAP;
+        *d = (
+            at * PITCH,
+            DOT / 2.0 * scale,
+            DOT_ALPHA + (ACTIVE_ALPHA - DOT_ALPHA) * t,
+        );
     }
-    (out, x - GAP)
+    out
 }
 
 impl Carousel {
@@ -370,15 +390,13 @@ impl Surface for Carousel {
         }
         let (w, h) = self.size;
         let strip = h / 2.0 + 120.0;
-        let (row, row_w) = self::dots(x / CARD_W);
-        let left = (w - row_w) / 2.0;
         let mut dots = [[0.0f32; 4]; COUNT];
-        for (d, (cx, dw, alpha)) in dots.iter_mut().zip(row) {
-            // Centre, the capsule's straight half-length (its ends are DOT / 2 round), alpha.
+        for (d, (cx, r, alpha)) in dots.iter_mut().zip(self::dots(x / CARD_W)) {
+            // Centre, radius, alpha.
             *d = [
-                (left + cx) as f32,
+                (w / 2.0 + cx) as f32,
                 (strip + 20.0) as f32,
-                ((dw - DOT) / 2.0) as f32,
+                r as f32,
                 alpha as f32,
             ];
         }
@@ -416,20 +434,27 @@ mod tests {
     }
 
     #[test]
-    fn the_capsule_flows_with_the_page_and_the_row_keeps_its_width() {
-        let (at0, w0) = dots(0.0);
-        assert_eq!(w0, 19.0 * 6.0 + 18.0 + 19.0 * 8.0);
-        assert_eq!(at0[0], (9.0, 18.0, 0.8));
-        assert_eq!(at0[1], (18.0 + 8.0 + 3.0, 6.0, 0.2));
-        // Half way to page 1: two 12 pt capsules at 50 %; the same row width.
-        let (half, wh) = dots(0.5);
-        assert_eq!(wh, w0);
-        assert_eq!((half[0].1, half[1].1), (12.0, 12.0));
-        assert!((half[0].2 - 0.5).abs() < 1e-9 && (half[1].2 - 0.5).abs() < 1e-9);
-        assert_eq!(half[2].1, 6.0);
-        // Overscroll is held at the ends.
-        assert_eq!(dots(-0.3).0, at0);
-        assert_eq!(dots(19.4).0[19].1, 18.0);
+    fn a_window_of_seven_dots_slides_with_the_page() {
+        let near = |a: f64, b: f64| (a - b).abs() < 1e-9;
+        // Page 0: the window stops at the start, dots 0…5 whole, 6 and 7 shrinking toward more.
+        let at0 = dots(0.0);
+        assert!(near(at0[0].0, -3.0 * 14.0));
+        for (i, r) in [(0, 3.0), (3, 3.0), (5, 3.0), (6, 1.98), (7, 0.99), (8, 0.0)] {
+            assert!(near(at0[i].1, r), "{i}: {:?}", at0[i]);
+        }
+        assert!(near(at0[0].2, 0.7) && near(at0[1].2, 0.25));
+        // Mid-list: the page at the centre, both sides shrinking.
+        let mid = dots(10.0);
+        assert!(near(mid[10].0, 0.0) && near(mid[10].1, 3.0) && near(mid[10].2, 0.7));
+        assert!(near(mid[7].1, 1.98) && near(mid[13].1, 1.98) && near(mid[15].1, 0.0));
+        // Half a page on: the window slides 7 pt, the two dots share the dark, same size.
+        let half = dots(10.5);
+        assert!(near(half[10].0, -7.0));
+        assert!(near(half[10].2, 0.475) && near(half[11].2, 0.475));
+        assert!((9..=12).all(|i| near(half[i].1, 3.0)));
+        // The last page: the window stops; dot 19 whole and dark three pitches right.
+        let end = dots(19.0);
+        assert!(near(end[19].0, 42.0) && near(end[19].1, 3.0) && near(end[19].2, 0.7));
     }
 
     #[test]

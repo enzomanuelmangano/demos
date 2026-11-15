@@ -133,7 +133,14 @@ pub fn card(u: f64, cw: f64, ch: f64) -> (f64, f64, f64, f64, f64, f64) {
 /// two cards swapping places (|u| < 1, zIndex above 300) over both, in zIndex order. A card
 /// changes group only at |u| = 1, where the front card covers every place the fans overlap, and
 /// the two front cards cross at u = ±0.5, apart; no change of order is ever seen.
-fn depth(u: f64, z: f64) -> (u8, f64) {
+///
+/// Within a group, zIndex ties past |u| = 3, where every card is clamped to the same pose: the
+/// nearer card (the smaller |u|) is on top there. Tied on the mounting order, the right fan's
+/// farthest card came over the one arriving at u = 3 and the card showing at the fan's end
+/// changed colour at each page (phone feedback, 2026-11-15). Drawn from the cards' shapes, a
+/// sweep of pages 0 … 9 in 0.01 steps, each frame drawn in the order before and after every
+/// change of order, finds no pixel that changes.
+fn depth(u: f64, z: f64) -> (u8, f64, f64) {
     let group = if u.abs() < 1.0 {
         2
     } else if u < 0.0 {
@@ -141,7 +148,7 @@ fn depth(u: f64, z: f64) -> (u8, f64) {
     } else {
         0
     };
-    (group, z)
+    (group, z, -u.abs())
 }
 
 impl Stack {
@@ -464,5 +471,22 @@ mod tests {
         // The two swapping cards are on top, and cross at the half step.
         assert_eq!(&order(1.4)[8..], &[7, 8]);
         assert_eq!(&order(1.6)[8..], &[8, 7]);
+        // On each side of the front pair the nearer card is always over the farther one, at
+        // every page, clamped poses included (page 4.01: card 8 at u 3.01 over card 9 at 4.01).
+        let mut page = 0.0;
+        while page <= 9.0 {
+            let o = order(page);
+            let at = |c: usize| o.iter().position(|&x| x == c).unwrap();
+            let u = |i: usize| page - (9 - i) as f64;
+            for a in 0..10 {
+                for b in 0..10 {
+                    let same_side = (u(a) >= 1.0 && u(b) >= 1.0) || (u(a) <= -1.0 && u(b) <= -1.0);
+                    if same_side && u(a).abs() < u(b).abs() {
+                        assert!(at(a) > at(b), "{page}: {a} under {b} in {o:?}");
+                    }
+                }
+            }
+            page += 0.01;
+        }
     }
 }

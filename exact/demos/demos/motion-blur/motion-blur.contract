@@ -44,12 +44,15 @@ component MotionBlur
       testId="motion-blur"
       column flex=1 justify-content="center"
         // BlurredList: maxVisibleItems × 110 tall, clipped.
-        view height=(maxVisible() * rowHeight()) overflow="hidden" position="relative"
+        // Not clipped: the canvas reaches 24 above the list and 30 below it, so the top card's
+        // corners and shadow are whole (the surface draws within its own bounds).
+        view height=(maxVisible() * rowHeight()) position="relative"
           press=toggleSlow aria-label="Toggle slow motion" testId="motion-blur-list"
           // The cards, their motion, the bursts and a real motion blur (a 1/15 s tent shutter,
           // integrated per pixel along each card's own motion): gpu/src/motion_blur.rs.
-          canvas surface=motion_blur(count, env.seed, held, slow) width="100%"
-            height=(maxVisible() * rowHeight()) message=buzz aria-hidden=true
+          canvas surface=motion_blur(count, env.seed, held, slow) position="absolute" left=0
+            top=-24 width="100%" height=(maxVisible() * rowHeight() + 54) message=buzz
+            aria-hidden=true
             testId="motion-blur-canvas"
         // styles.buttonContainer: centred, top -50.
         column align-items="center" position="relative" top=-50

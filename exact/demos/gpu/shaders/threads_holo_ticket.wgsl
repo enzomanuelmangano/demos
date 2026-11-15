@@ -78,7 +78,9 @@ fn edge(m: array<vec4<f32>, 3>, p: vec2<f32>) -> vec4<f32> {
     let t = u.slab.x * 0.5;
     let d = max(abs(zy.x) - t, max(-zy.y, zy.y - u.ticket.y));
     let fw = max(fwidth(d), 1e-4);
-    let cover = clamp(0.5 - d / fw, 0.0, 1.0) * select(0.0, 1.0, q.z > 0.0);
+    // Far from the edge the plane's map stretches without bound and fwidth with it, which
+    // would give stray half coverage: an edge pixel spans at most a few thicknesses.
+    let cover = clamp(0.5 - d / fw, 0.0, 1.0) * select(0.0, 1.0, q.z > 0.0 && fw < 4.0 * u.slab.x);
     // Seashell, darker toward the bottom and at the slab's middle (a rounded edge's shading).
     let along = zy.y / u.ticket.y;
     let across = 1.0 - 0.35 * pow(abs(zy.x) / max(t, 1e-3), 2.0);

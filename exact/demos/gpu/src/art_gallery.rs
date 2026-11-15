@@ -26,15 +26,26 @@
 //! centre. A pick of the painting already shown changes no cell (RN's memoised mapping and
 //! cells): only the zoom and the haptics.
 //!
-//! Gestures: Gesture.Race(doubleTap, Gesture.Simultaneous(pinch, pan)), as index.tsx:
-//! - Pinch: onStart saves scale and translation, the focal point from the screen's centre;
-//!   onUpdate scale = clamp(saved × scale, 0.5, idealGridScale × 1.2), the translation about the
-//!   focal point; onEnd under 1.2 springs home, else in grid mode (a cell ≥ half the screen)
-//!   snaps to the centred cell.
-//! - Pan (UIKit's pan of the fingers' centroid, its translation kept continuous when a finger
-//!   comes or goes): skipped while pinching or at scale ≤ 1; translation clamped to the cell
-//!   bounds; onEnd in grid mode snaps to the centred cell, one more along a fling over 300 pt/s,
-//!   else springs to clamp(t + v × 0.1) with the lift's velocity.
+//! Gestures: Gesture.Race(doubleTap, Gesture.Simultaneous(pinch, pan)), as index.tsx, but with
+//! RN's pan and pinch fused into one transform under the fingers, as Photos and Maps do it (the
+//! owner: RN's own pair, pan skipped while pinching and resumed from a stale start, felt broken):
+//! - Every finger down counts: the content point under the fingers' centroid stays under it as
+//!   they move and spread (pinch and two-finger pan at once). A finger that lands or lifts
+//!   re-bases the anchor where the content is, so 1 ↔ 2 fingers never jumps.
+//! - A touch-down catches a gliding or springing transform where it is; one finger moves it
+//!   after UIKit's 10 pt hysteresis, only when zoomed in (RN: the pan does nothing at scale ≤ 1).
+//! - Past the limits the transform is rubber-banded, UIScrollView's (1 − 1 / (x · 0.55 / d + 1)) ·
+//!   d: the scale in log space (at most 2× past idealGridScale × 1.2, down to RN's
+//!   MIN_SCALE_RUBBER_BAND 0.5 below 1), the translation past its bound over the screen's side.
+//!   The bound lets any cell be centred once a cell fills half the screen (RN's
+//!   (canvas − cell) / 2 × scale), the content's edges at the screen's edges when zoomed out.
+//! - Release, when the last finger lifts: under SNAP_BACK_THRESHOLD (1.2) springs home; in grid
+//!   mode (a cell ≥ half the screen) snaps to the centred cell, one more along a one-finger
+//!   fling over 300 pt/s (RN); else each axis glides as UIScrollView: past its bound it bounces
+//!   back (critically damped, 0.01088 / ms), a finger faster than 335 pt/s decelerates at 0.998
+//!   / ms and bounces off the bound it reaches (gpu/src/ui_scroll.rs's measured constants).
+//!   A touch that caught motion and lifted without dragging releases the same way, so an
+//!   interrupted snap finishes.
 //! - Double tap (RNGH numberOfTaps 2: each touch within 500 ms, the second down within 500 ms of
 //!   the first lift): zoomed in (> 1.2) springs home, else snaps to the tapped cell.
 //! - snapToCell: a light impact, scale to idealGridScale = 0.7 × screen / cellWidth, the cell
@@ -53,7 +64,7 @@ use std::sync::OnceLock;
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, Pan, PanGesture, Phase, PinchEvent, PinchGesture};
+use gesture_handler::Phase;
 use pressto::Pressable;
 use reanimated::{Spring, interpolate_clamp};
 use skia::backdrop::{BackdropBlur, Material, expo_fraction};
@@ -89,6 +100,22 @@ const MIN_SCALE_RUBBER_BAND: f64 = 0.5;
 const SPRING_MS: f64 = 350.0;
 const SPRING_RATIO: f64 = 1.0;
 const SWIPE_THRESHOLD: f32 = 300.0;
+/// UIKit's pan hysteresis (pt).
+const SLOP: f64 = 10.0;
+/// UIScrollView, as gpu/src/ui_scroll.rs measured it: the normal deceleration rate (per ms), the
+/// velocity a deceleration stops at (pt/ms), the slowest finger that flings (pt/s), the rubber
+/// band's constant, the bounce's rate (per ms), its pull per pt of overshoot (per ms) and the
+/// share of the content's velocity it keeps.
+const DECELERATION: f64 = 0.998;
+const STOP_VELOCITY: f64 = 0.00988;
+const FLING_MIN: f64 = 335.0;
+const RUBBER: f64 = 0.55;
+const BOUNCE_RATE: f64 = 0.01088;
+const BOUNCE_PULL: f64 = 0.00797;
+const BOUNCE_CARRY: f64 = 1.656;
+/// The scale's rubber band, in ln(scale): at most 2× past the top, 0.5 (RN's
+/// MIN_SCALE_RUBBER_BAND) below 1.
+const SCALE_BAND: f64 = std::f64::consts::LN_2;
 /// RNGH Tap's defaultMaxDuration and defaultMaxDelay.
 const TAP_MAX_MS: f64 = 500.0;
 /// zoom-out-button.tsx: 56 × 56, radius 28, a hairline border; styles.fab bottom 40, right 20.
@@ -110,7 +137,6 @@ fn new() -> ArtGallery {
         scale: Spring::at(1.0),
         tx: Spring::at(0.0),
         ty: Spring::at(0.0),
-        saved_scale: 1.0,
         row: -1,
         col: -1,
         picks: 0.0,
@@ -445,66 +471,159 @@ impl Focus {
     }
 }
 
-/// UIKit's pan over every finger down: the centroid, shifted when a finger comes or goes so the
-/// translation does not jump (one PanGesture fed a virtual pointer).
-#[derive(Clone, Debug, Default)]
-struct CentroidPan {
-    pan: PanGesture,
-    fingers: Vec<(u32, f32, f32)>,
-    offset: (f32, f32),
+/// UIScrollView's rubber band: `x` past an end shows this much, over a port `d` wide.
+fn band(x: f64, d: f64) -> f64 {
+    (1.0 - 1.0 / (x * RUBBER / d + 1.0)) * d
 }
 
-impl CentroidPan {
-    fn centroid(&self) -> (f32, f32) {
-        let n = self.fingers.len().max(1) as f32;
-        let (sx, sy) = self
-            .fingers
-            .iter()
-            .fold((0.0, 0.0), |(a, b), f| (a + f.1, b + f.2));
-        (sx / n + self.offset.0, sy / n + self.offset.1)
+/// The raw travel past an end that shows `y` of overshoot.
+fn unband(y: f64, d: f64) -> f64 {
+    let y = y.min(d * 0.999_999);
+    (1.0 / (1.0 - y / d) - 1.0) * d / RUBBER
+}
+
+/// `x` inside [lo, hi], rubber-banded over `d` past either end.
+fn band_range(x: f64, lo: f64, hi: f64, d: f64) -> f64 {
+    if x > hi {
+        hi + band(x - hi, d)
+    } else if x < lo {
+        lo - band(lo - x, d)
+    } else {
+        x
+    }
+}
+
+/// The raw value `band_range` shows as `y`.
+fn unband_range(y: f64, lo: f64, hi: f64, d: f64) -> f64 {
+    if y > hi {
+        hi + unband(y - hi, d)
+    } else if y < lo {
+        lo - unband(lo - y, d)
+    } else {
+        y
+    }
+}
+
+/// One axis of the translation after the fingers let go, as UIScrollView moves it: a
+/// deceleration (which bounces off `edge` if it gets there) or a bounce back to an edge.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+enum Glide {
+    #[default]
+    Off,
+    /// From `from` at `v` pt/ms, decaying at `lambda` per ms from `at`.
+    Decay {
+        from: f64,
+        v: f64,
+        at: f64,
+        lambda: f64,
+        edge: Option<f64>,
+    },
+    /// Critically damped onto `edge` from `x0` past it at `v0` pt/ms, from `at`.
+    Bounce {
+        edge: f64,
+        x0: f64,
+        v0: f64,
+        at: f64,
+    },
+}
+
+impl Glide {
+    /// UIScrollView's release of an axis at `t` (bound ±`bound`, port `d`) by a finger at
+    /// `finger` pt/s, its clock from `at`.
+    fn release(t: f64, finger: f64, bound: f64, d: f64, at: f64) -> Glide {
+        if t.abs() > bound {
+            let edge = t.clamp(-bound, bound);
+            let x0 = t - edge;
+            // The pull back plus what the bounce keeps of the content's banded velocity.
+            let raw = unband(x0.abs(), d);
+            let slope = RUBBER / (raw * RUBBER / d + 1.0).powi(2);
+            let v0 = -BOUNCE_PULL * x0 + BOUNCE_CARRY * finger / 1000.0 * slope;
+            return Glide::Bounce { edge, x0, v0, at };
+        }
+        if finger.abs() < FLING_MIN {
+            return Glide::Off;
+        }
+        let v = finger / 1000.0;
+        let lambda = -DECELERATION.ln();
+        let projected = t + v.signum() * (v.abs() - STOP_VELOCITY) / lambda;
+        let edge = if projected > bound {
+            Some(bound)
+        } else if projected < -bound {
+            Some(-bound)
+        } else {
+            None
+        };
+        Glide::Decay {
+            from: t,
+            v,
+            at,
+            lambda,
+            edge,
+        }
     }
 
-    fn event(&mut self, id: u32, phase: Phase, x: f32, y: f32, ms: f64) -> Event {
-        let at = self.fingers.iter().position(|f| f.0 == id);
-        match phase {
-            Phase::Down => {
-                if at.is_some() {
-                    return Event::None;
+    /// The value at `now` and whether it still moves; None when off.
+    fn step(&mut self, now: f64) -> Option<(f64, bool)> {
+        match *self {
+            Glide::Off => None,
+            Glide::Decay {
+                from,
+                v,
+                at,
+                lambda,
+                edge,
+            } => {
+                let t = (now - at).max(0.0);
+                if let Some(edge) = edge {
+                    // Free deceleration until it crosses the edge, then the bounce from there
+                    // with the velocity it crossed at.
+                    let k = 1.0 - (edge - from) * lambda / v;
+                    if k > 0.0 {
+                        let cross = -k.ln() / lambda;
+                        if t >= cross {
+                            *self = Glide::Bounce {
+                                edge,
+                                x0: 0.0,
+                                v0: v * (-lambda * cross).exp(),
+                                at: at + cross,
+                            };
+                            return self.step(now);
+                        }
+                    }
                 }
-                if self.fingers.is_empty() {
-                    self.offset = (0.0, 0.0);
-                    self.fingers.push((id, x, y));
-                    return self.pan.event(0, Phase::Down, x, y, ms, true);
+                if (v * (-lambda * t).exp()).abs() <= STOP_VELOCITY {
+                    *self = Glide::Off;
+                    return Some((
+                        from + v.signum() * (v.abs() - STOP_VELOCITY).max(0.0) / lambda,
+                        false,
+                    ));
                 }
-                let before = self.centroid();
-                self.fingers.push((id, x, y));
-                let after = self.centroid();
-                self.offset.0 += before.0 - after.0;
-                self.offset.1 += before.1 - after.1;
-                Event::None
+                Some((from + v / lambda * (1.0 - (-lambda * t).exp()), true))
             }
-            Phase::Move => {
-                let Some(k) = at else { return Event::None };
-                self.fingers[k] = (id, x, y);
-                let (vx, vy) = self.centroid();
-                self.pan.event(0, Phase::Move, vx, vy, ms, true)
-            }
-            Phase::Up | Phase::Cancel => {
-                let Some(k) = at else { return Event::None };
-                self.fingers[k] = (id, x, y);
-                let before = self.centroid();
-                if self.fingers.len() == 1 {
-                    self.fingers.clear();
-                    return self.pan.event(0, phase, before.0, before.1, ms, true);
+            Glide::Bounce { edge, x0, v0, at } => {
+                let t = (now - at).max(0.0);
+                let w = BOUNCE_RATE;
+                let x = (x0 + (v0 + w * x0) * t) * (-w * t).exp();
+                if t > 0.0 && x.abs() < 0.01 {
+                    *self = Glide::Off;
+                    return Some((edge, false));
                 }
-                self.fingers.remove(k);
-                let after = self.centroid();
-                self.offset.0 += before.0 - after.0;
-                self.offset.1 += before.1 - after.1;
-                Event::None
+                Some((edge + x, true))
             }
         }
     }
+}
+
+/// The transform the fingers hold since the last time a finger landed or lifted: their centroid
+/// (from the screen's centre) and spread then, and the raw (unbanded) ln scale, the scale shown
+/// and the raw translation then.
+#[derive(Clone, Copy, Debug, Default)]
+struct Grab {
+    c0: (f64, f64),
+    d0: f64,
+    l0: f64,
+    s0: f64,
+    u0: (f64, f64),
 }
 
 /// RNGH's iOS Tap with numberOfTaps(2) (RNBetterTapGestureRecognizer): every touch-down arms a
@@ -581,19 +700,32 @@ struct ArtGallery {
     scale: Spring,
     tx: Spring,
     ty: Spring,
-    saved_scale: f64,
-    saved_tx: f64,
-    saved_ty: f64,
-    focal: (f64, f64),
-    pinching: bool,
+    /// The fingers down (id, x, y), in landing order.
+    fingers: Vec<(u32, f64, f64)>,
+    /// Where the first finger landed, and whether that touch caught motion.
+    down_at: (f64, f64),
+    caught: bool,
+    /// The fingers hold the transform (past the slop, or two of them).
+    grab: Option<Grab>,
+    /// Two fingers held it during this touch.
+    pinched: bool,
+    /// The raw (unbanded) ln scale and translation the fingers put it at.
+    raw_l: f64,
+    raw_t: (f64, f64),
+    /// The centroid's samples (ms, x, y), shifted at each landing or lift so they stay
+    /// continuous: the release velocity.
+    samples: Vec<(f64, f64, f64)>,
+    shift: (f64, f64),
+    glide_x: Glide,
+    glide_y: Glide,
+    /// Where the springs a touch caught were going: a tap that never dragged lets them finish.
+    resume: Option<(f64, f64, f64)>,
     row: i32,
     col: i32,
     focus: Focus,
     /// playTransitionHaptics: armed at a pick, timed from the next frame.
     haptics_pending: bool,
     haptics: Vec<(f64, &'static str)>,
-    pan: CentroidPan,
-    pinch: PinchGesture,
     tap: DoubleTap,
     press: Pressable,
     posted: Vec<String>,
@@ -652,23 +784,9 @@ impl ArtGallery {
         gfx::spring_to(s, to, SPRING_MS, SPRING_RATIO);
     }
 
-    /// withSpring(to, { ...SPRING_CONFIG, velocity }): the running velocity plus `velocity`.
-    fn spring_with(s: &mut Spring, to: f64, velocity: f64) {
-        let (x, run) = (s.value, if s.running { s.velocity } else { 0.0 });
-        let v = run + velocity;
-        let v = if (to > x && v < 0.0) || (to < x && v > 0.0) {
-            0.0
-        } else {
-            v
-        };
-        s.to(
-            to,
-            v,
-            reanimated::duration_config(x - to, v, SPRING_MS, SPRING_RATIO, 4.0),
-        );
-    }
-
     fn home(&mut self) {
+        self.glide_x = Glide::Off;
+        self.glide_y = Glide::Off;
         Self::spring(&mut self.scale, 1.0);
         Self::spring(&mut self.tx, 0.0);
         Self::spring(&mut self.ty, 0.0);
@@ -682,6 +800,8 @@ impl ArtGallery {
 
     fn snap_to_cell(&mut self, row: i32, col: i32) {
         self.light();
+        self.glide_x = Glide::Off;
+        self.glide_y = Glide::Off;
         let g = self.grid();
         let ideal = self.ideal_grid_scale();
         Self::spring(&mut self.scale, ideal);
@@ -741,105 +861,296 @@ impl ArtGallery {
         )
     }
 
-    fn on_pinch(&mut self, e: PinchEvent) {
-        match e {
-            PinchEvent::Start(p) => {
-                self.pinching = true;
-                self.saved_scale = self.scale.value;
-                self.saved_tx = self.tx.value;
-                self.saved_ty = self.ty.value;
-                self.focal = (
-                    p.focal_x as f64 - self.size.0 / 2.0,
-                    p.focal_y as f64 - self.size.1 / 2.0,
-                );
-            }
-            PinchEvent::Update(p) => {
-                let max_scale = self.ideal_grid_scale() * 1.2;
-                let s = (self.saved_scale * p.scale as f64).clamp(MIN_SCALE_RUBBER_BAND, max_scale);
-                let ratio = s / self.saved_scale;
-                self.scale.set(s);
-                self.tx
-                    .set(self.focal.0 * (1.0 - ratio) + self.saved_tx * ratio);
-                self.ty
-                    .set(self.focal.1 * (1.0 - ratio) + self.saved_ty * ratio);
-            }
-            PinchEvent::End(_) => {
-                self.saved_scale = self.scale.value;
-                if self.scale.value < SNAP_BACK_THRESHOLD {
-                    self.home();
-                } else {
-                    let g = self.grid();
-                    if self.in_grid_mode() && g.cols > 0 && g.rows > 0 {
-                        let (r, c) = self.centred_cell();
-                        let (r, c) = self.clamp_cell(r, c);
-                        self.snap_to_cell(r, c);
-                    }
-                }
-                // onFinalize.
-                self.pinching = false;
-            }
-            PinchEvent::None => {}
+    /// The highest scale (RN's pinch clamp, idealGridScale × 1.2), never under 1.
+    fn max_scale(&self) -> f64 {
+        (self.ideal_grid_scale() * 1.2).max(1.0)
+    }
+
+    /// The scale a raw ln scale shows: rubber-banded under 1 (towards MIN_SCALE_RUBBER_BAND) and
+    /// over the top (towards twice it).
+    fn banded_scale(&self, l: f64) -> f64 {
+        let hi = self.max_scale().ln();
+        if l > hi {
+            (hi + band(l - hi, SCALE_BAND)).exp()
+        } else if l < 0.0 {
+            (-band(-l, -MIN_SCALE_RUBBER_BAND.ln())).exp()
+        } else {
+            l.exp()
         }
     }
 
-    fn on_pan(&mut self, e: Event) {
-        match e {
-            Event::Start(_) => {
-                if self.pinching {
-                    return;
-                }
-                for s in [&mut self.tx, &mut self.ty, &mut self.scale] {
-                    s.set(s.value);
-                }
-                self.saved_tx = self.tx.value;
-                self.saved_ty = self.ty.value;
-            }
-            Event::Update(p) => {
-                if self.pinching || self.scale.value <= 1.0 {
-                    return;
-                }
-                let g = self.grid();
-                let s = self.scale.value;
-                let max_x = ((g.canvas_w / 2.0 - g.cell_w / 2.0) * s).max(0.0);
-                let max_y = ((g.canvas_h / 2.0 - g.cell_h / 2.0) * s).max(0.0);
-                self.tx
-                    .set((self.saved_tx + p.translation_x as f64).clamp(-max_x, max_x));
-                self.ty
-                    .set((self.saved_ty + p.translation_y as f64).clamp(-max_y, max_y));
-            }
-            Event::End(p) => self.pan_end(p),
-            _ => {}
+    fn raw_scale(&self, s: f64) -> f64 {
+        let (l, hi) = (s.ln(), self.max_scale().ln());
+        if l > hi {
+            hi + unband(l - hi, SCALE_BAND)
+        } else if l < 0.0 {
+            -unband(-l, -MIN_SCALE_RUBBER_BAND.ln())
+        } else {
+            l
         }
     }
 
-    fn pan_end(&mut self, p: Pan) {
-        if self.pinching || self.scale.value <= 1.0 {
+    /// How far the mosaic may move from the centre at scale `s`, per axis. Once a cell fills half
+    /// the screen, RN's cell bound ((canvas − cell) / 2 × s: any cell can be centred); zoomed out,
+    /// the content's edges at the screen's edges (Photos); between, blended by the cell's share
+    /// of half the screen, so the bound never jumps as the scale changes.
+    fn bounds(&self, s: f64) -> (f64, f64) {
+        let g = self.grid();
+        let (w, h) = self.size;
+        let f = if w > 0.0 {
+            (g.cell_w * s / (w * GRID_MODE_THRESHOLD)).clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        let axis = |canvas: f64, cell: f64, screen: f64| {
+            let edges = (canvas * s - screen) / 2.0;
+            let cells = (canvas - cell) * s / 2.0;
+            (edges + (cells - edges) * f).max(0.0)
+        };
+        (axis(g.canvas_w, g.cell_w, w), axis(g.canvas_h, g.cell_h, h))
+    }
+
+    /// The fingers' centroid, from the screen's centre.
+    fn centroid(&self) -> (f64, f64) {
+        let n = self.fingers.len().max(1) as f64;
+        let (x, y) = self
+            .fingers
+            .iter()
+            .fold((0.0, 0.0), |(a, b), f| (a + f.1, b + f.2));
+        (x / n - self.size.0 / 2.0, y / n - self.size.1 / 2.0)
+    }
+
+    /// The first two fingers' distance (0 with one).
+    fn spread(&self) -> f64 {
+        match self.fingers.as_slice() {
+            [a, b, ..] => (b.1 - a.1).hypot(b.2 - a.2),
+            _ => 0.0,
+        }
+    }
+
+    /// Stops every glide and spring where it is (a running spring's targets kept in `resume`);
+    /// whether anything was moving.
+    fn catch(&mut self) -> bool {
+        let glided = self.glide_x != Glide::Off || self.glide_y != Glide::Off;
+        self.glide_x = Glide::Off;
+        self.glide_y = Glide::Off;
+        let sprung = self.scale.running || self.tx.running || self.ty.running;
+        if sprung {
+            self.resume = Some((self.scale.target(), self.tx.target(), self.ty.target()));
+        }
+        for s in [&mut self.scale, &mut self.tx, &mut self.ty] {
+            s.set(s.value);
+        }
+        glided || sprung
+    }
+
+    /// The fingers take the transform where it shows.
+    fn take(&mut self) {
+        self.catch();
+        self.raw_l = self.raw_scale(self.scale.value);
+        let (bx, by) = self.bounds(self.scale.value);
+        self.raw_t = (
+            unband_range(self.tx.value, -bx, bx, self.size.0),
+            unband_range(self.ty.value, -by, by, self.size.1),
+        );
+        self.rebase();
+    }
+
+    /// A finger landed or lifted: the anchor moves to where the fingers and the content are now.
+    fn rebase(&mut self) {
+        self.grab = Some(Grab {
+            c0: self.centroid(),
+            d0: self.spread(),
+            l0: self.raw_l,
+            s0: self.scale.value,
+            u0: self.raw_t,
+        });
+    }
+
+    /// The fingers moved: the content point under the anchor's centroid goes under the
+    /// centroid, scaled by the spread.
+    fn follow(&mut self) {
+        let Some(g) = self.grab else { return };
+        let c = self.centroid();
+        let mut l = g.l0;
+        if self.fingers.len() >= 2 && g.d0 > 0.0 {
+            l += (self.spread() / g.d0).ln();
+        }
+        self.raw_l = l;
+        let s = self.banded_scale(l);
+        let k = s / g.s0;
+        let u = (c.0 - (g.c0.0 - g.u0.0) * k, c.1 - (g.c0.1 - g.u0.1) * k);
+        self.raw_t = u;
+        let (bx, by) = self.bounds(s);
+        self.scale.set(s);
+        self.tx.set(band_range(u.0, -bx, bx, self.size.0));
+        self.ty.set(band_range(u.1, -by, by, self.size.1));
+    }
+
+    fn sample(&mut self, ms: f64) {
+        let c = self.centroid();
+        let (x, y) = (c.0 + self.shift.0, c.1 + self.shift.1);
+        if self.samples.last().is_some_and(|s| s.1 == x && s.2 == y) {
+            return; // a finger at rest: UIKit hears no move, its velocity stands
+        }
+        self.samples.retain(|s| ms - s.0 <= 150.0);
+        self.samples.push((ms, x, y));
+    }
+
+    /// The centroid's velocity (pt/s) over the last 100 ms of moves (UIKit's estimate).
+    fn velocity(&self) -> (f64, f64) {
+        let Some(last) = self.samples.last() else {
+            return (0.0, 0.0);
+        };
+        let first = self
+            .samples
+            .iter()
+            .find(|s| last.0 - s.0 <= 100.0)
+            .unwrap_or(last);
+        let dt = (last.0 - first.0) / 1000.0;
+        if dt <= 0.0 {
+            return (0.0, 0.0);
+        }
+        ((last.1 - first.1) / dt, (last.2 - first.2) / dt)
+    }
+
+    /// The last finger lifted (or a catch let go): where the transform goes from here.
+    fn release(&mut self, (vx, vy): (f64, f64)) {
+        self.grab = None;
+        let s = self.scale.value;
+        if s < SNAP_BACK_THRESHOLD {
+            self.home();
             return;
         }
         let g = self.grid();
         if self.in_grid_mode() && g.cols > 0 && g.rows > 0 {
-            let velocity = p.velocity_x.abs().max(p.velocity_y.abs());
+            // RN: the centred cell; a one-finger fling over 300 pt/s one cell further.
             let (mut row, mut col) = self.centred_cell();
-            if velocity > SWIPE_THRESHOLD {
-                if p.velocity_x.abs() > p.velocity_y.abs() {
-                    col += if p.velocity_x > 0.0 { -1 } else { 1 };
+            if !self.pinched && vx.abs().max(vy.abs()) > SWIPE_THRESHOLD as f64 {
+                if vx.abs() > vy.abs() {
+                    col += if vx > 0.0 { -1 } else { 1 };
                 } else {
-                    row += if p.velocity_y > 0.0 { -1 } else { 1 };
+                    row += if vy > 0.0 { -1 } else { 1 };
                 }
             }
             let (r, c) = self.clamp_cell(row, col);
             self.snap_to_cell(r, c);
-        } else {
-            let s = self.scale.value;
-            let max_x = ((g.canvas_w / 2.0 - g.cell_w / 2.0) * s).max(0.0);
-            let max_y = ((g.canvas_h / 2.0 - g.cell_h / 2.0) * s).max(0.0);
-            let target_x = (self.tx.value + p.velocity_x as f64 * 0.1).clamp(-max_x, max_x);
-            let target_y = (self.ty.value + p.velocity_y as f64 * 0.1).clamp(-max_y, max_y);
-            Self::spring_with(&mut self.tx, target_x, p.velocity_x as f64);
-            Self::spring_with(&mut self.ty, target_y, p.velocity_y as f64);
-            self.row = -1;
-            self.col = -1;
+            return;
         }
+        // Between 1.2 and grid mode the scale is in range: each axis glides as UIScrollView,
+        // its clock from the last frame (a pointer's time is not on the frame clock).
+        let (bx, by) = self.bounds(s);
+        let at = self.last_now;
+        self.glide_x = Glide::release(self.tx.value, vx, bx, self.size.0, at);
+        self.glide_y = Glide::release(self.ty.value, vy, by, self.size.1, at);
+        self.row = -1;
+        self.col = -1;
+    }
+
+    /// Every finger as one transform (pinch and pan); whether the fingers took it now.
+    fn touch(&mut self, id: u32, phase: Phase, x: f64, y: f64, ms: f64, on_fab: bool) -> bool {
+        let at = self.fingers.iter().position(|f| f.0 == id);
+        let before = self.centroid();
+        let mut took = false;
+        match phase {
+            Phase::Down => {
+                if at.is_some() {
+                    return false;
+                }
+                if self.fingers.is_empty() {
+                    self.resume = None;
+                    self.caught = !on_fab && self.catch();
+                    self.down_at = (x, y);
+                    self.pinched = false;
+                    self.samples.clear();
+                    self.shift = (0.0, 0.0);
+                }
+                self.fingers.push((id, x, y));
+                if !self.samples.is_empty() {
+                    let after = self.centroid();
+                    self.shift.0 += before.0 - after.0;
+                    self.shift.1 += before.1 - after.1;
+                }
+                if self.fingers.len() >= 2 {
+                    self.pinched = true;
+                    if self.grab.is_some() {
+                        self.rebase();
+                    } else {
+                        self.take();
+                        took = true;
+                    }
+                }
+                self.sample(ms);
+            }
+            Phase::Move => {
+                let Some(k) = at else { return false };
+                self.fingers[k] = (id, x, y);
+                if self.grab.is_none() {
+                    let (dx, dy) = (x - self.down_at.0, y - self.down_at.1);
+                    // One finger: RN's pan moves nothing at scale ≤ 1.
+                    if dx.hypot(dy) >= SLOP && self.scale.value > 1.0 + 1e-9 {
+                        self.take();
+                        took = true;
+                    }
+                }
+                self.follow();
+                self.sample(ms);
+            }
+            Phase::Up | Phase::Cancel => {
+                let Some(k) = at else { return false };
+                self.fingers[k] = (id, x, y);
+                self.follow();
+                self.sample(ms);
+                if self.fingers.len() == 1 {
+                    self.fingers.clear();
+                    if self.grab.is_some() {
+                        let v = self.velocity();
+                        self.release(v);
+                    } else if self.caught {
+                        // A tap on moving content: a snap or the way home finishes; a glide
+                        // stays where it was caught (or bounces back in range).
+                        match self.resume.take() {
+                            Some((s, x, y)) => {
+                                Self::spring(&mut self.scale, s);
+                                Self::spring(&mut self.tx, x);
+                                Self::spring(&mut self.ty, y);
+                            }
+                            None => self.release((0.0, 0.0)),
+                        }
+                    }
+                    self.caught = false;
+                    return false;
+                }
+                let before = self.centroid();
+                self.fingers.remove(k);
+                let after = self.centroid();
+                self.shift.0 += before.0 - after.0;
+                self.shift.1 += before.1 - after.1;
+                if self.grab.is_some() {
+                    self.rebase();
+                }
+            }
+        }
+        took
+    }
+
+    /// Steps every motion to `now`; whether anything still moves.
+    fn step_motion(&mut self, now: f64) -> bool {
+        let mut moving = false;
+        for s in [&mut self.scale, &mut self.tx, &mut self.ty] {
+            moving |= s.step(now);
+        }
+        for (glide, s) in [
+            (&mut self.glide_x, &mut self.tx),
+            (&mut self.glide_y, &mut self.ty),
+        ] {
+            if let Some((v, m)) = glide.step(now) {
+                s.set(v);
+                moving |= m;
+            }
+        }
+        moving |= self.press.step(now);
+        moving || !self.fingers.is_empty()
     }
 
     fn double_tap(&mut self, x: f32, y: f32) {
@@ -963,15 +1274,15 @@ impl Surface for ArtGallery {
         let fab = phase == Phase::Down && self.fab_hit(x, y);
         // Race(doubleTap, Simultaneous(pinch, pan)).
         let tapped = self.tap.event(id, phase, x, y, at_ms);
-        let pinch = self.pinch.event(id, phase, x, y, true);
-        let pan = self.pan.event(id, phase, x, y, at_ms);
-        if matches!(pinch, PinchEvent::Start(_)) || matches!(pan, Event::Start(_)) {
+        let took = self.touch(id, phase, x as f64, y as f64, at_ms, fab);
+        let dragged = phase == Phase::Move
+            && self.fingers.len() == 1
+            && (x as f64 - self.down_at.0).hypot(y as f64 - self.down_at.1) >= SLOP;
+        if took || dragged {
             // The pinch or pan took the touch: the tap fails, the button's touch is cancelled.
             self.tap.reset();
             self.press.cancel();
         }
-        self.on_pinch(pinch);
-        self.on_pan(pan);
         if let Some((tx, ty)) = tapped {
             self.press.cancel();
             self.double_tap(tx, ty);
@@ -1030,11 +1341,7 @@ impl Surface for ArtGallery {
             let (_, m) = self.haptics.remove(0);
             self.posted.push(m.into());
         }
-        let mut moving = false;
-        for s in [&mut self.scale, &mut self.tx, &mut self.ty] {
-            moving |= s.step(now);
-        }
-        moving |= self.press.step(now);
+        let moving = self.step_motion(now);
         let g = self.grid();
         self.focus
             .frame(now, self.row, self.col, g.cols, g.rows, g.cell_w, g.cell_h);
@@ -1809,33 +2116,424 @@ mod tests {
         assert_eq!(field(&mut s, "rearranging"), "false");
     }
 
-    #[test]
-    fn a_pinch_zooms_about_the_fingers_and_snaps_back_under_1_2() {
-        let mut s = surface();
-        s.bind(&[Value::from(String::new()), Value::Number(0.0)], None)
-            .unwrap();
-        s.size(W, H);
-        // Fingers 100 pt apart about (210, 456), spread to 110: scale 1.1, about the centre.
-        touch(&mut s, 1, PointerPhase::Down, 160.0, 456.0, 0.0);
-        touch(&mut s, 2, PointerPhase::Down, 260.0, 456.0, 10.0);
-        touch(&mut s, 2, PointerPhase::Move, 265.0, 456.0, 30.0);
-        touch(&mut s, 1, PointerPhase::Move, 155.0, 456.0, 40.0);
-        assert_eq!(field(&mut s, "scale"), "1.100");
-        // The focal point is where the fingers were at the pinch's start (212.5): 2.5 × (1 − 1.1).
-        assert_eq!(field(&mut s, "translateX"), "-0.25");
-        touch(&mut s, 2, PointerPhase::Up, 265.0, 456.0, 60.0);
-        touch(&mut s, 1, PointerPhase::Up, 155.0, 456.0, 70.0);
-        // Under SNAP_BACK_THRESHOLD: home, the button never shown.
+    // ---- gestures: synthetic pointer sequences on the surface, its motion stepped at 120 Hz ----
+
+    fn at(scale: f64, tx: f64, ty: f64) -> ArtGallery {
         let mut g = new();
         g.size = (W as f64, H as f64);
-        g.scale.set(1.1);
-        g.on_pinch(PinchEvent::End(gesture_handler::Pinch::default()));
-        let mut ms = 0.0;
-        while g.scale.step(ms) {
-            ms += 16.0;
+        g.scale.set(scale);
+        g.tx.set(tx);
+        g.ty.set(ty);
+        g
+    }
+
+    fn put(g: &mut ArtGallery, id: u32, phase: PointerPhase, x: f64, y: f64, at_ms: f64) {
+        g.input(&InputEvent::Pointer {
+            id,
+            phase,
+            x: x as f32,
+            y: y as f32,
+            dx: 0.0,
+            dy: 0.0,
+            kind: PointerKind::Touch,
+            buttons: 1,
+            at_ms,
+        });
+    }
+
+    /// Frames every 8.33 ms from `from` until nothing moves; the time it stopped and every tx.
+    fn run(g: &mut ArtGallery, from: f64) -> (f64, Vec<f64>) {
+        let (mut t, mut xs) = (from, Vec::new());
+        while t < from + 5000.0 {
+            g.last_now = t;
+            let moving = g.step_motion(t);
+            xs.push(g.tx.value);
+            if !moving {
+                break;
+            }
+            t += 1000.0 / 120.0;
         }
-        let last = format!("{:.3}", g.scale.value);
-        assert!(ms < 600.0, "{ms}");
-        assert_eq!(last, "1.000");
+        (t, xs)
+    }
+
+    /// The content point (from the canvas's centre, unscaled) under a screen point.
+    fn content(g: &ArtGallery, x: f64, y: f64) -> (f64, f64) {
+        (
+            (x - W as f64 / 2.0 - g.tx.value) / g.scale.value,
+            (y - H as f64 / 2.0 - g.ty.value) / g.scale.value,
+        )
+    }
+
+    fn transform(g: &ArtGallery) -> (f64, f64, f64) {
+        (g.scale.value, g.tx.value, g.ty.value)
+    }
+
+    fn near(a: (f64, f64, f64), b: (f64, f64, f64)) -> bool {
+        (a.0 - b.0).abs() < 1e-9 && (a.1 - b.1).abs() < 1e-6 && (a.2 - b.2).abs() < 1e-6
+    }
+
+    #[test]
+    fn a_pinch_keeps_the_content_under_moving_fingers() {
+        // The old pinch froze the focal point at its start and dropped the fingers' travel:
+        // the content slid out from under them.
+        let mut g = at(4.0, 100.0, -50.0);
+        put(&mut g, 1, PointerPhase::Down, 150.0, 400.0, 0.0);
+        put(&mut g, 2, PointerPhase::Down, 250.0, 400.0, 5.0);
+        let q0 = content(&g, 200.0, 400.0);
+        for i in 1..=20 {
+            let k = i as f64 / 20.0;
+            let (cx, cy, half) = (200.0 + 30.0 * k, 400.0 + 80.0 * k, 50.0 + 20.0 * k);
+            put(
+                &mut g,
+                1,
+                PointerPhase::Move,
+                cx - half,
+                cy,
+                5.0 + 8.0 * i as f64,
+            );
+            put(
+                &mut g,
+                2,
+                PointerPhase::Move,
+                cx + half,
+                cy,
+                6.0 + 8.0 * i as f64,
+            );
+            let q = content(&g, cx, cy);
+            assert!(
+                (q.0 - q0.0).abs() < 1e-6 && (q.1 - q0.1).abs() < 1e-6,
+                "{i}: {q:?} {q0:?}"
+            );
+        }
+        assert!((g.scale.value - 4.0 * 1.4).abs() < 1e-9);
+    }
+
+    #[test]
+    fn one_and_two_fingers_hand_over_without_a_jump() {
+        // The old pan restarted from where it began before the pinch: lifting one finger of a
+        // pinch threw the mosaic back by the pinch's whole travel.
+        let mut g = at(4.0, 0.0, 0.0);
+        put(&mut g, 1, PointerPhase::Down, 200.0, 400.0, 0.0);
+        for i in 1..=5 {
+            put(
+                &mut g,
+                1,
+                PointerPhase::Move,
+                200.0 + 8.0 * i as f64,
+                400.0,
+                16.0 * i as f64,
+            );
+        }
+        // From the activation (16 pt) the content follows 1:1: 24 more.
+        assert!((g.tx.value - 24.0).abs() < 1e-6, "{}", g.tx.value);
+        let before = transform(&g);
+        put(&mut g, 2, PointerPhase::Down, 320.0, 520.0, 100.0);
+        assert!(near(transform(&g), before));
+        put(&mut g, 2, PointerPhase::Move, 360.0, 560.0, 116.0);
+        assert!(g.scale.value > 4.0);
+        let pinched = transform(&g);
+        put(&mut g, 1, PointerPhase::Up, 240.0, 400.0, 130.0);
+        assert!(near(transform(&g), pinched));
+        put(&mut g, 2, PointerPhase::Move, 380.0, 540.0, 146.0);
+        let after = transform(&g);
+        assert!((after.0 - pinched.0).abs() < 1e-9);
+        assert!(
+            (after.1 - pinched.1 - 20.0).abs() < 1e-6 && (after.2 - pinched.2 + 20.0).abs() < 1e-6
+        );
+        // And back to two: still no jump.
+        put(&mut g, 3, PointerPhase::Down, 100.0, 100.0, 160.0);
+        assert!(near(transform(&g), after));
+    }
+
+    #[test]
+    fn the_scale_rubber_bands_past_its_limits_and_springs_back() {
+        // Over the top: resisting, never past twice the limit; a release snaps to the cell.
+        let mut g = at(60.0, 0.0, 0.0);
+        let max = g.max_scale();
+        put(&mut g, 1, PointerPhase::Down, 160.0, 456.0, 0.0);
+        put(&mut g, 2, PointerPhase::Down, 260.0, 456.0, 0.0);
+        let (mut last, mut step) = (60.0, f64::INFINITY);
+        for i in 1..=40 {
+            let half = 50.0 + 5.0 * i as f64;
+            put(
+                &mut g,
+                1,
+                PointerPhase::Move,
+                210.0 - half,
+                456.0,
+                8.0 * i as f64,
+            );
+            put(
+                &mut g,
+                2,
+                PointerPhase::Move,
+                210.0 + half,
+                456.0,
+                8.0 * i as f64 + 1.0,
+            );
+            let s = g.scale.value;
+            assert!(s > last && s < 2.0 * max, "{i}: {s}");
+            if last > max {
+                // Each step adds less than the one before (the band stiffens).
+                assert!(s - last < step, "{i}");
+                step = s - last;
+            }
+            last = s;
+        }
+        assert!(last > max);
+        put(&mut g, 1, PointerPhase::Up, 10.0, 456.0, 400.0);
+        put(&mut g, 2, PointerPhase::Up, 410.0, 456.0, 401.0);
+        run(&mut g, 410.0);
+        assert!((g.scale.value - g.ideal_grid_scale()).abs() < 1e-6);
+        assert_eq!((g.row, g.col), (50, 50));
+
+        // Under 1: down towards 0.5, never under; a release goes home.
+        let mut g = at(1.0, 0.0, 0.0);
+        put(&mut g, 1, PointerPhase::Down, 110.0, 456.0, 0.0);
+        put(&mut g, 2, PointerPhase::Down, 310.0, 456.0, 0.0);
+        put(&mut g, 1, PointerPhase::Move, 185.0, 456.0, 16.0);
+        put(&mut g, 2, PointerPhase::Move, 235.0, 456.0, 17.0);
+        let s = g.scale.value;
+        assert!(s > 0.5 && s < 1.0 && s > 0.25, "{s}");
+        put(&mut g, 1, PointerPhase::Up, 185.0, 456.0, 30.0);
+        put(&mut g, 2, PointerPhase::Up, 235.0, 456.0, 31.0);
+        let (t, _) = run(&mut g, 40.0);
+        assert_eq!(transform(&g), (1.0, 0.0, 0.0));
+        assert!(t < 40.0 + 700.0, "{t}");
+    }
+
+    #[test]
+    fn a_drag_past_the_edge_rubber_bands_and_bounces_back() {
+        let mut g = at(3.0, 0.0, 0.0);
+        let (bx, _) = g.bounds(3.0);
+        g.tx.set(bx);
+        // A slow drag (100 pt/s, under UIScrollView's fling) 300 pt to the right.
+        put(&mut g, 1, PointerPhase::Down, 100.0, 400.0, 0.0);
+        for i in 1..=30 {
+            put(
+                &mut g,
+                1,
+                PointerPhase::Move,
+                100.0 + 10.0 * i as f64,
+                400.0,
+                100.0 * i as f64,
+            );
+        }
+        let over = g.tx.value - bx;
+        // 290 pt of travel past the bound shows as band(290, 420).
+        assert!(
+            (over - band(290.0, W as f64)).abs() < 1e-6 && over < 150.0,
+            "{over}"
+        );
+        put(&mut g, 1, PointerPhase::Up, 400.0, 400.0, 3000.0);
+        let (t, xs) = run(&mut g, 3000.0);
+        assert!(xs.windows(2).all(|w| w[1] <= w[0] + 1e-9), "monotonic back");
+        assert!(xs.iter().all(|&x| x >= bx - 0.01));
+        assert!((g.tx.value - bx).abs() < 1e-9);
+        assert!(t - 3000.0 < 900.0, "{}", t - 3000.0);
+    }
+
+    #[test]
+    fn a_fling_decelerates_as_uiscrollview_and_bounces_off_the_bound() {
+        // 500 pt/s, in range: UIKit's projection (v − 0.00988) / −ln 0.998 past the lift.
+        let mut g = at(3.0, -300.0, 0.0);
+        put(&mut g, 1, PointerPhase::Down, 100.0, 400.0, 0.0);
+        for i in 1..=10 {
+            put(
+                &mut g,
+                1,
+                PointerPhase::Move,
+                100.0 + 5.0 * i as f64,
+                400.0,
+                10.0 * i as f64,
+            );
+        }
+        put(&mut g, 1, PointerPhase::Up, 150.0, 400.0, 110.0);
+        let lifted = g.tx.value;
+        let (t, xs) = run(&mut g, 120.0);
+        let projected = (0.5 - STOP_VELOCITY) / -DECELERATION.ln();
+        assert!(
+            (g.tx.value - lifted - projected).abs() < 1e-6,
+            "{} {projected}",
+            g.tx.value - lifted
+        );
+        assert!(xs.windows(2).all(|w| w[1] >= w[0]));
+        assert!(t > 1000.0, "{t}");
+
+        // 2000 pt/s towards the bound: through it, then back onto it.
+        let mut g = at(3.0, 0.0, 0.0);
+        let (bx, _) = g.bounds(3.0);
+        put(&mut g, 1, PointerPhase::Down, 100.0, 400.0, 0.0);
+        for i in 1..=10 {
+            put(
+                &mut g,
+                1,
+                PointerPhase::Move,
+                100.0 + 20.0 * i as f64,
+                400.0,
+                10.0 * i as f64,
+            );
+        }
+        put(&mut g, 1, PointerPhase::Up, 300.0, 400.0, 110.0);
+        let (_, xs) = run(&mut g, 120.0);
+        let peak = xs.iter().cloned().fold(f64::MIN, f64::max);
+        assert!(peak > bx + 5.0 && peak < bx + W as f64, "{peak} {bx}");
+        assert!((g.tx.value - bx).abs() < 1e-9);
+
+        // A slow lift (200 pt/s) stops under the finger.
+        let mut g = at(3.0, 0.0, 0.0);
+        put(&mut g, 1, PointerPhase::Down, 100.0, 400.0, 0.0);
+        for i in 1..=10 {
+            put(
+                &mut g,
+                1,
+                PointerPhase::Move,
+                100.0 + 4.0 * i as f64,
+                400.0,
+                20.0 * i as f64,
+            );
+        }
+        put(&mut g, 1, PointerPhase::Up, 140.0, 400.0, 210.0);
+        let lifted = g.tx.value;
+        run(&mut g, 220.0);
+        assert_eq!(g.tx.value, lifted);
+    }
+
+    #[test]
+    fn a_touch_catches_a_fling_and_a_tap_lets_a_snap_finish() {
+        let mut g = at(3.0, -300.0, 0.0);
+        put(&mut g, 1, PointerPhase::Down, 100.0, 400.0, 0.0);
+        for i in 1..=10 {
+            put(
+                &mut g,
+                1,
+                PointerPhase::Move,
+                100.0 + 5.0 * i as f64,
+                400.0,
+                10.0 * i as f64,
+            );
+        }
+        put(&mut g, 1, PointerPhase::Up, 150.0, 400.0, 110.0);
+        let mut t = 120.0;
+        for _ in 0..20 {
+            g.last_now = t;
+            g.step_motion(t);
+            t += 8.33;
+        }
+        put(&mut g, 2, PointerPhase::Down, 200.0, 400.0, t);
+        let held = g.tx.value;
+        g.step_motion(t + 8.33);
+        assert_eq!(g.tx.value, held);
+        put(&mut g, 2, PointerPhase::Up, 200.0, 400.0, t + 50.0);
+        run(&mut g, t + 60.0);
+        assert_eq!(g.tx.value, held);
+
+        // A double tap's snap, interrupted by a tap, still lands on the cell.
+        let mut g = at(1.0, 0.0, 0.0);
+        put(&mut g, 1, PointerPhase::Down, 210.0, 456.0, 0.0);
+        put(&mut g, 1, PointerPhase::Up, 210.0, 456.0, 50.0);
+        put(&mut g, 1, PointerPhase::Down, 210.0, 456.0, 150.0);
+        put(&mut g, 1, PointerPhase::Up, 210.0, 456.0, 200.0);
+        for i in 0..10 {
+            g.step_motion(210.0 + 8.33 * i as f64);
+        }
+        let mid = g.scale.value;
+        assert!(mid > 1.5 && mid < g.ideal_grid_scale() - 1.0, "{mid}");
+        put(&mut g, 2, PointerPhase::Down, 50.0, 700.0, 300.0);
+        put(&mut g, 2, PointerPhase::Up, 50.0, 700.0, 340.0);
+        run(&mut g, 350.0);
+        assert!((g.scale.value - g.ideal_grid_scale()).abs() < 1e-6);
+    }
+
+    #[test]
+    fn a_double_tap_zooms_into_the_tapped_cell_and_back_out() {
+        let mut g = at(1.0, 0.0, 0.0);
+        // A tap 60 pt left and 100 pt up of the centre: cell (row, col) under it.
+        let (x, y): (f64, f64) = (150.0, 356.0);
+        let cw: f64 = 399.0 / 100.0;
+        // The second tap's point (RNGH's onEnd event).
+        let col = ((x + 2.0 - 210.0 + 199.5) / cw).floor() as i32;
+        let row = ((y - 456.0 + 199.5) / cw).floor() as i32;
+        put(&mut g, 1, PointerPhase::Down, x, y, 0.0);
+        put(&mut g, 1, PointerPhase::Up, x, y, 60.0);
+        put(&mut g, 1, PointerPhase::Down, x + 2.0, y, 200.0);
+        put(&mut g, 1, PointerPhase::Up, x + 2.0, y, 260.0);
+        assert_eq!((g.row, g.col), (row, col));
+        run(&mut g, 270.0);
+        let ideal = g.ideal_grid_scale();
+        assert!((g.scale.value - ideal).abs() < 1e-6);
+        // The tapped cell is centred.
+        let c = content(&g, 210.0, 456.0);
+        assert!(
+            (c.0 - ((col as f64 + 0.5) * cw - 199.5)).abs() < 1e-6,
+            "{c:?}"
+        );
+        put(&mut g, 1, PointerPhase::Down, 300.0, 300.0, 2000.0);
+        put(&mut g, 1, PointerPhase::Up, 300.0, 300.0, 2050.0);
+        put(&mut g, 1, PointerPhase::Down, 300.0, 300.0, 2150.0);
+        put(&mut g, 1, PointerPhase::Up, 300.0, 300.0, 2200.0);
+        run(&mut g, 2210.0);
+        assert_eq!(transform(&g), (1.0, 0.0, 0.0));
+    }
+
+    #[test]
+    fn one_finger_at_scale_1_moves_nothing_and_a_drag_is_no_tap() {
+        let mut g = at(1.0, 0.0, 0.0);
+        put(&mut g, 1, PointerPhase::Down, 200.0, 400.0, 0.0);
+        put(&mut g, 1, PointerPhase::Up, 200.0, 400.0, 50.0);
+        put(&mut g, 1, PointerPhase::Down, 200.0, 400.0, 150.0);
+        for i in 1..=6 {
+            put(
+                &mut g,
+                1,
+                PointerPhase::Move,
+                200.0 + 10.0 * i as f64,
+                400.0,
+                150.0 + 10.0 * i as f64,
+            );
+        }
+        put(&mut g, 1, PointerPhase::Up, 260.0, 400.0, 230.0);
+        assert_eq!(transform(&g), (1.0, 0.0, 0.0));
+        assert!(
+            !g.scale.running && g.row == -1,
+            "the drag failed the double tap"
+        );
+        assert!(g.posted.is_empty());
+    }
+
+    #[test]
+    fn a_pinch_released_in_grid_mode_snaps_to_the_centred_cell() {
+        let ideal = at(1.0, 0.0, 0.0).ideal_grid_scale();
+        let mut g = at(ideal, 0.0, 0.0);
+        put(&mut g, 1, PointerPhase::Down, 160.0, 456.0, 0.0);
+        put(&mut g, 2, PointerPhase::Down, 260.0, 456.0, 0.0);
+        // Pinch in a little and drift 100 pt left: the cell right of the middle comes in.
+        for i in 1..=10 {
+            let k = i as f64 / 10.0;
+            put(
+                &mut g,
+                1,
+                PointerPhase::Move,
+                160.0 + 5.0 * k - 100.0 * k,
+                456.0,
+                16.0 * i as f64,
+            );
+            put(
+                &mut g,
+                2,
+                PointerPhase::Move,
+                260.0 - 5.0 * k - 100.0 * k,
+                456.0,
+                16.0 * i as f64 + 1.0,
+            );
+        }
+        assert!(g.scale.value < ideal);
+        let (r, c) = g.centred_cell();
+        put(&mut g, 1, PointerPhase::Up, 65.0, 456.0, 200.0);
+        put(&mut g, 2, PointerPhase::Up, 155.0, 456.0, 201.0);
+        assert_eq!((g.row, g.col), (r, c));
+        assert_eq!(g.posted, ["haptic:impact-light"]);
+        run(&mut g, 210.0);
+        assert!((g.scale.value - ideal).abs() < 1e-6);
     }
 }

@@ -4,8 +4,9 @@
 //! the poster's glow fades and a blur rises over everything.
 //!
 //! Layout (the root fills the screen):
-//! - FloatingButtonTheme (zIndex 999): pressto PressableScale, absolute, right 32, bottom 32 +
-//!   safeBottom, 64 × 64, radius 32 (Core Animation's circle), a 1 pt border of `border` over
+//! - FloatingButtonTheme (zIndex 999): pressto PressableScale, absolute (RN: right 32, bottom 32 +
+//!   safeBottom; here concentric with the display's corner at the owner's request: right and
+//!   bottom 30, see DISPLAY_CORNER), 64 × 64, radius 32 (Core Animation's circle), a 1 pt border of `border` over
 //!   `card`, MaterialIcons "sunny" 20 in `primary` centred.
 //! - ThemeBlurView (zIndex 5): expo BlurView (tint default: `.regular`) over the screen,
 //!   intensity withTiming(switching ? 15 : 0, 350), opacity 0 while the intensity is 0.
@@ -66,6 +67,11 @@ const IMAGE_X: f32 = 32.0;
 const BLUR: f32 = 500.0;
 const GRADIENT_H: f32 = 400.0;
 const BUTTON: f32 = 64.0;
+/// The display's corner radius (demos/env.contract displayCorner: the iPhone 17 / Air's). The
+/// button is concentric with it (the owner's rule for bottom floating UI): its centre on the
+/// corner's centre, so it sits displayCorner − BUTTON / 2 = 30 pt from the side and the bottom of
+/// the display, not above the home indicator.
+const DISPLAY_CORNER: f32 = 62.0;
 
 /// palette.ts: primary, background, card, border (rgb, alpha), text.
 struct Palette {
@@ -177,7 +183,8 @@ impl Appearance {
         (self.canvas_height() - IMAGE_H) / 2.0 + 32.0
     }
     fn button_box(&self) -> (f32, f32) {
-        (self.size.0 - 32.0 - BUTTON, self.size.1 - (32.0 + self.safe.1) - BUTTON)
+        let inset = DISPLAY_CORNER - BUTTON / 2.0;
+        (self.size.0 - inset - BUTTON, self.size.1 - inset - BUTTON)
     }
     fn in_button(&self, x: f32, y: f32) -> bool {
         // RNGestureHandlerButton tests the point in its own (scaled) bounds.
@@ -627,11 +634,12 @@ mod tests {
         let bg = rest.at(3 * 400, 3 * 300);
         assert!(bg[..3].iter().all(|&c| (240..=252).contains(&c)), "{bg:?}");
         assert!(rest.at(3 * 130, 3 * 270)[..3].iter().any(|&c| c < 200));
-        // The button (centre 356, 814 at safeBottom 34): its card colour.
-        let card = rest.at(3 * 345, 3 * 800);
+        // The button (centre 358, 850: concentric with the display's corner, 62 from its sides): its
+        // card colour.
+        let card = rest.at(3 * 347, 3 * 836);
         assert!((230..=245).contains(&card[0]), "{card:?}");
 
-        let p = |phase, at_ms| InputEvent::Pointer { id: 1, phase, x: 356.0, y: 814.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let p = |phase, at_ms| InputEvent::Pointer { id: 1, phase, x: 358.0, y: 850.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
         s.input(&p(PointerPhase::Down, 0.0));
         let mut ms = 0.0;
         while ms < 800.0 {

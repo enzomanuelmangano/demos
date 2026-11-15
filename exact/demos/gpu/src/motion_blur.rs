@@ -13,7 +13,7 @@
 //! the same on a card that is still and on one that moves, in no direction. Here each card is
 //! blurred by its own motion, as a film camera records it:
 //!
-//! - The shutter: 1/15 s (`EXPOSURE_MS`, 66.7 ms; a 360° shutter at 15 fps), tent-weighted,
+//! - The shutter: 1/15 s (`EXPOSURE_MS`, 66.7 ms; a 360° shutter at 15 fps), Hann-weighted,
 //!   centred on the frame's instant (Blender's "centre on frame"), the same on a 60 Hz and a
 //!   120 Hz display. The slide's spring peaks at ~600 pt/s (5 pt, 15 px a 120 Hz frame): a 40 pt
 //!   smear, the pop-in's ~50 pt. 180° at 24 fps (20.8 ms) and 360° at 24 fps (41.7 ms) both read
@@ -41,8 +41,12 @@
 //!   ms inOut(quad)). ListItem: a row, padding 10 (stretched, as the Contract port measured),
 //!   the emoji circle (60, #F4F4F4, the emoji 25), ItemDetails (flex 1, marginLeft 10, flex-end):
 //!   amount Honk-Bold 22 letterSpacing 1, address Honk-Regular 14 marginTop 5 opacity 0.3.
-//! - Entering (the index's wrapper, a 0-tall full-width box at the list's top): Keyframe 200 ms,
-//!   linear, opacity 0 → 1, [scale 0.5 → 1, translateY 100 → 0] about (W / 2, 0).
+//! - Entering, past RN (the owner's ask; RN drops it in with a Keyframe of scale 0.5 →
+//!   1 and translateY 100 → 0 about the list's top centre): dealt from under the card above, its
+//!   top springing from half a card above its slot (the default spring), its scale 0.92 → 1
+//!   with it, fading in over 120 ms, drawn under the others while it comes out.
+//! - The canvas reaches `LIST_TOP` above the list and `LIST_BOTTOM` below it (the list's
+//!   clip cut the top card's corners and shadow): the list's points are `LIST_TOP` down.
 //! - Exiting (k < n − 3): FadeOutUp 400 ms inOut(quad): opacity 1 → 0, translateY 0 → −25, at
 //!   the top it had.
 //!
@@ -60,12 +64,23 @@ use shaders::motion_blur::{entry, module, Uniforms, ATLAS, GROUP_0, SMP, U};
 
 /// LIST_ITEM_HEIGHT.
 const CARD_H: f64 = 90.0;
+/// The canvas reaches this far above the list (pt), so the top card's corners and shadow and
+/// the leaving card's rise are not cut at the list's edge; and this far below it.
+pub const LIST_TOP: f64 = 24.0;
+/// The canvas's reach below the list (pt): the bottom card's shadow.
+pub const LIST_BOTTOM: f64 = 30.0;
+/// The new card: its top starts this many card heights above its slot, under the card above …
+const ENTER_RISE: f64 = 0.5;
+/// … at this scale …
+const ENTER_SCALE: f64 = 0.92;
+/// … fading in over this …
+const ENTER_FADE_MS: f64 = 120.0;
+/// … and drawn under the others for this long.
+const ENTER_UNDER_MS: f64 = 450.0;
 /// LIST_ITEM_HEIGHT + LIST_ITEM_MARGIN_BOTTOM.
 const ROW: f64 = 110.0;
 /// maxVisibleItems.
 const MAX_VISIBLE: usize = 3;
-/// The entering keyframe's duration.
-const ENTER_MS: f64 = 200.0;
 /// FadeOutUp.duration(400).
 const EXIT_MS: f64 = 400.0;
 /// isLastItemProgress's withTiming (default: 300 ms, inOut(quad)).
@@ -87,7 +102,7 @@ pub const BURST_MIN_MS: f64 = 70.0;
 /// The most knots (intervals) a card takes in a frame.
 pub const MAX_SAMPLES: usize = 64;
 /// The most samples a pixel takes for one card (its cost at the fastest moves).
-pub const MAX_TOTAL: usize = 160;
+pub const MAX_TOTAL: usize = 192;
 /// Cards drawn at once (the shader's arrays).
 const SLOTS: usize = 8;
 /// Knots in the uniform.
@@ -301,12 +316,16 @@ impl Card {
             .map_or(1.0, |f| f.at(t))
     }
     fn pose(&self, l: &Layout, t: f64) -> Pose {
-        // The entering keyframe (linear between its two frames); before the card mounts it is
-        // there at its first frame, transparent.
-        let p = ((t - self.added) / ENTER_MS).clamp(0.0, 1.0);
-        let s = 0.5 + 0.5 * p;
-        let ty_in = 100.0 * (1.0 - p);
-        let mut alpha = if t < self.added { 0.0 } else { p };
+        // Dealt from under the card above (the owner's ask, past RN's drop-in keyframe): its
+        // top springs from half a card above its slot (`tops`), its scale with the same
+        // critically damped step from ENTER_SCALE, about the card's centre, and it fades in
+        // over ENTER_FADE_MS, drawn under the others (`live`). Before it mounts: transparent.
+        let s = ENTER_SCALE + (1.0 - ENTER_SCALE) * self.pose_scale(t);
+        let mut alpha = if t < self.added {
+            0.0
+        } else {
+            ((t - self.added) / ENTER_FADE_MS).min(1.0)
+        };
         let mut ty_exit = 0.0;
         if let Some(x) = self.exit {
             if t >= x {
@@ -315,18 +334,37 @@ impl Card {
                 ty_exit = -25.0 * e;
             }
         }
-        let top = self.top_at(t).0;
-        let cx = l.w / 2.0;
+        let top = self.top_at(t).0 + ty_exit;
+        let (cx, cy) = (l.card_x + l.card_w / 2.0, top + CARD_H / 2.0);
         Pose {
             s,
-            ox: cx + s * (l.card_x - l.mx - cx),
-            oy: s * (top + ty_exit + ty_in - l.mt),
+            ox: cx - s * (l.card_w / 2.0 + l.mx),
+            oy: LIST_TOP + cy - s * (CARD_H / 2.0 + l.mt),
             alpha,
         }
     }
+    /// How far its entering scale has come (1: done).
+    fn pose_scale(&self, t: f64) -> f64 {
+        if !self.added.is_finite() {
+            return 1.0;
+        }
+        let dt = ((t - self.added) / 1000.0).max(0.0);
+        let step = 1.0 - (-OMEGA * dt).exp() * (1.0 + OMEGA * dt);
+        // At rest once a hundredth of a device pixel off (Reanimated's threshold, in scale).
+        if (1.0 - step) * (1.0 - ENTER_SCALE) * 400.0 < 0.01 {
+            1.0
+        } else {
+            step
+        }
+    }
+    /// Whether it is still coming out from under the card above (drawn under the others).
+    fn entering(&self, t: f64) -> bool {
+        self.added.is_finite() && t < self.added + ENTER_UNDER_MS
+    }
     /// Whether anything about it changes after `t`.
     fn moving(&self, t: f64) -> bool {
-        t < self.added + ENTER_MS
+        t < self.added + ENTER_FADE_MS
+            || self.pose_scale(t) < 1.0
             || self.exit.is_some()
             || self.top_at(t).1 != 0.0
             || self.tops.last().is_some_and(|g| g.at(t).0 != g.to)
@@ -403,6 +441,8 @@ struct MotionBlur {
     seed: f64,
     /// The last inputs (count, held, slow), applied at the next frame.
     pending: Option<(usize, bool, bool)>,
+    /// The demo's clock at the frame being drawn.
+    now_anim: f64,
     /// The demo's clock: at host time `clock.0` it read `clock.1`, running at `rate`.
     clock: (f64, f64),
     rate: f64,
@@ -501,10 +541,16 @@ impl MotionBlur {
         for k in old.max(n.saturating_sub(MAX_VISIBLE + 4))..n {
             let last = (k + 1 == n) as u8 as f64;
             let exit = (k + MAX_VISIBLE < n).then_some(t);
+            let slot = top_of(k, n);
             self.cards.push(Card {
                 k,
                 added: t,
-                tops: vec![Seg::rest(t, top_of(k, n))],
+                tops: vec![Seg {
+                    t0: t,
+                    from: slot - ENTER_RISE * CARD_H,
+                    to: slot,
+                    v0: 0.0,
+                }],
                 shadow: vec![Fade {
                     t0: t,
                     from: last,
@@ -534,7 +580,11 @@ impl MotionBlur {
         let mut live: Vec<Card> = self.cards.clone();
         live.sort_by_key(|c| c.k);
         let skip = live.len().saturating_sub(SLOTS - self.slow as usize);
-        live.split_off(skip)
+        let mut live = live.split_off(skip);
+        // Drawn in this order: a card still coming out from under the others first.
+        let t = self.now_anim;
+        live.sort_by_key(|c| (!c.entering(t), c.k));
+        live
     }
 
     /// Card `card`'s layer into `c` at the slot's origin (pt).
@@ -683,6 +733,7 @@ impl Surface for MotionBlur {
         }
         // Every motion below runs on the demo's clock (the host's, or 10× slower in debug).
         let t = anim(self.clock, self.rate);
+        self.now_anim = t;
         if let Some((n, held, _)) = self.pending.take() {
             if n != self.presses || held != self.held {
                 self.peak_samples = 0;
@@ -1073,7 +1124,7 @@ mod tests {
     use exact_gpu::fixture;
 
     const W: f32 = 402.0;
-    const H: f32 = 330.0;
+    const H: f32 = (330.0 + LIST_TOP + LIST_BOTTOM) as f32;
     const S: f32 = 3.0;
 
     fn frame(now_ms: f64) -> Frame {
@@ -1218,7 +1269,9 @@ mod tests {
     #[test]
     fn cards_rest_sharp_and_blur_along_their_motion() {
         // Three cards at rest, then a fourth: the others slide up, the oldest leaves.
-        let shots = [1450.0, 1520.0, 1560.0, 1600.0, 1650.0, 3000.0];
+        let shots = [
+            1030.0, 1060.0, 1100.0, 1450.0, 1520.0, 1560.0, 1600.0, 1650.0, 3000.0,
+        ];
         let px = render_seq("motion-blur", &[0.0, 500.0, 1000.0, 1500.0], &shots);
         if px.is_empty() {
             return;
@@ -1228,9 +1281,9 @@ mod tests {
             (l.card_x * 3.0) as u32,
             ((l.card_x + l.card_w) * 3.0) as u32,
         );
-        let at_rest = &px[0];
+        let at_rest = &px[3];
         // At rest: the cards are centred (white at both inner edges, transparent past them).
-        let mid_y = (2.0 * ROW + 45.0) as u32 * 3;
+        let mid_y = (LIST_TOP + 2.0 * ROW + 45.0) as u32 * 3;
         assert_eq!(at_rest.at(cx0 + 3, mid_y)[3], 255);
         assert_eq!(at_rest.at(cx1 - 3, mid_y)[3], 255);
         assert!(
@@ -1251,13 +1304,13 @@ mod tests {
         assert!(
             edge(
                 at_rest,
-                (2.0 * ROW * 3.0) as u32 - 10,
-                (2.0 * ROW * 3.0) as u32 + 10
+                ((LIST_TOP + 2.0 * ROW) * 3.0) as u32 - 10,
+                ((LIST_TOP + 2.0 * ROW) * 3.0) as u32 + 10
             ) <= 3
         );
         // Mid-slide (100 ms after the tap): the top edges are smeared over many pixels along y,
         // and the vertical sides (motion along them) stay sharp.
-        let sliding = &px[3];
+        let sliding = &px[6];
         let soft = (0..H as u32 * 3)
             .filter(|&y| {
                 let a = sliding.at(x, y)[3];
@@ -1267,7 +1320,7 @@ mod tests {
         assert!(soft > 40, "{soft}");
         let side = (cx0 - 8..cx0 + 8)
             .filter(|&xx| {
-                let a = sliding.at(xx, (ROW * 3.0 + 135.0) as u32)[3];
+                let a = sliding.at(xx, ((LIST_TOP + ROW) * 3.0 + 135.0) as u32)[3];
                 a > 60 && a < 230
             })
             .count();
@@ -1280,7 +1333,7 @@ mod tests {
             .unwrap();
         let (still, moving) = fixture::render(&gpu, fresh.as_mut(), &frame(5000.0)).unwrap();
         assert!(!moving);
-        assert_eq!(still.data, px[5].data);
+        assert_eq!(still.data, px[8].data);
     }
 
     #[test]

@@ -52,7 +52,7 @@
 //! made once ([`noise_tile`]).
 //! The lights stay in the room: each card's frame there (`frame`: x axis, y axis, normal) is the
 //! phone's turn (Core Motion's `relativeOrientation`, its CMAttitude pitch and roll, clamped to
-//! ±ATTITUDE_RANGE and smoothed on the critically damped ATTITUDE_SPRING) · the 18° roll · the
+//! ±ATTITUDE_RANGE, scaled by ATTITUDE_GAIN and smoothed on the critically damped ATTITUDE_SPRING) · the 18° roll · the
 //! scroll's turn · the finger's tilt. Tilting the phone sweeps the highlights and the foil's
 //! colours across the card. A finger on the list tilts the centred card about x toward where it
 //! presses (MAX_TILT at the card's top / bottom edge) and lifts it (PRESS_SCALE), both on
@@ -123,10 +123,13 @@ const PRESS_SCALE: f32 = 0.025;
 const TILT_SPRING: SpringConfig = SpringConfig { stiffness: 260.0, damping: 20.0, mass: 1.0 };
 /// The phone's turn that moves the light: CMAttitude pitch and roll, each clamped to ±25°.
 const ATTITUDE_RANGE: f64 = 25.0 * std::f64::consts::PI / 180.0;
-/// Their smoothing: critically damped (ζ = 1), settled in ~0.35 s (ω = 14 rad/s).
-const ATTITUDE_SPRING: SpringConfig = SpringConfig { stiffness: 196.0, damping: 28.0, mass: 1.0 };
-/// A sample that moves a target less than this (radians, ~0.06°) is sensor noise: no frame.
-const ATTITUDE_DEADBAND: f64 = 0.001;
+/// How much of the phone's turn the room's light sees: half, so a hand's small sway shades the
+/// card instead of flickering it (the owner: "it sparkles too much").
+const ATTITUDE_GAIN: f64 = 0.5;
+/// Their smoothing: critically damped (ζ = 1), settled in ~0.5 s (ω = 10 rad/s).
+const ATTITUDE_SPRING: SpringConfig = SpringConfig { stiffness: 100.0, damping: 20.0, mass: 1.0 };
+/// A sample that moves a target less than this (radians, ~0.11°) is a hand's tremor: no frame.
+const ATTITUDE_DEADBAND: f64 = 0.002;
 /// The noise tile's side (texels).
 const TILE_SIDE: u32 = 256;
 /// The shadow's push in the card's plane per unit of sin(turn) and sin(tilt), points.
@@ -359,8 +362,8 @@ impl CardShaderReflections {
     /// eye stay put): the phone's turn · Rz(18°) · Ry(turn) · Rx(the finger's tilt).
     fn room_frame(&self, pose: &Pose) -> [[f32; 3]; 3] {
         let (tilt, _) = self.held(pose);
-        let m = Matrix4::rotate_x(-self.pitch.value as f32)
-            .multiply(Matrix4::rotate_y(self.roll.value as f32))
+        let m = Matrix4::rotate_x((-self.pitch.value * ATTITUDE_GAIN) as f32)
+            .multiply(Matrix4::rotate_y((self.roll.value * ATTITUDE_GAIN) as f32))
             .multiply(Matrix4::rotate_z(TILT_DEG.to_radians()))
             .multiply(Matrix4::rotate_y((pose.rotate_y_deg as f32).to_radians()))
             .multiply(Matrix4::rotate_x(tilt))
@@ -926,13 +929,14 @@ mod tests {
         s.input(&sensor(-15.0 * deg, -40.0 * deg, 8000.0));
         let left = settle(s.as_mut(), 8000.0);
         left.save("card-shader-reflections-phone-left");
-        // The card's face changed under the light; the background did not.
+        // The card's face changed under the light (gently: ATTITUDE_GAIN halves the sweep); the
+        // background did not.
         let px = |img: &fixture::Pixels, x: f32, y: f32| img.at((x * 3.0) as u32, (y * 3.0) as u32);
         let changed = |a: &fixture::Pixels, b: &fixture::Pixels| {
             [(150.0, 300.0), (210.0, 429.5), (260.0, 560.0)].iter().map(|&(x, y)| (px(a, x, y)[1] as i32 - px(b, x, y)[1] as i32).abs()).max().unwrap()
         };
-        assert!(changed(&rest, &right) > 12, "{}", changed(&rest, &right));
-        assert!(changed(&right, &left) > 12, "{}", changed(&right, &left));
+        assert!(changed(&rest, &right) > 6, "{}", changed(&rest, &right));
+        assert!(changed(&right, &left) > 6, "{}", changed(&right, &left));
         assert_eq!(&px(&left, 5.0, 5.0)[..3], &[17, 17, 17]);
     }
 
