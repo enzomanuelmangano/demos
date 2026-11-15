@@ -23,7 +23,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-HERE = Path(__file__).resolve().parent.parent
+HERE = Path(__file__).resolve().parents[2] / "demos"
 PNG = HERE / "../../src/animations/the-little-prince/assets/prince.png"
 OUT = HERE / "gpu/images/prince-rgb-910x1218.rgb8.zlib"
 
