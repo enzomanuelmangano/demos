@@ -18,7 +18,8 @@
     "painting-menu",
     "variable-blur",
     "glass-pane",
-    "inspiration-sheet"
+    "inspiration-sheet",
+    "audio-track"
   ],
   "host": {
     "web": {},
