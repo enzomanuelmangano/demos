@@ -13,6 +13,11 @@ component ThreadsHoloTicket
   action buzz(m: string)
     if m == "haptic:selection"
       haptic("selection")
+    // Past RN: the pan's grab, and a fling stopped at its clamp.
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+    if m == "haptic:impact-rigid"
+      haptic("impact-rigid")
   view
     // styles.container: #070018 (a View colour: Display P3 components), flex 1.
     column position="absolute" inset=0 background-color="color(display-p3 0.027451 0 0.094118)" testId="threads-holo-ticket"
