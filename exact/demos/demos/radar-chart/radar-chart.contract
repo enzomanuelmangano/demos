@@ -2,7 +2,7 @@
 // springs them to new random values. RN: src/animations/radar-chart (index.tsx,
 // components/radar-chart). The chart is Skia: drawn and sprung in Rust
 // (gpu/src/radar_chart.rs); the data and the button are here.
-use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+use PressableScale from "pressto"
 use DemoEnv, roll from "../env.contract"
 
 // generateRandomDataChart: (Math.random() × 100) / 100 for each of five keys, twice; the
@@ -12,18 +12,8 @@ fn value(seed: number, draw: number, k: number): number = roll(seed, draw * 10 +
 component RadarChart
   props
     env: DemoEnv
-  inject
-    pressto: PressablesConfig
-    pressablesOnPress: action
-  // pressto: the pressed pressable (its key) and the press parity.
-  state pressing = pressNone()
-  action pressIn(key: number)
-    pressing = pressDown(pressing, key)
-  action pressOut
-    pressing = pressUp(pressing)
   state draw = 0
   action shuffle
-    pressablesOnPress()
     draw = draw + 1
   view
     // styles.container: black, centred, paddingHorizontal 20.
@@ -37,12 +27,12 @@ component RadarChart
       // styles.button: 80% wide, 60 tall, white 1 border, radius 20, marginTop 50. Its borderCurve
       // 'continuous' is not drawn: a bordered RN View that doesn't clip is RCTBorderDrawing's ring
       // with circular corners (measured: the outer edge is a circle of 20 to 0.1 px).
-      button appearance="none" press=shuffle width=(0.8 * (env.width - 40)) height=60
-        pointerdown=pressIn(0) pointerup=pressOut
-        scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
-        margin-top=50 box-sizing="border-box" border="1px solid #ffffff" border-radius=20
-        display="flex" align-items="center" justify-content="center" testId="shuffle"
-        // styles.title: white, 20, weight 800, letterSpacing 2, uppercase. CoreGraphics puts
-        // TextKit's baseline (19.04 below the 24-tall line's top) on the next pixel down; the
-        // host's line sat one device pixel lower: moved back up by one.
-        text "Shuffle" position="relative" top="-0.33333px" color="#ffffff" font-size=20 font-weight=800 letter-spacing=2 text-transform="uppercase"
+      // Its place on the view around the PressableScale, its look on the column it presses.
+      view width=(0.8 * (env.width - 40)) height=60 margin-top=50 display="flex" flex-direction="column"
+        PressableScale(press=shuffle)
+          column flex-grow=1 box-sizing="border-box" border="1px solid #ffffff" border-radius=20 text-align="center"
+            align-items="center" justify-content="center" testId="shuffle"
+            // styles.title: white, 20, weight 800, letterSpacing 2, uppercase. CoreGraphics puts
+            // TextKit's baseline (19.04 below the 24-tall line's top) on the next pixel down; the
+            // host's line sat one device pixel lower: moved back up by one.
+            text "Shuffle" position="relative" top="-0.33333px" color="#ffffff" font-size=20 font-weight=800 letter-spacing=2 text-transform="uppercase"

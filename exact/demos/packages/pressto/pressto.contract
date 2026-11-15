@@ -17,24 +17,9 @@
 // the up wherever the finger lifts, a cancel is an up, and neither takes anything from
 // `press`, which the host fires only for a lift inside): 2 commits a press.
 //
-// Use (one pressable; in a `for`, pass the item's index as the key):
-//
-//   use Press, PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
-//   component X
-//     inject
-//       pressto: PressablesConfig
-//       pressablesOnPress: action
-//     state pressing = pressNone()
-//     action pressIn(key: number)
-//       pressing = pressDown(pressing, key)
-//     action pressOut
-//       pressing = pressUp(pressing)
-//     action go
-//       pressablesOnPress()
-//       …
-//     view
-//       button appearance="none" press=go pointerdown=pressIn(0) pointerup=pressOut
-//         scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
+// Use: the components at the end of this file (PressableScale, PressableOpacity,
+// PressableWithoutFeedback, AnimatedPressable, and the *Layout variants), around the caller's
+// nodes. The functions below are their machine.
 
 // PressablesConfig (provider/index.tsx): the animation and pressto's `config`. The root
 // provides one (`pressto`), with the app's global onPress (`pressablesOnPress`).
@@ -106,3 +91,191 @@ fn pressTransition(property: string, c: PressablesConfig): string = `${property}
 // Oklab, Reanimated in gamma-2.2 RGB.
 fn animatedPressableColor(p: Press, key: number, rest: string, pressed: string): string =
   isPressed(p, key) ? pressed : rest
+
+
+// ── The components: pressto's API ──────────────────────────────────────────────────────────
+//
+// Each wraps the caller's nodes (its `slot`) in one press box, as pressto's BaseButton wraps a
+// pressable's children, and owns its press (one `Press` state a pressable, as each RN pressable
+// owns its `active` shared value):
+//
+//   PressableScale(press=save)
+//     row height=60 border-radius=30 background-color="#0c86f7" …
+//       text "Continue"
+//
+// - `press` is the pressable's onPress. The app's global onPress (`pressablesOnPress`, the
+//   root's PressablesConfig globalHandlers) runs first, then `press`, as BasePressable calls
+//   `onPressProvider` before `onPress`. It runs only for a lift inside the box (BaseButton
+//   onPress(pointerInside), pointerInside true).
+// - The box fills the box its caller gives it (flex column, grown and stretched), as an RN
+//   pressable's style places it: write the pressable's place (position, size, flex, margins,
+//   `-exact-layout-transition`) on a `view` around it, its look (background, radius, padding,
+//   layout of its content) on the node in the slot. The box draws nothing and has no padding,
+//   so the scale turns about the centre of the caller's box, as RN's does.
+// - The box is `role="button"`: a view, not a `button`, so it adds no text style (a `button`'s
+//   tag centres its text and sets its font) to the caller's nodes.
+//
+// RN's provider (PressablesConfig) stays the root's `provide`: a slot's fill keeps its caller's
+// providers, so a wrapping component cannot provide to it. The root provides
+// `pressto = defaultPressablesConfig()` and `pressablesOnPress` (app.contract).
+
+// PressableScale (custom/scale.ts): scale baseScale → minScale.
+component PressableScale
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  props
+    press: action
+  slot
+  state pressing = pressNone()
+  action pressIn
+    pressing = pressDown(pressing, 0)
+    // The innermost pressable takes the touch, as RNGH's innermost button does (UIKit hands the
+    // touch to the deepest UIControl): a pressable around this one does not press in.
+    stopPropagation()
+  action pressOut
+    pressing = pressUp(pressing)
+  action pressed
+    pressablesOnPress()
+    press()
+  view
+    view role="button" press=pressed pointerdown=pressIn pointerup=pressOut
+      display="flex" flex-direction="column" flex-grow=1 align-self="stretch"
+      scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
+      children
+
+// PressableScale whose box moves with a layout animation (RN's `layout={…}` on the pressable):
+// `layout` is the box's `-exact-layout-transition`, so the scale turns about the moving box's
+// centre, as Reanimated's layout animation and pressto's transform share RN's one view.
+component PressableScaleLayout
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  props
+    press: action
+    layout: string
+  slot
+  state pressing = pressNone()
+  action pressIn
+    pressing = pressDown(pressing, 0)
+    // The innermost pressable takes the touch, as RNGH's innermost button does (UIKit hands the
+    // touch to the deepest UIControl): a pressable around this one does not press in.
+    stopPropagation()
+  action pressOut
+    pressing = pressUp(pressing)
+  action pressed
+    pressablesOnPress()
+    press()
+  view
+    view role="button" press=pressed pointerdown=pressIn pointerup=pressOut
+      display="flex" flex-direction="column" flex-grow=1 align-self="stretch"
+      -exact-layout-transition=layout
+      scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
+      children
+
+// PressableOpacity (custom/opacity.ts): opacity 1 → activeOpacity.
+component PressableOpacity
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  props
+    press: action
+  slot
+  state pressing = pressNone()
+  action pressIn
+    pressing = pressDown(pressing, 0)
+    // The innermost pressable takes the touch, as RNGH's innermost button does (UIKit hands the
+    // touch to the deepest UIControl): a pressable around this one does not press in.
+    stopPropagation()
+  action pressOut
+    pressing = pressUp(pressing)
+  action pressed
+    pressablesOnPress()
+    press()
+  view
+    view role="button" press=pressed pointerdown=pressIn pointerup=pressOut
+      display="flex" flex-direction="column" flex-grow=1 align-self="stretch"
+      opacity=pressableOpacity(pressing, 0, pressto) transition=pressTransition("opacity", pressto)
+      children
+
+// PressableOpacity whose box moves with a layout animation (as PressableScaleLayout).
+component PressableOpacityLayout
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  props
+    press: action
+    layout: string
+  slot
+  state pressing = pressNone()
+  action pressIn
+    pressing = pressDown(pressing, 0)
+    stopPropagation()
+  action pressOut
+    pressing = pressUp(pressing)
+  action pressed
+    pressablesOnPress()
+    press()
+  view
+    view role="button" press=pressed pointerdown=pressIn pointerup=pressOut
+      display="flex" flex-direction="column" flex-grow=1 align-self="stretch"
+      -exact-layout-transition=layout
+      opacity=pressableOpacity(pressing, 0, pressto) transition=pressTransition("opacity", pressto)
+      children
+
+// PressableWithoutFeedback (custom/withoutFeedback.ts): no look, the press and its haptic.
+component PressableWithoutFeedback
+  inject
+    pressablesOnPress: action
+  props
+    press: action
+  slot
+  action pressed
+    pressablesOnPress()
+    press()
+  view
+    view role="button" press=pressed
+      display="flex" flex-direction="column" flex-grow=1 align-self="stretch"
+      children
+
+// What a createAnimatedPressable style is at progress 0 (`rest`) and 1 (`pressed`), for the
+// styles the demos write: interpolate(progress, [0, 1], [rest, pressed]) of the scale and the
+// opacity, interpolateColor of the background. The corner is the box's own (the same in both).
+shape PressLook
+  scale: number
+  opacity: number
+  background: string
+  radius: number
+  continuous: bool
+
+// createAnimatedPressable(progress => ({ transform: [{ scale }], opacity, backgroundColor,
+// borderRadius })).
+component AnimatedPressable
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  props
+    press: action
+    rest: PressLook
+    pressed: PressLook
+  slot
+  state pressing = pressNone()
+  action pressIn
+    pressing = pressDown(pressing, 0)
+    // The innermost pressable takes the touch, as RNGH's innermost button does (UIKit hands the
+    // touch to the deepest UIControl): a pressable around this one does not press in.
+    stopPropagation()
+  action pressOut
+    pressing = pressUp(pressing)
+  action onPress
+    pressablesOnPress()
+    press()
+  view
+    view role="button" press=onPress pointerdown=pressIn pointerup=pressOut
+      display="flex" flex-direction="column" flex-grow=1 align-self="stretch"
+      scale=animatedPressable(pressing, 0, rest.scale, pressed.scale)
+      opacity=animatedPressable(pressing, 0, rest.opacity, pressed.opacity)
+      background-color=animatedPressableColor(pressing, 0, rest.background, pressed.background)
+      border-radius=rest.radius corner-shape=(rest.continuous ? "-exact-continuous" : "round")
+      transition=`${pressTransition("scale", pressto)}, ${pressTransition("opacity", pressto)}, ${pressTransition("background-color", pressto)}`
+      children

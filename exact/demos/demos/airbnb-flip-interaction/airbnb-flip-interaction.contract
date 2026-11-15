@@ -5,27 +5,17 @@
 // front.tsx, back.tsx, profile-avatar.tsx}, pages/{MainPage.tsx, SecondPage.tsx}). The card (both
 // faces, the 4×4 turn, its spring with Reanimated's velocity rules) and the description (pages,
 // Keyframes, the blur pulse) are Rust surfaces; the scroll, the press and the top gradient are here.
-use PressablesConfig, pressNone, pressDown, pressUp, pressableOpacity, pressTransition from "pressto"
+use PressableScale from "pressto"
 use DemoEnv, demoButtonRow from "../env.contract"
 
 component AirbnbFlipInteraction
   props
     env: DemoEnv
-  inject
-    pressto: PressablesConfig
-    pressablesOnPress: action
-  // pressto: the pressed pressable (its key) and the press parity.
-  state pressing = pressNone()
-  action pressIn(key: number)
-    pressing = pressDown(pressing, key)
-  action pressOut
-    pressing = pressUp(pressing)
   state isFlipped = false
   // flip-interaction/constants spacing.xxl 64: cardWidth = screenWidth - 64, height / 1.6.
   derive cardW = env.width - 64
   derive cardH = cardW / 1.6
   action toggleCard
-    pressablesOnPress()
     isFlipped = not isFlipped
   view
     // styles.container: white, flex 1.
@@ -46,19 +36,21 @@ component AirbnbFlipInteraction
             pointer-events="none" aria-hidden=true testId=(isFlipped ? "airbnb-second-page" : "airbnb-main-page")
           // styles.cardSection: centred, paddingBottom spacing.xl (24), paddingHorizontal 20.
           column align-items="center" padding-bottom=24 padding-left=20 padding-right=20
-            column press=toggleCard role="button"
-              pointerdown=pressIn(0) pointerup=pressOut
-              opacity=pressableOpacity(pressing, 0, pressto) transition=pressTransition("opacity", pressto)
-              aria-label=(isFlipped ? "Show the profile card" : "Show the stats card")
-              testId="airbnb-card"
-              // FlipCard: rotationContainer cardWidth × cardHeight (horizontal: rotate 0). Both
-              // faces, their 3D turn and the progress spring are drawn in Rust
-              // (gpu/src/airbnb_flip_card.rs); the canvas reaches 56 past the box for the shadow
-              // and the perspective.
-              view position="relative" width=cardW height=cardH testId="airbnb-front"
-                canvas surface=airbnb_flip_card(isFlipped) position="absolute" left=-56 top=-56
-                  width=(cardW + 112) height=(cardH + 112) pointer-events="none" aria-hidden=true
-                  testId="airbnb-back"
+            // RN wraps the card in a PressableOpacity (index.tsx); the owner's call (phone feedback,
+            // 2026-11-15): pressto's PressableScale instead, its 250 ms ease to 0.96. The
+            // pressable's place (the card's width); the press box fills it.
+            view width=cardW
+              PressableScale(press=toggleCard)
+                column aria-label=(isFlipped ? "Show the profile card" : "Show the stats card")
+                  testId="airbnb-card"
+                  // FlipCard: rotationContainer cardWidth × cardHeight (horizontal: rotate 0). Both
+                  // faces, their 3D turn and the progress spring are drawn in Rust
+                  // (gpu/src/airbnb_flip_card.rs); the canvas reaches 56 past the box for the shadow
+                  // and the perspective.
+                  view position="relative" width=cardW height=cardH testId="airbnb-front"
+                    canvas surface=airbnb_flip_card(isFlipped) position="absolute" left=-56 top=-56
+                      width=(cardW + 112) height=(cardH + 112) pointer-events="none" aria-hidden=true
+                      testId="airbnb-back"
           // styles.descriptionSection: the pages are the canvas's; this box holds their place
           // (taller than either page: the content stays shorter than the window, as RN's, so
           // the scroll only bounces).

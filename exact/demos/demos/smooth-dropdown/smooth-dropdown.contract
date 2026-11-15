@@ -1,7 +1,7 @@
 // Smooth Dropdown: a header card over a stack of four option cards; a tap on the header springs
 // them open into a list (its chevron turns), a tap on an option picks it.
 // RN: src/animations/smooth-dropdown (index.tsx, components/dropdown/index.tsx, dropdrop-item.tsx).
-use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+use PressableScale from "pressto"
 
 shape DropdownOption
   label: string
@@ -99,73 +99,59 @@ component DropdownItem
     n: number
     bgMs: number
     press: action
-  inject
-    pressto: PressablesConfig
-    pressablesOnPress: action
-  // pressto: the pressed pressable (its key) and the press parity.
-  state pressing = pressNone()
-  action pressIn(key: number)
-    pressing = pressDown(pressing, key)
-  action pressOut
-    pressing = pressUp(pressing)
-  // onPress: the global onPress, then the item's.
-  action pressed
-    pressablesOnPress()
-    press()
   derive isHeader = index == 0
   view
     // styles.item: absolute, 80% wide, 75 tall, padding 15, radius 10 (continuous);
     // zIndex optionsLength - index. Collapsed options are behind the header: no touches.
-    // The PressableScale's own scale multiplies the item's (a box inside it, filling it, takes
-    // the press scale and the item's paint: both turn about the same centre).
-    button appearance="none" press=pressed testId=(isHeader ? "dropdown-header" : `dropdown-${option.label.toLowerCase()}`)
-      aria-label=option.label aria-expanded=open
-      position="absolute" bottom=0 left="10%" width="80%" height=75 padding=0
+    // The PressableScale's own scale multiplies the item's: the item's place and motion on the
+    // view around it, the paint on the row in it (both turn about the same centre).
+    view position="absolute" bottom=0 left="10%" width="80%" height=75 padding=0 text-align="center"
       // RN flips an option's pointerEvents where progress crosses 0.5 (bgMs in); here at the tap
       // (`pointer-events` takes no transition): an option tapped in those ~112 ms differs.
       z-index=(5 - index) pointer-events=(open or isHeader ? "auto" : "none")
-      pointerdown=pressIn(0) pointerup=pressOut
       display="flex" flex-direction="row" align-items="stretch"
       translate=`0px ${0 - itemBottom(open, index) + nudge(n)}px` scale=(itemScale(open, index) + nudge(n) / 100)
       transition=`translate ${dropdownEase()}, scale ${dropdownEase()}`
-      row flex=1 padding=15 box-sizing="border-box" align-items="stretch"
-        border-radius=10 corner-shape="-exact-continuous"
-        background-color=(open ? "#1B1B1B" : collapsedColor(index))
-        scale=pressableScale(pressing, 0, pressto)
-        transition=`${pressTransition("scale", pressto)}, background-color ${bgMs}ms step-end`
-        // styles.content: a row, opacity interpolate(progress, [0, 1], [isHeader ? 1 : 0, 1]).
-        row flex=1 align-items="center" opacity=(open or isHeader ? 1 - nudge(n) / 100 : nudge(n) / 100)
-          transition=`opacity ${dropdownEase()}`
-          // styles.iconBox: 80% of the row's height, square, #0C0C0C, radius 10, margin-right 12.
-          view height="80%" aspect-ratio=1 background-color="#0C0C0C" border-radius=10 corner-shape="-exact-continuous"
-            margin-right=12 display="flex" align-items="center" justify-content="center"
-            // RN's icon is a Text: Yoga ceils its 20 × 20.94 box to 20.333 × 21 and floors its
-            // centred offset (Traps): 1 px left and 1 px down of a centred svg (the host snaps an
-            // svg's box to the device pixel). CoreGraphics draws the baseline (AntDesign ascent
-            // 455 / 512 em: 17.773 pt, 53.32 px below the box top) on a whole pixel: the viewBox
-            // lifts the outline those 0.32 px (2.733 units).
-            svg width=20 height=(20 * 536 / 512) viewBox="0 2.7333 512 536" aria-hidden=true
-              position="relative" left="-0.3333px" top="0.3333px"
-              path d=option.icon fill="#ffffff"
-          // styles.title: white, 16, letter-spacing 1.2, uppercase.
-          // Measured: Exact's line box set the label 1 pt below TextKit's.
-          text option.label.toUpperCase() color="#ffffff" font-size=16 letter-spacing=1.2
-            position="relative" top="-1px"
-          view flex=1
-          // styles.arrowBox: 80% tall, centred, margin-right 5. The header's chevron turns
-          // interpolate(progress, [0, 1], [0, PI / 2], CLAMP) on the same spring (no overshoot).
-          view height="80%" margin-right=5 display="flex" align-items="center" justify-content="center"
-            // The glyph is a Text whose box Yoga ceils to 20.333 square, centred (top 8.0, the glyph
-            // at its top); the Animated.View turning it is that box: its centre is the pivot
-            // (measured against RN's open chevron).
-            column width="20.3333px" height="20.3333px" position="relative" top="0.1667px"
-              rotate=(isHeader ? `${(open ? 90 : 0) + nudge(n)}deg` : "0deg")
-              transition=`rotate ${dropdownEase()}`
-              if isHeader
-                // MaterialIcons "arrow-forward-ios" 20: the vector-icons glyph (512 × 512 units of 512 to the em).
-                svg width=20 height=20 viewBox="0 0 512 512" aria-hidden=true
-                  path d="M133 432 171 469 384 256 171 43 133 80 308 256Z" fill="rgba(255,255,255,0.8)"
-              else
-                // MaterialIcons "arrow-forward" 20: the vector-icons glyph (512 × 512 units of 512 to the em).
-                svg width=20 height=20 viewBox="0 0 512 512" aria-hidden=true
-                  path d="M256 85 427 256 256 427 226 397 345 277H85V235H345L226 115Z" fill="rgba(255,255,255,0.5)"
+      PressableScale(press=press)
+        row flex=1 padding=15 box-sizing="border-box" align-items="stretch"
+          testId=(isHeader ? "dropdown-header" : `dropdown-${option.label.toLowerCase()}`)
+          aria-label=option.label aria-expanded=open
+          border-radius=10 corner-shape="-exact-continuous"
+          background-color=(open ? "#1B1B1B" : collapsedColor(index))
+          transition=`background-color ${bgMs}ms step-end`
+          // styles.content: a row, opacity interpolate(progress, [0, 1], [isHeader ? 1 : 0, 1]).
+          row flex=1 align-items="center" opacity=(open or isHeader ? 1 - nudge(n) / 100 : nudge(n) / 100)
+            transition=`opacity ${dropdownEase()}`
+            // styles.iconBox: 80% of the row's height, square, #0C0C0C, radius 10, margin-right 12.
+            view height="80%" aspect-ratio=1 background-color="#0C0C0C" border-radius=10 corner-shape="-exact-continuous"
+              margin-right=12 display="flex" align-items="center" justify-content="center"
+              // RN's icon is a Text: Yoga ceils its 20 × 20.94 box to 20.333 × 21 and floors its
+              // centred offset (Traps): 1 px left and 1 px down of a centred svg (the host snaps an
+              // svg's box to the device pixel). CoreGraphics draws the baseline (AntDesign ascent
+              // 455 / 512 em: 17.773 pt, 53.32 px below the box top) on a whole pixel: the viewBox
+              // lifts the outline those 0.32 px (2.733 units).
+              svg width=20 height=(20 * 536 / 512) viewBox="0 2.7333 512 536" aria-hidden=true
+                position="relative" left="-0.3333px" top="0.3333px"
+                path d=option.icon fill="#ffffff"
+            // styles.title: white, 16, letter-spacing 1.2, uppercase.
+            // Measured: Exact's line box set the label 1 pt below TextKit's.
+            text option.label.toUpperCase() color="#ffffff" font-size=16 letter-spacing=1.2
+              position="relative" top="-1px"
+            view flex=1
+            // styles.arrowBox: 80% tall, centred, margin-right 5. The header's chevron turns
+            // interpolate(progress, [0, 1], [0, PI / 2], CLAMP) on the same spring (no overshoot).
+            view height="80%" margin-right=5 display="flex" align-items="center" justify-content="center"
+              // The glyph is a Text whose box Yoga ceils to 20.333 square, centred (top 8.0, the glyph
+              // at its top); the Animated.View turning it is that box: its centre is the pivot
+              // (measured against RN's open chevron).
+              column width="20.3333px" height="20.3333px" position="relative" top="0.1667px"
+                rotate=(isHeader ? `${(open ? 90 : 0) + nudge(n)}deg` : "0deg")
+                transition=`rotate ${dropdownEase()}`
+                if isHeader
+                  // MaterialIcons "arrow-forward-ios" 20: the vector-icons glyph (512 × 512 units of 512 to the em).
+                  svg width=20 height=20 viewBox="0 0 512 512" aria-hidden=true
+                    path d="M133 432 171 469 384 256 171 43 133 80 308 256Z" fill="rgba(255,255,255,0.8)"
+                else
+                  // MaterialIcons "arrow-forward" 20: the vector-icons glyph (512 × 512 units of 512 to the em).
+                  svg width=20 height=20 viewBox="0 0 512 512" aria-hidden=true
+                    path d="M256 85 427 256 256 427 226 397 345 277H85V235H345L226 115Z" fill="rgba(255,255,255,0.5)"

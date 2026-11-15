@@ -7,7 +7,7 @@
 //
 // RN ignores a toggle within 120 ms of the last one (the press animation can fire twice on one
 // tap): so does `toggle`.
-use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+use PressableScale from "pressto"
 use DemoEnv from "../env.contract"
 
 // withTiming(next ? 1 : 0, { duration: FACE_MS 350 }): Reanimated's default easing,
@@ -18,19 +18,9 @@ fn inOutQuad(): string = "linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.013
 component SculpturesInWords
   props
     env: DemoEnv
-  inject
-    pressto: PressablesConfig
-    pressablesOnPress: action
-  // pressto: the pressed pressable (its key) and the press parity.
-  state pressing = pressNone()
-  action pressIn(key: number)
-    pressing = pressDown(pressing, key)
-  action pressOut
-    pressing = pressUp(pressing)
   state revealed = false
   state lastToggle = -1000000
   action toggle
-    pressablesOnPress()
     let now = performanceNow()
     if now - lastToggle >= 120
       lastToggle = now
@@ -51,19 +41,19 @@ component SculpturesInWords
       // SymbolView is a 20 × 20 UIImageView, aspect fit: the 20 pt symbol image (textformat
       // 29 × 18, person.crop.circle 24 × 24) is drawn 20 / 29 and 20 / 24 the size, the point
       // sizes below (its "Aa" was 1.45× RN's).
-      button appearance="none" press=toggle position="absolute" z-index=1
-        pointerdown=pressIn(0) pointerup=pressOut
-        scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
-        right=(env.width * 0.09 - 16) bottom=(env.width * 0.09 - 16) width=80 height=80 padding=16
-        box-sizing="border-box" border="none" background-color="transparent"
-        aria-label="Switch between the article and the sculpture" testId="sculptures-toggle"
-        view position="relative" width=48 height=48 border-radius=24 corner-shape="-exact-continuous"
-          background-color="#1c1a17"
-          view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
-            opacity=(revealed ? 0 : 1) scale=(revealed ? 0.85 : 1)
-            transition=`opacity 350ms ${inOutQuad()}, scale 350ms ${inOutQuad()}`
-            image "symbol:sf/textformat" font-size=13.7931 font-weight=600 position="relative" top="0.2833px" left="0.12px" color="#F5F1E8" aria-hidden=true
-          view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
-            opacity=(revealed ? 1 : 0) scale=(revealed ? 1 : 0.85)
-            transition=`opacity 350ms ${inOutQuad()}, scale 350ms ${inOutQuad()}`
-            image "symbol:sf/person.crop.circle" font-size=16.6667 font-weight=600 color="#F5F1E8" aria-hidden=true
+      // Its place on the view around the PressableScale, the disc (in its 16 pt slop) its look.
+      view position="absolute" z-index=1 right=(env.width * 0.09 - 16) bottom=(env.width * 0.09 - 16)
+        width=80 height=80 display="flex" flex-direction="column"
+        PressableScale(press=toggle)
+          column flex-grow=1 padding=16 box-sizing="border-box" text-align="center"
+            aria-label="Switch between the article and the sculpture" testId="sculptures-toggle"
+            view position="relative" width=48 height=48 border-radius=24 corner-shape="-exact-continuous"
+              background-color="#1c1a17"
+              view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
+                opacity=(revealed ? 0 : 1) scale=(revealed ? 0.85 : 1)
+                transition=`opacity 350ms ${inOutQuad()}, scale 350ms ${inOutQuad()}`
+                image "symbol:sf/textformat" font-size=13.7931 font-weight=600 position="relative" top="0.2833px" left="0.12px" color="#F5F1E8" aria-hidden=true
+              view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
+                opacity=(revealed ? 1 : 0) scale=(revealed ? 1 : 0.85)
+                transition=`opacity 350ms ${inOutQuad()}, scale 350ms ${inOutQuad()}`
+                image "symbol:sf/person.crop.circle" font-size=16.6667 font-weight=600 color="#F5F1E8" aria-hidden=true

@@ -1,7 +1,7 @@
 // Tab Navigation: four pill tabs in a row; the chosen one widens, its icon slides left and its
 // label fades in. RN: src/animations/tab-navigation (src/index.tsx, src/constants.ts,
 // src/components/tabs/index.tsx, tab.tsx).
-use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+use PressableScale from "pressto"
 use DemoEnv from "../env.contract"
 
 shape TabData
@@ -82,8 +82,8 @@ component TabNavigation
   state activeTabIndex = 0
   // The tab that was active before the last change (-1: none yet): its label fades out.
   state previousTabIndex = -1
+  // The tab's press: pressto's PressableScale plays the app's global haptic first.
   action choose(i: number)
-    haptic("selection")
     if i != activeTabIndex
       previousTabIndex = activeTabIndex
       activeTabIndex = i
@@ -107,36 +107,28 @@ component Tab
     changed: bool
     press: action
     testId: string
-  inject
-    pressto: PressablesConfig
-    pressablesOnPress: action
-  // pressto: the pressed pressable (its key) and the press parity.
-  state pressing = pressNone()
-  action pressIn(key: number)
-    pressing = pressDown(pressing, key)
-  action pressOut
-    pressing = pressUp(pressing)
   view
-    button appearance="none" press=press testId=testId aria-label=label aria-pressed=isActive
-      pointerdown=pressIn(0) pointerup=pressOut
-      scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
-      // styles.container: #f1f1f1, borderRadius 15 continuous, height 60, justifyContent center;
-      // width interpolate(progress, [0, 1], [minWidth, maxWidth 170]) on the progress spring.
-      column width=(isActive ? 170 : minWidth) height=60 justify-content="center" background-color="#f1f1f1"
-        border-radius=15 corner-shape="-exact-continuous" -exact-layout-transition=tabSpring()
-        // styles.innerContainer: row, centred, overflow hidden, width 100%.
-        row align-items="center" justify-content="center" overflow="hidden" width="100%"
-          -exact-layout-transition=tabSpring()
-          // styles.iconContainer: 20 × 20 (IconSize), #f1f1f1, absolute at left 0 (centred on the
-          // cross axis, as Yoga places it), zIndex 100; translateX from (minWidth - 20) / 2 to 20.
-          view position="absolute" left=0 top="50%" margin-top=-10 width=20 height=20 background-color="#f1f1f1"
-            z-index=100 translate=`${isActive ? 20 : (minWidth - 20) / 2}px 0px`
-            transition=`translate ${tabSpring()}`
-            svg width=20 height=(20 * 536 / 512) viewBox="0 0 512 536" aria-hidden=true
-              path d=iconPath(icon) fill="#000000"
-          // styles.label: fontSize 16, weight 500, zIndex 100, one line; marginLeft from 0 to 15.
-          text label font-size=16 font-weight=500 z-index=100 white-space="nowrap" line-clamp=1
-            color="#000000" margin-left=(isActive ? 15 : 0) -exact-layout-transition=tabSpring()
-            opacity=(isActive ? 1 : 0)
-            animation=(changed and isActive ? "labelOn 600ms linear both" : (wasActive ? "labelOff 600ms linear both" : "none"))
-            testId=`${testId}-label`
+    // pressto's PressableScale, in a box of the tab's own size (the row's item).
+    view display="flex" flex-direction="column"
+      PressableScale(press=press)
+        // styles.container: #f1f1f1, borderRadius 15 continuous, height 60, justifyContent center;
+        // width interpolate(progress, [0, 1], [minWidth, maxWidth 170]) on the progress spring.
+        column width=(isActive ? 170 : minWidth) height=60 justify-content="center" background-color="#f1f1f1" text-align="center"
+          border-radius=15 corner-shape="-exact-continuous" -exact-layout-transition=tabSpring()
+          testId=testId aria-label=label aria-pressed=isActive
+          // styles.innerContainer: row, centred, overflow hidden, width 100%.
+          row align-items="center" justify-content="center" overflow="hidden" width="100%"
+            -exact-layout-transition=tabSpring()
+            // styles.iconContainer: 20 × 20 (IconSize), #f1f1f1, absolute at left 0 (centred on the
+            // cross axis, as Yoga places it), zIndex 100; translateX from (minWidth - 20) / 2 to 20.
+            view position="absolute" left=0 top="50%" margin-top=-10 width=20 height=20 background-color="#f1f1f1"
+              z-index=100 translate=`${isActive ? 20 : (minWidth - 20) / 2}px 0px`
+              transition=`translate ${tabSpring()}`
+              svg width=20 height=(20 * 536 / 512) viewBox="0 0 512 536" aria-hidden=true
+                path d=iconPath(icon) fill="#000000"
+            // styles.label: fontSize 16, weight 500, zIndex 100, one line; marginLeft from 0 to 15.
+            text label font-size=16 font-weight=500 z-index=100 white-space="nowrap" line-clamp=1
+              color="#000000" margin-left=(isActive ? 15 : 0) -exact-layout-transition=tabSpring()
+              opacity=(isActive ? 1 : 0)
+              animation=(changed and isActive ? "labelOn 600ms linear both" : (wasActive ? "labelOff 600ms linear both" : "none"))
+              testId=`${testId}-label`

@@ -3,7 +3,7 @@
 // on a spring; a drag down, the close button or the backdrop closes it.
 // RN: src/animations/action-tray (index.tsx, constants/palette.ts,
 // components/ActionTray/index.tsx, components/ActionTray/Backdrop/index.tsx).
-use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+use PressableScale from "pressto"
 use DemoEnv from "../env.contract"
 
 // constants/palette.ts: primary #4290F6, background #FFF, surface #F1F1F4, text #B3B3B6.
@@ -47,15 +47,6 @@ keyframes trayClamp
 component ActionTray
   props
     env: DemoEnv
-  inject
-    pressto: PressablesConfig
-    pressablesOnPress: action
-  // pressto: the pressed pressable (its key) and the press parity.
-  state pressing = pressNone()
-  action pressIn(key: number)
-    pressing = pressDown(pressing, key)
-  action pressOut
-    pressing = pressUp(pressing)
   state opened = false
   state step = 0
   // maxHeight = screenHeight × 0.6: translateY's closed value (and its start).
@@ -66,21 +57,18 @@ component ActionTray
     layerHeight = ph
   // close(): the tray to maxHeight, isActionTrayOpened false, step 0.
   action close
-    pressablesOnPress()
     opened = false
     step = 0
   action closeQuietly
     opened = false
     step = 0
   action toggleActionTray
-    pressablesOnPress()
     if opened
       opened = false
       step = 0
     else
       opened = true
   action next
-    pressablesOnPress()
     if step == 2
       opened = false
       step = 0
@@ -97,13 +85,15 @@ component ActionTray
       justify-content="center" testId="action-tray"
       // styles.button: 50 × 50, #4290F6, radius 25, marginTop 200, centred; rotate 0 → 45°.
       // MaterialCommunityIcons plus 25 #FFF.
-      column width=50 height=50 border-radius=25 background-color="color(display-p3 0.2588 0.5647 0.9647)"
-        margin-top=200 align-items="center" justify-content="center"
-        pointerdown=pressIn(2) pointerup=pressOut scale=pressableScale(pressing, 2, pressto)
-        rotate=(opened ? 45 : 0) transition=`rotate ${rotateSpring()}, ${pressTransition("scale", pressto)}`
-        press=toggleActionTray role="button" aria-label=(opened ? "Close the tray" : "Open the tray")
-        testId="toggle"
-        image "symbol:sf/plus" font-size=25 font-weight=600 color="#FFF" aria-hidden=true
+      // The pressable's place; PressableScale's box fills it and scales (pressto).
+      view width=50 height=50 margin-top=200
+        PressableScale(press=toggleActionTray)
+          column width=50 height=50 border-radius=25 background-color="color(display-p3 0.2588 0.5647 0.9647)"
+            align-items="center" justify-content="center"
+            rotate=(opened ? 45 : 0) transition=`rotate ${rotateSpring()}`
+            aria-label=(opened ? "Close the tray" : "Open the tray")
+            testId="toggle"
+            image "symbol:sf/plus" font-size=25 font-weight=600 color="#FFF" aria-hidden=true
       // Backdrop: absoluteFill rgba(0,0,0,0.2), opacity withTiming(active ? 1 : 0), touchable
       // only while active; onTouchStart closes.
       view position="absolute" inset=0 background-color="rgba(0, 0, 0, 0.2)"
@@ -143,14 +133,14 @@ component ActionTray
                   view flex=1
                   // styles.closeButton: 24 × 24, radius 20, #F1F1F4, hitSlop 8;
                   // MaterialCommunityIcons close-thick 15 #B3B3B6.
-                  column pointer-events="auto" width=24 height=24
-                    pointerdown=pressIn(0) pointerup=pressOut
-                    scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
-                    border-radius=20 background-color="color(display-p3 0.9451 0.9451 0.9569)" align-items="center"
-                    justify-content="center" press=close role="button" aria-label="Close"
-                    testId="close"
-                    image "symbol:sf/xmark" font-size=15 font-weight=900 color="color(display-p3 0.702 0.702 0.7137)"
-                      aria-hidden=true
+                  view pointer-events="auto" width=24 height=24
+                    PressableScale(press=close)
+                      column width=24 height=24
+                        border-radius=20 background-color="color(display-p3 0.9451 0.9451 0.9569)" align-items="center"
+                        justify-content="center" aria-label="Close"
+                        testId="close"
+                        image "symbol:sf/xmark" font-size=15 font-weight=900 color="color(display-p3 0.702 0.702 0.7137)"
+                          aria-hidden=true
                 // rContentStyle: height withSpring(80 | 200 | 250).
                 column height=contentHeight(step) transition=`height ${gentle()}` testId="content"
                   // styles.contentText: #B3B3B6, 16, weight 600, marginTop 15, marginBottom 25.
@@ -173,10 +163,10 @@ component ActionTray
                           color="rgba(0, 0, 0, 0.5)"
                 // styles.continueButton: #4290F6, radius 25 continuous, 55 tall, full width;
                 // buttonText #FFF 16 bold.
-                column pointer-events="auto" height=55 width="100%"
-                  pointerdown=pressIn(1) pointerup=pressOut
-                  scale=pressableScale(pressing, 1, pressto) transition=pressTransition("scale", pressto)
-                  border-radius=25 corner-shape="-exact-continuous" background-color="color(display-p3 0.2588 0.5647 0.9647)"
-                  align-items="center" justify-content="center" press=next role="button"
-                  aria-label=actionOf(step) testId="continue"
-                  text actionOf(step) font-size=16 font-weight=700 color="#FFF" testId="continue-label"
+                view pointer-events="auto" height=55 width="100%" display="flex" flex-direction="column"
+                  PressableScale(press=next)
+                    column height=55
+                      border-radius=25 corner-shape="-exact-continuous" background-color="color(display-p3 0.2588 0.5647 0.9647)"
+                      align-items="center" justify-content="center"
+                      aria-label=actionOf(step) testId="continue"
+                      text actionOf(step) font-size=16 font-weight=700 color="#FFF" testId="continue-label"

@@ -1,6 +1,6 @@
 // Animated Count Text: a number whose digits roll to their new value; the shuffle button picks
 // a random number of one to six digits. RN: src/animations/animated-count-text.
-use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+use PressableScale from "pressto"
 use DemoEnv, roll from "../env.contract"
 
 // animated-count.tsx: TEXT_DIGIT_HEIGHT 55, TEXT_DIGIT_WIDTH 40, FONT_SIZE 50.
@@ -19,19 +19,9 @@ keyframes digitOut
 component AnimatedCountText
   props
     env: DemoEnv
-  inject
-    pressto: PressablesConfig
-    pressablesOnPress: action
-  // pressto: the pressed pressable (its key) and the press parity.
-  state pressing = pressNone()
-  action pressIn(key: number)
-    pressing = pressDown(pressing, key)
-  action pressOut
-    pressing = pressUp(pressing)
   state value = 1
   state shuffles = 0
   action shuffle
-    pressablesOnPress()
     value = randomNumber(env.seed, shuffles)
     shuffles = shuffles + 1
   view
@@ -49,15 +39,16 @@ component AnimatedCountText
             // stiffness solved from the running value and velocity, a velocity pointing away
             // dropped) and whose Texts are drawn with UIKit's line layout.
             canvas surface=animated_count_digit(d) width=40 height=55 aria-hidden=true
-      button appearance="none" press=shuffle aria-label="Shuffle" testId="shuffle"
-        pointerdown=pressIn(0) pointerup=pressOut
-        scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
-        position="absolute" right=30 bottom=80 width=64 height=64 border-radius=32 background-color="#ffffff"
-        display="flex" align-items="center" justify-content="center"
-        // <Entypo name="shuffle" size={24}>: the glyph's outline (Entypo.ttf, 512 units, y down
-        // from the hhea ascent 449). Its Text box (24 × 24.09, ceiled to 24.333) sits at
-        // (19.667, 19.667); CoreGraphics puts the baseline (21.047 below) on the next pixel down:
-        // 41.0 (fitted to RN's ink centroid). The host snaps an svg to the pixel: box at 20, the
-        // outline lifted 1 unit.
-        svg width=24 height=24 viewBox="0 1 512 512" position="absolute" left="19.66667px" top=20 aria-hidden=true
-          path d="M386 172Q365 172 347 179.5Q329 187 310.5 204.5Q292 222 280.5 235.5Q269 249 248 276Q229 301 218.5 314Q208 327 187.5 348Q167 369 149 380Q131 391 106 399.5Q81 408 54 408H0V336H54Q75 336 93 329Q111 322 129.5 304.5Q148 287 159.5 273.5Q171 260 191 233Q211 207 221.5 194Q232 181 252.5 160Q273 139 290.5 128.5Q308 118 333.5 109.5Q359 101 386 101H410V40L512 143L410 246V172ZM138 218Q98 177 54 177H0V106H54Q124 106 183 161Q166 181 151 202Q141 215 138 218ZM410 341V268L512 371L410 474V413H386Q313 413 252 354Q266 337 289 307L297 297Q340 341 386 341Z" fill="#000000"
+      // The pressable's place; PressableScale's box fills it.
+      view position="absolute" right=30 bottom=80 width=64 height=64
+        PressableScale(press=shuffle)
+          row aria-label="Shuffle" testId="shuffle" position="relative" text-align="center"
+            width=64 height=64 border-radius=32 background-color="#ffffff"
+            align-items="center" justify-content="center"
+            // <Entypo name="shuffle" size={24}>: the glyph's outline (Entypo.ttf, 512 units, y down
+            // from the hhea ascent 449). Its Text box (24 × 24.09, ceiled to 24.333) sits at
+            // (19.667, 19.667); CoreGraphics puts the baseline (21.047 below) on the next pixel down:
+            // 41.0 (fitted to RN's ink centroid). The host snaps an svg to the pixel: box at 20, the
+            // outline lifted 1 unit.
+            svg width=24 height=24 viewBox="0 1 512 512" position="absolute" left="19.66667px" top=20 aria-hidden=true
+              path d="M386 172Q365 172 347 179.5Q329 187 310.5 204.5Q292 222 280.5 235.5Q269 249 248 276Q229 301 218.5 314Q208 327 187.5 348Q167 369 149 380Q131 391 106 399.5Q81 408 54 408H0V336H54Q75 336 93 329Q111 322 129.5 304.5Q148 287 159.5 273.5Q171 260 191 233Q211 207 221.5 194Q232 181 252.5 160Q273 139 290.5 128.5Q308 118 333.5 109.5Q359 101 386 101H410V40L512 143L410 246V172ZM138 218Q98 177 54 177H0V106H54Q124 106 183 161Q166 181 151 202Q141 215 138 218ZM410 341V268L512 371L410 474V413H386Q313 413 252 354Q266 337 289 307L297 297Q340 341 386 341Z" fill="#000000"

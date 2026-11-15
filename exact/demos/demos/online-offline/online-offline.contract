@@ -1,7 +1,7 @@
 // Online / Offline: seven overlapping avatars in two pill-shaped groups, online in colour and
 // offline in grey; a tap anywhere moves a random one across, and everything springs to its place.
 // RN: src/animations/online-offline (index.tsx, components/online-to-offline/*).
-use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+use PressableScale from "pressto"
 use DemoEnv, roll from "../env.contract"
 
 shape Avatar
@@ -50,15 +50,6 @@ keyframes sectionOut
 component OnlineOffline
   props
     env: DemoEnv
-  inject
-    pressto: PressablesConfig
-    pressablesOnPress: action
-  // pressto: the pressed pressable (its key) and the press parity.
-  state pressing = pressNone()
-  action pressIn(key: number)
-    pressing = pressDown(pressing, key)
-  action pressOut
-    pressing = pressUp(pressing)
   state items: Avatar[] = initialItems()
   state taps = 0
   // LayoutAnimationConfig skipEntering: the sections fade in only when they come back after a
@@ -68,7 +59,6 @@ component OnlineOffline
   derive online = items.filter(a => not a.offline).length
   derive offline = items.filter(a => a.offline).length
   action move
-    pressablesOnPress()
     // Math.random() > 0.5, then a random item of that side: roll(seed, k, n).
     let toOffline = offline == 0 ? true : online == 0 ? false : roll(env.seed, 2 * taps, 2) == 1
     if toOffline and online > 0
@@ -86,24 +76,25 @@ component OnlineOffline
           offlineFades = true
     taps = taps + 1
   view
-    // The whole screen is the PressableScale (styles.container: white, flex 1, centred).
-    button appearance="none" press=move aria-label="Move someone online or offline"
-      pointerdown=pressIn(0) pointerup=pressOut
-      scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
-      testId="online-offline" position="absolute" inset=0 background-color="#FFFFFF"
-      display="flex" flex-direction="column" justify-content="center"
-      // OnlineToOffline container: full width, 40 tall, the list centred in it.
-      row width="100%" height=40 align-items="center" justify-content="center"
-        view class=Springy position="relative" width=listWidth(online, offline) height=40 flex-shrink=0
-          testId="online-offline-list"
-          if online > 0
-            Section(left=0, width=sectionWidth(online), fades=onlineFades, testId="online-section")
-          if offline > 0
-            Section(left=offlineStart(online), width=sectionWidth(offline), fades=offlineFades,
-              testId="offline-section")
-          for a, i in ordered(items) key=a.uri
-            Item(uri=a.uri, offline=a.offline, left=itemLeft(online, i), z=items.length - i,
-              testId=`avatar-${indexOfUri(a.uri)}`)
+    // The whole screen is the PressableScale (styles.container: white, flex 1, centred): its
+    // place on the view around it, its look on the column it presses.
+    view position="absolute" inset=0 display="flex" flex-direction="column"
+      PressableScale(press=move)
+        column aria-label="Move someone online or offline" text-align="center"
+          testId="online-offline" flex-grow=1 background-color="#FFFFFF"
+          justify-content="center"
+          // OnlineToOffline container: full width, 40 tall, the list centred in it.
+          row width="100%" height=40 align-items="center" justify-content="center"
+            view class=Springy position="relative" width=listWidth(online, offline) height=40 flex-shrink=0
+              testId="online-offline-list"
+              if online > 0
+                Section(left=0, width=sectionWidth(online), fades=onlineFades, testId="online-section")
+              if offline > 0
+                Section(left=offlineStart(online), width=sectionWidth(offline), fades=offlineFades,
+                  testId="offline-section")
+              for a, i in ordered(items) key=a.uri
+                Item(uri=a.uri, offline=a.offline, left=itemLeft(online, i), z=items.length - i,
+                  testId=`avatar-${indexOfUri(a.uri)}`)
 
 fn indexOfUri(uri: string): number = initialItems().map(a => a.uri).indexOf(uri)
 

@@ -4,7 +4,7 @@
 // RN: src/animations/dynamic-tab-indicator (constants/data.tsx,
 // components/dynamic-tab-indicator/index.tsx, section-tabs.tsx).
 use DemoEnv, demoButtonRow from "../env.contract"
-use PressablesConfig, pressNone, pressDown, pressUp, pressableOpacity, pressTransition from "pressto"
+use PressableOpacity from "pressto"
 
 // constants/data.tsx: the titles (the photos are the surface's).
 fn titles(): string[] = ["France", "Italy", "Iceland", "Norway", "Japan"]
@@ -36,15 +36,6 @@ fn textLeft(w: number, tw: number): number = floorPx(8 + (widest(w) - tw) / 2)
 component DynamicTabIndicator
   props
     env: DemoEnv
-  inject
-    pressto: PressablesConfig
-    pressablesOnPress: action
-  // pressto: the pressed pressable (its key) and the press parity.
-  state pressing = pressNone()
-  action pressIn(key: number)
-    pressing = pressDown(pressing, key)
-  action pressOut
-    pressing = pressUp(pressing)
   // The tab pressed last and a counter that changes on each press (the surface's scrollTo).
   state target = 0
   state token = 0
@@ -71,7 +62,6 @@ component DynamicTabIndicator
         y = floorPx((p.height - textHeight(p.height)) / 2)
   // handleSelectSection: scrollTo({ x: index * width, animated: true }).
   action select(i: number)
-    pressablesOnPress()
     target = i
     token = token + 1
   view
@@ -92,18 +82,18 @@ component DynamicTabIndicator
         z-index=1 testId="section-tabs"
         for title, i in titles() key=i
           // styles.container: flex 1, width / 5, centred, paddingHorizontal 8.
-          column id=`tab-${i}` press=select(i) role="button" aria-label=title
-            // pressto's PressableOpacity.
-            pointerdown=pressIn(i) pointerup=pressOut opacity=pressableOpacity(pressing, i, pressto)
-            transition=pressTransition("opacity", pressto)
-            flex=1 width=(env.width / 5) align-items="center" justify-content="center"
-            padding-left=8 padding-right=8 box-sizing="border-box" resize=measured(i) testId=`tab-${i}`
-            // The title measured as Yoga measures it: at styles.title's 17 bold, one line.
-            text title id=`tab-measure-${i}` position="absolute" opacity=0 resize=measured(i)
-              font-size=17 font-weight=700 white-space="nowrap" aria-hidden=true pointer-events="none"
-            // The Text's frame (left floored, 17's width, the tab's height): styles.title, #000,
-            // bold, centred, drawn at adjustsFontSizeToFit's size.
-            view position="absolute" top=(y) left=textLeft(env.width, atOr(tws, i))
-              width=atOr(tws, i) height=textHeight(th) align-items="center" pointer-events="none"
-              text title id=`tab-title-${i}` color="#000000" font-size=(17 * fitRatio(th / (17 * sfLine())))
-                font-weight=700 text-align="center" white-space="nowrap" testId=`tab-title-${i}`
+          // pressto's PressableOpacity: its place on the view, the look in it.
+          view flex=1 width=(env.width / 5) display="flex" flex-direction="column"
+            PressableOpacity(press=select(i))
+              column id=`tab-${i}` aria-label=title
+                flex=1 align-items="center" justify-content="center"
+                padding-left=8 padding-right=8 box-sizing="border-box" resize=measured(i) testId=`tab-${i}`
+                // The title measured as Yoga measures it: at styles.title's 17 bold, one line.
+                text title id=`tab-measure-${i}` position="absolute" opacity=0 resize=measured(i)
+                  font-size=17 font-weight=700 white-space="nowrap" aria-hidden=true pointer-events="none"
+                // The Text's frame (left floored, 17's width, the tab's height): styles.title, #000,
+                // bold, centred, drawn at adjustsFontSizeToFit's size.
+                view position="absolute" top=(y) left=textLeft(env.width, atOr(tws, i))
+                  width=atOr(tws, i) height=textHeight(th) align-items="center" pointer-events="none"
+                  text title id=`tab-title-${i}` color="#000000" font-size=(17 * fitRatio(th / (17 * sfLine())))
+                    font-weight=700 text-align="center" white-space="nowrap" testId=`tab-title-${i}`

@@ -4,7 +4,7 @@
 // in turn. RN: src/animations/clerk-toast (src/index.tsx, src/hook.tsx, src/hooks/use-toast.tsx,
 // src/stacked-toast-manager/{constants.ts, hooks.ts, stacked-toast-provider.tsx,
 // stacked-toast.tsx, backdrop/index.tsx, backdrop/use-gradient-height.ts}).
-use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+use PressableScale from "pressto"
 use DemoEnv, demoButtonRow from "../env.contract"
 
 // hook.tsx toasts: the thirteen titles, taken in turn (toastIndex % 13).
@@ -70,15 +70,6 @@ keyframes clerkClearOut
 component ClerkToast
   props
     env: DemoEnv
-  inject
-    pressto: PressablesConfig
-    pressablesOnPress: action
-  // pressto: the pressed pressable (its key) and the press parity.
-  state pressing = pressNone()
-  action pressIn(key: number)
-    pressing = pressDown(pressing, key)
-  action pressOut
-    pressing = pressUp(pressing)
   // toastIndex.current, and the key serial.
   state pressed = 0
   state serial = 0
@@ -99,7 +90,6 @@ component ClerkToast
 
   // A list card's press (hook.tsx onPress): the next toast, id 0, the others one place back.
   action showToast
-    pressablesOnPress()
     let now = performanceNow()
     let keep = range(keys.length).filter(j => clerkStays(gone, goneAt, goneK, j, now))
     keys = keep.map(j => clerkNum(keys, j)).concat([serial])
@@ -113,8 +103,8 @@ component ClerkToast
     shiftDelay = 0
 
   // The eighth toast's x (clearAllStackedToasts): every toast leaves, FadeOutLeft.delay(120 × id).
+  // The x's PressableScale plays pressto's global haptic (the app's onPress) first.
   action clearAll
-    haptic("selection")
     let now = performanceNow()
     goneK = range(keys.length).map(j => clerkId(gone, goneK, j))
     gone = range(keys.length).map(j => clerkNum(gone, j) == 0 ? 2 : clerkNum(gone, j))
@@ -155,12 +145,13 @@ component ClerkToast
       scroll flex=1 min-height=0 testId="clerk-scroll"
         column padding-top=(env.safeTop + demoButtonRow())
           for n in range(10) key=n
-            view press=showToast role="button" aria-label="Show a toast"
-              pointerdown=pressIn(n) pointerup=pressOut
-              scale=pressableScale(pressing, n, pressto) transition=pressTransition("scale", pressto)
-              background-color="#000000" border-radius=20 corner-shape="-exact-continuous" height=100
+            // The card's place; PressableScale's box fills it.
+            view display="flex" flex-direction="column" height=100
               margin-left=20 margin-right=20 margin-top=10 margin-bottom=10
-              testId=`clerk-card-${n}`
+              PressableScale(press=showToast)
+                view flex=1 aria-label="Show a toast"
+                  background-color="#000000" border-radius=20 corner-shape="-exact-continuous"
+                  testId=`clerk-card-${n}`
       // Backdrop: absoluteFill, translateY withSpring(windowHeight - gradientHeight); a
       // MaskedView windowHeight / 2 tall, its mask a LinearGradient (white 0 → 1 at 0 → 0.55),
       // over a BlurView (intensity 80, systemChromeMaterialLight). Not exact: the material is
@@ -241,15 +232,6 @@ component ClerkRow
     kind: number
     ghost: bool
     clear: action
-  inject
-    pressto: PressablesConfig
-    pressablesOnPress: action
-  // pressto: the pressed pressable (its key) and the press parity.
-  state pressing = pressNone()
-  action pressIn(key: number)
-    pressing = pressDown(pressing, key)
-  action pressOut
-    pressing = pressUp(pressing)
   view
     // use-toast.tsx: a LinearGradient #2C2E35 → #26252D (locations 0, 0.9) over #2A292F, flex 1,
     // a centred row, paddingHorizontal 20.
@@ -267,9 +249,8 @@ component ClerkRow
       view flex=1
       if kind == 7
         // The trailing PressableScale (marginRight 6), Octicons x 16 white.
-        view press=clear pointer-events="auto" margin-right=6 role="button"
-          pointerdown=pressIn(0) pointerup=pressOut
-          scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
-          aria-label="Clear all toasts" testId=(ghost ? `clerk-clear-${toastKey}` : `clerk-x-${toastKey}`)
-          svg width=16 height=(16 * 518 / 512) viewBox="0 0 512 518" aria-hidden=true
-            path d=clerkXPath() fill=(ghost ? "transparent" : "#ffffff")
+        view pointer-events="auto" margin-right=6
+          PressableScale(press=clear)
+            view aria-label="Clear all toasts" testId=(ghost ? `clerk-clear-${toastKey}` : `clerk-x-${toastKey}`)
+              svg width=16 height=(16 * 518 / 512) viewBox="0 0 512 518" aria-hidden=true
+                path d=clerkXPath() fill=(ghost ? "transparent" : "#ffffff")

@@ -1,7 +1,7 @@
 // Split Button: a "Start" chip that, tapped, turns black with an Apple logo and slides right
 // while a bordered Google chip fades in and slides out to its left; either chip folds them back.
 // RN: src/animations/split-button (index.tsx, constants.ts, components/split-button/index.tsx).
-use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+use PressableScale from "pressto"
 
 // No background of its own (RN's container is transparent): the demo screen's backdrop
 // (#f1eee8) shows through, as in RN.
@@ -50,27 +50,16 @@ fn applePath(): string = "M343 27Q349 26 352.5 26.0Q356 26 356 28Q359 39 353 62Q
 fn googlePath(): string = "M243 45Q178 50 125 90Q106 105 90 125Q61 161 49 205Q33 265 50 324Q66 381 109.0 422.0Q152 463 209 476Q233 482 262 482Q290 482 313 477Q397 458 440 387Q480 321 469 237Q468 227 467.5 225.5Q467 224 363 224H260V266V308H319Q378 308 378.0 309.5Q378 311 376 318Q361 369 308 387Q272 400 236 393Q198 385 170.0 357.0Q142 329 134 291Q128 263 134 235Q141 202 164.5 175.0Q188 148 221 138Q238 132 261 132Q279 132 288 134Q316 140 338 159L344 164L376 133L407 101L403 98Q394 89 379 79Q339 52 290 46Q265 43 243 45Z"
 
 component SplitButton
-  inject
-    pressto: PressablesConfig
-    pressablesOnPress: action
   state activated = false
   // Toggles so far: the nudge cycles with it.
   state n = 0
-  // The two PressableScales' press state (keys 0 left, 1 right).
-  state pressing = pressNone()
-  action pressIn(key: number)
-    pressing = pressDown(pressing, key)
-  action pressOut
-    pressing = pressUp(pressing)
   // Left onPress: onLeft (none given), setActive(false); the global onPress first.
   action pressLeft
-    pressablesOnPress()
     if activated
       n = n + 1
     activated = false
   // Right onPress: activates; activated, deactivates (onRight: none given).
   action pressRight
-    pressablesOnPress()
     n = n + 1
     activated = not activated
   view
@@ -84,49 +73,45 @@ component SplitButton
         view opacity=(activated ? 1 - nudge(n) / 100 : nudge(n) / 100)
           translate=`${(activated ? 0 - offset() : 0) + nudge(n)}px 0px`
           transition=`opacity 300ms ${inOutQuad()}, ${slide()}` testId="left"
-          // The PressableScale: its scale carries the chip and the icon.
-          view position="relative" scale=pressableScale(pressing, 0, pressto)
-            transition=pressTransition("scale", pressto)
-            button appearance="none" press=pressLeft aria-label="Google"
-              pointerdown=pressIn(0) pointerup=pressOut testId="left-press" display="flex"
-              flex-direction="column"
-              // styles.chip (+ activeChip: the same border, width 120): 60 tall, 140 wide, radius
-              // 16 continuous, shadow 0 1 5 10% black. The view doesn't clip, so RN draws its 1 pt
-              // #D9D6D1 border as RCTBorderDrawing's ring with CIRCULAR corners over the layer
-              // (which keeps the continuous curve, and the shadow its shape).
-              column width=(activated ? 120 : 140) height=60 border-radius=16
-                corner-shape="-exact-continuous" box-shadow="0px 1px 5px rgba(0, 0, 0, 0.1)"
-                view position="absolute" inset=0 border="1px solid" border-color=border()
-                  border-radius=16 pointer-events="none"
-            // styles.chipContent: row, flex 1, centred, paddingVertical 16 (+ the border);
-            // paddingHorizontal 36 while activated (it only exists then). entering FadeIn,
-            // exiting FadeOut, layout LinearTransition (its box never moves). Mounted throughout:
-            // an exit inside the press tree played nothing on iOS, and RN's exiting view keeps
-            // its last frame, 120 wide from the chip's left edge, while the chip widens to 140
-            // about its centre (measured: the G stays 155 px right of the chip's edge).
-            row position="absolute" left=0 top=0 width=120 height=60 box-sizing="border-box"
-              align-items="center" justify-content="center" padding="17px 37px"
-              pointer-events="none" opacity=0
-              animation=(n == 0 ? "none" : (activated ? `iconIn 300ms ${inOutQuad()} both` : `iconOut 300ms ${inOutQuad()} both`))
-              testId="left-icon"
-              // AntDesign google, 22, almostBlack. Its Text box is Yoga's: 22 ceiled to 22.333,
-              // its left floored (48.667 where the svg centres at 49), its baseline on the next
-              // pixel down (CoreGraphics: 38.0 where the snapped svg puts 37.884, 2.698 units).
-              svg width=22 height=(22 * 536 / 512) viewBox="0 -2.698 512 536" aria-hidden=true
-                position="relative" left="-0.33333px"
-                path d=googlePath() fill=almostBlack()
+          // The PressableScale: its scale carries the chip and the icon (the icon's box, absolute
+          // in the relative column, takes no touch).
+          PressableScale(press=pressLeft)
+            column position="relative" text-align="center"
+              column aria-label="Google" testId="left-press"
+                // styles.chip (+ activeChip: the same border, width 120): 60 tall, 140 wide, radius
+                // 16 continuous, shadow 0 1 5 10% black. The view doesn't clip, so RN draws its 1 pt
+                // #D9D6D1 border as RCTBorderDrawing's ring with CIRCULAR corners over the layer
+                // (which keeps the continuous curve, and the shadow its shape).
+                column width=(activated ? 120 : 140) height=60 border-radius=16
+                  corner-shape="-exact-continuous" box-shadow="0px 1px 5px rgba(0, 0, 0, 0.1)"
+                  view position="absolute" inset=0 border="1px solid" border-color=border()
+                    border-radius=16 pointer-events="none"
+              // styles.chipContent: row, flex 1, centred, paddingVertical 16 (+ the border);
+              // paddingHorizontal 36 while activated (it only exists then). entering FadeIn,
+              // exiting FadeOut, layout LinearTransition (its box never moves). Mounted throughout:
+              // an exit inside the press tree played nothing on iOS, and RN's exiting view keeps
+              // its last frame, 120 wide from the chip's left edge, while the chip widens to 140
+              // about its centre (measured: the G stays 155 px right of the chip's edge).
+              row position="absolute" left=0 top=0 width=120 height=60 box-sizing="border-box"
+                align-items="center" justify-content="center" padding="17px 37px"
+                pointer-events="none" opacity=0
+                animation=(n == 0 ? "none" : (activated ? `iconIn 300ms ${inOutQuad()} both` : `iconOut 300ms ${inOutQuad()} both`))
+                testId="left-icon"
+                // AntDesign google, 22, almostBlack. Its Text box is Yoga's: 22 ceiled to 22.333,
+                // its left floored (48.667 where the svg centres at 49), its baseline on the next
+                // pixel down (CoreGraphics: 38.0 where the snapped svg puts 37.884, 2.698 units).
+                svg width=22 height=(22 * 536 / 512) viewBox="0 -2.698 512 536" aria-hidden=true
+                  position="relative" left="-0.33333px"
+                  path d=googlePath() fill=almostBlack()
         // Right button: styles.rightChipContainer (absolute, zIndex 100), translateX
         // withSpring(0 | offset).
         view position="absolute" z-index=100 translate=`${(activated ? offset() : 0) + nudge(n)}px 0px`
           transition=slide() testId="right"
-          button appearance="none" press=pressRight
-            pointerdown=pressIn(1) pointerup=pressOut
-            scale=pressableScale(pressing, 1, pressto) transition=pressTransition("scale", pressto)
-            aria-label=(activated ? "Apple" : "Start") testId="right-press" display="flex"
-            flex-direction="column"
+          PressableScale(press=pressRight)
             // styles.chip + rightChip (#F1EEE8); activeRightChip: black, its shadow 0 0 0 (hidden
             // under the chip: none). The border as the left chip's: a circular ring.
-            column position="relative" width=140 height=60 padding=1 box-sizing="border-box"
+            column aria-label=(activated ? "Apple" : "Start") testId="right-press" text-align="center"
+              position="relative" width=140 height=60 padding=1 box-sizing="border-box"
               border-radius=16 corner-shape="-exact-continuous"
               background-color=(activated ? "#000000" : background())
               box-shadow=(activated ? "none" : "0px 1px 5px rgba(0, 0, 0, 0.1)")
