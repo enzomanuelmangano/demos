@@ -19,7 +19,8 @@
     "variable-blur",
     "glass-pane",
     "inspiration-sheet",
-    "audio-track"
+    "audio-track",
+    "system-alert"
   ],
   "host": {
     "web": {},
