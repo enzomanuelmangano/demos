@@ -1,4 +1,17 @@
 at "/demo/expandable-mini-player"
 
-test "the player is there"
+test "the page, the bars, and a tap that opens the player"
   expect tree has "expandable-mini-player"
+  expect tree has "mp-tabs"
+  expect tree has "mp-mini"
+  expect tree missing "mp-sheet"
+  tap "mp-mini"
+  clock settle
+  expect tree has "mp-sheet"
+  expect tree has "mp-sheet-handle"
+  tap "mp-play"
+  clock settle
+  expect tree has "mp-play"
+  tap "mp-grabber"
+  clock settle
+  expect tree missing "mp-sheet"
