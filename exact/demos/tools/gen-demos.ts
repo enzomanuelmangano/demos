@@ -46,7 +46,7 @@ const iconOf = (slug: string) => {
 };
 
 // Demos the owner dropped from the Exact app (their code stays, unlisted).
-const dropped = new Set(['shake-to-delete']);
+const dropped = new Set(['shake-to-delete', 'dynamic-blur-tabs']);
 
 const q = (s: string) => JSON.stringify(s);
 const rows = order
