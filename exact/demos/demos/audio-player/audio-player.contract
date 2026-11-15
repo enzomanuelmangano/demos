@@ -19,8 +19,11 @@
 //   on a nominal 3:00, silently.
 use DemoEnv, demoButtonRow from "../env.contract"
 
-fn trackTitle(): string = "Run"
+fn trackTitle(): string = "Now, Run"
 fn trackArtist(): string = "Hania Rani"
+// The owner's cover, beside the track (gitignored, bundled by a native build). Until it loads
+// (or with no file) the drawn artwork and the warm gradients stand in.
+fn coverSource(): string = "assets/audio/cover.jpg"
 
 // The artwork's side inset (20). The card floats as iOS 26's bottom UI does: concentric with the
 // display's corners (radius 62 on the iPhone 17 family), 10 from the sides and the bottom, past
@@ -41,6 +44,9 @@ component AudioPlayer
   // The surface speaks card mode (a build with it).
   state cardMode = false
   state playing = false
+  // The artwork's size follows the press, not the player's answer: set in the same action.
+  state big = false
+  state coverReady = false
   // From `audio-track`: the file's length, its 50 levels, its clock ("<n>:<s>").
   state duration = ""
   state wave = ""
@@ -63,6 +69,7 @@ component AudioPlayer
       haptic("impact-soft")
     if m == "ended"
       playing = false
+      big = false
     if m.startsWith("seek:")
       seekN = seekN + 1
       seek = `${seekN}:${m.slice(5)}`
@@ -76,8 +83,14 @@ component AudioPlayer
       sync = `${syncN}:${m.slice(5)}`
     if m == "ended:" or m == "paused:"
       playing = false
+      big = false
   action toggle
+    big = not playing
     playing = not playing
+  action coverLoaded
+    coverReady = true
+  action coverFailed(message: string)
+    coverReady = false
   action back
     skipN = skipN + 1
     skip = `${skipN}:-15`
@@ -98,20 +111,34 @@ component AudioPlayer
       background-image="radial-gradient(95% 55% at 50% 22%, rgba(184, 146, 108, 0.55) 0%, rgba(184, 146, 108, 0) 100%), radial-gradient(90% 50% at 85% 95%, rgba(78, 66, 120, 0.5) 0%, rgba(78, 66, 120, 0) 100%), radial-gradient(70% 40% at 0% 70%, rgba(150, 92, 70, 0.35) 0%, rgba(150, 92, 70, 0) 100%)"
       padding-top=top padding-bottom=bottom padding-left=audioFloatInset() padding-right=audioFloatInset()
       color-scheme="dark" testId="audio-player"
+      // Apple Music's backdrop: the cover filling the screen under a dark blur, dimmed.
+      if coverReady
+        image coverSource() position="absolute" top=0 left=0 width=env.width height=env.height
+          object-fit="cover" aria-hidden=true
+        view position="absolute" top=0 left=0 width=env.width height=env.height
+          backgroundMaterial="dark" aria-hidden=true
+        view position="absolute" top=0 left=0 width=env.width height=env.height
+          background-color="rgba(0, 0, 0, 0.22)" aria-hidden=true
       // The artwork: drawn, not a record sleeve. It breathes with playback, as Music's does.
       column flex=1 align-items="center" justify-content="center"
         padding-left=(audioSideInset() - audioFloatInset()) padding-right=(audioSideInset() - audioFloatInset())
-        column width=art height=art border-radius=30 corner-shape="-exact-continuous"
-          background-color="#2a221d"
-          background-image="radial-gradient(110% 80% at 18% 8%, rgba(240, 222, 196, 0.95) 0%, rgba(240, 222, 196, 0) 62%), radial-gradient(90% 70% at 100% 100%, rgba(84, 70, 128, 0.85) 0%, rgba(84, 70, 128, 0) 70%), linear-gradient(165deg, #8a6f57 0%, #3b2f28 55%, #1b1614 100%)"
-          box-shadow="0px 24px 60px rgba(0, 0, 0, 0.5)" overflow="hidden"
-          justify-content="space-between" padding=24
-          scale=(playing ? 1 : 0.9) transition="scale -exact-spring(400, 50, 1.6)"
+        // Only this box scales, on Core Animation: no layout, no shadow or clip to redraw, a
+        // critically damped spring (c = 2·√(k·m)) started by the press's own commit.
+        view width=art height=art scale=(big ? 1 : 0.9)
+          transition="scale -exact-spring(200, 28.2843, 1)"
           aria-label=`${trackTitle()} by ${trackArtist()}` testId="audio-artwork"
-          text trackArtist() font-size=13 font-weight=600 letter-spacing=2.4
-            color="rgba(30, 22, 18, 0.72)" text-transform="uppercase" aria-hidden=true
-          text trackTitle() font-family="AddingtonCF-Light" font-size=(art * 0.3) line-height=1
-            color="rgba(255, 248, 238, 0.94)" letter-spacing=-1 aria-hidden=true
+          column position="absolute" top=0 left=0 width=art height=art border-radius=30
+            corner-shape="-exact-continuous" background-color="#2a221d"
+            background-image="radial-gradient(110% 80% at 18% 8%, rgba(240, 222, 196, 0.95) 0%, rgba(240, 222, 196, 0) 62%), radial-gradient(90% 70% at 100% 100%, rgba(84, 70, 128, 0.85) 0%, rgba(84, 70, 128, 0) 70%), linear-gradient(165deg, #8a6f57 0%, #3b2f28 55%, #1b1614 100%)"
+            justify-content="space-between" padding=24 opacity=(coverReady ? 0 : 1)
+            aria-hidden=true
+            text trackArtist() font-size=13 font-weight=600 letter-spacing=2.4
+              color="rgba(30, 22, 18, 0.72)" text-transform="uppercase"
+            text trackTitle() font-family="AddingtonCF-Light" font-size=(art * 0.19) line-height=1
+              color="rgba(255, 248, 238, 0.94)" letter-spacing=-1
+          image coverSource() position="absolute" top=0 left=0 width=art height=art
+            border-radius=30 corner-shape="-exact-continuous" object-fit="cover"
+            opacity=(coverReady ? 1 : 0) load=coverLoaded error=coverFailed aria-hidden=true
       // The card: liquid glass over the warm backdrop, concentric with the screen's corners.
       column backgroundMaterial="glass" -exact-glass-tint="rgba(24, 18, 15, 0.32)"
         border-radius=audioCardRadius() corner-shape="-exact-continuous" margin-top=32

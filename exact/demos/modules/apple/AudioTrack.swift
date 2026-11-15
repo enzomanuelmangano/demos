@@ -37,6 +37,10 @@ final class AudioTrack: ExactNativeInstance {
     private var wantsPlay = false
     private var seekToken: String?
     private var ticker: Timer?
+    /// Every session change, in order, off the main thread.
+    private static let sessionQueue = DispatchQueue(label: "audio-track.session", qos: .userInitiated)
+    /// An activation is on its way (`takeSession`).
+    private var starting = false
     private var savedSession: (AVAudioSession.Category, AVAudioSession.Mode, AVAudioSession.CategoryOptions)?
     private var observers: [NSObjectProtocol] = []
 
@@ -153,11 +157,21 @@ final class AudioTrack: ExactNativeInstance {
     private func apply() {
         guard let player else { return }
         if wantsPlay && box.window != nil {
-            guard !player.isPlaying else { return }
-            takeSession()
-            if player.currentTime >= player.duration - 0.05 { player.currentTime = 0 }
-            player.play()
-            startTicker()
+            guard !player.isPlaying, !starting else { return }
+            // The session's activation blocks for tens of ms: off the main thread, so the press's
+            // animations (the artwork's spring) start on time; play once it is ours.
+            starting = true
+            takeSession { [weak self] in
+                guard let self else { return }
+                self.starting = false
+                guard self.wantsPlay, self.box.window != nil, let player = self.player, !player.isPlaying else {
+                    if !self.wantsPlay { self.restoreSession() }
+                    return
+                }
+                if player.currentTime >= player.duration - 0.05 { player.currentTime = 0 }
+                player.play()
+                self.startTicker()
+            }
         } else {
             halt()
         }
@@ -194,13 +208,16 @@ final class AudioTrack: ExactNativeInstance {
     // MARK: - The session
 
     /// `.playback` while it plays: heard with the silent switch on, other audio paused.
-    private func takeSession() {
+    private func takeSession(then: @escaping () -> Void) {
         let session = AVAudioSession.sharedInstance()
         if savedSession == nil {
             savedSession = (session.category, session.mode, session.categoryOptions)
         }
-        try? session.setCategory(.playback, mode: .default, options: [])
-        try? session.setActive(true)
+        Self.sessionQueue.async {
+            try? session.setCategory(.playback, mode: .default, options: [])
+            try? session.setActive(true)
+            DispatchQueue.main.async(execute: then)
+        }
     }
 
     /// The session as it was, and other apps' audio told it may resume.
@@ -208,8 +225,11 @@ final class AudioTrack: ExactNativeInstance {
         guard let (category, mode, options) = savedSession else { return }
         savedSession = nil
         let session = AVAudioSession.sharedInstance()
-        try? session.setActive(false, options: .notifyOthersOnDeactivation)
-        try? session.setCategory(category, mode: mode, options: options)
+        // In order after any activation still on the way, and off the main thread too.
+        Self.sessionQueue.async {
+            try? session.setActive(false, options: .notifyOthersOnDeactivation)
+            try? session.setCategory(category, mode: mode, options: options)
+        }
     }
 
     private func send(_ text: String) {
