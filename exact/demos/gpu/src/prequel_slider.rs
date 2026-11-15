@@ -27,8 +27,8 @@
 //!
 //! | value | driver | config | trigger / cancel |
 //! |---|---|---|---|
-//! | scrollOffset | Pan onUpdate: clamp(context + translationX, −500 + W / 2, W / 2) | — | onBegin: context = scrollOffset, cancelAnimation |
-//! | scrollOffset | Pan onEnd: withSpring(snapPoint(offset, velocityX, W / 2 − 10 i, i 0…50)) | mass 0.45, damping 10, stiffness 100 (ζ 0.75) | the next onBegin |
+//! | scrollOffset | RN: Pan onUpdate clamp(context + translationX, −500 + W / 2, W / 2); here, by the owner's call (phone note 2026-11-15: "scroll like a native scroll view"), W / 2 − contentOffset of a UIScrollView (`ui_scroll`) over the 500 pt ruler: 1:1 from the pan's begin, rubber-banded past the ends | — | a finger down catches it where it is |
+//! | scrollOffset | RN: Pan onEnd withSpring(snapPoint(offset, velocityX, W / 2 − 10 i)) (mass 0.45, damping 10, stiffness 100); here UIKit's release: deceleration at the normal rate (0.998 / ms) onto the projected target moved to the 10 pt tick at or past it in the fling's direction (RN's snapToInterval rule, as RN snaps to the ticks), and the bounce back past an end | — | the next finger down |
 //! | progress | useAnimatedReaction on scrollOffset (not on its first run) | interpolate(offset, [W / 2, W / 2 − 500], [0, 1]), extended | — |
 //! | color | interpolateColor(progress, [0, 1], [#6d9bf1, orange]) (gamma 2.2, clamped) | — | — |
 //!
@@ -37,11 +37,11 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture};
-use reanimated::{interpolate, interpolate_color, Extrapolation, Spring, SpringConfig};
+use reanimated::{interpolate, interpolate_color, Extrapolation};
 use skia::blur::GRAPHITE_FORMAT;
 use skia::{point, stops, Canvas, Cap, Color, Join, Paint, Renderer, Shader};
 
+use crate::ui_scroll::{Snap, UiScroll, NORMAL};
 use crate::{gfx, shaders};
 use shaders::prequel_slider::{entry, module, Uniforms, GROUP_0, MASK, PHOTO, SMP, U, UI};
 
@@ -62,8 +62,6 @@ const LINE_R: f32 = LINE_W / 2.0;
 const INDICATOR_LINE_W: f32 = 2.0;
 /// bigLineIndexOffset.
 const BIG_EACH: usize = 10;
-/// The snap spring.
-const SNAP: SpringConfig = SpringConfig { stiffness: 100.0, damping: 10.0, mass: 0.45 };
 /// DonutCircularProgress: size, strokeWidth.
 const DONUT: f32 = 35.0;
 const DONUT_STROKE: f32 = 4.0;
@@ -75,14 +73,18 @@ static PHOTO_JPEG: &[u8] = include_bytes!("../images/prequel-slider-unsplash-354
 
 /// The demo's surface. Inputs: the safe area's top and bottom (useSafeAreaInsets).
 pub fn surface() -> Box<dyn Surface> {
-    Box::new(PrequelSlider {
+    Box::new(PrequelSlider::new())
+}
+
+impl PrequelSlider {
+    fn new() -> PrequelSlider {
+        PrequelSlider {
         insets: (0.0, 0.0),
         size: (0.0, 0.0),
         scale: 1.0,
-        scroll: Spring::at(0.0),
+        // contentOffset 0: scrollOffset W / 2 (useSharedValue(ScreenWidth / 2)).
+        scroll: UiScroll::new(0.0, (LINES as f64 * SPACE).round(), 0.0, NORMAL, Snap::Interval(SPACE)),
         last_offset: f64::NAN,
-        context: 0.0,
-        pan: PanGesture::new(),
         progress: 0.0,
         line_index: -1,
         posted: Vec::new(),
@@ -91,7 +93,19 @@ pub fn surface() -> Box<dyn Surface> {
         mask: Canvas::default(),
         renderers: [Renderer::default(), Renderer::default()],
         gpu: None,
-    })
+        }
+    }
+}
+
+#[cfg(test)]
+impl PrequelSlider {
+    fn new_for_test() -> PrequelSlider {
+        let mut s = PrequelSlider::new();
+        s.size = (420.0, 912.0);
+        s.scale = 3.0;
+        s.scroll.port = 420.0;
+        s
+    }
 }
 
 /// Yoga's rounding of a layout edge to the pixel grid (roundValueToPixelGrid): to the nearest
@@ -108,35 +122,16 @@ fn frame_of(x: f32, y: f32, w: f32, h: f32, scale: f32) -> [f32; 4] {
     [grid(x, scale), grid(y, scale), grid(x + w, scale), grid(y + h, scale)]
 }
 
-/// snapPoint (redash): the point nearest value + 0.2 · velocity, the first of equals.
-fn snap_point(value: f64, velocity: f64, w: f64) -> f64 {
-    let p = value + 0.2 * velocity;
-    let mut best = w / 2.0;
-    let mut min = f64::INFINITY;
-    for i in 0..=LINES {
-        let s = w / 2.0 - i as f64 * SPACE;
-        let d = (p - s).abs();
-        if d < min {
-            min = d;
-            best = s;
-        }
-    }
-    best
-}
-
 struct PrequelSlider {
     /// safeTop, safeBottom.
     insets: (f32, f32),
     /// The window, in points, and its pixels per point.
     size: (f32, f32),
     scale: f32,
-    /// scrollOffset.
-    scroll: Spring,
+    /// The ruler as a UIScrollView: scrollOffset = W / 2 − its contentOffset.
+    scroll: UiScroll,
     /// scrollOffset as the reaction last saw it.
     last_offset: f64,
-    /// scrollContext.
-    context: f64,
-    pan: PanGesture,
     /// progressPercentage.
     progress: f64,
     /// previousLineIndex.
@@ -196,15 +191,14 @@ impl PrequelSlider {
         }
     }
 
-    /// The offset's bounds: [−ProgressWidth + W / 2, W / 2].
-    fn bounds(&self) -> (f64, f64) {
-        let w = self.size.0 as f64;
-        (-(LINES as f64 * SPACE).round() + w / 2.0, w / 2.0)
+    /// scrollOffset: the ticks' x, W / 2 at the ruler's start.
+    fn offset(&self) -> f64 {
+        self.size.0 as f64 / 2.0 - self.scroll.offset
     }
 
     /// useAnimatedReaction on scrollOffset: onProgressChange.
     fn react(&mut self) {
-        let offset = self.scroll.value;
+        let offset = self.offset();
         if offset == self.last_offset {
             return;
         }
@@ -215,7 +209,10 @@ impl PrequelSlider {
         }
         let w = self.size.0 as f64;
         let progress = interpolate(offset, &[w / 2.0, -(LINES as f64 * SPACE).round() + w / 2.0], &[0.0, 1.0], Extrapolation::Extend);
-        let index = (progress * LINES as f64).floor() as i64;
+        // Past the ruler's ends the scroll bands; RN's clamp never got there, so the line index
+        // (and its haptic) and the progress stop at the ends.
+        let progress = progress.clamp(0.0, 1.0);
+        let index = ((progress * LINES as f64).floor() as i64).min(LINES as i64);
         if index != self.line_index && index >= 0 {
             self.posted.push("haptic:selection".into());
             self.line_index = index;
@@ -232,6 +229,7 @@ impl PrequelSlider {
     fn record(&mut self, scale: f32, at: &Layout) {
         let w = self.size.0;
         let rgb = self.color();
+        let x0 = self.offset() as f32;
         let c = &mut self.ui;
         c.begin(scale);
         // The donut: rotated −90° about its centre, so its circle starts at the top.
@@ -251,7 +249,6 @@ impl PrequelSlider {
         let top = at.lines[1];
         c.save();
         c.clip_rrect(0.0, top, w, at.lines[3] - top, 0.0);
-        let x0 = self.scroll.value as f32;
         let small = Paint::fill(Color::WHITE).with_opacity(0.5);
         let big = Paint::fill(Color::WHITE);
         for pass in [false, true] {
@@ -308,7 +305,7 @@ impl Surface for PrequelSlider {
     }
 
     fn agent(&mut self, _request: &str) -> Option<String> {
-        Some(format!("{{\"progress\":{:.4},\"offset\":{:.2},\"lineIndex\":{}}}", self.progress, self.scroll.value, self.line_index))
+        Some(format!("{{\"progress\":{:.4},\"offset\":{:.2},\"lineIndex\":{}}}", self.progress, self.offset(), self.line_index))
     }
 
     fn input(&mut self, event: &InputEvent) {
@@ -319,23 +316,8 @@ impl Surface for PrequelSlider {
         // The GestureDetector's view: the slider's W × 60 area, as laid out.
         let area = self.layout(self.scale).area;
         let inside = x >= area[0] && x <= area[2] && y >= area[1] && y <= area[3];
-        match self.pan.event(id, gfx::phase(phase), x, y, at_ms, inside) {
-            Event::Begin { .. } => {
-                self.context = self.scroll.value;
-                let v = self.scroll.value;
-                self.scroll.set(v);
-            }
-            Event::Start(p) | Event::Update(p) => {
-                let (lo, hi) = self.bounds();
-                self.scroll.set((self.context + p.translation_x as f64).clamp(lo, hi));
-                self.react();
-            }
-            Event::End(p) => {
-                let target = snap_point(self.scroll.value, p.velocity_x as f64, self.size.0 as f64);
-                self.scroll.to(target, 0.0, SNAP);
-            }
-            _ => {}
-        }
+        self.scroll.input(id, gfx::phase(phase), x, y, at_ms, inside);
+        self.react();
     }
 
     fn render(
@@ -348,13 +330,10 @@ impl Surface for PrequelSlider {
         format: wgpu::TextureFormat,
     ) -> bool {
         if self.size != (frame.width, frame.height) {
-            let first = self.size.0 == 0.0;
             self.size = (frame.width, frame.height);
             let w = frame.width;
-            if first {
-                // useSharedValue(ScreenWidth / 2).
-                self.scroll.set(w as f64 / 2.0);
-            }
+            // The rubber band's dimension: the port, the window's width.
+            self.scroll.port = w as f64;
             let black = Color::BLACK;
             let clear = Color::TRANSPARENT;
             self.gradient = Some(Paint::shader(Shader::Linear { start: point(0.0, 0.0), end: point(w, 0.0), stops: stops(&[black, clear, clear, clear, black]) }));
@@ -395,7 +374,7 @@ impl Surface for PrequelSlider {
         };
         queue.write_buffer(&gpu.uniforms, 0, &u.bytes());
         skia::render::fullscreen_pass(encoder, "prequel slider", target, &gpu.pipeline, &gpu.bind);
-        moving || self.pan.tracking()
+        moving || self.scroll.moving()
     }
 }
 
@@ -455,8 +434,6 @@ mod tests {
         assert_eq!(grid(10.5, 3.0), 32.0 / 3.0);
         assert_eq!(grid(409.5, 3.0), 1229.0 / 3.0);
         assert_eq!(grid(718.8, 3.0), 2156.0 / 3.0);
-        assert_eq!(snap_point(150.0, 100.0, 420.0), 170.0);
-        assert_eq!(snap_point(-2000.0, 0.0, 420.0), 210.0 - 500.0);
     }
 
     #[test]
@@ -487,8 +464,8 @@ mod tests {
         let finger = |s: &mut Box<dyn Surface>, phase, x, at_ms| {
             s.input(&InputEvent::Pointer { id: 1, phase, x, y: 2409.0 / 3.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
         };
-        // Drag left slowly (RNGH on iOS leaves UIKit's 10 pt hysteresis out of the
-        // translation): offset 210 − 254.5 → progress 0.506; release, snap to 0.5.
+        // Drag left slowly, a UIScrollView's drag: it begins on the second move past the 10 pt
+        // hysteresis (x 327) and follows 1:1 from there, no jump: 241.5 pt, offset 210 − 241.5.
         finger(&mut s, PointerPhase::Down, 350.0, 0.0);
         for i in 1..=23 {
             finger(&mut s, PointerPhase::Move, 350.0 - 11.5 * i as f32, 40.0 * i as f64);
@@ -496,10 +473,9 @@ mod tests {
         // A haptic per line index reached (11.5 pt moves skip some of the 26).
         let posted = s.messages();
         assert!(posted.iter().filter(|m| *m == "haptic:selection").count() > 15, "{posted:?}");
-        assert!(s.agent("").unwrap().ends_with("\"lineIndex\":25}"), "{}", s.agent("").unwrap());
-        // The finger slows before the lift: UIKit keeps the last move's velocity at a lift
-        // after a rest, so a release meant to be still ends on slow moves.
-        // (here easing back 2 pt: offset 210 − 252.5 + 0.2 · 25 → snaps to −40).
+        assert!(s.agent("").unwrap().starts_with("{\"progress\":0.4830,\"offset\":-31.50,\"lineIndex\":24}"), "{}", s.agent("").unwrap());
+        // The finger eases back 2 pt and rests a second: below ~335 pt/s UIKit reports no
+        // velocity, so the snapToInterval rule rounds the 239.5 pt offset to the 240 tick.
         finger(&mut s, PointerPhase::Move, 86.5, 960.0);
         finger(&mut s, PointerPhase::Move, 87.5, 1000.0);
         finger(&mut s, PointerPhase::Up, 87.5, 2000.0);
@@ -511,10 +487,53 @@ mod tests {
             (img, moving) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         }
         gfx::save_over(&img, "prequel-slider-half", [0, 0, 0]);
-        assert!(s.agent("").unwrap().starts_with("{\"progress\":0.5000,\"offset\":-40.00"), "{}", s.agent("").unwrap());
+        assert!(s.agent("").unwrap().starts_with("{\"progress\":0.4800,\"offset\":-30.00"), "{}", s.agent("").unwrap());
         assert_ne!(img.at(600, 1200), before, "the photo is warped");
         // Half: the ring's arc reaches the bottom; the indicator is between blue and orange.
         let ring = img.at(631, 2313);
         assert!(ring[3] > 200, "ring's arc at 6 o'clock {ring:?}");
+    }
+
+    #[test]
+    fn the_ruler_scrolls_like_a_scroll_view() {
+        let mut s = PrequelSlider::new_for_test();
+        let y = s.layout(3.0).area[1] + 30.0;
+        let mut at = 0.0;
+        let mut finger = |s: &mut PrequelSlider, phase, x: f32, at_ms: f64| {
+            s.input(&InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
+        };
+        // A fling left (1.2 pt/ms): it glides on after the lift and rests on a 10 pt tick.
+        finger(&mut s, PointerPhase::Down, 300.0, at);
+        for i in 1..=6 {
+            at += 16.0;
+            finger(&mut s, PointerPhase::Move, 300.0 - 19.2 * i as f32, at);
+        }
+        let lifted = s.scroll.offset;
+        finger(&mut s, PointerPhase::Up, 300.0 - 19.2 * 6.0, at + 1.0);
+        let mut t = at;
+        while s.scroll.step(t) {
+            t += 16.0;
+        }
+        assert!(s.scroll.offset > lifted + 50.0, "{} after {lifted}", s.scroll.offset);
+        assert_eq!(s.scroll.offset % SPACE, 0.0);
+        // Dragged right past the start: banded (less than the finger), then back to 0.
+        let mut s = PrequelSlider::new_for_test();
+        at = t + 100.0;
+        let start = s.scroll.offset;
+        finger(&mut s, PointerPhase::Down, 50.0, at);
+        for i in 1..=30 {
+            at += 16.0;
+            finger(&mut s, PointerPhase::Move, 50.0 + 12.0 * i as f32, at);
+        }
+        let over = -s.scroll.offset;
+        assert!(over > 0.0 && over < 350.0 - start, "overshoot {over}");
+        at += 500.0;
+        finger(&mut s, PointerPhase::Up, 410.0, at);
+        let mut t = at;
+        while s.scroll.step(t) {
+            t += 16.0;
+        }
+        assert!(s.scroll.offset.abs() < 0.01, "{}", s.scroll.offset);
+        assert_eq!(s.progress, 0.0);
     }
 }
