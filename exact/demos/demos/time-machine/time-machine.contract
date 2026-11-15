@@ -13,6 +13,12 @@ component TimeMachine
   action buzz(m: string)
     if m == "haptic:impact-light"
       haptic("impact-light")
+    // Past RN: a selection per row crossed and per card leafed, a medium impact as a release
+    // opens or closes the time machine.
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-medium"
+      haptic("impact-medium")
   view
     canvas surface=time_machine(env.safeTop) position="absolute" top=0 left=0 width=env.width
       height=env.height background-color="#000" touch-action="none" message=buzz
