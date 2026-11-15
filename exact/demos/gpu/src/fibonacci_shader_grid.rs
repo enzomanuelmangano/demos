@@ -29,6 +29,11 @@
 //!
 //! The GestureDetector wraps the container: RNGH's recognizer gets the touches of the container
 //! and of its children (the grid overflowing it by 2, the pointer wherever it is).
+//!
+//! Haptics (past RN, which plays none: the owner's haptic language): `haptic:impact-light` when
+//! a finger takes the pad (onBegin); `haptic:selection` each time the finger crosses into
+//! another of the 6 × 6 cells, at most one per HAPTIC_GAP_MS; `haptic:impact-rigid` once each
+//! time it leaves the pad (where the remap clamps N and the multiplier).
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -54,6 +59,10 @@ const R: f32 = 24.0;
 /// styles.container borderWidth.
 const BORDER: f32 = 2.0;
 /// The x / y springs of onBegin.
+/// The shortest gap between two selection haptics, ms.
+const HAPTIC_GAP_MS: f64 = 40.0;
+/// The grid's cells per side.
+const CELLS: f32 = 6.0;
 const PAD_SPRING: Config = Config { stiffness: 100.0, damping: 10.0, mass: 0.5 };
 
 /// The demo's surface.
@@ -64,6 +73,7 @@ pub fn surface() -> Box<dyn Surface> {
         y: Spring::at((MAX_Y + MIN_Y) / 2.0),
         opacity: Timing::at(1.0),
         scale: Spring::at(1.0),
+        haptic_at: f64::NEG_INFINITY,
         ..Default::default()
     })
 }
@@ -76,6 +86,12 @@ struct FibonacciShaderGrid {
     opacity: Timing,
     scale: Spring,
     pan: PanGesture,
+    /// The cell under the finger, whether it is off the pad, the last selection's time (their
+    /// haptics).
+    cell: (i32, i32),
+    past_end: bool,
+    haptic_at: f64,
+    posted: Vec<String>,
     start_ms: Option<f64>,
     width: f32,
     height: f32,
@@ -149,6 +165,13 @@ impl FibonacciShaderGrid {
         inside(ox, oy, s, s)
             || inside(ox + BORDER, oy + BORDER, s, s)
             || inside(ox + BORDER + pcx - half, oy + BORDER + pcy - half, 2.0 * half, 2.0 * half)
+    }
+    /// The grid cell under (ex, ey) in the container (clamped to the pad) and whether the
+    /// point is off the pad.
+    fn cell_at(&self, ex: f32, ey: f32) -> ((i32, i32), bool) {
+        let s = self.side();
+        let k = |v: f32| (v / (s / CELLS)).floor().clamp(0.0, CELLS - 1.0) as i32;
+        ((k(ex), k(ey)), ex < 0.0 || ex > s || ey < 0.0 || ey > s)
     }
     fn set_active(&mut self, active: bool) {
         if self.active == active {
@@ -233,8 +256,22 @@ impl Surface for FibonacciShaderGrid {
                 let (tx, ty) = (self.remap_x(ex), self.remap_y(ey));
                 self.x.to(tx, self.x.velocity, PAD_SPRING);
                 self.y.to(ty, self.y.velocity, PAD_SPRING);
+                (self.cell, self.past_end) = self.cell_at(ex, ey);
+                self.posted.push("haptic:impact-light".into());
             }
             Event::Start(_) | Event::Update(_) => {
+                let (cell, past) = self.cell_at(ex, ey);
+                if cell != self.cell {
+                    self.cell = cell;
+                    if at_ms - self.haptic_at >= HAPTIC_GAP_MS {
+                        self.posted.push("haptic:selection".into());
+                        self.haptic_at = at_ms;
+                    }
+                }
+                if past && !self.past_end {
+                    self.posted.push("haptic:impact-rigid".into());
+                }
+                self.past_end = past;
                 let (tx, ty) = (self.remap_x(ex), self.remap_y(ey));
                 self.x.set(tx);
                 self.y.set(ty);
@@ -242,6 +279,10 @@ impl Surface for FibonacciShaderGrid {
             Event::End(_) | Event::Fail => self.set_active(false),
             _ => {}
         }
+    }
+
+    fn messages(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.posted)
     }
 
     fn agent(&mut self, _request: &str) -> Option<String> {
@@ -378,6 +419,8 @@ mod tests {
         assert_ne!(a.data, b.data);
         s.input(&p(exact_gpu::PointerPhase::Up, 411.0, 542.0, 400.0));
         assert!(s.agent("{}").unwrap().contains("\"active\":false"));
+        // The grab; the cells crossed every 16 ms, paced to one per 40 ms; off the pad once.
+        assert_eq!(s.messages(), vec!["haptic:impact-light", "haptic:selection", "haptic:selection", "haptic:impact-rigid"]);
         // A touch outside the pad does nothing.
         s.input(&p(exact_gpu::PointerPhase::Down, 50.0, 850.0, 900.0));
         assert!(s.agent("{}").unwrap().contains("\"held\":false"));
