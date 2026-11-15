@@ -39,11 +39,13 @@ const r = spawnSync(process.execPath, [resolve(exact2, 'host/apple/build.mjs'), 
 // the phone then connects to `url` and takes every edit live.
 if (r.status === 0 && run && url && phone) {
   try {
-    const { readdirSync, readFileSync, existsSync } = await import('node:fs');
+    const { readdirSync, readFileSync, existsSync, statSync } = await import('node:fs');
     const clients = resolve(process.cwd(), 'target/clients');
     const receipt = readdirSync(clients).flatMap((d) => readdirSync(resolve(clients, d)).map((b) =>
       resolve(clients, d, b, 'ios/aarch64-apple-ios/embedded/development/standalone/Demos.app/receipt.json')))
-      .find((f) => existsSync(f));
+      .filter((f) => existsSync(f))
+      // The newest receipt is this build's: each build re-tokens its admission.
+      .sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs)[0];
     const dev = receipt && JSON.parse(readFileSync(receipt, 'utf8')).development;
     if (dev?.scheme && dev?.token) {
       const page = new URL('/', url).href;
