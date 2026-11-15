@@ -1,10 +1,11 @@
-// Fractal Glass: an orange circle dragged behind a pane of fluted glass, blurred and shaded through
-// a 4 × 4 grid of gradient cells; a round button switches the light theme (white, orange) and the
-// dark one (black, #78C0E0). RN: src/animations/fractal-glass (index.tsx,
-// components/fractal-glass-mask.tsx). The canvas, the circle's drag and the theme's colour
-// timings are Rust (gpu/src/fractal_glass.rs); the button is here, its fill a second instance
-// of that surface (input + 2) so it is the circle's colour timing itself: a toggle mid-way
-// continues from the colour shown, in Reanimated's colour space, as RN's circleColor does.
+// Fractal Glass: an orange circle dragged behind a pane of reeded (fluted) glass, each flute a
+// lens that refracts and frosts it (RN's 4 × 4 gradient mask was not real fractal glass); a
+// round button switches the light theme (white, orange) and the dark one (black, #78C0E0).
+// RN: src/animations/fractal-glass (index.tsx, components/fractal-glass-mask.tsx). The canvas,
+// the circle's drag and the theme's colour timings are Rust (gpu/src/fractal_glass.rs); the
+// button is here, its fill a second instance of that surface (input + 2) so it is the
+// circle's colour timing itself: a toggle mid-way continues from the colour shown, in
+// Reanimated's colour space, as RN's circleColor does.
 use PressableScale from "pressto"
 
 // Octicons sun / moon (512 units to the em, the line ascent 450 + descent 68 + gap 46 = 564).

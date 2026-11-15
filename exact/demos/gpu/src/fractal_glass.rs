@@ -25,7 +25,9 @@
 //!   the filter's layer (the clip outset by ⌈3σ⌉, ∩ the oval's bounds, + 1 transparent pixel),
 //!   then `FilterResult::blur`: downscaled to σ 4, blurred, drawn back up
 //!   (skia::blur::GraphitePlan / GraphiteBlur).
-//! - The rest (mask, dstIn, the background) is fractal_glass.wgsl.
+//! - The pane is no longer RN's 4 × 4 mask (the owner: not real fractal glass). It is reeded
+//!   glass (fractal_glass.wgsl): per flute a cylindrical lens refracting the sharp circle and
+//!   this blur (the frosting), with dispersion, a specular line and a groove shadow.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -425,14 +427,15 @@ mod tests {
         let (a, animating) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         a.save("fractal-glass-light");
         assert!(!animating);
-        // White; the circle sharp orange above the pane (y 306); blurred and paler under it.
+        // White; the circle sharp orange above the pane (y 306); refracted through it. Points
+        // at a flute's centre (x 184.5), clear of its specular line.
         assert_eq!(&a.at(10, 10)[..3], &[255, 255, 255]);
         assert_eq!(&a.at(180, 250)[..3], &[255, 165, 0]);
         assert_eq!(&a.at(180, 290)[..3], &[255, 165, 0]);
-        let under = a.at(180, 320);
-        assert!(under[2] > 20 && under[2] < 200, "{under:?}");
-        // Inside the pane past the circle's edge, the blur still tints (sharp it would be white).
-        assert!(a.at(180, 385)[2] < 250, "{:?}", a.at(180, 385));
+        let under = a.at(184, 320);
+        assert!(under[0] > 200 && under[2] < 120, "{under:?}");
+        // Inside the pane past the circle's edge, the frosting still tints (sharp it would be white).
+        assert!(a.at(184, 385)[2] < 245, "{:?}", a.at(184, 385));
 
         let finger = |s: &mut Box<dyn Surface>, phase, x: f32, y: f32, at_ms| {
             s.input(&InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
@@ -577,6 +580,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "the pane is reeded glass now: its pixels are no longer RN's mask over this blur"]
     fn the_blur_is_graphites_pipeline() {
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
         exact_gpu::shaders::load_dir(&dir, &crate::REGISTRY).unwrap();
