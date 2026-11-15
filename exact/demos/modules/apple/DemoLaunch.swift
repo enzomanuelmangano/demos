@@ -5,7 +5,7 @@
 // and settle, the card is a slight trapezoid that straightens as it lands, and the home behind
 // shrinks, blurs and dims. Close: a drag shrinks the card under the finger (a still of the demo takes its
 // place for the pull, rounded by its own layer: no offscreen pass; the demo keeps running hidden behind it);
-// a throw (or a pull past a fifth of the screen) flies it into its icon, a shorter pull springs back.
+// a throw (or a pull past a tenth of the screen) flies it into its icon, a shorter pull springs back.
 //
 // `present(_:animated:completion:)` is swizzled once (`installLaunch`) so the presented
 // `.overFullScreen` controller gets this file's transitioning delegate, named by the icon the finger
@@ -52,9 +52,9 @@ private enum K {
     static let prepareOffsetY: CGFloat = 6
     /// A demo that owns its drags still gives a pull from this much of the screen's top to the close.
     static let stripFraction: CGFloat = 0.1
-    /// A release closes when it is a throw down, or lands past a fifth of the screen.
-    static let closeVelocity: CGFloat = 400
-    static let closeTravel: CGFloat = 0.2
+    /// A release closes when it is a throw down, or lands past a tenth of the screen: a short pull is enough, as on iOS.
+    static let closeVelocity: CGFloat = 250
+    static let closeTravel: CGFloat = 0.1
     static let throwProjection: CGFloat = 0.15
     // The icon's artwork fades out between these fractions of the screen's width.
     static let artGone = (from: 0.2, to: 0.42)
