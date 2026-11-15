@@ -1,8 +1,7 @@
 //! Threads Holo Ticket (src/animations/threads-holo-ticket: src/index.tsx, components/
 //! holographic-card.tsx, components/ticket/{index,front-side,back-side}.tsx, hooks/
 //! use-device-tilt.ts): a 300 × 400 ticket centred on #070018 that turns about its vertical axis
-//! as it is dragged (flung with a decay) or flips half a turn on a tap (a spring and the selection
-//! haptic). Its HolographicCard canvas shows a holographic grid only while it turns, the shine
+//! as it is dragged (flung with a decay) or flips half a turn on a tap (a spring). Its HolographicCard canvas shows a holographic grid only while it turns, the shine
 //! following the phone's tilt; the front has the event's details, the back a gold QR code.
 //!
 //! Layout (Yoga's numbers, edges on the device-pixel grid): styles.container centres the
@@ -38,7 +37,7 @@
 //! |---|---|---|
 //! | translateX | Pan onStart: context = translateX; onUpdate: translationX + context (cancels any animation) | the same: the pan's translation from its activation, set per move |
 //! | translateX | Pan onEnd: withDecay({ velocity: velocityX × 0.7, deceleration 0.998, clamp [x − 1080, x + 1080] }) | `reanimated::Decay` with the same numbers |
-//! | translateX | Tap onStart / onEnd: cancelAnimation, then withSpring(round(x / 180) × 180 + 180, { dampingRatio 1.5, duration 500 }) from rest; Haptics.selectionAsync | `gfx::spring_to` (Reanimated's duration bisection, run critically damped as ζ ≥ 1); posts `haptic:selection` |
+//! | translateX | Tap onStart / onEnd: cancelAnimation, then withSpring(round(x / 180) × 180 + 180, { dampingRatio 1.5, duration 500 }) from rest| `gfx::spring_to` (Reanimated's duration bisection, run critically damped as ζ ≥ 1) |
 //! | rotateY | translateX % 360 (deg), the view's `[perspective 1000, rotateY]` | the same, in the compose's inverse map |
 //! | front / back | \|rotateY\| < 90 or > 270: front opacity 1, back 0 (and the reverse) | the side the compose draws |
 //! | maskOpacity | interpolate(\|rotateY\|, [0, 90, 180, 270, 360], [0, 0.5, 0, 0.5, 0], CLAMP) | the same; the Rect's paint alpha |
@@ -49,12 +48,6 @@
 //! | gradientEnd | (interpolate(roll, ±π/4, [270, 225]), interpolate(pitch, ±π/4, [360, 300])), CLAMP | the same |
 //!
 //! Nothing renders at rest; the canvas layer is redrawn only when its values change.
-//!
-//! Haptics past RN (which plays only the tap's selection; the owner's haptic language):
-//! `haptic:impact-light` when the pan takes the ticket; `haptic:selection` each time a drag or
-//! its fling turns the other side to the front (|rotateY| SWITCH past 90 or 270, so a ticket
-//! held edge-on does not flap), at most one per HAPTIC_GAP_MS (the tap's flip keeps only its
-//! own). Nothing when a throw's spring settles on its face (it eases in: no limit is felt).
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, SensorKind, Surface, SurfaceError, Value};
@@ -173,11 +166,6 @@ const DECAY_DECELERATION: f64 = 0.998;
 const DECAY_CLAMP: f64 = 1080.0;
 const FLIP_MS: f64 = 500.0;
 const FLIP_DAMPING_RATIO: f64 = 1.5;
-/// The shortest gap between two side haptics, ms.
-const HAPTIC_GAP_MS: f64 = 40.0;
-/// How far past edge-on (90° / 270°) the ticket turns before the other side counts as in
-/// front, degrees (1 pt of drag each): a finger holding it edge-on does not flap.
-const SWITCH: f64 = 6.0;
 /// Graphite's tessellation precision (Wang's formula: 1/4 px).
 const PRECISION: f32 = 4.0;
 const LAYER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
@@ -202,10 +190,6 @@ pub fn surface() -> Box<dyn Surface> {
         par: (0.0, 0.0),
         par_ms: None,
         tilt: (0.0, 0.0),
-        posted: Vec::new(),
-        side_front: true,
-        haptic_at: f64::NEG_INFINITY,
-        throwing: false,
         fonts: None,
         front: Canvas::default(),
         renderer: Renderer::default(),
@@ -597,13 +581,6 @@ struct ThreadsHoloTicket {
     par_ms: Option<f64>,
     /// smoothPitch, smoothRoll.
     tilt: (f64, f64),
-    posted: Vec<String>,
-    /// The side in front as the side haptic last saw it.
-    side_front: bool,
-    /// When the last haptic was posted, ms.
-    haptic_at: f64,
-    /// translateX's spring carries a throw (its side turns play), not the tap's flip.
-    throwing: bool,
     fonts: Option<Option<Front>>,
     front: Canvas,
     renderer: Renderer,
@@ -708,48 +685,23 @@ impl ThreadsHoloTicket {
     }
 
     fn step(&mut self, now_ms: f64) -> bool {
-        let (moving, fling) = match &mut self.motion {
+        let moving = match &mut self.motion {
             Motion::Rest => return false,
             Motion::Decay(d) => {
                 let moving = d.step(now_ms);
                 self.x = d.value;
-                (moving, true)
+                moving
             }
             Motion::Spring(s) => {
                 let moving = s.step(now_ms);
                 self.x = s.value;
-                // A throw's spring (not the tap's flip) plays the side turns.
-                (moving, self.throwing)
+                moving
             }
         };
         if !moving {
             self.motion = Motion::Rest;
-            self.throwing = false;
         }
-        self.side(now_ms, fling);
         moving
-    }
-
-    /// A haptic at `at` (ms); a selection only HAPTIC_GAP_MS after the last one.
-    fn haptic(&mut self, kind: &str, at: f64) {
-        if kind == "selection" && at - self.haptic_at < HAPTIC_GAP_MS {
-            return;
-        }
-        self.posted.push(format!("haptic:{kind}"));
-        self.haptic_at = at;
-    }
-
-    /// The side in front changed: a selection when `play` (a drag or its fling).
-    fn side(&mut self, at: f64, play: bool) {
-        let front = self.is_front();
-        let a = self.rotate_y().abs();
-        let edge = (a - 90.0).abs().min((a - 270.0).abs());
-        if front != self.side_front && edge >= SWITCH {
-            self.side_front = front;
-            if play {
-                self.haptic("selection", at);
-            }
-        }
     }
 
     /// The slab's edges: thickness, whether the left (x = 0, outward −x) or right edge faces the
@@ -819,13 +771,10 @@ impl ThreadsHoloTicket {
                         self.context = self.x;
                         self.x = self.context;
                         self.motion = Motion::Rest;
-                        // The finger takes the ticket.
-                        self.haptic("impact-light", ms);
                     }
                     Some((ox, _)) => {
                         self.x = x - ox + self.context;
                         self.motion = Motion::Rest;
-                        self.side(ms, true);
                     }
                     None => {}
                 }
@@ -847,18 +796,15 @@ impl ThreadsHoloTicket {
                         ahead += 16.0;
                     }
                     let face = (d.value / 180.0).round() * 180.0;
-                    self.throwing = true;
                     let mut s = Spring::at(self.x);
                     s.to(face, v, reanimated::duration_config(self.x - face, v, SETTLE_MS, 1.0, 4.0));
                     self.motion = if s.running { Motion::Spring(s) } else { Motion::Rest };
                 } else if phase == Phase::Up && !t.tap_failed && ms - t.down.2 <= TAP_MAX_MS {
-                    // onStart / onEnd: cancelAnimation, the haptic, the flip spring from rest.
+                    // onStart / onEnd: cancelAnimation, the flip spring from rest.
                     let normalized = (self.x / 180.0 + 0.5).floor() * 180.0;
                     let mut s = Spring::at(self.x);
                     gfx::spring_to(&mut s, normalized + 180.0, FLIP_MS, FLIP_DAMPING_RATIO);
-                    self.throwing = false;
                     self.motion = if s.running { Motion::Spring(s) } else { Motion::Rest };
-                    self.posted.push("haptic:selection".to_string());
                 }
             }
         }
@@ -876,10 +822,6 @@ impl Surface for ThreadsHoloTicket {
 
     fn wants_input(&self) -> bool {
         true
-    }
-
-    fn messages(&mut self) -> Vec<String> {
-        crate::haptic::host(std::mem::take(&mut self.posted))
     }
 
     fn agent(&mut self, _request: &str) -> Option<String> {
@@ -1293,13 +1235,9 @@ mod tests {
         assert!(reply.contains("\"moving\":false,\"held\":false"), "{reply}");
         // rigidDecay.ts's fling would stop at 326.433; it settles on the nearest face, 360.
         assert!(reply.starts_with("{\"translateX\":360.000,"), "{reply}");
-        // The grab's light impact, then a selection as the fling turns the back (90°) and the
-        // front (270°) to the viewer (paced: one or both).
-        let haptics = s.messages();
-        assert_eq!(haptics[0], "haptic:impact-light", "{haptics:?}");
-        assert!((2..=3).contains(&haptics.len()) && haptics[1..].iter().all(|m| m == "haptic:selection"), "{haptics:?}");
+        assert!(s.messages().is_empty(), "the ticket plays no haptics");
 
-        // A tap flips the ticket half a turn: the back's QR shows, the haptic is posted.
+        // A tap flips the ticket half a turn: the back's QR shows.
         let tap = |s: &mut Box<dyn Surface>, at: f64| {
             let p = |phase| InputEvent::Pointer { id: 2, phase, x: 210.0, y: 450.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: at };
             s.input(&p(PointerPhase::Down));
@@ -1307,7 +1245,7 @@ mod tests {
         };
         // From translateX 360: round(360 / 180) × 180 + 180 = 540.
         tap(&mut s, ms + 100.0);
-        assert_eq!(s.messages(), vec!["haptic:selection".to_string()]);
+        assert!(s.messages().is_empty());
         let mut t = ms + 200.0;
         let mut moving = true;
         while moving && t < ms + 3000.0 {
