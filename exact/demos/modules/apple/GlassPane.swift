@@ -87,6 +87,11 @@ final class GlassPaneView: UIView {
 
     deinit { visibilityLink?.invalidate() }
 
+    /// Decorative: never a touch target, whatever the host's container or a later UIKit change to
+    /// the effect view does, so the demo's own pan under it (liquid-glass-playground) hears the
+    /// finger.
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? { nil }
+
     /// iOS 26's glass, when UIKit has it (expo checks the class at runtime too: early iOS 26
     /// betas crashed in its initialiser).
     private static var hasGlass: Bool {

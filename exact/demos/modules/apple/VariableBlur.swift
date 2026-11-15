@@ -48,6 +48,8 @@ final class VariableBlur: ExactNativeInstance {
 }
 
 final class VariableBlurView: UIView {
+    /// Decorative: never a touch target (clerk-toast's photo and toasts under it take the taps).
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? { nil }
     struct Ramp: Equatable {
         var radius: CGFloat = 20
         var start: CGFloat = 0
