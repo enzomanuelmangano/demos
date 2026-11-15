@@ -37,8 +37,8 @@ const FONT_SIZE: f32 = 34.0;
 const HEIGHT: f32 = 80.0;
 /// The digits' BlurMask.
 const TEXT_BLUR: f32 = 7.0;
-/// The finger's circle: r 60, BlurMask 15.
-const SPOT_RADIUS: f32 = 60.0;
+/// The finger's circle: BlurMask 15; r 76, a third over RN's 60 at the owner's ask (a wider reveal).
+const SPOT_RADIUS: f32 = 76.0;
 const SPOT_BLUR: f32 = 15.0;
 /// The spot texture: the circle and 3σ around it.
 const SPOT_SIZE: f32 = 2.0 * (SPOT_RADIUS + 3.0 * SPOT_BLUR);
