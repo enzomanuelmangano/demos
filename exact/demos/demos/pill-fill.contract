@@ -4,27 +4,32 @@
 // paintSurface; parity-tools/exact-issues/radius-reduced.md): the phone showed square or
 // re-curved corners for the whole spring (composable-text, 2026-11-15).
 //
-// Two clips of a fixed width, `half`, each holding a long pill of the colour and radius: one
+// Two clips of a fixed width, `cap`, each holding a long pill of the colour and radius: one
 // pinned to the box's left edge (it rides the box's own layout offset), one to its right edge
 // (its own layout transition, the box's spring, moves it as the edge moves). Neither resizes,
-// so both keep the layer's own corner; they overlap in the middle (an opaque colour: the overlap
-// does not show). `half` must be at least half the widest box and at most the narrowest, or
-// a clip shows past the far end. The box: `position="relative"`, this as its first child, the
-// height fixed for the spring (only the width moves).
+// so both keep the layer's own corner. Between them a plain rectangle (radius 0: the resize
+// surface draws it as the layer does) fills the straight middle, 1 pt into each cap; the
+// pieces overlap (an opaque colour: the overlap does not show).
+// `cap` must hold the whole corner curve (a continuous corner reaches about 1.53 × the drawn
+// radius along the edge: 1.6 × min(radius, h/2) is safe) and leave room for the far end's:
+// cap ≤ narrowest width − 1.53 × the drawn radius. The box: `position="relative"`, this as its
+// first child, its height fixed for the spring (only the width moves).
 
 component PillFill
   props
     color: string
     radius: number
-    half: number
+    cap: number
     // The box's own -exact-layout-transition.
     spring: string
   view
-    view position="absolute" left=0 top=0 bottom=0 width=half overflow="hidden"
+    view position="absolute" left=0 top=0 bottom=0 width=cap overflow="hidden"
       pointer-events="none" aria-hidden=true
       view position="absolute" left=0 top=0 bottom=0 width=2000 background-color=color
         border-radius=radius corner-shape="-exact-continuous"
-    view position="absolute" right=0 top=0 bottom=0 width=half overflow="hidden"
+    view position="absolute" left=(cap - 1) right=(cap - 1) top=0 bottom=0 background-color=color
+      pointer-events="none" aria-hidden=true -exact-layout-transition=spring
+    view position="absolute" right=0 top=0 bottom=0 width=cap overflow="hidden"
       pointer-events="none" aria-hidden=true -exact-layout-transition=spring
       view position="absolute" right=0 top=0 bottom=0 width=2000 background-color=color
         border-radius=radius corner-shape="-exact-continuous"

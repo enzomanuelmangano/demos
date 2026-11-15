@@ -4,6 +4,7 @@
 // src/steps/dots/index.tsx, dots/dot.tsx, src/steps/step-buttons/index.tsx).
 use PressableScale, PressableScaleLayout from "pressto"
 use DemoEnv from "../env.contract"
+use PillFill from "../pill-fill.contract"
 
 // dots/index.tsx: count 3, dotSize 10, dotSpacing 20, externalSpacing = dotSpacing, bar height
 // dotSize + 20. activeWidth = (activeIndex + 1) · dotSize + activeIndex · dotSpacing +
@@ -71,10 +72,14 @@ component Steps
         // styles.fill + continueButton: flex 1, #0c86f7.
         view display="flex" flex-direction="column" flex=1 -exact-layout-transition=stepSpring()
           PressableScaleLayout(press=onContinue, layout=stepSpring())
-            row testId="continue" text-align="center"
-              flex=1 height=60 border-radius=30 corner-shape="-exact-continuous" background-color="color(display-p3 0.0471 0.5255 0.9686)"
+            // Its fill is PillFill (pill-fill.contract): the button resizes as Back comes and goes
+            // with no fill of its own, so its corner never goes through the host's resize surface.
+            // Radius 30 (half of 60); caps 50 (the corner reaches 46; the button is 264 to 362 wide).
+            row testId="continue" text-align="center" position="relative"
+              flex=1 height=60
               display="flex" flex-direction="row" align-items="center" justify-content="center"
               -exact-layout-transition=stepSpring()
+              PillFill(color="color(display-p3 0.0471 0.5255 0.9686)", radius=30, cap=50, spring=stepSpring())
               // styles.labelContainer: a centred row, icon (width 0 → 22, marginRight 0 → 6) then
               // the label. RN swaps "Continue" for "Finish" at once, centred, and only the icon's
               // width moves it: the label's left is (B − T + 28p) / 2, the icon centred 17p

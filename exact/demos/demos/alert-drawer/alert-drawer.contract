@@ -5,6 +5,7 @@
 // with the spring, is a Rust surface: gpu/src/alert_drawer_card.rs.
 use PressableScale, PressableScaleLayout from "pressto"
 use DemoEnv from "../env.contract"
+use PillFill from "../pill-fill.contract"
 
 // fonts.ts 'Honk-Regular': assets/fonts/honk-regular.otf. Its one face: RN's fontWeight 'bold'
 // on it finds no bold face and draws this one, as here.
@@ -127,10 +128,15 @@ component AlertDrawer
           display="flex" flex-direction="column"
           -exact-layout-transition="-exact-spring(1699.5858, 164.9042, 4)"
           PressableScaleLayout(press=pressMain, layout="-exact-spring(1699.5858, 164.9042, 4)")
-            row testId="continue" height=50 border-radius=25 text-align="center"
-              corner-shape="-exact-continuous" background-color="color(display-p3 0.9412 0.1294 0.1686)" padding-left=20 padding-right=20
+            // Its fill is PillFill (pill-fill.contract): the pill resizes on the spring with no fill
+            // of its own, so its corner never goes through the host's resize surface. Radius RN's
+            // 50 (drawn at 25); caps 40 (the corner reaches 38; the pill is 161 to 330 wide).
+            row testId="continue" height=50 text-align="center" position="relative"
+              padding-left=20 padding-right=20
               box-sizing="border-box" align-items="center" justify-content="center"
               -exact-layout-transition="-exact-spring(1699.5858, 164.9042, 4)"
+              PillFill(color="color(display-p3 0.9412 0.1294 0.1686)", radius=50, cap=40,
+                spring="-exact-spring(1699.5858, 164.9042, 4)")
               // styles.buttonLabel: white, Honk 16 bold. Yoga floors a Text's position where Exact
               // rounds it: 1 px left (measured against the RN capture).
               text "Continue" font-family="Honk-Regular" font-size=16 color="#ffffff"

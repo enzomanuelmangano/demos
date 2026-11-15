@@ -47,11 +47,11 @@ component ComposableText
             // the same springify() layout as the button. RN's box is 60.667 tall (16 + 24 pt bold's
             // 28.64 line, ceiled, + 16), fixed here; the fill is PillFill (pill-fill.contract): the
             // row itself resizes with no fill of its own, so the corner never goes through the
-            // host's resize surface (it showed square on the phone). The two halves are 100 wide:
-            // the pill runs from about 140 ("Use Max") to 175 ("Using Max").
+            // host's resize surface (it showed square on the phone). Caps 50 wide (the corner,
+            // drawn at 30.333, reaches 46 along the edge; the pill is 140 to 161 wide).
             row position="relative" height=60.667 box-sizing="border-box" align-items="center" padding="0px 22px"
               -exact-layout-transition="-exact-spring(100, 12, 0.4)" testId="label"
-              PillFill(color="#181818", radius=32, half=100, spring="-exact-spring(100, 12, 0.4)")
+              PillFill(color="#181818", radius=32, cap=50, spring="-exact-spring(100, 12, 0.4)")
               for c, i in labelOf(active).split("") key=keyOf(labelOf(active), c, i)
                 // styles.text: fontSize 24, bold; colour withTiming 200 ms linear. Each letter's
                 // layout: springify().mass(0.3).damping(12).stiffness(80).
