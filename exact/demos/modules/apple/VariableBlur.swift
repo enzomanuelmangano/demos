@@ -13,10 +13,11 @@
 // missing (or `variableBlur` is) the view falls back to the old look: an ultra-thin light
 // material faded in by the same ramp.
 //
-// Props (all optional):
-//   radius     the largest radius, points (σ of the Gaussian); default 20
-//   start/end  where the ramp runs, as fractions of the view's height; default 0 and 1
-//   direction  "down" (sharp at the top, blurred toward the bottom; default) or "up"
+// Props (all optional; Contract binds `radius`, `start`, `end` and `direction` to the box, so the
+// module's names are its own):
+//   blur-radius         the largest radius, points (σ of the Gaussian); default 20
+//   ramp-from, ramp-to  where the ramp runs, as fractions of the view's height; default 0 and 1
+//   ramp-up             "true": blurred at the top, sharp toward the bottom; default false
 // The ramp between start and end is smootherstep (6t⁵ − 15t⁴ + 10t³): flat at both ends, so
 // neither the onset nor the full-radius line shows. The mask is 8-bit alpha, 1024 rows: a step
 // of radius under 0.08 pt, interpolated between rows.
@@ -39,10 +40,10 @@ final class VariableBlur: ExactNativeInstance {
             return CGFloat(value)
         }
         blur.configure(VariableBlurView.Ramp(
-            radius: max(0, number("radius", 20)),
-            start: min(max(number("start", 0), 0), 1),
-            end: min(max(number("end", 1), 0), 1),
-            up: props["direction"] == "up"))
+            radius: max(0, number("blur-radius", 20)),
+            start: min(max(number("ramp-from", 0), 0), 1),
+            end: min(max(number("ramp-to", 1), 0), 1),
+            up: props["ramp-up"] == "true"))
     }
 }
 

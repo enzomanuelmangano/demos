@@ -15,11 +15,12 @@
 // On macOS 26 and later, NSGlassEffectView (style .clear / .regular, tintColor, cornerRadius);
 // earlier, an NSVisualEffectView (.hudWindow, dark).
 //
-// Props (all optional):
-//   glass       "clear" | "regular" | "none"; default "regular" (GlassView's default)
-//   tint        the tint colour, #rrggbb, #rrggbbaa or rgba(r, g, b, a); none by default
+// Props (all optional; Contract binds `glass`, `tint` and `radius` to the box, so these names
+// are the module's own):
+//   glass-style "clear" | "regular" | "none"; default "regular" (GlassView's default)
+//   pane-tint   the tint colour, #rrggbb, #rrggbbaa or rgba(r, g, b, a); none by default
 //   interactive "true" | "false"; default false
-//   radius      the corner radius in points; default 0
+//   corner-size the corner radius in points; default 0
 //   continuous  "true" | "false": borderCurve continuous; default true
 import Foundation
 
@@ -53,10 +54,10 @@ struct GlassPaneStyle: Equatable {
     init() {}
 
     init(_ props: [String: String]) {
-        glass = props["glass"] ?? "regular"
-        tint = glassPaneColor(props["tint"]).map { [$0.0, $0.1, $0.2, $0.3] }
+        glass = props["glass-style"] ?? "regular"
+        tint = glassPaneColor(props["pane-tint"]).map { [$0.0, $0.1, $0.2, $0.3] }
         interactive = props["interactive"] == "true"
-        radius = props["radius"].flatMap(Double.init).map { CGFloat(max(0, $0)) } ?? 0
+        radius = props["corner-size"].flatMap(Double.init).map { CGFloat(max(0, $0)) } ?? 0
         continuous = props["continuous"] != "false"
     }
 }
