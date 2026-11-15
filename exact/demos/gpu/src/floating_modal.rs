@@ -295,9 +295,11 @@ impl FloatingModal {
         }
     }
 
+    /// RN shrank the modal with the drag's distance (1 − distance / the screen's diagonal); the
+    /// phone's clip showed the sheet shrinking and sliding sideways off its 10 pt float while
+    /// dragged (feedback 2026-11-15, "full of problems"). An iOS sheet only translates.
     fn scale(&self) -> f64 {
-        let (w, h) = self.size;
-        1.0 - self.x.value.hypot(self.y.value) / w.hypot(h)
+        1.0
     }
 
     /// The modal's transform (its own points to screen points): [scale, translateX,
@@ -460,10 +462,10 @@ impl Surface for FloatingModal {
                         self.posted.push("haptic:impact-light".into());
                         self.homing = false;
                     }
-                    // Down follows the finger; up and sideways rubber-band.
-                    let (_, _, fw, fh) = self.layout(1.0).frame;
+                    // Down follows the finger, up rubber-bands; it never moves sideways.
+                    let (_, _, _, fh) = self.layout(1.0).frame;
                     let ty = p.translation_y as f64;
-                    self.x.set(rubber(p.translation_x as f64, fw));
+                    self.x.set(0.0);
                     self.y.set(if ty > 0.0 { ty } else { rubber(ty, fh) });
                 }
             }
@@ -868,7 +870,9 @@ impl FloatingModal {
         if !self.opened {
             return;
         }
-        if translation_y > 0.0 && (self.scale() < 0.95 || velocity_y > 800.0) {
+        // A quarter of the sheet's height down, or a flick down, dismisses it.
+        let (_, _, _, fh) = self.layout(1.0).frame;
+        if translation_y > 0.0 && (translation_y > fh * 0.25 || velocity_y > 600.0) {
             self.toggle();
         } else {
             self.homing = self.x.value.hypot(self.y.value) >= 2.0 * LANDED;
@@ -984,7 +988,8 @@ mod tests {
         let (dragged, _) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         dragged.save("floating-modal-dragged");
         let state = s.agent("{}").unwrap();
-        assert!(state.contains("\"scale\":0.8008"), "{state}");
+        // It follows the finger down, unscaled.
+        assert!(state.contains("\"scale\":1.0000"), "{state}");
         s.input(&pointer(PointerPhase::Up, 210.0, 910.0, ms));
         while ms < 3000.0 {
             ms += 16.0;
