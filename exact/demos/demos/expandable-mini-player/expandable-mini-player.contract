@@ -19,8 +19,8 @@
 // - Collapse: a drag down on the sheet follows the finger 1:1; released past 120 pt (or 30 % of
 //   the screen) or flicked faster than 700 pt/s, it collapses (the cover flies back into the
 //   mini player), else it springs back. The grabber taps closed too.
-// - Haptics: impact-medium on expand, impact-light on collapse and on play / pause (the presses'
-//   selection is pressto's global one).
+// - Haptics: impact-medium on expand, impact-light on collapse; the transport's presses play
+//   only pressto's global selection (an impact on top of it stacked two haptics per press).
 // - Time: the `timer` surface ticks once a second while playing (one commit a second); the
 //   progress line and the scrubber glide between ticks on a 1 s linear transition.
 use PressableScale from "pressto"
@@ -123,15 +123,12 @@ component ExpandableMiniPlayer
     playing = not playing
     if playing
       tickToken = tickToken + 1
-    haptic("impact-light")
   action next
     elapsed = 0
     tickToken = tickToken + 1
-    haptic("impact-light")
   action back
     elapsed = 0
     tickToken = tickToken + 1
-    haptic("impact-light")
   action expand
     if not expanded
       expanded = true
