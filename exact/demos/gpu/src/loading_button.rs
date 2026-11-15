@@ -46,6 +46,15 @@
 //!   status at once, so it is gone while the disc fades out.
 //!
 //! The indicator's status colour changes at once; its timers are the demo's (above).
+//!
+//! Beyond RN (the owner's phone feedback, 2026-11-15: "the transitions between the states
+//! stutter"): RN's title swaps at once, so the pill's width jumps by the titles' difference
+//! (loading → success: 33 pt in one frame), the title's colour and the indicator's flip at once,
+//! and Yoga snaps every edge to the pixel grid each frame. Here the titles crossfade on a
+//! critically damped spring (400 ms) that also carries the pill from one title's width to the
+//! other, each title in its own colour; the spinner keeps the loading colour while it fades and
+//! the outcome's disc and icon stay while they fade back to idle; nothing is snapped to the grid
+//! while it moves (only at rest, where the frame is RN's to the pixel).
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -76,7 +85,12 @@ const GAP: f64 = 6.0;
 /// colorFromStatusMap and Color(c).lighten(0.6).hex() (Display P3 components, 0…255).
 const ACTIVE: [u32; 4] = [0x47A1E6, 0x47A1E6, 0x5BC682, 0xCD5454];
 const LIGHT: [u32; 4] = [0xE6F2FC, 0xE6F2FC, 0xDCF3E4, 0xF4DADA];
-const TITLES: [&str; 4] = ["Check Transaction", "Analyzing Transaction", "Transaction Safe", "Transaction Unsafe"];
+const TITLES: [&str; 4] = [
+    "Check Transaction",
+    "Analyzing Transaction",
+    "Transaction Safe",
+    "Transaction Unsafe",
+];
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
@@ -102,6 +116,13 @@ struct LoadingButton {
     background: ([f64; 3], [f64; 3], Option<f64>),
     /// The title's FadeIn.
     fade: Timing,
+    /// The crossfade from `from_title` to the status's title: 0 → 1 on each change.
+    blend: reanimated::Spring,
+    from_title: u8,
+    /// The last outcome (success 2 or error 3): the icon group's colour and icon as it fades.
+    outcome: u8,
+    /// Whether this frame is at rest (edges on the pixel grid, as Yoga's).
+    rest: bool,
     /// The pill's Yoga frame (x, width), as last drawn.
     yoga: (f64, f64),
     /// The PressableScale (the shared pressto machine).
@@ -127,27 +148,52 @@ fn color(status: u8) -> Color {
 }
 
 fn components(rgb: u32) -> [f64; 3] {
-    [((rgb >> 16) & 255) as f64, ((rgb >> 8) & 255) as f64, (rgb & 255) as f64]
+    [
+        ((rgb >> 16) & 255) as f64,
+        ((rgb >> 8) & 255) as f64,
+        (rgb & 255) as f64,
+    ]
 }
 
 /// Display P3 components (0…255) as the sRGB colour they make (`Color::view_hex`, unrounded).
 fn p3(c: [f64; 3]) -> Color {
     let lin = |v: f64| {
         let v = v / 255.0;
-        if v <= 0.04045 { v / 12.92 } else { ((v + 0.055) / 1.055).powf(2.4) }
+        if v <= 0.04045 {
+            v / 12.92
+        } else {
+            ((v + 0.055) / 1.055).powf(2.4)
+        }
     };
     let enc = |v: f64| {
         let v = v.clamp(0.0, 1.0);
-        (if v <= 0.0031308 { 12.92 * v } else { 1.055 * v.powf(1.0 / 2.4) - 0.055 }) as f32
+        (if v <= 0.0031308 {
+            12.92 * v
+        } else {
+            1.055 * v.powf(1.0 / 2.4) - 0.055
+        }) as f32
     };
     let (r, g, b) = (lin(c[0]), lin(c[1]), lin(c[2]));
-    Color([enc(1.2249 * r - 0.2247 * g), enc(-0.0420 * r + 1.0419 * g), enc(-0.0197 * r - 0.0786 * g + 1.0979 * b), 1.0])
+    Color([
+        enc(1.2249 * r - 0.2247 * g),
+        enc(-0.0420 * r + 1.0419 * g),
+        enc(-0.0197 * r - 0.0786 * g + 1.0979 * b),
+        1.0,
+    ])
 }
 
 impl LoadingButton {
     fn new() -> LoadingButton {
         let mut arc = skia::path_builder();
-        skia::add_arc(&mut arc, STROKE / 2.0, STROKE / 2.0, SIZE - STROKE, SIZE - STROKE, 0.0, 90.0);
+        skia::add_arc(
+            &mut arc,
+            STROKE / 2.0,
+            STROKE / 2.0,
+            SIZE - STROKE,
+            SIZE - STROKE,
+            0.0,
+            90.0,
+        );
         let light = components(LIGHT[0]);
         LoadingButton {
             size: (0.0, 0.0),
@@ -166,6 +212,10 @@ impl LoadingButton {
                 t.to(1.0, 300.0, Easing::timing_default());
                 t
             },
+            blend: reanimated::Spring::at(1.0),
+            from_title: 0,
+            outcome: 2,
+            rest: true,
             yoga: (0.0, 0.0),
             press: Pressable::new(),
             settle_at: None,
@@ -180,15 +230,25 @@ impl LoadingButton {
         }
     }
 
+    /// Yoga's pixel grid, at rest only: a moving edge snapped each frame steps.
     fn round(&self, v: f64) -> f64 {
+        if !self.rest {
+            return v;
+        }
         (v * self.scale).round() / self.scale
     }
 
     fn floor(&self, v: f64) -> f64 {
+        if !self.rest {
+            return v;
+        }
         (v * self.scale + 1e-4).floor() / self.scale
     }
 
     fn ceil(&self, v: f64) -> f64 {
+        if !self.rest {
+            return v;
+        }
         (v * self.scale - 1e-4).ceil() / self.scale
     }
 
@@ -200,6 +260,19 @@ impl LoadingButton {
         }
         let was = self.status;
         self.status = status;
+        if TITLES[was as usize] != TITLES[status as usize] {
+            // The title on screen now: the one the running crossfade is closer to.
+            self.from_title = if self.blend.value >= 0.5 {
+                was
+            } else {
+                self.from_title
+            };
+            self.blend = reanimated::Spring::at(0.0);
+            gfx::spring_to(&mut self.blend, 1.0, 400.0, 1.0);
+        }
+        if status >= 2 {
+            self.outcome = status;
+        }
         let loading = if status == 1 { 1.0 } else { 0.0 };
         let icon = if status >= 2 { 1.0 } else { 0.0 };
         if self.loading.target() != loading {
@@ -249,7 +322,19 @@ impl LoadingButton {
     }
 
     fn text_width(&self) -> f64 {
-        self.title.as_ref().map_or(0.0, |f| self.ceil(f.advance_width(TITLES[self.status as usize]) as f64))
+        let b = self.blend.value.clamp(0.0, 1.0);
+        let to = self.title_width(self.status);
+        if b >= 1.0 {
+            return to;
+        }
+        let from = self.title_width(self.from_title);
+        from + (to - from) * b
+    }
+
+    fn title_width(&self, status: u8) -> f64 {
+        self.title.as_ref().map_or(0.0, |f| {
+            self.ceil(f.advance_width(TITLES[status as usize]) as f64)
+        })
     }
 
     /// The pill's top.
@@ -283,10 +368,16 @@ impl Surface for LoadingButton {
     }
 
     fn input(&mut self, event: &InputEvent) {
-        let InputEvent::Pointer { id, phase, x, y, .. } = *event else { return };
+        let InputEvent::Pointer {
+            id, phase, x, y, ..
+        } = *event
+        else {
+            return;
+        };
         let (ox, ow) = self.yoga;
         let top = self.top();
-        let inside = (ox..=ox + ow).contains(&(x as f64)) && (top..=top + PILL_H).contains(&(y as f64));
+        let inside =
+            (ox..=ox + ow).contains(&(x as f64)) && (top..=top + PILL_H).contains(&(y as f64));
         if let Some(PressEvent::Press(press)) = self.press.pointer(id, gfx::phase(phase), inside) {
             self.posted.extend(press.global_message().map(String::from));
             self.handle_press();
@@ -312,7 +403,11 @@ impl Surface for LoadingButton {
         // index.tsx's timers.
         let mut moving = false;
         for k in 0..2 {
-            let (slot, delay) = if k == 0 { (&mut self.settle_at, WAIT_MS) } else { (&mut self.reset_at, RESET_MS) };
+            let (slot, delay) = if k == 0 {
+                (&mut self.settle_at, WAIT_MS)
+            } else {
+                (&mut self.reset_at, RESET_MS)
+            };
             if let Some(due) = slot {
                 let due = *due.get_or_insert(now + delay);
                 if now >= due {
@@ -334,13 +429,19 @@ impl Surface for LoadingButton {
                 }
             }
         }
-        moving |= self.loading.step(now) | self.icon.step(now) | self.progress.step(now) | self.fade.step(now) | self.press.step(now);
-        // Yoga's frame, every frame.
-        let yoga = self.layout();
-        self.yoga = yoga;
+        moving |= self.loading.step(now)
+            | self.icon.step(now)
+            | self.progress.step(now)
+            | self.fade.step(now)
+            | self.press.step(now)
+            | self.blend.step(now);
         if let Some(at) = self.background.2 {
             moving |= now - at < 200.0;
         }
+        self.rest = !moving && self.spin_from.is_none() && !self.press.is_animating();
+        // Yoga's frame, every frame.
+        let yoga = self.layout();
+        self.yoga = yoga;
         let rotation = match &mut self.spin_from {
             Some(start) => {
                 moving = true;
@@ -363,6 +464,10 @@ impl Surface for LoadingButton {
         let fade = self.fade.value as f32;
         let press = self.press.scale() as f32;
         let title = TITLES[status as usize];
+        let blend = self.blend.value.clamp(0.0, 1.0) as f32;
+        let from_title = TITLES[self.from_title as usize];
+        let from_color = p3(components(ACTIVE[self.from_title as usize]));
+        let outcome = self.outcome;
         let text_top = self.title.as_ref().map(|f| {
             let m = f.metrics();
             let th = self.ceil((-m.ascent + m.descent + m.leading) as f64);
@@ -384,23 +489,72 @@ impl Surface for LoadingButton {
             c.save();
             c.translate(PAD as f32, box_top);
             c.clip_rect(0.0, 0.0, boxw as f32, boxw as f32);
-            draw_indicator(c, status, rotation, self.loading.value as f32, self.icon.value as f32, &self.arc, &self.success, &self.error);
+            draw_indicator(
+                c,
+                outcome,
+                rotation,
+                self.loading.value as f32,
+                self.icon.value as f32,
+                &self.arc,
+                &self.success,
+                &self.error,
+            );
             c.restore();
         }
         if let (Some(font), Some(baseline)) = (self.title.as_ref(), text_top) {
-            c.draw_text(title, text_left, baseline, font, &Paint::fill(p3(components(ACTIVE[status as usize]))).with_opacity(fade));
+            // The crossfade, inside the pill (the outgoing title is wider while the pill narrows).
+            c.save();
+            c.clip_rect(0.0, 0.0, pill_w, PILL_H as f32);
+            if blend < 1.0 {
+                c.draw_text(
+                    from_title,
+                    text_left,
+                    baseline,
+                    font,
+                    &Paint::fill(from_color).with_opacity(fade * (1.0 - blend)),
+                );
+            }
+            c.draw_text(
+                title,
+                text_left,
+                baseline,
+                font,
+                &Paint::fill(p3(components(ACTIVE[status as usize]))).with_opacity(fade * blend),
+            );
+            c.restore();
         }
         c.restore();
         let (pw, ph) = frame.pixels();
-        self.renderer.draw(device, queue, encoder, &self.canvas, target, format, pw, ph, wgpu::Color::WHITE);
+        self.renderer.draw(
+            device,
+            queue,
+            encoder,
+            &self.canvas,
+            target,
+            format,
+            pw,
+            ph,
+            wgpu::Color::WHITE,
+        );
         moving || self.press.is_animating()
     }
 }
 
 /// The ActivityIndicator's canvas, at its origin.
 #[allow(clippy::too_many_arguments)]
-fn draw_indicator(canvas: &mut Canvas, status: u8, rotation: f64, loading: f32, icon: f32, arc: &Path, success: &Path, error: &Path) {
-    let c = color(status);
+fn draw_indicator(
+    canvas: &mut Canvas,
+    outcome: u8,
+    rotation: f64,
+    loading: f32,
+    icon: f32,
+    arc: &Path,
+    success: &Path,
+    error: &Path,
+) {
+    // The spinner is only ever the loading colour; the disc and icon are the last outcome's, so
+    // neither changes colour (nor the icon vanishes) while it fades.
+    let c = color(1);
     let center = SIZE / 2.0;
     let radius = center - STROKE / 2.0;
     // <Group opacity={loadingOpacity}>.
@@ -410,15 +564,23 @@ fn draw_indicator(canvas: &mut Canvas, status: u8, rotation: f64, loading: f32, 
     canvas.translate(center, center);
     canvas.rotate(rotation as f32);
     canvas.translate(-center, -center);
-    canvas.draw_path(arc, &Paint::stroke(c, STROKE).caps(skia::Cap::Round, skia::Join::Miter));
+    canvas.draw_path(
+        arc,
+        &Paint::stroke(c, STROKE).caps(skia::Cap::Round, skia::Join::Miter),
+    );
     canvas.restore();
-    canvas.draw_circle(center, center, radius, &Paint::stroke(c, STROKE).with_opacity(0.08));
+    canvas.draw_circle(
+        center,
+        center,
+        radius,
+        &Paint::stroke(c, STROKE).with_opacity(0.08),
+    );
     canvas.restore();
     // <Group opacity={iconOpacity}>.
     canvas.save();
     canvas.opacity(icon);
-    canvas.draw_circle(center, center, radius, &Paint::fill(c));
-    let svg = match status {
+    canvas.draw_circle(center, center, radius, &Paint::fill(color(outcome)));
+    let svg = match outcome {
         2 => Some(success),
         3 => Some(error),
         _ => None,
@@ -428,7 +590,10 @@ fn draw_indicator(canvas: &mut Canvas, status: u8, rotation: f64, loading: f32, 
         let icon_size = SIZE * 0.45;
         let offset = (SIZE - icon_size) / 2.0;
         canvas.save();
-        canvas.concat(fit_box(Rect::new(0.0, 0.0, SVG_SIZE, SVG_SIZE), Rect::new(offset, offset, icon_size, icon_size)));
+        canvas.concat(fit_box(
+            Rect::new(0.0, 0.0, SVG_SIZE, SVG_SIZE),
+            Rect::new(offset, offset, icon_size, icon_size),
+        ));
         canvas.draw_path(svg, &Paint::fill(Color::WHITE));
         canvas.restore();
     }
@@ -446,8 +611,28 @@ mod tests {
             Ok(gpu) => gpu,
             Err(error) => return eprintln!("{error}; skipped"),
         };
-        let frame = |now_ms| Frame { width: 420.0, height: 912.0, scale: 3.0, now_ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: 0, headroom: 1.0 };
-        let pointer = |phase, at_ms| InputEvent::Pointer { id: 1, phase, x: 210.0, y: 456.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let frame = |now_ms| Frame {
+            width: 420.0,
+            height: 912.0,
+            scale: 3.0,
+            now_ms,
+            seekable: true,
+            period_ms: 0.0,
+            children_generation: 0,
+            shader_generation: 0,
+            headroom: 1.0,
+        };
+        let pointer = |phase, at_ms| InputEvent::Pointer {
+            id: 1,
+            phase,
+            x: 210.0,
+            y: 456.0,
+            dx: 0.0,
+            dy: 0.0,
+            kind: PointerKind::Touch,
+            buttons: 1,
+            at_ms,
+        };
         let mut s = surface();
         let mut ms = 0.0;
         while ms < 500.0 {
@@ -485,16 +670,19 @@ mod tests {
     }
 
     #[test]
-    fn the_title_jumps_and_the_indicator_grows_in_layout() {
+    fn the_title_crossfades_and_the_indicator_grows_in_layout() {
         let mut s = LoadingButton::new();
         s.size = (420.0, 912.0);
         let (x0, w0) = s.layout();
         s.handle_press();
-        // The title's width changes at once; the indicator's box is still 0.
-        let (x1, w1) = s.layout();
-        assert!(w1 > w0 && x1 < x0);
+        // The crossfade starts from the old title's width; the indicator's box is still 0.
+        let (_, w1) = s.layout();
+        assert!((w1 - w0).abs() < 0.34, "{w1} {w0}");
+        s.blend.value = 1.0;
+        let (x2, w2) = s.layout();
+        assert!(w2 > w0 && x2 < x0);
         s.progress.value = 0.5;
-        let (_, w2) = s.layout();
-        assert!((w2 - w1 - 13.0).abs() < 0.34, "{w2} {w1}");
+        let (_, w3) = s.layout();
+        assert!((w3 - w2 - 13.0).abs() < 0.34, "{w3} {w2}");
     }
 }
