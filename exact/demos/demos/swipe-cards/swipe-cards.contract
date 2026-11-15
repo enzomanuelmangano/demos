@@ -25,8 +25,8 @@ component SwipeCards
     rights = rights + 1
   action onReset
     resets = resets + 1
-  // The stack's haptics (gpu/src/swipe_cards.rs, past RN): light on the grab, selection
-  // across the throw line and back, medium on a throw, soft when a card lands back.
+  // The stack's haptics (gpu/src/swipe_cards.rs, past RN), the essentials: light on the grab,
+  // one selection past the throw line, medium on a throw.
   action heard(m: string)
     if m == "haptic:impact-light"
       haptic("impact-light")
@@ -34,8 +34,6 @@ component SwipeCards
       haptic("selection")
     if m == "haptic:impact-medium"
       haptic("impact-medium")
-    if m == "haptic:impact-soft"
-      haptic("impact-soft")
   view
     // styles.container: #242831, flex 1.
     column position="absolute" inset=0 background-color="color(display-p3 0.1412 0.1569 0.1922)" overflow="hidden"
