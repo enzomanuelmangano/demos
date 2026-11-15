@@ -18,8 +18,16 @@ component StaggeredCardNumber
   props
     env: DemoEnv
   state toggled = false
+  // The owner's call (phone note): the digits change through SwiftUI's numeric text transition,
+  // not RN's slide and blur. `rolling-count` (modules/apple/Demos.swift) says "rolling-count:2"
+  // once mounted in a build that knows its font, anchor, direction and delay props; until then
+  // (an older build, the web) the cells stay invisible and the RN surface draws the digits.
+  state swiftDigits = false
   action onToggle
     toggled = not toggled
+  action heard(m: string)
+    if m == "rolling-count:2"
+      swiftDigits = true
   view
     // index.tsx container: #eaeaea, centred.
     column position="absolute" inset=0 background-color="#eaeaea" align-items="center"
@@ -39,10 +47,24 @@ component StaggeredCardNumber
           // 80 tall) + paddingTop 15 + the title's line (17 pt SF, 20.287 rounded up to 61 px)
           // + marginTop 5. Exact's line box for the title is 20 pt (ascent and descent rounded),
           // RN's Text 61 px: the row goes a third of a point lower to sit where RN's does.
-          row margin-top=(5 + 1 / 3)
-            canvas surface=staggered_card_number(toggled, env.width * 0.05 + 25, env.height / 2 - 40 + 15 + 61 / 3 + 5)
-              width=208 height=25 pointer-events="none" aria-label=(toggled ? "Card number hidden" : "2223 0000 4840 0011")
-              testId="digits"
+          row position="relative" margin-top=(5 + 1 / 3) width=208 height=25 pointer-events="none"
+            aria-label=(toggled ? "Card number hidden" : "2223 0000 4840 0011") testId="digits"
+            // The same cells (11 × 25, marginRight 8 after each group of four) as SwiftUI Texts:
+            // FiraCode-Regular 20 black at the cell's top-leading corner (RN's baseline, 19.8 pt
+            // down), each digit (the first 12 while toggled) becoming FiraCode's "•" with
+            // .numericText: counting down (in from above) as it hides, up as it shows, on a
+            // bounce-free spring (RN: withSpring duration 700 dampingRatio 1, settled ≈ SwiftUI's
+            // spring(duration: 0.5)), withDelay(25 · index) each.
+            for d, i in "2223000048400011".split("") key=i
+              rolling-count count=(toggled and i < 12 ? "•" : d) family="FiraCode-Regular" points="20"
+                tint="#000000" anchor="top-leading" down=(toggled ? "true" : "false") seconds="0.5"
+                delay=`${i * 0.025}` width=11 height=25 flex-shrink=0
+                margin-right=(i % 4 == 3 ? 8 : 0) opacity=(swiftDigits ? 1 : 0) message=heard
+                aria-hidden=true
+            if not swiftDigits
+              canvas surface=staggered_card_number(toggled, env.width * 0.05 + 25, env.height / 2 - 40 + 15 + 61 / 3 + 5)
+                position="absolute" top=0 left=0 width=208 height=25 pointer-events="none"
+                aria-hidden=true testId="digits-surface"
         // <View style={{ flex: 1 }} />
         view flex=1
         // styles.button: aspectRatio 1, height 100% (80 - 15 - 10 = 55), centred. Feather

@@ -12,6 +12,14 @@
 //                                     → .animation(.spring(duration: 0.3, bounce: 0,
 //                                        blendDuration: 0), value: Double(count))
 // So the number always rolls up (countsDown false), on a 0.3 s bounce-free spring.
+// Optional props, absent in wheel-picker (which stays as above): `family` (a registered
+// PostScript name, fixed size: no Dynamic Type), `weight` and `design` (SwiftUI's names) for the
+// system font; `tracking` (pt); `anchor="top-leading"` (the Text at its natural size at the box's
+// top-leading corner, overflowing it, instead of centred in a 9999-wide frame); `down`
+// ("true": numericText(countsDown: true)); `seconds`, `bounce`, `delay` (s) for the spring.
+// The transition runs on every change of `count`'s text. Each instance sends
+// `message("rolling-count:2")` once after its first props, so a Contract can tell this build
+// from one whose rolling-count knows none of these props (staggered-card-number).
 //
 // `demo-card` is the demo screen's card (src/navigation/home/demo-screen.tsx styles.card and
 // DemoLaunch): its open out of the icon, the close drag, the flight home, the home's blur, all
@@ -71,9 +79,22 @@ final class DemosModule: ExactModule {
 
 private final class CountModel: ObservableObject {
     @Published var text = "0"
-    @Published var value = 0.0
     @Published var size: CGFloat = 50
     @Published var color = Color.black
+    @Published var family: String?
+    @Published var weight = Font.Weight.bold
+    @Published var design = Font.Design.rounded
+    @Published var tracking: CGFloat = 0
+    @Published var topLeading = false
+    @Published var down = false
+    @Published var seconds = 0.3
+    @Published var bounce = 0.0
+    @Published var delay = 0.0
+
+    var font: Font {
+        if let family, UIFont(name: family, size: size) != nil { return .custom(family, fixedSize: size) }
+        return .system(size: size, weight: weight, design: design)
+    }
 }
 
 private struct CountBody: View {
@@ -81,23 +102,33 @@ private struct CountBody: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            Text(model.text)
-                .contentTransition(.numericText(countsDown: false))
-                .font(.system(size: model.size, weight: .bold, design: .rounded))
-                .monospacedDigit()
-                .frame(maxWidth: 9999, alignment: .center)
-                .foregroundStyle(model.color)
-                .animation(.spring(duration: 0.3, bounce: 0, blendDuration: 0), value: model.value)
-                .accessibilityHidden(true)
+            if model.topLeading {
+                text.fixedSize()
+            } else {
+                text.frame(maxWidth: 9999, alignment: .center)
+            }
         }
         // HostView's FillAlignmentModifier: the host fills its box, content at top-leading.
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .animation(.spring(duration: model.seconds, bounce: model.bounce, blendDuration: 0)
+            .delay(model.delay), value: model.text)
+    }
+
+    private var text: some View {
+        Text(model.text)
+            .contentTransition(.numericText(countsDown: model.down))
+            .font(model.font)
+            .monospacedDigit()
+            .tracking(model.tracking)
+            .foregroundStyle(model.color)
+            .accessibilityHidden(true)
     }
 }
 
 private final class RollingCount: ExactNativeInstance {
     private let model = CountModel()
     private let host: UIHostingController<CountBody>
+    private var announced = false
 
     init(props: [String: String], events: ExactNativeEvents) {
         host = UIHostingController(rootView: CountBody(model: model))
@@ -113,9 +144,46 @@ private final class RollingCount: ExactNativeInstance {
     override func setProps(_ props: [String: String]) throws {
         if let size = props["points"].flatMap(Double.init) { model.size = CGFloat(size) }
         if let hex = props["tint"], let color = Self.color(hex) { model.color = color }
-        if let text = props["count"], text != model.text {
-            model.text = text
-            model.value = Double(text) ?? 0
+        model.family = props["family"].flatMap { $0.isEmpty ? nil : $0 }
+        model.weight = props["weight"].flatMap(Self.weight) ?? .bold
+        model.design = props["design"].flatMap(Self.design) ?? .rounded
+        model.tracking = CGFloat(props["tracking"].flatMap(Double.init) ?? 0)
+        model.topLeading = props["anchor"] == "top-leading"
+        model.down = props["down"] == "true"
+        model.seconds = props["seconds"].flatMap(Double.init) ?? 0.3
+        model.bounce = props["bounce"].flatMap(Double.init) ?? 0
+        model.delay = props["delay"].flatMap(Double.init) ?? 0
+        // Last, so the change animates with this update's direction, spring and delay.
+        if let text = props["count"], text != model.text { model.text = text }
+        if !announced {
+            announced = true
+            let events = self.events
+            DispatchQueue.main.async { events.message("rolling-count:2") }
+        }
+    }
+
+    private static func weight(_ name: String) -> Font.Weight? {
+        switch name {
+        case "ultraLight": .ultraLight
+        case "thin": .thin
+        case "light": .light
+        case "regular": .regular
+        case "medium": .medium
+        case "semibold": .semibold
+        case "bold": .bold
+        case "heavy": .heavy
+        case "black": .black
+        default: nil
+        }
+    }
+
+    private static func design(_ name: String) -> Font.Design? {
+        switch name {
+        case "default": .default
+        case "rounded": .rounded
+        case "monospaced": .monospaced
+        case "serif": .serif
+        default: nil
         }
     }
 
