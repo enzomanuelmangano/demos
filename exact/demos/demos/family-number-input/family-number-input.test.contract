@@ -42,7 +42,7 @@ test "deleting removes the last digit and its comma, typing again gives new keys
   expect tree missing "char-d4"
   expect text "number" == "1,239"
 
-test "zero: typing 0 changes nothing, deleting the last digit leaves a new 0, a long press clears"
+test "zero: typing 0 changes nothing, deleting the last digit leaves a new 0"
   tap "key-0"
   clock settle
   expect text "char-d0" == "0"
@@ -55,13 +55,51 @@ test "zero: typing 0 changes nothing, deleting the last digit leaves a new 0, a 
   clock settle
   expect text "char-d2" == "0"
   tap "key-7"
-  tap "key-7"
-  tap "key-7"
-  tap "key-7"
-  tap "key--2" contextmenu
   clock settle
-  expect text "number" == "0"
+  expect text "char-d3" == "7"
+  expect text "number" == "7"
+
+// A digit typed while the one it replaces is still leaving: both are on screen, the new one by
+// its own key; once the exit ends only the new one is.
+test "retyping during an exit enters a new node beside the leaving one"
+  tap "key-5"
+  tap "key-6"
+  clock settle
+  tap "key--2"
+  tap "key-8"
+  expect tree has "char-d2"
+  expect text "char-d4" == "8"
+  clock settle
+  expect tree missing "char-d2"
+  expect text "number" == "58"
+
+test "rapid typing and deleting, no settling between, ends on the right number and keys"
+  tap "key-1"
+  tap "key-2"
+  tap "key-3"
+  tap "key--2"
+  tap "key--2"
+  tap "key-4"
+  tap "key-5"
+  tap "key-6"
+  tap "key-7"
+  tap "key--2"
+  tap "key-9"
+  clock settle
+  expect text "number" == "14,569"
+  expect text "char-d1" == "1"
+  expect tree missing "char-d2"
   expect tree missing "char-d3"
+  expect tree missing "char-d10"
+
+// No timer fires on the web (gpu/src/timer.rs posts only on iOS): a press and release on
+// backspace is one delete, as a tap is.
+test "backspace pressed and released deletes one digit"
+  tap "key-4"
+  tap "key-2"
+  tap "key--2"
+  clock settle
+  expect text "number" == "4"
 
 test "the number stops at eleven digits"
   tap "key-9"

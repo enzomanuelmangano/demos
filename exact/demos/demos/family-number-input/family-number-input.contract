@@ -14,10 +14,24 @@
 // - the row: one `translate` (−width / 2, the centring) and one `scale` (rContainerStyle);
 // - a character: its place (`translate` x on the text), its entrance and exit (keyframes of
 //   `translate` y and `opacity` on its wrapper, FadeInDown / FadeOutDown).
-// Places move on a critically damped spring, not RN's 300 ms timing: a tap during a slide
+// Places move on a spring without bounce (below), not RN's 300 ms timing: a tap during a slide
 // retargets it with its velocity kept instead of restarting from rest, which is what a fast
 // typist feels as fluid. Characters are keyed by insertion id, never by position: a digit typed
 // where one is still leaving is a new node that enters, and the leaving one finishes its exit.
+//
+// Motion (beyond RN, after the owner's "study Emil Kowalski and Jakub Krehel"): a digit enters
+// with ease-out, never RN's inOut(quad) whose slow start reads as lag: up from 24 px and from
+// 0.9 scale, faded in, 380 ms cubic-bezier(0.23, 1, 0.32, 1) (Emil's strong ease-out; Jakub's
+// enter is opacity + blur + y). It leaves subtler and faster than it came (Jakub: exits softer
+// than enters): 12 px down, to 0.92, faded, 200 ms on the same curve. Jakub's blur is left out:
+// Contract animates no `filter` (lower-keyframe-property), and the scale carries the softening.
+// Places, the row's centring and its scale share one spring with no bounce, Motion's
+// { duration 0.45, bounce 0 } (Jakub's spring): stiffness (2π / 0.45)² × 4 = 780, damping
+// 2√(780 × 4) = 111.7, mass 4; it keeps its velocity when a tap retargets it.
+//
+// Holding backspace repeats it (as iOS's keyboard does): after 400 ms, one digit every 100 ms,
+// quickening toward 50 ms, a light haptic each; reaching 0 ends it with a medium one. Releasing
+// stops it. The clock is the `timer` surface (gpu/src/timer.rs): only the app's root has timers.
 use DemoEnv from "../env.contract"
 use AnimatedPressable, PressLook from "pressto"
 
@@ -59,12 +73,14 @@ fn rowScale(ds: Dig[]): number = max(1.05 - 0.05 * (ds.length + commaCount(ds.le
 // The commas' ids after the digits change: kept while they stay, new ones for new commas.
 fn commasFor(cs: number[], n: number, next: number): number[] = cs.length >= commaCount(n) ? cs.slice(0, commaCount(n)) : cs.concat(range(commaCount(n) - cs.length).map(i => next + i))
 
-// FadeInDown / FadeOutDown: opacity and translateY 25, Reanimated's default timing (300 ms,
-// Easing.inOut(Easing.quad), written as an exact linear()).
+// RN's FadeInDown / FadeOutDown direction (in from below, out downwards), timed as above.
 keyframes charIn
-  from opacity=0 translate="0px 25px"
+  from opacity=0 translate="0px 24px" scale=0.9
 keyframes charOut
-  to opacity=0 translate="0px 25px"
+  to opacity=0 translate="0px 12px" scale=0.92
+
+// The hold's next step: 100 ms, then 15 % shorter each time, toward 50 ms (50 + 50 × 0.85ⁿ).
+fn repeatMs(n: number): number = match [100, 92.5, 86.13, 80.71, 76.1, 72.19, 68.86, 66.03, 63.62, 61.58, 59.84, 58.37].at(n) { case some(v) => v, case none => 50 }
 
 // InputButton (createAnimatedPressable): pressed, a white 10% fill and scale 0.9, radius 20.
 // pressto's AnimatedPressable (packages/pressto) runs the app's global onPress (its haptic)
@@ -77,6 +93,11 @@ component FamilyNumberInput
   state digits: Dig[] = [Dig(id=0, d=0)]
   state commas: number[] = []
   state nextId = 1
+  // The backspace hold: down, the timer's token and wait, deletes it made.
+  state holding = false
+  state holdToken = 0
+  state holdMs = 400
+  state repeats = 0
   action press(k: number)
     let zero = digits.length == 1 and textOf(digits) == "0"
     // A digit: `+${input}${label}`, refused past 11 digits (onMaxReached). On 0 it replaces
@@ -86,18 +107,39 @@ component FamilyNumberInput
       digits = next
       commas = commasFor(commas, next.length, nextId + 1)
       nextId = nextId + 1 + commaCount(next.length)
-    // Backspace: floor(input / 10); the last digit gone gives a new 0.
-    if k == -2 and not zero
+    // Backspace: floor(input / 10); the last digit gone gives a new 0. The release that ends a
+    // hold which repeated deletes nothing more.
+    if k == -2 and repeats > 0
+      repeats = 0
+    else if k == -2 and not zero
       let next = digits.length > 1 ? digits.slice(0, digits.length - 1) : [Dig(id=nextId, d=0)]
       digits = next
       commas = commasFor(commas, next.length, nextId + 1)
       nextId = nextId + 1
-  // onLongPress on backspace: onReset.
-  action hold(k: number)
-    if k == -2 and textOf(digits) != "0"
-      digits = [Dig(id=nextId, d=0)]
-      commas = []
+  action holdStart(k: number)
+    if k == -2
+      holding = true
+      repeats = 0
+      holdMs = 400
+      holdToken = holdToken + 1
+  action holdEnd(k: number)
+    if k == -2
+      holding = false
+  // The timer fired: delete one, then arm the next step, unless released or at 0.
+  action tick(m: string)
+    if holding and m == `timer:${holdToken}` and textOf(digits) != "0"
+      let next = digits.length > 1 ? digits.slice(0, digits.length - 1) : [Dig(id=nextId, d=0)]
+      digits = next
+      commas = commasFor(commas, next.length, nextId + 1)
       nextId = nextId + 1
+      repeats = repeats + 1
+      if textOf(next) == "0"
+        holding = false
+        haptic("impact-medium")
+      else
+        haptic("impact-light")
+        holdMs = repeatMs(repeats - 1)
+        holdToken = holdToken + 1
   view
     // styles.container: black, padded by the safe area top and bottom.
     column position="absolute" inset=0 background-color="#000000" padding-top=env.safeTop
@@ -111,6 +153,8 @@ component FamilyNumberInput
           background-image="linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, #000000 33.333%, #000000 66.667%, #000000 100%)"
       // ButtonsGrid: styles.container wraps a row of keys 30% wide, 20% tall, margined
       // 7/3% left and bottom.
+      canvas surface=timer(holding ? holdToken : 0, holdMs) message=tick width=1 height=1 position="absolute"
+        pointer-events="none" aria-hidden=true
       row flex=1 flex-wrap="wrap" align-items="center" align-content="flex-start"
         for k in keys() key=k
           // The key's place (30% × 20%, margined 7/3% left and bottom) on the view; the press box,
@@ -120,7 +164,8 @@ component FamilyNumberInput
             AnimatedPressable(press=press(k),
               rest=PressLook(scale=1, opacity=1, background="rgba(255, 255, 255, 0)", radius=20, continuous=false),
               pressed=PressLook(scale=0.9, opacity=1, background="rgba(255, 255, 255, 0.1)", radius=20, continuous=false))
-              column flex-grow=1 align-items="center" justify-content="center" contextmenu=hold(k)
+              column flex-grow=1 align-items="center" justify-content="center"
+                pointerdown=holdStart(k) pointerup=holdEnd(k)
                 aria-label=(k >= 0 ? `${k}` : (k == -2 ? "Delete" : "")) testId=`key-${k}`
                 if k >= 0
                   // styles.number: SF-Pro-Rounded-Bold 30, white, centred.
@@ -138,17 +183,17 @@ component AnimatedNumber
     // styles.row's centre: a zero-wide anchor as tall as the Text (hhea 1950 + 494 of 2048 at
     // 90, ceiled to the pixel), centred where RN centres the row. The row scales about it.
     view width=0 height="107.66667px" position="relative" flex-shrink=0
-      scale=rowScale(digits) transition="scale -exact-spring(1024, 128, 4)"
+      scale=rowScale(digits) transition="scale -exact-spring(780, 111.7, 4)"
       testId="number" aria-label=textOf(digits)
       // The row's left edge, half its width left of the centre: RN's row frame, sliding as
       // LinearTransition slides it when the width changes.
       view position="absolute" left=0 top=0 width=0 height="107.66667px"
-        translate=`${-rowWidth(digits) / 2}px 0px` transition="translate -exact-spring(1024, 128, 4)"
+        translate=`${-rowWidth(digits) / 2}px 0px` transition="translate -exact-spring(780, 111.7, 4)"
         for c in charsOf(digits, commas) key=c.key
-          // FadeInDown / FadeOutDown on the wrapper (y and opacity only); the place on the text.
+          // Enter / exit on the wrapper (y, scale, opacity); the place on the text.
           view position="absolute" left=0 top=0 testId=`char-${c.key}` aria-hidden=true
-            animation="charIn 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) both"
-            -exact-exit-animation="charOut 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) both"
+            animation="charIn 380ms cubic-bezier(0.23, 1, 0.32, 1) both"
+            -exact-exit-animation="charOut 200ms cubic-bezier(0.23, 1, 0.32, 1) both"
             text c.char font-family="SF-Pro-Rounded-Bold" font-size=90 color="#ffffff"
               line-height="107.40234375px" white-space="nowrap"
-              translate=`${c.x}px 0px` transition="translate -exact-spring(1024, 128, 4)"
+              translate=`${c.x}px 0px` transition="translate -exact-spring(780, 111.7, 4)"
