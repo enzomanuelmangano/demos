@@ -7,12 +7,17 @@
 // success) and asks for the two Alert.alerts, whose buttons come back as the `reset` (New Game)
 // and `ok` (Genius OK) tokens.
 use DemoEnv from "../env.contract"
+use RouteAlert from "../route-alert.contract"
 
 component Sudoku
   props
     env: DemoEnv
   state reset = 0
   state ok = 0
+  // The two Alert.alerts, drawn in the route (route-alert.contract: a `dialog`'s showModal from
+  // the demo route never showed on the phone, so New Game did nothing).
+  state asking = false
+  state genius = false
   action heard(m: string)
     if m == "haptic:selection"
       haptic("selection")
@@ -25,14 +30,18 @@ component Sudoku
     if m == "haptic:success"
       haptic("success")
     if m == "alert:new-game"
-      showModal("new-game")
+      asking = true
     if m == "alert:genius"
-      showModal("genius")
+      genius = true
   // The New Game alert's New Game: setSudoku(generateSudoku('medium')), setHasStarted(false).
   action newGame
+    asking = false
     reset = reset + 1
+  action keepGame
+    asking = false
   // The Genius alert's OK: setHasStarted(false).
   action geniusOk
+    genius = false
     ok = ok + 1
   view
     // styles.safeArea: COLORS.background (#0A1222, a View colour: Display P3), under the canvas.
@@ -41,14 +50,11 @@ component Sudoku
         touch-action="none" message=heard testId="sudoku-canvas"
         aria-label="Sudoku: Start Game, then tap a cell and a number"
       // Alert.alert('New Game', …, [Cancel (cancel), New Game (destructive)]).
-      dialog id="new-game" role="alertdialog" aria-label="New Game" testId="new-game-alert"
-        text "Are you sure you want to start a new game? Your current progress will be lost."
-        button commandfor="new-game" command="close" testId="new-game-cancel"
-          text "Cancel"
-        button press=newGame destructive=true commandfor="new-game" command="close" testId="new-game-confirm"
-          text "New Game"
+      RouteAlert(shown=asking, title="New Game",
+        message="Are you sure you want to start a new game? Your current progress will be lost.",
+        cancel="Cancel", confirm="New Game", destructive=true, dismiss=keepGame, accept=newGame,
+        testId="new-game-alert")
       // Alert.alert('Genius!', 'Ready for another challenge?', [OK]).
-      dialog id="genius" role="alertdialog" aria-label="Genius!" testId="genius-alert"
-        text "Ready for another challenge?"
-        button press=geniusOk commandfor="genius" command="close" testId="genius-ok"
-          text "OK"
+      RouteAlert(shown=genius, title="Genius!", message="Ready for another challenge?",
+        cancel="", confirm="OK", destructive=false, dismiss=geniusOk, accept=geniusOk,
+        testId="genius-alert")
