@@ -10,7 +10,9 @@
 // `.overFullScreen` controller gets this file's transitioning delegate, named by the icon the finger
 // last touched (LaunchIconHatch.swift). Touches are never held for the motion's tail: the
 // presentation completes as soon as the demo shows, and a close may interrupt the open mid-flight;
-// a close hands the route back at once and the card flies on as a touch-transparent still picture.
+// a close flies the live demo home inside the card and hands the route back once the card is on its
+// way (`routeLeaves`), so the release costs no picture and no unmount; a close that UIKit asked for
+// has its route going at once and flies a touch-transparent still picture instead.
 #if os(iOS)
 import ObjectiveC
 import UIKit
@@ -63,6 +65,8 @@ private enum K {
     // The reveal: the card covers the demo until it has painted.
     static let contentFade: Double = 200
     static let firstPaintFrames = 4
+    /// The close hands the route back this long after the card lets go: its unmount is one large commit.
+    static let routeLeaves = 0.3
     static let mountAt = 0.85
     static let iconRadiusRatio: CGFloat = 0.2237
 }
@@ -236,6 +240,8 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
     private var grouped = false
     private(set) var closing = false
     private var routeGone = false
+    /// The flight's time at which the route leaves (the demo is covered by then): never in its first frames.
+    private var routeAt = Double.infinity
     fileprivate var stripTouch = false
 
     // Geometry, in window points.
@@ -523,12 +529,10 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
     private func commit(haptic: Bool, velocity: (w: Double, h: Double, x: Double, y: Double)?) {
         guard !closing else { return }
         closing = true
-        if haptic { UIImpactFeedbackGenerator(style: .medium).impactOccurred() }
         if LaunchSession.current === self { LaunchSession.current = nil }
         controller?.view.isUserInteractionEnabled = false
-        controller?.view.window?.endEditing(true)
-        NotificationCenter.default.post(name: LaunchSession.shownChanged, object: self)
         guard grouped else {
+            closed(haptic: haptic)
             leave()
             return
         }
@@ -544,14 +548,23 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         homeDim.run(to: 0, K.closeHomeDim)
         homeBlur.target = 0
         retargetIcon()
-        pictureContent()
-        if snapshot != nil { detachCard() }
+        // The route is already going when UIKit asked for the dismissal: its views go with it, so a still
+        // takes their place. Otherwise the demo itself rides the card down.
+        if dismissing != nil { pictureContent() }
+        detachCard()
         fly()
-        // The route goes now, its picture flying on: the home takes taps under the flight.
-        if detached {
-            CATransaction.flush()
-            DispatchQueue.main.async { [self] in leave() }
-        }
+        // Committed: the card moves on the first frame after the release.
+        CATransaction.flush()
+        closed(haptic: haptic)
+        if dismissing != nil, detached { DispatchQueue.main.async { [self] in leave() } }
+        else { routeAt = K.routeLeaves }
+    }
+
+    /// What the close does that is not the card: the haptic, the keyboard, the buttons.
+    private func closed(haptic: Bool) {
+        if haptic { UIImpactFeedbackGenerator(style: .medium).impactOccurred() }
+        controller?.view.window?.endEditing(true)
+        NotificationCenter.default.post(name: LaunchSession.shownChanged, object: self)
     }
 
     /// Moves the card out of the presentation's container, which UIKit takes away with the route, so the home takes taps.
@@ -984,6 +997,7 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
                 keepCard()
                 // Covered by the artwork: the demo stops drawing; its route goes once all is still.
                 if t >= f.covered, controller?.view.isHidden == false { controller?.view.isHidden = true }
+                if t >= routeAt { routeAt = .infinity; leave() }
                 if t >= f.cardDone, cardView?.isHidden == false { landCard() }
                 if t >= f.end { flight = nil; land(); return }
             default: flight = nil

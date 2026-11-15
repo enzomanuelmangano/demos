@@ -77,7 +77,7 @@ component DemoScreen
           position="absolute" inset=0 pointer-events="none" aria-hidden=true
         // The close button: a real SwiftUI glass button (`glass-button`, modules/apple/Demos.swift).
         // In a demo's sub-page it is Back and plays the demo's own way back instead of closing.
-        glass-button press=closeOrBack caption=(subField != "" ? "Back" : "Close")
+        glass-button press=closeOrBack caption=(subField != "" ? "Back" : "Close") kind=(subField != "" ? "back" : "close")
           symbol=(subField != "" ? "chevron.backward" : "xmark")
           aria-label=(subField != "" ? "Back" : "Close")
           testId="close" position="absolute" top=top left=16 width=48 height=48

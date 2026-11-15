@@ -212,6 +212,8 @@ private final class GlassModel: ObservableObject {
     @Published var label = ""
     @Published var symbol = ""
     @Published var close = false
+    /// When `close` last changed.
+    var closeSince: CFTimeInterval = 0
     @Published var visible = false
     @Published var trailing = false
 }
@@ -267,8 +269,11 @@ private final class GlassButton: ExactNativeInstance {
         let model = self.model
         // The close goes through the launch (haptic, then the flight home); with no launch
         // (a demo it does not hold) it falls back to the route's own leave.
+        // A close right after a sub-page's Back (the same button) is ignored, as the route's own guard does.
         host = UIHostingController(rootView: GlassBody(model: model, press: {
-            if model.close, let session = LaunchSession.current { session.closeFromButton() } else { events.press() }
+            if model.close, let session = LaunchSession.current {
+                if CACurrentMediaTime() - model.closeSince > 0.4 { session.closeFromButton() }
+            } else { events.press() }
         }))
         host.safeAreaRegions = []
         host.view.backgroundColor = .clear
@@ -283,7 +288,9 @@ private final class GlassButton: ExactNativeInstance {
     override func setProps(_ props: [String: String]) throws {
         model.label = props["caption"] ?? ""
         model.symbol = props["symbol"] ?? ""
-        model.close = props["role"] == "close"
+        let close = props["kind"] == "close"
+        if close != model.close { model.closeSince = CACurrentMediaTime() }
+        model.close = close
         model.trailing = props["edge"] == "trailing"
     }
 }
