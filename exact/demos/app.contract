@@ -114,14 +114,14 @@ component Demos
   resource feedback = feedbackNotes() when atlasShown as shape FeedbackNote[] else empty()
   mutation noted as shape FeedbackNote refreshes feedback
   derive desk = host.pointer == "fine" and host.width >= 600
-  // The phone's home badges: asked when the home shows again and every 20 s while it shows.
+  // The phone's home badges: asked once the home has shown again, after the close flight has landed
+  // (DemoLaunch's flight is ~0.7-1 s): an ask is a whole-plan apply on the main thread (10-14 ms on the
+  // simulator), so it never lands inside a flight or a scroll, and there is no periodic poll.
   derive homeShown = top(nav).name == "home" and not desk
   resource approved = approvedDemos() when homeShown as shape string[] else empty() transient
   derive approvedSlugs = failed(approved) ? [] : approved
   task approvedOnHome when homeShown key=top(nav).id
-    after(1, refreshApproved)
-  task approvedPoll when homeShown key=top(nav).id
-    every(20000, refreshApproved)
+    after(1500, refreshApproved)
   resource changed = changedDemos() when homeShown as shape string[] else empty() transient
   derive changedSlugs = failed(changed) ? [] : changed
   action refreshApproved
