@@ -17,6 +17,8 @@ fn backWidth(w: number): number = (w - 20 * 2 - 10) * 0.25
 // (back: activeIndex > 0, icon: activeIndex == 2) ride it; every value interpolated on them
 // (width, marginRight, opacity) is linear in the progress, so each rides the same spring.
 // ζ 1.5 ≥ 1: Reanimated runs it critically damped, so damping 2√(k·m) = 179.4.
+// The continue label's width (RN: CoreText, ceiled to the pixel).
+fn labelWidth(i: number): number = i == 2 ? 51.666667 : 79
 fn stepSpring(): string = "-exact-spring(2011.7188, 179.4088, 4)"
 
 component Steps
@@ -73,20 +75,28 @@ component Steps
               flex=1 height=60 border-radius=30 corner-shape="-exact-continuous" background-color="color(display-p3 0.0471 0.5255 0.9686)"
               display="flex" flex-direction="row" align-items="center" justify-content="center"
               -exact-layout-transition=stepSpring()
-              // styles.labelContainer: a centred row (it moves with the button's resize).
-              row align-items="center" justify-content="center"
+              // styles.labelContainer: a centred row, icon (width 0 → 22, marginRight 0 → 6) then
+              // the label. RN swaps "Continue" for "Finish" at once, centred, and only the icon's
+              // width moves it: the label's left is (B − T + 28p) / 2, the icon centred 17p
+              // before it. Laid out by hand in a fixed 200-wide row (its centre the group's) so no
+              // layout transition sees the label's width change (that slid "Finish" in from
+              // where "Continue" began): T is the label's width (CoreText, SF-Pro-Rounded-Bold 18,
+              // kern 0.5, ceiled to the pixel: Continue 79, Finish 51.667), p the icon's spring.
+              row width=200 height=60 position="relative" flex-shrink=0
                 -exact-layout-transition=stepSpring()
-                // rIconStyle: width 0 → ICON_WIDTH, opacity 0 → 1, marginRight 0 → ICON_MARGIN_RIGHT,
-                // clipped; AntDesign check-circle 16 white.
-                view display="flex" flex-direction="column" width=(activeIndex == 2 ? 22 : 0) margin-right=(activeIndex == 2 ? 6 : 0)
-                  opacity=(activeIndex == 2 ? 1 : 0) overflow="hidden" align-items="center"
-                  justify-content="center" transition=`opacity ${stepSpring()}`
-                  -exact-layout-transition=stepSpring() testId="check"
+                // rIconStyle: opacity 0 → 1; its centre 17p left of the label's start.
+                column position="absolute" top=0 bottom=0 left=(100 - labelWidth(activeIndex) / 2 - 14)
+                  width=22 align-items="center" justify-content="center"
+                  translate=`${activeIndex == 2 ? 0 : 3}px 0px` opacity=(activeIndex == 2 ? 1 : 0)
+                  transition=`translate ${stepSpring()}, opacity ${stepSpring()}` testId="check"
                   // AntDesign "check-circle" 16: the vector-icons glyph (512 × 536 units of 512 to the em).
                   svg width=16 height=16.75 viewBox="0 0 512 536" aria-hidden=true
                     path d="M239 8Q304 4 362.5 30.5Q421 57 461 109Q494 153 506 206Q518 262 506.5 317Q495 372 460 417Q398 500 292 517Q279 519 256.5 519Q234 519 221 517Q142 504 84 453Q17 392 2 298Q0 285 0 263Q0 241 2 228Q13 160 51 109Q110 32 203 13Q223 9 239 8ZM283 52Q278 52 261.5 51.5Q245 51 241 51Q238 51 230 52Q211 54 192 60Q142 76 105 113.5Q68 151 53 202Q44 230 44 263Q44 286 48 306Q63 380 122 428Q159 458 204 469Q227 475 256 475Q286 475 309 469Q364 454 403.5 416Q443 378 459 324Q468 296 468 263Q468 230 459 202Q444 151 406 113Q368 75 317 60Q302 55 283 52ZM328 174Q325 176 322.5 178.5Q320 181 276 242Q232 302 230 302Q229 301 211 276Q190 247 186 244Q182 241 165 240Q146 240 145 244Q144 245 146 248Q148 251 183.5 300.5Q219 350 223 352Q236 358 245 348Q246 347 305 264.5Q364 182 366 179Q368 177 367 175L365 173H348Q332 173 328 174Z" fill="white"
                 // continueButtonLabel: white, SF-Pro-Rounded-Bold 18, letterSpacing 0.5. rightLabel:
                 // Finish on the last step.
-                text (activeIndex == 2 ? "Finish" : "Continue") color="white" font-family="SF-Pro-Rounded-Bold"
-                  font-size=18 letter-spacing=0.5 -exact-layout-transition=stepSpring()
-                  testId="continue-label"
+                column position="absolute" top=0 bottom=0 left=(100 - labelWidth(activeIndex) / 2)
+                  justify-content="center" translate=`${activeIndex == 2 ? 14 : 0}px 0px`
+                  transition=`translate ${stepSpring()}`
+                  text (activeIndex == 2 ? "Finish" : "Continue") color="white" font-family="SF-Pro-Rounded-Bold"
+                    font-size=18 letter-spacing=0.5 white-space="nowrap"
+                    testId="continue-label"
