@@ -1,46 +1,41 @@
-// Everybody Can Cook: "Everybody" / "can cook." in Honk on black; a tap anywhere flips every
-// letter over on X, one after another (each letter's copy rotates down and fades as a second copy
-// rotates up into its place). RN: src/animations/everybody-can-cook (index.tsx,
-// components/staggered-text.tsx, components/staggered-digit.tsx).
+// Everybody Can Cook: "Everybody" / "can cook." in Honk on black; a tap anywhere sends a wave
+// through the letters, each one replaced by a copy that rises and stands up into its place.
+// RN: src/animations/everybody-can-cook (index.tsx, components/staggered-text.tsx,
+// components/staggered-digit.tsx).
 
 // fonts.ts 'Honk-Regular' is declared once in ../env.contract.
 
-// staggered-text.tsx: each letter's progress is withDelay(index * 40 + delay,
-// withSpring(1, { duration: 350, dampingRatio: 2.8 })), mass 4 (GentleSpringConfigWithDuration).
-// bun tools/spring.ts 350 2.8 → stiffness 319.6. Reanimated runs a duration spring with
-// dampingRatio ≥ 1 critically damped at ω0 = √(k / m) = 8.9387 rad/s
-// (springUtils.ts criticallyDampedSpringCalculations), p(t) = 1 - e^(-ω0 t)(1 + ω0 t), until its
-// energy falls to 6e-9 of the start: 1384 ms. An `animation` takes no spring, so that curve is
-// sampled into `linear()` (60 steps). Every style below is linear in p, so the keyframes ride it
-// exactly.
-fn flip(): string = "1384ms linear(0, 0.0185, 0.0649, 0.128, 0.2, 0.2755, 0.3506, 0.4229, 0.4908, 0.5534, 0.6103, 0.6616, 0.7072, 0.7476, 0.7831, 0.8142, 0.8412, 0.8646, 0.8847, 0.9021, 0.917, 0.9297, 0.9406, 0.9499, 0.9578, 0.9644, 0.9701, 0.9749, 0.9789, 0.9823, 0.9852, 0.9876, 0.9896, 0.9913, 0.9928, 0.994, 0.995, 0.9958, 0.9965, 0.9971, 0.9976, 0.998, 0.9983, 0.9986, 0.9988, 0.999, 0.9992, 0.9993, 0.9995, 0.9995, 0.9996, 0.9997, 0.9997, 0.9998, 0.9998, 0.9999, 0.9999, 0.9999, 0.9999, 0.9999, 1)"
+// The motion is the owner's call (phone feedback, 2026-11-15: "super elegant and professional",
+// after Vercel's text transitions), not RN's 1.4 s spring flip. A tap is a wave: each letter's
+// new copy rises 22 pt into place while it stands up from 50° tipped back about its baseline
+// and fades in, 560 ms on a strong ease-out (cubic-bezier(0.22, 1, 0.36, 1): fast to respond,
+// long to settle, no overshoot on text); the copy it replaces leaves faster, 320 ms up 16 pt,
+// tipping 40° away about its middle, fading out. Letters follow each other by 22 ms, the second
+// line 120 ms behind the first, so a word reads as one gesture rather than a queue. Under a
+// perspective of 600 the turns stay subtle. The references: Vercel/Geist-style blur-in and
+// rotating-word components (letter split, y offset, opacity, 20–60 ms stagger); the host
+// animates no `filter`, so the blur they use is left out and the tip stands in for it.
+fn enter(delay: number): string = `arrive 560ms cubic-bezier(0.22, 1, 0.36, 1) ${delay}ms both`
+fn exit(delay: number): string = `leave 320ms cubic-bezier(0.23, 1, 0.32, 1) ${delay}ms both`
 
-// staggered-digit.tsx (DefaultFontSize 50, DefaultFontHeight 55):
-// top copy: opacity 1 - p, perspective(1000) translateY(-p · 55 / 2) rotateX(p · 90deg);
-// bottom copy: opacity p, translateY(interpolate p → [27.5, 0]) rotateX(interpolate p → [-90, 0]).
 // Keyframes animate the angle; the axis (x) is each node's own `rotate`. The iOS host lowers a
 // box's rotate keyframes to Core Animation's `transform.rotation.z` whatever the axis (exact2
 // host/apple/src/svg_lower.rs `specs_in`; exact/parity-tools/exact-issues/rotate-axis.md): the
 // letters turned flat in the screen's plane. A transform-origin off the centre makes the host
-// sample the node instead, through its 3D axis. The origin is `left center`: a turn about x is
-// the same about any point on the centre line, so RN's centred rotateX is unchanged.
+// sample the node instead, through its 3D axis (left bottom: the baseline the copy stands up
+// from; left center: the middle the old copy tips about).
 //
-// A press never cuts a run short (the owner's call, phone feedback 2026-11-15: RN's reset()
-// restarted every letter from p = 0, a visible jump on a second tap mid-flight). Each press is a
-// run of its own, keyed by its number: its copy of each letter arrives (the bottom copy's
-// motion) and, once a later press comes, its box leaves (the top copy's motion) from wherever
-// the copy inside has got to. One press from rest is exactly RN's flip: the resting letter (run
-// 0) leaves as the new one arrives. Presses in quick succession add waves that compose, nothing
-// restarts. A run must stay mounted until its last letter has left: the next press plus that
-// letter's delay (up to 600 ms) plus the leave (opacity under 0.06 0.5 s in), about 1.2 s. Four
-// runs were too few at the owner's 5–8 taps a second: the late letters' runs were dropped before
-// they had arrived and those letters vanished while tapping (phone feedback, 2026-11-15). Ten
-// runs cover 8 taps a second.
+// A press never cuts a run short (the owner's call: RN's reset() restarted every letter, a
+// visible jump on a second tap). Each tap is a run of its own, keyed by its number: its copy of
+// each letter arrives and, once a later tap comes, its box leaves from wherever the copy inside
+// has got to, so quick taps layer waves and nothing restarts. A run stays mounted until its last
+// letter has left: the next tap plus that letter's delay (up to 296 ms) plus the leave (320 ms).
+// Ten runs cover 8 taps a second with room.
 keyframes leave
   from opacity=1 translate="0px 0px" rotate=0
-  to opacity=0 translate="0px -27.5px" rotate=90
+  to opacity=0 translate="0px -16px" rotate=40
 keyframes arrive
-  from opacity=0 translate="0px 27.5px" rotate=-90
+  from opacity=0 translate="0px 22px" rotate=-50
   to opacity=1 translate="0px 0px" rotate=0
 
 // The runs on screen: the last ten press numbers (0 = the letters at rest before any press).
@@ -64,8 +59,8 @@ component EverybodyCanCook
       column flex=1 justify-content="center" padding="0px 42px" pointerdown=play testId="cook"
         aria-label="Everybody can cook."
         StaggeredText(text="Everybody", delay=0, plays=plays, testId="everybody")
-        // delay={280}
-        StaggeredText(text="can cook.", delay=280, plays=plays, testId="can-cook")
+        // The second line 120 ms behind (RN: delay={280} on its 40 ms stagger).
+        StaggeredText(text="can cook.", delay=120, plays=plays, testId="can-cook")
 
 // staggered-text.tsx: styles.container row, flexWrap wrap; one StaggeredDigit per character.
 component StaggeredText
@@ -83,17 +78,15 @@ component StaggeredText
           text c font-family="Honk-Regular" font-size=50 color="#ffffff" white-space="pre"
             visibility="hidden"
           for k in runs(plays) key=k
-            // perspective(1000) leads the top copy's transform: Exact's `perspective` (CSS's)
-            // acts on a box's children, so it sits on a box the size of the cell, its vanishing
-            // point the cell's centre.
-            view position="absolute" left=0 top=0 right=0 bottom=0 perspective=1000
-              // The run's box: the top copy's motion once a later press comes (withDelay(index ·
-              // 40 + delay, the spring)), from rest, whatever the copy inside is doing.
+            // The perspective the turns are seen under: Exact's `perspective` (CSS's) acts on a
+            // box's children, so it sits on a box the size of the cell, its vanishing point the
+            // cell's centre.
+            view position="absolute" left=0 top=0 right=0 bottom=0 perspective=600
+              // The run's box: it leaves once a later tap comes, whatever the copy inside is doing.
               view position="absolute" left=0 top=0 right=0 bottom=0 rotate="x 0deg"
-                transform-origin="left center"
-                animation=(k < plays ? `leave ${flip()} ${i * 40 + delay}ms both` : "none")
-                // The run's copy: the bottom copy's motion (no perspective, as RN's), at rest
-                // for run 0. It starts when the run mounts, with the press.
+                transform-origin="left center" perspective=600
+                animation=(k < plays ? exit(i * 22 + delay) : "none")
+                // The run's copy: it arrives with the tap (at rest for run 0).
                 text c position="absolute" left=0 top=0 font-family="Honk-Regular" font-size=50
-                  color="#ffffff" white-space="pre" rotate="x 0deg" transform-origin="left center"
-                  animation=(k == 0 ? "none" : `arrive ${flip()} ${i * 40 + delay}ms both`)
+                  color="#ffffff" white-space="pre" rotate="x 0deg" transform-origin="left bottom"
+                  animation=(k == 0 ? "none" : enter(i * 22 + delay))
