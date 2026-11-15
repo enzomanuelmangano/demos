@@ -62,6 +62,24 @@ const BUTTON: f64 = 64.0;
 /// (iPhone 17: 62 pt): the sheet's radius is concentric with it.
 const INSET: f64 = 10.0;
 const DISPLAY_RADIUS: f64 = 62.0;
+/// The sheet's content (phone feedback 2026-11-15, "this layout is awful"), on a 4 pt grid:
+/// the "×" row (64, the morphing "+"), the title centred on it, a two-line subtitle, and a
+/// full-width capsule, concentric with the sheet: 50 tall (radius 25), inset 52 − 25 = 27 from
+/// the sheet's sides and bottom. The sheet is as tall as that content.
+const ROW: f64 = 64.0;
+const SUBTITLE_TOP: f64 = 4.0;
+const SUBTITLE_LINE: f64 = 20.0;
+const SUBTITLE: [&str; 2] = [
+    "Start something new here.",
+    "Drag down or tap outside to close.",
+];
+const CAPSULE_H: f64 = 50.0;
+const CAPSULE_INSET: f64 = 52.0 - CAPSULE_H / 2.0;
+const SUBTITLE_TO_CAPSULE: f64 = 28.0;
+const SHEET_H: f64 =
+    ROW + SUBTITLE_TOP + 2.0 * SUBTITLE_LINE + SUBTITLE_TO_CAPSULE + CAPSULE_H + CAPSULE_INSET;
+/// The grabber: 36 × 5, 6 below the top, the system's tertiary label grey.
+const GRABBER: (f32, f32, f32) = (36.0, 5.0, 6.0);
 /// iOS's rubber band: (1 − 1 / (d · 0.55 / dim + 1)) · dim.
 fn rubber(d: f64, dim: f64) -> f64 {
     if dim <= 0.0 {
@@ -105,6 +123,8 @@ fn modal() -> FloatingModal {
         posted: Vec::new(),
         plus: Font::new(ANTDESIGN, 28.0).map(Font::with_ui_layout),
         title: skia::match_ui_font(20.0, 700.0),
+        subtitle: skia::match_ui_font(15.0, 400.0),
+        label: skia::match_ui_font(17.0, 600.0),
         canvas: Canvas::default(),
         group_canvas: Canvas::default(),
         layer_canvas: Canvas::default(),
@@ -154,6 +174,10 @@ struct FloatingModal {
     posted: Vec<String>,
     plus: Option<Font>,
     title: Option<Font>,
+    /// The subtitle (15, regular) and the capsule's label (17, semibold): iOS's subheadline and
+    /// headline.
+    subtitle: Option<Font>,
+    label: Option<Font>,
     canvas: Canvas,
     group_canvas: Canvas,
     layer_canvas: Canvas,
@@ -216,7 +240,7 @@ impl FloatingModal {
         // The floating sheet: the display's width less the insets, 0.9 × width tall (RN's
         // square's height), at the bottom; from the 64 pt button at right 32, bottom 32.
         let sw = interpolate_clamp(p, &[0.0, 1.0], &[BUTTON, w - 2.0 * INSET]);
-        let size = interpolate_clamp(p, &[0.0, 1.0], &[BUTTON, w * 0.9]);
+        let size = interpolate_clamp(p, &[0.0, 1.0], &[BUTTON, SHEET_H]);
         let right = interpolate_clamp(p, &[0.0, 1.0], &[BUTTON / 2.0, INSET]);
         let bottom = interpolate_clamp(p, &[0.0, 1.0], &[BUTTON / 2.0, INSET]);
         let radius = interpolate_clamp(p, &[0.0, 1.0], &[BUTTON / 2.0, DISPLAY_RADIUS - INSET])
@@ -236,13 +260,11 @@ impl FloatingModal {
             grid((sw - new.0) / 2.0, s),
             text_grid((BUTTON - new.1) / 2.0, s),
         );
-        let row_top = grid(size - 80.0, s);
-        let (bl, bt) = (l0 + 10.0, t0 + size - 70.0);
         let button = (
-            10.0,
-            row_top + 10.0,
-            grid(bl + sw - 20.0, s) - grid(bl, s),
-            grid(bt + 60.0, s) - grid(bt, s),
+            CAPSULE_INSET,
+            size - CAPSULE_INSET - CAPSULE_H,
+            (sw - 2.0 * CAPSULE_INSET).max(0.0),
+            CAPSULE_H,
         );
         let done_at = (
             button.0 + text_grid((sw - 20.0 - done.0) / 2.0, s),
@@ -501,47 +523,73 @@ impl Surface for FloatingModal {
         let plus_m = self.plus_matrix().then(modal);
         let strip = plus_bounds(plus_m, s, pw, ph);
         let button_m = self.button_matrix(&l);
-        let has_title = self.title.is_some();
         let g = &mut self.group_canvas;
         g.begin(s);
         if content > 0.0 {
             g.save();
             g.concat(modal);
-            if has_title {
-                composite(
+            let (_, _, sw, _) = l.frame;
+            let sw = sw as f32;
+            // The grabber.
+            let (gw, gh, gy) = GRABBER;
+            g.draw_rrect(
+                (sw - gw) / 2.0,
+                gy,
+                gw,
+                gh,
+                gh / 2.0,
+                &Paint::fill(Color::rgba8(60, 60, 67, 255).alpha(0.3)),
+            );
+            let centred = |g: &mut Canvas,
+                           font: &Font,
+                           text: &str,
+                           mid_y: f32,
+                           x0: f32,
+                           w: f32,
+                           paint: &Paint| {
+                let lh = gfx::line_height(font);
+                let x = x0 + (w - font.advance_width(text)) / 2.0;
+                g.draw_text(text, x, gfx::baseline(font, mid_y - lh / 2.0), font, paint);
+            };
+            // The title on the "×" row, the subtitle under it (secondary label, 60 %).
+            if let Some(f) = self.title.as_ref() {
+                centred(
                     g,
-                    &gpu.atlas,
-                    gpu.origins[1],
-                    [
-                        px(l.new_at.0),
-                        px(l.new_at.1),
-                        px(boxes[1].0),
-                        px(boxes[1].1),
-                    ],
-                    s,
+                    f,
+                    "New",
+                    px(ROW / 2.0),
+                    0.0,
+                    sw,
+                    &Paint::fill(Color::BLACK),
                 );
-                g.concat(button_m);
-                let (bx, by, bw, bh) = l.button;
-                // Concentric with the sheet: its radius less the 10 pt margin, a pill at most.
-                g.draw_continuous_rrect(
+            }
+            if let Some(f) = self.subtitle.as_ref() {
+                let paint = Paint::fill(Color::rgba8(60, 60, 67, 255).alpha(0.6));
+                for (k, line) in SUBTITLE.iter().enumerate() {
+                    let mid = ROW + SUBTITLE_TOP + SUBTITLE_LINE * (k as f64 + 0.5);
+                    centred(g, f, line, px(mid), 0.0, sw, &paint);
+                }
+            }
+            // The capsule (analytic: no path, no MSAA), pressed by pressto's scale.
+            g.concat(button_m);
+            let (bx, by, bw, bh) = l.button;
+            g.draw_rrect(
+                px(bx),
+                px(by),
+                px(bw),
+                px(bh),
+                px(bh) / 2.0,
+                &Paint::fill(Color::hex(0x111111)),
+            );
+            if let Some(f) = self.label.as_ref() {
+                centred(
+                    g,
+                    f,
+                    "Done",
+                    px(by + bh / 2.0),
                     px(bx),
-                    px(by),
                     px(bw),
-                    px(bh),
-                    ((l.radius - 10.0) as f32).clamp(12.0, px(bh) / 2.0),
-                    &Paint::fill(Color::hex(0x111111)),
-                );
-                composite(
-                    g,
-                    &gpu.atlas,
-                    gpu.origins[2],
-                    [
-                        px(l.done_at.0),
-                        px(l.done_at.1),
-                        px(boxes[2].0),
-                        px(boxes[2].1),
-                    ],
-                    s,
+                    &Paint::fill(Color::WHITE),
                 );
             }
             g.restore();
@@ -886,21 +934,21 @@ mod tests {
         open.save("floating-modal-open");
         assert!(!moving);
         assert!(s.agent("{}").unwrap().contains("\"opened\":true"));
-        // The floating sheet: x 10…410, 378 tall, 10 above the bottom (y 524…902); the scrim
-        // darkens the rest; "Done" (y 832…892) is #111.
+        // The floating sheet: x 10…410, 213 tall, 10 above the bottom (y 689…902); the scrim
+        // darkens the rest; the "Done" capsule (x 37…383, y 825…875) is #111.
         assert_eq!(open.at(2 * 30, 2 * 700), [255, 255, 255, 255]);
         assert_eq!(open.at(2 * 10, 2 * 100)[3], 102);
         assert_eq!(&open.at(2 * 60, 2 * 862)[..3], &[0x11, 0x11, 0x11]);
 
         // Drag it down 210 (RNGH on iOS leaves UIKit's 10 pt hysteresis out: translation 200):
         // it shrinks, and the release closes it.
-        s.input(&pointer(PointerPhase::Down, 210.0, 650.0, ms));
+        s.input(&pointer(PointerPhase::Down, 210.0, 700.0, ms));
         for k in 1..=21 {
             ms += 16.0;
             s.input(&pointer(
                 PointerPhase::Move,
                 210.0,
-                650.0 + 10.0 * k as f32,
+                700.0 + 10.0 * k as f32,
                 ms,
             ));
             fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
@@ -909,7 +957,7 @@ mod tests {
         dragged.save("floating-modal-dragged");
         let state = s.agent("{}").unwrap();
         assert!(state.contains("\"scale\":0.8008"), "{state}");
-        s.input(&pointer(PointerPhase::Up, 210.0, 860.0, ms));
+        s.input(&pointer(PointerPhase::Up, 210.0, 910.0, ms));
         while ms < 3000.0 {
             ms += 16.0;
             fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
@@ -1033,7 +1081,7 @@ mod tests {
             fixture::render(&gpu, &mut m, &frame(ms)).unwrap();
         }
         assert!((m.plus_shown.0 - std::f64::consts::FRAC_PI_4).abs() < 1e-9);
-        // "Done" (the bottom row of the floating sheet, y 832…892): its onPress sets
+        // "Done" (the sheet's capsule, y 825…875): its onPress sets
         // lastTouchedPressable (the "+"'s pressto style writes [scale] over the rotate) and
         // dismisses the sheet, whose closing rotate is then written last.
         m.input(&pointer(PointerPhase::Down, 210.0, 862.0, ms));
