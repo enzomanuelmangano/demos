@@ -16,6 +16,14 @@ component ScrollableBottomSheet
   action heard(m: string)
     if m == "haptic:selection"
       haptic("selection")
+    // The drag's haptics (gpu/src/scrollable_bottom_sheet.rs, past RN): light on the grab,
+    // medium when a pull closes it, soft when it springs back and lands.
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+    if m == "haptic:impact-medium"
+      haptic("impact-medium")
+    if m == "haptic:impact-soft"
+      haptic("impact-soft")
   view
     canvas surface=scrollable_bottom_sheet() message=heard position="absolute" top=0 left=0
       width=env.width height=env.height background-color="#000" touch-action="none"
