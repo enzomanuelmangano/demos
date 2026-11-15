@@ -11,10 +11,10 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture, Phase};
-use reanimated::{interpolate, Easing, Extrapolation, Spring, SpringConfig, Timing};
-use skia::backdrop::{expo_fraction, BackdropBlur, Chain};
-use skia::{Canvas, Color, Font, Images, Matrix, Paint, Renderer, Shader};
+use gestures::{Event, PanGesture, Phase};
+use motion::{interpolate, Easing, Extrapolation, Spring, SpringConfig, Timing};
+use draw2d::backdrop::{expo_fraction, BackdropBlur, Chain};
+use draw2d::{Canvas, Color, Font, Images, Matrix, Paint, Renderer, Shader};
 
 use crate::gfx;
 use crate::ui_scroll::{Snap, UiScroll, NORMAL};
@@ -790,11 +790,11 @@ impl Bouncy {
         c.save();
         let e = 3.0 * sigma + dy.abs() + 2.0;
         c.clip_with(|p| {
-            skia::add_rect(p, b[0] - e, b[1] - e, b[2] + 2.0 * e, b[3] + 2.0 * e);
+            draw2d::add_rect(p, b[0] - e, b[1] - e, b[2] + 2.0 * e, b[3] + 2.0 * e);
             if continuous {
-                skia::add_continuous_rrect_hole(p, b[0], b[1], b[2], b[3], r);
+                draw2d::add_continuous_rrect_hole(p, b[0], b[1], b[2], b[3], r);
             } else {
-                skia::add_rrect_hole(p, b[0], b[1], b[2], b[3], r);
+                draw2d::add_rrect_hole(p, b[0], b[1], b[2], b[3], r);
             }
         });
         c.draw_rrect_shadow(b[0], b[1] + dy, b[2], b[3], r, sigma, color);
@@ -804,8 +804,8 @@ impl Bouncy {
     /// A ring of width `bw` inside the box edge.
     fn ring(c: &mut Canvas, b: [f32; 4], r: f32, bw: f32, color: Color) {
         c.draw_with(&Paint::fill(color), |p| {
-            skia::add_rrect(p, b[0], b[1], b[2], b[3], r);
-            skia::add_rrect_hole(
+            draw2d::add_rrect(p, b[0], b[1], b[2], b[3], r);
+            draw2d::add_rrect_hole(
                 p,
                 b[0] + bw,
                 b[1] + bw,
@@ -1015,8 +1015,8 @@ impl Bouncy {
             let (cx, cy) = (th[0] + 12.0, th[1] + 12.0);
             c.draw_circle(cx, cy, 12.0, &Paint::fill(Color::WHITE));
             c.draw_with(&Paint::fill(Color::view_hex(0xF3F4F6)), |p| {
-                skia::add_circle(p, cx, cy, 12.0);
-                skia::add_circle_fine(p, cx, cy, 10.0, true);
+                draw2d::add_circle(p, cx, cy, 12.0);
+                draw2d::add_circle_fine(p, cx, cy, 10.0, true);
             });
         }
         c.restore();
@@ -1113,7 +1113,7 @@ impl Surface for Bouncy {
         }
         let mut gpu = self.gpu.take().unwrap();
         let fmt = wgpu::TextureFormat::Rgba8Unorm;
-        let full = |img: skia::ImageRef| {
+        let full = |img: draw2d::ImageRef| {
             Paint::shader(Shader::ImageNearest {
                 image: img,
                 to_image: Matrix::scale(s, s),

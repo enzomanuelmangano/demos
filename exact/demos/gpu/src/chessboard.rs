@@ -16,10 +16,10 @@ mod chess;
 use chess::{at, Chess, Kind, Piece, Side};
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture, Phase, TapGesture};
+use gestures::{Event, PanGesture, Phase, TapGesture};
 use pressto::{PressEvent, Pressable};
-use reanimated::{Easing, Spring, SpringConfig, Timing};
-use skia::{Canvas, Color, Font, Image, Images, Matrix, Paint, Renderer, RsXform};
+use motion::{Easing, Spring, SpringConfig, Timing};
+use draw2d::{Canvas, Color, Font, Image, Images, Matrix, Paint, Renderer, RsXform};
 
 use crate::gfx;
 
@@ -456,7 +456,7 @@ impl Fonts {
             pill: ui_font(BOLD_TNUM, 15.0),
             q_label: ui_font(BOLD, 14.0),
             q_count: ui_font(BOLD_TNUM, 15.0),
-            glyph: skia::match_ui_font(11.0, 900.0),
+            glyph: draw2d::match_ui_font(11.0, 900.0),
             glyph_menlo: ui_font(MENLO_BOLD, 11.0),
             glyph_zapf: ui_font(ZAPF, 11.0),
             button: ui_font(BOLD, 16.0),
@@ -1858,7 +1858,7 @@ impl Chessboard {
         let ps = self.ps();
         let s = self.scale;
         if self.fonts.board.is_none() {
-            self.fonts.board = skia::match_system_font(ps * 0.15, 400.0);
+            self.fonts.board = draw2d::match_system_font(ps * 0.15, 400.0);
         }
         let c = &mut self.canvas;
         c.begin(s);
@@ -1910,7 +1910,7 @@ impl Chessboard {
             c.draw_with(&Paint::fill(Color::rgba8(0, 0, 0, 255).alpha(0.3)).with_opacity(0.5), |b| {
                 for &m in &valid {
                     let (x, y) = pos(m, ps);
-                    skia::add_circle(b, x + ps / 2.0, y + ps / 2.0, r);
+                    draw2d::add_circle(b, x + ps / 2.0, y + ps / 2.0, r);
                 }
             });
         }
@@ -1932,7 +1932,7 @@ impl Chessboard {
                 let k = (1.0 - 0.25 * e) * ps / cell;
                 let (x, y) = pos(g.sq, ps);
                 let (cx, cy) = (x + ps / 2.0, y + ps / 2.0);
-                rects.push(skia::Rect { x: g.piece.kind.column() as f32 * cell, y: g.piece.color as usize as f32 * cell, width: cell, height: cell });
+                rects.push(draw2d::Rect { x: g.piece.kind.column() as f32 * cell, y: g.piece.color as usize as f32 * cell, width: cell, height: cell });
                 xf.push(RsXform { scos: k, ssin: 0.0, tx: cx - cell / 2.0 * k, ty: cy - cell / 2.0 * k });
                 colors.push(Color::rgba8(255, 255, 255, 255).alpha(1.0 - e));
             }
@@ -1953,7 +1953,7 @@ impl Chessboard {
             let mut xf = Vec::with_capacity(pieces.len());
             for (_, sq, p) in pieces {
                 let st = &self.squares[sq as usize];
-                rects.push(skia::Rect { x: p.kind.column() as f32 * cell, y: p.color as usize as f32 * cell, width: cell, height: cell });
+                rects.push(draw2d::Rect { x: p.kind.column() as f32 * cell, y: p.color as usize as f32 * cell, width: cell, height: cell });
                 let k = st.scale.value as f32 * ps / cell;
                 let (cx, cy) = (st.tx.s.value as f32 + ps / 2.0 + self.shake(sq), st.ty.s.value as f32 + ps / 2.0);
                 xf.push(RsXform { scos: k, ssin: 0.0, tx: cx - cell / 2.0 * k, ty: cy - cell / 2.0 * k });
@@ -1985,7 +1985,7 @@ impl Chessboard {
         let a = fixed3(active);
         if a > 0.0 {
             c.draw_continuous_rrect(x0, y0, w, h, 18.0, &Paint::fill(view(theme::SURFACE, a)));
-            c.draw_path(&skia::border_ring_path(x0, y0, w, h, 18.0, hair), &Paint::fill(view(theme::BORDER, a)));
+            c.draw_path(&draw2d::border_ring_path(x0, y0, w, h, 18.0, hair), &Paint::fill(view(theme::BORDER, a)));
         }
         let (cx, cy) = (x0 + hair + 6.0, y0 + hair + 6.0);
         let cw = w - 2.0 * (hair + 6.0);
@@ -1997,8 +1997,8 @@ impl Chessboard {
             c.restore();
         }
         c.draw_with(&Paint::fill(Color::rgba8(255, 255, 255, 255).alpha(0.14)), |b| {
-            skia::add_continuous_rrect(b, cx, cy, 40.0, 40.0, 12.0);
-            skia::add_continuous_rrect_hole(b, cx + hair, cy + hair, 40.0 - 2.0 * hair, 40.0 - 2.0 * hair, 12.0 - hair);
+            draw2d::add_continuous_rrect(b, cx, cy, 40.0, 40.0, 12.0);
+            draw2d::add_continuous_rrect_hole(b, cx + hair, cy + hair, 40.0 - 2.0 * hair, 40.0 - 2.0 * hair, 12.0 - hair);
         });
         let rt_h = self.line(&f.clock);
         let ch = 18.0 + rt_h;
@@ -2173,8 +2173,8 @@ impl Chessboard {
                                 c.draw_rect(ax, ay, 34.0, 34.0, &Paint::image(img, Matrix::scale(k, k).then(Matrix::translate(-ax * k, -ay * k))));
                                 c.restore();
                                 c.draw_with(&Paint::fill(Color::rgba8(255, 255, 255, 255).alpha(0.14)), |b| {
-                                    skia::add_continuous_rrect(b, ax, ay, 34.0, 34.0, 10.0);
-                                    skia::add_continuous_rrect_hole(b, ax + hair, ay + hair, 34.0 - 2.0 * hair, 34.0 - 2.0 * hair, 10.0 - hair);
+                                    draw2d::add_continuous_rrect(b, ax, ay, 34.0, 34.0, 10.0);
+                                    draw2d::add_continuous_rrect_hole(b, ax + hair, ay + hair, 34.0 - 2.0 * hair, 34.0 - 2.0 * hair, 10.0 - hair);
                                 });
                             }
                         }
@@ -2246,7 +2246,7 @@ impl Chessboard {
         let (icon, glyph, label, fg) = if i == 0 { (f.icon_back.as_ref(), "\u{F127}", "Back", theme::TEXT) } else { (f.icon_replay.as_ref(), "\u{F51A}", "Replay", theme::BG) };
         if i == 0 {
             c.draw_continuous_rrect(l, t, w, h, 18.0, &Paint::fill(view(theme::TEXT, 0.08)));
-            c.draw_path(&skia::border_ring_path(l, t, w, h, 18.0, hair), &Paint::fill(view(theme::TEXT, 0.16)));
+            c.draw_path(&draw2d::border_ring_path(l, t, w, h, 18.0, hair), &Paint::fill(view(theme::TEXT, 0.16)));
         } else {
             c.draw_continuous_rrect(l, t, w, h, 18.0, &Paint::fill(view(theme::TEXT, 1.0)));
         }
@@ -2562,30 +2562,30 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat, px: (u32, u32), boa
         ],
     });
     let rgba = wgpu::TextureFormat::Rgba8Unorm;
-    let t = |label| skia::render::sampled_target(device, label, rgba, px.0, px.1);
+    let t = |label| draw2d::render::sampled_target(device, label, rgba, px.0, px.1);
     Gpu {
         format,
-        compose: skia::render::fullscreen_pipeline(device, &module, &layout, "compose", rgba, None),
-        wave: skia::render::fullscreen_pipeline(device, &module, &layout, "wave", rgba, None),
-        finish: skia::render::fullscreen_pipeline(device, &module, &layout, "finish", format, None),
+        compose: draw2d::render::fullscreen_pipeline(device, &module, &layout, "compose", rgba, None),
+        wave: draw2d::render::fullscreen_pipeline(device, &module, &layout, "wave", rgba, None),
+        finish: draw2d::render::fullscreen_pipeline(device, &module, &layout, "finish", format, None),
         buffer: device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("chessboard"),
             size: UNIFORM_SIZE as u64,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         }),
-        sampler: skia::render::linear_sampler(device),
+        sampler: draw2d::render::linear_sampler(device),
         layout,
         px,
-        board: skia::render::sampled_target(device, "chessboard board", rgba, board_px, board_px),
-        pieces: skia::render::sampled_target(device, "chessboard pieces", rgba, board_px, board_px),
+        board: draw2d::render::sampled_target(device, "chessboard board", rgba, board_px, board_px),
+        pieces: draw2d::render::sampled_target(device, "chessboard pieces", rgba, board_px, board_px),
         ui: t("chessboard ui"),
         screen: t("chessboard screen"),
         snapshot: t("chessboard snapshot"),
         wave_out: t("chessboard wave"),
         sheet: t("chessboard sheet"),
         modal: t("chessboard modal"),
-        dummy: skia::render::sampled_target(device, "chessboard dummy", rgba, 1, 1),
+        dummy: draw2d::render::sampled_target(device, "chessboard dummy", rgba, 1, 1),
         groups: None,
     }
 }
@@ -2868,13 +2868,13 @@ impl Surface for Chessboard {
         }
         let gpu = self.gpu.as_ref().unwrap();
         let [g_compose, g_wave, g_finish] = gpu.groups.as_ref().unwrap();
-        skia::render::fullscreen_pass(encoder, "chessboard compose", &gpu.screen, &gpu.compose, g_compose);
+        draw2d::render::fullscreen_pass(encoder, "chessboard compose", &gpu.screen, &gpu.compose, g_compose);
         // The overlay appears on the frame after the snapshot is taken.
         let mut wave = false;
         if let Some(a) = self.aura.as_mut() {
             if a.snapshot_at.is_none() {
                 a.snapshot_at = Some(self.now);
-                skia::render::fullscreen_pass(encoder, "chessboard snapshot", &gpu.snapshot, &gpu.compose, g_compose);
+                draw2d::render::fullscreen_pass(encoder, "chessboard snapshot", &gpu.snapshot, &gpu.compose, g_compose);
             } else if !a.revealed {
                 a.revealed = true;
                 a.vis.set(1.0);
@@ -2887,9 +2887,9 @@ impl Surface for Chessboard {
             wave = a.revealed && a.vis.value > 0.0;
         }
         if wave {
-            skia::render::fullscreen_pass(encoder, "chessboard wave", &gpu.wave_out, &gpu.wave, g_wave);
+            draw2d::render::fullscreen_pass(encoder, "chessboard wave", &gpu.wave_out, &gpu.wave, g_wave);
         }
-        skia::render::fullscreen_pass(encoder, "chessboard", target, &gpu.finish, g_finish);
+        draw2d::render::fullscreen_pass(encoder, "chessboard", target, &gpu.finish, g_finish);
         moving || modal
     }
 }

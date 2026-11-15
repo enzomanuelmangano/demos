@@ -12,10 +12,10 @@
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
 use pressto::{PressEvent, Pressable};
-use reanimated::{Easing, Spring, Timing};
-use skia::backdrop::{expo_fraction, BackdropBlur, Material};
-use skia::blur::{ceil_size, outset, GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
-use skia::{fit_cover, Canvas, Color, Font, Images, Matrix, Paint, Rect, Renderer};
+use motion::{Easing, Spring, Timing};
+use draw2d::backdrop::{expo_fraction, BackdropBlur, Material};
+use draw2d::blur::{ceil_size, outset, GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
+use draw2d::{fit_cover, Canvas, Color, Font, Images, Matrix, Paint, Rect, Renderer};
 
 use crate::gfx;
 use crate::ui_scroll::{Snap, UiScroll, NORMAL};
@@ -62,8 +62,8 @@ pub fn surface() -> Box<dyn Surface> {
         glow: Timing::at(1.0),
         scroll: UiScroll::new(0.0, 0.0, 1.0, NORMAL, Snap::Free),
         messages: Vec::new(),
-        title: skia::match_ui_font(32.0, 400.0),
-        body: skia::match_ui_font(16.0, 400.0),
+        title: draw2d::match_ui_font(32.0, 400.0),
+        body: draw2d::match_ui_font(16.0, 400.0),
         icon: Font::new(SUNNY_FONT, 20.0).map(Font::with_ui_layout),
         total: 0.0,
         content_key: None,
@@ -178,7 +178,7 @@ impl Appearance {
     }
 
     /// The ScrollView's content into `c` (its origin the content's top), returning its height.
-    fn record_content(&self, c: &mut Canvas, poster: Option<skia::ImageRef>) -> f32 {
+    fn record_content(&self, c: &mut Canvas, poster: Option<draw2d::ImageRef>) -> f32 {
         let p = self.palette();
         let w = self.size.0;
         let ch = self.canvas_height();
@@ -363,12 +363,12 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat) -> Gpu {
     let buffer = || device.create_buffer(&wgpu::BufferDescriptor { label: Some("appearance"), size: 96, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
     Gpu {
         format,
-        resolve: skia::render::fullscreen_pipeline(device, &module, &layout, "resolve", GRAPHITE_FORMAT, None),
-        under: skia::render::fullscreen_pipeline(device, &module, &layout, "under", GRAPHITE_FORMAT, None),
-        finish: skia::render::fullscreen_pipeline(device, &module, &layout, "finish", format, None),
+        resolve: draw2d::render::fullscreen_pipeline(device, &module, &layout, "resolve", GRAPHITE_FORMAT, None),
+        under: draw2d::render::fullscreen_pipeline(device, &module, &layout, "under", GRAPHITE_FORMAT, None),
+        finish: draw2d::render::fullscreen_pipeline(device, &module, &layout, "finish", format, None),
         layout,
         buffers: [buffer(), buffer(), buffer()],
-        sampler: skia::render::linear_sampler(device),
+        sampler: draw2d::render::linear_sampler(device),
     }
 }
 
@@ -465,7 +465,7 @@ impl Surface for Appearance {
             self.gpu = Some(build(device, format));
         }
         if self.poster.is_none() {
-            let img = skia::Image::from_jpeg(POSTER).unwrap_or(skia::Image { width: 1, height: 1, pixels: vec![128, 128, 128, 255] });
+            let img = draw2d::Image::from_jpeg(POSTER).unwrap_or(draw2d::Image { width: 1, height: 1, pixels: vec![128, 128, 128, 255] });
             let images = Images::upload_unmipped(device, queue, &img);
             for r in self.renderers.iter_mut() {
                 r.set_images(&images);
@@ -485,7 +485,7 @@ impl Surface for Appearance {
         let content_px = (px.0, (self.total * frame.scale).ceil() as u32);
         let glow_px = (px.0, (((self.canvas_height() + 500.0) * frame.scale).round() as u32).min(px.1 * 2));
         if self.textures.as_ref().map(|t| (t.px, t.content.1, t.glow.1)) != Some((px, content_px.1, glow_px.1)) {
-            let t = |label, w, h| skia::render::sampled_target(device, label, GRAPHITE_FORMAT, w, h);
+            let t = |label, w, h| draw2d::render::sampled_target(device, label, GRAPHITE_FORMAT, w, h);
             self.textures = Some(Textures {
                 px,
                 content: (content_px.0, content_px.1, t("appearance content", content_px.0, content_px.1)),
@@ -526,7 +526,7 @@ impl Surface for Appearance {
                 u[20..24].copy_from_slice(&low_mapping(&plan, out.origin, out.size));
                 queue.write_buffer(&gpu.buffers[0], 0, &bytes(&u));
                 let g = bind(device, gpu, 0, &tex.layer, out.view);
-                skia::render::fullscreen_pass(encoder, "appearance resolve", &tex.glow.2, &gpu.resolve, &g);
+                draw2d::render::fullscreen_pass(encoder, "appearance resolve", &tex.glow.2, &gpu.resolve, &g);
             }
             self.glow_key = Some(glow_px);
         }
@@ -559,7 +559,7 @@ impl Surface for Appearance {
         let u = self.uniforms(frame, format);
         queue.write_buffer(&gpu.buffers[1], 0, &bytes(&u));
         let g = bind(device, gpu, 1, &tex.glow.2, &tex.content.2);
-        skia::render::fullscreen_pass(encoder, "appearance under", &tex.under, &gpu.under, &g);
+        draw2d::render::fullscreen_pass(encoder, "appearance under", &tex.under, &gpu.under, &g);
         let mut base = &tex.under;
         if self.intensity.value > 0.0 {
             let params = Material::Regular.chain().at(expo_fraction(self.intensity.value));
@@ -569,7 +569,7 @@ impl Surface for Appearance {
         }
         queue.write_buffer(&gpu.buffers[2], 0, &bytes(&u));
         let g = bind(device, gpu, 2, base, &tex.button);
-        skia::render::fullscreen_pass(encoder, "appearance", target, &gpu.finish, &g);
+        draw2d::render::fullscreen_pass(encoder, "appearance", target, &gpu.finish, &g);
         moving
     }
 }

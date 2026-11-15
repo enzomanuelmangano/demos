@@ -1,8 +1,8 @@
 // Art Gallery: the frame on the screen. The mosaic (`scene`, encoded sRGB, as RN's canvas holds
 // it) with the zoom-out button over it as Core Animation composes RN's view: an Animated.View
 // whose opacity is a group's (bg × (1 − a·G.a) + a·G), G being the 56 pt circle (overflow
-// hidden, radius 28) holding the BlurView's backdrop (skia::backdrop, sampled here) under the
-// icon and the hairline border (`ink`, premultiplied, drawn unscaled by packages/skia), all of
+// hidden, radius 28) holding the BlurView's backdrop (draw2d::backdrop, sampled here) under the
+// icon and the hairline border (`ink`, premultiplied, drawn unscaled by packages/draw2d), all of
 // it scaled by pressto's PressableScale about the button's centre.
 
 struct Present {
@@ -14,7 +14,7 @@ struct Present {
     ink: vec4<f32>,
     // The BlurView's box (device px, x0 y0 x1 y1): absoluteFill inside the border, scaled.
     blur: vec4<f32>,
-    // skia::backdrop's mapping (Backdrop::mapping).
+    // draw2d::backdrop's mapping (Backdrop::mapping).
     m: vec4<f32>,
     n: vec4<f32>,
 };

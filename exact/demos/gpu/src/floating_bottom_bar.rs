@@ -10,10 +10,10 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture};
+use gestures::{Event, PanGesture};
 use pressto::{PressEvent, Pressable};
-use reanimated::{spring::GENTLE, Easing, Spring, Timing};
-use skia::{point, stops, Canvas, Color, Font, Paint, Path, Renderer, Shader};
+use motion::{spring::GENTLE, Easing, Spring, Timing};
+use draw2d::{point, stops, Canvas, Color, Font, Paint, Path, Renderer, Shader};
 
 use crate::gfx;
 
@@ -241,7 +241,7 @@ impl Surface for FloatingBottomBar {
             Event::Start(p) => {
                 self.dragging = true;
                 for press in &mut self.press {
-                    press.pointer(id, gesture_handler::Phase::Cancel, false);
+                    press.pointer(id, gestures::Phase::Cancel, false);
                 }
                 self.drag_to(p.x, p.velocity_x);
                 return;
@@ -261,7 +261,7 @@ impl Surface for FloatingBottomBar {
             _ if self.dragging => return,
             _ => {}
         }
-        if phase == gesture_handler::Phase::Down {
+        if phase == gestures::Phase::Down {
             if let Some(i) = (0..TABS).find(|&i| self.inside(i, x, y)) {
                 self.press[i].pointer_down(id, true);
             }
@@ -319,7 +319,7 @@ impl Surface for FloatingBottomBar {
 
         let tab = l.tab as f32;
         if self.path.as_ref().map(|(size, _)| *size) != Some((tab, h)) {
-            let mut b = skia::path_builder();
+            let mut b = draw2d::path_builder();
             b.begin(point(PADDING * 3.0, 0.0));
             b.line_to(point(tab - PADDING * 3.0, 0.0));
             b.line_to(point(tab, h));

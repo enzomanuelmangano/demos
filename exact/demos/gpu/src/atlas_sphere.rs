@@ -9,8 +9,8 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture, Phase};
-use reanimated::Spring;
+use gestures::{Event, PanGesture, Phase};
+use motion::Spring;
 
 use crate::{gfx, shaders};
 use shaders::atlas_sphere::{entry, module, Uniforms, CIRCLE, GROUP_0, SMP, U};

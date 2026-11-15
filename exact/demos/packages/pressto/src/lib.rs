@@ -15,7 +15,7 @@
 //! - `progress = withTiming(active ? 1 : 0, { duration: 250, easing: bezier(0.25, 0.1, 0.25, 1) })`
 //!   (`DefaultAnimationConfigs.timing`), or `withSpring(…, { mass: 1, damping: 30,
 //!   stiffness: 200 })` (`DefaultAnimationConfigs.spring`; ζ = 30 / (2√200) ≈ 1.06, which
-//!   Reanimated runs critically damped, as `reanimated::Spring` does). A `useDerivedValue`
+//!   Reanimated runs critically damped, as `motion::Spring` does). A `useDerivedValue`
 //!   starts its new animation at the next frame, from the value the last frame left: a release
 //!   mid-flight eases back from there over a fresh full 250 ms (not a CSS reversal).
 //! - `DefaultPressableConfig`: minScale 0.96, baseScale 1, activeOpacity 0.5;
@@ -38,8 +38,8 @@
 
 #![deny(missing_docs)]
 
-pub use gesture_handler::Phase;
-use reanimated::{Easing, Spring, SpringConfig, Timing};
+pub use gestures::Phase;
+use motion::{Easing, Spring, SpringConfig, Timing};
 
 /// What the app's `PressablesConfig` `globalHandlers.onPress` does: `Haptics.selectionAsync()`,
 /// as the message a surface posts.

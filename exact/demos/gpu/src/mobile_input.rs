@@ -10,10 +10,10 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::Phase;
-use reanimated::{interpolate, Easing, Extrapolation, Spring, Timing, GENTLE};
-use skia::blur::{round_out, GraphiteBlur, GraphitePlan, IRect, Placed, GRAPHITE_FORMAT};
-use skia::{point, Canvas, Cap, Color, Font, Join, Paint, Renderer};
+use gestures::Phase;
+use motion::{interpolate, Easing, Extrapolation, Spring, Timing, GENTLE};
+use draw2d::blur::{round_out, GraphiteBlur, GraphitePlan, IRect, Placed, GRAPHITE_FORMAT};
+use draw2d::{point, Canvas, Cap, Color, Font, Join, Paint, Renderer};
 
 use crate::{gfx, shaders};
 use shaders::mobile_input::{entry, module, Uniforms, BLURRED, COVERAGE, GROUP_0, SMP, U, UI};
@@ -324,8 +324,8 @@ impl MobileInput {
         MobileInput {
             insets: (0.0, 0.0),
             layout: Layout::default(),
-            label: skia::match_ui_font(LABEL_SIZE, 400.0),
-            digit: skia::match_ui_font(DIGIT_SIZE, 400.0),
+            label: draw2d::match_ui_font(LABEL_SIZE, 400.0),
+            digit: draw2d::match_ui_font(DIGIT_SIZE, 400.0),
             icon: Font::new(FA5_SOLID, ICON_SIZE).map(Font::with_ui_layout),
             pin: Vec::new(),
             blur,
@@ -475,17 +475,17 @@ impl MobileInput {
         ) as f32;
         let (center_x, center_y) = (sw / 4.0 - bw / 2.0, sh / 4.0 + 30.0);
         let origin = (center_x + bw / 2.0 + er, center_y - 5.0);
-        let m = skia::Matrix::translate(-origin.0, -origin.1)
-            .then(skia::Matrix::translate(center_x, center_y))
-            .then(skia::Matrix::scale(FACE_SCALE, FACE_SCALE))
-            .then(skia::Matrix::translate(origin.0, origin.1));
+        let m = draw2d::Matrix::translate(-origin.0, -origin.1)
+            .then(draw2d::Matrix::translate(center_x, center_y))
+            .then(draw2d::Matrix::scale(FACE_SCALE, FACE_SCALE))
+            .then(draw2d::Matrix::translate(origin.0, origin.1));
         c.save();
         c.clip_rect(0.0, 0.0, l.w, 2.0 * l.w);
         c.concat(m);
         let white = Paint::fill(Color::WHITE);
         c.draw_circle(er / 2.0, -20.0, er, &white);
         c.draw_circle(bw + er / 2.0, -20.0, er, &white);
-        let mut b = skia::path_builder();
+        let mut b = draw2d::path_builder();
         let p = |i: usize| point(pts[i][0], pts[i][1]);
         b.begin(p(0));
         b.cubic_bezier_to(p(1), p(2), p(3));
@@ -766,7 +766,7 @@ impl Surface for MobileInput {
         );
         queue.write_buffer(&gpu.uniforms, 0, &uniforms.bytes());
         if let Some((_, bind)) = gpu.bind.as_ref() {
-            skia::render::fullscreen_pass(encoder, "mobile input", target, &gpu.compose, bind);
+            draw2d::render::fullscreen_pass(encoder, "mobile input", target, &gpu.compose, bind);
         }
         moving || self.blur.running() || self.keys.iter().any(|p| p.finger().is_some())
     }
@@ -796,9 +796,9 @@ fn build(
     let shader = device.create_shader_module(module());
     let layout = device.create_bind_group_layout(&GROUP_0);
     let compose =
-        skia::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None);
+        draw2d::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None);
     let target =
-        |label| skia::render::sampled_target(device, label, GRAPHITE_FORMAT, pixels.0, pixels.1);
+        |label| draw2d::render::sampled_target(device, label, GRAPHITE_FORMAT, pixels.0, pixels.1);
     Gpu {
         format,
         generation,
@@ -811,10 +811,10 @@ fn build(
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         }),
-        sampler: skia::render::linear_sampler(device),
+        sampler: draw2d::render::linear_sampler(device),
         coverage: target("mobile input ring"),
         ui: target("mobile input ui"),
-        empty: skia::render::sampled_target(device, "mobile input empty", GRAPHITE_FORMAT, 1, 1),
+        empty: draw2d::render::sampled_target(device, "mobile input empty", GRAPHITE_FORMAT, 1, 1),
         bind: None,
         ring_drawn: false,
     }

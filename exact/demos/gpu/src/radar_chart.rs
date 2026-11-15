@@ -10,8 +10,8 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
-use reanimated::Spring;
-use skia::{point, stops, Canvas, Cap, Color, Font, Join, Paint, Path, Renderer, Shader};
+use motion::Spring;
+use draw2d::{point, stops, Canvas, Cap, Color, Font, Join, Paint, Path, Renderer, Shader};
 
 /// Axis labels, clockwise from the top. The data's values come in this order.
 const LABELS: [&str; 5] = ["Sacrifice", "Fork", "Endgame", "Deflection", "Checkmate"];
@@ -33,7 +33,7 @@ const STAGGER_MS: f64 = 24.0;
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
-    let font = skia::match_ui_font(LABEL_SIZE, 600.0).or_else(|| Font::new(OUTFIT, LABEL_SIZE));
+    let font = draw2d::match_ui_font(LABEL_SIZE, 600.0).or_else(|| Font::new(OUTFIT, LABEL_SIZE));
     Box::new(RadarChart { font, progress: [Spring::at(1.0); N], ..Default::default() })
 }
 
@@ -72,14 +72,14 @@ impl RadarChart {
     }
 }
 
-fn vertex(i: usize, c: f32, r: f32, v: f32) -> skia::Point {
+fn vertex(i: usize, c: f32, r: f32, v: f32) -> draw2d::Point {
     let a = i as f32 * std::f32::consts::TAU / N as f32;
     point(c + a.sin() * r * v, c - a.cos() * r * v)
 }
 
 /// A closed polygon through each value along its axis.
 fn polygon(values: impl Iterator<Item = f32>, c: f32, r: f32) -> Path {
-    let mut b = skia::path_builder();
+    let mut b = draw2d::path_builder();
     for (i, v) in values.enumerate() {
         if i == 0 {
             b.begin(vertex(i, c, r, v));
@@ -157,7 +157,7 @@ impl Surface for RadarChart {
             let side_sin = (std::f32::consts::TAU / N as f32).sin();
             let r = ((c - EDGE - LABEL_GAP - widest) / side_sin).min(c * 0.74).max(c * 0.4);
             // Spokes from the centre, then the rings.
-            let mut b = skia::path_builder();
+            let mut b = draw2d::path_builder();
             for i in 0..N {
                 b.begin(point(c, c));
                 b.line_to(vertex(i, c, r, 1.0));
@@ -235,7 +235,7 @@ mod tests {
         assert!(!animating);
         let r = s.grid.as_ref().unwrap().1;
         assert!(r > 200.0 * 0.5 && r <= 200.0 * 0.74, "{r}");
-        let px = |img: &fixture::Pixels, p: skia::Point| img.at((2.0 * p.x) as u32, (2.0 * p.y) as u32);
+        let px = |img: &fixture::Pixels, p: draw2d::Point| img.at((2.0 * p.x) as u32, (2.0 * p.y) as u32);
         // Within 3 levels (the 8-bit P3 canvas's round trip).
         let near = |a: [u8; 4], b: [u8; 3]| (0..3).all(|k| (a[k] as i32 - b[k] as i32).abs() <= 3);
         // The yellow dot at the top spoke's end; the cyan one on spoke 3 at 0.9.

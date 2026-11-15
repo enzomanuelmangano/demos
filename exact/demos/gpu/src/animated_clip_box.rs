@@ -12,9 +12,9 @@
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
 use pressto::{PressEvent, Pressable};
-use reanimated::spring::Config;
-use reanimated::{interpolate_color, Spring};
-use skia::{Canvas, Color, Font, Paint, Renderer};
+use motion::spring::Config;
+use motion::{interpolate_color, Spring};
+use draw2d::{Canvas, Color, Font, Paint, Renderer};
 
 use crate::gfx;
 
@@ -67,8 +67,8 @@ pub fn surface() -> Box<dyn Surface> {
     Box::new(AnimatedClipBox {
         card: 0,
         icon: Font::new(ANTDESIGN, ICON_SIZE).map(Font::with_ui_layout),
-        description: skia::match_ui_font(DESCRIPTION_SIZE, 400.0),
-        action: skia::match_ui_font(ACTION_SIZE, 700.0),
+        description: draw2d::match_ui_font(DESCRIPTION_SIZE, 400.0),
+        action: draw2d::match_ui_font(ACTION_SIZE, 700.0),
         r: Spring::at(INITIAL_R),
         press: Pressable::new(),
         action_press: Pressable::new(),
@@ -308,7 +308,7 @@ impl Surface for AnimatedClipBox {
         };
         let phase = gfx::phase(phase);
         let w = self.layout.as_ref().map_or(0.0, |l| l.0 as f64);
-        if phase == gesture_handler::Phase::Down {
+        if phase == gestures::Phase::Down {
             // The action is on top: it takes touches in its frame.
             if self.in_action(x, y) {
                 self.action_press.pointer_down(id, true);
@@ -464,8 +464,8 @@ mod tests {
             Font::new(ANTDESIGN, ICON_SIZE)
                 .map(Font::with_ui_layout)
                 .unwrap(),
-            skia::match_ui_font(DESCRIPTION_SIZE, 400.0).unwrap(),
-            skia::match_ui_font(ACTION_SIZE, 700.0).unwrap(),
+            draw2d::match_ui_font(DESCRIPTION_SIZE, 400.0).unwrap(),
+            draw2d::match_ui_font(ACTION_SIZE, 700.0).unwrap(),
         )
     }
 

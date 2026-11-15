@@ -12,9 +12,9 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture};
-use reanimated::duration_config;
-use skia::{point, Canvas, Color, Font, Paint, Renderer, Shader};
+use gestures::{Event, PanGesture};
+use motion::duration_config;
+use draw2d::{point, Canvas, Color, Font, Paint, Renderer, Shader};
 
 use crate::gfx;
 
@@ -68,7 +68,7 @@ pub fn surface() -> Box<dyn Surface> {
         haptic_page: 0,
         haptic_at: f64::NEG_INFINITY,
         messages: Vec::new(),
-        header_font: skia::match_ui_font(20.0, 600.0),
+        header_font: draw2d::match_ui_font(20.0, 600.0),
         number_font: Font::new(SF_ROUNDED_BOLD, 90.0).map(Font::with_ui_layout),
         numbers,
         canvas: Canvas::default(),

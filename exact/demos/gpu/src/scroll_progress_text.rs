@@ -10,7 +10,7 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
-use skia::{Canvas, Color, Font, Paint, Renderer};
+use draw2d::{Canvas, Color, Font, Paint, Renderer};
 
 use crate::gfx;
 
@@ -88,7 +88,7 @@ fn layout<'a>(fonts: &(Font, Font), width: f32, s: f32) -> (Vec<(f32, Vec<&'a st
 }
 
 fn fonts() -> Option<(Font, Font)> {
-    Some((skia::match_ui_font(TITLE_SIZE, 700.0)?, skia::match_ui_font(DESCRIPTION_SIZE, 400.0)?))
+    Some((draw2d::match_ui_font(TITLE_SIZE, 700.0)?, draw2d::match_ui_font(DESCRIPTION_SIZE, 400.0)?))
 }
 
 impl Surface for ScrollProgressText {

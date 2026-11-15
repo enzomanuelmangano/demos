@@ -14,10 +14,10 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture};
+use gestures::{Event, PanGesture};
 use pressto::{PressEvent, Pressable};
-use reanimated::{interpolate_clamp, Easing, Spring, Timing, GENTLE};
-use skia::{Canvas, Color, Font, Images, Matrix, Paint, Renderer};
+use motion::{interpolate_clamp, Easing, Spring, Timing, GENTLE};
+use draw2d::{Canvas, Color, Font, Images, Matrix, Paint, Renderer};
 
 use crate::gfx;
 
@@ -82,9 +82,9 @@ fn modal() -> FloatingModal {
         touched: false,
         posted: Vec::new(),
         plus: Font::new(ANTDESIGN, 28.0).map(Font::with_ui_layout),
-        title: skia::match_ui_font(20.0, 700.0),
-        subtitle: skia::match_ui_font(15.0, 400.0),
-        label: skia::match_ui_font(17.0, 600.0),
+        title: draw2d::match_ui_font(20.0, 700.0),
+        subtitle: draw2d::match_ui_font(15.0, 400.0),
+        label: draw2d::match_ui_font(17.0, 600.0),
         canvas: Canvas::default(),
         group_canvas: Canvas::default(),
         layer_canvas: Canvas::default(),
@@ -316,7 +316,7 @@ impl FloatingModal {
     fn hits(&self, px: f64, py: f64) -> (bool, bool, bool) {
         let l = self.layout(self.progress.value);
         let m = self.modal_matrix(&l).invert();
-        let q = m.apply(skia::Point::new(px as f32, py as f32));
+        let q = m.apply(draw2d::Point::new(px as f32, py as f32));
         let (lx, ly) = (q.x as f64, q.y as f64);
         let in_modal = (0.0..=l.frame.2).contains(&lx) && (0.0..=l.frame.3).contains(&ly);
         let pq = self.plus_matrix().invert().apply(q);
@@ -374,7 +374,7 @@ impl Surface for FloatingModal {
         }
         let (on_modal, on_plus, on_done) = self.hits(x as f64, y as f64);
         let phase = gfx::phase(phase);
-        if phase == gesture_handler::Phase::Down {
+        if phase == gestures::Phase::Down {
             if !on_modal {
                 // The scrim's touch, while the sheet is open (or opening).
                 if self.opened {
@@ -414,7 +414,7 @@ impl Surface for FloatingModal {
             Event::Fail => self.finalize(y as f64 - self.down_y, 0.0),
             _ => {}
         }
-        if phase != gesture_handler::Phase::Down {
+        if phase != gestures::Phase::Down {
             // A lift inside the button posts `press` and toggles the sheet.
             if let Some(PressEvent::Press(press)) = self.plus_press.pointer(id, phase, on_plus) {
                 if press.global {
@@ -663,7 +663,7 @@ impl Surface for FloatingModal {
 /// The screen bounds (points) of a `w` × `h` box through `m`.
 fn bounds(m: Matrix, w: f32, h: f32) -> (f32, f32, f32, f32) {
     let pts =
-        [(0.0, 0.0), (w, 0.0), (0.0, h), (w, h)].map(|(x, y)| m.apply(skia::Point::new(x, y)));
+        [(0.0, 0.0), (w, 0.0), (0.0, h), (w, h)].map(|(x, y)| m.apply(draw2d::Point::new(x, y)));
     let (mut x0, mut y0, mut x1, mut y1) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
     for p in pts {
         x0 = x0.min(p.x);

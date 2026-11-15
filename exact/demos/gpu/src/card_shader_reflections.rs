@@ -17,9 +17,9 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, SensorKind, Surface, SurfaceError, Value};
-use gesture_handler::Phase;
-use reanimated::{interpolate_clamp, Spring, SpringConfig};
-use skia::{add_continuous_rrect, add_rect, add_rrect, continuous_rrect_path, Canvas, Color, Font, Matrix4, Paint, Renderer};
+use gestures::Phase;
+use motion::{interpolate_clamp, Spring, SpringConfig};
+use draw2d::{add_continuous_rrect, add_rect, add_rrect, continuous_rrect_path, Canvas, Color, Font, Matrix4, Paint, Renderer};
 
 use crate::ui_scroll::{Snap, UiScroll, FAST};
 use crate::{gfx, shaders};
@@ -265,7 +265,7 @@ struct Gpu {
 
 impl CardShaderReflections {
     /// Card `k`'s plane in points to the screen, at the current scroll.
-    fn matrix(&self, k: usize, pose: &Pose) -> skia::Matrix3 {
+    fn matrix(&self, k: usize, pose: &Pose) -> draw2d::Matrix3 {
         let l = &self.layout;
         let tilt = self.held(pose);
         let [vx, vy, vw, vh] = l.view;
@@ -282,7 +282,7 @@ impl CardShaderReflections {
     }
 
     /// Whether card `k`'s plane region (its shadow's, the widest) reaches the screen.
-    fn visible(&self, m: &skia::Matrix3) -> bool {
+    fn visible(&self, m: &draw2d::Matrix3) -> bool {
         let [x, y, w, h] = self.layout.shadow();
         let (mut l, mut t, mut r, mut b) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
         for (px, py) in [(x, y), (x + w, y), (x, y + h), (x + w, y + h)] {
@@ -351,7 +351,7 @@ impl CardShaderReflections {
         let s = l.s;
         let (_, _, _, lefts) = l.atlas();
         if self.font.is_none() {
-            self.font = Some(skia::match_ui_font(TITLE_SIZE, TITLE_WEIGHT));
+            self.font = Some(draw2d::match_ui_font(TITLE_SIZE, TITLE_WEIGHT));
         }
         let c = &mut self.atlas;
         c.begin(s);
@@ -410,7 +410,7 @@ fn draw_chip(c: &mut Canvas, l: &Layout) {
             let (bw, bh) = (l.gx(left + width) - bl, l.gy(top + row_h) - bt);
             c.draw_rect(bl, bt, bw, bh, &fill);
             // A translucent ring inside the contact.
-            c.draw_path(&skia::border_ring_path(bl, bt, bw, bh, 0.0, CONTACT_BORDER), &border);
+            c.draw_path(&draw2d::border_ring_path(bl, bt, bw, bh, 0.0, CONTACT_BORDER), &border);
         }
     }
     c.restore();
@@ -580,7 +580,7 @@ impl Surface for CardShaderReflections {
             u.frame[3 * k] = [axes[0][0], axes[0][1], axes[0][2], CARDS[k].0];
             u.frame[3 * k + 1] = [axes[1][0], axes[1][1], axes[1][2], 0.0];
             u.frame[3 * k + 2] = [axes[2][0], axes[2][1], axes[2][2], 0.0];
-            let rows = m.invert().unwrap_or(skia::Matrix3([0.0; 9])).rows();
+            let rows = m.invert().unwrap_or(draw2d::Matrix3([0.0; 9])).rows();
             u.inv[3 * k..3 * k + 3].copy_from_slice(&rows);
             u.look[k] = [
                 if visible { 1.0 } else { 0.0 },
@@ -649,13 +649,13 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32, la
     let tile_view = tile.create_view(&Default::default());
 
     let ((aw, ah), ..) = layout.atlas();
-    let atlas = skia::render::sampled_target(device, "card shader reflections atlas", LAYER_FORMAT, aw, ah);
+    let atlas = draw2d::render::sampled_target(device, "card shader reflections atlas", LAYER_FORMAT, aw, ah);
 
     let shader = device.create_shader_module(module());
     let group = device.create_bind_group_layout(&GROUP_0);
-    let compose = skia::render::fullscreen_pipeline(device, &shader, &group, entry::COMPOSE, format, Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING));
+    let compose = draw2d::render::fullscreen_pipeline(device, &shader, &group, entry::COMPOSE, format, Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING));
     let uniforms = device.create_buffer(&wgpu::BufferDescriptor { label: Some("card shader reflections"), size: Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
-    let sampler = skia::render::linear_sampler(device);
+    let sampler = draw2d::render::linear_sampler(device);
     let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("card shader reflections"),
         layout: &group,

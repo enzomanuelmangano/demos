@@ -7,8 +7,8 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, PointerPhase, Surface, SurfaceError, Value};
-use reanimated::{interpolate, Extrapolation, Spring, SpringConfig, GENTLE};
-use skia::{Canvas, Color, Paint, Renderer};
+use motion::{interpolate, Extrapolation, Spring, SpringConfig, GENTLE};
+use draw2d::{Canvas, Color, Paint, Renderer};
 
 const CIRCLES: usize = 50;
 const SIZE: f64 = 100.0;
@@ -103,11 +103,11 @@ impl Surface for GeometryButton {
         let p = self.progress.value;
         let stroke_width = interpolate(p, &[0.0, 0.5, 1.0], &[3.0, 0.6, 0.2], Extrapolation::Extend).max(0.0);
         let radius = (SIZE / 2.0) as f32;
-        let mut path = skia::path_builder();
+        let mut path = draw2d::path_builder();
         for i in 0..CIRCLES {
             let rotation = i as f32 * std::f32::consts::TAU / CIRCLES as f32;
             let (dx, dy) = (radius * rotation.cos() * p as f32, radius * rotation.sin() * p as f32);
-            skia::add_rrect(&mut path, -radius + dx, -radius + dy, SIZE as f32, SIZE as f32, radius);
+            draw2d::add_rrect(&mut path, -radius + dx, -radius + dy, SIZE as f32, SIZE as f32, radius);
         }
         let path = path.build();
         let (w, h) = (frame.width, frame.height);

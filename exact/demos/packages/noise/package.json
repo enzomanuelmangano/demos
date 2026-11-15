@@ -1,0 +1,6 @@
+{
+  "name": "noise",
+  "version": "4.0.3",
+  "private": true,
+  "description": "A Rust crate of 2D simplex noise for GPU surfaces."
+}

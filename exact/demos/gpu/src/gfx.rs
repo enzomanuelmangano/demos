@@ -95,12 +95,12 @@ pub fn srgb_flag(format: wgpu::TextureFormat) -> f32 {
 }
 
 /// The host's pointer phase as gesture-handler names it.
-pub fn phase(phase: exact_gpu::PointerPhase) -> gesture_handler::Phase {
+pub fn phase(phase: exact_gpu::PointerPhase) -> gestures::Phase {
     match phase {
-        exact_gpu::PointerPhase::Down => gesture_handler::Phase::Down,
-        exact_gpu::PointerPhase::Move => gesture_handler::Phase::Move,
-        exact_gpu::PointerPhase::Up => gesture_handler::Phase::Up,
-        exact_gpu::PointerPhase::Cancel => gesture_handler::Phase::Cancel,
+        exact_gpu::PointerPhase::Down => gestures::Phase::Down,
+        exact_gpu::PointerPhase::Move => gestures::Phase::Move,
+        exact_gpu::PointerPhase::Up => gestures::Phase::Up,
+        exact_gpu::PointerPhase::Cancel => gestures::Phase::Cancel,
     }
 }
 
@@ -124,13 +124,13 @@ impl Random {
 }
 
 /// Baseline of a one-line text box: an ascent below its top.
-pub fn baseline(font: &skia::Font, top: f32) -> f32 {
+pub fn baseline(font: &draw2d::Font, top: f32) -> f32 {
     top - font.metrics().ascent
 }
 
 
 /// Word wrapping with letter spacing: breaks after spaces and hyphens; a line holds what fits in `width`.
-pub(crate) fn wrap_spaced(font: &skia::Font, text: &str, spacing: f32, width: f32, out: &mut Vec<(usize, usize)>) {
+pub(crate) fn wrap_spaced(font: &draw2d::Font, text: &str, spacing: f32, width: f32, out: &mut Vec<(usize, usize)>) {
     out.clear();
     let mut breaks: Vec<(usize, usize)> = Vec::new();
     let bytes: Vec<(usize, char)> = text.char_indices().collect();
@@ -193,7 +193,7 @@ pub(crate) fn wrap_spaced(font: &skia::Font, text: &str, spacing: f32, width: f3
 
 
 /// Word wrapping at `width`: breaks after spaces and hyphens; returns the lines as byte ranges.
-pub fn wrap(font: &skia::Font, text: &str, width: f32) -> Vec<(usize, usize)> {
+pub fn wrap(font: &draw2d::Font, text: &str, width: f32) -> Vec<(usize, usize)> {
     let mut out = Vec::new();
     let chars: Vec<(usize, char)> = text.char_indices().collect();
     let n = chars.len();
@@ -255,15 +255,15 @@ pub fn wrap(font: &skia::Font, text: &str, width: f32) -> Vec<(usize, usize)> {
 }
 
 /// The height of one line of `font`: ascent plus descent. The font's line gap is left out.
-pub fn line_height(font: &skia::Font) -> f32 {
+pub fn line_height(font: &draw2d::Font) -> f32 {
     font.ui_line_height()
 }
 
 /// Retargets `v` to `to` with a spring of mass 4, keeping its velocity unless that points away from `to`.
-pub fn spring_to(spring: &mut reanimated::Spring, to: f64, duration_ms: f64, damping_ratio: f64) {
+pub fn spring_to(spring: &mut motion::Spring, to: f64, duration_ms: f64, damping_ratio: f64) {
     let (x, v) = (spring.value, spring.velocity);
     let v = if !spring.running || (to > x && v < 0.0) || (to < x && v > 0.0) { 0.0 } else { v };
-    spring.to(to, v, reanimated::duration_config(x - to, v, duration_ms, damping_ratio, 4.0));
+    spring.to(to, v, motion::duration_config(x - to, v, duration_ms, damping_ratio, 4.0));
 }
 
 /// Writes a fixture image over an opaque background to `EXACT_GPU_OUT/<name>.ppm`.
@@ -345,11 +345,11 @@ impl P3Layer {
     #[allow(clippy::too_many_arguments)]
     pub fn draw(
         &mut self,
-        renderer: &mut skia::Renderer,
+        renderer: &mut draw2d::Renderer,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         encoder: &mut wgpu::CommandEncoder,
-        canvas: &skia::Canvas,
+        canvas: &draw2d::Canvas,
         target: &wgpu::TextureView,
         format: wgpu::TextureFormat,
         width: u32,

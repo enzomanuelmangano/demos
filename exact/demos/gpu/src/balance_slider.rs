@@ -13,9 +13,9 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture};
-use reanimated::{Spring, GENTLE};
-use skia::{Canvas, Color, Font, Paint, Renderer};
+use gestures::{Event, PanGesture};
+use motion::{Spring, GENTLE};
+use draw2d::{Canvas, Color, Font, Paint, Renderer};
 
 use crate::gfx;
 

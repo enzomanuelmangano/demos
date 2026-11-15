@@ -8,9 +8,9 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
-use reanimated::{interpolate, Extrapolation, Spring, SpringConfig};
-use skia::blur::{GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
-use skia::{point, stops, Canvas, Color, Font, Matrix4, Paint, Renderer, Shader};
+use motion::{interpolate, Extrapolation, Spring, SpringConfig};
+use draw2d::blur::{GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
+use draw2d::{point, stops, Canvas, Color, Font, Matrix4, Paint, Renderer, Shader};
 
 use crate::{gfx, shaders};
 use shaders::airbnb_flip::{entry as card_entry, module as card_module, Uniforms, BACK_TEX, FRONT_TEX, GROUP_0 as CARD_GROUP, SMP as CARD_SMP, U as CARD_U};
@@ -83,7 +83,7 @@ impl Fonts {
     fn new() -> Option<Fonts> {
         let heavy = |s: f32| Font::new(HEAVY, s).map(Font::with_ui_layout);
         let bold = |s: f32| Font::new(BOLD, s).map(Font::with_ui_layout);
-        Some(Fonts { heavy32: heavy(32.0)?, heavy22: heavy(22.0)?, heavy24: heavy(24.0)?, bold17: bold(17.0)?, bold15: bold(15.0)?, bold13: bold(13.0)?, check: skia::match_ui_font(11.2, 700.0) })
+        Some(Fonts { heavy32: heavy(32.0)?, heavy22: heavy(22.0)?, heavy24: heavy(24.0)?, bold17: bold(17.0)?, bold15: bold(15.0)?, bold13: bold(13.0)?, check: draw2d::match_ui_font(11.2, 700.0) })
     }
 }
 
@@ -144,7 +144,7 @@ fn avatar_layout(f: &Fonts, abs: (f32, f32), s: f32) -> AvatarLayout {
 fn avatar_body(c: &mut Canvas, x: f32, y: f32) {
     let g = Shader::Linear { start: point(x, y), end: point(x, y + AVATAR), stops: stops(&[Color::hex(0x4A5568), Color::hex(0x2D3748)]) };
     c.draw_rrect(x, y, AVATAR, AVATAR, AVATAR / 2.0, &Paint::shader(g));
-    c.draw_path(&skia::border_ring_path(x, y, AVATAR, AVATAR, AVATAR / 2.0, 3.0), &Paint::fill(Color::WHITE.alpha(0.3)));
+    c.draw_path(&draw2d::border_ring_path(x, y, AVATAR, AVATAR, AVATAR / 2.0, 3.0), &Paint::fill(Color::WHITE.alpha(0.3)));
 }
 
 fn badge_body(c: &mut Canvas, x: f32, y: f32, l: &AvatarLayout) {
@@ -153,7 +153,7 @@ fn badge_body(c: &mut Canvas, x: f32, y: f32, l: &AvatarLayout) {
     let g = Shader::Linear { start: point(bx, by), end: point(bx, by + bh), stops: stops(&[Color::hex(0xFF6B6B), Color::hex(0xFF5252)]) };
     let r = AVATAR * 0.16;
     c.draw_rrect(bx, by, bw, bh, r, &Paint::shader(g));
-    c.draw_path(&skia::border_ring_path(bx, by, bw, bh, r, 3.0), &Paint::fill(Color::WHITE));
+    c.draw_path(&draw2d::border_ring_path(bx, by, bw, bh, r, 3.0), &Paint::fill(Color::WHITE));
 }
 
 /// A canvas begun for a face texture (the face at (FACE_MARGIN, FACE_MARGIN)), clipped to the
@@ -172,8 +172,8 @@ fn face_canvas(s: f32, w: f32, h: f32, clip: bool) -> Canvas {
 fn box_shadow(c: &mut Canvas, w: f32, h: f32) {
     c.save();
     c.clip_with(|b| {
-        skia::add_rect(b, -FACE_MARGIN, -FACE_MARGIN, w + 2.0 * FACE_MARGIN, h + 2.0 * FACE_MARGIN);
-        skia::add_rrect_hole(b, 0.0, 0.0, w, h, RADIUS);
+        draw2d::add_rect(b, -FACE_MARGIN, -FACE_MARGIN, w + 2.0 * FACE_MARGIN, h + 2.0 * FACE_MARGIN);
+        draw2d::add_rrect_hole(b, 0.0, 0.0, w, h, RADIUS);
     });
     c.draw_rrect_shadow(0.0, 4.0, w, h, RADIUS, 6.0, Color::BLACK.alpha(0.1));
     c.restore();
@@ -298,12 +298,12 @@ fn back_layers(f: &Fonts, w: f32, h: f32, hu: f32, s: f32) -> Vec<Layer> {
 
 /// Draws `layers` in order into a new face texture of `px` pixels (shadows blurred by Graphite).
 fn build_face(device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut wgpu::CommandEncoder, layers: &[Layer], px: (u32, u32), s: f32) -> wgpu::TextureView {
-    let target = |label| skia::render::sampled_target(device, label, GRAPHITE_FORMAT, px.0, px.1);
+    let target = |label| draw2d::render::sampled_target(device, label, GRAPHITE_FORMAT, px.0, px.1);
     let accs = [target("airbnb face a"), target("airbnb face b")];
     let shader = device.create_shader_module(layer_shader::module());
     let layout = device.create_bind_group_layout(&layer_shader::GROUP_0);
-    let pipeline = skia::render::fullscreen_pipeline(device, &shader, &layout, layer_shader::entry::OVER, GRAPHITE_FORMAT, None);
-    let sampler = skia::render::linear_sampler(device);
+    let pipeline = draw2d::render::fullscreen_pipeline(device, &shader, &layout, layer_shader::entry::OVER, GRAPHITE_FORMAT, None);
+    let sampler = draw2d::render::linear_sampler(device);
     {
         let _clear = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("airbnb face clear"),
@@ -344,7 +344,7 @@ fn build_face(device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut wgpu::Co
                 wgpu::BindGroupEntry { binding: layer_shader::SMP.binding, resource: wgpu::BindingResource::Sampler(&sampler) },
             ],
         });
-        skia::render::fullscreen_pass(encoder, "airbnb face over", &accs[1 - cur], &pipeline, &bind);
+        draw2d::render::fullscreen_pass(encoder, "airbnb face over", &accs[1 - cur], &pipeline, &bind);
         cur = 1 - cur;
     }
     accs[cur].clone()
@@ -361,7 +361,7 @@ fn low_mapping(plan: &GraphitePlan, origin: [i32; 2], size: [u32; 2]) -> [f32; 4
 
 /// The face's plane (points, its box's origin) → the canvas's face-box frame, for rotateY
 /// `deg` and `scale`, about the centre; and whether it faces the viewer.
-pub fn face_matrix(w: f32, h: f32, deg: f64, scale: f64) -> (skia::Matrix3, bool) {
+pub fn face_matrix(w: f32, h: f32, deg: f64, scale: f64) -> (draw2d::Matrix3, bool) {
     let rad = (deg as f32).to_radians();
     let m = Matrix4::perspective(PERSPECTIVE).multiply(Matrix4::rotate_y(rad)).multiply(Matrix4::scale(scale as f32, scale as f32, 1.0)).pivot(w / 2.0, h / 2.0);
     (m.to_matrix3(), rad.cos() > 1e-6)
@@ -436,9 +436,9 @@ impl Surface for Card {
             self.gpu = Some(Gpu {
                 format,
                 generation: frame.shader_generation,
-                compose: skia::render::fullscreen_pipeline(device, &shader, &layout, card_entry::COMPOSE, format, None),
+                compose: draw2d::render::fullscreen_pipeline(device, &shader, &layout, card_entry::COMPOSE, format, None),
                 layout,
-                sampler: skia::render::linear_sampler(device),
+                sampler: draw2d::render::linear_sampler(device),
                 uniforms: device.create_buffer(&wgpu::BufferDescriptor { label: Some("airbnb card"), size: Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false }),
                 bind: None,
             });
@@ -485,7 +485,7 @@ impl Surface for Card {
                 ],
             }));
         }
-        skia::render::fullscreen_pass(encoder, "airbnb card", target, &gpu.compose, gpu.bind.as_ref().unwrap());
+        draw2d::render::fullscreen_pass(encoder, "airbnb card", target, &gpu.compose, gpu.bind.as_ref().unwrap());
         moving
     }
 }

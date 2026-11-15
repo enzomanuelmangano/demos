@@ -1,5 +1,5 @@
 // Spiral (src/animations/spiral): the Group's layer (glowPaint) composed onto the canvas.
-// `layer` holds the circles as packages/skia drew them (one path of addCircle conics, Graphite's
+// `layer` holds the circles as packages/draw2d drew them (one path of addCircle conics, Graphite's
 // 4× MSAA, the sweep gradient interpolated in Display P3), premultiplied ENCODED DISPLAY P3, as
 // RN Skia's layer in the surface's colour space; it reaches `reach` pixels past the canvas on
 // every side, as Skia sizes a layer for its filter's input. `blurred` is Graphite's blur of it
@@ -36,7 +36,7 @@ fn enc(c0: vec3<f32>) -> vec3<f32> {
     let c = clamp(c0, vec3<f32>(0.0), vec3<f32>(1.0));
     return select(1.055 * pow(c, vec3<f32>(1.0 / 2.4)) - 0.055, c * 12.92, c <= vec3<f32>(0.0031308));
 }
-// Encoded Display P3 to encoded sRGB (clipped to the sRGB gamut), as packages/skia's.
+// Encoded Display P3 to encoded sRGB (clipped to the sRGB gamut), as packages/draw2d's.
 fn p3_to_srgb(c: vec3<f32>) -> vec3<f32> {
     let l = lin(c);
     return enc(vec3<f32>(

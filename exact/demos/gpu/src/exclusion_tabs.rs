@@ -9,9 +9,9 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, TapGesture};
-use reanimated::{Easing, Timing};
-use skia::{Color, Font, Paint};
+use gestures::{Event, TapGesture};
+use motion::{Easing, Timing};
+use draw2d::{Color, Font, Paint};
 
 use crate::gfx;
 use crate::gooey::{ColorTiming, Goo, Gooey};

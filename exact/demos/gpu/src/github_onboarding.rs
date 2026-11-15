@@ -10,9 +10,9 @@ use std::f64::consts::PI;
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::Phase;
-use reanimated::{interpolate, interpolate_clamp, interpolate_color, Extrapolation};
-use skia::{fit_cover, Canvas, Color, Font, Images, Matrix, Paint, Rect, Renderer};
+use gestures::Phase;
+use motion::{interpolate, interpolate_clamp, interpolate_color, Extrapolation};
+use draw2d::{fit_cover, Canvas, Color, Font, Images, Matrix, Paint, Rect, Renderer};
 
 use crate::gfx;
 use crate::ui_scroll::{Snap, UiScroll, NORMAL};
@@ -67,12 +67,12 @@ const DOTS_BOTTOM: f64 = 100.0;
 const HIT_SLOP: f64 = 5.0;
 
 /// A photo's pixels (opaque RGBA), its rows restored from their deltas.
-fn photo(index: usize) -> skia::Image {
+fn photo(index: usize) -> draw2d::Image {
     let (bytes, w, h) = PHOTOS[index];
     let mut rgb = miniz_oxide::inflate::decompress_to_vec_zlib(bytes).unwrap_or_default();
     let row = w as usize * 3;
     if rgb.len() != row * h as usize {
-        return skia::Image {
+        return draw2d::Image {
             width: 1,
             height: 1,
             pixels: vec![255, 255, 255, 255],
@@ -88,7 +88,7 @@ fn photo(index: usize) -> skia::Image {
     for (d, s) in pixels.chunks_exact_mut(4).zip(rgb.chunks_exact(3)) {
         d[..3].copy_from_slice(s);
     }
-    skia::Image {
+    draw2d::Image {
         width: w,
         height: h,
         pixels,
@@ -247,7 +247,7 @@ pub fn surface() -> Box<dyn Surface> {
         dots: std::array::from_fn(|_| pressto::Pressable::new()),
         held: None,
         size: (0.0, 0.0),
-        font: skia::match_ui_font(TITLE_SIZE, 700.0),
+        font: draw2d::match_ui_font(TITLE_SIZE, 700.0),
         titles: Vec::new(),
         canvas: Canvas::default(),
         renderer: Renderer::default(),
@@ -529,8 +529,8 @@ impl Surface for Onboarding {
             };
         }
         if self.images.is_none() {
-            let decoded: Vec<skia::Image> = (0..4).map(photo).collect();
-            let refs: Vec<&skia::Image> = decoded.iter().collect();
+            let decoded: Vec<draw2d::Image> = (0..4).map(photo).collect();
+            let refs: Vec<&draw2d::Image> = decoded.iter().collect();
             let images = Images::upload(device, queue, &refs);
             self.renderer.set_images(&images);
             self.images = Some(images);

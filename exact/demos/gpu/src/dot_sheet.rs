@@ -4,7 +4,7 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
-use skia::{point, stops, Canvas, Color, Paint, Renderer, Shader};
+use draw2d::{point, stops, Canvas, Color, Paint, Renderer, Shader};
 
 use crate::{gfx, shaders};
 use shaders::dot_sheet::{entry, module, Uniforms, GLOW, GROUP_0, SMP, U};
@@ -23,7 +23,7 @@ pub fn surface() -> Box<dyn Surface> {
 struct DotSheet {
     layer: Canvas,
     renderer: Renderer,
-    blur: skia::Blur,
+    blur: draw2d::Blur,
     gpu: Option<Gpu>,
 }
 
@@ -54,7 +54,7 @@ impl Surface for DotSheet {
         if self.gpu.as_ref().map(|g| (g.format, g.generation, g.size)) != Some((format, frame.shader_generation, (pw, ph))) {
             // Once per size: the sweep fill into a layer, blurred.
             let (w, h) = (frame.width, frame.height);
-            let source = skia::render::sampled_target(device, "dot sheet fill", LAYER, pw, ph);
+            let source = draw2d::render::sampled_target(device, "dot sheet fill", LAYER, pw, ph);
             let colors: Vec<Color> = GRADIENT_COLORS.iter().map(|c| Color::parse(c)).collect();
             self.layer.begin(frame.scale);
             self.layer.draw_rect(0.0, 0.0, w, h, &Paint::shader(Shader::Sweep { center: point(w / 2.0, h / 2.0), stops: stops(&colors) }));
@@ -62,10 +62,10 @@ impl Surface for DotSheet {
             let glow = self.blur.run(device, queue, encoder, &source, LAYER, pw, ph, BLUR * frame.scale);
             let shader = device.create_shader_module(module());
             let layout = device.create_bind_group_layout(&GROUP_0);
-            let compose = skia::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None);
+            let compose = draw2d::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None);
             let uniforms = device.create_buffer(&wgpu::BufferDescriptor { label: Some("dot sheet"), size: Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
             queue.write_buffer(&uniforms, 0, &Uniforms { flags: [gfx::srgb_flag(format), 0.0, 0.0, 0.0] }.bytes());
-            let sampler = skia::render::linear_sampler(device);
+            let sampler = draw2d::render::linear_sampler(device);
             let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("dot sheet"),
                 layout: &layout,
@@ -78,7 +78,7 @@ impl Surface for DotSheet {
             self.gpu = Some(Gpu { format, generation: frame.shader_generation, size: (pw, ph), compose, _uniforms: uniforms, bind });
         }
         let gpu = self.gpu.as_ref().unwrap();
-        skia::render::fullscreen_pass(encoder, "dot sheet", target, &gpu.compose, &gpu.bind);
+        draw2d::render::fullscreen_pass(encoder, "dot sheet", target, &gpu.compose, &gpu.bind);
         false
     }
 }

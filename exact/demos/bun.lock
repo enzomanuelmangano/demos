@@ -9,32 +9,32 @@
         "pressto": "workspace:*",
       },
     },
-    "packages/gesture-handler": {
-      "name": "gesture-handler",
+    "packages/gestures": {
+      "name": "gestures",
       "version": "2.28.0",
     },
     "packages/pressto": {
       "name": "pressto",
       "version": "0.7.0",
     },
-    "packages/reanimated": {
-      "name": "reanimated",
+    "packages/motion": {
+      "name": "motion",
       "version": "4.7.1",
     },
-    "packages/simplex-noise": {
-      "name": "simplex-noise",
+    "packages/noise": {
+      "name": "noise",
       "version": "4.0.3",
     },
   },
   "packages": {
     "@exact/motion": ["@exact/motion@file:../../../../../../.exact/exact2/730abad161c2a5f6cd1f34ea164cda8d9ad6b358/packages/motion", {}],
 
-    "gesture-handler": ["gesture-handler@workspace:packages/gesture-handler"],
+    "gestures": ["gestures@workspace:packages/gestures"],
 
     "pressto": ["pressto@workspace:packages/pressto"],
 
-    "reanimated": ["reanimated@workspace:packages/reanimated"],
+    "motion": ["motion@workspace:packages/motion"],
 
-    "simplex-noise": ["simplex-noise@workspace:packages/simplex-noise"],
+    "noise": ["noise@workspace:packages/noise"],
   }
 }

@@ -8,9 +8,9 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use reanimated::{interpolate, interpolate_color, Extrapolation};
-use skia::blur::GRAPHITE_FORMAT;
-use skia::{point, stops, Canvas, Cap, Color, Join, Paint, Renderer, Shader};
+use motion::{interpolate, interpolate_color, Extrapolation};
+use draw2d::blur::GRAPHITE_FORMAT;
+use draw2d::{point, stops, Canvas, Cap, Color, Join, Paint, Renderer, Shader};
 
 use crate::ui_scroll::{Snap, UiScroll, NORMAL};
 use crate::{gfx, shaders};
@@ -217,12 +217,12 @@ impl PrequelSlider {
         let r = DONUT / 2.0 - DONUT_STROKE / 2.0;
         // The track: white at 0.25.
         let ring = Paint::stroke(Color([1.0, 1.0, 1.0, 0.25]), DONUT_STROKE).caps(Cap::Round, Join::Miter);
-        c.draw_with(&ring, |b| skia::add_circle(b, dx, dy, r));
+        c.draw_with(&ring, |b| draw2d::add_circle(b, dx, dy, r));
         let end = self.progress.clamp(0.0, 1.0) as f32;
         if end > 0.0 {
             let arc = Paint::stroke(Color::rgb8(rgb[0], rgb[1], rgb[2]), DONUT_STROKE).caps(Cap::Round, Join::Miter);
             // The arc starts at 12 o'clock and runs clockwise.
-            c.draw_with(&arc, |b| skia::add_arc(b, dx - r, dy - r, 2.0 * r, 2.0 * r, -90.0, 360.0 * end));
+            c.draw_with(&arc, |b| draw2d::add_arc(b, dx - r, dy - r, 2.0 * r, 2.0 * r, -90.0, 360.0 * end));
         }
         // The slider's lines, in the lines canvas (clipped to it).
         let top = at.lines[1];
@@ -353,7 +353,7 @@ impl Surface for PrequelSlider {
             cover: [(-src_x * s) as f32, (-src_y * (eh / src_h)) as f32, 0.0, 0.0],
         };
         queue.write_buffer(&gpu.uniforms, 0, &u.bytes());
-        skia::render::fullscreen_pass(encoder, "prequel slider", target, &gpu.pipeline, &gpu.bind);
+        draw2d::render::fullscreen_pass(encoder, "prequel slider", target, &gpu.pipeline, &gpu.bind);
         moving || self.scroll.moving()
     }
 }
@@ -361,11 +361,11 @@ impl Surface for PrequelSlider {
 fn build(device: &wgpu::Device, queue: &wgpu::Queue, format: wgpu::TextureFormat, generation: u32, pixels: (u32, u32)) -> Gpu {
     let shader = device.create_shader_module(module());
     let layout = device.create_bind_group_layout(&GROUP_0);
-    let pipeline = skia::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None);
-    let layers = [skia::render::sampled_target(device, "prequel ui", GRAPHITE_FORMAT, pixels.0, pixels.1), skia::render::sampled_target(device, "prequel mask", GRAPHITE_FORMAT, pixels.0, pixels.1)];
+    let pipeline = draw2d::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None);
+    let layers = [draw2d::render::sampled_target(device, "prequel ui", GRAPHITE_FORMAT, pixels.0, pixels.1), draw2d::render::sampled_target(device, "prequel mask", GRAPHITE_FORMAT, pixels.0, pixels.1)];
     let photo = photo(device, queue);
     let uniforms = device.create_buffer(&wgpu::BufferDescriptor { label: Some("prequel slider"), size: Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
-    let sampler = skia::render::linear_sampler(device);
+    let sampler = draw2d::render::linear_sampler(device);
     let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("prequel slider"),
         layout: &layout,
@@ -382,7 +382,7 @@ fn build(device: &wgpu::Device, queue: &wgpu::Queue, format: wgpu::TextureFormat
 
 /// The photo as one mip level: the shader samples it without mipmaps.
 fn photo(device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::TextureView {
-    let image = skia::Image::from_jpeg(PHOTO_JPEG).unwrap_or_else(|| skia::Image::from_rgba(1, 1, vec![0, 0, 0, 255]));
+    let image = draw2d::Image::from_jpeg(PHOTO_JPEG).unwrap_or_else(|| draw2d::Image::from_rgba(1, 1, vec![0, 0, 0, 255]));
     let size = wgpu::Extent3d { width: image.width, height: image.height, depth_or_array_layers: 1 };
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("prequel photo"),

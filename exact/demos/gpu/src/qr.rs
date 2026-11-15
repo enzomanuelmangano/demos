@@ -9,7 +9,7 @@
 //! interleave, and the mask with the lowest N1–N4 penalty (first on a tie). The tests compare every
 //! module against node-qrcode's output.
 
-use skia::{point, Point};
+use draw2d::{point, Point};
 
 /// An error-correction level, as node-qrcode's `ECLevel`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -975,8 +975,8 @@ pub fn rounded_path(symbol: &Symbol, size: f64, out: &mut Vec<Verb>) {
 }
 
 /// The verbs as a lyon path (what Skia fills: every contour closed).
-pub fn to_lyon(verbs: &[Verb]) -> skia::Path {
-    let mut b = skia::path_builder();
+pub fn to_lyon(verbs: &[Verb]) -> draw2d::Path {
+    let mut b = draw2d::path_builder();
     let mut open = false;
     for v in verbs {
         match *v {

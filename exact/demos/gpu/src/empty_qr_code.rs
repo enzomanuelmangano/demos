@@ -16,8 +16,8 @@
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, PointerPhase, Surface, SurfaceError, Value};
 use pressto::{PressEvent, Pressable};
-use reanimated::{Easing, Spring, Timing, GENTLE};
-use skia::{point, Canvas, Color, Font, Matrix, Paint, Renderer, Shader};
+use motion::{Easing, Spring, Timing, GENTLE};
+use draw2d::{point, Canvas, Color, Font, Matrix, Paint, Renderer, Shader};
 
 use crate::{qr, shaders};
 use shaders::empty_qr_code::{entry, module, Compose, GROUP_0, LETTER, MASK, QR, SMP, U};
@@ -140,7 +140,7 @@ struct EmptyQrCode {
     press: Pressable,
     posted: Vec<String>,
     font: Option<Font>,
-    qr: skia::Path,
+    qr: draw2d::Path,
     letter: Canvas,
     letter_renderer: Renderer,
     qr_canvas: Canvas,
@@ -273,7 +273,7 @@ impl EmptyQrCode {
         let gradient = Shader::Radial {
             center: point(SIZE / 2.0, SIZE / 2.0),
             radius: SIZE / 2.0,
-            stops: skia::stops(&[Color::hex(c0), Color::hex(c1)]),
+            stops: draw2d::stops(&[Color::hex(c0), Color::hex(c1)]),
         };
         c.draw_rect(0.0, 0.0, SIZE, SIZE, &Paint::shader(gradient));
         if let Some(font) = &self.font {
@@ -436,7 +436,7 @@ impl Surface for EmptyQrCode {
         };
         let gpu = self.gpu.as_ref().unwrap();
         queue.write_buffer(&gpu.uniforms, 0, &u.bytes());
-        skia::render::fullscreen_pass(encoder, "empty qr code", target, &gpu.compose, &gpu.bind);
+        draw2d::render::fullscreen_pass(encoder, "empty qr code", target, &gpu.compose, &gpu.bind);
         // The letter timer keeps frames coming.
         true
     }
@@ -468,15 +468,15 @@ fn build(
     let (lp, qp) = (layout.px(SIZE), layout.px(SIZE - PADDING * 2.0));
     let (_, mask_px) = layout.mask();
     let letter_view =
-        skia::render::sampled_target(device, "empty qr code letter", LAYER_FORMAT, lp, lp);
-    let qr_view = skia::render::sampled_target(device, "empty qr code qr", LAYER_FORMAT, qp, qp);
+        draw2d::render::sampled_target(device, "empty qr code letter", LAYER_FORMAT, lp, lp);
+    let qr_view = draw2d::render::sampled_target(device, "empty qr code qr", LAYER_FORMAT, qp, qp);
     let mask_view =
-        skia::render::sampled_target(device, "empty qr code mask", LAYER_FORMAT, mask_px, mask_px);
-    let sampler = skia::render::linear_sampler(device);
+        draw2d::render::sampled_target(device, "empty qr code mask", LAYER_FORMAT, mask_px, mask_px);
+    let sampler = draw2d::render::linear_sampler(device);
     let shader = device.create_shader_module(module());
     let group = device.create_bind_group_layout(&GROUP_0);
     let compose =
-        skia::render::fullscreen_pipeline(device, &shader, &group, entry::COMPOSE, format, None);
+        draw2d::render::fullscreen_pipeline(device, &shader, &group, entry::COMPOSE, format, None);
     let uniforms = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("empty qr code"),
         size: Compose::SIZE as u64,

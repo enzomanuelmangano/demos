@@ -8,9 +8,9 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture};
-use reanimated::{interpolate, Easing, Extrapolation, Spring, SpringConfig, Timing};
-use skia::{point, stops, Canvas, Color, Paint, Renderer, Shader};
+use gestures::{Event, PanGesture};
+use motion::{interpolate, Easing, Extrapolation, Spring, SpringConfig, Timing};
+use draw2d::{point, stops, Canvas, Color, Paint, Renderer, Shader};
 
 use crate::gfx;
 

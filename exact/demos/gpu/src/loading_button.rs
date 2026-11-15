@@ -17,8 +17,8 @@
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
 use pressto::{PressEvent, Pressable};
-use reanimated::{Easing, Timing};
-use skia::{fit_box, path_from_svg, Canvas, Color, Font, Paint, Path, Rect, Renderer};
+use motion::{Easing, Timing};
+use draw2d::{fit_box, path_from_svg, Canvas, Color, Font, Paint, Path, Rect, Renderer};
 
 use crate::floating_modal::press_easing;
 use crate::gfx;
@@ -86,7 +86,7 @@ struct LoadingButton {
     /// The title's FadeIn.
     fade: Timing,
     /// The crossfade from `from_title` to the status's title: 0 → 1 on each change.
-    blend: reanimated::Spring,
+    blend: motion::Spring,
     from_title: u8,
     /// The last outcome (success 2 or error 3): the icon group's colour and icon as it fades.
     outcome: u8,
@@ -108,7 +108,7 @@ struct LoadingButton {
     renderer: Renderer,
     /// Shapes drawn once into an atlas at the frame's scale, instead of tessellated each frame:
     /// the pill's continuous ends, the arc and the two icons. Each frame draws them as sprites.
-    sprites: Option<(skia::Images, f32)>,
+    sprites: Option<(draw2d::Images, f32)>,
     sprite_canvas: Canvas,
     sprite_renderer: Renderer,
 }
@@ -158,8 +158,8 @@ fn p3(c: [f64; 3]) -> Color {
 
 impl LoadingButton {
     fn new() -> LoadingButton {
-        let mut arc = skia::path_builder();
-        skia::add_arc(
+        let mut arc = draw2d::path_builder();
+        draw2d::add_arc(
             &mut arc,
             STROKE / 2.0,
             STROKE / 2.0,
@@ -186,7 +186,7 @@ impl LoadingButton {
                 t.to(1.0, 300.0, Easing::timing_default());
                 t
             },
-            blend: reanimated::Spring::at(1.0),
+            blend: motion::Spring::at(1.0),
             from_title: 0,
             outcome: 2,
             rest: true,
@@ -198,7 +198,7 @@ impl LoadingButton {
             arc: arc.build(),
             success: path_from_svg(SUCCESS).unwrap_or_default(),
             error: path_from_svg(ERROR).unwrap_or_default(),
-            title: skia::match_ui_font(14.0, 700.0),
+            title: draw2d::match_ui_font(14.0, 700.0),
             canvas: Canvas::default(),
             renderer: Renderer::default(),
             sprites: None,
@@ -243,7 +243,7 @@ impl LoadingButton {
             } else {
                 self.from_title
             };
-            self.blend = reanimated::Spring::at(0.0);
+            self.blend = motion::Spring::at(0.0);
             gfx::spring_to(&mut self.blend, 1.0, 400.0, 1.0);
         }
         if status >= 2 {
@@ -454,7 +454,7 @@ impl Surface for LoadingButton {
         if self.sprites.as_ref().is_none_or(|(_, k)| *k != sc) {
             let aw = ((sprite_x(4) + GUTTER) * sc).ceil() as u32;
             let ah = ((PILL_H as f32 + 2.0 * GUTTER) * sc).ceil() as u32;
-            let images = skia::Images::target(device, aw, ah);
+            let images = draw2d::Images::target(device, aw, ah);
             let a = &mut self.sprite_canvas;
             a.begin(sc);
             let white = Paint::fill(Color::WHITE);
@@ -470,7 +470,7 @@ impl Surface for LoadingButton {
             a.translate(sprite_x(1), GUTTER);
             a.draw_path(
                 &self.arc,
-                &Paint::stroke(Color::WHITE, STROKE).caps(skia::Cap::Round, skia::Join::Miter),
+                &Paint::stroke(Color::WHITE, STROKE).caps(draw2d::Cap::Round, draw2d::Join::Miter),
             );
             a.restore();
             for (k, svg) in [(2, &self.success), (3, &self.error)] {
@@ -514,8 +514,8 @@ impl Surface for LoadingButton {
         let px = |v: f32| v * sc;
         let k = 1.0 / sc;
         let ends = [
-            skia::Rect::new(px(sprite_x(0)), px(GUTTER), px(CAP), px(PILL_H as f32)),
-            skia::Rect::new(
+            draw2d::Rect::new(px(sprite_x(0)), px(GUTTER), px(CAP), px(PILL_H as f32)),
+            draw2d::Rect::new(
                 px(sprite_x(0) + CAP),
                 px(GUTTER),
                 px(CAP),
@@ -523,13 +523,13 @@ impl Surface for LoadingButton {
             ),
         ];
         let at = [
-            skia::RsXform {
+            draw2d::RsXform {
                 scos: k,
                 ssin: 0.0,
                 tx: 0.0,
                 ty: 0.0,
             },
-            skia::RsXform {
+            draw2d::RsXform {
                 scos: k,
                 ssin: 0.0,
                 tx: pill_w - CAP,
@@ -604,7 +604,7 @@ impl Surface for LoadingButton {
 #[allow(clippy::too_many_arguments)]
 fn draw_indicator(
     canvas: &mut Canvas,
-    atlas: skia::ImageRef,
+    atlas: draw2d::ImageRef,
     scale: f32,
     outcome: u8,
     rotation: f64,
@@ -617,7 +617,7 @@ fn draw_indicator(
     let center = SIZE / 2.0;
     let radius = center - STROKE / 2.0;
     let sprite = |k: usize| {
-        skia::Rect::new(
+        draw2d::Rect::new(
             sprite_x(k) * scale,
             GUTTER * scale,
             SIZE * scale,
@@ -630,7 +630,7 @@ fn draw_indicator(
     let (sin, cos) = (rotation as f32).sin_cos();
     let (sc, ss) = (cos / scale, sin / scale);
     let h = SIZE * scale / 2.0;
-    let xf = skia::RsXform {
+    let xf = draw2d::RsXform {
         scos: sc,
         ssin: ss,
         tx: center - (sc * h - ss * h),
@@ -648,7 +648,7 @@ fn draw_indicator(
     canvas.opacity(icon);
     canvas.draw_circle(center, center, radius, &Paint::fill(color(outcome)));
     if outcome == 2 || outcome == 3 {
-        let xf = skia::RsXform {
+        let xf = draw2d::RsXform {
             scos: 1.0 / scale,
             ssin: 0.0,
             tx: 0.0,

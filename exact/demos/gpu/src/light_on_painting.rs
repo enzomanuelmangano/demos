@@ -9,8 +9,8 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture, PinchEvent, PinchGesture};
-use skia::{Canvas, Color, Paint, Renderer};
+use gestures::{Event, PanGesture, PinchEvent, PinchGesture};
+use draw2d::{Canvas, Color, Paint, Renderer};
 
 use crate::{gfx, shaders};
 use shaders::light_on_painting as relight;
@@ -895,14 +895,14 @@ impl Surface for LightOnPainting {
 
         let gpu = self.gpu.as_mut().unwrap();
         if gpu.layers.as_ref().map(|l| (l.raster, l.pixels)) != Some((raster, pixels)) {
-            let painting = skia::render::sampled_target(
+            let painting = draw2d::render::sampled_target(
                 device,
                 "light on painting relit",
                 LAYER_FORMAT,
                 raster.0,
                 raster.1,
             );
-            let dots = skia::render::sampled_target(
+            let dots = draw2d::render::sampled_target(
                 device,
                 "light on painting dots",
                 LAYER_FORMAT,

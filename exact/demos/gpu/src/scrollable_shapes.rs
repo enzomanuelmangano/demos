@@ -12,8 +12,8 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use skia::blur::{GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
-use skia::{point, Canvas, Color, Paint, Renderer, Shader};
+use draw2d::blur::{GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
+use draw2d::{point, Canvas, Color, Paint, Renderer, Shader};
 
 use crate::ui_scroll::{Snap, UiScroll, FAST};
 use crate::{gfx, shaders};
@@ -403,7 +403,7 @@ impl Surface for ScrollableShapes {
             let gpu = self.gpu.as_mut().unwrap();
             let (cx, cy, r) = (w / 2.0, h / 2.0, w * 0.6);
             self.glow.begin(scale);
-            let gradient = Shader::Radial { center: point(cx, cy), radius: r, stops: skia::stops(&[Color::rgba8(255, 255, 255, 0x40), Color::TRANSPARENT]) };
+            let gradient = Shader::Radial { center: point(cx, cy), radius: r, stops: draw2d::stops(&[Color::rgba8(255, 255, 255, 0x40), Color::TRANSPARENT]) };
             self.glow.draw_circle(cx, cy, r, &Paint::shader(gradient));
             self.renderers[0].draw(device, queue, encoder, &self.glow, &gpu.layers[0], GRAPHITE_FORMAT, pw, ph, wgpu::Color::TRANSPARENT);
             let layer = [0, 0, pw as i32, ph as i32];
@@ -417,7 +417,7 @@ impl Surface for ScrollableShapes {
                 gpu.layers[0].clone()
             };
             let layout = device.create_bind_group_layout(&GROUP_0);
-            let sampler = skia::render::linear_sampler(device);
+            let sampler = draw2d::render::linear_sampler(device);
             let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("scrollable shapes"),
                 layout: &layout,
@@ -463,7 +463,7 @@ impl Surface for ScrollableShapes {
             pass.draw(0..4, 0..N as u32);
         }
         self.renderers[1].draw(device, queue, encoder, &self.dots, &gpu.layers[2], GRAPHITE_FORMAT, pw, ph, wgpu::Color::TRANSPARENT);
-        skia::render::fullscreen_pass(encoder, "scrollable shapes", target, &gpu.compose, &gpu.bind.as_ref().unwrap().0);
+        draw2d::render::fullscreen_pass(encoder, "scrollable shapes", target, &gpu.compose, &gpu.bind.as_ref().unwrap().0);
         // The spin never settles, so the surface keeps drawing.
         true
     }
@@ -482,7 +482,7 @@ fn low_mapping(plan: &GraphitePlan, origin: [i32; 2], size: [u32; 2]) -> [f32; 4
 fn build(device: &wgpu::Device, queue: &wgpu::Queue, format: wgpu::TextureFormat, generation: u32, pixels: (u32, u32), axes: &[[f32; 12]]) -> Gpu {
     let shader = device.create_shader_module(module());
     let layout = device.create_bind_group_layout(&GROUP_0);
-    let compose = skia::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None);
+    let compose = draw2d::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None);
     let point_module = device.create_shader_module(points_shader::module());
     let point_layout = device.create_bind_group_layout(&points_shader::GROUP_0);
     let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor { label: Some("scrollable shapes points"), bind_group_layouts: &[Some(&point_layout)], immediate_size: 0 });
@@ -522,7 +522,7 @@ fn build(device: &wgpu::Device, queue: &wgpu::Queue, format: wgpu::TextureFormat
         layout: &point_layout,
         entries: &[wgpu::BindGroupEntry { binding: points_shader::U.binding, resource: point_uniforms.as_entire_binding() }],
     });
-    let view = |label| skia::render::sampled_target(device, label, GRAPHITE_FORMAT, pixels.0, pixels.1);
+    let view = |label| draw2d::render::sampled_target(device, label, GRAPHITE_FORMAT, pixels.0, pixels.1);
     Gpu {
         format,
         generation,

@@ -17,8 +17,8 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture};
-use reanimated::{Easing, Spring, SpringConfig, Timing};
+use gestures::{Event, PanGesture};
+use motion::{Easing, Spring, SpringConfig, Timing};
 
 use crate::{gfx, shaders};
 use shaders::fractal_glass::{entry, module, Uniforms, GROUP_0, PROFILE, SMP, U};
@@ -79,8 +79,8 @@ fn surface_struct() -> Box<FractalGlass> {
         behind: false,
         haptic_at: f64::NEG_INFINITY,
         posted: Vec::new(),
-        canvas: skia::Canvas::default(),
-        renderer: skia::Renderer::default(),
+        canvas: draw2d::Canvas::default(),
+        renderer: draw2d::Renderer::default(),
         gpu: None,
     })
 }
@@ -106,8 +106,8 @@ struct FractalGlass {
     behind: bool,
     haptic_at: f64,
     posted: Vec<String>,
-    canvas: skia::Canvas,
-    renderer: skia::Renderer,
+    canvas: draw2d::Canvas,
+    renderer: draw2d::Renderer,
     gpu: Option<Gpu>,
 }
 
@@ -352,7 +352,7 @@ impl Surface for FractalGlass {
             // The button fill: the whole canvas, continuous corners.
             let (w, h) = self.size;
             self.canvas.begin(frame.scale);
-            self.canvas.draw_continuous_rrect(0.0, 0.0, w, h, BUTTON_RADIUS, &skia::Paint::fill(skia::Color([color[0], color[1], color[2], 1.0])));
+            self.canvas.draw_continuous_rrect(0.0, 0.0, w, h, BUTTON_RADIUS, &draw2d::Paint::fill(draw2d::Color([color[0], color[1], color[2], 1.0])));
             self.renderer.draw(device, queue, encoder, &self.canvas, target, format, pw, ph, wgpu::Color::TRANSPARENT);
             return moving;
         }
@@ -388,7 +388,7 @@ impl Surface for FractalGlass {
         };
         let gpu = self.gpu.as_ref().unwrap();
         queue.write_buffer(&gpu.uniforms, 0, &uniforms.bytes());
-        skia::render::fullscreen_pass(encoder, "fractal glass", target, &gpu.pipeline, &gpu.bind);
+        draw2d::render::fullscreen_pass(encoder, "fractal glass", target, &gpu.pipeline, &gpu.bind);
         // Always true: the lights drift; `max_fps` paces the host.
         true
     }
@@ -434,7 +434,7 @@ fn build(device: &wgpu::Device, queue: &wgpu::Queue, format: wgpu::TextureFormat
 mod tests {
     use super::*;
     use exact_gpu::{fixture, PointerKind, PointerPhase};
-    use skia::blur::{intersect, outset, round_out, GraphitePlan, IRect};
+    use draw2d::blur::{intersect, outset, round_out, GraphitePlan, IRect};
 
     /// The blur's filter layer in device pixels: the clip outset by 3σ, intersected with the oval's bounds.
     fn filter_layer(clip: IRect, oval: [f32; 4], radius: i32) -> Option<IRect> {
@@ -547,7 +547,7 @@ mod tests {
         let clip = pane_clip(w, h, s);
         let sigma = SIGMA * s;
         let oval = [center.0 - RADIUS, center.1 - RADIUS, center.0 + RADIUS, center.1 + RADIUS];
-        let layer = filter_layer(clip, oval, skia::blur::ceil_size(3.0 * sigma)).unwrap();
+        let layer = filter_layer(clip, oval, draw2d::blur::ceil_size(3.0 * sigma)).unwrap();
         let plan = GraphitePlan::new(layer, clip, sigma).unwrap();
         let orange = [1.0, 165.0 / 255.0, 0.0];
         // The layer: the circle's coverage within it.

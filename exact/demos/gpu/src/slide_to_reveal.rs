@@ -9,9 +9,9 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture};
-use reanimated::{interpolate_clamp, Easing, Timing};
-use skia::{Canvas, Color, Font, Paint, Renderer};
+use gestures::{Event, PanGesture};
+use motion::{interpolate_clamp, Easing, Timing};
+use draw2d::{Canvas, Color, Font, Paint, Renderer};
 
 use crate::{gfx, shaders};
 use shaders::slide_to_reveal::{entry, module, Uniforms, ATLAS, GROUP_0, SHARP, SMP, SPOT, U};
@@ -77,8 +77,8 @@ struct SlideToReveal {
     atlas_layer: Canvas,
     spot_layer: Canvas,
     renderers: [Renderer; 3],
-    atlas_blur: skia::Blur,
-    spot_blur: skia::Blur,
+    atlas_blur: draw2d::Blur,
+    spot_blur: draw2d::Blur,
     gpu: Option<Gpu>,
 }
 
@@ -237,7 +237,7 @@ impl Surface for SlideToReveal {
         if self.gpu.as_ref().map(|g| (g.format, g.generation, g.size)) != Some((format, frame.shader_generation, (pw, ph))) {
             // Once per size: the digits at scale 1 in their cells, blurred; the spot, blurred.
             let (aw, ah) = (((CELL * DIGITS as f32 * s).round() as u32).max(1), ((HEIGHT * s).round() as u32).max(1));
-            let atlas_source = skia::render::sampled_target(device, "slide to reveal atlas", LAYER, aw, ah);
+            let atlas_source = draw2d::render::sampled_target(device, "slide to reveal atlas", LAYER, aw, ah);
             let c = &mut self.atlas_layer;
             c.begin(s);
             if let Some(font) = &self.font {
@@ -248,19 +248,19 @@ impl Surface for SlideToReveal {
             self.renderers[0].draw(device, queue, encoder, c, &atlas_source, LAYER, aw, ah, wgpu::Color::TRANSPARENT);
             let atlas = self.atlas_blur.run(device, queue, encoder, &atlas_source, LAYER, aw, ah, TEXT_BLUR * s);
             let sp = ((SPOT_SIZE * s).round() as u32).max(1);
-            let spot_source = skia::render::sampled_target(device, "slide to reveal spot", LAYER, sp, sp);
+            let spot_source = draw2d::render::sampled_target(device, "slide to reveal spot", LAYER, sp, sp);
             let c = &mut self.spot_layer;
             c.begin(s);
             c.draw_circle(SPOT_SIZE / 2.0, SPOT_SIZE / 2.0, SPOT_RADIUS, &white);
             self.renderers[1].draw(device, queue, encoder, c, &spot_source, LAYER, sp, sp, wgpu::Color::TRANSPARENT);
             let spot = self.spot_blur.run(device, queue, encoder, &spot_source, LAYER, sp, sp, SPOT_BLUR * s);
 
-            let sharp = skia::render::sampled_target(device, "slide to reveal sharp", LAYER, pw, ph);
+            let sharp = draw2d::render::sampled_target(device, "slide to reveal sharp", LAYER, pw, ph);
             let shader = device.create_shader_module(module());
             let layout = device.create_bind_group_layout(&GROUP_0);
-            let compose = skia::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None);
+            let compose = draw2d::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None);
             let uniforms = device.create_buffer(&wgpu::BufferDescriptor { label: Some("slide to reveal"), size: Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
-            let sampler = skia::render::linear_sampler(device);
+            let sampler = draw2d::render::linear_sampler(device);
             let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("slide to reveal"),
                 layout: &layout,
@@ -303,7 +303,7 @@ impl Surface for SlideToReveal {
             digit,
         };
         queue.write_buffer(&gpu.uniforms, 0, &uniforms.bytes());
-        skia::render::fullscreen_pass(encoder, "slide to reveal", target, &gpu.compose, &gpu.bind);
+        draw2d::render::fullscreen_pass(encoder, "slide to reveal", target, &gpu.compose, &gpu.bind);
         moving || self.pan.tracking()
     }
 }

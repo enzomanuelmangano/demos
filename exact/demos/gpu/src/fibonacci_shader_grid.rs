@@ -11,9 +11,9 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture};
-use reanimated::{interpolate_clamp, Easing, SpringConfig as Config, Spring, Timing, GENTLE};
-use skia::{add_continuous_rrect, add_rect, add_rrect, add_rrect_hole, Canvas, Color, Paint, Renderer};
+use gestures::{Event, PanGesture};
+use motion::{interpolate_clamp, Easing, SpringConfig as Config, Spring, Timing, GENTLE};
+use draw2d::{add_continuous_rrect, add_rect, add_rrect, add_rrect_hole, Canvas, Color, Paint, Renderer};
 
 use crate::{gfx, shaders};
 use shaders::fibonacci_shader_grid::{entry, module, Uniforms, GROUP_0, U};
@@ -356,7 +356,7 @@ impl Surface for FibonacciShaderGrid {
 fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32) -> Gpu {
     let shader = device.create_shader_module(module());
     let layout = device.create_bind_group_layout(&GROUP_0);
-    let pipeline = skia::render::fullscreen_pipeline(device, &shader, &layout, entry::FS, format, None);
+    let pipeline = draw2d::render::fullscreen_pipeline(device, &shader, &layout, entry::FS, format, None);
     let uniforms = device.create_buffer(&wgpu::BufferDescriptor { label: Some("fibonacci shader grid"), size: Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
     let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("fibonacci shader grid"),

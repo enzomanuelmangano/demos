@@ -12,8 +12,8 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture};
-use reanimated::{interpolate_clamp, Spring, SpringConfig};
+use gestures::{Event, PanGesture};
+use motion::{interpolate_clamp, Spring, SpringConfig};
 
 use crate::{gfx, shaders};
 use shaders::magnet_spring::{entry, module, Items, Profiles, GROUP_0, PROFILES, U};
@@ -263,7 +263,7 @@ impl Surface for MagnetSpring {
         let gpu = self.gpu.as_ref().unwrap();
         let items = Items { at, canvas: [pw as f32, ph as f32, frame.scale, gfx::srgb_flag(format)] };
         queue.write_buffer(&gpu.items, 0, &items.bytes());
-        skia::render::fullscreen_pass(encoder, "magnet spring", target, &gpu.compose, &gpu.bind);
+        draw2d::render::fullscreen_pass(encoder, "magnet spring", target, &gpu.compose, &gpu.bind);
         moving || self.pan.tracking()
     }
 }
@@ -271,7 +271,7 @@ impl Surface for MagnetSpring {
 fn build(device: &wgpu::Device, queue: &wgpu::Queue, format: wgpu::TextureFormat, generation: u32) -> Gpu {
     let shader = device.create_shader_module(module());
     let layout = device.create_bind_group_layout(&GROUP_0);
-    let compose = skia::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None);
+    let compose = draw2d::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None);
     let buffer = |label, size: usize| device.create_buffer(&wgpu::BufferDescriptor { label: Some(label), size: size as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
     let items = buffer("magnet items", Items::SIZE);
     let profiles = buffer("magnet profiles", Profiles::SIZE);

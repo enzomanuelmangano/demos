@@ -10,11 +10,11 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::Phase;
+use gestures::Phase;
 use pressto::{PressEvent, Pressable};
-use reanimated::{interpolate, interpolate_color, Easing, Extrapolation, Timing};
-use skia::backdrop::{BackdropBlur, Material, BACKDROP_WGSL};
-use skia::{Canvas, Color, Font, Paint, Renderer};
+use motion::{interpolate, interpolate_color, Easing, Extrapolation, Timing};
+use draw2d::backdrop::{BackdropBlur, Material, BACKDROP_WGSL};
+use draw2d::{Canvas, Color, Font, Paint, Renderer};
 
 use crate::gfx;
 
@@ -421,8 +421,8 @@ impl FluidTab {
         // Pill shadow, drawn outside the pill.
         c.save();
         c.clip_with(|b| {
-            skia::add_rect(b, px - 20.0, py - 20.0, pw + 40.0, ph + 40.0);
-            skia::add_rrect_hole(b, px, py, pw, ph, r);
+            draw2d::add_rect(b, px - 20.0, py - 20.0, pw + 40.0, ph + 40.0);
+            draw2d::add_rrect_hole(b, px, py, pw, ph, r);
         });
         c.draw_rrect_shadow(px, py + 1.0, pw, ph, r, 1.0, Color::BLACK.alpha(0.1));
         c.restore();

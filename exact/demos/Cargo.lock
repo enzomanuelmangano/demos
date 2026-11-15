@@ -421,14 +421,14 @@ dependencies = [
 name = "demos-gpu"
 version = "0.1.0"
 dependencies = [
+ "draw2d",
  "exact-gpu",
  "exact-gpu-reflect",
- "gesture-handler",
+ "gestures",
  "miniz_oxide 0.9.1",
+ "motion",
+ "noise",
  "pressto",
- "reanimated",
- "simplex-noise",
- "skia",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -516,6 +516,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4b8a88685455ed29a21542a33abd9cb6510b6b129abadabdcef0f4c55bc8f61"
 dependencies = [
  "litrs",
+]
+
+[[package]]
+name = "draw2d"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "exact-gpu",
+ "lyon",
+ "ttf-parser",
+ "zune-jpeg",
 ]
 
 [[package]]
@@ -1145,7 +1156,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "gesture-handler"
+name = "gestures"
 version = "0.1.0"
 
 [[package]]
@@ -1669,6 +1680,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "motion"
+version = "0.1.0"
+
+[[package]]
 name = "naga"
 version = "30.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1705,6 +1720,10 @@ dependencies = [
  "rustc-hash",
  "thiserror",
 ]
+
+[[package]]
+name = "noise"
+version = "0.1.0"
 
 [[package]]
 name = "num-traits"
@@ -1925,8 +1944,8 @@ checksum = "e8cf8e6a8aa66ce33f63993ffc4ea4271eb5b0530a9002db8455ea6050c77bfa"
 name = "pressto"
 version = "0.1.0"
 dependencies = [
- "gesture-handler",
- "reanimated",
+ "gestures",
+ "motion",
 ]
 
 [[package]]
@@ -2028,10 +2047,6 @@ dependencies = [
  "objc2-foundation",
  "objc2-quartz-core",
 ]
-
-[[package]]
-name = "reanimated"
-version = "0.1.0"
 
 [[package]]
 name = "redox_syscall"
@@ -2350,21 +2365,6 @@ name = "simd-adler32"
 version = "0.3.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a219298ac11a56ea9a6d2120044824d6f01aeb034955e7af7bc16858527deea"
-
-[[package]]
-name = "simplex-noise"
-version = "0.1.0"
-
-[[package]]
-name = "skia"
-version = "0.1.0"
-dependencies = [
- "bytemuck",
- "exact-gpu",
- "lyon",
- "ttf-parser",
- "zune-jpeg",
-]
 
 [[package]]
 name = "slab"

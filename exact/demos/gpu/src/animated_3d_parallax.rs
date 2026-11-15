@@ -10,9 +10,9 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture};
-use reanimated::{interpolate, Extrapolation, Spring, SpringConfig, GENTLE};
-use skia::{Canvas, Color, Matrix4, Paint, Renderer};
+use gestures::{Event, PanGesture};
+use motion::{interpolate, Extrapolation, Spring, SpringConfig, GENTLE};
+use draw2d::{Canvas, Color, Matrix4, Paint, Renderer};
 
 use crate::{gfx, shaders};
 use shaders::animated_3d_parallax::{entry, module, Uniforms, CARD, GROUP_0, LOGO, SHADOW, SMP, U};
@@ -69,7 +69,7 @@ struct Parallax {
     /// The card layer's own renderer: one renderer's buffers serve one draw per encoder.
     card_renderer: Renderer,
     renderer: Renderer,
-    blur: skia::Blur,
+    blur: draw2d::Blur,
     gpu: Option<Gpu>,
 }
 
@@ -126,7 +126,7 @@ impl Parallax {
     fn inverse(&self, m: Matrix4) -> [[f32; 4]; 3] {
         let (ox, oy) = self.origin();
         let screen = Matrix4::translate(ox, oy, 0.0).multiply(m).to_matrix3();
-        screen.invert().unwrap_or(skia::Matrix3([0.0; 9])).rows()
+        screen.invert().unwrap_or(draw2d::Matrix3([0.0; 9])).rows()
     }
 }
 
@@ -224,7 +224,7 @@ impl Surface for Parallax {
             canvas: [pw as f32, ph as f32, frame.scale, gfx::srgb_flag(format)],
         };
         queue.write_buffer(&gpu.uniforms, 0, &uniforms.bytes());
-        skia::render::fullscreen_pass(
+        draw2d::render::fullscreen_pass(
             encoder,
             "animated 3d parallax",
             target,
@@ -248,7 +248,7 @@ impl Parallax {
     ) -> Gpu {
         let s = frame.scale;
         let side = ((CARD_SIZE + 2.0 * MARGIN) * s).ceil() as u32;
-        let layer = skia::render::sampled_target(device, "parallax shadow", LAYER, side, side);
+        let layer = draw2d::render::sampled_target(device, "parallax shadow", LAYER, side, side);
         let c = &mut self.shadow_layer;
         c.begin(s);
         c.translate(MARGIN, MARGIN);
@@ -285,7 +285,7 @@ impl Parallax {
         // 3D-transformed layer.
         let card_side = (CARD_SIZE * s).ceil() as u32;
         let card =
-            skia::render::sampled_target(device, "parallax card", LAYER, card_side, card_side);
+            draw2d::render::sampled_target(device, "parallax card", LAYER, card_side, card_side);
         let c = &mut self.card_layer;
         c.begin(s);
         let (r, g, b) = CARD_COLOR;
@@ -312,7 +312,7 @@ impl Parallax {
         let logo = logo_texture(device, queue);
         let shader = device.create_shader_module(module());
         let layout = device.create_bind_group_layout(&GROUP_0);
-        let compose = skia::render::fullscreen_pipeline(
+        let compose = draw2d::render::fullscreen_pipeline(
             device,
             &shader,
             &layout,

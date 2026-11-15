@@ -14,8 +14,8 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
-use reanimated::{interpolate, interpolate_clamp, Easing, Extrapolation, Timing};
-use skia::Color;
+use motion::{interpolate, interpolate_clamp, Easing, Extrapolation, Timing};
+use draw2d::Color;
 
 use crate::ui_scroll::{Snap, UiScroll};
 use crate::{gfx, shaders};

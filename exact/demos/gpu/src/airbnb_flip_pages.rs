@@ -14,10 +14,10 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
-use reanimated::{interpolate, Extrapolation, Spring, SpringConfig};
-use skia::backdrop::{expo_fraction, BackdropBlur, Material};
-use skia::blur::GRAPHITE_FORMAT;
-use skia::{Canvas, Color, Font, Paint, Renderer};
+use motion::{interpolate, Extrapolation, Spring, SpringConfig};
+use draw2d::backdrop::{expo_fraction, BackdropBlur, Material};
+use draw2d::blur::GRAPHITE_FORMAT;
+use draw2d::{Canvas, Color, Font, Paint, Renderer};
 
 use crate::{gfx, shaders};
 use shaders::airbnb_flip_pages::{entry, module, Uniforms, BLURRED, GROUP_0, PAGE0, PAGE1, SMP, U};
@@ -215,7 +215,7 @@ impl Surface for Pages {
             let (Some(title), Some(body)) = (Font::new(BOLD, 20.0).map(Font::with_ui_layout), Font::new(REGULAR, 16.0).map(Font::with_ui_layout)) else { return false };
             let mut views = Vec::new();
             for page in 0..2 {
-                let view = skia::render::sampled_target(device, "airbnb page", GRAPHITE_FORMAT, tex.0, tex.1);
+                let view = draw2d::render::sampled_target(device, "airbnb page", GRAPHITE_FORMAT, tex.0, tex.1);
                 let mut c = Canvas::default();
                 c.begin(s);
                 self.heights[page] = record_page(&mut c, page, width, &title, &body, s, true);
@@ -226,7 +226,7 @@ impl Surface for Pages {
             self.textures = Some((tex, [a, b]));
         }
         if self.under.as_ref().map(|u| u.0) != Some((pw, ph)) {
-            self.under = Some(((pw, ph), skia::render::sampled_target(device, "airbnb under", GRAPHITE_FORMAT, pw, ph)));
+            self.under = Some(((pw, ph), draw2d::render::sampled_target(device, "airbnb under", GRAPHITE_FORMAT, pw, ph)));
         }
         if self.gpu.as_ref().map(|g| (g.format, g.generation)) != Some((format, frame.shader_generation)) {
             let shader = device.create_shader_module(module());
@@ -234,10 +234,10 @@ impl Surface for Pages {
             self.gpu = Some(Gpu {
                 format,
                 generation: frame.shader_generation,
-                under: skia::render::fullscreen_pipeline(device, &shader, &layout, entry::UNDER, GRAPHITE_FORMAT, None),
-                compose: skia::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None),
+                under: draw2d::render::fullscreen_pipeline(device, &shader, &layout, entry::UNDER, GRAPHITE_FORMAT, None),
+                compose: draw2d::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None),
                 layout,
-                sampler: skia::render::linear_sampler(device),
+                sampler: draw2d::render::linear_sampler(device),
                 uniforms: device.create_buffer(&wgpu::BufferDescriptor { label: Some("airbnb pages"), size: Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false }),
                 uniforms2: device.create_buffer(&wgpu::BufferDescriptor { label: Some("airbnb pages 2"), size: Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false }),
             });
@@ -280,7 +280,7 @@ impl Surface for Pages {
         queue.write_buffer(&gpu.uniforms, 0, &u.bytes());
         // Pass 1: what the effect sees (its own background included).
         let first = bind(&textures[0]);
-        skia::render::fullscreen_pass(encoder, "airbnb under", under, &gpu.under, &first);
+        draw2d::render::fullscreen_pass(encoder, "airbnb under", under, &gpu.under, &first);
         let intensity = interpolate(self.progress.value, &[0.0, 0.2, 0.5, 0.8, 1.0], &[0.0, 10.0, 20.0, 10.0, 0.0], Extrapolation::Extend);
         // Zero intensity skips the blur, so the page stays sharp.
         let blurred = if intensity > 0.0 {
@@ -307,7 +307,7 @@ impl Surface for Pages {
                 wgpu::BindGroupEntry { binding: SMP.binding, resource: wgpu::BindingResource::Sampler(&gpu.sampler) },
             ],
         });
-        skia::render::fullscreen_pass(encoder, "airbnb pages", target, &gpu.compose, &second);
+        draw2d::render::fullscreen_pass(encoder, "airbnb pages", target, &gpu.compose, &second);
         moving
     }
 }

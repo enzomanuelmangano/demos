@@ -11,10 +11,10 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, Phase, PanGesture};
-use reanimated::{interpolate, Easing, Extrapolation, Spring, SpringConfig, Timing, GENTLE};
-use skia::blur::{GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
-use skia::{point, stops, Canvas, Color, Matrix3, Matrix4, Paint, Renderer, Shader};
+use gestures::{Event, Phase, PanGesture};
+use motion::{interpolate, Easing, Extrapolation, Spring, SpringConfig, Timing, GENTLE};
+use draw2d::blur::{GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
+use draw2d::{point, stops, Canvas, Color, Matrix3, Matrix4, Paint, Renderer, Shader};
 
 use crate::gfx;
 
@@ -373,7 +373,7 @@ impl InfiniteCarousel {
             cell_x += pw + 2;
         }
         let px = (cell_x, ph);
-        let view = skia::render::sampled_target(device, "infinite cards", GRAPHITE_FORMAT, px.0, px.1);
+        let view = draw2d::render::sampled_target(device, "infinite cards", GRAPHITE_FORMAT, px.0, px.1);
         let mut c = Canvas::default();
         c.begin(self.scale);
         let cell = cw / 3.5;
@@ -453,7 +453,7 @@ impl Background {
     ) -> Option<(wgpu::TextureView, [f32; 4], [f32; 4])> {
         let (pw, ph) = frame.pixels();
         if self.layer.as_ref().map(|l| l.0) != Some((pw, ph)) {
-            self.layer = Some(((pw, ph), skia::render::sampled_target(device, "infinite layer", GRAPHITE_FORMAT, pw, ph)));
+            self.layer = Some(((pw, ph), draw2d::render::sampled_target(device, "infinite layer", GRAPHITE_FORMAT, pw, ph)));
         }
         let layer = &self.layer.as_ref().unwrap().1;
         self.canvas.begin(frame.scale);
@@ -630,7 +630,7 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat) -> Gpu {
         label: Some("infinite compose"),
         entries: &[uniform_entry(0), tex_entry(1), tex_entry(2), sampler_entry(3)],
     });
-    let compose = skia::render::fullscreen_pipeline(device, &compose_module, &compose_layout, "compose", format, None);
+    let compose = draw2d::render::fullscreen_pipeline(device, &compose_module, &compose_layout, "compose", format, None);
     let module = device.create_shader_module(wgpu::ShaderModuleDescriptor { label: Some("infinite cards"), source: wgpu::ShaderSource::Wgsl(CARDS_WGSL.into()) });
     let cards_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("infinite cards"),
@@ -664,8 +664,8 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat) -> Gpu {
         cards_layout,
         cards_buffer: buffer("infinite cards", UNIFORM_FLOATS * 4),
         cards_bind: None,
-        sampler: skia::render::linear_sampler(device),
-        empty: skia::render::sampled_target(device, "infinite empty", GRAPHITE_FORMAT, 1, 1),
+        sampler: draw2d::render::linear_sampler(device),
+        empty: draw2d::render::sampled_target(device, "infinite empty", GRAPHITE_FORMAT, 1, 1),
     }
 }
 
@@ -811,7 +811,7 @@ impl Surface for InfiniteCarousel {
             });
             gpu.compose_bind = Some((v1, v2, group));
         }
-        skia::render::fullscreen_pass(encoder, "infinite compose", target, &gpu.compose, &gpu.compose_bind.as_ref().unwrap().2);
+        draw2d::render::fullscreen_pass(encoder, "infinite compose", target, &gpu.compose, &gpu.compose_bind.as_ref().unwrap().2);
 
         // The cards, by zIndex (stable: equal ones in the row's order).
         let cards = self.cards.as_ref().unwrap();

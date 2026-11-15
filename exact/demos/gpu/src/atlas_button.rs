@@ -11,9 +11,9 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::Phase;
-use reanimated::{interpolate_clamp, Spring};
-use skia::{fit_box, path_from_svg, Canvas, Color, Font, Paint, Path, Rect, Renderer};
+use gestures::Phase;
+use motion::{interpolate_clamp, Spring};
+use draw2d::{fit_box, path_from_svg, Canvas, Color, Font, Paint, Path, Rect, Renderer};
 
 use crate::{gfx, shaders};
 use shaders::atlas_button::{entry, module, Uniforms, GROUP_0, LAYER, SMP, SQUARES, U};
@@ -54,7 +54,7 @@ pub fn surface() -> Box<dyn Surface> {
         mount: MOUNTS.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
         // The label is a text view, so UIKit lays it out: the system face at bold, with its
         // tracking and kerning.
-        font: skia::match_ui_font(20.0, 700.0).or_else(|| Font::new(OUTFIT, 20.0)),
+        font: draw2d::match_ui_font(20.0, 700.0).or_else(|| Font::new(OUTFIT, 20.0)),
         dot: path_from_svg(LOGO_DOT),
         orbits: LOGO_ORBITS.iter().filter_map(|d| path_from_svg(d)).collect(),
         ..Default::default()
@@ -351,7 +351,7 @@ mod tests {
     /// The label's pen positions and metrics match Core Text's line layout for "React Native".
     #[test]
     fn the_label_is_laid_out_as_uikit() {
-        let Some(f) = skia::match_ui_font(20.0, 700.0) else { return eprintln!("no system font; skipped") };
+        let Some(f) = draw2d::match_ui_font(20.0, 700.0) else { return eprintln!("no system font; skipped") };
         if f.metrics().ascent != -19.335_938 {
             return eprintln!("another SF than the reference's; skipped");
         }

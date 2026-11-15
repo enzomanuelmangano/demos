@@ -9,9 +9,9 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture};
-use reanimated::{Easing, Spring, Timing, GENTLE};
-use skia::{Canvas, Color, Font, Paint, Renderer};
+use gestures::{Event, PanGesture};
+use motion::{Easing, Spring, Timing, GENTLE};
+use draw2d::{Canvas, Color, Font, Paint, Renderer};
 
 use crate::gfx;
 
@@ -41,7 +41,7 @@ const BAR_MAX: f32 = 45.0;
 /// The demo's surface. Input: a seed for the waveform.
 pub fn surface() -> Box<dyn Surface> {
     // The two times are laid out by UIKit, in the system font.
-    let font = skia::match_ui_font(14.0, 700.0);
+    let font = draw2d::match_ui_font(14.0, 700.0);
     let labels = (0..=DURATION as usize)
         .map(|s| format!("0:{s:02}"))
         .collect();
@@ -556,7 +556,7 @@ impl Card {
             opacity_target: [None; N],
             scale: [Spring::at(1.0); N],
             scale_target: [None; N],
-            font: skia::match_ui_font(12.0, 600.0),
+            font: draw2d::match_ui_font(12.0, 600.0),
             playing: false,
             duration: NOMINAL,
             base: 0.0,

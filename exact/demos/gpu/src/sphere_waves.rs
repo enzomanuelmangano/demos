@@ -12,9 +12,9 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PinchEvent, PinchGesture, TapGesture};
-use reanimated::{interpolate_clamp, Spring, GENTLE};
-use skia::Color;
+use gestures::{Event, PinchEvent, PinchGesture, TapGesture};
+use motion::{interpolate_clamp, Spring, GENTLE};
+use draw2d::Color;
 
 use crate::{gfx, shaders};
 use shaders::sphere_waves::{entry, module, Uniforms, DOTS, GROUP_0, U};

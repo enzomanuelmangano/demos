@@ -2,7 +2,7 @@
 // pages (each its layer, drawn once: `page0` MainPage, `page1` SecondPage) under their entering /
 // exiting Keyframes (opacity, translateY), on the white screen; over the description section the
 // AnimatedBlurView: its rgba(255,255,255,0.5) background, then UIBlurEffect.light's chain over
-// what is behind it (skia::backdrop, run between the two passes).
+// what is behind it (draw2d::backdrop, run between the two passes).
 struct Uniforms {
     // The canvas (device px), its scale, whether the target encodes sRGB itself.
     canvas: vec4<f32>,
@@ -15,7 +15,7 @@ struct Uniforms {
     g1: vec4<f32>,
     g2: vec4<f32>,
     g3: vec4<f32>,
-    // The backdrop's mapping (skia::backdrop::Backdrop::mapping); `m.w` 1 when the effect runs
+    // The backdrop's mapping (draw2d::backdrop::Backdrop::mapping); `m.w` 1 when the effect runs
     // (intensity 0 shows none, as measured at rest).
     m: vec4<f32>,
     n: vec4<f32>,

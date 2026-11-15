@@ -11,10 +11,10 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, Pan, PanGesture, Phase};
+use gestures::{Event, Pan, PanGesture, Phase};
 use pressto::{PressEvent, Pressable};
-use reanimated::{interpolate, Easing, Extrapolation, Spring, SpringConfig as Config, Timing};
-use skia::{Canvas, Color, Font, Image, Images, Matrix, Paint, Renderer};
+use motion::{interpolate, Easing, Extrapolation, Spring, SpringConfig as Config, Timing};
+use draw2d::{Canvas, Color, Font, Image, Images, Matrix, Paint, Renderer};
 
 use crate::gfx;
 use crate::ui_scroll::{self, Snap, UiScroll};
@@ -198,7 +198,7 @@ impl Sheet {
             reported_at: f64::NEG_INFINITY,
             resets: Vec::new(),
             press: std::array::from_fn(|_| Pressable::new()),
-            font: skia::match_ui_font(20.0, 700.0),
+            font: draw2d::match_ui_font(20.0, 700.0),
             posted: Vec::new(),
             past_close: false,
             page: 0,

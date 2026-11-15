@@ -5,7 +5,7 @@
 //!   25 points tall, and move up and down with the progress.
 //! - Each cell's progress is a spring delayed by 25 ms per cell, so the row sweeps across. The first
 //!   12 cells hide.
-//! - The blur behind each box is `skia::backdrop`. The glyphs are drawn once at rest and moved by
+//! - The blur behind each box is `draw2d::backdrop`. The glyphs are drawn once at rest and moved by
 //!   the layer, as Core Animation moves them.
 //!
 //! Inputs: toggled, and the canvas's origin in the window (points). The canvas is the numbers row,
@@ -13,9 +13,9 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
-use reanimated::Spring;
-use skia::backdrop::{BackdropBlur, Material, BACKDROP_WGSL};
-use skia::{Canvas, Color, Font, Paint, Renderer};
+use motion::Spring;
+use draw2d::backdrop::{BackdropBlur, Material, BACKDROP_WGSL};
+use draw2d::{Canvas, Color, Font, Paint, Renderer};
 
 use crate::gfx;
 
@@ -162,7 +162,7 @@ impl Digits {
                     s.to(
                         to,
                         0.0,
-                        reanimated::duration_config(x0, 0.0, 700.0, 1.0, 4.0),
+                        motion::duration_config(x0, 0.0, 700.0, 1.0, 4.0),
                     );
                 } else {
                     moving = true;

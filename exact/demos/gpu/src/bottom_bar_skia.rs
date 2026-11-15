@@ -7,9 +7,9 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, TapGesture};
-use reanimated::{duration_config, interpolate_color, Easing, Spring, Timing, GENTLE};
-use skia::{fit_box, Canvas, Color, Paint, Path, Rect, Renderer};
+use gestures::{Event, TapGesture};
+use motion::{duration_config, interpolate_color, Easing, Spring, Timing, GENTLE};
+use draw2d::{fit_box, Canvas, Color, Paint, Path, Rect, Renderer};
 
 use crate::{gfx, shaders};
 use shaders::bottom_bar_skia::{entry, module, Uniforms, GROUP_0, LAYER, MASK, SMP, TOP, U};
@@ -38,7 +38,7 @@ const ICONS: [(&str, f32); TABS] = [
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
-    Box::new(BottomBarSkia { icons: ICONS.map(|(d, _)| skia::path_from_svg(d)), ..Default::default() })
+    Box::new(BottomBarSkia { icons: ICONS.map(|(d, _)| draw2d::path_from_svg(d)), ..Default::default() })
 }
 
 #[derive(Default)]
@@ -55,7 +55,7 @@ struct BottomBarSkia {
     icons: [Option<Path>; TABS],
     layers: [Canvas; 2],
     renderers: [Renderer; 2],
-    blurs: [skia::Blur; 2],
+    blurs: [draw2d::Blur; 2],
     gpu: Option<Gpu>,
     /// The canvas's tap; the screen's width and the tab bar's height it hit-tests against.
     tap: TapGesture,
@@ -184,9 +184,9 @@ impl Surface for BottomBarSkia {
         // The layer: rect(−10, 45, width + 50, height + 50) and the bump, white.
         layer.begin(s);
         layer.translate(pad as f32 / s, pad as f32 / s + SHADOW_ROOM);
-        let mut shape = skia::path_builder();
-        skia::add_rect(&mut shape, -10.0, 45.0, w + OFFSET, bar + OFFSET);
-        skia::add_circle(&mut shape, cx, OFFSET, OFFSET);
+        let mut shape = draw2d::path_builder();
+        draw2d::add_rect(&mut shape, -10.0, 45.0, w + OFFSET, bar + OFFSET);
+        draw2d::add_circle(&mut shape, cx, OFFSET, OFFSET);
         layer.draw_path(&shape.build(), &Paint::fill(Color::WHITE));
         // Over it: the circle and the icons.
         top.begin(s);
@@ -213,19 +213,19 @@ impl Surface for BottomBarSkia {
         let blurred = blur_layer.run(device, queue, encoder, &gpu.layer, FORMAT, lw, lh, 5.0 * s);
         match gpu.binds.as_ref() {
             Some((goo, _)) => {
-                skia::render::fullscreen_pass(encoder, "bottom bar skia shape", &gpu.shape, &gpu.goo, goo);
+                draw2d::render::fullscreen_pass(encoder, "bottom bar skia shape", &gpu.shape, &gpu.goo, goo);
                 blur_shadow.run(device, queue, encoder, &gpu.shape, FORMAT, lw, lh, 25.0 * s);
             }
             None => {
                 let goo = bind_group(device, gpu, blurred, blurred);
-                skia::render::fullscreen_pass(encoder, "bottom bar skia shape", &gpu.shape, &gpu.goo, &goo);
+                draw2d::render::fullscreen_pass(encoder, "bottom bar skia shape", &gpu.shape, &gpu.goo, &goo);
                 let shadow = blur_shadow.run(device, queue, encoder, &gpu.shape, FORMAT, lw, lh, 25.0 * s);
                 let compose = bind_group(device, gpu, blurred, shadow);
                 gpu.binds = Some((goo, compose));
             }
         }
         let (_, compose) = gpu.binds.as_ref().unwrap();
-        skia::render::fullscreen_pass(encoder, "bottom bar skia", target, &gpu.compose, compose);
+        draw2d::render::fullscreen_pass(encoder, "bottom bar skia", target, &gpu.compose, compose);
         moving
     }
 }
@@ -247,9 +247,9 @@ fn bind_group(device: &wgpu::Device, gpu: &Gpu, layer: &wgpu::TextureView, mask:
 fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32, size: (u32, u32), padded: (u32, u32)) -> Gpu {
     let shader = device.create_shader_module(module());
     let layout = device.create_bind_group_layout(&GROUP_0);
-    let goo = skia::render::fullscreen_pipeline(device, &shader, &layout, entry::GOO, FORMAT, None);
-    let compose = skia::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None);
-    let view = |label, (w, h): (u32, u32)| skia::render::sampled_target(device, label, FORMAT, w, h);
+    let goo = draw2d::render::fullscreen_pipeline(device, &shader, &layout, entry::GOO, FORMAT, None);
+    let compose = draw2d::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None);
+    let view = |label, (w, h): (u32, u32)| draw2d::render::sampled_target(device, label, FORMAT, w, h);
     Gpu {
         format,
         generation,
@@ -258,7 +258,7 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32, si
         compose,
         layout,
         uniforms: device.create_buffer(&wgpu::BufferDescriptor { label: Some("bottom bar skia"), size: Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false }),
-        sampler: skia::render::linear_sampler(device),
+        sampler: draw2d::render::linear_sampler(device),
         layer: view("bottom bar skia layer", padded),
         shape: view("bottom bar skia shape", padded),
         top: view("bottom bar skia top", size),

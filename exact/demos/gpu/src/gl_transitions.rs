@@ -17,11 +17,11 @@ use std::rc::Rc;
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::Phase;
+use gestures::Phase;
 use pressto::{PressEvent, Pressable};
-use reanimated::{Easing, Spring, Timing};
-use skia::blur::GRAPHITE_FORMAT;
-use skia::{Canvas, Color, Font, Paint, Renderer};
+use motion::{Easing, Spring, Timing};
+use draw2d::blur::GRAPHITE_FORMAT;
+use draw2d::{Canvas, Color, Font, Paint, Renderer};
 
 use crate::ui_scroll::{self, UiScroll};
 use crate::{gfx, shaders};
@@ -144,11 +144,11 @@ struct Fonts {
 impl Fonts {
     fn new() -> Option<Fonts> {
         Some(Fonts {
-            title: skia::match_ui_font(20.0, 600.0)?,
-            card: skia::match_ui_font(16.0, 600.0)?,
-            heading: skia::match_ui_font(18.0, 400.0)?,
-            label: skia::match_ui_font(12.0, 500.0)?,
-            input: skia::match_ui_font(20.0, 400.0)?,
+            title: draw2d::match_ui_font(20.0, 600.0)?,
+            card: draw2d::match_ui_font(16.0, 600.0)?,
+            heading: draw2d::match_ui_font(18.0, 400.0)?,
+            label: draw2d::match_ui_font(12.0, 500.0)?,
+            input: draw2d::match_ui_font(20.0, 400.0)?,
         })
     }
 }
@@ -445,8 +445,8 @@ fn build(
     let shader = device.create_shader_module(module());
     let layout = device.create_bind_group_layout(&GROUP_0);
     let copy =
-        skia::render::fullscreen_pipeline(device, &shader, &layout, entry::COPY_FS, format, None);
-    let transition = skia::render::fullscreen_pipeline(
+        draw2d::render::fullscreen_pipeline(device, &shader, &layout, entry::COPY_FS, format, None);
+    let transition = draw2d::render::fullscreen_pipeline(
         device,
         &shader,
         &layout,
@@ -457,14 +457,14 @@ fn build(
     let (live, first, uniforms) = match keep {
         Some(g) => (g.live, g.first, g.uniforms),
         None => (
-            skia::render::sampled_target(
+            draw2d::render::sampled_target(
                 device,
                 "gl transitions live",
                 GRAPHITE_FORMAT,
                 pixels.0,
                 pixels.1,
             ),
-            skia::render::sampled_target(
+            draw2d::render::sampled_target(
                 device,
                 "gl transitions first",
                 GRAPHITE_FORMAT,
@@ -479,7 +479,7 @@ fn build(
             }),
         ),
     };
-    let sampler = skia::render::linear_sampler(device);
+    let sampler = draw2d::render::linear_sampler(device);
     let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("gl transitions"),
         layout: &layout,
@@ -919,14 +919,14 @@ fn draw_card(
         // The view's opacity is its layer's, the shadow under the opaque card unseen: only what
         // lies outside the card is drawn.
         c.clip_with(|b| {
-            skia::add_rect(
+            draw2d::add_rect(
                 b,
                 card.x - margin,
                 y - margin,
                 card.w + 2.0 * margin,
                 card.h + 2.0 * margin,
             );
-            skia::add_rrect_hole(b, card.x, y, card.w, card.h, CARD_RADIUS);
+            draw2d::add_rrect_hole(b, card.x, y, card.w, card.h, CARD_RADIUS);
         });
         c.draw_rrect_shadow(
             card.x,
@@ -1328,7 +1328,7 @@ impl Surface for GlTransitions {
         } else {
             &gpu.copy
         };
-        skia::render::fullscreen_pass(encoder, "gl transitions", target, pipeline, &gpu.bind);
+        draw2d::render::fullscreen_pass(encoder, "gl transitions", target, pipeline, &gpu.bind);
         moving
             || self.plus.is_pressed()
             || self.close.is_pressed()
@@ -1430,7 +1430,7 @@ mod tests {
 
     #[test]
     fn notes_wrap_as_textkit_breaks_them() {
-        let Some(font) = skia::match_ui_font(16.0, 600.0) else {
+        let Some(font) = draw2d::match_ui_font(16.0, 600.0) else {
             return eprintln!("no system font; skipped");
         };
         let mut lines = Vec::new();

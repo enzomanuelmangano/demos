@@ -7,8 +7,8 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
-use reanimated::{Spring, GENTLE};
-use skia::{point, Canvas, Color, Font, Paint, Path, PathBuffer, Point, Renderer};
+use motion::{Spring, GENTLE};
+use draw2d::{point, Canvas, Color, Font, Paint, Path, PathBuffer, Point, Renderer};
 
 /// Scores for Light, Standard and Pro.
 const SCORES: [[f64; 27]; 3] = [
@@ -103,13 +103,13 @@ impl Surface for Highlight {
         c.begin(frame.scale);
         c.save();
         c.clip_with(|b| {
-            skia::add_rect(b, x - 10.0, y - 10.0, w + 20.0, h + 20.0);
-            skia::add_rrect_hole(b, x, y, w, h, r);
+            draw2d::add_rect(b, x - 10.0, y - 10.0, w + 20.0, h + 20.0);
+            draw2d::add_rrect_hole(b, x, y, w, h, r);
         });
         c.draw_rrect_shadow(x, y + 1.0, w, h, r, 1.0, Color::BLACK.alpha(0.1));
         c.restore();
         c.draw_continuous_rrect(x, y, w, h, r, &Paint::fill(Color::view_hex(0xF1EEE8)));
-        c.draw_path(&skia::border_ring_path(x, y, w, h, r, 1.0), &Paint::fill(Color::view_hex(0xE5E2DC)));
+        c.draw_path(&draw2d::border_ring_path(x, y, w, h, r, 1.0), &Paint::fill(Color::view_hex(0xE5E2DC)));
         let (pw, ph) = frame.pixels();
         self.renderer.draw(device, queue, encoder, &self.canvas, target, format, pw, ph, wgpu::Color::TRANSPARENT);
         moving
@@ -141,7 +141,7 @@ struct Graph {
     renderer: Renderer,
 }
 
-/// `<CornerPathEffect r>` on the open polyline `points`, written as `skia::corner_polyline`
+/// `<CornerPathEffect r>` on the open polyline `points`, written as `draw2d::corner_polyline`
 /// writes it (the same events, checked in the tests) into `out`, cleared first: a buffer kept
 /// between frames, so once it has grown to the line's size, writing it allocates nothing.
 fn corner_path(points: &[Point], radius: f32, out: &mut PathBuffer) {
@@ -172,10 +172,10 @@ fn corner_path(points: &[Point], radius: f32, out: &mut PathBuffer) {
 
 /// The dashed rule across `width`: 4 on, 4 off, as 2-pt-tall rects, the last cut at the end.
 fn dash_path(width: f32, y: f32) -> Path {
-    let mut b = skia::path_builder();
+    let mut b = draw2d::path_builder();
     let mut x = 0.0;
     while x < width {
-        skia::add_rect(&mut b, x, y - 1.0, 4.0f32.min(width - x), 2.0);
+        draw2d::add_rect(&mut b, x, y - 1.0, 4.0f32.min(width - x), 2.0);
         x += 8.0;
     }
     b.build()
@@ -207,7 +207,7 @@ impl Graph {
         }
         corner_path(&self.points, 20.0, &mut self.path);
         // A solid paint holds no heap data: making it is free.
-        let line = Paint::stroke(Color::hex(0x8A40FF), 3.0).caps(skia::Cap::Round, skia::Join::Miter);
+        let line = Paint::stroke(Color::hex(0x8A40FF), 3.0).caps(draw2d::Cap::Round, draw2d::Join::Miter);
         c.draw_path_events(self.path.get(0).iter(), &line);
     }
 }
@@ -366,7 +366,7 @@ pub(crate) mod tests {
             let mut buffer = PathBuffer::new();
             corner_path(&points, 20.0, &mut buffer);
             let ours: Vec<_> = buffer.get(0).iter().collect();
-            let skia: Vec<_> = skia::corner_polyline(&points, 20.0).iter().collect();
+            let skia: Vec<_> = draw2d::corner_polyline(&points, 20.0).iter().collect();
             assert_eq!(ours, skia);
         }
     }

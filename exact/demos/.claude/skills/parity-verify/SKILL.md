@@ -33,7 +33,7 @@ can't time RN to tens of milliseconds. Motion parity is proved in two parts:
    value, driver (withSpring / withTiming / withDecay / interpolate / gesture), config (stiffness
    / damping / mass or duration + dampingRatio, duration, easing, delay), input and output ranges,
    extrapolation, what triggers it, what cancels it, the haptics. Check the Exact side against
-   each row. `packages/reanimated` is Reanimated's math line for line, so equal rows mean equal
+   each row. `packages/motion` is Reanimated's math line for line, so equal rows mean equal
    curves. Contract `-exact-spring(k, c, m)` is the same spring; durations go through
    `tools/spring.ts`.
 2. **Recording (decides structure).** At 15 fps a recording still shows the wrong property

@@ -89,7 +89,7 @@ pub fn continuous_rrect_sdf(p: V, half: V, r: f32) -> f32 {
 
 /// [`continuous_rrect_sdf`] in WGSL: `continuous_rrect_sdf(p, half, r) -> f32`, with its helpers
 /// (`crr_` prefixed). Paste it into a shader verbatim.
-pub const CONTINUOUS_RRECT_SDF_WGSL: &str = r#"// continuous_rrect_sdf: packages/skia/src/continuous_sdf.rs (Core Animation's continuous corner).
+pub const CONTINUOUS_RRECT_SDF_WGSL: &str = r#"// continuous_rrect_sdf: packages/draw2d/src/continuous_sdf.rs (Core Animation's continuous corner).
 const CRR_E: f32 = 1.528665;
 
 struct CrrHit { d2: f32, side: f32 };

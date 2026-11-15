@@ -11,8 +11,8 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
-use reanimated::{interpolate, Extrapolation, Spring};
-use skia::{Canvas, Color, Paint, Renderer};
+use motion::{interpolate, Extrapolation, Spring};
+use draw2d::{Canvas, Color, Paint, Renderer};
 
 use crate::gfx;
 
@@ -144,8 +144,8 @@ impl Surface for Card {
         c.save();
         c.clip_with(|b| {
             let e = 4.0 * SHADOW_SIGMA;
-            skia::add_rect(b, -e, -e, w + 2.0 * e, h + 2.0 * e);
-            skia::add_rrect_hole(b, 0.0, 0.0, w, h, r);
+            draw2d::add_rect(b, -e, -e, w + 2.0 * e, h + 2.0 * e);
+            draw2d::add_rrect_hole(b, 0.0, 0.0, w, h, r);
         });
         c.draw_rrect_shadow_local(
             0.0,

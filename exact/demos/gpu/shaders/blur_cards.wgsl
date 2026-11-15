@@ -56,7 +56,7 @@ fn to_linear(c: vec3<f32>) -> vec3<f32> {
     return select(pow((c + 0.055) / 1.055, vec3<f32>(2.4)), c / 12.92, c <= vec3<f32>(0.04045));
 }
 
-// continuous_rrect_sdf: packages/skia/src/continuous_sdf.rs (Core Animation's continuous corner).
+// continuous_rrect_sdf: packages/draw2d/src/continuous_sdf.rs (Core Animation's continuous corner).
 const CRR_E: f32 = 1.528665;
 
 struct CrrHit { d2: f32, side: f32 };

@@ -19,12 +19,12 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture, Phase};
+use gestures::{Event, PanGesture, Phase};
 use pressto::{PressEvent, Pressable};
-use reanimated::{
+use motion::{
     interpolate, interpolate_color, Easing, Extrapolation, Spring, SpringConfig, Timing,
 };
-use skia::{Canvas, Color, Font, Images, Matrix, Paint, Renderer, Shader};
+use draw2d::{Canvas, Color, Font, Images, Matrix, Paint, Renderer, Shader};
 
 use crate::gfx;
 
@@ -712,7 +712,7 @@ impl Panel {
         rects: &[[u32; 4]; SPRITES],
         b: TextBox,
         sprite: usize,
-        atlas: skia::ImageRef,
+        atlas: draw2d::ImageRef,
     ) {
         let s = self.size.2;
         let r = rects[sprite];
@@ -729,7 +729,7 @@ impl Panel {
         content: &Content,
         l: &Layout,
         rects: &[[u32; 4]; SPRITES],
-        atlas: skia::ImageRef,
+        atlas: draw2d::ImageRef,
     ) {
         let press = |k: usize, c: &mut Canvas, r: [f32; 4]| {
             let k = content.presses[k].scale() as f32;
@@ -932,8 +932,8 @@ impl Surface for Panel {
         c.save();
         c.clip_with(|b| {
             let e = 4.0 * SHADOW_SIGMA;
-            skia::add_rect(b, px - e, py - e, bw + 2.0 * e, bh + 2.0 * e);
-            skia::add_rrect_hole(b, px, py, bw, bh, radius);
+            draw2d::add_rect(b, px - e, py - e, bw + 2.0 * e, bh + 2.0 * e);
+            draw2d::add_rrect_hole(b, px, py, bw, bh, radius);
         });
         c.draw_rrect_shadow(
             px,

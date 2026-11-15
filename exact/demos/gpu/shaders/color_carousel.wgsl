@@ -111,7 +111,7 @@ fn rrect_sdf(p: vec2<f32>, half: vec2<f32>, r: f32) -> f32 {
     return length(max(q, vec2<f32>(0.0))) + min(max(q.x, q.y), 0.0) - r;
 }
 
-// Apple's continuous corner (packages/skia CONTINUOUS_CORNER), in radii from the corner's
+// Apple's continuous corner (packages/draw2d CONTINUOUS_CORNER), in radii from the corner's
 // point: (a, c) is a back along the side coming in and c along the side going out. Its first
 // two cubics run from the side (1.52866, 0) to the diagonal (the second's t = 0.5); the rest is
 // their mirror image.

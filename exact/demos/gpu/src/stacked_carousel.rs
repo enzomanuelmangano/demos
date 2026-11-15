@@ -10,8 +10,8 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use reanimated::{interpolate, Extrapolation};
-use skia::{Canvas, Color, Matrix4, Paint, Renderer};
+use motion::{interpolate, Extrapolation};
+use draw2d::{Canvas, Color, Matrix4, Paint, Renderer};
 
 use crate::ui_scroll::{Snap, UiScroll, FAST};
 use crate::{gfx, shaders};
@@ -207,7 +207,7 @@ impl Carousel {
             ((CARD_W as f32 + 2.0 * MARGIN) * s).ceil() as u32,
             ((CARD_H as f32 + 2.0 * MARGIN) * s).ceil() as u32,
         );
-        let layer = skia::render::sampled_target(device, "stacked carousel card", LAYER, lw, lh);
+        let layer = draw2d::render::sampled_target(device, "stacked carousel card", LAYER, lw, lh);
         let c = &mut self.layer_canvas;
         c.begin(s);
         c.translate(MARGIN, MARGIN);
@@ -236,7 +236,7 @@ impl Carousel {
 
         let shader = device.create_shader_module(module());
         let layout = device.create_bind_group_layout(&GROUP_0);
-        let pipeline = skia::render::fullscreen_pipeline(
+        let pipeline = draw2d::render::fullscreen_pipeline(
             device,
             &shader,
             &layout,
@@ -388,7 +388,7 @@ impl Surface for Carousel {
             layer: [CARD_W as f32, CARD_H as f32, MARGIN, strip as f32],
         };
         queue.write_buffer(&gpu.uniforms, 0, &uniforms.bytes());
-        skia::render::fullscreen_pass(
+        draw2d::render::fullscreen_pass(
             encoder,
             "stacked carousel",
             target,

@@ -11,9 +11,9 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture, Phase, TapGesture};
+use gestures::{Event, PanGesture, Phase, TapGesture};
 use pressto::{PressEvent, Pressable};
-use reanimated::{duration_config, Easing, Spring, SpringConfig as Config, Timing};
+use motion::{duration_config, Easing, Spring, SpringConfig as Config, Timing};
 
 /// The border and badge fade over FADE_SELECT_MS. The badge and button springs are critically
 /// damped, settling in 300 and 350 ms.
@@ -25,7 +25,7 @@ fn badge_spring() -> Config {
 fn fab_spring() -> Config {
     duration_config(150.0, 0.0, 350.0, 1.0, 4.0)
 }
-use skia::{fit_cover, Canvas, Color, Font, Images, Paint, Rect, Renderer};
+use draw2d::{fit_cover, Canvas, Color, Font, Images, Paint, Rect, Renderer};
 
 use crate::gfx;
 use crate::ui_scroll::{self, Snap, UiScroll};
@@ -99,7 +99,7 @@ fn grid() -> SelectableGrid {
         check: Font::new(ANTDESIGN, 16.0).map(Font::with_ui_layout),
         clear: Font::new(MATERIAL, 20.0).map(Font::with_ui_layout),
         // A text input's font, with UIKit's tracking and kerning.
-        label: skia::match_ui_font(20.0, 400.0),
+        label: draw2d::match_ui_font(20.0, 400.0),
         images: None,
         canvas: Canvas::default(),
         renderer: Renderer::default(),
@@ -394,17 +394,17 @@ impl Surface for SelectableGrid {
             moving |= fade.step(now) || fade.value < 1.0;
         }
         if self.images.is_none() {
-            let decoded: Vec<skia::Image> = PHOTOS
+            let decoded: Vec<draw2d::Image> = PHOTOS
                 .iter()
                 .map(|b| {
-                    skia::Image::from_jpeg(b).unwrap_or(skia::Image {
+                    draw2d::Image::from_jpeg(b).unwrap_or(draw2d::Image {
                         width: 1,
                         height: 1,
                         pixels: vec![40, 40, 40, 255],
                     })
                 })
                 .collect();
-            let refs: Vec<&skia::Image> = decoded.iter().collect();
+            let refs: Vec<&draw2d::Image> = decoded.iter().collect();
             let images = Images::upload(device, queue, &refs);
             self.renderer.set_images(&images);
             self.images = Some(images);
@@ -446,7 +446,7 @@ impl Surface for SelectableGrid {
         c.begin(frame.scale);
         c.fill(Color::BLACK);
         c.save();
-        c.clip_path(&skia::rect_path(0.0, top, w, h - top));
+        c.clip_path(&draw2d::rect_path(0.0, top, w, h - top));
         let first_row = (offset / item).floor().max(0.0) as usize;
         let last_row = ((offset + h - top) / item).ceil() as usize;
         for row in first_row..=last_row {

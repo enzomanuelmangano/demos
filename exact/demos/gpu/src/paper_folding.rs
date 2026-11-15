@@ -14,8 +14,8 @@ use pressto::{Config, PressEvent, Pressable};
 
 /// The paper shrinks a little while held, about the screen's centre.
 const PRESS: Config = Config { active_opacity: 0.5, min_scale: 0.97, base_scale: 1.0 };
-use reanimated::{interpolate_color, Easing, Timing};
-use skia::{point, stops, Blur, Canvas, Color, Paint, Renderer, Shader};
+use motion::{interpolate_color, Easing, Timing};
+use draw2d::{point, stops, Blur, Canvas, Color, Paint, Renderer, Shader};
 
 use crate::{gfx, shaders};
 use shaders::paper_folding::{entry, module, Uniforms, BACKGROUND, GROUP_0, SMP, U};
@@ -170,7 +170,7 @@ impl Surface for PaperFolding {
                 stops: stops(&[Color::hex(0xEAEAEA), Color::hex(0xE9EBEC), Color::hex(0xDDDDDD), Color::hex(0xE0E0E0)]),
             };
             self.layer.draw_rect(0.0, 0.0, w, h, &Paint::shader(sweep));
-            let sharp = skia::render::sampled_target(device, "paper folding background", LAYER, pw, ph);
+            let sharp = draw2d::render::sampled_target(device, "paper folding background", LAYER, pw, ph);
             self.renderer.draw(device, queue, encoder, &self.layer, &sharp, LAYER, pw, ph, wgpu::Color::TRANSPARENT);
             let blurred = self.blur.run(device, queue, encoder, &sharp, LAYER, pw, ph, BLUR * frame.scale);
             self.gpu = Some(build(device, format, frame.shader_generation, size, blurred));
@@ -190,7 +190,7 @@ impl Surface for PaperFolding {
             look: [p, 0.0, 0.0, 0.0],
         };
         queue.write_buffer(&gpu.uniforms, 0, &uniforms.bytes());
-        skia::render::fullscreen_pass(encoder, "paper folding", target, &gpu.pipeline, &gpu.bind);
+        draw2d::render::fullscreen_pass(encoder, "paper folding", target, &gpu.pipeline, &gpu.bind);
         moving || !self.due.is_empty() || self.press.is_animating()
     }
 }

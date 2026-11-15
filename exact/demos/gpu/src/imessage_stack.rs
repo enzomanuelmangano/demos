@@ -8,8 +8,8 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use reanimated::{interpolate, Extrapolation};
-use skia::{Canvas, Color, Paint, Renderer};
+use motion::{interpolate, Extrapolation};
+use draw2d::{Canvas, Color, Paint, Renderer};
 
 use crate::gfx;
 use crate::ui_scroll::{Snap, UiScroll, FAST};
@@ -291,8 +291,8 @@ impl Surface for Stack {
             c.save();
             c.clip_with(|b| {
                 let e = 4.0 * SHADOW_SIGMA + 5.0;
-                skia::add_rect(b, -e, -e, cwf + 2.0 * e, chf + 2.0 * e);
-                skia::add_rrect_hole(b, 0.0, 0.0, cwf, chf, RADIUS);
+                draw2d::add_rect(b, -e, -e, cwf + 2.0 * e, chf + 2.0 * e);
+                draw2d::add_rrect_hole(b, 0.0, 0.0, cwf, chf, RADIUS);
             });
             c.draw_rrect_shadow_local(
                 0.0,

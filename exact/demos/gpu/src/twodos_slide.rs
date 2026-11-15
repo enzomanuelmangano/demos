@@ -10,7 +10,7 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use skia::{point, Canvas, Cap, Color, Font, Images, Join, Matrix, MeasuredPath, Paint, Path, Renderer};
+use draw2d::{point, Canvas, Cap, Color, Font, Images, Join, Matrix, MeasuredPath, Paint, Path, Renderer};
 
 use crate::gfx;
 use crate::ui_scroll::{Snap, UiScroll, NORMAL};
@@ -80,11 +80,11 @@ pub(crate) fn squircle_path(width: f64, height: f64, border_radius: f64, smoothi
     let a = 2.0 * b;
     let (w, h) = (width, height);
     let pt = |x: f64, y: f64| point(x as f32, y as f32);
-    let mut path = skia::path_builder();
+    let mut path = draw2d::path_builder();
     // A small arc from where the last curve ended.
-    let arc = |b: &mut skia::PathBuilder, from: skia::Point, dx: f64, dy: f64| {
+    let arc = |b: &mut draw2d::PathBuilder, from: draw2d::Point, dx: f64, dy: f64| {
         let r = r as f32;
-        skia::add_svg_arc(b, from, pt(from.x as f64 + dx, from.y as f64 + dy), r, r, 0.0, true, false);
+        draw2d::add_svg_arc(b, from, pt(from.x as f64 + dx, from.y as f64 + dy), r, r, 0.0, true, false);
     };
     // Top right.
     path.begin(pt((w / 2.0).max(w - p), 0.0));
@@ -186,7 +186,7 @@ impl TwodosSlide {
             last_call: None,
             posted: Vec::new(),
             squircle: MeasuredPath::new(squircle_path(SQUIRCLE_SIDE, SQUIRCLE_SIDE, SQUIRCLE_RADIUS, 1.0)),
-            label: skia::match_ui_font(LABEL_SIZE, 700.0),
+            label: draw2d::match_ui_font(LABEL_SIZE, 700.0),
             arrow: Font::new(ANTDESIGN_ARROW, ARROW_SIZE).map(Font::with_ui_layout),
             check: Font::new(ENTYPO_CHECK, CHECK_SIZE).map(Font::with_ui_layout),
             layers: None,
@@ -300,8 +300,8 @@ impl TwodosSlide {
         c.save();
         c.clip_with(|b| {
             let e = 3.0 * SHADOW_SIGMA + 2.0 * (2.0 * SHADOW_SIGMA + 1.0);
-            skia::add_rect(b, -e, -e, SIZE + 2.0 * e, SIZE + 2.0 * e);
-            skia::add_rrect_hole(b, 0.0, 0.0, SIZE, SIZE, RADIUS);
+            draw2d::add_rect(b, -e, -e, SIZE + 2.0 * e, SIZE + 2.0 * e);
+            draw2d::add_rrect_hole(b, 0.0, 0.0, SIZE, SIZE, RADIUS);
         });
         c.draw_rrect_shadow_local(0.0, 0.0, SIZE, SIZE, RADIUS, SHADOW_SIGMA, Color::BLACK.alpha(SHADOW_ALPHA));
         c.restore();
@@ -444,8 +444,8 @@ mod tests {
         assert!(bb.0.abs() < 1e-3 && bb.1.abs() < 1e-3 && (bb.2 - 69.0).abs() < 1e-3 && (bb.3 - 69.0).abs() < 1e-3, "{bb:?}");
         // Open, from the top's middle back to it (max(w / 2, w − p) = min(w / 2, p) = 34.5).
         let events: Vec<_> = p.iter().collect();
-        assert!(matches!(events[0], skia::PathEvent::Begin { at } if at == point(34.5, 0.0)));
-        assert!(matches!(events.last(), Some(skia::PathEvent::End { last, close: false, .. }) if (last.x - 34.5).abs() < 1e-4 && last.y.abs() < 1e-4));
+        assert!(matches!(events[0], draw2d::PathEvent::Begin { at } if at == point(34.5, 0.0)));
+        assert!(matches!(events.last(), Some(draw2d::PathEvent::End { last, close: false, .. }) if (last.x - 34.5).abs() < 1e-4 && last.y.abs() < 1e-4));
     }
 
     fn lyon_bounds(p: &Path) -> (f32, f32, f32, f32) {

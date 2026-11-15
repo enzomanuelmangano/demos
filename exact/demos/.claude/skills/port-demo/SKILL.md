@@ -20,7 +20,8 @@ not a lookalike. Read `demos-dev-loop` first (build rules, springs, GPU rules).
 
 The demo's `index.tsx` and everything it imports inside its folder. Note each constant
 with its RN name. Note what the demo imports from packages (pressto, reanimated, skia,
-gesture-handler, expo-*): those map to `packages/*` here.
+gesture-handler, simplex-noise, expo-*): reanimated is `packages/motion`, skia `packages/draw2d`,
+gesture-handler `packages/gestures`, simplex-noise `packages/noise`.
 
 ## 2. Choose the layer — performance first
 
@@ -34,7 +35,7 @@ gesture-handler, expo-*): those map to `packages/*` here.
 | `withRepeat` loops | `keyframes` + `animation … infinite` |
 | scroll-driven `useAnimatedScrollHandler` | `scroll=` writing ONE state value read only by `translate`/`scale`/`opacity` (stacked-list); or the whole thing in Rust when heavy |
 | Pan/drag that moves a box (no per-frame logic) | `transformDragFor` + `transformgeometry`/`transformrelease`, `-exact-drag-timeline` + `animation-timeline` (interaction-gallery's CardDeck): host-driven, zero commits |
-| Gestures with per-frame logic, physics, many moving things | Rust surface: `gesture-handler` + `reanimated` crates, `wants_input()` |
+| Gestures with per-frame logic, physics, many moving things | Rust surface: `gestures` + `motion` crates, `wants_input()` |
 | Skia (anything), WebGPU, three.js, shaders | Rust surface in `gpu/src/<slug>.rs` + `gpu/shaders/<slug>.wgsl` |
 | Any pressto pressable (`PressableScale`, `PressableOpacity`, `PressableWithoutFeedback`, `createAnimatedPressable`) | **pressto is the app's global press system: use `packages/pressto`, never `:active` / `-exact-press-*`.** Contract: `pressing` state + `pointerdown=pressIn(key) pointerup=pressOut` + `scale=pressableScale(pressing, key, pressto)` (`pressableOpacity`, `animatedPressable(…, rest, pressed)`, `animatedPressableColor`) + `transition=pressTransition("scale", pressto)`, and `pressablesOnPress()` (the global haptic) in the press action; `inject pressto: PressablesConfig` and `pressablesOnPress: action` (the root provides them). Rust surface: `pressto::Pressable` (BaseButton semantics, progress, `scale()`/`opacity()`, `global_message()`). packages/pressto/README.md |
 | `Math.random()` | `roll(env.seed, k, n)` from `../env.contract` |
@@ -96,7 +97,7 @@ One commit per haptic event, never per frame.
 - RN Skia renders into a Display P3 surface: a RuntimeEffect (SkSL) shader's output colours
   are P3 values, so convert them to sRGB in the WGSL port (skia-color-picker: 5.0 → 1.2 levels).
 - RN Skia `measureText` on iOS: each glyph's bounds rounded out to whole points + 1 pt, wider
-  than the ink; `skia::measure_text` reproduces it ("Home" = 37.888).
+  than the ink; `draw2d::measure_text` reproduces it ("Home" = 37.888).
 - Variable fonts: RN uses the optical size it draws at and Core Text's fractional advances
   (Newsreader at opsz 12): never round advances to font units.
 - iOS host: a `transition`'s DELAY is ignored (measured: popup-handler, verification-code),
@@ -134,7 +135,7 @@ One commit per haptic event, never per frame.
 - Corners: RN `borderCurve: 'continuous'` = `corner-shape="-exact-continuous"` (CALayer
   cornerCurve .continuous), pills and circles included: CA draws it unclamped at min(r, w/2, h/2),
   so a continuous pill's ends are flatter than a semicircle. `squircle` is the CSS superellipse,
-  a different shape: never use it. No borderCurve in RN = plain `border-radius`. Rust: skia's
+  a different shape: never use it. No borderCurve in RN = plain `border-radius`. Rust: draw2d's
   continuous rrect.
 - iOS host: `object-fit="cover"` pins the image to the TOP when it crops vertically (CSS and
   expo-image centre it; Contract has no `object-position`). When the photo is taller than its box
@@ -160,7 +161,7 @@ One commit per haptic event, never per frame.
   the text (`position="relative" top=…`) by the computed difference (staggered-card-number: 1 pt).
   Read the metrics with fontTools, don't eyeball.
 - RN `<Text>` drawn in Rust (labels, @expo/vector-icons glyphs): use a UIKit font
-  (`skia::match_ui_font`, or `Font::new(..).map(Font::with_ui_layout)` for a bundled/icon font)
+  (`draw2d::match_ui_font`, or `Font::new(..).map(Font::with_ui_layout)` for a bundled/icon font)
   and `gfx::line_height` / `gfx::baseline`. Measured by exact/parity-tools/text-probe (UILabel-
   free RN path: NSLayoutManager, usesFontLeading NO, lineFragmentPadding 0) and matched pixel for
   pixel: the line is hhea ascent + descent (no lineGap), the baseline the hhea ascent below the
@@ -181,7 +182,7 @@ One commit per haptic event, never per frame.
   the finger (12 pt at 30-83 ms reads 0; 0.6 s drags of 140 pt: 124.3-129.7 by move size). Custom
   criteria (`minDist`, active offsets) `setTranslation(.zero)` at activation instead. A finger at
   rest sends no moves, so the lift's `velocityX/Y` is the last move's (a drag held still still flings
-  a snapPoint one tick on). The gesture-handler crate's `PanGesture` does all of it
+  a snapPoint one tick on). The gestures crate's `PanGesture` does all of it
   (`.min_distance(d)` is the custom-criteria case; a test that wants the 10 pt left out moves 90 ms
   or more after its down). The RN Debug app loses more on fast drags (swipe-cards: 113 for 140 pt in
   0.6 s, 127.9 in 2 s): its busy main thread; parity follows UIKit (Release). react-native-skia-gesture
@@ -209,11 +210,11 @@ One commit per haptic event, never per frame.
   by UIKit's page. Evenly spaced `snapToOffsets` are `Snap::Interval`.
 - Remote photos in a Rust surface: download the exact URLs RN requests (same `w=`) into
   `gpu/images/<slug>/` and `include_bytes!` them (coverflow, circular-carousel: ~1 MB total).
-- packages/skia: a continuous rrect with r ≥ half its side (a continuous circle or pill) leaves a
+- packages/draw2d: a continuous rrect with r ≥ half its side (a continuous circle or pill) leaves a
   1-sample AA crack one pixel inside its extremes (reported; circular-carousel's rings show it).
   Measured (animated-clip-box, a 70 pt view, borderRadius 200 continuous): Core Animation draws
   a continuous square whose radius reaches half its side as a true circle (mean coverage error
-  0.006 against one); packages/skia's overlap path is flatter, with a thin lens and a white row
+  0.006 against one); packages/draw2d's overlap path is flatter, with a thin lens and a white row
   at the top. Draw such a view with `draw_circle`.
 - Icon fonts drawn in Rust (`draw_text` of an AntDesign / Entypo glyph): TextKit sets the glyph
   half the font's hhea lineGap below box top + ascender (twodos-slide's check was 5.6 px high).
@@ -235,7 +236,7 @@ One commit per haptic event, never per frame.
   after an epsilon, so an exact 13 or 28 measures 13.333 / 28.333. In Rust: floor the Text's
   offset inside its parent (`text_grid`); in Contract: `position="relative"` back onto RN's px.
 - RN `fontWeight` is a UIFontWeight, which San Francisco draws at its named instance's `wght`:
-  '500' 510, '600' 590, '800' 860, '900' 1000 (`skia::match_ui_font` does it: `ui_weight`). At
+  '500' 510, '600' 590, '800' 860, '900' 1000 (`draw2d::match_ui_font` does it: `ui_weight`). At
   the CSS number a semibold label was a hair heavy (expandable-mini-player's "Demo", max 44).
 - Subsetting an icon font with fontTools: keep `recalc_bounds = False` (and load with
   `recalcBBoxes=False`). MaterialCommunityIcons' headers say xMin 0 where the outline starts
@@ -342,7 +343,7 @@ One commit per haptic event, never per frame.
   RN has not. Compose `p3_to_srgb(rgb / a) * a + view × (1 − a)`.
 - A Group `layer` with an image filter is a layer in the surface's space, encoded Display P3:
   gradients mix there and the blur mixes P3 values (an sRGB-encoded blur of a saturated colour is
-  up to 18 levels off). `Renderer::p3 = true` keeps a packages/skia target in P3 (gradients stay,
+  up to 18 levels off). `Renderer::p3 = true` keeps a packages/draw2d target in P3 (gradients stay,
   other colours are converted); convert once at the end. Skia sizes such a layer to the filter's
   input, the device clip outset by the blur's `ceil(3σ)` (when the content has no bounds), so what
   lies just off screen glows into the edges: draw the layer that much larger (spiral).
@@ -355,7 +356,7 @@ One commit per haptic event, never per frame.
   bounds), Blur(σ × CTM) then DstIn with that coverage, stored 8-bit, the paint drawn through it.
 - A path of many small `addCircle`s (spiral's 1641) is one Graphite path, a 4× MSAA union: the
   sub-pixel circles take quarter coverages. Instanced analytic circles overstate them (a r 0.6 px
-  dot lit 4 pixels): draw RN's path with `draw_with` + `skia::add_circle` (~1.7 ms CPU a frame).
+  dot lit 4 pixels): draw RN's path with `draw_with` + `draw2d::add_circle` (~1.7 ms CPU a frame).
 - An RN Skia canvas is an 8-bit Display P3 surface even with no gradient: every flat colour takes a
   rounded P3 round trip (#F7FFF7 shows as 246, 255, 247) and AA edges and glyphs blend P3 values
   (6 levels off in sRGB). Draw through `gfx::P3Layer` (theme-canvas-animation: max 1 level).
@@ -411,7 +412,7 @@ One commit per haptic event, never per frame.
   out at once, and the tab chosen only once the spring rests exactly on its index (833 ms at 60 Hz).
 - A mapper's `withSpring` retarget (`useDerivedValue(() => withSpring(x))`) inherits the running
   velocity but measures its rest against `getEnergy(x0, config.velocity = 0)`: the inherited
-  velocity is not in the initial energy (`reanimated::Spring::retarget` does this).
+  velocity is not in the initial energy (`motion::Spring::retarget` does this).
 - A surface left transparent where it draws nothing shows what lies under the app (the home)
   in the keyboard's glass, though the column under it is opaque: composite the last pass over the
   screen's colour (`gfx::P3Layer::over_black`; qr-code-generator).
@@ -420,7 +421,7 @@ One commit per haptic event, never per frame.
 - The RN app sets `RCTColorSpace.displayP3`: an RN View's hex is P3 (#474069 shows as 72, 64,
   108). An RN View drawn in Rust takes `Color::view_hex` (audio-player). A ReText's centred line
   starts on a whole device pixel (floored), a Text's on a subpixel.
-- One `skia::Renderer` serves one `draw` per encoder (its buffers are rewritten by the next draw
+- One `draw2d::Renderer` serves one `draw` per encoder (its buffers are rewritten by the next draw
   before submission): two offscreen layers in one `build` need two renderers (parallax's shadow
   took the card's geometry). A 3D-transformed RN view is its layer sampled through the transform
   with hard quad edges (no edge AA on iOS): draw the layer once, sample it (animated-3d-parallax).
@@ -514,7 +515,7 @@ One commit per haptic event, never per frame.
 - Core Animation antialiases a continuous-corner View analytically; `draw_continuous_rrect` is a
   path, so 4× MSAA: the corner's long tail along the side (coverage 7-65 in RN) reads 0 or 64
   (add-to-cart's buttons: edge pixels up to 76 levels, shape identical). A sub-pixel note until
-  packages/skia gets an analytic continuous rrect.
+  packages/draw2d gets an analytic continuous rrect.
 - A transformed RN view (a scale or a fractional translate: story-list's side cards) has
   ALIASED straight edges: CALayer's `allowsEdgeAntialiasing` is NO, so an edge pixel is in or out
   by its centre (col 1098 full where ours blends 0.7, up to 112 levels), while the corner mask
@@ -629,11 +630,11 @@ One commit per haptic event, never per frame.
 - RN's `onContentSizeChange` height is a float32 (2189.666748 for 2189.6667): a ratio of an offset
   to `height − viewHeight` stays under 1 at the bottom (scroll-progress' END shows only while
   overscrolled). Use `Math.fround` of the height where RN divides by it.
-- packages/skia's gradients take any number of stops in one draw (over 8 they go to a stop
+- packages/draw2d's gradients take any number of stops in one draw (over 8 they go to a stop
   buffer, same ramp): never split a long gradient into pieces.
 - expo-symbols' SymbolView is a size × size UIImageView, aspect fit: the symbol image at that point
   size is scaled to fit (textformat at 20 is 29 × 18: drawn at 20/29). Size the Contract symbol so.
-- A skia::Renderer's first draw builds its pipelines (~0.9 s on the simulator): run every path a
+- A draw2d::Renderer's first draw builds its pipelines (~0.9 s on the simulator): run every path a
   surface will need on its first frame (sculptures-in-words' composite path, `warmed`).
 
 ## 4. Check
@@ -652,7 +653,7 @@ finger), magnet-spring (2D distance per frame to nine magnets).
 ## Parity debts (ported, with a known gap to revisit, likely in Rust)
 
 - Animated blur intensity (expo-blur `intensity` driven by Reanimated): Exact's materials and
-  `backdrop-filter` don't animate. The fix is `skia::backdrop` (UIKit's partially animated blur, measured by
+  `backdrop-filter` don't animate. The fix is `draw2d::backdrop` (UIKit's partially animated blur, measured by
   `exact/parity-tools/blur-probe`): a Rust surface draws what is under the BlurView and runs the
   tint's chain at intensity / 100 (blurred-bottom-bar, dynamic-blur-tabs, bezier-curve-outline,
   airbnb-flip-interaction).

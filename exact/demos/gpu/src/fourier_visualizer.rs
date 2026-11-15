@@ -14,10 +14,10 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture, Phase};
+use gestures::{Event, PanGesture, Phase};
 use pressto::{PressEvent, Pressable};
-use reanimated::{Easing, Spring, Timing, GENTLE};
-use skia::{point, Canvas, Color, Font, Paint, Point, Renderer, ScratchBuilder};
+use motion::{Easing, Spring, Timing, GENTLE};
+use draw2d::{point, Canvas, Color, Font, Paint, Point, Renderer, ScratchBuilder};
 
 use crate::{gfx, shaders};
 use shaders::fourier_visualizer::{entry, module, Uniforms, BUTTON as BUTTON_TEXTURE, GROUP_0, U};
@@ -798,9 +798,9 @@ impl Surface for FourierVisualizer {
 fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32, side: u32) -> Gpu {
     let shader = device.create_shader_module(module());
     let layout = device.create_bind_group_layout(&GROUP_0);
-    let pipeline = skia::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING));
+    let pipeline = draw2d::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING));
     let uniforms = device.create_buffer(&wgpu::BufferDescriptor { label: Some("fourier visualizer"), size: Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
-    let layer = skia::render::sampled_target(device, "fourier visualizer button", LAYER_FORMAT, side, side);
+    let layer = draw2d::render::sampled_target(device, "fourier visualizer button", LAYER_FORMAT, side, side);
     let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("fourier visualizer"),
         layout: &layout,

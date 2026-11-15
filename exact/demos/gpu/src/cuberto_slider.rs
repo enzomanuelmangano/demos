@@ -11,9 +11,9 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, PointerPhase, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture};
-use reanimated::{interpolate_clamp, Spring, GENTLE};
-use skia::{fit_box, Canvas, Color, Font, Images, Matrix, Paint, Path, Rect, Renderer};
+use gestures::{Event, PanGesture};
+use motion::{interpolate_clamp, Spring, GENTLE};
+use draw2d::{fit_box, Canvas, Color, Font, Images, Matrix, Paint, Path, Rect, Renderer};
 
 use crate::gfx;
 
@@ -40,10 +40,10 @@ static OUTFIT: &[u8] = include_bytes!("../fonts/outfit.ttf");
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
     // System bold 20 pt, laid out as UIKit lays it out; falls back to the bundled font.
-    let font = skia::match_ui_font(20.0, 700.0).or_else(|| Font::new(OUTFIT, 20.0).map(Font::with_ui_layout));
+    let font = draw2d::match_ui_font(20.0, 700.0).or_else(|| Font::new(OUTFIT, 20.0).map(Font::with_ui_layout));
     Box::new(CubertoSlider {
         font,
-        balloon: skia::path_from_svg(BALLOON_PATH),
+        balloon: draw2d::path_from_svg(BALLOON_PATH),
         scale: Spring::at(DEFAULT_SCALE),
         radius: Spring::at(DEFAULT_RADIUS),
         border: Spring::at(DEFAULT_BORDER),

@@ -8,8 +8,8 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::Frame;
-use skia::blur::{GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
-use skia::{Canvas, Renderer};
+use draw2d::blur::{GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
+use draw2d::{Canvas, Renderer};
 
 use crate::{gfx, shaders};
 use shaders::gooey::{entry, module, Uniforms, GOO, GROUP_0, SMP, TOP, U};
@@ -108,7 +108,7 @@ impl Gooey {
             });
             gpu.bind = Some((blurred, group));
         }
-        skia::render::fullscreen_pass(encoder, "gooey", target, &gpu.pipeline, &gpu.bind.as_ref().unwrap().1);
+        draw2d::render::fullscreen_pass(encoder, "gooey", target, &gpu.pipeline, &gpu.bind.as_ref().unwrap().1);
     }
 }
 
@@ -125,8 +125,8 @@ fn low_mapping(plan: &GraphitePlan, origin: [i32; 2], size: [u32; 2]) -> [f32; 4
 fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32, pixels: (u32, u32)) -> Gpu {
     let shader = device.create_shader_module(module());
     let layout = device.create_bind_group_layout(&GROUP_0);
-    let pipeline = skia::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None);
-    let view = |label| skia::render::sampled_target(device, label, GRAPHITE_FORMAT, pixels.0, pixels.1);
+    let pipeline = draw2d::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None);
+    let view = |label| draw2d::render::sampled_target(device, label, GRAPHITE_FORMAT, pixels.0, pixels.1);
     Gpu {
         format,
         generation,
@@ -134,9 +134,9 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32, pi
         pipeline,
         layout,
         uniforms: device.create_buffer(&wgpu::BufferDescriptor { label: Some("gooey"), size: Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false }),
-        sampler: skia::render::linear_sampler(device),
+        sampler: draw2d::render::linear_sampler(device),
         layers: [view("gooey layer"), view("gooey top")],
-        empty: skia::render::sampled_target(device, "gooey empty", GRAPHITE_FORMAT, 1, 1),
+        empty: draw2d::render::sampled_target(device, "gooey empty", GRAPHITE_FORMAT, 1, 1),
         bind: None,
     }
 }
@@ -145,14 +145,14 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32, pi
 /// shown back at 0…255, rounded. A retarget starts from the rounded colour shown.
 #[derive(Clone, Debug)]
 pub struct ColorTiming {
-    channels: [reanimated::Timing; 3],
+    channels: [motion::Timing; 3],
     target: [u8; 3],
 }
 
 impl ColorTiming {
     /// At rest at `rgb`.
     pub fn at(rgb: [u8; 3]) -> ColorTiming {
-        ColorTiming { channels: rgb.map(|c| reanimated::Timing::at(linear(c as f64))), target: rgb }
+        ColorTiming { channels: rgb.map(|c| motion::Timing::at(linear(c as f64))), target: rgb }
     }
 
     /// Eases to `rgb` over `duration_ms` (ease in-out quad), from the colour shown; no-op when
@@ -165,7 +165,7 @@ impl ColorTiming {
         let shown = self.rgb();
         for (k, c) in self.channels.iter_mut().enumerate() {
             c.set(linear(shown[k] as f64));
-            c.to(linear(rgb[k] as f64), duration_ms, reanimated::Easing::timing_default());
+            c.to(linear(rgb[k] as f64), duration_ms, motion::Easing::timing_default());
         }
     }
 
@@ -184,9 +184,9 @@ impl ColorTiming {
     }
 
     /// [`ColorTiming::rgb`] as a Skia colour.
-    pub fn color(&self) -> skia::Color {
+    pub fn color(&self) -> draw2d::Color {
         let [r, g, b] = self.rgb();
-        skia::Color::rgb8(r, g, b)
+        draw2d::Color::rgb8(r, g, b)
     }
 }
 

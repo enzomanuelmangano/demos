@@ -3,7 +3,7 @@
 // (use-relight-renderer.ts MAX_PIXEL_RATIO), stretched over its bounds with the layer's linear
 // filter: the relit layer (light_on_painting.wgsl, sRGB-encoded) sampled bilinearly at this
 // pixel's centre, in its encoding. Over it, the Paginator's views (white, at their opacity:
-// premultiplied, sRGB-encoded, drawn by packages/skia at the device's pixels), src-over.
+// premultiplied, sRGB-encoded, drawn by packages/draw2d at the device's pixels), src-over.
 struct Uniforms {
     // The target in device pixels (w, h); whether the target encodes sRGB itself (1); whether
     // the relit layer is the target's size (1: read texel for texel).

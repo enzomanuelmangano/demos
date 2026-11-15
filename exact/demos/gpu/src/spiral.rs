@@ -12,9 +12,9 @@
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
 use pressto::{PressEvent, Pressable};
-use reanimated::SpringArray;
-use skia::blur::{ceil_size, outset, GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
-use skia::{point, stops, Canvas, Color, Paint, Renderer, Shader};
+use motion::SpringArray;
+use draw2d::blur::{ceil_size, outset, GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
+use draw2d::{point, stops, Canvas, Color, Paint, Renderer, Shader};
 
 use crate::{gfx, shaders};
 use shaders::spiral::{entry, module, Uniforms, BLURRED, CONTENT, GROUP_0, SMP, U};
@@ -177,7 +177,7 @@ impl Surface for Spiral {
                 let (x, y) = (current[i * 2], current[i * 2 + 1]);
                 // interpolate(distance, [0, max], [1.2, 0.2], CLAMP), inlined.
                 let progress = ((x * x + y * y).sqrt() / max_distance).clamp(0.0, 1.0);
-                skia::add_circle(b, x as f32, y as f32, (1.2 - progress) as f32);
+                draw2d::add_circle(b, x as f32, y as f32, (1.2 - progress) as f32);
             }
         });
         let gpu = self.gpu.as_mut().unwrap();
@@ -243,7 +243,7 @@ impl Surface for Spiral {
             });
             gpu.bind = Some((view, group));
         }
-        skia::render::fullscreen_pass(
+        draw2d::render::fullscreen_pass(
             encoder,
             "spiral",
             target,
@@ -281,7 +281,7 @@ fn build(
         format,
         generation,
         size,
-        compose: skia::render::fullscreen_pipeline(
+        compose: draw2d::render::fullscreen_pipeline(
             device,
             &shader,
             &layout,
@@ -296,15 +296,15 @@ fn build(
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         }),
-        layer: skia::render::sampled_target(
+        layer: draw2d::render::sampled_target(
             device,
             "spiral layer",
             GRAPHITE_FORMAT,
             size.0,
             size.1,
         ),
-        empty: skia::render::sampled_target(device, "spiral empty", GRAPHITE_FORMAT, 1, 1),
-        sampler: skia::render::linear_sampler(device),
+        empty: draw2d::render::sampled_target(device, "spiral empty", GRAPHITE_FORMAT, 1, 1),
+        sampler: draw2d::render::linear_sampler(device),
         bind: None,
     }
 }

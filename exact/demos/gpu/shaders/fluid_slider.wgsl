@@ -1,5 +1,5 @@
 // Fluid Slider (src/animations/fluid-slider): the canvas as RN Skia and Core Animation show it.
-// `goo` is Graphite's blur (skia::blur::GraphiteBlur) of the Group layer (the bar and the
+// `goo` is Graphite's blur (draw2d::blur::GraphiteBlur) of the Group layer (the bar and the
 // metaball, #007AFF, premultiplied encoded Display P3 in 8 bits); the layer's ColorMatrix runs on
 // it unpremultiplied (RGB kept, alpha 50 a − 25, clamped). `top` is what is drawn over the layer
 // (the white circle and the value), premultiplied P3. The two land in the canvas's 8-bit P3

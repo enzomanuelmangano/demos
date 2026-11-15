@@ -13,8 +13,8 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
-use reanimated::{duration_config, Spring};
-use skia::{point, stops, Canvas, Color, Paint, Renderer, Shader};
+use motion::{duration_config, Spring};
+use draw2d::{point, stops, Canvas, Color, Paint, Renderer, Shader};
 
 use crate::{gfx, shaders};
 use shaders::blur_cards::{entry, module, Pass, BG, BLURRED, CUR, GROUP_0, SMP, U};
@@ -37,7 +37,7 @@ struct BlurCards {
     progress: Spring,
     bg_layer: Canvas,
     bg_renderer: Renderer,
-    bg_blur: skia::Blur,
+    bg_blur: draw2d::Blur,
     gpu: Option<Gpu>,
 }
 
@@ -133,7 +133,7 @@ impl Surface for BlurCards {
                 wgpu::BindGroupEntry { binding: SMP.binding, resource: wgpu::BindingResource::Sampler(&gpu.sampler) },
             ],
         });
-        skia::render::fullscreen_pass(encoder, "blur cards", target, &gpu.pass, &bind);
+        draw2d::render::fullscreen_pass(encoder, "blur cards", target, &gpu.pass, &bind);
         moving
     }
 }
@@ -145,11 +145,11 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32, si
         format,
         generation,
         size,
-        pass: skia::render::fullscreen_pipeline(device, &shader, &layout, entry::CARD_PASS, format, None),
+        pass: draw2d::render::fullscreen_pipeline(device, &shader, &layout, entry::CARD_PASS, format, None),
         layout,
-        sampler: skia::render::linear_sampler(device),
+        sampler: draw2d::render::linear_sampler(device),
         uniforms: device.create_buffer(&wgpu::BufferDescriptor { label: Some("blur cards"), size: Pass::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false }),
-        bg_source: skia::render::sampled_target(device, "blur cards background", LAYER, size.0, size.1),
+        bg_source: draw2d::render::sampled_target(device, "blur cards background", LAYER, size.0, size.1),
     }
 }
 
@@ -161,7 +161,7 @@ mod tests {
     #[test]
     fn the_shader_carries_skias_continuous_corner_verbatim() {
         let wgsl = include_str!("../shaders/blur_cards.wgsl");
-        assert!(wgsl.contains(skia::CONTINUOUS_RRECT_SDF_WGSL), "paste skia::CONTINUOUS_RRECT_SDF_WGSL into blur_cards.wgsl again");
+        assert!(wgsl.contains(draw2d::CONTINUOUS_RRECT_SDF_WGSL), "paste draw2d::CONTINUOUS_RRECT_SDF_WGSL into blur_cards.wgsl again");
     }
 
     #[test]

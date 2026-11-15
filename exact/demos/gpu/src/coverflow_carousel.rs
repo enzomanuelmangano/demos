@@ -11,8 +11,8 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use reanimated::{interpolate, Extrapolation};
-use skia::{fit_cover, Canvas, Images, Matrix, Paint, Rect, Renderer};
+use motion::{interpolate, Extrapolation};
+use draw2d::{fit_cover, Canvas, Images, Matrix, Paint, Rect, Renderer};
 
 use crate::gfx;
 use crate::ui_scroll::{Snap, UiScroll, FAST};
@@ -183,11 +183,11 @@ impl Surface for Coverflow {
             self.scroll.max = (COUNT as f64 * ITEM + 2.0 * self.pad() - w).max(0.0);
         }
         if self.images.is_none() {
-            let decoded: Vec<skia::Image> = PHOTOS
+            let decoded: Vec<draw2d::Image> = PHOTOS
                 .iter()
-                .map(|b| skia::Image::from_jpeg(b).unwrap_or(skia::Image { width: 1, height: 1, pixels: vec![200, 200, 200, 255] }))
+                .map(|b| draw2d::Image::from_jpeg(b).unwrap_or(draw2d::Image { width: 1, height: 1, pixels: vec![200, 200, 200, 255] }))
                 .collect();
-            let refs: Vec<&skia::Image> = decoded.iter().collect();
+            let refs: Vec<&draw2d::Image> = decoded.iter().collect();
             let images = Images::upload(device, queue, &refs);
             self.renderer.set_images(&images);
             self.images = Some(images);
@@ -198,7 +198,7 @@ impl Surface for Coverflow {
         let (pad, top) = (self.pad(), self.list_top(scale));
         let c = &mut self.canvas;
         c.begin(frame.scale);
-        c.draw_rect(0.0, 0.0, w as f32, h as f32, &Paint::fill(skia::Color::WHITE));
+        c.draw_rect(0.0, 0.0, w as f32, h as f32, &Paint::fill(draw2d::Color::WHITE));
         if let Some(images) = self.images.as_ref() {
             for i in 0..COUNT {
                 let s = style(x, i);

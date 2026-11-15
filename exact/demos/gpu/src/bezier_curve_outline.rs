@@ -7,20 +7,20 @@
 //! - The content: the chessboard, and the square travelling along the curve. Its position is
 //!   sampled from the curve every point of length, and the square reads those samples.
 //! - The square is pressable and scales down while held. Its blur and the full-screen blur are
-//!   skia::backdrop chains, and a blur at zero intensity is the identity, so resting content
+//!   draw2d::backdrop chains, and a blur at zero intensity is the identity, so resting content
 //!   stays sharp.
 //! - Points are re-sampled whenever the curve changes while the square is visible, and at each
 //!   start.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture};
+use gestures::{Event, PanGesture};
 use pressto::{PressEvent, Pressable};
-use reanimated::{interpolate, Extrapolation, Spring, Timing, GENTLE};
-use reanimated::Easing;
-use skia::backdrop::{expo_fraction, BackdropBlur, Material};
-use skia::blur::{round_out, GRAPHITE_FORMAT};
-use skia::{path_from_svg, point, Canvas, Color, Paint, Path, PathEvent, Renderer};
+use motion::{interpolate, Extrapolation, Spring, Timing, GENTLE};
+use motion::Easing;
+use draw2d::backdrop::{expo_fraction, BackdropBlur, Material};
+use draw2d::blur::{round_out, GRAPHITE_FORMAT};
+use draw2d::{path_from_svg, point, Canvas, Color, Paint, Path, PathEvent, Renderer};
 
 use crate::{gfx, shaders};
 use shaders::bezier_curve_outline::{entry, module, Uniforms, BASE, BLURRED, GROUP_0, MASK, SMP, U, UPPER};
@@ -241,7 +241,7 @@ impl BezierOutline {
         icon.scale(ICON / 50.0, ICON / 50.0);
         if let [body, shade, light, glint] = &self.pawn[..] {
             icon.draw_path(body, &Paint::fill(Color::hex(0xE9E9E9)));
-            icon.draw_path(body, &Paint::stroke(Color::hex(0x2A2A2A), 1.5).caps(skia::Cap::Butt, skia::Join::Round));
+            icon.draw_path(body, &Paint::stroke(Color::hex(0x2A2A2A), 1.5).caps(draw2d::Cap::Butt, draw2d::Join::Round));
             icon.draw_path(shade, &Paint::fill(Color::BLACK).with_opacity(0.2));
             icon.draw_path(light, &Paint::fill(Color::WHITE));
             icon.draw_path(glint, &Paint::fill(Color::WHITE));
@@ -377,7 +377,7 @@ impl Surface for BezierOutline {
         // The composite below is the full-screen blur's source: encoded, not linearised.
         let mut u = Uniforms { canvas: [pw as f32, ph as f32, s, 0.0], mix: [self.outline_progress.value as f32, 1.0 - self.progress.value as f32, 0.0, 0.0], low: [0.0; 4], out: [0.0; 4] };
         queue.write_buffer(&gpu.uniforms, 0, &u.bytes());
-        skia::render::fullscreen_pass(encoder, "bezier content", &gpu.layers[4], &gpu.content, &gpu.content_bind);
+        draw2d::render::fullscreen_pass(encoder, "bezier content", &gpu.layers[4], &gpu.content, &gpu.content_bind);
         // The square's BlurView over its bounds as pressed (scale k about its centre).
         let k = self.press.scale() as f32;
         let (cx, cy, half) = ((sx + size / 2.0) as f32, (sy + size / 2.0) as f32, size as f32 * k / 2.0);
@@ -406,7 +406,7 @@ impl Surface for BezierOutline {
             });
             gpu.bind = Some((blurred, group));
         }
-        skia::render::fullscreen_pass(encoder, "bezier compose", &gpu.layers[5], &gpu.compose, &gpu.bind.as_ref().unwrap().1);
+        draw2d::render::fullscreen_pass(encoder, "bezier compose", &gpu.layers[5], &gpu.compose, &gpu.bind.as_ref().unwrap().1);
         // The full-screen BlurView over all of it, then the target.
         let screen = resting(self.intensity.value);
         self.screen_blur.run(device, queue, encoder, &gpu.layers[5], [0, 0, pw as i32, ph as i32], [0.0, 0.0], &Material::SystemUltraThinMaterialLight.chain().at(screen), s);
@@ -428,12 +428,12 @@ fn resting(intensity: f64) -> f32 {
 fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32, pixels: (u32, u32)) -> Gpu {
     let shader = device.create_shader_module(module());
     let layout = device.create_bind_group_layout(&GROUP_0);
-    let target = |label| skia::render::sampled_target(device, label, GRAPHITE_FORMAT, pixels.0, pixels.1);
+    let target = |label| draw2d::render::sampled_target(device, label, GRAPHITE_FORMAT, pixels.0, pixels.1);
     let layers = [target("bezier outline"), target("bezier under"), target("bezier icon"), target("bezier mask"), target("bezier main"), target("bezier screen")];
     // Two copies of the uniforms (256-aligned): the content pass's, the composite's.
     let uniforms = device.create_buffer(&wgpu::BufferDescriptor { label: Some("bezier"), size: COMPOSE_OFFSET + Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
-    let sampler = skia::render::linear_sampler(device);
-    let empty = skia::render::sampled_target(device, "bezier empty", GRAPHITE_FORMAT, 1, 1);
+    let sampler = draw2d::render::linear_sampler(device);
+    let empty = draw2d::render::sampled_target(device, "bezier empty", GRAPHITE_FORMAT, 1, 1);
     let content_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("bezier content"),
         layout: &layout,
@@ -450,8 +450,8 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32, pi
         format,
         generation,
         pixels,
-        content: skia::render::fullscreen_pipeline(device, &shader, &layout, entry::CONTENT, GRAPHITE_FORMAT, None),
-        compose: skia::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, GRAPHITE_FORMAT, None),
+        content: draw2d::render::fullscreen_pipeline(device, &shader, &layout, entry::CONTENT, GRAPHITE_FORMAT, None),
+        compose: draw2d::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, GRAPHITE_FORMAT, None),
         layout,
         sampler,
         uniforms,

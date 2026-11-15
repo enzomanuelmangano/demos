@@ -17,8 +17,8 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
-use reanimated::Spring;
-use skia::{Canvas, Color, Font, Images, Paint, Rect, Renderer, RsXform};
+use motion::Spring;
+use draw2d::{Canvas, Color, Font, Images, Paint, Rect, Renderer, RsXform};
 
 /// The page colour, and the ink.
 const PAGE_BG: u32 = 0xf7f4ec;

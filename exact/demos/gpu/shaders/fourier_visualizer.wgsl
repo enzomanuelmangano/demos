@@ -1,7 +1,7 @@
 // Fourier Visualizer (src/animations/fourier-visualizer/index.tsx): the clear button's view at
 // its opacity. Core Animation draws a view with opacity < 1 as a group (allowsGroupOpacity): the
 // #111 disc and the white icon are rendered into their own layer (premultiplied, encoded sRGB,
-// by packages/skia), and the layer is laid over the canvas at the view's opacity, src-over.
+// by packages/draw2d), and the layer is laid over the canvas at the view's opacity, src-over.
 struct Uniforms {
     // The layer's top-left corner in the target (device pixels), the view's opacity, and
     // whether the target encodes sRGB itself (1).

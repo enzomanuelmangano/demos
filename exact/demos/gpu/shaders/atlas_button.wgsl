@@ -3,7 +3,7 @@
 // colour blended in (colorBlendMode DstOver: the colour over the white sprite), not
 // antialiased (drawAtlas draws its quads plain). The useRSXformBuffer worklet runs here, per
 // instance; the whole button is scaled about its centre (rStyle). Then the icon and label
-// layer (`layer`, drawn by packages/skia) over it.
+// layer (`layer`, drawn by packages/draw2d) over it.
 struct Uniforms {
     // The canvas in device pixels (w, h), device pixels per point, whether the target encodes
     // sRGB itself (1).

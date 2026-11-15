@@ -9,8 +9,8 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::Phase;
-use skia::{point, stops, Canvas, Color, Images, Paint, Rect, Renderer, RsXform, Shader};
+use gestures::Phase;
+use draw2d::{point, stops, Canvas, Color, Images, Paint, Rect, Renderer, RsXform, Shader};
 
 use crate::gfx;
 
@@ -475,7 +475,7 @@ impl Surface for Grid {
         }
         let moving = sim.looping || self.next.is_some() || self.finger.is_some();
         if self.images.is_none() {
-            let white = skia::Image {
+            let white = draw2d::Image {
                 width: 4,
                 height: 4,
                 pixels: vec![255; 64],
@@ -551,7 +551,7 @@ mod tests {
             "/../../../assets/fonts/SF-Pro-Rounded-Heavy.otf"
         );
         let data: &'static [u8] = Box::leak(std::fs::read(font_path).unwrap().into_boxed_slice());
-        let font = skia::Font::new(data, 120.0).unwrap();
+        let font = draw2d::Font::new(data, 120.0).unwrap();
         let mut out = vec![0u8; 100 * MASK_BYTES];
         for n in 0..100 {
             let text = n.to_string();
@@ -564,7 +564,7 @@ mod tests {
             for i in 0..N {
                 let tx = (i % HS) as f64 * XS + (XS + PAD) / 2.0;
                 let ty = (i / HS) as f64 * YS + (YS + PAD) / 2.0;
-                if skia::path_contains(
+                if draw2d::path_contains(
                     &path,
                     (tx + SQUARE / 2.0) as f32,
                     (ty + SQUARE / 2.0) as f32,

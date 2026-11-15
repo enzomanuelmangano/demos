@@ -7,7 +7,7 @@
 //   under [translateY, scaleX] about its centre, then the zIndex 10 BlurView (tint light), then
 //   the two zIndex 50 LinearGradients (white → clear over the top third, clear → white over the
 //   bottom third). `source` draws what is under each BlurView (the card's white and the column);
-//   skia::backdrop runs UIBlurEffect.light's chain on it into `effect`; `compose` lays the
+//   draw2d::backdrop runs UIBlurEffect.light's chain on it into `effect`; `compose` lays the
 //   gradients over that and the container's opacity over the white, as UIKit does under a
 //   parent alpha (the group composites over what is behind it).
 // - the restart overlay: the PressableScale (`button`, black continuous radius 10 and its white

@@ -101,17 +101,17 @@ Override the Mac without a rebuild: launch argument `-feedbackHost <ip[:port]>`.
 - Layout `springify()` with no setters is the same default spring.
 - Overdamped: Reanimated runs any spring with damping ratio ζ = c / (2√(k·m)) ≥ 1 as
   critically damped. Contract's `-exact-spring` solves the real overdamped curve, so when ζ > 1
-  write damping 2√(k·m), not RN's number. `packages/reanimated` already does this.
+  write damping 2√(k·m), not RN's number. `packages/motion` already does this.
 - `perspective` in Exact acts on a box's children (CSS), not on the box: put it on the parent of
   the rotating node.
 - Presses are pressto's (packages/pressto: 250 ms ease from pointerdown/pointerup state), not
   the host's `:active` (a fixed 120 ms). See the port-demo skill.
 
-## GPU surfaces (gpu/, packages/reanimated, packages/gesture-handler)
+## GPU surfaces (gpu/, packages/motion, packages/gestures)
 
 - A `canvas` is a replaced element: `inset=0` leaves it 300×150. Give it `width`/`height`.
 - Gestures and motion live in the surface: `wants_input() -> true`, recognizers from
-  `gesture-handler`, animations from `reanimated`, `render()` returns true only while
+  `gestures`, animations from `motion`, `render()` returns true only while
   something moves or a finger is down. No commit per frame.
 - `cargo test -p demos-gpu` renders offscreen (`exact_gpu::fixture`; `EXACT_GPU_OUT=/tmp/x`
   writes PPMs): check positions there before a device build.
@@ -119,18 +119,18 @@ Override the Mac without a rebuild: launch argument `-feedbackHost <ip[:port]>`.
 - Never let a surface publish state that changes route props (`closedby`, presentation)
   during a gesture: the commit held the canvas's first frames ~1 s. Per-demo policy is
   static (`ownsDrags` in app.contract).
-- Skia drawing goes through `packages/skia`, antialiased as RN Skia's Graphite: `draw_rect`,
+- Skia drawing goes through `packages/draw2d`, antialiased as RN Skia's Graphite: `draw_rect`,
   `draw_rrect`, `draw_circle`, `draw_oval`, `draw_line` (and paths that are those shapes) are
   analytic (AnalyticRRectRenderStep), other paths 4× MSAA of Graphite's tessellation, clips
   analytic or MSAA as Graphite picks. Text below 162 device px is Graphite's direct masks:
   CoreText rasterises each glyph with Skia's Mac-scaler settings into a per-thread atlas
   (bit-exact against tools/coretext_reference.c); larger text is still glyph paths. Arcs,
-  ovals and circles built with `skia::add_arc`, `add_svg_arc`, `add_circle`, `add_oval` (and SVG
+  ovals and circles built with `draw2d::add_arc`, `add_svg_arc`, `add_circle`, `add_oval` (and SVG
   `A` commands) are Skia's conics: build them with those helpers, not lyon's own arc/circle
   builders, or they stay cubics.
 - `cargo test --release -p demos-gpu bench -- --ignored --nocapture`: CPU µs per frame of the
   heaviest Skia surfaces (`BENCH_ONLY=<name>`, `BENCH_FRAMES=<n>`); run it before and after
-  touching `packages/skia`. Use the shape call RN's JSX makes (`<Circle>` is
+  touching `packages/draw2d`. Use the shape call RN's JSX makes (`<Circle>` is
   `draw_circle`, not a circle path). vello was tried and fails on the iOS Simulator (no
   indirect dispatch), so don't reach for it.
 

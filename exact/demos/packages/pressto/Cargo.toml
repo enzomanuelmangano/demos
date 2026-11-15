@@ -14,5 +14,5 @@ publish = false
 name = "pressto"
 
 [dependencies]
-reanimated = { path = "../reanimated" }
-gesture-handler = { path = "../gesture-handler" }
+motion = { path = "../motion" }
+gestures = { path = "../gestures" }

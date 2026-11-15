@@ -11,8 +11,8 @@ use std::sync::{Arc, Mutex};
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, PointerPhase, Surface, SurfaceError, Value};
 use pressto::{PressEvent, Pressable};
-use reanimated::interpolate_clamp;
-use skia::{Canvas, Color, Font, Image, ImageRef, Images, Matrix, Paint, Renderer, Shader};
+use motion::interpolate_clamp;
+use draw2d::{Canvas, Color, Font, Image, ImageRef, Images, Matrix, Paint, Renderer, Shader};
 
 use crate::{gfx, qr};
 
@@ -1144,7 +1144,7 @@ struct Fonts {
 impl Fonts {
     fn new() -> Option<Fonts> {
         Some(Fonts {
-            label: skia::match_ui_font(LABEL_SIZE, LABEL_WEIGHT)?,
+            label: draw2d::match_ui_font(LABEL_SIZE, LABEL_WEIGHT)?,
             icon: Font::new(IONICONS, ICON_SIZE).map(Font::with_ui_layout)?,
         })
     }
@@ -1539,8 +1539,8 @@ impl NotionQrCode {
         c.draw_with(
             &Paint::fill(Color::BLACK.alpha(RING_A as f32 / 255.0)),
             |p| {
-                skia::add_rrect(p, b.x, b.y, b.w, b.h, RADIUS);
-                skia::add_rrect_hole(
+                draw2d::add_rrect(p, b.x, b.y, b.w, b.h, RADIUS);
+                draw2d::add_rrect_hole(
                     p,
                     b.x + BORDER,
                     b.y + BORDER,
@@ -1587,7 +1587,7 @@ fn box_shadow(c: &mut Canvas, r: R, radius: f32, (dy, sigma, a): (f32, f32, u8))
     let pad = 2.0 * (blur + 1.0);
     c.save();
     c.clip_with(|b| {
-        skia::add_rrect(
+        draw2d::add_rrect(
             b,
             r.x - pad,
             r.y + dy - pad,
@@ -1595,7 +1595,7 @@ fn box_shadow(c: &mut Canvas, r: R, radius: f32, (dy, sigma, a): (f32, f32, u8))
             r.h + 2.0 * pad,
             radius,
         );
-        skia::add_rrect_hole(b, r.x, r.y, r.w, r.h, radius);
+        draw2d::add_rrect_hole(b, r.x, r.y, r.w, r.h, radius);
     });
     c.draw_rrect_shadow(
         r.x,

@@ -7,9 +7,9 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, TapGesture};
-use reanimated::{duration_config, Spring, GENTLE};
-use skia::{Canvas, Color, Font, Paint, Renderer};
+use gestures::{Event, TapGesture};
+use motion::{duration_config, Spring, GENTLE};
+use draw2d::{Canvas, Color, Font, Paint, Renderer};
 
 use crate::gfx;
 
@@ -116,14 +116,14 @@ impl Surface for Theme {
         let phase = gfx::phase(phase);
         // A swatch scales in while the finger is down.
         match phase {
-            gesture_handler::Phase::Down if self.finger.is_none() => {
+            gestures::Phase::Down if self.finger.is_none() => {
                 self.finger = Some(id);
                 if let Some(i) = self.swatch_at(x, y) {
                     let s = &mut self.scales[i];
                     s.to(0.9, s.velocity, GENTLE);
                 }
             }
-            gesture_handler::Phase::Up | gesture_handler::Phase::Cancel if self.finger == Some(id) => self.finger = None,
+            gestures::Phase::Up | gestures::Phase::Cancel if self.finger == Some(id) => self.finger = None,
             _ => {}
         }
         // A tap selects the swatch and springs it back.

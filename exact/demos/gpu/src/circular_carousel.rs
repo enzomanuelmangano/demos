@@ -15,8 +15,8 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use reanimated::{interpolate, Extrapolation, Spring, GENTLE};
-use skia::{Canvas, Color, Images, Matrix, Paint, Rect, Renderer};
+use motion::{interpolate, Extrapolation, Spring, GENTLE};
+use draw2d::{Canvas, Color, Images, Matrix, Paint, Rect, Renderer};
 
 use crate::gfx;
 use crate::ui_scroll::{Snap, UiScroll, NORMAL};
@@ -55,16 +55,16 @@ static PHOTOS: [(&[u8], u32, u32); COUNT] = [
 /// Pixel sizes of the downloaded photos.
 const DOWNLOADED: [(f64, f64); COUNT] = [(400.0, 250.0), (400.0, 267.0), (400.0, 250.0), (400.0, 600.0), (400.0, 250.0), (400.0, 250.0), (400.0, 600.0), (400.0, 267.0), (400.0, 600.0)];
 
-fn decode(&(bytes, w, h): &(&[u8], u32, u32)) -> skia::Image {
+fn decode(&(bytes, w, h): &(&[u8], u32, u32)) -> draw2d::Image {
     let rgb = miniz_oxide::inflate::decompress_to_vec_zlib(bytes).unwrap_or_default();
     if rgb.len() != (w * h * 3) as usize {
-        return skia::Image { width: 1, height: 1, pixels: vec![200, 200, 200, 255] };
+        return draw2d::Image { width: 1, height: 1, pixels: vec![200, 200, 200, 255] };
     }
     let mut rgba = vec![255u8; (w * h * 4) as usize];
     for (d, s) in rgba.chunks_exact_mut(4).zip(rgb.chunks_exact(3)) {
         d[..3].copy_from_slice(s);
     }
-    skia::Image::from_rgba(w, h, rgba)
+    draw2d::Image::from_rgba(w, h, rgba)
 }
 
 /// Where photo `index` draws in its square view, in points: covered at its ideal size, downscaled
@@ -149,8 +149,8 @@ fn draw_cell(c: &mut Canvas, images: &Images, i: usize, left: f64, top: f64, ite
     c.save();
     c.clip_with(|b| {
         let e = 3.0 * SHADOW_SIGMA + 2.0 * (2.0 * SHADOW_SIGMA + 1.0);
-        skia::add_rect(b, bx - e, by - e, bs + 2.0 * e, bs + 2.0 * e);
-        skia::add_rrect_hole(b, bx, by, bs, bs, round);
+        draw2d::add_rect(b, bx - e, by - e, bs + 2.0 * e, bs + 2.0 * e);
+        draw2d::add_rrect_hole(b, bx, by, bs, bs, round);
     });
     c.draw_rrect_shadow_local(bx, by, bs, bs, round, SHADOW_SIGMA, Color::BLACK.alpha(SHADOW_ALPHA));
     c.restore();
@@ -258,8 +258,8 @@ impl Surface for Circular {
             self.scroll.snap = Snap::Interval(item);
         }
         if self.images.is_none() {
-            let decoded: Vec<skia::Image> = PHOTOS.iter().map(decode).collect();
-            let refs: Vec<&skia::Image> = decoded.iter().collect();
+            let decoded: Vec<draw2d::Image> = PHOTOS.iter().map(decode).collect();
+            let refs: Vec<&draw2d::Image> = decoded.iter().collect();
             let images = Images::upload(device, queue, &refs);
             self.group_renderer.set_images(&images);
             self.images = Some(images);

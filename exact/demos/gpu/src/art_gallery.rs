@@ -25,11 +25,11 @@ use std::sync::OnceLock;
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::Phase;
+use gestures::Phase;
 use pressto::Pressable;
-use reanimated::{Spring, interpolate_clamp};
-use skia::backdrop::{BackdropBlur, Material, expo_fraction};
-use skia::{Canvas, Color, Font, Paint, Renderer};
+use motion::{Spring, interpolate_clamp};
+use draw2d::backdrop::{BackdropBlur, Material, expo_fraction};
+use draw2d::{Canvas, Color, Font, Paint, Renderer};
 
 use crate::{gfx, shaders};
 use shaders::art_gallery::{GROUP_0, Uniforms, entry};

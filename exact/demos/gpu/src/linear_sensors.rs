@@ -10,8 +10,8 @@ use std::f64::consts::PI;
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, SensorKind, Surface, SurfaceError, Value};
-use reanimated::interpolate_clamp;
-use skia::{point, stops, Canvas, Color, Matrix4, Paint, Renderer, Shader};
+use motion::interpolate_clamp;
+use draw2d::{point, stops, Canvas, Color, Matrix4, Paint, Renderer, Shader};
 
 use crate::{gfx, shaders};
 use shaders::linear_sensors::{Compose, GLOW, LAYER as LAYER_TEX, LAYER_BLUR, OVALS, OVALS_BLUR, SMP, U};
@@ -45,7 +45,7 @@ struct LinearSensors {
     layers: [Canvas; 4],
     renderers: [Renderer; 4],
     /// The gradient square's, the layer's, the ovals', the glow's.
-    blurs: [skia::Blur; 4],
+    blurs: [draw2d::Blur; 4],
     gpu: Option<Gpu>,
 }
 
@@ -112,7 +112,7 @@ impl Surface for LinearSensors {
                     .pivot(CANVAS / 2.0, CANVAS / 2.0),
             )
             .to_matrix3();
-        let r = m.invert().unwrap_or(skia::Matrix3([0.0; 9])).rows();
+        let r = m.invert().unwrap_or(draw2d::Matrix3([0.0; 9])).rows();
         let gpu = self.gpu.as_ref().unwrap();
         let uniforms = Compose {
             r0: r[0],
@@ -123,7 +123,7 @@ impl Surface for LinearSensors {
             canvas: [pw as f32, ph as f32, frame.scale, gfx::srgb_flag(format)],
         };
         queue.write_buffer(&gpu.uniforms, 0, &uniforms.bytes());
-        skia::render::fullscreen_pass(encoder, "linear sensors", target, &gpu.compose, &gpu.bind);
+        draw2d::render::fullscreen_pass(encoder, "linear sensors", target, &gpu.compose, &gpu.bind);
         false
     }
 }
@@ -136,9 +136,9 @@ impl LinearSensors {
         let (pw, ph) = frame.pixels();
         let (w, h) = (frame.width, frame.height);
         let side = (SIDE * s).ceil() as u32;
-        let target = |label| skia::render::sampled_target(device, label, FORMAT, side, side);
+        let target = |label| draw2d::render::sampled_target(device, label, FORMAT, side, side);
         let views = [target("linear sensors square"), target("linear sensors gradient"), target("linear sensors ovals")];
-        let glow_source = skia::render::sampled_target(device, "linear sensors glow", FORMAT, pw, ph);
+        let glow_source = draw2d::render::sampled_target(device, "linear sensors glow", FORMAT, pw, ph);
         let layer_view = target("linear sensors layer");
 
         let [square, gradient, ovals, glow] = &mut self.layers;
@@ -154,8 +154,8 @@ impl LinearSensors {
         // The ovals, about the canvas's centre.
         ovals.begin(s);
         ovals.translate(CANVAS / 2.0 - WINDOW, CANVAS / 2.0 - WINDOW);
-        let mut b = skia::path_builder();
-        skia::add_oval(&mut b, -SIZE, -SIZE / OVAL_HEIGHT_RATIO, SIZE * 2.0, SIZE / OVAL_HEIGHT_RATIO * 2.0);
+        let mut b = draw2d::path_builder();
+        draw2d::add_oval(&mut b, -SIZE, -SIZE / OVAL_HEIGHT_RATIO, SIZE * 2.0, SIZE / OVAL_HEIGHT_RATIO * 2.0);
         let oval = b.build();
         for angle in [0.0, PI / 3.0, PI * 2.0 / 3.0] {
             ovals.save();
@@ -176,12 +176,12 @@ impl LinearSensors {
 
         let [gradient_blur, layer_blur, ovals_blur, glow_blur] = &mut self.blurs;
         let gradient_blurred = gradient_blur.run(device, queue, encoder, &views[1], FORMAT, side, side, 10.0 * s);
-        let sampler = skia::render::linear_sampler(device);
+        let sampler = draw2d::render::linear_sampler(device);
 
         // The layer: gradient over square, then the inner shadow.
         let inner_shader = device.create_shader_module(shaders::linear_sensors_inner::module());
         let inner_layout = device.create_bind_group_layout(&shaders::linear_sensors_inner::GROUP_0);
-        let inner = skia::render::fullscreen_pipeline(device, &inner_shader, &inner_layout, shaders::linear_sensors_inner::entry::INNER, FORMAT, None);
+        let inner = draw2d::render::fullscreen_pipeline(device, &inner_shader, &inner_layout, shaders::linear_sensors_inner::entry::INNER, FORMAT, None);
         let inner_uniforms = device.create_buffer(&wgpu::BufferDescriptor { label: Some("linear sensors inner"), size: Inner::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
         queue.write_buffer(&inner_uniforms, 0, &Inner { offset: [0.0, 0.8 / SIDE, 0.0, 0.0] }.bytes());
         let inner_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -194,7 +194,7 @@ impl LinearSensors {
                 wgpu::BindGroupEntry { binding: shaders::linear_sensors_inner::SMP.binding, resource: wgpu::BindingResource::Sampler(&sampler) },
             ],
         });
-        skia::render::fullscreen_pass(encoder, "linear sensors inner", &layer_view, &inner, &inner_bind);
+        draw2d::render::fullscreen_pass(encoder, "linear sensors inner", &layer_view, &inner, &inner_bind);
 
         let layer_blurred = layer_blur.run(device, queue, encoder, &layer_view, FORMAT, side, side, 3.5 * s);
         let ovals_blurred = ovals_blur.run(device, queue, encoder, &views[2], FORMAT, side, side, 3.0 * s);
@@ -202,7 +202,7 @@ impl LinearSensors {
 
         let shader = device.create_shader_module(shaders::linear_sensors::module());
         let layout = device.create_bind_group_layout(&shaders::linear_sensors::GROUP_0);
-        let compose = skia::render::fullscreen_pipeline(device, &shader, &layout, shaders::linear_sensors::entry::COMPOSE, format, None);
+        let compose = draw2d::render::fullscreen_pipeline(device, &shader, &layout, shaders::linear_sensors::entry::COMPOSE, format, None);
         let uniforms = device.create_buffer(&wgpu::BufferDescriptor { label: Some("linear sensors"), size: Compose::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
         let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("linear sensors"),

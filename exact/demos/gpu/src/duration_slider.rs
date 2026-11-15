@@ -12,10 +12,10 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture};
-use reanimated::spring::{Config, Spring};
-use skia::blur::{round_out, GraphiteBlur, GraphitePlan, IRect, Placed, GRAPHITE_FORMAT};
-use skia::{point, stops, Canvas, Color, Font, Paint, PathEvent, Renderer, Shader};
+use gestures::{Event, PanGesture};
+use motion::spring::{Config, Spring};
+use draw2d::blur::{round_out, GraphiteBlur, GraphitePlan, IRect, Placed, GRAPHITE_FORMAT};
+use draw2d::{point, stops, Canvas, Color, Font, Paint, PathEvent, Renderer, Shader};
 
 use crate::{gfx, shaders};
 use shaders::duration_slider::{entry, module, Uniforms, GROUP_0, SMP, T0, T1, T2, T3, T4, T5, T6, T7, T8, U};
@@ -236,7 +236,7 @@ impl DurationSlider {
 impl DurationSlider {
     /// Springs the knob to its value's mark, carrying the finger's angular speed when it left
     /// inside the span.
-    fn release(&mut self, pan: Option<gesture_handler::Pan>) {
+    fn release(&mut self, pan: Option<gestures::Pan>) {
         self.dragging = false;
         self.grip.to(0.0, 0.0, SNAP);
         let c = self.size as f64 / 2.0;
@@ -378,7 +378,7 @@ impl Surface for DurationSlider {
             let view = &gpu.layers[if i == 3 { 4 } else { i }];
             self.renderers[i].draw(device, queue, encoder, &self.canvases[i], view, GRAPHITE_FORMAT, pw, ph, wgpu::Color::TRANSPARENT);
         }
-        skia::render::fullscreen_pass(encoder, "duration slider saturate", &gpu.layers[3], &gpu.saturate, &gpu.saturate_bind);
+        draw2d::render::fullscreen_pass(encoder, "duration slider saturate", &gpu.layers[3], &gpu.saturate, &gpu.saturate_bind);
         // Blurs: the donut's glow, the knob's glow, and the knob's inner shadow.
         let clip = circle_bounds(g.c, g.c, g.r + STROKE / 2.0, s);
         let dy = (20.0 * s).round() as i32;
@@ -417,7 +417,7 @@ impl Surface for DurationSlider {
             let group = bind_group(device, &gpu.layout, &gpu.uniforms, &gpu.sampler, [&views[0], &views[1], &views[2], &gpu.background, &gpu.layers[0], &gpu.layers[1], &gpu.layers[2], &gpu.disc, &gpu.layers[4]]);
             gpu.bind = Some((views, group));
         }
-        skia::render::fullscreen_pass(encoder, "duration slider", target, &gpu.compose, &gpu.bind.as_ref().unwrap().1);
+        draw2d::render::fullscreen_pass(encoder, "duration slider", target, &gpu.compose, &gpu.bind.as_ref().unwrap().1);
         self.dragging || moving
     }
 }
@@ -445,11 +445,11 @@ fn bind_group(device: &wgpu::Device, layout: &wgpu::BindGroupLayout, uniforms: &
 fn build(device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut wgpu::CommandEncoder, format: wgpu::TextureFormat, generation: u32, pixels: (u32, u32), size: f32, s: f32) -> Gpu {
     let shader = device.create_shader_module(module());
     let layout = device.create_bind_group_layout(&GROUP_0);
-    let pipeline = |fs: &str, f| skia::render::fullscreen_pipeline(device, &shader, &layout, fs, f, None);
-    let sampler = skia::render::linear_sampler(device);
-    let target = |label| skia::render::sampled_target(device, label, GRAPHITE_FORMAT, pixels.0, pixels.1);
+    let pipeline = |fs: &str, f| draw2d::render::fullscreen_pipeline(device, &shader, &layout, fs, f, None);
+    let sampler = draw2d::render::linear_sampler(device);
+    let target = |label| draw2d::render::sampled_target(device, label, GRAPHITE_FORMAT, pixels.0, pixels.1);
     let new_uniforms = || device.create_buffer(&wgpu::BufferDescriptor { label: Some("duration slider"), size: Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
-    let empty = skia::render::sampled_target(device, "duration slider empty", GRAPHITE_FORMAT, 1, 1);
+    let empty = draw2d::render::sampled_target(device, "duration slider empty", GRAPHITE_FORMAT, 1, 1);
     let g = geometry(size);
     let canvas_rect = [0, 0, pixels.0 as i32, pixels.1 as i32];
     let base = Uniforms {
@@ -506,7 +506,7 @@ fn build(device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut wgpu::Command
         let buffer = new_uniforms();
         queue.write_buffer(&buffer, 0, &u.bytes());
         let group = bind_group(device, &layout, &buffer, &sampler, t);
-        skia::render::fullscreen_pass(encoder, "duration slider static", out, &pipeline(fs, GRAPHITE_FORMAT), &group);
+        draw2d::render::fullscreen_pass(encoder, "duration slider static", out, &pipeline(fs, GRAPHITE_FORMAT), &group);
     };
     let mut blurs: [GraphiteBlur; 3] = Default::default();
     let [ba, bb, bc] = &mut blurs;

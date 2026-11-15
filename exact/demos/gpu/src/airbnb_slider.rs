@@ -8,8 +8,8 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
-use reanimated::{duration_config, Easing, Spring, Timing, GENTLE};
-use skia::{Canvas, Color, Font, Images, Matrix, Paint, Renderer};
+use motion::{duration_config, Easing, Spring, Timing, GENTLE};
+use draw2d::{Canvas, Color, Font, Images, Matrix, Paint, Renderer};
 
 use crate::gfx;
 
@@ -82,7 +82,7 @@ pub fn surface() -> Box<dyn Surface> {
             x: Spring::at(digit_x(0)),
             opacity: Timing::at(if visible(0, i) { 1.0 } else { 0.0 }),
         }),
-        font: skia::match_ui_font(FONT_SIZE, 700.0),
+        font: draw2d::match_ui_font(FONT_SIZE, 700.0),
         canvas: Canvas::default(),
         renderer: Renderer::default(),
         atlas_canvas: Canvas::default(),

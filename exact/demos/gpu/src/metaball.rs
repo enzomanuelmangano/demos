@@ -10,8 +10,8 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture};
-use reanimated::{Spring, SpringConfig};
+use gestures::{Event, PanGesture};
+use motion::{Spring, SpringConfig};
 
 /// The release spring: critically damped, a 0.55 s period, mass 1: stiffness (2π / 0.55)²,
 /// damping 2√k.
@@ -280,7 +280,7 @@ impl Surface for Metaball {
             shape: [RADIUS, K, 0.0, 0.0],
         };
         queue.write_buffer(&gpu.uniforms, 0, &u.bytes());
-        skia::render::fullscreen_pass(encoder, "metaball", target, &gpu.compose, &gpu.bind);
+        draw2d::render::fullscreen_pass(encoder, "metaball", target, &gpu.compose, &gpu.bind);
         self.dirty = false;
         moving || self.first_pan.tracking() || self.second_pan.tracking()
     }
@@ -296,7 +296,7 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32) ->
         layout: &layout,
         entries: &[wgpu::BindGroupEntry { binding: U.binding, resource: uniforms.as_entire_binding() }],
     });
-    Gpu { format, generation, compose: skia::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None), uniforms, bind }
+    Gpu { format, generation, compose: draw2d::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None), uniforms, bind }
 }
 
 #[cfg(all(test, not(target_arch = "wasm32")))]

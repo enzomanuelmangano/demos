@@ -19,11 +19,11 @@ const TURN_MIN_MS: f64 = 60.0;
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, PointerPhase, Surface, SurfaceError, Value};
-use gesture_handler::{directions, FlingEvent, FlingGesture};
+use gestures::{directions, FlingEvent, FlingGesture};
 use pressto::{PressEvent, Pressable};
-use reanimated::{Easing, Spring, SpringConfig, Timing, GENTLE};
-use skia::backdrop::{expo_fraction, BackdropBlur, Material};
-use skia::{Canvas, Color, Font, Paint, Renderer};
+use motion::{Easing, Spring, SpringConfig, Timing, GENTLE};
+use draw2d::backdrop::{expo_fraction, BackdropBlur, Material};
+use draw2d::{Canvas, Color, Font, Paint, Renderer};
 
 use crate::gfx::{self, Random};
 use crate::shaders::snake::{
@@ -620,8 +620,8 @@ impl SnakeDemo {
             press: Pressable::new(),
             posted: Vec::new(),
             last_turn_ms: None,
-            score_font: skia::match_ui_font(SCORE_SIZE, 700.0),
-            label_font: skia::match_ui_font(LABEL_SIZE, 500.0),
+            score_font: draw2d::match_ui_font(SCORE_SIZE, 700.0),
+            label_font: draw2d::match_ui_font(LABEL_SIZE, 500.0),
             digit_font: Font::new(SF_ROUNDED_BOLD, DIGIT_SIZE),
             main: Canvas::default(),
             main_renderer: Renderer::default(),
@@ -833,12 +833,12 @@ impl SnakeDemo {
         let snake = &self.shown.snake;
         c.draw_with(&Paint::fill(Color::hex(SNAKE)), |b| {
             for s in snake {
-                skia::add_oval_from(b, s.x as f32, s.y as f32, sq, sq, 3);
+                draw2d::add_oval_from(b, s.x as f32, s.y as f32, sq, sq, 3);
             }
         });
         if let Some(f) = self.shown.food {
             c.draw_with(&Paint::fill(Color::hex(FOOD)), |b| {
-                skia::add_oval_from(b, f.x as f32, f.y as f32, sq, sq, 3)
+                draw2d::add_oval_from(b, f.x as f32, f.y as f32, sq, sq, 3)
             });
         }
     }
@@ -1087,7 +1087,7 @@ impl Surface for SnakeDemo {
 
         if self.drawn_count != Some(pose) {
             let row_h = l.px(DIGIT_H);
-            skia::render::fullscreen_pass(
+            draw2d::render::fullscreen_pass(
                 encoder,
                 "snake count source",
                 &gpu.source_view,
@@ -1130,7 +1130,7 @@ impl Surface for SnakeDemo {
             }
             self.drawn_count = Some(pose);
         }
-        skia::render::fullscreen_pass(encoder, "snake", target, &gpu.compose, &gpu.bind);
+        draw2d::render::fullscreen_pass(encoder, "snake", target, &gpu.compose, &gpu.bind);
         // The frame callback runs every frame.
         true
     }
@@ -1145,15 +1145,15 @@ fn build(
 ) -> Gpu {
     let (pw, ph) = size;
     let l = layout;
-    let main_view = skia::render::sampled_target(device, "snake main", LAYER, pw, ph);
-    let digits_view = skia::render::sampled_target(
+    let main_view = draw2d::render::sampled_target(device, "snake main", LAYER, pw, ph);
+    let digits_view = draw2d::render::sampled_target(
         device,
         "snake digits",
         LAYER,
         l.px(DIGIT_W),
         l.px(DIGIT_H * 10.0),
     );
-    let button_view = skia::render::sampled_target(
+    let button_view = draw2d::render::sampled_target(
         device,
         "snake button",
         LAYER,
@@ -1161,21 +1161,21 @@ fn build(
         l.px(l.button[3]),
     );
     let source_view =
-        skia::render::sampled_target(device, "snake count source", SOURCE, pw, l.px(DIGIT_H));
-    let effect_view = skia::render::sampled_target(
+        draw2d::render::sampled_target(device, "snake count source", SOURCE, pw, l.px(DIGIT_H));
+    let effect_view = draw2d::render::sampled_target(
         device,
         "snake count effect",
         EFFECT_FORMAT,
         pw,
         l.px(DIGIT_H),
     );
-    let sampler = skia::render::linear_sampler(device);
+    let sampler = draw2d::render::linear_sampler(device);
     let shader = device.create_shader_module(module());
     let group = device.create_bind_group_layout(&GROUP_0);
     let source =
-        skia::render::fullscreen_pipeline(device, &shader, &group, entry::SOURCE, SOURCE, None);
+        draw2d::render::fullscreen_pipeline(device, &shader, &group, entry::SOURCE, SOURCE, None);
     let compose =
-        skia::render::fullscreen_pipeline(device, &shader, &group, entry::COMPOSE, format, None);
+        draw2d::render::fullscreen_pipeline(device, &shader, &group, entry::COMPOSE, format, None);
     let uniforms = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("snake"),
         size: Uniforms::SIZE as u64,
@@ -1234,7 +1234,7 @@ fn build(
 mod tests {
     use super::*;
     use exact_gpu::{fixture, PointerKind};
-    use gesture_handler::directions::*;
+    use gestures::directions::*;
 
     const F120: f64 = 1000.0 / 120.0;
     const F60: f64 = 1000.0 / 60.0;

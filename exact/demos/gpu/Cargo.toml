@@ -14,11 +14,11 @@ name = "demos_gpu"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-reanimated = { path = "../packages/reanimated" }
-gesture-handler = { path = "../packages/gesture-handler" }
-skia = { path = "../packages/skia" }
+motion = { path = "../packages/motion" }
+gestures = { path = "../packages/gestures" }
+draw2d = { path = "../packages/draw2d" }
 pressto = { path = "../packages/pressto" }
-simplex-noise = { path = "../packages/simplex-noise" }
+noise = { path = "../packages/noise" }
 # Inflates the bitmaps in images/ (zlib), once, when a surface first draws.
 miniz_oxide = "0.9"
 # Decodes the photo skia-bottom-sheet draws (images/), once, when it first draws.

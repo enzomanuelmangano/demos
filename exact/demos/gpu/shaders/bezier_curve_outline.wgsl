@@ -5,7 +5,7 @@
 // icon container over it at the container's own (group) opacity 1 − progress, inside the square.
 // `compose`: the outline layer at opacity outline, under the main content at opacity
 // 1 − outline (two views with group opacity); inside the square the main content shows the
-// square's BlurView (`blurred`, skia::backdrop's low-resolution result, drawn back up
+// square's BlurView (`blurred`, draw2d::backdrop's low-resolution result, drawn back up
 // bilinearly as BACKDROP_WGSL does). The result is the full-screen BlurView's backdrop.
 struct Uniforms {
     // The canvas (device px), unused, whether the target encodes sRGB itself.
@@ -13,7 +13,7 @@ struct Uniforms {
     // outlineModeProgress, 1 − progress (the icon's opacity), whether the square's blur is on,
     // unused.
     mix: vec4<f32>,
-    // The square's backdrop (skia::backdrop::Backdrop::mapping): the low-resolution coordinate
+    // The square's backdrop (draw2d::backdrop::Backdrop::mapping): the low-resolution coordinate
     // of pixel (0, 0) and the scale; the used size and the texture's size.
     low: vec4<f32>,
     out: vec4<f32>,

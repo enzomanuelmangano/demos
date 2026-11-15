@@ -8,11 +8,11 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture};
+use gestures::{Event, PanGesture};
 use pressto::HitSlop;
-use reanimated::{interpolate_clamp, Spring, SpringConfig, GENTLE};
-use skia::blur::{ceil_size, outset, GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
-use skia::{Canvas, Color, Font, Paint, PathEvent, Renderer};
+use motion::{interpolate_clamp, Spring, SpringConfig, GENTLE};
+use draw2d::blur::{ceil_size, outset, GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
+use draw2d::{Canvas, Color, Font, Paint, PathEvent, Renderer};
 
 use crate::{gfx, shaders};
 use shaders::fluid_slider::{entry, module, Uniforms, GOO, GROUP_0, SMP, TOP, U};
@@ -362,7 +362,7 @@ impl Surface for FluidSlider {
             });
             gpu.bind = Some((view, group));
         }
-        skia::render::fullscreen_pass(encoder, "fluid slider", target, &gpu.compose, &gpu.bind.as_ref().unwrap().1);
+        draw2d::render::fullscreen_pass(encoder, "fluid slider", target, &gpu.compose, &gpu.bind.as_ref().unwrap().1);
         moving || chasing || self.pan.tracking()
     }
 }
@@ -380,8 +380,8 @@ fn low_mapping(plan: &GraphitePlan, origin: [i32; 2], size: [u32; 2]) -> [f32; 4
 fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32, size: (u32, u32), layer: (u32, u32)) -> Gpu {
     let shader = device.create_shader_module(module());
     let layout = device.create_bind_group_layout(&GROUP_0);
-    let compose = skia::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None);
-    let view = |label, (w, h)| skia::render::sampled_target(device, label, GRAPHITE_FORMAT, w, h);
+    let compose = draw2d::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None);
+    let view = |label, (w, h)| draw2d::render::sampled_target(device, label, GRAPHITE_FORMAT, w, h);
     Gpu {
         format,
         generation,
@@ -389,7 +389,7 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32, si
         compose,
         layout,
         uniforms: device.create_buffer(&wgpu::BufferDescriptor { label: Some("fluid slider"), size: Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false }),
-        sampler: skia::render::linear_sampler(device),
+        sampler: draw2d::render::linear_sampler(device),
         views: [view("fluid slider goo", layer), view("fluid slider top", size)],
         empty: view("fluid slider empty", (1, 1)),
         bind: None,

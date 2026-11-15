@@ -12,8 +12,8 @@ use std::collections::HashMap;
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use skia::blur::{ceil_size, outset, GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
-use skia::{point, stops, Canvas, Color, Font, Matrix4, Paint, Renderer, Shader};
+use draw2d::blur::{ceil_size, outset, GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
+use draw2d::{point, stops, Canvas, Color, Font, Matrix4, Paint, Renderer, Shader};
 
 use crate::gfx;
 use crate::ui_scroll::{Snap, UiScroll, FAST};
@@ -314,8 +314,8 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat) -> Gpu {
         label: Some("scroll 3d"),
         entries: &[entry(0, uniform()), entry(1, texture()), entry(2, texture()), entry(3, texture()), entry(4, sampler())],
     });
-    let combine = skia::render::fullscreen_pipeline(device, &module, &layout, "combine", GRAPHITE_FORMAT, None);
-    let resolve = skia::render::fullscreen_pipeline(device, &module, &layout, "resolve", GRAPHITE_FORMAT, None);
+    let combine = draw2d::render::fullscreen_pipeline(device, &module, &layout, "combine", GRAPHITE_FORMAT, None);
+    let resolve = draw2d::render::fullscreen_pipeline(device, &module, &layout, "resolve", GRAPHITE_FORMAT, None);
     let qm = device.create_shader_module(wgpu::ShaderModuleDescriptor { label: Some("scroll 3d quad"), source: wgpu::ShaderSource::Wgsl(QUAD_WGSL.into()) });
     let quad_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("scroll 3d quad"),
@@ -348,8 +348,8 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat) -> Gpu {
         quad_buffers: [buffer(device, 96), buffer(device, 96)],
         quad_binds: [None, None],
         combine_buffers: [buffer(device, 64), buffer(device, 64)],
-        sampler: skia::render::linear_sampler(device),
-        empty: skia::render::sampled_target(device, "scroll 3d empty", GRAPHITE_FORMAT, 1, 1),
+        sampler: draw2d::render::linear_sampler(device),
+        empty: draw2d::render::sampled_target(device, "scroll 3d empty", GRAPHITE_FORMAT, 1, 1),
     }
 }
 
@@ -373,7 +373,7 @@ impl ScrollTransition {
         let Some(font) = self.font.as_ref() else { return };
         let (w, h) = (px.0 as f32 / self.scale, px.1 as f32 / self.scale);
         if self.sweep.as_ref().map(|s| s.0) != Some(px) {
-            let view = skia::render::sampled_target(device, "scroll 3d sweep", GRAPHITE_FORMAT, px.0, px.1);
+            let view = draw2d::render::sampled_target(device, "scroll 3d sweep", GRAPHITE_FORMAT, px.0, px.1);
             let colors = [Color::rgb8(0, 255, 255), Color::rgb8(255, 0, 255), Color::rgb8(255, 255, 0), Color::rgb8(0, 255, 255)];
             self.canvas.begin(self.scale);
             let size = self.item() as f32;
@@ -384,7 +384,7 @@ impl ScrollTransition {
         }
         let k = i % 2;
         if self.text[k].as_ref().map(|t| t.0) != Some(px) {
-            self.text[k] = Some((px, skia::render::sampled_target(device, "scroll 3d text", GRAPHITE_FORMAT, px.0, px.1)));
+            self.text[k] = Some((px, draw2d::render::sampled_target(device, "scroll 3d text", GRAPHITE_FORMAT, px.0, px.1)));
         }
         let text = (COUNT - 1 - i).to_string();
         let width = font.measure_text(&text).width;
@@ -423,10 +423,10 @@ impl ScrollTransition {
         u[4..8].copy_from_slice(&low);
         u[8..12].copy_from_slice(&o);
         queue.write_buffer(&gpu.combine_buffers[k], 0, &bytes(&u));
-        let view = skia::render::sampled_target(device, "scroll 3d item", GRAPHITE_FORMAT, px.0, px.1);
+        let view = draw2d::render::sampled_target(device, "scroll 3d item", GRAPHITE_FORMAT, px.0, px.1);
         let sweep = &self.sweep.as_ref().unwrap().1;
         let bind = group(device, gpu, &gpu.combine_buffers[k], [sweep, &text_view, &glow]);
-        skia::render::fullscreen_pass(encoder, "scroll 3d combine", &view, &gpu.combine, &bind);
+        draw2d::render::fullscreen_pass(encoder, "scroll 3d combine", &view, &gpu.combine, &bind);
         self.bakes.insert(i, view);
     }
 }
@@ -516,7 +516,7 @@ impl Surface for ScrollTransition {
             let slot = &mut self.slots[i % 2];
             let gpu = self.gpu.as_ref().unwrap();
             if slot.resolved.as_ref().map(|r| r.0) != Some(px) {
-                slot.resolved = Some((px, skia::render::sampled_target(device, "scroll 3d resolved", GRAPHITE_FORMAT, px.0, px.1)));
+                slot.resolved = Some((px, draw2d::render::sampled_target(device, "scroll 3d resolved", GRAPHITE_FORMAT, px.0, px.1)));
                 slot.bind = None;
             }
             let buf = slot.buffer.get_or_insert_with(|| buffer(device, 64));
@@ -549,7 +549,7 @@ impl Surface for ScrollTransition {
                 slot.bind = Some((item.clone(), blurred.clone(), g));
             }
             let resolved = slot.resolved.as_ref().unwrap().1.clone();
-            skia::render::fullscreen_pass(encoder, "scroll 3d resolve", &resolved, &gpu.resolve, &slot.bind.as_ref().unwrap().2);
+            draw2d::render::fullscreen_pass(encoder, "scroll 3d resolve", &resolved, &gpu.resolve, &slot.bind.as_ref().unwrap().2);
             // The layer: the flipped list puts the cell's top at height − (top + h − offset).
             let screen_top = frame.height as f64 - (top + h - offset);
             let (w, hf) = (frame.width, h as f32);

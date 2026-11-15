@@ -1,0 +1,9 @@
+{
+  "name": "motion",
+  "version": "4.7.1",
+  "private": true,
+  "description": "Spring and easing presets for Contract (motion.contract), and a Rust crate of spring, timing, decay and interpolation functions for GPU surfaces.",
+  "exports": {
+    ".": "./motion.contract"
+  }
+}

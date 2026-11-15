@@ -11,8 +11,8 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
-use reanimated::{interpolate, interpolate_color, Extrapolation, Spring, SpringConfig as Config};
-use skia::{Canvas, Color, Paint, Renderer};
+use motion::{interpolate, interpolate_color, Extrapolation, Spring, SpringConfig as Config};
+use draw2d::{Canvas, Color, Paint, Renderer};
 
 /// Square side, step between squares, and corner radius, pt.
 const SIDE: f32 = 14.0;

@@ -16,8 +16,8 @@ use std::sync::OnceLock;
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use reanimated::Spring;
-use skia::{point, Canvas, Color, Font, Images, Matrix, Paint, Renderer, Shader};
+use motion::Spring;
+use draw2d::{point, Canvas, Color, Font, Images, Matrix, Paint, Renderer, Shader};
 
 use crate::gfx;
 use crate::shaders::sculptures_in_words::{entry, GROUP_0};
@@ -53,7 +53,7 @@ const CAMERA_TARGET: [f64; 3] = [0.0, 0.05, 0.0];
 const IDLE_SPIN: f64 = 0.35;
 const SHAPE_LEAN: f64 = 0.08;
 const SHAPE_YAW_OFFSET: f64 = std::f64::consts::PI * 1.35;
-const CLOCK: reanimated::SpringConfig = reanimated::SpringConfig {
+const CLOCK: motion::SpringConfig = motion::SpringConfig {
     stiffness: 2.2,
     damping: 2.098,
     mass: 0.5,
@@ -1248,7 +1248,7 @@ impl Surface for Sculptures {
             return;
         };
         let phase = gfx::phase(phase);
-        use gesture_handler::Phase;
+        use gestures::Phase;
         let clock = self.progress.value;
         let reading = match (phase, self.fingers.iter().find(|f| f.0 == id)) {
             (_, Some(f)) => Some(f.1),

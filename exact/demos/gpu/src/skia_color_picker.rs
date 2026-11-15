@@ -12,9 +12,9 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture};
-use skia::blur::{round_out, GraphiteBlur, GraphitePlan, IRect, Placed, GRAPHITE_FORMAT};
-use skia::{path_from_svg, Canvas, Color, Paint, Path, Renderer};
+use gestures::{Event, PanGesture};
+use draw2d::blur::{round_out, GraphiteBlur, GraphitePlan, IRect, Placed, GRAPHITE_FORMAT};
+use draw2d::{path_from_svg, Canvas, Color, Paint, Path, Renderer};
 
 use crate::{gfx, shaders};
 use shaders::skia_color_picker::{entry, module, Uniforms, BASE, BLURRED, GROUP_0, PICKER, SMP, U};
@@ -309,7 +309,7 @@ impl Surface for ColorPicker {
         // Nothing moved: the layers, the shadow and the uniforms from the last draw still hold.
         if !self.dirty {
             if let Some((_, bind)) = self.gpu.as_ref().and_then(|g| g.bind.as_ref()) {
-                skia::render::fullscreen_pass(encoder, "color picker", target, &self.gpu.as_ref().unwrap().compose, bind);
+                draw2d::render::fullscreen_pass(encoder, "color picker", target, &self.gpu.as_ref().unwrap().compose, bind);
                 return self.pan.tracking();
             }
         }
@@ -353,7 +353,7 @@ impl Surface for ColorPicker {
         }
         queue.write_buffer(&gpu.uniforms, 0, &uniforms.bytes());
         if let Some((_, bind)) = gpu.bind.as_ref() {
-            skia::render::fullscreen_pass(encoder, "color picker", target, &gpu.compose, bind);
+            draw2d::render::fullscreen_pass(encoder, "color picker", target, &gpu.compose, bind);
         }
         self.dirty = false;
         self.pan.tracking()
@@ -389,15 +389,15 @@ fn compose_bind(device: &wgpu::Device, gpu: &Gpu, blurred: &wgpu::TextureView) -
 fn build(device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut wgpu::CommandEncoder, format: wgpu::TextureFormat, generation: u32, pixels: (u32, u32), w: f32, s: f32) -> Gpu {
     let shader = device.create_shader_module(module());
     let layout = device.create_bind_group_layout(&GROUP_0);
-    let compose = skia::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None);
-    let wheel_pipeline = skia::render::fullscreen_pipeline(device, &shader, &layout, entry::WHEEL, GRAPHITE_FORMAT, None);
+    let compose = draw2d::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None);
+    let wheel_pipeline = draw2d::render::fullscreen_pipeline(device, &shader, &layout, entry::WHEEL, GRAPHITE_FORMAT, None);
     let uniforms = || device.create_buffer(&wgpu::BufferDescriptor { label: Some("color picker"), size: Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
-    let sampler = skia::render::linear_sampler(device);
-    let target = |label| skia::render::sampled_target(device, label, GRAPHITE_FORMAT, pixels.0, pixels.1);
+    let sampler = draw2d::render::linear_sampler(device);
+    let target = |label| draw2d::render::sampled_target(device, label, GRAPHITE_FORMAT, pixels.0, pixels.1);
     // The picker's layer: its fast bounds at most, rounded out, plus the margins.
     let (bw, bh) = bounds_size();
     let layer_size = (((bw + 2.0 * STROKE_OUTSET) * s).ceil() as u32 + 2 + 2 * MARGIN as u32, ((bh + 2.0 * STROKE_OUTSET) * s).ceil() as u32 + 2 + 2 * MARGIN as u32);
-    let layer = |label| skia::render::sampled_target(device, label, GRAPHITE_FORMAT, layer_size.0, layer_size.1);
+    let layer = |label| draw2d::render::sampled_target(device, label, GRAPHITE_FORMAT, layer_size.0, layer_size.1);
     let wheel = target("color picker wheel");
     // The wheel: the circle's coverage, its Graphite blur (σ 20 · s, respectCTM), the shading.
     let m = max_size(w);
@@ -443,7 +443,7 @@ fn build(device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut wgpu::Command
             bind(&wheel_uniforms, &empty)
         }
     };
-    skia::render::fullscreen_pass(encoder, "color picker wheel", &wheel, &wheel_pipeline, &group);
+    draw2d::render::fullscreen_pass(encoder, "color picker wheel", &wheel, &wheel_pipeline, &group);
     Gpu {
         format,
         generation,
@@ -470,12 +470,12 @@ mod tests {
         let path = path_from_svg(SHAPE).unwrap();
         let (mut l, mut t, mut r, mut b) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
         for e in path.iter() {
-            let pts: Vec<skia::Point> = match e {
-                skia::PathEvent::Begin { at } => vec![at],
-                skia::PathEvent::Line { to, .. } => vec![to],
-                skia::PathEvent::Quadratic { ctrl, to, .. } => vec![ctrl, to],
-                skia::PathEvent::Cubic { ctrl1, ctrl2, to, .. } => vec![ctrl1, ctrl2, to],
-                skia::PathEvent::End { .. } => vec![],
+            let pts: Vec<draw2d::Point> = match e {
+                draw2d::PathEvent::Begin { at } => vec![at],
+                draw2d::PathEvent::Line { to, .. } => vec![to],
+                draw2d::PathEvent::Quadratic { ctrl, to, .. } => vec![ctrl, to],
+                draw2d::PathEvent::Cubic { ctrl1, ctrl2, to, .. } => vec![ctrl1, ctrl2, to],
+                draw2d::PathEvent::End { .. } => vec![],
             };
             for p in pts {
                 (l, t, r, b) = (l.min(p.x), t.min(p.y), r.max(p.x), b.max(p.y));

@@ -11,9 +11,9 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, Phase, TapGesture};
-use reanimated::{Easing, Spring, Timing, GENTLE};
-use skia::{Color, Font, Matrix, Paint, Path};
+use gestures::{Event, Phase, TapGesture};
+use motion::{Easing, Spring, Timing, GENTLE};
+use draw2d::{Color, Font, Matrix, Paint, Path};
 
 use crate::gooey::ColorTiming;
 use crate::{gfx, shaders};
@@ -73,9 +73,9 @@ pub fn surface() -> Box<dyn Surface> {
 
 /// The two bars of the close icon, centred on the origin, as one path.
 fn cross_path() -> Path {
-    let bar = skia::rrect_path(-BAR_LENGTH / 2.0, -BAR_THICKNESS / 2.0, BAR_LENGTH, BAR_THICKNESS, BAR_THICKNESS / 2.0);
-    let a = skia::transform_path(&bar, &Matrix::rotate(std::f32::consts::FRAC_PI_4));
-    let b = skia::transform_path(&bar, &Matrix::rotate(-std::f32::consts::FRAC_PI_4));
+    let bar = draw2d::rrect_path(-BAR_LENGTH / 2.0, -BAR_THICKNESS / 2.0, BAR_LENGTH, BAR_THICKNESS, BAR_THICKNESS / 2.0);
+    let a = draw2d::transform_path(&bar, &Matrix::rotate(std::f32::consts::FRAC_PI_4));
+    let b = draw2d::transform_path(&bar, &Matrix::rotate(-std::f32::consts::FRAC_PI_4));
     let mut builder = Path::builder();
     builder.extend_from_paths(&[a.as_slice(), b.as_slice()]);
     builder.build()
@@ -167,8 +167,8 @@ fn in_rrect(x: f32, y: f32, rx: f32, ry: f32, w: f32, h: f32, r: f32) -> bool {
 #[derive(Default)]
 struct Melt {
     /// What the canvas draws after the layer (the labels, the cross), recorded each frame.
-    top: skia::Canvas,
-    renderer: skia::Renderer,
+    top: draw2d::Canvas,
+    renderer: draw2d::Renderer,
     gpu: Option<MeltGpu>,
 }
 
@@ -190,7 +190,7 @@ impl Melt {
             let shader = device.create_shader_module(module());
             let layout = device.create_bind_group_layout(&GROUP_0);
             let buffer = device.create_buffer(&wgpu::BufferDescriptor { label: Some("delete button"), size: Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
-            let top = skia::render::sampled_target(device, "delete button top", skia::blur::GRAPHITE_FORMAT, pw, ph);
+            let top = draw2d::render::sampled_target(device, "delete button top", draw2d::blur::GRAPHITE_FORMAT, pw, ph);
             let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("delete button"),
                 layout: &layout,
@@ -203,16 +203,16 @@ impl Melt {
                 format,
                 generation: frame.shader_generation,
                 pixels: (pw, ph),
-                pipeline: skia::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None),
+                pipeline: draw2d::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None),
                 uniforms: buffer,
                 top,
                 bind,
             });
         }
         let gpu = self.gpu.as_ref().unwrap();
-        self.renderer.draw(device, queue, encoder, &self.top, &gpu.top, skia::blur::GRAPHITE_FORMAT, pw, ph, wgpu::Color::TRANSPARENT);
+        self.renderer.draw(device, queue, encoder, &self.top, &gpu.top, draw2d::blur::GRAPHITE_FORMAT, pw, ph, wgpu::Color::TRANSPARENT);
         queue.write_buffer(&gpu.uniforms, 0, &uniforms.bytes());
-        skia::render::fullscreen_pass(encoder, "delete button", target, &gpu.pipeline, &gpu.bind);
+        draw2d::render::fullscreen_pass(encoder, "delete button", target, &gpu.pipeline, &gpu.bind);
     }
 }
 

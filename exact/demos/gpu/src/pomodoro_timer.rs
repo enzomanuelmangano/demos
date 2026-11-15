@@ -9,12 +9,12 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture, Phase};
+use gestures::{Event, PanGesture, Phase};
 use pressto::{PressEvent, Pressable};
-use reanimated::{Decay, Easing, Spring, SpringConfig, Timing, GENTLE};
-use skia::backdrop::{expo_fraction, BackdropBlur, Material};
-use skia::blur::GRAPHITE_FORMAT;
-use skia::{Canvas, Color, Font, Matrix, Paint, Renderer};
+use motion::{Decay, Easing, Spring, SpringConfig, Timing, GENTLE};
+use draw2d::backdrop::{expo_fraction, BackdropBlur, Material};
+use draw2d::blur::GRAPHITE_FORMAT;
+use draw2d::{Canvas, Color, Font, Matrix, Paint, Renderer};
 
 use crate::gfx;
 
@@ -434,7 +434,7 @@ impl Pomodoro {
     fn bake(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut wgpu::CommandEncoder) {
         let s = self.scale;
         let px = ((DIGIT_W * s).round() as u32, (DIGIT_H * s).round() as u32 * 10);
-        let view = skia::render::sampled_target(device, "pomodoro digits", GRAPHITE_FORMAT, px.0, px.1);
+        let view = draw2d::render::sampled_target(device, "pomodoro digits", GRAPHITE_FORMAT, px.0, px.1);
         let c = &mut self.canvas;
         c.begin(s);
         if let Some(font) = self.font.as_ref() {
@@ -621,15 +621,15 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat) -> Gpu {
     let buffer = |size: usize| device.create_buffer(&wgpu::BufferDescriptor { label: Some("pomodoro"), size: size as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
     Gpu {
         format,
-        under: skia::render::fullscreen_pipeline(device, &module, &layout, "under", GRAPHITE_FORMAT, None),
-        compose: skia::render::fullscreen_pipeline(device, &module, &layout, "compose", format, None),
-        overlay: skia::render::fullscreen_pipeline(device, &module, &layout, "overlay", format, blend),
+        under: draw2d::render::fullscreen_pipeline(device, &module, &layout, "under", GRAPHITE_FORMAT, None),
+        compose: draw2d::render::fullscreen_pipeline(device, &module, &layout, "compose", format, None),
+        overlay: draw2d::render::fullscreen_pipeline(device, &module, &layout, "overlay", format, blend),
         ticks,
         ticks_layout,
         layout,
         buffer: buffer(32 + 5 * 32),
         ticks_buffer: buffer(16 + 201 * 32),
-        sampler: skia::render::linear_sampler(device),
+        sampler: draw2d::render::linear_sampler(device),
         targets: None,
     }
 }
@@ -755,7 +755,7 @@ impl Surface for Pomodoro {
         let theta = -self.radiants();
         let gpu = self.gpu.as_mut().unwrap();
         if gpu.targets.as_ref().map(|t| t.0) != Some(px) {
-            let t = |label| skia::render::sampled_target(device, label, GRAPHITE_FORMAT, px.0, px.1);
+            let t = |label| draw2d::render::sampled_target(device, label, GRAPHITE_FORMAT, px.0, px.1);
             gpu.targets = Some((px, t("pomodoro under"), t("pomodoro overlay")));
             self.overlay_key = None;
         }
@@ -816,7 +816,7 @@ impl Surface for Pomodoro {
             })
         };
         let g_sprites = group(&sprites.view);
-        skia::render::fullscreen_pass(encoder, "pomodoro under", under, &gpu.under, &g_sprites);
+        draw2d::render::fullscreen_pass(encoder, "pomodoro under", under, &gpu.under, &g_sprites);
         // Capture every blur first, then draw each back into the same picture.
         let s = frame.scale;
         let mut drawn = Vec::new();
@@ -836,7 +836,7 @@ impl Surface for Pomodoro {
             self.blurs[i].draw(device, queue, encoder, under, GRAPHITE_FORMAT, [0.0, 0.0], [r[0].max(0) as u32, r[1].max(0) as u32], size);
         }
         let g_under = group(under);
-        skia::render::fullscreen_pass(encoder, "pomodoro", target, &gpu.compose, &g_under);
+        draw2d::render::fullscreen_pass(encoder, "pomodoro", target, &gpu.compose, &g_under);
         let centre = (left as f64 + 280.0, top as f64 + 280.0 + ty as f64);
         let mut t = vec![0f32; 4 + 201 * 8];
         t[0] = frame.width;

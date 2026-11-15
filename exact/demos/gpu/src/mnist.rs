@@ -11,11 +11,11 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture, Phase};
+use gestures::{Event, PanGesture, Phase};
 use pressto::{PressEvent, Pressable};
-use reanimated::{Easing, Timing};
-use skia::blur::GRAPHITE_FORMAT;
-use skia::{point, Canvas, Color, Font, Matrix, Paint, Renderer};
+use motion::{Easing, Timing};
+use draw2d::blur::GRAPHITE_FORMAT;
+use draw2d::{point, Canvas, Color, Font, Matrix, Paint, Renderer};
 
 use crate::gfx;
 
@@ -144,7 +144,7 @@ pub fn surface() -> Box<dyn Surface> {
         fades,
         active,
         messages: Vec::new(),
-        label: skia::match_ui_font(14.0, 400.0),
+        label: draw2d::match_ui_font(14.0, 400.0),
         icon: Font::new(MCI, 28.0).map(Font::with_ui_layout),
         canvas: Canvas::default(),
         renderer: Renderer::default(),
@@ -405,8 +405,8 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat, px: (u32, u32)) -> 
             },
         ],
     });
-    let pipeline = skia::render::fullscreen_pipeline(device, &module, &layout, "fs", format, Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING));
-    let overlay = skia::render::sampled_target(device, "mnist views", GRAPHITE_FORMAT, px.0, px.1);
+    let pipeline = draw2d::render::fullscreen_pipeline(device, &module, &layout, "fs", format, Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING));
+    let overlay = draw2d::render::sampled_target(device, "mnist views", GRAPHITE_FORMAT, px.0, px.1);
     let buffer = device.create_buffer(&wgpu::BufferDescriptor { label: Some("mnist"), size: 16, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
     let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("mnist"),

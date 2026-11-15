@@ -1,6 +1,6 @@
 // Duration Slider (src/animations/duration-slider/src/components): the canvas's layers combined
 // per pixel, in Skia's draw order, src-over on premultiplied sRGB-encoded colours. Layers come
-// from packages/skia (t3…t8) and Graphite blurs (t0…t2, read through their low-resolution
+// from packages/draw2d (t3…t8) and Graphite blurs (t0…t2, read through their low-resolution
 // mappings).
 //
 // `background` (once): the BlurMask-'inner' disc (blur 30 of the r + 35 circle, clipped to it),

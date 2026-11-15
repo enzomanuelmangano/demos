@@ -1,12 +1,12 @@
 # simplex-noise 4.0.3 (npm), for the Demos app's GPU surfaces: createNoise2D's permutation table
 # and its 2D noise, line for line.
 [package]
-name = "simplex-noise"
+name = "noise"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "simplex-noise 4's buildPermutationTable and createNoise2D"
+description = "2D simplex noise with a seeded permutation table, for GPU surfaces"
 publish = false
 
 [lib]
-name = "simplex_noise"
+name = "noise"

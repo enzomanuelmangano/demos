@@ -9,9 +9,9 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::Phase;
-use reanimated::{Easing, Spring, Timing};
-use skia::{point, stops, Canvas, Color, Font, Images, Matrix, Paint, Renderer, Shader};
+use gestures::Phase;
+use motion::{Easing, Spring, Timing};
+use draw2d::{point, stops, Canvas, Color, Font, Images, Matrix, Paint, Renderer, Shader};
 
 use crate::gfx;
 use crate::ui_scroll::{Snap, UiScroll, NORMAL};
@@ -140,17 +140,17 @@ static EMOJI: [&[u8]; COUNT] = [
 ];
 const EMOJI_PX: (u32, u32) = (76, 70);
 
-fn emoji(i: usize) -> skia::Image {
+fn emoji(i: usize) -> draw2d::Image {
     let (w, h) = EMOJI_PX;
     let pixels = miniz_oxide::inflate::decompress_to_vec_zlib(EMOJI[i]).unwrap_or_default();
     if pixels.len() != (w * h * 4) as usize {
-        return skia::Image {
+        return draw2d::Image {
             width: 1,
             height: 1,
             pixels: vec![0, 0, 0, 0],
         };
     }
-    skia::Image {
+    draw2d::Image {
         width: w,
         height: h,
         pixels,
@@ -594,11 +594,11 @@ impl Surface for Sort {
         self.scroll.max =
             (self.safe_top + BUTTON_ROW + COUNT as f64 * ITEM + 2.0 * ITEM - h).max(0.0);
         if self.fonts.is_none() {
-            self.fonts = skia::match_ui_font(16.0, 700.0).zip(skia::match_ui_font(14.0, 400.0));
+            self.fonts = draw2d::match_ui_font(16.0, 700.0).zip(draw2d::match_ui_font(14.0, 400.0));
         }
         if self.images.is_none() {
-            let decoded: Vec<skia::Image> = (0..COUNT).map(emoji).collect();
-            let refs: Vec<&skia::Image> = decoded.iter().collect();
+            let decoded: Vec<draw2d::Image> = (0..COUNT).map(emoji).collect();
+            let refs: Vec<&draw2d::Image> = decoded.iter().collect();
             let images = Images::upload(device, queue, &refs);
             self.renderer.set_images(&images);
             self.images = Some(images);

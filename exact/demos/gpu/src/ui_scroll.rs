@@ -8,7 +8,7 @@
 //! - `scroll_to` is an animated `setContentOffset`: 300 ms on a sine ease-in-out.
 //! - `take_drag_end` reports the lift of a finger that dragged, once.
 
-use gesture_handler::{Event, PanGesture, Phase};
+use gestures::{Event, PanGesture, Phase};
 
 /// UIScrollView.DecelerationRate.normal, per ms.
 pub const NORMAL: f64 = 0.998;

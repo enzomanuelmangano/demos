@@ -8,10 +8,10 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::Phase;
-use reanimated::interpolate_clamp;
-use skia::blur::{outset, GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
-use skia::{Canvas, Color, Paint, Renderer};
+use gestures::Phase;
+use motion::interpolate_clamp;
+use draw2d::blur::{outset, GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
+use draw2d::{Canvas, Color, Paint, Renderer};
 
 use crate::ui_scroll::{self, Snap, UiScroll};
 use crate::{gfx, shaders};
@@ -352,7 +352,7 @@ impl Surface for BlurredScroll {
                 // the CTM (the Group's scale and the screen's).
                 let desired = [0, 0, size.0 as i32, lh as i32];
                 let sigma = (blur * scale * s) as f32;
-                let reach = skia::blur::ceil_size(3.0 * sigma);
+                let reach = draw2d::blur::ceil_size(3.0 * sigma);
                 if slot
                     .plan
                     .update(outset(desired, reach, reach), desired, sigma)
@@ -372,7 +372,7 @@ impl Surface for BlurredScroll {
                         [size.0, size.1],
                     );
                 }
-                skia::render::fullscreen_pass(
+                draw2d::render::fullscreen_pass(
                     encoder,
                     "blurred scroll canvas",
                     &sg.canvas,
@@ -416,9 +416,9 @@ fn build(
 ) -> Gpu {
     let shader = device.create_shader_module(module());
     let layout = device.create_bind_group_layout(&GROUP_0);
-    let sampler = skia::render::linear_sampler(device);
+    let sampler = draw2d::render::linear_sampler(device);
     let target =
-        |label| skia::render::sampled_target(device, label, GRAPHITE_FORMAT, size.0, size.1);
+        |label| draw2d::render::sampled_target(device, label, GRAPHITE_FORMAT, size.0, size.1);
     let bind = |uniforms: &wgpu::Buffer, view: &wgpu::TextureView| {
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("blurred scroll"),
@@ -468,7 +468,7 @@ fn build(
         format,
         generation,
         size,
-        compose: skia::render::fullscreen_pipeline(
+        compose: draw2d::render::fullscreen_pipeline(
             device,
             &shader,
             &layout,
@@ -476,7 +476,7 @@ fn build(
             GRAPHITE_FORMAT,
             None,
         ),
-        item: skia::render::fullscreen_pipeline(
+        item: draw2d::render::fullscreen_pipeline(
             device,
             &shader,
             &layout,

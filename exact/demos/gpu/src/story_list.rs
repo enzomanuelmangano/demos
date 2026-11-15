@@ -9,8 +9,8 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use reanimated::{interpolate, Extrapolation};
-use skia::{fit_cover, Canvas, Images, Paint, Rect, Renderer};
+use motion::{interpolate, Extrapolation};
+use draw2d::{fit_cover, Canvas, Images, Paint, Rect, Renderer};
 
 use crate::gfx;
 use crate::ui_scroll::{Snap, UiScroll, FAST};
@@ -180,9 +180,9 @@ impl Surface for StoryList {
                 .flat_map(|p| [p[0], p[1], p[2], 255])
                 .collect();
             let first = if rgba.len() == 800 * 600 * 4 {
-                skia::Image::from_rgba(800, 600, rgba)
+                draw2d::Image::from_rgba(800, 600, rgba)
             } else {
-                skia::Image {
+                draw2d::Image {
                     width: 1,
                     height: 1,
                     pixels: vec![0, 0, 0, 255],
@@ -190,13 +190,13 @@ impl Surface for StoryList {
             };
             let mut decoded = vec![first];
             for b in JPEGS {
-                decoded.push(skia::Image::from_jpeg(b).unwrap_or(skia::Image {
+                decoded.push(draw2d::Image::from_jpeg(b).unwrap_or(draw2d::Image {
                     width: 1,
                     height: 1,
                     pixels: vec![0, 0, 0, 255],
                 }));
             }
-            let refs: Vec<&skia::Image> = decoded.iter().collect();
+            let refs: Vec<&draw2d::Image> = decoded.iter().collect();
             let images = Images::upload(device, queue, &refs);
             self.renderer.set_images(&images);
             self.images = Some(images);

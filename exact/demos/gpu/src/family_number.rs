@@ -18,7 +18,7 @@
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
 
-use skia::{point as lpoint, Canvas, Color, Font, Paint, Path, Renderer};
+use draw2d::{point as lpoint, Canvas, Color, Font, Paint, Path, Renderer};
 
 /// The bundled face, cut to the digits.
 static SF_ROUNDED_BOLD: &[u8] = include_bytes!("../fonts/sf-pro-rounded-bold-digits.otf");

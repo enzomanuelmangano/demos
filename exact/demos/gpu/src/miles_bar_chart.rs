@@ -11,7 +11,7 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use skia::{Canvas, Color, Font, Paint, Renderer};
+use draw2d::{Canvas, Color, Font, Paint, Renderer};
 
 use crate::gfx;
 use crate::ui_scroll::{Snap, UiScroll, FAST};

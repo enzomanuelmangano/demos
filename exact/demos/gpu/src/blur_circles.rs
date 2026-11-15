@@ -11,12 +11,12 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
-use reanimated::Easing;
-use simplex_noise::{Noise2D, Random};
-use skia::blur::{
+use motion::Easing;
+use noise::{Noise2D, Random};
+use draw2d::blur::{
     ceil_size, intersect, outset, round_out, GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT,
 };
-use skia::{point, stops, Canvas, Color, Paint, Renderer, Shader};
+use draw2d::{point, stops, Canvas, Color, Paint, Renderer, Shader};
 
 use crate::{gfx, shaders};
 use shaders::blur_circles::{
@@ -346,7 +346,7 @@ impl Surface for BlurCircles {
             });
             gpu.bind = Some((views, group));
         }
-        skia::render::fullscreen_pass(
+        draw2d::render::fullscreen_pass(
             encoder,
             "blur circles",
             target,
@@ -366,9 +366,9 @@ fn build(
     let shader = device.create_shader_module(module());
     let layout = device.create_bind_group_layout(&GROUP_0);
     let compose =
-        skia::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None);
+        draw2d::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None);
     let (pw, ph, inside, mask) = size;
-    let view = |label, w, h| skia::render::sampled_target(device, label, GRAPHITE_FORMAT, w, h);
+    let view = |label, w, h| draw2d::render::sampled_target(device, label, GRAPHITE_FORMAT, w, h);
     Gpu {
         format,
         generation,
@@ -381,7 +381,7 @@ fn build(
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         }),
-        sampler: skia::render::linear_sampler(device),
+        sampler: draw2d::render::linear_sampler(device),
         inside: view("blur circles inside", inside, inside),
         sweep: view("blur circles sweep", pw, ph),
         mask: view("blur circles mask", mask, mask),

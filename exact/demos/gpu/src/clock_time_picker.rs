@@ -14,9 +14,9 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use reanimated::{interpolate, Extrapolation};
-use skia::blur::{round_out, GraphiteBlur, GraphitePlan, IRect, Placed, GRAPHITE_FORMAT};
-use skia::{point, stops, Canvas, Color, Font, Paint, PathEvent, Renderer, Shader};
+use motion::{interpolate, Extrapolation};
+use draw2d::blur::{round_out, GraphiteBlur, GraphitePlan, IRect, Placed, GRAPHITE_FORMAT};
+use draw2d::{point, stops, Canvas, Color, Font, Paint, PathEvent, Renderer, Shader};
 
 use crate::ui_scroll::{Snap, UiScroll, FAST};
 use crate::{gfx, shaders};
@@ -61,7 +61,7 @@ fn picker() -> ClockTimePicker {
         labels,
         font: Font::new(HONK, 20.0).map(Font::with_ui_layout),
         gradients: None,
-        list_clip: skia::rect_path(LIST_X, 0.0, LIST_W, LIST_H),
+        list_clip: draw2d::rect_path(LIST_X, 0.0, LIST_W, LIST_H),
         canvases: Default::default(),
         renderers: Default::default(),
         blurs: Default::default(),
@@ -82,7 +82,7 @@ struct ClockTimePicker {
     /// The two gradient overlays' paints.
     gradients: Option<(Paint, Paint)>,
     /// The list's bounds, its clip.
-    list_clip: skia::Path,
+    list_clip: draw2d::Path,
     /// base (face, ticks, list), hour, minute, dot.
     canvases: [Canvas; 4],
     renderers: [Renderer; 4],
@@ -180,7 +180,7 @@ impl ClockTimePicker {
             base.draw_rect(LIST_X, 0.0, LIST_W, LIST_H, b);
         }
         base.restore();
-        let round = |p: Paint| p.caps(skia::Cap::Round, skia::Join::Round);
+        let round = |p: Paint| p.caps(draw2d::Cap::Round, draw2d::Join::Round);
         hour.begin(s);
         line(hour, ox + c, oy + c, hour_end.0, hour_end.1, &round(Paint::stroke(Color::hex(0xE6E6E6), 3.0)));
         minute.begin(s);
@@ -322,7 +322,7 @@ impl Surface for ClockTimePicker {
             });
             gpu.bind = Some((views, group));
         }
-        skia::render::fullscreen_pass(encoder, "clock time picker", target, &gpu.compose, &gpu.bind.as_ref().unwrap().1);
+        draw2d::render::fullscreen_pass(encoder, "clock time picker", target, &gpu.compose, &gpu.bind.as_ref().unwrap().1);
         moving || self.scroll.moving()
     }
 }
@@ -339,16 +339,16 @@ fn low_mapping(plan: &GraphitePlan, origin: [i32; 2], size: [u32; 2]) -> [f32; 4
 fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32, pixels: (u32, u32)) -> Gpu {
     let shader = device.create_shader_module(module());
     let layout = device.create_bind_group_layout(&GROUP_0);
-    let target = |label| skia::render::sampled_target(device, label, GRAPHITE_FORMAT, pixels.0, pixels.1);
+    let target = |label| draw2d::render::sampled_target(device, label, GRAPHITE_FORMAT, pixels.0, pixels.1);
     Gpu {
         format,
         generation,
         pixels,
-        compose: skia::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None),
+        compose: draw2d::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None),
         layout,
-        sampler: skia::render::linear_sampler(device),
+        sampler: draw2d::render::linear_sampler(device),
         uniforms: device.create_buffer(&wgpu::BufferDescriptor { label: Some("clock time picker"), size: Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false }),
-        empty: skia::render::sampled_target(device, "clock time picker empty", GRAPHITE_FORMAT, 1, 1),
+        empty: draw2d::render::sampled_target(device, "clock time picker empty", GRAPHITE_FORMAT, 1, 1),
         layers: [target("clock base"), target("clock hour"), target("clock minute"), target("clock dot")],
         bind: None,
     }

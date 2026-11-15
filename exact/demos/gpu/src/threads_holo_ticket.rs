@@ -15,8 +15,8 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, SensorKind, Surface, SurfaceError, Value};
-use reanimated::{interpolate_clamp, Decay, Spring};
-use skia::{Canvas, Color, Font, Matrix4, Paint, Renderer};
+use motion::{interpolate_clamp, Decay, Spring};
+use draw2d::{Canvas, Color, Font, Matrix4, Paint, Renderer};
 
 use crate::{gfx, shaders};
 use shaders::threads_holo_ticket::{entry, module, Compose, CARD, FRONT, GROUP_0, QR, SMP, U};
@@ -475,10 +475,10 @@ const STYLES: [TextStyle; 4] = [LABEL, VALUE, USERNAME, NUMBER];
 impl Front {
     fn new(s: f64) -> Option<Front> {
         let fonts = [
-            skia::match_ui_font(LABEL.size, LABEL.weight)?,
-            skia::match_ui_font(VALUE.size, VALUE.weight)?,
-            skia::match_ui_font(USERNAME.size, USERNAME.weight)?,
-            skia::match_ui_font(NUMBER.size, NUMBER.weight)?,
+            draw2d::match_ui_font(LABEL.size, LABEL.weight)?,
+            draw2d::match_ui_font(VALUE.size, VALUE.weight)?,
+            draw2d::match_ui_font(USERNAME.size, USERNAME.weight)?,
+            draw2d::match_ui_font(NUMBER.size, NUMBER.weight)?,
         ];
         let height = |k: usize| ceil_px(gfx::line_height(&fonts[k]) as f64, s);
         let (label_h, value_h) = (height(0), height(1));
@@ -615,13 +615,13 @@ impl ThreadsHoloTicket {
     }
 
     /// The face that shows, at its side of the slab (front at +½ thickness, back at −½).
-    fn matrix(&self) -> skia::Matrix3 {
+    fn matrix(&self) -> draw2d::Matrix3 {
         let z = if self.is_front() { THICKNESS / 2.0 } else { -THICKNESS / 2.0 };
         self.matrix4().multiply(Matrix4::translate(0.0, 0.0, z)).to_matrix3()
     }
 
     /// An edge of the slab (x = `x0`) as a plane in (z, y): z across the thickness.
-    fn side_matrix(&self, x0: f32) -> skia::Matrix3 {
+    fn side_matrix(&self, x0: f32) -> draw2d::Matrix3 {
         let basis = Matrix4([0.0, 0.0, 0.0, x0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]);
         self.matrix4().multiply(basis).to_matrix3()
     }
@@ -696,8 +696,8 @@ impl ThreadsHoloTicket {
         holo(rotate, self.tilt.0, self.tilt.1)
     }
 
-    fn pointer(&mut self, id: u32, phase: gesture_handler::Phase, x: f64, y: f64, ms: f64) {
-        use gesture_handler::Phase;
+    fn pointer(&mut self, id: u32, phase: gestures::Phase, x: f64, y: f64, ms: f64) {
+        use gestures::Phase;
         match phase {
             Phase::Down => {
                 if self.touch.is_some() || !self.hits(x, y) {
@@ -748,7 +748,7 @@ impl ThreadsHoloTicket {
                     }
                     let face = (d.value / 180.0).round() * 180.0;
                     let mut s = Spring::at(self.x);
-                    s.to(face, v, reanimated::duration_config(self.x - face, v, SETTLE_MS, 1.0, 4.0));
+                    s.to(face, v, motion::duration_config(self.x - face, v, SETTLE_MS, 1.0, 4.0));
                     self.motion = if s.running { Motion::Spring(s) } else { Motion::Rest };
                 } else if phase == Phase::Up && !t.tap_failed && ms - t.down.2 <= TAP_MAX_MS {
                     // A tap flips to the next face.
@@ -836,7 +836,7 @@ impl Surface for ThreadsHoloTicket {
             }
             let gpu = self.gpu.as_mut().unwrap();
             self.renderer.draw(device, queue, encoder, &self.front, &gpu.front_view, LAYER_FORMAT, tw, th, wgpu::Color::TRANSPARENT);
-            skia::render::fullscreen_pass(encoder, "threads holo ticket qr", &gpu.qr_view, &gpu.qr_pipeline, &gpu.qr_bind);
+            draw2d::render::fullscreen_pass(encoder, "threads holo ticket qr", &gpu.qr_view, &gpu.qr_pipeline, &gpu.qr_bind);
             gpu.statics_drawn = true;
         }
 
@@ -853,11 +853,11 @@ impl Surface for ThreadsHoloTicket {
             gpu.card.mask = [h.center.0 as f32 * s, h.center.1 as f32 * s, gpu.card.mask[2], o8];
             gpu.card.gradient = [h.start.0 as f32, h.start.1 as f32, h.end.0 as f32, h.end.1 as f32];
             queue.write_buffer(&gpu.card_uniforms, 0, &gpu.card.bytes());
-            skia::render::fullscreen_pass(encoder, "threads holo ticket card", &gpu.card_view, &gpu.card_pipeline, &gpu.card_bind);
+            draw2d::render::fullscreen_pass(encoder, "threads holo ticket card", &gpu.card_view, &gpu.card_pipeline, &gpu.card_bind);
             self.drawn = Some(key);
         }
 
-        let inv = self.matrix().invert().unwrap_or(skia::Matrix3([0.0; 9])).rows();
+        let inv = self.matrix().invert().unwrap_or(draw2d::Matrix3([0.0; 9])).rows();
         let qp = layout.qr_pixels() as f32;
         let bg = p3(BACKGROUND);
         let u = Compose {
@@ -867,15 +867,15 @@ impl Surface for ThreadsHoloTicket {
             tex: [tw as f32, th as f32, qp, qp],
             background: [bg[0], bg[1], bg[2], 1.0],
             canvas: [frame.pixels().0 as f32, frame.pixels().1 as f32, s, gfx::srgb_flag(format)],
-            left: self.side_matrix(0.0).invert().unwrap_or(skia::Matrix3([0.0; 9])).rows(),
-            right: self.side_matrix(W as f32).invert().unwrap_or(skia::Matrix3([0.0; 9])).rows(),
+            left: self.side_matrix(0.0).invert().unwrap_or(draw2d::Matrix3([0.0; 9])).rows(),
+            right: self.side_matrix(W as f32).invert().unwrap_or(draw2d::Matrix3([0.0; 9])).rows(),
             slab: self.slab(),
             shadow: self.shadow(),
             light: self.light(),
         };
         let gpu = self.gpu.as_ref().unwrap();
         queue.write_buffer(&gpu.uniforms, 0, &u.bytes());
-        skia::render::fullscreen_pass(encoder, "threads holo ticket", target, &gpu.compose, &gpu.bind);
+        draw2d::render::fullscreen_pass(encoder, "threads holo ticket", target, &gpu.compose, &gpu.bind);
         moving
     }
 }
@@ -887,10 +887,10 @@ fn uniform_buffer(device: &wgpu::Device, label: &str, size: usize) -> wgpu::Buff
 fn build(device: &wgpu::Device, queue: &wgpu::Queue, format: wgpu::TextureFormat, generation: u32, layout: Layout) -> Gpu {
     let s = layout.s;
     let (tw, th) = layout.ticket_pixels();
-    let sampler = skia::render::linear_sampler(device);
+    let sampler = draw2d::render::linear_sampler(device);
 
     // The holographic canvas layer.
-    let card_view = skia::render::sampled_target(device, "threads holo ticket card", LAYER_FORMAT, tw, th);
+    let card_view = draw2d::render::sampled_target(device, "threads holo ticket card", LAYER_FORMAT, tw, th);
     let (profile, texture_radius) = circle_blur_profile(MASK_BLUR * s, MASK_RADIUS as f32 * s);
     let profile_texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("threads holo ticket blur profile"),
@@ -939,7 +939,7 @@ fn build(device: &wgpu::Device, queue: &wgpu::Queue, format: wgpu::TextureFormat
     };
     let card_module = device.create_shader_module(card_shader::module());
     let card_layout = device.create_bind_group_layout(&card_shader::GROUP_0);
-    let card_pipeline = skia::render::fullscreen_pipeline(device, &card_module, &card_layout, card_shader::entry::CARD, LAYER_FORMAT, None);
+    let card_pipeline = draw2d::render::fullscreen_pipeline(device, &card_module, &card_layout, card_shader::entry::CARD, LAYER_FORMAT, None);
     let card_uniforms = uniform_buffer(device, "threads holo ticket card", card_shader::Card::SIZE);
     let card_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("threads holo ticket card"),
@@ -952,11 +952,11 @@ fn build(device: &wgpu::Device, queue: &wgpu::Queue, format: wgpu::TextureFormat
     });
 
     // The front's layer.
-    let front_view = skia::render::sampled_target(device, "threads holo ticket front", LAYER_FORMAT, tw, th);
+    let front_view = draw2d::render::sampled_target(device, "threads holo ticket front", LAYER_FORMAT, tw, th);
 
     // The QR canvas.
     let qp = layout.qr_pixels();
-    let qr_view = skia::render::sampled_target(device, "threads holo ticket qr", LAYER_FORMAT, qp, qp);
+    let qr_view = draw2d::render::sampled_target(device, "threads holo ticket qr", LAYER_FORMAT, qp, qp);
     let cell = (QR_SIZE / QR_ROWS.len() as f64) as f32;
     let qn = quad_chords(cell / 2.0 * s);
     let mut qstops = [[0.0; 4]; 3];
@@ -974,7 +974,7 @@ fn build(device: &wgpu::Device, queue: &wgpu::Queue, format: wgpu::TextureFormat
     };
     let qr_module = device.create_shader_module(qr_shader::module());
     let qr_layout = device.create_bind_group_layout(&qr_shader::GROUP_0);
-    let qr_pipeline = skia::render::fullscreen_pipeline(device, &qr_module, &qr_layout, qr_shader::entry::QR, LAYER_FORMAT, None);
+    let qr_pipeline = draw2d::render::fullscreen_pipeline(device, &qr_module, &qr_layout, qr_shader::entry::QR, LAYER_FORMAT, None);
     let qr_uniforms = uniform_buffer(device, "threads holo ticket qr", qr_shader::Qr::SIZE);
     queue.write_buffer(&qr_uniforms, 0, &qr_u.bytes());
     let qr_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -986,7 +986,7 @@ fn build(device: &wgpu::Device, queue: &wgpu::Queue, format: wgpu::TextureFormat
     // The compose.
     let shader = device.create_shader_module(module());
     let group = device.create_bind_group_layout(&GROUP_0);
-    let compose = skia::render::fullscreen_pipeline(device, &shader, &group, entry::COMPOSE, format, None);
+    let compose = draw2d::render::fullscreen_pipeline(device, &shader, &group, entry::COMPOSE, format, None);
     let uniforms = uniform_buffer(device, "threads holo ticket", Compose::SIZE);
     let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("threads holo ticket"),
@@ -1050,7 +1050,7 @@ mod tests {
     #[test]
     fn letter_spacing_is_core_texts() {
         // Every glyph moves by the spacing after it, the last one included.
-        let Some(font) = skia::match_ui_font(13.0, 400.0) else { return eprintln!("no system font; skipped") };
+        let Some(font) = draw2d::match_ui_font(13.0, 400.0) else { return eprintln!("no system font; skipped") };
         let plain = font.advance_width("DATE");
         assert!((font.advance_width_spaced("DATE", 0.5) - (plain + 2.0)).abs() < 1e-4);
     }

@@ -2,7 +2,7 @@
 // same source for Mac Catalyst. Prints a fresh recognizer's ivars (the thresholds RNGH 3.3's
 // iOS Fling, a UISwipeGestureRecognizer, runs with); `./build.sh dis` also disassembles
 // touchesMoved: and _checkForSwipeWithDelta:… with lldb (ivar offsets: the `offs` lines).
-// gesture-handler's FlingGesture (exact/demos/packages/gesture-handler) is that code.
+// gesture-handler's FlingGesture (exact/demos/packages/gestures) is that code.
 // Read 2026-11 (macOS 27 SDK): maximumDuration 0.5, minimumPrimaryMovement 50,
 // maximumPrimaryMovement FLT_MAX, minimumSecondaryMovement 0, maximumSecondaryMovement 50,
 // maximumOppositeMovement 0, minimumPrimaryMovementRate 0, rateOfMinimumMovementDecay 0.06,

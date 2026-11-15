@@ -29,7 +29,7 @@ fn enc(c0: vec3<f32>) -> vec3<f32> {
     let c = clamp(c0, vec3<f32>(0.0), vec3<f32>(1.0));
     return select(1.055 * pow(c, vec3<f32>(1.0 / 2.4)) - 0.055, c * 12.92, c <= vec3<f32>(0.0031308));
 }
-// Encoded Display P3 to encoded sRGB (clipped to the sRGB gamut), as packages/skia's.
+// Encoded Display P3 to encoded sRGB (clipped to the sRGB gamut), as packages/draw2d's.
 fn p3_to_srgb(c: vec3<f32>) -> vec3<f32> {
     let l = lin(c);
     return enc(vec3<f32>(

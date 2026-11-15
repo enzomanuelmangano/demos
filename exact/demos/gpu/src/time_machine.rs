@@ -14,10 +14,10 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::Phase;
-use reanimated::{interpolate, Easing, Extrapolation, Spring, SpringConfig, Timing};
-use skia::blur::{GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
-use skia::{Canvas, Color, Font, Images, Matrix, Paint, Renderer, Shader};
+use gestures::Phase;
+use motion::{interpolate, Easing, Extrapolation, Spring, SpringConfig, Timing};
+use draw2d::blur::{GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
+use draw2d::{Canvas, Color, Font, Images, Matrix, Paint, Renderer, Shader};
 
 use crate::ui_scroll::{Snap, UiScroll, FAST};
 use crate::{gfx, shaders};
@@ -342,7 +342,7 @@ impl TimeMachine {
             haptic_at: f64::NEG_INFINITY,
             item_rank: 0,
             card_index: 0,
-            title_font: skia::match_ui_font(16.0, 500.0),
+            title_font: draw2d::match_ui_font(16.0, 500.0),
             gpu: None,
         }
     }
@@ -460,7 +460,7 @@ impl TimeMachine {
             if self.card_opacity(i) < 0.01 {
                 continue;
             }
-            let q = self.card_matrix(i).invert().apply(skia::point(x, y));
+            let q = self.card_matrix(i).invert().apply(draw2d::point(x, y));
             let (qx, qy) = (q.x as f64, q.y as f64);
             if qx < 0.0 || qy < 0.0 || qx > l.w || qy > l.h {
                 continue;
@@ -704,8 +704,8 @@ impl TimeMachine {
         c.save();
         let e = 20.0;
         c.clip_with(|p| {
-            skia::add_rect(p, -e, -e, w + 2.0 * e, h + 2.0 * e);
-            skia::add_rrect_hole(p, 0.0, 0.0, w, h, 0.0);
+            draw2d::add_rect(p, -e, -e, w + 2.0 * e, h + 2.0 * e);
+            draw2d::add_rrect_hole(p, 0.0, 0.0, w, h, 0.0);
         });
         c.draw_rrect_shadow(
             0.0,
@@ -758,14 +758,14 @@ impl TimeMachine {
             let (cw, ch) = ((l.row_w - 8.0) as f32, 62.0);
             c.save();
             c.clip_with(|p| {
-                skia::add_rect(p, x - e, y - e, cw + 2.0 * e, ch + 2.0 * e);
-                skia::add_continuous_rrect_hole(p, x, y, cw, ch, 8.0);
+                draw2d::add_rect(p, x - e, y - e, cw + 2.0 * e, ch + 2.0 * e);
+                draw2d::add_continuous_rrect_hole(p, x, y, cw, ch, 8.0);
             });
             c.draw_rrect_shadow(x, y, cw, ch, 8.0, 5.0, Color::BLACK.alpha(0.01));
             c.restore();
             c.draw_continuous_rrect(x, y, cw, ch, 8.0, &Paint::fill(Color::view_hex(0xf7f7f7)));
             c.draw_path(
-                &skia::border_ring_path(x, y, cw, ch, 8.0, 1.0),
+                &draw2d::border_ring_path(x, y, cw, ch, 8.0, 1.0),
                 &Paint::fill(Color::view_hex(0xf0f0f0)),
             );
             let Some(sprites) = sprites else { continue };
@@ -1104,7 +1104,7 @@ impl Surface for TimeMachine {
         if gpu.sharp_time != itime {
             let k = uniform(&mut gpu, &mut slot, base);
             let bind = bind(device, &gpu, k, &gpu.empty, &gpu.empty);
-            skia::render::fullscreen_pass(
+            draw2d::render::fullscreen_pass(
                 encoder,
                 "time machine stars",
                 &gpu.sharp,
@@ -1153,7 +1153,7 @@ impl Surface for TimeMachine {
             let view = out.view.clone();
             let k = uniform(&mut gpu, &mut slot, u);
             let bind = bind(device, &gpu, k, &gpu.empty, &view);
-            skia::render::fullscreen_pass(
+            draw2d::render::fullscreen_pass(
                 encoder,
                 "time machine blur",
                 &gpu.acc[0],
@@ -1225,7 +1225,7 @@ impl Surface for TimeMachine {
             };
             let bind = bind(device, &gpu, k, from, &gpu.group);
             if last {
-                skia::render::fullscreen_pass(
+                draw2d::render::fullscreen_pass(
                     encoder,
                     "time machine cards",
                     target,
@@ -1234,7 +1234,7 @@ impl Surface for TimeMachine {
                 );
             } else {
                 let to = if under == 1 { 2 } else { 1 };
-                skia::render::fullscreen_pass(
+                draw2d::render::fullscreen_pass(
                     encoder,
                     "time machine cards",
                     &gpu.acc[to - 1],
@@ -1255,8 +1255,8 @@ impl TimeMachine {
         let m = self.card_matrix(i);
         let (w, h) = (self.layout.w as f32, self.layout.h as f32);
         let (a, b) = (
-            m.apply(skia::point(-15.0, -15.0)),
-            m.apply(skia::point(w + 15.0, h + 15.0)),
+            m.apply(draw2d::point(-15.0, -15.0)),
+            m.apply(draw2d::point(w + 15.0, h + 15.0)),
         );
         a.x < w && b.x > 0.0 && a.y < h && b.y > 0.0
     }
@@ -1303,14 +1303,14 @@ fn build(
     let shader = device.create_shader_module(module());
     let group = device.create_bind_group_layout(&GROUP_0);
     let pipe =
-        |fs: &str, f| skia::render::fullscreen_pipeline(device, &shader, &group, fs, f, None);
+        |fs: &str, f| draw2d::render::fullscreen_pipeline(device, &shader, &group, fs, f, None);
     let pipelines = [
         pipe(entry::STAR, GRAPHITE_FORMAT),
         pipe(entry::UNBLUR, GRAPHITE_FORMAT),
         pipe(entry::BLEND, GRAPHITE_FORMAT),
         pipe(entry::BLEND, format),
     ];
-    let t = |label| skia::render::sampled_target(device, label, GRAPHITE_FORMAT, pw, ph);
+    let t = |label| draw2d::render::sampled_target(device, label, GRAPHITE_FORMAT, pw, ph);
     let s = layout.s;
     let pitch = sprite_pitch(s);
     let sprite_w =
@@ -1319,13 +1319,13 @@ fn build(
     let mut emoji = None;
     #[cfg(target_vendor = "apple")]
     {
-        let images: Vec<skia::Image> = TODOS
+        let images: Vec<draw2d::Image> = TODOS
             .iter()
             .filter_map(|(e, _)| emoji::draw(e, 24.0, s))
-            .map(|(_, _, w, h, px)| skia::Image::from_rgba(w, h, px))
+            .map(|(_, _, w, h, px)| draw2d::Image::from_rgba(w, h, px))
             .collect();
         if images.len() == TODOS.len() {
-            let refs: Vec<&skia::Image> = images.iter().collect();
+            let refs: Vec<&draw2d::Image> = images.iter().collect();
             emoji = Some(Images::upload(device, queue, &refs));
         }
     }
@@ -1333,11 +1333,11 @@ fn build(
         key,
         pipelines,
         layout: group,
-        sampler: skia::render::linear_sampler(device),
+        sampler: draw2d::render::linear_sampler(device),
         sharp: t("time machine stars"),
         acc: [t("time machine under"), t("time machine under")],
         group: t("time machine group"),
-        empty: skia::render::sampled_target(device, "time machine empty", GRAPHITE_FORMAT, 1, 1),
+        empty: draw2d::render::sampled_target(device, "time machine empty", GRAPHITE_FORMAT, 1, 1),
         sharp_time: f64::NAN,
         blur: GraphiteBlur::default(),
         plan: None,

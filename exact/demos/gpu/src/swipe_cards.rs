@@ -12,9 +12,9 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::{Event, PanGesture, Phase};
-use reanimated::{interpolate, Easing, Extrapolation, Spring, Timing, GENTLE};
-use skia::{fit_cover, Canvas, Images, Paint, Rect, Renderer};
+use gestures::{Event, PanGesture, Phase};
+use motion::{interpolate, Easing, Extrapolation, Spring, Timing, GENTLE};
+use draw2d::{fit_cover, Canvas, Images, Paint, Rect, Renderer};
 
 use crate::gfx;
 
@@ -305,11 +305,11 @@ impl Surface for SwipeCards {
         self.scale_px = frame.scale as f64;
         self.now = frame.now_ms;
         if self.images.is_none() {
-            let decoded: Vec<skia::Image> = PHOTOS
+            let decoded: Vec<draw2d::Image> = PHOTOS
                 .iter()
-                .map(|b| skia::Image::from_jpeg(b).unwrap_or(skia::Image { width: 1, height: 1, pixels: vec![0, 0, 0, 255] }))
+                .map(|b| draw2d::Image::from_jpeg(b).unwrap_or(draw2d::Image { width: 1, height: 1, pixels: vec![0, 0, 0, 255] }))
                 .collect();
-            let refs: Vec<&skia::Image> = decoded.iter().collect();
+            let refs: Vec<&draw2d::Image> = decoded.iter().collect();
             let images = Images::upload(device, queue, &refs);
             self.renderer.set_images(&images);
             self.images = Some(images);

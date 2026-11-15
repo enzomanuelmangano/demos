@@ -16,7 +16,7 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, PointerPhase, Surface, SurfaceError, Value};
-use skia::{Canvas, Color, Font, Paint, Renderer};
+use draw2d::{Canvas, Color, Font, Paint, Renderer};
 
 use crate::gfx::Random;
 
@@ -411,10 +411,10 @@ struct Fonts {
 impl Fonts {
     fn new(cell: f32) -> Option<Fonts> {
         let note = (cell * 0.25).round().max(8.0);
-        let given = skia::match_ui_font(20.0, 500.0)?;
-        let user = skia::match_ui_font(20.0, 600.0)?;
-        let note_font = skia::match_ui_font(note, 500.0)?;
-        let note_strong = skia::match_ui_font(note, 700.0)?;
+        let given = draw2d::match_ui_font(20.0, 500.0)?;
+        let user = draw2d::match_ui_font(20.0, 600.0)?;
+        let note_font = draw2d::match_ui_font(note, 500.0)?;
+        let note_strong = draw2d::match_ui_font(note, 700.0)?;
         let mut centres = [[(0.0, 0.0); 10]; 4];
         for (k, f) in [&given, &user, &note_font, &note_strong]
             .into_iter()
@@ -762,8 +762,8 @@ impl Sudoku {
 
         // The border, over the cells' outer edges.
         c.draw_with(&Paint::fill(Color::hex(PRIMARY).alpha(frame_a)), |p| {
-            skia::add_continuous_rrect(p, 0.0, 0.0, size, size, BOARD_R);
-            skia::add_continuous_rrect_hole(
+            draw2d::add_continuous_rrect(p, 0.0, 0.0, size, size, BOARD_R);
+            draw2d::add_continuous_rrect_hole(
                 p,
                 BORDER,
                 BORDER,

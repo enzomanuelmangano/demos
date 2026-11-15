@@ -18,7 +18,7 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
-use skia::{Canvas, Color, Font, Images, Matrix, Paint, Renderer, Shader};
+use draw2d::{Canvas, Color, Font, Images, Matrix, Paint, Renderer, Shader};
 
 use crate::{gfx, shaders};
 use shaders::motion_blur::{entry, module, Uniforms, ATLAS, GROUP_0, SMP, U};
@@ -851,7 +851,7 @@ impl Surface for MotionBlur {
             u.bounds[i] = [o, o, o + sw as f32, o + (24.0 * s) as f32];
         }
         queue.write_buffer(&gpu.uniforms, 0, &u.bytes());
-        skia::render::fullscreen_pass(encoder, "motion blur", target, &gpu.pipeline, &gpu.bind);
+        draw2d::render::fullscreen_pass(encoder, "motion blur", target, &gpu.pipeline, &gpu.bind);
         self.gpu = Some(owned);
         self.held || self.cards.iter().any(|c| c.moving(t - EXPOSURE_MS))
     }
@@ -878,7 +878,7 @@ fn build(
     let (format, _, sw, sh, _) = key;
     let slot_size = (sw, sh);
     let atlas_size = (2 * (sw + 4), (SLOTS as u32).div_ceil(2) * (sh + 4));
-    let atlas = skia::render::sampled_target(
+    let atlas = draw2d::render::sampled_target(
         device,
         "motion blur atlas",
         wgpu::TextureFormat::Rgba8Unorm,
@@ -888,14 +888,14 @@ fn build(
     let shader = device.create_shader_module(module());
     let group = device.create_bind_group_layout(&GROUP_0);
     let pipeline =
-        skia::render::fullscreen_pipeline(device, &shader, &group, entry::COMPOSE, format, None);
+        draw2d::render::fullscreen_pipeline(device, &shader, &group, entry::COMPOSE, format, None);
     let uniforms = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("motion blur"),
         size: Uniforms::SIZE as u64,
         usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         mapped_at_creation: false,
     });
-    let sampler = skia::render::linear_sampler(device);
+    let sampler = draw2d::render::linear_sampler(device);
     let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("motion blur"),
         layout: &group,
@@ -918,17 +918,17 @@ fn build(
     let mut emoji = None;
     #[cfg(target_vendor = "apple")]
     {
-        let images: Vec<skia::Image> = EMOJIS
+        let images: Vec<draw2d::Image> = EMOJIS
             .iter()
             .filter_map(|e| emoji_text::draw(e, 25.0, layout.s))
-            .map(|(w, h, pixels)| skia::Image {
+            .map(|(w, h, pixels)| draw2d::Image {
                 width: w,
                 height: h,
                 pixels,
             })
             .collect();
         if images.len() == EMOJIS.len() {
-            let refs: Vec<&skia::Image> = images.iter().collect();
+            let refs: Vec<&draw2d::Image> = images.iter().collect();
             emoji = Some(Images::upload(device, queue, &refs));
         }
     }
