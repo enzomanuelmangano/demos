@@ -39,6 +39,8 @@
 // continuous event (intensity 1, sharpness 0) for the curves' length under an intensity-control
 // and a sharpness-control curve (a first point at 0 when the first is later). A new `plays` value
 // starts it, a new `stops` value cancels it (demos/chessboard/chessboard.contract).
+//
+// `painting-menu` is art-gallery's PaintingMenu (PaintingMenu.swift), on iOS and on macOS.
 import Foundation
 #if os(iOS)
 import CoreHaptics
@@ -54,7 +56,8 @@ final class DemosModule: ExactModule {
          "demo-card": ExactNativeFactory { props, events in DemoCard(props: props, events: events) },
          "glass-button": ExactNativeFactory { props, events in GlassButton(props: props, events: events) },
          "mate-haptic": ExactNativeFactory { props, events in MateHaptic(props: props, events: events) },
-         "swift-slider": ExactNativeFactory { props, events in SwiftSlider(props: props, events: events) }]
+         "swift-slider": ExactNativeFactory { props, events in SwiftSlider(props: props, events: events) },
+         "painting-menu": ExactNativeFactory { props, events in PaintingMenu(props: props, events: events) }]
     }
 
     override func element(_ element: ExactElement) {
@@ -356,5 +359,9 @@ private final class MateHaptic: ExactNativeInstance {
 }
 #else
 let exactModule: ExactModule.Type = DemosModule.self
-final class DemosModule: ExactModule {}
+final class DemosModule: ExactModule {
+    override class var views: [String: ExactNativeFactory] {
+        ["painting-menu": ExactNativeFactory { props, events in PaintingMenu(props: props, events: events) }]
+    }
+}
 #endif

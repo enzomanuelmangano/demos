@@ -14,7 +14,8 @@
     "demo-card",
     "glass-button",
     "mate-haptic",
-    "swift-slider"
+    "swift-slider",
+    "painting-menu"
   ],
   "host": {
     "web": {},
