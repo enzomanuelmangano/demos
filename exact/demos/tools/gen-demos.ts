@@ -46,7 +46,7 @@ const iconOf = (slug: string) => {
 };
 
 // Demos the owner dropped from the Exact app (their code stays, unlisted).
-const dropped = new Set(['shake-to-delete', 'dynamic-blur-tabs', 'record-button', 'email-demo', 'blurred-bottom-bar', 'twitter-tab-bar', 'popup-handler', 'qr-code-generator', 'animated-count-text', 'image-cropper', 'skia-bottom-sheet', 'dynamic-tab-indicator']);
+const dropped = new Set(['shake-to-delete', 'dynamic-blur-tabs', 'record-button', 'email-demo', 'blurred-bottom-bar', 'twitter-tab-bar', 'popup-handler', 'qr-code-generator', 'animated-count-text', 'image-cropper', 'skia-bottom-sheet', 'dynamic-tab-indicator', 'ios-home-grid']);
 
 const q = (s: string) => JSON.stringify(s);
 const rows = order
