@@ -1,48 +1,81 @@
-// Animated Indicator List: a list of films grouped by actor under a row of the actors' names;
-// as the list scrolls, the row slides to keep the current section's name at the left and the
-// black bar under it stretches to that name's width. Tapping a name scrolls to its section.
-// RN: src/animations/animated-indicator-list (index.tsx, constants.ts,
-// components/SectionListItem.tsx, hooks/useHeaderLayout.ts, hooks/useHeaderStyle.ts).
+// Animated Indicator List: films grouped by actor, under a strip of the actors' names. A dark
+// capsule behind the current name morphs in position and width with the list's scroll; inside it
+// the name turns white and semibold (a clipped copy of the strip, so weight and colour cross over
+// exactly where the capsule covers a name). The strip is a horizontal scroller on liquid glass: it
+// centres the current name when the section changes, a drag on it reaches any name, and a tap
+// scrolls the list to that section. A selection tick plays when the current section changes.
+// Redesigned from the phone feedback mwhlg9lh-e89e63 (the old row slid the current name to the
+// left edge, so at Brad Pitt nothing led back). RN: src/animations/animated-indicator-list.
+//
+// Everything that moves with the scroll runs on the host's scroll timeline (zero commits): the
+// capsule is three chains of nested segment boxes (see `segAnim`). Commits happen only when the
+// current section changes (four sentinels' `intersect`) and on a tap.
 use DemoEnv, demoButtonRow from "../env.contract"
 
-// constants.ts data: a header row, then its films.
-shape ListEntry
-  header: bool
-  label: string
+shape Film
+  title: string
+  year: number
+  director: string
 
-fn h(label: string): ListEntry = ListEntry(header=true, label=label)
-fn f(label: string): ListEntry = ListEntry(header=false, label=label)
-fn data(): ListEntry[] = [
-  h("Robert De Niro"), f("The Godfather"), f("The Godfather: Part II"), f("The Godfather: Part III"),
-  f("Goodfellas"), f("Casino"), f("The Irishman"),
-  h("Al Pacino"), f("The Godfather"), f("The Godfather: Part II"), f("The Godfather: Part III"),
-  f("Scarface"), f("Heat"),
-  h("Joe Pesci"), f("Goodfellas"), f("Casino"), f("The Irishman"), f("Home Alone"),
-  f("Home Alone 2: Lost in New York"),
-  h("Leonardo DiCaprio"), f("The Wolf of Wall Street"), f("The Departed"), f("Shutter Island"),
-  f("Inception"), f("Catch Me If You Can"),
-  h("Brad Pitt"), f("Fight Club"), f("Inglourious Basterds"), f("Se7en"),
-  f("Once Upon a Time... in Hollywood"), f("The Curious Case of Benjamin Button"),
+shape Section
+  actor: string
+  films: Film[]
+
+fn m(title: string, year: number, director: string): Film = Film(title=title, year=year, director=director)
+fn sections(): Section[] = [
+  Section(actor="Robert De Niro", films=[
+    m("The Godfather", 1972, "Francis Ford Coppola"), m("The Godfather: Part II", 1974, "Francis Ford Coppola"),
+    m("The Godfather: Part III", 1990, "Francis Ford Coppola"), m("Goodfellas", 1990, "Martin Scorsese"),
+    m("Casino", 1995, "Martin Scorsese"), m("The Irishman", 2019, "Martin Scorsese")]),
+  Section(actor="Al Pacino", films=[
+    m("The Godfather", 1972, "Francis Ford Coppola"), m("The Godfather: Part II", 1974, "Francis Ford Coppola"),
+    m("The Godfather: Part III", 1990, "Francis Ford Coppola"), m("Scarface", 1983, "Brian De Palma"),
+    m("Heat", 1995, "Michael Mann")]),
+  Section(actor="Joe Pesci", films=[
+    m("Goodfellas", 1990, "Martin Scorsese"), m("Casino", 1995, "Martin Scorsese"),
+    m("The Irishman", 2019, "Martin Scorsese"), m("Home Alone", 1990, "Chris Columbus"),
+    m("Home Alone 2: Lost in New York", 1992, "Chris Columbus")]),
+  Section(actor="Leonardo DiCaprio", films=[
+    m("The Wolf of Wall Street", 2013, "Martin Scorsese"), m("The Departed", 2006, "Martin Scorsese"),
+    m("Shutter Island", 2010, "Martin Scorsese"), m("Inception", 2010, "Christopher Nolan"),
+    m("Catch Me If You Can", 2002, "Steven Spielberg")]),
+  Section(actor="Brad Pitt", films=[
+    m("Fight Club", 1999, "David Fincher"), m("Inglourious Basterds", 2009, "Quentin Tarantino"),
+    m("Se7en", 1995, "David Fincher"), m("Once Upon a Time… in Hollywood", 2019, "Quentin Tarantino"),
+    m("The Curious Case of Benjamin Button", 2008, "David Fincher")]),
 ]
-fn headers(): string[] = data().filter(e => e.header).map(e => e.label)
-// The index of each header in `data` (scrollToIndex's target).
-fn headerRows(): number[] = [0, 7, 13, 19, 25]
+fn filmCount(): number = 26
+fn filmsLabel(n: number): string = `${n} ${n == 1 ? "film" : "films"}`
+// One accent per section, for the year tiles: brick, amber, moss, cobalt, violet.
+fn accents(): string[] = ["#B4483A", "#C2852B", "#3F7D58", "#2F6DB5", "#6B4FA8"]
+fn accentsLight(): string[] = ["#D9776A", "#E0AD5C", "#6FAA86", "#5E95D6", "#977DCC"]
+fn nthS(xs: string[], i: number): string = match xs.at(i) { case some(v) => v, case none => "#000000" }
+fn yy(y: number): string = `’${y - floor(y / 100) * 100 < 10 ? "0" : ""}${y - floor(y / 100) * 100}`
 
-// index.tsx: HeaderHeight 65, ItemHeight 50. headersLayoutY: each header's offset in the list
-// (the interpolation's input range): 0, 65 + 6 × 50, … .
-fn headerY(): number[] = [0, 365, 680, 995, 1310]
+// Geometry, on the 4/8 grid. A section is its title block (52), a card of 64 pt rows, then 24.
+// Sections have 6, 5, 5, 5, 5 films: heights 460, 396, 396, 396, 396.
+fn titleH(): number = 52
+fn rowH(): number = 64
+fn gapH(): number = 24
+fn tops(): number[] = [0, 460, 856, 1252, 1648]
+fn lastH(): number = 396
+// The capsule morphs from one name to the next over the last `morph` points before the next
+// section's title reaches the strip, and the section changes halfway through it.
+fn morph(): number = 120
+// The strip: 48 tall glass capsule, a 36 tall indicator 6 in (concentric: radius 24 and 18).
+fn stripH(): number = 48
+fn pillH(): number = 36
+fn labelPad(): number = 16
+// The list's top inset: the demo's button row, the strip, 16.
+fn topInset(env: DemoEnv): number = env.safeTop + demoButtonRow() + stripH() + 16
 
 fn nth(xs: number[], i: number): number = match xs.at(i) { case some(v) => v, case none => 0 }
-// interpolate(contentOffsetY, headersLayoutY, outs, Extrapolation.CLAMP) over five points is
-// out0 + Σ_k (out_k+1 − out_k) × clamp((y − y_k) / (y_k+1 − y_k), 0, 1): each segment is a box
-// |Δ| wide that a scroll-driven animation translates by 0 → ∓100 % of itself over
-// [y_k, y_k+1] (linear, `both` fill = CLAMP), nested so the translates add. Zero commits: the
-// host moves them in the scroll's own frame (was a `scroll=` action, a commit per frame).
+// A piecewise-linear interpolate(scrollTop, ranges, outs, CLAMP) as nested boxes: segment k is a
+// box |Δk| wide that a scroll-driven animation translates 0 → ±100 % of itself over its range
+// (`both` fill = CLAMP), nested so the translates add. The host runs it in the scroll's frame.
 fn delta(outs: number[], k: number): number = nth(outs, k + 1) - nth(outs, k)
-// Yoga ceils a Text's measured width to the device pixel (3x).
-fn ceilPx(v: number): number = ceil(v * 3 - 0.001) / 3
 fn mag(outs: number[], k: number): number = max(delta(outs, k), 0 - delta(outs, k))
-fn segRange(k: number): string = `${nth(headerY(), k)}px ${nth(headerY(), k + 1)}px`
+fn segRange(k: number): string = `${nth(tops(), k + 1) - morph()}px ${nth(tops(), k + 1)}px`
 fn segAnim(d: number, sign: number): string = d * sign >= 0 ? "ailPlus 1s linear both" : "ailMinus 1s linear both"
 keyframes ailMinus
   from translate="0px 0px"
@@ -50,108 +83,172 @@ keyframes ailMinus
 keyframes ailPlus
   from translate="0px 0px"
   to translate="100% 0px"
+// Yoga-like: a text's width ceiled to the device pixel (3x).
+fn ceilPx(v: number): number = ceil(v * 3 - 0.001) / 3
+fn sum(ws: number[]): number = nth(ws, 0) + nth(ws, 1) + nth(ws, 2) + nth(ws, 3) + nth(ws, 4)
+fn lefts(ws: number[]): number[] = [0, nth(ws, 0), nth(ws, 0) + nth(ws, 1), nth(ws, 0) + nth(ws, 1) + nth(ws, 2),
+  nth(ws, 0) + nth(ws, 1) + nth(ws, 2) + nth(ws, 3)]
+fn rights(ws: number[]): number[] = [nth(ws, 0), nth(ws, 0) + nth(ws, 1), nth(ws, 0) + nth(ws, 1) + nth(ws, 2),
+  nth(ws, 0) + nth(ws, 1) + nth(ws, 2) + nth(ws, 3), sum(ws)]
 
 component AnimatedIndicatorList
   props
     env: DemoEnv
-  // headersLayoutXData before the headers are measured: x = i, width 0.
-  state xs = [0, 1, 2, 3, 4]
+  // Each name's box width (text + 2 × 16), measured once the strip is laid out.
   state widths = [0, 0, 0, 0, 0]
-  // useMounted: RN measures the headers 100 ms after mount ("otherwise the layout isn't
-  // correct"), x relative to their row. A demo is no root and declares no timer: the row's
-  // `intersect`, delivered once it is laid out after mounting, measures them instead.
-  // RN's header is padding 20 around a Text that Yoga measures ceiled to the device pixel
-  // (JOE PESCI: 81.81 → 82), the row's x the sum of those: the host's text stays unceiled, so
-  // the headers take RN's widths here and the measures are computed from them.
+  // The current section, the one a tap is travelling to (-1: none) and the last tick's time.
+  state active = 0
+  state jump = -1
+  state lastTick = 0
+  // `frame` is the box as drawn, transforms applied, and the strip first intersects while the
+  // demo's card is still zooming open (DemoLaunch scales the whole demo): a 100 pt ruler under
+  // the same transform gives that scale, and the widths are divided back to points. The names
+  // are measured semibold (the capsule's weight, the wider one) from an unpainted copy.
   action measureHeaders(entry: IntersectionObserverEntry)
     let t0 = frame("label-0")
     let t1 = frame("label-1")
     let t2 = frame("label-2")
     let t3 = frame("label-3")
     let t4 = frame("label-4")
-    // `frame` is the box as drawn, every transform applied, and the row first intersects while
-    // the demo's card is still zooming open (DemoLaunch scales the whole demo): the names were
-    // measured at the card's scale (≈ 0.15), set as the labels' widths and kept, so the names
-    // overlapped and the bar was a stub (phone feedback, 2026-11-15). A 100 pt ruler under the
-    // same transform gives that scale; the widths are divided back to points.
     let ruler = frame("ail-ruler")
     if not (ruler.unavailable or ruler.width <= 0 or t0.unavailable or t1.unavailable or t2.unavailable or t3.unavailable or t4.unavailable)
       let k = ruler.width / 100
-      let w = [ceilPx(t0.width / k) + 40, ceilPx(t1.width / k) + 40, ceilPx(t2.width / k) + 40, ceilPx(t3.width / k) + 40, ceilPx(t4.width / k) + 40]
-      widths = w
-      xs = [0, nth(w, 0), nth(w, 0) + nth(w, 1), nth(w, 0) + nth(w, 1) + nth(w, 2), nth(w, 0) + nth(w, 1) + nth(w, 2) + nth(w, 3)]
-  // onSelectHeaderItem: scrollToIndex({ index }), animated.
+      let p = labelPad() * 2
+      widths = [ceilPx(t0.width / k) + p, ceilPx(t1.width / k) + p, ceilPx(t2.width / k) + p, ceilPx(t3.width / k) + p, ceilPx(t4.width / k) + p]
+  // Sentinel k spans the list's content from its top to the middle of morph k, so it leaves the
+  // scroller exactly when section k + 1 becomes current, and comes back when it stops being.
+  action crossed(k: number, e: IntersectionObserverEntry)
+    let next = e.isIntersecting ? min(active, k) : max(active, k + 1)
+    if next != active
+      active = next
+      // While a tap travels, the strip is already centred on its target and the sections passed
+      // on the way stay silent: one tick on arrival.
+      let arriving = jump == next
+      if jump < 0 or arriving
+        if arriving
+          jump = -1
+        let now = performanceNow()
+        // Rate-limited: a fling across sections ticks at most every 60 ms.
+        if now - lastTick >= 60
+          lastTick = now
+          haptic("selection")
+        scrollIntoView(`hdr-${next}`, block="nearest", inline="center", behavior="smooth")
+  // A tap on a name: the list to that section's title, the strip to centre the name.
   action select(i: number)
-    scrollIntoView(`row-${nth(headerRows(), i)}`, behavior="smooth")
+    jump = i == active ? -1 : i
+    scrollIntoView(`anchor-${i}`, behavior="smooth")
+    scrollIntoView(`hdr-${i}`, block="nearest", inline="center", behavior="smooth")
+  // A finger on the list takes over from a travelling tap.
+  action grab
+    jump = -1
   view
-    // styles.container: white, flex 1, overflow hidden; paddingTop safeTop +
-    // DEMO_BUTTON_ROW_HEIGHT, paddingBottom the bottom inset.
-    column position="absolute" inset=0 background-color="#ffffff" overflow="hidden" timeline-scope="--ail"
-      padding-top=(env.safeTop + demoButtonRow()) padding-bottom="env(safe-area-inset-bottom)"
+    column position="absolute" inset=0 background-color="#F2F2F7" overflow="hidden" timeline-scope="--ail"
       testId="animated-indicator-list"
-      column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(xs, 0)
-        animation=segAnim(delta(xs, 0), -1) animation-timeline="--ail" animation-range=segRange(0)
-        column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(xs, 1)
-          animation=segAnim(delta(xs, 1), -1) animation-timeline="--ail" animation-range=segRange(1)
-          column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(xs, 2)
-            animation=segAnim(delta(xs, 2), -1) animation-timeline="--ail" animation-range=segRange(2)
-            column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(xs, 3)
-              animation=segAnim(delta(xs, 3), -1) animation-timeline="--ail" animation-range=segRange(3)
-              // The header row: translateX −interpolate(offset, headersLayoutY, headersX), the
-              // segments above.
-              // The ruler `measureHeaders` reads the demo's drawn scale from: 100 pt, unpainted (no fill), over
-              // the labels' own lines (padding 20, the 14 pt line), as the open's taper scales
-              // each height of the card by its own amount.
-              row id="header-row" position="relative" flex-shrink=0 intersect=measureHeaders
-                view id="ail-ruler" position="absolute" left=0 top=20 width=100 height=17
-                  pointer-events="none" aria-hidden=true
-                for name, i in headers() key=name
-                  // MeasureableAnimatedView: padding 20; onTouchStart selects the header.
-                  view id=`header-${i}` flex-shrink=0 padding=20 pointerdown=select(i) role="button"
-                    aria-label=name testId=`header-${i}`
-                    // fontSize 14, bold, uppercase, letterSpacing 1.
-                    text name id=`label-${i}` font-size=14 font-weight=700 text-transform="uppercase" letter-spacing=1
-                      white-space="nowrap" color="#000000" flex-shrink=0
-                      width=(nth(widths, i) > 0 ? `${nth(widths, i) - 40}px` : "auto")
-      // rIndicatorStyle: a 3 tall black bar from the left edge, `width` wide (RN draws it as
-      // 100 wide scaled by width / 100 from its left). A box takes no per-axis scale, so the
-      // same pixels are boxes that only translate: a clip 1000 wide whose right edge is at
-      // `width`, holding a 1000 wide bar put back at the left edge.
-      column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(widths, 0)
-        animation=segAnim(delta(widths, 0), 1) animation-timeline="--ail" animation-range=segRange(0) testId="indicator"
-        column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(widths, 1)
-          animation=segAnim(delta(widths, 1), 1) animation-timeline="--ail" animation-range=segRange(1)
-          column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(widths, 2)
-            animation=segAnim(delta(widths, 2), 1) animation-timeline="--ail" animation-range=segRange(2)
-            column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(widths, 3)
-              animation=segAnim(delta(widths, 3), 1) animation-timeline="--ail" animation-range=segRange(3)
-              // The clip: right edge at width(offset); the bar inside is put back at the left edge
-              // by the same segments negated.
-              view flex-shrink=0 width=1000 height=3 overflow="hidden" translate=`${nth(widths, 0) - 1000}px 0px`
-                column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(widths, 0)
-                  animation=segAnim(delta(widths, 0), -1) animation-timeline="--ail" animation-range=segRange(0)
-                  column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(widths, 1)
-                    animation=segAnim(delta(widths, 1), -1) animation-timeline="--ail" animation-range=segRange(1)
-                    column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(widths, 2)
-                      animation=segAnim(delta(widths, 2), -1) animation-timeline="--ail" animation-range=segRange(2)
-                      column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(widths, 3)
-                        animation=segAnim(delta(widths, 3), -1) animation-timeline="--ail" animation-range=segRange(3)
-                        view width=1000 height=3 background-color="#000000" translate=`${1000 - nth(widths, 0)}px 0px`
-      // The FlatList: paddingBottom 400.
-      column flex=1 min-height=0 overflow-y="auto" scroll-timeline="--ail y" testId="animated-indicator-list-scroll"
-        column padding-bottom=400
-          for e, i in data() key=i
-            if e.header
-              // headerContainer: height 65, rgba(0,0,0,0.1), centred; text 20 bold, spacing 1,
-              // paddingLeft 15.
-              column id=`row-${i}` height=65 flex-shrink=0 justify-content="center"
-                background-color="rgba(0, 0, 0, 0.1)"
-                // TextKit: Yoga floors the 23.87-tall line's top to 20.333 and CoreGraphics ceils the
-                // baseline; the host's rounded line sits a device pixel lower: put it back.
-                text e.label font-size=20 font-weight=700 letter-spacing=1 padding-left=15 color="#000000"
-                  position="relative" top="-0.3333px"
-            else
-              // itemContainer: height 50, white, a row centred, paddingLeft 15; text 15.
-              row id=`row-${i}` height=50 flex-shrink=0 align-items="center" background-color="#ffffff"
-                padding-left=15
-                text e.label font-size=15 color="#000000"
+      // The list, full screen, under the glass.
+      column position="absolute" inset=0 overflow-y="auto" overflow-x="hidden" scroll-timeline="--ail y"
+        pointerdown=grab testId="animated-indicator-list-scroll"
+        column position="relative" flex-shrink=0 padding-top=topInset(env) padding-left=16 padding-right=16
+          for k in [0, 1, 2, 3] key=k
+            view position="absolute" top=0 left=0 width=1 height=(nth(tops(), k + 1) - morph() / 2)
+              pointer-events="none" aria-hidden=true intersect=crossed(k)
+          for s, k in sections() key=s.actor
+            column id=`sec-${k}` position="relative" flex-shrink=0 testId=`section-${k}`
+              // scrollIntoView's target: the list's top inset above the title, so the title
+              // lands just under the strip.
+              view id=`anchor-${k}` position="absolute" top=(0 - topInset(env)) left=0 width=1 height=1
+                pointer-events="none" aria-hidden=true
+              // Content-box, as CSS: the 12 below the title is inside its 52.
+              row height=(titleH() - 12) flex-shrink=0 align-items="flex-end" justify-content="space-between"
+                padding-left=4 padding-right=4 padding-bottom=12
+                text s.actor font-size=22 font-weight=700 letter-spacing=-0.3 color="#000000" role="heading"
+                  aria-level=2
+                text filmsLabel(s.films.length) font-size=15 color="rgba(60, 60, 67, 0.6)"
+              column flex-shrink=0 background-color="#ffffff" border-radius=22 corner-shape="-exact-continuous"
+                overflow="hidden"
+                for f, j in s.films key=f.title
+                  row height=rowH() flex-shrink=0 align-items="center" gap=12 padding-left=16 padding-right=16
+                    position="relative"
+                    if j > 0
+                      view position="absolute" top=0 left=68 right=0 height=0.3333
+                        background-color="rgba(60, 60, 67, 0.22)"
+                    // A year tile in the section's accent.
+                    column width=40 height=40 flex-shrink=0 align-items="center" justify-content="center"
+                      border-radius=10 corner-shape="-exact-continuous"
+                      background-image=`linear-gradient(145deg, ${nthS(accentsLight(), k)} 0%, ${nthS(accents(), k)} 100%)`
+                      text yy(f.year) font-family="ui-rounded" font-size=14 font-weight=700 color="#ffffff"
+                    column flex=1 min-width=0 gap=2
+                      text f.title font-size=16 font-weight=500 color="#000000" white-space="nowrap"
+                        overflow="hidden" text-overflow="ellipsis"
+                      text f.director font-size=13 color="rgba(60, 60, 67, 0.6)" white-space="nowrap"
+              view height=gapH() flex-shrink=0
+          // The end: room for the last section's title to reach the strip, and a quiet count.
+          column flex-shrink=0 height=(max(env.height - topInset(env) - lastH(), 96) - 8) align-items="center"
+            padding-top=8
+            text `${filmsLabel(filmCount())} · 5 actors` font-size=13 color="rgba(60, 60, 67, 0.45)"
+      // The scroll edge: the background fading in over the content under the buttons and strip.
+      view position="absolute" top=0 left=0 right=0 height=topInset(env) pointer-events="none"
+        background-image="linear-gradient(to bottom, rgba(242, 242, 247, 0.94) 0%, rgba(242, 242, 247, 0.82) 62%, rgba(242, 242, 247, 0) 100%)"
+      // The strip: liquid glass, a horizontal scroller of names.
+      column position="absolute" top=(env.safeTop + demoButtonRow()) left=16 right=16 height=stripH()
+        backgroundMaterial="glass" border-radius=24 corner-shape="-exact-continuous" overflow="hidden"
+        testId="ail-strip"
+        row id="ail-strip" height=stripH() overflow-x="auto" overflow-y="hidden" scrollbar-width="none"
+          align-items="center"
+          view width=6 height=1 flex-shrink=0
+          row id="header-row" position="relative" flex-shrink=0 height=pillH() intersect=measureHeaders
+            // The ruler and the semibold copy measureHeaders reads: unpainted, untouchable.
+            view id="ail-ruler" position="absolute" left=0 top=0 width=100 height=1 pointer-events="none"
+              aria-hidden=true
+            row position="absolute" left=0 top=0 pointer-events="none" aria-hidden=true
+              for name, i in sections().map(s => s.actor) key=name
+                text name id=`label-${i}` font-size=15 font-weight=600 white-space="nowrap" flex-shrink=0
+                  color="rgba(0, 0, 0, 0)"
+            // The names as they rest: medium, secondary.
+            for name, i in sections().map(s => s.actor) key=name
+              column id=`hdr-${i}` flex-shrink=0 height=pillH() padding-left=labelPad() padding-right=labelPad()
+                justify-content="center" press=select(i) role="button" aria-label=name testId=`header-${i}`
+                text name font-size=15 font-weight=500 white-space="nowrap" text-align="center"
+                  color="rgba(60, 60, 67, 0.62)" flex-shrink=0
+                  width=(nth(widths, i) > 0 ? `${nth(widths, i) - labelPad() * 2}px` : "auto")
+            // The capsule, once measured. Its right edge is a clip (rights(t) − W), its left edge
+            // a W wide bar inside it put at lefts(t) (W − widths(t) into the clip), and inside
+            // the bar the names again, white and semibold, put back on the strip (−lefts(t)).
+            if sum(widths) > 0
+              view position="absolute" left=0 top=0 width=sum(widths) height=pillH() pointer-events="none"
+                aria-hidden=true testId="indicator"
+                column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(rights(widths), 0)
+                  animation=segAnim(delta(rights(widths), 0), 1) animation-timeline="--ail" animation-range=segRange(0)
+                  column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(rights(widths), 1)
+                    animation=segAnim(delta(rights(widths), 1), 1) animation-timeline="--ail" animation-range=segRange(1)
+                    column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(rights(widths), 2)
+                      animation=segAnim(delta(rights(widths), 2), 1) animation-timeline="--ail" animation-range=segRange(2)
+                      column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(rights(widths), 3)
+                        animation=segAnim(delta(rights(widths), 3), 1) animation-timeline="--ail" animation-range=segRange(3)
+                        view flex-shrink=0 width=sum(widths) height=pillH() overflow="hidden" border-radius=18
+                          corner-shape="-exact-continuous" translate=`${nth(widths, 0) - sum(widths)}px 0px`
+                          column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(widths, 0)
+                            animation=segAnim(delta(widths, 0), -1) animation-timeline="--ail" animation-range=segRange(0)
+                            column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(widths, 1)
+                              animation=segAnim(delta(widths, 1), -1) animation-timeline="--ail" animation-range=segRange(1)
+                              column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(widths, 2)
+                                animation=segAnim(delta(widths, 2), -1) animation-timeline="--ail" animation-range=segRange(2)
+                                column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(widths, 3)
+                                  animation=segAnim(delta(widths, 3), -1) animation-timeline="--ail" animation-range=segRange(3)
+                                  view flex-shrink=0 width=sum(widths) height=pillH() border-radius=18
+                                    corner-shape="-exact-continuous" background-color="#111114" overflow="hidden"
+                                    translate=`${sum(widths) - nth(widths, 0)}px 0px`
+                                    column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(lefts(widths), 0)
+                                      animation=segAnim(delta(lefts(widths), 0), -1) animation-timeline="--ail" animation-range=segRange(0)
+                                      column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(lefts(widths), 1)
+                                        animation=segAnim(delta(lefts(widths), 1), -1) animation-timeline="--ail" animation-range=segRange(1)
+                                        column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(lefts(widths), 2)
+                                          animation=segAnim(delta(lefts(widths), 2), -1) animation-timeline="--ail" animation-range=segRange(2)
+                                          column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(lefts(widths), 3)
+                                            animation=segAnim(delta(lefts(widths), 3), -1) animation-timeline="--ail" animation-range=segRange(3)
+                                            row flex-shrink=0 height=pillH() translate="0px 0px"
+                                              for name, i in sections().map(s => s.actor) key=name
+                                                column flex-shrink=0 width=nth(widths, i) height=pillH() align-items="center"
+                                                  justify-content="center"
+                                                  text name font-size=15 font-weight=600 white-space="nowrap"
+                                                    color="#ffffff" flex-shrink=0
+          view width=6 height=1 flex-shrink=0
