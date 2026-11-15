@@ -43,8 +43,12 @@ component ComposableText
           column testId="toggle" aria-label=labelOf(active) aria-pressed=active text-align="center"
             -exact-layout-transition="-exact-spring(100, 12, 0.4)"
             // styles.textContainer: #181818, borderRadius 32 continuous, padding 16, paddingHorizontal 22;
-            // the same springify() layout as the button.
-            row background-color="#181818" border-radius=32 corner-shape="-exact-continuous" padding="16px 22px"
+            // the same springify() layout as the button. The 32 is drawn at half the height
+            // (16 + 24 pt bold's 28.64 line + 16 = 60.667 in RN): 30.333 here, because while the
+            // layout transition resizes the row the host paints it on a surface that takes Core
+            // Animation's continuous corner only when the AUTHORED radius fits the box; 32 fell
+            // back to the host's own continuous outline, a different curve, during the spring.
+            row background-color="#181818" border-radius=30.333 corner-shape="-exact-continuous" padding="16px 22px"
               -exact-layout-transition="-exact-spring(100, 12, 0.4)" testId="label"
               for c, i in labelOf(active).split("") key=keyOf(labelOf(active), c, i)
                 // styles.text: fontSize 24, bold; colour withTiming 200 ms linear. Each letter's
