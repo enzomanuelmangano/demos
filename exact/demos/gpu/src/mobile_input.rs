@@ -31,7 +31,7 @@
 //! | shake translateX | withRepeat(withTiming(10, 100 ms, bezier(0.36, 0.69, 0.49, 0.71)), 4, reverse) | cancel + 0 first | wrong | `Chain` 0→10→0→10→0 |
 //! | dot opacity | withTiming(active ? 1 : 0.4) | 300 ms inOut(quad) | activeDots changes | `Timing`, re-issued for every dot |
 //! | dot scale | withSpring(active ? 1.4 : 1) | GENTLE (900, 120, 4) | same | `Spring::to` at its velocity |
-//! | key press | pressto progress withTiming(active) | 250 ms bezier(0.25, 0.1, 0.25, 1) | press in / out | [`Press`] |
+//! | key press | pressto progress withTiming(active) | 250 ms bezier(0.25, 0.1, 0.25, 1) | press in / out | [`pressto::Pressable`] |
 //! | key fill | rgba(255,255,255, interpolate(p, [0,1], [0, 0.1]).toFixed(3)) | Reanimated's colour: alpha round(a · 255) | | same |
 //! | key scale | interpolate(p, [0, 1], [1, 0.9]) | about the key's centre | | same |
 //!
@@ -42,7 +42,7 @@
 //! slides off keeps the key pressed (shouldCancelWhenOutside is false) and presses nothing. Each
 //! key takes its own finger (pressto's buttons are not exclusive). RN's app today (pressto 0.7.0 on
 //! RNGH 3.3's v3 BaseButton) passes onBegan/onEnded that v3 drops: no feedback, and onPress on
-//! any uncancelled lift. `PRESSTO_FEEDBACK` false is that.
+//! any uncancelled lift; that bug is not ported. The machine is the shared `pressto` crate's.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -116,16 +116,10 @@ const DIGIT_SIZE: f32 = 30.0;
 const ICON_SIZE: f32 = 24.0;
 const KEY_RADIUS: f32 = 20.0;
 
-/// pressto's default animation (no PressablesConfig animation config in app/_layout.tsx) and
-/// InputButton's outputs. `PRESSTO_FEEDBACK` false is RN's app today (see the module doc).
-const PRESSTO_FEEDBACK: bool = true;
-const PRESS_MS: f64 = 250.0;
+/// InputButton's outputs (createAnimatedPressable): scale 1 → 0.9, fill alpha 0 → 0.1. The
+/// progress is pressto's default (no PressablesConfig animation config in app/_layout.tsx).
 const PRESS_SCALE: f64 = 0.9;
 const PRESS_FILL: f64 = 0.1;
-
-fn press_easing() -> Easing {
-    Easing::bezier(0.25, 0.1, 0.25, 1.0)
-}
 
 /// The demo's surface (the whole screen). Inputs: the safe area's top and bottom insets.
 pub fn surface() -> Box<dyn Surface> {
@@ -213,43 +207,28 @@ impl Chain {
     }
 }
 
-/// pressto's `createAnimatedPressable` on RNGH's BaseButton: its progress and the finger on it.
-/// Kept apart so it can move onto the shared pressto module.
+/// pressto's `createAnimatedPressable` on RNGH's BaseButton: the shared press machine
+/// ([`pressto::Pressable`]: its progress and the finger on it) and InputButton's style over it.
 #[derive(Clone, Debug, Default)]
 struct Press {
-    /// `withTiming(active ? 1 : 0, { duration 250, easing bezier(0.25, 0.1, 0.25, 1) })`.
-    progress: Timing,
-    finger: Option<u32>,
+    pressable: pressto::Pressable,
 }
 
 impl Press {
-    /// onBegan: `active` true.
-    fn down(&mut self, id: u32) {
-        self.finger = Some(id);
-        if PRESSTO_FEEDBACK {
-            self.progress.to(1.0, PRESS_MS, press_easing());
-        }
+    /// The finger holding it.
+    fn finger(&self) -> Option<u32> {
+        self.pressable.finger()
     }
 
-    /// The finger lifts (`inside`: in the key's bounds) or is taken: whether it was this key's,
-    /// and whether onPress runs.
-    fn up(&mut self, id: u32, inside: bool, cancelled: bool) -> Option<bool> {
-        if self.finger != Some(id) {
-            return None;
-        }
-        self.finger = None;
-        if PRESSTO_FEEDBACK {
-            self.progress.to(0.0, PRESS_MS, press_easing());
-            Some(inside && !cancelled)
-        } else {
-            Some(!cancelled)
-        }
+    /// `progress`.
+    fn progress(&self) -> f64 {
+        self.pressable.progress()
     }
 
     /// interpolate(progress, [0, 1], [1, 0.9]).
     fn scale(&self) -> f32 {
         interpolate(
-            self.progress.value,
+            self.progress(),
             &[0.0, 1.0],
             &[1.0, PRESS_SCALE],
             Extrapolation::Extend,
@@ -260,7 +239,7 @@ impl Press {
     /// Reanimated's colour parser rounds it (round(a · 255)).
     fn fill(&self) -> u8 {
         let a = to_fixed_3(interpolate(
-            self.progress.value,
+            self.progress(),
             &[0.0, 1.0],
             &[0.0, PRESS_FILL],
             Extrapolation::Extend,
@@ -420,8 +399,10 @@ impl MobileInput {
     }
 
     /// pressto's onPress: the app's globalHandlers (Haptics.selectionAsync), then the key's.
-    fn press(&mut self, k: usize) {
-        self.posted.push("haptic:selection".into());
+    fn press(&mut self, k: usize, press: pressto::Press) {
+        if let Some(m) = press.global_message() {
+            self.posted.push(m.into());
+        }
         match KEYS[k] {
             Key::Digit(d) => {
                 self.pin.push(d);
@@ -496,7 +477,7 @@ impl MobileInput {
             moving |= s.step(now);
         }
         for p in self.keys.iter_mut() {
-            moving |= p.progress.step(now);
+            moving |= p.pressable.step(now);
         }
         moving
     }
@@ -676,7 +657,7 @@ impl Surface for MobileInput {
     fn agent(&mut self, _request: &str) -> Option<String> {
         let pin: String = self.pin.iter().map(|d| char::from(b'0' + d)).collect();
         let pressed: Vec<String> = (0..12)
-            .filter(|&k| self.keys[k].finger.is_some())
+            .filter(|&k| self.keys[k].finger().is_some())
             .map(|k| k.to_string())
             .collect();
         Some(format!(
@@ -686,7 +667,7 @@ impl Surface for MobileInput {
             self.blur.value(),
             self.shake.value(),
             pressed.join(","),
-            self.keys.iter().map(|p| format!("{:.3}", p.progress.value)).collect::<Vec<_>>().join(",")
+            self.keys.iter().map(|p| format!("{:.3}", p.progress())).collect::<Vec<_>>().join(",")
         ))
     }
 
@@ -699,21 +680,21 @@ impl Surface for MobileInput {
         };
         match gfx::phase(phase) {
             Phase::Down => {
+                // Each key takes its own finger (pressto's buttons are not exclusive).
                 if let Some(k) =
-                    (0..12).find(|&k| self.keys[k].finger.is_none() && self.inside(k, x, y))
+                    (0..12).find(|&k| self.keys[k].finger().is_none() && self.inside(k, x, y))
                 {
-                    self.keys[k].down(id);
+                    self.keys[k].pressable.pointer_down(id, true);
                 }
             }
             Phase::Move => {}
             phase @ (Phase::Up | Phase::Cancel) => {
-                for k in 0..12 {
+                if let Some(k) = (0..12).find(|&k| self.keys[k].finger() == Some(id)) {
                     let inside = self.inside(k, x, y);
-                    if let Some(pressed) = self.keys[k].up(id, inside, phase == Phase::Cancel) {
-                        if pressed {
-                            self.press(k);
-                        }
-                        break;
+                    if let Some(pressto::PressEvent::Press(press)) =
+                        self.keys[k].pressable.pointer(id, phase, inside)
+                    {
+                        self.press(k, press);
                     }
                 }
             }
@@ -827,7 +808,7 @@ impl Surface for MobileInput {
         if let Some((_, bind)) = gpu.bind.as_ref() {
             skia::render::fullscreen_pass(encoder, "mobile input", target, &gpu.compose, bind);
         }
-        moving || self.blur.running() || self.keys.iter().any(|p| p.finger.is_some())
+        moving || self.blur.running() || self.keys.iter().any(|p| p.finger().is_some())
     }
 }
 
@@ -982,17 +963,17 @@ mod tests {
         let mut s = placed();
         let [x, y, w, h] = s.layout.keys[4];
         finger(&mut s, PointerPhase::Down, 7, x + w / 2.0, y + h / 2.0);
-        assert_eq!(s.keys[4].finger, Some(7));
+        assert_eq!(s.keys[4].finger(), Some(7));
         s.step(0.0);
         s.step(125.0);
-        let mid = s.keys[4].progress.value;
+        let mid = s.keys[4].progress();
         // bezier(0.25, 0.1, 0.25, 1) at half time.
         assert!(
             (mid - Easing::bezier(0.25, 0.1, 0.25, 1.0).at(0.5)).abs() < 1e-9,
             "{mid}"
         );
         s.step(400.0);
-        assert_eq!(s.keys[4].progress.value, 1.0);
+        assert_eq!(s.keys[4].progress(), 1.0);
         assert_eq!(s.keys[4].fill(), 26);
         assert!((s.keys[4].scale() - 0.9).abs() < 1e-6);
         finger(&mut s, PointerPhase::Up, 7, x + w / 2.0, y + h / 2.0);
@@ -1001,7 +982,7 @@ mod tests {
         // It eases back from where it is, over 250 ms.
         s.step(410.0);
         s.step(535.0);
-        assert!(s.keys[4].progress.value > 0.0 && s.keys[4].progress.value < 0.5);
+        assert!(s.keys[4].progress() > 0.0 && s.keys[4].progress() < 0.5);
     }
 
     #[test]
@@ -1010,11 +991,11 @@ mod tests {
         let [x, y, w, h] = s.layout.keys[4];
         finger(&mut s, PointerPhase::Down, 1, x + w / 2.0, y + h / 2.0);
         finger(&mut s, PointerPhase::Move, 1, x + w + 40.0, y + h / 2.0);
-        assert_eq!(s.keys[4].finger, Some(1));
+        assert_eq!(s.keys[4].finger(), Some(1));
         finger(&mut s, PointerPhase::Up, 1, x + w + 40.0, y + h / 2.0);
         assert!(s.pin.is_empty());
         assert!(s.messages().is_empty());
-        assert!(s.keys.iter().all(|p| p.finger.is_none()));
+        assert!(s.keys.iter().all(|p| p.finger().is_none()));
         // A lift inside the unscaled frame but outside the 0.9-scaled one presses nothing either.
         finger(&mut s, PointerPhase::Down, 2, x + w / 2.0, y + h / 2.0);
         s.step(0.0);

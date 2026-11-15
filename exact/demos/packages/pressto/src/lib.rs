@@ -609,6 +609,88 @@ mod tests {
         assert_eq!(p.progress(), 0.0);
     }
 
+    /// A quick tap: active for one frame (onBegin, then onFinalize before the next frame), as
+    /// base.tsx's `progress = useDerivedValue(() => withAnimation(active.get() ? 1 : 0))` sees it:
+    /// the frame the press began at shows 0 (the new timing's start), the next one frame of the
+    /// curve; the release then eases back from there over a full 250 ms from its own first frame.
+    #[test]
+    fn a_quick_tap_dips_and_returns_over_a_full_250_ms_from_where_it_was() {
+        let e = timing_easing();
+        let mut p = Pressable::new();
+        assert!(p.pointer_down(1, true));
+        p.step(0.0);
+        assert_eq!(p.progress(), 0.0);
+        p.step(16.0);
+        let dip = p.progress();
+        assert!(close(dip, e.at(16.0 / 250.0)), "{dip}");
+        assert!(dip > 0.0);
+        assert!(p.pointer_up(1, true).is_some());
+        // The release's first frame holds where the press left it.
+        p.step(32.0);
+        assert!(close(p.progress(), dip));
+        p.step(32.0 + 125.0);
+        assert!(close(p.progress(), dip * (1.0 - e.at(0.5))), "{}", p.progress());
+        // Full 250 ms from 32, not shortened to the 16 ms the press ran (CSS's reversing case).
+        assert!(p.step(32.0 + 249.0));
+        assert!(p.progress() > 0.0);
+        assert!(!p.step(32.0 + 250.0));
+        assert_eq!(p.progress(), 0.0);
+    }
+
+    /// Down and up before any frame: the mapper only ever sees `active` false, so nothing moves
+    /// (base.tsx: the derived value re-runs once, withTiming(0) from 0).
+    #[test]
+    fn a_tap_inside_one_frame_never_moves() {
+        let mut p = Pressable::new();
+        p.pointer_down(1, true);
+        assert!(p.pointer_up(1, true).is_some());
+        let mut ms = 0.0;
+        while p.step(ms) {
+            assert_eq!(p.progress(), 0.0);
+            ms += 16.0;
+        }
+        assert_eq!(p.progress(), 0.0);
+    }
+
+    /// A re-press during the release: withTiming(1) from the current value, its first frame
+    /// holding it, then a full 250 ms forward (no reversing shortcut).
+    #[test]
+    fn a_re_press_during_the_release_eases_forward_over_a_full_250_ms() {
+        let e = timing_easing();
+        let mut p = Pressable::new();
+        p.pointer_down(1, true);
+        p.step(0.0);
+        p.step(300.0);
+        assert_eq!(p.progress(), 1.0);
+        p.pointer_up(1, true);
+        p.step(316.0);
+        p.step(316.0 + 100.0);
+        let v = p.progress();
+        assert!(close(v, 1.0 - e.at(100.0 / 250.0)), "{v}");
+        assert!(p.pointer_down(2, true));
+        p.step(432.0);
+        assert!(close(p.progress(), v));
+        p.step(432.0 + 125.0);
+        assert!(close(p.progress(), v + (1.0 - v) * e.at(0.5)), "{}", p.progress());
+        assert!(p.step(432.0 + 249.0));
+        assert!(!p.step(432.0 + 250.0));
+        assert_eq!(p.progress(), 1.0);
+    }
+
+    /// RNGestureHandlerButton.mm endTrackingWithTouch: the lift's own location decides
+    /// TouchUpInside / TouchUpOutside, and v3 BaseButton's onFinalize calls onPress(pointerInside):
+    /// a finger that was inside on its last move and lifts outside presses nothing.
+    #[test]
+    fn the_lift_location_alone_decides_the_press() {
+        let mut p = Pressable::new();
+        p.pointer(1, Phase::Down, true);
+        p.pointer(1, Phase::Move, true);
+        assert_eq!(p.pointer(1, Phase::Up, false), Some(PressEvent::PressOut));
+        p.pointer(2, Phase::Down, true);
+        p.pointer(2, Phase::Move, false);
+        assert!(matches!(p.pointer(2, Phase::Up, true), Some(PressEvent::Press(_))));
+    }
+
     #[test]
     fn a_group_remembers_the_last_pressed() {
         let mut g = Group::new();

@@ -62,9 +62,11 @@
 //!   onBegan sets active (progress withTiming(1, { 250 ms, bezier(0.25, 0.1, 0.25, 1) })); the
 //!   finger dragged out of the bounds (RNGestureHandlerButton's strict hit frame) makes the
 //!   last event's pointerInside false; the lift is TouchUpInside or TouchUpOutside by the same
-//!   frame, and BaseButton calls onPress if the lift or the event before it was inside:
-//!   PressablesConfig's onPress (the app's selection haptic, `haptic:selection`), then the
-//!   button's. onEnded / onCancelled set active false.
+//!   frame (RNGestureHandlerButton.mm endTrackingWithTouch: the lift's own location), and RNGH
+//!   3.3's v3 BaseButton calls onPress(pointerInside) at onFinalize; pressto as designed presses
+//!   only for a lift inside: PressablesConfig's onPress (the app's selection haptic,
+//!   `haptic:selection`), then the button's. The lift or a cancel sets active false. The machine
+//!   is the shared `pressto` crate's (`pressto::Pressable`).
 //! - The canvas (react-native-skia-gesture's Touchable.Canvas: Gesture.Simultaneous(Pan(),
 //!   Tap()); the Tap's onTouchesUp finds no onTap handler): the Pan's onBegin finds the first
 //!   touchable whose shape contains the touch-down point in registration order (useEffect
@@ -80,7 +82,7 @@
 //! |---|---|---|
 //! | grid x, y | expand: withTiming(0, { duration 250 }) (inOut(quad)); the move Pan's onActive: clamp(t, −ctx, max − size − ctx) + ctx; TopLeft / BottomLeft (x), TopLeft / TopRight (y): clamp(t + ctx, 0, max − new size) | `Timing` (a timing to the target it already runs to keeps its start and from, as timing.ts's onStart); a set cancels |
 //! | grid width, height | expand: withTiming(W, H); collapse: withTiming(W / 3, H / 3); a corner's onActive: clamp(±t + ctx, min, max − x / y now) | same |
-//! | button scale | pressto: progress withTiming(active, { 250 ms, bezier(0.25, 0.1, 0.25, 1) }), scale interpolate(progress, [0, 1], [1, 0.96]) | `press::Pressto` (layers resampled) |
+//! | button scale | pressto: progress withTiming(active, { 250 ms, bezier(0.25, 0.1, 0.25, 1) }), scale interpolate(progress, [0, 1], [1, 0.96]) | `pressto::Pressable` (layers resampled) |
 //! | Modal page y | UIKit cover vertical: CASpringAnimation (3, 1000, 500), critical, 0.5 s | `modal_offset` |
 //! | haptics | PressablesConfig onPress: selection, at each button's press | `haptic:selection` |
 //!
@@ -416,83 +418,6 @@ fn modal_left(t_ms: f64) -> f64 {
     (1.0 + w * t) * (-w * t).exp()
 }
 
-mod press {
-    //! pressto's PressableScale (node_modules/pressto/src: pressables/base.tsx, custom/scale.ts,
-    //! provider/constants.ts: the app's PressablesConfig keeps the default 'timing' animation and
-    //! config) on RNGH's BaseButton, as designed: kept in one place for the shared module.
-    use reanimated::{interpolate, Easing, Extrapolation, Timing};
-
-    /// DefaultAnimationConfigs.timing.duration.
-    const PRESSTO_MS: f64 = 250.0;
-    /// DefaultPressableConfig.minScale (baseScale 1).
-    const PRESSTO_MIN_SCALE: f64 = 0.96;
-
-    /// One PressableScale: its finger, whether the last event was inside, its progress.
-    #[derive(Clone, Debug)]
-    pub(super) struct Pressto {
-        pub(super) progress: Timing,
-        pub(super) finger: Option<u32>,
-        inside: bool,
-    }
-
-    impl Pressto {
-        pub(super) fn new() -> Pressto {
-            Pressto {
-                progress: Timing::at(0.0),
-                finger: None,
-                inside: false,
-            }
-        }
-
-        /// `progress = withTiming(active ? 1 : 0, DefaultAnimationConfigs.timing)` (useDerivedValue
-        /// re-run when active changes; the same target keeps the running timeline).
-        fn animate(&mut self, active: bool) {
-            let to = if active { 1.0 } else { 0.0 };
-            if self.progress.running && self.progress.target() == to {
-                return;
-            }
-            self.progress
-                .to(to, PRESSTO_MS, Easing::bezier(0.25, 0.1, 0.25, 1.0));
-        }
-
-        /// onBegan (handleTouchDown): active.
-        pub(super) fn down(&mut self, id: u32) {
-            self.finger = Some(id);
-            self.inside = true;
-            self.animate(true);
-        }
-
-        /// A move of the finger: DragInside / DragOutside's pointerInside.
-        pub(super) fn moved(&mut self, inside: bool) {
-            self.inside = inside;
-        }
-
-        /// The finger lifts `inside` (TouchUpInside) or not, or is cancelled: onEnded /
-        /// onCancelled set active false; whether BaseButton calls onPress (its handleEvent: the
-        /// END after ACTIVE, not cancelled, while lastIsPressed: TouchUpInside's ACTIVE event,
-        /// or the last drag's when the lift is outside).
-        pub(super) fn up(&mut self, cancelled: bool, inside: bool) -> bool {
-            self.finger = None;
-            self.animate(false);
-            !cancelled && (inside || self.inside)
-        }
-
-        /// scale.ts: interpolate(progress, [0, 1], [baseScale 1, minScale 0.96]).
-        pub(super) fn scale(&self) -> f64 {
-            interpolate(
-                self.progress.value,
-                &[0.0, 1.0],
-                &[1.0, PRESSTO_MIN_SCALE],
-                Extrapolation::Extend,
-            )
-        }
-
-        pub(super) fn step(&mut self, now: f64) -> bool {
-            self.progress.step(now)
-        }
-    }
-}
-
 /// Where the atlas keeps each layer (pixels): the photo as the canvas shows it, the detail
 /// Canvas, each button (its content's top-left; one repeated pixel around each but the photo).
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -602,7 +527,8 @@ struct ImageCropper {
     /// The move gesture's ctx {x, y}; the corners' ctx {x, y, width, height}.
     move_ctx: [f64; 2],
     corner_ctx: [f64; 4],
-    presses: [press::Pressto; 4],
+    /// The four buttons: pressto's PressableScale each (the shared machine, default config).
+    presses: [pressto::Pressable; 4],
     modal: Modal,
     /// croppedRect's drawing while the page shows it.
     detail: Option<Detail>,
@@ -636,7 +562,7 @@ impl ImageCropper {
             owner: None,
             move_ctx: [0.0; 2],
             corner_ctx: [0.0; 4],
-            presses: std::array::from_fn(|_| press::Pressto::new()),
+            presses: std::array::from_fn(|_| pressto::Pressable::new()),
             modal: Modal::Hidden,
             detail: None,
             posted: Vec::new(),
@@ -831,9 +757,11 @@ impl ImageCropper {
         self.modal = Modal::Dismissing(at);
     }
 
-    fn on_press(&mut self, i: usize, at: f64) {
+    fn on_press(&mut self, i: usize, press: pressto::Press, at: f64) {
         // PressablesConfig's globalHandlers.onPress, then the button's.
-        self.posted.push("haptic:selection".into());
+        if let Some(m) = press.global_message() {
+            self.posted.push(m.into());
+        }
         match i {
             0 => self.expand(),
             1 => self.collapse(),
@@ -862,8 +790,8 @@ impl ImageCropper {
                 for &i in buttons {
                     let k = self.presses[i].scale();
                     if self.layout.buttons[i].contains(fx, fy, k) {
-                        if self.presses[i].finger.is_none() {
-                            self.presses[i].down(id);
+                        if self.presses[i].finger().is_none() {
+                            self.presses[i].pointer_down(id, true);
                         }
                         return;
                     }
@@ -880,15 +808,15 @@ impl ImageCropper {
             }
             Phase::Move | Phase::Up | Phase::Cancel => {
                 for i in 0..4 {
-                    if self.presses[i].finger != Some(id) {
+                    if self.presses[i].finger() != Some(id) {
                         continue;
                     }
                     let k = self.presses[i].scale();
                     let inside = self.layout.buttons[i].contains(fx, fy, k);
-                    if phase == Phase::Move {
-                        self.presses[i].moved(inside);
-                    } else if self.presses[i].up(phase == Phase::Cancel, inside) {
-                        self.on_press(i, at);
+                    if let Some(pressto::PressEvent::Press(press)) =
+                        self.presses[i].pointer(id, phase, inside)
+                    {
+                        self.on_press(i, press, at);
                     }
                     return;
                 }
@@ -916,7 +844,7 @@ impl ImageCropper {
         moving
             || self.transitioning()
             || self.pan.tracking()
-            || self.presses.iter().any(|p| p.finger.is_some())
+            || self.presses.iter().any(|p| p.finger().is_some())
     }
 
     /// The page's offset (points) and whether it is the empty white container, at `now`.
@@ -1280,7 +1208,7 @@ impl Surface for ImageCropper {
             Modal::Shown => "shown",
             Modal::Dismissing(_) => "dismissing",
         };
-        let pressed: Vec<bool> = self.presses.iter().map(|p| p.finger.is_some()).collect();
+        let pressed: Vec<bool> = self.presses.iter().map(|p| p.finger().is_some()).collect();
         Some(format!(
             "{{\"grid\":[{:.3},{:.3},{:.3},{:.3}],\"modal\":\"{modal}\",\"pressed\":{pressed:?},\"held\":{}}}",
             g.x.value,
@@ -1693,13 +1621,21 @@ mod tests {
         assert_eq!(a.modal, Modal::Hidden);
         let t = settle(&mut a, 320.0, 1000.0);
         assert!(close(a.presses[2].scale(), 1.0));
-        // Lifted just outside after a move inside: lastIsPressed was true, so onPress.
+        // Lifted just outside after a move inside: RNGestureHandlerButton.mm endTrackingWithTouch
+        // tests the lift's own location (TouchUpOutside, pointerInside false), so no onPress.
         let (x0, y0) = (b.at[0] as f32 + 2.0, b.at[1] as f32 + 2.0);
         touch(&mut a, 3, Phase::Down, x0, y0, t);
         touch(&mut a, 3, Phase::Move, x0 - 1.0, y0, t + 20.0);
         touch(&mut a, 3, Phase::Up, x0 - 3.0, y0, t + 40.0);
+        assert!(a.messages().is_empty());
+        assert_eq!(a.modal, Modal::Hidden);
+        // Slid off and back in, lifted inside: a press.
+        touch(&mut a, 4, Phase::Down, x, y, t + 100.0);
+        touch(&mut a, 4, Phase::Move, x, y - 30.0, t + 120.0);
+        touch(&mut a, 4, Phase::Move, x, y, t + 140.0);
+        touch(&mut a, 4, Phase::Up, x, y, t + 160.0);
         assert_eq!(a.messages(), vec!["haptic:selection".to_string()]);
-        assert_eq!(a.modal, Modal::Presenting(t + 40.0));
+        assert_eq!(a.modal, Modal::Presenting(t + 160.0));
     }
 
     /// Crop presents the page with UIKit's cover-vertical spring (critical, 0.5 s), Back slides
@@ -1725,7 +1661,7 @@ mod tests {
         // A touch during the transition is not taken.
         tap(&mut a, BACK, 200.0);
         assert!(
-            a.presses.iter().all(|p| p.finger.is_none()) && a.modal != Modal::Dismissing(260.0)
+            a.presses.iter().all(|p| p.finger().is_none()) && a.modal != Modal::Dismissing(260.0)
         );
         a.step(60.0 + 499.0);
         assert!(a.page().unwrap().0 > 0.5);

@@ -78,7 +78,7 @@
 //! | onTap's reset | cancelAnimation (callback false) + set(0) | `Spring::set(0)`, the dismiss callback disarmed |
 //! | dismiss callback | withSpring(0, cb): cb(true) at rest clears layoutData, selectedIndex; cb(false) when replaced | `dismissing`, cleared on completion only |
 //! | row press scale | Tap onTouchesDown withSpring(0.9, { overshootClamping }) / onFinalize withSpring(1, same): default (900, 120, 4) | `press::RowTap`, `Spring::to_clamped(GENTLE)` with the running velocity (dropped when pointing away) |
-//! | confirm press scale | pressto: withTiming(active, 250 ms, bezier(0.25, 0.1, 0.25, 1)), scale interpolate(progress, [0, 1], [1, 0.96]) | `press::Pressto` |
+//! | confirm press scale | pressto: withTiming(active, 250 ms, bezier(0.25, 0.1, 0.25, 1)), scale interpolate(progress, [0, 1], [1, 0.96]) | `pressto::Pressable` |
 //! | button opacity | selectedIndex === index ? 0 : 1 | same |
 //! | badge opacity | selectedIndex === index ? (1 − p)² : 1 | same, group opacity |
 //! | confirm top / left / width / height | interpolate(p, [0, 1], [layout, end]) (extend), Yoga-rounded | `ConfirmGeom` |
@@ -169,9 +169,6 @@ const SHEET_RADIUS: f32 = 20.0;
 const SHEET_PAD_V: f64 = 20.0;
 const SHEET_PAD_H: f64 = 0.05;
 const MESSAGE_GAP: f64 = 10.0;
-/// pressto: minScale 0.96, withTiming 250 ms, bezier(0.25, 0.1, 0.25, 1).
-const PRESSTO_MIN_SCALE: f64 = 0.96;
-const PRESSTO_MS: f64 = 250.0;
 /// The atlas's transparent margin around each layer, device pixels.
 const GUTTER: f64 = 2.0;
 
@@ -491,10 +488,10 @@ impl Layout {
     }
 }
 
-/// The press feedback, kept together so a shared pressto module can replace `Pressto`.
+/// The row's press feedback (the confirm button's is the shared `pressto` crate's).
 mod press {
     use super::*;
-    use reanimated::{Easing, Timing, GENTLE};
+    use reanimated::GENTLE;
 
     /// pressable-scale.tsx's PressableScale (RNGH Tap): the finger, its row, its touch-down
     /// time, and each row's scale.
@@ -536,49 +533,6 @@ mod press {
                 moving |= s.step(now);
             }
             moving
-        }
-    }
-
-    /// pressto's PressableScale: active while a finger that came down on it is down.
-    pub(super) struct Pressto {
-        pub(super) progress: Timing,
-        pub(super) finger: Option<u32>,
-    }
-
-    impl Pressto {
-        pub(super) fn new() -> Pressto {
-            Pressto {
-                progress: Timing::at(0.0),
-                finger: None,
-            }
-        }
-
-        /// onBegan / onActivated: active.
-        pub(super) fn down(&mut self, id: u32) {
-            self.finger = Some(id);
-            self.progress
-                .to(1.0, PRESSTO_MS, Easing::bezier(0.25, 0.1, 0.25, 1.0));
-        }
-
-        /// The finger lifts or is taken: whether it was this press's.
-        pub(super) fn up(&mut self, id: u32) -> bool {
-            if self.finger != Some(id) {
-                return false;
-            }
-            self.finger = None;
-            self.progress
-                .to(0.0, PRESSTO_MS, Easing::bezier(0.25, 0.1, 0.25, 1.0));
-            true
-        }
-
-        /// interpolate(progress, [0, 1], [baseScale 1, minScale 0.96]).
-        pub(super) fn scale(&self) -> f64 {
-            interpolate(
-                self.progress.value,
-                &[0.0, 1.0],
-                &[1.0, PRESSTO_MIN_SCALE],
-                Extrapolation::Extend,
-            )
         }
     }
 }
@@ -680,7 +634,8 @@ struct AddToCart {
     /// selectedIndex.
     selected: Option<usize>,
     tap: press::RowTap,
-    pressto: press::Pressto,
+    /// The confirm button: pressto's PressableScale (the shared machine, default config).
+    pressto: pressto::Pressable,
     touch: Option<Touch>,
     posted: Vec<String>,
     now: f64,
@@ -773,7 +728,7 @@ impl AddToCart {
             data: None,
             selected: None,
             tap: press::RowTap::new(),
-            pressto: press::Pressto::new(),
+            pressto: pressto::Pressable::new(),
             touch: None,
             posted: Vec::new(),
             now: 0.0,
@@ -989,7 +944,7 @@ impl AddToCart {
                     return;
                 }
                 let touch = if self.confirm_hit(x, y) {
-                    self.pressto.down(id);
+                    self.pressto.pointer_down(id, true);
                     Touch::Confirm(id)
                 } else if self.sheet_hit(y) {
                     Touch::Sheet(id)
@@ -1032,9 +987,14 @@ impl AddToCart {
                 match touch {
                     Touch::Confirm(_) => {
                         let inside = self.confirm_hit(x, y);
-                        if self.pressto.up(id) && phase == Phase::Up && inside {
+                        // onPress only for a lift inside; a cancel releases without one.
+                        if let Some(pressto::PressEvent::Press(press)) =
+                            self.pressto.pointer(id, phase, inside)
+                        {
                             // PressablesConfig's onPress, then the button's.
-                            self.posted.push("haptic:selection".into());
+                            if let Some(m) = press.global_message() {
+                                self.posted.push(m.into());
+                            }
                             self.on_confirm();
                         }
                     }
@@ -1077,7 +1037,7 @@ impl AddToCart {
             }
         }
         moving |= self.tap.step(now);
-        moving |= self.pressto.progress.step(now);
+        moving |= self.pressto.step(now);
         moving || self.touch.is_some()
     }
 
