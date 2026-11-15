@@ -32,10 +32,10 @@ component StaggeredCardNumber
     // index.tsx container: #eaeaea, centred.
     column position="absolute" inset=0 background-color="#eaeaea" align-items="center"
       justify-content="center" testId="staggered-card-number"
-      // styles.container: white, radius 20 continuous, boxShadow 0 2 20 rgba(0,0,0,0.05), a
+      // styles.container: white, radius 20 continuous (30 here, the owner's call), boxShadow 0 2 20 rgba(0,0,0,0.05), a
       // row 80 tall, paddingTop 15, paddingBottom 10, paddingHorizontal 25, 90% wide.
       row width="90%" height=80 box-sizing="border-box" padding-top=15 padding-bottom=10
-        padding-left=25 padding-right=25 background-color="#ffffff" border-radius=20
+        padding-left=25 padding-right=25 background-color="#ffffff" border-radius=30
         corner-shape="-exact-continuous" box-shadow="0px 2px 20px rgba(0, 0, 0, 0.05)" testId="card"
         column
           // styles.title: #787878, 17, weight 400.
