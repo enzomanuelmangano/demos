@@ -23,7 +23,9 @@
 use DemoEnv, floatingWidth, concentricRadius from "../env.contract"
 use PressableScale from "pressto"
 
-// The bar: inset from the display's sides and bottom, its height (Patterns' dock pill).
+// The bar: inset from the display's sides and bottom, its height (Patterns' dock pill). Each half's
+// content row takes the bar's height itself (a pressable's box does not stretch it), the icons a
+// fixed 22 box and the labels a 22 line, so both halves sit centred on one baseline.
 fn barInset(): number = 10
 fn barHeight(): number = 56
 
@@ -81,18 +83,20 @@ component Chessboard
           pointer-events=(mode == "done" ? "none" : "auto") testId="puzzle-bar"
           view flex=1 height=barHeight()
             PressableScale(press=hint)
-              row flex-grow=1 align-items="center" justify-content="center" gap=8
+              row height=barHeight() align-items="center" justify-content="center" gap=8
                 opacity=(mode == "play" or mode == "hint1" ? 1 : 0.38) transition="opacity 200ms ease"
                 aria-label="Hint" testId="puzzle-hint"
-                image "symbol:sf/lightbulb" font-size=17 color="#f0f2f5"
-                text (mode == "hint1" ? "Show square" : "Hint") font-size=16 font-weight=600
-                  color="#f0f2f5"
+                row width=22 height=22 align-items="center" justify-content="center"
+                  image "symbol:sf/lightbulb" font-size=17 color="#f0f2f5"
+                text (mode == "hint1" ? "Show square" : "Hint") font-size=16 line-height=22
+                  font-weight=600 color="#f0f2f5"
           // The hairline between the halves.
           view width=1 height=24 background-color="rgba(255, 255, 255, 0.14)"
           view flex=1 height=barHeight()
             PressableScale(press=solve)
-              row flex-grow=1 align-items="center" justify-content="center" gap=8
+              row height=barHeight() align-items="center" justify-content="center" gap=8
                 opacity=(mode == "wait" ? 0.38 : 1) transition="opacity 200ms ease"
                 aria-label="View solution" testId="puzzle-solution"
-                image "symbol:sf/eye" font-size=17 color="#f0f2f5"
-                text "View solution" font-size=16 font-weight=600 color="#f0f2f5"
+                row width=22 height=22 align-items="center" justify-content="center"
+                  image "symbol:sf/eye" font-size=17 color="#f0f2f5"
+                text "View solution" font-size=16 line-height=22 font-weight=600 color="#f0f2f5"
