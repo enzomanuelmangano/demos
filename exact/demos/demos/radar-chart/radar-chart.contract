@@ -24,15 +24,12 @@ component RadarChart
         value(env.seed, draw, 3), value(env.seed, draw, 4), value(env.seed, draw, 5), value(env.seed, draw, 6),
         value(env.seed, draw, 7), value(env.seed, draw, 8), value(env.seed, draw, 9))
         width=env.width height=env.width flex-shrink=0 aria-label="Radar chart" testId="radar-canvas"
-      // styles.button: 80% wide, 60 tall, white 1 border, radius 20, marginTop 50. Its borderCurve
-      // 'continuous' is not drawn: a bordered RN View that doesn't clip is RCTBorderDrawing's ring
-      // with circular corners (measured: the outer edge is a circle of 20 to 0.1 px).
-      // Its place on the view around the PressableScale, its look on the column it presses.
-      view width=(0.8 * (env.width - 40)) height=60 margin-top=50 display="flex" flex-direction="column"
+      // Past RN (design pass; RN: an outlined 80 % wide box, radius 20, uppercase 20 / 800
+      // tracked 2): an iOS 26 prominent capsule. White on black is the screen's one action, so it
+      // fills; sentence-case 17 semibold is the system button's label; 52 tall, 220 wide, 40
+      // below the chart (its labels now sit inside the canvas).
+      view width=220 height=52 margin-top=40 display="flex" flex-direction="column"
         PressableScale(press=shuffle)
-          column flex-grow=1 box-sizing="border-box" border="1px solid #ffffff" border-radius=20 text-align="center"
-            align-items="center" justify-content="center" testId="shuffle"
-            // styles.title: white, 20, weight 800, letterSpacing 2, uppercase. CoreGraphics puts
-            // TextKit's baseline (19.04 below the 24-tall line's top) on the next pixel down; the
-            // host's line sat one device pixel lower: moved back up by one.
-            text "Shuffle" position="relative" top="-0.33333px" color="#ffffff" font-size=20 font-weight=800 letter-spacing=2 text-transform="uppercase"
+          column flex-grow=1 background-color="#ffffff" border-radius=26 corner-shape="-exact-continuous"
+            align-items="center" justify-content="center" testId="shuffle" aria-label="Shuffle"
+            text "Shuffle" color="#000000" font-size=17 font-weight=600
