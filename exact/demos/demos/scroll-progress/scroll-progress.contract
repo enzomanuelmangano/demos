@@ -5,7 +5,7 @@
 // section-content-list/bottom-progress/index.tsx, progress-bar-area.tsx, collapsed-area.tsx,
 // utils/get-reading-time.ts).
 use PressableOpacityLayout from "pressto"
-use DemoEnv, demoButtonRow from "../env.contract"
+use DemoEnv, demoButtonRow, concentricInset from "../env.contract"
 
 shape Section
   title: string
@@ -166,7 +166,9 @@ component BottomProgress
     // #222123, zIndex 100, a 0.5 border rgba(255,255,255,0.1). Yoga rounds the 0.5 inset to
     // the device pixel (the children start 0.667 in) and RCTBorderDrawing's ring covers those
     // 2 px fully (measured): 0.66667 here, where 0.5 drew 1 px and the inner pill 1 px early.
-    column class=PillMotion position="absolute" bottom=50 left=left width=pillWidth(progress) height=70
+    // Past RN (the owner, mwhpb99e: "the button should be lower"): not RN's bottom 50 but where a
+    // 70 pt capsule is concentric with the display's corners, 62 − 35 = 27 (concentricInset).
+    column class=PillMotion position="absolute" bottom=concentricInset(70) left=left width=pillWidth(progress) height=70
       // Radius 40 is drawn at half the height (35), and the inner pills' a hair under half their 59 (29.49: their height is a sum of insets, so it may land a float under 59),
       // the bar's at 2.5: authored so, because the host paints a layout transition's resize with Core Animation's corner only when the authored radius fits the box.
       box-sizing="border-box" border-radius=35 background-color="color(display-p3 0.1333 0.1294 0.1373)" border-width=0.66667
