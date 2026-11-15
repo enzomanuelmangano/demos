@@ -69,8 +69,15 @@ component AnimatedIndicatorList
     let t2 = frame("label-2")
     let t3 = frame("label-3")
     let t4 = frame("label-4")
-    if not (t0.unavailable or t1.unavailable or t2.unavailable or t3.unavailable or t4.unavailable)
-      let w = [ceilPx(t0.width) + 40, ceilPx(t1.width) + 40, ceilPx(t2.width) + 40, ceilPx(t3.width) + 40, ceilPx(t4.width) + 40]
+    // `frame` is the box as drawn, every transform applied, and the row first intersects while
+    // the demo's card is still zooming open (DemoLaunch scales the whole demo): the names were
+    // measured at the card's scale (≈ 0.15), set as the labels' widths and kept, so the names
+    // overlapped and the bar was a stub (phone feedback, 2026-11-15). A 100 pt ruler under the
+    // same transform gives that scale; the widths are divided back to points.
+    let ruler = frame("ail-ruler")
+    if not (ruler.unavailable or ruler.width <= 0 or t0.unavailable or t1.unavailable or t2.unavailable or t3.unavailable or t4.unavailable)
+      let k = ruler.width / 100
+      let w = [ceilPx(t0.width / k) + 40, ceilPx(t1.width / k) + 40, ceilPx(t2.width / k) + 40, ceilPx(t3.width / k) + 40, ceilPx(t4.width / k) + 40]
       widths = w
       xs = [0, nth(w, 0), nth(w, 0) + nth(w, 1), nth(w, 0) + nth(w, 1) + nth(w, 2), nth(w, 0) + nth(w, 1) + nth(w, 2) + nth(w, 3)]
   // onSelectHeaderItem: scrollToIndex({ index }), animated.
@@ -92,15 +99,20 @@ component AnimatedIndicatorList
               animation=segAnim(delta(xs, 3), -1) animation-timeline="--ail" animation-range=segRange(3)
               // The header row: translateX −interpolate(offset, headersLayoutY, headersX), the
               // segments above.
-              row id="header-row" flex-shrink=0 intersect=measureHeaders
+              // The ruler `measureHeaders` reads the demo's drawn scale from: 100 pt, unpainted (no fill), over
+              // the labels' own lines (padding 20, the 14 pt line), as the open's taper scales
+              // each height of the card by its own amount.
+              row id="header-row" position="relative" flex-shrink=0 intersect=measureHeaders
+                view id="ail-ruler" position="absolute" left=0 top=20 width=100 height=17
+                  pointer-events="none" aria-hidden=true
                 for name, i in headers() key=name
                   // MeasureableAnimatedView: padding 20; onTouchStart selects the header.
-                  view id=`header-${i}` flex-shrink=0 padding=20
-                    width=(nth(widths, i) > 0 ? `${nth(widths, i) - 40}px` : "auto") pointerdown=select(i) role="button"
+                  view id=`header-${i}` flex-shrink=0 padding=20 pointerdown=select(i) role="button"
                     aria-label=name testId=`header-${i}`
                     // fontSize 14, bold, uppercase, letterSpacing 1.
                     text name id=`label-${i}` font-size=14 font-weight=700 text-transform="uppercase" letter-spacing=1
-                      white-space="nowrap" color="#000000"
+                      white-space="nowrap" color="#000000" flex-shrink=0
+                      width=(nth(widths, i) > 0 ? `${nth(widths, i) - 40}px` : "auto")
       // rIndicatorStyle: a 3 tall black bar from the left edge, `width` wide (RN draws it as
       // 100 wide scaled by width / 100 from its left). A box takes no per-axis scale, so the
       // same pixels are boxes that only translate: a clip 1000 wide whose right edge is at
