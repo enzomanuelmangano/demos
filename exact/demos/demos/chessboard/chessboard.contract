@@ -9,25 +9,35 @@
 // Past RN (the owner's phone note mwhlpkfj-6464e0: "add a concentric button at the bottom saying
 // Hint and View solution, as on Patterns"): the board is a puzzle as the owner's Patterns app plays
 // one. The opponent's setup move slides in, the user answers, the opponent replies, until the mate.
-// The bar at the bottom is concentric with the display (env.contract: 10 from its sides and
-// bottom, radius concentricRadius(10, 56) = 28: a capsule), liquid glass, two halves: Hint (the
-// piece to move, then a second tap its square) and View solution (plays the move). Each tap raises
-// a counter the surface reads; the press is pressto's (its selection haptic). The surface posts
-// `puzzle:<wait|play|hint1|hint2|done>`: a build without the puzzle never does, so the bar shows
+// The control at the bottom is Patterns' puzzle dock (modules/dock-segmented-control/ios:
+// DockSegmentedControlLogic.swift, DockSegmentedControlView+Appearance.swift / +Transition.swift;
+// src/components/navigation/morphing-dock.tsx, dock-metrics.ts): one liquid-glass pill, 60 tall
+// (surfaceHeight), a word and no icon, in the dock's semibold at 14 (fontSize.sm), its ink the
+// accent while it can be pressed and the muted grey while the opponent moves (applyPrimaryInk).
+// The word climbs Patterns' ladder: Hint (marks the piece) → View solution (marks its square,
+// Patterns' arrow) → Play solution (plays the move); the pill is padding-led at 104 for Hint and
+// 148 for the other two (hintWidth, solutionWidth), resized on the dock's spring (342, 30.3), the
+// words crossed over 240 ms (wordChangeDuration). Glass: regular, tinted white at 0.07 (the dark
+// scheme's dock.surface). 20 above the display's bottom (DockHorizontalInset: the bottom gap is the
+// side gutter), its corners concentricRadius(20, 60) = 30, a capsule. Patterns' leading pill (the
+// history arrows) has no counterpart here: the demo keeps no move history. Each tap raises a
+// counter the surface reads; the press is pressto's scale and selection haptic. The surface posts
+// `puzzle:<wait|play|hint1|hint2|done>`: a build without the puzzle never does, so the pill shows
 // only once one arrives.
 //
 // The mate's Core Haptics pattern (haptics.ts MATE_PATTERN) is `mate-haptic` in
 // modules/apple/Demos.swift: the surface posts "haptic:mate" / "haptic:mate-stop", counted here
 // into its `plays` and `stops`. The web build has no such view; there the surface posts the
 // pattern's taps as UIKit impacts instead.
-use DemoEnv, floatingWidth, concentricRadius from "../env.contract"
+use DemoEnv, concentricRadius from "../env.contract"
 use PressableScale from "pressto"
 
-// The bar: inset from the display's sides and bottom, its height (Patterns' dock pill). Each half's
-// content row takes the bar's height itself (a pressable's box does not stretch it), the icons a
-// fixed 22 box and the labels a 22 line, so both halves sit centred on one baseline.
-fn barInset(): number = 10
-fn barHeight(): number = 56
+// Patterns' dock: its bottom gap, the pill's height, its widths.
+fn dockInset(): number = 20
+fn dockHeight(): number = 60
+fn dockWidth(mode: string): number = mode == "hint1" or mode == "hint2" ? 148 : 104
+// The word a mode shows: the next rung of the ladder.
+fn dockWord(mode: string): string = mode == "hint1" ? "View solution" : (mode == "hint2" ? "Play solution" : "Hint")
 
 component Chessboard
   props
@@ -59,11 +69,11 @@ component Chessboard
       haptic("impact-rigid")
     if m == "haptic:impact-heavy"
       haptic("impact-heavy")
-  action hint
+  // The pill's one press: the rung its word names.
+  action primary
     if mode == "play" or mode == "hint1"
       hints = hints + 1
-  action solve
-    if mode == "play" or mode == "hint1" or mode == "hint2"
+    if mode == "hint2"
       solves = solves + 1
   view
     // styles.root: theme.bg.
@@ -74,29 +84,20 @@ component Chessboard
       mate-haptic plays=mate stops=stop width=0 height=0
       if mode != ""
         // Hidden under the review card once the puzzle is solved; back with the next one.
-        row position="absolute" z-index=10 left=barInset() bottom=barInset()
-          width=floatingWidth(env.width, barInset()) height=barHeight()
-          border-radius=concentricRadius(barInset(), barHeight()) corner-shape="-exact-continuous"
-          backgroundMaterial="glass" -exact-glass-tint="rgba(23, 25, 31, 0.35)" align-items="center"
+        row position="absolute" z-index=10 left=0 right=0 bottom=dockInset() justify-content="center"
           opacity=(mode == "done" ? 0 : 1) translate=(mode == "done" ? "0 16px" : "0 0")
           transition="opacity 220ms cubic-bezier(0.23, 1, 0.32, 1), translate 220ms cubic-bezier(0.23, 1, 0.32, 1)"
-          pointer-events=(mode == "done" ? "none" : "auto") testId="puzzle-bar"
-          view flex=1 height=barHeight()
-            PressableScale(press=hint)
-              row height=barHeight() align-items="center" justify-content="center" gap=8
-                opacity=(mode == "play" or mode == "hint1" ? 1 : 0.38) transition="opacity 200ms ease"
-                aria-label="Hint" testId="puzzle-hint"
-                row width=22 height=22 align-items="center" justify-content="center"
-                  image "symbol:sf/lightbulb" font-size=17 color="#f0f2f5"
-                text (mode == "hint1" ? "Show square" : "Hint") font-size=16 line-height=22
-                  font-weight=600 color="#f0f2f5"
-          // The hairline between the halves.
-          view width=1 height=24 background-color="rgba(255, 255, 255, 0.14)"
-          view flex=1 height=barHeight()
-            PressableScale(press=solve)
-              row height=barHeight() align-items="center" justify-content="center" gap=8
-                opacity=(mode == "wait" ? 0.38 : 1) transition="opacity 200ms ease"
-                aria-label="View solution" testId="puzzle-solution"
-                row width=22 height=22 align-items="center" justify-content="center"
-                  image "symbol:sf/eye" font-size=17 color="#f0f2f5"
-                text "View solution" font-size=16 line-height=22 font-weight=600 color="#f0f2f5"
+          pointer-events=(mode == "done" ? "none" : "auto")
+          view width=dockWidth(mode) height=dockHeight() -exact-layout-transition="-exact-spring(342, 30.3, 1)"
+            PressableScale(press=primary)
+              row height=dockHeight() position="relative" align-items="center" justify-content="center"
+                backgroundMaterial="glass" -exact-glass-tint="rgba(255, 255, 255, 0.07)"
+                border-radius=concentricRadius(dockInset(), dockHeight()) corner-shape="-exact-continuous"
+                aria-label=dockWord(mode) testId="puzzle-bar"
+                for word in ["Hint", "View solution", "Play solution"] key=word
+                  // The three words stacked, centred: the shown one fades in as the last fades out.
+                  row position="absolute" inset=0 align-items="center" justify-content="center"
+                    opacity=(dockWord(mode) == word ? 1 : 0) transition="opacity 240ms ease-out"
+                    aria-hidden=true
+                    text word font-size=14 line-height=20 font-weight=600 white-space="nowrap"
+                      color=(mode == "wait" ? "#8f9298" : "#3a91f8") transition="color 200ms ease"
