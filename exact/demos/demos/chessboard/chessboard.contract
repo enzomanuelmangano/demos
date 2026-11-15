@@ -18,8 +18,9 @@
 // Patterns' arrow) → Play solution (plays the move); the pill is padding-led at 104 for Hint and
 // 148 for the other two (hintWidth, solutionWidth), resized on the dock's spring (342, 30.3), the
 // words crossed over 240 ms (wordChangeDuration). Glass: regular, tinted white at 0.07 (the dark
-// scheme's dock.surface). 20 above the display's bottom (DockHorizontalInset: the bottom gap is the
-// side gutter), its corners concentricRadius(20, 60) = 30, a capsule. Patterns' leading pill (the
+// scheme's dock.surface). A continuous capsule (radius 30) at the height a capsule concentric with
+// the display sits: 62 − 30 = 32 above the display's bottom (env.contract concentricInset; the
+// owner, mwhpcftp: "the bottom button isn't concentric" at Patterns' 20). Patterns' leading pill (the
 // history arrows) has no counterpart here: the demo keeps no move history. Each tap raises a
 // counter the surface reads; the press is pressto's scale and selection haptic. The surface posts
 // `puzzle:<wait|play|hint1|hint2|done>`: a build without the puzzle never does, so the pill shows
@@ -29,11 +30,11 @@
 // modules/apple/Demos.swift: the surface posts "haptic:mate" / "haptic:mate-stop", counted here
 // into its `plays` and `stops`. The web build has no such view; there the surface posts the
 // pattern's taps as UIKit impacts instead.
-use DemoEnv, concentricRadius from "../env.contract"
+use DemoEnv, concentricInset, concentricRadius from "../env.contract"
 use PressableScale from "pressto"
 
-// Patterns' dock: its bottom gap, the pill's height, its widths.
-fn dockInset(): number = 20
+// Patterns' dock: its bottom gap (concentric), the pill's height, its widths.
+fn dockInset(): number = concentricInset(dockHeight())
 fn dockHeight(): number = 60
 fn dockWidth(mode: string): number = mode == "hint1" or mode == "hint2" ? 148 : 104
 // The word a mode shows: the next rung of the ladder.
