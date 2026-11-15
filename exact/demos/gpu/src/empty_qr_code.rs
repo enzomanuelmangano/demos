@@ -16,6 +16,11 @@
 //!   (flex 1: 150 × 150): Rect 150 × 150 with RadialGradient c (75, 75), r 75 of the active
 //!   colour pair; Text of the active letter, white, SF-Pro-Rounded-Bold.otf at 110 (glyph paths
 //!   at this size), at x = −font.measureText(letter).width / 2 + 75, y = 110 / 3 + 75.
+//!   Past RN (the owner: "the letters often don't look perfectly centred"): RN's x takes
+//!   measureText's width but not its left edge, so each letter sits right of centre by about its
+//!   left side bearing (U, R, L ~5 pt, O and G ~3.5), and y = c + size / 3 leaves the capitals
+//!   ~2 pt high. Here each letter's exact ink box (the glyph's outline bounds, read from the font)
+//!   is centred on the card and the cap height (1443 units) centred vertically.
 //! The two Skia canvases are drawn into their own layers (only when they change), and
 //! gpu/shaders/empty_qr_code.wgsl composites the card as Core Animation does: the layers
 //! sampled bilinearly through the inverse of the card's transform, the continuous rounded clip
@@ -81,6 +86,19 @@ const ROTATE_HIDDEN: f64 = -10.0;
 const INTERVAL_MS: f64 = 650.0;
 /// DEFAULT_LETTERS and DEFAULT_COLORS (Skia colours: sRGB).
 const LETTERS: [&str; 8] = ["Y", "O", "U", "R", "L", "O", "G", "O"];
+/// Each letter's ink, left and right, in font units (2048 / em): sf-pro-rounded-bold-yourlogo.otf's
+/// outline bounds (the test checks them against the font).
+const LETTER_INK: [(char, f32, f32); 6] =
+    [('Y', 59.0, 1304.0), ('O', 75.0, 1467.0), ('U', 120.0, 1329.0), ('R', 120.0, 1233.0), ('L', 120.0, 1071.0), ('G', 75.0, 1410.0)];
+/// The capitals' height, font units.
+const CAP_HEIGHT: f32 = 1443.0;
+
+/// A letter's ink, left and right of its pen, in points at `size`.
+fn ink_span(letter: &str, size: f32) -> (f32, f32) {
+    let ch = letter.chars().next().unwrap_or('O');
+    let (_, l, r) = LETTER_INK.iter().copied().find(|e| e.0 == ch).unwrap_or(LETTER_INK[1]);
+    (l * size / 2048.0, r * size / 2048.0)
+}
 const COLORS: [(u32, u32); 8] = [
     (0x22AAA1, 0x4CE0D2),
     (0xE55934, 0xFA7921),
@@ -311,8 +329,10 @@ impl EmptyQrCode {
         c.draw_rect(0.0, 0.0, SIZE, SIZE, &Paint::shader(gradient));
         if let Some(font) = &self.font {
             let letter = LETTERS[self.index];
-            let x = -font.measure_text(letter).width / 2.0 + SIZE / 2.0;
-            let y = FONT_SIZE / 3.0 + SIZE / 2.0;
+            // Past RN: the ink box centred, the cap height centred.
+            let (l, r) = ink_span(letter, FONT_SIZE);
+            let x = SIZE / 2.0 - (l + r) / 2.0;
+            let y = SIZE / 2.0 + CAP_HEIGHT / 2.0 / 2048.0 * FONT_SIZE;
             c.draw_text(letter, x, y, font, &Paint::fill(Color::WHITE));
         }
     }
@@ -848,4 +868,18 @@ mod tests {
         assert_eq!(q.max_fps(), 0);
     }
 
+
+    #[test]
+    fn each_letter_is_centred_on_its_ink() {
+        let font = Font::new(SF_ROUNDED_BOLD, 100.0).unwrap();
+        for &(ch, l, r) in &LETTER_INK {
+            // The table is the font's: measureText rounds the same bounds out (floor − 1, ceil + 1).
+            let m = font.measure_text(&ch.to_string());
+            assert_eq!((m.x, m.x + m.width), ((l / 20.48).floor() - 1.0, (r / 20.48).ceil() + 1.0), "{ch}");
+            // Centred: the ink's middle on the card's.
+            let (a, b) = ink_span(&ch.to_string(), FONT_SIZE);
+            let x = SIZE / 2.0 - (a + b) / 2.0;
+            assert!(((x + a + x + b) / 2.0 - SIZE / 2.0).abs() < 1e-4, "{ch}");
+        }
+    }
 }
