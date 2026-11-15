@@ -23,7 +23,7 @@
 //! | value | RN driver / config | here |
 //! |---|---|---|
 //! | progress | Pan: onBegin cancel, onUpdate previous + translationX; onFinalize: > 0 → withTiming(0, 500), else withDecay(velocityX) (ignored while the timer runs) | the same: `PanGesture`, `Timing`, `Decay` |
-//! | seconds | round((radiants − π/2) / (2π / 200)), radiants = π/2 − progress / 280; a change ≥ 0 sets the count and plays Haptics.selectionAsync | the same, `haptic:selection` |
+//! | seconds | round((radiants − π/2) / (2π / 200)), radiants = π/2 − progress / 280; a change ≥ 0 sets the count and plays Haptics.selectionAsync | the same, `haptic:selection`, at most one per HAPTIC_GAP_MS (past RN, which plays one per tick: a fling crosses a tick every frame) |
 //! | timer | runTimer: count 0 → Alert; progress withTiming(0, 500); after 300 ms, every 1000 ms progress −= 2π·280 / 200 until count ticks; then isTimerEnabled false and an Alert 1000 ms later, whose OK resets | the same, the Alerts in Contract (`alert:invalid`, `alert:done`; OK back as the input `ok`) |
 //! | digit translateY | withSpring(−120 × digit, { mass 0.25, damping 10, stiffness 100 }) | `Spring::retarget` |
 //! | digit scaleX | withSpring(isChanging ? 0.7 : 1) (Gentle) | `Spring::retarget` |
@@ -51,6 +51,8 @@ const MAX_DIGITS: usize = 5;
 const DIGIT_W: f32 = 68.0;
 const DIGIT_H: f32 = 120.0;
 const BUTTON: f32 = 64.0;
+/// The shortest gap between two tick haptics, ms (UIKit's pickers pace theirs so).
+const HAPTIC_GAP_MS: f64 = 40.0;
 const TRANSLATE_SPRING: SpringConfig = SpringConfig { stiffness: 100.0, damping: 10.0, mass: 0.25 };
 const TIMER_ICON: &str = "\u{F13AB}";
 const STOP_ICON: &str = "\u{F04DB}";
@@ -73,6 +75,7 @@ pub fn surface() -> Box<dyn Surface> {
         alert_at: None,
         ok: None,
         previous_tick: 0,
+        haptic_at: f64::NEG_INFINITY,
         count: 0,
         digits: std::array::from_fn(|_| Digit::default()),
         small: Fade::at([255, 255, 255], 0.5),
@@ -285,6 +288,8 @@ struct Pomodoro {
     alert_at: Option<f64>,
     ok: Option<f64>,
     previous_tick: i64,
+    /// When the last tick haptic was posted, ms.
+    haptic_at: f64,
     count: i64,
     digits: [Digit; MAX_DIGITS],
     small: Fade,
@@ -339,7 +344,10 @@ impl Pomodoro {
             return;
         }
         if seconds != self.previous_tick {
-            self.messages.push("haptic:selection".into());
+            if now - self.haptic_at >= HAPTIC_GAP_MS {
+                self.messages.push("haptic:selection".into());
+                self.haptic_at = now;
+            }
             self.previous_tick = seconds;
         }
         if seconds != self.count {
@@ -915,6 +923,20 @@ mod tests {
     }
 
     #[test]
+    fn a_fling_paces_its_tick_haptics() {
+        // 300 pt in 80 ms (about 34 ticks): at most one selection per HAPTIC_GAP_MS.
+        let mut s = surface();
+        let p = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 700.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        s.input(&p(PointerPhase::Down, 350.0, 0.0));
+        for k in 1..=5 {
+            s.input(&p(PointerPhase::Move, 350.0 - 60.0 * k as f32, 16.0 * k as f64));
+        }
+        let haptics = s.messages();
+        assert!(!haptics.is_empty() && haptics.len() <= 3, "{haptics:?}");
+        assert!(haptics.iter().all(|m| m == "haptic:selection"), "{haptics:?}");
+    }
+
+    #[test]
     fn digits_pad_as_the_demo() {
         assert_eq!(digit_of(123, 0), 3);
         assert_eq!(digit_of(123, 2), 1);
@@ -955,7 +977,7 @@ mod tests {
         fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         s.input(&p(PointerPhase::Up, 200.0, ms));
         let haptics = s.messages();
-        assert!(haptics.len() >= 9 && haptics.iter().all(|m| m == "haptic:selection"), "{haptics:?}");
+        assert!(haptics.len() >= 6 && haptics.iter().all(|m| m == "haptic:selection"), "{haptics:?}");
         while ms < 6000.0 {
             ms += 16.0;
             fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
