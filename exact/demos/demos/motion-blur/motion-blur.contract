@@ -99,7 +99,9 @@ component MotionBlurItem
     view class=MotionBlurRow position="absolute" top=0 left=0 right=0 height=0
       animation="motionBlurIn 200ms linear both" testId=`item-${k + 1}`
       // styles.itemContainer: absolute, 90 tall (marginBottom 20), full width, at calculateTop.
-      view class=MotionBlurSlide position="absolute" left=0 width="100%" height=90
+      // A column (RN's View is a flex column): a `view` is a block, where the card's
+      // align-self does nothing and the card sat at the left edge.
+      column class=MotionBlurSlide position="absolute" left=0 width="100%" height=90
         top=topOf(k, count)
         // styles.itemContent: 80% wide, centred, white, radius 20 continuous, 90 tall,
         // boxShadow 0 0 10 rgba(0,0,0,0.05); contentStyle's shadow (black) withTiming from
