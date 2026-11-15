@@ -954,7 +954,8 @@ mod tests {
         assert_eq!(m.plus_shown.0, 0.0);
         assert!(m.plus_shown.1 < 1.0);
         m.input(&pointer(PointerPhase::Up, 356.0, 848.0, ms));
-        while ms < 800.0 {
+        // The 500 ms critically damped spring rests (Reanimated's energy threshold) ~1 s on.
+        while ms < 1500.0 {
             ms += 16.0;
             let before = m.progress.value;
             fixture::render(&gpu, &mut m, &frame(ms)).unwrap();
@@ -964,7 +965,11 @@ mod tests {
             }
         }
         assert!(
-            (m.plus_shown.0 - std::f64::consts::FRAC_PI_4).abs() < 1e-9 && m.plus_shown.1 == 1.0
+            (m.plus_shown.0 - std::f64::consts::FRAC_PI_4).abs() < 1e-9 && m.plus_shown.1 == 1.0,
+            "{:?} progress {} running {}",
+            m.plus_shown,
+            m.progress.value,
+            m.progress.running
         );
         // Opened, press the "+" (now at the modal's top-left) and hold: the press rewrites the
         // transform as [scale], the rotation is gone while held.
