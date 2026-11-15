@@ -150,6 +150,7 @@ pub fn surface() -> Box<dyn Surface> {
         par: (0.0, 0.0),
         par_ms: None,
         tilt: (0.0, 0.0),
+        posted: Vec::new(),
         fonts: None,
         front: Canvas::default(),
         renderer: Renderer::default(),
@@ -532,6 +533,8 @@ struct ThreadsHoloTicket {
     par_ms: Option<f64>,
     /// The (pitch, roll) the canvas uses, held while the mask is hidden.
     tilt: (f64, f64),
+    /// Haptic messages to hand to the host.
+    posted: Vec<String>,
     fonts: Option<Option<Front>>,
     front: Canvas,
     renderer: Renderer,
@@ -753,6 +756,7 @@ impl ThreadsHoloTicket {
                     let mut s = Spring::at(self.x);
                     gfx::spring_to(&mut s, normalized + 180.0, FLIP_MS, FLIP_DAMPING_RATIO);
                     self.motion = if s.running { Motion::Spring(s) } else { Motion::Rest };
+                    self.posted.push("haptic:selection".to_string());
                 }
             }
         }
@@ -770,6 +774,10 @@ impl Surface for ThreadsHoloTicket {
 
     fn wants_input(&self) -> bool {
         true
+    }
+
+    fn messages(&mut self) -> Vec<String> {
+        crate::haptic::host(std::mem::take(&mut self.posted))
     }
 
     fn agent(&mut self, _request: &str) -> Option<String> {
@@ -1178,7 +1186,7 @@ mod tests {
         assert!(reply.contains("\"moving\":false,\"held\":false"), "{reply}");
         // The raw decay would stop at 326.433; it settles on the nearest face, 360.
         assert!(reply.starts_with("{\"translateX\":360.000,"), "{reply}");
-        assert!(s.messages().is_empty(), "the ticket plays no haptics");
+        assert!(s.messages().is_empty(), "a drag and its throw play no haptic");
 
         // A tap flips the ticket half a turn: the back's QR shows.
         let tap = |s: &mut Box<dyn Surface>, at: f64| {
@@ -1188,7 +1196,7 @@ mod tests {
         };
         // From a turn of 360, the flip lands on 540.
         tap(&mut s, ms + 100.0);
-        assert!(s.messages().is_empty());
+        assert_eq!(s.messages(), vec!["haptic:selection".to_string()]);
         let mut t = ms + 200.0;
         let mut moving = true;
         while moving && t < ms + 3000.0 {
