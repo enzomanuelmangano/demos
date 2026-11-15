@@ -4,21 +4,19 @@
 // springs, the layout spring of the panel's size, its animated corner radius, the keyed
 // content's fades, pressto's presses and the options' colour timings are one Rust surface
 // (gpu/src/draggable_panel.rs) over the screen's #f5f7fa. The surface posts each press's
-// selection haptic, the pan's grab and the panel's landing.
+// selection haptic and the pan's grab.
 use DemoEnv from "../env.contract"
 
 component DraggablePanel
   props
     env: DemoEnv
   // The app's PressablesConfig onPress: Haptics.selectionAsync(); past RN (which plays no
-  // more), a light impact when the pan takes the panel and a soft one when it lands.
+  // more), a light impact when the pan takes the panel; nothing when it lands.
   action heard(m: string)
     if m == "haptic:selection"
       haptic("selection")
     if m == "haptic:impact-light"
       haptic("impact-light")
-    if m == "haptic:impact-soft"
-      haptic("impact-soft")
   view
     canvas surface=draggable_panel(env.safeTop) message=heard position="absolute" top=0 left=0
       width=env.width height=env.height touch-action="none" testId="draggable-panel"
