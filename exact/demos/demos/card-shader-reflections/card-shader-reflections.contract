@@ -8,8 +8,15 @@
 // gpu/shaders/card_shader_reflections.wgsl (getCardShader, line for line).
 
 component CardShaderReflections
+  // The cards' haptics (gpu/src/card_shader_reflections.rs, past RN): light when a finger lands
+  // on the list, soft when it lifts.
+  action heard(m: string)
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+    if m == "haptic:impact-soft"
+      haptic("impact-soft")
   view
     // styles.container: #111 (17 / 255, a grey: the same in Display P3), flex 1.
     column position="absolute" inset=0 background-color="color(display-p3 0.066667 0.066667 0.066667)" testId="card-shader-reflections"
-      canvas surface=card_shader_reflections() position="absolute" top=0 left=0 width="100%" height="100%"
+      canvas surface=card_shader_reflections() message=heard position="absolute" top=0 left=0 width="100%" height="100%"
         touch-action="none" testId="card-shader-reflections-canvas" aria-label="Swipe the cards sideways"

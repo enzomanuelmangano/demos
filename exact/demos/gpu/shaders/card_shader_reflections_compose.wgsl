@@ -1,31 +1,31 @@
-// Card Shader Reflections' screen (src/animations/card-shader-reflections): the four cards as
-// Core Animation composites them. Each card's Animated.View carries `[rotate 18deg, perspective
-// 1200, translateY, rotateY]` about its centre; a pixel shows the point of the card's plane its
-// inverse projective map finds there (each cardContainer flattens its card: painted in index
-// order). In that plane (styles.card's points, origin at its top-left):
-// - its <Canvas>: the card shader's 8-bit layer (card_shader_reflections.wgsl), sampled bilinearly
-//   as a layer's contents are, clipped by the container view's circular radius 20 (RN moves an
-//   `overflow: hidden` view with a boxShadow into a container whose layer has no cornerCurve);
-// - over it, cardContent's opacity 0.7 group: the chip (its Animated opacity) and the title
-//   (Math.round of its opacity), drawn once into the atlas, each in its card's slot;
-// - its boxShadow (RCTBoxShadow: black 0.3, shadowRadius 10, offset 0 10, outside the bounds'
-//   rounded rect only), drawn once into the atlas;
+// Card Shader Reflections' screen: the four cards as Core Animation composites them, each a
+// physical card. Each card's Animated.View carries `[rotate 18deg, perspective 1200, translateY,
+// rotateY]` (and, past RN, the finger's tilt) about its centre; a pixel shows the point of the
+// card's plane its inverse projective map finds there (painted in index order). In that plane
+// (styles.card's points, origin at its top-left):
+// - its <Canvas>: the card's 8-bit layer (card_shader_reflections.wgsl), sampled bilinearly,
+//   clipped by a continuous (squircle) radius 20, antialiased in screen space;
+// - the title, laser-engraved into the metal: the atlas's glyph coverage as a mask, a matte
+//   floor with a shadowed near wall and a lit far wall (the chip is the layer's own now);
+// - its shadow, analytic: a soft ambient one and a tight contact one under the card, offset
+//   with the turn and the tilt (the surface's per-card offset; 0 rests it low right), masked
+//   to outside the card;
 // - the Animated.View's opacity over the group (UIKit's group opacity).
-// Everything composites in Display P3's encoding (RN's views and Skia's layers are P3) over #111;
-// the result is turned into sRGB at the end.
+// Everything composites in Display P3's encoding over #111; the result is turned into sRGB.
 struct Uniforms {
     // Per card, three rows: screen points → the card's plane points (inverse projective 3×3).
     inv: array<vec4<f32>, 12>,
     // Per card: visible (1), the Animated.View's opacity, the chip's alpha, the title's alpha
     // (each × cardContent's 0.7).
     look: array<vec4<f32>, 4>,
-    // Per card: its overlay slot's left edge in the atlas (device pixels); unused.
+    // Per card: its overlay slot's left edge in the atlas (device pixels); the shadow's extra
+    // offset (points, in the card's plane); the press (0…1).
     slot: array<vec4<f32>, 4>,
     // The card's clip: width, height, radius (points); the chip / title split (points).
     card: vec4<f32>,
     // The canvas layer (device pixels: width, height); the atlas (width, height).
     tex: vec4<f32>,
-    // The shadow's region in the plane: left, top, width, height (points), at the atlas's (0, 0).
+    // The shadow's region in the plane: left, top, width, height (points); unused now.
     shadow: vec4<f32>,
     // The overlay slot's width, height (points); unused.
     overlay: vec4<f32>,
@@ -63,14 +63,34 @@ fn p3_to_srgb(c: vec3<f32>) -> vec3<f32> {
     return enc(vec3<f32>(1.2249 * l.r - 0.2247 * l.g, -0.0420 * l.r + 1.0419 * l.g, -0.0197 * l.r - 0.0786 * l.g + 1.0979 * l.b));
 }
 
-// A rounded rect's signed distance (circular corners): centre-relative `p`, half size `b`.
-fn rrect(p: vec2<f32>, b: vec2<f32>, r: f32) -> f32 {
-    let q = abs(p) - b + vec2<f32>(r);
-    return length(max(q, vec2<f32>(0.0))) + min(max(q.x, q.y), 0.0) - r;
+// Core Animation's continuous corner (as the card shader's `squircle`): centre-relative `p`,
+// half size `b`, radius `r`.
+fn squircle(p: vec2<f32>, b: vec2<f32>, r: f32) -> f32 {
+    let e = min(r * 1.528, min(b.x, b.y));
+    let q = abs(p) - b + vec2<f32>(e);
+    let m = max(q, vec2<f32>(0.0));
+    let n = 3.26;
+    let corner = pow(pow(m.x, n) + pow(m.y, n), 1.0 / n);
+    return corner + min(max(q.x, q.y), 0.0) - e;
 }
 
 fn within(p: vec2<f32>, size: vec2<f32>) -> bool {
     return all(p >= vec2<f32>(0.0)) && all(p <= size);
+}
+
+/// A rounded rect's soft shadow: coverage at distance `d` for a blur `sigma` (a smoothstep
+/// fitted to the Gaussian's integral).
+fn soft(d: f32, sigma: f32) -> f32 {
+    return 1.0 - smoothstep(-1.6 * sigma, 1.9 * sigma, d);
+}
+
+/// The atlas's glyph coverage at plane point `l` of card `k` (0 outside its slot).
+fn glyph(l: vec2<f32>, k: u32, s: f32) -> f32 {
+    if (!within(l, u.overlay.xy)) {
+        return 0.0;
+    }
+    let auv = (vec2<f32>(u.slot[k].x, 0.0) + l * s) / u.tex.zw;
+    return textureSampleLevel(atlas, smp, auv, 0.0).a;
 }
 
 @fragment
@@ -88,30 +108,43 @@ fn compose(in: Out) -> @location(0) vec4<f32> {
         let h = vec3<f32>(p, 1.0);
         let q = vec3<f32>(dot(u.inv[3u * k].xyz, h), dot(u.inv[3u * k + 1u].xyz, h), dot(u.inv[3u * k + 2u].xyz, h));
         let l = q.xy / q.z;
-        // The container's clip, antialiased in screen space.
-        let d = rrect(l - size * 0.5, size * 0.5, u.card.z);
+        let front = q.z > 0.0;
+        // The clip, antialiased in screen space.
+        let d = squircle(l - size * 0.5, size * 0.5, u.card.z);
         let fw = max(fwidth(d), 1e-4);
         var cover = clamp(0.5 - d / fw, 0.0, 1.0);
-        if (q.z <= 0.0) {
+        if (!front) {
             cover = 0.0;
         }
-        // The canvas layer (Display P3, opaque).
+        // The layer (Display P3, opaque).
         let luv = l * s / u.tex.xy;
         var content = textureSampleLevel(layers, smp, luv, i32(k), 0.0).rgb;
-        // cardContent's group: the chip or the title, by where the point is.
-        let slot = u.overlay.xy;
-        if (q.z > 0.0 && within(l, slot)) {
-            let auv = (vec2<f32>(u.slot[k].x, 0.0) + l * s) / u.tex.zw;
-            let o = textureSampleLevel(atlas, smp, auv, 0.0);
-            let a = select(look.w, look.z, l.y < u.card.w);
-            content = o.rgb * a + content * (1.0 - o.a * a);
+        // The engraved title (below the chip's band; the chip is in the layer).
+        if (front && look.w > 0.0 && l.y >= u.card.w) {
+            let a = glyph(l, k, s);
+            if (a > 0.0) {
+                // Toward the light (up left on the card) and away from it.
+                let o = vec2<f32>(0.42, 0.42);
+                let near = a * (1.0 - glyph(l - o, k, s));
+                let far = a * (1.0 - glyph(l + o, k, s));
+                let lum = dot(content, vec3<f32>(0.2126, 0.7152, 0.0722));
+                // A matte floor: lighter on the dark titanium (k 0), darker on the light metals.
+                var etched = content * 0.58;
+                if (k == 0u) {
+                    etched = vec3<f32>(0.30, 0.30, 0.31) + content * 0.25;
+                }
+                etched = etched * (1.0 - 0.45 * near) + vec3<f32>(0.22) * far * (0.4 + lum);
+                content = mix(content, etched, a);
+            }
         }
-        // The box shadow, masked to outside the bounds' rounded rect (RCTBoxShadow's even-odd
-        // mask), over the clipped content.
+        // The shadow: ambient and contact, offset with the card's turn and tilt.
         var shade = 0.0;
-        let sl = l - u.shadow.xy;
-        if (q.z > 0.0 && within(sl, u.shadow.zw)) {
-            shade = textureSampleLevel(atlas, smp, sl * s / u.tex.zw, 0.0).a * (1.0 - cover);
+        if (front) {
+            let press = u.slot[k].w;
+            let off = vec2<f32>(3.0, 12.0) + u.slot[k].yz;
+            let ambient = soft(squircle(l - size * 0.5 - off * (1.0 + 0.6 * press), size * 0.5 - vec2<f32>(4.0), u.card.z), 18.0 + 8.0 * press);
+            let contact = soft(squircle(l - size * 0.5 - vec2<f32>(0.0, 2.5) - off * 0.15, size * 0.5 - vec2<f32>(1.0), u.card.z), 3.0 + 2.0 * press);
+            shade = (1.0 - (1.0 - 0.62 * ambient) * (1.0 - 0.38 * contact * (1.0 - 0.5 * press))) * (1.0 - cover);
         }
         let group_rgb = content * cover * (1.0 - shade);
         let group_a = shade + cover * (1.0 - shade);
