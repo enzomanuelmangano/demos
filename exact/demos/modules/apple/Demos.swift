@@ -34,20 +34,28 @@ let exactModule: ExactModule.Type = DemosModule.self
 final class DemosModule: ExactModule {
     override class var views: [String: ExactNativeFactory] {
         installLaunch()
-        return ["rolling-count": ExactNativeFactory { props, events in RollingCount(props: props, events: events) },
-         "demo-card": ExactNativeFactory { props, events in DemoCard(props: props, events: events) },
-         "glass-button": ExactNativeFactory { props, events in GlassButton(props: props, events: events) },
-         "mate-haptic": ExactNativeFactory { props, events in MateHaptic(props: props, events: events) },
-         "swift-slider": ExactNativeFactory { props, events in SwiftSlider(props: props, events: events) },
-         "painting-menu": ExactNativeFactory { props, events in PaintingMenu(props: props, events: events) },
-         "variable-blur": ExactNativeFactory { props, events in VariableBlur(props: props, events: events) },
-         "audio-track": ExactNativeFactory { props, events in AudioTrack(props: props, events: events) },
-         "glass-pane": ExactNativeFactory { props, events in GlassPane(props: props, events: events) },
-         "inspiration-sheet": ExactNativeFactory { props, events in InspirationSheet(props: props, events: events) },
-         "toggle-sheet": ExactNativeFactory { props, events in ToggleSheet(props: props, events: events) },
-         "system-alert": ExactNativeFactory { props, events in SystemAlert(props: props, events: events) },
-         "music-tabbar": ExactNativeFactory { props, events in MusicTabBar(props: props, events: events) },
-         "native-tabbar": ExactNativeFactory { props, events in MusicTabBar(props: props, events: events, accessory: false) }]
+        // Each native view is named for the layers overlay (LayerSkeleton.swift) when it is made.
+        func native(_ tag: String, _ make: @escaping ([String: String], ExactNativeEvents) -> ExactNativeInstance) -> ExactNativeFactory {
+            ExactNativeFactory { props, events in
+                let instance = make(props, events)
+                LayerSkeleton.tag(instance.view, tag)
+                return instance
+            }
+        }
+        return ["rolling-count": native("rolling-count") { RollingCount(props: $0, events: $1) },
+         "demo-card": native("demo-card") { DemoCard(props: $0, events: $1) },
+         "glass-button": native("glass-button") { GlassButton(props: $0, events: $1) },
+         "mate-haptic": native("mate-haptic") { MateHaptic(props: $0, events: $1) },
+         "swift-slider": native("swift-slider") { SwiftSlider(props: $0, events: $1) },
+         "painting-menu": native("painting-menu") { PaintingMenu(props: $0, events: $1) },
+         "variable-blur": native("variable-blur") { VariableBlur(props: $0, events: $1) },
+         "audio-track": native("audio-track") { AudioTrack(props: $0, events: $1) },
+         "glass-pane": native("glass-pane") { GlassPane(props: $0, events: $1) },
+         "inspiration-sheet": native("inspiration-sheet") { InspirationSheet(props: $0, events: $1) },
+         "toggle-sheet": native("toggle-sheet") { ToggleSheet(props: $0, events: $1) },
+         "system-alert": native("system-alert") { SystemAlert(props: $0, events: $1) },
+         "music-tabbar": native("music-tabbar") { MusicTabBar(props: $0, events: $1) },
+         "native-tabbar": native("native-tabbar") { MusicTabBar(props: $0, events: $1, accessory: false) }]
     }
 
     override func element(_ element: ExactElement) {

@@ -45,6 +45,7 @@ enum PhoneFeedback {
     }
 
     static func trigger() {
+        if LayerSkeleton.dismiss() { return }
         guard !open, !recording, let card, card.window != nil, let window = card.window else { return }
         let slug = card.slug.isEmpty ? (LaunchSession.current?.slug ?? "") : card.slug
         guard !slug.isEmpty, var top = window.rootViewController else { return }
@@ -55,6 +56,7 @@ enum PhoneFeedback {
         let model = SheetModel(slug: slug, name: card.name.isEmpty ? slug : card.name, shot: shot)
         let host = UIHostingController(rootView: FeedbackSheet(model: model))
         model.close = { [weak host] in host?.dismiss(animated: true) }
+        model.layers = { [weak host] in host?.dismiss(animated: true) { showLayers() } }
         host.modalPresentationStyle = .pageSheet
         host.presentationController?.delegate = Trigger.shared
         if let sheet = host.sheetPresentationController {
@@ -67,6 +69,14 @@ enum PhoneFeedback {
     }
 
     static func closed() { open = false }
+
+    /// Once the sheet is gone: its dismissal would otherwise leave the demo mid-scale under the walk.
+    static func showLayers() {
+        open = false
+        guard let card, let window = card.window else { return }
+        let slug = card.slug.isEmpty ? (LaunchSession.current?.slug ?? "") : card.slug
+        LayerSkeleton.show(card: card, window: window, slug: slug)
+    }
 
     static func snapshot(_ window: UIWindow) -> UIImage {
         let format = UIGraphicsImageRendererFormat()
@@ -121,6 +131,7 @@ final class SheetModel: ObservableObject {
     @Published var text = ""
     @Published var recent: [RecentNote] = []
     var close: () -> Void = {}
+    var layers: () -> Void = {}
     init(slug: String, name: String, shot: UIImage) { self.slug = slug; self.name = name; self.shot = shot; architecture = DemoArchitecture.bySlug[slug] }
 
     func send(_ kind: String, image: Bool = true) {
@@ -159,6 +170,7 @@ private struct FeedbackSheet: View {
                         }
                         command("🔁 Same as RN?") { model.send("parity") }
                         command("✅ Looks good") { model.send("approve", image: false) }
+                        command("🧩 Show layers") { model.layers() }
                     }
                 }
                 if let architecture = model.architecture { ArchitectureCard(architecture: architecture) }
