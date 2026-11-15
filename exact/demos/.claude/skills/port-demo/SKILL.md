@@ -68,11 +68,28 @@ One commit per haptic event, never per frame.
 ## Traps the compiler only catches in the whole app
 
 - Bottom floating UI is concentric with the display (the owner's rule, iOS 26: sheets, tab
-  bars, trays, mini-players): `inset` from the DISPLAY's sides and bottom (not above the home
-  indicator), radius = display corner − inset, continuous, capped at half the box's height (a
-  capsule), an inner pill padded `p` at concentricRadius(inset + p, its height). Use
-  demos/env.contract `floatingWidth` / `concentricRadius` (display corner 62: Exact exposes
-  none). Past RN, so say so in the demo's comment.
+  bars, trays, mini-players, bottom buttons). Concentric = the box's corner arc has the SAME
+  CENTRE as the display corner's arc, not "radius = something smaller". The display corner
+  (R = 62, Exact exposes none) is centred R in from the side and R up from the bottom; a box
+  `inset` from the DISPLAY's side and bottom (not above the home indicator) with radius r is
+  centred inset + r in. So inset + r = R, always. In words, bottom-left corner:
+
+      display edge ─┐            the display's arc: centre C, radius 62
+                    │  ·  ·      the box's arc:     centre C, radius 62 − inset
+                    │ ·   C      → both arcs bulge around one point C (62, 62)
+                    │·  ·        a 30 pt capsule end at inset 10 is centred (40, 40):
+      display bottom└─────       its curve is tighter than the display's and reads "off"
+
+  Two rules (demos/env.contract): a TALL box (sheet, card: R − inset ≤ h/2) keeps its inset
+  and takes `concentricRadius(inset, h)` = R − inset. A SHORT box (a bar, a button) is a
+  capsule, r = h/2, and its INSET follows from its height: `concentricInset(h)` = R − h/2
+  (a 60 bar 32 in, a 52 button 36 in, a 62 bar 31 in, as Apple's tab bar ~25 in at ~62-70
+  tall). `floatingInset(want, h)` picks between them; never pair a small inset with a
+  min(R − inset, h/2) capsule. A circle button in a corner: centre on C, so its edge is
+  concentricInset(d) from the side and bottom. A row padded `p` inside a concentric card:
+  card radius − p, or a capsule whose padding is card radius − h/2. A short bar that would sit
+  far from the sides: make it taller (a 62-70 capsule) rather than leave it non-concentric.
+  Past RN, so say so in the demo's comment.
 - Text in a surface standing for an RN `<Text>` (not RN Skia `<Text>`): its font MUST be
   `.with_ui_layout()` (or `match_ui_font`). `Font::new` alone takes Skia's path with gamma
   pre-blend: 5–20 % heavier ink than TextKit. With it, the text probe matches UIKit at 0 diff.
