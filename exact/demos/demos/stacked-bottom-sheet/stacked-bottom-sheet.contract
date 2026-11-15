@@ -35,6 +35,9 @@ fn sheetThrow(): string = "-exact-spring(4350.9397, 263.8467, 4)"
 // under half the shortest tray (140).
 fn sheetInset(): number = 10
 fn sheetCorner(): number = 62 - sheetInset()
+// The swipe handle's height over a sheet: the whole sheet, but only a 44 pt strip at the top of
+// the Spiral's (config 7), whose canvas below it takes taps.
+fn sheetGripOf(cfg: number): number = cfg == 7 ? 44 : sheetHeightOf(cfg)
 
 // The mount: `bottom` starts at -componentHeight and springs to BaseSafeArea + bottomHeight, so
 // the sheet rises biggest + 50 px (biggest: the tallest sheet in the list then, one of eight
@@ -180,9 +183,13 @@ component StackedBottomSheet
           -exact-drag-timeline="--sheetSwipe y"
           for key, i in keys key=key
             if sheetNum(vGone, i) == 0 and sheetNewer(vGone, i) == 0
+              // The Spiral's sheet (config 7): its canvas takes taps (RN's Spiral Tap beside the
+              // sheet's Pan), and this handle over it would swallow them, so there the handle is
+              // the grabber's strip at the sheet's top (sheetGrip()); every other sheet drags
+              // from anywhere.
               view position="absolute" left=sheetInset()
-                bottom=(sheetInset() + sheetLift(biggest, sheetHeightOf(sheetNum(cfgs, i)), 0))
-                width=(w - 2 * sheetInset()) height=sheetHeightOf(sheetNum(cfgs, i)) pointer-events="auto"
+                bottom=(sheetInset() + sheetLift(biggest, sheetHeightOf(sheetNum(cfgs, i)), 0) + sheetHeightOf(sheetNum(cfgs, i)) - sheetGripOf(sheetNum(cfgs, i)))
+                width=(w - 2 * sheetInset()) height=sheetGripOf(sheetNum(cfgs, i)) pointer-events="auto"
                 touch-action="none" transformDragFor="sheet-drag" transformgeometry=began(key)
                 transformrelease=released aria-label="Swipe the sheet down"
                 testId=`sheet-handle-${key}`
