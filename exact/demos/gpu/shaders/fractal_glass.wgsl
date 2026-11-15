@@ -13,35 +13,42 @@
 //   colour fringes grow toward its edges, unevenly from flute to flute;
 // - a crisp bevelled pane edge with a thin specular rim.
 //
-// The interface (bindings, the uniform block) is unchanged, so the Rust surface
-// (gpu/src/fractal_glass.rs) feeds it as it fed the RN replica:
-// - `sharp`: the circle, sharp, unclipped, on a canvas-sized surface (premultiplied);
-// - `blurred`: the circle under σ 25 pt (premultiplied), over the pane, mapped by `low`
-//   within `output`;
-// - the pane is `glass`; the background (white ↔ black) and the circle's colour come
-//   timed from the theme.
+// One pass, no offscreen target, and no per-frame work in the shader that a uniform can hold:
+// - the circle is evaluated here, analytically (the coverage Skia's AnalyticRRect writes), not
+//   read from a canvas-sized surface;
+// - the circle under σ 25 pt is a function of the distance to its centre alone (the disc
+//   convolved with the Gaussian), read from `profile`, 256 values the Rust surface fills once;
+// - everything that depends only on the clock (the drifting light, the key light) arrives
+//   evaluated in the uniforms.
 struct Uniforms {
     // The canvas in device pixels (w, h), device pixels per point, whether the target encodes
     // sRGB itself (1).
     canvas: vec4<f32>,
     // The glass rect in points: x, y, width, height.
     glass: vec4<f32>,
-    // The background's colour (straight sRGB, opaque) in rgb; w: the idle clock, seconds
-    // wrapped at 60 (a binary that writes 1 there shows one still moment of the motion).
+    // The background's colour (straight sRGB, opaque) in rgb; w: its luminance (0 dark, 1 light).
     background: vec4<f32>,
-    // A device pixel's centre → the blurred texture's uv: uv = p · xy + zw.
-    low: vec4<f32>,
-    // The blurred result's layer bounds in device pixels (l, t, r, b); empty: no blur.
-    output: vec4<f32>,
+    // The circle: centre in points, radius in points.
+    circle: vec4<f32>,
+    // The circle's colour (straight sRGB); w: a flute's width in points.
+    colour: vec4<f32>,
+    // The second light's centre in points; z: the highlight's wander phase (radians).
+    ambient: vec4<f32>,
+    // The key light's unit direction.
+    key: vec4<f32>,
+    // The unit half vector between the key light and the viewer.
+    halfway: vec4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> u: Uniforms;
-@group(0) @binding(1) var sharp: texture_2d<f32>;
-@group(0) @binding(2) var blurred: texture_2d<f32>;
-@group(0) @binding(3) var smp: sampler;
+// The blurred circle's alpha at a distance from its centre: 0 … REACH points, PROFILE_N values.
+@group(0) @binding(1) var profile: texture_2d<f32>;
+@group(0) @binding(2) var smp: sampler;
 
-// A flute's width in points, about: the pane holds a whole number of them.
-const FLUTE: f32 = 17.0;
+// The distance at which the blurred circle has faded to nothing (radius + 4 σ), points, and
+// the number of values of the profile.
+const REACH: f32 = 200.0;
+const PROFILE_N: f32 = 256.0;
 // The pane's corner radius, points.
 const CORNER: f32 = 20.0;
 // How far a flute's steepest slope moves the sample sideways, points.
@@ -86,13 +93,10 @@ fn flute_hash(i: f32) -> f32 {
 }
 
 // The second light: a broad soft glow drifting on a slow Lissajous around the pane (periods
-// 20 s and 15 s, both dividing the clock's 60), a pastel tint on a light background and a
-// violet bloom on a dark one. p in points; its weight 0…1.
+// 20 s and 15 s), a pastel tint on a light background and a violet bloom on a dark one. p in
+// points; its weight 0…1.
 fn ambient_at(p: vec2<f32>) -> f32 {
-    let g = u.glass;
-    let t = u.background.w;
-    let c = g.xy + g.zw * 0.5 + vec2<f32>(0.30 * g.z * cos(TAU * t / 20.0 + 0.9), 0.36 * g.w * sin(TAU * t / 15.0 + 2.2));
-    let d = p - c;
+    let d = p - u.ambient.xy;
     let r = 125.0;
     return exp(-dot(d, d) / (2.0 * r * r));
 }
@@ -132,24 +136,30 @@ fn rrect_normal(p: vec2<f32>, o: vec2<f32>, size: vec2<f32>, r: f32) -> vec2<f32
     return n * sign(rel + vec2<f32>(1e-4));
 }
 
-// The blurred circle (premultiplied) at device pixel q, held at the result's edge.
-fn haze(q: vec2<f32>) -> vec4<f32> {
-    let o = u.output;
-    if (o.z <= o.x || o.w <= o.y) {
-        return vec4<f32>(0.0);
-    }
-    let c = clamp(q, o.xy + vec2<f32>(0.5), o.zw - vec2<f32>(0.5));
-    return textureSampleLevel(blurred, smp, c * u.low.xy + u.low.zw, 0.0);
+// The circle's coverage at device pixel q (the pixel's centre): AnalyticRRect's edge, for a
+// circle, one device pixel wide.
+fn disc(q: vec2<f32>) -> f32 {
+    let s = u.canvas.z;
+    let d = max(length(q / s - u.circle.xy), 1e-3);
+    let r = u.circle.z;
+    return clamp(0.5 - 0.5 * s * (d * d - r * r) / d, 0.0, 1.0);
+}
+
+// The blurred circle's alpha at device pixel q, held at the pane's edge (where the blur's
+// layer ends).
+fn haze(q: vec2<f32>) -> f32 {
+    let s = u.canvas.z;
+    let g = u.glass * s;
+    let c = clamp(q, g.xy + vec2<f32>(0.5), g.xy + g.zw - vec2<f32>(0.5));
+    let d = length(c / s - u.circle.xy);
+    return textureSampleLevel(profile, smp, vec2<f32>((d * (PROFILE_N - 1.0) / REACH + 0.5) / PROFILE_N, 0.5), 0.0).r;
 }
 
 // What lies behind the glass at device pixel q, frosted: the sharp circle mixed with its haze,
 // over the background (straight sRGB).
 fn behind(q: vec2<f32>, light: f32) -> vec3<f32> {
-    // Loaded, never sampled: the binding stays unfilterable, as the binary binds it.
-    let size = vec2<i32>(textureDimensions(sharp)) - vec2<i32>(1);
-    let s = textureLoad(sharp, clamp(vec2<i32>(floor(q)), vec2<i32>(0), size), 0);
-    let c = mix(s, haze(q), FROST);
-    return c.rgb + backdrop(q / u.canvas.z, light) * (1.0 - c.a);
+    let a = mix(disc(floor(q) + vec2<f32>(0.5)), haze(q), FROST);
+    return u.colour.rgb * a + backdrop(q / u.canvas.z, light) * (1.0 - a);
 }
 
 @fragment
@@ -158,17 +168,22 @@ fn fs(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
     let px = pos.xy;
     let p = px / s;
     let g = u.glass;
-    let bg = u.background.rgb;
-    let light = dot(bg, vec3<f32>(0.299, 0.587, 0.114));
+    let light = u.background.w;
 
-    // Outside: the scene itself, the sharp circle over the background.
-    let sharp_px = textureLoad(sharp, vec2<i32>(px), 0);
-    var outside = sharp_px.rgb + backdrop(p, light) * (1.0 - sharp_px.a);
-    // The pane's soft shadow on what is behind it (seen on a light background).
     let d = rrect(p, g.xy, g.zw, CORNER);
-    let drop = rrect(p - vec2<f32>(0.0, 12.0), g.xy, g.zw, CORNER);
-    outside *= 1.0 - 0.07 * light * (1.0 - smoothstep(-6.0, 18.0, drop));
     let cover = clamp(0.5 - d * s, 0.0, 1.0);
+    // Outside: the scene itself, the sharp circle over the background, under the pane's soft
+    // shadow (seen on a light background). A pixel wholly inside the pane never shows it.
+    var outside = vec3<f32>(0.0);
+    if (cover < 1.0) {
+        let a = disc(px);
+        outside = u.colour.rgb * a + backdrop(p, light) * (1.0 - a);
+        // The shadow reaches 18 pt past the pane's edge.
+        if (d < 30.0) {
+            let drop = rrect(p - vec2<f32>(0.0, 12.0), g.xy, g.zw, CORNER);
+            outside *= 1.0 - 0.07 * light * (1.0 - smoothstep(-6.0, 18.0, drop));
+        }
+    }
     if (cover <= 0.0) {
         var c = outside;
         if (u.canvas.w > 0.5) { c = to_linear(c); }
@@ -176,19 +191,18 @@ fn fs(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
     }
 
     // The flute this pixel looks through, and where across it (−1 left edge … 1 right edge).
-    let n = max(1.0, round(g.z / FLUTE));
-    let fw = g.z / n;
+    let fw = u.colour.w;
     let f = (p.x - g.x) / fw;
     let centre = g.x + (floor(f) + 0.5) * fw;
     let x = clamp(fract(f) * 2.0 - 1.0, -1.0, 1.0);
+    let x2 = x * x;
     // The lens: an arc of a circle, height sqrt(1 − (Kx)²); its slope steepens at the edges.
     let kx = K * x;
     let rise = sqrt(1.0 - kx * kx);
     let slope = kx / rise;
 
     // Each flute is its own piece of glass: a number that varies its fringes and highlight.
-    let id = fract(flute_hash(floor(f)));
-    let t = u.background.w;
+    let id = flute_hash(floor(f));
 
     // Refraction: magnified about the flute's centre, pushed against the slope (a mirrored
     // slice), per channel; a touch of vertical magnification about the pane's middle.
@@ -198,7 +212,7 @@ fn fs(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
     let base = centre + (p.x - centre) * MAG;
     let shift = -DEPTH * slope;
     // Dispersion grows toward the flute's edges, a little unevenly from flute to flute.
-    let disp = DISPERSION * (0.35 + 1.25 * x * x) * (0.7 + 0.6 * id);
+    let disp = DISPERSION * (0.35 + 1.25 * x2) * (0.7 + 0.6 * id);
     let r = behind((vec2<f32>(base + shift * (1.0 - disp), y) + jitter) * s, light).r;
     let gg = behind((vec2<f32>(base + shift, y) + jitter.yx) * s, light).g;
     let b = behind((vec2<f32>(base + shift * (1.0 + disp), y) - jitter) * s, light).b;
@@ -206,18 +220,20 @@ fn fs(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
 
     // The key light: from the upper left, swaying slowly (12 s), so the left shoulder of each
     // flute catches it and the highlight drifts across the flutes.
-    let normal = normalize(vec3<f32>(slope * 0.55, 0.0, 1.0));
-    let l = normalize(vec3<f32>(-0.55 + 0.22 * sin(TAU * t / 12.0), -0.25, 1.0));
-    let diffuse = dot(normal, l) - dot(vec3<f32>(0.0, 0.0, 1.0), l);
-    let h = normalize(l + vec3<f32>(0.0, 0.0, 1.0));
+    let sl = slope * 0.55;
+    let normal = vec3<f32>(sl, 0.0, 1.0) * inverseSqrt(1.0 + sl * sl);
+    let l = u.key.xyz;
+    let diffuse = dot(normal, l) - l.z;
+    let h = u.halfway.xyz;
     // The highlight wavers down the flute (no glass is drawn perfectly), each flute its own way.
-    let waver = 0.72 + 0.28 * sin(p.y / 23.0 + id * TAU + TAU * t / 10.0) * sin(p.y / 61.0 + id * 3.1);
+    let waver = 0.72 + 0.28 * sin(p.y / 23.0 + id * TAU + u.ambient.z) * sin(p.y / 61.0 + id * 3.1);
     let spec = pow(max(dot(normal, h), 0.0), 90.0) * waver;
     // The groove where two flutes meet: in shadow, darkest on the side facing away.
     let groove = smoothstep(0.82, 1.0, abs(x)) * select(0.55, 1.0, x > 0.0);
     // The blob's light, scattered in the glass: strongest where the glass is steepest.
-    let glow = haze(px);
-    let ridge = pow(abs(x), 4.0);
+    let glow_a = haze(px);
+    let glow = vec4<f32>(u.colour.rgb * glow_a, glow_a);
+    let ridge = x2 * x2;
     // The second light, caught on the ridges too.
     let soft = ambient_at(p) * ridge;
 

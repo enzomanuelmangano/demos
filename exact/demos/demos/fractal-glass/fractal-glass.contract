@@ -6,7 +6,8 @@ component FractalGlass
   state theme = "light"
   action toggle
     theme = theme == "light" ? "dark" : "light"
-  // Haptics: light on the grab, selection as the circle passes behind the glass or out from it.
+  // Haptics: a light one when a drag takes the circle, one selection as it goes behind the glass;
+  // never two within 150 ms (the surface decides).
   action heard(m: string)
     if m == "haptic:impact-light"
       haptic("impact-light")

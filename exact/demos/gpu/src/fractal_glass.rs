@@ -18,39 +18,42 @@
 //!   'continuous', backgroundColor circleColor) is this surface's second instance (input + 2),
 //!   so its colour is the circle's own timing, frame for frame.
 //!
-//! How Skia m157 Graphite draws it, reproduced:
-//! - Each circle is AnalyticRRectRenderStep (fractal_glass_rrect.wgsl).
-//! - `<Blur blur={25}>` is `SkImageFilters::Blur(25, 25, kDecal)`: σ is 25 pt (not a radius;
-//!   no ConvertRadiusToSigma), 25 · scale device pixels. The circle is drawn unclipped into
-//!   the filter's layer (the clip outset by ⌈3σ⌉, ∩ the oval's bounds, + 1 transparent pixel),
-//!   then `FilterResult::blur`: downscaled to σ 4, blurred, drawn back up
-//!   (skia::blur::GraphitePlan / GraphiteBlur).
-//! - The pane is no longer RN's 4 × 4 mask (the owner: not real fractal glass). It is reeded
-//!   glass (fractal_glass.wgsl): per flute a cylindrical lens refracting the sharp circle and
-//!   this blur (the frosting), with dispersion, a specular line and a groove shadow.
+//! The pane is no longer RN's 4 × 4 mask (the owner: not real fractal glass). It is reeded
+//! glass (fractal_glass.wgsl): per flute a cylindrical lens refracting the sharp circle and
+//! its blur (the frosting), with dispersion, a specular line and a groove shadow.
+//!
+//! One full-screen pass draws all of it, with no offscreen target:
+//! - the circle is evaluated in the shader, with the coverage Skia's AnalyticRRect step writes
+//!   (one device pixel of edge), not drawn into a canvas-sized surface first;
+//! - `<Blur blur={25}>` (σ 25 pt, decal) of a disc is a function of the distance to its centre
+//!   alone: the disc convolved with the Gaussian. `blurred_disc` integrates it once into
+//!   PROFILE_N values (a tiny texture); Graphite's 8-bit rescale-and-blur chain it replaces
+//!   agrees with it within a few 8-bit levels (the test `the_profile_is_the_graphite_blur`);
+//! - what depends on the clock alone (the second light's centre, the key light's vectors, the
+//!   highlight's phase) is evaluated here, once a frame, not per pixel.
 //!
 //! Haptics (past RN, which plays none: the owner's haptic language): `haptic:impact-light` when
 //! the pan takes the circle (its activation, so a tap plays none); `haptic:selection` when the
 //! drag carries its centre behind the glass (the pane's edge), none on the way out, re-armed
-//! only once the centre is REARM outside the pane, at most one per HAPTIC_GAP_MS. The flutes
-//! play none (crossing them under a drag would buzz); nothing when the finger lets go.
+//! only once the centre is REARM outside the pane. Never two within HAPTIC_GAP_MS, whichever.
+//! The flutes play none (crossing them under a drag would buzz); nothing when the finger lets
+//! go or the circle lands.
 //!
 //! Motion (past RN, the owner's ask): the circle drawn follows the finger through a spring
 //! (FOLLOW: a hair of lag and settle), and a release carries its velocity on: the rest point is
 //! the lift's projected PROJECTION_S ahead, kept on screen, reached by a spring launched at the
-//! finger's velocity (SETTLE). The glass's idle clock (seconds wrapped at 60) rides in the
-//! uniform background's w, so its lights drift with nothing touched: the surface draws every
-//! frame (one cheap pass).
+//! finger's velocity (SETTLE). The glass's idle clock (seconds wrapped at 60) drives its lights,
+//! which drift with nothing touched: untouched and settled, the surface draws IDLE_FPS frames a
+//! second (`max_fps`: the drift is a slow phase), and every frame while a finger, a spring or
+//! the theme moves.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
 use gesture_handler::{Event, PanGesture};
 use reanimated::{Easing, Spring, SpringConfig, Timing};
-use skia::blur::{intersect, outset, round_out, GraphiteBlur, GraphitePlan, IRect, Placed, GRAPHITE_FORMAT};
 
 use crate::{gfx, shaders};
-use shaders::fractal_glass::{entry, module, Uniforms, BLURRED, GROUP_0, SHARP, SMP, U};
-use shaders::fractal_glass_rrect as rrect;
+use shaders::fractal_glass::{entry, module, Uniforms, GROUP_0, PROFILE, SMP, U};
 
 /// CircleRadius.
 const RADIUS: f32 = 100.0;
@@ -59,16 +62,21 @@ const SIGMA: f32 = 25.0;
 /// The pane: x, height (y and width follow the window).
 const PANE_X: f32 = 40.0;
 const PANE_HEIGHT: f32 = 300.0;
+/// A flute's width in points, about: the pane holds a whole number of them.
+const FLUTE: f32 = 17.0;
 /// styles.floatingContent's borderRadius.
 const BUTTON_RADIUS: f32 = 29.0;
 /// 'white' / 'black' and 'orange' / '#78C0E0'.
 const LIGHT: ([f64; 3], [f64; 3]) = ([255.0, 255.0, 255.0], [255.0, 165.0, 0.0]);
 const DARK: ([f64; 3], [f64; 3]) = ([0.0, 0.0, 0.0], [120.0, 192.0, 224.0]);
-/// The filter layer's transparent margin here (Skia pads 1; past it is decal, transparent).
-const LAYER_MARGIN: i32 = 4;
+/// The blurred circle's profile: PROFILE_N alpha values from the centre out to REACH points
+/// (the radius and four σ, past which the blur is under 1/255 of nothing).
+const PROFILE_N: usize = 256;
+const REACH: f32 = RADIUS + 4.0 * SIGMA;
 
-/// The shortest gap between two selection haptics, ms.
-const HAPTIC_GAP_MS: f64 = 40.0;
+/// The shortest gap between two haptics of this surface, ms: the activation's and the pane's
+/// edge's never read as one buzz.
+const HAPTIC_GAP_MS: f64 = 150.0;
 /// How far outside the pane the circle's centre goes before going behind it plays again, pt.
 const REARM: f32 = 16.0;
 /// The drawn circle chasing the finger (ζ ≈ 0.75).
@@ -81,6 +89,9 @@ const PROJECTION_S: f32 = 0.16;
 const KEEP: f32 = 0.5;
 /// The idle clock's period, seconds (every motion in the shader divides it).
 const CLOCK_S: f64 = 60.0;
+/// Frames a second while nothing but the lights drifts (their fastest phase turns in 10 s: a
+/// step of this size moves a highlight under a quarter of a grey level).
+const IDLE_FPS: u32 = 20;
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
@@ -97,10 +108,11 @@ fn surface_struct() -> Box<FractalGlass> {
         shown: [Spring::at(180.0), Spring::at(270.0)],
         saved: (0.0, 0.0),
         pan: PanGesture::new(),
+        touched: false,
+        moving: true,
         behind: false,
         haptic_at: f64::NEG_INFINITY,
         posted: Vec::new(),
-        blur: GraphiteBlur::default(),
         canvas: skia::Canvas::default(),
         renderer: skia::Renderer::default(),
         gpu: None,
@@ -120,11 +132,14 @@ struct FractalGlass {
     shown: [Spring; 2],
     saved: (f32, f32),
     pan: PanGesture,
-    /// The pane's selection played and is not re-armed yet, and the last selection's time.
+    /// A finger holds the circle.
+    touched: bool,
+    /// A spring or the theme's timing was still running at the last frame.
+    moving: bool,
+    /// The pane's selection played and is not re-armed yet, and the last haptic's time.
     behind: bool,
     haptic_at: f64,
     posted: Vec<String>,
-    blur: GraphiteBlur,
     canvas: skia::Canvas,
     renderer: skia::Renderer,
     gpu: Option<Gpu>,
@@ -135,18 +150,8 @@ struct Gpu {
     generation: u32,
     pipeline: wgpu::RenderPipeline,
     uniforms: wgpu::Buffer,
-    mesh: wgpu::RenderPipeline,
-    mesh_layout: wgpu::BindGroupLayout,
-    /// The two circles' mesh uniforms: the sharp one, the filter layer's.
-    mesh_uniforms: [wgpu::Buffer; 2],
-    layout: wgpu::BindGroupLayout,
-    sampler: wgpu::Sampler,
-    /// The canvas-sized surface of the sharp circle and its depth.
-    sharp: Option<((u32, u32), wgpu::TextureView, wgpu::TextureView)>,
-    /// The filter layer and its depth.
-    layer: Option<((u32, u32), wgpu::TextureView, wgpu::TextureView)>,
-    /// An empty texture for a frame with no blur.
-    empty: wgpu::TextureView,
+    /// Fixed for the surface's life: the uniforms, the profile, the sampler.
+    bind: wgpu::BindGroup,
 }
 
 /// rgbaArrayToRGBAColor ∘ toGammaSpace: a linear channel as the 8-bit value the colour
@@ -155,17 +160,43 @@ fn gamma8(linear: f64) -> f64 {
     (linear.clamp(0.0, 1.0).powf(1.0 / 2.2) * 255.0).round()
 }
 
-/// The filter layer: the device clip outset by ⌈3σ⌉ (SkBlurImageFilter's input bounds) ∩ the
-/// oval's bounds rounded out (the draw's content bounds), in device pixels.
-fn filter_layer(clip: IRect, oval: [f32; 4], radius: i32) -> Option<IRect> {
-    intersect(outset(clip, radius, radius), round_out(oval))
+/// erf, Abramowitz and Stegun 7.1.26 (absolute error under 1.5e-7).
+fn erf(x: f64) -> f64 {
+    let t = 1.0 / (1.0 + 0.3275911 * x.abs());
+    let y = 1.0 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * (-x * x).exp();
+    y.copysign(x)
 }
 
-/// The pane's device clip bounds: its rect rounded out.
-fn pane_clip(w: f32, h: f32, s: f32) -> IRect {
-    let (x, y) = (PANE_X * s, (h - PANE_HEIGHT) / 2.0 * s);
-    let (r, b) = ((w - PANE_X) * s, (h + PANE_HEIGHT) / 2.0 * s);
-    [x.floor() as i32, y.floor() as i32, r.ceil() as i32, b.ceil() as i32]
+/// The alpha of a disc of radius `RADIUS` under a Gaussian of σ `SIGMA`, at distance `d` from
+/// its centre (decal: nothing beyond the disc). Along x the point (d, 0) sees the disc's chord
+/// of half-length √(R² − x²), of which the Gaussian across y keeps erf(L / σ√2); x = R sin θ.
+fn blurred_disc(d: f64) -> f64 {
+    let (r, s) = (RADIUS as f64, SIGMA as f64);
+    let steps = 512;
+    let mut sum = 0.0;
+    for k in 0..steps {
+        let theta = (k as f64 + 0.5) / steps as f64 * std::f64::consts::PI - std::f64::consts::FRAC_PI_2;
+        let (x, l) = (r * theta.sin(), r * theta.cos());
+        let g = (-(x - d) * (x - d) / (2.0 * s * s)).exp() / (s * (2.0 * std::f64::consts::PI).sqrt());
+        sum += g * erf(l / (s * std::f64::consts::SQRT_2)) * l;
+    }
+    (sum * std::f64::consts::PI / steps as f64).clamp(0.0, 1.0)
+}
+
+/// An f32 in 0…1 as half-float bits (round to nearest; below the smallest normal, 0).
+fn half_bits(v: f32) -> u16 {
+    let bits = v.clamp(0.0, 1.0).to_bits();
+    let exponent = ((bits >> 23) & 0xff) as i32 - 127 + 15;
+    if exponent <= 0 {
+        return 0;
+    }
+    (((exponent as u32) << 10) + (bits >> 13 & 0x3ff) + (bits >> 12 & 1)) as u16
+}
+
+/// A unit vector.
+fn unit(v: [f32; 3]) -> [f32; 3] {
+    let n = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
+    v.map(|c| c / n)
 }
 
 impl FractalGlass {
@@ -180,6 +211,7 @@ impl FractalGlass {
                 // colorOnStart: from the current colour string, re-linearised.
                 ch.value = (gamma8(ch.value) / 255.0).powf(2.2);
                 ch.to(linear, 300.0, Easing::timing_default());
+                self.moving = true;
             }
         }
     }
@@ -217,6 +249,14 @@ impl FractalGlass {
         (x - cx).abs() <= RADIUS && (y - cy).abs() <= RADIUS
     }
 
+    /// Plays `kind` unless another haptic of this surface played under HAPTIC_GAP_MS ago.
+    fn haptic(&mut self, at_ms: f64, kind: &str) {
+        if at_ms - self.haptic_at >= HAPTIC_GAP_MS {
+            self.posted.push(kind.into());
+            self.haptic_at = at_ms;
+        }
+    }
+
     /// A release at velocity (vx, vy) pt/s: on to the projected rest, kept on screen.
     fn release(&mut self, vx: f32, vy: f32) {
         let (w, h) = self.size;
@@ -228,6 +268,7 @@ impl FractalGlass {
         self.center = (rest(self.center.0, vx, w), rest(self.center.1, vy, h));
         self.shown[0].launch(self.center.0 as f64, vx as f64, SETTLE);
         self.shown[1].launch(self.center.1 as f64, vy as f64, SETTLE);
+        self.moving = true;
     }
 }
 
@@ -253,6 +294,12 @@ impl Surface for FractalGlass {
 
     fn wants_input(&self) -> bool {
         !self.button
+    }
+
+    /// Every frame while a finger, a spring or the theme moves; untouched and settled, the
+    /// lights' slow drift at IDLE_FPS. The button's fill only changes with the theme.
+    fn max_fps(&self) -> u32 {
+        if self.touched || self.moving { 0 } else { IDLE_FPS }
     }
 
     fn messages(&mut self) -> Vec<String> {
@@ -289,25 +336,27 @@ impl Surface for FractalGlass {
                 self.center = (cx, cy);
                 self.saved = self.center;
                 self.behind = self.behind_pane();
+                self.touched = true;
             }
             Event::Start(p) | Event::Update(p) => {
                 if matches!(event, Event::Start(_)) {
-                    self.posted.push("haptic:impact-light".into());
+                    self.haptic(at_ms, "haptic:impact-light");
                 }
                 self.center = (self.saved.0 + p.translation_x, self.saved.1 + p.translation_y);
                 self.shown[0].retarget(self.center.0 as f64, FOLLOW);
                 self.shown[1].retarget(self.center.1 as f64, FOLLOW);
                 if !self.behind && self.behind_pane() {
                     self.behind = true;
-                    if at_ms - self.haptic_at >= HAPTIC_GAP_MS {
-                        self.posted.push("haptic:selection".into());
-                        self.haptic_at = at_ms;
-                    }
+                    self.haptic(at_ms, "haptic:selection");
                 } else if self.behind && self.outside_pane() > REARM {
                     self.behind = false;
                 }
             }
-            Event::End(p) => self.release(p.velocity_x, p.velocity_y),
+            Event::End(p) => {
+                self.touched = false;
+                self.release(p.velocity_x, p.velocity_y);
+            }
+            Event::Fail | Event::Tap { .. } => self.touched = false,
             _ => {}
         }
     }
@@ -331,8 +380,9 @@ impl Surface for FractalGlass {
             moving |= ch.step(frame.now_ms);
         }
         for sp in self.shown.iter_mut() {
-            sp.step(frame.now_ms);
+            moving |= sp.step(frame.now_ms);
         }
+        self.moving = moving;
         let (pw, ph) = frame.pixels();
         let color = [self.channel(3), self.channel(4), self.channel(5)];
         if self.button {
@@ -344,188 +394,98 @@ impl Surface for FractalGlass {
             return moving;
         }
         if self.gpu.as_ref().map(|g| (g.format, g.generation)) != Some((format, frame.shader_generation)) {
-            self.gpu = Some(build(device, format, frame.shader_generation));
+            self.gpu = Some(build(device, queue, format, frame.shader_generation));
         }
         let (w, h) = self.size;
-        let s = frame.scale;
-        // w: the glass's idle clock, seconds wrapped at CLOCK_S.
-        let clock = ((frame.now_ms / 1000.0).rem_euclid(CLOCK_S)) as f32;
-        let background = [self.channel(0), self.channel(1), self.channel(2), clock];
         let (cx, cy) = self.drawn();
-        let gpu = self.gpu.as_mut().unwrap();
-        let oval = [(cx - RADIUS) * s, (cy - RADIUS) * s, (cx + RADIUS) * s, (cy + RADIUS) * s];
-        let mesh = |target: [f32; 4]| {
-            let mut m = rrect::Mesh::default();
-            m.ltrb = [cx - RADIUS, cy - RADIUS, cx + RADIUS, cy + RADIUS];
-            // localAARadius 1/s; opposite insets intersect when 2 · aa ≥ size − radius.
-            let aa = 1.0 / s;
-            m.shape = [RADIUS, s, if 2.0 * aa >= RADIUS { -1.0 } else { aa }, 0.0];
-            m.surface = target;
-            m.color = [color[0], color[1], color[2], 1.0];
-            m.bytes()
-        };
-        // The sharp circle, on a canvas-sized surface.
-        ensure(&mut gpu.sharp, device, "fractal glass sharp", (pw, ph));
-        queue.write_buffer(&gpu.mesh_uniforms[0], 0, &mesh([0.0, 0.0, pw as f32, ph as f32]));
-        draw_mesh(encoder, device, gpu, 0, (pw, ph), None);
-        // The blur.
-        let clip = pane_clip(w, h, s);
-        let sigma = SIGMA * s;
-        let radius = skia::blur::ceil_size(3.0 * sigma);
-        let plan = filter_layer(clip, oval, radius).and_then(|layer| GraphitePlan::new(layer, clip, sigma).map(|p| (layer, p)));
-        let mut uniforms = Uniforms {
-            canvas: [pw as f32, ph as f32, s, gfx::srgb_flag(format)],
-            glass: [PANE_X, (h - PANE_HEIGHT) / 2.0, w - PANE_X * 2.0, PANE_HEIGHT],
-            background,
-            low: [0.0; 4],
-            output: [0.0; 4],
-        };
-        let blurred = if let Some((layer, plan)) = plan {
-            let origin = [layer[0] - LAYER_MARGIN, layer[1] - LAYER_MARGIN];
-            let size = ((layer[2] - layer[0] + 2 * LAYER_MARGIN) as u32, (layer[3] - layer[1] + 2 * LAYER_MARGIN) as u32);
-            ensure(&mut gpu.layer, device, "fractal glass layer", size);
-            queue.write_buffer(&gpu.mesh_uniforms[1], 0, &mesh([origin[0] as f32, origin[1] as f32, size.0 as f32, size.1 as f32]));
-            // Only the layer's pixels exist (the padding stays transparent).
-            draw_mesh(encoder, device, gpu, 1, size, Some([LAYER_MARGIN as u32, LAYER_MARGIN as u32, (layer[2] - layer[0]) as u32, (layer[3] - layer[1]) as u32]));
-            let source = Placed { view: &gpu.layer.as_ref().unwrap().1, origin, size: [size.0, size.1] };
-            let out = self.blur.run(device, queue, encoder, source, &plan);
-            // uv = (to_low(p) − origin) / size, to_low(p) = low.l + (p − src.l) · k.
-            let src = plan.src_rect.map(|v| v as f32);
-            let low = plan.low_bounds;
-            let kx = (low[2] - low[0]) / (src[2] - src[0]);
-            let ky = (low[3] - low[1]) / (src[3] - src[1]);
-            let (sw, sh) = (out.size[0] as f32, out.size[1] as f32);
-            uniforms.low = [kx / sw, ky / sh, (low[0] - src[0] * kx - out.origin[0] as f32) / sw, (low[1] - src[1] * ky - out.origin[1] as f32) / sh];
-            uniforms.output = plan.output.map(|v| v as f32);
-            Some(out.view)
-        } else {
-            None
+        let glass = [PANE_X, (h - PANE_HEIGHT) / 2.0, w - PANE_X * 2.0, PANE_HEIGHT];
+        let flutes = (glass[2] / FLUTE).round().max(1.0);
+        // The lights, from the clock (seconds wrapped at CLOCK_S): the second one's centre on
+        // its Lissajous (periods 20 s and 15 s), the key light swaying (12 s), the highlight's
+        // phase (10 s).
+        let t = (frame.now_ms / 1000.0).rem_euclid(CLOCK_S);
+        let tau = std::f64::consts::TAU;
+        let ambient = [
+            glass[0] + glass[2] * 0.5 + 0.30 * glass[2] * (tau * t / 20.0 + 0.9).cos() as f32,
+            glass[1] + glass[3] * 0.5 + 0.36 * glass[3] * (tau * t / 15.0 + 2.2).sin() as f32,
+            (tau * t / 10.0) as f32,
+            0.0,
+        ];
+        let key = unit([-0.55 + 0.22 * (tau * t / 12.0).sin() as f32, -0.25, 1.0]);
+        let halfway = unit([key[0], key[1], key[2] + 1.0]);
+        let (bg0, bg1, bg2) = (self.channel(0), self.channel(1), self.channel(2));
+        let uniforms = Uniforms {
+            canvas: [pw as f32, ph as f32, frame.scale, gfx::srgb_flag(format)],
+            glass,
+            background: [bg0, bg1, bg2, bg0 * 0.299 + bg1 * 0.587 + bg2 * 0.114],
+            circle: [cx, cy, RADIUS, 0.0],
+            colour: [color[0], color[1], color[2], glass[2] / flutes],
+            ambient,
+            key: [key[0], key[1], key[2], 0.0],
+            halfway: [halfway[0], halfway[1], halfway[2], 0.0],
         };
         let gpu = self.gpu.as_ref().unwrap();
         queue.write_buffer(&gpu.uniforms, 0, &uniforms.bytes());
-        let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("fractal glass"),
-            layout: &gpu.layout,
-            entries: &[
-                wgpu::BindGroupEntry { binding: U.binding, resource: gpu.uniforms.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: SHARP.binding, resource: wgpu::BindingResource::TextureView(&gpu.sharp.as_ref().unwrap().1) },
-                wgpu::BindGroupEntry { binding: BLURRED.binding, resource: wgpu::BindingResource::TextureView(blurred.unwrap_or(&gpu.empty)) },
-                wgpu::BindGroupEntry { binding: SMP.binding, resource: wgpu::BindingResource::Sampler(&gpu.sampler) },
-            ],
-        });
-        skia::render::fullscreen_pass(encoder, "fractal glass", target, &gpu.pipeline, &bind);
-        // The glass's lights drift with nothing touched: every frame is a new one.
+        skia::render::fullscreen_pass(encoder, "fractal glass", target, &gpu.pipeline, &gpu.bind);
+        // The lights drift with nothing touched; `max_fps` paces the host.
         true
     }
 }
 
-/// A Graphite surface of `size` and its depth, kept while the size holds.
-fn ensure(slot: &mut Option<((u32, u32), wgpu::TextureView, wgpu::TextureView)>, device: &wgpu::Device, label: &str, size: (u32, u32)) {
-    if slot.as_ref().map(|s| s.0) != Some(size) {
-        let color = skia::render::sampled_target(device, label, GRAPHITE_FORMAT, size.0, size.1);
-        let depth = device
-            .create_texture(&wgpu::TextureDescriptor {
-                label: Some(label),
-                size: wgpu::Extent3d { width: size.0.max(1), height: size.1.max(1), depth_or_array_layers: 1 },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::Depth32Float,
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-                view_formats: &[],
-            })
-            .create_view(&Default::default());
-        *slot = Some((size, color, depth));
-    }
-}
-
-/// One AnalyticRRect instance (`which`: 0 the sharp surface, 1 the filter layer), cleared
-/// first, scissored to `scissor` (x, y, w, h).
-fn draw_mesh(encoder: &mut wgpu::CommandEncoder, device: &wgpu::Device, gpu: &Gpu, which: usize, size: (u32, u32), scissor: Option<[u32; 4]>) {
-    let (_, color, depth) = if which == 0 { gpu.sharp.as_ref().unwrap() } else { gpu.layer.as_ref().unwrap() };
-    let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("fractal glass circle"),
-        layout: &gpu.mesh_layout,
-        entries: &[wgpu::BindGroupEntry { binding: rrect::M.binding, resource: gpu.mesh_uniforms[which].as_entire_binding() }],
-    });
-    let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-        label: Some("fractal glass circle"),
-        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-            view: color,
-            resolve_target: None,
-            depth_slice: None,
-            ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT), store: wgpu::StoreOp::Store },
-        })],
-        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-            view: depth,
-            depth_ops: Some(wgpu::Operations { load: wgpu::LoadOp::Clear(1.0), store: wgpu::StoreOp::Discard }),
-            stencil_ops: None,
-        }),
-        timestamp_writes: None,
-        occlusion_query_set: None,
-        multiview_mask: None,
-    });
-    if let Some([x, y, w, h]) = scissor {
-        pass.set_scissor_rect(x, y, w.min(size.0 - x), h.min(size.1 - y));
-    }
-    pass.set_pipeline(&gpu.mesh);
-    pass.set_bind_group(0, &bind, &[]);
-    pass.draw(0..69, 0..1);
-}
-
-fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32) -> Gpu {
+fn build(device: &wgpu::Device, queue: &wgpu::Queue, format: wgpu::TextureFormat, generation: u32) -> Gpu {
     let shader = device.create_shader_module(module());
     let layout = device.create_bind_group_layout(&GROUP_0);
     let pipeline = gfx::fullscreen(device, format, &shader, &layout, entry::VS, entry::FS, None, "fractal glass");
     let uniforms = device.create_buffer(&wgpu::BufferDescriptor { label: Some("fractal glass uniforms"), size: Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
-    let mesh_shader = device.create_shader_module(rrect::module());
-    let mesh_layout = device.create_bind_group_layout(&rrect::GROUP_0);
-    let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor { label: Some("fractal glass circle"), bind_group_layouts: &[Some(&mesh_layout)], immediate_size: 0 });
-    let mesh = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("fractal glass circle"),
-        layout: Some(&pl),
-        vertex: wgpu::VertexState { module: &mesh_shader, entry_point: Some(rrect::entry::RRECT_VS), buffers: &[], compilation_options: Default::default() },
-        fragment: Some(wgpu::FragmentState {
-            module: &mesh_shader,
-            entry_point: Some(rrect::entry::RRECT_FS),
-            // src-over onto the cleared surface; each pixel is written once (the depth test).
-            targets: &[Some(wgpu::ColorTargetState { format: GRAPHITE_FORMAT, blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING), write_mask: wgpu::ColorWrites::ALL })],
-            compilation_options: Default::default(),
-        }),
-        primitive: wgpu::PrimitiveState { topology: wgpu::PrimitiveTopology::TriangleStrip, cull_mode: None, ..Default::default() },
-        depth_stencil: Some(wgpu::DepthStencilState {
-            format: wgpu::TextureFormat::Depth32Float,
-            depth_write_enabled: Some(true),
-            depth_compare: Some(wgpu::CompareFunction::Less),
-            stencil: Default::default(),
-            bias: Default::default(),
-        }),
-        multisample: Default::default(),
-        multiview_mask: None,
-        cache: None,
+    let profile = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("fractal glass profile"),
+        size: wgpu::Extent3d { width: PROFILE_N as u32, height: 1, depth_or_array_layers: 1 },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::R16Float,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
     });
-    let buffer = || device.create_buffer(&wgpu::BufferDescriptor { label: Some("fractal glass circle"), size: rrect::Mesh::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
-    let empty = skia::render::sampled_target(device, "fractal glass empty", GRAPHITE_FORMAT, 1, 1);
-    Gpu {
-        format,
-        generation,
-        pipeline,
-        uniforms,
-        mesh,
-        mesh_layout,
-        mesh_uniforms: [buffer(), buffer()],
-        layout,
-        sampler: gfx::linear_sampler(device, "fractal glass"),
-        sharp: None,
-        layer: None,
-        empty,
-    }
+    let bits: Vec<u8> = (0..PROFILE_N).flat_map(|i| half_bits(blurred_disc(i as f64 * REACH as f64 / (PROFILE_N - 1) as f64) as f32).to_le_bytes()).collect();
+    queue.write_texture(
+        wgpu::TexelCopyTextureInfo { texture: &profile, mip_level: 0, origin: wgpu::Origin3d::ZERO, aspect: wgpu::TextureAspect::All },
+        &bits,
+        wgpu::TexelCopyBufferLayout { offset: 0, bytes_per_row: Some(2 * PROFILE_N as u32), rows_per_image: Some(1) },
+        wgpu::Extent3d { width: PROFILE_N as u32, height: 1, depth_or_array_layers: 1 },
+    );
+    let view = profile.create_view(&Default::default());
+    let sampler = gfx::linear_sampler(device, "fractal glass");
+    let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("fractal glass"),
+        layout: &layout,
+        entries: &[
+            wgpu::BindGroupEntry { binding: U.binding, resource: uniforms.as_entire_binding() },
+            wgpu::BindGroupEntry { binding: PROFILE.binding, resource: wgpu::BindingResource::TextureView(&view) },
+            wgpu::BindGroupEntry { binding: SMP.binding, resource: wgpu::BindingResource::Sampler(&sampler) },
+        ],
+    });
+    Gpu { format, generation, pipeline, uniforms, bind }
 }
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
     use exact_gpu::{fixture, PointerKind, PointerPhase};
+    use skia::blur::{intersect, outset, round_out, GraphitePlan, IRect};
+
+    /// The filter layer: the device clip outset by ⌈3σ⌉ (SkBlurImageFilter's input bounds) ∩ the
+    /// oval's bounds rounded out (the draw's content bounds), in device pixels.
+    fn filter_layer(clip: IRect, oval: [f32; 4], radius: i32) -> Option<IRect> {
+        intersect(outset(clip, radius, radius), round_out(oval))
+    }
+
+    /// The pane's device clip bounds: its rect rounded out.
+    fn pane_clip(w: f32, h: f32, s: f32) -> IRect {
+        let (x, y) = (PANE_X * s, (h - PANE_HEIGHT) / 2.0 * s);
+        let (r, b) = ((w - PANE_X) * s, (h + PANE_HEIGHT) / 2.0 * s);
+        [x.floor() as i32, y.floor() as i32, r.ceil() as i32, b.ceil() as i32]
+    }
 
     #[test]
     fn the_circle_blurs_behind_the_glass_and_follows_the_finger() {
@@ -542,9 +502,8 @@ mod tests {
         a.save("fractal-glass-light");
         // The glass's lights drift: it draws every frame.
         assert!(animating);
-        // White; the circle sharp orange above the pane (y 306); refracted through it. Points
-        // at a flute's centre (x 184.5), clear of its specular line.
-        // The corner: white, a breath of the second light at most.
+        // White above the pane, where the circle is sharp; through the pane it is refracted.
+        // The corner stays white.
         assert!(a.at(10, 10)[..3].iter().all(|&c| c >= 245), "{:?}", a.at(10, 10));
         assert_eq!(&a.at(180, 250)[..3], &[255, 165, 0]);
         assert_eq!(&a.at(180, 290)[..3], &[255, 165, 0]);
@@ -564,8 +523,7 @@ mod tests {
         finger(&mut s, PointerPhase::Down, 200.0, 300.0, 40.0);
         finger(&mut s, PointerPhase::Move, 200.0, 400.0, 140.0);
         finger(&mut s, PointerPhase::Move, 220.0, 480.0, 160.0);
-        // RNGH on iOS leaves UIKit's 10 pt hysteresis (along the set-off, down) out of a pan that
-        // begins 90 ms or more after touch-down: (20, 170).
+        // The pan begins 90 ms after touch-down, so its translation is the full drag.
         assert!(s.agent("{}").unwrap().contains("\"cx\":200.0,\"cy\":440.0"), "{}", s.agent("{}").unwrap());
         finger(&mut s, PointerPhase::Up, 220.0, 480.0, 170.0);
         // The release carries on down (the finger was moving down), and stays on screen.
@@ -622,11 +580,8 @@ mod tests {
         v.map(|c| (c.clamp(0.0, 1.0) * 255.0).round() / 255.0)
     }
 
-    /// The whole of Graphite's path on the CPU, in f64, from its definitions: the AnalyticRRect
-    /// circle into the padded layer, each rescale step's bilinear draw into 8 bits, the two
-    /// linear-kernel passes, the bilinear draw back up into L1 (8 bits), the mask's 8-bit alpha
-    /// (dstIn), Core Animation's src-over on the background. Device pixel (x, y) at scale 1.
-    fn reference(center: (f32, f32), w: f32, h: f32, xs: &[(u32, u32)]) -> Vec<[u8; 3]> {
+    /// Reference model of Graphite's path on the CPU, in f64, for the pixel tests.
+    fn reference(center: (f32, f32), w: f32, h: f32, xs: &[(u32, u32)]) -> Vec<f64> {
         let s = 1.0f32;
         let clip = pane_clip(w, h, s);
         let sigma = SIGMA * s;
@@ -695,103 +650,267 @@ mod tests {
                     let low = plan.to_low([px[0] as f32, px[1] as f32]);
                     l1 = q8(bilinear(&vpass, gw, gh, gorigin, [low[0] as f64, low[1] as f64]));
                 }
-                // The cell's gradient.
-                let g = [PANE_X as f64, ((h - PANE_HEIGHT) / 2.0) as f64, (w - 2.0 * PANE_X) as f64, PANE_HEIGHT as f64];
-                let cell = [g[2] / 4.0, g[3] / 4.0];
-                let ix = ((px[0] - g[0]) / cell[0]).floor().clamp(0.0, 3.0);
-                let iy = ((px[1] - g[1]) / cell[1]).floor().clamp(0.0, 3.0);
-                let st = [g[0] + cell[0] * ix, g[1] + cell[1] * iy];
-                let d = [cell[0] - 5.0, cell[1] - 5.0];
-                let t = (((px[0] - st[0]) * d[0] + (px[1] - st[1]) * d[1]) / (d[0] * d[0] + d[1] * d[1])).clamp(0.0, 1.0);
-                let mask = ((1.0 + (0.45 - 1.0) * t) * 255.0).round() / 255.0;
-                let l1 = q8(l1.map(|c| c * mask));
-                // Over white.
-                [0, 1, 2].map(|k| ((l1[k] + 1.0 * (1.0 - l1[3])) * 255.0).round() as u8)
+                l1[3]
             })
             .collect()
     }
 
     #[test]
-    #[ignore = "the pane is reeded glass now: its pixels are no longer RN's mask over this blur"]
-    fn the_blur_is_graphites_pipeline() {
-        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
-        exact_gpu::shaders::load_dir(&dir, &crate::REGISTRY).unwrap();
-        let gpu = match fixture::device() {
-            Ok(gpu) => gpu,
-            Err(error) => return eprintln!("{error}; skipped"),
-        };
-        let frame = Frame { width: 420.0, height: 912.0, scale: 1.0, now_ms: 0.0, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: exact_gpu::shaders::shader_generation(), headroom: 1.0 };
-        let mut s = surface();
-        s.bind(&[Value::Number(0.0)], None).unwrap();
-        // A fractional centre, so nothing lands on the pixel grid by luck.
-        let (cx, cy) = (183.3f32, 341.7f32);
-        s.input(&InputEvent::Pointer { id: 1, phase: PointerPhase::Down, x: 180.0, y: 270.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: 0.0 });
-        // The pan sets off straight down: UIKit's 10 pt hysteresis is left out of the
-        // translation (RNGH on iOS, a begin 90 ms or more after touch-down), so the finger ends
-        // 10 pt past the centre's travel.
-        s.input(&InputEvent::Pointer { id: 1, phase: PointerPhase::Move, x: 180.0, y: 270.0 + 20.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: 100.0 });
-        s.input(&InputEvent::Pointer { id: 1, phase: PointerPhase::Move, x: 180.0 + (cx - 180.0), y: 280.0 + (cy - 270.0), dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: 110.0 });
-        s.input(&InputEvent::Pointer { id: 1, phase: PointerPhase::Up, x: 180.0 + (cx - 180.0), y: 280.0 + (cy - 270.0), dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: 120.0 });
-        assert!(s.agent("{}").unwrap().contains("\"cx\":183.3,\"cy\":341.7"), "{}", s.agent("{}").unwrap());
-        let (img, _) = fixture::render(&gpu, s.as_mut(), &frame).unwrap();
-        img.save("fractal-glass-reference");
-        // Every 3rd pixel of the pane and a band around the circle.
-        let points: Vec<(u32, u32)> = (306..606).step_by(3).flat_map(|y| (40..380).step_by(3).map(move |x| (x, y))).collect();
-        let want = reference((cx, cy), 420.0, 912.0, &points);
-        // The GPU's bilinear filter and f32 against the f64 replay: a 1-LSB rounding flip in an
-        // early 8-bit step can carry; nothing more.
-        let (mut worst, mut off) = (0i32, 0usize);
-        for (&(x, y), w) in points.iter().zip(&want) {
-            let got = img.at(x, y);
-            for k in 0..3 {
-                let d = (got[k] as i32 - w[k] as i32).abs();
-                worst = worst.max(d);
-                off += (d > 1) as usize;
-                assert!(d <= 2, "({x}, {y}) {got:?} vs {w:?}");
+    fn the_profile_is_the_graphite_blur() {
+        // The blurred circle's alpha, from the profile (what the shader reads), against the
+        // CPU replay of Graphite's chain (8-bit rescales, the linear kernel, the draw up) at
+        // every 3rd pixel of the pane but its outermost pixels (the blur's own edge, under the
+        // pane's bevel and rim), for circles whose whole disc lies within 3σ of the pane (past
+        // that Graphite's layer cuts the source: a circle dragged off the screen's edge fades
+        // by up to 5 % over the pane's outer 4 pt, which the shader does not).
+        let (w, h) = (420.0f32, 912.0f32);
+        for (cx, cy) in [(183.3f32, 341.7f32), (140.4, 420.2), (300.0, 250.0)] {
+            let points: Vec<(u32, u32)> = (309..603).step_by(3).flat_map(|y| (43..377).step_by(3).map(move |x| (x, y))).collect();
+            let want = reference((cx, cy), w, h, &points);
+            let (mut worst, mut sum) = (0.0f64, 0.0f64);
+            for (&(x, y), w) in points.iter().zip(&want) {
+                let d = (((x as f32 + 0.5 - cx).powi(2) + (y as f32 + 0.5 - cy).powi(2)) as f64).sqrt();
+                // The shader's lookup: linear between the table's values.
+                let at = (d / REACH as f64 * (PROFILE_N - 1) as f64).min((PROFILE_N - 1) as f64);
+                let (i, f) = (at.floor() as usize, at.fract());
+                let value = |i: usize| blurred_disc(i.min(PROFILE_N - 1) as f64 * REACH as f64 / (PROFILE_N - 1) as f64);
+                let got = value(i) * (1.0 - f) + value(i + 1) * f;
+                let diff = (got - w).abs() * 255.0;
+                worst = worst.max(diff);
+                sum += diff;
             }
+            eprintln!("profile vs the Graphite blur at ({cx}, {cy}): worst {worst:.2}, mean {:.3} of 255", sum / points.len() as f64);
+            assert!(worst < 3.5, "{worst}");
         }
-        eprintln!("worst channel difference vs the CPU replay: {worst}, {off} of {} channels over 1", points.len() * 3);
-        assert!(off * 1000 < points.len() * 3, "{off}");
-
-        // At 3× (σ 75 px: five rescale steps, σ 4 on a 32-pixel image) the start pose: the
-        // blur under the pane's top edge, fading downward.
-        let big = Frame { scale: 3.0, ..frame };
-        let mut s = surface();
-        s.bind(&[Value::Number(0.0)], None).unwrap();
-        let (img, _) = fixture::render(&gpu, s.as_mut(), &big).unwrap();
-        img.save("fractal-glass-3x");
-        let b = |x: u32, y: u32| img.at(x, y)[2] as i32;
-        assert!(b(540, 930) < b(540, 1100) && b(540, 1100) < b(540, 1300), "{} {} {}", b(540, 930), b(540, 1100), b(540, 1300));
-        assert_eq!(&img.at(540, 810)[..3], &[255, 165, 0]);
     }
 
     #[test]
-    fn the_drag_plays_the_grab_and_the_pane_edge_once() {
+    fn the_blurred_disc_has_the_right_shape() {
+        // Centre: nearly the whole disc (σ 25 inside r 100); at the edge, a little under half
+        // (the disc's curvature); far out, nothing; the table's last value is the reach's.
+        assert!(blurred_disc(0.0) > 0.99, "{}", blurred_disc(0.0));
+        assert!((blurred_disc(100.0) - 0.45).abs() < 0.05, "{}", blurred_disc(100.0));
+        assert!(blurred_disc(REACH as f64) < 1.0 / 255.0, "{}", blurred_disc(REACH as f64));
+        let mut last = 1.0;
+        for i in 0..PROFILE_N {
+            let v = blurred_disc(i as f64 * REACH as f64 / (PROFILE_N - 1) as f64);
+            assert!(v <= last + 1e-9, "not monotonic at {i}");
+            last = v;
+        }
+        // Half-float bits round-trip within a half-float's 11 bits.
+        for v in [0.0f32, 0.001, 0.25, 0.5, 0.999, 1.0] {
+            let b = half_bits(v);
+            let back = f32::from_bits(((b as u32 & 0x8000) << 16) | if b & 0x7fff == 0 { 0 } else { (((b as u32 & 0x7c00) >> 10) + 112) << 23 | (b as u32 & 0x3ff) << 13 });
+            assert!((back - v).abs() <= v / 1024.0 + 1e-4, "{v} -> {back}");
+        }
+    }
+
+    /// This thread's CPU time, microseconds.
+    #[cfg(target_vendor = "apple")]
+    fn cpu_us() -> f64 {
+        extern "C" {
+            fn clock_gettime_nsec_np(clock: u32) -> u64;
+        }
+        // CLOCK_THREAD_CPUTIME_ID.
+        unsafe { clock_gettime_nsec_np(16) as f64 / 1e3 }
+    }
+    #[cfg(not(target_vendor = "apple"))]
+    fn cpu_us() -> f64 {
+        0.0
+    }
+
+    /// The frame at the phone's size, at rest and under a drag: CPU time of `render`, its heap
+    /// allocations, and the GPU's time from submit to idle.
+    /// `cargo test --release -p demos-gpu bench_the_frame -- --ignored --nocapture`
+    #[test]
+    #[ignore = "a benchmark: run with --release --ignored --nocapture"]
+    fn bench_the_frame() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
+        exact_gpu::shaders::load_dir(&dir, &crate::REGISTRY).unwrap();
+        let Some(gpu) = fixture::device_or_skip(fixture::device()) else { return };
+        let (w, h, scale) = (402.0f32, 874.0f32, 3.0f32);
+        let format = wgpu::TextureFormat::Bgra8UnormSrgb;
+        let texture = gpu.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("bench"),
+            size: wgpu::Extent3d { width: (w * scale) as u32, height: (h * scale) as u32, depth_or_array_layers: 1 },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+            view_formats: &[],
+        });
+        let view = texture.create_view(&Default::default());
+        let step = 1000.0 / 120.0;
+        for dragging in [false, true] {
+            let mut s = surface();
+            s.size(w, h);
+            s.bind(&[Value::Number(0.0)], None).unwrap();
+            let (mut cpu, mut gpu_us, mut allocs) = (Vec::new(), Vec::new(), Vec::new());
+            let mut animating = 0;
+            for i in 0..360usize {
+                let ms = 100.0 + i as f64 * step;
+                if dragging {
+                    let t = i as f32 / 360.0 * std::f32::consts::TAU;
+                    let (x, y) = (180.0 + 120.0 * t.sin(), 270.0 + 300.0 * (1.0 - t.cos()) * 0.5);
+                    let phase = if i == 0 { PointerPhase::Down } else if i == 359 { PointerPhase::Up } else { PointerPhase::Move };
+                    s.input(&InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: ms });
+                }
+                let _ = s.messages();
+                let mut encoder = gpu.device.create_command_encoder(&Default::default());
+                let t = cpu_us();
+                let (more, n) = crate::steddy_graph_interaction::tests::counted(|| {
+                    s.render(&Frame { width: w, height: h, scale, now_ms: ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: exact_gpu::shaders::shader_generation(), headroom: 1.0 }, &gpu.device, &gpu.queue, &mut encoder, &view, format)
+                });
+                let dt = cpu_us() - t;
+                animating += more as usize;
+                let buffer = encoder.finish();
+                let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+                let t = std::time::Instant::now();
+                gpu.queue.submit([buffer]);
+                s.submitted();
+                let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+                if i >= 60 {
+                    cpu.push(dt);
+                    allocs.push(n as f64);
+                    gpu_us.push(t.elapsed().as_secs_f64() * 1e6);
+                }
+            }
+            let q = |v: &mut Vec<f64>, p: usize| {
+                v.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                v[v.len() * p / 100]
+            };
+            // The GPU's own time per frame: 20 frames in one submission, so the submit-to-idle
+            // floor (about 0.3 ms) is shared.
+            if !dragging {
+                let mut per = Vec::new();
+                for round in 0..40usize {
+                    let mut encoder = gpu.device.create_command_encoder(&Default::default());
+                    for k in 0..20usize {
+                        let ms = 5000.0 + (round * 20 + k) as f64 * step;
+                        s.render(&Frame { width: w, height: h, scale, now_ms: ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: exact_gpu::shaders::shader_generation(), headroom: 1.0 }, &gpu.device, &gpu.queue, &mut encoder, &view, format);
+                    }
+                    let buffer = encoder.finish();
+                    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+                    let t = std::time::Instant::now();
+                    gpu.queue.submit([buffer]);
+                    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+                    if round >= 8 {
+                        per.push(t.elapsed().as_secs_f64() * 1e6 / 20.0);
+                    }
+                }
+                per.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                println!("bench fractal-glass gpu per frame, 20 to a submission: median {:.0} us, best {:.0} us", per[per.len() / 2], per[0]);
+            }
+            println!(
+                "bench fractal-glass {:<5} cpu median {:>7.0} p90 {:>7.0} us | allocs median {:>4.0} | gpu median {:>7.0} p90 {:>7.0} us | asks for a frame {}/360 | max_fps {}",
+                if dragging { "drag" } else { "rest" },
+                q(&mut cpu, 50),
+                q(&mut cpu, 90),
+                q(&mut allocs, 50),
+                q(&mut gpu_us, 50),
+                q(&mut gpu_us, 90),
+                animating,
+                s.max_fps()
+            );
+        }
+    }
+
+    /// A drag from (180, 270), above the pane (306…606), down behind it and back out, then a
+    /// hover across the pane's top edge: every haptic with its time. `step` is the ms between
+    /// moves.
+    fn haptics_of_a_drag(step: f64) -> Vec<(f64, String)> {
         let mut s = surface_struct();
         s.size = (420.0, 912.0);
-        let p = |phase, y: f32, at_ms| InputEvent::Pointer { id: 1, phase, x: 180.0, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
-        // From (180, 270), above the pane (306…606): down behind it, then back up out of it.
-        s.input(&p(PointerPhase::Down, 270.0, 0.0));
+        let mut played = Vec::new();
+        let mut at = 0.0;
+        let mut send = |s: &mut FractalGlass, phase, y: f32, at_ms: f64| {
+            s.input(&InputEvent::Pointer { id: 1, phase, x: 180.0, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms });
+            played.extend(s.messages().into_iter().map(|m| (at_ms, m)));
+        };
+        send(&mut s, PointerPhase::Down, 270.0, at);
+        at = 100.0;
         for k in 1..=10 {
-            s.input(&p(PointerPhase::Move, 270.0 + 10.0 * k as f32, 100.0 + 16.0 * k as f64));
+            at += step;
+            send(&mut s, PointerPhase::Move, 270.0 + 10.0 * k as f32, at);
         }
         for k in 1..=10 {
-            s.input(&p(PointerPhase::Move, 370.0 - 15.0 * k as f32, 300.0 + 16.0 * k as f64));
+            at += step;
+            send(&mut s, PointerPhase::Move, 370.0 - 15.0 * k as f32, at);
         }
         assert!(!s.behind_pane());
-        // The grab, one selection going behind; none on the way out.
-        assert_eq!(s.messages(), vec!["haptic:impact-light", "haptic:selection"]);
-        // Hovering across the pane's top edge (y 306): one selection, no flapping.
-        let mut crossed = 0;
+        // Hovering across the pane's edge, flapping every 50 ms.
         for k in 0..20 {
-            s.input(&p(PointerPhase::Move, if k % 2 == 0 { 330.0 } else { 300.0 }, 480.0 + 50.0 * k as f64));
-            crossed += (s.behind_pane() as usize) * (k % 2 == 0) as usize;
+            at += 50.0;
+            send(&mut s, PointerPhase::Move, if k % 2 == 0 { 330.0 } else { 300.0 }, at);
         }
-        assert!(crossed > 0, "the hover never went behind the pane");
-        assert_eq!(s.messages(), vec!["haptic:selection"]);
-        // The lift plays nothing; a tap on the circle plays nothing either.
-        s.input(&p(PointerPhase::Up, 220.0, 1500.0));
+        // The lift plays nothing, and the circle landing none.
+        send(&mut s, PointerPhase::Up, 220.0, at + 50.0);
+        for ms in 0..120 {
+            s.shown[0].step(at + 50.0 + ms as f64 * 16.0);
+            s.shown[1].step(at + 50.0 + ms as f64 * 16.0);
+        }
         assert!(s.messages().is_empty());
+        played
+    }
+
+    #[test]
+    fn the_drag_plays_the_grab_and_the_pane_edge_never_twice_in_150_ms() {
+        for step in [8.0, 16.0, 60.0, 200.0] {
+            let played = haptics_of_a_drag(step);
+            // The grab first, once; the lift, the way out, the hover's flapping add none.
+            assert_eq!(played[0].1, "haptic:impact-light", "{step}: {played:?}");
+            assert_eq!(played.iter().filter(|p| p.1 == "haptic:impact-light").count(), 1, "{step}: {played:?}");
+            // Never two within 150 ms, and the selection is the only other kind.
+            for pair in played.windows(2) {
+                assert!(pair[1].0 - pair[0].0 >= HAPTIC_GAP_MS, "{step}: {played:?}");
+            }
+            assert!(played.iter().all(|p| p.1 == "haptic:impact-light" || p.1 == "haptic:selection"), "{played:?}");
+            // At most one a 150 ms window, so a hover of ~1 s plays a handful at the most.
+            assert!(played.len() <= 8, "{step}: {played:?}");
+        }
+        // A drag slow enough to cross the edge after the grab plays the selection once going
+        // behind, none on the way out; a fast one's selection falls inside the grab's 150 ms.
+        let slow = haptics_of_a_drag(60.0);
+        assert_eq!(slow.iter().filter(|p| p.1 == "haptic:selection").count().min(1), 1, "{slow:?}");
+        assert_eq!(&slow[..2].iter().map(|p| p.1.as_str()).collect::<Vec<_>>(), &["haptic:impact-light", "haptic:selection"]);
+        assert_eq!(haptics_of_a_drag(8.0)[0].1, "haptic:impact-light");
+    }
+
+    #[test]
+    fn a_tap_on_the_circle_plays_nothing() {
+        let mut s = surface_struct();
+        s.size = (420.0, 912.0);
+        let p = |phase, at_ms| InputEvent::Pointer { id: 1, phase, x: 180.0, y: 270.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        s.input(&p(PointerPhase::Down, 0.0));
+        s.input(&p(PointerPhase::Up, 60.0));
+        assert!(s.messages().is_empty());
+        assert!(!s.touched);
+    }
+
+    #[test]
+    fn it_draws_every_frame_while_moving_and_slowly_at_rest() {
+        let mut s = surface_struct();
+        s.size = (420.0, 912.0);
+        s.bind(&[Value::Number(0.0)], None).unwrap();
+        // Before the first frame, it has something to draw.
+        assert_eq!(s.max_fps(), 0);
+        for ms in 0..30 {
+            let now = ms as f64 * 8.0;
+            s.moving = [s.channels[0].step(now), s.shown[0].step(now), s.shown[1].step(now)].iter().any(|&m| m);
+        }
+        assert_eq!(s.max_fps(), IDLE_FPS);
+        // A finger asks for every frame at once; so does the lift's spring, and the theme.
+        let p = |phase, y: f32, at_ms| InputEvent::Pointer { id: 1, phase, x: 180.0, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        s.input(&p(PointerPhase::Down, 270.0, 1000.0));
+        assert_eq!(s.max_fps(), 0);
+        s.input(&p(PointerPhase::Move, 400.0, 1200.0));
+        s.input(&p(PointerPhase::Up, 400.0, 1216.0));
+        assert_eq!(s.max_fps(), 0);
+        s.touched = false;
+        s.moving = false;
+        s.bind(&[Value::Number(1.0)], None).unwrap();
+        assert_eq!(s.max_fps(), 0);
     }
 
     #[test]

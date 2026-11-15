@@ -130,7 +130,7 @@ it takes input), and whether it rests after 4 s. Device columns: not measured (s
 | floating-modal | `floating_modal` 32/49 µs, 23 allocs; drag 37/136 µs; rests |  |
 | fluid-slider | `fluid_slider` 71/118 µs, 132 allocs; drag 70/152 µs; rests |  |
 | fluid-tab-interaction | `fluid_tab_interaction` 81/120 µs, 113 allocs; drag 158/409 µs; rests |  |
-| fractal-glass | `fractal_glass` 64/103 µs, 124 allocs; drag 71/122 µs; rests |  |
+| fractal-glass | `fractal_glass` 21/36 µs CPU, 11 allocs (all wgpu's); GPU 0.34 → 0.20 ms a frame (M-series), one pass, no offscreen target; untouched it draws 20 fps (the lights' drift), a finger or spring every frame |  |
 | geometry-button | `geometry_button` 420/446 µs, 37 allocs; drag 467/549 µs; rests |  |
 | github-contributions | `github_contributions` 19/26 µs, 10 allocs; rests | shadows (shadowPath: no pass) |
 | github-terrain | `github_terrain` 15/22 µs, 11 allocs; drag 19/38 µs; rests |  |
