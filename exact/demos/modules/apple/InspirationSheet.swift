@@ -10,7 +10,7 @@
 // The view itself is an empty box; the sheet is presented from the top-most view controller (the
 // full-screen demo route cannot present a dialog, LLP: showModal from it never appeared). Props:
 // `open` ("true" presents it, anything else dismisses it), `caption` (the title), `story`,
-// `label` (the action's). Events: `press` when the action is tapped (the route opens the URL and
+// `action-label` (the action's; Contract refuses `label` on a native tag). Events: `press` when the action is tapped (the route opens the URL and
 // closes the sheet), `change("dismissed")` when the person drags it away.
 #if os(iOS)
 import SwiftUI
@@ -80,7 +80,7 @@ final class InspirationSheet: ExactNativeInstance {
     override func setProps(_ props: [String: String]) throws {
         model.title = props["caption"].flatMap { $0.isEmpty ? nil : $0 } ?? "Inspiration"
         model.story = props["story"] ?? ""
-        model.label = props["label"] ?? ""
+        model.label = props["action-label"] ?? props["label"] ?? ""
         let open = props["open"] == "true"
         if open != wantsOpen {
             wantsOpen = open
