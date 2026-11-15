@@ -10,8 +10,15 @@ use DemoEnv from "../env.contract"
 component CoverflowCarousel
   props
     env: DemoEnv
+  // The strip's haptics (gpu/src/coverflow_carousel.rs, past RN): selection as the centred photo
+  // changes, rigid when the strip is pulled past an end.
+  action heard(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-rigid"
+      haptic("impact-rigid")
   view
     // index.tsx: white, the 250 pt coverflow box centred.
-    canvas surface=coverflow_carousel() position="absolute" top=0 left=0 width=env.width
+    canvas surface=coverflow_carousel() message=heard position="absolute" top=0 left=0 width=env.width
       height=env.height touch-action="none" testId="coverflow-carousel"
       aria-label="Photos: drag sideways"
