@@ -13,6 +13,9 @@ use RouteAlert from "../route-alert.contract"
 // container (marginTop 16, padding 16), the label (marginTop 8, 12 pt: 14.333 tall, marginBottom
 // 4), the input's marginTop 16; 20 pt: 23.87 tall, 24 on the pixel grid. x: 8 + 16.
 fn fieldTop(safeTop: number): number = safeTop + demoButtonRow() + 48 + 16 + 16 + 8 + 14.333 + 4 + 16
+// Under the glass header (phone feedback 2026-11-15): the container starts 16 under the glass
+// row (48 tall at the safe top), the screen's own row gone.
+fn fieldTopGlass(safeTop: number): number = safeTop + 48 + 16 + 16 + 8 + 14.333 + 4 + 16
 
 component GlTransitions
   props
@@ -34,6 +37,17 @@ component GlTransitions
   state empty = false
   // The surface takes the glass Back (it said `glass-back`).
   state glassReady = false
+  // The glass header (the surface said `glass-header`): the demo's + and check are glass
+  // buttons on the demo screen's row, left of the info button; the titles sit on that row.
+  state glassHeader = false
+  state adds = 0
+  state checks = 0
+  action addPressed
+    haptic("selection")
+    adds = adds + 1
+  action checkPressed
+    haptic("selection")
+    checks = checks + 1
   action emptySeen
     empty = false
   action heard(m: string)
@@ -42,6 +56,8 @@ component GlTransitions
       haptic("selection")
     if m == "glass-back"
       glassReady = true
+    if m == "glass-header"
+      glassHeader = true
     if m == "presented"
       field = true
       veiled = false
@@ -61,7 +77,7 @@ component GlTransitions
     text = v
   view
     column position="absolute" inset=0 background-color="#f0f0f0" testId="gl-transitions"
-      canvas surface=gl_transitions(env.safeTop, env.safeBottom, text, field, demoBacks, demoBackChrome) message=heard
+      canvas surface=gl_transitions(env.safeTop, env.safeBottom, text, field, demoBacks, demoBackChrome, adds, checks) message=heard
         position="absolute" top=0 left=0 width=env.width height=env.height touch-action="none"
         aria-label="Notes: + adds a note; the new note screen has close and save"
         testId="gl-transitions-canvas"
@@ -69,10 +85,19 @@ component GlTransitions
         // styles.inputText: fontSize 20, #333, selectionColor Palette.primary (#EB6439 in P3);
         // UIKit's own placeholder colour.
         input id="note-input" value=text input=typed placeholder="Write your ideas here..."
-          position="absolute" left=24 top=fieldTop(env.safeTop) width=(env.width - 48) height=24
+          position="absolute" left=24 top=(glassHeader ? fieldTopGlass(env.safeTop) : fieldTop(env.safeTop)) width=(env.width - 48) height=24
           font-size=20 color="#333333" caret-color="color(display-p3 0.92157 0.39216 0.22353)"
           background-color="transparent" border="none" padding=0 outline="none"
           opacity=(veiled ? 0 : 1) aria-label="Note" testId="note-input"
+      // The glass header's controls: + on the notes, the checkmark on the new note; on the demo
+      // screen's row, 8 left of the info button (right 16, 48 pt).
+      if glassHeader and demoBackChrome
+        if field
+          glass-button press=checkPressed caption="Save" symbol="checkmark" edge="trailing"
+            aria-label="Save" testId="gl-glass-check" position="absolute" top=env.safeTop right=72 width=48 height=48
+        else
+          glass-button press=addPressed caption="Add note" symbol="plus" edge="trailing"
+            aria-label="Add note" testId="gl-glass-add" position="absolute" top=env.safeTop right=72 width=48 height=48
       // Alert.alert('Empty Note', 'Please write something before saving'): its one OK.
       RouteAlert(shown=empty, title="Empty Note", message="Please write something before saving",
         cancelLabel="", confirm="OK", destructive=false, dismiss=emptySeen, accept=emptySeen,
