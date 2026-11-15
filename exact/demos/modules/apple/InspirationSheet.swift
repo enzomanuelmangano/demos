@@ -105,6 +105,12 @@ final class InspirationSheet: ExactNativeInstance {
         let events = self.events
         let host = UIHostingController(rootView: InspirationBody(model: model, action: { events.press() }))
         host.overrideUserInterfaceStyle = .dark
+        // iOS 26's sheet floats inset from the display's corners; its content keeps no safe area
+        // under it, so the action sits one inset (24) above the sheet's bottom edge, as on the
+        // sides, and its capsule (50 tall, radius 25) is concentric with the sheet's corners
+        // (their radius less the inset) and so with the display's (the owner's phone note: "See
+        // Post lower, concentric with the device"). RN's content kept the bottom safe area.
+        host.safeAreaRegions = []
         host.view.backgroundColor = .clear
         host.modalPresentationStyle = .pageSheet
         if let controller = host.sheetPresentationController {
