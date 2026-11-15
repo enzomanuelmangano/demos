@@ -19,10 +19,13 @@ component OnboardingCanvas
     height: number
   inject
     pressablesOnPress: action
-  // pressto's global onPress (the selection haptic) for a dot's press.
+  // pressto's global onPress (the selection haptic) for a dot's press; past RN, the same
+  // selection for each page a swipe turns, and a rigid impact as a drag hits either end.
   action heard(m: string)
     if m == "haptic:selection"
       pressablesOnPress()
+    if m == "haptic:impact-rigid"
+      haptic("impact-rigid")
   view
     canvas surface=github_onboarding() message=heard position="absolute" top=0 left=0
       width=width height=height touch-action="none" testId="github-onboarding"
