@@ -86,10 +86,12 @@ component AppIcon
         // The square the demo opens out of and closes into (DemoLaunch.swift). The long press lifts
         // this squircle alone, as SpringBoard lifts an icon: UIKit clips the lift to the node's own
         // corners, so the label and the cell's box would lift on black.
+        // No box-shadow, and circular (not continuous) corners on the artwork: with them every icon was an
+        // offscreen pass (Simulator > Debug > Color Off-screen Rendered: 25.8% of the screen, 4.0% now), which
+        // costs the GPU on each scroll and launch-zoom frame; the shadow was invisible on the dark wallpaper.
         view id=`icon-${demo.slug}` hatch="launch-icon" data-slug=demo.slug width=size height=size border-radius=(size * 0.2237) corner-shape="-exact-continuous"
           contextPopover=`menu-${demo.slug}`
-          box-shadow="0px 5px 9px rgba(27, 34, 51, 0.18)"
-          image demo.icon width=size height=size border-radius=(size * 0.2237) corner-shape="-exact-continuous"
+          image demo.icon width=size height=size border-radius=(size * 0.2237)
             overflow="hidden" background-color="#1c1c1e" object-fit="cover" aria-hidden=true
       // Badges over the icon's top-right corner, siblings of the button so the launch square and
       // the long-press lift stay the bare squircle. Orange: changed since the last open, shown
