@@ -3,7 +3,7 @@
 // oldest fades out upwards, each blurred by its own motion (gpu/src/motion_blur.rs).
 // RN: src/animations/motion-blur (src/index.tsx, utils/generate-random-item.ts,
 // components/blurred-list/index.tsx, components/list-item/index.tsx).
-use PressableScale from "pressto"
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
 use DemoEnv from "../env.contract"
 
 // blurred-list: LIST_ITEM_HEIGHT 90, LIST_ITEM_MARGIN_BOTTOM 20 (110 a row); maxVisibleItems 3.
@@ -12,12 +12,27 @@ fn maxVisible(): number = 3
 // The cards (items, layout, keyframes, spring, exit) are the surface's: gpu/src/motion_blur.rs.
 
 component MotionBlur
+  inject
+    pressto: PressablesConfig
   props
     env: DemoEnv
-  // The items added (item k has id k + 1).
+  // The presses of the + (each adds a card on press-down); the surface adds the burst's cards
+  // while it is held (past RN, the owner's ask: hold to fire in bursts).
   state count = 0
-  action addItem
+  state held = false
+  state pressing = pressNone()
+  action holdOn
+    pressing = pressDown(pressing, 0)
     count = count + 1
+    held = true
+    haptic("impact-light")
+  action holdOff
+    pressing = pressUp(pressing)
+    held = false
+  // The surface posts one per burst card.
+  action buzz(m: string)
+    if m == "haptic:impact-light"
+      haptic("impact-light")
   view
     // styles.container: #fff, flex 1, centred; styles.listContainer: flex 1, centred.
     column position="absolute" inset=0 background-color="#fff" justify-content="center"
@@ -26,19 +41,22 @@ component MotionBlur
         // BlurredList: maxVisibleItems × 110 tall, clipped.
         view height=(maxVisible() * rowHeight()) overflow="hidden" position="relative"
           testId="motion-blur-list"
-          // The cards, their motion and a real motion blur (a 180° shutter at 24 fps,
-          // integrated per pixel along each card's own motion): gpu/src/motion_blur.rs.
-          canvas surface=motion_blur(count, env.seed) width="100%"
-            height=(maxVisible() * rowHeight()) aria-hidden=true testId="motion-blur-canvas"
+          // The cards, their motion, the bursts and a real motion blur (a 360° shutter at 24
+          // fps, integrated per pixel along each card's own motion): gpu/src/motion_blur.rs.
+          canvas surface=motion_blur(count, env.seed, held) width="100%"
+            height=(maxVisible() * rowHeight()) message=buzz aria-hidden=true
+            testId="motion-blur-canvas"
         // styles.buttonContainer: centred, top -50.
         column align-items="center" position="relative" top=-50
           // styles.addButton: 64 × 64, black, radius 32; Entypo plus 40 white.
-          // A content-sized view for the press box (it fills its box): 64 × 64, centred.
+          // PressableScale's look (pressto's scale on press-in/out), but it adds on press-down
+          // and holds for the bursts until the lift (pointerup also ends a cancelled touch).
           view
-            PressableScale(press=addItem)
-              column width=64 height=64 border-radius=32
-                background-color="black" align-items="center" justify-content="center"
-                aria-label="Add an item" testId="add"
-                // Entypo "plus" 40: the vector-icons glyph (512 × 514 units of 512 to the em).
-                svg width=40 height=40.1562 viewBox="0 0 512 514" aria-hidden=true
-                  path d="M394 283H282V395Q282 405 275.5 408Q269 411 256 411Q243 411 236.5 408Q230 405 230 395V283H118Q108 283 105 276.5Q102 270 102 257Q102 244 105 237.5Q108 231 118 231H230V119Q230 109 236.5 106Q243 103 256 103Q269 103 275.5 106Q282 109 282 119V231H394Q404 231 407 237.5Q410 244 410 257Q410 270 407 276.5Q404 283 394 283Z" fill="white"
+            column width=64 height=64 border-radius=32 role="button"
+              background-color="black" align-items="center" justify-content="center"
+              pointerdown=holdOn pointerup=holdOff
+              scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
+              aria-label="Add an item" testId="add"
+              // Entypo "plus" 40: the vector-icons glyph (512 × 514 units of 512 to the em).
+              svg width=40 height=40.1562 viewBox="0 0 512 514" aria-hidden=true
+                path d="M394 283H282V395Q282 405 275.5 408Q269 411 256 411Q243 411 236.5 408Q230 405 230 395V283H118Q108 283 105 276.5Q102 270 102 257Q102 244 105 237.5Q108 231 118 231H230V119Q230 109 236.5 106Q243 103 256 103Q269 103 275.5 106Q282 109 282 119V231H394Q404 231 407 237.5Q410 244 410 257Q410 270 407 276.5Q404 283 394 283Z" fill="white"
