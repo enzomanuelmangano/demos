@@ -11,18 +11,21 @@
 //!   press of the full-screen PressableOpacity; the press is the app's (the input counts presses),
 //!   the stiffness solved from where the spring is, as Reanimated does at the animation's start.
 //!
-//! Per frame while it moves: one pass per card boundary (see blur_cards.wgsl) and one Blur of
-//! the canvas so far per card, as Skia runs each BackdropBlur on what is under it.
+//! Per frame while it moves: one full-screen pass over the blurred background. The backdrop
+//! blurs are analytic (blur_cards.wgsl): what they blur is the glow, which a σ-5 blur leaves as
+//! it is, and the cards' own edges, whose Gaussians are closed forms of their distances. The
+//! earlier port ran a full-resolution Gaussian of the canvas per card and six full-screen passes
+//! a frame (at 3× about 1.5 G texel reads a frame, far over a 120 Hz budget); this is one read
+//! of the background a pixel.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
 use reanimated::{duration_config, Spring};
-use skia::{point, stops, Canvas, Color, Matrix4, Paint, Renderer, Shader};
+use skia::{point, stops, Canvas, Color, Paint, Renderer, Shader};
 
 use crate::{gfx, shaders};
 use shaders::blur_cards::{entry, module, Pass, BG, BLURRED, CUR, GROUP_0, SMP, U};
 
-const CARDS: usize = 5;
 const CARD_W: f32 = 300.0;
 const CARD_H: f32 = 200.0;
 const LAYER: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
@@ -39,7 +42,6 @@ struct BlurCards {
     bg_layer: Canvas,
     bg_renderer: Renderer,
     bg_blur: skia::Blur,
-    blur: skia::Blur,
     gpu: Option<Gpu>,
 }
 
@@ -48,28 +50,11 @@ struct Gpu {
     generation: u32,
     size: (u32, u32),
     pass: wgpu::RenderPipeline,
-    /// The same pass writing the target.
-    last: wgpu::RenderPipeline,
     layout: wgpu::BindGroupLayout,
     sampler: wgpu::Sampler,
-    /// One per pass (the queue's writes all land before the frame's commands).
-    uniforms: Vec<wgpu::Buffer>,
-    /// The canvas so far, ping-ponged.
-    canvas: [wgpu::TextureView; 2],
+    uniforms: wgpu::Buffer,
     /// The background's source (before its blur).
     bg_source: wgpu::TextureView,
-}
-
-/// Card `index`'s group transform at `p`, about the window's centre (cx, cy).
-fn card_matrix(index: usize, p: f32, cx: f32, cy: f32) -> skia::Matrix3 {
-    use std::f32::consts::PI;
-    Matrix4::rotate_z(-PI / 2.0 * p)
-        .multiply(Matrix4::translate(25.0 * index as f32 * p, 0.0, 0.0))
-        .multiply(Matrix4::perspective(10000.0))
-        .multiply(Matrix4::rotate_y(PI / 3.0 * p))
-        .multiply(Matrix4::rotate_z(PI / 4.0 * p))
-        .pivot(cx, cy)
-        .to_matrix3()
 }
 
 impl Surface for BlurCards {
@@ -126,47 +111,33 @@ impl Surface for BlurCards {
         let gpu = self.gpu.as_ref().unwrap();
         let Some(bg) = self.bg_blur.output() else { return false };
         let p = self.progress.value as f32;
-        let sigma = (5.0 * p).max(0.0) * s;
-        let (cx, cy) = (w / 2.0, h / 2.0);
-        let rows = |i: usize| card_matrix(i, p, cx, cy).invert().unwrap_or(skia::Matrix3([0.0; 9])).rows();
-        let none = [[0.0f32; 4]; 3];
-        let srgb = gfx::srgb_flag(format);
-        // Pass k: card k − 1's backdrop blur ends, card k is drawn.
-        for k in 0..=CARDS {
-            let prev = if k > 0 { rows(k - 1) } else { none };
-            let next = if k < CARDS { rows(k) } else { none };
-            let last = k == CARDS;
-            let uniforms = Pass {
-                prev0: prev[0],
-                prev1: prev[1],
-                prev2: prev[2],
-                next0: next[0],
-                next1: next[1],
-                next2: next[2],
-                flags: [(k > 0) as u32 as f32, (k < CARDS) as u32 as f32, p, (k == 0) as u32 as f32],
-                canvas: [pw as f32, ph as f32, s, if last { srgb } else { 0.0 }],
-                rect: [cx, cy, CARD_W / 2.0, CARD_H / 2.0],
-            };
-            queue.write_buffer(&gpu.uniforms[k], 0, &uniforms.bytes());
-            let cur = &gpu.canvas[(k + 1) % 2];
-            let blurred = if k > 0 && sigma > 0.0 { self.blur.run(device, queue, encoder, cur, LAYER, pw, ph, sigma) } else { cur };
-            let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("blur cards"),
-                layout: &gpu.layout,
-                entries: &[
-                    wgpu::BindGroupEntry { binding: U.binding, resource: gpu.uniforms[k].as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: CUR.binding, resource: wgpu::BindingResource::TextureView(cur) },
-                    wgpu::BindGroupEntry { binding: BLURRED.binding, resource: wgpu::BindingResource::TextureView(blurred) },
-                    wgpu::BindGroupEntry { binding: BG.binding, resource: wgpu::BindingResource::TextureView(bg) },
-                    wgpu::BindGroupEntry { binding: SMP.binding, resource: wgpu::BindingResource::Sampler(&gpu.sampler) },
-                ],
-            });
-            if last {
-                skia::render::fullscreen_pass(encoder, "blur cards", target, &gpu.last, &bind);
-            } else {
-                skia::render::fullscreen_pass(encoder, "blur cards", &gpu.canvas[k % 2], &gpu.pass, &bind);
-            }
-        }
+        // The cards' transforms, σ and the stroke's opacity are the shader's, from p.
+        let none = [0.0f32; 4];
+        let uniforms = Pass {
+            prev0: none,
+            prev1: none,
+            prev2: none,
+            next0: none,
+            next1: none,
+            next2: none,
+            flags: [0.0, 0.0, p, 1.0],
+            canvas: [pw as f32, ph as f32, s, gfx::srgb_flag(format)],
+            rect: [w / 2.0, h / 2.0, CARD_W / 2.0, CARD_H / 2.0],
+        };
+        queue.write_buffer(&gpu.uniforms, 0, &uniforms.bytes());
+        // `cur` and `blurred` are the earlier multi-pass driver's; the background stands in.
+        let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("blur cards"),
+            layout: &gpu.layout,
+            entries: &[
+                wgpu::BindGroupEntry { binding: U.binding, resource: gpu.uniforms.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: CUR.binding, resource: wgpu::BindingResource::TextureView(bg) },
+                wgpu::BindGroupEntry { binding: BLURRED.binding, resource: wgpu::BindingResource::TextureView(bg) },
+                wgpu::BindGroupEntry { binding: BG.binding, resource: wgpu::BindingResource::TextureView(bg) },
+                wgpu::BindGroupEntry { binding: SMP.binding, resource: wgpu::BindingResource::Sampler(&gpu.sampler) },
+            ],
+        });
+        skia::render::fullscreen_pass(encoder, "blur cards", target, &gpu.pass, &bind);
         moving
     }
 }
@@ -174,22 +145,15 @@ impl Surface for BlurCards {
 fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32, size: (u32, u32)) -> Gpu {
     let shader = device.create_shader_module(module());
     let layout = device.create_bind_group_layout(&GROUP_0);
-    let pass = skia::render::fullscreen_pipeline(device, &shader, &layout, entry::CARD_PASS, LAYER, None);
-    let last = skia::render::fullscreen_pipeline(device, &shader, &layout, entry::CARD_PASS, format, None);
-    let view = |label| skia::render::sampled_target(device, label, LAYER, size.0, size.1);
     Gpu {
         format,
         generation,
         size,
-        pass,
-        last,
+        pass: skia::render::fullscreen_pipeline(device, &shader, &layout, entry::CARD_PASS, format, None),
         layout,
         sampler: skia::render::linear_sampler(device),
-        uniforms: (0..=CARDS)
-            .map(|_| device.create_buffer(&wgpu::BufferDescriptor { label: Some("blur cards"), size: Pass::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false }))
-            .collect(),
-        canvas: [view("blur cards a"), view("blur cards b")],
-        bg_source: view("blur cards background"),
+        uniforms: device.create_buffer(&wgpu::BufferDescriptor { label: Some("blur cards"), size: Pass::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false }),
+        bg_source: skia::render::sampled_target(device, "blur cards background", LAYER, size.0, size.1),
     }
 }
 
