@@ -541,24 +541,39 @@ fn cell(p: vec2<f32>) -> vec3<f32> {
 const TICKS_WGSL: &str = r#"
 struct Tick { a: vec4<f32>, color: vec4<f32> };
 struct U {
-    // canvas (points), srgb
+    // canvas (points), srgb, pixels per point
     a: vec4<f32>,
     ticks: array<Tick, 201>,
 };
 @group(0) @binding(0) var<uniform> u: U;
 
-struct V { @builtin(position) pos: vec4<f32>, @location(0) @interpolate(flat) color: vec4<f32> };
+struct V {
+    @builtin(position) pos: vec4<f32>,
+    @location(0) @interpolate(flat) color: vec4<f32>,
+    // The point in the tick's own frame (points, from its centre), and its half size.
+    @location(1) local: vec2<f32>,
+    @location(2) @interpolate(flat) half: vec2<f32>,
+};
 
-// A tick: centre (a.xy), angle a.z, height a.w, 1.5 wide; aliased (Core Animation's edges).
+// A tick: centre (a.xy), angle a.z, height a.w, 1.5 wide. RN turns each tick's view with a
+// rotate, and RCTViewComponentView switches `allowsEdgeAntialiasing` on for any transform with
+// m12 / m21 ≠ 0 (every tick, and the ring under them): Core Animation's edges are antialiased,
+// a coverage ramp one device pixel wide across each edge. Drawn here the same way: the quad
+// grows by a pixel each side and the fragment takes the pixel's coverage along both axes of the
+// tick's frame (a turn keeps distances).
 @vertex fn vs(@builtin(vertex_index) i: u32, @builtin(instance_index) id: u32) -> V {
     let t = u.ticks[id];
     let w = select(1.5, 3.0, id == 200u);
-    let local = vec2<f32>((f32(i & 1u) - 0.5) * w, (f32(i >> 1u) - 0.5) * t.a.w);
+    let half = vec2<f32>(w, t.a.w) * 0.5;
+    let grow = 1.0 / max(u.a.w, 1.0);
+    let local = (vec2<f32>(f32(i & 1u), f32(i >> 1u)) * 2.0 - 1.0) * (half + vec2<f32>(grow));
     let cs = vec2<f32>(cos(t.a.z), sin(t.a.z));
     let p = t.a.xy + vec2<f32>(local.x * cs.x - local.y * cs.y, local.x * cs.y + local.y * cs.x);
     var o: V;
     o.pos = vec4<f32>(2.0 * p.x / u.a.x - 1.0, 1.0 - 2.0 * p.y / u.a.y, 0.0, 1.0);
     o.color = t.color;
+    o.local = local;
+    o.half = half;
     return o;
 }
 fn lin(c: vec3<f32>) -> vec3<f32> {
@@ -567,7 +582,10 @@ fn lin(c: vec3<f32>) -> vec3<f32> {
 @fragment fn fs(v: V) -> @location(0) vec4<f32> {
     var c = v.color;
     if (u.a.z > 0.5) { c = vec4<f32>(lin(c.rgb), c.a); }
-    return vec4<f32>(c.rgb * c.a, c.a);
+    // The pixel's coverage: its distance inside each pair of edges, in device pixels, + 0.5.
+    let inside = clamp((v.half - abs(v.local)) * u.a.w + vec2<f32>(0.5), vec2<f32>(0.0), vec2<f32>(1.0));
+    let a = c.a * inside.x * inside.y;
+    return vec4<f32>(c.rgb * a, a);
 }
 "#;
 
@@ -842,6 +860,7 @@ impl Surface for Pomodoro {
         t[0] = frame.width;
         t[1] = frame.height;
         t[2] = gfx::srgb_flag(format);
+        t[3] = frame.scale;
         let (small, big) = (self.small.color().0, self.big.color().0);
         for i in 0..LINES {
             let a = 2.0 * std::f64::consts::PI / LINES as f64 * i as f64;
@@ -915,6 +934,13 @@ mod tests {
         // The orange indicator over the ring's top (x 210, y 912 − 140 − 280 − 20 + 4).
         let ind = rest.at(3 * 210, 3 * 478);
         assert!(ind[0] > 200 && ind[2] < 80, "{ind:?}");
+        // The tick right of the top one (1.8°, centre x 218.8, y 492.1): its edges are
+        // antialiased, as Core Animation's are under RN's rotate (allowsEdgeAntialiasing), so
+        // a row across it has partial pixels between black and its full grey, not only the two.
+        let row: Vec<u8> = (640..676).map(|x| rest.at(x, 3 * 492)[0]).collect();
+        let full = *row.iter().max().unwrap();
+        assert!(full > 60, "{row:?}");
+        assert!(row.iter().any(|&v| v > 8 && v + 8 < full), "{row:?}");
 
         // Drag left 100 pt slowly in the lower half, then lift still.
         let p = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 700.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
