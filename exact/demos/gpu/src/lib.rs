@@ -145,7 +145,7 @@ pub static REGISTRY: Registry = Registry {
         ("art_gallery", 2, art_gallery::surface),
         ("atlas_button", 1, atlas_button::surface),
         ("atlas_sphere", 0, atlas_sphere::surface),
-        ("audio_player", 1, audio_player::surface),
+        ("audio_player", 7, audio_player::surface),
         ("balance_slider", 0, balance_slider::surface),
         ("bezier_curve_outline", 2, bezier_curve_outline::surface),
         ("blur_cards", 1, blur_cards::surface),

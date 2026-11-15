@@ -90,6 +90,7 @@ pub fn surface() -> Box<dyn Surface> {
         scale_target: [None; N],
         canvas: Canvas::default(),
         renderer: Renderer::default(),
+        card: None,
     })
 }
 
@@ -117,6 +118,8 @@ struct AudioPlayer {
     scale_target: [Option<f64>; N],
     canvas: Canvas,
     renderer: Renderer,
+    /// The music player's waveform (the second input is `"card"`): see `Card`.
+    card: Option<Box<Card>>,
 }
 
 /// pickNValuesFromDistribution(0, √½, n), then normalizeArray.
@@ -269,7 +272,13 @@ impl AudioPlayer {
 }
 
 impl Surface for AudioPlayer {
-    fn bind(&mut self, inputs: &[Value], _: Option<f64>) -> Result<(), SurfaceError> {
+    fn bind(&mut self, inputs: &[Value], at_ms: Option<f64>) -> Result<(), SurfaceError> {
+        if inputs.get(1).and_then(|v| v.as_str()) == Some("card") {
+            let seed = inputs.first().and_then(|v| v.as_number()).unwrap_or(0.0);
+            let card = self.card.get_or_insert_with(|| Box::new(Card::new(seed)));
+            card.bind(inputs, at_ms);
+            return Ok(());
+        }
         let seed = inputs.first().and_then(|v| v.as_number()).unwrap_or(0.0);
         if self.seed != Some(seed) {
             self.seed = Some(seed);
@@ -280,7 +289,16 @@ impl Surface for AudioPlayer {
     }
 
     fn opaque(&self) -> bool {
-        true
+        // Asked before the first bind, when the mode is not known yet: the card's waveform is
+        // transparent over the glass (the legacy demo fills its frame anyway).
+        false
+    }
+
+    fn messages(&mut self) -> Vec<String> {
+        match self.card.as_mut() {
+            Some(card) => std::mem::take(&mut card.posted),
+            None => Vec::new(),
+        }
     }
 
     fn wants_input(&self) -> bool {
@@ -288,6 +306,9 @@ impl Surface for AudioPlayer {
     }
 
     fn agent(&mut self, _request: &str) -> Option<String> {
+        if let Some(card) = self.card.as_ref() {
+            return Some(card.agent());
+        }
         Some(format!(
             "{{\"time\":\"{}\",\"x\":{:.2},\"dragging\":{},\"held\":{}}}",
             self.label(),
@@ -298,6 +319,10 @@ impl Surface for AudioPlayer {
     }
 
     fn input(&mut self, event: &InputEvent) {
+        if let Some(card) = self.card.as_mut() {
+            card.input(event);
+            return;
+        }
         let InputEvent::Pointer {
             id,
             phase,
@@ -354,6 +379,9 @@ impl Surface for AudioPlayer {
         target: &wgpu::TextureView,
         format: wgpu::TextureFormat,
     ) -> bool {
+        if let Some(card) = self.card.as_mut() {
+            return card.render(frame, device, queue, encoder, target, format);
+        }
         if self.width != frame.width
             || self.height != frame.height
             || self.pixel_scale != frame.scale
@@ -473,6 +501,406 @@ impl Surface for AudioPlayer {
     }
 }
 
+// ---------------------------------------------------------------------------------------------
+// The music player (the owner's phone note: "migliora il layout, Liquid Glass, musica vera,
+// play/pausa, haptics sul pan"). audio-player.contract lays out the card (artwork, title, glass
+// controls) and passes `audio_player(seed, "card", playing, duration, skip, wave, sync)`; this
+// surface draws only the waveform and the two times, transparent, in its own frame, and owns
+// the playhead so nothing commits per frame:
+//
+// - inputs: `playing` (bool), `duration` (seconds as text; "" until the `audio-track` native
+//   view has read the file: NOMINAL), `skip` ("<token>:<seconds>", a new token moves the
+//   playhead by that much), `wave` (50 comma-separated levels 0…1 the native view measured
+//   from the file; "" keeps the seed's waveform), `sync` ("<token>:<seconds>", the player's
+//   own clock about twice a second: a drift over 0.25 s is corrected, not within 0.8 s of a
+//   seek of ours, whose answer may still be on the way).
+// - messages: "audio-player:2" at the first bind (the Contract switches from the legacy
+//   frame), "haptic:grab" at touch-down on the waveform, "haptic:tick" each bar the finger
+//   crosses (at most one per 28 ms), "haptic:release" at the lift, "seek:<s>" when a scrub or a
+//   skip moves the playhead, "ended" when it reaches the end while playing.
+// - the bars: RN's look kept: played at full opacity, the rest at 0.35, each change over
+//   300 ms inOut(quad); while a finger is down RN's scales (1.4 near it, 0.9 played, 0.7 ahead)
+//   on the gentle spring; a new waveform grows each bar's height on the same spring.
+
+/// The length shown before the file has reported its own (no file: the UI still plays).
+const NOMINAL: f64 = 180.0;
+/// The waveform's band and the times' line below it, in the surface's frame (points).
+const WAVE_H: f32 = 52.0;
+const CARD_BAR_W: f32 = 3.0;
+const CARD_BAR_MAX: f32 = 44.0;
+const TIME_GAP: f32 = 8.0;
+const AHEAD_OPACITY: f64 = 0.35;
+/// The finger's halo: bars within this many points of it grow (RN: 20).
+const HALO: f64 = 20.0;
+const TICK_MIN_MS: f64 = 28.0;
+const SYNC_TOLERANCE: f64 = 0.25;
+const SYNC_QUIET_MS: f64 = 800.0;
+
+struct Card {
+    seed_values: [f64; N],
+    wave_text: String,
+    height: [Spring; N],
+    opacity: [Timing; N],
+    opacity_target: [Option<f64>; N],
+    scale: [Spring; N],
+    scale_target: [Option<f64>; N],
+    font: Option<Font>,
+    playing: bool,
+    duration: f64,
+    /// The playhead: `base` seconds at `since` (ms), running while `since` is some.
+    base: f64,
+    since: Option<f64>,
+    /// A play asked for before a clock was known: started at the next frame.
+    start_pending: bool,
+    skip_token: Option<String>,
+    sync_token: Option<String>,
+    quiet_until: f64,
+    dragging: bool,
+    pan: PanGesture,
+    last_bar: Option<usize>,
+    last_tick: f64,
+    now: f64,
+    width: f32,
+    posted: Vec<String>,
+    announced: bool,
+    canvas: Canvas,
+    renderer: Renderer,
+}
+
+/// "m:ss".
+fn clock(seconds: f64) -> String {
+    let s = seconds.max(0.0).floor() as u64;
+    format!("{}:{:02}", s / 60, s % 60)
+}
+
+/// "<token>:<value>" → (token, value).
+fn tokened(text: &str) -> Option<(&str, f64)> {
+    let (token, value) = text.split_once(':')?;
+    let value: f64 = value.trim().parse().ok()?;
+    value.is_finite().then_some((token, value))
+}
+
+impl Card {
+    fn new(seed: f64) -> Card {
+        let values = waveform(seed);
+        Card {
+            seed_values: values,
+            wave_text: String::new(),
+            height: std::array::from_fn(|i| Spring::at(values[i])),
+            opacity: std::array::from_fn(|_| Timing::at(AHEAD_OPACITY)),
+            opacity_target: [None; N],
+            scale: [Spring::at(1.0); N],
+            scale_target: [None; N],
+            font: skia::match_ui_font(12.0, 600.0),
+            playing: false,
+            duration: NOMINAL,
+            base: 0.0,
+            since: None,
+            start_pending: false,
+            skip_token: None,
+            sync_token: None,
+            quiet_until: f64::MIN,
+            dragging: false,
+            pan: PanGesture::new(),
+            last_bar: None,
+            last_tick: f64::MIN,
+            now: 0.0,
+            width: 0.0,
+            posted: Vec::new(),
+            announced: false,
+            canvas: Canvas::default(),
+            renderer: Renderer::default(),
+        }
+    }
+
+    /// The playhead at `now` (seconds), held at the end.
+    fn position(&self, now: f64) -> f64 {
+        let at = match self.since {
+            Some(since) => self.base + (now - since).max(0.0) / 1000.0,
+            None => self.base,
+        };
+        at.clamp(0.0, self.duration)
+    }
+
+    /// Moves the playhead to `seconds` at `now`, still running if it was.
+    fn place(&mut self, seconds: f64, now: f64) {
+        self.base = seconds.clamp(0.0, self.duration);
+        if self.since.is_some() {
+            self.since = Some(now);
+        }
+    }
+
+    fn seek_posted(&mut self, now: f64) {
+        let at = self.position(now);
+        self.posted.push(format!("seek:{at:.3}"));
+        self.quiet_until = now + SYNC_QUIET_MS;
+    }
+
+    fn bind(&mut self, inputs: &[Value], at_ms: Option<f64>) {
+        if !self.announced {
+            self.announced = true;
+            self.posted.push("audio-player:2".into());
+        }
+        let now = at_ms.unwrap_or(self.now).max(self.now);
+        self.now = now;
+        let text = |i: usize| inputs.get(i).and_then(|v| v.as_str()).unwrap_or("");
+        let duration = text(3)
+            .trim()
+            .parse::<f64>()
+            .ok()
+            .filter(|d| d.is_finite() && *d > 0.5)
+            .unwrap_or(NOMINAL);
+        if duration != self.duration {
+            let at = self.position(now);
+            self.duration = duration;
+            self.place(at, now);
+        }
+        let wave = text(5);
+        if wave != self.wave_text {
+            self.wave_text = wave.to_string();
+            let levels: Vec<f64> = wave
+                .split(',')
+                .filter_map(|v| v.trim().parse::<f64>().ok())
+                .filter(|v| v.is_finite())
+                .collect();
+            let target: [f64; N] = if levels.len() == N {
+                std::array::from_fn(|i| levels[i].clamp(0.0, 1.0))
+            } else {
+                self.seed_values
+            };
+            for (spring, to) in self.height.iter_mut().zip(target) {
+                spring.retarget(to, GENTLE);
+            }
+        }
+        let playing = inputs.get(2).and_then(|v| v.as_bool()).unwrap_or(false);
+        if playing != self.playing {
+            self.playing = playing;
+            if playing {
+                if self.position(now) >= self.duration - 0.05 {
+                    // Play at the end starts over.
+                    self.base = 0.0;
+                    self.posted.push("seek:0".into());
+                    self.quiet_until = now + SYNC_QUIET_MS;
+                }
+                if !self.dragging {
+                    match at_ms {
+                        Some(at) => self.since = Some(at),
+                        None => self.start_pending = true,
+                    }
+                }
+            } else {
+                self.base = self.position(now);
+                self.since = None;
+                self.start_pending = false;
+            }
+        }
+        if let Some((token, by)) = tokened(text(4)) {
+            if self.skip_token.as_deref() != Some(token) {
+                let first = self.skip_token.is_none();
+                self.skip_token = Some(token.to_string());
+                // The value at mount is no press.
+                if !first && !self.dragging {
+                    let at = self.position(now) + by;
+                    self.place(at, now);
+                    self.seek_posted(now);
+                }
+            }
+        }
+        if let Some((token, at)) = tokened(text(6)) {
+            if self.sync_token.as_deref() != Some(token) {
+                self.sync_token = Some(token.to_string());
+                if self.playing
+                    && !self.dragging
+                    && now >= self.quiet_until
+                    && (at - self.position(now)).abs() > SYNC_TOLERANCE
+                {
+                    self.place(at, now);
+                }
+            }
+        }
+    }
+
+    fn agent(&self) -> String {
+        format!(
+            "{{\"mode\":\"card\",\"at\":{:.2},\"duration\":{:.2},\"playing\":{},\"dragging\":{},\"held\":{}}}",
+            self.position(self.now),
+            self.duration,
+            self.playing,
+            self.dragging,
+            self.pan.tracking()
+        )
+    }
+
+    fn scrub_to(&mut self, x: f32, now: f64) {
+        if self.width <= 0.0 {
+            return;
+        }
+        let f = (x / self.width).clamp(0.0, 1.0) as f64;
+        self.base = f * self.duration;
+        let bar = ((f * N as f64).floor() as usize).min(N - 1);
+        if self.last_bar != Some(bar) {
+            if self.last_bar.is_some() && now - self.last_tick >= TICK_MIN_MS {
+                self.posted.push("haptic:tick".into());
+                self.last_tick = now;
+            }
+            self.last_bar = Some(bar);
+        }
+    }
+
+    fn input(&mut self, event: &InputEvent) {
+        let InputEvent::Pointer {
+            id,
+            phase,
+            x,
+            y,
+            at_ms,
+            ..
+        } = *event
+        else {
+            return;
+        };
+        self.now = self.now.max(at_ms);
+        match self.pan.event(id, gfx::phase(phase), x, y, at_ms, true) {
+            Event::Begin { x, .. } => {
+                self.dragging = true;
+                self.since = None;
+                self.start_pending = false;
+                self.last_bar = None;
+                self.posted.push("haptic:grab".into());
+                self.scrub_to(x, at_ms);
+            }
+            Event::Start(p) | Event::Update(p) => {
+                if self.dragging {
+                    self.scrub_to(p.x, at_ms);
+                }
+            }
+            Event::End(_) | Event::Fail => {
+                if self.dragging {
+                    self.dragging = false;
+                    self.posted.push("haptic:release".into());
+                    self.seek_posted(at_ms);
+                    if self.playing && self.base < self.duration {
+                        self.since = Some(at_ms);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn render(
+        &mut self,
+        frame: &Frame,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        encoder: &mut wgpu::CommandEncoder,
+        target: &wgpu::TextureView,
+        format: wgpu::TextureFormat,
+    ) -> bool {
+        let now = frame.now_ms;
+        self.now = now;
+        self.width = frame.width;
+        if self.start_pending {
+            self.start_pending = false;
+            if self.playing && !self.dragging {
+                self.since = Some(now);
+            }
+        }
+        if self.since.is_some() && self.position(now) >= self.duration {
+            self.base = self.duration;
+            self.since = None;
+            self.posted.push("ended".into());
+        }
+        let at = self.position(now);
+        let w = frame.width as f64;
+        let x = if self.duration > 0.0 {
+            at / self.duration * w
+        } else {
+            0.0
+        };
+        let pitch = w / N as f64;
+        let mut moving = self.since.is_some() || self.pan.tracking();
+        for i in 0..N {
+            self.opacity[i].step(now);
+            self.scale[i].step(now);
+            // The bar's own centre: played once the playhead has reached it.
+            let centre = pitch * (i as f64 + 0.5);
+            let played = x >= centre;
+            let opacity = if played { 1.0 } else { AHEAD_OPACITY };
+            match self.opacity_target[i] {
+                None => self.opacity[i].set(opacity),
+                Some(t) if t != opacity => {
+                    self.opacity[i].to(opacity, 300.0, Easing::timing_default())
+                }
+                _ => {}
+            }
+            self.opacity_target[i] = Some(opacity);
+            let scale = if !self.dragging {
+                1.0
+            } else if (x - centre).abs() < HALO && played {
+                1.4
+            } else if played {
+                0.9
+            } else {
+                0.7
+            };
+            match self.scale_target[i] {
+                None => self.scale[i].set(scale),
+                Some(t) if t != scale => self.scale[i].retarget(scale, GENTLE),
+                _ => {}
+            }
+            self.scale_target[i] = Some(scale);
+            moving |= self.opacity[i].step(now);
+            moving |= self.scale[i].step(now);
+            moving |= self.height[i].step(now);
+        }
+
+        let c = &mut self.canvas;
+        c.begin(frame.scale);
+        let snap = |v: f32| (v * frame.scale).round() / frame.scale;
+        let mid = WAVE_H / 2.0;
+        for i in 0..N {
+            let h = (CARD_BAR_MAX as f64 * self.height[i].value.max(0.08)) as f32;
+            let cx = snap((pitch * (i as f64 + 0.5)) as f32 - CARD_BAR_W / 2.0) + CARD_BAR_W / 2.0;
+            c.save();
+            c.translate(cx, mid);
+            c.scale(1.0, self.scale[i].value as f32);
+            c.draw_rrect(
+                -CARD_BAR_W / 2.0,
+                -h / 2.0,
+                CARD_BAR_W,
+                h,
+                (CARD_BAR_W / 2.0).min(h / 2.0),
+                &Paint::fill(Color::WHITE).with_opacity(self.opacity[i].value as f32),
+            );
+            c.restore();
+        }
+        if let Some(font) = self.font.as_ref() {
+            let alpha = if self.dragging { 0.9 } else { 0.6 };
+            let paint = Paint::fill(Color::WHITE).with_opacity(alpha);
+            let baseline = gfx::baseline(font, WAVE_H + TIME_GAP);
+            let elapsed = clock(at);
+            let remaining = format!("-{}", clock((self.duration - at).max(0.0).ceil()));
+            c.draw_text(&elapsed, 0.0, baseline, font, &paint);
+            let rw = font.advance_width(&remaining);
+            c.draw_text(&remaining, frame.width - rw, baseline, font, &paint);
+        }
+        let (pw, ph) = frame.pixels();
+        self.renderer.draw(
+            device,
+            queue,
+            encoder,
+            &self.canvas,
+            target,
+            format,
+            pw,
+            ph,
+            wgpu::Color::TRANSPARENT,
+        );
+        moving
+    }
+}
+
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
@@ -559,5 +987,125 @@ mod tests {
         let (_, moving) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         assert!(!moving, "it stops at the end");
         assert!(s.agent("{}").unwrap().contains("\"time\":\"0:22\""));
+    }
+
+    #[test]
+    fn the_card_plays_scrubs_and_skips() {
+        let gpu = match fixture::device() {
+            Ok(gpu) => gpu,
+            Err(error) => return eprintln!("{error}; skipped"),
+        };
+        let frame = |now_ms| Frame {
+            width: 320.0,
+            height: 80.0,
+            scale: 3.0,
+            now_ms,
+            seekable: true,
+            period_ms: 0.0,
+            children_generation: 0,
+            shader_generation: 0,
+            headroom: 1.0,
+        };
+        let text = |t: &str| Value::from(t.to_string());
+        let inputs = |playing: bool, duration: &str, skip: &str, sync: &str| {
+            vec![
+                Value::Number(7.0),
+                text("card"),
+                Value::Bool(playing),
+                text(duration),
+                text(skip),
+                text(""),
+                text(sync),
+            ]
+        };
+        let at = |s: &mut Box<dyn Surface>| -> f64 {
+            let a = s.agent("{}").unwrap();
+            let i = a.find("\"at\":").unwrap() + 5;
+            a[i..].split(',').next().unwrap().parse().unwrap()
+        };
+        let mut s = surface();
+        s.bind(&inputs(false, "", "0:0", "0:0"), Some(0.0)).unwrap();
+        assert_eq!(s.messages(), vec!["audio-player:2".to_string()]);
+        let (still, moving) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
+        still.save("audio-player-card");
+        assert!(!moving, "paused, nothing moves");
+        assert!(s.agent("{}").unwrap().contains("\"duration\":180.00"));
+        // Transparent between the bars.
+        assert_eq!(still.at(1, 1)[3], 0);
+
+        // The file's length, then play for 2 s.
+        s.bind(&inputs(true, "200.5", "0:0", "0:0"), Some(100.0))
+            .unwrap();
+        let (_, moving) = fixture::render(&gpu, s.as_mut(), &frame(2100.0)).unwrap();
+        assert!(moving);
+        assert!(
+            (at(&mut s) - 2.0).abs() < 0.01,
+            "{}",
+            s.agent("{}").unwrap()
+        );
+        // A skip of +15.
+        s.bind(&inputs(true, "200.5", "1:15", "0:0"), Some(2100.0))
+            .unwrap();
+        assert_eq!(s.messages(), vec!["seek:17.000".to_string()]);
+        // The player's clock 1 s behind is not trusted right after our seek...
+        s.bind(&inputs(true, "200.5", "1:15", "1:16"), Some(2200.0))
+            .unwrap();
+        assert!((at(&mut s) - 17.1).abs() < 0.01);
+        // ...but later it corrects the drift.
+        s.bind(&inputs(true, "200.5", "1:15", "2:30"), Some(4000.0))
+            .unwrap();
+        fixture::render(&gpu, s.as_mut(), &frame(4000.0)).unwrap();
+        assert!(
+            (at(&mut s) - 30.0).abs() < 0.01,
+            "{}",
+            s.agent("{}").unwrap()
+        );
+
+        // A scrub: grab at the middle, across a few bars, lift.
+        let pointer = |phase, x: f32, at_ms| InputEvent::Pointer {
+            id: 1,
+            phase,
+            x,
+            y: 26.0,
+            dx: 0.0,
+            dy: 0.0,
+            kind: PointerKind::Touch,
+            buttons: 1,
+            at_ms,
+        };
+        s.input(&pointer(PointerPhase::Down, 160.0, 4000.0));
+        let mut ms = 4000.0;
+        for k in 1..=10 {
+            ms += 50.0;
+            s.input(&pointer(PointerPhase::Move, 160.0 + k as f32 * 8.0, ms));
+        }
+        let (held, _) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+        held.save("audio-player-card-held");
+        assert!(s.agent("{}").unwrap().contains("\"dragging\":true"));
+        s.input(&pointer(PointerPhase::Up, 240.0, ms));
+        let messages = s.messages();
+        assert_eq!(messages.first().map(String::as_str), Some("haptic:grab"));
+        let ticks = messages.iter().filter(|m| *m == "haptic:tick").count();
+        assert!(ticks >= 8, "{messages:?}");
+        assert_eq!(
+            &messages[messages.len() - 2..],
+            &["haptic:release".to_string(), "seek:150.375".to_string()]
+        );
+        // Still playing from there.
+        fixture::render(&gpu, s.as_mut(), &frame(ms + 1000.0)).unwrap();
+        assert!(
+            (at(&mut s) - 151.375).abs() < 0.01,
+            "{}",
+            s.agent("{}").unwrap()
+        );
+        // It ends, and play again starts over.
+        fixture::render(&gpu, s.as_mut(), &frame(ms + 60_000.0)).unwrap();
+        assert!(s.messages().contains(&"ended".to_string()));
+        s.bind(&inputs(false, "200.5", "1:15", "2:30"), Some(ms + 60_000.0))
+            .unwrap();
+        s.bind(&inputs(true, "200.5", "1:15", "2:30"), Some(ms + 61_000.0))
+            .unwrap();
+        assert_eq!(s.messages(), vec!["seek:0".to_string()]);
+        assert!(at(&mut s) < 0.01);
     }
 }

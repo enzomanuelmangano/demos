@@ -1,15 +1,136 @@
-// Audio Player: a 22 s waveform of fifty bars that plays itself; a finger on it scrubs, the
-// bars near the finger grow and the time follows. RN: src/animations/audio-player (index.tsx,
-// constants.ts, helpers/, components/waveform-scrubber). The pills, the scrubber, the bars,
-// their springs and timings, the time label and the pan are Rust: gpu/src/audio_player.rs
-// (styles.container's #1D1B2B, the whole window). The waveform is random (Math.random()): the
-// launch's seed picks it.
-use DemoEnv from "../env.contract"
+// Audio Player, redesigned from the owner's phone note ("migliora il layout, magari Liquid Glass,
+// musica vera di Hania Rani 'Run', config per pausa e play, haptics sul pan"). RN's original
+// (src/animations/audio-player) is the waveform of fifty bars that a finger scrubs; here it sits
+// in an iOS 26 now-playing screen: the artwork, then a liquid-glass card with the title and
+// artist, the waveform with its two times, and glass controls (back 15 s, play / pause,
+// forward 15 s).
+//
+// Who does what, so nothing commits per frame:
+// - The waveform, its times, the playhead's clock and the scrub are Rust: gpu/src/audio_player.rs
+//   in card mode (the second input is "card"). It posts "haptic:grab" / "haptic:tick" (each bar
+//   the finger crosses) / "haptic:release", "seek:<s>" when a scrub or skip moves the playhead,
+//   "ended", and "audio-player:2" at mount. A build older than card mode posts nothing and
+//   draws RN's demo (pills, purple row, a 22 s loop) over the whole frame: until it says
+//   "audio-player:2" the canvas is laid out so that only RN's purple row shows, clipped.
+// - The sound is the `audio-track` native view (modules/apple/AudioTrack.swift): the bundled
+//   assets/audio/track.m4a (not in git: the owner adds it) on AVAudioPlayer, `.playback` while it
+//   plays. It answers "ready:<s>", "wave:<50 levels>", "time:<s>", "ended:", "paused:",
+//   "missing:<file>". Without the file (or before the build that ships the tag) the UI plays
+//   on a nominal 3:00, silently.
+use DemoEnv, demoButtonRow from "../env.contract"
+
+fn trackTitle(): string = "Run"
+fn trackArtist(): string = "Hania Rani"
+
+// The card's insets: the screen's 20 and the card's own 22.
+fn audioSideInset(): number = 20
+fn audioCardInset(): number = 22
+// The waveform's slot: the bars (52) and the times under them.
+fn audioSlotHeight(): number = 80
 
 component AudioPlayer
   props
     env: DemoEnv
+  // The surface speaks card mode (a build with it).
+  state cardMode = false
+  state playing = false
+  // From `audio-track`: the file's length, its 50 levels, its clock ("<n>:<s>").
+  state duration = ""
+  state wave = ""
+  state sync = ""
+  state syncN = 0
+  // To the surface: the ±15 s buttons ("<n>:<seconds>").
+  state skip = "0:0"
+  state skipN = 0
+  // To `audio-track`: where the playhead went ("<n>:<s>").
+  state seek = "0:0"
+  state seekN = 0
+  action heard(m: string)
+    if m == "audio-player:2"
+      cardMode = true
+    if m == "haptic:grab"
+      haptic("impact-light")
+    if m == "haptic:tick"
+      haptic("selection")
+    if m == "haptic:release"
+      haptic("impact-soft")
+    if m == "ended"
+      playing = false
+    if m.startsWith("seek:")
+      seekN = seekN + 1
+      seek = `${seekN}:${m.slice(5)}`
+  action track(m: string)
+    if m.startsWith("ready:")
+      duration = m.slice(6)
+    if m.startsWith("wave:")
+      wave = m.slice(5)
+    if m.startsWith("time:")
+      syncN = syncN + 1
+      sync = `${syncN}:${m.slice(5)}`
+    if m == "ended:" or m == "paused:"
+      playing = false
+  action toggle
+    playing = not playing
+  action back
+    skipN = skipN + 1
+    skip = `${skipN}:-15`
+  action ahead
+    skipN = skipN + 1
+    skip = `${skipN}:15`
+  derive top = env.safeTop + demoButtonRow() + 8
+  derive bottom = env.safeBottom + 12
+  derive slotWidth = env.width - 2 * audioSideInset() - 2 * audioCardInset()
+  // The card: title block 50, the slot, the controls 72, gaps 18 + 14, insets 22 + 18.
+  derive cardHeight = 50 + audioSlotHeight() + 72 + 18 + 14 + 22 + 18
+  derive art = min(env.width - 2 * audioSideInset() - 24, env.height - top - bottom - cardHeight - 32)
+  // A build without card mode: RN's whole column (window × 0.95 wide, 130 tall) scaled so its
+  // purple row is the slot, the row 50 below the column's top.
+  derive legacyWidth = slotWidth / 0.95
   view
-    canvas surface=audio_player(env.seed) position="absolute" top=0 left=0 width=env.width
-      height=env.height background-color="#1D1B2B" touch-action="none" testId="audio-player"
-      aria-label="Waveform: drag to scrub"
+    column position="absolute" inset=0 background-color="#15110f"
+      background-image="radial-gradient(95% 55% at 50% 22%, rgba(184, 146, 108, 0.55) 0%, rgba(184, 146, 108, 0) 100%), radial-gradient(90% 50% at 85% 95%, rgba(78, 66, 120, 0.5) 0%, rgba(78, 66, 120, 0) 100%), radial-gradient(70% 40% at 0% 70%, rgba(150, 92, 70, 0.35) 0%, rgba(150, 92, 70, 0) 100%)"
+      padding-top=top padding-bottom=bottom padding-left=audioSideInset() padding-right=audioSideInset()
+      color-scheme="dark" testId="audio-player"
+      // The artwork: drawn, not a record sleeve. It breathes with playback, as Music's does.
+      column flex=1 align-items="center" justify-content="center"
+        column width=art height=art border-radius=30 corner-shape="-exact-continuous"
+          background-color="#2a221d"
+          background-image="radial-gradient(110% 80% at 18% 8%, rgba(240, 222, 196, 0.95) 0%, rgba(240, 222, 196, 0) 62%), radial-gradient(90% 70% at 100% 100%, rgba(84, 70, 128, 0.85) 0%, rgba(84, 70, 128, 0) 70%), linear-gradient(165deg, #8a6f57 0%, #3b2f28 55%, #1b1614 100%)"
+          box-shadow="0px 24px 60px rgba(0, 0, 0, 0.5)" overflow="hidden"
+          justify-content="space-between" padding=24
+          scale=(playing ? 1 : 0.9) transition="scale -exact-spring(400, 50, 1.6)"
+          aria-label=`${trackTitle()} by ${trackArtist()}` testId="audio-artwork"
+          text trackArtist() font-size=13 font-weight=600 letter-spacing=2.4
+            color="rgba(30, 22, 18, 0.72)" text-transform="uppercase" aria-hidden=true
+          text trackTitle() font-family="AddingtonCF-Light" font-size=(art * 0.3) line-height=1
+            color="rgba(255, 248, 238, 0.94)" letter-spacing=-1 aria-hidden=true
+      // The card: liquid glass over the warm backdrop.
+      column backgroundMaterial="glass" -exact-glass-tint="rgba(24, 18, 15, 0.32)" border-radius=34
+        corner-shape="-exact-continuous" margin-top=32 padding-top=audioCardInset()
+        padding-bottom=18 padding-left=audioCardInset() padding-right=audioCardInset() gap=18
+        testId="audio-card"
+        column gap=2 height=50 justify-content="center"
+          text trackTitle() font-size=22 font-weight=700 color="#ffffff" testId="audio-title"
+          text trackArtist() font-size=17 color="rgba(255, 255, 255, 0.62)" testId="audio-artist"
+        // The waveform. In card mode the surface fills the slot; before it, RN's row is clipped.
+        view position="relative" width=slotWidth height=audioSlotHeight() overflow="hidden"
+          border-radius=(cardMode ? 0 : 15) corner-shape="-exact-continuous"
+          canvas surface=audio_player(env.seed, "card", playing, duration, skip, wave, sync)
+            message=heard position="absolute" left=(cardMode ? 0 : (slotWidth - legacyWidth) / 2)
+            top=(cardMode ? 0 : -50) width=(cardMode ? slotWidth : legacyWidth)
+            height=(cardMode ? audioSlotHeight() : 130) touch-action="none" testId="audio-waveform"
+            aria-label="Waveform: drag to scrub"
+        // The integrator adds, once the build ships `audio-track` (app.json "modules"):
+        //   audio-track playing=(playing ? "true" : "false") seek=seek message=track
+        //     position="absolute" width=1 height=1 aria-hidden=true
+        row justify-content="center" align-items="center" gap=28 glassGroup=28 margin-top=-4
+          button buttonStyle="glass" press=back width=56 height=56
+            aria-label="Back 15 seconds" testId="audio-back"
+            image "symbol:gobackward.15" font-size=22
+          button buttonStyle="glass" press=toggle width=72 height=72
+            aria-label=(playing ? "Pause" : "Play") testId="audio-play"
+            image (playing ? "symbol:pause.fill" : "symbol:play.fill") font-size=30
+          button buttonStyle="glass" press=ahead width=56 height=56
+            aria-label="Forward 15 seconds" testId="audio-ahead"
+            image "symbol:goforward.15" font-size=22
+at "/demo/audio-player"

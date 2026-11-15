@@ -56,6 +56,9 @@
 //
 // `variable-blur` is a progressive blur of the backdrop (VariableBlur.swift): clerk-toast's
 // backdrop behind the toasts, iOS only.
+//
+// `audio-track` is audio-player's real playback (AudioTrack.swift): an AVAudioPlayer on the
+// bundled assets/audio/track.m4a under a `.playback` session, iOS only.
 import Foundation
 #if os(iOS)
 import CoreHaptics
@@ -74,6 +77,7 @@ final class DemosModule: ExactModule {
          "swift-slider": ExactNativeFactory { props, events in SwiftSlider(props: props, events: events) },
          "painting-menu": ExactNativeFactory { props, events in PaintingMenu(props: props, events: events) },
          "variable-blur": ExactNativeFactory { props, events in VariableBlur(props: props, events: events) },
+         "audio-track": ExactNativeFactory { props, events in AudioTrack(props: props, events: events) },
          "glass-pane": ExactNativeFactory { props, events in GlassPane(props: props, events: events) },
          "inspiration-sheet": ExactNativeFactory { props, events in InspirationSheet(props: props, events: events) }]
     }
