@@ -2,7 +2,9 @@
 # Cold-start measurement of the embedded Demos build on ONE simulator: a screen recording of the relaunch,
 # analysed frame by frame, plus the app's own journal. bash + ffmpeg + python3 (stdlib) only.
 #
-#   tools/startup-measure.sh [-n RUNS] [-u UDID] [-o OUTDIR] [-b BUNDLE] [-s SECONDS] [-q]
+#   tools/startup-measure.sh [-n RUNS] [-u UDID] [-o OUTDIR] [-b BUNDLE] [-s SECONDS] [-a] [-q]
+#   -a   Accessibility off on the simulator for the run (restored after): with it on (argent / AXe tooling turn it on),
+#        UIKit loads ~60 accessibility bundles at every launch, ~1 s of main thread a phone never pays.
 #
 # Per run: terminate, start `simctl io recordVideo` and `log stream` (journal), `simctl launch`, stop after
 # SECONDS (default 10), then ffmpeg (30 fps; grey 151x328 for luma, rgb 302x656 for the badges) and:
@@ -28,9 +30,9 @@
 # Takes /tmp/sim.lock (unless SIM_LOCK_HELD=1) and waits for the machine's load to drop below 8.
 # Output: a table and OUTDIR/summary.json (medians, worst, every run).
 set -u
-RUNS=5 UDID=D3D786DE-31CD-448D-B801-B3830895BB69 OUT=/tmp/start2 BUNDLE=com.reactiive.demos.exact SECS=10 QUIET=0
-while getopts "n:u:o:b:s:q" o; do
-  case $o in n) RUNS=$OPTARG;; u) UDID=$OPTARG;; o) OUT=$OPTARG;; b) BUNDLE=$OPTARG;; s) SECS=$OPTARG;; q) QUIET=1;; *) exit 2;; esac
+RUNS=5 UDID=D3D786DE-31CD-448D-B801-B3830895BB69 OUT=/tmp/start2 BUNDLE=com.reactiive.demos.exact SECS=10 QUIET=0 AXOFF=0
+while getopts "n:u:o:b:s:qa" o; do
+  case $o in n) RUNS=$OPTARG;; u) UDID=$OPTARG;; o) OUT=$OPTARG;; b) BUNDLE=$OPTARG;; s) SECS=$OPTARG;; q) QUIET=1;; a) AXOFF=1;; *) exit 2;; esac
 done
 mkdir -p "$OUT"
 export PATH="/opt/homebrew/bin:$PATH"
@@ -40,7 +42,11 @@ case "$UDID" in
 esac
 
 LOCKED=0
+AXKEYS="AccessibilityEnabled ApplicationAccessibilityEnabled AutomationEnabled"
 cleanup() {
+  if [ "$AXOFF" = 1 ]; then
+    for k in $AXKEYS; do xcrun simctl spawn "$UDID" defaults write com.apple.Accessibility "$k" -bool true 2>/dev/null; done
+  fi
   [ -n "${REC:-}" ] && kill -INT "$REC" 2>/dev/null
   pkill -f "log stream --style compact --level debug" 2>/dev/null
   [ "$LOCKED" = 1 ] && rmdir /tmp/sim.lock 2>/dev/null
@@ -51,6 +57,9 @@ if [ "${SIM_LOCK_HELD:-0}" != 1 ]; then
   LOCKED=1
 fi
 
+if [ "$AXOFF" = 1 ]; then
+  for k in $AXKEYS; do xcrun simctl spawn "$UDID" defaults write com.apple.Accessibility "$k" -bool false; done
+fi
 now() { perl -MTime::HiRes=time -e 'printf "%.3f\n", time'; }
 load1() { uptime | sed -E 's/.*load averages?: *([0-9.]+).*/\1/'; }
 
