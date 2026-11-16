@@ -164,7 +164,16 @@ component Demos
   // simulator), so it never lands inside a flight or a scroll, and there is no periodic poll.
   derive homeShown = top(nav).name == "home" and not desk
   resource approved = approvedDemos() when homeShown as shape string[] else empty()
-  derive approvedSlugs = failed(approved) ? [] : approved
+  // The last answers ride in storage (a `persist` state is in the first commit, a resource's own answer is not: this source is
+  // declared here), so the badges are in the home's first frame and the ask only changes what changed.
+  state savedApproved: string[] = [] persist
+  state savedChanged: string[] = [] persist
+  derive approvedSlugs = failed(approved) ? [] : (current(approved) ? approved : savedApproved)
+  action keepBadges
+    savedApproved = approved
+    savedChanged = changed
+  task keepingBadges when current(approved) and current(changed) key=`${approved.join(",")}|${changed.join(",")}`
+    change(keepBadges)
   task approvedOnHome when homeShown key=top(nav).id
     after(1500, refreshApproved, wait=idle, max=6000)
   // The GPU module loads when the first canvas exists (shader registry, device: ~85 ms on the simulator),
@@ -176,7 +185,7 @@ component Demos
   task warmingGpu when homeShown and not gpuWarm key=top(nav).id
     after(4000, warmGpu, wait=idle, max=10000)
   resource changed = changedDemos() when homeShown as shape string[] else empty()
-  derive changedSlugs = failed(changed) ? [] : changed
+  derive changedSlugs = failed(changed) ? [] : (current(changed) ? changed : savedChanged)
   action refreshApproved
     refresh approved
     refresh changed
