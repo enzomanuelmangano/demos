@@ -10,6 +10,7 @@
 //        `mode` "cover" (default) or "fill".
 #if os(iOS)
 import UIKit
+import QuartzCore
 
 enum StillArt {
     private static let lock = NSCondition()
@@ -55,14 +56,16 @@ enum StillArt {
 
     /// The decoded picture: from the cache, from another thread's decode in flight (waited for), or decoded here.
     static func image(_ file: String) -> UIImage? {
+        let began = CACurrentMediaTime()
         lock.lock()
         while true {
-            if let hit = done[file] { lock.unlock(); return hit }
+            if let hit = done[file] { lock.unlock(); StartupProbe.waited(file, since: began, decoded: false); return hit }
             if claimed.contains(file) { lock.wait(); continue }
             claimed.insert(file)
             break
         }
         lock.unlock()
+        defer { StartupProbe.waited(file, since: began, decoded: true) }
         var made: UIImage?
         for base in [Bundle.main.resourceURL, Bundle.main.bundleURL].compactMap({ $0 }) {
             if let image = UIImage(contentsOfFile: base.appendingPathComponent(file).path) {

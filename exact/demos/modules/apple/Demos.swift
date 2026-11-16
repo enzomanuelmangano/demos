@@ -38,6 +38,7 @@ let exactModule: ExactModule.Type = DemosModule.self
 final class DemosModule: ExactModule {
     override class var views: [String: ExactNativeFactory] {
         StillArt.warm()
+        StartupProbe.start()
         installLaunch()
         // Each native view is named for the layers overlay (LayerSkeleton.swift) when it is made.
         func native(_ tag: String, _ make: @escaping ([String: String], ExactNativeEvents) -> ExactNativeInstance) -> ExactNativeFactory {
@@ -68,7 +69,7 @@ final class DemosModule: ExactModule {
              return instance
          },
          "search-reveal": native("search-reveal") { SearchReveal(props: $0, events: $1) },
-         "still-art": ExactNativeFactory(firstFrame: true) { props, events in StillArtInstance(props: props, events: events) }]
+         "still-art": ExactNativeFactory(firstFrame: true) { props, events in StartupProbe.made("still-art") { StillArtInstance(props: props, events: events) } }]
     }
 
     override func element(_ element: ExactElement) {

@@ -196,6 +196,8 @@ if shown is not None and exp:
 # ---- the journal
 ev = {}
 late = []
+probe = []
+art_wait = []
 rx = re.compile(r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d+) \S+ +Demos\[\d+:\w+\] (.*)$")
 fulfil = None
 for line in open(logfile, errors="replace"):
@@ -205,9 +207,16 @@ for line in open(logfile, errors="replace"):
     ts = datetime.datetime.strptime(m.group(1), "%Y-%m-%d %H:%M:%S.%f").timestamp()
     rel = ts - t_launch
     msg = m.group(2)
+    if msg.startswith("(Foundation) "): msg = msg[13:]   # NSLog's prefix
     ev.setdefault("process_first_line", rel)
     if "[SR] block" in msg: ev.setdefault("sr_block", rel)
     if "[SR] didMoveToWindow window=true" in msg: ev.setdefault("sr_window", rel)
+    if msg.startswith("[probe] busy"):
+        mm = re.match(r"\[probe\] busy ([\d.]+) ms at \d+(.*)$", msg)
+        if mm: probe.append((rel, float(mm.group(1)), mm.group(2)))
+    elif msg.startswith("[probe] art") and "on main" in msg:
+        mm = re.search(r" (?:wait|decode) ([\d.]+) ms on main", msg)
+        if mm: art_wait.append(float(mm.group(1)))
     if "[com.exact.app:journal]" in msg:
         ev.setdefault("exact_first_line", rel)
         if "native loaded" in msg:
@@ -230,6 +239,25 @@ if fc is not None:
     after = [(t, n) for t, n in late if t >= fc]
     res["missed_at_first_commit"] = after[0][1] if after else 0
     res["missed_first_2s"] = sum(n for t, n in after if t <= after[0][0] + 2.0) if after else 0
+# The probe (modules/apple/StartupProbe.swift): every main-thread turn of 3 ms or more, after Core Animation's commit.
+# The first turn that made `still-art` views is the home's first commit; the 3 s after it are the window.
+first = next((p for p in probe if "still-art" in p[2]), None)
+if first is not None:
+    t0 = first[0]
+    res["probe_first_commit_ms"] = first[1]
+    res["probe_art_wait_ms"] = round(sum(art_wait), 1)
+    win = [p for p in probe if t0 < p[0] <= t0 + 3.0]
+    res["probe_turns_3s"] = len(win)
+    res["probe_cpu_ms_3s"] = round(sum(p[1] for p in win), 1)
+    res["probe_long_turns_3s"] = sum(1 for p in win if p[1] > 16.7)
+    res["probe_missed_3s"] = sum(int(p[1] // 16.7) for p in win)
+    res["probe_worst_turn_ms"] = max([p[1] for p in win] or [0])
+    # Exact's own `frame late` lines: the first commit's line(s) are the ones logged within 0.1 s of the first turn
+    own = [(t, n) for t, n in late if t0 - 0.05 <= t <= t0 + 0.1]
+    rest = [(t, n) for t, n in late if t0 + 0.1 < t <= t0 + 3.0]
+    res["missed_3s_after"] = sum(n for t, n in rest)
+    res["late_lines_3s_after"] = len(rest)
+    res["missed_first_commit_lines"] = sum(n for t, n in own)
 res["frame_late_lines"] = [(round(t, 2), n) for t, n in late[:8]]
 json.dump(res, open(out, "w"))
 print(json.dumps(res))
@@ -260,6 +288,14 @@ rows = [
  ("search-band flash frames", lambda r: r["flash_frames"]),
  ("missed frames at first commit", lambda r: r["missed_at_first_commit"]),
  ("missed frames in the 2 s after it", lambda r: r["missed_first_2s"]),
+ ("first commit: main-thread turn incl. CA commit (ms)", lambda r: r["probe_first_commit_ms"]),
+ ("first commit: wait on the wallpaper decode (ms)", lambda r: r["probe_art_wait_ms"]),
+ ("0-3 s after: missed frames (Exact frame-late lines)", lambda r: r["missed_3s_after"]),
+ ("0-3 s after: frame-late lines", lambda r: r["late_lines_3s_after"]),
+ ("0-3 s after: missed frames (probe, turns / 16.7 ms)", lambda r: r["probe_missed_3s"]),
+ ("0-3 s after: turns > 16.7 ms", lambda r: r["probe_long_turns_3s"]),
+ ("0-3 s after: busiest turn (ms)", lambda r: r["probe_worst_turn_ms"]),
+ ("0-3 s after: main-thread busy (ms, turns >= 3 ms)", lambda r: r["probe_cpu_ms_3s"]),
  ("machine load (1 min) at launch", lambda r: r["load"]),
  ("journal: Exact first line (s after launch cmd)", lambda r: r["journal"]["exact_first_line"]),
  ("journal: native modules loaded", lambda r: r["journal"]["native_modules_loaded"]),
@@ -296,7 +332,7 @@ for i in $(seq 1 "$RUNS"); do
   sleep 1.5
   LOAD=$(load1)
   T0=$(now)
-  xcrun simctl launch "$UDID" "$BUNDLE" >/dev/null
+  SIMCTL_CHILD_DEMOS_STARTUP_PROBE=1 xcrun simctl launch "$UDID" "$BUNDLE" >/dev/null
   sleep "$SECS"
   kill -INT "$REC"; wait "$REC" 2>/dev/null; REC=
   pkill -f "log stream --style compact --level debug"
@@ -305,7 +341,7 @@ for i in $(seq 1 "$RUNS"); do
   python3 - "$OUT/run-$i.json" "$LOAD" <<'P2'
 import json, sys
 r = json.load(open(sys.argv[1])); r["load"] = float(sys.argv[2]); json.dump(r, open(sys.argv[1], "w"))
-print("run", sys.argv[1].split("-")[-1][:-5], {k: r.get(k) for k in ("ls_to_first", "ls_to_full", "placeholders", "badges_first", "badges_final", "flash_frames", "missed_at_first_commit", "error")})
+print("run", sys.argv[1].split("-")[-1][:-5], {k: r.get(k) for k in ("ls_to_first", "ls_to_full", "placeholders", "badges_first", "badges_final", "flash_frames", "missed_at_first_commit", "probe_first_commit_ms", "missed_3s_after", "probe_missed_3s", "error")})
 P2
   [ -n "${KEEP:-}" ] && cp "$OUT/rec.mp4" "$OUT/rec-$i.mp4"
 done
