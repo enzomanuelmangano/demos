@@ -69,16 +69,15 @@ final class DemosModule: ExactModule {
              return instance
          },
          "search-reveal": native("search-reveal") { SearchReveal(props: $0, events: $1) },
+         "icon-grid": ExactNativeFactory(firstFrame: true) { props, events in StartupProbe.made("icon-grid") { AppIconGrid(props: props, events: events) } },
          "still-art": ExactNativeFactory(firstFrame: true) { props, events in StartupProbe.made("still-art") { StillArtInstance(props: props, events: events) } }]
     }
 
     override func element(_ element: ExactElement) {
-        if element.hatch == .launchIcon { launchIconHatch(element) }
         if element.hatch == .pageScroller { pageScrollerHatch(element) }
     }
 
     override func elementEnded(_ element: ExactElement) {
-        if element.hatch == .launchIcon { launchIconHatchEnded(element) }
         if element.hatch == .pageScroller { pageScrollerHatchEnded(element) }
     }
 }

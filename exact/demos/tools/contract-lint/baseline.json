@@ -1,21 +1,13 @@
 {
  "version": 1,
- "generated": "2026-11-15",
+ "generated": "2026-11-16",
  "entries": [
-  {
-   "file": "app.contract",
-   "rule": "no-magic-slug-lists",
-   "hash": "adb51d5aba",
-   "count": 1,
-   "line": 81,
-   "message": "a list of 47 demo slugs (metaball, magnet-spring, swipe-cards, ...): derive it from allDemos() or generate it, so adding a demo cannot leave it stale"
-  },
   {
    "file": "app.contract",
    "rule": "unused-state",
    "hash": "a97b5d0b10",
    "count": 1,
-   "line": 204,
+   "line": 265,
    "message": "state noSubpage is never read in Demos: remove it (it is still written and recomputed on every commit)"
   },
   {
@@ -399,48 +391,8 @@
    "rule": "corner-shape-continuous",
    "hash": "566facd9c0",
    "count": 1,
-   "line": 69,
+   "line": 70,
    "message": "border-radius without corner-shape=\"-exact-continuous\": iOS rounds with squircles, a plain radius reads as a different shape"
-  },
-  {
-   "file": "home/springboard.contract",
-   "rule": "corner-shape-continuous",
-   "hash": "3c7f2de15b",
-   "count": 1,
-   "line": 94,
-   "message": "border-radius without corner-shape=\"-exact-continuous\": iOS rounds with squircles, a plain radius reads as a different shape"
-  },
-  {
-   "file": "home/springboard.contract",
-   "rule": "prefer-pressto",
-   "hash": "50a2be81b9",
-   "count": 1,
-   "line": 85,
-   "message": "class IconPress reacts to :active by hand: use pressto's PressableScale for press feedback (a bare button has none of its haptic or timing)"
-  },
-  {
-   "file": "home/springboard.contract",
-   "rule": "testid-on-interactive",
-   "hash": "ebf984a320",
-   "count": 1,
-   "line": 117,
-   "message": "button is interactive and has no testId or aria-label"
-  },
-  {
-   "file": "home/springboard.contract",
-   "rule": "testid-on-interactive",
-   "hash": "72a740705c",
-   "count": 1,
-   "line": 120,
-   "message": "button is interactive and has no testId or aria-label"
-  },
-  {
-   "file": "home/springboard.contract",
-   "rule": "testid-on-interactive",
-   "hash": "08e084525d",
-   "count": 1,
-   "line": 123,
-   "message": "button is interactive and has no testId or aria-label"
   }
  ]
 }

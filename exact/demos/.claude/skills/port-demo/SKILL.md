@@ -431,7 +431,7 @@ One commit per haptic event, never per frame.
   presented controller inside its own present, and a module tag's instance is made only AFTER
   `present`, so DemoLaunch wraps
   `present(_:animated:completion:)` once to set its transitioning delegate, names the launch by
-  the icon a finger last went down on (the `launch-icon` hatch), and the route's `demo-card`
+  the icon a finger last went down on (`LaunchIcons`, filled by the home's `icon-grid`, AppIcon.swift), and the route's `demo-card`
   joins the session when it enters the window. The close pan lives on the WINDOW: a GPU canvas's
   touches never pass the presented view's recognizers. Exact's canvas takes touches over views
   above it, so "touch went down in the strip" is decided by location, not by `touch.view`. A

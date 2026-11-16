@@ -196,6 +196,7 @@ if shown is not None and exp:
 # ---- the journal
 ev = {}
 late = []
+late_first = []
 probe = []
 art_wait = []
 rx = re.compile(r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d+) \S+ +Demos\[\d+:\w+\] (.*)$")
@@ -231,13 +232,15 @@ for line in open(logfile, errors="replace"):
         if "hatch route 0: built" in msg: ev.setdefault("first_commit_route", rel)
         if "frame late" in msg:
             mm = re.search(r"(\d+) missed", msg)
-            late.append((rel, int(mm.group(1)) if mm else 0))
+            sq = re.search(r"seq (\d+)\.\.", msg)
+            # `seq 1..` is the boot batches' own frame: the first commit, which the journal may print late
+            (late_first if sq and sq.group(1) == "1" else late).append((rel, int(mm.group(1)) if mm else 0))
         if "search-reveal" in msg and ("ready" in msg or "loading" in msg): ev.setdefault("search_reveal_" + ("ready" if "ready" in msg else "loading"), rel)
 res["journal"] = {k: (round(v, 3) if isinstance(v, float) else v) for k, v in ev.items()}
 fc = ev.get("first_commit_route")
 if fc is not None:
     after = [(t, n) for t, n in late if t >= fc]
-    res["missed_at_first_commit"] = after[0][1] if after else 0
+    res["missed_at_first_commit"] = sum(n for t, n in late_first) if late_first else (after[0][1] if after else 0)
     res["missed_first_2s"] = sum(n for t, n in after if t <= after[0][0] + 2.0) if after else 0
 # The probe (modules/apple/StartupProbe.swift): every main-thread turn of 3 ms or more, after Core Animation's commit.
 # The first turn that made `still-art` views is the home's first commit; the 3 s after it are the window.
@@ -253,7 +256,7 @@ if first is not None:
     res["probe_missed_3s"] = sum(int(p[1] // 16.7) for p in win)
     res["probe_worst_turn_ms"] = max([p[1] for p in win] or [0])
     # Exact's own `frame late` lines: the first commit's line(s) are the ones logged within 0.1 s of the first turn
-    own = [(t, n) for t, n in late if t0 - 0.05 <= t <= t0 + 0.1]
+    own = [(t, n) for t, n in late if t0 - 0.05 <= t <= t0 + 0.1] + late_first
     rest = [(t, n) for t, n in late if t0 + 0.1 < t <= t0 + 3.0]
     res["missed_3s_after"] = sum(n for t, n in rest)
     res["late_lines_3s_after"] = len(rest)

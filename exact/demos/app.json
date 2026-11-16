@@ -30,7 +30,8 @@
     "native-tabbar",
     "page-dots",
     "search-reveal",
-    "still-art"
+    "still-art",
+    "icon-grid"
   ],
   "host": {
     "web": {},
@@ -69,15 +70,11 @@
     }
   ],
   "hatches": {
-    "launch-icon": [
-      "ios"
-    ],
     "page-scroller": [
       "ios"
     ]
   },
   "data": [
-    "slug",
     "scroller"
   ],
   "commands": {

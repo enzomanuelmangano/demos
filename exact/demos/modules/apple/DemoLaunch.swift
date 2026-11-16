@@ -9,7 +9,7 @@
 //
 // `present(_:animated:completion:)` is swizzled once (`installLaunch`) so the presented
 // `.overFullScreen` controller gets this file's transitioning delegate, named by the icon the finger
-// last touched (LaunchIconHatch.swift). Touches are never held for the motion's tail: the
+// last touched (AppIcon.swift). Touches are never held for the motion's tail: the
 // presentation completes as soon as the demo shows, and a close may interrupt the open mid-flight;
 // a close flies the live demo home inside the card and hands the route back once the card is on its
 // way (`routeLeaves`), so the release costs no picture and no unmount; a close that UIKit asked for
@@ -128,7 +128,7 @@ private func smoothstep(_ a: Double, _ b: Double, _ x: Double) -> Double {
 }
 private func lerp(_ a: Double, _ b: Double, _ t: Double) -> Double { a + (b - a) * t }
 
-// MARK: - The icons on the home (LaunchIconHatch.swift)
+// MARK: - The icons on the home (AppIcon.swift: each page's `icon-grid` registers its squares)
 
 final class LaunchIcons {
     static let shared = LaunchIcons()
@@ -169,8 +169,8 @@ final class LaunchIcons {
         return v
     }
 
-    // An icon is hidden while its launch flies, and a hidden view takes no touch: a finger that lands on it reaches the
-    // button around it, which opens the demo with no icon named (the launch would be ungrouped: no pull, no flight home).
+    // An icon is hidden while its launch flies, and a hidden square takes no touch (the grid's hit test skips it): a tap
+    // there would open the demo with no icon named (the launch would be ungrouped: no pull, no flight home).
     // So the demo's own route names it (`heldSlug`), and the icon is shown again only by the launch that hid it.
     private var hiddenBy: [ObjectIdentifier: Int] = [:]
     func hide(_ view: UIView, by gen: Int) {
