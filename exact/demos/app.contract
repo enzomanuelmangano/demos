@@ -199,18 +199,13 @@ component Demos
   derive atlasShown = desk or stack(nav).map(e => e.name).includes("atlas")
   derive demos = showUnstable ? allDemos() : allDemos().filter(d => not d.unstable)
   // The home's first commit mounts page 1 (home/springboard.contract): the rest of the pages follow one per tick at the
-  // first frame's heels, then each page's long-press menus. `stagePages` over-counts a little (rows from a shorter screen).
+  // first frame's heels. `stagePages` over-counts a little (rows from a shorter screen).
   state staged = 1
-  state menuStaged = 0
   derive stagePages = min(12, pageCount(demos.length, perPage(host.width, host.height - 140)))
   action stage
     staged = staged + 1
-  action stageMenus
-    menuStaged = menuStaged + 1
   task staging when staged < stagePages and not desk key=staged
     after(40, stage)
-  task stagingMenus when staged >= stagePages and menuStaged < stagePages and not desk key=menuStaged
-    after(120, stageMenus)
 
   action open(slug: string)
     haptic("selection")
@@ -303,7 +298,7 @@ component Demos
             closable=false, leave=back, notes=feedback, add=addNote, edit=editNote)
         if e.name == "home" and not desk
           column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" position="absolute" inset=0
-            Springboard(demos=demos, approved=approvedSlugs, changed=changedSlugs, mounted=staged, menuPages=menuStaged, open=open)
+            Springboard(demos=demos, approved=approvedSlugs, changed=changedSlugs, mounted=staged, open=open)
             if gpuWarm
               canvas surface=warm() width=1 height=1 position="absolute" left=0 top=0 pointer-events="none"
                 aria-hidden=true testId="gpu-warm"

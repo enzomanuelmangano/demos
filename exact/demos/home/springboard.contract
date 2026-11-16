@@ -20,10 +20,8 @@ component Springboard
     demos: Demo[]
     approved: string[]
     changed: string[]
-    // The pages mounted so far and the pages whose long-press menus are mounted (app.contract stages both after the first
-    // frame): the first commit holds page 1 alone, ~110 nodes a page with its menus where the whole grid was ~1,700.
+    // The pages mounted so far (app.contract stages them after the first frame): the first commit holds page 1 alone.
     mounted: number
-    menuPages: number
     open: action
   state boxW = 0
   state boxH = 0
@@ -34,6 +32,19 @@ component Springboard
   derive searchNames = demos.map(d => d.name).join("|")
   derive searchLabels = demos.map(d => d.label).join("|")
   derive searchIcons = demos.map(d => d.icon).join("|")
+
+  // One long-press menu for the whole grid (an icon's own was ten nodes of its page): an icon's long press fires `aim`
+  // as the menu is about to show, before its rows are read (ContextMenusIOS.swift), and the menu is the aimed demo's.
+  state aimed = ""
+  derive aimedDemo = demos.filter(d => d.slug == aimed)
+  derive aimedName = aimedDemo.map(d => d.name).join("")
+  derive aimedInspiration = aimedDemo.map(d => d.inspiration).join("")
+  action aim(slug: string)
+    aimed = slug
+  action openLink(url: string)
+    openURL(url)
+  action shareAimed
+    share(text=`${aimedName} — ${sourceUrl(aimed)}`, url=sourceUrl(aimed))
 
   action fit(w: number, h: number)
     boxW = w
@@ -59,13 +70,24 @@ component Springboard
               row flex-wrap="wrap" row-gap=22 align-content="flex-start"
                 if p < mounted
                   for d in demos.slice(p * per, (p + 1) * per) key=d.slug
-                    AppIcon(demo=d, cell=cellWidth(boxW), size=iconSize(boxW), approved=approved.includes(d.slug), changed=changed.includes(d.slug), menu=(p < menuPages), open=open)
+                    AppIcon(demo=d, cell=cellWidth(boxW), size=iconSize(boxW), approved=approved.includes(d.slug), changed=changed.includes(d.slug), open=open, aim=aim)
         // Page dots: native, they read the pager's offset in the same frame as the scroll (PageDots.swift).
         if pages.length > 1
           page-dots scroller="pager" count=pages.length height=44 flex-shrink=0 aria-hidden=true
         // Pull down on the pager to search: a native overlay (SearchReveal.swift) blurs the home, shows the field
         // and the results, and filters as you type, all off the plan. It passes every touch through until
         // the search is committed; a tapped result arrives here as `change(slug)` and opens like an icon.
+        column id="home-menu" popover="auto" role="menu" aria-label=aimedName
+          if aimedInspiration != ""
+            button press=openLink(aimedInspiration) popovertarget="home-menu" popovertargetaction="hide" testId="menu-inspiration"
+              text "Inspiration"
+              image "symbol:sparkles"
+          button press=shareAimed popovertarget="home-menu" popovertargetaction="hide" testId="menu-share"
+            text "Share"
+            image "symbol:share"
+          button press=openLink(sourceUrl(aimed)) popovertarget="home-menu" popovertargetaction="hide" testId="menu-code"
+            text "View Code"
+            image "symbol:document"
         search-reveal scroller="pager" slugs=searchSlugs names=searchNames labels=searchLabels icons=searchIcons
           icon-size=iconSize(boxW) side-margin=22 change=open position="absolute" inset=0 testId="search"
 
@@ -78,12 +100,8 @@ component AppIcon
     size: number
     approved: bool
     changed: bool
-    menu: bool
     open: action
-  action openLink(url: string)
-    openURL(url)
-  action shareDemo
-    share(text=`${demo.name} — ${sourceUrl(demo.slug)}`, url=sourceUrl(demo.slug))
+    aim: action
   view
     column width=cell height=(size + 26) align-items="center" position="relative"
       button appearance="none" press=open(demo.slug) aria-label=`Open ${demo.name}` testId=`icon-${demo.slug}`
@@ -95,7 +113,7 @@ component AppIcon
         // shadow: each of those is an offscreen pass on every scroll and launch-zoom frame. The node keeps
         // the matching continuous radius for the launch's frame and the lift's outline; it clips nothing.
         view id=`icon-${demo.slug}` hatch="launch-icon" data-slug=demo.slug width=size height=size border-radius=(size * 0.2237) corner-shape="-exact-continuous"
-          contextPopover=(menu ? `menu-${demo.slug}` : "")
+          contextPopover="home-menu" contextmenu=aim(demo.slug)
           still-art art=demo.icon mode="cover" width=size height=size aria-hidden=true
       // Badges over the icon's top-right corner, siblings of the button so the launch square and
       // the long-press lift stay the bare squircle. Orange: changed since the last open, shown
@@ -116,17 +134,5 @@ component AppIcon
       text demo.label margin-top=6 max-width="100%" font-size=11 font-weight=600
         color="rgba(255,255,255,0.92)" text-align="center" white-space="nowrap" overflow="hidden"
         text-overflow="ellipsis"
-      if menu
-        column id=`menu-${demo.slug}` popover="auto" role="menu" aria-label=demo.name
-          if demo.inspiration != ""
-            button press=openLink(demo.inspiration) popovertarget=`menu-${demo.slug}` popovertargetaction="hide"
-              text "Inspiration"
-              image "symbol:sparkles"
-          button press=shareDemo popovertarget=`menu-${demo.slug}` popovertargetaction="hide"
-            text "Share"
-            image "symbol:share"
-          button press=openLink(sourceUrl(demo.slug)) popovertarget=`menu-${demo.slug}` popovertargetaction="hide"
-            text "View Code"
-            image "symbol:document"
 
 fn sourceUrl(slug: string): string = `https://github.com/enzomanuelmangano/demos/tree/main/src/animations/${slug}`
