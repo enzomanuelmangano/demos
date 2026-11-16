@@ -147,6 +147,7 @@ if shown is not None:
         a = min(1.0, max(0.02, (st[i][0] - lmean) / (fmean - lmean)))
         if abs((v - lmean * (1 - a)) / a - fin_band) > 8:
             flash += 1
+            res.setdefault("flash_start_ms", round((i - shown) * 1000 / 30))
     res["flash_frames"] = flash
 
 # ---- pass 2: badges, from the rgb frames (302 x 656)
@@ -196,6 +197,8 @@ for line in open(logfile, errors="replace"):
     rel = ts - t_launch
     msg = m.group(2)
     ev.setdefault("process_first_line", rel)
+    if "[SR] block" in msg: ev.setdefault("sr_block", rel)
+    if "[SR] didMoveToWindow window=true" in msg: ev.setdefault("sr_window", rel)
     if "[com.exact.app:journal]" in msg:
         ev.setdefault("exact_first_line", rel)
         if "native loaded" in msg:

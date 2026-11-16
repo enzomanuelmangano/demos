@@ -427,7 +427,11 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         fade.frame = band.bounds
         fade.locations = [0, NSNumber(value: Double(barBottom / max(listTop, 1))), 1]
         let cancelW = ceil(cancelButton.sizeThatFits(.zero).width) + 12
-        bar.frame = CGRect(x: sideMargin, y: safeTop + Pull.barTop, width: max(0, w - sideMargin * 2), height: Pull.barHeight)
+        // Bounds and center, not `frame`: with the off-screen warm-up transform on, a frame assignment is the transformed
+        // rect, so it put the bar back in view (the field showed for 0.4 s after the home appeared).
+        let barFrame = CGRect(x: sideMargin, y: safeTop + Pull.barTop, width: max(0, w - sideMargin * 2), height: Pull.barHeight)
+        bar.bounds = CGRect(origin: .zero, size: barFrame.size)
+        bar.center = CGPoint(x: barFrame.midX, y: barFrame.midY)
         let pillW = max(0, bar.bounds.width - cancelW)
         glass.frame = CGRect(x: 0, y: 0, width: pillW, height: Pull.barHeight)
         field.frame = glass.frame
