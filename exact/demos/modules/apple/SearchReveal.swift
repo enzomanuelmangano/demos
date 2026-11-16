@@ -445,16 +445,31 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
     override func didMoveToWindow() {
         super.didMoveToWindow()
         guard window != nil else { return }
-        // The glass is created only once it can be seen (GlassPane.swift): show it once, off screen.
-        bar.isHidden = false
-        bar.alpha = 1
-        bar.transform = CGAffineTransform(translationX: 0, y: -400)
-        setNeedsLayout()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
-            self?.bar.transform = .identity
-            self?.render()
-        }
         tick.prepare()
+        // The glass is created only once it can be seen (GlassPane.swift: ~15 ms on the simulator, the first glass of the
+        // process): show it once, off screen, so the first pull does not pay for it. Not in the home's first 3 s, when the
+        // first frames and the other pages are being made, and not under a finger.
+        warmGlass(after: 3.2)
+    }
+
+    private var glassWarm = false
+    private func warmGlass(after delay: Double) {
+        guard !glassWarm else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self, self.window != nil, !self.glassWarm else { return }
+            if reveal > 0 || self.committed { self.glassWarm = true; return }
+            if let scroll = self.scroll, scroll.isTracking || scroll.isDragging || scroll.isDecelerating { self.warmGlass(after: 0.3); return }
+            self.glassWarm = true
+            self.bar.isHidden = false
+            self.bar.alpha = 1
+            self.bar.transform = CGAffineTransform(translationX: 0, y: -400)
+            self.setNeedsLayout()
+            self.layoutIfNeeded()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+                self?.bar.transform = .identity
+                self?.render()
+            }
+        }
     }
 
     // MARK: the render: layer properties only, no implicit animations
