@@ -597,6 +597,12 @@ struct Chessboard {
     gpu: Option<Gpu>,
 }
 
+/// Steps a highlight's fade; true while it moves, and on the frame it lands, which needs a redraw.
+fn fade_step(t: &mut Timing, now: f64) -> bool {
+    let before = t.value;
+    t.step(now) || t.value != before
+}
+
 fn initial_captures() -> [Vec<Kind>; 2] {
     // Captures are the pieces missing from a full set.
     let chess = Chess::new(START_FEN).unwrap();
@@ -1667,9 +1673,9 @@ impl Chessboard {
             if s.hint_fade.target() != hint {
                 s.hint_fade.to(hint, 180.0, Easing::Linear);
             }
-            board |= s.last_fade.step(now);
-            board |= s.check_fade.step(now);
-            board |= s.hint_fade.step(now);
+            board |= fade_step(&mut s.last_fade, now);
+            board |= fade_step(&mut s.check_fade, now);
+            board |= fade_step(&mut s.hint_fade, now);
         }
         let ghosts = self.ghosts.len();
         self.ghosts.retain(|g| now < g.at + CAPTURE_AT + CAPTURE_MS);
@@ -2925,6 +2931,21 @@ mod tests {
         assert!(!c.messages.contains(&"haptic:error".to_string()));
         run(&mut c, 4100.0, 6000.0);
         assert_eq!(c.plies.len(), 2);
+    }
+
+    #[test]
+    fn a_fade_that_lands_redraws_the_board() {
+        let mut c = surface_at(0.0);
+        hint_taps(&mut c, 0.0, 0.0);
+        hint_taps(&mut c, 1.0, 0.0);
+        let e1 = chess::square("e1").unwrap() as usize;
+        c.now = 16.0;
+        c.step();
+        // The frame that finishes the fade changes the value without "moving": it still draws.
+        c.board_dirty = false;
+        c.now = 1000.0;
+        c.step();
+        assert!(c.squares[e1].hint_fade.value > 0.99 && c.board_dirty);
     }
 
     #[test]
