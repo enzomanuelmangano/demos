@@ -183,11 +183,8 @@ component ActionTray
                     column width=40 height=40 border-radius=20 background-color=trayFill()
                       align-items="center" justify-content="center" aria-label="Close"
                       testId="close"
-                      glass-pane glass-style="regular" corner-size="20" interactive="false"
-                        continuous="true" position="absolute" inset=0 pointer-events="none"
-                        aria-hidden=true
                       image "symbol:sf/xmark" font-size=15 font-weight=600
-                        color="rgba(60, 60, 67, 0.85)" aria-hidden=true
+                        color=traySecondary() aria-hidden=true
                 // Copy: body 17 / 22. Every step stays mounted; `pre-line` keeps the line breaks.
                 column id="tray-body-0" position="absolute" left=trayPad() top=trayBodyTop()
                   width=(trayW - 2 * trayPad()) aria-hidden=(step != 0)
