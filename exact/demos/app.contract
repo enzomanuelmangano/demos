@@ -97,7 +97,7 @@ fn closeZone(slug: string): string = (
   slug == "drag-to-sort" ? "strip" :
   slug == "draggable-panel" ? "strip" :
   slug == "duration-slider" ? "0.07,0.30,0.93,0.70" :
-  slug == "expandable-mini-player" ? "0,0.37,1,1" :
+  slug == "expandable-mini-player" ? "strip" :
   slug == "fibonacci-shader-grid" ? "0.20,0.56,0.80,0.84" :
   slug == "floating-bottom-bar" ? "0,0.88,1,0.97" :
   slug == "floating-modal" ? "0,0.73,1,1" :

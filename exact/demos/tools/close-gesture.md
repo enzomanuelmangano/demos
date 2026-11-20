@@ -58,7 +58,7 @@ Counts: 109 demos: 71 close from anywhere (7 of them over a real scroller with t
 | empty-qr-code | tap | anywhere |
 | everybody-can-cook | pointerdown | anywhere |
 | exclusion-tabs | taps | anywhere |
-| expandable-mini-player | collapsed: real scroller; expanded: full-screen sheet drag (Contract transformDragFor) | zone 0,0.37,1,1 + scroll hand-off |
+| expandable-mini-player | collapsed: real scroller; expanded: full-screen sheet drag (Contract transformDragFor) | strip |
 | family-number-input | keypad taps | anywhere |
 | fibonacci-shader-grid | 6x6 pad pan, 2D | zone 0.20,0.56,0.80,0.84 |
 | fibonacci-shader | native slider, x | anywhere |

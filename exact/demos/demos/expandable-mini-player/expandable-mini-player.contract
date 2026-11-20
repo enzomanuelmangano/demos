@@ -74,6 +74,10 @@ component ExpandableMiniPlayer
   state tab = 0
   state elapsed = 74
   state tickToken = 1
+  // When a drag of the sheet last began (0: none or released). A clock tick that changes the
+  // time text mid-drag re-measures the handle and ends the drag, so a tick during one only
+  // re-arms the timer.
+  state dragAt = 0
   derive W = env.width
   derive H = env.height
   derive cover = W - 2 * mpSide()
@@ -89,8 +93,11 @@ component ExpandableMiniPlayer
   // The clock: a tick a second while playing; past the end it starts over.
   action tick(m: string)
     if playing and m == `timer:${tickToken}`
-      elapsed = elapsed + 1 >= mpLength() ? 0 : elapsed + 1
-      tickToken = tickToken + 1
+      if dragAt > 0 and performanceNow() - dragAt < 10000
+        tickToken = tickToken + 1
+      else
+        elapsed = elapsed + 1 >= mpLength() ? 0 : elapsed + 1
+        tickToken = tickToken + 1
   action toggle
     playing = not playing
     if playing
@@ -130,11 +137,12 @@ component ExpandableMiniPlayer
       tab = 2
     if m == "tab:3"
       tab = 3
-  // The drag needs this binding; it changes no state.
+  // The drag's geometry: a drag has begun.
   action bound(bw: number, bh: number, pw: number, ph: number)
-    tab = tab
+    dragAt = performanceNow()
   // Released: far enough down or flicked, it collapses; else it springs back.
   action release(x: number, y: number, scale: number, vx: number, vy: number, vscale: number)
+    dragAt = 0
     if expanded and (y > min(120, H * 0.3) or (vy > 700 and y > 10))
       collapse()
 
@@ -180,7 +188,8 @@ component ExpandableMiniPlayer
 
       // Sheet layer: at 0 when open, at H when collapsed.
       column position="absolute" inset=0 overflow="hidden" pointer-events="none"
-        column id="mp-sheet-layer" width="100%" height="100%" position="relative" pointer-events="none"
+        column id="mp-sheet-layer" width="100%" height="100%" box-sizing="border-box" position="relative"
+          pointer-events="none"
           translate=`0px ${expanded ? 0 : H}px` transition=`translate ${mpSheetSpring()}`
           // Drag handle over the open sheet; the buttons above keep their taps.
           if expanded
