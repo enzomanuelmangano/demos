@@ -5,6 +5,8 @@ use PressableScale from "pressto"
 use DemoEnv, demoButtonRow, floatingWidth, concentricInset, concentricRadius from "../env.contract"
 
 
+// How long after a tap the field takes focus (the keyboard), once the card is opening.
+fn keysDelay(): number = 260
 // Card spring: 350 ms once the surface reports it can run that fast, 800 ms otherwise.
 fn cardSpring(ms: number): string = ms == 350 ? "-exact-spring(2219.8672, 188.4619, 4)" : "-exact-spring(424.9, 82.5, 4)"
 // The open sheet starts just under the button row; the surface adds 56 + 52 to the safe top.
@@ -74,21 +76,40 @@ component DotSheet
     demoSubpage("dot-input")
   action closed
     open = false
+    keysWanted = false
     demoSubpage("")
-  // Focus only when the card is fully closed, not while it is still closing.
+  // The keyboard's first layout blocks the main thread for about 100 ms, which stops the card in
+  // the middle of its spring. So a tap opens the card first and the field takes focus once the
+  // spring has nearly landed (keysDelay), where a stall shows least.
+  state keysWanted = false
+  state keysToken = 0
+  action openCard
+    pinH = max(pinH, env.height)
+    open = true
+    still = false
+    keysWanted = true
+    keysToken = keysToken + 1
+    demoSubpage("dot-input")
+  action showKeys(m: string)
+    if open and keysWanted and m == `timer:${keysToken}`
+      keysWanted = false
+      focus("dot-input")
+  // Open only when the card is fully closed, not while it is still closing.
   action tapCard
     if not open and still
-      pinH = max(pinH, env.height)
-      focus("dot-input")
+      openCard()
   action start
-    pinH = max(pinH, env.height)
-    focus("dot-input")
+    if not open
+      openCard()
   action back
     blur("dot-input")
   view
     column position="absolute" top=0 left=0 width=env.width height=h testId="dot-sheet"
       canvas surface=dot_sheet() position="absolute" top=0 left=0 width=env.width height=h
         aria-hidden=true testId="dot-sheet-canvas"
+      // Fires keysDelay() after a tap opens the card (the surface is idle at token 0).
+      canvas surface=timer(keysToken, keysDelay()) message=showKeys width=1 height=1 position="absolute"
+        left=0 top=0 aria-hidden=true pointer-events="none"
       // Positioned, so it paints over the canvas.
       column flex=1 position="relative" align-items="center" justify-content="center"
         // Explicit line-heights and small offsets match the native text metrics. The title's frame
