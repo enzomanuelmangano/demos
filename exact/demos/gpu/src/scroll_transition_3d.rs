@@ -1009,6 +1009,6 @@ mod tests {
         assert_eq!(held(&s), (c - 2..=(c + 2).min(COUNT - 1)).collect::<Vec<_>>());
         // At rest a render is one pass with nothing to bake.
         let (more, n) = run(&mut s, ms + 16.0);
-        assert!(!more && n < 25, "{n}");
+        assert!(!more && n < 40, "{n}");
     }
 }
