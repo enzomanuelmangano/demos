@@ -1605,7 +1605,7 @@ mod tests {
                 dy: 0.0,
                 kind: exact_gpu::PointerKind::Touch,
                 buttons: 1,
-                at_ms: at,
+                at_ms: at, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false
             })
         };
         touch(&mut s, exact_gpu::PointerPhase::Down, 700.0, 20000.0);

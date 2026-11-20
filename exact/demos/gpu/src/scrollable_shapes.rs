@@ -576,7 +576,7 @@ mod tests {
         // The first dot is active: wide and white.
         assert!(img.at(3 * 190, 2547)[0] > 240, "dot 0 {:?}", img.at(570, 2547));
         // A slow flick to the left: 30 pt, then release.
-        let pointer = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 400.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let pointer = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 400.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         s.input(&pointer(PointerPhase::Down, 300.0, 16.0));
         for i in 1..=6 {
             s.input(&pointer(PointerPhase::Move, 300.0 - 8.0 * i as f32, 16.0 + 16.0 * i as f64));

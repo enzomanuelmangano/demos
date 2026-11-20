@@ -708,7 +708,7 @@ mod tests {
             dy: 0.0,
             kind: PointerKind::Touch,
             buttons: 1,
-            at_ms,
+            at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false
         };
         let mut s = surface();
         let (img, _) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();

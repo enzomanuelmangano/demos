@@ -308,7 +308,7 @@ mod tests {
         assert_ne!(a.data, b.data);
 
         let tap = |s: &mut Box<dyn Surface>, x: f32, at_ms: f64| {
-            let e = |phase| InputEvent::Pointer { id: 7, phase, x, y: 400.0, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
+            let e = |phase| InputEvent::Pointer { id: 7, phase, x, y: 400.0, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
             s.input(&e(PointerPhase::Down));
             s.input(&e(PointerPhase::Up));
         };
@@ -331,7 +331,7 @@ mod tests {
 
         // A pinch in to half: distance × interpolate(0.5) = 300 × (1 + (2 − 1) × 0.5 / 0.7).
         let finger = |s: &mut Box<dyn Surface>, id, phase, y: f32| {
-            s.input(&InputEvent::Pointer { id, phase, x: 210.0, y, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms: 500.0 })
+            s.input(&InputEvent::Pointer { id, phase, x: 210.0, y, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms: 500.0, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false })
         };
         finger(&mut s, 1, PointerPhase::Down, 256.0);
         finger(&mut s, 2, PointerPhase::Down, 656.0);

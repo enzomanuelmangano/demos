@@ -1140,7 +1140,7 @@ mod tests {
         assert!(dark > 10, "{dark}");
 
         // A pan to the right: the ticket turns about y; the holographic grid shows.
-        let pointer = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 450.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let pointer = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 450.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         s.input(&pointer(PointerPhase::Down, 150.0, 16.0));
         s.input(&pointer(PointerPhase::Move, 156.0, 32.0));
         s.input(&pointer(PointerPhase::Move, 162.0, 48.0));
@@ -1190,9 +1190,9 @@ mod tests {
 
         // A tap flips the ticket half a turn: the back's QR shows.
         let tap = |s: &mut Box<dyn Surface>, at: f64| {
-            let p = |phase| InputEvent::Pointer { id: 2, phase, x: 210.0, y: 450.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: at };
+            let p = |phase| InputEvent::Pointer { id: 2, phase, x: 210.0, y: 450.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: at, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
             s.input(&p(PointerPhase::Down));
-            s.input(&InputEvent::Pointer { id: 2, phase: PointerPhase::Up, x: 211.0, y: 450.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: at + 80.0 });
+            s.input(&InputEvent::Pointer { id: 2, phase: PointerPhase::Up, x: 211.0, y: 450.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: at + 80.0, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false });
         };
         // From a turn of 360, the flip lands on 540.
         tap(&mut s, ms + 100.0);
@@ -1212,7 +1212,7 @@ mod tests {
         assert!(eye[0] > eye[2] + 40 && eye[0] < 240, "{eye:?}");
         assert!(near(px(&back, 60.0 + 40.0, 256.0 + 60.0), [255, 245, 238], 1));
         // A touch outside the ticket does nothing.
-        s.input(&InputEvent::Pointer { id: 3, phase: PointerPhase::Down, x: 30.0, y: 450.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: t + 100.0 });
+        s.input(&InputEvent::Pointer { id: 3, phase: PointerPhase::Down, x: 30.0, y: 450.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: t + 100.0, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false });
         assert!(s.agent("").unwrap().ends_with("\"held\":false}"));
     }
 
@@ -1226,7 +1226,7 @@ mod tests {
         let mut s = surface();
         // A tap flips to the back.
         fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
-        let p = |phase, at_ms| InputEvent::Pointer { id: 1, phase, x: 201.0, y: 437.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let p = |phase, at_ms| InputEvent::Pointer { id: 1, phase, x: 201.0, y: 437.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         s.input(&p(PointerPhase::Down, 16.0));
         s.input(&p(PointerPhase::Up, 80.0));
         // A held phone: pitch 0.3 rad, roll 0.2 rad, with +-0.0005 rad of jitter.

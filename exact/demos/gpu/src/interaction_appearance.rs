@@ -602,7 +602,7 @@ mod tests {
         let card = rest.at(3 * 347, 3 * 836);
         assert!((230..=245).contains(&card[0]), "{card:?}");
 
-        let p = |phase, at_ms| InputEvent::Pointer { id: 1, phase, x: 358.0, y: 850.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let p = |phase, at_ms| InputEvent::Pointer { id: 1, phase, x: 358.0, y: 850.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         s.input(&p(PointerPhase::Down, 0.0));
         let mut ms = 0.0;
         while ms < 800.0 {

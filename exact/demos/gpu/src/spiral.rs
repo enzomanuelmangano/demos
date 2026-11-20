@@ -362,7 +362,7 @@ mod tests {
             dy: 0.0,
             kind: exact_gpu::PointerKind::Touch,
             buttons: 1,
-            at_ms,
+            at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false
         };
         s.input(&tap(exact_gpu::PointerPhase::Down, 10.0));
         s.input(&tap(exact_gpu::PointerPhase::Up, 60.0));
@@ -389,7 +389,7 @@ mod tests {
             dy: 0.0,
             kind: exact_gpu::PointerKind::Touch,
             buttons: 1,
-            at_ms,
+            at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false
         };
         s.input(&at(exact_gpu::PointerPhase::Down, 100.0, ms));
         s.input(&at(exact_gpu::PointerPhase::Move, 180.0, ms + 400.0));

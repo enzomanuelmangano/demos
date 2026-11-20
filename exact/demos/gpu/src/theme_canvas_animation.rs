@@ -239,7 +239,7 @@ mod tests {
         assert_eq!(&rest.at(280, 456)[..3], &[0x1A, 0x53, 0x5C]);
 
         let finger = |s: &mut Box<dyn Surface>, phase, at_ms| {
-            s.input(&InputEvent::Pointer { id: 1, phase, x: 280.0, y: 456.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
+            s.input(&InputEvent::Pointer { id: 1, phase, x: 280.0, y: 456.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false })
         };
         finger(&mut s, PointerPhase::Down, 10.0);
         let mut held = false;

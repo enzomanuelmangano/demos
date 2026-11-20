@@ -894,7 +894,7 @@ mod tests {
     }
 
     fn pointer(phase: exact_gpu::PointerPhase, x: f32, y: f32, at_ms: f64) -> InputEvent {
-        InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms }
+        InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false }
     }
 
     fn grey(p: [u8; 4]) -> u8 {

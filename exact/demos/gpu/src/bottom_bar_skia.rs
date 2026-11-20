@@ -328,7 +328,7 @@ mod tests {
         exact_gpu::shaders::load_dir(&dir, &crate::REGISTRY).unwrap();
         fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         let finger = |s: &mut Box<dyn Surface>, phase, x: f32, y: f32, at_ms| {
-            s.input(&InputEvent::Pointer { id: 1, phase, x, y: y + SHADOW_ROOM, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
+            s.input(&InputEvent::Pointer { id: 1, phase, x, y: y + SHADOW_ROOM, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false })
         };
         // A tap on the second tab (x 130..260, y 50..132).
         finger(&mut s, PointerPhase::Down, 200.0, 100.0, 10.0);

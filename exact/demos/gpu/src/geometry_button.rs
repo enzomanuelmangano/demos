@@ -146,7 +146,7 @@ mod tests {
         // At rest: one ring of radius 25 (half of 50) about the centre.
         assert!(rest.at(125, 100)[3] > 0, "{:?}", rest.at(125, 100));
         assert_eq!(rest.at(100, 100)[3], 0);
-        let pointer = |phase, at_ms| InputEvent::Pointer { id: 1, phase, x: 100.0, y: 100.0, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
+        let pointer = |phase, at_ms| InputEvent::Pointer { id: 1, phase, x: 100.0, y: 100.0, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         s.input(&pointer(PointerPhase::Down, 0.0));
         let mut ms = 0.0;
         let mut last = rest;

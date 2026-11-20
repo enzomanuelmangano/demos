@@ -642,7 +642,7 @@ mod tests {
         assert_eq!(s.agent("{}").unwrap(), "{\"offset\":0.00,\"number\":99,\"moving\":false}");
 
         // Drag down 140 pt slowly, then lift still: the snap rounds to the next item (231 pt).
-        let p = |phase, y: f32, at_ms| InputEvent::Pointer { id: 1, phase, x: 210.0, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let p = |phase, y: f32, at_ms| InputEvent::Pointer { id: 1, phase, x: 210.0, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         s.input(&p(PointerPhase::Down, 300.0, 0.0));
         let mut ms = 0.0;
         for k in 1..=35 {

@@ -919,7 +919,7 @@ mod tests {
             dy: 0.0,
             kind: PointerKind::Touch,
             buttons: 1,
-            at_ms,
+            at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false
         };
         let mid = 10.5 + 0.5 * 379.0;
         s.input(&pointer(PointerPhase::Down, mid, ms));
@@ -1035,7 +1035,7 @@ mod tests {
             dy: 0.0,
             kind: PointerKind::Touch,
             buttons: 1,
-            at_ms,
+            at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false
         };
         s.input(&pointer(PointerPhase::Down, 160.0, 4000.0));
         let mut ms = 4000.0;

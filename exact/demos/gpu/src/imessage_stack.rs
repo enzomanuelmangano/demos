@@ -366,7 +366,7 @@ mod tests {
             dy: 0.0,
             kind: PointerKind::Touch,
             buttons: 1,
-            at_ms: at,
+            at_ms: at, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false
         };
         st.input(&ev(exact_gpu::PointerPhase::Down, 100.0, 0.0));
         for k in 1..=6 {

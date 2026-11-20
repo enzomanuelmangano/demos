@@ -539,7 +539,7 @@ mod tests {
         // The grid at (70, 456): an untouched cell #181818.
         assert_eq!(&rest.at(3 * 75, 3 * 461)[..3], &[0x18, 0x18, 0x18]);
         // A vertical stroke down the grid's middle column.
-        let p = |phase, y: f32, at_ms| InputEvent::Pointer { id: 1, phase, x: 215.0, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let p = |phase, y: f32, at_ms| InputEvent::Pointer { id: 1, phase, x: 215.0, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         s.input(&p(PointerPhase::Down, 480.0, 0.0));
         let mut ms = 0.0;
         for k in 1..=40 {
@@ -554,7 +554,7 @@ mod tests {
         // A touched cell (column 14, row 3: x 70 + 141, y 456 + 31).
         assert_eq!(&drawn.at(3 * 215, 3 * 490)[..3], &[0xd5, 0xd5, 0xd5]);
         // The eraser (centre 340, 808).
-        let b = |phase, at_ms| InputEvent::Pointer { id: 2, phase, x: 340.0, y: 808.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let b = |phase, at_ms| InputEvent::Pointer { id: 2, phase, x: 340.0, y: 808.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         s.input(&b(PointerPhase::Down, ms + 100.0));
         s.input(&b(PointerPhase::Up, ms + 150.0));
         assert_eq!(s.messages(), vec!["haptic:selection".to_string()]);

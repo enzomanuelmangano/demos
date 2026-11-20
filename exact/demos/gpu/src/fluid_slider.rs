@@ -426,7 +426,7 @@ mod tests {
     #[test]
     fn a_grab_ticks_at_tens_and_ends_are_felt_once() {
         let mut s = FluidSlider { size: (400.0, 100.0), picker_y: Some(Spring::at(50.0)), ..Default::default() };
-        let pointer = |phase, x, y, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
+        let pointer = |phase, x, y, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         s.input(&pointer(PointerPhase::Down, 30.0, 51.0, 0.0));
         assert_eq!(s.posted, [GRAB]);
         s.posted.clear();
@@ -453,7 +453,7 @@ mod tests {
     #[test]
     fn a_touch_far_from_the_picker_springs_it_there_and_a_drag_carries_on() {
         let mut s = FluidSlider { size: (400.0, 100.0), picker_y: Some(Spring::at(50.0)), ..Default::default() };
-        let pointer = |phase, x, y, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
+        let pointer = |phase, x, y, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         // 16 pt below the bar's bottom still takes the touch.
         s.input(&pointer(PointerPhase::Down, 210.0, 72.0, 0.0));
         assert!(s.sliding && s.chasing);
@@ -507,7 +507,7 @@ mod tests {
         assert!(blue(img.at(400, 102)), "bar {:?}", img.at(400, 102));
         assert_eq!(img.at(60 + 26, 100)[..3], [255, 255, 255], "{:?}", img.at(86, 100));
         assert_eq!(img.at(400, 40)[3], 0);
-        let pointer = |phase, x, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 51.0, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
+        let pointer = |phase, x, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 51.0, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         s.input(&pointer(PointerPhase::Down, 200.0, 0.0));
         for i in 1..=10 {
             s.input(&pointer(PointerPhase::Move, 200.0 + 10.0 * i as f32, 16.0 * i as f64));

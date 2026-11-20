@@ -332,7 +332,7 @@ mod tests {
         let lit = |img: &fixture::Pixels, x: u32, y: u32| img.at(x, y)[2] > 128;
         assert!(lit(&img, 105, 228), "centre {:?}", img.at(105, 228));
         assert!(!lit(&img, 105, 100), "above {:?}", img.at(105, 100));
-        let pointer = |phase, x, y, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
+        let pointer = |phase, x, y, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         s.input(&pointer(exact_gpu::PointerPhase::Down, 105.0, 228.0, 10.0));
         // The pan's translation leaves out UIKit's 10 pt hysteresis: 130 pt of travel moves it 120.
         for i in 1..=11 {
@@ -359,7 +359,7 @@ mod tests {
     fn grab_texture_snap_merge_and_settle_are_felt_and_the_first_springs_back() {
         let mut s = Metaball { size: (400.0, 800.0), touched: true, first: (200.0, 400.0), ..Default::default() };
         s.second = (Spring::at(200.0), Spring::at(400.0));
-        let pointer = |phase, x, y, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
+        let pointer = |phase, x, y, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         s.input(&pointer(exact_gpu::PointerPhase::Down, 200.0, 400.0, 0.0));
         assert_eq!(s.messages(), [GRAB]);
         // Dragged down 400 pt at 4 pt a frame: the ticks come by distance, denser as the gap grows.
@@ -458,7 +458,7 @@ mod tests {
     fn the_second_springs_back_and_a_touch_down_does_not_stop_it() {
         let mut s = Metaball { size: (210.0, 456.0), touched: true, first: (105.0, 0.0), ..Default::default() };
         s.second = (Spring::at(105.0), Spring::at(228.0));
-        let pointer = |phase, x, y, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
+        let pointer = |phase, x, y, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         s.input(&pointer(exact_gpu::PointerPhase::Down, 105.0, 228.0, 0.0));
         s.input(&pointer(exact_gpu::PointerPhase::Move, 105.0, 240.0, 8.0));
         s.input(&pointer(exact_gpu::PointerPhase::Move, 105.0, 400.0, 16.0));

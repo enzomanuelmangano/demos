@@ -468,7 +468,7 @@ mod tests {
         assert!(a > 3560 * 4, "{a}");
 
         let finger = |s: &mut Box<dyn Surface>, phase, x: f32, y: f32, at_ms| {
-            s.input(&InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
+            s.input(&InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false })
         };
         finger(&mut s, PointerPhase::Down, 160.0, 356.0, 10.0);
         assert_eq!(s.messages(), ["haptic:impact-light"]);
@@ -505,7 +505,7 @@ mod tests {
         let step = s.grid().2 * TICK_ANGLE;
         assert!((step - 51.08).abs() < 0.05, "{step}");
         let finger = |s: &mut AtlasSphere, phase, y: f32, at_ms| {
-            s.input(&InputEvent::Pointer { id: 1, phase, x: 160.0, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
+            s.input(&InputEvent::Pointer { id: 1, phase, x: 160.0, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false })
         };
         finger(&mut s, PointerPhase::Down, 100.0, 0.0);
         assert_eq!(s.messages(), ["haptic:impact-light"]);

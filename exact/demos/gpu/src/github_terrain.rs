@@ -555,7 +555,7 @@ mod tests {
             dy: 0.0,
             kind: exact_gpu::PointerKind::Touch,
             buttons: 1,
-            at_ms,
+            at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false
         };
         s.input(&e(PointerPhase::Down, 10.0));
         s.input(&e(PointerPhase::Up, 80.0));

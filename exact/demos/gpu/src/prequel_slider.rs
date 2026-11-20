@@ -441,7 +441,7 @@ mod tests {
         assert!(ring[3] > 40 && ring[3] < 90, "ring {ring:?}");
         let before = rest.at(600, 1200);
         let finger = |s: &mut Box<dyn Surface>, phase, x, at_ms| {
-            s.input(&InputEvent::Pointer { id: 1, phase, x, y: 2409.0 / 3.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
+            s.input(&InputEvent::Pointer { id: 1, phase, x, y: 2409.0 / 3.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false })
         };
         // The drag follows 1:1 from the second move past the 10 pt slop, with no jump.
         finger(&mut s, PointerPhase::Down, 350.0, 0.0);
@@ -477,7 +477,7 @@ mod tests {
         let y = s.layout(3.0).area[1] + 30.0;
         let mut at = 0.0;
         let mut finger = |s: &mut PrequelSlider, phase, x: f32, at_ms: f64| {
-            s.input(&InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
+            s.input(&InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false })
         };
         // A fling left (1.2 pt/ms): it glides on after the lift and rests on a 10 pt tick.
         finger(&mut s, PointerPhase::Down, 300.0, at);

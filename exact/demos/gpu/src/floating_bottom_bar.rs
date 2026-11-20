@@ -436,7 +436,7 @@ mod tests {
                 dy: 0.0,
                 kind: PointerKind::Touch,
                 buttons: 1,
-                at_ms,
+                at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false
             });
         }
     }
@@ -520,7 +520,7 @@ mod tests {
         let mut s = surface();
         fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         let finger = |s: &mut Box<dyn Surface>, phase, x: f32, at_ms: f64| {
-            s.input(&InputEvent::Pointer { id: 1, phase, x, y: 30.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
+            s.input(&InputEvent::Pointer { id: 1, phase, x, y: 30.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false })
         };
         // Drag across all tabs, 4 pt a frame.
         let mut x = 50.0;

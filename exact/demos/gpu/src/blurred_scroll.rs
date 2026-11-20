@@ -576,7 +576,7 @@ mod tests {
             dy: 0.0,
             kind: exact_gpu::PointerKind::Touch,
             buttons: 1,
-            at_ms,
+            at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false
         };
         s.list.as_mut().unwrap().set_offset(0.0);
         s.input(&pointer(exact_gpu::PointerPhase::Down, 600.0, 100.0));

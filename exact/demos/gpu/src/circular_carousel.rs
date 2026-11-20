@@ -351,7 +351,7 @@ mod tests {
             ms += 16.7;
         }
         assert!(sf.agent("{}").unwrap().contains("[0.5000,0.9000,1.2000,0.9000,0.5000]"), "{}", sf.agent("{}").unwrap());
-        let touch = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 150.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let touch = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 150.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         ms += 100.0;
         sf.input(&touch(PointerPhase::Down, 300.0, ms));
         for k in 1..=40 {

@@ -273,7 +273,7 @@ mod tests {
     fn the_paper_shrinks_while_held_on_presstos_curve() {
         let mut s = PaperFolding { press: Pressable::new().skip_global_handlers().with_config(PRESS), ..Default::default() };
         let finger = |s: &mut PaperFolding, phase, at_ms| {
-            s.input(&InputEvent::Pointer { id: 1, phase, x: 50.0, y: 100.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
+            s.input(&InputEvent::Pointer { id: 1, phase, x: 50.0, y: 100.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false })
         };
         finger(&mut s, PointerPhase::Down, 0.0);
         s.press.step(0.0);
@@ -293,7 +293,7 @@ mod tests {
     fn the_fold_is_quick_and_lands_with_a_settle() {
         let mut s = PaperFolding { press: Pressable::new().skip_global_handlers().with_config(PRESS), ..Default::default() };
         let finger = |s: &mut PaperFolding, phase, at_ms| {
-            s.input(&InputEvent::Pointer { id: 1, phase, x: 50.0, y: 100.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
+            s.input(&InputEvent::Pointer { id: 1, phase, x: 50.0, y: 100.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false })
         };
         finger(&mut s, PointerPhase::Down, 0.0);
         finger(&mut s, PointerPhase::Up, 50.0);
@@ -363,7 +363,7 @@ mod tests {
         assert!(a.at(0, 0)[3] < 200, "{:?}", a.at(0, 0));
 
         let finger = |s: &mut Box<dyn Surface>, phase, at_ms| {
-            s.input(&InputEvent::Pointer { id: 1, phase, x: 50.0, y: 100.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
+            s.input(&InputEvent::Pointer { id: 1, phase, x: 50.0, y: 100.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false })
         };
         finger(&mut s, PointerPhase::Down, 10.0);
         finger(&mut s, PointerPhase::Up, 900.0);

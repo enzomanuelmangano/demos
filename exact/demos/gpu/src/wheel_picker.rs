@@ -294,7 +294,7 @@ mod tests {
         s.width = 420.0;
         s.set_offsets(210.0);
         let finger = |s: &mut WheelPicker, phase, x, at_ms| {
-            s.input(&InputEvent::Pointer { id: 1, phase, x, y: 75.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
+            s.input(&InputEvent::Pointer { id: 1, phase, x, y: 75.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false })
         };
         finger(&mut s, PointerPhase::Down, 300.0, 0.0);
         for i in 1..=5 {
@@ -332,7 +332,7 @@ mod tests {
         let tick = rest.at(461, 150);
         assert!(tick[3] > 100 && tick[0] > 150 && tick[0] < 230, "{tick:?}");
         let finger = |s: &mut Box<dyn Surface>, phase, x, at_ms| {
-            s.input(&InputEvent::Pointer { id: 1, phase, x, y: 75.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
+            s.input(&InputEvent::Pointer { id: 1, phase, x, y: 75.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false })
         };
         // A slow drag left: each line passed plays one selection.
         finger(&mut s, PointerPhase::Down, 300.0, 0.0);

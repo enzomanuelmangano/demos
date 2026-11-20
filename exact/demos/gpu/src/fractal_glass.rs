@@ -474,7 +474,7 @@ mod tests {
         assert!(a.at(184, 385)[2] < 245, "{:?}", a.at(184, 385));
 
         let finger = |s: &mut Box<dyn Surface>, phase, x: f32, y: f32, at_ms| {
-            s.input(&InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
+            s.input(&InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false })
         };
         // A touch off the circle is not its pan.
         finger(&mut s, PointerPhase::Down, 400.0, 800.0, 10.0);
@@ -709,7 +709,7 @@ mod tests {
                     let t = i as f32 / 360.0 * std::f32::consts::TAU;
                     let (x, y) = (180.0 + 120.0 * t.sin(), 270.0 + 300.0 * (1.0 - t.cos()) * 0.5);
                     let phase = if i == 0 { PointerPhase::Down } else if i == 359 { PointerPhase::Up } else { PointerPhase::Move };
-                    s.input(&InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: ms });
+                    s.input(&InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false });
                 }
                 let _ = s.messages();
                 let mut encoder = gpu.device.create_command_encoder(&Default::default());
@@ -778,7 +778,7 @@ mod tests {
         let mut played = Vec::new();
         let mut at = 0.0;
         let mut send = |s: &mut FractalGlass, phase, y: f32, at_ms: f64| {
-            s.input(&InputEvent::Pointer { id: 1, phase, x: 180.0, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms });
+            s.input(&InputEvent::Pointer { id: 1, phase, x: 180.0, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false });
             played.extend(s.messages().into_iter().map(|m| (at_ms, m)));
         };
         send(&mut s, PointerPhase::Down, 270.0, at);
@@ -834,7 +834,7 @@ mod tests {
     fn a_tap_on_the_circle_plays_nothing() {
         let mut s = surface_struct();
         s.size = (420.0, 912.0);
-        let p = |phase, at_ms| InputEvent::Pointer { id: 1, phase, x: 180.0, y: 270.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let p = |phase, at_ms| InputEvent::Pointer { id: 1, phase, x: 180.0, y: 270.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         s.input(&p(PointerPhase::Down, 0.0));
         s.input(&p(PointerPhase::Up, 60.0));
         assert!(s.messages().is_empty());
@@ -854,7 +854,7 @@ mod tests {
         }
         assert_eq!(s.max_fps(), IDLE_FPS);
         // A finger asks for every frame at once; so does the lift's spring, and the theme.
-        let p = |phase, y: f32, at_ms| InputEvent::Pointer { id: 1, phase, x: 180.0, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let p = |phase, y: f32, at_ms| InputEvent::Pointer { id: 1, phase, x: 180.0, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         s.input(&p(PointerPhase::Down, 270.0, 1000.0));
         assert_eq!(s.max_fps(), 0);
         s.input(&p(PointerPhase::Move, 400.0, 1200.0));

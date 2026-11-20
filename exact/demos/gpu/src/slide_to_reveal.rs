@@ -320,7 +320,7 @@ mod tests {
         s.layout();
         assert_eq!(s.digits.len(), DIGITS);
         let finger = |s: &mut SlideToReveal, phase, x: f32, at_ms| {
-            s.input(&InputEvent::Pointer { id: 1, phase, x, y: 45.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
+            s.input(&InputEvent::Pointer { id: 1, phase, x, y: 45.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false })
         };
         // A tap plays nothing.
         finger(&mut s, PointerPhase::Down, 10.0, 0.0);
@@ -385,7 +385,7 @@ mod tests {
 
         // A finger on the third digit (the 2): it grows to ~1, sharp, under the spot.
         let finger = |s: &mut Box<dyn Surface>, phase, x: f32, at_ms| {
-            s.input(&InputEvent::Pointer { id: 1, phase, x, y: 45.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
+            s.input(&InputEvent::Pointer { id: 1, phase, x, y: 45.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false })
         };
         finger(&mut s, PointerPhase::Down, 110.0, 500.0);
         let mut ms = 400.0;

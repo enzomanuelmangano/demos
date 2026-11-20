@@ -693,7 +693,7 @@ mod tests {
         let face = rest.at(2 * 300, 2 * 168);
         assert!(face[0] > 200 && face[1] > 200 && face[3] == 255, "{face:?}");
         let finger = |s: &mut Box<dyn Surface>, phase, x, y, at_ms| {
-            s.input(&InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
+            s.input(&InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false })
         };
         finger(&mut s, PointerPhase::Down, 168.0, 45.0, 0.0);
         let mut y = 45.0;

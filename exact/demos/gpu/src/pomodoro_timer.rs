@@ -909,7 +909,7 @@ mod tests {
     fn a_fling_paces_its_tick_haptics() {
         // 300 pt in 80 ms (about 34 ticks): at most one selection per HAPTIC_GAP_MS.
         let mut s = surface();
-        let p = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 700.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let p = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 700.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         s.input(&p(PointerPhase::Down, 350.0, 0.0));
         for k in 1..=5 {
             s.input(&p(PointerPhase::Move, 350.0 - 60.0 * k as f32, 16.0 * k as f64));
@@ -946,7 +946,7 @@ mod tests {
         assert!(row.iter().any(|&v| v > 8 && v + 8 < full), "{row:?}");
 
         // Drag left 100 pt slowly in the lower half, then lift still.
-        let p = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 700.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let p = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 700.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         s.input(&p(PointerPhase::Down, 300.0, 0.0));
         let mut ms = 0.0;
         for k in 1..=25 {
@@ -972,7 +972,7 @@ mod tests {
         s.messages();
 
         // Start: the count resets to 0 and counts up to the set seconds, one a second.
-        let b = |phase, at_ms| InputEvent::Pointer { id: 2, phase, x: 356.0, y: 832.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let b = |phase, at_ms| InputEvent::Pointer { id: 2, phase, x: 356.0, y: 832.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         s.input(&b(PointerPhase::Down, ms));
         s.input(&b(PointerPhase::Up, ms + 60.0));
         assert!(s.agent("{}").unwrap().contains("\"running\":true,\"enabled\":true"));

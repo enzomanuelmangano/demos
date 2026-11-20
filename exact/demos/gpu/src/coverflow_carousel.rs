@@ -244,7 +244,7 @@ mod tests {
             Err(error) => return eprintln!("{error}; skipped"),
         };
         let frame = |now_ms| Frame { width: 420.0, height: 912.0, scale: 3.0, now_ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: 0, headroom: 1.0 };
-        let touch = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 456.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let touch = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 456.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         let mut s = surface();
         let (img, _) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         gfx::save_over(&img, "coverflow-rest", [255, 255, 255]);

@@ -776,7 +776,7 @@ mod tests {
         assert_ne!(&right[..3], &[17, 17, 17]);
 
         // A slow flick to the left: the scroll snaps one card on.
-        let pointer = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 430.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let pointer = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 430.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         s.input(&pointer(PointerPhase::Down, 300.0, 16.0));
         for i in 1..=8 {
             s.input(&pointer(PointerPhase::Move, 300.0 - 15.0 * i as f32, 16.0 + 16.0 * i as f64));
@@ -801,7 +801,7 @@ mod tests {
         // No haptic on the flick.
         assert!(s.messages().is_empty());
         // A touch below the list does not scroll.
-        let below = InputEvent::Pointer { id: 2, phase: PointerPhase::Down, x: 200.0, y: 850.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: 5000.0 };
+        let below = InputEvent::Pointer { id: 2, phase: PointerPhase::Down, x: 200.0, y: 850.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: 5000.0, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         s.input(&below);
         assert!(s.agent("").unwrap().ends_with("\"held\":false}"), "{}", s.agent("").unwrap());
         assert!(s.messages().is_empty());
@@ -813,7 +813,7 @@ mod tests {
             Some(s) => s,
             None => return,
         };
-        let pointer = |phase, y: f32, at_ms| InputEvent::Pointer { id: 1, phase, x: 210.0, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let pointer = |phase, y: f32, at_ms| InputEvent::Pointer { id: 1, phase, x: 210.0, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         // A tap, even with a small slip: no tilt, no message.
         s.input(&pointer(PointerPhase::Down, 240.0, 0.0));
         s.input(&pointer(PointerPhase::Move, 244.0, 10.0));

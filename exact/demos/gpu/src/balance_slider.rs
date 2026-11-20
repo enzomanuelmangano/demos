@@ -238,7 +238,7 @@ mod tests {
         s.size = (378.0, 50.0);
         s.x();
         s.feel(0.0);
-        let pointer = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 25.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let pointer = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 25.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         // A tap plays nothing.
         s.input(&pointer(PointerPhase::Down, 189.0, 0.0));
         assert!(s.messages().is_empty());
@@ -287,7 +287,7 @@ mod tests {
         assert_eq!(&rest.at(2 * 189, 50)[..3], &[255, 255, 255]);
 
         // Drag to 20%: the boxes drop to 30% of the height and the labels rise.
-        let pointer = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 25.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let pointer = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 25.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         s.input(&pointer(PointerPhase::Down, 189.0, 0.0));
         let mut ms = 0.0;
         for k in 1..=20 {

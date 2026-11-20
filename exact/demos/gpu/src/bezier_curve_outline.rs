@@ -496,7 +496,7 @@ mod tests {
         assert!(icon[0] > 160 && icon[0] < 190 && icon[2] < 120, "{icon:?}");
         let tap = |s: &mut Box<dyn Surface>, x: f32, y: f32, at: f64| {
             for (phase, t) in [(PointerPhase::Down, at), (PointerPhase::Up, at + 50.0)] {
-                s.input(&InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: t });
+                s.input(&InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: t, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false });
             }
         };
         tap(&mut s, 140.0, 712.0, 0.0);
@@ -546,7 +546,7 @@ mod tests {
         assert_eq!(&held.at(10, 10)[..3], &[flat(0x11, 0.65); 3]);
         s.bind(&[Value::Bool(true), Value::Bool(false)], None).unwrap();
         // Drag the first point (140, 712) to (100, 600).
-        let at = |s: &mut Box<dyn Surface>, phase, x, y, t| s.input(&InputEvent::Pointer { id: 2, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: t });
+        let at = |s: &mut Box<dyn Surface>, phase, x, y, t| s.input(&InputEvent::Pointer { id: 2, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: t, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false });
         at(&mut s, PointerPhase::Down, 141.0, 713.0, ms);
         at(&mut s, PointerPhase::Move, 120.0, 650.0, ms + 16.0);
         at(&mut s, PointerPhase::Move, 100.0, 600.0, ms + 32.0);

@@ -311,7 +311,7 @@ mod tests {
         assert!(view_purple(img.at(100 - 30, 400)), "border {:?}", img.at(70, 400));
         assert_eq!(img.at(100, 400)[..3], [255, 255, 255], "inside {:?}", img.at(100, 400));
         assert!(purple(img.at(100, 180)), "balloon {:?}", img.at(100, 180));
-        let pointer = |phase, x, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 200.0, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
+        let pointer = |phase, x, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 200.0, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         s.input(&pointer(PointerPhase::Down, 50.0, 0.0));
         let mut ms = 100.0;
         // The pan begins 10 pt late (UIKit hysteresis), so 160 pt of travel moves the picker 150.

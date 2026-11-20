@@ -389,7 +389,7 @@ mod tests {
         assert_eq!(white(&rest), 0);
 
         let finger = |s: &mut Box<dyn Surface>, phase, at_ms| {
-            s.input(&InputEvent::Pointer { id: 1, phase, x: 125.0, y: 100.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
+            s.input(&InputEvent::Pointer { id: 1, phase, x: 125.0, y: 100.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false })
         };
         finger(&mut s, PointerPhase::Down, 10.0);
         let mut ms = 0.0;
@@ -424,7 +424,7 @@ mod haptic_tests {
     use exact_gpu::{PointerKind, PointerPhase};
 
     fn finger(s: &mut AtlasButton, phase: PointerPhase, x: f32, y: f32) {
-        s.input(&InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: 0.0 });
+        s.input(&InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: 0.0, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false });
     }
 
     /// The grab plays a light impact and the hold's end a soft one; a touch outside plays none.

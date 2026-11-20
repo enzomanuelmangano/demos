@@ -362,7 +362,7 @@ mod tests {
     #[test]
     fn haptics_per_time_at_an_end_and_on_landing() {
         let finger = |s: &mut ClockTimePicker, phase, y: f32, at_ms| {
-            s.input(&InputEvent::Pointer { id: 1, phase, x: 180.0, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
+            s.input(&InputEvent::Pointer { id: 1, phase, x: 180.0, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false })
         };
         let settle = |s: &mut ClockTimePicker, from: f64| {
             let mut posted = Vec::new();
@@ -430,7 +430,7 @@ mod tests {
         let text = (3 * 132..3 * 232).filter(|&x| (3 * 52..3 * 68).any(|y| rest.at(x, y)[0] > 150)).count();
         assert!(text > 20, "{text}");
         let finger = |s: &mut Box<dyn Surface>, phase, y, at_ms| {
-            s.input(&InputEvent::Pointer { id: 1, phase, x: 180.0, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
+            s.input(&InputEvent::Pointer { id: 1, phase, x: 180.0, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false })
         };
         finger(&mut s, PointerPhase::Down, 100.0, 0.0);
         for i in 1..=8 {

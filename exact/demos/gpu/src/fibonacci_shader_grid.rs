@@ -403,7 +403,7 @@ mod tests {
         assert!(b[0] > 110 && b[0] < 122, "{b:?}");
 
         // A touch at the pad's top-left heads for the minimum values.
-        let p = |phase, x: f32, y: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
+        let p = |phase, x: f32, y: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         s.input(&p(exact_gpu::PointerPhase::Down, 111.0, 542.0, 10.0));
         for k in 1..=10 {
             s.input(&p(exact_gpu::PointerPhase::Move, 111.0 + k as f32 * 30.0, 542.0, 10.0 + k as f64 * 16.0));

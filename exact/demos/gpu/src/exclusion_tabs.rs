@@ -202,7 +202,7 @@ mod tests {
         let tabs = |s: &mut Box<dyn Surface>| s.agent("").unwrap();
         assert!(blue(img.at(3 * 55, 3 * 10)), "Home {:?}", img.at(165, 30));
         assert!(black(img.at(3 * 200, 3 * 10)), "Changelog {:?}", img.at(600, 30));
-        let pointer = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 22.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let pointer = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 22.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         s.input(&pointer(PointerPhase::Down, 260.0, 0.0));
         s.input(&pointer(PointerPhase::Up, 260.0, 50.0));
         assert_eq!(s.messages(), vec!["haptic:selection".to_string()]);

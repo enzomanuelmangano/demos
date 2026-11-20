@@ -419,7 +419,7 @@ mod tests {
     }
 
     fn pointer(phase: PointerPhase, x: f32, y: f32, at_ms: f64) -> InputEvent {
-        InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms }
+        InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false }
     }
 
     fn state(s: &mut Box<dyn Surface>) -> String {
@@ -463,7 +463,7 @@ mod tests {
             s.input(&pointer(PointerPhase::Move, x2, 400.0, ms));
         }
         assert_eq!(s.messages(), vec!["haptic:selection"]);
-        s.input(&InputEvent::Pointer { id: 2, phase: PointerPhase::Down, x: 100.0, y: 400.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: ms });
+        s.input(&InputEvent::Pointer { id: 2, phase: PointerPhase::Down, x: 100.0, y: 400.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false });
         assert!(s.messages().is_empty());
         let _ = x;
     }

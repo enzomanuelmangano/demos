@@ -2904,7 +2904,7 @@ mod tests {
     }
 
     fn touch(id: u32, phase: PointerPhase, x: f32, y: f32, at_ms: f64) -> InputEvent {
-        InputEvent::Pointer { id, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms }
+        InputEvent::Pointer { id, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false }
     }
 
     /// A square's centre on the screen.

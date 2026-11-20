@@ -623,7 +623,7 @@ mod tests {
             dy: 0.0,
             kind: PointerKind::Touch,
             buttons: 1,
-            at_ms,
+            at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false
         };
         let mut s = surface();
         s.bind(&[Value::Number(62.0), Value::Number(34.0)], None)
@@ -741,7 +741,7 @@ mod tests {
             dy: 0.0,
             kind: PointerKind::Touch,
             buttons: 1,
-            at_ms,
+            at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false
         };
         // Sideways (a vertical drag would scroll the list itself), in the top row.
         s.input(&pointer(PointerPhase::Down, 50.0, 200.0, 0.0));
@@ -786,7 +786,7 @@ mod tests {
             dy: 0.0,
             kind: PointerKind::Touch,
             buttons: 1,
-            at_ms,
+            at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false
         };
         // Up 200 over 200 ms, then let go: the list scrolls (no selection), then flings on.
         s.input(&pointer(PointerPhase::Down, 200.0, 700.0, 0.0));

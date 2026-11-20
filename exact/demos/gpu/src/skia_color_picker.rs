@@ -492,7 +492,7 @@ mod tests {
         s.size = 420.0;
         let r = max_size(420.0) as f64 / 2.0;
         let finger = |s: &mut ColorPicker, phase, x: f64, y: f64, at_ms| {
-            s.input(&InputEvent::Pointer { id: 1, phase, x: x as f32, y: y as f32, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
+            s.input(&InputEvent::Pointer { id: 1, phase, x: x as f32, y: y as f32, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false })
         };
         // A tap, even outside the wheel, plays nothing.
         finger(&mut s, PointerPhase::Down, 415.0, 210.0, 0.0);
@@ -565,7 +565,7 @@ mod tests {
         assert!(body[..3].iter().all(|&c| c > 250), "{body:?}");
 
         let finger = |s: &mut Box<dyn Surface>, phase, x, y, at_ms| {
-            s.input(&InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
+            s.input(&InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false })
         };
         // Down far right: clamped to the circle's edge, hue 180 (cyan).
         finger(&mut s, PointerPhase::Down, 419.0, 210.0, 0.0);

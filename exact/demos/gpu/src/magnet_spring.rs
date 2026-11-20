@@ -308,7 +308,7 @@ mod tests {
         let mut s = MagnetSpring::new();
         s.place(420.0, 912.0);
         let m = magnets(420.0, 912.0);
-        let pointer = |phase, x: f64, y: f64, at_ms| InputEvent::Pointer { id: 1, phase, x: x as f32, y: y as f32, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let pointer = |phase, x: f64, y: f64, at_ms| InputEvent::Pointer { id: 1, phase, x: x as f32, y: y as f32, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         // A tap beside the piece takes nothing: no haptic.
         s.input(&pointer(PointerPhase::Down, 20.0, 20.0, 0.0));
         s.input(&pointer(PointerPhase::Up, 20.0, 20.0, 50.0));
@@ -375,7 +375,7 @@ mod tests {
         assert_eq!(&rest.at(5, 5)[..3], &[245, 245, 245]);
 
         // Drag the piece onto magnet 3 and past it, then let go slowly: it snaps to magnet 3.
-        let pointer = |phase, x: f64, y: f64, at_ms| InputEvent::Pointer { id: 1, phase, x: x as f32, y: y as f32, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let pointer = |phase, x: f64, y: f64, at_ms| InputEvent::Pointer { id: 1, phase, x: x as f32, y: y as f32, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         let (tx, ty) = (m[3].0 + 6.0, m[3].1 - 4.0);
         s.input(&pointer(PointerPhase::Down, 210.0, 456.0, 0.0));
         let mut ms = 0.0;

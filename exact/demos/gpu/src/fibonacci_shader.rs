@@ -421,7 +421,7 @@ mod tests {
         let lit = (100..520).step_by(4).flat_map(|y| (0..420).step_by(4).map(move |x| (x, y))).filter(|&(x, y)| a.at(x, y)[..3].iter().any(|&c| c > 60)).count();
         assert!(lit > 50, "{lit} lit samples");
         // Drag the picker to the track's end: N = 350.
-        let p = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 602.0, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
+        let p = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 602.0, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         s.input(&p(exact_gpu::PointerPhase::Down, 42.0, 10.0));
         for k in 1..=20 {
             s.input(&p(exact_gpu::PointerPhase::Move, 42.0 + k as f32 * 20.0, 10.0 + k as f64 * 16.0));
@@ -460,7 +460,7 @@ mod tests {
         let reply = s.agent("{}").unwrap();
         assert!(reply.contains("\"n\":350") && reply.contains("\"native\":true"), "{reply}");
         // Touches on the drawn track do nothing.
-        let p = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 602.0, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
+        let p = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 602.0, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         s.input(&p(exact_gpu::PointerPhase::Down, 378.0, 10.0));
         s.input(&p(exact_gpu::PointerPhase::Move, 42.0, 30.0));
         s.input(&p(exact_gpu::PointerPhase::Up, 42.0, 50.0));
