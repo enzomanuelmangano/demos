@@ -751,10 +751,12 @@ impl ThreadsHoloTicket {
                     s.to(face, v, motion::duration_config(self.x - face, v, SETTLE_MS, 1.0, 4.0));
                     self.motion = if s.running { Motion::Spring(s) } else { Motion::Rest };
                 } else if phase == Phase::Up && !t.tap_failed && ms - t.down.2 <= TAP_MAX_MS {
-                    // A tap flips to the next face.
+                    // A tap flips the ticket half a turn, away from the finger: a tap on the left
+                    // half pushes that edge back (it turns right), on the right half the other way.
                     let normalized = (self.x / 180.0 + 0.5).floor() * 180.0;
+                    let toward = if t.down.0 < self.layout.x0 + W / 2.0 { -180.0 } else { 180.0 };
                     let mut s = Spring::at(self.x);
-                    gfx::spring_to(&mut s, normalized + 180.0, FLIP_MS, FLIP_DAMPING_RATIO);
+                    gfx::spring_to(&mut s, normalized + toward, FLIP_MS, FLIP_DAMPING_RATIO);
                     self.motion = if s.running { Motion::Spring(s) } else { Motion::Rest };
                     self.posted.push("haptic:selection".to_string());
                 }
@@ -1207,6 +1209,22 @@ mod tests {
         back.save("threads-holo-ticket-back");
         let reply = s.agent("").unwrap();
         assert!(reply.starts_with("{\"translateX\":540.000,\"rotateY\":180.000,\"front\":false,\"maskOpacity\":0.0000"), "{reply}");
+        // A tap on the ticket's left half turns it the other way: back from 540 to 360.
+        let tap_at = |s: &mut Box<dyn Surface>, x: f32, at: f64| {
+            let p = |phase, x| InputEvent::Pointer { id: 3, phase, x, y: 450.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: at, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
+            s.input(&p(PointerPhase::Down, x));
+            s.input(&p(PointerPhase::Up, x + 1.0));
+        };
+        tap_at(&mut s, 100.0, t + 100.0);
+        let _ = s.messages();
+        let mut u = t + 200.0;
+        let mut turning = true;
+        while turning && u < t + 3000.0 {
+            u += 16.0;
+            (_, turning) = fixture::render(&gpu, s.as_mut(), &frame(u)).unwrap();
+        }
+        let reply = s.agent("").unwrap();
+        assert!(reply.starts_with("{\"translateX\":360.000,"), "{reply}");
         // The QR reads unmirrored: its top-right eye is gold, the card around it seashell.
         let eye = px(&back, 60.0 + 225.0 - 2.0, 256.0 + 125.0 + 2.0);
         assert!(eye[0] > eye[2] + 40 && eye[0] < 240, "{eye:?}");
