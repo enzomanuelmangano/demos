@@ -1,11 +1,14 @@
 // Motion blur: a + button adds a random transaction card to a list showing the last three. Each
-// new card pops in, the others slide up on a spring, and the oldest fades out upwards, each
-// blurred by its own motion. The cards are drawn in Rust (gpu/src/motion_blur.rs).
+// new card comes out of the + button, the others slide up on a spring, and the oldest fades out
+// upwards, each blurred by its own motion. The cards are drawn in Rust (gpu/src/motion_blur.rs).
 use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
 use DemoEnv from "../env.contract"
 
 fn rowHeight(): number = 110
 fn maxVisible(): number = 3
+// The + is 64 pt tall and lifted 50 pt over the list's bottom: its centre below the list's top.
+// A new card starts there.
+fn plusCenterY(): number = maxVisible() * rowHeight() - 50 + 32
 
 component MotionBlur
   inject
@@ -40,7 +43,7 @@ component MotionBlur
         // shadow are not clipped.
         view height=(maxVisible() * rowHeight()) position="relative"
           press=toggleSlow aria-label="Toggle slow motion" testId="motion-blur-list"
-          canvas surface=motion_blur(count, env.seed, held, slow) position="absolute" left=0
+          canvas surface=motion_blur(count, env.seed, held, slow, plusCenterY()) position="absolute" left=0
             top=-24 width="100%" height=(maxVisible() * rowHeight() + 54) message=buzz
             aria-hidden=true
             testId="motion-blur-canvas"

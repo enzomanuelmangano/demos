@@ -12,7 +12,7 @@
 //! - Debug input `slow` runs the clock at SLOW_RATE and shows a HUD with the pixel scale, the
 //!   frame's dt, the samples a pixel took and the longest smear since the last press.
 //!
-//! Inputs: count, seed, held, slow. Every change starts at the next frame's instant
+//! Inputs: count, seed, held, slow, plusY (the + button's centre, pt below the list's top). Every change starts at the next frame's instant
 //! (`Frame::now_ms`), never at the bind's stamp: a stamp on another clock would start the motion
 //! in the past.
 
@@ -30,10 +30,11 @@ const CARD_H: f64 = 90.0;
 pub const LIST_TOP: f64 = 24.0;
 /// How far the canvas reaches below the list, pt: the bottom card's shadow.
 pub const LIST_BOTTOM: f64 = 30.0;
-/// A new card starts this many card heights above its slot, under the card above.
-const ENTER_RISE: f64 = 0.5;
-/// A new card starts at this scale.
-const ENTER_SCALE: f64 = 0.92;
+/// Where the + sits, pt below the list's top, when the demo does not say: the list's height, the
+/// 50 pt the button is lifted, and its 32 pt radius. A new card starts centred there.
+const PLUS_CY: f64 = 3.0 * ROW - 50.0 + 32.0;
+/// A new card starts at this scale: the + (64 pt) covers it, so it reads as coming out of the button.
+const ENTER_SCALE: f64 = 0.5;
 /// A new card fades in over this long, ms.
 const ENTER_FADE_MS: f64 = 120.0;
 /// A new card is drawn under the others for this long, ms.
@@ -277,9 +278,9 @@ impl Card {
             .map_or(1.0, |f| f.at(t))
     }
     fn pose(&self, l: &Layout, t: f64) -> Pose {
-        // A new card is dealt from under the card above: its top springs from half a card above
-        // its slot (`tops`), its scale grows from ENTER_SCALE, and it fades in. Before it mounts
-        // it is transparent.
+        // A new card comes out of the +: its centre springs from the button's centre to its slot
+        // (`tops`), its scale grows from ENTER_SCALE, and it fades in. Before it mounts it is
+        // transparent.
         let s = ENTER_SCALE + (1.0 - ENTER_SCALE) * self.pose_scale(t);
         let mut alpha = if t < self.added {
             0.0
@@ -399,6 +400,8 @@ pub fn plan(
 struct MotionBlur {
     count: Option<usize>,
     seed: f64,
+    /// The + button's centre, pt below the list's top.
+    plus_y: f64,
     /// The last inputs (count, held, slow), applied at the next frame.
     pending: Option<(usize, bool, bool)>,
     /// The demo's clock at the frame being drawn.
@@ -507,7 +510,7 @@ impl MotionBlur {
                 added: t,
                 tops: vec![Seg {
                     t0: t,
-                    from: slot - ENTER_RISE * CARD_H,
+                    from: self.plus_y - CARD_H / 2.0,
                     to: slot,
                     v0: 0.0,
                 }],
@@ -639,6 +642,10 @@ impl Surface for MotionBlur {
             .get(3)
             .and_then(|v| v.as_bool().or(v.as_number().map(|x| x != 0.0)))
             .unwrap_or(false);
+        self.plus_y = inputs
+            .get(4)
+            .and_then(|v| v.as_number())
+            .unwrap_or(PLUS_CY);
         if seed != self.seed {
             self.seed = seed;
             self.count = None;
@@ -1126,6 +1133,37 @@ mod tests {
     }
 
     #[test]
+    fn a_new_card_comes_out_of_the_plus() {
+        let l = Layout::new(W as f64, S as f64);
+        let mut m = MotionBlur::default();
+        m.plus_y = PLUS_CY;
+        m.apply(3, 0.0);
+        m.apply(4, 1000.0);
+        let new = m.cards.iter().find(|c| c.k == 3).unwrap();
+        // The centre of the card on screen: the layer's centre.
+        let centre = |p: Pose| {
+            (
+                p.ox + p.s * (l.card_w / 2.0 + l.mx),
+                p.oy + p.s * (CARD_H / 2.0 + l.mt),
+            )
+        };
+        let p = new.pose(&l, 1000.0);
+        let (x, y) = centre(p);
+        assert!((x - W as f64 / 2.0).abs() < 0.01, "{x}");
+        assert!((y - (LIST_TOP + PLUS_CY)).abs() < 0.01, "{y}");
+        assert_eq!(p.s, ENTER_SCALE);
+        // It travels to its slot (the last of the three) and grows to full size.
+        let mid = new.pose(&l, 1100.0);
+        let (_, ym) = centre(mid);
+        assert!(ym < y && mid.s > p.s, "{ym} {}", mid.s);
+        let done = new.pose(&l, 3000.0);
+        let (xd, yd) = centre(done);
+        assert!((xd - W as f64 / 2.0).abs() < 0.01);
+        assert!((yd - (LIST_TOP + 2.0 * ROW + CARD_H / 2.0)).abs() < 0.01, "{yd}");
+        assert_eq!(done.s, 1.0);
+    }
+
+    #[test]
     fn the_spring_is_continuous_and_settles() {
         let g = Seg {
             t0: 0.0,
@@ -1229,9 +1267,9 @@ mod tests {
     fn cards_rest_sharp_and_blur_along_their_motion() {
         // Three cards at rest, then a fourth: the others slide up, the oldest leaves.
         let shots = [
-            1030.0, 1060.0, 1100.0, 1450.0, 1520.0, 1560.0, 1600.0, 1650.0, 3000.0,
+            1030.0, 1060.0, 1100.0, 1850.0, 1920.0, 1960.0, 2000.0, 2050.0, 3400.0,
         ];
-        let px = render_seq("motion-blur", &[0.0, 500.0, 1000.0, 1500.0], &shots);
+        let px = render_seq("motion-blur", &[0.0, 500.0, 1000.0, 1900.0], &shots);
         if px.is_empty() {
             return;
         }

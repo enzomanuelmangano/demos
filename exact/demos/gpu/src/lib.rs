@@ -176,7 +176,7 @@ pub static REGISTRY: Registry = Registry {
         ("miles_bar_chart", 7, miles_bar_chart::surface),
         ("mnist", 0, mnist::surface),
         ("mobile_input", 2, mobile_input::surface),
-        ("motion_blur", 4, motion_blur::surface),
+        ("motion_blur", 5, motion_blur::surface),
         ("notion_qrcode", 0, notion_qrcode::surface),
         ("paper_folding", 0, paper_folding::surface),
         ("pomodoro_timer", 1, pomodoro_timer::surface),
