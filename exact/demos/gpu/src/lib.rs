@@ -166,7 +166,7 @@ pub static REGISTRY: Registry = Registry {
         ("grid_visualizer", 1, grid_visualizer::surface),
         ("imessage_stack", 0, imessage_stack::surface),
         ("infinite_carousel", 0, infinite_carousel::surface),
-        ("interaction_appearance", 2, interaction_appearance::surface),
+        ("interaction_appearance", 4, interaction_appearance::surface),
         ("ios_home_bouncy", 1, ios_home_bouncy::surface),
         ("light_on_painting", 4, light_on_painting::surface),
         ("linear_sensors", 0, linear_sensors::surface),

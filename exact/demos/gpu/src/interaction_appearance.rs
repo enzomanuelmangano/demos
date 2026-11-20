@@ -1,28 +1,25 @@
 //! A movie page whose floating sun button switches the light and dark themes. While the button
 //! is held, the page shrinks, the poster's glow fades and a blur rises over everything.
 //!
-//! - The button is concentric with the display's corner, so it sits 30 pt from the sides and
-//!   the bottom, not above the home indicator.
+//! - The button is the demo's own (a Liquid Glass pane over this canvas, see the Contract): it
+//!   tells the surface whether it is held and which theme is on. The surface draws the page.
 //! - The page has no height of its own beyond its content, so it does not scroll; it only
 //!   bounces. The scale's origin, the page's centre, lies below the screen.
 //! - The blur is taken over a Display P3 surface; views and text use the app's P3 colours.
 //!
-//! Inputs: safeTop, safeBottom.
+//! Inputs: safeTop, safeBottom, held, dark.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use pressto::{PressEvent, Pressable};
 use motion::{Easing, Spring, Timing};
 use draw2d::backdrop::{expo_fraction, BackdropBlur, Material};
 use draw2d::blur::{ceil_size, outset, GraphiteBlur, GraphitePlan, Placed, GRAPHITE_FORMAT};
-use draw2d::{fit_cover, Canvas, Color, Font, Images, Matrix, Paint, Rect, Renderer};
+use draw2d::{fit_cover, Canvas, Color, Font, Images, Paint, Rect, Renderer};
 
 use crate::gfx;
 use crate::ui_scroll::{Snap, UiScroll, NORMAL};
 
 static POSTER: &[u8] = include_bytes!("../images/interaction-appearance/past-lives.jpg");
-static SUNNY_FONT: &[u8] = include_bytes!("../fonts/materialicons-sunny-subset.ttf");
-const SUNNY: &str = "\u{E81A}";
 
 const TITLE: &str = "Past Lives";
 const DESCRIPTION: &str = "This heart-meltingly romantic and sad movie from Korean-Canadian dramatist and film-maker Celine Song left me wrung out and empty and weirdly euphoric, as if I\u{2019}d lived through an 18-month affair in the course of an hour and three-quarters. How extraordinary to think that this is Song\u{2019}s feature debut.\n\nIt\u{2019}s delicate, sophisticated and yet also somehow simple, direct, even verging on the cheesy. Past Lives has been compared to the movies of Richard Linklater, Noah Baumbach and Greta Gerwig; all true, but I also found myself remembering the wrenching final moments of Wong Kar-wai\u{2019}s In the Mood for Love, with Tony Leung murmuring his pain into a stone hollow in Angkor Wat and - yes - the gooey genius of Dean Friedman\u{2019}s plaintive 1978 chart hit Lucky Stars.";
@@ -32,23 +29,17 @@ const IMAGE_H: f32 = 250.0;
 const IMAGE_X: f32 = 32.0;
 const BLUR: f32 = 500.0;
 const GRADIENT_H: f32 = 400.0;
-const BUTTON: f32 = 64.0;
-/// The display's corner radius (iPhone 17 / Air). The button is concentric with it, so it sits
-/// DISPLAY_CORNER − BUTTON / 2 = 30 pt from the sides and the bottom of the display.
-const DISPLAY_CORNER: f32 = 62.0;
 
-/// Theme colours: primary, background, card, border (rgb, alpha), text.
+/// Theme colours: primary, background, text.
 struct Palette {
     primary: u32,
     background: u32,
-    card: u32,
-    border: (u32, f32),
     text: u32,
 }
-const LIGHT: Palette = Palette { primary: 0x000000, background: 0xFCFCFC, card: 0xf0f0f0, border: (0xA0A0A0, 0.05), text: 0xA0A0A0 };
-const DARK: Palette = Palette { primary: 0xFFFFFF, background: 0x090909, card: 0x1D1D1F, border: (0x2C2C2C, 1.0), text: 0x808080 };
+const LIGHT: Palette = Palette { primary: 0x000000, background: 0xFCFCFC, text: 0xA0A0A0 };
+const DARK: Palette = Palette { primary: 0xFFFFFF, background: 0x090909, text: 0x808080 };
 
-/// The surface. Inputs: safeTop, safeBottom.
+/// The surface. Inputs: safeTop, safeBottom, held, dark.
 pub fn surface() -> Box<dyn Surface> {
     Box::new(Appearance {
         safe: (0.0, 0.0),
@@ -56,19 +47,16 @@ pub fn surface() -> Box<dyn Surface> {
         scale: 0.0,
         dark: false,
         switching: false,
-        press: Pressable::new(),
         intensity: Timing::at(0.0),
         page: Spring::at(1.0),
         glow: Timing::at(1.0),
         scroll: UiScroll::new(0.0, 0.0, 1.0, NORMAL, Snap::Free),
-        messages: Vec::new(),
         title: draw2d::match_ui_font(32.0, 400.0),
         body: draw2d::match_ui_font(16.0, 400.0),
-        icon: Font::new(SUNNY_FONT, 20.0).map(Font::with_ui_layout),
         total: 0.0,
         content_key: None,
         glow_key: None,
-        button_key: None,
+        button_cleared: false,
         textures: None,
         poster: None,
         renderers: [Renderer::default(), Renderer::default(), Renderer::default(), Renderer::default()],
@@ -108,20 +96,17 @@ struct Appearance {
     scale: f32,
     dark: bool,
     switching: bool,
-    press: Pressable,
     intensity: Timing,
     page: Spring,
     glow: Timing,
     scroll: UiScroll,
-    messages: Vec<String>,
     title: Option<Font>,
     body: Option<Font>,
-    icon: Option<Font>,
     /// The ScrollView's content height (= the rescaler's).
     total: f32,
     content_key: Option<(bool, u32, u32, u32)>,
     glow_key: Option<(u32, u32)>,
-    button_key: Option<(bool, u64)>,
+    button_cleared: bool,
     textures: Option<Textures>,
     poster: Option<Images>,
     /// Content, glow layer, button, spare: each draws once a frame at most.
@@ -145,17 +130,6 @@ impl Appearance {
     }
     fn image_y(&self) -> f32 {
         (self.canvas_height() - IMAGE_H) / 2.0 + 32.0
-    }
-    fn button_box(&self) -> (f32, f32) {
-        let inset = DISPLAY_CORNER - BUTTON / 2.0;
-        (self.size.0 - inset - BUTTON, self.size.1 - inset - BUTTON)
-    }
-    fn in_button(&self, x: f32, y: f32) -> bool {
-        // The press tests the point in the button's scaled bounds.
-        let (bx, by) = self.button_box();
-        let (cx, cy) = (bx + BUTTON / 2.0, by + BUTTON / 2.0);
-        let half = BUTTON / 2.0 * self.press.scale() as f32;
-        (x - cx).abs() <= half && (y - cy).abs() <= half
     }
     fn set_switching(&mut self, on: bool) {
         if self.switching == on {
@@ -394,15 +368,15 @@ impl Surface for Appearance {
         if let [Value::Number(top), Value::Number(bottom), ..] = inputs {
             self.safe = (*top as f32, *bottom as f32);
         }
+        let flag = |i: usize| inputs.get(i).is_some_and(|v| v.as_bool().or(v.as_number().map(|x| x != 0.0)).unwrap_or(false));
+        // The button's hold and the theme come from the Contract.
+        self.set_switching(flag(2));
+        self.dark = flag(3);
         Ok(())
     }
 
     fn wants_input(&self) -> bool {
         true
-    }
-
-    fn messages(&mut self) -> Vec<String> {
-        crate::haptic::host(std::mem::take(&mut self.messages))
     }
 
     fn agent(&mut self, _request: &str) -> Option<String> {
@@ -420,27 +394,8 @@ impl Surface for Appearance {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else {
             return;
         };
-        let phase = gfx::phase(phase);
-        let inside = self.in_button(x, y);
-        match self.press.pointer(id, phase, inside) {
-            Some(PressEvent::PressIn) => {
-                self.set_switching(true);
-                return;
-            }
-            Some(PressEvent::Press(press)) => {
-                self.messages.extend(press.global_message().map(String::from));
-                self.dark = !self.dark;
-                self.set_switching(false);
-                return;
-            }
-            Some(PressEvent::PressOut) => {
-                self.set_switching(false);
-                return;
-            }
-            None => {}
-        }
         // The scroll view covers the screen; its axes are swapped for the vertical pan.
-        self.scroll.input(id, phase, y, x, at_ms, !inside);
+        self.scroll.input(id, gfx::phase(phase), y, x, at_ms, true);
     }
 
     fn render(
@@ -453,8 +408,7 @@ impl Surface for Appearance {
         format: wgpu::TextureFormat,
     ) -> bool {
         let now = frame.now_ms;
-        let mut moving = self.press.step(now);
-        moving |= self.intensity.step(now);
+        let mut moving = self.intensity.step(now);
         moving |= self.glow.step(now);
         moving |= self.page.step(now);
         moving |= self.scroll.step(now);
@@ -496,7 +450,7 @@ impl Surface for Appearance {
                 blurred: t("appearance blurred", px.0, px.1),
             });
             self.glow_key = None;
-            self.button_key = None;
+            self.button_cleared = false;
         }
         let gpu = self.gpu.as_ref().unwrap();
         let tex = self.textures.as_ref().unwrap();
@@ -530,30 +484,12 @@ impl Surface for Appearance {
             }
             self.glow_key = Some(glow_px);
         }
-        // The button: per theme and press.
-        let bkey = (self.dark, self.press.scale().to_bits());
-        if self.button_key != Some(bkey) {
-            let p = self.palette();
-            let (bx, by) = self.button_box();
-            let (cx, cy) = (bx + BUTTON / 2.0, by + BUTTON / 2.0);
-            let k = self.press.scale() as f32;
+        // The button is the Contract's glass; the layer over the blur stays clear.
+        if !self.button_cleared {
             let c = &mut self.canvas;
             c.begin(frame.scale);
-            c.concat(Matrix::translate(-cx, -cy).then(Matrix::scale(k, k)).then(Matrix::translate(cx, cy)));
-            c.draw_circle(cx, cy, BUTTON / 2.0, &Paint::fill(Color::view_hex(p.card)));
-            let border = Color::view_hex(p.border.0).alpha(p.border.1);
-            c.draw_circle(cx, cy, BUTTON / 2.0 - 0.5, &Paint::stroke(border, 1.0));
-            if let Some(icon) = self.icon.as_ref() {
-                let s = frame.scale;
-                let w = (icon.advance_width(SUNNY) * s - 1e-3).ceil() / s;
-                let h = (gfx::line_height(icon) * s - 1e-3).ceil() / s;
-                let left = ((1.0 + (BUTTON - 2.0 - w) / 2.0) * s + 1e-4).floor() / s;
-                let top = ((1.0 + (BUTTON - 2.0 - h) / 2.0) * s + 1e-4).floor() / s;
-                let base = gfx::baseline(icon, top + icon.metrics().leading / 2.0);
-                c.draw_text(SUNNY, bx + left, by + (base * s - 1e-3).ceil() / s, icon, &Paint::fill(Color::view_hex(p.primary)));
-            }
             self.renderers[2].draw(device, queue, encoder, c, &tex.button, GRAPHITE_FORMAT, px.0, px.1, wgpu::Color::TRANSPARENT);
-            self.button_key = Some(bkey);
+            self.button_cleared = true;
         }
         // What the blur sees.
         let u = self.uniforms(frame, format);
@@ -577,7 +513,7 @@ impl Surface for Appearance {
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
-    use exact_gpu::{fixture, PointerKind, PointerPhase};
+    use exact_gpu::fixture;
 
     fn frame(now_ms: f64) -> Frame {
         Frame { width: 420.0, height: 912.0, scale: 3.0, now_ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: 0, headroom: 1.0 }
@@ -590,7 +526,7 @@ mod tests {
             Err(error) => return eprintln!("{error}; skipped"),
         };
         let mut s = surface();
-        s.bind(&[Value::Number(68.0), Value::Number(34.0)], None).unwrap();
+        s.bind(&[Value::Number(68.0), Value::Number(34.0), Value::Bool(false), Value::Bool(false)], None).unwrap();
         let (rest, _) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
         gfx::save_over(&rest, "appearance-rest", [0, 0, 0]);
         // The light background beside the poster (the σ 500 glow tints it a little), the poster
@@ -598,13 +534,13 @@ mod tests {
         let bg = rest.at(3 * 400, 3 * 300);
         assert!(bg[..3].iter().all(|&c| (240..=252).contains(&c)), "{bg:?}");
         assert!(rest.at(3 * 130, 3 * 270)[..3].iter().any(|&c| c < 200));
-        // The button (centre 358, 850): its card colour.
-        let card = rest.at(3 * 347, 3 * 836);
-        assert!((230..=245).contains(&card[0]), "{card:?}");
+        // The surface draws no button: the glass is the Contract's.
+        let corner = rest.at(3 * 358, 3 * 850);
+        assert!(corner[..3].iter().all(|&c| (240..=252).contains(&c)), "{corner:?}");
 
-        let p = |phase, at_ms| InputEvent::Pointer { id: 1, phase, x: 358.0, y: 850.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
-        s.input(&p(PointerPhase::Down, 0.0));
+        // Held: the Contract says so.
         let mut ms = 0.0;
+        s.bind(&[Value::Number(68.0), Value::Number(34.0), Value::Bool(true), Value::Bool(false)], None).unwrap();
         while ms < 800.0 {
             ms += 16.0;
             fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
@@ -612,8 +548,8 @@ mod tests {
         let (held, _) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         gfx::save_over(&held, "appearance-held", [0, 0, 0]);
         assert_eq!(s.agent("{}").unwrap(), "{\"theme\":\"light\",\"switching\":true,\"intensity\":15.00,\"scale\":0.9500,\"held\":false}");
-        s.input(&p(PointerPhase::Up, ms));
-        assert_eq!(s.messages(), vec!["haptic:selection".to_string()]);
+        // Released with a press: the theme turns dark and the hold ends.
+        s.bind(&[Value::Number(68.0), Value::Number(34.0), Value::Bool(false), Value::Bool(true)], None).unwrap();
         while ms < 3000.0 {
             ms += 16.0;
             fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
