@@ -8,6 +8,8 @@ use DemoEnv, floatingWidth, concentricRadius from "../env.contract"
 fn ttsInset(): number = 10
 fn ttsBarH(): number = 62
 fn ttsGap(): number = 8
+// The native bar floats this far in from its frame's sides, so the frame reaches this far past the bar.
+fn ttsBarMargin(): number = 21
 fn ttsRevealMs(): number = 650
 
 // Telegram's Day and Night palettes.
@@ -200,8 +202,8 @@ component TtsScreen
         native-tabbar tab-titles="Contacts|Calls|Chats|Settings"
           tab-symbols="person.crop.circle.fill|phone.fill|bubble.left.and.bubble.right.fill|gearshape.fill"
           selected-tab=`${tab}` tab-tint=ttsAccent(dark) bar-appearance=(dark ? "dark" : "light")
-          change=native position="absolute" left=0 bottom=0 width=(barW + ttsInset())
-          height=(ttsBarH() + 2 * ttsInset() + 24) testId="tts-tabs"
+          change=native position="absolute" left=(ttsInset() - ttsBarMargin()) bottom=0
+          width=(barW + 2 * ttsBarMargin()) height=(ttsBarH() + 2 * ttsInset() + 24) testId="tts-tabs"
       else
         // Glass behind the tabs. It takes no touches.
         view position="absolute" left=ttsInset() bottom=ttsInset() width=barW height=ttsBarH()

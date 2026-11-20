@@ -159,6 +159,36 @@ struct MusicTabBarBody: View {
 /// Takes a touch only on the bar and the accessory; hits on its clear content pass to the page below.
 final class MusicTabBarHost: UIView {
     weak var hosted: UIView?
+    /// A bar with no accessory sits over the page's own pixels: the TabView's container paints a
+    /// system background (black in the dark style) over its whole frame, so it is cleared.
+    var clearsContainer = false
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        if clearsContainer { Self.clearBackgrounds(self) }
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        guard clearsContainer, window != nil else { return }
+        // The TabView builds its container views after the first layout.
+        for delay in [0.0, 0.25, 1.0] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                if let self { Self.clearBackgrounds(self) }
+            }
+        }
+    }
+
+    /// Clears every opaque backing but the bar's own (its glass platter and tab buttons).
+    private static func clearBackgrounds(_ view: UIView) {
+        let name = NSStringFromClass(type(of: view))
+        if view is UITabBar || view is UIVisualEffectView || name.contains("UITabBar") || name.contains("LiquidLens") {
+            return
+        }
+        if let color = view.backgroundColor, color != .clear { view.backgroundColor = .clear }
+        view.isOpaque = false
+        view.subviews.forEach(clearBackgrounds)
+    }
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         guard let hit = super.hitTest(point, with: event), hit !== self, hit !== hosted else { return nil }
@@ -176,6 +206,7 @@ final class MusicTabBar: ExactNativeInstance {
     init(props: [String: String], events: ExactNativeEvents, accessory: Bool = true) {
         model.accessory = accessory
         box.backgroundColor = .clear
+        box.clearsContainer = !accessory
         super.init(events: events)
         let events = self.events
         let host = UIHostingController(rootView: MusicTabBarBody(model: model, send: { events.change($0) }))
