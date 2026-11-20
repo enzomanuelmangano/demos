@@ -48,10 +48,6 @@ const HAPTIC_GAP_MS: f64 = 150.0;
 const REARM: f32 = 16.0;
 /// The drawn circle chasing the finger (ζ ≈ 0.75).
 const FOLLOW: SpringConfig = SpringConfig { stiffness: 520.0, damping: 34.0, mass: 1.0 };
-/// A release, to its projected rest (ζ ≈ 0.7: one soft overshoot).
-const SETTLE: SpringConfig = SpringConfig { stiffness: 200.0, damping: 20.0, mass: 1.0 };
-/// How far ahead a release is projected, seconds of its velocity.
-const PROJECTION_S: f32 = 0.16;
 /// The rest point keeps this much of the circle's radius on screen.
 const KEEP: f32 = 0.5;
 /// The idle clock's period, seconds.
@@ -221,17 +217,14 @@ impl FractalGlass {
         }
     }
 
-    /// A release at velocity (vx, vy) pt/s: on to the projected rest, kept on screen.
-    fn release(&mut self, vx: f32, vy: f32) {
+    /// A release leaves the circle where the finger put it, kept on screen: no carried velocity.
+    fn release(&mut self) {
         let (w, h) = self.size;
         let keep = RADIUS * KEEP;
-        let rest = |c: f32, v: f32, size: f32| {
-            let r = c + v * PROJECTION_S;
-            if size > 2.0 * keep { r.clamp(keep, size - keep) } else { r }
-        };
-        self.center = (rest(self.center.0, vx, w), rest(self.center.1, vy, h));
-        self.shown[0].launch(self.center.0 as f64, vx as f64, SETTLE);
-        self.shown[1].launch(self.center.1 as f64, vy as f64, SETTLE);
+        let rest = |c: f32, size: f32| if size > 2.0 * keep { c.clamp(keep, size - keep) } else { c };
+        self.center = (rest(self.center.0, w), rest(self.center.1, h));
+        self.shown[0].retarget(self.center.0 as f64, FOLLOW);
+        self.shown[1].retarget(self.center.1 as f64, FOLLOW);
         self.moving = true;
     }
 }
@@ -317,7 +310,7 @@ impl Surface for FractalGlass {
             }
             Event::End(p) => {
                 self.touched = false;
-                self.release(p.velocity_x, p.velocity_y);
+                self.release();
             }
             Event::Fail | Event::Tap { .. } => self.touched = false,
             _ => {}
@@ -335,8 +328,8 @@ impl Surface for FractalGlass {
     ) -> bool {
         self.size = (frame.width, frame.height);
         if self.theme.is_none() {
-            self.theme = Some(false);
-            self.retarget(false, true);
+            self.theme = Some(true);
+            self.retarget(true, true);
         }
         let mut moving = false;
         for ch in self.channels.iter_mut() {
@@ -487,11 +480,11 @@ mod tests {
         // The pan begins 90 ms after touch-down.
         assert!(s.agent("{}").unwrap().contains("\"cx\":200.0,\"cy\":440.0"), "{}", s.agent("{}").unwrap());
         finger(&mut s, PointerPhase::Up, 220.0, 480.0, 170.0);
-        // The release carries on down (the finger was moving down), and stays on screen.
+        // The release leaves the circle where the finger put it: no carried velocity.
         let rest = s.agent("{}").unwrap();
         let (rx, ry) = (field(&rest, "cx"), field(&rest, "cy"));
-        assert!(ry > 440.0 && ry <= 912.0 - RADIUS * KEEP, "{rest}");
-        // The drawn circle springs there and settles.
+        assert!((rx - 200.0).abs() < 0.01 && (ry - 440.0).abs() < 0.01, "{rest}");
+        // The drawn circle catches up and settles there.
         let mut ms = 100.0;
         while ms < 2600.0 {
             ms += 16.0;

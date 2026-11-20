@@ -1,11 +1,7 @@
 // Fractal Glass: an orange circle dragged behind a pane of reeded (fluted) glass, each flute a
-// lens that refracts and frosts it. A liquid-glass button switches the light and dark themes.
-use displayCorner from "../env.contract"
+// lens that refracts and frosts it. It is dark only.
 
 component FractalGlass
-  state theme = "light"
-  action toggle
-    theme = theme == "light" ? "dark" : "light"
   // Haptics: a light one when a drag takes the circle, one selection as it goes behind the glass;
   // never two within 150 ms (the surface decides).
   action heard(m: string)
@@ -14,13 +10,8 @@ component FractalGlass
     if m == "haptic:selection"
       haptic("selection")
   view
-    // The canvas draws the background, fading between white and black.
+    // The canvas draws the black background and the circle.
     column position="absolute" inset=0 testId="fractal-glass"
-      canvas surface=fractal_glass(theme == "dark" ? 1 : 0) message=heard position="absolute" top=0 left=0 width="100%"
+      canvas surface=fractal_glass(1) message=heard position="absolute" top=0 left=0 width="100%"
         height="100%" touch-action="none" testId="fractal-glass-canvas"
         aria-label="Drag the circle behind the glass"
-      // A 48 pt circle, concentric with the display's corner: displayCorner - 24 from the right and the bottom.
-      glass-button press=toggle caption=(theme == "light" ? "Dark theme" : "Light theme")
-        symbol=(theme == "light" ? "moon.fill" : "sun.max.fill") edge="trailing"
-        aria-label=(theme == "light" ? "Dark theme" : "Light theme") testId="fractal-glass-theme"
-        position="absolute" right=(displayCorner() - 24) bottom=(displayCorner() - 24) width=48 height=48
