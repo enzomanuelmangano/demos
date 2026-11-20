@@ -3,12 +3,13 @@
 // haze under the game review card (Back resets, Replay plays the line again). The board is a
 // Rust surface (gpu/src/chessboard.rs).
 //
-// The puzzle plays as the opponent's setup move, then the user's answers and the opponent's
-// replies, up to the mate. The bottom control is a Patterns-style dock: one glass pill, 60 pt tall,
-// whose word climbs Hint, then View solution, then Play solution. Glass is regular, tinted white
-// at 0.07. Its bottom gap is concentric with the display (62 − 30 = 32 pt). Each tap raises a
-// counter that the surface reads. The surface posts `puzzle:<wait|play|hint1|hint2|done>`, and the
-// pill shows only once one arrives.
+// The tactic opens on White to move with one move left, 18. Kd2#. Any legal move is played, for
+// either side, and nothing answers it. The bottom control is a Patterns-style dock: one glass
+// pill, 60 pt tall, whose word climbs Hint, then View solution, then Play solution while the
+// opening position is on the board, and is muted once a move leaves it. Glass is regular, tinted
+// white at 0.07. Its bottom gap is concentric with the display (62 − 30 = 32 pt). Each tap raises
+// a counter that the surface reads. The surface posts `puzzle:<wait|play|hint1|hint2|done>`, and
+// the pill shows only once one arrives.
 //
 // The mate's haptic pattern is `mate-haptic` (modules/apple/Demos.swift). The surface posts
 // "haptic:mate" and "haptic:mate-stop", counted here into `plays` and `stops`. The web build has
@@ -41,8 +42,6 @@ component Chessboard
       mate = mate + 1
     if m == "haptic:mate-stop"
       stop = stop + 1
-    if m == "haptic:error"
-      haptic("error")
     if m == "haptic:selection"
       haptic("selection")
     if m == "haptic:impact-light"
