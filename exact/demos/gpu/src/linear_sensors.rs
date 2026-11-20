@@ -226,6 +226,49 @@ mod tests {
     use super::*;
     use exact_gpu::fixture;
 
+    /// A gravity sample as the host delivers it: W3C units and sign, +z out of the screen.
+    fn gravity_event(x: f32, y: f32, z: f32) -> InputEvent {
+        InputEvent::Sensor { sensor: SensorKind::Gravity, values: [x, y, z, 0.0], dropped: 0, at_ms: 0.0 }
+    }
+
+    #[test]
+    fn the_angles_follow_the_samples_and_ignore_other_sensors() {
+        let mut s = LinearSensors::default();
+        // No sample yet: the square rests at rotateX π/8, rotateY 0.
+        let (rx, ry) = s.rotation();
+        assert!((rx - PI / 8.0).abs() < 1e-9 && ry == 0.0, "{rx} {ry}");
+        // Face up on a table (W3C: z = +g): rotateX near −π/8 (the range ends at −10 m/s², g is
+        // 9.81), no roll.
+        s.input(&gravity_event(0.0, 0.0, 9.80665));
+        let (rx, ry) = s.rotation();
+        assert!((rx + PI / 8.0).abs() < 0.02 && ry.abs() < 1e-9, "{rx} {ry}");
+        // Resting angle: 6 m/s² of z is neutral.
+        s.input(&gravity_event(0.0, 7.7, 6.0 * STANDARD_G as f32 / REANIMATED_G as f32));
+        assert!(s.rotation().0.abs() < 1e-3, "{:?}", s.rotation());
+        // Stood upright: rotateX leans the other way, to its end.
+        s.input(&gravity_event(0.0, 9.8, 0.0));
+        assert!((s.rotation().0 - PI / 8.0).abs() < 1e-6);
+        // Rolling the right edge down turns rotateY from 0 toward −π/8, a step at a time.
+        let mut last = 0.0;
+        for deg in [10.0_f32, 20.0, 30.0, 40.0] {
+            let (sin, cos) = deg.to_radians().sin_cos();
+            s.input(&gravity_event(-9.80665 * sin, 0.0, 9.80665 * cos));
+            let ry = s.rotation().1;
+            assert!(ry < last, "{deg}: {ry} after {last}");
+            last = ry;
+        }
+        // Rolling the other way turns it the other way.
+        s.input(&gravity_event(9.80665 * 0.5, 0.0, 9.80665 * 0.87));
+        assert!(s.rotation().1 > 0.0);
+        // Another sensor's samples leave it alone.
+        let before = s.rotation();
+        s.input(&InputEvent::Sensor { sensor: SensorKind::Accelerometer, values: [5.0, 5.0, 5.0, 0.0], dropped: 0, at_ms: 0.0 });
+        assert_eq!(s.rotation(), before);
+        // The state the driver reads shows the same angles.
+        let state = s.agent("{}").unwrap();
+        assert!(state.contains(&format!("\"rotateY\":{:.4}", before.1)), "{state}");
+    }
+
     #[test]
     fn the_square_tilts_with_gravity() {
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
