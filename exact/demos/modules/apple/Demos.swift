@@ -12,8 +12,8 @@
 //   The view itself is the demo's backdrop until the demo has painted.
 // `glass-button`: the demo screen's close and info buttons, a SwiftUI glass button; `role="close"`
 //   is the system close role (iOS 26). It fades in once the demo has painted.
-// `swift-slider`: a SwiftUI Slider (0...1) whose changes arrive as `change`; `progress` is the
-//   value at mount, `max-track-tint` the unfilled track's colour.
+// `swift-slider`: a SwiftUI Slider (0...1) whose changes arrive as `change` (and "edit:1" / "edit:0"
+//   as a finger takes and leaves the thumb); `progress` is the value at mount, `max-track-tint` the unfilled track's colour.
 // `mate-haptic`: a Core Haptics crescendo; a new `plays` value starts it, a new `stops` value
 //   cancels it. Discrete points are transient events, continuous ones one event under an
 //   intensity and a sharpness curve.
@@ -323,14 +323,16 @@ private final class SliderModel: ObservableObject {
     /// The value at mount (props `progress`).
     @Published var progress: Float = 0
 }
-/// A bare SwiftUI Slider (0...1, no step or labels) filling the box.
+/// A bare SwiftUI Slider (0...1, no step or labels) filling the box. `editing` posts "edit:1" when a
+/// finger takes the thumb and "edit:0" when it lets go: the thumb is wider (glass) while held.
 private struct SliderBody: View {
     @ObservedObject var model: SliderModel
     let changed: (Float) -> Void
+    let editing: (Bool) -> Void
     @State private var value: Float = 0
     var body: some View {
         ZStack(alignment: .topLeading) {
-            Slider(value: Binding(get: { value }, set: { value = min(max($0, 0), 1) }), onEditingChanged: { _ in })
+            Slider(value: Binding(get: { value }, set: { value = min(max($0, 0), 1) }), onEditingChanged: { editing($0) })
                 .onAppear { value = model.progress }
                 .onChange(of: value) { new in changed(new) }
         }
@@ -343,7 +345,8 @@ private final class SwiftSlider: ExactNativeInstance {
     private let host: UIHostingController<SliderBody>
     init(props: [String: String], events: ExactNativeEvents) {
         let model = self.model
-        host = UIHostingController(rootView: SliderBody(model: model, changed: { v in events.change(String(v)) }))
+        host = UIHostingController(rootView: SliderBody(model: model, changed: { v in events.change(String(v)) },
+                                                      editing: { on in events.change(on ? "edit:1" : "edit:0") }))
         host.safeAreaRegions = []
         host.view.backgroundColor = .clear
         super.init(events: events)

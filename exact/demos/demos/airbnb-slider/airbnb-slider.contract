@@ -23,10 +23,16 @@ component AirbnbSlider
   // It starts on $0, so leaving that end is silent.
   state felt = 1
   state ended = true
+  // A finger is on the thumb: it is a wider, see-through glass capsule meanwhile.
+  state editing = false
   // Haptics, at most one per change: impact-rigid when the price reaches $0 or $4500 (once per
   // excursion), else selection when the digit count changes (9 → 10, 99 → 100, 999 → 1000).
   // There are only a few crossings in the whole range, so no rate limit is needed.
   action moved(v: string)
+    if v == "edit:1"
+      editing = true
+    if v == "edit:0"
+      editing = false
     progress = match parseNumber(v) { case some(n) => n, case none => progress }
     if atEnd(priceOf(progress)) and not ended
       haptic("impact-rigid")
@@ -45,10 +51,15 @@ component AirbnbSlider
       // thumb plus 4 pt above and below), centred in it. Its width is in points: a native view
       // given 100% takes a narrower box.
       column position="relative" width=env.width - 90 height=60 flex-shrink=0 justify-content="center"
-        // The unfilled track. The liquid-glass thumb is see-through, so nothing may lie under it:
-        // the track starts 26 pt past the thumb's centre, which is 18.5 + progress × (width − 37).
-        view position="absolute" right=0 top=26.333 height=6 border-radius=3
-          left=(18.5 + min(max(progress, 0), 1) * (env.width - 90 - 37) + 26)
-          background-color="rgba(60, 60, 67, 0.18)" pointer-events="none" aria-hidden=true
+        // The unfilled track. The liquid-glass thumb is see-through while held, so nothing may lie
+        // under it: the track starts at the thumb's own edge, 18.5 pt from its centre at rest and
+        // 33 pt while held (the thumb widens on a layout transition of its own, so the track's
+        // start follows it without lagging the drag). The centre is 18.5 + progress x (width - 37).
+        view position="absolute" right=0 top=26.333 height=6
+          left=(18.5 + min(max(progress, 0), 1) * (env.width - 90 - 37)) pointer-events="none"
+          aria-hidden=true
+          view position="absolute" top=0 bottom=0 right=0 border-radius=3
+            -exact-layout-transition="180ms cubic-bezier(0.23, 1, 0.32, 1)"
+            left=(editing ? 33 : 18.5) background-color="rgba(60, 60, 67, 0.18)"
         swift-slider progress="0" change=moved width=env.width - 90 height=32 flex-shrink=0
           role="slider" aria-label="Price" testId="airbnb-slider-range"
