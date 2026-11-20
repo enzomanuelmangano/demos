@@ -58,7 +58,7 @@ component AirbnbSlider
         view position="absolute" right=0 top=26.333 height=6
           left=(18.5 + min(max(progress, 0), 1) * (env.width - 90 - 37)) pointer-events="none"
           aria-hidden=true
-          view position="absolute" top=0 bottom=0 right=0 border-radius=3
+          view position="absolute" top=0 height=6 right=0 border-radius=3 corner-shape="-exact-continuous"
             -exact-layout-transition="180ms cubic-bezier(0.23, 1, 0.32, 1)"
             left=(editing ? 33 : 18.5) background-color="rgba(60, 60, 67, 0.18)"
         swift-slider progress="0" change=moved width=env.width - 90 height=32 flex-shrink=0
