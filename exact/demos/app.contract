@@ -84,6 +84,7 @@ source snapIdle(slug: string) as shape SnapAck
 // takes over from it at its top and never from the middle of its content.
 fn closeZone(slug: string): string = (
   slug == "action-tray" ? "0,0.56,1,1" :
+  slug == "add-to-cart" ? "0,0.29,1,1" :
   slug == "animated-3d-parallax" ? "0.09,0.31,0.91,0.69" :
   slug == "art-gallery" ? "strip" :
   slug == "atlas-sphere" ? "strip" :

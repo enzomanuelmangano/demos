@@ -54,6 +54,26 @@ fn secondary(): string = "rgba(60, 60, 67, 0.6)"
 fn badgeRed(): string = "#D12727"
 fn countAt(counts: number[], i: number): number = match counts.at(i) { case some(c) => c, case none => 0 }
 
+// Drag up: iOS's rubber band, (1 - 1/(|y| * 0.55 / 120 + 1)) * 120 for a finger |y| up, as
+// keyframes over the drag timeline. The layer follows the finger; this takes the difference back.
+keyframes atcRubber
+  0% translate="0px 901.49px"
+  24% translate="0px 666.77px"
+  44% translate="0px 473.64px"
+  58% translate="0px 341.03px"
+  68% translate="0px 248.65px"
+  75.5% translate="0px 181.53px"
+  81.5% translate="0px 129.94px"
+  86% translate="0px 93.10px"
+  89.5% translate="0px 66.01px"
+  92.2% translate="0px 46.40px"
+  94.4% translate="0px 31.49px"
+  96.2% translate="0px 20.20px"
+  97.6% translate="0px 12.11px"
+  98.7% translate="0px 6.25px"
+  99.5% translate="0px 2.31px"
+  100% translate="0px 0.00px"
+
 // The badge pops as the photo lands in the cart.
 keyframes pop
   0% opacity=0 scale=0.4
@@ -150,6 +170,14 @@ component AddToCart
       fromY = (b.y - root.y + b.height / 2) / k - hy - cartDrop() / 2
     phase = "closing"
     landToken = landToken + 1
+  // The drag binding needs an action; this one has nothing to record.
+  action bound(bw: number, bh: number, pw: number, ph: number)
+    open = open
+  // y is the layer's translate (0 at rest). A quarter of the sheet, or a downward flick, closes
+  // it like a tap on the backdrop; otherwise the layer springs home.
+  action release(x: number, y: number, scale: number, vx: number, vy: number, vscale: number)
+    if open and (y > min(120, sheetHeight(hero) * 0.25) or (vy > 600 and y > 12))
+      dismiss()
   action landed(m: string)
     if phase == "closing"
       if toCart
@@ -159,6 +187,7 @@ component AddToCart
       fade = false
   view
     column position="absolute" inset=0 background-color="#ffffff" id="atc-root" testId="add-to-cart"
+      overflow="hidden"
       scroll position="absolute" left=0 top=0 width=env.width height=env.height overflow-y="scroll"
         testId="add-to-cart-list"
         column width=env.width box-sizing="border-box"
@@ -174,41 +203,54 @@ component AddToCart
         // The dimmed screen above the sheet (what a tap there lands on).
         view position="absolute" left=0 right=0 top=0
           height=(env.height - sheetInset() - sheetHeight(hero)) testId="add-to-cart-backdrop"
-      // The sheet stays mounted and springs up from under the screen.
-      column position="absolute" left=sheetInset() right=sheetInset() bottom=sheetInset()
-        height=sheetHeight(hero) box-sizing="border-box" padding=sheetPad()
-        background-color="#ffffff" border-radius=sheetRadius() corner-shape="-exact-continuous"
-        translate=(open ? "0px 0px" : `0px ${sheetHeight(hero) + sheetInset() + 24}px`)
-        transition=`translate ${spring()}` pointer-events=(open ? "auto" : "none")
-        testId="add-to-cart-sheet"
-        // Holds the hero's place in the layout; the flying hero is the overlay below.
-        view width=hero height=hero align-self="center" flex-shrink=0
-        column height=sheetCopy() margin-top=20 flex-shrink=0 gap=4
-          text "PAYMENT CONFIRMATION" font-size=13 font-weight=600 letter-spacing=0.6
-            line-height="16px" color=secondary()
-          text `Item ${pick}` font-size=24 font-weight=700 line-height="28px" color=ink()
-            role="heading" aria-level=2 testId="sheet-title"
-          text "Are you sure you want to add this item to your cart?" font-size=15
-            line-height="20px" color=secondary() line-clamp=2
-        view height=confirmHeight() margin-top=24 margin-left=confirmExtra() margin-right=confirmExtra()
-          margin-bottom=confirmExtra() flex-shrink=0 position="relative"
-          PressableScale(press=confirm)
-            row height=confirmHeight() align-items="center" justify-content="center" gap=8
-              background-color="#000000" border-radius=(confirmHeight() / 2)
-              corner-shape="-exact-continuous" aria-label="Add to Cart" testId="add-to-cart-confirm"
-              image "symbol:sf/cart.fill" font-size=17 font-weight=600 color="#FFFFFF" aria-hidden=true
-              text "Add to Cart" font-size=17 font-weight=600 line-height="22px" color="#FFFFFF"
-      // The flying photo: laid out at the sheet's hero, moved by transform only.
-      view position="absolute" left=hx top=hy width=hero height=hero transform-origin="0px 0px"
-        translate=(phase == "open" ? "0px 0px" : `${fromX}px ${fromY}px`)
-        scale=(phase == "open" ? 1 : fromS)
-        opacity=(phase == "rest" or (phase == "closing" and toCart) ? 0 : 1)
-        transition=heroMotion pointer-events="none" testId="sheet-photo" aria-label=`Item ${pick}`
-        image heroUri() position="absolute" left=0 top=0 width=hero height=hero object-fit="cover"
-          border-radius=sheetInner() corner-shape="-exact-continuous" aria-hidden=true
-        image heroUri() position="absolute" left=0 top=0 width=hero height=hero object-fit="cover"
-          border-radius=min(cardInner() * hero / thumb(), hero / 2) corner-shape="-exact-continuous"
-          opacity=(phase == "open" ? 0 : 1) transition=roundMotion aria-hidden=true
+      // The drag layer: the sheet and its photo move with the finger, 1:1 downward and with a
+      // rubber band upward. Past a quarter of the sheet, or on a flick down, a release closes it.
+      column id="atc-drag" position="absolute" left=0 top=0 width="100%" height="100%"
+        box-sizing="border-box" pointer-events="none"
+        translate="0px 0px" transition=`translate ${spring()}` -exact-drag-timeline="--atc y"
+        // The handle: the sheet's box. The confirm button, above it, keeps its taps.
+        view position="absolute" left=sheetInset() bottom=sheetInset() width=(env.width - 2 * sheetInset())
+          height=sheetHeight(hero) pointer-events=(open ? "auto" : "none") touch-action="none"
+          transformDragFor="atc-drag" transformgeometry=bound transformrelease=release
+          aria-label="Drag the sheet down to close it" testId="add-to-cart-handle"
+        column position="absolute" inset=0 pointer-events="none" animation="atcRubber 1s linear both"
+          animation-timeline="--atc" animation-range="-1000px 0px"
+          // The sheet stays mounted and springs up from under the screen.
+          column position="absolute" left=sheetInset() right=sheetInset() bottom=sheetInset()
+            height=sheetHeight(hero) box-sizing="border-box" padding=sheetPad()
+            background-color="#ffffff" border-radius=sheetRadius() corner-shape="-exact-continuous"
+            translate=(open ? "0px 0px" : `0px ${sheetHeight(hero) + sheetInset() + 24}px`)
+            transition=`translate ${spring()}` pointer-events="none"
+            testId="add-to-cart-sheet"
+            // Holds the hero's place in the layout; the flying hero is the overlay below.
+            view width=hero height=hero align-self="center" flex-shrink=0
+            column height=sheetCopy() margin-top=20 flex-shrink=0 gap=4
+              text "PAYMENT CONFIRMATION" font-size=13 font-weight=600 letter-spacing=0.6
+                line-height="16px" color=secondary()
+              text `Item ${pick}` font-size=24 font-weight=700 line-height="28px" color=ink()
+                role="heading" aria-level=2 testId="sheet-title"
+              text "Are you sure you want to add this item to your cart?" font-size=15
+                line-height="20px" color=secondary() line-clamp=2
+            view height=confirmHeight() margin-top=24 margin-left=confirmExtra() margin-right=confirmExtra()
+              margin-bottom=confirmExtra() flex-shrink=0 position="relative"
+              pointer-events=(open ? "auto" : "none")
+              PressableScale(press=confirm)
+                row height=confirmHeight() align-items="center" justify-content="center" gap=8
+                  background-color="#000000" border-radius=(confirmHeight() / 2)
+                  corner-shape="-exact-continuous" aria-label="Add to Cart" testId="add-to-cart-confirm"
+                  image "symbol:sf/cart.fill" font-size=17 font-weight=600 color="#FFFFFF" aria-hidden=true
+                  text "Add to Cart" font-size=17 font-weight=600 line-height="22px" color="#FFFFFF"
+          // The flying photo: laid out at the sheet's hero, moved by transform only.
+          view position="absolute" left=hx top=hy width=hero height=hero transform-origin="0px 0px"
+            translate=(phase == "open" ? "0px 0px" : `${fromX}px ${fromY}px`)
+            scale=(phase == "open" ? 1 : fromS)
+            opacity=(phase == "rest" or (phase == "closing" and toCart) ? 0 : 1)
+            transition=heroMotion pointer-events="none" testId="sheet-photo" aria-label=`Item ${pick}`
+            image heroUri() position="absolute" left=0 top=0 width=hero height=hero object-fit="cover"
+              border-radius=sheetInner() corner-shape="-exact-continuous" aria-hidden=true
+            image heroUri() position="absolute" left=0 top=0 width=hero height=hero object-fit="cover"
+              border-radius=min(cardInner() * hero / thumb(), hero / 2) corner-shape="-exact-continuous"
+              opacity=(phase == "open" ? 0 : 1) transition=roundMotion aria-hidden=true
       // The armed open's second commit: this node is new each open. Its first `intersect` starts
       // the spring; the timer is the backstop.
       for s in [openSerial] key=s
