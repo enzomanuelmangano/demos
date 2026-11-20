@@ -89,6 +89,8 @@ component StackedBottomSheet
   derive firedT = match range(timerToken + 1).filter(t => t > 0 and env.timers.includes(t)).at(-1) { case some(t) => t, case none => 0 }
   derive vGone = range(gone.length).map(j => sheetNum(gone, j) == 1 and sheetNum(goneT, j) <= firedT ? 2 : sheetNum(gone, j))
   derive w = env.width
+  // The front sheet: the newest one still live (-1: none). Only it has a drag handle.
+  derive front = match range(keys.length).filter(j => sheetNum(vGone, j) == 0).at(-1) { case some(j) => j, case none => -1 }
   derive biggest = sheetBiggest(range(keys.length).filter(j => sheetNum(vGone, j) != 2).map(j => sheetHeightOf(sheetNum(cfgs, j))))
 
   // Adds a sheet at the front and moves the others back one place. A sheet past its 250 ms slide
@@ -113,13 +115,14 @@ component StackedBottomSheet
     if not wand
       increment = increment + 1
 
-  // The pan begins only on the front sheet.
+  // The pan begins only on the front sheet. The geometry reply can land after a quick flick has
+  // lifted, so nothing here depends on it: the release acts on the front sheet.
   action began(key: number, bw: number, bh: number, pw: number, ph: number)
     dragKey = key
 
   // A medium impact when a release past 50 points dismisses the sheet. Otherwise it springs home.
   action released(x: number, y: number, scale: number, vx: number, vy: number, vscale: number)
-    let i = keys.indexOf(dragKey)
+    let i = front
     if i >= 0 and y > 50 and sheetNum(vGone, i) == 0
       haptic("impact-medium")
       goneL = sheetSet(goneL, i, sheetLift(biggest, sheetHeightOf(sheetNum(cfgs, i)), 0))
@@ -141,18 +144,21 @@ component StackedBottomSheet
       testId="stacked-bottom-sheet"
       canvas surface=timer(timerToken, 250) message=dismissed width=1 height=1 position="absolute"
         left=0 top=0 aria-hidden=true pointer-events="none"
-      // The button is a glass capsule with a sentence-case label. The glass takes no touches, so
-      // the press lands on the capsule.
+      // The button is a capsule of Liquid Glass tinted with the page's near-black, so it reads on
+      // the white page (clear glass over white goes a muddy grey), with a white label. The glass
+      // takes no touches, so the press lands on the capsule.
       view display="flex" flex-direction="column" margin-bottom=20
         PressableScale(press=push(false))
           column position="relative" height=52 padding="0px 28px" border-radius=26
-            corner-shape="-exact-continuous" background-color="rgba(120, 120, 128, 0.12)"
-            box-shadow="0px 6px 18px rgba(0, 0, 0, 0.08)" align-items="center"
+            corner-shape="-exact-continuous" align-items="center"
             justify-content="center" aria-label="Show stacked tray" testId="sheet-button"
-            glass-pane glass-style="regular" corner-size="26" interactive="false" continuous="true"
-              position="absolute" inset=0 pointer-events="none" aria-hidden=true
-            text "Show stacked tray" position="relative" color="#000000" font-size=17
-              line-height="22px" font-weight=600 pointer-events="none"
+            glass-pane glass-style="regular" pane-tint="#111111" corner-size="26" interactive="false"
+              continuous="true" position="absolute" inset=0 pointer-events="none" aria-hidden=true
+            // The label sits in its own box above the glass: text painted by the capsule itself
+            // would lie under the glass view.
+            view position="relative" z-index=1 pointer-events="none"
+              text "Show stacked tray" color="#FFFFFF" font-family="SF-Pro-Rounded-Bold" font-size=17
+                line-height="22px"
       // Dismissed sheets are no longer drawn.
       for key, i in keys key=key
         if sheetNum(vGone, i) != 2
@@ -160,7 +166,7 @@ component StackedBottomSheet
             id=(sheetNum(vGone, i) >= 1 ? 0 : sheetNewer(vGone, i)),
             lift=(sheetNum(vGone, i) >= 1 ? sheetNum(goneL, i) : sheetLift(biggest, sheetHeightOf(sheetNum(cfgs, i)), sheetNewer(vGone, i))),
             mountBiggest=sheetNum(mountB, i), goneMode=sheetNum(vGone, i), goneY=sheetNum(goneY, i),
-            dragged=(key == dragKey), magic=push(true))
+            dragged=(sheetNum(vGone, i) == 0 and (i == front or key == dragKey)), magic=push(true))
       // One drag layer drives the front sheet's vertical translate, under an unmoved, clipping parent.
       column position="absolute" inset=0 overflow="hidden" pointer-events="none" z-index=2000
         column id="sheet-drag" width="100%" height="100%" box-sizing="border-box"
