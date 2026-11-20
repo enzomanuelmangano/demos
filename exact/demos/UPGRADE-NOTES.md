@@ -1,3 +1,33 @@
+# Upgrade to Exact 2180d806 (2026-11-20), from c193f394
+
+14 upstream commits (98 files: host/apple ExactKit batch/publication timing, web-js, contract lower/syntax/cli, runner; nothing the
+app calls changed). The app is on `2180d806c4d7a3668c6423ea34cda497be26ad4d` (upstream `main`), a git worktree of the same object
+store (`~/.exact/exact2/<hash>`), made as before: `git worktree add --detach <path> origin/main` from the c193f394 checkout, then
+`EXACT=<path> bun exact.mjs update` (the `.exact/checkout` symlink now points there; nothing in the repo changed, no hash is
+committed) and `lock` ("current; no changes"). To save disk, the new checkout's `target`, `node_modules` and the Hermes installer
+`target` were APFS clones (`cp -cRp`) of the old checkout's: only what the build rewrites takes space.
+
+- Fixed upstream (expo/exact#1133, our report): b768e92c0 builds wgpu with `std` in the native GPU module and the Ink renderer, so
+  validation error scopes are per thread again. `gpu/src/warm.rs` has its scope back (see below); `cargo test -p demos-gpu` still 336.
+- Local patch (`Surface.swift`, `BorderPaint.reduced`): still NOT fixed upstream on 2180d806 (line 158 passes the authored radii);
+  re-applied in the new checkout (uncommitted there), `radius-reduced.patch` applies as is. Do not `git clean`/`checkout` it.
+- Machine setup: the Hermes bundles for aarch64-apple-ios-sim and aarch64-apple-ios were already installed for this pin; the
+  wasm-bindgen 0.2.130 CLI is still first on `PATH` for the dev server. Build with `CARGO_INCREMENTAL=0` on a tight disk (each
+  incremental dir is 1.5-6 GB).
+- Checked on the iPhone 17 sim (D3D786DE): contract build 0 errors, Contract linter 0 new problems (50 accepted baseline),
+  `cargo test -p demos-gpu` 336 passed, `cargo check` for wasm32 demos-gpu and draw2d/motion/gestures/noise/pressto clean.
+  Cold start (`tools/startup-measure.sh -n 5 -a`, machine load 6.6 median): first home frame 0.40 s, fully bright 0.60 s (c193f394 at
+  load ~7: 0.37 / 0.57; 730abad1 at load ~4: 0.27 / 0.47); the first run of five is the cold-cache one (1.67 / 1.87 s), the other four
+  0.33-0.60 / 0.53-0.80. Launch stress (tools/launch-stress.md, strict, with random 0.5 s SIGSTOP stalls): 35 sessions, 35 grouped
+  closes, 0 bad, no `error scopes` panic, no new Demos crash report. An earlier run at machine load 40-60 hit one
+  `opens ungrouped` (the route was adopted 2.2 s after the touch, past the 2 s window): a starved machine, not reproduced at load 7.
+- `gpu/src/warm.rs`: the warm-up frame has its validation scope back (it was removed in 65646a7a for #1133). Benefit: a shader or
+  pipeline validation error in the warm frame is reported and dropped instead of aborting the app. Verified by the stress run above.
+- Rollback: `git revert` the two commits of this upgrade (warm.rs scope, notes), then point the build at the old checkout:
+  `EXACT=~/.exact/exact2/c193f39435fdc24000ba2edeb48eda6acc64fc36 bun exact.mjs ios --run --sim <udid>` (and the dev server with the
+  same `EXACT=`; the gitignored `.exact/checkout` symlink is re-pointed by it). The c193f394 checkout keeps its sources and its `Surface.swift` patch; its `target` was removed (a cache, a cold
+  rebuild). The 730abad1 checkout is untouched.
+
 # Upgrade to Exact c193f394 (2026-11-20), from 730abad1 (2026-11-14)
 
 1,370 upstream commits. The app is on `c193f39435fdc24000ba2edeb48eda6acc64fc36`, a git worktree of the same object store
