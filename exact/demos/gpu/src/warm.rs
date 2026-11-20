@@ -159,9 +159,10 @@ pub fn warm(name: &str, device: &wgpu::Device, queue: &wgpu::Queue) {
         shader_generation: exact_gpu::shaders::shader_generation(),
         headroom: 1.0,
     };
-    // No error scope here: exact-gpu builds wgpu without its `std` feature, so wgpu's error scopes are one
-    // stack for every thread (not one per thread), and a scope pushed by this thread interleaves with the
-    // main thread's per-frame scope (`frame::Recording`): the first one to pop out of order panics.
+    // One scope, so a validation error in a shader or pipeline is reported (and dropped) instead of aborting
+    // the app. wgpu keeps scopes per thread (exact-gpu builds it with `std`), so this one cannot interleave
+    // with the main thread's per-frame scope. A panic mid-frame drops the scope in order.
+    let scope = device.push_error_scope(wgpu::ErrorFilter::Validation);
     let (w, h) = frame.pixels();
     let target = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("warm"),
@@ -178,6 +179,7 @@ pub fn warm(name: &str, device: &wgpu::Device, queue: &wgpu::Queue) {
     surface.render(&frame, device, queue, &mut encoder, &view, format);
     queue.submit([encoder.finish()]);
     surface.submitted();
+    let _ = exact_gpu::block_on(scope.pop());
 }
 
 /// Moves a demo to the front of the warm-up: the finger is on its icon. `slug` is `len` bytes of UTF-8.
