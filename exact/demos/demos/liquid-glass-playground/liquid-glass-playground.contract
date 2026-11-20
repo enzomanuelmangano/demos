@@ -22,6 +22,8 @@ component LiquidGlassPlayground
   state began = false
   // The pan failed on its first move, so it never takes the drag.
   state failed = false
+  // The haptic ramp's full travel, 0.3 of the root's height. `frame(id)` reads a node's `id`, not its testId: without the id on the root it was 0, so `maxDrag` stayed 0,
+  // the progress read 1 from the first move and the max-reached guard dropped every haptic after the first.
   state maxDrag = 0
   // The travel at the last haptic.
   state lastHaptic = 0
@@ -56,7 +58,7 @@ component LiquidGlassPlayground
     dragging = false
   view
     column position="absolute" inset=0 align-items="center" justify-content="center"
-      testId="liquid-glass-playground"
+      id="liquid-glass-playground" testId="liquid-glass-playground"
       // Laid out by hand: object-fit cover does not centre a horizontal crop here, so the
       // photo is height-bound and centred by its row.
       row position="absolute" inset=0 justify-content="center" align-items="stretch"

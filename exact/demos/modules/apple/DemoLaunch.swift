@@ -707,6 +707,13 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         cardView?.layer.allowsEdgeAntialiasing = on
     }
 
+    /// The covered home is made invisible by its alpha, never `isHidden`: a demo's Contract pan checks its logical
+    /// ancestors (the home's views) and refuses to begin under a hidden one, so the pan would never take a drag.
+    private func showHome(_ on: Bool) {
+        home?.alpha = on ? 1 : 0
+        home?.accessibilityElementsHidden = !on
+    }
+
     private func rest() {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -726,12 +733,12 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         art?.layer.opacity = 0
         blur?.isHidden = true
         dim?.isHidden = true
-        if ownsHome { home?.isHidden = true }
+        if ownsHome { showHome(false) }
         CATransaction.commit()
     }
 
     private func unrest() {
-        home?.isHidden = false
+        showHome(true)
         blur?.isHidden = false
         dim?.isHidden = false
         moving(true)
@@ -761,7 +768,7 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         func at(_ k: KeyPath<Pose, Double>) -> Double { lerp(a[keyPath: k], b[keyPath: k], u) }
         func rate(_ k: KeyPath<Pose, Double>) -> Double { (b[keyPath: k] - a[keyPath: k]) * Flight.rate }
         flight = nil
-        home?.isHidden = false
+        showHome(true)
         blur?.isHidden = false
         dim?.isHidden = false
         moving(true)
@@ -954,7 +961,7 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         dim = nil
         if ownsHome {
             zoom?.layer.transform = CATransform3DIdentity
-            home?.isHidden = false
+            showHome(true)
             LaunchSession.homeOwner = nil
         }
         if detached {
@@ -1002,7 +1009,7 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         }
         if snapshot == nil, let view = controller?.view { pulled = LaunchSession.picture(of: view) }
         if phase == .open {
-            home?.isHidden = false
+            showHome(true)
             blur?.isHidden = false
             dim?.isHidden = false
         }
@@ -1016,7 +1023,7 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         guard phase == .open, !closing else { return }
         blur?.isHidden = true
         dim?.isHidden = true
-        if ownsHome { home?.isHidden = true }
+        if ownsHome { showHome(false) }
     }
 
     @objc private func dragged(_ pan: ClosePan) {
