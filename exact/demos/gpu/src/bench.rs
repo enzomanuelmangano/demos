@@ -106,6 +106,24 @@ fn cases() -> Vec<Case> {
             tick: |s, i, _| s.bind(&[Value::Number(2.4), Value::Number(300.0 + 50.0 * ((i as f64 * 0.1).sin() * 0.5 + 0.5))], None).unwrap(),
         },
         Case {
+            name: "scroll-transition-3d",
+            make: crate::scroll_transition_3d::surface,
+            size: (402.0, 874.0, 3.0),
+            setup: |_| {},
+            // A flick every 240 frames: 8 frames of 40 pt (the list is inverted: down scrolls on),
+            // lifted fast, then the glide and snap.
+            tick: |s, i, ms| {
+                let k = i % 240;
+                let y = 100.0 + 40.0 * k as f32;
+                match k {
+                    0 => s.input(&pointer(1, PointerPhase::Down, 200.0, 100.0, ms)),
+                    1..=8 => s.input(&pointer(1, PointerPhase::Move, 200.0, y, ms)),
+                    9 => s.input(&pointer(1, PointerPhase::Up, 200.0, 100.0 + 360.0, ms)),
+                    _ => {}
+                }
+            },
+        },
+        Case {
             name: "sphere-waves",
             make: crate::sphere_waves::surface,
             size: (420.0, 912.0, 3.0),
