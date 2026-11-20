@@ -49,15 +49,18 @@ const iconOf = (slug: string) => {
 // Demos the owner dropped from the Exact app (their code stays, unlisted).
 const dropped = new Set(['shake-to-delete', 'dynamic-blur-tabs', 'record-button', 'email-demo', 'blurred-bottom-bar', 'twitter-tab-bar', 'popup-handler', 'qr-code-generator', 'animated-count-text', 'image-cropper', 'skia-bottom-sheet', 'dynamic-tab-indicator', 'ios-home-grid', 'particles-button', 'animated-grid-list']);
 
+// Demos that show no Inspiration button here, although the RN registry credits one.
+const noInspiration = new Set(['sphere-waves']);
+
 const q = (s: string) => JSON.stringify(s);
 const rows = order
   .filter(slug => meta[slug] !== undefined && !dropped.has(slug))
   .reverse()
   .map(slug => {
     const m = meta[slug] as { name: string; displayName?: string; alert?: boolean };
-    const link = (inspirations[slug]?.link as string | null) ?? '';
+    const link = noInspiration.has(slug) ? '' : ((inspirations[slug]?.link as string | null) ?? '');
     // The Inspiration sheet's copy, from the RN app's own wording (inspiration-copy.ts).
-    const copy = getInspirationCopy(slug);
+    const copy = noInspiration.has(slug) ? undefined : getInspirationCopy(slug);
     return `    Demo(slug=${q(slug)}, name=${q(m.name)}, label=${q(m.displayName ?? m.name)}, icon=${q(iconOf(slug))}, backdrop=${q(colors[slug] ?? '#ffffff')}, inspiration=${q(link)}, story=${q(copy?.story ?? '')}, actionLabel=${q(copy?.action.label ?? '')}, actionUrl=${q(copy?.action.url ?? '')}, unstable=${m.alert === true}, ported=${ported.has(slug)})`;
   });
 
