@@ -1,6 +1,7 @@
 # Demos's native workspace: the hosts exact2 generates (web/, apple/), plus the app's own GPU
 # module (gpu/), where every demo the RN app draws with Skia or WebGPU is drawn with wgpu.
 [workspace]
+exclude = [".exact/checkout"]
 members = ["web", "apple", "gpu", "packages/motion", "packages/gestures", "packages/draw2d", "packages/noise", "packages/pressto"]
 resolver = "2"
 
@@ -61,17 +62,17 @@ cast_lossless = "allow"
 # The helper crates are named here with their version, so a member that depends on another packages
 # (`cargo package`) as `motion = "0.1.0"` and builds in the workspace from the path.
 [workspace.dependencies]
-exact-gpu = { path = "../../../../../../.exact/exact2/730abad161c2a5f6cd1f34ea164cda8d9ad6b358/gpu" }
-exact-gpu-reflect = { path = "../../../../../../.exact/exact2/730abad161c2a5f6cd1f34ea164cda8d9ad6b358/gpu/reflect" }
+exact-gpu = { path = ".exact/checkout/gpu" }
+exact-gpu-reflect = { path = ".exact/checkout/gpu/reflect" }
 motion = { path = "packages/motion", version = "0.1.0" }
 gestures = { path = "packages/gestures", version = "0.1.0" }
 
 [patch.crates-io]
-accesskit_windows = { path = "../../../../../../.exact/exact2/730abad161c2a5f6cd1f34ea164cda8d9ad6b358/vendor/accesskit-windows" }
-taffy = { path = "../../../../../../.exact/exact2/730abad161c2a5f6cd1f34ea164cda8d9ad6b358/vendor/taffy" }
-parley = { path = "../../../../../../.exact/exact2/730abad161c2a5f6cd1f34ea164cda8d9ad6b358/vendor/parley" }
-fontique = { path = "../../../../../../.exact/exact2/730abad161c2a5f6cd1f34ea164cda8d9ad6b358/vendor/fontique" }
-wgpu-hal = { path = "../../../../../../.exact/exact2/730abad161c2a5f6cd1f34ea164cda8d9ad6b358/vendor/wgpu-hal" }
+accesskit_windows = { path = ".exact/checkout/vendor/accesskit-windows" }
+taffy = { path = ".exact/checkout/vendor/taffy" }
+parley = { path = ".exact/checkout/vendor/parley" }
+fontique = { path = ".exact/checkout/vendor/fontique" }
+wgpu-hal = { path = ".exact/checkout/vendor/wgpu-hal" }
 
 [profile.dev.package.draw2d]
 opt-level = 3

@@ -14,6 +14,6 @@
   },
   "dependencies": {
     "pressto": "workspace:*",
-    "@exact/motion": "file:../../../../../../.exact/exact2/730abad161c2a5f6cd1f34ea164cda8d9ad6b358/packages/motion"
+    "@exact/motion": "file:.exact/checkout/packages/motion"
   }
 }
