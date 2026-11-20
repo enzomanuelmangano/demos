@@ -26,9 +26,15 @@ const BUTTON: f64 = 64.0;
 /// Open sheet inset from the display's sides and bottom, pt. Its corners are concentric with the display's 62 pt radius.
 const INSET: f64 = 10.0;
 const DISPLAY_RADIUS: f64 = 62.0;
-/// Sheet content: a 64 pt title row, a two-line subtitle and a full-width capsule. The sheet is as tall as that content.
-const ROW: f64 = 64.0;
-const SUBTITLE_TOP: f64 = 4.0;
+/// The sheet's corner radius, and so where its corner's centre is from each edge, pt.
+const CORNER: f64 = DISPLAY_RADIUS - INSET;
+/// The close button: a 40 pt disc centred on the corner's centre, so it is concentric with the
+/// sheet and the display. The title shares its centre line.
+const CLOSE: f64 = 40.0;
+/// Sheet content: a header (the close disc and the title on the corner's centre line), a two-line
+/// subtitle and a full-width capsule. The sheet is as tall as that content.
+const ROW: f64 = 80.0;
+const SUBTITLE_TOP: f64 = 0.0;
 const SUBTITLE_LINE: f64 = 20.0;
 const SUBTITLE: [&str; 2] = [
     "Start something new here.",
@@ -36,10 +42,10 @@ const SUBTITLE: [&str; 2] = [
 ];
 const CAPSULE_H: f64 = 50.0;
 const CAPSULE_INSET: f64 = 52.0 - CAPSULE_H / 2.0;
-const SUBTITLE_TO_CAPSULE: f64 = 28.0;
+const SUBTITLE_TO_CAPSULE: f64 = 24.0;
 const SHEET_H: f64 =
     ROW + SUBTITLE_TOP + 2.0 * SUBTITLE_LINE + SUBTITLE_TO_CAPSULE + CAPSULE_H + CAPSULE_INSET;
-const GRABBER: (f32, f32, f32) = (36.0, 5.0, 6.0);
+const GRABBER: (f32, f32, f32) = (36.0, 5.0, 5.0);
 /// iOS-style rubber band: resists the drag more as it grows.
 fn rubber(d: f64, dim: f64) -> f64 {
     if dim <= 0.0 {
@@ -82,7 +88,7 @@ fn modal() -> FloatingModal {
         touched: false,
         posted: Vec::new(),
         plus: Font::new(ANTDESIGN, 28.0).map(Font::with_ui_layout),
-        title: draw2d::match_ui_font(20.0, 700.0),
+        title: draw2d::match_ui_font(22.0, 600.0),
         subtitle: draw2d::match_ui_font(15.0, 400.0),
         label: draw2d::match_ui_font(17.0, 600.0),
         canvas: Canvas::default(),
@@ -212,7 +218,7 @@ impl FloatingModal {
         // Content: the title row, centred, and the button row at the bottom.
         let new_at = (
             grid((sw - new.0) / 2.0, s),
-            text_grid((BUTTON - new.1) / 2.0, s),
+            text_grid(CORNER - new.1 / 2.0, s),
         );
         let button = (
             CAPSULE_INSET,
@@ -263,10 +269,22 @@ impl FloatingModal {
     fn plus_matrix(&self) -> Matrix {
         let (rotate, k) = self.plus_shown;
         let half = (BUTTON / 2.0) as f32;
+        // Closed it is the button's "+" at the middle; open it is the close glyph on the
+        // corner's centre, smaller.
+        let p = self.progress.value.clamp(0.0, 1.0) as f32;
+        let (shift, size) = ((CORNER as f32 - half) * p, 1.0 - 0.45 * p);
         Matrix::translate(-half, -half)
-            .then(Matrix::scale(k as f32, k as f32))
+            .then(Matrix::scale(k as f32 * size, k as f32 * size))
             .then(Matrix::rotate(rotate as f32))
-            .then(Matrix::translate(half, half))
+            .then(Matrix::translate(half + shift, half + shift))
+    }
+
+    /// Where a press on the "+" / close button lands: its 64 pt box, press scale only, so the
+    /// shrunken glyph keeps a comfortable target.
+    fn plus_hit_matrix(&self) -> Matrix {
+        let half = (BUTTON / 2.0) as f32;
+        let shift = (CORNER as f32 - half) * self.progress.value.clamp(0.0, 1.0) as f32;
+        Matrix::translate(shift, shift)
     }
 
     /// The Done button's transform inside the modal: pressto's scale about its centre.
@@ -319,7 +337,7 @@ impl FloatingModal {
         let q = m.apply(draw2d::Point::new(px as f32, py as f32));
         let (lx, ly) = (q.x as f64, q.y as f64);
         let in_modal = (0.0..=l.frame.2).contains(&lx) && (0.0..=l.frame.3).contains(&ly);
-        let pq = self.plus_matrix().invert().apply(q);
+        let pq = self.plus_hit_matrix().invert().apply(q);
         let on_plus =
             (0.0..=BUTTON as f32).contains(&pq.x) && (0.0..=BUTTON as f32).contains(&pq.y);
         let bq = self.button_matrix(&l).invert().apply(q);
@@ -528,7 +546,7 @@ impl Surface for FloatingModal {
                     g,
                     f,
                     "New",
-                    px(ROW / 2.0),
+                    px(CORNER),
                     0.0,
                     sw,
                     &Paint::fill(Color::BLACK),
@@ -619,6 +637,17 @@ impl Surface for FloatingModal {
         );
         // Analytic rounded rects: a path would turn the full-screen frame into 4x MSAA.
         c.draw_rrect(0.0, 0.0, fw, fh, radius, &Paint::fill(Color::WHITE));
+        // The close button's disc (tertiary fill) grows with the sheet, under the glyph.
+        let open = self.progress.value.clamp(0.0, 1.0) as f32;
+        if open > 0.0 && content > 0.0 {
+            let c0 = (BUTTON / 2.0) as f32 + (CORNER as f32 - (BUTTON / 2.0) as f32) * open;
+            c.draw_circle(
+                c0,
+                c0,
+                CLOSE as f32 / 2.0 * open,
+                &Paint::fill(Color::rgba8(118, 118, 128, 255).alpha(0.12 * content)),
+            );
+        }
         c.restore();
         // The content as one group at its opacity (allowsGroupOpacity), then the "+", 1:1.
         if content > 0.0 {
@@ -1036,8 +1065,8 @@ mod tests {
         let (fx, fy, _, _) = m.layout(1.0).frame;
         m.input(&pointer(
             PointerPhase::Down,
-            fx as f32 + 32.0,
-            fy as f32 + 32.0,
+            fx as f32 + CORNER as f32,
+            fy as f32 + CORNER as f32,
             ms,
         ));
         for _ in 0..3 {
