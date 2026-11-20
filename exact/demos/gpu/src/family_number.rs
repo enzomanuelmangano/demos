@@ -12,7 +12,11 @@
 //! - Identities: digits keep theirs while the digits before them are unchanged; comma k keeps
 //!   its identity while there are more than k commas, so commas slide rather than pop.
 //!
-//! Input: `digits`, a string of 0-9 ("0" for zero). Glyphs are outlines filled through the canvas
+//! - Haptics are the surface's: the keypad hands over `buzz` ("<kind>:<n>", a new n each time) and
+//!   each change plays that kind through `haptic::host`, with no Contract haptic() (a feedback
+//!   generator made on the main thread per key, inside a frame).
+//!
+//! Input: `digits`, a string of 0-9 ("0" for zero); `buzz`, optional. Glyphs are outlines filled through the canvas
 //! transform, so they stay crisp at any scale and nothing is re-rasterised per frame.
 
 use exact_gpu::wgpu;
@@ -241,8 +245,15 @@ impl Model {
 
     /// Each glyph's drawn centre x from the row's left, slide included, and its opacity factor.
     fn layout(&self) -> Vec<(f32, f32)> {
-        let mut x = 0.0f32;
         let mut out = Vec::with_capacity(self.glyphs.len());
+        self.layout_into(&mut out);
+        out
+    }
+
+    /// [`Model::layout`] into `out`, which a frame reuses.
+    fn layout_into(&self, out: &mut Vec<(f32, f32)>) {
+        out.clear();
+        let mut x = 0.0f32;
         for g in &self.glyphs {
             let slot = g.w.x as f32;
             let adv = self.advance(g.kind);
@@ -265,7 +276,6 @@ impl Model {
                 x += slot;
             }
         }
-        out
     }
 
     /// Applies new digits: slots and scale are retargeted. `animate` false places everything at once.
@@ -475,6 +485,12 @@ struct FamilyNumber {
     comma: Option<Path>,
     canvas: Canvas,
     renderer: Renderer,
+    /// A frame's layout and draw list, kept so a frame allocates nothing of its own.
+    layout: Vec<(f32, f32)>,
+    draws: Vec<(Kind, f32, f32, f32, f32, f32)>,
+    /// The last `buzz` bound, and the haptics waiting for the host.
+    buzz: Option<String>,
+    posted: Vec<String>,
 }
 
 impl FamilyNumber {
@@ -530,7 +546,22 @@ impl Surface for FamilyNumber {
             .unwrap_or("0")
             .to_string();
         self.pending = Some(digits);
+        if let Some(buzz) = inputs.get(1).and_then(|v| v.as_str()) {
+            // A new buzz plays its kind; the first one seen (a mount) plays nothing.
+            if self.buzz.as_deref().is_some_and(|old| old != buzz) {
+                if let Some(kind) = buzz.split(':').next().filter(|k| !k.is_empty()) {
+                    self.posted.push(format!("haptic:{kind}"));
+                }
+            }
+            if self.buzz.as_deref() != Some(buzz) {
+                self.buzz = Some(buzz.to_string());
+            }
+        }
         Ok(())
+    }
+
+    fn messages(&mut self) -> Vec<String> {
+        crate::haptic::host(std::mem::take(&mut self.posted))
     }
 
     fn agent(&mut self, _request: &str) -> Option<String> {
@@ -580,15 +611,16 @@ impl Surface for FamilyNumber {
         let baseline = -LINE / 2.0 + ASCENT;
         // Glyphs scale about the middle of their ink, which sits about 0.7 em up.
         let mid_y = -0.36 * SIZE;
-        let mut draws = Vec::with_capacity(model.glyphs.len());
-        for (g, (centre, open)) in model.glyphs.iter().zip(model.layout()) {
+        model.layout_into(&mut self.layout);
+        self.draws.clear();
+        for (g, &(centre, open)) in model.glyphs.iter().zip(&self.layout) {
             let (dy, s, o) = look(g, now);
             let o = o * open;
             if o > 0.0 && g.kind != Kind::Gap {
-                draws.push((g.kind, centre, dy, s, o, model.advance(g.kind)));
+                self.draws.push((g.kind, centre, dy, s, o, model.advance(g.kind)));
             }
         }
-        for (kind, x, dy, s, o, adv) in draws {
+        for &(kind, x, dy, s, o, adv) in &self.draws {
             let Some(path) = (match kind {
                 Kind::Digit(d) => self.paths.get(d as usize),
                 Kind::Comma => self.comma.as_ref(),
@@ -774,6 +806,71 @@ mod tests {
         }
         let state = s.agent("").unwrap();
         assert!(state.contains("\"digits\":\"12349\""), "{state}");
+    }
+
+
+    #[test]
+    fn a_new_buzz_plays_its_kind_once() {
+        let mut s = surface();
+        let bind = |s: &mut Box<dyn Surface>, d: &str, b: &str| s.bind(&[Value::str(d), Value::str(b)], None).unwrap();
+        bind(&mut s, "0", "");
+        assert!(s.messages().is_empty(), "a mount plays nothing");
+        bind(&mut s, "1", "selection:1");
+        assert_eq!(s.messages(), vec!["haptic:selection"]);
+        bind(&mut s, "12", "selection:1");
+        assert!(s.messages().is_empty(), "the same buzz is not played twice");
+        bind(&mut s, "1", "impact-light:2");
+        bind(&mut s, "0", "impact-medium:3");
+        assert_eq!(s.messages(), vec!["haptic:impact-light", "haptic:impact-medium"]);
+        assert!(s.messages().is_empty());
+    }
+
+    #[test]
+    fn typing_and_deleting_frames_allocate_what_a_rest_frame_does() {
+        use exact_gpu::fixture;
+        let Some(gpu) = fixture::device_or_skip(fixture::device()) else {
+            return;
+        };
+        let (w, h, sc) = (402.0f32, 389.0f32, 3.0f32);
+        let fr = |ms| Frame { width: w, height: h, scale: sc, now_ms: ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: 0, headroom: 1.0 };
+        let fmt = wgpu::TextureFormat::Rgba8Unorm;
+        let tex = gpu.device.create_texture(&wgpu::TextureDescriptor {
+            label: None,
+            size: wgpu::Extent3d { width: (w * sc) as u32, height: (h * sc) as u32, depth_or_array_layers: 1 },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: fmt,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
+        });
+        let view = tex.create_view(&Default::default());
+        let mut s = surface();
+        s.bind(&[Value::str("1")], None).unwrap();
+        let mut run = |s: &mut Box<dyn Surface>, ms: f64| {
+            let mut e = gpu.device.create_command_encoder(&Default::default());
+            let (more, n) = crate::steddy_graph_interaction::tests::counted(|| s.render(&fr(ms), &gpu.device, &gpu.queue, &mut e, &view, fmt));
+            gpu.queue.submit([e.finish()]);
+            let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+            (more, n)
+        };
+        let mut ms = 1000.0;
+        let rest = (0..6).map(|_| { ms += 16.67; run(&mut s, ms).1 }).min().unwrap();
+        // A key every 160 ms up to eleven digits and back down: a frame allocates what the
+        // renderer does at rest, a few more where a glyph enters or leaves.
+        let (mut worst_key, mut worst_frame) = (0, 0);
+        for step in 0..20usize {
+            let len = if step <= 10 { 1 + step } else { 21 - step };
+            s.bind(&[Value::str(&"12345678901"[..len])], None).unwrap();
+            for f in 0..10 {
+                ms += 16.67;
+                let (more, n) = run(&mut s, ms);
+                assert!(more || f > 0);
+                if f == 0 { worst_key = worst_key.max(n) } else { worst_frame = worst_frame.max(n) }
+            }
+        }
+        assert!(worst_frame <= rest + 20, "{worst_frame} vs {rest} at rest");
+        assert!(worst_key <= rest + 45, "{worst_key} vs {rest} at rest");
     }
 
     fn save(img: &exact_gpu::fixture::Pixels, name: &str) {

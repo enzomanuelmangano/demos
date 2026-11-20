@@ -124,6 +124,20 @@ fn cases() -> Vec<Case> {
             },
         },
         Case {
+            name: "family-number",
+            make: crate::family_number::surface,
+            size: (402.0, 389.0, 3.0),
+            setup: |s| s.bind(&[Value::str("1")], None).unwrap(),
+            // A key at 6 Hz: up to 11 digits, then back down to 1 (the commas regroup each way).
+            tick: |s, i, _| {
+                if i % 10 == 0 {
+                    let n = i / 10 % 20;
+                    let len = if n <= 10 { 1 + n } else { 21 - n };
+                    s.bind(&[Value::str(&"1234567890123"[..len])], None).unwrap();
+                }
+            },
+        },
+        Case {
             name: "sphere-waves",
             make: crate::sphere_waves::surface,
             size: (420.0, 912.0, 3.0),

@@ -1,7 +1,9 @@
 // Family Number Input: a keypad under a big number; each digit and thousands comma rises in, drops
 // out, and the commas slide as the number regroups. Holding backspace repeats it, quickening.
 // The number is one canvas surface with its own springs, so a keypress is one input bind; a commit
-// would start transitions the iOS host can skip the first frames of.
+// would start transitions the iOS host can skip the first frames of. The haptics are the
+// surface's too (`buzz`): a Contract haptic() makes a feedback generator on the main thread for
+// every key, inside a frame, and the surface's reach the host as patterns with no commit.
 use DemoEnv from "../env.contract"
 use AnimatedPressable, PressLook from "pressto"
 
@@ -25,6 +27,23 @@ component FamilyNumberInput
   state holdToken = 0
   state holdMs = 400
   state repeats = 0
+  // The last haptic asked for, "<kind>:<n>": the surface plays each new one.
+  state beats = 0
+  state buzz = ""
+  // pressto's global handler (a selection per press), here the surface's haptic.
+  action pressablesOnPress
+    beats = beats + 1
+    buzz = `selection:${beats}`
+  provide
+    pressablesOnPress
+  // The surface's haptics, played through the Contract only where the host does not take them.
+  action heard(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+    if m == "haptic:impact-medium"
+      haptic("impact-medium")
   action press(k: number)
     // Refused past 11 digits; a digit typed over a 0 replaces it.
     if k >= 0 and not (input == "0" and k == 0) and (input == "0" or input.length < 11)
@@ -49,11 +68,12 @@ component FamilyNumberInput
       let next = dropLast(input)
       input = next
       repeats = repeats + 1
+      beats = beats + 1
       if next == "0"
         holding = false
-        haptic("impact-medium")
+        buzz = `impact-medium:${beats}`
       else
-        haptic("impact-light")
+        buzz = `impact-light:${beats}`
         holdMs = repeatMs(repeats - 1)
         holdToken = holdToken + 1
   view
@@ -61,7 +81,7 @@ component FamilyNumberInput
       padding-bottom="env(safe-area-inset-bottom)" testId="family-number-input"
       // The surface fills the top half and centres the row in it.
       column flex=1 position="relative"
-        canvas surface=family_number(input) position="absolute" top=0 left=0 width=env.width
+        canvas surface=family_number(input, buzz) message=heard position="absolute" top=0 left=0 width=env.width
           height=((env.height - env.safeTop - env.safeBottom) / 2) aria-hidden=true
         // The number for VoiceOver and tests, not drawn.
         text grouped(input) testId="number" position="absolute" top=0 left=0 opacity=0
@@ -79,11 +99,14 @@ component FamilyNumberInput
             AnimatedPressable(press=press(k),
               rest=PressLook(scale=1, opacity=1, background="rgba(255, 255, 255, 0)", radius=20, continuous=false),
               pressed=PressLook(scale=0.9, opacity=1, background="rgba(255, 255, 255, 0.1)", radius=20, continuous=false))
-              column flex-grow=1 align-items="center" justify-content="center"
-                pointerdown=holdStart(k) pointerup=holdEnd(k)
-                aria-label=(k >= 0 ? `${k}` : (k == -2 ? "Delete" : "")) testId=`key-${k}`
-                if k >= 0
-                  text `${k}` font-family="SF-Pro-Rounded-Bold" font-size=30 color="#ffffff"
-                    text-align="center"
-                if k == -2
+              // Only backspace listens to the raw touch (the hold); the other keys carry no handler.
+              if k == -2
+                column flex-grow=1 align-items="center" justify-content="center"
+                  pointerdown=holdStart(k) pointerup=holdEnd(k) aria-label="Delete" testId=`key-${k}`
                   image "symbol:sf/delete.left.fill" font-size=24 color="#ffffff" aria-hidden=true
+              if k != -2
+                column flex-grow=1 align-items="center" justify-content="center"
+                  aria-label=(k >= 0 ? `${k}` : "") testId=`key-${k}`
+                  if k >= 0
+                    text `${k}` font-family="SF-Pro-Rounded-Bold" font-size=30 color="#ffffff"
+                      text-align="center"
