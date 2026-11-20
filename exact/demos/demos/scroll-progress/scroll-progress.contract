@@ -36,20 +36,17 @@ fn isEnd(p: number): bool = p == 1
 fn isExpanded(p: number): bool = p != 0 and p != 1
 fn pillWidth(p: number): number = isExpanded(p) ? 200 : 70
 // The percentage label and the bar follow the scroll on a scroll timeline (`--sp`), with no commit
-// per frame. Label k is an opaque copy over label k - 1 from (k - 0.5)%.
-fn pctRange(k: number): string = `${k - 0.5}% ${k - 0.5 + 0.0001}%`
+// per frame.
 keyframes spFill
   from translate="-100% 0px"
   to translate="0px 0px"
-keyframes spOn
-  from opacity=0
-  to opacity=1
 // The percentage as one column of labels "0%" to "100%", 18 apart, stepped by the scroll timeline:
-// one animated node instead of 100.
+// one animated node instead of 100. `steps(100, jump-end)` shows label floor(100 q); the range
+// starts half a percent early so that q is the scroll fraction plus 0.5 %, which makes it the
+// nearest whole percent (a `linear()` staircase would need 200 stops, and the wire takes 64).
 keyframes spRoll
   from translate="0px 0px"
   to translate="0px -1800px"
-fn rollStairs(): string = `linear(0 0%, ${range(100).map(k => `${k / 100} ${k + 0.5}%, ${(k + 1) / 100} ${k + 0.5}%`).join(", ")}, 1 100%)`
 
 // Ease-in-out quad over 500 ms; the pill's width moves every box inside it on the same curve.
 style PillMotion
@@ -147,7 +144,7 @@ component BottomProgress
         view class=PillMotion position="relative" flex-shrink=0 width=50 testId="progress-percent"
           view position="relative" width=50 height=18 overflow="hidden" top="-0.16667px"
             column position="absolute" left=0 top=0 width=50
-              animation=`spRoll 1s ${rollStairs()} both` animation-timeline="--sp" testId="progress-roll"
+              animation="spRoll 1s steps(100, jump-end) both" animation-timeline="--sp" animation-range="-0.5% 99.5%" testId="progress-roll"
               for k in range(101) key=k
                 text `${k}%` color="#9E9E9E" font-size=15 text-align="center" width=50 height=18
                   line-height="18px" aria-hidden=(k != 0)
