@@ -25,8 +25,11 @@ const BUTTON_ROW: f64 = 56.0;
 const CENTRED_SLACK: f64 = 40.0;
 /// The time scale of a flick's velocity, s.
 const FLICK: f64 = 0.1;
-/// The shortest gap between two selection haptics, ms.
-const HAPTIC_GAP_MS: f64 = 40.0;
+/// The shortest gap between a haptic and the next selection, ms. A flick that crosses the line
+/// right after the grab, or a finger hovering on the line, adds no tap on top of the last one.
+const HAPTIC_GAP_MS: f64 = 150.0;
+/// The tilt at the throw line, rad (9 degrees); it grows linearly with the drag and holds there.
+const MAX_TILT: f64 = std::f64::consts::PI / 20.0;
 /// How far back under the throw line the drag must go before a new crossing plays again, pt.
 const REARM: f64 = 24.0;
 
@@ -144,7 +147,26 @@ impl SwipeCards {
     /// The card's tilt, from its horizontal drag.
     fn rotate(&self, i: usize) -> f64 {
         let t = self.third();
-        interpolate(self.cards[i].x.value, &[-t, 0.0, t], &[-std::f64::consts::PI / 20.0, 0.0, std::f64::consts::PI / 20.0], Extrapolation::Clamp)
+        interpolate(self.cards[i].x.value, &[-t, 0.0, t], &[-MAX_TILT, 0.0, MAX_TILT], Extrapolation::Clamp)
+    }
+
+    /// Where a release would throw the card: `current + 1` when the drag's translation and
+    /// velocity, each normalised to 1 at the throw line and at a flick, reach the unit circle
+    /// (no arctangent: the card's tilt and this decision are both piecewise linear), else `current`.
+    fn decide(&self, tx: f64, vx: f64, current: f64) -> f64 {
+        let third = self.third();
+        let nx = interpolate(tx, &[-third, 0.0, third], &[-1.0, 0.0, 1.0], Extrapolation::Extend);
+        let nv = interpolate(vx, &[-third / FLICK, 0.0, third / FLICK], &[-1.0, 0.0, 1.0], Extrapolation::Extend);
+        let radius = tx.signum_js() * (nx * nx + nv * nv);
+        interpolate(radius, &[-1.0, 0.0, 1.0], &[current + 1.0, current, current + 1.0], Extrapolation::Clamp)
+    }
+
+    /// Posts a selection unless a haptic played less than HAPTIC_GAP_MS ago.
+    fn select(&mut self, at_ms: f64) {
+        if at_ms - self.haptic_at >= HAPTIC_GAP_MS {
+            self.posted.push("haptic:selection".into());
+            self.haptic_at = at_ms;
+        }
     }
 
     /// Whether the point lands on card i's transformed box. A faded-out card takes no touches.
@@ -265,29 +287,24 @@ impl Surface for SwipeCards {
                 }
                 if matches!(event_kind, Kind::Start) {
                     self.posted.push("haptic:impact-light".into());
+                    self.haptic_at = at_ms;
                 }
                 let (tx, vx) = (p.translation_x as f64, p.velocity_x as f64);
                 // Past the throw line a release throws at any speed. One selection on the way out,
                 // re-armed only REARM back under the line.
                 if !self.past_line && tx.abs() >= third {
                     self.past_line = true;
-                    if at_ms - self.haptic_at >= HAPTIC_GAP_MS {
-                        self.posted.push("haptic:selection".into());
-                        self.haptic_at = at_ms;
-                    }
+                    self.select(at_ms);
                 } else if self.past_line && tx.abs() < third - REARM {
                     self.past_line = false;
                 }
                 self.cards[i].x.set(tx);
                 self.cards[i].y.set(p.translation_y as f64);
-                let nx = interpolate(tx, &[-third, 0.0, third], &[-1.0, 0.0, 1.0], Extrapolation::Extend);
-                let nv = interpolate(vx, &[-third / FLICK, 0.0, third / FLICK], &[-1.0, 0.0, 1.0], Extrapolation::Extend);
-                let radius = tx.signum_js() * (nx * nx + nv * nv);
                 let a = self.current;
-                self.cards[i].next = interpolate(radius, &[-1.0, 0.0, 1.0], &[a + 1.0, a, a + 1.0], Extrapolation::Clamp);
+                self.cards[i].next = self.decide(tx, vx, a);
             }
-            Event::End(p) => self.finalize(i, p.translation_x as f64),
-            Event::Fail => self.finalize(i, 0.0),
+            Event::End(p) => self.finalize(i, p.translation_x as f64, at_ms),
+            Event::Fail => self.finalize(i, 0.0, at_ms),
             _ => {}
         }
     }
@@ -370,7 +387,7 @@ impl Surface for SwipeCards {
 
 impl SwipeCards {
     /// Release on card i: throws it if the drag reached the next index, else springs it back.
-    fn finalize(&mut self, i: usize, translation_x: f64) {
+    fn finalize(&mut self, i: usize, translation_x: f64, at_ms: f64) {
         self.touched = None;
         if self.current != i as f64 {
             return;
@@ -378,7 +395,9 @@ impl SwipeCards {
         if self.cards[i].next == self.active + 1.0 {
             let sign = translation_x.signum_js();
             self.throw(i, if sign == 1.0 { 1.0 } else { -1.0 });
+            // The throw always plays; it is the one tap a flick ends with.
             self.posted.push("haptic:impact-medium".into());
+            self.haptic_at = at_ms;
         } else {
             self.cards[i].x.to(0.0, 0.0, GENTLE);
             self.cards[i].y.to(0.0, 0.0, GENTLE);
@@ -469,6 +488,59 @@ mod tests {
     }
 
     #[test]
+    fn the_tilt_and_the_throw_decision_are_the_linear_ones_not_an_arctangent() {
+        let mut s = SwipeCards::new();
+        s.size = (420.0, 912.0);
+        let deg = |r: f64| r.to_degrees();
+        // 9 degrees at the throw line (140 pt), linear below it, held beyond it, mirrored.
+        for (x, want) in [(0.0, 0.0), (35.0, 2.25), (70.0, 4.5), (140.0, 9.0), (400.0, 9.0), (-70.0, -4.5), (-140.0, -9.0)] {
+            s.cards[0].x.set(x);
+            assert!((deg(s.rotate(0)) - want).abs() < 1e-9, "{x}: {}", deg(s.rotate(0)));
+        }
+        // The decision is the unit circle of translation / 140 pt and velocity / 1400 pt/s.
+        let thrown = |tx: f64, vx: f64| s.decide(tx, vx, 3.0) == 4.0;
+        assert!(!thrown(0.0, 0.0) && !thrown(100.0, 0.0) && thrown(140.0, 0.0) && thrown(-141.0, 0.0));
+        // 0.6^2 + 0.8^2 = 1: 84 pt at 1120 pt/s sits exactly on the circle.
+        assert!(thrown(84.0, 1120.0) && !thrown(83.0, 1120.0) && thrown(-84.0, -1120.0));
+        // A fast flick back against the drag's side is not a throw: the sign is the translation's.
+        assert_eq!(s.decide(-20.0, 2000.0, 3.0), 4.0);
+        assert_eq!(s.decide(0.0, 5000.0, 3.0), 3.0);
+        // Between the two it blends: radius 0.5 is half way to the next index.
+        assert!((s.decide(140.0 * 0.5f64.sqrt(), 0.0, 3.0) - 3.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn a_drag_makes_few_haptics_never_one_per_move() {
+        let play = |moves: &dyn Fn(usize) -> f32, steps: usize, dt: f64| {
+            let mut s = SwipeCards::new();
+            s.size = (420.0, 912.0);
+            s.safe_top = 68.0;
+            let mut ms = 0.0;
+            s.input(&pointer(PointerPhase::Down, 210.0, 400.0, ms));
+            for k in 0..steps {
+                ms += dt;
+                s.input(&pointer(PointerPhase::Move, 210.0 + moves(k), 400.0, ms));
+            }
+            s.input(&pointer(PointerPhase::Up, 210.0, 400.0, ms + dt));
+            s.messages()
+        };
+        let count = |m: &[String], k: &str| m.iter().filter(|x| x.as_str() == k).count();
+        // Sweeping across the throw line and 60 pt back, again and again every 60 ms, for 6 s:
+        // one grab, and a selection at most every 150 ms (and each needs the 24 pt re-arm).
+        let sweep = play(&|k| if k % 2 == 0 { 100.0 } else { 20.0 }, 100, 60.0);
+        assert_eq!(count(&sweep, "haptic:impact-light"), 1, "{sweep:?}");
+        assert!(count(&sweep, "haptic:selection") <= 6000 / 150, "{sweep:?}");
+        // The release may throw (the sweep's last move is fast): one tap, at the end.
+        assert!(count(&sweep, "haptic:impact-medium") <= 1, "{sweep:?}");
+        // A flick that passes the line in the first 100 ms: the grab and the throw, nothing between.
+        let flick = play(&|k| 40.0 * (k + 1) as f32, 6, 16.0);
+        assert_eq!(flick, vec!["haptic:impact-light", "haptic:impact-medium"], "{flick:?}");
+        // A slow drag to the line and a release: grab, line, throw.
+        let slow = play(&|k| 12.0 * (k + 1) as f32, 14, 50.0);
+        assert_eq!(slow, vec!["haptic:impact-light", "haptic:selection", "haptic:impact-medium"], "{slow:?}");
+    }
+
+    #[test]
     fn a_fling_throws_and_reset_brings_the_cards_back() {
         let gpu = match fixture::device() {
             Ok(gpu) => gpu,
@@ -487,7 +559,8 @@ mod tests {
         }
         s.input(&pointer(PointerPhase::Up, 370.0, 400.0, ms + 8.0));
         assert!(state(&mut s).contains("\"activeIndex\":1"), "{}", state(&mut s));
-        assert_eq!(s.messages(), vec!["haptic:impact-light", "haptic:selection", "haptic:impact-medium"]);
+        // The line is crossed 100 ms after the grab: too soon after it for a tap of its own.
+        assert_eq!(s.messages(), vec!["haptic:impact-light", "haptic:impact-medium"]);
         while ms < 2000.0 {
             ms += 16.0;
             fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
