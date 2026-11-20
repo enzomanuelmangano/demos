@@ -33,6 +33,13 @@ bun exact.mjs phone <udid> --run --url http://<your-lan-ip>:5341
 `bun exact.mjs help` lists every verb. `bun tools/gen-demos.ts` rebuilds the launcher's list from
 the original React Native app's registry.
 
+The Exact checkout is `.exact/checkout`, a gitignored symlink `exact.mjs` makes to the checkout it finds
+(`EXACT=<path>` retargets it; the seed path in `exact.mjs` names the commit this tree was last updated to).
+The web build's `wasm-bindgen` CLI must be the version the checkout pins (`game/Cargo.toml`, 0.2.130 now):
+`bun <checkout>/scripts/exact.mjs setup` installs it into `~/.cargo/bin`, which replaces the one other
+checkouts use; to keep both, `cargo install wasm-bindgen-cli --version 0.2.130 --locked --root ~/.exact/bindgen-0.2.130`
+and put `~/.exact/bindgen-0.2.130/bin` first on `PATH` for the dev server. See `UPGRADE-NOTES.md`.
+
 ## Lint
 
 `tools/lint.sh all` runs the Contract linter (polish and performance rules, with a baseline of accepted debt), the Rust format
