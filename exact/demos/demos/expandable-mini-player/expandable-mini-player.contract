@@ -1,16 +1,16 @@
-// Expandable Mini Player: an iOS 26 Music-style player. A page scrolls under a floating glass tab
-// bar and mini player; a tap grows the mini player into a full-screen sheet, and a drag down
-// collapses it. The cover is one node, so its flight between the two sizes is one morph.
+// Expandable Mini Player: an iOS 26 Music-style player. A page scrolls under a native tab bar, and
+// the mini player above it is the top of the full-screen sheet: dragging it up (or tapping it)
+// raises one sheet whose cover, title and play/next controls grow into the large player, and the
+// drag down reverses it. The drag only holds a translate; every moving part follows it as a
+// timeline animation, so no commit runs per finger move.
 use PressableScale from "pressto"
 use DemoEnv, floatingWidth, concentricRadius from "../env.contract"
 
-// The bars: 10 from the display's edges; the tab bar 62 tall, the mini player 60, 8 between.
+// The mini player is 60 tall, 10 from the display's sides, with the tab bar 62 tall below it.
+// The timeline keyframes are in the points of a 402 x 874 display: the mini player's top is at 734.
 fn mpInset(): number = 10
-fn mpTabH(): number = 62
 fn mpMiniH(): number = 60
-fn mpMiniBottom(): number = mpInset() + mpTabH() + 8
-fn mpThumb(): number = 44
-fn mpThumbPad(): number = 8
+fn mpTravel(): number = 734
 fn mpSide(): number = 32
 fn mpCoverTop(top: number): number = top + 48
 
@@ -66,6 +66,58 @@ component MpArt
       image src position="absolute" left=((w - iw * k) / 2) top=((h - ih * k) / 2)
         width=(iw * k) height=(ih * k) aria-hidden=true
 
+// The sheet's motion, one keyframes block per moving part. Each runs on the drag timeline `--mp`,
+// 0% at the open sheet and 100% at the mini player, so the finger and the release spring move
+// them all in one frame. The sheet is rigid: its top is the mini player.
+keyframes mpSheet
+  from translate="0px 0px" scale=1
+  to translate="10px 734px" scale=0.95025
+keyframes mpPage
+  from scale=0.92
+  to scale=1
+keyframes mpDim
+  from opacity=0.45
+  to opacity=0
+// The tab bar and the black ground under the mini player leave early as the sheet rises.
+keyframes mpBars
+  0% translate="0px 150px"
+  70% translate="0px 150px"
+  100% translate="0px 0px"
+// The cover: from the large cover to the 44 point thumbnail.
+keyframes mpArt
+  from translate="0px 0px" scale=1
+  to translate="-14px 632px" scale=0.13018
+keyframes mpArtShadow
+  0% opacity=1
+  40% opacity=0
+  100% opacity=0
+// The thumbnail's radius is 10 in its own scale; two layers trade places near the end.
+keyframes mpArtMini
+  0% opacity=0
+  60% opacity=0
+  100% opacity=1
+keyframes mpArtBig
+  0% opacity=1
+  85% opacity=1
+  100% opacity=0
+keyframes mpTitle
+  from translate="0px 0px" scale=1
+  to translate="42px 262.33px" scale=0.68182
+keyframes mpArtist
+  from translate="0px 0px" scale=1
+  to translate="42px 253.42px" scale=0.65
+// Only the open player has these.
+keyframes mpFade
+  0% opacity=1
+  35% opacity=0
+  100% opacity=0
+keyframes mpPlay
+  from translate="0px 0px" scale=1
+  to translate="139.55px 127.55px" scale=0.54545
+keyframes mpNext
+  from translate="0px 0px" scale=1
+  to translate="73.03px 121.53px" scale=0.73333
+
 component ExpandableMiniPlayer
   props
     env: DemoEnv
@@ -74,30 +126,19 @@ component ExpandableMiniPlayer
   state tab = 0
   state elapsed = 74
   state tickToken = 1
-  // When a drag of the sheet last began (0: none or released). A clock tick that changes the
-  // time text mid-drag re-measures the handle and ends the drag, so a tick during one only
-  // re-arms the timer.
-  state dragAt = 0
+  // The release velocity seeds the sheet's spring; a tap starts it from rest.
+  state vel = "0 0"
   derive W = env.width
   derive H = env.height
   derive cover = W - 2 * mpSide()
   derive coverTop = mpCoverTop(env.safeTop)
-  // The cover's flight, in the sheet's coordinates: from the large cover to the thumbnail.
-  derive thumbX = mpInset() + mpThumbPad() + mpThumb() / 2
-  derive thumbY = H - mpMiniBottom() - mpMiniH() / 2
-  derive flyX = thumbX - (mpSide() + cover / 2)
-  derive flyY = thumbY - H - (coverTop + cover / 2)
-  derive flyK = mpThumb() / cover
   derive fraction = elapsed / mpLength()
 
   // The clock: a tick a second while playing; past the end it starts over.
   action tick(m: string)
     if playing and m == `timer:${tickToken}`
-      if dragAt > 0 and performanceNow() - dragAt < 10000
-        tickToken = tickToken + 1
-      else
-        elapsed = elapsed + 1 >= mpLength() ? 0 : elapsed + 1
-        tickToken = tickToken + 1
+      elapsed = elapsed + 1 >= mpLength() ? 0 : elapsed + 1
+      tickToken = tickToken + 1
   action toggle
     playing = not playing
     if playing
@@ -110,25 +151,16 @@ component ExpandableMiniPlayer
     tickToken = tickToken + 1
   action expand
     if not expanded
+      vel = "0 0"
       expanded = true
       haptic("impact-medium")
   action collapse
     if expanded
+      vel = "0 0"
       expanded = false
       haptic("impact-light")
-  action pick(i: number)
-    tab = i
-  // Native chrome events. Its buttons play their own haptics.
+  // Native tab bar events.
   action chrome(m: string)
-    if m == "accessory"
-      expand()
-    if m == "play"
-      playing = not playing
-      if playing
-        tickToken = tickToken + 1
-    if m == "next"
-      elapsed = 0
-      tickToken = tickToken + 1
     if m == "tab:0"
       tab = 0
     if m == "tab:1"
@@ -137,28 +169,33 @@ component ExpandableMiniPlayer
       tab = 2
     if m == "tab:3"
       tab = 3
-  // The drag's geometry: a drag has begun.
+  // The drag binding needs a geometry action. It records nothing, so no commit lands as the
+  // finger does.
   action bound(bw: number, bh: number, pw: number, ph: number)
-    dragAt = performanceNow()
-  // Released: far enough down or flicked, it collapses; else it springs back.
+    vel = vel
+  // y is the layer's translate: 0 at the open sheet, 734 at the mini player. It opens on a flick
+  // up or when released above the middle, and closes on a flick down or below it; the spring
+  // starts with the finger's speed.
   action release(x: number, y: number, scale: number, vx: number, vy: number, vscale: number)
-    dragAt = 0
-    if expanded and (y > min(120, H * 0.3) or (vy > 700 and y > 10))
-      collapse()
+    let open = vy < -500 or (vy <= 500 and y < mpTravel() / 2)
+    vel = `0 ${vy}`
+    if open != expanded
+      haptic(open ? "impact-medium" : "impact-light")
+    expanded = open
 
   view
     column position="absolute" inset=0 background-color="#000000" overflow="hidden"
-      testId="expandable-mini-player"
+      timeline-scope="--mp" testId="expandable-mini-player"
       canvas surface=timer(playing ? tickToken : 0, 1000) message=tick width=1 height=1
         position="absolute" left=0 top=0 aria-hidden=true pointer-events="none"
       // The page sinks behind the sheet; its corners are the display's, so it reads as a card.
       column position="absolute" inset=0 border-radius=62 corner-shape="-exact-continuous"
-        overflow="hidden" background-color="#000000"
-        scale=(expanded ? 0.92 : 1) transition=`scale ${mpPageSpring()}` testId="mp-page"
+        overflow="hidden" background-color="#000000" animation="mpPage 1s linear both"
+        animation-timeline="--mp" animation-range="0px 734px" testId="mp-page"
         scroll position="absolute" left=0 top=0 width=W height=H overflow-y="auto"
           overflow-x="hidden" scrollbar-width="none"
           column padding-top=(env.safeTop + 56) padding-left=20 padding-right=20
-            padding-bottom=(mpMiniBottom() + mpMiniH() + 24)
+            padding-bottom=(mpTravel() + 24)
             text "Listen Now" font-size=34 line-height="41px" font-weight=700 color=mpLabel()
             text "Top Picks for You" margin-top=20 font-size=22 line-height="28px" font-weight=700
               color=mpLabel()
@@ -173,95 +210,150 @@ component ExpandableMiniPlayer
                       white-space="nowrap"
                     text a.artist font-size=13 line-height="18px" color=mpSecondary()
                       white-space="nowrap"
-        // Dim over the page, on the same spring.
-        view position="absolute" inset=0 background-color="#000000"
-          opacity=(expanded ? 0.45 : 0) transition=`opacity ${mpPageSpring()}` pointer-events="none"
+        // Dim over the page, with the sheet.
+        view position="absolute" inset=0 background-color="#000000" opacity=0
+          animation="mpDim 1s linear both" animation-timeline="--mp" animation-range="0px 734px"
+          pointer-events="none" aria-hidden=true
+
+      // The sheet: the cover's colours, deepening downward. At rest as the mini player only its
+      // top 60 points show, over the black ground below.
+      view position="absolute" left=0 top=0 width=W height=H transform-origin="0px 0px"
+        border-radius=32 corner-shape="-exact-continuous"
+        background-image="linear-gradient(to bottom, #4A5A48 0%, #263024 45%, #0E120D 100%)"
+        box-shadow="0px -6px 30px rgba(0, 0, 0, 0.35)" animation="mpSheet 1s linear both"
+        animation-timeline="--mp" animation-range="0px 734px" pointer-events="none"
+        testId=(expanded ? "mp-sheet" : "mp-sheet-idle")
+
+      // One cover from the thumbnail to the large cover; paused, it settles smaller.
+      view position="absolute" left=mpSide() top=coverTop width=cover height=cover
+        transform-origin="0px 0px" animation="mpArt 1s linear both" animation-timeline="--mp"
+        animation-range="0px 734px" pointer-events="none" testId="mp-cover"
+        view position="absolute" inset=0 scale=(expanded and not playing ? 0.86 : 1)
+          transition=`scale ${mpCoverSpring()}`
+          view position="absolute" inset=0 border-radius=14 corner-shape="-exact-continuous"
+            box-shadow="0px 18px 40px rgba(0, 0, 0, 0.45)" background-color="#1C1C1E"
+            animation="mpArtShadow 1s linear both" animation-timeline="--mp"
+            animation-range="0px 734px"
+          view position="absolute" inset=0 animation="mpArtBig 1s linear both"
+            animation-timeline="--mp" animation-range="0px 734px"
+            MpArt(src=mpCover(), iw=1920, ih=2880, w=cover, h=cover, radius=14)
+          view position="absolute" inset=0 opacity=0 animation="mpArtMini 1s linear both"
+            animation-timeline="--mp" animation-range="0px 734px"
+            MpArt(src=mpCover(), iw=1920, ih=2880, w=cover, h=cover, radius=76.8)
+      // The title and artist grow from the mini player's two lines.
+      column position="absolute" left=mpSide() top=(coverTop + cover + 36) width=cover
+        pointer-events="none"
+        text "Happiness Does Not Wait" font-size=22 line-height="28px" font-weight=600
+          color=mpLabel() white-space="nowrap" transform-origin="0px 0px"
+          animation="mpTitle 1s linear both" animation-timeline="--mp" animation-range="0px 734px"
+        text "Ólafur Arnalds" font-size=20 line-height="25px" color=mpSecondary()
+          white-space="nowrap" transform-origin="0px 0px" animation="mpArtist 1s linear both"
+          animation-timeline="--mp" animation-range="0px 734px"
+      // The open player's scrubber and times.
+      column position="absolute" left=mpSide() width=cover top=(coverTop + cover + 36 + 28 + 25 + 26)
+        pointer-events="none" animation="mpFade 1s linear both" animation-timeline="--mp"
+        animation-range="0px 734px"
+        view height=6 border-radius=3 corner-shape="-exact-continuous"
+          background-color="rgba(255, 255, 255, 0.2)" overflow="hidden"
+          view position="absolute" left=0 top=0 bottom=0 width="100%"
+            background-color="rgba(255, 255, 255, 0.82)"
+            translate=`${(fraction - 1) * cover}px 0px` transition="translate 1000ms linear"
+            testId="mp-scrubber"
+        row margin-top=8 justify-content="space-between"
+          text mpClock(elapsed) font-size=12 line-height="16px" font-weight=500
+            color=mpSecondary() font-variant-numeric="tabular-nums"
+          text `-${mpClock(mpLength() - elapsed)}` font-size=12 line-height="16px"
+            font-weight=500 color=mpSecondary() font-variant-numeric="tabular-nums"
+      // The transport: previous fades in, play and next grow from the mini player's two buttons.
+      row position="absolute" left=mpSide() width=cover top=(coverTop + cover + 36 + 28 + 25 + 26 + 6 + 8 + 16 + 26)
+        height=64 align-items="center" justify-content="space-evenly" pointer-events="none"
+        column width=64 height=64 align-items="center" justify-content="center"
+          animation="mpFade 1s linear both" animation-timeline="--mp" animation-range="0px 734px"
+          image "symbol:sf/backward.fill" font-size=30 color=mpLabel() aria-hidden=true
+        column width=64 height=64 align-items="center" justify-content="center"
+          transform-origin="0px 0px" animation="mpPlay 1s linear both" animation-timeline="--mp"
+          animation-range="0px 734px"
+          image (playing ? "symbol:sf/pause.fill" : "symbol:sf/play.fill") font-size=44
+            color=mpLabel() aria-hidden=true
+        column width=64 height=64 align-items="center" justify-content="center"
+          transform-origin="0px 0px" animation="mpNext 1s linear both" animation-timeline="--mp"
+          animation-range="0px 734px"
+          image "symbol:sf/forward.fill" font-size=30 color=mpLabel() aria-hidden=true
+      // The volume row.
+      row position="absolute" left=mpSide() width=cover align-items="center" gap=12
+        top=(coverTop + cover + 36 + 28 + 25 + 26 + 6 + 8 + 16 + 26 + 64 + 28)
+        pointer-events="none" animation="mpFade 1s linear both" animation-timeline="--mp"
+        animation-range="0px 734px"
+        image "symbol:sf/speaker.fill" font-size=13 color=mpSecondary() aria-hidden=true
+        view flex=1 height=6 border-radius=3 corner-shape="-exact-continuous"
+          background-color="rgba(255, 255, 255, 0.2)" overflow="hidden"
+          view position="absolute" left=0 top=0 bottom=0 width="62%"
+            background-color="rgba(255, 255, 255, 0.82)"
+        image "symbol:sf/speaker.wave.3.fill" font-size=13 color=mpSecondary()
           aria-hidden=true
+      // The grabber of the open sheet.
+      view position="absolute" top=(env.safeTop + 4 + 8) left=((W - 36) / 2) width=36 height=5
+        border-radius=2.5 corner-shape="-exact-continuous" background-color="rgba(255, 255, 255, 0.35)"
+        pointer-events="none"
+        animation="mpFade 1s linear both" animation-timeline="--mp" animation-range="0px 734px"
 
-      // Native tab bar and mini player (SwiftUI TabView). It takes touches only on the bar and the accessory.
-      music-tabbar tab-titles="Home|New|Radio|Library"
-        tab-symbols="house.fill|square.grid.2x2.fill|dot.radiowaves.left.and.right|music.note.square.stack.fill"
-        selected-tab=`${tab}` tab-tint=mpAccent() track-title="Happiness Does Not Wait"
-        track-artist="Ólafur Arnalds" artwork-file=mpCover() is-playing=(playing ? "true" : "false")
-        change=chrome position="absolute" left=0 right=0 bottom=0 height=(mpMiniBottom() + mpMiniH() + 24)
-        testId="mp-chrome"
+      // The tab bar over a black ground, as the page's own, under the mini player. They leave with the sheet.
+      view position="absolute" left=0 right=0 bottom=0 height=140 pointer-events="none"
+        animation="mpBars 1s linear both" animation-timeline="--mp" animation-range="0px 734px"
+        view position="absolute" left=0 right=0 top=60 bottom=0 background-color="#000000"
+          pointer-events="none" aria-hidden=true
+        // The mini player's bottom corners: black outside a 30 point circle, from its outer shadow.
+        view position="absolute" left=10 top=30 width=30 height=30 overflow="hidden"
+          pointer-events="none" aria-hidden=true
+          view position="absolute" left=0 top=-30 width=60 height=60 border-radius=30
+            corner-shape="-exact-continuous" box-shadow="0px 0px 0px 30px #000000"
+        view position="absolute" left=362 top=30 width=30 height=30 overflow="hidden"
+          pointer-events="none" aria-hidden=true
+          view position="absolute" left=-30 top=-30 width=60 height=60 border-radius=30
+            corner-shape="-exact-continuous" box-shadow="0px 0px 0px 30px #000000"
+        native-tabbar tab-titles="Home|New|Radio|Library"
+          tab-symbols="house.fill|square.grid.2x2.fill|dot.radiowaves.left.and.right|music.note.square.stack.fill"
+          selected-tab=`${tab}` tab-tint=mpAccent() change=chrome position="absolute" left=0
+          right=0 bottom=0 height=106 testId="mp-tabs"
 
-      // Sheet layer: at 0 when open, at H when collapsed.
+      // The drag layer: it holds the sheet's translate, 0 when open and 734 as the mini player,
+      // and is the timeline's source. Its handle is the sheet, or the mini player's strip.
       column position="absolute" inset=0 overflow="hidden" pointer-events="none"
-        column id="mp-sheet-layer" width="100%" height="100%" box-sizing="border-box" position="relative"
-          pointer-events="none"
-          translate=`0px ${expanded ? 0 : H}px` transition=`translate ${mpSheetSpring()}`
-          // Drag handle over the open sheet; the buttons above keep their taps.
-          if expanded
-            view position="absolute" inset=0 pointer-events="auto" touch-action="none"
-              transformDragFor="mp-sheet-layer" transformgeometry=bound transformrelease=release
-              aria-label="Drag down to close the player" testId="mp-sheet-handle"
-          // Sheet background: the cover's colours, deepening downward.
-          view position="absolute" inset=0 border-radius=62 corner-shape="-exact-continuous"
-            background-image="linear-gradient(to bottom, #4A5A48 0%, #263024 45%, #0E120D 100%)"
-            pointer-events="none" testId=(expanded ? "mp-sheet" : "mp-sheet-idle")
-          view position="absolute" top=(env.safeTop + 4) left=((W - 80) / 2) width=80 height=24
-            pointer-events=(expanded ? "auto" : "none") pointerdown=collapse
-            aria-label="Close the player" testId="mp-grabber"
-            view position="absolute" left=22 top=8 width=36 height=5 border-radius=2.5
-              background-color="rgba(255, 255, 255, 0.35)"
-          // One node from the thumbnail to the large cover; paused, it settles smaller.
-          view position="absolute" left=mpSide() top=coverTop width=cover height=cover
-            translate=(expanded ? "0px 0px" : `${flyX}px ${flyY}px`)
-            scale=(expanded ? 1 : flyK)
-            transition=`translate ${mpSheetSpring()}, scale ${mpSheetSpring()}, opacity 220ms cubic-bezier(0.23, 1, 0.32, 1)`
-            opacity=(expanded ? 1 : 0) pointer-events="none" testId="mp-cover"
-            view position="absolute" inset=0 scale=(expanded and not playing ? 0.86 : 1)
-              transition=`scale ${mpCoverSpring()}`
-              view position="absolute" inset=0 border-radius=14 corner-shape="-exact-continuous"
-                box-shadow="0px 18px 40px rgba(0, 0, 0, 0.45)" background-color="#1C1C1E"
-                opacity=(expanded ? 1 : 0) transition="opacity 300ms cubic-bezier(0.23, 1, 0.32, 1)"
-              // The thumbnail's radius is 10 in its own scale, so it is divided by flyK.
-              view position="absolute" inset=0 opacity=(expanded ? 1 : 0)
-                transition="opacity 260ms cubic-bezier(0.23, 1, 0.32, 1)"
-                MpArt(src=mpCover(), iw=1920, ih=2880, w=cover, h=cover, radius=14)
-              view position="absolute" inset=0 opacity=(expanded ? 0 : 1)
-                transition="opacity 260ms cubic-bezier(0.23, 1, 0.32, 1)"
-                MpArt(src=mpCover(), iw=1920, ih=2880, w=cover, h=cover, radius=(10 / flyK))
-          column position="absolute" left=mpSide() width=cover top=(coverTop + cover + 36)
-            pointer-events="none"
-            text "Happiness Does Not Wait" font-size=22 line-height="28px" font-weight=600
-              color=mpLabel() white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
-            text "Ólafur Arnalds" font-size=20 line-height="25px" color=mpSecondary()
-              white-space="nowrap"
-            view margin-top=26 height=6 border-radius=3 background-color="rgba(255, 255, 255, 0.2)"
-              overflow="hidden"
-              view position="absolute" left=0 top=0 bottom=0 width="100%"
-                background-color="rgba(255, 255, 255, 0.82)"
-                translate=`${(fraction - 1) * cover}px 0px` transition="translate 1000ms linear"
-                testId="mp-scrubber"
-            row margin-top=8 justify-content="space-between"
-              text mpClock(elapsed) font-size=12 line-height="16px" font-weight=500
-                color=mpSecondary() font-variant-numeric="tabular-nums"
-              text `-${mpClock(mpLength() - elapsed)}` font-size=12 line-height="16px"
-                font-weight=500 color=mpSecondary() font-variant-numeric="tabular-nums"
-            row margin-top=26 height=64 align-items="center" justify-content="space-evenly"
-              view width=64 height=64 pointer-events=(expanded ? "auto" : "none") display="flex" flex-direction="column"
-                PressableScale(press=back)
-                  column flex-grow=1 align-items="center" justify-content="center"
-                    aria-label="Previous" testId="mp-back"
-                    image "symbol:sf/backward.fill" font-size=30 color=mpLabel() aria-hidden=true
-              view width=64 height=64 pointer-events=(expanded ? "auto" : "none") display="flex" flex-direction="column"
-                PressableScale(press=toggle)
-                  column flex-grow=1 align-items="center" justify-content="center"
-                    aria-label=(playing ? "Pause" : "Play") testId="mp-play"
-                    image (playing ? "symbol:sf/pause.fill" : "symbol:sf/play.fill") font-size=44
-                      color=mpLabel() aria-hidden=true
-              view width=64 height=64 pointer-events=(expanded ? "auto" : "none") display="flex" flex-direction="column"
-                PressableScale(press=next)
-                  column flex-grow=1 align-items="center" justify-content="center"
-                    aria-label="Next" testId="mp-next"
-                    image "symbol:sf/forward.fill" font-size=30 color=mpLabel() aria-hidden=true
-            row margin-top=28 align-items="center" gap=12
-              image "symbol:sf/speaker.fill" font-size=13 color=mpSecondary() aria-hidden=true
-              view flex=1 height=6 border-radius=3 background-color="rgba(255, 255, 255, 0.2)"
-                overflow="hidden"
-                view position="absolute" left=0 top=0 bottom=0 width="62%"
-                  background-color="rgba(255, 255, 255, 0.82)"
-              image "symbol:sf/speaker.wave.3.fill" font-size=13 color=mpSecondary()
-                aria-hidden=true
+        column id="mp-sheet-layer" width="100%" height="100%" box-sizing="border-box"
+          position="relative" pointer-events="none"
+          translate=(expanded ? "0px 0px" : `0px ${mpTravel()}px`)
+          transition=`translate ${mpSheetSpring()}` -exact-translate-velocity=vel
+          -exact-drag-timeline="--mp y"
+          view position="absolute" left=(expanded ? 0 : mpInset()) top=0
+            width=(expanded ? W : W - 2 * mpInset()) height=(expanded ? H : mpMiniH())
+            pointer-events="auto" touch-action="none" transformDragFor="mp-sheet-layer"
+            transformgeometry=bound transformrelease=release press=expand
+            aria-label=(expanded ? "Drag down to close the player" : "Open the player")
+            testId=(expanded ? "mp-sheet-handle" : "mp-mini")
+
+      // Close, from the grabber.
+      view position="absolute" top=(env.safeTop + 4) left=((W - 80) / 2) width=80 height=24
+        pointer-events=(expanded ? "auto" : "none") pointerdown=collapse
+        aria-label="Close the player" testId="mp-grabber"
+      // The mini player's play and next take touches while it is closed.
+      view position="absolute" left=304 top=742 width=44 height=44 display="flex"
+        flex-direction="column" pointer-events=(expanded ? "none" : "auto")
+        PressableScale(press=toggle)
+          column flex-grow=1 aria-label=(playing ? "Pause" : "Play") testId="mp-mini-play"
+      view position="absolute" left=344 top=742 width=44 height=44 display="flex"
+        flex-direction="column" pointer-events=(expanded ? "none" : "auto")
+        PressableScale(press=next)
+          column flex-grow=1 aria-label="Next" testId="mp-mini-next"
+      // The open player's transport takes touches while it is open.
+      row position="absolute" left=mpSide() width=cover top=(coverTop + cover + 36 + 28 + 25 + 26 + 6 + 8 + 16 + 26)
+        height=64 align-items="center" justify-content="space-evenly"
+        pointer-events="none"
+        view width=64 height=64 pointer-events=(expanded ? "auto" : "none") display="flex" flex-direction="column"
+          PressableScale(press=back)
+            column flex-grow=1 aria-label="Previous" testId="mp-back"
+        view width=64 height=64 pointer-events=(expanded ? "auto" : "none") display="flex" flex-direction="column"
+          PressableScale(press=toggle)
+            column flex-grow=1 aria-label=(playing ? "Pause" : "Play") testId="mp-play"
+        view width=64 height=64 pointer-events=(expanded ? "auto" : "none") display="flex" flex-direction="column"
+          PressableScale(press=next)
+            column flex-grow=1 aria-label="Next" testId="mp-next"
