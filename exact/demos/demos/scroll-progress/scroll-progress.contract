@@ -62,8 +62,10 @@ component ScrollProgress
   state progress = 0
   // Holds the label and bar at 100% from the up arrow's press until the first scroll after the reset.
   state frozen = false
-  // At the very bottom, bounce included: the label and bar hold 100% whatever the timeline says
-  // there (it may drop to the unanimated style at and past the range's end).
+  // Near the very bottom (the last 1.5 %), bounce included: a full bar is drawn over the track. The
+  // host resets scroll-timeline animations (the fill goes empty) while the content is past its end;
+  // this state covers that, but a commit takes ~100 ms to land, so a very fast fling still shows an
+  // empty bar for a few frames before it does.
   state bottom = false
   // Set by the up arrow: scroll events are ignored until the scroll reaches 0.
   state resetting = false
@@ -82,7 +84,7 @@ component ScrollProgress
       let maxY = max(1, float32(e.scrollHeight) - e.clientHeight)
       let p = y / maxY
       let q = y - maxY >= endPull() ? 1 : (p > 0 ? 0.5 : 0)
-      let atBottom = maxY - y < 0.5
+      let atBottom = p >= 0.985
       if atBottom != bottom
         bottom = atBottom
       if q != progress
