@@ -155,6 +155,10 @@ component Demos
   derive env = DemoEnv(width=host.width, height=host.height, safeTop=0, safeBottom=0, epoch=time.epochAtZero, utcOffset=time.utcOffset, seed=time.seed, reducedMotion=host.prefersReducedMotion, timers=timers.fired, tile=false)
   // "Show Unstable" (the General tray): the work-in-progress demos are listed only with it on.
   state showUnstable = false persist
+  // A shake on the home hides the approved demos (home/springboard.contract, HomeShake.swift).
+  state hideResolved = false persist
+  action toggleResolved(text: string)
+    hideResolved = not hideResolved
   resource feedback = feedbackNotes() when atlasShown as shape FeedbackNote[] else empty()
   mutation noted as shape FeedbackNote refreshes feedback
   derive desk = host.pointer == "fine" and host.width >= 600
@@ -284,7 +288,7 @@ component Demos
             closable=false, leave=back, notes=feedback, add=addNote, edit=editNote)
         if e.name == "home" and not desk
           column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" position="absolute" inset=0
-            Springboard(demos=demos, approved=approvedSlugs, changed=changedSlugs, open=open)
+            Springboard(demos=demos, approved=approvedSlugs, changed=changedSlugs, open=open, hideResolved=hideResolved, toggleResolved=toggleResolved)
             if gpuWarm
               canvas surface=warm() width=1 height=1 position="absolute" left=0 top=0 pointer-events="none"
                 aria-hidden=true testId="gpu-warm"
