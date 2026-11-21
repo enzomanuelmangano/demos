@@ -128,10 +128,13 @@ fn cases() -> Vec<Case> {
             make: crate::family_number::surface,
             size: (402.0, 389.0, 3.0),
             setup: |s| s.bind(&[Value::str("1")], None).unwrap(),
-            // A key at 6 Hz: up to 11 digits, then back down to 1 (the commas regroup each way).
+            // A key at 6 Hz for 200 frames, then one every 3 frames for 60: each time up to 11
+            // digits (the commas appear past 3 and 6, regroup at every length) and back down to 1.
             tick: |s, i, _| {
-                if i % 10 == 0 {
-                    let n = i / 10 % 20;
+                let k = i % 260;
+                let (step, key) = if k < 200 { (k / 10, k % 10 == 0) } else { ((k - 200) / 3, (k - 200) % 3 == 0) };
+                if key {
+                    let n = step % 20;
                     let len = if n <= 10 { 1 + n } else { 21 - n };
                     s.bind(&[Value::str(&"1234567890123"[..len])], None).unwrap();
                 }
