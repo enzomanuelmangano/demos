@@ -7,8 +7,8 @@
 //! - Haptics: medium on a capture, rigid on a check, light otherwise; a mate pattern at checkmate.
 //! - Any legal move is played, for either side, and nothing answers it: after the replay (or Back)
 //!   the board waits for the next drag. Only the dock reads the line: while the position is the
-//!   opening one it climbs Hint, View solution, Play solution (the whole line again); each change
-//!   posts `puzzle:<wait|play|hint1|hint2|done>`.
+//!   opening one its Play solution plays the whole line again; each change posts
+//!   `puzzle:<wait|play|done>`.
 
 // Full API: not every item is used by the board.
 #[allow(dead_code)]
@@ -279,9 +279,6 @@ struct SquareState {
     in_check: bool,
     last_fade: Timing,
     check_fade: Timing,
-    /// A hint's mark, on the piece to move and then on its square.
-    hint: bool,
-    hint_fade: Timing,
 }
 
 /// A captured piece fading out; `at` is when it was taken.
@@ -559,14 +556,12 @@ struct Chessboard {
     show_at: Option<(f64, Side)>,
     mate_haptics: Vec<(f64, &'static str)>,
     // Tactic state.
-    /// The hint's rung on this move: 0, 1 (the piece), 2 (its square).
-    hint: u8,
     ghosts: Vec<Ghost>,
     mated_by: Option<Side>,
     /// The last `puzzle:` mode posted.
     mode: &'static str,
-    /// The inputs' counters as last seen (hint taps, solution taps); None before the first bind.
-    seen: Option<(f64, f64)>,
+    /// The solution-tap counter as last seen; None before the first bind.
+    seen: Option<f64>,
     cards: [CardAnim; 2],
     aura: Option<Aura>,
     busy: bool,
@@ -649,7 +644,6 @@ impl Chessboard {
             aura_timer: None,
             show_at: None,
             mate_haptics: Vec::new(),
-            hint: 0,
             ghosts: Vec::new(),
             mated_by: None,
             mode: "",
@@ -689,8 +683,6 @@ impl Chessboard {
                 in_check: false,
                 last_fade: Timing::at(0.0),
                 check_fade: Timing::at(0.0),
-                hint: false,
-                hint_fade: Timing::at(0.0),
             };
             128
         ];
@@ -751,7 +743,6 @@ impl Chessboard {
                 self.ghosts.push(Ghost { sq: to, piece, at: now });
             }
         }
-        self.clear_hint();
         let to_pos = pos(to, ps);
         let from_pos = pos(from, ps);
         self.squares[from as usize].z = 100;
@@ -843,7 +834,7 @@ impl Chessboard {
 
     // The tactic.
 
-    /// The line's first move, which Hint marks, while the opening position is on the board.
+    /// The line's first move, while the opening position is on the board.
     fn expected(&self) -> Option<(i32, i32)> {
         if !self.plies.is_empty() {
             return None;
@@ -856,30 +847,6 @@ impl Chessboard {
         !self.running && !self.game_over && self.aura.is_none()
     }
 
-    fn clear_hint(&mut self) {
-        self.hint = 0;
-        for s in self.squares.iter_mut() {
-            s.hint = false;
-        }
-        self.board_dirty = true;
-    }
-
-    /// Hint: the piece to move, then (a second tap) its square.
-    fn hint_request(&mut self) {
-        if !self.user_can_move() || self.hint >= 2 {
-            return;
-        }
-        let Some((from, to)) = self.expected() else {
-            return;
-        };
-        self.hint += 1;
-        self.squares[from as usize].hint = true;
-        if self.hint == 2 {
-            self.squares[to as usize].hint = true;
-        }
-        self.board_dirty = true;
-    }
-
     /// Play solution: the whole line plays out from the opening position.
     fn solve_request(&mut self) {
         if !self.user_can_move() || self.pan.tracking() || self.dragged.is_some() || self.expected().is_none() {
@@ -890,14 +857,14 @@ impl Chessboard {
         self.play_sequence();
     }
 
-    /// The mode the bar shows: wait, play, hint1, hint2 or done.
+    /// The mode the bar shows: wait, play or done.
     fn puzzle_mode(&self) -> &'static str {
         if self.game_over || self.aura.is_some() {
             "done"
         } else if !self.user_can_move() || self.expected().is_none() {
             "wait"
         } else {
-            ["play", "hint1", "hint2"][self.hint.min(2) as usize]
+            "play"
         }
     }
 
@@ -918,7 +885,6 @@ impl Chessboard {
                 s.scale.set(1.0);
                 s.last_move = last_move.is_some_and(|(a, b)| sq == a || sq == b);
                 s.in_check = false;
-                s.hint = false;
                 match slide {
                     Some((from, to)) if sq == to => {
                         let fp = pos(from, ps);
@@ -950,7 +916,6 @@ impl Chessboard {
         self.king_in_check = king;
         self.board_dirty = true;
         self.pieces_dirty = true;
-        self.hint = 0;
         self.ghosts.clear();
     }
 
@@ -1662,13 +1627,8 @@ impl Chessboard {
             if s.check_fade.target() != check {
                 s.check_fade.to(check, 180.0, Easing::Linear);
             }
-            let hint = if s.hint { 1.0 } else { 0.0 };
-            if s.hint_fade.target() != hint {
-                s.hint_fade.to(hint, 180.0, Easing::Linear);
-            }
             board |= fade_step(&mut s.last_fade, now);
             board |= fade_step(&mut s.check_fade, now);
-            board |= fade_step(&mut s.hint_fade, now);
         }
         let ghosts = self.ghosts.len();
         self.ghosts.retain(|g| now < g.at + CAPTURE_AT + CAPTURE_MS);
@@ -1772,7 +1732,6 @@ impl Chessboard {
         // The last move's squares are gold, not the accent, to read on this board.
         let last = Color::parse("rgba(235, 199, 105, 0.5)");
         let check = Color::hex(theme::LOSE);
-        let hint = Color::parse("rgba(124, 92, 200, 0.55)");
         for row in 0..8 {
             for col in 0..8 {
                 let sq = &self.squares[at(col, row) as usize];
@@ -1782,9 +1741,6 @@ impl Chessboard {
                 }
                 if sq.check_fade.value > 0.0 {
                     c.draw_rect(x, y, ps, ps, &Paint::fill(check).with_opacity(sq.check_fade.value as f32));
-                }
-                if sq.hint_fade.value > 0.0 {
-                    c.draw_rect(x, y, ps, ps, &Paint::fill(hint).with_opacity(sq.hint_fade.value as f32));
                 }
             }
         }
@@ -2480,22 +2436,16 @@ fn bytes(v: &[f32]) -> Vec<u8> {
 }
 
 impl Surface for Chessboard {
-    /// Inputs: the hint and solution taps, as counters (each rise is one tap).
+    /// Input: the solution taps, as a counter (each rise is one tap).
     fn bind(&mut self, inputs: &[Value], _: Option<f64>) -> Result<(), SurfaceError> {
-        let n = |i: usize| inputs.get(i).and_then(|v| v.as_number()).unwrap_or(0.0);
-        let (hints, solves) = (n(0), n(1));
-        if let Some((h, v)) = self.seen {
-            if self.size.0 > 0.0 {
-                if hints > h {
-                    self.hint_request();
-                }
-                if solves > v {
-                    self.solve_request();
-                    self.run_callbacks();
-                }
+        let solves = inputs.first().and_then(|v| v.as_number()).unwrap_or(0.0);
+        if let Some(v) = self.seen {
+            if self.size.0 > 0.0 && solves > v {
+                self.solve_request();
+                self.run_callbacks();
             }
         }
-        self.seen = Some((hints, solves));
+        self.seen = Some(solves);
         Ok(())
     }
 
@@ -2864,8 +2814,8 @@ mod tests {
         ms
     }
 
-    fn hint_taps(c: &mut Chessboard, hints: f64, solves: f64) {
-        c.bind(&[Value::Number(hints), Value::Number(solves)], None).unwrap();
+    fn solve_taps(c: &mut Chessboard, solves: f64) {
+        c.bind(&[Value::Number(solves)], None).unwrap();
     }
 
     #[test]
@@ -2945,11 +2895,11 @@ mod tests {
         tap(&mut c, 2, "h4", 1100.0);
         assert_eq!((c.plies.len(), c.status.as_str()), (1, "Black to move"));
         assert_eq!(c.messages(), vec!["haptic:impact-light".to_string()]);
-        // The line is gone: the dock mutes, and a tap on Hint does nothing.
+        // The line is gone: the dock mutes, and a tap on Play solution does nothing.
         assert_eq!(c.puzzle_mode(), "wait");
-        hint_taps(&mut c, 0.0, 0.0);
-        hint_taps(&mut c, 1.0, 1.0);
-        assert!(c.hint == 0 && c.plies.len() == 1 && !c.running);
+        solve_taps(&mut c, 0.0);
+        solve_taps(&mut c, 1.0);
+        assert!(c.plies.len() == 1 && !c.running);
         // No reply comes, however long it waits; Black's clock burns instead of White's.
         run(&mut c, 1100.0, 4000.0);
         assert_eq!(c.plies.len(), 1);
@@ -2968,44 +2918,15 @@ mod tests {
     }
 
     #[test]
-    fn a_fade_that_lands_redraws_the_board() {
-        let mut c = surface_at(0.0);
-        hint_taps(&mut c, 0.0, 0.0);
-        hint_taps(&mut c, 1.0, 0.0);
-        let e1 = chess::square("f2").unwrap() as usize;
-        c.now = 16.0;
-        c.step();
-        // The frame that finishes the fade changes the value without "moving": it still draws.
-        c.board_dirty = false;
-        c.now = 1000.0;
-        c.step();
-        assert!(c.squares[e1].hint_fade.value > 0.99 && c.board_dirty);
-    }
-
-    #[test]
-    fn hint_then_solution_climb_the_ladder() {
+    fn play_solution_plays_the_whole_line() {
         let mut c = surface_at(0.0);
         c.next_tick = Some(1000.0);
-        hint_taps(&mut c, 0.0, 0.0);
-        let (f2, f3) = (chess::square("f2").unwrap() as usize, chess::square("f3").unwrap() as usize);
+        solve_taps(&mut c, 0.0);
         assert_eq!(c.puzzle_mode(), "play");
-        // Rung one marks the piece.
-        hint_taps(&mut c, 1.0, 0.0);
-        assert!(c.squares[f2].hint && !c.squares[f3].hint);
-        assert_eq!(c.puzzle_mode(), "hint1");
-        // Rung two marks its square.
-        hint_taps(&mut c, 2.0, 0.0);
-        assert!(c.squares[f2].hint && c.squares[f3].hint);
-        assert_eq!(c.puzzle_mode(), "hint2");
-        hint_taps(&mut c, 3.0, 0.0);
-        assert_eq!(c.hint, 2);
-        run(&mut c, 0.0, 200.0);
-        assert!(c.squares[f2].hint_fade.value > 0.99 && c.squares[f3].hint_fade.value > 0.99);
-        // The solution clears the marks and plays the whole line.
-        hint_taps(&mut c, 3.0, 1.0);
-        assert!(c.running && c.hint == 0 && !c.squares[f2].hint && !c.squares[f3].hint);
+        solve_taps(&mut c, 1.0);
+        assert!(c.running);
         assert_eq!(c.puzzle_mode(), "wait");
-        run(&mut c, 200.0, 6000.0);
+        run(&mut c, 0.0, 6000.0);
         assert_eq!((c.plies.len(), c.status.as_str()), (4, "Checkmate"));
         assert_eq!(c.puzzle_mode(), "done");
         assert_eq!(c.winner(), Some(Side::B));
