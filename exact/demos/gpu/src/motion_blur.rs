@@ -1,10 +1,13 @@
-//! A list of the last three random transaction cards, each with an emoji, an amount and an
+//! A list of the last three random transaction cards, each with a glass orb, an amount and an
 //! address. A + button adds one: the new card pops in, the others slide up on a spring, and the
 //! oldest fades out upwards. This surface is the list; the + lives outside it.
 //!
 //! - Holding the + adds cards in bursts: the first after BURST_DELAY_MS, then at intervals that
-//!   shrink from BURST_FIRST_MS to BURST_MIN_MS, until the release. Each burst card posts
-//!   `haptic:impact-light`.
+//!   shrink from BURST_FIRST_MS to BURST_MIN_MS, until the release, one card a frame at most
+//!   and never in catch-up after a slow frame. Each burst card posts `haptic:impact-light`.
+//!   The samples all cards take in a frame share a budget (SAMPLE_BUDGET, halved while the +
+//!   is held), and both it and the cadence back off when frames come late, so a hold cannot
+//!   outrun the GPU.
 //! - The blur is real motion blur: each card is blurred along its own motion, as a camera
 //!   records it. The shutter is EXPOSURE_MS (1/15 s), centred on the frame's instant. A card's
 //!   transform is sampled at instants across the shutter and averaged in linear light (a box
@@ -18,7 +21,7 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
-use draw2d::{Canvas, Color, Font, Images, Matrix, Paint, Renderer, Shader};
+use draw2d::{point, Canvas, Color, Font, Matrix, Paint, Renderer, Shader};
 
 use crate::{gfx, shaders};
 use shaders::motion_blur::{entry, module, Uniforms, ATLAS, GROUP_0, SMP, U};
@@ -56,15 +59,25 @@ const HUD_SIZE: f32 = 12.0;
 /// Holding the +: the first burst card this long after the press.
 pub const BURST_DELAY_MS: f64 = 300.0;
 /// Then one every this long at first…
-pub const BURST_FIRST_MS: f64 = 120.0;
+pub const BURST_FIRST_MS: f64 = 130.0;
 /// … each interval this much of the last …
-pub const BURST_RAMP: f64 = 0.88;
+pub const BURST_RAMP: f64 = 0.9;
 /// … down to this.
-pub const BURST_MIN_MS: f64 = 70.0;
+pub const BURST_MIN_MS: f64 = 100.0;
 /// The most knots (intervals) a card takes in a frame.
 pub const MAX_SAMPLES: usize = 64;
 /// The most samples a pixel takes for one card (its cost at the fastest moves).
 pub const MAX_TOTAL: usize = 192;
+/// The most samples all the cards of a frame take together: what four cards at the cap cost.
+/// Past it each card's share shrinks evenly (more grain, never a longer frame). Held, half of it.
+pub const SAMPLE_BUDGET: usize = 4 * MAX_TOTAL;
+/// A frame later than this many periods is a late one (a 60 Hz cap on a 120 Hz display is not).
+const LATE: f64 = 2.5;
+/// The budget's scale after a late frame, and the lowest it goes; it recovers by RECOVER a frame.
+const LATE_BACKOFF: f64 = 0.7;
+const MIN_PRESSURE: f64 = 0.25;
+const RECOVER: f64 = 0.02;
+
 /// Cards drawn at once (the shader's arrays).
 const SLOTS: usize = 8;
 /// Knots in the uniform.
@@ -81,13 +94,6 @@ const MASS: f64 = 4.0;
 
 static HONK_BOLD: &[u8] = include_bytes!("../../assets/fonts/Honk-Bold.otf");
 static HONK: &[u8] = include_bytes!("../../assets/fonts/Honk-Regular.otf");
-
-/// The emojis the cards draw from.
-const EMOJIS: [&str; 36] = [
-    "🫠", "💪", "🤔", "😎", "🚀", "💡", "🌈", "🍕", "🎉", "🦄", "🌟", "🍀", "🎸", "🏆", "🌺", "🍦",
-    "🐱", "🐶", "🦋", "🌴", "⚡️", "🔥", "❄️", "🌊", "🎨", "📚", "🧠", "🧘", "🏄", "🚴", "🏋️", "🧗",
-    "🎭", "🎬", "🎧", "📷",
-];
 
 /// The surface.
 pub fn surface() -> Box<dyn Surface> {
@@ -116,7 +122,7 @@ pub fn roll(seed: f64, k: f64, n: f64) -> f64 {
         .floor()
 }
 
-/// The k-th card's (emoji index, amount, address).
+/// The k-th card's (orb variant, amount, address).
 pub fn item(seed: f64, k: usize) -> (usize, String, String) {
     let k = k as f64;
     let cents = roll(seed, k * 4.0, 1_000_000.0) as u64;
@@ -333,6 +339,123 @@ impl Card {
     }
 }
 
+/// An opaque colour from hue (turns), saturation and lightness.
+fn hsl(h: f64, s: f64, l: f64) -> Color {
+    let h = h.rem_euclid(1.0) * 6.0;
+    let c = (1.0 - (2.0 * l - 1.0).abs()) * s;
+    let x = c * (1.0 - (h % 2.0 - 1.0).abs());
+    let (r, g, b) = match h as u32 {
+        0 => (c, x, 0.0),
+        1 => (x, c, 0.0),
+        2 => (0.0, c, x),
+        3 => (0.0, x, c),
+        4 => (x, 0.0, c),
+        _ => (c, 0.0, x),
+    };
+    let m = l - c / 2.0;
+    Color([(r + m) as f32, (g + m) as f32, (b + m) as f32, 1.0])
+}
+
+fn mix(a: Color, b: Color, t: f32) -> Color {
+    Color([0, 1, 2, 3].map(|i| a.0[i] + (b.0[i] - a.0[i]) * t))
+}
+
+/// Card `k`'s hue (turns): the golden angle apart from the card before it, so no two cards in
+/// the list share a family, offset per variant so a new list does not repeat the last one.
+pub fn orb_hue(k: usize, variant: usize) -> f64 {
+    (k as f64 * 0.618_033_988_75 + variant as f64 * 0.027_7).rem_euclid(1.0)
+}
+
+/// A glass disc (60 pt) holding a lit sphere, centred on (`cx`, `cy`): the disc is a pale tinted
+/// bubble with a window highlight and a warm rim; the sphere inside has an offset highlight, a
+/// core colour, a darker rim, a glow bounced up from below and a soft shadow on the glass.
+fn orb(c: &mut Canvas, cx: f32, cy: f32, k: usize, base: usize, variant: usize) {
+    let h = orb_hue(k, base);
+    // Each card lights its sphere from a slightly different side.
+    let tilt = (variant % 7) as f32 / 6.0 - 0.5;
+    // The sphere's family shifts a little across its body (cooler in the shade, warmer lit).
+    let light = hsl(h - 0.015, 1.0, 0.84);
+    let core = hsl(h, 0.92, 0.56);
+    let shade = hsl(h + 0.045, 0.85, 0.26);
+    let bounce = hsl(h - 0.06, 1.0, 0.70);
+    let glass = hsl(h, 0.85, 0.96);
+    let glass_edge = hsl(h, 0.7, 0.84);
+    let rad = |center, radius, st| Paint::shader(Shader::Radial { center, radius, stops: st });
+    let at = |dx: f32, dy: f32, r: f32| point(cx + dx * r, cy + dy * r);
+
+    // The bubble: pale in the middle, tinted at the rim, a lit lip below-right.
+    let bubble = 30.0;
+    c.draw_circle(cx, cy, bubble, &rad(at(-0.15, -0.2, bubble), bubble * 1.3, vec![
+        (0.0, glass),
+        (0.7, hsl(h, 0.75, 0.92)),
+        (1.0, glass_edge),
+    ]));
+    c.draw_circle(cx, cy, bubble, &rad(at(0.35, 0.45, bubble), bubble * 0.95, vec![
+        (0.0, Color::WHITE.alpha(0.0)),
+        (0.8, Color::WHITE.alpha(0.0)),
+        (1.0, Color::WHITE.alpha(0.55)),
+    ]));
+    // The sphere's colour bleeding onto the glass below it.
+    c.draw_circle(cx, cy, bubble, &rad(at(0.0, 0.9, bubble), bubble * 0.8, vec![
+        (0.0, core.alpha(0.38)),
+        (1.0, core.alpha(0.0)),
+    ]));
+    // The window highlight on the bubble's upper left.
+    c.save();
+    c.concat(Matrix::scale(1.0, 0.55).then(Matrix::translate(cx - 15.0, cy - 19.0)));
+    c.draw_circle(0.0, 0.0, 9.0, &rad(point(0.0, 0.0), 9.0, vec![
+        (0.0, Color::WHITE.alpha(0.85)),
+        (1.0, Color::WHITE.alpha(0.0)),
+    ]));
+    c.restore();
+
+    // The sphere.
+    let r = 19.0;
+    let (sx, sy) = (cx, cy - 1.0);
+    // Its shadow on the glass: a flat ellipse under it.
+    c.save();
+    c.concat(Matrix::scale(1.0, 0.28).then(Matrix::translate(sx + 2.0, sy + r * 0.98)));
+    c.draw_circle(0.0, 0.0, r * 0.95, &rad(point(0.0, 0.0), r * 0.95, vec![
+        (0.0, shade.alpha(0.5)),
+        (0.6, shade.alpha(0.2)),
+        (1.0, shade.alpha(0.0)),
+    ]));
+    c.restore();
+    // Body: lit from the upper left, light to core to rim shade.
+    let lit = point(sx + (tilt * 0.3 - 0.38) * r, sy - 0.42 * r);
+    c.draw_circle(sx, sy, r, &rad(lit, r * 1.75, vec![
+        (0.0, light),
+        (0.32, core),
+        (0.72, mix(core, shade, 0.55)),
+        (1.0, shade),
+    ]));
+    // Bounce: a soft glow in the lower right, where the glass lights the sphere from below.
+    c.draw_circle(sx, sy, r, &rad(point(sx + 0.45 * r, sy + 0.62 * r), r * 0.95, vec![
+        (0.0, bounce.alpha(0.75)),
+        (0.55, bounce.alpha(0.22)),
+        (1.0, bounce.alpha(0.0)),
+    ]));
+    // A thin lit edge so the sphere reads as translucent at the rim.
+    c.draw_circle(sx, sy, r, &rad(point(sx, sy), r, vec![
+        (0.0, Color::WHITE.alpha(0.0)),
+        (0.86, Color::WHITE.alpha(0.0)),
+        (1.0, Color::WHITE.alpha(0.28)),
+    ]));
+    // Specular: a soft patch and a small hot spot.
+    c.save();
+    c.concat(Matrix::rotate(-0.6).then(Matrix::translate(sx + (tilt * 0.3 - 0.36) * r, sy - 0.46 * r)));
+    c.draw_circle(0.0, 0.0, 0.5 * r, &rad(point(0.0, 0.0), 0.5 * r, vec![
+        (0.0, Color::WHITE.alpha(0.75)),
+        (1.0, Color::WHITE.alpha(0.0)),
+    ]));
+    c.restore();
+    let spot = point(sx + (tilt * 0.3 - 0.4) * r, sy - 0.5 * r);
+    c.draw_circle(spot.x, spot.y, 0.14 * r, &rad(spot, 0.14 * r, vec![
+        (0.0, Color::WHITE.alpha(1.0)),
+        (1.0, Color::WHITE.alpha(0.0)),
+    ]));
+}
+
 /// Top of card `k` of `n`: the last three sit in the list.
 fn top_of(k: usize, n: usize) -> f64 {
     k as f64 * ROW - n.saturating_sub(MAX_VISIBLE) as f64 * ROW
@@ -351,6 +474,17 @@ pub fn plan(
     t: f64,
     layer: (f64, f64),
     scale: f64,
+) -> (Vec<Pose>, usize, f64) {
+    plan_capped(pose, t, layer, scale, MAX_TOTAL)
+}
+
+/// [`plan`] with at most `cap` samples.
+pub fn plan_capped(
+    pose: impl Fn(f64) -> Pose,
+    t: f64,
+    layer: (f64, f64),
+    scale: f64,
+    cap: usize,
 ) -> (Vec<Pose>, usize, f64) {
     let (lw, lh) = layer;
     let corners = |p: &Pose| {
@@ -384,7 +518,7 @@ pub fn plan(
     if !visible {
         return (Vec::new(), 1, 0.0);
     }
-    let total = ((2.0 * path).ceil() as usize).clamp(1, MAX_TOTAL);
+    let total = ((2.0 * path).ceil() as usize).clamp(1, cap.clamp(1, MAX_TOTAL));
     if total == 1 || path < 0.05 {
         return (vec![pose(t)], 1, swept);
     }
@@ -416,6 +550,8 @@ struct MotionBlur {
     dt: f64,
     peak_samples: usize,
     peak_smear: f64,
+    /// How much of the sample budget the frames' lateness allows (1: all).
+    pressure: f64,
     /// Presses so far, burst cards since, and whether the + is held.
     presses: usize,
     bursts: usize,
@@ -447,7 +583,6 @@ struct Gpu {
     regular: Font,
     /// The debug HUD's face.
     hud: Font,
-    emoji: Option<Images>,
 }
 
 impl MotionBlur {
@@ -571,38 +706,16 @@ impl MotionBlur {
         );
         c.draw_rrect_shadow(x, y, w, CARD_H as f32, 20.0, 5.0, Color::BLACK.alpha(0.05));
         c.draw_continuous_rrect(x, y, w, CARD_H as f32, 20.0, &Paint::fill(Color::WHITE));
-        let (emoji, amount, address) = item(seed, card.k);
+        let (variant, amount, address) = item(seed, card.k);
+        // One hue origin for the whole list, so the cards keep the golden angle between them.
+        let base = roll(seed, 1e6, 36.0) as usize;
         let lh1 = ceil_px(gfx::line_height(&g.bold) as f64, s);
         let lh2 = ceil_px(gfx::line_height(&g.regular) as f64, s);
         let details = lh1 + 5.0 + lh2;
         let inner = details.max(60.0);
         let row_top = round_px((CARD_H - inner - 20.0) / 2.0, s);
         let (rx, ry) = (l.mx + 10.0, l.mt + row_top + 10.0);
-        c.draw_rrect(
-            rx as f32,
-            ry as f32,
-            60.0,
-            60.0,
-            30.0,
-            &Paint::fill(Color::view_hex(0xF4F4F4)),
-        );
-        if let Some(images) = &g.emoji {
-            let im = images.image(emoji);
-            let (bw, bh) = (im.width as f64 / s, im.height as f64 / s);
-            let bx = rx + round_px((60.0 - bw) / 2.0, s);
-            let by = ry + round_px((60.0 - bh) / 2.0, s);
-            let (bx, by) = (bx as f32, by as f32);
-            c.draw_rect(
-                bx,
-                by,
-                bw as f32,
-                bh as f32,
-                &Paint::shader(Shader::Image {
-                    image: im,
-                    to_image: Matrix::translate(-bx, -by).then(Matrix::scale(s as f32, s as f32)),
-                }),
-            );
-        }
+        orb(c, (rx + 30.0) as f32, (ry + 30.0) as f32, card.k, base, variant);
         let right = l.mx + l.card_w - 10.0;
         let dy = ry + round_px((inner - details) / 2.0, s);
         let aw = ceil_px(g.bold.advance_width_spaced(&amount, 1.0) as f64, s);
@@ -687,6 +800,18 @@ impl Surface for MotionBlur {
             self.clock = (host, host);
         }
         self.dt = self.last_host.map_or(0.0, |l| host - l);
+        // Frames arriving late mean the GPU is behind: draw cheaper and add cards more slowly
+        // until it catches up. A long gap is idleness, not load.
+        if self.pressure == 0.0 {
+            self.pressure = 1.0;
+        }
+        if frame.period_ms > 0.0 && self.dt > 0.0 {
+            if self.dt > LATE * frame.period_ms && self.dt < 100.0 {
+                self.pressure = (self.pressure * LATE_BACKOFF).max(MIN_PRESSURE);
+            } else {
+                self.pressure = (self.pressure + RECOVER).min(1.0);
+            }
+        }
         self.last_host = Some(host);
         let anim = |c: (f64, f64), rate: f64| c.1 + (host - c.0) * rate;
         if let Some((_, _, slow)) = self.pending {
@@ -719,11 +844,15 @@ impl Surface for MotionBlur {
             self.held = held;
             self.apply(self.presses + self.bursts, t);
         }
-        while let Some(at) = self.next_burst.filter(|&at| at <= t) {
+        // One burst card a frame at most, and a slow frame is not made up for: catching up
+        // would spawn a pile of cards exactly when the GPU is behind.
+        if let Some(at) = self.next_burst.filter(|&at| at <= t) {
+            let at = at.max(t - 1000.0 / 60.0);
             self.bursts += 1;
             self.apply(self.presses + self.bursts, at);
             self.posted.push("haptic:impact-light".into());
-            self.next_burst = Some(at + self.interval);
+            // A late GPU gets cards more slowly.
+            self.next_burst = Some(at + self.interval / self.pressure.max(MIN_PRESSURE));
             self.interval = (self.interval * BURST_RAMP).max(BURST_MIN_MS);
         }
         self.prune(t);
@@ -733,11 +862,8 @@ impl Surface for MotionBlur {
         let (sw, sh) = layout.layer_px();
         let key = (format, frame.shader_generation, sw, sh, (s * 1000.0) as u32);
         if self.gpu.as_ref().map(|g| g.key) != Some(key) {
-            self.gpu = Some(build(device, queue, key, layout));
+            self.gpu = Some(build(device, key, layout));
             self.drawn.clear();
-            if let Some(images) = self.gpu.as_ref().and_then(|g| g.emoji.as_ref()) {
-                self.renderer.set_images(images);
-            }
         }
         let owned = self.gpu.take().unwrap();
         let gpu = &owned;
@@ -810,8 +936,25 @@ impl Surface for MotionBlur {
         let (lw, lh) = layout.layer();
         let mut next = 0;
         let mut samples = Vec::new();
-        for (i, card) in live.iter().enumerate() {
-            let (ks, m, smear) = plan(|tt| card.pose(&layout, tt), t, (lw, lh), s);
+        // The cards' samples share a budget: past it each card's share shrinks evenly.
+        let mut plans: Vec<_> = live
+            .iter()
+            .map(|card| plan(|tt| card.pose(&layout, tt), t, (lw, lh), s))
+            .collect();
+        let used: usize = plans.iter().map(|p| p.0.len().saturating_sub(1) * p.1).sum();
+        let budget = ((SAMPLE_BUDGET as f64 * self.pressure * if self.held { 0.5 } else { 1.0 })
+            as usize)
+            .max(SLOTS);
+        if used > budget {
+            for (card, p) in live.iter().zip(plans.iter_mut()) {
+                let mine = p.0.len().saturating_sub(1) * p.1;
+                if mine > 1 {
+                    let cap = (mine * budget).div_ceil(used).max(1);
+                    *p = plan_capped(|tt| card.pose(&layout, tt), t, (lw, lh), s, cap);
+                }
+            }
+        }
+        for (i, (ks, m, smear)) in plans.into_iter().enumerate() {
             self.peak_smear = self.peak_smear.max(smear);
             if ks.is_empty() || next + ks.len() > KNOTS {
                 samples.push(0);
@@ -878,7 +1021,6 @@ fn slot_origin(i: usize, slot: (u32, u32)) -> (u32, u32) {
 
 fn build(
     device: &wgpu::Device,
-    queue: &wgpu::Queue,
     key: (wgpu::TextureFormat, u32, u32, u32, u32),
     layout: Layout,
 ) -> Gpu {
@@ -921,26 +1063,6 @@ fn build(
             },
         ],
     });
-    #[allow(unused_mut)]
-    let mut emoji = None;
-    #[cfg(target_vendor = "apple")]
-    {
-        let images: Vec<draw2d::Image> = EMOJIS
-            .iter()
-            .filter_map(|e| emoji_text::draw(e, 25.0, layout.s))
-            .map(|(w, h, pixels)| draw2d::Image {
-                width: w,
-                height: h,
-                pixels,
-            })
-            .collect();
-        if images.len() == EMOJIS.len() {
-            let refs: Vec<&draw2d::Image> = images.iter().collect();
-            emoji = Some(Images::upload(device, queue, &refs));
-        }
-    }
-    #[cfg(not(target_vendor = "apple"))]
-    let _ = (queue, EMOJIS);
     Gpu {
         key,
         pipeline,
@@ -959,128 +1081,6 @@ fn build(
         hud: Font::new(HONK, HUD_SIZE)
             .expect("Honk-Regular")
             .with_ui_layout(),
-        emoji,
-    }
-}
-
-#[cfg(target_vendor = "apple")]
-mod emoji_text {
-    //! An emoji line drawn as TextKit draws it: the system font (its cascade picks Apple Color
-    //! Emoji), one CTLine, the baseline one ascent below the box top, into a premultiplied sRGB
-    //! bitmap at the screen's scale. The box is rounded up to whole pixels.
-    use std::ffi::c_void;
-    type Ref = *const c_void;
-    #[link(name = "CoreFoundation", kind = "framework")]
-    extern "C" {
-        static kCFTypeDictionaryKeyCallBacks: c_void;
-        static kCFTypeDictionaryValueCallBacks: c_void;
-        fn CFRelease(cf: Ref);
-        fn CFStringCreateWithBytes(
-            alloc: Ref,
-            bytes: *const u8,
-            len: isize,
-            encoding: u32,
-            external: bool,
-        ) -> Ref;
-        fn CFDictionaryCreate(
-            alloc: Ref,
-            keys: *const Ref,
-            values: *const Ref,
-            n: isize,
-            kc: *const c_void,
-            vc: *const c_void,
-        ) -> Ref;
-        fn CFAttributedStringCreate(alloc: Ref, s: Ref, attributes: Ref) -> Ref;
-    }
-    #[link(name = "CoreGraphics", kind = "framework")]
-    extern "C" {
-        static kCGColorSpaceSRGB: Ref;
-        fn CGColorSpaceCreateWithName(name: Ref) -> Ref;
-        fn CGColorSpaceRelease(space: Ref);
-        fn CGBitmapContextCreate(
-            data: *mut c_void,
-            width: usize,
-            height: usize,
-            bpc: usize,
-            bpr: usize,
-            space: Ref,
-            info: u32,
-        ) -> Ref;
-        fn CGContextRelease(c: Ref);
-        fn CGContextScaleCTM(c: Ref, sx: f64, sy: f64);
-        fn CGContextSetTextPosition(c: Ref, x: f64, y: f64);
-    }
-    #[link(name = "CoreText", kind = "framework")]
-    extern "C" {
-        static kCTFontAttributeName: Ref;
-        fn CTFontCreateUIFontForLanguage(kind: u32, size: f64, language: Ref) -> Ref;
-        fn CTLineCreateWithAttributedString(s: Ref) -> Ref;
-        fn CTLineGetTypographicBounds(
-            line: Ref,
-            ascent: *mut f64,
-            descent: *mut f64,
-            leading: *mut f64,
-        ) -> f64;
-        fn CTLineDraw(line: Ref, c: Ref);
-    }
-    const SYSTEM: u32 = 2;
-    const UTF8: u32 = 0x0800_0100;
-
-    /// The box's premultiplied RGBA8 pixels (w, h).
-    pub fn draw(text: &str, size: f64, scale: f64) -> Option<(u32, u32, Vec<u8>)> {
-        unsafe {
-            let font = CTFontCreateUIFontForLanguage(SYSTEM, size, std::ptr::null());
-            if font.is_null() {
-                return None;
-            }
-            let s = CFStringCreateWithBytes(
-                std::ptr::null(),
-                text.as_ptr(),
-                text.len() as isize,
-                UTF8,
-                false,
-            );
-            let keys = [kCTFontAttributeName];
-            let values = [font];
-            let attrs = CFDictionaryCreate(
-                std::ptr::null(),
-                keys.as_ptr(),
-                values.as_ptr(),
-                1,
-                &kCFTypeDictionaryKeyCallBacks,
-                &kCFTypeDictionaryValueCallBacks,
-            );
-            let a = CFAttributedStringCreate(std::ptr::null(), s, attrs);
-            let line = CTLineCreateWithAttributedString(a);
-            let (mut asc, mut desc, mut lead) = (0.0, 0.0, 0.0);
-            let adv = CTLineGetTypographicBounds(line, &mut asc, &mut desc, &mut lead);
-            let w = (adv * scale + 1e-3).ceil().max(1.0) as u32;
-            let h = ((asc + desc) * scale + 1e-3).ceil().max(1.0) as u32;
-            let mut px = vec![0u8; (w * h * 4) as usize];
-            let cs = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
-            let ctx = CGBitmapContextCreate(
-                px.as_mut_ptr() as *mut c_void,
-                w as usize,
-                h as usize,
-                8,
-                (w * 4) as usize,
-                cs,
-                1,
-            );
-            if !ctx.is_null() {
-                CGContextScaleCTM(ctx, scale, scale);
-                CGContextSetTextPosition(ctx, 0.0, h as f64 / scale - asc);
-                CTLineDraw(line, ctx);
-                CGContextRelease(ctx);
-            }
-            CGColorSpaceRelease(cs);
-            CFRelease(line);
-            CFRelease(a);
-            CFRelease(attrs);
-            CFRelease(s);
-            CFRelease(font);
-            Some((w, h, px))
-        }
     }
 }
 
@@ -1367,10 +1367,10 @@ mod tests {
         if let Some(px) = shot {
             gfx::save_over(&px, "motion-blur-burst-800", [255, 255, 255]);
         }
-        // Cards at 300, 420, 525.6, 618.5, 700.3, 772.3, then every 70 ms: 9 by 1000 ms.
+        // Cards at 300, 430, 547, 652.3, then every 100 ms: 7 by 1000 ms.
         let state = s.agent("{}").unwrap();
-        assert!(state.contains("\"bursts\":9,"), "{state}");
-        assert_eq!(haptics, 9);
+        assert!(state.contains("\"bursts\":7,"), "{state}");
+        assert_eq!(haptics, 7);
         // The release stops it; the list then settles.
         bind(&mut s, 1.0, false);
         let mut t = 2010.0;
@@ -1380,8 +1380,130 @@ mod tests {
             t += 1000.0 / 120.0;
         }
         assert!(!moving);
-        assert!(s.agent("{}").unwrap().contains("\"bursts\":9,"));
+        assert!(s.agent("{}").unwrap().contains("\"bursts\":7,"));
         assert!(s.messages().is_empty());
+    }
+
+    #[test]
+    fn a_long_hold_keeps_the_cards_and_the_samples_bounded() {
+        let Some(gpu) = gpu() else { return };
+        let mut s = surface();
+        let bind = |s: &mut Box<dyn Surface>, n: f64, held: bool| {
+            s.bind(&[Value::Number(n), Value::Number(7.0), Value::Bool(held)], None)
+                .unwrap()
+        };
+        bind(&mut s, 0.0, false);
+        fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
+        bind(&mut s, 1.0, true);
+        let mut ms = 1000.0;
+        let (mut most_cards, mut most_samples) = (0, 0);
+        let started = std::time::Instant::now();
+        let mut frames = 0;
+        while ms <= 7000.0 {
+            fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+            frames += 1;
+            let state = s.agent("{}").unwrap();
+            let list = |key: &str| {
+                let at = state.find(key).unwrap() + key.len();
+                let end = at + state[at..].find(']').unwrap();
+                state[at..end].split(',').filter(|x| !x.is_empty()).map(|x| x.parse::<usize>().unwrap()).collect::<Vec<_>>()
+            };
+            most_cards = most_cards.max(list("\"cards\":[").len());
+            most_samples = most_samples.max(list("\"samples\":[").iter().sum::<usize>());
+            ms += 1000.0 / 120.0;
+        }
+        eprintln!("hold: {} frames in {:?}, {most_cards} cards, {most_samples} samples", frames, started.elapsed());
+        // Six seconds of holding: a handful of cards live, the samples within the budget (each
+        // card rounds its share up by under one interval).
+        assert!(most_cards <= 12, "{most_cards}");
+        assert!(most_samples <= SAMPLE_BUDGET / 2 + 3 * SLOTS, "{most_samples}");
+        let state = s.agent("{}").unwrap();
+        // About one card per 100 ms after the ramp: not a card a frame.
+        let bursts: usize = state.split("\"bursts\":").nth(1).unwrap().split(',').next().unwrap().parse().unwrap();
+        assert!((55..=62).contains(&bursts), "{bursts}");
+    }
+
+    #[test]
+    fn a_slow_frame_is_not_made_up_for_with_a_pile_of_cards() {
+        let Some(gpu) = gpu() else { return };
+        let mut s = surface();
+        s.bind(&[Value::Number(0.0), Value::Number(7.0), Value::Bool(false)], None).unwrap();
+        fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
+        s.bind(&[Value::Number(1.0), Value::Number(7.0), Value::Bool(true)], None).unwrap();
+        fixture::render(&gpu, s.as_mut(), &frame(100.0)).unwrap();
+        // The next frame arrives 3 s later: one burst card, not twenty.
+        fixture::render(&gpu, s.as_mut(), &frame(3100.0)).unwrap();
+        let state = s.agent("{}").unwrap();
+        assert!(state.contains("\"bursts\":1,"), "{state}");
+    }
+
+    #[test]
+    fn each_card_has_its_own_orb_hue_and_draws_it() {
+        // Consecutive cards are at least a twentieth of the colour wheel apart.
+        for variant in [0usize, 11, 35] {
+            for k in 0..40 {
+                let (a, b) = (orb_hue(k, variant), orb_hue(k + 1, variant));
+                let d = (a - b).abs().min(1.0 - (a - b).abs());
+                assert!(d > 0.05, "{k} {variant}: {a} {b}");
+            }
+        }
+        // Three cards at rest: each disc holds a coloured sphere (no grey emoji ground), and
+        // no two spheres share a colour.
+        let px = render_seq("motion-blur-orbs", &[0.0, 100.0, 200.0], &[2000.0]);
+        let Some(px) = px.first() else { return };
+        let l = Layout::new(W as f64, S as f64);
+        let mut cores = Vec::new();
+        for row in 0..3 {
+            let (cx, cy) = (
+                l.card_x + 10.0 + 30.0,
+                LIST_TOP + row as f64 * ROW + CARD_H / 2.0,
+            );
+            // The sphere's lower-left body, away from the highlight.
+            let p = px.at(((cx - 4.0) * 3.0) as u32, ((cy + 4.0) * 3.0) as u32);
+            let (mx, mn) = (p[..3].iter().max().copied().unwrap(), p[..3].iter().min().copied().unwrap());
+            assert!(mx - mn > 60, "row {row}: {p:?}");
+            cores.push(p);
+        }
+        for i in 0..3 {
+            for j in i + 1..3 {
+                let d: i32 = (0..3).map(|c| (cores[i][c] as i32 - cores[j][c] as i32).abs()).sum();
+                assert!(d > 60, "{:?} {:?}", cores[i], cores[j]);
+            }
+        }
+    }
+
+
+    #[test]
+    fn late_frames_make_the_hold_cheaper_and_slower() {
+        let Some(gpu) = gpu() else { return };
+        let run = |gap: f64| {
+            let mut s = surface();
+            s.bind(&[Value::Number(0.0), Value::Number(7.0), Value::Bool(false)], None).unwrap();
+            fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
+            s.bind(&[Value::Number(1.0), Value::Number(7.0), Value::Bool(true)], None).unwrap();
+            let mut ms = 1000.0;
+            let mut most = 0;
+            while ms < 4000.0 {
+                fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+                let state = s.agent("{}").unwrap();
+                let tail = &state[state.find("\"samples\":[").unwrap() + 11..];
+                let n: usize = tail[..tail.find(']').unwrap()].split(',').filter_map(|x| x.parse::<usize>().ok()).sum();
+                if ms > 2000.0 {
+                    most = most.max(n);
+                }
+                ms += gap;
+            }
+            let state = s.agent("{}").unwrap();
+            let bursts: usize = state.split("\"bursts\":").nth(1).unwrap().split(',').next().unwrap().parse().unwrap();
+            (bursts, most)
+        };
+        let (on_time, samples_on_time) = run(1000.0 / 120.0);
+        // Every frame 30 ms after the last: the GPU is behind.
+        let (late, samples_late) = run(30.0);
+        assert!(late < on_time * 3 / 4, "{late} {on_time}");
+        assert!(samples_late <= samples_on_time / 2 + 8, "{samples_late} {samples_on_time}");
+        // It still adds cards: slower, never stalled.
+        assert!(late >= 5, "{late}");
     }
 
     #[test]
