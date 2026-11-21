@@ -153,7 +153,7 @@ component BottomProgress
             opacity=(frozen ? 1 : 0) aria-hidden=true
         // Progress bar: the fill slides in with the scroll timeline. Only the bar takes the layout transition;
         // a transitioning fill fights its own scroll-driven translate under the clip and flickers.
-        view class=PillMotion height=5 width="70%" background-color="#ffffff" border-radius=2.5
+        view class=PillMotion height=5 width="70%" background-color="#1A1A1A" border-radius=2.5 corner-shape="-exact-continuous"
           overflow="hidden" position="relative"
           view position="absolute" inset=0 background-color="#1A1A1A"
           // Rests at 0 (-100%): a scroll past the top, before the timeline's range, shows the
