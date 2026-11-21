@@ -1,0 +1,60 @@
+// Motion blur: a + button adds a random transaction card to a list showing the last three. Each
+// new card comes out of the + button, the others slide up on a spring, and the oldest fades out
+// upwards, each blurred by its own motion. The cards are drawn in Rust (gpu/src/motion_blur.rs).
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+use DemoEnv from "../env.contract"
+
+fn rowHeight(): number = 110
+fn maxVisible(): number = 3
+// The + is 64 pt tall and lifted 50 pt over the list's bottom: its centre below the list's top.
+// A new card starts there.
+fn plusCenterY(): number = maxVisible() * rowHeight() - 50 + 32
+
+component MotionBlur
+  inject
+    pressto: PressablesConfig
+  props
+    env: DemoEnv
+  // Each press adds a card; holding keeps adding cards in bursts, which the surface draws.
+  state count = 0
+  state held = false
+  state pressing = pressNone()
+  // Debug: a tap on the list runs the demo 10x slower and shows a HUD of the blur inputs.
+  state slow = false
+  action toggleSlow
+    slow = not slow
+  action holdOn
+    pressing = pressDown(pressing, 0)
+    count = count + 1
+    held = true
+    haptic("impact-light")
+  action holdOff
+    pressing = pressUp(pressing)
+    held = false
+  // Light haptic per burst card.
+  action buzz(m: string)
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+  view
+    column position="absolute" inset=0 background-color="#fff" justify-content="center"
+      testId="motion-blur"
+      column flex=1 justify-content="center"
+        // The canvas extends 24 above and 30 below the list, so the top card's corners and
+        // shadow are not clipped.
+        view height=(maxVisible() * rowHeight()) position="relative"
+          press=toggleSlow aria-label="Toggle slow motion" testId="motion-blur-list"
+          canvas surface=motion_blur(count, env.seed, held, slow, plusCenterY()) position="absolute" left=0
+            top=-24 width="100%" height=(maxVisible() * rowHeight() + 54) message=buzz
+            aria-hidden=true
+            testId="motion-blur-canvas"
+        column align-items="center" position="relative" top=-50
+          // Adds on press-down, not on lift, and holds for bursts until lift. Lift also ends a
+          // cancelled touch.
+          view
+            column width=64 height=64 border-radius=32 role="button"
+              background-color="black" align-items="center" justify-content="center"
+              pointerdown=holdOn pointerup=holdOff
+              scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
+              aria-label="Add an item" testId="add"
+              svg width=40 height=40.1562 viewBox="0 0 512 514" aria-hidden=true
+                path d="M394 283H282V395Q282 405 275.5 408Q269 411 256 411Q243 411 236.5 408Q230 405 230 395V283H118Q108 283 105 276.5Q102 270 102 257Q102 244 105 237.5Q108 231 118 231H230V119Q230 109 236.5 106Q243 103 256 103Q269 103 275.5 106Q282 109 282 119V231H394Q404 231 407 237.5Q410 244 410 257Q410 270 407 276.5Q404 283 394 283Z" fill="white"

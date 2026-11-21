@@ -1,0 +1,87 @@
+// Cherry Blossom QR Code: the field's text as a QR code, built as a voxel cherry tree in an
+// isometric WebGPU scene. A tap folds it flat for scanning and back. A long press spawns a
+// creeper that walks in, fuses, blows the tree apart, and lets it reassemble. The scene is a
+// Rust surface (gpu/src/cherry_blossom_qrcode.rs). The screen, the URL field and the hint are
+// Contract.
+//
+// The keyboard stays up for the whole demo. The field and the hint sit in a keyboard toolbar
+// (`toolbarPlacement="keyboard"`, which needs `overlays-content` in app.contract), so the host
+// lifts them with the keys. The toolbar ends at the screen's bottom, so the lift is the keyboard's
+// full height.
+//
+// Motion: the hint fades in 2000 ms after the first frame, to 0.72 over 650 ms (out quad). The
+// long press fades it out over 260 ms (inOut quad, as linear() stops).
+use DemoEnv from "../env.contract"
+
+// The longest text allowed, in UTF-16 units. The surface clamps the bytes.
+fn maxQrContent(): number = 106
+// The field's height: 14 pt padding above and below SF 16's 19.09 pt line.
+fn inputHeight(): number = 14 + 19.09375 + 14
+
+component CherryBlossomQrcode
+  props
+    env: DemoEnv
+  state text = "https://enzo.fyi"
+  // The hint shows 2000 ms in, and is gone for good at the first spawn.
+  state hintShown = false
+  state hintGone = false
+  action heard(m: string)
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+    if m == "haptic:impact-medium"
+      haptic("impact-medium")
+    if m == "haptic:impact-heavy"
+      haptic("impact-heavy")
+    if m == "haptic:impact-rigid"
+      haptic("impact-rigid")
+    if m == "haptic:impact-soft"
+      haptic("impact-soft")
+    // Focuses the field shortly after the mount, and on every press.
+    if m == "focus" and not env.tile
+      focus("cherry-input")
+    if m == "hint"
+      hintShown = true
+    if m == "spawned"
+      hintGone = true
+    // The controlled field shows the clamped text.
+    if m.startsWith("text:")
+      text = m.slice(5)
+  action typed(v: string)
+    text = v
+  // Blurring the field refocuses it, so the keyboard stays up.
+  action refocus
+    if not env.tile
+      focus("cherry-input")
+  view
+    column position="absolute" inset=0 background-color="#f7f7f7" testId="cherry-blossom-qrcode"
+      // The canvas starts 10 % of the width down. A press keeps the field's focus.
+      canvas surface=cherry_blossom_qrcode(env.width, env.height, env.seed, text) message=heard
+        position="absolute" top=(env.width * 0.1) left=0 width=env.width height=(env.height * 0.6)
+        touch-action="none" retainFocus=true
+        aria-label="Cherry blossom tree QR code. Tap to flatten for scanning. Long press to spawn a creeper."
+        testId="cherry-blossom-qrcode-canvas"
+      // The hint and the field sit at the bottom, above the keyboard.
+      column role="toolbar" toolbarPlacement="keyboard" position="absolute" left=0 right=0 bottom=0
+        pointer-events="none" testId="cherry-blossom-qrcode-bar"
+        column align-items="center" margin-bottom=8
+          opacity=(hintGone ? 0 : hintShown ? 0.72 : 0)
+          transition=(hintGone ? "opacity 260ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)" : "opacity 650ms cubic-bezier(0.333333, 0.666667, 0.666667, 1)")
+          testId="cherry-blossom-qrcode-hint"
+          // The line box is rounded to the device pixel, and the text is moved back up by 0.377 pt.
+          text "Long press to spawn a creeper" font-family="SF-Pro-Rounded-Bold" font-size=13
+            letter-spacing=0.2 color="#1a1a1a" line-height="15.666667px" position="relative"
+            top=0.376953125
+        column padding="16px 12px 8px 12px" pointer-events="auto"
+          // A URL field: no autocapitalisation, correction, autocomplete or spell check; a light
+          // keyboard and the Return key.
+          input id="cherry-input" value=text input=typed blur=refocus maxlength=maxQrContent()
+            placeholder="https://enzo.fyi" inputmode="url" autocapitalize="none" autocorrect="off"
+            autocomplete="off" spellcheck="false" enterkeyhint="enter" color-scheme="light"
+            height=inputHeight() box-sizing="border-box" padding="14px 18px" border="none"
+            outline="none" background-color="#ffffff" border-radius=14
+            corner-shape="-exact-continuous" box-shadow="0px 1px 4px rgba(0, 0, 0, 0.03)"
+            color="#1a1a1a" font-size=16 font-weight=400 letter-spacing=0.2
+            caret-color="color(display-p3 0.290196 0.486275 0.305882)"
+            aria-label="QR code content" testId="cherry-input"
+            ::placeholder
+              color="#999999"

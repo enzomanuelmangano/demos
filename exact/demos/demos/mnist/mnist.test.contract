@@ -1,0 +1,6 @@
+at "/demo/mnist"
+
+// Checks the canvas is present. Drawing, prediction and erasing are covered by the Rust tests.
+test "the canvas fills the screen"
+  expect tree has "mnist"
+  expect tree has "mnist-canvas"

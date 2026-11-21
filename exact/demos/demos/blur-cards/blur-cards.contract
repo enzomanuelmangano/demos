@@ -1,0 +1,16 @@
+// Blur Cards: five glass cards over a violet glow. A tap anywhere fans them out in 3D, each
+// blurring what it covers; another tap folds them back. The canvas is a Rust surface
+// (gpu/src/blur_cards.rs). The full-screen press is here and counts presses into it.
+
+component BlurCards
+  state presses = 0
+  action press
+    haptic("selection")
+    presses = presses + 1
+  view
+    column position="absolute" inset=0 background-color="#000000" testId="blur-cards"
+      canvas surface=blur_cards(presses) position="absolute" top=0 left=0 width="100%" height="100%"
+        aria-hidden=true testId="blur-cards-canvas"
+      // A transparent full-screen button. Nothing inside it dims on press.
+      button appearance="none" press=press position="absolute" inset=0 background-color="transparent"
+        border="none" testId="blur-cards-press" aria-label="Fan the cards"

@@ -1,0 +1,4 @@
+at "/demo/spiral"
+
+test "the canvas is there"
+  expect tree has "spiral"

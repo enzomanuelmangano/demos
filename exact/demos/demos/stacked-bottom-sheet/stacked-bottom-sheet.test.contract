@@ -1,0 +1,26 @@
+at "/demo/stacked-bottom-sheet"
+
+test "each press stacks the next sheet, only the front one swipeable"
+  expect tree has "stacked-bottom-sheet"
+  expect tree missing "sheet-handle-0"
+  tap "sheet-button"
+  clock settle
+  expect tree has "sheet-0"
+  expect tree has "sheet-handle-0"
+  tap "sheet-button"
+  clock settle
+  expect tree has "sheet-1"
+  expect tree has "sheet-handle-1"
+  expect tree missing "sheet-handle-0"
+
+test "the third sheet's wand stacks the Spiral sheet"
+  tap "sheet-button"
+  tap "sheet-button"
+  tap "sheet-button"
+  clock settle
+  expect tree has "sheet-wand-drawn"
+  tap "sheet-wand"
+  clock settle
+  expect tree has "sheet-3"
+  expect tree has "sheet-spiral"
+  expect tree has "sheet-handle-3"

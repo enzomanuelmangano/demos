@@ -1,0 +1,86 @@
+{
+  "$schema": ".exact/checkout/scripts/app.schema.json",
+  "name": "Demos",
+  "short_name": "Demos",
+  "id": "com.reactiive.demos.exact",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#141414",
+  "color_scheme_dark": {
+    "background_color": "#141414"
+  },
+  "app": {
+    "id": "com.reactiive.demos.exact",
+    "name": "Demos"
+  },
+  "modules": [
+    "rolling-count",
+    "demo-card",
+    "glass-button",
+    "mate-haptic",
+    "swift-slider",
+    "painting-menu",
+    "variable-blur",
+    "glass-pane",
+    "inspiration-sheet",
+    "audio-track",
+    "system-alert",
+    "toggle-sheet",
+    "music-tabbar",
+    "native-tabbar",
+    "page-dots",
+    "search-reveal",
+    "still-art",
+    "icon-grid"
+  ],
+  "host": {
+    "web": {},
+    "ios": {
+      "minimumOS": "18.0",
+      "deviceFamily": [
+        "iphone"
+      ],
+      "localNetworking": "Sends your feedback on a demo to the Mac you build from.",
+      "resources": [
+        {
+          "from": "feedback-host",
+          "to": "Resources/feedback-host"
+        }
+      ]
+    },
+    "macos": {
+      "minimumOS": "14.0",
+      "window": {
+        "width": 900,
+        "height": 700
+      }
+    }
+  },
+  "deploy": {
+    "store": {
+      "web": "0",
+      "ios": "0",
+      "macos": "0"
+    }
+  },
+  "protocol_handlers": [
+    {
+      "protocol": "demos-exact",
+      "url": "/open?u=%s"
+    }
+  ],
+  "hatches": {
+    "page-scroller": [
+      "ios"
+    ]
+  },
+  "data": [
+    "scroller"
+  ],
+  "commands": {
+    "phone": [
+      "bun",
+      "tools/phone.mjs"
+    ]
+  }
+}

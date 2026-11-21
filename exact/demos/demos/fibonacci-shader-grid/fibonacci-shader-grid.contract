@@ -1,0 +1,16 @@
+// Fibonacci Shader Grid: XorDev's sphere of glowing points over a 6 × 6 pad; dragging the pad sets
+// how many points (x) and the spiral's multiplier (y). One canvas draws the sphere and the pad.
+
+component FibonacciShaderGrid
+  // Haptics: light on the grab, selection across the cells, rigid when the finger leaves the pad.
+  action heard(m: string)
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-rigid"
+      haptic("impact-rigid")
+  view
+    column position="absolute" inset=0 background-color="#000000" testId="fibonacci-shader-grid"
+      canvas surface=fibonacci_shader_grid() message=heard position="absolute" top=0 left=0 width="100%" height="100%"
+        touch-action="none" aria-label="Fibonacci sphere and its control pad" testId="fibonacci-grid-canvas"

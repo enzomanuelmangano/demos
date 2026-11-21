@@ -1,0 +1,81 @@
+// Full-screen photo under a full-screen pane of clear Liquid Glass. Dragging pulls the pane
+// up or down at half the finger's travel, fires a haptic every 5 px of travel, and springs back.
+
+// The drag is a `pan` (one action per finger move), not a host transform drag: the haptic
+// logic needs the travel at each move. The action writes the pane's translate and plays the
+// haptic when it is due.
+
+// Photo, cropped to the centre 1200 x 1593 of its 2832 x 1593 original.
+fn photo(): string = "assets/demos/liquid-glass-playground/background.jpg"
+
+// Haptic intensity steps are thresholds on the eased progress, which is 1 only at progress 1.
+fn hapticOf(p: number): string = p >= 1 ? "impact-heavy" : (p >= 0.8058677170 ? "impact-medium" : (p >= 0.4855721557 ? "impact-light" : "selection"))
+
+fn paneMotion(dragging: bool): string = dragging ? "none" : "translate -exact-spring(755.3715, 109.9361, 4)"
+
+component LiquidGlassPlayground
+  // The gesture's translationY, from the touch-down.
+  state ty = 0
+  // A pan in progress: the pane follows the finger without a transition.
+  state dragging = false
+  // This contact's first move was seen.
+  state began = false
+  // The pan failed on its first move, so it never takes the drag.
+  state failed = false
+  // The haptic ramp's full travel, 0.3 of the root's height. `frame(id)` reads a node's `id`, not its testId: without the id on the root it was 0, so `maxDrag` stayed 0,
+  // the progress read 1 from the first move and the max-reached guard dropped every haptic after the first.
+  state maxDrag = 0
+  // The travel at the last haptic.
+  state lastHaptic = 0
+  state hasMax = false
+  // Fails when the first move is more than 10 px to the right: the platform recognizer's first
+  // delta is the whole displacement from the touch-down, so a rightward start is a horizontal swipe.
+  action drag(dx: number, dy: number)
+    let fails = began ? failed : dx > 10
+    if not began
+      maxDrag = frame("liquid-glass-playground").height * 0.3
+    began = true
+    failed = fails
+    if not fails
+      let t = ty + dy
+      ty = t
+      dragging = true
+      let d = max(t * 0.5, 0 - t * 0.5)
+      if max(d - lastHaptic, lastHaptic - d) >= 5
+        let p = min(d / (maxDrag > 0 ? maxDrag : frame("liquid-glass-playground").height * 0.3), 1)
+        if not (hasMax and p >= 1)
+          hasMax = p >= 1
+          haptic(hapticOf(p))
+          lastHaptic = d
+  // Only after the pan was active: resets the haptic tracking and springs the pane back to rest.
+  action release(vx: number, vy: number)
+    if began and not failed
+      lastHaptic = 0
+      hasMax = false
+      ty = 0
+    began = false
+    failed = false
+    dragging = false
+  view
+    column position="absolute" inset=0 align-items="center" justify-content="center"
+      id="liquid-glass-playground" testId="liquid-glass-playground"
+      // Laid out by hand: object-fit cover does not centre a horizontal crop here, so the
+      // photo is height-bound and centred by its row.
+      row position="absolute" inset=0 justify-content="center" align-items="stretch"
+        image photo() height="100%" aspect-ratio=(1200 / 1593) flex-shrink=0
+          alt="Background photo" testId="photo"
+      view position="absolute" inset=0 overflow="hidden"
+        // The real glass: `glass-pane` (modules/apple/GlassPane.swift), an expo-glass-effect
+        // GlassView (clear, tinted, radius 50 continuous) that fills the moving box. The web
+        // shows an empty box.
+        view position="absolute" inset=0 pointer-events="none" translate=`0px ${ty * 0.5}px`
+          transition=paneMotion(dragging) aria-hidden=true testId="glass"
+          glass-pane glass-style="clear" pane-tint="rgba(0,0,0,0.5)" corner-size="50"
+            interactive="false" continuous="true" position="absolute" inset=0 aria-hidden=true
+            // Needs its own pointer-events too: the host skips a node's native views as touch
+            // targets only under that node's own `none`.
+            pointer-events="none"
+        // On the pane itself, so it moves with the pane: the strip a pulled pane uncovers takes no drag.
+        view position="absolute" inset=0 touch-action="none" pan=drag panrelease=release
+          translate=`0px ${ty * 0.5}px` transition=paneMotion(dragging)
+          aria-label="Pull the glass" testId="pull-handle"

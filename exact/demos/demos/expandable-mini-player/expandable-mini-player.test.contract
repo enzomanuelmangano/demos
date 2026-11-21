@@ -1,0 +1,19 @@
+at "/demo/expandable-mini-player"
+
+test "the page, the tab bar, and a tap on the mini player that opens the sheet"
+  expect tree has "expandable-mini-player"
+  expect tree has "mp-tabs"
+  expect tree has "mp-mini"
+  expect tree has "mp-sheet-idle"
+  expect tree missing "mp-sheet-handle"
+  tap "mp-mini"
+  clock settle
+  expect tree has "mp-sheet"
+  expect tree has "mp-sheet-handle"
+  tap "mp-play"
+  clock settle
+  expect tree has "mp-play"
+  tap "mp-grabber"
+  clock settle
+  expect tree has "mp-mini"
+  expect tree missing "mp-sheet-handle"

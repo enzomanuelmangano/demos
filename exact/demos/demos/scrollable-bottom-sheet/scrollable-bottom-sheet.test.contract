@@ -1,0 +1,5 @@
+at "/demo/scrollable-bottom-sheet"
+
+// The button, sheet, pages and gestures are one surface, covered by the Rust tests.
+test "the button, the sheet and its pages are one surface"
+  expect tree has "scrollable-bottom-sheet"

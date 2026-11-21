@@ -1,0 +1,23 @@
+// GitHub Terrain: nine years of contributions as blocks, flat like the chart; a tap springs them
+// into an isometric mountain range and back. A switch toggles between real and synthetic data.
+use DemoEnv from "../env.contract"
+
+component GithubTerrain
+  props
+    env: DemoEnv
+  state useRealData = true
+  action setData(on: bool)
+    useRealData = on
+  action buzz(m: string)
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+  view
+    column position="absolute" inset=0 background-color="#F9F6F1" testId="github-terrain"
+      canvas surface=github_terrain(useRealData) message=buzz position="absolute" top=0 left=0
+        width="100%" height="100%" touch-action="none" testId="github-terrain-canvas"
+        aria-label="Contribution terrain: tap to switch between the chart and the terrain"
+      // Above the canvas, which would otherwise take its touches.
+      view position="absolute" right=20 bottom=(env.safeBottom + 14) z-index=10
+        input type="checkbox" switch checked=useRealData change=setData accent-color="#34D399"
+          aria-label="Toggle real GitHub contribution data" testId="terrain-data-switch"
+at "/demo/github-terrain"

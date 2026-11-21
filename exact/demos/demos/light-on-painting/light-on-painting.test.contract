@@ -1,0 +1,5 @@
+at "/demo/light-on-painting"
+
+test "the canvas is there"
+  expect tree has "light-on-painting"
+  expect tree has "light-on-painting-canvas"

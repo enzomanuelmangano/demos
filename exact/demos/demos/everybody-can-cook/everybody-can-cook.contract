@@ -1,0 +1,62 @@
+// Everybody Can Cook: "Everybody" / "can cook." in Honk on black; a tap flips every letter over on
+// X, one after another: each letter's copy rotates down and fades as a second copy rotates up.
+
+// Each letter's progress is a critically damped spring, sampled into linear() since an animation
+// takes no spring. Every style below is linear in that progress, so the keyframes follow it exactly.
+fn flip(): string = "1384ms linear(0, 0.0185, 0.0649, 0.128, 0.2, 0.2755, 0.3506, 0.4229, 0.4908, 0.5534, 0.6103, 0.6616, 0.7072, 0.7476, 0.7831, 0.8142, 0.8412, 0.8646, 0.8847, 0.9021, 0.917, 0.9297, 0.9406, 0.9499, 0.9578, 0.9644, 0.9701, 0.9749, 0.9789, 0.9823, 0.9852, 0.9876, 0.9896, 0.9913, 0.9928, 0.994, 0.995, 0.9958, 0.9965, 0.9971, 0.9976, 0.998, 0.9983, 0.9986, 0.9988, 0.999, 0.9992, 0.9993, 0.9995, 0.9995, 0.9996, 0.9997, 0.9997, 0.9998, 0.9998, 0.9999, 0.9999, 0.9999, 0.9999, 0.9999, 1)"
+
+// The axis is x. The iOS host turns a box's rotate keyframes about z unless the box has an
+// off-centre transform-origin, so the origin is `left center`: a turn about x is the same about
+// any point on the centre line.
+//
+// A press never cuts a run short: each press is a run keyed by its number, so a quick second tap
+// adds a wave instead of restarting letters. A run stays mounted until its last letter has left,
+// about 1.2 s after its press, and ten runs cover 8 taps a second.
+keyframes leave
+  from opacity=1 translate="0px 0px" rotate=0
+  to opacity=0 translate="0px -27.5px" rotate=90
+keyframes arrive
+  from opacity=0 translate="0px 27.5px" rotate=-90
+  to opacity=1 translate="0px 0px" rotate=0
+
+// The runs on screen: the last ten press numbers (0 = the letters at rest before any press).
+fn runs(plays: number): number[] = range(10).map(k => plays - 9 + k).filter(k => k >= 0)
+
+component EverybodyCanCook
+  // How many taps: 0 = never animated (progress 0, the top copies shown).
+  state plays = 0
+  // Every tap starts a new wave as the finger lands, with a light impact.
+  action play
+    haptic("impact-light")
+    plays = plays + 1
+  view
+    column position="absolute" inset=0 background-color="#000000" testId="everybody-can-cook"
+      column flex=1 justify-content="center" padding="0px 42px" pointerdown=play testId="cook"
+        aria-label="Everybody can cook."
+        StaggeredText(text="Everybody", delay=0, plays=plays, testId="everybody")
+        StaggeredText(text="can cook.", delay=280, plays=plays, testId="can-cook")
+
+component StaggeredText
+  props
+    text: string
+    delay: number
+    plays: number
+    testId: string
+  view
+    row flex-wrap="wrap" testId=testId aria-hidden=true
+      for c, i in text.split("") key=i
+        // The letter in flow, unseen, holds the cell's size; the runs sit over it.
+        column position="relative" align-items="center" justify-content="center" testId=`${testId}-${i}`
+          text c font-family="Honk-Regular" font-size=50 color="#ffffff" white-space="pre"
+            visibility="hidden"
+          for k in runs(plays) key=k
+            // Perspective acts on the box's children, so it sits on a cell-sized box, centred on the cell.
+            view position="absolute" left=0 top=0 right=0 bottom=0 perspective=1000
+              // The run's box: the top copy's motion, from rest, once a later press comes.
+              view position="absolute" left=0 top=0 right=0 bottom=0 rotate="x 0deg"
+                transform-origin="left center"
+                animation=(k < plays ? `leave ${flip()} ${i * 40 + delay}ms both` : "none")
+                // The run's copy: the bottom copy's motion, at rest for run 0.
+                text c position="absolute" left=0 top=0 font-family="Honk-Regular" font-size=50
+                  color="#ffffff" white-space="pre" rotate="x 0deg" transform-origin="left center"
+                  animation=(k == 0 ? "none" : `arrive ${flip()} ${i * 40 + delay}ms both`)

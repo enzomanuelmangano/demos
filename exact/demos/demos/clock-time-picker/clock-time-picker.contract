@@ -1,0 +1,22 @@
+// Clock Time Picker: an analog clock beside a list of times; scrolling the list turns the hands
+// and settles on a time. The canvas draws both, so the hands follow the scroll without a commit per frame.
+
+component ClockTimePicker
+  // Haptics: selection per time centred, rigid past an end, soft when a drag comes to rest.
+  action heard(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-rigid"
+      haptic("impact-rigid")
+    if m == "haptic:impact-soft"
+      haptic("impact-soft")
+  view
+    column position="absolute" inset=0 background-color="color(display-p3 0.0667 0.0667 0.0667)"
+      align-items="center" justify-content="center" testId="clock-time-picker"
+      // Clock and list share one 232 x 120 canvas.
+      row background-color="color(display-p3 0.0667 0.0667 0.0667)"
+        border="1px solid color(display-p3 0.1333 0.1333 0.1333)" border-radius=24
+        corner-shape="-exact-continuous" padding=32 align-items="center" justify-content="center"
+        testId="clock-time-picker-container"
+        canvas surface=clock_time_picker() message=heard width=232 height=120 flex-shrink=0 touch-action="none"
+          testId="clock-time-picker-canvas" aria-label="Time: scroll the list to set the clock"

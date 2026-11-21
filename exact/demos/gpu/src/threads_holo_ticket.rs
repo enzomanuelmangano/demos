@@ -1,0 +1,1288 @@
+//! A 300 x 400 ticket on a dark background that turns about its vertical axis as it is dragged
+//! (flung, then settling on a face) and flips half a turn on a tap. A holographic grid shows only
+//! while it turns, its shine following the phone's tilt; the front has the event's details, the
+//! back a gold QR code.
+//!
+//! - The front text, the QR and the holographic canvas are drawn into layers (the front and QR
+//!   once, the canvas only when its values change); threads_holo_ticket.wgsl composites the ticket
+//!   per pixel through the inverse of its perspective and rotateY.
+//! - A touch is the ticket's if it starts inside its untransformed frame. The pan wins at 10 pt;
+//!   a tap (under 10 pt, 500 ms) flips it. A fling's decay lands rounded to a face, carried by a
+//!   critically damped spring.
+//! - The ticket is a slab THICKNESS deep whose edge shows at grazing angles, with a contact
+//!   shadow and a specular band that sweeps with the turn; the sensor adds a slight parallax.
+//! - Nothing renders at rest. No haptics.
+
+use exact_gpu::wgpu;
+use exact_gpu::{Frame, InputEvent, SensorKind, Surface, SurfaceError, Value};
+use motion::{interpolate_clamp, Decay, Spring};
+use draw2d::{Canvas, Color, Font, Matrix4, Paint, Renderer};
+
+use crate::{gfx, shaders};
+use shaders::threads_holo_ticket::{entry, module, Compose, CARD, FRONT, GROUP_0, QR, SMP, U};
+use shaders::threads_holo_ticket_card as card_shader;
+use shaders::threads_holo_ticket_qr as qr_shader;
+
+/// The ticket's width and height, pt.
+const W: f64 = 300.0;
+const H: f64 = 400.0;
+/// Perspective distance, pt.
+const PERSPECTIVE: f32 = 1000.0;
+/// Slab thickness, pt.
+const THICKNESS: f32 = 3.0;
+/// How long a fling takes to settle on a face, ms.
+const SETTLE_MS: f64 = 900.0;
+/// The sensor's parallax: maximum, gain, deadband (degrees) and smoothing time constant (ms).
+const PARALLAX_MAX: f64 = 8.0;
+const PARALLAX_GAIN: f64 = 0.35;
+const PARALLAX_DEADBAND: f64 = 0.05;
+const PARALLAX_TAU_MS: f64 = 120.0;
+/// The slab's edges show only past this |sin| of the turn: nearer square-on the edge's plane map
+/// is too ill-conditioned to draw.
+const EDGE_MIN_SIN: f32 = 0.15;
+/// The background colour (Display P3 components).
+const BACKGROUND: u32 = 0x070018;
+/// The card's colour and corner radius.
+const CARD_COLOR: u32 = 0xFFF5EE;
+const CARD_RADIUS: f32 = 5.0;
+/// Diameter of the notch circles, pt.
+const DOT_SIZE: f32 = 25.0;
+/// Grid circles across the card.
+const LOGOS: u32 = 25;
+/// The mask circle's radius and its blur σ.
+const MASK_RADIUS: f64 = H / 2.5;
+const MASK_BLUR: f32 = 200.0;
+/// The largest blur σ, device pixels.
+const MAX_BLUR_SIGMA: f32 = 532.0;
+/// Width of the circle blur profile, texels.
+const PROFILE: usize = 512;
+/// The holographic gradient's colours and positions.
+const GRADIENT: [u32; 7] = [0xECD9A8, 0xB89FCC, 0xE5C896, 0x8FB3D5, 0xE8CF9E, 0x9B89C0, 0xEDD5A5];
+const POSITIONS: [f32; 7] = [0.0, 0.17, 0.33, 0.5, 0.67, 0.83, 1.0];
+/// The QR's side, pt, and its gradient.
+const QR_SIZE: f64 = 150.0;
+const QR_GRADIENT: [u32; 3] = [0xD4AF37, 0x8B6914, 0x4A3C1F];
+/// The QR modules for "https://reactiive.io/demos" (version 4, level H, mask 6).
+const QR_ROWS: [&str; 33] = [
+    "#######..#.##.#....#..#.#.#######",
+    "#.....#...#.###.###.#...#.#.....#",
+    "#.###.#.#..######..###.##.#.###.#",
+    "#.###.#.#...##......##.#..#.###.#",
+    "#.###.#..#.#..#.#####.###.#.###.#",
+    "#.....#....###.#.###...#..#.....#",
+    "#######.#.#.#.#.#.#.#.#.#.#######",
+    ".........#.#..#...#.#.#.#........",
+    "...##.##...#..#.#..#....#....##..",
+    "#....#..#######.##.#####.#.###...",
+    "########........#.##..##..##.#.##",
+    "#...#..#.##.###..#...###.####.#.#",
+    "..#####..#....##..####.##.####.##",
+    "##.##...#..###.#.#.#.#.#...###.#.",
+    ".#.#####.##.#.###..##.....##.....",
+    ".#..##.##...##....##....##.#.#...",
+    "##...#####.###..#.#.#....######..",
+    "#.#.##.##..###.#...##.#.#.#.##...",
+    "..##..#.##...#..#...#..#.##..####",
+    "##.##...###.#.#.####...##.#####..",
+    "..###.#.##.#.#..#..#....##.#.#.#.",
+    "#...#..#.#...###..##.##..######..",
+    "#...######..##.###..#.#.#.#...#.#",
+    "#..#.#...###..##..#.........#.##.",
+    "##....#..#####.#.#..#...######..#",
+    "........##........#...#.#...#....",
+    "#######.#.###..#..##.####.#.###..",
+    "#.....#..#..#..#.#.#...##...####.",
+    "#.###.#.##..##########.#######.#.",
+    "#.###.#.#..#...##.#..#.###.#.###.",
+    "#.###.#...##.##..##.....#...#.###",
+    "#.....#...##...#.#.#.#....#...###",
+    "#######..#..#..##....#.###..###..",
+];
+/// The front's padding, pt.
+const PAD_TOP: f64 = 42.0;
+const PAD_X: f64 = 28.0;
+const PAD_BOTTOM: f64 = 60.0;
+/// Gaps: between sections, under a label, above the footer row.
+const SECTION_GAP: f64 = 24.0;
+const LABEL_GAP: f64 = 6.0;
+const FOOTER_PAD: f64 = 16.0;
+/// The sections: label, value.
+const SECTIONS: [(&str, &str); 3] = [("DATE", "TUE 14 JAN"), ("TIME", "11:00 AM CET"), ("USERNAME", "Enzo")];
+/// Text styles: size, weight, letter spacing, colour (Display P3).
+const LABEL: TextStyle = TextStyle { size: 13.0, weight: 400.0, spacing: 0.5, color: 0x8E8E93 };
+const VALUE: TextStyle = TextStyle { size: 21.0, weight: 600.0, spacing: -0.3, color: 0x1C1C1E };
+const USERNAME: TextStyle = TextStyle { size: 15.0, weight: 500.0, spacing: -0.1, color: 0x1C1C1E };
+const NUMBER: TextStyle = TextStyle { size: 15.0, weight: 400.0, spacing: -0.1, color: 0x8E8E93 };
+/// The footer's hairline colour and alpha.
+const BORDER: [u8; 3] = [60, 60, 67];
+const BORDER_ALPHA: f32 = 0.15;
+/// Gesture thresholds: pan distance (pt), tap distance (pt) and duration (ms), the fling's
+/// velocity scale, deceleration and clamp, and the flip's duration and damping ratio.
+const MIN_DISTANCE: f64 = 10.0;
+const TAP_MAX_DISTANCE: f64 = 10.0;
+const TAP_MAX_MS: f64 = 500.0;
+const DECAY_VELOCITY: f64 = 0.7;
+const DECAY_DECELERATION: f64 = 0.998;
+const DECAY_CLAMP: f64 = 1080.0;
+const FLIP_MS: f64 = 500.0;
+const FLIP_DAMPING_RATIO: f64 = 1.5;
+/// Tessellation precision (Wang's formula: 1/4 px).
+const PRECISION: f32 = 4.0;
+const LAYER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+
+#[derive(Clone, Copy)]
+struct TextStyle {
+    size: f32,
+    weight: f32,
+    spacing: f32,
+    color: u32,
+}
+
+/// The demo's surface.
+pub fn surface() -> Box<dyn Surface> {
+    Box::new(ThreadsHoloTicket {
+        layout: Layout::default(),
+        x: 0.0,
+        motion: Motion::Rest,
+        context: 0.0,
+        touch: None,
+        attitude: None,
+        par: (0.0, 0.0),
+        par_ms: None,
+        tilt: (0.0, 0.0),
+        posted: Vec::new(),
+        fonts: None,
+        front: Canvas::default(),
+        renderer: Renderer::default(),
+        drawn: None,
+        gpu: None,
+    })
+}
+
+/// Rounds an edge to the device-pixel grid (half up).
+fn grid(v: f64, s: f64) -> f64 {
+    ((v * s + 0.5 + 1e-6).floor()) / s
+}
+
+/// Rounds a text size up to the device pixel.
+fn ceil_px(v: f64, s: f64) -> f64 {
+    (v * s - 1e-6).ceil() / s
+}
+
+/// The screen: a window `w × h` at `s` device pixels per point.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+struct Layout {
+    w: f32,
+    h: f32,
+    s: f32,
+    /// The ticket's top-left (rounded).
+    x0: f64,
+    y0: f64,
+}
+
+impl Layout {
+    fn new(w: f32, h: f32, s: f32) -> Layout {
+        let (wd, hd, sd) = (w as f64, h as f64, s as f64);
+        Layout { w, h, s, x0: grid((wd - W) / 2.0, sd), y0: grid((hd - H) / 2.0, sd) }
+    }
+    /// A layer of the ticket's plane in device pixels.
+    fn ticket_pixels(&self) -> (u32, u32) {
+        (((W * self.s as f64).ceil() as u32).max(1), ((H * self.s as f64).ceil() as u32).max(1))
+    }
+    fn qr_pixels(&self) -> u32 {
+        ((QR_SIZE * self.s as f64).ceil() as u32).max(1)
+    }
+}
+
+/// What moves the turn.
+#[derive(Clone, Copy, Debug)]
+enum Motion {
+    Rest,
+    Decay(Decay),
+    Spring(Spring),
+}
+
+/// The finger on the ticket, racing a tap against a pan.
+#[derive(Clone, Debug)]
+struct Touch {
+    id: u32,
+    down: (f64, f64, f64),
+    /// Where the pan activated (its translation's origin), once it has.
+    origin: Option<(f64, f64)>,
+    /// The tap has failed (moved too far).
+    tap_failed: bool,
+    /// The last moves (x, y, ms); a finger at rest adds none.
+    samples: [(f64, f64, f64); 16],
+    count: usize,
+}
+
+impl Touch {
+    fn sample(&mut self, x: f64, y: f64, ms: f64) {
+        if self.count > 0 {
+            let (lx, ly, _) = self.samples[(self.count - 1) % 16];
+            if lx == x && ly == y {
+                return;
+            }
+        }
+        self.samples[self.count % 16] = (x, y, ms);
+        self.count += 1;
+    }
+    /// Velocity over the samples within 100 ms of the last move, pt/s.
+    fn velocity_x(&self) -> f64 {
+        if self.count == 0 {
+            return 0.0;
+        }
+        let last = self.samples[(self.count - 1) % 16];
+        let mut first = last;
+        for k in (0..self.count.min(16)).rev() {
+            let s = self.samples[(self.count - 1 - k) % 16];
+            if last.2 - s.2 <= 100.0 {
+                first = s;
+                break;
+            }
+        }
+        let dt = (last.2 - first.2) / 1000.0;
+        if dt <= 0.0 {
+            0.0
+        } else {
+            (last.0 - first.0) / dt
+        }
+    }
+}
+
+/// Pitch and roll of Core Motion's attitude quaternion `[x, y, z, w]`.
+fn pitch_roll(q: [f64; 4]) -> (f64, f64) {
+    let [x, y, z, w] = q;
+    let pitch = (2.0 * (w * x + y * z)).clamp(-1.0, 1.0).asin();
+    let roll = (2.0 * (w * y - x * z)).atan2(1.0 - 2.0 * (x * x + y * y));
+    (pitch, roll)
+}
+
+/// The values the canvas draws, at rotateY `rotate` (deg) and the held tilt.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct Holo {
+    opacity: f64,
+    center: (f64, f64),
+    start: (f64, f64),
+    end: (f64, f64),
+}
+
+fn holo(rotate: f64, pitch: f64, roll: f64) -> Holo {
+    let q = std::f64::consts::FRAC_PI_4;
+    let opacity = interpolate_clamp(rotate.abs(), &[0.0, 90.0, 180.0, 270.0, 360.0], &[0.0, 0.5, 0.0, 0.5, 0.0]);
+    let normalized = rotate % 360.0;
+    let rotation = if normalized < 0.0 { normalized + 360.0 } else { normalized };
+    let base_x = W / 2.0 - (rotation * std::f64::consts::PI / 180.0).sin() * (W / 2.0);
+    let cx = base_x + interpolate_clamp(pitch, &[-q, q], &[-W / 3.0, W / 3.0]);
+    let cy = H / 2.0 + interpolate_clamp(roll, &[-q, q], &[-H / 3.0, H / 3.0]);
+    Holo {
+        opacity,
+        center: (cx, cy),
+        start: (interpolate_clamp(roll, &[-q, q], &[W * 0.1, W * 0.25]), interpolate_clamp(pitch, &[-q, q], &[H * 0.1, H * 0.25])),
+        end: (interpolate_clamp(roll, &[-q, q], &[W * 0.9, W * 0.75]), interpolate_clamp(pitch, &[-q, q], &[H * 0.9, H * 0.75])),
+    }
+}
+
+/// A straight sRGB colour as encoded Display P3.
+fn srgb_to_p3(rgb: u32) -> [f32; 3] {
+    let lin = |c: u32| {
+        let c = (c & 0xFF) as f64 / 255.0;
+        if c <= 0.04045 { c / 12.92 } else { ((c + 0.055) / 1.055).powf(2.4) }
+    };
+    let enc = |c: f64| {
+        let c = c.clamp(0.0, 1.0);
+        (if c <= 0.0031308 { 12.92 * c } else { 1.055 * c.powf(1.0 / 2.4) - 0.055 }) as f32
+    };
+    let (r, g, b) = (lin(rgb >> 16), lin(rgb >> 8), lin(rgb));
+    [enc(0.8224621 * r + 0.177538 * g), enc(0.0331941 * r + 0.9668058 * g), enc(0.0170827 * r + 0.0723974 * g + 0.9105199 * b)]
+}
+
+/// A colour whose components are already Display P3.
+fn p3(rgb: u32) -> [f32; 3] {
+    [((rgb >> 16) & 0xFF) as f32 / 255.0, ((rgb >> 8) & 0xFF) as f32 / 255.0, (rgb & 0xFF) as f32 / 255.0]
+}
+
+/// Chords per quarter that Graphite tessellates a circle of radius `r` (device pixels) into.
+fn conic_chords(r: f32) -> u32 {
+    let w = std::f32::consts::FRAC_1_SQRT_2;
+    let h = r / 2.0;
+    let (p0, p1, p2) = ([h, -h], [h, h], [-h, h]);
+    let dot = |a: [f32; 2]| a[0] * a[0] + a[1] * a[1];
+    let max_len = dot(p0).max(dot(p1)).max(dot(p2)).sqrt();
+    let dp = [-2.0 * w * p1[0] + p0[0] + p2[0], -2.0 * w * p1[1] + p0[1] + p2[1]];
+    let dw = (-2.0 * w + 2.0).abs();
+    let rp_minus_1 = (max_len * PRECISION - 1.0).max(0.0);
+    let numer = dot(dp).sqrt() * PRECISION + rp_minus_1 * dw;
+    let denom = 4.0 * w.min(1.0);
+    chords((numer / denom).sqrt())
+}
+
+/// Chords of the QR corner's quad, for half a cell `h` (device pixels).
+fn quad_chords(h: f32) -> u32 {
+    chords((2.0 * h * h).sqrt())
+}
+
+fn chords(n: f32) -> u32 {
+    let level = n.max(1.0).log2().ceil().clamp(0.0, 5.0) as u32;
+    1 << level
+}
+
+/// A quarter circle's chain of `n` chords from (1, 0) to (0, 1).
+fn conic_chain(n: u32) -> Vec<[f32; 2]> {
+    let w = std::f32::consts::FRAC_1_SQRT_2;
+    (0..=n)
+        .map(|k| {
+            let t = k as f32 / n as f32;
+            let (a, b, c) = ((1.0 - t) * (1.0 - t), 2.0 * w * t * (1.0 - t), t * t);
+            let d = a + b + c;
+            [(a + b) / d, (b + c) / d]
+        })
+        .collect()
+}
+
+/// The QR corner's chain of `n` chords from (1, 0) to (0, 1), in half cells.
+fn quad_chain(n: u32) -> Vec<[f32; 2]> {
+    (0..=n)
+        .map(|k| {
+            let t = 1.0 - k as f32 / n as f32;
+            [2.0 * t - t * t, 1.0 - t * t]
+        })
+        .collect()
+}
+
+/// Two chain points per vec4.
+fn pack_chain(chain: &[[f32; 2]]) -> [[f32; 4]; 17] {
+    let mut out = [[0.0; 4]; 17];
+    for (k, p) in chain.iter().enumerate().take(34) {
+        out[k / 2][2 * (k % 2)] = p[0];
+        out[k / 2][2 * (k % 2) + 1] = p[1];
+    }
+    out
+}
+
+/// The analytic blur profile of a circle of radius `r` at σ (device pixels), and its texture radius.
+fn circle_blur_profile(sigma: f32, r: f32) -> ([u8; PROFILE], f32) {
+    let sigma = sigma.min(MAX_BLUR_SIGMA);
+    // σ / r is capped at 8 and binned, as Graphite does.
+    let ratio = (sigma / r).min(8.0);
+    let fixed = ((ratio * 65536.0) as i32) & !0xff;
+    let sigma = r * (fixed as f32 / 65536.0);
+    let texture_radius = r + 3.0 * sigma;
+    let scale = PROFILE as f32 / texture_radius;
+    (circle_profile(sigma * scale, r * scale), texture_radius)
+}
+
+fn circle_profile(sigma: f32, r: f32) -> [u8; PROFILE] {
+    let steps = PROFILE;
+    let mut half = (6.0 * sigma).ceil() as i32;
+    half = ((half + 1) & !1) >> 1;
+    let half = half as usize;
+    // The half kernel, normalised to 0.5, and its running sums.
+    let b = -0.5 / (sigma * sigma);
+    let mut kernel = vec![0f32; half];
+    let mut tot = 0.0f32;
+    let mut t = 0.5f32;
+    for v in kernel.iter_mut() {
+        *v = (t * t * b).exp();
+        tot += *v;
+        t += 1.0;
+    }
+    let tot = 2.0 * tot;
+    let mut summed = vec![0f32; half];
+    let mut sum = 0.0f32;
+    for i in 0..half {
+        kernel[i] /= tot;
+        sum += kernel[i];
+        summed[i] = sum;
+    }
+    // The kernel applied vertically at each column of the circle.
+    let ysteps = steps + 2 * half;
+    let mut yevals = vec![0f32; ysteps];
+    let mut x = -(half as f32) + 0.5;
+    for v in yevals.iter_mut() {
+        if x < -r || x > r {
+            *v = 0.0;
+        } else {
+            let mut y = (r * r - x * x).sqrt();
+            y -= 0.5;
+            let yi = y.floor() as i32;
+            *v = if y < 0.0 {
+                (y + 0.5) * summed[0]
+            } else if yi >= half as i32 - 1 {
+                0.5
+            } else {
+                let f = y - yi as f32;
+                (1.0 - f) * summed[yi as usize] + f * summed[yi as usize + 1]
+            };
+        }
+        x += 1.0;
+    }
+    let mut out = [0u8; PROFILE];
+    for (i, w) in out.iter_mut().enumerate().take(steps - 1) {
+        let eval_x = i as f32 + 0.5;
+        let ys = &yevals[i..];
+        let mut acc = 0.0f32;
+        let mut x = eval_x - half as f32;
+        for k in 0..half {
+            if x >= -r && x <= r {
+                acc += ys[k] * kernel[half - k - 1];
+            }
+            x += 1.0;
+        }
+        for k in 0..half {
+            if x >= -r && x <= r {
+                acc += ys[k + half] * kernel[k];
+            }
+            x += 1.0;
+        }
+        *w = ((2.0 * acc).clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+    }
+    out
+}
+
+/// The QR's rows as the shader reads them: modules 0-16 and 17-32 of each row as two floats.
+fn qr_rows() -> [[f32; 4]; 17] {
+    let mut out = [[0.0; 4]; 17];
+    for (i, row) in QR_ROWS.iter().enumerate() {
+        let (mut lo, mut hi) = (0u32, 0u32);
+        for (j, c) in row.bytes().enumerate() {
+            if c == b'#' {
+                if j < 17 {
+                    lo |= 1 << j;
+                } else {
+                    hi |= 1 << (j - 17);
+                }
+            }
+        }
+        for (half, bits) in [lo, hi].into_iter().enumerate() {
+            let slot = 2 * i + half;
+            out[slot / 4][slot % 4] = bits as f32;
+        }
+    }
+    out
+}
+
+/// The front's text boxes (text, style, left, top) in the ticket, and the footer's border.
+struct Front {
+    fonts: [Font; 4],
+    texts: Vec<(&'static str, usize, f64, f64)>,
+    /// The footer's hairline: left, top, width, height.
+    border: [f64; 4],
+}
+
+const STYLES: [TextStyle; 4] = [LABEL, VALUE, USERNAME, NUMBER];
+
+impl Front {
+    fn new(s: f64) -> Option<Front> {
+        let fonts = [
+            draw2d::match_ui_font(LABEL.size, LABEL.weight)?,
+            draw2d::match_ui_font(VALUE.size, VALUE.weight)?,
+            draw2d::match_ui_font(USERNAME.size, USERNAME.weight)?,
+            draw2d::match_ui_font(NUMBER.size, NUMBER.weight)?,
+        ];
+        let height = |k: usize| ceil_px(gfx::line_height(&fonts[k]) as f64, s);
+        let (label_h, value_h) = (height(0), height(1));
+        let section = label_h + LABEL_GAP + value_h;
+        let mut texts = Vec::with_capacity(8);
+        for (k, (label, value)) in SECTIONS.iter().enumerate() {
+            let top = PAD_TOP + k as f64 * (section + SECTION_GAP);
+            texts.push((*label, 0, PAD_X, top));
+            texts.push((*value, 1, PAD_X, top + label_h + LABEL_GAP));
+        }
+        // A hairline: 0.4 pt rounded to a device pixel, at least one.
+        let hairline = ((0.4 * s).round() / s).max(1.0 / s);
+        let row = height(2).max(height(3));
+        let footer_h = hairline + FOOTER_PAD + row;
+        // The footer sits at the bottom padding; the sections take the space above.
+        let footer_top = H - PAD_BOTTOM - footer_h;
+        let row_top = footer_top + hairline + FOOTER_PAD;
+        let content_w = W - 2.0 * PAD_X;
+        let number_w = ceil_px(fonts[3].advance_width_spaced("00001992", NUMBER.spacing) as f64, s);
+        texts.push(("reactiive", 2, PAD_X, grid(row_top + (row - height(2)) / 2.0, s)));
+        texts.push(("00001992", 3, grid(PAD_X + content_w - number_w, s), grid(row_top + (row - height(3)) / 2.0, s)));
+        Some(Front { fonts, texts, border: [PAD_X, footer_top, content_w, hairline] })
+    }
+
+    /// Draws the labels and the border into the front's layer.
+    fn record(&self, c: &mut Canvas, s: f32) {
+        c.begin(s);
+        let [x, y, w, h] = self.border.map(|v| v as f32);
+        c.draw_rect(x, y, w, h, &Paint::fill(Color::rgb8(BORDER[0], BORDER[1], BORDER[2]).alpha(BORDER_ALPHA)));
+        for &(text, k, left, top) in &self.texts {
+            let font = &self.fonts[k];
+            let style = STYLES[k];
+            let baseline = gfx::baseline(font, top as f32);
+            c.draw_text_spaced(text, left as f32, baseline, font, &Paint::fill(Color::hex(style.color)), style.spacing);
+        }
+    }
+}
+
+struct ThreadsHoloTicket {
+    layout: Layout,
+    /// The turn in degrees (unwrapped).
+    x: f64,
+    motion: Motion,
+    /// The turn at the start of a drag.
+    context: f64,
+    touch: Option<Touch>,
+    /// The sensor's latest (pitch, roll); `None` before its first sample.
+    attitude: Option<(f64, f64)>,
+    /// The parallax as drawn (deg about x, about y): the sensor's through a deadband and smoothing,
+    /// so its jitter never moves the ticket frame to frame; and its last frame time.
+    par: (f64, f64),
+    par_ms: Option<f64>,
+    /// The (pitch, roll) the canvas uses, held while the mask is hidden.
+    tilt: (f64, f64),
+    /// Haptic messages to hand to the host.
+    posted: Vec<String>,
+    fonts: Option<Option<Front>>,
+    front: Canvas,
+    renderer: Renderer,
+    /// The canvas layer's last values.
+    drawn: Option<[f32; 8]>,
+    gpu: Option<Gpu>,
+}
+
+struct Gpu {
+    format: wgpu::TextureFormat,
+    generation: u32,
+    layout: Layout,
+    card_pipeline: wgpu::RenderPipeline,
+    card_uniforms: wgpu::Buffer,
+    card_bind: wgpu::BindGroup,
+    card_view: wgpu::TextureView,
+    card: card_shader::Card,
+    front_view: wgpu::TextureView,
+    qr_pipeline: wgpu::RenderPipeline,
+    qr_bind: wgpu::BindGroup,
+    qr_view: wgpu::TextureView,
+    statics_drawn: bool,
+    compose: wgpu::RenderPipeline,
+    uniforms: wgpu::Buffer,
+    bind: wgpu::BindGroup,
+}
+
+impl ThreadsHoloTicket {
+    /// The rotation about y, degrees.
+    fn rotate_y(&self) -> f64 {
+        self.x % 360.0
+    }
+
+    /// The sensor's parallax (deg about x, about y).
+    fn parallax(&self) -> (f64, f64) {
+        self.par
+    }
+
+    /// The sensor's parallax target (deg), clamped.
+    fn parallax_target(&self) -> (f64, f64) {
+        let (p, r) = self.attitude.unwrap_or((0.0, 0.0));
+        let k = |v: f64| (v.to_degrees() * PARALLAX_GAIN).clamp(-PARALLAX_MAX, PARALLAX_MAX);
+        (-k(p), k(r))
+    }
+
+    /// Moves the drawn parallax toward the sensor's: changes under the deadband are ignored, the
+    /// rest eased exponentially (time constant PARALLAX_TAU_MS). Whether it still moves.
+    fn smooth_parallax(&mut self, now_ms: f64) -> bool {
+        let dt = self.par_ms.map_or(0.0, |last| (now_ms - last).clamp(0.0, 64.0));
+        self.par_ms = Some(now_ms);
+        let (tx, ty) = self.parallax_target();
+        let k = 1.0 - (-dt / PARALLAX_TAU_MS).exp();
+        let mut moving = false;
+        for (v, t) in [(&mut self.par.0, tx), (&mut self.par.1, ty)] {
+            if (t - *v).abs() >= PARALLAX_DEADBAND {
+                *v += (t - *v) * k;
+                moving = true;
+            }
+        }
+        moving
+    }
+
+    fn is_front(&self) -> bool {
+        let a = self.rotate_y().abs();
+        a < 90.0 || a > 270.0
+    }
+
+    /// The ticket's 3D transform to the screen, with the parallax.
+    fn matrix4(&self) -> Matrix4 {
+        let l = &self.layout;
+        let (cx, cy) = ((W / 2.0) as f32, (H / 2.0) as f32);
+        let (px, py) = self.parallax();
+        Matrix4::translate(l.x0 as f32 + cx, l.y0 as f32 + cy, 0.0)
+            .multiply(Matrix4::perspective(PERSPECTIVE))
+            .multiply(Matrix4::rotate_x(px.to_radians() as f32))
+            .multiply(Matrix4::rotate_y((self.rotate_y() + py).to_radians() as f32))
+            .multiply(Matrix4::translate(-cx, -cy, 0.0))
+    }
+
+    /// The face that shows, at its side of the slab (front at +½ thickness, back at −½).
+    fn matrix(&self) -> draw2d::Matrix3 {
+        let z = if self.is_front() { THICKNESS / 2.0 } else { -THICKNESS / 2.0 };
+        self.matrix4().multiply(Matrix4::translate(0.0, 0.0, z)).to_matrix3()
+    }
+
+    /// An edge of the slab (x = `x0`) as a plane in (z, y): z across the thickness.
+    fn side_matrix(&self, x0: f32) -> draw2d::Matrix3 {
+        let basis = Matrix4([0.0, 0.0, 0.0, x0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]);
+        self.matrix4().multiply(basis).to_matrix3()
+    }
+
+    /// Whether a point is on the ticket's untransformed frame.
+    fn hits(&self, x: f64, y: f64) -> bool {
+        let l = &self.layout;
+        if !(x >= l.x0 && x < l.x0 + W && y >= l.y0 && y < l.y0 + H) {
+            return false;
+        }
+        // The frame takes the touch whatever the turn, so an edge-on ticket can still be grabbed.
+        true
+    }
+
+    fn step(&mut self, now_ms: f64) -> bool {
+        let moving = match &mut self.motion {
+            Motion::Rest => return false,
+            Motion::Decay(d) => {
+                let moving = d.step(now_ms);
+                self.x = d.value;
+                moving
+            }
+            Motion::Spring(s) => {
+                let moving = s.step(now_ms);
+                self.x = s.value;
+                moving
+            }
+        };
+        if !moving {
+            self.motion = Motion::Rest;
+        }
+        moving
+    }
+
+    /// The slab's edges: thickness, whether the left or right edge faces the viewer, and how
+    /// squarely (|sin| of the turn).
+    fn slab(&self) -> [f32; 4] {
+        let (_, py) = self.parallax();
+        let sin = (self.rotate_y() + py).to_radians().sin() as f32;
+        // Square-on (|sin| tiny) neither edge shows, and its plane's map is near singular.
+        [THICKNESS, if sin > EDGE_MIN_SIN { 1.0 } else { 0.0 }, if sin < -EDGE_MIN_SIN { 1.0 } else { 0.0 }, sin.abs()]
+    }
+
+    /// The contact shadow: under the face's projected bounds, 28 pt lower, a little narrower,
+    /// never thinner than a finger.
+    fn shadow(&self) -> [f32; 4] {
+        let m = self.matrix();
+        let pts = [(0.0, 0.0), (W as f32, 0.0), (0.0, H as f32), (W as f32, H as f32)].map(|(x, y)| m.map(x, y));
+        let (x0, x1) = pts.iter().fold((f32::MAX, f32::MIN), |a, p| (a.0.min(p.x), a.1.max(p.x)));
+        let (y0, y1) = pts.iter().fold((f32::MAX, f32::MIN), |a, p| (a.0.min(p.y), a.1.max(p.y)));
+        let hw = ((x1 - x0) / 2.0 * 0.86).max(14.0);
+        [(x0 + x1) / 2.0, (y0 + y1) / 2.0 + 28.0, hw, (y1 - y0) / 2.0 * 0.9]
+    }
+
+    /// The shadow's blur and opacity, and the specular band's centre (0..1 across the face) and
+    /// strength: the band sweeps with the turn and the roll.
+    fn light(&self) -> [f32; 4] {
+        let (_, py) = self.parallax();
+        let t = (self.rotate_y() + py).to_radians();
+        let band = 0.5 - 0.9 * t.sin() + py / 60.0;
+        let strength = 0.3 * t.sin().abs();
+        [34.0, 0.5, band as f32, strength as f32]
+    }
+
+    /// The canvas's values now: the tilt reaches them only while the mask shows.
+    fn holo(&mut self) -> Holo {
+        let rotate = self.rotate_y();
+        let opacity = holo(rotate, 0.0, 0.0).opacity;
+        if opacity > 0.0 {
+            self.tilt = self.attitude.unwrap_or((0.0, 0.0));
+        }
+        holo(rotate, self.tilt.0, self.tilt.1)
+    }
+
+    fn pointer(&mut self, id: u32, phase: gestures::Phase, x: f64, y: f64, ms: f64) {
+        use gestures::Phase;
+        match phase {
+            Phase::Down => {
+                if self.touch.is_some() || !self.hits(x, y) {
+                    return;
+                }
+                let mut t = Touch { id, down: (x, y, ms), origin: None, tap_failed: false, samples: [(0.0, 0.0, 0.0); 16], count: 0 };
+                t.sample(x, y, ms);
+                self.touch = Some(t);
+            }
+            Phase::Move => {
+                let Some(t) = self.touch.as_mut().filter(|t| t.id == id) else { return };
+                t.sample(x, y, ms);
+                let (dx, dy) = (x - t.down.0, y - t.down.1);
+                let d2 = dx * dx + dy * dy;
+                if d2 > TAP_MAX_DISTANCE * TAP_MAX_DISTANCE {
+                    t.tap_failed = true;
+                }
+                match t.origin {
+                    None if d2 >= MIN_DISTANCE * MIN_DISTANCE => {
+                        // The pan activates here: its translation starts at 0.
+                        t.origin = Some((x, y));
+                        t.tap_failed = true;
+                        self.context = self.x;
+                        self.x = self.context;
+                        self.motion = Motion::Rest;
+                    }
+                    Some((ox, _)) => {
+                        self.x = x - ox + self.context;
+                        self.motion = Motion::Rest;
+                    }
+                    None => {}
+                }
+            }
+            Phase::Up | Phase::Cancel => {
+                let Some(mut t) = self.touch.take().filter(|t| t.id == id) else { return };
+                t.sample(x, y, ms);
+                if t.origin.is_some() {
+                    // Run the decay ahead to find where the fling would land, round that to a face,
+                    // and carry the throw there on a critically damped spring.
+                    let v = t.velocity_x() * DECAY_VELOCITY;
+                    let mut d = Decay::at(self.x);
+                    d.deceleration = DECAY_DECELERATION;
+                    d.clamp = Some([self.x - DECAY_CLAMP, self.x + DECAY_CLAMP]);
+                    d.fling(v);
+                    let mut ahead = 0.0;
+                    while d.step(ahead) && ahead < 10_000.0 {
+                        ahead += 16.0;
+                    }
+                    let face = (d.value / 180.0).round() * 180.0;
+                    let mut s = Spring::at(self.x);
+                    s.to(face, v, motion::duration_config(self.x - face, v, SETTLE_MS, 1.0, 4.0));
+                    self.motion = if s.running { Motion::Spring(s) } else { Motion::Rest };
+                } else if phase == Phase::Up && !t.tap_failed && ms - t.down.2 <= TAP_MAX_MS {
+                    // A tap flips the ticket half a turn, away from the finger: a tap on the left
+                    // half pushes that edge back (it turns right), on the right half the other way.
+                    let normalized = (self.x / 180.0 + 0.5).floor() * 180.0;
+                    let toward = if t.down.0 < self.layout.x0 + W / 2.0 { -180.0 } else { 180.0 };
+                    let mut s = Spring::at(self.x);
+                    gfx::spring_to(&mut s, normalized + toward, FLIP_MS, FLIP_DAMPING_RATIO);
+                    self.motion = if s.running { Motion::Spring(s) } else { Motion::Rest };
+                    self.posted.push("haptic:selection".to_string());
+                }
+            }
+        }
+    }
+}
+
+impl Surface for ThreadsHoloTicket {
+    fn bind(&mut self, _: &[Value], _: Option<f64>) -> Result<(), SurfaceError> {
+        Ok(())
+    }
+
+    fn opaque(&self) -> bool {
+        true
+    }
+
+    fn wants_input(&self) -> bool {
+        true
+    }
+
+    fn messages(&mut self) -> Vec<String> {
+        crate::haptic::host(std::mem::take(&mut self.posted))
+    }
+
+    fn agent(&mut self, _request: &str) -> Option<String> {
+        let h = holo(self.rotate_y(), self.tilt.0, self.tilt.1);
+        Some(format!(
+            "{{\"translateX\":{:.3},\"rotateY\":{:.3},\"front\":{},\"maskOpacity\":{:.4},\"pitch\":{:.4},\"roll\":{:.4},\"moving\":{},\"held\":{}}}",
+            self.x,
+            self.rotate_y(),
+            self.is_front(),
+            h.opacity,
+            self.tilt.0,
+            self.tilt.1,
+            !matches!(self.motion, Motion::Rest),
+            self.touch.is_some()
+        ))
+    }
+
+    fn input(&mut self, event: &InputEvent) {
+        match *event {
+            InputEvent::Pointer { id, phase, x, y, at_ms, .. } => self.pointer(id, gfx::phase(phase), x as f64, y as f64, at_ms),
+            InputEvent::Sensor { sensor: SensorKind::RelativeOrientation, values, .. } => {
+                // NaN reads as 0.
+                let (p, r) = pitch_roll(values.map(|v| v as f64));
+                self.attitude = Some((if p.is_nan() { 0.0 } else { p }, if r.is_nan() { 0.0 } else { r }));
+            }
+            _ => {}
+        }
+    }
+
+    fn render(
+        &mut self,
+        frame: &Frame,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        encoder: &mut wgpu::CommandEncoder,
+        target: &wgpu::TextureView,
+        format: wgpu::TextureFormat,
+    ) -> bool {
+        let layout = Layout::new(frame.width, frame.height, frame.scale);
+        self.layout = layout;
+        let moving = self.step(frame.now_ms) | self.smooth_parallax(frame.now_ms);
+        if self.gpu.as_ref().map(|g| (g.format, g.generation, g.layout)) != Some((format, frame.shader_generation, layout)) {
+            self.gpu = Some(build(device, queue, format, frame.shader_generation, layout));
+            self.drawn = None;
+        }
+        let s = layout.s;
+        let (tw, th) = layout.ticket_pixels();
+
+        if !self.gpu.as_ref().unwrap().statics_drawn {
+            if self.fonts.is_none() {
+                self.fonts = Some(Front::new(s as f64));
+            }
+            self.front.begin(s);
+            if let Some(Some(front)) = self.fonts.as_ref() {
+                front.record(&mut self.front, s);
+            }
+            let gpu = self.gpu.as_mut().unwrap();
+            self.renderer.draw(device, queue, encoder, &self.front, &gpu.front_view, LAYER_FORMAT, tw, th, wgpu::Color::TRANSPARENT);
+            draw2d::render::fullscreen_pass(encoder, "threads holo ticket qr", &gpu.qr_view, &gpu.qr_pipeline, &gpu.qr_bind);
+            gpu.statics_drawn = true;
+        }
+
+        let h = self.holo();
+        // The mask alpha on the 8-bit layer's grid: at 0 the layer is empty, whatever the tilt.
+        let o8 = (h.opacity.clamp(0.0, 1.0) * 255.0 + 0.5).floor() as f32 / 255.0;
+        let key = if o8 == 0.0 {
+            [0.0; 8]
+        } else {
+            [o8, h.center.0 as f32, h.center.1 as f32, h.start.0 as f32, h.start.1 as f32, h.end.0 as f32, h.end.1 as f32, 1.0]
+        };
+        if self.drawn != Some(key) {
+            let gpu = self.gpu.as_mut().unwrap();
+            gpu.card.mask = [h.center.0 as f32 * s, h.center.1 as f32 * s, gpu.card.mask[2], o8];
+            gpu.card.gradient = [h.start.0 as f32, h.start.1 as f32, h.end.0 as f32, h.end.1 as f32];
+            queue.write_buffer(&gpu.card_uniforms, 0, &gpu.card.bytes());
+            draw2d::render::fullscreen_pass(encoder, "threads holo ticket card", &gpu.card_view, &gpu.card_pipeline, &gpu.card_bind);
+            self.drawn = Some(key);
+        }
+
+        let inv = self.matrix().invert().unwrap_or(draw2d::Matrix3([0.0; 9])).rows();
+        let qp = layout.qr_pixels() as f32;
+        let bg = p3(BACKGROUND);
+        let u = Compose {
+            inv,
+            ticket: [W as f32, H as f32, if self.is_front() { 1.0 } else { 0.0 }, 0.0],
+            qr: [((W - QR_SIZE) / 2.0) as f32, ((H - QR_SIZE) / 2.0) as f32, QR_SIZE as f32, 0.0],
+            tex: [tw as f32, th as f32, qp, qp],
+            background: [bg[0], bg[1], bg[2], 1.0],
+            canvas: [frame.pixels().0 as f32, frame.pixels().1 as f32, s, gfx::srgb_flag(format)],
+            left: self.side_matrix(0.0).invert().unwrap_or(draw2d::Matrix3([0.0; 9])).rows(),
+            right: self.side_matrix(W as f32).invert().unwrap_or(draw2d::Matrix3([0.0; 9])).rows(),
+            slab: self.slab(),
+            shadow: self.shadow(),
+            light: self.light(),
+        };
+        let gpu = self.gpu.as_ref().unwrap();
+        queue.write_buffer(&gpu.uniforms, 0, &u.bytes());
+        draw2d::render::fullscreen_pass(encoder, "threads holo ticket", target, &gpu.compose, &gpu.bind);
+        moving
+    }
+}
+
+fn uniform_buffer(device: &wgpu::Device, label: &str, size: usize) -> wgpu::Buffer {
+    device.create_buffer(&wgpu::BufferDescriptor { label: Some(label), size: size as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false })
+}
+
+fn build(device: &wgpu::Device, queue: &wgpu::Queue, format: wgpu::TextureFormat, generation: u32, layout: Layout) -> Gpu {
+    let s = layout.s;
+    let (tw, th) = layout.ticket_pixels();
+    let sampler = draw2d::render::linear_sampler(device);
+
+    // The holographic canvas layer.
+    let card_view = draw2d::render::sampled_target(device, "threads holo ticket card", LAYER_FORMAT, tw, th);
+    let (profile, texture_radius) = circle_blur_profile(MASK_BLUR * s, MASK_RADIUS as f32 * s);
+    let profile_texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("threads holo ticket blur profile"),
+        size: wgpu::Extent3d { width: PROFILE as u32, height: 1, depth_or_array_layers: 1 },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::R8Unorm,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    });
+    queue.write_texture(
+        wgpu::TexelCopyTextureInfo { texture: &profile_texture, mip_level: 0, origin: wgpu::Origin3d::ZERO, aspect: wgpu::TextureAspect::All },
+        &profile,
+        wgpu::TexelCopyBufferLayout { offset: 0, bytes_per_row: Some(PROFILE as u32), rows_per_image: Some(1) },
+        wgpu::Extent3d { width: PROFILE as u32, height: 1, depth_or_array_layers: 1 },
+    );
+    let profile_view = profile_texture.create_view(&Default::default());
+    let notch_n = conic_chords(DOT_SIZE * s);
+    let logo = (W / LOGOS as f64) as f32;
+    let grid_n = conic_chords(logo / 2.0 * s);
+    let base = srgb_to_p3(CARD_COLOR);
+    let mut stops = [[0.0; 4]; 7];
+    for (k, c) in GRADIENT.iter().enumerate() {
+        let v = srgb_to_p3(*c);
+        stops[k] = [v[0], v[1], v[2], 1.0];
+    }
+    let mut positions = [[0.0; 4]; 2];
+    for (k, p) in POSITIONS.iter().enumerate() {
+        positions[k / 4][k % 4] = *p;
+    }
+    // Grid rows down the card.
+    let rows = (H / (W / LOGOS as f64) + 0.5).floor() + 1.0;
+    let card = card_shader::Card {
+        canvas: [tw as f32, th as f32, s, 0.0],
+        base: [base[0], base[1], base[2], CARD_RADIUS * s],
+        mask: [0.0, 0.0, 1.0 / texture_radius, 0.0],
+        gradient: [0.0; 4],
+        stops,
+        positions,
+        notch: [(W / 2.0) as f32 * s, 0.0, H as f32 * s, DOT_SIZE * s],
+        grid: [logo * s, logo / 2.0 * s, LOGOS as f32, rows as f32],
+        counts: [notch_n as f32, grid_n as f32, 0.0, 0.0],
+        notch_chain: pack_chain(&conic_chain(notch_n)),
+        grid_chain: pack_chain(&conic_chain(grid_n)),
+    };
+    let card_module = device.create_shader_module(card_shader::module());
+    let card_layout = device.create_bind_group_layout(&card_shader::GROUP_0);
+    let card_pipeline = draw2d::render::fullscreen_pipeline(device, &card_module, &card_layout, card_shader::entry::CARD, LAYER_FORMAT, None);
+    let card_uniforms = uniform_buffer(device, "threads holo ticket card", card_shader::Card::SIZE);
+    let card_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("threads holo ticket card"),
+        layout: &card_layout,
+        entries: &[
+            wgpu::BindGroupEntry { binding: card_shader::U.binding, resource: card_uniforms.as_entire_binding() },
+            wgpu::BindGroupEntry { binding: card_shader::PROFILE.binding, resource: wgpu::BindingResource::TextureView(&profile_view) },
+            wgpu::BindGroupEntry { binding: card_shader::SMP.binding, resource: wgpu::BindingResource::Sampler(&sampler) },
+        ],
+    });
+
+    // The front's layer.
+    let front_view = draw2d::render::sampled_target(device, "threads holo ticket front", LAYER_FORMAT, tw, th);
+
+    // The QR canvas.
+    let qp = layout.qr_pixels();
+    let qr_view = draw2d::render::sampled_target(device, "threads holo ticket qr", LAYER_FORMAT, qp, qp);
+    let cell = (QR_SIZE / QR_ROWS.len() as f64) as f32;
+    let qn = quad_chords(cell / 2.0 * s);
+    let mut qstops = [[0.0; 4]; 3];
+    for (k, c) in QR_GRADIENT.iter().enumerate() {
+        let v = srgb_to_p3(*c);
+        qstops[k] = [v[0], v[1], v[2], 1.0];
+    }
+    let qr_u = qr_shader::Qr {
+        canvas: [qp as f32, qp as f32, s, cell],
+        counts: [QR_ROWS.len() as f32, qn as f32, 0.0, 0.0],
+        gradient: [QR_SIZE as f32, QR_SIZE as f32, 0.0, 0.0],
+        stops: qstops,
+        rows: qr_rows(),
+        chain: pack_chain(&quad_chain(qn)),
+    };
+    let qr_module = device.create_shader_module(qr_shader::module());
+    let qr_layout = device.create_bind_group_layout(&qr_shader::GROUP_0);
+    let qr_pipeline = draw2d::render::fullscreen_pipeline(device, &qr_module, &qr_layout, qr_shader::entry::QR, LAYER_FORMAT, None);
+    let qr_uniforms = uniform_buffer(device, "threads holo ticket qr", qr_shader::Qr::SIZE);
+    queue.write_buffer(&qr_uniforms, 0, &qr_u.bytes());
+    let qr_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("threads holo ticket qr"),
+        layout: &qr_layout,
+        entries: &[wgpu::BindGroupEntry { binding: qr_shader::U.binding, resource: qr_uniforms.as_entire_binding() }],
+    });
+
+    // The compose.
+    let shader = device.create_shader_module(module());
+    let group = device.create_bind_group_layout(&GROUP_0);
+    let compose = draw2d::render::fullscreen_pipeline(device, &shader, &group, entry::COMPOSE, format, None);
+    let uniforms = uniform_buffer(device, "threads holo ticket", Compose::SIZE);
+    let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("threads holo ticket"),
+        layout: &group,
+        entries: &[
+            wgpu::BindGroupEntry { binding: U.binding, resource: uniforms.as_entire_binding() },
+            wgpu::BindGroupEntry { binding: CARD.binding, resource: wgpu::BindingResource::TextureView(&card_view) },
+            wgpu::BindGroupEntry { binding: FRONT.binding, resource: wgpu::BindingResource::TextureView(&front_view) },
+            wgpu::BindGroupEntry { binding: QR.binding, resource: wgpu::BindingResource::TextureView(&qr_view) },
+            wgpu::BindGroupEntry { binding: SMP.binding, resource: wgpu::BindingResource::Sampler(&sampler) },
+        ],
+    });
+    Gpu {
+        format,
+        generation,
+        layout,
+        card_pipeline,
+        card_uniforms,
+        card_bind,
+        card_view,
+        card,
+        front_view,
+        qr_pipeline,
+        qr_bind,
+        qr_view,
+        statics_drawn: false,
+        compose,
+        uniforms,
+        bind,
+    }
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    use super::*;
+    use exact_gpu::{fixture, PointerKind, PointerPhase};
+
+    #[test]
+    fn layout_is_yogas() {
+        // 420 x 912 at 3x.
+        let l = Layout::new(420.0, 912.0, 3.0);
+        assert_eq!((l.x0, l.y0), (60.0, 256.0));
+        assert_eq!(l.ticket_pixels(), (900, 1200));
+        assert_eq!(l.qr_pixels(), 450);
+        let Some(front) = Front::new(3.0) else { return eprintln!("no system font; skipped") };
+        // Every box is on the 1/3 pt grid.
+        for &(_, _, x, y) in &front.texts {
+            assert!(((x * 3.0) - (x * 3.0).round()).abs() < 1e-6 && ((y * 3.0) - (y * 3.0).round()).abs() < 1e-6, "{x} {y}");
+        }
+        assert_eq!(front.texts[0].3, 42.0);
+        assert_eq!(front.border[3], 1.0 / 3.0);
+        // The sections fit above the footer: the spacer is not negative.
+        let last_value = front.texts[5].3 + ceil_px(gfx::line_height(&front.fonts[1]) as f64, 3.0);
+        assert!(last_value + SECTION_GAP <= front.border[1], "{last_value} {}", front.border[1]);
+        // `00001992` ends at the content box's right edge (272), within a device pixel.
+        let n = &front.texts[7];
+        let w = front.fonts[3].advance_width_spaced("00001992", NUMBER.spacing) as f64;
+        assert!(n.2 + w <= 272.0 + 1e-6 && n.2 + w > 272.0 - 1.0 / 3.0, "{} {w}", n.2);
+    }
+
+    #[test]
+    fn letter_spacing_is_core_texts() {
+        // Every glyph moves by the spacing after it, the last one included.
+        let Some(font) = draw2d::match_ui_font(13.0, 400.0) else { return eprintln!("no system font; skipped") };
+        let plain = font.advance_width("DATE");
+        assert!((font.advance_width_spaced("DATE", 0.5) - (plain + 2.0)).abs() < 1e-4);
+    }
+
+    #[test]
+    fn the_attitude_is_cmattitudes() {
+        // Flat, face up: identity.
+        assert_eq!(pitch_roll([0.0, 0.0, 0.0, 1.0]), (0.0, 0.0));
+        // The top edge raised by 30° (about the device's x): pitch 30°.
+        let h = 15f64.to_radians();
+        let (p, r) = pitch_roll([h.sin(), 0.0, 0.0, h.cos()]);
+        assert!((p - 30f64.to_radians()).abs() < 1e-12 && r.abs() < 1e-12);
+        // Turned 20° about y: roll 20°.
+        let h = 10f64.to_radians();
+        let (p, r) = pitch_roll([0.0, h.sin(), 0.0, h.cos()]);
+        assert!(p.abs() < 1e-12 && (r - 20f64.to_radians()).abs() < 1e-12);
+    }
+
+    #[test]
+    fn holo_values_follow_rn() {
+        let h = holo(0.0, 0.0, 0.0);
+        assert_eq!((h.opacity, h.center, h.start, h.end), (0.0, (150.0, 200.0), (52.5, 70.0), (247.5, 330.0)));
+        let h = holo(-90.0, std::f64::consts::FRAC_PI_4, -1.0);
+        assert_eq!(h.opacity, 0.5);
+        // -90 wraps to 270: sin = -1, so 300, plus 100 for the pitch.
+        assert!((h.center.0 - 400.0).abs() < 1e-9 && (h.center.1 - (200.0 - 400.0 / 3.0)).abs() < 1e-9, "{:?}", h.center);
+        assert_eq!(holo(45.0, 0.0, 0.0).opacity, 0.25);
+    }
+
+    #[test]
+    fn tessellation_and_profile_are_graphites() {
+        // Chords per quarter: a notch, a grid circle, a QR corner.
+        assert_eq!(conic_chords(75.0), 16);
+        assert_eq!(conic_chords(18.0), 8);
+        assert_eq!(quad_chords(225.0 / 33.0), 16);
+        let c = conic_chain(8);
+        assert_eq!((c[0], c[8]), ([1.0, 0.0], [0.0, 1.0]));
+        assert!(c.iter().all(|p| ((p[0] * p[0] + p[1] * p[1]).sqrt() - 1.0).abs() < 1e-5));
+        // σ 600 clamps to 532, then bins to 530.625.
+        let (p, radius) = circle_blur_profile(600.0, 480.0);
+        assert_eq!(radius, 480.0 + 3.0 * 530.625);
+        // A disc blurred wider than itself: 1 - exp(-r^2 / 2σ^2) at the centre, falling outward.
+        let centre = 255.0 * (1.0 - (-(480.0f64 * 480.0) / (2.0 * 530.625 * 530.625)).exp());
+        assert!((p[0] as f64 - centre).abs() <= 1.0, "{} {centre}", p[0]);
+        assert!(p.windows(2).all(|w| w[1] <= w[0]));
+        assert_eq!(p[PROFILE - 1], 0);
+    }
+
+    #[test]
+    fn the_ticket_draws_turns_and_flips() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
+        exact_gpu::shaders::load_dir(&dir, &crate::REGISTRY).unwrap();
+        let gpu = match fixture::device() {
+            Ok(gpu) => gpu,
+            Err(error) => return eprintln!("{error}; skipped"),
+        };
+        let frame = |now_ms| Frame { width: 420.0, height: 912.0, scale: 3.0, now_ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: exact_gpu::shaders::shader_generation(), headroom: 1.0 };
+        let px = |img: &fixture::Pixels, x: f32, y: f32| {
+            let p = img.at((x * 3.0) as u32, (y * 3.0) as u32);
+            [p[0] as i32, p[1] as i32, p[2] as i32]
+        };
+        let near = |a: [i32; 3], b: [i32; 3], tol: i32| (0..3).all(|k| (a[k] - b[k]).abs() <= tol);
+        let mut s = surface();
+        let (rest, moving) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
+        rest.save("threads-holo-ticket-rest");
+        assert!(!moving);
+        // The background in sRGB.
+        let bg = px(&rest, 10.0, 10.0);
+        assert_eq!(bg, [9, 0, 25]);
+        // Seashell inside the ticket; the notches are background.
+        assert!(near(px(&rest, 330.0, 450.0), [255, 245, 238], 1), "{:?}", px(&rest, 330.0, 450.0));
+        assert_eq!(px(&rest, 210.0, 260.0), bg);
+        // The bottom notch shows the glow pooled under the ticket, not the ticket.
+        let notch = px(&rest, 210.0, 652.0);
+        assert!(notch[0] < 80 && notch[2] > notch[0], "{notch:?}");
+        assert!(near(px(&rest, 236.0, 260.0), [255, 245, 238], 1));
+        // Beside the ticket: the background, the glow under it just reaching (a level or two).
+        assert!(near(px(&rest, 58.0, 450.0), bg, 3), "{:?}", px(&rest, 58.0, 450.0));
+        // A value's glyphs are dark.
+        let mut dark = 0;
+        for k in 0..240 {
+            let p = px(&rest, 88.0 + k as f32 * 0.5, 256.0 + 76.0);
+            if p[0] < 120 {
+                dark += 1;
+            }
+        }
+        assert!(dark > 10, "{dark}");
+
+        // A pan to the right: the ticket turns about y; the holographic grid shows.
+        let pointer = |phase, x: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 450.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
+        s.input(&pointer(PointerPhase::Down, 150.0, 16.0));
+        s.input(&pointer(PointerPhase::Move, 156.0, 32.0));
+        s.input(&pointer(PointerPhase::Move, 162.0, 48.0));
+        // The pan activates at 12 pt; 45 pt more is 45 degrees.
+        s.input(&pointer(PointerPhase::Move, 207.0, 64.0));
+        let reply = s.agent("").unwrap();
+        assert!(reply.starts_with("{\"translateX\":45.000,\"rotateY\":45.000,\"front\":true,\"maskOpacity\":0.2500"), "{reply}");
+        let (turned, _) = fixture::render(&gpu, s.as_mut(), &frame(80.0)).unwrap();
+        turned.save("threads-holo-ticket-turned");
+        // Tilt the phone: the shine moves.
+        let tilt = |s: &mut Box<dyn Surface>, pitch: f64| {
+            let h = pitch / 2.0;
+            s.input(&InputEvent::Sensor { sensor: SensorKind::RelativeOrientation, values: [h.sin() as f32, 0.0, 0.0, h.cos() as f32], dropped: 0, at_ms: 90.0 });
+        };
+        tilt(&mut s, -0.6);
+        let (left, _) = fixture::render(&gpu, s.as_mut(), &frame(96.0)).unwrap();
+        left.save("threads-holo-ticket-tilt-a");
+        tilt(&mut s, 0.6);
+        let (right, _) = fixture::render(&gpu, s.as_mut(), &frame(112.0)).unwrap();
+        right.save("threads-holo-ticket-tilt-b");
+        let reply = s.agent("").unwrap();
+        assert!(reply.contains("\"pitch\":0.6000"), "{reply}");
+        let mut changed = 0;
+        for k in 0..40 {
+            let (x, y) = (130.0 + 4.0 * k as f32, 400.0 + 3.0 * k as f32);
+            if px(&left, x, y) != px(&right, x, y) {
+                changed += 1;
+            }
+        }
+        assert!(changed > 10, "{changed}");
+        // The turned ticket is narrower than 300 on screen: its edges are background.
+        assert_eq!(px(&right, 64.0, 456.0), bg);
+
+        // The lift: the fling starts from the last move's velocity.
+        s.input(&pointer(PointerPhase::Up, 207.0, 120.0));
+        let mut ms = 120.0;
+        let mut moving = true;
+        while moving && ms < 5000.0 {
+            ms += 16.0;
+            (_, moving) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+        }
+        let reply = s.agent("").unwrap();
+        assert!(reply.contains("\"moving\":false,\"held\":false"), "{reply}");
+        // The raw decay would stop at 326.433; it settles on the nearest face, 360.
+        assert!(reply.starts_with("{\"translateX\":360.000,"), "{reply}");
+        assert!(s.messages().is_empty(), "a drag and its throw play no haptic");
+
+        // A tap flips the ticket half a turn: the back's QR shows.
+        let tap = |s: &mut Box<dyn Surface>, at: f64| {
+            let p = |phase| InputEvent::Pointer { id: 2, phase, x: 210.0, y: 450.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: at, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
+            s.input(&p(PointerPhase::Down));
+            s.input(&InputEvent::Pointer { id: 2, phase: PointerPhase::Up, x: 211.0, y: 450.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: at + 80.0, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false });
+        };
+        // From a turn of 360, the flip lands on 540.
+        tap(&mut s, ms + 100.0);
+        assert_eq!(s.messages(), vec!["haptic:selection".to_string()]);
+        let mut t = ms + 200.0;
+        let mut moving = true;
+        while moving && t < ms + 3000.0 {
+            t += 16.0;
+            (_, moving) = fixture::render(&gpu, s.as_mut(), &frame(t)).unwrap();
+        }
+        let (back, _) = fixture::render(&gpu, s.as_mut(), &frame(t + 16.0)).unwrap();
+        back.save("threads-holo-ticket-back");
+        let reply = s.agent("").unwrap();
+        assert!(reply.starts_with("{\"translateX\":540.000,\"rotateY\":180.000,\"front\":false,\"maskOpacity\":0.0000"), "{reply}");
+        // A tap on the ticket's left half turns it the other way: back from 540 to 360.
+        let tap_at = |s: &mut Box<dyn Surface>, x: f32, at: f64| {
+            let p = |phase, x| InputEvent::Pointer { id: 3, phase, x, y: 450.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: at, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
+            s.input(&p(PointerPhase::Down, x));
+            s.input(&p(PointerPhase::Up, x + 1.0));
+        };
+        tap_at(&mut s, 100.0, t + 100.0);
+        let _ = s.messages();
+        let mut u = t + 200.0;
+        let mut turning = true;
+        while turning && u < t + 3000.0 {
+            u += 16.0;
+            (_, turning) = fixture::render(&gpu, s.as_mut(), &frame(u)).unwrap();
+        }
+        let reply = s.agent("").unwrap();
+        assert!(reply.starts_with("{\"translateX\":360.000,"), "{reply}");
+        // The QR reads unmirrored: its top-right eye is gold, the card around it seashell.
+        let eye = px(&back, 60.0 + 225.0 - 2.0, 256.0 + 125.0 + 2.0);
+        assert!(eye[0] > eye[2] + 40 && eye[0] < 240, "{eye:?}");
+        assert!(near(px(&back, 60.0 + 40.0, 256.0 + 60.0), [255, 245, 238], 1));
+        // A touch outside the ticket does nothing.
+        s.input(&InputEvent::Pointer { id: 3, phase: PointerPhase::Down, x: 30.0, y: 450.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: t + 100.0, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false });
+        assert!(s.agent("").unwrap().ends_with("\"held\":false}"));
+    }
+
+
+    #[test]
+    fn a_jittery_sensor_leaves_the_background_still() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
+        exact_gpu::shaders::load_dir(&dir, &crate::REGISTRY).unwrap();
+        let Ok(gpu) = fixture::device() else { return };
+        let frame = |now_ms| Frame { width: 402.0, height: 874.0, scale: 3.0, now_ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: exact_gpu::shaders::shader_generation(), headroom: 1.0 };
+        let mut s = surface();
+        // A tap flips to the back.
+        fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
+        let p = |phase, at_ms| InputEvent::Pointer { id: 1, phase, x: 201.0, y: 437.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
+        s.input(&p(PointerPhase::Down, 16.0));
+        s.input(&p(PointerPhase::Up, 80.0));
+        // A held phone: pitch 0.3 rad, roll 0.2 rad, with +-0.0005 rad of jitter.
+        let sensor = |s: &mut Box<dyn Surface>, k: usize, at: f64| {
+            let j = if k % 2 == 0 { 0.0005 } else { -0.0005 };
+            let (hp, hr) = ((0.3 + j) / 2.0, (0.2 - j) / 2.0);
+            let (sp, cp, sr, cr) = (f64::sin(hp), f64::cos(hp), f64::sin(hr), f64::cos(hr));
+            let q = [sp * cr, cp * sr, -sp * sr, cp * cr];
+            s.input(&InputEvent::Sensor { sensor: SensorKind::RelativeOrientation, values: q.map(|v| v as f32), dropped: 0, at_ms: at });
+        };
+        let mut ms = 100.0;
+        for k in 0..240 {
+            sensor(&mut s, k, ms);
+            fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+            ms += 16.0;
+        }
+        // Settled: frame after frame of jitter, every pixel stays put.
+        let mut last: Option<fixture::Pixels> = None;
+        for k in 0..30 {
+            sensor(&mut s, k, ms);
+            let (img, _) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+            if let Some(prev) = last.as_ref() {
+                assert!(prev.data == img.data, "frame {k} changed under the jitter");
+            }
+            if k == 0 {
+                img.save("holo-jitter");
+            }
+            last = Some(img);
+            ms += 16.0;
+        }
+        // Nothing stray below the ticket: the background there.
+        let img = last.unwrap();
+        let bg = img.at(3 * 200, 3 * 860);
+        for y in (720..870).step_by(4) {
+            for x in (40..380).step_by(4) {
+                let px = img.at(3 * x, 3 * y);
+                assert!((0..3).all(|c| (px[c] as i32 - bg[c] as i32).abs() <= 24), "({x}, {y}) {px:?} vs {bg:?}");
+            }
+        }
+    }
+}

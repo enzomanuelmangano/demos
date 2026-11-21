@@ -1,0 +1,9 @@
+at "/demo/liquid-glass-playground"
+
+test "the glass covers the photo and a pull lets it go back"
+  expect tree has "photo"
+  expect tree has "glass"
+  expect tree has "pull-handle"
+  tap "pull-handle" drag 0 200
+  clock settle
+  expect tree has "glass"

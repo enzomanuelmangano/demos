@@ -1,0 +1,4 @@
+at "/demo/mobile-input"
+
+test "the lock screen is there"
+  expect tree has "mobile-input"

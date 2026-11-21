@@ -1,0 +1,20 @@
+// Balance Slider: a coffee / milk split dragged left and right. Past a third or 72 %, the boxes
+// shrink and the labels rise. The row is a Rust surface (gpu/src/balance_slider.rs).
+use DemoEnv from "../env.contract"
+
+component BalanceSlider
+  props
+    env: DemoEnv
+  // Haptics: light on the grab, selection across the 33 % and 72 % limits, rigid at an end.
+  action heard(m: string)
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-rigid"
+      haptic("impact-rigid")
+  view
+    column position="absolute" inset=0 background-color="#000000" align-items="center"
+      justify-content="center" testId="balance-slider"
+      canvas surface=balance_slider() message=heard width=(env.width * 0.9) height=50 flex-shrink=0
+        touch-action="none" testId="balance-canvas" aria-label="Coffee and milk balance"

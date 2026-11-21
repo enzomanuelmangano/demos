@@ -1,0 +1,13 @@
+at "/demo/wheel-picker"
+
+test "the count, the slider and the button are there"
+  expect tree has "wheel-picker"
+  expect tree has "wheel-picker-count"
+  expect tree has "wheel-picker-slider"
+  expect tree has "wheel-picker-toggle"
+
+test "toggling the spacing keeps the demo"
+  tap "wheel-picker-toggle"
+  expect tree has "wheel-picker-count"
+  tap "wheel-picker-toggle"
+  expect tree has "wheel-picker-slider"

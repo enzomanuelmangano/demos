@@ -1,0 +1,12 @@
+// Fluid Slider: a blue bar whose round picker, dragged, rises out of it like a drop of liquid
+// and shows the value 0–100. One canvas draws, drags and springs the picker.
+use DemoEnv from "../env.contract"
+
+component FluidSlider
+  props
+    env: DemoEnv
+  view
+    column position="absolute" inset=0 background-color="color(display-p3 0.9725 0.9765 0.9804)" align-items="center"
+      justify-content="center" testId="fluid-slider"
+      canvas surface=fluid_slider() width=env.width height=100 touch-action="none"
+        testId="fluid-slider-canvas" aria-label="Slider"

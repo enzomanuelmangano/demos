@@ -1,0 +1,475 @@
+//! Clock Time Picker: a 100-point analog clock beside a scrolling list of times, 1:00 pm to
+//! 10:30 pm every 30 minutes. The hands follow the list's scroll offset.
+//!
+//! - The clock is drawn in Skia: a face, twelve ticks, two hands with soft shadows and a centre
+//!   dot.
+//! - Times come from the list's offset. The hands use UTC, so they do not depend on the device's
+//!   time zone.
+//! - Scrolling is vertical: the list follows the finger, rubber-bands past the ends and decelerates
+//!   to rest on the nearest time, as UIKit's scroll view does. A touch that never drags snaps
+//!   nothing.
+//! - Haptics: a selection each time the scroll centres another time, paced at HAPTIC_GAP_MS, with
+//!   hysteresis at the half-row line so a finger holding there does not flap. A rigid impact when
+//!   the list is pulled or bounces past an end, once per excursion. Nothing at rest.
+
+use exact_gpu::wgpu;
+use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
+use motion::{interpolate, Extrapolation};
+use draw2d::blur::{round_out, GraphiteBlur, GraphitePlan, IRect, Placed, GRAPHITE_FORMAT};
+use draw2d::{point, stops, Canvas, Color, Font, Paint, PathEvent, Renderer, Shader};
+
+use crate::ui_scroll::{Snap, UiScroll, FAST};
+use crate::{gfx, shaders};
+use shaders::clock_time_picker::{entry, module, Uniforms, B0, B1, B2, BASE, DOT, GROUP_0, HOUR, MINUTE, SMP, U};
+
+/// Clock diameter, pt.
+const CLOCK: f32 = 100.0;
+const CLOCK_Y: f32 = 10.0;
+const LIST_X: f32 = 132.0;
+const LIST_W: f32 = 100.0;
+const LIST_H: f32 = 120.0;
+const ITEM: f64 = 30.0;
+const ITEMS: usize = 20;
+/// 2025-01-01 13:00 UTC in milliseconds: the first time.
+const FIRST_MS: f64 = 1_735_736_400_000.0;
+const HALF_HOUR_MS: f64 = 1_800_000.0;
+/// Hand shadow sigma, pt.
+const SHADOW_SIGMA: f32 = 10.0;
+/// The shortest gap between two haptics, ms.
+const HAPTIC_GAP_MS: f64 = 40.0;
+/// How far past the half-row line the scroll goes before another time counts as centred, pt.
+const SWITCH: f64 = 4.0;
+/// How far past an end the scroll is before its limit haptic plays, pt.
+const PAST_END: f64 = 2.0;
+static HONK: &[u8] = include_bytes!("../fonts/honk-regular-times-subset.otf");
+
+/// The demo's surface (the canvas is 232 × 120).
+pub fn surface() -> Box<dyn Surface> {
+    Box::new(picker())
+}
+
+/// The picker at its starting offset.
+fn picker() -> ClockTimePicker {
+    let labels = std::array::from_fn(|i| {
+        let h = 13 + i / 2;
+        format!("{}:{} pm", h - 12, if i % 2 == 0 { "00" } else { "30" })
+    });
+    let plan = || GraphitePlan::new([0, 0, 1, 1], [0, 0, 1, 1], 1.0).unwrap();
+    ClockTimePicker {
+        // The list's offset: a UiScroll driven by the finger's y.
+        scroll: UiScroll::new(0.0, max_offset(), LIST_H as f64, FAST, Snap::Interval(ITEM)),
+        labels,
+        font: Font::new(HONK, 20.0).map(Font::with_ui_layout),
+        gradients: None,
+        list_clip: draw2d::rect_path(LIST_X, 0.0, LIST_W, LIST_H),
+        canvases: Default::default(),
+        renderers: Default::default(),
+        blurs: Default::default(),
+        plans: [plan(), plan(), plan()],
+        centred: 0,
+        past_end: false,
+        haptic_at: f64::NEG_INFINITY,
+        posted: Vec::new(),
+        gpu: None,
+    }
+}
+
+struct ClockTimePicker {
+    /// The list's scroll state.
+    scroll: UiScroll,
+    labels: [String; ITEMS],
+    font: Option<Font>,
+    /// The two gradient overlays' paints.
+    gradients: Option<(Paint, Paint)>,
+    /// The list's bounds, its clip.
+    list_clip: draw2d::Path,
+    /// base (face, ticks, list), hour, minute, dot.
+    canvases: [Canvas; 4],
+    renderers: [Renderer; 4],
+    blurs: [GraphiteBlur; 3],
+    plans: [GraphitePlan; 3],
+    /// The item centred when last felt.
+    centred: usize,
+    /// Pulled or bounced past an end (its limit haptic played).
+    past_end: bool,
+    haptic_at: f64,
+    posted: Vec<String>,
+    gpu: Option<Gpu>,
+}
+
+struct Gpu {
+    format: wgpu::TextureFormat,
+    generation: u32,
+    pixels: (u32, u32),
+    compose: wgpu::RenderPipeline,
+    layout: wgpu::BindGroupLayout,
+    sampler: wgpu::Sampler,
+    uniforms: wgpu::Buffer,
+    empty: wgpu::TextureView,
+    layers: [wgpu::TextureView; 4],
+    bind: Option<([wgpu::TextureView; 3], wgpu::BindGroup)>,
+}
+
+/// Strokes one segment, as path events (no allocation).
+fn line(c: &mut Canvas, x0: f32, y0: f32, x1: f32, y1: f32, paint: &Paint) {
+    let (a, b) = (point(x0, y0), point(x1, y1));
+    c.draw_path_events([PathEvent::Begin { at: a }, PathEvent::Line { from: a, to: b }, PathEvent::End { last: b, first: a, close: false }], paint);
+}
+
+/// The furthest offset: the padded content less the viewport.
+fn max_offset() -> f64 {
+    ITEMS as f64 * ITEM + 2.0 * (LIST_H as f64 / 2.0 - ITEM / 2.0) - LIST_H as f64
+}
+
+/// The wall time the clock shows at a scroll offset (interpolate, extended).
+fn date_at(offset: f64) -> f64 {
+    let input: [f64; ITEMS] = std::array::from_fn(|i| i as f64 * ITEM);
+    let output: [f64; ITEMS] = std::array::from_fn(|i| FIRST_MS + i as f64 * HALF_HOUR_MS);
+    interpolate(offset, &input, &output, Extrapolation::Extend)
+}
+
+/// The hands' angles (hour, minute), radians clockwise from 12.
+fn angles(ms: f64) -> (f64, f64) {
+    let hours = ms / 1000.0 / 60.0 / 60.0;
+    let minutes = ms / 1000.0 / 60.0;
+    ((hours * (std::f64::consts::PI * 2.0)) / 12.0, (minutes * (std::f64::consts::PI * 2.0)) / 60.0)
+}
+
+impl ClockTimePicker {
+    /// Records the four canvases at this offset.
+    fn record(&mut self, s: f32) -> [(f32, f32, f32, f32, f32); 3] {
+        let (hour_a, minute_a) = angles(date_at(self.scroll.offset));
+        let c = CLOCK / 2.0;
+        let (ox, oy) = (0.0, CLOCK_Y);
+        let hand = |a: f64, len: f32| (ox + c + len * (a.sin() as f32), oy + c - len * (a.cos() as f32));
+        let hour_end = hand(hour_a, CLOCK * 0.15);
+        let minute_end = hand(minute_a, CLOCK * 0.32);
+        let [base, hour, minute, dot] = &mut self.canvases;
+        base.begin(s);
+        base.draw_circle(ox + c, oy + c, c, &Paint::fill(Color::hex(0x1E1E1E)));
+        base.save();
+        base.translate(ox + c, oy + c);
+        base.scale(0.9, 0.9);
+        base.translate(-c, -c);
+        let tick = CLOCK * 0.08;
+        for i in 0..12 {
+            let a = (i as f64 * (std::f64::consts::PI * 2.0)) / 12.0;
+            let (sx, sy) = (c + (c - tick) * a.sin() as f32, c - (c - tick) * a.cos() as f32);
+            let (ex, ey) = (c + c * a.sin() as f32, c - c * a.cos() as f32);
+            line(base, sx, sy, ex, ey, &Paint::stroke(Color::hex(0xBFBFBF), 1.0));
+        }
+        base.restore();
+        // The list, clipped to its bounds and under the two fades.
+        base.save();
+        base.clip_path(&self.list_clip);
+        if let Some(font) = self.font.as_ref() {
+            let lh = gfx::line_height(font);
+            let top0 = (LIST_H as f64 / 2.0 - ITEM / 2.0) - self.scroll.offset;
+            for (i, label) in self.labels.iter().enumerate() {
+                let top = top0 + i as f64 * ITEM;
+                if top + ITEM < 0.0 || top > LIST_H as f64 {
+                    continue;
+                }
+                let w = font.advance_width(label);
+                let y = gfx::baseline(font, top as f32 + (ITEM as f32 - lh) / 2.0);
+                base.draw_text(label, LIST_X + (LIST_W - w) / 2.0, y, font, &Paint::fill(Color::view_hex(0xD8D8D8)));
+            }
+        }
+        if let Some((a, b)) = self.gradients.as_ref() {
+            base.draw_rect(LIST_X, 0.0, LIST_W, LIST_H, a);
+            base.draw_rect(LIST_X, 0.0, LIST_W, LIST_H, b);
+        }
+        base.restore();
+        let round = |p: Paint| p.caps(draw2d::Cap::Round, draw2d::Join::Round);
+        hour.begin(s);
+        line(hour, ox + c, oy + c, hour_end.0, hour_end.1, &round(Paint::stroke(Color::hex(0xE6E6E6), 3.0)));
+        minute.begin(s);
+        line(minute, ox + c, oy + c, minute_end.0, minute_end.1, &round(Paint::stroke(Color::hex(0xD2D2D2), 2.0)));
+        dot.begin(s);
+        dot.draw_circle(ox + c, oy + c, 3.0, &Paint::fill(Color::WHITE));
+        // Each shape's fast bounds (a round-capped stroke outsets by half its width).
+        [
+            (ox + c, oy + c, hour_end.0, hour_end.1, 1.5),
+            (ox + c, oy + c, minute_end.0, minute_end.1, 1.0),
+            (ox + c - 3.0, oy + c - 3.0, ox + c + 3.0, oy + c + 3.0, 0.0),
+        ]
+    }
+}
+
+impl ClockTimePicker {
+    /// Posts `kind` unless another haptic played under HAPTIC_GAP_MS ago.
+    fn haptic(&mut self, kind: &str, at_ms: f64) -> bool {
+        if at_ms - self.haptic_at < HAPTIC_GAP_MS {
+            return false;
+        }
+        self.posted.push(format!("haptic:{kind}"));
+        self.haptic_at = at_ms;
+        true
+    }
+
+    /// The list's haptics, felt where the scroll is now.
+    fn feel(&mut self, at_ms: f64) {
+        let offset = self.scroll.offset;
+        let past = offset < -PAST_END || offset > self.scroll.max + PAST_END;
+        if past && !self.past_end {
+            self.haptic("impact-rigid", at_ms);
+        }
+        if past {
+            self.past_end = true;
+        } else if (0.0..=self.scroll.max).contains(&offset) {
+            self.past_end = false;
+        }
+        let f = offset / ITEM;
+        let held = (f - self.centred as f64).abs() < 0.5 + SWITCH / ITEM;
+        let centred = f.round().clamp(0.0, (ITEMS - 1) as f64) as usize;
+        if centred != self.centred && !held {
+            self.centred = centred;
+            self.haptic("selection", at_ms);
+        }
+    }
+}
+
+impl Surface for ClockTimePicker {
+    fn bind(&mut self, _: &[Value], _: Option<f64>) -> Result<(), SurfaceError> {
+        Ok(())
+    }
+
+    fn wants_input(&self) -> bool {
+        true
+    }
+
+    fn messages(&mut self) -> Vec<String> {
+        crate::haptic::host(std::mem::take(&mut self.posted))
+    }
+
+    fn agent(&mut self, _request: &str) -> Option<String> {
+        let ms = date_at(self.scroll.offset);
+        let wall = (ms - FIRST_MS) / 60000.0 + 13.0 * 60.0;
+        Some(format!("{{\"offset\":{:.2},\"minutes\":{:.1},\"settled\":{}}}", self.scroll.offset, wall, !self.scroll.moving()))
+    }
+
+    fn input(&mut self, event: &InputEvent) {
+        let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
+        let on_list = (LIST_X..=LIST_X + LIST_W).contains(&x) && (0.0..=LIST_H).contains(&y);
+        // A vertical scroll view: its axis is the finger's y.
+        self.scroll.input(id, gfx::phase(phase), y, x, at_ms, on_list);
+        self.feel(at_ms);
+    }
+
+    fn render(
+        &mut self,
+        frame: &Frame,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        encoder: &mut wgpu::CommandEncoder,
+        target: &wgpu::TextureView,
+        format: wgpu::TextureFormat,
+    ) -> bool {
+        let (pw, ph) = frame.pixels();
+        let s = frame.scale;
+        let moving = self.scroll.step(frame.now_ms);
+        self.feel(frame.now_ms);
+        if self.gradients.is_none() {
+            let dark = Color::hex(0x111111);
+            let clear = Color::rgba8(0x11, 0x11, 0x11, 0);
+            // Top fade over the upper half, bottom fade over the lower half.
+            let top = Shader::Linear { start: point(0.0, 0.0), end: point(0.0, LIST_H / 2.0), stops: stops(&[dark, clear]) };
+            let bottom = Shader::Linear { start: point(0.0, LIST_H / 2.0), end: point(0.0, LIST_H), stops: stops(&[clear, dark]) };
+            self.gradients = Some((Paint::shader(top), Paint::shader(bottom)));
+        }
+        if self.gpu.as_ref().map(|g| (g.format, g.generation, g.pixels)) != Some((format, frame.shader_generation, (pw, ph))) {
+            self.gpu = Some(build(device, format, frame.shader_generation, (pw, ph)));
+        }
+        let bounds = self.record(s);
+        let gpu = self.gpu.as_mut().unwrap();
+        for i in 0..4 {
+            self.renderers[i].draw(device, queue, encoder, &self.canvases[i], &gpu.layers[i], GRAPHITE_FORMAT, pw, ph, wgpu::Color::TRANSPARENT);
+        }
+        let clip: IRect = round_out([0.0, CLOCK_Y * s, CLOCK * s, (CLOCK_Y + CLOCK) * s]);
+        let mut u = Uniforms { canvas: [pw as f32, ph as f32, s, gfx::srgb_flag(format)], low0: [0.0; 4], out0: [0.0; 4], low1: [0.0; 4], out1: [0.0; 4], low2: [0.0; 4], out2: [0.0; 4] };
+        let mut views = [gpu.empty.clone(), gpu.empty.clone(), gpu.empty.clone()];
+        for (k, (x0, y0, x1, y1, o)) in bounds.into_iter().enumerate() {
+            let layer = round_out([(x0.min(x1) - o) * s, (y0.min(y1) - o) * s, (x0.max(x1) + o) * s, (y0.max(y1) + o) * s]);
+            if !self.plans[k].update(layer, clip, SHADOW_SIGMA * s) {
+                continue;
+            }
+            let out = self.blurs[k].run(device, queue, encoder, Placed { view: &gpu.layers[k + 1], origin: [0, 0], size: [pw, ph] }, &self.plans[k]);
+            let low = low_mapping(&self.plans[k], out.origin, out.size);
+            let output = self.plans[k].output.map(|v| v as f32);
+            match k {
+                0 => (u.low0, u.out0) = (low, output),
+                1 => (u.low1, u.out1) = (low, output),
+                _ => (u.low2, u.out2) = (low, output),
+            }
+            views[k] = out.view.clone();
+        }
+        queue.write_buffer(&gpu.uniforms, 0, &u.bytes());
+        if gpu.bind.as_ref().is_none_or(|(v, _)| *v != views) {
+            let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("clock time picker"),
+                layout: &gpu.layout,
+                entries: &[
+                    wgpu::BindGroupEntry { binding: U.binding, resource: gpu.uniforms.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: BASE.binding, resource: wgpu::BindingResource::TextureView(&gpu.layers[0]) },
+                    wgpu::BindGroupEntry { binding: HOUR.binding, resource: wgpu::BindingResource::TextureView(&gpu.layers[1]) },
+                    wgpu::BindGroupEntry { binding: MINUTE.binding, resource: wgpu::BindingResource::TextureView(&gpu.layers[2]) },
+                    wgpu::BindGroupEntry { binding: DOT.binding, resource: wgpu::BindingResource::TextureView(&gpu.layers[3]) },
+                    wgpu::BindGroupEntry { binding: B0.binding, resource: wgpu::BindingResource::TextureView(&views[0]) },
+                    wgpu::BindGroupEntry { binding: B1.binding, resource: wgpu::BindingResource::TextureView(&views[1]) },
+                    wgpu::BindGroupEntry { binding: B2.binding, resource: wgpu::BindingResource::TextureView(&views[2]) },
+                    wgpu::BindGroupEntry { binding: SMP.binding, resource: wgpu::BindingResource::Sampler(&gpu.sampler) },
+                ],
+            });
+            gpu.bind = Some((views, group));
+        }
+        draw2d::render::fullscreen_pass(encoder, "clock time picker", target, &gpu.compose, &gpu.bind.as_ref().unwrap().1);
+        moving || self.scroll.moving()
+    }
+}
+
+fn low_mapping(plan: &GraphitePlan, origin: [i32; 2], size: [u32; 2]) -> [f32; 4] {
+    let src = plan.src_rect.map(|v| v as f32);
+    let low = plan.low_bounds;
+    let kx = (low[2] - low[0]) / (src[2] - src[0]);
+    let ky = (low[3] - low[1]) / (src[3] - src[1]);
+    let (sw, sh) = (size[0] as f32, size[1] as f32);
+    [kx / sw, ky / sh, (low[0] - src[0] * kx - origin[0] as f32) / sw, (low[1] - src[1] * ky - origin[1] as f32) / sh]
+}
+
+fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32, pixels: (u32, u32)) -> Gpu {
+    let shader = device.create_shader_module(module());
+    let layout = device.create_bind_group_layout(&GROUP_0);
+    let target = |label| draw2d::render::sampled_target(device, label, GRAPHITE_FORMAT, pixels.0, pixels.1);
+    Gpu {
+        format,
+        generation,
+        pixels,
+        compose: draw2d::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None),
+        layout,
+        sampler: draw2d::render::linear_sampler(device),
+        uniforms: device.create_buffer(&wgpu::BufferDescriptor { label: Some("clock time picker"), size: Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false }),
+        empty: draw2d::render::sampled_target(device, "clock time picker empty", GRAPHITE_FORMAT, 1, 1),
+        layers: [target("clock base"), target("clock hour"), target("clock minute"), target("clock dot")],
+        bind: None,
+    }
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    use super::*;
+    use exact_gpu::{fixture, PointerKind, PointerPhase};
+
+    #[test]
+    fn haptics_per_time_at_an_end_and_on_landing() {
+        let finger = |s: &mut ClockTimePicker, phase, y: f32, at_ms| {
+            s.input(&InputEvent::Pointer { id: 1, phase, x: 180.0, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false })
+        };
+        let settle = |s: &mut ClockTimePicker, from: f64| {
+            let mut posted = Vec::new();
+            let mut ms = from;
+            while ms < from + 3000.0 {
+                ms += 16.0;
+                s.scroll.step(ms);
+                s.feel(ms);
+                posted.extend(s.messages());
+            }
+            posted
+        };
+        // A flick: a selection per time centred on the way, paced; nothing at rest.
+        let mut s = picker();
+        finger(&mut s, PointerPhase::Down, 100.0, 0.0);
+        for i in 1..=8 {
+            finger(&mut s, PointerPhase::Move, 100.0 - 8.0 * i as f32, 10.0 * i as f64);
+        }
+        finger(&mut s, PointerPhase::Up, 36.0, 80.0);
+        let mut posted = s.messages();
+        posted.extend(settle(&mut s, 80.0));
+        assert!(posted.len() >= 2 && posted.iter().all(|m| m == "haptic:selection"), "{posted:?}");
+        assert_eq!(s.centred, (s.scroll.offset / ITEM).round() as usize);
+
+        let mut s = picker();
+        finger(&mut s, PointerPhase::Down, 10.0, 0.0);
+        for i in 1..=40 {
+            finger(&mut s, PointerPhase::Move, 10.0 + 2.5 * i as f32, 16.0 * i as f64);
+        }
+        assert_eq!(s.messages(), vec!["haptic:impact-rigid"]);
+        finger(&mut s, PointerPhase::Up, 110.0, 16.0 * 41.0);
+        assert!(settle(&mut s, 16.0 * 41.0).is_empty());
+        assert_eq!(s.scroll.offset, 0.0);
+    }
+
+    #[test]
+    fn labels_and_times() {
+        let s = surface();
+        drop(s);
+        assert_eq!(max_offset(), 570.0);
+        let (h, m) = angles(date_at(0.0));
+        assert!(((h % std::f64::consts::TAU).to_degrees() - 30.0).abs() < 1e-6);
+        assert!(m.cos() > 1.0 - 1e-9, "{m}");
+        let (_, m) = angles(date_at(15.0));
+        assert!(((m % std::f64::consts::TAU).to_degrees() - 90.0).abs() < 1e-6);
+        // The snap points run to the content's end.
+        assert_eq!((ITEMS - 1) as f64 * ITEM, max_offset());
+    }
+
+    #[test]
+    fn a_flick_scrolls_settles_on_an_item_and_turns_the_hands() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
+        exact_gpu::shaders::load_dir(&dir, &crate::REGISTRY).unwrap();
+        let gpu = match fixture::device() {
+            Ok(gpu) => gpu,
+            Err(error) => return eprintln!("{error}; skipped"),
+        };
+        let frame = |now_ms| Frame { width: 232.0, height: 120.0, scale: 3.0, now_ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: exact_gpu::shaders::shader_generation(), headroom: 1.0 };
+        let mut s = surface();
+        let (rest, animating) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
+        rest.save("clock-time-picker-rest");
+        assert!(!animating);
+        let face = rest.at(3 * 20, 3 * 60);
+        assert_eq!(&face[..3], &[0x1E, 0x1E, 0x1E]);
+        let text = (3 * 132..3 * 232).filter(|&x| (3 * 52..3 * 68).any(|y| rest.at(x, y)[0] > 150)).count();
+        assert!(text > 20, "{text}");
+        let finger = |s: &mut Box<dyn Surface>, phase, y, at_ms| {
+            s.input(&InputEvent::Pointer { id: 1, phase, x: 180.0, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false })
+        };
+        finger(&mut s, PointerPhase::Down, 100.0, 0.0);
+        for i in 1..=8 {
+            finger(&mut s, PointerPhase::Move, 100.0 - 8.0 * i as f32, 10.0 * i as f64);
+        }
+        finger(&mut s, PointerPhase::Up, 36.0, 80.0);
+        let mut ms = 80.0;
+        while ms < 3000.0 {
+            ms += 16.0;
+            fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+        }
+        let (after, animating) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+        after.save("clock-time-picker-scrolled");
+        assert!(!animating);
+        let state = s.agent("{}").unwrap();
+        let offset: f64 = state.split("\"offset\":").nth(1).unwrap().split(',').next().unwrap().parse().unwrap();
+        assert!(offset > 54.0 && (offset / 30.0 - (offset / 30.0).round()).abs() < 1e-6, "{state}");
+        assert_ne!(rest.data, after.data);
+
+        // A tap that catches a flick without a drag leaves the list between items.
+        finger(&mut s, PointerPhase::Down, 100.0, ms);
+        for i in 1..=8 {
+            finger(&mut s, PointerPhase::Move, 100.0 - 8.0 * i as f32, ms + 10.0 * i as f64);
+        }
+        finger(&mut s, PointerPhase::Up, 36.0, ms + 80.0);
+        ms += 80.0;
+        for _ in 0..4 {
+            ms += 16.0;
+            fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+        }
+        finger(&mut s, PointerPhase::Down, 60.0, ms);
+        finger(&mut s, PointerPhase::Up, 60.0, ms + 50.0);
+        let caught = s.agent("{}").unwrap();
+        for _ in 0..60 {
+            ms += 16.0;
+            fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+        }
+        assert_eq!(s.agent("{}").unwrap(), caught);
+        let offset: f64 = caught.split("\"offset\":").nth(1).unwrap().split(',').next().unwrap().parse().unwrap();
+        assert!((offset / 30.0 - (offset / 30.0).round()).abs() > 0.01, "{caught}");
+    }
+}

@@ -1,0 +1,10 @@
+at "/demo/audio-player"
+
+test "the player is there"
+  expect tree has "audio-player"
+  expect tree has "audio-waveform"
+  expect text "audio-title" == "Run"
+  expect text "audio-artist" == "Hania Rani"
+  expect tree has "audio-play"
+  expect tree has "audio-back"
+  expect tree has "audio-ahead"

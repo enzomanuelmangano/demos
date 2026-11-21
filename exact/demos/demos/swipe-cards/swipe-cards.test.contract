@@ -1,0 +1,12 @@
+at "/demo/swipe-cards"
+
+test "the stack is one canvas; the buttons throw and reset through it"
+  expect tree has "swipe-cards"
+  expect tree has "swipe-cards-stack"
+  tap "swipe-right"
+  clock settle
+  tap "swipe-left"
+  clock settle
+  tap "reset"
+  clock settle
+  expect tree has "swipe-cards-stack"

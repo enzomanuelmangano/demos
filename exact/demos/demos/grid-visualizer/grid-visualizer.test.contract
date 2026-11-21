@@ -1,0 +1,4 @@
+at "/demo/grid-visualizer"
+
+test "the grid is one canvas"
+  expect tree has "grid-visualizer"

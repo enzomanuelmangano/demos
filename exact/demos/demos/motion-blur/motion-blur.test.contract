@@ -1,0 +1,12 @@
+at "/demo/motion-blur"
+
+test "the list is the motion-blur surface; the + adds cards to it"
+  expect tree has "motion-blur"
+  expect tree has "motion-blur-canvas"
+  tap "add"
+  tap "add"
+  tap "add"
+  tap "add"
+  clock settle
+  expect tree has "motion-blur-canvas"
+  expect tree has "add"

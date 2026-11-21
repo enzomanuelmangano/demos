@@ -1,0 +1,35 @@
+// Animated Clip Box: two cards whose corner circle floods the card while held (the text turns
+// white with it) and shrinks back on release. Each card's body is here. The circle is a Rust
+// surface (gpu/src/animated_clip_box.rs, one canvas per card) that follows the radius spring
+// every frame. The description shows only the lines that fit.
+use DemoEnv from "../env.contract"
+
+component AnimatedClipBox
+  props
+    env: DemoEnv
+  view
+    column position="absolute" inset=0 background-color="#ffffff" align-items="center" justify-content="center"
+      testId="animated-clip-box"
+      ClipBoxButton(boxWidth=env.width * 0.9, marginBottom=30, card=0, testId="explore",
+        label="Explore Demos. Perfect for learning how React Native Reanimated works, prototyping a new idea, or creating a demo to share online.")
+      ClipBoxButton(boxWidth=env.width * 0.9, marginBottom=0, card=1, testId="learn",
+        label="Learn More. What if I tell you that this text is animated with React Native Reanimated?")
+
+component ClipBoxButton
+  props
+    boxWidth: number
+    marginBottom: number
+    card: number
+    label: string
+    testId: string
+  inject
+    pressablesOnPress: action
+  // A press plays pressto's selection haptic.
+  action heard(m: string)
+    if m == "haptic:selection"
+      pressablesOnPress()
+  view
+    column width=boxWidth height=250 margin-bottom=marginBottom background-color="#ffffff"
+      box-shadow="0px 0px 20px rgba(0, 0, 0, 0.15)" position="relative" testId=testId
+      canvas surface=animated_clip_box(card) message=heard position="absolute" left=0 top=0
+        width=boxWidth height=250 touch-action="none" testId=`${testId}-canvas` aria-label=label

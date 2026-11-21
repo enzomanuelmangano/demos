@@ -1,0 +1,12 @@
+// Twodos slide: two squares fanned out over "Slide to Unlock". Dragging the label sideways turns
+// the squares and outlines the front one. The drag is a scroll view that only rubber-bands.
+
+component TwodosSlide
+  // Light haptic past the end, debounced.
+  action heard(m: string)
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+  view
+    canvas surface=twodos_slide() message=heard position="absolute" top=0 left=0 width="100%"
+      height="100%" touch-action="none" testId="twodos-slide"
+      aria-label="Slide to Unlock: drag the label sideways"

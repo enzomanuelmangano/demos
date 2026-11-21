@@ -1,0 +1,8 @@
+at "/demo/circular-carousel"
+
+test "the strip is a canvas and the scale switch flips"
+  expect tree has "circular-carousel"
+  expect tree has "circular-list"
+  tap "scale-switch"
+  clock settle
+  expect tree has "circular-list"

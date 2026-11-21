@@ -1,0 +1,26 @@
+// GitHub Onboarding: four cat photos on a paging list over a gradient that follows the scroll;
+// each page's badge turns as it leaves, and four dots page the list. One canvas draws it all.
+use DemoEnv from "../env.contract"
+
+component GithubOnboarding
+  props
+    env: DemoEnv
+  view
+    OnboardingCanvas(width=env.width, height=env.height)
+
+component OnboardingCanvas
+  props
+    width: number
+    height: number
+  inject
+    pressablesOnPress: action
+  // Selection on each dot press and each page turn; rigid when a drag hits either end.
+  action heard(m: string)
+    if m == "haptic:selection"
+      pressablesOnPress()
+    if m == "haptic:impact-rigid"
+      haptic("impact-rigid")
+  view
+    canvas surface=github_onboarding() message=heard position="absolute" top=0 left=0
+      width=width height=height touch-action="none" testId="github-onboarding"
+      aria-label="Onboarding pages: swipe sideways or tap a dot"

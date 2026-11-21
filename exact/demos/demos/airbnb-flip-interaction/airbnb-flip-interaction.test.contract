@@ -1,0 +1,16 @@
+at "/demo/airbnb-flip-interaction"
+
+test "a press flips the card and swaps the page under it, a second press flips it back"
+  expect tree has "airbnb-flip"
+  expect tree has "airbnb-front"
+  expect tree has "airbnb-back"
+  expect tree has "airbnb-main-page"
+  expect tree missing "airbnb-second-page"
+  tap "airbnb-card"
+  clock settle
+  expect tree has "airbnb-second-page"
+  expect tree missing "airbnb-main-page"
+  tap "airbnb-card"
+  clock settle
+  expect tree has "airbnb-main-page"
+  expect tree missing "airbnb-second-page"

@@ -1,0 +1,15 @@
+{
+  "name": "motion",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Spring and easing presets for Contract (motion.contract), and a Rust crate of spring, timing, decay and interpolation functions for GPU surfaces.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/enzomanuelmangano/demos.git",
+    "directory": "exact/demos/packages/motion"
+  },
+  "exports": {
+    ".": "./motion.contract"
+  }
+}

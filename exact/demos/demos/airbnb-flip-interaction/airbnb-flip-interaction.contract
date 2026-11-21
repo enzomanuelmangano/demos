@@ -1,0 +1,48 @@
+// Airbnb Flip Interaction: a coral profile card that flips to a white stats card when pressed.
+// The text under it swaps between two pages with short rise-and-fade keyframes.
+// The card and the description are Rust surfaces; the scroll, the press and the top gradient
+// are Contract.
+use PressableScale from "pressto"
+use DemoEnv, demoButtonRow from "../env.contract"
+
+component AirbnbFlipInteraction
+  props
+    env: DemoEnv
+  state isFlipped = false
+  // The card is the screen less 64 pt wide, and its height is width / 1.6.
+  derive cardW = env.width - 64
+  derive cardH = cardW / 1.6
+  action toggleCard
+    isFlipped = not isFlipped
+  view
+    column position="absolute" inset=0 background-color="#ffffff" testId="airbnb-flip"
+      // Vertical scroll only; the card's canvas overhangs the window across.
+      scroll flex=1 min-height=0 scrollbar-width="none" overflow-x="hidden" overflow-y="auto"
+        testId="airbnb-scroll"
+        column position="relative" width="100%" overflow-x="clip"
+          padding-top=(env.safeTop + demoButtonRow())
+          padding-bottom="calc(40px + env(safe-area-inset-bottom))"
+          // The description is a Rust surface (gpu/src/airbnb_flip_pages.rs), drawn below the card.
+          canvas surface=airbnb_flip_pages(isFlipped, env.safeTop) position="absolute" left=0
+            top=(env.safeTop + demoButtonRow()) width=env.width height=(cardH + 24 + 400)
+            pointer-events="none" aria-hidden=true testId=(isFlipped ? "airbnb-second-page" : "airbnb-main-page")
+          column align-items="center" padding-bottom=24 padding-left=20 padding-right=20
+            // The press is pressto's PressableScale: it eases to 0.96 over 250 ms.
+            view width=cardW
+              PressableScale(press=toggleCard)
+                column aria-label=(isFlipped ? "Show the profile card" : "Show the stats card")
+                  testId="airbnb-card"
+                  // Both faces, their 3D turn and the spring are drawn in Rust
+                  // (gpu/src/airbnb_flip_card.rs). The canvas reaches 56 pt past the box for the
+                  // shadow and the perspective.
+                  view position="relative" width=cardW height=cardH testId="airbnb-front"
+                    canvas surface=airbnb_flip_card(isFlipped) position="absolute" left=-56 top=-56
+                      width=(cardW + 112) height=(cardH + 112) pointer-events="none" aria-hidden=true
+                      testId="airbnb-back"
+          // The canvas draws the pages; this box holds their place. It is taller than either page,
+          // so the content stays shorter than the window and the scroll only bounces.
+          view height=380 testId="airbnb-description"
+      // Top fade under the status bar, white to transparent.
+      view position="absolute" top=0 left=0 right=0 height=(env.safeTop + 16) z-index=10
+        background-image="linear-gradient(to bottom, #FFFFFF 0%, rgba(255, 255, 255, 0) 100%)"
+        pointer-events="none" aria-hidden=true

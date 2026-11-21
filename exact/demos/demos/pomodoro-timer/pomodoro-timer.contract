@@ -1,0 +1,39 @@
+// Pomodoro timer: a ring of 200 ticks that the finger turns to set the seconds, shown in a
+// five-digit counter. The white button counts them down, one a second. Drawn in Rust
+// (gpu/src/pomodoro_timer.rs), which also posts the haptics.
+use DemoEnv from "../env.contract"
+use RouteAlert from "../route-alert.contract"
+
+component PomodoroTimer
+  props
+    env: DemoEnv
+  // Completion-alert OK presses, read by the canvas.
+  state ok = 0
+  // Native alerts, drawn in the route: a `dialog` opened from the demo route never shows on the phone.
+  state invalid = false
+  state done = false
+  action heard(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "alert:invalid"
+      invalid = true
+    if m == "alert:done"
+      done = true
+  // Times the invalid-number alert was dismissed. Its OK changes nothing on screen.
+  state dismissed = 0
+  action confirmed
+    done = false
+    ok = ok + 1
+  action acknowledged
+    invalid = false
+    dismissed = dismissed + 1
+  view
+    column position="absolute" inset=0 background-color="#000000" testId="pomodoro-timer"
+      canvas surface=pomodoro_timer(ok) message=heard position="absolute" top=0 left=0
+        width=env.width height=env.height touch-action="none" testId="pomodoro-timer-canvas"
+        aria-label="Timer: drag the ring sideways to set the seconds; the button starts and stops"
+      RouteAlert(shown=invalid, title="Please enter a valid number", message="", cancelLabel="",
+        confirm="OK", destructive=false, dismiss=acknowledged, accept=acknowledged,
+        testId="invalid-number")
+      RouteAlert(shown=done, title="Timer completed 🤌", message="", cancelLabel="", confirm="OK",
+        destructive=false, dismiss=confirmed, accept=confirmed, testId="timer-completed")

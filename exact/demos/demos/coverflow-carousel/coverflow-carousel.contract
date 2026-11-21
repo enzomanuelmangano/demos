@@ -1,0 +1,18 @@
+// Coverflow Carousel: eleven photos on a horizontal strip snapping every 160 pt; the centred one is
+// full size and the others shrink, squash and fan out as they leave the centre. One canvas draws
+// the strip and owns its scroll.
+use DemoEnv from "../env.contract"
+
+component CoverflowCarousel
+  props
+    env: DemoEnv
+  // Haptics: selection as the centred photo changes, rigid when pulled past an end.
+  action heard(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-rigid"
+      haptic("impact-rigid")
+  view
+    canvas surface=coverflow_carousel() message=heard position="absolute" top=0 left=0 width=env.width
+      height=env.height touch-action="none" testId="coverflow-carousel"
+      aria-label="Photos: drag sideways"

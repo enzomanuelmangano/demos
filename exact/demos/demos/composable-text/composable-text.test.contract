@@ -1,0 +1,11 @@
+at "/demo/composable-text"
+
+test "the pill toggles between Use Max and Using Max"
+  expect tree has "composable-text"
+  expect text "label" == "Use Max"
+  tap "toggle"
+  clock settle
+  expect text "label" == "Using Max"
+  tap "toggle"
+  clock settle
+  expect text "label" == "Use Max"

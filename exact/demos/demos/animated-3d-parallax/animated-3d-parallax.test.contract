@@ -1,0 +1,4 @@
+at "/demo/animated-3d-parallax"
+
+test "the card is there"
+  expect tree has "parallax-canvas"

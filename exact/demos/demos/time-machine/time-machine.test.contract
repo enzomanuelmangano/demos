@@ -1,0 +1,4 @@
+at "/demo/time-machine"
+
+test "the time machine is there"
+  expect tree has "time-machine"

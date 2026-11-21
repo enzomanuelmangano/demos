@@ -1,0 +1,162 @@
+//! A round button of fifty white circles stroked over each other. Pressed, they fan out on a ring
+//! and their stroke thins, and the button grows from half size to full.
+//!
+//! - Press progress is a critically damped spring of 600 ms; the canvas scales with a default spring.
+//! - A press lasts from touch-down to lift, until the touch leaves the button, or for 20 s at most.
+//!   The haptic is posted on an accepted touch-down, and the app plays it.
+
+use exact_gpu::wgpu;
+use exact_gpu::{Frame, InputEvent, PointerPhase, Surface, SurfaceError, Value};
+use motion::{interpolate, Extrapolation, Spring, SpringConfig, GENTLE};
+use draw2d::{Canvas, Color, Paint, Renderer};
+
+const CIRCLES: usize = 50;
+const SIZE: f64 = 100.0;
+const PROGRESS: SpringConfig = SpringConfig { stiffness: 755.4, damping: 109.9, mass: 4.0 };
+
+/// The demo's surface.
+pub fn surface() -> Box<dyn Surface> {
+    Box::new(GeometryButton { progress: Spring::at(0.0), scale: Spring::at(0.5), ..Default::default() })
+}
+
+#[derive(Default)]
+struct GeometryButton {
+    size: (f32, f32),
+    finger: Option<u32>,
+    /// When the finger went down, for the 20 s limit.
+    down_ms: f64,
+    /// Haptics for the app to play (`message=buzz`).
+    posted: Vec<String>,
+    progress: Spring,
+    scale: Spring,
+    canvas: Canvas,
+    renderer: Renderer,
+}
+
+impl GeometryButton {
+    /// Inside the scaled view: the 200×200 box at its scale about the centre.
+    fn inside(&self, x: f32, y: f32) -> bool {
+        let s = self.scale.value as f32;
+        let (cx, cy) = (self.size.0 / 2.0, self.size.1 / 2.0);
+        (x - cx).abs() <= self.size.0 / 2.0 * s && (y - cy).abs() <= self.size.1 / 2.0 * s
+    }
+    fn press(&mut self, active: bool) {
+        self.progress.to(if active { 1.0 } else { 0.0 }, self.progress.velocity, PROGRESS);
+        self.scale.to(if active { 1.0 } else { 0.5 }, self.scale.velocity, GENTLE);
+    }
+}
+
+impl Surface for GeometryButton {
+    fn bind(&mut self, _: &[Value], _: Option<f64>) -> Result<(), SurfaceError> {
+        Ok(())
+    }
+
+    fn wants_input(&self) -> bool {
+        true
+    }
+
+    /// A plain tap gesture, not the shared press machine.
+    fn input(&mut self, event: &InputEvent) {
+        let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
+        match phase {
+            PointerPhase::Down if self.finger.is_none() => {
+                if self.inside(x, y) {
+                    self.finger = Some(id);
+                    self.down_ms = at_ms;
+                    self.posted.push("haptic:impact-heavy".into());
+                    self.press(true);
+                }
+            }
+            PointerPhase::Move if self.finger == Some(id) => {
+                if !self.inside(x, y) || at_ms - self.down_ms > 20000.0 {
+                    self.finger = None;
+                    self.press(false);
+                }
+            }
+            PointerPhase::Up | PointerPhase::Cancel if self.finger == Some(id) => {
+                self.finger = None;
+                self.press(false);
+            }
+            _ => {}
+        }
+    }
+
+    fn messages(&mut self) -> Vec<String> {
+        crate::haptic::host(std::mem::take(&mut self.posted))
+    }
+
+    fn render(
+        &mut self,
+        frame: &Frame,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        encoder: &mut wgpu::CommandEncoder,
+        target: &wgpu::TextureView,
+        format: wgpu::TextureFormat,
+    ) -> bool {
+        self.size = (frame.width, frame.height);
+        if self.finger.is_some() && frame.now_ms - self.down_ms > 20000.0 {
+            self.finger = None;
+            self.press(false);
+        }
+        let moving = self.progress.step(frame.now_ms) | self.scale.step(frame.now_ms);
+        let p = self.progress.value;
+        let stroke_width = interpolate(p, &[0.0, 0.5, 1.0], &[3.0, 0.6, 0.2], Extrapolation::Extend).max(0.0);
+        let radius = (SIZE / 2.0) as f32;
+        let mut path = draw2d::path_builder();
+        for i in 0..CIRCLES {
+            let rotation = i as f32 * std::f32::consts::TAU / CIRCLES as f32;
+            let (dx, dy) = (radius * rotation.cos() * p as f32, radius * rotation.sin() * p as f32);
+            draw2d::add_rrect(&mut path, -radius + dx, -radius + dy, SIZE as f32, SIZE as f32, radius);
+        }
+        let path = path.build();
+        let (w, h) = (frame.width, frame.height);
+        let c = &mut self.canvas;
+        c.begin(frame.scale);
+        c.translate(w / 2.0, h / 2.0);
+        c.scale(self.scale.value as f32, self.scale.value as f32);
+        // The 200×200 canvas, its radius 100: a circle, scaled with the view.
+        let r = w.min(h) / 2.0;
+        c.clip_rrect(-r, -r, 2.0 * r, 2.0 * r, r);
+        c.draw_path(&path, &Paint::stroke(Color::WHITE, stroke_width as f32));
+        let (pw, ph) = frame.pixels();
+        self.renderer.draw(device, queue, encoder, &self.canvas, target, format, pw, ph, wgpu::Color::TRANSPARENT);
+        moving || self.finger.is_some()
+    }
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    use super::*;
+    use exact_gpu::fixture;
+
+    fn frame(now_ms: f64) -> Frame {
+        Frame { width: 200.0, height: 200.0, scale: 1.0, now_ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: 0, headroom: 1.0 }
+    }
+
+    #[test]
+    fn pressed_it_fans_out_and_grows() {
+        let gpu = match fixture::device() {
+            Ok(gpu) => gpu,
+            Err(error) => return eprintln!("{error}; skipped"),
+        };
+        let mut s = surface();
+        let (rest, _) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
+        rest.save("geometry-rest");
+        // At rest: one ring of radius 25 (half of 50) about the centre.
+        assert!(rest.at(125, 100)[3] > 0, "{:?}", rest.at(125, 100));
+        assert_eq!(rest.at(100, 100)[3], 0);
+        let pointer = |phase, at_ms| InputEvent::Pointer { id: 1, phase, x: 100.0, y: 100.0, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
+        s.input(&pointer(PointerPhase::Down, 0.0));
+        let mut ms = 0.0;
+        let mut last = rest;
+        while ms < 2000.0 {
+            ms += 16.0;
+            let (img, _) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+            last = img;
+        }
+        last.save("geometry-pressed");
+        // Pressed: the circles reach the canvas's edge.
+        assert!(last.at(196, 100)[3] > 0 || last.at(195, 100)[3] > 0, "{:?}", last.at(196, 100));
+    }
+}

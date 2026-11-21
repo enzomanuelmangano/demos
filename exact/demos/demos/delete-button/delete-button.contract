@@ -1,0 +1,13 @@
+// Delete Button: a red "Delete" pill that, tapped, slides left, turns black and reads "Confirm"
+// while a black close circle melts out of its right end; its "X" puts it back.
+
+component DeleteButton
+  action buzz(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+  view
+    column position="absolute" inset=0 background-color="color(display-p3 1 1 1)" align-items="center"
+      justify-content="center" testId="delete-button"
+      // Wide enough for the pill and the close circle's extra 80.
+      canvas surface=delete_button() width=230 height=50 flex-shrink=0 touch-action="none" message=buzz
+        testId="delete-button-canvas" aria-label="Delete"

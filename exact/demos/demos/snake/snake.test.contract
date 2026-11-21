@@ -1,0 +1,6 @@
+at "/demo/snake"
+
+test "the card holds the game's canvas"
+  expect tree has "snake"
+  expect tree has "snake-card"
+  expect tree has "snake-canvas"

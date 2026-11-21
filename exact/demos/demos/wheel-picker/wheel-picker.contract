@@ -1,0 +1,35 @@
+// Wheel picker: a big number over a ruler of ticks. Dragging the ruler sideways picks a number,
+// with a selection haptic per tick. The corner button spreads the ticks apart or back.
+// The count is drawn by SwiftUI's numeric text, so it rolls between values.
+use DemoEnv from "../env.contract"
+use PressableScale from "pressto"
+
+component WheelPicker
+  props
+    env: DemoEnv
+  state expanded = false
+  state count = "0"
+  action heard(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+    if m.startsWith("count:")
+      count = m.slice(6)
+  action toggle
+    expanded = not expanded
+  view
+    column position="absolute" inset=0 background-color="color(display-p3 1 1 1)" align-items="center"
+      justify-content="center" testId="wheel-picker"
+      rolling-count count=count points="65" tint="#000000" width=440 height=80 flex-shrink=0
+        role="img" aria-label=count testId="wheel-picker-count"
+      // The ruler and its indicator, drawn on a canvas.
+      canvas surface=wheel_picker(expanded) message=heard width=env.width height=150 flex-shrink=0
+        touch-action="none" testId="wheel-picker-slider" aria-label="Drag the ruler to pick a number"
+    // The expand and collapse button.
+    view position="absolute" bottom=48 right=32 width=64 height=64 display="flex" flex-direction="column"
+      PressableScale(press=toggle)
+        row width=64 height=64 border-radius=32 text-align="center"
+          background-color="color(display-p3 0.0667 0.0667 0.0667)" align-items="center"
+          justify-content="center" testId="wheel-picker-toggle"
+          aria-label=(expanded ? "Collapse the ruler" : "Expand the ruler")
+          svg width=28 height=28 viewBox="0 0 512 512" aria-hidden=true
+            path d=(expanded ? "M416 66 320 162V85H277V235H427V192H350L446 96ZM85 277V320H162L66 416L96 446L192 350V427H235V277Z" : "M213 448V405H137L233 309L203 279L107 375V299H64V448ZM309 233 405 137V213H448V64H299V107H375L279 203Z") fill="#ffffff"

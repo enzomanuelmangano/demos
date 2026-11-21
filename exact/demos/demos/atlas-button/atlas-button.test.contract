@@ -1,0 +1,5 @@
+at "/demo/atlas-button"
+
+test "the button is there"
+  expect tree has "atlas-button"
+  expect tree has "atlas-button-canvas"

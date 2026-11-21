@@ -1,0 +1,5 @@
+at "/demo/prequel-slider"
+
+test "the editor and slider canvas is there"
+  expect tree has "prequel-slider"
+  expect tree has "prequel-slider-canvas"

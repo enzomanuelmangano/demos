@@ -1,0 +1,51 @@
+// Light on Painting: two paintings on black, relit by a bulb on a cord that the finger carries and
+// swings when let go. A swipe pages between paintings; a double tap opens the Light sheet.
+
+component LightOnPainting
+  state showBulb = true
+  state showCord = true
+  state relight = true
+  state showDepth = false
+  // The Light sheet is up (toggle-sheet).
+  state settingsOpen = false
+  action closeSettings
+    settingsOpen = false
+  action heard(m: string)
+    if m == "settings"
+      settingsOpen = true
+  // Sheet values: "<id>:true|false", or "dismissed". The sheet plays its own haptics.
+  action switched(v: string)
+    if v == "dismissed"
+      settingsOpen = false
+    if v == "bulb:true" or v == "bulb:false"
+      showBulb = v == "bulb:true"
+    if v == "cord:true" or v == "cord:false"
+      showCord = v == "cord:true"
+    if v == "shader:true" or v == "shader:false"
+      relight = v == "shader:true"
+    if v == "depth:true" or v == "depth:false"
+      showDepth = v == "depth:true"
+  // Each toggle plays a selection haptic, then changes.
+  action setBulb(on: bool)
+    haptic("selection")
+    showBulb = on
+  action setCord(on: bool)
+    haptic("selection")
+    showCord = on
+  action setRelight(on: bool)
+    haptic("selection")
+    relight = on
+  action setDepth(on: bool)
+    haptic("selection")
+    showDepth = on
+  view
+    column position="absolute" inset=0 background-color="#000000" testId="light-on-painting"
+      canvas surface=light_on_painting(showBulb, showCord, relight, showDepth) message=heard
+        position="absolute" top=0 left=0 width="100%" height="100%" touch-action="none"
+        aria-label="A painting relit by a bulb: drag the bulb, swipe to page, double tap for settings"
+        testId="light-on-painting-canvas"
+      // Native sheet with four toggles, tinted #FFC280.
+      toggle-sheet open=(settingsOpen ? "true" : "false") caption="Light"
+        switches=`bulb:${showBulb ? 1 : 0}:Bulb|cord:${showCord && showBulb ? 1 : 0}:Cord|shader:${relight ? 1 : 0}:Shader|depth:${showDepth ? 1 : 0}:Show depth`
+        switch-tint="#FFC280" change=switched position="absolute" left=0 top=0 width=0 height=0
+        aria-hidden=true testId="light-settings"

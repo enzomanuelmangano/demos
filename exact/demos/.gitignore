@@ -1,0 +1,12 @@
+/target/
+/dist/
+/dist.*
+/dist-windows/
+/node_modules/
+/app.contract.d.ts
+/.exact/
+/.env.local
+/.exact-ios-*.log
+/assets/atlas/
+# The audio-player demo's track (copyrighted, the owner's own copy): bundled, never committed.
+/assets/audio/

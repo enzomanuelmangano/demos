@@ -1,0 +1,9 @@
+at "/demo/github-terrain"
+
+test "the terrain and its switch are there"
+  expect tree has "github-terrain-canvas"
+  expect tree has "terrain-data-switch"
+
+test "the switch turns the real data off"
+  tap "terrain-data-switch"
+  expect tree has "github-terrain-canvas"

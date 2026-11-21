@@ -1,0 +1,397 @@
+//! What every surface here shares: full-screen pipelines, render targets, samplers, passes.
+
+use exact_gpu::wgpu;
+
+/// A pipeline drawing one full-screen triangle with `vs`/`fs` of `module`.
+#[allow(clippy::too_many_arguments)]
+pub fn fullscreen(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    module: &wgpu::ShaderModule,
+    layout: &wgpu::BindGroupLayout,
+    vs: &str,
+    fs: &str,
+    blend: Option<wgpu::BlendState>,
+    label: &str,
+) -> wgpu::RenderPipeline {
+    let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some(label),
+        bind_group_layouts: &[Some(layout)],
+        immediate_size: 0,
+    });
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some(label),
+        layout: Some(&pl),
+        vertex: wgpu::VertexState { module, entry_point: Some(vs), buffers: &[], compilation_options: Default::default() },
+        fragment: Some(wgpu::FragmentState {
+            module,
+            entry_point: Some(fs),
+            targets: &[Some(wgpu::ColorTargetState { format, blend, write_mask: wgpu::ColorWrites::ALL })],
+            compilation_options: Default::default(),
+        }),
+        primitive: Default::default(),
+        depth_stencil: None,
+        multisample: Default::default(),
+        multiview_mask: None,
+        cache: None,
+    })
+}
+
+/// A sampled render target of `width`×`height` pixels.
+pub fn target(device: &wgpu::Device, label: &str, format: wgpu::TextureFormat, width: u32, height: u32) -> wgpu::TextureView {
+    device
+        .create_texture(&wgpu::TextureDescriptor {
+            label: Some(label),
+            size: wgpu::Extent3d { width: width.max(1), height: height.max(1), depth_or_array_layers: 1 },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        })
+        .create_view(&Default::default())
+}
+
+/// A clamped, linearly filtered sampler.
+pub fn linear_sampler(device: &wgpu::Device, label: &str) -> wgpu::Sampler {
+    device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some(label),
+        address_mode_u: wgpu::AddressMode::ClampToEdge,
+        address_mode_v: wgpu::AddressMode::ClampToEdge,
+        mag_filter: wgpu::FilterMode::Linear,
+        min_filter: wgpu::FilterMode::Linear,
+        ..Default::default()
+    })
+}
+
+/// One full-screen draw into `view`, cleared first.
+pub fn pass(encoder: &mut wgpu::CommandEncoder, label: &str, view: &wgpu::TextureView, pipeline: &wgpu::RenderPipeline, bind: &wgpu::BindGroup) {
+    let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        label: Some(label),
+        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+            view,
+            resolve_target: None,
+            depth_slice: None,
+            ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT), store: wgpu::StoreOp::Store },
+        })],
+        depth_stencil_attachment: None,
+        timestamp_writes: None,
+        occlusion_query_set: None,
+        multiview_mask: None,
+    });
+    pass.set_pipeline(pipeline);
+    pass.set_bind_group(0, bind, &[]);
+    pass.draw(0..3, 0..1);
+}
+
+/// 1 when the target encodes sRGB itself (the shader writes linear), else 0.
+pub fn srgb_flag(format: wgpu::TextureFormat) -> f32 {
+    if format.is_srgb() {
+        1.0
+    } else {
+        0.0
+    }
+}
+
+/// The host's pointer phase as gesture-handler names it.
+pub fn phase(phase: exact_gpu::PointerPhase) -> gestures::Phase {
+    match phase {
+        exact_gpu::PointerPhase::Down => gestures::Phase::Down,
+        exact_gpu::PointerPhase::Move => gestures::Phase::Move,
+        exact_gpu::PointerPhase::Up => gestures::Phase::Up,
+        exact_gpu::PointerPhase::Cancel => gestures::Phase::Cancel,
+    }
+}
+
+/// Seeded random numbers (mulberry32): one seed gives one layout, and each launch differs.
+#[derive(Clone, Debug)]
+pub struct Random(u32);
+
+impl Random {
+    /// The stream `seed` names.
+    pub fn new(seed: f64) -> Random {
+        Random((seed.abs() as u64 % 4_294_967_296) as u32 ^ 0x9E37_79B9)
+    }
+    /// The next number in [0, 1).
+    pub fn next(&mut self) -> f64 {
+        self.0 = self.0.wrapping_add(0x6D2B_79F5);
+        let mut t = self.0;
+        t = (t ^ (t >> 15)).wrapping_mul(t | 1);
+        t ^= t.wrapping_add((t ^ (t >> 7)).wrapping_mul(t | 61));
+        ((t ^ (t >> 14)) as f64) / 4_294_967_296.0
+    }
+}
+
+/// Baseline of a one-line text box: an ascent below its top.
+pub fn baseline(font: &draw2d::Font, top: f32) -> f32 {
+    top - font.metrics().ascent
+}
+
+
+/// Word wrapping with letter spacing: breaks after spaces and hyphens; a line holds what fits in `width`.
+pub(crate) fn wrap_spaced(font: &draw2d::Font, text: &str, spacing: f32, width: f32, out: &mut Vec<(usize, usize)>) {
+    out.clear();
+    let mut breaks: Vec<(usize, usize)> = Vec::new();
+    let bytes: Vec<(usize, char)> = text.char_indices().collect();
+    let n = bytes.len();
+    let byte = |i: usize| if i < n { bytes[i].0 } else { text.len() };
+    let mut i = 0;
+    while i < n {
+        let c = bytes[i].1;
+        if c == ' ' {
+            let mut j = i;
+            while j < n && bytes[j].1 == ' ' {
+                j += 1;
+            }
+            if j < n {
+                breaks.push((i, j));
+            }
+            i = j;
+            continue;
+        }
+        if c == '-' && i > 0 && i + 1 < n && bytes[i - 1].1.is_alphanumeric() && bytes[i + 1].1.is_alphanumeric() {
+            breaks.push((i + 1, i + 1));
+        }
+        i += 1;
+    }
+    breaks.push((n, n));
+    let fits = |a: usize, b: usize| font.advance_width_spaced(&text[byte(a)..byte(b)], spacing) <= width + 1e-3;
+    let mut start = 0;
+    let mut k = 0;
+    while start < n {
+        let mut last = None;
+        while k < breaks.len() {
+            let (end, next) = breaks[k];
+            if end <= start {
+                k += 1;
+                continue;
+            }
+            if fits(start, end) {
+                last = Some((end, next));
+                k += 1;
+            } else {
+                break;
+            }
+        }
+        match last {
+            Some((end, next)) => {
+                out.push((byte(start), byte(end)));
+                start = next;
+            }
+            None => {
+                let mut end = start + 1;
+                while end < n && fits(start, end + 1) {
+                    end += 1;
+                }
+                out.push((byte(start), byte(end)));
+                start = end;
+            }
+        }
+    }
+}
+
+
+/// Word wrapping at `width`: breaks after spaces and hyphens; returns the lines as byte ranges.
+pub fn wrap(font: &draw2d::Font, text: &str, width: f32) -> Vec<(usize, usize)> {
+    let mut out = Vec::new();
+    let chars: Vec<(usize, char)> = text.char_indices().collect();
+    let n = chars.len();
+    let byte = |i: usize| if i < n { chars[i].0 } else { text.len() };
+    let mut breaks: Vec<(usize, usize)> = Vec::new();
+    let mut i = 0;
+    while i < n {
+        let c = chars[i].1;
+        if c == ' ' {
+            let mut j = i;
+            while j < n && chars[j].1 == ' ' {
+                j += 1;
+            }
+            if j < n {
+                breaks.push((i, j));
+            }
+            i = j;
+            continue;
+        }
+        if c == '-' && i > 0 && i + 1 < n && chars[i - 1].1.is_alphanumeric() && chars[i + 1].1.is_alphanumeric() {
+            breaks.push((i + 1, i + 1));
+        }
+        i += 1;
+    }
+    breaks.push((n, n));
+    let fits = |a: usize, b: usize| font.advance_width(&text[byte(a)..byte(b)]) <= width + 1e-3;
+    let (mut start, mut k) = (0, 0);
+    while start < n {
+        let mut last = None;
+        while k < breaks.len() {
+            let (end, next) = breaks[k];
+            if end <= start {
+                k += 1;
+                continue;
+            }
+            if fits(start, end) {
+                last = Some((end, next));
+                k += 1;
+            } else {
+                break;
+            }
+        }
+        match last {
+            Some((end, next)) => {
+                out.push((byte(start), byte(end)));
+                start = next;
+            }
+            None => {
+                let mut end = start + 1;
+                while end < n && fits(start, end + 1) {
+                    end += 1;
+                }
+                out.push((byte(start), byte(end)));
+                start = end;
+            }
+        }
+    }
+    out
+}
+
+/// The height of one line of `font`: ascent plus descent. The font's line gap is left out.
+pub fn line_height(font: &draw2d::Font) -> f32 {
+    font.ui_line_height()
+}
+
+/// Retargets `v` to `to` with a spring of mass 4, keeping its velocity unless that points away from `to`.
+pub fn spring_to(spring: &mut motion::Spring, to: f64, duration_ms: f64, damping_ratio: f64) {
+    let (x, v) = (spring.value, spring.velocity);
+    let v = if !spring.running || (to > x && v < 0.0) || (to < x && v > 0.0) { 0.0 } else { v };
+    spring.to(to, v, motion::duration_config(x - to, v, duration_ms, damping_ratio, 4.0));
+}
+
+/// Writes a fixture image over an opaque background to `EXACT_GPU_OUT/<name>.ppm`.
+#[cfg(all(test, not(target_arch = "wasm32")))]
+pub fn save_over(img: &exact_gpu::fixture::Pixels, name: &str, background: [u8; 3]) {
+    let Some(dir) = std::env::var_os("EXACT_GPU_OUT") else { return };
+    let mut out = format!("P6\n{} {}\n255\n", img.width, img.height).into_bytes();
+    for p in img.data.chunks(4) {
+        let a = p[3] as u32;
+        for k in 0..3 {
+            out.push((p[k] as u32 + (255 - a) * background[k] as u32 / 255).min(255) as u8);
+        }
+    }
+    let _ = std::fs::write(std::path::Path::new(&dir).join(format!("{name}.ppm")), out);
+}
+
+/// The Skia canvas on iOS is an 8-bit Display P3 surface that Core Animation converts to sRGB.
+/// `draw` renders the canvas into a P3 layer and converts it to sRGB, unpremultiplied, into the target.
+///
+/// `over_black`: the converted canvas composited over opaque black, as Core Animation shows a
+/// transparent canvas on a black view.
+#[derive(Default)]
+pub struct P3Layer {
+    /// Composite over opaque black (alpha 1 out).
+    pub over_black: bool,
+    layer: Option<(u32, u32, wgpu::TextureView)>,
+    pipe: Option<((wgpu::TextureFormat, bool), wgpu::RenderPipeline, wgpu::BindGroupLayout)>,
+    bind: Option<wgpu::BindGroup>,
+}
+
+const P3_RESOLVE: &str = r#"
+@group(0) @binding(0) var layer: texture_2d<f32>;
+@vertex fn vs(@builtin(vertex_index) i: u32) -> @builtin(position) vec4<f32> {
+    let p = vec2<f32>(f32((i << 1u) & 2u), f32(i & 2u));
+    return vec4<f32>(p * vec2<f32>(2.0, -2.0) + vec2<f32>(-1.0, 1.0), 0.0, 1.0);
+}
+fn lin(c: vec3<f32>) -> vec3<f32> {
+    return select(pow((c + 0.055) / 1.055, vec3<f32>(2.4)), c / 12.92, c <= vec3<f32>(0.04045));
+}
+fn enc(c0: vec3<f32>) -> vec3<f32> {
+    let c = clamp(c0, vec3<f32>(0.0), vec3<f32>(1.0));
+    return select(1.055 * pow(c, vec3<f32>(1.0 / 2.4)) - 0.055, c * 12.92, c <= vec3<f32>(0.0031308));
+}
+// Linear Display P3 to linear sRGB (D65).
+fn p3_lin_to_srgb_lin(l: vec3<f32>) -> vec3<f32> {
+    return vec3<f32>(
+        1.2249401 * l.r - 0.2249404 * l.g,
+        -0.0420569 * l.r + 1.0420571 * l.g,
+        -0.0196376 * l.r - 0.0786361 * l.g + 1.0982735 * l.b);
+}
+fn resolve(pos: vec4<f32>) -> vec4<f32> {
+    let c = textureLoad(layer, vec2<i32>(pos.xy), 0);
+    if (c.a <= 0.0) { return vec4<f32>(0.0); }
+    return vec4<f32>(c.rgb / c.a, c.a);
+}
+// An encoded (unorm) target.
+@fragment fn fs_encoded(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
+    let c = resolve(pos);
+    return vec4<f32>(enc(p3_lin_to_srgb_lin(lin(c.rgb))) * c.a, c.a);
+}
+// Over opaque black: the premultiplied colour with alpha 1.
+@fragment fn fs_encoded_black(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
+    let c = resolve(pos);
+    return vec4<f32>(enc(p3_lin_to_srgb_lin(lin(c.rgb))) * c.a, 1.0);
+}
+@fragment fn fs_linear_black(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
+    let c = resolve(pos);
+    return vec4<f32>(lin(enc(p3_lin_to_srgb_lin(lin(c.rgb))) * c.a), 1.0);
+}
+// An sRGB target (the hardware encodes): write linear.
+@fragment fn fs_linear(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
+    let c = resolve(pos);
+    return vec4<f32>(lin(enc(p3_lin_to_srgb_lin(lin(c.rgb)))) * c.a, c.a);
+}
+"#;
+
+impl P3Layer {
+    /// Draws `canvas` into the P3 layer (cleared to `clear`), then converts it into `target`.
+    #[allow(clippy::too_many_arguments)]
+    pub fn draw(
+        &mut self,
+        renderer: &mut draw2d::Renderer,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        encoder: &mut wgpu::CommandEncoder,
+        canvas: &draw2d::Canvas,
+        target: &wgpu::TextureView,
+        format: wgpu::TextureFormat,
+        width: u32,
+        height: u32,
+        clear: wgpu::Color,
+    ) {
+        renderer.p3 = true;
+        if self.layer.as_ref().map(|l| (l.0, l.1)) != Some((width, height)) {
+            self.layer = Some((width, height, self::target(device, "p3 layer", wgpu::TextureFormat::Rgba8Unorm, width, height)));
+            self.bind = None;
+        }
+        if self.pipe.as_ref().map(|p| p.0) != Some((format, self.over_black)) {
+            let module = device.create_shader_module(wgpu::ShaderModuleDescriptor { label: Some("p3 layer"), source: wgpu::ShaderSource::Wgsl(P3_RESOLVE.into()) });
+            let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("p3 layer"),
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture { sample_type: wgpu::TextureSampleType::Float { filterable: false }, view_dimension: wgpu::TextureViewDimension::D2, multisampled: false },
+                    count: None,
+                }],
+            });
+            let fs = match (format.is_srgb(), self.over_black) {
+                (true, false) => "fs_linear",
+                (false, false) => "fs_encoded",
+                (true, true) => "fs_linear_black",
+                (false, true) => "fs_encoded_black",
+            };
+            let pipeline = fullscreen(device, format, &module, &layout, "vs", fs, None, "p3 layer");
+            self.pipe = Some(((format, self.over_black), pipeline, layout));
+            self.bind = None;
+        }
+        let (_, _, layer) = self.layer.as_ref().unwrap();
+        let (_, pipeline, layout) = self.pipe.as_ref().unwrap();
+        let bind = self.bind.get_or_insert_with(|| {
+            device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("p3 layer"),
+                layout,
+                entries: &[wgpu::BindGroupEntry { binding: 0, resource: wgpu::BindingResource::TextureView(layer) }],
+            })
+        });
+        renderer.draw(device, queue, encoder, canvas, layer, wgpu::TextureFormat::Rgba8Unorm, width, height, clear);
+        pass(encoder, "p3 layer", target, pipeline, bind);
+    }
+}

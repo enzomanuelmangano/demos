@@ -1,0 +1,14 @@
+at "/demo/gl-transitions"
+
+// Presses, the slide and the warp are covered by the Rust tests; this checks the rest at rest.
+test "the notes and the canvas are there"
+  expect tree has "gl-transitions"
+  expect tree has "gl-transitions-canvas"
+
+test "the field waits for the screen to slide up"
+  clock settle
+  expect tree missing "note-input"
+
+test "the empty-note alert is declared, closed"
+  clock settle
+  expect tree has "empty-note"

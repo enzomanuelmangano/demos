@@ -1,0 +1,9 @@
+test "the launcher lists the demos and opens one out of its icon"
+  expect tree has "springboard"
+  expect tree has "icon-sculptures-in-words"
+  tap "icon-sculptures-in-words"
+  clock settle
+  expect tree has "demo-sculptures-in-words"
+  tap "close"
+  clock settle
+  expect tree has "springboard"

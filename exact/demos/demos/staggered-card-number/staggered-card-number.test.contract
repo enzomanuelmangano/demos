@@ -1,0 +1,13 @@
+at "/demo/staggered-card-number"
+
+test "the eye hides the first twelve digits and shows them again"
+  expect tree has "card"
+  expect tree has "digits"
+  expect tree has "icon-eye-off"
+  tap "toggle"
+  clock settle
+  expect tree has "icon-eye"
+  expect tree missing "icon-eye-off"
+  tap "toggle"
+  clock settle
+  expect tree has "icon-eye-off"

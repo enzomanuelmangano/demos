@@ -1,0 +1,16 @@
+// MNIST: draw a digit on a 28 x 28 grid; a small network classifies it on every new cell, its
+// nodes lit by their activations, and the eleven guesses show below. The eraser clears the grid.
+// Drawn in Rust (gpu/src/mnist.rs), including the prediction, whose weights are converted offline.
+use DemoEnv from "../env.contract"
+
+component Mnist
+  props
+    env: DemoEnv
+  action heard(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+  view
+    column position="absolute" inset=0 background-color="#000000" testId="mnist"
+      canvas surface=mnist() message=heard position="absolute" top=0 left=0 width=env.width
+        height=env.height touch-action="none" testId="mnist-canvas"
+        aria-label="Draw a digit on the grid; the eraser clears it"

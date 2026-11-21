@@ -1,0 +1,277 @@
+// Telegram theme switch: a chat list with a floating tab bar and a round theme button. Tapping
+// the button grows the new theme in a circle from it, over the whole screen.
+// The reveal draws the screen twice: the new copy is clipped by the circle, and it is scaled by
+// the inverse of the circle so it stays still. When the reveal lands, the new theme becomes the base.
+// The tab bar is one native view that sits above both copies (a circle cannot clip it), so the
+// reveal's copy has no bar and the bar itself changes theme when the circle is passing it.
+use PressableScale from "pressto"
+use DemoEnv, floatingWidth, concentricRadius from "../env.contract"
+
+fn ttsInset(): number = 10
+fn ttsBarH(): number = 62
+fn ttsGap(): number = 8
+// The native bar floats this far in from its frame's sides, so the frame reaches this far past the bar.
+fn ttsBarMargin(): number = 21
+fn ttsRevealMs(): number = 650
+// When the circle has swept past the bar: the bar's theme turns then.
+fn ttsBarMs(): number = 240
+
+// Telegram's Day and Night palettes.
+fn ttsBg(dark: bool): string = dark ? "#18222D" : "#FFFFFF"
+fn ttsText(dark: bool): string = dark ? "#FFFFFF" : "#000000"
+fn ttsSecondary(dark: bool): string = dark ? "#7D8B99" : "#8E8E93"
+fn ttsSeparator(dark: bool): string = dark ? "#0E161F" : "#E3E3E6"
+fn ttsSearch(dark: bool): string = dark ? "#242F3D" : "#EEEEF0"
+fn ttsAccent(dark: bool): string = dark ? "#5EB5F7" : "#007AFF"
+fn ttsBadge(dark: bool, muted: bool): string = muted ? (dark ? "#3E546A" : "#B8B8BD") : (dark ? "#3E88F7" : "#007AFF")
+fn ttsBarFill(dark: bool): string = dark ? "rgba(36, 47, 61, 0.82)" : "rgba(255, 255, 255, 0.82)"
+fn ttsGlassTint(dark: bool): string = dark ? "rgba(24, 34, 45, 0.45)" : "rgba(255, 255, 255, 0.35)"
+
+shape TtsChat
+  name: string
+  message: string
+  time: string
+  unread: number
+  muted: bool
+  photo: string
+  pw: number
+  ph: number
+  hue: number
+
+fn ttsChats(): TtsChat[] = [
+  TtsChat(name="Design Crew", message="Mila: the new icons are in Figma", time="09:41", unread=3, muted=false, photo="assets/demos/shared-transitions/thumbnails/03.jpg", pw=630, ph=788, hue=0),
+  TtsChat(name="Alex Rivera", message="See you at 7 then!", time="09:12", unread=1, muted=false, photo="", pw=0, ph=0, hue=1),
+  TtsChat(name="Weekend Hikes", message="Photo: summit at sunrise", time="08:55", unread=12, muted=true, photo="assets/demos/dynamic-tab-indicator/norway.jpg", pw=1920, ph=2880, hue=0),
+  TtsChat(name="Sofia Marino", message="That reveal is so smooth", time="Yesterday", unread=0, muted=false, photo="", pw=0, ph=0, hue=2),
+  TtsChat(name="Travel Notes", message="Kyoto in autumn: a thread", time="Yesterday", unread=0, muted=false, photo="assets/demos/shared-transitions/thumbnails/08.jpg", pw=630, ph=796, hue=0),
+  TtsChat(name="Leo Park", message="Voice message", time="Tue", unread=0, muted=false, photo="", pw=0, ph=0, hue=3),
+  TtsChat(name="Plant Lovers", message="Water them on Sundays only", time="Mon", unread=0, muted=false, photo="assets/demos/blurred-bottom-bar/02.jpg", pw=1920, ph=1280, hue=0),
+  TtsChat(name="Nora Jensen", message="Sticker", time="Sun", unread=0, muted=false, photo="", pw=0, ph=0, hue=4),
+  TtsChat(name="Ocean Club", message="Tide's out at 6", time="Sat", unread=0, muted=false, photo="assets/demos/shared-transitions/thumbnails/09.jpg", pw=630, ph=788, hue=0),
+]
+
+// Avatar gradients, one per hue.
+fn ttsAvatar(h: number): string = h == 1 ? "linear-gradient(180deg, #FF885E 0%, #FF516A 100%)" : (h == 2 ? "linear-gradient(180deg, #72D5FD 0%, #2A9EF1 100%)" : (h == 3 ? "linear-gradient(180deg, #A0DE7E 0%, #54CB68 100%)" : "linear-gradient(180deg, #E0A2F3 0%, #D669ED 100%)"))
+fn ttsInitials(name: string): string = name.slice(0, 1)
+
+
+keyframes ttsRevealOuter
+  0.00% scale=0.01200
+  3.45% scale=0.01216
+  6.90% scale=0.01330
+  10.34% scale=0.01638
+  13.79% scale=0.02237
+  17.24% scale=0.03226
+  20.69% scale=0.04700
+  24.14% scale=0.06758
+  27.59% scale=0.09496
+  31.03% scale=0.13013
+  34.48% scale=0.17404
+  37.93% scale=0.22768
+  41.38% scale=0.29201
+  44.83% scale=0.36800
+  48.28% scale=0.45664
+  51.72% scale=0.55536
+  55.17% scale=0.64400
+  58.62% scale=0.71999
+  62.07% scale=0.78432
+  65.52% scale=0.83796
+  68.97% scale=0.88187
+  72.41% scale=0.91704
+  75.86% scale=0.94442
+  79.31% scale=0.96500
+  82.76% scale=0.97974
+  86.21% scale=0.98963
+  89.66% scale=0.99562
+  93.10% scale=0.99870
+  96.55% scale=0.99984
+  100.00% scale=1.00000
+keyframes ttsRevealInner
+  0.00% scale=83.3333
+  3.45% scale=82.2230
+  6.90% scale=75.2088
+  10.34% scale=61.0684
+  13.79% scale=44.7016
+  17.24% scale=31.0029
+  20.69% scale=21.2763
+  24.14% scale=14.7973
+  27.59% scale=10.5302
+  31.03% scale=7.6848
+  34.48% scale=5.7458
+  37.93% scale=4.3922
+  41.38% scale=3.4246
+  44.83% scale=2.7174
+  48.28% scale=2.1899
+  51.72% scale=1.8006
+  55.17% scale=1.5528
+  58.62% scale=1.3889
+  62.07% scale=1.2750
+  65.52% scale=1.1934
+  68.97% scale=1.1340
+  72.41% scale=1.0905
+  75.86% scale=1.0589
+  79.31% scale=1.0363
+  82.76% scale=1.0207
+  86.21% scale=1.0105
+  89.66% scale=1.0044
+  93.10% scale=1.0013
+  96.55% scale=1.0002
+  100.00% scale=1.0000
+// The symbol of the theme to come turns in with the circle.
+keyframes ttsSymbolIn
+  0% rotate="-90deg" scale=0.4 opacity=0
+  45% rotate="-90deg" scale=0.4 opacity=0
+  100% rotate="0deg" scale=1 opacity=1
+
+// A photo cropped to fill a round clip. It is sized by hand, since the host pins object-fit to the top.
+component TtsPhoto
+  props
+    src: string
+    iw: number
+    ih: number
+    size: number
+  derive k = max(size / iw, size / ih)
+  view
+    view position="relative" width=size height=size border-radius=(size / 2) overflow="hidden"
+      flex-shrink=0 pointer-events="none"
+      image src position="absolute" left=((size - iw * k) / 2) top=((size - ih * k) / 2)
+        width=(iw * k) height=(ih * k) aria-hidden=true
+
+// The whole screen in one theme. `live` is the interactive copy; the reveal's copy only draws.
+component TtsScreen
+  props
+    env: DemoEnv
+    dark: bool
+    // The native bar's theme (the reveal turns it before the base does).
+    barDark: bool
+    live: bool
+    tab: number
+    toggle: action
+    pick: action
+  derive W = env.width
+  derive barW = floatingWidth(W, ttsInset()) - ttsBarH() - ttsGap()
+  derive radius = concentricRadius(ttsInset(), ttsBarH())
+  // The native bar's tab events: "tab:<index>".
+  action native(m: string)
+    if m == "tab:0"
+      pick(0)
+    if m == "tab:1"
+      pick(1)
+    if m == "tab:2"
+      pick(2)
+    if m == "tab:3"
+      pick(3)
+  view
+    view position="absolute" left=0 top=0 width=W height=env.height background-color=ttsBg(dark)
+      pointer-events=(live ? "auto" : "none") overflow="hidden"
+      scroll position="absolute" left=0 top=0 width=W height=env.height overflow-y="auto"
+        overflow-x="hidden" scrollbar-width="none"
+        column padding-top=(env.safeTop + 52) padding-bottom=(ttsInset() + ttsBarH() + 24)
+          text "Chats" margin-left=16 font-size=34 line-height="41px" font-weight=700
+            color=ttsText(dark)
+          row margin="10px 16px 8px 16px" height=36 border-radius=10 corner-shape="-exact-continuous"
+            background-color=ttsSearch(dark) align-items="center" padding="0px 8px" gap=6
+            image "symbol:sf/magnifyingglass" font-size=15 color=ttsSecondary(dark) aria-hidden=true
+            text "Search" font-size=17 line-height="22px" color=ttsSecondary(dark)
+          for c, i in ttsChats() key=i
+            row height=76 padding-left=12 align-items="center" gap=12
+              if c.photo != ""
+                TtsPhoto(src=c.photo, iw=c.pw, ih=c.ph, size=56)
+              else
+                view width=56 height=56 border-radius=28 background-image=ttsAvatar(c.hue)
+                  flex-shrink=0 display="flex" align-items="center" justify-content="center"
+                  text ttsInitials(c.name) font-size=22 font-weight=600 color="#FFFFFF"
+              column flex=1 min-width=0 height=76 justify-content="center" padding-right=14
+                border-bottom-width=0.5 border-bottom-style="solid"
+                border-bottom-color=ttsSeparator(dark) gap=2
+                row align-items="center" gap=6
+                  text c.name flex=1 min-width=0 font-size=16 line-height="21px" font-weight=600
+                    color=ttsText(dark) white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
+                  if c.unread == 0 and i % 2 == 1
+                    image "symbol:sf/checkmark" font-size=11 font-weight=600 color=ttsAccent(dark)
+                      aria-hidden=true
+                  text c.time font-size=14 line-height="18px" color=ttsSecondary(dark)
+                row align-items="center" gap=8
+                  text c.message flex=1 min-width=0 font-size=15 line-height="20px"
+                    color=ttsSecondary(dark) white-space="nowrap" overflow="hidden"
+                    text-overflow="ellipsis"
+                  if c.unread > 0
+                    view min-width=22 height=22 border-radius=11 padding="0px 7px"
+                      background-color=ttsBadge(dark, c.muted) display="flex"
+                      align-items="center" justify-content="center"
+                      text `${c.unread}` font-size=14 line-height="18px" font-weight=600
+                        color="#FFFFFF" font-variant-numeric="tabular-nums"
+      // Tab bar: native, on the live copy only. The reveal's copy has none.
+      if live
+        native-tabbar tab-titles="Contacts|Calls|Chats|Settings"
+          tab-symbols="person.crop.circle.fill|phone.fill|bubble.left.and.bubble.right.fill|gearshape.fill"
+          selected-tab=`${tab}` tab-tint=ttsAccent(barDark) bar-appearance=(barDark ? "dark" : "light")
+          change=native position="absolute" left=(ttsInset() - ttsBarMargin()) bottom=0
+          width=(barW + 2 * ttsBarMargin()) height=(ttsBarH() + 2 * ttsInset() + 24) testId="tts-tabs"
+      // The theme button: a glass circle beside the tab bar.
+      view position="absolute" right=ttsInset() bottom=ttsInset() width=ttsBarH() height=ttsBarH()
+        border-radius=radius background-color=ttsBarFill(dark)
+        box-shadow="0px 8px 24px rgba(0, 0, 0, 0.12)" pointer-events="none" aria-hidden=true
+        glass-pane glass-style="regular" pane-tint=ttsGlassTint(dark) corner-size=`${radius}`
+          interactive="false" continuous="true" position="absolute" inset=0 pointer-events="none"
+          aria-hidden=true
+      view position="absolute" right=ttsInset() bottom=ttsInset() width=ttsBarH() height=ttsBarH()
+        display="flex" flex-direction="column"
+        PressableScale(press=toggle)
+          column flex-grow=1 align-items="center" justify-content="center"
+            aria-label=(dark ? "Switch to the day theme" : "Switch to the night theme")
+            testId=(live ? "tts-theme" : "tts-ghost-theme")
+            image (dark ? "symbol:sf/sun.max.fill" : "symbol:sf/moon.fill") font-size=24
+              color=ttsAccent(dark) aria-hidden=true
+              animation=(live ? "none" : `ttsSymbolIn ${ttsRevealMs()}ms cubic-bezier(0.23, 1, 0.32, 1) both`)
+
+component TelegramThemeSwitch
+  props
+    env: DemoEnv
+  // The theme drawn as the base, and the one revealing over it. The reveal's serial remounts the
+  // circle, so each switch plays from the start (0 means none).
+  state dark = true
+  state target = true
+  state reveal = 0
+  state tab = 2
+  // The theme of the native bar: it turns with the circle, before `dark` does.
+  state barDark = true
+  derive cx = env.width - ttsInset() - ttsBarH() / 2
+  derive cy = env.height - ttsInset() - ttsBarH() / 2
+  // Radius that reaches the farthest corner, with a small margin.
+  derive R = ceil(max(cx, cy) + min(cx, cy) / 2) + 2
+
+  action toggle
+    if reveal == 0
+      target = not dark
+      reveal = 1
+      haptic("impact-medium")
+  action landed(m: string)
+    if reveal != 0 and m == `timer:${reveal}`
+      dark = target
+      barDark = target
+      reveal = 0
+      haptic("impact-soft")
+  action barTurn(m: string)
+    if reveal != 0 and m == `timer:${reveal}`
+      barDark = target
+  action pick(i: number)
+    tab = i
+
+  view
+    column position="absolute" inset=0 overflow="hidden" testId="telegram-theme-switch"
+      background-color=ttsBg(dark)
+      canvas surface=timer(reveal, ttsRevealMs()) message=landed width=1 height=1
+        position="absolute" left=0 top=0 aria-hidden=true pointer-events="none"
+      canvas surface=timer(reveal, ttsBarMs()) message=barTurn width=1 height=1
+        position="absolute" left=0 top=0 aria-hidden=true pointer-events="none"
+      TtsScreen(env=env, dark=dark, barDark=barDark, live=true, tab=tab, toggle=toggle, pick=pick)
+      // The reveal: a round box that grows from the button, in the new theme.
+      if reveal != 0
+        view position="absolute" left=(cx - R) top=(cy - R) width=(2 * R) height=(2 * R)
+          border-radius=R overflow="hidden" pointer-events="none"
+          animation=`ttsRevealOuter ${ttsRevealMs()}ms linear both` testId="tts-reveal"
+          view position="absolute" left=0 top=0 width=(2 * R) height=(2 * R)
+            animation=`ttsRevealInner ${ttsRevealMs()}ms linear both`
+            view position="absolute" left=(R - cx) top=(R - cy) width=env.width height=env.height
+              TtsScreen(env=env, dark=target, barDark=target, live=false, tab=tab, toggle=toggle, pick=pick)

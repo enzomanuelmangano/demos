@@ -1,0 +1,23 @@
+// Selectable grid list: fifty photos in four columns. Tap one to select it, or drag across the
+// grid to select a range, scrolling near the top. The floating button counts the selection and
+// clears it. Drawn in Rust (gpu/src/selectable_grid_list.rs), which posts press when the button clears.
+use DemoEnv from "../env.contract"
+
+component SelectableGridList
+  props
+    env: DemoEnv
+  action heard(m: string)
+    if m == "press"
+      haptic("selection")
+    // A tick per selection change (kept 40 ms apart), an impact as a drag-select starts, and a
+    // softer one as it ends.
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+    if m == "haptic:impact-soft"
+      haptic("impact-soft")
+  view
+    canvas surface=selectable_grid_list(env.safeTop, env.safeBottom) message=heard position="absolute" top=0 left=0
+      width=env.width height=env.height background-color="#000000" touch-action="none"
+      testId="selectable-grid-list" aria-label="Photos: tap or drag to select"

@@ -1,0 +1,214 @@
+// Stacked modals: a + button opens a card. Confirm or Dismiss stacks the next card in front, and
+// the older ones shrink and rise behind it. The seventh's Dismiss removes it, and a tap on the
+// backdrop clears them all, each falling away in turn.
+use PressableScale, AnimatedPressable, PressLook from "pressto"
+use DemoEnv from "../env.contract"
+
+// The seven modals, by index.
+fn titleOf(i: number): string = match ["Modals are fun!", "Stacked Modals are really fun!", "Wait what?", "Are you sure?", "Ok, you win.", "...the past is always with you.", "You can dismiss me"].at(i) { case some(t) => t, case none => "" }
+fn messageOf(i: number): string = match ["They're versatile, attention-grabbing, and when used appropriately, can significantly enhance the user experience.", "Yep, they are slightly tricky to get right.\n\nBy confirming you'll find the source code at reactiive.io/demos", "You might want to reconsider don't you?", "You might regret this for the rest of your life.", "You can go now, but remember...", "Just like the shadow that follows you everywhere.", "But you can also dismiss all the modals by tapping the backdrop"].at(i) { case some(t) => t, case none => "" }
+
+// The modal's id on the stack is its position: the newest is 0.
+fn modalOf(entry: number): number = entry % 10
+
+// Each card's bottom offset: the id is its depth, and the cards behind rise by 15 per step.
+fn bottomHeight(id: number): number = min(id, 2) + 15 * id
+
+// Critically damped spring: damping is 2√(stiffness × mass), so it does not overshoot.
+fn modalSpring(): string = "-exact-spring(740, 86.0233, 2.5)"
+
+// Mount: the card rises 110 and fades in. The curve is sampled as a linear() easing.
+keyframes modalIn
+  from translate="0px 110px" opacity=0
+  to translate="0px 0px" opacity=1
+fn modalInTiming(): string = "750ms linear(0 0%, 0.0012205 0.3894%, 0.0049738 0.7999%, 0.011423 1.235%, 0.020774 1.698%, 0.033301 2.196%, 0.049377 2.735%, 0.069539 3.326%, 0.094626 3.987%, 0.1261 4.748%, 0.16711 5.675%, 0.22894 7.005%, 0.34607 9.487%, 0.40606 10.8%, 0.45652 11.96%, 0.50158 13.05%, 0.54282 14.1%, 0.58106 15.13%, 0.61677 16.17%, 0.65025 17.2%, 0.68172 18.25%, 0.71134 19.32%, 0.73922 20.42%, 0.76544 21.54%, 0.79009 22.7%, 0.81321 23.91%, 0.83486 25.17%, 0.85507 26.48%, 0.87388 27.87%, 0.89131 29.33%, 0.90738 30.89%, 0.92211 32.56%, 0.93553 34.37%, 0.94765 36.33%, 0.95848 38.5%, 0.96804 40.92%, 0.97633 43.68%, 0.98336 46.88%, 0.98914 50.71%, 0.99368 55.52%, 0.997 62.04%, 0.99908 72.31%, 0.99996 98.65%, 1 100%) both"
+
+// Exit when a modal is removed: fades out and drops 25, 300 ms, ease-in-out.
+keyframes modalOut
+  to opacity=0 translate="0px 25px"
+
+// Content opacity follows the card's depth: full at the front, faded behind it. The curves are
+// keyframes, not a transition: a transition that is moved by a timeline jumps to its end on iOS,
+// which blanks the card behind in one frame.
+keyframes contentOut
+  from opacity=1
+  to opacity=0
+keyframes contentIn
+  from opacity=0
+  to opacity=1
+fn contentOutTiming(): string = "750ms linear(0 0%, 0.0012168 0.3165%, 0.0049432 0.6471%, 0.011315 0.9942%, 0.020508 1.36%, 0.03275 1.75%, 0.04835 2.166%, 0.067748 2.618%, 0.0916 3.114%, 0.12099 3.672%, 0.15798 4.325%, 0.20789 5.157%, 0.36848 7.743%, 0.42785 8.733%, 0.47792 9.607%, 0.5226 10.43%, 0.56341 11.22%, 0.60117 12%, 0.63635 12.77%, 0.66926 13.55%, 0.70012 14.34%, 0.72909 15.14%, 0.75629 15.96%, 0.7818 16.8%, 0.80571 17.67%, 0.82807 18.57%, 0.84893 19.51%, 0.86834 20.5%, 0.88632 21.54%, 0.90291 22.64%, 0.91812 23.81%, 0.93199 25.08%, 0.94453 26.45%, 0.95576 27.95%, 0.96569 29.61%, 0.97434 31.5%, 0.98172 33.66%, 0.98783 36.23%, 0.99269 39.41%, 0.99631 43.6%, 0.9987 49.87%, 0.99986 62.98%, 1 100%) both"
+fn contentInTiming(): string = "750ms linear(0 0%, 0.00080311 1.066%, 0.0035171 1.8%, 0.0082686 2.46%, 0.015182 3.093%, 0.024401 3.718%, 0.036103 4.348%, 0.050512 4.992%, 0.067923 5.661%, 0.088741 6.366%, 0.11356 7.123%, 0.14334 7.953%, 0.17983 8.899%, 0.22715 10.06%, 0.30733 11.93%, 0.39998 14.1%, 0.45805 15.51%, 0.50685 16.74%, 0.55024 17.9%, 0.58977 19.02%, 0.62625 20.12%, 0.66016 21.22%, 0.69181 22.32%, 0.72143 23.43%, 0.74917 24.57%, 0.77515 25.73%, 0.79948 26.93%, 0.82222 28.17%, 0.84344 29.46%, 0.86318 30.81%, 0.88149 32.23%, 0.8984 33.73%, 0.91394 35.33%, 0.92813 37.05%, 0.941 38.91%, 0.95256 40.95%, 0.96284 43.2%, 0.97183 45.74%, 0.97957 48.65%, 0.98605 52.07%, 0.99128 56.25%, 0.99528 61.64%, 0.99806 69.34%, 0.99961 83.14%, 1 100%) both"
+fn contentAnimation(id: number, fresh: bool): string = id > 0 ? `contentOut ${contentOutTiming()}` : (fresh ? "none" : `contentIn ${contentInTiming()}`)
+
+// Exit for a modal, delayed by 60 ms per depth so the backdrop's clear-all staggers. The
+// modal stays mounted until the timer surface reports the last one has finished.
+fn modalOutOf(id: number): string = `modalOut 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) ${60 * id}ms both`
+style ModalOut
+  -exact-exit-animation="modalOut 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) both"
+
+// Backdrop: fades to 1 while any modal is shown, to 0 when none is. Fading out waits for the
+// cards to start leaving, so the cards lead the fade.
+fn backdropLagMs(): number = 48
+fn quadStops(): number[] = [0, 0.00151, 0.00604, 0.0136, 0.02418, 0.03778, 0.0544, 0.07405, 0.09671, 0.1224, 0.15112, 0.18285, 0.21761, 0.25539, 0.29619, 0.34001, 0.38686, 0.43672, 0.48961, 0.54354, 0.59235, 0.64645, 0.69338, 0.73407, 0.77779, 0.81433, 0.84486, 0.87639, 0.90151, 0.92617, 0.94466, 0.96167, 0.97606, 0.98697, 0.99411, 0.9986, 1]
+fn quadAt(): number[] = [0, 2.74878, 5.49756, 8.24634, 10.99512, 13.7439, 16.49267, 19.24145, 21.99023, 24.73901, 27.48779, 30.23657, 32.98535, 35.73413, 38.48291, 41.23169, 43.98047, 46.72924, 49.47802, 52.2268, 54.85316, 57.95563, 60.8449, 63.53561, 66.66788, 69.53109, 72.14835, 75.1389, 77.80834, 80.78685, 83.3656, 86.15639, 89.0596, 91.92756, 94.57274, 97.3515, 100]
+fn inOutQuad(t: number): number = t < 0.5 ? 2 * t * t : 1 - (2 - 2 * t) * (2 - 2 * t) / 2
+fn backdropAt(from: number, to: number, start: number, now: number): number = from + (to - from) * inOutQuad(min(1, max(0, (now - start) / 300)))
+fn backdropCurve(from: number, to: number): string = `linear(${range(quadStops().length).map(i => `${from + (to - from) * (match quadStops().at(i) { case some(v) => v, case none => 0 })} ${match quadAt().at(i) { case some(v) => v, case none => 0 }}%`).join(", ")})`
+keyframes backdropA
+  from opacity=0
+  to opacity=1
+keyframes backdropB
+  from opacity=0
+  to opacity=1
+
+component StackedModals
+  props
+    env: DemoEnv
+  state stack = []
+  state serial = 0
+  // Backdrop fade: from, to, start time, and a play count (0 means not played yet).
+  state bdFrom = 0
+  state bdTo = 0
+  state bdStart = 0
+  state bdPlay = 0
+  state bdDelay = 0
+  action fadeBackdrop(to: number, delay: number)
+    let now = performanceNow()
+    bdFrom = backdropAt(bdFrom, bdTo, bdStart, now)
+    bdTo = to
+    bdStart = now + delay
+    bdDelay = delay
+    bdPlay = bdPlay + 1
+  // The + button: shows the first modal.
+  action open
+    if stack.length == 0
+      fadeBackdrop(1, 0)
+    stack = [serial * 10].concat(stack)
+    serial = serial + 1
+  // Confirm and Dismiss both show the next modal. After the seventh, Dismiss clears the stack.
+  action answer(entry: number, dismiss: bool)
+    let kept = (dismiss and modalOf(entry) == 6) ? stack.filter(e => modalOf(e) != 6) : stack
+    if modalOf(entry) + 1 < 7
+      stack = [serial * 10 + modalOf(entry) + 1].concat(kept)
+      serial = serial + 1
+    else
+      stack = kept
+      if kept.length == 0
+        fadeBackdrop(0, backdropLagMs())
+  // Tapping the backdrop clears the whole stack.
+  state leaving = []
+  state leaveEnd = 0
+  state leaveToken = 0
+  state leaveMs = 0
+  // On the web the timer reports its token, and the leaving modals are gone once it appears.
+  derive leftWeb = leaveToken != 0 and env.timers.includes(leaveToken)
+  derive shownLeaving = leftWeb ? [] : leaving
+  action clearAll
+    let now = performanceNow()
+    let end = max(leftWeb ? 0 : leaveEnd, now + 300 + 60 * max(0, stack.length - 1))
+    leaving = shownLeaving.concat(stack.map((e, i) => [e, i]))
+    if stack.length > 0
+      fadeBackdrop(0, backdropLagMs())
+    stack = []
+    leaveEnd = end
+    leaveMs = end - now
+    leaveToken = leaveToken + 1
+  action cleared(m: string)
+    leaving = []
+    leaveEnd = 0
+  view
+    column position="absolute" inset=0 background-color="#fefefe" overflow="hidden"
+      testId="stacked-modals"
+      // The + button, a 64 × 64 circle with a plus sign.
+      view display="flex" flex-direction="column" position="absolute" bottom=48 right=20 margin-left=20 margin-right=20
+        width=64 height=64
+        PressableScale(press=open)
+          column width=64 height=64 border-radius=32 background-color="#000000" align-items="center"
+            justify-content="center" aria-label="Show a modal" testId="add"
+            svg width=28 height=28.7109 viewBox="0 0 512 525" aria-hidden=true
+              path d="M248 105Q248 105 248 105Q253 101 259.5 102.5Q266 104 270 110Q270 110 272 113V179V246H338H404L408 248Q416 253 416 262Q416 271 408 276Q408 276 405 278H339H272V345V411L270 414Q265 422 256 422Q247 422 242 414Q242 414 240 411V345V278H173H107L104 276Q96 271 96 262Q96 253 103 249Q103 249 107 246H173H240V179V113L242 110Q244 107 248 105Z" fill="#ffffff"
+      canvas surface=timer(leaveToken, leaveMs) message=cleared width=1 height=1 position="absolute"
+        left=0 top=0 aria-hidden=true pointer-events="none"
+      // One list, so a modal that starts leaving keeps its instance.
+      for pair in stack.map((e, i) => [e, i, 0]).concat(shownLeaving.map(p => [leaveEntry(p), leaveId(p), 1])) key=(leaveEntry(pair) - modalOf(leaveEntry(pair))) / 10
+        Modal(entry=leaveEntry(pair), id=leaveId(pair), width=env.width, height=env.height,
+          fresh=((leaveEntry(pair) - modalOf(leaveEntry(pair))) / 10 == serial - 1),
+          leaving=(leaveFlag(pair) == 1), confirm=answer(leaveEntry(pair), false),
+          dismiss=answer(leaveEntry(pair), true))
+      // Backdrop: dims the screen, and only takes touches while a modal is shown.
+      view position="absolute" inset=0 background-color="rgba(0, 0, 0, 0.4353)"
+        opacity=(stack.length > 0 ? 1 : 0) pointer-events=(stack.length > 0 ? "auto" : "none")
+        animation=(bdPlay == 0 ? "none" : `${bdPlay % 2 == 0 ? "backdropA" : "backdropB"} 300ms ${backdropCurve(bdFrom, bdTo)} ${bdDelay}ms both`)
+        press=clearAll
+        aria-label="Close all" testId="backdrop"
+
+fn leaveEntry(pair: number[]): number = match pair.at(0) { case some(v) => v, case none => 0 }
+fn leaveId(pair: number[]): number = match pair.at(1) { case some(v) => v, case none => 0 }
+fn leaveFlag(pair: number[]): number = match pair.at(2) { case some(v) => v, case none => 0 }
+
+component Modal
+  props
+    entry: number
+    id: number
+    leaving: bool
+    fresh: bool
+    width: number
+    height: number
+    confirm: action
+    dismiss: action
+  view
+    // The outer box is centred vertically and stacks by z-index. Its inner box carries the
+    // visible part, so the exit fade runs there.
+    column position="absolute" left=(width * 0.1) width=(width * 0.8)
+      bottom=((height - 200) / 2) z-index=(100 - id) class=ModalOut
+      pointer-events=(leaving ? "none" : "auto") testId=`modal-${modalOf(entry)}`
+      column border-radius=35 corner-shape="-exact-continuous"
+        box-shadow="0px 0px 10px rgba(0, 0, 0, 0.03)"
+        animation=(leaving ? modalOutOf(id) : "none")
+        // Moves to its depth position when the id changes.
+        column translate=`0px ${0 - bottomHeight(id)}px` transition=`translate ${modalSpring()}`
+          column animation=`modalIn ${modalInTiming()}`
+            // The card: cards behind the front three are hidden and get smaller and shifted.
+            column width=(width * 0.8) height=200 border-radius=10 corner-shape="-exact-continuous"
+              background-color="#ffffff" opacity=(id < 3 ? 1 : 0) translate=`0px ${0 - id * 5}px`
+              scale=(1 - id * 0.05)
+              box-shadow=`0px -3px ${2 * max(10 - id, 2)}px rgba(0, 0, 0, ${id > 3 ? 0.1 - id * 0.01 : 0.08})`
+              transition=`opacity ${modalSpring()}, translate ${modalSpring()}, scale ${modalSpring()}, box-shadow ${modalSpring()}`
+              column flex=1 border-radius=10 corner-shape="-exact-continuous" overflow="hidden"
+                column flex=1 animation=contentAnimation(id, fresh)
+                  // Only the first few cards render their content.
+                  if id <= 4
+                    ModalContent(index=modalOf(entry), confirm=confirm, dismiss=dismiss)
+
+component ModalContent
+  props
+    index: number
+    confirm: action
+    dismiss: action
+  view
+    column flex=1
+      column flex=1 background-color="#ffffff" border-radius=12 corner-shape="-exact-continuous" padding=16
+        row align-items="center" margin-bottom=8
+          // Line heights and the relative tops place the baselines where the text sits on iOS.
+          text titleOf(index) color="#333333" font-size=18 font-weight=700 line-height="21.48046875px"
+            position="relative" top=(1 / 3)
+        text messageOf(index) color="#666666" font-size=14 line-height="16.70703125px" margin-bottom=12
+          position="relative" top=0.52
+      // The buttons, right-aligned. Their widths are whole device pixels, so the labels line up.
+      row justify-content="flex-end" margin-bottom=12 margin-right=12
+        // Dismiss button.
+        view display="flex" flex-direction="column"
+          AnimatedPressable(press=dismiss,
+            rest=PressLook(scale=1, opacity=1, background="color(display-p3 0.8353 0.3255 0.2902 / 0)", radius=8, continuous=true),
+            pressed=PressLook(scale=1, opacity=1, background="color(display-p3 0.8824 0.3098 0.2667 / 0.5098)", radius=8, continuous=true))
+            column padding-left=12 padding-right=12 padding-top=8 padding-bottom=8
+              align-items="center" justify-content="center" testId=`modal-${index}-dismiss`
+              text "Dismiss" color="#141414" font-weight=700 font-size=14 width=(163 / 3) white-space="nowrap"
+        // Confirm button.
+        view display="flex" flex-direction="column"
+          AnimatedPressable(press=confirm,
+            rest=PressLook(scale=1, opacity=1, background="rgba(80, 80, 80, 0)", radius=8, continuous=true),
+            pressed=PressLook(scale=1, opacity=1, background="rgba(186, 186, 186, 0.6078)", radius=8, continuous=true))
+            column padding-left=12 padding-right=12 padding-top=8 padding-bottom=8
+              align-items="center" justify-content="center" testId=`modal-${index}-confirm`
+              text "Confirm" color="#141414" font-weight=700 font-size=14 width=56 white-space="nowrap"

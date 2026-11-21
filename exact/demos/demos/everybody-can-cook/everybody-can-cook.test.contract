@@ -1,0 +1,16 @@
+at "/demo/everybody-can-cook"
+
+test "both lines are there, one box per character"
+  expect tree has "everybody-can-cook"
+  expect tree has "everybody-0"
+  expect tree has "everybody-8"
+  expect tree missing "everybody-9"
+  expect tree has "can-cook-8"
+  expect tree missing "can-cook-9"
+
+test "a tap flips the letters and a second tap replays them"
+  tap "cook"
+  clock settle
+  tap "cook"
+  clock settle
+  expect tree has "can-cook-3"

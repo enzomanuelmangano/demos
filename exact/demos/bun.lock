@@ -1,0 +1,40 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "demos",
+      "dependencies": {
+        "@exact/motion": "file:.exact/checkout/packages/motion",
+        "pressto": "workspace:*",
+      },
+    },
+    "packages/gestures": {
+      "name": "gestures",
+      "version": "0.1.0",
+    },
+    "packages/motion": {
+      "name": "motion",
+      "version": "0.1.0",
+    },
+    "packages/noise": {
+      "name": "noise",
+      "version": "0.1.0",
+    },
+    "packages/pressto": {
+      "name": "pressto",
+      "version": "0.1.0",
+    },
+  },
+  "packages": {
+    "@exact/motion": ["@exact/motion@file:.exact/checkout/packages/motion", {}],
+
+    "gestures": ["gestures@workspace:packages/gestures"],
+
+    "motion": ["motion@workspace:packages/motion"],
+
+    "noise": ["noise@workspace:packages/noise"],
+
+    "pressto": ["pressto@workspace:packages/pressto"],
+  }
+}

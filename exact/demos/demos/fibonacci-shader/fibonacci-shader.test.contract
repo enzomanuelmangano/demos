@@ -1,0 +1,9 @@
+at "/demo/fibonacci-shader"
+
+test "the canvas and the wand are there"
+  expect tree has "fibonacci-canvas"
+  expect tree has "wand"
+
+test "the wand picks a new spiral"
+  tap "wand"
+  expect tree has "fibonacci-canvas"

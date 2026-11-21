@@ -1,0 +1,5 @@
+at "/demo/floating-bottom-bar"
+
+test "the bar and its canvas are there"
+  expect tree has "tab-bar"
+  expect tree has "tab-bar-canvas"

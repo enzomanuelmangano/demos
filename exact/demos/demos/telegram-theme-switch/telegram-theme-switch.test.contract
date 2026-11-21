@@ -1,0 +1,9 @@
+at "/demo/telegram-theme-switch"
+
+test "the chat list, its bars, and a switch that reveals the other theme"
+  expect tree has "telegram-theme-switch"
+  expect tree has "tts-tabs"
+  expect tree has "tts-theme"
+  expect tree missing "tts-reveal"
+  tap "tts-theme"
+  expect tree has "tts-reveal"

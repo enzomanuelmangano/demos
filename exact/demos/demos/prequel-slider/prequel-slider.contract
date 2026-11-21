@@ -1,0 +1,16 @@
+// Prequel slider: a photo warped by a butterfly-wave transition as a ruler of white ticks is
+// dragged under a blue-to-orange indicator. Drawn in Rust (gpu/src/prequel_slider.rs), laid out
+// from the safe area, which also posts a selection haptic for each tick crossed.
+use DemoEnv from "../env.contract"
+
+component PrequelSlider
+  props
+    env: DemoEnv
+  action buzz(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+  view
+    column position="absolute" inset=0 background-color="color(display-p3 0 0 0)" testId="prequel-slider"
+      canvas surface=prequel_slider(env.safeTop, env.safeBottom) position="absolute" top=0 left=0
+        width=env.width height=env.height touch-action="none" message=buzz testId="prequel-slider-canvas"
+        aria-label="Drag the ruler to transform the photo"

@@ -1,0 +1,5 @@
+at "/demo/blur-cards"
+
+test "the cards and their press are there"
+  expect tree has "blur-cards-canvas"
+  expect tree has "blur-cards-press"

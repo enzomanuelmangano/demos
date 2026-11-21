@@ -1,0 +1,13 @@
+// Loading button: "Check Transaction" turns into a spinner, then a check or a lock with a status
+// line, and back after 1.5 s. Drawn in Rust (gpu/src/loading_button.rs): the pill's layout
+// animates every frame, which no Contract layout transition expresses.
+
+component LoadingButton
+  // The press's haptic.
+  action buzz(text: string)
+    if text == "haptic:selection"
+      haptic("selection")
+  view
+    column position="absolute" inset=0 background-color="#ffffff" testId="loading-button"
+      canvas surface=loading_button() message=buzz position="absolute" top=0 left=0 width="100%"
+        height="100%" touch-action="none" aria-label="Check Transaction" testId="loading-button-press"

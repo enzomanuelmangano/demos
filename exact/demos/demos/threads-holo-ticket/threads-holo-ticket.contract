@@ -1,0 +1,14 @@
+// Threads holo ticket: a ticket that turns about its vertical axis as it is dragged, or flips
+// half a turn on a tap. A holographic grid shines across it and follows the phone's tilt.
+// The front shows the event's details, the back a gold QR code.
+
+component ThreadsHoloTicket
+  // The tap's flip plays one selection.
+  action buzz(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+  view
+    column position="absolute" inset=0 background-color="color(display-p3 0.027451 0 0.094118)" testId="threads-holo-ticket"
+      canvas surface=threads_holo_ticket() position="absolute" top=0 left=0 width="100%" height="100%"
+        touch-action="none" message=buzz testId="threads-holo-ticket-canvas"
+        aria-label="Drag the ticket to turn it, tap it to flip it"

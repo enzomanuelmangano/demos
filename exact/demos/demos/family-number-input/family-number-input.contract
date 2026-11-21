@@ -1,0 +1,112 @@
+// Family Number Input: a keypad under a big number; each digit and thousands comma rises in, drops
+// out, and the commas slide as the number regroups. Holding backspace repeats it, quickening.
+// The number is one canvas surface with its own springs, so a keypress is one input bind; a commit
+// would start transitions the iOS host can skip the first frames of. The haptics are the
+// surface's too (`buzz`): a Contract haptic() makes a feedback generator on the main thread for
+// every key, inside a frame, and the surface's reach the host as patterns with no commit.
+use DemoEnv from "../env.contract"
+use AnimatedPressable, PressLook from "pressto"
+
+// Keys: 1…9, an empty key, 0, then backspace (-1 is empty, -2 is backspace).
+fn keys(): number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, -1, 0, -2]
+
+// value.toLocaleString('en-US') of the digits: a comma before every group of three from the
+// right (what the surface draws, for tests and VoiceOver).
+fn grouped(s: string): string = range(s.length).map(j => (j > 0 and (s.length - j) % 3 == 0 ? "," : "") + s.slice(j, j + 1)).join("")
+// The hold's next step: 100 ms, then 15 % shorter each time, toward 50 ms (50 + 50 × 0.85ⁿ).
+fn repeatMs(n: number): number = match [100, 92.5, 86.13, 80.71, 76.1, 72.19, 68.86, 66.03, 63.62, 61.58, 59.84, 58.37].at(n) { case some(v) => v, case none => 50 }
+fn dropLast(s: string): string = s.length > 1 ? s.slice(0, s.length - 1) : "0"
+
+component FamilyNumberInput
+  props
+    env: DemoEnv
+  // The digits, "0" for zero.
+  state input = "0"
+  // Backspace hold: the timer's token, the wait before the next delete, and whether it has repeated.
+  state holding = false
+  state holdToken = 0
+  state holdMs = 400
+  state repeats = 0
+  // The last haptic asked for, "<kind>:<n>": the surface plays each new one.
+  state beats = 0
+  state buzz = ""
+  // pressto's global handler (a selection per press), here the surface's haptic.
+  action pressablesOnPress
+    beats = beats + 1
+    buzz = `selection:${beats}`
+  provide
+    pressablesOnPress
+  // The surface's haptics, played through the Contract only where the host does not take them.
+  action heard(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+    if m == "haptic:impact-medium"
+      haptic("impact-medium")
+  action press(k: number)
+    // Refused past 11 digits; a digit typed over a 0 replaces it.
+    if k >= 0 and not (input == "0" and k == 0) and (input == "0" or input.length < 11)
+      input = input == "0" ? `${k}` : `${input}${k}`
+    // The release that ends a repeated hold deletes nothing.
+    if k == -2 and repeats > 0
+      repeats = 0
+    else if k == -2
+      input = dropLast(input)
+  action holdStart(k: number)
+    if k == -2
+      holding = true
+      repeats = 0
+      holdMs = 400
+      holdToken = holdToken + 1
+  action holdEnd(k: number)
+    if k == -2
+      holding = false
+  // The timer fired: delete one, then arm the next step, unless released or at 0.
+  action tick(m: string)
+    if holding and m == `timer:${holdToken}` and input != "0"
+      let next = dropLast(input)
+      input = next
+      repeats = repeats + 1
+      beats = beats + 1
+      if next == "0"
+        holding = false
+        buzz = `impact-medium:${beats}`
+      else
+        buzz = `impact-light:${beats}`
+        holdMs = repeatMs(repeats - 1)
+        holdToken = holdToken + 1
+  view
+    column position="absolute" inset=0 background-color="#000000" padding-top=env.safeTop
+      padding-bottom="env(safe-area-inset-bottom)" testId="family-number-input"
+      // The surface fills the top half and centres the row in it.
+      column flex=1 position="relative"
+        canvas surface=family_number(input, buzz) message=heard position="absolute" top=0 left=0 width=env.width
+          height=((env.height - env.safeTop - env.safeBottom) / 2) aria-hidden=true
+        // The number for VoiceOver and tests, not drawn.
+        text grouped(input) testId="number" position="absolute" top=0 left=0 opacity=0
+          pointer-events="none"
+        // Fades the bottom into black.
+        view position="absolute" left=0 right=0 bottom=0 height="38%" pointer-events="none"
+          background-image="linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, #000000 33.333%, #000000 66.667%, #000000 100%)"
+      canvas surface=timer(holding ? holdToken : 0, holdMs) message=tick width=1 height=1 position="absolute"
+        pointer-events="none" aria-hidden=true
+      row flex=1 flex-wrap="wrap" align-items="center" align-content="flex-start"
+        for k in keys() key=k
+          // The press box fills the key's place.
+          view display="flex" flex-direction="column"
+            width="30%" height="20%" margin-left="2.3333%" margin-bottom="2.3333%"
+            AnimatedPressable(press=press(k),
+              rest=PressLook(scale=1, opacity=1, background="rgba(255, 255, 255, 0)", radius=20, continuous=false),
+              pressed=PressLook(scale=0.9, opacity=1, background="rgba(255, 255, 255, 0.1)", radius=20, continuous=false))
+              // Only backspace listens to the raw touch (the hold); the other keys carry no handler.
+              if k == -2
+                column flex-grow=1 align-items="center" justify-content="center"
+                  pointerdown=holdStart(k) pointerup=holdEnd(k) aria-label="Delete" testId=`key-${k}`
+                  image "symbol:sf/delete.left.fill" font-size=24 color="#ffffff" aria-hidden=true
+              if k != -2
+                column flex-grow=1 align-items="center" justify-content="center"
+                  aria-label=(k >= 0 ? `${k}` : "") testId=`key-${k}`
+                  if k >= 0
+                    text `${k}` font-family="SF-Pro-Rounded-Bold" font-size=30 color="#ffffff"
+                      text-align="center"

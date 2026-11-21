@@ -1,0 +1,16 @@
+// Magnet spring: a graphite piece dragged over nine aluminium magnets that swell as it nears;
+// let go, it springs to the nearest. Drawn in Rust (gpu/src/magnet_spring.rs).
+
+component MagnetSpring
+  // The piece's haptics: light on grab, selection as the drag nears another magnet, soft on landing.
+  action heard(m: string)
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-soft"
+      haptic("impact-soft")
+  view
+    canvas surface=magnet_spring() message=heard position="absolute" top=0 left=0 width="100%" height="100%"
+      background-color="#f5f5f5" touch-action="none" testId="magnet-canvas"
+      aria-label="Magnet: drag the piece"

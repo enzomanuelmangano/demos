@@ -1,0 +1,6 @@
+at "/demo/notion-qrcode"
+
+// Checks the screen and canvas are present. The morph, spring, pulse and haptics are covered by the Rust tests.
+test "the screen and its canvas are there"
+  expect tree has "notion-qrcode"
+  expect tree has "notion-qrcode-canvas"

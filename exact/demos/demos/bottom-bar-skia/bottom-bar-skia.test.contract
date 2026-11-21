@@ -1,0 +1,9 @@
+at "/demo/bottom-bar-skia"
+
+// The web host gives a surface no touches, so only the tab boxes are checked here. The tap timing
+// and hit test are checked by the Rust test (gpu/src/bottom_bar_skia.rs).
+test "the bar and its tabs are there"
+  expect tree has "bottom-bar-canvas"
+  expect tree has "tab-0"
+  expect tree has "tab-1"
+  expect tree has "tab-2"

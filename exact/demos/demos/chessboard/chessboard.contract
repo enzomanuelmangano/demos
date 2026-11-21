@@ -1,0 +1,86 @@
+// Chessboard: a live board with two player cards and chess clocks. Drag or tap a piece to move it;
+// castling, en passant and promotion are supported. It opens on the start position and plays Fool's
+// Mate by itself (f3 e5 g4 Qh4#). On checkmate the screen is swept by a glass wave into a haze under
+// the game review card (Back resets to a still board, Replay plays the line again). The board is a
+// Rust surface (gpu/src/chessboard.rs).
+//
+// After the replay (or Back) any legal move is played, for either side, and nothing answers it. The
+// bottom control is a Patterns-style dock: one glass pill, 60 pt tall, whose word climbs Hint, then
+// View solution, then Play solution (the whole line again) while the opening position is on the
+// board, and is muted while the line plays or once a move leaves it. Glass is regular, tinted white
+// at 0.07. Its bottom gap is concentric with the display (62 − 30 = 32 pt). Each tap raises a
+// counter that the surface reads. The surface posts `puzzle:<wait|play|hint1|hint2|done>`, and the
+// pill shows only once one arrives.
+//
+// The mate's haptic pattern is `mate-haptic` (modules/apple/Demos.swift). The surface posts
+// "haptic:mate" and "haptic:mate-stop", counted here into `plays` and `stops`. The web build has
+// no such view, so the surface posts the pattern's taps as impacts instead.
+use DemoEnv, concentricInset, concentricRadius from "../env.contract"
+use PressableScale from "pressto"
+
+// The dock: its bottom gap, the pill's height and its widths.
+fn dockInset(): number = concentricInset(dockHeight())
+fn dockHeight(): number = 60
+fn dockWidth(mode: string): number = mode == "hint1" or mode == "hint2" ? 148 : 104
+// The word a mode shows: the next rung of the ladder.
+fn dockWord(mode: string): string = mode == "hint1" ? "View solution" : (mode == "hint2" ? "Play solution" : "Hint")
+
+component Chessboard
+  props
+    env: DemoEnv
+  // The mate pattern starts on a new `plays` and cancels on a new `stops`.
+  state mate = 0
+  state stop = 0
+  // The surface's puzzle mode ("" until it posts one).
+  state mode = ""
+  // Taps on Hint and View solution. The surface acts on each change.
+  state hints = 0
+  state solves = 0
+  action heard(m: string)
+    if m.startsWith("puzzle:")
+      mode = m.slice(7)
+    if m == "haptic:mate"
+      mate = mate + 1
+    if m == "haptic:mate-stop"
+      stop = stop + 1
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+    if m == "haptic:impact-medium"
+      haptic("impact-medium")
+    if m == "haptic:impact-rigid"
+      haptic("impact-rigid")
+    if m == "haptic:impact-heavy"
+      haptic("impact-heavy")
+  // The pill's one press: the rung its word names.
+  action primary
+    if mode == "play" or mode == "hint1"
+      hints = hints + 1
+    if mode == "hint2"
+      solves = solves + 1
+  view
+    column position="absolute" inset=0 background-color="#0d0e12" testId="chessboard"
+      canvas surface=chessboard(hints, solves) message=heard position="absolute" top=0 left=0
+        width=env.width height=env.height touch-action="none" testId="chessboard-canvas"
+        aria-label="Chessboard: drag or tap a piece to move it"
+      mate-haptic plays=mate stops=stop width=0 height=0
+      if mode != ""
+        // Hidden under the review card once the puzzle is solved; back with the next one.
+        row position="absolute" z-index=10 left=0 right=0 bottom=dockInset() justify-content="center"
+          opacity=(mode == "done" ? 0 : 1) translate=(mode == "done" ? "0 16px" : "0 0")
+          transition="opacity 220ms cubic-bezier(0.23, 1, 0.32, 1), translate 220ms cubic-bezier(0.23, 1, 0.32, 1)"
+          pointer-events=(mode == "done" ? "none" : "auto")
+          view width=dockWidth(mode) height=dockHeight() -exact-layout-transition="-exact-spring(342, 30.3, 1)"
+            PressableScale(press=primary)
+              row height=dockHeight() position="relative" align-items="center" justify-content="center"
+                backgroundMaterial="glass" -exact-glass-tint="rgba(255, 255, 255, 0.07)"
+                border-radius=concentricRadius(dockInset(), dockHeight()) corner-shape="-exact-continuous"
+                aria-label=dockWord(mode) testId="puzzle-bar"
+                for word in ["Hint", "View solution", "Play solution"] key=word
+                  // The three words stacked, centred: the shown one fades in as the last fades out.
+                  row position="absolute" inset=0 align-items="center" justify-content="center"
+                    opacity=(dockWord(mode) == word ? 1 : 0) transition="opacity 240ms ease-out"
+                    aria-hidden=true
+                    text word font-size=14 line-height=20 font-weight=600 white-space="nowrap"
+                      color=(mode == "wait" ? "#8f9298" : "#3a91f8") transition="color 200ms ease"

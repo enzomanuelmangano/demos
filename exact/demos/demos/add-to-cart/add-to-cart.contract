@@ -1,0 +1,302 @@
+// Add to Cart: a list of 20 product cards. Opening one flies its photo into the hero of a
+// confirmation sheet; confirming flies it into the card's cart button, pops the red badge and
+// plays a haptic. A tap on the backdrop flies the photo back to its card.
+//
+// Every moving thing is a translate, scale or opacity on a node that stays mounted, so a tap
+// creates no node or image while it animates. Shared-element flights were dropped: iOS presents
+// them on the main thread, and they stuttered.
+use PressableScale from "pressto"
+use DemoEnv, demoButtonRow, displayCorner, concentricRadius from "../env.contract"
+
+// The photo is cropped square at the source, so the thumbnail and the hero show the same
+// pixels. Sized for 3x: a 64 pt thumbnail and a ~354 pt hero.
+fn thumbUri(): string = "https://images.unsplash.com/photo-1662880195918-63fecf8a8b71?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=200&q=80"
+fn heroUri(): string = "https://images.unsplash.com/photo-1662880195918-63fecf8a8b71?ixlib=rb-4.0.3&auto=format&fit=crop&w=1080&h=1080&q=80"
+fn description(): string = "Lorem, ipsum dolor sit amet consectetur adipisicing elit. Vitae itaque quae, deleniti distinctio laudantium, doloremque debitis, fugiat ea alias sint dolor qui? Quo tempore, ab aliquam repellendus veritatis aspernatur cupiditate."
+
+// Card: radius 24 with 12 pt padding, so the photo and the cart button are concentric at radius 12.
+fn cardRadius(): number = 24
+fn cardPad(): number = 12
+fn cardInner(): number = cardRadius() - cardPad()
+fn thumb(): number = 64
+fn cardHeight(): number = thumb() + 2 * cardPad()
+fn buyButton(): number = 44
+fn listSide(): number = 16
+fn listGap(): number = 12
+// The sheet is concentric with the display: 8 pt from its sides and bottom, radius 62 − 8.
+// The 56 pt capsule button sits 54 − 28 = 26 pt in from the sheet's edges, so its ends share
+// the corner's centre.
+fn sheetInset(): number = 8
+fn sheetPad(): number = 16
+fn sheetRadius(): number = displayCorner() - sheetInset()
+fn sheetInner(): number = sheetRadius() - sheetPad()
+fn confirmHeight(): number = 56
+fn confirmInset(): number = sheetRadius() - confirmHeight() / 2
+fn confirmExtra(): number = confirmInset() - sheetPad()
+// Copy under the hero: eyebrow, title and two body lines.
+fn sheetCopy(): number = 92
+fn sheetHeight(hero: number): number = 2 * sheetPad() + hero + 20 + sheetCopy() + 24 + confirmHeight() + confirmExtra()
+fn heroSide(w: number, h: number): number = min(w - 2 * sheetInset() - 2 * sheetPad(), h * 0.42)
+
+// Where the hero sits when the sheet is up, in the demo's points.
+fn heroLeft(w: number, hero: number): number = sheetInset() + sheetPad() + (w - 2 * sheetInset() - 2 * sheetPad() - hero) / 2
+fn heroTop(h: number, hero: number): number = h - sheetInset() - sheetHeight(hero) + sheetPad()
+// The size the photo shrinks to as it drops into the cart button.
+fn cartDrop(): number = 20
+
+// One spring for every motion: critically damped, settling in about 500 ms.
+fn spring(): string = "-exact-spring(1087.7349, 131.9234, 4)"
+// A close hands the row its photo back once the spring is within 0.2 pt of rest.
+fn landMs(): number = 460
+
+fn ink(): string = "#000000"
+fn secondary(): string = "rgba(60, 60, 67, 0.6)"
+fn badgeRed(): string = "#D12727"
+fn countAt(counts: number[], i: number): number = match counts.at(i) { case some(c) => c, case none => 0 }
+
+// Drag up: iOS's rubber band, (1 - 1/(|y| * 0.55 / 120 + 1)) * 120 for a finger |y| up, as
+// keyframes over the drag timeline. The layer follows the finger; this takes the difference back.
+keyframes atcRubber
+  0% translate="0px 901.49px"
+  24% translate="0px 666.77px"
+  44% translate="0px 473.64px"
+  58% translate="0px 341.03px"
+  68% translate="0px 248.65px"
+  75.5% translate="0px 181.53px"
+  81.5% translate="0px 129.94px"
+  86% translate="0px 93.10px"
+  89.5% translate="0px 66.01px"
+  92.2% translate="0px 46.40px"
+  94.4% translate="0px 31.49px"
+  96.2% translate="0px 20.20px"
+  97.6% translate="0px 12.11px"
+  98.7% translate="0px 6.25px"
+  99.5% translate="0px 2.31px"
+  100% translate="0px 0.00px"
+
+// The badge pops as the photo lands in the cart.
+keyframes pop
+  0% opacity=0 scale=0.4
+  55% opacity=1 scale=1.25
+  80% scale=0.94
+  100% opacity=1 scale=1
+
+component AddToCart
+  props
+    env: DemoEnv
+  // The product the sheet shows and whether it is up; each product's count.
+  state open = false
+  state pick = 0
+  state counts = range(20).map(i => 0)
+  // Hero flight: "rest" (hidden), "armed" (at the row's photo, no transition), "open" (springing
+  // to the sheet), "closing" (springing to fromX/fromY/fromS). The row it stands for is hidden;
+  // `fade` brings that row back on a confirm. `toCart`: the close drops into the cart button.
+  state phase = "rest"
+  state fromX = 0
+  state fromY = 0
+  state fromS = 1
+  state hidden = -1
+  state fade = false
+  state toCart = false
+  state added = -1
+  state openSerial = 0
+  state landToken = 0
+  derive hero = heroSide(env.width, env.height)
+  derive hx = heroLeft(env.width, hero)
+  derive hy = heroTop(env.height, hero)
+  derive still = phase == "rest" or phase == "armed"
+  derive heroMotion = still ? "none" : `translate ${spring()}, scale ${spring()}, opacity 360ms cubic-bezier(0.4, 0, 1, 1)`
+  // The hero's corner is the sheet's at full size and the card's at the row photo's size. A
+  // second copy fades over it, so the radius changes on opacity alone.
+  derive roundMotion = still ? "none" : "opacity 320ms ease-in-out"
+  // `frame()` is the box as drawn, transforms included. Dividing by the root's width maps it
+  // back to demo points.
+  action show(i: number)
+    let root = frame("atc-root")
+    let f = frame(`thumb-${i}`)
+    let k = root.unavailable or root.width <= 0 ? 1 : root.width / env.width
+    pick = i
+    added = -1
+    toCart = false
+    fade = false
+    open = true
+    if f.unavailable
+      phase = "open"
+    else
+      fromX = (f.x - root.x) / k - hx
+      fromY = (f.y - root.y) / k - hy
+      fromS = f.width / k / hero
+      hidden = i
+      phase = "armed"
+      openSerial = openSerial + 1
+  // The commit after the armed one: the hero springs from the row to the sheet.
+  action go
+    if phase == "armed"
+      phase = "open"
+  action goEntry(e: IntersectionObserverEntry)
+    if phase == "armed"
+      phase = "open"
+  action goTimer(m: string)
+    if phase == "armed"
+      phase = "open"
+  action dismiss
+    let root = frame("atc-root")
+    let f = frame(`thumb-${pick}`)
+    let k = root.unavailable or root.width <= 0 ? 1 : root.width / env.width
+    open = false
+    toCart = false
+    fade = false
+    if not f.unavailable
+      fromX = (f.x - root.x) / k - hx
+      fromY = (f.y - root.y) / k - hy
+      fromS = f.width / k / hero
+    phase = "closing"
+    landToken = landToken + 1
+  // Confirm: the count grows, the photo drops into the cart button and the row's photo fades back.
+  // The landing plays success; the press already plays pressto's selection haptic.
+  action confirm
+    let root = frame("atc-root")
+    let b = frame(`buy-${pick}`)
+    let k = root.unavailable or root.width <= 0 ? 1 : root.width / env.width
+    counts = range(20).map(j => j == pick ? countAt(counts, j) + 1 : countAt(counts, j))
+    added = pick
+    open = false
+    toCart = true
+    fade = true
+    hidden = -1
+    if not b.unavailable
+      fromS = cartDrop() / hero
+      fromX = (b.x - root.x + b.width / 2) / k - hx - cartDrop() / 2
+      fromY = (b.y - root.y + b.height / 2) / k - hy - cartDrop() / 2
+    phase = "closing"
+    landToken = landToken + 1
+  // The drag binding needs an action; this one has nothing to record.
+  action bound(bw: number, bh: number, pw: number, ph: number)
+    open = open
+  // y is the layer's translate (0 at rest). A quarter of the sheet, or a downward flick, closes
+  // it like a tap on the backdrop; otherwise the layer springs home.
+  action release(x: number, y: number, scale: number, vx: number, vy: number, vscale: number)
+    if open and (y > min(120, sheetHeight(hero) * 0.25) or (vy > 600 and y > 12))
+      dismiss()
+  action landed(m: string)
+    if phase == "closing"
+      if toCart
+        haptic("success")
+      phase = "rest"
+      hidden = -1
+      fade = false
+  view
+    column position="absolute" inset=0 background-color="#ffffff" id="atc-root" testId="add-to-cart"
+      overflow="hidden"
+      scroll position="absolute" left=0 top=0 width=env.width height=env.height overflow-y="scroll"
+        testId="add-to-cart-list"
+        column width=env.width box-sizing="border-box"
+          padding-top=(env.safeTop + demoButtonRow()) padding-bottom=(env.safeBottom + 24)
+          padding-left=listSide() padding-right=listSide() gap=listGap()
+          for i in range(20) key=i
+            Card(i=i, count=countAt(counts, i), hidden=(hidden == i), fade=fade,
+              bumped=(added == i), press=show(i))
+      // The backdrop dims the screen; a tap flies the product home.
+      view position="absolute" inset=0 background-color="rgba(0, 0, 0, 0.4)" opacity=(open ? 1 : 0)
+        transition="opacity 400ms cubic-bezier(0.32, 0.72, 0, 1)" pointer-events=(open ? "auto" : "none")
+        press=dismiss aria-label="Close"
+        // The dimmed screen above the sheet (what a tap there lands on).
+        view position="absolute" left=0 right=0 top=0
+          height=(env.height - sheetInset() - sheetHeight(hero)) testId="add-to-cart-backdrop"
+      // The drag layer: the sheet and its photo move with the finger, 1:1 downward and with a
+      // rubber band upward. Past a quarter of the sheet, or on a flick down, a release closes it.
+      column id="atc-drag" position="absolute" left=0 top=0 width="100%" height="100%"
+        box-sizing="border-box" pointer-events="none"
+        translate="0px 0px" transition=`translate ${spring()}` -exact-drag-timeline="--atc y"
+        // The handle: the sheet's box. The confirm button, above it, keeps its taps.
+        view position="absolute" left=sheetInset() bottom=sheetInset() width=(env.width - 2 * sheetInset())
+          height=sheetHeight(hero) pointer-events=(open ? "auto" : "none") touch-action="none"
+          transformDragFor="atc-drag" transformgeometry=bound transformrelease=release
+          aria-label="Drag the sheet down to close it" testId="add-to-cart-handle"
+        column position="absolute" inset=0 pointer-events="none" animation="atcRubber 1s linear both"
+          animation-timeline="--atc" animation-range="-1000px 0px"
+          // The sheet stays mounted and springs up from under the screen.
+          column position="absolute" left=sheetInset() right=sheetInset() bottom=sheetInset()
+            height=sheetHeight(hero) box-sizing="border-box" padding=sheetPad()
+            background-color="#ffffff" border-radius=sheetRadius() corner-shape="-exact-continuous"
+            translate=(open ? "0px 0px" : `0px ${sheetHeight(hero) + sheetInset() + 24}px`)
+            transition=`translate ${spring()}` pointer-events="none"
+            testId="add-to-cart-sheet"
+            // Holds the hero's place in the layout; the flying hero is the overlay below.
+            view width=hero height=hero align-self="center" flex-shrink=0
+            column height=sheetCopy() margin-top=20 flex-shrink=0 gap=4
+              text "PAYMENT CONFIRMATION" font-size=13 font-weight=600 letter-spacing=0.6
+                line-height="16px" color=secondary()
+              text `Item ${pick}` font-size=24 font-weight=700 line-height="28px" color=ink()
+                role="heading" aria-level=2 testId="sheet-title"
+              text "Are you sure you want to add this item to your cart?" font-size=15
+                line-height="20px" color=secondary() line-clamp=2
+            view height=confirmHeight() margin-top=24 margin-left=confirmExtra() margin-right=confirmExtra()
+              margin-bottom=confirmExtra() flex-shrink=0 position="relative"
+              pointer-events=(open ? "auto" : "none")
+              PressableScale(press=confirm)
+                row height=confirmHeight() align-items="center" justify-content="center" gap=8
+                  background-color="#000000" border-radius=(confirmHeight() / 2)
+                  corner-shape="-exact-continuous" aria-label="Add to Cart" testId="add-to-cart-confirm"
+                  image "symbol:sf/cart.fill" font-size=17 font-weight=600 color="#FFFFFF" aria-hidden=true
+                  text "Add to Cart" font-size=17 font-weight=600 line-height="22px" color="#FFFFFF"
+          // The flying photo: laid out at the sheet's hero, moved by transform only.
+          view position="absolute" left=hx top=hy width=hero height=hero transform-origin="0px 0px"
+            translate=(phase == "open" ? "0px 0px" : `${fromX}px ${fromY}px`)
+            scale=(phase == "open" ? 1 : fromS)
+            opacity=(phase == "rest" or (phase == "closing" and toCart) ? 0 : 1)
+            transition=heroMotion pointer-events="none" testId="sheet-photo" aria-label=`Item ${pick}`
+            image heroUri() position="absolute" left=0 top=0 width=hero height=hero object-fit="cover"
+              border-radius=sheetInner() corner-shape="-exact-continuous" aria-hidden=true
+            image heroUri() position="absolute" left=0 top=0 width=hero height=hero object-fit="cover"
+              border-radius=min(cardInner() * hero / thumb(), hero / 2) corner-shape="-exact-continuous"
+              opacity=(phase == "open" ? 0 : 1) transition=roundMotion aria-hidden=true
+      // The armed open's second commit: this node is new each open. Its first `intersect` starts
+      // the spring; the timer is the backstop.
+      for s in [openSerial] key=s
+        view position="absolute" left=0 top=0 width=1 height=1 pointer-events="none"
+          intersect=goEntry aria-hidden=true
+      canvas surface=timer(openSerial, 16) message=goTimer width=1 height=1 position="absolute"
+        left=0 top=0 pointer-events="none" aria-hidden=true
+      // The landing returns the row its photo.
+      canvas surface=timer(landToken, landMs()) message=landed width=1 height=1 position="absolute"
+        left=0 top=0 pointer-events="none" aria-hidden=true
+
+// A product card: photo, title, two lines of copy, and a black cart button with a red count
+// badge. The whole card opens the product.
+component Card
+  props
+    i: number
+    count: number
+    hidden: bool
+    fade: bool
+    bumped: bool
+    press: action
+  view
+    PressableScale(press=press)
+      row height=cardHeight() padding=cardPad() gap=12 align-items="center" box-sizing="border-box"
+        background-color="#ffffff" border-radius=cardRadius() corner-shape="-exact-continuous"
+        box-shadow="0px 4px 16px rgba(0, 0, 0, 0.10)" testId=`card-${i}` aria-label=`Item ${i}`
+        image thumbUri() id=`thumb-${i}` width=thumb() height=thumb() flex-shrink=0
+          object-fit="cover" border-radius=cardInner() corner-shape="-exact-continuous"
+          opacity=(hidden ? 0 : 1) transition=(fade ? "opacity 240ms ease-out" : "none")
+          aria-hidden=true
+        column flex=1 min-width=0 gap=2
+          text `Item ${i}` font-size=16 font-weight=600 line-height="20px" color=ink() line-clamp=1
+          text description() font-size=14 line-height="18px" color=secondary() line-clamp=2
+        // Cart button: 44 pt. The badge rides its corner.
+        view width=buyButton() height=buyButton() flex-shrink=0 position="relative"
+          PressableScale(press=press)
+            column width=buyButton() height=buyButton() align-items="center" justify-content="center"
+              background-color="#000000" border-radius=cardInner() corner-shape="-exact-continuous"
+              id=`buy-${i}` aria-label=`Add Item ${i} to cart` testId=`buy-${i}`
+              image "symbol:sf/cart" font-size=17 font-weight=600 color="#FFFFFF" aria-hidden=true
+          if count > 0
+            for c in [count] key=c
+              view position="absolute" top=-6 right=-6 min-width=20 height=20 padding="0px 5px"
+                box-sizing="border-box" border-radius=10 background-color=badgeRed()
+                border="2px solid #ffffff" display="flex" align-items="center"
+                justify-content="center" pointer-events="none"
+                animation=(bumped ? "pop 460ms cubic-bezier(0.2, 0.8, 0.2, 1) 300ms both" : "none")
+                text `${c}` font-size=11 font-weight=700 line-height="13px" color="#FFFFFF"
+                  font-variant-numeric="tabular-nums" testId=`badge-${i}`

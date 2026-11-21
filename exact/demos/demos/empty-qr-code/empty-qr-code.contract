@@ -1,0 +1,15 @@
+// Empty QR Code: a tilted card cycling the letters of YOURLOGO on radial gradients; a tap turns
+// it straight, grows it and swaps the letters for a white QR code of https://reactiive.io/demos.
+use DemoEnv from "../env.contract"
+
+component EmptyQrCode
+  props
+    env: DemoEnv
+  action buzz(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+  view
+    column position="absolute" inset=0 background-color="color(display-p3 0.984314 0.984314 0.984314)" testId="empty-qr-code"
+      canvas surface=empty_qr_code() position="absolute" top=0 left=0 width=env.width height=env.height
+        touch-action="none" message=buzz testId="empty-qr-code-canvas"
+        aria-label="Tap the card to show the QR code"

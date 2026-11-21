@@ -1,0 +1,70 @@
+// Alert: UIKit's own alert on iOS (`system-alert` presents a real UIAlertController), or an alert
+// drawn in the demo's route elsewhere. A `dialog` opened with showModal from the full-screen demo
+// route never shows on the phone, so the native alert is the one that works there.
+//
+// The drawn alert sits above everything in the demo (z-index 1000): a full-screen canvas takes the
+// touches under it on iOS whatever its pointer-events.
+
+keyframes routeAlertIn
+  from opacity=0 scale=1.1
+  to opacity=1 scale=1
+
+component RouteAlert
+  props
+    shown: bool
+    title: string
+    message: string
+    // The cancel action's label ("" for none) and the other action's.
+    cancelLabel: string
+    confirm: string
+    destructive: bool
+    // Each button closes the alert: `dismiss` for the cancel action, `accept` for the other.
+    dismiss: action
+    accept: action
+    testId: string
+  // True once the native alert reports itself: the drawn alert then never shows.
+  state native = false
+  action heard(m: string)
+    if m == "system-alert:1"
+      native = true
+  // The tapped button's index in `alert-buttons`: with a cancel label, "0" is it.
+  action chose(index: string)
+    if cancelLabel != "" and index == "0"
+      dismiss()
+    else
+      accept()
+  view
+    view position="absolute" inset=0 z-index=1000 display="flex" flex-direction="column"
+      align-items="center" justify-content="center"
+      background-color=(shown and not native ? "rgba(0, 0, 0, 0.48)" : "rgba(0, 0, 0, 0)")
+      transition="background-color 250ms ease-out"
+      pointer-events=(shown and not native ? "auto" : "none") aria-hidden=(not shown or native)
+      testId=testId
+      system-alert open=shown change=chose message=heard alert-title=title alert-message=message
+        alert-buttons=(cancelLabel != "" ? `${cancelLabel}|${confirm}` : confirm)
+        alert-button-styles=(cancelLabel != "" ? (destructive ? "cancel|destructive" : "cancel|default") : (destructive ? "destructive" : "default"))
+        alert-appearance="dark" position="absolute" top=0 left=0 width=0 height=0
+        aria-hidden=true testId=`${testId}-system`
+      if shown and not native
+        column aria-label=title width=300 color-scheme="dark"
+          backgroundMaterial="regular" border-radius=34 corner-shape="-exact-continuous"
+          padding="22px 18px 18px" gap=4 align-items="stretch"
+          animation="routeAlertIn 300ms cubic-bezier(0.32, 0.72, 0, 1) both"
+          -exact-exit-animation="routeAlertOut 150ms ease-in both"
+          text title font-size=17 font-weight=600 color="#ffffff" padding="0px 6px"
+          if message != ""
+            text message font-size=15 color="rgba(235, 235, 245, 0.7)" padding="0px 6px"
+          row gap=10 margin-top=18
+            if cancelLabel != ""
+              button appearance="none" press=dismiss aria-label=cancelLabel flex=1 height=48 border-radius=24
+                background-color="rgba(255, 255, 255, 0.12)" text-align="center"
+                testId=`${testId}-cancel`
+                text cancelLabel font-size=17 font-weight=600 color="#ffffff"
+            button appearance="none" press=accept aria-label=confirm flex=1 height=48 border-radius=24
+              background-color="rgba(255, 255, 255, 0.12)" text-align="center"
+              testId=`${testId}-confirm`
+              text confirm font-size=17 font-weight=600
+                color=(destructive ? "#FF4245" : "#0091FF")
+
+keyframes routeAlertOut
+  to opacity=0

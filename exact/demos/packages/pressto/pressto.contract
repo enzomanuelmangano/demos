@@ -1,0 +1,264 @@
+// The press system every demo's pressable uses: pressto's pressables for Exact.
+//
+// A pressable is on from the touch-down to the lift or a cancel; sliding off keeps it on; a press
+// counts only when the lift is inside. Its progress runs 0 → 1 over 250 ms on
+// cubic-bezier(0.25, 0.1, 0.25, 1) (or a spring), retargeting from where it is, and each style is
+// linear in progress, so it is a transition of that property between its two ends.
+//
+// Not the host's `:active`: the iOS host eases it over a fixed 120 ms that no transition or
+// property changes. So the pressed state is the component's, from `pointerdown` / `pointerup`
+// (every ancestor of the touched node hears them, the up wherever the finger lifts, a cancel is
+// an up, and neither takes anything from `press`, which the host fires only for a lift inside).
+//
+// Use the components at the end of this file (PressableScale, PressableOpacity,
+// PressableWithoutFeedback, AnimatedPressable and the *Layout variants) around the caller's
+// nodes. The functions below are their machine.
+
+// The animation and the pressables' config. The root provides one (`pressto`), with the app's
+// global press handler (`pressablesOnPress`).
+shape PressablesConfig
+  // The progress curve, as a transition's timing.
+  animation: string
+  // The scales and opacity a pressed pressable moves to.
+  minScale: number
+  baseScale: number
+  activeOpacity: number
+
+// The default timing: 250 ms on cubic-bezier(0.25, 0.1, 0.25, 1), which is CSS `ease`.
+fn pressTiming(): string = "250ms cubic-bezier(0.25, 0.1, 0.25, 1)"
+// The default spring (mass 1, damping 30, stiffness 200): ζ = 30 / (2√200) > 1, run critically
+// damped, so damping 2√(200 · 1).
+fn pressSpring(): string = "-exact-spring(200, 28.284271247461902, 1)"
+
+// The default config: timing, min scale 0.96, active opacity 0.5.
+fn defaultPressablesConfig(): PressablesConfig =
+  PressablesConfig(animation=pressTiming(), minScale=0.96, baseScale=1, activeOpacity=0.5)
+// The default config with the spring.
+fn springPressablesConfig(): PressablesConfig =
+  PressablesConfig(animation=pressSpring(), minScale=0.96, baseScale=1, activeOpacity=0.5)
+
+// A component's press state: the held pressable's key (-1: none) and the parity of its
+// presses (pressNudge).
+shape Press
+  key: number
+  odd: bool
+
+fn pressNone(): Press = Press(key=-1, odd=false)
+// Pressable `key` goes active.
+fn pressDown(p: Press, key: number): Press = Press(key=key, odd=not p.odd)
+// A press-out, a press or a cancel: none active.
+fn pressUp(p: Press): Press = Press(key=-1, odd=p.odd)
+// Whether pressable `key` is held.
+fn isPressed(p: Press, key: number): bool = p.key == key
+
+// A transition that returns to the value it started from is CSS's reversing case (CSS
+// Transitions §3.2): it runs for only a share of the duration. A press always runs the full
+// 250 ms from where it is, so every other press aims a millionth off toward the other end
+// (0.001 px across 1000 device px, one f32 step is 6e-8): no target ever equals the start of
+// the transition it interrupts, and each retarget is a fresh full run from the current value.
+fn pressNudge(p: Press, rest: number, pressed: number): number =
+  p.odd ? (pressed < rest ? -0.000001 : 0.000001) : 0
+
+// The value of a property that is `rest` idle and `pressed` held, linear in progress. Give the
+// property `transition=pressTransition(<property>, pressto)`.
+fn animatedPressable(p: Press, key: number, rest: number, pressed: number): number =
+  isPressed(p, key) ? pressed - pressNudge(p, rest, pressed) : rest + pressNudge(p, rest, pressed)
+
+// The scale of a scale pressable: baseScale → minScale.
+fn pressableScale(p: Press, key: number, c: PressablesConfig): number =
+  animatedPressable(p, key, c.baseScale, c.minScale)
+// The opacity of an opacity pressable: 1 → activeOpacity.
+fn pressableOpacity(p: Press, key: number, c: PressablesConfig): number =
+  animatedPressable(p, key, 1, c.activeOpacity)
+
+// The transition the pressed property runs on (join it to a node's own with `, `).
+fn pressTransition(property: string, c: PressablesConfig): string = `${property} ${c.animation}`
+
+
+// The colour of a pressable: `rest` idle or `pressed` held, with
+// `transition=pressTransition("background-color", pressto)`. Not nudged, so a colour released
+// mid-flight takes CSS's shortened reverse; Exact blends in Oklab.
+fn animatedPressableColor(p: Press, key: number, rest: string, pressed: string): string =
+  isPressed(p, key) ? pressed : rest
+
+
+// ── The components: pressto's API ──────────────────────────────────────────────────────────
+//
+// Each wraps the caller's nodes (its `slot`) in one press box and owns its press (one `Press`
+// state a pressable):
+//
+//   PressableScale(press=save)
+//     row height=60 border-radius=30 background-color="#0c86f7" …
+//       text "Continue"
+//
+// - `press` is the pressable's press. The app's global handler (`pressablesOnPress`, the root's
+//   PressablesConfig) runs first, then `press`, only for a lift inside the box.
+// - The box fills the box its caller gives it (flex column, grown and stretched): write the
+//   pressable's place (position, size, flex, margins, `-exact-layout-transition`) on a `view`
+//   around it, its look (background, radius, padding, layout of its content) on the node in the
+//   slot. The box draws nothing and has no padding, so the scale turns about the centre of the
+//   caller's box.
+// - The box is `role="button"`: a view, not a `button`, so it adds no text style (a `button`'s
+//   tag centres its text and sets its font) to the caller's nodes.
+//
+// The provider stays the root's `provide`: a slot's fill keeps its caller's providers, so a
+// wrapping component cannot provide to it. The root provides
+// `pressto = defaultPressablesConfig()` and `pressablesOnPress` (app.contract).
+
+// A pressable that scales from baseScale to minScale.
+component PressableScale
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  props
+    press: action
+  slot
+  state pressing = pressNone()
+  action pressIn
+    pressing = pressDown(pressing, 0)
+    // The innermost pressable takes the touch (UIKit hands it to the deepest control): a pressable
+    // around this one does not press in.
+    stopPropagation()
+  action pressOut
+    pressing = pressUp(pressing)
+  action pressed
+    pressablesOnPress()
+    press()
+  view
+    view role="button" press=pressed pointerdown=pressIn pointerup=pressOut
+      display="flex" flex-direction="column" flex-grow=1 align-self="stretch"
+      scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
+      children
+
+// A scale pressable whose box moves with a layout animation: `layout` is the box's
+// `-exact-layout-transition`, so the scale turns about the moving box's centre.
+component PressableScaleLayout
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  props
+    press: action
+    layout: string
+  slot
+  state pressing = pressNone()
+  action pressIn
+    pressing = pressDown(pressing, 0)
+    // The innermost pressable takes the touch (UIKit hands it to the deepest control): a pressable
+    // around this one does not press in.
+    stopPropagation()
+  action pressOut
+    pressing = pressUp(pressing)
+  action pressed
+    pressablesOnPress()
+    press()
+  view
+    view role="button" press=pressed pointerdown=pressIn pointerup=pressOut
+      display="flex" flex-direction="column" flex-grow=1 align-self="stretch"
+      -exact-layout-transition=layout
+      scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
+      children
+
+// A pressable that fades from 1 to activeOpacity.
+component PressableOpacity
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  props
+    press: action
+  slot
+  state pressing = pressNone()
+  action pressIn
+    pressing = pressDown(pressing, 0)
+    // The innermost pressable takes the touch (UIKit hands it to the deepest control): a pressable
+    // around this one does not press in.
+    stopPropagation()
+  action pressOut
+    pressing = pressUp(pressing)
+  action pressed
+    pressablesOnPress()
+    press()
+  view
+    view role="button" press=pressed pointerdown=pressIn pointerup=pressOut
+      display="flex" flex-direction="column" flex-grow=1 align-self="stretch"
+      opacity=pressableOpacity(pressing, 0, pressto) transition=pressTransition("opacity", pressto)
+      children
+
+// An opacity pressable whose box moves with a layout animation (as PressableScaleLayout).
+component PressableOpacityLayout
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  props
+    press: action
+    layout: string
+  slot
+  state pressing = pressNone()
+  action pressIn
+    pressing = pressDown(pressing, 0)
+    stopPropagation()
+  action pressOut
+    pressing = pressUp(pressing)
+  action pressed
+    pressablesOnPress()
+    press()
+  view
+    view role="button" press=pressed pointerdown=pressIn pointerup=pressOut
+      display="flex" flex-direction="column" flex-grow=1 align-self="stretch"
+      -exact-layout-transition=layout
+      opacity=pressableOpacity(pressing, 0, pressto) transition=pressTransition("opacity", pressto)
+      children
+
+// A pressable with no look: the press and its haptic.
+component PressableWithoutFeedback
+  inject
+    pressablesOnPress: action
+  props
+    press: action
+  slot
+  action pressed
+    pressablesOnPress()
+    press()
+  view
+    view role="button" press=pressed
+      display="flex" flex-direction="column" flex-grow=1 align-self="stretch"
+      children
+
+// What an animated pressable's style is at rest (progress 0) and pressed (progress 1): the scale,
+// the opacity and the background, interpolated. The corner is the box's own (the same in both).
+shape PressLook
+  scale: number
+  opacity: number
+  background: string
+  radius: number
+  continuous: bool
+
+// A pressable with a custom look: its scale, opacity and background at rest and pressed.
+component AnimatedPressable
+  inject
+    pressto: PressablesConfig
+    pressablesOnPress: action
+  props
+    press: action
+    rest: PressLook
+    pressed: PressLook
+  slot
+  state pressing = pressNone()
+  action pressIn
+    pressing = pressDown(pressing, 0)
+    // The innermost pressable takes the touch (UIKit hands it to the deepest control): a pressable
+    // around this one does not press in.
+    stopPropagation()
+  action pressOut
+    pressing = pressUp(pressing)
+  action onPress
+    pressablesOnPress()
+    press()
+  view
+    view role="button" press=onPress pointerdown=pressIn pointerup=pressOut
+      display="flex" flex-direction="column" flex-grow=1 align-self="stretch"
+      scale=animatedPressable(pressing, 0, rest.scale, pressed.scale)
+      opacity=animatedPressable(pressing, 0, rest.opacity, pressed.opacity)
+      background-color=animatedPressableColor(pressing, 0, rest.background, pressed.background)
+      border-radius=rest.radius corner-shape=(rest.continuous ? "-exact-continuous" : "round")
+      transition=`${pressTransition("scale", pressto)}, ${pressTransition("opacity", pressto)}, ${pressTransition("background-color", pressto)}`
+      children

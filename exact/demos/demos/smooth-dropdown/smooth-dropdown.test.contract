@@ -1,0 +1,12 @@
+at "/demo/smooth-dropdown"
+
+test "the header opens the stack, an option is picked, the header closes it"
+  expect tree has "smooth-dropdown"
+  tap "dropdown-header"
+  clock settle
+  tap "dropdown-charts"
+  clock settle
+  expect tree has "dropdown-camera"
+  tap "dropdown-header"
+  clock settle
+  expect tree has "dropdown-header"

@@ -1,0 +1,7 @@
+at "/demo/calendar-days"
+
+// The web host gives a surface no touches, so the pages and the slider are checked by the Rust
+// fixture tests (gpu/src/calendar_days.rs). Here only the canvas is checked.
+test "the canvas fills the screen"
+  expect tree has "calendar-days"
+  expect tree has "calendar-days-canvas"

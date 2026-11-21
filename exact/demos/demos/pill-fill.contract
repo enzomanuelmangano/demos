@@ -1,0 +1,27 @@
+// An opaque rounded fill for a box whose width springs with a layout transition. On iOS, a fill
+// that resizes can lose its corner shape mid-spring, so the fill is built from pieces that never
+// resize: two end caps pinned to the box's edges, and a plain rectangle between them.
+//
+// `cap` must hold the whole corner curve (a continuous corner reaches about 1.53 times the
+// radius along the edge) and leave room for the far end's: cap <= narrowest width - 1.53 * radius.
+// The pieces overlap by 1 pt; the opaque colour hides the seam.
+// The box must be `position="relative"`, with this as its first child and a fixed height.
+
+component PillFill
+  props
+    color: string
+    radius: number
+    cap: number
+    // The box's own -exact-layout-transition.
+    spring: string
+  view
+    view position="absolute" left=0 top=0 bottom=0 width=cap overflow="hidden"
+      pointer-events="none" aria-hidden=true
+      view position="absolute" left=0 top=0 bottom=0 width=2000 background-color=color
+        border-radius=radius corner-shape="-exact-continuous"
+    view position="absolute" left=(cap - 1) right=(cap - 1) top=0 bottom=0 background-color=color
+      pointer-events="none" aria-hidden=true -exact-layout-transition=spring
+    view position="absolute" right=0 top=0 bottom=0 width=cap overflow="hidden"
+      pointer-events="none" aria-hidden=true -exact-layout-transition=spring
+      view position="absolute" right=0 top=0 bottom=0 width=2000 background-color=color
+        border-radius=radius corner-shape="-exact-continuous"

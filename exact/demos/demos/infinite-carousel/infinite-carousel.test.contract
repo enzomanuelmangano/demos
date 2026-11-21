@@ -1,0 +1,6 @@
+at "/demo/infinite-carousel"
+
+// Pan, snap and taps are covered by the Rust tests; this checks the rest.
+test "the canvas fills the screen"
+  expect tree has "infinite-carousel"
+  expect tree has "infinite-carousel-canvas"
