@@ -2,13 +2,14 @@
 //! background. Each card is tilted 18 degrees and turns about y as it scrolls away from the centre.
 //!
 //! - One analytic pass (card_shader_reflections_compose.wgsl) draws every visible card per pixel:
-//!   brushed or anodised metal under softboxes, an anisotropic highlight, a Fresnel bevel, a
-//!   thin-film hologram, an engraved chip, contactless mark and title, grain, and an analytic shadow.
-//! - The chip, the four titles and the shadow are recorded once into an atlas; the brushing noise
-//!   is a 256 x 256 tile made once (`noise_tile`).
-//! - The lights stay in the room: each card's frame there is the phone's turn (Core Motion
-//!   attitude, clamped, scaled by ATTITUDE_GAIN, smoothed on ATTITUDE_SPRING) x the 18 degree roll
-//!   x the scroll's turn x the finger's tilt, so tilting the phone sweeps the highlights.
+//!   the body is the RN demo's metal shader (environment, conductor Fresnel, specular, grain), with
+//!   an engraved chip, contactless mark and title, a small hologram, and an analytic shadow.
+//! - The chip, the four titles and the shadow are recorded once into an atlas; a 256 x 256 noise
+//!   tile made once (`noise_tile`) grains the hologram's and the chip's finish.
+//! - The body's light turns with each card's `rotate` (the scroll's turn, -pi to pi) plus the
+//!   phone's roll (Core Motion attitude, clamped, scaled by ATTITUDE_GAIN, smoothed on
+//!   ATTITUDE_SPRING); the hologram follows each card's frame in the room, which also has the
+//!   18 degree roll, the scroll's turn and the finger's tilt.
 //! - A finger dragging the list tilts the centred card about x toward the finger (up to MAX_TILT
 //!   at its top or bottom edge) and settles back on release; a tap (within TAP_SLOP) does nothing.
 //! - A sensor sample that moves the smoothed target less than ATTITUDE_DEADBAND asks for no frame,
@@ -88,21 +89,27 @@ const SHADOW_TILT: f32 = 14.0;
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
-    Box::new(CardShaderReflections {
-        layout: Layout::default(),
-        scroll: UiScroll::new(0.0, 0.0, 0.0, FAST, Snap::Free),
-        font: None,
-        atlas: Canvas::default(),
-        renderer: Renderer::default(),
-        gpu: None,
-        tilt: Spring::at(0.0),
-        finger: None,
-        down: (0.0, 0.0),
-        dragging: false,
-        pitch: Spring::at(0.0),
-        roll: Spring::at(0.0),
-        changed: true,
-    })
+    Box::new(CardShaderReflections::new())
+}
+
+impl CardShaderReflections {
+    fn new() -> CardShaderReflections {
+        CardShaderReflections {
+            layout: Layout::default(),
+            scroll: UiScroll::new(0.0, 0.0, 0.0, FAST, Snap::Free),
+            font: None,
+            atlas: Canvas::default(),
+            renderer: Renderer::default(),
+            gpu: None,
+            tilt: Spring::at(0.0),
+            finger: None,
+            down: (0.0, 0.0),
+            dragging: false,
+            pitch: Spring::at(0.0),
+            roll: Spring::at(0.0),
+            changed: true,
+        }
+    }
 }
 
 /// Rounds an edge to the device-pixel grid (half up).
@@ -591,7 +598,9 @@ impl Surface for CardShaderReflections {
             // The shadow leans away from the turn and drops with the tilt.
             let turn = (pose.rotate_y_deg as f32).to_radians();
             let off = (-turn.sin() * SHADOW_TURN, tilt.sin() * SHADOW_TILT);
-            u.slot[k] = [lefts[k] as f32, off.0, off.1, 0.0];
+            // The body's light turns by the scroll and, a little, by the phone's roll.
+            let rotate = pose.rotate + (self.roll.value * ATTITUDE_GAIN) as f32;
+            u.slot[k] = [lefts[k] as f32, off.0, off.1, rotate];
             // The card's quad grown by its shadow's reach, projected.
             let [_, _, w, h] = layout.card;
             let reach = 4.0 + ((3.0 + off.0).abs() + (12.0 + off.1).abs()) + 1.9 * 18.0 + 2.0;
@@ -903,5 +912,183 @@ mod tests {
             changed: true,
         };
         Some(s)
+    }
+
+    // ---- the body against RN's shader -------------------------------------------------------
+
+    type V3 = [f32; 3];
+    fn add(a: V3, b: V3) -> V3 {
+        [a[0] + b[0], a[1] + b[1], a[2] + b[2]]
+    }
+    fn mul(a: V3, b: V3) -> V3 {
+        [a[0] * b[0], a[1] * b[1], a[2] * b[2]]
+    }
+    fn sc(a: V3, k: f32) -> V3 {
+        a.map(|v| v * k)
+    }
+    fn dot(a: V3, b: V3) -> f32 {
+        a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+    }
+    fn norm(a: V3) -> V3 {
+        sc(a, 1.0 / dot(a, a).sqrt())
+    }
+    fn fract(x: f32) -> f32 {
+        x - x.floor()
+    }
+    fn hash(p: [f32; 2]) -> f32 {
+        let mut p3 = [fract(p[0] * 443.897), fract(p[1] * 441.423), fract(p[0] * 437.195)];
+        let d = dot(p3, [p3[1] + 19.19, p3[2] + 19.19, p3[0] + 19.19]);
+        p3 = p3.map(|v| v + d);
+        fract((p3[0] + p3[1]) * p3[2])
+    }
+    fn noise(p: [f32; 2]) -> f32 {
+        let (i, f) = ([p[0].floor(), p[1].floor()], [fract(p[0]), fract(p[1])]);
+        let f = f.map(|v| v * v * (3.0 - 2.0 * v));
+        let (a, b, c, d) = (hash(i), hash([i[0] + 1.0, i[1]]), hash([i[0], i[1] + 1.0]), hash([i[0] + 1.0, i[1] + 1.0]));
+        let mix = |x: f32, y: f32, t: f32| x + (y - x) * t;
+        mix(mix(a, b, f[0]), mix(c, d, f[0]), f[1])
+    }
+    /// RN's calculateMetallicDetail.
+    fn detail(uv: [f32; 2], t: f32) -> f32 {
+        let pi = std::f32::consts::PI;
+        let (fine, medium, rough) = (noise([uv[0] * 1600.0, uv[1] * 1600.0]) * 0.35, noise([uv[0] * 800.0, uv[1] * 800.0]) * 0.3, noise([uv[0] * 400.0, uv[1] * 400.0]) * 0.2);
+        let (c, s) = ((pi * 0.15).cos(), (pi * 0.15).sin());
+        let ru = [uv[0] * c - uv[1] * s, uv[0] * s + uv[1] * c];
+        let directional = noise([ru[0] * 1000.0, ru[1] * 1000.0]) * 0.4;
+        let k = if t < 0.5 { 1.0 } else if t < 1.5 { 0.9 } else if t < 2.5 { 0.95 } else { 1.1 };
+        (fine + medium + rough + directional) * 0.4 * k
+    }
+    /// RN's main(), line for line, at plane point `p` (points).
+    fn rn_body(p: [f32; 2], size: [f32; 2], rotate: f32, t: f32, scale: f32) -> V3 {
+        let pi = std::f32::consts::PI;
+        // (reflectivity, edge tint, base, highlight 1, highlight 2, roughness, normal strength, env mix colour)
+        let (refl, edge, base, hi1, hi2, rough, ns, mix_c): (V3, V3, V3, V3, V3, f32, f32, V3) = if t < 0.5 {
+            ([0.92; 3], [0.94; 3], [0.15; 3], [0.9; 3], [0.85; 3], 0.32, 0.2 * 1.1, [0.4, 0.4, 0.45])
+        } else if t < 1.5 {
+            ([0.92, 0.88, 0.78], [0.9, 0.87, 0.82], [0.16, 0.14, 0.11], [0.92, 0.88, 0.78], [0.88, 0.85, 0.78], 0.32, 0.13, [0.45, 0.35, 0.15])
+        } else if t < 2.5 {
+            ([0.99, 0.98, 0.97], [1.0, 0.99, 0.98], [0.25, 0.24, 0.23], [0.99, 0.98, 0.97], [0.97, 0.96, 0.95], 0.3, 0.14 * 1.05, [0.42, 0.41, 0.4])
+        } else {
+            ([0.96; 3], [0.98; 3], [0.18; 3], [0.95; 3], [0.92; 3], 0.32, 0.16 * 1.15, [0.35; 3])
+        };
+        let uv = [p[0] / size[0], p[1] / size[1]];
+        let view = norm([uv[0] * 2.0 - 1.0, uv[1] * 2.0 - 1.0, 1.0]);
+        let speed = rotate.sin().abs();
+        let (c, s) = ((-rotate).cos(), (-rotate).sin());
+        let light = norm([-3.0 * c - 2.5 * s, -0.8, -3.0 * s + 2.5 * c]);
+        let q = [((p[0] * scale).floor() + 0.5) / scale / size[0], ((p[1] * scale).floor() + 0.5) / scale / size[1]];
+        let eps = [1.0 / size[0], 1.0 / size[1]];
+        let pattern = detail(q, t);
+        let (r, d) = (detail([q[0] + eps[0], q[1]], t), detail([q[0], q[1] + eps[1]], t));
+        let strength = ns * (1.0 + speed * 0.15);
+        let normal = norm([(r - pattern) * strength * 2.0, (d - pattern) * strength * 2.0, 1.0]);
+        let half = norm(add(light, view));
+        let (n_h, n_v, n_l) = (dot(normal, half).max(0.0), dot(normal, view).max(0.0), dot(normal, light).max(0.0));
+        let dyn_rough = rough * (0.6 + speed * 0.4);
+        let power = (1.0 - dyn_rough) * (156.0 + speed * 100.0) + 16.0;
+        let spec_term = n_h.powf(power) * (1.6 + speed * 0.8) * n_l.powf(1.8) + (1.0 - n_v).powf(3.0 + speed * 2.0) * (0.7 + speed * 0.6) + (1.0 - n_v).powf(2.5 + speed * 1.5) * 0.8;
+        let specular = sc(base, spec_term * (1.0 - dyn_rough * 0.4));
+        // Fresnel for a conductor.
+        let fr = |i: usize| -> f32 {
+            let cos_t = n_v;
+            let rf = (refl[i] * (1.0 + speed * 0.4)).clamp(0.0, 0.99);
+            let rs = rf.sqrt();
+            let n = (1.0 + rs) / (1.0 - rs) + ((1.0 - rf) / (1.0 + rf) - (1.0 + rs) / (1.0 - rs)) * edge[i];
+            let k2 = (((n + 1.0) * (n + 1.0) * rf - (n - 1.0) * (n - 1.0)) / (1.0 - rf)).max(0.0);
+            let nk = n * n + k2;
+            let (rs_n, rs_d) = (nk - 2.0 * n * cos_t + cos_t * cos_t, nk + 2.0 * n * cos_t + cos_t * cos_t);
+            let (rp_n, rp_d) = (nk * cos_t * cos_t - 2.0 * n * cos_t + 1.0, nk * cos_t * cos_t + 2.0 * n * cos_t + 1.0);
+            (0.5 * (rs_n / rs_d + rp_n / rp_d)).clamp(0.0, 1.0)
+        };
+        let fres = [fr(0), fr(1), fr(2)];
+        // The reflection, from the view and the normal.
+        let k = 2.0 * dot(normal, sc(view, -1.0));
+        let rd = add(sc(view, -1.0), sc(normal, -k));
+        let rough_env = rough * (0.5 + speed * 0.3);
+        let env_uv = [rd[2].atan2(rd[0]) / (2.0 * pi) + 0.5, rd[1].clamp(-1.0, 1.0).acos() / pi];
+        let dist = |a: [f32; 2], b: [f32; 2]| ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2)).sqrt();
+        let i1 = (1.0 - dist(env_uv, [0.3, 0.4]) * 1.8).max(0.0).powf(6.0);
+        let i2 = (1.0 - dist(env_uv, [0.7, 0.6]) * 1.8).max(0.0).powf(6.0);
+        let mut env = add(base, add(sc(hi1, i1 * 1.6), sc(hi2, i2 * 1.6)));
+        let shift = (1.0 - rd[1]).max(0.0).powf(4.0) * 0.8;
+        let tint = if t < 0.5 { [1.0 + shift * 0.05; 3] } else if t < 1.5 { [1.0 + shift * 0.08, 1.0 + shift * 0.06, 1.0 + shift * 0.02] } else if t < 2.5 { [1.0 + shift * 0.06, 1.0 + shift * 0.05, 1.0 + shift * 0.04] } else { [1.0 + shift * 0.04; 3] };
+        env = mul(env, tint);
+        let env = [0, 1, 2].map(|i| env[i] + (mix_c[i] - env[i]) * rough_env);
+        let amount = [0, 1, 2].map(|i| fres[i] * (0.8 + speed * 0.3));
+        let mut col = [0, 1, 2].map(|i| base[i] + (env[i] - base[i]) * amount[i]);
+        col = add(sc(col, 0.5 + 0.7 * n_l.max(0.0).powf(1.4)), sc(specular, 1.2));
+        col = sc(col, 1.0 + pattern * (0.35 + speed * 0.45));
+        col = col.map(|v| v.max(0.0).powf(0.85 + speed * 0.2));
+        let vc = [0.5 + rotate.sin() * 0.15, 0.5 + (rotate * 0.7).cos() * 0.1];
+        let vig = 1.0 - (((uv[0] - vc[0]) * (1.5 + speed * 0.5)).powi(2) + ((uv[1] - vc[1]) * (1.5 + speed * 0.5)).powi(2)).sqrt();
+        col = sc(col, 0.85 + 0.15 * vig);
+        let cs = (rotate * 0.5).sin() * 0.1;
+        col = add(col, sc([cs, cs * 0.5, -cs * 0.5], speed * 0.2));
+        col.map(|v| v.clamp(0.0, 1.0))
+    }
+    /// Display P3 (sRGB's curve) to sRGB, 8-bit.
+    fn p3_to_srgb(c: V3) -> V3 {
+        let lin = c.map(|v| if v <= 0.04045 { v / 12.92 } else { ((v + 0.055) / 1.055).powf(2.4) });
+        let m = [1.2249 * lin[0] - 0.2247 * lin[1], -0.0420 * lin[0] + 1.0419 * lin[1], -0.0197 * lin[0] - 0.0786 * lin[1] + 1.0979 * lin[2]];
+        m.map(|v| {
+            let v = v.clamp(0.0, 1.0);
+            255.0 * if v <= 0.0031308 { v * 12.92 } else { 1.055 * v.powf(1.0 / 2.4) - 0.055 }
+        })
+    }
+
+    #[test]
+    fn the_body_matches_rns_shader() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
+        exact_gpu::shaders::load_dir(&dir, &crate::REGISTRY).unwrap();
+        let gpu = match fixture::device() {
+            Ok(gpu) => gpu,
+            Err(error) => return eprintln!("{error}; skipped"),
+        };
+        let frame = |now_ms| Frame { width: 420.0, height: 912.0, scale: 3.0, now_ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: exact_gpu::shaders::shader_generation(), headroom: 1.0 };
+        let mut s = CardShaderReflections::new();
+        fixture::render(&gpu, &mut s, &frame(0.0)).unwrap();
+        let mut worst = 0.0f32;
+        for (k, frac) in (0..4usize).flat_map(|k| [(k, 0.0), (k, 0.25), (k, -0.25)]) {
+            let offset = (k as f64 + frac) * s.layout.cw as f64;
+            if offset < 0.0 || offset > 3.0 * s.layout.cw as f64 {
+                continue;
+            }
+            s.scroll.offset = offset;
+            let (img, _) = fixture::render(&gpu, &mut s, &frame(16.0 + k as f64)).unwrap();
+            let pose = s.poses()[k];
+            assert!((pose.rotate == 0.0) == (frac == 0.0));
+            let m = s.matrix(k, &pose);
+            let inv = m.invert().unwrap().rows();
+            let t = CARDS[k].0;
+            // Plane points clear of the chip, the contactless mark, the title and the foil.
+            for (px, py) in [(150.0f32, 220.0f32), (60.0, 160.0), (200.0, 330.0), (200.0, 120.0), (120.0, 300.0)] {
+                let at = m.map(px, py);
+                let (cx, cy) = ((at.x * 3.0) as i32, (at.y * 3.0) as i32);
+                let (mut gpu_sum, mut cpu_sum, mut n) = ([0.0f32; 3], [0.0f32; 3], 0.0f32);
+                for dy in -4..=4 {
+                    for dx in -4..=4 {
+                        let (sx, sy) = ((cx + dx) as f32 + 0.5, (cy + dy) as f32 + 0.5);
+                        let (hx, hy) = (sx / 3.0, sy / 3.0);
+                        let q = [inv[0][0] * hx + inv[0][1] * hy + inv[0][2], inv[1][0] * hx + inv[1][1] * hy + inv[1][2], inv[2][0] * hx + inv[2][1] * hy + inv[2][2]];
+                        let plane = [q[0] / q[2], q[1] / q[2]];
+                        let c = p3_to_srgb(rn_body(plane, [262.0, 433.0], pose.rotate, t, 3.0));
+                        // The card's opacity over the #111 background.
+                        let c = c.map(|v| v * pose.opacity as f32 + 17.0 * (1.0 - pose.opacity as f32));
+                        let g = img.at((cx + dx) as u32, (cy + dy) as u32);
+                        for i in 0..3 {
+                            gpu_sum[i] += g[i] as f32;
+                            cpu_sum[i] += c[i];
+                        }
+                        n += 1.0;
+                    }
+                }
+                for i in 0..3 {
+                    let d = ((gpu_sum[i] - cpu_sum[i]) / n).abs();
+                    worst = worst.max(d);
+                    assert!(d < 4.0, "card {k} +{frac} at ({px}, {py}) channel {i}: gpu {} vs rn {}", gpu_sum[i] / n, cpu_sum[i] / n);
+                }
+            }
+        }
+        eprintln!("worst mean difference over blocks: {worst:.2} / 255");
     }
 }
