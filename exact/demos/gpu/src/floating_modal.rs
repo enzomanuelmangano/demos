@@ -10,7 +10,7 @@
 //!   springs back with no haptic, and the rubber band is silent.
 //! - The "+" has two transform writers, the rotation and the press scale. Reanimated replaces the
 //!   whole transform, so the last write wins: the press scale while pressed, else the rotation.
-//!   Pressing "Done" re-runs the "+" press mapper too, so the "×" shows upright until the progress moves.
+//!   Pressing "Done" re-runs the "+" press mapper too, so the "+" comes back upright until the progress moves.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
@@ -28,12 +28,12 @@ const INSET: f64 = 10.0;
 const DISPLAY_RADIUS: f64 = 62.0;
 /// The sheet's corner radius, and so where its corner's centre is from each edge, pt.
 const CORNER: f64 = DISPLAY_RADIUS - INSET;
-/// The close button: a 40 pt disc centred on the corner's centre, so it is concentric with the
-/// sheet and the display. The title shares its centre line.
-const CLOSE: f64 = 40.0;
-/// Sheet content: a header (the close disc and the title on the corner's centre line), a two-line
-/// subtitle and a full-width capsule. The sheet is as tall as that content.
-const ROW: f64 = 80.0;
+/// Where the title's line is centred below the sheet's top: its top sits as far from the top as
+/// the capsule's bottom sits from the bottom (CAPSULE_INSET), under the grabber.
+const TITLE_MID: f64 = CAPSULE_INSET + 13.5;
+/// Sheet content: a header (the title), a two-line subtitle and a full-width capsule. The sheet
+/// is as tall as that content. The sheet closes by a tap on the scrim, a drag down or the capsule.
+const ROW: f64 = TITLE_MID + 28.0;
 const SUBTITLE_TOP: f64 = 0.0;
 const SUBTITLE_LINE: f64 = 20.0;
 const SUBTITLE: [&str; 2] = [
@@ -218,7 +218,7 @@ impl FloatingModal {
         // Content: the title row, centred, and the button row at the bottom.
         let new_at = (
             grid((sw - new.0) / 2.0, s),
-            text_grid(CORNER - new.1 / 2.0, s),
+            text_grid(TITLE_MID - new.1 / 2.0, s),
         );
         let button = (
             CAPSULE_INSET,
@@ -269,8 +269,8 @@ impl FloatingModal {
     fn plus_matrix(&self) -> Matrix {
         let (rotate, k) = self.plus_shown;
         let half = (BUTTON / 2.0) as f32;
-        // Closed it is the button's "+" at the middle; open it is the close glyph on the
-        // corner's centre, smaller.
+        // Closed it is the button's "+" at the middle; as the sheet opens it turns, shrinks
+        // into the corner and fades out (see `plus_alpha`).
         let p = self.progress.value.clamp(0.0, 1.0) as f32;
         let (shift, size) = ((CORNER as f32 - half) * p, 1.0 - 0.45 * p);
         Matrix::translate(-half, -half)
@@ -279,7 +279,13 @@ impl FloatingModal {
             .then(Matrix::translate(half + shift, half + shift))
     }
 
-    /// Where a press on the "+" / close button lands: its 64 pt box, press scale only, so the
+    /// The "+"'s opacity: gone by the time a quarter of the way open, so no glyph sits on the
+    /// open sheet.
+    fn plus_alpha(&self) -> f32 {
+        (1.0 - self.progress.value.clamp(0.0, 1.0) / 0.25).clamp(0.0, 1.0) as f32
+    }
+
+    /// Where a press on the "+" lands: its 64 pt box, press scale only, so the
     /// shrunken glyph keeps a comfortable target.
     fn plus_hit_matrix(&self) -> Matrix {
         let half = (BUTTON / 2.0) as f32;
@@ -338,8 +344,11 @@ impl FloatingModal {
         let (lx, ly) = (q.x as f64, q.y as f64);
         let in_modal = (0.0..=l.frame.2).contains(&lx) && (0.0..=l.frame.3).contains(&ly);
         let pq = self.plus_hit_matrix().invert().apply(q);
-        let on_plus =
-            (0.0..=BUTTON as f32).contains(&pq.x) && (0.0..=BUTTON as f32).contains(&pq.y);
+        // The "+" is only a button while the sheet is closed; open, there is nothing to press
+        // in its corner.
+        let on_plus = !self.opened
+            && (0.0..=BUTTON as f32).contains(&pq.x)
+            && (0.0..=BUTTON as f32).contains(&pq.y);
         let bq = self.button_matrix(&l).invert().apply(q);
         let (bx, by, bw, bh) = l.button;
         let on_done = self.opened
@@ -501,6 +510,7 @@ impl Surface for FloatingModal {
 
         // The bitmaps, in screen pixels: the content's subtree, then the "+" in the strip.
         let content = self.content_opacity() as f32;
+        let plus_alpha = self.plus_alpha();
         let plus_m = self.plus_matrix().then(modal);
         let strip = plus_bounds(plus_m, s, pw, ph);
         // The content scales with the sheet as one picture, so it stays inside it every frame.
@@ -540,13 +550,13 @@ impl Surface for FloatingModal {
                 let x = x0 + (w - font.advance_width(text)) / 2.0;
                 g.draw_text(text, x, gfx::baseline(font, mid_y - lh / 2.0), font, paint);
             };
-            // The title on the "×" row, the subtitle under it (secondary label, 60 %).
+            // The title, the subtitle under it (secondary label, 60 %).
             if let Some(f) = self.title.as_ref() {
                 centred(
                     g,
                     f,
                     "New",
-                    px(CORNER),
+                    px(TITLE_MID),
                     0.0,
                     sw,
                     &Paint::fill(Color::BLACK),
@@ -637,17 +647,6 @@ impl Surface for FloatingModal {
         );
         // Analytic rounded rects: a path would turn the full-screen frame into 4x MSAA.
         c.draw_rrect(0.0, 0.0, fw, fh, radius, &Paint::fill(Color::WHITE));
-        // The close button's disc (tertiary fill) grows with the sheet, under the glyph.
-        let open = self.progress.value.clamp(0.0, 1.0) as f32;
-        if open > 0.0 && content > 0.0 {
-            let c0 = (BUTTON / 2.0) as f32 + (CORNER as f32 - (BUTTON / 2.0) as f32) * open;
-            c.draw_circle(
-                c0,
-                c0,
-                CLOSE as f32 / 2.0 * open,
-                &Paint::fill(Color::rgba8(118, 118, 128, 255).alpha(0.12 * content)),
-            );
-        }
         c.restore();
         // The content as one group at its opacity (allowsGroupOpacity), then the "+", 1:1.
         if content > 0.0 {
@@ -660,7 +659,7 @@ impl Surface for FloatingModal {
                 &Paint::image(gpu.group.image(0), Matrix::scale(s, s)).with_opacity(content),
             );
         }
-        if let Some((sx, sy, sw, sh)) = strip {
+        if let Some((sx, sy, sw, sh)) = strip.filter(|_| plus_alpha > 0.0) {
             let to =
                 Matrix::scale(s, s).then(Matrix::translate(-(sx as f32), ph as f32 - sy as f32));
             c.draw_rect(
@@ -668,7 +667,7 @@ impl Surface for FloatingModal {
                 sy as f32 / s,
                 sw as f32 / s,
                 sh as f32 / s,
-                &Paint::image(gpu.group.image(0), to),
+                &Paint::image(gpu.group.image(0), to).with_opacity(plus_alpha),
             );
         }
         self.renderer.draw(
@@ -933,18 +932,24 @@ mod tests {
         assert!(!moving);
         assert!(s.agent("{}").unwrap().contains("\"opened\":true"));
         // The sheet's frame; the scrim darkens the rest.
-        assert_eq!(open.at(2 * 30, 2 * 700), [255, 255, 255, 255]);
+        assert_eq!(open.at(2 * 30, 2 * 730), [255, 255, 255, 255]);
         assert_eq!(open.at(2 * 10, 2 * 100)[3], 102);
+        // No close disc or glyph in the sheet's top-left corner: it is plain white there.
+        let top = 912.0 - INSET - SHEET_H;
+        for (dx, dy) in [(52.0, 52.0), (52.0, 40.0), (40.0, 52.0), (64.0, 52.0)] {
+            let p = open.at((2.0 * (INSET + dx)) as u32, (2.0 * (top + dy)) as u32);
+            assert_eq!(p, [255, 255, 255, 255], "{dx} {dy}");
+        }
         assert_eq!(&open.at(2 * 60, 2 * 862)[..3], &[0x11, 0x11, 0x11]);
 
         // Drag down 210: the sheet shrinks, and the release closes it.
-        s.input(&pointer(PointerPhase::Down, 210.0, 700.0, ms));
+        s.input(&pointer(PointerPhase::Down, 210.0, 710.0, ms));
         for k in 1..=21 {
             ms += 16.0;
             s.input(&pointer(
                 PointerPhase::Move,
                 210.0,
-                700.0 + 10.0 * k as f32,
+                710.0 + 10.0 * k as f32,
                 ms,
             ));
             fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
@@ -1061,7 +1066,7 @@ mod tests {
             m.progress.value,
             m.progress.running
         );
-        // Press the "+" while open: the press rewrites the transform as [scale].
+        // Open, the old corner of the "+" is not a button: a touch there presses nothing.
         let (fx, fy, _, _) = m.layout(1.0).frame;
         m.input(&pointer(
             PointerPhase::Down,
@@ -1073,7 +1078,8 @@ mod tests {
             ms += 16.0;
             fixture::render(&gpu, &mut m, &frame(ms)).unwrap();
         }
-        assert_eq!(m.plus_shown.0, 0.0);
+        assert!(!m.plus_press.is_pressed());
+        assert!((m.plus_shown.0 - std::f64::consts::FRAC_PI_4).abs() < 1e-9);
     }
 
     #[test]
