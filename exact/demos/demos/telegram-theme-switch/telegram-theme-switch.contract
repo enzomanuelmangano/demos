@@ -1,20 +1,16 @@
-// Telegram theme switch: a chat list with a floating tab bar and a round theme button. Tapping
-// the button grows the new theme in a circle from it, over the whole screen.
+// Telegram theme switch: a chat list and a round glass theme button, placed like the Past Lives
+// demo's (64 pt, concentric with the display: 30 pt from the right and the bottom). Tapping the
+// button grows the new theme in a circle from it, over the whole screen. The list runs to the
+// bottom behind the button, with room to scroll its last row clear of it.
 // The reveal draws the screen twice: the new copy is clipped by the circle, and it is scaled by
 // the inverse of the circle so it stays still. When the reveal lands, the new theme becomes the base.
-// The tab bar is one native view that sits above both copies (a circle cannot clip it), so the
-// reveal's copy has no bar and the bar itself changes theme when the circle is passing it.
 use PressableScale from "pressto"
-use DemoEnv, floatingWidth, concentricRadius from "../env.contract"
+use DemoEnv, concentricInset from "../env.contract"
 
-fn ttsInset(): number = 10
-fn ttsBarH(): number = 62
-fn ttsGap(): number = 8
-// The native bar floats this far in from its frame's sides, so the frame reaches this far past the bar.
-fn ttsBarMargin(): number = 21
+fn ttsBtn(): number = 64
+// The button's gap to the display's right and bottom edges.
+fn ttsInset(): number = concentricInset(ttsBtn())
 fn ttsRevealMs(): number = 650
-// When the circle has swept past the bar: the bar's theme turns then.
-fn ttsBarMs(): number = 240
 
 // Telegram's Day and Night palettes.
 fn ttsBg(dark: bool): string = dark ? "#18222D" : "#FFFFFF"
@@ -24,7 +20,7 @@ fn ttsSeparator(dark: bool): string = dark ? "#0E161F" : "#E3E3E6"
 fn ttsSearch(dark: bool): string = dark ? "#242F3D" : "#EEEEF0"
 fn ttsAccent(dark: bool): string = dark ? "#5EB5F7" : "#007AFF"
 fn ttsBadge(dark: bool, muted: bool): string = muted ? (dark ? "#3E546A" : "#B8B8BD") : (dark ? "#3E88F7" : "#007AFF")
-fn ttsBarFill(dark: bool): string = dark ? "rgba(36, 47, 61, 0.82)" : "rgba(255, 255, 255, 0.82)"
+fn ttsBtnFill(dark: bool): string = dark ? "rgba(36, 47, 61, 0.82)" : "rgba(255, 255, 255, 0.82)"
 fn ttsGlassTint(dark: bool): string = dark ? "rgba(24, 34, 45, 0.45)" : "rgba(255, 255, 255, 0.35)"
 
 shape TtsChat
@@ -142,31 +138,16 @@ component TtsScreen
   props
     env: DemoEnv
     dark: bool
-    // The native bar's theme (the reveal turns it before the base does).
-    barDark: bool
     live: bool
-    tab: number
     toggle: action
-    pick: action
   derive W = env.width
-  derive barW = floatingWidth(W, ttsInset()) - ttsBarH() - ttsGap()
-  derive radius = concentricRadius(ttsInset(), ttsBarH())
-  // The native bar's tab events: "tab:<index>".
-  action native(m: string)
-    if m == "tab:0"
-      pick(0)
-    if m == "tab:1"
-      pick(1)
-    if m == "tab:2"
-      pick(2)
-    if m == "tab:3"
-      pick(3)
+  derive radius = ttsBtn() / 2
   view
     view position="absolute" left=0 top=0 width=W height=env.height background-color=ttsBg(dark)
       pointer-events=(live ? "auto" : "none") overflow="hidden"
       scroll position="absolute" left=0 top=0 width=W height=env.height overflow-y="auto"
         overflow-x="hidden" scrollbar-width="none"
-        column padding-top=(env.safeTop + 52) padding-bottom=(ttsInset() + ttsBarH() + 24)
+        column padding-top=(env.safeTop + 52) padding-bottom=(ttsInset() + ttsBtn() + 24)
           text "Chats" margin-left=16 font-size=34 line-height="41px" font-weight=700
             color=ttsText(dark)
           row margin="10px 16px 8px 16px" height=36 border-radius=10 corner-shape="-exact-continuous"
@@ -201,21 +182,14 @@ component TtsScreen
                       align-items="center" justify-content="center"
                       text `${c.unread}` font-size=14 line-height="18px" font-weight=600
                         color="#FFFFFF" font-variant-numeric="tabular-nums"
-      // Tab bar: native, on the live copy only. The reveal's copy has none.
-      if live
-        native-tabbar tab-titles="Contacts|Calls|Chats|Settings"
-          tab-symbols="person.crop.circle.fill|phone.fill|bubble.left.and.bubble.right.fill|gearshape.fill"
-          selected-tab=`${tab}` tab-tint=ttsAccent(barDark) bar-appearance=(barDark ? "dark" : "light")
-          change=native position="absolute" left=(ttsInset() - ttsBarMargin()) bottom=0
-          width=(barW + 2 * ttsBarMargin()) height=(ttsBarH() + 2 * ttsInset() + 24) testId="tts-tabs"
-      // The theme button: a glass circle beside the tab bar.
-      view position="absolute" right=ttsInset() bottom=ttsInset() width=ttsBarH() height=ttsBarH()
-        border-radius=radius background-color=ttsBarFill(dark)
+      // The theme button: a glass circle in the bottom right corner.
+      view position="absolute" right=ttsInset() bottom=ttsInset() width=ttsBtn() height=ttsBtn()
+        border-radius=radius corner-shape="-exact-continuous" background-color=ttsBtnFill(dark)
         box-shadow="0px 8px 24px rgba(0, 0, 0, 0.12)" pointer-events="none" aria-hidden=true
         glass-pane glass-style="regular" pane-tint=ttsGlassTint(dark) corner-size=`${radius}`
           interactive="false" continuous="true" position="absolute" inset=0 pointer-events="none"
           aria-hidden=true
-      view position="absolute" right=ttsInset() bottom=ttsInset() width=ttsBarH() height=ttsBarH()
+      view position="absolute" right=ttsInset() bottom=ttsInset() width=ttsBtn() height=ttsBtn()
         display="flex" flex-direction="column"
         PressableScale(press=toggle)
           column flex-grow=1 align-items="center" justify-content="center"
@@ -233,11 +207,8 @@ component TelegramThemeSwitch
   state dark = true
   state target = true
   state reveal = 0
-  state tab = 2
-  // The theme of the native bar: it turns with the circle, before `dark` does.
-  state barDark = true
-  derive cx = env.width - ttsInset() - ttsBarH() / 2
-  derive cy = env.height - ttsInset() - ttsBarH() / 2
+  derive cx = env.width - ttsInset() - ttsBtn() / 2
+  derive cy = env.height - ttsInset() - ttsBtn() / 2
   // Radius that reaches the farthest corner, with a small margin.
   derive R = ceil(max(cx, cy) + min(cx, cy) / 2) + 2
 
@@ -249,23 +220,15 @@ component TelegramThemeSwitch
   action landed(m: string)
     if reveal != 0 and m == `timer:${reveal}`
       dark = target
-      barDark = target
       reveal = 0
       haptic("impact-soft")
-  action barTurn(m: string)
-    if reveal != 0 and m == `timer:${reveal}`
-      barDark = target
-  action pick(i: number)
-    tab = i
 
   view
     column position="absolute" inset=0 overflow="hidden" testId="telegram-theme-switch"
       background-color=ttsBg(dark)
       canvas surface=timer(reveal, ttsRevealMs()) message=landed width=1 height=1
         position="absolute" left=0 top=0 aria-hidden=true pointer-events="none"
-      canvas surface=timer(reveal, ttsBarMs()) message=barTurn width=1 height=1
-        position="absolute" left=0 top=0 aria-hidden=true pointer-events="none"
-      TtsScreen(env=env, dark=dark, barDark=barDark, live=true, tab=tab, toggle=toggle, pick=pick)
+      TtsScreen(env=env, dark=dark, live=true, toggle=toggle)
       // The reveal: a round box that grows from the button, in the new theme.
       if reveal != 0
         view position="absolute" left=(cx - R) top=(cy - R) width=(2 * R) height=(2 * R)
@@ -274,4 +237,4 @@ component TelegramThemeSwitch
           view position="absolute" left=0 top=0 width=(2 * R) height=(2 * R)
             animation=`ttsRevealInner ${ttsRevealMs()}ms linear both`
             view position="absolute" left=(R - cx) top=(R - cy) width=env.width height=env.height
-              TtsScreen(env=env, dark=target, barDark=target, live=false, tab=tab, toggle=toggle, pick=pick)
+              TtsScreen(env=env, dark=target, live=false, toggle=toggle)
