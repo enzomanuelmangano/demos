@@ -42,6 +42,8 @@ pub fn surface() -> Box<dyn Surface> {
 struct LinearSensors {
     /// Gravity in g, device frame; zero until the first sample.
     gravity: [f64; 3],
+    /// Gravity samples taken, for the driver's state.
+    samples: u64,
     layers: [Canvas; 4],
     renderers: [Renderer; 4],
     /// The gradient square's, the layer's, the ovals', the glow's.
@@ -77,13 +79,15 @@ impl Surface for LinearSensors {
 
     fn agent(&mut self, _request: &str) -> Option<String> {
         let (rx, ry) = self.rotation();
-        Some(format!("{{\"rotateX\":{rx:.4},\"rotateY\":{ry:.4}}}"))
+        let [x, y, z] = self.gravity;
+        Some(format!("{{\"rotateX\":{rx:.4},\"rotateY\":{ry:.4},\"samples\":{},\"gravity\":[{x:.4},{y:.4},{z:.4}]}}", self.samples))
     }
 
     fn input(&mut self, event: &InputEvent) {
         if let InputEvent::Sensor { sensor: SensorKind::Gravity, values, .. } = event {
             // (+ 0.0: a −0.0 would turn atan2 by π.)
             self.gravity = values.map(|v| v as f64 / -STANDARD_G + 0.0)[..3].try_into().unwrap_or([0.0; 3]);
+            self.samples += 1;
         }
     }
 
@@ -342,5 +346,63 @@ mod tests {
         let state = s.agent("{}").unwrap();
         assert!(state.contains("\"rotateY\":-0.3927"), "{state}");
         assert_ne!(tilted.data, held.data);
+    }
+
+    /// main's demo on the CPU, from RN's sources and nothing of this file: Reanimated's ROTATION roll and
+    /// GRAVITY z (Core Motion's g x 9.81) through its interpolations, then Skia's
+    /// `[{ perspective: 200 }, { rotateY }, { rotateX }]` about the 500 pt canvas's centre: where a
+    /// point `(dx, dy)` from that centre lands on screen, for a phone at `pitch` and `roll`.
+    fn mains_point(pitch: f64, roll: f64, dx: f64, dy: f64, screen: (f64, f64)) -> (f64, f64) {
+        let lerp = |v: f64, a: [f64; 3], b: [f64; 3]| {
+            let v = v.clamp(a[0], a[2]);
+            let i = usize::from(v > a[1]);
+            b[i] + (v - a[i]) / (a[i + 1] - a[i]) * (b[i + 1] - b[i])
+        };
+        let z = -roll.cos() * pitch.cos() * 9.81;
+        let rotate_y = lerp(roll, [-1.0, 0.0, 1.0], [PI / 8.0, 0.0, -PI / 8.0]);
+        let rotate_x = lerp(z, [-10.0, -6.0, -1.0], [-PI / 8.0, 0.0, PI / 8.0]);
+        // SkM44::Rotate about x, then about y, then the perspective row (0, 0, -1/200, 1).
+        let (sx, cx) = rotate_x.sin_cos();
+        let (x1, y1, z1) = (dx, dy * cx, dy * sx);
+        let (sy, cy) = rotate_y.sin_cos();
+        let (x2, z2) = (x1 * cy + z1 * sy, -x1 * sy + z1 * cy);
+        let w = 1.0 - z2 / 200.0;
+        (screen.0 / 2.0 + x2 / w, screen.1 / 2.0 + y1 / w)
+    }
+
+    #[test]
+    fn the_drawing_lands_where_mains_does_for_each_attitude() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
+        exact_gpu::shaders::load_dir(&dir, &crate::REGISTRY).unwrap();
+        let gpu = match fixture::device() {
+            Ok(gpu) => gpu,
+            Err(error) => return eprintln!("{error}; skipped"),
+        };
+        let (w, h, scale) = (420.0, 912.0, 2.0);
+        let frame = |now_ms| Frame { width: w as f32, height: h as f32, scale: scale as f32, now_ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: exact_gpu::shaders::shader_generation(), headroom: 1.0 };
+        let mut s = surface();
+        // On the logo's rings (bright) and between them (the square's dark face).
+        let rings = [(60.0, 0.0), (-60.0, 0.0), (30.0, 52.0), (-30.0, -52.0)];
+        let between = [(45.0, 0.0), (-45.0, 0.0), (0.0, 0.0)];
+        let mut n = 0.0;
+        for (pitch_deg, roll_deg) in [(52.0, 0.0), (85.0, 0.0), (10.0, 0.0), (52.0, 0.6_f64.to_degrees()), (52.0, -40.0), (30.0, 30.0), (75.0, -20.0)] {
+            let (pitch, roll) = (f64::to_radians(pitch_deg), f64::to_radians(roll_deg));
+            s.input(&host_sample(pitch, roll));
+            n += 16.0;
+            let (shot, _) = fixture::render(&gpu, s.as_mut(), &frame(n)).unwrap();
+            let px = |(x, y): (f64, f64)| ((x * scale).round() as u32, (y * scale).round() as u32);
+            for (dx, dy) in rings {
+                let (x, y) = px(mains_point(pitch, roll, dx, dy, (w, h)));
+                let brightest = (0..9).map(|i| shot.at(x + i % 3 - 1, y + i / 3 - 1)[0]).max().unwrap();
+                assert!(brightest > 150, "pitch {pitch_deg} roll {roll_deg}: ring point ({dx}, {dy}) at ({x}, {y}) reads {brightest}");
+            }
+            for (dx, dy) in between {
+                let (x, y) = px(mains_point(pitch, roll, dx, dy, (w, h)));
+                let v = shot.at(x, y)[0];
+                assert!(v < 80, "pitch {pitch_deg} roll {roll_deg}: face point ({dx}, {dy}) at ({x}, {y}) reads {v}");
+            }
+        }
+        let state = s.agent("{}").unwrap();
+        assert!(state.contains("\"samples\":7"), "{state}");
     }
 }

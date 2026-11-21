@@ -26,7 +26,6 @@
 // `page-dots` (PageDots.swift): the home's page dots, following the pager's scroll offset
 //   (the `page-scroller` hatch names the pager's scroll view).
 // `search-reveal` (SearchReveal.swift): the home's pull-to-search, driven by the same pager.
-// `home-shake` (HomeShake.swift): a shake on the home hides the resolved demos, a second shows all.
 // `still-art` (StillArt.swift): a bundled picture predecoded at launch, in the frame its node first shows in.
 import Foundation
 #if os(iOS)
@@ -37,6 +36,14 @@ import UIKit
 let exactModule: ExactModule.Type = DemosModule.self
 
 final class DemosModule: ExactModule {
+    /// The session's module: `motion-feed` writes into its canvases' inputs through it (MotionFeed.swift).
+    static weak var live: DemosModule?
+
+    required init(context: ExactModuleContext) {
+        super.init(context: context)
+        Self.live = self
+    }
+
     override class var views: [String: ExactNativeFactory] {
         StillArt.warm()
         StartupProbe.start()
@@ -69,10 +76,10 @@ final class DemosModule: ExactModule {
              LayerSkeleton.tag(instance.view, "page-dots")
              return instance
          },
-         "home-shake": ExactNativeFactory { props, events in HomeShakeInstance(props: props, events: events) },
          "search-reveal": native("search-reveal") { SearchReveal(props: $0, events: $1) },
          "icon-grid": ExactNativeFactory(firstFrame: true) { props, events in StartupProbe.made("icon-grid") { AppIconGrid(props: props, events: events) } },
-         "still-art": ExactNativeFactory(firstFrame: true) { props, events in StartupProbe.made("still-art") { StillArtInstance(props: props, events: events) } }]
+         "still-art": ExactNativeFactory(firstFrame: true) { props, events in StartupProbe.made("still-art") { StillArtInstance(props: props, events: events) } },
+         "motion-feed": ExactNativeFactory { props, events in MotionFeed(props: props, events: events) }]
     }
 
     override func element(_ element: ExactElement) {

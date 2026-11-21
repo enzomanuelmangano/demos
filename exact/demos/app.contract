@@ -133,8 +133,6 @@ fn ownsDrags(slug: string): bool = closeZone(slug) != ""
 // demo overlays the keys (`overlays-content`), and DemoScreen lays the demo out at the screen's
 // full height (the host still ends a full-screen route's own box at the keys).
 fn overlaysKeyboard(slug: string): bool = true
-// Demos whose GPU surface reads the gravity sensor while it shows (RN: useAnimatedSensor).
-fn tilts(slug: string): bool = slug == "linear-sensors"
 // Demos whose GPU surface reads the attitude (RN: useAnimatedSensor(SensorType.ROTATION)).
 fn turns(slug: string): bool = slug == "threads-holo-ticket"
 // Demos whose GPU surface lights itself by the phone's attitude (past RN: card-shader-reflections).
@@ -157,10 +155,6 @@ component Demos
   derive env = DemoEnv(width=host.width, height=host.height, safeTop=0, safeBottom=0, epoch=time.epochAtZero, utcOffset=time.utcOffset, seed=time.seed, reducedMotion=host.prefersReducedMotion, timers=timers.fired, tile=false)
   // "Show Unstable" (the General tray): the work-in-progress demos are listed only with it on.
   state showUnstable = false persist
-  // A shake on the home hides the approved demos (home/springboard.contract, HomeShake.swift).
-  state hideResolved = false persist
-  action toggleResolved(text: string)
-    hideResolved = not hideResolved
   resource feedback = feedbackNotes() when atlasShown as shape FeedbackNote[] else empty()
   mutation noted as shape FeedbackNote refreshes feedback
   derive desk = host.pointer == "fine" and host.width >= 600
@@ -227,23 +221,12 @@ component Demos
   // Presets.System.impactMedium() when it commits, before the flight home: the launch does
   // (modules/apple/DemoLaunch.swift), and lets the route go here at expansion 0.2.
   action back
-    if top(nav).name == "demo" and tilts(top(nav).params.slug)
-      send sensors = stopSensorInput(surface="linear_sensors", sensor="gravity")
-    else if top(nav).name == "demo" and turns(top(nav).params.slug)
+    if top(nav).name == "demo" and turns(top(nav).params.slug)
       send sensors = stopSensorInput(surface="threads_holo_ticket", sensor="relativeOrientation")
     else if top(nav).name == "demo" and lights(top(nav).params.slug)
       send sensors = stopSensorInput(surface="card_shader_reflections", sensor="relativeOrientation")
     nav = back(nav)
-  // Linear Sensors' feed: the gravity sensor at 50 Hz (RN's interval 20), into its surface.
-  task tilt when top(nav).name == "demo" and tilts(top(nav).params.slug) key=top(nav).id
-    after(1, startTilt)
-  // The start is sent again every 400 ms while the demo is open: a start that came before its
-  // canvas was placed, or a feed the host paused with the canvas, would otherwise stay silent. A
-  // start for a feed already running only takes the canvas as shown.
-  task tiltKeep when top(nav).name == "demo" and tilts(top(nav).params.slug) key=top(nav).id
-    every(400, startTilt)
-  action startTilt
-    send sensors = startSensorInput(surface="linear_sensors", sensor="gravity", frequency=50)
+  // Linear Sensors' gravity is fed by its own `motion-feed` node (modules/apple/MotionFeed.swift).
   // Threads Holo Ticket's feed: Core Motion's attitude at 62.5 Hz (RN's interval 16 ms is
   // deviceMotionUpdateInterval 0.016 s), into its surface.
   task turn when top(nav).name == "demo" and turns(top(nav).params.slug) key=top(nav).id
@@ -301,7 +284,7 @@ component Demos
             closable=false, leave=back, notes=feedback, add=addNote, edit=editNote)
         if e.name == "home" and not desk
           column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" position="absolute" inset=0
-            Springboard(demos=demos, approved=approvedSlugs, changed=changedSlugs, open=open, hideResolved=hideResolved, toggleResolved=toggleResolved)
+            Springboard(demos=demos, approved=approvedSlugs, changed=changedSlugs, open=open)
             if gpuWarm
               canvas surface=warm() width=1 height=1 position="absolute" left=0 top=0 pointer-events="none"
                 aria-hidden=true testId="gpu-warm"
