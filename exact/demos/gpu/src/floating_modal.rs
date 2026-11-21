@@ -2,8 +2,11 @@
 //! "Done" button) from the corner; dragging the sheet away, or pressing "Done", closes it.
 //!
 //! - The button and sheet morph as one: size, corner radius and position follow the open progress.
-//! - Opening and closing run on a critically damped spring (500 ms). The scrim follows the
-//!   progress, and thins as the sheet is dragged down. The content fades in over the last 40% of the way.
+//! - Aave's curves. The sheet rises on a long ease-out with no overshoot (cubic-bezier(0.19, 1,
+//!   0.22, 1), 560 ms) and closes faster on an ease-in-out (320 ms). The scrim fades on its own
+//!   ease-out from the first frame, and thins as the sheet is dragged down. The content comes in
+//!   40 ms after the sheet starts (a fade and a 10 pt rise) at full size, clipped by the sheet,
+//!   and leaves first on close. A tap mid-flight retargets every piece from where it is.
 //! - A drag rubber-bands up and sideways, and closes on a flick down.
 //! - Haptics: the presses' selection; a light impact when a drag takes the open sheet (not on a
 //!   tap); a medium impact when a release dismisses the sheet. A release short of dismissing
@@ -17,6 +20,22 @@ use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
 use gestures::{Event, PanGesture};
 use pressto::{PressEvent, Pressable};
 use motion::{interpolate_clamp, Easing, Spring, Timing, GENTLE};
+
+/// The sheet's rise: easeOutExpo, as on aave.com.
+fn rise() -> Easing {
+    Easing::bezier(0.19, 1.0, 0.22, 1.0)
+}
+/// The sheet's close, and the scrim's: ease-in-out.
+fn leave() -> Easing {
+    Easing::bezier(0.65, 0.0, 0.35, 1.0)
+}
+const OPEN_MS: f64 = 560.0;
+const CLOSE_MS: f64 = 320.0;
+/// The content starts this long after the sheet, fades over CONTENT_IN_MS and rises CONTENT_RISE pt.
+const CONTENT_DELAY_MS: f64 = 40.0;
+const CONTENT_IN_MS: f64 = 240.0;
+const CONTENT_OUT_MS: f64 = 120.0;
+const CONTENT_RISE: f64 = 10.0;
 use draw2d::{Canvas, Color, Font, Images, Matrix, Paint, Renderer};
 
 use crate::gfx;
@@ -75,12 +94,12 @@ fn modal() -> FloatingModal {
         size: (0.0, 0.0),
         s: 3.0,
         opened: false,
-        progress: Spring::at(0.0),
+        progress: Timing::at(0.0),
         x: Spring::at(0.0),
         y: Spring::at(0.0),
         backdrop: Timing::at(0.0),
         content: Timing::at(0.0),
-        visible: false,
+        content_wait: None,
         pan: PanGesture::new(),
         plus_press: Pressable::new(),
         done_press: Pressable::new(),
@@ -121,12 +140,13 @@ struct FloatingModal {
     /// Device pixels per point.
     s: f64,
     opened: bool,
-    progress: Spring,
+    progress: Timing,
     x: Spring,
     y: Spring,
     backdrop: Timing,
     content: Timing,
-    visible: bool,
+    /// The open's content waits for CONTENT_DELAY_MS: the frame time it started counting (NaN until the next frame).
+    content_wait: Option<f64>,
     pan: PanGesture,
     /// The "+" and "Done" presses; a finger is on one until it lifts, moves away, or is cancelled.
     plus_press: Pressable,
@@ -306,29 +326,32 @@ impl FloatingModal {
     fn toggle(&mut self) {
         self.opened = !self.opened;
         let to = if self.opened { 1.0 } else { 0.0 };
-        gfx::spring_to(&mut self.progress, to, 500.0, 1.0);
-        // The content is part of the sheet from its first frame: in over 60 ms as it opens.
-        self.content = Timing::at(0.0);
+        // A retarget mid-flight runs only the distance left, from where the sheet is.
+        let left = (self.progress.value.clamp(0.0, 1.0) - to).abs().max(0.4);
         if self.opened {
-            self.content.to(1.0, 60.0, Easing::timing_default());
+            self.progress.to(1.0, OPEN_MS * left, rise());
+            self.backdrop.to(1.0, 360.0, Easing::bezier(0.23, 1.0, 0.32, 1.0));
+            self.content_wait = Some(f64::NAN);
+        } else {
+            self.progress.to(0.0, CLOSE_MS * left, leave());
+            self.backdrop.to(0.0, 260.0, Easing::bezier(0.4, 0.0, 0.2, 1.0));
+            // The content leaves first, before the sheet folds onto the button.
+            self.content_wait = None;
+            self.content.to(0.0, CONTENT_OUT_MS, Easing::bezier(0.4, 0.0, 1.0, 1.0));
         }
         self.posted
             .push(if self.opened { "open" } else { "close" }.into());
     }
 
-    /// The scrim's opacity: the progress, thinned as the open sheet is dragged down.
+    /// The scrim's opacity: its own fade, thinned as the open sheet is dragged down.
     fn scrim(&self) -> f64 {
         let drag = (self.y.value.max(0.0) / 400.0).clamp(0.0, 1.0);
-        self.progress.value.clamp(0.0, 1.0) * (1.0 - drag)
+        self.backdrop.value.clamp(0.0, 1.0) * (1.0 - drag)
     }
 
-    /// The content's opacity: fades in over the open's first 60 ms, and on close stays whole until the last 15%.
+    /// The content's opacity; it also sets how far it still has to rise.
     fn content_opacity(&self) -> f64 {
-        if self.opened {
-            self.content.value
-        } else {
-            (self.progress.value / 0.15).clamp(0.0, 1.0)
-        }
+        self.content.value.clamp(0.0, 1.0)
     }
 
     /// A finger is on one of the buttons.
@@ -352,7 +375,7 @@ impl FloatingModal {
         let bq = self.button_matrix(&l).invert().apply(q);
         let (bx, by, bw, bh) = l.button;
         let on_done = self.opened
-            && self.progress.value > 0.9
+            && self.progress.value > 0.97
             && in_modal
             && (bx..=bx + bw).contains(&(bq.x as f64))
             && (by..=by + bh).contains(&(bq.y as f64));
@@ -379,7 +402,7 @@ impl Surface for FloatingModal {
             self.opened,
             self.progress.value,
             self.scale(),
-            self.visible,
+            self.opened && self.progress.value > 0.9,
             self.pan.tracking() || self.pressing()
         ))
     }
@@ -478,11 +501,15 @@ impl Surface for FloatingModal {
         let (p0, k0) = (self.progress.value, self.plus_press.progress());
         let mut moving = self.progress.step(now);
         moving |= self.x.step(now) | self.y.step(now);
-        let visible = self.opened && self.progress.value > 0.9;
-        if visible != self.visible {
-            self.visible = visible;
-            let v = if visible { 1.0 } else { 0.0 };
-            self.backdrop.to(v, 300.0, Easing::timing_default());
+        if let Some(t0) = self.content_wait {
+            let t0 = if t0.is_nan() { now } else { t0 };
+            if now - t0 >= CONTENT_DELAY_MS {
+                self.content_wait = None;
+                self.content.to(1.0, CONTENT_IN_MS, Easing::bezier(0.23, 1.0, 0.32, 1.0));
+            } else {
+                self.content_wait = Some(t0);
+            }
+            moving = true;
         }
         moving |= self.backdrop.step(now) | self.content.step(now);
         moving |= self.plus_press.step(now) | self.done_press.step(now);
@@ -518,15 +545,19 @@ impl Surface for FloatingModal {
         let button_m = self.button_matrix(&lo);
         let (_, _, sw1, sh1) = lo.frame;
         let (_, _, fw0, fh0) = l.frame;
-        let snap_k = ((fw0 / sw1).min(fh0 / sh1)) as f32;
-        let snapshot = Matrix::translate(-(sw1 / 2.0) as f32, -(sh1 / 2.0) as f32)
-            .then(Matrix::scale(snap_k, snap_k))
-            .then(Matrix::translate((fw0 / 2.0) as f32, (fh0 / 2.0) as f32));
+        // The content keeps its full size: it sits on the sheet's bottom, centred, and the sheet
+        // clips it. It rises into place as it fades in.
+        let rise_left = (1.0 - self.content.value.clamp(0.0, 1.0)) * CONTENT_RISE;
+        let snapshot = Matrix::translate(
+            ((fw0 - sw1) / 2.0) as f32,
+            (fh0 - sh1 + rise_left) as f32,
+        );
         let g = &mut self.group_canvas;
         g.begin(s);
         if content > 0.0 {
             g.save();
             g.concat(modal);
+            g.clip_rrect(0.0, 0.0, fw, fh, radius);
             g.concat(snapshot);
             let l = lo;
             let sw = sw1 as f32;
@@ -990,7 +1021,7 @@ mod tests {
         m.size = (420.0, 912.0);
         m.s = 2.0;
         m.opened = true;
-        m.progress = Spring::at(1.0);
+        m.progress = Timing::at(1.0);
         m.input(&pointer(PointerPhase::Down, 760.0, 0.0));
         for k in 1..=4 {
             m.input(&pointer(PointerPhase::Move, 760.0 + 10.0 * k as f32, 100.0 * k as f64));
