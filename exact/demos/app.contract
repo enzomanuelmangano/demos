@@ -233,11 +233,11 @@ component Demos
   // Linear Sensors' feed: the gravity sensor at 50 Hz (RN's interval 20), into its surface.
   task tilt when top(nav).name == "demo" and tilts(top(nav).params.slug) key=top(nav).id
     after(1, startTilt)
-  // The start is sent again every second while the demo is open: a start that came before its
+  // The start is sent again every 400 ms while the demo is open: a start that came before its
   // canvas was placed, or a feed the host paused with the canvas, would otherwise stay silent. A
   // start for a feed already running only takes the canvas as shown.
   task tiltKeep when top(nav).name == "demo" and tilts(top(nav).params.slug) key=top(nav).id
-    every(1000, startTilt)
+    every(400, startTilt)
   action startTilt
     send sensors = startSensorInput(surface="linear_sensors", sensor="gravity", frequency=50)
   // Threads Holo Ticket's feed: Core Motion's attitude at 62.5 Hz (RN's interval 16 ms is

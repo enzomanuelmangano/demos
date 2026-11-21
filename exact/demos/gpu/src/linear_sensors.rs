@@ -269,6 +269,46 @@ mod tests {
         assert!(state.contains(&format!("\"rotateY\":{:.4}", before.1)), "{state}");
     }
 
+    /// Core Motion's gravity (g, +z out of the screen: face up reads z = -1) for a phone at
+    /// `pitch` (top toward the user) and `roll` (right edge down), radians, as the host delivers
+    /// it: negated into the W3C's m/s^2.
+    fn host_sample(pitch: f64, roll: f64) -> InputEvent {
+        let g = [roll.sin() * pitch.cos(), -pitch.sin(), -roll.cos() * pitch.cos()];
+        gravity_event(g[0].mul_add(-STANDARD_G, 0.0) as f32, g[1].mul_add(-STANDARD_G, 0.0) as f32, g[2].mul_add(-STANDARD_G, 0.0) as f32)
+    }
+
+    #[test]
+    fn every_axis_follows_rns_formulas_for_a_phone_at_any_attitude() {
+        // RN: rotateY from the attitude's roll (rad) over [-1, 1], rotateX from Reanimated's
+        // gravity z (Core Motion's g x 9.81) over [-10, -6, -1].
+        let mut s = LinearSensors::default();
+        for pitch_deg in [10.0_f64, 30.0, 45.0, 60.0, 75.0] {
+            for roll_deg in [-80.0_f64, -57.0, -30.0, -5.0, 0.0, 5.0, 30.0, 57.0, 80.0] {
+                let (pitch, roll) = (pitch_deg.to_radians(), roll_deg.to_radians());
+                s.input(&host_sample(pitch, roll));
+                let want_y = interpolate_clamp(roll, &[-1.0, 0.0, 1.0], &[PI / 8.0, 0.0, -PI / 8.0]);
+                let z = -roll.cos() * pitch.cos() * 9.81;
+                let want_x = interpolate_clamp(z, &[-10.0, -6.0, -1.0], &[-PI / 8.0, 0.0, PI / 8.0]);
+                let (rx, ry) = s.rotation();
+                assert!((rx - want_x).abs() < 2e-4 && (ry - want_y).abs() < 2e-4, "pitch {pitch_deg} roll {roll_deg}: ({rx}, {ry}) vs ({want_x}, {want_y})");
+            }
+        }
+        // The signs, one axis at a time, from a reading position (pitch 52 degrees, no roll).
+        s.input(&host_sample(52.0_f64.to_radians(), 0.0));
+        let level = s.rotation();
+        assert!(level.0.abs() < 0.02 && level.1.abs() < 1e-9, "{level:?}");
+        // Right edge down: rotateY goes negative; left edge down: positive.
+        s.input(&host_sample(52.0_f64.to_radians(), 0.3));
+        assert!(s.rotation().1 < -0.1);
+        s.input(&host_sample(52.0_f64.to_radians(), -0.3));
+        assert!(s.rotation().1 > 0.1);
+        // Top toward the user (more upright): rotateX goes positive; laid flat: negative.
+        s.input(&host_sample(80.0_f64.to_radians(), 0.0));
+        assert!(s.rotation().0 > 0.3);
+        s.input(&host_sample(5.0_f64.to_radians(), 0.0));
+        assert!(s.rotation().0 < -0.3);
+    }
+
     #[test]
     fn the_square_tilts_with_gravity() {
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
