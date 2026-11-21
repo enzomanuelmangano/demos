@@ -12,8 +12,8 @@
 //   The view itself is the demo's backdrop until the demo has painted.
 // `glass-button`: the demo screen's close and info buttons, a SwiftUI glass button; `role="close"`
 //   is the system close role (iOS 26). It fades in once the demo has painted.
-// `swift-slider`: a SwiftUI Slider (0...1) whose changes arrive as `change` (and "edit:1" / "edit:0"
-//   as a finger takes and leaves the thumb); `progress` is the value at mount, `max-track-tint` the unfilled track's colour.
+// `swift-slider`: a SwiftUI Slider (0...1) whose value changes arrive as `change`; `progress` is
+//   the value at mount. It draws its own unfilled track, clear of the thumb, in the same render.
 // `mate-haptic`: a Core Haptics crescendo; a new `plays` value starts it, a new `stops` value
 //   cancels it. Discrete points are transient events, continuous ones one event under an
 //   intensity and a sharpness curve.
@@ -323,20 +323,48 @@ private final class SliderModel: ObservableObject {
     /// The value at mount (props `progress`).
     @Published var progress: Float = 0
 }
-/// A bare SwiftUI Slider (0...1, no step or labels) filling the box. `editing` posts "edit:1" when a
-/// finger takes the thumb and "edit:0" when it lets go: the thumb is wider (glass) while held.
+/// The unfilled track: a 6 pt capsule from the thumb's edge to the end, so nothing lies under the
+/// see-through glass thumb. `half` (the thumb's half width) is the only animated part, so the
+/// track follows the thumb as it widens under a finger while its start follows the value at once.
+private struct UnfilledTrack: Shape {
+    var centre: CGFloat
+    var half: CGFloat
+    var animatableData: CGFloat {
+        get { half }
+        set { half = newValue }
+    }
+    func path(in rect: CGRect) -> Path {
+        let start = centre + half
+        guard start < rect.width else { return Path() }
+        return Path(roundedRect: CGRect(x: start, y: 12.333, width: rect.width - start, height: 6), cornerRadius: 3)
+    }
+}
+/// A bare SwiftUI Slider (0...1, no step or labels) filling the box. The unfilled track is drawn
+/// here, behind the Slider, from the same value the Slider reports in the same render, so the two
+/// cannot drift apart however fast the finger moves.
 private struct SliderBody: View {
     @ObservedObject var model: SliderModel
     let changed: (Float) -> Void
-    let editing: (Bool) -> Void
     @State private var value: Float = 0
+    @State private var held = false
+    /// The thumb's half width at rest and while held (a wider glass capsule), pt.
+    private static let restHalf: CGFloat = 18.5
+    private static let heldHalf: CGFloat = 33
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            Slider(value: Binding(get: { value }, set: { value = min(max($0, 0), 1) }), onEditingChanged: { editing($0) })
-                .onAppear { value = model.progress }
-                .onChange(of: value) { new in changed(new) }
+        GeometryReader { box in
+            ZStack(alignment: .topLeading) {
+                UnfilledTrack(centre: Self.restHalf + CGFloat(value) * (box.size.width - 2 * Self.restHalf),
+                              half: held ? Self.heldHalf : Self.restHalf)
+                    .fill(Color(.sRGB, red: 60 / 255, green: 60 / 255, blue: 67 / 255, opacity: 0.18))
+                    .allowsHitTesting(false)
+                    .animation(.smooth(duration: 0.18), value: held)
+                Slider(value: Binding(get: { value }, set: { value = min(max($0, 0), 1) }),
+                       onEditingChanged: { held = $0 })
+                    .onAppear { value = model.progress }
+                    .onChange(of: value) { new in changed(new) }
+            }
+            .frame(width: box.size.width, height: box.size.height, alignment: .topLeading)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 /// `swift-slider`: see the header.
@@ -345,8 +373,7 @@ private final class SwiftSlider: ExactNativeInstance {
     private let host: UIHostingController<SliderBody>
     init(props: [String: String], events: ExactNativeEvents) {
         let model = self.model
-        host = UIHostingController(rootView: SliderBody(model: model, changed: { v in events.change(String(v)) },
-                                                      editing: { on in events.change(on ? "edit:1" : "edit:0") }))
+        host = UIHostingController(rootView: SliderBody(model: model, changed: { v in events.change(String(v)) }))
         host.safeAreaRegions = []
         host.view.backgroundColor = .clear
         super.init(events: events)
