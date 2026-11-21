@@ -82,7 +82,6 @@ component StackedBottomSheet
   // Dismissal waits 250 ms for the slide. That delay is a timer surface, since the host ignores
   // transition delays.
   state timerToken = 0
-  state dragKey = -1
   // Web: the timer posts its token instead of a dismissed message. A swiped sheet is dismissed
   // once its token has fired.
   state goneT = []
@@ -115,10 +114,11 @@ component StackedBottomSheet
     if not wand
       increment = increment + 1
 
-  // The pan begins only on the front sheet. The geometry reply can land after a quick flick has
-  // lifted, so nothing here depends on it: the release acts on the front sheet.
-  action began(key: number, bw: number, bh: number, pw: number, ph: number)
-    dragKey = key
+  // The drag binding needs a geometry action. It records nothing: a commit when the finger lands
+  // would stall the first frames of the pan, and the front sheet is already the one bound to the
+  // drag, so the release does not wait on it either.
+  action began(bw: number, bh: number, pw: number, ph: number)
+    timerToken = timerToken
 
   // A medium impact when a release past 50 points dismisses the sheet. Otherwise it springs home.
   action released(x: number, y: number, scale: number, vx: number, vy: number, vscale: number)
@@ -131,7 +131,6 @@ component StackedBottomSheet
       goneAt = sheetSet(goneAt, i, performanceNow())
       goneT = sheetSet(goneT, i, timerToken + 1)
       timerToken = timerToken + 1
-      dragKey = -1
 
   // Sheets that have slid for their 250 ms leave the stack.
   action dismissed(m: string)
@@ -166,7 +165,7 @@ component StackedBottomSheet
             id=(sheetNum(vGone, i) >= 1 ? 0 : sheetNewer(vGone, i)),
             lift=(sheetNum(vGone, i) >= 1 ? sheetNum(goneL, i) : sheetLift(biggest, sheetHeightOf(sheetNum(cfgs, i)), sheetNewer(vGone, i))),
             mountBiggest=sheetNum(mountB, i), goneMode=sheetNum(vGone, i), goneY=sheetNum(goneY, i),
-            dragged=(sheetNum(vGone, i) == 0 and (i == front or key == dragKey)), magic=push(true))
+            dragged=(sheetNum(vGone, i) == 0 and i == front), magic=push(true))
       // One drag layer drives the front sheet's vertical translate, under an unmoved, clipping parent.
       column position="absolute" inset=0 overflow="hidden" pointer-events="none" z-index=2000
         column id="sheet-drag" width="100%" height="100%" box-sizing="border-box"
@@ -179,7 +178,7 @@ component StackedBottomSheet
               view position="absolute" left=sheetInset()
                 bottom=(sheetInset() + sheetLift(biggest, sheetHeightOf(sheetNum(cfgs, i)), 0) + sheetHeightOf(sheetNum(cfgs, i)) - sheetGripOf(sheetNum(cfgs, i)))
                 width=(w - 2 * sheetInset()) height=sheetGripOf(sheetNum(cfgs, i)) pointer-events="auto"
-                touch-action="none" transformDragFor="sheet-drag" transformgeometry=began(key)
+                touch-action="none" transformDragFor="sheet-drag" transformgeometry=began
                 transformrelease=released aria-label="Swipe the sheet down"
                 testId=`sheet-handle-${key}`
                 // The wand is a second, unseen copy of the third sheet's button, so the press
