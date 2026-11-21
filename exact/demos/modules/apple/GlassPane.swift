@@ -8,7 +8,11 @@
 // Props (all optional):
 //   glass-style "clear" | "regular" | "none"; default "regular"
 //   pane-tint   the tint colour, #rrggbb, #rrggbbaa or rgba(r, g, b, a); none by default
-//   interactive "true" | "false"; default false
+//   interactive "true" | "false"; default false. True: the pane takes the touch and plays iOS's
+//               press response (the glass swells and shimmers under the finger); the touch still
+//               reaches the views above it.
+//   scheme      "light" | "dark": the pane's appearance, whatever the phone's; default the phone's.
+//               Glass reads its backdrop through it, so a dark one over a light page looks grey.
 //   corner-size the corner radius in points; default 0
 //   continuous  "true" | "false": continuous corner curve; default true
 import Foundation
@@ -36,6 +40,7 @@ struct GlassPaneStyle: Equatable {
     var glass = "regular"
     var tint: [CGFloat]? = nil
     var interactive = false
+    var scheme: String? = nil
     var radius: CGFloat = 0
     var continuous = true
 
@@ -45,6 +50,7 @@ struct GlassPaneStyle: Equatable {
         glass = props["glass-style"] ?? "regular"
         tint = glassPaneColor(props["pane-tint"]).map { [$0.0, $0.1, $0.2, $0.3] }
         interactive = props["interactive"] == "true"
+        scheme = props["scheme"]
         radius = props["corner-size"].flatMap(Double.init).map { CGFloat(max(0, $0)) } ?? 0
         continuous = props["continuous"] != "false"
     }
@@ -75,8 +81,12 @@ final class GlassPaneView: UIView {
 
     deinit { visibilityLink?.invalidate() }
 
-    /// Decorative, never a touch target, so a pan on the demo underneath hears the finger.
-    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? { nil }
+    /// Decorative, never a touch target, so a pan on the demo underneath hears the finger. An
+    /// interactive pane takes the touch for its press response: the gesture recognizers of the
+    /// views above still see it.
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        style.interactive && bounds.contains(point) ? effectView : nil
+    }
 
     /// Checked at runtime: early iOS 26 betas crashed in the glass initialiser.
     private static var hasGlass: Bool {
@@ -140,6 +150,12 @@ final class GlassPaneView: UIView {
     }
 
     private func restyle(effectChanged: Bool) {
+        effectView.isUserInteractionEnabled = style.interactive
+        switch style.scheme {
+        case "dark": overrideUserInterfaceStyle = .dark
+        case "light": overrideUserInterfaceStyle = .light
+        default: overrideUserInterfaceStyle = .unspecified
+        }
         let tint = style.tint.map { UIColor(red: $0[0], green: $0[1], blue: $0[2], alpha: $0[3]) }
         if Self.hasGlass, #available(iOS 26.0, *) {
             layer.borderWidth = 0
