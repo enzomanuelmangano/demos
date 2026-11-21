@@ -2,8 +2,10 @@
 //! Notes driven from the Contract. A cell selects, the pad fills it, a solved board plays the
 //! celebration and asks "Genius!".
 //!
-//! Two surfaces: `backdrop` draws the screen's dithered gradient behind the Contract's views, and
-//! `surface` is the board alone (border, cells, digits, pencil marks), alive from Start to New Game.
+//! Three surfaces: `backdrop` draws the screen's dithered gradient behind the Contract's views,
+//! `surface` is the board alone (border, cells, digits, pencil marks), alive from Start to New Game,
+//! and `confetti` is the screen-wide burst the solved board throws (its one input, `burst`, is a
+//! counter: each rise throws a new one).
 //!
 //! - Inputs, in bind order: `seed` (a new value is a new puzzle), `cmd` and `token` (the pad: 1-9 a
 //!   digit, 10 Erase, 11 Undo, 12 solve, applied once per new token), `notes` (1 while pencil marks are on).
@@ -16,7 +18,8 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, PointerPhase, Surface, SurfaceError, Value};
-use draw2d::{Canvas, Color, Font, Paint, Renderer};
+use draw2d::{Canvas, Color, Font, Image, Images, Paint, Renderer, RsXform};
+use motion::{Easing, Timing};
 
 use crate::gfx::Random;
 
@@ -28,6 +31,11 @@ pub fn surface() -> Box<dyn Surface> {
 /// The screen's gradient, behind everything.
 pub fn backdrop() -> Box<dyn Surface> {
     Box::new(Backdrop::default())
+}
+
+/// The solved board's confetti, over the whole screen.
+pub fn confetti() -> Box<dyn Surface> {
+    Box::new(Confetti::default())
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -76,8 +84,8 @@ const WAVE_MS: f64 = 460.0;
 const WAVE_STEP_MS: f64 = 38.0;
 /// The solved board's wave: delay per cell of distance from the last entry.
 const SOLVE_STEP_MS: f64 = 30.0;
-/// Delay from solving to the Genius alert.
-const GENIUS_MS: f64 = 1500.0;
+/// Delay from solving to the Genius alert: the title's solve waits 100 ms, then 2 s.
+const GENIUS_MS: f64 = 2100.0;
 
 /// The celebration: each haptic and the wait after it.
 const CELEBRATION: [(&str, f64); 9] = [
@@ -1110,9 +1118,207 @@ impl Surface for Backdrop {
     }
 }
 
+// ---------------------------------------------------------------------------------------------
+// Confetti.
+
+/// Flakes, each a 10 pt square, blasted out of a point near the top, then falling through the
+/// screen and fading out.
+const FLAKES: usize = 500;
+const FLAKE: f32 = 10.0;
+const BLAST_RADIUS: f32 = 300.0;
+const BLAST_MS: f64 = 1000.0;
+const FALL_MS: f64 = 10000.0;
+/// The blast's centre: the middle of the width, this far from the top.
+const BLAST_Y: f32 = 150.0;
+/// The confetti's palette, as colour and alpha: the primary blues and the faint highlights.
+const FLAKE_COLORS: [(u32, f32); 6] =
+    [(PRIMARY, 1.0), (PRIMARY_LIGHT, 1.0), (PRIMARY, 0.15), (PRIMARY, 0.25), (PRIMARY, 0.0), (PRIMARY, 0.35)];
+
+/// One flake's random draw.
+#[derive(Clone, Debug)]
+struct Flake {
+    clockwise: bool,
+    rotation_x: f64,
+    rotation_z: f64,
+    color: usize,
+    /// Sideways wobble at six points of the fall.
+    wobble: [f64; 6],
+    initial_rotation: f64,
+    offset_x: f64,
+    offset_y: f64,
+    /// Where in the blast it starts (0 to 0.6).
+    delay: f64,
+}
+
+impl Flake {
+    fn new(r: &mut Random) -> Flake {
+        use std::f64::consts::PI;
+        let mut range = |lo: f64, hi: f64| r.next() * (hi - lo) + lo;
+        Flake {
+            clockwise: range(0.0, 1.0) >= 0.5,
+            rotation_x: range(PI, 3.0 * PI),
+            rotation_z: range(PI, 3.0 * PI),
+            color: range(0.0, (FLAKE_COLORS.len() - 1) as f64).round() as usize,
+            wobble: std::array::from_fn(|_| range(-5.0, 5.0)),
+            initial_rotation: range(0.1 * PI, PI),
+            offset_x: range(-50.0, 50.0),
+            offset_y: range(0.0, 150.0),
+            delay: range(0.0, 0.6),
+        }
+    }
+}
+
+/// A linear map of `x` from `[a, b]` to `[c, d]`, extended past the ends.
+fn lerp_range(x: f64, a: f64, b: f64, c: f64, d: f64) -> f64 {
+    c + (x - a) / (b - a) * (d - c)
+}
+
+/// Where flake `i` of `FLAKES` is at blast progress `blast` and fall progress `fall`, in a screen
+/// `width` by `height`: its sprite's rotation-scale and centre, and its scale on its own.
+fn flake_pose(f: &Flake, i: usize, blast: f64, fall: f64, width: f32, height: f32) -> (f64, f64, f64, f64, f64) {
+    use std::f64::consts::PI;
+    let (cx, cy) = (width as f64 / 2.0, BLAST_Y as f64);
+    // On a golden-angle spiral around the blast.
+    let radius = (((i + 1) as f64) / FLAKES as f64).sqrt() * BLAST_RADIUS as f64;
+    let angle = ((i as f64 * 137.5) % 360.0) * PI / 180.0;
+    let (x, y) = (cx + radius * angle.cos(), cy + radius * angle.sin());
+    let (dx, dy) = (x - cx, y - cy);
+    // Before its delay a flake follows the raw progress, then restarts from the centre.
+    let blasted = if blast < f.delay { blast } else { lerp_range(blast, f.delay, 1.0, 0.0, 1.0) };
+    let (mut tx, mut ty) = (x - dx * (1.0 - blasted), y - dy * (1.0 - blasted));
+    let fall_distance = fall * ((height + 100.0 - BLAST_Y + BLAST_RADIUS) as f64);
+    tx += fall * f.offset_x;
+    ty += fall_distance + fall * f.offset_y;
+    // The wobble: linear through the six values from a tenth of the way down.
+    let start = 0.1;
+    let mut wobble = 0.0;
+    if fall > start {
+        let step = (1.0 - start) / 6.0;
+        let k = (((fall - start) / step).floor() as usize).min(5);
+        let (from_t, to_t) = (start + k as f64 * step, start + (k as f64 + 1.0) * step);
+        let from_v = if k == 0 { 0.0 } else { f.wobble[k - 1] };
+        wobble = lerp_range(fall, from_t, to_t, from_v, f.wobble[k]);
+    }
+    tx += wobble;
+    let direction = if f.clockwise { 1.0 } else { -1.0 };
+    let rz = f.initial_rotation + fall.clamp(0.0, 1.0) * direction * f.rotation_z;
+    let rx = f.initial_rotation + fall.clamp(0.0, 1.0) * direction * f.rotation_x;
+    let blast_scale = if blast <= 0.0 {
+        0.0
+    } else if blast < 0.2 {
+        blast / 0.2
+    } else {
+        1.0
+    };
+    let scale = blast_scale * rx.cos().abs();
+    let (s, c) = (rz.sin() * scale, rz.cos() * scale);
+    let half = FLAKE as f64 / 2.0;
+    (c, s, tx - c * half + s * half, ty - s * half - c * half, scale)
+}
+
+#[derive(Default)]
+struct Confetti {
+    seen: Option<f64>,
+    /// A burst was asked for and starts at the next frame.
+    pending: bool,
+    flakes: Vec<Flake>,
+    blast: Timing,
+    fall: Timing,
+    running: bool,
+    images: Option<Images>,
+    canvas: Canvas,
+    renderer: Renderer,
+}
+
+impl Surface for Confetti {
+    fn bind(&mut self, inputs: &[Value], _: Option<f64>) -> Result<(), SurfaceError> {
+        let n = inputs.first().and_then(|v| v.as_number()).unwrap_or(0.0);
+        // A counter that is already up when the surface mounts is not a new burst.
+        if self.seen.is_some_and(|p| n > p) {
+            self.pending = true;
+        }
+        self.seen = Some(n);
+        Ok(())
+    }
+
+    fn render(
+        &mut self,
+        frame: &Frame,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        encoder: &mut wgpu::CommandEncoder,
+        target: &wgpu::TextureView,
+        format: wgpu::TextureFormat,
+    ) -> bool {
+        let now = frame.now_ms;
+        if self.images.is_none() {
+            // One 10 pt flake per colour, as it is on a device at this scale.
+            let side = (FLAKE * frame.scale).round().max(1.0) as u32;
+            let images: Vec<Image> = FLAKE_COLORS
+                .iter()
+                .map(|&(hex, a)| {
+                    let (r, g, b) = ((hex >> 16) as u8, (hex >> 8) as u8, hex as u8);
+                    let px = [r, g, b, (a * 255.0).round() as u8].repeat((side * side) as usize);
+                    Image::from_rgba(side, side, px)
+                })
+                .collect();
+            let refs: Vec<&Image> = images.iter().collect();
+            let up = Images::upload(device, queue, &refs);
+            self.renderer.set_images(&up);
+            self.images = Some(up);
+        }
+        if self.pending {
+            self.pending = false;
+            self.flakes = (0..FLAKES).scan(Random::new(now), |r, _| Some(Flake::new(r))).collect();
+            self.blast.set(0.0);
+            self.fall.set(0.0);
+            self.blast.to(1.0, BLAST_MS, Easing::timing_default());
+            self.fall.to(1.0, FALL_MS, Easing::timing_default());
+            self.running = true;
+        }
+        let moving = self.blast.step(now) | self.fall.step(now);
+        let c = &mut self.canvas;
+        c.begin(frame.scale);
+        if self.running {
+            if let Some(images) = self.images.as_ref() {
+                let (blast, fall) = (self.blast.value, self.fall.value);
+                // The whole burst fades out as it falls.
+                let opacity = (1.0 - fall).clamp(0.0, 1.0) as f32;
+                let side = (FLAKE * frame.scale).round().max(1.0);
+                let mut groups: Vec<(Vec<draw2d::Rect>, Vec<RsXform>)> = vec![Default::default(); FLAKE_COLORS.len()];
+                for (i, f) in self.flakes.iter().enumerate() {
+                    let (scos, ssin, tx, ty, scale) = flake_pose(f, i, blast, fall, frame.width, frame.height);
+                    if scale <= 0.0 {
+                        continue;
+                    }
+                    // The sprite is `side` pixels; its transform is in points.
+                    let k = FLAKE / side;
+                    let g = &mut groups[f.color];
+                    g.0.push(draw2d::Rect { x: 0.0, y: 0.0, width: side, height: side });
+                    g.1.push(RsXform { scos: scos as f32 * k, ssin: ssin as f32 * k, tx: tx as f32, ty: ty as f32 });
+                }
+                let tint = Color::rgba8(255, 255, 255, 255).alpha(opacity);
+                for (color, (rects, xf)) in groups.iter().enumerate() {
+                    if !rects.is_empty() {
+                        let colors = vec![tint; rects.len()];
+                        c.draw_atlas(images.image(color), rects, xf, Some(&colors), false);
+                    }
+                }
+            }
+        }
+        if !moving {
+            self.running = false;
+        }
+        let (pw, ph) = frame.pixels();
+        self.renderer.draw(device, queue, encoder, &self.canvas, target, format, pw, ph, wgpu::Color::TRANSPARENT);
+        moving
+    }
+}
+
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
+    use crate::gfx;
     use exact_gpu::{fixture, PointerKind};
 
     /// The board canvas's side, pt.
@@ -1394,7 +1600,7 @@ mod tests {
     fn celebration(d: &mut Driver) -> Vec<String> {
         let mut all = Vec::new();
         let mut t = 0.0;
-        while t < 2000.0 {
+        while t < 2200.0 {
             d.s.fire(t);
             all.extend(d.s.messages());
             t += 10.0;
@@ -1467,6 +1673,150 @@ mod tests {
         assert_eq!(pads.len(), 1);
         assert!(pads[0] >= PAD_MS && pads[0] < PAD_MS + 20.0, "{pads:?}");
         assert!(!moving, "a board at rest asks for no frames");
+    }
+
+    fn screen(now_ms: f64) -> Frame {
+        Frame { width: 402.0, height: 874.0, scale: 3.0, now_ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: 0, headroom: 1.0 }
+    }
+
+    /// A flake with every draw fixed.
+    fn flake(delay: f64, clockwise: bool) -> Flake {
+        Flake { clockwise, rotation_x: 2.0, rotation_z: 3.0, color: 0, wobble: [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], initial_rotation: 0.5, offset_x: 20.0, offset_y: 100.0, delay }
+    }
+
+    #[test]
+    fn a_flake_blasts_out_of_the_centre_then_falls() {
+        let f = flake(0.3, true);
+        let (w, h) = (402.0, 874.0);
+        // Nothing is drawn before the blast starts.
+        assert_eq!(flake_pose(&f, 499, 0.0, 0.0, w, h).4, 0.0);
+        // The blast's end, still: the last flake sits on the rim of the spiral, at the blast's height.
+        let (c, s, tx, ty, scale) = flake_pose(&f, 499, 1.0, 0.0, w, h);
+        let angle = ((499.0f64 * 137.5) % 360.0).to_radians();
+        let (x, y) = (201.0 + 300.0 * angle.cos(), 150.0 + 300.0 * angle.sin());
+        let want_scale = 0.5f64.cos().abs();
+        assert!((scale - want_scale).abs() < 1e-9);
+        assert!((c - 0.5f64.cos() * want_scale).abs() < 1e-9 && (s - 0.5f64.sin() * want_scale).abs() < 1e-9);
+        // The sprite's centre is its transform applied to the point (5, 5).
+        let (mx, my) = (c * 5.0 - s * 5.0 + tx, s * 5.0 + c * 5.0 + ty);
+        assert!((mx - x).abs() < 1e-9 && (my - y).abs() < 1e-9, "{mx} {my} vs {x} {y}");
+        // Before its delay a flake follows the raw progress (a tenth of the way out at 0.1).
+        let (c, s, tx, ty, scale) = flake_pose(&f, 499, 0.1, 0.0, w, h);
+        assert!((scale - 0.5 * 0.5f64.cos().abs()).abs() < 1e-9);
+        let (mx, my) = (c * 5.0 - s * 5.0 + tx, s * 5.0 + c * 5.0 + ty);
+        assert!((mx - (201.0 + 0.1 * (x - 201.0))).abs() < 1e-9 && (my - (150.0 + 0.1 * (y - 150.0))).abs() < 1e-9);
+        // At its delay it starts over from the centre.
+        let (c, s, tx, ty, _) = flake_pose(&f, 499, 0.3, 0.0, w, h);
+        let (mx, my) = (c * 5.0 - s * 5.0 + tx, s * 5.0 + c * 5.0 + ty);
+        assert!((mx - 201.0).abs() < 1e-9 && (my - 150.0).abs() < 1e-9);
+        // The end of the fall: down by height + 100 - 150 + 300 and its offsets, wobbled by the last value.
+        let (c, s, tx, ty, scale) = flake_pose(&f, 499, 1.0, 1.0, w, h);
+        let (mx, my) = (c * 5.0 - s * 5.0 + tx, s * 5.0 + c * 5.0 + ty);
+        assert!((mx - (x + 20.0 + 6.0)).abs() < 1e-9, "{mx}");
+        assert!((my - (y + 874.0 + 250.0 + 100.0)).abs() < 1e-9, "{my}");
+        assert!((scale - (0.5f64 + 2.0).cos().abs()).abs() < 1e-9);
+        // Counter-clockwise turns the other way.
+        let (_, s, ..) = flake_pose(&flake(0.3, false), 499, 1.0, 1.0, w, h);
+        let (_, s2, ..) = flake_pose(&flake(0.3, true), 499, 1.0, 1.0, w, h);
+        assert!(s != s2);
+    }
+
+    #[test]
+    fn the_wobble_runs_through_its_six_values() {
+        let f = flake(0.0, true);
+        let at = |fall: f64| {
+            let (c, s, tx, ..) = flake_pose(&f, 0, 1.0, fall, 402.0, 874.0);
+            // Remove the fall's own sideways offset and the sprite's centring.
+            c * 5.0 - s * 5.0 + tx - (201.0 + (1.0f64 / 500.0).sqrt() * 300.0 * ((0.0f64 * 137.5) % 360.0).to_radians().cos()) - fall * 20.0
+        };
+        assert!(at(0.05).abs() < 1e-9 && at(0.1).abs() < 1e-9);
+        // Each sixth of the remaining fall ends on the next value.
+        for k in 1..=6 {
+            let t = 0.1 + 0.15 * k as f64;
+            assert!((at(t) - k as f64).abs() < 1e-9, "{k}: {}", at(t));
+        }
+        assert!((at(0.1 + 0.075) - 0.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn a_new_burst_is_a_rise_of_the_counter() {
+        let mut c = Confetti::default();
+        // Already up at mount: not a burst.
+        c.bind(&[Value::Number(3.0)], None).unwrap();
+        assert!(!c.pending);
+        c.bind(&[Value::Number(3.0)], None).unwrap();
+        assert!(!c.pending);
+        c.bind(&[Value::Number(4.0)], None).unwrap();
+        assert!(c.pending);
+    }
+
+    #[test]
+    fn the_flakes_are_a_random_draw_of_main_s_ranges() {
+        let mut r = Random::new(11.0);
+        let fs: Vec<Flake> = (0..FLAKES).map(|_| Flake::new(&mut r)).collect();
+        assert!(fs.iter().all(|f| (0.0..=0.6).contains(&f.delay) && f.offset_y >= 0.0 && f.offset_y <= 150.0 && f.offset_x.abs() <= 50.0 && f.color < 6));
+        assert!(fs.iter().all(|f| f.wobble.iter().all(|w| w.abs() <= 5.0) && (std::f64::consts::PI..=3.0 * std::f64::consts::PI).contains(&f.rotation_x)));
+        // Every colour is drawn, the clockwise split is about even.
+        for k in 0..6 {
+            assert!(fs.iter().any(|f| f.color == k), "{k}");
+        }
+        let cw = fs.iter().filter(|f| f.clockwise).count();
+        assert!((200..300).contains(&cw), "{cw}");
+    }
+
+    #[test]
+    fn the_burst_renders_blasts_falls_and_fades_away() {
+        let Some(gpu) = fixture::device_or_skip(fixture::device()) else {
+            return;
+        };
+        let mut s = Confetti::default();
+        s.bind(&[Value::Number(0.0)], None).unwrap();
+        let (img, moving) = fixture::render(&gpu, &mut s, &screen(0.0)).unwrap();
+        assert!(!moving && img.data.chunks(4).all(|p| p[3] == 0), "nothing before the first burst");
+        s.bind(&[Value::Number(1.0)], None).unwrap();
+        let ink = |img: &fixture::Pixels| img.data.chunks(4).filter(|p| p[3] > 0).count();
+        let mut t = 0.0;
+        let mut shot = |t: f64, s: &mut Confetti, name: &str| -> usize {
+            let (img, _) = fixture::render(&gpu, s, &screen(t)).unwrap();
+            gfx::save_over(&img, name, [10, 18, 34]);
+            ink(&img)
+        };
+        t += 16.0;
+        let first = shot(t, &mut s, "sudoku-confetti-0");
+        // The blast has scale 0 at its first frame.
+        assert!(first < 50, "{first}");
+        let mut blast = 0;
+        while t < 1000.0 {
+            t += 16.0;
+            fixture::render(&gpu, &mut s, &screen(t)).unwrap();
+            if (t - 500.0).abs() < 8.0 {
+                blast = shot(t, &mut s, "sudoku-confetti-blast");
+            }
+        }
+        assert!(blast > 2000, "{blast}");
+        while t < 4000.0 {
+            t += 16.0;
+            fixture::render(&gpu, &mut s, &screen(t)).unwrap();
+        }
+        let mid = shot(t, &mut s, "sudoku-confetti-fall");
+        assert!(mid > 2000, "{mid}");
+        while t < 9000.0 {
+            t += 16.0;
+            fixture::render(&gpu, &mut s, &screen(t)).unwrap();
+        }
+        let late = shot(t, &mut s, "sudoku-confetti-late");
+        assert!(late < mid, "the burst fades as it falls: {late} vs {mid}");
+        let mut moving = true;
+        let mut end = None;
+        while t < 11500.0 {
+            t += 16.0;
+            let (img, m) = fixture::render(&gpu, &mut s, &screen(t)).unwrap();
+            moving = m;
+            if !m && end.is_none() {
+                end = Some(ink(&img));
+            }
+        }
+        assert!(!moving && end == Some(0), "the burst ends clean: {end:?}");
     }
 
     fn out(name: &str, img: &fixture::Pixels) {

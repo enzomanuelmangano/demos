@@ -2,7 +2,8 @@
 // and, after a moment, a number pad with Undo and Notes under it, and New Game sits under the
 // title. A cell selects, a pad key fills it, the title solves the board, New Game asks first.
 // The board is a canvas surface (gpu/src/sudoku.rs) that also plays the haptics; the gradient
-// behind everything is another. The pad sends each press as `cmd` plus a new `token` (1-9 a
+// behind everything is another, and a third over everything throws the confetti when the board is
+// solved (by the title or by hand): each `solved` the board posts raises `burst`. The pad sends each press as `cmd` plus a new `token` (1-9 a
 // digit, 10 Erase, 11 Undo, 12 solve).
 use DemoEnv from "../env.contract"
 use RouteAlert from "../route-alert.contract"
@@ -42,6 +43,8 @@ component Sudoku
   state remain = ""
   state asking = false
   state genius = false
+  // Raised on each solved board: the confetti surface throws a new burst per rise.
+  state burst = 0
   action heard(m: string)
     if m.startsWith("remain:")
       remain = m.slice(7)
@@ -49,6 +52,8 @@ component Sudoku
       lit = match parseNumber(m.slice(3)) { case some(n) => n, case none => lit }
     if m == "pad"
       padReady = true
+    if m == "solved"
+      burst = burst + 1
     if m == "alert:genius"
       genius = true
     // Haptics: the host plays these only where the surface cannot.
@@ -141,6 +146,8 @@ component Sudoku
             column align-items="center" padding=24
               SudokuButton(title="Start Game", press=start, testId="sudoku-start", filled=true,
                 size=16, padX=20, padY=10, minW=200)
+      canvas surface=sudoku_confetti(burst) position="absolute" top=0 left=0 width=env.width height=env.height
+        pointer-events="none" aria-hidden=true testId="sudoku-confetti"
       RouteAlert(shown=asking, title="New Game",
         message="Are you sure you want to start a new game? Your current progress will be lost.",
         cancelLabel="Cancel", confirm="New Game", destructive=true, dismiss=keepGame, accept=newGame,

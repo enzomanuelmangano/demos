@@ -200,6 +200,7 @@ pub static REGISTRY: Registry = Registry {
         ("story_list", 0, story_list::surface),
         ("sudoku", 4, sudoku::surface),
         ("sudoku_backdrop", 0, sudoku::backdrop),
+        ("sudoku_confetti", 1, sudoku::confetti),
         ("swipe_cards", 4, swipe_cards::surface),
         ("the_little_prince", 2, the_little_prince::surface),
         ("theme_canvas_animation", 0, theme_canvas_animation::surface),
