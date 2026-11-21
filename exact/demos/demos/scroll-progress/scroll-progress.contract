@@ -110,12 +110,12 @@ component ScrollProgress
       view position="absolute" left=0 right=0 top=0 height=(env.safeTop + 16) z-index=10
         pointer-events="none" aria-hidden=true
         background-image="linear-gradient(180deg, #111111 0%, rgba(17, 17, 17, 0) 100%)"
-      // Text scrolling under the pill fades: a progressive blur (sharp at the top, 12 pt at the bottom)
-      // under a scrim from clear to 0.85.
-      view position="absolute" left=0 right=0 bottom=0 height=(env.safeBottom + 150) z-index=99
+      // Text scrolling under the pill fades: a progressive blur (sharp at the top, 6 pt at the bottom)
+      // under a scrim from clear to 0.85, over the last 75 pt above the safe area.
+      view position="absolute" left=0 right=0 bottom=0 height=(env.safeBottom + 75) z-index=99
         pointer-events="none" aria-hidden=true testId="scroll-progress-fade"
-        variable-blur blur-radius="12" ramp-from="0" ramp-to="1" position="absolute" left=0 top=0
-          width="100%" height="100%" aria-hidden=true
+        variable-blur blur-radius="6" ramp-from="0" ramp-to="1" position="absolute" left=0 top=0
+          width="100%" height="100%" pointer-events="none" aria-hidden=true
         view position="absolute" inset=0
           background-image="linear-gradient(180deg, rgba(17, 17, 17, 0) 0%, rgba(17, 17, 17, 0.55) 55%, rgba(17, 17, 17, 0.85) 100%)"
       BottomProgress(left=((env.width - pillWidth(progress)) / 2), progress=progress, frozen=frozen, reset=reset)
@@ -156,7 +156,9 @@ component BottomProgress
         view class=PillMotion height=5 width="70%" background-color="#ffffff" border-radius=2.5
           overflow="hidden" position="relative"
           view position="absolute" inset=0 background-color="#1A1A1A"
-          view position="absolute" inset=0 background-color="#9E9E9E"
+          // Rests at 0 (-100%): a scroll past the top, before the timeline's range, shows the
+          // base style, which must be an empty bar and not a full one.
+          view position="absolute" inset=0 background-color="#9E9E9E" translate="-100% 0px"
             animation="spFill 1s linear both" animation-timeline="--sp" testId="progress-fill"
           view position="absolute" inset=0 background-color="#9E9E9E" opacity=(frozen ? 1 : 0)
       view class=PillMotion position="absolute" top=5 left=5 right=4.66667 bottom=4.66667 border-radius=29.49 corner-shape="-exact-continuous"
