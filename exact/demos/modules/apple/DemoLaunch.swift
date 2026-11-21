@@ -490,6 +490,14 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
     private var content: UIView? { snapshot ?? controller?.view }
     private var detached = false
     private weak var cardHost: UIView?
+    /// The detached card's parent: it follows the pager, so a page swiped while the card lands carries the
+    /// card with its icon, as SpringBoard's own icons do (the card was pinned to the screen and slid over
+    /// the next page).
+    private var carrier: UIView?
+    private weak var pager: UIScrollView?
+    /// The pager's offset when the icon's frame was read.
+    private var pagerOffset: CGFloat = 0
+    private var pagerWatch: NSKeyValueObservation?
     private var cardView: CardView?
     private var art: UIView?
     private var blur: HomeBlur?
@@ -541,6 +549,8 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
             return view.isDescendant(of: v)
         }) ?? current
     }
+
+    static func searchTookHome() { for s in live { s.searchTookHome() } }
 
     static func holds(_ controller: UIViewController) -> Bool {
         var at: UIViewController? = controller
@@ -615,6 +625,10 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
         let shownScale = Double(zoom?.layer.presentation()?.transform.m11 ?? 1)
         iconFrame = icon.convert(icon.bounds, to: nil)
         iconRadius = iconFrame.width * K.iconRadiusRatio
+        if let p = PageScrollers.shared.scrollView("pager"), icon.isDescendant(of: p) {
+            pager = p
+            pagerOffset = p.contentOffset.x
+        }
         let blur = HomeBlur()
         blur.frame = host.bounds
         host.insertSubview(blur, belowSubview: container)
@@ -826,21 +840,52 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
     private func detachCard() {
         guard !detached, let cardView, let container = cardView.superview, let host = container.superview else { return }
         let origin = container.frame.origin
-        host.insertSubview(cardView, aboveSubview: container)
+        let carrier = UIView(frame: host.bounds)
+        carrier.isUserInteractionEnabled = false
+        carrier.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        host.insertSubview(carrier, aboveSubview: container)
+        carrier.addSubview(cardView)
+        self.carrier = carrier
         if origin != .zero { cardView.center = CGPoint(x: cardView.center.x + origin.x, y: cardView.center.y + origin.y) }
         cardView.isUserInteractionEnabled = false
         cardHost = host
         detached = true
+        // KVO fires inside each change of the offset (a drag, a deceleration): the card moves in the same frame as the page.
+        pagerWatch = pager?.observe(\.contentOffset, options: [.new]) { [weak self] _, _ in self?.followPager() }
+        followPager()
+    }
+
+    /// Shifts the carrier by the pager's travel since the icon was read, at the home's zoom as shown.
+    private func followPager() {
+        guard let carrier, let pager else { return }
+        let s = zoom?.layer.presentation()?.transform.m11 ?? zoom?.layer.transform.m11 ?? 1
+        let x = (pager.contentOffset.x - pagerOffset) * s
+        guard carrier.bounds.origin.x != x else { return }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        carrier.bounds.origin.x = x
+        CATransaction.commit()
     }
 
     /// UIKit's dismissal takes the detached card and its flight out of the window: both go back on the flight's clock.
     private func keepCard() {
-        guard detached, phase == .closing, let cardView, cardView.superview == nil, let host = cardHost else { return }
+        guard detached, phase == .closing, let cardView, let host = cardHost,
+              cardView.superview == nil || carrier?.superview == nil else { return }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        host.addSubview(cardView)
+        if let carrier {
+            if carrier.superview == nil { host.addSubview(carrier) }
+            if cardView.superview == nil { carrier.addSubview(cardView) }
+        } else { host.addSubview(cardView) }
         if let f = flight { removeFlight(); animate(f) }
         CATransaction.commit()
+    }
+
+    /// A pull to search took the home while the card still lands: the icon takes its place at once, under the
+    /// search's blur, rather than a sharp card over it.
+    fileprivate func searchTookHome() {
+        guard phase == .closing, detached, cardView?.isHidden == false else { return }
+        landCard()
     }
 
     /// A still of the demo in the card, to fly home once the route is handed back (its views go with the route).
@@ -968,6 +1013,9 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
             snapshot?.removeFromSuperview()
             snapshot = nil
             cardView?.removeFromSuperview()
+            carrier?.removeFromSuperview()
+            carrier = nil
+            pagerWatch = nil
         }
         link?.invalidate()
         link = nil
@@ -1372,6 +1420,8 @@ final class LaunchSession: NSObject, UIViewControllerTransitioningDelegate {
                 if t >= f.end { flight = nil; phase = .open; rest() }
             case .closing:
                 keepCard()
+                // The home's zoom changes the page's travel on screen while it settles.
+                followPager()
                 // Covered by the artwork: the demo stops drawing; its route goes once all is still.
                 if t >= f.covered, controller?.view.isHidden == false { controller?.view.isHidden = true }
                 if t >= routeAt { routeAt = .infinity; leave() }
@@ -1488,6 +1538,9 @@ final class DemoCardView: UIView {
 /// `present` wrapped once: Exact's fullscreen presentation over the home is the launch's.
 func installLaunch() {
     struct Once { static let done: Void = {
+        NotificationCenter.default.addObserver(forName: SearchRevealView.pullBegan, object: nil, queue: nil) { _ in
+            LaunchSession.searchTookHome()
+        }
         let cls = UIViewController.self
         guard let original = class_getInstanceMethod(cls, #selector(UIViewController.present(_:animated:completion:))),
               let wrapped = class_getInstanceMethod(cls, #selector(UIViewController.demosLaunchPresent(_:animated:completion:))) else { return }
