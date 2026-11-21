@@ -31,7 +31,8 @@
     "page-dots",
     "search-reveal",
     "still-art",
-    "icon-grid"
+    "icon-grid",
+    "home-shake"
   ],
   "host": {
     "web": {},
