@@ -59,10 +59,26 @@ keyframes sheetIn400
 fn sheetEnterName(biggest: number): string = biggest + 50 == 190 ? "sheetIn190" : (biggest + 50 == 210 ? "sheetIn210" : (biggest + 50 == 230 ? "sheetIn230" : (biggest + 50 == 250 ? "sheetIn250" : (biggest + 50 == 300 ? "sheetIn300" : (biggest + 50 == 325 ? "sheetIn325" : (biggest + 50 == 350 ? "sheetIn350" : "sheetIn400"))))))
 fn sheetEnterTiming(): string = "800ms linear(0, 0.055, 0.1734, 0.3101, 0.4422, 0.5591, 0.6575, 0.7374, 0.8009, 0.8503, 0.8883, 0.9172, 0.9389, 0.9551, 0.9672, 0.9761, 0.9826, 0.9874, 0.9909, 0.9935, 0.9953, 0.9966, 0.9976, 0.9983, 0.9988, 0.9991, 0.9994, 0.9996, 0.9997, 0.9998, 0.9998, 0.9999, 1) both"
 
-// The front sheet's translate follows the drag and holds at 0 above.
+// The front sheet follows the drag 1:1 down. Up, past its resting place, it stretches with iOS's
+// rubber band, (1 - 1/(d * 0.55 / 120 + 1)) * 120 for a finger d up, over the range -1000..2000.
 keyframes sheetSwipeY
-  from translate="0px 0px"
-  to translate="0px 2000px"
+  0% translate="0px -98.51px"
+  6% translate="0px -94.78px"
+  12% translate="0px -89.49px"
+  16.6667% translate="0px -83.54px"
+  20.6667% translate="0px -76.23px"
+  23.6667% translate="0px -68.48px"
+  26% translate="0px -60.25px"
+  27.8333% translate="0px -51.67px"
+  29.3333% translate="0px -42.58px"
+  30.5% translate="0px -33.64px"
+  31.4% translate="0px -25.20px"
+  32.0667% translate="0px -17.80px"
+  32.5667% translate="0px -11.44px"
+  32.9333% translate="0px -6.26px"
+  33.1667% translate="0px -2.69px"
+  33.3333% translate="0px 0px"
+  100% translate="0px 2000px"
 
 component StackedBottomSheet
   props
@@ -82,6 +98,9 @@ component StackedBottomSheet
   // Dismissal waits 250 ms for the slide. That delay is a timer surface, since the host ignores
   // transition delays.
   state timerToken = 0
+  // A dismissing release puts the drag layer back at 0 at once: the next sheet follows the layer
+  // from that frame, so a spring back from the release point would drag it down with it.
+  state snap = false
   // Web: the timer posts its token instead of a dismissed message. A swiped sheet is dismissed
   // once its token has fired.
   state goneT = []
@@ -123,6 +142,7 @@ component StackedBottomSheet
   // A medium impact when a release past 50 points dismisses the sheet. Otherwise it springs home.
   action released(x: number, y: number, scale: number, vx: number, vy: number, vscale: number)
     let i = front
+    snap = i >= 0 and y > 50 and sheetNum(vGone, i) == 0
     if i >= 0 and y > 50 and sheetNum(vGone, i) == 0
       haptic("impact-medium")
       goneL = sheetSet(goneL, i, sheetLift(biggest, sheetHeightOf(sheetNum(cfgs, i)), 0))
@@ -169,23 +189,26 @@ component StackedBottomSheet
       // One drag layer drives the front sheet's vertical translate, under an unmoved, clipping parent.
       column position="absolute" inset=0 overflow="hidden" pointer-events="none" z-index=2000
         column id="sheet-drag" width="100%" height="100%" box-sizing="border-box"
-          position="relative" translate="0px 0px" transition=`translate ${sheetSpring()}`
+          position="relative" translate="0px 0px"
+          transition=(snap ? "none" : `translate ${sheetSpring()}`)
           -exact-drag-timeline="--sheetSwipe y"
-          for key, i in keys key=key
-            if sheetNum(vGone, i) == 0 and sheetNewer(vGone, i) == 0
-              // The spiral's canvas takes taps, so its handle is a strip at the top. Other sheets
-              // drag from anywhere.
-              view position="absolute" left=sheetInset()
-                bottom=(sheetInset() + sheetLift(biggest, sheetHeightOf(sheetNum(cfgs, i)), 0) + sheetHeightOf(sheetNum(cfgs, i)) - sheetGripOf(sheetNum(cfgs, i)))
-                width=(w - 2 * sheetInset()) height=sheetGripOf(sheetNum(cfgs, i)) pointer-events="auto"
-                touch-action="none" transformDragFor="sheet-drag" transformgeometry=began
-                transformrelease=released aria-label="Swipe the sheet down"
-                testId=`sheet-handle-${key}`
-                // The wand is a second, unseen copy of the third sheet's button, so the press
-                // lands where the wand is drawn.
-                if sheetNum(cfgs, i) == 2
-                  column position="absolute" inset=0
-                    SheetContent(cfg=2, ghost=true, width=(w - 2 * sheetInset()), magic=push(true))
+          // One handle, moved to whichever sheet is in front, so the binding and its geometry stay
+          // the same view: the next sheet is draggable the moment the last one is thrown, not
+          // after its slide ends and a new handle reports its geometry.
+          if front >= 0
+            // The spiral's canvas takes taps, so its handle is a strip at the top. Other sheets
+            // drag from anywhere.
+            view position="absolute" left=sheetInset()
+              bottom=(sheetInset() + sheetLift(biggest, sheetHeightOf(sheetNum(cfgs, front)), sheetNewer(vGone, front)) + sheetHeightOf(sheetNum(cfgs, front)) - sheetGripOf(sheetNum(cfgs, front)))
+              width=(w - 2 * sheetInset()) height=sheetGripOf(sheetNum(cfgs, front)) pointer-events="auto"
+              touch-action="none" transformDragFor="sheet-drag" transformgeometry=began
+              transformrelease=released aria-label="Swipe the sheet down"
+              testId=`sheet-handle-${sheetNum(keys, front)}`
+              // The wand is a second, unseen copy of the third sheet's button, so the press
+              // lands where the wand is drawn.
+              if sheetNum(cfgs, front) == 2
+                column position="absolute" inset=0
+                  SheetContent(cfg=2, ghost=true, width=(w - 2 * sheetInset()), magic=push(true))
 
 component StackedSheetCard
   props
@@ -213,7 +236,7 @@ component StackedSheetCard
             // The drag offset, then the dismiss throw.
             column translate=(goneMode >= 1 ? `0px ${goneY}px` : "0px 0px")
               animation=(dragged ? "sheetSwipeY 1s linear both" : "none")
-              animation-timeline=(dragged ? "--sheetSwipe" : "auto") animation-range="0px 2000px"
+              animation-timeline=(dragged ? "--sheetSwipe" : "auto") animation-range="-1000px 2000px"
               column translate=(goneMode >= 1 ? `0px ${h + sheetInset() - goneY}px` : "0px 0px")
                 transition=`translate ${sheetThrow()}`
                 // White rounded container. Its shadow lightens for older sheets.
