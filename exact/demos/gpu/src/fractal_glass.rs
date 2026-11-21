@@ -5,9 +5,8 @@
 //!   the circle's colour in a rounded square). The theme animates over 300 ms in a gamma-2.2 colour space.
 //! - Pan on the circle's 200 x 200 box: the drawn circle follows the finger through a spring; a
 //!   release carries its velocity on to a rest point kept on screen.
-//! - Haptics: light when the pan takes the circle (a tap plays none); selection when the drag
-//!   carries its centre behind the pane, re-armed once the centre is REARM outside it. Never two
-//!   within HAPTIC_GAP_MS; the flutes, the release and the landing play none.
+//! - Haptics: one light impact when a finger lands on the circle; nothing else (not the drag,
+//!   the pane's edge, the release or the landing).
 //! - Untouched and settled, the lights still drift: IDLE_FPS frames a second (`max_fps`), every
 //!   frame while a finger, a spring or the theme moves.
 //!
@@ -42,10 +41,6 @@ const DARK: ([f64; 3], [f64; 3]) = ([0.0, 0.0, 0.0], [120.0, 192.0, 224.0]);
 const PROFILE_N: usize = 256;
 const REACH: f32 = RADIUS + 4.0 * SIGMA;
 
-/// The shortest gap between two haptics, ms, so the grab and the pane's edge never read as one buzz.
-const HAPTIC_GAP_MS: f64 = 150.0;
-/// How far outside the pane the circle's centre goes before going behind it plays again, pt.
-const REARM: f32 = 16.0;
 /// The drawn circle chasing the finger (ζ ≈ 0.75).
 const FOLLOW: SpringConfig = SpringConfig { stiffness: 520.0, damping: 34.0, mass: 1.0 };
 /// The rest point keeps this much of the circle's radius on screen.
@@ -72,8 +67,6 @@ fn surface_struct() -> Box<FractalGlass> {
         pan: PanGesture::new(),
         touched: false,
         moving: true,
-        behind: false,
-        haptic_at: f64::NEG_INFINITY,
         posted: Vec::new(),
         canvas: draw2d::Canvas::default(),
         renderer: draw2d::Renderer::default(),
@@ -98,9 +91,6 @@ struct FractalGlass {
     touched: bool,
     /// A spring or the theme's timing was still running at the last frame.
     moving: bool,
-    /// The pane's selection played and is not re-armed yet, and the last haptic's time.
-    behind: bool,
-    haptic_at: f64,
     posted: Vec<String>,
     canvas: draw2d::Canvas,
     renderer: draw2d::Renderer,
@@ -181,40 +171,14 @@ impl FractalGlass {
         (gamma8(self.channels[k].value) / 255.0) as f32
     }
 
-    /// Whether the circle's centre is behind the pane (x 40, width W − 80, 300 tall, centred).
-    fn behind_pane(&self) -> bool {
-        let (w, h) = self.size;
-        let (x, y) = self.center;
-        let top = (h - 300.0) / 2.0;
-        x >= 40.0 && x <= w - 40.0 && y >= top && y <= top + 300.0
-    }
-
     /// The circle as drawn.
     fn drawn(&self) -> (f32, f32) {
         (self.shown[0].value as f32, self.shown[1].value as f32)
     }
 
-    /// How far the circle's centre is outside the pane, pt (0 behind it).
-    fn outside_pane(&self) -> f32 {
-        let (w, h) = self.size;
-        let (x, y) = self.center;
-        let top = (h - 300.0) / 2.0;
-        let dx = (40.0 - x).max(x - (w - 40.0)).max(0.0);
-        let dy = (top - y).max(y - (top + 300.0)).max(0.0);
-        dx.max(dy)
-    }
-
     fn on_circle(&self, x: f32, y: f32) -> bool {
         let (cx, cy) = self.drawn();
         (x - cx).abs() <= RADIUS && (y - cy).abs() <= RADIUS
-    }
-
-    /// Plays `kind` unless another haptic of this surface played under HAPTIC_GAP_MS ago.
-    fn haptic(&mut self, at_ms: f64, kind: &str) {
-        if at_ms - self.haptic_at >= HAPTIC_GAP_MS {
-            self.posted.push(kind.into());
-            self.haptic_at = at_ms;
-        }
     }
 
     /// A release leaves the circle where the finger put it, kept on screen: no carried velocity.
@@ -291,22 +255,19 @@ impl Surface for FractalGlass {
                 self.shown[1].set(cy as f64);
                 self.center = (cx, cy);
                 self.saved = self.center;
-                self.behind = self.behind_pane();
                 self.touched = true;
+                // The finger landed on the circle.
+                self.posted.push("haptic:impact-light".into());
             }
             Event::Start(p) | Event::Update(p) => {
-                if matches!(event, Event::Start(_)) {
-                    self.haptic(at_ms, "haptic:impact-light");
+                if !self.touched {
+                    // A pan with no slop starts without a Begin.
+                    self.touched = true;
+                    self.posted.push("haptic:impact-light".into());
                 }
                 self.center = (self.saved.0 + p.translation_x, self.saved.1 + p.translation_y);
                 self.shown[0].retarget(self.center.0 as f64, FOLLOW);
                 self.shown[1].retarget(self.center.1 as f64, FOLLOW);
-                if !self.behind && self.behind_pane() {
-                    self.behind = true;
-                    self.haptic(at_ms, "haptic:selection");
-                } else if self.behind && self.outside_pane() > REARM {
-                    self.behind = false;
-                }
             }
             Event::End(p) => {
                 self.touched = false;
@@ -784,7 +745,6 @@ mod tests {
             at += step;
             send(&mut s, PointerPhase::Move, 370.0 - 15.0 * k as f32, at);
         }
-        assert!(!s.behind_pane());
         // Hovering across the pane's edge, flapping every 50 ms.
         for k in 0..20 {
             at += 50.0;
@@ -801,37 +761,28 @@ mod tests {
     }
 
     #[test]
-    fn the_drag_plays_the_grab_and_the_pane_edge_never_twice_in_150_ms() {
+    fn only_the_finger_landing_plays_a_haptic() {
         for step in [8.0, 16.0, 60.0, 200.0] {
+            // Down the pane, out again and hovering over its edge: one light impact, at the
+            // landing, and nothing for the drag, the edge, the lift or the settle.
             let played = haptics_of_a_drag(step);
-            // The grab first, once; the lift, the way out, the hover's flapping add none.
-            assert_eq!(played[0].1, "haptic:impact-light", "{step}: {played:?}");
-            assert_eq!(played.iter().filter(|p| p.1 == "haptic:impact-light").count(), 1, "{step}: {played:?}");
-            // Never two within 150 ms, and the selection is the only other kind.
-            for pair in played.windows(2) {
-                assert!(pair[1].0 - pair[0].0 >= HAPTIC_GAP_MS, "{step}: {played:?}");
-            }
-            assert!(played.iter().all(|p| p.1 == "haptic:impact-light" || p.1 == "haptic:selection"), "{played:?}");
-            // At most one per 150 ms window.
-            assert!(played.len() <= 8, "{step}: {played:?}");
+            assert_eq!(played, vec![(0.0, "haptic:impact-light".to_string())], "{step}");
         }
-        // A drag slow enough to cross the edge after the grab plays the selection once going
-        // behind, none on the way out; a fast one's selection falls inside the grab's 150 ms.
-        let slow = haptics_of_a_drag(60.0);
-        assert_eq!(slow.iter().filter(|p| p.1 == "haptic:selection").count().min(1), 1, "{slow:?}");
-        assert_eq!(&slow[..2].iter().map(|p| p.1.as_str()).collect::<Vec<_>>(), &["haptic:impact-light", "haptic:selection"]);
-        assert_eq!(haptics_of_a_drag(8.0)[0].1, "haptic:impact-light");
     }
 
     #[test]
-    fn a_tap_on_the_circle_plays_nothing() {
+    fn a_tap_on_the_circle_plays_the_landing_only() {
         let mut s = surface_struct();
         s.size = (420.0, 912.0);
         let p = |phase, at_ms| InputEvent::Pointer { id: 1, phase, x: 180.0, y: 270.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false };
         s.input(&p(PointerPhase::Down, 0.0));
+        assert_eq!(s.messages(), vec!["haptic:impact-light".to_string()]);
         s.input(&p(PointerPhase::Up, 60.0));
         assert!(s.messages().is_empty());
         assert!(!s.touched);
+        // A finger that lands off the circle plays nothing.
+        s.input(&InputEvent::Pointer { id: 2, phase: PointerPhase::Down, x: 20.0, y: 700.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: 100.0, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false });
+        assert!(s.messages().is_empty());
     }
 
     #[test]

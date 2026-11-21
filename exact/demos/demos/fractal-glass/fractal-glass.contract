@@ -2,13 +2,10 @@
 // lens that refracts and frosts it. It is dark only.
 
 component FractalGlass
-  // Haptics: a light one when a drag takes the circle, one selection as it goes behind the glass;
-  // never two within 150 ms (the surface decides).
+  // The only haptic: a light one when a finger lands on the circle.
   action heard(m: string)
     if m == "haptic:impact-light"
       haptic("impact-light")
-    if m == "haptic:selection"
-      haptic("selection")
   view
     // The canvas draws the black background and the circle.
     column position="absolute" inset=0 testId="fractal-glass"
