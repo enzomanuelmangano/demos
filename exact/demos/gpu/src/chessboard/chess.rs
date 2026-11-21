@@ -979,6 +979,9 @@ fn valid_shape(tokens: &[&str]) -> bool {
 mod tests {
     use super::*;
 
+    /// Lasker–Thomas, London 1912, after 17...Kg1: one move from mate.
+    const LASKER_17: &str = "rn3r2/pbppq1p1/1p2pN2/8/3P2NP/6P1/PPP1BP1R/R3K1k1 w Q - 5 18";
+
     fn sq(s: &str) -> i32 {
         square(s).unwrap()
     }
@@ -1001,10 +1004,26 @@ mod tests {
     }
 
     #[test]
-    fn the_demo_opens_one_move_from_mate() {
-        // The opening position is one move from mate: the king steps aside to d2.
+    fn the_demo_opens_on_the_start_position_and_fools_mate_ends_it() {
         let mut c = Chess::new(crate::chessboard::START_FEN).unwrap();
-        assert_eq!(c.fen(), crate::chessboard::START_FEN);
+        assert_eq!(c.fen(), DEFAULT_POSITION);
+        assert!(!c.is_check());
+        let mut sans = Vec::new();
+        for (a, b) in [("f2", "f3"), ("e7", "e5"), ("g2", "g4"), ("d8", "h4")] {
+            assert!(!c.is_checkmate());
+            sans.push(c.play(sq(a), sq(b), None).unwrap().san);
+        }
+        assert_eq!(sans, ["f3", "e5", "g4", "Qh4#"]);
+        assert!(c.is_checkmate() && !c.is_stalemate());
+        assert_eq!(c.turn(), Side::W);
+        assert_eq!(c.king(Side::W), Some(sq("e1")));
+    }
+
+    #[test]
+    fn a_position_one_move_from_mate_mates_with_a_king_step() {
+        // The king steps aside to d2.
+        let mut c = Chess::new(LASKER_17).unwrap();
+        assert_eq!(c.fen(), LASKER_17);
         assert!(!c.is_check());
         let m = c.play(sq("e1"), sq("d2"), None).unwrap();
         assert_eq!(m.san, "Kd2#");
@@ -1012,7 +1031,7 @@ mod tests {
         assert!(c.is_checkmate() && !c.is_stalemate());
         assert_eq!(c.turn(), Side::B);
         assert_eq!(c.king(Side::B), Some(sq("g1")));
-        let mut c = Chess::new(crate::chessboard::START_FEN).unwrap();
+        let mut c = Chess::new(LASKER_17).unwrap();
         let m = c.play(sq("e1"), sq("c1"), None).unwrap();
         assert_eq!((m.san.as_str(), m.flags.as_str()), ("O-O-O#", "q"));
         assert_eq!(c.get(sq("d1")), Some(Piece { color: Side::W, kind: Kind::R }));
@@ -1041,7 +1060,7 @@ mod tests {
         assert!(c.is_stalemate() && !c.is_checkmate() && c.is_draw());
         let mut c = Chess::new("4k3/8/8/8/8/8/8/R4RK1 w - - 0 1").unwrap();
         assert_eq!(c.play(sq("a1"), sq("d1"), None).unwrap().san, "Rad1");
-        let mut c = Chess::new(crate::chessboard::START_FEN).unwrap();
+        let mut c = Chess::new(LASKER_17).unwrap();
         assert!(c.play(sq("e1"), sq("f1"), None).is_none());
         assert!(c.play(sq("g1"), sq("h1"), None).is_none());
         assert!(Chess::new("8/8/8/8/8/8/8/K1k5 w - - 0 1").unwrap().is_insufficient_material());
@@ -1108,7 +1127,7 @@ mod tests {
         }
         let sans: Vec<&str> = c.history().iter().map(|m| m.san.as_str()).collect();
         assert_eq!(sans.join(" "), "d4 e6 Nf3 f5 Nc3 Nf6 Bg5 Be7 Bxf6 Bxf6 e4 fxe4 Nxe4 b6 Ne5 O-O Bd3 Bb7 Qh5 Qe7 Qxh7+ Kxh7 Nxf6+ Kh6 Neg4+ Kg5 h4+ Kf4 g3+ Kf3 Be2+ Kg2 Rh2+ Kg1");
-        assert_eq!(c.fen().split(' ').take(3).collect::<Vec<_>>(), crate::chessboard::START_FEN.split(' ').take(3).collect::<Vec<_>>());
+        assert_eq!(c.fen().split(' ').take(3).collect::<Vec<_>>(), LASKER_17.split(' ').take(3).collect::<Vec<_>>());
         assert_eq!(c.play(sq("e1"), sq("d2"), None).unwrap().san, "Kd2#");
     }
 }

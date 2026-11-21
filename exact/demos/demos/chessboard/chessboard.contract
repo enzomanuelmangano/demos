@@ -1,15 +1,16 @@
-// Chessboard: Lasker–Thomas, London 1912, as a puzzle. Drag or tap a piece to move it; castling,
-// en passant and promotion are supported. On checkmate the screen is swept by a glass wave into a
-// haze under the game review card (Back resets, Replay plays the line again). The board is a
+// Chessboard: a live board with two player cards and chess clocks. Drag or tap a piece to move it;
+// castling, en passant and promotion are supported. It opens on the start position and plays Fool's
+// Mate by itself (f3 e5 g4 Qh4#). On checkmate the screen is swept by a glass wave into a haze under
+// the game review card (Back resets to a still board, Replay plays the line again). The board is a
 // Rust surface (gpu/src/chessboard.rs).
 //
-// The tactic opens on White to move with one move left, 18. Kd2#. Any legal move is played, for
-// either side, and nothing answers it. The bottom control is a Patterns-style dock: one glass
-// pill, 60 pt tall, whose word climbs Hint, then View solution, then Play solution while the
-// opening position is on the board, and is muted once a move leaves it. Glass is regular, tinted
-// white at 0.07. Its bottom gap is concentric with the display (62 − 30 = 32 pt). Each tap raises
-// a counter that the surface reads. The surface posts `puzzle:<wait|play|hint1|hint2|done>`, and
-// the pill shows only once one arrives.
+// After the replay (or Back) any legal move is played, for either side, and nothing answers it. The
+// bottom control is a Patterns-style dock: one glass pill, 60 pt tall, whose word climbs Hint, then
+// View solution, then Play solution (the whole line again) while the opening position is on the
+// board, and is muted while the line plays or once a move leaves it. Glass is regular, tinted white
+// at 0.07. Its bottom gap is concentric with the display (62 − 30 = 32 pt). Each tap raises a
+// counter that the surface reads. The surface posts `puzzle:<wait|play|hint1|hint2|done>`, and the
+// pill shows only once one arrives.
 //
 // The mate's haptic pattern is `mate-haptic` (modules/apple/Demos.swift). The surface posts
 // "haptic:mate" and "haptic:mate-stop", counted here into `plays` and `stops`. The web build has

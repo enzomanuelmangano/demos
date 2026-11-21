@@ -1,13 +1,14 @@
-//! Chessboard: a live board for both sides, with two player cards and chess clocks, on a tactic
-//! (Lasker–Thomas, London 1912, after 17...Kg1: White mates with 18. Kd2#). On checkmate, a glass
-//! wave sweeps the screen's snapshot into a haze under the game review card.
+//! Chessboard: a live board for both sides, with two player cards and chess clocks. It opens on the
+//! start position and plays Fool's Mate by itself (f3 e5 g4 Qh4#); on checkmate, a glass wave sweeps
+//! the screen's snapshot into a haze under the game review card.
 //!
 //! - Drag: the piece follows the finger and lands on the square it is released on, or springs back.
 //!   Tap: select a piece, then tap a square to move it.
 //! - Haptics: medium on a capture, rigid on a check, light otherwise; a mate pattern at checkmate.
-//! - Any legal move is played, for either side, and nothing answers it: the board waits for the next
-//!   drag. Only the dock reads the tactic: while the position is the opening one it climbs Hint,
-//!   View solution, Play solution; each change posts `puzzle:<wait|play|hint1|hint2|done>`.
+//! - Any legal move is played, for either side, and nothing answers it: after the replay (or Back)
+//!   the board waits for the next drag. Only the dock reads the line: while the position is the
+//!   opening one it climbs Hint, View solution, Play solution (the whole line again); each change
+//!   posts `puzzle:<wait|play|hint1|hint2|done>`.
 
 // Full API: not every item is used by the board.
 #[allow(dead_code)]
@@ -23,18 +24,18 @@ use draw2d::{Canvas, Color, Font, Image, Images, Matrix, Paint, Renderer, RsXfor
 
 use crate::gfx;
 
-/// The position after 17...Kg1.
-pub const START_FEN: &str = "rn3r2/pbppq1p1/1p2pN2/8/3P2NP/6P1/PPP1BP1R/R3K1k1 w Q - 5 18";
-const NAME: [&str; 2] = ["lasker", "enzo"];
-const RATING: [&str; 2] = ["IM", "???"];
+/// The standard start position.
+pub const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+const NAME: [&str; 2] = ["magnus", "enzo"];
+const RATING: [&str; 2] = ["2841", "???"];
 /// Starting clock per side, in seconds.
-const CLOCK_START: [i32; 2] = [74, 23];
+const CLOCK_START: [i32; 2] = [180, 180];
 /// Replay timings, in ms.
-const START_DELAY: f64 = 900.0;
+const START_DELAY: f64 = 300.0;
 const MOVE_GAP: f64 = 260.0;
 const AURA_DELAY: f64 = 580.0;
-/// The one move left from START_FEN: 18. Kd2#. The replay and the dock's solution play it.
-const SOLUTION: [(&str, &str); 1] = [("e1", "d2")];
+/// Fool's Mate: f3 e5 g4 Qh4#. The replay and the dock's solution play it.
+const SOLUTION: [(&str, &str); 4] = [("f2", "f3"), ("e7", "e5"), ("g2", "g4"), ("d8", "h4")];
 /// Capture fade timing, in ms.
 const CAPTURE_AT: f64 = 90.0;
 const CAPTURE_MS: f64 = 200.0;
@@ -62,13 +63,8 @@ mod theme {
 }
 
 /// Move quality per ply: even plies are White's, odd plies Black's.
-#[rustfmt::skip]
-const REVIEW: [Q; 35] = [
-    Q::Book, Q::Book, Q::Book, Q::Book, Q::Book, Q::Book, Q::Book, Q::Good, Q::Good, Q::Good, Q::Excellent, Q::Inaccuracy,
-    Q::Best, Q::Mistake, Q::Best, Q::Blunder, Q::Best, Q::Inaccuracy, Q::Great, Q::Miss, Q::Brilliant, Q::Best, Q::Best,
-    Q::Best, Q::Best, Q::Best, Q::Best, Q::Best, Q::Best, Q::Best, Q::Best, Q::Best, Q::Best, Q::Best, Q::Best,
-];
-const ACCURACY: [&str; 2] = ["98.1", "64.3"];
+const REVIEW: [Q; 4] = [Q::Mistake, Q::Best, Q::Blunder, Q::Brilliant];
+const ACCURACY: [&str; 2] = ["11.2", "100.0"];
 
 /// Quality kinds, in the review table's order.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -175,10 +171,10 @@ static ZAPF: &[u8] = include_bytes!("../fonts/zapfdingbats-chessboard-subset.ttf
 
 /// The UI's bitmaps, in [`Images`] order; see gpu/images/chessboard/make.sh.
 static UI_IMAGES: [(&[u8], u32); 22] = [
-    (include_bytes!("../images/chessboard/avatar-lasker-120x120.rgba8.zlib"), 120),
+    (include_bytes!("../images/chessboard/avatar-magnus-120x120.rgba8.zlib"), 120),
     (include_bytes!("../images/chessboard/avatar-enzo-120x120.rgba8.zlib"), 120),
-    (include_bytes!("../images/chessboard/avatar-lasker-102x102.rgba8.zlib"), 102),
-    (include_bytes!("../images/chessboard/avatar-enzo-102x102.rgba8.zlib"), 102),
+    (include_bytes!("../images/chessboard/avatar-magnus-114x114.rgba8.zlib"), 114),
+    (include_bytes!("../images/chessboard/avatar-enzo-114x114.rgba8.zlib"), 114),
     (include_bytes!("../images/chessboard/tray-wp-48x48.rgba8.zlib"), 48),
     (include_bytes!("../images/chessboard/tray-wn-48x48.rgba8.zlib"), 48),
     (include_bytes!("../images/chessboard/tray-wb-48x48.rgba8.zlib"), 48),
@@ -435,15 +431,15 @@ impl Fonts {
             lead: ui_font(BOLD_TNUM, 12.0),
             clock: ui_font(BOLD_TNUM, 16.0),
             kicker: ui_font(HEAVY, 11.0),
-            title: ui_font(HEAVY, 23.0),
+            title: ui_font(HEAVY, 26.0),
             h_name: ui_font(COMPACT, 12.0),
             h_label: ui_font(COMPACT, 14.0),
             pill: ui_font(BOLD_TNUM, 15.0),
-            q_label: ui_font(BOLD, 14.0),
-            q_count: ui_font(BOLD_TNUM, 15.0),
-            glyph: draw2d::match_ui_font(11.0, 900.0),
-            glyph_menlo: ui_font(MENLO_BOLD, 11.0),
-            glyph_zapf: ui_font(ZAPF, 11.0),
+            q_label: ui_font(BOLD, 16.0),
+            q_count: ui_font(BOLD_TNUM, 17.0),
+            glyph: draw2d::match_ui_font(14.0, 900.0),
+            glyph_menlo: ui_font(MENLO_BOLD, 14.0),
+            glyph_zapf: ui_font(ZAPF, 14.0),
             button: ui_font(BOLD, 16.0),
             icon_back: ui_font(IONICONS, 18.0),
             icon_replay: ui_font(IONICONS, 20.0),
@@ -847,7 +843,7 @@ impl Chessboard {
 
     // The tactic.
 
-    /// The move the dock's solution plays: the line's, while the opening position is on the board.
+    /// The line's first move, which Hint marks, while the opening position is on the board.
     fn expected(&self) -> Option<(i32, i32)> {
         if !self.plies.is_empty() {
             return None;
@@ -884,17 +880,14 @@ impl Chessboard {
         self.board_dirty = true;
     }
 
-    /// Play solution: the line's move plays.
+    /// Play solution: the whole line plays out from the opening position.
     fn solve_request(&mut self) {
-        if !self.user_can_move() || self.pan.tracking() || self.dragged.is_some() {
+        if !self.user_can_move() || self.pan.tracking() || self.dragged.is_some() || self.expected().is_none() {
             return;
         }
-        let Some((from, to)) = self.expected() else {
-            return;
-        };
         self.selected = None;
         self.valid.clear();
-        self.execute_move(from, to, None, None);
+        self.play_sequence();
     }
 
     /// The mode the bar shows: wait, play, hint1, hint2 or done.
@@ -1465,11 +1458,11 @@ impl Chessboard {
         let s = self.scale;
         let hair = self.hair();
         let rows = self.review_rows().len();
-        let header = self.line(&self.fonts.kicker) + 5.0 + self.line(&self.fonts.title) + 12.0;
+        let header = self.line(&self.fonts.kicker) + 5.0 + self.line(&self.fonts.title) + 16.0;
         let icon = |f: &Option<Font>| f.as_ref().map_or(0.0, |f| ceil_px(gfx::line_height(f), s));
         let inner = self.line(&self.fonts.button).max(icon(&self.fonts.icon_back)).max(icon(&self.fonts.icon_replay));
-        let button_h = 24.0 + inner;
-        let total = header + 38.0 * 3.0 + 2.0 + (12.0 + hair) + 34.0 * rows as f32 + 16.0 + button_h;
+        let button_h = 28.0 + inner;
+        let total = header + 44.0 * 3.0 + 2.0 + (12.0 + hair) + 50.0 * rows as f32 + 24.0 + button_h;
         let (left, width) = (22.0, self.size.0 - 44.0);
         let mut y = snap(self.size.1 - 40.0 - total, s);
         let mut out = Vec::new();
@@ -1478,15 +1471,15 @@ impl Chessboard {
             *y += h + after;
         };
         push(&mut y, header, 0.0, 0.0);
-        push(&mut y, 38.0, 0.0, 55.0);
-        push(&mut y, 38.0, 0.0, 95.0);
-        push(&mut y, 38.0, 2.0, 135.0);
+        push(&mut y, 44.0, 0.0, 55.0);
+        push(&mut y, 44.0, 0.0, 95.0);
+        push(&mut y, 44.0, 2.0, 135.0);
         push(&mut y, 12.0 + hair, 0.0, 170.0);
         for i in 0..rows {
-            push(&mut y, 34.0, 0.0, 190.0 + 30.0 * i as f64);
+            push(&mut y, 50.0, 0.0, 210.0 + 50.0 * i as f64);
         }
-        y += 16.0;
-        let delay = 190.0 + 30.0 * rows as f64 + 40.0;
+        y += 24.0;
+        let delay = 470.0;
         let bw = (width - 10.0) / 2.0;
         let top = snap(y, s);
         out.push(Section { rect: [left, top, snap(bw, s), button_h], delay, button: Some(0) });
@@ -2042,7 +2035,7 @@ impl Chessboard {
                 (1, _) => {
                     let (c1, _, c2) = right_block(l, w);
                     if let Some(font) = f.h_name.as_ref() {
-                        let top = t + floor_px((38.0 - self.line(&f.h_name)) / 2.0, s);
+                        let top = t + floor_px((44.0 - self.line(&f.h_name)) / 2.0, s);
                         centre(&mut c, NAME[0], c1, top, font, view(theme::TEXT_MUTED, 1.0), 0.0);
                         centre(&mut c, NAME[1], c2, top, font, view(theme::TEXT_MUTED, 1.0), 0.0);
                     }
@@ -2050,33 +2043,34 @@ impl Chessboard {
                 (2, _) | (3, _) => {
                     let (c1, _, c2) = right_block(l, w);
                     if let Some(font) = f.h_label.as_ref() {
-                        let top = t + floor_px((38.0 - self.line(&f.h_label)) / 2.0, s);
+                        let top = t + floor_px((44.0 - self.line(&f.h_label)) / 2.0, s);
                         draw_line(&mut c, if k == 2 { "Players" } else { "Accuracy" }, l, top, font, view(theme::TEXT_MUTED, 1.0), 0.0, s);
                     }
                     if k == 2 {
                         if let Some(images) = self.images.as_ref() {
                             for (i, col) in [c1, c2].into_iter().enumerate() {
-                                let (ax, ay) = (col + 14.0, t + 2.0);
+                                let (ax, ay) = (col + 12.0, t + 3.0);
                                 c.save();
-                                c.clip_continuous_rrect(ax, ay, 34.0, 34.0, 10.0);
+                                c.clip_continuous_rrect(ax, ay, 38.0, 38.0, 11.0);
                                 let img = images.image(avatar_image(if i == 0 { Side::W } else { Side::B }, false));
-                                let k = img.width / 34.0;
-                                c.draw_rect(ax, ay, 34.0, 34.0, &Paint::image(img, Matrix::scale(k, k).then(Matrix::translate(-ax * k, -ay * k))));
+                                let k = img.width / 38.0;
+                                c.draw_rect(ax, ay, 38.0, 38.0, &Paint::image(img, Matrix::scale(k, k).then(Matrix::translate(-ax * k, -ay * k))));
                                 c.restore();
                                 c.draw_with(&Paint::fill(Color::rgba8(255, 255, 255, 255).alpha(0.14)), |b| {
-                                    draw2d::add_continuous_rrect(b, ax, ay, 34.0, 34.0, 10.0);
-                                    draw2d::add_continuous_rrect_hole(b, ax + hair, ay + hair, 34.0 - 2.0 * hair, 34.0 - 2.0 * hair, 10.0 - hair);
+                                    draw2d::add_continuous_rrect(b, ax, ay, 38.0, 38.0, 11.0);
+                                    draw2d::add_continuous_rrect_hole(b, ax + hair, ay + hair, 38.0 - 2.0 * hair, 38.0 - 2.0 * hair, 11.0 - hair);
                                 });
                             }
                         }
                     } else if let Some(font) = f.pill.as_ref() {
-                        let ph = 12.0 + self.line(&f.pill);
+                        let ph = 16.0 + self.line(&f.pill);
                         for (i, col) in [c1, c2].into_iter().enumerate() {
-                            let won = (i == 0) == (winner == Side::W);
-                            let (px, py) = (col + 3.0, t + snap((38.0 - ph) / 2.0, s));
+                            // The right pill is always the filled one.
+                            let won = i == 1;
+                            let (px, py) = (col + 3.0, t + snap((44.0 - ph) / 2.0, s));
                             c.draw_continuous_rrect(px, py, 56.0, ph, 9.0, &Paint::fill(if won { view(theme::ACCENT, 1.0) } else { view(theme::TEXT, 0.10) }));
                             let tw = ceil_px(font.advance_width(ACCURACY[i]), s);
-                            draw_line(&mut c, ACCURACY[i], px + floor_px((56.0 - tw) / 2.0, s), py + 6.0, font, view(if won { theme::BG } else { theme::TEXT }, 1.0), 0.0, s);
+                            draw_line(&mut c, ACCURACY[i], px + floor_px((56.0 - tw) / 2.0, s), py + 8.0, font, view(if won { theme::BG } else { theme::TEXT }, 1.0), 0.0, s);
                         }
                     }
                 }
@@ -2088,17 +2082,17 @@ impl Chessboard {
                     let color = view(q.color(), 1.0);
                     let (c1, ic, c2) = right_block(l, w);
                     if let Some(font) = f.q_label.as_ref() {
-                        draw_line(&mut c, q.label(), l, t + floor_px((34.0 - self.line(&f.q_label)) / 2.0, s), font, color, -0.2, s);
+                        draw_line(&mut c, q.label(), l, t + floor_px((50.0 - self.line(&f.q_label)) / 2.0, s), font, color, -0.2, s);
                     }
                     if let Some(font) = f.q_count.as_ref() {
-                        let top = t + floor_px((34.0 - self.line(&f.q_count)) / 2.0, s);
+                        let top = t + floor_px((50.0 - self.line(&f.q_count)) / 2.0, s);
                         for (n, col) in [(you, c1), (opp, c2)] {
                             let colr = if n == 0 { view(theme::TEXT_FAINT, 1.0) } else { color };
                             centre(&mut c, &n.to_string(), col, top, font, colr, 0.0);
                         }
                     }
-                    let (gx, gy) = (ic + 11.0, t + 6.0);
-                    c.draw_circle(gx + 11.0, gy + 11.0, 11.0, &Paint::fill(color));
+                    let (gx, gy) = (ic + 8.0, t + 11.0);
+                    c.draw_circle(gx + 14.0, gy + 14.0, 14.0, &Paint::fill(color));
                     self.draw_glyph(&mut c, q.glyph(), gx, gy);
                 }
                 (_, Some(i)) => {
@@ -2109,7 +2103,7 @@ impl Chessboard {
         self.canvas = c;
     }
 
-    /// Centred in its 22 pt box. The ⌑ and ✕ glyphs come from the fallback font.
+    /// Centred in its 28 pt box. The ⌑ and ✕ glyphs come from the fallback font.
     fn draw_glyph(&self, c: &mut Canvas, glyph: &str, x: f32, y: f32) {
         let s = self.scale;
         let f = &self.fonts;
@@ -2125,7 +2119,7 @@ impl Chessboard {
         let asc = (-base.metrics().ascent).max(-font.metrics().ascent);
         let lh = ceil_px(gfx::line_height(base).max(gfx::line_height(font)), s);
         let w = ceil_px(font.advance_width(glyph), s);
-        let (l, t) = (x + floor_px((22.0 - w) / 2.0, s), y + floor_px((22.0 - lh) / 2.0, s));
+        let (l, t) = (x + floor_px((28.0 - w) / 2.0, s), y + floor_px((28.0 - lh) / 2.0, s));
         let baseline = ((t + asc) * s - 1e-3).ceil() / s;
         c.draw_text(glyph, l, baseline, font, &Paint::fill(view(theme::BG, 1.0)));
     }
@@ -2586,6 +2580,8 @@ impl Surface for Chessboard {
         if first {
             self.mount_squares();
             self.next_tick = Some(self.now + 1000.0);
+            // The line plays by itself once the board is up.
+            self.play_sequence();
         }
         if resized {
             if !first {
@@ -2827,17 +2823,23 @@ mod tests {
 
     #[test]
     fn the_layout_is_yogas() {
-        let c = surface_at(0.0);
+        let mut c = surface_at(0.0);
         assert!((c.card_h() - 52.6667).abs() < 1e-3);
         assert!((c.group_top() - 175.3333).abs() < 1e-3, "{}", c.group_top());
         assert!((c.board_top() - 238.0).abs() < 1e-3);
         assert!((c.card_top(Side::W) - 668.0).abs() < 1e-3);
-        assert_eq!(c.captured[0], vec![Kind::P, Kind::P, Kind::N, Kind::B]);
-        assert_eq!(c.captured[1], vec![Kind::P, Kind::B, Kind::Q]);
-        let rows = c.review_rows();
-        assert_eq!(rows.len(), 10);
-        assert_eq!(rows[3], (Q::Best, 10, 7));
-        assert_eq!(rows[2], (Q::Book, 4, 3));
+        assert_eq!(c.captured, [vec![], vec![]]);
+        assert_eq!(c.chess.fen(), START_FEN);
+        assert_eq!(c.clock, [180, 180]);
+        // Fool's Mate: one move each of the four qualities.
+        assert_eq!(c.review_rows(), vec![(Q::Brilliant, 0, 1), (Q::Best, 0, 1), (Q::Mistake, 1, 0), (Q::Blunder, 1, 0)]);
+        // The review card sits 40 pt above the bottom, its rows main's heights.
+        let heights: Vec<f32> = c.sections.iter().map(|s| s.rect[3]).collect();
+        assert_eq!(&heights[1..4], &[44.0, 44.0, 44.0]);
+        assert_eq!(&heights[5..9], &[50.0, 50.0, 50.0, 50.0]);
+        let last = c.sections.last().unwrap();
+        assert!((last.rect[1] + last.rect[3] - (912.0 - 40.0)).abs() < 0.2, "{:?}", last.rect);
+        assert_eq!(last.delay, 470.0);
     }
 
     fn tap(c: &mut Chessboard, id: u32, name: &str, ms: f64) {
@@ -2867,63 +2869,95 @@ mod tests {
     }
 
     #[test]
-    fn the_tactic_opens_on_the_mate_in_one_and_waits() {
+    fn the_line_plays_by_itself_to_fools_mate() {
         let mut c = surface_at(0.0);
         c.next_tick = Some(1000.0);
-        assert_eq!(c.chess.fen(), START_FEN);
+        c.play_sequence();
+        assert!(c.running);
+        assert_eq!((c.chess.fen().as_str(), c.puzzle_mode(), c.clock), (START_FEN, "wait", [180, 180]));
+        // The start position holds for 300 ms, then each move waits for the last one to land.
+        let mut at = Vec::new();
+        let mut ms = 0.0;
+        while ms < 6000.0 {
+            let before = c.plies.len();
+            run(&mut c, ms, ms + 16.0);
+            ms += 16.0;
+            if c.plies.len() != before {
+                at.push(ms);
+            }
+        }
+        assert_eq!(at.len(), 4, "{at:?}");
+        assert!(at[0] >= 300.0 && at[0] < 340.0, "{at:?}");
+        assert!(at.windows(2).all(|w| w[1] - w[0] > 600.0), "{at:?}");
+        let sans: Vec<&str> = c.plies.iter().map(|p| p.san.as_str()).collect();
+        assert_eq!(sans, ["f3", "e5", "g4", "Qh4#"]);
+        assert_eq!(c.status, "Checkmate");
+        assert_eq!(c.winner(), Some(Side::B));
+        assert!(!c.running && c.game_over && c.puzzle_mode() == "done");
+        // The clocks burned for whoever was to move, and stopped at the mate.
+        let burnt = 360 - c.clock[0] - c.clock[1];
+        assert!((1..=4).contains(&burnt), "{:?}", c.clock);
+        let clock = c.clock;
+        run(&mut c, 6000.0, 9000.0);
+        assert_eq!(c.clock, clock);
+        // Three quiet moves tick light, the mate plays its pattern once.
+        let msgs = c.messages();
+        let light = msgs.iter().filter(|m| *m == "haptic:impact-light").count();
+        assert_eq!((light, msgs.iter().filter(|m| *m == "haptic:mate").count()), (3, 1), "{msgs:?}");
+        // The wave and the card follow, crowning the side that mated.
+        let a = c.aura.as_ref().unwrap();
+        assert_eq!((a.winner, NAME[a.winner as usize]), (Side::B, "enzo"));
+        assert!(a.card.is_some() && c.busy);
+        assert!(c.squares[chess::square("e1").unwrap() as usize].in_check);
+    }
+
+    #[test]
+    fn a_fresh_board_waits_for_a_hand() {
+        let mut c = surface_at(0.0);
+        c.next_tick = Some(1000.0);
         assert_eq!((c.chess.turn(), c.status.as_str(), c.puzzle_mode()), (Side::W, "White to move", "play"));
-        assert_eq!(c.clock, CLOCK_START);
-        // Nothing plays by itself, and the clocks wait for the first move.
         run(&mut c, 0.0, 5000.0);
         assert_eq!((c.plies.len(), c.clock, c.started), (0, CLOCK_START, false));
         assert!(c.messages.is_empty());
         // Black's pieces are not the mover's: a tap on one selects nothing.
         tap(&mut c, 1, "e7", 5000.0);
         assert_eq!(c.selected, None);
-        tap(&mut c, 2, "e1", 5100.0);
-        assert_eq!(c.selected, chess::square("e1"));
+        tap(&mut c, 2, "e2", 5100.0);
+        assert_eq!(c.selected, chess::square("e2"));
     }
 
     #[test]
-    fn a_dragged_king_mates_and_the_aura_follows() {
+    fn a_dragged_pawn_lands_on_its_square() {
         let mut c = surface_at(0.0);
-        let ms = drag(&mut c, 1, "e1", "d2", 0.0);
-        assert_eq!(c.status, "Checkmate");
-        assert_eq!(c.plies.len(), 1);
-        assert_eq!(c.winner(), Some(Side::W));
-        assert!(c.game_over && c.started);
-        assert_eq!(c.puzzle_mode(), "done");
+        let ms = drag(&mut c, 1, "e2", "e4", 0.0);
+        assert_eq!((c.plies.len(), c.status.as_str()), (1, "Black to move"));
         run(&mut c, ms, ms + 1000.0);
-        assert_eq!(c.squares[chess::square("d2").unwrap() as usize].piece, Some(Piece { color: Side::W, kind: Kind::K }));
-        assert_eq!(c.squares[chess::square("e1").unwrap() as usize].piece, None);
-        assert!(c.squares[chess::square("g1").unwrap() as usize].in_check);
-        assert!(c.aura.is_some() && c.busy);
-        let msgs = c.messages();
-        assert_eq!(msgs.iter().filter(|m| *m == "haptic:mate").count(), 1, "{msgs:?}");
-        assert!(!msgs.iter().any(|m| m == "haptic:error" || m == "haptic:impact-light"), "{msgs:?}");
+        let at = |n: &str| c.squares[chess::square(n).unwrap() as usize].piece;
+        assert_eq!(at("e4"), Some(Piece { color: Side::W, kind: Kind::P }));
+        assert_eq!(at("e2"), None);
     }
 
     #[test]
     fn any_legal_move_is_played_and_nothing_answers_it() {
         let mut c = surface_at(0.0);
         c.next_tick = Some(1000.0);
-        tap(&mut c, 1, "h4", 1000.0);
-        tap(&mut c, 2, "h5", 1100.0);
+        tap(&mut c, 1, "h2", 1000.0);
+        tap(&mut c, 2, "h4", 1100.0);
         assert_eq!((c.plies.len(), c.status.as_str()), (1, "Black to move"));
         assert_eq!(c.messages(), vec!["haptic:impact-light".to_string()]);
-        // The tactic is gone: the dock mutes, and a tap on Hint does nothing.
+        // The line is gone: the dock mutes, and a tap on Hint does nothing.
         assert_eq!(c.puzzle_mode(), "wait");
         hint_taps(&mut c, 0.0, 0.0);
         hint_taps(&mut c, 1.0, 1.0);
-        assert!(c.hint == 0 && c.plies.len() == 1);
+        assert!(c.hint == 0 && c.plies.len() == 1 && !c.running);
         // No reply comes, however long it waits; Black's clock burns instead of White's.
         run(&mut c, 1100.0, 4000.0);
         assert_eq!(c.plies.len(), 1);
-        assert_eq!(c.clock[0], 74);
-        assert!(c.clock[1] < 23, "{:?}", c.clock);
-        let h5 = chess::square("h5").unwrap() as usize;
-        assert_eq!(c.squares[h5].piece, Some(Piece { color: Side::W, kind: Kind::P }));
-        assert_eq!(c.squares[h5].z, 0);
+        assert_eq!(c.clock[0], 180);
+        assert!(c.clock[1] < 180, "{:?}", c.clock);
+        let h4 = chess::square("h4").unwrap() as usize;
+        assert_eq!(c.squares[h4].piece, Some(Piece { color: Side::W, kind: Kind::P }));
+        assert_eq!(c.squares[h4].z, 0);
         // Black moves by hand, then White is up again.
         tap(&mut c, 3, "g7", 4000.0);
         tap(&mut c, 4, "g6", 4100.0);
@@ -2938,7 +2972,7 @@ mod tests {
         let mut c = surface_at(0.0);
         hint_taps(&mut c, 0.0, 0.0);
         hint_taps(&mut c, 1.0, 0.0);
-        let e1 = chess::square("e1").unwrap() as usize;
+        let e1 = chess::square("f2").unwrap() as usize;
         c.now = 16.0;
         c.step();
         // The frame that finishes the fade changes the value without "moving": it still draws.
@@ -2951,29 +2985,30 @@ mod tests {
     #[test]
     fn hint_then_solution_climb_the_ladder() {
         let mut c = surface_at(0.0);
+        c.next_tick = Some(1000.0);
         hint_taps(&mut c, 0.0, 0.0);
-        let (e1, d2) = (chess::square("e1").unwrap() as usize, chess::square("d2").unwrap() as usize);
+        let (f2, f3) = (chess::square("f2").unwrap() as usize, chess::square("f3").unwrap() as usize);
         assert_eq!(c.puzzle_mode(), "play");
         // Rung one marks the piece.
         hint_taps(&mut c, 1.0, 0.0);
-        assert!(c.squares[e1].hint && !c.squares[d2].hint);
+        assert!(c.squares[f2].hint && !c.squares[f3].hint);
         assert_eq!(c.puzzle_mode(), "hint1");
         // Rung two marks its square.
         hint_taps(&mut c, 2.0, 0.0);
-        assert!(c.squares[e1].hint && c.squares[d2].hint);
+        assert!(c.squares[f2].hint && c.squares[f3].hint);
         assert_eq!(c.puzzle_mode(), "hint2");
         hint_taps(&mut c, 3.0, 0.0);
         assert_eq!(c.hint, 2);
         run(&mut c, 0.0, 200.0);
-        assert!(c.squares[e1].hint_fade.value > 0.99 && c.squares[d2].hint_fade.value > 0.99);
-        // The solution plays the mate and clears the marks.
+        assert!(c.squares[f2].hint_fade.value > 0.99 && c.squares[f3].hint_fade.value > 0.99);
+        // The solution clears the marks and plays the whole line.
         hint_taps(&mut c, 3.0, 1.0);
-        assert_eq!((c.plies.len(), c.status.as_str()), (1, "Checkmate"));
-        assert!(!c.squares[e1].hint && !c.squares[d2].hint && c.hint == 0);
+        assert!(c.running && c.hint == 0 && !c.squares[f2].hint && !c.squares[f3].hint);
+        assert_eq!(c.puzzle_mode(), "wait");
+        run(&mut c, 200.0, 6000.0);
+        assert_eq!((c.plies.len(), c.status.as_str()), (4, "Checkmate"));
         assert_eq!(c.puzzle_mode(), "done");
-        run(&mut c, 200.0, 1000.0);
-        assert!(c.squares[d2].hint_fade.value < 0.01);
-        assert_eq!(c.winner(), Some(Side::W));
+        assert_eq!(c.winner(), Some(Side::B));
     }
 
     #[test]
@@ -3009,53 +3044,54 @@ mod tests {
     }
 
     #[test]
-    fn castling_mates_too_and_back_restarts_the_tactic() {
+    fn back_resets_to_a_static_fresh_board_and_replay_plays_the_line_again() {
         let mut c = surface_at(0.0);
-        let ms = 0.0;
-        tap(&mut c, 1, "e1", ms);
-        tap(&mut c, 2, "c1", ms + 100.0);
+        c.next_tick = Some(1000.0);
+        c.play_sequence();
+        run(&mut c, 0.0, 4800.0);
         assert_eq!(c.status, "Checkmate");
-        run(&mut c, ms + 150.0, ms + 1800.0);
         let at = |c: &Chessboard, n: &str| c.squares[chess::square(n).unwrap() as usize].piece;
-        assert_eq!(at(&c, "d1"), Some(Piece { color: Side::W, kind: Kind::R }));
-        assert_eq!(at(&c, "c1"), Some(Piece { color: Side::W, kind: Kind::K }));
-        assert_eq!(at(&c, "a1"), None);
+        assert_eq!(at(&c, "h4"), Some(Piece { color: Side::B, kind: Kind::Q }));
         let a = c.aura.as_mut().unwrap();
         assert!(a.card.is_some());
         a.revealed = true;
         a.vis.set(1.0);
-        let ms = ms + 1800.0;
+        let ms = 4800.0;
         run(&mut c, ms, ms + 600.0);
-        let back = c.sections.iter().find(|s| s.button == Some(0)).unwrap().rect;
-        let (bx, by) = (back[0] + back[2] / 2.0, back[1] + back[3] / 2.0);
+        let button = |c: &Chessboard, i: usize| {
+            let r = c.sections.iter().find(|s| s.button == Some(i)).unwrap().rect;
+            (r[0] + r[2] / 2.0, r[1] + r[3] / 2.0)
+        };
+        let (bx, by) = button(&c, 0);
         c.input(&touch(3, PointerPhase::Down, bx, by, ms + 600.0));
         c.input(&touch(3, PointerPhase::Up, bx, by, ms + 660.0));
         assert!(c.messages().contains(&"haptic:selection".to_string()));
         run(&mut c, ms + 660.0, ms + 1200.0);
         assert!(c.aura.is_none() && !c.busy);
         assert_eq!(c.chess.fen(), START_FEN);
-        assert_eq!(at(&c, "e1"), Some(Piece { color: Side::W, kind: Kind::K }));
+        assert_eq!(at(&c, "f2"), Some(Piece { color: Side::W, kind: Kind::P }));
         assert_eq!((c.plies.len(), c.status.as_str(), c.clock), (0, "White to move", CLOCK_START));
         assert_eq!(c.captured, initial_captures());
         assert_eq!(c.puzzle_mode(), "play");
         // A static fresh board: nothing plays by itself.
         run(&mut c, ms + 1200.0, ms + 5000.0);
         assert_eq!(c.plies.len(), 0);
+        // Replay (from a second review) plays the line again from the start.
+        c.play_sequence();
+        run(&mut c, ms + 5000.0, ms + 10000.0);
+        assert_eq!((c.plies.len(), c.status.as_str()), (4, "Checkmate"));
     }
 
     #[test]
-    fn replay_plays_the_line_after_its_delay() {
+    fn replay_waits_its_delay_before_the_first_move() {
         let mut c = surface_at(0.0);
         c.play_sequence();
         assert!(c.running);
         assert_eq!(c.puzzle_mode(), "wait");
-        run(&mut c, 0.0, 880.0);
+        run(&mut c, 0.0, 280.0);
         assert_eq!(c.plies.len(), 0);
-        run(&mut c, 880.0, 940.0);
+        run(&mut c, 280.0, 340.0);
         assert_eq!(c.plies.len(), 1);
-        run(&mut c, 940.0, 3000.0);
-        assert_eq!(c.status, "Checkmate");
-        assert!(!c.running);
     }
 
     #[test]
@@ -3067,7 +3103,7 @@ mod tests {
         let mut s = surface();
         assert!(s.bind(&[Value::Number(0.0), Value::Number(0.0)], None).is_ok());
         let (rest, _) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
-        assert!(s.messages().contains(&"puzzle:play".to_string()));
+        assert!(s.messages().contains(&"puzzle:wait".to_string()));
         gfx::save_over(&rest, "chessboard-rest", [13, 14, 18]);
         let light = rest.at(3 * 4, 3 * 240);
         let dark = rest.at(3 * 60, 3 * 240);
@@ -3075,32 +3111,15 @@ mod tests {
         let top = rest.at(30, 30);
         assert!(top[0] < 20 && top[2] < 25, "{top:?}");
         let mut ms = 0.0;
-        let frames = |s: &mut Box<dyn Surface>, to: f64, ms: &mut f64| {
-            while *ms < to {
-                *ms += 8.0;
-                fixture::render(&gpu, s.as_mut(), &frame(*ms)).unwrap();
-            }
-        };
-        frames(&mut s, 1400.0, &mut ms);
-        let agent = s.agent("{}").unwrap();
-        assert!(agent.contains("\"plies\":0") && agent.contains("\"mode\":\"play\""), "{agent}");
-        let p = |ph, x, y, ms| touch(1, ph, x, y, ms);
-        let (x0, y0) = (4.5 * 52.5, 238.0 + 7.5 * 52.5);
-        let (x1, y1) = (3.5 * 52.5, 238.0 + 6.5 * 52.5);
-        s.input(&p(PointerPhase::Down, x0, y0, ms));
-        for k in 1..=10 {
-            ms += 16.0;
-            let t = k as f32 / 10.0;
-            s.input(&p(PointerPhase::Move, x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, ms));
-            fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
-        }
-        ms += 16.0;
-        s.input(&p(PointerPhase::Up, x1, y1, ms));
-        let end = ms + 4500.0;
-        let wave_at = ms + 1700.0;
+        // The line plays by itself; the wave is captured 1.7 s after the mate lands.
+        let mut wave_at = f64::MAX;
+        let end = 12000.0;
         while ms < end {
             ms += 16.0;
             let (img, _) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+            if wave_at == f64::MAX && s.agent("{}").unwrap().contains("\"status\":\"Checkmate\"") {
+                wave_at = ms + 1700.0;
+            }
             if (wave_at..wave_at + 16.0).contains(&ms) {
                 gfx::save_over(&img, "chessboard-wave", [13, 14, 18]);
             }

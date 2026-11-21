@@ -5,7 +5,7 @@
 # - RN <Image>s (RCTImageLoader): a bitmap larger than its view's pixel size is decoded with
 #   ImageIO's thumbnail at that size, then shown 1:1 by Core Animation: the capture trays' pieces
 #   (16 pt: 48 px), the promotion dialog's (48 pt: 144 px), the avatars (40 pt: 120 px on the
-#   cards, 34 pt: 102 px on the review card).
+#   cards, 38 pt: 114 px on the review card).
 # Every bitmap is written straight-alpha RGBA8, zlib'd: <name>-<w>x<h>.rgba8.zlib.
 # Fonts (gpu/fonts): the three bundled faces RN loads (assets/fonts) cut to Basic Latin, two
 # Ionicons glyphs (and the first two with their digits tabular), and the two fallback faces CoreText picks for the review's ⌑ (Menlo-Bold) and ✕
@@ -46,7 +46,7 @@ for c in w b; do for p in p n b r q; do
 done; for p in q r b n; do
   "$tmp/thumb" "$lib/$c$p.png" "$tmp/d$c$p.png" 144; pack "$tmp/d$c$p.png" "promo-$c$p"
 done; done
-for n in lasker enzo; do for px in 120 102; do
+for n in magnus enzo; do for px in 120 114; do
   "$tmp/thumb" "$demo/avatar-$n.jpg" "$tmp/a$n$px.png" $px; pack "$tmp/a$n$px.png" "avatar-$n"
 done; done
 rt=$(xcrun simctl runtime list -v 2>/dev/null | grep "Bundle Path:.*iOS 27.1" | sed 's/.*Bundle Path: //')/Contents/Resources/RuntimeRoot/System/Library/Fonts
