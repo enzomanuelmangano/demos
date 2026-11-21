@@ -1,4 +1,4 @@
-//! A list of the last three random transaction cards, each with a glass orb, an amount and an
+//! A list of the last three random transaction cards, each with a mesh-gradient avatar, an amount and an
 //! address. A + button adds one: the new card pops in, the others slide up on a spring, and the
 //! oldest fades out upwards. This surface is the list; the + lives outside it.
 //!
@@ -356,104 +356,40 @@ fn hsl(h: f64, s: f64, l: f64) -> Color {
     Color([(r + m) as f32, (g + m) as f32, (b + m) as f32, 1.0])
 }
 
-fn mix(a: Color, b: Color, t: f32) -> Color {
-    Color([0, 1, 2, 3].map(|i| a.0[i] + (b.0[i] - a.0[i]) * t))
-}
-
 /// Card `k`'s hue (turns): the golden angle apart from the card before it, so no two cards in
 /// the list share a family, offset per variant so a new list does not repeat the last one.
 pub fn orb_hue(k: usize, variant: usize) -> f64 {
     (k as f64 * 0.618_033_988_75 + variant as f64 * 0.027_7).rem_euclid(1.0)
 }
 
-/// A glass disc (60 pt) holding a lit sphere, centred on (`cx`, `cy`): the disc is a pale tinted
-/// bubble with a window highlight and a warm rim; the sphere inside has an offset highlight, a
-/// core colour, a darker rim, a glow bounced up from below and a soft shadow on the glass.
+/// A 60 pt avatar disc centred on (`cx`, `cy`), filled edge to edge with a soft mesh gradient: a
+/// base colour under four big blurred colour blobs of neighbouring hues that blend with no edge.
+/// No highlight, rim or glass. The blobs sit at a per-variant angle so no two cards repeat.
 fn orb(c: &mut Canvas, cx: f32, cy: f32, k: usize, base: usize, variant: usize) {
     let h = orb_hue(k, base);
-    // Each card lights its sphere from a slightly different side.
-    let tilt = (variant % 7) as f32 / 6.0 - 0.5;
-    // The sphere's family shifts a little across its body (cooler in the shade, warmer lit).
-    let light = hsl(h - 0.015, 1.0, 0.84);
-    let core = hsl(h, 0.92, 0.56);
-    let shade = hsl(h + 0.045, 0.85, 0.26);
-    let bounce = hsl(h - 0.06, 1.0, 0.70);
-    let glass = hsl(h, 0.85, 0.96);
-    let glass_edge = hsl(h, 0.7, 0.84);
-    let rad = |center, radius, st| Paint::shader(Shader::Radial { center, radius, stops: st });
-    let at = |dx: f32, dy: f32, r: f32| point(cx + dx * r, cy + dy * r);
-
-    // The bubble: pale in the middle, tinted at the rim, a lit lip below-right.
-    let bubble = 30.0;
-    c.draw_circle(cx, cy, bubble, &rad(at(-0.15, -0.2, bubble), bubble * 1.3, vec![
-        (0.0, glass),
-        (0.7, hsl(h, 0.75, 0.92)),
-        (1.0, glass_edge),
-    ]));
-    c.draw_circle(cx, cy, bubble, &rad(at(0.35, 0.45, bubble), bubble * 0.95, vec![
-        (0.0, Color::WHITE.alpha(0.0)),
-        (0.8, Color::WHITE.alpha(0.0)),
-        (1.0, Color::WHITE.alpha(0.55)),
-    ]));
-    // The sphere's colour bleeding onto the glass below it.
-    c.draw_circle(cx, cy, bubble, &rad(at(0.0, 0.9, bubble), bubble * 0.8, vec![
-        (0.0, core.alpha(0.38)),
-        (1.0, core.alpha(0.0)),
-    ]));
-    // The window highlight on the bubble's upper left.
-    c.save();
-    c.concat(Matrix::scale(1.0, 0.55).then(Matrix::translate(cx - 15.0, cy - 19.0)));
-    c.draw_circle(0.0, 0.0, 9.0, &rad(point(0.0, 0.0), 9.0, vec![
-        (0.0, Color::WHITE.alpha(0.85)),
-        (1.0, Color::WHITE.alpha(0.0)),
-    ]));
-    c.restore();
-
-    // The sphere.
-    let r = 19.0;
-    let (sx, sy) = (cx, cy - 1.0);
-    // Its shadow on the glass: a flat ellipse under it.
-    c.save();
-    c.concat(Matrix::scale(1.0, 0.28).then(Matrix::translate(sx + 2.0, sy + r * 0.98)));
-    c.draw_circle(0.0, 0.0, r * 0.95, &rad(point(0.0, 0.0), r * 0.95, vec![
-        (0.0, shade.alpha(0.5)),
-        (0.6, shade.alpha(0.2)),
-        (1.0, shade.alpha(0.0)),
-    ]));
-    c.restore();
-    // Body: lit from the upper left, light to core to rim shade.
-    let lit = point(sx + (tilt * 0.3 - 0.38) * r, sy - 0.42 * r);
-    c.draw_circle(sx, sy, r, &rad(lit, r * 1.75, vec![
-        (0.0, light),
-        (0.32, core),
-        (0.72, mix(core, shade, 0.55)),
-        (1.0, shade),
-    ]));
-    // Bounce: a soft glow in the lower right, where the glass lights the sphere from below.
-    c.draw_circle(sx, sy, r, &rad(point(sx + 0.45 * r, sy + 0.62 * r), r * 0.95, vec![
-        (0.0, bounce.alpha(0.75)),
-        (0.55, bounce.alpha(0.22)),
-        (1.0, bounce.alpha(0.0)),
-    ]));
-    // A thin lit edge so the sphere reads as translucent at the rim.
-    c.draw_circle(sx, sy, r, &rad(point(sx, sy), r, vec![
-        (0.0, Color::WHITE.alpha(0.0)),
-        (0.86, Color::WHITE.alpha(0.0)),
-        (1.0, Color::WHITE.alpha(0.28)),
-    ]));
-    // Specular: a soft patch and a small hot spot.
-    c.save();
-    c.concat(Matrix::rotate(-0.6).then(Matrix::translate(sx + (tilt * 0.3 - 0.36) * r, sy - 0.46 * r)));
-    c.draw_circle(0.0, 0.0, 0.5 * r, &rad(point(0.0, 0.0), 0.5 * r, vec![
-        (0.0, Color::WHITE.alpha(0.75)),
-        (1.0, Color::WHITE.alpha(0.0)),
-    ]));
-    c.restore();
-    let spot = point(sx + (tilt * 0.3 - 0.4) * r, sy - 0.5 * r);
-    c.draw_circle(spot.x, spot.y, 0.14 * r, &rad(spot, 0.14 * r, vec![
-        (0.0, Color::WHITE.alpha(1.0)),
-        (1.0, Color::WHITE.alpha(0.0)),
-    ]));
+    let r = 30.0f32;
+    // Vivid, analogous: the hue walks a third of the wheel across the blobs.
+    let blobs = [(-0.06, 0.60), (0.06, 0.62), (0.18, 0.58), (0.30, 0.60)];
+    c.draw_circle(cx, cy, r, &Paint::fill(hsl(h + 0.12, 0.9, 0.6)));
+    for (i, (dh, l)) in blobs.into_iter().enumerate() {
+        let col = hsl(h + dh, 0.95, l);
+        let a = variant as f32 * 0.9 + i as f32 * std::f32::consts::FRAC_PI_2;
+        let d = r * (0.38 + 0.12 * ((variant + 2 * i) % 3) as f32);
+        let center = point(cx + a.cos() * d, cy + a.sin() * d);
+        let radius = r * (1.1 + 0.12 * ((variant + i) % 3) as f32);
+        // An eased falloff to clear, so a blob has no visible edge where it ends.
+        c.draw_circle(cx, cy, r, &Paint::shader(Shader::Radial {
+            center,
+            radius,
+            stops: vec![
+                (0.0, col),
+                (0.3, col.alpha(0.85)),
+                (0.6, col.alpha(0.42)),
+                (0.85, col.alpha(0.1)),
+                (1.0, col.alpha(0.0)),
+            ],
+        }));
+    }
 }
 
 /// Top of card `k` of `n`: the last three sit in the list.
@@ -1447,31 +1383,44 @@ mod tests {
                 assert!(d > 0.05, "{k} {variant}: {a} {b}");
             }
         }
-        // Three cards at rest: each disc holds a coloured sphere (no grey emoji ground), and
-        // no two spheres share a colour.
+        // Three cards at rest: each disc is filled edge to edge with colour (no pale rim, no
+        // white highlight), and no two discs share a colour.
         let px = render_seq("motion-blur-orbs", &[0.0, 100.0, 200.0], &[2000.0]);
         let Some(px) = px.first() else { return };
         let l = Layout::new(W as f64, S as f64);
-        let mut cores = Vec::new();
+        let mut sums = Vec::new();
         for row in 0..3 {
             let (cx, cy) = (
                 l.card_x + 10.0 + 30.0,
                 LIST_TOP + row as f64 * ROW + CARD_H / 2.0,
             );
-            // The sphere's lower-left body, away from the highlight.
-            let p = px.at(((cx - 4.0) * 3.0) as u32, ((cy + 4.0) * 3.0) as u32);
-            let (mx, mn) = (p[..3].iter().max().copied().unwrap(), p[..3].iter().min().copied().unwrap());
-            assert!(mx - mn > 60, "row {row}: {p:?}");
-            cores.push(p);
+            let sample = |dx: f64, dy: f64| px.at(((cx + dx) * 3.0) as u32, ((cy + dy) * 3.0) as u32);
+            let mut sum = [0i32; 3];
+            // The centre, the rim at eight angles (28 pt out of 30) and a ring at half radius.
+            let mut pts = vec![(0.0, 0.0)];
+            for a in 0..8 {
+                let t = a as f64 * std::f64::consts::FRAC_PI_4;
+                pts.push((28.0 * t.cos(), 28.0 * t.sin()));
+                pts.push((14.0 * t.cos(), 14.0 * t.sin()));
+            }
+            for (dx, dy) in pts {
+                let p = sample(dx, dy);
+                let (mx, mn) = (p[..3].iter().max().copied().unwrap(), p[..3].iter().min().copied().unwrap());
+                assert!(mx - mn > 60, "row {row} ({dx:.0},{dy:.0}): {p:?}");
+                assert!(mn < 200, "row {row} ({dx:.0},{dy:.0}) is washed out: {p:?}");
+                for c in 0..3 {
+                    sum[c] += p[c] as i32;
+                }
+            }
+            sums.push(sum);
         }
         for i in 0..3 {
             for j in i + 1..3 {
-                let d: i32 = (0..3).map(|c| (cores[i][c] as i32 - cores[j][c] as i32).abs()).sum();
-                assert!(d > 60, "{:?} {:?}", cores[i], cores[j]);
+                let d: i32 = (0..3).map(|c| (sums[i][c] - sums[j][c]).abs()).sum();
+                assert!(d > 17 * 30, "{:?} {:?}", sums[i], sums[j]);
             }
         }
     }
-
 
     #[test]
     fn late_frames_make_the_hold_cheaper_and_slower() {
