@@ -40,7 +40,15 @@ private enum Pull {
     static let failX: CGFloat = 10
     /// The reveal's windows (App Library, frame by frame): the home blurs first, the field shows,
     /// then the results fade in over the blurred home.
-    static let blur: (CGFloat, CGFloat) = (0, 0.6)
+    static let blur: (CGFloat, CGFloat) = (0.1, 1)
+    /// The blur's radius grows as (its window)^blurPower: a Gaussian of 1.5 pt already makes the labels
+    /// unreadable, so a gentler radius looks like a jump; App Library is sharp at a quarter of the pull,
+    /// barely soft at half, strongest near commit (~0, 1.8, 9.6, 30 pt at 25/50/75/100 %).
+    static let blurPower: CGFloat = 3.5
+    static let dimPower: CGFloat = 1.5
+    /// Below this radius (pt) the backdrop is sampled at the screen's own scale: sampled at 1x it is
+    /// visibly soft at radius 0, which read as the home blurring at once.
+    static let fullScaleBelow: CGFloat = 5
     static let field: (CGFloat, CGFloat) = (0.15, 0.55)
     static let list: (CGFloat, CGFloat) = (0.35, 1)
     /// How far the field and the results ride the pull (× the damped pull).
@@ -184,14 +192,26 @@ private final class SearchBlur: UIView {
             backdrop.setValue([filter], forKey: "filters")
             backdrop.setValue(radius, forKeyPath: Self.path)
         }
-        // One sample per point: a 30 pt blur at the screen's 3 px per point costs 9 times the pixels and
-        // looks the same.
-        backdrop.setValue(1, forKey: "scale")
+        applyScale(backdrop, force: true)
         for view in effect.subviews where view.layer !== backdrop { view.isHidden = true }
     }
 
+    /// One sample per point once the blur is wide (a 30 pt blur at 3 px per point costs 9 times the pixels and
+    /// looks the same), the screen's own scale while it is narrow, where 1x sampling alone is a visible blur.
+    private var sampled: CGFloat = 0
+    private func applyScale(_ backdrop: CALayer, force: Bool = false) {
+        let native = max(window?.screen.scale ?? traitCollection.displayScale, 1)
+        let s: CGFloat = radius < Pull.fullScaleBelow ? native : 1
+        guard force || s != sampled else { return }
+        sampled = s
+        backdrop.setValue(s, forKey: "scale")
+    }
+
     /// The model value (actions off by the caller); the view hides at 0, where it would cost a pass for nothing.
-    func set(_ r: CGFloat, hide: Bool = true) {
+    /// `scaleFor` picks the sampling for a run's whole way (its widest radius), not the value it starts at.
+    func set(_ r: CGFloat, hide: Bool = true, scaleFor: CGFloat? = nil) {
+        radius = scaleFor ?? r
+        if filter != nil, let backdrop = backdrop() { applyScale(backdrop) }
         radius = r
         if r >= 0.05 { isHidden = false } else if hide { isHidden = true }
         if filter != nil { backdrop()?.setValue(r, forKeyPath: Self.path) } else { effect.alpha = r / Pull.blurRadius }
@@ -334,6 +354,8 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         }
     }
     private var run: Run?
+    /// The radius that picks the blur's sampling while a run is on (its narrowest).
+    private var runBlurScaleFor: CGFloat = 0
     /// Counts runs: the end of one that was replaced does nothing.
     private var runGen = 0
     private var keyboardOverlap: CGFloat = 0
@@ -610,21 +632,21 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
     }
 
     private func look(_ r: CGFloat, _ p: CGFloat) -> Look {
-        let b = smooth(span(r, Pull.blur))
+        let b = span(r, Pull.blur)
         let fp = span(r, Pull.field)
         let lp = span(r, Pull.list)
-        return Look(blur: Pull.blurRadius * b, dim: Float(b * Pull.maxDim),
+        return Look(blur: Pull.blurRadius * pow(b, Pull.blurPower), dim: Float(pow(clamp01(r), Pull.dimPower) * Pull.maxDim),
                     bar: Float(fp), barY: -16 * (1 - fp) + p * Pull.fieldRide,
                     list: Float(smooth(lp)), listY: -16 * (1 - lp) + p * Pull.listRide,
                     band: Float(fp))
     }
 
     /// Sets the model values for (reveal, pull): the caller holds actions off.
-    private func put(_ l: Look) {
+    private func put(_ l: Look, blurScaleFor: CGFloat? = nil) {
         // A view that ends at nothing hides (no pass for it), but never while a run still shows it on its way there:
         // a layout mid-run (the keys going down lay the view out) hid the results and the blur in one frame.
         func show(_ v: UIView, _ on: Bool) { if on { v.isHidden = false } else if run == nil { v.isHidden = true } }
-        blur.set(l.blur, hide: run == nil)
+        blur.set(l.blur, hide: run == nil, scaleFor: blurScaleFor ?? (run == nil ? nil : runBlurScaleFor))
         show(dim, l.dim > 0.001)
         dim.layer.opacity = l.dim
         // The warm-up holds the bar off screen for 0.4 s: leave it there.
@@ -710,7 +732,10 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         let final = looks[n - 1]
         reveal = to
         pull = pullTo
-        put(final)
+        // A run that passes through a narrow blur is sampled at the screen's scale all the way (the backdrop's
+        // scale is not animatable); the end's render drops it to 1x once the blur rests wide.
+        runBlurScaleFor = min(looks[0].blur, final.blur)
+        put(final, blurScaleFor: runBlurScaleFor)
         if peak.blur > 0.05 { blur.isHidden = false }
         if peak.dim > 0.001 { dim.isHidden = false }
         if peak.bar > 0.001, bar.transform.ty > -100 { bar.isHidden = false }
@@ -815,8 +840,11 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
 
     /// One touch: two numbers, one layer pass, no animation.
     private func follow(_ g: SearchPullRecognizer) {
-        let p = Pull.rubber * (1 - exp(-g.travel / Pull.rubber))
-        let r = min(p / Pull.trigger, 1)
+        // Measured from where the pull took hold (22 pt down): from the finger's start, its first frame was
+        // already a fifth of the reveal. The reveal is whole where the trigger arms.
+        func damp(_ x: CGFloat) -> CGFloat { Pull.rubber * (1 - exp(-max(0, x) / Pull.rubber)) }
+        let p = damp(g.travel - Pull.activate)
+        let r = min(p / damp(Pull.trigger - Pull.activate), 1)
         if r != reveal || p != pull {
             reveal = r
             pull = p
