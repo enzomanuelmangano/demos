@@ -286,7 +286,9 @@ component Demos
       // backdrop there, not black (cherry-blossom-qrcode's and verification-code-face's keys
       // showed black through their glass).
       background-color=(top(nav).name == "demo" and not desk ? demoOf(top(nav).params.slug).backdrop : "#000000")
-      interactive-widget=(top(nav).name == "demo" and overlaysKeyboard(top(nav).params.slug) ? "overlays-content" : "resizes-content")
+      // The phone's home overlays the keys too: its search blurs the home down to the screen's edge under them, and a
+      // shorter page would re-grid every page of icons (and show the root's black under the keys) as they rise.
+      interactive-widget=((top(nav).name == "home" and not desk) or (top(nav).name == "demo" and overlaysKeyboard(top(nav).params.slug)) ? "overlays-content" : "resizes-content")
       for e in stack(nav) key=e.id
         // The Mac (a fine pointer in a window wider than a phone) has the atlas as its home, the
         // window's root: no Back. The SpringBoard is the phone's home.

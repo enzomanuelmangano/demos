@@ -1,14 +1,18 @@
 // `search-reveal`: the home's pull-to-search, native from the finger to the pixels.
 //
 // A downward pull on the pager (the `page-scroller` hatch, springboard.contract) drives one `reveal`
-// value 0...1 over 100 pt of damped travel. Each touch move sets layer properties only (the home's
-// two blur passes, a dim, the field, the results), with actions disabled: nothing is committed to
-// the Contract plan, nothing reaches Rust. Released past the trigger (or flicked) the reveal runs
-// to 1 on a display link and the field takes the keyboard; released short it runs back to 0.
+// value 0...1 over 100 pt of damped travel, as iOS's App Library search: the home blurs, the field and
+// the results ride the finger down, the results fade in. Each touch move sets layer properties only
+// (one backdrop blur's radius, a dim, the field, the results), with actions disabled: nothing is
+// committed to the Contract plan, nothing reaches Rust. Released past the trigger (or flicked) the
+// rest of the way is handed to Core Animation as keyframes, the field narrows for its Cancel and takes
+// the keyboard in the same moment; released short it runs back to 0. No display link: a main thread
+// busy with the keyboard does not hold a frame of it back.
 //
-// The view holds everything the search shows: the two blur passes and the dim over the home, the
-// results (a UICollectionView of icon + name rows, filtered by the field with no round trip), the
-// scroll-edge blur under the field, the glass field (a real UITextField) and its Cancel. Only a
+// The view holds everything the search shows: the blur and the dim over the home, the results (a
+// UICollectionView of icon + name rows, filtered by the field with no round trip), the scroll-edge blur
+// under the field, the glass field (a real UITextField) and its Cancel. It covers the whole screen, the
+// keyboard's area too: the keys float over the blurred home, never over the window's black. Only a
 // tapped result leaves the view: `change("<slug>")` opens that demo out of the row's icon, the same
 // launch as the grid's (DemoLaunch.swift names the source by `LaunchIcons.touch(_:slug:)`).
 //
@@ -34,24 +38,36 @@ private enum Pull {
     /// The finger travel that starts the pull, and the sideways travel that fails it.
     static let activate: CGFloat = 22
     static let failX: CGFloat = 10
-    /// The reveal's windows: the field and its Cancel, then the results.
-    static let field: (CGFloat, CGFloat) = (0.2, 0.6)
-    static let list: (CGFloat, CGFloat) = (0.55, 1)
-    static let extraBlur: (CGFloat, CGFloat) = (0.5, 1)
-    static let commitMs = 0.32, commitPullMs = 0.34, backMs = 0.26, exitMs = 0.30
+    /// The reveal's windows (App Library, frame by frame): the home blurs first, the field shows,
+    /// then the results fade in over the blurred home.
+    static let blur: (CGFloat, CGFloat) = (0, 0.6)
+    static let field: (CGFloat, CGFloat) = (0.15, 0.55)
+    static let list: (CGFloat, CGFloat) = (0.35, 1)
+    /// How far the field and the results ride the pull (× the damped pull).
+    static let fieldRide: CGFloat = 0.4
+    static let listRide: CGFloat = 1
+    /// The release lands in 0.34 s (the keys rise beside it), Cancel leaves the reveal in 0.36 s after
+    /// the keys have started down, a short pull springs back in 0.26 s.
+    static let commitMs = 0.34, backMs = 0.26, exitMs = 0.36, exitDelay = 0.06
+    /// The field narrows for Cancel (and back) on this spring.
+    static let focusMs = 0.36
     static let barHeight: CGFloat = 48
     static let barTop: CGFloat = 10
     static let listGap: CGFloat = 24
     static let rowPadding: CGFloat = 7
     static let edgeBlur: CGFloat = 28
-    static let maxDim: CGFloat = 0.3
+    /// The home's blur at full reveal (Gaussian radius, pt) and the dim over it.
+    static let blurRadius: CGFloat = 30
+    static let maxDim: CGFloat = 0.28
+    /// Keyframes per second handed to Core Animation.
+    static let rate = 120.0
 }
 
 private func clamp01(_ x: CGFloat) -> CGFloat { min(1, max(0, x)) }
 private func span(_ x: CGFloat, _ r: (CGFloat, CGFloat)) -> CGFloat { clamp01((x - r.0) / (r.1 - r.0)) }
 private func smooth(_ t: CGFloat) -> CGFloat { t * t * (3 - 2 * t) }
 private func easeOutCubic(_ t: CGFloat) -> CGFloat { 1 - pow(1 - t, 3) }
-private func easeInCubic(_ t: CGFloat) -> CGFloat { t * t * t }
+private func easeInOutCubic(_ t: CGFloat) -> CGFloat { t < 0.5 ? 4 * t * t * t : 1 - pow(-2 * t + 2, 3) / 2 }
 private func easeInOutQuad(_ t: CGFloat) -> CGFloat { t < 0.5 ? 2 * t * t : 1 - pow(-2 * t + 2, 2) / 2 }
 
 // MARK: - The pull
@@ -107,34 +123,84 @@ final class SearchPullRecognizer: UIGestureRecognizer {
     }
 }
 
-// MARK: - The home's blur: one UIVisualEffectView, its paused animator made once
+// MARK: - The home's blur: one Gaussian on the backdrop, its radius a layer property
 
-private final class SearchBlurPass: UIVisualEffectView {
-    private var animator: UIViewPropertyAnimator?
-    /// This material at fraction 1 blurs at sigma 31 pt: the same calibration as the launch's home blur.
-    private static let fullFraction: CGFloat = 0.85
-    var amount: CGFloat = 0 { didSet { if amount != oldValue { apply() } } }
+/// A UIVisualEffectView whose backdrop layer runs Core Animation's `gaussianBlur` CAFilter alone (no
+/// material tint): its radius is a key path of the layer, set per touch or keyframed, and the render
+/// server blurs at that radius. A material scrubbed by a paused animator cannot be handed to Core
+/// Animation, and its tint ramps with it. Where the filter is missing: the material, faded in.
+private final class SearchBlur: UIView {
+    private let effect = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterialDark))
+    private let filter: NSObject? = SearchBlur.makeGaussian()
+    static let path = "filters.gaussianBlur.inputRadius"
+    private(set) var radius: CGFloat = 0
 
-    init() {
-        super.init(effect: nil)
+    override init(frame: CGRect) {
+        super.init(frame: frame)
         isUserInteractionEnabled = false
+        effect.frame = bounds
+        effect.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        effect.isUserInteractionEnabled = false
+        addSubview(effect)
+        isHidden = true
     }
     required init?(coder: NSCoder) { nil }
-    deinit { animator?.stopAnimation(true) }
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? { nil }
 
-    /// Made once the view is in a window: a paused animator made before shows the whole effect.
+    private static func makeGaussian() -> NSObject? {
+        guard let type = NSClassFromString(["CA", "Filter"].joined()) as? NSObject.Type else { return nil }
+        let make = NSSelectorFromString(["filter", "With", "Type:"].joined())
+        guard type.responds(to: make),
+              let made = type.perform(make, with: "gaussianBlur")?.takeUnretainedValue() as? NSObject,
+              made.responds(to: NSSelectorFromString("setValue:forKey:")) else { return nil }
+        made.setValue("gaussianBlur", forKey: "name")
+        made.setValue(0, forKey: "inputRadius")
+        // Edges are blurred with the screen's own pixels, not darkened toward transparent black.
+        made.setValue(true, forKey: "inputNormalizeEdges")
+        return made
+    }
+
+    /// The layer whose key path animates: the backdrop with our filter, or (fallback) the effect view.
+    var animated: CALayer? { filter != nil ? backdrop() : effect.layer }
+
+    private func backdrop() -> CALayer? {
+        effect.subviews.first { NSStringFromClass(type(of: $0.layer)).contains("Backdrop") }?.layer
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        install()
+    }
     override func didMoveToWindow() {
         super.didMoveToWindow()
-        guard window != nil, animator == nil else { return }
-        effect = nil
-        let a = UIViewPropertyAnimator(duration: 1, curve: .linear) { [unowned self] in
-            self.effect = UIBlurEffect(style: .systemUltraThinMaterialDark)
-        }
-        a.pausesOnCompletion = true
-        animator = a
-        apply()
+        install()
     }
-    private func apply() { animator?.fractionComplete = clamp01(amount) * Self.fullFraction }
+
+    /// UIKit rebuilds a visual effect's layers on some trait and layout changes: keep ours.
+    private func install() {
+        guard let filter, let backdrop = backdrop() else { return }
+        let current = backdrop.value(forKey: "filters") as? [NSObject]
+        if current?.count != 1 || current?.first?.value(forKey: "name") as? String != "gaussianBlur" {
+            backdrop.setValue([filter], forKey: "filters")
+            backdrop.setValue(radius, forKeyPath: Self.path)
+        }
+        // One sample per point: a 30 pt blur at the screen's 3 px per point costs 9 times the pixels and
+        // looks the same.
+        backdrop.setValue(1, forKey: "scale")
+        for view in effect.subviews where view.layer !== backdrop { view.isHidden = true }
+    }
+
+    /// The model value (actions off by the caller); the view hides at 0, where it would cost a pass for nothing.
+    func set(_ r: CGFloat, hide: Bool = true) {
+        radius = r
+        if r >= 0.05 { isHidden = false } else if hide { isHidden = true }
+        if filter != nil { backdrop()?.setValue(r, forKeyPath: Self.path) } else { effect.alpha = r / Pull.blurRadius }
+    }
+
+    /// Keyframe values for `animated` (radius, or the fallback's opacity).
+    func keyframes(_ radii: [CGFloat]) -> (path: String, values: [Any]) {
+        filter != nil ? (Self.path, radii.map { $0 as Any }) : ("opacity", radii.map { Float($0 / Pull.blurRadius) as Any })
+    }
 }
 
 // MARK: - The field
@@ -147,9 +213,6 @@ private final class SearchField: UITextField {
     override func textRect(forBounds bounds: CGRect) -> CGRect { textBox(bounds) }
     override func editingRect(forBounds bounds: CGRect) -> CGRect { textBox(bounds) }
     override func placeholderRect(forBounds bounds: CGRect) -> CGRect { textBox(bounds) }
-    override func leftViewRect(forBounds bounds: CGRect) -> CGRect {
-        CGRect(x: 16, y: (bounds.height - 18) / 2, width: 18, height: 18)
-    }
     override func clearButtonRect(forBounds bounds: CGRect) -> CGRect {
         super.clearButtonRect(forBounds: bounds).offsetBy(dx: -8, dy: 0)
     }
@@ -227,22 +290,16 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
     private var sideMargin: CGFloat = 22
     private var scrollerName = ""
 
-    // State: `reveal` is the one value everything reads; `pull` the rubber-band the results ride.
+    // State: `reveal` is the one value the look reads; `pull` the damped finger travel the field and results ride.
     private var reveal: CGFloat = 0
     private var pull: CGFloat = 0
-    /// Both move in one frame: one render, not one per value.
-    private func put(reveal r: CGFloat, pull p: CGFloat) {
-        guard r != reveal || p != pull else { return }
-        reveal = r
-        pull = p
-        render()
-    }
     private var committed = false
     private var armed = false
+    /// The field narrowed for Cancel (committed), or wide with its hint centred (the pull).
+    private var narrowed = false
 
     // Subviews, back to front
-    private let blurLead = SearchBlurPass()
-    private let blurExtra = SearchBlurPass()
+    private let blur = SearchBlur()
     private let dim = UIView()
     private let list: UICollectionView
     private let layout: UICollectionViewFlowLayout
@@ -253,6 +310,10 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
     private let bar = UIView()
     private let glass = GlassPaneView()
     private let field = SearchField()
+    /// The glyph and "Search": centred in the wide field, at its leading edge once it narrows.
+    private let hint = UIView()
+    private let hintGlyph = UIImageView()
+    private let hintLabel = UILabel()
     private let cancelButton = SlopButton(type: .system)
 
     // The pull
@@ -262,19 +323,19 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
     private let tick = UIImpactFeedbackGenerator(style: .light)
     private let select = UISelectionFeedbackGenerator()
 
-    // The tweens
-    private struct Tween {
-        var from: CGFloat, to: CGFloat, start: CFTimeInterval, duration: CFTimeInterval
+    /// The run handed to Core Animation: kept to answer where it is when a finger interrupts it.
+    private struct Run {
+        var from: (r: CGFloat, p: CGFloat), to: (r: CGFloat, p: CGFloat)
+        var start: CFTimeInterval, duration: CFTimeInterval
         var curve: (CGFloat) -> CGFloat
-        func value(_ now: CFTimeInterval) -> (CGFloat, Bool) {
-            let t = clamp01(CGFloat((now - start) / duration))
-            return (from + (to - from) * curve(t), t >= 1)
+        func at(_ now: CFTimeInterval) -> (r: CGFloat, p: CGFloat) {
+            let u = curve(clamp01(CGFloat((now - start) / duration)))
+            return (from.r + (to.r - from.r) * u, from.p + (to.p - from.p) * u)
         }
     }
-    private var revealTween: Tween?
-    private var pullTween: Tween?
-    private var link: CADisplayLink?
-    private var whenSettled: (() -> Void)?
+    private var run: Run?
+    /// Counts runs: the end of one that was replaced does nothing.
+    private var runGen = 0
     private var keyboardOverlap: CGFloat = 0
 
     override init(frame: CGRect) {
@@ -285,7 +346,9 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         backgroundColor = .clear
         clipsToBounds = false
 
-        for pass in [blurLead, blurExtra] { pass.frame = bounds; pass.autoresizingMask = [.flexibleWidth, .flexibleHeight]; addSubview(pass) }
+        blur.frame = bounds
+        blur.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        addSubview(blur)
         dim.backgroundColor = .black
         dim.isUserInteractionEnabled = false
         dim.frame = bounds
@@ -328,26 +391,33 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
             return s
         }()
         bar.addSubview(glass)
+        let grey = UIColor(red: 142 / 255, green: 142 / 255, blue: 147 / 255, alpha: 1)
         field.delegate = self
         field.allowsFocus = { [weak self] in self?.mayFocus ?? false }
         field.font = .systemFont(ofSize: 17)
         field.textColor = .white
-        field.attributedPlaceholder = NSAttributedString(
-            string: "Search", attributes: [.foregroundColor: UIColor(red: 142 / 255, green: 142 / 255, blue: 147 / 255, alpha: 1)])
         field.autocorrectionType = .no
         field.autocapitalizationType = .none
         field.spellCheckingType = .no
         field.returnKeyType = .search
         field.clearButtonMode = .whileEditing
         field.keyboardAppearance = .dark
-        let glyph = UIImageView(image: UIImage(systemName: "magnifyingglass",
-            withConfiguration: UIImage.SymbolConfiguration(pointSize: 18, weight: .regular)))
-        glyph.tintColor = UIColor(red: 142 / 255, green: 142 / 255, blue: 147 / 255, alpha: 1)
-        glyph.contentMode = .center
-        field.leftView = glyph
-        field.leftViewMode = .always
+        field.accessibilityLabel = "Search"
+        // Invisible: the hint draws it. A field with no placeholder reads as a login field to AutoFill.
+        field.attributedPlaceholder = NSAttributedString(string: "Search", attributes: [.foregroundColor: UIColor.clear])
         field.addTarget(self, action: #selector(queryChanged), for: .editingChanged)
         bar.addSubview(field)
+        hint.isUserInteractionEnabled = false
+        hintGlyph.image = UIImage(systemName: "magnifyingglass",
+                                  withConfiguration: UIImage.SymbolConfiguration(pointSize: 18, weight: .regular))
+        hintGlyph.tintColor = grey
+        hintGlyph.contentMode = .center
+        hintLabel.text = "Search"
+        hintLabel.font = .systemFont(ofSize: 17)
+        hintLabel.textColor = grey
+        hint.addSubview(hintGlyph)
+        hint.addSubview(hintLabel)
+        bar.addSubview(hint)
         cancelButton.setTitle("Cancel", for: .normal)
         cancelButton.setTitleColor(.white, for: .normal)
         cancelButton.titleLabel?.font = .systemFont(ofSize: 17)
@@ -372,7 +442,6 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
     required init?(coder: NSCoder) { nil }
 
     deinit {
-        link?.invalidate()
         NotificationCenter.default.removeObserver(self)
         if let scroll { scroll.removeGestureRecognizer(recognizer) }
     }
@@ -412,6 +481,7 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
     private var barBottom: CGFloat { safeTop + Pull.barTop + Pull.barHeight }
     /// Where the results start, and the height of the scroll-edge band: the fade's runway under the field.
     private var listTop: CGFloat { barBottom + Pull.listGap }
+    private var cancelWidth: CGFloat { ceil(cancelButton.sizeThatFits(.zero).width) + 12 }
 
     override func layoutSubviews() {
         super.layoutSubviews()
@@ -421,25 +491,56 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         let stride = iconSize + Pull.rowPadding * 2 + 1 / max(traitCollection.displayScale, 1)
         layout.itemSize = CGSize(width: max(0, w - sideMargin * 2), height: stride)
         layout.sectionInset = UIEdgeInsets(top: listTop, left: sideMargin, bottom: safeBottom + 40, right: sideMargin)
-        list.frame = bounds
+        // Bounds and center, not `frame`: the list and the bar carry transforms.
+        list.bounds = CGRect(origin: list.bounds.origin, size: bounds.size)
+        list.center = CGPoint(x: bounds.midX, y: bounds.midY)
         band.frame = CGRect(x: 0, y: 0, width: w, height: listTop)
         edgeBlur.frame = band.bounds
         fade.frame = band.bounds
         fade.locations = [0, NSNumber(value: Double(barBottom / max(listTop, 1))), 1]
-        let cancelW = ceil(cancelButton.sizeThatFits(.zero).width) + 12
-        // Bounds and center, not `frame`: with the off-screen warm-up transform on, a frame assignment is the transformed
-        // rect, so it put the bar back in view (the field showed for 0.4 s after the home appeared).
+        // With the off-screen warm-up transform on, a frame assignment is the transformed rect, so it put the
+        // bar back in view (the field showed for 0.4 s after the home appeared).
         let barFrame = CGRect(x: sideMargin, y: safeTop + Pull.barTop, width: max(0, w - sideMargin * 2), height: Pull.barHeight)
         bar.bounds = CGRect(origin: .zero, size: barFrame.size)
         bar.center = CGPoint(x: barFrame.midX, y: barFrame.midY)
-        let pillW = max(0, bar.bounds.width - cancelW)
-        glass.frame = CGRect(x: 0, y: 0, width: pillW, height: Pull.barHeight)
-        field.frame = glass.frame
-        cancelButton.frame = CGRect(x: pillW + 12, y: 0, width: cancelW - 12, height: Pull.barHeight)
+        layoutBar()
         empty.frame = CGRect(x: sideMargin, y: listTop + 40, width: max(0, w - sideMargin * 2), height: 24)
         CATransaction.commit()
         layout.invalidateLayout()
         render()
+    }
+
+    /// The field wide with its hint centred, or narrowed for Cancel with the hint at its leading edge.
+    private func layoutBar() {
+        let full = bar.bounds.width
+        let cancelW = cancelWidth
+        let pillW = max(0, narrowed ? full - cancelW : full)
+        glass.frame = CGRect(x: 0, y: 0, width: pillW, height: Pull.barHeight)
+        field.frame = glass.frame
+        // Bounds and center: it carries a transform, under which a frame assignment lands elsewhere.
+        cancelButton.bounds = CGRect(x: 0, y: 0, width: cancelW - 12, height: Pull.barHeight)
+        cancelButton.center = CGPoint(x: full - (cancelW - 12) / 2, y: Pull.barHeight / 2)
+        cancelButton.alpha = narrowed ? 1 : 0
+        cancelButton.transform = narrowed ? .identity : CGAffineTransform(translationX: cancelW * 0.6, y: 0)
+        let labelW = ceil(hintLabel.sizeThatFits(.zero).width)
+        let hintW = 18 + 7 + labelW
+        hint.bounds = CGRect(x: 0, y: 0, width: hintW, height: Pull.barHeight)
+        let leading = narrowed || !(field.text ?? "").isEmpty
+        hint.center = CGPoint(x: leading ? 16 + hintW / 2 : pillW / 2, y: Pull.barHeight / 2)
+        hintGlyph.frame = CGRect(x: 0, y: (Pull.barHeight - 18) / 2, width: 18, height: 18)
+        hintLabel.frame = CGRect(x: 25, y: 0, width: labelW, height: Pull.barHeight)
+        hintLabel.isHidden = !(field.text ?? "").isEmpty
+    }
+
+    /// The field narrows for Cancel (or widens back) on a spring, beside the keys.
+    private func focus(_ on: Bool) {
+        guard on != narrowed else { return }
+        narrowed = on
+        UIView.animate(springDuration: Pull.focusMs, bounce: 0, initialSpringVelocity: 0,
+                       delay: 0, options: [.allowUserInteraction, .beginFromCurrentState]) {
+            self.layoutBar()
+            self.glass.layoutIfNeeded()
+        }
     }
 
     override func didMoveToWindow() {
@@ -450,6 +551,35 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         // process): show it once, off screen, so the first pull does not pay for it. Not in the home's first 3 s, when the
         // first frames and the other pages are being made, and not under a finger.
         warmGlass(after: 3.2)
+        warmKeys(after: 4.5)
+    }
+
+    /// The first focus of the process starts the text system (seconds on a loaded simulator, ~0.1 s on a phone):
+    /// a field off screen takes the focus once with an empty input view, so no key shows, and gives it back at once.
+    /// After the glass, never under a finger or a demo, never while another field has the keys.
+    private var keysWarm = false
+    private func warmKeys(after delay: Double) {
+        guard !keysWarm else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self, let window = self.window, !self.keysWarm else { return }
+            let busy = self.reveal > 0 || self.committed || window.rootViewController?.presentedViewController != nil
+                || (self.scroll.map { $0.isTracking || $0.isDragging || $0.isDecelerating } ?? false)
+            if busy { self.warmKeys(after: 0.5); return }
+            self.keysWarm = true
+            let probe = UITextField(frame: CGRect(x: -200, y: -200, width: 10, height: 10))
+            probe.inputView = UIView(frame: .zero)
+            probe.inputAccessoryView = nil
+            probe.autocorrectionType = .no
+            probe.spellCheckingType = .no
+            probe.keyboardAppearance = .dark
+            probe.isAccessibilityElement = false
+            self.addSubview(probe)
+            let t0 = CACurrentMediaTime()
+            let ok = probe.becomeFirstResponder()
+            probe.resignFirstResponder()
+            probe.removeFromSuperview()
+            Self.trace(String(format: "keys warmed %d in %.1f ms", ok ? 1 : 0, (CACurrentMediaTime() - t0) * 1000))
+        }
     }
 
     private var glassWarm = false
@@ -466,34 +596,154 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
             self.setNeedsLayout()
             self.layoutIfNeeded()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
-                self?.bar.transform = .identity
-                self?.render()
+                guard let self else { return }
+                self.bar.transform = .identity
+                self.renderNow()
             }
         }
     }
 
-    // MARK: the render: layer properties only, no implicit animations
+    // MARK: the look: one value in, layer properties out
 
-    private func render() {
-        let lead = smooth(clamp01(reveal))
-        blurLead.amount = lead * lead
-        blurExtra.amount = smooth(span(reveal, Pull.extraBlur))
-        dim.alpha = lead * lead * Pull.maxDim
-        let fp = span(reveal, Pull.field)
-        let lp = span(reveal, Pull.list)
-        let barOff = bar.transform.ty < -100
-        if !barOff {
-            bar.isHidden = fp <= 0.001
-            bar.alpha = fp
-            bar.transform = CGAffineTransform(translationX: 0, y: -16 * (1 - fp))
+    private struct Look {
+        var blur: CGFloat, dim: Float, bar: Float, barY: CGFloat, list: Float, listY: CGFloat, band: Float
+    }
+
+    private func look(_ r: CGFloat, _ p: CGFloat) -> Look {
+        let b = smooth(span(r, Pull.blur))
+        let fp = span(r, Pull.field)
+        let lp = span(r, Pull.list)
+        return Look(blur: Pull.blurRadius * b, dim: Float(b * Pull.maxDim),
+                    bar: Float(fp), barY: -16 * (1 - fp) + p * Pull.fieldRide,
+                    list: Float(smooth(lp)), listY: -16 * (1 - lp) + p * Pull.listRide,
+                    band: Float(fp))
+    }
+
+    /// Sets the model values for (reveal, pull): the caller holds actions off.
+    private func put(_ l: Look) {
+        // A view that ends at nothing hides (no pass for it), but never while a run still shows it on its way there:
+        // a layout mid-run (the keys going down lay the view out) hid the results and the blur in one frame.
+        func show(_ v: UIView, _ on: Bool) { if on { v.isHidden = false } else if run == nil { v.isHidden = true } }
+        blur.set(l.blur, hide: run == nil)
+        show(dim, l.dim > 0.001)
+        dim.layer.opacity = l.dim
+        // The warm-up holds the bar off screen for 0.4 s: leave it there.
+        if bar.transform.ty > -100 {
+            show(bar, l.bar > 0.001)
+            // UIView's alpha, never the layer's opacity or a keyframe on it: the glass inside stops drawing under those.
+            bar.alpha = CGFloat(l.bar)
+            bar.transform = CGAffineTransform(translationX: 0, y: l.barY)
         }
-        cancelButton.alpha = fp
-        band.isHidden = fp <= 0.001
-        band.alpha = fp
-        list.isHidden = lp <= 0.001
-        list.alpha = lp
-        list.transform = CGAffineTransform(translationX: 0, y: -20 * (1 - lp) + pull)
-        empty.alpha = lp
+        show(band, l.band > 0.001)
+        band.layer.opacity = l.band
+        show(list, l.list > 0.001)
+        list.layer.opacity = l.list
+        list.layer.transform = CATransform3DMakeTranslation(0, l.listY, 0)
+        empty.layer.opacity = l.list
+    }
+
+    private func render() { put(look(reveal, pull)) }
+
+    private func renderNow() {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        render()
+        CATransaction.commit()
+    }
+
+    private static let runKey = "search"
+    /// Launch argument `-searchTrace YES`: the keyboard's timings, one line each.
+    private static let tracing = UserDefaults.standard.bool(forKey: "searchTrace")
+    private static func trace(_ line: @autoclosure () -> String) { if tracing { NSLog("[SEARCH] %@", line()) } }
+
+    /// The layers a run animates, and their key paths.
+    private var runLayers: [CALayer] {
+        [blur.animated, dim.layer, band.layer, list.layer, empty.layer].compactMap { $0 }
+    }
+
+    /// Where a run handed to Core Animation is now: its keyframes go, the model takes that pose.
+    private func stopRun() {
+        runGen += 1
+        guard let r = run else { return }
+        run = nil
+        let now = r.at(CACurrentMediaTime())
+        reveal = now.r
+        pull = now.p
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        for layer in runLayers { layer.removeAnimation(forKey: Self.runKey + ".a"); layer.removeAnimation(forKey: Self.runKey + ".b") }
+        if bar.transform.ty > -100 { bar.layer.removeAllAnimations() }
+        render()
+        CATransaction.commit()
+    }
+
+    /// Hands the way from here to (reveal, pull) to Core Animation as keyframes, sampled from the same look
+    /// the finger drives, so every layer keeps its own window of the reveal.
+    private func animate(reveal to: CGFloat, pull pullTo: CGFloat, ms: Double, delay: Double = 0,
+                         curve: @escaping (CGFloat) -> CGFloat, then: (() -> Void)?) {
+        stopRun()
+        let start = CACurrentMediaTime() + delay
+        let r = Run(from: (reveal, pull), to: (to, pullTo), start: start, duration: ms, curve: curve)
+        let n = max(2, Int((ms * Pull.rate).rounded()) + 1)
+        let looks: [Look] = (0..<n).map { i in
+            let v = r.at(start + ms * Double(i) / Double(n - 1))
+            return look(v.r, v.p)
+        }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        // Everything the run passes through is shown for it; what ends at nothing hides at the end.
+        let peak = (blur: looks.map(\.blur).max() ?? 0, dim: looks.map(\.dim).max() ?? 0, bar: looks.map(\.bar).max() ?? 0,
+                    band: looks.map(\.band).max() ?? 0, list: looks.map(\.list).max() ?? 0)
+        func add(_ layer: CALayer?, _ path: String, _ key: String, _ values: [Any]) {
+            guard let layer else { return }
+            let a = CAKeyframeAnimation(keyPath: path)
+            a.values = values
+            a.duration = ms
+            // In the layer's own time: an ancestor's timing would shift a raw media time.
+            a.beginTime = layer.convertTime(start, from: nil)
+            a.calculationMode = .linear
+            a.fillMode = .both
+            a.isRemovedOnCompletion = true
+            a.preferredFrameRateRange = CAFrameRateRange(minimum: 80, maximum: 120, preferred: 120)
+            layer.add(a, forKey: Self.runKey + key)
+        }
+        let final = looks[n - 1]
+        reveal = to
+        pull = pullTo
+        put(final)
+        if peak.blur > 0.05 { blur.isHidden = false }
+        if peak.dim > 0.001 { dim.isHidden = false }
+        if peak.bar > 0.001, bar.transform.ty > -100 { bar.isHidden = false }
+        if peak.band > 0.001 { band.isHidden = false }
+        if peak.list > 0.001 { list.isHidden = false }
+        let blurFrames = blur.keyframes(looks.map(\.blur))
+        add(blur.animated, blurFrames.path, ".a", blurFrames.values)
+        add(dim.layer, "opacity", ".a", looks.map(\.dim))
+        if bar.transform.ty > -100 {
+            bar.alpha = CGFloat(looks[0].bar)
+            bar.transform = CGAffineTransform(translationX: 0, y: looks[0].barY)
+        }
+        add(band.layer, "opacity", ".a", looks.map(\.band))
+        add(list.layer, "opacity", ".a", looks.map(\.list))
+        add(list.layer, "transform", ".b", looks.map { NSValue(caTransform3D: CATransform3DMakeTranslation(0, $0.listY, 0)) })
+        add(empty.layer, "opacity", ".a", looks.map(\.list))
+        CATransaction.commit()
+        // The bar (it holds the glass) through UIKit's own animation, outside the transaction that holds actions off.
+        if bar.transform.ty > -100 {
+            UIView.animate(withDuration: ms, delay: delay, options: [to > r.from.r ? .curveEaseOut : .curveEaseInOut, .allowUserInteraction]) {
+                self.bar.alpha = CGFloat(final.bar)
+                self.bar.transform = CGAffineTransform(translationX: 0, y: final.barY)
+            }
+        }
+        run = r
+        let gen = runGen
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay + ms) { [weak self] in
+            guard let self, self.runGen == gen else { return }
+            self.run = nil
+            // The hidden flags of the end pose (a blur at 0 costs no pass).
+            self.renderNow()
+            then?()
+        }
     }
 
     // MARK: hit testing: the home keeps every touch until the search is committed
@@ -522,30 +772,34 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         g === recognizer
     }
 
+    /// Not while a demo's route is still presented (a close hands it back 0.3 s after the release): a result opened
+    /// then would push a route over one still leaving.
+    override func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
+        guard g === recognizer else { return super.gestureRecognizerShouldBegin(g) }
+        return window?.rootViewController?.presentedViewController == nil
+    }
+
     func gestureRecognizer(_ g: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
         guard g !== recognizer else { return true }
         // A tap on nothing: the dim, or the list's empty room (a row, the field and Cancel take their own).
         return touch.view === self || touch.view === list
     }
 
+    /// Posted when a pull takes hold: a demo card still landing on the home (DemoLaunch.swift) lands at once.
+    static let pullBegan = Notification.Name("DemosSearchPullBegan")
+
     @objc private func pulled(_ g: SearchPullRecognizer) {
         switch g.state {
         case .began:
             armed = false
-            stopTweens()
+            stopRun()
             tick.prepare()
+            NotificationCenter.default.post(name: Self.pullBegan, object: self)
             // The pager must not take the same finger sideways while the pull has it.
             if let pan = scroll?.panGestureRecognizer { scrollPanWasEnabled = pan.isEnabled; pan.isEnabled = false }
+            follow(g)
         case .changed:
-            let p = Pull.rubber * (1 - exp(-g.travel / Pull.rubber))
-            put(reveal: min(p / Pull.trigger, 1), pull: p)
-            if !armed, g.travel > Pull.trigger {
-                armed = true
-                tick.impactOccurred()
-            } else if armed, g.travel < Pull.trigger * Pull.disarm {
-                armed = false
-                select.selectionChanged()
-            }
+            follow(g)
         case .ended:
             restorePager()
             if armed || g.velocity > Pull.flick {
@@ -559,6 +813,24 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         }
     }
 
+    /// One touch: two numbers, one layer pass, no animation.
+    private func follow(_ g: SearchPullRecognizer) {
+        let p = Pull.rubber * (1 - exp(-g.travel / Pull.rubber))
+        let r = min(p / Pull.trigger, 1)
+        if r != reveal || p != pull {
+            reveal = r
+            pull = p
+            renderNow()
+        }
+        if !armed, g.travel > Pull.trigger {
+            armed = true
+            tick.impactOccurred()
+        } else if armed, g.travel < Pull.trigger * Pull.disarm {
+            armed = false
+            select.selectionChanged()
+        }
+    }
+
     private func restorePager() { scroll?.panGestureRecognizer.isEnabled = scrollPanWasEnabled }
 
     // MARK: the states
@@ -566,15 +838,22 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
     private func commit() {
         committed = true
         recognizer.isEnabled = false
-        run(reveal: 1, ms: Pull.commitMs, curve: easeOutCubic, pull: 0, pullMs: Pull.commitPullMs) { [weak self] in
+        // The results and the field spring back up from the pull as the keys rise: one moment, as iOS does.
+        animate(reveal: 1, pull: 0, ms: Pull.commitMs, curve: easeOutCubic, then: nil)
+        focus(true)
+        // The motion is committed before the keyboard's main-thread work starts: it runs on the render server.
+        CATransaction.flush()
+        let t0 = CACurrentMediaTime()
+        DispatchQueue.main.async { [weak self] in
             guard let self, self.committed else { return }
-            // The keyboard rises once the reveal has landed: its first appearance is a main-thread cost.
-            self.field.becomeFirstResponder()
+            let t1 = CACurrentMediaTime()
+            let ok = self.field.becomeFirstResponder()
+            Self.trace(String(format: "focus %d after %.1f ms, becomeFirstResponder %.1f ms", ok ? 1 : 0, (t1 - t0) * 1000, (CACurrentMediaTime() - t1) * 1000))
         }
     }
 
     private func settleBack() {
-        run(reveal: 0, ms: Pull.backMs, curve: easeInOutQuad, pull: 0, pullMs: Pull.backMs, then: nil)
+        animate(reveal: 0, pull: 0, ms: Pull.backMs, curve: easeInOutQuad, then: nil)
     }
 
     @objc private func cancelTapped() { dismiss() }
@@ -583,61 +862,17 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
     private func dismiss() {
         guard committed else { return }
         select.selectionChanged()
+        // The keys go down and the field widens first; the results and the blur follow them out.
         field.resignFirstResponder()
-        run(reveal: 0, ms: Pull.exitMs, curve: easeInCubic, pull: 0, pullMs: Pull.exitMs) { [weak self] in
+        focus(false)
+        animate(reveal: 0, pull: 0, ms: Pull.exitMs, delay: Pull.exitDelay, curve: easeInOutCubic) { [weak self] in
             guard let self else { return }
             self.committed = false
             self.recognizer.isEnabled = true
             self.field.text = ""
             self.filter()
             self.list.setContentOffset(.zero, animated: false)
-        }
-    }
-
-    // MARK: tweens on one display link, in time and not in steps: a late frame jumps, it does not slow
-
-    private func run(reveal to: CGFloat, ms: Double, curve: @escaping (CGFloat) -> CGFloat,
-                     pull pullTo: CGFloat, pullMs: Double, then: (() -> Void)?) {
-        let now = CACurrentMediaTime()
-        revealTween = Tween(from: reveal, to: to, start: now, duration: ms, curve: curve)
-        pullTween = Tween(from: pull, to: pullTo, start: now, duration: pullMs, curve: easeOutCubic)
-        whenSettled = then
-        if link == nil {
-            let l = CADisplayLink(target: LinkTarget(self), selector: #selector(LinkTarget.step(_:)))
-            l.preferredFrameRateRange = CAFrameRateRange(minimum: 80, maximum: 120, preferred: 120)
-            l.add(to: .main, forMode: .common)
-            link = l
-        }
-        link?.isPaused = false
-    }
-
-    private func stopTweens() {
-        revealTween = nil
-        pullTween = nil
-        whenSettled = nil
-        link?.isPaused = true
-    }
-
-    fileprivate func step() {
-        let now = CACurrentMediaTime()
-        var done = true
-        var r = reveal, p = pull
-        if let t = revealTween {
-            let (v, end) = t.value(now)
-            r = v
-            if end { revealTween = nil } else { done = false }
-        }
-        if let t = pullTween {
-            let (v, end) = t.value(now)
-            p = v
-            if end { pullTween = nil } else { done = false }
-        }
-        put(reveal: r, pull: p)
-        if done {
-            link?.isPaused = true
-            let finished = whenSettled
-            whenSettled = nil
-            finished?()
+            self.layoutBar()
         }
     }
 
@@ -661,6 +896,7 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
     @objc private func queryChanged() {
         filter()
         list.setContentOffset(.zero, animated: false)
+        hintLabel.isHidden = !(field.text ?? "").isEmpty
     }
 
     private func filter() {
@@ -672,6 +908,8 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         empty.text = results.isEmpty ? "No Results" : nil
     }
 
+    /// The keys cover the results' bottom: the list scrolls its last row above them. The view itself stays
+    /// whole (the home overlays the keys, app.contract), so the blurred home runs under the keys to the edge.
     @objc private func keyboardMoved(_ note: Notification) {
         guard let end = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect, window != nil else { return }
         let overlap = max(0, bounds.maxY - convert(end, from: nil).minY)
@@ -706,13 +944,6 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         // After the open has started: taking the keyboard down is a main-thread cost the card must not wait for.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self] in self?.field.resignFirstResponder() }
     }
-}
-
-/// A weak target, so the display link does not keep the view alive.
-private final class LinkTarget: NSObject {
-    private weak var view: SearchRevealView?
-    init(_ view: SearchRevealView) { self.view = view }
-    @objc func step(_ link: CADisplayLink) { view?.step() }
 }
 
 final class SearchReveal: ExactNativeInstance {
