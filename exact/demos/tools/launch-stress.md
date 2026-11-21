@@ -35,6 +35,6 @@ Needs one booted simulator with the app built from the tree (`bun exact.mjs ios 
 
 - The checker exits 0: no `LAUNCH-FAULT`, no `opens ungrouped`, no `pull refused`, every close `grouped`, every session adopted
   has closed (one may still be open).
-- `no icon touched in the last 2 s` lines are fine (they are the re-taps above) as long as the next line is `adopted for <slug>`, not `adopted for no icon`.
+- `no icon touched in the last 10 s` lines are fine (they are the re-taps above) as long as the next line is `adopted for <slug>`, not `adopted for no icon`.
 - The app is still running (a fault under `-launchStrict` ends it).
 - A screenshot 150-200 ms after any close tap shows the card mid-flight, not the home.

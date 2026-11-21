@@ -153,12 +153,14 @@ final class LaunchIcons {
         touched = (slug, CACurrentMediaTime())
         GpuWarm.prioritize(slug)
     }
-    /// The demo a presentation now opens out of: an icon touched in the last two seconds.
+    /// The demo a presentation now opens out of: an icon touched in the last ten seconds. A loaded phone (or a simulator
+    /// on a busy Mac) can take seconds from the tap to the presentation; a shorter window opened that demo ungrouped
+    /// (no pull, no flight home). The touch is consumed by the first presentation, so a stale one cannot name a later open.
     func takeTouched() -> String? {
         defer { touched = nil }
-        guard let t = touched, CACurrentMediaTime() - t.at < 2 else {
+        guard let t = touched, CACurrentMediaTime() - t.at < 10 else {
             // No icon named: the launch will be ungrouped (the demo simply appears, no pull, the close button is the route's own).
-            LaunchTrace.log("no icon touched in the last 2 s (touched \(touched.map { "\($0.slug) \(CACurrentMediaTime() - $0.at) s ago" } ?? "never"))")
+            LaunchTrace.log("no icon touched in the last 10 s (touched \(touched.map { "\($0.slug) \(CACurrentMediaTime() - $0.at) s ago" } ?? "never"))")
             return nil
         }
         return t.slug
