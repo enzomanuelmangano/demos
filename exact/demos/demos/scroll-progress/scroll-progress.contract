@@ -32,25 +32,12 @@ fn readingTime(): string = `${sum(sections().map(x => ceil(x.description.split("
 fn float32(v: number): number = v >= 2048 ? round(v * 4096) / 4096 : round(v * 8192) / 8192
 // How far past the end (pt) the content is pulled before the pill turns into the up arrow. A bounce
 // off the bottom is a few points and must not collapse the pill: the bar stays at 100%.
-fn endPull(): number = 36
+fn endPull(): number = 20
 // Pill state: initial at progress 0, end at 1 (pulled past the end), expanded in between.
 fn isInitial(p: number): bool = p == 0
 fn isEnd(p: number): bool = p == 1
 fn isExpanded(p: number): bool = p != 0 and p != 1
 fn pillWidth(p: number): number = isExpanded(p) ? 200 : 70
-// The percentage label and the bar follow the scroll on a scroll timeline (`--sp`), with no commit
-// per frame.
-keyframes spFill
-  from translate="-100% 0px"
-  to translate="0px 0px"
-// The percentage as one column of labels "0%" to "100%", 18 apart, stepped by the scroll timeline:
-// one animated node instead of 100. `steps(100, jump-end)` shows label floor(100 q); the range
-// starts half a percent early so that q is the scroll fraction plus 0.5 %, which makes it the
-// nearest whole percent (a `linear()` staircase would need 200 stops, and the wire takes 64).
-keyframes spRoll
-  from translate="0px 0px"
-  to translate="0px -1800px"
-
 // Ease-in-out quad over 500 ms; the pill's width moves every box inside it on the same curve.
 style PillMotion
   -exact-layout-transition="500ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
@@ -60,13 +47,11 @@ component ScrollProgress
     env: DemoEnv
   // 0 = initial, 0.5 = expanded, 1 = end. Written only when the state changes, never per scroll frame.
   state progress = 0
-  // Holds the label and bar at 100% from the up arrow's press until the first scroll after the reset.
-  state frozen = false
-  // Near the very bottom (the last 1.5 %), bounce included: a full bar is drawn over the track. The
-  // host resets scroll-timeline animations (the fill goes empty) while the content is past its end;
-  // this state covers that, but a commit takes ~100 ms to land, so a very fast fling still shows an
-  // empty bar for a few frames before it does.
-  state bottom = false
+  // The scroll offset and range (pt) the surface draws the percentage and the bar from: it clamps
+  // them, so a bounce past the end keeps 100% and a pull past the top 0%. Held while the up arrow
+  // scrolls back, so the label and bar stay at 100% until the first scroll after the reset.
+  state offset = 0
+  state range = 1
   // Set by the up arrow: scroll events are ignored until the scroll reaches 0.
   state resetting = false
   // Article column height in points, posted by the surface (`height:<pt>`).
@@ -84,29 +69,24 @@ component ScrollProgress
       let maxY = max(1, float32(e.scrollHeight) - e.clientHeight)
       let p = y / maxY
       let q = y - maxY >= endPull() ? 1 : (p > 0 ? 0.5 : 0)
-      let atBottom = p >= 0.985
-      if atBottom != bottom
-        bottom = atBottom
+      offset = y
+      range = maxY
       if q != progress
         // One rigid tap when pulled past the end, once per pull.
         if q == 1
           haptic("impact-rigid")
         progress = q
-      if frozen
-        frozen = false
   // Exact's scroll has no drag-begin event: the end of a drag's scroll clears the flag.
   action ended
     resetting = false
   action reset
     if isEnd(progress)
       resetting = true
-      frozen = true
       scrollIntoView("scroll-progress-top", behavior="smooth")
   view
-    column position="absolute" inset=0 background-color="#111111" timeline-scope="--sp" testId="scroll-progress"
-      // A `column overflow-y="auto"`: a `scroll` tag's timeline drives nothing on iOS.
+    column position="absolute" inset=0 background-color="#111111" testId="scroll-progress"
       column position="absolute" top=0 left=0 width="100%" height="100%" overflow-y="auto"
-        scroll-timeline="--sp y" scroll=scrolled scrollend=ended testId="scroll-progress-scroll"
+        scroll=scrolled scrollend=ended testId="scroll-progress-scroll"
         view id="scroll-progress-top" height=0
         column padding-bottom="env(safe-area-inset-bottom)"
           column padding-top=(env.safeTop + demoButtonRow()) padding-bottom=100 padding-left=32
@@ -129,7 +109,7 @@ component ScrollProgress
           width="100%" height="100%" pointer-events="none" aria-hidden=true
         view position="absolute" inset=0
           background-image="linear-gradient(180deg, rgba(17, 17, 17, 0) 0%, rgba(17, 17, 17, 0.55) 55%, rgba(17, 17, 17, 0.85) 100%)"
-      BottomProgress(left=((env.width - pillWidth(progress)) / 2), progress=progress, frozen=frozen, bottom=bottom, reset=reset)
+      BottomProgress(left=((env.width - pillWidth(progress)) / 2), progress=progress, offset=offset, range=range, reset=reset)
 
 component BottomProgress
   inject
@@ -138,8 +118,8 @@ component BottomProgress
   props
     left: number
     progress: number
-    frozen: bool
-    bottom: bool
+    offset: number
+    range: number
     reset: action
   // The up arrow's press: the whole pill scales down while a finger is on it, and only when it is
   // the arrow (the end state), the one state in which it can be pressed.
@@ -161,32 +141,17 @@ component BottomProgress
       box-sizing="border-box" border-radius=35 corner-shape="-exact-continuous" background-color="color(display-p3 0.1333 0.1294 0.1373)" border-width=0.66667
       border-style="solid" border-color="rgba(255, 255, 255, 0.1)" z-index=100 testId="progress-pill"
       // The 5 / 4.667 and 9.833 / 10.167 insets put the inner pill and the bar on whole device pixels, with the ring.
-      row class=PillMotion flex=1 margin-top=5 margin-left=5 margin-right=4.66667 margin-bottom=4.66667 padding-left=9.83333 padding-right=10.16667 border-radius=29.49 corner-shape="-exact-continuous"
+      row class=PillMotion flex=1 margin-top=5 margin-left=5 margin-right=4.66667 margin-bottom=4.66667 padding-left=9.83333 padding-right=10.16667 overflow="hidden" border-radius=29.49 corner-shape="-exact-continuous"
         background-color="color(display-p3 0.1804 0.1765 0.1804)" justify-content="center" align-items="center"
         opacity=(isExpanded(progress) ? 1 : 0)
         transition="opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)" testId="progress-bar-area"
-        // Label k shows from (k - 0.5)% to (k + 0.5)% of the scroll. Shifted up 1/6 pt: a text field
-        // centres its line a device pixel off a text.
-        view class=PillMotion position="relative" flex-shrink=0 width=50 testId="progress-percent"
-          view position="relative" width=50 height=18 overflow="hidden" top="-0.16667px"
-            column position="absolute" left=0 top=0 width=50
-              animation="spRoll 1s steps(100, jump-end) both" animation-timeline="--sp" animation-range="-0.5% 99.5%" testId="progress-roll"
-              for k in range(101) key=k
-                text `${k}%` color="#9E9E9E" font-size=15 text-align="center" width=50 height=18
-                  line-height="18px" aria-hidden=(k != 0)
-          text "100%" color="#9E9E9E" font-size=15 text-align="center" position="absolute"
-            top="-0.16667px" left=0 width=50 height="100%" background-color="color(display-p3 0.1804 0.1765 0.1804)"
-            opacity=(frozen or bottom ? 1 : 0) aria-hidden=true
-        // Progress bar: the fill slides in with the scroll timeline. Only the bar takes the layout transition;
-        // a transitioning fill fights its own scroll-driven translate under the clip and flickers.
-        view class=PillMotion height=5 width="70%" background-color="#1A1A1A" border-radius=2.5 corner-shape="-exact-continuous"
-          overflow="hidden" position="relative"
-          view position="absolute" inset=0 background-color="#1A1A1A"
-          // Rests at 0 (-100%): a scroll past the top, before the timeline's range, shows the
-          // base style, which must be an empty bar and not a full one.
-          view position="absolute" inset=0 background-color="#9E9E9E" translate="-100% 0px"
-            animation="spFill 1s linear both" animation-timeline="--sp" testId="progress-fill"
-          view position="absolute" inset=0 background-color="#9E9E9E" opacity=(frozen or bottom ? 1 : 0) testId="progress-full"
+        // The percentage and the bar are drawn by a surface from the scroll offset, with no scroll
+        // timeline: the host resets those while the content is past its end.
+        // Its size is fixed (the row's width when expanded) and it stays centred on the row, which clips
+        // it: a canvas that took the pill's resize would redraw at the final width on the first frame,
+        // the bar gone while the pill is still wide.
+        canvas class=PillMotion surface=scroll_progress_meter(offset, range) position="absolute" left="50%"
+          top="50%" margin-left=-84.5 margin-top=-9 width=169 height=18 aria-hidden=true testId="progress-meter"
       view class=PillMotion position="absolute" top=5 left=5 right=4.66667 bottom=4.66667 border-radius=29.49 corner-shape="-exact-continuous"
         background-color="color(display-p3 0.1804 0.1765 0.1804)"
         opacity=(isExpanded(progress) ? 0 : 1)

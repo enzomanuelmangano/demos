@@ -10,4 +10,4 @@ test "scrolling widens the pill into a progress bar"
   tap "scroll-progress-scroll" drag 0 -300
   clock settle
   expect tree has "progress-bar-area"
-  expect tree has "progress-fill"
+  expect tree has "progress-meter"

@@ -182,6 +182,7 @@ pub static REGISTRY: Registry = Registry {
         ("pomodoro_timer", 1, pomodoro_timer::surface),
         ("prequel_slider", 2, prequel_slider::surface),
         ("radar_chart", 10, radar_chart::surface),
+        ("scroll_progress_meter", 2, scroll_progress_text::meter),
         ("scroll_progress_text", 1, scroll_progress_text::surface),
         ("scroll_transition_3d", 0, scroll_transition_3d::surface),
         ("scrollable_bottom_sheet", 0, scrollable_bottom_sheet::surface),

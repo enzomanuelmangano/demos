@@ -7,6 +7,10 @@
 //! - The column's total height is posted once as `height:<pt>`, so the scroll view sizes to it.
 //!
 //! Input: the content width.
+//!
+//! `meter` is the pill's percentage and progress bar, drawn from the scroll offset and the scroll
+//! range: the bar is never a scroll-driven animation, which the host resets while the content is
+//! past its end.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
@@ -142,6 +146,95 @@ impl Surface for ScrollProgressText {
     }
 }
 
+/// The meter's label column, the bar's share of the row and its height, in points.
+const LABEL_WIDTH: f32 = 50.0;
+const BAR_SHARE: f32 = 0.7;
+const BAR_HEIGHT: f32 = 5.0;
+const LABEL_SIZE: f32 = 15.0;
+const LABEL_LINE: f32 = 18.0;
+
+/// How far through the scroll, 0 to 1: the same clamp whatever the offset, so a bounce past the end
+/// holds 1 and a pull past the top holds 0.
+pub fn progress(offset: f32, range: f32) -> f32 {
+    if range.is_finite() && range > 0.0 && offset.is_finite() {
+        (offset / range).clamp(0.0, 1.0)
+    } else {
+        0.0
+    }
+}
+
+/// The percentage the label shows, the nearest whole one.
+pub fn percent(progress: f32) -> u32 {
+    (progress * 100.0).round() as u32
+}
+
+/// The fill's width in points for a track of `track` points.
+pub fn fill_width(progress: f32, track: f32) -> f32 {
+    track * progress
+}
+
+/// The meter surface: inputs are the scroll offset and the scroll range (content less viewport), in points.
+pub fn meter() -> Box<dyn Surface> {
+    Box::new(Meter::default())
+}
+
+#[derive(Default)]
+struct Meter {
+    offset: f32,
+    range: f32,
+    font: Option<Font>,
+    canvas: Canvas,
+    renderer: Renderer,
+}
+
+impl Surface for Meter {
+    fn bind(&mut self, inputs: &[Value], _: Option<f64>) -> Result<(), SurfaceError> {
+        self.offset = inputs.first().and_then(|v| v.as_number()).unwrap_or(0.0) as f32;
+        self.range = inputs.get(1).and_then(|v| v.as_number()).unwrap_or(0.0) as f32;
+        Ok(())
+    }
+
+    fn agent(&mut self, _request: &str) -> Option<String> {
+        let p = progress(self.offset, self.range);
+        Some(format!("{{\"progress\":{p},\"percent\":{}}}", percent(p)))
+    }
+
+    fn render(
+        &mut self,
+        frame: &Frame,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        encoder: &mut wgpu::CommandEncoder,
+        target: &wgpu::TextureView,
+        format: wgpu::TextureFormat,
+    ) -> bool {
+        if self.font.is_none() {
+            self.font = draw2d::match_ui_font(LABEL_SIZE, 400.0);
+        }
+        let Some(font) = self.font.as_ref() else { return false };
+        let p = progress(self.offset, self.range);
+        let c = &mut self.canvas;
+        c.begin(frame.scale);
+        // The label and the bar sit as a centred row, the bar a share of the row's width.
+        let track = BAR_SHARE * frame.width;
+        let x0 = ((frame.width - LABEL_WIDTH - track) / 2.0).max(0.0);
+        let label = format!("{}%", percent(p));
+        let lh = gfx::line_height(font);
+        let top = (frame.height - LABEL_LINE) / 2.0 + (LABEL_LINE - lh) / 2.0;
+        let text_x = x0 + (LABEL_WIDTH - font.measure_text(&label).width) / 2.0;
+        c.draw_text(&label, text_x, gfx::baseline(font, top), font, &Paint::fill(Color::hex(0x9E9E9E)));
+        let (bx, by) = (x0 + LABEL_WIDTH, (frame.height - BAR_HEIGHT) / 2.0);
+        c.draw_continuous_rrect(bx, by, track, BAR_HEIGHT, BAR_HEIGHT / 2.0, &Paint::fill(Color::hex(0x1A1A1A)));
+        c.save();
+        c.clip_continuous_rrect(bx, by, track, BAR_HEIGHT, BAR_HEIGHT / 2.0);
+        c.draw_rect(bx, by, fill_width(p, track), BAR_HEIGHT, &Paint::fill(Color::hex(0x9E9E9E)));
+        c.restore();
+        let (pw, ph) = frame.pixels();
+        self.renderer.draw(device, queue, encoder, &self.canvas, target, format, pw, ph, wgpu::Color::TRANSPARENT);
+        false
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -163,5 +256,64 @@ mod tests {
         assert!((text_side(4.0 * 16.70703125, 3.0) - 67.0).abs() < 1e-4);
         // Font metrics differ by host, so the height is only checked to a range.
         assert!(height > 1500.0 && height < 2500.0, "{height}");
+    }
+
+    #[test]
+    fn the_bar_follows_the_clamped_offset() {
+        // Below the top, the top, the middle, the end, past the end: never empty at the end.
+        let range = 1000.0;
+        let track = 118.3;
+        for (offset, want) in [(-40.0, 0.0), (0.0, 0.0), (500.0, 0.5), (999.0, 0.999), (1000.0, 1.0), (1001.0, 1.0), (1060.0, 1.0), (1e9, 1.0)] {
+            let p = progress(offset, range);
+            assert_eq!(p, want, "offset {offset}");
+            assert!((fill_width(p, track) - track * want).abs() < 1e-4);
+        }
+        assert_eq!(fill_width(progress(1060.0, range), track), track);
+        assert_eq!(fill_width(progress(-40.0, range), track), 0.0);
+        // A degenerate range or a broken offset reads as the start.
+        assert_eq!(progress(10.0, 0.0), 0.0);
+        assert_eq!(progress(f32::NAN, range), 0.0);
+        assert_eq!((percent(0.0), percent(0.5), percent(0.995), percent(1.0)), (0, 50, 100, 100));
+    }
+
+    fn meter_frame() -> Frame {
+        Frame { width: 169.0, height: 18.0, scale: 3.0, now_ms: 0.0, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: 0, headroom: 1.0 }
+    }
+
+    /// Light pixels of the bar's row, as (first, last) device x of the fill, or None when empty.
+    fn fill_span(img: &exact_gpu::fixture::Pixels) -> Option<(u32, u32)> {
+        let y = img.height / 2;
+        let xs: Vec<u32> = (0..img.width).filter(|&x| img.at(x, y)[0] > 0x60 && img.at(x, y)[3] > 200).collect();
+        // The label's pixels are left of the bar; keep what starts at or after the label column.
+        let bar_from = (LABEL_WIDTH * 3.0) as u32;
+        let xs: Vec<u32> = xs.into_iter().filter(|&x| x >= bar_from + 30).collect();
+        Some((*xs.first()?, *xs.last()?))
+    }
+
+    #[test]
+    fn the_bar_draws_at_the_start_the_middle_and_past_the_end() {
+        let gpu = match exact_gpu::fixture::device() {
+            Ok(gpu) => gpu,
+            Err(error) => return eprintln!("{error}; skipped"),
+        };
+        let mut s = meter();
+        let mut spans = Vec::new();
+        for (name, offset) in [("0", 0.0), ("50", 500.0), ("100", 1000.0), ("bounce", 1060.0), ("top-pull", -40.0)] {
+            s.bind(&[Value::Number(offset), Value::Number(1000.0)], None).unwrap();
+            let (img, _) = exact_gpu::fixture::render(&gpu, s.as_mut(), &meter_frame()).unwrap();
+            gfx::save_over(&img, &format!("scroll-progress-meter-{name}"), [46, 45, 46]);
+            spans.push(fill_span(&img));
+        }
+        assert_eq!(spans[0], None, "empty at 0");
+        let mid = spans[1].expect("half full");
+        let full = spans[2].expect("full at 100");
+        assert_eq!(spans[3], Some(full), "a bounce past the end draws the same full bar");
+        assert_eq!(spans[4], None, "a pull past the top draws the same empty bar");
+        // The track starts at 150 + x0 device px; the half fill ends at half of it.
+        let track = (BAR_SHARE * 169.0 * 3.0) as u32;
+        assert!(full.1 - full.0 + 30 + 3 >= track - 8, "full width {full:?} of {track}");
+        let half = (mid.1 + 1 - 150 - ((169.0 - 50.0 - BAR_SHARE * 169.0) / 2.0 * 3.0) as u32) as f32 / track as f32;
+        assert!((half - 0.5).abs() < 0.03, "{half}");
+        assert_eq!(s.agent("{}").unwrap(), "{\"progress\":0,\"percent\":0}");
     }
 }
