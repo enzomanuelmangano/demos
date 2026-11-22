@@ -92,14 +92,37 @@ missing; the web's system face is Inter, OFL, subset 250 KB, a stand-in for SF, 
 | cherry-blossom-qrcode | PERFECT, web limit | tap folds to the QR and back, long press sends the creeper (blast, reassembly), the field retypes the code. Limit: no software keyboard on a desktop, so the field's keyboard toolbar sits at the screen's bottom and the tree's space above an absent keyboard stays empty. |
 | github-terrain | PERFECT | tap springs to the terrain and back, the switch swaps data. Note (iOS too, not web): RN's switch has an off track #C8CCC9, the port's is the system's (faint on the light page). |
 | notion-qrcode | PERFECT | CONNECT / SHARE labels drawn (font fix), the wave to the QR and back, 60 fps touch. Labels are Inter on the web. |
-| scrollable-shapes | PERFECT, desktop note | swipes morph sphere, cube, torus, heart; dots follow; 60 fps. A trackpad's sideways scroll does nothing (a surface hears only pointers): see the wheel note below. |
-| sphere-waves ... | next | Continue here (its pinch needs the wheel note on a desktop), then calendar-days, blur-cards, liquid-glass-playground, ... in demos.contract order. |
+| scrollable-shapes | PERFECT | swipes morph sphere, cube, torus, heart; dots follow; 60 fps. A trackpad's sideways scroll swipes too (the trackpad mapping). |
+| sphere-waves | PERFECT | tap right / left walks the pattern history (selection haptic each), pinch nearer / farther and springs back (heavy haptic under 0.3), touch and trackpad; 60 fps. As on the iPhone (shared Rust, RN's Tap allows any distance), a pinch shorter than 500 ms also counts as a tap. |
+| calendar-days | PERFECT (draw2d fix) | slider drag flips pages, a haptic per day, trackpad drags the slider, the slider zone keeps the close. Fixed: the 31 lost the 3's lower half on the web (draw2d, see the shared fixes). |
+| blur-cards | PERFECT | press fans the five cards out and back; matches the iPhone frame at rest; 60 fps (vsync) desktop and touch. |
+| liquid-glass-playground | PERFECT (fixed) | the pane follows the pan at half travel, haptics ramp, springs back, strip-only close; trackpad pulls it. Fixed: clear glass was darker and flatter than the iPhone's (mean 27 / 59 / 12 vs 40 / 74 / 20). |
+| airbnb-flip-interaction | PERFECT | press flips the card (3D turn) and swaps the pages with their rise-and-fade; flips back; 60 fps. |
+| stacked-carousel | PERFECT | swipes page the pile both ways, the seven-dot window follows, trackpad swipes; 60 fps. (The atlas frame predates the dot window.) |
+| github-contributions | PERFECT | press sweeps the squares to their greens and back; 60 fps touch and desktop. |
+| draggable-panel | PERFECT | spring picks, the panel thrown to the nearest corner, close shrinks it to the settings button under the close button (as on the iPhone: safe top + 56), the button grows it back; 60 fps. |
+| online-offline | PERFECT | each press moves a random avatar across, the pills resize; 60 fps (vsync), no late frame without screenshots. |
+| ios-home-bouncy ... | next | Continue here, then time-machine, magnet-spring, sudoku (full game left), clock-time-picker, ... in demos.contract order. |
 
-Wheel note (proposed, not done): a GPU surface hears pointers and wheels, and only art-gallery reads a wheel (a pinch,
-gpu/src/art_gallery.rs `Wheel`). A generic page-module mapping would serve every surface: a wheel over a GPU canvas
-becomes synthetic touch pointers (a ctrl-wheel two fingers spreading about the pointer, a scroll one finger dragging,
-lifted 120 ms after the wheel stills), dispatched on the canvas, marked so the demo card's close pan ignores them; the
-pointer wrapper in modules/web/index.js already maps their coordinates. Art-gallery's Rust wheel would then be removed.
+Trackpad (done, 55fa5849 + 6d29e48f): over anything in a demo that claims touches (computed touch-action other than
+auto: a GPU canvas, a Contract pan, a host drag) a wheel becomes synthetic touches: a ctrl-wheel (trackpad pinch) is
+two touches spreading about the pointer (50 pt either side, Chrome's step), a scroll one touch dragging with the
+content; they lift 120 ms after the wheel stills (under 10 pt travelled: cancelled, never a tap), are untrusted (the
+close pan ignores them; capturing them is a no-op) and held off by a real touch. A DOM scroller that can scroll the
+wheel's way, and an axis left to the browser (pan-x / pan-y), keep the wheel. art-gallery's own Rust wheel is gone.
+A mouse wheel's 100 px notches arrive as jumps of the touch (a trackpad's deltas are fine).
+
+Shared fixes (this pass): draw2d (08f75964): a path that was the first user of a path clip (a continuous-corner
+clip, any clip_path) was drawn as the clip's outline: use_msaa_clips borrowed the draw's verbs buffer. Off Apple
+every glyph is an outline, so clipped text lost glyphs on the web; on the iPhone only a non-convex path that first
+uses a path clip changes (to what it should have drawn); draw2d 50 and demos-gpu 362 tests unchanged. The page
+module no longer touches the DOM when the build imports it in Bun (`Element is not defined` had stopped the dev
+server's Rust rebuilds: gpu/ edits did not reach the dev page). glass-pane's clear style: half-alpha tint, no wash,
+saturation 120%.
+
+Measuring: frame stats here are taken with vsync on (Chrome headless, real GPU, 60 Hz) and no screenshots during
+the run; uncapped runs (`--disable-gpu-vsync --disable-frame-rate-limit`) flood the GPU at ~2400 rAF/s and show
+periodic 35 ms stalls that a real display never sees (blur-cards).
 
 ## Per demo
 
