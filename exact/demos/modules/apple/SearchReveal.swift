@@ -410,8 +410,9 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
             var s = GlassPaneStyle()
             s.glass = "regular"
             s.radius = Pull.barHeight / 2
-            // Interactive glass, as the system's controls: it swells and shimmers under the finger.
-            s.interactive = true
+            // Static while it rides the pull: interactive glass cost the first pull 60 ms and every touch more.
+            // It turns interactive once the search has landed (`glassInteractive`).
+            s.interactive = false
             return s
         }()
         bar.addSubview(glass)
@@ -911,8 +912,20 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
                           (t1 - t0) * 1000, (t2 - t1) * 1000, (t3 - t2) * 1000))
     }
 
+    /// Interactive glass, as the system's controls (it swells and shimmers under the finger), only while the
+    /// search is open: the effect is set again, so it is done at rest, never under the pull.
+    private func glassInteractive(_ on: Bool) {
+        guard glass.style.interactive != on, !Self.glassStatic else { return }
+        let t0 = CACurrentMediaTime()
+        UIView.performWithoutAnimation { glass.style.interactive = on }
+        Self.trace(String(format: "glass interactive %d in %.1f ms", on ? 1 : 0, (CACurrentMediaTime() - t0) * 1000))
+    }
+    /// Launch argument `-searchGlassStatic YES`: the field's glass is never interactive, for an A/B.
+    private static let glassStatic = UserDefaults.standard.bool(forKey: "searchGlassStatic")
+
     private func takeKeys(since t0: CFTimeInterval) {
         guard committed else { return }
+        glassInteractive(true)
         let t1 = CACurrentMediaTime()
         let ok = field.becomeFirstResponder()
         Self.trace(String(format: "focus %d after %.1f ms, becomeFirstResponder %.1f ms", ok ? 1 : 0, (t1 - t0) * 1000, (CACurrentMediaTime() - t1) * 1000))
@@ -984,6 +997,7 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         animate(reveal: 0, pull: 0, ms: Pull.exitMs, delay: Pull.exitDelay, curve: easeInOutCubic) { [weak self] in
             guard let self else { return }
             self.committed = false
+            self.glassInteractive(false)
             self.recognizer.isEnabled = true
             self.field.text = ""
             self.filter()
