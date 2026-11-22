@@ -36,7 +36,6 @@ enum PhoneFeedback {
         FeedbackQueue.shared.flush()
     }
 
-    /// Also installed by the home's `home-shake` view: the home hears the shake before any demo has opened.
     static func installShake() {
         struct Once { static let done: Void = {
             let cls = UIApplication.self
@@ -51,8 +50,7 @@ enum PhoneFeedback {
         if LayerSkeleton.dismiss() { return }
         if open, sheet.map({ $0.viewIfLoaded?.window == nil && !$0.isBeingPresented }) ?? true { open = false }
         guard !open, !recording else { return }
-        // No demo on screen: the shake belongs to the home (HomeShake.swift).
-        guard let card, card.window != nil, let window = card.window else { HomeShake.shaken(); return }
+        guard let card, card.window != nil, let window = card.window else { return }
         let slug = card.slug.isEmpty ? (LaunchSession.current?.slug ?? "") : card.slug
         guard !slug.isEmpty, var top = window.rootViewController else { return }
         while let next = top.presentedViewController, !next.isBeingDismissed { top = next }

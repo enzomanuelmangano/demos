@@ -10,7 +10,7 @@
 //
 // The same one-"|"-list props as `search-reveal`: `slugs` `demo-names` `captions` `arts` `inspirations` (all the demos),
 // `grid-page` `grid-per` (this page's range: [page * per, (page + 1) * per)), `grid-cols`, `cell-width`, `art-size`,
-// `badge-approved` `badge-changed` (the slugs, "|"-joined), `scroller` (the pager's `data-scroller` name).
+// `badge-changed` (the slugs, "|"-joined), `scroller` (the pager's `data-scroller` name).
 // Events: `change(slug)` an icon was tapped; `message("share:<slug>")`, `message("inspiration:<url>")`,
 // `message("code:<slug>")` a long-press menu row was chosen.
 #if os(iOS)
@@ -38,7 +38,7 @@ final class AppIconView: UIView {
     private(set) var name = ""
     private(set) var inspiration = ""
     private var badge: UIView?
-    private var badgeKind = ""
+    private var changed = false
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -76,34 +76,21 @@ final class AppIconView: UIView {
         label.frame = CGRect(x: snap(frame.minX + (cell - text) / 2) - frame.minX, y: size + 6 - 1.0 / 3, width: text, height: ceil(label.font.lineHeight))
     }
 
-    func setBadge(_ kind: String, cell: CGFloat, size: CGFloat) {
-        guard kind != badgeKind else { return }
-        badgeKind = kind
+    func setChanged(_ on: Bool, cell: CGFloat, size: CGFloat) {
+        guard on != changed else { return }
+        changed = on
         badge?.removeFromSuperview()
         badge = nil
-        guard kind == "changed" || kind == "approved" else { return }
+        guard on else { return }
         let disc = UIView(frame: CGRect(x: snapDown(frame.minX + (cell + size) / 2 - 14) - frame.minX, y: -6, width: 20, height: 20))
         disc.isUserInteractionEnabled = false
         disc.layer.cornerRadius = 10
         disc.layer.borderWidth = 1.5
         disc.layer.borderColor = UIColor.white.cgColor
-        disc.backgroundColor = kind == "changed" ? UIColor(red: 1, green: 0.624, blue: 0.039, alpha: 1) : UIColor(red: 0.204, green: 0.78, blue: 0.349, alpha: 1)
+        disc.backgroundColor = UIColor(red: 1, green: 0.624, blue: 0.039, alpha: 1)
         disc.isAccessibilityElement = true
-        disc.accessibilityLabel = kind == "changed" ? "Changed" : "Approved"
-        disc.accessibilityIdentifier = "\(kind)-\(slug)"
-        if kind == "approved" {
-            // The check: a 6 x 11 box's right and bottom borders (2 pt, white), turned 45 degrees and lifted 2 pt.
-            let check = CAShapeLayer()
-            let path = UIBezierPath()
-            path.move(to: CGPoint(x: 1, y: -5.5)); path.addLine(to: CGPoint(x: 3, y: -5.5)); path.addLine(to: CGPoint(x: 3, y: 5.5))
-            path.addLine(to: CGPoint(x: -3, y: 5.5)); path.addLine(to: CGPoint(x: -3, y: 3.5)); path.addLine(to: CGPoint(x: 1, y: 3.5))
-            path.close()
-            check.path = path.cgPath
-            check.fillColor = UIColor.white.cgColor
-            check.position = CGPoint(x: 10, y: 10)
-            check.setAffineTransform(CGAffineTransform(translationX: 0, y: -2).rotated(by: .pi / 4))
-            disc.layer.addSublayer(check)
-        }
+        disc.accessibilityLabel = "Changed"
+        disc.accessibilityIdentifier = "changed-\(slug)"
         addSubview(disc)
         badge = disc
     }
@@ -131,7 +118,7 @@ final class AppIconGridView: UIView, UIContextMenuInteractionDelegate, UIGesture
         var slugs: [String] = [], names: [String] = [], captions: [String] = [], arts: [String] = [], inspirations: [String] = []
         var from = 0, to = 0, cols = 4
         var cell: CGFloat = 0, size: CGFloat = 0
-        var approved = Set<String>(), changed = Set<String>()
+        var changed = Set<String>()
         var scroller = ""
         var page = 0
     }
@@ -172,7 +159,6 @@ final class AppIconGridView: UIView, UIContextMenuInteractionDelegate, UIGesture
         next.cols = max(1, Int(number("grid-cols", 4)))
         next.cell = CGFloat(number("cell-width"))
         next.size = CGFloat(number("art-size"))
-        next.approved = Set(PropLists.split(props["badge-approved"]))
         next.changed = Set(PropLists.split(props["badge-changed"]))
         next.scroller = props["scroller"] ?? ""
         let sameIcons = next.slugs[next.from..<next.to] == spec.slugs[min(spec.from, spec.slugs.count)..<min(spec.to, spec.slugs.count)]
@@ -194,8 +180,7 @@ final class AppIconGridView: UIView, UIContextMenuInteractionDelegate, UIGesture
 
     private func refreshBadges() {
         for icon in icons {
-            let kind = spec.changed.contains(icon.slug) ? "changed" : spec.approved.contains(icon.slug) ? "approved" : ""
-            icon.setBadge(kind, cell: spec.cell, size: spec.size)
+            icon.setChanged(spec.changed.contains(icon.slug), cell: spec.cell, size: spec.size)
         }
     }
 
@@ -211,8 +196,7 @@ final class AppIconGridView: UIView, UIContextMenuInteractionDelegate, UIGesture
             icon.set(slug: spec.slugs[at], name: at < spec.names.count ? spec.names[at] : "", caption: at < spec.captions.count ? spec.captions[at] : "",
                      art: at < spec.arts.count ? spec.arts[at] : "", inspiration: at < spec.inspirations.count ? spec.inspirations[at] : "",
                      cell: spec.cell, size: spec.size)
-            let kind = spec.changed.contains(icon.slug) ? "changed" : spec.approved.contains(icon.slug) ? "approved" : ""
-            icon.setBadge(kind, cell: spec.cell, size: spec.size)
+            icon.setChanged(spec.changed.contains(icon.slug), cell: spec.cell, size: spec.size)
             icon.square.activate = { [weak self, weak icon] in if let icon { self?.open(icon) } }
             addSubview(icon)
             icons.append(icon)

@@ -13,30 +13,18 @@ fn pageCount(n: number, per: number): number = per > 0 ? ceil(n / per) : 0
 component Springboard
   props
     demos: Demo[]
-    approved: string[]
     changed: string[]
     open: action
-    // A shake on the home (HomeShake.swift) hides the approved demos, a second one shows all. The state is the root's (it persists).
-    hideResolved: bool
-    toggleResolved: action
   state boxW = 0
   state boxH = 0
-  derive shown = hideResolved ? demos.filter(d => not approved.includes(d.slug)) : demos
   derive per = perPage(boxW, boxH)
-  derive pages = boxW > 0 and boxH > 0 ? range(pageCount(shown.length, per)) : []
-  // The pull-to-search's rows, as the native view takes them: one "|" list per field.
+  derive pages = boxW > 0 and boxH > 0 ? range(pageCount(demos.length, per)) : []
+  // The demos' rows, as the native views (the icon grid and the pull-to-search) take them: one "|" list per field.
   derive searchSlugs = demos.map(d => d.slug).join("|")
   derive searchNames = demos.map(d => d.name).join("|")
   derive searchLabels = demos.map(d => d.label).join("|")
   derive searchIcons = demos.map(d => d.icon).join("|")
   derive inspirations = demos.map(d => d.inspiration).join("|")
-  // The icon grid's rows follow `shown`; the search above keeps every demo.
-  derive gridSlugs = hideResolved ? shown.map(d => d.slug).join("|") : searchSlugs
-  derive gridNames = hideResolved ? shown.map(d => d.name).join("|") : searchNames
-  derive gridLabels = hideResolved ? shown.map(d => d.label).join("|") : searchLabels
-  derive gridIcons = hideResolved ? shown.map(d => d.icon).join("|") : searchIcons
-  derive gridInspirations = hideResolved ? shown.map(d => d.inspiration).join("|") : inspirations
-  derive approvedKey = approved.join("|")
   derive changedKey = changed.join("|")
 
   // The icons' long-press menu rows (icon-grid, AppIcon.swift) arrive as "share:<slug>", "inspiration:<url>" or "code:<slug>".
@@ -74,16 +62,13 @@ component Springboard
                 scroll-snap-stop="always" padding="16px 22px 0" box-sizing="border-box"
                 // The whole page is one native view (modules/apple/AppIcon.swift): its icons, their badges, the press, the
                 // long-press menu and the launch's squares. Page 1 builds in the first commit, the rest right after it.
-                icon-grid scroller="pager" slugs=gridSlugs demo-names=gridNames captions=gridLabels arts=gridIcons
-                  inspirations=gridInspirations grid-page=p grid-per=per grid-cols=gridCols(boxW) cell-width=cellWidth(boxW)
-                  art-size=iconSize(boxW) badge-approved=approvedKey badge-changed=changedKey change=open message=iconMenu
+                icon-grid scroller="pager" slugs=searchSlugs demo-names=searchNames captions=searchLabels arts=searchIcons
+                  inspirations=inspirations grid-page=p grid-per=per grid-cols=gridCols(boxW) cell-width=cellWidth(boxW)
+                  art-size=iconSize(boxW) badge-changed=changedKey change=open message=iconMenu
                   width="100%" flex=1 min-height=0 testId=`icons-${p}`
           // Page dots: native, they read the pager's offset in the same frame as the scroll (PageDots.swift).
           if pages.length > 1
             page-dots scroller="pager" count=pages.length height=44 flex-shrink=0 aria-hidden=true
-        // A shake with no demo open toggles `hideResolved`; the view rewinds the pager and shows the pill (HomeShake.swift).
-        home-shake scroller="pager" hiding=hideResolved count=shown.length change=toggleResolved
-          position="absolute" left=0 top=0 width=0 height=0 aria-hidden=true testId="home-shake"
         // Pull down on the pager to search: a native overlay (SearchReveal.swift) blurs the home, shows the field
         // and the results, and filters as you type, all off the plan. It passes every touch through until
         // the search is committed; a tapped result arrives here as `change(slug)` and opens like an icon.

@@ -47,15 +47,9 @@ source feedbackEdit(slug: string, id: string, comment: string, status: string) a
   method "POST"
   body json
 
-// The demos the owner marked "✅ Looks good" from the phone's feedback sheet, on the Mac's LAN
-// address (the phone's feedback host): a green check on each one's home icon. With the server
-// unreachable, no badges.
-source approvedDemos() as shape string[]
-  url "http://192.168.1.206:5350/approved"
-  pointer "/slugs"
-
 // The demos with a live fix since the owner last opened them (orange on the home icon), and the
-// open that clears it: same host as approvedDemos.
+// open that clears it, on the Mac's LAN address (the phone's feedback host). With the server
+// unreachable, no badges.
 source changedDemos() as shape string[]
   url "http://192.168.1.206:5350/changed"
   pointer "/slugs"
@@ -155,10 +149,6 @@ component Demos
   derive env = DemoEnv(width=host.width, height=host.height, safeTop=0, safeBottom=0, epoch=time.epochAtZero, utcOffset=time.utcOffset, seed=time.seed, reducedMotion=host.prefersReducedMotion, timers=timers.fired, tile=false)
   // "Show Unstable" (the General tray): the work-in-progress demos are listed only with it on.
   state showUnstable = false persist
-  // A shake on the home hides the approved demos (home/springboard.contract, HomeShake.swift).
-  state hideResolved = false persist
-  action toggleResolved(text: string)
-    hideResolved = not hideResolved
   resource feedback = feedbackNotes() when atlasShown as shape FeedbackNote[] else empty()
   mutation noted as shape FeedbackNote refreshes feedback
   derive desk = host.pointer == "fine" and host.width >= 600
@@ -166,19 +156,15 @@ component Demos
   // (DemoLaunch's flight is ~0.7-1 s): an ask is a whole-plan apply on the main thread (10-14 ms on the
   // simulator), so it never lands inside a flight or a scroll, and there is no periodic poll.
   derive homeShown = top(nav).name == "home" and not desk
-  resource approved = approvedDemos() when homeShown as shape string[] else empty()
   // The last answers ride in storage (a `persist` state is in the first commit, a resource's own answer is not: this source is
   // declared here), so the badges are in the home's first frame and the ask only changes what changed.
-  state savedApproved: string[] = [] persist
   state savedChanged: string[] = [] persist
-  derive approvedSlugs = failed(approved) ? [] : (current(approved) ? approved : savedApproved)
   action keepBadges
-    savedApproved = approved
     savedChanged = changed
-  task keepingBadges when current(approved) and current(changed) key=`${approved.join(",")}|${changed.join(",")}`
+  task keepingBadges when current(changed) key=changed.join(",")
     change(keepBadges)
-  task approvedOnHome when homeShown key=top(nav).id
-    after(1500, refreshApproved, wait=idle, max=6000)
+  task changedOnHome when homeShown key=top(nav).id
+    after(1500, refreshChanged, wait=idle, max=6000)
   // The GPU module loads when the first canvas exists (shader registry, device: ~85 ms on the simulator),
   // which was the first Rust demo's open. A 1 px canvas on the home, mounted once the home has settled,
   // loads it there, and its surface (gpu/src/warm.rs) then compiles every demo's pipelines in the background.
@@ -189,8 +175,7 @@ component Demos
     after(4000, warmGpu, wait=idle, max=10000)
   resource changed = changedDemos() when homeShown as shape string[] else empty()
   derive changedSlugs = failed(changed) ? [] : (current(changed) ? changed : savedChanged)
-  action refreshApproved
-    refresh approved
+  action refreshChanged
     refresh changed
   // A demo opened on the phone is seen: its orange badge goes at the home's next ask.
   mutation seen as shape SnapAck
@@ -288,7 +273,7 @@ component Demos
             closable=false, leave=back, notes=feedback, add=addNote, edit=editNote)
         if e.name == "home" and not desk
           column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" position="absolute" inset=0
-            Springboard(demos=demos, approved=approvedSlugs, changed=changedSlugs, open=open, hideResolved=hideResolved, toggleResolved=toggleResolved)
+            Springboard(demos=demos, changed=changedSlugs, open=open)
             if gpuWarm
               canvas surface=warm() width=1 height=1 position="absolute" left=0 top=0 pointer-events="none"
                 aria-hidden=true testId="gpu-warm"

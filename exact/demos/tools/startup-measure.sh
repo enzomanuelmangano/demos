@@ -7,22 +7,19 @@
 #        UIKit loads ~60 accessibility bundles at every launch, ~1 s of main thread a phone never pays.
 #
 # Per run: terminate, start `simctl io recordVideo` and `log stream` (journal), `simctl launch`, stop after
-# SECONDS (default 10), then ffmpeg (30 fps; grey 151x328 for luma, rgb 302x656 for the badges) and:
+# SECONDS (default 10), then ffmpeg (30 fps, grey 151x328 for luma) and:
 #   t_launch_screen   video time the flat dark launch screen (#141414, luma ~20) first shows
 #   ls_to_first       launch screen -> first frame that is not the launch screen (the home starts to fade in)
 #   ls_to_full        launch screen -> first frame whose grid luma is >= 95% of the settled home
-#   (the 200 ms crossfade from the launch screen is undone per frame before cells and badges are judged;
+#   (the 200 ms crossfade from the launch screen is undone per frame before the cells are judged;
 #   "home frame" below = the first frame at 30% of the way from the launch screen to the settled home)
 #   placeholders      icon cells (24 of page 1) darker than 60% of their settled value, counted in the first
 #                     home frame; `placeholder_frames` = frames after it that still have one
 #                     (dark icons: |luma - settled| > 12 instead, since 60% of ~15 is invisible)
-#   badges_first      badge discs (green/orange rings at the icons' corners) present in the first home frame
-#                     of the settled count `badges_final`; `badges_full_ms` = when the last one shows,
-#                     relative to the first home frame
 #   flash_frames      frames after the first home frame where the top-left corner of the first row (where the
 #                     pull-to-search field would show) differs from its settled look
 #   journal timeline (s after the `simctl launch` command): first process line, Exact's first journal line,
-#                     native modules loaded, still-art loading, approved resource landed, first commit
+#                     native modules loaded, still-art loading, first commit
 #                     (route built); missed frames: the first `frame late` line after it (= the first commit) and the
 #                     sum of the lines in the 2 s after it.
 # The video clock is not the epoch clock (the recorder runs ~1-2 s ahead), so every video figure is
@@ -159,40 +156,6 @@ if shown is not None:
             res.setdefault("flash_start_ms", round((i - shown) * 1000 / 30))
     res["flash_frames"] = flash
 
-# ---- pass 2: badges, from the rgb frames (302 x 656)
-RW, RH = 302, 656
-def classify(r, g, b):
-    if g > r + 30 and g > b + 20 and g > 60: return "g"
-    if r > g + 30 and g > b + 15 and r > 100: return "o"
-    return ""
-RING = [(0.0163 * 920 / 920 * k[0], 0.0163 * 920 / 2000 * k[1]) for k in
-        [(1, 0), (0.7, 0.7), (0, 1), (-0.7, 0.7), (-1, 0), (-0.7, -0.7), (0, -1), (0.7, -0.7)]]
-def disc(f, c, r, a=1.0):
-    cx = X0 + c * XP + XW - 0.0076
-    cy = Y0 + r * YP + 0.004
-    hit = 0
-    for dx, dy in RING:
-        x, y = int((cx + dx) * RW), int((cy + dy) * RH)
-        if not (0 <= x < RW and 0 <= y < RH):
-            continue
-        o = (y * RW + x) * 3
-        u = [(f[o + k] - lmean * (1 - a)) / a for k in range(3)]   # undo the launch screen's crossfade
-        if classify(u[0], u[1], u[2]): hit += 1
-    return hit >= 6
-rgb_counts = []
-expected = None
-rgbf = list(frames(RW, RH, "rgb24"))
-exp = {(c, r) for c in range(COLS) for r in range(ROWS) if disc(rgbf[-1], c, r)}
-for i, f in enumerate(rgbf):
-    a = min(1.0, max(0.02, (st[min(i, N - 1)][0] - lmean) / (fmean - lmean)))
-    rgb_counts.append(sum(1 for k in exp if disc(f, k[0], k[1], a)))
-res["badges_final"] = len(exp)
-if shown is not None and exp:
-    res["badges_first"] = rgb_counts[min(shown, len(rgb_counts) - 1)]
-    done = next((i for i in range(shown, len(rgb_counts)) if rgb_counts[i] >= len(exp)), None)
-    res["badges_full_ms"] = round((done - shown) * 1000 / 30) if done is not None else None
-    res["badges_in_first_frame"] = res["badges_first"] == len(exp)
-
 # ---- the journal
 ev = {}
 late = []
@@ -226,9 +189,6 @@ for line in open(logfile, errors="replace"):
             if mm: ev["modules_load_ms"] = float(mm.group(1))
         if "still-art" in msg and "loading" in msg: ev.setdefault("still_art_loading", rel)
         if "before first pixel" in msg: ev.setdefault("modules_made_before_first_pixel", rel)
-        if "fulfil" in msg and "(approved)" in msg:
-            ev.setdefault("approved_landed", rel)
-            ev["approved_epoch_line"] = msg.split("main: ", 1)[-1][:120]
         if "hatch route 0: built" in msg: ev.setdefault("first_commit_route", rel)
         if "frame late" in msg:
             mm = re.search(r"(\d+) missed", msg)
@@ -285,9 +245,6 @@ rows = [
  ("launch screen -> home fully bright (s)", lambda r: r["ls_to_full"]),
  ("icon placeholders in first home frame (of 24)", lambda r: r["placeholders"]),
  ("frames after it with a placeholder", lambda r: r["placeholder_frames"]),
- ("badges in first frame (of final count)", lambda r: r["badges_first"]),
- ("badges final count", lambda r: r["badges_final"]),
- ("last badge appears after first home frame (ms)", lambda r: r["badges_full_ms"]),
  ("search-band flash frames", lambda r: r["flash_frames"]),
  ("missed frames at first commit", lambda r: r["missed_at_first_commit"]),
  ("missed frames in the 2 s after it", lambda r: r["missed_first_2s"]),
@@ -303,7 +260,6 @@ rows = [
  ("journal: Exact first line (s after launch cmd)", lambda r: r["journal"]["exact_first_line"]),
  ("journal: native modules loaded", lambda r: r["journal"]["native_modules_loaded"]),
  ("journal: still-art loading", lambda r: r["journal"]["still_art_loading"]),
- ("journal: approved landed", lambda r: r["journal"]["approved_landed"]),
  ("journal: first commit (route built)", lambda r: r["journal"]["first_commit_route"]),
 ]
 summary = {"runs": len(runs), "ok": len(ok), "metrics": {}, "all": runs}
@@ -344,7 +300,7 @@ for i in $(seq 1 "$RUNS"); do
   python3 - "$OUT/run-$i.json" "$LOAD" <<'P2'
 import json, sys
 r = json.load(open(sys.argv[1])); r["load"] = float(sys.argv[2]); json.dump(r, open(sys.argv[1], "w"))
-print("run", sys.argv[1].split("-")[-1][:-5], {k: r.get(k) for k in ("ls_to_first", "ls_to_full", "placeholders", "badges_first", "badges_final", "flash_frames", "missed_at_first_commit", "probe_first_commit_ms", "missed_3s_after", "probe_missed_3s", "error")})
+print("run", sys.argv[1].split("-")[-1][:-5], {k: r.get(k) for k in ("ls_to_first", "ls_to_full", "placeholders", "flash_frames", "missed_at_first_commit", "probe_first_commit_ms", "missed_3s_after", "probe_missed_3s", "error")})
 P2
   [ -n "${KEEP:-}" ] && cp "$OUT/rec.mp4" "$OUT/rec-$i.mp4"
 done
