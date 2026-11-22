@@ -329,8 +329,14 @@ function launch(el, props, event) {
   };
   // The demo's icon on the page shown behind (the copy of the launcher this route draws), or none off the page.
   const findIcon = () => {
-    const img = screen.querySelector(`[data-testid="icon-${CSS.escape(p.slug)}"] img`);
     iconFrame = null;
+    // Opened from a search's results: out of (and back into) the row's icon.
+    const row = searchIcon(screen, p.slug);
+    if (row !== undefined) {
+      if (row) { iconFrame = row; icon = row.el; iconRadius = row.w * K.iconRadiusRatio; }
+      return;
+    }
+    const img = screen.querySelector(`[data-testid="icon-${CSS.escape(p.slug)}"] img`);
     if (!img) return;
     const f = frameIn(img, screen);
     if (f.w > 0 && f.x + f.w > 0 && f.x < sw && f.y + f.h > 0 && f.y < sh) { iconFrame = f; icon = img; iconRadius = f.w * K.iconRadiusRatio; }
@@ -500,6 +506,295 @@ function launch(el, props, event) {
   return {
     set(n) { const was = p.closing; p = n; if (n.closing === 'true' && was !== 'true') close(); },
     destroy() { stopFlight(); uninstall(); if (icon) icon.style.visibility = ''; },
+  };
+}
+
+// ---- Pull-to-search: modules/apple/SearchReveal.swift on the web --------------------------------------------------
+// A downward pull on the pager drives one reveal value 0...1 over 100 pt of damped travel: the icons and the dots ride
+// the finger on a rubber band and shrink a touch (the wallpaper stays), the home blurs (the radius grows as the
+// reveal's power 3.5: sharp at a quarter, strongest at commit), dims, the field slides in, the results fade in. Each
+// move writes transform and opacity only; the growing blur is three fixed backdrop blurs cross-faded by opacity, so no
+// frame re-rasterizes a filter of a new radius. Past the trigger (or flicked) the release lands the search: the field
+// narrows for Cancel and takes the keys, the results filter as you type, a tapped row opens its demo out of the row's
+// icon. Short of it the pull springs back on iOS's spring (damping 0.85, response 0.35 s) from the finger's speed.
+const PULL = {
+  trigger: 100, rubber: 260, disarm: 0.85, flick: 900, activate: 10, failX: 10, blur: [0.1, 1], blurPower: 3.5,
+  dimPower: 1.5, field: [0.15, 0.55], list: [0.35, 1], fieldRide: 0.4, listRide: 1, commitMs: 340, exitMs: 360, exitDelay: 60,
+  springDamping: 0.85, springResponse: 0.35, gridRubber: 0.55, gridShrink: 0.04, gridAway: 48, fieldDrop: 24, focusMs: 360,
+  barHeight: 48, barTop: 10, listGap: 24, rowPadding: 7, blurRadius: 30, maxDim: 0.28,
+};
+const BLUR_STEPS = [3, 10, 30];
+const span = (x, [a, b]) => clamp01((x - a) / (b - a));
+const smooth = (t) => t * t * (3 - 2 * t);
+const easeOutCubic = (t) => 1 - (1 - t) ** 3;
+const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
+// What a search shows, shared by the launcher's copies (the home's route and the one under an open demo), so the home a
+// closing card lands on shows the same search.
+const searchShared = { committed: false, query: '', grid: 0, scroll: 0 };
+const searches = new Set();
+// A committed search's row icon for `slug` on `screen` (the launch opens out of it and closes back into it), `null` when
+// that search does not list it, `undefined` when no search is committed there.
+const searchIcon = (screen, slug) => {
+  for (const s of searches) if (s.screen() === screen && s.committed()) return s.rowIcon(slug);
+  return undefined;
+};
+
+function searchReveal(el, props, event) {
+  const root = el.shadowRoot ?? el.attachShadow({ mode: 'open' });
+  root.innerHTML = `<style>
+:host{display:block;pointer-events:none}*{box-sizing:border-box;font-family:-apple-system,system-ui,sans-serif}
+.b{position:absolute;inset:0;opacity:0;visibility:hidden;will-change:opacity}
+.dim{position:absolute;inset:0;background:#000;opacity:0;visibility:hidden;will-change:opacity}
+.list{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;opacity:0;visibility:hidden;scrollbar-width:none;will-change:opacity,transform}
+.list::-webkit-scrollbar{display:none}
+.row{all:unset;display:flex;align-items:center;gap:14px;width:100%;cursor:pointer;position:relative;-webkit-tap-highlight-color:transparent}
+.row img{flex-shrink:0;display:block}
+.row span{flex:1;color:rgba(255,255,255,.95);font-size:17px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row::after{content:"";position:absolute;left:var(--x);right:0;bottom:0;height:.5px;background:rgba(255,255,255,.1)}
+.row:active{opacity:.6}
+.empty{color:rgba(255,255,255,.55);font-size:17px;font-weight:500;text-align:center;margin-top:40px;display:none}
+.band{position:absolute;left:0;right:0;top:0;opacity:0;visibility:hidden;pointer-events:none;background:linear-gradient(rgba(31,31,32,.92),rgba(31,31,32,.7) var(--bar),rgba(31,31,32,0));backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);-webkit-mask-image:linear-gradient(#000 var(--bar),transparent);mask-image:linear-gradient(#000 var(--bar),transparent)}
+.bar{position:absolute;height:48px;opacity:0;visibility:hidden;will-change:opacity,transform}
+.pill{position:absolute;left:0;top:0;bottom:0;width:100%;border-radius:24px;background:rgba(118,118,128,.28);backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);box-shadow:inset 0 0 0 .5px rgba(255,255,255,.18);transition:width .36s cubic-bezier(.25,1,.35,1)}
+.hint{position:absolute;top:0;height:48px;display:flex;align-items:center;gap:7px;color:#8e8e93;font-size:17px;pointer-events:none;left:50%;transform:translateX(-50%);transition:left .36s cubic-bezier(.25,1,.35,1),transform .36s cubic-bezier(.25,1,.35,1)}
+.n .hint,.q .hint{left:16px;transform:none}.q .hint span{visibility:hidden}
+input{all:unset;position:absolute;inset:0;padding:0 16px 0 41px;color:#fff;font-size:17px;caret-color:#0a84ff;-webkit-user-select:text;user-select:text}
+.cancel{all:unset;position:absolute;right:0;top:0;height:48px;display:flex;align-items:center;color:#fff;font-size:17px;cursor:pointer;opacity:0;transform:translateX(40px);transition:opacity .36s,transform .36s cubic-bezier(.25,1,.35,1);pointer-events:none}
+.n .cancel{opacity:1;transform:none;pointer-events:auto}
+.still,.still *{transition:none!important}
+</style>
+<div class="b"></div><div class="b"></div><div class="b"></div><div class="dim"></div>
+<div class="list" role="list"><div class="rows"></div><div class="empty">No Results</div></div>
+<div class="band"></div>
+<div class="bar"><div class="pill"><div class="hint"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="8.5" cy="8.5" r="5.8"/><path d="M13 13L17.5 17.5" stroke-linecap="round"/></svg><span>Search</span></div>
+<input type="search" aria-label="Search" enterkeyhint="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
+<button class="cancel" type="button">Cancel</button></div>`;
+  const $ = (q) => root.querySelector(q);
+  const blurs = [...root.querySelectorAll('.b')], dim = $('.dim'), list = $('.list'), rowsBox = $('.rows'), empty = $('.empty');
+  const band = $('.band'), bar = $('.bar'), pill = $('.pill'), input = $('input'), cancel = $('.cancel');
+  blurs.forEach((b, i) => { b.style.backdropFilter = b.style.webkitBackdropFilter = `blur(${BLUR_STEPS[i]}px)`; });
+  let p = props, rows = [], results = [], committed = false, reveal = 0, pull = 0, grid = 0, run = 0, track = null, armed = false, pullBase = 0;
+  let screen = null, pager = null, box = null, sw = 0, sh = 0;
+  const num = (v, d) => (Number.isFinite(Number(v)) && v !== '' && v != null ? Number(v) : d);
+  const iconSize = () => num(p['icon-size'], 62), margin = () => num(p['side-margin'], 22);
+  const safeTop = () => num(p['safe-top'], 0), safeBottom = () => num(p['safe-bottom'], 0);
+  const barBottom = () => safeTop() + PULL.barTop + PULL.barHeight, listTop = () => barBottom() + PULL.listGap;
+
+  const rubber = (x) => (1 - 1 / (Math.max(0, x) * PULL.gridRubber / sh + 1)) * sh;
+  const unrubber = (g) => sh / PULL.gridRubber * (1 / (1 - Math.min(Math.max(0, g), sh * 0.99) / sh) - 1);
+  const rubberSlope = (x) => { const k = Math.max(0, x) * PULL.gridRubber / sh + 1; return PULL.gridRubber / (k * k); };
+  const damp = (x) => PULL.rubber * (1 - Math.exp(-Math.max(0, x) / PULL.rubber));
+  const look = (r, pp, g) => {
+    const b = span(r, PULL.blur), fp = span(r, PULL.field), lp = span(r, PULL.list), s = 1 - PULL.gridShrink * clamp01(r);
+    return { blur: PULL.blurRadius * b ** PULL.blurPower, dim: clamp01(r) ** PULL.dimPower * PULL.maxDim, bar: fp,
+      barY: -PULL.fieldDrop * (1 - fp) + pp * PULL.fieldRide, list: smooth(lp), listY: -16 * (1 - lp) + pp * PULL.listRide, band: fp,
+      grid: g === 0 && s === 1 ? '' : `translateY(${g}px) scale(${s})` };
+  };
+  const vis = (e, o) => { e.style.opacity = String(o); e.style.visibility = o > 0.001 ? 'visible' : 'hidden'; };
+  // A blur radius as the three fixed blurs: the step below at full, the step above faded in by the remainder.
+  const putBlur = (radius) => {
+    let lo = -1;
+    for (let i = 0; i < BLUR_STEPS.length; i++) if (radius >= BLUR_STEPS[i]) lo = i;
+    blurs.forEach((b, i) => {
+      let o = 0;
+      if (i === lo) o = 1;
+      else if (i === lo + 1) { const from = lo < 0 ? 0 : BLUR_STEPS[lo]; o = clamp01((radius - from) / (BLUR_STEPS[i] - from)); }
+      vis(b, o);
+    });
+  };
+  const put = (l) => {
+    putBlur(l.blur); vis(dim, l.dim); vis(bar, l.bar); bar.style.transform = `translateY(${l.barY}px)`;
+    vis(band, l.band); vis(list, l.list); list.style.transform = `translateY(${l.listY}px)`;
+    if (box) { box.style.transform = l.grid; box.style.willChange = l.grid ? 'transform' : ''; }
+  };
+  const render = () => put(look(reveal, pull, grid));
+  const layout = () => {
+    const m = margin();
+    bar.style.left = `${m}px`; bar.style.right = `${m}px`; bar.style.top = `${safeTop() + PULL.barTop}px`;
+    band.style.height = `${listTop()}px`; band.style.setProperty('--bar', `${(barBottom() / listTop()) * 100}%`);
+    list.style.padding = `${listTop()}px ${m}px ${safeBottom() + 40}px`;
+    pill.style.width = committed ? `calc(100% - ${cancel.offsetWidth + 12}px)` : '100%';
+    bar.classList.toggle('n', committed);
+  };
+  const filter = () => {
+    const q = input.value.trim().toLowerCase();
+    results = q ? rows.filter((r) => r.name.toLowerCase().includes(q) || r.label.toLowerCase().includes(q)) : rows;
+    const size = iconSize(), pad = PULL.rowPadding;
+    rowsBox.replaceChildren(...results.map((r) => {
+      const b = document.createElement('button');
+      b.className = 'row'; b.type = 'button'; b.dataset.slug = r.slug; b.setAttribute('role', 'listitem');
+      b.style.height = `${size + pad * 2}px`;
+      const img = document.createElement('img');
+      img.src = new URL(r.icon, document.baseURI).href; img.alt = ''; img.decoding = 'async';
+      img.style.cssText = `width:${size}px;height:${size}px;border-radius:${size * K.iconRadiusRatio}px`;
+      const name = document.createElement('span'); name.textContent = r.name;
+      b.style.setProperty('--x', `${size + 14}px`);
+      b.append(img, name);
+      return b;
+    }));
+    empty.style.display = results.length ? 'none' : 'block';
+    bar.classList.toggle('q', input.value !== '');
+  };
+  const setRows = () => {
+    const parts = (k) => String(p[k] ?? '').split('|');
+    const slugs = p.slugs ? parts('slugs') : [], names = parts('names'), labels = parts('labels'), icons = parts('icons');
+    rows = slugs.map((slug, i) => ({ slug, name: names[i] ?? slug, label: labels[i] ?? '', icon: icons[i] ?? '' }));
+    filter();
+  };
+
+  // Runs: the look sampled along a curve from here to there, a frame at a time (the home is idle under a search).
+  const stopRun = () => { if (run) { cancelAnimationFrame(run.raf); run = 0; } };
+  const animate = (to, ms, curve, delay = 0, then) => {
+    stopRun();
+    const from = { r: reveal, p: pull, g: grid }, start = performance.now() + delay;
+    const r = { raf: 0 };
+    const tick = (now) => {
+      const t = clamp01((now - start) / ms), k = now < start ? 0 : curve(t);
+      reveal = lerp(from.r, to.r, k); pull = lerp(from.p, to.p, k); grid = lerp(from.g, to.g, k);
+      render();
+      if (t < 1) r.raf = requestAnimationFrame(tick);
+      else { run = 0; reveal = to.r; pull = to.p; grid = to.g; render(); then?.(); }
+    };
+    run = r; r.raf = requestAnimationFrame(tick);
+  };
+  const settleBack = (v) => {
+    if (!(reveal > 0 || pull > 0 || grid > 0)) return render();
+    const x = grid > 0.5 ? unrubber(grid) : 0, y0v = grid > 0.5 ? rubberSlope(x) * v / grid : 0;
+    const w = 2 * Math.PI / PULL.springResponse, z = PULL.springDamping, wd = w * Math.sqrt(1 - z * z), b = (y0v + z * w) / wd;
+    const y = (t) => Math.exp(-z * w * t) * (Math.cos(wd * t) + b * Math.sin(wd * t));
+    const sec = Math.min(1.2, Math.max(0.2, Math.log((1 + Math.abs(b)) / 0.002) / (z * w)));
+    animate({ r: 0, p: 0, g: 0 }, sec * 1000, (t) => 1 - y(t * sec));
+  };
+  const commit = () => {
+    committed = true; searchShared.committed = true;
+    el.style.pointerEvents = 'auto';
+    layout();
+    searchShared.grid = grid + PULL.gridAway;
+    animate({ r: 1, p: 0, g: grid + PULL.gridAway }, PULL.commitMs, easeOutCubic, 0, () => { input.focus({ preventScroll: true }); });
+  };
+  const dismiss = () => {
+    if (!committed) return;
+    haptics.play('selection');
+    committed = false; searchShared.committed = false;
+    input.blur();
+    layout();
+    el.style.pointerEvents = 'none';
+    animate({ r: 0, p: 0, g: 0 }, PULL.exitMs, easeInOutCubic, PULL.exitDelay, () => { input.value = ''; searchShared.query = ''; searchShared.scroll = 0; filter(); list.scrollTop = 0; });
+  };
+  // A committed search shown at once (the copy of the launcher under a demo opened from it).
+  const adopt = () => {
+    committed = true; el.style.pointerEvents = 'auto';
+    // Already narrowed: no transition from the wide field.
+    bar.classList.add('still');
+    requestAnimationFrame(() => requestAnimationFrame(() => bar.classList.remove('still')));
+    input.value = searchShared.query; filter(); layout();
+    reveal = 1; pull = 0; grid = searchShared.grid; render();
+    list.scrollTop = searchShared.scroll;
+  };
+
+  // ---- the pull, on the pager ----
+  const toScreen = (e) => { const r = screen.getBoundingClientRect(), k = r.width / sw || 1; return { x: (e.clientX - r.left) / k, y: (e.clientY - r.top) / k }; };
+  const down = (e) => {
+    if (committed || track || !e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    if (screen.querySelector('[data-testid="web-card"]')) return;
+    const caught = !!run;
+    if (caught) stopRun();
+    const pt = toScreen(e);
+    track = { id: e.pointerId, start: pt, last: { y: pt.y, t: e.timeStamp }, v: 0, active: false, caught, target: e.target };
+  };
+  const move = (e) => {
+    if (!track || e.pointerId !== track.id) return;
+    const pt = toScreen(e), dx = pt.x - track.start.x, dy = pt.y - track.start.y, dt = (e.timeStamp - track.last.t) / 1000;
+    if (dt > 0) track.v = track.v * 0.5 + ((pt.y - track.last.y) / dt) * 0.5;
+    track.last = { y: pt.y, t: e.timeStamp };
+    if (!track.active) {
+      if (Math.abs(dx) > PULL.failX || dy < -PULL.failX) { const caught = track.caught; track = null; if (caught) settleBack(0); return; }
+      if (!(dy >= PULL.activate && dy > Math.abs(dx) * 1.5)) return;
+      track.active = true; armed = false;
+      pullBase = grid > 0.5 ? unrubber(grid) : 0;
+      try { track.target.dispatchEvent(new PointerEvent('pointercancel', { pointerId: track.id, pointerType: e.pointerType, isPrimary: true, bubbles: true })); } catch {}
+    }
+    e.stopImmediatePropagation(); e.preventDefault();
+    const x = Math.max(0, pullBase + Math.max(0, dy) - PULL.activate), pp = damp(x);
+    reveal = Math.min(pp / damp(PULL.trigger - PULL.activate), 1); pull = pp; grid = rubber(x);
+    render();
+    const travel = x + PULL.activate;
+    if (!armed && travel > PULL.trigger) { armed = true; haptics.play('impact-light'); }
+    else if (armed && travel < PULL.trigger * PULL.disarm) { armed = false; haptics.play('selection'); }
+  };
+  const up = (e) => {
+    if (!track || e.pointerId !== track.id || !e.isTrusted) return;
+    const t = track; track = null;
+    if (!t.active) { if (t.caught) settleBack(0); return; }
+    e.stopImmediatePropagation(); e.preventDefault();
+    const swallow = (c) => { c.stopImmediatePropagation(); c.preventDefault(); };
+    addEventListener('click', swallow, { capture: true, once: true }); setTimeout(() => removeEventListener('click', swallow, true), 400);
+    if (e.type === 'pointerup' && (armed || t.v > PULL.flick)) { if (!armed) haptics.play('impact-light'); commit(); }
+    else settleBack(e.type === 'pointerup' ? t.v : 0);
+  };
+  const touchmove = (e) => {
+    if (!track) return;
+    if (track.active) { if (e.cancelable) e.preventDefault(); }
+  };
+
+  // ---- the committed search ----
+  input.addEventListener('input', () => { searchShared.query = input.value; filter(); });
+  list.addEventListener('scroll', () => { if (committed) searchShared.scroll = list.scrollTop; }, { passive: true });
+  input.addEventListener('keydown', (e) => { if (e.key === 'Escape') dismiss(); else if (e.key === 'Enter') input.blur(); });
+  cancel.addEventListener('click', dismiss);
+  root.addEventListener('click', (e) => {
+    if (!committed) return;
+    const row = e.target.closest?.('.row');
+    if (row) {
+      haptics.play('selection');
+      lastTap = { slug: row.dataset.slug, at: performance.now(), scroll: pager?.scrollLeft ?? 0 };
+      event(1, row.dataset.slug);
+      setTimeout(() => input.blur(), 120);
+      return;
+    }
+    // A tap on nothing (the dim, the list's empty room) leaves the search.
+    if (e.target === list || e.target === rowsBox || e.target === empty || e.composedPath()[0] === list) dismiss();
+  });
+
+  const me = {
+    screen: () => screen, committed: () => committed,
+    rowIcon(slug) {
+      const img = rowsBox.querySelector(`.row[data-slug="${CSS.escape(slug)}"] img`);
+      if (!img || !screen) return null;
+      const r = img.getBoundingClientRect(), sr = screen.getBoundingClientRect(), k = sr.width / sw || 1;
+      const f = { x: (r.left - sr.left) / k, y: (r.top - sr.top) / k, w: r.width / k, h: r.height / k, el: img };
+      return f.y + f.h > listTop() && f.y < sh ? f : null;
+    },
+  };
+  let waits = 0;
+  const begin = () => {
+    if (!el.isConnected) return ++waits < 20 ? queueMicrotask(begin) : requestAnimationFrame(begin);
+    screen = el.closest('[data-testid="web-screen"]') ?? el.parentElement;
+    const board = el.closest('[data-testid="springboard"]');
+    pager = board?.querySelector('[data-testid="pager"]'); box = board?.querySelector('[data-testid="web-home-pull"]');
+    sw = screen.offsetWidth; sh = screen.offsetHeight;
+    if (box) box.style.transformOrigin = '50% 50%';
+    if (pager) {
+      // The pager scrolls sideways itself; a vertical pull is this view's (no browser pan takes the touch).
+      pager.style.touchAction = 'pan-x';
+      pager.addEventListener('pointerdown', down, true);
+      pager.addEventListener('touchmove', touchmove, { capture: true, passive: false });
+    }
+    addEventListener('pointermove', move, true); addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true);
+    searches.add(me);
+    setRows(); layout();
+    if (searchShared.committed) adopt(); else render();
+  };
+  setRows();
+  begin();
+  return {
+    set(n) { p = n; setRows(); layout(); },
+    destroy() {
+      stopRun(); searches.delete(me);
+      pager?.removeEventListener('pointerdown', down, true); pager?.removeEventListener('touchmove', touchmove, { capture: true });
+      removeEventListener('pointermove', move, true); removeEventListener('pointerup', up, true); removeEventListener('pointercancel', up, true);
+      if (box) box.style.transform = '';
+    },
   };
 }
 
@@ -748,6 +1043,7 @@ const views = {
 };
 views['music-tabbar'] = views['native-tabbar'];
 views['demo-card'] = launch;
+views['search-reveal'] = searchReveal;
 
 export function create(tag, element, json, event) {
   const props = JSON.parse(json);

@@ -38,32 +38,40 @@ component WebSpringboard
       image "assets/home-wallpaper.png" position="absolute" left=0 top=0 width="100%" height="100%" object-fit="cover" aria-hidden=true
       // The icons and the dots (never the wallpaper): what the launch zooms and the pull-to-search moves.
       column position="absolute" inset=0 padding-top=safeTop padding-bottom=safeBottom box-sizing="border-box" testId="web-home-zoom"
-        // Every page is a snap stop the width of the screen, as the native pager.
-        row testId="pager" flex=1 min-height=0 overflow-x="auto" overflow-y="hidden" scroll-snap-type="x mandatory"
-          scrollbar-width="none"
-          // contract-lint-disable-next-line no-per-frame-commit -- written only when the page number changes
-          scroll=scrolled
-          for p in pages key=p
-            column width=sw height="100%" flex-shrink=0 scroll-snap-align="start" scroll-snap-stop="always"
-              padding="16px 22px 0" box-sizing="border-box"
-              row flex-wrap="wrap" align-content="flex-start" row-gap=22
-                for d in demos.slice(p * per, (p + 1) * per) key=d.slug
-                  button press=open(d.slug) appearance="none" testId=`icon-${d.slug}` aria-label=d.name padding=0
-                    border-width=0 width=cellWidth(sw) display="flex" flex-direction="column" align-items="center" gap=6
-                    background-color="rgba(0,0,0,0)"
-                    :hover
-                      background-color = "rgba(0,0,0,0)"
-                    :active
-                      -exact-press-scale = 0.9
-                    image d.icon width=iconSize(sw) height=iconSize(sw) border-radius=(iconSize(sw) * 0.2237)
-                      corner-shape="-exact-continuous" aria-hidden=true
-                    text d.label font-size=11 font-weight=500 color="#ffffff" text-align="center" white-space="nowrap"
-                      overflow="hidden" text-overflow="ellipsis" max-width=(cellWidth(sw) - 4)
-        if pages.length > 1
-          row height=44 flex-shrink=0 justify-content="center" align-items="center" gap=9 aria-hidden=true
+        // What the pull-to-search moves down on its rubber band (the page module's `search-reveal`).
+        column flex=1 min-height=0 testId="web-home-pull"
+          // Every page is a snap stop the width of the screen, as the native pager.
+          row testId="pager" flex=1 min-height=0 overflow-x="auto" overflow-y="hidden" scroll-snap-type="x mandatory"
+            scrollbar-width="none"
+            // contract-lint-disable-next-line no-per-frame-commit -- written only when the page number changes
+            scroll=scrolled
             for p in pages key=p
-              view width=7 height=7 border-radius=3.5 background-color=(p == page ? "#ffffff" : "rgba(255,255,255,0.4)")
-                transition="background-color 160ms ease"
+              column width=sw height="100%" flex-shrink=0 scroll-snap-align="start" scroll-snap-stop="always"
+                padding="16px 22px 0" box-sizing="border-box"
+                row flex-wrap="wrap" align-content="flex-start" row-gap=22
+                  for d in demos.slice(p * per, (p + 1) * per) key=d.slug
+                    button press=open(d.slug) appearance="none" testId=`icon-${d.slug}` aria-label=d.name padding=0
+                      border-width=0 width=cellWidth(sw) display="flex" flex-direction="column" align-items="center" gap=6
+                      background-color="rgba(0,0,0,0)"
+                      :hover
+                        background-color = "rgba(0,0,0,0)"
+                      :active
+                        -exact-press-scale = 0.9
+                      image d.icon width=iconSize(sw) height=iconSize(sw) border-radius=(iconSize(sw) * 0.2237)
+                        corner-shape="-exact-continuous" aria-hidden=true
+                      text d.label font-size=11 font-weight=500 color="#ffffff" text-align="center" white-space="nowrap"
+                        overflow="hidden" text-overflow="ellipsis" max-width=(cellWidth(sw) - 4)
+          if pages.length > 1
+            row height=44 flex-shrink=0 justify-content="center" align-items="center" gap=9 aria-hidden=true
+              for p in pages key=p
+                view width=7 height=7 border-radius=3.5 background-color=(p == page ? "#ffffff" : "rgba(255,255,255,0.4)")
+                  transition="background-color 160ms ease"
+      // Pull down on the pager to search (modules/web/index.js, after modules/apple/SearchReveal.swift): the icons ride
+      // the finger, the home blurs, the field slides in; released past the trigger it holds the field, Cancel and the
+      // results. A tapped result arrives as `change(slug)` and opens like an icon.
+      search-reveal slugs=demos.map(d => d.slug).join("|") names=demos.map(d => d.name).join("|")
+        labels=demos.map(d => d.label).join("|") icons=demos.map(d => d.icon).join("|") icon-size=iconSize(sw)
+        side-margin=22 safe-top=safeTop safe-bottom=safeBottom change=open position="absolute" inset=0 testId="search"
 
 // A hex colour's brightness 0..255 (the status bar's ink follows the page it is over, as iOS's does).
 fn hexv(c: string, i: number): number = "0123456789abcdef".indexOf(c.slice(i, i + 1).toLowerCase()) * 16 + "0123456789abcdef".indexOf(c.slice(i + 1, i + 2).toLowerCase())
