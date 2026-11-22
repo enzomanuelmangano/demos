@@ -420,6 +420,15 @@ if (DOM) {
 }
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+// The open card's Back handler (`onBack` in `launch`). A Back is caught at the Navigation API's `navigate` event,
+// before the history moves: the router's popstate listener (registered before this module loads) runs ahead of any
+// listener added here and tore the demo down at once. `passing` is the traversal this module started itself.
+let backHandler = null, passing = null;
+if (DOM && globalThis.navigation) navigation.addEventListener('navigate', (e) => {
+  if (passing && e.navigationType === 'traverse' && e.destination.key === passing) { passing = null; return; }
+  backHandler?.(e);
+});
+
 function launch(el, props, event) {
   const root = el.shadowRoot ?? el.attachShadow({ mode: 'open' });
   root.innerHTML = '<style>:host{display:block}img{position:absolute;inset:0;width:100%;height:100%;opacity:0;pointer-events:none;will-change:opacity}</style><img alt="">';
@@ -635,8 +644,26 @@ function launch(el, props, event) {
     if (landedSent) return;
     landedSent = true;
     if (icon) icon.style.visibility = '';
+    // A Back (the browser's, a mouse's back button): held at its `navigate` event while the card flew; the history
+    // moves now, when the card has landed, so the route's teardown runs after the flight, never in its first frame.
+    if (backState) { goBack(); return; }
     if (p.closing !== 'true') event(0);
     event(1, 'landed');
+  };
+  // Back while the demo shows: the card flies into its icon as the close button's close does (on the phone a Back is
+  // the swipe's close), and the route's own popstate handler (registered without capture, so after this one) gets
+  // the event when the card lands. Without it the route tore the demo down at once in one 30-170 ms task, unanimated.
+  let backState = null;
+  const goBack = () => {
+    const key = backState.key; backState = null; passing = key;
+    try { navigation.traverseTo(key).finished.catch(() => {}); } catch { passing = null; history.back(); }
+  };
+  const onBack = (e) => {
+    if (e.navigationType !== 'traverse' || !e.cancelable || !e.destination.sameDocument || closing || backState) return;
+    if (!screen || !card || !card.isConnected || new URL(e.destination.url).pathname.endsWith(`/demo/${p.slug}`)) return;
+    e.preventDefault();
+    backState = { key: e.destination.key };
+    close();
   };
 
   // ---- the swipe-down close: the same rules as ClosePan / CloseZone (tools/close-gesture.md) ----
@@ -759,17 +786,23 @@ function launch(el, props, event) {
     card.addEventListener('pointerdown', down, true);
     addEventListener('pointermove', move, true); addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true);
     card.addEventListener('touchmove', touchmove, { capture: true, passive: false });
+    backHandler = onBack;
   };
   const uninstall = () => {
     if (!installed) return; installed = false;
     card.removeEventListener('pointerdown', down, true);
     removeEventListener('pointermove', move, true); removeEventListener('pointerup', up, true); removeEventListener('pointercancel', up, true);
     card.removeEventListener('touchmove', touchmove, { capture: true });
+    if (backHandler === onBack) backHandler = null;
   };
   begin();
   return {
     set(n) { const was = p.closing; p = n; if (n.closing === 'true' && was !== 'true') close(); },
-    destroy() { stopFlight(); uninstall(); if (icon) icon.style.visibility = ''; },
+    destroy() {
+      stopFlight(); uninstall(); if (icon) icon.style.visibility = '';
+      // Torn down before it landed (another route took the screen): the Back still happens.
+      if (backState) goBack();
+    },
   };
 }
 
