@@ -66,6 +66,11 @@ component WebSpringboard
               for p in pages key=p
                 view width=7 height=7 border-radius=3.5 background-color=(p == page ? "#ffffff" : "rgba(255,255,255,0.4)")
                   transition="background-color 160ms ease"
+      // The icons' long-press menu (and a right click on a desktop): Inspiration, Share, View Code, as AppIcon.swift's
+      // context menu, drawn by the page module's `icon-grid` over the lifted icon.
+      icon-grid slugs=demos.map(d => d.slug).join("|") demo-names=demos.map(d => d.name).join("|")
+        inspirations=demos.map(d => d.inspiration).join("|") position="absolute" left=0 top=0 width=0 height=0
+        pointer-events="none" aria-hidden=true
       // Pull down on the pager to search (modules/web/index.js, after modules/apple/SearchReveal.swift): the icons ride
       // the finger, the home blurs, the field slides in; released past the trigger it holds the field, Cancel and the
       // results. A tapped result arrives as `change(slug)` and opens like an icon.

@@ -798,6 +798,131 @@ input{all:unset;position:absolute;inset:0;padding:0 16px 0 41px;color:#fff;font-
   };
 }
 
+// ---- The icons' long-press menu: AppIcon.swift's context menu on the web ------------------------------------------
+// A press held 0.5 s on an icon (or a right click) lifts the icon (scale 1.06 and a shadow) over a blurred, dimmed home
+// and opens the menu by it: the demo's name, then Inspiration (when the demo credits one), Share and View Code. Share is
+// the browser's share sheet where there is one, else the link is copied. The press that opened the menu is not a tap.
+const sourceUrl = (slug) => `https://github.com/enzomanuelmangano/demos/tree/main/src/animations/${slug}`;
+const MENU_ICONS = {
+  sparkles: '<path d="M10 2.5L11.6 7.6L16.5 9.2L11.6 10.8L10 15.9L8.4 10.8L3.5 9.2L8.4 7.6Z" fill="currentColor" stroke="none"/><path d="M16 14.2L16.6 16L18.3 16.6L16.6 17.2L16 19L15.4 17.2L13.7 16.6L15.4 16Z" fill="currentColor" stroke="none"/>',
+  share: '<path d="M10 2.8V12.5M6.6 6.1L10 2.8L13.4 6.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 8.6H5.6C4.7 8.6 4 9.3 4 10.2V16C4 16.9 4.7 17.6 5.6 17.6H14.4C15.3 17.6 16 16.9 16 16V10.2C16 9.3 15.3 8.6 14.4 8.6H13" stroke-linecap="round"/>',
+  code: '<path d="M5.5 2.8H11.5L15.5 6.8V16.2C15.5 16.9 14.9 17.5 14.2 17.5H5.8C5.1 17.5 4.5 16.9 4.5 16.2V3.8C4.5 3.2 4.9 2.8 5.5 2.8Z" stroke-linejoin="round"/><path d="M11.3 2.9V7H15.4M7.5 10.5H12.5M7.5 13.5H12.5" stroke-linecap="round"/>',
+};
+function iconMenu(el, props) {
+  let p = props, board = null, press = null, menu = null;
+  const lists = () => {
+    const parts = (k) => String(p[k] ?? '').split('|');
+    const slugs = parts('slugs'), names = parts('demo-names'), insp = parts('inspirations');
+    return (slug) => { const i = slugs.indexOf(slug); return i < 0 ? null : { name: names[i] ?? slug, inspiration: insp[i] ?? '' }; };
+  };
+  const close = (animated = true) => {
+    const m = menu; menu = null;
+    if (!m) return;
+    const done = () => { m.layer.close(); m.icon.style.visibility = ''; };
+    if (!animated) return done();
+    m.root.querySelector('.bd').animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, easing: 'ease-in', fill: 'forwards' });
+    m.root.querySelector('.m').animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(.9)' }], { duration: 180, easing: 'ease-in', fill: 'forwards' });
+    m.root.querySelector('.lift').animate([{ transform: 'scale(1.06)' }, { transform: 'scale(1)' }], { duration: 240, easing: 'cubic-bezier(.32,.72,0,1)', fill: 'forwards' }).finished.then(done, done);
+  };
+  const toast = (layer, text) => {
+    const t = document.createElement('div');
+    t.textContent = text;
+    t.style.cssText = 'position:absolute;left:50%;bottom:120px;transform:translateX(-50%);padding:10px 18px;border-radius:20px;background:rgba(40,40,44,.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);color:#fff;font:500 15px -apple-system,system-ui,sans-serif;pointer-events:none';
+    layer.host.shadowRoot.append(t);
+  };
+  const act = (kind, slug, demo, layer) => {
+    if (kind === 'inspiration') return window.open(demo.inspiration, '_blank', 'noopener');
+    if (kind === 'code') return window.open(sourceUrl(slug), '_blank', 'noopener');
+    const url = sourceUrl(slug), text = `${demo.name} — ${url}`;
+    if (typeof navigator.share === 'function') { navigator.share({ title: demo.name, text, url }).catch(() => {}); return; }
+    navigator.clipboard?.writeText(url).then(() => {}, () => {});
+    return 'Link Copied';
+  };
+  const open = (button) => {
+    if (menu) return;
+    const slug = button.getAttribute('data-testid').slice(5), demo = lists()(slug), img = button.querySelector('img');
+    if (!demo || !img) return;
+    haptics.play('impact-medium');
+    const layer = overlay(el);
+    layer.host.style.pointerEvents = 'auto';
+    const root = layer.host.attachShadow({ mode: 'open' });
+    const hr = layer.host.getBoundingClientRect(), W = layer.host.offsetWidth, H = layer.host.offsetHeight, k = hr.width / W || 1;
+    const r = img.getBoundingClientRect(), f = { x: (r.left - hr.left) / k, y: (r.top - hr.top) / k, w: r.width / k, h: r.height / k };
+    const rows = [...(demo.inspiration ? [['inspiration', 'Inspiration', 'sparkles']] : []), ['share', 'Share', 'share'], ['code', 'View Code', 'code']];
+    root.innerHTML = `<style>*{box-sizing:border-box;font-family:-apple-system,system-ui,sans-serif}
+.bd{position:absolute;inset:0;background:rgba(0,0,0,.22);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%)}
+.lift{position:absolute;border-radius:${f.w * K.iconRadiusRatio}px;box-shadow:0 14px 34px rgba(0,0,0,.42),0 3px 8px rgba(0,0,0,.25);transform:scale(1.06);will-change:transform}
+.m{position:absolute;width:250px;border-radius:14px;overflow:hidden;background:rgba(48,48,52,.72);backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);box-shadow:0 18px 50px rgba(0,0,0,.35);color:#fff;will-change:transform,opacity}
+.t{padding:10px 16px 8px;font-size:13px;color:rgba(235,235,245,.6);text-align:center;border-bottom:.5px solid rgba(255,255,255,.14)}
+.r{all:unset;display:flex;align-items:center;justify-content:space-between;width:100%;box-sizing:border-box;padding:11px 16px;font-size:17px;cursor:pointer;border-bottom:.5px solid rgba(255,255,255,.12)}
+.r:last-child{border-bottom:0}.r:active,.r:hover{background:rgba(255,255,255,.1)}.r svg{flex-shrink:0}</style>
+<div class="bd"></div><img class="lift" alt=""><div class="m" role="menu"><div class="t"></div>${rows.map(([id, title, ic]) => `<button class="r" role="menuitem" data-k="${id}"><span>${title}</span><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7">${MENU_ICONS[ic]}</svg></button>`).join('')}</div>`;
+    root.querySelector('.t').textContent = demo.name;
+    const lift = root.querySelector('.lift');
+    lift.src = img.currentSrc || img.src;
+    Object.assign(lift.style, { left: `${f.x}px`, top: `${f.y}px`, width: `${f.w}px`, height: `${f.h}px` });
+    const m = root.querySelector('.m'), mh = 44 + rows.length * 45, gap = 14;
+    const below = f.y + f.h * 1.03 + gap + mh < H - 40;
+    // Its leading edge on the icon's on the left half of the screen, its trailing edge on the icon's on the right.
+    const left = Math.min(Math.max(16, f.x + f.w / 2 < W / 2 ? f.x : f.x + f.w - 250), W - 266);
+    m.style.left = `${left}px`;
+    m.style.top = `${below ? f.y + f.h * 1.03 + gap : f.y - f.h * 0.03 - gap - mh}px`;
+    m.style.transformOrigin = `${f.x + f.w / 2 - left}px ${below ? 0 : mh}px`;
+    img.style.visibility = 'hidden';
+    root.querySelector('.bd').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260, easing: 'ease-out' });
+    lift.animate([{ transform: 'scale(1)', boxShadow: '0 0 0 rgba(0,0,0,0)' }, { transform: 'scale(1.06)' }], { duration: 320, easing: 'cubic-bezier(.32,.72,0,1)' });
+    m.animate([{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'scale(1)' }], { duration: 340, easing: 'cubic-bezier(.32,.72,0,1)' });
+    menu = { layer, root, icon: img };
+    root.querySelector('.bd').addEventListener('click', () => close());
+    lift.addEventListener('click', () => close());
+    for (const b of root.querySelectorAll('.r')) b.addEventListener('click', () => {
+      haptics.play('selection');
+      const said = act(b.dataset.k, slug, demo, layer);
+      if (said) { toast(layer, said); setTimeout(() => close(), 700); } else close();
+    });
+  };
+  const iconAt = (e) => { const b = e.target?.closest?.('[data-testid^="icon-"]'); return b && board?.contains(b) ? b : null; };
+  const swallowClick = () => {
+    const swallow = (c) => { c.stopImmediatePropagation(); c.preventDefault(); };
+    addEventListener('click', swallow, { capture: true, once: true }); setTimeout(() => removeEventListener('click', swallow, true), 600);
+  };
+  const down = (e) => {
+    if (menu || !e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    const b = iconAt(e);
+    if (!b) return;
+    press = { id: e.pointerId, x: e.clientX, y: e.clientY, b, timer: setTimeout(() => { if (press) { press.fired = true; open(b); } }, 500) };
+  };
+  const move = (e) => { if (press && e.pointerId === press.id && !press.fired && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 10) { clearTimeout(press.timer); press = null; } };
+  const up = (e) => {
+    if (!press || e.pointerId !== press.id) return;
+    clearTimeout(press.timer);
+    if (press.fired) { e.stopImmediatePropagation(); swallowClick(); }
+    press = null;
+  };
+  const context = (e) => { const b = iconAt(e); if (!b) return; e.preventDefault(); if (press) { clearTimeout(press.timer); press = null; } open(b); };
+  const key = (e) => { if (e.key === 'Escape' && menu) close(); };
+  let waits = 0;
+  const begin = () => {
+    if (!el.isConnected) return ++waits < 20 ? queueMicrotask(begin) : requestAnimationFrame(begin);
+    board = el.closest('[data-testid="springboard"]');
+    if (!board) return;
+    board.addEventListener('pointerdown', down, true);
+    board.addEventListener('contextmenu', context, true);
+    addEventListener('pointermove', move, true); addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true);
+    addEventListener('keydown', key);
+  };
+  begin();
+  return {
+    set(n) { p = n; },
+    destroy() {
+      close(false);
+      board?.removeEventListener('pointerdown', down, true); board?.removeEventListener('contextmenu', context, true);
+      removeEventListener('pointermove', move, true); removeEventListener('pointerup', up, true); removeEventListener('pointercancel', up, true);
+      removeEventListener('keydown', key);
+    },
+  };
+}
+
 const views = {
   // A glass (or blur) pane behind other content.
   'glass-pane'(el, props) {
@@ -1044,6 +1169,7 @@ const views = {
 views['music-tabbar'] = views['native-tabbar'];
 views['demo-card'] = launch;
 views['search-reveal'] = searchReveal;
+views['icon-grid'] = iconMenu;
 
 export function create(tag, element, json, event) {
   const props = JSON.parse(json);
