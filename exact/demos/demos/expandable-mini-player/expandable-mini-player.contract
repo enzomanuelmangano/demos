@@ -34,7 +34,8 @@ fn mpSecondary(): string = "rgba(235, 235, 245, 0.6)"
 fn mpAccent(): string = "#FA2D48"
 fn mpCover(): string = "assets/demos/dynamic-tab-indicator/iceland.jpg"
 
-// iw and ih are the image's pixel size, used to cover-fit it.
+// iw and ih are the file's real pixel size: MpArt draws the image at that aspect, so a
+// wrong pair stretches it.
 shape MpAlbum
   src: string
   iw: number
@@ -45,12 +46,12 @@ shape MpAlbum
 fn mpAlbums(): MpAlbum[] = [
   MpAlbum(src="assets/demos/shared-transitions/thumbnails/03.jpg", iw=630, ih=788, title="Kyoto Mornings", artist="Hana Ito"),
   MpAlbum(src="assets/demos/shared-transitions/thumbnails/08.jpg", iw=630, ih=796, title="Low Tide", artist="The Coastlines"),
-  MpAlbum(src="assets/demos/blurred-bottom-bar/02.jpg", iw=1920, ih=1280, title="Afterglow", artist="Mira Vale"),
+  MpAlbum(src="assets/demos/blurred-bottom-bar/02.jpg", iw=640, ih=853, title="Afterglow", artist="Mira Vale"),
   MpAlbum(src="assets/demos/shared-transitions/thumbnails/01.jpg", iw=630, ih=945, title="Paper Planes", artist="North & Ash"),
-  MpAlbum(src="assets/demos/dynamic-tab-indicator/norway.jpg", iw=1920, ih=2880, title="Fjords", artist="Eirik Lund"),
+  MpAlbum(src="assets/demos/dynamic-tab-indicator/norway.jpg", iw=1920, ih=1080, title="Fjords", artist="Eirik Lund"),
   MpAlbum(src="assets/demos/shared-transitions/thumbnails/05.jpg", iw=1125, ih=750, title="Open Road", artist="Juniper"),
   MpAlbum(src="assets/demos/shared-transitions/thumbnails/09.jpg", iw=630, ih=788, title="Quiet Rooms", artist="Lena Hart"),
-  MpAlbum(src="assets/demos/dynamic-tab-indicator/japan.jpg", iw=1920, ih=2880, title="Neon Rain", artist="Kaito"),
+  MpAlbum(src="assets/demos/dynamic-tab-indicator/japan.jpg", iw=1920, ih=2560, title="Neon Rain", artist="Kaito"),
 ]
 
 fn mpTabIcon(i: number): string = i == 0 ? "symbol:sf/house.fill" : (i == 1 ? "symbol:sf/square.grid.2x2.fill" : (i == 2 ? "symbol:sf/dot.radiowaves.left.and.right" : "symbol:sf/music.note.square.stack.fill"))
