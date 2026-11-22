@@ -397,6 +397,9 @@ pub struct Canvas {
     clip_verbs: Vec<graphite::Verb>,
     /// The path being drawn, as verbs (kept between draws).
     verbs: Vec<graphite::Verb>,
+    /// A clip element's outline while it is drawn into depth ([`Canvas::use_msaa_clips`]), kept
+    /// apart from `verbs`: that holds the path of the draw the element clips, still to be filled.
+    clip_draw_verbs: Vec<graphite::Verb>,
     /// Flattening scratch.
     points: Vec<Point>,
     /// The path a shape draw ([`Canvas::draw_circle`], …) is built into, kept between draws.
@@ -425,6 +428,7 @@ impl Default for Canvas {
             clip_elems: Vec::new(),
             clip_verbs: Vec::new(),
             verbs: Vec::new(),
+            clip_draw_verbs: Vec::new(),
             points: Vec::new(),
             scratch: lyon::path::PathBuffer::new(),
             glyph_run: Vec::new(),
@@ -1092,7 +1096,7 @@ impl Canvas {
                 continue;
             }
             let v0 = self.vertices.len() as u32;
-            let mut verbs = std::mem::take(&mut self.verbs);
+            let mut verbs = std::mem::take(&mut self.clip_draw_verbs);
             verbs.clear();
             match e.shape {
                 ElemShape::Rect(r) => verbs.extend([
@@ -1108,7 +1112,7 @@ impl Canvas {
             let start = self.indices.len() as u32;
             self.fan(&verbs, &e.xf.m, depth, 0, None);
             let mid = self.indices.len() as u32;
-            self.verbs = verbs;
+            self.clip_draw_verbs = verbs;
             if mid > start {
                 self.ops.push(Op::Stencil { start, end: mid, scissor: None });
                 let b = self.device_bounds();
@@ -2174,6 +2178,43 @@ impl Canvas {
         let corners = [point(x0, y0), point(x1, y0), point(x1, y1), point(x0, y1)];
         self.quad(corners, corners, paint, u32::MAX, depth);
         self.push_tri(start, clip.scissor);
+    }
+}
+
+#[cfg(test)]
+mod clip_tests {
+    use super::*;
+
+    #[test]
+    fn a_path_drawn_first_under_a_path_clip_keeps_its_own_shape() {
+        // The clip is drawn into depth when its first draw uses it; that must not take the place
+        // of the draw's own path (a glyph outline under a continuous-corner clip came out as the
+        // clip: every outline glyph on the web, where text is paths).
+        let ring = |c: &mut Canvas| {
+            let mut b = Path::builder();
+            b.add_circle(point(95.0, 105.0), 30.0, Winding::Positive);
+            b.add_circle(point(95.0, 105.0), 15.0, Winding::Negative);
+            c.draw_path(&b.build(), &Paint::fill(Color::BLACK));
+        };
+        let mut c = Canvas::default();
+        c.begin(2.0);
+        c.clip_continuous_rrect(0.0, 30.0, 190.0, 110.0, 20.0);
+        ring(&mut c);
+        let kinds: Vec<&str> = c.ops.iter().map(|o| match o {
+            Op::Stencil { .. } => "stencil",
+            Op::ClipCover { .. } => "clip",
+            Op::Cover { .. } => "cover",
+            _ => "other",
+        }).collect();
+        assert_eq!(kinds, ["stencil", "clip", "stencil", "cover"]);
+        // The ring's winding: as many fan indices as the same ring drawn unclipped.
+        let (Op::Stencil { start, end, .. }, Op::Stencil { start: s0, end: e0, .. }) = (c.ops[2], c.ops[0]) else { unreachable!() };
+        let mut d = Canvas::default();
+        d.begin(2.0);
+        ring(&mut d);
+        let Op::Stencil { start: a, end: b, .. } = d.ops[0] else { unreachable!() };
+        assert_eq!(end - start, b - a);
+        assert_ne!(end - start, e0 - s0);
     }
 }
 
