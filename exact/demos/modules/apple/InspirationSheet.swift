@@ -5,7 +5,7 @@
 //
 // The view itself is an empty box; the sheet is presented from the top-most view controller,
 // because the full-screen demo route cannot present a dialog itself. Props: `open` ("true"
-// presents, anything else dismisses), `caption` (the title), `story`, `action-label` (the Contract
+// presents, anything else dismisses), `caption` (the title), `story`, `icon` (the demo's app icon file), `action-url` (picks the action's symbol), `action-label` (the Contract
 // refuses `label` on a native tag). Events: `press` when the action is tapped (the route opens
 // the URL and closes the sheet), `change("dismissed")` when the person drags it away.
 #if os(iOS)
@@ -16,27 +16,66 @@ final class InspirationModel: ObservableObject {
     @Published var title = "Inspiration"
     @Published var story = ""
     @Published var label = ""
+    @Published var icon: UIImage?
+    @Published var symbol = "arrow.up.right"
+    /// The window's bottom safe area (34 with a home indicator), which the sheet keeps under its content.
+    @Published var bottom: CGFloat = 0
+}
+
+/// The action's leading symbol, from where the link goes.
+private func actionSymbol(_ url: String) -> String {
+    let host = URL(string: url)?.host?.lowercased() ?? ""
+    if host.hasSuffix("apple.com") { return "arrow.down.app" }
+    if ["youtube.com", "youtu.be", "vimeo.com", "tiktok.com"].contains(where: { host == $0 || host.hasSuffix("." + $0) }) {
+        return "play.rectangle"
+    }
+    return "arrow.up.right"
 }
 
 struct InspirationBody: View {
     @ObservedObject var model: InspirationModel
     let action: () -> Void
 
+    /// One inset on every side of the content. The sheet is as tall as the content plus the bottom
+    /// safe area; the content moves down into that area by what it exceeds the inset, and the top
+    /// padding gives back as much, so the title keeps its place under the grabber (as the RN sheet).
+    private let inset: CGFloat = 24
+
     var body: some View {
+        let shift = min(max(0, model.bottom - inset), inset + 4)
+        // Top-aligned: a taller sheet must not centre the content and push it off the inset.
+        VStack(spacing: 0) {
+            content
+                .padding(.horizontal, inset)
+                .padding(.top, inset + 4 - shift)
+                .padding(.bottom, max(0, inset - model.bottom))
+                .offset(y: shift)
+            Spacer(minLength: 0)
+        }
+    }
+
+    private var content: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(model.title).font(.title2.bold())
+            HStack(spacing: 14) {
+                if let icon = model.icon {
+                    Image(uiImage: icon).resizable().frame(width: 56, height: 56)
+                        .clipShape(RoundedRectangle(cornerRadius: 12.5, style: .continuous))
+                }
+                Text(model.title).font(.title2.bold())
+            }
             Text(model.story).font(.body).fixedSize(horizontal: false, vertical: true)
             styled(SwiftUI.Button(action: action) {
-                Text(model.label).font(.headline).frame(maxWidth: .infinity)
+                HStack(spacing: 8) {
+                    Image(systemName: model.symbol)
+                    Text(model.label)
+                }
+                .font(.headline).frame(maxWidth: .infinity)
             })
             .buttonBorderShape(.capsule)
             .controlSize(.large)
             .padding(.top, 8)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 24)
-        .padding(.top, 28)
-        .padding(.bottom, 24)
     }
 
     /// Glass from iOS 26, bordered prominent on earlier versions.
@@ -62,6 +101,7 @@ final class InspirationSheet: ExactNativeInstance {
     private let box = UIView()
     private var sheet: UIHostingController<InspirationBody>?
     private var wantsOpen = false
+    private var iconFile = ""
 
     init(props: [String: String], events: ExactNativeEvents) {
         box.isUserInteractionEnabled = false
@@ -77,6 +117,11 @@ final class InspirationSheet: ExactNativeInstance {
         model.title = props["caption"].flatMap { $0.isEmpty ? nil : $0 } ?? "Inspiration"
         model.story = props["story"] ?? ""
         model.label = props["action-label"] ?? props["label"] ?? ""
+        model.symbol = actionSymbol(props["action-url"] ?? "")
+        if let file = props["icon"], !file.isEmpty, file != iconFile {
+            iconFile = file
+            model.icon = StillArt.image(file)
+        }
         let open = props["open"] == "true"
         if open != wantsOpen {
             wantsOpen = open
@@ -99,13 +144,16 @@ final class InspirationSheet: ExactNativeInstance {
     private func present() {
         guard wantsOpen, sheet == nil, let top = Self.topController(from: box.window) else { return }
         let events = self.events
+        model.bottom = top.view.window?.safeAreaInsets.bottom ?? 0
         let host = UIHostingController(rootView: InspirationBody(model: model, action: { events.press() }))
         host.overrideUserInterfaceStyle = .dark
         // iOS 26's sheet floats inset from the display's corners. With no bottom safe area the
         // action sits one inset (24) above the sheet's edge, so its capsule is concentric with the
         // sheet's corners and the display's.
         host.safeAreaRegions = []
-        host.view.backgroundColor = .clear
+        // The sheet's glass samples the demo behind it, so on a light demo it turned light grey
+        // under the white text: an opaque dark fill keeps it the dark sheet the RN one is.
+        host.view.backgroundColor = UIColor(white: 0.11, alpha: 1)
         host.modalPresentationStyle = .pageSheet
         if let controller = host.sheetPresentationController {
             // fitToContents: the content's own height at the screen's width.

@@ -90,5 +90,5 @@ component DemoScreen
       // The Inspiration sheet: a real UIKit sheet (`inspiration-sheet`, modules/apple/InspirationSheet.swift).
       if demo.story != ""
         inspiration-sheet open=(inspiring ? "true" : "false") caption="Inspiration" story=demo.story
-          action-label=demo.actionLabel press=follow change=sheetChanged position="absolute" left=0
+          icon=demo.icon action-url=demo.actionUrl action-label=demo.actionLabel press=follow change=sheetChanged position="absolute" left=0
           top=0 width=0 height=0 aria-hidden=true testId="inspiration-sheet"
