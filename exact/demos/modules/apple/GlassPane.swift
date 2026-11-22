@@ -13,7 +13,9 @@
 //               reaches the views above it.
 //   scheme      "light" | "dark": the pane's appearance, whatever the phone's; default the phone's.
 //               Glass reads its backdrop through it, so a dark one over a light page looks grey.
-//   corner-size the corner radius in points; default 0
+//   corner-size the corner radius in points; default 0. "capsule": half the shorter side, as a true
+//               pill (UIKit's capsule configuration): a continuous curve at half the height leaves
+//               flat-looking ends.
 //   continuous  "true" | "false": continuous corner curve; default true
 import Foundation
 
@@ -42,6 +44,7 @@ struct GlassPaneStyle: Equatable {
     var interactive = false
     var scheme: String? = nil
     var radius: CGFloat = 0
+    var capsule = false
     var continuous = true
 
     init() {}
@@ -51,6 +54,7 @@ struct GlassPaneStyle: Equatable {
         tint = glassPaneColor(props["pane-tint"]).map { [$0.0, $0.1, $0.2, $0.3] }
         interactive = props["interactive"] == "true"
         scheme = props["scheme"]
+        capsule = props["corner-size"] == "capsule"
         radius = props["corner-size"].flatMap(Double.init).map { CGFloat(max(0, $0)) } ?? 0
         continuous = props["continuous"] != "false"
     }
@@ -99,6 +103,8 @@ final class GlassPaneView: UIView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
+        // The pre-glass fallback's capsule radius follows the size.
+        if style.capsule, !Self.hasGlass { layer.cornerRadius = min(bounds.width, bounds.height) / 2; effectView.layer.cornerRadius = layer.cornerRadius }
         guard !installed else { return }
         if renderable { install() } else { waitForVisibility() }
     }
@@ -171,18 +177,23 @@ final class GlassPaneView: UIView {
                     effectView.effect = effect
                 }
             }
-            let r = UICornerRadius(floatLiteral: Double(style.radius))
-            effectView.cornerConfiguration = .corners(topLeftRadius: r, topRightRadius: r,
-                                                      bottomLeftRadius: r, bottomRightRadius: r)
+            if style.capsule {
+                effectView.cornerConfiguration = .capsule()
+            } else {
+                let r = UICornerRadius(floatLiteral: Double(style.radius))
+                effectView.cornerConfiguration = .corners(topLeftRadius: r, topRightRadius: r,
+                                                          bottomLeftRadius: r, bottomRightRadius: r)
+            }
         } else {
             if effectView.effect == nil || effectChanged { effectView.effect = UIBlurEffect(style: .dark) }
-            effectView.layer.cornerRadius = style.radius
-            effectView.clipsToBounds = style.radius > 0
-            layer.cornerRadius = style.radius
+            let radius = style.capsule ? min(bounds.width, bounds.height) / 2 : style.radius
+            effectView.layer.cornerRadius = radius
+            effectView.clipsToBounds = radius > 0
+            layer.cornerRadius = radius
             layer.borderWidth = 1 / max(traitCollection.displayScale, 1)
             layer.borderColor = UIColor(white: 1, alpha: 0.5).cgColor
         }
-        let curve: CALayerCornerCurve = style.continuous ? .continuous : .circular
+        let curve: CALayerCornerCurve = style.continuous && !style.capsule ? .continuous : .circular
         layer.cornerCurve = curve
         effectView.layer.cornerCurve = curve
     }
@@ -236,7 +247,7 @@ final class GlassPaneView: NSView {
             if glass !== view { glass?.removeFromSuperview(); attach(view) }
             view.style = style.glass == "clear" ? .clear : .regular
             view.tintColor = tint
-            view.cornerRadius = style.radius
+            view.cornerRadius = style.capsule ? min(bounds.width, bounds.height) / 2 : style.radius
             view.isHidden = style.glass == "none"
         } else {
             let view = glass as? NSVisualEffectView ?? NSVisualEffectView(frame: bounds)
@@ -246,8 +257,9 @@ final class GlassPaneView: NSView {
             view.state = .active
             view.appearance = NSAppearance(named: .darkAqua)
             view.wantsLayer = true
-            view.layer?.cornerRadius = style.radius
-            view.layer?.masksToBounds = style.radius > 0
+            let radius = style.capsule ? min(bounds.width, bounds.height) / 2 : style.radius
+            view.layer?.cornerRadius = radius
+            view.layer?.masksToBounds = radius > 0
             view.isHidden = style.glass == "none"
         }
         glass?.layer?.cornerCurve = style.continuous ? .continuous : .circular

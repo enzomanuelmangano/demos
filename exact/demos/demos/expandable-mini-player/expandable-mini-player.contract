@@ -9,7 +9,7 @@ use DemoEnv, floatingWidth, concentricRadius from "../env.contract"
 // Apple Music's mini player (the iOS 26 tab bar accessory): a 52 point Liquid Glass capsule with
 // the floating tab bar's side margins (21), 8 above it. The timeline keyframes are in the points of
 // a 402 x 874 display with a 62 point top inset: the mini player's top is at 732; its 40 point cover
-// (radius 7) is 6 in on top, bottom and left, concentric with the capsule's end; the title (15
+// (radius 10) is 6 in on top, bottom and left; the title (15
 // semibold) and the artist (13) start 12 after it; pause and forward are 22 point glyphs centred
 // at x 318 and 353, the forward glyph ending 14 from the capsule's right edge.
 fn mpInset(): number = 21
@@ -114,7 +114,8 @@ keyframes mpArtShadow
   0% opacity=1
   40% opacity=0
   100% opacity=0
-// The thumbnail's radius is 7 in its own scale (a rounded square); two layers trade places near the end.
+// The thumbnail's radius is 10 in its own scale: a rounded square (a radius concentric with the
+// capsule's 26 end, 20, would make it a circle); two layers trade places near the end.
 keyframes mpArtMini
   0% opacity=0
   60% opacity=0
@@ -244,10 +245,12 @@ component ExpandableMiniPlayer
       view position="absolute" left=mpInset() top=mpTravel() width=(W - 2 * mpInset())
         height=mpMiniH() pointer-events="none" animation="mpGlassRide 1s linear both"
         animation-timeline="--mp" animation-range="0px 732px"
-        view position="absolute" inset=0 backgroundMaterial="glass"
-          -exact-glass-tint="rgba(74, 90, 72, 0.18)" border-radius=(mpMiniH() / 2)
-          corner-shape="-exact-continuous" animation="mpGlass 1s linear both"
+        // A true pill: `corner-size="capsule"` is UIKit's capsule (a continuous curve at half the
+        // height reads as a flat-ended rounded rectangle).
+        view position="absolute" inset=0 animation="mpGlass 1s linear both"
           animation-timeline="--mp" animation-range="0px 732px" testId="mp-glass"
+          glass-pane glass-style="regular" pane-tint="rgba(74, 90, 72, 0.18)" corner-size="capsule"
+            interactive="false" position="absolute" inset=0 pointer-events="none" aria-hidden=true
 
       // The sheet: the cover's colours, deepening downward. It rises from the capsule (its radius
       // scales to the capsule's 26) and fades out over the last stretch, leaving the glass.
@@ -275,7 +278,7 @@ component ExpandableMiniPlayer
             MpArt(src=mpCover(), iw=1920, ih=2880, w=cover, h=cover, radius=12)
           view position="absolute" inset=0 opacity=0 animation="mpArtMini 1s linear both"
             animation-timeline="--mp" animation-range="0px 732px"
-            MpArt(src=mpCover(), iw=1920, ih=2880, w=cover, h=cover, radius=62)
+            MpArt(src=mpCover(), iw=1920, ih=2880, w=cover, h=cover, radius=88.5)
       // The title and artist grow from the mini player's two lines, left aligned with the controls.
       column position="absolute" left=mpSide() top=mpTitleTop(coverTop, cover) width=(cover - 44)
         pointer-events="none"
