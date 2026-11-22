@@ -386,7 +386,9 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         list.delaysContentTouches = false
         list.alwaysBounceVertical = true
         list.showsVerticalScrollIndicator = false
-        list.keyboardDismissMode = .onDrag
+        // As iOS: the keys follow a drag that reaches them. `.onDrag` took them down as each scroll began, a
+        // main-thread turn (35-70 ms on the simulator) on the scroll's first frames.
+        list.keyboardDismissMode = .interactive
         list.contentInsetAdjustmentBehavior = .never
         addSubview(list)
 
