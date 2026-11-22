@@ -5,6 +5,8 @@
 // logic needs the travel at each move. The action writes the pane's translate and plays the
 // haptic when it is due.
 
+use WebGlass from "../web-glass.contract"
+
 // Photo, cropped to the centre 1200 x 1593 of its 2832 x 1593 original.
 fn photo(): string = "assets/demos/liquid-glass-playground/background.jpg"
 
@@ -13,7 +15,11 @@ fn hapticOf(p: number): string = p >= 1 ? "impact-heavy" : (p >= 0.8058677170 ? 
 
 fn paneMotion(dragging: bool): string = dragging ? "none" : "translate -exact-spring(755.3715, 109.9361, 4)"
 
+shape WebPage
+  platform: string
+
 component LiquidGlassPlayground
+  resource web = exactPage() as shape WebPage
   // The gesture's translationY, from the touch-down.
   state ty = 0
   // A pan in progress: the pane follows the finger without a transition.
@@ -70,11 +76,14 @@ component LiquidGlassPlayground
         // shows an empty box.
         view position="absolute" inset=0 pointer-events="none" translate=`0px ${ty * 0.5}px`
           transition=paneMotion(dragging) aria-hidden=true testId="glass"
-          glass-pane glass-style="clear" pane-tint="rgba(0,0,0,0.5)" corner-size="50"
-            interactive="false" continuous="true" position="absolute" inset=0 aria-hidden=true
-            // Needs its own pointer-events too: the host skips a node's native views as touch
-            // targets only under that node's own `none`.
-            pointer-events="none"
+          if web.platform == "web"
+            WebGlass(tint="rgba(0,0,0,0.5)", radius="50", dark=true, clear=true)
+          if web.platform != "web"
+            glass-pane glass-style="clear" pane-tint="rgba(0,0,0,0.5)" corner-size="50"
+              interactive="false" continuous="true" position="absolute" inset=0 aria-hidden=true
+              // Needs its own pointer-events too: the host skips a node's native views as touch
+              // targets only under that node's own `none`.
+              pointer-events="none"
         // On the pane itself, so it moves with the pane: the strip a pulled pane uncovers takes no drag.
         view position="absolute" inset=0 touch-action="none" pan=drag panrelease=release
           translate=`0px ${ty * 0.5}px` transition=paneMotion(dragging)

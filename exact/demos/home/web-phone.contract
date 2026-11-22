@@ -44,7 +44,9 @@ component WebSpringboard
       column position="absolute" inset=0 padding-top=safeTop padding-bottom=safeBottom box-sizing="border-box"
         // Every page is a snap stop the width of the screen, as the native pager.
         row testId="pager" flex=1 min-height=0 overflow-x="auto" overflow-y="hidden" scroll-snap-type="x mandatory"
-          scrollbar-width="none" scroll=scrolled
+          scrollbar-width="none"
+          // contract-lint-disable-next-line no-per-frame-commit -- written only when the page number changes
+          scroll=scrolled
           for p in pages key=p
             column width=sw height="100%" flex-shrink=0 scroll-snap-align="start" scroll-snap-stop="always"
               padding="16px 22px 0" box-sizing="border-box"
@@ -67,26 +69,34 @@ component WebSpringboard
               view width=7 height=7 border-radius=3.5 background-color=(p == page ? "#ffffff" : "rgba(255,255,255,0.4)")
                 transition="background-color 160ms ease"
 
+// A hex colour's brightness 0..255 (the status bar's ink follows the page it is over, as iOS's does).
+fn hexv(c: string, i: number): number = "0123456789abcdef".indexOf(c.slice(i, i + 1).toLowerCase()) * 16 + "0123456789abcdef".indexOf(c.slice(i + 1, i + 2).toLowerCase())
+fn brightness(c: string): number = (hexv(c, 1) * 299 + hexv(c, 3) * 587 + hexv(c, 5) * 114) / 1000
+fn inkOver(c: string): string = brightness(c) > 150 ? "#000000" : "#ffffff"
+
 // The iPhone's status bar, drawn white over the app at the frame's top: the time, the signal, wifi and battery.
 component WebStatusBar
+  props
+    ink: string
   view
     view position="absolute" left=0 right=0 top=0 height=62 pointer-events="none" aria-hidden=true z-index=40
-      row position="absolute" left=36 top=19 width=96 height=22 align-items="center" justify-content="center"
-        text "9:41" font-size=17 font-weight=600 color="#ffffff" letter-spacing=-0.2
-      row position="absolute" right=30 top=19 width=110 height=22 align-items="center" justify-content="center" gap=7
-        svg width=19 height=12 viewBox="0 0 19 12"
-          rect x=0 y=7.5 width=3.2 height=4.5 rx=0.9 fill="#ffffff"
-          rect x=5 y=5 width=3.2 height=7 rx=0.9 fill="#ffffff"
-          rect x=10 y=2.5 width=3.2 height=9.5 rx=0.9 fill="#ffffff"
-          rect x=15 y=0 width=3.2 height=12 rx=0.9 fill="#ffffff"
-        svg width=17 height=12 viewBox="0 0 17 12" fill="none"
-          path d="M1.2 4.3C5.2 0.4 11.8 0.4 15.8 4.3" stroke="#ffffff" stroke-width=1.9 stroke-linecap="round"
-          path d="M3.6 6.8C6.2 4.3 10.8 4.3 13.4 6.8" stroke="#ffffff" stroke-width=1.9 stroke-linecap="round"
-          path d="M6 9.2C7.4 7.9 9.6 7.9 11 9.2" stroke="#ffffff" stroke-width=1.9 stroke-linecap="round"
-        svg width=28 height=13 viewBox="0 0 28 13" fill="none"
-          rect x=0.5 y=0.5 width=23 height=12 rx=3.8 stroke="#ffffff" stroke-opacity=0.4
-          rect x=2 y=2 width=20 height=9 rx=2.4 fill="#ffffff"
-          path d="M25 4.4V8.6C25.9 8.2 26.5 7.4 26.5 6.5C26.5 5.6 25.9 4.8 25 4.4Z" fill="#ffffff" fill-opacity=0.5
+      view position="absolute" inset=0
+        row position="absolute" left=36 top=19 width=96 height=22 align-items="center" justify-content="center"
+          text "9:41" font-size=17 font-weight=600 color=ink letter-spacing=-0.2
+        row position="absolute" right=30 top=19 width=110 height=22 align-items="center" justify-content="center" gap=7
+          svg width=19 height=12 viewBox="0 0 19 12"
+            rect x=0 y=7.5 width=3.2 height=4.5 rx=0.9 fill=ink
+            rect x=5 y=5 width=3.2 height=7 rx=0.9 fill=ink
+            rect x=10 y=2.5 width=3.2 height=9.5 rx=0.9 fill=ink
+            rect x=15 y=0 width=3.2 height=12 rx=0.9 fill=ink
+          svg width=17 height=12 viewBox="0 0 17 12" fill="none"
+            path d="M1.2 4.3C5.2 0.4 11.8 0.4 15.8 4.3" stroke=ink stroke-width=1.9 stroke-linecap="round"
+            path d="M3.6 6.8C6.2 4.3 10.8 4.3 13.4 6.8" stroke=ink stroke-width=1.9 stroke-linecap="round"
+            path d="M6 9.2C7.4 7.9 9.6 7.9 11 9.2" stroke=ink stroke-width=1.9 stroke-linecap="round"
+          svg width=28 height=13 viewBox="0 0 28 13" fill="none"
+            rect x=0.5 y=0.5 width=23 height=12 rx=3.8 stroke=ink stroke-opacity=0.4
+            rect x=2 y=2 width=20 height=9 rx=2.4 fill=ink
+            path d="M25 4.4V8.6C25.9 8.2 26.5 7.4 26.5 6.5C26.5 5.6 25.9 4.8 25 4.4Z" fill=ink fill-opacity=0.5
       // The Dynamic Island.
       view position="absolute" left=147 top=11 width=126 height=37 border-radius=18.5 background-color="#000000"
 
@@ -139,6 +149,8 @@ component WebShell
     open: action
     leave: action
   derive s = frameScale(vw, vh)
+  derive bd = demos.filter(d => d.slug == slug).map(d => d.backdrop).join("")
+  derive backdrop = bd == "" ? "#000000" : bd
   view
     column position="absolute" inset=0 background-color="#141414"
       if framed
@@ -147,10 +159,11 @@ component WebShell
           background-image="radial-gradient(ellipse 90% 70% at 50% 35%, #2b2b31, #161619 60%, #0a0a0b)" testId="web-stage"
           column width=frameW() height=frameH() flex-shrink=0 position="relative" scale=s
             // The titanium band, then the black glass edge, then the display.
-            view position="absolute" inset=0 border-radius=74
+            view position="absolute" inset=0 border-radius=74 corner-shape="-exact-continuous"
               background-image="linear-gradient(150deg, #e4e5e8, #8f9197 22%, #cfd0d3 48%, #7d7f85 74%, #babcc0)"
               box-shadow="0px 50px 120px rgba(0,0,0,0.6), 0px 14px 34px rgba(0,0,0,0.45)"
-            view position="absolute" left=3 top=3 right=3 bottom=3 border-radius=71 background-color="#050506"
+            // contract-lint-disable-next-line concentric-bottom-ui -- the device frame, not an app control
+            view position="absolute" left=3 top=3 right=3 bottom=3 border-radius=71 corner-shape="-exact-continuous" background-color="#050506"
               box-shadow="inset 0px 0px 0px 1px rgba(255,255,255,0.08)"
             // The side buttons: the action button and the volume keys on the left, the power key on the right.
             view position="absolute" left=-3 top=150 width=4 height=30 border-radius=2 background-color="#9a9ca2"
@@ -161,9 +174,10 @@ component WebShell
               corner-shape="-exact-continuous" overflow="hidden" background-color="#000000" testId="web-device"
               WebScreen(demos=demos, env=env, slug=slug, sw=airW(), sh=airH(), safeTop=airTop(), safeBottom=airBottom(),
                 framed=true, open=open, leave=leave)
-              WebStatusBar()
+              WebStatusBar(ink=inkOver(backdrop))
               // The home indicator.
-              view position="absolute" left=140 bottom=8 width=140 height=5 border-radius=2.5 background-color="#ffffff"
+              // contract-lint-disable-next-line concentric-bottom-ui -- the home indicator bar
+              view position="absolute" left=140 bottom=8 width=140 height=5 border-radius=2.5 background-color=inkOver(backdrop)
                 opacity=0.85 pointer-events="none" aria-hidden=true z-index=40
       else
         WebScreen(demos=demos, env=env, slug=slug, sw=vw, sh=vh, safeTop=safeTop, safeBottom=safeBottom, framed=false,

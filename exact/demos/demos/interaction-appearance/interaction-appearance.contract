@@ -4,6 +4,7 @@
 // above it, so it stays sharp over the blur.
 use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
 use DemoEnv, demoButtonRow, concentricInset from "../env.contract"
+use WebGlass from "../web-glass.contract"
 
 // The 64 pt circle sits concentric with the display's corner, 30 pt from the sides and the bottom.
 fn sunSize(): number = 64
@@ -38,9 +39,12 @@ component InteractionAppearance
         width=sunSize() height=sunSize() border-radius=32 corner-shape="-exact-continuous" role="button" aria-label="Switch theme"
         press=pressed pointerdown=holdOn pointerup=holdOff testId="sun"
         scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
-        glass-pane glass-style="regular" corner-size="32" interactive="true" continuous="true"
-          scheme=(dark ? "dark" : "light")
-          position="absolute" inset=0 pointer-events="none" aria-hidden=true
+        if env.web
+          WebGlass(tint="", radius="32", dark=dark, clear=false)
+        if not (env.web)
+          glass-pane glass-style="regular" corner-size="32" interactive="true" continuous="true"
+            scheme=(dark ? "dark" : "light")
+            position="absolute" inset=0 pointer-events="none" aria-hidden=true
         column position="absolute" inset=0 align-items="center" justify-content="center"
           pointer-events="none" aria-hidden=true
           image "symbol:sf/sun.max.fill" font-size=22 color=(dark ? "#FFFFFF" : "#000000")

@@ -6,6 +6,7 @@
 // the inverse of the circle so it stays still. When the reveal lands, the new theme becomes the base.
 use PressableScale from "pressto"
 use DemoEnv, concentricInset from "../env.contract"
+use WebGlass from "../web-glass.contract"
 
 fn ttsBtn(): number = 64
 // The button's gap to the display's right and bottom edges.
@@ -194,9 +195,12 @@ component TtsScreen
             view position="absolute" inset=0
               border-radius=radius corner-shape="-exact-continuous" background-color=ttsBtnFill(dark)
               box-shadow="0px 8px 24px rgba(0, 0, 0, 0.12)" pointer-events="none" aria-hidden=true
-            glass-pane glass-style="regular" pane-tint=ttsGlassTint(dark) corner-size=`${radius}`
-              interactive="true" continuous="true" scheme=(dark ? "dark" : "light")
-              position="absolute" inset=0 pointer-events="none" aria-hidden=true
+            if env.web
+              WebGlass(tint=ttsGlassTint(dark), radius=`${radius}`, dark=dark, clear=false)
+            if not (env.web)
+              glass-pane glass-style="regular" pane-tint=ttsGlassTint(dark) corner-size=`${radius}`
+                interactive="true" continuous="true" scheme=(dark ? "dark" : "light")
+                position="absolute" inset=0 pointer-events="none" aria-hidden=true
             image (dark ? "symbol:sf/sun.max.fill" : "symbol:sf/moon.fill") font-size=24
               color=ttsAccent(dark) aria-hidden=true
               animation=(live ? "none" : `ttsSymbolIn ${ttsRevealMs()}ms cubic-bezier(0.23, 1, 0.32, 1) both`)

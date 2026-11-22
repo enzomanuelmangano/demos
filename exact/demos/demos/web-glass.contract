@@ -1,0 +1,17 @@
+// The web's stand-in for `glass-pane` (modules/apple/GlassPane.swift, UIKit Liquid Glass): a rounded box that
+// blurs and saturates what is behind it, tinted, with the glass's bright rim. The iPhone keeps the real one.
+fn glassFill(tint: string, dark: bool, clear: bool): string =
+  tint != "" ? (tint.length == 7 ? tint + "cc" : tint) : (dark ? "rgba(30,30,34,0.42)" : (clear ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.4)"))
+fn glassRadius(r: string): string = r == "capsule" ? "9999px" : r + "px"
+
+component WebGlass
+  props
+    tint: string
+    radius: string
+    dark: bool
+    clear: bool
+  view
+    view position="absolute" inset=0 border-radius=glassRadius(radius) corner-shape="-exact-continuous" overflow="hidden"
+      pointer-events="none" aria-hidden=true backdrop-filter=(clear ? "blur(8px) saturate(160%)" : "blur(22px) saturate(180%)")
+      background-color=glassFill(tint, dark, clear)
+      box-shadow="inset 0px 0px 0px 0.5px rgba(255,255,255,0.35), inset 0px 1px 1px rgba(255,255,255,0.4)"

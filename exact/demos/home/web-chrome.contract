@@ -53,7 +53,7 @@ component WebSheet
           position="absolute" inset=0 background-color="rgba(0,0,0,0.4)"
           animation="webScrimIn 260ms ease-out both" -exact-exit-animation="webScrimOut 200ms ease-in both"
         column position="absolute" left=0 right=0 bottom=0 background-color="#1c1c1e" border-top-left-radius=28
-          border-top-right-radius=28 padding=24 gap=16 box-sizing="border-box"
+          border-top-right-radius=28 corner-shape="-exact-continuous" padding=24 gap=16 box-sizing="border-box"
           padding-bottom=max(24, safeBottom) color-scheme="dark"
           animation="webSheetIn 380ms cubic-bezier(0.32,0.72,0,1) both"
           -exact-exit-animation="webSheetOut 240ms cubic-bezier(0.5,0,0.75,0) both"
@@ -63,7 +63,7 @@ component WebSheet
           text story font-size=15 line-height=1.45 color="#c7c7cc"
           if actionLabel != ""
             button press=follow appearance="none" testId="web-sheet-action" padding=0 border-width=0 height=52
-              border-radius=26 background-color="#ffffff" display="flex" align-items="center" justify-content="center" gap=8
+              border-radius=26 corner-shape="-exact-continuous" background-color="#ffffff" display="flex" align-items="center" justify-content="center" gap=8
               :active
                 -exact-press-scale = 0.97
               text actionLabel font-size=17 font-weight=600 color="#000000"
