@@ -649,7 +649,8 @@ impl OutlineBuilder for Outline {
 }
 
 /// The platform's system UI face (San Francisco on Apple) at `weight` (100…900) and the optical
-/// size Core Text picks for `size`. `None` where the file cannot be read (the web, other platforms).
+/// size Core Text picks for `size` (Inter on the web, [`system_face`]). `None` where the file cannot be
+/// read (other platforms).
 pub fn match_system_font(size: f32, weight: f32) -> Option<Font> {
     let data = system_face()?;
     Font::with_variations(data, size, &[(b"wght", weight), (b"opsz", size)])
@@ -663,7 +664,13 @@ pub fn match_system_font(size: f32, weight: f32) -> Option<Font> {
 /// number: [`ui_weight`].
 pub fn match_ui_font(size: f32, weight: f32) -> Option<Font> {
     let data = system_face()?;
-    Font::with_variations(data, size, &[(b"wght", ui_weight(weight)), (b"opsz", size)]).map(Font::with_ui_layout)
+    Font::with_variations(data, size, &[(b"wght", face_weight(weight)), (b"opsz", size)]).map(Font::with_ui_layout)
+}
+
+/// The `wght` the system face draws a UIKit weight at: San Francisco's named instance ([`ui_weight`]);
+/// the web's stand-in (Inter, [`system_face`]) is drawn at the CSS weight itself.
+fn face_weight(weight: f32) -> f32 {
+    if cfg!(target_arch = "wasm32") { weight.clamp(100.0, 900.0) } else { ui_weight(weight) }
 }
 
 /// The `wght` San Francisco draws a font weight at: 100…900 map to the named weights ultraLight,
@@ -676,6 +683,16 @@ pub fn ui_weight(weight: f32) -> f32 {
     WGHT[i] + (WGHT[i + 1] - WGHT[i]) * (k - i as f32)
 }
 
+/// The web reads no system files, and San Francisco may not be shipped: there the system face is Inter
+/// (SIL Open Font License 1.1, rsms.me/inter), the variable font with `wght` 100…900 and `opsz` 14…32,
+/// subset to Latin, Latin-1, general punctuation, arrows and a few symbols (fonts/inter-web-subset.ttf,
+/// 250 KB). Without it every system-font label drawn on a GPU surface was missing on the web.
+#[cfg(target_arch = "wasm32")]
+fn system_face() -> Option<&'static [u8]> {
+    Some(include_bytes!("../fonts/inter-web-subset.ttf"))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 fn system_face() -> Option<&'static [u8]> {
     static FACE: std::sync::OnceLock<Option<&'static [u8]>> = std::sync::OnceLock::new();
     *FACE.get_or_init(|| {
