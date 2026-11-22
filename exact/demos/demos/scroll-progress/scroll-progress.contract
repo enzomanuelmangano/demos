@@ -30,10 +30,10 @@ fn readingTime(): string = `${sum(sections().map(x => ceil(x.description.split("
 
 // Rounds to float32, the precision the host reports the content height in.
 fn float32(v: number): number = v >= 2048 ? round(v * 4096) / 4096 : round(v * 8192) / 8192
-// How far past the end (pt) the content is pulled before the pill turns into the up arrow. A bounce
-// off the bottom is a few points and must not collapse the pill: the bar stays at 100%.
-fn endPull(): number = 20
-// Pill state: initial at progress 0, end at 1 (pulled past the end), expanded in between.
+// Within this many points of the end the pill is the up arrow: the content height is a float32, so at
+// rest at the bottom the offset can fall a hair short of the range.
+fn endSlack(): number = 0.5
+// Pill state: initial at progress 0, end at 1 (the end of the scroll), expanded in between.
 fn isInitial(p: number): bool = p == 0
 fn isEnd(p: number): bool = p == 1
 fn isExpanded(p: number): bool = p != 0 and p != 1
@@ -64,15 +64,14 @@ component ScrollProgress
       if y == 0
         resetting = false
     else
-      // The content height is a float32, so at rest at the bottom the ratio is 0.99999994: still expanded
-      // (100%). The end state (up arrow) shows only while the content is pulled well past its end.
+      // The end state (the up arrow) is reached with the last point of the scroll, as the 100% label goes.
       let maxY = max(1, float32(e.scrollHeight) - e.clientHeight)
       let p = y / maxY
-      let q = y - maxY >= endPull() ? 1 : (p > 0 ? 0.5 : 0)
+      let q = y >= maxY - endSlack() ? 1 : (p > 0 ? 0.5 : 0)
       offset = y
       range = maxY
       if q != progress
-        // One rigid tap when pulled past the end, once per pull.
+        // One rigid tap on reaching the end, once per arrival.
         if q == 1
           haptic("impact-rigid")
         progress = q
