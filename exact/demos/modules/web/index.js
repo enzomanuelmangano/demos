@@ -109,6 +109,80 @@ const hookMessages = () => {
 };
 hookMessages();
 
+// ---- A touch screen has no hover --------------------------------------------------------------------------------
+// The web host washes any pressable a mouse is over (`--exact-hover-wash`, the bordered / gray buttons' quaternary
+// fill): a grey square stayed behind a demo's button wherever the pointer rested on the desktop frame (sculptures-in-
+// words' toggle after a click), and iOS Safari keeps :hover on the last element tapped. The iPhone draws none.
+{
+  const sheet = document.createElement('style');
+  sheet.textContent = '#exact-root#exact-root :is(button,a[data-view][href],[data-exact-on~="press"]){--exact-hover-wash:none;--exact-hover-dim:1}#exact-root#exact-root button[data-button-style]:hover{background-image:none!important}';
+  document.head.append(sheet);
+}
+
+// ---- SF Symbols the web host's table lacks ----------------------------------------------------------------------
+// The host draws `symbol:sf/<name>` from its own subset of paths; a name outside it is an empty image. Each one a demo
+// uses is drawn here at the symbol's semibold width (its point size's box on the iPhone): textformat ("Aa",
+// sculptures-in-words' toggle, 20 x 12.5 at 13.79 pt).
+{
+  const SF = {
+    textformat: ['0 0 32 20', 20, 12.5, '<path d="M1.6 18.6L8 1.6L14.4 18.6M3.9 12.8H12.1" fill="none" stroke="black" stroke-width="2.9" stroke-linejoin="round" stroke-linecap="round"/><path d="M20.9 8.3C21.9 7.1 23.3 6.6 24.9 6.6C27.5 6.6 29 8 29 10.6V18.6M29 12.7C26.5 12.7 20.3 12.5 20.3 15.7C20.3 17.6 21.8 18.7 23.8 18.7C26.4 18.7 29 17.2 29 14.6" fill="none" stroke="black" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/>'],
+  };
+  const sheet = document.createElement('style');
+  sheet.textContent = Object.entries(SF).map(([name, [box, w, h, body]]) => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box}">${body}</svg>`;
+    return `#exact-root img[data-symbol-source="symbol:sf/${name}"][data-symbol-path=""]{mask-image:url("data:image/svg+xml,${encodeURIComponent(svg)}")!important;mask-size:contain!important;width:${w}px!important;height:${h}px!important;max-width:none!important}`;
+  }).join('');
+  document.head.append(sheet);
+}
+
+// ---- Continuous corners that do not fit are round, as UIKit draws them --------------------------------------------
+// `corner-shape: -exact-continuous` is written as a superellipse whose radius is the radius times the curve's reach
+// (1.52). UIKit draws a continuous corner only where that reach fits in half the side; where it does not (a disc,
+// a capsule, a pill), its corners are circular arcs of the radius asked, clamped to half the side: a 48 pt disc of
+// radius 24 is a circle on the iPhone, where the superellipse made it a squircle on the web. Each element whose class
+// or style gives it the curve is measured when it mounts and when it resizes, and turned round while it does not fit.
+{
+  const turned = new WeakSet();
+  let classes = null, sheets = -1;
+  const selector = () => {
+    if (sheets === document.styleSheets.length && classes) return classes;
+    sheets = document.styleSheets.length;
+    const found = new Set();
+    const walk = (rules) => { for (const r of rules) {
+      if (r.cssRules?.length) walk(r.cssRules);
+      if (r.style?.cornerShape?.startsWith('superellipse') && r.selectorText) for (const m of r.selectorText.matchAll(/\.(c\d+)\b/g)) found.add(m[1]);
+    } };
+    for (const s of document.styleSheets) { try { walk(s.cssRules); } catch {} }
+    classes = [...[...found].map((c) => '.' + c), '[style*="corner-shape"]'].join(',');
+    return classes;
+  };
+  const corners = ['TopLeft', 'TopRight', 'BottomRight', 'BottomLeft'];
+  const fit = (e, w, h) => {
+    if (turned.has(e)) { e.style.removeProperty('corner-shape'); for (const c of corners) e.style.removeProperty(`border-${c.replace(/[A-Z]/g, (x) => '-' + x.toLowerCase()).slice(1)}-radius`); turned.delete(e); }
+    const cs = getComputedStyle(e);
+    if (!cs.cornerShape?.startsWith('superellipse')) return;
+    const reach = parseFloat(cs.getPropertyValue('--exact-curve-reach')) || 1.52, half = Math.min(w, h) / 2;
+    const radii = corners.map((c) => parseFloat(cs[`border${c}Radius`]) || 0);
+    if (half <= 0 || Math.max(...radii) <= half + 0.01) return;
+    turned.add(e);
+    e.style.setProperty('corner-shape', 'round');
+    // The radius asked (the written one over the reach), unless the runtime animates the radius in the style.
+    if (!/border[a-z-]*radius/.test(e.getAttribute('style') ?? '')) corners.forEach((c, i) => e.style.setProperty(`border-${c.replace(/[A-Z]/g, (x) => '-' + x.toLowerCase()).slice(1)}-radius`, `${radii[i] / reach}px`));
+  };
+  const sizes = new ResizeObserver((entries) => { for (const en of entries) fit(en.target, en.borderBoxSize?.[0]?.inlineSize ?? en.contentRect.width, en.borderBoxSize?.[0]?.blockSize ?? en.contentRect.height); });
+  const watched = new WeakSet();
+  let queued = false;
+  const scan = () => {
+    queued = false;
+    const root = document.getElementById('exact-root');
+    if (!root) return;
+    for (const e of root.querySelectorAll(selector())) if (!watched.has(e)) { watched.add(e); sizes.observe(e, { box: 'border-box' }); }
+  };
+  const mutations = new MutationObserver(() => { if (!queued) { queued = true; requestAnimationFrame(scan); } });
+  const start = () => { const root = document.getElementById('exact-root'); if (!root) return void setTimeout(start, 50); mutations.observe(root, { childList: true, subtree: true }); scan(); };
+  if (typeof CSS !== 'undefined' && CSS.supports?.('corner-shape', 'round')) start();
+}
+
 // ---- The launch: modules/apple/DemoLaunch.swift on the web --------------------------------------------------------
 // Open: the card (`web-card`) grows out of the tapped icon, its width, aspect and centre each on their own spring, the
 // icon's artwork cross-fading into it, the corners overshooting the display's radius and settling, a slight trapezoid
