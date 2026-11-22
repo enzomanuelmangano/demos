@@ -92,7 +92,14 @@ missing; the web's system face is Inter, OFL, subset 250 KB, a stand-in for SF, 
 | cherry-blossom-qrcode | PERFECT, web limit | tap folds to the QR and back, long press sends the creeper (blast, reassembly), the field retypes the code. Limit: no software keyboard on a desktop, so the field's keyboard toolbar sits at the screen's bottom and the tree's space above an absent keyboard stays empty. |
 | github-terrain | PERFECT | tap springs to the terrain and back, the switch swaps data. Note (iOS too, not web): RN's switch has an off track #C8CCC9, the port's is the system's (faint on the light page). |
 | notion-qrcode | PERFECT | CONNECT / SHARE labels drawn (font fix), the wave to the QR and back, 60 fps touch. Labels are Inter on the web. |
-| scrollable-shapes ... | next | Continue here, then sphere-waves, calendar-days, blur-cards, ... in demos.contract order. |
+| scrollable-shapes | PERFECT, desktop note | swipes morph sphere, cube, torus, heart; dots follow; 60 fps. A trackpad's sideways scroll does nothing (a surface hears only pointers): see the wheel note below. |
+| sphere-waves ... | next | Continue here (its pinch needs the wheel note on a desktop), then calendar-days, blur-cards, liquid-glass-playground, ... in demos.contract order. |
+
+Wheel note (proposed, not done): a GPU surface hears pointers and wheels, and only art-gallery reads a wheel (a pinch,
+gpu/src/art_gallery.rs `Wheel`). A generic page-module mapping would serve every surface: a wheel over a GPU canvas
+becomes synthetic touch pointers (a ctrl-wheel two fingers spreading about the pointer, a scroll one finger dragging,
+lifted 120 ms after the wheel stills), dispatched on the canvas, marked so the demo card's close pan ignores them; the
+pointer wrapper in modules/web/index.js already maps their coordinates. Art-gallery's Rust wheel would then be removed.
 
 ## Per demo
 
