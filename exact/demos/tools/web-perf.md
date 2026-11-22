@@ -85,3 +85,53 @@ what stutters**.
 GPU first use (cold open of a GPU demo): the 910-1310 ms `click` includes creating the surface's pipelines and
 inflating its embedded images (gpu/images, zlib) on the main thread. On the web `gpu/src/warm.rs` is a no-op (see
 web-parity.md), so each demo pays this on its first open.
+
+## Load (cold, empty cache)
+
+`load.ts`, production build served by `serve.ts` (brotli, as a CDN), dev build by the running dev server (:5341).
+"Launcher drawn" = the first page's 24 icons decoded; "GPU ready" = `gpu_bg.wasm` instantiated (a GPU demo can draw);
+TTI = the end of the last long task before 3 s without one.
+
+| build | network | CPU, screen | wire MB | FCP s | launcher drawn s | launcher TTI s | gpu_bg.wasm fetch s | GPU ready s | long tasks n / total / max ms |
+|---|---|---|---|---|---|---|---|---|---|
+| prod | cable (100 Mbit, 5 ms) | 1x, 1440x900 | 32.8 | 0.88 | 1.04 | 3.32 | 5.03-7.27 | 7.28 | 2 / 291 / 235 |
+| prod | cable | 4x, 390x844@3 | 32.8 | 1.73 | 1.81 | 1.90 | 5.76-7.75 | 7.77 | 3 / 1090 / 966 |
+| prod | 4G (9 Mbit, 165 ms) | 4x, 390x844@3 | 32.7 | 3.94 | 5.29 | 5.48 | 8.63-30.86 | **30.9** | 7 / 1908 / 1298 |
+| prod | Fast 3G (1.44 Mbit, 563 ms) | 4x, 390x844@3 | 32.6 | 11.86 | **21.2** | 21.2 | 25.7-182.8 | **182.9** | 5 / 1549 / 1230 |
+| dev | cable | 1x, 1440x900 | 58.0 | 3.24-3.44 | 3.37-3.62 | 3.37-3.69 | 7.3-9.8 | 9.8 | 1-3 / 550-630 / 490-550 |
+| dev | cable | 4x, 390x844@3 | 58.0 | 5.01 | 5.11 | 5.23 | 9.1-11.4 | 11.4 | 6 / 2380 / 1978 |
+| dev | 4G | 4x, 390x844@3 | - | never | never | - | - | never | the dev server drops the connection (below) |
+
+Bytes of a cold production load (32.8 MB on the wire, 199 requests):
+
+| what | wire MB | decoded MB | when it is fetched | notes |
+|---|---|---|---|---|
+| `gpu_bg.wasm` | 24.74 (br) | 28.52 | 4 s after the launcher is idle (`task warmingGpu`, app.contract) | code 1.6 MB, **data section 26.9 MB**: the `include_bytes!` images (gpu/images 25 MB) and fonts; brotli saves 13% |
+| fonts (7, `<link rel=preload>`) | 2.99 (br) | 5.21 | at once, before app.js | **SF-Pro-Rounded-Bold.otf is 4.32 MB** (24,834 glyphs, CFF); a Latin subset is 100 KB (otf) / 47 KB (woff2). The launcher uses none of the 7 faces |
+| images (107) | 4.12 | 4.10 | after app.js runs | home-wallpaper.png 2.02 MB (1206 x 2622 PNG); icon.png 0.30 MB; 105 icons ~20 KB |
+| JS (26) | 0.73 (br) | 14.11 | app.js first | app.js 13.4 MB decoded, 0.45-0.53 MB brotli, 1.63 MB gzip-9: **brotli matters 3.5x here** |
+| shaders (55 `.wgsl`) | 0.13 | 0.34 | after the wasm, every shader of every demo, one request each | |
+| audio, art-pack | 0 | 0 | on demand | already lazy |
+
+Dev server: app.js 18.4 MB and the wasm 28.5 MB are served uncompressed with `cache-control: no-store` (58 MB per
+load, every reload), and the main-thread long task at startup is 2x the production one (550 vs 235 ms at 1x).
+
+Startup CPU: one long task of 235 ms (1x) / 970-1300 ms (4x) when app.js runs and the launcher is built; the wasm is
+compiled while it streams (`instantiateStreaming`, baseline + lazy tier-up: `wasm.CompileLazy` 350 functions, 3 ms),
+so compile time hides under the download; instantiate 2-6 ms. Memory after load: JS heap 42 MB (prod) / 51 MB (dev),
+wasm linear memory 28.6 MB (its data section is copied into it), 395-424 DOM nodes.
+
+### Load causes, ranked
+
+1. **The embedded images make the GPU module 28.5 MB**: 25 s of 4G and 157 s of Fast 3G before any GPU demo can draw,
+   and 27 MB of wasm memory held for the session. Only 1.6 MB is code.
+2. **7 fonts preloaded on the launcher, 5.2 MB (3 MB br), 4.3 MB of it one face** used as text in four demos
+   (stacked-bottom-sheet, steps, cherry-blossom-qrcode, family-number-input). On 4G it holds the link for 3.6 s while app.js and the icons wait; on Fast 3G 45 s.
+3. **home-wallpaper.png is 2 MB** and blocks "launcher drawn" on slow links (4G: done at 6.8 s; Fast 3G 50 s). It is 1206 x 2622
+   (the iPhone's 3x); JPEG q85 of it is 1.05 MB, and the framed desktop shows it at ~420 pt wide, so a web copy at 2x
+   (840 x 1824) in WebP/AVIF would be a few hundred KB.
+4. **The GPU module starts 4 s after the launcher is idle**: right for a fast link (it keeps the launcher smooth), but
+   on 4G the 25 MB then takes 22 s; a tap on a GPU demo in that window waits for it.
+5. **Dev server**: uncompressed, `no-store`, and both `exact serve` and the dev server close a connection that a slow
+   client drains (a 25 MB wasm at 1 MB/s is cut after ~8 s: `curl --limit-rate 1000k` gets 7.8 MB, then "transfer
+   closed"): the dev build never loads on a throttled profile, and a phone on a weak LAN link can hit the same.
