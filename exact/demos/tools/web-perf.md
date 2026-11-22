@@ -135,3 +135,162 @@ wasm linear memory 28.6 MB (its data section is copied into it), 395-424 DOM nod
 5. **Dev server**: uncompressed, `no-store`, and both `exact serve` and the dev server close a connection that a slow
    client drains (a 25 MB wasm at 1 MB/s is cut after ~8 s: `curl --limit-rate 1000k` gets 7.8 MB, then "transfer
    closed"): the dev build never loads on a throttled profile, and a phone on a weak LAN link can hit the same.
+
+## Runtime, every demo (launcher order)
+
+`runtime.ts` on the production build: per demo, tap its icon on the launcher (open flight, 1.2 s), a 3 s scripted
+interaction (horizontal drag through the centre both ways, a drag up, three taps), Back (1.2 s). Desktop: 1440 x 900,
+mouse, CPU 1x. Mobile: 390 x 844 @3, touch, CPU 4x. rAF is uncapped, so a frame interval is what the frame cost;
+"(60)" marks segments Chrome paced at 60 Hz (a compositor animation was running), where ~17 ms is the pace, not a
+cost. ios-home-bouncy, time-machine, grid-visualizer (and shared-transitions on mobile) are not on the web launcher.
+
+Summary:
+
+| | desktop 1x | mobile 4x |
+|---|---|---|
+| demos measured | 91 | 105 |
+| median run frame p95 | 17.2 ms (mostly the 60 Hz pace) | 18.7 ms |
+| demos with a long task (> 50 ms) during the interaction | 11 | 12 |
+| open flight: median worst frame / demos with a frame > 100 ms | 140 ms / 64 | 197 ms / 105 (all) |
+| worst open frame | fluid-tab-interaction 1105, duration-slider 996, threads-holo-ticket 910, sculptures-in-words 777, scroll-transition-3d 751 ms | coverflow-carousel 1539, light-on-painting 1271, github-onboarding 1029, chessboard 828, prequel-slider 760 ms |
+| worst interaction frame | linear-sensors 405, art-gallery 241, online-offline 212, wheel-picker 206, airbnb-flip-interaction 181 ms | prequel-slider 409, chessboard 393, atlas-sphere 298, fibonacci-shader-grid 253, checkbox-interactions 146 ms |
+| JS heap after GC, first -> last demo | 41.3 -> 48.9 MB (no demo leaks > 1.7 MB) | 41.2 -> 48.9 MB |
+| wasm linear memory | 28.6 -> 92 MB (grows with each demo's decoded images, never shrinks) | 88 MB |
+| crashes | **radar-chart: `RuntimeError: unreachable` in the GPU module on open (draws nothing)** | same |
+
+GPU time (timestamp queries, per submit, run segment): highest p95 bezier-curve-outline 8.8 ms (max 16.7), clock-time-picker
+7.6 (12.6), duration-slider 5.5 (41), exclusion-tabs 2.3, mnist 2.1 (9.9); on mobile emulation (same GPU) bezier-curve-outline
+38.8 ms p95. Everything else is under 2 ms: the GPU is rarely the limit; the main thread is.
+
+Per-frame data movement and resource churn (desktop):
+
+- `writeBuffer` during 3 s of interaction: sculptures-in-words **1.57 GB** (2 MB per frame), notion-qrcode 1.4 GB,
+  mnist 630 MB, drag-to-sort 450 MB, fourier-visualizer 440 MB, gl-transitions 420 MB, github-contributions 345 MB.
+  A whole vertex/instance buffer re-uploaded every frame where a uniform would do.
+- Textures created during the 1.2 s open: scrollable-shapes 631 (636 MB), notion-qrcode 391 (777 MB), snake 348,
+  slide-to-reveal 348, chessboard 326, airbnb-flip-interaction 248: the canvas resized every flight frame (cause 2
+  above) reallocates draw2d's MSAA and depth targets each time. Pipelines created in the open: airbnb-flip-interaction
+  **649**, scrollable-shapes 162, duration-slider 145, snake 140: pipelines rebuilt per frame (per size) instead of once.
+  During the interaction: blurred-scroll 363 textures (111 MB), github-contributions 94.
+- DOM mutation records during the interaction (Contract commits): online-offline 329, everybody-can-cook 324,
+  checkbox-interactions 288, github-contributions 223, liquid-glass-playground 122 (stacked-list's scroll: 4200, above).
+- Long tasks in the interaction (desktop): wheel-picker 212 ms, airbnb-flip-interaction 195, linear-sensors 158
+  (3 of them), threads-holo-ticket 155, sculptures-in-words 114, prequel-slider 101 ms. The open's own `click` task
+  (the demo's commit) is the bigger one: wheel-picker 408 ms, sculptures-in-words 276, linear-sensors 266 ms.
+
+Worst 15, desktop 1x (score = run p95 x4 + run max + open max / 4 + long task max x2 + GPU p95 x10):
+
+| demo | run frame ms p50 / p95 / max | run frames > 60 / 120 Hz budget | run long tasks (max ms) | run GPU ms/submit p50 / p95 / max | open p95 / max (missed 60 Hz) | close p95 / max (missed) | run DOM mutations | run writeBuffer MB | textures / pipelines created (open+run) | heap growth MB | top long-frame scripts (ms) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| linear-sensors | 16.9 / 17.8 / 404.8 (60) | 2 / 34 | 3 (158) | 0.038 / 0.937 / 1.237 | 17.7 / 382.6 (25) | 17.8 / 34.8 (1) | 4 | 0.03 | 42 / 70 | 0.05 | app-CvsiKF0t.js: 266; gpu-glue.js:frame: 55 |
+| airbnb-flip-interaction | 17.4 / 17.8 / 181.3 (60) | 3 / 157 | 1 (195) | - | 32 / 614.1 (39) | 17.8 / 104.1 (5) | 0 | 0.00 | 248 / 649 | -0.02 | gpu-glue.js:frame: 643; navigation-CgaO-v3L.js: 83 |
+| wheel-picker | 0.5 / 2.3 / 206.4 | 1 / 24 | 1 (212) | 0.05 / 0.341 / 1.717 | 16.9 / 459.6 (29) | 17.8 / 17.8 (0) | 29 | 25.25 | 6 / 14 | 0.12 | app-CvsiKF0t.js: 408; input-glue-BjspXFef.js: 19 |
+| threads-holo-ticket | 0.3 / 1 / 140.1 | 2 / 10 | 1 (155) | 0.038 / 0.768 / 3.584 | 103.2 / 910 (67) | 17.8 / 33.8 (1) | 5 | 5.58 | 15 / 23 | 0.32 | app-CvsiKF0t.js: 82; : 53 |
+| sculptures-in-words | 5.6 / 7.9 / 103.3 | 5 / 16 | 1 (114) | 1.288 / 1.955 / 3.048 | 17.7 / 776.7 (62) | 17.8 / 121.7 (6) | 5 | 1571.51 | 22 / 45 | 1.71 | app-CvsiKF0t.js: 276; gpu-glue.js:frame: 119 |
+| fluid-tab-interaction | 1.2 / 17.1 / 52.3 | 2 / 95 | 1 (56) | 0.158 / 1.846 / 4.982 | 17.7 / 1104.8 (67) | 17.8 / 35.5 (1) | 5 | 140.06 | 30 / 66 | 0.10 | app-CvsiKF0t.js: 74; navigation-CgaO-v3L.js: 49 |
+| prequel-slider | 16.8 / 17.7 / 86.6 (60) | 1 / 164 | 1 (101) | 0.363 / 1.892 / 2.4 | 17.7 / 209.1 (26) | 17.7 / 17.7 (0) | 5 | 1.06 | 19 / 30 | -0.23 | gpu-glue.js:frame: 256; app-CvsiKF0t.js: 40 |
+| calendar-days | 17 / 17.8 / 89.7 (60) | 6 / 161 | 1 (81) | 0.459 / 1.152 / 2.002 | 17.5 / 331.7 (22) | 17.8 / 17.8 (0) | 5 | 2.51 | 11 / 29 | -0.26 | app-CvsiKF0t.js: 66; gpu-glue.js:frame: 15 |
+| online-offline | 1.3 / 3.3 / 212 | 4 / 46 | 1 (65) | - | 13.5 / 179.7 (21) | 17.7 / 17.8 (0) | 329 | 0.00 | 0 / 0 | 0.44 | app-CvsiKF0t.js: 40; app-CvsiKF0t.js: 37 |
+| duration-slider | 16.8 / 17.7 / 17.8 (60) | 0 / 168 | 0 (0) | 0.719 / 5.462 / 41.237 | 17.7 / 996 (59) | 17.8 / 17.8 (0) | 5 | 0.99 | 144 / 228 | 0.01 | app-CvsiKF0t.js: 65; gpu-glue.js:frame: 9 |
+| metaball | 18.2 / 18.7 / 88.6 | 68 / 163 | 1 (84) | - | 18.8 / 192.3 (45) | 18.8 / 91.8 (31) | 0 | 0.00 | 0 / 0 | 0.01 | navigation-CgaO-v3L.js: 76; app-CvsiKF0t.js: 70 |
+| audio-player | 17.5 / 18.7 / 34.5 (60) | 38 / 167 | 1 (56) | - | 17.7 / 554.2 (34) | 18.7 / 18.8 (29) | 0 | 0.00 | 0 / 0 | 0.04 | index.js: 538; app-CvsiKF0t.js: 63 |
+| art-gallery | 0.6 / 1.4 / 241.3 | 5 / 18 | 0 (0) | 0.259 / 1.035 / 4.374 | 21.7 / 276.4 (25) | 17.7 / 53.3 (2) | 5 | 8.62 | 13 / 19 | -0.05 | gpu-glue.js:frame: 183; app-CvsiKF0t.js: 69 |
+| bezier-curve-outline | 16.9 / 17.7 / 18 (60) | 0 / 164 | 0 (0) | 0.663 / 8.79 / 16.696 | 17.8 / 477.6 (45) | 17.8 / 34.8 (1) | 5 | 6.49 | 46 / 65 | -0.01 | app-CvsiKF0t.js: 51; gpu-glue.js:frame: 6 |
+| fibonacci-shader-grid | 0.6 / 1.5 / 52.1 | 12 / 18 | 4 (52) | 0.536 / 1.047 / 1.809 | 2.9 / 276.8 (25) | 17.8 / 22.8 (1) | 1 | 264.24 | 98 / 15 | 0.05 | gpu-glue.js:frame: 207; app-CvsiKF0t.js: 57 |
+
+Worst 15, mobile emulation 4x CPU:
+
+| demo | run frame ms p50 / p95 / max | run frames > 60 / 120 Hz budget | run long tasks (max ms) | run GPU ms/submit p50 / p95 / max | open p95 / max (missed 60 Hz) | close p95 / max (missed) | run DOM mutations | run writeBuffer MB | textures / pipelines created (open+run) | heap growth MB | top long-frame scripts (ms) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| prequel-slider | 17 / 18.7 / 409.1 (60) | 44 / 129 | 1 (420) | 1.093 / 4.387 / 4.715 | 18.8 / 760 (54) | 18.8 / 54.1 (29) | 5 | 1.05 | 18 / 30 | -0.09 | gpu-glue.js:frame: 1008; app-CvsiKF0t.js: 135 |
+| chessboard | 1 / 4.9 / 392.7 | 9 / 32 | 1 (366) | 1.616 / 10.776 / 135.091 | 452.4 / 828.2 (146) | 18.6 / 290.1 (30) | 18 | 7.80 | 360 / 130 | 0.55 | gpu-glue.js:frame: 1474; app-CvsiKF0t.js: 176 |
+| atlas-sphere | 0.7 / 2.8 / 298.1 | 2 / 10 | 2 (299) | 0.358 / 5.541 / 9.79 | 18.7 / 232.1 (32) | 18.8 / 73.3 (18) | 5 | 0.20 | 2 / 2 | 0.38 | gpu-glue.js:frame: 627; app-CvsiKF0t.js: 168 |
+| fibonacci-shader-grid | 0.9 / 4.5 / 253.4 | 6 / 9 | 5 (261) | 3.962 / 4.624 / 5.114 | 46.8 / 372.4 (76) | 18.7 / 254.7 (41) | 1 | 75.53 | 122 / 15 | 0.30 | gpu-glue.js:frame: 2677; navigation-CgaO-v3L.js: 167 |
+| checkbox-interactions | 6.7 / 18.7 / 145.5 | 37 / 111 | 2 (135) | - | 18.5 / 356.2 (34) | 18.7 / 74.2 (26) | 117 | 0.00 | 0 / 0 | -0.15 | app-CvsiKF0t.js: 304; app-CvsiKF0t.js: 262 |
+| bezier-curve-outline | 17 / 18.7 / 18.9 (60) | 36 / 146 | 0 (0) | 17.822 / 38.78 / 67.695 | 18.6 / 214.7 (25) | 18.8 / 33.9 (24) | 5 | 8.24 | 46 / 65 | 0.30 | app-CvsiKF0t.js: 162; app-CvsiKF0t.js: 16 |
+| sculptures-in-words | 15.5 / 26.8 / 68.5 | 47 / 165 | 1 (77) | 1.274 / 4.172 / 8.742 | 18.7 / 606.3 (46) | 18.8 / 37.3 (30) | 5 | 695.98 | 22 / 45 | 1.64 | app-CvsiKF0t.js: 403; gpu-glue.js:frame: 223 |
+| coverflow-carousel | 2.8 / 18.1 / 18.8 | 26 / 91 | 0 (0) | 0.263 / 3.285 / 5.409 | 1538.9 / 1538.9 (87) | 18.8 / 36.6 (29) | 51 | 10.13 | 21 / 14 | -0.07 | gpu-glue.js:frame: 1338; app-CvsiKF0t.js: 160 |
+| wheel-picker | 4.6 / 18 / 83.8 | 9 / 66 | 2 (100) | 0.219 / 1.222 / 8.139 | 18.5 / 472.5 (43) | 18.8 / 72 (33) | 27 | 3.30 | 6 / 14 | 0.04 | app-CvsiKF0t.js: 445; navigation-CgaO-v3L.js: 65 |
+| scroll-progress | 17.5 / 28.9 / 104.8 (60) | 58 / 153 | 1 (89) | - | 18.2 / 176 (21) | 18.7 / 30.6 (17) | 439 | 0.00 | 0 / 0 | 0.02 | app-CvsiKF0t.js: 136; app-CvsiKF0t.js: 83 |
+| liquid-glass-playground | 17.7 / 18.7 / 107.7 (60) | 36 / 162 | 2 (110) | - | 18.4 / 127.2 (22) | 18.8 / 36 (30) | 118 | 0.00 | 0 / 0 | 0.47 | app-CvsiKF0t.js: 124; input-glue-BjspXFef.js: 77 |
+| gl-transitions | 2.7 / 4.1 / 62.6 | 1 / 9 | 1 (70) | 1.687 / 3.784 / 4.106 | 48.7 / 551.3 (56) | 18.8 / 56 (31) | 18 | 125.61 | 166 / 96 | 0.09 | : 225; gpu-glue.js:frame: 203 |
+| calendar-days | 17 / 18.7 / 89.8 (60) | 33 / 144 | 1 (50) | 2.022 / 5.524 / 7.933 | 18.6 / 213.4 (34) | 18.8 / 35.3 (33) | 5 | 3.65 | 11 / 29 | -0.04 | app-CvsiKF0t.js: 161; gpu-glue.js:frame: 61 |
+| light-on-painting | 1.9 / 3.2 / 17.2 | 0 / 2 | 0 (0) | 0.141 / 1.196 / 6.255 | 36.9 / 1271.3 (73) | 18.8 / 158.9 (26) | 22 | 1.39 | 14 / 16 | 0.86 | gpu-glue.js:frame: 1082; app-CvsiKF0t.js: 153 |
+| github-onboarding | 1.3 / 2.8 / 18.8 | 17 / 60 | 0 (0) | 0.252 / 0.805 / 4.603 | 18.5 / 1029.2 (60) | 18.8 / 25.3 (32) | 5 | 4.22 | 7 / 16 | 0.03 | gpu-glue.js:frame: 895; app-CvsiKF0t.js: 119 |
+
+## Ranked fix list
+
+Ordered by what a person feels per unit of work. Owner of the code in brackets. Nothing here changes the iPhone if
+it is guarded by `cfg(target_arch = "wasm32")` / the web page module.
+
+1. **Scroll-driven demos commit per scroll event** (stacked-list: 4200 style writes, 47-165 ms `onscroll` tasks, input
+   delayed 5-9x). Drive them with a host scroll timeline, keep the offset out of `state`. Then audit the other
+   `scroll=` demos the same way (scroll-progress shows 58 late frames and 439 mutations on mobile). [demos/*.contract]
+2. **Canvas backing store resized every open/close flight frame** (textures 300-777 MB churned per open, forced
+   layout in `gpu-glue.js:frame`, pipelines rebuilt: airbnb-flip-interaction 649 in one open). Size the canvas from its
+   layout box during the flight, not its transformed rect; or let the page module mark the card as flying so the GPU
+   glue keeps the last size. [Exact gpu-glue.js; modules/web demo-card]
+3. **Open waits for the demo's synchronous commit** (80-410 ms Contract demos, 265 ms warm / 0.9-1.3 s cold for GPU
+   demos) before the flight's first frame. Start the flight first (art placeholder), mount the demo after the first
+   flight frame. [modules/web demo-card + app.contract route]
+4. **Close by Back is unanimated and stalls 30-170 ms** (teardown of ~1150 layout objects in `popstate`); the swipe
+   close's `pointerup` is 77-162 ms with forced layout and `:has()` invalidations from per-node inline style writes.
+   Animate Back like the swipe, defer the teardown to after the flight, write flight values as one custom property or
+   `element.animate`. [modules/web; Exact style.css `:has([style*=…])` rules]
+5. **Pager: re-raster every drag frame, main-thread animations (press custom property, border-radius,
+   background-color), non-passive wheel listener**. Cancel the icon press on drag start, composite the pager content,
+   passive wheel. [modules/web pagerDrive / search-reveal, home/web-*.contract]
+6. **Split the embedded images out of the GPU module** (28.5 MB -> ~1.7 MB of wasm; 4G: GPU ready at ~10 s instead of
+   31 s; Fast 3G: ~35 s instead of 183 s; 27 MB less wasm memory). Plan below. [gpu/src]
+7. **Fonts**: stop preloading the 7 faces on the launcher, or at least subset SF-Pro-Rounded-Bold (4.32 MB -> 100 KB
+   Latin OTF / 47 KB WOFF2, `pyftsubset --unicodes=U+0020-007E,U+00A0-00FF,U+2010-2027,U+2030-205E,U+20AC
+   --layout-features='*'`). The preload is written by Exact for every `font` in demos/env.contract; a per-platform
+   source (web: WOFF2 subset) needs either an env.contract change or Exact support. [demos/env.contract, assets/fonts]
+8. **Per-frame buffer re-uploads**: sculptures-in-words 2 MB/frame, notion-qrcode, mnist, drag-to-sort,
+   fourier-visualizer, gl-transitions, github-contributions (345 MB-1.57 GB per 3 s). Upload static geometry once,
+   change uniforms per frame. [gpu/src]
+9. **radar-chart panics** in the GPU module on the web (`RuntimeError: unreachable`, wasm function 1188, called from
+   2727) and stays blank. [gpu/src/radar_chart.rs]
+10. **Wallpaper** 2 MB PNG at 1206 x 2622 on the launcher's critical path: a 2x WebP/AVIF for the web. [home/web-phone]
+11. **Dev loop**: the dev server sends 58 MB uncompressed with `no-store` per load, and it and `exact serve` drop slow
+    connections (idle timeout while the client drains): a phone on weak Wi-Fi may never finish the wasm. [Exact]
+12. **GPU warm start**: on a slow link start `gpu_bg.wasm` with the launcher (it is 4 s idle-delayed today), or better
+    after fix 6 it no longer matters. [app.contract `warmingGpu`]
+
+Not worth doing now: wasm opt-level (the GPU module is `opt-level = "z"`, fat LTO, `wasm-opt -Oz`; frame CPU in wasm
+is a few ms at most per frame on desktop, the stutters above are commits, layout and resizes, not wasm speed); and
+backdrop-filter (removing it changed nothing measurable).
+
+### Plan: the GPU module's images as lazily fetched assets (fix 6)
+
+Today 19 surfaces `include_bytes!` 25 MB from `gpu/images/` (biggest: art-gallery 6.8 MB, light-on-painting 4.5 MB,
+swipe-cards 3.2 MB, github-onboarding 2.3 MB, circular-carousel 2.0 MB, prequel-slider 1.9 MB, sculptures-in-words
+1.3 MB, chessboard 23 files). exact-gpu already has the delivery path: a surface returns names from
+`Surface::assets()`, the web host fetches `assets/<name>` (8 in flight, 64 MiB cap, cancel on retire) and calls
+`Surface::asset(name, bytes)`; `prepare_assets` runs before the surface reports ready.
+
+1. Copy (not move: the iPhone keeps `include_bytes!`) each `gpu/images/<demo>/*` to `assets/gpu/<demo>/*` with a
+   generated list; the web build ships `assets/`.
+2. Per surface, one helper in a new `gpu/src/bytes.rs`: on `cfg(not(target_arch = "wasm32"))` it returns the
+   `include_bytes!` slice at once; on wasm32 it returns `None` until `asset()` delivered it, and `assets()` lists
+   the names still missing. The `include_bytes!` sits behind `#[cfg(not(target_arch = "wasm32"))]`, so the wasm
+   drops 25 MB and the iPhone build is byte-identical.
+3. A surface draws its placeholder (the demo's backdrop colour) until its images arrived, as it does for the first
+   frame today; the first-draw inflate stays where it is.
+4. Check: `cargo test -p demos-gpu` (fixtures read the native path), the web runtime pass (`runtime.ts`) for
+   the 19 demos, and the wasm sections (`wasm-objdump -h`): code ~1.6 MB, data < 2 MB.
+
+Coordination: these 19 files in `gpu/src/` are being edited by the web-parity pass (last commit to `gpu/src` 8 minutes
+before this was written), so this is left as the plan, not done here.
+
+## What was changed here
+
+Only the measuring tools (`tools/web-perf/`) and this report: every high-value fix found is in code another pass owns
+(modules/web, home/web-*, demos/*.contract, gpu/src) or in Exact itself. No change to app.json, Cargo profiles or
+assets: the build settings are already size-optimised (fat LTO, `opt-level = "z"`, `wasm-opt -Oz`, brotli/gzip in
+`exact serve`), and the remaining load cost is data (images, fonts), not code.
+
+How to rerun: `bun exact.mjs web-build --out /tmp/perf-dist`, `bun tools/web-perf/serve.ts /tmp/perf-dist 5391`, then
+`bun tools/web-perf/trace.ts http://127.0.0.1:5391 --light`, `bun tools/web-perf/load.ts http://127.0.0.1:5391/ prod
+--net 4g --cpu 4 --mobile`, `bun tools/web-perf/runtime.ts http://127.0.0.1:5391 prod --out /tmp/rt.jsonl` and
+`bun tools/web-perf/report.ts runtime /tmp/rt.jsonl`.
