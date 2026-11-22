@@ -934,7 +934,13 @@ impl Sculptures {
                     depth_or_array_layers: 1,
                 },
             );
+            #[cfg(target_vendor = "apple")]
             let view = texture.create_view(&Default::default());
+            // CoreText rasterises the masks above on Apple; elsewhere draw2d has no masks (the
+            // column's glyphs are outlines there) and they come back empty, so the atlas is drawn from
+            // the same outlines on the GPU.
+            #[cfg(not(target_vendor = "apple"))]
+            let view = atlas_outlines(device, queue, self.font.as_ref(), &geo, ratio);
             let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("sculptures letters"),
                 layout: &gpu.layout,
@@ -1179,6 +1185,52 @@ impl Sculptures {
             x += dw + DOT_SPACING;
         }
     }
+}
+
+/// The atlas off Apple: each glyph's four phases drawn as outlines by draw2d (as the column draws
+/// them there), white over opaque black, so .r is the coverage the shader reads, as from the r8
+/// atlas CoreText fills on Apple. Each phase's origin sits where that mask's would: the cell's
+/// origin plus a quarter pixel per phase.
+#[cfg(not(target_vendor = "apple"))]
+fn atlas_outlines(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    font: Option<&Font>,
+    geo: &AtlasGeo,
+    ratio: f32,
+) -> wgpu::TextureView {
+    let images = Images::target(device, geo.width, geo.height);
+    let view = images.render_view();
+    let mut canvas = Canvas::default();
+    canvas.begin(ratio);
+    if let Some(font) = font {
+        let b = baked();
+        let mut run = Vec::with_capacity(b.union.len() * PHASES);
+        for (g, &id) in b.union.iter().enumerate() {
+            for phase in 0..PHASES {
+                let index = (g * PHASES + phase) as u32;
+                let x = ((index % geo.cols) * geo.cell + geo.origin_x) as f32 + phase as f32 * 0.25;
+                let y = ((index / geo.cols) * geo.cell + geo.origin_y) as f32;
+                run.push((id, x / ratio, y / ratio));
+            }
+        }
+        canvas.draw_glyphs_subpixel(&run, font, &Paint::fill(Color::WHITE));
+    }
+    let mut renderer = Renderer::default();
+    let mut encoder = device.create_command_encoder(&Default::default());
+    renderer.draw(
+        device,
+        queue,
+        &mut encoder,
+        &canvas,
+        &view,
+        wgpu::TextureFormat::Rgba8Unorm,
+        geo.width,
+        geo.height,
+        wgpu::Color::BLACK,
+    );
+    queue.submit([encoder.finish()]);
+    view
 }
 
 fn bytes(v: &[f32]) -> &[u8] {
