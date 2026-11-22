@@ -21,15 +21,37 @@ window). Phone browser: full screen like an app. Measured in headless Chrome 144
 | Area | Web | Status |
 |---|---|---|
 | Native views (`modules/apple`) | page module `modules/web/index.js`: glass-pane, glass-button, swift-slider, rolling-count, variable-blur, toggle-sheet, painting-menu, audio-track, native-tabbar, mate-haptic. `motion-feed` and the launcher's own views are stubs (the launcher is drawn in Contract). | done, approximations of UIKit's looks |
-| Launcher | `home/web-phone.contract`: wallpaper, paged grid, page dots, status bar and home indicator in the frame. No pull-to-search, no long-press menu on icons, no launch zoom (a scale and fade). | partial |
-| Demo open / close | scale and fade; close and info are round glass-like buttons; the Inspiration sheet is a plain bottom sheet. | done |
-| Swipe-down to close | not on the web (the close button closes; Back or the browser's back also closes). A top-strip pan would take the demo's taps there. | open |
-| Haptics | none on the web, except `navigator.vibrate` for the checkmate crescendo where the browser has it. | by design |
-| Device attitude / motion sensors | `startSensorInput` is `NotSupportedError` in the browser build: card-shader-reflections, threads-holo-ticket and linear-sensors do not tilt. | open |
+| Launcher | `home/web-phone.contract`: wallpaper, paged grid, page dots, status bar and home indicator in the frame. Page module: pull-to-search (`search-reveal`, SearchReveal.swift's numbers: rubber band, blur ramp reveal^3.5 as three cross-faded backdrop blurs, field, Cancel, filtered results, a row opens out of its icon), the long-press / right-click menu (`icon-grid`: Inspiration, Share via navigator.share else copy, View Code), a mouse drags the pages (rubber band, snap by throw or half a page), arrow keys and dot taps page, a trackpad's two-finger pull down searches; icons load eagerly. | done |
+| Demo open / close | `demo-card` (page module, DemoLaunch.swift's springs): the card grows out of the tapped icon (width, aspect, centre springs, radius overshoot table, taper, art cross-fade, home scale 0.912 + blur + dim), the close flies into the icon (or a search row); springs run ahead at 120 Hz, played as compositor keyframes (transform, opacity; the radius is the one main-thread track). A link opens without a flight, as on the phone. Close lands in ~0.78 s (within 1.2 pt of the icon). | done |
+| Swipe-down to close | `demo-card`: ClosePan's rules and `closeZone(slug)` (strip 0.18, zones, a vertical scroller's top hand-off), 10 pt vertical-dominant activation, 30 pt sideways fail; the card shrinks under the finger (scale to 0.3 over 0.7 screen), closes past 0.1 screen or at 250 pt/s, else springs back; interruptible mid-open. The demo's own gesture on that pointer gets a pointercancel; a downward first touchmove is kept from the browser. Tested: sudoku / stacked-list (top hand-off) / chessboard (zone and strip), mouse and touch. | done |
+| Haptics | `navigator.vibrate` (Android; iOS Safari has none): selection 5 ms, light 8, medium 12, heavy 18, success / warning / error patterns, 150 ms pacing; Contract's haptic() (the runtime's vibrate 5 / 12) paced too; surfaces' `haptic:<kind>` stay kinds in the web GPU module (gpu/src/haptic.rs, wasm32 only) and are played by the page module. | done |
+| Device attitude / motion sensors | `motion-feed` (page module) writes into the canvas through `exact.gpu.sensors`: gravity (linear-sensors) and the attitude quaternion (threads-holo-ticket, card-shader-reflections, mounted on the web in app.contract instead of startSensorInput). Generic Sensor classes, else devicemotion / deviceorientation (iOS Safari's permission on the first tap in the demo); a desktop tilts by the pointer over the frame. Verified: pointer tilt on all three, deviceorientation override on the ticket. | done (real iPhone Safari unverified) |
 | Safe areas | frame: top 62, bottom 34 (simulated); phone browser: the device's own via `viewport-fit=cover`. Five demos used `env(safe-area-inset-bottom)` and now read their DemoEnv. | done |
 | Scroll physics | the browser's: rubber band on iOS Safari, none on desktop Chrome. | by design |
 | Fonts | SF through `system-ui` / `ui-rounded` on Apple devices; other systems fall back. | by design |
 | Shaders | Dawn is stricter than naga: paper-folding's hash needed parentheses (fixed, same value). All other surfaces compile. | done |
+
+## Notes (second pass, 2026-11-22)
+
+- theme-color: the production build (`bun exact.mjs web-build --out <dir>`) writes `<meta name="theme-color" content="#141414">`
+  and `manifest.json` (theme and background #141414) from app.json; the dev loop does not (dev only). Nothing to add
+  (`host.web.head` refuses a theme colour: Exact writes it).
+- WebGPU needs a secure context: the dev loop's LAN URL (`http://192.168.1.206:5341`) has no `navigator.gpu`, so every
+  GPU demo is blank there (phone or desktop). Use `http://localhost:5341` on the Mac, an HTTPS tunnel (`--allow-host`)
+  for a phone, or Chrome's `--unsafely-treat-insecure-origin-as-secure=<lan url>`; a deployed (HTTPS) build is fine.
+- Hitches: the 15 demos with a stray late frame in the first pass were rerun with a trace (desktop and mobile, the same
+  interaction run): 29 of 30 runs had no frame over 25 ms; the one repeat (clerk-toast, desktop, first tap) is a 250-280 ms
+  GPU-process task (`GPUTask`) with nothing on the page's thread: a first-use compile of the browser's own blur shaders
+  (clerk-toast has no WebGPU surface; its glass and variable blur are backdrop-filters), cold profile only. The first
+  pass's other one-off frames (33-267 ms) did not recur: first-use pipeline / shader compiles in a cold Dawn cache.
+  The iPhone's background warm-up (gpu/src/warm.rs) is a no-op in wasm (the page's device is not `Send`); a main-thread
+  warm-up on the home was tried and dropped: it put 100-570 ms frames into the idle home.
+- sudoku draws black on the web (also in the first pass's screenshots): to be fixed in the per-demo pass.
+
+## Per-demo pass (owner: newest first, until every row is PERFECT or a documented web limit)
+
+Order: demos.contract (newest first). Done: none yet. In progress: sculptures-in-words (letters pass blank after the
+toggle on the web; being debugged), then light-on-painting, the-little-prince, chessboard, ...
 
 ## Per demo
 
