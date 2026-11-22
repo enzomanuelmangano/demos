@@ -6,9 +6,7 @@
 //!   Tap: select a piece, then tap a square to move it.
 //! - Haptics: medium on a capture, rigid on a check, light otherwise; a mate pattern at checkmate.
 //! - Any legal move is played, for either side, and nothing answers it: after the replay (or Back)
-//!   the board waits for the next drag. Only the dock reads the line: while the position is the
-//!   opening one its Play solution plays the whole line again; each change posts
-//!   `puzzle:<wait|play|done>`.
+//!   the board waits for the next drag.
 
 // Full API: not every item is used by the board.
 #[allow(dead_code)]
@@ -34,7 +32,7 @@ const CLOCK_START: [i32; 2] = [180, 180];
 const START_DELAY: f64 = 300.0;
 const MOVE_GAP: f64 = 260.0;
 const AURA_DELAY: f64 = 580.0;
-/// Fool's Mate: f3 e5 g4 Qh4#. The replay and the dock's solution play it.
+/// Fool's Mate: f3 e5 g4 Qh4#. The opening and Replay play it.
 const SOLUTION: [(&str, &str); 4] = [("f2", "f3"), ("e7", "e5"), ("g2", "g4"), ("d8", "h4")];
 /// Capture fade timing, in ms.
 const CAPTURE_AT: f64 = 90.0;
@@ -558,10 +556,6 @@ struct Chessboard {
     // Tactic state.
     ghosts: Vec<Ghost>,
     mated_by: Option<Side>,
-    /// The last `puzzle:` mode posted.
-    mode: &'static str,
-    /// The solution-tap counter as last seen; None before the first bind.
-    seen: Option<f64>,
     cards: [CardAnim; 2],
     aura: Option<Aura>,
     busy: bool,
@@ -646,8 +640,6 @@ impl Chessboard {
             mate_haptics: Vec::new(),
             ghosts: Vec::new(),
             mated_by: None,
-            mode: "",
-            seen: None,
             cards: [card(), card()],
             aura: None,
             busy: false,
@@ -834,38 +826,9 @@ impl Chessboard {
 
     // The tactic.
 
-    /// The line's first move, while the opening position is on the board.
-    fn expected(&self) -> Option<(i32, i32)> {
-        if !self.plies.is_empty() {
-            return None;
-        }
-        SOLUTION.first().map(|&(a, b)| (chess::square(a).unwrap(), chess::square(b).unwrap()))
-    }
-
     /// The board takes a move: no replay running, no game over, no card over it.
     fn user_can_move(&self) -> bool {
         !self.running && !self.game_over && self.aura.is_none()
-    }
-
-    /// Play solution: the whole line plays out from the opening position.
-    fn solve_request(&mut self) {
-        if !self.user_can_move() || self.pan.tracking() || self.dragged.is_some() || self.expected().is_none() {
-            return;
-        }
-        self.selected = None;
-        self.valid.clear();
-        self.play_sequence();
-    }
-
-    /// The mode the bar shows: wait, play or done.
-    fn puzzle_mode(&self) -> &'static str {
-        if self.game_over || self.aura.is_some() {
-            "done"
-        } else if !self.user_can_move() || self.expected().is_none() {
-            "wait"
-        } else {
-            "play"
-        }
     }
 
     fn reset_board(&mut self, fen: &str, slide: Option<(i32, i32)>, last_move: Option<(i32, i32)>) {
@@ -2436,16 +2399,8 @@ fn bytes(v: &[f32]) -> Vec<u8> {
 }
 
 impl Surface for Chessboard {
-    /// Input: the solution taps, as a counter (each rise is one tap).
-    fn bind(&mut self, inputs: &[Value], _: Option<f64>) -> Result<(), SurfaceError> {
-        let solves = inputs.first().and_then(|v| v.as_number()).unwrap_or(0.0);
-        if let Some(v) = self.seen {
-            if self.size.0 > 0.0 && solves > v {
-                self.solve_request();
-                self.run_callbacks();
-            }
-        }
-        self.seen = Some(solves);
+    /// No inputs.
+    fn bind(&mut self, _: &[Value], _: Option<f64>) -> Result<(), SurfaceError> {
         Ok(())
     }
 
@@ -2461,7 +2416,7 @@ impl Surface for Chessboard {
         let fen = self.chess.fen();
         let sq = |s: Option<i32>| s.map_or("null".to_string(), |s| format!("\"{}\"", chess::algebraic(s)));
         Some(format!(
-            "{{\"fen\":\"{fen}\",\"plies\":{},\"status\":\"{}\",\"selected\":{},\"valid\":{},\"clocks\":[{},{}],\"aura\":{},\"card\":{},\"promotion\":{},\"held\":{},\"mode\":\"{}\"}}",
+            "{{\"fen\":\"{fen}\",\"plies\":{},\"status\":\"{}\",\"selected\":{},\"valid\":{},\"clocks\":[{},{}],\"aura\":{},\"card\":{},\"promotion\":{},\"held\":{}}}",
             self.plies.len(),
             self.status,
             sq(self.selected),
@@ -2471,8 +2426,7 @@ impl Surface for Chessboard {
             self.aura.as_ref().map_or(0.0, |a| a.vis.value),
             self.aura.as_ref().is_some_and(|a| a.card.is_some()),
             self.promotion.is_some(),
-            self.pan.tracking() || self.held.is_some(),
-            self.puzzle_mode()
+            self.pan.tracking() || self.held.is_some()
         ))
     }
 
@@ -2560,11 +2514,6 @@ impl Surface for Chessboard {
         self.run_js();
         moving |= self.started && !self.game_over;
         moving |= self.replay.is_some() || self.aura_timer.is_some() || self.show_at.is_some() || !self.mate_haptics.is_empty();
-        let mode = self.puzzle_mode();
-        if mode != self.mode {
-            self.mode = mode;
-            self.messages.push(format!("puzzle:{mode}"));
-        }
         moving |= self.aura.is_some();
         moving |= self.pan.tracking() || self.held.is_some();
 
@@ -2814,17 +2763,13 @@ mod tests {
         ms
     }
 
-    fn solve_taps(c: &mut Chessboard, solves: f64) {
-        c.bind(&[Value::Number(solves)], None).unwrap();
-    }
-
     #[test]
     fn the_line_plays_by_itself_to_fools_mate() {
         let mut c = surface_at(0.0);
         c.next_tick = Some(1000.0);
         c.play_sequence();
         assert!(c.running);
-        assert_eq!((c.chess.fen().as_str(), c.puzzle_mode(), c.clock), (START_FEN, "wait", [180, 180]));
+        assert_eq!((c.chess.fen().as_str(), c.clock), (START_FEN, [180, 180]));
         // The start position holds for 300 ms, then each move waits for the last one to land.
         let mut at = Vec::new();
         let mut ms = 0.0;
@@ -2843,7 +2788,7 @@ mod tests {
         assert_eq!(sans, ["f3", "e5", "g4", "Qh4#"]);
         assert_eq!(c.status, "Checkmate");
         assert_eq!(c.winner(), Some(Side::B));
-        assert!(!c.running && c.game_over && c.puzzle_mode() == "done");
+        assert!(!c.running && c.game_over);
         // The clocks burned for whoever was to move, and stopped at the mate.
         let burnt = 360 - c.clock[0] - c.clock[1];
         assert!((1..=4).contains(&burnt), "{:?}", c.clock);
@@ -2865,7 +2810,7 @@ mod tests {
     fn a_fresh_board_waits_for_a_hand() {
         let mut c = surface_at(0.0);
         c.next_tick = Some(1000.0);
-        assert_eq!((c.chess.turn(), c.status.as_str(), c.puzzle_mode()), (Side::W, "White to move", "play"));
+        assert_eq!((c.chess.turn(), c.status.as_str()), (Side::W, "White to move"));
         run(&mut c, 0.0, 5000.0);
         assert_eq!((c.plies.len(), c.clock, c.started), (0, CLOCK_START, false));
         assert!(c.messages.is_empty());
@@ -2895,10 +2840,6 @@ mod tests {
         tap(&mut c, 2, "h4", 1100.0);
         assert_eq!((c.plies.len(), c.status.as_str()), (1, "Black to move"));
         assert_eq!(c.messages(), vec!["haptic:impact-light".to_string()]);
-        // The line is gone: the dock mutes, and a tap on Play solution does nothing.
-        assert_eq!(c.puzzle_mode(), "wait");
-        solve_taps(&mut c, 0.0);
-        solve_taps(&mut c, 1.0);
         assert!(c.plies.len() == 1 && !c.running);
         // No reply comes, however long it waits; Black's clock burns instead of White's.
         run(&mut c, 1100.0, 4000.0);
@@ -2915,21 +2856,6 @@ mod tests {
         assert!(!c.messages.contains(&"haptic:error".to_string()));
         run(&mut c, 4100.0, 6000.0);
         assert_eq!(c.plies.len(), 2);
-    }
-
-    #[test]
-    fn play_solution_plays_the_whole_line() {
-        let mut c = surface_at(0.0);
-        c.next_tick = Some(1000.0);
-        solve_taps(&mut c, 0.0);
-        assert_eq!(c.puzzle_mode(), "play");
-        solve_taps(&mut c, 1.0);
-        assert!(c.running);
-        assert_eq!(c.puzzle_mode(), "wait");
-        run(&mut c, 0.0, 6000.0);
-        assert_eq!((c.plies.len(), c.status.as_str()), (4, "Checkmate"));
-        assert_eq!(c.puzzle_mode(), "done");
-        assert_eq!(c.winner(), Some(Side::B));
     }
 
     #[test]
@@ -2993,7 +2919,6 @@ mod tests {
         assert_eq!(at(&c, "f2"), Some(Piece { color: Side::W, kind: Kind::P }));
         assert_eq!((c.plies.len(), c.status.as_str(), c.clock), (0, "White to move", CLOCK_START));
         assert_eq!(c.captured, initial_captures());
-        assert_eq!(c.puzzle_mode(), "play");
         // A static fresh board: nothing plays by itself.
         run(&mut c, ms + 1200.0, ms + 5000.0);
         assert_eq!(c.plies.len(), 0);
@@ -3008,7 +2933,6 @@ mod tests {
         let mut c = surface_at(0.0);
         c.play_sequence();
         assert!(c.running);
-        assert_eq!(c.puzzle_mode(), "wait");
         run(&mut c, 0.0, 280.0);
         assert_eq!(c.plies.len(), 0);
         run(&mut c, 280.0, 340.0);
@@ -3022,9 +2946,9 @@ mod tests {
             Err(error) => return eprintln!("{error}; skipped"),
         };
         let mut s = surface();
-        assert!(s.bind(&[Value::Number(0.0), Value::Number(0.0)], None).is_ok());
+        assert!(s.bind(&[], None).is_ok());
         let (rest, _) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
-        assert!(s.messages().contains(&"puzzle:wait".to_string()));
+        assert!(!s.messages().iter().any(|m| m.starts_with("puzzle:")));
         gfx::save_over(&rest, "chessboard-rest", [13, 14, 18]);
         let light = rest.at(3 * 4, 3 * 240);
         let dark = rest.at(3 * 60, 3 * 240);

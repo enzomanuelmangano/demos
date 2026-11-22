@@ -7,6 +7,6 @@ test "the canvas fills the screen"
   expect tree has "chessboard"
   expect tree has "chessboard-canvas"
 
-// The bar appears only once the surface posts a puzzle mode, which the web never does.
-test "the puzzle bar waits for the surface"
+// No control is drawn over the board.
+test "no dock over the board"
   expect tree missing "puzzle-bar"
