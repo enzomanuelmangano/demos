@@ -111,6 +111,11 @@ const hookMessages = () => {
 };
 if (DOM) hookMessages();
 
+// The trackpad's wheel-to-touches handler (below). It listens on the launch card only (demo-card's `install`), never
+// on the window: a blocking wheel listener on the window made every wheel on the page (the home pager's trackpad
+// swipes, a demo's own scrollers) wait for the main thread before the compositor could scroll.
+let trackpadWheel = null;
+
 // ---- A demo's canvases are sized in the screen's points, whatever scales the screen ------------------------------
 // The web host sizes a GPU canvas (and its world's layout) from getBoundingClientRect, which includes every transform
 // above it: the frame's scale on a desktop (a 420 pt screen shown at 0.9 laid the surface out 378 pt wide) and, worse,
@@ -219,7 +224,7 @@ if (DOM) {
     }
     return null;
   };
-  add.call(window, 'wheel', (e) => {
+  trackpadWheel = (e) => {
     const t = e.target;
     if (!(t instanceof Element)) return;
     // A held gesture keeps the wheel until it lifts, whatever moved under the pointer (the content follows it).
@@ -239,7 +244,7 @@ if (DOM) {
     held = { el: t, pinch: e.ctrlKey, k, c: [e.clientX, e.clientY], at: [e.clientX, e.clientY], half: HALF * k, travel: 0, timer: 0, ids: e.ctrlKey ? [++ids, ++ids] : [++ids] };
     points(held).forEach((p, i) => fire(held, 'pointerdown', i, p));
     step(held, e);
-  }, { capture: true, passive: false });
+  };
   const step = (s, e) => {
     const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? innerHeight : 1;
     const dx = e.deltaX * unit, dy = e.deltaY * unit;
@@ -786,6 +791,7 @@ function launch(el, props, event) {
     card.addEventListener('pointerdown', down, true);
     addEventListener('pointermove', move, true); addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true);
     card.addEventListener('touchmove', touchmove, { capture: true, passive: false });
+    if (trackpadWheel) card.addEventListener('wheel', trackpadWheel, { capture: true, passive: false });
     backHandler = onBack;
   };
   const uninstall = () => {
@@ -793,6 +799,7 @@ function launch(el, props, event) {
     card.removeEventListener('pointerdown', down, true);
     removeEventListener('pointermove', move, true); removeEventListener('pointerup', up, true); removeEventListener('pointercancel', up, true);
     card.removeEventListener('touchmove', touchmove, { capture: true });
+    if (trackpadWheel) card.removeEventListener('wheel', trackpadWheel, { capture: true });
     if (backHandler === onBack) backHandler = null;
   };
   begin();
@@ -1039,7 +1046,6 @@ input{all:unset;position:absolute;inset:0;padding:0 16px 0 41px;color:#fff;font-
   const onWheel = (e) => {
     if (committed || Math.abs(e.deltaY) <= Math.abs(e.deltaX) || screen.querySelector('[data-testid="web-card"]')) return;
     if (!wheel && e.deltaY >= 0) return;
-    e.preventDefault();
     if (!wheel) { stopRun(); wheel = { travel: PULL.activate, timer: 0 }; armed = false; pullBase = 0; }
     wheel.travel = Math.max(0, wheel.travel - e.deltaY * (e.deltaMode === 1 ? 16 : 1) * 0.5);
     const x = Math.max(0, wheel.travel - PULL.activate), pp = damp(x);
@@ -1093,7 +1099,9 @@ input{all:unset;position:absolute;inset:0;padding:0 16px 0 41px;color:#fff;font-
       pager.style.touchAction = 'pan-x';
       pager.addEventListener('pointerdown', down, true);
       pager.addEventListener('touchmove', touchmove, { capture: true, passive: false });
-      pager.addEventListener('wheel', onWheel, { passive: false });
+      // Passive: the pull's wheel needs no preventDefault (the pager does not scroll vertically), and a blocking
+      // listener made every trackpad swipe of the pages wait for the main thread.
+      pager.addEventListener('wheel', onWheel, { passive: true });
     }
     addEventListener('pointermove', move, true); addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true);
     searches.add(me);
@@ -1106,7 +1114,7 @@ input{all:unset;position:absolute;inset:0;padding:0 16px 0 41px;color:#fff;font-
     set(n) { p = n; setRows(); layout(); },
     destroy() {
       stopRun(); searches.delete(me);
-      pager?.removeEventListener('pointerdown', down, true); pager?.removeEventListener('touchmove', touchmove, { capture: true }); pager?.removeEventListener('wheel', onWheel);
+      pager?.removeEventListener('pointerdown', down, true); pager?.removeEventListener('touchmove', touchmove, { capture: true }); pager?.removeEventListener('wheel', onWheel, { passive: true });
       removeEventListener('pointermove', move, true); removeEventListener('pointerup', up, true); removeEventListener('pointercancel', up, true);
       if (box) box.style.transform = '';
     },
