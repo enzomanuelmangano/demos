@@ -5,8 +5,8 @@
 // the results ride the finger down, the results fade in. Each touch move sets layer properties only
 // (one backdrop blur's radius, a dim, the field, the results), with actions disabled: nothing is
 // committed to the Contract plan, nothing reaches Rust. Released past the trigger (or flicked) the
-// rest of the way is handed to Core Animation as keyframes, the field narrows for its Cancel and takes
-// the keyboard in the same moment; released short it runs back to 0. No display link: a main thread
+// rest of the way is handed to Core Animation as keyframes and the field narrows for its Cancel; it
+// takes the keyboard once it has landed. Released short it runs back to 0. No display link: a main thread
 // busy with the keyboard does not hold a frame of it back.
 //
 // The view holds everything the search shows: the blur and the dim over the home, the results (a
@@ -54,7 +54,7 @@ private enum Pull {
     /// How far the field and the results ride the pull (× the damped pull).
     static let fieldRide: CGFloat = 0.4
     static let listRide: CGFloat = 1
-    /// The release lands in 0.34 s (the keys rise beside it), Cancel leaves the reveal in 0.36 s after
+    /// The release lands in 0.34 s (then the keys rise), Cancel leaves the reveal in 0.36 s after
     /// the keys have started down, a short pull springs back in 0.26 s.
     static let commitMs = 0.34, backMs = 0.26, exitMs = 0.36, exitDelay = 0.06
     /// The field narrows for Cancel (and back) on this spring.
@@ -510,9 +510,6 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         let w = bounds.width
-        let stride = iconSize + Pull.rowPadding * 2 + 1 / max(traitCollection.displayScale, 1)
-        layout.itemSize = CGSize(width: max(0, w - sideMargin * 2), height: stride)
-        layout.sectionInset = UIEdgeInsets(top: listTop, left: sideMargin, bottom: safeBottom + 40, right: sideMargin)
         // Bounds and center, not `frame`: the list and the bar carry transforms.
         list.bounds = CGRect(origin: list.bounds.origin, size: bounds.size)
         list.center = CGPoint(x: bounds.midX, y: bounds.midY)
@@ -528,9 +525,18 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         layoutBar()
         empty.frame = CGRect(x: sideMargin, y: listTop + 40, width: max(0, w - sideMargin * 2), height: 24)
         CATransaction.commit()
-        layout.invalidateLayout()
+        // The keys coming up lay this view out again: the rows are re-laid out only when their geometry changed.
+        let key = [w, bounds.height, listTop, safeBottom, iconSize, sideMargin, traitCollection.displayScale]
+        if key != layoutKey {
+            layoutKey = key
+            let stride = iconSize + Pull.rowPadding * 2 + 1 / max(traitCollection.displayScale, 1)
+            layout.itemSize = CGSize(width: max(0, w - sideMargin * 2), height: stride)
+            layout.sectionInset = UIEdgeInsets(top: listTop, left: sideMargin, bottom: safeBottom + 40, right: sideMargin)
+            layout.invalidateLayout()
+        }
         render()
     }
+    private var layoutKey: [CGFloat] = []
 
     /// The field wide with its hint centred, or narrowed for Cancel with the hint at its leading edge.
     private func layoutBar() {
@@ -560,8 +566,8 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         narrowed = on
         UIView.animate(springDuration: Pull.focusMs, bounce: 0, initialSpringVelocity: 0,
                        delay: 0, options: [.allowUserInteraction, .beginFromCurrentState]) {
+            // Frames only: the glass's effect view follows by autoresizing, with no layout pass in the block.
             self.layoutBar()
-            self.glass.layoutIfNeeded()
         }
     }
 
@@ -615,10 +621,19 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
             self.bar.isHidden = false
             self.bar.alpha = 1
             self.bar.transform = CGAffineTransform(translationX: 0, y: -400)
+            // Narrowed, with Cancel drawn: the release's first narrowing then costs no first glass resize or text.
+            self.narrowed = true
             self.setNeedsLayout()
             self.layoutIfNeeded()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
                 guard let self else { return }
+                if !self.committed {
+                    self.narrowed = false
+                    CATransaction.begin()
+                    CATransaction.setDisableActions(true)
+                    self.layoutBar()
+                    CATransaction.commit()
+                }
                 self.bar.transform = .identity
                 self.renderNow()
             }
@@ -863,21 +878,69 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
 
     // MARK: the states
 
+    /// Launch argument `-searchKeysEarly YES`: the keyboard is asked for on the turn after the release, as before,
+    /// for an A/B of the release's frames.
+    private static let keysEarly = UserDefaults.standard.bool(forKey: "searchKeysEarly")
+
     private func commit() {
         committed = true
         recognizer.isEnabled = false
-        // The results and the field spring back up from the pull as the keys rise: one moment, as iOS does.
-        animate(reveal: 1, pull: 0, ms: Pull.commitMs, curve: easeOutCubic, then: nil)
-        focus(true)
-        // The motion is committed before the keyboard's main-thread work starts: it runs on the render server.
-        CATransaction.flush()
         let t0 = CACurrentMediaTime()
-        DispatchQueue.main.async { [weak self] in
-            guard let self, self.committed else { return }
-            let t1 = CACurrentMediaTime()
-            let ok = self.field.becomeFirstResponder()
-            Self.trace(String(format: "focus %d after %.1f ms, becomeFirstResponder %.1f ms", ok ? 1 : 0, (t1 - t0) * 1000, (CACurrentMediaTime() - t1) * 1000))
+        watchFrames(from: t0)
+        // The keyboard's first responder blocks the main thread (~0.1 s on a phone, seconds on a loaded simulator)
+        // and the field's glass and Cancel are drawn by UIKit on that thread: asked for during the settle, it froze
+        // them mid-way. The keys rise once the field has landed.
+        animate(reveal: 1, pull: 0, ms: Pull.commitMs, curve: easeOutCubic) { [weak self] in
+            if !Self.keysEarly { self?.takeKeys(since: t0) }
         }
+        let t1 = CACurrentMediaTime()
+        focus(true)
+        let t2 = CACurrentMediaTime()
+        // The motion is committed before any other main-thread work: it runs on the render server.
+        CATransaction.flush()
+        if Self.keysEarly { DispatchQueue.main.async { [weak self] in self?.takeKeys(since: t0) } }
+        let t3 = CACurrentMediaTime()
+        Self.trace(String(format: "commit %.1f ms (run %.1f, field %.1f, flush %.1f)", (t3 - t0) * 1000,
+                          (t1 - t0) * 1000, (t2 - t1) * 1000, (t3 - t2) * 1000))
+    }
+
+    private func takeKeys(since t0: CFTimeInterval) {
+        guard committed else { return }
+        let t1 = CACurrentMediaTime()
+        let ok = field.becomeFirstResponder()
+        Self.trace(String(format: "focus %d after %.1f ms, becomeFirstResponder %.1f ms", ok ? 1 : 0, (t1 - t0) * 1000, (CACurrentMediaTime() - t1) * 1000))
+    }
+
+    /// With `-searchTrace YES`: the main thread's frame gaps over the release and its settle (the commit run plus
+    /// 0.25 s), one line, so a stall shows as a number.
+    private var frameWatch: CADisplayLink?
+    private var frameWatchStart: CFTimeInterval = 0
+    private var frameWatchLast: CFTimeInterval = 0
+    private var frameGaps: [Double] = []
+    private var frameEnds: [Double] = []
+    private func watchFrames(from t0: CFTimeInterval) {
+        guard Self.tracing else { return }
+        frameWatch?.invalidate()
+        frameWatchStart = t0
+        frameWatchLast = t0
+        frameGaps = []
+        frameEnds = []
+        let link = CADisplayLink(target: FrameWatchTicker(self), selector: #selector(FrameWatchTicker.tick(_:)))
+        link.add(to: .main, forMode: .common)
+        frameWatch = link
+    }
+    fileprivate func frameTick(_ link: CADisplayLink) {
+        let now = CACurrentMediaTime()
+        frameGaps.append((now - frameWatchLast) * 1000)
+        frameEnds.append((now - frameWatchStart) * 1000)
+        frameWatchLast = now
+        guard now - frameWatchStart > Pull.commitMs + 0.25 else { return }
+        link.invalidate()
+        frameWatch = nil
+        // Each gap over 40 ms as length@end, in ms from the release.
+        let over = zip(frameGaps, frameEnds).filter { $0.0 > 40 }
+        Self.trace(String(format: "release frames %d, max gap %.1f ms, gaps > 40 ms: %d (%@)", frameGaps.count,
+                          frameGaps.max() ?? 0, over.count, over.map { String(format: "%.0f@%.0f", $0.0, $0.1) }.joined(separator: " ")))
     }
 
     private func settleBack() {
@@ -971,6 +1034,15 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         onPick(slug)
         // After the open has started: taking the keyboard down is a main-thread cost the card must not wait for.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self] in self?.field.resignFirstResponder() }
+    }
+}
+
+/// A weak target, so the display link does not keep the view alive.
+private final class FrameWatchTicker: NSObject {
+    private weak var view: SearchRevealView?
+    init(_ view: SearchRevealView) { self.view = view }
+    @objc func tick(_ link: CADisplayLink) {
+        if let view { view.frameTick(link) } else { link.invalidate() }
     }
 }
 
