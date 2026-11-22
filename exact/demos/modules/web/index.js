@@ -306,6 +306,7 @@ function launch(el, props, event) {
     sw = screen.offsetWidth; sh = screen.offsetHeight; R = framed() ? 62 : 48;
     card.style.transformOrigin = '0 0'; content.style.transformOrigin = '0 0'; zoom.style.transformOrigin = '50% 50%';
     art.src = new URL(p.art ?? '', document.baseURI).href;
+    install();
     const tapped = lastTap && lastTap.slug === p.slug && performance.now() - lastTap.at < 2500;
     if (tapped) { const pager = screen.querySelector('[data-testid="pager"]'); if (pager) pager.scrollLeft = lastTap.scroll; }
     lastTap = null;
@@ -340,6 +341,7 @@ function launch(el, props, event) {
     if (closing || !screen) return;
     closing = true;
     haptics.play('impact-medium');
+    cancelTrack();
     const now = shown();
     if (!iconFrame) findIcon();
     if (!iconFrame || reducedMotion()) {
@@ -372,10 +374,132 @@ function launch(el, props, event) {
     event(1, 'landed');
   };
 
+  // ---- the swipe-down close: the same rules as ClosePan / CloseZone (tools/close-gesture.md) ----
+  const toScreen = (e) => {
+    const r = screen.getBoundingClientRect(), k = r.width / sw || 1;
+    return { x: (e.clientX - r.left) / k, y: (e.clientY - r.top) / k };
+  };
+  const zoneAllows = (pt) => {
+    const z = String(p.zone ?? '').trim();
+    if (!z) return true;
+    for (const word of z.split(/\s+/)) {
+      if (word === 'strip') return false;
+      const [x0, y0, x1, y1] = word.split(',').map(Number);
+      if ([x0, y0, x1, y1].every(Number.isFinite) && pt.x >= x0 * sw && pt.x <= x1 * sw && pt.y >= y0 * sh && pt.y <= y1 * sh) return false;
+    }
+    return true;
+  };
+  // A vertical scroller under the finger scrolled into its content keeps the pull (iOS's hand-off at the top).
+  const scrolledInto = (target) => {
+    for (let n = target; n && n !== card; n = n.parentElement) {
+      if (n.nodeType !== 1) continue;
+      const oy = getComputedStyle(n).overflowY;
+      if ((oy === 'auto' || oy === 'scroll') && n.scrollHeight > n.clientHeight + 1 && n.scrollTop > 0) return true;
+    }
+    return false;
+  };
+  const down = (e) => {
+    if (track || closing || !e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    if (!(phase === 'open' || phase === 'opening' || phase === 'returning')) return;
+    const pt = toScreen(e), strip = pt.y < Math.max(Number(p['safe-top']) || 0, sh * K.stripFraction);
+    if (!strip && (!zoneAllows(pt) || scrolledInto(e.target))) return;
+    track = { id: e.pointerId, target: e.target, start: pt, client: { x: e.clientX, y: e.clientY }, strip, active: false, samples: [], decided: false };
+  };
+  const cancelTrack = () => { track = null; };
+  const move = (e) => {
+    if (!track || e.pointerId !== track.id) return;
+    const pt = toScreen(e), tx = pt.x - track.start.x, ty = pt.y - track.start.y;
+    if (!track.active) {
+      if (Math.abs(tx) > K.failSideways || (track.strip && ty < -K.activeOffsetY)) { track = null; return; }
+      if (ty > K.activeOffsetY && ty > Math.abs(tx)) activate(e, pt); else return;
+      if (!track) return;
+    }
+    e.stopImmediatePropagation(); e.preventDefault();
+    track.samples.push({ t: e.timeStamp, x: pt.x, y: pt.y });
+    while (track.samples.length > 2 && e.timeStamp - track.samples[0].t > 100) track.samples.shift();
+    drag(pt);
+  };
+  const activate = (e, pt) => {
+    let from = { s: 1, c: { x: sw / 2, y: sh / 2 } };
+    if (phase !== 'open') {
+      const now = shown();
+      if (!now || now.pose.w < 0.75 * sw) { track = null; return; }
+      from = { s: now.pose.w / sw, c: { x: now.pose.cx, y: now.pose.cy } };
+    }
+    stopFlight();
+    // The demo's own gesture on this pointer ends, as when the browser takes a touch to scroll.
+    try { track.target.dispatchEvent(new PointerEvent('pointercancel', { pointerId: track.id, pointerType: e.pointerType, isPrimary: true, bubbles: true, clientX: e.clientX, clientY: e.clientY })); } catch {}
+    track.active = true;
+    phase = 'dragging';
+    behind(true);
+    homeScale.set(K.homeScale); homeBlur.set(1); homeDim.set(1);
+    dragFrom = from; dragAnchor = pt;
+    dragHeld = { x: (pt.x - from.c.x) / from.s, y: (pt.y - from.c.y) / from.s };
+    track.anchorAt = pt;
+  };
+  const dragPose = (t) => {
+    const d = Math.max(0, t.y), s = Math.max(K.dragMinScale, dragFrom.s - d / (K.dragTravel * sh));
+    return { s, x: dragAnchor.x + t.x - dragHeld.x * s, y: dragAnchor.y + d - dragHeld.y * s };
+  };
+  const drag = (pt) => {
+    const d = dragPose({ x: pt.x - dragAnchor.x, y: pt.y - dragAnchor.y });
+    w.set(sw * d.s); h.set(sh * d.s); cx.set(d.x); cy.set(d.y); radius = restRadius(1) * d.s || R * d.s;
+    put({ w: w.x, h: h.x, cx: cx.x, cy: cy.x, radius: framed() ? R * d.s : R * d.s, taper: 0, art: 0, hs: K.homeScale, dim: dimOf(1, 1), blur: 1 });
+  };
+  const up = (e) => {
+    // The cancel this close sends the demo is not the finger's.
+    if (!track || e.pointerId !== track.id || !e.isTrusted) return;
+    const t = track; track = null;
+    if (!t.active) return;
+    e.stopImmediatePropagation(); e.preventDefault();
+    // The click the browser makes of this press would land on the demo.
+    const swallow = (c) => { c.stopImmediatePropagation(); c.preventDefault(); };
+    addEventListener('click', swallow, { capture: true, once: true }); setTimeout(() => removeEventListener('click', swallow, true), 400);
+    const pt = toScreen(e), a = t.samples[0] ?? { t: e.timeStamp, ...pt }, b = t.samples.at(-1) ?? a, dt = Math.max(1, b.t - a.t) / 1000;
+    const vx = t.samples.length > 1 ? (b.x - a.x) / dt : 0, vy = t.samples.length > 1 ? (b.y - a.y) / dt : 0;
+    const tr = { x: pt.x - dragAnchor.x, y: pt.y - dragAnchor.y }, d = Math.max(0, tr.y), thrown = d + Math.max(0, vy) * K.throwProjection;
+    const held = dragPose(tr);
+    const ds = d > 0 && held.s > K.dragMinScale ? -vy / (K.dragTravel * sh) : 0;
+    const v = { w: sw * ds, h: sh * ds, cx: vx + (sw / 2 - dragAnchor.x) * ds, cy: (d > 0 ? vy : 0) + (sh / 2 - dragAnchor.y) * ds };
+    radius = R * held.s;
+    if (e.type === 'pointerup' && vy > -100 && (vy > K.closeVelocity || thrown > K.closeTravel * sh)) {
+      phase = 'released';
+      close(v);
+      event(0);
+    } else {
+      phase = 'returning';
+      w.run(sw, K.openWidth, v.w); cx.run(sw / 2, K.openCenterX, v.cx); cy.run(sh / 2, K.openCenterY, v.cy);
+      homeScale.set(K.homeScale); homeBlur.set(1); homeDim.set(1);
+      fly(() => { phase = 'open'; rest(); });
+    }
+  };
+  const touchmove = (e) => {
+    if (!track || e.touches.length !== 1) return;
+    if (track.active) { if (e.cancelable) e.preventDefault(); return; }
+    if (track.decided) return;
+    const t = e.touches[0], dx = t.clientX - track.client.x, dy = t.clientY - track.client.y;
+    if (dx === 0 && dy === 0) return;
+    track.decided = true;
+    // A pull down that may become the close: the page must not take this touch to scroll (which cancels it).
+    if (dy > 0 && dy >= Math.abs(dx) && e.cancelable) e.preventDefault();
+  };
+  let installed = false;
+  const install = () => {
+    if (installed) return; installed = true;
+    card.addEventListener('pointerdown', down, true);
+    addEventListener('pointermove', move, true); addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true);
+    card.addEventListener('touchmove', touchmove, { capture: true, passive: false });
+  };
+  const uninstall = () => {
+    if (!installed) return; installed = false;
+    card.removeEventListener('pointerdown', down, true);
+    removeEventListener('pointermove', move, true); removeEventListener('pointerup', up, true); removeEventListener('pointercancel', up, true);
+    card.removeEventListener('touchmove', touchmove, { capture: true });
+  };
   begin();
   return {
     set(n) { const was = p.closing; p = n; if (n.closing === 'true' && was !== 'true') close(); },
-    destroy() { stopFlight(); if (icon) icon.style.visibility = ''; },
+    destroy() { stopFlight(); uninstall(); if (icon) icon.style.visibility = ''; },
   };
 }
 
