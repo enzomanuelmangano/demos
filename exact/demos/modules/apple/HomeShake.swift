@@ -13,9 +13,14 @@ import UIKit
 
 enum HomeShake {
     static let notification = Notification.Name("HomeShake")
+    private static var lastShake: TimeInterval = -10
 
     /// A shake that opened no sheet: it is the home's when no demo is open or opening and nothing is presented.
     static func shaken() {
+        // A shake reaches sendEvent twice on a phone (the motion begins, then ends): one toggle per shake.
+        let now = ProcessInfo.processInfo.systemUptime
+        guard now - lastShake > 1.5 else { return }
+        lastShake = now
         guard LaunchSession.current == nil else { return }
         let window = UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.windows.first { $0.isKeyWindow } }.first
         guard window?.rootViewController?.presentedViewController == nil else { return }
