@@ -54,14 +54,27 @@ Order: demos.contract (newest first). Drivers used (not in the repo): a CDP scri
 
 Fixes that apply to every demo: GPU canvases are configured `premultiplied` (wgpu's WebGPU backend lists only `opaque`,
 so transparent overlay canvases painted black: sudoku was all black); sheets opened by a double tap no longer
-dismiss on the tap's own click.
+dismiss on the tap's own click; no hover wash on pressables (a grey square stayed where the mouse rested); continuous
+corners that do not fit in half the side are round, as UIKit draws them (discs and capsules were squircles);
+`symbol:sf/textformat` drawn (the host's table lacks it); a canvas in the launch card is sized in the screen's points
+(the host measured it with getBoundingClientRect, which includes the card's and the frame's scale: a demo opened
+from its icon kept the icon-sized layout, a stuck zoomed still, and on the desktop frame every surface was laid out at
+the frame's scale, 378 pt wide at 0.9) and its pointer events are mapped back by the same scale; GPU surfaces draw
+their system-font text (draw2d read SF from the system's files: on the web every label drawn by 27 surfaces was
+missing; the web's system face is Inter, OFL, subset 250 KB, a stand-in for SF, which may not be shipped).
 
 | demo | state | what was checked / what is left |
 |---|---|---|
-| sculptures-in-words | statue fixed (45a6cabf) | Fixed: the letters' atlas came from CoreText-only `subpixel_mask` (empty off Apple): now drawn from outlines off Apple. Left: (1) after the first press an 80x80 light-grey square shows behind the toggle disc (the toggle's outer view, z-index 1, over the canvas; not focus, not the press scale: likely the web host's handling of a DOM sibling over a canvas); (2) the `symbol:sf/textformat` icon is an empty SVG on the web (person.crop.circle draws); (3) the disc is a squircle on the web (corner-shape continuous at r = h/2) where iOS shows a circle. |
-| light-on-painting | fixed (7549deb8), checked on touch | Bulb drag relights, swipe pages, double tap opens the Light sheet (it closed on its own click before), Show depth switches, scrim dismisses. Left: check the sheet on the desktop frame. |
+| sculptures-in-words | PERFECT | statue (45a6cabf); grey square, the Aa icon, the circle disc (6e8f0dbb); toggle, sideways re-seat, 60 fps desktop and touch. |
+| light-on-painting | fixed (7549deb8), checked on touch | Bulb drag relights, swipe pages, double tap opens the Light sheet, Show depth, scrim dismisses. Left: the sheet on the desktop frame. |
 | sudoku | black fixed (2b9ad379) | Header, Start Game, board appear. Left: play a game (cell tap, keys, notes, undo, confetti on a solve). |
-| the-little-prince ... | next | Continue here, then chessboard, art-gallery, ... in demos.contract order. |
+| the-little-prince | PERFECT | letters fly to the picture and back (toggle, 240 ms icon crossfade), laid out at 420 pt; no late frame desktop / touch. |
+| chessboard | PERFECT | Fool's Mate plays, glass wave, review card; Back, Replay; drag a piece, tap-select (dots) and tap-move; 60 fps. |
+| art-gallery | PERFECT | menu picks a painting (fixed: paintings opened as empty submenus), the mosaic rearranges; pinch, pan, double tap, zoom-out button (touch); a trackpad pinches and pans (fixed: no wheel input before). Menu is a web glass list, not SwiftUI's. |
+| cherry-blossom-qrcode | PERFECT, web limit | tap folds to the QR and back, long press sends the creeper (blast, reassembly), the field retypes the code. Limit: no software keyboard on a desktop, so the field's keyboard toolbar sits at the screen's bottom and the tree's space above an absent keyboard stays empty. |
+| github-terrain | PERFECT | tap springs to the terrain and back, the switch swaps data. Note (iOS too, not web): RN's switch has an off track #C8CCC9, the port's is the system's (faint on the light page). |
+| notion-qrcode | PERFECT | CONNECT / SHARE labels drawn (font fix), the wave to the QR and back, 60 fps touch. Labels are Inter on the web. |
+| scrollable-shapes ... | next | Continue here, then sphere-waves, calendar-days, blur-cards, ... in demos.contract order. |
 
 ## Per demo
 
