@@ -109,6 +109,61 @@ const hookMessages = () => {
 };
 hookMessages();
 
+// ---- A demo's canvases are sized in the screen's points, whatever scales the screen ------------------------------
+// The web host sizes a GPU canvas (and its world's layout) from getBoundingClientRect, which includes every transform
+// above it: the frame's scale on a desktop (a 420 pt screen shown at 0.9 laid the surface out 378 pt wide) and, worse,
+// the launch card's, which is the icon's size when the demo mounts. A surface sized then kept that size, as a transform
+// fires no ResizeObserver: the-little-prince's page stayed laid out ~60 pt wide and zoomed up, a stuck blurry still,
+// after an open from its icon. On the iPhone a surface is laid out at the screen's size and the launch scales it.
+// Here a canvas in the card (or a GPU input host) reports its layout size (offsetWidth / offsetHeight) at its on-page
+// corner, and a pointer event delivered to it carries clientX / clientY mapped back by the same scale, so a point
+// on the canvas is in the same points as its size (the host reads it as clientX - rect.left).
+{
+  const gpuBox = (e) => (e.localName === 'canvas' || e.hasAttribute?.('data-gpu-input')) && e.closest('[data-testid="web-card"]');
+  const rect = Element.prototype.getBoundingClientRect;
+  const scaleOf = (e, r) => {
+    const w = e.offsetWidth, h = e.offsetHeight;
+    if (!(w > 0 && h > 0) || (Math.abs(r.width - w) < 0.01 && Math.abs(r.height - h) < 0.01)) return null;
+    return { w, h, kx: r.width / w, ky: r.height / h };
+  };
+  Element.prototype.getBoundingClientRect = function () {
+    const r = rect.call(this);
+    if (!gpuBox(this)) return r;
+    const k = scaleOf(this, r);
+    return k ? new DOMRect(r.left, r.top, k.w, k.h) : r;
+  };
+  const POINTER = /^(pointer|mouse|click|dblclick|auxclick|contextmenu|wheel|lostpointercapture|gotpointercapture)/;
+  const add = EventTarget.prototype.addEventListener, remove = EventTarget.prototype.removeEventListener;
+  const wraps = new WeakMap();
+  const wrap = (fn) => {
+    let w = wraps.get(fn);
+    if (w) return w;
+    w = function (event) {
+      const handle = typeof fn === 'function' ? (ev) => fn.call(this, ev) : (ev) => fn.handleEvent(ev);
+      if (!gpuBox(this) || typeof event.clientX !== 'number') return handle(event);
+      const r = rect.call(this), k = scaleOf(this, r);
+      if (!k) return handle(event);
+      const x = r.left + (event.clientX - r.left) / k.kx, y = r.top + (event.clientY - r.top) / k.ky;
+      return handle(new Proxy(event, {
+        get(t, p) {
+          if (p === 'clientX' || p === 'x' || p === 'pageX') return x;
+          if (p === 'clientY' || p === 'y' || p === 'pageY') return y;
+          const v = Reflect.get(t, p, t);
+          return typeof v === 'function' ? v.bind(t) : v;
+        },
+      }));
+    };
+    wraps.set(fn, w);
+    return w;
+  };
+  const wrapped = (target, type, fn) => fn && target instanceof Element && (target.localName === 'canvas' || target.hasAttribute('data-gpu-input')) && POINTER.test(type);
+  EventTarget.prototype.addEventListener = function (type, fn, options) { return add.call(this, type, wrapped(this, type, fn) ? wrap(fn) : fn, options); };
+  EventTarget.prototype.removeEventListener = function (type, fn, options) {
+    if (wrapped(this, type, fn) && wraps.has(fn)) remove.call(this, type, wraps.get(fn), options);
+    return remove.call(this, type, fn, options);
+  };
+}
+
 // ---- A touch screen has no hover --------------------------------------------------------------------------------
 // The web host washes any pressable a mouse is over (`--exact-hover-wash`, the bordered / gray buttons' quaternary
 // fill): a grey square stayed behind a demo's button wherever the pointer rested on the desktop frame (sculptures-in-
