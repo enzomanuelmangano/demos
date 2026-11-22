@@ -104,6 +104,8 @@ component WebStatusBar
 component WebScreen
   props
     demos: Demo[]
+    // Every demo, the unstable ones too: a link opens one the launcher does not list.
+    all: Demo[]
     env: DemoEnv
     slug: string
     sw: number
@@ -114,7 +116,7 @@ component WebScreen
     open: action
     leave: action
   state closing = false
-  derive demo = first(demos.filter(d => d.slug == slug))
+  derive demo = first(all.filter(d => d.slug == slug))
   action beginClose
     closing = true
   action finishClose
@@ -139,6 +141,7 @@ component WebScreen
 component WebShell
   props
     demos: Demo[]
+    all: Demo[]
     env: DemoEnv
     slug: string
     framed: bool
@@ -149,7 +152,7 @@ component WebShell
     open: action
     leave: action
   derive s = frameScale(vw, vh)
-  derive bd = demos.filter(d => d.slug == slug).map(d => d.backdrop).join("")
+  derive bd = all.filter(d => d.slug == slug).map(d => d.backdrop).join("")
   derive backdrop = bd == "" ? "#000000" : bd
   view
     column position="absolute" inset=0 background-color="#141414"
@@ -172,7 +175,7 @@ component WebShell
             view position="absolute" right=-3 top=245 width=4 height=92 border-radius=2 background-color="#9a9ca2"
             view position="absolute" left=bezel() top=bezel() width=airW() height=airH() border-radius=62
               corner-shape="-exact-continuous" overflow="hidden" background-color="#000000" testId="web-device"
-              WebScreen(demos=demos, env=env, slug=slug, sw=airW(), sh=airH(), safeTop=airTop(), safeBottom=airBottom(),
+              WebScreen(demos=demos, all=all, env=env, slug=slug, sw=airW(), sh=airH(), safeTop=airTop(), safeBottom=airBottom(),
                 framed=true, open=open, leave=leave)
               WebStatusBar(ink=inkOver(backdrop))
               // The home indicator.
@@ -180,5 +183,5 @@ component WebShell
               view position="absolute" left=140 bottom=8 width=140 height=5 border-radius=2.5 background-color=inkOver(backdrop)
                 opacity=0.85 pointer-events="none" aria-hidden=true z-index=40
       else
-        WebScreen(demos=demos, env=env, slug=slug, sw=vw, sh=vh, safeTop=safeTop, safeBottom=safeBottom, framed=false,
+        WebScreen(demos=demos, all=all, env=env, slug=slug, sw=vw, sh=vh, safeTop=safeTop, safeBottom=safeBottom, framed=false,
           open=open, leave=leave)
