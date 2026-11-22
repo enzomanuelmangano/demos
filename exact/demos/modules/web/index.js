@@ -923,6 +923,121 @@ function iconMenu(el, props) {
   };
 }
 
+// ---- Motion: modules/apple/MotionFeed.swift and the iPhone's startSensorInput, on the web --------------------------
+// `motion-feed` writes a sensor's samples straight into a GPU canvas's input while the node is on the page, through the
+// GPU module's own sensor path (`exact.gpu.sensors`, the events `startSensorInput` would feed): `gravity` (W3C
+// GravitySensor units and sign, m/s², face up z = +9.81: Linear Sensors) or `relativeOrientation` (a quaternion
+// [x, y, z, w]: Threads Holo Ticket, Card Shader Reflections). Sources, best first: the Generic Sensor classes
+// (Chromium on Android), else `devicemotion` / `deviceorientation` (iOS Safari asks permission on the first tap inside
+// the demo: DeviceMotionEvent.requestPermission must run in a press). A desktop has neither: the pointer's place over
+// the screen tilts the phone (centre is the phone at rest), so the framed mockup still shows the effect.
+const G = 9.80665;
+const webkitMotion = () => typeof DeviceOrientationEvent === 'function' && 'webkitCompassHeading' in DeviceOrientationEvent.prototype;
+// Device Orientation's alpha, beta, gamma (degrees, Z-X'-Y'') as a quaternion (@exact/motion's, Orientation Sensor §6.1).
+const quaternionFromAngles = (alpha, beta, gamma) => {
+  const d = Math.PI / 360, a = (alpha ?? 0) * d, b = (beta ?? 0) * d, g = (gamma ?? 0) * d;
+  const ca = Math.cos(a), sa = Math.sin(a), cb = Math.cos(b), sb = Math.sin(b), cg = Math.cos(g), sg = Math.sin(g);
+  return [sb * cg * ca - cb * sg * sa, cb * sg * ca + sb * cg * sa, cb * cg * sa + sb * sg * ca, cb * cg * ca - sb * sg * sa];
+};
+let motionAsked = null;
+// iOS Safari's prompt, from inside a press (both events' requestPermission in the same turn, as @exact/motion does).
+const askMotion = () => {
+  if (motionAsked) return motionAsked;
+  const asks = [];
+  if (typeof DeviceMotionEvent?.requestPermission === 'function') asks.push(DeviceMotionEvent.requestPermission());
+  if (typeof DeviceOrientationEvent?.requestPermission === 'function') asks.push(DeviceOrientationEvent.requestPermission());
+  motionAsked = Promise.allSettled(asks);
+  return motionAsked;
+};
+const needsAsk = () => typeof DeviceMotionEvent?.requestPermission === 'function' || typeof DeviceOrientationEvent?.requestPermission === 'function';
+
+function motionFeed(el, props) {
+  let p = props, stops = [], last = 0, live = false, real = false, mouse = null, raf = 0;
+  const surface = () => String(p.feed ?? ''), sensor = () => (p.sensor === 'relativeOrientation' ? 'relativeOrientation' : 'gravity');
+  const period = () => 1000 / Math.max(1, Number(p.frequency) || 50);
+  const write = (values, force = false) => {
+    const now = performance.now();
+    if (!force && now - last < period() * 0.5) return;
+    last = now;
+    const gpu = globalThis.exact?.gpu;
+    if (!gpu?.sensors || !surface()) return;
+    gpu.sensors([{ surface: surface(), event: JSON.stringify({ t: 'sensor', sensor: sensor(), values: [...values, 0, 0, 0, 0].slice(0, 4), dropped: 0, at: globalThis.exact?.now?.() ?? now }) }]);
+  };
+  const fromAngles = (beta, gamma) => {
+    if (sensor() === 'relativeOrientation') return quaternionFromAngles(0, beta, gamma);
+    const b = beta * Math.PI / 180, g = gamma * Math.PI / 180;
+    return [-G * Math.sin(g) * Math.cos(b), G * Math.sin(b), G * Math.cos(g) * Math.cos(b)];
+  };
+  // The device's own readings: the first one ends the pointer's stand-in.
+  const sample = (values) => { if (!real) { real = true; stopMouse(); } write(values); };
+  const startDevice = (events = false) => {
+    const name = sensor();
+    const Class = name === 'gravity' ? globalThis.GravitySensor : globalThis.RelativeOrientationSensor;
+    if (typeof Class === 'function' && !events) {
+      try {
+        const s = new Class({ frequency: Number(p.frequency) || 50 });
+        s.addEventListener('reading', () => sample(name === 'gravity' ? [s.x, s.y, s.z] : [...s.quaternion]));
+        // No such sensor here (or not allowed): the events, which a browser without one still sends where it can.
+        s.addEventListener('error', () => { s.stop(); if (live) startDevice(true); });
+        s.start();
+        stops.push(() => s.stop());
+        return;
+      } catch {}
+    }
+    if (name === 'gravity') {
+      const on = (e) => {
+        const a = e.accelerationIncludingGravity;
+        if (!a || ![a.x, a.y, a.z].every(Number.isFinite)) return;
+        const k = webkitMotion() ? -1 : 1;
+        sample([a.x * k, a.y * k, a.z * k]);
+      };
+      addEventListener('devicemotion', on);
+      stops.push(() => removeEventListener('devicemotion', on));
+    } else {
+      const on = (e) => { if ([e.alpha, e.beta, e.gamma].every((n) => typeof n === 'number')) sample(quaternionFromAngles(e.alpha, e.beta, e.gamma)); };
+      addEventListener('deviceorientation', on);
+      stops.push(() => removeEventListener('deviceorientation', on));
+    }
+  };
+  // The pointer over the screen as the phone's tilt: centre is the phone at rest (flat for an attitude, held at 45°
+  // for gravity), the edges ±30° of pitch and ±40° of roll.
+  const pointer = (e) => {
+    if (real || e.pointerType === 'touch') return;
+    const screen = el.closest('[data-testid="web-device"]') ?? document.documentElement, r = screen.getBoundingClientRect();
+    mouse = { x: Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width) * 2 - 1)), y: Math.max(-1, Math.min(1, ((e.clientY - r.top) / r.height) * 2 - 1)) };
+    if (!raf) raf = requestAnimationFrame(() => {
+      raf = 0;
+      if (!mouse || real) return;
+      const rest = sensor() === 'gravity' ? 45 : 0;
+      write(fromAngles(rest - mouse.y * 30, mouse.x * 40), true);
+    });
+  };
+  const stopMouse = () => { removeEventListener('pointermove', pointer, true); cancelAnimationFrame(raf); raf = 0; };
+  const press = () => { askMotion().then(() => { if (live) { stopDevice(); startDevice(); } }); };
+  const stopDevice = () => { for (const f of stops.splice(0)) f(); };
+  const start = () => {
+    if (live || !surface()) return;
+    live = true;
+    startDevice();
+    if (needsAsk()) { addEventListener('pointerdown', press, { capture: true, once: true }); stops.push(() => removeEventListener('pointerdown', press, true)); }
+    addEventListener('pointermove', pointer, true);
+    // At rest until the first reading or the pointer moves.
+    const rest = sensor() === 'gravity' ? 45 : 0;
+    setTimeout(() => { if (live && !real && !mouse) write(fromAngles(rest, 0), true); }, 60);
+  };
+  const stop = () => {
+    if (!live) return;
+    live = false;
+    stopDevice(); stopMouse();
+    globalThis.exact?.gpu?.sensors?.([{ surface: surface(), event: JSON.stringify({ t: 'sensorEnded', sensor: sensor(), at: globalThis.exact?.now?.() ?? performance.now() }) }]);
+  };
+  start();
+  return {
+    set(n) { const changed = n.feed !== p.feed || n.sensor !== p.sensor || n.frequency !== p.frequency; if (changed) { stop(); p = n; start(); } else p = n; },
+    destroy: stop,
+  };
+}
+
 const views = {
   // A glass (or blur) pane behind other content.
   'glass-pane'(el, props) {
@@ -1170,6 +1285,7 @@ views['music-tabbar'] = views['native-tabbar'];
 views['demo-card'] = launch;
 views['search-reveal'] = searchReveal;
 views['icon-grid'] = iconMenu;
+views['motion-feed'] = motionFeed;
 
 export function create(tag, element, json, event) {
   const props = JSON.parse(json);

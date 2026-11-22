@@ -221,21 +221,23 @@ component Demos
   // Presets.System.impactMedium() when it commits, before the flight home: the launch does
   // (modules/apple/DemoLaunch.swift), and lets the route go here at expansion 0.2.
   action back
-    if top(nav).name == "demo" and turns(top(nav).params.slug)
+    if top(nav).name == "demo" and turns(top(nav).params.slug) and not web
       send sensors = stopSensorInput(surface="threads_holo_ticket", sensor="relativeOrientation")
-    else if top(nav).name == "demo" and lights(top(nav).params.slug)
+    else if top(nav).name == "demo" and lights(top(nav).params.slug) and not web
       send sensors = stopSensorInput(surface="card_shader_reflections", sensor="relativeOrientation")
     nav = back(nav)
   // Linear Sensors' gravity is fed by its own `motion-feed` node (modules/apple/MotionFeed.swift).
   // Threads Holo Ticket's feed: Core Motion's attitude at 62.5 Hz (RN's interval 16 ms is
   // deviceMotionUpdateInterval 0.016 s), into its surface.
-  task turn when top(nav).name == "demo" and turns(top(nav).params.slug) key=top(nav).id
+  // The web has no canvas input for @exact/motion (startSensorInput is NotSupportedError there): its feed is the page
+  // module's `motion-feed` beside the demo (below).
+  task turn when top(nav).name == "demo" and turns(top(nav).params.slug) and not web key=top(nav).id
     after(1, startTurn)
   action startTurn
     send sensors = startSensorInput(surface="threads_holo_ticket", sensor="relativeOrientation", frequency=62.5)
   // Card Shader Reflections' light: Core Motion's attitude at 62.5 Hz into its surface, which
   // turns the cards' room frame by it (gpu/src/card_shader_reflections.rs, past RN).
-  task light when top(nav).name == "demo" and lights(top(nav).params.slug) key=top(nav).id
+  task light when top(nav).name == "demo" and lights(top(nav).params.slug) and not web key=top(nav).id
     after(1, startLight)
   action startLight
     send sensors = startSensorInput(surface="card_shader_reflections", sensor="relativeOrientation", frequency=62.5)
@@ -315,6 +317,11 @@ component Demos
             position="absolute" inset=0
             WebShell(demos=demos, all=allDemos(), env=env, slug=e.params.slug, zone=closeZone(e.params.slug), framed=framed, vw=host.width, vh=host.height,
               safeTop=host.safeAreaTop, safeBottom=host.safeAreaBottom, open=open, leave=back)
+            // The attitude the iPhone feeds these surfaces from Core Motion (startTurn, startLight), from the browser's
+            // device orientation (or, on a desktop, the pointer over the screen): modules/web/index.js `motion-feed`.
+            if turns(e.params.slug) or lights(e.params.slug)
+              motion-feed feed=(turns(e.params.slug) ? "threads_holo_ticket" : "card_shader_reflections") sensor="relativeOrientation"
+                frequency=62.5 position="absolute" left=0 top=0 width=0 height=0 pointer-events="none" aria-hidden=true
         if e.name == "demo" and not desk and not web
           // The open out of the icon and the close into it are RN's launch, drawn by the app's
           // module (DemoLaunch.swift) on UIKit's fullscreen presentation, not UIKit's zoom.
