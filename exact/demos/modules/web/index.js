@@ -121,7 +121,9 @@ if (DOM) hookMessages();
 // corner, and a pointer event delivered to it carries clientX / clientY mapped back by the same scale, so a point
 // on the canvas is in the same points as its size (the host reads it as clientX - rect.left).
 if (DOM) {
-  const gpuBox = (e) => (e.localName === 'canvas' || e.hasAttribute?.('data-gpu-input')) && e.closest('[data-testid="web-card"]');
+  // A surface's host is its canvas, or the node whose own child the canvas is (gpu-glue.js `surface`): the host's size
+  // makes the canvas at creation (the scaled one made a wrongly sized backing store and targets, resized next frame).
+  const gpuBox = (e) => (e.localName === 'canvas' || e.hasAttribute?.('data-gpu-input') || (e.nodeType === 1 && e.querySelector(':scope > canvas[data-surface]'))) && e.closest('[data-testid="web-card"]');
   const rect = Element.prototype.getBoundingClientRect;
   const scaleOf = (e, r) => {
     const w = e.offsetWidth, h = e.offsetHeight;
