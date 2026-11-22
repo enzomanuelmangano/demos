@@ -28,7 +28,7 @@ component Check
     pressablesOnPress
   view
     column position="absolute" inset=0
-      ${name}(${takesEnv ? 'env=DemoEnv(width=420, height=912, safeTop=68, safeBottom=34, epoch=1794268800000, utcOffset=60, seed=1, reducedMotion=false, timers=[], tile=false, web=false)' : ''})
+      ${name}(${takesEnv ? 'env=DemoEnv(width=420, height=912, safeTop=68, safeBottom=34, epoch=1794268800000, utcOffset=60, seed=1, reducedMotion=false, timers=[])' : ''})
 `);
 try {
   const r = spawnSync(process.execPath, ['exact.mjs', 'contract', 'build', scratch, '--json', '--errors-only'], { cwd: APP, encoding: 'utf8' });

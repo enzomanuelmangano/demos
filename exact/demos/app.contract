@@ -154,7 +154,7 @@ component Demos
   resource time = exactTime() as shape Time
   resource page = exactPage() as shape Page
   resource timers = exactSurface("timer") as shape Timers
-  derive env = DemoEnv(width=host.width, height=host.height, safeTop=0, safeBottom=0, epoch=time.epochAtZero, utcOffset=time.utcOffset, seed=time.seed, reducedMotion=host.prefersReducedMotion, timers=timers.fired, tile=false, web=web)
+  derive env = DemoEnv(width=host.width, height=host.height, safeTop=0, safeBottom=0, epoch=time.epochAtZero, utcOffset=time.utcOffset, seed=time.seed, reducedMotion=host.prefersReducedMotion, timers=timers.fired, tile=false)
   // "Show Unstable" (the General tray): the work-in-progress demos are listed only with it on.
   state showUnstable = false persist
   resource feedback = feedbackNotes() when atlasShown as shape FeedbackNote[] else empty()

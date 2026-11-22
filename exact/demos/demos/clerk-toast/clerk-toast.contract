@@ -4,7 +4,6 @@
 // eighth toast's x clears them all, each fading out to the left in turn.
 use PressableScale from "pressto"
 use DemoEnv, floatingWidth, concentricInset, concentricRadius from "../env.contract"
-use WebGlass from "../web-glass.contract"
 
 // The thirteen titles, taken in turn (index % 13).
 fn clerkTitle(kind: number): string = match ["This is a Custom Toast message", "Strongly inspired by Emil Kowalski", "It works with React Native and Expo!", "Can you guess the main library used here?", "Reanimated - of course!", "Wait! Too many Toasts here!", "Let's swipe them away!", "Actually, let's clear quickly everything", "What about the source code?", "You can find it at reactiive.io/demos", "You're still here?", "Ok, last one!", "Thanks for watching!"].at(kind) { case some(t) => t, case none => "" }
@@ -170,11 +169,8 @@ component ClerkToast
             view aria-label="Show toast" height=56 display="flex" flex-direction="row"
               align-items="center" padding-left=26 padding-right=28 border-radius=28
               corner-shape="-exact-continuous"
-              if env.web
-                WebGlass(tint="", radius="28", dark=false, clear=false)
-              if not (env.web)
-                glass-pane glass-style="regular" corner-size="28" interactive="false"
-                  continuous="true" position="absolute" inset=0 pointer-events="none" aria-hidden=true
+              glass-pane glass-style="regular" corner-size="28" interactive="false"
+                continuous="true" position="absolute" inset=0 pointer-events="none" aria-hidden=true
               // The label sits in its own box above the glass: text painted by the capsule itself would
               // lie under the glass view.
               view position="relative" z-index=1 display="flex" flex-direction="row" align-items="center"

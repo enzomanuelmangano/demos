@@ -3,7 +3,6 @@
 // stacks a taller sheet that holds the spiral.
 use PressableScale from "pressto"
 use DemoEnv from "../env.contract"
-use WebGlass from "../web-glass.contract"
 
 fn sheetNum(xs: number[], i: number): number = match xs.at(i) { case some(v) => v, case none => 0 }
 fn sheetSet(xs: number[], i: number, v: number): number[] = range(xs.length).map(j => j == i ? v : sheetNum(xs, j))
@@ -172,11 +171,8 @@ component StackedBottomSheet
           column position="relative" height=52 padding="0px 28px" border-radius=26
             corner-shape="-exact-continuous" align-items="center"
             justify-content="center" aria-label="Show stacked tray" testId="sheet-button"
-            if env.web
-              WebGlass(tint="#111111", radius="26", dark=false, clear=false)
-            if not (env.web)
-              glass-pane glass-style="regular" pane-tint="#111111" corner-size="26" interactive="false"
-                continuous="true" position="absolute" inset=0 pointer-events="none" aria-hidden=true
+            glass-pane glass-style="regular" pane-tint="#111111" corner-size="26" interactive="false"
+              continuous="true" position="absolute" inset=0 pointer-events="none" aria-hidden=true
             // The label sits in its own box above the glass: text painted by the capsule itself
             // would lie under the glass view.
             view position="relative" z-index=1 pointer-events="none"

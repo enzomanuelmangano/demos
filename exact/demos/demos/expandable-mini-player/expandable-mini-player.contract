@@ -5,7 +5,6 @@
 // timeline animation, so no commit runs per finger move.
 use PressableScale from "pressto"
 use DemoEnv, floatingWidth, concentricRadius from "../env.contract"
-use WebGlass from "../web-glass.contract"
 
 // Apple Music's mini player (the iOS 26 tab bar accessory): a 52 point Liquid Glass capsule with
 // the floating tab bar's side margins (21), 8 above it. The timeline keyframes are in the points of
@@ -252,11 +251,8 @@ component ExpandableMiniPlayer
         // height reads as a flat-ended rounded rectangle).
         view position="absolute" inset=0 animation="mpGlass 1s linear both"
           animation-timeline="--mp" animation-range="0px 732px" testId="mp-glass"
-          if env.web
-            WebGlass(tint="rgba(74, 90, 72, 0.18)", radius="capsule", dark=false, clear=false)
-          if not (env.web)
-            glass-pane glass-style="regular" pane-tint="rgba(74, 90, 72, 0.18)" corner-size="capsule"
-              interactive="false" position="absolute" inset=0 pointer-events="none" aria-hidden=true
+          glass-pane glass-style="regular" pane-tint="rgba(74, 90, 72, 0.18)" corner-size="capsule"
+            interactive="false" position="absolute" inset=0 pointer-events="none" aria-hidden=true
 
       // The sheet: the cover's colours, deepening downward. It rises from the capsule (its radius
       // scales to the capsule's 26) and fades out over the last stretch, leaving the glass.

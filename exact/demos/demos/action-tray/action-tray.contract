@@ -7,7 +7,6 @@
 // Not here: the crossfade's blur. `filter` does not animate in Contract, so it needs host support.
 use PressableScale from "pressto"
 use DemoEnv from "../env.contract"
-use WebGlass from "../web-glass.contract"
 
 // The display corner is 62 pt (iPhone 17 / Air); the tray's corner is that less the 10 pt inset,
 // so the inner elements stay concentric with it.
@@ -124,12 +123,9 @@ component ActionTray
             align-items="center" justify-content="center"
             rotate=(opened ? 45 : 0) transition=`rotate ${presentSpring()}`
             aria-label=(opened ? "Close the tray" : "Open the tray") testId="toggle"
-            if env.web
-              WebGlass(tint="#0088FF", radius="28", dark=false, clear=false)
-            if not (env.web)
-              glass-pane glass-style="regular" pane-tint="#0088FF" corner-size="28"
-                interactive="false" continuous="true" position="absolute" inset=0
-                pointer-events="none" aria-hidden=true
+            glass-pane glass-style="regular" pane-tint="#0088FF" corner-size="28"
+              interactive="false" continuous="true" position="absolute" inset=0
+              pointer-events="none" aria-hidden=true
             image "symbol:sf/plus" font-size=24 font-weight=600 color="#FFFFFF" aria-hidden=true
       // The scrim: its opacity follows the tray's drag timeline (full at rest, clear once off screen).
       view position="absolute" inset=0 background-color="rgba(0, 0, 0, 0.24)"
@@ -218,12 +214,9 @@ component ActionTray
                 column height=56 border-radius=28 corner-shape="-exact-continuous"
                   background-color=trayBlue() align-items="center" justify-content="center"
                   aria-label=actionOf(step) testId="continue"
-                  if env.web
-                    WebGlass(tint="#0088FF", radius="28", dark=false, clear=false)
-                  if not (env.web)
-                    glass-pane glass-style="regular" pane-tint="#0088FF" corner-size="28"
-                      interactive="false" continuous="true" position="absolute" inset=0
-                      pointer-events="none" aria-hidden=true
+                  glass-pane glass-style="regular" pane-tint="#0088FF" corner-size="28"
+                    interactive="false" continuous="true" position="absolute" inset=0
+                    pointer-events="none" aria-hidden=true
                   for k in [0, 1, 2] key=k
                     column position="absolute" aria-hidden=(k != step)
                       TrayFade(k=k, step=step, still=env.reducedMotion)
