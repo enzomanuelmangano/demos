@@ -2,6 +2,7 @@
 use Demo from "../demos.contract"
 use PortedDemo from "../demos/index.contract"
 use DemoEnv from "../demos/env.contract"
+use WebRoundButton, WebSheet from "./web-chrome.contract"
 
 component DemoScreen
   props
@@ -10,6 +11,11 @@ component DemoScreen
     ownsDrags: bool
     zone: string
     leave: action
+    // The web has no native modules: it draws its own buttons and sheet (web-chrome.contract), and
+    // a desktop frame adds its simulated insets (the browser's env() is 0 there). Both 0 / false on iOS.
+    web: bool
+    insetTop: number
+    insetBottom: number
   // Demos pad their own top: the route keeps the whole screen (`-exact-safe-area="none"`) and
   // `demo-safe`, a box at the safe-area insets, gives the demo its safeTop and safeBottom.
   state top = 0
@@ -45,13 +51,19 @@ component DemoScreen
     inspiring = true
   action sheetChanged(v: string)
     inspiring = false
+  action dismissSheet
+    inspiring = false
   action follow
     inspiring = false
     openURL(demo.actionUrl)
   action placed(w: number, h: number)
     let g = frame("demo-safe")
     // Read once: the keyboard never moves the buttons or a demo's safe area.
-    if not g.unavailable and top == 0 and bottom == 0
+    // A framed web screen is scaled and offset in the page, so its simulated insets are taken as they are.
+    if insetTop > 0 and top == 0 and bottom == 0
+      top = insetTop
+      bottom = insetBottom
+    else if not g.unavailable and top == 0 and bottom == 0
       top = g.y
       bottom = max(0, env.height - g.y - g.height)
   view
@@ -61,7 +73,7 @@ component DemoScreen
       view position="absolute" top=0 left=0 width=env.width height=env.height pointer-events="none"
         aria-hidden=true
         view id="demo-safe" position="absolute" left=0 right=0 top="env(safe-area-inset-top)"
-          bottom="env(safe-area-inset-bottom)" pointer-events="none" aria-hidden=true
+          bottom="env(safe-area-inset-bottom)" margin-top=insetTop margin-bottom=insetBottom pointer-events="none" aria-hidden=true
       column position="absolute" top=0 left=0 width=env.width height=env.height background-color=demo.backdrop
         if demo.ported
           PortedDemo(slug=demo.slug, env=DemoEnv(env, safeTop=top, safeBottom=bottom))
@@ -74,21 +86,31 @@ component DemoScreen
               text "Not on Exact yet." font-size=15 color="#8e8e93" text-align="center" testId="not-ported"
         // The card in the demo's backdrop, with the demo fading in once painted, and the launch
         // around it (open, close drag, flight home): `demo-card` (modules/apple/DemoLaunch.swift).
-        demo-card press=leave slug=demo.slug caption=demo.name tint=demo.backdrop zone=zone owns=(ownsDrags ? "drags" : "")
-          position="absolute" inset=0 pointer-events="none" aria-hidden=true
+        if not web
+          demo-card press=leave slug=demo.slug caption=demo.name tint=demo.backdrop zone=zone owns=(ownsDrags ? "drags" : "")
+            position="absolute" inset=0 pointer-events="none" aria-hidden=true
         // The close button: a real SwiftUI glass button (`glass-button`, modules/apple/Demos.swift).
         // In a demo's sub-page it is Back and plays the demo's own way back instead of closing.
-        glass-button press=closeOrBack caption=(subField != "" ? "Back" : "Close") kind=(subField != "" ? "back" : "close")
-          symbol=(subField != "" ? "chevron.backward" : "xmark")
-          aria-label=(subField != "" ? "Back" : "Close")
-          testId="close" position="absolute" top=top left=16 width=48 height=48
-        // The info button, when the demo credits someone: it opens the Inspiration sheet.
-        if demo.story != ""
-          glass-button press=inspire caption="Inspiration" symbol="info" edge="trailing"
-            aria-label="Inspiration" testId="inspiration" position="absolute" top=top right=16 width=48
-            height=48
+        if not web
+          glass-button press=closeOrBack caption=(subField != "" ? "Back" : "Close") kind=(subField != "" ? "back" : "close")
+            symbol=(subField != "" ? "chevron.backward" : "xmark")
+            aria-label=(subField != "" ? "Back" : "Close")
+            testId="close" position="absolute" top=top left=16 width=48 height=48
+          // The info button, when the demo credits someone: it opens the Inspiration sheet.
+          if demo.story != ""
+            glass-button press=inspire caption="Inspiration" symbol="info" edge="trailing"
+              aria-label="Inspiration" testId="inspiration" position="absolute" top=top right=16 width=48
+              height=48
+        if web
+          column position="absolute" top=top left=16 z-index=20
+            WebRoundButton(kind=(subField != "" ? "back" : "close"), label=(subField != "" ? "Back" : "Close"), press=closeOrBack, id="close")
+          if demo.story != ""
+            column position="absolute" top=top right=16 z-index=20
+              WebRoundButton(kind="info", label="Inspiration", press=inspire, id="inspiration")
       // The Inspiration sheet: a real UIKit sheet (`inspiration-sheet`, modules/apple/InspirationSheet.swift).
-      if demo.story != ""
+      if demo.story != "" and not web
         inspiration-sheet open=(inspiring ? "true" : "false") caption="Inspiration" story=demo.story
           icon=demo.icon action-url=demo.actionUrl action-label=demo.actionLabel press=follow change=sheetChanged position="absolute" left=0
           top=0 width=0 height=0 aria-hidden=true testId="inspiration-sheet"
+      if demo.story != "" and web
+        WebSheet(open=inspiring, story=demo.story, icon=demo.icon, actionLabel=demo.actionLabel, safeBottom=bottom, dismiss=dismissSheet, follow=follow)

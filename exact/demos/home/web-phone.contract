@@ -1,0 +1,170 @@
+// The web's launcher: the springboard without its native views (icon-grid, page-dots, still-art, search-reveal
+// have no web module), and the demo opened over it. On a phone's browser it fills the screen like an app; on a
+// desktop it is an iPhone Air in a device frame (framed). The iPhone and the Mac never build this (app.contract).
+use Demo from "../demos.contract"
+use DemoEnv from "../demos/env.contract"
+use DemoScreen from "./demo-screen.contract"
+use gridCols, cellWidth, iconSize, perPage, pageCount from "./springboard.contract"
+
+// iPhone Air, portrait: the display in points, its safe areas (status bar + Dynamic Island, home
+// indicator) and corner radius, and the frame around it.
+fn airW(): number = 420
+fn airH(): number = 912
+fn airTop(): number = 62
+fn airBottom(): number = 34
+fn bezel(): number = 12
+fn frameW(): number = airW() + 2 * bezel()
+fn frameH(): number = airH() + 2 * bezel()
+// The frame fits the window with 24 pt around, never grows past its own size.
+fn frameScale(w: number, h: number): number = min(1, min((h - 48) / frameH(), (w - 48) / frameW()))
+
+keyframes webOpen
+  from opacity=0 scale=0.9
+keyframes webClose
+  to opacity=0 scale=0.9
+
+component WebSpringboard
+  props
+    demos: Demo[]
+    sw: number
+    sh: number
+    safeTop: number
+    safeBottom: number
+    open: action
+  state page = 0
+  derive area = sh - safeTop - safeBottom
+  derive per = perPage(sw, area)
+  derive pages = sw > 0 and area > 0 ? range(pageCount(demos.length, per)) : []
+  action scrolled(x: number, y: number)
+    page = max(0, floor(x / sw + 0.5))
+  view
+    column position="absolute" inset=0 testId="springboard"
+      // A static wallpaper, edge to edge.
+      image "assets/home-wallpaper.png" position="absolute" left=0 top=0 width="100%" height="100%" object-fit="cover" aria-hidden=true
+      column position="absolute" inset=0 padding-top=safeTop padding-bottom=safeBottom box-sizing="border-box"
+        // Every page is a snap stop the width of the screen, as the native pager.
+        row testId="pager" flex=1 min-height=0 overflow-x="auto" overflow-y="hidden" scroll-snap-type="x mandatory"
+          scrollbar-width="none" scroll=scrolled
+          for p in pages key=p
+            column width=sw height="100%" flex-shrink=0 scroll-snap-align="start" scroll-snap-stop="always"
+              padding="16px 22px 0" box-sizing="border-box"
+              row flex-wrap="wrap" align-content="flex-start" row-gap=22
+                for d in demos.slice(p * per, (p + 1) * per) key=d.slug
+                  button press=open(d.slug) appearance="none" testId=`icon-${d.slug}` aria-label=d.name padding=0
+                    border-width=0 width=cellWidth(sw) display="flex" flex-direction="column" align-items="center" gap=6
+                    background-color="rgba(0,0,0,0)"
+                    :hover
+                      background-color = "rgba(0,0,0,0)"
+                    :active
+                      -exact-press-scale = 0.9
+                    image d.icon width=iconSize(sw) height=iconSize(sw) border-radius=(iconSize(sw) * 0.2237)
+                      corner-shape="-exact-continuous" aria-hidden=true
+                    text d.label font-size=11 font-weight=500 color="#ffffff" text-align="center" white-space="nowrap"
+                      overflow="hidden" text-overflow="ellipsis" max-width=(cellWidth(sw) - 4)
+        if pages.length > 1
+          row height=44 flex-shrink=0 justify-content="center" align-items="center" gap=9 aria-hidden=true
+            for p in pages key=p
+              view width=7 height=7 border-radius=3.5 background-color=(p == page ? "#ffffff" : "rgba(255,255,255,0.4)")
+                transition="background-color 160ms ease"
+
+// The iPhone's status bar, drawn white over the app at the frame's top: the time, the signal, wifi and battery.
+component WebStatusBar
+  view
+    view position="absolute" left=0 right=0 top=0 height=62 pointer-events="none" aria-hidden=true z-index=40
+      row position="absolute" left=36 top=19 width=96 height=22 align-items="center" justify-content="center"
+        text "9:41" font-size=17 font-weight=600 color="#ffffff" letter-spacing=-0.2
+      row position="absolute" right=30 top=19 width=110 height=22 align-items="center" justify-content="center" gap=7
+        svg width=19 height=12 viewBox="0 0 19 12"
+          rect x=0 y=7.5 width=3.2 height=4.5 rx=0.9 fill="#ffffff"
+          rect x=5 y=5 width=3.2 height=7 rx=0.9 fill="#ffffff"
+          rect x=10 y=2.5 width=3.2 height=9.5 rx=0.9 fill="#ffffff"
+          rect x=15 y=0 width=3.2 height=12 rx=0.9 fill="#ffffff"
+        svg width=17 height=12 viewBox="0 0 17 12" fill="none"
+          path d="M1.2 4.3C5.2 0.4 11.8 0.4 15.8 4.3" stroke="#ffffff" stroke-width=1.9 stroke-linecap="round"
+          path d="M3.6 6.8C6.2 4.3 10.8 4.3 13.4 6.8" stroke="#ffffff" stroke-width=1.9 stroke-linecap="round"
+          path d="M6 9.2C7.4 7.9 9.6 7.9 11 9.2" stroke="#ffffff" stroke-width=1.9 stroke-linecap="round"
+        svg width=28 height=13 viewBox="0 0 28 13" fill="none"
+          rect x=0.5 y=0.5 width=23 height=12 rx=3.8 stroke="#ffffff" stroke-opacity=0.4
+          rect x=2 y=2 width=20 height=9 rx=2.4 fill="#ffffff"
+          path d="M25 4.4V8.6C25.9 8.2 26.5 7.4 26.5 6.5C26.5 5.6 25.9 4.8 25 4.4Z" fill="#ffffff" fill-opacity=0.5
+      // The Dynamic Island.
+      view position="absolute" left=147 top=11 width=126 height=37 border-radius=18.5 background-color="#000000"
+
+// The screen: the springboard, and over it the opened demo (opens with a scale and fade, closes with one).
+component WebScreen
+  props
+    demos: Demo[]
+    env: DemoEnv
+    slug: string
+    sw: number
+    sh: number
+    safeTop: number
+    safeBottom: number
+    framed: bool
+    open: action
+    leave: action
+  state closing = false
+  derive demo = first(demos.filter(d => d.slug == slug))
+  action beginClose
+    closing = true
+  action finishClose
+    leave()
+  task finishing when closing key=slug
+    after(220, finishClose)
+  view
+    column position="absolute" inset=0 overflow="hidden" background-color="#000000"
+      WebSpringboard(demos=demos, sw=sw, sh=sh, safeTop=safeTop, safeBottom=safeBottom, open=open)
+      if slug != ""
+        match demo
+          case some(d)
+            column position="absolute" inset=0 pointer-events=(closing ? "none" : "auto")
+              animation=(closing ? "webClose 220ms ease-in both" : "webOpen 360ms cubic-bezier(0.32,0.72,0,1) both")
+              DemoScreen(demo=d, env=DemoEnv(env, width=sw, height=sh), ownsDrags=false, zone="", leave=beginClose, web=true,
+                insetTop=(framed ? airTop() : 0), insetBottom=(framed ? airBottom() : 0))
+          case none
+            view
+
+// What the web route draws. Not framed (a phone, or a window narrower than a phone's): the screen fills the
+// page and the device's own safe areas apply. Framed (a desktop): an iPhone Air centred on a dark page.
+component WebShell
+  props
+    demos: Demo[]
+    env: DemoEnv
+    slug: string
+    framed: bool
+    vw: number
+    vh: number
+    safeTop: number
+    safeBottom: number
+    open: action
+    leave: action
+  derive s = frameScale(vw, vh)
+  view
+    column position="absolute" inset=0 background-color="#141414"
+      if framed
+        column position="absolute" inset=0 align-items="center" justify-content="center" overflow="hidden"
+          background-color="#0c0c0e"
+          background-image="radial-gradient(ellipse 90% 70% at 50% 35%, #2b2b31, #161619 60%, #0a0a0b)" testId="web-stage"
+          column width=frameW() height=frameH() flex-shrink=0 position="relative" scale=s
+            // The titanium band, then the black glass edge, then the display.
+            view position="absolute" inset=0 border-radius=74
+              background-image="linear-gradient(150deg, #e4e5e8, #8f9197 22%, #cfd0d3 48%, #7d7f85 74%, #babcc0)"
+              box-shadow="0px 50px 120px rgba(0,0,0,0.6), 0px 14px 34px rgba(0,0,0,0.45)"
+            view position="absolute" left=3 top=3 right=3 bottom=3 border-radius=71 background-color="#050506"
+              box-shadow="inset 0px 0px 0px 1px rgba(255,255,255,0.08)"
+            // The side buttons: the action button and the volume keys on the left, the power key on the right.
+            view position="absolute" left=-3 top=150 width=4 height=30 border-radius=2 background-color="#9a9ca2"
+            view position="absolute" left=-3 top=215 width=4 height=58 border-radius=2 background-color="#9a9ca2"
+            view position="absolute" left=-3 top=290 width=4 height=58 border-radius=2 background-color="#9a9ca2"
+            view position="absolute" right=-3 top=245 width=4 height=92 border-radius=2 background-color="#9a9ca2"
+            view position="absolute" left=bezel() top=bezel() width=airW() height=airH() border-radius=62
+              corner-shape="-exact-continuous" overflow="hidden" background-color="#000000" testId="web-device"
+              WebScreen(demos=demos, env=env, slug=slug, sw=airW(), sh=airH(), safeTop=airTop(), safeBottom=airBottom(),
+                framed=true, open=open, leave=leave)
+              WebStatusBar()
+              // The home indicator.
+              view position="absolute" left=140 bottom=8 width=140 height=5 border-radius=2.5 background-color="#ffffff"
+                opacity=0.85 pointer-events="none" aria-hidden=true z-index=40
+      else
+        WebScreen(demos=demos, env=env, slug=slug, sw=vw, sh=vh, safeTop=safeTop, safeBottom=safeBottom, framed=false,
+          open=open, leave=leave)
