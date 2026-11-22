@@ -736,6 +736,23 @@ input{all:unset;position:absolute;inset:0;padding:0 16px 0 41px;color:#fff;font-
     if (!track) return;
     if (track.active) { if (e.cancelable) e.preventDefault(); }
   };
+  // A trackpad's two-finger pull down (a wheel's negative deltaY) is the same pull: the travel follows the deltas,
+  // and when they stop the pull lands (past the trigger) or springs back.
+  let wheel = null;
+  const onWheel = (e) => {
+    if (committed || Math.abs(e.deltaY) <= Math.abs(e.deltaX) || screen.querySelector('[data-testid="web-card"]')) return;
+    if (!wheel && e.deltaY >= 0) return;
+    e.preventDefault();
+    if (!wheel) { stopRun(); wheel = { travel: PULL.activate, timer: 0 }; armed = false; pullBase = 0; }
+    wheel.travel = Math.max(0, wheel.travel - e.deltaY * (e.deltaMode === 1 ? 16 : 1) * 0.5);
+    const x = Math.max(0, wheel.travel - PULL.activate), pp = damp(x);
+    reveal = Math.min(pp / damp(PULL.trigger - PULL.activate), 1); pull = pp; grid = rubber(x);
+    render();
+    if (!armed && wheel.travel > PULL.trigger) { armed = true; haptics.play('impact-light'); }
+    else if (armed && wheel.travel < PULL.trigger * PULL.disarm) armed = false;
+    clearTimeout(wheel.timer);
+    wheel.timer = setTimeout(() => { wheel = null; if (armed) commit(); else settleBack(0); }, 140);
+  };
 
   // ---- the committed search ----
   input.addEventListener('input', () => { searchShared.query = input.value; filter(); });
@@ -779,6 +796,7 @@ input{all:unset;position:absolute;inset:0;padding:0 16px 0 41px;color:#fff;font-
       pager.style.touchAction = 'pan-x';
       pager.addEventListener('pointerdown', down, true);
       pager.addEventListener('touchmove', touchmove, { capture: true, passive: false });
+      pager.addEventListener('wheel', onWheel, { passive: false });
     }
     addEventListener('pointermove', move, true); addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true);
     searches.add(me);
@@ -791,7 +809,7 @@ input{all:unset;position:absolute;inset:0;padding:0 16px 0 41px;color:#fff;font-
     set(n) { p = n; setRows(); layout(); },
     destroy() {
       stopRun(); searches.delete(me);
-      pager?.removeEventListener('pointerdown', down, true); pager?.removeEventListener('touchmove', touchmove, { capture: true });
+      pager?.removeEventListener('pointerdown', down, true); pager?.removeEventListener('touchmove', touchmove, { capture: true }); pager?.removeEventListener('wheel', onWheel);
       removeEventListener('pointermove', move, true); removeEventListener('pointerup', up, true); removeEventListener('pointercancel', up, true);
       if (box) box.style.transform = '';
     },
@@ -808,8 +826,97 @@ const MENU_ICONS = {
   share: '<path d="M10 2.8V12.5M6.6 6.1L10 2.8L13.4 6.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 8.6H5.6C4.7 8.6 4 9.3 4 10.2V16C4 16.9 4.7 17.6 5.6 17.6H14.4C15.3 17.6 16 16.9 16 16V10.2C16 9.3 15.3 8.6 14.4 8.6H13" stroke-linecap="round"/>',
   code: '<path d="M5.5 2.8H11.5L15.5 6.8V16.2C15.5 16.9 14.9 17.5 14.2 17.5H5.8C5.1 17.5 4.5 16.9 4.5 16.2V3.8C4.5 3.2 4.9 2.8 5.5 2.8Z" stroke-linejoin="round"/><path d="M11.3 2.9V7H15.4M7.5 10.5H12.5M7.5 13.5H12.5" stroke-linecap="round"/>',
 };
+// ---- The launcher's pager on a desktop: a mouse drags the pages, a page snaps -----------------------------------
+// Touch and trackpads scroll the pager natively (scroll-snap, momentum, the browser's rubber band); a mouse cannot
+// scroll sideways, so a press-and-drag moves the pages with the pointer (in the frame's scaled coordinates), resists
+// past the first and last page, and a release snaps one page on by the throw (or back). Arrow keys page, a tap on
+// the dots pages toward its side (as iOS's page control), and the icons are loaded at once rather than lazily, so a
+// page swiped to never shows empty tiles (the phone draws them predecoded).
+function pagerDrive(board, screenOf) {
+  const pager = board.querySelector('[data-testid="pager"]');
+  if (!pager) return () => {};
+  const width = () => pager.clientWidth || 1;
+  const pages = () => Math.max(1, Math.round(pager.scrollWidth / width()));
+  const page = () => Math.round(pager.scrollLeft / width());
+  const go = (n) => { const to = Math.max(0, Math.min(pages() - 1, n)); pager.scrollTo({ left: to * width(), behavior: reducedMotion() ? 'auto' : 'smooth' }); };
+  let drag = null;
+  const scale = () => { const s = screenOf(); return s ? s.getBoundingClientRect().width / (s.offsetWidth || 1) : 1; };
+  const rubber = (x, d) => (1 - 1 / (Math.abs(x) * 0.55 / d + 1)) * d * Math.sign(x);
+  const down = (e) => {
+    if (e.pointerType !== 'mouse' || e.button !== 0 || drag) return;
+    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, from: pager.scrollLeft, startPage: page(), active: false, samples: [], k: scale() };
+  };
+  const move = (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dx = (e.clientX - drag.x) / drag.k, dy = (e.clientY - drag.y) / drag.k;
+    if (!drag.active) {
+      if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { drag = null; return; }
+      if (Math.abs(dx) < 6) return;
+      drag.active = true;
+      pager.style.scrollSnapType = 'none';
+      try { e.target.dispatchEvent(new PointerEvent('pointercancel', { pointerId: e.pointerId, pointerType: 'mouse', bubbles: true })); } catch {}
+    }
+    e.stopImmediatePropagation(); e.preventDefault();
+    drag.samples.push({ t: e.timeStamp, x: dx });
+    while (drag.samples.length > 2 && e.timeStamp - drag.samples[0].t > 100) drag.samples.shift();
+    const max = (pages() - 1) * width(), want = drag.from - dx;
+    const over = want < 0 ? want : want > max ? want - max : 0;
+    pager.scrollLeft = Math.max(0, Math.min(max, want));
+    pager.style.transform = over ? `translateX(${-rubber(over, width())}px)` : '';
+  };
+  const up = (e) => {
+    if (!drag || e.pointerId !== drag.id || !e.isTrusted) return;
+    const d = drag; drag = null;
+    if (!d.active) return;
+    e.stopImmediatePropagation();
+    const swallow = (c) => { c.stopImmediatePropagation(); c.preventDefault(); };
+    addEventListener('click', swallow, { capture: true, once: true }); setTimeout(() => removeEventListener('click', swallow, true), 400);
+    const a = d.samples[0], b = d.samples.at(-1), v = a && b && b.t > a.t ? (b.x - a.x) / (b.t - a.t) * 1000 : 0;
+    const moved = d.from - pager.scrollLeft;
+    let to = d.startPage;
+    if (v < -300 || (Math.abs(v) <= 300 && moved < -width() / 2)) to = d.startPage + 1;
+    else if (v > 300 || (Math.abs(v) <= 300 && moved > width() / 2)) to = d.startPage - 1;
+    if (pager.style.transform) {
+      pager.animate([{ transform: pager.style.transform }, { transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.25,1,.35,1)' });
+      pager.style.transform = '';
+    }
+    pager.style.scrollSnapType = '';
+    go(to);
+  };
+  // A tap on the dots: a page toward the tapped side of the current dot.
+  const dots = pager.nextElementSibling;
+  const dotTap = (e) => {
+    const r = dots.getBoundingClientRect(), n = pages(), at = (e.clientX - r.left) / r.width;
+    const current = (page() + 0.5) / n;
+    if (Math.abs(at - current) > 0.5 / n) go(page() + (at > current ? 1 : -1));
+  };
+  if (dots) { dots.style.cursor = 'pointer'; dots.addEventListener('click', dotTap); }
+  const key = (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    const screen = screenOf();
+    if (!screen || screen.querySelector('[data-testid="web-card"]') || !pager.offsetParent || /INPUT|TEXTAREA/.test(document.activeElement?.tagName ?? '')) return;
+    if (document.activeElement?.shadowRoot?.activeElement) return;
+    e.preventDefault();
+    go(page() + (e.key === 'ArrowRight' ? 1 : -1));
+  };
+  // Every icon now, not when its page nears the screen.
+  const eager = () => { for (const img of board.querySelectorAll('[data-testid^="icon-"] img')) if (img.loading !== 'eager') { img.loading = 'eager'; img.decode?.().catch(() => {}); } };
+  eager();
+  const watch = new MutationObserver(eager);
+  watch.observe(pager, { childList: true, subtree: true });
+  pager.addEventListener('pointerdown', down, true);
+  addEventListener('pointermove', move, true); addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true);
+  addEventListener('keydown', key);
+  return () => {
+    watch.disconnect(); dots?.removeEventListener('click', dotTap);
+    pager.removeEventListener('pointerdown', down, true);
+    removeEventListener('pointermove', move, true); removeEventListener('pointerup', up, true); removeEventListener('pointercancel', up, true);
+    removeEventListener('keydown', key);
+  };
+}
+
 function iconMenu(el, props) {
-  let p = props, board = null, press = null, menu = null;
+  let p = props, board = null, press = null, menu = null, unpager = () => {};
   const lists = () => {
     const parts = (k) => String(p[k] ?? '').split('|');
     const slugs = parts('slugs'), names = parts('demo-names'), insp = parts('inspirations');
@@ -906,6 +1013,7 @@ function iconMenu(el, props) {
     if (!el.isConnected) return ++waits < 20 ? queueMicrotask(begin) : requestAnimationFrame(begin);
     board = el.closest('[data-testid="springboard"]');
     if (!board) return;
+    unpager = pagerDrive(board, () => el.closest('[data-testid="web-screen"]'));
     board.addEventListener('pointerdown', down, true);
     board.addEventListener('contextmenu', context, true);
     addEventListener('pointermove', move, true); addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true);
@@ -915,7 +1023,7 @@ function iconMenu(el, props) {
   return {
     set(n) { p = n; },
     destroy() {
-      close(false);
+      close(false); unpager();
       board?.removeEventListener('pointerdown', down, true); board?.removeEventListener('contextmenu', context, true);
       removeEventListener('pointermove', move, true); removeEventListener('pointerup', up, true); removeEventListener('pointercancel', up, true);
       removeEventListener('keydown', key);
