@@ -89,8 +89,14 @@ final class GlassPaneView: UIView {
     /// interactive pane takes the touch for its press response: the gesture recognizers of the
     /// views above still see it.
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        style.interactive && bounds.contains(point) ? effectView : nil
+        guard style.interactive, bounds.contains(point) else { return nil }
+        // A control placed in `contentView` keeps its own touch; the glass still reads it as a press.
+        return effectView.hitTest(convert(point, to: effectView), with: event) ?? effectView
     }
+
+    /// Where a control that sits on the glass goes: its touches stay inside the effect view, so an
+    /// interactive glass answers them.
+    var contentView: UIView { effectView.contentView }
 
     /// Checked at runtime: early iOS 26 betas crashed in the glass initialiser.
     private static var hasGlass: Bool {

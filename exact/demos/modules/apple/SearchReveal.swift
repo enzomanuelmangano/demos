@@ -410,6 +410,8 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
             var s = GlassPaneStyle()
             s.glass = "regular"
             s.radius = Pull.barHeight / 2
+            // Interactive glass, as the system's controls: it swells and shimmers under the finger.
+            s.interactive = true
             return s
         }()
         bar.addSubview(glass)
@@ -428,7 +430,8 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         // Invisible: the hint draws it. A field with no placeholder reads as a login field to AutoFill.
         field.attributedPlaceholder = NSAttributedString(string: "Search", attributes: [.foregroundColor: UIColor.clear])
         field.addTarget(self, action: #selector(queryChanged), for: .editingChanged)
-        bar.addSubview(field)
+        // On the glass, not over it: a touch on the field is a touch on the glass too.
+        glass.contentView.addSubview(field)
         hint.isUserInteractionEnabled = false
         hintGlyph.image = UIImage(systemName: "magnifyingglass",
                                   withConfiguration: UIImage.SymbolConfiguration(pointSize: 18, weight: .regular))
@@ -439,7 +442,7 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         hintLabel.textColor = grey
         hint.addSubview(hintGlyph)
         hint.addSubview(hintLabel)
-        bar.addSubview(hint)
+        glass.contentView.addSubview(hint)
         cancelButton.setTitle("Cancel", for: .normal)
         cancelButton.setTitleColor(.white, for: .normal)
         cancelButton.titleLabel?.font = .systemFont(ofSize: 17)
@@ -544,7 +547,7 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         let cancelW = cancelWidth
         let pillW = max(0, narrowed ? full - cancelW : full)
         glass.frame = CGRect(x: 0, y: 0, width: pillW, height: Pull.barHeight)
-        field.frame = glass.frame
+        field.frame = CGRect(x: 0, y: 0, width: pillW, height: Pull.barHeight)
         // Bounds and center: it carries a transform, under which a frame assignment lands elsewhere.
         cancelButton.bounds = CGRect(x: 0, y: 0, width: cancelW - 12, height: Pull.barHeight)
         cancelButton.center = CGPoint(x: full - (cancelW - 12) / 2, y: Pull.barHeight / 2)
