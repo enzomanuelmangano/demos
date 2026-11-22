@@ -1292,7 +1292,11 @@ const views = {
         sw.addEventListener('click', () => { r.on = !r.on; sw.classList.toggle('on', r.on); sw.style.background = r.on ? tint : ''; event(1, `${r.id}:${r.on}`); });
         row.append(label, sw); panel.append(row);
       }
-      root.querySelector('.s').addEventListener('click', () => { close(); event(1, 'dismissed'); });
+      // Only a press that began on the scrim dismisses: the double tap that opened the sheet ends (its click) on it.
+      const scrim = root.querySelector('.s');
+      let pressed = false;
+      scrim.addEventListener('pointerdown', () => { pressed = true; });
+      scrim.addEventListener('click', () => { if (!pressed) return; pressed = false; close(); event(1, 'dismissed'); });
     };
     const set = (n) => { p = n; n.open === 'true' ? open() : close(); };
     set(props);
