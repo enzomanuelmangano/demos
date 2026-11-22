@@ -165,19 +165,26 @@ if (DOM) {
     return remove.call(this, type, fn, options);
   };
 
-  // A trackpad drives a demo's GPU surface as fingers would (the iPhone has no wheel; a surface hears pointers): a
-  // pinch (a wheel with ctrl set, as Chrome and Safari deliver it) is two touches spreading about the pointer, 50 pt
-  // either side, by Chrome's step (deltaY is -100 x ln of the scale step); a two-finger scroll is one touch dragging
-  // with the content (deltaY > 0 moves it up). The touches lift once the wheel has been still for 120 ms, so the
-  // release (its velocity, a snap) is the touch's; a scroll that travelled under 10 pt is cancelled, not lifted, so
-  // it is never a tap. They are dispatched on the canvas, untrusted (the demo card's close pan ignores them), and
-  // the wrapper above maps their points. A real touch down holds them off. A wheel over a control inside the surface
-  // (a DOM button) is left to it.
-  const LIFT_MS = 120, SLOP = 10, HALF = 50;
+  // A trackpad drives a demo as fingers would (the iPhone has no wheel): over anything in a demo that claims touches
+  // (a computed touch-action other than auto: a GPU canvas, a Contract pan, a host drag), a pinch (a wheel with ctrl
+  // set, as Chrome and Safari deliver it) is two touches spreading about the pointer, 50 pt either side, by Chrome's
+  // step (deltaY is -100 x ln of the scale step), and a two-finger scroll is one touch dragging with the content
+  // (deltaY > 0 moves it up). The touches lift once the wheel has been still for 120 ms, so the release (its
+  // velocity, a snap) is the touch's; a scroll that travelled under 10 pt is cancelled, not lifted, so it is never a
+  // tap. A scroller under the pointer that can scroll the wheel's way keeps it (the browser scrolls it), as does an
+  // axis the claim leaves to the browser (pan-x / pan-y). The touches are dispatched on the element under the
+  // pointer, untrusted (the demo card's close pan ignores them; capturing them is a no-op), and the wrapper above
+  // maps their points on a canvas. A real touch down holds them off.
+  const LIFT_MS = 120, SLOP = 10, HALF = 50, FIRST_ID = 0x7f000000;
+  const synthetic = (id) => id >= FIRST_ID && id < FIRST_ID + 0x1000000;
+  for (const name of ['setPointerCapture', 'releasePointerCapture']) {
+    const f = Element.prototype[name];
+    Element.prototype[name] = function (id) { if (!synthetic(id)) return f.call(this, id); };
+  }
   const real = new Set();
   add.call(window, 'pointerdown', (e) => { if (e.isTrusted && e.pointerType === 'touch') real.add(e.pointerId); }, true);
   for (const t of ['pointerup', 'pointercancel']) add.call(window, t, (e) => { if (e.isTrusted) real.delete(e.pointerId); }, true);
-  let held = null, ids = 0x7f000000;
+  let held = null, ids = FIRST_ID;
   const fire = (s, type, i, [x, y]) => {
     const lifted = type === 'pointerup' || type === 'pointercancel';
     try { s.el.dispatchEvent(new PointerEvent(type, { pointerId: s.ids[i], pointerType: 'touch', isPrimary: i === 0, bubbles: true, cancelable: true, composed: true, clientX: x, clientY: y, button: type === 'pointermove' ? -1 : 0, buttons: lifted ? 0 : 1, pressure: lifted ? 0 : 0.5, width: 1, height: 1 })); } catch {}
@@ -191,28 +198,55 @@ if (DOM) {
     const p = points(s);
     for (let i = p.length - 1; i >= 0; i--) fire(s, type, i, p[i]);
   };
+  // What a wheel over `t` in `card` drives: the element claiming touches, or null (the browser keeps the wheel).
+  const claimant = (t, card, dx, dy, pinch) => {
+    const across = Math.abs(dx) > Math.abs(dy);
+    for (let n = t; n && n !== card.parentElement; n = n.parentElement) {
+      const cs = getComputedStyle(n);
+      if (!pinch && n !== card) {
+        const ox = cs.overflowX, oy = cs.overflowY;
+        if (across && (ox === 'auto' || ox === 'scroll') && n.scrollWidth > n.clientWidth + 1) return null;
+        if (!across && (oy === 'auto' || oy === 'scroll') && n.scrollHeight > n.clientHeight + 1) return null;
+      }
+      const ta = cs.touchAction;
+      if (ta && ta !== 'auto') {
+        if (!pinch && ((across && /pan-x/.test(ta)) || (!across && /pan-y/.test(ta)) || ta === 'manipulation')) return null;
+        if (pinch && /pinch-zoom|manipulation/.test(ta)) return null;
+        return n;
+      }
+    }
+    return null;
+  };
   add.call(window, 'wheel', (e) => {
     const t = e.target;
     if (!(t instanceof Element)) return;
-    const host = t.closest('[data-gpu-input]');
-    if (!host || !host.closest('[data-testid="web-card"]') || (t !== host && t.localName !== 'canvas')) return;
-    e.preventDefault(); e.stopImmediatePropagation();
-    const pinch = e.ctrlKey, unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? host.clientHeight : 1;
-    const dx = e.deltaX * unit, dy = e.deltaY * unit;
-    if (held && (held.pinch !== pinch || held.el !== t || !t.isConnected)) lift();
-    if (!held) {
-      if (real.size) return;
-      const r = rect.call(host), k = host.offsetWidth > 0 ? r.width / host.offsetWidth : 1;
-      held = { el: t, pinch, k, c: [e.clientX, e.clientY], at: [e.clientX, e.clientY], half: HALF * k, travel: 0, timer: 0, ids: pinch ? [++ids, ++ids] : [++ids] };
-      points(held).forEach((p, i) => fire(held, 'pointerdown', i, p));
+    // A held gesture keeps the wheel until it lifts, whatever moved under the pointer (the content follows it).
+    if (held && held.el.isConnected && e.ctrlKey === held.pinch) {
+      e.preventDefault(); e.stopImmediatePropagation();
+      return step(held, e);
     }
-    const s = held;
-    if (pinch) s.half = Math.min(4000 * s.k, Math.max(s.k, s.half * Math.exp(-dy / 100)));
+    const card = t.closest('[data-testid="web-card"]');
+    if (!card || t.closest('input,textarea,select,[contenteditable]')) return;
+    const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? card.clientHeight : 1;
+    const host = claimant(t, card, e.deltaX * unit, e.deltaY * unit, e.ctrlKey);
+    if (!host) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    lift();
+    if (real.size) return;
+    const r = rect.call(host), k = host.offsetWidth > 0 ? r.width / host.offsetWidth : 1;
+    held = { el: t, pinch: e.ctrlKey, k, c: [e.clientX, e.clientY], at: [e.clientX, e.clientY], half: HALF * k, travel: 0, timer: 0, ids: e.ctrlKey ? [++ids, ++ids] : [++ids] };
+    points(held).forEach((p, i) => fire(held, 'pointerdown', i, p));
+    step(held, e);
+  }, { capture: true, passive: false });
+  const step = (s, e) => {
+    const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? innerHeight : 1;
+    const dx = e.deltaX * unit, dy = e.deltaY * unit;
+    if (s.pinch) s.half = Math.min(4000 * s.k, Math.max(s.k, s.half * Math.exp(-dy / 100)));
     else { s.at = [s.at[0] - dx, s.at[1] - dy]; s.travel = Math.max(s.travel, Math.hypot(s.at[0] - s.c[0], s.at[1] - s.c[1]) / s.k); }
     points(s).forEach((p, i) => fire(s, 'pointermove', i, p));
     clearTimeout(s.timer);
     s.timer = setTimeout(lift, LIFT_MS);
-  }, { capture: true, passive: false });
+  };
 }
 
 // ---- A touch screen has no hover --------------------------------------------------------------------------------
@@ -1383,10 +1417,14 @@ const views = {
     const draw = (p) => {
       const clear = p['glass-style'] === 'clear', none = p['glass-style'] === 'none', light = p.scheme === 'light';
       const r = p['corner-size'] === 'capsule' ? '9999px' : `${num(p['corner-size'], 0)}px`;
-      const tint = p['pane-tint'] ? `linear-gradient(${p['pane-tint']}, ${p['pane-tint']}),` : '';
-      const fill = none ? 'transparent' : light ? 'rgba(255,255,255,.55)' : clear ? 'rgba(255,255,255,.08)' : 'rgba(40,40,44,.5)';
+      // Clear glass shows its tint at about half its alpha, with no wash and a light saturation: liquid-glass-
+      // playground's rgba(0,0,0,.5) over its photo reads 0.76 / 0.83 / 0.63 of the photo's mean r / g / b on the iPhone.
+      const tintColor = p['pane-tint'] && clear ? `color-mix(in srgb, ${p['pane-tint']} 50%, transparent)` : p['pane-tint'];
+      const tint = tintColor ? `linear-gradient(${tintColor}, ${tintColor}),` : '';
+      const fill = none ? 'transparent' : light ? 'rgba(255,255,255,.55)' : clear ? 'transparent' : 'rgba(40,40,44,.5)';
+      const filter = `blur(${clear ? 10 : 22}px) saturate(${clear ? 120 : 180}%)`;
       box.style.cssText = `position:absolute;inset:0;border-radius:${r};background:${tint}${fill ? `linear-gradient(${fill},${fill})` : ''};` +
-        (none ? '' : `backdrop-filter:blur(${clear ? 10 : 22}px) saturate(180%);-webkit-backdrop-filter:blur(${clear ? 10 : 22}px) saturate(180%);box-shadow:0 8px 24px rgba(0,0,0,.12),inset 0 0 0 .5px rgba(255,255,255,${light ? .6 : .25})`);
+        (none ? '' : `backdrop-filter:${filter};-webkit-backdrop-filter:${filter};box-shadow:0 8px 24px rgba(0,0,0,.12),inset 0 0 0 .5px rgba(255,255,255,${light ? .6 : .25})`);
     };
     draw(props);
     return { set: draw };
