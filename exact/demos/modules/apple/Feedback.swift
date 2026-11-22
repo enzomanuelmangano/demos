@@ -17,6 +17,8 @@ enum PhoneFeedback {
     static weak var card: DemoCardView?
     private static var presses: Set<ObjectIdentifier> = []
     private static var open = false
+    /// The sheet on screen: a sheet torn down with its demo gets no dismiss callback, and `open` would stay set.
+    private static weak var sheet: UIViewController?
     static var recording = false
 
     static func attach(_ card: DemoCardView) {
@@ -47,6 +49,7 @@ enum PhoneFeedback {
 
     static func trigger() {
         if LayerSkeleton.dismiss() { return }
+        if open, sheet.map({ $0.viewIfLoaded?.window == nil && !$0.isBeingPresented }) ?? true { open = false }
         guard !open, !recording else { return }
         // No demo on screen: the shake belongs to the home (HomeShake.swift).
         guard let card, card.window != nil, let window = card.window else { HomeShake.shaken(); return }
@@ -58,6 +61,7 @@ enum PhoneFeedback {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         let model = SheetModel(slug: slug, name: card.name.isEmpty ? slug : card.name, shot: shot)
         let host = UIHostingController(rootView: FeedbackSheet(model: model))
+        sheet = host
         model.close = { [weak host] in host?.dismiss(animated: true) }
         model.layers = { [weak host] in host?.dismiss(animated: true) { showLayers() } }
         host.modalPresentationStyle = .pageSheet
