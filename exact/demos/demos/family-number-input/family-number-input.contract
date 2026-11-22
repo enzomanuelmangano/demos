@@ -78,7 +78,7 @@ component FamilyNumberInput
         holdToken = holdToken + 1
   view
     column position="absolute" inset=0 background-color="#000000" padding-top=env.safeTop
-      padding-bottom="env(safe-area-inset-bottom)" testId="family-number-input"
+      padding-bottom=env.safeBottom testId="family-number-input"
       // The surface fills the top half and centres the row in it.
       column flex=1 position="relative"
         canvas surface=family_number(input, buzz) message=heard position="absolute" top=0 left=0 width=env.width

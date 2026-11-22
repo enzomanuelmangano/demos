@@ -21,7 +21,7 @@ component AirbnbFlipInteraction
         testId="airbnb-scroll"
         column position="relative" width="100%" overflow-x="clip"
           padding-top=(env.safeTop + demoButtonRow())
-          padding-bottom="calc(40px + env(safe-area-inset-bottom))"
+          padding-bottom=(40 + env.safeBottom)
           // The description is a Rust surface (gpu/src/airbnb_flip_pages.rs), drawn below the card.
           canvas surface=airbnb_flip_pages(isFlipped, env.safeTop) position="absolute" left=0
             top=(env.safeTop + demoButtonRow()) width=env.width height=(cardH + 24 + 400)

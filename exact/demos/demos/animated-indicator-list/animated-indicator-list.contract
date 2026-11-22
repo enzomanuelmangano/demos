@@ -76,7 +76,7 @@ component AnimatedIndicatorList
     scrollIntoView(`row-${nth(headerRows(), i)}`, behavior="smooth")
   view
     column position="absolute" inset=0 background-color="#ffffff" overflow="hidden" timeline-scope="--ail"
-      padding-top=(env.safeTop + demoButtonRow()) padding-bottom="env(safe-area-inset-bottom)"
+      padding-top=(env.safeTop + demoButtonRow()) padding-bottom=env.safeBottom
       testId="animated-indicator-list"
       column flex-shrink=0 align-self="flex-start" align-items="flex-start" width=mag(xs, 0)
         animation=segAnim(delta(xs, 0), -1) animation-timeline="--ail" animation-range=segRange(0)

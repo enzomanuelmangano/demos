@@ -90,7 +90,7 @@ component ScrollProgress
       column position="absolute" top=0 left=0 width="100%" height="100%" overflow-y="auto"
         scroll=scrolled scrollend=ended testId="scroll-progress-scroll"
         view id="scroll-progress-top" height=0
-        column padding-bottom="env(safe-area-inset-bottom)"
+        column padding-bottom=env.safeBottom
           column padding-top=(env.safeTop + demoButtonRow()) padding-bottom=100 padding-left=32
             padding-right=32
             // The article is drawn by a surface line by line on whole pixels: the host rounds lines 2+ of a text
