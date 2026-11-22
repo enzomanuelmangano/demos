@@ -420,7 +420,7 @@ if (DOM) document.addEventListener('click', noteTap, true);
 // is made, which showed the demo full screen for a frame ahead of the open.
 if (DOM) {
   const sheet = document.createElement('style');
-  sheet.textContent = '[data-testid="web-card"]:not([data-launched]){visibility:hidden}';
+  sheet.textContent = '[data-testid="web-card"]:not([data-launched]){visibility:hidden}canvas[data-web-frozen]{visibility:hidden!important}';
   document.head.append(sheet);
 }
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -433,6 +433,14 @@ if (DOM && globalThis.navigation) navigation.addEventListener('navigate', (e) =>
   if (passing && e.navigationType === 'traverse' && e.destination.key === passing) { passing = null; return; }
   backHandler?.(e);
 });
+
+// When each WebGPU canvas last took a frame to draw into (`getCurrentTexture`): a closing card copies only a canvas
+// that drew in the current frame, the one moment its picture is readable (`freeze` in `launch`).
+const drawnAt = new WeakMap();
+if (DOM && typeof GPUCanvasContext === 'function') {
+  const take = GPUCanvasContext.prototype.getCurrentTexture;
+  GPUCanvasContext.prototype.getCurrentTexture = function () { drawnAt.set(this.canvas, performance.now()); return take.call(this); };
+}
 
 function launch(el, props, event) {
   const root = el.shadowRoot ?? el.attachShadow({ mode: 'open' });
@@ -611,11 +619,38 @@ function launch(el, props, event) {
     if (f.w > 0 && f.x + f.w > 0 && f.x < sw && f.y + f.h > 0 && f.y < sh) { iconFrame = f; icon = img; iconRadius = f.w * K.iconRadiusRatio; }
   };
 
+  // A closing card (dragged or flying) shows its demo's GPU canvases as stills. A live WebGPU canvas inside the moving
+  // card made the GPU process wait on the demo's frames before every composite (chessboard: 10-35 frames presented in
+  // the 1.5 s of a close); hidden, the same close presented 180-440. Each canvas is copied in the frame callback after
+  // the GPU glue's (the only moment its picture is readable) into a 2D canvas styled as it and placed right after it,
+  // so whatever the demo draws over it stays over it; a canvas that drew nothing that frame (an idle surface, whose
+  // picture is no longer readable) stays live. The card is torn down when it lands; a drag that springs back thaws.
+  let stills = [];
+  const freeze = (frameAt) => {
+    if (!content || !content.isConnected || !closing && phase !== 'dragging') return;
+    for (const c of content.querySelectorAll('canvas[data-surface]')) {
+      if (c.hasAttribute('data-web-frozen') || !(drawnAt.get(c) >= frameAt) || c.width < 2 || c.height < 2) continue;
+      const s = document.createElement('canvas');
+      s.width = c.width; s.height = c.height;
+      try { s.getContext('2d').drawImage(c, 0, 0); } catch { continue; }
+      s.style.cssText = c.style.cssText; s.style.visibility = ''; s.style.pointerEvents = 'none';
+      s.setAttribute('aria-hidden', 'true');
+      c.after(s); stills.push(s);
+      c.setAttribute('data-web-frozen', '');
+    }
+  };
+  const thaw = () => {
+    for (const s of stills) s.remove();
+    stills = [];
+    if (content) for (const c of content.querySelectorAll('canvas[data-web-frozen]')) c.removeAttribute('data-web-frozen');
+  };
+
   // The close: from wherever the card shows, into its icon (or a fade when the icon is not on the page).
   const close = (velocity) => {
     if (closing || !screen) return;
     closing = true;
     haptics.play('impact-medium');
+    requestAnimationFrame(freeze);
     cancelTrack();
     const now = shown();
     if (!iconFrame) findIcon();
@@ -728,6 +763,8 @@ function launch(el, props, event) {
       from = { s: now.pose.w / sw, c: { x: now.pose.cx, y: now.pose.cy } };
     }
     stopFlight();
+    // The drag moves the card with the canvases as stills too: live, they held the drag's frames as a flight's.
+    requestAnimationFrame(freeze);
     // The demo's own gesture on this pointer ends, as when the browser takes a touch to scroll.
     try { track.target.dispatchEvent(new PointerEvent('pointercancel', { pointerId: track.id, pointerType: e.pointerType, isPrimary: true, bubbles: true, clientX: e.clientX, clientY: e.clientY })); } catch {}
     track.active = true;
@@ -772,7 +809,7 @@ function launch(el, props, event) {
       phase = 'returning';
       w.run(sw, K.openWidth, v.w); cx.run(sw / 2, K.openCenterX, v.cx); cy.run(sh / 2, K.openCenterY, v.cy);
       homeScale.set(K.homeScale); homeBlur.set(1); homeDim.set(1);
-      fly(() => { phase = 'open'; rest(); });
+      fly(() => { phase = 'open'; rest(); thaw(); });
     }
   };
   const touchmove = (e) => {
@@ -806,7 +843,7 @@ function launch(el, props, event) {
   return {
     set(n) { const was = p.closing; p = n; if (n.closing === 'true' && was !== 'true') close(); },
     destroy() {
-      stopFlight(); uninstall(); if (icon) icon.style.visibility = '';
+      stopFlight(); uninstall(); thaw(); if (icon) icon.style.visibility = '';
       // Torn down before it landed (another route took the screen): the Back still happens.
       if (backState) goBack();
     },

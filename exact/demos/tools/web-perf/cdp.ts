@@ -65,7 +65,9 @@ export async function launch({ port = 9333, headless = true, extra = [] as strin
     `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, "--no-first-run", "--no-default-browser-check",
     ...(headless ? ["--headless=new"] : []),
     "--enable-unsafe-webgpu", "--use-angle=metal", "--enable-gpu-rasterization", "--ignore-gpu-blocklist",
-    "--disable-gpu-vsync", "--disable-frame-rate-limit",
+    // VSYNC=1: frames at the display's pace, as a person's browser (the default is uncapped, so a frame interval is
+    // its cost; uncapped, a GPU surface that redraws every frame also floods the GPU process's queue).
+    ...(process.env.VSYNC ? [] : ["--disable-gpu-vsync", "--disable-frame-rate-limit"]),
     "--enable-features=WebGPUDeveloperFeatures", "--enable-dawn-features=allow_unsafe_apis",
     "--disable-background-timer-throttling", "--disable-renderer-backgrounding", "--disable-backgrounding-occluded-windows",
     "--window-size=1440,900", ...extra, "about:blank",
