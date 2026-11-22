@@ -52,6 +52,8 @@ final class VariableBlurView: UIView {
     private var ramp = Ramp()
     private var filter: NSObject?
     private var fallbackMask: CAGradientLayer?
+    /// Backdrop samples per point; nil: the screen's scale. A wide blur sampled at 1x looks the same for a ninth of the pixels.
+    var sampleScale: CGFloat? { didSet { if sampleScale != oldValue { install() } } }
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -140,7 +142,7 @@ final class VariableBlurView: UIView {
             || (current?.first?.value(forKey: "inputRadius") as? NSNumber)?.doubleValue != Double(ramp.radius) {
             backdrop.setValue([filter], forKey: "filters")
         }
-        let scale = window?.screen.scale ?? traitCollection.displayScale
+        let scale = sampleScale ?? window?.screen.scale ?? traitCollection.displayScale
         if scale > 0 { backdrop.setValue(scale, forKey: "scale") }
         for view in effect.subviews where view.layer !== backdrop {
             view.isHidden = true

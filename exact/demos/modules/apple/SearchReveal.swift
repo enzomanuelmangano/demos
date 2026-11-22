@@ -390,6 +390,7 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         // main-thread turn (35-70 ms on the simulator) on the scroll's first frames.
         list.keyboardDismissMode = .interactive
         list.contentInsetAdjustmentBehavior = .never
+        list.layer.allowsGroupOpacity = false
         addSubview(list)
 
         empty.textColor = UIColor(white: 1, alpha: 0.55)
@@ -400,6 +401,12 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
 
         band.isUserInteractionEnabled = false
         edgeBlur.configure(VariableBlurView.Ramp(radius: Pull.edgeBlur, start: 0, end: 1, up: true))
+        // Re-blurred on every frame the results move under it: at the screen's 3x a 28 pt radius is 84 px over the
+        // whole band; at 1x it looks the same.
+        edgeBlur.sampleScale = 1
+        // Faded as a whole, the band and the list each cost an off-screen pass per frame of the pull; their parts
+        // do not overlap (the band's tint lies over its blur either way), so each part fades on its own.
+        band.layer.allowsGroupOpacity = false
         band.addSubview(edgeBlur)
         // What passes under the edge also fades into the defocused home, as a scroll edge does.
         fade.colors = [UIColor(red: 31 / 255, green: 31 / 255, blue: 32 / 255, alpha: 0.92).cgColor,
