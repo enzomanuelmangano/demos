@@ -9,7 +9,7 @@ use DemoEnv, floatingWidth, concentricRadius from "../env.contract"
 // Apple Music's mini player (the iOS 26 tab bar accessory): a 52 point Liquid Glass capsule with
 // the floating tab bar's side margins (21), 8 above it. The timeline keyframes are in the points of
 // a 402 x 874 display with a 62 point top inset: the mini player's top is at 732; its 40 point cover
-// (radius 10) is 6 in on top, bottom and left; the title (15
+// (radius 20: concentric with the capsule's 26 end, so a circle) is 6 in on top, bottom and left; the title (15
 // semibold) and the artist (13) start 12 after it; pause and forward are 22 point glyphs centred
 // at x 318 and 353, the forward glyph ending 14 from the capsule's right edge.
 fn mpInset(): number = 21
@@ -114,12 +114,9 @@ keyframes mpArtShadow
   0% opacity=1
   40% opacity=0
   100% opacity=0
-// The thumbnail's radius is 10 in its own scale: a rounded square (a radius concentric with the
-// capsule's 26 end, 20, would make it a circle); two layers trade places near the end.
-keyframes mpArtMini
-  0% opacity=0
-  60% opacity=0
-  100% opacity=1
+// The thumbnail's corner is the capsule's end less its 6 point inset, 20: a circle, the cover's half in its
+// own scale (a held radius cannot animate, so the circle sits under the open cover, whose square-ish corners
+// fade out at the end and leave it).
 keyframes mpArtBig
   0% opacity=1
   85% opacity=1
@@ -273,12 +270,11 @@ component ExpandableMiniPlayer
             box-shadow="0px 18px 40px rgba(0, 0, 0, 0.45)" background-color="#1C1C1E"
             animation="mpArtShadow 1s linear both" animation-timeline="--mp"
             animation-range="0px 732px"
+          view position="absolute" inset=0
+            MpArt(src=mpCover(), iw=1920, ih=2880, w=cover, h=cover, radius=(cover / 2))
           view position="absolute" inset=0 animation="mpArtBig 1s linear both"
             animation-timeline="--mp" animation-range="0px 732px"
             MpArt(src=mpCover(), iw=1920, ih=2880, w=cover, h=cover, radius=12)
-          view position="absolute" inset=0 opacity=0 animation="mpArtMini 1s linear both"
-            animation-timeline="--mp" animation-range="0px 732px"
-            MpArt(src=mpCover(), iw=1920, ih=2880, w=cover, h=cover, radius=88.5)
       // The title and artist grow from the mini player's two lines, left aligned with the controls.
       column position="absolute" left=mpSide() top=mpTitleTop(coverTop, cover) width=(cover - 44)
         pointer-events="none"
