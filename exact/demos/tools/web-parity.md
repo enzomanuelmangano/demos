@@ -46,12 +46,22 @@ window). Phone browser: full screen like an app. Measured in headless Chrome 144
   pass's other one-off frames (33-267 ms) did not recur: first-use pipeline / shader compiles in a cold Dawn cache.
   The iPhone's background warm-up (gpu/src/warm.rs) is a no-op in wasm (the page's device is not `Send`); a main-thread
   warm-up on the home was tried and dropped: it put 100-570 ms frames into the idle home.
-- sudoku draws black on the web (also in the first pass's screenshots): to be fixed in the per-demo pass.
 
 ## Per-demo pass (owner: newest first, until every row is PERFECT or a documented web limit)
 
-Order: demos.contract (newest first). Done: none yet. In progress: sculptures-in-words (letters pass blank after the
-toggle on the web; being debugged), then light-on-painting, the-little-prince, chessboard, ...
+Order: demos.contract (newest first). Drivers used (not in the repo): a CDP script per check, headless Chrome with
+`--enable-unsafe-webgpu`, desktop 1440x900 framed and 390x844 touch emulation, cold profile.
+
+Fixes that apply to every demo: GPU canvases are configured `premultiplied` (wgpu's WebGPU backend lists only `opaque`,
+so transparent overlay canvases painted black: sudoku was all black); sheets opened by a double tap no longer
+dismiss on the tap's own click.
+
+| demo | state | what was checked / what is left |
+|---|---|---|
+| sculptures-in-words | statue fixed (45a6cabf) | Fixed: the letters' atlas came from CoreText-only `subpixel_mask` (empty off Apple): now drawn from outlines off Apple. Left: (1) after the first press an 80x80 light-grey square shows behind the toggle disc (the toggle's outer view, z-index 1, over the canvas; not focus, not the press scale: likely the web host's handling of a DOM sibling over a canvas); (2) the `symbol:sf/textformat` icon is an empty SVG on the web (person.crop.circle draws); (3) the disc is a squircle on the web (corner-shape continuous at r = h/2) where iOS shows a circle. |
+| light-on-painting | fixed (7549deb8), checked on touch | Bulb drag relights, swipe pages, double tap opens the Light sheet (it closed on its own click before), Show depth switches, scrim dismisses. Left: check the sheet on the desktop frame. |
+| sudoku | black fixed (2b9ad379) | Header, Start Game, board appear. Left: play a game (cell tap, keys, notes, undo, confetti on a solve). |
+| the-little-prince ... | next | Continue here, then chessboard, art-gallery, ... in demos.contract order. |
 
 ## Per demo
 
