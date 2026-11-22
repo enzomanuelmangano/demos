@@ -16,12 +16,17 @@ fn mpInset(): number = 21
 fn mpMiniH(): number = 52
 fn mpTravel(): number = 732
 // The open player's margins and vertical rhythm: cover, title block, scrubber, transport, volume.
+// The cover starts 32 under the demo's close and info buttons (48 tall, at the safe top); the gaps
+// below are 30 to the title block (28 + 25 tall, so 53), 28 to the scrubber (6 + 8 + 16 tall, so 30),
+// 30 to the transport (64 tall), 28 to the volume row, which leaves 25 to the bottom row on a
+// 402 x 874 display. The morph keyframes below carry the cover, title, artist, play and next to the
+// mini player: when a position here moves, their translates move by the same amount.
 fn mpSide(): number = 24
-fn mpCoverTop(top: number): number = top + 48
-fn mpTitleTop(coverTop: number, cover: number): number = coverTop + cover + 44
-fn mpScrubTop(coverTop: number, cover: number): number = mpTitleTop(coverTop, cover) + 53 + 24
-fn mpTransportTop(coverTop: number, cover: number): number = mpScrubTop(coverTop, cover) + 6 + 8 + 16 + 24
-fn mpVolumeTop(coverTop: number, cover: number): number = mpTransportTop(coverTop, cover) + 64 + 30
+fn mpCoverTop(top: number): number = top + 48 + 32
+fn mpTitleTop(coverTop: number, cover: number): number = coverTop + cover + 30
+fn mpScrubTop(coverTop: number, cover: number): number = mpTitleTop(coverTop, cover) + 53 + 28
+fn mpTransportTop(coverTop: number, cover: number): number = mpScrubTop(coverTop, cover) + 6 + 8 + 16 + 30
+fn mpVolumeTop(coverTop: number, cover: number): number = mpTransportTop(coverTop, cover) + 64 + 28
 
 // Critically damped springs: the sheet and cover, the page behind, and the cover's pause settle.
 fn mpSheetSpring(): string = "-exact-spring(1024, 128, 4)"
@@ -109,7 +114,7 @@ keyframes mpBars
 // The cover: one uniform scale, from the 354 point cover to the 40 point thumbnail.
 keyframes mpArt
   from translate="0px 0px" scale=1
-  to translate="3px 628px" scale=0.112994
+  to translate="3px 596px" scale=0.112994
 keyframes mpArtShadow
   0% opacity=1
   40% opacity=0
@@ -124,10 +129,10 @@ keyframes mpArtBig
 // Title 22 to 15 and artist 20 to 13, centred together on the mini player's middle line, x 79.
 keyframes mpTitle
   from translate="0px 0px" scale=1
-  to translate="55px 232.3295px" scale=0.681818
+  to translate="55px 214.3295px" scale=0.681818
 keyframes mpArtist
   from translate="0px 0px" scale=1
-  to translate="55px 223.4204px" scale=0.65
+  to translate="55px 205.4204px" scale=0.65
 // Only the open player has these.
 keyframes mpFade
   0% opacity=1
@@ -136,10 +141,10 @@ keyframes mpFade
 // Play 44 to 22 and next 30 to 22, centred at x 318 and 353 on the mini player's middle line.
 keyframes mpPlay
   from translate="0px 0px" scale=1
-  to translate="133px 103px" scale=0.5
+  to translate="133px 75px" scale=0.5
 keyframes mpNext
   from translate="0px 0px" scale=1
-  to translate="56.0333px 95.5333px" scale=0.733333
+  to translate="56.0333px 67.5333px" scale=0.733333
 
 component ExpandableMiniPlayer
   props
@@ -341,7 +346,7 @@ component ExpandableMiniPlayer
         image "symbol:sf/airplay.audio" font-size=19 color=mpSecondary() aria-hidden=true
         image "symbol:sf/list.bullet" font-size=19 color=mpSecondary() aria-hidden=true
       // The grabber of the open sheet.
-      view position="absolute" top=(env.safeTop + 4 + 8) left=((W - 36) / 2) width=36 height=5
+      view position="absolute" top=(env.safeTop + 6) left=((W - 36) / 2) width=36 height=5
         border-radius=2.5 corner-shape="-exact-continuous" background-color="rgba(255, 255, 255, 0.35)"
         pointer-events="none"
         animation="mpFade 1s linear both" animation-timeline="--mp" animation-range="0px 732px"
