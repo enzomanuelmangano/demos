@@ -200,6 +200,11 @@ component Demos
   action open(slug: string)
     haptic("selection")
     nav = push(nav, path("demo", slug))
+  // The web: the demo last opened out of its icon, whose demo mounts a frame after its card (home/web-phone.contract).
+  state flown = ""
+  action openFlown(slug: string)
+    flown = slug
+    open(slug)
   // The atlas (home/atlas.contract): every demo live at once. demos-exact://atlas, or on the Mac
   // View › Demo Atlas (⇧⌘A).
   action openAtlas
@@ -287,7 +292,7 @@ component Demos
         if e.name == "home" and web
           column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" position="absolute" inset=0
             WebShell(demos=demos, all=allDemos(), env=env, slug="", zone="", framed=framed, vw=host.width, vh=host.height,
-              safeTop=host.safeAreaTop, safeBottom=host.safeAreaBottom, open=open, leave=back)
+              safeTop=host.safeAreaTop, safeBottom=host.safeAreaBottom, open=openFlown, flown=flown, leave=back)
             if gpuWarm
               canvas surface=warm() width=1 height=1 position="absolute" left=0 top=0 pointer-events="none"
                 aria-hidden=true testId="gpu-warm"
@@ -316,7 +321,7 @@ component Demos
           column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" navigationPresentation="fullscreen"
             position="absolute" inset=0
             WebShell(demos=demos, all=allDemos(), env=env, slug=e.params.slug, zone=closeZone(e.params.slug), framed=framed, vw=host.width, vh=host.height,
-              safeTop=host.safeAreaTop, safeBottom=host.safeAreaBottom, open=open, leave=back)
+              safeTop=host.safeAreaTop, safeBottom=host.safeAreaBottom, open=openFlown, flown=flown, leave=back)
             // The attitude the iPhone feeds these surfaces from Core Motion (startTurn, startLight), from the browser's
             // device orientation (or, on a desktop, the pointer over the screen): modules/web/index.js `motion-feed`.
             if turns(e.params.slug) or lights(e.params.slug)

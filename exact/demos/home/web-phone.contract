@@ -127,6 +127,8 @@ component WebScreen
     safeTop: number
     safeBottom: number
     framed: bool
+    // The demo opened out of its icon (app.contract `flown`).
+    flown: string
     open: action
     leave: action
   state closing = false
@@ -138,6 +140,15 @@ component WebScreen
     leave()
   action finishClose
     leave()
+  // The demo mounts a frame after its card: the card's flight starts in the tap's own task (the compositor runs it
+  // from there), and the demo's first commit (80-400 ms, a GPU demo's first surface longer) runs under the flight
+  // instead of holding its first frame. Until then the card shows the icon's art over the demo's backdrop.
+  // Only an open from an icon (`flown`) waits: a link has no flight and shows its demo at once.
+  state mountedSlug = ""
+  action mountDemo
+    mountedSlug = slug
+  task mounting when slug != "" and slug == flown and mountedSlug != slug key=slug
+    after(1, mountDemo)
   // With no page module (?hatches=off) nothing lands: the route goes after the flight's length.
   task finishing when closing key=slug
     after(1400, finishClose)
@@ -156,8 +167,9 @@ component WebScreen
             column position="absolute" inset=0 overflow="hidden" testId="web-card" background-color=d.backdrop
               column position="absolute" left=0 top=0 width=sw height=sh testId="web-card-content"
                 column position="absolute" inset=0 pointer-events=(closing ? "none" : "auto")
-                  DemoScreen(demo=d, env=DemoEnv(env, width=sw, height=sh), ownsDrags=false, zone="", leave=beginClose, web=true,
-                    insetTop=(framed ? airTop() : safeTop), insetBottom=(framed ? airBottom() : safeBottom))
+                  if mountedSlug == d.slug or flown != d.slug
+                    DemoScreen(demo=d, env=DemoEnv(env, width=sw, height=sh), ownsDrags=false, zone="", leave=beginClose, web=true,
+                      insetTop=(framed ? airTop() : safeTop), insetBottom=(framed ? airBottom() : safeBottom))
               demo-card slug=d.slug art=d.icon zone=zone closing=(closing ? "true" : "false") framed=(framed ? "true" : "false")
                 safe-top=safeTop press=beginClose change=landed position="absolute" inset=0 pointer-events="none" aria-hidden=true
           case none
@@ -177,6 +189,7 @@ component WebShell
     vh: number
     safeTop: number
     safeBottom: number
+    flown: string
     open: action
     leave: action
   derive s = frameScale(vw, vh)
@@ -204,7 +217,7 @@ component WebShell
             view position="absolute" left=bezel() top=bezel() width=airW() height=airH() border-radius=62
               corner-shape="-exact-continuous" overflow="hidden" background-color="#000000" testId="web-device"
               WebScreen(demos=demos, all=all, env=env, slug=slug, zone=zone, sw=airW(), sh=airH(), safeTop=airTop(), safeBottom=airBottom(),
-                framed=true, open=open, leave=leave)
+                framed=true, flown=flown, open=open, leave=leave)
               WebStatusBar(ink=inkOver(backdrop))
               // The home indicator.
               // contract-lint-disable-next-line concentric-bottom-ui -- the home indicator bar
@@ -212,4 +225,4 @@ component WebShell
                 opacity=0.85 pointer-events="none" aria-hidden=true z-index=40
       else
         WebScreen(demos=demos, all=all, env=env, slug=slug, zone=zone, sw=vw, sh=vh, safeTop=safeTop, safeBottom=safeBottom, framed=false,
-          open=open, leave=leave)
+          flown=flown, open=open, leave=leave)
