@@ -291,6 +291,32 @@ swipe-cards 3.2 MB, github-onboarding 2.3 MB, circular-carousel 2.0 MB, prequel-
 Coordination: these 19 files in `gpu/src/` are being edited by the web-parity pass (last commit to `gpu/src` 8 minutes
 before this was written), so this is left as the plan, not done here.
 
+## Fixes (web-parity pass, 2026-11-23)
+
+Measured with the same `trace.ts` on the dev build (:5341; dev and production run the same runtime and GPU module,
+see above), desktop 1440 x 900, uncapped rAF, on a machine at load average 9-25 (other sessions' builds), so a
+single max is noisy; the counts (commits, calls, layouts) are not.
+
+| fix | commit | before | after |
+|---|---|---|---|
+| 1. stacked-list: cards on a scroll timeline on the web (`env.web`), no `state scroll` | c6849bae | wheel down/up: 4200 style writes, `onscroll` tasks 47-165 ms, 1.8 s of input delivered in 10.7-16 s, main busy 1560-4720 ms | 0 DOM mutations, 0 long frames, 0 forced layouts, main busy 363 ms; rAF p95 18.8 / max 18.9 ms (paced at 60 Hz by the scroll-driven animations; the CDP wheel's per-event ack is what stretches the wall time to 8.7 s). Positions within 0.07 pt of the state-driven cards at every offset checked (desktop and touch). iPhone unchanged. |
+| 2. canvas sized at the card's transformed size | bbf33b3e | chessboard's canvas set 4 times per open (382 x 830 at creation inside the 0.91 frame, then 420 x 912) | 2 (420 x 912 at creation). No per-frame resize reproduced on this build (dev or a fresh `web-build`): the 46-74 per flight measured earlier is gone since the card's canvas answers its layout size. |
+| 3. demo mounted with its card, flight waits for it | eae97152 | open sudoku: presented max gap 130-1430 ms, `click` 146-180 ms; chessboard warm 280-390 ms, cold 870-1560 ms | open sudoku: max gap 27 ms, no long frame; chessboard warm 56 ms, cold 61 ms (the card's own commit is still a 60-68 ms `click` with a ~20 ms forced layout: `demo-card`'s `begin` reads sizes after the commit's writes) |
+| 4. Back unanimated | 75145828 | one `popstate` task of 30-170 ms tearing the demo down, 8-12 presented frames, no flight | the card flies into its icon (caught at the Navigation API's cancelable `navigate`, the traversal replayed on landing); close sudoku by Back: 772 presented frames, p95 2.7 ms |
+| 5. blocking wheel listeners | 115b205b | pager trackpad: Contract 2400-2600 calls / 250-445 ms, main busy 810-1070 ms | 826 calls / 136 ms, main busy 638 ms; presented max still 765 ms (GPU process busy 1970 ms of 4 s) |
+
+Still open from the ranked list (next session):
+
+- Close of a GPU demo (chessboard, swipe or Back): 18-26 presented frames in 1.5 s, gaps ~240 ms, GPU process busy
+  1.1-1.7 s: the demo's WebGPU canvas inside the flying card. Next: stop the card's surfaces from rendering during
+  a close (a `paused` hold from the page module, or `visibility` on the canvas once the art covers it).
+- The swipe close's `pointerup` cost and `put()`'s inline-style writes (`:has()` invalidations) are unchanged.
+- Pager mouse drag: presented max 480 ms; the icon press (`--exact-press-factor`) is not cancelled on drag start.
+- scroll-progress still commits `offset` per scroll event (its GPU meter reads it); stacked-list was the only
+  demo whose cards were driven from `state scroll`.
+- radar-chart panic, sculptures-in-words' 2 MB/frame upload, the 7 preloaded fonts, the embedded images: Rust and
+  asset changes, held while native builds are paused.
+
 ## What was changed here
 
 Only the measuring tools (`tools/web-perf/`) and this report: every high-value fix found is in code another pass owns
