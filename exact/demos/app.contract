@@ -284,7 +284,7 @@ component Demos
             closable=false, leave=back, notes=feedback, add=addNote, edit=editNote)
         if e.name == "home" and web
           column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" position="absolute" inset=0
-            WebShell(demos=demos, all=allDemos(), env=env, slug="", framed=framed, vw=host.width, vh=host.height,
+            WebShell(demos=demos, all=allDemos(), env=env, slug="", zone="", framed=framed, vw=host.width, vh=host.height,
               safeTop=host.safeAreaTop, safeBottom=host.safeAreaBottom, open=open, leave=back)
             if gpuWarm
               canvas surface=warm() width=1 height=1 position="absolute" left=0 top=0 pointer-events="none"
@@ -313,7 +313,7 @@ component Demos
         if e.name == "demo" and web
           column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" navigationPresentation="fullscreen"
             position="absolute" inset=0
-            WebShell(demos=demos, all=allDemos(), env=env, slug=e.params.slug, framed=framed, vw=host.width, vh=host.height,
+            WebShell(demos=demos, all=allDemos(), env=env, slug=e.params.slug, zone=closeZone(e.params.slug), framed=framed, vw=host.width, vh=host.height,
               safeTop=host.safeAreaTop, safeBottom=host.safeAreaBottom, open=open, leave=back)
         if e.name == "demo" and not desk and not web
           // The open out of the icon and the close into it are RN's launch, drawn by the app's

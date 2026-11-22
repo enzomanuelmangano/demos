@@ -55,6 +55,7 @@ function overlay(el) {
 }
 const GLASS = 'background:rgba(40,40,44,.55);backdrop-filter:blur(22px) saturate(180%);-webkit-backdrop-filter:blur(22px) saturate(180%);box-shadow:0 4px 14px rgba(0,0,0,.22),inset 0 0 0 .5px rgba(255,255,255,.22)';
 
+
 // ---- Haptics: the phone's motor where the browser has one (Android's `navigator.vibrate`; iOS Safari has none) ----
 // The iOS feedback generators as pulse lengths (gpu/src/haptic.rs's kinds): selection 5 ms, light 8, medium 12, heavy
 // 18, the notifications two or three pulses. A buzz within 150 ms of the last is dropped, as a drag's ticks would
@@ -94,6 +95,289 @@ const hookMessages = () => {
   ex.message = message;
 };
 hookMessages();
+
+// ---- The launch: modules/apple/DemoLaunch.swift on the web --------------------------------------------------------
+// Open: the card (`web-card`) grows out of the tapped icon, its width, aspect and centre each on their own spring, the
+// icon's artwork cross-fading into it, the corners overshooting the display's radius and settling, a slight trapezoid
+// straightening as it lands; the icons behind (`web-home-zoom`) shrink, blur (`web-blur`) and dim (`web-dim`). Close:
+// a drag shrinks the card under the finger; a throw or a pull past a tenth of the screen flies it into its icon, a
+// shorter pull springs back. Every flight is the springs run to rest ahead of time (1/120 s steps), handed to the
+// compositor as linear keyframes of transform and opacity (the corners' radius is the one main-thread track), so a busy
+// main thread (the demo's first commit, wasm, a pipeline compile) does not hold the motion back.
+const spring = (omega, zeta) => ({ omega, zeta });
+const K = {
+  openWidth: spring(22.6, 0.977), openAspect: spring(34.6, 1.088), openCenterX: spring(26.9, 1.02), openCenterY: spring(32.1, 0.892),
+  closeWidth: spring(15.7, 0.867), closeHeight: spring(25.7, 0.948), closeCenterX: spring(12.6, 0.67), closeCenterY: spring(13.6, 0.72),
+  homeScale: 0.912, homeGain: 0.445, blurGainAtFull: 0.56,
+  openHomeScale: spring(11, 1), openHomeBlur: spring(10.5, 1), openHomeDim: spring(25, 1),
+  closeHomeScale: spring(10, 1), closeHomeDim: spring(8.7, 0.73), closeBlurRate: 12.6,
+  dragTravel: 0.7, dragMinScale: 0.3, failSideways: 30, activeOffsetY: 10, stripFraction: 0.18,
+  closeVelocity: 250, closeTravel: 0.1, throwProjection: 0.15, artGone: [0.2, 0.42], taper: 0.334, taperIn: 0.065,
+  openRadius: [[0.14, 0.53], [0.35, 0.84], [0.45, 1], [0.5, 1.18], [0.6, 1.27], [0.7, 1.29], [0.8, 1.26], [0.85, 1.23], [0.9, 1.16], [0.95, 1.1], [0.98, 1.056], [1, 1]],
+  closeRadiusFrom: 0.35, iconRadiusRatio: 0.2237, rate: 120,
+};
+const clamp01 = (x) => Math.max(0, Math.min(1, x));
+const smoothstep = (a, b, x) => { const t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+const lerp = (a, b, t) => a + (b - a) * t;
+// A damped spring by natural frequency and damping ratio, mass 1, stepped in closed form.
+class Spring {
+  constructor(x, p = K.openWidth) { this.x = x; this.v = 0; this.target = x; this.p = p; }
+  run(target, p, velocity) { this.target = target; this.p = p; if (velocity !== undefined) this.v = velocity; }
+  set(x) { this.x = x; this.target = x; this.v = 0; }
+  step(t) {
+    const x0 = this.x - this.target, v0 = this.v, w = this.p.omega, z = this.p.zeta;
+    if (x0 === 0 && v0 === 0) return;
+    if (z < 0.9999) {
+      const a = z * w, wd = w * Math.sqrt(1 - z * z), e = Math.exp(-a * t), A = x0, B = (v0 + a * x0) / wd, c = Math.cos(wd * t), s = Math.sin(wd * t);
+      this.x = this.target + e * (A * c + B * s); this.v = e * ((-a * A + B * wd) * c + (-a * B - A * wd) * s);
+    } else if (z <= 1.0001) {
+      const e = Math.exp(-w * t), B = v0 + w * x0;
+      this.x = this.target + e * (x0 + B * t); this.v = e * (v0 - w * B * t);
+    } else {
+      const r = Math.sqrt(z * z - 1), r1 = -w * (z - r), r2 = -w * (z + r), c2 = (v0 - r1 * x0) / (r2 - r1), c1 = x0 - c2, e1 = Math.exp(r1 * t), e2 = Math.exp(r2 * t);
+      this.x = this.target + c1 * e1 + c2 * e2; this.v = r1 * c1 * e1 + r2 * c2 * e2;
+    }
+  }
+  settled(tol) { return Math.abs(this.x - this.target) < tol && Math.abs(this.v) < tol * 8; }
+}
+// An element's layout box in `root`'s coordinates (transforms left out, scrolls taken in).
+function frameIn(el, root) {
+  let x = 0, y = 0, n = el;
+  while (n && n !== root) {
+    x += n.offsetLeft; y += n.offsetTop;
+    const p = n.offsetParent;
+    for (let a = n.parentElement; a && a !== p && a !== root; a = a.parentElement) { x -= a.scrollLeft; y -= a.scrollTop; }
+    if (p && p !== root) { x -= p.scrollLeft; y -= p.scrollTop; }
+    if (!p) break;
+    n = p;
+  }
+  return { x, y, w: el.offsetWidth, h: el.offsetHeight };
+}
+// The icon the finger last pressed on the launcher, and the page it was on.
+let lastTap = null;
+const noteTap = (e) => {
+  const b = e.target?.closest?.('[data-testid^="icon-"]');
+  if (!b) return;
+  lastTap = { slug: b.getAttribute('data-testid').slice(5), at: performance.now(), scroll: b.closest('[data-testid="pager"]')?.scrollLeft ?? 0 };
+};
+document.addEventListener('pointerdown', noteTap, true);
+document.addEventListener('click', noteTap, true);
+// A demo's card draws only once its launch has placed it: the route's first frame can paint before this module's view
+// is made, which showed the demo full screen for a frame ahead of the open.
+{
+  const sheet = document.createElement('style');
+  sheet.textContent = '[data-testid="web-card"]:not([data-launched]){visibility:hidden}';
+  document.head.append(sheet);
+}
+const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function launch(el, props, event) {
+  const root = el.shadowRoot ?? el.attachShadow({ mode: 'open' });
+  root.innerHTML = '<style>:host{display:block}img{position:absolute;inset:0;width:100%;height:100%;opacity:0;pointer-events:none;will-change:opacity}</style><img alt="">';
+  const art = root.querySelector('img');
+  let p = props, phase = 'idle', closing = false, grouped = false, flight = null, track = null, landedSent = false;
+  let screen = null, card = null, content = null, zoom = null, dim = null, blur = null, icon = null;
+  let sw = 0, sh = 0, R = 62, rest0 = false, iconFrame = null, iconRadius = 0, radius = 0, releaseRadius = 0;
+  const w = new Spring(0), h = new Spring(0), aspect = new Spring(1), cx = new Spring(0), cy = new Spring(0);
+  const homeScale = new Spring(1), homeBlur = new Spring(0), homeDim = new Spring(0);
+  let dragFrom = { s: 1, c: { x: 0, y: 0 } }, dragAnchor = { x: 0, y: 0 }, dragHeld = { x: 0, y: 0 };
+
+  const framed = () => p.framed === 'true';
+  // The display's corners: the frame's 62 pt; a phone's browser page is square-cornered at rest (its glass rounds it).
+  const restRadius = (q) => (framed() ? R : R * (1 - smoothstep(0.9, 1, q)));
+  const widthProgress = () => {
+    const iw = iconFrame.w * (closing ? homeScale.x : 1), span = sw - iw;
+    return span > 0 ? (w.x - iw) / span : 1;
+  };
+  const openRadius = () => {
+    const q = widthProgress();
+    let last = [0, iconRadius / R];
+    for (const pt of K.openRadius) {
+      if (q <= pt[0]) return restRadius(q) / 1 * lerp(last[1], pt[1], clamp01((q - last[0]) / (pt[0] - last[0]))) * (framed() ? 1 : 1);
+      last = pt;
+    }
+    return restRadius(q);
+  };
+  const artAlpha = () => (phase === 'opening' || phase === 'closing' ? 1 - smoothstep(K.artGone[0], K.artGone[1], w.x / sw) : 0);
+  const dimOf = (hd, bl) => {
+    const gain = 1 - (1 - K.homeGain) * clamp01(hd), blurGain = 1 - (1 - K.blurGainAtFull) * bl;
+    return clamp01(1 - gain / Math.max(blurGain, 0.01));
+  };
+  const pose = (since = 0) => {
+    const q = widthProgress();
+    let taper = 0;
+    if (phase === 'opening') taper = K.taper / sw * (1 - clamp01(q));
+    else if (phase === 'closing') taper = K.taper / sw * (1 - clamp01(q)) * clamp01(since / K.taperIn) * smoothstep(0, 0.08, q);
+    const bl = clamp01(homeBlur.x);
+    return { w: w.x, h: Math.max(h.x, 1), cx: cx.x, cy: cy.x, radius, taper, art: artAlpha(), hs: homeScale.x, dim: dimOf(homeDim.x, bl), blur: bl };
+  };
+  // A pose as the layers' styles: the card a box of W x H by a non-uniform scale of the screen-sized element (its
+  // corners given per axis so they read round), the demo inside at the uniform scale W / screen width.
+  const styles = (q) => {
+    const W = q.w, H = q.h, k = q.taper, top = q.cy - H / 2, bottom = q.cy + H / 2;
+    let half = H / 2;
+    if (k !== 0) for (let i = 0; i < 4; i++) half = (bottom - top) / 2 * (1 - k * k * half * half);
+    const centerY = k !== 0 ? top + half / (1 - k * half) : q.cy;
+    const sx = W / sw, sy = (half * 2) / sh;
+    return {
+      card: `translate(${q.cx}px,${centerY}px) matrix3d(1,0,0,0,0,1,0,${k},0,0,1,0,0,0,0,1) translate(${-W / 2}px,${-half}px) scale(${sx},${sy})`,
+      radius: `${q.radius / sx}px / ${q.radius / sy}px`,
+      content: `scale(1,${sx / sy})`,
+      art: String(q.art), home: `scale(${q.hs})`, dim: String(q.dim), blur: String(q.blur),
+    };
+  };
+  const put = (q) => {
+    const st = styles(q);
+    card.style.transform = st.card; card.style.borderRadius = st.radius; content.style.transform = st.content;
+    art.style.opacity = st.art; zoom.style.transform = st.home; dim.style.opacity = st.dim; blur.style.opacity = st.blur;
+  };
+  const behind = (on) => {
+    blur.style.visibility = on ? 'visible' : 'hidden';
+    for (const e of [card, content, zoom, dim, blur]) e.style.willChange = on ? (e === dim || e === blur ? 'opacity' : 'transform') : '';
+  };
+  // At rest the card is the screen: no transform, no clip radius (the frame's display rounds it), the blur off.
+  const rest = () => {
+    card.style.transform = 'none'; card.style.borderRadius = framed() ? '' : '0'; content.style.transform = 'none'; art.style.opacity = '0';
+    zoom.style.transform = `scale(${K.homeScale})`; dim.style.opacity = String(dimOf(1, 1)); blur.style.opacity = '1';
+    behind(false);
+  };
+  const stopFlight = () => { if (flight) { for (const a of flight.anims) a.cancel(); clearTimeout(flight.timer); flight = null; } };
+  // The flight's pose and velocity now, read off its timeline (an open caught by a drag or a close).
+  const shown = () => {
+    if (!flight || !flight.poses.length) return null;
+    const x = Math.max(0, performance.now() - flight.start) / 1000 * K.rate, n = flight.poses.length;
+    const i = Math.min(Math.floor(x), n - 1), j = Math.min(i + 1, n - 1), u = x - i, a = flight.poses[i], b = flight.poses[j];
+    const at = {}; for (const key in a) at[key] = lerp(a[key], b[key], u);
+    const vel = (key) => (j > i ? (b[key] - a[key]) * K.rate : 0);
+    return { pose: at, v: { w: vel('w'), h: vel('h'), cx: vel('cx'), cy: vel('cy'), hs: vel('hs') } };
+  };
+  const step = (dt) => {
+    if (phase === 'opening') {
+      w.step(dt); aspect.step(dt); cx.step(dt); cy.step(dt); homeScale.step(dt); homeBlur.step(dt); homeDim.step(dt);
+      h.set(w.x * aspect.x); radius = openRadius();
+    } else if (phase === 'returning') {
+      w.step(dt); cx.step(dt); cy.step(dt); h.set(w.x * sh / sw); radius = restRadius(1) * w.x / sw;
+    } else if (phase === 'closing') {
+      homeScale.step(dt); homeDim.step(dt); homeBlur.x *= Math.exp(-K.closeBlurRate * dt);
+      retarget(); w.step(dt); h.step(dt); cx.step(dt); cy.step(dt);
+      radius = lerp(iconRadius * homeScale.x, releaseRadius, smoothstep(0, K.closeRadiusFrom, widthProgress()));
+    }
+  };
+  const settled = () => {
+    if (phase === 'opening') return w.settled(0.25) && aspect.settled(0.0005) && cx.settled(0.25) && cy.settled(0.25) && homeDim.settled(0.004) && homeBlur.settled(0.004) && homeScale.settled(0.0005);
+    if (phase === 'returning') return w.settled(0.25) && cx.settled(0.25) && cy.settled(0.25);
+    // The close lands once the card is within a point or so of its icon: the route then hands the home back, whose
+    // own icon is under it (the spring's sub-point tail would hold the home's taps for another 0.4 s).
+    return w.settled(1.2) && h.settled(1.2) && cx.settled(1.2) && cy.settled(1.2) && homeScale.settled(0.002) && homeDim.settled(0.02) && homeBlur.x < 0.02;
+  };
+  const retarget = () => {
+    const s = homeScale.x, mx = sw / 2, my = sh / 2;
+    w.target = iconFrame.w * s; h.target = iconFrame.h * s;
+    cx.target = mx + (iconFrame.x + iconFrame.w / 2 - mx) * s; cy.target = my + (iconFrame.y + iconFrame.h / 2 - my) * s;
+  };
+  // Runs the springs to rest and hands the compositor the whole path.
+  const fly = (done) => {
+    stopFlight();
+    const poses = [pose(0)], dt = 1 / K.rate;
+    for (let i = 1; i < K.rate * 3 && !settled(); i++) { step(dt); poses.push(pose(i * dt)); }
+    const ls = poses.map(styles), duration = (poses.length - 1) / K.rate * 1000, o = { duration: Math.max(1, duration), easing: 'linear', fill: 'forwards' };
+    behind(true);
+    const anims = [
+      card.animate(ls.map((l) => ({ transform: l.card })), o), card.animate(ls.map((l) => ({ borderRadius: l.radius })), o),
+      content.animate(ls.map((l) => ({ transform: l.content })), o), art.animate(ls.map((l) => ({ opacity: l.art })), o),
+      zoom.animate(ls.map((l) => ({ transform: l.home })), o), dim.animate(ls.map((l) => ({ opacity: l.dim })), o),
+      blur.animate(ls.map((l) => ({ opacity: l.blur })), o),
+    ];
+    flight = { start: performance.now(), poses, anims, timer: 0 };
+    const f = flight;
+    f.timer = setTimeout(() => { if (flight !== f) return; put(poses.at(-1)); stopFlight(); done(); }, duration);
+  };
+
+  // The node joins the page in the same task as this call (the runtime's commit): the open is set up in a microtask
+  // after it, before the frame paints, so the card never shows full screen for a frame first.
+  let waits = 0;
+  const begin = () => {
+    if (!el.isConnected) return ++waits < 20 ? queueMicrotask(begin) : requestAnimationFrame(begin);
+    screen = el.closest('[data-testid="web-screen"]'); card = el.closest('[data-testid="web-card"]');
+    if (!screen || !card) return;
+    card.setAttribute('data-launched', '');
+    content = card.querySelector('[data-testid="web-card-content"]');
+    zoom = screen.querySelector('[data-testid="web-home-zoom"]'); dim = screen.querySelector('[data-testid="web-dim"]'); blur = screen.querySelector('[data-testid="web-blur"]');
+    sw = screen.offsetWidth; sh = screen.offsetHeight; R = framed() ? 62 : 48;
+    card.style.transformOrigin = '0 0'; content.style.transformOrigin = '0 0'; zoom.style.transformOrigin = '50% 50%';
+    art.src = new URL(p.art ?? '', document.baseURI).href;
+    const tapped = lastTap && lastTap.slug === p.slug && performance.now() - lastTap.at < 2500;
+    if (tapped) { const pager = screen.querySelector('[data-testid="pager"]'); if (pager) pager.scrollLeft = lastTap.scroll; }
+    lastTap = null;
+    findIcon();
+    if (!tapped || !iconFrame || reducedMotion()) {
+      // A link has no icon to open out of: the demo simply appears, as on the phone.
+      phase = 'open'; rest(); return;
+    }
+    grouped = true;
+    icon.style.visibility = 'hidden';
+    w.set(iconFrame.w); w.run(sw, K.openWidth);
+    aspect.set(iconFrame.h / iconFrame.w); aspect.run(sh / sw, K.openAspect); h.set(w.x * aspect.x);
+    cx.set(iconFrame.x + iconFrame.w / 2); cx.run(sw / 2, K.openCenterX);
+    cy.set(iconFrame.y + iconFrame.h / 2); cy.run(sh / 2, K.openCenterY);
+    homeScale.set(1); homeScale.run(K.homeScale, K.openHomeScale);
+    homeBlur.set(0); homeBlur.run(1, K.openHomeBlur); homeDim.set(0); homeDim.run(1, K.openHomeDim);
+    phase = 'opening'; radius = iconRadius;
+    put(pose(0));
+    fly(() => { phase = 'open'; rest(); });
+  };
+  // The demo's icon on the page shown behind (the copy of the launcher this route draws), or none off the page.
+  const findIcon = () => {
+    const img = screen.querySelector(`[data-testid="icon-${CSS.escape(p.slug)}"] img`);
+    iconFrame = null;
+    if (!img) return;
+    const f = frameIn(img, screen);
+    if (f.w > 0 && f.x + f.w > 0 && f.x < sw && f.y + f.h > 0 && f.y < sh) { iconFrame = f; icon = img; iconRadius = f.w * K.iconRadiusRatio; }
+  };
+
+  // The close: from wherever the card shows, into its icon (or a fade when the icon is not on the page).
+  const close = (velocity) => {
+    if (closing || !screen) return;
+    closing = true;
+    haptics.play('impact-medium');
+    const now = shown();
+    if (!iconFrame) findIcon();
+    if (!iconFrame || reducedMotion()) {
+      stopFlight();
+      card.animate([{ opacity: 1, transform: getComputedStyle(card).transform }, { opacity: 0, transform: 'scale(0.92)' }], { duration: 220, easing: 'ease-in', fill: 'forwards' })
+        .finished.then(landed, landed);
+      return;
+    }
+    if (icon) icon.style.visibility = 'hidden';
+    let v = velocity ?? { w: 0, h: 0, cx: 0, cy: 0 };
+    if (now) {
+      const q = now.pose;
+      w.set(q.w); h.set(q.h); cx.set(q.cx); cy.set(q.cy); homeScale.set(q.hs); homeBlur.set(q.blur); radius = q.radius;
+      homeDim.set(phase === 'opening' ? clamp01(homeDim.x) : 1);
+      if (!velocity) v = now.v;
+    } else if (phase === 'open' || phase === 'idle') {
+      w.set(sw); h.set(sh); cx.set(sw / 2); cy.set(sh / 2); homeScale.set(K.homeScale); homeBlur.set(1); homeDim.set(1); radius = restRadius(1);
+    }
+    stopFlight();
+    phase = 'closing'; grouped = true; releaseRadius = radius;
+    w.run(w.x, K.closeWidth, v.w); h.run(h.x, K.closeHeight, v.h); cx.run(cx.x, K.closeCenterX, v.cx); cy.run(cy.x, K.closeCenterY, v.cy);
+    homeScale.run(1, K.closeHomeScale); homeDim.run(0, K.closeHomeDim); homeBlur.target = 0;
+    retarget();
+    fly(landed);
+  };
+  const landed = () => {
+    if (landedSent) return;
+    landedSent = true;
+    if (icon) icon.style.visibility = '';
+    event(1, 'landed');
+  };
+
+  begin();
+  return {
+    set(n) { const was = p.closing; p = n; if (n.closing === 'true' && was !== 'true') close(); },
+    destroy() { stopFlight(); if (icon) icon.style.visibility = ''; },
+  };
+}
 
 const views = {
   // A glass (or blur) pane behind other content.
@@ -339,6 +623,7 @@ const views = {
   },
 };
 views['music-tabbar'] = views['native-tabbar'];
+views['demo-card'] = launch;
 
 export function create(tag, element, json, event) {
   const props = JSON.parse(json);

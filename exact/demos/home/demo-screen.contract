@@ -60,7 +60,12 @@ component DemoScreen
     let g = frame("demo-safe")
     // Read once: the keyboard never moves the buttons or a demo's safe area.
     // A framed web screen is scaled and offset in the page, so its simulated insets are taken as they are.
-    if insetTop > 0 and top == 0 and bottom == 0
+    // On the web the card is mid-flight (scaled) when it is first placed, so a measured box would be the flight's: the
+    // web's insets are given (the frame's simulated ones, or the browser's own safe areas).
+    if web and top == 0 and bottom == 0
+      top = insetTop
+      bottom = insetBottom
+    else if insetTop > 0 and top == 0 and bottom == 0
       top = insetTop
       bottom = insetBottom
     else if not g.unavailable and top == 0 and bottom == 0
