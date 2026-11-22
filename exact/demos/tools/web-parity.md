@@ -47,6 +47,24 @@ window). Phone browser: full screen like an app. Measured in headless Chrome 144
   The iPhone's background warm-up (gpu/src/warm.rs) is a no-op in wasm (the page's device is not `Send`); a main-thread
   warm-up on the home was tried and dropped: it put 100-570 ms frames into the idle home.
 
+## Launch and scroll smoothness (third pass, 2026-11-22)
+
+- The flight is compositor-only now: card transform + clip-path corners (composited in Chrome 158: 9 main-thread
+  lifecycles over a 1 s clip-path animation against 62 for border-radius, measured on a test page), content transform,
+  home zoom transform, dim / blur opacity, all WAAPI keyframes of the springs run ahead; layers promoted when the card
+  is set up; a dragged close commits to the route only at landing; no style reads after writes in a drag.
+- Headless measurement is noisy (Dawn on Metal behind ANGLE): during the close the remaining long frames are GPU-process
+  `SwapBuffers` waiting on `IOSurfaceImageBacking::WaitForCommandsToBeScheduled::Dawn` (100-200 ms): the demo's WebGPU
+  canvas inside the card still submitting work, or a first-use pipeline compile, not the page's thread (the release
+  task fell from 152 ms to 69 ms; per-frame main-thread work during the flight is the runtime's rAF tick, ~0.07 ms).
+- A cold open of a GPU demo can still miss its first frames: the demo mounts in the tap's task and its surface's
+  pipelines compile on the GPU process's main thread (wgpu's createRenderPipeline is synchronous), which also draws
+  the compositor's frames. Warm opens and closes are smooth (chessboard: every screencast frame advances). Not fixed:
+  deferring a surface's creation until the flight lands needs the host's GPU glue (exact2) to expose a hold.
+- The home pager: a mouse drag reads its sizes once per press; the host's `:hover` rules are removed (several are
+  `:has(...:hover)`). Synthetic CDP drags are bounded by the driver's input rate (~30 Hz), so the pager's frame rate under
+  a real mouse was not measured here.
+
 ## Per-demo pass (owner: newest first, until every row is PERFECT or a documented web limit)
 
 Order: demos.contract (newest first). Drivers used (not in the repo): a CDP script per check, headless Chrome with
