@@ -1,12 +1,14 @@
 // `search-reveal`: the home's pull-to-search, native from the finger to the pixels.
 //
 // A downward pull on the pager (the `page-scroller` hatch, springboard.contract) drives one `reveal`
-// value 0...1 over 100 pt of damped travel, as iOS's App Library search: the home blurs, the field and
-// the results ride the finger down, the results fade in. Each touch move sets layer properties only
-// (one backdrop blur's radius, a dim, the field, the results), with actions disabled: nothing is
+// value 0...1 over 100 pt of damped travel, as iOS's App Library search: the icons and the dots ride the finger
+// down on a rubber band and shrink a touch (the wallpaper stays), the home blurs, the field slides in from above, the
+// results fade in. Each touch move sets layer properties only (the icons' box's sublayer transform, one backdrop
+// blur's radius, a dim, the field, the results), with actions disabled: nothing is
 // committed to the Contract plan, nothing reaches Rust. Released past the trigger (or flicked) the
 // rest of the way is handed to Core Animation as keyframes and the field narrows for its Cancel; it
-// takes the keyboard once it has landed. Released short it runs back to 0. No display link: a main thread
+// takes the keyboard once it has landed. Released short it springs back to 0 with the finger's velocity, and a new
+// touch catches it where it is. No display link: a main thread
 // busy with the keyboard does not hold a frame of it back.
 //
 // The view holds everything the search shows: the blur and the dim over the home, the results (a
@@ -56,8 +58,17 @@ private enum Pull {
     static let fieldRide: CGFloat = 0.4
     static let listRide: CGFloat = 1
     /// The release lands in 0.34 s (then the keys rise), Cancel leaves the reveal in 0.36 s after
-    /// the keys have started down, a short pull springs back in 0.26 s.
-    static let commitMs = 0.34, backMs = 0.26, exitMs = 0.36, exitDelay = 0.06
+    /// the keys have started down.
+    static let commitMs = 0.34, exitMs = 0.36, exitDelay = 0.06
+    /// A short pull springs back as iOS's: damping ratio 0.85, a 0.35 s response, from the finger's velocity.
+    static let springDamping: CGFloat = 0.85, springResponse: CGFloat = 0.35
+    /// The icons ride the pull on the scroll views' rubber band (gpu/src/ui_scroll.rs): (1 - 1/(x·0.55/H + 1))·H,
+    /// H the screen's height; they shrink to 0.96 at full reveal; committed, they go on down this far under the blur.
+    static let gridRubber: CGFloat = 0.55
+    static let gridShrink: CGFloat = 0.04
+    static let gridAway: CGFloat = 48
+    /// The field comes down from this far above its place as it fades in.
+    static let fieldDrop: CGFloat = 24
     /// The field narrows for Cancel (and back) on this spring.
     static let focusMs = 0.36
     static let barHeight: CGFloat = 48
@@ -77,7 +88,6 @@ private func span(_ x: CGFloat, _ r: (CGFloat, CGFloat)) -> CGFloat { clamp01((x
 private func smooth(_ t: CGFloat) -> CGFloat { t * t * (3 - 2 * t) }
 private func easeOutCubic(_ t: CGFloat) -> CGFloat { 1 - pow(1 - t, 3) }
 private func easeInOutCubic(_ t: CGFloat) -> CGFloat { t < 0.5 ? 4 * t * t * t : 1 - pow(-2 * t + 2, 3) / 2 }
-private func easeInOutQuad(_ t: CGFloat) -> CGFloat { t < 0.5 ? 2 * t * t : 1 - pow(-2 * t + 2, 2) / 2 }
 
 // MARK: - The pull
 
@@ -88,6 +98,15 @@ final class SearchPullRecognizer: UIGestureRecognizer {
     private(set) var velocity: CGFloat = 0
     private var tracked: UITouch?
     private var start = CGPoint.zero
+    /// A finger came down on the pager (it may catch a spring-back), and the recognizer failed (let it go on).
+    var onTouchDown: () -> Void = {}
+    var onFailed: () -> Void = {}
+
+    private func fail() {
+        guard state == .possible else { return }
+        state = .failed
+        onFailed()
+    }
     private var last: (y: CGFloat, t: TimeInterval) = (0, 0)
 
     override func reset() {
@@ -97,8 +116,9 @@ final class SearchPullRecognizer: UIGestureRecognizer {
     }
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
-        guard tracked == nil, touches.count == 1, let touch = touches.first else { state = .failed; return }
+        guard tracked == nil, touches.count == 1, let touch = touches.first else { fail(); return }
         tracked = touch
+        onTouchDown()
         // Window coordinates: the pager's own bounds move with its horizontal scroll.
         start = touch.location(in: nil)
         last = (start.y, touch.timestamp)
@@ -113,7 +133,7 @@ final class SearchPullRecognizer: UIGestureRecognizer {
         last = (p.y, touch.timestamp)
         switch state {
         case .possible:
-            if abs(dx) > Pull.failX || dy < -Pull.failX { state = .failed }
+            if abs(dx) > Pull.failX || dy < -Pull.failX { fail() }
             else if dy >= Pull.activate, dy > abs(dx) * 1.5 { travel = dy; state = .began }
         case .began, .changed:
             travel = max(0, dy)
@@ -124,11 +144,11 @@ final class SearchPullRecognizer: UIGestureRecognizer {
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent) {
         guard let touch = tracked, touches.contains(touch) else { return }
-        state = state == .possible ? .failed : .ended
+        if state == .possible { fail() } else { state = .ended }
     }
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent) {
-        state = state == .possible ? .failed : .cancelled
+        if state == .possible { fail() } else { state = .cancelled }
     }
 }
 
@@ -314,6 +334,15 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
     // State: `reveal` is the one value the look reads; `pull` the damped finger travel the field and results ride.
     private var reveal: CGFloat = 0
     private var pull: CGFloat = 0
+    /// How far the icons have come down (pt): the rubber band of the finger's travel.
+    private var grid: CGFloat = 0
+    /// The finger travel a new pull starts from: where a caught spring-back had the icons.
+    private var pullBase: CGFloat = 0
+    /// A finger caught a spring-back: it goes on if that finger does not pull.
+    private var held = false
+    /// The box around the pager and the dots (springboard.contract `springboard-pull`): its sublayer transform moves them.
+    private weak var pullBox: UIView?
+    private var barAnimator: UIViewPropertyAnimator?
     private var committed = false
     private var armed = false
     /// The field narrowed for Cancel (committed), or wide with its hint centred (the pull).
@@ -346,12 +375,12 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
 
     /// The run handed to Core Animation: kept to answer where it is when a finger interrupts it.
     private struct Run {
-        var from: (r: CGFloat, p: CGFloat), to: (r: CGFloat, p: CGFloat)
+        var from: (r: CGFloat, p: CGFloat, g: CGFloat), to: (r: CGFloat, p: CGFloat, g: CGFloat)
         var start: CFTimeInterval, duration: CFTimeInterval
         var curve: (CGFloat) -> CGFloat
-        func at(_ now: CFTimeInterval) -> (r: CGFloat, p: CGFloat) {
+        func at(_ now: CFTimeInterval) -> (r: CGFloat, p: CGFloat, g: CGFloat) {
             let u = curve(clamp01(CGFloat((now - start) / duration)))
-            return (from.r + (to.r - from.r) * u, from.p + (to.p - from.p) * u)
+            return (from.r + (to.r - from.r) * u, from.p + (to.p - from.p) * u, from.g + (to.g - from.g) * u)
         }
     }
     private var run: Run?
@@ -463,6 +492,8 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
 
         recognizer.addTarget(self, action: #selector(pulled(_:)))
         recognizer.delegate = self
+        recognizer.onTouchDown = { [weak self] in self?.touchDown() }
+        recognizer.onFailed = { [weak self] in self?.touchLetGo() }
         let outside = UITapGestureRecognizer(target: self, action: #selector(tappedOutside))
         outside.delegate = self
         outside.cancelsTouchesInView = false
@@ -658,16 +689,52 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
 
     private struct Look {
         var blur: CGFloat, dim: Float, bar: Float, barY: CGFloat, list: Float, listY: CGFloat, band: Float
+        var grid: CATransform3D
     }
 
-    private func look(_ r: CGFloat, _ p: CGFloat) -> Look {
+    private func look(_ r: CGFloat, _ p: CGFloat, _ g: CGFloat) -> Look {
         let b = span(r, Pull.blur)
         let fp = span(r, Pull.field)
         let lp = span(r, Pull.list)
+        // Scaled about the box's centre (its anchor), then moved down.
+        let s = 1 - Pull.gridShrink * clamp01(r)
+        let gridT = g == 0 && s == 1 ? CATransform3DIdentity : CATransform3DScale(CATransform3DMakeTranslation(0, g, 0), s, s, 1)
         return Look(blur: Pull.blurRadius * pow(b, Pull.blurPower), dim: Float(pow(clamp01(r), Pull.dimPower) * Pull.maxDim),
-                    bar: Float(fp), barY: -16 * (1 - fp) + p * Pull.fieldRide,
+                    bar: Float(fp), barY: -Pull.fieldDrop * (1 - fp) + p * Pull.fieldRide,
                     list: Float(smooth(lp)), listY: -16 * (1 - lp) + p * Pull.listRide,
-                    band: Float(fp))
+                    band: Float(fp), grid: gridT)
+    }
+
+    // MARK: the icons' rubber band
+
+    private var screenHeight: CGFloat { max(window?.bounds.height ?? bounds.height, 1) }
+    /// The icons' travel for a finger travel x, and back.
+    private func rubber(_ x: CGFloat) -> CGFloat {
+        let h = screenHeight
+        return (1 - 1 / (max(0, x) * Pull.gridRubber / h + 1)) * h
+    }
+    private func unrubber(_ g: CGFloat) -> CGFloat {
+        let h = screenHeight
+        return h / Pull.gridRubber * (1 / (1 - min(max(0, g), h * 0.99) / h) - 1)
+    }
+    private func rubberSlope(_ x: CGFloat) -> CGFloat {
+        let k = max(0, x) * Pull.gridRubber / screenHeight + 1
+        return Pull.gridRubber / (k * k)
+    }
+
+    /// Found once, by its id, among the home's views around this one.
+    private func findPullBox() -> UIView? {
+        if let box = pullBox, box.window != nil { return box }
+        var root: UIView? = superview
+        while let v = root, v.accessibilityIdentifier != "springboard-zoom" { root = v.superview }
+        var queue: [UIView] = root.map { [$0] } ?? []
+        while !queue.isEmpty {
+            let v = queue.removeFirst()
+            if v.accessibilityIdentifier == "springboard-pull" { pullBox = v; return v }
+            if v is UIScrollView || v === self { continue }
+            queue.append(contentsOf: v.subviews)
+        }
+        return nil
     }
 
     /// Sets the model values for (reveal, pull): the caller holds actions off.
@@ -691,9 +758,10 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         list.layer.opacity = l.list
         list.layer.transform = CATransform3DMakeTranslation(0, l.listY, 0)
         empty.layer.opacity = l.list
+        if let box = pullBox?.layer, !CATransform3DEqualToTransform(box.sublayerTransform, l.grid) { box.sublayerTransform = l.grid }
     }
 
-    private func render() { put(look(reveal, pull)) }
+    private func render() { put(look(reveal, pull, grid)) }
 
     private func renderNow() {
         CATransaction.begin()
@@ -709,7 +777,7 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
 
     /// The layers a run animates, and their key paths.
     private var runLayers: [CALayer] {
-        [blur.animated, dim.layer, band.layer, list.layer, empty.layer].compactMap { $0 }
+        [blur.animated, dim.layer, band.layer, list.layer, empty.layer, pullBox?.layer].compactMap { $0 }
     }
 
     /// Where a run handed to Core Animation is now: its keyframes go, the model takes that pose.
@@ -720,6 +788,8 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         let now = r.at(CACurrentMediaTime())
         reveal = now.r
         pull = now.p
+        grid = now.g
+        if let a = barAnimator { barAnimator = nil; a.stopAnimation(true) }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         for layer in runLayers { layer.removeAnimation(forKey: Self.runKey + ".a"); layer.removeAnimation(forKey: Self.runKey + ".b") }
@@ -730,15 +800,17 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
 
     /// Hands the way from here to (reveal, pull) to Core Animation as keyframes, sampled from the same look
     /// the finger drives, so every layer keeps its own window of the reveal.
-    private func animate(reveal to: CGFloat, pull pullTo: CGFloat, ms: Double, delay: Double = 0,
-                         curve: @escaping (CGFloat) -> CGFloat, then: (() -> Void)?) {
+    /// `spring`: the bar runs on these spring parameters (the same curve the keyframes sample), not UIKit's ease.
+    private func animate(reveal to: CGFloat, pull pullTo: CGFloat, grid gridTo: CGFloat, ms: Double, delay: Double = 0,
+                         curve: @escaping (CGFloat) -> CGFloat, spring: UISpringTimingParameters? = nil, then: (() -> Void)?) {
         stopRun()
+        _ = findPullBox()
         let start = CACurrentMediaTime() + delay
-        let r = Run(from: (reveal, pull), to: (to, pullTo), start: start, duration: ms, curve: curve)
+        let r = Run(from: (reveal, pull, grid), to: (to, pullTo, gridTo), start: start, duration: ms, curve: curve)
         let n = max(2, Int((ms * Pull.rate).rounded()) + 1)
         let looks: [Look] = (0..<n).map { i in
             let v = r.at(start + ms * Double(i) / Double(n - 1))
-            return look(v.r, v.p)
+            return look(v.r, v.p, v.g)
         }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -761,6 +833,7 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         let final = looks[n - 1]
         reveal = to
         pull = pullTo
+        grid = gridTo
         // A run that passes through a narrow blur is sampled at the screen's scale all the way (the backdrop's
         // scale is not animatable); the end's render drops it to 1x once the blur rests wide.
         runBlurScaleFor = min(looks[0].blur, final.blur)
@@ -781,12 +854,23 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         add(list.layer, "opacity", ".a", looks.map(\.list))
         add(list.layer, "transform", ".b", looks.map { NSValue(caTransform3D: CATransform3DMakeTranslation(0, $0.listY, 0)) })
         add(empty.layer, "opacity", ".a", looks.map(\.list))
+        add(pullBox?.layer, "sublayerTransform", ".a", looks.map { NSValue(caTransform3D: $0.grid) })
         CATransaction.commit()
         // The bar (it holds the glass) through UIKit's own animation, outside the transaction that holds actions off.
         if bar.transform.ty > -100 {
-            UIView.animate(withDuration: ms, delay: delay, options: [to > r.from.r ? .curveEaseOut : .curveEaseInOut, .allowUserInteraction]) {
+            let moves = {
                 self.bar.alpha = CGFloat(final.bar)
                 self.bar.transform = CGAffineTransform(translationX: 0, y: final.barY)
+            }
+            if let spring {
+                let a = UIViewPropertyAnimator(duration: ms, timingParameters: spring)
+                a.isUserInteractionEnabled = true
+                a.addAnimations(moves)
+                a.startAnimation(afterDelay: delay)
+                barAnimator = a
+            } else {
+                UIView.animate(withDuration: ms, delay: delay, options: [to > r.from.r ? .curveEaseOut : .curveEaseInOut, .allowUserInteraction],
+                               animations: moves)
             }
         }
         run = r
@@ -794,6 +878,7 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         DispatchQueue.main.asyncAfter(deadline: .now() + delay + ms) { [weak self] in
             guard let self, self.runGen == gen else { return }
             self.run = nil
+            self.barAnimator = nil
             // The hidden flags of the end pose (a blur at 0 costs no pass).
             self.renderNow()
             then?()
@@ -847,7 +932,11 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         case .began:
             watchFrames("pull", from: CACurrentMediaTime())
             armed = false
+            held = false
             stopRun()
+            _ = findPullBox()
+            // From where a caught spring-back had the icons: they do not jump under the finger.
+            pullBase = grid > 0.5 ? unrubber(grid) : 0
             tick.prepare()
             NotificationCenter.default.post(name: Self.pullBegan, object: self)
             // The pager must not take the same finger sideways while the pull has it.
@@ -860,11 +949,11 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
             if armed || g.velocity > Pull.flick {
                 if !armed { tick.impactOccurred() }
                 commit()
-            } else { endFrameWatch(); settleBack() }
+            } else { endFrameWatch(); settleBack(velocity: g.velocity) }
         case .cancelled, .failed:
             restorePager()
             endFrameWatch()
-            settleBack()
+            settleBack(velocity: 0)
         default: break
         }
     }
@@ -874,19 +963,24 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         // Measured from where the pull took hold (10 pt down): from the finger's start, its first frame was
         // already a fifth of the reveal. The reveal is whole where the trigger arms.
         func damp(_ x: CGFloat) -> CGFloat { Pull.rubber * (1 - exp(-max(0, x) / Pull.rubber)) }
-        let p = damp(g.travel - Pull.activate)
+        // One number per touch: the finger's travel past the slop (plus where a caught spring-back was).
+        let x = max(0, pullBase + g.travel - Pull.activate)
+        let p = damp(x)
         let r = min(p / damp(Pull.trigger - Pull.activate), 1)
-        if r != reveal || p != pull {
+        let gr = rubber(x)
+        if r != reveal || p != pull || gr != grid {
             let t0 = Self.tracing ? CACurrentMediaTime() : 0
             reveal = r
             pull = p
+            grid = gr
             renderNow()
             if Self.tracing { touchCosts.append((CACurrentMediaTime() - t0) * 1000) }
         }
-        if !armed, g.travel > Pull.trigger {
+        let travel = x + Pull.activate
+        if !armed, travel > Pull.trigger {
             armed = true
             tick.impactOccurred()
-        } else if armed, g.travel < Pull.trigger * Pull.disarm {
+        } else if armed, travel < Pull.trigger * Pull.disarm {
             armed = false
             select.selectionChanged()
         }
@@ -908,7 +1002,7 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         // The keyboard's first responder blocks the main thread (~0.1 s on a phone, seconds on a loaded simulator)
         // and the field's glass and Cancel are drawn by UIKit on that thread: asked for during the settle, it froze
         // them mid-way. The keys rise once the field has landed.
-        animate(reveal: 1, pull: 0, ms: Pull.commitMs, curve: easeOutCubic) { [weak self] in
+        animate(reveal: 1, pull: 0, grid: grid + Pull.gridAway, ms: Pull.commitMs, curve: easeOutCubic) { [weak self] in
             if !Self.keysEarly { self?.takeKeys(since: t0) }
         }
         let t1 = CACurrentMediaTime()
@@ -990,8 +1084,36 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
                           over.prefix(12).map { String(format: "%.0f@%.0f", $0.0, $0.1) }.joined(separator: " "), touches))
     }
 
-    private func settleBack() {
-        animate(reveal: 0, pull: 0, ms: Pull.backMs, curve: easeInOutQuad, then: nil)
+    /// Springs back to rest, every layer on one damped spring started at the finger's velocity (pt/s, down positive).
+    private func settleBack(velocity v: CGFloat) {
+        guard reveal > 0 || pull > 0 || grid > 0 else { renderNow(); return }
+        let x = grid > 0.5 ? unrubber(grid) : 0
+        // The spring runs the share still to go, 1 -> 0; its start velocity is the icons' over their distance.
+        let y0v = grid > 0.5 ? rubberSlope(x) * v / grid : 0
+        let w = 2 * .pi / Pull.springResponse, z = Pull.springDamping
+        let wd = w * sqrt(1 - z * z)
+        let b = (y0v + z * w) / wd
+        func y(_ t: CGFloat) -> CGFloat { exp(-z * w * t) * (cos(wd * t) + b * sin(wd * t)) }
+        // Until it is within 0.2 % of rest.
+        let ms = Double(min(1.2, max(0.2, log((1 + abs(b)) / 0.002) / (z * w))))
+        let spring = UISpringTimingParameters(mass: 1, stiffness: w * w, damping: 2 * z * w,
+                                              initialVelocity: CGVector(dx: -y0v, dy: -y0v))
+        Self.trace(String(format: "spring back from %.1f pt at %.0f pt/s, %.0f ms", grid, v, ms * 1000))
+        animate(reveal: 0, pull: 0, grid: 0, ms: ms, curve: { 1 - y($0 * CGFloat(ms)) }, spring: spring, then: nil)
+    }
+
+    /// A finger on the pager catches a spring-back where it is, as iOS's.
+    private func touchDown() {
+        guard run != nil, !committed else { return }
+        stopRun()
+        held = true
+    }
+
+    /// That finger did not pull: the spring goes on from where it was caught.
+    private func touchLetGo() {
+        guard held else { return }
+        held = false
+        if !committed, run == nil { settleBack(velocity: 0) }
     }
 
     @objc private func cancelTapped() { dismiss() }
@@ -1004,7 +1126,7 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         // The keys go down and the field widens first; the results and the blur follow them out.
         field.resignFirstResponder()
         focus(false)
-        animate(reveal: 0, pull: 0, ms: Pull.exitMs, delay: Pull.exitDelay, curve: easeInOutCubic) { [weak self] in
+        animate(reveal: 0, pull: 0, grid: 0, ms: Pull.exitMs, delay: Pull.exitDelay, curve: easeInOutCubic) { [weak self] in
             guard let self else { return }
             self.committed = false
             self.glassInteractive(false)

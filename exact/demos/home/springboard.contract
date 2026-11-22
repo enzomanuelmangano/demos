@@ -62,22 +62,25 @@ component Springboard
       column flex=1 min-height=0 resize=fit position="relative"
         padding-top="env(safe-area-inset-top)" padding-bottom="env(safe-area-inset-bottom)"
         testId="springboard-zoom"
-        // Native paging: every page is a snap stop the width of the pager, so a fling is
-        // interruptible. The hatch hands the scroll view to the page dots (PageDots.swift).
-        row testId="pager" hatch="page-scroller" data-scroller="pager" flex=1 min-height=0 overflow-x="auto" overflow-y="hidden"
-          scroll-snap-type="x mandatory" scrollbar-width="none"
-          for p in pages key=p
-            column id=`page-${p}` width=boxW height="100%" flex-shrink=0 scroll-snap-align="start"
-              scroll-snap-stop="always" padding="16px 22px 0" box-sizing="border-box"
-              // The whole page is one native view (modules/apple/AppIcon.swift): its icons, their badges, the press, the
-              // long-press menu and the launch's squares. Page 1 builds in the first commit, the rest right after it.
-              icon-grid scroller="pager" slugs=gridSlugs demo-names=gridNames captions=gridLabels arts=gridIcons
-                inspirations=gridInspirations grid-page=p grid-per=per grid-cols=gridCols(boxW) cell-width=cellWidth(boxW)
-                art-size=iconSize(boxW) badge-approved=approvedKey badge-changed=changedKey change=open message=iconMenu
-                width="100%" flex=1 min-height=0 testId=`icons-${p}`
-        // Page dots: native, they read the pager's offset in the same frame as the scroll (PageDots.swift).
-        if pages.length > 1
-          page-dots scroller="pager" count=pages.length height=44 flex-shrink=0 aria-hidden=true
+        // The pull-to-search moves the icons and the dots (never the wallpaper) by this box's sublayer transform
+        // (SearchReveal.swift): a layer property, no layout.
+        column flex=1 min-height=0 testId="springboard-pull"
+          // Native paging: every page is a snap stop the width of the pager, so a fling is
+          // interruptible. The hatch hands the scroll view to the page dots (PageDots.swift).
+          row testId="pager" hatch="page-scroller" data-scroller="pager" flex=1 min-height=0 overflow-x="auto" overflow-y="hidden"
+            scroll-snap-type="x mandatory" scrollbar-width="none"
+            for p in pages key=p
+              column id=`page-${p}` width=boxW height="100%" flex-shrink=0 scroll-snap-align="start"
+                scroll-snap-stop="always" padding="16px 22px 0" box-sizing="border-box"
+                // The whole page is one native view (modules/apple/AppIcon.swift): its icons, their badges, the press, the
+                // long-press menu and the launch's squares. Page 1 builds in the first commit, the rest right after it.
+                icon-grid scroller="pager" slugs=gridSlugs demo-names=gridNames captions=gridLabels arts=gridIcons
+                  inspirations=gridInspirations grid-page=p grid-per=per grid-cols=gridCols(boxW) cell-width=cellWidth(boxW)
+                  art-size=iconSize(boxW) badge-approved=approvedKey badge-changed=changedKey change=open message=iconMenu
+                  width="100%" flex=1 min-height=0 testId=`icons-${p}`
+          // Page dots: native, they read the pager's offset in the same frame as the scroll (PageDots.swift).
+          if pages.length > 1
+            page-dots scroller="pager" count=pages.length height=44 flex-shrink=0 aria-hidden=true
         // A shake with no demo open toggles `hideResolved`; the view rewinds the pager and shows the pill (HomeShake.swift).
         home-shake scroller="pager" hiding=hideResolved count=shown.length change=toggleResolved
           position="absolute" left=0 top=0 width=0 height=0 aria-hidden=true testId="home-shake"
