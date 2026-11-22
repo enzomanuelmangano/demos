@@ -834,6 +834,7 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
     @objc private func pulled(_ g: SearchPullRecognizer) {
         switch g.state {
         case .began:
+            watchFrames("pull", from: CACurrentMediaTime())
             armed = false
             stopRun()
             tick.prepare()
@@ -848,9 +849,10 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
             if armed || g.velocity > Pull.flick {
                 if !armed { tick.impactOccurred() }
                 commit()
-            } else { settleBack() }
+            } else { endFrameWatch(); settleBack() }
         case .cancelled, .failed:
             restorePager()
+            endFrameWatch()
             settleBack()
         default: break
         }
@@ -864,9 +866,11 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         let p = damp(g.travel - Pull.activate)
         let r = min(p / damp(Pull.trigger - Pull.activate), 1)
         if r != reveal || p != pull {
+            let t0 = Self.tracing ? CACurrentMediaTime() : 0
             reveal = r
             pull = p
             renderNow()
+            if Self.tracing { touchCosts.append((CACurrentMediaTime() - t0) * 1000) }
         }
         if !armed, g.travel > Pull.trigger {
             armed = true
@@ -889,7 +893,7 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         committed = true
         recognizer.isEnabled = false
         let t0 = CACurrentMediaTime()
-        watchFrames(from: t0)
+        watchFrames("release", from: t0, for: Pull.commitMs + 0.25)
         // The keyboard's first responder blocks the main thread (~0.1 s on a phone, seconds on a loaded simulator)
         // and the field's glass and Cancel are drawn by UIKit on that thread: asked for during the settle, it froze
         // them mid-way. The keys rise once the field has landed.
@@ -914,36 +918,53 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         Self.trace(String(format: "focus %d after %.1f ms, becomeFirstResponder %.1f ms", ok ? 1 : 0, (t1 - t0) * 1000, (CACurrentMediaTime() - t1) * 1000))
     }
 
-    /// With `-searchTrace YES`: the main thread's frame gaps over the release and its settle (the commit run plus
-    /// 0.25 s), one line, so a stall shows as a number.
+    /// With `-searchTrace YES`: the main thread's frame gaps over a stretch (the pull, the release and its settle,
+    /// a scroll of the results, the dismissal), one line each, so a stall shows as a number.
     private var frameWatch: CADisplayLink?
+    private var frameWatchLabel = ""
     private var frameWatchStart: CFTimeInterval = 0
     private var frameWatchLast: CFTimeInterval = 0
+    private var frameWatchUntil: CFTimeInterval = .infinity
     private var frameGaps: [Double] = []
     private var frameEnds: [Double] = []
-    private func watchFrames(from t0: CFTimeInterval) {
+    private var frameMs: Double = 1000 / 60
+    /// Main-thread time of each touch the pull handled (ms).
+    private var touchCosts: [Double] = []
+    private func watchFrames(_ label: String, from t0: CFTimeInterval, for seconds: Double = .infinity) {
         guard Self.tracing else { return }
-        frameWatch?.invalidate()
+        endFrameWatch()
+        frameWatchLabel = label
         frameWatchStart = t0
         frameWatchLast = t0
+        frameWatchUntil = t0 + seconds
         frameGaps = []
         frameEnds = []
+        touchCosts = []
         let link = CADisplayLink(target: FrameWatchTicker(self), selector: #selector(FrameWatchTicker.tick(_:)))
+        link.preferredFrameRateRange = CAFrameRateRange(minimum: 80, maximum: 120, preferred: 120)
         link.add(to: .main, forMode: .common)
         frameWatch = link
     }
     fileprivate func frameTick(_ link: CADisplayLink) {
         let now = CACurrentMediaTime()
+        if link.duration > 0 { frameMs = link.duration * 1000 }
         frameGaps.append((now - frameWatchLast) * 1000)
         frameEnds.append((now - frameWatchStart) * 1000)
         frameWatchLast = now
-        guard now - frameWatchStart > Pull.commitMs + 0.25 else { return }
+        if now >= frameWatchUntil { endFrameWatch() }
+    }
+    private func endFrameWatch() {
+        guard let link = frameWatch else { return }
         link.invalidate()
         frameWatch = nil
-        // Each gap over 40 ms as length@end, in ms from the release.
-        let over = zip(frameGaps, frameEnds).filter { $0.0 > 40 }
-        Self.trace(String(format: "release frames %d, max gap %.1f ms, gaps > 40 ms: %d (%@)", frameGaps.count,
-                          frameGaps.max() ?? 0, over.count, over.map { String(format: "%.0f@%.0f", $0.0, $0.1) }.joined(separator: " ")))
+        // Each gap over 1.5 frames as length@end, in ms from the start.
+        let frame = frameMs
+        let over = zip(frameGaps, frameEnds).filter { $0.0 > frame * 1.5 }
+        let touches = touchCosts.isEmpty ? "" : String(format: ", touches %d, cost avg %.2f max %.2f first %.2f ms", touchCosts.count,
+                                                       touchCosts.reduce(0, +) / Double(touchCosts.count), touchCosts.max() ?? 0, touchCosts[0])
+        Self.trace(String(format: "%@ frames %d in %.0f ms, max gap %.1f ms, gaps > %.0f ms: %d (%@)%@", frameWatchLabel, frameGaps.count,
+                          frameEnds.last ?? 0, frameGaps.max() ?? 0, frame * 1.5, over.count,
+                          over.prefix(12).map { String(format: "%.0f@%.0f", $0.0, $0.1) }.joined(separator: " "), touches))
     }
 
     private func settleBack() {
@@ -956,6 +977,7 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
     private func dismiss() {
         guard committed else { return }
         select.selectionChanged()
+        watchFrames("dismiss", from: CACurrentMediaTime(), for: Pull.exitDelay + Pull.exitMs + 0.25)
         // The keys go down and the field widens first; the results and the blur follow them out.
         field.resignFirstResponder()
         focus(false)
@@ -1027,6 +1049,16 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
         cell.icon.alpha = 1
         cell.name.alpha = 1
         return cell
+    }
+
+    func scrollViewWillBeginDragging(_ s: UIScrollView) {
+        if s === list { watchFrames("scroll", from: CACurrentMediaTime()) }
+    }
+    func scrollViewDidEndDragging(_ s: UIScrollView, willDecelerate decelerate: Bool) {
+        if s === list, !decelerate { endFrameWatch() }
+    }
+    func scrollViewDidEndDecelerating(_ s: UIScrollView) {
+        if s === list { endFrameWatch() }
     }
 
     func collectionView(_ c: UICollectionView, didSelectItemAt path: IndexPath) {
