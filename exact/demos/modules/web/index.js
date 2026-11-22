@@ -56,6 +56,19 @@ function overlay(el) {
 const GLASS = 'background:rgba(40,40,44,.55);backdrop-filter:blur(22px) saturate(180%);-webkit-backdrop-filter:blur(22px) saturate(180%);box-shadow:0 4px 14px rgba(0,0,0,.22),inset 0 0 0 .5px rgba(255,255,255,.22)';
 
 
+// ---- GPU canvases composite with alpha, as on the iPhone -----------------------------------------------------------
+// wgpu's WebGPU backend lists only `opaque` among a canvas's alpha modes (wgpu 29, backend/webgpu.rs), so every Exact
+// canvas on the web was configured opaque: a surface that clears to transparent over the page (sudoku's confetti, any
+// overlay canvas) painted black over everything under it. On the iPhone a non-opaque surface's CAMetalLayer is
+// composited with its alpha (premultiplied). Every canvas here is configured `premultiplied`: a surface that is opaque
+// writes alpha 1 everywhere (Surface::opaque's contract), so it looks the same.
+if (typeof GPUCanvasContext === 'function' && !GPUCanvasContext.prototype.configure.demosAlpha) {
+  const configure = GPUCanvasContext.prototype.configure;
+  const blended = function (config) { return configure.call(this, config && config.alphaMode !== 'premultiplied' ? { ...config, alphaMode: 'premultiplied' } : config); };
+  blended.demosAlpha = true;
+  GPUCanvasContext.prototype.configure = blended;
+}
+
 // ---- Haptics: the phone's motor where the browser has one (Android's `navigator.vibrate`; iOS Safari has none) ----
 // The iOS feedback generators as pulse lengths (gpu/src/haptic.rs's kinds): selection 5 ms, light 8, medium 12, heavy
 // 18, the notifications two or three pulses. A buzz within 150 ms of the last is dropped, as a drag's ticks would
