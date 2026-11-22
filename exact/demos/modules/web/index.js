@@ -55,6 +55,46 @@ function overlay(el) {
 }
 const GLASS = 'background:rgba(40,40,44,.55);backdrop-filter:blur(22px) saturate(180%);-webkit-backdrop-filter:blur(22px) saturate(180%);box-shadow:0 4px 14px rgba(0,0,0,.22),inset 0 0 0 .5px rgba(255,255,255,.22)';
 
+// ---- Haptics: the phone's motor where the browser has one (Android's `navigator.vibrate`; iOS Safari has none) ----
+// The iOS feedback generators as pulse lengths (gpu/src/haptic.rs's kinds): selection 5 ms, light 8, medium 12, heavy
+// 18, the notifications two or three pulses. A buzz within 150 ms of the last is dropped, as a drag's ticks would
+// otherwise each cut the one before short. Contract's `haptic()` reaches the runtime's own vibrate(5 | 12)
+// (host/web-js/commands.js), paced here too; a surface's `haptic:<kind>` messages (kept as kinds in the web's GPU
+// module) are played here and never reach the app, as the iPhone's host consumes them.
+const HAPTIC = {
+  selection: 5, tick: 5, 'impact-light': 8, grab: 8, 'impact-soft': 8, release: 8, 'impact-medium': 12, impact: 12,
+  'impact-rigid': 12, limit: 12, 'impact-heavy': 18, success: [8, 70, 14], warning: [14, 90, 8], error: [12, 50, 12, 80, 16],
+};
+const vibrate = typeof navigator.vibrate === 'function' ? navigator.vibrate.bind(navigator) : null;
+let lastBuzz = -1e9;
+const paced = (pattern) => {
+  const now = performance.now();
+  if (now - lastBuzz < 150) return true;
+  lastBuzz = now;
+  return vibrate(pattern);
+};
+const haptics = {
+  play(kind) { const pattern = HAPTIC[kind]; if (pattern !== undefined && vibrate) paced(pattern); return pattern !== undefined; },
+};
+if (vibrate) {
+  // A stop (0) and a long pattern (the checkmate's crescendo) pass as they are.
+  navigator.vibrate = (pattern) => (pattern === 0 || (Array.isArray(pattern) && pattern.length > 5) ? vibrate(pattern) : paced(pattern));
+}
+let messageTries = 0;
+const hookMessages = () => {
+  const ex = globalThis.exact;
+  if (typeof ex?.message !== 'function') { if (++messageTries < 1200) setTimeout(hookMessages, 50); return; }
+  if (ex.message.demosHaptics) return;
+  const pass = ex.message;
+  const message = function (host, text) {
+    if (typeof text === 'string' && text.startsWith('haptic:') && haptics.play(text.slice(7))) return;
+    return pass.call(this, host, text);
+  };
+  message.demosHaptics = true;
+  ex.message = message;
+};
+hookMessages();
+
 const views = {
   // A glass (or blur) pane behind other content.
   'glass-pane'(el, props) {

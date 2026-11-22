@@ -14,8 +14,11 @@
 use exact_gpu::haptics::{Event, Haptic, Pattern};
 
 /// A surface's messages as the host should get them: each `haptic:<kind>` as its pattern.
+///
+/// The web's host drops `exact:haptics` patterns (a page drives no haptic engine), so there the kinds stay as they are
+/// and the page module (modules/web/index.js) plays each on `navigator.vibrate` and keeps it from the app.
 pub fn host(messages: Vec<String>) -> Vec<String> {
-    if cfg!(test) {
+    if cfg!(test) || cfg!(target_arch = "wasm32") {
         messages
     } else {
         translate(messages)
