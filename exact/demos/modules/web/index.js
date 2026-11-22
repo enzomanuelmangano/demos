@@ -176,16 +176,16 @@ hookMessages();
 
 // ---- SF Symbols the web host's table lacks ----------------------------------------------------------------------
 // The host draws `symbol:sf/<name>` from its own subset of paths; a name outside it is an empty image. Each one a demo
-// uses is drawn here at the symbol's semibold width (its point size's box on the iPhone): textformat ("Aa",
-// sculptures-in-words' toggle, 20 x 12.5 at 13.79 pt).
+// uses is drawn here at the symbol's semibold box in ems of its point size (as the iPhone sizes it): textformat ("Aa",
+// 1.45 x 0.906 em: 20 x 12.5 at sculptures-in-words' 13.79 pt).
 {
   const SF = {
-    textformat: ['0 0 32 20', 20, 12.5, '<path d="M1.6 18.6L8 1.6L14.4 18.6M3.9 12.8H12.1" fill="none" stroke="black" stroke-width="2.9" stroke-linejoin="round" stroke-linecap="round"/><path d="M20.9 8.3C21.9 7.1 23.3 6.6 24.9 6.6C27.5 6.6 29 8 29 10.6V18.6M29 12.7C26.5 12.7 20.3 12.5 20.3 15.7C20.3 17.6 21.8 18.7 23.8 18.7C26.4 18.7 29 17.2 29 14.6" fill="none" stroke="black" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/>'],
+    textformat: ['0 0 32 20', 1.45, 0.906, '<path d="M1.6 18.6L8 1.6L14.4 18.6M3.9 12.8H12.1" fill="none" stroke="black" stroke-width="2.9" stroke-linejoin="round" stroke-linecap="round"/><path d="M20.9 8.3C21.9 7.1 23.3 6.6 24.9 6.6C27.5 6.6 29 8 29 10.6V18.6M29 12.7C26.5 12.7 20.3 12.5 20.3 15.7C20.3 17.6 21.8 18.7 23.8 18.7C26.4 18.7 29 17.2 29 14.6" fill="none" stroke="black" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/>'],
   };
   const sheet = document.createElement('style');
   sheet.textContent = Object.entries(SF).map(([name, [box, w, h, body]]) => {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box}">${body}</svg>`;
-    return `#exact-root img[data-symbol-source="symbol:sf/${name}"][data-symbol-path=""]{mask-image:url("data:image/svg+xml,${encodeURIComponent(svg)}")!important;mask-size:contain!important;width:${w}px!important;height:${h}px!important;max-width:none!important}`;
+    return `#exact-root img[data-symbol-source="symbol:sf/${name}"][data-symbol-path=""]{mask-image:url("data:image/svg+xml,${encodeURIComponent(svg)}")!important;mask-size:contain!important;width:${w}em!important;height:${h}em!important;max-width:none!important}`;
   }).join('');
   document.head.append(sheet);
 }
@@ -1467,7 +1467,8 @@ const views = {
         if (stack.length) { const back = document.createElement('div'); back.className = 'i'; back.innerHTML = '<b>‹</b><span></span>'; back.querySelector('span').textContent = title; back.onclick = () => { stack.pop(); const [t, i] = stack.at(-1) ?? ['', null]; stack.length ? show(t, i) : top(); }; m.append(back); }
         for (const it of items) {
           const row = document.createElement('div'); row.className = 'i';
-          const leaf = !it.kids;
+          // A painting (the tree's leaves, `kids` empty) or Default is picked; a movement or a painter opens its menu.
+          const leaf = !it.kids?.length;
           row.innerHTML = `<b>${leaf && (p.selected ?? '') === it.id ? '✓' : ''}</b><span></span>${leaf ? '' : '<b style="text-align:right">›</b>'}`;
           row.querySelector('span').textContent = it.name;
           row.onclick = () => { if (leaf) { close(); event(1, it.id); } else { stack.push([it.name, it.kids]); show(it.name, it.kids); } };
