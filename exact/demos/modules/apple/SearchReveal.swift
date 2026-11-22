@@ -35,8 +35,9 @@ private enum Pull {
     static let disarm: CGFloat = 0.85
     /// A release faster than this (pt/s) commits without reaching the trigger.
     static let flick: CGFloat = 900
-    /// The finger travel that starts the pull, and the sideways travel that fails it.
-    static let activate: CGFloat = 22
+    /// The finger travel that starts the pull (a system pan's own slop: 22 pt held the home still under the
+    /// finger for its first 22 pt), and the sideways travel that fails it.
+    static let activate: CGFloat = 10
     static let failX: CGFloat = 10
     /// The reveal's windows (App Library, frame by frame): the home blurs first, the field shows,
     /// then the results fade in over the blurred home.
@@ -80,7 +81,7 @@ private func easeInOutQuad(_ t: CGFloat) -> CGFloat { t < 0.5 ? 2 * t * t : 1 - 
 
 // MARK: - The pull
 
-/// A one-finger drag that begins only for a clear downward pull: 22 pt down before 10 pt sideways.
+/// A one-finger drag that begins only for a clear downward pull: 10 pt down, more down than sideways, before 10 pt sideways.
 /// Everything else fails and leaves the touch to the pager and the icons.
 final class SearchPullRecognizer: UIGestureRecognizer {
     private(set) var travel: CGFloat = 0
@@ -113,7 +114,7 @@ final class SearchPullRecognizer: UIGestureRecognizer {
         switch state {
         case .possible:
             if abs(dx) > Pull.failX || dy < -Pull.failX { state = .failed }
-            else if dy >= Pull.activate { travel = dy; state = .began }
+            else if dy >= Pull.activate, dy > abs(dx) * 1.5 { travel = dy; state = .began }
         case .began, .changed:
             travel = max(0, dy)
             state = .changed
@@ -870,7 +871,7 @@ final class SearchRevealView: UIView, UICollectionViewDataSource, UICollectionVi
 
     /// One touch: two numbers, one layer pass, no animation.
     private func follow(_ g: SearchPullRecognizer) {
-        // Measured from where the pull took hold (22 pt down): from the finger's start, its first frame was
+        // Measured from where the pull took hold (10 pt down): from the finger's start, its first frame was
         // already a fifth of the reveal. The reveal is whole where the trigger arms.
         func damp(_ x: CGFloat) -> CGFloat { Pull.rubber * (1 - exp(-max(0, x) / Pull.rubber)) }
         let p = damp(g.travel - Pull.activate)
