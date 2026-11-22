@@ -10,6 +10,8 @@ const tags = [
 ];
 export const roster = Object.fromEntries(tags.map((t) => [t, { snapshot: false }]));
 
+// The build imports this module in Bun to read `roster` (no DOM there): what touches the page runs only in one.
+const DOM = typeof document !== 'undefined';
 const num = (v, d) => { const n = Number(v); return v !== undefined && v !== '' && Number.isFinite(n) ? n : d; };
 const base = ':host{display:block;position:relative;box-sizing:border-box}*{box-sizing:border-box}';
 const shadow = (el, css) => {
@@ -107,7 +109,7 @@ const hookMessages = () => {
   message.demosHaptics = true;
   ex.message = message;
 };
-hookMessages();
+if (DOM) hookMessages();
 
 // ---- A demo's canvases are sized in the screen's points, whatever scales the screen ------------------------------
 // The web host sizes a GPU canvas (and its world's layout) from getBoundingClientRect, which includes every transform
@@ -118,7 +120,7 @@ hookMessages();
 // Here a canvas in the card (or a GPU input host) reports its layout size (offsetWidth / offsetHeight) at its on-page
 // corner, and a pointer event delivered to it carries clientX / clientY mapped back by the same scale, so a point
 // on the canvas is in the same points as its size (the host reads it as clientX - rect.left).
-{
+if (DOM) {
   const gpuBox = (e) => (e.localName === 'canvas' || e.hasAttribute?.('data-gpu-input')) && e.closest('[data-testid="web-card"]');
   const rect = Element.prototype.getBoundingClientRect;
   const scaleOf = (e, r) => {
@@ -162,6 +164,55 @@ hookMessages();
     if (wrapped(this, type, fn) && wraps.has(fn)) remove.call(this, type, wraps.get(fn), options);
     return remove.call(this, type, fn, options);
   };
+
+  // A trackpad drives a demo's GPU surface as fingers would (the iPhone has no wheel; a surface hears pointers): a
+  // pinch (a wheel with ctrl set, as Chrome and Safari deliver it) is two touches spreading about the pointer, 50 pt
+  // either side, by Chrome's step (deltaY is -100 x ln of the scale step); a two-finger scroll is one touch dragging
+  // with the content (deltaY > 0 moves it up). The touches lift once the wheel has been still for 120 ms, so the
+  // release (its velocity, a snap) is the touch's; a scroll that travelled under 10 pt is cancelled, not lifted, so
+  // it is never a tap. They are dispatched on the canvas, untrusted (the demo card's close pan ignores them), and
+  // the wrapper above maps their points. A real touch down holds them off. A wheel over a control inside the surface
+  // (a DOM button) is left to it.
+  const LIFT_MS = 120, SLOP = 10, HALF = 50;
+  const real = new Set();
+  add.call(window, 'pointerdown', (e) => { if (e.isTrusted && e.pointerType === 'touch') real.add(e.pointerId); }, true);
+  for (const t of ['pointerup', 'pointercancel']) add.call(window, t, (e) => { if (e.isTrusted) real.delete(e.pointerId); }, true);
+  let held = null, ids = 0x7f000000;
+  const fire = (s, type, i, [x, y]) => {
+    const lifted = type === 'pointerup' || type === 'pointercancel';
+    try { s.el.dispatchEvent(new PointerEvent(type, { pointerId: s.ids[i], pointerType: 'touch', isPrimary: i === 0, bubbles: true, cancelable: true, composed: true, clientX: x, clientY: y, button: type === 'pointermove' ? -1 : 0, buttons: lifted ? 0 : 1, pressure: lifted ? 0 : 0.5, width: 1, height: 1 })); } catch {}
+  };
+  const points = (s) => s.pinch ? [[s.c[0] - s.half, s.c[1]], [s.c[0] + s.half, s.c[1]]] : [s.at];
+  const lift = () => {
+    const s = held;
+    if (!s) return;
+    held = null; clearTimeout(s.timer);
+    const type = s.pinch || s.travel >= SLOP ? 'pointerup' : 'pointercancel';
+    const p = points(s);
+    for (let i = p.length - 1; i >= 0; i--) fire(s, type, i, p[i]);
+  };
+  add.call(window, 'wheel', (e) => {
+    const t = e.target;
+    if (!(t instanceof Element)) return;
+    const host = t.closest('[data-gpu-input]');
+    if (!host || !host.closest('[data-testid="web-card"]') || (t !== host && t.localName !== 'canvas')) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    const pinch = e.ctrlKey, unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? host.clientHeight : 1;
+    const dx = e.deltaX * unit, dy = e.deltaY * unit;
+    if (held && (held.pinch !== pinch || held.el !== t || !t.isConnected)) lift();
+    if (!held) {
+      if (real.size) return;
+      const r = rect.call(host), k = host.offsetWidth > 0 ? r.width / host.offsetWidth : 1;
+      held = { el: t, pinch, k, c: [e.clientX, e.clientY], at: [e.clientX, e.clientY], half: HALF * k, travel: 0, timer: 0, ids: pinch ? [++ids, ++ids] : [++ids] };
+      points(held).forEach((p, i) => fire(held, 'pointerdown', i, p));
+    }
+    const s = held;
+    if (pinch) s.half = Math.min(4000 * s.k, Math.max(s.k, s.half * Math.exp(-dy / 100)));
+    else { s.at = [s.at[0] - dx, s.at[1] - dy]; s.travel = Math.max(s.travel, Math.hypot(s.at[0] - s.c[0], s.at[1] - s.c[1]) / s.k); }
+    points(s).forEach((p, i) => fire(s, 'pointermove', i, p));
+    clearTimeout(s.timer);
+    s.timer = setTimeout(lift, LIFT_MS);
+  }, { capture: true, passive: false });
 }
 
 // ---- A touch screen has no hover --------------------------------------------------------------------------------
@@ -170,7 +221,7 @@ hookMessages();
 // words' toggle after a click), and iOS Safari keeps :hover on the last element tapped. The iPhone draws none.
 // The host's :hover rules are taken out of its sheets (they are many, several behind `:has(...:hover)`, so every move
 // of a mouse over the launcher re-matched styles up the tree); the variables cover a sheet added later.
-{
+if (DOM) {
   const sheet = document.createElement('style');
   sheet.textContent = '#exact-root#exact-root :is(button,a[data-view][href],[data-exact-on~="press"]){--exact-hover-wash:none;--exact-hover-dim:1}#exact-root#exact-root button[data-button-style]:hover{background-image:none!important}';
   document.head.append(sheet);
@@ -198,7 +249,7 @@ hookMessages();
 // The host draws `symbol:sf/<name>` from its own subset of paths; a name outside it is an empty image. Each one a demo
 // uses is drawn here at the symbol's semibold box in ems of its point size (as the iPhone sizes it): textformat ("Aa",
 // 1.45 x 0.906 em: 20 x 12.5 at sculptures-in-words' 13.79 pt).
-{
+if (DOM) {
   const SF = {
     textformat: ['0 0 32 20', 1.45, 0.906, '<path d="M1.6 18.6L8 1.6L14.4 18.6M3.9 12.8H12.1" fill="none" stroke="black" stroke-width="2.9" stroke-linejoin="round" stroke-linecap="round"/><path d="M20.9 8.3C21.9 7.1 23.3 6.6 24.9 6.6C27.5 6.6 29 8 29 10.6V18.6M29 12.7C26.5 12.7 20.3 12.5 20.3 15.7C20.3 17.6 21.8 18.7 23.8 18.7C26.4 18.7 29 17.2 29 14.6" fill="none" stroke="black" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/>'],
   };
@@ -216,7 +267,7 @@ hookMessages();
 // a capsule, a pill), its corners are circular arcs of the radius asked, clamped to half the side: a 48 pt disc of
 // radius 24 is a circle on the iPhone, where the superellipse made it a squircle on the web. Each element whose class
 // or style gives it the curve is measured when it mounts and when it resizes, and turned round while it does not fit.
-{
+if (DOM) {
   const turned = new WeakSet();
   let classes = null, sheets = -1;
   const selector = () => {
@@ -322,11 +373,11 @@ const noteTap = (e) => {
   if (!b) return;
   lastTap = { slug: b.getAttribute('data-testid').slice(5), at: performance.now(), scroll: b.closest('[data-testid="pager"]')?.scrollLeft ?? 0 };
 };
-document.addEventListener('pointerdown', noteTap, true);
-document.addEventListener('click', noteTap, true);
+if (DOM) document.addEventListener('pointerdown', noteTap, true);
+if (DOM) document.addEventListener('click', noteTap, true);
 // A demo's card draws only once its launch has placed it: the route's first frame can paint before this module's view
 // is made, which showed the demo full screen for a frame ahead of the open.
-{
+if (DOM) {
   const sheet = document.createElement('style');
   sheet.textContent = '[data-testid="web-card"]:not([data-launched]){visibility:hidden}';
   document.head.append(sheet);
@@ -580,7 +631,7 @@ function launch(el, props, event) {
     return false;
   };
   const down = (e) => {
-    if (track || closing || !e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    if (track || closing || !e.isTrusted || !e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
     if (!(phase === 'open' || phase === 'opening' || phase === 'returning')) return;
     screenRect = screen.getBoundingClientRect();
     const pt = toScreen(e), strip = pt.y < Math.max(Number(p['safe-top']) || 0, sh * K.stripFraction);

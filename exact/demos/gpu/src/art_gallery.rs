@@ -686,25 +686,7 @@ struct ArtGallery {
     blur: BackdropBlur,
     icon: Option<Font>,
     last_now: f64,
-    /// A desktop's wheel as fingers (the web; the iPhone sends none): see [`Wheel`].
-    wheel: Option<Wheel>,
 }
-
-/// A trackpad on the web drives the mosaic as fingers would: a pinch (a wheel with ctrl set) is two
-/// fingers spreading about the pointer, a two-finger scroll is one finger dragging (which, as on the
-/// phone, moves nothing at scale 1). The fingers lift once the wheel has been still for
-/// [`WHEEL_LIFT_MS`], so the release (its velocity, the snap to a cell) is the touch's.
-#[derive(Default)]
-struct Wheel {
-    pinch: bool,
-    centre: (f64, f64),
-    half: f64,
-    at: (f64, f64),
-    last_ms: f64,
-}
-const WHEEL_LIFT_MS: f64 = 120.0;
-const WHEEL_A: u32 = 0xFFFF_FF01;
-const WHEEL_B: u32 = 0xFFFF_FF02;
 
 struct Gpu {
     format: wgpu::TextureFormat,
@@ -1016,51 +998,6 @@ impl ArtGallery {
         self.col = -1;
     }
 
-    /// A wheel event as fingers ([`Wheel`]).
-    fn wheel_input(&mut self, dx: f64, dy: f64, x: f64, y: f64, pinch: bool, ms: f64) {
-        if self.wheel.as_ref().is_some_and(|w| w.pinch != pinch) {
-            self.wheel_lift(ms);
-        }
-        if self.wheel.is_none() {
-            if !self.fingers.is_empty() {
-                return; // a real touch holds the mosaic
-            }
-            let w = Wheel { pinch, centre: (x, y), half: 50.0, at: (x, y), last_ms: ms };
-            if pinch {
-                self.touch(WHEEL_A, Phase::Down, x - w.half, y, ms, false);
-                self.touch(WHEEL_B, Phase::Down, x + w.half, y, ms, false);
-            } else {
-                self.touch(WHEEL_A, Phase::Down, x, y, ms, false);
-            }
-            self.wheel = Some(w);
-        }
-        let Some(w) = self.wheel.as_mut() else { return };
-        w.last_ms = ms;
-        if w.pinch {
-            // Chrome's pinch: deltaY is -100 × ln of the scale step.
-            w.half = (w.half * (-dy / 100.0).exp()).clamp(1.0, 4000.0);
-            let ((cx, cy), half) = (w.centre, w.half);
-            self.touch(WHEEL_A, Phase::Move, cx - half, cy, ms, false);
-            self.touch(WHEEL_B, Phase::Move, cx + half, cy, ms, false);
-        } else {
-            w.at = (w.at.0 - dx, w.at.1 - dy);
-            let (ax, ay) = w.at;
-            self.touch(WHEEL_A, Phase::Move, ax, ay, ms, false);
-        }
-    }
-
-    /// The wheel's fingers lift.
-    fn wheel_lift(&mut self, ms: f64) {
-        let Some(w) = self.wheel.take() else { return };
-        if w.pinch {
-            let ((cx, cy), half) = (w.centre, w.half);
-            self.touch(WHEEL_B, Phase::Up, cx + half, cy, ms, false);
-            self.touch(WHEEL_A, Phase::Up, cx - half, cy, ms, false);
-        } else {
-            self.touch(WHEEL_A, Phase::Up, w.at.0, w.at.1, ms, false);
-        }
-    }
-
     /// Every finger as one transform (pinch and pan); whether the fingers took it now.
     fn touch(&mut self, id: u32, phase: Phase, x: f64, y: f64, ms: f64, on_fab: bool) -> bool {
         let at = self.fingers.iter().position(|f| f.0 == id);
@@ -1271,19 +1208,6 @@ impl Surface for ArtGallery {
     }
 
     fn input(&mut self, event: &InputEvent) {
-        if let InputEvent::Wheel {
-            dx,
-            dy,
-            x,
-            y,
-            ctrl_key,
-            at_ms,
-            ..
-        } = *event
-        {
-            self.wheel_input(dx as f64, dy as f64, x as f64, y as f64, ctrl_key, at_ms);
-            return;
-        }
         let InputEvent::Pointer {
             id,
             phase,
@@ -1367,10 +1291,7 @@ impl Surface for ArtGallery {
             let (_, m) = self.haptics.remove(0);
             self.posted.push(m.into());
         }
-        if self.wheel.as_ref().is_some_and(|w| now - w.last_ms > WHEEL_LIFT_MS) {
-            self.wheel_lift(now);
-        }
-        let moving = self.step_motion(now) || self.wheel.is_some();
+        let moving = self.step_motion(now);
         let g = self.grid();
         self.focus
             .frame(now, self.row, self.col, g.cols, g.rows, g.cell_w, g.cell_h);
@@ -2234,32 +2155,6 @@ mod tests {
             );
         }
         assert!((g.scale.value - 4.0 * 1.4).abs() < 1e-9);
-    }
-
-    #[test]
-    fn a_trackpad_pinch_zooms_about_the_pointer_and_lifts_when_still() {
-        // The web's ctrl-wheel is two fingers spreading about the pointer: Chrome's deltaY is
-        // -100 × ln of the step, so -10 × ln(2) × 10 doubles the spread (and the scale).
-        let mut g = at(4.0, 100.0, -50.0);
-        let wheel = |g: &mut ArtGallery, dx: f32, dy: f32, ctrl_key: bool, at_ms: f64| {
-            g.input(&InputEvent::Wheel { dx, dy, x: 200.0, y: 400.0, shift_key: false, ctrl_key, alt_key: false, meta_key: false, at_ms })
-        };
-        let q0 = content(&g, 200.0, 400.0);
-        for i in 0..10 {
-            wheel(&mut g, 0.0, -100.0 * std::f32::consts::LN_2 / 10.0, true, 10.0 * i as f64);
-        }
-        assert!((g.scale.value - 8.0).abs() < 1e-3, "{}", g.scale.value);
-        let q = content(&g, 200.0, 400.0);
-        assert!((q.0 - q0.0).abs() < 1e-6 && (q.1 - q0.1).abs() < 1e-6);
-        assert_eq!(g.fingers.len(), 2);
-        g.wheel_lift(300.0);
-        assert!(g.fingers.is_empty() && g.wheel.is_none());
-        // A two-finger scroll drags as one finger: the content follows the scroll's opposite.
-        let before = g.tx.value;
-        for i in 0..10 {
-            wheel(&mut g, 4.0, 0.0, false, 400.0 + 10.0 * i as f64);
-        }
-        assert!(g.tx.value < before - 20.0, "{} {}", g.tx.value, before);
     }
 
     #[test]
