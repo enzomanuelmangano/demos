@@ -63,6 +63,9 @@ component ScrollProgress
     if resetting
       if y == 0
         resetting = false
+        // Back at the top the pill is the reading time again, not the arrow it was pressed as.
+        offset = 0
+        progress = 0
     else
       // The end state (the up arrow) is reached with the last point of the scroll, as the 100% label goes.
       let maxY = max(1, float32(e.scrollHeight) - e.clientHeight)
