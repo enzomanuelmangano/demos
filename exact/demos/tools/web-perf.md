@@ -178,6 +178,14 @@ Per-frame data movement and resource churn (desktop):
   (3 of them), threads-holo-ticket 155, sculptures-in-words 114, prequel-slider 101 ms. The open's own `click` task
   (the demo's commit) is the bigger one: wheel-picker 408 ms, sculptures-in-words 276, linear-sensors 266 ms.
 
+Dev vs production at runtime: the same GPU module (both build it with the `web` profile) and the same Contract
+runtime; the dev pass over all demos (105 measured) and a back-to-back A/B on 8 demos (prod, dev, prod again) show no
+difference beyond noise: open worst frame sculptures-in-words 449 / 125 / 167 ms, linear-sensors 401 / 36 / 36 ms,
+chessboard run max 36.5 / 36.3 / 36.9 ms. The machine's load average swung between 15 and 118 during these runs
+(other agents' builds), so a single demo's worst frame can be 2-10x off; the per-demo tables rank candidates, the
+causes above are the ones every run showed. Dev memory is higher: JS heap 49 -> 59 MB over the pass (prod 41 -> 49),
+wasm memory 118 MB at the end.
+
 Worst 15, desktop 1x (score = run p95 x4 + run max + open max / 4 + long task max x2 + GPU p95 x10):
 
 | demo | run frame ms p50 / p95 / max | run frames > 60 / 120 Hz budget | run long tasks (max ms) | run GPU ms/submit p50 / p95 / max | open p95 / max (missed 60 Hz) | close p95 / max (missed) | run DOM mutations | run writeBuffer MB | textures / pipelines created (open+run) | heap growth MB | top long-frame scripts (ms) |
