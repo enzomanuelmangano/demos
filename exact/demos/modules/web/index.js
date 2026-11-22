@@ -168,10 +168,30 @@ hookMessages();
 // The web host washes any pressable a mouse is over (`--exact-hover-wash`, the bordered / gray buttons' quaternary
 // fill): a grey square stayed behind a demo's button wherever the pointer rested on the desktop frame (sculptures-in-
 // words' toggle after a click), and iOS Safari keeps :hover on the last element tapped. The iPhone draws none.
+// The host's :hover rules are taken out of its sheets (they are many, several behind `:has(...:hover)`, so every move
+// of a mouse over the launcher re-matched styles up the tree); the variables cover a sheet added later.
 {
   const sheet = document.createElement('style');
   sheet.textContent = '#exact-root#exact-root :is(button,a[data-view][href],[data-exact-on~="press"]){--exact-hover-wash:none;--exact-hover-dim:1}#exact-root#exact-root button[data-button-style]:hover{background-image:none!important}';
   document.head.append(sheet);
+  const seen = new WeakSet();
+  const strip = () => {
+    for (const s of document.styleSheets) {
+      if (seen.has(s) || s.ownerNode === sheet) continue;
+      let rules;
+      try { rules = s.cssRules; } catch { continue; }
+      seen.add(s);
+      const walk = (list, owner) => { for (let i = list.length - 1; i >= 0; i--) {
+        const r = list[i];
+        if (r.selectorText && r.selectorText.includes(':hover')) { try { owner.deleteRule(i); } catch {} }
+        else if (r.cssRules?.length) walk(r.cssRules, r);
+      } };
+      walk(rules, s);
+    }
+  };
+  strip();
+  new MutationObserver(strip).observe(document.head, { childList: true });
+  addEventListener('load', strip);
 }
 
 // ---- SF Symbols the web host's table lacks ----------------------------------------------------------------------
@@ -363,23 +383,26 @@ function launch(el, props, event) {
     const sx = W / sw, sy = (half * 2) / sh;
     return {
       card: `translate(${q.cx}px,${centerY}px) matrix3d(1,0,0,0,0,1,0,${k},0,0,1,0,0,0,0,1) translate(${-W / 2}px,${-half}px) scale(${sx},${sy})`,
-      radius: `${q.radius / sx}px / ${q.radius / sy}px`,
+      // The corners as a clip-path, which Chrome animates on the compositor (a border-radius animation repaints the card
+      // and its whole demo on the main thread every frame).
+      clip: `inset(0 round ${q.radius / sx}px / ${q.radius / sy}px)`,
       content: `scale(1,${sx / sy})`,
       art: String(q.art), home: `scale(${q.hs})`, dim: String(q.dim), blur: String(q.blur),
     };
   };
   const put = (q) => {
     const st = styles(q);
-    card.style.transform = st.card; card.style.borderRadius = st.radius; content.style.transform = st.content;
+    card.style.transform = st.card; card.style.clipPath = st.clip; content.style.transform = st.content;
     art.style.opacity = st.art; zoom.style.transform = st.home; dim.style.opacity = st.dim; blur.style.opacity = st.blur;
   };
   const behind = (on) => {
     blur.style.visibility = on ? 'visible' : 'hidden';
-    for (const e of [card, content, zoom, dim, blur]) e.style.willChange = on ? (e === dim || e === blur ? 'opacity' : 'transform') : '';
+    // The layers are promoted once, when the card is set up (`promote`), never at a flight's start: a promotion in the
+    // first frame of a flight rasterizes the layer in that frame.
   };
   // At rest the card is the screen: no transform, no clip radius (the frame's display rounds it), the blur off.
   const rest = () => {
-    card.style.transform = 'none'; card.style.borderRadius = framed() ? '' : '0'; content.style.transform = 'none'; art.style.opacity = '0';
+    card.style.transform = 'none'; card.style.clipPath = ''; content.style.transform = 'none'; art.style.opacity = '0';
     zoom.style.transform = `scale(${K.homeScale})`; dim.style.opacity = String(dimOf(1, 1)); blur.style.opacity = '1';
     behind(false);
   };
@@ -425,7 +448,7 @@ function launch(el, props, event) {
     const ls = poses.map(styles), duration = (poses.length - 1) / K.rate * 1000, o = { duration: Math.max(1, duration), easing: 'linear', fill: 'forwards' };
     behind(true);
     const anims = [
-      card.animate(ls.map((l) => ({ transform: l.card })), o), card.animate(ls.map((l) => ({ borderRadius: l.radius })), o),
+      card.animate(ls.map((l) => ({ transform: l.card })), o), card.animate(ls.map((l) => ({ clipPath: l.clip })), o),
       content.animate(ls.map((l) => ({ transform: l.content })), o), art.animate(ls.map((l) => ({ opacity: l.art })), o),
       zoom.animate(ls.map((l) => ({ transform: l.home })), o), dim.animate(ls.map((l) => ({ opacity: l.dim })), o),
       blur.animate(ls.map((l) => ({ opacity: l.blur })), o),
@@ -447,6 +470,9 @@ function launch(el, props, event) {
     zoom = screen.querySelector('[data-testid="web-home-zoom"]'); dim = screen.querySelector('[data-testid="web-dim"]'); blur = screen.querySelector('[data-testid="web-blur"]');
     sw = screen.offsetWidth; sh = screen.offsetHeight; R = framed() ? 62 : 48;
     card.style.transformOrigin = '0 0'; content.style.transformOrigin = '0 0'; zoom.style.transformOrigin = '50% 50%';
+    // Promoted for good: every flight then moves layers that already exist (see `behind`).
+    for (const e of [card, content, zoom]) e.style.willChange = 'transform';
+    for (const e of [dim, blur]) e.style.willChange = 'opacity';
     art.src = new URL(p.art ?? '', document.baseURI).href;
     install();
     const tapped = lastTap && lastTap.slug === p.slug && performance.now() - lastTap.at < 2500;
@@ -509,6 +535,9 @@ function launch(el, props, event) {
       w.set(sw); h.set(sh); cx.set(sw / 2); cy.set(sh / 2); homeScale.set(K.homeScale); homeBlur.set(1); homeDim.set(1); radius = restRadius(1);
     }
     stopFlight();
+    // As the route's `closing` would (it hears of a dragged close only when the card lands): the demo and the home
+    // behind take no tap during the flight.
+    content.style.pointerEvents = 'none'; screen.firstElementChild.style.pointerEvents = 'none';
     phase = 'closing'; grouped = true; releaseRadius = radius;
     w.run(w.x, K.closeWidth, v.w); h.run(h.x, K.closeHeight, v.h); cx.run(cx.x, K.closeCenterX, v.cx); cy.run(cy.x, K.closeCenterY, v.cy);
     homeScale.run(1, K.closeHomeScale); homeDim.run(0, K.closeHomeDim); homeBlur.target = 0;
@@ -519,12 +548,16 @@ function launch(el, props, event) {
     if (landedSent) return;
     landedSent = true;
     if (icon) icon.style.visibility = '';
+    if (p.closing !== 'true') event(0);
     event(1, 'landed');
   };
 
   // ---- the swipe-down close: the same rules as ClosePan / CloseZone (tools/close-gesture.md) ----
+  // The screen's rect is read once per press (at its down, before the drag writes a style): read after a write, it
+  // forced a style and layout of the whole page on every move.
+  let screenRect = null;
   const toScreen = (e) => {
-    const r = screen.getBoundingClientRect(), k = r.width / sw || 1;
+    const r = screenRect ?? screen.getBoundingClientRect(), k = r.width / sw || 1;
     return { x: (e.clientX - r.left) / k, y: (e.clientY - r.top) / k };
   };
   const zoneAllows = (pt) => {
@@ -549,6 +582,7 @@ function launch(el, props, event) {
   const down = (e) => {
     if (track || closing || !e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
     if (!(phase === 'open' || phase === 'opening' || phase === 'returning')) return;
+    screenRect = screen.getBoundingClientRect();
     const pt = toScreen(e), strip = pt.y < Math.max(Number(p['safe-top']) || 0, sh * K.stripFraction);
     if (!strip && (!zoneAllows(pt) || scrolledInto(e.target))) return;
     track = { id: e.pointerId, target: e.target, start: pt, client: { x: e.clientX, y: e.clientY }, strip, active: false, samples: [], decided: false };
@@ -612,8 +646,9 @@ function launch(el, props, event) {
     radius = R * held.s;
     if (e.type === 'pointerup' && vy > -100 && (vy > K.closeVelocity || thrown > K.closeTravel * sh)) {
       phase = 'released';
+      // The route hears of the close when the card has landed (`landed`): its commit (the launcher's pointer-events)
+      // in the release's frame held the flight's first frames ~70 ms.
       close(v);
-      event(0);
     } else {
       phase = 'returning';
       w.run(sw, K.openWidth, v.w); cx.run(sw / 2, K.openCenterX, v.cx); cy.run(sh / 2, K.openCenterY, v.cy);
@@ -986,7 +1021,8 @@ function pagerDrive(board, screenOf) {
   const rubber = (x, d) => (1 - 1 / (Math.abs(x) * 0.55 / d + 1)) * d * Math.sign(x);
   const down = (e) => {
     if (e.pointerType !== 'mouse' || e.button !== 0 || drag) return;
-    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, from: pager.scrollLeft, startPage: page(), active: false, samples: [], k: scale() };
+    // Sizes are read here, once: read in a move, after the last move's writes, each forced a style and layout.
+    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, from: pager.scrollLeft, startPage: page(), active: false, samples: [], k: scale(), w: width(), max: (pages() - 1) * width() };
   };
   const move = (e) => {
     if (!drag || e.pointerId !== drag.id) return;
@@ -1001,10 +1037,11 @@ function pagerDrive(board, screenOf) {
     e.stopImmediatePropagation(); e.preventDefault();
     drag.samples.push({ t: e.timeStamp, x: dx });
     while (drag.samples.length > 2 && e.timeStamp - drag.samples[0].t > 100) drag.samples.shift();
-    const max = (pages() - 1) * width(), want = drag.from - dx;
+    const max = drag.max, want = drag.from - dx;
     const over = want < 0 ? want : want > max ? want - max : 0;
     pager.scrollLeft = Math.max(0, Math.min(max, want));
-    pager.style.transform = over ? `translateX(${-rubber(over, width())}px)` : '';
+    const band = over ? `translateX(${-rubber(over, drag.w)}px)` : '';
+    if (band !== drag.band) { pager.style.transform = band; drag.band = band; }
   };
   const up = (e) => {
     if (!drag || e.pointerId !== drag.id || !e.isTrusted) return;
