@@ -26,8 +26,13 @@ component MetaballSlider
     dragging = true
     from = max(0, min(1, progress))
     anchor = e.clientX
+  // A cancelled pointer (a touch the browser takes for a scroll, the window losing focus) ends as `pointerup` in Exact
+  // (host pointer.js hears pointercancel, pointerout of the window and blur): `up` covers it. A move with no button
+  // held ends a drag too, in case an end was missed.
   action move(e: PointerEvent)
-    if dragging
+    if dragging and e.buttons == 0
+      dragging = false
+    else if dragging
       change(max(0, min(1, from + (e.clientX - anchor) / max(width, 1))))
   action up(e: PointerEvent)
     dragging = false
@@ -94,8 +99,13 @@ component Metaball
       anchorY = e.clientY
       dx = 0
       dy = 0
+  // A cancelled pointer (a touch the browser takes for a scroll, the window losing focus) ends as `pointerup` in Exact
+  // (host pointer.js hears pointercancel, pointerout of the window and blur): `up` covers it. A move with no button
+  // held ends a drag too, in case an end was missed.
   action move(e: PointerEvent)
-    if dragging
+    if dragging and e.buttons == 0
+      dragging = false
+    else if dragging
       dx = e.clientX - anchorX
       dy = e.clientY - anchorY
   action up(e: PointerEvent)

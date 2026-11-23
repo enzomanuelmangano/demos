@@ -44,8 +44,13 @@ component StartSlider
     dragging = true
     from = x
     anchor = e.clientX
+  // A cancelled pointer (a touch the browser takes for a scroll, the window losing focus) ends as `pointerup` in Exact
+  // (host pointer.js hears pointercancel, pointerout of the window and blur): `up` covers it. A move with no button
+  // held ends a drag too, in case an end was missed.
   action move(e: PointerEvent)
-    if dragging
+    if dragging and e.buttons == 0
+      dragging = false
+    else if dragging
       x = max(0, min(170, from + e.clientX - anchor))
       change(max(0, min(170, from + e.clientX - anchor)) / 170)
   action up(e: PointerEvent)
