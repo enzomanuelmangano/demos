@@ -15,6 +15,7 @@ import { spawnSync } from 'node:child_process';
 import { BASE, keyAt } from './demos-web/build.ts';
 import { ALIASES, LEGACY_DEMO_POSTS } from './demos-web/legacy-posts.ts';
 import { demosHead } from './demos-web/head.ts';
+import { NOT_PORTED_REDIRECTS } from './seo/site.ts';
 
 type Route = { src?: string; dest?: string; status?: number; headers?: Record<string, string>; handle?: string; continue?: boolean };
 
@@ -97,6 +98,8 @@ for (const slug of LEGACY_DEMO_POSTS) {
 }
 // Signed-out /profile and /manage-subscription sent a visitor to /demos (client-side, in the reference); at the edge now.
 routes.push({ src: '^/(?:profile|manage-subscription)/?$', status: 307, headers: { Location: '/demos' } });
+// The content not ported (Demos-tied articles and their two series, docs/decisions.md D13): permanent redirects.
+for (const [from, to] of Object.entries(NOT_PORTED_REDIRECTS)) routes.push({ src: `^${esc(from)}/?$`, status: 308, headers: { Location: to } });
 routes.push({ src: `^/((?!${esc(MOUNT.slice(1))}/).+)/$`, status: 308, headers: { Location: '/$1' } });
 // The articles' images keep their live URL (og:image, JSON-LD and external caches name it): /content-assets/… is the content pipeline's assets/content/….
 routes.push({ src: '^/content-assets/(.*)$', dest: '/assets/content/$1' });

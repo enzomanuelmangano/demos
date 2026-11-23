@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// Screenshots and structure of pages, the live sweep's way (1440x900 desktop, 390x844 touch; 3.5 s settle, one
+// Screenshots and structure of pages, the live sweep's way (1440x900 desktop, 390x844 touch; 3.5 s settle (--settle), one
 // scroll-through so reveal-on-scroll content fires, back to the top; full page, JPEG q70, capped at 16,000 px):
 //   bun tools/parity/shoot.ts <origin> <outDir> <route>... [--routes routes.json] [--widths 1440,390]
 // Writes <slug>@<w>.jpg (slug: "/" → home, "/a/b" → a__b), <slug>@<w>.dom.json (every visible box: tag, own text,
@@ -53,9 +53,14 @@ export const DOM_JS = `(() => {
   return out;
 })()`;
 
+// --settle <ms> (default 3500): a page whose runtime starts later than that (live's RevealOnScroll hydrates after a
+// cold load's 3.5 s on the series pages) needs longer, or its paused entrances are shot unplayed.
 export async function settle(page: any) {
-  await Bun.sleep(3500);
-  await page.eval(`(async()=>{const h=document.documentElement.scrollHeight;for(let y=0;y<h;y+=600){scrollTo(0,y);await new Promise(r=>setTimeout(r,60))}scrollTo(0,0)})()`);
+  await Bun.sleep(Number(opt('--settle') ?? 3500));
+  // --scroll <step px>,<ms> (default 600,60): live's RevealOnScroll misses cards passed at 600 px per 60 ms (they stay
+  // paused, unplayed, in the shot); 300,150 reveals them as a reader's scroll does.
+  const [step, ms] = (opt('--scroll') ?? '600,60').split(',').map(Number);
+  await page.eval(`(async()=>{const h=document.documentElement.scrollHeight;for(let y=0;y<h;y+=${step}){scrollTo(0,y);await new Promise(r=>setTimeout(r,${ms}))}scrollTo(0,0)})()`);
   await Bun.sleep(1200);
 }
 

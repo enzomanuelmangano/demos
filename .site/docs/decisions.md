@@ -190,3 +190,22 @@ heroes, all from 1024 px in `web/head.css` (one DOM, the stacked layout under 10
 - motion: the copy's entrances as live; the device rises 16 px and fades in, 700 ms `cubic-bezier(.16,1,.3,1)`, no
   delay (a delayed entrance delayed the page's largest paint, the still, to ~1 s); the live frame swaps in under the
   still with no shift.
+
+## D13. The Demos-tied content is not ported; its live URLs redirect permanently (owner, 2026-11-23)
+
+The owner: "All the content and articles tied to demos are no longer needed now" (classification:
+`docs/progress-content.md`). Four articles and the two series made only of them are not built, but their live URLs
+are linked from outside (search results, social posts, the newsletter), so none may 404. `tools/compose.ts` answers
+each with a 308 (permanent, method kept; the same kind as D5's demo posts), with or without a trailing slash:
+
+| live URL | to | why |
+|---|---|---|
+| `/articles/building-demos` | `/demos` | it presented how Demos was built: Demos is now the page |
+| `/articles/open-sourcing-demos` | `/demos` | it announced Demos going open source |
+| `/articles/leaving-patreon` | `/articles` | the Patreon move: no successor page, the articles index |
+| `/articles/patreon-migration` | `/articles` | the same |
+| `/series/thoughts` | `/articles` | the series of the three articles above |
+| `/series/engineering` | `/articles` | the series of `building-demos` alone: a list of articles, so the articles index |
+
+One list, `NOT_PORTED_REDIRECTS` in `tools/seo/site.ts`: the converter skips its articles (`SKIPPED`), the SEO
+postbuild leaves them out of the sitemap and the feed, compose writes the redirects.

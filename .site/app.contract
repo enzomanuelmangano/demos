@@ -4,9 +4,12 @@
 use SiteHeader, SiteFooter, Container from "./components/shell.contract"
 use HomePage from "./pages/home.contract"
 use NotFound from "./pages/not-found.contract"
+use Newsletter from "./components/newsletter.contract"
 use DemosPage from "./pages/demos.contract"
 use InspirationsPage from "./pages/inspirations.contract"
 use DemosAppPage from "./pages/demos-app.contract"
+use Page from "./components/markdown.contract"
+use Card, ArticleList, ArticlePage from "./pages/articles.contract"
 
 // The faces (Inter variable, Source Code Pro) are declared in app.json's head, font-display: swap and Inter
 // preloaded, as the reference: docs/decisions.md D7.
@@ -15,11 +18,19 @@ routes nav
   demos "/demos" render=build activate=idle
   inspirations "/inspirations" render=build activate=idle
   demosApp "/demos-app" render=build activate=idle
+  // The content (tools/gen-content.ts, docs/progress-content.md).
+  articles "/articles" render=build activate=idle
+  article "/articles/:post" render=build activate=idle pages=articleSlugs()
+  series "/series/:series" render=build activate=idle pages=seriesSlugs()
+  docs "/docs" render=build activate=idle
+  docPage "/docs/:post" render=build activate=idle pages=docSlugs()
   notfound render=build
 
 // The footer's Terms | Privacy variant, on the reference's paths (its /demos, /profile and /manage-subscription
 // pages are not this app's).
-fn legalFooter(name: string): bool = name == "demos" or name == "docTerms" or name == "docPrivacy"
+fn legalFooter(name: string, post: string): bool = name == "demos" or (name == "docPage" and (post == "terms" or post == "privacy"))
+fn titleCase(slug: string): string = slug.split("-").map(w => w.slice(0, 1).toUpperCase() + w.slice(1)).join(" ")
+fn docTitle(slug: string): string = slug == "terms" ? "Terms of Service" : slug == "privacy" ? "Privacy Policy" : slug == "license" ? "License" : slug
 
 shape Subscribed
   ok: bool
@@ -34,6 +45,31 @@ component App
   // viewport then (an IntersectionObserver, no per-scroll work).
   state scrolled = false
   mutation newsletter as shape Subscribed then subscribed
+  // The content pages' data: one generated module per page (app.ts), none on the other routes.
+  derive post = top(nav).name == "article" or top(nav).name == "docPage" ? top(nav).params.post : ""
+  derive seriesSlug = top(nav).name == "series" ? top(nav).params.series : ""
+  resource article = loadArticle(top(nav).name == "article" ? post : "") as shape Page
+  resource doc = loadDoc(top(nav).name == "docPage" ? post : "") as shape Page
+  resource cards = loadCards(top(nav).name == "articles" ? "*" : seriesSlug) as shape Card[]
+  // The cards seen once (RevealOnScroll), the YouTube and X frames near the window, the code block just copied.
+  state shown: string[] = []
+  state near: string[] = []
+  state copied = ""
+  state copies = 0
+  action cardSeen(id: string, entry: IntersectionObserverEntry)
+    if entry.isIntersecting and not shown.includes(id)
+      shown = shown.concat([id])
+  action embedSeen(id: string, entry: IntersectionObserverEntry)
+    if entry.isIntersecting and not near.includes(id)
+      near = near.concat([id])
+  action copyCode(id: string, code: string)
+    copyText(code)
+    copied = id
+    copies = copies + 1
+  task clearCopied when copied != "" key=copies
+    after(2000, forgetCopied)
+  action forgetCopied
+    copied = ""
   // /demos: the per-launch seed of the spiral's and the stars' randomness, the taps on the title (each turns the
   // spiral), and the star count's spin, 500 ms after the page starts (GitHubStarsButton).
   resource time = exactTime() as shape Seeded
@@ -125,9 +161,31 @@ component App
                   image="/og/demos.png" canonical="/demos-app"
                 Container()
                   DemosAppPage()
+              else if e.name == "articles"
+                head title="Articles | Reactiive" description="Interactive articles about React Native animations by Reactiive"
+                  image="/og/articles.png" canonical="/articles"
+                text "Articles" role="heading" aria-level=1 position="absolute" width=1 height=1 margin=-1 overflow="hidden" clip-path="inset(50%)" white-space="nowrap"
+                  font-size=16 font-weight=400 line-height="24px"
+                ArticleList(cards=cards, shown=shown, seen=cardSeen)
+              else if e.name == "series"
+                head title=`${titleCase(e.params.series)} | Reactiive` description=`Articles in the ${titleCase(e.params.series)} series on React Native animations.`
+                  image="/og/articles.png" canonical=`/series/${e.params.series}`
+                ArticleList(cards=cards, shown=shown, seen=cardSeen)
+              else if e.name == "article"
+                head title=`${article.title} | Reactiive` description=article.description image=`/content-assets/articles/${e.params.post}/images/header.webp`
+                  canonical=`/articles/${e.params.post}`
+                ArticlePage(page=article, article=true, copied=copied, copy=copyCode, near=near, seen=embedSeen)
+                  Newsletter(showTitle=true, status=newsletterStatus, subscribe=subscribe)
+              else if e.name == "docs"
+                head title="Reactiive" description="Discover the beauty of React Native and how to build stunning animations with Reanimated and Skia"
+                  image="/og/main.png" canonical="/"
+              else if e.name == "docPage"
+                head title=`${docTitle(e.params.post)} | Reactiive` description="Discover the beauty of React Native and how to build stunning animations with Reanimated and Skia"
+                  image="/og/main.png" canonical=`/docs/${e.params.post}`
+                ArticlePage(page=doc, article=false, copied=copied, copy=copyCode, near=near, seen=embedSeen)
               else
                 head title="Page not found | Reactiive" status=404 robots="noindex"
                   description="Discover the beauty of React Native and how to build stunning animations with Reanimated and Skia"
                   image="/og/main.png" canonical="/"
                 NotFound()
-            SiteFooter(legal=legalFooter(e.name))
+            SiteFooter(legal=legalFooter(e.name, e.name == "docPage" ? e.params.post : ""))

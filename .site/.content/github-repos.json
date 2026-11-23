@@ -2,9 +2,9 @@
   "enzomanuelmangano/demos": {
     "name": "demos",
     "description": "An ongoing collection of React Native animations crafted with Reanimated, Gesture Handler, and Skia.",
-    "stargazers_count": 1664,
-    "forks_count": 190,
-    "language": "TypeScript",
+    "stargazers_count": 3248,
+    "forks_count": 296,
+    "language": "Rust",
     "html_url": "https://github.com/enzomanuelmangano/demos",
     "owner": {
       "avatar_url": "https://avatars.githubusercontent.com/u/37193302?v=4",
@@ -14,8 +14,8 @@
   "enzomanuelmangano/exploring-skia": {
     "name": "exploring-skia",
     "description": "",
-    "stargazers_count": 45,
-    "forks_count": 2,
+    "stargazers_count": 50,
+    "forks_count": 1,
     "language": "TypeScript",
     "html_url": "https://github.com/enzomanuelmangano/exploring-skia",
     "owner": {
@@ -26,8 +26,8 @@
   "enzomanuelmangano/animate-with-reanimated": {
     "name": "animate-with-reanimated",
     "description": "Animate with Reanimated is a youtube series where I try to build from scratch simple and instructive animations.",
-    "stargazers_count": 638,
-    "forks_count": 130,
+    "stargazers_count": 646,
+    "forks_count": 127,
     "language": "TypeScript",
     "html_url": "https://github.com/enzomanuelmangano/animate-with-reanimated",
     "owner": {
@@ -38,8 +38,8 @@
   "enzomanuelmangano/appjs-talk-demos": {
     "name": "everybody-can-cook",
     "description": "All of the demos from my talk at App.js Conf 2025",
-    "stargazers_count": 133,
-    "forks_count": 13,
+    "stargazers_count": 134,
+    "forks_count": 11,
     "language": "TypeScript",
     "html_url": "https://github.com/enzomanuelmangano/everybody-can-cook",
     "owner": {
@@ -50,7 +50,7 @@
   "enzomanuelmangano/animated-skia-spiral": {
     "name": "animated-skia-spiral",
     "description": "Spirals are fun :)",
-    "stargazers_count": 3,
+    "stargazers_count": 4,
     "forks_count": 0,
     "language": "TypeScript",
     "html_url": "https://github.com/enzomanuelmangano/animated-skia-spiral",
@@ -62,7 +62,7 @@
   "enzomanuelmangano/eslint-plugin-refined": {
     "name": "eslint-plugin-refined",
     "description": "An ESLint plugin that cares about visual details",
-    "stargazers_count": 55,
+    "stargazers_count": 64,
     "forks_count": 1,
     "language": "TypeScript",
     "html_url": "https://github.com/enzomanuelmangano/eslint-plugin-refined",
@@ -74,7 +74,7 @@
   "enzomanuelmangano/the-power-of-lottie": {
     "name": "the-power-of-lottie",
     "description": "Github Repository related to the video tutorial \"The Power of Lottie in React Native\"",
-    "stargazers_count": 3,
+    "stargazers_count": 4,
     "forks_count": 0,
     "language": "TypeScript",
     "html_url": "https://github.com/enzomanuelmangano/the-power-of-lottie",
@@ -86,7 +86,7 @@
   "enzomanuelmangano/what-about-gestures": {
     "name": "what-about-gestures",
     "description": "What about Gestures is a Youtube Playlist where I like to share the process of creating React Native animations. All animations are always made from scratch trying to make them easy to understand.",
-    "stargazers_count": 137,
+    "stargazers_count": 142,
     "forks_count": 52,
     "language": "TypeScript",
     "html_url": "https://github.com/enzomanuelmangano/what-about-gestures",

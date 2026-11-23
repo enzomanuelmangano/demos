@@ -18,7 +18,8 @@ component Newsletter
         text "Thanks for subscribing!" color="var(--color-success)"
       else
         if showTitle
-          text "Newsletter" role="heading" aria-level=5 margin-bottom=8 font-size="1.125rem" line-height="1.75rem" font-weight=600 color="var(--color-text-heading)"
+          // Text variant h5 (the article pages' title): text-2xl, font-sans-medium, the heading colour.
+          text "Newsletter" role="heading" aria-level=5 margin-bottom=8 font-size="1.5rem" line-height="2rem" font-weight=500 color="var(--color-text-heading)"
         text "Join 5,000+ devs getting occasional updates on React Native animations." color="var(--color-text-secondary)" margin-bottom=16
         row gap=8
           input type="email" placeholder="you@email.com" value=email input=edit submit=submit disabled=(status == "loading")

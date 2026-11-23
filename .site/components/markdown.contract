@@ -1,0 +1,284 @@
+// The article body: the blocks tools/gen-content.ts makes from the reference's MDX, drawn as the reference's
+// MarkdownTheme draws them (src/components/mdx: mdx.css, code-highlight.tsx, PostTitle, embeds/*). Every margin is
+// resolved at build (Block.mt / Block.mb), so this column is a plain flex column, as the reference's .mdx-content.
+// What Contract cannot say (a link's growing underline, the copy button shown on hover, the list's dot) is
+// web/content.css, hooked by `data-motion` words (docs/decisions.md D11).
+use md, from from "./responsive.contract"
+
+shape Run
+  text: string
+  code: bool
+  strong: bool
+  em: bool
+  href: string
+  brand: bool
+  math: string
+  width: number
+  height: number
+  valign: number
+
+shape Repo
+  name: string
+  owner: string
+  path: string
+  description: string
+  language: string
+  stars: string
+  forks: string
+  avatar: string
+  url: string
+
+shape Block
+  id: string
+  kind: string
+  depth: number
+  text: string
+  href: string
+  src: string
+  title: string
+  lang: string
+  width: number
+  height: number
+  mt: number
+  mb: number
+  loose: bool
+  runs: Run[]
+  // A code block's lines, compact (tools/gen-content.ts `highlight`): the diff mark, then the tokens, each a
+  // palette letter and its text, joined by U+E000.
+  lines: string[]
+  // The GitHub card's repo: one for a `github` block, none for the others.
+  repo: Repo[]
+
+shape Page
+  slug: string
+  title: string
+  description: string
+  image: string
+  date: string
+  tags: string[]
+  blocks: Block[]
+
+style Mono
+  font-family="'Source Code Pro', 'Source Code Pro Fallback', ui-monospace, monospace"
+
+// A paragraph's runs (mdx.css): links in the link colour with a 500 ms colour change and a growing underline
+// (content.css `mdx-link`), a brand link keeping its element's look, strong in the heading colour, inline code.
+// A plain run inherits its block's weight (`weight`: the block's, for a strong run's); each look is a literal per
+// branch, so a run is a class, not an inline style.
+component Runs
+  props
+    runs: Run[]
+    weight: number
+  view
+    for r, i in runs key=i
+      if r.math != ""
+        image r.math alt="" width=r.width height=r.height vertical-align="middle"
+      else if r.code
+        text r.text class=Mono font-size="0.875em" font-weight=500 color="#e5c07b" background-color="rgb(255 255 255 / 0.06)" padding="3px 7px" border-radius=6 box-shadow="0 0 0 1px var(--color-hairline)" white-space="pre-wrap"
+      else if r.href != "" and not r.brand
+        if r.strong
+          text r.text href=r.href data-motion="mdx-link" color="var(--color-text-heading)" text-decoration-line="none" font-weight=600 font-style=(r.em ? "italic" : "normal")
+        else if r.em
+          text r.text href=r.href data-motion="mdx-link" color="var(--color-text-link)" text-decoration-line="none" font-style="italic"
+        else
+          text r.text href=r.href data-motion="mdx-link" color="var(--color-text-link)" text-decoration-line="none"
+      else if r.href != ""
+        text r.text href=r.href color=(r.strong ? "var(--color-text-heading)" : "inherit") font-weight=(r.strong ? 600 : weight) font-style=(r.em ? "italic" : "normal")
+      else if r.strong
+        text r.text font-weight=600 color="var(--color-text-heading)" font-style=(r.em ? "italic" : "normal")
+      else if r.em
+        text r.text font-style="italic"
+      else
+        text r.text
+
+// A code line's tokens (tools/gen-content.ts `highlight`): a palette letter and the text; the colours are the
+// reference's themePlus (palenight with its overrides) and the terminal theme. One literal colour per branch, so a
+// token is a class, not an inline style.
+component Tok
+  props
+    t: string
+  view
+    if t.startsWith("a")
+      text t.slice(1) color="#abb2bf"
+    else if t.startsWith("f")
+      text t.slice(1) color="#4b9fe4"
+    else if t.startsWith("k")
+      text t.slice(1) color="#c678dd"
+    else if t.startsWith("n")
+      text t.slice(1) color="#d19a66"
+    else if t.startsWith("y")
+      text t.slice(1) color="#e5c07b"
+    else if t.startsWith("s")
+      text t.slice(1) color="#e06c75"
+    else if t.startsWith("c")
+      text t.slice(1) color="#8b919d" font-style="italic"
+    else if t.startsWith("w")
+      text t.slice(1) color="#f2f5f7"
+    else if t.startsWith("t")
+      text t.slice(1) color="rgb(98, 114, 164)"
+    else
+      text t.slice(1)
+
+component CodeLine
+  props
+    line: string
+  view
+    if line.length > 1
+      for t, i in line.slice(1).split("\uE000") key=i
+        Tok(t=t)
+
+// The code a block copies: its lines' text, without the marks and letters.
+fn codeText(lines: string[]): string = lines.map(l => l.slice(1).split("\uE000").map(t => t.slice(1)).join("")).join("\n")
+
+// A fenced block (code-highlight.tsx): 14 px radius, the control ring, palenight tokens on the code surface, 16 px in,
+// scrolling sideways; the copy button shows on hover (always on a touch screen) and copies the code.
+component CodeBlock
+  props
+    block: Block
+    copied: string
+    copy: action
+  view
+    view position="relative" margin-bottom=block.mb border-radius=14 max-width="calc(100vw - 2.9rem)" data-motion="code"
+      view position="relative" border-radius=14 box-shadow="var(--shadow-control)" overflow="hidden"
+        button press=copy(block.id, codeText(block.lines)) appearance="none" aria-label="Copy code" position="absolute" z-index=10
+          right=(block.lines.length > 1 ? 8 : 4) top=(block.lines.length > 1 ? 8 : 4) display="flex" align-items="center" justify-content="center"
+          padding=10 border-radius="var(--radius-control)" background-color="rgb(255 255 255 / 0.06)" backdrop-filter="blur(4px)" box-shadow="var(--shadow-control)"
+          data-motion="copy" testId="copy"
+          :hover
+            background-color = "rgb(255 255 255 / 0.1)"
+          image "/assets/images/copy.svg" alt="" aria-hidden=true width=20 height=20 display="block"
+        view overflow-x="auto" tabindex=0 aria-label=`${block.lang} code` class=Mono font-size=14 line-height="21px" padding=16 color=(block.title == "terminal" ? "#F8F8F2" : "#bfc7d5") background-color=(block.title == "terminal" ? "#000000" : "var(--color-surface-code)") border-radius=14 data-motion="pre"
+          column min-width="100%" align-self="flex-start"
+            for l, i in block.lines key=i
+              if l.startsWith(" ")
+                text white-space="pre" min-height="21px"
+                  CodeLine(line=l)
+              else if l.startsWith("+")
+                text white-space="pre" min-height="21px" margin="0 -16px" padding="0 16px 0 13px" background-color="rgba(16, 185, 129, 0.12)" border-left="3px solid #10B981"
+                  CodeLine(line=l)
+              else if l.startsWith("-")
+                text white-space="pre" min-height="21px" margin="0 -16px" padding="0 16px 0 13px" background-color="rgba(239, 68, 68, 0.12)" border-left="3px solid #EF4444"
+                  CodeLine(line=l)
+              else
+                text white-space="pre" min-height="21px" margin="0 -16px" padding="0 16px 0 13px" border-left="3px solid transparent"
+                  CodeLine(line=l)
+
+// embeds/GithubCard.tsx: the repo's avatar, name (or repo › folder), description, language, stars and forks, from
+// the build's snapshot (the live card reads GitHub with a token: docs/stubs.md).
+component GithubCard
+  props
+    block: Block
+    repo: Repo
+  view
+    link href=block.href target="_blank" display="block" margin-bottom=block.mb -exact-hover-effect="none" text-decoration-line="none" data-motion="card-link"
+      view position="relative" data-motion="squircle-shadow"
+        // The squircle (live's Surface, figma-squircle 14 / 0.6): the mask, the rim and the shadows are web/content.css's.
+        view position="absolute" inset=-1 pointer-events="none" z-index=1 aria-hidden=true data-motion="squircle-rim"
+        view padding=16 background-color="var(--color-surface-elevated)" data-motion="surface squircle"
+          row align-items="flex-start" gap=12
+            if repo.avatar != ""
+              image repo.avatar alt=repo.owner width=40 height=40 border-radius=9999 flex-shrink=0
+            column flex=1 min-width=0
+              row align-items="center" gap=8
+                image "/assets/images/github.svg" alt="" aria-hidden=true width=20 height=20 flex-shrink=1 min-width=0
+                if repo.path != ""
+                  row align-items="center"
+                    text repo.name color="var(--color-text-tertiary)"
+                    image "/assets/images/chevron.svg" alt="" aria-hidden=true width=12 height=12 margin="0 4px"
+                    text repo.path color="var(--color-text-primary)" font-weight=600
+                else
+                  text `${repo.owner}/${repo.name}` font-weight=600 color="var(--color-text-primary)" overflow="hidden" text-overflow="ellipsis" white-space="nowrap"
+              if repo.description != ""
+                text repo.description margin-top=4 font-size=14 line-height="20px" color="var(--color-text-secondary)" line-clamp=2
+              row align-items="center" gap=16 margin-top=12 font-size=12 line-height="16px" color="var(--color-text-tertiary)"
+                if repo.language != ""
+                  row align-items="center" gap=4
+                    view width=12 height=12 border-radius=9999 background-color="var(--color-warning)"
+                    text repo.language
+                row align-items="center" gap=4
+                  image "/assets/images/star.svg" alt="" aria-hidden=true width=16 height=16
+                  text repo.stars
+                row align-items="center" gap=4
+                  image "/assets/images/fork.svg" alt="" aria-hidden=true width=16 height=16
+                  text repo.forks
+
+// A YouTube video (embeds/YouTube.tsx: full width, 400 px): the privacy-enhanced player, framed only once the
+// reader comes near it, so a page loads no YouTube until then.
+component YouTube
+  props
+    block: Block
+    near: string[]
+    seen: action
+  view
+    view width="100%" height=400 margin-bottom=block.mb intersect=seen(block.id) intersect-margin="50% 0px"
+      iframe (near.includes(block.id) ? `https://www.youtube-nocookie.com/embed/${block.text}` : "about:blank") title="YouTube video player" width="100%" height="100%" border-width=0 display="block"
+
+// The article's title (PostTitle.tsx): 20 px semibold, 144 px under the page's top from 768 px, 32 px below, then
+// the date.
+component PostTitle
+  props
+    block: Block
+  view
+    column gap=8 margin-bottom=20
+      h1 block.text margin-top=md(32, 144) margin-bottom=10 font-size="1.25rem" line-height=1.3333333 letter-spacing="-0.01em" color="var(--color-text-heading)" font-weight=600
+      row align-items="center" gap=8
+        text block.title font-size=13 line-height="normal" color="var(--color-text-tertiary)" font-variant-numeric="tabular-nums"
+
+component Blocks
+  props
+    block: Block
+    copied: string
+    copy: action
+    near: string[]
+    seen: action
+  view
+    if block.kind == "title"
+      PostTitle(block=block)
+    else if block.kind == "heading"
+      if block.depth == 2
+        h2 id=block.href margin-top=block.mt margin-bottom=block.mb margin-left=(block.lang == "0" ? 0 : 26) font-size=20 line-height="28px" font-weight=600 letter-spacing="-0.01em" color="var(--color-text-heading)"
+          Runs(runs=block.runs, weight=600)
+      else if block.depth == 3
+        h3 id=block.href margin-top=block.mt margin-bottom=block.mb font-size=17 line-height="24px" font-weight=600 letter-spacing="-0.005em" color="var(--color-text-heading)"
+          Runs(runs=block.runs, weight=600)
+      else
+        h4 id=block.href margin-top=block.mt margin-bottom=block.mb font-size=16 line-height="24px" font-weight=600 color="var(--color-text-heading)"
+          Runs(runs=block.runs, weight=600)
+    else if block.kind == "paragraph"
+      text margin-left=(block.depth * 26) margin-bottom=block.mb white-space="pre-wrap" font-size=16 line-height="28px" color="var(--color-text-body)"
+        Runs(runs=block.runs, weight=400)
+    else if block.kind == "item"
+      view position="relative" margin-left=(block.depth * 26 + 8) padding-left=18 margin-bottom=block.mb
+        view position="absolute" left=0 top=11 width=6 height=6 border-radius=3 background-color="var(--color-text-tertiary)"
+        text white-space="pre-wrap" overflow-wrap="break-word" font-size=16 line-height="28px" color="var(--color-text-body)"
+          Runs(runs=block.runs, weight=400)
+    else if block.kind == "code"
+      view margin-left=(block.depth * 26)
+        CodeBlock(block=block, copied=copied, copy=copy)
+    else if block.kind == "image"
+      image block.src alt=block.text width="100%" aspect-ratio=(block.width > 0 ? `${block.width} / ${block.height}` : "auto")
+        min-height=180 max-height=480 object-fit="contain" border-radius="1rem" margin-bottom=block.mb margin-left=(block.depth * 26)
+    else if block.kind == "video"
+      video block.src autoplay=true loop=true muted=true playsinline=true controls=true width="100%" min-height=180 max-height=480 object-fit="contain" border-radius="1rem" margin-bottom=block.mb
+    else if block.kind == "github"
+      for r in block.repo key=r.url
+        GithubCard(block=block, repo=r)
+    else if block.kind == "youtube"
+      YouTube(block=block, near=near, seen=seen)
+    else if block.kind == "math"
+      row justify-content="center" margin-bottom=block.mb padding="8px 0"
+        image block.src alt="" width=block.width height=block.height
+    else if block.kind == "rule"
+      view margin-top=block.mt margin-bottom=block.mb padding-top=24 padding-bottom=10 border-bottom="1px solid var(--color-hairline)"
+    else if block.kind == "quote"
+      text margin-bottom=block.mb font-size=18 line-height=1.6 background-color="var(--color-surface-elevated)" padding="23px 23px 8px" border-left="2px solid var(--color-hairline-strong)"
+        Runs(runs=block.runs, weight=400)
+    else if block.kind == "tweet"
+      row justify-content="center" width="100%"
+        view width="100%" max-width=550 margin-top=block.mt margin-bottom=block.mb overflow="hidden" intersect=seen(block.id) intersect-margin="50% 0px"
+          iframe (near.includes(block.id) ? `https://platform.twitter.com/embed/Tweet.html?id=${block.text}&theme=dark&hideThread=true` : "about:blank") title="X post" width="100%" height=from(598, block.width, block.height) border-width=0 display="block"
+    else if block.kind == "interactive"
+      // Not yet ported (docs/progress-content.md): the reference's frame (components/interactive: 16:9, 10 px radius,
+      // a 1 px #242424 border, 16 px under it), empty, so the page around it is laid out as live.
+      if block.title != "CanvasKitJsAlert"
+        view margin-bottom=16 width="100%" aspect-ratio="16 / 9" border-radius=10 border="1px solid rgb(36, 36, 36)" box-sizing="border-box" testId=`interactive-${block.title}`
