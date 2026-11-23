@@ -121,8 +121,6 @@ export function allPages(): PageMetadata[] {
     { path: '/docs', title: SITE_NAME, layoutOnly: true },
     ...Object.entries(DOC_TITLES).map(([slug, title]): PageMetadata => ({ path: `/docs/${slug}`, title, image: card(OG.home) })),
     { path: '/404', title: `Page not found | ${SITE_NAME}`, noindex: true, layoutOnly: true },
-    // The gesture/UI demos' development gallery (pages/dev-interactive-ui.contract): built, never in the sitemap.
-    { path: '/_dev/interactive-ui', title: 'Interactive demos: gesture and UI', noindex: true },
   ];
 }
 

@@ -1,9 +1,9 @@
 // introduction-to-reanimated's demos (reference: content/articles/introduction-to-reanimated/components/
 // animated-square.tsx): a 100 px blue square on white, in the frame, played by its round buttons. Each Play shows the
 // square's starting state at once and animates 100 ms later (the reference's reset, then setTimeout 100): here a
-// fresh node per play (keyed by the count) whose animations wait 100 ms with their first frame shown.
-// withTiming is Easing.inOut(Easing.quad) (CSS cubic-bezier(0.455, 0.03, 0.515, 0.955)); the withSpring legs are
-// baked from the reference's integrator at 60 Hz (gesture-kit/.tools/bake.ts). The corners are
+// fresh node per play (keyed by the count) that, once laid out, takes its end values through transitions delayed
+// 100 ms. withTiming is Easing.inOut(Easing.quad) (CSS cubic-bezier(0.455, 0.03, 0.515, 0.955)), withSpring Exact's
+// spring 100/10/1 from rest. Transitions are inline: no keyframes reach the page's stylesheet. The corners are
 // gesture-kit's MorphSquare. As live, the final square's
 // "repeat" plays one leg: the reference's bounce restarts the spring inside the finishing frame, which then clears it.
 //
@@ -17,159 +17,8 @@
 //   FinalAnimatedSquareDemo()                                                Play and Restart
 use DemoFrame, BoxButton, MorphSquare from "../gesture-kit/box.contract"
 
-keyframes irFade
-  from opacity=0
-  to opacity=1
-keyframes irHalf
-  from opacity=1
-  to opacity=0.5
-keyframes irDouble
-  from scale=1
-  to scale=2
-
-// <baked> (gesture-kit/.tools/bake.ts writes this block)
-// irScaleUp: 1033 ms
-keyframes irScaleUp
-  0% scale=1 animation-timing-function="cubic-bezier(0.3333, 0, 0.6667, 0.4932)"
-  4.839% scale=1.1453 animation-timing-function="cubic-bezier(0.3333, 0.2827, 0.6667, 0.6429)"
-  9.677% scale=1.4059 animation-timing-function="cubic-bezier(0.3333, 0.3403, 0.6667, 0.6889)"
-  14.516% scale=1.6793 animation-timing-function="cubic-bezier(0.3333, 0.379, 0.6667, 0.7198)"
-  19.355% scale=1.9037 animation-timing-function="cubic-bezier(0.3333, 0.4199, 0.6667, 0.7525)"
-  24.194% scale=2.0535 animation-timing-function="cubic-bezier(0.3333, 0.4901, 0.6667, 0.8087)"
-  29.032% scale=2.1291 animation-timing-function="cubic-bezier(0.3333, 0.8454, 0.6667, 1.0929)"
-  33.871% scale=2.1462 animation-timing-function="cubic-bezier(0.3333, 0.0784, 0.6667, 0.4794)"
-  38.71% scale=2.1259 animation-timing-function="cubic-bezier(0.3333, 0.2798, 0.6667, 0.6405)"
-  43.548% scale=2.0882 animation-timing-function="cubic-bezier(0.3333, 0.3388, 0.6667, 0.6877)"
-  48.387% scale=2.0482 animation-timing-function="cubic-bezier(0.3333, 0.3777, 0.6667, 0.7188)"
-  53.226% scale=2.015 animation-timing-function="cubic-bezier(0.3333, 0.4182, 0.6667, 0.7512)"
-  58.065% scale=1.9928 animation-timing-function="cubic-bezier(0.3333, 0.4862, 0.6667, 0.8056)"
-  62.903% scale=1.9814 animation-timing-function="cubic-bezier(0.3333, 0.8051, 0.6667, 1.0606)"
-  67.742% scale=1.9786 animation-timing-function="cubic-bezier(0.3333, 0.0591, 0.6667, 0.464)"
-  72.581% scale=1.9814 animation-timing-function="cubic-bezier(0.3333, 0.2876, 0.6667, 0.6378)"
-  75.806% scale=1.985 animation-timing-function="cubic-bezier(0.3333, 0.3212, 0.6667, 0.6736)"
-  80.645% scale=1.9909 animation-timing-function="cubic-bezier(0.3333, 0.364, 0.6667, 0.7078)"
-  85.484% scale=1.9962 animation-timing-function="cubic-bezier(0.3333, 0.402, 0.6667, 0.7382)"
-  90.323% scale=2 animation-timing-function="cubic-bezier(0.3333, 0.4068, 0.6667, 0.7372)"
-  93.548% scale=2.0017 animation-timing-function="cubic-bezier(0.3333, 0.5245, 0.6667, 2.0775)"
-  98.387% scale=2.003 animation-timing-function="cubic-bezier(0.3333, 0.1516, 0.6667, 1)"
-  100% scale=2
-fn irScaleUpMs(): number = 1033
-
-// irFinalProgress: 1017 ms
-keyframes irFinalProgress
-  0% opacity=1 rotate="360deg" animation-timing-function="cubic-bezier(0.3333, 0, 0.6667, 0.4932)"
-  4.918% opacity=0.9273 rotate="333.839deg" animation-timing-function="cubic-bezier(0.3333, 0.2827, 0.6667, 0.6429)"
-  9.836% opacity=0.7971 rotate="286.943deg" animation-timing-function="cubic-bezier(0.3333, 0.3403, 0.6667, 0.6889)"
-  14.754% opacity=0.6604 rotate="237.728deg" animation-timing-function="cubic-bezier(0.3333, 0.379, 0.6667, 0.7198)"
-  19.672% opacity=0.5481 rotate="197.331deg" animation-timing-function="cubic-bezier(0.3333, 0.4199, 0.6667, 0.7525)"
-  24.59% opacity=0.4733 rotate="170.375deg" animation-timing-function="cubic-bezier(0.3333, 0.4901, 0.6667, 0.8087)"
-  29.508% opacity=0.4355 rotate="156.763deg" animation-timing-function="cubic-bezier(0.3333, 0.8454, 0.6667, 1.0929)"
-  34.426% opacity=0.4269 rotate="153.682deg" animation-timing-function="cubic-bezier(0.3333, 0.0784, 0.6667, 0.4794)"
-  39.344% opacity=0.437 rotate="157.332deg" animation-timing-function="cubic-bezier(0.3333, 0.2798, 0.6667, 0.6405)"
-  44.262% opacity=0.4559 rotate="164.123deg" animation-timing-function="cubic-bezier(0.3333, 0.3388, 0.6667, 0.6877)"
-  49.18% opacity=0.4759 rotate="171.331deg" animation-timing-function="cubic-bezier(0.3333, 0.3777, 0.6667, 0.7188)"
-  54.098% opacity=0.4925 rotate="177.291deg" animation-timing-function="cubic-bezier(0.3333, 0.4182, 0.6667, 0.7512)"
-  59.016% opacity=0.5036 rotate="181.3deg" animation-timing-function="cubic-bezier(0.3333, 0.4862, 0.6667, 0.8056)"
-  63.934% opacity=0.5093 rotate="183.351deg" animation-timing-function="cubic-bezier(0.3333, 0.8051, 0.6667, 1.0606)"
-  68.852% opacity=0.5107 rotate="183.847deg" animation-timing-function="cubic-bezier(0.3333, 0.0591, 0.6667, 0.464)"
-  73.77% opacity=0.5093 rotate="183.339deg" animation-timing-function="cubic-bezier(0.3333, 0.2767, 0.6667, 0.638)"
-  78.689% opacity=0.5065 rotate="182.356deg" animation-timing-function="cubic-bezier(0.3333, 0.3372, 0.6667, 0.6864)"
-  83.607% opacity=0.5036 rotate="181.301deg" animation-timing-function="cubic-bezier(0.3333, 0.3764, 0.6667, 0.7177)"
-  88.525% opacity=0.5012 rotate="180.422deg" animation-timing-function="cubic-bezier(0.3333, 0.4165, 0.6667, 0.7498)"
-  93.443% opacity=0.4995 rotate="179.826deg" animation-timing-function="cubic-bezier(0.3333, 0.4826, 0.6667, 1.6623)"
-  98.361% opacity=0.4987 rotate="179.517deg" animation-timing-function="cubic-bezier(0.3333, 0.1412, 0.6667, 1)"
-  100% opacity=0.5 rotate="180deg"
-fn irFinalProgressMs(): number = 1017
-
-// irFinalCornerBar: 1017 ms
-keyframes irFinalCornerBar
-  0% translate="0px 50px" animation-timing-function="cubic-bezier(0.3333, 0, 0.6667, 0.4932)"
-  4.918% translate="0px 46.3665px" animation-timing-function="cubic-bezier(0.3333, 0.2827, 0.6667, 0.6429)"
-  9.836% translate="0px 39.8532px" animation-timing-function="cubic-bezier(0.3333, 0.3403, 0.6667, 0.6889)"
-  14.754% translate="0px 33.0178px" animation-timing-function="cubic-bezier(0.3333, 0.379, 0.6667, 0.7198)"
-  19.672% translate="0px 27.4071px" animation-timing-function="cubic-bezier(0.3333, 0.4199, 0.6667, 0.7525)"
-  24.59% translate="0px 23.6632px" animation-timing-function="cubic-bezier(0.3333, 0.4901, 0.6667, 0.8087)"
-  29.508% translate="0px 21.7726px" animation-timing-function="cubic-bezier(0.3333, 0.8454, 0.6667, 1.0929)"
-  34.426% translate="0px 21.3447px" animation-timing-function="cubic-bezier(0.3333, 0.0784, 0.6667, 0.4794)"
-  39.344% translate="0px 21.8516px" animation-timing-function="cubic-bezier(0.3333, 0.2798, 0.6667, 0.6405)"
-  44.262% translate="0px 22.7949px" animation-timing-function="cubic-bezier(0.3333, 0.3388, 0.6667, 0.6877)"
-  49.18% translate="0px 23.796px" animation-timing-function="cubic-bezier(0.3333, 0.3777, 0.6667, 0.7188)"
-  54.098% translate="0px 24.6238px" animation-timing-function="cubic-bezier(0.3333, 0.4182, 0.6667, 0.7512)"
-  59.016% translate="0px 25.1806px" animation-timing-function="cubic-bezier(0.3333, 0.4862, 0.6667, 0.8056)"
-  63.934% translate="0px 25.4655px" animation-timing-function="cubic-bezier(0.3333, 0.8051, 0.6667, 1.0606)"
-  68.852% translate="0px 25.5343px" animation-timing-function="cubic-bezier(0.3333, 0.0591, 0.6667, 0.464)"
-  73.77% translate="0px 25.4638px" animation-timing-function="cubic-bezier(0.3333, 0.2767, 0.6667, 0.638)"
-  78.689% translate="0px 25.3273px" animation-timing-function="cubic-bezier(0.3333, 0.3372, 0.6667, 0.6864)"
-  83.607% translate="0px 25.1807px" animation-timing-function="cubic-bezier(0.3333, 0.3764, 0.6667, 0.7177)"
-  88.525% translate="0px 25.0586px" animation-timing-function="cubic-bezier(0.3333, 0.4165, 0.6667, 0.7498)"
-  93.443% translate="0px 24.9758px" animation-timing-function="cubic-bezier(0.3333, 0.4826, 0.6667, 1.6623)"
-  98.361% translate="0px 24.9329px" animation-timing-function="cubic-bezier(0.3333, 0.1412, 0.6667, 1)"
-  100% translate="0px 25px"
-fn irFinalCornerBarMs(): number = 1017
-
-// irFinalCornerDisc: 1017 ms
-keyframes irFinalCornerDisc
-  0% scale=1 translate="0px 0px" animation-timing-function="cubic-bezier(0.3333, 0, 0.6667, 0.4932)"
-  4.918% scale=0.9273 translate="-3.6335px -3.6335px" animation-timing-function="cubic-bezier(0.3333, 0.2827, 0.6667, 0.6429)"
-  9.836% scale=0.7971 translate="-10.1468px -10.1468px" animation-timing-function="cubic-bezier(0.3333, 0.3403, 0.6667, 0.6889)"
-  14.754% scale=0.6604 translate="-16.9822px -16.9822px" animation-timing-function="cubic-bezier(0.3333, 0.379, 0.6667, 0.7198)"
-  19.672% scale=0.5481 translate="-22.5929px -22.5929px" animation-timing-function="cubic-bezier(0.3333, 0.4199, 0.6667, 0.7525)"
-  24.59% scale=0.4733 translate="-26.3368px -26.3368px" animation-timing-function="cubic-bezier(0.3333, 0.4901, 0.6667, 0.8087)"
-  29.508% scale=0.4355 translate="-28.2274px -28.2274px" animation-timing-function="cubic-bezier(0.3333, 0.8454, 0.6667, 1.0929)"
-  34.426% scale=0.4269 translate="-28.6553px -28.6553px" animation-timing-function="cubic-bezier(0.3333, 0.0784, 0.6667, 0.4794)"
-  39.344% scale=0.437 translate="-28.1484px -28.1484px" animation-timing-function="cubic-bezier(0.3333, 0.2798, 0.6667, 0.6405)"
-  44.262% scale=0.4559 translate="-27.2051px -27.2051px" animation-timing-function="cubic-bezier(0.3333, 0.3388, 0.6667, 0.6877)"
-  49.18% scale=0.4759 translate="-26.204px -26.204px" animation-timing-function="cubic-bezier(0.3333, 0.3777, 0.6667, 0.7188)"
-  54.098% scale=0.4925 translate="-25.3762px -25.3762px" animation-timing-function="cubic-bezier(0.3333, 0.4182, 0.6667, 0.7512)"
-  59.016% scale=0.5036 translate="-24.8194px -24.8194px" animation-timing-function="cubic-bezier(0.3333, 0.4862, 0.6667, 0.8056)"
-  63.934% scale=0.5093 translate="-24.5345px -24.5345px" animation-timing-function="cubic-bezier(0.3333, 0.8051, 0.6667, 1.0606)"
-  68.852% scale=0.5107 translate="-24.4657px -24.4657px" animation-timing-function="cubic-bezier(0.3333, 0.0591, 0.6667, 0.464)"
-  73.77% scale=0.5093 translate="-24.5362px -24.5362px" animation-timing-function="cubic-bezier(0.3333, 0.2767, 0.6667, 0.638)"
-  78.689% scale=0.5065 translate="-24.6727px -24.6727px" animation-timing-function="cubic-bezier(0.3333, 0.3372, 0.6667, 0.6864)"
-  83.607% scale=0.5036 translate="-24.8193px -24.8193px" animation-timing-function="cubic-bezier(0.3333, 0.3764, 0.6667, 0.7177)"
-  88.525% scale=0.5012 translate="-24.9414px -24.9414px" animation-timing-function="cubic-bezier(0.3333, 0.4165, 0.6667, 0.7498)"
-  93.443% scale=0.4995 translate="-25.0242px -25.0242px" animation-timing-function="cubic-bezier(0.3333, 0.4826, 0.6667, 1.6623)"
-  98.361% scale=0.4987 translate="-25.0671px -25.0671px" animation-timing-function="cubic-bezier(0.3333, 0.1412, 0.6667, 1)"
-  100% scale=0.5 translate="-25px -25px"
-fn irFinalCornerDiscMs(): number = 1017
-
-keyframes irRadiusCornerBar
-  from translate="0px 50px"
-  to translate="0px 25px"
-
-keyframes irRadiusCornerDisc
-  from scale=1 translate="0px 0px"
-  to scale=0.5 translate="-25px -25px"
-
-// irFinalScale: 1033 ms
-keyframes irFinalScale
-  0% scale=2 animation-timing-function="cubic-bezier(0.3333, 0, 0.6667, 0.4932)"
-  4.839% scale=1.8547 animation-timing-function="cubic-bezier(0.3333, 0.2827, 0.6667, 0.6429)"
-  9.677% scale=1.5941 animation-timing-function="cubic-bezier(0.3333, 0.3403, 0.6667, 0.6889)"
-  14.516% scale=1.3207 animation-timing-function="cubic-bezier(0.3333, 0.379, 0.6667, 0.7198)"
-  19.355% scale=1.0963 animation-timing-function="cubic-bezier(0.3333, 0.4199, 0.6667, 0.7525)"
-  24.194% scale=0.9465 animation-timing-function="cubic-bezier(0.3333, 0.4901, 0.6667, 0.8087)"
-  29.032% scale=0.8709 animation-timing-function="cubic-bezier(0.3333, 0.8454, 0.6667, 1.0929)"
-  33.871% scale=0.8538 animation-timing-function="cubic-bezier(0.3333, 0.0784, 0.6667, 0.4794)"
-  38.71% scale=0.8741 animation-timing-function="cubic-bezier(0.3333, 0.2798, 0.6667, 0.6405)"
-  43.548% scale=0.9118 animation-timing-function="cubic-bezier(0.3333, 0.3388, 0.6667, 0.6877)"
-  48.387% scale=0.9518 animation-timing-function="cubic-bezier(0.3333, 0.3777, 0.6667, 0.7188)"
-  53.226% scale=0.985 animation-timing-function="cubic-bezier(0.3333, 0.4182, 0.6667, 0.7512)"
-  58.065% scale=1.0072 animation-timing-function="cubic-bezier(0.3333, 0.4862, 0.6667, 0.8056)"
-  62.903% scale=1.0186 animation-timing-function="cubic-bezier(0.3333, 0.8051, 0.6667, 1.0606)"
-  67.742% scale=1.0214 animation-timing-function="cubic-bezier(0.3333, 0.0591, 0.6667, 0.464)"
-  72.581% scale=1.0186 animation-timing-function="cubic-bezier(0.3333, 0.2876, 0.6667, 0.6378)"
-  75.806% scale=1.015 animation-timing-function="cubic-bezier(0.3333, 0.3212, 0.6667, 0.6736)"
-  80.645% scale=1.0091 animation-timing-function="cubic-bezier(0.3333, 0.364, 0.6667, 0.7078)"
-  85.484% scale=1.0038 animation-timing-function="cubic-bezier(0.3333, 0.402, 0.6667, 0.7382)"
-  90.323% scale=1 animation-timing-function="cubic-bezier(0.3333, 0.4068, 0.6667, 0.7372)"
-  93.548% scale=0.9983 animation-timing-function="cubic-bezier(0.3333, 0.5245, 0.6667, 2.0775)"
-  98.387% scale=0.997 animation-timing-function="cubic-bezier(0.3333, 0.1516, 0.6667, 1)"
-  100% scale=1
-fn irFinalScaleMs(): number = 1033
-// </baked>
-
-fn irQuad(ms: number): string = `${ms}ms cubic-bezier(0.455, 0.03, 0.515, 0.955) 100ms both`
+fn irQuad(ms: number): string = `${ms}ms cubic-bezier(0.455, 0.03, 0.515, 0.955) 100ms`
+fn irSpring(): string = "0s -exact-spring(100, 10, 1) 100ms"
 
 component AnimatedSquareOpacityDemo
   view
@@ -192,26 +41,31 @@ component IrSquare
     kind: string
   // 0 before the first Play (and after Restart): the square's starting state, still.
   state plays = 0
+  // The play whose square has mounted: its first layout (`resize`) sets its end values, which its transitions
+  // carry it to (CSS transitions need a change after the node exists: a fresh node per play is the reset).
+  state armed = 0
+  derive go = plays > 0 and armed == plays
   derive rounded = kind == "springRadius" or kind == "final"
-  derive restOpacity = kind == "opacity" or kind == "timing" ? 0 : 1
-  derive restScale = kind == "final" ? 2 : 1
-  derive body = (kind == "opacity" ? `irFade ${irQuad(500)}` : kind == "timing" ? `irFade ${irQuad(500)}, irDouble ${irQuad(300)}`
-    : kind == "final" ? `irFinalProgress ${irFinalProgressMs()}ms linear 100ms both, irFinalScale ${irFinalScaleMs()}ms linear 100ms both`
-    : `irHalf ${irQuad(500)}, irScaleUp ${irScaleUpMs()}ms linear 100ms both`)
-  derive cornerPrefix = kind == "final" ? "irFinalCorner" : "irRadiusCorner"
-  derive cornerTiming = kind == "final" ? `${irFinalProgressMs()}ms linear 100ms both` : irQuad(500)
+  derive opacity = kind == "opacity" or kind == "timing" ? (go ? 1 : 0) : (go ? 0.5 : 1)
+  derive scale = kind == "final" ? (go ? 1 : 2) : kind == "opacity" ? 1 : (go ? 2 : 1)
+  derive fade = kind == "final" ? irSpring() : irQuad(500)
+  derive grow = kind == "timing" ? irQuad(300) : irSpring()
+  derive radius = rounded ? (go ? 25 : 50) : 0
+  derive corner = plays == 0 ? "none" : kind == "final" ? irSpring() : kind == "springRadius" ? irQuad(500) : "none"
   action play
     plays = plays + 1
   action restart
     plays = 0
+  action mounted(w: number, h: number)
+    armed = plays
   view
     DemoFrame()
       view flex=1 display="flex" align-items="center" justify-content="center" background-color="white"
         for p in [plays] key=p
-          view width=100 height=100 flex-shrink=0 opacity=restOpacity scale=restScale rotate=(kind == "final" ? "360deg" : "0deg")
-            animation=(plays == 0 ? "none" : body)
-            MorphSquare(size=100, color="blue", alpha=1, rest=(rounded ? 50 : 0), rmax=50, prefix=cornerPrefix,
-              timing=cornerTiming, on=(rounded and plays > 0))
+          view width=100 height=100 flex-shrink=0 opacity=opacity scale=scale resize=mounted
+            rotate=(kind == "final" ? (go ? "180deg" : "360deg") : "0deg")
+            transition=(plays == 0 ? "none" : `opacity ${fade}, scale ${grow}, rotate ${fade}`)
+            MorphSquare(size=100, color="blue", alpha=1, radius=radius, rmax=50, timing=corner, prefix="", loop="none")
       BoxButton(kind="play", index=0, label="Play", press=play)
       if kind == "final"
         BoxButton(kind="reset", index=1, label="Restart", press=restart)

@@ -1,5 +1,6 @@
-// /_dev/interactive-ui: every gesture/UI article demo on one page, unlinked, noindex and out of the sitemap, for
-// checking them against the live articles (each in a 720 px column, as an article's prose; full width on a phone).
+// /_dev/interactive-ui, development only (gesture-kit/.tools/gallery.ts builds it; no route of the site): every
+// gesture/UI article demo on one page, for checking them against the live articles (each in a 720 px column, as an
+// article's prose; full width on a phone).
 use InteractiveBox as BottomSheetBox, InitialSetup, BasicComponent, PanGesture, BorderRadius, FinalDemo from "../components/interactive/bottom-sheet-animation/index.contract"
 use InteractiveBox as CssBox, AnimatedSquare from "../components/interactive/css-animations-react-native/index.contract"
 use InteractivePanGesture from "../components/interactive/pan-gesture-handler/index.contract"

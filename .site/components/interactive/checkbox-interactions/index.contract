@@ -1,8 +1,8 @@
 // checkbox-interactions's demos (reference: content/articles/checkbox-interactions/components/checkbox/): twenty
 // cuisine chips under "What are your favourite cuisines?", Italian picked; a tap toggles one. Demo animates it as
 // the reference's framer-motion does: the chip's fill and border and the label's colour on a spring (stiffness 500,
-// damping 30), the check icon coming in (opacity 150 ms, scale 0.5 → 1 on a spring 500/25, baked from the spring's
-// motion) and going out the same way back, the chip's growth and the other chips' moves a layout spring 500/30.
+// damping 30), the check icon coming in (opacity 150 ms, scale 0.5 → 1 on a spring 500/25) and going out the same way
+// back, the chip's growth and the other chips' moves a layout spring 500/30.
 // StaticDemo changes at once.
 //
 // The check is the reference's glyph (U+F429 of its one-glyph AntDesign font, antdesign-check-circle.woff2) as an
@@ -12,62 +12,11 @@
 // Exports, as the article's MDX names them:
 //   Demo()
 //   StaticDemo()
-// <baked> (gesture-kit/.tools/bake.ts writes this block)
-// cbIconIn: 317 ms
-keyframes cbIconIn
-  0% scale=0.5 animation-timing-function="cubic-bezier(0.3333, 0, 0.6667, 0.4451)"
-  5.263% scale=0.5317 animation-timing-function="cubic-bezier(0.3333, 0.2382, 0.6667, 0.6231)"
-  10.526% scale=0.6055 animation-timing-function="cubic-bezier(0.3333, 0.2988, 0.6667, 0.6629)"
-  15.789% scale=0.6986 animation-timing-function="cubic-bezier(0.3333, 0.3296, 0.6667, 0.6831)"
-  21.053% scale=0.7939 animation-timing-function="cubic-bezier(0.3333, 0.3516, 0.6667, 0.6975)"
-  26.316% scale=0.8797 animation-timing-function="cubic-bezier(0.3333, 0.3712, 0.6667, 0.7104)"
-  31.579% scale=0.9497 animation-timing-function="cubic-bezier(0.3333, 0.3926, 0.6667, 0.7244)"
-  36.842% scale=1.0013 animation-timing-function="cubic-bezier(0.3333, 0.4217, 0.6667, 0.7435)"
-  42.105% scale=1.035 animation-timing-function="cubic-bezier(0.3333, 0.476, 0.6667, 0.7792)"
-  47.368% scale=1.0532 animation-timing-function="cubic-bezier(0.3333, 0.6798, 0.6667, 0.9129)"
-  52.632% scale=1.0591 animation-timing-function="cubic-bezier(0.3333, -0.1823, 0.6667, 0.3471)"
-  57.895% scale=1.0563 animation-timing-function="cubic-bezier(0.3333, 0.2238, 0.6667, 0.6136)"
-  63.158% scale=1.0481 animation-timing-function="cubic-bezier(0.3333, 0.2931, 0.6667, 0.6591)"
-  68.421% scale=1.0372 animation-timing-function="cubic-bezier(0.3333, 0.3261, 0.6667, 0.6808)"
-  73.684% scale=1.0259 animation-timing-function="cubic-bezier(0.3333, 0.3488, 0.6667, 0.6957)"
-  78.947% scale=1.0155 animation-timing-function="cubic-bezier(0.3333, 0.3685, 0.6667, 0.7086)"
-  84.211% scale=1.007 animation-timing-function="cubic-bezier(0.3333, 0.3894, 0.6667, 0.7223)"
-  89.474% scale=1.0006 animation-timing-function="cubic-bezier(0.3333, 0.4169, 0.6667, 0.9783)"
-  94.737% scale=0.9963 animation-timing-function="cubic-bezier(0.3333, -0.0249, 0.6667, 1)"
-  100% scale=1
-fn cbIconInMs(): number = 317
-
-// cbIconOut: 317 ms
+// Going out: the reference's exit (opacity 150 ms, scale towards 0.5 on the spring) is invisible after 150 ms, so
+// both end there.
 keyframes cbIconOut
-  0% scale=1 animation-timing-function="cubic-bezier(0.3333, 0, 0.6667, 0.4451)"
-  5.263% scale=0.9683 animation-timing-function="cubic-bezier(0.3333, 0.2382, 0.6667, 0.6231)"
-  10.526% scale=0.8945 animation-timing-function="cubic-bezier(0.3333, 0.2988, 0.6667, 0.6629)"
-  15.789% scale=0.8014 animation-timing-function="cubic-bezier(0.3333, 0.3296, 0.6667, 0.6831)"
-  21.053% scale=0.7061 animation-timing-function="cubic-bezier(0.3333, 0.3516, 0.6667, 0.6975)"
-  26.316% scale=0.6203 animation-timing-function="cubic-bezier(0.3333, 0.3712, 0.6667, 0.7104)"
-  31.579% scale=0.5503 animation-timing-function="cubic-bezier(0.3333, 0.3926, 0.6667, 0.7244)"
-  36.842% scale=0.4987 animation-timing-function="cubic-bezier(0.3333, 0.4217, 0.6667, 0.7435)"
-  42.105% scale=0.465 animation-timing-function="cubic-bezier(0.3333, 0.476, 0.6667, 0.7792)"
-  47.368% scale=0.4468 animation-timing-function="cubic-bezier(0.3333, 0.6798, 0.6667, 0.9129)"
-  52.632% scale=0.4409 animation-timing-function="cubic-bezier(0.3333, -0.1823, 0.6667, 0.3471)"
-  57.895% scale=0.4437 animation-timing-function="cubic-bezier(0.3333, 0.2238, 0.6667, 0.6136)"
-  63.158% scale=0.4519 animation-timing-function="cubic-bezier(0.3333, 0.2931, 0.6667, 0.6591)"
-  68.421% scale=0.4628 animation-timing-function="cubic-bezier(0.3333, 0.3261, 0.6667, 0.6808)"
-  73.684% scale=0.4741 animation-timing-function="cubic-bezier(0.3333, 0.3488, 0.6667, 0.6957)"
-  78.947% scale=0.4845 animation-timing-function="cubic-bezier(0.3333, 0.3685, 0.6667, 0.7086)"
-  84.211% scale=0.493 animation-timing-function="cubic-bezier(0.3333, 0.3894, 0.6667, 0.7223)"
-  89.474% scale=0.4994 animation-timing-function="cubic-bezier(0.3333, 0.4169, 0.6667, 0.9783)"
-  94.737% scale=0.5037 animation-timing-function="cubic-bezier(0.3333, -0.0249, 0.6667, 1)"
-  100% scale=0.5
-fn cbIconOutMs(): number = 317
-// </baked>
-
-keyframes cbIconFadeIn
-  from opacity=0
-  to opacity=1
-keyframes cbIconFadeOut
-  from opacity=1
-  to opacity=0
+  from opacity=1 scale=1
+  to opacity=0 scale=0.5
 
 fn cbSpring(p: string): string = `${p} -exact-spring(500, 30, 1)`
 
@@ -99,8 +48,17 @@ component Chip
     checked: bool
     animated: bool
     press: action
+  // The icon's first layout sets its end values (opacity 1, scale 1), which its transitions carry it to; a tap
+  // clears it for the next time it comes in.
+  state shown = false
+  action tap
+    shown = false
+    press()
+  action iconMounted(w: number, h: number)
+    shown = true
+  derive full = shown or not animated
   view
-    row press=press padding="12px 20px" border-width=1 border-style="solid" border-radius=60 align-items="center"
+    row press=tap padding="12px 20px" border-width=1 border-style="solid" border-radius=60 align-items="center"
       justify-content="center" cursor="pointer" -exact-hover-effect="none"
       background-color=(checked ? "rgba(239, 142, 82, 0.1)" : "rgba(239, 142, 82, 0)")
       border-color=(checked ? "#EF8E52" : "#B3B1B4")
@@ -110,7 +68,8 @@ component Chip
         transition=(animated ? cbSpring("color") : "none")
       if checked
         view display="flex" justify-content="center" align-items="center" height=16 width=18 margin-left=8
-          animation=(animated ? `cbIconFadeIn 150ms ease-out both, cbIconIn ${cbIconInMs()}ms linear both` : "none")
-          -exact-exit-animation=(animated ? `cbIconFadeOut 150ms ease-out both, cbIconOut ${cbIconOutMs()}ms linear both` : "none")
+          resize=iconMounted opacity=(full ? 1 : 0) scale=(full ? 1 : 0.5)
+          transition=(animated ? "opacity 150ms ease-out, scale -exact-spring(500, 25, 1)" : "none")
+          -exact-exit-animation=(animated ? "cbIconOut 150ms ease-out both" : "none")
           svg width=18 height=18.84 viewBox="0 -455 512 536" fill="#EF8E52" aria-hidden=true flex-shrink=0
             path d="M239 -447Q304 -451 362.5 -424.5Q421 -398 461 -346Q494 -302 506 -249Q518 -193 506.5 -138.0Q495 -83 460 -38Q398 45 292 62Q279 64 256.5 64.0Q234 64 221 62Q142 49 84 -2Q17 -63 2 -157Q0 -170 0.0 -192.0Q0 -214 2 -227Q13 -295 51 -346Q110 -423 203 -442Q223 -446 239 -447ZM283 -403Q278 -403 261.5 -403.5Q245 -404 241 -404Q238 -404 230 -403Q211 -401 192 -395Q142 -379 105.0 -341.5Q68 -304 53 -253Q44 -225 44 -192Q44 -169 48 -149Q63 -75 122 -27Q159 3 204 14Q227 20 256 20Q286 20 309 14Q364 -1 403.5 -39.0Q443 -77 459 -131Q468 -159 468.0 -192.0Q468 -225 459 -253Q444 -304 406.0 -342.0Q368 -380 317 -395Q302 -400 283 -403ZM328 -281Q325 -279 322.5 -276.5Q320 -274 276 -213Q232 -153 230 -153Q229 -154 211 -179Q190 -208 186.0 -211.0Q182 -214 165 -215Q146 -215 145 -211Q144 -210 146.0 -207.0Q148 -204 183.5 -154.5Q219 -105 223 -103Q236 -97 245 -107Q246 -108 305.0 -190.5Q364 -273 366 -276Q368 -278 367 -280L365 -282H348Q332 -282 328 -281Z"
