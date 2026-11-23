@@ -118,7 +118,7 @@ component DemosPage
             column flex-shrink=0 data-motion="title"
               text "Demos" role="heading" aria-level=1 class=Gradient data-motion="lift-20 d-title" pointerup=tap cursor="pointer" user-select="none"
                 font-size=titleSize() line-height=1.05 letter-spacing="-0.04em" padding-bottom="0.04em"
-                margin-top=steps(8, 32, 56, 56) margin-bottom=steps(20, 32, 36, 36) transition="opacity 150ms ease-out"
+                margin-top=steps(8, 32, 56, 56) margin-bottom=steps(20, 32, 36, 36) transition="opacity 150ms cubic-bezier(0, 0, 0.2, 1)"
                 :hover
                   opacity = 0.9
             view width=centring() flex-shrink=1
