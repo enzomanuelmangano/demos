@@ -5,22 +5,30 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const site = join(import.meta.dir, '..');
+const preloads: string[] = [];
+const hashed = (f: string) => `/${f}?v=${new Bun.CryptoHasher('sha256').update(readFileSync(join(site, f))).digest('hex').slice(0, 10)}`;
 const css = readFileSync(join(site, 'web/head.css'), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, '')
   .split('\n').map((l) => l.trim()).filter(Boolean).join('')
   // url(@inline:<path>): the file as a data: URL (the ASCII subset of Inter, web/head.css). Rebuild the subset with
-  // fonttools: pyftsubset assets/fonts/InterVariable.woff2 --unicodes=U+0020-007E --flavor=woff2 --output-file=assets/fonts/InterAscii.woff2
-  .replace(/url\(@inline:([^)]+)\)/g, (_, f: string) => `url(data:font/woff2;base64,${readFileSync(join(site, f)).toString('base64')})`);
+  // url(@hashed:<path>): the file's URL versioned by its content (compose caches /assets/fonts/ for good) and
+  // preloaded by a head link (below). The ASCII subset of Inter, with fonttools:
+  // pyftsubset assets/fonts/InterVariable.woff2 --unicodes=U+0020-007E --layout-features+=tnum --flavor=woff2 --output-file=assets/fonts/InterAscii.woff2
+  .replace(/url\(@hashed:([^)]+)\)/g, (_, f: string) => { const href = hashed(f); preloads.push(href); return `url(${href})`; });
 const text = `(function(){var s=document.createElement('style');s.textContent=${JSON.stringify(css)};document.head.appendChild(s)})();`;
 const path = join(site, 'app.json');
 const app = JSON.parse(readFileSync(path, 'utf8'));
 const head: any[] = app.host.web.head;
 const i = head.findIndex((h) => h.script?.text?.includes("document.createElement('style')"));
 if (i < 0) throw new Error('head: no style script in app.json host.web.head');
+const links = preloads.map((href) => ({ link: { rel: 'preload', href, as: 'font', type: 'font/woff2', crossorigin: true } }));
+const isPreload = (h: any) => h.link?.rel === 'preload' && h.link?.as === 'font';
+const next = [...links, ...head.filter((h) => !isPreload(h))];
+next[next.findIndex((h) => h.script?.text?.includes("document.createElement('style')"))] = { script: { text } };
 if (process.argv.includes('--check')) {
-  if (head[i].script.text !== text) { console.error('head: app.json is stale: run bun tools/head.ts'); process.exit(1); }
+  if (JSON.stringify(next) !== JSON.stringify(head)) { console.error('head: app.json is stale: run bun tools/head.ts'); process.exit(1); }
   process.exit(0);
 }
-head[i] = { script: { text } };
+app.host.web.head = next;
 writeFileSync(path, JSON.stringify(app, null, 2) + '\n');
 console.log(`head: ${css.length} bytes of CSS in app.json`);

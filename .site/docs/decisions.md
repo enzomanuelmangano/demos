@@ -88,6 +88,9 @@ Rows name `font-family="Inter, …"`. The same script sets the reference's body 
 reference's file serves the rest by unicode-range and is no longer preloaded. Pixel parity unchanged: `/` 0.04 % /
 0.28 %, 404 0.03 % / 0.28 %.)
 
+(D7 amended again, 2026-11-23: the subset is a preloaded, hash-versioned, immutable file with `font-display: block`
+and `tnum` kept, no longer inlined in every page: docs/perf.md, "Inter's ASCII as a preloaded file".)
+
 ## D8. The header's scrolled look: an intersection marker, not a scroll handler
 
 The bar takes the page colour and a hairline past 10 px of scroll. A scroll-driven CSS animation was emitted but
