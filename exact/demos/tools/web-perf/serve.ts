@@ -24,7 +24,7 @@ const encoded = (path: string, enc: string) => {
 };
 Bun.serve({
   port: Number(portArg ?? 5391), hostname: "127.0.0.1", idleTimeout: 0,
-  fetch(req) {
+  fetch(req: Request) {
     let path = decodeURIComponent(new URL(req.url).pathname).replace(/^\/\.exact\/gen\/[0-9a-f]+\//, "/");
     let file = join(dir, path);
     if (path.endsWith("/") || !existsSync(file) || statSync(file).isDirectory()) {
