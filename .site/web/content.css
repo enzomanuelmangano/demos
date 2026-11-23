@@ -46,6 +46,10 @@
 /* The article demos' controls: no press dim (Exact's 0.65 on a pressed button; the reference's buttons keep their
    opacity: hover and press scale them to 0.95). */
 #exact-root [data-motion~=demo] :is(button,[data-exact-on~="press"])[data-pressed]{opacity:1 !important}
+/* Their round Play / Pause / Restart buttons shrink to 0.95 under the pointer as live's inline style does it: a
+   `transform`, not the `scale` property a Contract look writes; same pixels, same 300 ms. (Live leaves scale(1) inline
+   once the pointer has left, so a button focused after a hover computes matrix(1) there and none here.) */
+@media (any-hover:hover){html:not([data-exact-input=touch]) [data-motion~=demo-button]:hover:not(:disabled){transform:scale(.95)}}
 
 /* A code token's colour by its palette letter (tools/gen-content.ts PALETTE): the reference's themePlus (palenight with
    its overrides) and the terminal theme's command colour. The runs between comments are coloured by the CSS Custom
