@@ -87,11 +87,11 @@ const LAYER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 /// One painting's bundled pixels and facts.
 struct Painting {
     /// RGB rows, each stored as a delta from the row above, zlib-compressed.
-    albedo: &'static [u8],
+    albedo: &'static crate::bytes::Bytes,
     albedo_size: (u32, u32),
     /// The surface field as f16 bits in byte planes, row deltas, zlib-compressed. `meta` is its
     /// size.
-    surface: &'static [u8],
+    surface: &'static crate::bytes::Bytes,
     meta: (u32, u32),
     /// Whether the surface depth hides the bulb's disc.
     occlude_bulb: bool,
@@ -99,22 +99,16 @@ struct Painting {
 
 const PAINTINGS: [Painting; 2] = [
     Painting {
-        albedo: include_bytes!(
-            "../images/light-on-painting/girl-with-a-pearl-earring-1200x1421.rgb8up.zlib"
-        ),
+        albedo: crate::image!("light-on-painting/girl-with-a-pearl-earring-1200x1421.rgb8up.zlib"),
         albedo_size: (1200, 1421),
-        surface: include_bytes!(
-            "../images/light-on-painting/girl-with-a-pearl-earring-surface-640x758.rgba16f.zlib"
-        ),
+        surface: crate::image!("light-on-painting/girl-with-a-pearl-earring-surface-640x758.rgba16f.zlib"),
         meta: (640, 758),
         occlude_bulb: false,
     },
     Painting {
-        albedo: include_bytes!("../images/light-on-painting/nighthawks-1280x698.rgb8up.zlib"),
+        albedo: crate::image!("light-on-painting/nighthawks-1280x698.rgb8up.zlib"),
         albedo_size: (1280, 698),
-        surface: include_bytes!(
-            "../images/light-on-painting/nighthawks-surface-640x349.rgba16f.zlib"
-        ),
+        surface: crate::image!("light-on-painting/nighthawks-surface-640x349.rgba16f.zlib"),
         meta: (640, 349),
         occlude_bulb: true,
     },
@@ -475,9 +469,23 @@ fn advance_light(
 
 // --- The surface ------------------------------------------------------------------------------
 
+/// The files of gpu/images this surface draws: embedded on the iPhone, fetched before it draws on the web
+/// (crate::bytes).
+const IMAGES: &[&str] = &[
+    "light-on-painting/girl-with-a-pearl-earring-1200x1421.rgb8up.zlib",
+    "light-on-painting/girl-with-a-pearl-earring-surface-640x758.rgba16f.zlib",
+    "light-on-painting/nighthawks-1280x698.rgb8up.zlib",
+    "light-on-painting/nighthawks-surface-640x349.rgba16f.zlib",
+];
+
 /// The relit painting surface. Inputs are the sheet's switches: showBulb, showCord, relight,
 /// showDepth.
+/// On the web it draws once its [`IMAGES`] arrived (crate::bytes::gate).
 pub fn surface() -> Box<dyn Surface> {
+    crate::bytes::gate(IMAGES, ungated())
+}
+
+fn ungated() -> Box<dyn Surface> {
     Box::new(LightOnPainting {
         light: LightState::default(),
         settings: LightSettings::default(),

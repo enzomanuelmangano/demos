@@ -26,7 +26,7 @@ use crate::ui_scroll::{Snap, UiScroll};
 /// Newsreader's glyphs the columns use (a subset), still variable: Core Text draws them at opsz 12.
 static FONT: &[u8] = include_bytes!("../fonts/newsreader-sculptures-subset.ttf");
 /// The baked columns and figure data, zlib-compressed.
-static BAKED: &[u8] = include_bytes!("../images/sculptures-in-words/sculptures.bin.zlib");
+static BAKED: &crate::bytes::Bytes = crate::image!("sculptures-in-words/sculptures.bin.zlib");
 
 const PAGE_BG: u32 = 0xffffff;
 /// A linear gradient from `y0` to `y1`, full width.
@@ -82,8 +82,19 @@ const RATE_NORMAL: f64 = 0.998;
 const RATE_FAST: f64 = 0.99;
 const ARTICLES: usize = 3;
 
+/// The files of gpu/images this surface draws: embedded on the iPhone, fetched before it draws on the web
+/// (crate::bytes).
+const IMAGES: &[&str] = &[
+    "sculptures-in-words/sculptures.bin.zlib",
+];
+
 /// The surface. Input: whether the statue is shown (the button's toggle).
+/// On the web it draws once its [`IMAGES`] arrived (crate::bytes::gate).
 pub fn surface() -> Box<dyn Surface> {
+    crate::bytes::gate(IMAGES, ungated())
+}
+
+fn ungated() -> Box<dyn Surface> {
     Box::new(Sculptures::new())
 }
 

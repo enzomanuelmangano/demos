@@ -22,15 +22,29 @@ const HAPTIC_GAP_MS: f64 = 40.0;
 const SWITCH: f64 = 6.0;
 /// How far past an end (points) the rubber band must pull before its haptic.
 const PAST_END: f64 = 2.0;
-static IMAGE_01: &[u8] = include_bytes!("../images/story-list/image_01-800x600.rgb8.zlib");
-static JPEGS: [&[u8]; 3] = [
-    include_bytes!("../images/story-list/image_02.jpg"),
-    include_bytes!("../images/story-list/image_03.jpg"),
-    include_bytes!("../images/story-list/image_04.jpg"),
+static IMAGE_01: &crate::bytes::Bytes = crate::image!("story-list/image_01-800x600.rgb8.zlib");
+static JPEGS: [&crate::bytes::Bytes; 3] = [
+    crate::image!("story-list/image_02.jpg"),
+    crate::image!("story-list/image_03.jpg"),
+    crate::image!("story-list/image_04.jpg"),
+];
+
+/// The files of gpu/images this surface draws: embedded on the iPhone, fetched before it draws on the web
+/// (crate::bytes).
+const IMAGES: &[&str] = &[
+    "story-list/image_01-800x600.rgb8.zlib",
+    "story-list/image_02.jpg",
+    "story-list/image_03.jpg",
+    "story-list/image_04.jpg",
 ];
 
 /// The demo's surface.
+/// On the web it draws once its [`IMAGES`] arrived (crate::bytes::gate).
 pub fn surface() -> Box<dyn Surface> {
+    crate::bytes::gate(IMAGES, ungated())
+}
+
+fn ungated() -> Box<dyn Surface> {
     Box::new(StoryList {
         size: (0.0, 0.0),
         scale: 3.0,

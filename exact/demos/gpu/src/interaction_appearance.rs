@@ -19,7 +19,7 @@ use draw2d::{fit_cover, Canvas, Color, Font, Images, Paint, Rect, Renderer};
 use crate::gfx;
 use crate::ui_scroll::{Snap, UiScroll, NORMAL};
 
-static POSTER: &[u8] = include_bytes!("../images/interaction-appearance/past-lives.jpg");
+static POSTER: &crate::bytes::Bytes = crate::image!("interaction-appearance/past-lives.jpg");
 
 const TITLE: &str = "Past Lives";
 const DESCRIPTION: &str = "This heart-meltingly romantic and sad movie from Korean-Canadian dramatist and film-maker Celine Song left me wrung out and empty and weirdly euphoric, as if I\u{2019}d lived through an 18-month affair in the course of an hour and three-quarters. How extraordinary to think that this is Song\u{2019}s feature debut.\n\nIt\u{2019}s delicate, sophisticated and yet also somehow simple, direct, even verging on the cheesy. Past Lives has been compared to the movies of Richard Linklater, Noah Baumbach and Greta Gerwig; all true, but I also found myself remembering the wrenching final moments of Wong Kar-wai\u{2019}s In the Mood for Love, with Tony Leung murmuring his pain into a stone hollow in Angkor Wat and - yes - the gooey genius of Dean Friedman\u{2019}s plaintive 1978 chart hit Lucky Stars.";
@@ -39,8 +39,19 @@ struct Palette {
 const LIGHT: Palette = Palette { primary: 0x000000, background: 0xFCFCFC, text: 0xA0A0A0 };
 const DARK: Palette = Palette { primary: 0xFFFFFF, background: 0x090909, text: 0x808080 };
 
+/// The files of gpu/images this surface draws: embedded on the iPhone, fetched before it draws on the web
+/// (crate::bytes).
+const IMAGES: &[&str] = &[
+    "interaction-appearance/past-lives.jpg",
+];
+
 /// The surface. Inputs: safeTop, safeBottom, held, dark.
+/// On the web it draws once its [`IMAGES`] arrived (crate::bytes::gate).
 pub fn surface() -> Box<dyn Surface> {
+    crate::bytes::gate(IMAGES, ungated())
+}
+
+fn ungated() -> Box<dyn Surface> {
     Box::new(Appearance {
         safe: (0.0, 0.0),
         size: (0.0, 0.0),

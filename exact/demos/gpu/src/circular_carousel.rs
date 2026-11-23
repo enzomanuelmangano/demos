@@ -41,21 +41,21 @@ const PAST_END: f64 = 2.0;
 const SWITCH: f64 = 6.0;
 
 /// Each photo as RGB rows, zlib-compressed, with its size.
-static PHOTOS: [(&[u8], u32, u32); COUNT] = [
-    (include_bytes!("../images/circular-carousel/01-400x250.rgb8.zlib"), 400, 250),
-    (include_bytes!("../images/circular-carousel/02-400x267.rgb8.zlib"), 400, 267),
-    (include_bytes!("../images/circular-carousel/03-400x250.rgb8.zlib"), 400, 250),
-    (include_bytes!("../images/circular-carousel/04-267x402.rgb8.zlib"), 267, 402),
-    (include_bytes!("../images/circular-carousel/05-400x250.rgb8.zlib"), 400, 250),
-    (include_bytes!("../images/circular-carousel/06-400x250.rgb8.zlib"), 400, 250),
-    (include_bytes!("../images/circular-carousel/07-267x402.rgb8.zlib"), 267, 402),
-    (include_bytes!("../images/circular-carousel/08-400x267.rgb8.zlib"), 400, 267),
-    (include_bytes!("../images/circular-carousel/09-267x402.rgb8.zlib"), 267, 402),
+static PHOTOS: [(&crate::bytes::Bytes, u32, u32); COUNT] = [
+    (crate::image!("circular-carousel/01-400x250.rgb8.zlib"), 400, 250),
+    (crate::image!("circular-carousel/02-400x267.rgb8.zlib"), 400, 267),
+    (crate::image!("circular-carousel/03-400x250.rgb8.zlib"), 400, 250),
+    (crate::image!("circular-carousel/04-267x402.rgb8.zlib"), 267, 402),
+    (crate::image!("circular-carousel/05-400x250.rgb8.zlib"), 400, 250),
+    (crate::image!("circular-carousel/06-400x250.rgb8.zlib"), 400, 250),
+    (crate::image!("circular-carousel/07-267x402.rgb8.zlib"), 267, 402),
+    (crate::image!("circular-carousel/08-400x267.rgb8.zlib"), 400, 267),
+    (crate::image!("circular-carousel/09-267x402.rgb8.zlib"), 267, 402),
 ];
 /// Pixel sizes of the downloaded photos.
 const DOWNLOADED: [(f64, f64); COUNT] = [(400.0, 250.0), (400.0, 267.0), (400.0, 250.0), (400.0, 600.0), (400.0, 250.0), (400.0, 250.0), (400.0, 600.0), (400.0, 267.0), (400.0, 600.0)];
 
-fn decode(&(bytes, w, h): &(&[u8], u32, u32)) -> draw2d::Image {
+fn decode(&(bytes, w, h): &(&crate::bytes::Bytes, u32, u32)) -> draw2d::Image {
     let rgb = miniz_oxide::inflate::decompress_to_vec_zlib(bytes).unwrap_or_default();
     if rgb.len() != (w * h * 3) as usize {
         return draw2d::Image { width: 1, height: 1, pixels: vec![200, 200, 200, 255] };
@@ -83,8 +83,27 @@ fn photo_rect(index: usize, left: f32, top: f32, side: f32, scale: f32, drawn: (
     Rect::new(left + x as f32, top + y as f32, dw as f32, dh as f32)
 }
 
+/// The files of gpu/images this surface draws: embedded on the iPhone, fetched before it draws on the web
+/// (crate::bytes).
+const IMAGES: &[&str] = &[
+    "circular-carousel/01-400x250.rgb8.zlib",
+    "circular-carousel/02-400x267.rgb8.zlib",
+    "circular-carousel/03-400x250.rgb8.zlib",
+    "circular-carousel/04-267x402.rgb8.zlib",
+    "circular-carousel/05-400x250.rgb8.zlib",
+    "circular-carousel/06-400x250.rgb8.zlib",
+    "circular-carousel/07-267x402.rgb8.zlib",
+    "circular-carousel/08-400x267.rgb8.zlib",
+    "circular-carousel/09-267x402.rgb8.zlib",
+];
+
 /// The demo's surface: input `scaleEnabled`.
+/// On the web it draws once its [`IMAGES`] arrived (crate::bytes::gate).
 pub fn surface() -> Box<dyn Surface> {
+    crate::bytes::gate(IMAGES, ungated())
+}
+
+fn ungated() -> Box<dyn Surface> {
     Box::new(Circular {
         scroll: UiScroll::new(0.0, 0.0, 0.0, NORMAL, Snap::Free),
         width: 0.0,

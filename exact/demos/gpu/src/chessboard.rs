@@ -157,7 +157,7 @@ const MATE: [(f64, f64); 16] = [
     (2060.0, 0.9),
 ];
 
-static SPRITE: &[u8] = include_bytes!("../images/chessboard/pieces-sprite-768x256.rgba8.zlib");
+static SPRITE: &crate::bytes::Bytes = crate::image!("chessboard/pieces-sprite-768x256.rgba8.zlib");
 static BOLD: &[u8] = include_bytes!("../fonts/sf-pro-rounded-bold-chessboard.otf");
 static BOLD_TNUM: &[u8] = include_bytes!("../fonts/sf-pro-rounded-bold-chessboard-tnum.otf");
 static HEAVY: &[u8] = include_bytes!("../fonts/sf-pro-rounded-heavy-chessboard.otf");
@@ -168,29 +168,29 @@ static MENLO_BOLD: &[u8] = include_bytes!("../fonts/menlo-bold-chessboard-subset
 static ZAPF: &[u8] = include_bytes!("../fonts/zapfdingbats-chessboard-subset.ttf");
 
 /// The UI's bitmaps, in [`Images`] order; see gpu/images/chessboard/make.sh.
-static UI_IMAGES: [(&[u8], u32); 22] = [
-    (include_bytes!("../images/chessboard/avatar-magnus-120x120.rgba8.zlib"), 120),
-    (include_bytes!("../images/chessboard/avatar-enzo-120x120.rgba8.zlib"), 120),
-    (include_bytes!("../images/chessboard/avatar-magnus-114x114.rgba8.zlib"), 114),
-    (include_bytes!("../images/chessboard/avatar-enzo-114x114.rgba8.zlib"), 114),
-    (include_bytes!("../images/chessboard/tray-wp-48x48.rgba8.zlib"), 48),
-    (include_bytes!("../images/chessboard/tray-wn-48x48.rgba8.zlib"), 48),
-    (include_bytes!("../images/chessboard/tray-wb-48x48.rgba8.zlib"), 48),
-    (include_bytes!("../images/chessboard/tray-wr-48x48.rgba8.zlib"), 48),
-    (include_bytes!("../images/chessboard/tray-wq-48x48.rgba8.zlib"), 48),
-    (include_bytes!("../images/chessboard/tray-bp-48x48.rgba8.zlib"), 48),
-    (include_bytes!("../images/chessboard/tray-bn-48x48.rgba8.zlib"), 48),
-    (include_bytes!("../images/chessboard/tray-bb-48x48.rgba8.zlib"), 48),
-    (include_bytes!("../images/chessboard/tray-br-48x48.rgba8.zlib"), 48),
-    (include_bytes!("../images/chessboard/tray-bq-48x48.rgba8.zlib"), 48),
-    (include_bytes!("../images/chessboard/promo-wq-144x144.rgba8.zlib"), 144),
-    (include_bytes!("../images/chessboard/promo-wr-144x144.rgba8.zlib"), 144),
-    (include_bytes!("../images/chessboard/promo-wb-144x144.rgba8.zlib"), 144),
-    (include_bytes!("../images/chessboard/promo-wn-144x144.rgba8.zlib"), 144),
-    (include_bytes!("../images/chessboard/promo-bq-144x144.rgba8.zlib"), 144),
-    (include_bytes!("../images/chessboard/promo-br-144x144.rgba8.zlib"), 144),
-    (include_bytes!("../images/chessboard/promo-bb-144x144.rgba8.zlib"), 144),
-    (include_bytes!("../images/chessboard/promo-bn-144x144.rgba8.zlib"), 144),
+static UI_IMAGES: [(&crate::bytes::Bytes, u32); 22] = [
+    (crate::image!("chessboard/avatar-magnus-120x120.rgba8.zlib"), 120),
+    (crate::image!("chessboard/avatar-enzo-120x120.rgba8.zlib"), 120),
+    (crate::image!("chessboard/avatar-magnus-114x114.rgba8.zlib"), 114),
+    (crate::image!("chessboard/avatar-enzo-114x114.rgba8.zlib"), 114),
+    (crate::image!("chessboard/tray-wp-48x48.rgba8.zlib"), 48),
+    (crate::image!("chessboard/tray-wn-48x48.rgba8.zlib"), 48),
+    (crate::image!("chessboard/tray-wb-48x48.rgba8.zlib"), 48),
+    (crate::image!("chessboard/tray-wr-48x48.rgba8.zlib"), 48),
+    (crate::image!("chessboard/tray-wq-48x48.rgba8.zlib"), 48),
+    (crate::image!("chessboard/tray-bp-48x48.rgba8.zlib"), 48),
+    (crate::image!("chessboard/tray-bn-48x48.rgba8.zlib"), 48),
+    (crate::image!("chessboard/tray-bb-48x48.rgba8.zlib"), 48),
+    (crate::image!("chessboard/tray-br-48x48.rgba8.zlib"), 48),
+    (crate::image!("chessboard/tray-bq-48x48.rgba8.zlib"), 48),
+    (crate::image!("chessboard/promo-wq-144x144.rgba8.zlib"), 144),
+    (crate::image!("chessboard/promo-wr-144x144.rgba8.zlib"), 144),
+    (crate::image!("chessboard/promo-wb-144x144.rgba8.zlib"), 144),
+    (crate::image!("chessboard/promo-wn-144x144.rgba8.zlib"), 144),
+    (crate::image!("chessboard/promo-bq-144x144.rgba8.zlib"), 144),
+    (crate::image!("chessboard/promo-br-144x144.rgba8.zlib"), 144),
+    (crate::image!("chessboard/promo-bb-144x144.rgba8.zlib"), 144),
+    (crate::image!("chessboard/promo-bn-144x144.rgba8.zlib"), 144),
 ];
 fn avatar_image(side: Side, big: bool) -> usize {
     (if big { 0 } else { 2 }) + side as usize
@@ -516,8 +516,41 @@ struct Gpu {
     groups: Option<[wgpu::BindGroup; 3]>,
 }
 
+/// The files of gpu/images this surface draws: embedded on the iPhone, fetched before it draws on the web
+/// (crate::bytes).
+const IMAGES: &[&str] = &[
+    "chessboard/pieces-sprite-768x256.rgba8.zlib",
+    "chessboard/avatar-magnus-120x120.rgba8.zlib",
+    "chessboard/avatar-enzo-120x120.rgba8.zlib",
+    "chessboard/avatar-magnus-114x114.rgba8.zlib",
+    "chessboard/avatar-enzo-114x114.rgba8.zlib",
+    "chessboard/tray-wp-48x48.rgba8.zlib",
+    "chessboard/tray-wn-48x48.rgba8.zlib",
+    "chessboard/tray-wb-48x48.rgba8.zlib",
+    "chessboard/tray-wr-48x48.rgba8.zlib",
+    "chessboard/tray-wq-48x48.rgba8.zlib",
+    "chessboard/tray-bp-48x48.rgba8.zlib",
+    "chessboard/tray-bn-48x48.rgba8.zlib",
+    "chessboard/tray-bb-48x48.rgba8.zlib",
+    "chessboard/tray-br-48x48.rgba8.zlib",
+    "chessboard/tray-bq-48x48.rgba8.zlib",
+    "chessboard/promo-wq-144x144.rgba8.zlib",
+    "chessboard/promo-wr-144x144.rgba8.zlib",
+    "chessboard/promo-wb-144x144.rgba8.zlib",
+    "chessboard/promo-wn-144x144.rgba8.zlib",
+    "chessboard/promo-bq-144x144.rgba8.zlib",
+    "chessboard/promo-br-144x144.rgba8.zlib",
+    "chessboard/promo-bb-144x144.rgba8.zlib",
+    "chessboard/promo-bn-144x144.rgba8.zlib",
+];
+
 /// The demo's surface.
+/// On the web it draws once its [`IMAGES`] arrived (crate::bytes::gate).
 pub fn surface() -> Box<dyn Surface> {
+    crate::bytes::gate(IMAGES, ungated())
+}
+
+fn ungated() -> Box<dyn Surface> {
     Box::new(Chessboard::new())
 }
 

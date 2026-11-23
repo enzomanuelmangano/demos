@@ -118,6 +118,10 @@
   "data": [
     "scroller"
   ],
+  "before_build": [
+    "bun",
+    "tools/gpu-images-web.mjs"
+  ],
   "commands": {
     "phone": [
       "bun",

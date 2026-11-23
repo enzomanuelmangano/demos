@@ -269,7 +269,7 @@ Not worth doing now: wasm opt-level (the GPU module is `opt-level = "z"`, fat LT
 is a few ms at most per frame on desktop, the stutters above are commits, layout and resizes, not wasm speed); and
 backdrop-filter (removing it changed nothing measurable).
 
-### Plan: the GPU module's images as lazily fetched assets (fix 6)
+### Plan: the GPU module's images as lazily fetched assets (fix 6; done differently, see the third session)
 
 Today 19 surfaces `include_bytes!` 25 MB from `gpu/images/` (biggest: art-gallery 6.8 MB, light-on-painting 4.5 MB,
 swipe-cards 3.2 MB, github-onboarding 2.3 MB, circular-carousel 2.0 MB, prequel-slider 1.9 MB, sculptures-in-words
@@ -326,11 +326,7 @@ display's pace as a person's browser does; a "presented" gap over a period with 
 
 Still open:
 
-- **The GPU module's embedded images (24.9 MB of the 32 MB load)**: not started. The plan below stands; the
-  open question found this session: `assets/` is shipped to the iPhone too, so copying gpu/images there doubles 25 MB
-  in the iOS bundle unless Exact gets a web-only asset directory (or the iPhone switches to the fetched copies as
-  well). The asset path (`Surface::assets` / `asset`) works today; 18 surfaces need a "not yet" path at their
-  image's use.
+- The GPU module's embedded images: done (third session, below).
 - **sculptures-in-words' 2 MB/frame**: the instances buffer is already built once per size; the per-frame bytes are
   draw2d's immediate-mode geometry for the column of text (`draw_glyphs_subpixel` per visible line, every frame
   while the column scrolls). A fix is caching the column as a texture per page (shared Rust, both platforms). At vsync
@@ -338,6 +334,39 @@ Still open:
 - scroll-progress commits `offset` per scroll event (its GPU meter reads it).
 - Per-frame uploads in notion-qrcode, mnist, drag-to-sort, fourier-visualizer, gl-transitions, github-contributions
   (uncapped numbers; recheck at vsync before touching them).
+
+## The GPU module's images, fetched per demo on the web (third session, 2026-11-23)
+
+Exact has no web-only key in app.json (`host.web` takes `base`, `head`, `csp`, `cspReportOnly`; `assets/` ships to
+the iPhone too), but a package's `exact.json` `web.assets` are web only: the web build copies them from the
+TypeScript capture to `/assets/<package>/<path>` (host/web-js/build.mjs, LLP 1154 D2), the dev server serves them
+as deferred cards, and no native host reads them. So:
+
+- `packages/gpu-images` (package `demos-gpu-images`, imported by app.ts for its side effect) holds the images cut in
+  64 KiB pieces: `tools/gpu-images-web.mjs`, app.json `before_build`, writes `chunks/<file>.<i>` and `exact.json` (both
+  Git-ignored; a stamp makes it a no-op when gpu/images is unchanged). Pieces, because the web host's asset fetch
+  (host/web/gpu-assets.js) aborts an attempt after 5 s: a 6.25 MB atlas never arrives over 4G whole.
+- `gpu/src/bytes.rs`: `image!("<path in gpu/images>")` is `include_bytes!` on native (same bytes, so the iPhone's
+  binary and bundle are what they were), a name on wasm32. Each of the 17 surfaces that draws images lists them
+  (`IMAGES`) and is wrapped by `bytes::gate` (native: the surface itself). On the web the gate asks for the pieces
+  (`Surface::assets`), retries a failed piece 4 times, holds the canvas's size, binds and input and draws nothing
+  (the demo's backdrop shows) until every file arrived, then replays size and inputs and draws; a file arrives once
+  per page. Three small files stay embedded on the web as well (read before a draw: art-gallery's gallery.bin
+  0.53 MB, mnist's weights 0.36 MB, grid-visualizer's masks). A test checks each surface's `image!` uses against its
+  `IMAGES` list.
+
+| measure (production build, serve.ts, cold) | before | after |
+|---|---|---|
+| `gpu_bg.wasm` | 28.52 MB, 24.74 MB brotli | 4.70 MB, 2.06 MB brotli |
+| cold load on the wire, 4G + 4x CPU, 390 x 844 | 32.7 MB | 5.73 MB |
+| GPU module instantiated (`load.ts` GPU ready), same profile | 30.9 s | 9.8 s |
+| shaders loaded (55 `.wgsl`, after the module) | after 30.9 s | 14.2 s |
+| a demo's images, opened cold by link on 4G (no CPU throttle): first piece asked / all arrived | - (in the 25 MB) | sculptures-in-words 16.5 / 18.3 s (1.3 MB), chessboard 16.4 / 17.3 s, art-gallery 16.3 / 24.9 s (6.3 MB) |
+| on cable, each of the 17 demos | - | every piece in under 0.1 s, all drawn, no console error (screenshots checked) |
+
+Left, in Exact (host/web/gpu-glue.js `loadShaders`): the production page fetches the GPU module's shaders one after
+another (`for ... await fetch`), 55 round trips: on 4G ~7 s between the module and the first surface. Fetching them
+in parallel would bring a GPU demo's first frame to ~10 s on a cold 4G link.
 
 ## What was changed here
 

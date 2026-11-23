@@ -36,13 +36,24 @@ const MARGIN: f32 = 20.0;
 const SHADOW_SIGMA: f32 = 5.0;
 const LAYER: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 /// The logo's coverage, pre-scaled to its drawn size and zlib-compressed.
-static LOGO_BITMAP: &[u8] = include_bytes!("../images/parallax-logo-600x495.a8.zlib");
+static LOGO_BITMAP: &crate::bytes::Bytes = crate::image!("parallax-logo-600x495.a8.zlib");
 const LOGO_SIZE: (u32, u32) = (600, 495);
 /// Card colour. View hex is read as Display P3, so these bytes are not sRGB.
 const CARD_COLOR: (u8, u8, u8) = (28, 39, 50);
 
+/// The files of gpu/images this surface draws: embedded on the iPhone, fetched before it draws on the web
+/// (crate::bytes).
+const IMAGES: &[&str] = &[
+    "parallax-logo-600x495.a8.zlib",
+];
+
 /// The demo's surface.
+/// On the web it draws once its [`IMAGES`] arrived (crate::bytes::gate).
 pub fn surface() -> Box<dyn Surface> {
+    crate::bytes::gate(IMAGES, ungated())
+}
+
+fn ungated() -> Box<dyn Surface> {
     let half = (CARD_SIZE / 2.0) as f64;
     Box::new(Parallax {
         touch: (half, half),

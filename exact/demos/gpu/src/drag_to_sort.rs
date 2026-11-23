@@ -127,16 +127,16 @@ const HABITS: [Habit; COUNT] = [
 ];
 
 /// The emoji images, 76 x 70 px, premultiplied RGBA, zlib-compressed.
-static EMOJI: [&[u8]; COUNT] = [
-    include_bytes!("../images/drag-to-sort/emoji-0-76x70.rgba.zlib"),
-    include_bytes!("../images/drag-to-sort/emoji-1-76x70.rgba.zlib"),
-    include_bytes!("../images/drag-to-sort/emoji-2-76x70.rgba.zlib"),
-    include_bytes!("../images/drag-to-sort/emoji-3-76x70.rgba.zlib"),
-    include_bytes!("../images/drag-to-sort/emoji-4-76x70.rgba.zlib"),
-    include_bytes!("../images/drag-to-sort/emoji-5-76x70.rgba.zlib"),
-    include_bytes!("../images/drag-to-sort/emoji-6-76x70.rgba.zlib"),
-    include_bytes!("../images/drag-to-sort/emoji-7-76x70.rgba.zlib"),
-    include_bytes!("../images/drag-to-sort/emoji-8-76x70.rgba.zlib"),
+static EMOJI: [&crate::bytes::Bytes; COUNT] = [
+    crate::image!("drag-to-sort/emoji-0-76x70.rgba.zlib"),
+    crate::image!("drag-to-sort/emoji-1-76x70.rgba.zlib"),
+    crate::image!("drag-to-sort/emoji-2-76x70.rgba.zlib"),
+    crate::image!("drag-to-sort/emoji-3-76x70.rgba.zlib"),
+    crate::image!("drag-to-sort/emoji-4-76x70.rgba.zlib"),
+    crate::image!("drag-to-sort/emoji-5-76x70.rgba.zlib"),
+    crate::image!("drag-to-sort/emoji-6-76x70.rgba.zlib"),
+    crate::image!("drag-to-sort/emoji-7-76x70.rgba.zlib"),
+    crate::image!("drag-to-sort/emoji-8-76x70.rgba.zlib"),
 ];
 const EMOJI_PX: (u32, u32) = (76, 70);
 
@@ -181,8 +181,27 @@ struct Hold {
     at: f64,
 }
 
+/// The files of gpu/images this surface draws: embedded on the iPhone, fetched before it draws on the web
+/// (crate::bytes).
+const IMAGES: &[&str] = &[
+    "drag-to-sort/emoji-0-76x70.rgba.zlib",
+    "drag-to-sort/emoji-1-76x70.rgba.zlib",
+    "drag-to-sort/emoji-2-76x70.rgba.zlib",
+    "drag-to-sort/emoji-3-76x70.rgba.zlib",
+    "drag-to-sort/emoji-4-76x70.rgba.zlib",
+    "drag-to-sort/emoji-5-76x70.rgba.zlib",
+    "drag-to-sort/emoji-6-76x70.rgba.zlib",
+    "drag-to-sort/emoji-7-76x70.rgba.zlib",
+    "drag-to-sort/emoji-8-76x70.rgba.zlib",
+];
+
 /// The demo's surface; input 0 is safeTop.
+/// On the web it draws once its [`IMAGES`] arrived (crate::bytes::gate).
 pub fn surface() -> Box<dyn Surface> {
+    crate::bytes::gate(IMAGES, ungated())
+}
+
+fn ungated() -> Box<dyn Surface> {
     Box::new(Sort {
         scroll: UiScroll::new(0.0, 0.0, 0.0, NORMAL, Snap::Free),
         safe_top: 0.0,

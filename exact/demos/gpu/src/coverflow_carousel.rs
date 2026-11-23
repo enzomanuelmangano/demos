@@ -31,22 +31,43 @@ const SWITCH: f64 = 6.0;
 /// How far past an end (points) the rubber band must pull before its haptic.
 const PAST_END: f64 = 2.0;
 
-static PHOTOS: [&[u8]; COUNT] = [
-    include_bytes!("../images/coverflow-carousel/01.jpg"),
-    include_bytes!("../images/coverflow-carousel/02.jpg"),
-    include_bytes!("../images/coverflow-carousel/03.jpg"),
-    include_bytes!("../images/coverflow-carousel/04.jpg"),
-    include_bytes!("../images/coverflow-carousel/05.jpg"),
-    include_bytes!("../images/coverflow-carousel/06.jpg"),
-    include_bytes!("../images/coverflow-carousel/07.jpg"),
-    include_bytes!("../images/coverflow-carousel/08.jpg"),
-    include_bytes!("../images/coverflow-carousel/09.jpg"),
-    include_bytes!("../images/coverflow-carousel/10.jpg"),
-    include_bytes!("../images/coverflow-carousel/11.jpg"),
+static PHOTOS: [&crate::bytes::Bytes; COUNT] = [
+    crate::image!("coverflow-carousel/01.jpg"),
+    crate::image!("coverflow-carousel/02.jpg"),
+    crate::image!("coverflow-carousel/03.jpg"),
+    crate::image!("coverflow-carousel/04.jpg"),
+    crate::image!("coverflow-carousel/05.jpg"),
+    crate::image!("coverflow-carousel/06.jpg"),
+    crate::image!("coverflow-carousel/07.jpg"),
+    crate::image!("coverflow-carousel/08.jpg"),
+    crate::image!("coverflow-carousel/09.jpg"),
+    crate::image!("coverflow-carousel/10.jpg"),
+    crate::image!("coverflow-carousel/11.jpg"),
+];
+
+/// The files of gpu/images this surface draws: embedded on the iPhone, fetched before it draws on the web
+/// (crate::bytes).
+const IMAGES: &[&str] = &[
+    "coverflow-carousel/01.jpg",
+    "coverflow-carousel/02.jpg",
+    "coverflow-carousel/03.jpg",
+    "coverflow-carousel/04.jpg",
+    "coverflow-carousel/05.jpg",
+    "coverflow-carousel/06.jpg",
+    "coverflow-carousel/07.jpg",
+    "coverflow-carousel/08.jpg",
+    "coverflow-carousel/09.jpg",
+    "coverflow-carousel/10.jpg",
+    "coverflow-carousel/11.jpg",
 ];
 
 /// The demo's surface.
+/// On the web it draws once its [`IMAGES`] arrived (crate::bytes::gate).
 pub fn surface() -> Box<dyn Surface> {
+    crate::bytes::gate(IMAGES, ungated())
+}
+
+fn ungated() -> Box<dyn Surface> {
     Box::new(Coverflow {
         scroll: UiScroll::new(0.0, 0.0, 0.0, FAST, Snap::Interval(ITEM)),
         size: (0.0, 0.0),

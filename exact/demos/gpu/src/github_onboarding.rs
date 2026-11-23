@@ -31,24 +31,24 @@ const TITLES: [&str; 4] = [
     "Sleek Feline in Repose",
 ];
 const COLORS: [u32; 4] = [0x265D9E, 0x4E8DC5, 0x7BB2E9, 0xA1CAE8];
-static PHOTOS: [(&[u8], u32, u32); 4] = [
+static PHOTOS: [(&crate::bytes::Bytes, u32, u32); 4] = [
     (
-        include_bytes!("../images/github-onboarding/02-696x999.rgb8up.zlib"),
+        crate::image!("github-onboarding/02-696x999.rgb8up.zlib"),
         696,
         999,
     ),
     (
-        include_bytes!("../images/github-onboarding/01-640x853.rgb8up.zlib"),
+        crate::image!("github-onboarding/01-640x853.rgb8up.zlib"),
         640,
         853,
     ),
     (
-        include_bytes!("../images/github-onboarding/03-640x896.rgb8up.zlib"),
+        crate::image!("github-onboarding/03-640x896.rgb8up.zlib"),
         640,
         896,
     ),
     (
-        include_bytes!("../images/github-onboarding/04-640x960.rgb8up.zlib"),
+        crate::image!("github-onboarding/04-640x960.rgb8up.zlib"),
         640,
         960,
     ),
@@ -240,8 +240,22 @@ struct Gpu {
     bind: wgpu::BindGroup,
 }
 
+/// The files of gpu/images this surface draws: embedded on the iPhone, fetched before it draws on the web
+/// (crate::bytes).
+const IMAGES: &[&str] = &[
+    "github-onboarding/02-696x999.rgb8up.zlib",
+    "github-onboarding/01-640x853.rgb8up.zlib",
+    "github-onboarding/03-640x896.rgb8up.zlib",
+    "github-onboarding/04-640x960.rgb8up.zlib",
+];
+
 /// The demo's surface.
+/// On the web it draws once its [`IMAGES`] arrived (crate::bytes::gate).
 pub fn surface() -> Box<dyn Surface> {
+    crate::bytes::gate(IMAGES, ungated())
+}
+
+fn ungated() -> Box<dyn Surface> {
     Box::new(Onboarding {
         scroll: UiScroll::new(0.0, 0.0, 0.0, NORMAL, Snap::Page(1.0)),
         dots: std::array::from_fn(|_| pressto::Pressable::new()),
