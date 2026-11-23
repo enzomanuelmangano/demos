@@ -90,5 +90,20 @@ local: the same values at the same times (e.g. 128 ms: blur 11, alpha 85, pos 61
 
 1. The loaders' 1 px snap in the gallery (not on the article pages).
 2. Metaball drag lags live by one frame (Exact's pointer → state → draw round trip).
-3. Bundle: the four articles' components + the gallery add ~49 KB raw / ~15 KB gzip to the shared `app-*.js` (Exact
-   has no per-route code split); the draw code ~2.7 KB gzip.
+3. Bundle: see "Cost" below. Once wired, the four articles' components cost every page ~19 KB gzip of `app-*.js`
+   (Exact has one view-plan script, no per-route split).
+
+## Cost (after review, 2026-11-23): raw / gzip bytes against origin/site `76c320c7`
+
+The gallery is no longer a route: `bun components/interactive/_canvas/.tools/gallery.ts` builds it into
+`dist/gallery-canvas` (route patched into a copy of app.contract, as gesture-kit's) and serves it on 4312. The drawing
+code is a chunk (`draws-*.js`, 5.3 KB / 2.6 KB) imported on the first draw. No keyframes (the loaders' fade and the
+toast are transitions armed by first layout). Dispatchers call each demo component once.
+
+| file | origin/site | this branch (unwired) | this branch, wired into markdown.contract (local only) |
+|---|---|---|---|
+| `/` HTML | 94,444 / 19,807 | 94,444 / 19,810 | 98,307 / 20,008 |
+| `/articles/metaball` HTML | 204,676 / 30,054 | 204,676 / 30,053 | 223,900 / 32,795 |
+| `/articles/animated-gradient` HTML | 206,874 / 29,006 | 206,874 / 29,010 | 214,489 / 29,560 |
+| style.css | 139,278 / 18,767 | 139,278 / 18,767 | 155,491 / 20,295 |
+| app.js | 378,946 / 100,835 | 380,542 / 101,396 | 450,476 / 120,244 |
