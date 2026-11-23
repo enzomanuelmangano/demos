@@ -335,3 +335,17 @@ Cost: the CTA and hint are a few plan nodes (app.js +~1 KB) and ~2.5 KB of head 
   Cost: the SVG's 8 paths (~3.9 KB raw, ~1.7 KB gzip in the page) and 1.3 KB of CSS; the title is not the LCP
   element (gradient-clipped text): `/demos` 1440 LCP cable 212 → 188 ms, 4g 648 → 668 ms (noise; 3 runs, AC power),
   CLS 0, page TBT 17 → 16 ms.
+- **Tab switches, re-measured in a headed Chrome (owner's report).** A normal window (`--user-data-dir`, no
+  extensions), /demos in tab A, example.com in tab B, 10 switches 2-10 s apart, one minimise/restore, one
+  freeze/resume: **0 child-frame navigations**, the frame's src unchanged, `live` kept, and a screencast of the
+  device over 3 returns shows the launcher still (only its own wallpaper light moving). Nothing in the page reloads
+  the frame on visibility or focus (Exact does not re-render the route on either).
+- **Articles ↔ Demos: the frame is kept (from 1024 px).** It now lives outside the routed entry, in `app.contract`
+  (mounted from the first visit, `keepSim`; hidden with `display: none` on any other page, which keeps a frame
+  loaded; never moved, which would reload it), placed by CSS exactly where the hero leaves its column (the row's
+  right padding is the device's width plus the gap; `sim-keep`'s top and right are computed from the same `--W`,
+  `--m`, `--avail`, `--ph`). Measured: 5 round trips, **0 loads of the app**, the frame at opacity 1 from the first
+  50 ms of each return. Under 1024 px the hero's height depends on its wrapped text, so no CSS can place a frame
+  outside the flow there: the page's own frame is used, created per visit, with the still (from 768 px) until it has
+  drawn. The device's entrance (rise, 700 ms) replays with the copy's on each return (a `display` change restarts CSS
+  animations); the app inside keeps its state.

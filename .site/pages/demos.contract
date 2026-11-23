@@ -148,7 +148,7 @@ component DemosPage
             column flex-shrink=0 data-motion="blur-in" data-delay="550"
               StarsPill(seed=seed, counted=counted)
             view width=centring() flex-shrink=1
-        DemosSim(ready=simReady, live=simLive, seen=simSeen, loaded=simLoaded)
+        DemosSim(ready=simReady, live=simLive, seen=simSeen, loaded=simLoaded, place="sim-route")
 
 // The Demos app (its own build at /demos/app/), in a sandboxed frame: an opaque origin, so Chrome gives it its own
 // renderer process and its start never blocks this page's main thread (D12; the app's files answer any origin,
@@ -176,9 +176,10 @@ component DemosSim
     live: bool
     seen: action
     loaded: action
+    place: string
   view
     column flex-shrink=0 width=`min(100%, ${lg(9999, simColumn())})` margin-top=`min(${steps(32, 32, 32, 48)}, ${lg(9999, 0)})`
-      data-motion="sim-col" intersect=seen intersect-margin="100% 0px"
+      data-motion=`sim-col ${place}` intersect=seen intersect-margin="100% 0px"
       column margin-left=md(-24, 0) margin-right=md(-24, 0) overflow="hidden" data-motion="sim-wrap"
         padding-top=md(24, 0) mask-image="linear-gradient(to bottom, transparent 0px, #000000 24px)"
         column align-items="center" padding-bottom=md(24, 0) data-motion="sim-wrap" mask-image="linear-gradient(to top, transparent 0px, #000000 24px)"

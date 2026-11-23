@@ -5,7 +5,7 @@ use SiteHeader, SiteFooter, Container from "./components/shell.contract"
 use HomePage from "./pages/home.contract"
 use NotFound from "./pages/not-found.contract"
 use Newsletter from "./components/newsletter.contract"
-use DemosPage from "./pages/demos.contract"
+use DemosPage, DemosSim from "./pages/demos.contract"
 use InspirationsPage from "./pages/inspirations.contract"
 use CoursePage from "./pages/course.contract"
 use DemosAppPage from "./pages/demos-app.contract"
@@ -83,6 +83,27 @@ component App
   state simNear = false
   state simFramed = false
   state simLive = false
+  // From 1024 px the frame is not the page's: it is kept here, outside the routed entry, from the first visit on, and
+  // only hidden while another page is shown, so a return to /demos finds the app as it was left (D16). Under 1024 px
+  // the page's own frame (above) is used, created per visit.
+  state keepSim = false
+  state keepNear = false
+  state keepFramed = false
+  state keepLive = false
+  task keep when not keepSim and top(nav).name == "demos"
+    after(1, keepIt)
+  action keepIt
+    keepSim = true
+  action keepSeen(entry: IntersectionObserverEntry)
+    if entry.isIntersecting
+      keepNear = true
+  action keepLoaded
+    if simSettled and keepNear
+      keepFramed = true
+  task keepReveal when keepFramed and not keepLive
+    after(800, keepShow)
+  action keepShow
+    keepLive = true
   task sim when not simSettled
     after(1600, settleSim)
   action settleSim
@@ -195,3 +216,8 @@ component App
                   image="/og/main.png" canonical="/"
                 NotFound()
             SiteFooter(legal=legalFooter(e.name, e.name == "docPage" ? e.params.post : ""))
+      // /demos's frame from 1024 px, kept across pages (D16): placed where the page's hero leaves its column (web/head.css
+      // sim-keep), hidden on any other page and under 1024 px (a hidden frame stays loaded; it is never moved).
+      if keepSim or top(nav).name == "demos"
+        view position="absolute" top=0 left=0 right=0 height=0 data-motion=(top(nav).name == "demos" ? "sim-keep-layer on" : "sim-keep-layer")
+          DemosSim(ready=(simSettled and keepNear), live=keepLive, seen=keepSeen, loaded=keepLoaded, place="sim-keep")
