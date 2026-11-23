@@ -153,7 +153,8 @@ function asset(kind: string, slug: string, rel: string, original = false): { url
   let name = basename(rel);
   const target = () => join(outDir, name);
   if ((ext === '.png' || ext === '.jpg' || ext === '.jpeg' || ext === '.webp') && (width > MAX_WIDTH || ext === '.png')) {
-    const webp = basename(rel, extname(rel)) + (ext === '.webp' ? '.webp' : `${ext.replace('.', '-')}.webp`);
+    // A resized WebP gets its own name, so the original keeps its file (a featured image's is og:image's).
+    const webp = basename(rel, extname(rel)) + (ext === '.webp' ? `-${MAX_WIDTH}w.webp` : `${ext.replace('.', '-')}.webp`);
     const out = join(outDir, webp);
     if (!existsSync(out) || statSync(out).mtimeMs < statSync(file).mtimeMs) {
       const r = spawnSync('magick', [file, '-resize', `${MAX_WIDTH}x>`, '-quality', '82', '-define', 'webp:method=6', out]);
