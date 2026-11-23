@@ -15,11 +15,11 @@ and it holds public values only.
 
 ```sh
 cd .site
-bun tools/local-env/api.ts --site-port 4314 &       # the reference's Next API on :3000 (a git-archive copy, see below)
+bun tools/local-env/api.ts --site-port 4314 &       # the reference's Next API on 127.0.0.1:3000 only (a git-archive copy, see below)
 bun tools/local-env/site-env.ts --site-port 4314    # .env.local: SITE_ACCOUNTS=1 + the public keys
 bun run build                                        # site (+ observability), as CI does
-LEGACY_API_ORIGIN=http://localhost:3000 bun tools/compose.ts   # with it, /profile is the site's page
-LEGACY_API_ORIGIN=http://localhost:3000 bun tools/serve.ts --port 4314 &
+LEGACY_API_ORIGIN=http://127.0.0.1:3000 bun tools/compose.ts   # with it, /profile is the site's page
+LEGACY_API_ORIGIN=http://127.0.0.1:3000 bun tools/serve.ts --port 4314 &
 bun tools/local-env/e2e.ts http://localhost:4314     # the end-to-end check (below)
 ```
 
@@ -27,7 +27,7 @@ bun tools/local-env/e2e.ts http://localhost:4314     # the end-to-end check (bel
 another worktree's `.out/demos-web/<key>/`). `bun tools/local-env/site-env.ts --off` returns to the public build.
 Use the same port everywhere: the OAuth `redirect_uri` and the page's API base are `http://localhost:<port>`.
 
-**The API.** `tools/local-env/api.ts` runs `next dev` from `<reactiive>/reactiive-api-local`, a copy of the
+**The API.** `tools/local-env/api.ts` runs `next dev -H 127.0.0.1` (loopback only: it holds production secrets; the launcher checks the listener with `lsof` and stops if it is not loopback) from `<reactiive>/reactiive-api-local`, a copy of the
 reference made with `git archive HEAD | tar -x` (never a worktree; the reference clone is not touched), with
 `bun install` and its `content:build`. The env file's values reach the Next process's environment only (no `.env`
 file anywhere; the launcher refuses to start if the copy has one), filtered to the reference's own names

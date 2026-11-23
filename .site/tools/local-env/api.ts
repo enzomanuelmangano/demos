@@ -53,8 +53,28 @@ if (env.BEEHIIV_API_KEY) env.BEEHIIV_API_KEY = INERT;
 if (!telegram && env.TELEGRAM_BOT_TOKEN) env.TELEGRAM_BOT_TOKEN = INERT;
 env.NEXT_TELEMETRY_DISABLED = '1';
 console.log(`api: overrides: EXPO_PUBLIC_WEBSITE_URL=http://localhost:${sitePort}, Sentry off, Lemon Squeezy dropped, Beehiiv inert, Telegram ${telegram ? 'LIVE' : 'inert'}`);
-console.log(`api: http://localhost:${port} (from ${DIR})`);
+console.log(`api: http://127.0.0.1:${port} (loopback only, from ${DIR})`);
 
-const child = spawn('bunx', ['next', 'dev', '--turbopack', '-p', port], { cwd: DIR, env, stdio: 'inherit' });
+// Loopback only: the process holds production secrets (DATABASE_URL, AUTH_JWT_SECRET, OAuth secrets) and next dev
+// shows error details; on all interfaces anyone on the network could reach it.
+const child = spawn('bunx', ['next', 'dev', '--turbopack', '-H', '127.0.0.1', '-p', port], { cwd: DIR, env, stdio: 'inherit' });
 for (const s of ['SIGINT', 'SIGTERM'] as const) process.on(s, () => child.kill(s));
 child.on('exit', (code) => process.exit(code ?? 0));
+
+// Refuse to keep running unless every listener on the port is loopback (lsof, once it listens; 60 s at most).
+const listeners = () => spawnSync('lsof', ['-nP', `-iTCP:${port}`, '-sTCP:LISTEN', '-Fn'], { encoding: 'utf8' }).stdout.split('\n').filter((l) => l.startsWith('n')).map((l) => l.slice(1));
+for (let t = 0; ; t += 250) {
+  const ls = listeners();
+  if (ls.length) {
+    const open = ls.filter((a) => !/^(127\.0\.0\.1|\[::1\]|localhost):/.test(a));
+    if (open.length) {
+      console.error(`api: REFUSED: port ${port} listens on ${open.join(', ')} (not loopback): stopping`);
+      child.kill('SIGKILL');
+      process.exit(1);
+    }
+    console.log(`api: listener check: ${ls.join(', ')} (loopback only)`);
+    break;
+  }
+  if (t > 60000) { console.error('api: no listener after 60 s: stopping'); child.kill('SIGKILL'); process.exit(1); }
+  await Bun.sleep(250);
+}
