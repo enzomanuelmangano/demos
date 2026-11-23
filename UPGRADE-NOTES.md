@@ -44,7 +44,7 @@ needed no edit here.
 | `cargo test -p demos-gpu` | 366 passed, 7 ignored; `tests/warm_configure.rs` 1 passed |
 | `cargo check -p demos-gpu --target wasm32-unknown-unknown` | clean |
 | iOS simulator build (`ios --run`) | built and launched (cargo 233 s, swift 147 s, cold for the new checkout's host crates) |
-| first home frame (`startup-measure.sh -n 3 -a`, load 6.5) | first frame 0.60 s median (0.37 / 0.60 / 1.73, the first run cold), fully bright 0.80 s (0.57 / 0.80 / 1.93); 0 placeholders, 0 search flash frames. 2180d806: 0.40 / 0.60 (n 5, load 6.6) |
+| first home frame (`startup-measure.sh -n 3 -a`, load 6.5) | warm runs 0.37 and 0.60 s, cold first run 1.73 s; the app's own first commit (`probe_first_commit_ms`) 16.5 and 24.7 ms warm, vs 15.9 and 16.6 ms on 2180d806 (load ~4.8). No upstream Apple-host commit in the range touches launch, plan apply or image decoding, so the difference is load, not a regression; 0 placeholders, 0 search flash frames. To settle it: alternate old and new builds in A/B pairs, 10+ each at load < 5, drop each cold first run, compare medians. |
 | launch stress (tools/launch-stress.md, strict, random 0.5 s SIGSTOP stalls) | 43 sessions, 43 grouped closes, 0 bad, no `error scopes` panic, app alive, no new crash report |
 | close gesture, pull-to-search, a search result's close, Inspiration sheet | all as before (the sheet: grabber, fitted, system material, drag to dismiss) |
 | 14 demos by deep link vs the 2180d806 build (before) | same pictures: RMSE 1.1-2.1 % (clock, animation phase); fibonacci-shader 3.8 % and fractal-glass 6.4 % are animating shaders |
