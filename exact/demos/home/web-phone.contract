@@ -208,12 +208,12 @@ component WebShell
           background-color="#0c0c0e"
           background-image="radial-gradient(ellipse 90% 70% at 50% 35%, #2b2b31, #161619 60%, #0a0a0b)" testId="web-stage"
           column width=frameW() height=frameH() flex-shrink=0 position="relative" scale=s
-            // The titanium band, then the black glass edge, then the display.
+            // The titanium band (4 pt, lit evenly top to bottom so the top edge reads as thick as the sides), then the black glass edge, then the display.
             view position="absolute" inset=0 border-radius=74 corner-shape="-exact-continuous"
-              background-image="linear-gradient(150deg, #e4e5e8, #8f9197 22%, #cfd0d3 48%, #7d7f85 74%, #babcc0)"
-              box-shadow="0px 50px 120px rgba(0,0,0,0.6), 0px 14px 34px rgba(0,0,0,0.45)"
+              background-image="linear-gradient(180deg, #eceded, #c3c5c9 20%, #dcdde0 50%, #a9abb0 80%, #cfd0d3)"
+              box-shadow="0px 50px 120px rgba(0,0,0,0.6), 0px 14px 34px rgba(0,0,0,0.45), inset 0px 0px 0px 1px rgba(255,255,255,0.55)"
             // contract-lint-disable-next-line concentric-bottom-ui -- the device frame, not an app control
-            view position="absolute" left=3 top=3 right=3 bottom=3 border-radius=71 corner-shape="-exact-continuous" background-color="#050506"
+            view position="absolute" left=4 top=4 right=4 bottom=4 border-radius=70 corner-shape="-exact-continuous" background-color="#050506"
               box-shadow="inset 0px 0px 0px 1px rgba(255,255,255,0.08)"
             // The side buttons: the action button and the volume keys on the left, the power key on the right.
             view position="absolute" left=-3 top=150 width=4 height=30 border-radius=2 background-color="#9a9ca2"
