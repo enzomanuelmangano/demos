@@ -53,14 +53,10 @@ component App
   resource article = loadArticle(top(nav).name == "article" ? post : "") as shape Page
   resource doc = loadDoc(top(nav).name == "docPage" ? post : "") as shape Page
   resource cards = loadCards(top(nav).name == "articles" ? "*" : seriesSlug) as shape Card[]
-  // The cards seen once (RevealOnScroll), the YouTube and X frames near the window, the code block just copied.
-  state shown: string[] = []
+  // The YouTube and X frames near the window, the code block just copied.
   state near: string[] = []
   state copied = ""
   state copies = 0
-  action cardSeen(id: string, entry: IntersectionObserverEntry)
-    if entry.isIntersecting and not shown.includes(id)
-      shown = shown.concat([id])
   action embedSeen(id: string, entry: IntersectionObserverEntry)
     if entry.isIntersecting and not near.includes(id)
       near = near.concat([id])
@@ -172,11 +168,11 @@ component App
                   image="/og/articles.png" canonical="/articles"
                 text "Articles" role="heading" aria-level=1 position="absolute" width=1 height=1 margin=-1 overflow="hidden" clip-path="inset(50%)" white-space="nowrap"
                   font-size=16 font-weight=400 line-height="24px"
-                ArticleList(cards=cards, shown=shown, seen=cardSeen)
+                ArticleList(cards=cards)
               else if e.name == "series"
                 head title=`${titleCase(e.params.series)} | Reactiive` description=`Articles in the ${titleCase(e.params.series)} series on React Native animations.`
                   image="/og/articles.png" canonical=`/series/${e.params.series}`
-                ArticleList(cards=cards, shown=shown, seen=cardSeen)
+                ArticleList(cards=cards)
               else if e.name == "article"
                 head title=`${article.title} | Reactiive` description=article.description image=`/content-assets/articles/${e.params.post}/images/header.webp`
                   canonical=`/articles/${e.params.post}`

@@ -29,6 +29,14 @@ the scrolled bar, /demos's frame). Performance: `tools/parity/perf.ts`, docs/per
 | `/demos/app/` | the Demos app: 0 px against its own build (decisions.md D3) | 0 px | | |
 | all other pages | not built yet | | | |
 
+Card cascade (`tools/parity/reveal.ts <live> <local> <route>…`): every card of /articles and /series/* sampled per
+frame from navigation start and through a steady 1200 px/s scroll (start, end, scroll offset, delay, paused, flash,
+restart). The reveal is `web/reveal.js`, a head script (the reference's RevealOnScroll: rootMargin -40 px, 60 ms
+stagger in DOM order, first batch from 280 ms), not Exact's `intersect`, which only answered after the app booted
+(the first screen's second row started ~1.2 s late). 2026-11-23: every series page equal to live in delays, pause,
+batches and easing, no flash or restart; /articles differs only where D13's skipped cards shift the order. Live's
+first batch starts ~40 ms later than local's (its hydration).
+
 Hover audit: `tools/parity/hover.ts <live> <local> <route>… [--widths 1440,700]` (700 also opens the menu).
 
 ## Open differences (the owner's bar is identity in pixels and in motion: each is to be fixed, none is accepted)

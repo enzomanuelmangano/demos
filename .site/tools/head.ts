@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // Writes web/head.css into app.json's host.web.head as the script that adds it (the head takes no style tag), and
-// checks that the copy there is current (`--check`, for CI). Run after editing web/head.css.
+// web/reveal.js as a script of its own; checks that the copy there is current (`--check`, for CI). Run after editing web/head.css.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -26,6 +26,11 @@ const links = preloads.map((href) => ({ link: { rel: 'preload', href, as: 'font'
 const isPreload = (h: any) => h.link?.rel === 'preload' && h.link?.as === 'font';
 const next = [...links, ...head.filter((h) => !isPreload(h))];
 next[next.findIndex((h) => h.script?.text?.includes("document.createElement('style')"))] = { script: { text } };
+// web/reveal.js (RevealOnScroll, the card grids' cascade), its own script after the style's, comments dropped.
+const reveal = readFileSync(join(site, 'web/reveal.js'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').split('\n').map((l) => l.trim()).filter(Boolean).join('\n');
+const r = next.findIndex((h) => h.script?.text?.includes('IntersectionObserver'));
+if (r >= 0) next[r] = { script: { text: reveal } };
+else next.splice(next.findIndex((h) => h.script?.text?.includes("document.createElement('style')")) + 1, 0, { script: { text: reveal } });
 if (process.argv.includes('--check')) {
   if (JSON.stringify(next) !== JSON.stringify(head)) { console.error('head: app.json is stale: run bun tools/head.ts'); process.exit(1); }
   process.exit(0);

@@ -1,7 +1,7 @@
 // /articles, /series/:series (components/ArticleList.tsx): a grid of cards (1, 2, then 3 columns at 768 and 1024 px)
 // in a 1200 px column, 96 px under the header from 640 px. Each card rises in (motion-card-in, 700 ms): the first
 // three at once from the page's CSS (100, 160, 220 ms), the others when they come into view, in a cascade
-// (RevealOnScroll: paused until seen; the delays per column are web/content.css's).
+// (RevealOnScroll: paused until web/reveal.js, a head script, sees them and sets their delays).
 // /docs (app/docs/page.tsx) is an empty page, as live.
 use sm from "../components/responsive.contract"
 use Page, Blocks from "../components/markdown.contract"
@@ -36,14 +36,11 @@ component ArticleCard
 component ArticleList
   props
     cards: Card[]
-    shown: string[]
-    seen: action
   view
     column width="100%" align-items="center" margin-top=sm(48, 96) padding-left=24 padding-right=24 box-sizing="border-box"
       view width="100%" max-width=1200 display="grid" gap=24 data-motion="article-grid"
-        for c in cards key=c.id
-          view intersect=seen(c.id) intersect-margin="0px 0px -40px 0px"
-            data-motion=(c.index < 3 or shown.includes(c.id) ? "card-in" : "card-in wait")
+        for c, i in cards key=c.id
+          view data-motion=(i < 3 ? "card-in" : "card-in wait")
             ArticleCard(card=c)
 
 // /articles/:post and /docs/:post (app/articles/[post]/page.tsx): the MDX in a 768 px column, 24 px down.

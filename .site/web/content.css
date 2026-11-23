@@ -35,12 +35,9 @@
 [data-motion~=article-card]:hover [data-motion~=article-title]{color:rgb(255 255 255 / .95) !important}
 [data-motion~=article-card]:hover [data-motion~=article-dim]{color:rgb(255 255 255 / .8) !important}
 
-/* RevealOnScroll: a card below the first screen waits, paused on its first frame, until it is seen; the first three
-   start at 100, 160, 220 ms, the rest of the first screen continue the cascade, a later row's cards 60 ms apart. */
+/* RevealOnScroll: a card past the first three waits, paused on its first frame, until web/reveal.js sees it; the
+   first three start from the CSS at once, at 100, 160, 220 ms. */
 [data-motion~=wait]{animation-play-state:paused}
 [data-motion~=article-grid]>:nth-child(1){--motion-delay:100ms}
 [data-motion~=article-grid]>:nth-child(2){--motion-delay:160ms}
 [data-motion~=article-grid]>:nth-child(3){--motion-delay:220ms}
-@media (min-width:768px){[data-motion~=article-grid]>:nth-child(2n+4){--motion-delay:60ms}}
-@media (min-width:1024px){[data-motion~=article-grid]>:nth-child(3n+4){--motion-delay:0ms}[data-motion~=article-grid]>:nth-child(3n+5){--motion-delay:60ms}[data-motion~=article-grid]>:nth-child(3n+6){--motion-delay:120ms}
-[data-motion~=article-grid]>:nth-child(4){--motion-delay:280ms}[data-motion~=article-grid]>:nth-child(5){--motion-delay:340ms}[data-motion~=article-grid]>:nth-child(6){--motion-delay:400ms}}
