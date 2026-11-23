@@ -38,6 +38,7 @@ apart (`+N in 1 OOPIF`: the app's own main thread, not the page's). Median of 3.
 | `/demos` | 1440 | 4g | 782 / 46, 604, 2148, 66 | 3429 / 147, 316, 680, 7 (+493) | exempt: bytes |
 | `/demos` | 390 | cable | 2943 / 70, 148, 1452, 0 | 5270 / 159, 60, 1612, 0 (+66) | exempt: bytes; **LCP +160 ms open** |
 | `/demos` | 390 | 4g | 2586 / 48, 564, 1900, 67 | 3299 / 146, 320, 1900, 8 (+518) | exempt: bytes |
+| `/demos` (D12 revised, 3 runs, machine under load 25) | 1440 | cable / 4g | 872 / 2188, TBT 0 / 142 | 3510 / 149: LCP 460 / 592, page TBT 0 / 85 (+93 / +628 app) | exempt: bytes |
 | `/demos` without the sim (`--block /demos/app/`) | 1440 | 4g | | 309 / 14, 316, -, 8 | the hero is as light as live's page minus its grid |
 
 At 390 the sim's box is in the first viewport (its top at 327 px), so it loads at 1.6 s. The 390 LCP element is the

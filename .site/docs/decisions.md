@@ -166,3 +166,24 @@ A deliberate difference from live, asked by the owner ("show the demos on the ri
   public static files); the app gets no storage (it handles that: no exception, demos open and close) and no
   `allow=` permissions (Contract's `iframe` takes no `allow`: clipboard writes and Web Share inside the frame are
   refused); Safari and low-memory Android Chrome keep sandboxed frames in-process (no worse than a same-origin frame).
+
+### D12, revised the same day (owner: "I don't understand the background behind the mockup … take inspiration from Apple")
+
+Compared at 1280x720, 1440x900, 1512x982, 1920x1080: **A** copy left / device right (two equal columns) and **B** a
+centred stack with the device peeking below the fold (the D10 layout at desktop widths). B leaves the device cut at
+the fold on every size (the owner's first complaint) and the copy floating alone in the first viewport; A keeps
+copy and device on one horizontal axis in one viewport. **Chosen: A**, restyled after apple.com's device-beside-copy
+heroes, all from 1024 px in `web/head.css` (one DOM, the stacked layout under 1024 px unchanged):
+
+- the device sits on the page: the frame is masked to the iPhone's silhouette (an SVG of the app's 444 x 936 frame:
+  continuous 74 pt corners from the display path's constants, the four keys), so none of the app's stage shows; a
+  soft shadow under it (`::before`, two blurred shadows, 55 % / 35 % black); the spiral steps back (40 % and masked
+  out before the device column);
+- device height `min(100vh - 176px, 780px)`: 48 px under the 80 px header band and 48 px above the fold, never larger
+  than 780 px (1280x720: 544 px; 1440x900: 724 px; 1920x1080: 780 px); the frame is that plus the app's 24 px each
+  side, 600 px wide, overflowing its column under the copy (the copy is above it, so its links keep the pointer);
+- copy: title 72-96 px (`clamp(72px, 6.25vw, 96px)`), weight 600, -0.035em, the live gradient; subtitle 22 px / 1.45
+  in the secondary colour; the pill 32 px below; the column vertically centred on the device's centre line;
+- motion: the copy's entrances as live; the device rises 16 px and fades in, 700 ms `cubic-bezier(.16,1,.3,1)`, no
+  delay (a delayed entrance delayed the page's largest paint, the still, to ~1 s); the live frame swaps in under the
+  still with no shift.

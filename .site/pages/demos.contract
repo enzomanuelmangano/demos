@@ -73,7 +73,7 @@ component StarsPill
         pointer-events="none"
       link href="https://github.com/enzomanuelmangano/demos" target="_blank" rel="noopener noreferrer" display="flex" height=36
         align-items="center" border-radius=9999 padding-left=10 padding-right=11 background-color="rgb(255 255 255 / 0.06)"
-        transition="background-color 200ms cubic-bezier(0.4, 0, 0.2, 1)" font-size="0.875rem" line-height="1.25rem" color="var(--color-text-primary)"
+        transition="background-color 200ms cubic-bezier(0.4, 0, 0.2, 1)" data-motion="colors-200" font-size="0.875rem" line-height="1.25rem" color="var(--color-text-primary)"
         :hover
           background-color = "rgb(255 255 255 / 0.09)"
         GitHubMark(size=16)
@@ -108,15 +108,15 @@ component DemosPage
       margin-top=sm(16, 0)
       // Under 1024 px the hero and, below it, the app; from 1024 px the hero on the left, vertically centred, and the
       // app on the right (D12): one wrapping row, whose hero is the full width under 1024 px, so the app wraps below.
-      row flex-wrap="wrap" align-items="center"
+      row flex-wrap="wrap" align-items="center" data-motion="d-row"
         // The hero (LandingHero): left-aligned under 640 px, centred from it (left again from 1024 px). A flex
         // alignment cannot step at a width with no runtime, so each line sits between two spacers (centring()).
-        header appearance="none" display="flex" flex-direction="column" flex-shrink=0 data-motion="perspective"
+        header appearance="none" display="flex" flex-direction="column" flex-shrink=0 data-motion="perspective d-hero"
           width=`calc(100% - ${lg(0, simColumn())})`
           row
             view width=centring() flex-shrink=1
             column flex-shrink=0 data-motion="title"
-              text "Demos" role="heading" aria-level=1 class=Gradient data-motion="lift-20" pointerup=tap cursor="pointer" user-select="none"
+              text "Demos" role="heading" aria-level=1 class=Gradient data-motion="lift-20 d-title" pointerup=tap cursor="pointer" user-select="none"
                 font-size=titleSize() line-height=1.05 letter-spacing="-0.04em" padding-bottom="0.04em"
                 margin-top=steps(8, 32, 56, 56) margin-bottom=steps(20, 32, 36, 36) transition="opacity 150ms ease-out"
                 :hover
@@ -125,7 +125,7 @@ component DemosPage
           column data-motion="blur-in" data-delay="450"
             // From 640 px two lines, one gradient across both (centred, left from 1024 px); under it one
             // left-aligned paragraph, 320 px.
-            column class=Gradient data-motion="lift-10" font-size=steps(14, 16, 18, 18) line-height=1.55
+            column class=Gradient data-motion="lift-10 d-sub" font-size=steps(14, 16, 18, 18) line-height=1.55
               letter-spacing="-0.01em" max-height=sm(0, 200) overflow="hidden"
               row
                 view width=centring() flex-shrink=1
@@ -137,7 +137,7 @@ component DemosPage
                 view width=centring() flex-shrink=1
             text "120+ React Native animations with Skia, Reanimated and Gesture Handler" class=Gradient data-motion="lift-10" font-size="0.875rem"
               line-height=1.55 letter-spacing="-0.01em" max-width=320 max-height=sm(200, 0) overflow="hidden" aria-hidden=true
-          row margin-top=sm(24, 28)
+          row margin-top=sm(24, 28) data-motion="d-pill"
             view width=centring() flex-shrink=1
             column flex-shrink=0 data-motion="blur-in" data-delay="550"
               StarsPill(seed=seed, counted=counted)
@@ -169,16 +169,16 @@ component DemosSim
     loaded: action
   view
     column flex-shrink=0 width=`min(100%, ${lg(9999, simColumn())})` margin-top=`min(${steps(32, 32, 32, 48)}, ${lg(9999, 0)})`
-      intersect=seen intersect-margin="100% 0px"
-      column margin-left=md(-24, 0) margin-right=md(-24, 0) overflow="hidden"
+      data-motion="sim-col" intersect=seen intersect-margin="100% 0px"
+      column margin-left=md(-24, 0) margin-right=md(-24, 0) overflow="hidden" data-motion="sim-wrap"
         padding-top=md(24, 0) mask-image="linear-gradient(to bottom, transparent 0px, #000000 24px)"
-        column align-items="center" padding-bottom=md(24, 0) mask-image="linear-gradient(to top, transparent 0px, #000000 24px)"
+        column align-items="center" padding-bottom=md(24, 0) data-motion="sim-wrap" mask-image="linear-gradient(to top, transparent 0px, #000000 24px)"
           // Under 1024 px the stage's sides fade over 12 %; from 1024 px (the inner row) within 24 px of the phone.
           row flex-shrink=0 justify-content="center"
             width="calc(clamp(0px, (767px - 100vw) * 1000, 100vw + 260px) + clamp(0px, (100vw - 767px) * 1000, 600px))"
             data-motion="sim-sides"
             row flex-shrink=0 position="relative" data-motion="sim-phone"
-              iframe (ready ? "/demos/app/" : "about:blank") title="Demos" flex-shrink=0 border-width=0 display="block"
+              iframe (ready ? "/demos/app/" : "about:blank") title="Demos" flex-shrink=0 border-width=0 display="block" data-motion="sim-frame"
                 sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-pointer-lock allow-downloads"
                 load=loaded
                 width="calc(clamp(0px, (767px - 100vw) * 1000, 100vw) + clamp(0px, (100vw - 767px) * 1000, 600px))"

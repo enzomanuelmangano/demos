@@ -49,13 +49,36 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
    min(1, (frame height - 48) / 936), the still being the phone plus 24 px (984 px tall at scale 1). From 768 px only,
    so a phone never downloads it. */
 @media (min-width:768px){[data-motion~=sim-still]{background:url(/assets/images/demos/sim-still.webp) 50% 50%/auto min(984px,(clamp(600px,100vh - 87px,1080px) - 48px) * 1.051282) no-repeat}}
-@media (min-width:1024px){[data-motion~=sim-still]{background-size:auto min(984px,(clamp(560px,100vh - 96px,1032px) - 48px) * 1.051282)}}
-/* /demos: the frame's stage fades into the page: its sides over 12 % under 1024 px; from 1024 px everything farther
-   than 24 px from the app's phone (its width: min(444, (frame height - 48) * 444 / 936)), so the spiral shows around it. */
+/* /demos under 1024 px: the frame's stage fades into the page at its sides (12 %). */
 [data-motion~=sim-sides]{mask-image:linear-gradient(to right,transparent 0%,#000 12%,#000 88%,transparent 100%)}
-@media (min-width:1024px){[data-motion~=sim-sides]{mask-image:none}[data-motion~=sim-phone]{--sim-gap:calc(50% - min(444px,(clamp(560px,100vh - 96px,1032px) - 48px) * .474359) / 2);mask-image:linear-gradient(to right,transparent calc(var(--sim-gap) - 24px),#000 var(--sim-gap),#000 calc(100% - var(--sim-gap)),transparent calc(100% - var(--sim-gap) + 24px))}}
+/* /demos from 1024 px (D12, the owner's Apple-style revision): two equal columns in the container, the copy left and
+   optically centred on the device's centre line, the device centred in the right column at --ph tall (the viewport
+   under the header less 48 px above and below, at most 780 px), straight on the page: the app's frame is masked to
+   the iPhone's own silhouette (its continuous 74 pt corners and side keys, the app's 444 x 936 frame), so no stage
+   shows; a soft shadow under it; the frame (600 px wide, the app's 24 px kept) overflows the column on both sides,
+   under the copy. The device rises in with the copy (no delay: a delayed entrance would delay its largest paint); the spiral steps back behind the copy. */
+@keyframes device-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@media (min-width:1024px){
+:root{--ph:min(100vh - 176px,780px);--pw:calc(var(--ph) * .474359)}
+[data-motion~=d-row]{min-height:calc(100vh - 80px);flex-wrap:nowrap !important;align-items:center !important}
+[data-motion~=d-hero]{width:auto !important;flex:1 1 0 !important;position:relative;z-index:1;padding-right:48px;box-sizing:border-box}
+[data-motion~=d-title]{font-size:clamp(72px,6.25vw,96px) !important;font-weight:600 !important;letter-spacing:-.035em !important;line-height:1.05 !important;margin-top:0 !important;margin-bottom:20px !important}
+[data-motion~=d-sub]{background-image:none !important;color:var(--color-text-secondary) !important;font-size:22px !important;line-height:1.45 !important;letter-spacing:-.01em !important}
+[data-motion~=d-pill]{margin-top:32px !important}
+[data-motion~=sim-col]{width:auto !important;flex:1 1 0 !important;height:var(--ph);margin-top:0 !important;display:flex;align-items:center;justify-content:center;animation:device-in 700ms cubic-bezier(.16,1,.3,1) backwards}
+[data-motion~=sim-wrap]{overflow:visible !important;mask-image:none !important;padding:0 !important;margin:0 !important;flex-shrink:0}
+[data-motion~=sim-sides]{mask-image:none;position:relative}
+[data-motion~=sim-sides]::before{content:'';position:absolute;left:50%;top:50%;width:calc(var(--pw) * .9);height:calc(var(--ph) * .96);translate:-50% -48%;border-radius:calc(var(--ph) * .08);box-shadow:0 calc(var(--ph) * .05) calc(var(--ph) * .12) rgb(0 0 0 / .55),0 calc(var(--ph) * .015) calc(var(--ph) * .03) rgb(0 0 0 / .35);pointer-events:none}
+[data-motion~=sim-frame]{height:calc(var(--ph) + 48px) !important}
+[data-motion~=sim-phone]{mask:url("data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%27-4%200%20452%20936%27%3E%3Cpath%20d=%27M113.12%200L330.88%200C363.45%200%20379.74%200%20397.27%205.54C416.41%2012.51%20431.49%2027.59%20438.46%2046.73C444%2064.26%20444%2080.55%20444%20113.12L444%20822.88C444%20855.45%20444%20871.74%20438.46%20889.27C431.49%20908.41%20416.41%20923.49%20397.27%20930.46C379.74%20936%20363.45%20936%20330.88%20936L113.12%20936C80.55%20936%2064.26%20936%2046.73%20930.46C27.59%20923.49%2012.51%20908.41%205.54%20889.27C0%20871.74%200%20855.45%200%20822.88L0%20113.12C0%2080.55%200%2064.26%205.54%2046.73C12.51%2027.59%2027.59%2012.51%2046.73%205.54C64.26%200%2080.55%200%20113.12%200Z%27/%3E%3Crect%20x=%27-3%27%20y=%27150%27%20width=%274%27%20height=%2730%27%20rx=%272%27/%3E%3Crect%20x=%27-3%27%20y=%27215%27%20width=%274%27%20height=%2758%27%20rx=%272%27/%3E%3Crect%20x=%27-3%27%20y=%27290%27%20width=%274%27%20height=%2758%27%20rx=%272%27/%3E%3Crect%20x=%27443%27%20y=%27245%27%20width=%274%27%20height=%2792%27%20rx=%272%27/%3E%3C/svg%3E") 50% 50%/auto var(--ph) no-repeat}
+[data-motion~=sim-still]{background-size:auto calc(var(--ph) * 1.051282)}
+[data-motion~=spiral]{opacity:.4 !important;mask-image:linear-gradient(to right,#000 0%,#000 30%,transparent 55%)}
+}
+@media (min-width:1024px) and (prefers-reduced-motion:reduce){[data-motion~=sim-col]{animation:none}}
 /* Interaction transitions, as the reference's classes compute them. */
 [data-motion~=colors]{transition-property:color,background-color,border-color,outline-color,text-decoration-color,fill,stroke !important;transition-duration:150ms !important;transition-timing-function:cubic-bezier(.4,0,.2,1) !important;transition-delay:0s !important}
+/* /demos's pill: transition-colors duration-200. */
+[data-motion~=colors-200]{transition-property:color,background-color,border-color,outline-color,text-decoration-color,fill,stroke !important;transition-duration:200ms !important;transition-timing-function:cubic-bezier(.4,0,.2,1) !important;transition-delay:0s !important}
 [data-motion~=button]{cursor:pointer;transition-property:background-color,color,box-shadow,transform,scale !important;transition-duration:150ms !important;transition-timing-function:var(--ease-snappy) !important;transition-delay:0s !important}
 [data-motion~=plain]:hover{text-decoration:none !important}
 /* Exact's default hover feedback (a translucent wash, a 65 % dim) on links and buttons: the reference has none; each
