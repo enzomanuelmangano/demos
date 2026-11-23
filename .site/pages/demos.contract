@@ -157,7 +157,10 @@ component DemosPage
 //   the page's handles.
 // From 768 px a still of the app's launcher (tools/sim-still.ts: the framed phone at scale 1, 492 x 984 with its
 // 24 px) is drawn where the app's phone will be, at the app's own scale, as a background from web/head.css (so a phone
-// never downloads it), over the frame and blind to the pointer; once the frame has loaded and drawn, it fades out.
+// never downloads it), under the frame and blind to the pointer. From 768 px the frame is clipped to the app's display
+// (web/head.css sim-frame: a clip path also clips hit testing), so the wheel and the touches over the bezel, the keys,
+// the stage and the margins are the page's, and only the screen's go to the app; the still draws the bezel around
+// it, and the frame fades in over the still once it has loaded and drawn (`live`).
 // The frame's page loads (`ready`, App) once its box is within a viewport's height of the window and the hero's
 // entrances are done (1.6 s), whichever is later: on a desktop at 1.6 s, on a phone when scrolled near. The masks are
 // web/head.css's (sim-sides, sim-phone): a gradient stop cannot step at a width in Contract.
@@ -178,10 +181,10 @@ component DemosSim
             width="calc(clamp(0px, (767px - 100vw) * 1000, 100vw + 260px) + clamp(0px, (100vw - 767px) * 1000, 600px))"
             data-motion="sim-sides"
             row flex-shrink=0 position="relative" data-motion="sim-phone"
-              iframe (ready ? "/demos/app/" : "about:blank") title="Demos" flex-shrink=0 border-width=0 display="block" data-motion="sim-frame"
+              iframe (ready ? "/demos/app/" : "about:blank") title="Demos" flex-shrink=0 border-width=0 display="block"
+                data-motion=(live ? "sim-frame live" : "sim-frame") position="relative" z-index=1
                 sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-pointer-lock allow-downloads"
                 load=loaded
                 width="calc(clamp(0px, (767px - 100vw) * 1000, 100vw) + clamp(0px, (100vw - 767px) * 1000, 600px))"
                 height="calc(clamp(0px, (767px - 100vw) * 1000, 100vh - 73px) + clamp(0px, min(100vw - 767px, 1024px - 100vw) * 1000, clamp(600px, 100vh - 87px, 1080px)) + clamp(0px, (100vw - 1023px) * 1000, clamp(560px, 100vh - 96px, 1032px)))"
               view position="absolute" inset=0 pointer-events="none" aria-hidden=true data-motion="sim-still"
-                opacity=(live ? 0 : 1) transition="opacity 300ms ease-out"
