@@ -12,7 +12,7 @@ use CoursePage from "./pages/course.contract"
 use DemosAppPage from "./pages/demos-app.contract"
 use Page from "./components/markdown.contract"
 use Card, ArticleList, ArticlePage from "./pages/articles.contract"
-use Me, SiteConfig, Sent, SignInDialog, FeedbackDialog, ProfilePage, Toast from "./components/account/account.contract"
+use Me, SiteConfig, Sent, SignInDialog, FeedbackDialog, ProfilePage, ManageSubscriptionPage, CancelDialog, Toast from "./components/account/account.contract"
 
 // The faces (Inter variable, Source Code Pro) are declared in app.json's head, font-display: swap and Inter
 // preloaded, as the reference: docs/decisions.md D7.
@@ -31,11 +31,13 @@ routes nav
   // Signed in only (components/account): the shell, drawn on the reader's page. Without the env the host sends it
   // to /demos (tools/compose.ts), as the reference did for a signed-out visitor.
   profile "/profile" render=client
+  // A subscription's status and its cancel (no plans, no prices: docs/stubs.md); signed in only, as /profile.
+  manageSubscription "/manage-subscription" render=client
   notfound render=build
 
-// The footer's Terms | Privacy variant, on the reference's paths (its /demos, /profile and /manage-subscription
-// pages are not this app's).
-fn legalFooter(name: string, post: string): bool = name == "demos" or (name == "docPage" and (post == "terms" or post == "privacy"))
+// The footer's Terms | Privacy variant, on the reference's paths (components/Footer: /demos, /profile,
+// /manage-subscription, /privacy, /terms).
+fn legalFooter(name: string, post: string): bool = name == "demos" or name == "profile" or name == "manageSubscription" or (name == "docPage" and (post == "terms" or post == "privacy"))
 fn titleCase(slug: string): string = slug.split("-").map(w => w.slice(0, 1).toUpperCase() + w.slice(1)).join(" ")
 fn docTitle(slug: string): string = slug == "terms" ? "Terms of Service" : slug == "privacy" ? "Privacy Policy" : slug == "license" ? "License" : slug
 
@@ -54,25 +56,40 @@ component App
   // page (localStorage), sent by the data module. The utm_source a visit came with goes with the sign-up.
   state accessToken = "" persist
   state utmSource = "" persist
+  // Whether the last visit ended signed in: web/storage.js mirrors it to the reference's `reactiive:signed-in`, which
+  // reserves the avatar's place before the session is known (docs/storage.md).
+  state signedHint = false persist
   resource config = siteConfig() as shape SiteConfig
-  resource me = userInfo(accessToken) as shape Me
+  // A token the API rejects (401) is dropped for this page only: the reader is shown signed out, as the reference's
+  // user query does on its error, but the stored token stays (the reference never removes @AccessStorage on a 401;
+  // only a sign-out does: docs/storage.md). The next visit asks again, as the reference's does.
+  state dropped = ""
+  derive session = accessToken != dropped ? accessToken : ""
+  resource me = userInfo(session) as shape Me
   derive accounts = config.accounts
-  derive meLoading = accounts and accessToken != "" and not current(me)
+  derive meLoading = accounts and session != "" and not current(me)
   derive tokenInUrl = searchParam(top(nav), "accessToken")
   derive utmInUrl = searchParam(top(nav), "utm_source")
   task takeToken when tokenInUrl != ""
     after(1, keepToken)
   action keepToken
     accessToken = tokenInUrl
+    dropped = ""
     nav = replace(nav, path("profile"))
   task takeUtm when utmInUrl != "" and utmInUrl != utmSource
     after(1, keepUtm)
   action keepUtm
     utmSource = utmInUrl
+  task hint when accounts and not meLoading and signedHint != me.signedIn
+    after(1, keepHint)
+  action keepHint
+    signedHint = me.signedIn
   task forgetRejected when me.rejected
-    after(1, signOut)
+    after(1, dropSession)
+  action dropSession
+    dropped = accessToken
   // /profile signed out (or once the session is known to be none): /demos, with the reference's toast.
-  task leaveProfile when top(nav).name == "profile" and tokenInUrl == "" and not meLoading and not me.signedIn and (current(me) or accessToken == "")
+  task leaveProfile when (top(nav).name == "profile" or top(nav).name == "manageSubscription") and tokenInUrl == "" and not meLoading and not me.signedIn and (current(me) or session == "")
     after(1, toDemos)
   action toDemos
     nav = replace(nav, "/demos")
@@ -99,6 +116,16 @@ component App
     accessToken = ""
   action openProfile
     nav = go(nav, path("profile"))
+  // The subscription's cancel (hooks/use-subscription.ts): the confirmation, then POST /api/purchase/cancel-subscription;
+  // on success the user's info is asked again and the dialog closes; on a failure it stays open, as the reference's.
+  mutation cancelled as shape Sent refreshes me then cancelDone
+  action openCancel
+    showModal("cancel-subscription")
+  action confirmCancel
+    send cancelled = cancelSubscription(session)
+  action cancelDone
+    if match cancelled { case some(r) => r.ok, case none => false }
+      close("cancel-subscription")
   // Feedback (POST /api/feedback/submit) and the toasts (sonner's).
   state feedbackSending = false
   mutation feedback as shape Sent then feedbackSent
@@ -109,7 +136,7 @@ component App
     showModal("feedback")
   action sendFeedback(text: string, anonymous: bool)
     feedbackSending = true
-    send feedback = sendFeedback(accessToken, text, anonymous, "")
+    send feedback = sendFeedback(session, text, anonymous, "")
   action feedbackSent
     feedbackSending = false
     match feedback
@@ -247,6 +274,7 @@ component App
         Toast(message=toast, tone=toastTone)
       SignInDialog(google=googleUrl, apple=appleUrl, googleFailed=failed(googleUrl), appleFailed=failed(appleUrl), retry=signInFailed)
       FeedbackDialog(sending=feedbackSending, send=sendFeedback)
+      CancelDialog(expires=me.expires, sending=pending(cancelled), confirm=confirmCancel)
       for e in stack(nav).slice(-1) key=e.id
         column navigationKey=`${e.id}` navigationScroll=`page-${e.id}` position="absolute" inset=0
           scroll document id=`page-${e.id}` flex=1 min-height=0
@@ -299,7 +327,12 @@ component App
                 head title="Profile | Reactiive" robots="noindex, nofollow" canonical="/profile"
                 Container()
                   if accounts and me.signedIn
-                    ProfilePage(openFeedback=openFeedback, signOut=signOut)
+                    ProfilePage(me=me, openFeedback=openFeedback, signOut=signOut)
+              else if e.name == "manageSubscription"
+                head title="Support Demos | Reactiive" robots="noindex, nofollow" canonical="/manage-subscription"
+                Container()
+                  if accounts and me.signedIn
+                    ManageSubscriptionPage(me=me, cancel=openCancel)
               else if e.name == "docs"
                 head title="Reactiive" description="Discover the beauty of React Native and how to build stunning animations with Reanimated and Skia"
                   image="/og/main.png" canonical="/"

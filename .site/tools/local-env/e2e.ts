@@ -97,16 +97,19 @@ try {
   await page.goto(`${ORIGIN}/profile`);
   check('/profile signed out goes to /demos', await until(page, `location.pathname === '/demos'`));
 
-  // 6. A token the real API rejects (401) is forgotten.
+  // 6. A token the real API rejects (401): shown signed out, kept stored (the old site keeps @AccessStorage on a 401;
+  //    only a sign-out removes it: docs/storage.md).
   await page.goto(`${ORIGIN}/profile?accessToken=not-a-valid-jwt`);
   check('rejected token: signed out, sent to /demos', await until(page, `location.pathname === '/demos'`, 15000));
-  check('rejected token forgotten', await until(page, `!Object.values(localStorage).some(v => String(v).includes('not-a-valid-jwt'))`));
+  check('rejected token: "Sign In" shown, the token kept stored', await until(page, `${visible('sign-in')}`)
+    && await page.eval<boolean>(`localStorage.getItem('exact.state.accessToken') === JSON.stringify('not-a-valid-jwt') && localStorage.getItem('@AccessStorage') !== null`));
 
   // 7. Live GitHub stars on /demos (the real API; the snapshot is the fallback).
   const stars = await fetch(`${ORIGIN}/api/github/stars?repo=enzomanuelmangano/demos`).then((r) => r.json()).catch(() => ({}));
   await page.goto(`${ORIGIN}/demos`);
   const want = typeof stars.stars === 'number' ? stars.stars.toLocaleString('en-US') : '';
   check('stars pill shows the live count', !!want && (await until(page, `document.querySelector('[aria-label$=" stars"]')?.getAttribute('aria-label') === '${want} stars'`)), `${want} stars`);
+  for (let t = 0; t < 10000 && !consoleLines.some((l) => l.includes('[amplitude] localhost')); t += 200) await Bun.sleep(200); // the SDK loads after the page
   check('Amplitude initialised opted out on localhost', consoleLines.some((l) => l.includes('[amplitude] localhost')));
   check('Sentry initialised disabled on localhost', consoleLines.some((l) => l.includes('[sentry] localhost')));
   check('no request to Sentry or Amplitude ingestion', beacons.length === 0, beacons.join(', '));

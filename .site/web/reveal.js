@@ -223,3 +223,55 @@ document.addEventListener('click', function (e) {
     if (plain(e, a) && !e.detail) arm(a.href);
   }, true);
 })();
+/* Up to 640 px the account dialogs are vaul's Drawer (web/head.css): dragged down they follow the finger (the overlay
+   fading with the share dragged), and released past 25 % of their height or faster than 0.4 px/ms they close (vaul's
+   closeThreshold and velocity threshold); otherwise they slide back (500 ms, vaul's cubic-bezier(.32,.72,0,1)). An
+   upward drag does not move them. A drag that starts on a field or in a scrolled area is the field's. A sheet taller
+   than the window scrolls: web/head.css lets the browser pan it upward-finger (pan-down) at its top, where a downward
+   drag is the dismiss, and both ways once it is scrolled (data-sheet-scrolled, set here from its scrollTop). */
+(function () {
+  var ids = { 'signin-modal': 1, 'feedback': 1, 'cancel-subscription': 1 };
+  var mq = matchMedia('(max-width: 640px)'), d = null, y0 = 0, t0 = 0, dy = 0, id = null;
+  addEventListener('scroll', function (e) {
+    var el = e.target;
+    if (el && el.nodeType == 1 && ids[el.id]) el.toggleAttribute('data-sheet-scrolled', el.scrollTop > 0);
+  }, true);
+  function reset(el) { el.style.translate = ''; el.style.transition = ''; el.style.removeProperty('--sheet-fade'); }
+  addEventListener('pointerdown', function (e) {
+    var el = e.target.closest && e.target.closest('dialog[open]');
+    if (!el || !ids[el.id] || !mq.matches || e.button) return;
+    if (e.target.closest('input,textarea,select,[contenteditable]') || el.scrollTop > 0) return;
+    d = el; y0 = e.clientY; t0 = performance.now(); dy = 0; id = e.pointerId;
+  }, true);
+  addEventListener('pointermove', function (e) {
+    if (!d || e.pointerId !== id) return;
+    dy = Math.max(0, e.clientY - y0);
+    if (dy < 3) return;
+    d.style.transition = 'none';
+    d.style.translate = '0 ' + dy + 'px';
+    d.style.setProperty('--sheet-fade', String(Math.max(0, 1 - dy / d.offsetHeight)));
+  }, true);
+  function end(e) {
+    if (!d || e.pointerId !== id) return;
+    var el = d, h = el.offsetHeight, v = dy / Math.max(1, performance.now() - t0);
+    d = null;
+    if (dy < 3) return reset(el);
+    if (dy > h * 0.25 || v > 0.4) {
+      // From where the finger left it to below the screen: the closing transition starts at the current offset.
+      el.style.transition = '';
+      el.style.translate = '';
+      el.style.removeProperty('--sheet-fade');
+      el.close();
+      var swallow = function (c) { c.stopPropagation(); c.preventDefault(); };
+      addEventListener('click', swallow, { capture: true, once: true });
+      setTimeout(function () { removeEventListener('click', swallow, true); }, 400);
+    } else {
+      el.style.transition = 'translate 500ms cubic-bezier(.32,.72,0,1)';
+      el.style.translate = '0 0';
+      el.style.removeProperty('--sheet-fade');
+      setTimeout(function () { reset(el); }, 520);
+    }
+  }
+  addEventListener('pointerup', end, true);
+  addEventListener('pointercancel', end, true);
+})();

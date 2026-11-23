@@ -68,6 +68,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # The accounts and the old API go together (docs/storage.md, docs/stubs.md): with the accounts on and no
+      # LEGACY_API_ORIGIN the sign-in's callback has nowhere to land; with neither, Sign In still shows (it opens on
+      # every build) but no provider can be reached, and every reader signed in on the old site would look signed out.
+      # A production run therefore needs both; a preview only warns.
+      - name: The accounts and the old API are configured together
+        env:
+          ACCOUNTS: ${{ vars.SITE_ACCOUNTS }}
+          PRODUCTION: ${{ inputs.production }}
+        run: |
+          if [ "$ACCOUNTS" = "1" ] && [ -n "$LEGACY_API_ORIGIN" ]; then echo "accounts on, /api/* -> the old deployment"; exit 0; fi
+          if [ -n "$LEGACY_API_ORIGIN" ]; then legacy="set"; else legacy="unset"; fi
+          msg="SITE_ACCOUNTS is '${ACCOUNTS:-unset}' and LEGACY_API_ORIGIN is $legacy: production needs SITE_ACCOUNTS=1 and LEGACY_API_ORIGIN (with EXPO_PUBLIC_ACCESS_KEY), or readers lose their session at the cutover (.site/docs/deploy.md, step 2)"
+          if [ "$PRODUCTION" = "true" ]; then echo "::error::$msg"; exit 1; fi
+          echo "::warning::$msg"
+
+
       - name: Set up Bun (the version Exact pins)
         uses: oven-sh/setup-bun@v2
         with:
@@ -138,6 +154,29 @@ jobs:
         working-directory: .site
         run: |
           if [ -f tools/gen-content.ts ]; then bun tools/gen-content.ts; else echo "no content pipeline on this branch"; fi
+
+      # The accounts (docs/stubs.md, docs/storage.md): public settings only, from repository VARIABLES, into the
+      # gitignored .env.local the build reads. Off unless vars.SITE_ACCOUNTS is 1; then EXPO_PUBLIC_ACCESS_KEY (the old
+      # site's token key) is required, or every reader signed in on the old site would be signed out at the cutover.
+      - name: The accounts' public settings
+        if: ${{ vars.SITE_ACCOUNTS == '1' }}
+        working-directory: .site
+        env:
+          WEBSITE_URL: ${{ vars.EXPO_PUBLIC_WEBSITE_URL || 'https://reactiive.io' }}
+          AMPLITUDE: ${{ vars.EXPO_PUBLIC_AMPLITUDE_API_KEY }}
+          SENTRY: ${{ vars.EXPO_PUBLIC_SENTRY_DSN }}
+          ACCESS_KEY: ${{ vars.EXPO_PUBLIC_ACCESS_KEY }}
+        run: |
+          if [ -z "$ACCESS_KEY" ]; then echo "::error::SITE_ACCOUNTS=1 needs the EXPO_PUBLIC_ACCESS_KEY variable (.site/docs/storage.md)"; exit 1; fi
+          umask 077
+          {
+            echo "SITE_ACCOUNTS=1"
+            echo "EXPO_PUBLIC_WEBSITE_URL=$WEBSITE_URL"
+            if [ -n "$AMPLITUDE" ]; then echo "EXPO_PUBLIC_AMPLITUDE_API_KEY=$AMPLITUDE"; fi
+            if [ -n "$SENTRY" ]; then echo "EXPO_PUBLIC_SENTRY_DSN=$SENTRY"; fi
+            echo "EXPO_PUBLIC_ACCESS_KEY=$ACCESS_KEY"
+          } > .env.local
+          bun tools/storage-bridge.ts --check-key
 
       - name: Build the site (web-build, then head, JSON-LD, sitemap, robots, feed, manifest)
         working-directory: .site
