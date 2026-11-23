@@ -1,0 +1,35 @@
+// /_dev/interactive-ui: every gesture/UI article demo on one page, unlinked, noindex and out of the sitemap, for
+// checking them against the live articles (each in a 720 px column, as an article's prose; full width on a phone).
+use InteractiveBox as BottomSheetBox, InitialSetup, BasicComponent, PanGesture, BorderRadius, FinalDemo from "../components/interactive/bottom-sheet-animation/index.contract"
+
+component DevLabel
+  props
+    label: string
+  view
+    text label font-size=13 line-height="1.25rem" color="var(--color-text-tertiary)" margin-top=32 margin-bottom=8
+      font-family="'Source Code Pro', ui-monospace, monospace"
+
+component DevInteractiveUi
+  view
+    column width="100%" max-width=768 margin-left="auto" margin-right="auto" padding-left=24 padding-right=24
+      box-sizing="border-box"
+      text "Interactive demos: gesture and UI" role="heading" aria-level=1 font-size="1.875rem" line-height="2.25rem"
+        font-weight=600 color="var(--color-text-primary)"
+      DevLabel(label="bottom-sheet-animation · InitialSetup")
+      BottomSheetBox()
+        InitialSetup()
+      DevLabel(label="bottom-sheet-animation · BasicComponent")
+      BottomSheetBox()
+        BasicComponent()
+      DevLabel(label="bottom-sheet-animation · PanGesture")
+      BottomSheetBox()
+        PanGesture()
+      DevLabel(label="bottom-sheet-animation · BorderRadius")
+      BottomSheetBox()
+        BorderRadius()
+      DevLabel(label="bottom-sheet-animation · FinalDemo hasBackdrop=false")
+      BottomSheetBox()
+        FinalDemo(hasBackdrop=false)
+      DevLabel(label="bottom-sheet-animation · FinalDemo")
+      BottomSheetBox()
+        FinalDemo(hasBackdrop=true)
