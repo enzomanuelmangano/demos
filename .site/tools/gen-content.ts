@@ -180,7 +180,7 @@ async function math() {
   const adaptor = liteAdaptor();
   RegisterHTMLHandler(adaptor);
   const doc = mj.document('', { InputJax: new TeX({ packages: AllPackages }), OutputJax: new SVG({ fontCache: 'none' }) });
-  const EX = 8.5; // px per ex of Inter at 16 px (MathJax measures the surrounding font; 0.53 em)
+  const EX = 8.675; // px per ex as live's MathJax measures it in Inter at 16 px (19.63 px for 2.262 ex, 8.84 for 1.02)
   mathjax = {
     tex2svg(tex, display) {
       const node = doc.convert(tex, { display });
@@ -405,7 +405,9 @@ async function convert(page: Page, meta: any) {
           // inside the paragraph, whose bottom margin it keeps.
           if (parts.length && parts.every((c: any) => c.type === 'mdxJsxTextElement' && c.name !== 'InlineMath' && c.name !== 'br')) {
             walk(parts.map((c: any) => ({ ...c, type: 'mdxJsxFlowElement' })), depth, inLoose);
-            blocks[blocks.length - 1].mb += inLoose || depth === 0 ? 20 : 0;
+            // Display maths excepted: live's paragraph of BlockMath adds nothing under its last formula (each formula
+            // is MathJax's display container, 16 px above and below, measured on live's animated-spiral).
+            if (blocks[blocks.length - 1].kind !== 'math') blocks[blocks.length - 1].mb += inLoose || depth === 0 ? 20 : 0;
             break;
           }
           block({ kind: 'paragraph', depth, runs: runs(n.children), mb: inLoose || depth === 0 ? 20 : 0 });
