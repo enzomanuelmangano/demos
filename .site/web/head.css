@@ -148,6 +148,8 @@ main:has([data-motion~=d-page]) ~ *{visibility:hidden}
 @starting-style{:is(#signin-modal,#feedback,#cancel-subscription)[open]{translate:0 100%;opacity:1;scale:1}}
 :is(#signin-modal,#feedback,#cancel-subscription)::backdrop{transition:opacity 500ms cubic-bezier(.32,.72,0,1),display 500ms allow-discrete,overlay 500ms allow-discrete}
 [data-motion~=drawer-handle]{display:flex !important;position:sticky;top:0;z-index:20}
+:is(#signin-modal,#feedback,#cancel-subscription){touch-action:pan-x}
+:is(#signin-modal,#feedback,#cancel-subscription)[open]::backdrop{opacity:var(--sheet-fade,1)}
 [data-motion~=dialog-x]{display:none !important}
 }
 /* The desktop header bar is 0 px tall and clipped under 768 px; from 768 px it must not clip: the avatar's menu (w-56,
