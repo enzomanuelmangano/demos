@@ -1,7 +1,7 @@
 // Marks a note handled, so the phone's feedback sheet (and the atlas) shows it as fixed.
 //
-//   bun exact/parity-tools/feedback/resolve.ts <note-id> [fix summary]          live now → "fixed"
-//   bun exact/parity-tools/feedback/resolve.ts <note-id> --build [fix summary]  fix waits for the native build
+//   bun tools/parity/feedback/resolve.ts <note-id> [fix summary]          live now → "fixed"
+//   bun tools/parity/feedback/resolve.ts <note-id> --build [fix summary]  fix waits for the native build
 //
 // A fix that is live on the phone (hot reload, or an installed build) resolves the note. A fix
 // that waits for the next native build keeps it open and tags the comment "⏳ next build", so
@@ -10,7 +10,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const DATA = resolve(import.meta.dir, "data");
+const DATA = resolve(import.meta.dir, ".data");
 const args = process.argv.slice(2);
 const pending = args.includes("--build");
 const [id, ...rest] = args.filter((a) => a !== "--build");

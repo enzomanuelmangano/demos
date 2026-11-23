@@ -7,6 +7,6 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/enzomanuelmangano/demos.git",
-    "directory": "exact/demos/packages/gestures"
+    "directory": "packages/gestures"
   }
 }

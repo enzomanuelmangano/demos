@@ -1,4 +1,4 @@
-// Run: bun exact/parity-tools/checkbox-interactions/chips.ts [url] (the web dev server on :5341).
+// Run: bun tools/parity/checkbox-interactions/chips.ts [url] (the web dev server on :5341).
 // Measures checkbox-interactions' chips on the web dev server: every chip's box at rest, then for
 // chip 3 while pressed, after release (checked), and after a second toggle; samples the chip's
 // height every frame through each animation. Exit 1 on any height other than the expected one.

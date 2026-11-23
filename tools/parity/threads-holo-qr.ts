@@ -3,8 +3,8 @@
 // component's default level) for BackSide's value. It prints the module rows that
 // gpu/src/threads_holo_ticket.rs embeds as QR_ROWS ('#' dark, '.' light).
 //
-//   bun exact/parity-tools/threads-holo-qr.ts
-import QRCode from '../../node_modules/qrcode/lib/index.js';
+//   bun tools/parity/threads-holo-qr.ts
+import QRCode from '../../legacy/node_modules/qrcode/lib/index.js';
 
 const value = 'https://reactiive.io/demos';
 const qr = QRCode.create(value, { errorCorrectionLevel: 'H' });

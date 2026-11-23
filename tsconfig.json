@@ -1,9 +1,9 @@
 {
-  // The Bun tooling of the Exact app: exact/demos/tools (the Contract linter included).
-  // exact/demos/app.ts is not here: it imports app.contract.d.ts, which `contract build` writes (and
-  // git ignores), so it cannot be checked on a bare checkout. exact/parity-tools: tsconfig.parity.json.
-  // It is its own project: the React Native app's tsconfig (../tsconfig.json) excludes exact/.
-  // Check it with `bun x tsc -p exact/tsconfig.json --noEmit` (or `exact/demos/tools/lint.sh ts`).
+  // The Bun tooling of the Exact app: tools/ (the Contract linter included), not tools/parity
+  // (tools/parity/tsconfig.json). app.ts is not here: it imports app.contract.d.ts, which
+  // `contract build` writes (and git ignores), so it cannot be checked on a bare checkout.
+  // The React Native app in legacy/ is its own project with its own tsconfig.json.
+  // Check it with `bun x tsc -p tsconfig.json --noEmit` (or `tools/lint.sh ts`).
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2023"],
@@ -19,11 +19,12 @@
     // The scripts are run, not imported: every file is a module, so top-level await is allowed.
     "moduleDetection": "force",
     "noFallthroughCasesInSwitch": true,
-    // Node's types come from the repo's root install; Bun's globals from the declaration below
-    // (swap it for the `bun-types` package when that is installed).
+    // Node's types: tools/lint.sh ts installs typescript and @types/node into a scratch dir and
+    // passes --typeRoots (the app's install has neither; legacy/'s is never borrowed). Bun's globals
+    // come from tools/types/bun-min.d.ts (swap it for the `bun-types` package when that is installed).
     "types": ["node"],
-    "typeRoots": ["../node_modules/@types"]
+    "typeRoots": ["./node_modules/@types"]
   },
-  "include": ["demos/tools/**/*.ts", "types/**/*.d.ts"],
-  "exclude": ["**/node_modules", "demos/node_modules", "demos/target", "parity-tools/**/out"]
+  "include": ["tools/**/*.ts", "tools/types/**/*.d.ts"],
+  "exclude": ["**/node_modules", "tools/parity", "legacy", "target"]
 }

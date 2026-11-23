@@ -1,4 +1,4 @@
-// Everything: web captures, iOS captures, scores, then out/index.html.
+// Everything: web captures, iOS captures, scores, then .out/index.html.
 //   bun capture.ts [--rebuild] [--setup] [--skip-web] [--skip-ios] [slug…]
 //   SETTLE=<ms> sets both captures' settle time (default 1500).
 import { $ } from "bun";

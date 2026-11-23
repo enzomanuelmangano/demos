@@ -30,7 +30,7 @@ export function format(kind: Format, r: Report): string {
   if (kind === 'github') {
     for (const [f, isDebt] of all) {
       const level = isDebt ? 'notice' : f.severity === 'error' ? 'error' : 'warning';
-      lines.push(`::${level} file=exact/demos/${f.file},line=${f.line},col=${f.col},title=${f.ruleId}::${f.message.replace(/\n/g, ' ')}`);
+      lines.push(`::${level} file=${f.file},line=${f.line},col=${f.col},title=${f.ruleId}::${f.message.replace(/\n/g, ' ')}`);
     }
   } else if (kind === 'compact') {
     for (const [f, isDebt] of all) lines.push(`${f.file}:${f.line}:${f.col}: ${isDebt ? 'debt ' : f.severity} ${f.ruleId} ${f.message}`);

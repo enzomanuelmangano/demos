@@ -4,7 +4,7 @@
 # 400 x 600 ones downscaled as expo-image does (89 x 134 pt at 3x: 267 x 402). RGB rows, zlib.
 set -e
 here=$(cd "$(dirname "$0")" && pwd)
-img="$here/../../demos/gpu/images/circular-carousel"
+img="$here/../../../gpu/images/circular-carousel"
 swiftc -O "$here/decode.swift" -o /tmp/cc-decode
 for spec in 01:400:250 02:400:267 03:400:250 04:267:402 05:400:250 06:400:250 07:267:402 08:400:267 09:267:402; do
   n=${spec%%:*}; wh=${spec#*:}; w=${wh%:*}; h=${wh#*:}

@@ -153,7 +153,7 @@ function render() {
     g.append(c);
   });
   $("#count").textContent = `${l.length} / ${demos.length} demos`;
-  $("#hint").textContent = state.view === "live" && !served ? "Live frames need the server: bun exact/parity-tools/screen-atlas/serve.ts" :
+  $("#hint").textContent = state.view === "live" && !served ? "Live frames need the server: bun tools/parity/screen-atlas/serve.ts" :
     state.view === "live" ? `Only frames in view run (at most the live cap; Chrome keeps ~16 GPU contexts). Others show their last web capture. Generated ${ATLAS.generated || ""}.` : `Generated ${ATLAS.generated || ""}. Score: mean / p99 per-pixel difference (0-255) between RN iOS and Exact iOS.`;
   schedule();
 }

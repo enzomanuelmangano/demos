@@ -1,4 +1,4 @@
-// Writes out/index.html: viewer.html with the demo list, captures present, scores and web notes inlined.
+// Writes .out/index.html: viewer.html with the demo list, captures present, scores and web notes inlined.
 //   bun build-index.ts
 import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";

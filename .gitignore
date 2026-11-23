@@ -1,3 +1,4 @@
+# The Exact app (the repo root). The React Native app in legacy/ has its own legacy/.gitignore.
 /target/
 /dist/
 /dist.*
@@ -13,3 +14,16 @@
 # The GPU module's images cut for the web (tools/gpu-images-web.mjs, app.json before_build).
 /packages/gpu-images/chunks/
 /packages/gpu-images/exact.json
+
+# Anywhere in the repo.
+node_modules/
+.DS_Store
+.env
+npm-debug.*
+*.orig.*
+
+# Agent tooling (local).
+CLAUDE.md
+.agents/
+skills-lock.json
+mcp.json

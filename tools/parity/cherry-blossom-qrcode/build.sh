@@ -4,7 +4,7 @@
 # reference.txt for gpu/src/cherry_blossom_qrcode.rs's tests.
 set -e
 here=$(cd "$(dirname "$0")" && pwd)
-root=$(cd "$here/../../../node_modules" && pwd -P)/..
+root=$(cd "$here/../../../legacy/node_modules" && pwd -P)/..
 runner=/tmp/notion-qrcode-hermes
 if [ ! -x "$runner" ]; then
   hermes=${HERMES_DESTROOT:-$root/ios/Pods/hermes-engine/destroot}

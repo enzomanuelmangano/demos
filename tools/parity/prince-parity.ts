@@ -3,7 +3,7 @@
 // for number with what the surface computed.
 //
 //   PRINCE_DUMP=/tmp/prince.json cargo test -q -p demos-gpu prince_dump
-//   bun ../parity-tools/prince-parity.ts (from exact/demos; outside the app so its TS stage skips it) /tmp/prince.json
+//   bun tools/parity/prince-parity.ts (from the repo root; no build reads it: app.ts never imports it) /tmp/prince.json
 //
 // Inputs given to RN's code: prince.png's own RGBA samples (decoded by PIL, no colour
 // conversion, as Skia's readPixels with no colour space returns them), the font's advances
@@ -15,7 +15,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dir, '../..');
-const morph = resolve(root, 'src/animations/text-image-morph');
+const morph = resolve(root, 'legacy/src/animations/text-image-morph');
 
 Bun.plugin({
   setup(build) {
@@ -33,9 +33,9 @@ Bun.plugin({
 const { buildAtlas } = await import(resolve(morph, 'atlas.ts'));
 const { buildLayout } = await import(resolve(morph, 'layout.ts'));
 const { computeTargets } = await import(resolve(morph, 'sampling.ts'));
-const { LITTLE_PRINCE_TEXT } = await import(resolve(root, 'src/animations/the-little-prince/text.ts'));
+const { LITTLE_PRINCE_TEXT } = await import(resolve(root, 'legacy/src/animations/the-little-prince/text.ts'));
 
-const png = resolve(root, 'src/animations/the-little-prince/assets/prince.png');
+const png = resolve(root, 'legacy/src/animations/the-little-prince/assets/prince.png');
 const py = spawnSync(
   'python3',
   ['-c', 'import sys; from PIL import Image; im = Image.open(sys.argv[1]); assert im.mode == "RGBA"; sys.stdout.buffer.write(im.tobytes())', png],

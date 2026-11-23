@@ -1,8 +1,8 @@
 // Core Text's advances for the-little-prince's page font (RN Skia's getGlyphWidths on iOS: a
 // CTFont from Newsreader.ttf at 30, optical size "none" as Skia's SkCTFontCreateExactCopy sets
 // it), the reference gpu/src/the_little_prince.rs advances_are_core_texts checks:
-//   swiftc -O parity-tools/measure/prince-advances-ct.swift -o /tmp/pct && /tmp/pct \
-//     ../../src/animations/text-image-morph/assets/Newsreader.ttf <file with the page's text>
+//   swiftc -O tools/parity/measure/prince-advances-ct.swift -o /tmp/pct && /tmp/pct \
+//     legacy/src/animations/text-image-morph/assets/Newsreader.ttf <file with the page's text>
 // Prints per character: code point, the f64 advance, the f32 bits Skia keeps.
 import CoreText
 import Foundation

@@ -1,7 +1,7 @@
-diff --git a/exact/demos/gpu/src/add_to_cart.rs b/exact/demos/gpu/src/add_to_cart.rs
+diff --git a/gpu/src/add_to_cart.rs b/gpu/src/add_to_cart.rs
 index 7444562..a51d76d 100644
---- a/exact/demos/gpu/src/add_to_cart.rs
-+++ b/exact/demos/gpu/src/add_to_cart.rs
+--- a/gpu/src/add_to_cart.rs
++++ b/gpu/src/add_to_cart.rs
 @@ -1521,7 +1521,7 @@ impl Surface for AddToCart {
      }
  
@@ -11,10 +11,10 @@ index 7444562..a51d76d 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/animated_clip_box.rs b/exact/demos/gpu/src/animated_clip_box.rs
+diff --git a/gpu/src/animated_clip_box.rs b/gpu/src/animated_clip_box.rs
 index 16d6f67..ca3f264 100644
---- a/exact/demos/gpu/src/animated_clip_box.rs
-+++ b/exact/demos/gpu/src/animated_clip_box.rs
+--- a/gpu/src/animated_clip_box.rs
++++ b/gpu/src/animated_clip_box.rs
 @@ -321,7 +321,7 @@ impl Surface for AnimatedClipBox {
      }
  
@@ -24,10 +24,10 @@ index 16d6f67..ca3f264 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/art_gallery.rs b/exact/demos/gpu/src/art_gallery.rs
+diff --git a/gpu/src/art_gallery.rs b/gpu/src/art_gallery.rs
 index a66ee81..fb9d446 100644
---- a/exact/demos/gpu/src/art_gallery.rs
-+++ b/exact/demos/gpu/src/art_gallery.rs
+--- a/gpu/src/art_gallery.rs
++++ b/gpu/src/art_gallery.rs
 @@ -925,7 +925,7 @@ impl Surface for ArtGallery {
      }
  
@@ -37,10 +37,10 @@ index a66ee81..fb9d446 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/atlas_button.rs b/exact/demos/gpu/src/atlas_button.rs
+diff --git a/gpu/src/atlas_button.rs b/gpu/src/atlas_button.rs
 index 1bfa474..28e51a2 100644
---- a/exact/demos/gpu/src/atlas_button.rs
-+++ b/exact/demos/gpu/src/atlas_button.rs
+--- a/gpu/src/atlas_button.rs
++++ b/gpu/src/atlas_button.rs
 @@ -96,6 +96,9 @@ struct AtlasButton {
      canvas: Canvas,
      renderer: Renderer,
@@ -106,10 +106,10 @@ index 1bfa474..28e51a2 100644
 +        assert!(s.messages().is_empty());
 +    }
 +}
-diff --git a/exact/demos/gpu/src/atlas_sphere.rs b/exact/demos/gpu/src/atlas_sphere.rs
+diff --git a/gpu/src/atlas_sphere.rs b/gpu/src/atlas_sphere.rs
 index 5eb9058..7e9024d 100644
---- a/exact/demos/gpu/src/atlas_sphere.rs
-+++ b/exact/demos/gpu/src/atlas_sphere.rs
+--- a/gpu/src/atlas_sphere.rs
++++ b/gpu/src/atlas_sphere.rs
 @@ -305,7 +305,7 @@ impl Surface for AtlasSphere {
      }
  
@@ -119,10 +119,10 @@ index 5eb9058..7e9024d 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/audio_player.rs b/exact/demos/gpu/src/audio_player.rs
+diff --git a/gpu/src/audio_player.rs b/gpu/src/audio_player.rs
 index 81499c1..3824760 100644
---- a/exact/demos/gpu/src/audio_player.rs
-+++ b/exact/demos/gpu/src/audio_player.rs
+--- a/gpu/src/audio_player.rs
++++ b/gpu/src/audio_player.rs
 @@ -296,7 +296,7 @@ impl Surface for AudioPlayer {
  
      fn messages(&mut self) -> Vec<String> {
@@ -132,10 +132,10 @@ index 81499c1..3824760 100644
              None => Vec::new(),
          }
      }
-diff --git a/exact/demos/gpu/src/balance_slider.rs b/exact/demos/gpu/src/balance_slider.rs
+diff --git a/gpu/src/balance_slider.rs b/gpu/src/balance_slider.rs
 index a74ae1a..40a40a0 100644
---- a/exact/demos/gpu/src/balance_slider.rs
-+++ b/exact/demos/gpu/src/balance_slider.rs
+--- a/gpu/src/balance_slider.rs
++++ b/gpu/src/balance_slider.rs
 @@ -147,7 +147,7 @@ impl Surface for BalanceSlider {
      }
  
@@ -145,10 +145,10 @@ index a74ae1a..40a40a0 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/bezier_curve_outline.rs b/exact/demos/gpu/src/bezier_curve_outline.rs
+diff --git a/gpu/src/bezier_curve_outline.rs b/gpu/src/bezier_curve_outline.rs
 index 14c5fa8..eef9626 100644
---- a/exact/demos/gpu/src/bezier_curve_outline.rs
-+++ b/exact/demos/gpu/src/bezier_curve_outline.rs
+--- a/gpu/src/bezier_curve_outline.rs
++++ b/gpu/src/bezier_curve_outline.rs
 @@ -316,7 +316,7 @@ impl Surface for BezierOutline {
      }
  
@@ -158,10 +158,10 @@ index 14c5fa8..eef9626 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/bottom_bar_skia.rs b/exact/demos/gpu/src/bottom_bar_skia.rs
+diff --git a/gpu/src/bottom_bar_skia.rs b/gpu/src/bottom_bar_skia.rs
 index 8a15583..147863e 100644
---- a/exact/demos/gpu/src/bottom_bar_skia.rs
-+++ b/exact/demos/gpu/src/bottom_bar_skia.rs
+--- a/gpu/src/bottom_bar_skia.rs
++++ b/gpu/src/bottom_bar_skia.rs
 @@ -149,7 +149,7 @@ impl Surface for BottomBarSkia {
      }
  
@@ -171,10 +171,10 @@ index 8a15583..147863e 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/calendar_days.rs b/exact/demos/gpu/src/calendar_days.rs
+diff --git a/gpu/src/calendar_days.rs b/gpu/src/calendar_days.rs
 index 10e9f94..4b90ec2 100644
---- a/exact/demos/gpu/src/calendar_days.rs
-+++ b/exact/demos/gpu/src/calendar_days.rs
+--- a/gpu/src/calendar_days.rs
++++ b/gpu/src/calendar_days.rs
 @@ -508,7 +508,7 @@ impl Surface for CalendarDays {
      }
  
@@ -184,10 +184,10 @@ index 10e9f94..4b90ec2 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/card_shader_reflections.rs b/exact/demos/gpu/src/card_shader_reflections.rs
+diff --git a/gpu/src/card_shader_reflections.rs b/gpu/src/card_shader_reflections.rs
 index 4fac1e6..0158a28 100644
---- a/exact/demos/gpu/src/card_shader_reflections.rs
-+++ b/exact/demos/gpu/src/card_shader_reflections.rs
+--- a/gpu/src/card_shader_reflections.rs
++++ b/gpu/src/card_shader_reflections.rs
 @@ -521,7 +521,7 @@ impl Surface for CardShaderReflections {
      }
  
@@ -197,10 +197,10 @@ index 4fac1e6..0158a28 100644
      }
  
      fn render(
-diff --git a/exact/demos/gpu/src/cherry_blossom_qrcode.rs b/exact/demos/gpu/src/cherry_blossom_qrcode.rs
+diff --git a/gpu/src/cherry_blossom_qrcode.rs b/gpu/src/cherry_blossom_qrcode.rs
 index 668b2c4..10b3542 100644
---- a/exact/demos/gpu/src/cherry_blossom_qrcode.rs
-+++ b/exact/demos/gpu/src/cherry_blossom_qrcode.rs
+--- a/gpu/src/cherry_blossom_qrcode.rs
++++ b/gpu/src/cherry_blossom_qrcode.rs
 @@ -802,7 +802,7 @@ impl Surface for CherryBlossomQrcode {
      }
  
@@ -210,10 +210,10 @@ index 668b2c4..10b3542 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/chessboard.rs b/exact/demos/gpu/src/chessboard.rs
+diff --git a/gpu/src/chessboard.rs b/gpu/src/chessboard.rs
 index a17c4a2..fb52a56 100644
---- a/exact/demos/gpu/src/chessboard.rs
-+++ b/exact/demos/gpu/src/chessboard.rs
+--- a/gpu/src/chessboard.rs
++++ b/gpu/src/chessboard.rs
 @@ -2702,7 +2702,7 @@ impl Surface for Chessboard {
      }
  
@@ -223,10 +223,10 @@ index a17c4a2..fb52a56 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/circular_carousel.rs b/exact/demos/gpu/src/circular_carousel.rs
+diff --git a/gpu/src/circular_carousel.rs b/gpu/src/circular_carousel.rs
 index b1600da..4984947 100644
---- a/exact/demos/gpu/src/circular_carousel.rs
-+++ b/exact/demos/gpu/src/circular_carousel.rs
+--- a/gpu/src/circular_carousel.rs
++++ b/gpu/src/circular_carousel.rs
 @@ -250,7 +250,7 @@ impl Surface for Circular {
      }
  
@@ -236,10 +236,10 @@ index b1600da..4984947 100644
      }
  
      fn input(&mut self, event: &InputEvent) {
-diff --git a/exact/demos/gpu/src/color_carousel.rs b/exact/demos/gpu/src/color_carousel.rs
+diff --git a/gpu/src/color_carousel.rs b/gpu/src/color_carousel.rs
 index 293573a..270efc9 100644
---- a/exact/demos/gpu/src/color_carousel.rs
-+++ b/exact/demos/gpu/src/color_carousel.rs
+--- a/gpu/src/color_carousel.rs
++++ b/gpu/src/color_carousel.rs
 @@ -162,7 +162,7 @@ impl Surface for ColorCarousel {
      }
  
@@ -249,10 +249,10 @@ index 293573a..270efc9 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/cuberto_slider.rs b/exact/demos/gpu/src/cuberto_slider.rs
+diff --git a/gpu/src/cuberto_slider.rs b/gpu/src/cuberto_slider.rs
 index 6a9468d..b5c8626 100644
---- a/exact/demos/gpu/src/cuberto_slider.rs
-+++ b/exact/demos/gpu/src/cuberto_slider.rs
+--- a/gpu/src/cuberto_slider.rs
++++ b/gpu/src/cuberto_slider.rs
 @@ -189,7 +189,7 @@ impl Surface for CubertoSlider {
  
      /// RN's press is a Gesture.Pan's onBegin / onFinalize with its own springs, not pressto: not `pressto::Pressable`.
@@ -262,10 +262,10 @@ index 6a9468d..b5c8626 100644
      }
  
      fn input(&mut self, event: &InputEvent) {
-diff --git a/exact/demos/gpu/src/delete_button.rs b/exact/demos/gpu/src/delete_button.rs
+diff --git a/gpu/src/delete_button.rs b/gpu/src/delete_button.rs
 index f6ae36c..e260e07 100644
---- a/exact/demos/gpu/src/delete_button.rs
-+++ b/exact/demos/gpu/src/delete_button.rs
+--- a/gpu/src/delete_button.rs
++++ b/gpu/src/delete_button.rs
 @@ -208,7 +208,7 @@ impl Surface for DeleteButton {
      }
  
@@ -275,10 +275,10 @@ index f6ae36c..e260e07 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/dot_sheet_card.rs b/exact/demos/gpu/src/dot_sheet_card.rs
+diff --git a/gpu/src/dot_sheet_card.rs b/gpu/src/dot_sheet_card.rs
 index cb40551..b542182 100644
---- a/exact/demos/gpu/src/dot_sheet_card.rs
-+++ b/exact/demos/gpu/src/dot_sheet_card.rs
+--- a/gpu/src/dot_sheet_card.rs
++++ b/gpu/src/dot_sheet_card.rs
 @@ -104,7 +104,7 @@ impl Surface for Card {
      }
  
@@ -288,10 +288,10 @@ index cb40551..b542182 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/drag_to_sort.rs b/exact/demos/gpu/src/drag_to_sort.rs
+diff --git a/gpu/src/drag_to_sort.rs b/gpu/src/drag_to_sort.rs
 index 2ba5c5c..3fadb24 100644
---- a/exact/demos/gpu/src/drag_to_sort.rs
-+++ b/exact/demos/gpu/src/drag_to_sort.rs
+--- a/gpu/src/drag_to_sort.rs
++++ b/gpu/src/drag_to_sort.rs
 @@ -539,7 +539,7 @@ impl Surface for Sort {
      }
  
@@ -301,10 +301,10 @@ index 2ba5c5c..3fadb24 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/draggable_panel.rs b/exact/demos/gpu/src/draggable_panel.rs
+diff --git a/gpu/src/draggable_panel.rs b/gpu/src/draggable_panel.rs
 index 5534b53..6709d91 100644
---- a/exact/demos/gpu/src/draggable_panel.rs
-+++ b/exact/demos/gpu/src/draggable_panel.rs
+--- a/gpu/src/draggable_panel.rs
++++ b/gpu/src/draggable_panel.rs
 @@ -842,7 +842,7 @@ impl Surface for Panel {
      }
  
@@ -314,10 +314,10 @@ index 5534b53..6709d91 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/duration_slider.rs b/exact/demos/gpu/src/duration_slider.rs
+diff --git a/gpu/src/duration_slider.rs b/gpu/src/duration_slider.rs
 index 5fa086f..ae58623 100644
---- a/exact/demos/gpu/src/duration_slider.rs
-+++ b/exact/demos/gpu/src/duration_slider.rs
+--- a/gpu/src/duration_slider.rs
++++ b/gpu/src/duration_slider.rs
 @@ -331,7 +331,7 @@ impl Surface for DurationSlider {
      }
  
@@ -327,10 +327,10 @@ index 5fa086f..ae58623 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/empty_qr_code.rs b/exact/demos/gpu/src/empty_qr_code.rs
+diff --git a/gpu/src/empty_qr_code.rs b/gpu/src/empty_qr_code.rs
 index f8c65a9..50b8083 100644
---- a/exact/demos/gpu/src/empty_qr_code.rs
-+++ b/exact/demos/gpu/src/empty_qr_code.rs
+--- a/gpu/src/empty_qr_code.rs
++++ b/gpu/src/empty_qr_code.rs
 @@ -367,7 +367,7 @@ impl Surface for EmptyQrCode {
      }
  
@@ -340,10 +340,10 @@ index f8c65a9..50b8083 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/exclusion_tabs.rs b/exact/demos/gpu/src/exclusion_tabs.rs
+diff --git a/gpu/src/exclusion_tabs.rs b/gpu/src/exclusion_tabs.rs
 index ee2830a..f6f03b0 100644
---- a/exact/demos/gpu/src/exclusion_tabs.rs
-+++ b/exact/demos/gpu/src/exclusion_tabs.rs
+--- a/gpu/src/exclusion_tabs.rs
++++ b/gpu/src/exclusion_tabs.rs
 @@ -155,7 +155,7 @@ impl Surface for ExclusionTabs {
      }
  
@@ -353,10 +353,10 @@ index ee2830a..f6f03b0 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/expandable_mini_player.rs b/exact/demos/gpu/src/expandable_mini_player.rs
+diff --git a/gpu/src/expandable_mini_player.rs b/gpu/src/expandable_mini_player.rs
 index 45eff94..76b6b65 100644
---- a/exact/demos/gpu/src/expandable_mini_player.rs
-+++ b/exact/demos/gpu/src/expandable_mini_player.rs
+--- a/gpu/src/expandable_mini_player.rs
++++ b/gpu/src/expandable_mini_player.rs
 @@ -161,7 +161,7 @@ impl Surface for MiniPlayer {
      }
  
@@ -366,10 +366,10 @@ index 45eff94..76b6b65 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/fibonacci_shader.rs b/exact/demos/gpu/src/fibonacci_shader.rs
+diff --git a/gpu/src/fibonacci_shader.rs b/gpu/src/fibonacci_shader.rs
 index 4edf663..f10dbb0 100644
---- a/exact/demos/gpu/src/fibonacci_shader.rs
-+++ b/exact/demos/gpu/src/fibonacci_shader.rs
+--- a/gpu/src/fibonacci_shader.rs
++++ b/gpu/src/fibonacci_shader.rs
 @@ -146,7 +146,7 @@ impl Surface for FibonacciShader {
      }
  
@@ -379,10 +379,10 @@ index 4edf663..f10dbb0 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/fibonacci_shader_grid.rs b/exact/demos/gpu/src/fibonacci_shader_grid.rs
+diff --git a/gpu/src/fibonacci_shader_grid.rs b/gpu/src/fibonacci_shader_grid.rs
 index 567db93..c35d440 100644
---- a/exact/demos/gpu/src/fibonacci_shader_grid.rs
-+++ b/exact/demos/gpu/src/fibonacci_shader_grid.rs
+--- a/gpu/src/fibonacci_shader_grid.rs
++++ b/gpu/src/fibonacci_shader_grid.rs
 @@ -282,7 +282,7 @@ impl Surface for FibonacciShaderGrid {
      }
  
@@ -392,10 +392,10 @@ index 567db93..c35d440 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/floating_bottom_bar.rs b/exact/demos/gpu/src/floating_bottom_bar.rs
+diff --git a/gpu/src/floating_bottom_bar.rs b/gpu/src/floating_bottom_bar.rs
 index 0a31735..00f05d8 100644
---- a/exact/demos/gpu/src/floating_bottom_bar.rs
-+++ b/exact/demos/gpu/src/floating_bottom_bar.rs
+--- a/gpu/src/floating_bottom_bar.rs
++++ b/gpu/src/floating_bottom_bar.rs
 @@ -240,7 +240,7 @@ impl Surface for FloatingBottomBar {
      }
  
@@ -405,10 +405,10 @@ index 0a31735..00f05d8 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/floating_modal.rs b/exact/demos/gpu/src/floating_modal.rs
+diff --git a/gpu/src/floating_modal.rs b/gpu/src/floating_modal.rs
 index a65e9ae..83d7cb8 100644
---- a/exact/demos/gpu/src/floating_modal.rs
-+++ b/exact/demos/gpu/src/floating_modal.rs
+--- a/gpu/src/floating_modal.rs
++++ b/gpu/src/floating_modal.rs
 @@ -381,7 +381,7 @@ impl Surface for FloatingModal {
      }
  
@@ -418,10 +418,10 @@ index a65e9ae..83d7cb8 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/fluid_tab_interaction.rs b/exact/demos/gpu/src/fluid_tab_interaction.rs
+diff --git a/gpu/src/fluid_tab_interaction.rs b/gpu/src/fluid_tab_interaction.rs
 index 84774fe..bbc17f9 100644
---- a/exact/demos/gpu/src/fluid_tab_interaction.rs
-+++ b/exact/demos/gpu/src/fluid_tab_interaction.rs
+--- a/gpu/src/fluid_tab_interaction.rs
++++ b/gpu/src/fluid_tab_interaction.rs
 @@ -537,7 +537,7 @@ impl Surface for FluidTab {
      }
  
@@ -431,10 +431,10 @@ index 84774fe..bbc17f9 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/fourier_visualizer.rs b/exact/demos/gpu/src/fourier_visualizer.rs
+diff --git a/gpu/src/fourier_visualizer.rs b/gpu/src/fourier_visualizer.rs
 index 12b3ea8..eefaa9f 100644
---- a/exact/demos/gpu/src/fourier_visualizer.rs
-+++ b/exact/demos/gpu/src/fourier_visualizer.rs
+--- a/gpu/src/fourier_visualizer.rs
++++ b/gpu/src/fourier_visualizer.rs
 @@ -719,7 +719,7 @@ impl Surface for FourierVisualizer {
      }
  
@@ -444,10 +444,10 @@ index 12b3ea8..eefaa9f 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/fractal_glass.rs b/exact/demos/gpu/src/fractal_glass.rs
+diff --git a/gpu/src/fractal_glass.rs b/gpu/src/fractal_glass.rs
 index 62e9d21..2efb094 100644
---- a/exact/demos/gpu/src/fractal_glass.rs
-+++ b/exact/demos/gpu/src/fractal_glass.rs
+--- a/gpu/src/fractal_glass.rs
++++ b/gpu/src/fractal_glass.rs
 @@ -203,7 +203,7 @@ impl Surface for FractalGlass {
      }
  
@@ -457,10 +457,10 @@ index 62e9d21..2efb094 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/geometry_button.rs b/exact/demos/gpu/src/geometry_button.rs
+diff --git a/gpu/src/geometry_button.rs b/gpu/src/geometry_button.rs
 index 73d8e66..b7c3ce6 100644
---- a/exact/demos/gpu/src/geometry_button.rs
-+++ b/exact/demos/gpu/src/geometry_button.rs
+--- a/gpu/src/geometry_button.rs
++++ b/gpu/src/geometry_button.rs
 @@ -88,7 +88,7 @@ impl Surface for GeometryButton {
      }
  
@@ -470,10 +470,10 @@ index 73d8e66..b7c3ce6 100644
      }
  
      fn render(
-diff --git a/exact/demos/gpu/src/github_onboarding.rs b/exact/demos/gpu/src/github_onboarding.rs
+diff --git a/gpu/src/github_onboarding.rs b/gpu/src/github_onboarding.rs
 index 66156ab..df4b550 100644
---- a/exact/demos/gpu/src/github_onboarding.rs
-+++ b/exact/demos/gpu/src/github_onboarding.rs
+--- a/gpu/src/github_onboarding.rs
++++ b/gpu/src/github_onboarding.rs
 @@ -426,7 +426,7 @@ impl Surface for Onboarding {
      }
  
@@ -483,10 +483,10 @@ index 66156ab..df4b550 100644
      }
  
      fn input(&mut self, event: &InputEvent) {
-diff --git a/exact/demos/gpu/src/github_terrain.rs b/exact/demos/gpu/src/github_terrain.rs
+diff --git a/gpu/src/github_terrain.rs b/gpu/src/github_terrain.rs
 index f214cb2..e607ab1 100644
---- a/exact/demos/gpu/src/github_terrain.rs
-+++ b/exact/demos/gpu/src/github_terrain.rs
+--- a/gpu/src/github_terrain.rs
++++ b/gpu/src/github_terrain.rs
 @@ -167,7 +167,7 @@ impl Surface for GithubTerrain {
      }
  
@@ -496,10 +496,10 @@ index f214cb2..e607ab1 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/gl_transitions.rs b/exact/demos/gpu/src/gl_transitions.rs
+diff --git a/gpu/src/gl_transitions.rs b/gpu/src/gl_transitions.rs
 index c7491d8..e0e4a54 100644
---- a/exact/demos/gpu/src/gl_transitions.rs
-+++ b/exact/demos/gpu/src/gl_transitions.rs
+--- a/gpu/src/gl_transitions.rs
++++ b/gpu/src/gl_transitions.rs
 @@ -1060,7 +1060,7 @@ impl Surface for GlTransitions {
      }
  
@@ -509,11 +509,11 @@ index c7491d8..e0e4a54 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/haptic.rs b/exact/demos/gpu/src/haptic.rs
+diff --git a/gpu/src/haptic.rs b/gpu/src/haptic.rs
 new file mode 100644
 index 0000000..7ff00c1
 --- /dev/null
-+++ b/exact/demos/gpu/src/haptic.rs
++++ b/gpu/src/haptic.rs
 @@ -0,0 +1,117 @@
 +//! A surface's haptics, played by the host with no Contract commit.
 +//!
@@ -632,10 +632,10 @@ index 0000000..7ff00c1
 +        assert_eq!(host(vec!["haptic:selection".into()]), ["haptic:selection"]);
 +    }
 +}
-diff --git a/exact/demos/gpu/src/image_cropper.rs b/exact/demos/gpu/src/image_cropper.rs
+diff --git a/gpu/src/image_cropper.rs b/gpu/src/image_cropper.rs
 index 4236631..2c155f4 100644
---- a/exact/demos/gpu/src/image_cropper.rs
-+++ b/exact/demos/gpu/src/image_cropper.rs
+--- a/gpu/src/image_cropper.rs
++++ b/gpu/src/image_cropper.rs
 @@ -1197,7 +1197,7 @@ impl Surface for ImageCropper {
      }
  
@@ -645,10 +645,10 @@ index 4236631..2c155f4 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/interaction_appearance.rs b/exact/demos/gpu/src/interaction_appearance.rs
+diff --git a/gpu/src/interaction_appearance.rs b/gpu/src/interaction_appearance.rs
 index 321d344..d7552d1 100644
---- a/exact/demos/gpu/src/interaction_appearance.rs
-+++ b/exact/demos/gpu/src/interaction_appearance.rs
+--- a/gpu/src/interaction_appearance.rs
++++ b/gpu/src/interaction_appearance.rs
 @@ -429,7 +429,7 @@ impl Surface for Appearance {
      }
  
@@ -658,10 +658,10 @@ index 321d344..d7552d1 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/ios_home_grid.rs b/exact/demos/gpu/src/ios_home_grid.rs
+diff --git a/gpu/src/ios_home_grid.rs b/gpu/src/ios_home_grid.rs
 index ca88c4c..c856129 100644
---- a/exact/demos/gpu/src/ios_home_grid.rs
-+++ b/exact/demos/gpu/src/ios_home_grid.rs
+--- a/gpu/src/ios_home_grid.rs
++++ b/gpu/src/ios_home_grid.rs
 @@ -544,7 +544,7 @@ impl Surface for Grid {
      }
  
@@ -671,10 +671,10 @@ index ca88c4c..c856129 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/lib.rs b/exact/demos/gpu/src/lib.rs
+diff --git a/gpu/src/lib.rs b/gpu/src/lib.rs
 index c48c47a..8bf423d 100644
---- a/exact/demos/gpu/src/lib.rs
-+++ b/exact/demos/gpu/src/lib.rs
+--- a/gpu/src/lib.rs
++++ b/gpu/src/lib.rs
 @@ -18,6 +18,7 @@ pub mod shaders {
  #[cfg(test)]
  mod bench;
@@ -683,10 +683,10 @@ index c48c47a..8bf423d 100644
  pub mod gooey;
  pub mod qr;
  pub mod ui_scroll;
-diff --git a/exact/demos/gpu/src/light_on_painting.rs b/exact/demos/gpu/src/light_on_painting.rs
+diff --git a/gpu/src/light_on_painting.rs b/gpu/src/light_on_painting.rs
 index c6bb9b6..6b1404b 100644
---- a/exact/demos/gpu/src/light_on_painting.rs
-+++ b/exact/demos/gpu/src/light_on_painting.rs
+--- a/gpu/src/light_on_painting.rs
++++ b/gpu/src/light_on_painting.rs
 @@ -882,7 +882,7 @@ impl Surface for LightOnPainting {
      }
  
@@ -696,10 +696,10 @@ index c6bb9b6..6b1404b 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/loading_button.rs b/exact/demos/gpu/src/loading_button.rs
+diff --git a/gpu/src/loading_button.rs b/gpu/src/loading_button.rs
 index 2d4d216..facce32 100644
---- a/exact/demos/gpu/src/loading_button.rs
-+++ b/exact/demos/gpu/src/loading_button.rs
+--- a/gpu/src/loading_button.rs
++++ b/gpu/src/loading_button.rs
 @@ -357,7 +357,7 @@ impl Surface for LoadingButton {
      }
  
@@ -709,10 +709,10 @@ index 2d4d216..facce32 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/magnet_spring.rs b/exact/demos/gpu/src/magnet_spring.rs
+diff --git a/gpu/src/magnet_spring.rs b/gpu/src/magnet_spring.rs
 index 3438db9..54a6aab 100644
---- a/exact/demos/gpu/src/magnet_spring.rs
-+++ b/exact/demos/gpu/src/magnet_spring.rs
+--- a/gpu/src/magnet_spring.rs
++++ b/gpu/src/magnet_spring.rs
 @@ -213,7 +213,7 @@ impl Surface for MagnetSpring {
      }
  
@@ -722,10 +722,10 @@ index 3438db9..54a6aab 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/metaball.rs b/exact/demos/gpu/src/metaball.rs
+diff --git a/gpu/src/metaball.rs b/gpu/src/metaball.rs
 index 82b00f8..930732d 100644
---- a/exact/demos/gpu/src/metaball.rs
-+++ b/exact/demos/gpu/src/metaball.rs
+--- a/gpu/src/metaball.rs
++++ b/gpu/src/metaball.rs
 @@ -289,7 +289,7 @@ impl Surface for Metaball {
      }
  
@@ -735,10 +735,10 @@ index 82b00f8..930732d 100644
      }
  
      fn render(
-diff --git a/exact/demos/gpu/src/miles_bar_chart.rs b/exact/demos/gpu/src/miles_bar_chart.rs
+diff --git a/gpu/src/miles_bar_chart.rs b/gpu/src/miles_bar_chart.rs
 index 74f4064..dd3880a 100644
---- a/exact/demos/gpu/src/miles_bar_chart.rs
-+++ b/exact/demos/gpu/src/miles_bar_chart.rs
+--- a/gpu/src/miles_bar_chart.rs
++++ b/gpu/src/miles_bar_chart.rs
 @@ -111,7 +111,7 @@ impl Surface for Weeks {
      }
  
@@ -748,10 +748,10 @@ index 74f4064..dd3880a 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/mnist.rs b/exact/demos/gpu/src/mnist.rs
+diff --git a/gpu/src/mnist.rs b/gpu/src/mnist.rs
 index 674decf..5636ca0 100644
---- a/exact/demos/gpu/src/mnist.rs
-+++ b/exact/demos/gpu/src/mnist.rs
+--- a/gpu/src/mnist.rs
++++ b/gpu/src/mnist.rs
 @@ -450,7 +450,7 @@ impl Surface for Mnist {
      }
  
@@ -761,10 +761,10 @@ index 674decf..5636ca0 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/mobile_input.rs b/exact/demos/gpu/src/mobile_input.rs
+diff --git a/gpu/src/mobile_input.rs b/gpu/src/mobile_input.rs
 index 9ef74e1..2e6fcb9 100644
---- a/exact/demos/gpu/src/mobile_input.rs
-+++ b/exact/demos/gpu/src/mobile_input.rs
+--- a/gpu/src/mobile_input.rs
++++ b/gpu/src/mobile_input.rs
 @@ -651,7 +651,7 @@ impl Surface for MobileInput {
      }
  
@@ -774,10 +774,10 @@ index 9ef74e1..2e6fcb9 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/motion_blur.rs b/exact/demos/gpu/src/motion_blur.rs
+diff --git a/gpu/src/motion_blur.rs b/gpu/src/motion_blur.rs
 index 01e0aed..da5bc5f 100644
---- a/exact/demos/gpu/src/motion_blur.rs
-+++ b/exact/demos/gpu/src/motion_blur.rs
+--- a/gpu/src/motion_blur.rs
++++ b/gpu/src/motion_blur.rs
 @@ -766,7 +766,7 @@ impl Surface for MotionBlur {
      }
  
@@ -787,10 +787,10 @@ index 01e0aed..da5bc5f 100644
      }
  }
  
-diff --git a/exact/demos/gpu/src/notion_qrcode.rs b/exact/demos/gpu/src/notion_qrcode.rs
+diff --git a/gpu/src/notion_qrcode.rs b/gpu/src/notion_qrcode.rs
 index b65524b..4bf362f 100644
---- a/exact/demos/gpu/src/notion_qrcode.rs
-+++ b/exact/demos/gpu/src/notion_qrcode.rs
+--- a/gpu/src/notion_qrcode.rs
++++ b/gpu/src/notion_qrcode.rs
 @@ -1759,7 +1759,7 @@ impl Surface for NotionQrCode {
      }
  
@@ -800,10 +800,10 @@ index b65524b..4bf362f 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/paper_folding.rs b/exact/demos/gpu/src/paper_folding.rs
+diff --git a/gpu/src/paper_folding.rs b/gpu/src/paper_folding.rs
 index f410402..f909d83 100644
---- a/exact/demos/gpu/src/paper_folding.rs
-+++ b/exact/demos/gpu/src/paper_folding.rs
+--- a/gpu/src/paper_folding.rs
++++ b/gpu/src/paper_folding.rs
 @@ -111,7 +111,7 @@ impl Surface for PaperFolding {
      }
  
@@ -813,10 +813,10 @@ index f410402..f909d83 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/particles_button.rs b/exact/demos/gpu/src/particles_button.rs
+diff --git a/gpu/src/particles_button.rs b/gpu/src/particles_button.rs
 index 2134ecf..eaae128 100644
---- a/exact/demos/gpu/src/particles_button.rs
-+++ b/exact/demos/gpu/src/particles_button.rs
+--- a/gpu/src/particles_button.rs
++++ b/gpu/src/particles_button.rs
 @@ -289,7 +289,7 @@ impl Surface for ParticlesButton {
      }
  
@@ -826,10 +826,10 @@ index 2134ecf..eaae128 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/pomodoro_timer.rs b/exact/demos/gpu/src/pomodoro_timer.rs
+diff --git a/gpu/src/pomodoro_timer.rs b/gpu/src/pomodoro_timer.rs
 index 25e73f8..785e04c 100644
---- a/exact/demos/gpu/src/pomodoro_timer.rs
-+++ b/exact/demos/gpu/src/pomodoro_timer.rs
+--- a/gpu/src/pomodoro_timer.rs
++++ b/gpu/src/pomodoro_timer.rs
 @@ -688,7 +688,7 @@ impl Surface for Pomodoro {
      }
  
@@ -839,10 +839,10 @@ index 25e73f8..785e04c 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/popup_handler.rs b/exact/demos/gpu/src/popup_handler.rs
+diff --git a/gpu/src/popup_handler.rs b/gpu/src/popup_handler.rs
 index a6f589e..86e8939 100644
---- a/exact/demos/gpu/src/popup_handler.rs
-+++ b/exact/demos/gpu/src/popup_handler.rs
+--- a/gpu/src/popup_handler.rs
++++ b/gpu/src/popup_handler.rs
 @@ -153,7 +153,7 @@ impl Surface for PopupHandler {
      }
  
@@ -852,10 +852,10 @@ index a6f589e..86e8939 100644
      }
  
      fn max_fps(&self) -> u32 {
-diff --git a/exact/demos/gpu/src/prequel_slider.rs b/exact/demos/gpu/src/prequel_slider.rs
+diff --git a/gpu/src/prequel_slider.rs b/gpu/src/prequel_slider.rs
 index 23cd998..1e87f72 100644
---- a/exact/demos/gpu/src/prequel_slider.rs
-+++ b/exact/demos/gpu/src/prequel_slider.rs
+--- a/gpu/src/prequel_slider.rs
++++ b/gpu/src/prequel_slider.rs
 @@ -314,7 +314,7 @@ impl Surface for PrequelSlider {
      }
  
@@ -865,10 +865,10 @@ index 23cd998..1e87f72 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/qr_code_generator.rs b/exact/demos/gpu/src/qr_code_generator.rs
+diff --git a/gpu/src/qr_code_generator.rs b/gpu/src/qr_code_generator.rs
 index 72756c5..54fcc8a 100644
---- a/exact/demos/gpu/src/qr_code_generator.rs
-+++ b/exact/demos/gpu/src/qr_code_generator.rs
+--- a/gpu/src/qr_code_generator.rs
++++ b/gpu/src/qr_code_generator.rs
 @@ -783,7 +783,7 @@ impl Surface for QrCodeGenerator {
      }
  
@@ -878,10 +878,10 @@ index 72756c5..54fcc8a 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/record_button.rs b/exact/demos/gpu/src/record_button.rs
+diff --git a/gpu/src/record_button.rs b/gpu/src/record_button.rs
 index 04d0e9a..f60777e 100644
---- a/exact/demos/gpu/src/record_button.rs
-+++ b/exact/demos/gpu/src/record_button.rs
+--- a/gpu/src/record_button.rs
++++ b/gpu/src/record_button.rs
 @@ -213,7 +213,7 @@ impl Surface for RecordButton {
      }
  
@@ -891,10 +891,10 @@ index 04d0e9a..f60777e 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/scroll_progress_text.rs b/exact/demos/gpu/src/scroll_progress_text.rs
+diff --git a/gpu/src/scroll_progress_text.rs b/gpu/src/scroll_progress_text.rs
 index fffd446..d186e55 100644
---- a/exact/demos/gpu/src/scroll_progress_text.rs
-+++ b/exact/demos/gpu/src/scroll_progress_text.rs
+--- a/gpu/src/scroll_progress_text.rs
++++ b/gpu/src/scroll_progress_text.rs
 @@ -107,7 +107,7 @@ impl Surface for ScrollProgressText {
      }
  
@@ -904,10 +904,10 @@ index fffd446..d186e55 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/scrollable_bottom_sheet.rs b/exact/demos/gpu/src/scrollable_bottom_sheet.rs
+diff --git a/gpu/src/scrollable_bottom_sheet.rs b/gpu/src/scrollable_bottom_sheet.rs
 index 43ab059..264c930 100644
---- a/exact/demos/gpu/src/scrollable_bottom_sheet.rs
-+++ b/exact/demos/gpu/src/scrollable_bottom_sheet.rs
+--- a/gpu/src/scrollable_bottom_sheet.rs
++++ b/gpu/src/scrollable_bottom_sheet.rs
 @@ -585,7 +585,7 @@ impl Surface for Sheet {
      }
  
@@ -917,10 +917,10 @@ index 43ab059..264c930 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/sculptures_in_words.rs b/exact/demos/gpu/src/sculptures_in_words.rs
+diff --git a/gpu/src/sculptures_in_words.rs b/gpu/src/sculptures_in_words.rs
 index 3f30fa6..82699db 100644
---- a/exact/demos/gpu/src/sculptures_in_words.rs
-+++ b/exact/demos/gpu/src/sculptures_in_words.rs
+--- a/gpu/src/sculptures_in_words.rs
++++ b/gpu/src/sculptures_in_words.rs
 @@ -1249,7 +1249,7 @@ impl Surface for Sculptures {
      }
  
@@ -930,10 +930,10 @@ index 3f30fa6..82699db 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/selectable_grid_list.rs b/exact/demos/gpu/src/selectable_grid_list.rs
+diff --git a/gpu/src/selectable_grid_list.rs b/gpu/src/selectable_grid_list.rs
 index 181a91c..388eb50 100644
---- a/exact/demos/gpu/src/selectable_grid_list.rs
-+++ b/exact/demos/gpu/src/selectable_grid_list.rs
+--- a/gpu/src/selectable_grid_list.rs
++++ b/gpu/src/selectable_grid_list.rs
 @@ -261,7 +261,7 @@ impl Surface for SelectableGrid {
      }
  
@@ -943,10 +943,10 @@ index 181a91c..388eb50 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/snake.rs b/exact/demos/gpu/src/snake.rs
+diff --git a/gpu/src/snake.rs b/gpu/src/snake.rs
 index 5514ec0..7be0d55 100644
---- a/exact/demos/gpu/src/snake.rs
-+++ b/exact/demos/gpu/src/snake.rs
+--- a/gpu/src/snake.rs
++++ b/gpu/src/snake.rs
 @@ -997,7 +997,7 @@ impl Surface for SnakeDemo {
      }
  
@@ -956,10 +956,10 @@ index 5514ec0..7be0d55 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/sphere_waves.rs b/exact/demos/gpu/src/sphere_waves.rs
+diff --git a/gpu/src/sphere_waves.rs b/gpu/src/sphere_waves.rs
 index cf6ea8b..a0d1a2b 100644
---- a/exact/demos/gpu/src/sphere_waves.rs
-+++ b/exact/demos/gpu/src/sphere_waves.rs
+--- a/gpu/src/sphere_waves.rs
++++ b/gpu/src/sphere_waves.rs
 @@ -168,7 +168,7 @@ impl Surface for SphereWaves {
      }
  
@@ -969,10 +969,10 @@ index cf6ea8b..a0d1a2b 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/spiral.rs b/exact/demos/gpu/src/spiral.rs
+diff --git a/gpu/src/spiral.rs b/gpu/src/spiral.rs
 index 82aa29e..05f14a7 100644
---- a/exact/demos/gpu/src/spiral.rs
-+++ b/exact/demos/gpu/src/spiral.rs
+--- a/gpu/src/spiral.rs
++++ b/gpu/src/spiral.rs
 @@ -115,7 +115,7 @@ impl Surface for Spiral {
      }
  
@@ -982,10 +982,10 @@ index 82aa29e..05f14a7 100644
      }
  
      fn input(&mut self, event: &InputEvent) {
-diff --git a/exact/demos/gpu/src/stacked_carousel.rs b/exact/demos/gpu/src/stacked_carousel.rs
+diff --git a/gpu/src/stacked_carousel.rs b/gpu/src/stacked_carousel.rs
 index 329da73..a217f61 100644
---- a/exact/demos/gpu/src/stacked_carousel.rs
-+++ b/exact/demos/gpu/src/stacked_carousel.rs
+--- a/gpu/src/stacked_carousel.rs
++++ b/gpu/src/stacked_carousel.rs
 @@ -326,7 +326,7 @@ impl Surface for Carousel {
      }
  
@@ -995,10 +995,10 @@ index 329da73..a217f61 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/sudoku.rs b/exact/demos/gpu/src/sudoku.rs
+diff --git a/gpu/src/sudoku.rs b/gpu/src/sudoku.rs
 index f19838e..7f1123e 100644
---- a/exact/demos/gpu/src/sudoku.rs
-+++ b/exact/demos/gpu/src/sudoku.rs
+--- a/gpu/src/sudoku.rs
++++ b/gpu/src/sudoku.rs
 @@ -2563,7 +2563,7 @@ impl Surface for Sudoku {
      }
  
@@ -1008,10 +1008,10 @@ index f19838e..7f1123e 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/swipe_cards.rs b/exact/demos/gpu/src/swipe_cards.rs
+diff --git a/gpu/src/swipe_cards.rs b/gpu/src/swipe_cards.rs
 index ef3317e..325b1fe 100644
---- a/exact/demos/gpu/src/swipe_cards.rs
-+++ b/exact/demos/gpu/src/swipe_cards.rs
+--- a/gpu/src/swipe_cards.rs
++++ b/gpu/src/swipe_cards.rs
 @@ -269,7 +269,7 @@ impl Surface for SwipeCards {
      }
  
@@ -1021,10 +1021,10 @@ index ef3317e..325b1fe 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/telegram_theme_switch.rs b/exact/demos/gpu/src/telegram_theme_switch.rs
+diff --git a/gpu/src/telegram_theme_switch.rs b/gpu/src/telegram_theme_switch.rs
 index e346fcc..05e44c4 100644
---- a/exact/demos/gpu/src/telegram_theme_switch.rs
-+++ b/exact/demos/gpu/src/telegram_theme_switch.rs
+--- a/gpu/src/telegram_theme_switch.rs
++++ b/gpu/src/telegram_theme_switch.rs
 @@ -562,7 +562,7 @@ impl Surface for TelegramThemeSwitch {
      }
  
@@ -1034,10 +1034,10 @@ index e346fcc..05e44c4 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/the_little_prince.rs b/exact/demos/gpu/src/the_little_prince.rs
+diff --git a/gpu/src/the_little_prince.rs b/gpu/src/the_little_prince.rs
 index f13dfbf..c37e5e8 100644
---- a/exact/demos/gpu/src/the_little_prince.rs
-+++ b/exact/demos/gpu/src/the_little_prince.rs
+--- a/gpu/src/the_little_prince.rs
++++ b/gpu/src/the_little_prince.rs
 @@ -600,7 +600,7 @@ impl Surface for Prince {
      }
  
@@ -1047,10 +1047,10 @@ index f13dfbf..c37e5e8 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/theme_canvas_animation.rs b/exact/demos/gpu/src/theme_canvas_animation.rs
+diff --git a/gpu/src/theme_canvas_animation.rs b/gpu/src/theme_canvas_animation.rs
 index 0dd5d8c..b228a29 100644
---- a/exact/demos/gpu/src/theme_canvas_animation.rs
-+++ b/exact/demos/gpu/src/theme_canvas_animation.rs
+--- a/gpu/src/theme_canvas_animation.rs
++++ b/gpu/src/theme_canvas_animation.rs
 @@ -122,7 +122,7 @@ impl Surface for Theme {
      }
  
@@ -1060,10 +1060,10 @@ index 0dd5d8c..b228a29 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/threads_holo_ticket.rs b/exact/demos/gpu/src/threads_holo_ticket.rs
+diff --git a/gpu/src/threads_holo_ticket.rs b/gpu/src/threads_holo_ticket.rs
 index 5c1a997..91f4717 100644
---- a/exact/demos/gpu/src/threads_holo_ticket.rs
-+++ b/exact/demos/gpu/src/threads_holo_ticket.rs
+--- a/gpu/src/threads_holo_ticket.rs
++++ b/gpu/src/threads_holo_ticket.rs
 @@ -730,7 +730,7 @@ impl Surface for ThreadsHoloTicket {
      }
  
@@ -1073,10 +1073,10 @@ index 5c1a997..91f4717 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/time_machine.rs b/exact/demos/gpu/src/time_machine.rs
+diff --git a/gpu/src/time_machine.rs b/gpu/src/time_machine.rs
 index ea72447..2970a74 100644
---- a/exact/demos/gpu/src/time_machine.rs
-+++ b/exact/demos/gpu/src/time_machine.rs
+--- a/gpu/src/time_machine.rs
++++ b/gpu/src/time_machine.rs
 @@ -947,7 +947,7 @@ impl Surface for TimeMachine {
      }
  
@@ -1086,10 +1086,10 @@ index ea72447..2970a74 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/timer.rs b/exact/demos/gpu/src/timer.rs
+diff --git a/gpu/src/timer.rs b/gpu/src/timer.rs
 index 56b1786..0a3c346 100644
---- a/exact/demos/gpu/src/timer.rs
-+++ b/exact/demos/gpu/src/timer.rs
+--- a/gpu/src/timer.rs
++++ b/gpu/src/timer.rs
 @@ -144,7 +144,7 @@ impl Surface for Timer {
      }
  
@@ -1099,10 +1099,10 @@ index 56b1786..0a3c346 100644
      }
  
      #[cfg(target_arch = "wasm32")]
-diff --git a/exact/demos/gpu/src/twitter_tab_bar.rs b/exact/demos/gpu/src/twitter_tab_bar.rs
+diff --git a/gpu/src/twitter_tab_bar.rs b/gpu/src/twitter_tab_bar.rs
 index bde1b74..1f72df5 100644
---- a/exact/demos/gpu/src/twitter_tab_bar.rs
-+++ b/exact/demos/gpu/src/twitter_tab_bar.rs
+--- a/gpu/src/twitter_tab_bar.rs
++++ b/gpu/src/twitter_tab_bar.rs
 @@ -441,7 +441,7 @@ impl Surface for TwitterTabBar {
      }
  
@@ -1112,10 +1112,10 @@ index bde1b74..1f72df5 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/twodos_slide.rs b/exact/demos/gpu/src/twodos_slide.rs
+diff --git a/gpu/src/twodos_slide.rs b/gpu/src/twodos_slide.rs
 index c350e3a..091e5b3 100644
---- a/exact/demos/gpu/src/twodos_slide.rs
-+++ b/exact/demos/gpu/src/twodos_slide.rs
+--- a/gpu/src/twodos_slide.rs
++++ b/gpu/src/twodos_slide.rs
 @@ -371,7 +371,7 @@ impl Surface for TwodosSlide {
      }
  
@@ -1125,10 +1125,10 @@ index c350e3a..091e5b3 100644
      }
  
      fn agent(&mut self, _request: &str) -> Option<String> {
-diff --git a/exact/demos/gpu/src/wheel_picker.rs b/exact/demos/gpu/src/wheel_picker.rs
+diff --git a/gpu/src/wheel_picker.rs b/gpu/src/wheel_picker.rs
 index c78ff0e..a9f2b49 100644
---- a/exact/demos/gpu/src/wheel_picker.rs
-+++ b/exact/demos/gpu/src/wheel_picker.rs
+--- a/gpu/src/wheel_picker.rs
++++ b/gpu/src/wheel_picker.rs
 @@ -177,7 +177,7 @@ impl Surface for WheelPicker {
      }
  

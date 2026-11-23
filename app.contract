@@ -38,7 +38,7 @@ shape Time
   epochAtZero: number
   utcOffset: number
 
-// The atlas's feedback store on this Mac's loopback (exact/parity-tools/feedback/server.ts):
+// The atlas's feedback store on this Mac's loopback (tools/parity/feedback/server.ts):
 // every note, a new one, and an edit (status "resolved", "open" or "deleted"). With the server
 // down the atlas just shows no pins.
 source feedbackNotes() as shape FeedbackNote[]
@@ -79,7 +79,7 @@ source snapIdle(slug: string) as shape SnapAck
 // Where a demo lets the swipe-down close start. RN's CloseGesture is a pan over the whole screen that a
 // demo's own gesture can claim first; here the demo's canvas takes touches natively and the close cannot
 // ask it mid-gesture (switching per touch costs a commit that holds the canvas's first frames), so each
-// demo says where its own vertical or free 2D drags live (exact/demos/tools/close-gesture.md has the table).
+// demo says where its own vertical or free 2D drags live (tools/close-gesture.md has the table).
 // Words, space-separated (read by CloseZone in modules/apple/DemoLaunch.swift): "" = from anywhere;
 // "x0,y0,x1,y1" = a rect in fractions of the screen where the close must not start; "strip" = only the
 // top strip (the demo's drags need the whole screen). A real vertical scroller needs no word: the close
@@ -311,7 +311,7 @@ component Demos
         if e.name == "atlas"
           Atlas(demos=allDemos(), env=env, active=(top(nav).name == "atlas"), routeKey=`${e.id}`,
             closable=(stack(nav).length > 1), leave=back, notes=feedback, add=addNote, edit=editNote)
-        // One demo as an atlas tile mounts it, for exact/parity-tools/screen-atlas/gen-snapshots.ts.
+        // One demo as an atlas tile mounts it, for tools/parity/screen-atlas/gen-snapshots.ts.
         if e.name == "snap"
           column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" position="absolute" inset=0
             SnapFrame(slug=e.params.slug, backdrop=demoOf(e.params.slug).backdrop, env=env)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Finds a child with flex=1 (or flex-grow) whose parent is a plain `view`/`box` that is not a
 flex container: in Exact a `view` is a block, so the child gets no height (RN's View is
-flex-column). Prints file:line of each parent. Usage: python3 parity-tools/measure/lint-flex.py [files…]"""
+flex-column). Prints file:line of each parent. Usage: python3 tools/parity/measure/lint-flex.py [files…]"""
 import re, sys, glob
 
 def nodes(lines):

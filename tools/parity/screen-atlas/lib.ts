@@ -3,8 +3,9 @@ import { readFileSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 export const HERE = import.meta.dir;
-export const DEMOS = resolve(HERE, "../../demos");
-export const OUT = process.env.ATLAS_OUT ?? join(HERE, "out");
+export const DEMOS = resolve(HERE, "../../..");
+// A dot folder: the Exact build and its dev server (the repo root) never capture or watch it.
+export const OUT = process.env.ATLAS_OUT ?? join(HERE, ".out");
 export const WEB = join(OUT, "web"); // a snapshot of target/web-dist, so other agents' builds don't move it mid-run
 export const KINDS = ["rn-ios", "exact-ios", "exact-web"] as const;
 

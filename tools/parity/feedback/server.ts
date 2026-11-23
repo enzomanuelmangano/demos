@@ -1,15 +1,17 @@
-// The atlas's feedback store: the Mac app's feedback mode (exact/demos/home/atlas.contract) posts
-// a note per click on a tile; this keeps one JSON per demo in data/<slug>.json, with a PNG crop
-// around the point (data/<slug>-<id>.png, from the tile's static frame) beside it.
+// The atlas's feedback store: the Mac app's feedback mode (home/atlas.contract) posts
+// a note per click on a tile; this keeps one JSON per demo in .data/<slug>.json, with a PNG crop
+// around the point (.data/<slug>-<id>.png, from the tile's static frame) beside it.
 // `list.ts` prints the open ones for whoever fixes them.
-//   bun exact/parity-tools/feedback/server.ts        (http://127.0.0.1:5350)
+//   bun tools/parity/feedback/server.ts        (http://127.0.0.1:5350)
+// Everything it writes lives in .data/ (a dot folder, so the Exact build and its dev server, which run
+// from the repo root, never capture or watch it).
 import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import sharp from "sharp";
 import { INBOX, lanAddresses, phone } from "./phone";
 
-export const DATA = resolve(import.meta.dir, "data");
-const SNAPS = resolve(import.meta.dir, "../../demos/assets/atlas");
+export const DATA = resolve(import.meta.dir, ".data");
+const SNAPS = resolve(import.meta.dir, "../../../assets/atlas");
 const PORT = +(process.env.FEEDBACK_PORT ?? 5350);
 // The demo's frame: an iPhone Air in points (home/atlas.contract airW/airH).
 const W = 420, H = 912, CROP = 220;
@@ -63,7 +65,7 @@ export function approved(): string[] {
 
 // When the owner last looked at each demo on the phone: seen.json (POST /seen, each open), and
 // for the time before it any phone event on the demo (a note, approve, clip is sent from inside it).
-const SEEN = resolve(import.meta.dir, "seen.json");
+const SEEN = resolve(DATA, "seen.json");
 const seenAt = (): Record<string, string> => (existsSync(SEEN) ? JSON.parse(readFileSync(SEEN, "utf8")) : {});
 // A live fix is a "resolved" event (resolve.ts without --build); "⏳ next build" stays "open",
 // since that change is not on the phone yet.

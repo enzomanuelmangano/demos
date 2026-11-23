@@ -519,7 +519,7 @@ mod tests {
         assert!((sum - 1.0).abs() < 1e-9);
         // An empty grid is "N/A".
         assert!(none.output[10] > 0.5, "{:?}", none.output);
-        let one = include_str!("../../../../src/animations/mnist/find-weights/examples/1.json");
+        let one = include_str!("../../legacy/src/animations/mnist/find-weights/examples/1.json");
         let cells: Vec<f64> = one.split(|c: char| !(c.is_ascii_digit() || c == '.')).filter_map(|t| t.parse::<f64>().ok()).collect();
         assert_eq!(cells.len(), 784);
         let p = model.predict(&cells);

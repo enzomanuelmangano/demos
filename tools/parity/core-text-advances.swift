@@ -1,6 +1,6 @@
 // Core Text advances of a font at 30 pt, per character: `none` (optical size none), `default`
 // (Core Text's automatic optical size) or a number (the opsz variation). The table in
-// exact/demos/gpu/src/the_little_prince.rs is `<Newsreader.ttf> 12 <the page's characters>`.
+// gpu/src/the_little_prince.rs is `<Newsreader.ttf> 12 <the page's characters>`.
 //   swiftc -O core-text-advances.swift -o /tmp/cta && /tmp/cta <font> <mode> <characters>
 import CoreText
 import Foundation

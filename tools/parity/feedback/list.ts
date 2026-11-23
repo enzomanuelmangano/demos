@@ -1,11 +1,11 @@
 // Every open note (the atlas's right-click feedback, the phone's), as markdown grouped by demo,
 // with each note's crop. `--all` includes resolved ones; `--since <ISO time | 10m | 2h>` only
 // the notes left after it (for a dispatcher that polls; inbox.jsonl is the line-per-event feed).
-//   bun exact/parity-tools/feedback/list.ts [--all] [--since 15m]
+//   bun tools/parity/feedback/list.ts [--all] [--since 15m]
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-const DATA = resolve(import.meta.dir, "data");
+const DATA = resolve(import.meta.dir, ".data");
 const every = process.argv.includes("--all");
 const si = process.argv.indexOf("--since");
 const sinceArg = si > 0 ? process.argv[si + 1] ?? "" : "";

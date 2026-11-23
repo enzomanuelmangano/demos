@@ -5,7 +5,7 @@
 # Skia.Color through RN Skia's own CSSColorParser (css-color.cpp), and writes reference.txt.
 set -e
 here=$(cd "$(dirname "$0")" && pwd)
-root=$(cd "$here/../../../node_modules" && pwd -P)/..
+root=$(cd "$here/../../../legacy/node_modules" && pwd -P)/..
 hermes=${HERMES_DESTROOT:-$root/ios/Pods/hermes-engine/destroot}
 fw="$hermes/Library/Frameworks/macosx"
 clang++ -std=c++20 -O1 -I"$hermes/include" -F"$fw" -framework hermesvm -Wl,-rpath,"$fw" \

@@ -1,5 +1,5 @@
-// RN iOS vs Exact iOS: per-pixel difference (max over RGB, 0-255) → out/<slug>/diff.png (420 px wide
-// heatmap: Exact in grey, differences in red) and out/scores.json ({ slug: { mean, p99, over16 } }).
+// RN iOS vs Exact iOS: per-pixel difference (max over RGB, 0-255) → .out/<slug>/diff.png (420 px wide
+// heatmap: Exact in grey, differences in red) and .out/scores.json ({ slug: { mean, p99, over16 } }).
 //   bun score.ts [slug…]
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";

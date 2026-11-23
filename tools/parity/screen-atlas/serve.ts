@@ -1,6 +1,6 @@
 // Serves the atlas and the Exact web build from one origin, so the atlas's live frames load /demo/<slug>.
-//   bun exact/parity-tools/screen-atlas/serve.ts [--port 5310]
-//   /atlas/…  → out/ (index.html, captures)    anything else → the web build (out/web, else target/web-dist),
+//   bun tools/parity/screen-atlas/serve.ts [--port 5310]
+//   /atlas/…  → .out/ (index.html, captures)    anything else → the web build (.out/web, else target/web-dist),
 //   with the app's index.html for client routes such as /demo/<slug>.
 import { existsSync, statSync } from "node:fs";
 import { join, normalize } from "node:path";

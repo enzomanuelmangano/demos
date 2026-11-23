@@ -1,8 +1,8 @@
-// art-gallery: writes exact/demos/gpu/images/art-gallery/gallery.bin, everything the Rust surface
-// (exact/demos/gpu/src/art_gallery.rs) reads besides RN's ASTC atlas, from the RN demo's own
+// art-gallery: writes gpu/images/art-gallery/gallery.bin, everything the Rust surface
+// (gpu/src/art_gallery.rs) reads besides RN's ASTC atlas, from the RN demo's own
 // assets and code, and checks it against them.
 //
-//   bun exact/parity-tools/art-gallery/build.ts
+//   bun tools/parity/art-gallery/build.ts
 //
 // What RN does at run time, and what this does once instead:
 // - use-photo-atlas.ts parses assets/photos-compact.json (r, g, b, L, a, b per photo) and
@@ -42,9 +42,9 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 
 const root = new URL('../../../', import.meta.url).pathname;
-const rn = `${root}src/animations/art-gallery/`;
-const out = `${root}exact/demos/gpu/images/art-gallery/gallery.bin`;
-const NM = `${root}../thank-you/node_modules/`;
+const rn = `${root}legacy/src/animations/art-gallery/`;
+const out = `${root}gpu/images/art-gallery/gallery.bin`;
+const NM = `${root}../thank-you/legacy/node_modules/`;
 
 Bun.plugin({
   name: 'jpg-path',
@@ -185,7 +185,7 @@ const sampleRegionFromBuffer = (
 
 // ---- RN's matcher, compiled ----
 const tmp = mkdtempSync(join(tmpdir(), 'art-gallery-'));
-const cpp = (await Bun.file(`${root}src/native/ColorMatcher/HybridColorMatcher.cpp`).text()).replace(
+const cpp = (await Bun.file(`${root}legacy/src/native/ColorMatcher/HybridColorMatcher.cpp`).text()).replace(
   'std::thread::hardware_concurrency()',
   'ag_threads()',
 );

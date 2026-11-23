@@ -27,7 +27,7 @@ demos-gpu (gpu/, the app) --> all five, and exact-gpu (not published)
 ```
 
 Only `pressto` depends on a sibling (`motion`, `gestures`), by version and path, named once in the
-workspace (`exact/demos/Cargo.toml`, `[workspace.dependencies]`): cargo packages it as
+workspace (`Cargo.toml`, `[workspace.dependencies]`): cargo packages it as
 `motion = "0.1.0"` and builds it in the workspace from the path.
 
 ## Versions and metadata
@@ -58,7 +58,7 @@ Checked by `tools/check-standalone.sh` (below). What was found and what was done
 - `draw2d`'s Apple text path reads the iOS Simulator's system fonts at run time from
   `SIMULATOR_ROOT` / `IPHONE_SIMULATOR_ROOT` (`src/text.rs`): a run-time lookup that falls back when
   the variables are unset, no build dependency.
-- `exact-gpu` (library users: `gpu/` only) is one entry in `exact/demos/Cargo.toml`
+- `exact-gpu` (library users: `gpu/` only) is one entry in `Cargo.toml`
   `[workspace.dependencies]`; members write `exact-gpu = { workspace = true }`. `bun exact.mjs update`
   re-settles only `[patch.crates-io]`, not that path: change it there when the exact2 checkout moves.
   Once exact-gpu is published, replacing that one line moves every member.
@@ -100,8 +100,8 @@ Blockers before anything is published (none is done today):
 ## Running the check
 
 ```sh
-exact/demos/tools/check-standalone.sh            # all five
-exact/demos/tools/check-standalone.sh motion     # one (a sibling it needs is added)
+tools/check-standalone.sh            # all five
+tools/check-standalone.sh motion     # one (a sibling it needs is added)
 ```
 
 For each crate it runs `cargo package --allow-dirty --no-verify` (a dry packaging: it writes a

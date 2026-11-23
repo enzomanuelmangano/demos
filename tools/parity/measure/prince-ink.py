@@ -14,7 +14,7 @@ probability is also exactly 0: the stream is smaller and every probability is un
 Also prints the checksum the Rust test asserts (the count of pixels with p > 0 and the f64 sum
 of p, in row-major order).
 
-    python3 parity-tools/measure/prince-ink.py     # from exact/
+    python3 tools/parity/measure/prince-ink.py     # from the repo root
 """
 import sys
 import zlib
@@ -23,8 +23,8 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-HERE = Path(__file__).resolve().parents[2] / "demos"
-PNG = HERE / "../../src/animations/the-little-prince/assets/prince.png"
+HERE = Path(__file__).resolve().parents[3]  # the repo root, the Exact app
+PNG = HERE / "legacy/src/animations/the-little-prince/assets/prince.png"
 OUT = HERE / "gpu/images/prince-rgb-910x1218.rgb8.zlib"
 
 # constants.ts

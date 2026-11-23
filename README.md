@@ -4,6 +4,10 @@ The Demos launcher and its 109 animations, rebuilt on Exact:
 the UI and state are written in Contract, the heavy per-frame work (Skia-style drawing, shaders,
 physics) runs in Rust on wgpu, and the few things that must be native UIKit live in Swift.
 
+> The original React Native (Expo) app lives in [`legacy/`](legacy/) and still runs from there
+> (`cd legacy && bun install && bun run ios`): see [legacy/README.md](legacy/README.md). It is the
+> source of truth the Exact port is measured against.
+
 ## Layout
 
 | Path | What lives there |
@@ -17,6 +21,8 @@ physics) runs in Rust on wgpu, and the few things that must be native UIKit live
 | `modules/apple/` | Native views: glass buttons, sheets, alerts, tab bars, haptics. |
 | `packages/` | Helper crates the demos rely on: `motion`, `gestures`, `pressto`, `draw2d`, `noise`. |
 | `assets/` | Icons, images, fonts, audio. |
+| `tools/` | Generators, the Contract linter, lint and parity scripts. `tools/parity/` holds the measuring and parity tooling. |
+| `legacy/` | The original React Native app (Expo), its own project. |
 
 A demo with a GPU surface is split in two on purpose: the Contract file owns layout and input,
 the Rust file owns the pixels. They meet by the surface's name.
@@ -31,7 +37,7 @@ bun exact.mjs phone <udid> --run --url http://<your-lan-ip>:5341
 ```
 
 `bun exact.mjs help` lists every verb. `bun tools/gen-demos.ts` rebuilds the launcher's list from
-the original React Native app's registry.
+the original React Native app's registry (`legacy/src/animations/registry.ts`).
 
 The Exact checkout is `.exact/checkout`, a gitignored symlink `exact.mjs` makes to the checkout it finds
 (`EXACT=<path>` retargets it; the seed path in `exact.mjs` names the commit this tree was last updated to).
@@ -53,3 +59,7 @@ checkout. What each check does, how to add a rule and how the baseline works: [L
 3. If it needs per-frame drawing, add `gpu/src/<slug>.rs` and expose its `surface()`.
 
 See `.claude/skills/port-demo/SKILL.md` for the full routine.
+
+## License
+
+This project is licensed under a custom Software License Agreement. See [LICENSE.md](./LICENSE.md) for details.

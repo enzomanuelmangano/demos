@@ -1,7 +1,7 @@
 // The QR demos' matrices and the qrcode demo's DiscretePathEffect, from the real libraries, for
 // gpu/src/qr.rs's tests.
 //
-//   bun exact/parity-tools/qr/qr-matrix.ts
+//   bun tools/parity/qr/qr-matrix.ts
 //
 // reference.txt: qrcode 1.5.4's QRCode.create(text, { errorCorrectionLevel }) (what
 // react-native-qrcode-skia's generateMatrix and the notion / cherry-blossom demos call) over a
@@ -16,8 +16,8 @@
 // that output and CanvasKit's MakeDiscrete(10, 3, 0) on the same path, without antialiasing at
 // 4x, and fails if a pixel differs: the transcription is the effect.
 import { writeFileSync } from 'node:fs';
-import QRCode from '../../../node_modules/qrcode/lib/index.js';
-import CanvasKitInit from '../../../node_modules/canvaskit-wasm/bin/canvaskit.js';
+import QRCode from '../../../legacy/node_modules/qrcode/lib/index.js';
+import CanvasKitInit from '../../../legacy/node_modules/canvaskit-wasm/bin/canvaskit.js';
 
 const here = new URL('./', import.meta.url).pathname;
 
@@ -139,7 +139,7 @@ const roundedPath = (matrix: number[][], size: number) => {
 };
 
 // ─── SkDiscretePathEffect::onFilterPath over CanvasKit's ContourMeasure ──────────────────────
-const bin = new URL('../../../node_modules/canvaskit-wasm/bin/', import.meta.url).pathname;
+const bin = new URL('../../../legacy/node_modules/canvaskit-wasm/bin/', import.meta.url).pathname;
 const CK = await CanvasKitInit({ locateFile: (f: string) => bin + f });
 const f = Math.fround;
 const SIZE = 378, SEG = 10, DEV = 3;

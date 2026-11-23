@@ -1,6 +1,6 @@
 # The swipe-down close: where it starts, per demo
 
-RN's `CloseGesture` (src/navigation/home/demo-screen.tsx) is a pan over the whole screen (`activeOffsetY(10)`,
+RN's `CloseGesture` (legacy/src/navigation/home/demo-screen.tsx) is a pan over the whole screen (`activeOffsetY(10)`,
 `failOffsetX(+-30)`) that a demo's own gesture can claim first. Here the close is `ClosePan`
 (modules/apple/DemoLaunch.swift) on the window and the canvases take touches natively, so each demo states where
 its own vertical or free 2D drags live: `closeZone(slug)` in app.contract (data), read by `CloseZone`.

@@ -548,7 +548,7 @@ mod tests {
     fn generate_masks() {
         let font_path = concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../../../assets/fonts/SF-Pro-Rounded-Heavy.otf"
+            "/../legacy/assets/fonts/SF-Pro-Rounded-Heavy.otf"
         );
         let data: &'static [u8] = Box::leak(std::fs::read(font_path).unwrap().into_boxed_slice());
         let font = draw2d::Font::new(data, 120.0).unwrap();

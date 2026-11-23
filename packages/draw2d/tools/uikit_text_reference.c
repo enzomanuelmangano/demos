@@ -2,7 +2,7 @@
 // NSLayoutManager drawGlyphsForGlyphRange does into a text view's backing store (a flipped,
 // scaled context, the text matrix flipped, positions in points). With flags PQA (subpixel
 // positioning and quantization on, antialiasing, no smoothing) its alpha equals the iOS
-// Simulator's own pixels byte for byte (exact/parity-tools/text-probe, every case measured),
+// Simulator's own pixels byte for byte (tools/parity/text-probe, every case measured),
 // so the skia package's UIKit text is tested against it (src/glyphs.rs, uikit_text_is_coregraphics).
 // uikit_text_reference <font file | sfui:<path>:<wght>> <size> <w px> <h px> <scale> <flags>
 //   <glyph:x,y (points)>...   prints the alpha in hex.

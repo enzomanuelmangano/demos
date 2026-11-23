@@ -4,8 +4,8 @@
 //
 //   bun tools/gen-icons.ts
 //
-// Reads the originals (assets/app-icons/*.png of the repo root, square) and writes the shaped
-// copies over exact/demos/assets/app-icons/. It always bakes from the originals, so running it
+// Reads the originals (legacy/assets/app-icons/*.png, the RN app's, square) and writes the shaped
+// copies over assets/app-icons/. It always bakes from the originals, so running it
 // again never rounds twice. tools/gen-demos.ts runs it right after copying the icons in.
 //
 // The shape: a square of corner radius 0.2237 of the side with continuous curvature (Figma's
@@ -16,7 +16,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 const APP = resolve(import.meta.dir, '..');
-const RN = resolve(APP, '../..');
+const RN = resolve(APP, 'legacy');
 
 export const ICON_PX = 192;
 const RADIUS = 0.2237;

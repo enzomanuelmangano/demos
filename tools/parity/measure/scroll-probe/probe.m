@@ -1,6 +1,6 @@
 // Scroll probe: a bare UIScrollView on the iOS Simulator, logging what UIKit does per display
 // frame and per touch, to measure the rubber band, the bounce, the deceleration and the release
-// rules the demos' Rust UIScrollView (exact/demos/gpu/src/ui_scroll.rs) models.
+// rules the demos' Rust UIScrollView (gpu/src/ui_scroll.rs) models.
 //   ./build.sh; xcrun simctl install <sim> /tmp/scroll-probe/ScrollProbe.app
 //   xcrun simctl launch <sim> com.reactiive.scrollprobe [-content <× port width>] [-offset <x>]
 //     [-rate fast|normal|<number>] [-paging YES] [-snap <interval> [-current YES]]

@@ -1,5 +1,5 @@
---- a/exact/demos/gpu/src/card_shader_reflections.rs
-+++ b/exact/demos/gpu/src/card_shader_reflections.rs
+--- a/gpu/src/card_shader_reflections.rs
++++ b/gpu/src/card_shader_reflections.rs
 @@ -12,8 +12,7 @@
  //! (radius 20, overflow hidden, padding 30, boxShadow `0px 10px 20px rgba(0,0,0,0.3)`):
  //! - CardCanvas: absoluteFill but CARD_WIDTH × CARD_HEIGHT, so it overflows the card, which clips
@@ -511,8 +511,8 @@
          };
          Some(s)
      }
---- a/exact/demos/gpu/src/bench.rs
-+++ b/exact/demos/gpu/src/bench.rs
+--- a/gpu/src/bench.rs
++++ b/gpu/src/bench.rs
 @@ -44,6 +44,25 @@
  fn cases() -> Vec<Case> {
      vec![
@@ -604,8 +604,8 @@
  fn bench_cpu_per_frame() {
      let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
      exact_gpu::shaders::load_dir(&dir, &crate::REGISTRY).unwrap();
---- a/exact/demos/gpu/shaders/card_shader_reflections_compose.wgsl
-+++ b/exact/demos/gpu/shaders/card_shader_reflections_compose.wgsl
+--- a/gpu/shaders/card_shader_reflections_compose.wgsl
++++ b/gpu/shaders/card_shader_reflections_compose.wgsl
 @@ -1,32 +1,43 @@
 -// Card Shader Reflections' screen: the four cards as Core Animation composites them, each a
 -// physical card. Each card's Animated.View carries `[rotate 18deg, perspective 1200, translateY,
@@ -1120,7 +1120,7 @@
 -    return vec4<f32>(rgb, 1.0);
 +    return vec4<f32>(rgb * a, a);
  }
---- a/exact/demos/gpu/shaders/card_shader_reflections.wgsl
+--- a/gpu/shaders/card_shader_reflections.wgsl
 +++ /dev/null
 @@ -1,377 +0,0 @@
 -// Card Shader Reflections: one card's face, a physical metal card lit in a small studio (past

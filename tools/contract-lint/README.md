@@ -58,7 +58,7 @@ precise check, a message that says what to write instead, and the bug it is ther
 | `recommended` | every rule at its own severity: polish and performance rules warn, the rules that catch a bug (`box-sizing-border-box`, `exit-animation-literal`, `rotate-axis-origin`) are errors |
 | `strict` | every rule an error |
 
-`exact/demos/.contractlintrc.json` selects `recommended`:
+`.contractlintrc.json` selects `recommended`:
 
 ```json
 {

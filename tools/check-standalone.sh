@@ -22,7 +22,7 @@
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-root="$(cd "$here/.." && pwd)" # exact/demos, the Cargo workspace
+root="$(cd "$here/.." && pwd)" # the repo root, the Cargo workspace
 export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-/tmp/standalone-target}"
 export PATH="$HOME/.cargo/bin:$PATH"
 

@@ -1,8 +1,8 @@
 // Exact on the web: every demo at iPhone Air size (420×912, DPR 3) in headless Chrome, N pages at once.
 //   bun capture-web.ts [--rebuild] [--jobs 6] [--settle 1500] [slug…]
-// Serves the snapshot in out/web itself (port 5311), so it needs no other server. --rebuild runs
-// `bun exact.mjs web-build` first and re-snapshots target/web-dist into out/web.
-// Writes out/<slug>/exact-web.png and out/web.json ({ slug: { blank, why, errors } }).
+// Serves the snapshot in .out/web itself (port 5311), so it needs no other server. --rebuild runs
+// `bun exact.mjs web-build` first and re-snapshots target/web-dist into .out/web.
+// Writes .out/<slug>/exact-web.png and .out/web.json ({ slug: { blank, why, errors } }).
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import sharp from "sharp";

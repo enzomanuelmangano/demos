@@ -9,8 +9,8 @@
 //   01.jpg 640 × 853, 03.jpg 640 × 896, 04.jpg 640 × 960: 696 px wide wanted, 640 < 696: kept.
 // Decoded by ImageIO (what SDWebImage decodes with on iOS), its own bytes (no colour matching).
 // Stored as `<name>-<w>x<h>.rgb8up.zlib`: RGB rows, each minus the row above bytewise (the first
-// as is), zlib (see exact/parity-tools/image-cropper/photo.py).
-//   swift exact/parity-tools/github-onboarding/photos.swift <src/animations/github-onboarding/assets> <out dir>
+// as is), zlib (see tools/parity/image-cropper/photo.py).
+//   swift tools/parity/github-onboarding/photos.swift <src/animations/github-onboarding/assets> <out dir>
 import CoreGraphics
 import Foundation
 import ImageIO

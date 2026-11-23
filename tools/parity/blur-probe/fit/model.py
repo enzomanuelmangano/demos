@@ -1,4 +1,4 @@
-# Fit of UIKit's partially animated blur to the probe's captures (exact/parity-tools/blur-probe:
+# Fit of UIKit's partially animated blur to the probe's captures (tools/parity/blur-probe:
 # build.sh, capall.sh write /tmp/blur-probe/cap). sim.py simulates the measured chain; prof.py fits σ.
 import numpy as np
 W709=np.array([0.2126,0.7152,0.0722])

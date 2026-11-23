@@ -1,6 +1,6 @@
 // Core Text's layout of the atlas-button label (an RN <Text>: System 20 bold) on macOS, the
 // reference gpu/src/atlas_button.rs the_label_is_laid_out_as_uikit checks:
-//   swiftc -O parity-tools/measure/ui-label-ct.swift -o /tmp/ui-label-ct && /tmp/ui-label-ct
+//   swiftc -O tools/parity/measure/ui-label-ct.swift -o /tmp/ui-label-ct && /tmp/ui-label-ct
 import AppKit
 import CoreText
 // An RN <Text> "React Native", System 20 bold, as Core Text lays it out (macOS's SFNS.ttf).

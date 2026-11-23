@@ -10,9 +10,9 @@
 //   (little-endian) of types, then positions, then resistance, then baseY, as the JS arrays hold
 //   them before the Float32Array / Uint32Array upload.
 // clamp <json text> <json clampToQRBytes(text)>.
-import { approachDestination, validApproachYaws } from '../../../src/animations/cherry-blossom-qrcode/utils/approach';
-import { generateBlockData } from '../../../src/animations/cherry-blossom-qrcode/utils/block-generator';
-import { clampToQRBytes, generateQRMatrix } from '../../../src/animations/cherry-blossom-qrcode/utils/qr-matrix';
+import { approachDestination, validApproachYaws } from '../../../legacy/src/animations/cherry-blossom-qrcode/utils/approach';
+import { generateBlockData } from '../../../legacy/src/animations/cherry-blossom-qrcode/utils/block-generator';
+import { clampToQRBytes, generateQRMatrix } from '../../../legacy/src/animations/cherry-blossom-qrcode/utils/qr-matrix';
 
 declare const print: (...a: string[]) => void;
 

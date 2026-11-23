@@ -3,14 +3,14 @@
 // getPosTan samples (getPoints), fillToPowerOfTwo, fft.js's transform, extractEpicycles sorted
 // by amplitude. It prints what gpu/src/fourier_visualizer.rs's test asserts for the same stroke.
 //
-//   bun exact/parity-tools/fourier-epicycles.ts
+//   bun tools/parity/fourier-epicycles.ts
 //
 // The stroke: the test's (`stroke()` there), as the Pan writes it: moveTo(p0) + lineTo(p0) at
 // onStart, lineTo(p0) at the onChange of the same event, then one lineTo per move.
-import FFT from '../../node_modules/fft.js/lib/fft.js';
-import CanvasKitInit from '../../node_modules/canvaskit-wasm/bin/canvaskit.js';
+import FFT from '../../legacy/node_modules/fft.js/lib/fft.js';
+import CanvasKitInit from '../../legacy/node_modules/canvaskit-wasm/bin/canvaskit.js';
 
-const bin = new URL('../../node_modules/canvaskit-wasm/bin/', import.meta.url).pathname;
+const bin = new URL('../../legacy/node_modules/canvaskit-wasm/bin/', import.meta.url).pathname;
 const CK = await CanvasKitInit({ locateFile: (f: string) => bin + f });
 
 const stroke: [number, number][] = [];

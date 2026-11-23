@@ -1,5 +1,5 @@
---- a/exact/demos/gpu/src/card_shader_reflections.rs
-+++ b/exact/demos/gpu/src/card_shader_reflections.rs
+--- a/gpu/src/card_shader_reflections.rs
++++ b/gpu/src/card_shader_reflections.rs
 @@ -43,11 +43,22 @@
  //! | title opacity | Math.round(interpolate(…, [0, 1, 0], CLAMP)) | the same (half up) |
  //! | shader rotate | useAnimatedReaction: interpolate(…, [−π, 0, π], CLAMP), written only when it changes | the card's layer is redrawn only when this value changes |

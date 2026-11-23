@@ -2,12 +2,12 @@
 # straight RGBA rows, zlib'd, for gpu/images/ (the surface inflates and premultiplies it as
 # Skia's PNG decode does: round(c * a / 255)). Decoded here (zlib + PNG's row filters) so no
 # image library is needed; prints the pixels' FNV-1a (32-bit).
-#   python3 -I exact/parity-tools/notion-qrcode/sprite.py
+#   python3 -I tools/parity/notion-qrcode/sprite.py
 import os, struct, zlib
 
 here = os.path.dirname(os.path.abspath(__file__))
-src = os.path.join(here, '../../../src/animations/notion-qrcode/avatars-sprite.png')
-dst = os.path.join(here, '../../demos/gpu/images/notion-qrcode-avatars-640x512.rgba8.zlib')
+src = os.path.join(here, '../../../legacy/src/animations/notion-qrcode/avatars-sprite.png')
+dst = os.path.join(here, '../../../gpu/images/notion-qrcode-avatars-640x512.rgba8.zlib')
 data = open(src, 'rb').read()
 i, idat, w, h = 8, b'', 0, 0
 while i < len(data):

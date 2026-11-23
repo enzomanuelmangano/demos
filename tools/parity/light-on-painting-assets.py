@@ -1,4 +1,4 @@
-# light-on-painting's bundled pixels (exact/demos/gpu/images/light-on-painting/), from the RN
+# light-on-painting's bundled pixels (gpu/images/light-on-painting/), from the RN
 # demo's assets (src/animations/light-on-painting/assets), losslessly w.r.t. what RN samples:
 #
 # - the albedo: RN Skia decodes the JPEG (SkJpegCodec: libjpeg-turbo, JDCT_ISLOW, fancy
@@ -14,7 +14,7 @@
 # It prints each file's FNV-1a 64 of the decoded bytes, which gpu/src/light_on_painting.rs's
 # test checks after inflating.
 #
-#   python3 exact/parity-tools/light-on-painting-assets.py
+#   python3 tools/parity/light-on-painting-assets.py
 import json
 import os
 import zlib
@@ -23,8 +23,8 @@ import numpy as np
 from PIL import Image
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..')
-SRC = os.path.join(ROOT, 'src', 'animations', 'light-on-painting', 'assets')
-OUT = os.path.join(ROOT, 'exact', 'demos', 'gpu', 'images', 'light-on-painting')
+SRC = os.path.join(ROOT, 'legacy', 'src', 'animations', 'light-on-painting', 'assets')
+OUT = os.path.join(ROOT, 'gpu', 'images', 'light-on-painting')
 
 
 def fnv(data: bytes) -> str:

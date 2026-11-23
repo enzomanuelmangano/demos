@@ -17,9 +17,9 @@
 // color <string>: every hsl() string those frames hand Skia.Color (for css-color.cpp, which runs
 // RN Skia's own CSSColorParser over them).
 import './setup';
-import { computeShapeData } from '../../../src/animations/notion-qrcode/hooks/use-shape-data';
-import { createBackgroundColors, createPicture } from '../../../src/animations/notion-qrcode/create-picture';
-import { DEFAULT_COLORS, DEFAULT_TORUS } from '../../../src/animations/notion-qrcode/constants';
+import { computeShapeData } from '../../../legacy/src/animations/notion-qrcode/hooks/use-shape-data';
+import { createBackgroundColors, createPicture } from '../../../legacy/src/animations/notion-qrcode/create-picture';
+import { DEFAULT_COLORS, DEFAULT_TORUS } from '../../../legacy/src/animations/notion-qrcode/constants';
 import { ops } from './stubs';
 
 declare const print: (...a: string[]) => void;

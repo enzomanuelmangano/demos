@@ -1,4 +1,4 @@
-# image-cropper's bundled photo (exact/demos/gpu/images/image-cropper/), losslessly w.r.t. what
+# image-cropper's bundled photo (gpu/images/image-cropper/), losslessly w.r.t. what
 # RN samples: the JPEG the demo's useImage requests (Unsplash photo-1621996346565, w=2706: a
 # 2706 x 2706 progressive JPEG tagged sRGB, as imgix serves it to NSURLSession's Accept */*),
 # decoded as RN Skia decodes it (SkJpegCodec: libjpeg-turbo, JDCT_ISLOW, fancy upsampling,
@@ -8,7 +8,7 @@
 # first row as is), zlib level 9. Prints the decoded bytes' FNV-1a 64, which
 # gpu/src/image_cropper.rs's test checks after inflating.
 #
-#   python3 exact/parity-tools/image-cropper/photo.py [path/to/the.jpg]
+#   python3 tools/parity/image-cropper/photo.py [path/to/the.jpg]
 import os
 import sys
 import urllib.request
@@ -19,8 +19,8 @@ from PIL import Image
 
 URL = ('https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?ixlib=rb-4.0.3&ixid='
        'M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2706&q=80')
-ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..')
-OUT = os.path.join(ROOT, 'demos', 'gpu', 'images', 'image-cropper')
+ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..')
+OUT = os.path.join(ROOT, 'gpu', 'images', 'image-cropper')
 
 
 def fnv(data: bytes) -> str:

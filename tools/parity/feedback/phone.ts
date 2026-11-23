@@ -1,15 +1,15 @@
 // The phone's side of the feedback store: the Demos app on an iPhone (modules/apple/Feedback.swift:
 // shake, or a two-finger long-press, in any open demo) posts one command per tap to POST /phone.
 //   kind: note | screenshot | clip | approve | parity
-// Each lands as one line of inbox.jsonl (`source: "phone"`), its media beside it in data/phone/
-// (<slug>-<id>.jpg, .mp4), and a `note` also as a Note in data/<slug>.json, so list.ts and the
+// Each lands as one line of inbox.jsonl (`source: "phone"`), its media beside it in .data/phone/
+// (<slug>-<id>.jpg, .mp4), and a `note` also as a Note in .data/<slug>.json, so list.ts and the
 // atlas see it. The phone queues and retries, so a repeated id is answered and not stored twice.
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-const DATA = resolve(import.meta.dir, "data");
+const DATA = resolve(import.meta.dir, ".data");
 const MEDIA = join(DATA, "phone");
-export const INBOX = resolve(import.meta.dir, "inbox.jsonl");
+export const INBOX = resolve(DATA, "inbox.jsonl");
 const KINDS = new Set(["note", "screenshot", "clip", "approve", "parity"]);
 const MAX_IMAGE = 2 << 20, MAX_CLIP = 12 << 20;
 const safe = (s: unknown): s is string => typeof s === "string" && /^[a-z0-9-]+$/.test(s);
@@ -49,6 +49,7 @@ export async function phone(req: Request): Promise<Response> {
       comment: entry.text, status: "open", at: entry.at, crop: image, source: "phone" });
     writeFileSync(file, JSON.stringify(ns, null, 2) + "\n");
   }
+  mkdirSync(DATA, { recursive: true });
   appendFileSync(INBOX, JSON.stringify(entry) + "\n");
   writeFileSync(seen, JSON.stringify(entry));
   console.log(`phone ${entry.kind} ${entry.slug}${entry.text ? `: ${entry.text}` : ""}${image ? ` ${image}` : ""}${clip ? ` ${clip}` : ""}`);

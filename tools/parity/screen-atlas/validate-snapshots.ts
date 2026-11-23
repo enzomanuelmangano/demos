@@ -1,7 +1,7 @@
 // Rejects atlas frames that can't be a demo's idle: the wrong size or aspect, nearly uniform
 // (blank), atlas chrome in it (a light page with a rounded tile edge and caption text: its
 // outer margin light grey/white while the middle is not), or (near-)identical to another slug's.
-//   bun validate-snapshots.ts [dir]      (default: exact/demos/assets/atlas; prints the rejects)
+//   bun validate-snapshots.ts [dir]      (default: assets/atlas; prints the rejects)
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import sharp from "sharp";

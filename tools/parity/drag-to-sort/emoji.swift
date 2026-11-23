@@ -3,7 +3,7 @@
 // bold system font with Apple Color Emoji as its fallback), at 3x: each Text's box (its used
 // rect, ceiled to the device pixel after an epsilon, as Yoga measures it) as premultiplied
 // RGBA, zlib-compressed, with its size in points in the file name's header line.
-//   swift exact/parity-tools/drag-to-sort/emoji.swift <out dir>
+//   swift tools/parity/drag-to-sort/emoji.swift <out dir>
 // Output: <out>/emoji-<i>.rgba.zlib, and one line per emoji on stdout: i, width px, height px.
 import AppKit
 import Foundation

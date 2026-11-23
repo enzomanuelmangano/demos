@@ -1,2 +1,6 @@
+# Notes, media, inbox.jsonl and seen.json (server.ts, phone.ts).
+.data/
+# Where they lived before .data/.
 data/
 inbox.jsonl
+seen.json

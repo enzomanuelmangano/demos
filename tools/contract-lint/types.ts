@@ -131,7 +131,7 @@ export interface RuleContext {
 }
 
 export interface Project {
-  /** Absolute path of exact/demos (the Contract project's root). */
+  /** Absolute path of the Contract project's root (the repo root). */
   root: string;
   /** Reads a project file; undefined when it is absent. */
   read(rel: string): string | undefined;

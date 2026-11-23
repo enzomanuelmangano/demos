@@ -1,5 +1,5 @@
---- a/exact/demos/app.contract
-+++ b/exact/demos/app.contract
+--- a/app.contract
++++ b/app.contract
 @@ -80,6 +80,8 @@
  fn tilts(slug: string): bool = slug == "linear-sensors"
  // Demos whose GPU surface reads the attitude (RN: useAnimatedSensor(SensorType.ROTATION)).

@@ -8,7 +8,7 @@ mkdir -p "$OUT"
 SDK=$(xcrun --sdk iphonesimulator --show-sdk-path)
 xcrun --sdk iphonesimulator clang -fobjc-arc -O1 -target arm64-apple-ios17.0-simulator -isysroot "$SDK" \
   -framework UIKit -framework CoreText -framework CoreGraphics -framework Foundation -o "$OUT/TextProbe" probe.m
-cp ../../demos/gpu/fonts/*.ttf ../../demos/gpu/fonts/*.otf ../../demos/assets/fonts/SF-Compact-Rounded-Medium.otf "$OUT/"
+cp ../../../gpu/fonts/*.ttf ../../../gpu/fonts/*.otf ../../../assets/fonts/SF-Compact-Rounded-Medium.otf "$OUT/"
 cat > "$OUT/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

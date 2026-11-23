@@ -18,7 +18,7 @@
 #   Env: CARGO_TARGET_DIR (default /tmp/lint-target), RUST_LINT_BASELINE (default
 #   tools/rust-lint-baseline.txt next to this script's parent; the test hook for a simulated regression).
 #
-# fmt: rustfmt --check --edition 2021 with exact/demos/rustfmt.toml on the .rs files under gpu/ and
+# fmt: rustfmt --check --edition 2021 with rustfmt.toml on the .rs files under gpu/ and
 #   packages/ that differ between BASE...HEAD (BASE defaults to origin/main, else main), plus working
 #   tree changes (git diff HEAD) and untracked files. rustfmt also formats the `mod` children of a file
 #   it is given (skip_children is unstable), so a changed gpu/src/lib.rs would pull in the whole crate:
@@ -215,7 +215,7 @@ for p in parts:
 if kept:
     sys.stdout.write("".join(kept).replace(root + "/", ""))
     print(f"\nrust-lint fmt: FAIL, {len(files)} file(s) need formatting: " + " ".join(sorted(os.path.relpath(f, root) for f in files)))
-    print("  fix with: rustfmt --edition 2021 --config-path rustfmt.toml <file>   (in exact/demos; formats the file's `mod` children too)")
+    print("  fix with: rustfmt --edition 2021 --config-path rustfmt.toml <file>   (at the repo root; formats the file's `mod` children too)")
     sys.exit(1)
 if rc not in (0, 1) or other:
     sys.stdout.write("".join(other))
@@ -254,13 +254,13 @@ cmd_fmt_all() {
   find gpu packages -name '*.rs' -not -path '*/target/*' | sort \
     | xargs rustfmt --check --edition 2021 --color never --config-path "$RUSTFMT_CONFIG" >"$out" 2>&1 || true
   python3 -I - "$out" <<'PY'
-import collections, re, sys
+import collections, os, re, sys
 per = collections.Counter()
 cur = None
 for line in open(sys.argv[1], errors="replace"):
     m = re.match(r"Diff in (.*?):\d+:?", line)
     if m:
-        cur = m.group(1).split("/exact/demos/")[-1]
+        cur = os.path.relpath(m.group(1))
     elif cur and line[:1] in "+-":
         per[cur] += 1
 print(f"rust-lint fmt-all: {len(per)} file(s) would change, {sum(per.values())} diff lines (informational)")

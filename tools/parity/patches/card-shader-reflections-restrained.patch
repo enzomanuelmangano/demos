@@ -1,5 +1,5 @@
---- a/exact/demos/gpu/src/card_shader_reflections.rs
-+++ b/exact/demos/gpu/src/card_shader_reflections.rs
+--- a/gpu/src/card_shader_reflections.rs
++++ b/gpu/src/card_shader_reflections.rs
 @@ -52,7 +52,7 @@
  //! made once ([`noise_tile`]).
  //! The lights stay in the room: each card's frame there (`frame`: x axis, y axis, normal) is the
@@ -56,8 +56,8 @@
          assert_eq!(&px(&left, 5.0, 5.0)[..3], &[17, 17, 17]);
      }
  
---- a/exact/demos/gpu/shaders/card_shader_reflections_compose.wgsl
-+++ b/exact/demos/gpu/shaders/card_shader_reflections_compose.wgsl
+--- a/gpu/shaders/card_shader_reflections_compose.wgsl
++++ b/gpu/shaders/card_shader_reflections_compose.wgsl
 @@ -16,7 +16,10 @@
  // - the Animated.View's opacity over the group.
  // The lights and the eye stay in the room while the card turns with the scroll, tilts under the

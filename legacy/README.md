@@ -1,5 +1,8 @@
 # Demos ✨
 
+> This is the original React Native app, kept in `legacy/`. The app at the repo root is its
+> port to Exact (see [../README.md](../README.md)). Every command below runs from `legacy/`.
+
 An ongoing collection of React Native animations crafted with Reanimated, Gesture Handler, and Skia.
 
 Browse all demos at [reactiive.io/demos](https://reactiive.io/demos).
@@ -29,6 +32,7 @@ This project is a work in progress (almost by definition). Here are the current 
 This is an Expo project. To get started:
 
 ```bash
+cd legacy
 bun install
 bun prebuild
 bun ios     # for iOS
@@ -57,7 +61,7 @@ Your support helps maintain this project and support my open-source work!
 
 ## License
 
-This project is licensed under a custom Software License Agreement. See [LICENSE.md](./LICENSE.md) for details.
+This project is licensed under a custom Software License Agreement. See [LICENSE.md](../LICENSE.md) for details.
 
 **Key points:**
 

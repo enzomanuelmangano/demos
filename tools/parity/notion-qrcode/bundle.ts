@@ -1,7 +1,7 @@
 // Bundles parity.ts with the RN demo's own sources for Hermes (one IIFE, no modules): the
 // native packages the demo imports become stubs.ts, and use-shape-data.ts also exports its
 // (module-private) computeShapeData.
-//   bun exact/parity-tools/notion-qrcode/bundle.ts <out.js>
+//   bun tools/parity/notion-qrcode/bundle.ts <out.js>
 const here = new URL('./', import.meta.url).pathname;
 const stubs = here + 'stubs.ts';
 const native = /^(react|react-native|react-native-skia|react-native-reanimated|react-native-worklets|expo-haptics)$/;

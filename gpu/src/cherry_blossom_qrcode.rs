@@ -1248,7 +1248,7 @@ mod tests {
     /// reference.txt's lines that start with `kind`.
     fn reference(kind: &str) -> Vec<Vec<String>> {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../parity-tools/cherry-blossom-qrcode/reference.txt");
+            .join("../tools/parity/cherry-blossom-qrcode/reference.txt");
         let text = std::fs::read_to_string(path).unwrap();
         text.lines()
             .filter(|l| l.starts_with(&format!("{kind} ")))

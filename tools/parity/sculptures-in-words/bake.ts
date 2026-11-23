@@ -1,8 +1,8 @@
-// sculptures-in-words: writes exact/demos/gpu/images/sculptures-in-words/sculptures.bin.zlib,
+// sculptures-in-words: writes gpu/images/sculptures-in-words/sculptures.bin.zlib,
 // everything gpu/src/sculptures_in_words.rs reads besides the font, from the RN demo's own
 // assets and code, and checks it against them.
 //
-//   bun exact/parity-tools/sculptures-in-words/bake.ts
+//   bun tools/parity/sculptures-in-words/bake.ts
 //
 // What RN does at run time (layout.ts buildPageLayout, use-portrait-renderer.ts), and what this
 // does once instead:
@@ -44,9 +44,9 @@ import { mkdirSync, writeFileSync, readFileSync } from 'fs';
 import { execFileSync } from 'child_process';
 
 const root = new URL('../../../', import.meta.url).pathname;
-const rn = `${root}src/animations/sculptures-in-words/`;
-const NM = `${root}../thank-you/node_modules/`;
-const outDir = `${root}exact/demos/gpu/images/sculptures-in-words/`;
+const rn = `${root}legacy/src/animations/sculptures-in-words/`;
+const NM = `${root}../thank-you/legacy/node_modules/`;
+const outDir = `${root}gpu/images/sculptures-in-words/`;
 
 const W_MIN = 320;
 const W_MAX = 440;
@@ -539,7 +539,7 @@ console.log(`sculptures.bin: ${raw.length} bytes, ${z.length} zlib`);
 // applies no optical size at all); no layout
 // tables (the glyphs are shaped here) and no hinting (Core Text ignores it). The surface's test
 // checks every mask it draws equal to the full font's.
-const subset = `${root}exact/demos/gpu/fonts/newsreader-sculptures-subset.ttf`;
+const subset = `${root}gpu/fonts/newsreader-sculptures-subset.ttf`;
 execFileSync('/usr/local/bin/python3.12', [
   '-m', 'fontTools.subset', `${rn}assets/Newsreader.ttf`,
   `--gids=${unionIds.join(',')}`, '--retain-gids', '--notdef-outline', '--no-hinting',

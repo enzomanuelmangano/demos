@@ -1,6 +1,6 @@
 ---
 name: port-demo
-description: Port one demo of the RN demos app (src/animations/<slug>) to the Exact app in exact/demos with the same UI, numbers, gestures and layout animations, at the highest performance — Contract for UI and state, Rust (gpu/) for anything Skia, WebGPU, three.js or per-frame. Use for any "port demo X" task.
+description: Port one demo of the RN demos app (legacy/src/animations/<slug>) to the Exact app at the repo root with the same UI, numbers, gestures and layout animations, at the highest performance — Contract for UI and state, Rust (gpu/) for anything Skia, WebGPU, three.js or per-frame. Use for any "port demo X" task.
 ---
 
 # Port one demo
@@ -12,7 +12,7 @@ haptic at a precise moment), the demo — or the part of it that moves — is dr
 (`gpu/`), where everything is possible. A port is done only when `parity-verify` passes:
 still frames AND motion, side by side with the RN app.
 
-The RN demo (`src/animations/<slug>/`, read-only) is the source of truth: every size,
+The RN demo (`legacy/src/animations/<slug>/`, read-only) is the source of truth: every size,
 padding, radius, colour, font, timing, curve, spring and gesture. Target: the same demo,
 not a lookalike. Read `demos-dev-loop` first (build rules, springs, GPU rules).
 
@@ -118,7 +118,7 @@ One commit per haptic event, never per frame.
   needs `transform-origin="left center"` (x) or `"center top"` (y): a non-centre origin keeps it
   sampled, and a pure rotation is unchanged by moving the origin along its axis. The web is
   unaffected, so only the phone shows it (everybody-can-cook, verification-code*). See
-  exact/parity-tools/exact-issues/rotate-axis.md.
+  tools/parity/exact-issues/rotate-axis.md.
 - Exact easings: `cubic-bezier(0.455, 0.03, 0.515, 0.955)` is only CLOSE to Reanimated's
   inOut(quad) (1.9 % off): never use it. In a `transition` / `animation`, paste
   `bun tools/easing.ts inOutQuad` (a `linear()` within 0.0005, verified on iOS). Or, for keyframes, Exact: two keyframe halves, ease-in half `cubic-bezier(1/3, 0, 2/3, 1/3)` (y = s²)
@@ -131,7 +131,7 @@ One commit per haptic event, never per frame.
   paintSurface skips CSS reduction). `border-radius=999` / 50 on a 50 pt pill redraws on the
   CPU with the kernel's continuous outline every frame (a different curve, and jank). Write the
   radius RN draws, min(r, w/2, h/2) at every frame (online-offline 22, alert-drawer 25). See
-  exact/parity-tools/exact-issues/radius-reduced.md.
+  tools/parity/exact-issues/radius-reduced.md.
 - Corners: RN `borderCurve: 'continuous'` = `corner-shape="-exact-continuous"` (CALayer
   cornerCurve .continuous), pills and circles included: CA draws it unclamped at min(r, w/2, h/2),
   so a continuous pill's ends are flatter than a semicircle. `squircle` is the CSS superellipse,
@@ -162,7 +162,7 @@ One commit per haptic event, never per frame.
   Read the metrics with fontTools, don't eyeball.
 - RN `<Text>` drawn in Rust (labels, @expo/vector-icons glyphs): use a UIKit font
   (`draw2d::match_ui_font`, or `Font::new(..).map(Font::with_ui_layout)` for a bundled/icon font)
-  and `gfx::line_height` / `gfx::baseline`. Measured by exact/parity-tools/text-probe (UILabel-
+  and `gfx::line_height` / `gfx::baseline`. Measured by tools/parity/text-probe (UILabel-
   free RN path: NSLayoutManager, usesFontLeading NO, lineFragmentPadding 0) and matched pixel for
   pixel: the line is hhea ascent + descent (no lineGap), the baseline the hhea ascent below the
   box top (CoreText ignores USE_TYPO_METRICS: AntDesign, Entypo, Ionicons), trak values truncated
@@ -175,7 +175,7 @@ One commit per haptic event, never per frame.
 - RNGH's iOS Pan: a plain `Gesture.Pan()` is UIKit's UIPanGestureRecognizer untouched (RNPanHandler.m
   adds nothing without custom criteria; `failOffset*` alone is none) and reports
   `translationInView:` of the window, so a view's own transform plays no part. It begins on the first
-  move 10 pt or more from touch-down, and its translation depends on when (exact/parity-tools/pan-probe,
+  move 10 pt or more from touch-down, and its translation depends on when (tools/parity/pan-probe,
   a bare recognizer): from ~90 ms after touch-down it leaves out exactly the 10 pt along the set-off
   (a 12 pt begin reads 2; slow drags: 140 → 130 at any move size; RN's wheel-picker 104.5 → 94.3,
   floating-modal 99.95 → 90.1); earlier, UIKit defers the begin a frame and zeroes the translation at
@@ -192,7 +192,7 @@ One commit per haptic event, never per frame.
   activation; at the lift it decelerates (0.998/ms) only from a finger faster than ~335 pt/s,
   even after a still rest: a finger at rest sends no moves, so the last moves' velocity stands
   (probe and RN's FlatList alike, rests 0.15-3 s, zero-motion argent holds; 2026-11-14). Below that it stops under the finger.
-- UIScrollView bounce and deceleration (measured with `parity-tools/measure/scroll-probe`, a bare UIScrollView
+- UIScrollView bounce and deceleration (measured with `tools/parity/measure/scroll-probe`, a bare UIScrollView
   logging contentOffset per display frame; drive it with argent at y 0.6): the bounce is critically
   damped at 0.01088/ms from a start velocity of 0.00797 × the overshoot toward the edge (plus the
   banded content velocity), not from rest; UIKit projects a fling (v − 0.00988) / −ln(rate) and
@@ -439,7 +439,7 @@ One commit per haptic event, never per frame.
   whole whatever its fraction (expo-blur makes it in `draw`). argent's touches in the top status
   bar band (y < ~0.07) reach neither app, so RN's grab strip can't be driven on the simulator.
 - iOS 27's launch, measured frame by frame on the owner's iPhone 17 recording
-  (exact/parity-tools/ios-launch-reference, 402 × 874 pt, 60 fps, kept out of git): the card's
+  (tools/parity/ios-launch-reference, 402 × 874 pt, 60 fps, kept out of git): the card's
   bounds are four separate springs (ω rad/s, ζ, mass 1). Open: width 22.6/0.977, aspect
   (h/w) 34.6/1.09, centre x 26.9/1.02, centre y 32.1/0.89. Two launches agree to 1 pt rms; the
   card fills the screen about 0.42 s after the touch-up. The app's content is scaled to the card's
@@ -553,7 +553,7 @@ One commit per haptic event, never per frame.
   |Δ| wide and keyframed 0 → ∓100 % over its `animation-range` (animated-indicator-list).
 - The host's Text frame is TextKit's unceiled width (81.8125); Yoga ceils it to the pixel (82):
   a row of texts drifts a pixel per item. Take RN's widths from `ceilPx(frame.width)`.
-- Performance (exact/parity-tools/perf/device-perf.md): run `cargo test --release -p demos-gpu
+- Performance (tools/parity/perf/device-perf.md): run `cargo test --release -p demos-gpu
   --lib audit_every_surface -- --ignored --nocapture` (`BENCH_ONLY=<surface>`) after a port: per
   surface, whether it still asks for frames after 4 s untouched, render CPU and allocations at
   rest and under a drag. A surface that only waits for a timed event (an RN `setInterval`)
@@ -654,7 +654,7 @@ finger), magnet-spring (2D distance per frame to nine magnets).
 
 - Animated blur intensity (expo-blur `intensity` driven by Reanimated): Exact's materials and
   `backdrop-filter` don't animate. The fix is `draw2d::backdrop` (UIKit's partially animated blur, measured by
-  `exact/parity-tools/blur-probe`): a Rust surface draws what is under the BlurView and runs the
+  `tools/parity/blur-probe`): a Rust surface draws what is under the BlurView and runs the
   tint's chain at intensity / 100 (blurred-bottom-bar, dynamic-blur-tabs, bezier-curve-outline,
   airbnb-flip-interaction).
 - `border-radius` doesn't animate: draw the body in Rust under the Contract content

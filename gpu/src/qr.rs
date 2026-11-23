@@ -1437,7 +1437,7 @@ mod tests {
 
     /// node-qrcode's output over a corpus: per line, the level, the version, the mask, the modules
     /// as hex (row-major, 4 per digit), and the text as JSON.
-    const REFERENCE: &str = include_str!("../../../parity-tools/qr/reference.txt");
+    const REFERENCE: &str = include_str!("../../tools/parity/qr/reference.txt");
 
     fn unjson(s: &str) -> String {
         // The corpus's JSON strings: \" \\ \n \uXXXX (with surrogate pairs).
@@ -1500,7 +1500,7 @@ mod tests {
     fn discrete_matches_canvaskit() {
         // CanvasKit's DiscretePathEffect over the rounded path of "reactiive.io" (H, size 378,
         // length 10, deviation 3).
-        const REF: &str = include_str!("../../../parity-tools/qr/discrete.txt");
+        const REF: &str = include_str!("../../tools/parity/qr/discrete.txt");
         let mut lines = REF.lines();
         let header: Vec<f64> = lines
             .next()

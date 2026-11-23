@@ -1,10 +1,10 @@
 {
-  // exact/parity-tools: the measuring and parity scripts. Not clean today (see `bun x tsc -p
-  // exact/tsconfig.parity.json --noEmit`): Bun's API is declared `any` in types/bun-min.d.ts, so
-  // callbacks of `Bun.build` / `Bun.serve` are implicit any, the feedback JSON is untyped, and
+  // tools/parity: the measuring and parity scripts. Not clean today (see `bun x tsc -p
+  // tools/parity/tsconfig.json --noEmit`): Bun's API is declared `any` in tools/types/bun-min.d.ts,
+  // so callbacks of `Bun.build` / `Bun.serve` are implicit any, the feedback JSON is untyped, and
   // notion-qrcode/parity.ts imports `computeShapeData`, which the RN demo no longer exports.
   // tools/lint.sh ts reports its error count without failing on it.
-  "extends": "./tsconfig.json",
-  "include": ["parity-tools/**/*.ts", "types/**/*.d.ts"],
-  "exclude": ["**/node_modules", "parity-tools/**/out"]
+  "extends": "../../tsconfig.json",
+  "include": ["./**/*.ts", "../types/**/*.d.ts"],
+  "exclude": ["**/node_modules", "./**/out", "./**/.out"]
 }
