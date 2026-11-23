@@ -16,6 +16,11 @@ const probe = readFileSync(new URL("./probe.js", import.meta.url), "utf8");
 const { cdp, kill } = await launch({ port: 9500 + Math.floor(Math.random() * 40) });
 const page = await newPage(cdp, mobile ? { width: 390, height: 844, mobile: true, dpr: 3 } : { width: 1440, height: 900 });
 await page.send("Page.addScriptToEvaluateOnNewDocument", { source: probe });
+const errors: string[] = [];
+page.on((e) => {
+  if (e.method === "Runtime.exceptionThrown") errors.push(String(e.params.exceptionDetails?.exception?.description ?? e.params.exceptionDetails?.text).slice(0, 300));
+  if (e.method === "Runtime.consoleAPICalled" && e.params.type === "error") errors.push(e.params.args.map((a: any) => a.value ?? a.description).join(" ").slice(0, 300));
+});
 await page.send("Page.navigate", { url: `${base}/` });
 for (let i = 0; i < 240; i++) {
   await Bun.sleep(500);
@@ -89,7 +94,7 @@ for (const slug of demos) for (let k = 0; k < runs; k++) for (const how of close
     if (how === "swipe") await drag(...S(0.5, 0.12), ...S(0.5, 0.6), 300); else await page.eval(`history.back()`);
     await Bun.sleep(1500);
   });
-  const row = { slug, run: k, how, open, close };
+  const row = { slug, run: k, how, open, close, errors: errors.splice(0) };
   rows.push(row);
   console.log(JSON.stringify(row));
 }

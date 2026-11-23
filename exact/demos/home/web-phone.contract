@@ -34,8 +34,8 @@ component WebSpringboard
     page = max(0, floor(x / sw + 0.5))
   view
     column position="absolute" inset=0 testId="springboard"
-      // A static wallpaper, edge to edge.
-      image "assets/home-wallpaper.png" position="absolute" left=0 top=0 width="100%" height="100%" object-fit="cover" aria-hidden=true
+      // A static wallpaper, edge to edge: the iPhone's PNG as WebP (2.0 MB -> 0.29 MB, same 1206 x 2622).
+      image "assets/web/home-wallpaper.webp" position="absolute" left=0 top=0 width="100%" height="100%" object-fit="cover" aria-hidden=true
       // The icons and the dots (never the wallpaper): what the launch zooms and the pull-to-search moves.
       column position="absolute" inset=0 padding-top=safeTop padding-bottom=safeBottom box-sizing="border-box" testId="web-home-zoom"
         // What the pull-to-search moves down on its rubber band (the page module's `search-reveal`).
