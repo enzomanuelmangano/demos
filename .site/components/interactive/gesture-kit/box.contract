@@ -8,7 +8,7 @@
 // property over 300 ms (the reference's `transition: all 300ms` on onMouseEnter/onMouseLeave).
 style BoxButtonLight
   background-color="#b8b8b8" box-shadow="0 0 #0000" scale=1 cursor="pointer"
-  transition="background-color 300ms ease, scale 300ms ease, box-shadow 300ms ease"
+  transition="all 300ms ease"
   :hover
     background-color = "#e5e7eb"
     scale = 0.95
@@ -31,7 +31,7 @@ component BoxButton
     label: string
     press: action
   view
-    button press=press aria-label=label title=label class=BoxButtonLight position="absolute"
+    button press=press aria-label=label title=label class=BoxButtonLight data-motion="focus" position="absolute"
       right=`${16 + index * 44.8}px` bottom=16 width=36 height=36 border-radius=12 border="none" padding=0
       display="flex" align-items="center" justify-content="center"
       svg width=18 height=18 viewBox="0 0 24 24" fill="#303030" aria-hidden=true

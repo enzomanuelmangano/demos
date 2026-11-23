@@ -41,3 +41,7 @@
 [data-motion~=article-grid]>:nth-child(1){--motion-delay:100ms}
 [data-motion~=article-grid]>:nth-child(2){--motion-delay:160ms}
 [data-motion~=article-grid]>:nth-child(3){--motion-delay:220ms}
+
+/* The article demos' controls: no press dim (Exact's 0.65 on a pressed button; the reference's buttons keep their
+   opacity: hover and press scale them to 0.95). */
+#exact-root [data-motion~=demo] :is(button,[data-exact-on~="press"])[data-pressed]{opacity:1 !important}
