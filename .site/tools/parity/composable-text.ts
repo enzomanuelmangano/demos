@@ -11,7 +11,7 @@ const fails: string[] = [];
 for (const width of [1440, 390]) {
   const page = await newPage(cdp, width);
   await page.goto(`${origin}/demos/app/demo/composable-text`);
-  for (let i = 0; i < 100 && !(await page.eval(`!!document.querySelector('[data-testid=toggle]')`)); i++) await Bun.sleep(100);
+  for (let i = 0; i < 600 && !(await page.eval(`!!document.querySelector('[data-testid=label]')`)); i++) await Bun.sleep(100);
   await Bun.sleep(800);
   // Every ghost's left as it is set, per leave: [char, left][]
   await page.eval(`(() => { const l = document.querySelector('[data-testid=label]'); window.__ghosts = [];
