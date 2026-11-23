@@ -58,7 +58,7 @@ const IMAGE: (usize, usize) = (910, 1218);
 /// The font: the page's letters only.
 static NEWSREADER: &[u8] = include_bytes!("../fonts/newsreader-prince-subset.ttf");
 /// The picture's pixels as 8-bit r, g, b, row by row.
-static PIXELS: &[u8] = include_bytes!("../images/prince-rgb-910x1218.rgb8.zlib");
+static PIXELS: &crate::bytes::Bytes = crate::image!("prince-rgb-910x1218.rgb8.zlib");
 /// The ink curve: floor, saturation weight and gamma.
 const INK_FLOOR: f64 = 0.18;
 const SAT_WEIGHT: f64 = 0.45;
@@ -87,8 +87,19 @@ const TEXT: &str = "“You are beautiful, but you are empty,” he went on. “O
     you must not forget it. You become responsible, forever, for what you have tamed. You \
     are responsible for your rose…”";
 
+/// The files of gpu/images this surface draws: embedded on the iPhone, fetched before it draws on the web
+/// (crate::bytes).
+const IMAGES: &[&str] = &[
+    "prince-rgb-910x1218.rgb8.zlib",
+];
+
 /// The demo's surface. Inputs: a seed (Math.random()), and whether the picture is shown.
+/// On the web it draws once its [`IMAGES`] arrived (crate::bytes::gate).
 pub fn surface() -> Box<dyn Surface> {
+    crate::bytes::gate(IMAGES, ungated())
+}
+
+fn ungated() -> Box<dyn Surface> {
     Box::new(prince())
 }
 

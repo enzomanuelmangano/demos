@@ -87,7 +87,7 @@ component AlertDrawer
             column animation=(toggles == 0 ? "none" : (isExpanded ? `dropIn ${squaredIn()}` : `dropOut ${squaredOut()}`))
               translate=(isExpanded ? "0px 10px" : "0px 0px")
               row
-                image "symbol:sf/exclamationmark.circle" font-size=48 color="color(display-p3 0.9412 0.1294 0.1686)" aria-hidden=true
+                image "symbol:icon.exclamationmark-circle" font-size=48 color="color(display-p3 0.9412 0.1294 0.1686)" aria-hidden=true
                 view flex=1
                 // The close button: a 50 pt hit area around a 32 pt disc.
                 view display="flex" flex-direction="column" width=50 height=50 align-items="center" justify-content="center"
@@ -96,7 +96,7 @@ component AlertDrawer
                       row aria-label="Close" testId="close-card" width=32 height=32 border-radius=16 text-align="center"
                         background-color="color(display-p3 0.9725 0.9725 0.9804)" align-items="center"
                         justify-content="center"
-                        image "symbol:sf/xmark" font-size=14 color="color(display-p3 0.6314 0.6275 0.6353)"
+                        image "symbol:icon.xmark" font-size=14 color="color(display-p3 0.6314 0.6275 0.6353)"
               column margin-top=8 padding=8
                 text "Are you sure?" font-family="Honk-Regular" font-size=20
                   letter-spacing=0.5 color="#000000" testId="card-title"

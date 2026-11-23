@@ -15,6 +15,8 @@ pub mod shaders {
 }
 #[cfg(test)]
 mod bench;
+/// The images the surfaces draw: embedded on native, fetched per demo on the web.
+pub mod bytes;
 pub mod gfx;
 pub mod haptic;
 pub mod gooey;

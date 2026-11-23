@@ -85,7 +85,7 @@ fn span(p: f32, a: f32, b: f32) -> f32 {
 
 // Value noise on a unit lattice, from an integer hash (no sin: exact on every GPU).
 fn hash(c: vec2<i32>) -> f32 {
-    var h = bitcast<u32>(c.x) * 0x8da6b343u ^ bitcast<u32>(c.y) * 0xd8163841u;
+    var h = (bitcast<u32>(c.x) * 0x8da6b343u) ^ (bitcast<u32>(c.y) * 0xd8163841u);
     h = (h ^ (h >> 15u)) * 0x2c1b3c6du;
     h = (h ^ (h >> 12u)) * 0x297a2d39u;
     h = h ^ (h >> 15u);

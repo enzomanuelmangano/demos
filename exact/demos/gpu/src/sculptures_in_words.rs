@@ -26,7 +26,7 @@ use crate::ui_scroll::{Snap, UiScroll};
 /// Newsreader's glyphs the columns use (a subset), still variable: Core Text draws them at opsz 12.
 static FONT: &[u8] = include_bytes!("../fonts/newsreader-sculptures-subset.ttf");
 /// The baked columns and figure data, zlib-compressed.
-static BAKED: &[u8] = include_bytes!("../images/sculptures-in-words/sculptures.bin.zlib");
+static BAKED: &crate::bytes::Bytes = crate::image!("sculptures-in-words/sculptures.bin.zlib");
 
 const PAGE_BG: u32 = 0xffffff;
 /// A linear gradient from `y0` to `y1`, full width.
@@ -73,6 +73,8 @@ const POINT_STRIDE: usize = 7;
 const INSTANCE_FLOATS: usize = 36;
 const UNIFORM_FLOATS: usize = 52;
 const MAX_PIXEL_RATIO: f32 = 3.0;
+/// The clock up to which the column is drawn (the letters have not moved yet).
+const COLUMN_CUT: f64 = 0.003;
 /// Subpixel phases per glyph in the atlas.
 const PHASES: usize = 4;
 /// Impact ticks spread over the departures.
@@ -82,8 +84,19 @@ const RATE_NORMAL: f64 = 0.998;
 const RATE_FAST: f64 = 0.99;
 const ARTICLES: usize = 3;
 
+/// The files of gpu/images this surface draws: embedded on the iPhone, fetched before it draws on the web
+/// (crate::bytes).
+const IMAGES: &[&str] = &[
+    "sculptures-in-words/sculptures.bin.zlib",
+];
+
 /// The surface. Input: whether the statue is shown (the button's toggle).
+/// On the web it draws once its [`IMAGES`] arrived (crate::bytes::gate).
 pub fn surface() -> Box<dyn Surface> {
+    crate::bytes::gate(IMAGES, ungated())
+}
+
+fn ungated() -> Box<dyn Surface> {
     Box::new(Sculptures::new())
 }
 
@@ -564,6 +577,9 @@ struct Sculptures {
     /// Tests: leave the column out.
     #[cfg(test)]
     quads_only: bool,
+    /// Tests: draw the column at rest with the letters' quads, as off Apple.
+    #[cfg(test)]
+    column_quads: bool,
 }
 
 impl Sculptures {
@@ -598,6 +614,8 @@ impl Sculptures {
             forced: None,
             #[cfg(test)]
             quads_only: false,
+            #[cfg(test)]
+            column_quads: false,
         }
     }
 
@@ -683,6 +701,21 @@ impl Sculptures {
             gfx::spring_to(&mut s, 0.0, MORPH_DURATION_MS, 1.0);
             self.yaw = Yaw::Spring(s);
         }
+    }
+
+    /// Whether the letters' quads draw the column at rest, in place of draw2d's text. Off Apple each glyph
+    /// of the column is an outline draw2d tessellates and uploads every frame (2 MB a frame while it
+    /// scrolls, on the web); the quads draw the same letters on the same pixels (the handoff test) from
+    /// the instances built once per size, and the scroll is a uniform. Not while the pages cross: the
+    /// quads blend one page's letters into the next's (the figures' crossing), the column slides. On
+    /// Apple, CoreText's masks draw the column, as before.
+    fn column_by_quads(&self, clock: f64) -> bool {
+        #[cfg(test)]
+        let wanted = self.column_quads;
+        #[cfg(not(test))]
+        let wanted = cfg!(not(target_vendor = "apple"));
+        let cross = self.cross();
+        wanted && clock <= COLUMN_CUT && (cross - cross.round()).abs() < 1e-6
     }
 
     fn morph(&self) -> f64 {
@@ -934,7 +967,13 @@ impl Sculptures {
                     depth_or_array_layers: 1,
                 },
             );
+            #[cfg(target_vendor = "apple")]
             let view = texture.create_view(&Default::default());
+            // CoreText rasterises the masks above on Apple; elsewhere draw2d has no masks (the
+            // column's glyphs are outlines there) and they come back empty, so the atlas is drawn from
+            // the same outlines on the GPU.
+            #[cfg(not(target_vendor = "apple"))]
+            let view = atlas_outlines(device, queue, self.font.as_ref(), &geo, ratio);
             let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("sculptures letters"),
                 layout: &gpu.layout,
@@ -1038,16 +1077,16 @@ impl Sculptures {
     }
 
     /// Draws the column and the fades, in points.
-    fn draw_canvas(&mut self, scale: f32, clock: f64) {
+    fn draw_canvas(&mut self, scale: f32, clock: f64, by_quads: bool) {
         let (w, h) = self.size;
         let ratio = scale as f64;
         let c = &mut self.canvas;
         c.begin(scale);
         let ink = Paint::fill(Color::hex(PAPER_INK));
         #[cfg(test)]
-        let column = clock <= 0.003 && !self.quads_only;
+        let column = clock <= COLUMN_CUT && !self.quads_only && !by_quads;
         #[cfg(not(test))]
-        let column = clock <= 0.003;
+        let column = clock <= COLUMN_CUT && !by_quads;
         if column {
             if let Some(font) = &self.font {
                 let scroll = self.read.offset;
@@ -1089,7 +1128,7 @@ impl Sculptures {
                 c.restore();
             }
         }
-        if clock > 0.0 {
+        if clock > 0.0 || by_quads {
             if let Some((_, images, _, _)) = self.gpu.as_ref().and_then(|g| g.shape.as_ref()) {
                 let (iw, ih) = (images.image(0).width, images.image(0).height);
                 let to = Matrix::scale(iw / w as f32, ih / h as f32);
@@ -1179,6 +1218,52 @@ impl Sculptures {
             x += dw + DOT_SPACING;
         }
     }
+}
+
+/// The atlas off Apple: each glyph's four phases drawn as outlines by draw2d (as the column draws
+/// them there), white over opaque black, so .r is the coverage the shader reads, as from the r8
+/// atlas CoreText fills on Apple. Each phase's origin sits where that mask's would: the cell's
+/// origin plus a quarter pixel per phase.
+#[cfg(not(target_vendor = "apple"))]
+fn atlas_outlines(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    font: Option<&Font>,
+    geo: &AtlasGeo,
+    ratio: f32,
+) -> wgpu::TextureView {
+    let images = Images::target(device, geo.width, geo.height);
+    let view = images.render_view();
+    let mut canvas = Canvas::default();
+    canvas.begin(ratio);
+    if let Some(font) = font {
+        let b = baked();
+        let mut run = Vec::with_capacity(b.union.len() * PHASES);
+        for (g, &id) in b.union.iter().enumerate() {
+            for phase in 0..PHASES {
+                let index = (g * PHASES + phase) as u32;
+                let x = ((index % geo.cols) * geo.cell + geo.origin_x) as f32 + phase as f32 * 0.25;
+                let y = ((index / geo.cols) * geo.cell + geo.origin_y) as f32;
+                run.push((id, x / ratio, y / ratio));
+            }
+        }
+        canvas.draw_glyphs_subpixel(&run, font, &Paint::fill(Color::WHITE));
+    }
+    let mut renderer = Renderer::default();
+    let mut encoder = device.create_command_encoder(&Default::default());
+    renderer.draw(
+        device,
+        queue,
+        &mut encoder,
+        &canvas,
+        &view,
+        wgpu::TextureFormat::Rgba8Unorm,
+        geo.width,
+        geo.height,
+        wgpu::Color::BLACK,
+    );
+    queue.submit([encoder.finish()]);
+    view
 }
 
 fn bytes(v: &[f32]) -> &[u8] {
@@ -1285,9 +1370,18 @@ impl Surface for Sculptures {
         let clock = self.morph();
         let ratio = frame.scale.min(MAX_PIXEL_RATIO);
         self.ensure_gpu(device, queue, frame, format);
-        if clock > 0.0 {
+        let by_quads = self.column_by_quads(clock);
+        if clock > 0.0 || by_quads {
             let geo = self.gpu.as_ref().unwrap().atlas.as_ref().unwrap().1;
             self.write_uniforms(ratio, &geo);
+            if by_quads {
+                // The column's scroll in whole device pixels, as draw_canvas shifts the text: each line
+                // then rounds as draw2d rounds it, and no line moves a pixel apart from its neighbours.
+                self.uniforms[35] = ((self.read.offset * ratio as f64).round() / ratio as f64) as f32;
+                // The shader shows the letters only once the clock has started (at rest the text is the
+                // column's): a clock just above 0, where no letter has left its place yet.
+                self.uniforms[31] = self.uniforms[31].max(1e-7);
+            }
             let gpu = self.gpu.as_ref().unwrap();
             queue.write_buffer(&gpu.uniforms, 0, bytes(&self.uniforms));
             let (_, _, view, depth) = gpu.shape.as_ref().unwrap();
@@ -1321,7 +1415,7 @@ impl Surface for Sculptures {
             pass.set_vertex_buffer(1, instances.slice(..));
             pass.draw(0..6, 0..*count as u32);
         }
-        self.draw_canvas(frame.scale, clock);
+        self.draw_canvas(frame.scale, clock, by_quads);
         let (pw, ph) = frame.pixels();
         {
             let gpu = self.gpu.as_ref().unwrap();
@@ -1568,6 +1662,53 @@ mod tests {
             gfx::save_over(&img, name, [255, 255, 255]);
             assert!(img.count(|px| px[3] > 128) > 20_000, "{name}");
         }
+    }
+
+    /// Off Apple the column at rest is drawn by the letters' quads (built once, scrolled by a uniform):
+    /// at any scroll they put the column's letters on its pixels, and the uploads are the uniforms only.
+    #[cfg(target_vendor = "apple")]
+    #[test]
+    fn the_quads_draw_the_column_at_any_scroll() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
+        exact_gpu::shaders::load_dir(&dir, &crate::REGISTRY).unwrap();
+        let gpu = match fixture::device() {
+            Ok(gpu) => gpu,
+            Err(error) => return eprintln!("{error}; skipped"),
+        };
+        let (w, h, scale) = (420u32, 912u32, 3.0f32);
+        let mut s = Sculptures::new();
+        s.bind(&[Value::Bool(false)], None).unwrap();
+        s.size(w as f32, h as f32);
+        s.forced = Some(0.0);
+        for (k, scroll) in [0.0, 137.4, 802.71].into_iter().enumerate() {
+            s.read.offset = scroll;
+            s.column_quads = false;
+            let text = render(&gpu, &mut s, 16.0 * k as f64, w, h, scale);
+            s.column_quads = true;
+            assert!(s.column_by_quads(0.0));
+            let quads = render(&gpu, &mut s, 16.0 * k as f64 + 8.0, w, h, scale);
+            let (pw, ph) = (text.width as usize, text.height as usize);
+            let (mut diff, mut ink, mut max) = (0u64, 0u64, 0u8);
+            for y in (h as f32 * scale * TOP_FADE_FRAC as f32) as usize..(ph as f32 * (1.0 - BOTTOM_FADE_FRAC as f32)) as usize {
+                for x in 0..pw {
+                    let i = (y * pw + x) * 4;
+                    // The page is opaque: compare the ink (green, the darkest of the paper's channels).
+                    let (a, b) = (255 - text.data[i + 1], 255 - quads.data[i + 1]);
+                    ink += (a > 8) as u64;
+                    diff += a.abs_diff(b) as u64;
+                    max = max.max(a.abs_diff(b));
+                }
+            }
+            gfx::save_over(&quads, &format!("sculptures-column-quads-{k}"), [255, 255, 255]);
+            assert!(ink > 100_000, "scroll {scroll}: {ink} inked pixels");
+            let mean = diff as f64 / ink as f64;
+            eprintln!("scroll {scroll}: mean {mean:.4} max {max} over {ink} inked pixels");
+            // Measured: mean 0.009, max one level (CoreText's masks either way, quarter-pixel phases).
+            assert!(mean < 0.05 && max <= 2, "scroll {scroll}: mean {mean} max {max}");
+        }
+        // Mid-crossing the column slides as text.
+        s.crossing.offset = w as f64 * 0.5;
+        assert!(!s.column_by_quads(0.0));
     }
 
     /// The tap: the clock springs to 1 and the yaw turns; a touch scrolls the column.

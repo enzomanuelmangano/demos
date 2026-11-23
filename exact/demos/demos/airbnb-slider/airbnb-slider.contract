@@ -27,14 +27,18 @@ component AirbnbSlider
   // excursion), else selection when the digit count changes (9 → 10, 99 → 100, 999 → 1000).
   // There are only a few crossings in the whole range, so no rate limit is needed.
   action moved(v: string)
-    progress = match parseNumber(v) { case some(n) => n, case none => progress }
-    if atEnd(priceOf(progress)) and not ended
+    // An action's writes land when it ends: the checks read the new value through `next`, not
+    // `progress` (which would judge the previous change, so the end's bump came one move late).
+    let next = match parseNumber(v) { case some(n) => n, case none => progress }
+    let p = priceOf(next)
+    progress = next
+    if atEnd(p) and not ended
       haptic("impact-rigid")
     else
-      if feltDigits(priceOf(progress), felt) != felt
+      if feltDigits(p, felt) != felt
         haptic("selection")
-    felt = atEnd(priceOf(progress)) ? digitsOf(priceOf(progress)) : feltDigits(priceOf(progress), felt)
-    ended = atEnd(priceOf(progress)) or (ended and (priceOf(progress) < hapticGap() or priceOf(progress) > 4500 - hapticGap()))
+    felt = atEnd(p) ? digitsOf(p) : feltDigits(p, felt)
+    ended = atEnd(p) or (ended and (p < hapticGap() or p > 4500 - hapticGap()))
   view
     column position="absolute" inset=0 background-color="color(display-p3 0.8902 0.9255 0.9804)"
       align-items="center" justify-content="center" testId="airbnb-slider"

@@ -32,13 +32,24 @@ const SPRING_DURATION: f64 = 0.35;
 /// How far the press area extends past the canvas: left, right, top, bottom, pt.
 const PRESS_RECT: (f32, f32, f32, f32) = (20.0, 20.0, 20.0, 30.0);
 /// Scene buffers for both data sets, as the renderer uploads them.
-static SCENE: &[u8] = include_bytes!("../images/github-terrain/scene.bin");
+static SCENE: &crate::bytes::Bytes = crate::image!("github-terrain/scene.bin");
 
 const LAYER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
 
+/// The files of gpu/images this surface draws: embedded on the iPhone, fetched before it draws on the web
+/// (crate::bytes).
+const IMAGES: &[&str] = &[
+    "github-terrain/scene.bin",
+];
+
 /// The demo's surface. Input: whether the real data is shown.
+/// On the web it draws once its [`IMAGES`] arrived (crate::bytes::gate).
 pub fn surface() -> Box<dyn Surface> {
+    crate::bytes::gate(IMAGES, ungated())
+}
+
+fn ungated() -> Box<dyn Surface> {
     Box::new(GithubTerrain {
         is_flat: true,
         use_real: true,

@@ -35,7 +35,7 @@ const CELL: f64 = 128.0;
 const AVATARS: usize = 20;
 const SPRITE_W: u32 = 640;
 const SPRITE_H: u32 = 512;
-static SPRITE: &[u8] = include_bytes!("../images/notion-qrcode-avatars-640x512.rgba8.zlib");
+static SPRITE: &crate::bytes::Bytes = crate::image!("notion-qrcode-avatars-640x512.rgba8.zlib");
 /// Morph progress at which each light impact fires.
 const HAPTIC_THRESHOLDS: [f64; 4] = [0.05, 0.12, 0.21, 0.32];
 /// Rotation: 40 s per turn, 1000 turns.
@@ -76,8 +76,19 @@ static IONICONS: &[u8] = include_bytes!("../fonts/ionicons-scan-qr-code-subset.t
 const SCAN: &str = "\u{F556}";
 const QR_CODE: &str = "\u{F4FC}";
 
+/// The files of gpu/images this surface draws: embedded on the iPhone, fetched before it draws on the web
+/// (crate::bytes).
+const IMAGES: &[&str] = &[
+    "notion-qrcode-avatars-640x512.rgba8.zlib",
+];
+
 /// The demo's surface: `notion_qrcode()`.
+/// On the web it draws once its [`IMAGES`] arrived (crate::bytes::gate).
 pub fn surface() -> Box<dyn Surface> {
+    crate::bytes::gate(IMAGES, ungated())
+}
+
+fn ungated() -> Box<dyn Surface> {
     Box::new(NotionQrCode::new())
 }
 

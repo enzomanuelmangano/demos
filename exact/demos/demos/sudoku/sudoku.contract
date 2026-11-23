@@ -136,7 +136,7 @@ component Sudoku
                       gone=sdkDone(remain, d))
                       text `${d}` font-size=18 font-weight=500 color=(lit == d ? "#60A5FA" : "#FFFFFF")
                   SudokuKey(press=send(10), label="Erase", testId="sudoku-erase", lit=false, gone=false)
-                    image "symbol:sf/delete.left" font-size=20 color="#E2E8F0" aria-hidden=true
+                    image "symbol:icon.delete-left" font-size=20 color="#E2E8F0" aria-hidden=true
                 row gap=10 align-items="center" justify-content="center"
                   SudokuButton(title="Undo", press=send(11), testId="sudoku-undo", filled=false,
                     size=14, padX=12, padY=6, minW=88)

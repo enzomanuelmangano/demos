@@ -5,6 +5,7 @@ use Springboard from "./home/springboard.contract"
 use DemoScreen from "./home/demo-screen.contract"
 use Atlas, SnapFrame, DeskDemo, FeedbackNote from "./home/atlas.contract"
 use DemoEnv from "./demos/env.contract"
+use WebShell from "./home/web-phone.contract"
 use startSensorInput, stopSensorInput, SensorInput from "@exact/motion"
 use defaultPressablesConfig from "pressto"
 
@@ -20,6 +21,13 @@ shape Host
   height: number
   prefersReducedMotion: bool
   pointer: string
+  safeAreaTop: number
+  safeAreaBottom: number
+  keyboardHeight: number
+
+// Which host this is: the web has no native views, so it draws its own launcher (home/web-phone.contract).
+shape Page
+  platform: string
 
 // The web's `timer` surfaces: the token each live one last fired (gpu/src/timer.rs).
 shape Timers
@@ -145,13 +153,17 @@ fn demoOf(slug: string): Demo = match first(allDemos().filter(d => d.slug == slu
 component Demos
   resource host = exactViewport() as shape Host
   resource time = exactTime() as shape Time
+  resource page = exactPage() as shape Page
   resource timers = exactSurface("timer") as shape Timers
-  derive env = DemoEnv(width=host.width, height=host.height, safeTop=0, safeBottom=0, epoch=time.epochAtZero, utcOffset=time.utcOffset, seed=time.seed, reducedMotion=host.prefersReducedMotion, timers=timers.fired, tile=false)
+  derive env = DemoEnv(width=host.width, height=host.height, safeTop=0, safeBottom=0, epoch=time.epochAtZero, utcOffset=time.utcOffset, seed=time.seed, reducedMotion=host.prefersReducedMotion, timers=timers.fired, tile=false, web=page.platform == "web", keyboardHeight=(page.platform == "web" ? host.keyboardHeight : 0))
   // "Show Unstable" (the General tray): the work-in-progress demos are listed only with it on.
   state showUnstable = false persist
   resource feedback = feedbackNotes() when atlasShown as shape FeedbackNote[] else empty()
   mutation noted as shape FeedbackNote refreshes feedback
-  derive desk = host.pointer == "fine" and host.width >= 600
+  // The web is never the Mac's atlas window: a desktop browser gets an iPhone Air in a frame (`framed`).
+  derive web = page.platform == "web"
+  derive desk = not web and host.pointer == "fine" and host.width >= 600
+  derive framed = web and host.pointer == "fine" and host.width >= 600
   // The phone's home badges: asked once the home has shown again, after the close flight has landed
   // (DemoLaunch's flight is ~0.7-1 s): an ask is a whole-plan apply on the main thread (10-14 ms on the
   // simulator), so it never lands inside a flight or a scroll, and there is no periodic poll.
@@ -189,6 +201,11 @@ component Demos
   action open(slug: string)
     haptic("selection")
     nav = push(nav, path("demo", slug))
+  // The web: the demo last opened out of its icon, whose demo mounts a frame after its card (home/web-phone.contract).
+  state flown = ""
+  action openFlown(slug: string)
+    flown = slug
+    open(slug)
   // The atlas (home/atlas.contract): every demo live at once. demos-exact://atlas, or on the Mac
   // View › Demo Atlas (⇧⌘A).
   action openAtlas
@@ -210,21 +227,23 @@ component Demos
   // Presets.System.impactMedium() when it commits, before the flight home: the launch does
   // (modules/apple/DemoLaunch.swift), and lets the route go here at expansion 0.2.
   action back
-    if top(nav).name == "demo" and turns(top(nav).params.slug)
+    if top(nav).name == "demo" and turns(top(nav).params.slug) and not web
       send sensors = stopSensorInput(surface="threads_holo_ticket", sensor="relativeOrientation")
-    else if top(nav).name == "demo" and lights(top(nav).params.slug)
+    else if top(nav).name == "demo" and lights(top(nav).params.slug) and not web
       send sensors = stopSensorInput(surface="card_shader_reflections", sensor="relativeOrientation")
     nav = back(nav)
   // Linear Sensors' gravity is fed by its own `motion-feed` node (modules/apple/MotionFeed.swift).
   // Threads Holo Ticket's feed: Core Motion's attitude at 62.5 Hz (RN's interval 16 ms is
   // deviceMotionUpdateInterval 0.016 s), into its surface.
-  task turn when top(nav).name == "demo" and turns(top(nav).params.slug) key=top(nav).id
+  // The web has no canvas input for @exact/motion (startSensorInput is NotSupportedError there): its feed is the page
+  // module's `motion-feed` beside the demo (below).
+  task turn when top(nav).name == "demo" and turns(top(nav).params.slug) and not web key=top(nav).id
     after(1, startTurn)
   action startTurn
     send sensors = startSensorInput(surface="threads_holo_ticket", sensor="relativeOrientation", frequency=62.5)
   // Card Shader Reflections' light: Core Motion's attitude at 62.5 Hz into its surface, which
   // turns the cards' room frame by it (gpu/src/card_shader_reflections.rs, past RN).
-  task light when top(nav).name == "demo" and lights(top(nav).params.slug) key=top(nav).id
+  task light when top(nav).name == "demo" and lights(top(nav).params.slug) and not web key=top(nav).id
     after(1, startLight)
   action startLight
     send sensors = startSensorInput(surface="card_shader_reflections", sensor="relativeOrientation", frequency=62.5)
@@ -271,7 +290,14 @@ component Demos
         if e.name == "home" and desk
           Atlas(demos=allDemos(), env=env, active=(top(nav).name == "home"), routeKey=`${e.id}`,
             closable=false, leave=back, notes=feedback, add=addNote, edit=editNote)
-        if e.name == "home" and not desk
+        if e.name == "home" and web
+          column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" position="absolute" inset=0
+            WebShell(demos=demos, all=allDemos(), env=env, slug="", zone="", framed=framed, vw=host.width, vh=host.height,
+              safeTop=host.safeAreaTop, safeBottom=host.safeAreaBottom, open=openFlown, flown=flown, leave=back)
+            if gpuWarm
+              canvas surface=warm() width=1 height=1 position="absolute" left=0 top=0 pointer-events="none"
+                aria-hidden=true testId="gpu-warm"
+        if e.name == "home" and not desk and not web
           column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" position="absolute" inset=0
             Springboard(demos=demos, changed=changedSlugs, open=open)
             if gpuWarm
@@ -292,10 +318,21 @@ component Demos
         if e.name == "demo" and desk
           DeskDemo(slug=e.params.slug, name=demoOf(e.params.slug).name, backdrop=demoOf(e.params.slug).backdrop, env=env,
             routeKey=`${e.id}`, leave=back)
-        if e.name == "demo" and not desk
+        if e.name == "demo" and web
+          column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" navigationPresentation="fullscreen"
+            position="absolute" inset=0
+            WebShell(demos=demos, all=allDemos(), env=env, slug=e.params.slug, zone=closeZone(e.params.slug), framed=framed, vw=host.width, vh=host.height,
+              safeTop=host.safeAreaTop, safeBottom=host.safeAreaBottom, open=openFlown, flown=flown, leave=back)
+            // The attitude the iPhone feeds these surfaces from Core Motion (startTurn, startLight), from the browser's
+            // device orientation (or, on a desktop, the pointer over the screen): modules/web/index.js `motion-feed`.
+            if turns(e.params.slug) or lights(e.params.slug)
+              motion-feed feed=(turns(e.params.slug) ? "threads_holo_ticket" : "card_shader_reflections") sensor="relativeOrientation"
+                frequency=62.5 position="absolute" left=0 top=0 width=0 height=0 pointer-events="none" aria-hidden=true
+        if e.name == "demo" and not desk and not web
           // The open out of the icon and the close into it are RN's launch, drawn by the app's
           // module (DemoLaunch.swift) on UIKit's fullscreen presentation, not UIKit's zoom.
           column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" navigationPresentation="fullscreen"
             position="absolute" inset=0
             background-color=demoOf(e.params.slug).backdrop closedby=(ownsDrags(e.params.slug) ? "none" : "closerequest")
-            DemoScreen(demo=demoOf(e.params.slug), env=env, ownsDrags=ownsDrags(e.params.slug), zone=closeZone(e.params.slug), leave=back)
+            DemoScreen(demo=demoOf(e.params.slug), env=env, ownsDrags=ownsDrags(e.params.slug), zone=closeZone(e.params.slug), leave=back,
+              web=false, insetTop=0, insetBottom=0)

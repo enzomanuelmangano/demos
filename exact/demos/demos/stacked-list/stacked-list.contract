@@ -13,14 +13,62 @@ fn cardScale(v: number): number = 0.6 + 0.4 * clamp01(v / 110)
 // Opacity piecewise linear over [0, 36.7, 110] → [0.3, 0.4, 0.7], held in [0, 1].
 fn cardOpacity(v: number): number = min(1, max(0, v < 110 / 3 ? 0.3 + 0.1 * v / (110 / 3) : 0.4 + 0.3 * (v - 110 / 3) / (110 * 2 / 3)))
 
+// The web's cards: one card's translate (from its place in the list), scale and opacity over its visible
+// amount v from -110 (opacity 0) to 183.3 (opacity 1), the functions above sampled every 5.5 pt (the
+// quadratic rise between the stack and the list is within 0.04 pt), driven by the list's own scroll.
+keyframes stackCard
+  0% translate="0px -220px" scale=0.6 opacity=0
+  37.5% translate="0px -110px" scale=0.6 opacity=0.3
+  39.375% translate="0px -99.275px" scale=0.62 opacity=0.315
+  41.25% translate="0px -89.1px" scale=0.64 opacity=0.33
+  43.125% translate="0px -79.475px" scale=0.66 opacity=0.345
+  45% translate="0px -70.4px" scale=0.68 opacity=0.36
+  46.875% translate="0px -61.875px" scale=0.7 opacity=0.375
+  48.75% translate="0px -53.9px" scale=0.72 opacity=0.39
+  50% translate="0px -48.889px" scale=0.7333 opacity=0.4
+  50.625% translate="0px -46.475px" scale=0.74 opacity=0.4075
+  52.5% translate="0px -39.6px" scale=0.76 opacity=0.43
+  54.375% translate="0px -33.275px" scale=0.78 opacity=0.4525
+  56.25% translate="0px -27.5px" scale=0.8 opacity=0.475
+  58.125% translate="0px -22.275px" scale=0.82 opacity=0.4975
+  60% translate="0px -17.6px" scale=0.84 opacity=0.52
+  61.875% translate="0px -13.475px" scale=0.86 opacity=0.5425
+  63.75% translate="0px -9.9px" scale=0.88 opacity=0.565
+  65.625% translate="0px -6.875px" scale=0.9 opacity=0.5875
+  67.5% translate="0px -4.4px" scale=0.92 opacity=0.61
+  69.375% translate="0px -2.475px" scale=0.94 opacity=0.6325
+  71.25% translate="0px -1.1px" scale=0.96 opacity=0.655
+  73.125% translate="0px -0.275px" scale=0.98 opacity=0.6775
+  75% translate="0px 0px" scale=1 opacity=0.7
+  100% translate="0px 0px" scale=1 opacity=1
+
 component StackedList
+  props
+    env: DemoEnv
+  view
+    column position="absolute" inset=0 background-color="#ffffff" testId="stacked-list"
+      // On the web the browser moves the cards in the scroll's own frame (a scroll timeline): a commit per
+      // scroll event there ran 47-165 ms tasks and held the wheel's input back.
+      if env.web
+        scroll position="absolute" top=0 left=0 width="100%" height="100%" scrollbar-width="none"
+          testId="stacked-list-scroll"
+          view height=(50 * 110 + 70 + 80 * 1.5) margin-top=70
+          for i in range(50) key=i
+            view position="absolute" top=(70 + i * 110) left="2.5%" width="95%" height=100 border-radius=15
+              corner-shape="-exact-continuous" background-color="color(display-p3 0.3176 0.6745 0.8)" z-index=(0 - i)
+              pointer-events="none" aria-hidden=true animation="stackCard 1s linear both" animation-timeline="scroll()"
+              animation-range=`${110 * i - env.height + 40}px ${110 * i - env.height + 40 + 110 * 2 + 220 / 3}px`
+      else
+        StackedCards(env=env)
+
+component StackedCards
   props
     env: DemoEnv
   state scroll = 0
   action scrolled(x: number, y: number)
     scroll = y
   view
-    column position="absolute" inset=0 background-color="#ffffff" testId="stacked-list"
+    column position="absolute" inset=0
       // The cards, drawn where the scroll puts them. The layer spans the whole list, so a card
       // scrolled up stays visible over the top 70 pt; each card sits 70 below its content y.
       column position="absolute" left=0 right=0 top=0 bottom=0 overflow="hidden" pointer-events="none"

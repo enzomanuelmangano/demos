@@ -1,0 +1,13 @@
+{
+  "name": "demos-gpu-images",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The GPU module's images (gpu/images) as web assets: tools/gpu-images-web.mjs cuts them into chunks/ and lists them in exact.json; the web build serves them at /assets/demos-gpu-images/, the iPhone never ships them (it embeds gpu/images).",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    }
+  }
+}

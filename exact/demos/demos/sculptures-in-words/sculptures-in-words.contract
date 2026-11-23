@@ -43,8 +43,8 @@ component SculpturesInWords
               view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
                 opacity=(revealed ? 0 : 1) scale=(revealed ? 0.85 : 1)
                 transition=`opacity 350ms ${inOutQuad()}, scale 350ms ${inOutQuad()}`
-                image "symbol:sf/textformat" font-size=13.7931 font-weight=600 position="relative" top="0.2833px" left="0.12px" color="#F5F1E8" aria-hidden=true
+                image "symbol:icon.textformat" font-size=13.7931 font-weight=600 position="relative" top="0.2833px" left="0.12px" color="#F5F1E8" aria-hidden=true
               view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
                 opacity=(revealed ? 1 : 0) scale=(revealed ? 1 : 0.85)
                 transition=`opacity 350ms ${inOutQuad()}, scale 350ms ${inOutQuad()}`
-                image "symbol:sf/person.crop.circle" font-size=16.6667 font-weight=600 color="#F5F1E8" aria-hidden=true
+                image "symbol:icon.person-crop-circle" font-size=16.6667 font-weight=600 color="#F5F1E8" aria-hidden=true

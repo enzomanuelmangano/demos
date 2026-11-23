@@ -40,7 +40,7 @@ fn leaveCurve(): string = "220ms cubic-bezier(0.23, 1, 0.32, 1)"
 fn arriveCurve(): string = "340ms linear(0 0%, 0 11.76%, 0.0859 13.53%, 0.2098 16.18%, 0.3626 19.71%, 0.5277 24.12%, 0.6819 29.41%, 0.8052 35.59%, 0.8911 42.65%, 0.9491 51.47%, 0.9796 61.18%, 0.9938 71.76%, 0.9991 84.12%, 1 100%)"
 fn leaveT(): string = `opacity ${leaveCurve()}, translate ${leaveCurve()}, scale ${leaveCurve()}`
 fn arriveT(): string = `opacity ${arriveCurve()}, translate ${arriveCurve()}, scale ${arriveCurve()}`
-fn trayGlyphOf(step: number): string = step == 0 ? "symbol:sf/arrow.right" : (step == 1 ? "symbol:sf/checkmark" : "symbol:sf/checkmark.circle.fill")
+fn trayGlyphOf(step: number): string = step == 0 ? "symbol:icon.arrow-right" : (step == 1 ? "symbol:icon.checkmark" : "symbol:icon.checkmark-circle-fill")
 
 // Drag up: iOS's rubber band, (1 − 1/(|y|·0.55/110 + 1))·110 for a finger |y| up, as keyframes.
 keyframes trayRubber
@@ -126,7 +126,7 @@ component ActionTray
             glass-pane glass-style="regular" pane-tint="#0088FF" corner-size="28"
               interactive="false" continuous="true" position="absolute" inset=0
               pointer-events="none" aria-hidden=true
-            image "symbol:sf/plus" font-size=24 font-weight=600 color="#FFFFFF" aria-hidden=true
+            image "symbol:icon.plus" font-size=24 font-weight=600 color="#FFFFFF" aria-hidden=true
       // The scrim: its opacity follows the tray's drag timeline (full at rest, clear once off screen).
       view position="absolute" inset=0 background-color="rgba(0, 0, 0, 0.24)"
         animation="trayScrim 1s linear both" animation-timeline="--tray"
@@ -183,7 +183,7 @@ component ActionTray
                     column width=40 height=40 border-radius=20 background-color=trayFill()
                       align-items="center" justify-content="center" aria-label="Close"
                       testId="close"
-                      image "symbol:sf/xmark" font-size=15 font-weight=600
+                      image "symbol:icon.xmark" font-size=15 font-weight=600
                         color=traySecondary() aria-hidden=true
                 // Copy: body 17 / 22. Every step stays mounted; `pre-line` keeps the line breaks.
                 column id="tray-body-0" position="absolute" left=trayPad() top=trayBodyTop()

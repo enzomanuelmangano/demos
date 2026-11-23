@@ -33,20 +33,39 @@ const MAX_TILT: f64 = std::f64::consts::PI / 20.0;
 /// How far back under the throw line the drag must go before a new crossing plays again, pt.
 const REARM: f64 = 24.0;
 
-static PHOTOS: [&[u8]; COUNT] = [
-    include_bytes!("../images/swipe-cards/01.jpg"),
-    include_bytes!("../images/swipe-cards/02.jpg"),
-    include_bytes!("../images/swipe-cards/03.jpg"),
-    include_bytes!("../images/swipe-cards/04.jpg"),
-    include_bytes!("../images/swipe-cards/05.jpg"),
-    include_bytes!("../images/swipe-cards/06.jpg"),
-    include_bytes!("../images/swipe-cards/07.jpg"),
-    include_bytes!("../images/swipe-cards/08.jpg"),
-    include_bytes!("../images/swipe-cards/09.jpg"),
+static PHOTOS: [&crate::bytes::Bytes; COUNT] = [
+    crate::image!("swipe-cards/01.jpg"),
+    crate::image!("swipe-cards/02.jpg"),
+    crate::image!("swipe-cards/03.jpg"),
+    crate::image!("swipe-cards/04.jpg"),
+    crate::image!("swipe-cards/05.jpg"),
+    crate::image!("swipe-cards/06.jpg"),
+    crate::image!("swipe-cards/07.jpg"),
+    crate::image!("swipe-cards/08.jpg"),
+    crate::image!("swipe-cards/09.jpg"),
+];
+
+/// The files of gpu/images this surface draws: embedded on the iPhone, fetched before it draws on the web
+/// (crate::bytes).
+const IMAGES: &[&str] = &[
+    "swipe-cards/01.jpg",
+    "swipe-cards/02.jpg",
+    "swipe-cards/03.jpg",
+    "swipe-cards/04.jpg",
+    "swipe-cards/05.jpg",
+    "swipe-cards/06.jpg",
+    "swipe-cards/07.jpg",
+    "swipe-cards/08.jpg",
+    "swipe-cards/09.jpg",
 ];
 
 /// The demo's surface.
+/// On the web it draws once its [`IMAGES`] arrived (crate::bytes::gate).
 pub fn surface() -> Box<dyn Surface> {
+    crate::bytes::gate(IMAGES, ungated())
+}
+
+fn ungated() -> Box<dyn Surface> {
     Box::new(SwipeCards::new())
 }
 

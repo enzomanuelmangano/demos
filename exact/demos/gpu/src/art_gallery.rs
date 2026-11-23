@@ -37,7 +37,7 @@ use shaders::art_gallery_present::{GROUP_0 as PRESENT_GROUP, Present, entry as p
 
 static GALLERY: &[u8] = include_bytes!("../images/art-gallery/gallery.bin");
 /// The atlas file, byte for byte.
-static ATLAS: &[u8] = include_bytes!("../images/art-gallery/deduped-atlas.astc");
+static ATLAS: &crate::bytes::Bytes = crate::image!("art-gallery/deduped-atlas.astc");
 /// The zoom-out icon's glyph (U+F28A) from the icon font.
 static IONICONS: &[u8] = include_bytes!("../fonts/ionicons-contract-outline-subset.ttf");
 const CONTRACT_OUTLINE: &str = "\u{F28A}";
@@ -83,8 +83,19 @@ const BLUR_INTENSITY: f64 = 60.0;
 const SCENE: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 const DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
 
+/// The files of gpu/images this surface draws: embedded on the iPhone, fetched before it draws on the web
+/// (crate::bytes).
+const IMAGES: &[&str] = &[
+    "art-gallery/deduped-atlas.astc",
+];
+
 /// The demo's surface.
+/// On the web it draws once its [`IMAGES`] arrived (crate::bytes::gate).
 pub fn surface() -> Box<dyn Surface> {
+    crate::bytes::gate(IMAGES, ungated())
+}
+
+fn ungated() -> Box<dyn Surface> {
     Box::new(new())
 }
 

@@ -41,10 +41,21 @@ const DONUT_STROKE: f32 = 4.0;
 /// Height of the row above the editor, in points.
 const BUTTON_ROW: f32 = 56.0;
 /// The photo: a baseline JPEG in images/.
-static PHOTO_JPEG: &[u8] = include_bytes!("../images/prequel-slider-unsplash-3540.jpg");
+static PHOTO_JPEG: &crate::bytes::Bytes = crate::image!("prequel-slider-unsplash-3540.jpg");
+
+/// The files of gpu/images this surface draws: embedded on the iPhone, fetched before it draws on the web
+/// (crate::bytes).
+const IMAGES: &[&str] = &[
+    "prequel-slider-unsplash-3540.jpg",
+];
 
 /// The demo's surface. Inputs: the safe area's top and bottom.
+/// On the web it draws once its [`IMAGES`] arrived (crate::bytes::gate).
 pub fn surface() -> Box<dyn Surface> {
+    crate::bytes::gate(IMAGES, ungated())
+}
+
+fn ungated() -> Box<dyn Surface> {
     Box::new(PrequelSlider::new())
 }
 

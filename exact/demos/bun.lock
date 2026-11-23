@@ -6,11 +6,16 @@
       "name": "demos",
       "dependencies": {
         "@exact/motion": "file:.exact/checkout/packages/motion",
+        "demos-gpu-images": "workspace:*",
         "pressto": "workspace:*",
       },
     },
     "packages/gestures": {
       "name": "gestures",
+      "version": "0.1.0",
+    },
+    "packages/gpu-images": {
+      "name": "demos-gpu-images",
       "version": "0.1.0",
     },
     "packages/motion": {
@@ -28,6 +33,8 @@
   },
   "packages": {
     "@exact/motion": ["@exact/motion@file:.exact/checkout/packages/motion", {}],
+
+    "demos-gpu-images": ["demos-gpu-images@workspace:packages/gpu-images"],
 
     "gestures": ["gestures@workspace:packages/gestures"],
 

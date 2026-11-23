@@ -5,8 +5,9 @@ use DemoEnv from "../env.contract"
 
 // The bar is 65 pt plus half the bottom inset. The canvas adds 50 pt, and 85 pt above that for
 // the shadow.
-fn barHeight(): string = "calc(65px + env(safe-area-inset-bottom) / 2)"
-fn canvasHeight(): string = "calc(65px + env(safe-area-inset-bottom) / 2 + 50px + 85px)"
+// The bottom inset arrives in the demo's env (the same number as env(safe-area-inset-bottom) on a phone).
+fn barHeight(b: number): number = 65 + b / 2
+fn canvasHeight(b: number): number = 65 + b / 2 + 50 + 85
 fn tabName(i: number): string = i == 0 ? "Home" : (i == 1 ? "Search" : "User")
 
 component BottomBarSkia
@@ -30,14 +31,14 @@ component BottomBarSkia
       index = 2
   view
     column position="absolute" inset=0 background-color="rgb(242, 242, 242)" testId="bottom-bar-skia"
-      view position="absolute" top=0 left=0 right=0 bottom=barHeight() background-color="rgba(0, 0, 0, 0.1)"
+      view position="absolute" top=0 left=0 right=0 bottom=barHeight(env.safeBottom) background-color="rgba(0, 0, 0, 0.1)"
         aria-hidden=true
       // One box per tab, a third of the width, for accessibility and the web. On iOS the canvas
       // takes the touches instead.
       for i in range(3) key=i
         view position="absolute" bottom=0 left=(i * env.width / 3) width=(env.width / 3)
-          height=barHeight() press=choose(i) role="button" aria-label=tabName(i)
+          height=barHeight(env.safeBottom) press=choose(i) role="button" aria-label=tabName(i)
           aria-pressed=(i == index) testId=`tab-${i}`
       canvas surface=bottom_bar_skia(index) position="absolute" left=0 bottom=0 width="100%"
-        height=canvasHeight() touch-action="none" message=tapped aria-hidden=true
+        height=canvasHeight(env.safeBottom) touch-action="none" message=tapped aria-hidden=true
         testId="bottom-bar-canvas"

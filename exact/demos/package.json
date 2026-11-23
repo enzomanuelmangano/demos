@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "pressto": "workspace:*",
-    "@exact/motion": "file:.exact/checkout/packages/motion"
+    "@exact/motion": "file:.exact/checkout/packages/motion",
+    "demos-gpu-images": "workspace:*"
   }
 }

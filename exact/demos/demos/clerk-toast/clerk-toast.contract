@@ -175,7 +175,7 @@ component ClerkToast
               // lie under the glass view.
               view position="relative" z-index=1 display="flex" flex-direction="row" align-items="center"
                 gap=10 pointer-events="none"
-                image "symbol:sf/bell.badge" font-size=17 color="#FFFFFF" aria-hidden=true
+                image "symbol:icon.bell-badge" font-size=17 color="#FFFFFF" aria-hidden=true
                 text "Show toast" color="#FFFFFF" font-family="ui-rounded" font-weight=600 font-size=17
       for key, i in keys key=key
         ClerkToastCard(env=env, toastKey=key, kind=clerkNum(kinds, i), k=clerkId(gone, goneK, i),

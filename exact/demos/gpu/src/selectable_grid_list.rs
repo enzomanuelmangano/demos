@@ -54,18 +54,121 @@ const CLEAR: &str = "\u{E14C}";
 static ANTDESIGN: &[u8] = include_bytes!("../fonts/antdesign-subset.ttf");
 static MATERIAL: &[u8] = include_bytes!("../fonts/materialicons-subset.ttf");
 
-macro_rules! photos {
-    ($($n:literal),*) => { [$(include_bytes!(concat!("../images/selectable-grid-list/", $n, ".jpg")).as_slice()),*] };
-}
-static PHOTOS: [&[u8]; ITEMS] = photos!(
-    "00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15",
-    "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31",
-    "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47",
-    "48", "49"
-);
+static PHOTOS: [&crate::bytes::Bytes; ITEMS] = [
+    crate::image!("selectable-grid-list/00.jpg"),
+    crate::image!("selectable-grid-list/01.jpg"),
+    crate::image!("selectable-grid-list/02.jpg"),
+    crate::image!("selectable-grid-list/03.jpg"),
+    crate::image!("selectable-grid-list/04.jpg"),
+    crate::image!("selectable-grid-list/05.jpg"),
+    crate::image!("selectable-grid-list/06.jpg"),
+    crate::image!("selectable-grid-list/07.jpg"),
+    crate::image!("selectable-grid-list/08.jpg"),
+    crate::image!("selectable-grid-list/09.jpg"),
+    crate::image!("selectable-grid-list/10.jpg"),
+    crate::image!("selectable-grid-list/11.jpg"),
+    crate::image!("selectable-grid-list/12.jpg"),
+    crate::image!("selectable-grid-list/13.jpg"),
+    crate::image!("selectable-grid-list/14.jpg"),
+    crate::image!("selectable-grid-list/15.jpg"),
+    crate::image!("selectable-grid-list/16.jpg"),
+    crate::image!("selectable-grid-list/17.jpg"),
+    crate::image!("selectable-grid-list/18.jpg"),
+    crate::image!("selectable-grid-list/19.jpg"),
+    crate::image!("selectable-grid-list/20.jpg"),
+    crate::image!("selectable-grid-list/21.jpg"),
+    crate::image!("selectable-grid-list/22.jpg"),
+    crate::image!("selectable-grid-list/23.jpg"),
+    crate::image!("selectable-grid-list/24.jpg"),
+    crate::image!("selectable-grid-list/25.jpg"),
+    crate::image!("selectable-grid-list/26.jpg"),
+    crate::image!("selectable-grid-list/27.jpg"),
+    crate::image!("selectable-grid-list/28.jpg"),
+    crate::image!("selectable-grid-list/29.jpg"),
+    crate::image!("selectable-grid-list/30.jpg"),
+    crate::image!("selectable-grid-list/31.jpg"),
+    crate::image!("selectable-grid-list/32.jpg"),
+    crate::image!("selectable-grid-list/33.jpg"),
+    crate::image!("selectable-grid-list/34.jpg"),
+    crate::image!("selectable-grid-list/35.jpg"),
+    crate::image!("selectable-grid-list/36.jpg"),
+    crate::image!("selectable-grid-list/37.jpg"),
+    crate::image!("selectable-grid-list/38.jpg"),
+    crate::image!("selectable-grid-list/39.jpg"),
+    crate::image!("selectable-grid-list/40.jpg"),
+    crate::image!("selectable-grid-list/41.jpg"),
+    crate::image!("selectable-grid-list/42.jpg"),
+    crate::image!("selectable-grid-list/43.jpg"),
+    crate::image!("selectable-grid-list/44.jpg"),
+    crate::image!("selectable-grid-list/45.jpg"),
+    crate::image!("selectable-grid-list/46.jpg"),
+    crate::image!("selectable-grid-list/47.jpg"),
+    crate::image!("selectable-grid-list/48.jpg"),
+    crate::image!("selectable-grid-list/49.jpg"),
+];
+
+/// The files of gpu/images this surface draws: embedded on the iPhone, fetched before it draws on the web
+/// (crate::bytes).
+const IMAGES: &[&str] = &[
+    "selectable-grid-list/00.jpg",
+    "selectable-grid-list/01.jpg",
+    "selectable-grid-list/02.jpg",
+    "selectable-grid-list/03.jpg",
+    "selectable-grid-list/04.jpg",
+    "selectable-grid-list/05.jpg",
+    "selectable-grid-list/06.jpg",
+    "selectable-grid-list/07.jpg",
+    "selectable-grid-list/08.jpg",
+    "selectable-grid-list/09.jpg",
+    "selectable-grid-list/10.jpg",
+    "selectable-grid-list/11.jpg",
+    "selectable-grid-list/12.jpg",
+    "selectable-grid-list/13.jpg",
+    "selectable-grid-list/14.jpg",
+    "selectable-grid-list/15.jpg",
+    "selectable-grid-list/16.jpg",
+    "selectable-grid-list/17.jpg",
+    "selectable-grid-list/18.jpg",
+    "selectable-grid-list/19.jpg",
+    "selectable-grid-list/20.jpg",
+    "selectable-grid-list/21.jpg",
+    "selectable-grid-list/22.jpg",
+    "selectable-grid-list/23.jpg",
+    "selectable-grid-list/24.jpg",
+    "selectable-grid-list/25.jpg",
+    "selectable-grid-list/26.jpg",
+    "selectable-grid-list/27.jpg",
+    "selectable-grid-list/28.jpg",
+    "selectable-grid-list/29.jpg",
+    "selectable-grid-list/30.jpg",
+    "selectable-grid-list/31.jpg",
+    "selectable-grid-list/32.jpg",
+    "selectable-grid-list/33.jpg",
+    "selectable-grid-list/34.jpg",
+    "selectable-grid-list/35.jpg",
+    "selectable-grid-list/36.jpg",
+    "selectable-grid-list/37.jpg",
+    "selectable-grid-list/38.jpg",
+    "selectable-grid-list/39.jpg",
+    "selectable-grid-list/40.jpg",
+    "selectable-grid-list/41.jpg",
+    "selectable-grid-list/42.jpg",
+    "selectable-grid-list/43.jpg",
+    "selectable-grid-list/44.jpg",
+    "selectable-grid-list/45.jpg",
+    "selectable-grid-list/46.jpg",
+    "selectable-grid-list/47.jpg",
+    "selectable-grid-list/48.jpg",
+    "selectable-grid-list/49.jpg",
+];
 
 /// The demo's surface. Inputs: the safe area's top and bottom insets.
+/// On the web it draws once its [`IMAGES`] arrived (crate::bytes::gate).
 pub fn surface() -> Box<dyn Surface> {
+    crate::bytes::gate(IMAGES, ungated())
+}
+
+fn ungated() -> Box<dyn Surface> {
     Box::new(grid())
 }
 
