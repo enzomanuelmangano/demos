@@ -209,15 +209,24 @@ component TelegramThemeSwitch
   state dark = true
   state target = true
   state reveal = 0
+  state serial = 0
+  // Web: the timer reports its token in env.timers (empty on iOS) instead of its message, so the
+  // landing is read from there: the theme it landed on is the base, and no reveal is up.
+  derive webLanded = reveal != 0 and env.timers.includes(reveal)
+  derive vDark = webLanded ? target : dark
+  derive vReveal = webLanded ? 0 : reveal
   derive cx = env.width - ttsInset() - ttsBtn() / 2
   derive cy = env.height - ttsInset() - ttsBtn() / 2
   // Radius that reaches the farthest corner, with a small margin.
   derive R = ceil(max(cx, cy) + min(cx, cy) / 2) + 2
 
+  // Each reveal has its own token, so a web landing is never read from an earlier one.
   action toggle
-    if reveal == 0
-      target = not dark
-      reveal = 1
+    if vReveal == 0
+      dark = vDark
+      target = not vDark
+      reveal = serial + 1
+      serial = serial + 1
       haptic("impact-medium")
   action landed(m: string)
     if reveal != 0 and m == `timer:${reveal}`
@@ -227,12 +236,13 @@ component TelegramThemeSwitch
 
   view
     column position="absolute" inset=0 overflow="hidden" testId="telegram-theme-switch"
-      background-color=ttsBg(dark)
-      canvas surface=timer(reveal, ttsRevealMs()) message=landed width=1 height=1
+      background-color=ttsBg(vDark)
+      // On the web the landing's soft haptic is the timer's own (its message never reaches landed).
+      canvas surface=timer(vReveal, ttsRevealMs(), env.web ? "impact-soft" : "") message=landed width=1 height=1
         position="absolute" left=0 top=0 aria-hidden=true pointer-events="none"
-      TtsScreen(env=env, dark=dark, live=true, toggle=toggle)
+      TtsScreen(env=env, dark=vDark, live=true, toggle=toggle)
       // The reveal: a round box that grows from the button, in the new theme.
-      if reveal != 0
+      if vReveal != 0
         view position="absolute" left=(cx - R) top=(cy - R) width=(2 * R) height=(2 * R)
           border-radius=R overflow="hidden" pointer-events="none"
           animation=`ttsRevealOuter ${ttsRevealMs()}ms linear both` testId="tts-reveal"

@@ -4,7 +4,9 @@
 //! Each new non-zero `token` arms the timer once. It draws nothing and wants frames only while a
 //! timer is pending.
 //! On the web, the host delivers no surface messages, so fired tokens are published as
-//! `{ "fired": [...] }` instead; the instances share that one list.
+//! `{ "fired": [...] }` instead; the instances share that one list. An optional third input, a
+//! haptic kind, is played there when the timer fires (the page plays a surface's `haptic:<kind>`),
+//! for the haptic an iOS action would play on the message; iOS ignores it.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
@@ -23,6 +25,9 @@ struct Timer {
     posted: Vec<String>,
     #[cfg(target_arch = "wasm32")]
     shared: web::Seat,
+    /// Web: the haptic kind to play when the timer fires ("" for none).
+    #[cfg(target_arch = "wasm32")]
+    haptic: String,
 }
 
 /// The web's channel: the live timers' fired tokens, one list for every instance.
@@ -127,6 +132,10 @@ impl Surface for Timer {
             .and_then(|v| v.as_number())
             .unwrap_or(0.0)
             .max(0.0);
+        #[cfg(target_arch = "wasm32")]
+        {
+            self.haptic = inputs.get(2).and_then(|v| v.as_str()).unwrap_or("").to_string();
+        }
         if token != self.token {
             self.token = token;
             self.due = if token != 0.0 { Some(None) } else { None };
@@ -170,7 +179,12 @@ impl Surface for Timer {
                 #[cfg(not(target_arch = "wasm32"))]
                 self.posted.push(format!("timer:{}", self.token));
                 #[cfg(target_arch = "wasm32")]
-                self.shared.fire(self.token);
+                {
+                    self.shared.fire(self.token);
+                    if !self.haptic.is_empty() {
+                        self.posted.push(format!("haptic:{}", self.haptic));
+                    }
+                }
             } else {
                 pending = true;
             }
