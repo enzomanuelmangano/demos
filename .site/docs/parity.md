@@ -29,6 +29,8 @@ the scrolled bar, /demos's frame). Performance: `tools/parity/perf.ts`, docs/per
 | `/demos/app/` | the Demos app: 0 px against its own build (decisions.md D3) | 0 px | | |
 | all other pages | not built yet | | | |
 
+Hover audit: `tools/parity/hover.ts <live> <local> <route>… [--widths 1440,700]` (700 also opens the menu).
+
 ## Open differences (the owner's bar is identity in pixels and in motion: each is to be fixed, none is accepted)
 
 - **Icons are images.** The logo and the menu icon are `<img>` of SVG files (the reference inlines `<svg>`), so the

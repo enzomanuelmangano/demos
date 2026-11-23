@@ -21,18 +21,29 @@ Branch `site` (worktree `thank-you-site`), draft PR #115 into `main`. Update thi
   top zone closes it, with the page at scrollY 254 and with the frame half scrolled in (scrollY 100); the page
   never scrolls. A drag that starts on the board plays the board, as in the standalone app (closeZone).
 
+- **2026-11-23, block 3** (build-first): hover audit tool `tools/parity/hover.ts` (every :hover/:active/:focus target
+  from the page's own stylesheets plus every control, hovered, pressed, focused, box screenshots diffed, a narrow
+  desktop window with the menu open): `/`, 404, `/inspirations` 0 differences at 1440 and 700 (menu). Fixed: menu
+  entries' hover (white on white/5) and transition, the nav underline scaling on x only, the global `:focus-visible`
+  outline (footer and nav links had a ring), Exact's 0.65 press dim on buttons, Exact's hover/focus underline on menu
+  links, the logo link's colour, the newsletter field's hover/focus, the /demos title's ease-out. Pages:
+  `/inspirations` (0.01 / 0.14 % px), `/demos-app` (0.02 / 0.18 %, QR at build: `tools/qr.ts`), `/course`
+  (0.04 / 0.01 %, 89/89 texts), `/docs` (the content agent's route; 0.02 / 0.22 %). Inter's ASCII is a preloaded,
+  hash-versioned, immutable file with `tnum` and `font-display: block` (perf.md: 404 4g LCP 484 / 472 vs live 532 / 568,
+  -20 KB per page, every / and 404 cell passes). Owner bugs: scrollbar track always on (`html{overflow-y:scroll}`,
+  width 1425 and logo x 352.5 on every page and across in-app navigations); /demos ≥ 768 px: the frame clipped to the
+  app's display so only the screen takes the wheel (CDP wheel 1 px in / out of each edge, corners, bezel, margins at
+  1440x900 and 1920x1080), the still draws the bezel under it. head.css colours are literals: the theme is not CSS
+  variables at run time (the /demos subtitle colour was silently dropped before).
+
 ## Next, in order
 
-1. Open: 404 @390 4g LCP 768 vs live 568 (a second candidate of the same paragraph at ~770 ms when the runtime's
-   stylesheet arrives; box and style unchanged: find what repaints it); `/demos` @390 cable LCP ~1.6 s (the pill's
-   blur-in end; live's is a thumbnail at ~1.5 s). The motion.ts matcher keys the pill differently (labels differ,
-   parameters equal).
-2. Audit every hover/group-hover in reactiive.io/src against ours (grep `hover:` / `group-hover:`), then phase 2:
-   `/inspirations`, `/demos-app` (QR at build), `/course`, `/docs`; each through shoot/compare, motion, nav, perf.
-3. Phase 3 content pipeline (`tools/gen-content.ts`, Markdown + CodeBlock, `/docs/{terms,privacy,license}`); 4
-   articles; 5 interactive components; 6 SEO/feeds; 7 deploy workflow (prepared only; production needs
-   `Access-Control-Allow-Origin: *` under `/demos/app/`, compose writes it).
-4. Measure perf on AC power with a quiet machine (load was 25-30 during this block; battery caps headless Chrome at 30 fps).
+1. The one automated sweep over every page (pixel, motion, hover.ts, nav, perf), per the lead's plan.
+2. Open: `/demos` @390 cable LCP ~1.6 s (live ~1.5 s): the pill's blur-in end; the testimonial cards' squircle
+   (live: figma-squircle 18 / 0.6 clip and gradient rim; here border-radius 18 + hairline, pixels within 0.04 %); the
+   menu's Sign In row is 32 px wider than live's at 700 px (pixels equal); `/demos` 390 touch: the app owns its
+   full-width box (D10, unchanged).
+3. 5 interactive components (content agent's articles), 6 SEO checks per page (head-diff), 7 deploy (prepared).
 
 ## Local setup notes
 
