@@ -2,7 +2,8 @@
 // `article` and `name` pick the export; `args` is its props as the converter wrote them, every prop given
 // (`hasBackdrop=true`, `scaleAnimationType="spring", showBorderRadiusAnimation=false`: the converter checked each
 // name and value against the reference's); `boxed` puts it in the article's InteractiveBox, as the MDX does.
-// Each demo draws its own frame and the space under it (docs/progress-comp-gesture.md).
+// Each demo draws its own frame and the space under it (docs/progress-comp-gesture.md, progress-comp-canvas.md).
+// No ancestor between a demo and the page's scroller may clip: the lazy mount and the off-screen pause observe it.
 use InteractiveBox as SheetBox, InitialSetup, BasicComponent, PanGesture, BorderRadius, FinalDemo from "./bottom-sheet-animation/index.contract"
 use InteractiveBox as CssBox, AnimatedSquare from "./css-animations-react-native/index.contract"
 use Demo as CheckboxDemo, StaticDemo as CheckboxStaticDemo from "./checkbox-interactions/index.contract"
@@ -10,6 +11,10 @@ use IntroToGesturesDemo from "./introduction-to-gestures/index.contract"
 use FinalAnimatedSquareDemo, AnimatedSquareOpacityDemo, AnimatedSquareOpacityAndScaleDemo from "./introduction-to-reanimated/index.contract"
 use InteractivePanGesture from "./pan-gesture-handler/index.contract"
 use InteractiveSkeletonDemo, InteractiveContactItem, InteractiveJustSkeleton from "./skeleton-loader/index.contract"
+use AnimatedGradientInteractive from "./animated-gradient/animated-gradient.contract"
+use AnimatedLoaderSkiaInteractive from "./animated-loader-skia/animated-loader-skia.contract"
+use AnimatedSpiralInteractive from "./animated-spiral/animated-spiral.contract"
+use MetaballInteractive from "./metaball/metaball.contract"
 
 component ArticleDemo
   props
@@ -46,6 +51,14 @@ component ArticleDemo
         InteractiveJustSkeleton()
       else
         InteractiveSkeletonDemo()
+    else if article == "animated-gradient"
+      AnimatedGradientInteractive(name=name)
+    else if article == "animated-loader-skia"
+      AnimatedLoaderSkiaInteractive(name=name)
+    else if article == "animated-spiral"
+      AnimatedSpiralInteractive(name=name)
+    else if article == "metaball"
+      MetaballInteractive(name=name)
 
 component BottomSheetDemo
   props

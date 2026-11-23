@@ -279,10 +279,5 @@ component Blocks
         view width="100%" max-width=550 margin-top=block.mt margin-bottom=block.mb overflow="hidden" intersect=seen(block.id) intersect-margin="50% 0px"
           iframe (near.includes(block.id) ? `https://platform.twitter.com/embed/Tweet.html?id=${block.text}&theme=dark&hideThread=true` : "about:blank") title="X post" width="100%" height=from(598, block.width, block.height) border-width=0 display="block"
     else if block.kind == "demo"
-      view margin-left=(block.depth * 26) testId=`demo-${block.title}`
+      view margin-left=(block.depth * 26) data-motion="demo" testId=`demo-${block.title}`
         ArticleDemo(article=block.lang, name=block.title, args=block.text)
-    else if block.kind == "interactive"
-      // Not yet ported (docs/progress-content.md): the reference's frame (components/interactive: 16:9, 10 px radius,
-      // a 1 px #242424 border, 16 px under it), empty, so the page around it is laid out as live.
-      if block.title != "CanvasKitJsAlert"
-        view margin-bottom=16 width="100%" aspect-ratio="16 / 9" border-radius=10 border="1px solid rgb(36, 36, 36)" box-sizing="border-box" testId=`interactive-${block.title}`

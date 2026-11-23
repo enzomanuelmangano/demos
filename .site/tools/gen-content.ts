@@ -208,12 +208,12 @@ const fmtCount = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$
 
 const INTERACTIVE_ARTICLES = new Set<string>();
 
-// The ported interactive demos (components/interactive/<article>/index.contract, drawn by ArticleDemo in
-// components/interactive/demo.contract; the mapping: docs/progress-comp-gesture.md). Per article, each MDX export
-// and its props: a bool (`x`, `x={true}`, `x={false}`) or one of a string's values, with the reference's default
-// (Contract props have none, so every prop is passed); none when the reference has no default (the MDX must pass
-// it). BOXED: the articles whose every demo the MDX wraps in `<InteractiveBox>` (ArticleDemo draws the box). A tag, prop or value not listed here fails the build. An article not
-// listed keeps the reference's empty 16:9 frame (the canvas demos, not ported yet).
+// The interactive demos (components/interactive/<article>/, drawn by ArticleDemo in components/interactive/demo.contract;
+// the mappings: docs/progress-comp-gesture.md, docs/progress-comp-canvas.md). Per article, each MDX export and its
+// props: a bool (`x`, `x={true}`, `x={false}`) or one of a string's values, with the reference's default (Contract
+// props have none, so every prop is passed); none when the reference has no default (the MDX must pass it). BOXED:
+// the articles whose every demo the MDX wraps in `<InteractiveBox>` (ArticleDemo draws the box). A tag, prop or value
+// not listed here fails the build.
 type DemoProp = { values: (boolean | string)[]; default?: boolean | string };
 const BOOL = (d: boolean): DemoProp => ({ values: [true, false], default: d });
 const DEMOS: Record<string, Record<string, Record<string, DemoProp>>> = {
@@ -228,6 +228,11 @@ const DEMOS: Record<string, Record<string, Record<string, DemoProp>>> = {
   },
   'pan-gesture-handler': { InteractivePanGesture: {} },
   'skeleton-loader': { InteractiveSkeletonDemo: {}, InteractiveContactItem: {}, InteractiveJustSkeleton: {} },
+  // The canvas demos (docs/progress-comp-canvas.md): each article's dispatcher takes the tag's name.
+  'animated-gradient': { AnimatedGradientWithSkia: {}, GlitchedAnimatedGradientWithSkia: {}, NonInteractiveAnimatedGradientWithSkia: {} },
+  'animated-loader-skia': { BasicLoaderWithSkia: {}, WithGradientLoaderWithSkia: {}, WithProgressLoaderWithSkia: {}, WithBasicAnimationLoaderWithSkia: {}, WithAnimationLoaderWithSkia: {} },
+  'animated-spiral': { AnimatedSpiralWithSkia: {}, AnimatedInteractiveSnappySpiralWhite: {}, AnimatedInteractiveSnappySpiralGradient: {}, AnimatedInteractiveAnimatedSpiralFixedRadiusGradient: {} },
+  metaball: { BasicMetaballWithSkia: {}, WithPanMetaballWithSkia: {}, WithColorMatrixMetaballWithSkia: {}, WithBlurMetaballWithSkia: {}, CanvasKitJsAlert: {} },
 };
 const BOXED = new Set(['bottom-sheet-animation', 'css-animations-react-native']);
 
@@ -439,8 +444,11 @@ async function convert(page: Page, meta: any) {
           }
           if (name === 'BlockMath') { const m = mathFile(plain(n), true); block({ kind: 'math', depth, src: m.src, width: m.width, height: m.height }); break; }
           if (name === 'InlineMath') { const m = mathFile(plain(n), false); block({ kind: 'paragraph', depth, runs: [{ text: '', code: false, strong: false, em: false, href: '', brand: false, math: m.src, width: m.width, height: m.height, valign: m.valign }], mb: 20 }); break; }
-          if (imported.has(name) && DEMOS[page.slug]) { demo(n, depth, false); break; }
-          if (imported.has(name)) { INTERACTIVE_ARTICLES.add(page.slug); block({ kind: 'interactive', depth, title: name, lang: page.slug }); break; }
+          if (imported.has(name)) {
+            if (!DEMOS[page.slug]) throw new Error(`${where(n)}: <${name}>: ${page.slug} has no ported demos (DEMOS in tools/gen-content.ts)`);
+            demo(n, depth, false);
+            break;
+          }
           throw new Error(`${where(n)}: <${name}> is not known to the converter`);
         }
         default: throw new Error(`${where(n)}: ${n.type} is not known to the converter`);
