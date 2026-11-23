@@ -237,3 +237,35 @@ Measured on the home page, the gallery build (all 22 gesture/UI demos in the pla
 
 The remaining cost is the components' plan and classes, which every page loads. Removing it needs per-route plans
 and keyframes from Exact (feedback noted).
+
+## D16. /demos on a desktop, redesigned: the header's columns, two calls to action, a lit device (owner, 2026-11-23)
+
+The owner: "I think you can also hugely improve the design of this one". Today's page (D12 revised) put the hero in the
+72rem container while the header (shared by every page, unchanged) is in 48rem: at 1440 the title started 193 px left
+of the logo, the left column was mostly empty, and the device floated alone on the right.
+
+Three variants, all from 1024 px only (under 1024 px the stacked layout of D10 is unchanged, apart from the new
+"Get the app" button beside the pill, same height, so the app's frame does not move), shot at 1440x900, 1920x1080,
+1280x720 and 390x844 (`/tmp/demos-variants/{before,A,B,C}@<w>x<h>.png`):
+
+- **A (chosen).** One row in the header's own container (48rem): the title starts under the logo, the device's right
+  edge ends under Sign In. The title as large as the column allows (`min(104px, (672px - device width) / 3.1)`, 600,
+  -0.04em, the live gradient), the subtitle's first line in the primary colour and the rest in the tertiary one,
+  balanced (19 px / 1.5); two calls to action: "Get the app" (the page's one light button: `/demos-app`, the TestFlight
+  page) and the GitHub pill with the star count (its label shortened to "GitHub" beside the button); under them a
+  quiet hint, "Running live. Tap any app on the screen.", whose dot turns green when the app has drawn (the screen
+  "turns on" under it: the frame's fade over the still). The device stands in a soft cool spotlight (a radial gradient
+  of the primary blue at 20 %, no panel, no edge) over a contact shadow; at most 720 px tall, so the composition is the
+  same at 1440x900 and 1920x1080. The copy sits 2vh above the device's centre line (optical centre).
+- **B.** A, quieter: no spotlight, the hint as a caption under the device ("Live in your browser. Tap any app."), the
+  title 88 px, a one-colour subtitle. The caption reads well but sits on the fold at 1280x720 and the device is
+  smaller; without the light the device is again a cut-out on black.
+- **C.** A with a wider, brighter spotlight and a slow idle float of the device (±4 px, 3.2 s). The haze muddies the
+  copy's side and moving an interactive target (the screen takes taps) has no purpose: rejected.
+
+**A featured-demos list that opens a demo inside the phone** was considered and dropped: the app's
+`/demos/app/demo/<slug>` draws the demo full window, not inside its framed iPhone (checked in a 600 px window), so the
+frame would show a frameless demo; and a src change reloads the app (D10). Doing it properly needs the app's own
+deep link into its framed launcher: a change in the Demos app, not here.
+
+Cost: the CTA and hint are a few plan nodes (app.js +~1 KB) and ~2.5 KB of head CSS; perf.md 2026-11-23 (D16).

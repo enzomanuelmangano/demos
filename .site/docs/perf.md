@@ -90,3 +90,19 @@ the font's arrival. Median of 3, machine load 13-15, AC power:
 
 All pass; the 404 at 390 4g LCP is fixed (the open "second candidate"). A first visit pays one request more; every later page
 reads the font from the cache (it was re-downloaded inside each page's HTML before). Pixels: `/` 0.03 / 0.28 %, 404 0.03 / 0.28 %.
+
+## 2026-11-23, /demos redesign (D16): before (origin/site 5b032ed5) against after
+
+`perf.ts http://localhost:4316 (before) http://localhost:4315 (after) /demos --runs 3`: both builds composed with the
+same Demos artifact, served locally. **Caveat: machine load 88 and on battery (18 %)**, so headless Chrome ran at
+30 fps (jank 90/91 on both: the battery cap, see above) and times are noisy; the two columns ran interleaved.
+
+| width | profile | before: KB / req, FCP, LCP, page TBT (+ app), CLS | after: KB / req, FCP, LCP, page TBT (+ app), CLS |
+|---|---|---|---|
+| 1440 | cable | 3680 / 185, 252, 1508, 0 (+88), 0 | 3681 / 185, 88, 260, 0 (+100), 0 |
+| 1440 | 4g | 3680 / 186, 324, 660, 28 (+800), 0 | 3681 / 186, 328, 672, 27 (+737), 0 |
+| 390 | cable | 5522 / 197, 160, 1696, 0 (+97), 0 | 5522 / 197, 80, 1632, 0 (+83), 0 |
+| 390 | 4g | 3550 / 184, 352, 1420, 26 (+603), 0 | 3551 / 184, 324, 1420, 20 (+677), 0 |
+
++1 KB on the wire, no new request, CLS 0, page TBT equal or lower; 1440 4g FCP/LCP +4/+12 ms are within this run's
+noise. To re-run on AC power with an idle machine before merging.
