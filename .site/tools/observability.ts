@@ -10,6 +10,8 @@
 // - Sentry: the browser bundle with tracing, the reference's options (sample rates, release, environment, the
 //   NetworkError / React-warning filters, cookie and auth header scrubbing, console-credential and auth-route
 //   breadcrumb redaction).
+// - The callback's `accessToken` query never leaves in an event: beforeSend and beforeSendTransaction scrub it from the
+//   transaction name, the request URL and query, breadcrumbs and spans; beforeBreadcrumb from navigation and http URLs.
 // - On localhost / 127.0.0.1 nothing is sent: Amplitude is initialised opted out and logs what it would track,
 //   Sentry is initialised with `enabled: false` and `debug: true`. Production data stays clean.
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
@@ -45,13 +47,19 @@ var local=/^(localhost|127\\.0\\.0\\.1|\\[::1\\])$/.test(location.hostname);
 function load(s,i,f){var e=document.createElement('script');e.src=s;e.integrity=i;e.crossOrigin='anonymous';e.async=true;e.onload=f;document.head.appendChild(e);}
 if(D)load(${JSON.stringify(SENTRY_SDK.src)},${JSON.stringify(SENTRY_SDK.integrity)},function(){
 var S=window.Sentry;if(!S)return;var dev=local;
+function scrub(v){return typeof v==='string'?v.replace(/([?&#]accessToken=)[^&#\s]*/g,'$1[REDACTED]'):v;}
+function clean(e){if(e.transaction)e.transaction=scrub(e.transaction);if(e.request){e.request.url=scrub(e.request.url);if(e.request.query_string)e.request.query_string=scrub('?'+(typeof e.request.query_string==='string'?e.request.query_string:'')).slice(1);}
+(e.breadcrumbs||[]).forEach(function(b){if(b.message)b.message=scrub(b.message);if(b.data){['url','to','from'].forEach(function(k){if(b.data[k])b.data[k]=scrub(b.data[k]);});}});
+(e.spans||[]).forEach(function(sp){if(sp.description)sp.description=scrub(sp.description);if(sp.data){['url','http.url','http.query'].forEach(function(k){if(sp.data[k])sp.data[k]=scrub(sp.data[k]);});}});
+if(e.contexts&&e.contexts.trace&&e.contexts.trace.data){['url','http.url','http.query'].forEach(function(k){if(e.contexts.trace.data[k])e.contexts.trace.data[k]=scrub(e.contexts.trace.data[k]);});}return e;}
 S.init({dsn:D,debug:dev,tracesSampleRate:dev?1:0.1,release:${JSON.stringify(RELEASE)},environment:dev?'development':'production',enabled:!local,
 integrations:[S.browserTracingIntegration()],
+beforeSendTransaction:function(e){return clean(e);},
 beforeSend:function(e){var x=e.exception&&e.exception.values&&e.exception.values[0];if(x&&x.type==='NetworkError')return null;if(!dev&&x&&x.value&&x.value.indexOf('Warning:')>=0)return null;
-if(e.request&&e.request.cookies)delete e.request.cookies;if(e.request&&e.request.headers){var h=Object.assign({},e.request.headers);delete h.authorization;delete h.cookie;e.request.headers=h;}return e;},
+e=clean(e);if(e.request&&e.request.cookies)delete e.request.cookies;if(e.request&&e.request.headers){var h=Object.assign({},e.request.headers);delete h.authorization;delete h.cookie;e.request.headers=h;}return e;},
 beforeBreadcrumb:function(b){if(b.category==='console'&&b.data&&b.data.arguments){if(b.data.arguments.some(function(a){return typeof a==='string'&&(a.indexOf('password')>=0||a.indexOf('token')>=0||a.indexOf('secret')>=0);}))return null;}
 var t=b.data&&b.data.to;if(b.category==='navigation'&&typeof t==='string'&&(t.indexOf('/api/auth')>=0||t.indexOf('/api/login')>=0||t.indexOf('accessToken=')>=0))b.data=Object.assign({},b.data,{to:'[REDACTED_AUTH_ROUTE]'});
-if(b.category==='navigation'&&b.data&&typeof b.data.from==='string'&&b.data.from.indexOf('accessToken=')>=0)b.data=Object.assign({},b.data,{from:'[REDACTED_AUTH_ROUTE]'});return b;}});
+if(b.category==='navigation'&&b.data&&typeof b.data.from==='string'&&b.data.from.indexOf('accessToken=')>=0)b.data=Object.assign({},b.data,{from:'[REDACTED_AUTH_ROUTE]'});if(b.data&&b.data.url)b.data=Object.assign({},b.data,{url:scrub(b.data.url)});if(b.message)b.message=scrub(b.message);return b;}});
 if(local)console.info('[sentry] localhost: initialised with enabled:false (nothing is sent)');});
 function amp(){load(${JSON.stringify(AMPLITUDE_SDK.src)},${JSON.stringify(AMPLITUDE_SDK.integrity)},function(){
 var a=window.amplitude;if(!a)return;var utm=new URLSearchParams(location.search).get('utm_source');
