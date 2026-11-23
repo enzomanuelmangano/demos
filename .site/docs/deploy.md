@@ -15,7 +15,11 @@ uploads that tree with `vercel deploy --prebuilt`. Vercel builds nothing.
    Note the project's ID and your team/org ID (Settings, General; or `.vercel/project.json` after `vercel link` in a scratch folder).
 2. **Add the repository secrets** (`enzomanuelmangano/demos`, Settings, Secrets and variables, Actions):
    `VERCEL_TOKEN` (a token scoped to that team, Account Settings, Tokens), `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`.
-   Optional repository variable `LEGACY_API_ORIGIN` (step 5).
+   Optional repository variable `LEGACY_API_ORIGIN` (step 5). For the accounts (sign-in, profile, the subscription's
+   status and cancel; `docs/stubs.md`), repository VARIABLES (public values, the old site's bundle ships them):
+   `SITE_ACCOUNTS=1`, `EXPO_PUBLIC_ACCESS_KEY` (required with it: the old site's session key, so signed-in readers stay
+   signed in, `docs/storage.md`), `EXPO_PUBLIC_AMPLITUDE_API_KEY`, `EXPO_PUBLIC_SENTRY_DSN`, optionally
+   `EXPO_PUBLIC_WEBSITE_URL` (default `https://reactiive.io`); the values are the old Vercel project's.
 3. **First preview.** Actions, "Site / deploy", Run workflow, `production` off. The run builds, checks head parity with the
    live site, deploys a preview and prints its URL in the summary. Check by hand: `/`, `/demos`, an article, 404, `/sitemap.xml`,
    `/rss.xml`, and `bun .site/tools/parity/head-diff.ts --ours-url <preview url>` (a preview behind Deployment Protection
