@@ -4,6 +4,19 @@
 // three sliders set. The canvas mounts when the box comes within 300 px of the viewport (its drawing code loads then).
 use InteractiveBox from "../_canvas/box.contract"
 
+// The basic demo's toast (sonner, the reference's Toaster theme="dark"): in from below over 400 ms, 3 s on screen, out
+// the way it came. Two copies of the same keyframes, so each press restarts it.
+keyframes toastLifeA
+  0% translate="0px 100%" opacity=0 animation-timing-function="ease"
+  11.765% translate="0px 0px" opacity=1
+  88.235% translate="0px 0px" opacity=1 animation-timing-function="ease"
+  100% translate="0px 100%" opacity=0
+keyframes toastLifeB
+  0% translate="0px 100%" opacity=0 animation-timing-function="ease"
+  11.765% translate="0px 0px" opacity=1
+  88.235% translate="0px 0px" opacity=1 animation-timing-function="ease"
+  100% translate="0px 100%" opacity=0
+
 // The reference's monospace label (a <span> with font-family monospace, 12 px).
 style SliderLabel
   line-height="normal" font-size=12 font-family="monospace" color="var(--color-text-body)" width="20%" min-width=90
@@ -17,8 +30,9 @@ component MetaballSlider
     progress: number
     shown: number
     eased: bool
-    vw: number
     change: action
+  // The bar's laid-out width (min(50vw, 250px)), for turning a drag into progress.
+  state width = 250
   state dragging = false
   state from = 0
   state anchor = 0
@@ -28,13 +42,15 @@ component MetaballSlider
     anchor = e.clientX
   action move(e: PointerEvent)
     if dragging
-      change(max(0, min(1, from + (e.clientX - anchor) / min(vw * 0.5, 250))))
+      change(max(0, min(1, from + (e.clientX - anchor) / max(width, 1))))
   action up(e: PointerEvent)
     dragging = false
+  action fit(w: number, h: number)
+    width = w
   view
     row height=45 align-items="center" justify-content="flex-start" width="min(70vw, 350px)"
       text `${label} (${shown.toFixed(0)})` class=SliderLabel
-      view position="relative" flex-shrink=0 width="min(50vw, 250px)" height=2 border-radius=5 background-color="rgba(255, 255, 255, 0.2)"
+      view position="relative" flex-shrink=0 width="min(50vw, 250px)" height=2 resize=fit border-radius=5 background-color="rgba(255, 255, 255, 0.2)"
         view position="absolute" top=0 bottom=0 left=0 right=0 overflow="hidden"
           view position="absolute" top=0 bottom=0 left=0 width="100%" background-color="white"
             translate=`calc(${max(0, min(1, progress)) * 100}% - 100%) 0px` transition=(eased ? "translate 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)" : "none")
@@ -43,16 +59,12 @@ component MetaballSlider
           transition=(eased ? "translate 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955), scale 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)" : "scale 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)")
           pointerdown=down pointermove=move pointerup=up
 
-shape Window
-  width: number
-
 fn lerp(p: number, a: number, b: number): number = a + (b - a) * max(0, min(1, p))
 
 component Metaball
   props
     key: string
     type: string
-  resource window = exactViewport() as shape Window
   state near = false
   state dragging = false
   state anchorX = 0
@@ -68,8 +80,12 @@ component Metaball
   action seen(entry: IntersectionObserverEntry)
     if entry.isIntersecting
       near = true
+  state toasts = 0
   action down(e: PointerEvent)
-    if type != "basic"
+    if type == "basic"
+      toasts = toasts + 1
+      showPopover(`${key}-toast`)
+    else
       dragging = true
       anchorX = e.clientX
       anchorY = e.clientY
@@ -98,7 +114,7 @@ component Metaball
   action idle
     easing = easing
   view
-    InteractiveBox(theme="light", square=(type == "with-color-matrix"), withPlay=false, withReset=(type == "with-color-matrix"), play=idle, reset=reset)
+    InteractiveBox(theme="light", shape=(type == "with-color-matrix" ? "square" : "video"), withPlay=false, withReset=(type == "with-color-matrix"), play=idle, reset=reset)
       column flex=1 min-height=0 min-width=0 position="relative" intersect=seen intersect-margin="300px"
         if type == "with-color-matrix"
           svg width=0 height=0 position="absolute" aria-hidden=true
@@ -109,11 +125,26 @@ component Metaball
           if near
             canvas surface=metaball(key, dragging, dx, dy) aria-hidden=true width="100%" height="100%" flex=1
               filter=(type == "with-color-matrix" ? `blur(${lerp(blurP, 0, 100)}px) url(#${key}-goo)` : type == "with-blur" ? "blur(30px)" : "none")
+        if type == "basic"
+          // sonner's toast: 356 px (the window less 32 px under 600 px) at the bottom centre, 32 px up (16 px under 600):
+          // the popover's own fixed, full-window inset (the top layer), pushed down by an auto top margin.
+          row id=`${key}-toast` popover="manual"
+            margin-top="auto" margin-left="auto" margin-right="auto" margin-bottom="clamp(16px, (100vw - 599px) * 1000, 32px)" width="min(100vw - 32px, max(356px, (600px - 100vw) * 1000))" box-sizing="border-box" padding=16 gap=6 align-items="center"
+            background-color="#000000" border="1px solid hsl(0, 0%, 20%)" border-radius=8 box-shadow="0 4px 12px #0000001a"
+            color="#fcfcfc" font-size=13 line-height="19.5px" pointer-events="none" opacity=0 overflow="visible"
+            font-family="ui-sans-serif, system-ui, -apple-system, 'system-ui', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'"
+            animation=(toasts == 0 ? "none" : `${toasts % 2 == 0 ? "toastLifeA" : "toastLifeB"} 3400ms both`) role="alertdialog" aria-modal=false aria-live="polite" aria-label="Notification"
+            row width=16 height=16 flex-shrink=0 align-items="center" margin="0 4px 0 -3px"
+              svg width=20 height=20 viewBox="0 0 20 20" fill="currentColor" margin-left=-1 flex-shrink=0 aria-hidden=true
+                path fill-rule="evenodd" clip-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z"
+            column gap=2 flex=1 min-width=0
+              text "Slooow down - Continue reading 👀" font-weight=500 line-height="19.5px"
+              text "The Pan Gesture implementation is in the next demo 👇" line-height="18.2px"
         if type == "with-color-matrix"
           column flex-shrink=0 width="100%" align-items="center" margin-bottom=50
-            MetaballSlider(label="blur", progress=blurP, shown=lerp(blurP, 0, 100), eased=easing, vw=window.width, change=setBlur)
-            MetaballSlider(label="alpha", progress=alphaP, shown=lerp(alphaP, 1, 100), eased=easing, vw=window.width, change=setAlpha)
-            MetaballSlider(label="pos", progress=posP, shown=lerp(posP, 0, 100), eased=easing, vw=window.width, change=setPos)
+            MetaballSlider(label="blur", progress=blurP, shown=lerp(blurP, 0, 100), eased=easing, change=setBlur)
+            MetaballSlider(label="alpha", progress=alphaP, shown=lerp(alphaP, 1, 100), eased=easing, change=setAlpha)
+            MetaballSlider(label="pos", progress=posP, shown=lerp(posP, 0, 100), eased=easing, change=setPos)
 
 // The MDX's names (content/articles/metaball/components/index.tsx; CanvasKitJsAlert is src/components/ui/alert.tsx's).
 component BasicMetaballWithSkia
@@ -140,3 +171,19 @@ component CanvasKitJsAlert
       box-shadow="0 0 0 1px color-mix(in oklab, var(--color-warning) 20%, transparent)"
       text "⚠️ Known Issues" role="heading" aria-level=5 margin-bottom=4 font-weight=500 line-height=1 letter-spacing="-0.025em"
       text "I am currently updating the article to support CanvasKitJs, which is causing some demos to break. Please note that the code will still work perfectly in your own apps." opacity=0.9
+
+// One entry for the content converter: the export named `name` (an MDX tag of this article), nothing for another.
+component MetaballInteractive
+  props
+    name: string
+  view
+    if name == "BasicMetaballWithSkia"
+      BasicMetaballWithSkia()
+    else if name == "WithPanMetaballWithSkia"
+      WithPanMetaballWithSkia()
+    else if name == "WithBlurMetaballWithSkia"
+      WithBlurMetaballWithSkia()
+    else if name == "WithColorMatrixMetaballWithSkia"
+      WithColorMatrixMetaballWithSkia()
+    else if name == "CanvasKitJsAlert"
+      CanvasKitJsAlert()
