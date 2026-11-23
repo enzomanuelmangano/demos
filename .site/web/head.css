@@ -140,6 +140,47 @@ main:has([data-motion~=d-page]) ~ *{visibility:hidden}
 #exact-root [data-motion~=press-secondary]:active:not(:disabled){background-color:rgb(255 255 255 / .14) !important;scale:.97 !important}
 #exact-root [data-motion~=press-primary]:active:not(:disabled){background-color:#3c49b0 !important;scale:.97 !important}
 #exact-root :is([data-motion~=press-primary],[data-motion~=press-secondary])[data-pressed]{opacity:1 !important}
+/* The account's other presses (components/account: the outline "Manage Subscription", the ghost "Cancel Plan"), as
+   the reference's Button: active:scale-[0.97] and the variant's active colour. */
+#exact-root [data-motion~=press-outline]:active{background-color:rgb(255 255 255 / .08) !important;scale:.97 !important}
+#exact-root [data-motion~=press-ghost]:active:not(:disabled){background-color:rgb(255 255 255 / .09) !important;scale:.97 !important}
+#exact-root :is([data-motion~=press-outline],[data-motion~=press-ghost])[data-pressed]{opacity:1 !important}
+/* The account dialogs' overlay: bg-background/80 (their ::backdrop) and backdrop-blur-sm (Contract has no backdrop-filter). */
+:is(#signin-modal,#feedback,#cancel-subscription)::backdrop{-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+/* Their motion. From 641 px the Radix dialog's (tw-animate: fade-in-0 zoom-in-95 in, fade-out-0 zoom-out-95 out, 200 ms;
+   the overlay fades). Up to 640 px vaul's Drawer: a sheet at the bottom, full width, rounded top, sliding up from 100 %
+   (500 ms, cubic-bezier(.32,.72,0,1), vaul's own), its handle shown and the dialog's X hidden. Exit animations ride on
+   `display`/`overlay` allow-discrete; @starting-style gives the entry its first frame. */
+:is(#signin-modal,#feedback,#cancel-subscription){opacity:0;scale:.95;transition:opacity 200ms ease,scale 200ms ease,translate 500ms cubic-bezier(.32,.72,0,1),display 200ms allow-discrete,overlay 200ms allow-discrete}
+:is(#signin-modal,#feedback,#cancel-subscription)[open]{opacity:1;scale:1}
+:is(#signin-modal,#feedback,#cancel-subscription)::backdrop{opacity:0;transition:opacity 200ms ease,display 200ms allow-discrete,overlay 200ms allow-discrete}
+:is(#signin-modal,#feedback,#cancel-subscription)[open]::backdrop{opacity:1}
+@starting-style{:is(#signin-modal,#feedback,#cancel-subscription)[open]{opacity:0;scale:.95}:is(#signin-modal,#feedback,#cancel-subscription)[open]::backdrop{opacity:0}}
+[data-motion~=drawer-handle]{display:none !important}
+@media (max-width:640px){
+:is(#signin-modal,#feedback,#cancel-subscription){position:fixed;inset:auto 0 0 0 !important;margin:96px 0 0 !important;width:100% !important;max-width:none !important;border-radius:18px 18px 0 0 !important;opacity:1;scale:1;translate:0 100%;transition:translate 500ms cubic-bezier(.32,.72,0,1),display 500ms allow-discrete,overlay 500ms allow-discrete}
+:is(#signin-modal,#feedback,#cancel-subscription)[open]{translate:0 0}
+@starting-style{:is(#signin-modal,#feedback,#cancel-subscription)[open]{translate:0 100%;opacity:1;scale:1}}
+:is(#signin-modal,#feedback,#cancel-subscription)::backdrop{transition:opacity 500ms cubic-bezier(.32,.72,0,1),display 500ms allow-discrete,overlay 500ms allow-discrete}
+[data-motion~=drawer-handle]{display:flex !important;position:sticky;top:0;z-index:20}
+[data-motion~=dialog-x]{display:none !important}
+}
+/* The desktop header bar is 0 px tall and clipped under 768 px; from 768 px it must not clip: the avatar's menu (w-56,
+   mt-3 under a 32 px avatar) hangs 190 px below the 87 px bar. */
+@media (min-width:768px){[data-motion~=bar][data-motion~=desk]{overflow:visible !important}}
+/* md:hidden (the profile's mobile sign-out card), and the plans' grid: grid-cols-1 sm:grid-cols-2. */
+@media (min-width:768px){[data-motion~=md-hidden]{display:none !important}}
+[data-motion~=plan-grid]{grid-template-columns:repeat(1,minmax(0,1fr))}
+@media (min-width:640px){[data-motion~=plan-grid]{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* The header's place for the avatar while the session loads, for a reader signed in at the last visit (the reference's
+   layout.tsx script and AuthSlot: html[data-auth=in] from localStorage reactiive:signed-in, which web/storage.js sets and
+   clears): a 32 px circle instead of "Sign In", the build's signed-out header included (docs/storage.md). */
+[data-motion~=auth-hint]{display:none}
+html[data-auth=in] [data-motion~=auth-signin]{display:none !important}
+html[data-auth=in] [data-motion~=auth-hint]{display:block}
+/* ModalLayout's inline actions: stacked in reverse under 640 px, side by side (equal widths) from it. */
+[data-motion~=modal-actions]{flex-direction:column-reverse}
+@media (min-width:640px){[data-motion~=modal-actions]{flex-direction:row}[data-motion~=modal-actions]>*{flex:1 1 0%}}
 /* Keyboard focus everywhere (globals.css @layer base): controls with their own ring (data-motion focus) drop it. */
 :focus-visible,#exact-root :focus-visible,html #exact-root button:not([data-native]):focus-visible{outline:2px solid oklch(72% 0.12 274 / 0.9);outline-offset:2px}
 html #exact-root input:not([data-native]):focus-visible{outline:none}

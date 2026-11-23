@@ -16,7 +16,15 @@ export const API = `${WEBSITE_URL}/api`;
 const ON = ACCOUNTS === '1';
 
 type Me = Result<'userInfo'>;
-const SIGNED_OUT: Me = { signedIn: false, rejected: false, id: '', name: '', email: '', picture: '', relay: false, supporter: false };
+const SIGNED_OUT: Me = { signedIn: false, rejected: false, id: '', name: '', email: '', picture: '', relay: false, supporter: false, plan: '', planType: '', planStatus: '', expires: '' };
+
+// date-fns `format(new Date(expiresAt), 'MMMM d, yyyy')` (the reader's time zone), as the reference's SubscriptionBox
+// and cancel dialog write it; '' when there is no date.
+const longDate = (v: unknown) => {
+  if (typeof v !== 'string' && typeof v !== 'number') return '';
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+};
 
 const api = (path: string, token: string, init: RequestInit = {}) => {
   const headers = new Headers(init.headers);
@@ -35,10 +43,12 @@ export const accountSources = {
     const r = await api('/user/info', token);
     if (r.status === 401) return { ...SIGNED_OUT, rejected: true };
     if (!r.ok) throw new Error(`user/info answered ${r.status}`);
-    const body = (await r.json()) as { user?: Record<string, unknown>; plan?: { status?: string } | null };
+    const body = (await r.json()) as { user?: Record<string, unknown>; plan?: { status?: string; subscriptionType?: string; expiresAt?: string } | null };
     const u = body.user ?? {};
     const email = str(u.email);
-    const status = body.plan?.status ?? '';
+    const status = str(body.plan?.status);
+    const supporter = status === 'active' || status === 'cancelled';
+    const planType = str(body.plan?.subscriptionType);
     return {
       signedIn: email !== '',
       rejected: false,
@@ -47,7 +57,12 @@ export const accountSources = {
       email,
       picture: str(u.profilePicture),
       relay: email.includes('privaterelay.appleid.com'),
-      supporter: status === 'active' || status === 'cancelled',
+      supporter,
+      // states/auth/user.ts: planData is the plan when there is one; currentPlan its subscriptionType for a supporter.
+      plan: supporter ? planType : '',
+      planType: body.plan ? planType : '',
+      planStatus: body.plan ? status : '',
+      expires: body.plan ? longDate(body.plan.expiresAt) : '',
     };
   },
 
@@ -68,6 +83,14 @@ export const accountSources = {
     const body: Record<string, unknown> = { feedback: text, isAnonymous: anonymous };
     if (demo) body.demoName = demo;
     const r = await api('/feedback/submit', token, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    return { ok: r.ok };
+  },
+
+  // POST /api/purchase/cancel-subscription (hooks/use-subscription.ts `cancelSubscription`: axios `client.post(path)`,
+  // no body, the Bearer token, axios's Accept). Only from the cancel dialog's confirm button.
+  cancelSubscription: async ([token]: [string]): Promise<Result<'cancelSubscription'>> => {
+    if (!ON || !token) return { ok: false };
+    const r = await api('/purchase/cancel-subscription', token, { method: 'POST', headers: { Accept: 'application/json, text/plain, */*' } });
     return { ok: r.ok };
   },
 
