@@ -1,19 +1,19 @@
 name: Exact lint
 
-# Quality checks for the Exact app (exact/demos): Contract files, Rust, the Bun tooling.
-# Separate from lint.yml (the React Native app's ESLint / tsc / Prettier), which is untouched.
+# Quality checks for the Exact app (the repo root): Contract files, Rust, the Bun tooling.
+# Separate from lint.yml (the React Native app in .legacy/: ESLint / tsc / Prettier).
 #
-# The Exact app depends on a local checkout of exact2 (a path dependency in exact/demos/Cargo.toml,
-# ../../../../../../.exact/exact2/<hash>), and a GitHub runner has none. So this workflow runs only
+# The Exact app depends on a local checkout of exact2 (a path dependency in Cargo.toml through the
+# .exact/checkout symlink exact.mjs makes, ~/.exact/exact2/<hash>), and a GitHub runner has none. So this workflow runs only
 # the checks that need nothing but git, bun and rustfmt:
 #
 #   runs here                                         tools/lint.sh
 #   - Contract linter against its baseline + tests    contract   (new findings fail; accepted debt is listed)
 #   - rustfmt --check on the .rs files the PR changes rust       (rust-toolchain.toml's rustfmt; informational until the cargo fmt commit)
-#   - tsc over the Bun tooling                        ts         (exact/tsconfig.json)
+#   - tsc over the Bun tooling                        ts         (tsconfig.json)
 #   - generated files are up to date                  generated  (regenerates into scratch, reports drift; informational today)
 #
-#   only local, where the Exact checkout exists (run `exact/demos/tools/lint.sh all`)
+#   only local, where the Exact checkout exists (run `tools/lint.sh all`)
 #   - `bun exact.mjs contract build app.contract --errors-only`   (the compiler)
 #   - clippy against tools/rust-lint-baseline.txt                 (cargo needs the workspace to resolve)
 #
@@ -21,8 +21,14 @@ name: Exact lint
 
 on:
   pull_request:
+    # Everything but the React Native app (.legacy/, lint.yml) and the other workflows.
     paths:
-      - 'exact/**'
+      - '**'
+      - '.parity/**'
+      - '.claude/**'
+      - '.cargo/**'
+      - '!.legacy/**'
+      - '!.github/**'
       - '.github/workflows/exact-lint.yml'
 
 permissions:
@@ -35,9 +41,6 @@ concurrency:
 jobs:
   exact-lint:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: exact/demos
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

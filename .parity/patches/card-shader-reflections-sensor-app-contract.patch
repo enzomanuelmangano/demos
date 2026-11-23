@@ -1,0 +1,33 @@
+--- a/app.contract
++++ b/app.contract
+@@ -80,6 +80,8 @@
+ fn tilts(slug: string): bool = slug == "linear-sensors"
+ // Demos whose GPU surface reads the attitude (RN: useAnimatedSensor(SensorType.ROTATION)).
+ fn turns(slug: string): bool = slug == "threads-holo-ticket"
++// Demos whose GPU surface lights itself by the phone's attitude (past RN: card-shader-reflections).
++fn lights(slug: string): bool = slug == "card-shader-reflections"
+ 
+ // A link `demos-exact://demo/<slug>` arrives as `/open?u=<the link, encoded>`: its path.
+ fn linkPath(u: string): string = linkRoute(u.replaceAll("%3A", ":").replaceAll("%2F", "/").split("://").slice(1).join("://"))
+@@ -142,6 +144,8 @@
+       send sensors = stopSensorInput(surface="linear_sensors", sensor="gravity")
+     else if top(nav).name == "demo" and turns(top(nav).params.slug)
+       send sensors = stopSensorInput(surface="threads_holo_ticket", sensor="relativeOrientation")
++    else if top(nav).name == "demo" and lights(top(nav).params.slug)
++      send sensors = stopSensorInput(surface="card_shader_reflections", sensor="relativeOrientation")
+     nav = back(nav)
+   // Linear Sensors' feed: the gravity sensor at 50 Hz (RN's interval 20), into its surface.
+   task tilt when top(nav).name == "demo" and tilts(top(nav).params.slug) key=top(nav).id
+@@ -154,6 +158,12 @@
+     after(1, startTurn)
+   action startTurn
+     send sensors = startSensorInput(surface="threads_holo_ticket", sensor="relativeOrientation", frequency=62.5)
++  // Card Shader Reflections' light: Core Motion's attitude at 62.5 Hz into its surface, which
++  // turns the cards' room frame by it (gpu/src/card_shader_reflections.rs, past RN).
++  task light when top(nav).name == "demo" and lights(top(nav).params.slug) key=top(nav).id
++    after(1, startLight)
++  action startLight
++    send sensors = startSensorInput(surface="card_shader_reflections", sensor="relativeOrientation", frequency=62.5)
+   action follow(url: string)
+     let n = go(nav, url)
+     nav = top(n).name == "open" ? replace(n, linkPath(searchParam(top(n), "u"))) : n

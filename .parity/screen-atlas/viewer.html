@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Demos atlas: RN vs Exact</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root { --bg:#0e0f11; --panel:#17191c; --line:#2a2d32; --fg:#e7e9ec; --dim:#8b9099; --acc:#6ea8ff;
+  --done:#3ecf8e; --open:#f5a524; --claimed:#b48cff; --unverified:#6b7280; --s:0.4; }
+* { box-sizing:border-box }
+body { margin:0; background:var(--bg); color:var(--fg); font:13px/1.4 -apple-system, system-ui, sans-serif }
+header { position:sticky; top:0; z-index:5; background:rgba(14,15,17,.94); backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--line); padding:10px 16px; display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center }
+header h1 { font-size:15px; margin:0 8px 0 0 }
+input, select, button { background:var(--panel); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:5px 8px; font:inherit }
+button { cursor:pointer } button.on { border-color:var(--acc); color:var(--acc) }
+input[type=search] { width:200px }
+input[type=number] { width:54px }
+.grp { display:flex; gap:4px; align-items:center } .grp label { color:var(--dim) }
+#count { color:var(--dim); margin-left:auto }
+main { padding:16px; display:grid; gap:16px; grid-template-columns:repeat(auto-fill, minmax(calc(420px * var(--s) + 2px), 1fr)) }
+main.caps { grid-template-columns:repeat(auto-fill, minmax(calc(3 * 420px * var(--s) + 30px), 1fr)) }
+.card { background:var(--panel); border:1px solid var(--line); border-radius:10px; overflow:hidden }
+.card .top { display:flex; flex-wrap:wrap; gap:4px 6px; align-items:center; padding:6px 8px; cursor:pointer }
+.card .top img.icon { width:18px; height:18px; border-radius:5px }
+.card .top .nm { flex:1 1 calc(100% - 30px); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:600 }
+.badge { font-size:10px; padding:1px 6px; border-radius:9px; border:1px solid currentColor; white-space:nowrap }
+.st-done { color:var(--done) } .st-open { color:var(--open) } .st-claimed { color:var(--claimed) } .st-unverified { color:var(--unverified) }
+.score { color:var(--dim); font-variant-numeric:tabular-nums; font-size:11px; white-space:nowrap }
+.score.bad { color:#ff6b6b }
+.frame { position:relative; width:calc(420px * var(--s)); height:calc(912px * var(--s)); margin:0 auto 8px; overflow:hidden;
+  border-radius:calc(40px * var(--s)); background:#000 }
+.frame > img, .frame > .ph { position:absolute; inset:0; width:100%; height:100%; object-fit:cover }
+.frame > .ph { display:grid; place-items:center; color:var(--dim); font-size:11px }
+.frame iframe { position:absolute; left:0; top:0; width:420px; height:912px; border:0; transform:scale(var(--s)); transform-origin:0 0; background:#000 }
+.open { padding:1px 6px; font-size:12px; line-height:1.2 }
+.card .top .nm { cursor:pointer }
+.frame .dot { position:absolute; right:8px; top:8px; width:8px; height:8px; border-radius:50%; background:#444; z-index:2; pointer-events:none }
+.frame.live .dot { background:#3ecf8e; box-shadow:0 0 6px #3ecf8e }
+.trio { display:flex; gap:8px; justify-content:center; padding:0 8px 8px }
+.trio figure { margin:0; text-align:center; color:var(--dim); font-size:10px }
+.trio .shot { position:relative; width:calc(420px * var(--s)); height:calc(912px * var(--s)); background:#000; border-radius:calc(40px * var(--s)); overflow:hidden; cursor:zoom-in }
+.shot img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover }
+.shot img.diff { display:none; mix-blend-mode:normal }
+body.diff .shot img.diff { display:block }
+.shot .none { position:absolute; inset:0; display:grid; place-items:center }
+.note { color:var(--open); font-size:10px; padding:0 8px 6px }
+/* single view */
+#single { position:fixed; inset:0; z-index:10; background:rgba(6,7,8,.97); display:none; flex-direction:column }
+#single.show { display:flex }
+#single .bar { display:flex; gap:10px; align-items:center; padding:10px 16px; border-bottom:1px solid var(--line) }
+#single .bar .nm { font-size:16px; font-weight:600 }
+#single .body { flex:1; display:flex; gap:24px; justify-content:center; align-items:center; overflow:auto; padding:16px; --s:0.72 }
+#single figure { margin:0; text-align:center; color:var(--dim) }
+#single .big { position:relative; width:calc(420px * var(--s)); height:calc(912px * var(--s)); background:#000; border-radius:calc(40px * var(--s)); overflow:hidden }
+#single .big iframe { position:absolute; left:0; top:0; width:420px; height:912px; border:0; transform:scale(var(--s)); transform-origin:0 0 }
+#single .big img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; cursor:zoom-in }
+#single .big img.diff { display:none } body.diff #single .big img.diff { display:block }
+#strip { display:flex; gap:6px; overflow-x:auto; padding:8px 16px; border-top:1px solid var(--line) }
+#strip img, #strip .ph { flex:none; width:46px; height:100px; object-fit:cover; border-radius:6px; border:2px solid transparent; cursor:pointer; background:#000 }
+#strip .cur { border-color:var(--acc) }
+#zoom { position:fixed; inset:0; z-index:20; background:#000e; display:none; place-items:center; cursor:zoom-out }
+#zoom.show { display:grid } #zoom img { max-width:100vw; max-height:100vh }
+#hint { color:var(--dim); padding:0 16px 24px }
+</style>
+<body>
+<header>
+  <h1>Demos atlas</h1>
+  <input type="search" id="q" placeholder="Search demos…">
+  <div class="grp"><label>Sort</label><select id="sort">
+    <option value="order">App order</option><option value="score">Score (worst first)</option>
+    <option value="name">Name</option><option value="status">Status</option></select></div>
+  <div class="grp" id="filters"></div>
+  <div class="grp"><button id="vLive" class="on">Live web</button><button id="vCaps">Captures</button></div>
+  <div class="grp"><label>Live cap</label><input type="number" id="cap" min="0" max="32"></div>
+  <button id="pause">Pause all</button>
+  <button id="diff">Diff overlay</button>
+  <div class="grp"><label>Size</label><input type="range" id="size" min="0.25" max="0.7" step="0.01"></div>
+  <span id="count"></span>
+</header>
+<main id="grid"></main>
+<p id="hint"></p>
+<div id="single"><div class="bar"><button id="prev">←</button><button id="next">→</button><span class="nm" id="sname"></span>
+  <span id="sbadges"></span><span style="flex:1"></span><button id="close">Close (Esc)</button></div>
+  <div class="body" id="sbody"></div><div id="strip"></div></div>
+<div id="zoom"><img alt=""></div>
+<script>
+const ATLAS = /*ATLAS_DATA*/{};
+const $ = (s) => document.querySelector(s);
+const served = location.protocol.startsWith("http");
+const params = new URLSearchParams(location.search);
+const state = { q: "", sort: params.get("sort") || "order", status: new Set(), view: params.get("view") || (served ? "live" : "caps"),
+  cap: +(params.get("cap") || localStorage.atlasCap || 12), paused: false, cur: -1 };
+const demos = ATLAS.demos || [];
+const img = (slug, kind) => (ATLAS.have?.[slug] || []).includes(kind) ? `${slug}/${kind}.png` : "";
+const STATUSES = ["done", "open", "claimed", "unverified"];
+const fmt = (s) => s ? `Δ ${s.mean.toFixed(1)} · p99 ${s.p99.toFixed(0)}` : "no score";
+
+for (const st of STATUSES) {
+  const b = document.createElement("button"); b.textContent = `${st} ${demos.filter((d) => d.status === st).length}`;
+  b.className = "st-" + st; b.onclick = () => { state.status.has(st) ? state.status.delete(st) : state.status.add(st); b.classList.toggle("on"); render(); };
+  $("#filters").append(b);
+}
+$("#q").oninput = (e) => { state.q = e.target.value.toLowerCase(); render(); };
+$("#sort").value = state.sort; $("#sort").onchange = (e) => { state.sort = e.target.value; render(); };
+$("#cap").value = state.cap; $("#cap").onchange = (e) => { state.cap = Math.max(0, +e.target.value); localStorage.atlasCap = state.cap; schedule(); };
+$("#size").value = localStorage.atlasSize || 0.4; document.documentElement.style.setProperty("--s", $("#size").value);
+$("#size").oninput = (e) => { document.documentElement.style.setProperty("--s", e.target.value); localStorage.atlasSize = e.target.value; };
+$("#pause").onclick = (e) => { state.paused = !state.paused; e.target.classList.toggle("on", state.paused); e.target.textContent = state.paused ? "Resume" : "Pause all"; schedule(); };
+$("#diff").onclick = (e) => { document.body.classList.toggle("diff"); e.target.classList.toggle("on"); };
+$("#vLive").onclick = () => setView("live"); $("#vCaps").onclick = () => setView("caps");
+function setView(v) { state.view = v; $("#vLive").classList.toggle("on", v === "live"); $("#vCaps").classList.toggle("on", v === "caps"); render(); }
+
+function list() {
+  let l = demos.filter((d) => (!state.q || d.slug.includes(state.q) || d.name.toLowerCase().includes(state.q)) && (!state.status.size || state.status.has(d.status)));
+  const sc = (d) => ATLAS.scores?.[d.slug]?.mean ?? -1;
+  if (state.sort === "score") l.sort((a, b) => sc(b) - sc(a));
+  else if (state.sort === "name") l.sort((a, b) => a.name.localeCompare(b.name));
+  else if (state.sort === "status") l.sort((a, b) => STATUSES.indexOf(a.status) - STATUSES.indexOf(b.status) || a.order - b.order);
+  else l.sort((a, b) => a.order - b.order);
+  return l;
+}
+function badges(d) {
+  const s = ATLAS.scores?.[d.slug], w = ATLAS.web?.[d.slug];
+  return `<span class="badge st-${d.status}" title="${(d.note || "").replace(/"/g, "&quot;")}">${d.status}</span>` +
+    (w?.blank ? `<span class="badge st-open" title="${w.why || ""}">web blank</span>` : "") +
+    `<span class="score ${s && s.mean > 20 ? "bad" : ""}">${fmt(s)}</span>`;
+}
+function topBar(d) { return `<div class="top">${d.icon ? `<img class="icon" src="icons/${d.slug}.png" onerror="this.remove()">` : ""}<span class="nm" title="${d.slug}">${d.name}</span><button class="open" title="Open large, next to the iOS captures">⤢</button>${badges(d)}</div>`; }
+function shot(d, kind, label) {
+  const src = img(d.slug, kind);
+  return `<figure><div class="shot" data-zoom="${src}">${src ? `<img src="${src}" loading="lazy">` : `<div class="none">none</div>`}` +
+    (kind === "exact-ios" && img(d.slug, "diff") ? `<img class="diff" src="${d.slug}/diff.png" loading="lazy">` : "") + `</div>${label}</figure>`;
+}
+
+const io = new IntersectionObserver((es) => { for (const e of es) e.target._vis = e.isIntersecting; schedule(); }, { rootMargin: "50px" });
+let current = [];
+function render() {
+  const l = list(); current = l;
+  const g = $("#grid"); g.classList.toggle("caps", state.view === "caps");
+  io.disconnect(); unloadAll(); g.innerHTML = "";
+  l.forEach((d, i) => {
+    const c = document.createElement("div"); c.className = "card"; c.dataset.i = i; c._d = d;
+    if (state.view === "live") {
+      const ph = img(d.slug, "exact-web") || img(d.slug, "exact-ios");
+      c.innerHTML = topBar(d) + `<div class="frame"><span class="dot"></span>${ph ? `<img src="${ph}" loading="lazy">` : `<div class="ph">${d.slug}</div>`}</div>`;
+      io.observe(c);
+    } else {
+      c.innerHTML = topBar(d) + `<div class="trio">${shot(d, "rn-ios", "RN iOS")}${shot(d, "exact-ios", "Exact iOS")}${shot(d, "exact-web", "Exact web")}</div>` +
+        (ATLAS.web?.[d.slug]?.blank ? `<div class="note">web: ${ATLAS.web[d.slug].why || "draws nothing"}</div>` : "");
+      c.querySelectorAll("[data-zoom]").forEach((s) => s.onclick = () => s.dataset.zoom && zoom(s.dataset.zoom));
+    }
+    c.querySelector(".open").onclick = c.querySelector(".nm").onclick = () => open(i);
+    g.append(c);
+  });
+  $("#count").textContent = `${l.length} / ${demos.length} demos`;
+  $("#hint").textContent = state.view === "live" && !served ? "Live frames need the server: bun .parity/screen-atlas/serve.ts" :
+    state.view === "live" ? `Only frames in view run (at most the live cap; Chrome keeps ~16 GPU contexts). Others show their last web capture. Generated ${ATLAS.generated || ""}.` : `Generated ${ATLAS.generated || ""}. Score: mean / p99 per-pixel difference (0-255) between RN iOS and Exact iOS.`;
+  schedule();
+}
+let t = 0;
+function schedule() { clearTimeout(t); t = setTimeout(apply, 120); }
+function apply() {
+  if (!served || state.view !== "live") return;
+  const cards = [...document.querySelectorAll("#grid .card")];
+  const cap = Math.max(0, state.cap - ($("#single").classList.contains("show") ? 1 : 0));
+  const want = new Set(state.paused ? [] : cards.filter((c) => c._vis).slice(0, cap));
+  for (const c of cards) {
+    const f = c.querySelector(".frame"), live = f.querySelector("iframe");
+    if (live && !want.has(c)) { live.remove(); f.classList.remove("live"); }
+    if (!live && want.has(c)) { const fr = document.createElement("iframe"); fr.src = `/demo/${c._d.slug}`; fr.allow = "autoplay; fullscreen"; f.append(fr); f.classList.add("live"); }
+  }
+}
+function unloadAll() { document.querySelectorAll("#grid iframe").forEach((f) => { f.parentElement.classList.remove("live"); f.remove(); }); }
+
+function open(i) {
+  state.cur = (i + current.length) % current.length; const d = current[state.cur];
+  $("#single").classList.add("show"); $("#sname").textContent = `${d.name}  ·  ${d.slug}`; $("#sbadges").innerHTML = badges(d);
+  const live = served ? `<iframe src="/demo/${d.slug}"></iframe>` : (img(d.slug, "exact-web") ? `<img src="${img(d.slug, "exact-web")}">` : "");
+  const fig = (inner, label) => `<figure><div class="big">${inner}</div>${label}</figure>`;
+  const im = (k) => img(d.slug, k) ? `<img src="${img(d.slug, k)}" data-zoom="${img(d.slug, k)}">` : `<div style="display:grid;place-items:center;height:100%">none</div>`;
+  $("#sbody").innerHTML = fig(im("rn-ios"), "RN iOS (capture)") +
+    fig(im("exact-ios") + (img(d.slug, "diff") ? `<img class="diff" src="${d.slug}/diff.png" data-zoom="${d.slug}/diff.png">` : ""), "Exact iOS (capture)") +
+    fig(live, served ? "Exact web (live)" : "Exact web (capture)");
+  $("#sbody").querySelectorAll("[data-zoom]").forEach((e) => e.onclick = () => zoom(e.dataset.zoom));
+  const s = $("#strip"); s.innerHTML = "";
+  current.forEach((x, j) => { const src = img(x.slug, "exact-ios") || img(x.slug, "exact-web");
+    const e = document.createElement(src ? "img" : "div"); if (src) { e.src = src; e.loading = "lazy"; } else e.className = "ph";
+    e.title = x.name; if (j === state.cur) e.classList.add("cur"); e.onclick = () => open(j); s.append(e); });
+  s.children[state.cur]?.scrollIntoView({ inline: "center", block: "nearest" });
+  schedule();
+}
+function close() { $("#single").classList.remove("show"); $("#sbody").innerHTML = ""; schedule(); }
+function zoom(src) { $("#zoom img").src = src; $("#zoom").classList.add("show"); }
+$("#zoom").onclick = () => $("#zoom").classList.remove("show");
+$("#close").onclick = close; $("#prev").onclick = () => open(state.cur - 1); $("#next").onclick = () => open(state.cur + 1);
+addEventListener("keydown", (e) => {
+  if ($("#zoom").classList.contains("show")) { if (e.key === "Escape") $("#zoom").classList.remove("show"); return; }
+  if (!$("#single").classList.contains("show")) return;
+  if (e.key === "Escape") close(); else if (e.key === "ArrowLeft") open(state.cur - 1); else if (e.key === "ArrowRight") open(state.cur + 1);
+});
+setView(state.view);
+</script>

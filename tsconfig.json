@@ -1,22 +1,30 @@
 {
-  "extends": "eslint-config-react-native-wcandillon/tsconfig.base",
+  // The Bun tooling of the Exact app: tools/ (the Contract linter included), not .parity
+  // (.parity/tsconfig.json). app.ts is not here: it imports app.contract.d.ts, which
+  // `contract build` writes (and git ignores), so it cannot be checked on a bare checkout.
+  // The React Native app in .legacy/ is its own project with its own tsconfig.json.
+  // Check it with `bun x tsc -p tsconfig.json --noEmit` (or `tools/lint.sh ts`).
   "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
     "strict": true,
-    // TypeScript 6 deprecates the base config's classic "node" resolution.
-    // "bundler" also honors package.json "exports", matching Metro.
-    "module": "esnext",
-    "moduleResolution": "bundler"
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    // The scripts are run, not imported: every file is a module, so top-level await is allowed.
+    "moduleDetection": "force",
+    "noFallthroughCasesInSwitch": true,
+    // Node's types: tools/lint.sh ts installs typescript and @types/node into a scratch dir and
+    // passes --typeRoots (the app's install has neither; .legacy/'s is never borrowed). Bun's globals
+    // come from tools/types/bun-min.d.ts (swap it for the `bun-types` package when that is installed).
+    "types": ["node"],
+    "typeRoots": ["./node_modules/@types"]
   },
-  "exclude": [
-    "node_modules",
-    "babel.config.js",
-    "metro.config.js",
-    "jest.config.js",
-    // A standalone Node tool with its own dependencies, pinned to a headless
-    // Skia build; it is installed and compiled on its own.
-    "scripts/generate-app-icon",
-    // The Exact app (Contract + Rust + Bun tooling) is its own project with its
-    // own toolchain; the React Native type check must not compile it.
-    "exact"
-  ]
+  "include": ["tools/**/*.ts", "tools/types/**/*.d.ts"],
+  "exclude": ["**/node_modules", ".parity", ".legacy", "target"]
 }

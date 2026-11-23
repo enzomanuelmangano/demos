@@ -1,0 +1,12 @@
+{
+  "name": "noise",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A Rust crate of 2D simplex noise for GPU surfaces.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/enzomanuelmangano/demos.git",
+    "directory": "packages/noise"
+  }
+}

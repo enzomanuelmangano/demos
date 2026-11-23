@@ -1,14 +1,24 @@
 name: Lint and Format
 
+# The React Native app in .legacy/ only; the Exact app at the root has exact-lint.yml.
 on:
   push:
     branches: [main]
+    paths:
+      - '.legacy/**'
+      - '.github/workflows/lint.yml'
   pull_request:
     branches: [main]
+    paths:
+      - '.legacy/**'
+      - '.github/workflows/lint.yml'
 
 jobs:
   lint_and_format:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .legacy
 
     steps:
       - name: Checkout code

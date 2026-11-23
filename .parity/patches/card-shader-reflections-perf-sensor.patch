@@ -1,0 +1,1502 @@
+--- a/gpu/src/card_shader_reflections.rs
++++ b/gpu/src/card_shader_reflections.rs
+@@ -12,8 +12,7 @@
+ //! (radius 20, overflow hidden, padding 30, boxShadow `0px 10px 20px rgba(0,0,0,0.3)`):
+ //! - CardCanvas: absoluteFill but CARD_WIDTH × CARD_HEIGHT, so it overflows the card, which clips
+ //!   it; resolution [CARD_WIDTH, CARD_HEIGHT], cardType = the item's id
+-//!   (gpu/shaders/card_shader_reflections.wgsl, drawn into one 8-bit layer per card at device
+-//!   pixels, redrawn only when its `rotate` uniform changes, as RN's canvas is).
++//!   (past RN: shaded in the compose pass itself, below).
+ //! - cardContent (flex 1, opacity 0.7): CardChip (chipContainer 0.15 × 0.12 CARD_WIDTH; chip:
+ //!   0.5 pt #A8A8A8 Core Animation border, continuous radius 4, clipping, padding 2; chipGrid
+ //!   rgba(255,255,255,0.1), padding 2, three rows 28 % tall spaced between, each a 25 % and a
+@@ -41,30 +40,38 @@
+ //! | card opacity | interpolate(scrollX, [(i−1), i, (i+1)] × CW, [0.5, 1, 0.5], CLAMP) | the same |
+ //! | chip opacity | interpolate(…, [0.2, 0.6, 0.2], CLAMP) | the same (× cardContent's 0.7) |
+ //! | title opacity | Math.round(interpolate(…, [0, 1, 0], CLAMP)) | the same (half up) |
+-//! | shader rotate | useAnimatedReaction: interpolate(…, [−π, 0, π], CLAMP), written only when it changes | the card's layer is redrawn only when this value changes |
++//! | shader rotate | useAnimatedReaction: interpolate(…, [−π, 0, π], CLAMP), written only when it changes | the card's turn in its room frame, per frame |
+ //!
+-//! Past RN (the owner's ask for premium, physical cards): the face is a lit card, not RN's
+-//! getCardShader (card_shader_reflections.wgsl: brushed or anodised metal under a studio's
+-//! softboxes, Ward's anisotropic highlight, a Fresnel bevel on a continuous outline, a thin-film
+-//! hologram, an engraved chip, contactless mark and title, grain). A finger on the list tilts
+-//! the centred card about x toward where it presses (MAX_TILT at the card's top / bottom edge)
+-//! and lifts it (PRESS_SCALE), both on TILT_SPRING, which settles them back on the lift; the
+-//! shader gets the tilt and the press (params.w, res.z) and the compose pass the shadow's
+-//! offset (slot.yz: the turn and the tilt push it) and the press (slot.w). Each card takes them
+-//! by its nearness to the centre, so a card leaving under the finger levels out.
++//! Past RN (the owner's ask for premium, physical cards): one analytic pass draws the screen
++//! (card_shader_reflections_compose.wgsl): each visible card is a lit metal card (brushed or
++//! anodised metal under a studio's softboxes, Ward's anisotropic highlight, a Fresnel bevel on a
++//! continuous outline, a thin-film hologram, an engraved chip, contactless mark and title, grain)
++//! shaded where it shows, its shadow analytic; pixels past a card's shadow skip it. The cards'
++//! face layers and their per-card pass are gone (a slow scroll redrew two 787 × 1300 layers a
++//! frame, then composed them: the stutter the owner saw); the brushing's noise is a 256² tile
++//! made once ([`noise_tile`]).
++//! The lights stay in the room: each card's frame there (`frame`: x axis, y axis, normal) is the
++//! phone's turn (Core Motion's `relativeOrientation`, its CMAttitude pitch and roll, clamped to
++//! ±ATTITUDE_RANGE and smoothed on the critically damped ATTITUDE_SPRING) · the 18° roll · the
++//! scroll's turn · the finger's tilt. Tilting the phone sweeps the highlights and the foil's
++//! colours across the card. A finger on the list tilts the centred card about x toward where it
++//! presses (MAX_TILT at the card's top / bottom edge) and lifts it (PRESS_SCALE), both on
++//! TILT_SPRING, settled back on the lift; each card takes them by its nearness to the centre.
++//! The compose pass gets the shadow's offset (slot.yz: the turn and the tilt push it) and the
++//! press (slot.w). A sensor sample that moves the smoothed target less than ATTITUDE_DEADBAND
++//! asks for no frame, so a phone at rest leaves the screen at rest.
+ //! Haptics: `haptic:impact-light` when a finger lands on the list, `haptic:impact-soft` when it
+ //! lifts. No timers: at rest nothing renders.
+ 
+ use exact_gpu::wgpu;
+-use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
++use exact_gpu::{Frame, InputEvent, SensorKind, Surface, SurfaceError, Value};
+ use gesture_handler::Phase;
+ use reanimated::{interpolate_clamp, Spring, SpringConfig};
+ use skia::{add_continuous_rrect, add_rect, add_rrect, continuous_rrect_path, Canvas, Color, Font, Matrix4, Paint, Renderer};
+ 
+ use crate::ui_scroll::{Snap, UiScroll, FAST};
+ use crate::{gfx, shaders};
+-use shaders::card_shader_reflections as card_shader;
+-use shaders::card_shader_reflections_compose::{entry, module, Uniforms, ATLAS, GROUP_0, LAYERS, SMP, U};
++use shaders::card_shader_reflections_compose::{entry, module, Uniforms, ATLAS, GROUP_0, SMP, TILE, U};
+ 
+ /// CARD_DATA: (id = cardType, title), in list order.
+ const CARDS: [(f32, &str); 4] = [(3.0, "Metal"), (0.0, "Silver"), (1.0, "Gold"), (2.0, "Platinum")];
+@@ -114,6 +121,14 @@
+ /// The tilt's and the press's spring: quick to follow the finger, a small overshoot on the
+ /// settle (ζ ≈ 0.62).
+ const TILT_SPRING: SpringConfig = SpringConfig { stiffness: 260.0, damping: 20.0, mass: 1.0 };
++/// The phone's turn that moves the light: CMAttitude pitch and roll, each clamped to ±25°.
++const ATTITUDE_RANGE: f64 = 25.0 * std::f64::consts::PI / 180.0;
++/// Their smoothing: critically damped (ζ = 1), settled in ~0.35 s (ω = 14 rad/s).
++const ATTITUDE_SPRING: SpringConfig = SpringConfig { stiffness: 196.0, damping: 28.0, mass: 1.0 };
++/// A sample that moves a target less than this (radians, ~0.06°) is sensor noise: no frame.
++const ATTITUDE_DEADBAND: f64 = 0.001;
++/// The noise tile's side (texels).
++const TILE_SIDE: u32 = 256;
+ /// The shadow's push in the card's plane per unit of sin(turn) and sin(tilt), points.
+ const SHADOW_TURN: f32 = 10.0;
+ const SHADOW_TILT: f32 = 14.0;
+@@ -126,12 +141,14 @@
+         font: None,
+         atlas: Canvas::default(),
+         renderer: Renderer::default(),
+-        drawn: [None; 4],
+         gpu: None,
+         tilt: Spring::at(0.0),
+         press: Spring::at(0.0),
+         finger: None,
+         posted: Vec::new(),
++        pitch: Spring::at(0.0),
++        roll: Spring::at(0.0),
++        changed: true,
+     })
+ }
+ 
+@@ -194,15 +211,6 @@
+         grid(self.card_abs.1 + v, self.s) - grid(self.card_abs.1, self.s)
+     }
+ 
+-    /// The canvas layer's size in device pixels: the canvas (CW × CH at the card's origin) as
+-    /// far as the card shows it, plus one pixel for the bilinear filter at the clip's edge.
+-    fn layer_pixels(&self) -> (u32, u32) {
+-        let s = self.s;
+-        let canvas = ((self.gx(self.cw) * s).round() as u32, (self.gy(self.ch) * s).round() as u32);
+-        let shown = ((self.card[2] * s).ceil() as u32 + 1, (self.card[3] * s).ceil() as u32 + 1);
+-        (canvas.0.min(shown.0).max(1), canvas.1.min(shown.1).max(1))
+-    }
+-
+     /// The shadow's region in the card's points: left, top, width, height (RCTBoxShadow's
+     /// padded mask).
+     fn shadow(&self) -> [f32; 4] {
+@@ -276,8 +284,6 @@
+     font: Option<Option<Font>>,
+     atlas: Canvas,
+     renderer: Renderer,
+-    /// The `rotate`, tilt and press each card's layer was last drawn with.
+-    drawn: [Option<[f32; 3]>; 4],
+     gpu: Option<Gpu>,
+     /// The finger's tilt about x (radians) and the press (0…1), on TILT_SPRING.
+     tilt: Spring,
+@@ -285,17 +291,20 @@
+     /// The finger holding the list.
+     finger: Option<u32>,
+     posted: Vec<String>,
++    /// The phone's CMAttitude pitch and roll (radians, clamped), on ATTITUDE_SPRING.
++    pitch: Spring,
++    roll: Spring,
++    /// Whether the last input changed what the screen shows.
++    changed: bool,
+ }
+ 
+ struct Gpu {
+     format: wgpu::TextureFormat,
+     generation: u32,
+     layout: Layout,
+-    card_pipeline: wgpu::RenderPipeline,
+-    card_uniforms: [wgpu::Buffer; 4],
+-    card_binds: [wgpu::BindGroup; 4],
+-    /// Each card's canvas layer, as a render target.
+-    layer_views: [wgpu::TextureView; 4],
++    /// The noise tile, written on the first frame.
++    tile: wgpu::Texture,
++    tile_written: bool,
+     atlas: wgpu::TextureView,
+     atlas_drawn: bool,
+     compose: wgpu::RenderPipeline,
+@@ -344,8 +353,37 @@
+     /// The finger's tilt (radians) and press as card `pose` takes them.
+     fn held(&self, pose: &Pose) -> (f32, f32) {
+         ((self.tilt.value * pose.near) as f32, (self.press.value.clamp(0.0, 1.0) * pose.near) as f32)
++    }
++
++    /// Card `pose`'s frame in the room: its x axis, y axis and normal (the shader's lights and
++    /// eye stay put): the phone's turn · Rz(18°) · Ry(turn) · Rx(the finger's tilt).
++    fn room_frame(&self, pose: &Pose) -> [[f32; 3]; 3] {
++        let (tilt, _) = self.held(pose);
++        let m = Matrix4::rotate_x(-self.pitch.value as f32)
++            .multiply(Matrix4::rotate_y(self.roll.value as f32))
++            .multiply(Matrix4::rotate_z(TILT_DEG.to_radians()))
++            .multiply(Matrix4::rotate_y((pose.rotate_y_deg as f32).to_radians()))
++            .multiply(Matrix4::rotate_x(tilt))
++            .0;
++        [[m[0], m[4], m[8]], [m[1], m[5], m[9]], [m[2], m[6], m[10]]]
+     }
+ 
++    /// A Core Motion attitude sample: CMAttitude's pitch and roll, clamped, chased by the
++    /// springs; whether it moved a target past the deadband.
++    fn attitude(&mut self, q: [f32; 4]) -> bool {
++        let (p, r) = pitch_roll(q.map(|v| v as f64));
++        let p = if p.is_nan() { 0.0 } else { p.clamp(-ATTITUDE_RANGE, ATTITUDE_RANGE) };
++        let r = if r.is_nan() { 0.0 } else { r.clamp(-ATTITUDE_RANGE, ATTITUDE_RANGE) };
++        let mut moved = false;
++        for (spring, to) in [(&mut self.pitch, p), (&mut self.roll, r)] {
++            if (spring.target() - to).abs() >= ATTITUDE_DEADBAND {
++                spring.retarget(to, ATTITUDE_SPRING);
++                moved = true;
++            }
++        }
++        moved
++    }
++
+     /// The tilt toward a finger at `y`: the card's top goes away under a finger on it.
+     fn tilt_for(&self, y: f32) -> f64 {
+         let [_, vy, _, vh] = self.layout.view;
+@@ -492,7 +530,15 @@
+     }
+ 
+     fn input(&mut self, event: &InputEvent) {
+-        let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
++        if let InputEvent::Sensor { sensor: SensorKind::RelativeOrientation, values, .. } = *event {
++            self.changed = self.attitude(values);
++            return;
++        }
++        let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else {
++            self.changed = false;
++            return;
++        };
++        self.changed = true;
+         // The FlatList's frame: the full width, the list View's height.
+         let (top, bottom) = self.layout.list;
+         let inside = y >= top && y < bottom && x >= 0.0 && x <= self.layout.w;
+@@ -524,6 +570,10 @@
+         crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
++    fn input_changed(&self) -> bool {
++        self.changed
++    }
++
+     fn render(
+         &mut self,
+         frame: &Frame,
+@@ -543,11 +593,23 @@
+         }
+         let mut moving = self.scroll.step(frame.now_ms);
+         moving |= self.tilt.step(frame.now_ms);
++        moving |= self.pitch.step(frame.now_ms);
++        moving |= self.roll.step(frame.now_ms);
+         moving |= self.press.step(frame.now_ms);
+ 
+         if self.gpu.as_ref().map(|g| (g.format, g.generation, g.layout)) != Some((format, frame.shader_generation, layout)) {
+             self.gpu = Some(build(device, format, frame.shader_generation, layout));
+-            self.drawn = [None; 4];
++        }
++        if !self.gpu.as_ref().unwrap().tile_written {
++            let gpu = self.gpu.as_mut().unwrap();
++            let side = TILE_SIDE;
++            queue.write_texture(
++                wgpu::TexelCopyTextureInfo { texture: &gpu.tile, mip_level: 0, origin: wgpu::Origin3d::ZERO, aspect: wgpu::TextureAspect::All },
++                &noise_tile(side),
++                wgpu::TexelCopyBufferLayout { offset: 0, bytes_per_row: Some(4 * side), rows_per_image: Some(side) },
++                wgpu::Extent3d { width: side, height: side, depth_or_array_layers: 1 },
++            );
++            gpu.tile_written = true;
+         }
+         if !self.gpu.as_ref().unwrap().atlas_drawn {
+             self.record_atlas();
+@@ -560,21 +622,18 @@
+         let poses = self.poses();
+         let mut u = Uniforms::default();
+         let s = layout.s;
+-        let (lw, lh) = layout.layer_pixels();
+         let ((aw, ah), _, slot_px, lefts) = layout.atlas();
++        // The visible cards, in paint order.
++        let mut drawn: Vec<u32> = Vec::with_capacity(4);
+         for k in 0..4 {
+             let pose = &poses[k];
+             let m = self.matrix(k, pose);
+             let visible = self.visible(&m);
+             let (tilt, press) = self.held(pose);
+-            let key = [pose.rotate, tilt, press];
+-            if visible && self.drawn[k] != Some(key) {
+-                let gpu = self.gpu.as_ref().unwrap();
+-                let cu = card_shader::Uniforms { params: [pose.rotate, CARDS[k].0, 1.0 / s, tilt], res: [layout.cw, layout.ch, press, 0.0] };
+-                queue.write_buffer(&gpu.card_uniforms[k], 0, &cu.bytes());
+-                skia::render::fullscreen_pass(encoder, "card shader reflections card", &gpu.layer_views[k], &gpu.card_pipeline, &gpu.card_binds[k]);
+-                self.drawn[k] = Some(key);
+-            }
++            let axes = self.room_frame(pose);
++            u.frame[3 * k] = [axes[0][0], axes[0][1], axes[0][2], CARDS[k].0];
++            u.frame[3 * k + 1] = [axes[1][0], axes[1][1], axes[1][2], 0.0];
++            u.frame[3 * k + 2] = [axes[2][0], axes[2][1], axes[2][2], 0.0];
+             let rows = m.invert().unwrap_or(skia::Matrix3([0.0; 9])).rows();
+             u.inv[3 * k..3 * k + 3].copy_from_slice(&rows);
+             u.look[k] = [
+@@ -585,65 +644,72 @@
+             ];
+             // The shadow leans away from the turn and drops with the tilt and the press.
+             let turn = (pose.rotate_y_deg as f32).to_radians();
+-            u.slot[k] = [lefts[k] as f32, -turn.sin() * SHADOW_TURN, tilt.sin() * SHADOW_TILT + 4.0 * press, press];
++            let off = (-turn.sin() * SHADOW_TURN, tilt.sin() * SHADOW_TILT + 4.0 * press);
++            u.slot[k] = [lefts[k] as f32, off.0, off.1, press];
++            // Its quad: the card grown by its shadow's reach (the compose pass's ambient shadow:
++            // its offset, then 1.9 σ), projected.
++            let [_, _, w, h] = layout.card;
++            let reach = 4.0 + ((3.0 + off.0).abs() + (12.0 + off.1).abs()) * (1.0 + 0.6 * press) + 1.9 * (18.0 + 8.0 * press) + 2.0;
++            let c = [(-reach, -reach), (w + reach, -reach), (w + reach, h + reach), (-reach, h + reach)].map(|(x, y)| m.map(x, y));
++            u.quad[2 * k] = [c[0].x, c[0].y, c[1].x, c[1].y];
++            u.quad[2 * k + 1] = [c[2].x, c[2].y, c[3].x, c[3].y];
++            if visible {
++                drawn.push(k as u32);
++            }
+         }
+         let [_, _, cw, chh] = layout.card;
+         u.card = [cw, chh, CARD_RADIUS, layout.split()];
+-        u.tex = [lw as f32, lh as f32, aw as f32, ah as f32];
+-        u.shadow = layout.shadow();
++        u.tex = [TILE_SIDE as f32, TILE_SIDE as f32, aw as f32, ah as f32];
++        u.light = [layout.cw, 0.0, 0.0, 0.0];
+         u.overlay = [slot_px as f32 / s, chh, 0.0, 0.0];
+         u.canvas = [frame.pixels().0 as f32, frame.pixels().1 as f32, s, gfx::srgb_flag(format)];
+         let gpu = self.gpu.as_ref().unwrap();
+         queue.write_buffer(&gpu.uniforms, 0, &u.bytes());
+-        skia::render::fullscreen_pass(encoder, "card shader reflections", target, &gpu.compose, &gpu.bind);
++        // styles.container's #111, then each visible card's quad over it.
++        // (A target that encodes sRGB takes linear values: #11's (17 / 255 / 12.92 … the curve).)
++        let v = 17.0_f64 / 255.0;
++        let bg = if format.is_srgb() { ((v + 0.055) / 1.055).powf(2.4) } else { v };
++        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
++            label: Some("card shader reflections"),
++            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
++                view: target,
++                resolve_target: None,
++                depth_slice: None,
++                ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color { r: bg, g: bg, b: bg, a: 1.0 }), store: wgpu::StoreOp::Store },
++            })],
++            depth_stencil_attachment: None,
++            timestamp_writes: None,
++            occlusion_query_set: None,
++            multiview_mask: None,
++        });
++        pass.set_pipeline(&gpu.compose);
++        pass.set_bind_group(0, &gpu.bind, &[]);
++        for k in drawn {
++            pass.draw(0..6, k..k + 1);
++        }
+         moving
+     }
+ }
+ 
+ fn build(device: &wgpu::Device, format: wgpu::TextureFormat, generation: u32, layout: Layout) -> Gpu {
+-    // The cards' canvas layers: one array layer each.
+-    let (lw, lh) = layout.layer_pixels();
+-    let layers = device.create_texture(&wgpu::TextureDescriptor {
+-        label: Some("card shader reflections layers"),
+-        size: wgpu::Extent3d { width: lw, height: lh, depth_or_array_layers: 4 },
++    let tile = device.create_texture(&wgpu::TextureDescriptor {
++        label: Some("card shader reflections noise"),
++        size: wgpu::Extent3d { width: TILE_SIDE, height: TILE_SIDE, depth_or_array_layers: 1 },
+         mip_level_count: 1,
+         sample_count: 1,
+         dimension: wgpu::TextureDimension::D2,
+         format: LAYER_FORMAT,
+-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
++        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+         view_formats: &[],
+     });
+-    let layer_views = std::array::from_fn(|k| {
+-        layers.create_view(&wgpu::TextureViewDescriptor {
+-            label: Some("card shader reflections layer"),
+-            dimension: Some(wgpu::TextureViewDimension::D2),
+-            base_array_layer: k as u32,
+-            array_layer_count: Some(1),
+-            ..Default::default()
+-        })
+-    });
+-    let array_view = layers.create_view(&wgpu::TextureViewDescriptor { label: Some("card shader reflections layers"), dimension: Some(wgpu::TextureViewDimension::D2Array), ..Default::default() });
++    let tile_view = tile.create_view(&Default::default());
+ 
+-    let card_module = device.create_shader_module(card_shader::module());
+-    let card_layout = device.create_bind_group_layout(&card_shader::GROUP_0);
+-    let card_pipeline = skia::render::fullscreen_pipeline(device, &card_module, &card_layout, card_shader::entry::FS, LAYER_FORMAT, None);
+-    let card_uniforms: [wgpu::Buffer; 4] = std::array::from_fn(|_| {
+-        device.create_buffer(&wgpu::BufferDescriptor { label: Some("card shader reflections card"), size: card_shader::Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false })
+-    });
+-    let card_binds = std::array::from_fn(|k| {
+-        device.create_bind_group(&wgpu::BindGroupDescriptor {
+-            label: Some("card shader reflections card"),
+-            layout: &card_layout,
+-            entries: &[wgpu::BindGroupEntry { binding: card_shader::U.binding, resource: card_uniforms[k].as_entire_binding() }],
+-        })
+-    });
+-
+     let ((aw, ah), ..) = layout.atlas();
+     let atlas = skia::render::sampled_target(device, "card shader reflections atlas", LAYER_FORMAT, aw, ah);
+ 
+     let shader = device.create_shader_module(module());
+     let group = device.create_bind_group_layout(&GROUP_0);
+-    let compose = skia::render::fullscreen_pipeline(device, &shader, &group, entry::COMPOSE, format, None);
++    let compose = skia::render::fullscreen_pipeline(device, &shader, &group, entry::COMPOSE, format, Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING));
+     let uniforms = device.create_buffer(&wgpu::BufferDescriptor { label: Some("card shader reflections"), size: Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
+     let sampler = skia::render::linear_sampler(device);
+     let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+@@ -651,14 +717,61 @@
+         layout: &group,
+         entries: &[
+             wgpu::BindGroupEntry { binding: U.binding, resource: uniforms.as_entire_binding() },
+-            wgpu::BindGroupEntry { binding: LAYERS.binding, resource: wgpu::BindingResource::TextureView(&array_view) },
++            wgpu::BindGroupEntry { binding: TILE.binding, resource: wgpu::BindingResource::TextureView(&tile_view) },
+             wgpu::BindGroupEntry { binding: ATLAS.binding, resource: wgpu::BindingResource::TextureView(&atlas) },
+             wgpu::BindGroupEntry { binding: SMP.binding, resource: wgpu::BindingResource::Sampler(&sampler) },
+         ],
+     });
+-    Gpu { format, generation, layout, card_pipeline, card_uniforms, card_binds, layer_views, atlas, atlas_drawn: false, compose, uniforms, bind }
++    Gpu { format, generation, layout, tile, tile_written: false, atlas, atlas_drawn: false, compose, uniforms, bind }
+ }
+ 
++/// CMAttitude's pitch and roll (Z-X'-Y'') of Core Motion's attitude quaternion `[x, y, z, w]`
++/// (as threads_holo_ticket reads it).
++fn pitch_roll(q: [f64; 4]) -> (f64, f64) {
++    let [x, y, z, w] = q;
++    let pitch = (2.0 * (w * x + y * z)).clamp(-1.0, 1.0).asin();
++    let roll = (2.0 * (w * y - x * z)).atan2(1.0 - 2.0 * (x * x + y * y));
++    (pitch, roll)
++}
++
++/// A hash of a lattice point in [0, 1).
++fn hash(x: u32, y: u32, seed: u32) -> f32 {
++    let mut h = x.wrapping_mul(0x8da6_b343) ^ y.wrapping_mul(0xd816_3841) ^ seed.wrapping_mul(0xcb1a_b31f);
++    h ^= h >> 13;
++    h = h.wrapping_mul(0x5bd1_e995);
++    h ^= h >> 15;
++    (h & 0xff_ffff) as f32 / 16_777_216.0
++}
++
++/// Value noise that tiles a `side` square: `cells` lattice cells across each axis.
++fn tiled_noise(x: u32, y: u32, side: u32, cells: (u32, u32), seed: u32) -> f32 {
++    let fx = x as f32 * cells.0 as f32 / side as f32;
++    let fy = y as f32 * cells.1 as f32 / side as f32;
++    let (ix, iy) = (fx.floor() as u32, fy.floor() as u32);
++    let smooth = |t: f32| t * t * (3.0 - 2.0 * t);
++    let (tx, ty) = (smooth(fx.fract()), smooth(fy.fract()));
++    let at = |i: u32, j: u32| hash(i % cells.0, j % cells.1, seed);
++    let top = at(ix, iy) + (at(ix + 1, iy) - at(ix, iy)) * tx;
++    let bottom = at(ix, iy + 1) + (at(ix + 1, iy + 1) - at(ix, iy + 1)) * tx;
++    top + (bottom - top) * ty
++}
++
++/// The cards' noise, a `side`² RGBA8 tile read per plane device pixel: r the brushing's lines
++/// (long along x, ~1.3 a pixel across, three octaves), g the bead-blast's tooth, b the grain.
++fn noise_tile(side: u32) -> Vec<u8> {
++    let mut out = Vec::with_capacity((side * side * 4) as usize);
++    for y in 0..side {
++        for x in 0..side {
++            let lines = tiled_noise(x, y, side, (1, side), 1) * 0.5 + tiled_noise(x, y, side, (3, side / 2), 2) * 0.2 + tiled_noise(x, y, side, (2, side / 8), 3) * 0.1 + 0.1;
++            let tooth = tiled_noise(x, y, side, (side * 7 / 10, side * 7 / 10), 4);
++            let grain = hash(x, y, 5);
++            out.extend([lines, tooth, grain].map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8));
++            out.push(255);
++        }
++    }
++    out
++}
++
+ #[cfg(all(test, not(target_arch = "wasm32")))]
+ mod tests {
+     use super::*;
+@@ -773,21 +886,73 @@
+         assert_eq!(s.messages(), vec!["haptic:impact-light", "haptic:impact-soft"]);
+     }
+ 
++    #[test]
++    fn the_phone_turn_moves_the_light() {
++        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
++        exact_gpu::shaders::load_dir(&dir, &crate::REGISTRY).unwrap();
++        let gpu = match fixture::device() {
++            Ok(gpu) => gpu,
++            Err(error) => return eprintln!("{error}; skipped"),
++        };
++        let frame = |now_ms| Frame { width: 420.0, height: 912.0, scale: 3.0, now_ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: exact_gpu::shaders::shader_generation(), headroom: 1.0 };
++        let sensor = |pitch: f32, roll: f32, at_ms| {
++            // Roll about y, then pitch about x (small angles: CMAttitude's pitch and roll back).
++            let (sp, cp) = (pitch / 2.0).sin_cos();
++            let (sr, cr) = (roll / 2.0).sin_cos();
++            InputEvent::Sensor { sensor: SensorKind::RelativeOrientation, values: [sp * cr, cp * sr, -sp * sr, cp * cr], dropped: 0, at_ms }
++        };
++        let settle = |s: &mut dyn Surface, from: f64| {
++            let mut ms = from;
++            let (mut img, mut moving) = fixture::render(&gpu, s, &frame(ms)).unwrap();
++            while moving && ms < from + 3000.0 {
++                ms += 16.0;
++                (img, moving) = fixture::render(&gpu, s, &frame(ms)).unwrap();
++            }
++            assert!(!moving, "settles");
++            img
++        };
++        let mut s = surface();
++        let rest = settle(s.as_mut(), 0.0);
++        rest.save("card-shader-reflections-phone-level");
++        // Sensor noise asks for no frame.
++        s.input(&sensor(0.0003, 0.0, 10.0));
++        assert!(!s.input_changed());
++        // The phone rolled 20° right: the highlights move; the clamp holds 40° at 25°.
++        let deg = std::f32::consts::PI / 180.0;
++        s.input(&sensor(0.0, 20.0 * deg, 20.0));
++        assert!(s.input_changed());
++        let right = settle(s.as_mut(), 4000.0);
++        right.save("card-shader-reflections-phone-right");
++        s.input(&sensor(-15.0 * deg, -40.0 * deg, 8000.0));
++        let left = settle(s.as_mut(), 8000.0);
++        left.save("card-shader-reflections-phone-left");
++        // The card's face changed under the light; the background did not.
++        let px = |img: &fixture::Pixels, x: f32, y: f32| img.at((x * 3.0) as u32, (y * 3.0) as u32);
++        let changed = |a: &fixture::Pixels, b: &fixture::Pixels| {
++            [(150.0, 300.0), (210.0, 429.5), (260.0, 560.0)].iter().map(|&(x, y)| (px(a, x, y)[1] as i32 - px(b, x, y)[1] as i32).abs()).max().unwrap()
++        };
++        assert!(changed(&rest, &right) > 12, "{}", changed(&rest, &right));
++        assert!(changed(&right, &left) > 12, "{}", changed(&right, &left));
++        assert_eq!(&px(&left, 5.0, 5.0)[..3], &[17, 17, 17]);
++    }
++
+     /// The surface at the iPhone Air's layout, without a GPU.
+     fn surface_with_layout() -> Option<CardShaderReflections> {
+         let layout = Layout::new(420.0, 912.0, 3.0);
+-        let mut s = CardShaderReflections {
++        let s = CardShaderReflections {
+             layout,
+             scroll: UiScroll::new(0.0, 3.0 * layout.cw as f64, layout.w as f64, FAST, Snap::Interval(layout.cw as f64)),
+             font: None,
+             atlas: Canvas::default(),
+             renderer: Renderer::default(),
+-            drawn: [None; 4],
+             gpu: None,
+             tilt: Spring::at(0.0),
+             press: Spring::at(0.0),
+             finger: None,
+             posted: Vec::new(),
++            pitch: Spring::at(0.0),
++            roll: Spring::at(0.0),
++            changed: true,
+         };
+         Some(s)
+     }
+--- a/gpu/src/bench.rs
++++ b/gpu/src/bench.rs
+@@ -44,6 +44,25 @@
+ fn cases() -> Vec<Case> {
+     vec![
+         Case {
++            name: "card-shader-reflections",
++            make: crate::card_shader_reflections::surface,
++            size: (420.0, 912.0, 3.0),
++            setup: |_| {},
++            // A finger held on the list, dragging 0.8 pt a frame (a slow scroll: every visible
++            // card turns, so each one's face redraws every frame), lifted and put down again
++            // every 150 frames.
++            tick: |s, i, ms| {
++                let k = i % 150;
++                let x = 360.0 - 0.8 * k as f32;
++                let phase = match k {
++                    0 => PointerPhase::Down,
++                    149 => PointerPhase::Up,
++                    _ => PointerPhase::Move,
++                };
++                s.input(&pointer(1, phase, x, 430.0 + 0.3 * k as f32, ms));
++            },
++        },
++        Case {
+             name: "spiral",
+             make: crate::spiral::surface,
+             size: (420.0, 912.0, 3.0),
+@@ -188,8 +207,64 @@
+     (times[0], times[frames / 2], times[frames * 9 / 10])
+ }
+ 
++/// Minimum, median and p90 wall microseconds from submitting a frame of `case` to the GPU
++/// going idle: the GPU's time for it (plus the driver's, small), the CPU's recording excluded.
++fn measure_gpu(gpu: &exact_gpu::Gpu, case: &Case, frames: usize) -> (f64, f64, f64) {
++    let (w, h, scale) = case.size;
++    let format = wgpu::TextureFormat::Rgba8Unorm;
++    let texture = gpu.device.create_texture(&wgpu::TextureDescriptor {
++        label: Some("bench"),
++        size: wgpu::Extent3d { width: (w * scale) as u32, height: (h * scale) as u32, depth_or_array_layers: 1 },
++        mip_level_count: 1,
++        sample_count: 1,
++        dimension: wgpu::TextureDimension::D2,
++        format,
++        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
++        view_formats: &[],
++    });
++    let view = texture.create_view(&Default::default());
++    let mut s = (case.make)();
++    (case.setup)(s.as_mut());
++    let mut times = Vec::with_capacity(frames);
++    for i in 0..frames + 30 {
++        let ms = i as f64 * 16.67;
++        (case.tick)(s.as_mut(), i, ms);
++        let _ = s.messages();
++        let mut encoder = gpu.device.create_command_encoder(&Default::default());
++        s.render(&frame(w, h, scale, ms), &gpu.device, &gpu.queue, &mut encoder, &view, format);
++        let buffer = encoder.finish();
++        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
++        let t = std::time::Instant::now();
++        gpu.queue.submit([buffer]);
++        s.submitted();
++        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
++        if i >= 30 {
++            times.push(t.elapsed().as_secs_f64() * 1e6);
++        }
++    }
++    times.sort_by(|a, b| a.partial_cmp(b).unwrap());
++    (times[0], times[frames / 2], times[frames * 9 / 10])
++}
++
+ #[test]
+ #[ignore = "a benchmark: run with --release --ignored --nocapture"]
++fn bench_gpu_per_frame() {
++    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
++    exact_gpu::shaders::load_dir(&dir, &crate::REGISTRY).unwrap();
++    let Some(gpu) = fixture::device_or_skip(fixture::device()) else { return };
++    let frames = std::env::var("BENCH_FRAMES").ok().and_then(|v| v.parse().ok()).unwrap_or(300);
++    let only = std::env::var("BENCH_ONLY").ok();
++    for case in cases() {
++        if only.as_deref().is_some_and(|o| !case.name.contains(o)) {
++            continue;
++        }
++        let (min, median, p90) = measure_gpu(&gpu, &case, frames);
++        println!("bench-gpu {:<22} min {:>7.1}  median {:>7.1}  p90 {:>7.1} us (submit to idle)", case.name, min, median, p90);
++    }
++}
++
++#[test]
++#[ignore = "a benchmark: run with --release --ignored --nocapture"]
+ fn bench_cpu_per_frame() {
+     let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
+     exact_gpu::shaders::load_dir(&dir, &crate::REGISTRY).unwrap();
+--- a/gpu/shaders/card_shader_reflections_compose.wgsl
++++ b/gpu/shaders/card_shader_reflections_compose.wgsl
+@@ -1,32 +1,43 @@
+-// Card Shader Reflections' screen: the four cards as Core Animation composites them, each a
+-// physical card. Each card's Animated.View carries `[rotate 18deg, perspective 1200, translateY,
+-// rotateY]` (and, past RN, the finger's tilt) about its centre; a pixel shows the point of the
+-// card's plane its inverse projective map finds there (painted in index order). In that plane
+-// (styles.card's points, origin at its top-left):
+-// - its <Canvas>: the card's 8-bit layer (card_shader_reflections.wgsl), sampled bilinearly,
+-//   clipped by a continuous (squircle) radius 20, antialiased in screen space;
+-// - the title, laser-engraved into the metal: the atlas's glyph coverage as a mask, a matte
+-//   floor with a shadowed near wall and a lit far wall (the chip is the layer's own now);
+-// - its shadow, analytic: a soft ambient one and a tight contact one under the card, offset
+-//   with the turn and the tilt (the surface's per-card offset; 0 rests it low right), masked
+-//   to outside the card;
+-// - the Animated.View's opacity over the group (UIKit's group opacity).
+-// Everything composites in Display P3's encoding over #111; the result is turned into sRGB.
++// Card Shader Reflections' screen: the four cards as Core Animation composites them, one
++// analytic draw per visible card (its quad: the card and its shadow's reach, projected), over
++// the cleared #111, blended in index order (premultiplied over: the group opacity's equation);
++// pixels outside every quad run no shader. Each card is each a physical metal card lit in a small studio (past RN's getCardShader:
++// the owner's ask for premium cards, Apple Card titanium, Revolut Metal).
++//
++// Each card's Animated.View carries `[rotate 18deg, perspective 1200, translateY, rotateY]` (and,
++// past RN, the finger's tilt and press) about its centre; a pixel finds the point of the card's
++// plane its inverse projective map gives (painted in index order), and is shaded there:
++// - brushed or anodised metal: the studio's softboxes reflected with an anisotropic blur, Ward's
++//   anisotropic highlight from two point lights, the brushing's lines jittering the normal;
++// - a 1.4 pt bevel on the continuous (squircle) outline: the Fresnel rim;
++// - a thin-film / diffraction hologram, an EMV chip with engraved contacts, an engraved
++//   contactless mark and the laser-engraved title (the atlas's glyph coverage as its mask);
++// - its shadow, analytic: an ambient and a contact one, offset by the turn, tilt and press;
++// - the Animated.View's opacity over the group.
++// The lights and the eye stay in the room while the card turns with the scroll, tilts under the
++// finger, and turns with the phone (Core Motion's attitude, smoothed): `frame`, from Rust.
++// The brushing's noise is a 256² tile (Rust makes it once), read per plane device pixel.
++// Each card's colour is Display P3 (RN's surfaces), turned into sRGB before it blends.
+ struct Uniforms {
+     // Per card, three rows: screen points → the card's plane points (inverse projective 3×3).
+     inv: array<vec4<f32>, 12>,
+-    // Per card: visible (1), the Animated.View's opacity, the chip's alpha, the title's alpha
+-    // (each × cardContent's 0.7).
++    // Per card: visible (1), the Animated.View's opacity, unused, the title's alpha.
+     look: array<vec4<f32>, 4>,
+     // Per card: its overlay slot's left edge in the atlas (device pixels); the shadow's extra
+     // offset (points, in the card's plane); the press (0…1).
+     slot: array<vec4<f32>, 4>,
+-    // The card's clip: width, height, radius (points); the chip / title split (points).
++    // Per card, its frame in the room (x right, y down, z toward the eye: the phone's turn ·
++    // Rz(18°) · Ry(the scroll's turn) · Rx(the finger's tilt)), three rows: the card's x axis
++    // and its cardType (0 Silver, 1 Gold, 2 Platinum, 3 Metal); its y axis; its normal.
++    frame: array<vec4<f32>, 12>,
++    // Per card, its quad on screen (points): top-left, top-right; bottom-right, bottom-left.
++    quad: array<vec4<f32>, 8>,
++    // The card: width, height, radius (points); the chip / title split (points).
+     card: vec4<f32>,
+-    // The canvas layer (device pixels: width, height); the atlas (width, height).
++    // The noise tile's size (texels: 256, 256); the atlas (width, height).
+     tex: vec4<f32>,
+-    // The shadow's region in the plane: left, top, width, height (points); unused now.
+-    shadow: vec4<f32>,
++    // CARD_WIDTH (the chip's size); unused.
++    light: vec4<f32>,
+     // The overlay slot's width, height (points); unused.
+     overlay: vec4<f32>,
+     // The target (device pixels), device pixels per point, whether the target encodes sRGB.
+@@ -34,22 +45,37 @@
+ };
+ 
+ @group(0) @binding(0) var<uniform> u: Uniforms;
+-@group(0) @binding(1) var layers: texture_2d_array<f32>;
++@group(0) @binding(1) var tile: texture_2d<f32>;
+ @group(0) @binding(2) var atlas: texture_2d<f32>;
+ @group(0) @binding(3) var smp: sampler;
+ 
+ struct Out {
+     @builtin(position) pos: vec4<f32>,
++    @location(0) @interpolate(flat) card: u32,
+ };
+ 
++/// Card `k`'s quad (instance k), two triangles.
+ @vertex
+-fn vs(@builtin(vertex_index) i: u32) -> Out {
+-    let q = vec2<f32>(f32(i32(i & 1u) * 4 - 1), f32(i32(i >> 1u) * 4 - 1));
++fn vs(@builtin(vertex_index) i: u32, @builtin(instance_index) k: u32) -> Out {
++    var corners = array<u32, 6>(0u, 1u, 2u, 0u, 2u, 3u);
++    let c = corners[i];
++    let pair = u.quad[2u * k + c / 2u];
++    let pt = select(pair.xy, pair.zw, (c & 1u) == 1u);
++    let ndc = pt * u.canvas.z / u.canvas.xy * 2.0 - 1.0;
+     var o: Out;
+-    o.pos = vec4<f32>(q, 0.0, 1.0);
++    o.pos = vec4<f32>(ndc.x, -ndc.y, 0.0, 1.0);
++    o.card = k;
+     return o;
+ }
+ 
++const PI: f32 = 3.14159265359;
++/// The perspective (the eye's distance, points).
++const EYE: f32 = 1200.0;
++const BEVEL: f32 = 1.4;
++/// The chip: styles.card padding 30, CARD_WIDTH × 0.15 by × 0.12.
++const PAD: f32 = 30.0;
++const SQ_N: f32 = 3.26;
++
+ fn to_linear(c: vec3<f32>) -> vec3<f32> {
+     return select(pow((c + 0.055) / 1.055, vec3<f32>(2.4)), c / 12.92, c <= vec3<f32>(0.04045));
+ }
+@@ -63,95 +89,355 @@
+     return enc(vec3<f32>(1.2249 * l.r - 0.2247 * l.g, -0.0420 * l.r + 1.0419 * l.g, -0.0197 * l.r - 0.0786 * l.g + 1.0979 * l.b));
+ }
+ 
+-// Core Animation's continuous corner (as the card shader's `squircle`): centre-relative `p`,
+-// half size `b`, radius `r`.
++// --- shape -----------------------------------------------------------------------------------
++
++/// A continuous-corner rounded rect's (near) signed distance: centre-relative `p`, half size
++/// `b`, corner radius `r`. Core Animation's continuous corner leaves the straight edge 1.528 r
++/// from the corner; a 3.26-norm over that run passes the circle's 45° point. The norm is taken
++/// only in the corners.
+ fn squircle(p: vec2<f32>, b: vec2<f32>, r: f32) -> f32 {
+     let e = min(r * 1.528, min(b.x, b.y));
+     let q = abs(p) - b + vec2<f32>(e);
+-    let m = max(q, vec2<f32>(0.0));
+-    let n = 3.26;
+-    let corner = pow(pow(m.x, n) + pow(m.y, n), 1.0 / n);
+-    return corner + min(max(q.x, q.y), 0.0) - e;
++    if (q.x > 0.0 && q.y > 0.0) {
++        return pow(pow(q.x, SQ_N) + pow(q.y, SQ_N), 1.0 / SQ_N) - e;
++    }
++    return max(q.x, q.y) - e;
+ }
+ 
+-fn within(p: vec2<f32>, size: vec2<f32>) -> bool {
+-    return all(p >= vec2<f32>(0.0)) && all(p <= size);
++/// The squircle's outward direction at `p` (its gradient, normalised).
++fn squircle_dir(p: vec2<f32>, b: vec2<f32>, r: f32) -> vec2<f32> {
++    let e = min(r * 1.528, min(b.x, b.y));
++    let q = abs(p) - b + vec2<f32>(e);
++    var g = select(vec2<f32>(0.0, 1.0), vec2<f32>(1.0, 0.0), q.x > q.y);
++    if (q.x > 0.0 && q.y > 0.0) {
++        g = normalize(pow(q, vec2<f32>(SQ_N - 1.0)));
++    }
++    return g * sign(p + vec2<f32>(1e-6));
+ }
+ 
+-/// A rounded rect's soft shadow: coverage at distance `d` for a blur `sigma` (a smoothstep
+-/// fitted to the Gaussian's integral).
++/// A circular rounded rect's signed distance (the shadows: their blur hides the corner's kind).
++fn rrect(p: vec2<f32>, b: vec2<f32>, r: f32) -> f32 {
++    let q = abs(p) - b + vec2<f32>(r);
++    return length(max(q, vec2<f32>(0.0))) + min(max(q.x, q.y), 0.0) - r;
++}
++
++/// A rounded rect's soft shadow: coverage at distance `d` for a blur `sigma`.
+ fn soft(d: f32, sigma: f32) -> f32 {
+     return 1.0 - smoothstep(-1.6 * sigma, 1.9 * sigma, d);
+ }
+ 
++/// An antialiased band of half width `hw` around 0 (distance `d`, `aa` points a pixel).
++fn band(d: f32, hw: f32, aa: f32) -> f32 {
++    return 1.0 - smoothstep(hw - aa * 0.5, hw + aa * 0.5, abs(d));
++}
++
++// --- materials -------------------------------------------------------------------------------
++
++struct Material {
++    f0: vec3<f32>,
++    diffuse: vec3<f32>,
++    // Ward's roughness along the brushing (x) and across it (y).
++    alpha: vec2<f32>,
++    // How strongly the brushing lines move the normal.
++    brush: f32,
++    // The pearl film over the whole face (Platinum).
++    pearl: f32,
++};
++
++fn material(t: f32) -> Material {
++    // Silver: brushed aluminium.
++    if (t < 0.5) {
++        return Material(vec3<f32>(0.62, 0.63, 0.65), vec3<f32>(0.07, 0.07, 0.075), vec2<f32>(0.07, 0.34), 1.0, 0.0);
++    }
++    // Gold: anodised champagne gold.
++    if (t < 1.5) {
++        return Material(vec3<f32>(0.86, 0.64, 0.36), vec3<f32>(0.07, 0.045, 0.02), vec2<f32>(0.08, 0.30), 0.8, 0.0);
++    }
++    // Platinum: finely brushed, a pearl film on it.
++    if (t < 2.5) {
++        return Material(vec3<f32>(0.66, 0.65, 0.64), vec3<f32>(0.09, 0.088, 0.086), vec2<f32>(0.06, 0.18), 0.45, 0.10);
++    }
++    // Metal: dark titanium, bead-blasted then brushed.
++    return Material(vec3<f32>(0.15, 0.15, 0.162), vec3<f32>(0.010, 0.010, 0.012), vec2<f32>(0.09, 0.30), 1.0, 0.0);
++}
++
++// --- the studio ------------------------------------------------------------------------------
++
++/// A soft strip in the reflection's plane: `q` the reflected direction projected (x/z, y/z),
++/// `c` a point on its axis, `n` its normal, `hw` its half width, `len` its half length. The
++/// edges are blurred by the brushing: `t2` / `b2` its axes in that plane, `sig` the blur along each.
++fn strip(q: vec2<f32>, c: vec2<f32>, n: vec2<f32>, hw: f32, len: f32, t2: vec2<f32>, b2: vec2<f32>, sig: vec2<f32>) -> f32 {
++    let d = q - c;
++    let across = abs(dot(d, n)) - hw;
++    let along_dir = vec2<f32>(-n.y, n.x);
++    let along = abs(dot(d, along_dir)) - len;
++    let w1 = length(vec2<f32>(dot(n, t2) * sig.x, dot(n, b2) * sig.y)) + 0.004;
++    let w2 = length(vec2<f32>(dot(along_dir, t2) * sig.x, dot(along_dir, b2) * sig.y)) + 0.05;
++    return (1.0 - smoothstep(-w1, w1, across)) * (1.0 - smoothstep(-w2, w2, along));
++}
++
++/// The studio seen in direction `r`: a dark room, a soft gradient behind the camera, a column of
++/// near-vertical softboxes the sheen sweeps across as the card turns, a cool fill low right.
++fn studio(r: vec3<f32>, t2: vec2<f32>, b2: vec2<f32>, sig: vec2<f32>) -> vec3<f32> {
++    let z = max(r.z, 0.06);
++    let q = r.xy / z;
++    let toward = smoothstep(-0.05, 0.35, r.z);
++    let sky = mix(0.035, 0.16, smoothstep(0.9, -0.9, q.y)) * (0.75 + 0.25 * smoothstep(1.2, 0.0, abs(q.x)));
++    var c = vec3<f32>(sky) * vec3<f32>(0.98, 0.99, 1.02);
++    let n1 = vec2<f32>(0.95393920, -0.30123345);
++    c += vec3<f32>(1.9, 1.87, 1.80) * strip(q, vec2<f32>(-0.075, -0.10), n1, 0.032, 0.55, t2, b2, sig);
++    c += vec3<f32>(0.8) * strip(q, vec2<f32>(0.10, -0.02), n1, 0.008, 0.45, t2, b2, sig);
++    c += vec3<f32>(1.15, 1.14, 1.12) * strip(q, vec2<f32>(0.48, -0.1), n1, 0.05, 0.9, t2, b2, sig);
++    c += vec3<f32>(0.95, 0.96, 1.0) * strip(q, vec2<f32>(-0.52, -0.1), n1, 0.045, 0.9, t2, b2, sig);
++    c += vec3<f32>(1.1) * strip(q, vec2<f32>(1.12, 0.2), n1, 0.10, 1.4, t2, b2, sig * 1.5);
++    c += vec3<f32>(0.95) * strip(q, vec2<f32>(-1.15, -0.3), n1, 0.10, 1.4, t2, b2, sig * 1.5);
++    c += vec3<f32>(0.7) * strip(q, vec2<f32>(2.3, 0.6), n1, 0.35, 2.5, t2, b2, sig * 3.0);
++    c += vec3<f32>(0.6) * strip(q, vec2<f32>(-2.4, -0.6), n1, 0.35, 2.5, t2, b2, sig * 3.0);
++    let n2 = vec2<f32>(0.85285, -0.52215);
++    c += vec3<f32>(0.42, 0.46, 0.52) * strip(q, vec2<f32>(0.55, 0.45), n2, 0.22, 0.6, t2, b2, sig * 2.0);
++    return mix(vec3<f32>(0.03), c, toward);
++}
++
++/// Ward's anisotropic highlight from a point light at `lp` (room points, from the card's
++/// centre), times N·L.
++fn ward(pos: vec3<f32>, v: vec3<f32>, n: vec3<f32>, t: vec3<f32>, b: vec3<f32>, lp: vec3<f32>, alpha: vec2<f32>) -> f32 {
++    let l = normalize(lp - pos);
++    let nl = dot(n, l);
++    let nv = dot(n, v);
++    if (nl <= 0.0 || nv <= 0.0) {
++        return 0.0;
++    }
++    let h = normalize(l + v);
++    let ht = dot(h, t) / alpha.x;
++    let hb = dot(h, b) / alpha.y;
++    let hn = dot(h, n);
++    let e = exp(-(ht * ht + hb * hb) / (hn * hn));
++    return e / (4.0 * PI * alpha.x * alpha.y * sqrt(nl * nv)) * nl;
++}
++
++/// Thin-film interference: the film's reflectance at 650, 532 and 450 nm for an optical path
++/// `path` (nm).
++fn film(path: f32) -> vec3<f32> {
++    return 0.5 + 0.5 * cos(2.0 * PI * path / vec3<f32>(650.0, 532.0, 450.0));
++}
++
++fn fresnel(f0: vec3<f32>, cos_t: f32) -> vec3<f32> {
++    return f0 + (vec3<f32>(1.0) - f0) * pow(1.0 - clamp(cos_t, 0.0, 1.0), 5.0);
++}
++
++/// Linear light to Display P3's encoding, with a soft shoulder so highlights roll off.
++fn encode(c0: vec3<f32>) -> vec3<f32> {
++    let knee = 0.72;
++    let over = max(c0 - vec3<f32>(knee), vec3<f32>(0.0));
++    let c = min(c0, vec3<f32>(knee)) + (1.0 - knee) * (vec3<f32>(1.0) - exp(-over / (1.0 - knee)));
++    return enc(c);
++}
++
+ /// The atlas's glyph coverage at plane point `l` of card `k` (0 outside its slot).
+ fn glyph(l: vec2<f32>, k: u32, s: f32) -> f32 {
+-    if (!within(l, u.overlay.xy)) {
++    if (any(l < vec2<f32>(0.0)) || any(l > u.overlay.xy)) {
+         return 0.0;
+     }
+     let auv = (vec2<f32>(u.slot[k].x, 0.0) + l * s) / u.tex.zw;
+     return textureSampleLevel(atlas, smp, auv, 0.0).a;
++}
++
++/// Card `k`'s face at plane point `p` (points, origin at its top-left), `aa` plane points a
++/// screen pixel; Display P3-encoded.
++fn face(p: vec2<f32>, k: u32, aa: f32, s: f32) -> vec3<f32> {
++    let size = u.card.xy;
++    let t = u.frame[3u * k].w;
++    let press = clamp(u.slot[k].w, 0.0, 1.0);
++    let m = material(t);
++
++    // The frame, the point, the eye: in the room.
++    let tx = u.frame[3u * k].xyz;
++    let by = u.frame[3u * k + 1u].xyz;
++    var n = u.frame[3u * k + 2u].xyz;
++    let local = p - size * 0.5;
++    let pos = tx * local.x + by * local.y;
++    let v = normalize(vec3<f32>(0.0, 0.0, EYE) - pos);
++    // Past 90° the back shows (Core Animation mirrors the layer): lit as a face all the same.
++    if (dot(n, v) < 0.0) {
++        n = -n;
++    }
++
++    // The tile at the plane's device pixel: r the brushing's lines (long along x), g the
++    // bead-blast's tooth, b the grain.
++    let texel = vec2<i32>(floor(p * s)) & vec2<i32>(255);
++    let nz = textureLoad(tile, texel, 0);
++    let lines = nz.r;
++    let tooth = nz.g - 0.5;
++    var nn = normalize(n + by * (lines - 0.5) * 0.035 * m.brush + (tx + by) * tooth * 0.012);
++
++    // The bevel: the outline's normal tips outward over its last 1.4 pt.
++    let card_d = squircle(local, size * 0.5, u.card.z);
++    let bevel = smoothstep(-BEVEL, 0.0, card_d);
++    if (bevel > 0.0) {
++        let g = squircle_dir(local, size * 0.5, u.card.z);
++        nn = normalize(nn + (tx * g.x + by * g.y) * bevel * bevel * 1.6);
++    }
++
++    // The chip: polished, gold (palladium on the light cards), its contacts engraved.
++    let cw = u.light.x;
++    let chip_o = vec2<f32>(PAD, PAD);
++    let chip_s = vec2<f32>(cw * 0.15, cw * 0.12);
++    let chip_l = p - chip_o;
++    var in_chip = 0.0;
++    var groove = 0.0;
++    if (all(chip_l > vec2<f32>(-1.0)) && all(chip_l < chip_s + vec2<f32>(1.0))) {
++        let chip_d = squircle(chip_l - chip_s * 0.5, chip_s * 0.5, 5.0);
++        in_chip = 1.0 - smoothstep(-aa * 0.5, aa * 0.5, chip_d);
++        let cu = chip_l / chip_s;
++        let gw = 0.32;
++        var g = band(chip_l.x - chip_s.x * 0.34, gw, aa) + band(chip_l.x - chip_s.x * 0.66, gw, aa);
++        let side = step(cu.x, 0.34) + step(0.66, cu.x);
++        g += side * (band(chip_l.y - chip_s.y / 3.0, gw, aa) + band(chip_l.y - chip_s.y * 2.0 / 3.0, gw, aa));
++        let island = squircle(chip_l - chip_s * 0.5, vec2<f32>(chip_s.x * 0.16, chip_s.y * 0.30), 3.0);
++        g += band(island, gw, aa);
++        groove = clamp(g, 0.0, 1.0);
++        let chip_rim = smoothstep(-0.9, 0.0, chip_d);
++        let chip_n = normalize(n + (tx + by) * tooth * 0.004);
++        nn = normalize(mix(nn, chip_n, in_chip) + (tx * -0.35 + by * -0.35) * chip_rim * in_chip);
++    }
++    var chip_f0 = vec3<f32>(0.98, 0.76, 0.40);
++    if (t < 0.5 || (t > 1.5 && t < 2.5)) {
++        chip_f0 = vec3<f32>(0.86, 0.85, 0.82);
++    }
++
++    // --- light -------------------------------------------------------------------------------
++    let t2 = normalize(tx.xy + vec2<f32>(1e-5));
++    let b2 = normalize(by.xy + vec2<f32>(1e-5));
++    let alpha = mix(m.alpha, vec2<f32>(0.05, 0.07), in_chip);
++    let sig = vec2<f32>(alpha.x * 0.35, alpha.y * 0.30);
++
++    let r = reflect(-v, nn);
++    let env = studio(r, t2, b2, sig);
++    let key = vec3<f32>(-200.0, -320.0, 900.0);
++    let fill = vec3<f32>(420.0, 420.0, 520.0);
++    let spec = vec3<f32>(1.0, 0.98, 0.95) * ward(pos, v, nn, tx, by, key, alpha) * 0.55
++        + vec3<f32>(0.70, 0.78, 0.90) * ward(pos, v, nn, tx, by, fill, alpha) * 0.18;
++
++    let nv = max(dot(nn, v), 0.0);
++    var f0 = mix(m.f0, chip_f0, in_chip);
++    f0 = f0 * (0.955 + 0.09 * lines);
++    let fr = fresnel(f0, nv);
++    let ln = normalize(key - pos);
++    let lambert = max(dot(nn, ln), 0.0);
++    var col = fr * (env + spec) + mix(m.diffuse, vec3<f32>(0.02), in_chip) * (0.35 + 0.65 * lambert);
++
++    // Pearl (Platinum): a faint film over the face, its colour turning with the eye.
++    if (m.pearl > 0.0) {
++        let thick = 480.0 + 220.0 * (p.x + 0.6 * p.y) / (size.x + size.y);
++        let tint = film(2.0 * 1.38 * thick * sqrt(1.0 - (1.0 - nv * nv) / (1.38 * 1.38)));
++        col = col * mix(vec3<f32>(1.0), 0.75 + 0.5 * tint, m.pearl * (1.0 - in_chip));
++    }
++
++    col = mix(col, col * 0.28 + vec3<f32>(0.004), groove * in_chip);
++
++    // The contactless mark beside the chip: four arcs, laser-engraved.
++    let cl = p - vec2<f32>(chip_o.x + chip_s.x + 8.0, chip_o.y + chip_s.y * 0.5);
++    if (cl.x > -1.0 && cl.x < 15.0 && abs(cl.y) < 11.0) {
++        let ang = atan2(cl.y, cl.x);
++        let rad = length(cl);
++        var arcs = 0.0;
++        for (var i = 0; i < 4; i = i + 1) {
++            let ri = 3.4 + 3.4 * f32(i);
++            let ea = aa / ri;
++            arcs = max(arcs, band(rad - ri, 0.62, aa) * (1.0 - smoothstep(0.62 - ea, 0.62 + ea, abs(ang))));
++        }
++        var etch = col * 0.55;
++        if (t > 2.5) {
++            etch = vec3<f32>(0.11, 0.11, 0.115) + col * 0.3;
++        }
++        col = mix(col, etch, arcs);
++    }
++
++    // The hologram: a diffraction foil of concentric rings; its colours follow the half vector,
++    // so they run as the card turns and the phone tilts.
++    let holo_s = vec2<f32>(34.0, 24.0);
++    let holo_l = p - vec2<f32>(size.x - PAD - holo_s.x * 0.5, size.y - PAD - holo_s.y * 0.5 + 4.0);
++    if (all(abs(holo_l) < holo_s * 0.5 + vec2<f32>(1.0))) {
++        let holo_d = squircle(holo_l, holo_s * 0.5, 6.0);
++        let in_holo = 1.0 - smoothstep(-aa * 0.5, aa * 0.5, holo_d);
++        let h = normalize(normalize(key - pos) + v);
++        let radial = normalize(holo_l + vec2<f32>(1e-4));
++        let gdir = tx * radial.x + by * radial.y;
++        let ring = length(holo_l);
++        let path = 1500.0 * dot(h, gdir) + ring * 34.0 + 380.0 + 50.0 * lines;
++        var holo = mix(film(path), film(path * 1.31 + 200.0), 0.5);
++        holo = mix(vec3<f32>(dot(holo, vec3<f32>(0.333))), holo, 0.65);
++        let crest = 0.5 + 0.5 * cos(ring * 2.2);
++        let lit = 0.28 + 0.85 * env.g + spec.g * 0.6;
++        var hc = (0.7 * holo + 0.3 * vec3<f32>(0.85, 0.86, 0.88)) * lit * (0.85 + 0.25 * crest);
++        hc = hc * (1.0 - 0.45 * smoothstep(-0.8, 0.0, holo_d));
++        col = mix(col, hc, in_holo);
++    }
++
++    // The press: the card lifts toward the light a touch. The grain: fixed to the card.
++    col = col * (1.0 + 0.06 * press) * (1.0 + (nz.b - 0.5) * 0.035);
++    return encode(col);
+ }
+ 
+ @fragment
+ fn compose(in: Out) -> @location(0) vec4<f32> {
+     let s = u.canvas.z;
+     let p = in.pos.xy / s;
+-    // styles.container: #111.
+-    var c = vec3<f32>(17.0 / 255.0);
++    let k = in.card;
+     let size = u.card.xy;
+-    for (var k = 0u; k < 4u; k = k + 1u) {
+-        let look = u.look[k];
+-        if (look.x < 0.5) {
+-            continue;
+-        }
+-        let h = vec3<f32>(p, 1.0);
+-        let q = vec3<f32>(dot(u.inv[3u * k].xyz, h), dot(u.inv[3u * k + 1u].xyz, h), dot(u.inv[3u * k + 2u].xyz, h));
+-        let l = q.xy / q.z;
+-        let front = q.z > 0.0;
+-        // The clip, antialiased in screen space.
+-        let d = squircle(l - size * 0.5, size * 0.5, u.card.z);
+-        let fw = max(fwidth(d), 1e-4);
+-        var cover = clamp(0.5 - d / fw, 0.0, 1.0);
+-        if (!front) {
+-            cover = 0.0;
+-        }
+-        // The layer (Display P3, opaque).
+-        let luv = l * s / u.tex.xy;
+-        var content = textureSampleLevel(layers, smp, luv, i32(k), 0.0).rgb;
+-        // The engraved title (below the chip's band; the chip is in the layer).
+-        if (front && look.w > 0.0 && l.y >= u.card.w) {
++    let half = size * 0.5;
++    let look = u.look[k];
++    let h = vec3<f32>(p, 1.0);
++    let q = vec3<f32>(dot(u.inv[3u * k].xyz, h), dot(u.inv[3u * k + 1u].xyz, h), dot(u.inv[3u * k + 2u].xyz, h));
++    let l = q.xy / q.z;
++    // Plane points a screen pixel (taken before any branch on the pixel).
++    let dl = fwidth(l);
++    let aa = max(max(dl.x, dl.y), 1e-4);
++    if (q.z <= 0.0) {
++        return vec4<f32>(0.0);
++    }
++    let local = l - half;
++    // The clip, antialiased in screen space.
++    let d = squircle(local, half, u.card.z);
++    let cover = clamp(0.5 - d / aa, 0.0, 1.0);
++    var content = vec3<f32>(0.0);
++    if (cover > 0.0) {
++        content = face(l, k, aa, s);
++        // The engraved title (below the chip's band).
++        if (look.w > 0.0 && l.y >= u.card.w) {
+             let a = glyph(l, k, s);
+             if (a > 0.0) {
+-                // Toward the light (up left on the card) and away from it.
+                 let o = vec2<f32>(0.42, 0.42);
+                 let near = a * (1.0 - glyph(l - o, k, s));
+                 let far = a * (1.0 - glyph(l + o, k, s));
+                 let lum = dot(content, vec3<f32>(0.2126, 0.7152, 0.0722));
+-                // A matte floor: lighter on the dark titanium (k 0), darker on the light metals.
+                 var etched = content * 0.58;
+-                if (k == 0u) {
++                if (u.frame[3u * k].w > 2.5) {
+                     etched = vec3<f32>(0.30, 0.30, 0.31) + content * 0.25;
+                 }
+                 etched = etched * (1.0 - 0.45 * near) + vec3<f32>(0.22) * far * (0.4 + lum);
+                 content = mix(content, etched, a);
+             }
+         }
+-        // The shadow: ambient and contact, offset with the card's turn and tilt.
+-        var shade = 0.0;
+-        if (front) {
+-            let press = u.slot[k].w;
+-            let off = vec2<f32>(3.0, 12.0) + u.slot[k].yz;
+-            let ambient = soft(squircle(l - size * 0.5 - off * (1.0 + 0.6 * press), size * 0.5 - vec2<f32>(4.0), u.card.z), 18.0 + 8.0 * press);
+-            let contact = soft(squircle(l - size * 0.5 - vec2<f32>(0.0, 2.5) - off * 0.15, size * 0.5 - vec2<f32>(1.0), u.card.z), 3.0 + 2.0 * press);
+-            shade = (1.0 - (1.0 - 0.62 * ambient) * (1.0 - 0.38 * contact * (1.0 - 0.5 * press))) * (1.0 - cover);
+-        }
+-        let group_rgb = content * cover * (1.0 - shade);
+-        let group_a = shade + cover * (1.0 - shade);
+-        // The Animated.View's opacity over the flattened group.
+-        c = c * (1.0 - look.y * group_a) + look.y * group_rgb;
+     }
+-    var rgb = p3_to_srgb(c);
++    // The shadow: ambient and contact, offset with the card's turn, tilt and press; black.
++    var shade = 0.0;
++    if (cover < 1.0) {
++        let press = u.slot[k].w;
++        let off = vec2<f32>(3.0, 12.0) + u.slot[k].yz;
++        let ambient = soft(rrect(local - off * (1.0 + 0.6 * press), half - vec2<f32>(4.0), u.card.z), 18.0 + 8.0 * press);
++        let contact = soft(rrect(local - vec2<f32>(0.0, 2.5) - off * 0.15, half - vec2<f32>(1.0), u.card.z), 3.0 + 2.0 * press);
++        shade = (1.0 - (1.0 - 0.62 * ambient) * (1.0 - 0.38 * contact * (1.0 - 0.5 * press))) * (1.0 - cover);
++    }
++    // The group: the face over its shadow (premultiplied), then the Animated.View's opacity.
++    let group_a = shade + cover * (1.0 - shade);
++    let a = look.y * group_a;
++    if (a <= 0.0) {
++        return vec4<f32>(0.0);
++    }
++    // Unpremultiplied (the shadow is black), dithered one level, into the target's encoding.
++    let dither = fract(sin(dot(in.pos.xy, vec2<f32>(12.9898, 78.233))) * 43758.5453) - 0.5;
++    var rgb = p3_to_srgb(content * cover * (1.0 - shade) / group_a + vec3<f32>(dither / 255.0));
+     if (u.canvas.w > 0.5) { rgb = to_linear(rgb); }
+-    return vec4<f32>(rgb, 1.0);
++    return vec4<f32>(rgb * a, a);
+ }
+--- a/gpu/shaders/card_shader_reflections.wgsl
++++ /dev/null
+@@ -1,377 +0,0 @@
+-// Card Shader Reflections: one card's face, a physical metal card lit in a small studio (past
+-// RN's getCardShader, the owner's ask for premium cards: Apple Card titanium, Revolut Metal).
+-// One analytic pass per card into its own 8-bit layer at device pixels: `fragCoord` is the pixel's
+-// centre in the canvas's points (origin at styles.card's top-left, y down); the card itself is
+-// res − 32 (the Animated.View's padding 16 a side). The output is stored as the layer stores it
+-// (clamped, 8 bits) in Display P3's encoding, which the compose pass turns into sRGB.
+-//
+-// The card's orientation is the one the compose pass draws it with: the carousel's fixed 18°
+-// roll, the scroll's turn about y (−rotate) and the finger's tilt about x, so the lights stay in
+-// the room while the card moves under them:
+-// - brushed metal: Ward's anisotropic highlight from two point lights, stretched across the
+-//   brushing; the studio's softboxes reflected with an anisotropic blur; per-line normal jitter;
+-// - a 1.4 pt bevel on the continuous (squircle) outline: the Fresnel rim;
+-// - foil: a thin-film / diffraction hologram whose colours shift with the half vector;
+-// - an EMV chip (polished, its contacts engraved), an engraved contactless mark;
+-// - grain and dither per device pixel.
+-struct Uniforms {
+-    // rotate (radians, −π…π), cardType (0 Silver, 1 Gold, 2 Platinum, 3 Metal), points per
+-    // device pixel (the inverse of the canvas's density scale), the finger's tilt about x
+-    // (radians; 0 when the surface sends none).
+-    params: vec4<f32>,
+-    // resolution: [CARD_WIDTH, CARD_HEIGHT]; the press (0…1); unused.
+-    res: vec4<f32>,
+-};
+-
+-@group(0) @binding(0) var<uniform> u: Uniforms;
+-
+-struct Out {
+-    @builtin(position) pos: vec4<f32>,
+-};
+-
+-@vertex
+-fn vs(@builtin(vertex_index) i: u32) -> Out {
+-    let q = vec2<f32>(f32(i32(i & 1u) * 4 - 1), f32(i32(i >> 1u) * 4 - 1));
+-    var o: Out;
+-    o.pos = vec4<f32>(q, 0.0, 1.0);
+-    return o;
+-}
+-
+-const PI: f32 = 3.14159265359;
+-/// The carousel's roll (TILT_DEG) and perspective (the eye's distance, points).
+-const ROLL: f32 = 0.31415926536;
+-const EYE: f32 = 1200.0;
+-/// styles.card's radius (continuous here), the bevel's width.
+-const RADIUS: f32 = 20.0;
+-const BEVEL: f32 = 1.4;
+-/// The chip: styles.card padding 30, CARD_WIDTH × 0.15 by × 0.12.
+-const PAD: f32 = 30.0;
+-
+-// --- shape -----------------------------------------------------------------------------------
+-
+-/// A continuous-corner rounded rect's (near) signed distance: centre-relative `p`, half size
+-/// `b`, corner radius `r`. Core Animation's continuous corner leaves the straight edge 1.528 r
+-/// from the corner; a 3.26-norm over that run passes the circle's 45° point, which is the shape
+-/// to the eye.
+-fn squircle(p: vec2<f32>, b: vec2<f32>, r: f32) -> f32 {
+-    let e = min(r * 1.528, min(b.x, b.y));
+-    let q = abs(p) - b + vec2<f32>(e);
+-    let m = max(q, vec2<f32>(0.0));
+-    let n = 3.26;
+-    let corner = pow(pow(m.x, n) + pow(m.y, n), 1.0 / n);
+-    return corner + min(max(q.x, q.y), 0.0) - e;
+-}
+-
+-// --- noise -----------------------------------------------------------------------------------
+-
+-fn hash(p: vec2<f32>) -> f32 {
+-    var p3 = fract(vec3<f32>(p.x, p.y, p.x) * 0.1031);
+-    p3 = p3 + dot(p3, p3.yzx + 33.33);
+-    return fract((p3.x + p3.y) * p3.z);
+-}
+-
+-fn vnoise(p: vec2<f32>) -> f32 {
+-    let i = floor(p);
+-    var f = fract(p);
+-    f = f * f * (3.0 - 2.0 * f);
+-    let a = hash(i);
+-    let b = hash(i + vec2<f32>(1.0, 0.0));
+-    let c = hash(i + vec2<f32>(0.0, 1.0));
+-    let d = hash(i + vec2<f32>(1.0, 1.0));
+-    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+-}
+-
+-// --- orientation -----------------------------------------------------------------------------
+-
+-/// The card's frame on screen (x right, y down, z toward the eye): Rz(roll) · Ry(turn) · Rx(tilt).
+-fn orient(v: vec3<f32>, turn: f32, tilt: f32) -> vec3<f32> {
+-    let cx = cos(tilt);
+-    let sx = sin(tilt);
+-    let a = vec3<f32>(v.x, v.y * cx - v.z * sx, v.y * sx + v.z * cx);
+-    let cy = cos(turn);
+-    let sy = sin(turn);
+-    let b = vec3<f32>(a.x * cy + a.z * sy, a.y, -a.x * sy + a.z * cy);
+-    let cz = cos(ROLL);
+-    let sz = sin(ROLL);
+-    return vec3<f32>(b.x * cz - b.y * sz, b.x * sz + b.y * cz, b.z);
+-}
+-
+-// --- materials -------------------------------------------------------------------------------
+-
+-struct Material {
+-    f0: vec3<f32>,
+-    diffuse: vec3<f32>,
+-    // Ward's roughness along the brushing (x) and across it (y).
+-    alpha: vec2<f32>,
+-    // How strongly the brushing lines move the normal.
+-    brush: f32,
+-    // The pearl film over the whole face (Platinum).
+-    pearl: f32,
+-};
+-
+-fn material(t: f32) -> Material {
+-    // Silver: brushed aluminium.
+-    if (t < 0.5) {
+-        return Material(vec3<f32>(0.62, 0.63, 0.65), vec3<f32>(0.07, 0.07, 0.075), vec2<f32>(0.07, 0.34), 1.0, 0.0);
+-    }
+-    // Gold: anodised champagne gold.
+-    if (t < 1.5) {
+-        return Material(vec3<f32>(0.86, 0.64, 0.36), vec3<f32>(0.07, 0.045, 0.02), vec2<f32>(0.08, 0.30), 0.8, 0.0);
+-    }
+-    // Platinum: finely brushed, a pearl film on it.
+-    if (t < 2.5) {
+-        return Material(vec3<f32>(0.66, 0.65, 0.64), vec3<f32>(0.09, 0.088, 0.086), vec2<f32>(0.06, 0.18), 0.45, 0.10);
+-    }
+-    // Metal: dark titanium, bead-blasted then brushed.
+-    return Material(vec3<f32>(0.15, 0.15, 0.162), vec3<f32>(0.010, 0.010, 0.012), vec2<f32>(0.09, 0.30), 1.0, 0.0);
+-}
+-
+-// --- the studio ------------------------------------------------------------------------------
+-
+-/// A soft strip in the reflection's plane: `q` the reflected direction projected (x/z, y/z),
+-/// `c` a point on its axis, `n` its normal, `hw` its half width, `len` its half length. The
+-/// edges are blurred by the brushing: `t2` / `b2` the brushing's axes in that plane, `sig` the
+-/// blur along each.
+-fn strip(q: vec2<f32>, c: vec2<f32>, n: vec2<f32>, hw: f32, len: f32, t2: vec2<f32>, b2: vec2<f32>, sig: vec2<f32>) -> f32 {
+-    let d = q - c;
+-    let across = abs(dot(d, n)) - hw;
+-    let along_dir = vec2<f32>(-n.y, n.x);
+-    let along = abs(dot(d, along_dir)) - len;
+-    let w1 = length(vec2<f32>(dot(n, t2) * sig.x, dot(n, b2) * sig.y)) + 0.004;
+-    let w2 = length(vec2<f32>(dot(along_dir, t2) * sig.x, dot(along_dir, b2) * sig.y)) + 0.05;
+-    return (1.0 - smoothstep(-w1, w1, across)) * (1.0 - smoothstep(-w2, w2, along));
+-}
+-
+-/// The studio seen in direction `r`: a dark room, a bright floor-to-ceiling gradient behind the
+-/// camera, a long diagonal softbox high left and a broad fill low right.
+-fn studio(r: vec3<f32>, t2: vec2<f32>, b2: vec2<f32>, sig: vec2<f32>) -> vec3<f32> {
+-    // Behind the card (grazing reflections): the dark room.
+-    let z = max(r.z, 0.06);
+-    let q = r.xy / z;
+-    let toward = smoothstep(-0.05, 0.35, r.z);
+-    // Brighter from above (y up the screen is −y).
+-    let sky = mix(0.035, 0.16, smoothstep(0.9, -0.9, q.y)) * (0.75 + 0.25 * smoothstep(1.2, 0.0, abs(q.x)));
+-    var c = vec3<f32>(sky) * vec3<f32>(0.98, 0.99, 1.02);
+-    // The key softbox: a long diagonal strip high left.
+-    let n1 = normalize(vec2<f32>(0.95, -0.30));
+-    c += vec3<f32>(1.9, 1.87, 1.80) * strip(q, vec2<f32>(-0.075, -0.10), n1, 0.032, 0.55, t2, b2, sig);
+-    // The room's other lights, which the sheen sweeps across as the card turns.
+-    c += vec3<f32>(1.15, 1.14, 1.12) * strip(q, vec2<f32>(0.48, -0.1), n1, 0.05, 0.9, t2, b2, sig);
+-    c += vec3<f32>(0.95, 0.96, 1.0) * strip(q, vec2<f32>(-0.52, -0.1), n1, 0.045, 0.9, t2, b2, sig);
+-    c += vec3<f32>(1.1) * strip(q, vec2<f32>(1.12, 0.2), n1, 0.10, 1.4, t2, b2, sig * 1.5);
+-    c += vec3<f32>(0.95) * strip(q, vec2<f32>(-1.15, -0.3), n1, 0.10, 1.4, t2, b2, sig * 1.5);
+-    c += vec3<f32>(0.7) * strip(q, vec2<f32>(2.3, 0.6), n1, 0.35, 2.5, t2, b2, sig * 3.0);
+-    c += vec3<f32>(0.6) * strip(q, vec2<f32>(-2.4, -0.6), n1, 0.35, 2.5, t2, b2, sig * 3.0);
+-    // The fill: broad, low right, cool.
+-    let n2 = normalize(vec2<f32>(0.85, -0.52));
+-    c += vec3<f32>(0.42, 0.46, 0.52) * strip(q, vec2<f32>(0.55, 0.45), n2, 0.22, 0.6, t2, b2, sig * 2.0);
+-    return mix(vec3<f32>(0.03), c, toward);
+-}
+-
+-/// Ward's anisotropic highlight from a point light at `lp` (screen points, from the card's
+-/// centre), times N·L.
+-fn ward(pos: vec3<f32>, v: vec3<f32>, n: vec3<f32>, t: vec3<f32>, b: vec3<f32>, lp: vec3<f32>, alpha: vec2<f32>) -> f32 {
+-    let l = normalize(lp - pos);
+-    let nl = dot(n, l);
+-    let nv = dot(n, v);
+-    if (nl <= 0.0 || nv <= 0.0) {
+-        return 0.0;
+-    }
+-    let h = normalize(l + v);
+-    let ht = dot(h, t) / alpha.x;
+-    let hb = dot(h, b) / alpha.y;
+-    let hn = dot(h, n);
+-    let e = exp(-(ht * ht + hb * hb) / (hn * hn));
+-    return e / (4.0 * PI * alpha.x * alpha.y * sqrt(nl * nv)) * nl;
+-}
+-
+-/// Thin-film interference: the film's reflectance at three wavelengths (650, 532, 450 nm) for an
+-/// optical path `path` (nm), soft enough to read as foil rather than as a rainbow.
+-fn film(path: f32) -> vec3<f32> {
+-    let w = vec3<f32>(650.0, 532.0, 450.0);
+-    return 0.5 + 0.5 * cos(2.0 * PI * path / w);
+-}
+-
+-/// Schlick's Fresnel for a conductor's tint `f0`.
+-fn fresnel(f0: vec3<f32>, cos_t: f32) -> vec3<f32> {
+-    return f0 + (vec3<f32>(1.0) - f0) * pow(1.0 - clamp(cos_t, 0.0, 1.0), 5.0);
+-}
+-
+-/// Linear light to the layer's 8-bit encoding (sRGB's curve: Display P3's), with a soft
+-/// shoulder so the highlights roll off instead of clipping flat.
+-fn encode(c0: vec3<f32>) -> vec3<f32> {
+-    let knee = 0.72;
+-    let over = max(c0 - vec3<f32>(knee), vec3<f32>(0.0));
+-    let c = min(c0, vec3<f32>(knee)) + (1.0 - knee) * (vec3<f32>(1.0) - exp(-over / (1.0 - knee)));
+-    let x = clamp(c, vec3<f32>(0.0), vec3<f32>(1.0));
+-    return select(1.055 * pow(x, vec3<f32>(1.0 / 2.4)) - 0.055, x * 12.92, x <= vec3<f32>(0.0031308));
+-}
+-
+-/// An antialiased band of half width `hw` around 0 (distance `d`, `aa` points a pixel).
+-fn line(d: f32, hw: f32, aa: f32) -> f32 {
+-    return 1.0 - smoothstep(hw - aa * 0.5, hw + aa * 0.5, abs(d));
+-}
+-
+-@fragment
+-fn fs(in: Out) -> @location(0) vec4<f32> {
+-    let aa = u.params.z;
+-    let p = in.pos.xy * aa;
+-    let size = u.res.xy - vec2<f32>(32.0);
+-    let t = u.params.y;
+-    let turn = -u.params.x;
+-    let tilt = u.params.w;
+-    let press = clamp(u.res.z, 0.0, 1.0);
+-    var m = material(t);
+-
+-    // The frame, the point on the card, the eye.
+-    let tx = orient(vec3<f32>(1.0, 0.0, 0.0), turn, tilt);
+-    let by = orient(vec3<f32>(0.0, 1.0, 0.0), turn, tilt);
+-    var n = orient(vec3<f32>(0.0, 0.0, 1.0), turn, tilt);
+-    let local = p - size * 0.5;
+-    let pos = tx * local.x + by * local.y;
+-    let v = normalize(vec3<f32>(0.0, 0.0, EYE) - pos);
+-    // Past 90° the back shows (Core Animation mirrors the layer): lit as a face all the same.
+-    if (dot(n, v) < 0.0) {
+-        n = -n;
+-    }
+-
+-    // The brushing: lines along x, a few per device pixel across, long and wavering along.
+-    let dev = in.pos.xy;
+-    let lines = vnoise(vec2<f32>(dev.x * 0.004, dev.y * 1.3)) * 0.5
+-        + vnoise(vec2<f32>(dev.x * 0.010, dev.y * 0.45)) * 0.2
+-        + vnoise(local * vec2<f32>(0.015, 0.35)) * 0.1 + 0.1;
+-    // The bead-blast under it: a fine isotropic tooth.
+-    let tooth = vnoise(dev * 0.7) - 0.5;
+-    var nn = normalize(n + by * (lines - 0.5) * 0.035 * m.brush + (tx + by) * tooth * 0.012);
+-
+-    // --- regions: chip, contactless mark, hologram, bevel ------------------------------------
+-    let chip_o = vec2<f32>(PAD, PAD);
+-    let chip_s = vec2<f32>(u.res.x * 0.15, u.res.x * 0.12);
+-    let chip_l = p - chip_o;
+-    let chip_d = squircle(chip_l - chip_s * 0.5, chip_s * 0.5, 5.0);
+-    let in_chip = 1.0 - smoothstep(-aa * 0.5, aa * 0.5, chip_d);
+-
+-    let holo_s = vec2<f32>(34.0, 24.0);
+-    let holo_c = vec2<f32>(size.x - PAD - holo_s.x * 0.5, size.y - PAD - holo_s.y * 0.5 + 4.0);
+-    let holo_l = p - holo_c;
+-    let holo_d = squircle(holo_l, holo_s * 0.5, 6.0);
+-    let in_holo = 1.0 - smoothstep(-aa * 0.5, aa * 0.5, holo_d);
+-
+-    // The bevel: the outline's normal tips outward over its last 1.4 pt.
+-    let card_d = squircle(local, size * 0.5, RADIUS);
+-    let bevel = smoothstep(-BEVEL, 0.0, card_d);
+-    if (bevel > 0.0) {
+-        let e = 0.25;
+-        let g = normalize(vec2<f32>(
+-            squircle(local + vec2<f32>(e, 0.0), size * 0.5, RADIUS) - squircle(local - vec2<f32>(e, 0.0), size * 0.5, RADIUS),
+-            squircle(local + vec2<f32>(0.0, e), size * 0.5, RADIUS) - squircle(local - vec2<f32>(0.0, e), size * 0.5, RADIUS)
+-        ) + vec2<f32>(1e-6));
+-        nn = normalize(nn + (tx * g.x + by * g.y) * bevel * bevel * 1.6);
+-    }
+-
+-    // The chip: polished, softly anisotropic, gold (palladium on the light cards).
+-    var chip_f0 = vec3<f32>(0.98, 0.76, 0.40);
+-    if (t < 0.5 || (t > 1.5 && t < 2.5)) {
+-        chip_f0 = vec3<f32>(0.86, 0.85, 0.82);
+-    }
+-    var groove = 0.0;
+-    if (in_chip > 0.0) {
+-        let cu = chip_l / chip_s;
+-        let gw = 0.32;
+-        // Two verticals, the side pads' rows, the centre pad's waist.
+-        var g = line(chip_l.x - chip_s.x * 0.34, gw, aa) + line(chip_l.x - chip_s.x * 0.66, gw, aa);
+-        let side = step(cu.x, 0.34) + step(0.66, cu.x);
+-        g += side * (line(chip_l.y - chip_s.y / 3.0, gw, aa) + line(chip_l.y - chip_s.y * 2.0 / 3.0, gw, aa));
+-        // The centre pad's rounded island.
+-        let island = squircle(chip_l - chip_s * 0.5, vec2<f32>(chip_s.x * 0.16, chip_s.y * 0.30), 3.0);
+-        g += line(island, gw, aa);
+-        groove = clamp(g, 0.0, 1.0);
+-        // The chip's own rim and a flatter, finer surface.
+-        let chip_rim = smoothstep(-0.9, 0.0, chip_d);
+-        let chip_n = normalize(n + (tx + by) * tooth * 0.004);
+-        nn = normalize(mix(nn, chip_n, in_chip) + (tx * -0.35 + by * -0.35) * chip_rim * in_chip);
+-    }
+-
+-    // --- light -------------------------------------------------------------------------------
+-    // The brushing's axes in the reflection's plane, and the blur along each.
+-    let t2 = normalize(tx.xy + vec2<f32>(1e-5));
+-    let b2 = normalize(by.xy + vec2<f32>(1e-5));
+-    var alpha = m.alpha;
+-    alpha = mix(alpha, vec2<f32>(0.05, 0.07), in_chip);
+-    let sig = vec2<f32>(alpha.x * 0.35, alpha.y * 0.30);
+-
+-    let r = reflect(-v, nn);
+-    let env = studio(r, t2, b2, sig);
+-    let key = vec3<f32>(-200.0, -320.0, 900.0);
+-    let fill = vec3<f32>(420.0, 420.0, 520.0);
+-    let spec = vec3<f32>(1.0, 0.98, 0.95) * ward(pos, v, nn, tx, by, key, alpha) * 0.55
+-        + vec3<f32>(0.70, 0.78, 0.90) * ward(pos, v, nn, tx, by, fill, alpha) * 0.18;
+-
+-    let nv = max(dot(nn, v), 0.0);
+-    var f0 = mix(m.f0, chip_f0, in_chip);
+-    // The brushing's lines change the reflectance a little: the visible grain of the metal.
+-    f0 = f0 * (0.955 + 0.09 * lines);
+-    let f = fresnel(f0, nv);
+-    let ln = normalize(key - pos);
+-    let lambert = max(dot(nn, ln), 0.0);
+-    var col = f * (env + spec) + mix(m.diffuse, vec3<f32>(0.02), in_chip) * (0.35 + 0.65 * lambert);
+-
+-    // Pearl (Platinum): a faint film over the face, its colour turning with the eye.
+-    if (m.pearl > 0.0) {
+-        let thick = 480.0 + 220.0 * (p.x + 0.6 * p.y) / (size.x + size.y);
+-        let tint = film(2.0 * 1.38 * thick * sqrt(1.0 - (1.0 - nv * nv) / (1.38 * 1.38)));
+-        col = col * mix(vec3<f32>(1.0), 0.75 + 0.5 * tint, m.pearl * (1.0 - in_chip));
+-    }
+-
+-    // The chip's engraved contacts: dark, a hairline of light on their far wall.
+-    col = mix(col, col * 0.28 + vec3<f32>(0.004), groove * in_chip);
+-
+-    // The contactless mark beside the chip: four arcs, laser-engraved.
+-    let cl_c = vec2<f32>(chip_o.x + chip_s.x + 8.0, chip_o.y + chip_s.y * 0.5);
+-    let cl = p - cl_c;
+-    let ang = atan2(cl.y, cl.x);
+-    let rad = length(cl);
+-    var arcs = 0.0;
+-    for (var i = 0; i < 4; i = i + 1) {
+-        let ri = 3.4 + 3.4 * f32(i);
+-        arcs = max(arcs, line(rad - ri, 0.62, aa) * (1.0 - smoothstep(0.62 - aa / max(ri, 1.0), 0.62 + aa / max(ri, 1.0), abs(ang))));
+-    }
+-    // Laser engraving: lighter and matte on the dark card, darker on the light ones.
+-    var etch = col * 0.55;
+-    if (t > 2.5) {
+-        etch = vec3<f32>(0.11, 0.11, 0.115) + col * 0.3;
+-    }
+-    col = mix(col, etch, arcs);
+-
+-    // The hologram: a diffraction foil of concentric rings; its colours follow the half vector.
+-    if (in_holo > 0.0) {
+-        let h = normalize(normalize(key - pos) + v);
+-        let radial = normalize(holo_l + vec2<f32>(1e-4));
+-        let gdir = tx * radial.x + by * radial.y;
+-        let ring = length(holo_l);
+-        let path = 1500.0 * dot(h, gdir) + ring * 34.0 + 380.0 + 50.0 * vnoise(holo_l * 0.6);
+-        let foil = film(path);
+-        let foil2 = film(path * 1.31 + 200.0);
+-        var holo = mix(foil, foil2, 0.5);
+-        holo = mix(vec3<f32>(dot(holo, vec3<f32>(0.333))), holo, 0.65);
+-        // A fine guilloché of rings in it, embossed: each ring's crest catches the light.
+-        let crest = 0.5 + 0.5 * cos(ring * 2.2);
+-        let lit = 0.28 + 0.85 * env.g + spec.g * 0.6;
+-        var hc = (0.7 * holo + 0.3 * vec3<f32>(0.85, 0.86, 0.88)) * lit * (0.85 + 0.25 * crest);
+-        // Its edge: a hairline of shadow.
+-        let edge = smoothstep(-0.8, 0.0, holo_d);
+-        hc = hc * (1.0 - 0.45 * edge);
+-        col = mix(col, hc, in_holo);
+-    }
+-
+-    // The press: the card lifts toward the light a touch.
+-    col = col * (1.0 + 0.06 * press);
+-
+-    // Grain and dither: per device pixel, so it never swims.
+-    let grain = hash(dev + vec2<f32>(t * 37.0, 11.0)) - 0.5;
+-    col = col * (1.0 + grain * 0.035);
+-    var o = encode(col);
+-    o = o + (hash(dev * 1.37 + 3.1) - 0.5) / 255.0;
+-    // The 8-bit layer clamps and rounds it on store.
+-    return vec4<f32>(o, 1.0);
+-}
