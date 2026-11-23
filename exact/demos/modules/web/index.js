@@ -256,6 +256,99 @@ if (DOM) {
   };
 }
 
+// ---- A transform drag works in the scaled desktop frame ---------------------------------------------------------
+// The host's transform drag (`transformDragFor`: expandable-mini-player's sheet, the toasts, the bottom sheets) admits
+// a target only on an untransformed path (motion-glue.js `transformSnapshot`: every ancestor's scale 1, the target's
+// box centred on its clip's by its translate in client pixels). The desktop frame scales the screen to the window
+// (web-phone.contract, `scale=s`), so on a desktop no transform drag ever began: the sheet ignored a mouse. The drag
+// is the screen's points, as on the iPhone: for the drag's target and clip, getBoundingClientRect answers in the
+// unscaled screen (anchored at the display's corner), a pointer event on a handle carries its point mapped the same
+// way, and the frame's own scale reads 1. The finger and the sheet move together; a phone browser (no frame) is
+// untouched.
+if (DOM) {
+  let dirty = true, frames = new Set(), boxes = new Set();
+  const refresh = () => {
+    if (!dirty) return;
+    dirty = false;
+    frames = new Set([...document.querySelectorAll('[data-testid="web-device"]')].map((d) => d.parentElement));
+    boxes = new Set();
+    for (const h of document.querySelectorAll('[data-transformdragfor]')) {
+      const t = document.getElementById(h.getAttribute('data-transformdragfor'));
+      if (t) { boxes.add(t); if (t.parentElement) boxes.add(t.parentElement); }
+    }
+  };
+  new MutationObserver(() => { dirty = true; }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-transformdragfor', 'id', 'data-testid'] });
+  const rect = Element.prototype.getBoundingClientRect;
+  // The corner and scale of the display holding `el`, or null when it is not scaled.
+  const mapping = (el) => {
+    const device = el.closest('[data-testid="web-device"]');
+    if (!device || !(device.offsetWidth > 0)) return null;
+    const r = rect.call(device), s = r.width / device.offsetWidth;
+    return Math.abs(s - 1) < 1e-6 ? null : { x: r.left, y: r.top, s };
+  };
+  Element.prototype.getBoundingClientRect = function () {
+    const r = rect.call(this);
+    if (dirty) refresh();
+    if (!boxes.has(this)) return r;
+    const m = mapping(this);
+    return m ? new DOMRect(m.x + (r.left - m.x) / m.s, m.y + (r.top - m.y) / m.s, r.width / m.s, r.height / m.s) : r;
+  };
+  const computed = window.getComputedStyle;
+  window.getComputedStyle = function (el, pseudo) {
+    const cs = computed.call(this, el, pseudo);
+    if (dirty) refresh();
+    if (pseudo || !frames.has(el)) return cs;
+    return new Proxy(cs, {
+      get(t, p) {
+        if (p === 'scale') return 'none';
+        const v = Reflect.get(t, p, t);
+        return typeof v === 'function' ? (p === 'getPropertyValue' ? (n) => (n === 'scale' ? 'none' : t.getPropertyValue(n)) : v.bind(t)) : v;
+      },
+    });
+  };
+  const POINTER = /^(pointer|lostpointercapture|gotpointercapture)/;
+  const add = EventTarget.prototype.addEventListener, remove = EventTarget.prototype.removeEventListener;
+  const wraps = new WeakMap();
+  const wrap = (fn) => {
+    let w = wraps.get(fn);
+    if (w) return w;
+    w = function (event) {
+      const handle = typeof fn === 'function' ? (ev) => fn.call(this, ev) : (ev) => fn.handleEvent(ev);
+      const m = typeof event.clientX === 'number' ? mapping(this) : null;
+      if (!m) return handle(event);
+      const x = m.x + (event.clientX - m.x) / m.s, y = m.y + (event.clientY - m.y) / m.s;
+      return handle(new Proxy(event, {
+        get(t, p) {
+          if (p === 'clientX' || p === 'x' || p === 'pageX') return x;
+          if (p === 'clientY' || p === 'y' || p === 'pageY') return y;
+          const v = Reflect.get(t, p, t);
+          return typeof v === 'function' ? v.bind(t) : v;
+        },
+      }));
+    };
+    wraps.set(fn, w);
+    return w;
+  };
+  // A mouse that dragged a handle still clicks it (the pointer is captured, so the press and the release land on the
+  // same node), and the handle's own press ran: the mini player's sheet, dragged down past the middle, closed and at
+  // once reopened on its `press=expand`. A finger's drag makes no click, nor does a pan on the iPhone: a click after
+  // the mouse travelled past the slop (10 pt) on a handle is dropped before any listener hears it.
+  let down = null;
+  add.call(window, 'pointerdown', (e) => { down = e.pointerType === 'mouse' ? [e.clientX, e.clientY] : null; }, true);
+  add.call(window, 'click', (e) => {
+    const from = down;
+    down = null;
+    if (!from || !(e.target instanceof Element) || !e.target.closest('[data-transformdragfor]')) return;
+    if (Math.hypot(e.clientX - from[0], e.clientY - from[1]) > 10) { e.preventDefault(); e.stopImmediatePropagation(); }
+  }, true);
+  const wrapped = (target, type, fn) => fn && target instanceof Element && POINTER.test(type) && target.hasAttribute('data-transformdragfor');
+  EventTarget.prototype.addEventListener = function (type, fn, options) { return add.call(this, type, wrapped(this, type, fn) ? wrap(fn) : fn, options); };
+  EventTarget.prototype.removeEventListener = function (type, fn, options) {
+    if (wrapped(this, type, fn) && wraps.has(fn)) remove.call(this, type, wraps.get(fn), options);
+    return remove.call(this, type, fn, options);
+  };
+}
+
 // ---- A touch screen has no hover --------------------------------------------------------------------------------
 // The web host washes any pressable a mouse is over (`--exact-hover-wash`, the bordered / gray buttons' quaternary
 // fill): a grey square stayed behind a demo's button wherever the pointer rested on the desktop frame (sculptures-in-
