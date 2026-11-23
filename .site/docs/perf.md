@@ -70,3 +70,23 @@ Note: runs on battery (low power) cap headless Chrome at 30 fps (every frame "ja
 0 frames over 20 ms during the scroll on every local route and width (live `/demos` at 390: 90/91); CLS 0 (0.001 once
 on a 4g 404 sample, under the 0.001 noise floor in perf.ts). Header stillness over in-app navigations: 0 px changed
 (`tools/parity/nav.ts`, `/` ↔ `/demos`, 1440 and 390, live also 0).
+
+## 2026-11-23, Inter's ASCII as a preloaded file (D7 amended again)
+
+The 41 KB base64 subset inlined in every page's head script (≈45 KB gzip on every page, articles included) is now
+`/assets/fonts/InterAscii.woff2?v=<hash>` (43 KB, `tnum` kept for tabular dates), preloaded by a head link
+(`crossorigin`), cached for good (`compose.ts`: `/assets/fonts/` immutable; the URL carries the content hash), with
+`font-display: block`. With `swap` the font arrived (~440 ms at 4g) after the first paint and its swap repainted only
+once app.js had run (~780 ms: a second, 4 % larger LCP candidate). With `block` the text's first paint is already Inter, at
+the font's arrival. Median of 3, machine load 13-15, AC power:
+
+| route | width | profile | live FCP / LCP | before (inlined): KB, FCP, LCP | after: KB, FCP, LCP, TBT, CLS |
+|---|---|---|---|---|---|
+| `/` | 1440 | cable | 184 / 1380 | 213, 52, 1208 | 193, 52, 1220, 0, 0 |
+| `/` | 1440 | 4g | 624 / 1824 | 213, 304, 1480 | 193, 328, 1512, 10, 0 |
+| `/` | 390 | 4g | 560 / 1756 | 213, 312, 1500 | 193, 320, 1508, 11, 0 |
+| 404 | 1440 | 4g | 532 / 532 | 213, 332, 276 | 192, 348, 484, 12, 0 |
+| 404 | 390 | 4g | 568 (earlier run) / 3540 (this run) | 213, 336, 768 (failed) | 192, 348, 472, 9, 0 |
+
+All pass; the 404 at 390 4g LCP is fixed (the open "second candidate"). A first visit pays one request more; every later page
+reads the font from the cache (it was re-downloaded inside each page's HTML before). Pixels: `/` 0.03 / 0.28 %, 404 0.03 / 0.28 %.

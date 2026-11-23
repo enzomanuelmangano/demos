@@ -3,11 +3,12 @@
    and hooked to the page by the app's declared data-* words (app.json "data"): docs/decisions.md D7, D11. */
 
 /* Faces: the reference's WOFF2 files, font-display: swap (D7). */
-/* Inter in two faces by unicode-range: printable ASCII inlined in the page (a 41 KB subset of the same variable
-   file, tools/head.ts writes it as a data: URL), so the first paint is already in Inter (no swap, no second largest
-   paint); the rest of the reference's file (accents, punctuation, arrows) is fetched only by a page that uses one. */
+/* Inter in two faces by unicode-range: printable ASCII (a 43 KB subset of the same variable file, with tnum kept for
+   tabular dates) preloaded by the head (tools/head.ts writes the link, the URL versioned by the file's hash, cached
+   for good), so the first paint is in Inter on a cold load as on a warm one; the rest of the reference's file
+   (accents, punctuation, arrows) is fetched only by a page that uses one. */
 @font-face{font-family:Inter;src:url(/assets/fonts/InterVariable.woff2) format('woff2');font-weight:100 900;font-style:normal;font-display:swap;unicode-range:U+A0-AC,U+AE-148,U+14A-17F,U+3B1,U+3B8,U+2000-200B,U+2010-2027,U+202F-2055,U+2057,U+205F,U+20AC,U+2122,U+2190-2199,U+21A9-21AA,U+21B0-21B1,U+21B3-21B5,U+21BA-21BB,U+21D0,U+21D2,U+21D4,U+21DE-21DF,U+21E4-21E5,U+21E7,U+21EA,U+2212,U+25B2,U+26A0}
-@font-face{font-family:Inter;src:url(@inline:assets/fonts/InterAscii.woff2) format('woff2');font-weight:100 900;font-style:normal;font-display:swap;unicode-range:U+20-7E}
+@font-face{font-family:Inter;src:url(@hashed:assets/fonts/InterAscii.woff2) format('woff2');font-weight:100 900;font-style:normal;font-display:block;unicode-range:U+20-7E}
 @font-face{font-family:'Source Code Pro';src:url(/assets/fonts/SourceCodePro_400Regular.woff2) format('woff2');font-weight:400;font-style:normal;font-display:swap}
 /* next/font's metric-matched fallbacks: text set in Arial before Inter arrives takes Inter's size, so the swap
    neither reflows the page nor makes a new largest paint. */

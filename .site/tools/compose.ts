@@ -113,6 +113,8 @@ for (const [base, r] of [['/', siteRoutes], [BASE, demosRoutes]] as const) {
   const names = Object.values(r.files as Record<string, string>).filter((n) => n !== 'app.plan');
   if (names.length) routes.push({ src: `^${esc(base)}(?:${names.map(esc).join('|')})$`, headers: immutable, continue: true });
 }
+// The site's fonts: their URLs carry a content hash (?v=, tools/head.ts), so they may be cached for good.
+routes.push({ src: '^/assets/fonts/.*$', headers: immutable, continue: true });
 // A build's generation prefix (/.exact/gen/<id>/…) names the files of that build.
 routes.push({ src: `^${esc(MOUNT)}/\\.exact/gen/[0-9a-f]+/(.*)$`, dest: `${BASE}$1` });
 routes.push({ src: '^/\\.exact/gen/[0-9a-f]+/(.*)$', dest: '/$1' });
