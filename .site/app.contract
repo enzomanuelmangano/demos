@@ -60,15 +60,21 @@ component App
   // reserves the avatar's place before the session is known (docs/storage.md).
   state signedHint = false persist
   resource config = siteConfig() as shape SiteConfig
-  resource me = userInfo(accessToken) as shape Me
+  // A token the API rejects (401) is dropped for this page only: the reader is shown signed out, as the reference's
+  // user query does on its error, but the stored token stays (the reference never removes @AccessStorage on a 401;
+  // only a sign-out does: docs/storage.md). The next visit asks again, as the reference's does.
+  state dropped = ""
+  derive session = accessToken != dropped ? accessToken : ""
+  resource me = userInfo(session) as shape Me
   derive accounts = config.accounts
-  derive meLoading = accounts and accessToken != "" and not current(me)
+  derive meLoading = accounts and session != "" and not current(me)
   derive tokenInUrl = searchParam(top(nav), "accessToken")
   derive utmInUrl = searchParam(top(nav), "utm_source")
   task takeToken when tokenInUrl != ""
     after(1, keepToken)
   action keepToken
     accessToken = tokenInUrl
+    dropped = ""
     nav = replace(nav, path("profile"))
   task takeUtm when utmInUrl != "" and utmInUrl != utmSource
     after(1, keepUtm)
@@ -79,9 +85,11 @@ component App
   action keepHint
     signedHint = me.signedIn
   task forgetRejected when me.rejected
-    after(1, signOut)
+    after(1, dropSession)
+  action dropSession
+    dropped = accessToken
   // /profile signed out (or once the session is known to be none): /demos, with the reference's toast.
-  task leaveProfile when (top(nav).name == "profile" or top(nav).name == "manageSubscription") and tokenInUrl == "" and not meLoading and not me.signedIn and (current(me) or accessToken == "")
+  task leaveProfile when (top(nav).name == "profile" or top(nav).name == "manageSubscription") and tokenInUrl == "" and not meLoading and not me.signedIn and (current(me) or session == "")
     after(1, toDemos)
   action toDemos
     nav = replace(nav, "/demos")
@@ -114,7 +122,7 @@ component App
   action openCancel
     showModal("cancel-subscription")
   action confirmCancel
-    send cancelled = cancelSubscription(accessToken)
+    send cancelled = cancelSubscription(session)
   action cancelDone
     if match cancelled { case some(r) => r.ok, case none => false }
       close("cancel-subscription")
@@ -128,7 +136,7 @@ component App
     showModal("feedback")
   action sendFeedback(text: string, anonymous: bool)
     feedbackSending = true
-    send feedback = sendFeedback(accessToken, text, anonymous, "")
+    send feedback = sendFeedback(session, text, anonymous, "")
   action feedbackSent
     feedbackSending = false
     match feedback
