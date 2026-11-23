@@ -274,3 +274,20 @@ their canvas is masked to the 26 px between the subtitle and the pill and kept o
 inside the text's box. Screens after this fix: `/tmp/demos-variants/A2@<w>x<h>.png`.
 
 Cost: the CTA and hint are a few plan nodes (app.js +~1 KB) and ~2.5 KB of head CSS; perf.md 2026-11-23 (D16).
+
+### D16, revised the same day (owner: "I don't like the Get the app button"; "everything is a bit too cramped")
+
+- **No "Get the app".** Removed on every width; the live pill is back exactly ("Demos is Open Source | ★ 3,248", its
+  icon, 36 px, hover, the spinning count, "Source code" under 640 px), the only control under the subtitle. The hint
+  stays below it: with the pill alone it reads as the pill's caption about the device, not as an orphan.
+- **Air, still inside the header's container** (both edges kept on the logo and Sign In). The gap between the copy and
+  the device is `clamp(64px, 6.67vw, 112px)` (1280: 85, 1440: 96, 1728+: 112); the device is
+  `min((720px - gap) * 48 %, 80 % of the height under the header, 332 px)` wide (1440x900: 300 x 632, 78 % of the
+  height), so copy and device have about equal widths; the title and the subtitle size to the copy column
+  (title `min(104px, column / 3.1)`, subtitle `min(18px, column / 20.2)`: 18 px at 1024-1280, 16 px at 1440,
+  15.7 px from 1728); rhythm title → subtitle ~34 px, subtitle → pill 40, pill → hint 28. Measured: the subtitle's
+  second line ends 97-112 px before the device at every width from 1024 to 1920. A wider hero container was not
+  needed. Screens: `/tmp/demos-variants/A4@{1280x720,1440x900,1728x960,1920x1080,390x844}.png`.
+- **Focus ring after a click.** A link that opens a new tab kept the focus; back on the tab the browser could draw the
+  keyboard ring on the pill. `web/reveal.js` drops the focus of such a link after a pointer click (`detail > 0`);
+  keyboard activation keeps it (and its ring).
