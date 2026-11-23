@@ -1,7 +1,10 @@
 #!/usr/bin/env bun
 // The reference's Next API on localhost, as the site's local backend (docs/local-env.md, decisions.md D15).
 //
-//   bun tools/local-env/api.ts [--port 3000] [--site-port 4314] [--telegram]
+//   bun tools/local-env/api.ts [--port 3000] [--site-port 4314] [--telegram] [--prod]
+//
+// --prod runs `next build` then `next start` instead of `next dev`: the reference exactly as deployed (its pages too),
+// which tools/local-env/storage-continuity.ts serves as "the old site" behind tools/local-env/switch.ts.
 //
 // It runs from a COPY of the reference (`git archive HEAD`, never a worktree: the reference clone is read-only) at
 // REACTIIVE_API_DIR (default <reactiive>/reactiive-api-local), made on first use. The env file's values go to the Next
@@ -22,6 +25,7 @@ const arg = (name: string, fallback: string) => { const i = process.argv.indexOf
 const port = arg('--port', '3000');
 const sitePort = arg('--site-port', process.env.SITE_PORT ?? '4314');
 const telegram = process.argv.includes('--telegram');
+const prod = process.argv.includes('--prod');
 const SITE = resolve(import.meta.dir, '../..');
 const REFERENCE = resolve(process.env.REACTIIVE_REFERENCE ?? resolve(SITE, '../../reactiive.io'));
 const DIR = resolve(process.env.REACTIIVE_API_DIR ?? resolve(SITE, '../../reactiive-api-local'));
@@ -57,7 +61,13 @@ console.log(`api: http://127.0.0.1:${port} (loopback only, from ${DIR})`);
 
 // Loopback only: the process holds production secrets (DATABASE_URL, AUTH_JWT_SECRET, OAuth secrets) and next dev
 // shows error details; on all interfaces anyone on the network could reach it.
-const child = spawn('bunx', ['next', 'dev', '--turbopack', '-H', '127.0.0.1', '-p', port], { cwd: DIR, env, stdio: 'inherit' });
+if (prod) {
+  console.log('api: next build (the production build of the reference, its EXPO_PUBLIC_* inlined as deployed)');
+  const built = spawnSync('bunx', ['next', 'build'], { cwd: DIR, env: { ...env, NODE_ENV: 'production' }, stdio: 'inherit' });
+  if (built.status !== 0) process.exit(built.status ?? 1);
+}
+const child = spawn('bunx', prod ? ['next', 'start', '-H', '127.0.0.1', '-p', port] : ['next', 'dev', '--turbopack', '-H', '127.0.0.1', '-p', port],
+  { cwd: DIR, env: prod ? { ...env, NODE_ENV: 'production' } : env, stdio: 'inherit' });
 for (const s of ['SIGINT', 'SIGTERM'] as const) process.on(s, () => child.kill(s));
 child.on('exit', (code) => process.exit(code ?? 0));
 

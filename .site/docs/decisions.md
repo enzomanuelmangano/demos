@@ -285,6 +285,25 @@ reference's API, then mirrored here):
 - **OAuth `state` carries only utm_source, no anti-CSRF value; no PKCE.** Upstream: a random, single-use `state`
   bound to the browser (cookie) and checked in the callback; PKCE for the code exchange.
 
+### D15, amended: the old site's storage is the new site's (owner, 2026-11-23: "people must NOT lose their data")
+
+- **Overrides "Not carried over: the XOR obfuscation" above.** The session is kept in the reference's own key and
+  format, `@AccessStorage` (XOR with the public `EXPO_PUBLIC_ACCESS_KEY`, base64), so a reader signed in on the old site
+  is signed in on the new one at the cutover, and the reverse on a rollback. Also carried: `@UtmSource` and the header
+  hint `reactiive:signed-in` (with `html[data-auth=in]`, the avatar's place reserved before the session is known).
+  Everything else on the origin (`REACTIIVE_CACHE`, Amplitude's cookies, storage and IndexedDB) is left untouched, and
+  Amplitude is the same SDK and init, so device and session ids continue. Inventory and proof: `docs/storage.md`.
+- **How.** Exact's `persist` keeps a state under `exact.state.<name>` (JSON) and the data module cannot reach
+  localStorage, so a page script (`web/storage.js`, first in the head, written by `tools/storage-bridge.ts` with the
+  key) copies the reference's keys into the runtime's before it starts, and mirrors the runtime's writes back
+  (`Storage.prototype.setItem`/`removeItem` wrapped, for those three keys only). Rejected: a copy at the first visit
+  only (a rollback after a new sign-in or sign-out would see a stale session); dropping `persist` for a page-side store
+  (Exact has no other way into a state at boot); renaming the states to the reference's keys (Exact prefixes every key).
+- **Intent-activated pages (D16) and the session.** A signed-in reader's page starts its runtime once idle (the same
+  start as Exact's capture script), so the avatar appears without a press; a signed-out reader's pages are unchanged.
+- **Payments, amended.** `/manage-subscription` is ported for a subscriber's status and cancel only (`docs/stubs.md`):
+  no price, purchase, upgrade, downgrade, resume or refund.
+
 ## D16. Content and static pages activate on the reader's intent; the runtime adopts fewer nodes (2026-11-23)
 
 Article pages blocked the main thread 225-430 ms at 4g / 4x CPU (live: ~75) because each page started Exact's whole

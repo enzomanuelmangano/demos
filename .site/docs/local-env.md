@@ -23,7 +23,7 @@ and it holds public values only.
 ```sh
 cd .site
 bun tools/local-env/api.ts --site-port 4314 &       # the reference's Next API on 127.0.0.1:3000 only (a git-archive copy, see below)
-bun tools/local-env/site-env.ts --site-port 4314    # .env.local: SITE_ACCOUNTS=1 + the public keys
+bun tools/local-env/site-env.ts --site-port 4314    # .env.local: SITE_ACCOUNTS=1 + the public keys (incl. EXPO_PUBLIC_ACCESS_KEY)
 bun run build                                        # site (+ observability), as CI does
 LEGACY_API_ORIGIN=http://127.0.0.1:3000 bun tools/compose.ts   # with it, /profile is the site's page
 LEGACY_API_ORIGIN=http://127.0.0.1:3000 bun tools/serve.ts --port 4314 &
@@ -68,6 +68,7 @@ Same origin, as production's rewrite to the old deployment.
 | Sentry (client) | `EXPO_PUBLIC_SENTRY_DSN` (tools/observability.ts) | |
 | Newsletter form | none (posts to `https://subs.reactiive.io/api/subscribe`) | `BEEHIIV_*` live on subs.reactiive.io's own server |
 | `/api/*` in production | | `LEGACY_API_ORIGIN` (repository variable, compose time) |
+| The old site's session kept (`@AccessStorage`) | `EXPO_PUBLIC_ACCESS_KEY` (public, `tools/storage-bridge.ts`; required with `SITE_ACCOUNTS=1`) | |
 
 Not ported: payments (Lemon Squeezy: checkout, plan cards, subscription modals, webhook, refunds; owner's call) and
 the GitHub / Patreon "connect" flows (the reference's `ConnectionBox` is not rendered on its live pages). See
@@ -91,13 +92,26 @@ the URL, session, profile, sign out) is verified with a test token (below).
 ## What the e2e check verifies (`tools/local-env/e2e.ts`)
 
 Headless Chrome against the composed site and the local API. Real requests where nothing is written: the sign-in URLs
-(`/api/auth/{google,apple}-sign-up`: host and `redirect_uri` checked), a rejected token (the real API's 401 signs out
-and forgets it), the live star count. Mocked in the browser (CDP Fetch) where a real session would be needed or a
+(`/api/auth/{google,apple}-sign-up`: host and `redirect_uri` checked), a rejected token (the real API's 401 shows "Sign In"
+and keeps the token stored, as the old site: docs/storage.md), the live star count. Mocked in the browser (CDP Fetch) where a real session would be needed or a
 message would be sent: `/api/user/info` for a test token, `/api/feedback/submit` (method, path, `Authorization`, JSON
 body checked; no Telegram message). Steps: Sign In opens the dialog, Escape closes it; the callback landing
 `/profile?accessToken=…` keeps the token and cleans the URL; avatar, menu (name, email), `/profile`; the session
 survives navigation and reload; feedback; sign out; `/profile` signed out goes to `/demos`; Amplitude initialised
-opted out and Sentry disabled on localhost, and no request to either's ingestion. 25/25 on 2026-11-23.
+opted out and Sentry disabled on localhost, and no request to either's ingestion. 25/25 on 2026-11-24.
+
+## The cutover on one origin: storage continuity and the signed-in screens
+
+`tools/local-env/switch.ts` answers `http://localhost:4317` from either the old site (the reference's production build,
+`api.ts --prod`, pages and API) or the new one (`tools/serve.ts`), switched by `POST /__switch?to=old|new`: the deploy
+and its rollback, on the one origin the browser's storage belongs to. On it:
+
+- `tools/local-env/storage-continuity.ts [--headed]`: every key the old site writes survives the switch and is used,
+  both ways, and a brand-new visitor is untouched (the contract and the commands: `docs/storage.md`).
+- `tools/local-env/account-parity.ts`: `/profile`, `/manage-subscription` (no plan, active, cancelled, billing issue),
+  the avatar menu, the cancel confirmation and the sign-in dialog, old against new at 1440 and 390, pixel-diffed.
+
+Both answer `/api/user/info` in the browser for a made-up token and never forward `/api/purchase/*` or `/api/refund/*`.
 
 ## Analytics and errors on localhost
 
