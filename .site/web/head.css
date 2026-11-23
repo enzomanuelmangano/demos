@@ -73,21 +73,19 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
    the page, the app's frame masked to the iPhone's silhouette (its continuous 74 pt corners and side keys, the app's
    444 x 936 frame); the frame (600 px wide, the app's 24 px kept) overflows the device's column on both sides, under
    the copy. It stands in a soft cool spotlight (no panel, no edge) over a contact shadow. The copy: the title as large
-   as the column allows (at most 104 px), the subtitle's first line in the primary colour and the rest secondary, two
+   as the column allows (at most 104 px), the subtitle as live (two lines, one gradient, 18 px or a little less so its second line never wraps), two
    calls to action (the app, the source), a live hint whose dot lights when the app has drawn. The device rises in
    with the copy (no delay: a delayed entrance would delay its largest paint); the spiral steps back behind the copy. */
 @keyframes device-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 @media (min-width:1024px){
-:root{--ph:min(100vh - 176px,720px);--pw:calc(var(--ph) * .474359)}
+:root{--sub-em:20.2;--ph:min(100vh - 176px,700px);--pw:calc(var(--ph) * .474359)}
 [data-motion~=d-page]{max-width:48rem !important}
-[data-motion~=d-row]{min-height:calc(100vh - 80px);flex-wrap:nowrap !important;align-items:center !important;gap:48px}
+[data-motion~=d-row]{min-height:calc(100vh - 80px);flex-wrap:nowrap !important;align-items:center !important;gap:40px}
 [data-motion~=d-hero]{width:auto !important;flex:1 1 0 !important;min-width:0;position:relative;z-index:1;box-sizing:border-box;margin-top:-2vh}
-[data-motion~=d-title]{font-size:min(104px,(672px - var(--pw)) / 3.1) !important;font-weight:600 !important;letter-spacing:-.04em !important;line-height:1 !important;margin-top:0 !important;margin-bottom:24px !important;padding-bottom:.06em !important;margin-left:-.05em}
-[data-motion~=d-sub]{display:block !important;max-height:none !important;background-image:none !important;color:oklch(66% 0.0042 286) !important;font-size:19px !important;line-height:1.5 !important;letter-spacing:-.012em !important;text-wrap:pretty}
-[data-motion~=d-sub]>*{display:block !important;text-wrap:balance}
-[data-motion~=d-sub]>*>*{display:inline !important}
-[data-motion~=d-sub]>:first-child{color:oklch(92% 0.004 286)}
+[data-motion~=d-title]{font-size:min(104px,(680px - var(--pw)) / 3.1) !important;font-weight:600 !important;letter-spacing:-.04em !important;line-height:1 !important;margin-top:0 !important;margin-bottom:24px !important;padding-bottom:.06em !important;margin-left:-.05em}
+[data-motion~=d-sub]{font-size:min(18px,(680px - var(--pw)) / var(--sub-em)) !important;white-space:nowrap}
 [data-motion~=d-pill]{margin-top:32px !important}
+[data-motion~=pill-stars]{mask-image:linear-gradient(to top,#000 0,#000 10px,transparent 26px),linear-gradient(to left,transparent 0,transparent 80px,#000 104px);mask-composite:intersect}
 [data-motion~=d-long]{max-width:0 !important;margin-left:0 !important}
 [data-motion~=d-short]{max-width:80px !important;margin-left:8px !important}
 [data-motion~=d-pill-link],[data-motion~=d-cta]{height:40px !important}

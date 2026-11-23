@@ -250,12 +250,13 @@ Three variants, all from 1024 px only (under 1024 px the stacked layout of D10 i
 
 - **A (chosen).** One row in the header's own container (48rem): the title starts under the logo, the device's right
   edge ends under Sign In. The title as large as the column allows (`min(104px, (672px - device width) / 3.1)`, 600,
-  -0.04em, the live gradient), the subtitle's first line in the primary colour and the rest in the tertiary one,
-  balanced (19 px / 1.5); two calls to action: "Get the app" (the page's one light button: `/demos-app`, the TestFlight
+  -0.04em, the live gradient), the subtitle exactly as live (owner, after a two-tone, three-line try: "awful"): the
+  same two lines, one gradient, weight 500, line-height 1.55, -0.01em, at 18 px or slightly less
+  (`min(18px, column / 20.2)`, 17.2 px at 1440 and 1920) so the second line never wraps; two calls to action: "Get the app" (the page's one light button: `/demos-app`, the TestFlight
   page) and the GitHub pill with the star count (its label shortened to "GitHub" beside the button); under them a
   quiet hint, "Running live. Tap any app on the screen.", whose dot turns green when the app has drawn (the screen
   "turns on" under it: the frame's fade over the still). The device stands in a soft cool spotlight (a radial gradient
-  of the primary blue at 20 %, no panel, no edge) over a contact shadow; at most 720 px tall, so the composition is the
+  of the primary blue at 20 %, no panel, no edge) over a contact shadow; at most 700 px tall, so the composition is the
   same at 1440x900 and 1920x1080. The copy sits 2vh above the device's centre line (optical centre).
 - **B.** A, quieter: no spotlight, the hint as a caption under the device ("Live in your browser. Tap any app."), the
   title 88 px, a one-colour subtitle. The caption reads well but sits on the fold at 1280x720 and the device is
@@ -267,5 +268,9 @@ Three variants, all from 1024 px only (under 1024 px the stacked layout of D10 i
 `/demos/app/demo/<slug>` draws the demo full window, not inside its framed iPhone (checked in a 600 px window), so the
 frame would show a frameless demo; and a src change reloads the app (D10). Doing it properly needs the app's own
 deep link into its framed launcher: a change in the Demos app, not here.
+
+The pill's floating stars rise 170 px over the copy; beside the copy they would cross the subtitle, so from 1024 px
+their canvas is masked to the 26 px between the subtitle and the pill and kept off the device's side: no sparkle
+inside the text's box. Screens after this fix: `/tmp/demos-variants/A2@<w>x<h>.png`.
 
 Cost: the CTA and hint are a few plan nodes (app.js +~1 KB) and ~2.5 KB of head CSS; perf.md 2026-11-23 (D16).
