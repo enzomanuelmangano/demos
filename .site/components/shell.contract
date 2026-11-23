@@ -23,7 +23,17 @@ style NavLink
 
 style MenuLink
   display="block" padding="12px 16px" border-radius="var(--radius-lg)" font-size="1rem" line-height="1.5rem" font-weight=500
-  color="var(--color-text-secondary)"
+  color="var(--color-text-secondary)" cursor="pointer"
+
+// A menu entry that is not the current page: hover:text-white hover:bg-white/5 (transition-colors, web/head.css).
+style MenuLinkIdle
+  display="block" padding="12px 16px" border-radius="var(--radius-lg)" font-size="1rem" line-height="1.5rem" font-weight=500
+  color="var(--color-text-secondary)" cursor="pointer"
+  :hover
+    color = "#ffffff"
+    background-color = "rgb(255 255 255 / 0.05)"
+  :active
+    opacity = 1
 
 component SiteHeader
   props
@@ -46,10 +56,9 @@ component SiteHeader
                 LogoHome(width=143, height=35)
             nav aria-label="Main" display="flex" align-items="center" gap=28 margin-left="auto" margin-top=6
               for item in navItems() key=item.route
-                link href=item.href class=NavLink data-motion="nav-link colors focus" color=(current == item.route ? "var(--color-text-primary)" : "var(--color-text-secondary)")
+                link href=item.href class=NavLink data-motion="nav-link colors" color=(current == item.route ? "var(--color-text-primary)" : "var(--color-text-secondary)")
                   text item.name
-                  view height=1.5 border-radius="var(--radius-sm)" background-color="var(--color-text-primary)" transform-origin="left" data-motion="underline"
-                    scale=(current == item.route ? 1 : 0) transition="scale 300ms cubic-bezier(0.23, 1, 0.32, 1)"
+                  view height=1.5 border-radius="var(--radius-sm)" background-color="var(--color-text-primary)" transform-origin="left" data-motion=(current == item.route ? "underline current" : "underline")
               SignIn()
       // Phones and narrow windows.
       view class=HeaderBar height=md(73, 0) testId="header-mobile"
@@ -64,6 +73,8 @@ component SiteHeader
               cursor="pointer" data-motion="colors focus"
               :hover
                 color = "#ffffff"
+              :active
+                opacity = 1
               MenuIcon(open=menu)
       view id="mobile-menu" inert=(not menu) position="absolute" top=0 left=0 right=0 z-index=40 height="clamp(0px, (768px - 100vw) * 1000, 100vh)" overflow="hidden"
         opacity=(menu ? 1 : 0) pointer-events=(menu ? "auto" : "none") transition="opacity 300ms cubic-bezier(0.4, 0, 0.2, 1)"
@@ -72,16 +83,27 @@ component SiteHeader
           translate=(menu ? "0 0" : "0 -16px") opacity=(menu ? 1 : 0) transition="translate 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms cubic-bezier(0.4, 0, 0.2, 1)"
           Container()
             nav aria-label="Menu" padding="40px 0 16px" display="flex" flex-direction="column" gap=4
-              link href="/" class=MenuLink press=close color=(current == "home" ? "#ffffff" : "var(--color-text-secondary)")
-                background-color=(current == "home" ? "rgb(255 255 255 / 0.1)" : "transparent")
-                text "Home"
+              MenuEntry(href="/", name="Home", on=(current == "home"), pick=close)
               for item in navItems() key=item.route
-                link href=item.href class=MenuLink color=(current == item.route ? "#ffffff" : "var(--color-text-secondary)")
-                  background-color=(current == item.route ? "rgb(255 255 255 / 0.1)" : "transparent")
-                  text item.name
+                MenuEntry(href=item.href, name=item.name, on=(current == item.route), pick=close)
               view padding-top=8 margin-top=4 border-top="1px solid rgb(255 255 255 / 0.1)"
-                button appearance="none" class=MenuLink text-align="left" width="100%" testId="menu-sign-in"
+                button appearance="none" class=MenuLinkIdle text-align="left" width="100%" testId="menu-sign-in" data-motion="colors"
                   text "Sign In"
+
+// A menu entry: the current page white on white/10; the others secondary, white on white/5 under the pointer.
+component MenuEntry
+  props
+    href: string
+    name: string
+    on: bool
+    pick: action
+  view
+    if on
+      link href=href class=MenuLink data-motion="plain colors" press=pick color="#ffffff" background-color="rgb(255 255 255 / 0.1)"
+        text name
+    else
+      link href=href class=MenuLinkIdle data-motion="plain colors" press=pick
+        text name
 
 // Sign-in needs the reference's OAuth secrets (docs/stubs.md): drawn as a signed-out visitor sees it.
 component SignIn
@@ -99,10 +121,9 @@ component Container
     column width="100%" max-width="48rem" margin-left="auto" margin-right="auto" padding-left=24 padding-right=24 box-sizing="border-box" flex=1
       children
 
+// The logo link: no colour of its own (the reference's Link inherits the body's), no underline.
 style Plain
-  color="var(--color-text-primary)" text-decoration-line="none"
-  :hover
-    color = "var(--color-text-primary)"
+  color="inherit" text-decoration-line="none"
 
 style FooterLink
   text-decoration-line="underline" color="var(--color-text-tertiary)" font-size="0.75rem" line-height="1rem"
@@ -119,15 +140,15 @@ component SiteFooter
         // No gap: the "|" before Inspirations is not drawn under 640 px, and takes its space with it.
         row flex-wrap="wrap" justify-content="center" align-items="center" font-size="0.75rem" line-height="1rem" color="var(--color-text-tertiary)"
           if legal
-            link href="/docs/terms" class=FooterLink data-motion="footer-link colors focus"
+            link href="/docs/terms" class=FooterLink data-motion="footer-link colors"
               text "Terms"
             text "|" margin-left=8
-            link href="/docs/privacy" class=FooterLink data-motion="footer-link colors focus" margin-left=8
+            link href="/docs/privacy" class=FooterLink data-motion="footer-link colors" margin-left=8
               text "Privacy Policy"
           else
             text "Follow me on"
-            link href="https://x.com/reactiive_" target="_blank" class=FooterLink data-motion="footer-link colors focus" margin-left=8
+            link href="https://x.com/reactiive_" target="_blank" class=FooterLink data-motion="footer-link colors" margin-left=8
               text "Twitter"
             text "|" width=sm(0, 4) margin-left=sm(0, 8) overflow="hidden"
-            link href="/inspirations" class=FooterLink data-motion="footer-link colors focus" margin-left=8
+            link href="/inspirations" class=FooterLink data-motion="footer-link colors" margin-left=8
               text "Inspirations"

@@ -22,6 +22,7 @@
     "remark-gfm": "4",
     "remark-mdx": "3",
     "remark-parse": "11",
+    "qrcode-generator": "1.4.4",
     "typescript": "5.9.3",
     "unified": "11"
   }
