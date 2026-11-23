@@ -219,7 +219,7 @@ component WebShell
             // Their outlines are the display's, offset (airRimPath, airGlassPath): concentric with it at every angle. The
             // drop shadow is its own box, 6 pt inside the rim so no corner of it shows past the rim (a clip path would clip it); each 1 pt highlight ring is the outline's tint
             // showing past a copy 1 pt inside it.
-            view position="absolute" inset=6 border-radius=68 box-shadow="0px 50px 120px rgba(0,0,0,0.6), 0px 14px 34px rgba(0,0,0,0.45)"
+            view position="absolute" inset=6 border-radius=68 corner-shape="-exact-continuous" box-shadow="0px 50px 120px rgba(0,0,0,0.6), 0px 14px 34px rgba(0,0,0,0.45)"
             view position="absolute" inset=0 clip-path=`path('${airRimPath()}')`
               background-image="linear-gradient(rgba(255,255,255,0.55), rgba(255,255,255,0.55)), linear-gradient(180deg, #eceded, #c3c5c9 20%, #dcdde0 50%, #a9abb0 80%, #cfd0d3)"
             view position="absolute" inset=0 clip-path=`path('${airRimInnerPath()}')`

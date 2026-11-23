@@ -587,15 +587,22 @@ const noteTap = (e) => {
 if (DOM) document.addEventListener('pointerdown', noteTap, true);
 if (DOM) document.addEventListener('click', noteTap, true);
 // Framed by another page (reactiive.io's /demos shows this app in a sandboxed frame and plays a one-time touch
-// demo over it, .site/docs/decisions.md D19), the parent may ask, by message only: `{ demos: 'rect', target }` (the
-// box of the element whose testId is `target`, answered as `{ demos: 'rect', target, rect }` in this window's CSS
-// pixels, or rect null) and `{ demos: 'press', target }` (press it as a tap would). The first real input here is
-// told to the parent (`{ demos: 'input' }`) so it stops its demo. Nothing else is read or answered; never at the top.
-if (DOM && window.parent !== window) {
-  const post = (m) => { try { window.parent.postMessage(m, '*'); } catch {} };
+// demo over it, .site/docs/decisions.md D19, .site/docs/isolation.md), the parent may ask, by message only:
+// `{ demos: 'rect', target }` (the box of the element whose testId is `target`, answered as
+// `{ demos: 'rect', target, rect }` in this window's CSS pixels, or rect null) and `{ demos: 'press', target }` (press
+// it as a tap would). Only from the parent window, and only from reactiive.io, a Vercel preview or a local server;
+// answers go to that origin only. Once the parent has spoken, real input here is told to it (`{ demos: 'input' }`)
+// so it stops its demo. Nothing else is read or answered. At the top level (not framed) none of this is installed.
+const FRAMED = DOM && window.parent !== window;
+const PARENT_ORIGIN = /^(https:\/\/(www\.)?reactiive\.io|https:\/\/[a-z0-9-]+\.vercel\.app|http:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?)$/;
+if (FRAMED) {
+  let parentOrigin = null;
+  const post = (m) => { if (parentOrigin) try { window.parent.postMessage(m, parentOrigin); } catch {} };
   addEventListener('message', (e) => {
     const m = e.data;
-    if (e.source !== window.parent || !m || (m.demos !== 'rect' && m.demos !== 'press') || typeof m.target !== 'string' || !/^[a-z0-9-]{1,80}$/.test(m.target)) return;
+    if (e.source !== window.parent || !PARENT_ORIGIN.test(e.origin)) return;
+    if (!m || (m.demos !== 'rect' && m.demos !== 'press') || typeof m.target !== 'string' || !/^[a-z0-9-]{1,80}$/.test(m.target)) return;
+    parentOrigin = e.origin;
     const el = document.querySelector(`[data-testid="${m.target}"]`);
     if (m.demos === 'rect') {
       const r = el?.getBoundingClientRect();
@@ -608,6 +615,15 @@ if (DOM && window.parent !== window) {
     el.dispatchEvent(new MouseEvent('click', at));
   });
   for (const type of ['pointerdown', 'wheel', 'keydown']) addEventListener(type, (e) => { if (e.isTrusted) post({ demos: 'input' }); }, { capture: true, passive: true });
+}
+// In a sandboxed frame (an opaque origin: reactiive.io's /demos, which draws the phone's rim, keys and shadow itself
+// under the frame, from a still) the desktop frame draws only its display: the stage, the rim, the glass and the
+// shadow are transparent, so the page's own drawing shows around the display with no seam at any scale.
+if (FRAMED && self.origin === 'null') {
+  const sheet = document.createElement('style');
+  sheet.textContent = 'html,body,#exact-root,:has(> [data-testid="web-stage"]),[data-testid="web-stage"]{background:transparent !important}'
+    + '[data-testid="web-stage"] > * > :not([data-testid="web-device"]){visibility:hidden !important}';
+  document.head.appendChild(sheet);
 }
 // A demo's card draws only once its launch has placed it: the route's first frame can paint before this module's view
 // is made, which showed the demo full screen for a frame ahead of the open.
