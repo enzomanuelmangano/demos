@@ -38,6 +38,11 @@ batches and easing, no flash or restart; /articles differs only where D13's skip
 first batch starts ~40 ms later than local's (its hydration).
 
 Hover audit: `tools/parity/hover.ts <live> <local> <route>… [--widths 1440,700]` (700 also opens the menu).
+2026-11-23 (leftovers): `/articles/smooth-dropdown` 0 differences (35 elements, Sign In and Subscribe pressed with CSS
+`:active`, also measured before the runtime starts: `rgb(255 255 255/.14)` / `#3c49b0` at scale 0.97, as live); the
+demo buttons' 0.95 is a `transform` as live's inline style (pan-gesture-handler 3 differences to 1, animated-gradient
+the same): the one left is a button focused after a hover, where live keeps `scale(1)` inline (matrix(1) vs none, same
+pixels).
 
 ## Open differences (the owner's bar is identity in pixels and in motion: each is to be fixed, none is accepted)
 

@@ -111,6 +111,30 @@ Cable: TBT 0 everywhere, FCP / LCP under live's on every route. Every TBT, LCP, 
 wakes the runtime at the reader's first scroll (Exact's rule), and the boot lands in that scroll: `smooth-dropdown`
 2-3 frames over 20 ms (max 150-183 ms at 4x CPU), `pan-gesture-handler` 1-3 (max 50-67 ms); live 0. Next: embeds as
 native `loading="lazy"` frames (no `intersect`), so only demo pages wake.
+**Fixed (next section).**
+
+## 2026-11-23, no runtime start inside a scroll (D16 amended)
+
+The embeds are the browser's lazy frames (no `intersect`), the demos' frames have none either, and a page with a demo
+starts its runtime on idle once parsed, never within 250 ms of a scroll (`web/reveal.js`). perf.ts's scroll (3 s eased,
+5 s after load), median of 3, AC power, machine load ~9. Jank = frames over 20 ms; the longest frame is one vsync
+(17 ms) in every cell, so no frame over 16.7 ms is a missed one.
+
+| route | profile | before (`8ad31754`): jank, longest | after: jank (longest), TBT 1440 / 390 | live TBT 1440 / 390 |
+|---|---|---|---|---|
+| `/articles/smooth-dropdown` | cable | 2 (67 ms) | 0 (17), 0 / 0 | 0 / 0 |
+| `/articles/smooth-dropdown` | 4g | 2-3 (150-300 ms) | 0 (17), 0 / 0 | 78-92 / 77-79 |
+| `/articles/pan-gesture-handler` | cable | 0 (17 ms) | 0 (17), 0 / 0 | 0 / 0 |
+| `/articles/pan-gesture-handler` | 4g | 1-3 (50-67 ms) | 0 (17), 77 / 72 | 78 / 73 |
+| `/articles/metaball`, `animated-gradient`, `skeleton-loader` (canvas demos, local) | cable / 4g | | 0 (17) everywhere; TBT 4g 56-78 / 60-97 | 71-98 (other articles) |
+
+Bytes: the YouTube frame now loads with the page when it is within the browser's lazy distance (smooth-dropdown 4g
+554 -> 1406 KB, its player in its own process); live loads it at once too (1974 KB). Every cell ≤ live except
+`/articles/metaball` @390 4g TBT 97, which has no live column in this run (live articles 71-98): to re-measure in the
+next sweep. Starting at the demo's approach (1.5 viewports) was not taken: a reader scrolling steadily is mid-scroll
+then. With the start after `load` instead of after parsing, pan-gesture-handler 4g was 81-100 (the start then competed
+with the YouTube frame's load).
+
 ## 2026-11-23, /demos redesign (D17): before (origin/site 5b032ed5) against after
 
 `perf.ts http://localhost:4316 (before) http://localhost:4315 (after) /demos --runs 3`: both builds composed with the

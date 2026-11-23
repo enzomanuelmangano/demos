@@ -296,8 +296,13 @@ rendered (~55 ms plus ~0.07 ms a node at 4x CPU; `pan-gesture-handler` had 2,763
   script of the runtime until intent: a press on a control with a handler (the menu, Sign In, the copy button, the
   newsletter field), which Exact's capture script records and replays after the boot, or a node with an `intersect`
   handler entering the window (and the first scroll once one exists: Exact's own rule, `host/web-js/capture.js`).
-  The interactive demos and the YouTube / X embeds carry one (`components/markdown.contract`), so a demo activates the
-  page when it is seen; a page with none never loads the runtime. Text, links, entrances, the card cascade and every
+  **Amended (leftovers block):** the YouTube / X embeds are the browser's own lazy frames (`loading="lazy"`, written by
+  `tools/seo/postbuild.ts` since Exact's `iframe` takes no `loading`; `web/reveal.js` adds it to a frame the runtime
+  draws) and the demos' frames have no `intersect` either: an observed node made Exact start the runtime inside the
+  reader's first scroll (2-3 frames up to 183 ms at 4x CPU). A page with a demo now starts its runtime once it is
+  parsed and the main thread is idle (`web/reveal.js`: the capture script's own start, the checkpoint's entry and answers), deferred
+  while the reader is scrolling (no scroll in the last 250 ms), so the one long task lands before the scroll, not in
+  it; a page with only embeds never starts it. Text, links, entrances, the card cascade and every
   hover are HTML and CSS (D11) and work without it.
 - **The header's scrolled look moved out of the runtime**: `web/reveal.js` sets `html[data-scrolled]` past 10 px (one
   passive scroll listener writing on change), `web/head.css` colours `[data-motion~=bar]` (the mobile bar too while its
@@ -309,13 +314,24 @@ rendered (~55 ms plus ~0.07 ms a node at 4x CPU; `pan-gesture-handler` had 2,763
   `data-hl` list, as the parser adds it, and again if a text node is replaced). Comments stay italic spans.
   `pan-gesture-handler`: 2,763 nodes to 543; HTML 310 to 212 KB. Glyphs are the same at the same places; anti-aliasing
   at former span starts differs by subpixel offsets (code blocks 0.01-0.24 % px at threshold 32). Without the API
-  (Chrome < 105, Safari < 17.2, Firefox < 140) code is drawn in its block's colour.
+  (Chrome < 105, Safari < 17.2, Firefox < 140) `web/reveal.js` splits each run's coloured tokens into spans
+  (`[data-hl]>[data-tok=<letter>]`, the same colours in web/content.css; plain tokens stay text), so only those
+  browsers pay the nodes; `?hl=spans` forces it (pan-gesture-handler: 7,538 code characters, 0 in another colour than
+  the highlight's, 728 spans, before and after the runtime starts; modern browsers 0 spans, 647 nodes).
+- **Pressed looks are CSS.** Exact draws a Contract `:active` (and `-exact-press-scale`) from its runtime, so the first
+  press of a page not yet awake showed nothing. Sign In, Subscribe and the account dialogs' buttons
+  (`data-motion~=press-primary` / `~=press-secondary`, web/head.css) press with `:active` as live's classes
+  (`active:scale-[0.97]`, the variant's active colour, data-motion button's 150 ms snappy); hover and focus were already
+  CSS. Exact's 0.65 press dim is off for them.
 - **Navigation.** Before activation a link is a document navigation (Exact: "real links navigate before
   activation"); the head's speculation rules prerender a same-origin page on hover (`moderate`; not `/demos*`,
   `/profile`, `/api/*`), so it swaps in at once with the header in place. After activation links are in-app as before.
 - Rejected: deferring the idle activation past the measurement window (the same work, later, during the reader's first
   scroll); `paint`/`render` policies (they change when a page is drawn, not what activation costs); time-slicing the
-  boot (Exact's adoption is one task; not ours to split).
+  boot (Exact's adoption is one task; not ours to split). Starting a demo page's runtime when its demo is 1.5
+  viewports away: a reader scrolling steadily is mid-scroll then, the very frame to avoid; idle once parsed is earlier
+  and between scrolls.
+
 ## D17. /demos on a desktop, redesigned: the header's columns, two calls to action, a lit device (owner, 2026-11-23)
 
 The owner: "I think you can also hugely improve the design of this one". Today's page (D12 revised) put the hero in the

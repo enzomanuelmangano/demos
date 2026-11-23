@@ -44,10 +44,15 @@ Branch `site` (worktree `thank-you-site`), draft PR #115 into `main`. Update thi
   italics slanted as live (Exact's root `font-synthesis: none`). Owner bug fixed: an article opened in-app kept
   /articles' scroll and its content popped in under the footer (CLS 0.13 -> 0, starts at the top).
 
+- **2026-11-23, block 5** (leftovers): no runtime start inside a scroll: the embeds are native lazy frames and a demo
+  page starts its runtime on idle once parsed, outside scrolls (D16 amended): 0 frames over 20 ms (longest 17) through
+  smooth-dropdown, pan-gesture-handler and three canvas-demo articles, cable and 4g (was 2-3, up to 183 ms); TBT ≤ live.
+  Code colours without the Highlight API: spans for those browsers only (`?hl=spans` forces it: 0 characters in
+  another colour). Sign In / Subscribe / the account buttons press in CSS (`:active`), so before the runtime too; the
+  demo buttons scale by `transform` as live (hover.ts).
+
 ## Next, in order
 
-0. Scroll jank on pages that wake while scrolled (perf.md, D16): embeds as native lazy frames; demo buttons'
-   press look before the runtime (hover.ts: transform vs scale, Sign In / Subscribe :active on a page not yet awake).
 1. The one automated sweep over every page (pixel, motion, hover.ts, nav, perf), per the lead's plan.
 2. Open: `/demos` @390 cable LCP ~1.6 s (live ~1.5 s): the pill's blur-in end; the testimonial cards' squircle
    (live: figma-squircle 18 / 0.6 clip and gradient rim; here border-radius 18 + hairline, pixels within 0.04 %); the
