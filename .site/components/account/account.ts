@@ -53,8 +53,9 @@ export const accountSources = {
 
   // GET /api/auth/{google,apple}-sign-up → { url }: asked when the sign-in dialog opens, so its buttons are plain links
   // to the provider (the reference asks at the press, then sets window.location: the same request, the same page).
-  authUrl: async ([provider, utm, armed]: [string, string, boolean]): Promise<string> => {
-    if (!ON || !armed) return '';
+  // Asked on every build once the dialog has opened (Sign In works as live's; `attempt` asks again after a failure).
+  authUrl: async ([provider, utm, armed]: [string, string, boolean, number]): Promise<string> => {
+    if (!armed) return '';
     const r = await api(`/auth/${provider}-sign-up${utm ? `?utm_source=${encodeURIComponent(utm)}` : ''}`, '');
     if (!r.ok) throw new Error(`auth/${provider}-sign-up answered ${r.status}`);
     const { url } = (await r.json()) as { url?: string };

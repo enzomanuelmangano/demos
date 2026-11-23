@@ -138,6 +138,7 @@ component SignInDialog
     apple: string
     googleFailed: bool
     appleFailed: bool
+    retry: action
   view
     dialog id="signin-modal" class=ModalBox closedby="any" aria-labelledby="sign-in-title" testId="sign-in-dialog"
       ::backdrop
@@ -148,8 +149,8 @@ component SignInDialog
             letter-spacing="-0.01em" color="var(--color-text-primary)"
           text "Use your Google or Apple account." max-width=320 font-size="0.875rem" line-height="1.5rem" color="var(--color-text-secondary)"
         column margin-top=28 gap=12
-          ProviderButton(url=google, failed=googleFailed, label="Continue with Google", provider="google")
-          ProviderButton(url=apple, failed=appleFailed, label="Continue with Apple", provider="apple")
+          ProviderButton(url=google, failed=googleFailed, label="Continue with Google", provider="google", retry=retry)
+          ProviderButton(url=apple, failed=appleFailed, label="Continue with Apple", provider="apple", retry=retry)
         text "Signing in subscribes you to the newsletter: new content and the occasional promotion. Unsubscribe at any time."
           margin-top=24 text-align="center" font-size="0.75rem" line-height="1.25rem" color="var(--color-text-tertiary)"
       CloseX(dialog="signin-modal")
@@ -160,17 +161,20 @@ component ProviderButton
     failed: bool
     label: string
     provider: string
+    retry: action
   view
     if url != ""
       link href=url class=ButtonSecondary display="flex" align-items="center" justify-content="center" gap=10 height=44 padding="0 24px" border-radius="var(--radius-control)" font-size="15px" line-height="1.5rem" font-weight=500 text-decoration-line="none" box-sizing="border-box" width="100%" data-motion="button press-secondary focus" testId=`sign-in-${provider}`
         ProviderIcon(provider=provider)
         text label
+    else if failed
+      // The API did not answer: the button stays live; a press says so (a toast) and asks again.
+      button appearance="none" press=retry class=ButtonSecondary display="flex" align-items="center" justify-content="center" gap=10 height=44 padding="0 24px" border-radius="var(--radius-control)" font-size="15px" line-height="1.5rem" font-weight=500 text-decoration-line="none" box-sizing="border-box" width="100%" cursor="pointer" data-motion="button press-secondary focus" testId=`sign-in-${provider}`
+        ProviderIcon(provider=provider)
+        text label
     else
-      button appearance="none" disabled=true class=ButtonSecondary display="flex" align-items="center" justify-content="center" gap=10 height=44 padding="0 24px" border-radius="var(--radius-control)" font-size="15px" line-height="1.5rem" font-weight=500 text-decoration-line="none" box-sizing="border-box" width="100%" opacity=(failed ? 0.5 : 1) testId=`sign-in-${provider}`
-        if failed
-          ProviderIcon(provider=provider)
-        else
-          Spinner()
+      button appearance="none" disabled=true class=ButtonSecondary display="flex" align-items="center" justify-content="center" gap=10 height=44 padding="0 24px" border-radius="var(--radius-control)" font-size="15px" line-height="1.5rem" font-weight=500 text-decoration-line="none" box-sizing="border-box" width="100%" testId=`sign-in-${provider}`
+        Spinner()
         text label
 
 component ProviderIcon

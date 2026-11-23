@@ -38,6 +38,8 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 [data-motion~=card-in]{animation:motion-card-in 700ms var(--ease-out-expo) var(--motion-delay,0ms) backwards}
 [data-motion~=qr]{animation:motion-qr-in 900ms var(--ease-motion) 200ms backwards}
 [data-motion~=pop-in]{animation:motion-pop-in 450ms var(--ease-motion) backwards}
+/* Arrived from another page of the site by a document navigation: the header is already in (web/reveal.js). */
+[data-nav] [data-motion~=pop-in]{animation:none}
 [data-motion~=fade-in]{animation:motion-fade-in 1400ms var(--ease-motion) var(--motion-delay,0ms) backwards}
 /* The waving hand (globals.css wave: rotate, then rise in the hand's own frame, 8 x 250 ms alternate). */
 @keyframes wave{from{transform:rotate(0rad) translateY(0)}to{transform:rotate(.3927rad) translateY(-12px)}}
@@ -128,23 +130,6 @@ main:has([data-motion~=d-page]) ~ *{visibility:hidden}
 [data-motion~=spiral]{opacity:.4 !important;mask-image:linear-gradient(to right,#000 0%,#000 30%,transparent 55%)}
 }
 @media (min-width:1024px) and (prefers-reduced-motion:reduce){[data-motion~=sim-col]{animation:none}}
-/* /demos's title entrance from 1024 px (D17, V3 of three): the outlines drawn on (pages/demos-title.contract,
-   tools/title-draw.py), then the fill follows the pen left to right behind a soft light while the strokes fade; the end
-   is the static title (0 px over 32/255 against prefers-reduced-motion, which keeps it static). */
-[data-motion~=d-draw]{display:none}
-@media (min-width:1024px) and (prefers-reduced-motion:no-preference){
-/* V3 draw-on, then light fill: the outlines drawn as V1; the fill then follows the pen from left to right behind a soft
-   light (the sweep of V2 from nothing rather than from dim), and the strokes fade out. */
-@keyframes d-stroke{to{stroke-dashoffset:0}}
-@keyframes d-out{to{opacity:0}}
-@keyframes d-sweep{from{background-position:100% 0,0 0;mask-position:100% 0}to{background-position:0 0,0 0;mask-position:0 0}}
-[data-motion~=title]{animation:none !important}
-[data-motion~=d-draw]{display:block;animation:d-out 600ms ease-out 1750ms forwards}
-[data-motion~=d-draw] path{fill:none;stroke:#f4f4f5;stroke-width:1.25px;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-dasharray:1 1;stroke-dashoffset:1;animation:d-stroke 1000ms cubic-bezier(.65,0,.35,1) var(--sd,200ms) forwards}
-[data-motion~=d-draw] path:nth-child(n+3){--sd:340ms}[data-motion~=d-draw] path:nth-child(n+5){--sd:480ms}
-[data-motion~=d-draw] path:nth-child(n+6){--sd:620ms}[data-motion~=d-draw] path:nth-child(n+8){--sd:760ms}
-[data-motion~=d-title]:not(svg){background-image:linear-gradient(100deg,transparent 0 37%,rgb(255 255 255 / .95) 43%,transparent 49% 100%),linear-gradient(to right,#ffffffd9,#ffffff,#ffffffd9) !important;background-size:300% 100%,100% 100% !important;background-repeat:no-repeat !important;background-position:0 0,0 0;mask-image:linear-gradient(100deg,#000 0 40%,transparent 48% 100%);mask-size:300% 100%;mask-repeat:no-repeat;mask-position:0 0;animation:d-sweep 1300ms cubic-bezier(.45,0,.2,1) 650ms backwards}
-}
 /* Interaction transitions, as the reference's classes compute them. */
 [data-motion~=colors]{transition-property:color,background-color,border-color,outline-color,text-decoration-color,fill,stroke !important;transition-duration:150ms !important;transition-timing-function:cubic-bezier(.4,0,.2,1) !important;transition-delay:0s !important}
 /* /demos's pill: transition-colors duration-200. */

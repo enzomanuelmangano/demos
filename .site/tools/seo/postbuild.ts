@@ -48,6 +48,8 @@ for (const m of pages) {
   let head = html.slice(0, cut < 0 ? html.length : cut);
   const rest = html.slice(head.length);
   if (head.includes('rel="canonical"') === false) throw new Error(`seo: ${file}: no Exact default head to replace`);
+  // Not idempotent: a second pass would keep the first pass's tags that Exact's head lacks (author, publisher, ...).
+  if (head.includes('name="publisher"')) throw new Error(`seo: ${file}: already post-built: run web-build again first (bun run build)`);
   const own = /<title>([^<]*)<\/title>/.exec(head)?.[1];
   const tags = headTags(m);
   const want = (tags.find((t) => t.tag === 'title') as { text: string }).text;
