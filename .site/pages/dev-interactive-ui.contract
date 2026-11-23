@@ -4,6 +4,8 @@ use InteractiveBox as BottomSheetBox, InitialSetup, BasicComponent, PanGesture, 
 use InteractiveBox as CssBox, AnimatedSquare from "../components/interactive/css-animations-react-native/index.contract"
 use InteractivePanGesture from "../components/interactive/pan-gesture-handler/index.contract"
 use IntroToGesturesDemo from "../components/interactive/introduction-to-gestures/index.contract"
+use InteractiveSkeletonDemo, InteractiveContactItem, InteractiveJustSkeleton from "../components/interactive/skeleton-loader/index.contract"
+use Demo as CheckboxDemo, StaticDemo as CheckboxStaticDemo from "../components/interactive/checkbox-interactions/index.contract"
 use FinalAnimatedSquareDemo, AnimatedSquareOpacityDemo, AnimatedSquareOpacityAndScaleDemo from "../components/interactive/introduction-to-reanimated/index.contract"
 
 component DevLabel
@@ -60,3 +62,13 @@ component DevInteractiveUi
       InteractivePanGesture()
       DevLabel(label="introduction-to-gestures · IntroToGesturesDemo")
       IntroToGesturesDemo()
+      DevLabel(label="skeleton-loader · InteractiveSkeletonDemo")
+      InteractiveSkeletonDemo()
+      DevLabel(label="skeleton-loader · InteractiveContactItem")
+      InteractiveContactItem()
+      DevLabel(label="skeleton-loader · InteractiveJustSkeleton")
+      InteractiveJustSkeleton()
+      DevLabel(label="checkbox-interactions · Demo")
+      CheckboxDemo()
+      DevLabel(label="checkbox-interactions · StaticDemo")
+      CheckboxStaticDemo()
