@@ -168,3 +168,14 @@ document.addEventListener('click', function (e) {
     }
   }).observe(document.documentElement, { childList: true, subtree: true });
 })();
+/* The header is the reference's root layout, kept across its in-app navigations, so its one entrance (Sign In's
+   pop-in) plays once a visit. Here a link of a page not yet awake is a document navigation (docs/decisions.md D16):
+   a page reached from this site (a link, Back, Forward; not a reload) shows the header already in, as live's does
+   (web/head.css, [data-nav]). */
+(function () {
+  try {
+    var nav = performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
+    if (nav && nav.type == 'reload') return;
+    if (document.referrer && new URL(document.referrer).origin == location.origin) document.documentElement.setAttribute('data-nav', 'in');
+  } catch (e) {}
+})();

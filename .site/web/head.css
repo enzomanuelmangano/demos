@@ -38,6 +38,8 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 [data-motion~=card-in]{animation:motion-card-in 700ms var(--ease-out-expo) var(--motion-delay,0ms) backwards}
 [data-motion~=qr]{animation:motion-qr-in 900ms var(--ease-motion) 200ms backwards}
 [data-motion~=pop-in]{animation:motion-pop-in 450ms var(--ease-motion) backwards}
+/* Arrived from another page of the site by a document navigation: the header is already in (web/reveal.js). */
+[data-nav] [data-motion~=pop-in]{animation:none}
 [data-motion~=fade-in]{animation:motion-fade-in 1400ms var(--ease-motion) var(--motion-delay,0ms) backwards}
 /* The waving hand (globals.css wave: rotate, then rise in the hand's own frame, 8 x 250 ms alternate). */
 @keyframes wave{from{transform:rotate(0rad) translateY(0)}to{transform:rotate(.3927rad) translateY(-12px)}}
