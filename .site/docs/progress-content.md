@@ -48,22 +48,27 @@ Parity, full page, share of differing pixels (`compare.ts`, live shot into `/tmp
 |---|---|---|---|
 | docs terms / privacy / license | 0.06 / 0.10 / 0.01 % | 0.08 / 0.14 / 0.02 % | |
 | `/docs` | 0.02 % | 0.22 % | |
-| series exploring-skia / toolbelt / gestures | 0.07 / 0.06 / 0.05 % | 0.26 / 0.28 / 0.34 % | dates: Inter ASCII subset lacks `tnum` (see open) |
-| series animate-with-reanimated | 7.2 % | 37 % | tall page: live's reveal-on-scroll timing in the capture; to check |
-| `/articles` | 40 % | 45 % | by design: 22 cards, not 26 (scope cut) |
-| 11 articles without interactive components | 0.02-0.33 % | 0.05-0.89 % | animated-flat-list, appjs-2025, circular-progress-bar, haptic-feedback, interpolate-with-scrollview, pinch-gesture-handler, setup-reanimated-gestures, smooth-dropdown, the-hidden-gems, the-power-of-lottie; introducing-refined 4.4 / 8.9 % (to check) |
+| series exploring-skia / toolbelt / gestures | 0.02 / 0.06 / 0.05 % | 0.14 / 0.28 / 0.34 % | dates at live's width since `site`'s subset keeps `tnum` (c4bdbb89) |
+| series animate-with-reanimated | 0.18 % | 0.25 % | shot with `--scroll 300,150`: live's RevealOnScroll misses cards passed at the default 600 px / 60 ms (they stay paused in live's shot); a reader's scroll reveals them on both |
+| `/articles` | 40 % | 45 % | by design: 22 cards, not 26 (D13); every card's cover, title, description and date at live's offsets, grid and gaps equal |
+| 11 articles without interactive components | 0-0.33 % | 0.03-0.89 % | introducing-refined 0.00 / 0.03 % (the X post's frame has live's measured height) |
 | 11 articles with interactive components | 0.2-9.8 % | 0.9-12.5 % | the components are empty 16:9 frames (live's size, so the rest is in place) |
+
+Review fixes (2026-11-23, PR #117): a failed conversion keeps the previous pages (temp dir + rename); compact code lines
+in the checkpoint; og:image keeps the original of a featured WebP wider than 1440 px; the 4 skipped articles and 2
+series 308 (D13). Article weight, smooth-dropdown, gzip: 105.7 KB -> 40.5 KB (font now external on `site`); checkpoint
+26.8 -> 8.9 KB, body 24.8 -> 19.2 KB; live 38 KB. The rest is the head: Exact's page style 6.7 KB and runtime boot
+3.9 KB, the content CSS (squircle masks 0.6 KB).
 
 ## Open, in order
 
-1. Interactive components (37 exports, 11 articles): placeholders now; port in batches (`interactive/<slug>/`).
-   Known special sizes: checkbox-interactions `Demo`/`StaticDemo` (not 16:9), metaball `CanvasKitJsAlert` (drawn
-   as nothing now), animated-loader-skia `WithProgressLoaderWithSkia` at 390.
-2. Inline maths (animated-spiral): SVG sizes and baseline against live's MathJax.
-3. The Inter ASCII subset (`assets/fonts/InterAscii.woff2`, branch `site`) has no `tnum`: tabular dates are 5 px
-   narrower than live. Rebuild it with `--layout-features='*'`.
-4. Perf: an article's HTML is ~2.5x live's document (smooth-dropdown 80 KB vs 32 KB brotli): every code token is a
-   styled element. Merge equal-style tokens, class the colours, then the perf gate.
-5. GitHub card: live clips a squircle (figma-squircle 0.6) with a gradient rim; here a 14 px radius and the
-   `--shadow-surface` fallback the reference uses before measuring.
-6. The motion, nav and perf sweep at the end (og:type, JSON-LD: done by the SEO postbuild).
+1. Interactive components (37 exports, 11 articles): ported on `site-comp-canvas` and `site-comp-gesture` under
+   `components/interactive/<article>/`; not in `site` yet. When merged: map the MDX tags to them in the converter
+   (`interactive` blocks, `INTERACTIVE_ARTICLES`) instead of the empty frames. Known special sizes: checkbox-interactions
+   `Demo`/`StaticDemo` (not 16:9), metaball `CanvasKitJsAlert` (drawn as nothing now), animated-loader-skia
+   `WithProgressLoaderWithSkia` at 390.
+2. Article weight 40.5 vs live 38 KB gzip (smooth-dropdown): the squircle CSS could be one sprite (0.4 KB); the rest
+   is Exact's head (page style, boot script).
+3. Inline maths (animated-spiral): SVG sizes and baseline against live's MathJax.
+4. smooth-dropdown at 390: 0.88 % (paragraph wraps: the texts list two paragraphs as missing at 390 and 1440).
+5. The motion, nav and perf sweep at the end.
