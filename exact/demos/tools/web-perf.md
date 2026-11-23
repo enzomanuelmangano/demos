@@ -397,6 +397,17 @@ fibonacci-shader-grid, mobile and desktop): drawn, no console error, no `.wgsl` 
 this unnecessary: `loadShaders` fetching in parallel (`Promise.all`), or better the build writing one `shaders.json`
 (names and texts) beside `gpu.js` and the glue starting its fetch with the wasm's, as the head script does.
 
+## The frame's display clip (fifth session, 2026-11-23)
+
+The desktop frame clipped its display by a rounded overflow (border-radius 62 + corner-shape). Under any rounded
+overflow clip Chrome ignored the mask of every backdrop-filter inside: a progressive blur (variable-blur: three
+masked backdrop blurs) drew as one hard-edged full blur (clerk-toast; scroll-progress, and the home's search reveal
+use the same masks). Tried in the page: radius 0 with a round corner-shape restores the ramp, a `clip-path` does not
+break it. The display is now clipped by `clip-path: path(...)`, UIKit's continuous 62 pt corner (PaintCode's
+constants, home/web-phone.contract `airDisplayPath`). A/B on open / close flights (chessboard, clerk-toast, 3 runs
+each, VSYNC=1): presented frames and gaps the same with either clip (the ~170 ms gap at a close's landing is there in
+both).
+
 ## What was changed here
 
 Only the measuring tools (`tools/web-perf/`) and this report: every high-value fix found is in code another pass owns
