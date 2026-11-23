@@ -38,3 +38,16 @@
   }
   if (document.readyState == 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
+/* An in-app navigation to another page starts at its top, as live's (Next scrolls a new page to the top). The page
+   scrolls the document, which the route change does not reset: an article opened from /articles scrolled down kept
+   that offset (clamped while its module loaded, then the page jumped). A history push to another path scrolls to 0;
+   a replace, a hash and back/forward (the browser's restoration) are left alone. */
+(function () {
+  var push = history.pushState;
+  history.pushState = function (state, title, url) {
+    var before = location.pathname;
+    var r = push.apply(this, arguments);
+    if (location.pathname !== before && !location.hash) window.scrollTo(0, 0);
+    return r;
+  };
+})();

@@ -131,6 +131,11 @@ component App
   resource article = loadArticle(top(nav).name == "article" ? post : "") as shape Page
   resource doc = loadDoc(top(nav).name == "docPage" ? post : "") as shape Page
   resource cards = loadCards(top(nav).name == "articles" ? "*" : seriesSlug) as shape Card[]
+  // An in-app navigation to a content page draws it once its module has answered: until then a window-tall blank under
+  // the header, not the newsletter and the footer at the top of an empty page that the content then pushes down (a
+  // layout shift of 0.13 on every article opened from /articles; live swaps the page in when its data is there).
+  derive held = ((top(nav).name == "article" and not current(article)) or (top(nav).name == "docPage" and not current(doc))
+    or ((top(nav).name == "articles" or top(nav).name == "series") and not current(cards)))
   // The YouTube and X frames near the window, the code block just copied.
   state near: string[] = []
   state copied = ""
@@ -272,12 +277,18 @@ component App
                 else
                   head title=`${docTitle(e.params.post)} | Reactiive` description="Discover the beauty of React Native and how to build stunning animations with Reanimated and Skia"
                     image="/og/main.png" canonical=`/docs/${e.params.post}`
-                ArticlePage(page=(e.name == "article" ? article : doc), article=(e.name == "article"), copied=copied, copy=copyCode, near=near, seen=embedSeen)
-                  if e.name == "article"
-                    Newsletter(showTitle=true, status=newsletterStatus, subscribe=subscribe)
+                if held
+                  view height="100vh"
+                else
+                  ArticlePage(page=(e.name == "article" ? article : doc), article=(e.name == "article"), copied=copied, copy=copyCode, near=near, seen=embedSeen)
+                    if e.name == "article"
+                      Newsletter(showTitle=true, status=newsletterStatus, subscribe=subscribe)
               else
                 head title="Page not found | Reactiive" status=404 robots="noindex"
                   description="Discover the beauty of React Native and how to build stunning animations with Reanimated and Skia"
                   image="/og/main.png" canonical="/"
                 NotFound()
-            SiteFooter(legal=legalFooter(e.name, e.name == "docPage" ? e.params.post : ""))
+            if held
+              view height="100vh"
+            else
+              SiteFooter(legal=legalFooter(e.name, e.name == "docPage" ? e.params.post : ""))
