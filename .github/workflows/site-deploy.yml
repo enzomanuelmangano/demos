@@ -139,6 +139,28 @@ jobs:
         run: |
           if [ -f tools/gen-content.ts ]; then bun tools/gen-content.ts; else echo "no content pipeline on this branch"; fi
 
+      # The accounts (docs/stubs.md, docs/storage.md): public settings only, from repository VARIABLES, into the
+      # gitignored .env.local the build reads. Off unless vars.SITE_ACCOUNTS is 1; then EXPO_PUBLIC_ACCESS_KEY (the old
+      # site's token key) is required, or every reader signed in on the old site would be signed out at the cutover.
+      - name: The accounts' public settings
+        if: ${{ vars.SITE_ACCOUNTS == '1' }}
+        working-directory: .site
+        env:
+          WEBSITE_URL: ${{ vars.EXPO_PUBLIC_WEBSITE_URL || 'https://reactiive.io' }}
+          AMPLITUDE: ${{ vars.EXPO_PUBLIC_AMPLITUDE_API_KEY }}
+          SENTRY: ${{ vars.EXPO_PUBLIC_SENTRY_DSN }}
+          ACCESS_KEY: ${{ vars.EXPO_PUBLIC_ACCESS_KEY }}
+        run: |
+          if [ -z "$ACCESS_KEY" ]; then echo "::error::SITE_ACCOUNTS=1 needs the EXPO_PUBLIC_ACCESS_KEY variable (.site/docs/storage.md)"; exit 1; fi
+          umask 077
+          {
+            echo "SITE_ACCOUNTS=1"
+            echo "EXPO_PUBLIC_WEBSITE_URL=$WEBSITE_URL"
+            if [ -n "$AMPLITUDE" ]; then echo "EXPO_PUBLIC_AMPLITUDE_API_KEY=$AMPLITUDE"; fi
+            if [ -n "$SENTRY" ]; then echo "EXPO_PUBLIC_SENTRY_DSN=$SENTRY"; fi
+            echo "EXPO_PUBLIC_ACCESS_KEY=$ACCESS_KEY"
+          } > .env.local
+
       - name: Build the site (web-build, then head, JSON-LD, sitemap, robots, feed, manifest)
         working-directory: .site
         env:
