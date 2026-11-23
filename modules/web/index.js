@@ -586,6 +586,29 @@ const noteTap = (e) => {
 };
 if (DOM) document.addEventListener('pointerdown', noteTap, true);
 if (DOM) document.addEventListener('click', noteTap, true);
+// Framed by another page (reactiive.io's /demos shows this app in a sandboxed frame and plays a one-time touch
+// demo over it, .site/docs/decisions.md D19), the parent may ask, by message only: `{ demos: 'rect', target }` (the
+// box of the element whose testId is `target`, answered as `{ demos: 'rect', target, rect }` in this window's CSS
+// pixels, or rect null) and `{ demos: 'press', target }` (press it as a tap would). The first real input here is
+// told to the parent (`{ demos: 'input' }`) so it stops its demo. Nothing else is read or answered; never at the top.
+if (DOM && window.parent !== window) {
+  const post = (m) => { try { window.parent.postMessage(m, '*'); } catch {} };
+  addEventListener('message', (e) => {
+    const m = e.data;
+    if (e.source !== window.parent || !m || (m.demos !== 'rect' && m.demos !== 'press') || typeof m.target !== 'string' || !/^[a-z0-9-]{1,80}$/.test(m.target)) return;
+    const el = document.querySelector(`[data-testid="${m.target}"]`);
+    if (m.demos === 'rect') {
+      const r = el?.getBoundingClientRect();
+      return post({ demos: 'rect', target: m.target, rect: r && r.width > 0 ? { x: r.x, y: r.y, width: r.width, height: r.height } : null });
+    }
+    if (!el) return;
+    const r = el.getBoundingClientRect(), at = { bubbles: true, cancelable: true, composed: true, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2, pointerId: 7, pointerType: 'touch', isPrimary: true, button: 0 };
+    el.dispatchEvent(new PointerEvent('pointerdown', { ...at, buttons: 1 }));
+    el.dispatchEvent(new PointerEvent('pointerup', at));
+    el.dispatchEvent(new MouseEvent('click', at));
+  });
+  for (const type of ['pointerdown', 'wheel', 'keydown']) addEventListener(type, (e) => { if (e.isTrusted) post({ demos: 'input' }); }, { capture: true, passive: true });
+}
 // A demo's card draws only once its launch has placed it: the route's first frame can paint before this module's view
 // is made, which showed the demo full screen for a frame ahead of the open.
 if (DOM) {

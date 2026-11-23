@@ -11,7 +11,9 @@ keyframes webScrimIn
 keyframes webScrimOut
   to opacity=0
 
-// A 48 pt circle, the glass button's size: a translucent dark disc with a white glyph.
+// A 48 pt circle, the glass button's size, as iOS 26's clear glass: a neutral translucent tint over a blur that
+// lifts what is under it (so it reads as glass over a white demo as over a black one, not a flat grey disc), a
+// specular rim lit from the top, a soft lift shadow, and a white glyph with a hairline shadow for light backdrops.
 // kind: "close", "back" or "info".
 component WebRoundButton
   props
@@ -22,11 +24,12 @@ component WebRoundButton
   view
     button press=press appearance="none" aria-label=label testId=id padding=0 border-width=0
       width=48 height=48 border-radius=24 display="flex" align-items="center" justify-content="center"
-      background-color="rgba(36,36,40,0.58)" backdrop-filter="blur(20px) saturate(180%)"
-      box-shadow="0px 4px 14px rgba(0,0,0,0.22), inset 0px 0px 0px 0.5px rgba(255,255,255,0.22)"
+      background-color="rgba(118,118,128,0.34)" backdrop-filter="blur(14px) saturate(180%) brightness(1.08)"
+      background-image="linear-gradient(180deg, rgba(255,255,255,0.20), rgba(255,255,255,0.03) 48%, rgba(255,255,255,0.08))"
+      box-shadow="0px 6px 18px rgba(0,0,0,0.16), 0px 1px 3px rgba(0,0,0,0.10), inset 0px 0.75px 0px rgba(255,255,255,0.55), inset 0px 0px 0px 0.5px rgba(255,255,255,0.22)"
       :active
         -exact-press-scale = 0.92
-      svg width=20 height=20 viewBox="0 0 20 20" fill="none" aria-hidden=true
+      svg width=20 height=20 viewBox="0 0 20 20" fill="none" aria-hidden=true filter="drop-shadow(0px 0.5px 1px rgba(0,0,0,0.28))"
         if kind == "close"
           path d="M5 5L15 15M15 5L5 15" stroke="#ffffff" stroke-width=2.2 stroke-linecap="round"
         else if kind == "back"
