@@ -40,6 +40,8 @@ const BUTTON: f32 = 48.0;
 const HEADER: f32 = 50.0;
 const HEADER_BELOW: f32 = 16.0;
 const HEADER_PAD: f32 = 16.0;
+/// The glass check's inset from the right edge (gl-transitions.contract: right=72), pt.
+const GLASS_CHECK_RIGHT: f32 = 72.0;
 /// Letter spacing of the title, pt.
 const TITLE_SPACING: f32 = 0.6;
 /// Gap between note columns and rows, pt.
@@ -340,8 +342,16 @@ impl Layout {
             cards,
             add_row: row,
             heading,
+            // Centred on the screen; on a narrow one (390 pt) it slides left to end 4 pt before the
+            // glass check (right 72, 48 wide), which it otherwise ran under (the iPhone 17's 402 pt
+            // leaves that gap centred), and never under the Back.
             heading_glass: (
-                grid((w - heading_w) / 2.0, scale),
+                grid(
+                    ((w - heading_w) / 2.0)
+                        .min(w - GLASS_CHECK_RIGHT - BUTTON - 4.0 - heading_w)
+                        .max(HEADER_PAD + BUTTON + 8.0),
+                    scale,
+                ),
                 grid(safe_top + (BUTTON - heading_h) / 2.0, scale),
             ),
             check_x: grid(w - ADD_PAD - BUTTON, scale),
@@ -1346,6 +1356,16 @@ mod tests {
     const H: f32 = 912.0;
     const SAFE_TOP: f64 = 68.0;
     const SAFE_BOTTOM: f64 = 34.0;
+
+    #[test]
+    fn the_glass_title_clears_the_check_on_a_narrow_screen() {
+        // 150 pt wide without fonts. 420 and 402: centred, as before; 390: 4 pt before the check.
+        let x = |w: f32| Layout::new(w, 844.0, 3.0, 47.0, None, true).heading_glass.0;
+        assert_eq!(x(420.0), 135.0);
+        assert_eq!(x(402.0), 126.0);
+        assert_eq!(x(390.0), 116.0);
+        assert!(x(390.0) + 150.0 <= 390.0 - 72.0 - 48.0 - 4.0 + 0.01);
+    }
 
     fn frame(now_ms: f64) -> Frame {
         Frame {
