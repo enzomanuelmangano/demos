@@ -68,6 +68,7 @@ const cdp = await Cdp.connect(ver.webSocketDebuggerUrl);
 type Sent = { side: string; url: string; method: string; headers: Record<string, string>; body: string };
 const sentPurchase: Sent[] = [];
 const userInfoAuth: string[] = [];
+const rejected = new Set<string>();
 let currentSide = 'old';
 const plain = (h: Record<string, string>) => Object.fromEntries(Object.entries(h).map(([k, v]) => [k.toLowerCase(), v]));
 
@@ -93,6 +94,10 @@ async function openPage(browserContextId?: string): Promise<Page> {
     }
     const auth = plain(request.headers).authorization ?? '';
     const token = auth.replace(/^Bearer /, '');
+    if (rejected.has(token)) {
+      userInfoAuth.push(`${currentSide}:rejected`);
+      return json(401, { error: 'Unauthorized' }); // the reference's withAuth answer to a token it no longer takes
+    }
     if (token === TOKEN_A || token === TOKEN_B) {
       userInfoAuth.push(`${currentSide}:${token === TOKEN_A ? 'A' : 'B'}`);
       return json(200, { user: USER, plan: PLAN, github: null, patreon: null });
@@ -137,6 +142,7 @@ const page = await openPage();
 try {
   // ---------------------------------------------------------------- 1. the old site writes every kind of state
   phase = '1 old site';
+  await fetch(`${ORIGIN}/__switch/forwarded?reset`, { method: 'POST' });
   await side('old'); currentSide = 'old';
   await page.goto(`${ORIGIN}/?utm_source=${UTM}`);
   check('old: Amplitude device id cookie created', await until(page, `document.cookie.split('; ').some(c => /^AMP_[A-Za-z0-9]{10}=/.test(c))`, 20000));
@@ -156,7 +162,8 @@ try {
   await clickWhere(page, byText('button', 'Cancel Plan'));
   await until(page, textHas('Cancel subscription?'));
   await clickWhere(page, byText('button', 'Cancel subscription'));
-  check('old: cancel request sent (mocked)', await until(page, `true`) && (await (async () => { for (let i = 0; i < 40 && !sentPurchase.some((s) => s.side === 'old'); i++) await Bun.sleep(150); return sentPurchase.some((s) => s.side === 'old'); })()));
+  for (let i = 0; i < 40 && !sentPurchase.some((s) => s.side === 'old'); i++) await Bun.sleep(150);
+  check('old: cancel request sent (answered in the browser)', sentPurchase.some((s) => s.side === 'old'));
   await Bun.sleep(1500); // Amplitude's throttled writes and the persister's (1 s)
   const before = await snapshot(page);
   const deviceBefore = ampDevice(before);
@@ -245,6 +252,9 @@ try {
   check('new: token written in the old format (@AccessStorage decrypts to it)', decrypt(await page.eval(`localStorage.getItem('@AccessStorage')`)) === TOKEN_B
     && (await page.eval<string>(`localStorage.getItem('@AccessStorage')`)) === encrypt(TOKEN_B));
   check('new: hint written (reactiive:signed-in = 1)', await until(page, `localStorage.getItem('reactiive:signed-in') === '1'`));
+  const leaked = await page.eval<boolean>(`(() => { const t = ${JSON.stringify(TOKEN_B)}; const ss = Object.keys(sessionStorage).some(k => (sessionStorage.getItem(k) || '').includes(t) || k.includes(t));
+    return ss || JSON.stringify(history.state ?? null).includes(t) || location.href.includes(t); })()`);
+  check('new: the callback\'s token is in no URL, history state or sessionStorage', !leaked);
   await side('old'); currentSide = 'old';
   userInfoAuth.length = 0;
   await page.goto(`${ORIGIN}/profile`);
@@ -264,7 +274,58 @@ try {
   await side('old'); currentSide = 'old';
   await fresh.goto(`${ORIGIN}/demos`);
   check('old: the same visitor, signed out, works', await until(fresh, `[...document.querySelectorAll('button')].some(b => b.innerText.trim() === 'Sign In' && b.getClientRects().length)`));
-  check('no purchase/refund request left the browser', true, `${sentPurchase.length} intercepted, 0 forwarded`);
+
+  // ---------------------------------------------------------------- 7. a token the API rejects (401)
+  phase = '7 rejected token';
+  await side('new'); currentSide = 'new';
+  await page.goto(`${ORIGIN}/demos`);
+  await until(page, `document.querySelector('[data-testid="avatar"]')?.getClientRects().length`);
+  const storedB = await page.eval<string>(`localStorage.getItem('@AccessStorage')`);
+  rejected.add(TOKEN_B);
+  userInfoAuth.length = 0;
+  await page.goto(`${ORIGIN}/articles`);
+  check('new: a 401 shows the reader signed out ("Sign In")', await until(page, `document.querySelector('[data-testid="sign-in"]')?.getClientRects().length && !document.querySelector('[data-testid="avatar"]')`) && userInfoAuth.includes('new:rejected'));
+  await Bun.sleep(1500);
+  check('new: the stored token survives the 401 byte-identical', (await page.eval<string>(`localStorage.getItem('@AccessStorage')`)) === storedB && JSON.parse(await page.eval(`localStorage.getItem('exact.state.accessToken')`)) === TOKEN_B);
+  check('new: the hint is dropped, as the old site does when it shows "Sign In"', await page.eval(`localStorage.getItem('reactiive:signed-in') === null && !document.documentElement.dataset.auth`));
+  await side('old'); currentSide = 'old';
+  await page.goto(`${ORIGIN}/demos`);
+  await until(page, `[...document.querySelectorAll('button')].some(b => b.innerText.trim() === 'Sign In' && b.getClientRects().length && getComputedStyle(b).visibility !== 'hidden')`);
+  await Bun.sleep(1500);
+  check('old (rollback): also signed out on the 401, and also keeps @AccessStorage', (await page.eval<string>(`localStorage.getItem('@AccessStorage')`)) === storedB && userInfoAuth.includes('old:rejected'));
+  rejected.delete(TOKEN_B);
+  userInfoAuth.length = 0;
+  await page.goto(`${ORIGIN}/profile`);
+  check('old: once the API takes the token again, signed in (the key was kept)', await until(page, `${textHas('Profile Settings')} && document.querySelector('img[alt="Profile"]')`) && userInfoAuth.includes('old:B'));
+  await side('new'); currentSide = 'new';
+  await page.goto(`${ORIGIN}/profile`);
+  check('new: the same, signed in again on the next visit', await until(page, `${textHas('Profile Settings')} && document.querySelector('[data-testid="avatar"]')?.getClientRects().length`));
+
+  // ---------------------------------------------------------------- 8. two tabs of the new site
+  phase = '8 two tabs';
+  const tabB = await openPage();
+  await tabB.goto(`${ORIGIN}/articles`);
+  check('tab B: signed in too', await until(tabB, `document.querySelector('[data-testid="avatar"]')?.getClientRects().length`));
+  await page.send('Page.bringToFront');
+  await hover(page, `document.querySelector('[data-testid="avatar"]')`);
+  await until(page, `document.querySelector('[data-testid="menu-sign-out"]')?.getClientRects().length`);
+  await clickWhere(page, `document.querySelector('[data-testid="menu-sign-out"]')`);
+  check('tab A signs out: @AccessStorage removed', await until(page, `localStorage.getItem('@AccessStorage') === null`));
+  check('tab B follows: "Sign In", no avatar', await until(tabB, `document.querySelector('[data-testid="sign-in"]')?.getClientRects().length && !document.querySelector('[data-testid="avatar"]')?.getClientRects().length`));
+  await page.goto(`${ORIGIN}/profile?accessToken=${TOKEN_A}`);
+  check('tab A signs in again', await until(page, `location.search === '' && ${textHas('Profile Settings')}`));
+  check('tab B follows: avatar', await until(tabB, `document.querySelector('[data-testid="avatar"]')?.getClientRects().length`));
+  await Bun.sleep(1000);
+  check('one session in the old format after both tabs', decrypt(await tabB.eval(`localStorage.getItem('@AccessStorage')`)) === TOKEN_A
+    && JSON.parse(await tabB.eval(`localStorage.getItem('exact.state.accessToken')`)) === TOKEN_A);
+
+  // ---------------------------------------------------------------- money endpoints: nothing reached a server
+  phase = '9 network';
+  const forwarded = await (await fetch(`${ORIGIN}/__switch/forwarded`)).json() as unknown[];
+  check('no /api/purchase/* or /api/refund/* request reached either site (the origin\'s own log)', forwarded.length === 0, `${forwarded.length} forwarded`);
+  const kinds = [...new Set(sentPurchase.map((r) => `${r.method} ${r.url}`))];
+  check('the browser asked only the cancel, once per site (answered in the browser)', kinds.length === 1 && kinds[0] === 'POST /api/purchase/cancel-subscription'
+    && sentPurchase.length === 2, `${sentPurchase.length} asked: ${kinds.join(', ')}`);
 } finally {
   await side('old').catch(() => {});
   console.log('\n| Phase | Check | Result | Detail |\n|---|---|---|---|');

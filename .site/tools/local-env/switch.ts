@@ -6,6 +6,8 @@
 //   bun tools/local-env/switch.ts [--port 4317] [--old http://127.0.0.1:3017] [--new http://127.0.0.1:4319] [--mode old]
 //   curl -X POST 'http://localhost:4317/__switch?to=new'    (the "deploy"; ?to=old is the rollback)
 //   curl 'http://localhost:4317/__switch'                   (the current side)
+//   curl 'http://localhost:4317/__switch/forwarded'         (every /api/purchase/* and /api/refund/* request that reached
+//                                                            a site through this origin; POST ?reset clears the list)
 //
 // The old site is the reference's production build (tools/local-env/api.ts --prod --site-port 4317), its pages and its
 // /api/* alike. The new site is the composed Exact site (tools/serve.ts), whose own /api/* proxy points at the same old
@@ -15,6 +17,8 @@ const arg = (n: string, d: string) => { const i = process.argv.indexOf(n); retur
 const port = Number(arg('--port', '4317'));
 const sides: Record<string, string> = { old: arg('--old', 'http://127.0.0.1:3017'), new: arg('--new', 'http://127.0.0.1:4319') };
 let mode = arg('--mode', 'old');
+// The money endpoints that reached a site through this origin: the tests prove none ever did.
+let forwarded: { side: string; method: string; path: string }[] = [];
 if (!sides[mode]) throw new Error(`switch: --mode is old or new`);
 
 const HOP = ['connection', 'keep-alive', 'transfer-encoding', 'content-encoding', 'content-length', 'host'];
@@ -35,6 +39,11 @@ Bun.serve({
   port, hostname: '127.0.0.1', idleTimeout: 0,
   async fetch(req) {
     const url = new URL(req.url);
+    if (url.pathname === '/__switch/forwarded') {
+      if (req.method === 'POST' && url.searchParams.has('reset')) forwarded = [];
+      return Response.json(forwarded);
+    }
+    if (/^\/api\/(purchase|refund)\//.test(url.pathname)) forwarded.push({ side: mode, method: req.method, path: url.pathname });
     if (url.pathname === '/__switch') {
       const to = url.searchParams.get('to');
       if (req.method === 'POST' && to) {
