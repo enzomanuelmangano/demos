@@ -12,9 +12,12 @@ shape NavItem
 
 fn navItems(): NavItem[] = [NavItem(name="Articles", href="/articles", route="articles"), NavItem(name="Demos", href="/demos", route="demos")]
 
-// Past 10 px of the page's scroll the bar takes the page's colour and a hairline, over 300 ms, as the reference's.
+// Past 10 px of the page's scroll the bar takes the page's colour and a hairline, over 300 ms, as the reference's: the
+// head script web/reveal.js sets `html[data-scrolled]` and web/head.css colours `[data-motion~=bar]`, so the look needs
+// no runtime (the content pages activate on interaction, docs/decisions.md D16); the mobile bar's open menu too.
 style HeaderBar
   position="absolute" top=0 left=0 right=0 z-index=50 overflow="hidden" border-bottom-width=1 border-bottom-style="solid"
+  background-color="transparent" border-bottom-color="transparent"
   transition="background-color 300ms cubic-bezier(0.4, 0, 0.2, 1), border-color 300ms cubic-bezier(0.4, 0, 0.2, 1)"
 
 style NavLink
@@ -39,7 +42,6 @@ style MenuLinkIdle
 component SiteHeader
   props
     current: string
-    scrolled: bool
     // The account (components/account): off without the env; the session loading; the user; the two actions.
     accounts: bool
     loading: bool
@@ -62,8 +64,7 @@ component SiteHeader
   view
     header appearance="none" position="absolute" top=0 left=0 right=0 z-index=50
       // Desktop, from 768 px.
-      view class=HeaderBar height=md(0, 87) testId="header-desktop"
-        background-color=(scrolled ? "var(--color-background)" : "transparent") border-bottom-color=(scrolled ? "rgb(255 255 255 / 0.05)" : "transparent")
+      view class=HeaderBar height=md(0, 87) testId="header-desktop" data-motion="bar"
         Container()
           row justify-content="space-between" align-items="center" padding-top=sm(16, 20) padding-bottom=sm(16, 20)
             link href="/" aria-label="Reactiive, home" margin-top=6 border-radius="var(--radius-md)" display="flex" class=Plain data-motion="plain focus" -exact-hover-effect="none"
@@ -76,8 +77,7 @@ component SiteHeader
                   view height=1.5 border-radius="var(--radius-sm)" background-color="var(--color-text-primary)" transform-origin="left" data-motion=(current == item.route ? "underline current" : "underline")
               AccountSlot(accounts=accounts, loading=loading, me=me, openSignIn=openSignIn, signOut=signOut)
       // Phones and narrow windows.
-      view class=HeaderBar height=md(73, 0) testId="header-mobile"
-        background-color=(scrolled or menu ? "var(--color-background)" : "transparent") border-bottom-color=(scrolled or menu ? "rgb(255 255 255 / 0.05)" : "transparent")
+      view class=HeaderBar height=md(73, 0) testId="header-mobile" data-motion=(menu ? "bar open" : "bar")
         Container()
           row justify-content="space-between" align-items="center" padding-top=16 padding-bottom=16
             link href="/" aria-label="Reactiive, home" border-radius="var(--radius-md)" display="flex" press=close class=Plain data-motion="plain focus" -exact-hover-effect="none"

@@ -93,44 +93,23 @@ component Runs
       else
         text r.text
 
-// A code line's tokens (tools/gen-content.ts `highlight`): a palette letter and the text; the colours are the
-// reference's themePlus (palenight with its overrides) and the terminal theme. One literal colour per branch, so a
-// token is a class, not an inline style.
-component Tok
-  props
-    t: string
-  view
-    if t.startsWith("a")
-      text t.slice(1) color="#abb2bf"
-    else if t.startsWith("f")
-      text t.slice(1) color="#4b9fe4"
-    else if t.startsWith("k")
-      text t.slice(1) color="#c678dd"
-    else if t.startsWith("n")
-      text t.slice(1) color="#d19a66"
-    else if t.startsWith("y")
-      text t.slice(1) color="#e5c07b"
-    else if t.startsWith("s")
-      text t.slice(1) color="#e06c75"
-    else if t.startsWith("c")
-      text t.slice(1) color="#8b919d" font-style="italic"
-    else if t.startsWith("w")
-      text t.slice(1) color="#f2f5f7"
-    else if t.startsWith("t")
-      text t.slice(1) color="rgb(98, 114, 164)"
-    else
-      text t.slice(1)
-
+// A code line's segments (tools/gen-content.ts `highlight`): an italic comment (`c`), coloured by web/content.css's
+// `[data-tok=c]`; the runs between, one text each, coloured by the CSS Custom Highlight API from `data-hl` (web/reveal.js
+// paints the ranges, web/content.css's `::highlight(tok-…)` the reference's themePlus and terminal colours). A node per
+// segment, not per token: a content page's runtime adopts each when it activates (docs/decisions.md D16).
 component CodeLine
   props
     line: string
   view
     if line.length > 1
       for t, i in line.slice(1).split("\uE000") key=i
-        Tok(t=t)
+        if t.startsWith("c")
+          text t.slice(1) data-tok="c"
+        else
+          text t.slice(t.indexOf("\uE001") + 1) data-hl=t.slice(1, t.indexOf("\uE001"))
 
-// The code a block copies: its lines' text, without the marks and letters.
-fn codeText(lines: string[]): string = lines.map(l => l.slice(1).split("\uE000").map(t => t.slice(1)).join("")).join("\n")
+// The code a block copies: its lines' text, without the marks and segment heads.
+fn codeText(lines: string[]): string = lines.map(l => l.slice(1).split("\uE000").map(t => t.startsWith("c") ? t.slice(1) : t.slice(t.indexOf("\uE001") + 1)).join("")).join("\n")
 
 // A fenced block (code-highlight.tsx): 14 px radius, the control ring, palenight tokens on the code surface, 16 px in,
 // scrolling sideways; the copy button shows on hover (always on a touch screen) and copies the code.
@@ -143,7 +122,7 @@ component CodeBlock
     view position="relative" margin-bottom=block.mb border-radius=14 max-width="calc(100vw - 2.9rem)" data-motion="code"
       view position="relative" border-radius=14 box-shadow="var(--shadow-control)" overflow="hidden"
         button press=copy(block.id, codeText(block.lines)) appearance="none" aria-label="Copy code" position="absolute" z-index=10
-          right=(block.lines.length > 1 ? 8 : 4) top=(block.lines.length > 1 ? 8 : 4) display="flex" align-items="center" justify-content="center"
+          right=(codeText(block.lines).includes("\n") ? 8 : 4) top=(codeText(block.lines).includes("\n") ? 8 : 4) display="flex" align-items="center" justify-content="center"
           padding=10 border-radius="var(--radius-control)" background-color="rgb(255 255 255 / 0.06)" backdrop-filter="blur(4px)" box-shadow="var(--shadow-control)"
           data-motion="copy" testId="copy"
           :hover
@@ -282,5 +261,7 @@ component Blocks
         view width="100%" max-width=550 margin-top=block.mt margin-bottom=block.mb overflow="hidden" intersect=seen(block.id) intersect-margin="50% 0px"
           iframe (near.includes(block.id) ? `https://platform.twitter.com/embed/Tweet.html?id=${block.text}&theme=dark&hideThread=true` : "about:blank") title="X post" width="100%" height=from(598, block.width, block.height) border-width=0 display="block"
     else if block.kind == "demo"
-      view margin-left=(block.depth * 26) data-motion="demo" testId=`demo-${block.title}`
+      // `intersect`: a content page activates on interaction (docs/decisions.md D16); an observed node wakes its
+      // runtime as it enters the window (or at the first scroll), so a demo starts once it is seen.
+      view margin-left=(block.depth * 26) data-motion="demo" testId=`demo-${block.title}` intersect=seen(block.id)
         ArticleDemo(article=block.lang, name=block.title, args=block.text)

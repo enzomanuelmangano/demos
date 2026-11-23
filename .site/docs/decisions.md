@@ -284,3 +284,35 @@ reference's API, then mirrored here):
   refresh with rotation, a revocation list or session table.
 - **OAuth `state` carries only utm_source, no anti-CSRF value; no PKCE.** Upstream: a random, single-use `state`
   bound to the browser (cookie) and checked in the callback; PKCE for the code exchange.
+
+## D16. Content and static pages activate on the reader's intent; the runtime adopts fewer nodes (2026-11-23)
+
+Article pages blocked the main thread 225-430 ms at 4g / 4x CPU (live: ~75) because each page started Exact's whole
+runtime once idle (`activate=idle`): one task that builds the page's view tree and adopts every node the build
+rendered (~55 ms plus ~0.07 ms a node at 4x CPU; `pan-gesture-handler` had 2,763 nodes, 2,050 of them code tokens).
+
+- **`activate=interaction`** on `/articles`, `/articles/:post`, `/series/:series`, `/docs`, `/docs/:post`, `/course`,
+  `/inspirations`, `/demos-app` (`/` and `/demos`, ~140 nodes and their own clocks, stay `idle`). Such a page loads no
+  script of the runtime until intent: a press on a control with a handler (the menu, Sign In, the copy button, the
+  newsletter field), which Exact's capture script records and replays after the boot, or a node with an `intersect`
+  handler entering the window (and the first scroll once one exists: Exact's own rule, `host/web-js/capture.js`).
+  The interactive demos and the YouTube / X embeds carry one (`components/markdown.contract`), so a demo activates the
+  page when it is seen; a page with none never loads the runtime. Text, links, entrances, the card cascade and every
+  hover are HTML and CSS (D11) and work without it.
+- **The header's scrolled look moved out of the runtime**: `web/reveal.js` sets `html[data-scrolled]` past 10 px (one
+  passive scroll listener writing on change), `web/head.css` colours `[data-motion~=bar]` (the mobile bar too while its
+  menu is open, `bar open`). The `scrolled` state, its 10 px marker and `topSeen` are gone, so no page has an
+  `intersect` node at the top that would wake it at once.
+- **Code blocks are a text node per run, not a span per token.** A block without diff marks is one pre-formatted text
+  (its line feeds inside); the runs between italic comments are one text each, coloured by the CSS Custom Highlight API
+  (`::highlight(tok-<letter>)`, web/content.css; `web/reveal.js` registers one `StaticRange` per token from the run's
+  `data-hl` list, as the parser adds it, and again if a text node is replaced). Comments stay italic spans.
+  `pan-gesture-handler`: 2,763 nodes to 543; HTML 310 to 212 KB. Glyphs are the same at the same places; anti-aliasing
+  at former span starts differs by subpixel offsets (code blocks 0.01-0.24 % px at threshold 32). Without the API
+  (Chrome < 105, Safari < 17.2, Firefox < 140) code is drawn in its block's colour.
+- **Navigation.** Before activation a link is a document navigation (Exact: "real links navigate before
+  activation"); the head's speculation rules prerender a same-origin page on hover (`moderate`; not `/demos*`,
+  `/profile`, `/api/*`), so it swaps in at once with the header in place. After activation links are in-app as before.
+- Rejected: deferring the idle activation past the measurement window (the same work, later, during the reader's first
+  scroll); `paint`/`render` policies (they change when a page is drawn, not what activation costs); time-slicing the
+  boot (Exact's adoption is one task; not ours to split).

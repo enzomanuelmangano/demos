@@ -70,12 +70,13 @@ function dict(theme: { plain: any; styles: { types: string[]; style: Style }[] }
 }
 const PLUS = dict(themePlus), TERM = dict(terminalTheme);
 
-// A code line, compact (it is in the page's checkpoint as well as its HTML: docs/perf.md): one string, its diff mark
-// (" " none, "+" added, "-" removed, "=" the pad of an unmarked line in a diff block) then its tokens, each a
-// palette letter and its text, joined by U+E000. Empty tokens are dropped; the others stay one span each, as live
-// (prism-react-renderer: a span per token, so every token box is at live's place). The palette is the theme's colours,
-// the letters drawn by components/markdown.contract `Tok`.
-const SEP = '\uE000';
+// A code line, compact (it is in the page's checkpoint as well as its HTML: docs/perf.md; a block without diff marks
+// is a single "line" holding the line feeds): one string, its diff mark (" " none, "+" added, "-" removed, "=" the pad
+// of an unmarked line in a diff block) then its segments joined by U+E000: `c<text>` an italic comment, `h<spec>U+E001<text>` the runs between, `<spec>` their palette letters and
+// lengths in UTF-16 units (`k5.a1.w3`). Live has a span per token; here the runs between comments are one text node
+// coloured by the CSS Custom Highlight API, so a content page's runtime adopts a node per segment, not per token
+// (docs/decisions.md D16). Same glyphs at the same places. The letters: PALETTE (`_` the block's own colour).
+const SEP = '\uE000', SPEC = '\uE001';
 const PALETTE: Record<string, string> = { '': '_', '#abb2bf': 'a', '#4b9fe4': 'f', '#c678dd': 'k', '#d19a66': 'n', '#e5c07b': 'y', '#e06c75': 's', '#8b919d/i': 'c', '#f2f5f7': 'w', 'rgb(98, 114, 164)': 't' };
 type Line = string;
 
@@ -97,19 +98,47 @@ function highlight(raw: string, langIn: string, meta: string): { lang: string; t
   const grammar = (Prism.languages as any)[language];
   const tokens = grammar ? normalizeTokens(Prism.tokenize(code, grammar) as any) : normalizeTokens([code]);
   const d = terminal ? TERM : PLUS;
-  const lines = tokens.map((line, i) => {
-    const runs: [string, string][] = [];
+  // A token of blanks takes the colour of the one before it (blanks draw no ink, and the font is monospaced), and
+  // neighbours of one colour are one run.
+  const add = (runs: [string, string][], letter: string, text: string) => {
+    const last = runs[runs.length - 1];
+    if (last && (last[0] === letter || /^\s+$/.test(text))) last[1] += text;
+    else if (last && /^\s+$/.test(last[1])) { last[0] = letter; last[1] += text; }
+    else runs.push([letter, text]);
+  };
+  const runsOf = (line: (typeof tokens)[number], runs: [string, string][] = []) => {
     for (const t of line) {
       const text = t.empty ? '' : t.content;
       if (!text) continue;
       const style: Style = t.types.length === 1 && t.types[0] === 'plain' ? {} : t.types.length === 1 && t.empty != null ? d[t.types[0]] ?? {} : Object.assign({}, ...t.types.map((x) => d[x]));
       const key = (style?.color ?? '') + (style?.fontStyle === 'italic' ? '/i' : '');
       const letter = PALETTE[key];
-      if (!letter) throw new Error(`code: the colour ${key} is not in the palette (tools/gen-content.ts PALETTE, components/markdown.contract Tok)`);
-      runs.push([letter, text]);
+      if (!letter) throw new Error(`code: the colour ${key} is not in the palette (tools/gen-content.ts PALETTE)`);
+      add(runs, letter, text);
     }
-    return (hasDiff ? marks[i] || '=' : ' ') + runs.map(([l, t]) => l + t).join(SEP);
-  });
+    return runs;
+  };
+  // The segments: an italic comment is a span of its own (`c`); the runs between are one text each (`h`), coloured
+  // by the CSS Custom Highlight API from its `<letter><length>.…` list (web/reveal.js, web/content.css).
+  const segments = (runs: [string, string][]) => {
+    const segs: string[] = [];
+    let spec: string[] = [], text = '';
+    const flush = () => { if (text) segs.push('h' + spec.join('.') + SPEC + text); spec = []; text = ''; };
+    for (const [l, t] of runs) {
+      if (l === 'c') { flush(); segs.push('c' + t); continue; }
+      spec.push(l + t.length); text += t;
+    }
+    flush();
+    return segs.join(SEP);
+  };
+  // A block without diff marks is one "line" whose text holds the line feeds (one pre-formatted text, as many lines as
+  // live's, each 21 px); a diff block keeps a line per line, each with its mark's background and rule.
+  if (!hasDiff) {
+    const runs: [string, string][] = [];
+    tokens.forEach((line, i) => { if (i) add(runs, '_', '\n'); runsOf(line, runs); });
+    return { lang, terminal, diff: false, lines: [' ' + segments(runs)] };
+  }
+  const lines = tokens.map((line, i) => (marks[i] || '=') + segments(runsOf(line)));
   return { lang, terminal, diff: hasDiff, lines };
 }
 
