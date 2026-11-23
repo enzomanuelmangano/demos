@@ -11,3 +11,5 @@
 /.vercel/
 /.env
 /.env.*
+/content-gen/
+/assets/content/
