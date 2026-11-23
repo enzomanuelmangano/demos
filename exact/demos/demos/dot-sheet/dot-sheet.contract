@@ -83,12 +83,18 @@ component DotSheet
   // spring has nearly landed (keysDelay), where a stall shows least.
   state keysWanted = false
   state keysToken = 0
+  // On the web the field takes focus in the tap itself: the timer's message never arrives there
+  // (the host delivers no surface messages), and a phone browser raises its keyboard only for a
+  // focus inside the user's gesture.
   action openCard
     pinH = max(pinH, env.height)
     open = true
     still = false
-    keysWanted = true
-    keysToken = keysToken + 1
+    if env.web
+      focus("dot-input")
+    else
+      keysWanted = true
+      keysToken = keysToken + 1
     demoSubpage("dot-input")
   action showKeys(m: string)
     if open and keysWanted and m == `timer:${keysToken}`

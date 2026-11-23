@@ -73,8 +73,8 @@ if (typeof GPUCanvasContext === 'function' && !GPUCanvasContext.prototype.config
 
 // ---- Haptics: the phone's motor where the browser has one (Android's `navigator.vibrate`; iOS Safari has none) ----
 // The iOS feedback generators as pulse lengths (gpu/src/haptic.rs's kinds): selection 5 ms, light 8, medium 12, heavy
-// 18, the notifications two or three pulses. A buzz within 150 ms of the last is dropped, as a drag's ticks would
-// otherwise each cut the one before short. Contract's `haptic()` reaches the runtime's own vibrate(5 | 12)
+// 18, the notifications two or three pulses. A buzz within 150 ms of the last is dropped unless stronger, as a drag's
+// ticks would otherwise each cut the one before short. Contract's `haptic()` reaches the runtime's own vibrate(5 | 12)
 // (host/web-js/commands.js), paced here too; a surface's `haptic:<kind>` messages (kept as kinds in the web's GPU
 // module) are played here and never reach the app, as the iPhone's host consumes them.
 const HAPTIC = {
@@ -82,11 +82,14 @@ const HAPTIC = {
   'impact-rigid': 12, limit: 12, 'impact-heavy': 18, success: [8, 70, 14], warning: [14, 90, 8], error: [12, 50, 12, 80, 16],
 };
 const vibrate = typeof navigator.vibrate === 'function' ? navigator.vibrate.bind(navigator) : null;
-let lastBuzz = -1e9;
+// A stronger buzz within the 150 ms still plays (it cuts the weaker one short): a press's selection tick then the
+// action's own feedback (dot-sheet's send: selection, then success) keeps the second, as the iPhone plays both.
+let lastBuzz = -1e9, lastStrength = 0;
+const strength = (p) => (Array.isArray(p) ? p.reduce((a, b, i) => a + (i % 2 ? 0 : b), 0) : Number(p) || 0);
 const paced = (pattern) => {
-  const now = performance.now();
-  if (now - lastBuzz < 150) return true;
-  lastBuzz = now;
+  const now = performance.now(), k = strength(pattern);
+  if (now - lastBuzz < 150 && k <= lastStrength) return true;
+  lastBuzz = now; lastStrength = k;
   return vibrate(pattern);
 };
 const haptics = {
@@ -347,6 +350,20 @@ if (DOM) {
     if (wrapped(this, type, fn) && wraps.has(fn)) remove.call(this, type, wraps.get(fn), options);
     return remove.call(this, type, fn, options);
   };
+}
+
+// ---- A tap keeps the keyboard where it is ----------------------------------------------------------------------
+// On the iPhone a tap on a button (or anywhere that is not a text field) leaves the first responder alone: the
+// keyboard stays up and the field keeps its text. A browser moves focus on mousedown, so a tap on a demo's send
+// button blurred its field first: dot-sheet's arrow closed the sheet (the field's blur) before its press could
+// submit. While a text field in a demo has focus, a press on anything but another field does not take it.
+if (DOM) {
+  addEventListener('mousedown', (e) => {
+    const a = document.activeElement, t = e.target;
+    if (!(t instanceof Element) || !a?.matches?.('input,textarea,[contenteditable=""],[contenteditable="true"]')) return;
+    if (!t.closest('[data-testid="web-card"]') || t.closest('input,textarea,select,[contenteditable]')) return;
+    e.preventDefault();
+  }, true);
 }
 
 // ---- A touch screen has no hover --------------------------------------------------------------------------------
