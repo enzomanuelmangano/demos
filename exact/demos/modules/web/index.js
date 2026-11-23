@@ -1006,11 +1006,18 @@ function launch(el, props, event) {
     if (dy > 0 && dy >= Math.abs(dx) && e.cancelable) e.preventDefault();
   };
   let installed = false;
+  const noop = () => {};
   const install = () => {
     if (installed) return; installed = true;
     card.addEventListener('pointerdown', down, true);
     addEventListener('pointermove', move, true); addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true);
     card.addEventListener('touchmove', touchmove, { capture: true, passive: false });
+    // A blocking touchstart listener on the window while a demo is up: without one (a production page has no other)
+    // Chrome sends the touch's start uncancelable and lets the compositor take a pull down over a touch-action:auto
+    // view as a scroll at its first move (pointercancel, every touchmove uncancelable), so the swipe-down close never
+    // began over sudoku, stacked-list, clerk-toast, fluid-slider... opened from their icons. One on the card is not
+    // enough (its region is not consulted under the card's transform); the dev page had one (its tooling's).
+    addEventListener('touchstart', noop, { capture: true, passive: false });
     if (trackpadWheel) card.addEventListener('wheel', trackpadWheel, { capture: true, passive: false });
     backHandler = onBack;
   };
@@ -1019,6 +1026,7 @@ function launch(el, props, event) {
     card.removeEventListener('pointerdown', down, true);
     removeEventListener('pointermove', move, true); removeEventListener('pointerup', up, true); removeEventListener('pointercancel', up, true);
     card.removeEventListener('touchmove', touchmove, { capture: true });
+    removeEventListener('touchstart', noop, { capture: true });
     if (trackpadWheel) card.removeEventListener('wheel', trackpadWheel, { capture: true });
     if (backHandler === onBack) backHandler = null;
   };
