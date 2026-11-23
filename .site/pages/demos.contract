@@ -3,7 +3,6 @@
 // grid, the Demos app itself: its own web build, mounted at /demos/app/ and shown here in a frame (an iframe), so the
 // app stays its own artifact (docs/decisions.md D10).
 use sm, md, lg from "../components/responsive.contract"
-use TitleDraw from "./demos-title.contract"
 
 // The entrances (motion-title, motion-blur-in) and the 3D lift are the reference's CSS, in web/head.css, hooked by
 // data-motion: Contract keyframes take no filter and boxes no 3D transform (docs/decisions.md D11).
@@ -129,9 +128,6 @@ component DemosPage
                 margin-top=steps(8, 32, 56, 56) margin-bottom=steps(20, 32, 36, 36) transition="opacity 150ms cubic-bezier(0, 0, 0.2, 1)"
                 :hover
                   opacity = 0.9
-              // The title's entrance from 1024 px: its outlines drawn on, then the text fills in behind a light (D17,
-              // web/head.css). On the text's own line box (1.05 em under 1024 px: half the extra leading above).
-              TitleDraw(size=titleSize(), top=`calc(${steps(8, 32, 56, 56)} + 0.025em)`)
             view width=centring() flex-shrink=1
           column data-motion="blur-in" data-delay="450"
             // From 640 px two lines, one gradient across both (centred, left from 1024 px); under it one
