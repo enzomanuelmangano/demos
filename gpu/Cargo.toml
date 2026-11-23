@@ -25,6 +25,14 @@ miniz_oxide = "0.9"
 zune-jpeg = "0.5"
 exact-gpu = { workspace = true }
 
+
+# wgpu's `std` keeps error scopes per thread. The warm-up (src/warm.rs) pushes one on its own thread
+# while the main thread pushes its per-frame scope; without `std` the scopes are the device's, the two
+# interleave and wgpu panics ("Mismatched pop_error_scope"). Exact builds wgpu with it only from
+# b768e92c0 on, so it is asked for here, for any checkout. The browser does not warm.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+wgpu = { version = "30", default-features = false, features = ["std"] }
+
 [build-dependencies]
 exact-gpu-reflect = { workspace = true }
 
