@@ -194,10 +194,16 @@ document.addEventListener('click', function (e) {
 /* Up to 640 px the account dialogs are vaul's Drawer (web/head.css): dragged down they follow the finger (the overlay
    fading with the share dragged), and released past 25 % of their height or faster than 0.4 px/ms they close (vaul's
    closeThreshold and velocity threshold); otherwise they slide back (500 ms, vaul's cubic-bezier(.32,.72,0,1)). An
-   upward drag does not move them. A drag that starts on a field or in a scrolled area is the field's. */
+   upward drag does not move them. A drag that starts on a field or in a scrolled area is the field's. A sheet taller
+   than the window scrolls: web/head.css lets the browser pan it upward-finger (pan-down) at its top, where a downward
+   drag is the dismiss, and both ways once it is scrolled (data-sheet-scrolled, set here from its scrollTop). */
 (function () {
   var ids = { 'signin-modal': 1, 'feedback': 1, 'cancel-subscription': 1 };
   var mq = matchMedia('(max-width: 640px)'), d = null, y0 = 0, t0 = 0, dy = 0, id = null;
+  addEventListener('scroll', function (e) {
+    var el = e.target;
+    if (el && el.nodeType == 1 && ids[el.id]) el.toggleAttribute('data-sheet-scrolled', el.scrollTop > 0);
+  }, true);
   function reset(el) { el.style.translate = ''; el.style.transition = ''; el.style.removeProperty('--sheet-fade'); }
   addEventListener('pointerdown', function (e) {
     var el = e.target.closest && e.target.closest('dialog[open]');

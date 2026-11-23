@@ -122,6 +122,13 @@ const results: Record<string, number> = {};
 // cards by the owner's decision (docs/stubs.md): its budget covers their area; everything else is the same screen.
 const budget = (n: string) => n.startsWith('manage-') ? 10 : 2;
 const over: string[] = [];
+// Every screen, on both sides: 4 user states x (/profile, /manage-subscription) + the cancel dialog + the sign-in dialog
+// at each width, + the menu at 1440. A shot missing on a side (a flow that broke before it) is a failure, not a pass.
+const EXPECTED = 2 * (4 * 2 + 2) + 1;
+const counts = new Map<string, number>();
+for (const n of shots) counts.set(n, (counts.get(n) ?? 0) + 1);
+const missing = counts.size !== EXPECTED || [...counts.values()].some((c) => c !== 2);
+if (missing) console.log(`FAIL  ${counts.size} screens shot (expected ${EXPECTED}), some not on both sides: ${[...counts].filter(([, c]) => c !== 2).map(([n]) => n).join(', ') || '-'}`);
 for (const n of [...new Set(shots)]) {
   const r = await diffImages(page, join(OUT, `old.${n}.png`), join(OUT, `new.${n}.png`), { diffOut: join(OUT, `diff.${n}.png`) }).catch(() => null);
   results[n] = r ? Math.round(r.ratio * 10000) / 100 : -1;
@@ -131,5 +138,5 @@ for (const n of [...new Set(shots)]) {
 }
 writeFileSync(join(OUT, 'results.json'), JSON.stringify(results, null, 1));
 kill();
-console.log(over.length ? `${over.length} over budget: ${over.join(', ')}` : 'all within budget');
-process.exit(over.length ? 1 : 0);
+console.log(over.length ? `${over.length} over budget: ${over.join(', ')}` : missing ? 'screens missing' : `all ${counts.size} within budget`);
+process.exit(over.length || missing ? 1 : 0);

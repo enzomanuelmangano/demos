@@ -37,12 +37,12 @@ const str = (v: unknown) => (typeof v === 'string' ? v : '');
 // cleared when not. Sentry is the page's: tools/observability.ts loads its browser bundle after the page, so the latest
 // value is also left on the page (`__reactiiveSentryUser`, a page global: this module's global writes reach the page),
 // which that script applies right after Sentry's init. Without Sentry nothing happens.
-type SentryUser = { id: unknown; email: string; name: string; github: string; supporter: boolean; status: string; planType: string };
+type SentryUser = { id: unknown; email: string; name: string; github: string; hasGithub: boolean; supporter: boolean; status: string; planType: string };
 function sentryUser(u: SentryUser | null) {
   const g = globalThis as { Sentry?: { setUser(u: unknown): void; setContext(k: string, v: unknown): void; setTag(k: string, v: unknown): void }; __reactiiveSentryUser?: unknown };
-  const user = u ? { id: u.id, email: u.email, username: u.github || u.name || u.email.split('@')[0] } : null;
+  const user = u ? { id: u.id, email: u.email || undefined, username: u.github || u.name || u.email.split('@')[0] || undefined } : null;
   const context = u ? { isSupporter: u.supporter, planStatus: u.status || undefined, subscriptionType: u.planType || undefined } : null;
-  const tags: Record<string, unknown> = u ? { 'user.supporter': u.supporter, 'user.has_github': !!u.github, ...(u.status ? { 'subscription.status': u.status } : {}) }
+  const tags: Record<string, unknown> = u ? { 'user.supporter': u.supporter, 'user.has_github': u.hasGithub, ...(u.status ? { 'subscription.status': u.status } : {}) }
     : { 'user.supporter': false, 'user.has_github': false, 'subscription.status': 'none' };
   try { g.__reactiiveSentryUser = { user, context, tags }; } catch { /* not kept */ }
   const S = g.Sentry;
@@ -70,7 +70,9 @@ export const accountSources = {
     const status = str(body.plan?.status);
     const supporter = status === 'active' || status === 'cancelled';
     const planType = str(body.plan?.subscriptionType);
-    sentryUser(email ? { id: u.id, email, name: str(u.name), github: (body as { github?: { username?: string } | null }).github?.username ?? '', supporter, status, planType } : null);
+    // As the reference's hook: set whenever the user's data exists (with or without an email); has_github is `!!github`.
+    const github = (body as { github?: { username?: string } | null }).github ?? null;
+    sentryUser(body.user ? { id: u.id, email, name: str(u.name), github: str(github?.username), hasGithub: !!github, supporter, status, planType } : null);
     return {
       signedIn: email !== '',
       rejected: false,

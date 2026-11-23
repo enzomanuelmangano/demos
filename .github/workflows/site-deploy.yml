@@ -78,7 +78,8 @@ jobs:
           PRODUCTION: ${{ inputs.production }}
         run: |
           if [ "$ACCOUNTS" = "1" ] && [ -n "$LEGACY_API_ORIGIN" ]; then echo "accounts on, /api/* -> the old deployment"; exit 0; fi
-          msg="SITE_ACCOUNTS is '${ACCOUNTS:-unset}' and LEGACY_API_ORIGIN is ${LEGACY_API_ORIGIN:+set}${LEGACY_API_ORIGIN:-unset}: production needs SITE_ACCOUNTS=1 and LEGACY_API_ORIGIN (with EXPO_PUBLIC_ACCESS_KEY), or readers lose their session at the cutover (.site/docs/deploy.md, step 2)"
+          if [ -n "$LEGACY_API_ORIGIN" ]; then legacy="set"; else legacy="unset"; fi
+          msg="SITE_ACCOUNTS is '${ACCOUNTS:-unset}' and LEGACY_API_ORIGIN is $legacy: production needs SITE_ACCOUNTS=1 and LEGACY_API_ORIGIN (with EXPO_PUBLIC_ACCESS_KEY), or readers lose their session at the cutover (.site/docs/deploy.md, step 2)"
           if [ "$PRODUCTION" = "true" ]; then echo "::error::$msg"; exit 1; fi
           echo "::warning::$msg"
 

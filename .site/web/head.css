@@ -143,12 +143,13 @@ main:has([data-motion~=d-page]) ~ *{visibility:hidden}
 @starting-style{:is(#signin-modal,#feedback,#cancel-subscription)[open]{opacity:0;scale:.95}:is(#signin-modal,#feedback,#cancel-subscription)[open]::backdrop{opacity:0}}
 [data-motion~=drawer-handle]{display:none !important}
 @media (max-width:640px){
-:is(#signin-modal,#feedback,#cancel-subscription){position:fixed;inset:auto 0 0 0 !important;margin:96px 0 0 !important;width:100% !important;max-width:none !important;border-radius:18px 18px 0 0 !important;opacity:1;scale:1;translate:0 100%;transition:translate 500ms cubic-bezier(.32,.72,0,1),display 500ms allow-discrete,overlay 500ms allow-discrete}
+:is(#signin-modal,#feedback,#cancel-subscription){position:fixed;inset:auto 0 0 0 !important;margin:96px 0 0 !important;max-height:calc(100dvh - 96px) !important;overflow-y:auto !important;overscroll-behavior:contain;width:100% !important;max-width:none !important;border-radius:18px 18px 0 0 !important;opacity:1;scale:1;translate:0 100%;transition:translate 500ms cubic-bezier(.32,.72,0,1),display 500ms allow-discrete,overlay 500ms allow-discrete}
 :is(#signin-modal,#feedback,#cancel-subscription)[open]{translate:0 0}
 @starting-style{:is(#signin-modal,#feedback,#cancel-subscription)[open]{translate:0 100%;opacity:1;scale:1}}
 :is(#signin-modal,#feedback,#cancel-subscription)::backdrop{transition:opacity 500ms cubic-bezier(.32,.72,0,1),display 500ms allow-discrete,overlay 500ms allow-discrete}
 [data-motion~=drawer-handle]{display:flex !important;position:sticky;top:0;z-index:20}
-:is(#signin-modal,#feedback,#cancel-subscription){touch-action:pan-x}
+:is(#signin-modal,#feedback,#cancel-subscription){touch-action:pan-x pan-down}
+:is(#signin-modal,#feedback,#cancel-subscription)[data-sheet-scrolled]{touch-action:pan-x pan-y}
 :is(#signin-modal,#feedback,#cancel-subscription)[open]::backdrop{opacity:var(--sheet-fade,1)}
 [data-motion~=dialog-x]{display:none !important}
 }
