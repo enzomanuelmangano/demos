@@ -6,7 +6,6 @@
 use md from "./responsive.contract"
 
 shape Run
-  id: string
   text: string
   code: bool
   strong: bool
@@ -17,17 +16,6 @@ shape Run
   width: number
   height: number
   valign: number
-
-shape Tok
-  id: string
-  text: string
-  color: string
-  italic: bool
-
-shape Line
-  id: string
-  mark: string
-  toks: Tok[]
 
 shape Repo
   name: string
@@ -55,8 +43,11 @@ shape Block
   mb: number
   loose: bool
   runs: Run[]
-  lines: Line[]
-  repo: Repo
+  // A code block's lines, compact (tools/gen-content.ts `highlight`): the diff mark, then the tokens, each a
+  // palette letter and its text, joined by U+E000.
+  lines: string[]
+  // The GitHub card's repo: one for a `github` block, none for the others.
+  repo: Repo[]
 
 shape Page
   slug: string
@@ -77,7 +68,7 @@ component Runs
     runs: Run[]
     weight: number
   view
-    for r in runs key=r.id
+    for r, i in runs key=i
       if r.math != ""
         image r.math alt="" width=r.width height=r.height vertical-align="middle"
       else if r.code
@@ -89,6 +80,45 @@ component Runs
       else
         text r.text font-weight=(r.strong ? 600 : weight) font-style=(r.em ? "italic" : "normal") color=(r.strong ? "var(--color-text-heading)" : "inherit")
 
+// A code line's tokens (tools/gen-content.ts `highlight`): a palette letter and the text; the colours are the
+// reference's themePlus (palenight with its overrides) and the terminal theme. One literal colour per branch, so a
+// token is a class, not an inline style.
+component Tok
+  props
+    t: string
+  view
+    if t.startsWith("a")
+      text t.slice(1) color="#abb2bf"
+    else if t.startsWith("f")
+      text t.slice(1) color="#4b9fe4"
+    else if t.startsWith("k")
+      text t.slice(1) color="#c678dd"
+    else if t.startsWith("n")
+      text t.slice(1) color="#d19a66"
+    else if t.startsWith("y")
+      text t.slice(1) color="#e5c07b"
+    else if t.startsWith("s")
+      text t.slice(1) color="#e06c75"
+    else if t.startsWith("c")
+      text t.slice(1) color="#8b919d" font-style="italic"
+    else if t.startsWith("w")
+      text t.slice(1) color="#f2f5f7"
+    else if t.startsWith("t")
+      text t.slice(1) color="rgb(98, 114, 164)"
+    else
+      text t.slice(1)
+
+component CodeLine
+  props
+    line: string
+  view
+    if line.length > 1
+      for t, i in line.slice(1).split("\uE000") key=i
+        Tok(t=t)
+
+// The code a block copies: its lines' text, without the marks and letters.
+fn codeText(lines: string[]): string = lines.map(l => l.slice(1).split("\uE000").map(t => t.slice(1)).join("")).join("\n")
+
 // A fenced block (code-highlight.tsx): 14 px radius, the control ring, palenight tokens on the code surface, 16 px in,
 // scrolling sideways; the copy button shows on hover (always on a touch screen) and copies the code.
 component CodeBlock
@@ -99,7 +129,7 @@ component CodeBlock
   view
     view position="relative" margin-bottom=block.mb border-radius=14 max-width="calc(100vw - 2.9rem)" data-motion="code"
       view position="relative" border-radius=14 box-shadow="var(--shadow-control)" overflow="hidden"
-        button press=copy(block.id, block.text) appearance="none" aria-label="Copy code" position="absolute" z-index=10
+        button press=copy(block.id, codeText(block.lines)) appearance="none" aria-label="Copy code" position="absolute" z-index=10
           right=(block.lines.length > 1 ? 8 : 4) top=(block.lines.length > 1 ? 8 : 4) display="flex" align-items="center" justify-content="center"
           padding=10 border-radius="var(--radius-control)" background-color="rgb(255 255 255 / 0.06)" backdrop-filter="blur(4px)" box-shadow="var(--shadow-control)"
           data-motion="copy" testId="copy"
@@ -108,47 +138,55 @@ component CodeBlock
           image "/assets/images/copy.svg" alt="" aria-hidden=true width=20 height=20 display="block"
         view overflow-x="auto" tabindex=0 aria-label=`${block.lang} code` class=Mono font-size=14 line-height="21px" padding=16 color=(block.title == "terminal" ? "#F8F8F2" : "#bfc7d5") background-color=(block.title == "terminal" ? "#000000" : "var(--color-surface-code)") border-radius=14 data-motion="pre"
           column min-width="100%" align-self="flex-start"
-            for l in block.lines key=l.id
-              text white-space="pre" min-height="21px" margin=(l.mark == "" ? "0" : "0 -16px") padding=(l.mark == "" ? "0" : "0 16px 0 13px")
-                background-color=(l.mark == "add" ? "rgba(16, 185, 129, 0.12)" : l.mark == "del" ? "rgba(239, 68, 68, 0.12)" : "transparent")
-                border-left=(l.mark == "add" ? "3px solid #10B981" : l.mark == "del" ? "3px solid #EF4444" : l.mark == "pad" ? "3px solid transparent" : "0")
-                for t in l.toks key=t.id
-                  text t.text color=(t.color == "" ? "inherit" : t.color) font-style=(t.italic ? "italic" : "normal")
+            for l, i in block.lines key=i
+              if l.startsWith(" ")
+                text white-space="pre" min-height="21px"
+                  CodeLine(line=l)
+              else if l.startsWith("+")
+                text white-space="pre" min-height="21px" margin="0 -16px" padding="0 16px 0 13px" background-color="rgba(16, 185, 129, 0.12)" border-left="3px solid #10B981"
+                  CodeLine(line=l)
+              else if l.startsWith("-")
+                text white-space="pre" min-height="21px" margin="0 -16px" padding="0 16px 0 13px" background-color="rgba(239, 68, 68, 0.12)" border-left="3px solid #EF4444"
+                  CodeLine(line=l)
+              else
+                text white-space="pre" min-height="21px" margin="0 -16px" padding="0 16px 0 13px" border-left="3px solid transparent"
+                  CodeLine(line=l)
 
 // embeds/GithubCard.tsx: the repo's avatar, name (or repo › folder), description, language, stars and forks, from
 // the build's snapshot (the live card reads GitHub with a token: docs/stubs.md).
 component GithubCard
   props
     block: Block
+    repo: Repo
   view
     link href=block.href target="_blank" display="block" margin-bottom=block.mb -exact-hover-effect="none" text-decoration-line="none" data-motion="card-link"
       view padding=16 border-radius=14 background-color="var(--color-surface-elevated)" box-shadow="var(--shadow-surface)" data-motion="surface"
         row align-items="flex-start" gap=12
-          if block.repo.avatar != ""
-            image block.repo.avatar alt=block.repo.owner width=40 height=40 border-radius=9999 flex-shrink=0
+          if repo.avatar != ""
+            image repo.avatar alt=repo.owner width=40 height=40 border-radius=9999 flex-shrink=0
           column flex=1 min-width=0
             row align-items="center" gap=8
               image "/assets/images/github.svg" alt="" aria-hidden=true width=20 height=20 flex-shrink=1 min-width=0
-              if block.repo.path != ""
+              if repo.path != ""
                 row align-items="center"
-                  text block.repo.name color="var(--color-text-tertiary)"
+                  text repo.name color="var(--color-text-tertiary)"
                   image "/assets/images/chevron.svg" alt="" aria-hidden=true width=12 height=12 margin="0 4px"
-                  text block.repo.path color="var(--color-text-primary)" font-weight=600
+                  text repo.path color="var(--color-text-primary)" font-weight=600
               else
-                text `${block.repo.owner}/${block.repo.name}` font-weight=600 color="var(--color-text-primary)" overflow="hidden" text-overflow="ellipsis" white-space="nowrap"
-            if block.repo.description != ""
-              text block.repo.description margin-top=4 font-size=14 line-height="20px" color="var(--color-text-secondary)" line-clamp=2
+                text `${repo.owner}/${repo.name}` font-weight=600 color="var(--color-text-primary)" overflow="hidden" text-overflow="ellipsis" white-space="nowrap"
+            if repo.description != ""
+              text repo.description margin-top=4 font-size=14 line-height="20px" color="var(--color-text-secondary)" line-clamp=2
             row align-items="center" gap=16 margin-top=12 font-size=12 line-height="16px" color="var(--color-text-tertiary)"
-              if block.repo.language != ""
+              if repo.language != ""
                 row align-items="center" gap=4
                   view width=12 height=12 border-radius=9999 background-color="var(--color-warning)"
-                  text block.repo.language
+                  text repo.language
               row align-items="center" gap=4
                 image "/assets/images/star.svg" alt="" aria-hidden=true width=16 height=16
-                text block.repo.stars
+                text repo.stars
               row align-items="center" gap=4
                 image "/assets/images/fork.svg" alt="" aria-hidden=true width=16 height=16
-                text block.repo.forks
+                text repo.forks
 
 // A YouTube video (embeds/YouTube.tsx: full width, 400 px): the privacy-enhanced player, framed only once the
 // reader comes near it, so a page loads no YouTube until then.
@@ -209,7 +247,8 @@ component Blocks
     else if block.kind == "video"
       video block.src autoplay=true loop=true muted=true playsinline=true controls=true width="100%" min-height=180 max-height=480 object-fit="contain" border-radius="1rem" margin-bottom=block.mb
     else if block.kind == "github"
-      GithubCard(block=block)
+      for r in block.repo key=r.url
+        GithubCard(block=block, repo=r)
     else if block.kind == "youtube"
       YouTube(block=block, near=near, seen=seen)
     else if block.kind == "math"

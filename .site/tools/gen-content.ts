@@ -70,10 +70,16 @@ function dict(theme: { plain: any; styles: { types: string[]; style: Style }[] }
 }
 const PLUS = dict(themePlus), TERM = dict(terminalTheme);
 
-type Tok = { id: string; text: string; color: string; italic: boolean };
-type Line = { id: string; mark: string; toks: Tok[] };
+// A code line, compact (it is in the page's checkpoint as well as its HTML: docs/perf.md): one string, its diff mark
+// (" " none, "+" added, "-" removed, "=" the pad of an unmarked line in a diff block) then its tokens, each a
+// palette letter and its text, joined by U+E000. Equal-coloured neighbours are merged and a blank token joins its
+// neighbour (a space has no colour), so a line is as few runs as its colours. The palette is the theme's colours,
+// the letters drawn by components/markdown.contract `Tok`.
+const SEP = '\uE000';
+const PALETTE: Record<string, string> = { '': '_', '#abb2bf': 'a', '#4b9fe4': 'f', '#c678dd': 'k', '#d19a66': 'n', '#e5c07b': 'y', '#e06c75': 's', '#8b919d/i': 'c', '#f2f5f7': 'w', 'rgb(98, 114, 164)': 't' };
+type Line = string;
 
-function highlight(raw: string, langIn: string, meta: string, next: () => string): { lang: string; terminal: boolean; diff: boolean; code: string; lines: Line[] } {
+function highlight(raw: string, langIn: string, meta: string): { lang: string; terminal: boolean; diff: boolean; lines: Line[] } {
   let lang = (langIn || 'txt').toLowerCase();
   const terminal = ['terminal', 'term'].includes(lang);
   const isDiff = meta.includes('diff') || lang === 'diff';
@@ -84,22 +90,30 @@ function highlight(raw: string, langIn: string, meta: string, next: () => string
   if (isDiff && m) actual = REMAP[m[1]] ?? m[1];
   const rawCode = raw.trim();
   const src = rawCode.split('\n');
-  const marks = isDiff ? src.map((l) => (l.startsWith('+ ') || l === '+' ? 'add' : l.startsWith('- ') || l === '-' ? 'del' : '')) : [];
+  const marks = isDiff ? src.map((l) => (l.startsWith('+ ') || l === '+' ? '+' : l.startsWith('- ') || l === '-' ? '-' : '')) : [];
   const hasDiff = marks.some(Boolean);
   const code = isDiff && hasDiff ? src.map((l) => (l.startsWith('+ ') || l.startsWith('- ') ? l.slice(2) : l === '+' || l === '-' ? '' : l)).join('\n') : rawCode;
   const language = (isDiff && hasDiff ? actual : lang).toLowerCase();
   const grammar = (Prism.languages as any)[language];
   const tokens = grammar ? normalizeTokens(Prism.tokenize(code, grammar) as any) : normalizeTokens([code]);
   const d = terminal ? TERM : PLUS;
-  const lines = tokens.map((line, i) => ({
-    id: next(),
-    mark: hasDiff ? marks[i] || 'pad' : '',
-    toks: line.map((t) => {
+  const lines = tokens.map((line, i) => {
+    const runs: [string, string][] = [];
+    for (const t of line) {
+      const text = t.empty ? '' : t.content;
+      if (!text) continue;
       const style: Style = t.types.length === 1 && t.types[0] === 'plain' ? {} : t.types.length === 1 && t.empty != null ? d[t.types[0]] ?? {} : Object.assign({}, ...t.types.map((x) => d[x]));
-      return { id: next(), text: t.empty ? '' : t.content, color: style?.color ?? '', italic: style?.fontStyle === 'italic' };
-    }),
-  }));
-  return { lang, terminal, diff: hasDiff, code, lines };
+      const key = (style?.color ?? '') + (style?.fontStyle === 'italic' ? '/i' : '');
+      const letter = PALETTE[key];
+      if (!letter) throw new Error(`code: the colour ${key} is not in the palette (tools/gen-content.ts PALETTE, components/markdown.contract Tok)`);
+      const last = runs[runs.length - 1];
+      if (last && (last[0] === letter || !text.trim())) last[1] += text;
+      else if (last && !last[1].trim()) { last[0] = letter; last[1] += text; }
+      else runs.push([letter, text]);
+    }
+    return (hasDiff ? marks[i] || '=' : ' ') + runs.map(([l, t]) => l + t).join(SEP);
+  });
+  return { lang, terminal, diff: hasDiff, lines };
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -186,9 +200,9 @@ async function math() {
 // fields it reads, the rest empty. Margins are resolved here (`mt`, `mb`, px), so the page's column needs no
 // margin collapsing: the reference's .mdx-content is a flex column (no collapsing between its children), and the
 // collapsing inside list items is decided below.
-type Run = { id: string; text: string; code: boolean; strong: boolean; em: boolean; href: string; brand: boolean; math: string; width: number; height: number; valign: number };
+type Run = { text: string; code: boolean; strong: boolean; em: boolean; href: string; brand: boolean; math: string; width: number; height: number; valign: number };
 type Repo = { name: string; owner: string; path: string; description: string; language: string; stars: string; forks: string; avatar: string; url: string };
-type Block = { id: string; kind: string; depth: number; text: string; href: string; src: string; title: string; lang: string; width: number; height: number; mt: number; mb: number; loose: boolean; runs: Run[]; lines: Line[]; repo: Repo };
+type Block = { id: string; kind: string; depth: number; text: string; href: string; src: string; title: string; lang: string; width: number; height: number; mt: number; mb: number; loose: boolean; runs: Run[]; lines: Line[]; repo: Repo[] };
 const NO_REPO: Repo = { name: '', owner: '', path: '', description: '', language: '', stars: '', forks: '', avatar: '', url: '' };
 
 const repos: Record<string, any> = JSON.parse(readFileSync(join(SRC, 'github-repos.json'), 'utf8'));
@@ -231,7 +245,7 @@ async function convert(page: Page, meta: any) {
   const blocks: Block[] = [];
   const imported = new Set<string>();
   const block = (b: Partial<Block> & { kind: string }): Block => {
-    const full: Block = { id: next(), depth: 0, text: '', href: '', src: '', title: '', lang: '', width: 0, height: 0, mt: 0, mb: 0, loose: false, runs: [], lines: [], repo: NO_REPO, ...b };
+    const full: Block = { id: next(), depth: 0, text: '', href: '', src: '', title: '', lang: '', width: 0, height: 0, mt: 0, mb: 0, loose: false, runs: [], lines: [], repo: [], ...b };
     blocks.push(full);
     return full;
   };
@@ -249,7 +263,7 @@ async function convert(page: Page, meta: any) {
   const runs = (nodes: any[], style = { strong: false, em: false, href: '', brand: false }): Run[] => {
     const out: Run[] = [];
     const push = (text: string, extra: Partial<Run> = {}) => {
-      if (text || extra.math) out.push({ id: next(), text, code: false, strong: style.strong, em: style.em, href: style.href, brand: style.brand, math: '', width: 0, height: 0, valign: 0, ...extra });
+      if (text || extra.math) out.push({ text, code: false, strong: style.strong, em: style.em, href: style.href, brand: style.brand, math: '', width: 0, height: 0, valign: 0, ...extra });
     };
     for (const n of nodes) {
       switch (n.type) {
@@ -332,8 +346,8 @@ async function convert(page: Page, meta: any) {
         }
         case 'list': list(n, depth); break;
         case 'code': {
-          const h = highlight(n.value, n.lang ?? '', n.meta ?? '', next);
-          block({ kind: 'code', depth, lang: h.lang, text: h.code, title: h.terminal ? 'terminal' : h.diff ? 'diff' : '', lines: h.lines, mb: 20 });
+          const h = highlight(n.value, n.lang ?? '', n.meta ?? '');
+          block({ kind: 'code', depth, lang: h.lang, title: h.terminal ? 'terminal' : h.diff ? 'diff' : '', lines: h.lines, mb: 20 });
           break;
         }
         case 'thematicBreak': block({ kind: 'rule', depth, mt: 32, mb: 14 }); break;
@@ -346,7 +360,7 @@ async function convert(page: Page, meta: any) {
           if (name === 'GithubCard') {
             const repo = attr(n, 'repo'), path = attr(n, 'path'), r = repos[repo];
             const url = r ? (path ? `${r.html_url}/tree/main/${path}` : r.html_url) : path ? `https://github.com/${repo}/tree/main/${path}` : `https://github.com/${repo}`;
-            block({ kind: 'github', depth, href: url, mb: 24, repo: r ? { name: r.name, owner: r.owner.login, path: path ? path.split('/').pop()! : '', description: r.description ?? '', language: r.language ?? '', stars: fmtCount(r.stargazers_count), forks: fmtCount(r.forks_count), avatar: `${r.owner.avatar_url}&s=80`, url } : { ...NO_REPO, name: repo, url } });
+            block({ kind: 'github', depth, href: url, mb: 24, repo: [r ? { name: r.name, owner: r.owner.login, path: path ? path.split('/').pop()! : '', description: r.description ?? '', language: r.language ?? '', stars: fmtCount(r.stargazers_count), forks: fmtCount(r.forks_count), avatar: `${r.owner.avatar_url}&s=80`, url } : { ...NO_REPO, name: repo, url }] });
             break;
           }
           if (name === 'YouTubeEmbed') { block({ kind: 'youtube', depth, text: attr(n, 'videoId'), height: 400 }); break; }
@@ -357,7 +371,7 @@ async function convert(page: Page, meta: any) {
             break;
           }
           if (name === 'BlockMath') { const m = mathFile(plain(n), true); block({ kind: 'math', depth, src: m.src, width: m.width, height: m.height }); break; }
-          if (name === 'InlineMath') { const m = mathFile(plain(n), false); block({ kind: 'paragraph', depth, runs: [{ id: next(), text: '', code: false, strong: false, em: false, href: '', brand: false, math: m.src, width: m.width, height: m.height, valign: m.valign }], mb: 20 }); break; }
+          if (name === 'InlineMath') { const m = mathFile(plain(n), false); block({ kind: 'paragraph', depth, runs: [{ text: '', code: false, strong: false, em: false, href: '', brand: false, math: m.src, width: m.width, height: m.height, valign: m.valign }], mb: 20 }); break; }
           if (imported.has(name)) { INTERACTIVE_ARTICLES.add(page.slug); block({ kind: 'interactive', depth, title: name, lang: page.slug }); break; }
           throw new Error(`${where(n)}: <${name}> is not known to the converter`);
         }
