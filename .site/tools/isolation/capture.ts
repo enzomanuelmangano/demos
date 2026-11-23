@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // What Exact's bake captures from an app root, re-implemented from `sources()` in
-// <exact2>/js/bake/src/lib.rs (identical at c193f394, the demos' seed, and 2180d806, the site's).
+// <exact2>/js/bake/src/lib.rs (identical at c193f394, the demos' seed, 2180d806 and 98ed61fb, the site's).
 // Usage: bun capture.ts <app-root> [--list] [--json]
 // Prints the file count, the byte total and the per-top-level-directory split. `--list` prints every path,
 // so two runs can be diffed path by path (isolation proof 1 in .site/docs/isolation.md).

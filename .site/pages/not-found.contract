@@ -10,5 +10,5 @@ component NotFound
           letter-spacing="-0.02em" color="var(--color-text-primary)"
         text "Oops! It seems like you've wandered off the beaten path." color="var(--color-text-secondary)"
         text "Don't worry, even the best explorers get lost sometimes. Let's get you back on track." color="var(--color-text-secondary)"
-        link href="/" display="flex" align-items="center" font-size=14 line-height="normal"
+        link href="/" display="flex" align-items="center" font-size=14 line-height="normal" color="var(--color-text-secondary)" data-motion="plain"
           text "Back to Home" font-weight=600 text-decoration-line="underline" margin-right=8 color="var(--color-text-secondary)"

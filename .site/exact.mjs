@@ -5,7 +5,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { basename, dirname, relative, resolve } from 'node:path';
-const seed = "../../../../../.exact/exact2/2180d806c4d7a3668c6423ea34cda497be26ad4d";
+const seed = "../../../../../.exact/exact2/98ed61fb2a7d618ce90af2c40f349bb9ea91c706";
 function worktreePaths(app) {
   const options = { cwd: app, encoding: "utf8", env: Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_"))) }, git = spawnSync("git", ["rev-parse", "--show-toplevel"], options);
   if (git.status !== 0)
