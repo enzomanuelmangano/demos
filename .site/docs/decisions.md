@@ -301,3 +301,13 @@ Cost: the CTA and hint are a few plan nodes (app.js +~1 KB) and ~2.5 KB of head 
 - **Bottom space (owner: "too much bottom padding").** The row no longer fills the viewport: as much space under the
   device as above it (`--m = clamp(48px, 7vh, 96px)` under the 87 px header; 63 px both sides at 1440x900), then the
   footer at its usual 40 px. Screens: `/tmp/demos-variants/A6@{1280x720,1440x900,1728x960,1920x1080,390x844}.png`.
+- **The middle ground (owner: "it still looks too wide").** `--W = clamp(720px, 100vw - 480px, 960px)`: 120 px past
+  the header's container on each side from 1440 (centred on it), gap `clamp(64px, 7vw, 112px)` (1440: 101, 1728: 112);
+  the rest as above. Screens: `/tmp/demos-variants/A7@{1440x900,1728x960}.png`.
+- **One screen, no scroll (owner, on a 1728 x 960-1000 MacBook; the footer kept).** From 1024 px the whole page is the
+  window: `main`'s 80vh floor is dropped on this page (`main:has(d-page)`), the hero row is `100dvh` less the 80 px
+  header band and the footer's 105 px, the device as tall as that less equal margins above and below
+  (`clamp(24px, 5dvh, 64px)`), clamped 420-700 px (a shorter window scrolls rather than shrink the device further).
+  Measured scrollHeight == clientHeight at 1728x960, 1728x1000, 1512x982, 1440x900, 1280x720 (device 456 px, 36 px
+  margins) and 1024x768; under 1024 px the stacked page scrolls as before (390x844: 1196 px).
+  Screens: `/tmp/demos-variants/A7@{1728x960,1440x900,1280x720,390x844}.png`.
