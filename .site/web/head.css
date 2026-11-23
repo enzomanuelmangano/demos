@@ -133,3 +133,6 @@ html #exact-root input:not([data-native]):focus-visible{outline:none}
 /* Footer links: underline-offset-2. */
 [data-motion~=footer-link]{text-underline-offset:2px}
 @media (prefers-reduced-motion:reduce){[data-motion~=course-in],[data-motion~=title],[data-motion~=blur-in],[data-motion~=card-in],[data-motion~=qr],[data-motion~=pop-in],[data-motion~=fade-in]{animation:none}}
+/* Italic as live draws it: Inter and Source Code Pro have no italic face here or there, and live's browser slants the
+   upright one; Exact's root says font-synthesis: none, which drew every em, italic link and code comment upright. */
+html #exact-root{font-synthesis-style:auto}

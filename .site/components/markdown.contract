@@ -78,7 +78,8 @@ component Runs
         text r.text class=Mono font-size="0.875em" font-weight=500 color="#e5c07b" background-color="rgb(255 255 255 / 0.06)" padding="3px 7px" border-radius=6 box-shadow="0 0 0 1px var(--color-hairline)" white-space="pre-wrap"
       else if r.href != "" and not r.brand
         if r.strong
-          text r.text href=r.href data-motion="mdx-link" color="var(--color-text-heading)" text-decoration-line="none" font-weight=600 font-style=(r.em ? "italic" : "normal")
+          // A link in bold keeps the link colour (live: <strong><a>, the anchor's colour wins).
+          text r.text href=r.href data-motion="mdx-link" color="var(--color-text-link)" text-decoration-line="none" font-weight=600 font-style=(r.em ? "italic" : "normal")
         else if r.em
           text r.text href=r.href data-motion="mdx-link" color="var(--color-text-link)" text-decoration-line="none" font-style="italic"
         else
@@ -181,7 +182,8 @@ component GithubCard
               image repo.avatar alt=repo.owner width=40 height=40 border-radius=9999 flex-shrink=0
             column flex=1 min-width=0
               row align-items="center" gap=8
-                image "/assets/images/github.svg" alt="" aria-hidden=true width=20 height=20 flex-shrink=1 min-width=0
+                // color: live's inline icon is `text-white` (its computed colour; the image's pixels are the file's).
+                image "/assets/images/github.svg" alt="" aria-hidden=true width=20 height=20 flex-shrink=1 min-width=0 color="#ffffff"
                 if repo.path != ""
                   row align-items="center"
                     text repo.name color="var(--color-text-tertiary)"
