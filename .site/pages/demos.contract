@@ -1,0 +1,131 @@
+// "/demos": the reference's app/demos page down to its hero (components/landing/hero: the spiral backdrop, the
+// "Demos" title, the subtitle, the open-source pill with its stars), and below it, in place of the reference's video
+// grid, the Demos app itself: its own web build, mounted at /demos/app/ and shown here in a frame (an iframe), so the
+// app stays its own artifact (docs/decisions.md D10).
+use sm, md, lg from "../components/responsive.contract"
+
+// The entrances (motion-title, motion-blur-in) and the 3D lift are the reference's CSS, in web/head.css, hooked by
+// data-motion: Contract keyframes take no filter and boxes no 3D transform (docs/decisions.md D11).
+
+// A length that steps up at Tailwind's sm, md and lg (px): the largest of the steps that apply.
+fn steps(base: number, s: number, m: number, l: number): string = `max(${base}px, ${sm(0, s)}, ${md(0, m)}, ${lg(0, l)})`
+
+// The pill's star count: the reference fetched it live (GITHUB_OAUTH_TOKEN, docs/stubs.md); a snapshot of
+// enzomanuelmangano/demos's stargazers on 2026-11-23, as the live page showed it.
+fn starCount(): string = "3,248"
+
+// The reference's hero text gradient (GRADIENT_ROW): white at 85 % on the sides, full in the middle, clipped to text.
+style Gradient
+  background-image="linear-gradient(to right, #ffffffd9, #ffffff, #ffffffd9)" background-clip="text" color="transparent"
+  font-weight=500
+
+component GitHubMark
+  props
+    size: number
+  view
+    svg width=size height=size viewBox="0 0 24 24" fill="currentColor" aria-hidden=true flex-shrink=0
+      path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"
+
+// One digit of the count, as NumberFlow draws it: a column of 0-9 that spins from 0 to its digit (1.5 s,
+// cubic-bezier(0.16, 1, 0.3, 1)) once `counted`, 500 ms after the page starts.
+component Digit
+  props
+    d: number
+    counted: bool
+  view
+    // The box takes the final digit's own width (an invisible copy, as the reference's width keeper); the column
+    // spins inside it.
+    view height=20 overflow="hidden" position="relative" aria-hidden=true
+      text `${d}` visibility="hidden" line-height="20px"
+      column position="absolute" left=0 top=0 align-items="flex-start" translate=(counted ? `0px ${d * -20}px` : "0px 0px")
+        transition="translate 1500ms cubic-bezier(0.16, 1, 0.3, 1)"
+        for n in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] key=n
+          text `${n}` height=20 line-height="20px"
+
+component StarsPill
+  props
+    seed: number
+    counted: bool
+  state hovered = false
+  action hover(on: bool)
+    hovered = on
+  view
+    row position="relative" hover=hover
+      // FloatingStars: 170 px of canvas above the pill, 56 px past each side.
+      canvas surface=stars(hovered ? 1 : 0, seed) aria-hidden=true position="absolute" left=-56 right=-56 bottom="100%" height=170
+        pointer-events="none"
+      link href="https://github.com/enzomanuelmangano/demos" target="_blank" rel="noopener noreferrer" display="flex" height=36
+        align-items="center" border-radius=9999 padding-left=10 padding-right=11 background-color="rgb(255 255 255 / 0.06)"
+        transition="background-color 200ms cubic-bezier(0.4, 0, 0.2, 1)" font-size="0.875rem" line-height="1.25rem" color="var(--color-text-primary)"
+        :hover
+          background-color = "rgb(255 255 255 / 0.09)"
+        GitHubMark(size=16)
+        // Under 640 px the pill reads "Source code"; from 640 px the full line with the star count.
+        text "Source code" margin-left=sm(10, 0) max-width=sm(200, 0) overflow="hidden" white-space="nowrap"
+        text "Demos is Open Source" margin-left=sm(0, 10) max-width=sm(0, 300) overflow="hidden" white-space="nowrap"
+        view width=sm(0, 1) height=16 margin-left=sm(0, 10) background-color="rgb(255 255 255 / 0.12)" aria-hidden=true
+        row align-items="center" margin-left=sm(0, 10) max-width=sm(0, 200) overflow="hidden" white-space="nowrap" aria-label=`${starCount()} stars`
+          svg width=12 height=12 viewBox="0 0 16 16" fill="currentColor" color="var(--color-text-secondary)" aria-hidden=true flex-shrink=0
+            path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"
+          row margin-left=6 letter-spacing="0.02em"
+            Digit(d=3, counted=counted)
+            // The separator enters with the digits (NumberFlow), so it fades in as they spin.
+            text "," opacity=(counted ? 1 : 0) transition="opacity 1500ms cubic-bezier(0.16, 1, 0.3, 1)" aria-hidden=true
+            Digit(d=2, counted=counted)
+            Digit(d=4, counted=counted)
+            Digit(d=8, counted=counted)
+
+component DemosPage
+  props
+    seed: number
+    taps: number
+    tap: action
+    counted: bool
+  view
+    // Container size xl: 1152 px at most, 24 px each side; mt-4 under 640 px.
+    column width="100%" max-width="72rem" margin-left="auto" margin-right="auto" padding-left=24 padding-right=24 box-sizing="border-box"
+      margin-top=sm(16, 0)
+      // The hero (LandingHero): left-aligned under 640 px, centred from it. A flex alignment cannot step at a width
+      // with no runtime, so each line sits between two spacers that are 0 px under 640 px and share the row above.
+      header appearance="none" display="flex" flex-direction="column" width="100%" data-motion="perspective"
+        row
+          view width=sm(0, 9999) flex-shrink=1
+          column flex-shrink=0 data-motion="title"
+            text "Demos" role="heading" aria-level=1 class=Gradient data-motion="lift-20" pointerup=tap cursor="pointer" user-select="none"
+              font-size=steps(40, 80, 112, 144) line-height=1.05 letter-spacing="-0.04em" padding-bottom="0.04em"
+              margin-top=steps(8, 32, 56, 56) margin-bottom=steps(20, 32, 36, 36) transition="opacity 150ms ease-out"
+              :hover
+                opacity = 0.9
+          view width=sm(0, 9999) flex-shrink=1
+        column data-motion="blur-in" data-delay="450"
+          // From 640 px two centred lines, one gradient across both; under it one left-aligned paragraph, 320 px.
+          column class=Gradient data-motion="lift-10" align-items="center" align-self="center" font-size=steps(14, 16, 18, 18) line-height=1.55
+            letter-spacing="-0.01em" max-height=sm(0, 200) overflow="hidden"
+            text "120+ React Native animations"
+            text "with Skia, Reanimated and Gesture Handler"
+          text "120+ React Native animations with Skia, Reanimated and Gesture Handler" class=Gradient data-motion="lift-10" font-size="0.875rem"
+            line-height=1.55 letter-spacing="-0.01em" max-width=320 max-height=sm(200, 0) overflow="hidden" aria-hidden=true
+        row margin-top=sm(24, 28)
+          view width=sm(0, 9999) flex-shrink=1
+          column flex-shrink=0 data-motion="blur-in" data-delay="550"
+            StarsPill(seed=seed, counted=counted)
+          view width=sm(0, 9999) flex-shrink=1
+      DemosSim()
+
+// The Demos app (its own build at /demos/app/). From 768 px a desktop browser's window of 600 px by the viewport's
+// height under the 87 px header (600-1080 px) makes the app draw its framed iPhone Air on its stage, scaled to fit,
+// as /demos/app/ itself does in a window that size; the stage's edges fade into the page (three masks, one an edge:
+// the frame's own masks take one gradient each). Under 768 px the app fills the width and the viewport's height under
+// the 73 px header, so once scrolled to it owns the touches; the header and the hero stay the page's handles, and the
+// fades fall in the padding and past the window's sides, outside the app.
+component DemosSim
+  view
+    column margin-top=steps(32, 32, 32, 48) margin-left=md(-24, 0) margin-right=md(-24, 0) overflow="hidden"
+      padding-top=md(24, 0) mask-image="linear-gradient(to bottom, transparent 0px, #000000 24px)"
+      column align-items="center" padding-bottom=md(24, 0) mask-image="linear-gradient(to top, transparent 0px, #000000 24px)"
+        row flex-shrink=0 justify-content="center"
+          width="calc(clamp(0px, (767px - 100vw) * 1000, 100vw + 260px) + clamp(0px, (100vw - 767px) * 1000, 600px))"
+          mask-image="linear-gradient(to right, transparent 0%, #000000 12%, #000000 88%, transparent 100%)"
+          iframe "/demos/app/" title="Demos" flex-shrink=0 border-width=0 display="block"
+            width="calc(clamp(0px, (767px - 100vw) * 1000, 100vw) + clamp(0px, (100vw - 767px) * 1000, 600px))"
+            height="calc(clamp(0px, (767px - 100vw) * 1000, 100vh - 73px) + clamp(0px, (100vw - 767px) * 1000, clamp(600px, 100vh - 87px, 1080px)))"

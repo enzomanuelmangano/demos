@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// The Demos app's own web build, mounted at /demos/ of the site (docs/architecture.md §6).
+// The Demos app's own web build, mounted at /demos/app/ of the site and shown in the /demos page (docs/decisions.md D10).
 //
 //   bun tools/demos-web/build.ts [--rev <git-rev>] [--key-only] [--force]
 //
@@ -8,7 +8,7 @@
 //    and this file's overlay version. A site-only change keeps the key; any demos change makes a new one.
 // 2. Cache hit (.site/.out/demos-web/<key>/dist with a demos-web.json): nothing to do.
 // 3. Miss: `git archive <rev>` into a scratch directory (the repo's own tree is never touched), the CI-only manifest
-//    overlay host.web.base = "/demos/" applied there, `bun install --frozen-lockfile`, then
+//    overlay host.web.base = "/demos/app/" applied there, `bun install --frozen-lockfile`, then
 //    `bun exact.mjs web-build --out dist --render js`. Exact refuses a non-root base for the wasm target, bakes, the Rust
 //    renderer, --plan and auth, so this never passes --wasm or --plan and pins --render js.
 //    The scratch tree has no assets/audio/ (gitignored: the audio-player demo's copyrighted track) and no assets/atlas/
@@ -23,8 +23,8 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statS
 import { homedir, tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
 
-export const OVERLAY_VERSION = 1;
-export const BASE = '/demos/';
+export const OVERLAY_VERSION = 2;
+export const BASE = '/demos/app/';
 /** Top-level paths that are not the demos app's inputs. */
 export const DENY_TOP = ['.site', '.legacy', '.parity', '.github'];
 

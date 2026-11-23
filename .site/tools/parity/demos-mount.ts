@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
-// Spike S1 (docs/decisions.md): the Demos app mounted at /demos/ of the composed output, end to end.
+// Spike S1 (docs/decisions.md D3, D10): the Demos app mounted at /demos/app/ of the composed output, end to end.
 //   bun tools/parity/demos-mount.ts <origin> <outDir>
-// For 1440x900 (framed iPhone Air) and 390x844 (full screen, touch): /demos/ cold, a GPU demo by deep link
-// (/demos/demo/chessboard), its reload, Back to /demos/ and Forward; every non-2xx response, the GPU module's and the
+// For 1440x900 (framed iPhone Air) and 390x844 (full screen, touch): /demos/app/ cold (via the /demos/app 308), a GPU
+// demo by a legacy post link (/demos/chessboard → /demos/app/demo/chessboard), its reload, Back and Forward; every non-2xx response, the GPU module's and the
 // shader bundle's URLs, exceptions, and a screenshot of each step.
 import { launch, newPage } from './cdp.ts';
 const [origin, outDir] = process.argv.slice(2);
@@ -26,8 +26,8 @@ for (const width of [1440, 390]) {
     await Bun.write(`${outDir}/${name}@${width}.png`, Buffer.from(s.data, 'base64'));
     log.steps[name] = await state();
   };
-  await page.goto(`${origin}/demos`); await Bun.sleep(6000); await shot('launcher');
-  await page.goto(`${origin}/demos/demo/chessboard`); await Bun.sleep(9000); await shot('deeplink');
+  await page.goto(`${origin}/demos/app`); await Bun.sleep(6000); await shot('launcher');
+  await page.goto(`${origin}/demos/chessboard`); await Bun.sleep(9000); await shot('deeplink');
   await page.send('Page.reload'); await Bun.sleep(9000); await shot('reload');
   const { currentIndex, entries } = await page.send('Page.getNavigationHistory');
   await page.send('Page.navigateToHistoryEntry', { entryId: entries[currentIndex - 1].id }); await Bun.sleep(5000); await shot('back');

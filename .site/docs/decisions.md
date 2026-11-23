@@ -96,3 +96,38 @@ work per scroll event), and the bar's own 300 ms transition times it, as the ref
 Built pages must fit 390 and 1440 before any script runs, so a breakpoint is a CSS `clamp()` against `100vw`
 (`components/responsive.contract`: `sm`, `md`, `lg`), the technique of Exact's docs site. A part that exists only
 on one side (the desktop and mobile header bars) is clipped to zero height on the other.
+
+## D10. `/demos` is a site page: the live hero, then the Demos app in a frame (owner, 2026-11-23; supersedes D3's mount path)
+
+The owner asked for the live `/demos` top (header, spiral backdrop, "Demos" title, subtitle, the open-source pill
+with its star count) and, below it, the Demos app in place of the video grid. So:
+
+- **The app stays its own artifact**, built exactly as in D3 but at base **`/demos/app/`** (`tools/demos-web/build.ts`
+  `BASE`; overlay v2, so a new cache key; nothing else in the artifact changes). `tools/compose.ts` places it at
+  `/demos/app/`, refuses any site path under `/demos/` and routes `/demos/app` → 308 `/demos/app/`.
+- **`/demos` is the site's route** (`pages/demos.contract`), its hero ported from `components/landing/hero` (layout
+  matches the live text boxes to 0.1 px at 1440 and 390). The spiral and the pill's stars are Canvas 2D surfaces
+  drawn by the data module (`components/hero-canvas.ts`, the reference's code with a seeded stream for
+  `Math.random`); the count spins like NumberFlow (one 0-9 column per digit, 1.5 s `cubic-bezier(.16,1,.3,1)`,
+  500 ms in). The count is a snapshot (3,248 on 2026-11-23): the live one needed `GITHUB_OAUTH_TOKEN` (stubs.md).
+- **The app is an `iframe` of `/demos/app/`**, so it keeps its own runtime and the site loads none of it until the
+  frame does. From 768 px the frame is 600 px wide and the viewport's height under the header (600-1080 px): the app
+  then draws its own framed iPhone Air on its stage, scaled to fit, exactly as `/demos/app/` does in such a window;
+  the stage's edges fade into the page (masks: top and bottom 24 px, sides 12 %). Under 768 px the frame is the
+  window's width and its height under the 73 px header: the app's phone layout, owning the touches once scrolled to
+  (the app's head sets `overscroll-behavior: none`, so its gestures never scroll the page); the header, the hero
+  above and the footer below stay the page's handles. Verified (`/tmp` script, CDP input into the frame): open
+  Chessboard, close with its button, page the launcher; the page's scroll stays put; no exceptions.
+- **Legacy `/demos/<slug>` posts** 308 to `/demos/app/demo/<slug>` (the demo full window, as the old app link did);
+  a slug the app lacks, and `/profile`, `/manage-subscription`, go to `/demos`. `/demos/` 308s to `/demos` (the
+  reference's trailing-slash rule). A `?demo=` handoff into the framed app was considered and dropped: the frame's
+  `src` is fixed at build, and changing it at run time loads the app twice.
+
+## D11. Motion Contract cannot express lives in the head stylesheet, hooked by `data-*` words
+
+Contract keyframes take no `filter`, boxes take no 3D transform, and a breakpoint cannot switch an animation. The
+reference's entrances are CSS that runs before any script (motion-blur-in's 12 px blur, motion-title-in's
+`rotateX(-30deg)` under a 1000 px perspective, `translateZ` lifts). They are therefore the reference's own CSS, in
+`web/head.css` (copied into `app.json`'s head script by `tools/head.ts`; `--check` in CI), applied by the app's
+declared `data-motion` / `data-delay` words (`app.json` `"data"`). Same keyframes, durations, easings and delays as
+`globals.css`; `prefers-reduced-motion` turns them off as there.

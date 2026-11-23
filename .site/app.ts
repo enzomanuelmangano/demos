@@ -13,3 +13,6 @@ const sources: Sources = {
   },
 };
 export const answer: Answer = (source, args, store, storage, native) => sources[source](args, store, storage, native);
+
+// The /demos hero's Canvas 2D surfaces (components/hero-canvas.ts).
+export { heroSurfaces as surfaces, drawHero as draw } from './components/hero-canvas';

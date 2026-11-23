@@ -4,19 +4,24 @@
 use SiteHeader, SiteFooter, Container from "./components/shell.contract"
 use HomePage from "./pages/home.contract"
 use NotFound from "./pages/not-found.contract"
+use DemosPage from "./pages/demos.contract"
 
 // The faces (Inter variable, Source Code Pro) are declared in app.json's head, font-display: swap and Inter
 // preloaded, as the reference: docs/decisions.md D7.
 routes nav
   home "/" render=build activate=idle
+  demos "/demos" render=build activate=idle
   notfound render=build
 
 // The footer's Terms | Privacy variant, on the reference's paths (its /demos, /profile and /manage-subscription
 // pages are not this app's).
-fn legalFooter(name: string): bool = name == "docTerms" or name == "docPrivacy"
+fn legalFooter(name: string): bool = name == "demos" or name == "docTerms" or name == "docPrivacy"
 
 shape Subscribed
   ok: bool
+
+shape Seeded
+  seed: number
 
 component App
   // The newsletter form's request (components/newsletter.contract): idle, loading, success or error.
@@ -25,6 +30,17 @@ component App
   // viewport then (an IntersectionObserver, no per-scroll work).
   state scrolled = false
   mutation newsletter as shape Subscribed then subscribed
+  // /demos: the per-launch seed of the spiral's and the stars' randomness, the taps on the title (each turns the
+  // spiral), and the star count's spin, 500 ms after the page starts (GitHubStarsButton).
+  resource time = exactTime() as shape Seeded
+  state spiralTaps = 0
+  state counted = false
+  task count when not counted
+    after(500, countStars)
+  action countStars
+    counted = true
+  action spiralTap
+    spiralTaps = spiralTaps + 1
   action follow(url: string)
     nav = go(nav, url)
   action topSeen(entry: IntersectionObserverEntry)
@@ -50,7 +66,17 @@ component App
             // The reference's skip link: off screen until focused.
             link href="#main" position="absolute" width=1 height=1 margin=-1 overflow="hidden" clip-path="inset(50%)" white-space="nowrap"
               text "Skip to content"
-            // The header is drawn over the page (below); its place in the flow is the reference's mb-20.
+            // /demos: the spiral behind the page (SpiralBackdrop): the window's width, 500 px tall from 15 % of the
+            // window's height above the page's top, shown 1.2 s in (fadeIn 1.4 s) at 70 %.
+            if e.name == "demos"
+              view position="absolute" left=0 top="-15vh" width="100%" height=500 z-index=-1 pointer-events="none"
+                data-motion="fade-in" data-delay="1200"
+                canvas surface=spiral(time.seed, spiralTaps) aria-hidden=true width="100%" height="100%" opacity=0.7
+            // The header: fixed over the page in the reference; here a zero-height sticky box at the scroller's top, the
+            // bars hanging from it (Contract positions are relative, absolute or sticky). Its place in the flow is the
+            // reference's mb-20, below.
+            view position="sticky" top=0 height=0 z-index=50
+              SiteHeader(current=e.name, scrolled=scrolled)
             view height=80 flex-shrink=0
               view height=10 intersect=topSeen
             main id="main" display="flex" flex-direction="column" min-height="80vh"
@@ -59,10 +85,13 @@ component App
                   image="/og/main.png" canonical="/"
                 Container()
                   HomePage(newsletterStatus=newsletterStatus, subscribe=subscribe)
+              else if e.name == "demos"
+                head title="Demos | Reactiive" description="Explore the beauty of React Native animations with Reanimated, Skia and Gesture Handler"
+                  image="/og/demos.png" canonical="/demos"
+                DemosPage(seed=time.seed, taps=spiralTaps, tap=spiralTap, counted=counted)
               else
                 head title="Page not found | Reactiive" status=404 robots="noindex"
                   description="Discover the beauty of React Native and how to build stunning animations with Reanimated and Skia"
                   image="/og/main.png" canonical="/"
                 NotFound()
             SiteFooter(legal=legalFooter(e.name))
-          SiteHeader(current=e.name, scrolled=scrolled)

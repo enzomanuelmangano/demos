@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
-// The deployable output: the site's dist at / and the Demos app's own build at /demos/, side by side, as a Vercel
+// The deployable output: the site's dist at / and the Demos app's own build at /demos/app/ (shown inside the site's
+// /demos page, docs/decisions.md D10), side by side, as a Vercel
 // Build Output API v3 tree (.vercel/output/{config.json,static/}). Nothing is built here; the two dist trees are only
 // placed and routed (docs/architecture.md §6, §10).
 //
@@ -36,10 +37,11 @@ const demosRoutes = readJson(join(demosDist, 'routes.json'));
 if ((siteRoutes.base ?? '/') !== '/') throw new Error('compose: the site builds at /');
 if (demosRoutes.base !== BASE) throw new Error(`compose: the demos build's base is ${demosRoutes.base}, not ${BASE}`);
 
-// Paths the site build owns must stay out of /demos/: the mount is the demos app's alone.
-const siteTop = readdirSync(siteDist);
-if (siteTop.includes('demos')) throw new Error('compose: the site build has a demos/ path, which is the Demos app\'s mount');
-for (const r of siteRoutes.routes) if (r.pattern === '/demos' || r.pattern.startsWith('/demos/')) throw new Error(`compose: site route ${r.name} (${r.pattern}) is inside the /demos mount`);
+// /demos is the site's page; everything under /demos/ is the Demos app's mount (/demos/app/) or a redirect into it.
+const MOUNT = BASE.replace(/\/$/, '');
+if (existsSync(join(siteDist, MOUNT.slice(1)))) throw new Error(`compose: the site build has ${MOUNT}/, the Demos app's mount`);
+if (existsSync(join(siteDist, 'demos')) && readdirSync(join(siteDist, 'demos')).some((n) => n !== 'index.html')) throw new Error('compose: the site build has paths under /demos/');
+for (const r of siteRoutes.routes) if (r.pattern.startsWith('/demos/')) throw new Error(`compose: site route ${r.name} (${r.pattern}) is under /demos/, the Demos app's`);
 
 // The app's demo slugs, from the launcher list of the same tree the demos build came from.
 const demosRev = (() => { try { return readJson(join(demosDist, '..', 'demos-web.json')).rev; } catch { return 'HEAD'; } })();
@@ -47,7 +49,7 @@ const appSlugs = new Set([...spawnSync('git', ['show', `${demosRev}:demos.contra
 if (appSlugs.size < 100) throw new Error(`compose: ${appSlugs.size} demo slugs read from demos.contract at ${demosRev}`);
 for (const [from, to] of Object.entries(ALIASES)) if (!appSlugs.has(to)) throw new Error(`compose: alias ${from} → ${to}, which the app does not have`);
 const reserved = ['demo', 'open', 'atlas', 'snap', 'assets', 'modules', 'shaders'];
-for (const s of LEGACY_DEMO_POSTS) if (reserved.includes(s)) throw new Error(`compose: legacy post ${s} collides with a demos app path`);
+for (const s of LEGACY_DEMO_POSTS) if (reserved.includes(s) || s === 'app') throw new Error(`compose: legacy post ${s} collides with a demos app path`);
 
 // ---------------------------------------------------------------- files
 rmSync(out, { recursive: true, force: true });
@@ -67,14 +69,14 @@ if (existsSync(pub)) for (const n of readdirSync(pub)) {
 }
 // The demos' robots.txt names only its mount; the origin's robots.txt is the site's (Exact: serve discovery files at
 // the root and merge them; the site's `Allow: /` already covers /demos/). The demos build has no .well-known/.
-copy(demosDist, join(staticDir, 'demos'), ['robots.txt']);
+copy(demosDist, join(staticDir, MOUNT.slice(1)), ['robots.txt']);
 if (existsSync(join(demosDist, '.well-known'))) throw new Error('compose: the demos build has .well-known/: merge it at the origin root');
 
-// The /demos/ head: today's title, description and share card (a CI-only overlay of the built HTML, never of the
+// The /demos/app/ head: /demos's title, description and share card (a CI-only overlay of the built HTML, never of the
 // tracked demos sources). The page is one shell for every demos route.
 const head = demosHead(origin);
 for (const page of ['index.html', 'shell.html']) {
-  const p = join(staticDir, 'demos', page);
+  const p = join(staticDir, MOUNT.slice(1), page);
   const html = readFileSync(p, 'utf8');
   if (!html.includes('<title>Demos</title>')) throw new Error(`compose: demos ${page} has no <title>Demos</title>`);
   writeFileSync(p, html.replace('<title>Demos</title>', head));
@@ -87,14 +89,15 @@ const immutable = { 'cache-control': 'public, max-age=31536000, immutable' };
 
 const routes: Route[] = [];
 // Redirects first (Next.js's: a trailing slash drops with 308; Exact's: the mount's root gains one).
-routes.push({ src: '^/demos$', status: 308, headers: { Location: '/demos/' } });
+routes.push({ src: `^${esc(MOUNT)}$`, status: 308, headers: { Location: BASE } });
+// A legacy demo post opens that demo in the app, full window (D5, D10); a demo the app lacks, the /demos page.
 for (const slug of LEGACY_DEMO_POSTS) {
   const to = ALIASES[slug] ?? (appSlugs.has(slug) ? slug : null);
-  routes.push({ src: `^/demos/${esc(slug)}/?$`, status: 308, headers: { Location: to ? `/demos/demo/${to}` : '/demos/' } });
+  routes.push({ src: `^/demos/${esc(slug)}/?$`, status: 308, headers: { Location: to ? `${BASE}demo/${to}` : '/demos' } });
 }
 // Signed-out /profile and /manage-subscription sent a visitor to /demos (client-side, in the reference); at the edge now.
-routes.push({ src: '^/(?:profile|manage-subscription)/?$', status: 307, headers: { Location: '/demos/' } });
-routes.push({ src: '^/((?!demos/).+)/$', status: 308, headers: { Location: '/$1' } });
+routes.push({ src: '^/(?:profile|manage-subscription)/?$', status: 307, headers: { Location: '/demos' } });
+routes.push({ src: `^/((?!${esc(MOUNT.slice(1))}/).+)/$`, status: 308, headers: { Location: '/$1' } });
 if (process.env.LEGACY_API_ORIGIN) routes.push({ src: '^/api/(.*)$', dest: `${process.env.LEGACY_API_ORIGIN.replace(/\/$/, '')}/api/$1` });
 // Content-named files may be cached for good (routes.json `files`).
 for (const [base, r] of [['/', siteRoutes], [BASE, demosRoutes]] as const) {
@@ -102,12 +105,12 @@ for (const [base, r] of [['/', siteRoutes], [BASE, demosRoutes]] as const) {
   if (names.length) routes.push({ src: `^${esc(base)}(?:${names.map(esc).join('|')})$`, headers: immutable, continue: true });
 }
 // A build's generation prefix (/.exact/gen/<id>/…) names the files of that build.
-routes.push({ src: '^/demos/\\.exact/gen/[0-9a-f]+/(.*)$', dest: '/demos/$1' });
+routes.push({ src: `^${esc(MOUNT)}/\\.exact/gen/[0-9a-f]+/(.*)$`, dest: `${BASE}$1` });
 routes.push({ src: '^/\\.exact/gen/[0-9a-f]+/(.*)$', dest: '/$1' });
 routes.push({ handle: 'filesystem' });
 // Demos: every route is render=client: its shell; any other path inside the mount: the shell with 404.
-for (const r of demosRoutes.routes) if (!r.notfound) routes.push({ src: patternRe(BASE, r.pattern), dest: '/demos/shell.html' });
-routes.push({ src: '^/demos/.*$', dest: '/demos/shell.html', status: 404 });
+for (const r of demosRoutes.routes) if (!r.notfound) routes.push({ src: patternRe(BASE, r.pattern), dest: `${BASE}shell.html` });
+routes.push({ src: `^${esc(MOUNT)}/.*$`, dest: `${BASE}shell.html`, status: 404 });
 // Site: a page built ahead is its file; a render=client route its shell.
 const builtPages: string[] = [];
 const walk = (d: string) => { for (const n of readdirSync(d)) { const p = join(d, n); if (n.startsWith('.')) continue; if (statSync(p).isDirectory()) walk(p); else if (n === 'index.html') builtPages.push('/' + relative(siteDist, d)); } };

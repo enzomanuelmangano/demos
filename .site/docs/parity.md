@@ -19,13 +19,12 @@ bun tools/parity/compare.ts /tmp/live /tmp/local
 |---|---|---|---|---|
 | `/` | 0.05 % | 0.29 % | 22/23, 20/23 | JSON-LD (phase 6); 3 wrapped paragraphs' glyph boxes 4 px narrower (same lines, same wraps) |
 | 404 | 0.05 % | 0.28 % | 12/12 | `twitter:card` is `summary_large_image` (the reference's 404 says `summary`): postbuild, phase 6 |
-| `/demos/` | the Demos app: 0 px against its own build (decisions.md D3) | 0 px | | |
+| `/demos` | hero: every text box at the live place to 0.1 px (title, subtitle, pill); the spiral is random per visit, as live | same | 4/4, 4/4 | the app below is `/demos/app/` in a frame (D10) |
+| `/demos/app/` | the Demos app: 0 px against its own build (decisions.md D3) | 0 px | | |
 | all other pages | not built yet | | | |
 
-## Known, accepted differences (each small; revisit if the owner minds)
+## Open differences (the owner's bar is identity in pixels and in motion: each is to be fixed, none is accepted)
 
-- **Entrance blur.** The reference's blocks rise out of a 12 px blur; Contract keyframes cannot animate `filter`,
-  so they rise and fade only. Invisible after the entrance (all captures are taken after it).
 - **Underline offset.** `text-underline-offset` is not a Contract property: the footer links' underlines sit at the
   font's default offset, 2 px higher than the reference's.
 - **Icons are images.** The logo and the menu icon are `<img>` of SVG files (the reference inlines `<svg>`), so the

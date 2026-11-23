@@ -7,16 +7,16 @@ shape NavItem
   href: string
   route: string
 
-fn navItems(): NavItem[] = [NavItem(name="Articles", href="/articles", route="articles"), NavItem(name="Demos", href="/demos/", route="demos")]
+fn navItems(): NavItem[] = [NavItem(name="Articles", href="/articles", route="articles"), NavItem(name="Demos", href="/demos", route="demos")]
 
 // Past 10 px of the page's scroll the bar takes the page's colour and a hairline, over 300 ms, as the reference's.
 style HeaderBar
   position="absolute" top=0 left=0 right=0 z-index=50 overflow="hidden" border-bottom-width=1 border-bottom-style="solid"
-  transition="background-color 300ms, border-color 300ms"
+  transition="background-color 300ms cubic-bezier(0.4, 0, 0.2, 1), border-color 300ms cubic-bezier(0.4, 0, 0.2, 1)"
 
 style NavLink
   font-size="0.875rem" line-height="1.25rem" font-weight=500 white-space="nowrap" color="var(--color-text-secondary)"
-  transition="color 150ms"
+  transition="color 150ms cubic-bezier(0.4, 0, 0.2, 1)"
   :hover
     color = "#ffffff"
 
@@ -59,11 +59,11 @@ component SiteHeader
             button press=toggle appearance="none" aria-label=(menu ? "Close menu" : "Open menu") aria-expanded=menu
               aria-controls="mobile-menu" padding=8 border-radius="var(--radius-md)" color="var(--color-text-secondary)" testId="menu"
               image (menu ? "symbol:xmark" : "symbol:line.3.horizontal") aria-hidden=true width=24 height=24
-      view id="mobile-menu" inert=(not menu) position="absolute" inset=0 z-index=40 height=md(844, 0) overflow="hidden"
-        opacity=(menu ? 1 : 0) pointer-events=(menu ? "auto" : "none") transition="opacity 300ms"
+      view id="mobile-menu" inert=(not menu) position="absolute" top=0 left=0 right=0 z-index=40 height="clamp(0px, (768px - 100vw) * 1000, 100vh)" overflow="hidden"
+        opacity=(menu ? 1 : 0) pointer-events=(menu ? "auto" : "none") transition="opacity 300ms cubic-bezier(0.4, 0, 0.2, 1)"
         view position="absolute" inset=0 background-color="rgb(0 0 0 / 0.6)" press=close
         view position="absolute" top=60 left=0 right=0 background-color="var(--color-background)" border-bottom="1px solid rgb(255 255 255 / 0.05)"
-          translate=(menu ? "0 0" : "0 -16px") transition="translate 300ms"
+          translate=(menu ? "0 0" : "0 -16px") opacity=(menu ? 1 : 0) transition="translate 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms cubic-bezier(0.4, 0, 0.2, 1)"
           Container()
             nav aria-label="Menu" padding="40px 0 16px" display="flex" flex-direction="column" gap=4
               link href="/" class=MenuLink press=close color=(current == "home" ? "#ffffff" : "var(--color-text-secondary)")
