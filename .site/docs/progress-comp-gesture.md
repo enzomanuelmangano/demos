@@ -5,8 +5,29 @@ Branch `site-comp-gesture` (worktree `thank-you-site-comp-gesture`), draft PR #1
 ## Done
 
 The demos of all seven articles are ported to Contract under `components/interactive/<article>/index.contract`. Each
-file's header names its exports and their props. The gallery is `/_dev/interactive-ui`: noindex, unlinked, listed in
-`tools/seo/metadata.ts` so postbuild knows it, and left out of `sitemap.xml`.
+file's header names its exports and their props. The gallery `/_dev/interactive-ui` is development only, not a route:
+`bun components/interactive/gesture-kit/.tools/gallery.ts` builds it into `dist/gallery` and serves it on port 4313.
+
+### For the content converter: MDX tag → Contract call
+
+Contract props have no defaults, so every prop is passed. Import each name from its article's `index.contract`.
+
+| MDX | Contract |
+|---|---|
+| `<InteractiveBox><X /></InteractiveBox>` (bottom-sheet-animation, css-animations-react-native) | `InteractiveBox()` with `X(…)` indented under it |
+| `<InitialSetup />`, `<BasicComponent />`, `<PanGesture />`, `<BorderRadius />` | the same name, `()` |
+| `<FinalDemo />` | `FinalDemo(hasBackdrop=true)` |
+| `<FinalDemo hasBackdrop={false} />` | `FinalDemo(hasBackdrop=false)` |
+| `<AnimatedSquare />` | `AnimatedSquare(withoutRepeat=false, withoutPause=false)` |
+| `<AnimatedSquare withoutRepeat />` | `AnimatedSquare(withoutRepeat=true, withoutPause=false)` |
+| `<AnimatedSquare withoutPause />` | `AnimatedSquare(withoutRepeat=false, withoutPause=true)` |
+| `<AnimatedSquareOpacityAndScaleDemo scaleAnimationType="timing" />` | `AnimatedSquareOpacityAndScaleDemo(scaleAnimationType="timing", showBorderRadiusAnimation=false)` |
+| `<AnimatedSquareOpacityAndScaleDemo scaleAnimationType="spring" />` | `…(scaleAnimationType="spring", showBorderRadiusAnimation=false)` |
+| `… scaleAnimationType="spring" showBorderRadiusAnimation />` | `…(scaleAnimationType="spring", showBorderRadiusAnimation=true)` |
+| `<Demo />`, `<StaticDemo />` (checkbox-interactions), every other export | the same name, `()` |
+
+Each demo draws its own 16:9 frame, except checkbox-interactions: it is a bordered card with 24 px below it, as tall
+as its chips wrap.
 
 | Article | Exports (props) | Check against live |
 |---|---|---|
@@ -30,17 +51,21 @@ How the demos are built (the constraints that shaped them):
     sheet and on the stage.
   - pan-gesture-handler and introduction-to-gestures use `frame()` with page-unique ids (`pg-*`, `ig-*`). They assume
     one instance per page, which is how their articles use them.
-- **Springs baked as keyframes.** Where a spring must restart from its first value on each Play,
-  `gesture-kit/.tools/bake.ts` bakes the reference's own 60 Hz integrator into keyframes. Contract allows at most 32
-  stops, so each segment between stops is a cubic Hermite written as a per-stop `cubic-bezier`; the worst error is
-  0.006 of the value. Rerun the baker after changing a spring: `bun components/interactive/gesture-kit/.tools/bake.ts`.
+- **Restarting motion is transitions, not keyframes.** Exact writes every keyframes rule into every page
+  (decisions.md D14). So a Play keys a fresh node whose first layout (`resize`) sets its end values, and inline
+  transitions carry it there: `-exact-spring` for withSpring, `cubic-bezier(0.455, 0.03, 0.515, 0.955)` for
+  withTiming's quad. Only endless loops and exits use keyframes, with two stops each.
 - **Animated corner radius.** `border-radius` does not animate, and any `animation` on an SVG node breaks the
   build-time render (Exact's `motion.rs` reads `document.createElement('div').style.animationName`; noted with
   `feedback note`). `gesture-kit`'s `MorphSquare` builds the rounded square from four quarter-turns of a half-bar and
   a disc, all moved by the compositor. The bottom sheet's radius is an SVG rect's `rx` on a *transition*, which
   works, following the same spring as the sheet's translate.
 - **Pausing off screen.** Endless loops (the skeleton shimmer, the CSS square) are paused off screen through
-  `intersect`. Pages render at build and activate at idle.
+  `intersect`. The frame clips with `overflow: clip` because Exact roots an observer at the nearest
+  auto/scroll/hidden ancestor; a parent of these components must not be `overflow: hidden` either. Tested: scrolled
+  away, `currentTime` holds; scrolled back, it resumes.
+- **Bottom sheet press.** A press holds the sheet where it is drawn, measured from the press itself. A drag then
+  adds to that position, and a press without a drag settles on release.
 
 ## Deliberate differences from live (live is broken there)
 
@@ -54,8 +79,8 @@ How the demos are built (the constraints that shaped them):
    children jump into place. framer animates the width (spring 400/30) and the margin. In samples, the neighbour
    chips arrive about 30 ms earlier than live.
 2. A touch pan starts about 7 px late (Exact's slop). The reference counts from pointerdown.
-3. Bundle cost. The demos' plan adds about 30 KB raw to the site's single `app.js`, which every page loads (Exact does
-   not split the view plan per route). Measured: 295 KB without the gallery, 325 KB with it.
-4. The content converter (`site-content`) must pass every prop: Contract props have no defaults. For example, the
-   MDX's `<FinalDemo />` is `FinalDemo(hasBackdrop=true)` and `<AnimatedSquare />` is
-   `AnimatedSquare(withoutRepeat=false, withoutPause=false)`.
+3. Bundle cost, once the articles use the demos (decisions.md D14). Every page carries: HTML +3.2 KB (+0.4 KB
+   gzip), `style.css` +18 KB (+1.8 KB gzip), `app.js` +36 KB (+7.8 KB gzip). Removing it needs per-route plans
+   from Exact (feedback noted).
+4. The spring-radius square shows a sub-pixel notch where a corner disc meets a bar while it is scaled about 2x
+   mid-spring.
