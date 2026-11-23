@@ -53,3 +53,6 @@
 ::highlight(tok-a){color:#abb2bf}::highlight(tok-f){color:#4b9fe4}::highlight(tok-k){color:#c678dd}::highlight(tok-n){color:#d19a66}
 ::highlight(tok-y){color:#e5c07b}::highlight(tok-s){color:#e06c75}::highlight(tok-w){color:#f2f5f7}::highlight(tok-t){color:rgb(98, 114, 164)}
 [data-tok=c]{color:#8b919d;font-style:italic}
+/* The same colours as spans, for a browser without the Highlight API (web/reveal.js makes them only there). */
+[data-hl]>[data-tok=a]{color:#abb2bf}[data-hl]>[data-tok=f]{color:#4b9fe4}[data-hl]>[data-tok=k]{color:#c678dd}[data-hl]>[data-tok=n]{color:#d19a66}
+[data-hl]>[data-tok=y]{color:#e5c07b}[data-hl]>[data-tok=s]{color:#e06c75}[data-hl]>[data-tok=w]{color:#f2f5f7}[data-hl]>[data-tok=t]{color:rgb(98, 114, 164)}

@@ -59,12 +59,35 @@
    token, so a content page's runtime has a fraction of the nodes to adopt (docs/decisions.md D16). Painted as the
    parser adds the lines (a MutationObserver from the head, so before their first paint), again when a text node is
    replaced (the runtime's adoption, an in-app navigation). Without the API (Chrome < 105, Safari < 17.2, Firefox <
-   140) the code is drawn in its block's colour. */
+   140), or with `?hl=spans` (the forced fallback, to check it), a run's coloured tokens become spans
+   (`[data-hl]>[data-tok=<letter>]`, the same colours in web/content.css) and its plain tokens stay text: only those
+   browsers pay the nodes. */
 (function () {
-  if (!(window.CSS && CSS.highlights && window.Highlight && window.StaticRange)) return;
-  var sets = {}, letters = 'afknysw t'.replace(' ', ''), painted = new WeakMap();
-  for (var i = 0; i < letters.length; i++) { sets[letters[i]] = new Highlight(); CSS.highlights.set('tok-' + letters[i], sets[letters[i]]); }
+  var api = !!(window.CSS && CSS.highlights && window.Highlight && window.StaticRange) && !/[?&]hl=spans(&|$)/.test(location.search);
+  var sets = {}, letters = 'afknyswt', painted = new WeakMap();
+  if (api) for (var i = 0; i < letters.length; i++) { sets[letters[i]] = new Highlight(); CSS.highlights.set('tok-' + letters[i], sets[letters[i]]); }
+  function spans(el) {
+    var node = el.firstChild;
+    if (!node || node !== el.lastChild || node.nodeType != 3) return;
+    var spec = (el.getAttribute('data-hl') || '').split('.'), text = node.data, at = 0, out = document.createDocumentFragment(), plain = '', any = false;
+    for (var i = 0; i < spec.length; i++) {
+      var c = spec[i].charAt(0), n = +spec[i].slice(1), part = text.slice(at, at + n);
+      at += n;
+      if (letters.indexOf(c) < 0 || !n) { plain += part; continue; }
+      if (plain) { out.appendChild(document.createTextNode(plain)); plain = ''; }
+      any = true;
+      var s = document.createElement('span');
+      s.setAttribute('data-tok', c);
+      s.textContent = part;
+      out.appendChild(s);
+    }
+    if (!any) return;
+    plain += text.slice(at);
+    if (plain) out.appendChild(document.createTextNode(plain));
+    el.replaceChildren(out);
+  }
   function paint(el) {
+    if (!api) return spans(el);
     var node = el.firstChild, was = painted.get(el);
     if (!node || node.nodeType != 3 || (was && was.node === node)) return;
     if (was) was.ranges.forEach(function (r) { sets[r[0]].delete(r[1]); });
