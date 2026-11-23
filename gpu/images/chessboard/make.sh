@@ -10,10 +10,10 @@
 # Fonts (gpu/fonts): the three bundled faces RN loads (assets/fonts) cut to Basic Latin, two
 # Ionicons glyphs (and the first two with their digits tabular), and the two fallback faces CoreText picks for the review's ⌑ (Menlo-Bold) and ✕
 # (ZapfDingbats) in the iOS 27.1 runtime. Needs swiftc, python3 with Pillow and fontTools (PY=),
-# and the RN app (RN=, default this repo's legacy/).
+# and the RN app (RN=, default this repo's .legacy/).
 set -e
 here=$(cd "$(dirname "$0")" && pwd)
-rn=${RN:-"$here/../../../legacy"}
+rn=${RN:-"$here/../../../.legacy"}
 lib="$rn/node_modules/react-native-chessboard/src/assets"
 demo="$rn/src/animations/chessboard/assets"
 fonts="$here/../../fonts"

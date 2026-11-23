@@ -19,7 +19,7 @@ const release = args.includes('--release');
 const ui = args.indexOf('--url'), url = ui >= 0 ? args[ui + 1] : null;
 const phone = args.find((a, i) => !a.startsWith('--') && args[i - 1] !== '--url') ?? process.env.EXACT_PHONE;
 // The phone's feedback sheet (modules/apple/Feedback.swift) posts to this Mac's feedback server
-// (tools/parity/feedback/server.ts): its LAN addresses and .local name, baked in the bundle.
+// (.parity/feedback/server.ts): its LAN addresses and .local name, baked in the bundle.
 const lan = Object.entries(networkInterfaces()).sort(([a], [b]) => (/^en\d/.test(b) ? 1 : 0) - (/^en\d/.test(a) ? 1 : 0))
   .flatMap(([, is]) => is).filter(i => i && i.family === 'IPv4' && !i.internal).map(i => i.address);
 let local = ''; try { local = execFileSync('scutil', ['--get', 'LocalHostName'], { encoding: 'utf8' }).trim(); } catch {}

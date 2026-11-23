@@ -1,7 +1,7 @@
 name: Exact lint
 
 # Quality checks for the Exact app (the repo root): Contract files, Rust, the Bun tooling.
-# Separate from lint.yml (the React Native app in legacy/: ESLint / tsc / Prettier).
+# Separate from lint.yml (the React Native app in .legacy/: ESLint / tsc / Prettier).
 #
 # The Exact app depends on a local checkout of exact2 (a path dependency in Cargo.toml through the
 # .exact/checkout symlink exact.mjs makes, ~/.exact/exact2/<hash>), and a GitHub runner has none. So this workflow runs only
@@ -21,10 +21,13 @@ name: Exact lint
 
 on:
   pull_request:
-    # Everything but the React Native app (legacy/, lint.yml) and the other workflows.
+    # Everything but the React Native app (.legacy/, lint.yml) and the other workflows.
     paths:
       - '**'
-      - '!legacy/**'
+      - '.parity/**'
+      - '.claude/**'
+      - '.cargo/**'
+      - '!.legacy/**'
       - '!.github/**'
       - '.github/workflows/exact-lint.yml'
 

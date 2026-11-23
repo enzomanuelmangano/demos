@@ -3,18 +3,18 @@
 //
 //   bun tools/gen-demos.ts
 //
-// RN sources (read-only, under legacy/): src/animations/registry.ts (AnimationRegistry order,
+// RN sources (read-only, under .legacy/): src/animations/registry.ts (AnimationRegistry order,
 // AnimationMetadata), src/animations/inspirations.ts, assets/app-icons/*.png and
 // src/navigation/home/icon-colors.generated.ts. The order mirrors
 // src/navigation/home/demos.ts: registry order, reversed (newest first).
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { getInspirationCopy } from '../legacy/src/navigation/home/inspiration-copy';
+import { getInspirationCopy } from '../.legacy/src/navigation/home/inspiration-copy';
 import { bakeIcons } from './gen-icons';
 
 const APP = resolve(import.meta.dir, '..');
-const RN = resolve(APP, 'legacy');
+const RN = resolve(APP, '.legacy');
 const src = (p: string) => readFileSync(resolve(RN, p), 'utf8');
 
 // An object literal of plain values, taken from the text between `start` and `end`.

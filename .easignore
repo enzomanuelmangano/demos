@@ -1,13 +1,13 @@
-# EAS uploads the git root, not the project directory: the React Native app is legacy/, and
+# EAS uploads the git root, not the project directory: the React Native app is .legacy/, and
 # nothing else in this repo (the Exact app at the root, its tools) is build input. This file
-# replaces .gitignore for the upload (EAS reads one or the other), so legacy/.gitignore's rules
-# are restated below with their legacy/ prefix.
+# replaces .gitignore for the upload (EAS reads one or the other), so .legacy/.gitignore's rules
+# are restated below with their .legacy/ prefix.
 
 # Everything but the React Native app.
 /*
-!/legacy/
+!/.legacy/
 
-# legacy/.gitignore, mirrored.
+# .legacy/.gitignore, mirrored.
 node_modules/
 .expo/
 dist/
@@ -20,10 +20,10 @@ npm-debug.*
 *.orig.*
 web-build/
 .DS_Store
-/legacy/ios
-/legacy/android
+/.legacy/ios
+/.legacy/android
 .env
-/legacy/scripts/generate-app-icon/build
+/.legacy/scripts/generate-app-icon/build
 build/node_modules
 .yarn/
 .pnp.loader.mjs
@@ -33,4 +33,4 @@ CLAUDE.md
 
 # Not build input.
 **/**/_meta.json
-/legacy/scripts/analytics
+/.legacy/scripts/analytics

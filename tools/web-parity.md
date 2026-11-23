@@ -64,7 +64,7 @@ Hard web limits (what the browser cannot do as the iPhone does):
   main thread shows as late frames; GPU time is not in this number.
 - Pointer mapping under the frame's scale (skia-color-picker, tap at 80% / 60% of the screen at scale 1.00 and 0.70):
   the same colour and pin place, so clicks and drags map 1:1.
-- No iOS reference frames exist for most demos (`tools/parity/screen-atlas/.out` has RN and Exact iOS for two), so the
+- No iOS reference frames exist for most demos (`.parity/screen-atlas/out` has RN and Exact iOS for two), so the
   layout comparison against the phone rests on the shared Contract / Rust: a demo's plan and GPU surfaces are the same
   code; the differences are the host layers listed below.
 

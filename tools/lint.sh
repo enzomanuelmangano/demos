@@ -5,7 +5,7 @@
 #                             tests, and `contract build --errors-only` when the Exact checkout is here
 #   tools/lint.sh rust        rustfmt --check on the changed Rust files, and clippy counts against
 #                             tools/rust-lint-baseline.txt (clippy needs the Exact checkout)
-#   tools/lint.sh ts          tsc over the Bun tooling with tsconfig.json (tools/parity: reported only)
+#   tools/lint.sh ts          tsc over the Bun tooling with tsconfig.json (.parity: reported only)
 #   tools/lint.sh generated   regenerate demos.contract, demos/index.contract, Architecture.generated.swift
 #                             and home/atlas-data.contract; fail when one of them changes
 #   tools/lint.sh all         all of the above, then a summary (exit 1 if any failed)
@@ -21,7 +21,7 @@
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
-ROOT="$PWD"                       # the repo root: the Exact app (the React Native app is legacy/)
+ROOT="$PWD"                       # the repo root: the Exact app (the React Native app is .legacy/)
 export PATH="$HOME/.cargo/bin:$PATH"
 
 red=$'\033[31m'; green=$'\033[32m'; yellow=$'\033[33m'; dim=$'\033[2m'; off=$'\033[0m'
@@ -69,7 +69,7 @@ lint_ts() {
   step "ts: tsc -p tsconfig.json"
   local tsc="$ROOT/node_modules/.bin/tsc" extra=()
   if [ ! -x "$tsc" ] || [ ! -d "$ROOT/node_modules/@types/node" ]; then
-    # The app's install has no TypeScript (and legacy/'s is never borrowed): typescript and Node's types into a scratch dir (Bun's globals are declared
+    # The app's install has no TypeScript (and .legacy/'s is never borrowed): typescript and Node's types into a scratch dir (Bun's globals are declared
     # by hand in tools/types/bun-min.d.ts).
     local deps="${TMPDIR:-/tmp}/exact-ts-deps"
     mkdir -p "$deps"
@@ -81,8 +81,8 @@ lint_ts() {
   "$tsc" -p "$ROOT/tsconfig.json" --noEmit ${extra[@]+"${extra[@]}"}
   echo "tsconfig.json: clean"
   local n
-  n="$("$tsc" -p "$ROOT/tools/parity/tsconfig.json" --noEmit ${extra[@]+"${extra[@]}"} 2>&1 | grep -c 'error TS' || true)"
-  echo "${yellow}tools/parity (tools/parity/tsconfig.json, not gating): $n errors${off}"
+  n="$("$tsc" -p "$ROOT/.parity/tsconfig.json" --noEmit ${extra[@]+"${extra[@]}"} 2>&1 | grep -c 'error TS' || true)"
+  echo "${yellow}.parity (.parity/tsconfig.json, not gating): $n errors${off}"
 }
 
 # The generated files. Each generator rewrites its file in place, so the originals are copied aside
@@ -102,7 +102,7 @@ lint_generated() {
   bun tools/gen-demos.ts >/dev/null
   bun tools/gen-index.ts >/dev/null
   bun tools/gen-architecture.ts >/dev/null
-  bun tools/parity/screen-atlas/gen-atlas-data.ts >/dev/null
+  bun .parity/screen-atlas/gen-atlas-data.ts >/dev/null
   for f in "${GENERATED[@]}"; do
     cp "$f" "$out/$f"
     cmp -s "$f" "$keep/$f" || stale+=("$f")
@@ -111,7 +111,7 @@ lint_generated() {
     echo "${red}generated files out of date: ${stale[*]}${off}"
     for f in "${stale[@]}"; do diff -u "$keep/$f" "$out/$f" | cut -c1-200 | head -30 || true; done
     echo "regenerated copies: $out (the files in the tree were left as they are)"
-    echo "to refresh: bun tools/gen-demos.ts && bun tools/gen-index.ts && bun tools/gen-architecture.ts && bun tools/parity/screen-atlas/gen-atlas-data.ts"
+    echo "to refresh: bun tools/gen-demos.ts && bun tools/gen-index.ts && bun tools/gen-architecture.ts && bun .parity/screen-atlas/gen-atlas-data.ts"
     return 1
   fi
   echo "generated files are up to date"

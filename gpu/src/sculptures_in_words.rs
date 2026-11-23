@@ -1573,7 +1573,7 @@ mod tests {
     #[test]
     fn the_subset_font_draws_the_full_fonts_masks() {
         static FULL: &[u8] =
-            include_bytes!("../../legacy/src/animations/sculptures-in-words/assets/Newsreader.ttf");
+            include_bytes!("../../.legacy/src/animations/sculptures-in-words/assets/Newsreader.ttf");
         let size = (GLYPH_FONT_SIZE * PAGE_GLYPH_SCALE) as f32;
         let (sub, full) = (
             Font::new(FONT, size).unwrap(),

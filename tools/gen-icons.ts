@@ -4,7 +4,7 @@
 //
 //   bun tools/gen-icons.ts
 //
-// Reads the originals (legacy/assets/app-icons/*.png, the RN app's, square) and writes the shaped
+// Reads the originals (.legacy/assets/app-icons/*.png, the RN app's, square) and writes the shaped
 // copies over assets/app-icons/. It always bakes from the originals, so running it
 // again never rounds twice. tools/gen-demos.ts runs it right after copying the icons in.
 //
@@ -16,7 +16,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 const APP = resolve(import.meta.dir, '..');
-const RN = resolve(APP, 'legacy');
+const RN = resolve(APP, '.legacy');
 
 export const ICON_PX = 192;
 const RADIUS = 0.2237;

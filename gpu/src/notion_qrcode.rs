@@ -1843,7 +1843,7 @@ mod tests {
     const H: f32 = 912.0;
     const FRAME_MS: f64 = 1000.0 / 60.0;
     /// Hermes's reference digests.
-    const REFERENCE: &str = include_str!("../../tools/parity/notion-qrcode/reference.txt");
+    const REFERENCE: &str = include_str!("../../.parity/notion-qrcode/reference.txt");
     /// Test frames: name, progress, iTime, stagger and frozen angles.
     const FRAMES: [(&str, f64, f64, f64, f64); 8] = [
         ("rest", 0.0, 1.234, 0.0, 0.0),

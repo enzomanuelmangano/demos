@@ -1,12 +1,12 @@
 ---
 name: demos-dev-loop
-description: Build, hot-reload, test and check the Demos Exact app (the root of the demos repo; the original React Native app is in legacy/) on the web and the iOS simulator. Use before any build, test run or simulator check here.
+description: Build, hot-reload, test and check the Demos Exact app (the root of the demos repo; the original React Native app is in .legacy/) on the web and the iOS simulator. Use before any build, test run or simulator check here.
 ---
 
 # Demos dev loop
 
 ```sh
-# from the repo root (the Exact app; the RN app is legacy/)
+# from the repo root (the Exact app; the RN app is .legacy/)
 export PATH=~/.bun-1.4.2/bin:~/.cargo/bin:$PATH
 export CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 export EXACT_SIM=4287A1AF-1C48-462C-9E3D-3FAABC3F0119   # iPhone Air, iOS 27.1: this app's sim
@@ -29,7 +29,7 @@ build is rare and batched (one, by the integrator, for everyone's Swift / Rust /
 
 1. The dev server on the LAN: `nohup bun exact.mjs web --port 5341 --lan > /tmp/demos-dev-lan.log 2>&1 &`
    (one loop per app dir: stop a loopback-only one first; `--lan` still answers on 127.0.0.1).
-2. The feedback server on the LAN: `bun tools/parity/feedback/server.ts` (once: `cd tools/parity && bun install`, for sharp) binds
+2. The feedback server on the LAN: `bun .parity/feedback/server.ts` (once: `cd .parity && bun install`, for sharp) binds
    0.0.0.0:5350 and prints `phone: http://<mac ip>:5350`.
 3. The development build, connected to that server: `bun exact.mjs phone <udid> --run --url
    http://<mac ip>:5341` (the Mac's IP: `ipconfig getifaddr en0`). `tools/phone.mjs` also bakes the
@@ -41,10 +41,10 @@ Feedback from the phone (modules/apple/Feedback.swift): in any open demo, shake 
 long-press with two fingers. The sheet has the demo's name and slug, a screenshot taken at the
 trigger (tap it to mark a point), quick commands (📸 Screenshot, 🎬 Record 5 s, 🔁 Same as RN?,
 ✅ Looks good), a text note (dictation works) with Send, and the demo's last 3 notes. Each command
-is a POST /phone (tools/parity/feedback/phone.ts): one line of `tools/parity/feedback/.data/inbox.jsonl`
+is a POST /phone (.parity/feedback/phone.ts): one line of `.parity/feedback/data/inbox.jsonl`
 with `source: "phone"` and `kind` note | screenshot | clip | approve | parity, media in
-`tools/parity/feedback/.data/phone/`, a note also in `.data/<slug>.json` (`bun
-tools/parity/feedback/list.ts`). Undelivered commands queue on the phone and retry every 20 s.
+`.parity/feedback/data/phone/`, a note also in `data/<slug>.json` (`bun
+.parity/feedback/list.ts`). Undelivered commands queue on the phone and retry every 20 s.
 Override the Mac without a rebuild: launch argument `-feedbackHost <ip[:port]>`.
 
 ## Hot reload first
@@ -162,7 +162,7 @@ Override the Mac without a rebuild: launch argument `-feedbackHost <ip[:port]>`.
   `app.json`, bundled `assets/`, fonts. A `gpu/` change needs the rebuild and a relaunch.
 - Never run `agent macos` while the person uses the app: it rebuilds when anything is stale and
   replaces the running app.
-- Feedback: `bun tools/parity/feedback/server.ts` (:5350) before opening the atlas;
-  right-click a tile → Add Feedback Here…; `bun tools/parity/feedback/list.ts --since 15m`;
-  `.data/inbox.jsonl` has one line per event. The server also serves `assets/atlas/*.jpg` to the atlas at
+- Feedback: `bun .parity/feedback/server.ts` (:5350) before opening the atlas;
+  right-click a tile → Add Feedback Here…; `bun .parity/feedback/list.ts --since 15m`;
+  `inbox.jsonl` has one line per event. The server also serves `assets/atlas/*.jpg` to the atlas at
   runtime (`/snap/<slug>.jpg`), so regenerated frames need no build.

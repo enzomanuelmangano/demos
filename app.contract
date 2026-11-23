@@ -38,7 +38,7 @@ shape Time
   epochAtZero: number
   utcOffset: number
 
-// The atlas's feedback store on this Mac's loopback (tools/parity/feedback/server.ts):
+// The atlas's feedback store on this Mac's loopback (.parity/feedback/server.ts):
 // every note, a new one, and an edit (status "resolved", "open" or "deleted"). With the server
 // down the atlas just shows no pins.
 source feedbackNotes() as shape FeedbackNote[]
@@ -311,7 +311,7 @@ component Demos
         if e.name == "atlas"
           Atlas(demos=allDemos(), env=env, active=(top(nav).name == "atlas"), routeKey=`${e.id}`,
             closable=(stack(nav).length > 1), leave=back, notes=feedback, add=addNote, edit=editNote)
-        // One demo as an atlas tile mounts it, for tools/parity/screen-atlas/gen-snapshots.ts.
+        // One demo as an atlas tile mounts it, for .parity/screen-atlas/gen-snapshots.ts.
         if e.name == "snap"
           column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" position="absolute" inset=0
             SnapFrame(slug=e.params.slug, backdrop=demoOf(e.params.slug).backdrop, env=env)

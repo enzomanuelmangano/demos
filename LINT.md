@@ -16,7 +16,7 @@ bun run lint | lint:contract | lint:rust | lint:fix     # the same, as package s
 
 ## What runs, and where
 
-| check | command | CI (`.github/workflows/exact-lint.yml`, PRs touching the Exact app, i.e. anything outside `legacy/`) | needs the Exact checkout |
+| check | command | CI (`.github/workflows/exact-lint.yml`, PRs touching the Exact app, i.e. anything outside `.legacy/`) | needs the Exact checkout |
 |---|---|---|---|
 | Contract linter vs baseline, rule tests | `lint.sh contract` | yes | no |
 | Contract compiler | `bun exact.mjs contract build app.contract --errors-only` (inside `lint.sh contract`) | no | yes |
@@ -125,9 +125,9 @@ measured; the numbers are at the top of the file) and the `[workspace.lints]` ta
 
 ## TypeScript
 
-`tsconfig.json` covers `tools` but `tools/parity` (the linter included, strict) and passes. `app.ts` is left out: it imports
+`tsconfig.json` covers `tools` but `.parity` (the linter included, strict) and passes. `app.ts` is left out: it imports
 `app.contract.d.ts`, which `contract build` writes and git ignores, so it cannot be checked on a bare checkout.
-`tools/parity/tsconfig.json` covers `tools/parity`, which does not pass today (39 errors here, about 60 on a bare checkout without the repo's node_modules) and is reported, not gating:
+`.parity/tsconfig.json` covers `.parity`, which does not pass today (39 errors here, about 60 on a bare checkout without the repo's node_modules) and is reported, not gating:
 Bun's API is declared `any` in `tools/types/bun-min.d.ts` because `bun-types` is not installed (callbacks of `Bun.build` /
 `Bun.serve` are implicit any), the feedback JSON is untyped, and `notion-qrcode/parity.ts` imports `computeShapeData`, which the
 RN demo no longer exports (a real stale import). Installing `bun-types` and typing the JSON clears most of it.
@@ -135,7 +135,7 @@ RN demo no longer exports (a real stale import). Installing `bun-types` and typi
 ## Generated files
 
 `lint.sh generated` runs, on scratch copies, `tools/gen-demos.ts`, `tools/gen-index.ts`, `tools/gen-architecture.ts` and
-`tools/parity/screen-atlas/gen-atlas-data.ts`, and fails when `demos.contract`, `demos/index.contract`,
+`.parity/screen-atlas/gen-atlas-data.ts`, and fails when `demos.contract`, `demos/index.contract`,
 `modules/apple/Architecture.generated.swift` or `home/atlas-data.contract` would change. The generators write in place, so the
 originals are copied aside and always put back; the regenerated copies are left in `$TMPDIR/lint-generated` to diff or copy over.
 **It fails today** (so it is informational in CI): the committed `demos/index.contract` names `ExpandableMiniPlayer` and
@@ -150,4 +150,4 @@ the workflow.
 - Contract: pay down the baseline (start with `box-sizing-border-box`, which is an error and likely a parity bug in each hit),
   then flip `corner-shape-continuous`, `hairline-border` and `min-touch-target` to errors in `.contractlintrc.json`.
 - Adopt the motion presets in new UI (the launcher, the shake sheet).
-- Type `tools/parity` and make `tools/parity/tsconfig.json` gate.
+- Type `.parity` and make `.parity/tsconfig.json` gate.

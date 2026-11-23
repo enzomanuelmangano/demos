@@ -1,8 +1,0 @@
-{
-  "name": "demos-parity-tools",
-  "private": true,
-  "description": "Dev-only dependencies of tools/parity (the feedback server, the screen atlas). Not part of the app's install: `cd tools/parity && bun install` once.",
-  "devDependencies": {
-    "sharp": "0.33.5"
-  }
-}

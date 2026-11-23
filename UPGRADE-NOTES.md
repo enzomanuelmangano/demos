@@ -69,7 +69,7 @@ dev server: `PATH=~/.exact/bindgen-0.2.130/bin:$PATH bun exact.mjs web --port 53
 
 ## Local patch
 
-`host/apple/Sources/ExactKit/Surface.swift` (`BorderPaint.reduced(...)`, `tools/parity/exact-issues/radius-reduced.md`):
+`host/apple/Sources/ExactKit/Surface.swift` (`BorderPaint.reduced(...)`, `.parity/exact-issues/radius-reduced.md`):
 NOT fixed upstream (line 158 still passes the authored radii). Re-applied in the new checkout, uncommitted there as in the old
 one; `radius-reduced.patch` applies as is (a line number differs). A new checkout of c193f394 without it loses the transition
 corner fix. It is also in the working tree of `~/.exact/exact2/c193f394...`: do not `git clean`/`checkout` that checkout.

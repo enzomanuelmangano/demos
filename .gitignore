@@ -1,4 +1,4 @@
-# The Exact app (the repo root). The React Native app in legacy/ has its own legacy/.gitignore.
+# The Exact app (the repo root). The React Native app in .legacy/ has its own .legacy/.gitignore.
 /target/
 /dist/
 /dist.*
