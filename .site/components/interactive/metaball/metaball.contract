@@ -1,0 +1,142 @@
+// The metaball article's demos (the reference's content/articles/metaball/components): two discs of the
+// cyan-magenta-cyan sweep, one dragged by the reader (springing back on release); then blurred (CSS `blur()` on the
+// canvas, as the reference); then thresholded by an SVG colour matrix whose alpha row (`alpha`, -`pos`) and the blur
+// three sliders set. The canvas mounts when the box comes within 300 px of the viewport (its drawing code loads then).
+use InteractiveBox from "../_canvas/box.contract"
+
+// The reference's monospace label (a <span> with font-family monospace, 12 px).
+style SliderLabel
+  line-height="normal" font-size=12 font-family="monospace" color="var(--color-text-body)" width="20%" min-width=90
+
+// One slider of the colour-matrix demo (components/metaball/animated-slider): a 2 px white-on-20 % bar
+// min(50vw, 250px) wide and a 35 px white picker (80 % at rest, 100 % while dragged) at `progress` of it. The picker
+// is dragged by the pointer; the demo keeps the value (it animates the pickers back on Restart).
+component MetaballSlider
+  props
+    label: string
+    progress: number
+    shown: number
+    eased: bool
+    vw: number
+    change: action
+  state dragging = false
+  state from = 0
+  state anchor = 0
+  action down(e: PointerEvent)
+    dragging = true
+    from = max(0, min(1, progress))
+    anchor = e.clientX
+  action move(e: PointerEvent)
+    if dragging
+      change(max(0, min(1, from + (e.clientX - anchor) / min(vw * 0.5, 250))))
+  action up(e: PointerEvent)
+    dragging = false
+  view
+    row height=45 align-items="center" justify-content="flex-start" width="min(70vw, 350px)"
+      text `${label} (${shown.toFixed(0)})` class=SliderLabel
+      view position="relative" flex-shrink=0 width="min(50vw, 250px)" height=2 border-radius=5 background-color="rgba(255, 255, 255, 0.2)"
+        view position="absolute" top=0 bottom=0 left=0 right=0 overflow="hidden"
+          view position="absolute" top=0 bottom=0 left=0 width="100%" background-color="white"
+            translate=`calc(${max(0, min(1, progress)) * 100}% - 100%) 0px` transition=(eased ? "translate 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)" : "none")
+        view position="absolute" left=0 top=-16.5 width=35 height=35 border-radius=17.5 background-color="white" cursor="grab"
+          touch-action="none" user-select="none" translate=`calc(min(50vw, 250px) * ${progress} - 17.5px) 0px` scale=(dragging ? 1 : 0.8)
+          transition=(eased ? "translate 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955), scale 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)" : "scale 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)")
+          pointerdown=down pointermove=move pointerup=up
+
+shape Window
+  width: number
+
+fn lerp(p: number, a: number, b: number): number = a + (b - a) * max(0, min(1, p))
+
+component Metaball
+  props
+    key: string
+    type: string
+  resource window = exactViewport() as shape Window
+  state near = false
+  state dragging = false
+  state anchorX = 0
+  state anchorY = 0
+  state dx = 0
+  state dy = 0
+  // The colour-matrix sliders, as progress along their bars: blur 0-100 (30), alpha 1-100 (60 % of the bar), pos 0-100 (30).
+  state blurP = 0.3
+  state alphaP = 0.6
+  state posP = 0.3
+  // Restart eases the pickers back (300 ms, easeInOutQuad, the reference's timing); a drag moves them at once.
+  state easing = false
+  action seen(entry: IntersectionObserverEntry)
+    if entry.isIntersecting
+      near = true
+  action down(e: PointerEvent)
+    if type != "basic"
+      dragging = true
+      anchorX = e.clientX
+      anchorY = e.clientY
+      dx = 0
+      dy = 0
+  action move(e: PointerEvent)
+    if dragging
+      dx = e.clientX - anchorX
+      dy = e.clientY - anchorY
+  action up(e: PointerEvent)
+    dragging = false
+  action setBlur(p: number)
+    easing = false
+    blurP = p
+  action setAlpha(p: number)
+    easing = false
+    alphaP = p
+  action setPos(p: number)
+    easing = false
+    posP = p
+  action reset
+    easing = true
+    blurP = 0.3
+    alphaP = 0.6
+    posP = 0.3
+  action idle
+    easing = easing
+  view
+    InteractiveBox(theme="light", square=(type == "with-color-matrix"), withPlay=false, withReset=(type == "with-color-matrix"), play=idle, reset=reset)
+      column flex=1 min-height=0 min-width=0 position="relative" intersect=seen intersect-margin="300px"
+        if type == "with-color-matrix"
+          svg width=0 height=0 position="absolute" aria-hidden=true
+            filter id=`${key}-goo`
+              feColorMatrix type="matrix" values=`1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 ${lerp(alphaP, 1, 100)} ${-lerp(posP, 0, 100)}`
+        column flex=1 min-height=0 min-width=0 position="relative" touch-action="none" user-select="none"
+          pointerdown=down pointermove=move pointerup=up
+          if near
+            canvas surface=metaball(key, dragging, dx, dy) aria-hidden=true width="100%" height="100%" flex=1
+              filter=(type == "with-color-matrix" ? `blur(${lerp(blurP, 0, 100)}px) url(#${key}-goo)` : type == "with-blur" ? "blur(30px)" : "none")
+        if type == "with-color-matrix"
+          column flex-shrink=0 width="100%" align-items="center" margin-bottom=50
+            MetaballSlider(label="blur", progress=blurP, shown=lerp(blurP, 0, 100), eased=easing, vw=window.width, change=setBlur)
+            MetaballSlider(label="alpha", progress=alphaP, shown=lerp(alphaP, 1, 100), eased=easing, vw=window.width, change=setAlpha)
+            MetaballSlider(label="pos", progress=posP, shown=lerp(posP, 0, 100), eased=easing, vw=window.width, change=setPos)
+
+// The MDX's names (content/articles/metaball/components/index.tsx; CanvasKitJsAlert is src/components/ui/alert.tsx's).
+component BasicMetaballWithSkia
+  view
+    Metaball(key="basic-metaball", type="basic")
+
+component WithPanMetaballWithSkia
+  view
+    Metaball(key="pan-metaball", type="with-pan")
+
+component WithBlurMetaballWithSkia
+  view
+    Metaball(key="blur-metaball", type="with-blur")
+
+component WithColorMatrixMetaballWithSkia
+  view
+    Metaball(key="color-matrix-metaball", type="with-color-matrix")
+
+// The warning before the colour-matrix demo: a 14 px rounded panel, warning yellow at 10 % with a 20 % ring.
+component CanvasKitJsAlert
+  view
+    column role="alert" width="100%" box-sizing="border-box" margin-top=16 margin-bottom=24 border-radius=14 padding="12px 16px"
+      font-size="0.875rem" line-height="1.25rem" color="var(--color-warning)" background-color="color-mix(in oklab, var(--color-warning) 10%, transparent)"
+      box-shadow="0 0 0 1px color-mix(in oklab, var(--color-warning) 20%, transparent)"
+      text "⚠️ Known Issues" role="heading" aria-level=5 margin-bottom=4 font-weight=500 line-height=1 letter-spacing="-0.025em"
+      text "I am currently updating the article to support CanvasKitJs, which is causing some demos to break. Please note that the code will still work perfectly in your own apps." opacity=0.9
