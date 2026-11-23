@@ -1,6 +1,7 @@
-// /_dev/interactive: every canvas article demo on one page, for checking them against the live articles (not linked,
-// noindex, not in the sitemap). Each sits in a 720 px column, as in an article at 1440 px, rendered the way an
-// article page does: a list of (article, name) blocks, each through its article's dispatcher.
+// /_dev/interactive: every canvas article demo on one page, for checking them against the live articles. Not a route
+// of the site: components/interactive/_canvas/.tools/gallery.ts builds it into a dev-only dist. Each sits in a 720 px
+// column, as in an article at 1440 px, rendered the way an article page does: a list of (article, name) blocks, each
+// through its article's dispatcher.
 use AnimatedGradientInteractive from "../components/interactive/animated-gradient/animated-gradient.contract"
 use AnimatedLoaderSkiaInteractive from "../components/interactive/animated-loader-skia/animated-loader-skia.contract"
 use AnimatedSpiralInteractive from "../components/interactive/animated-spiral/animated-spiral.contract"
