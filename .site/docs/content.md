@@ -47,7 +47,7 @@ images (a looping video), `---`, `> quotes`, `<br />`.
 | `<YouTubeEmbed videoId={'…'} />` | | the player (youtube-nocookie), framed once near the window |
 | `<Embed url="https://x.com/…/status/…" />` | | the post, framed once near the window |
 | `<InlineMath>…</InlineMath>`, `<BlockMath>…</BlockMath>` | TeX | SVG made at build (no MathJax in the browser) |
-| an article's own component | imported from `./mdx-client` | its interactive demo (`interactive/<slug>/`); not yet ported ones draw the reference's empty 16:9 frame |
+| an article's own component | imported from `./mdx-client` | its interactive demo (`components/interactive/<slug>/`, drawn by `ArticleDemo`); each tag and prop is listed in `DEMOS` (`tools/gen-content.ts`) with the reference's defaults: an unlisted tag, prop or value fails the build |
 
 Any other tag, a raw HTML block or an `{expression}` (comments aside) fails the build with the file and line.
 
