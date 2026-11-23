@@ -12,6 +12,28 @@ Each article folder has a dispatcher: `AnimatedGradientInteractive(name)`, `Anim
 also a prop-less component of the same name. They declare no resource and no task, so they may sit under a `for`
 (`/_dev/interactive` renders them exactly so). The box is as wide as its parent, 16:9 (square for
 WithColorMatrixMetaballWithSkia, and for WithProgressLoaderWithSkia in a portrait window), 16 px margin below.
+Verified wired into `components/markdown.contract` (locally, not committed: that file is the content branch's):
+
+```contract
+use AnimatedGradientInteractive from "./interactive/animated-gradient/animated-gradient.contract"
+use AnimatedLoaderSkiaInteractive from "./interactive/animated-loader-skia/animated-loader-skia.contract"
+use AnimatedSpiralInteractive from "./interactive/animated-spiral/animated-spiral.contract"
+use MetaballInteractive from "./interactive/metaball/metaball.contract"
+…
+    else if block.kind == "interactive" and block.lang == "animated-gradient"
+      AnimatedGradientInteractive(name=block.title)
+    else if block.kind == "interactive" and block.lang == "animated-loader-skia"
+      AnimatedLoaderSkiaInteractive(name=block.title)
+    else if block.kind == "interactive" and block.lang == "animated-spiral"
+      AnimatedSpiralInteractive(name=block.title)
+    else if block.kind == "interactive" and block.lang == "metaball"
+      MetaballInteractive(name=block.title)
+```
+
+With it, every demo box on the four article pages (1440) differs from live's by ≤ 0.09 % of pixels (> 32/255),
+16 of 16 boxes at live's size and place count, and no canvas mounts until scrolled near (spiral's first, near the
+top, does).
+
 **No ancestor between the demo and the page's scroller may clip (`overflow` hidden/auto/scroll)**: the lazy mount
 and the off-screen pause use an IntersectionObserver whose root is the nearest clipping ancestor.
 

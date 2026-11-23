@@ -36,7 +36,8 @@ const decode = (s: string) => s.replace(/&quot;/g, '"').replace(/&lt;/g, '<').re
 const pages = allPages();
 const known = new Set(pages.map((p) => htmlFile(p.path)));
 const built = readdirSync(dist, { recursive: true, encoding: 'utf8' }).filter((f) => !f.split('/').some((s) => s.startsWith('.')) && (f.endsWith('index.html') || f === '404.html')).map((f) => f.split('\\').join('/'));
-for (const f of built) if (!known.has(f)) throw new Error(`seo: ${f} is built but the metadata table (tools/seo/metadata.ts allPages) has no entry for it`);
+// /_dev/* (unlinked, noindex checking pages, e.g. pages/dev-interactive.contract) keep the head the build wrote.
+for (const f of built) if (!known.has(f) && !f.startsWith('_dev/')) throw new Error(`seo: ${f} is built but the metadata table (tools/seo/metadata.ts allPages) has no entry for it`);
 
 let done = 0;
 const missing: string[] = [];
