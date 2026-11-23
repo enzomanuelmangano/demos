@@ -477,6 +477,8 @@ inside the app's own renderer process and the page's, per interaction; site vs t
   reading takes its ghost out of flow at the end of the task, or before the next measure. Reported to Exact
   (`exact feedback note`); drop the patch when the pinned Exact has the fix. Regression check:
   `bun tools/parity/composable-text.ts <origin>` (exit 1 if leaving letters collapse; 1440 and 390 touch).
+- **The frame loads 600 ms in** (it waited for the hero's 1.6 s entrances): its start is in its own process, so it never
+  competed with them on the page's main thread; live 1.0-1.3 s sooner on cable and 4g (perf.md).
 - **The sandbox costs the frame its HTTP cache.** Measured: a repeat visit to `/demos` re-downloads every file of the
   app, the content-hashed `immutable` ones included (144 requests, ~5 MB on cable), because a frame with an opaque
   origin gets a transient cache partition; the same files at the top level come from the cache. Kept anyway: the

@@ -150,3 +150,66 @@ same Demos artifact, served locally. **Caveat: machine load 88 and on battery (1
 
 +1 KB on the wire, no new request, CLS 0, page TBT equal or lower; 1440 4g FCP/LCP +4/+12 ms are within this run's
 noise. To re-run on AC power with an idle machine before merging.
+
+## 2026-11-23/24, navigating the sim (D18-D20): before (`ddfba72e`, demos `d2f01f0a`) against after (`site-demos-nav`)
+
+**Caveat: machine load 200-850 (other agents' simulators and builds) for every run**; before and after ran interleaved,
+so they share the noise, but absolute times are inflated and single cells are noisy. Headed Chrome, real vsync (120 Hz
+on this display: one dropped frame = one missed 8.3 ms vsync), AC power. Local `tools/serve.ts` is HTTP/1.1 (6
+connections per origin; Vercel is HTTP/2), now with ETags (304s, as the host). Median of 3 unless noted.
+
+**Arriving at /demos, desktop 1440x900** (`tools/parity/sim-arrive.ts`; ms from the navigation or the header click;
+"live" = the framed app shown, "interactive" = live + a tap on an icon that opens its demo):
+
+| scenario | profile | before: FCP / still / live / interactive | after: FCP / still / live / interactive |
+|---|---|---|---|
+| cold (empty cache) | cable | 524 / 423 / 3538 / 3571 | 712 / 970 / 2274 / 2375 |
+| warm (repeat visit) | cable | 100 / 68 / 3160 / 3042 | 80 / 233 / 2244 / 2364 |
+| in-app (from /articles, header click) | cable | - / 453 / 3153 / 3190 | - / 164 / 2212 / 2244 |
+| cold | 4g | 960 / 914 / 6205 / 6456 | 952 / 984 / 4816 / 5079 |
+| warm | 4g | 424 / 668 / 5682 / 6593 | 340 / 444 / 4577 / 4744 |
+| in-app | 4g | - / 1144 / 5180 / 5392 | - / 593 / 4057 / 4146 |
+
+The frame now loads 600 ms in instead of after the hero's 1.6 s entrances (its start is in its own process): live
+-1.0 to -1.3 s everywhere. Warm is not faster than cold for the frame: the sandboxed frame has no HTTP cache (D18,
+measured: 144 requests and ~5 MB again on every visit, the `immutable` files included). Back to /demos within a tab
+keeps the frame (D17): 0 reloads (verified again: the kept frame is the same document, `live` at once).
+
+**Phones (390x844, touch): /demos → "Open the demos" → the app full screen** (no frame in the page any more, D20):
+tap → launcher drawn: cable 1312 cold / 937 warm; 4g 3492 cold / 4831 warm (local HTTP/1.1: ~130 revalidations over 6
+connections at 170 ms RTT; one run, noisy). Before, the phone's frame loaded only when scrolled near, 1.6 s at the
+earliest, inside the page.
+
+**Inside the app** (tap on an icon → the demo's root mounted; 10 demos in a row, GPU and plain; median / max):
+desktop cable 40 / 124 → 34 / 114; desktop 4g 101 / 301 → 98 / 816 (one GPU demo's first open under load); phone
+(full screen) cable 66 / 598, 4g 240 / 492. Deep link `/demos/chessboard` (308) → the demo drawn: desktop cable
+503 → 512, 4g 1744 → 1911, phone 4g 1226 (unchanged path: the redirect, then the app's own start).
+
+**Frame pacing in the framed app, 1440x900** (`tools/parity/sim-frames.ts`, dropped 120 Hz frames per interaction,
+median over 3 interleaved rounds; before = the old embedding CSS put back with `--css`, same build; app = the same
+build alone at the top):
+
+| interaction | before (embedded) | after (embedded) | app alone |
+|---|---|---|---|
+| launcher drag (450 ms) | 1 | 0 | 35 |
+| launcher flick | 15 | 0 | 3 |
+| page back (drag + flick) | 0 | 5 | 0 |
+| open a demo (10 demos, 1.2 s window) | 28 | 22.5 | 23 |
+| close | 3.5 | 3 | 8.5 |
+| pull to search | 1 | 1 | 0 |
+| scroll inside a demo | 0 | 0 | 0 |
+
+p95 frame interval 10.0-10.3 ms in every cell (one vsync plus jitter). Per demo, the longest frame on open: GPU
+demos 50-210 ms (Sculptures in Words, The Little Prince, Card Shader Reflections, Chessboard) in both the embedded and
+the standalone app: their first frame builds shader modules and pipelines, and Chrome's WebGPU compiles on the GPU
+process's main thread, which stalls every compositor frame (the page's too, measured). **That is the app's own cost**
+(the native warm-up, `gpu/src/warm.rs`, is a no-op on wasm: "the browser's device is not Send"). The embedding's own
+cost was small and is gone (no mask or rounded clip over the frame); the rest is noise at this load. To remove the
+open stalls: warm on the web with `createRenderPipelineAsync` (compiled off the GPU main thread) in idle slices, an
+Exact/wgpu web change.
+
+1728x960 (one round each, same order): drag 1 / 1 / 1, flick 0 / 9 / 0, open 35 / 31.5 / 22, close 4.5 / 5.5 / 16,
+pull to search 44 / 0 / 1 (before / after / app alone). Phone 390x844, the app full screen as phones now get it (one
+round): drag 4, flick 1, open 20, close 3, pull to search 22, scroll 0. **Verdict: not yet 0 on open.** The target
+(0 dropped on paging / open / close on a desktop) is met for paging and close within noise; open keeps the GPU
+demos' first-use compile stalls, the app's own, same embedded or alone.
