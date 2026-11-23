@@ -95,6 +95,12 @@ html #exact-root input:not([data-native]):focus-visible{outline:none}
 @media (hover:hover){[data-motion~=nav-link]:hover [data-motion~=underline]{scale:1 !important}}
 /* Focus rings: focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]. */
 [data-motion~=focus]:focus-visible{outline:none !important;box-shadow:0 0 0 2px oklch(15.5% 0.0041 286),0 0 0 4px oklch(72% 0.12 274 / .8) !important}
+/* /demos-app's QR card: shadow-lg, transition-all duration-200; hover:scale-105 hover:shadow-xl; active:scale-95. */
+[data-motion~=qr-card]{cursor:pointer;box-shadow:0 16px 36px -10px rgb(0 0 0 / .6);transition:all 200ms cubic-bezier(.4,0,.2,1)}
+@media (hover:hover){[data-motion~=qr-card]:hover{scale:1.05;box-shadow:0 24px 56px -12px rgb(0 0 0 / .7)}}
+[data-motion~=qr-card]:active{scale:.95}
+/* A link run inside a paragraph (its hover cannot be a Contract look): hover:text-text-primary. */
+@media (hover:hover){[data-motion~=hover-primary]:hover{color:var(--color-text-primary) !important}}
 /* Footer links: underline-offset-2. */
 [data-motion~=footer-link]{text-underline-offset:2px}
 @media (prefers-reduced-motion:reduce){[data-motion~=title],[data-motion~=blur-in],[data-motion~=card-in],[data-motion~=qr],[data-motion~=pop-in],[data-motion~=fade-in]{animation:none}}

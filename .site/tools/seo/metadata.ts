@@ -116,6 +116,7 @@ export function allPages(): PageMetadata[] {
       return { path: `/series/${s}`, title, description: `Articles in the ${title} series on React Native animations.`, image: card(OG.articles) };
     }),
     { path: '/inspirations', title: 'Inspirations', description: 'The blogs, docs and creators whose work shaped Reactiive.io.', image: OG.home },
+    { path: '/demos-app', title: 'Demos (TestFlight)', description: 'Get 120+ React Native animation demos on your phone through the TestFlight beta.', image: OG.demos },
     { path: '/course', title: 'Course', description: COURSE_DESCRIPTION, image: card(OG.home) },
     { path: '/docs', title: SITE_NAME, layoutOnly: true },
     ...Object.entries(DOC_TITLES).map(([slug, title]): PageMetadata => ({ path: `/docs/${slug}`, title, image: card(OG.home) })),

@@ -6,6 +6,7 @@ use HomePage from "./pages/home.contract"
 use NotFound from "./pages/not-found.contract"
 use DemosPage from "./pages/demos.contract"
 use InspirationsPage from "./pages/inspirations.contract"
+use DemosAppPage from "./pages/demos-app.contract"
 
 // The faces (Inter variable, Source Code Pro) are declared in app.json's head, font-display: swap and Inter
 // preloaded, as the reference: docs/decisions.md D7.
@@ -13,6 +14,7 @@ routes nav
   home "/" render=build activate=idle
   demos "/demos" render=build activate=idle
   inspirations "/inspirations" render=build activate=idle
+  demosApp "/demos-app" render=build activate=idle
   notfound render=build
 
 // The footer's Terms | Privacy variant, on the reference's paths (its /demos, /profile and /manage-subscription
@@ -118,6 +120,11 @@ component App
                   image="/og/main.png" canonical="/inspirations"
                 Container()
                   InspirationsPage()
+              else if e.name == "demosApp"
+                head title="Demos (TestFlight) | Reactiive" description="Get 120+ React Native animation demos on your phone through the TestFlight beta."
+                  image="/og/demos.png" canonical="/demos-app"
+                Container()
+                  DemosAppPage()
               else
                 head title="Page not found | Reactiive" status=404 robots="noindex"
                   description="Discover the beauty of React Native and how to build stunning animations with Reanimated and Skia"
