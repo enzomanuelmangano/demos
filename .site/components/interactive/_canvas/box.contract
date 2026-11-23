@@ -4,19 +4,8 @@
 // from the right, then Restart 44.8 px further left. The demo owns its state: the box only places the buttons and
 // calls `play` / `reset`.
 
-// The reference's icons (Material's replay, a play triangle, two pause bars), 18 px in a 24-unit box.
-component InteractiveIcon
-  props
-    kind: string
-    color: string
-  view
-    svg width=18 height=18 viewBox="0 0 24 24" fill=color aria-hidden=true
-      if kind == "reset"
-        path fill=color d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"
-      else if kind == "pause"
-        path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" stroke=color fill=color stroke-width=1.5 stroke-linecap="round" stroke-linejoin="round"
-      else
-        path d="M8 5.14v14.72L19 12 8 5.14z" stroke=color fill=color stroke-width=1.5 stroke-linecap="round" stroke-linejoin="round"
+// The reference's icons (Material's replay, a play triangle), 18 px in a 24-unit box; the triangle stroked 1.5.
+fn iconPath(kind: string): string = kind == "reset" ? "M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z" : "M8 5.14v14.72L19 12 8 5.14z"
 
 // CustomButton: 36 px, 12 px corners; light #b8b8b8 (hover #E5E7EB), dark #00000033 (hover black); hover shrinks it
 // to 95 % with a 1 px gray-800 ring and a small shadow; everything eases over 300 ms.
@@ -52,27 +41,34 @@ component InteractiveButton
     view position="absolute" bottom=0 right=right display="flex" flex-direction="column"
       if theme == "dark"
         button press=press aria-label=label title=label class=ButtonDark
-          InteractiveIcon(kind=kind, color="#FFFFFF")
+          svg width=18 height=18 viewBox="0 0 24 24" fill="#FFFFFF" aria-hidden=true
+            path d=iconPath(kind) fill="#FFFFFF" stroke=(kind == "reset" ? "none" : "#FFFFFF") stroke-width=1.5 stroke-linecap="round" stroke-linejoin="round"
       else
         button press=press aria-label=label title=label class=ButtonLight
-          InteractiveIcon(kind=kind, color="#303030")
+          svg width=18 height=18 viewBox="0 0 24 24" fill="#303030" aria-hidden=true
+            path d=iconPath(kind) fill="#303030" stroke=(kind == "reset" ? "none" : "#303030") stroke-width=1.5 stroke-linecap="round" stroke-linejoin="round"
 
+// `shape`: "video" (16:9), "square", or "portrait" (square in a portrait window, 16:9 otherwise: the reference's
+// Dimensions check, here a padding that is 100 % of the width when 100vh >= 100vw, else 56.25 %).
 component InteractiveBox
   props
     theme: string
-    square: bool
+    shape: string
     withPlay: bool
     withReset: bool
     play: action
     reset: action
   slot
   view
-    row width="100%" aspect-ratio=(square ? "1 / 1" : "16 / 9") margin-bottom=16 justify-content="center" align-items="center"
-      border-radius=10 overflow="hidden" box-sizing="border-box" border-style="solid" border-width=(theme == "dark" ? 0 : 1)
-      border-color=(theme == "dark" ? "#00000000" : "#242424")
-      column position="relative" flex=1 min-width=0 min-height=0 height="100%" cursor="pointer"
-        children
-        if withPlay
-          InteractiveButton(kind="play", label="Play", theme=theme, right=0, press=play)
-        if withReset
-          InteractiveButton(kind="reset", label="Restart", theme=theme, right=(withPlay ? 44.8 : 0), press=reset)
+    view position="relative" width="100%" margin-bottom=16 aspect-ratio=(shape == "square" ? "1 / 1" : shape == "video" ? "16 / 9" : "auto")
+      if shape == "portrait"
+        view width="100%" padding-top="clamp(56.25%, (100vh - 100vw + 1px) * 1000, 100%)"
+      row position="absolute" inset=0 justify-content="center" align-items="center"
+        border-radius=10 overflow="hidden" box-sizing="border-box" border-style="solid" border-width=(theme == "dark" ? 0 : 1)
+        border-color=(theme == "dark" ? "#00000000" : "#242424")
+        column position="relative" flex=1 min-width=0 min-height=0 height="100%" cursor="pointer"
+          children
+          if withPlay
+            InteractiveButton(kind="play", label="Play", theme=theme, right=0, press=play)
+          if withReset
+            InteractiveButton(kind="reset", label="Restart", theme=theme, right=(withPlay ? 44.8 : 0), press=reset)

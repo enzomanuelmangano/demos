@@ -59,16 +59,11 @@ component StartSlider
           pointerdown=down pointermove=move pointerup=up
       text value.toFixed(2) class=RnText font-size=14 margin-top=5 color="#bdbdbd"
 
-shape Window
-  width: number
-  height: number
-
 component LoaderDemo
   props
     key: string
     type: string
     withButtons: bool
-  resource window = exactViewport() as shape Window
   state near = false
   state visible = false
   state presses = 0
@@ -88,7 +83,7 @@ component LoaderDemo
     start = value
   view
     // The progress demo is square in a portrait window (the reference's Dimensions check).
-    InteractiveBox(theme="light", square=(type == "with-progress" and window.width <= window.height), withPlay=withButtons,
+    InteractiveBox(theme="light", shape=(type == "with-progress" ? "portrait" : "video"), withPlay=withButtons,
       withReset=withButtons, play=play, reset=reset)
       column flex=1 min-height=0 intersect=seen intersect-margin="300px"
         if type == "with-progress"
@@ -121,3 +116,19 @@ component WithBasicAnimationLoaderWithSkia
 component WithAnimationLoaderWithSkia
   view
     LoaderDemo(key="animation-loader", type="with-animation", withButtons=true)
+
+// One entry for the content converter: the export named `name` (an MDX tag of this article), nothing for another.
+component AnimatedLoaderSkiaInteractive
+  props
+    name: string
+  view
+    if name == "BasicLoaderWithSkia"
+      BasicLoaderWithSkia()
+    else if name == "WithGradientLoaderWithSkia"
+      WithGradientLoaderWithSkia()
+    else if name == "WithProgressLoaderWithSkia"
+      WithProgressLoaderWithSkia()
+    else if name == "WithBasicAnimationLoaderWithSkia"
+      WithBasicAnimationLoaderWithSkia()
+    else if name == "WithAnimationLoaderWithSkia"
+      WithAnimationLoaderWithSkia()
