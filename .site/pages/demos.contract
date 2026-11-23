@@ -31,6 +31,14 @@ fn titleSize(): string = `min(${steps(40, 80, 112, 144)}, max(${lg(9999, 0)}, (m
 // enzomanuelmangano/demos's stargazers on 2026-11-23, as the live page showed it.
 fn starCount(): string = "3,248"
 
+// The primary call to action: the page's one light button (the text colour as its fill), pressed to 0.97.
+style CtaPrimary
+  cursor="pointer" user-select="none" background-color="var(--color-text-primary)" color="var(--color-text-inverse)"
+  :hover
+    background-color = "#ffffff"
+  :active
+    -exact-press-scale = 0.97
+
 // The reference's hero text gradient (GRADIENT_ROW): white at 85 % on the sides, full in the middle, clipped to text.
 style Gradient
   background-image="linear-gradient(to right, #ffffffd9, #ffffff, #ffffffd9)" background-clip="text" color="transparent"
@@ -79,7 +87,9 @@ component StarsPill
         GitHubMark(size=16)
         // Under 640 px the pill reads "Source code"; from 640 px the full line with the star count.
         text "Source code" margin-left=sm(10, 0) max-width=sm(200, 0) overflow="hidden" white-space="nowrap"
-        text "Demos is Open Source" margin-left=sm(0, 10) max-width=sm(0, 300) overflow="hidden" white-space="nowrap"
+        text "Demos is Open Source" margin-left=sm(0, 10) max-width=sm(0, 300) overflow="hidden" white-space="nowrap" data-motion="d-long"
+        // From 1024 px, beside the primary button, the pill says only where it goes (web/head.css d-short).
+        text "GitHub" margin-left=0 max-width=0 overflow="hidden" white-space="nowrap" data-motion="d-short"
         view width=sm(0, 1) height=16 margin-left=sm(0, 10) background-color="rgb(255 255 255 / 0.12)" aria-hidden=true
         row align-items="center" margin-left=sm(0, 10) max-width=sm(0, 200) overflow="hidden" white-space="nowrap" aria-label=`${starCount()} stars`
           svg width=12 height=12 viewBox="0 0 16 16" fill="currentColor" color="var(--color-text-secondary)" aria-hidden=true flex-shrink=0
@@ -104,8 +114,10 @@ component DemosPage
     simLoaded: action
   view
     // Container size xl: 1152 px at most, 24 px each side; mt-4 under 640 px.
+    // From 1024 px the header's own container (48rem, web/head.css d-page), so the copy starts under the logo and the
+    // device ends under Sign In (D16).
     column width="100%" max-width="72rem" margin-left="auto" margin-right="auto" padding-left=24 padding-right=24 box-sizing="border-box"
-      margin-top=sm(16, 0)
+      margin-top=sm(16, 0) data-motion="d-page"
       // Under 1024 px the hero and, below it, the app; from 1024 px the hero on the left, vertically centred, and the
       // app on the right (D12): one wrapping row, whose hero is the full width under 1024 px, so the app wraps below.
       row flex-wrap="wrap" align-items="center" data-motion="d-row"
@@ -139,9 +151,17 @@ component DemosPage
               line-height=1.55 letter-spacing="-0.01em" max-width=320 max-height=sm(200, 0) overflow="hidden" aria-hidden=true
           row margin-top=sm(24, 28) data-motion="d-pill"
             view width=centring() flex-shrink=1
-            column flex-shrink=0 data-motion="blur-in" data-delay="550"
+            row flex-shrink=0 align-items="center" gap=10 data-motion="blur-in" data-delay="550"
+              // The primary action: the app on a phone (the TestFlight page, /demos-app); the pill is the secondary.
+              link href="/demos-app" class=CtaPrimary display="flex" align-items="center" height=36 padding-left=16 padding-right=16
+                border-radius=9999 font-size="0.875rem" line-height="1.25rem" font-weight=500 data-motion="button focus d-cta"
+                text "Get the app"
               StarsPill(seed=seed, counted=counted)
             view width=centring() flex-shrink=1
+          // From 1024 px: the device is live, say so and point at it (the dot lights when the app has drawn).
+          row align-items="center" gap=8 margin-top=0 max-height=0 overflow="hidden" data-motion="d-hint" aria-hidden=true
+            view width=6 height=6 border-radius=3 flex-shrink=0 data-motion=(simLive ? "d-dot on" : "d-dot")
+            text "Running live. Tap any app on the screen." font-size="0.8125rem" line-height="1.25rem" color="var(--color-text-tertiary)"
         DemosSim(ready=simReady, live=simLive, seen=simSeen, loaded=simLoaded)
 
 // The Demos app (its own build at /demos/app/), in a sandboxed frame: an opaque origin, so Chrome gives it its own
