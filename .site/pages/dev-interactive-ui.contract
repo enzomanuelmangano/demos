@@ -2,6 +2,8 @@
 // checking them against the live articles (each in a 720 px column, as an article's prose; full width on a phone).
 use InteractiveBox as BottomSheetBox, InitialSetup, BasicComponent, PanGesture, BorderRadius, FinalDemo from "../components/interactive/bottom-sheet-animation/index.contract"
 use InteractiveBox as CssBox, AnimatedSquare from "../components/interactive/css-animations-react-native/index.contract"
+use InteractivePanGesture from "../components/interactive/pan-gesture-handler/index.contract"
+use IntroToGesturesDemo from "../components/interactive/introduction-to-gestures/index.contract"
 use FinalAnimatedSquareDemo, AnimatedSquareOpacityDemo, AnimatedSquareOpacityAndScaleDemo from "../components/interactive/introduction-to-reanimated/index.contract"
 
 component DevLabel
@@ -54,3 +56,7 @@ component DevInteractiveUi
       AnimatedSquareOpacityAndScaleDemo(scaleAnimationType="spring", showBorderRadiusAnimation=true)
       DevLabel(label="introduction-to-reanimated · FinalAnimatedSquareDemo")
       FinalAnimatedSquareDemo()
+      DevLabel(label="pan-gesture-handler · InteractivePanGesture")
+      InteractivePanGesture()
+      DevLabel(label="introduction-to-gestures · IntroToGesturesDemo")
+      IntroToGesturesDemo()

@@ -1,0 +1,91 @@
+// introduction-to-gestures's demo (reference: content/articles/introduction-to-gestures/components/
+// intro-to-gestures.tsx): three 80 px circles (80 %) on white at the top left, blue over red over green. Dragging
+// blue (pointer or touch) moves its target; blue springs to it (withSpring's default 100/10/1, from rest at each
+// move), red springs to blue and green to red. On release blue's x snaps to 0 or to the window's width less 80,
+// whichever half of the window it is in (the reference's Dimensions.get('window')).
+//
+// The reference chains `useDerivedValue(() => withSpring(leader))`, which restarts the follower's spring each frame
+// its leader moves, with no time elapsed in the first frame: so a follower holds still while its leader moves and
+// sets off, from rest, the frame after its leader comes to rest (measured live: red sets off ~1.9 s after blue's
+// last move, green ~1.8 s after red). Here each follower's spring is the same transition, held back by its leader's
+// rest time: the reference's integrator rests (within 0.01, slower than 0.01/s) after a time that steps with the
+// distance (igRest, from gesture-kit/.tools's integrator, 60 Hz). Each axis is its own spring, as in the reference
+// (x and y are separate values), so each is its own box.
+//
+// Exports, as the article's MDX names them:
+//   IntroToGesturesDemo()
+use DemoFrame from "../gesture-kit/box.contract"
+
+// The reference's spring at 60 Hz from rest over a distance `a`: the time until its next follower moves (its rest
+// frame, then one more frame with no time elapsed), in ms.
+fn igRest(a: number): number = a < 0.01 ? 0 : a < 0.07 ? 350 : a < 0.47 ? 700 : a < 3.2 ? 1050 : a < 22 ? 1417 : a < 152 ? 1767 : a < 1041 ? 2117 : 2467
+fn igAbs(n: number): number = max(n, 0 - n)
+fn igSpring(delay: number): string = `translate 0s -exact-spring(100, 10, 1) ${delay}ms`
+
+component IntroToGesturesDemo
+  view
+    DemoFrame()
+      IntroToGestures()
+
+component IntroToGestures
+  // blue's target (the reference's translateX/Y), and how long red and green wait on each axis
+  state tx = 0
+  state ty = 0
+  state redX = 0
+  state redY = 0
+  state greenX = 0
+  state greenY = 0
+  state dragging = false
+  state fromX = 0
+  state fromY = 0
+  state sumX = 0
+  state sumY = 0
+  state w = 1024
+  action measured(cw: number, ch: number)
+    w = cw
+  // A new target for blue: red waits for blue's rest from where blue is drawn now, green for red's after that.
+  action aim(nx: number, ny: number)
+    let s = frame("ig-stage")
+    let b = frame("ig-blue")
+    let r = frame("ig-red")
+    let bx = b.unavailable ? tx : b.x - s.x
+    let by = b.unavailable ? ty : b.y - s.y
+    let rx = r.unavailable ? tx : r.x - s.x
+    let ry = r.unavailable ? ty : r.y - s.y
+    let dx = igRest(igAbs(nx - bx))
+    let dy = igRest(igAbs(ny - by))
+    if nx != tx
+      redX = dx
+      greenX = dx + igRest(igAbs(nx - rx))
+    if ny != ty
+      redY = dy
+      greenY = dy + igRest(igAbs(ny - ry))
+    tx = nx
+    ty = ny
+  action drag(dx: number, dy: number)
+    let baseX = dragging ? fromX : tx
+    let baseY = dragging ? fromY : ty
+    let nextX = dragging ? sumX + dx : dx
+    let nextY = dragging ? sumY + dy : dy
+    dragging = true
+    fromX = baseX
+    fromY = baseY
+    sumX = nextX
+    sumY = nextY
+    aim(baseX + nextX, baseY + nextY)
+  action release(vx: number, vy: number)
+    dragging = false
+    aim(tx > w / 2 ? w - 80 : 0, ty)
+  view
+    view id="ig-stage" flex=1 position="relative" background-color="#fff" overflow="hidden"
+      view position="absolute" left=0 top=0 width="100vw" height=0 resize=measured aria-hidden=true
+      view position="absolute" left=0 top=0 translate=`${tx}px 0px` transition=igSpring(greenX) -exact-translate-velocity="0 0"
+        view translate=`0px ${ty}px` transition=igSpring(greenY) -exact-translate-velocity="0 0"
+          view width=80 height=80 border-radius=40 background-color="green" opacity=0.8
+      view position="absolute" left=0 top=0 translate=`${tx}px 0px` transition=igSpring(redX) -exact-translate-velocity="0 0"
+        view translate=`0px ${ty}px` transition=igSpring(redY) -exact-translate-velocity="0 0"
+          view id="ig-red" width=80 height=80 border-radius=40 background-color="red" opacity=0.8
+      view position="absolute" left=0 top=0 translate=`${tx}px 0px` transition=igSpring(0) -exact-translate-velocity="0 0"
+        view translate=`0px ${ty}px` transition=igSpring(0) -exact-translate-velocity="0 0"
+          view id="ig-blue" width=80 height=80 border-radius=40 background-color="blue" opacity=0.8 cursor="grab"
+            touch-action="none" user-select="none" pan=drag panrelease=release
