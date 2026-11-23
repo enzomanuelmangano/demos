@@ -168,3 +168,26 @@ document.addEventListener('click', function (e) {
     }
   }).observe(document.documentElement, { childList: true, subtree: true });
 })();
+/* The header is the reference's root layout, kept across its in-app navigations, so its one entrance (Sign In's
+   pop-in) plays once a visit. Here a link of a page not yet awake is a document navigation (docs/decisions.md D16):
+   a page reached from this site (a link, Back, Forward; not a reload) shows the header already in, as live's does
+   (web/head.css, [data-nav]). */
+(function () {
+  try {
+    var nav = performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
+    if (nav && nav.type == 'reload') return;
+    if (document.referrer && new URL(document.referrer).origin == location.origin) document.documentElement.setAttribute('data-nav', 'in');
+  } catch (e) {}
+})();
+/* Sign In opens its dialog at the press, before the runtime has started (a page that activates on interaction,
+   docs/decisions.md D16, starts it at this press and replays it: up to ~2 s cold at 4x CPU). The dialog is in the
+   built page; it is shown here at once and the replayed press finds it open (showModal on an open modal dialog does
+   nothing). The provider buttons are asked for once the runtime runs. */
+(function () {
+  addEventListener('click', function (e) {
+    var b = e.target && e.target.closest && e.target.closest('[data-testid="sign-in"]');
+    var d = b && document.getElementById('signin-modal');
+    if (!d || d.open || typeof d.showModal != 'function') return;
+    try { d.showModal(); } catch (err) {}
+  }, true);
+})();

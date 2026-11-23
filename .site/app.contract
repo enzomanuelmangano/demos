@@ -90,12 +90,20 @@ component App
     toasts = toasts + 1
   // The sign-in dialog: its provider links are asked the first time it opens.
   state signInArmed = false
-  resource googleUrl = authUrl("google", utmSource, signInArmed) as shape string
-  resource appleUrl = authUrl("apple", utmSource, signInArmed) as shape string
+  // Sign In opens the dialog on every build, as live (the owner); the provider links are asked of /api/* (the old
+  // deployment, or tools/local-env/api.ts locally). Where it does not answer, a press on a provider says so in a toast
+  // and asks again (signInTry), never a dead control.
+  state signInTry = 0
+  resource googleUrl = authUrl("google", utmSource, signInArmed, signInTry) as shape string
+  resource appleUrl = authUrl("apple", utmSource, signInArmed, signInTry) as shape string
   action openSignIn
-    if accounts
-      signInArmed = true
-      showModal("signin-modal")
+    signInArmed = true
+    showModal("signin-modal")
+  action signInFailed
+    toast = "Sign in is not available right now. Please try again."
+    toastTone = "error"
+    toasts = toasts + 1
+    signInTry = signInTry + 1
   action signOut
     accessToken = ""
   action openProfile
@@ -256,7 +264,7 @@ component App
         SiteHeader(current=top(nav).name, accounts=accounts, loading=meLoading, me=me, openSignIn=openSignIn,
           signOut=signOut, openProfile=openProfile)
         Toast(message=toast, tone=toastTone)
-      SignInDialog(google=googleUrl, apple=appleUrl, googleFailed=failed(googleUrl), appleFailed=failed(appleUrl))
+      SignInDialog(google=googleUrl, apple=appleUrl, googleFailed=failed(googleUrl), appleFailed=failed(appleUrl), retry=signInFailed)
       FeedbackDialog(sending=feedbackSending, send=sendFeedback)
       CancelDialog(expires=me.expires, sending=pending(cancelled), confirm=confirmCancel)
       for e in stack(nav).slice(-1) key=e.id
