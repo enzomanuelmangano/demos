@@ -37,8 +37,9 @@ first skipped one differ from live by design).
 
 The converter works end to end (`tools/gen-content.ts`, authoring guide `docs/content.md`): MDX stays the source
 (`.content/`), output generated and gitignored; strict (unknown tag, expression, raw HTML, `index.json` field: build
-error with file and line); `--watch` for authoring; RSS and the articles' share images at their live URLs
-(`.out/content/`, copied by compose); sitemap from Exact's build. All ported pages build: 22 articles, 4 series,
+error with file and line); `--watch` for authoring; head, JSON-LD, RSS and sitemap come from the same `index.json` files
+(`tools/seo/postbuild.ts`, branch `site`; one not-ported list in `tools/seo/site.ts`); share images at their live
+URLs through compose's `/content-assets/` rewrite. `bun run build` = convert, build, SEO postbuild. All ported pages build: 22 articles, 4 series,
 `/articles`, `/docs` + 3 docs. Preview: `bun tools/serve.ts --port 4311` on the composed output.
 
 Parity, full page, share of differing pixels (`compare.ts`, live shot into `/tmp/content-live`, `CDP_PORT_OFFSET=100`):
@@ -65,4 +66,4 @@ Parity, full page, share of differing pixels (`compare.ts`, live shot into `/tmp
    styled element. Merge equal-style tokens, class the colours, then the perf gate.
 5. GitHub card: live clips a squircle (figma-squircle 0.6) with a gradient rim; here a 14 px radius and the
    `--shadow-surface` fallback the reference uses before measuring.
-6. `og:type` article, JSON-LD NewsArticle (phase 6 postbuild); the motion, nav and perf sweep at the end.
+6. The motion, nav and perf sweep at the end (og:type, JSON-LD: done by the SEO postbuild).
