@@ -64,7 +64,7 @@ component SiteHeader
   view
     header appearance="none" position="absolute" top=0 left=0 right=0 z-index=50
       // Desktop, from 768 px.
-      view class=HeaderBar height=md(0, 87) testId="header-desktop" data-motion="bar"
+      view class=HeaderBar height=md(0, 87) testId="header-desktop" data-motion="bar desk"
         Container()
           row justify-content="space-between" align-items="center" padding-top=sm(16, 20) padding-bottom=sm(16, 20)
             link href="/" aria-label="Reactiive, home" margin-top=6 border-radius="var(--radius-md)" display="flex" class=Plain data-motion="plain focus" -exact-hover-effect="none"
