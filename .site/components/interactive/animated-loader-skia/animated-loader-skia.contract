@@ -3,11 +3,6 @@
 // viewport (its drawing code loads then) and spins only while visible.
 use InteractiveBox from "../_canvas/box.contract"
 
-// tailwind's animate-[fadeIn_1000ms_ease-out] on the spinning loaders' box (globals.css fadeIn).
-keyframes loaderFadeIn
-  from opacity=0
-  to opacity=1
-
 // The reference's RN_TEXT (src/lib/rn-text.ts): a react-native-web <Text>'s system font and normal line height.
 style RnText
   font-family="-apple-system, 'system-ui', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" line-height="normal"
@@ -22,10 +17,16 @@ component Loader
     presses: number
     kind: string
     near: bool
+  // tailwind's animate-[fadeIn_1000ms_ease-out] on the spinning loaders' box (globals.css fadeIn), as a transition
+  // armed by the box's first layout (keyframes would land in every page's head). The box is on the page from the
+  // start, so the fade runs at load as the reference's; the canvas comes when near.
+  state shown = false
+  action arm(w: number, h: number)
+    shown = true
   view
-    // The box is on the page from the start, so its fade runs at load as the reference's; the canvas comes when near.
     row flex=1 align-items="center" justify-content="center"
-      view width=158 height=158 animation=((type == "with-animation" or type == "with-basic-animation") ? "loaderFadeIn 1000ms ease-out" : "none")
+      view width=158 height=158 resize=arm opacity=((type == "with-animation" or type == "with-basic-animation") and not shown ? 0 : 1)
+        transition="opacity 1000ms ease-out"
         if near
           canvas surface=loader(key, type, start, visible, presses, kind) aria-hidden=true width=158 height=158
 
