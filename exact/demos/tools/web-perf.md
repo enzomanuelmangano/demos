@@ -367,9 +367,35 @@ as deferred cards, and no native host reads them. So:
 | a demo's images, opened cold by link on 4G (no CPU throttle): first piece asked / all arrived | - (in the 25 MB) | sculptures-in-words 16.5 / 18.3 s (1.3 MB), chessboard 16.4 / 17.3 s, art-gallery 16.3 / 24.9 s (6.3 MB) |
 | on cable, each of the 17 demos | - | every piece in under 0.1 s, all drawn, no console error (screenshots checked) |
 
-Left, in Exact (host/web/gpu-glue.js `loadShaders`): the production page fetches the GPU module's shaders one after
-another (`for ... await fetch`), 55 round trips: on 4G ~7 s between the module and the first surface. Fetching them
-in parallel would bring a GPU demo's first frame to ~10 s on a cold 4G link.
+## The shaders in one request (fourth session, 2026-11-23)
+
+Exact's GPU glue (host/web/gpu-glue.js `loadShaders`) fetches the module's shaders one after another, after the module
+is instantiated: `for (const name of gpu_shader_names()) await fetch(./shaders/<name>.wgsl)`, 55 round trips. Fixed
+on our side, web only, nothing in Exact touched:
+
+- `tools/gpu-images-web.mjs` (before_build) also writes `packages/gpu-images/chunks/shaders.wgsl`: every
+  `gpu/shaders/*.wgsl` in one JSON object `{ name: text }`, a web asset of the package (`/assets/demos-gpu-images/chunks/shaders.wgsl`;
+  named `.wgsl` so hosts compress it as `text/wgsl`). This app declares no `gpu.shaderRoots` / `shaderPreludes`, so the
+  build ships gpu/shaders verbatim; the script refuses if one is ever added. Not a `.json`: the dev loop takes every
+  event on a package's files as an edit and a build reads a package's `.json` files, so a `.json` bundle set every
+  dev build aside in a loop.
+- A head script in app.json (`host.web.head`) wraps `fetch`: the GPU module's `gpu_bg.wasm` fetch starts the bundle's
+  (`cache: 'no-cache'`, revalidated), and each one-argument fetch of `<base>/shaders/<name>.wgsl` is answered from it
+  with a `Response`. A name the bundle lacks, or a bundle that fails, falls through to the glue's own fetch (checked:
+  bundle removed, paper-folding draws the same pixels). The dev loop never fetches shaders (`exact.devAssets`), so
+  nothing changes there.
+
+| production build (serve.ts, cold, 4G + 4x CPU, 390 x 844), 2 runs each | before | after |
+|---|---|---|
+| shader requests / bytes on the wire | 55 / 132 KB, last at 19.1-19.3 s | 1 / 84 KB brotli, done at 7.7-7.8 s (before the wasm) |
+| `gpu_bg.wasm` instantiated | 9.5-9.6 s | 9.6 s |
+| GPU module ready (`data-gpu-ms` set: wasm + every shader registered; `load.ts` `gpuShadersReady`) | **19.2 s** | **9.6 s** |
+| same, cable 1x desktop | - | 5.05 s (instantiated 5.04 s) |
+
+GPU demos checked on the production build (chessboard, paper-folding, threads-holo-ticket, sculptures-in-words,
+fibonacci-shader-grid, mobile and desktop): drawn, no console error, no `.wgsl` request. What Exact would need to make
+this unnecessary: `loadShaders` fetching in parallel (`Promise.all`), or better the build writing one `shaders.json`
+(names and texts) beside `gpu.js` and the glue starting its fetch with the wasm's, as the head script does.
 
 ## What was changed here
 

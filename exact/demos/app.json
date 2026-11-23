@@ -73,6 +73,11 @@
           "script": {
             "text": "(function(){var s=document.createElement('style');s.textContent='html,body{overscroll-behavior:none;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;background:#141414}body{height:100dvh;overflow:hidden}input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text}';document.head.appendChild(s);var t=matchMedia('(pointer:coarse)');addEventListener('contextmenu',function(e){if(t.matches)e.preventDefault()});document.addEventListener('gesturestart',function(e){e.preventDefault()});})();"
           }
+        },
+        {
+          "script": {
+            "text": "(function(){var F=window.fetch,B=null,W=/\\/gpu_bg\\.wasm$/,S=/\\/shaders\\/([A-Za-z_][A-Za-z0-9_]*)\\.wgsl$/;function bundle(base){return B||(B=F(new URL('assets/demos-gpu-images/chunks/shaders.wgsl',base),{cache:'no-cache'}).then(function(r){return r.ok?r.json():null}).catch(function(){return null}))}window.fetch=function(u,o){var s=o===undefined&&(typeof u==='string'?new URL(u,location.href).href:u instanceof URL?u.href:null),m;if(s&&W.test(s))bundle(new URL('./',s));else if(s&&(m=S.exec(s)))return bundle(new URL('../',s)).then(function(b){var t=b&&b[m[1]];return typeof t==='string'?new Response(t,{headers:{'content-type':'text/plain; charset=utf-8'}}):F(u)});return F.apply(this,arguments)}})();"
+          }
         }
       ]
     },

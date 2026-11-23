@@ -30,6 +30,8 @@ const { cdp, kill } = await launch({ port: 9340 + Math.floor(Math.random() * 50)
 for (let run = 0; run < runs; run++) {
   const page = await newPage(cdp, mobile ? { width: 390, height: 844, mobile: true, dpr: 3 } : { width: 1440, height: 900 });
   await page.send("Page.addScriptToEvaluateOnNewDocument", { source: probe });
+  // The GPU module is ready (wasm instantiated and every shader registered) when the glue sets data-gpu-ms.
+  await page.send("Page.addScriptToEvaluateOnNewDocument", { source: `new MutationObserver((l, o) => { for (const m of l) if (m.attributeName === 'data-gpu-ms') { (window.__perf ??= {}).gpuShadersReady = performance.now(); o.disconnect(); } }).observe(document, { attributes: true, subtree: true, attributeFilter: ['data-gpu-ms'] });` });
   await page.send("Network.emulateNetworkConditions", NETWORK[net]);
   if (cpu > 1) await page.send("Emulation.setCPUThrottlingRate", { rate: cpu });
   const req = new Map<string, any>();
@@ -50,11 +52,11 @@ for (let run = 0; run < runs; run++) {
   for (;;) {
     await Bun.sleep(500);
     state = await page.eval(`(() => { const P = window.__perf; if (!P) return {}; const lt = P.longtasks; const last = lt.length ? lt[lt.length-1][0] + lt[lt.length-1][1] : 0;
-      const g = P.wasm.find(w => /gpu_bg/.test(w.url ?? '')); return { now: performance.now(), last, icons: P.marks.launcherIcons, gpu: g?.end }; })()`).catch(() => ({}));
-    if (state.icons && state.gpu && state.now - Math.max(state.last, state.gpu) > 3000) break;
+      const g = P.wasm.find(w => /gpu_bg/.test(w.url ?? '')); return { now: performance.now(), last, icons: P.marks.launcherIcons, gpu: g?.end, ready: P.gpuShadersReady }; })()`).catch(() => ({}));
+    if (state.icons && state.gpu && state.ready && state.now - Math.max(state.last, state.gpu, state.ready) > 3000) break;
     if (Date.now() - t0 > timeout) { state.timedOut = true; break; }
   }
-  const perf = await page.eval(`(() => { const P = window.__perf; return { marks: P.marks, paints: P.paints, longtasks: P.longtasks, wasm: P.wasm.map(w => ({ name: w.name, url: w.url, start: w.start, end: w.end, error: w.error, memory: w.memory?.buffer?.byteLength ?? 0 })), gpu: P.gpu, nav: performance.getEntriesByType('navigation')[0]?.toJSON?.(), dom: document.getElementsByTagName('*').length }; })()`);
+  const perf = await page.eval(`(() => { const P = window.__perf; return { gpuShadersReady: P.gpuShadersReady, marks: P.marks, paints: P.paints, longtasks: P.longtasks, wasm: P.wasm.map(w => ({ name: w.name, url: w.url, start: w.start, end: w.end, error: w.error, memory: w.memory?.buffer?.byteLength ?? 0 })), gpu: P.gpu, nav: performance.getEntriesByType('navigation')[0]?.toJSON?.(), dom: document.getElementsByTagName('*').length }; })()`);
   const heap = await page.send("Runtime.getHeapUsage");
   // The trace: wasm compile spans and main-thread time by top-level event.
   const done = page.cdp.waitFor((e) => e.method === "Tracing.tracingComplete" && e.sessionId === page.sessionId, 120000);
@@ -107,6 +109,7 @@ for (let run = 0; run < runs; run++) {
     ttiLauncher: quietAfter(perf.marks.launcherIcons ?? 0),
     gpuFetchStart: big.find((b) => /gpu_bg/.test(b.url))?.start, gpuFetchEnd: big.find((b) => /gpu_bg/.test(b.url))?.end,
     gpuInstantiate: gpuWasm ? { start: +gpuWasm.start.toFixed(0), end: +gpuWasm.end.toFixed(0), ms: +(gpuWasm.end - gpuWasm.start).toFixed(0), how: gpuWasm.name, error: gpuWasm.error } : null,
+    gpuShadersReady: perf.gpuShadersReady == null ? null : +perf.gpuShadersReady.toFixed(0),
     ttiGpu: gpuWasm ? quietAfter(Math.max(perf.marks.launcherIcons ?? 0, gpuWasm.end)) : null,
     longtasks: { n: lt.length, totalMs: +lt.reduce((a, [, d]) => a + d, 0).toFixed(0), maxMs: +Math.max(0, ...lt.map(([, d]) => d)).toFixed(0), list: lt.map(([s, d]) => [s | 0, d | 0]) },
     bytes: { total: resources.reduce((a, r) => a + (r.bytes ?? 0), 0), requests: resources.length, byKind },

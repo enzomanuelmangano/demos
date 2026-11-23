@@ -6,6 +6,11 @@
 // gives each asset request 5 s per attempt, so a 6 MB atlas never arrives over 4G; 64 KiB arrives over Fast 3G
 // with eight in flight. CHUNK must equal gpu/src/bytes.rs's. Runs before every build verb: done at once when the
 // pieces match the images (a stamp of each file's size and mtime).
+// It also writes chunks/shaders.wgsl, every gpu/shaders/*.wgsl in one JSON object ({ name: text }, a web asset
+// too; named .wgsl so every host compresses it as text/wgsl): the head
+// script in app.json answers the GPU glue's 55 one-at-a-time shader fetches from that one request, started with the
+// wasm's (tools/web-perf.md, "The shaders in one request"). The web build ships gpu/shaders as they are (this app
+// declares no gpu.shaderRoots / shaderPreludes; the script refuses if it ever does), so the bundle is the same text.
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
@@ -25,7 +30,28 @@ walk(images);
 const rows = files.map(f => { const s = statSync(f); return [relative(images, f).split(sep).join('/'), s.size, Math.round(s.mtimeMs)]; });
 const stamp = createHash('sha256').update(JSON.stringify([CHUNK, rows])).digest('hex');
 const stampFile = join(out, '.stamp');
-if (existsSync(stampFile) && readFileSync(stampFile, 'utf8') === stamp && existsSync(join(pkg, 'exact.json'))) process.exit(0);
+
+// The shaders, every build (340 KB of text): the bundle never lags gpu/shaders. Not a .json: the dev loop
+// (host/web-js/dev.mjs) takes every event on a package's files as an edit, a build reads a package's .json files,
+// and a .json bundle set every dev build aside, forever.
+const manifest = JSON.parse(readFileSync(join(app, 'app.json'), 'utf8'));
+if (manifest.gpu?.shaderRoots?.length || Object.keys(manifest.gpu?.shaderPreludes ?? {}).length)
+  throw new Error('gpu-images-web: app.json declares shader roots or preludes: shaders.wgsl must be built from what the web build ships (scripts/app.mjs shaderFiles)');
+const shaderDir = join(app, 'gpu/shaders'), shaders = {};
+for (const name of readdirSync(shaderDir).filter(n => /^[A-Za-z_][A-Za-z0-9_]*\.wgsl$/.test(n)).sort())
+  shaders[name.slice(0, -5)] = readFileSync(join(shaderDir, name), 'utf8');
+const writeManifest = assets => {
+  const bundle = JSON.stringify(shaders), bundleFile = join(out, 'shaders.wgsl');
+  mkdirSync(out, { recursive: true });
+  if (!existsSync(bundleFile) || readFileSync(bundleFile, 'utf8') !== bundle) writeFileSync(bundleFile, bundle);
+  const text = JSON.stringify({ web: { assets: [...assets, 'chunks/shaders.wgsl'] } }, null, 1) + '\n', at = join(pkg, 'exact.json');
+  if (!existsSync(at) || readFileSync(at, 'utf8') !== text) writeFileSync(at, text);
+};
+
+if (existsSync(stampFile) && readFileSync(stampFile, 'utf8') === stamp && existsSync(join(pkg, 'exact.json'))) {
+  writeManifest(JSON.parse(readFileSync(join(pkg, 'exact.json'), 'utf8')).web.assets.filter(a => /^chunks\/.+\.\d+$/.test(a)));
+  process.exit(0);
+}
 
 rmSync(out, { recursive: true, force: true });
 const assets = [];
@@ -37,6 +63,6 @@ for (const [rel, size] of rows) {
     assets.push(`chunks/${rel}.${i}`);
   }
 }
-writeFileSync(join(pkg, 'exact.json'), JSON.stringify({ web: { assets } }, null, 1) + '\n');
+writeManifest(assets);
 writeFileSync(stampFile, stamp);
 console.error(`gpu-images-web: ${rows.length} images, ${assets.length} pieces in packages/gpu-images/chunks`);
