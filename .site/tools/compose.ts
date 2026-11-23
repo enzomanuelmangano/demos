@@ -67,12 +67,6 @@ if (existsSync(pub)) for (const n of readdirSync(pub)) {
   if (existsSync(join(staticDir, n))) throw new Error(`compose: public/${n} collides with the site build's ${n}`);
   cpSync(join(pub, n), join(staticDir, n), { recursive: true });
 }
-// .out/content/: what tools/gen-content.ts serves at fixed root URLs (rss.xml, the articles' share images).
-const fed = join(site, '.out/content');
-if (existsSync(fed)) for (const n of readdirSync(fed)) {
-  if (existsSync(join(staticDir, n))) throw new Error(`compose: .out/content/${n} collides with ${n}`);
-  cpSync(join(fed, n), join(staticDir, n), { recursive: true });
-}
 // The demos' robots.txt names only its mount; the origin's robots.txt is the site's (Exact: serve discovery files at
 // the root and merge them; the site's `Allow: /` already covers /demos/). The demos build has no .well-known/.
 copy(demosDist, join(staticDir, MOUNT.slice(1)), ['robots.txt']);
