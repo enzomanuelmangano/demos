@@ -39,11 +39,26 @@ component App
     after(500, countStars)
   action countStars
     counted = true
-  state simReady = false
-  task sim when not simReady
-    after(1600, readySim)
-  action readySim
-    simReady = true
+  // /demos's frame (pages/demos.contract DemosSim): its page loads once the hero's entrances are done (1.6 s) and its
+  // box is within a viewport of the window; the launcher's still over it fades 800 ms after the frame's load.
+  state simSettled = false
+  state simNear = false
+  state simFramed = false
+  state simLive = false
+  task sim when not simSettled
+    after(1600, settleSim)
+  action settleSim
+    simSettled = true
+  action simSeen(entry: IntersectionObserverEntry)
+    if entry.isIntersecting
+      simNear = true
+  action simLoaded
+    if simSettled and simNear
+      simFramed = true
+  task reveal when simFramed and not simLive
+    after(800, showSim)
+  action showSim
+    simLive = true
   action spiralTap
     spiralTaps = spiralTaps + 1
   action follow(url: string)
@@ -94,7 +109,8 @@ component App
               else if e.name == "demos"
                 head title="Demos | Reactiive" description="Explore the beauty of React Native animations with Reanimated, Skia and Gesture Handler"
                   image="/og/demos.png" canonical="/demos"
-                DemosPage(seed=time.seed, taps=spiralTaps, tap=spiralTap, counted=counted, simReady=simReady)
+                DemosPage(seed=time.seed, taps=spiralTaps, tap=spiralTap, counted=counted, simReady=(simSettled and simNear),
+                  simLive=simLive, simSeen=simSeen, simLoaded=simLoaded)
               else
                 head title="Page not found | Reactiive" status=404 robots="noindex"
                   description="Discover the beauty of React Native and how to build stunning animations with Reanimated and Skia"

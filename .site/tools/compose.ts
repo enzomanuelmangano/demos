@@ -99,6 +99,10 @@ for (const slug of LEGACY_DEMO_POSTS) {
 routes.push({ src: '^/(?:profile|manage-subscription)/?$', status: 307, headers: { Location: '/demos' } });
 routes.push({ src: `^/((?!${esc(MOUNT.slice(1))}/).+)/$`, status: 308, headers: { Location: '/$1' } });
 if (process.env.LEGACY_API_ORIGIN) routes.push({ src: '^/api/(.*)$', dest: `${process.env.LEGACY_API_ORIGIN.replace(/\/$/, '')}/api/$1` });
+// /demos frames the app sandboxed (no allow-same-origin: an opaque origin, so Chrome runs it in a renderer process of
+// its own, off the page's main thread; decisions.md D12): its scripts, wasm and fonts are then CORS fetches. Public,
+// static and credential-free, so any origin may read them.
+routes.push({ src: `^${esc(BASE)}.*$`, headers: { 'Access-Control-Allow-Origin': '*' }, continue: true });
 // Content-named files may be cached for good (routes.json `files`).
 for (const [base, r] of [['/', siteRoutes], [BASE, demosRoutes]] as const) {
   const names = Object.values(r.files as Record<string, string>).filter((n) => n !== 'app.plan');

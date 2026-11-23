@@ -10,6 +10,23 @@ use sm, md, lg from "../components/responsive.contract"
 // A length that steps up at Tailwind's sm, md and lg (px): the largest of the steps that apply.
 fn steps(base: number, s: number, m: number, l: number): string = `max(${base}px, ${sm(0, s)}, ${md(0, m)}, ${lg(0, l)})`
 
+// The hero's alignment: left under 640 px (the reference's), centred from 640 px, and left again from 1024 px, where
+// the Demos app sits beside it (D12). A spacer each side of a line: this wide, so equal spacers centre it, or 0 px.
+fn centring(): string = `min(${sm(0, 9999)}, ${lg(9999, 0)})`
+
+// From 1024 px (D12): the app's column is 600 px (the app frames its iPhone from a 600 px wide window) and as tall as
+// the viewport under the header and 16 px, 560-1032 px; the hero takes the rest of the container.
+fn simColumn(): number = 600
+fn deskSimHeight(): string = "clamp(560px, 100vh - 96px, 1032px)"
+// The title's size beside it: the reference's 144 px, smaller when the column is narrower than 3 em (1024-1079 px).
+// The title's size beside it: the reference's 144 px, smaller when the column is narrower than 3 em (1024-1079 px).
+// The phone's width beside the hero, and a mask that keeps it and fades the stage out within 24 px of its sides
+// (identity under 1024 px: every stop at the edges).
+fn phoneW(): string = "min(444px, (clamp(560px, 100vh - 96px, 1032px) - 48px) * 0.474359)"
+fn deskOnly(): string = "clamp(0px, (100vw - 1023px) * 1000, 9999px)"
+fn phoneMask(): string = `linear-gradient(to right, transparent min(50% - ${phoneW()} / 2 - 24px, ${deskOnly()}), #000000 min(50% - ${phoneW()} / 2, ${deskOnly()}), #000000 calc(100% - min(50% - ${phoneW()} / 2, ${deskOnly()})), transparent calc(100% - min(50% - ${phoneW()} / 2 - 24px, ${deskOnly()})))`
+fn titleSize(): string = `min(${steps(40, 80, 112, 144)}, max(${lg(9999, 0)}, (min(100vw, 1200px) - 648px) / 3))`
+
 // The pill's star count: the reference fetched it live (GITHUB_OAUTH_TOKEN, docs/stubs.md); a snapshot of
 // enzomanuelmangano/demos's stargazers on 2026-11-23, as the live page showed it.
 fn starCount(): string = "3,248"
@@ -82,55 +99,89 @@ component DemosPage
     tap: action
     counted: bool
     simReady: bool
+    simLive: bool
+    simSeen: action
+    simLoaded: action
   view
     // Container size xl: 1152 px at most, 24 px each side; mt-4 under 640 px.
     column width="100%" max-width="72rem" margin-left="auto" margin-right="auto" padding-left=24 padding-right=24 box-sizing="border-box"
       margin-top=sm(16, 0)
-      // The hero (LandingHero): left-aligned under 640 px, centred from it. A flex alignment cannot step at a width
-      // with no runtime, so each line sits between two spacers that are 0 px under 640 px and share the row above.
-      header appearance="none" display="flex" flex-direction="column" width="100%" data-motion="perspective"
-        row
-          view width=sm(0, 9999) flex-shrink=1
-          column flex-shrink=0 data-motion="title"
-            text "Demos" role="heading" aria-level=1 class=Gradient data-motion="lift-20" pointerup=tap cursor="pointer" user-select="none"
-              font-size=steps(40, 80, 112, 144) line-height=1.05 letter-spacing="-0.04em" padding-bottom="0.04em"
-              margin-top=steps(8, 32, 56, 56) margin-bottom=steps(20, 32, 36, 36) transition="opacity 150ms ease-out"
-              :hover
-                opacity = 0.9
-          view width=sm(0, 9999) flex-shrink=1
-        column data-motion="blur-in" data-delay="450"
-          // From 640 px two centred lines, one gradient across both; under it one left-aligned paragraph, 320 px.
-          column class=Gradient data-motion="lift-10" align-items="center" align-self="center" font-size=steps(14, 16, 18, 18) line-height=1.55
-            letter-spacing="-0.01em" max-height=sm(0, 200) overflow="hidden"
-            text "120+ React Native animations"
-            text "with Skia, Reanimated and Gesture Handler"
-          text "120+ React Native animations with Skia, Reanimated and Gesture Handler" class=Gradient data-motion="lift-10" font-size="0.875rem"
-            line-height=1.55 letter-spacing="-0.01em" max-width=320 max-height=sm(200, 0) overflow="hidden" aria-hidden=true
-        row margin-top=sm(24, 28)
-          view width=sm(0, 9999) flex-shrink=1
-          column flex-shrink=0 data-motion="blur-in" data-delay="550"
-            StarsPill(seed=seed, counted=counted)
-          view width=sm(0, 9999) flex-shrink=1
-      DemosSim(ready=simReady)
+      // Under 1024 px the hero and, below it, the app; from 1024 px the hero on the left, vertically centred, and the
+      // app on the right (D12): one wrapping row, whose hero is the full width under 1024 px, so the app wraps below.
+      row flex-wrap="wrap" align-items="center"
+        // The hero (LandingHero): left-aligned under 640 px, centred from it (left again from 1024 px). A flex
+        // alignment cannot step at a width with no runtime, so each line sits between two spacers (centring()).
+        header appearance="none" display="flex" flex-direction="column" flex-shrink=0 data-motion="perspective"
+          width=`calc(100% - ${lg(0, simColumn())})`
+          row
+            view width=centring() flex-shrink=1
+            column flex-shrink=0 data-motion="title"
+              text "Demos" role="heading" aria-level=1 class=Gradient data-motion="lift-20" pointerup=tap cursor="pointer" user-select="none"
+                font-size=titleSize() line-height=1.05 letter-spacing="-0.04em" padding-bottom="0.04em"
+                margin-top=steps(8, 32, 56, 56) margin-bottom=steps(20, 32, 36, 36) transition="opacity 150ms ease-out"
+                :hover
+                  opacity = 0.9
+            view width=centring() flex-shrink=1
+          column data-motion="blur-in" data-delay="450"
+            // From 640 px two lines, one gradient across both (centred, left from 1024 px); under it one
+            // left-aligned paragraph, 320 px.
+            column class=Gradient data-motion="lift-10" font-size=steps(14, 16, 18, 18) line-height=1.55
+              letter-spacing="-0.01em" max-height=sm(0, 200) overflow="hidden"
+              row
+                view width=centring() flex-shrink=1
+                text "120+ React Native animations" flex-shrink=0
+                view width=centring() flex-shrink=1
+              row
+                view width=centring() flex-shrink=1
+                text "with Skia, Reanimated and Gesture Handler" flex-shrink=0
+                view width=centring() flex-shrink=1
+            text "120+ React Native animations with Skia, Reanimated and Gesture Handler" class=Gradient data-motion="lift-10" font-size="0.875rem"
+              line-height=1.55 letter-spacing="-0.01em" max-width=320 max-height=sm(200, 0) overflow="hidden" aria-hidden=true
+          row margin-top=sm(24, 28)
+            view width=centring() flex-shrink=1
+            column flex-shrink=0 data-motion="blur-in" data-delay="550"
+              StarsPill(seed=seed, counted=counted)
+            view width=centring() flex-shrink=1
+        DemosSim(ready=simReady, live=simLive, seen=simSeen, loaded=simLoaded)
 
-// The Demos app (its own build at /demos/app/). From 768 px a desktop browser's window of 600 px by the viewport's
-// height under the 87 px header (600-1080 px) makes the app draw its framed iPhone Air on its stage, scaled to fit,
-// as /demos/app/ itself does in a window that size; the stage's edges fade into the page (three masks, one an edge:
-// the frame's own masks take one gradient each). Under 768 px the app fills the width and the viewport's height under
-// the 73 px header, so once scrolled to it owns the touches; the header and the hero stay the page's handles, and the
-// fades fall in the padding and past the window's sides, outside the app.
+// The Demos app (its own build at /demos/app/), in a sandboxed frame: an opaque origin, so Chrome gives it its own
+// renderer process and its start never blocks this page's main thread (D12; the app's files answer any origin,
+// tools/compose.ts). The window it is given decides what it draws:
+// - from 1024 px: 600 px by deskSimHeight(), beside the hero. The app draws its iPhone Air at
+//   min(1, (height - 48) / 936) with 24 px around (home/web-phone.contract frameScale); a mask keeps the phone and
+//   fades the app's stage out within 24 px of it, so the page's spiral shows around the phone;
+// - 768-1023 px: 600 px by the viewport's height under the 87 px header (600-1080 px), below the hero, the stage's
+//   edges faded (top and bottom 24 px, sides 12 %);
+// - under 768 px: the window's width and its height under the 73 px header: the app's phone layout, owning the
+//   touches once scrolled to (the app's head sets overscroll-behavior: none); the header, the hero and the footer stay
+//   the page's handles.
+// From 768 px a still of the app's launcher (tools/sim-still.ts: the framed phone at scale 1, 492 x 984 with its
+// 24 px) is drawn where the app's phone will be, at the app's own scale, as a background from web/head.css (so a phone
+// never downloads it), over the frame and blind to the pointer; once the frame has loaded and drawn, it fades out.
+// The frame's page loads (`ready`, App) once its box is within a viewport's height of the window and the hero's
+// entrances are done (1.6 s), whichever is later: on a desktop at 1.6 s, on a phone when scrolled near. The masks are
+// web/head.css's (sim-sides, sim-phone): a gradient stop cannot step at a width in Contract.
 component DemosSim
   props
-    // The frame's page loads once the hero's entrances are done (1.6 s, decided in App), so the app's start never
-    // competes with them; until then its box holds the same size (no layout shift).
     ready: bool
+    live: bool
+    seen: action
+    loaded: action
   view
-    column margin-top=steps(32, 32, 32, 48) margin-left=md(-24, 0) margin-right=md(-24, 0) overflow="hidden"
-      padding-top=md(24, 0) mask-image="linear-gradient(to bottom, transparent 0px, #000000 24px)"
-      column align-items="center" padding-bottom=md(24, 0) mask-image="linear-gradient(to top, transparent 0px, #000000 24px)"
-        row flex-shrink=0 justify-content="center"
-          width="calc(clamp(0px, (767px - 100vw) * 1000, 100vw + 260px) + clamp(0px, (100vw - 767px) * 1000, 600px))"
-          mask-image="linear-gradient(to right, transparent 0%, #000000 12%, #000000 88%, transparent 100%)"
-          iframe (ready ? "/demos/app/" : "about:blank") title="Demos" flex-shrink=0 border-width=0 display="block"
-            width="calc(clamp(0px, (767px - 100vw) * 1000, 100vw) + clamp(0px, (100vw - 767px) * 1000, 600px))"
-            height="calc(clamp(0px, (767px - 100vw) * 1000, 100vh - 73px) + clamp(0px, (100vw - 767px) * 1000, clamp(600px, 100vh - 87px, 1080px)))"
+    column flex-shrink=0 width=`min(100%, ${lg(9999, simColumn())})` margin-top=`min(${steps(32, 32, 32, 48)}, ${lg(9999, 0)})`
+      intersect=seen intersect-margin="100% 0px"
+      column margin-left=md(-24, 0) margin-right=md(-24, 0) overflow="hidden"
+        padding-top=md(24, 0) mask-image="linear-gradient(to bottom, transparent 0px, #000000 24px)"
+        column align-items="center" padding-bottom=md(24, 0) mask-image="linear-gradient(to top, transparent 0px, #000000 24px)"
+          // Under 1024 px the stage's sides fade over 12 %; from 1024 px (the inner row) within 24 px of the phone.
+          row flex-shrink=0 justify-content="center"
+            width="calc(clamp(0px, (767px - 100vw) * 1000, 100vw + 260px) + clamp(0px, (100vw - 767px) * 1000, 600px))"
+            data-motion="sim-sides"
+            row flex-shrink=0 position="relative" data-motion="sim-phone"
+              iframe (ready ? "/demos/app/" : "about:blank") title="Demos" flex-shrink=0 border-width=0 display="block"
+                sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-pointer-lock allow-downloads"
+                load=loaded
+                width="calc(clamp(0px, (767px - 100vw) * 1000, 100vw) + clamp(0px, (100vw - 767px) * 1000, 600px))"
+                height="calc(clamp(0px, (767px - 100vw) * 1000, 100vh - 73px) + clamp(0px, min(100vw - 767px, 1024px - 100vw) * 1000, clamp(600px, 100vh - 87px, 1080px)) + clamp(0px, (100vw - 1023px) * 1000, clamp(560px, 100vh - 96px, 1032px)))"
+              view position="absolute" inset=0 pointer-events="none" aria-hidden=true data-motion="sim-still"
+                opacity=(live ? 0 : 1) transition="opacity 300ms ease-out"

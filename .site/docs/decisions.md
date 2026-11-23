@@ -131,3 +131,34 @@ reference's entrances are CSS that runs before any script (motion-blur-in's 12 p
 `web/head.css` (copied into `app.json`'s head script by `tools/head.ts`; `--check` in CI), applied by the app's
 declared `data-motion` / `data-delay` words (`app.json` `"data"`). Same keyframes, durations, easings and delays as
 `globals.css`; `prefers-reduced-motion` turns them off as there.
+
+## D12. /demos on a desktop: the hero left, the Demos app right; the app sandboxed in its own process (owner, 2026-11-23)
+
+A deliberate difference from live, asked by the owner ("show the demos on the right and reorganise the screen").
+
+- **From 1024 px** one row in the site's container (72 rem): the hero on the left, vertically centred and left-aligned
+  (same title gradient, size 144 px or `(min(100vw, 1200px) - 648px) / 3` when the column is narrower, same entrances,
+  delays and hovers as live), the app's frame on the right: 600 px (the app frames its iPhone from a 600 px window) by
+  `clamp(560px, 100vh - 96px, 1032px)`, so the phone (`min(1, (h - 48) / 936)`) is never cut by the fold and never
+  larger than 1:1. Checked at 1024x768, 1280x720, 1440x900, 1512x982, 1920x1080, 2560x1440 (phone 0.62-1.0 scale).
+  The app's stage is masked to 24 px around the phone, so the spiral shows around it. Under 1024 px the stacked layout
+  of D10 is unchanged. No runtime switches the layout: a wrapping row whose hero is 100 % wide under 1024 px, spacers
+  for the alignment (`centring()`), the masks and the still in `web/head.css` media queries.
+- **The still.** From 768 px a WebP of the app's framed launcher (`tools/sim-still.ts`: the phone at scale 1 plus its
+  24 px, transparent around it, 2x, 133 KB) is drawn where the app will draw its phone, at the app's own scale, over
+  the frame and blind to the pointer; it fades (300 ms) 800 ms after the frame's `load` (the app has drawn its phone by
+  `load`: measured at 4x CPU on both processes). A CSS background in a media query, so a phone never downloads it.
+- **When the frame loads.** Once its box is within a viewport's height of the window (`intersect-margin="100% 0px"`)
+  and the hero's entrances are done (1.6 s), whichever is later.
+- **Its own process.** `sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-pointer-lock
+  allow-downloads"` without `allow-same-origin`: an opaque origin, which Chrome (desktop, and Android with site
+  isolation) puts in a renderer process of its own, so the app's start (≈ 500 ms of long tasks at 4g / 4x CPU) is off
+  the page's main thread: page TBT 7 ms vs live 66 ms. Measured alternatives (`perf.ts`, 1440 4g, one run):
+  same-origin frame: page TBT 558 ms; a cross-site frame (`localhost` in a `127.0.0.1` page): page 0 + 499 ms in the
+  OOPIF; sandboxed: page 0 + 602 ms in the OOPIF. A subdomain (`demos.reactiive.io`) would be the same *site*, hence the
+  same process; a different registrable domain works but needs a second deployment and domain. `credentialless` keeps
+  the origin, hence the process. Costs of the sandbox: the app's files must answer `Access-Control-Allow-Origin: *`
+  (module scripts, wasm and fonts are CORS fetches from origin `null`; `tools/compose.ts` adds it under `/demos/app/`,
+  public static files); the app gets no storage (it handles that: no exception, demos open and close) and no
+  `allow=` permissions (Contract's `iframe` takes no `allow`: clipboard writes and Web Share inside the frame are
+  refused); Safari and low-memory Android Chrome keep sandboxed frames in-process (no worse than a same-origin frame).

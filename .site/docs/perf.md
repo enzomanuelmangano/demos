@@ -27,12 +27,31 @@ Vercel preview.
 
 (Icons inlined since: the 404 at 4g is now 243 KB / 12 requests.)
 
+## 2026-11-23, Exact 98ed61fb, /demos two-column + sandboxed frame (D12)
+
+`perf.ts` now attaches out-of-process frames (their requests count, same throttling) and reports their blocking time
+apart (`+N in 1 OOPIF`: the app's own main thread, not the page's). Median of 3.
+
+| route | width | profile | live: KB / req, FCP, LCP, TBT | Exact: KB / req, FCP, LCP, page TBT (+ app's process) | verdict |
+|---|---|---|---|---|---|
+| `/demos` | 1440 | cable | 782 / 46, 192, 796, 0 | 3429 / 147, 52, 52, 0 (+73) | exempt: bytes (the app) |
+| `/demos` | 1440 | 4g | 782 / 46, 604, 2148, 66 | 3429 / 147, 316, 680, 7 (+493) | exempt: bytes |
+| `/demos` | 390 | cable | 2943 / 70, 148, 1452, 0 | 5270 / 159, 60, 1612, 0 (+66) | exempt: bytes; **LCP +160 ms open** |
+| `/demos` | 390 | 4g | 2586 / 48, 564, 1900, 67 | 3299 / 146, 320, 1900, 8 (+518) | exempt: bytes |
+| `/demos` without the sim (`--block /demos/app/`) | 1440 | 4g | | 309 / 14, 316, -, 8 | the hero is as light as live's page minus its grid |
+
+At 390 the sim's box is in the first viewport (its top at 327 px), so it loads at 1.6 s. The 390 LCP element is the
+pill's text, whose blur-in ends at 1.55 s (as live's); the hero's other text is gradient-clipped (transparent colour),
+which Chrome does not count; live's LCP is the first grid thumbnail. Jank: 0 frames over 20 ms on every route.
+Note: runs on battery (low power) cap headless Chrome at 30 fps (every frame "janky", both origins): measure on AC.
+
 ## Exemptions and open failures
 
 - **`/demos`, bytes and TBT: the Demos app.** The owner asked for the app in place of the video grid (D10); it is
   its own build (wasm GPU module, demo icons, shaders: ~3.3 MB on 4g, more on cable, where more icons load before the
-  sample ends) running in a same-origin frame, whose start is main-thread work of this page. Mitigation in place: the
-  frame loads 1.6 s in, after the hero's entrances (which stay at 0 dropped frames), and its box is reserved (CLS 0).
+  sample ends) running in a sandboxed frame (D12), so its start runs in its own renderer process, not on this page's main thread (page TBT
+  7 ms at 4g vs live 66). The frame loads at 1.6 s, after the hero's entrances, when near the viewport; its box is
+  reserved (CLS 0) and from 768 px a 133 KB still of the launcher stands in until it has drawn.
   The page around it (hero, header, footer) is 246 KB, the same as `/`. Live `/demos` on a phone drops 90 of 91
   frames while scrolling its video grid; the rebuild drops none.
 - **404 at 4g, LCP (open).** The same text element is the LCP twice: first in the metric-matched fallback

@@ -41,6 +41,15 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 [data-motion~=perspective]{perspective:1000px}
 [data-motion~=lift-20]{transform:translateZ(20px)}
 [data-motion~=lift-10]{transform:translateZ(10px)}
+/* /demos: the still of the Demos app's launcher where the framed app will draw its phone (D12), at the app's scale:
+   min(1, (frame height - 48) / 936), the still being the phone plus 24 px (984 px tall at scale 1). From 768 px only,
+   so a phone never downloads it. */
+@media (min-width:768px){[data-motion~=sim-still]{background:url(/assets/images/demos/sim-still.webp) 50% 50%/auto min(984px,(clamp(600px,100vh - 87px,1080px) - 48px) * 1.051282) no-repeat}}
+@media (min-width:1024px){[data-motion~=sim-still]{background-size:auto min(984px,(clamp(560px,100vh - 96px,1032px) - 48px) * 1.051282)}}
+/* /demos: the frame's stage fades into the page: its sides over 12 % under 1024 px; from 1024 px everything farther
+   than 24 px from the app's phone (its width: min(444, (frame height - 48) * 444 / 936)), so the spiral shows around it. */
+[data-motion~=sim-sides]{mask-image:linear-gradient(to right,transparent 0%,#000 12%,#000 88%,transparent 100%)}
+@media (min-width:1024px){[data-motion~=sim-sides]{mask-image:none}[data-motion~=sim-phone]{--sim-gap:calc(50% - min(444px,(clamp(560px,100vh - 96px,1032px) - 48px) * .474359) / 2);mask-image:linear-gradient(to right,transparent calc(var(--sim-gap) - 24px),#000 var(--sim-gap),#000 calc(100% - var(--sim-gap)),transparent calc(100% - var(--sim-gap) + 24px))}}
 /* Interaction transitions, as the reference's classes compute them. */
 [data-motion~=colors]{transition-property:color,background-color,border-color,outline-color,text-decoration-color,fill,stroke !important;transition-duration:150ms !important;transition-timing-function:cubic-bezier(.4,0,.2,1) !important;transition-delay:0s !important}
 [data-motion~=button]{cursor:pointer;transition-property:background-color,color,box-shadow,transform,scale !important;transition-duration:150ms !important;transition-timing-function:var(--ease-snappy) !important;transition-delay:0s !important}
