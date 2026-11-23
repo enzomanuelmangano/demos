@@ -377,15 +377,55 @@ if (process.argv.includes('--refresh-repos')) {
   writeFileSync(join(SRC, 'github-repos.json'), JSON.stringify(repos, null, 2) + '\n');
 }
 
+if (process.argv.includes('--watch')) {
+  // The authoring loop (docs/content.md): every edit under .content/ runs the conversion again, so `serve` (which
+  // rebuilds when a captured file changes) shows it. An error is printed and the last good output kept.
+  const { watch } = await import('node:fs');
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const run = () => {
+    const r = spawnSync('bun', [import.meta.path], { stdio: 'inherit' });
+    if (r.status !== 0) console.error('content: not converted (the error is above); the previous pages stay');
+  };
+  run();
+  watch(SRC, { recursive: true }, () => { clearTimeout(timer); timer = setTimeout(run, 150); });
+  console.log('content: watching .content/');
+  await new Promise(() => {});
+}
+
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(join(OUT, 'articles'), { recursive: true });
 mkdirSync(join(OUT, 'docs'), { recursive: true });
+
+// index.json, the article's frontmatter, as the reference writes it: these fields, no others.
+const FIELDS: Record<string, (v: unknown) => boolean> = {
+  title: (v) => typeof v === 'string' && v.length > 0,
+  shortTitle: (v) => typeof v === 'string' && v.length > 0,
+  subtitle: (v) => typeof v === 'string' && v.length > 0,
+  author: (v) => typeof v === 'string',
+  date: (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v)),
+  slug: (v) => typeof v === 'string',
+  tags: (v) => Array.isArray(v) && v.every((t) => typeof t === 'string'),
+  featuredImage: (v) => typeof v === 'string' && v.startsWith('./'),
+  series: (v) => typeof v === 'string' && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(v),
+  // Kept from the reference's metadata, not shown on the page: { url, directory }.
+  repository: (v) => typeof v === 'object' && v !== null && typeof (v as any).url === 'string' && Object.keys(v).every((k) => k === 'url' || k === 'directory'),
+};
+const REQUIRED = ['title', 'subtitle', 'author', 'date', 'slug', 'tags', 'featuredImage'];
+function checkMeta(slug: string, meta: any) {
+  const where = `.content/articles/${slug}/index.json`;
+  for (const k of Object.keys(meta)) if (!FIELDS[k]) throw new Error(`${where}: unknown field "${k}" (known: ${Object.keys(FIELDS).join(', ')})`);
+  for (const k of REQUIRED) if (!(k in meta)) throw new Error(`${where}: "${k}" is required`);
+  for (const [k, ok] of Object.entries(FIELDS)) if (k in meta && !ok(meta[k])) throw new Error(`${where}: "${k}" is not valid: ${JSON.stringify(meta[k])}`);
+  if (meta.slug !== slug) throw new Error(`${where}: slug "${meta.slug}" differs from its folder "${slug}"`);
+}
 
 const DOC_TITLES: Record<string, string> = { terms: 'Terms of Service', privacy: 'Privacy Policy', license: 'License' };
 const articles: any[] = [];
 for (const slug of readdirSync(join(SRC, 'articles')).sort()) {
   if (SKIPPED.has(slug)) continue;
+  if (!existsSync(join(SRC, 'articles', slug, 'index.mdx'))) throw new Error(`.content/articles/${slug}: no index.mdx`);
   const meta = JSON.parse(readFileSync(join(SRC, 'articles', slug, 'index.json'), 'utf8'));
+  checkMeta(slug, meta);
   const blocks = await convert({ kind: 'articles', slug, file: join(SRC, 'articles', slug, 'index.mdx') }, meta);
   const cover = asset('articles', slug, String(meta.featuredImage).replace(/^\.\//, ''));
   const page = { slug, title: meta.title, description: meta.subtitle, image: cover.url, date: meta.date, tags: meta.tags ?? [], blocks };
@@ -399,6 +439,47 @@ for (const slug of readdirSync(join(SRC, 'docs')).sort()) {
   writeFileSync(join(OUT, 'docs', `${slug}.ts`), `export default ${JSON.stringify({ slug, title: DOC_TITLES[slug] ?? slug, description: '', image: '', date: '', tags: [], blocks })};\n`);
   docs.push(slug);
 }
+// Files served at fixed root URLs, beside the build (tools/compose.ts copies .out/content/ to the root): the RSS feed
+// (app/rss.xml/route.ts's format, byte for byte) and each article's share image at its live URL
+// (/content-assets/articles/<slug>/images/…, the og:image every share of an article already points to).
+const FEED = join(SITE, '.out/content');
+rmSync(FEED, { recursive: true, force: true });
+mkdirSync(FEED, { recursive: true });
+const SITE_URL = 'https://reactiive.io';
+const cdata = (v: string) => `<![CDATA[${v}]]>`;
+const metas = articles.map((a) => ({ ...JSON.parse(readFileSync(join(SRC, 'articles', a.slug, 'index.json'), 'utf8')) }));
+const items = metas.map((m) => {
+  const url = `${SITE_URL}/articles/${m.slug}`;
+  return `    <item>
+      <title>${cdata(m.title)}</title>
+      <link>${url}</link>
+      <guid isPermaLink="true">${url}</guid>
+      <author>hello@reactiive.io (Enzo Manuel Mangano)</author>
+      <description>${cdata(m.subtitle)}</description>
+      <content:encoded>${cdata(`<h1>${m.title}</h1>\n      <p>${m.subtitle}</p>\n      <p>Read the full article at: <a href="${url}">${url}</a></p>`)}</content:encoded>
+      <pubDate>${new Date(m.date).toUTCString()}</pubDate>
+    </item>`;
+}).join('\n\n');
+writeFileSync(join(FEED, 'rss.xml'), `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" 
+     xmlns:atom="http://www.w3.org/2005/Atom"
+     xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Reactiive.io blog</title>
+    <link>${SITE_URL}</link>
+    <description>Latest articles from Reactiive.io</description>
+    <language>en</language>
+    <atom:link href="${SITE_URL}/rss.xml" rel="self" type="application/rss+xml"/>
+
+${items}
+  </channel>
+</rss>`);
+for (const m of metas) {
+  const rel = String(m.featuredImage).replace(/^\.\//, '');
+  mkdirSync(join(FEED, 'content-assets/articles', m.slug, dirname(rel)), { recursive: true });
+  copyFileSync(join(SRC, 'articles', m.slug, rel), join(FEED, 'content-assets/articles', m.slug, rel));
+}
+
 const series = [...new Set(articles.map((a) => a.series).filter(Boolean))].sort();
 const cards = articles.map(({ date, ...a }, i) => ({ id: a.slug, ...a, index: i }));
 writeFileSync(join(OUT, 'cards.ts'), `export default ${JSON.stringify(cards)};\n`);
