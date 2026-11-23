@@ -1,0 +1,64 @@
+// An article's interactive demo, as its MDX names it: the `demo` blocks of tools/gen-content.ts (DEMOS there).
+// `article` and `name` pick the export; `args` is its props as the converter wrote them, every prop given
+// (`hasBackdrop=true`, `scaleAnimationType="spring", showBorderRadiusAnimation=false`: the converter checked each
+// name and value against the reference's); `boxed` puts it in the article's InteractiveBox, as the MDX does.
+// Each demo draws its own frame and the space under it (docs/progress-comp-gesture.md).
+use InteractiveBox as SheetBox, InitialSetup, BasicComponent, PanGesture, BorderRadius, FinalDemo from "./bottom-sheet-animation/index.contract"
+use InteractiveBox as CssBox, AnimatedSquare from "./css-animations-react-native/index.contract"
+use Demo as CheckboxDemo, StaticDemo as CheckboxStaticDemo from "./checkbox-interactions/index.contract"
+use IntroToGesturesDemo from "./introduction-to-gestures/index.contract"
+use FinalAnimatedSquareDemo, AnimatedSquareOpacityDemo, AnimatedSquareOpacityAndScaleDemo from "./introduction-to-reanimated/index.contract"
+use InteractivePanGesture from "./pan-gesture-handler/index.contract"
+use InteractiveSkeletonDemo, InteractiveContactItem, InteractiveJustSkeleton from "./skeleton-loader/index.contract"
+
+component ArticleDemo
+  props
+    article: string
+    name: string
+    args: string
+  view
+    if article == "bottom-sheet-animation"
+      SheetBox()
+        BottomSheetDemo(name=name, args=args)
+    else if article == "css-animations-react-native"
+      CssBox()
+        AnimatedSquare(withoutRepeat=args.includes("withoutRepeat=true"), withoutPause=args.includes("withoutPause=true"))
+    else if article == "checkbox-interactions"
+      if name == "StaticDemo"
+        CheckboxStaticDemo()
+      else
+        CheckboxDemo()
+    else if article == "introduction-to-gestures"
+      IntroToGesturesDemo()
+    else if article == "introduction-to-reanimated"
+      if name == "AnimatedSquareOpacityDemo"
+        AnimatedSquareOpacityDemo()
+      else if name == "AnimatedSquareOpacityAndScaleDemo"
+        AnimatedSquareOpacityAndScaleDemo(scaleAnimationType=(args.includes("scaleAnimationType=\u0022spring") ? "spring" : "timing"), showBorderRadiusAnimation=args.includes("showBorderRadiusAnimation=true"))
+      else
+        FinalAnimatedSquareDemo()
+    else if article == "pan-gesture-handler"
+      InteractivePanGesture()
+    else if article == "skeleton-loader"
+      if name == "InteractiveContactItem"
+        InteractiveContactItem()
+      else if name == "InteractiveJustSkeleton"
+        InteractiveJustSkeleton()
+      else
+        InteractiveSkeletonDemo()
+
+component BottomSheetDemo
+  props
+    name: string
+    args: string
+  view
+    if name == "InitialSetup"
+      InitialSetup()
+    else if name == "BasicComponent"
+      BasicComponent()
+    else if name == "PanGesture"
+      PanGesture()
+    else if name == "BorderRadius"
+      BorderRadius()
+    else
+      FinalDemo(hasBackdrop=args.includes("hasBackdrop=true"))

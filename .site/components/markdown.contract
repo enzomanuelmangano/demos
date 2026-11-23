@@ -4,6 +4,7 @@
 // What Contract cannot say (a link's growing underline, the copy button shown on hover, the list's dot) is
 // web/content.css, hooked by `data-motion` words (docs/decisions.md D11).
 use md, from from "./responsive.contract"
+use ArticleDemo from "./interactive/demo.contract"
 
 shape Run
   text: string
@@ -277,6 +278,9 @@ component Blocks
       row justify-content="center" width="100%"
         view width="100%" max-width=550 margin-top=block.mt margin-bottom=block.mb overflow="hidden" intersect=seen(block.id) intersect-margin="50% 0px"
           iframe (near.includes(block.id) ? `https://platform.twitter.com/embed/Tweet.html?id=${block.text}&theme=dark&hideThread=true` : "about:blank") title="X post" width="100%" height=from(598, block.width, block.height) border-width=0 display="block"
+    else if block.kind == "demo"
+      view margin-left=(block.depth * 26) testId=`demo-${block.title}`
+        ArticleDemo(article=block.lang, name=block.title, args=block.text)
     else if block.kind == "interactive"
       // Not yet ported (docs/progress-content.md): the reference's frame (components/interactive: 16:9, 10 px radius,
       // a 1 px #242424 border, 16 px under it), empty, so the page around it is laid out as live.

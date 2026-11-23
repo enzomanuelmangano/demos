@@ -208,6 +208,29 @@ const fmtCount = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$
 
 const INTERACTIVE_ARTICLES = new Set<string>();
 
+// The ported interactive demos (components/interactive/<article>/index.contract, drawn by ArticleDemo in
+// components/interactive/demo.contract; the mapping: docs/progress-comp-gesture.md). Per article, each MDX export
+// and its props: a bool (`x`, `x={true}`, `x={false}`) or one of a string's values, with the reference's default
+// (Contract props have none, so every prop is passed); none when the reference has no default (the MDX must pass
+// it). BOXED: the articles whose every demo the MDX wraps in `<InteractiveBox>` (ArticleDemo draws the box). A tag, prop or value not listed here fails the build. An article not
+// listed keeps the reference's empty 16:9 frame (the canvas demos, not ported yet).
+type DemoProp = { values: (boolean | string)[]; default?: boolean | string };
+const BOOL = (d: boolean): DemoProp => ({ values: [true, false], default: d });
+const DEMOS: Record<string, Record<string, Record<string, DemoProp>>> = {
+  'bottom-sheet-animation': { InitialSetup: {}, BasicComponent: {}, PanGesture: {}, BorderRadius: {}, FinalDemo: { hasBackdrop: BOOL(true) } },
+  'checkbox-interactions': { Demo: {}, StaticDemo: {} },
+  'css-animations-react-native': { AnimatedSquare: { withoutRepeat: BOOL(false), withoutPause: BOOL(false) } },
+  'introduction-to-gestures': { IntroToGesturesDemo: {} },
+  'introduction-to-reanimated': {
+    FinalAnimatedSquareDemo: {},
+    AnimatedSquareOpacityDemo: {},
+    AnimatedSquareOpacityAndScaleDemo: { scaleAnimationType: { values: ['timing', 'spring'] }, showBorderRadiusAnimation: BOOL(false) },
+  },
+  'pan-gesture-handler': { InteractivePanGesture: {} },
+  'skeleton-loader': { InteractiveSkeletonDemo: {}, InteractiveContactItem: {}, InteractiveJustSkeleton: {} },
+};
+const BOXED = new Set(['bottom-sheet-animation', 'css-animations-react-native']);
+
 // The X posts' frame heights on live (iframe rect, tools/parity/shoot.ts), [550 px column, 342 px column].
 const TWEETS: Record<string, [number, number]> = { '1954286123406262280': [817, 625] };
 
@@ -321,6 +344,44 @@ async function convert(page: Page, meta: any) {
     last.mb = depth === 0 ? last.mb + 20 : Math.max(last.mb, 20);
   };
 
+  // A ported demo: `kind: 'demo'`, `lang` its article, `title` its export, `text` its props as Contract arguments
+  // (`hasBackdrop=true`, every prop, in the table's order).
+  const demo = (n: any, depth: number, boxed: boolean) => {
+    const name = n.name as string, table = DEMOS[page.slug];
+    if (name === 'InteractiveBox') {
+      if (boxed || !BOXED.has(page.slug)) throw new Error(`${where(n)}: <InteractiveBox> is not known to the converter here`);
+      if ((n.attributes ?? []).length) throw new Error(`${where(n)}: <InteractiveBox> takes no props`);
+      const kids = (n.children ?? []).flatMap((c: any) => (c.type === 'paragraph' ? c.children : [c])).filter((c: any) => !(c.type === 'text' && !c.value.trim()));
+      if (kids.length !== 1 || !/^mdxJsx/.test(kids[0].type)) throw new Error(`${where(n)}: <InteractiveBox> holds one demo`);
+      demo(kids[0], depth, true);
+      return;
+    }
+    const spec = table[name];
+    if (!spec) throw new Error(`${where(n)}: <${name}> is not a ported demo of ${page.slug} (DEMOS in tools/gen-content.ts)`);
+    if (boxed !== BOXED.has(page.slug)) throw new Error(`${where(n)}: <${name}> is ${boxed ? '' : 'not '}inside <InteractiveBox>, unlike the reference`);
+    const given: Record<string, boolean | string> = {};
+    for (const a of n.attributes ?? []) {
+      if (a.type !== 'mdxJsxAttribute' || !spec[a.name]) throw new Error(`${where(n)}: <${name}> has no prop ${a.name ?? '{...spread}'}`);
+      const raw = a.value;
+      const v = raw === null || raw === undefined ? true : typeof raw === 'string' ? raw : (() => {
+        const e = String(raw.value ?? '').trim();
+        if (e === 'true' || e === 'false') return e === 'true';
+        const m = e.match(/^(['"`])(.*)\1$/s);
+        if (m) return m[2];
+        throw new Error(`${where(n)}: <${name} ${a.name}={${e}}>: only a literal is known to the converter`);
+      })();
+      if (!spec[a.name].values.includes(v)) throw new Error(`${where(n)}: <${name} ${a.name}> is ${JSON.stringify(v)}; known: ${spec[a.name].values.map((x) => JSON.stringify(x)).join(', ')}`);
+      given[a.name] = v;
+    }
+    const args = Object.entries(spec).map(([k, p]) => {
+      const v = k in given ? given[k] : p.default;
+      if (v === undefined) throw new Error(`${where(n)}: <${name}> needs ${k} (the reference has no default)`);
+      return `${k}=${typeof v === 'string' ? JSON.stringify(v) : v}`;
+    });
+    INTERACTIVE_ARTICLES.add(page.slug);
+    block({ kind: 'demo', depth, title: name, lang: page.slug, text: args.join(', ') });
+  };
+
   const walk = (nodes: any[], depth: number, inLoose = true) => {
     for (const n of nodes) {
       switch (n.type) {
@@ -378,6 +439,7 @@ async function convert(page: Page, meta: any) {
           }
           if (name === 'BlockMath') { const m = mathFile(plain(n), true); block({ kind: 'math', depth, src: m.src, width: m.width, height: m.height }); break; }
           if (name === 'InlineMath') { const m = mathFile(plain(n), false); block({ kind: 'paragraph', depth, runs: [{ text: '', code: false, strong: false, em: false, href: '', brand: false, math: m.src, width: m.width, height: m.height, valign: m.valign }], mb: 20 }); break; }
+          if (imported.has(name) && DEMOS[page.slug]) { demo(n, depth, false); break; }
           if (imported.has(name)) { INTERACTIVE_ARTICLES.add(page.slug); block({ kind: 'interactive', depth, title: name, lang: page.slug }); break; }
           throw new Error(`${where(n)}: <${name}> is not known to the converter`);
         }
