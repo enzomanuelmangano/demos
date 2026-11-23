@@ -84,8 +84,10 @@ for (let round = 0; round < rounds; round++) for (const w of widths) for (const 
       const m = await page.eval<number[]>(`(() => { const r = document.querySelector('[aria-controls="mobile-menu"]').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()`);
       await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: m[0], y: m[1] });
       for (const type of ['mousePressed', 'mouseReleased']) await page.send('Input.dispatchMouseEvent', { type, x: m[0], y: m[1], button: 'left', clickCount: 1 });
-      await until(page, `!!document.querySelector('#mobile-menu a')`, 3000);
-      await Bun.sleep(400);
+      // The menu opens once the press is handled (a page not yet awake starts its runtime at it): wait until its
+      // links can be pressed.
+      await until(page, `[...document.querySelectorAll('#mobile-menu a')].some((a) => hit(a))`, 6000);
+      await Bun.sleep(350);
     }
     const sel = mobile ? '#mobile-menu a' : 'header a';
     const p = await page.eval<number[] | null>(`(() => { const a = [...document.querySelectorAll(${JSON.stringify(sel)})].find((a) => hit(a) && new URL(a.href).pathname === ${JSON.stringify(to)}); if (!a) return null; const r = a.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()`);

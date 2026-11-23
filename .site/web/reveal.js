@@ -191,3 +191,35 @@ document.addEventListener('click', function (e) {
     try { d.showModal(); } catch (err) {}
   }, true);
 })();
+/* A safety net for in-app navigation. A press on a link of this site not carried out 2.5 s later loads that address as
+   a document: either the address changed and the page did not (the head title, which every route sets, is still the
+   old page's), or neither changed: a press that landed while the runtime was starting, which its router swallowed or
+   whose link was replaced between the press and the release, so no click reached it (measured on the 404: ~1 press in
+   40 in the first 20 ms of the start). Armed by the click (keyboard too) and by a pointer released on the link it was
+   pressed on. A stuck page is never left on screen. */
+(function () {
+  var down = null, armed = 0;
+  function arm(href) {
+    var url; try { url = new URL(href, location.href); } catch (err) { return; }
+    if (url.origin != location.origin || url.pathname == location.pathname) return;
+    var title = document.title, from = location.pathname, path = url.pathname, id = ++armed;
+    setTimeout(function () {
+      if (id != armed || document.title != title) return;
+      if (location.pathname == path) location.reload();
+      else if (location.pathname == from) location.assign(url.href);
+    }, 2500);
+  }
+  function plain(e, a) { return a && !e.button && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && !(a.target && a.target != '_self') && !a.hasAttribute('download'); }
+  addEventListener('pointerdown', function (e) {
+    var a = e.target && e.target.closest && e.target.closest('a[href]');
+    down = plain(e, a) ? { href: a.href, r: a.getBoundingClientRect() } : null;
+  }, true);
+  addEventListener('pointerup', function (e) {
+    var d = down; down = null;
+    if (d && e.clientX >= d.r.left && e.clientX <= d.r.right && e.clientY >= d.r.top && e.clientY <= d.r.bottom) arm(d.href);
+  }, true);
+  addEventListener('click', function (e) {
+    var a = e.target && e.target.closest && e.target.closest('a[href]');
+    if (plain(e, a) && !e.detail) arm(a.href);
+  }, true);
+})();
