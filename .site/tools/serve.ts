@@ -21,8 +21,9 @@ function file(path: string, status: number, headers: Record<string, string>, req
   const p = join(root, decodeURIComponent(path));
   const h = new Headers({ 'content-type': TYPES[extname(p)] ?? 'application/octet-stream', 'cache-control': 'public, max-age=0, must-revalidate', ...headers });
   if (COMPRESS.has(extname(p)) && (req.headers.get('accept-encoding') ?? '').includes('br')) {
-    let b = brCache.get(p);
-    if (!b) brCache.set(p, (b = brotliCompressSync(readFileSync(p))));
+    const key = `${p}:${statSync(p).mtimeMs}`; // a recomposed tree is served fresh without a restart
+    let b = brCache.get(key);
+    if (!b) brCache.set(key, (b = brotliCompressSync(readFileSync(p))));
     h.set('content-encoding', 'br');
     h.set('vary', 'Accept-Encoding');
     return new Response(new Blob([b as Uint8Array<ArrayBuffer>]), { status, headers: h });

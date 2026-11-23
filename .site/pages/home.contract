@@ -1,0 +1,60 @@
+// "/": the reference's app/page.tsx. Each block rises 10 px and fades in (the reference also unblurs it from 12 px: Contract
+// keyframes cannot animate `filter`), top to bottom (motion-blur-in,
+// 900 ms, cubic-bezier(.22,1,.36,1), delays 80-650 ms); the hand waves 4 times (8 x 250 ms, alternate).
+use md from "../components/responsive.contract"
+use Newsletter from "../components/newsletter.contract"
+
+keyframes blurIn
+  from opacity=0 translate="0 10px"
+  to opacity=1 translate="0 0"
+
+keyframes wave
+  from rotate="0rad" translate="0 0"
+  to rotate="0.3927rad" translate="0 -12px"
+
+fn reveal(delay: number): string = `blurIn 900ms cubic-bezier(0.22, 1, 0.36, 1) ${delay}ms backwards`
+
+style Caption
+  font-size="0.875rem" line-height="1.25rem" color="var(--color-text-tertiary)"
+
+component ProjectItem
+  props
+    title: string
+    description: string
+    tag: string
+    href: string
+    newPage: bool
+  view
+    link href=href target=(newPage ? "_blank" : "_self") display="flex" flex-direction="column"
+      column padding="16px 12px" margin="0 -12px" border-radius="var(--radius-md)"
+        :hover
+          background-color = "rgb(35 35 38 / 0.5)"
+        row justify-content="space-between" align-items="baseline"
+          text title font-weight=500 color="var(--color-text-primary)"
+          text tag class=Caption
+        text description class=Caption margin-top=4
+
+component HomePage
+  props
+    newsletterStatus: string
+    subscribe: action
+  view
+    column gap=24 max-width="42rem" margin-top=md(32, 96) margin-bottom=12
+      row animation=reveal(80)
+        view transform-origin="bottom" animation="wave 250ms ease-in-out 8 alternate"
+          text "👋🏻" display="block" padding-bottom=10 font-size=32 line-height="normal" color="#000000" font-family="system-ui"
+      column animation=reveal(170)
+        text "Hey, I'm Enzo." role="heading" aria-level=1 font-size=16 line-height="1.5rem" font-weight=400 color="var(--color-text-body)"
+      column animation=reveal(250)
+        text "I have a passion for creating animations and enjoy sharing my insights along the way. That's what this blog is all about."
+    column animation=reveal(350)
+      Newsletter(showTitle=false, status=newsletterStatus, subscribe=subscribe)
+    column margin-top=56
+      column animation=reveal(470)
+        text "Projects" class=Caption text-transform="uppercase" letter-spacing="0.1em" margin-bottom=16
+      column animation=reveal(530)
+        ProjectItem(title="Reanimate.dev", href="https://reanimate.dev", tag="Course", description="Designed to guide you from the basics to advanced techniques.", newPage=true)
+      column animation=reveal(590)
+        ProjectItem(title="Demos", href="/demos/", tag="Open Source", description="120+ React Native experiments and demos.", newPage=false)
+      column animation=reveal(650)
+        ProjectItem(title="YouTube", href="https://youtube.com/@Reactiive", tag="Tutorials", description="React Native tutorials and animation breakdowns.", newPage=true)

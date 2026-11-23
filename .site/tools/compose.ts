@@ -59,6 +59,12 @@ const copy = (from: string, to: string, drop: string[] = []) => cpSync(from, to,
   filter: (p) => { const rel = relative(from, p); return !skip(rel) && !drop.includes(rel); },
 });
 copy(siteDist, staticDir);
+// public/: files the reference serves at fixed root URLs (share images, icons, favicon, LICENSE).
+const pub = join(site, 'public');
+if (existsSync(pub)) for (const n of readdirSync(pub)) {
+  if (existsSync(join(staticDir, n))) throw new Error(`compose: public/${n} collides with the site build's ${n}`);
+  cpSync(join(pub, n), join(staticDir, n), { recursive: true });
+}
 // The demos' robots.txt names only its mount; the origin's robots.txt is the site's (Exact: serve discovery files at
 // the root and merge them; the site's `Allow: /` already covers /demos/). The demos build has no .well-known/.
 copy(demosDist, join(staticDir, 'demos'), ['robots.txt']);

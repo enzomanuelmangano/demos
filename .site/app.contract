@@ -1,22 +1,68 @@
-// Phase 0 skeleton: the routes that prove the /demos/ mount and the build-rendered page layout. Phase 1 replaces it.
+// reactiive.io: the routes and the page frame. One page per route, rendered at build; each waits for the reader
+// (activate=idle) before its runtime loads, as Exact's docs site does. /demos/ is not a route of this app: it is
+// the Demos app's own build, mounted beside it (tools/compose.ts), and a link to it leaves this app.
+use SiteHeader, SiteFooter, Container from "./components/shell.contract"
+use HomePage from "./pages/home.contract"
+use NotFound from "./pages/not-found.contract"
+
+// The faces (Inter variable, Source Code Pro) are declared in app.json's head, font-display: swap and Inter
+// preloaded, as the reference: docs/decisions.md D7.
 routes nav
   home "/" render=build activate=idle
-  articles "/articles" render=build activate=idle
-  article "/articles/:post" render=build activate=idle pages=articleSlugs()
   notfound render=build
 
-component Site
+// The footer's Terms | Privacy variant, on the reference's paths (its /demos, /profile and /manage-subscription
+// pages are not this app's).
+fn legalFooter(name: string): bool = name == "docTerms" or name == "docPrivacy"
+
+shape Subscribed
+  ok: bool
+
+component App
+  // The newsletter form's request (components/newsletter.contract): idle, loading, success or error.
+  state newsletterStatus = "idle"
+  // Whether the page is scrolled past 10 px (the header's background): a 10 px marker at the page's top leaves the
+  // viewport then (an IntersectionObserver, no per-scroll work).
+  state scrolled = false
+  mutation newsletter as shape Subscribed then subscribed
+  action follow(url: string)
+    nav = go(nav, url)
+  action topSeen(entry: IntersectionObserverEntry)
+    scrolled = not entry.isIntersecting
+  action subscribe(email: string)
+    if email == ""
+      newsletterStatus = "error"
+    else
+      newsletterStatus = "loading"
+      send newsletter = subscribe(email)
+  action subscribed
+    match newsletter
+      case some(s)
+        newsletterStatus = s.ok ? "success" : "error"
+      case none
+        newsletterStatus = "error"
   view
-    main navigationKey=`${top(nav).id}`
+    view navigationKey=`${top(nav).id}` navigate=follow width="100%" min-height="100%" background-color="var(--color-surface-primary)"
+      font-family="Inter, ui-sans-serif, system-ui, sans-serif" color="var(--color-text-body)" font-size=16 line-height="1.5rem"
       for e in stack(nav).slice(-1) key=e.id
-        column navigationKey=`${e.id}` testId=e.name
-          if e.name == "notfound"
-            head title="Page not found | Reactiive" status=404
-            text "404"
-          else
-            head title=e.name
-            text e.name
-            link href="/demos/"
-              text "Demos"
-            link href="/articles"
-              text "Articles"
+        column navigationKey=`${e.id}` navigationScroll=`page-${e.id}` position="absolute" inset=0
+          scroll document id=`page-${e.id}` flex=1 min-height=0
+            // The reference's skip link: off screen until focused.
+            link href="#main" position="absolute" width=1 height=1 margin=-1 overflow="hidden" clip-path="inset(50%)" white-space="nowrap"
+              text "Skip to content"
+            // The header is drawn over the page (below); its place in the flow is the reference's mb-20.
+            view height=80 flex-shrink=0
+              view height=10 intersect=topSeen
+            main id="main" display="flex" flex-direction="column" min-height="80vh"
+              if e.name == "home"
+                head title="Home" description="Dive into the world of React Native - Discover the resources that helped me start my journey to building React Native animations"
+                  image="/og/main.png" canonical="/"
+                Container()
+                  HomePage(newsletterStatus=newsletterStatus, subscribe=subscribe)
+              else
+                head title="Page not found | Reactiive" status=404 robots="noindex"
+                  description="Discover the beauty of React Native and how to build stunning animations with Reanimated and Skia"
+                  image="/og/main.png" canonical="/"
+                NotFound()
+            SiteFooter(legal=legalFooter(e.name))
+          SiteHeader(current=e.name, scrolled=scrolled)

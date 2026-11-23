@@ -1,0 +1,14 @@
+// The 404 (reference components/404 and app/not-found.tsx). Below 768 px it keeps 16 px from each side; from 768 px
+// it is as wide as its longest line and centred (the reference's `mx-4 md:mx-auto` on a flex column item).
+use md from "../components/responsive.contract"
+
+component NotFound
+  view
+    row justify-content="center"
+      column width="fit-content" min-width=`clamp(0px, (768px - 100vw) * 1000, calc(100% - 32px))` max-width=`min(42rem, calc(100% - 32px))` margin-top="10rem" gap=24
+        text "404 - Page Not Found" role="heading" aria-level=1 margin-bottom=16 font-size="1.875rem" line-height="2.25rem" font-weight=600
+          letter-spacing="-0.02em" color="var(--color-text-primary)"
+        text "Oops! It seems like you've wandered off the beaten path." color="var(--color-text-secondary)"
+        text "Don't worry, even the best explorers get lost sometimes. Let's get you back on track." color="var(--color-text-secondary)"
+        link href="/" display="flex" align-items="center" font-size=14 line-height="normal"
+          text "Back to Home" font-weight=600 text-decoration-line="underline" margin-right=8 color="var(--color-text-secondary)"

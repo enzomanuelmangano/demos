@@ -1,23 +1,36 @@
 # Progress
 
-Branch `site` (worktree `thank-you-site`), draft PR into `main`. Update this file at every stop.
+Branch `site` (worktree `thank-you-site`), draft PR #115 into `main`. Update this file at every stop.
 
 ## Done
 
-- Phase 0: `.site/` app scaffolded (Exact `2180d806`); `/demos/` mount proven end to end (docs/decisions.md D3);
-  the five isolation proofs and the runner build (docs/isolation.md); review amendments applied (architecture.md).
-- Design tokens imported (`tokens.css` → `app.forma`).
+- **Phase 0** (complete): `.site/` app (Exact `2180d806`); `/demos/` mount proven end to end, 0 differing pixels
+  against the app's own build (decisions.md D3); five isolation proofs and the GitHub-runner build of `/demos/`
+  (isolation.md); review amendments applied (architecture.md, top).
+- **Phase 1** (in progress): tokens (`tokens.css` → `app.forma`), fonts (D7), `SiteHeader` (desktop bar, mobile bar,
+  menu overlay, scrolled look D8), `SiteFooter` (both variants), `Container`, responsive helpers (D9), the 404.
+  Reference assets imported (`tools/import-reference.ts`: `.content/`, `assets/`, `public/`).
+- **Phase 2** (started): `/` at parity (0.05 % / 0.29 % px), newsletter wired to the public endpoint.
+- Parity tooling: `tools/parity/{shoot,compare,diff,cdp}.ts` (docs/parity.md).
 
-## Next
+## Next, in order
 
-1. Phase 1 shell: fonts (Inter variable, Source Code Pro), `SiteHeader`, `SiteFooter`, `Container`, 404; parity
-   tools `tools/parity/shoot.ts` + `compare.ts` against `/tmp/reactiive-live/` (re-shoot with the live sweep's
-   settings if missing: 1440x900 and 390x844 touch, 3.5 s settle, one scroll-through, JPEG q70).
-2. Phase 2 static pages, phase 3 content pipeline (`.content/`), phase 4 articles, phase 5 interactive components,
-   phase 6 SEO/feeds, phase 7 deploy workflow (no deploy from agents).
+1. Finish phase 1: check the header's menu overlay and scrolled state against the live site (scripted: open the
+   menu at 390, scroll 30 px at 1440, screenshot both sides); `/docs` (header + footer only).
+2. Phase 2: `/inspirations`, `/demos-app` (QR at build: `qrcode-generator` in a tool → SVG rects), `/course`
+   (testimonials, avatars in `assets/images/avatars`). Live captures: `bun tools/parity/shoot.ts https://reactiive.io
+   /tmp/site-live-dom /inspirations /demos-app /course /docs` (the old `/tmp/reactiive-live/` JPEGs are the sweep's;
+   shoot.ts also writes the `.dom.json` structure compare.ts needs).
+3. Phase 3: `tools/gen-content.ts` (MDX in `.content/` → typed block modules in `content-gen/`, gitignored;
+   images to `assets/content/`, gitignored), `Markdown` + `CodeBlock` (palenight), `/docs/{terms,privacy,license}`.
+4. Phase 4 articles and series; 5 interactive components; 6 SEO/feeds (postbuild: JSON-LD, twitter:card on the
+   404, sitemap/robots/rss/manifest); 7 the deploy workflow (prebuilt output; never run from an agent).
 
 ## Local setup notes
 
-- Demos web build: `CARGO_HOME=/tmp/site-cargo-home` with `bin/wasm-bindgen` → 0.2.130 (docs/decisions.md D6),
-  `CARGO_TARGET_DIR=/tmp/site-target`, `DEMOS_WEB_SCRATCH=/tmp/demos-web-src`.
-- Composed output: `bun tools/compose.ts && bun tools/serve.ts --port 4310`.
+- Site: `cd .site && bun install && bun exact.mjs web-build --out dist && bun tools/compose.ts && bun tools/serve.ts --port 4310`.
+- Demos artifact (compose needs it): `CARGO_HOME=/tmp/site-cargo-home` whose `bin/wasm-bindgen` links
+  `~/.exact/bindgen-0.2.130/bin/wasm-bindgen` and whose `registry`, `git` and other `bin/*` link `~/.cargo`'s
+  (decisions.md D6); `CARGO_TARGET_DIR=/tmp/site-target DEMOS_WEB_SCRATCH=/tmp/demos-web-src bun tools/demos-web/build.ts`
+  (about 1.5 min warm, cached in `.out/demos-web/<key>/`). `/tmp/site-target` was deleted to keep disk ≥ 12 GB.
+- Disk: keep ≥ 12 GB free; delete `/tmp/site-target`, `/tmp/demos-web-src` and `/tmp/site-cargo-home` at the very end.

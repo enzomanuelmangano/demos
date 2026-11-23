@@ -1,0 +1,8 @@
+// Breakpoints made at build, with no runtime: a length that is one value below a width and another from it,
+// written as CSS clamp() against 100vw (the trick Exact's docs site uses), so a page built ahead fits any window
+// before its script loads. The reference's breakpoints are Tailwind's: sm 640, md 768, lg 1024, xl 1280.
+// `from(w, below, above)`: `below` px under a w px wide window, `above` px from w on.
+fn from(w: number, below: number, above: number): string = below <= above ? `clamp(${below}px, (100vw - ${w - 1}px) * 1000, ${above}px)` : `clamp(${above}px, (${w}px - 100vw) * 1000, ${below}px)`
+fn sm(below: number, above: number): string = from(640, below, above)
+fn md(below: number, above: number): string = from(768, below, above)
+fn lg(below: number, above: number): string = from(1024, below, above)

@@ -73,3 +73,26 @@ qr-code-generator, record-button, shake-to-delete, skia-bottom-sheet, twitter-ta
 - **CARGO_TARGET_DIR is claimed by an app directory.** Exact refuses a target dir whose crates another app directory
   built; the scratch tree therefore has one fixed path (`DEMOS_WEB_SCRATCH`, default `$TMPDIR/reactiive-demos-web-src`),
   wiped before each build.
+
+## D7. Fonts: the reference's WOFF2 files with `font-display: swap`, declared in the head
+
+Contract `font` declarations take TTF/OTF only and Exact writes them with `font-display: optional` (host/web-js
+`faces.rs`): on a cold load the 290 KB TTF missed the 100 ms window and the page stayed in the system font
+(measured: "Open Source" 84.1 px wide in SF, 86.5 px in Inter). The site therefore declares its two faces as the
+reference does, in a head script that adds the `@font-face` rules (`app.json` `host.web.head`; the head takes no
+`style` tag), with `font-display: swap` and Inter preloaded, from the reference's own 115 KB + 36 KB WOFF2 files.
+Rows name `font-family="Inter, …"`. The same script sets the reference's body text rendering
+(`optimizeLegibility`, antialiased) and `::selection`, which are not Contract properties.
+
+## D8. The header's scrolled look: an intersection marker, not a scroll handler
+
+The bar takes the page colour and a hairline past 10 px of scroll. A scroll-driven CSS animation was emitted but
+ran with a 0 s duration under Exact's timeline handling, and `scroll=` on `scroll document` did not fire for the
+document's scroll; a 10 px marker at the top of the page with `intersect=` flips `scrolled` once per crossing (no
+work per scroll event), and the bar's own 300 ms transition times it, as the reference's.
+
+## D9. Responsive layout without a runtime
+
+Built pages must fit 390 and 1440 before any script runs, so a breakpoint is a CSS `clamp()` against `100vw`
+(`components/responsive.contract`: `sm`, `md`, `lg`), the technique of Exact's docs site. A part that exists only
+on one side (the desktop and mobile header bars) is clipped to zero height on the other.

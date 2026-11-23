@@ -1,0 +1,121 @@
+// The frame of every page: the fixed header (desktop from 768 px, a bar with a menu below it), the page's container
+// and the footer. Ports of the reference's components/header, components/container and components/Footer.tsx.
+use md, sm from "./responsive.contract"
+
+shape NavItem
+  name: string
+  href: string
+  route: string
+
+fn navItems(): NavItem[] = [NavItem(name="Articles", href="/articles", route="articles"), NavItem(name="Demos", href="/demos/", route="demos")]
+
+// Past 10 px of the page's scroll the bar takes the page's colour and a hairline, over 300 ms, as the reference's.
+style HeaderBar
+  position="absolute" top=0 left=0 right=0 z-index=50 overflow="hidden" border-bottom-width=1 border-bottom-style="solid"
+  transition="background-color 300ms, border-color 300ms"
+
+style NavLink
+  font-size="0.875rem" line-height="1.25rem" font-weight=500 white-space="nowrap" color="var(--color-text-secondary)"
+  transition="color 150ms"
+  :hover
+    color = "#ffffff"
+
+style MenuLink
+  display="block" padding="12px 16px" border-radius="var(--radius-lg)" font-size="1rem" line-height="1.5rem" font-weight=500
+  color="var(--color-text-secondary)"
+
+component SiteHeader
+  props
+    current: string
+    scrolled: bool
+  state menu = false
+  action toggle
+    menu = not menu
+  action close
+    menu = false
+  view
+    header appearance="none" position="absolute" top=0 left=0 right=0 z-index=50
+      // Desktop, from 768 px.
+      view class=HeaderBar height=md(0, 87) testId="header-desktop"
+        background-color=(scrolled ? "var(--color-background)" : "transparent") border-bottom-color=(scrolled ? "rgb(255 255 255 / 0.05)" : "transparent")
+        Container()
+          row justify-content="space-between" align-items="center" padding-top=sm(16, 20) padding-bottom=sm(16, 20)
+            link href="/" aria-label="Reactiive, home" margin-top=6 border-radius="var(--radius-md)" display="flex"
+              image "assets/logo-home.svg" alt="" width=143 height=35 margin-right=47
+            nav aria-label="Main" display="flex" align-items="center" gap=28 margin-left="auto" margin-top=6
+              for item in navItems() key=item.route
+                link href=item.href class=NavLink color=(current == item.route ? "var(--color-text-primary)" : "var(--color-text-secondary)")
+                  text item.name
+                  view height=1.5 border-radius="var(--radius-sm)" background-color="var(--color-text-primary)" transform-origin="left"
+                    scale=(current == item.route ? 1 : 0) transition="scale 300ms cubic-bezier(0.23, 1, 0.32, 1)"
+              SignIn()
+      // Phones and narrow windows.
+      view class=HeaderBar height=md(73, 0) testId="header-mobile"
+        background-color=(scrolled or menu ? "var(--color-background)" : "transparent") border-bottom-color=(scrolled or menu ? "rgb(255 255 255 / 0.05)" : "transparent")
+        Container()
+          row justify-content="space-between" align-items="center" padding-top=16 padding-bottom=16
+            link href="/" aria-label="Reactiive, home" border-radius="var(--radius-md)" display="flex" press=close
+              image "assets/logo-home.svg" alt="" width=114.4 height=28 margin-right=35.6
+            button press=toggle appearance="none" aria-label=(menu ? "Close menu" : "Open menu") aria-expanded=menu
+              aria-controls="mobile-menu" padding=8 border-radius="var(--radius-md)" color="var(--color-text-secondary)" testId="menu"
+              image (menu ? "symbol:xmark" : "symbol:line.3.horizontal") aria-hidden=true width=24 height=24
+      view id="mobile-menu" inert=(not menu) position="absolute" inset=0 z-index=40 height=md(844, 0) overflow="hidden"
+        opacity=(menu ? 1 : 0) pointer-events=(menu ? "auto" : "none") transition="opacity 300ms"
+        view position="absolute" inset=0 background-color="rgb(0 0 0 / 0.6)" press=close
+        view position="absolute" top=60 left=0 right=0 background-color="var(--color-background)" border-bottom="1px solid rgb(255 255 255 / 0.05)"
+          translate=(menu ? "0 0" : "0 -16px") transition="translate 300ms"
+          Container()
+            nav aria-label="Menu" padding="40px 0 16px" display="flex" flex-direction="column" gap=4
+              link href="/" class=MenuLink press=close color=(current == "home" ? "#ffffff" : "var(--color-text-secondary)")
+                background-color=(current == "home" ? "rgb(255 255 255 / 0.1)" : "transparent")
+                text "Home"
+              for item in navItems() key=item.route
+                link href=item.href class=MenuLink color=(current == item.route ? "#ffffff" : "var(--color-text-secondary)")
+                  background-color=(current == item.route ? "rgb(255 255 255 / 0.1)" : "transparent")
+                  text item.name
+              view padding-top=8 margin-top=4 border-top="1px solid rgb(255 255 255 / 0.1)"
+                button appearance="none" class=MenuLink text-align="left" width="100%" testId="menu-sign-in"
+                  text "Sign In"
+
+// Sign-in needs the reference's OAuth secrets (docs/stubs.md): drawn as a signed-out visitor sees it.
+component SignIn
+  view
+    button appearance="none" height=40 padding="0 16px" border-radius="var(--radius-control)" background-color="rgb(255 255 255 / 0.08)"
+      box-shadow="inset 0 1px 0 rgb(255 255 255 / 0.06)" color="var(--color-text-primary)" font-size="0.875rem" line-height="1.25rem"
+      font-weight=500 testId="sign-in"
+      text "Sign In"
+
+// Container size md: 768 px wide at most, 24 px each side, a flex column that fills.
+component Container
+  slot
+  view
+    column width="100%" max-width="48rem" margin-left="auto" margin-right="auto" padding-left=24 padding-right=24 box-sizing="border-box" flex=1
+      children
+
+style FooterLink
+  text-decoration-line="underline" color="var(--color-text-tertiary)" font-size="0.75rem" line-height="1rem"
+  :hover
+    color = "var(--color-text-secondary)"
+
+component SiteFooter
+  props
+    legal: bool
+  view
+    view width="100%" max-width="48rem" margin-left="auto" margin-right="auto" padding-top=md(16, 32)
+      footer appearance="none" margin-top=8 padding-top=sm(16, 24) padding-bottom=sm(16, 24) padding-left=24 padding-right=24
+        border-top="1px solid var(--color-hairline)" min-height=50 box-sizing="border-box" display="flex" justify-content="flex-end"
+        // No gap: the "|" before Inspirations is not drawn under 640 px, and takes its space with it.
+        row flex-wrap="wrap" justify-content="center" align-items="center" font-size="0.75rem" line-height="1rem" color="var(--color-text-tertiary)"
+          if legal
+            link href="/docs/terms" class=FooterLink
+              text "Terms"
+            text "|" margin-left=8
+            link href="/docs/privacy" class=FooterLink margin-left=8
+              text "Privacy Policy"
+          else
+            text "Follow me on"
+            link href="https://x.com/reactiive_" target="_blank" class=FooterLink margin-left=8
+              text "Twitter"
+            text "|" width=sm(0, 4) margin-left=sm(0, 8) overflow="hidden"
+            link href="/inspirations" class=FooterLink margin-left=8
+              text "Inspirations"
