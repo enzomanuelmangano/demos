@@ -1,0 +1,40 @@
+/* The content pages' rules Contract does not express (docs/decisions.md D11), appended to web/head.css by tools/head.ts.
+   Ported from the reference's src/components/mdx (mdx.css, code-highlight.tsx) and components/ArticleList.tsx. */
+
+/* A prose link (mdx Anchor): the colour turns in 500 ms and a hairline grows under it from the left. */
+[data-motion~=mdx-link]{position:relative;transition:color 500ms ease-out}
+[data-motion~=mdx-link]::after{content:'';position:absolute;bottom:0;left:0;height:1px;width:0;background:rgb(159 174 244 / .6);transition:all 500ms ease-out}
+[data-motion~=mdx-link]:hover{color:var(--color-text-linkHover) !important}
+[data-motion~=mdx-link]:hover::after{width:100%}
+
+/* A code block's copy button: shown while the block is hovered or the button focused, always on a touch screen. */
+[data-motion~=copy]{cursor:pointer;opacity:0;transition-property:opacity,background-color,transform,scale;transition-duration:150ms;transition-timing-function:var(--ease-snappy)}
+[data-motion~=copy]:active{scale:.97}
+[data-motion~=code]:hover [data-motion~=copy],[data-motion~=copy]:focus-visible{opacity:1}
+@media (hover:none){[data-motion~=copy]{opacity:1}}
+[data-motion~=pre]:focus-visible{outline-offset:-2px}
+
+/* The GitHub card: its surface turns to the code colour in 150 ms on hover. */
+[data-motion~=surface]{transition:background-color 150ms var(--ease-snappy)}
+[data-motion~=card-link]:hover [data-motion~=surface]{background-color:var(--color-surface-code)}
+
+/* The article grid: 1, 2, 3 columns at 768 and 1024 px. A card lifts 2 px on hover, its cover and words dim. */
+[data-motion~=article-grid]{grid-template-columns:repeat(1,minmax(0,1fr))}
+@media (min-width:768px){[data-motion~=article-grid]{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (min-width:1024px){[data-motion~=article-grid]{grid-template-columns:repeat(3,minmax(0,1fr))}}
+[data-motion~=article-card]{cursor:pointer;transition:all 200ms cubic-bezier(.4,0,.2,1)}
+[data-motion~=article-card]:hover{background-color:rgb(255 255 255 / .04) !important;translate:0 -2px}
+[data-motion~=article-card]:active{scale:.99;opacity:.95}
+[data-motion~=article-card]:hover [data-motion~=article-cover]{opacity:.95}
+[data-motion~=article-card]:hover [data-motion~=article-title]{color:rgb(255 255 255 / .95) !important}
+[data-motion~=article-card]:hover [data-motion~=article-dim]{color:rgb(255 255 255 / .8) !important}
+
+/* RevealOnScroll: a card below the first screen waits, paused on its first frame, until it is seen; the first three
+   start at 100, 160, 220 ms, the rest of the first screen continue the cascade, a later row's cards 60 ms apart. */
+[data-motion~=wait]{animation-play-state:paused}
+[data-motion~=article-grid]>:nth-child(1){--motion-delay:100ms}
+[data-motion~=article-grid]>:nth-child(2){--motion-delay:160ms}
+[data-motion~=article-grid]>:nth-child(3){--motion-delay:220ms}
+@media (min-width:768px){[data-motion~=article-grid]>:nth-child(2n+4){--motion-delay:60ms}}
+@media (min-width:1024px){[data-motion~=article-grid]>:nth-child(3n+4){--motion-delay:0ms}[data-motion~=article-grid]>:nth-child(3n+5){--motion-delay:60ms}[data-motion~=article-grid]>:nth-child(3n+6){--motion-delay:120ms}
+[data-motion~=article-grid]>:nth-child(4){--motion-delay:280ms}[data-motion~=article-grid]>:nth-child(5){--motion-delay:340ms}[data-motion~=article-grid]>:nth-child(6){--motion-delay:400ms}}
