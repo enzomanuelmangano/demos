@@ -101,10 +101,16 @@ component AddToCart
   state added = -1
   state openSerial = 0
   state landToken = 0
+  // Web: the landing timer reports its token in env.timers (empty on iOS) instead of its message,
+  // so the landing is read from there: the hero is at rest and the row has its photo back.
+  derive webLanded = phase == "closing" and landToken != 0 and env.timers.includes(landToken)
+  derive vPhase = webLanded ? "rest" : phase
+  derive vHidden = webLanded ? -1 : hidden
+  derive vFade = webLanded ? false : fade
   derive hero = heroSide(env.width, env.height)
   derive hx = heroLeft(env.width, hero)
   derive hy = heroTop(env.height, hero)
-  derive still = phase == "rest" or phase == "armed"
+  derive still = vPhase == "rest" or vPhase == "armed"
   derive heroMotion = still ? "none" : `translate ${spring()}, scale ${spring()}, opacity 360ms cubic-bezier(0.4, 0, 1, 1)`
   // The hero's corner is the sheet's at full size and the card's at the row photo's size. A
   // second copy fades over it, so the radius changes on opacity alone.
@@ -194,7 +200,7 @@ component AddToCart
           padding-top=(env.safeTop + demoButtonRow()) padding-bottom=(env.safeBottom + 24)
           padding-left=listSide() padding-right=listSide() gap=listGap()
           for i in range(20) key=i
-            Card(i=i, count=countAt(counts, i), hidden=(hidden == i), fade=fade,
+            Card(i=i, count=countAt(counts, i), hidden=(vHidden == i), fade=vFade,
               bumped=(added == i), press=show(i))
       // The backdrop dims the screen; a tap flies the product home.
       view position="absolute" inset=0 background-color="rgba(0, 0, 0, 0.4)" opacity=(open ? 1 : 0)
@@ -242,15 +248,15 @@ component AddToCart
                   text "Add to Cart" font-size=17 font-weight=600 line-height="22px" color="#FFFFFF"
           // The flying photo: laid out at the sheet's hero, moved by transform only.
           view position="absolute" left=hx top=hy width=hero height=hero transform-origin="0px 0px"
-            translate=(phase == "open" ? "0px 0px" : `${fromX}px ${fromY}px`)
-            scale=(phase == "open" ? 1 : fromS)
-            opacity=(phase == "rest" or (phase == "closing" and toCart) ? 0 : 1)
+            translate=(vPhase == "open" ? "0px 0px" : `${fromX}px ${fromY}px`)
+            scale=(vPhase == "open" ? 1 : fromS)
+            opacity=(vPhase == "rest" or (vPhase == "closing" and toCart) ? 0 : 1)
             transition=heroMotion pointer-events="none" testId="sheet-photo" aria-label=`Item ${pick}`
             image heroUri() position="absolute" left=0 top=0 width=hero height=hero object-fit="cover"
               border-radius=sheetInner() corner-shape="-exact-continuous" aria-hidden=true
             image heroUri() position="absolute" left=0 top=0 width=hero height=hero object-fit="cover"
               border-radius=min(cardInner() * hero / thumb(), hero / 2) corner-shape="-exact-continuous"
-              opacity=(phase == "open" ? 0 : 1) transition=roundMotion aria-hidden=true
+              opacity=(vPhase == "open" ? 0 : 1) transition=roundMotion aria-hidden=true
       // The armed open's second commit: this node is new each open. Its first `intersect` starts
       // the spring; the timer is the backstop.
       for s in [openSerial] key=s
@@ -258,8 +264,9 @@ component AddToCart
           intersect=goEntry aria-hidden=true
       canvas surface=timer(openSerial, 16) message=goTimer width=1 height=1 position="absolute"
         left=0 top=0 pointer-events="none" aria-hidden=true
-      // The landing returns the row its photo.
-      canvas surface=timer(landToken, landMs()) message=landed width=1 height=1 position="absolute"
+      // The landing returns the row its photo. On the web the confirm's success haptic is the
+      // timer's own (its message never reaches landed).
+      canvas surface=timer(landToken, landMs(), env.web and toCart ? "success" : "") message=landed width=1 height=1 position="absolute"
         left=0 top=0 pointer-events="none" aria-hidden=true
 
 // A product card: photo, title, two lines of copy, and a black cart button with a red count
