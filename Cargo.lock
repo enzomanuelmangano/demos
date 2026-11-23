@@ -254,6 +254,7 @@ dependencies = [
  "exact-gpu-reflect",
  "exact-kernel",
  "exact-plan",
+ "exact-route",
  "exact-runner",
  "exact-shader-uniforms",
  "libc",
@@ -305,6 +306,7 @@ name = "contract-syntax"
 version = "0.1.0"
 dependencies = [
  "exact-motion",
+ "sha2 0.10.9",
 ]
 
 [[package]]
@@ -3071,9 +3073,9 @@ dependencies = [
 
 [[package]]
 name = "wgpu"
-version = "30.0.1"
+version = "30.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "527ccdf43dd5b2e8676eed9984ce00e2bbb0a1b85b70c1969dcb6cd2eb55ab9e"
+checksum = "146fc3d654250e6207921a66c87534c621bc886c70df83dcf466c1d66813810e"
 dependencies = [
  "arrayvec",
  "bitflags",
