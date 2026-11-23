@@ -46,8 +46,10 @@ component FibonacciShader
         width="100%" height="100%" touch-action="none" pointer-events=(native ? "none" : "auto")
         aria-label="Fibonacci sphere" testId="fibonacci-canvas"
       if native
+        // The padding is inside the bar's width (border-box): content-box put the bar's right end
+        // 30 pt past its place, at the display's edge, and the button off it.
         row position="absolute" left=fibInset() bottom=fibInset() width=floatingWidth(env.width, fibInset())
-          height=fibBarH() border-radius=concentricRadius(fibInset(), fibBarH())
+          height=fibBarH() box-sizing="border-box" border-radius=concentricRadius(fibInset(), fibBarH())
           corner-shape="-exact-continuous" backgroundMaterial="glass"
           -exact-glass-tint="rgba(255, 255, 255, 0.04)" align-items="center"
           padding-left=22 padding-right=(fibBarH() - fibButton()) / 2 gap=14 testId="fibonacci-bar"
