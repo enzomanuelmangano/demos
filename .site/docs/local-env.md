@@ -73,7 +73,7 @@ localhost flow. Probed against the production clients (an unauthenticated GET of
 
 | Provider | Accepts today | To sign in on localhost |
 |---|---|---|
-| Google | `https://reactiive.io/api/callback/google` only (localhost and `www` answer `redirect_uri_mismatch`) | add `http://localhost:4314/api/callback/google` to the OAuth client's Authorized redirect URIs (Google Cloud console, Credentials) |
+| Google | `https://reactiive.io/api/callback/google` only: `www`, and `localhost`/`127.0.0.1` on 3000, 4314, 8080, 8081 with the paths `/api/callback/google`, `/api/auth/callback/google`, `/callback/google`, `/auth/callback/google` and none, all answer `redirect_uri_mismatch` (checked 2026-11-23, also in headless Chrome) | add `http://localhost:4314/api/callback/google` to the OAuth client's Authorized redirect URIs (Google Cloud console, Credentials) |
 | Apple | Apple refuses `http` and `localhost` return URLs | not possible locally; test on a preview with a real https domain registered in the Services ID |
 | GitHub (connect, not in the live UI) | one callback URL per OAuth app | a separate development OAuth app with `http://localhost:4314/api/callback/github` |
 | Patreon (connect, not in the live UI) | redirect URIs listed on the client | add `http://localhost:4314/api/callback/patreon` |
