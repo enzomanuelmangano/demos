@@ -200,7 +200,7 @@ component CanvasKitJsAlert
     column role="alert" width="100%" box-sizing="border-box" margin-top=16 margin-bottom=24 border-radius=14 padding="12px 16px"
       font-size="0.875rem" line-height="1.25rem" color="var(--color-warning)" background-color="color-mix(in oklab, var(--color-warning) 10%, transparent)"
       box-shadow="0 0 0 1px color-mix(in oklab, var(--color-warning) 20%, transparent)"
-      text "⚠️ Known Issues" role="heading" aria-level=5 margin-bottom=4 font-weight=500 line-height=1 letter-spacing="-0.025em"
+      text "⚠️ Known Issues" role="heading" aria-level=5 margin-bottom=4 font-size="0.875rem" font-weight=500 line-height=1 letter-spacing="-0.025em"
       text "I am currently updating the article to support CanvasKitJs, which is causing some demos to break. Please note that the code will still work perfectly in your own apps." opacity=0.9
 
 
