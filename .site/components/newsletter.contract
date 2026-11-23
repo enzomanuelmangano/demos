@@ -37,7 +37,7 @@ component Newsletter
             ::placeholder
               color = "var(--color-text-disabled)"
           button press=submit appearance="none" disabled=(status == "loading") height=40 padding="0 16px" border-radius="var(--radius-control)"
-            class=ButtonPrimary font-size="0.875rem" line-height="1.25rem" font-weight=500 testId="newsletter-subscribe" data-motion="button focus"
+            class=ButtonPrimary font-size="0.875rem" line-height="1.25rem" font-weight=500 testId="newsletter-subscribe" data-motion="button press-primary focus"
             text "Subscribe"
         if status == "error"
           text "Something went wrong. Please try again." margin-top=12 font-size="0.875rem" color="var(--color-danger)"

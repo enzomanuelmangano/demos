@@ -134,6 +134,12 @@ main:has([data-motion~=d-page]) ~ *{visibility:hidden}
 [data-motion~=colors-200]{transition-property:color,background-color,border-color,outline-color,text-decoration-color,fill,stroke !important;transition-duration:200ms !important;transition-timing-function:cubic-bezier(.4,0,.2,1) !important;transition-delay:0s !important}
 [data-motion~=button]{cursor:pointer;transition-property:background-color,color,box-shadow,transform,scale !important;transition-duration:150ms !important;transition-timing-function:var(--ease-snappy) !important;transition-delay:0s !important}
 [data-motion~=plain]:is(:hover,:focus-visible){text-decoration:none !important}
+/* The reference's Button pressed (components/ui/button: active:scale-[0.97] and the variant's active colour), in CSS
+   so a page whose runtime has not started yet (docs/decisions.md D16) shows it on its first press; the transition is
+   data-motion button's (150 ms, snappy). Exact's own press dim (0.65 on [data-pressed]) is off for them. */
+#exact-root [data-motion~=press-secondary]:active:not(:disabled){background-color:rgb(255 255 255 / .14) !important;scale:.97 !important}
+#exact-root [data-motion~=press-primary]:active:not(:disabled){background-color:#3c49b0 !important;scale:.97 !important}
+#exact-root :is([data-motion~=press-primary],[data-motion~=press-secondary])[data-pressed]{opacity:1 !important}
 /* Keyboard focus everywhere (globals.css @layer base): controls with their own ring (data-motion focus) drop it. */
 :focus-visible,#exact-root :focus-visible,html #exact-root button:not([data-native]):focus-visible{outline:2px solid oklch(72% 0.12 274 / 0.9);outline-offset:2px}
 html #exact-root input:not([data-native]):focus-visible{outline:none}

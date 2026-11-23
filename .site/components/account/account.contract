@@ -109,7 +109,7 @@ component AccountSlot
                 text "Sign out" font-size="0.875rem" line-height="1.25rem" color="var(--color-danger)"
       else
         button appearance="none" press=openSignIn class=ButtonSecondary height=40 padding="0 16px" border-radius="var(--radius-control)" font-size="0.875rem"
-          line-height="1.25rem" font-weight=500 testId="sign-in" data-motion="pop-in button focus"
+          line-height="1.25rem" font-weight=500 testId="sign-in" data-motion="pop-in button press-secondary focus"
           text "Sign In"
 
 style MenuItem
@@ -162,7 +162,7 @@ component ProviderButton
     provider: string
   view
     if url != ""
-      link href=url class=ButtonSecondary display="flex" align-items="center" justify-content="center" gap=10 height=44 padding="0 24px" border-radius="var(--radius-control)" font-size="15px" line-height="1.5rem" font-weight=500 text-decoration-line="none" box-sizing="border-box" width="100%" data-motion="button focus" testId=`sign-in-${provider}`
+      link href=url class=ButtonSecondary display="flex" align-items="center" justify-content="center" gap=10 height=44 padding="0 24px" border-radius="var(--radius-control)" font-size="15px" line-height="1.5rem" font-weight=500 text-decoration-line="none" box-sizing="border-box" width="100%" data-motion="button press-secondary focus" testId=`sign-in-${provider}`
         ProviderIcon(provider=provider)
         text label
     else
@@ -240,7 +240,7 @@ component SendFeedback
                 data-motion="colors"
               text "."
         button appearance="none" press=open class=ButtonSecondary height=36 padding="0 12px" border-radius="var(--radius-control)" font-size="0.875rem"
-          line-height="1.25rem" font-weight=500 flex-shrink=0 data-motion="button focus" testId="send-feedback"
+          line-height="1.25rem" font-weight=500 flex-shrink=0 data-motion="button press-secondary focus" testId="send-feedback"
           text "Send feedback"
 
 // ---------------------------------------------------------------- the feedback modal
@@ -285,7 +285,7 @@ component FeedbackDialog
             text "Submit anonymously" font-size="0.875rem" color="var(--color-text-secondary)"
         button appearance="none" press=submit disabled=(draft.trim() == "" or sending) class=ButtonPrimary height=44 margin-top=28
           border-radius="var(--radius-control)" font-size="1rem" font-weight=500 display="flex" align-items="center" justify-content="center" gap=8
-          opacity=(draft.trim() == "" or sending ? 0.5 : 1) data-motion="button focus" testId="feedback-send"
+          opacity=(draft.trim() == "" or sending ? 0.5 : 1) data-motion="button press-primary focus" testId="feedback-send"
           if sending
             Spinner()
             text "Sending…"

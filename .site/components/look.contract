@@ -5,22 +5,19 @@
 // are web/head.css's `data-motion~=focus`, since Contract has no :focus-visible look. The transitions themselves are
 // web/head.css's too (`data-motion~=button`, `~=colors`): Contract transitions take no `transform`, `outline-color`,
 // `text-decoration-color`, `fill` or `stroke` on a box, and the reference lists them (a computed-style match).
+// The pressed look (`active:scale-[0.97]`, the variant's active colour) is web/head.css's `data-motion~=press-primary`
+// / `~=press-secondary` (CSS :active), not a Contract :active: Exact draws that from its runtime, which a content page
+// starts only at its first press (docs/decisions.md D16), so that press showed nothing.
 
 style ButtonPrimary
   cursor="pointer" user-select="none" background-color="var(--color-primary-600)" color="#ffffff"
   box-shadow="inset 0 1px 0 rgb(255 255 255 / 0.18), 0 1px 2px rgb(0 0 0 / 0.4)"
   :hover
     background-color = "var(--color-primary)"
-  :active
-    background-color = "var(--color-primary-700)"
-    -exact-press-scale = 0.97
 
 style ButtonSecondary
   cursor="pointer" user-select="none" background-color="rgb(255 255 255 / 0.08)" color="var(--color-text-primary)"
   box-shadow="inset 0 1px 0 rgb(255 255 255 / 0.06)"
   :hover
     background-color = "rgb(255 255 255 / 0.12)"
-  :active
-    background-color = "rgb(255 255 255 / 0.14)"
-    -exact-press-scale = 0.97
 
