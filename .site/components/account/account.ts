@@ -33,15 +33,36 @@ const api = (path: string, token: string, init: RequestInit = {}) => {
 };
 const str = (v: unknown) => (typeof v === 'string' ? v : '');
 
+// hooks/use-sentry-user-context.ts: Sentry's user, the subscription context and the tags, set when the user is known and
+// cleared when not. Sentry is the page's: tools/observability.ts loads its browser bundle after the page, so the latest
+// value is also left on the page (`__reactiiveSentryUser`, a page global: this module's global writes reach the page),
+// which that script applies right after Sentry's init. Without Sentry nothing happens.
+type SentryUser = { id: unknown; email: string; name: string; github: string; supporter: boolean; status: string; planType: string };
+function sentryUser(u: SentryUser | null) {
+  const g = globalThis as { Sentry?: { setUser(u: unknown): void; setContext(k: string, v: unknown): void; setTag(k: string, v: unknown): void }; __reactiiveSentryUser?: unknown };
+  const user = u ? { id: u.id, email: u.email, username: u.github || u.name || u.email.split('@')[0] } : null;
+  const context = u ? { isSupporter: u.supporter, planStatus: u.status || undefined, subscriptionType: u.planType || undefined } : null;
+  const tags: Record<string, unknown> = u ? { 'user.supporter': u.supporter, 'user.has_github': !!u.github, ...(u.status ? { 'subscription.status': u.status } : {}) }
+    : { 'user.supporter': false, 'user.has_github': false, 'subscription.status': 'none' };
+  try { g.__reactiiveSentryUser = { user, context, tags }; } catch { /* not kept */ }
+  const S = g.Sentry;
+  if (!S?.setUser) return;
+  try {
+    S.setUser(user);
+    S.setContext('subscription', context);
+    for (const [k, v] of Object.entries(tags)) S.setTag(k, v);
+  } catch { /* Sentry's own failure is never the page's */ }
+}
+
 export const accountSources = {
   siteConfig: async (): Promise<Result<'siteConfig'>> => ({ accounts: ON }),
 
   // GET /api/user/info (states/auth/user.ts). A 401 is a token the server no longer takes: signed out, and the page
   // forgets it (`rejected`). Any other failure fails the resource (kept signed in, as the reference's query error).
   userInfo: async ([token]: [string]): Promise<Me> => {
-    if (!ON || !token) return SIGNED_OUT;
+    if (!ON || !token) { sentryUser(null); return SIGNED_OUT; }
     const r = await api('/user/info', token);
-    if (r.status === 401) return { ...SIGNED_OUT, rejected: true };
+    if (r.status === 401) { sentryUser(null); return { ...SIGNED_OUT, rejected: true }; }
     if (!r.ok) throw new Error(`user/info answered ${r.status}`);
     const body = (await r.json()) as { user?: Record<string, unknown>; plan?: { status?: string; subscriptionType?: string; expiresAt?: string } | null };
     const u = body.user ?? {};
@@ -49,6 +70,7 @@ export const accountSources = {
     const status = str(body.plan?.status);
     const supporter = status === 'active' || status === 'cancelled';
     const planType = str(body.plan?.subscriptionType);
+    sentryUser(email ? { id: u.id, email, name: str(u.name), github: (body as { github?: { username?: string } | null }).github?.username ?? '', supporter, status, planType } : null);
     return {
       signedIn: email !== '',
       rejected: false,
@@ -71,6 +93,9 @@ export const accountSources = {
   // Asked on every build once the dialog has opened (Sign In works as live's; `attempt` asks again after a failure).
   authUrl: async ([provider, utm, armed]: [string, string, boolean, number]): Promise<string> => {
     if (!armed) return '';
+    // Never a sign-in the build could not keep: without the accounts (SITE_ACCOUNTS) the callback's token would land on
+    // a page that does not take it. The provider then answers "not available" (signInFailed), as an unreachable API does.
+    if (!ON) throw new Error('accounts off in this build');
     const r = await api(`/auth/${provider}-sign-up${utm ? `?utm_source=${encodeURIComponent(utm)}` : ''}`, '');
     if (!r.ok) throw new Error(`auth/${provider}-sign-up answered ${r.status}`);
     const { url } = (await r.json()) as { url?: string };

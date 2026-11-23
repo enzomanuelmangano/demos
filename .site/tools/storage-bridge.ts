@@ -4,7 +4,7 @@
 // (SITE_ACCOUNTS=1); then the reference's public obfuscation key EXPO_PUBLIC_ACCESS_KEY is required (the reference ships
 // it in its browser bundle; here it reaches the page the same way, and never git: env or the gitignored .env.local).
 // Without the accounts nothing is written: the public build stays byte-identical. Run after tools/observability.ts:
-//   bun tools/storage-bridge.ts [dist]
+//   bun tools/storage-bridge.ts [dist]      (--check-key: only check the key against its committed fingerprint)
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
@@ -17,19 +17,27 @@ const fromEnvLocal = (name: string) => {
   return m ? m[1].trim() : '';
 };
 const setting = (name: string) => process.env[name] ?? fromEnvLocal(name);
+// The key's fingerprint: SHA-256 of "reactiive-access-key:" + the key the old site was built with (the production one,
+// 64 characters). A different key would decode every stored session to garbage (every reader signed out) and then
+// overwrite it, so a build with another key fails here. The fingerprint is not the key and cannot give it back.
+const KEY_FINGERPRINT = 'd1b8c40763a97e51f8d0b2ddfcf652e53b102660b787f7c620dc83abe1713bf3';
+const fingerprint = (k: string) => new Bun.CryptoHasher('sha256').update(`reactiive-access-key:${k}`).digest('hex');
+const checkOnly = process.argv.includes('--check-key');
 if (setting('SITE_ACCOUNTS') !== '1') {
   console.log('storage-bridge: accounts off: nothing written');
   process.exit(0);
 }
 const KEY = setting('EXPO_PUBLIC_ACCESS_KEY');
 if (!KEY) throw new Error('storage-bridge: SITE_ACCOUNTS=1 needs EXPO_PUBLIC_ACCESS_KEY (the reference\'s token key): without it every signed-in reader of the old site would be signed out (docs/storage.md)');
-if (!/^[\x20-\x7e]+$/.test(KEY) || /['\\<]/.test(KEY)) throw new Error('storage-bridge: EXPO_PUBLIC_ACCESS_KEY is not plain printable ASCII');
+if (!/^[\x20-\x7e]+$/.test(KEY) || /['\\<$`]/.test(KEY)) throw new Error('storage-bridge: EXPO_PUBLIC_ACCESS_KEY is not plain printable ASCII without quotes, $, ` or <');
+if (fingerprint(KEY) !== KEY_FINGERPRINT) throw new Error('storage-bridge: EXPO_PUBLIC_ACCESS_KEY is not the old site\'s key (its SHA-256 fingerprint differs): every reader would be signed out. Use the value of the old Vercel project (docs/storage.md)');
+if (checkOnly) { console.log('storage-bridge: EXPO_PUBLIC_ACCESS_KEY matches the old site\'s fingerprint'); process.exit(0); }
 
 const MARK = 'data-reactiive-storage';
 const source = readFileSync(join(SITE, 'web/storage.js'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').split('\n').map((l) => l.trim())
   .filter((l) => l && !l.startsWith('//')).join('\n');
-if (!source.includes('__REACTIIVE_ACCESS_KEY__')) throw new Error('storage-bridge: web/storage.js lost its key placeholder');
-const tag = `<script ${MARK}>${source.replace('__REACTIIVE_ACCESS_KEY__', KEY)}</script>`;
+if (!source.includes("'__REACTIIVE_ACCESS_KEY__'")) throw new Error('storage-bridge: web/storage.js lost its key placeholder');
+const tag = `<script ${MARK}>${source.replace("'__REACTIIVE_ACCESS_KEY__'", () => JSON.stringify(KEY))}</script>`;
 
 let pages = 0;
 const walk = (dir: string) => {

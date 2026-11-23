@@ -68,6 +68,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # The accounts and the old API go together (docs/storage.md, docs/stubs.md): with the accounts on and no
+      # LEGACY_API_ORIGIN the sign-in's callback has nowhere to land; with neither, Sign In still shows (it opens on
+      # every build) but no provider can be reached, and every reader signed in on the old site would look signed out.
+      # A production run therefore needs both; a preview only warns.
+      - name: The accounts and the old API are configured together
+        env:
+          ACCOUNTS: ${{ vars.SITE_ACCOUNTS }}
+          PRODUCTION: ${{ inputs.production }}
+        run: |
+          if [ "$ACCOUNTS" = "1" ] && [ -n "$LEGACY_API_ORIGIN" ]; then echo "accounts on, /api/* -> the old deployment"; exit 0; fi
+          msg="SITE_ACCOUNTS is '${ACCOUNTS:-unset}' and LEGACY_API_ORIGIN is ${LEGACY_API_ORIGIN:+set}${LEGACY_API_ORIGIN:-unset}: production needs SITE_ACCOUNTS=1 and LEGACY_API_ORIGIN (with EXPO_PUBLIC_ACCESS_KEY), or readers lose their session at the cutover (.site/docs/deploy.md, step 2)"
+          if [ "$PRODUCTION" = "true" ]; then echo "::error::$msg"; exit 1; fi
+          echo "::warning::$msg"
+
+
       - name: Set up Bun (the version Exact pins)
         uses: oven-sh/setup-bun@v2
         with:
@@ -160,6 +175,7 @@ jobs:
             if [ -n "$SENTRY" ]; then echo "EXPO_PUBLIC_SENTRY_DSN=$SENTRY"; fi
             echo "EXPO_PUBLIC_ACCESS_KEY=$ACCESS_KEY"
           } > .env.local
+          bun tools/storage-bridge.ts --check-key
 
       - name: Build the site (web-build, then head, JSON-LD, sitemap, robots, feed, manifest)
         working-directory: .site
