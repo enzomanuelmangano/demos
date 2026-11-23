@@ -101,6 +101,10 @@ component App
     spiralTaps = spiralTaps + 1
   action follow(url: string)
     nav = go(nav, url)
+    // Leaving or entering a page unmounts /demos's frame (its entry is keyed per visit), so the next visit loads the
+    // app again: show the launcher's still until it has drawn again, as on the first visit (D16), never a blank frame.
+    simFramed = false
+    simLive = false
   action topSeen(entry: IntersectionObserverEntry)
     scrolled = not entry.isIntersecting
   action subscribe(email: string)

@@ -311,3 +311,13 @@ Cost: the CTA and hint are a few plan nodes (app.js +~1 KB) and ~2.5 KB of head 
   Measured scrollHeight == clientHeight at 1728x960, 1728x1000, 1512x982, 1440x900, 1280x720 (device 456 px, 36 px
   margins) and 1024x768; under 1024 px the stacked page scrolls as before (390x844: 1196 px).
   Screens: `/tmp/demos-variants/A7@{1728x960,1440x900,1280x720,390x844}.png`.
+- **"The sim reloads when I switch tabs" (owner).** Measured with CDP at 1728x960 (child-frame navigations of the
+  sandboxed frame): 10 browser-tab switches (the page hidden, half of them also frozen and resumed): **0 reloads**;
+  the app's own reload path (Exact's generation reload) needs sessionStorage, which the opaque-origin frame lacks, so it
+  never fires there. 5 in-app round trips (Articles ↔ Demos): 5 loads, by design of the router: the page's entry is
+  keyed per visit, so the frame is created again, and keeping it alive outside the routed content would mean placing
+  it over a box whose place only the page's layout knows (the stacked layout under 1024 px). The jump was that the
+  second visit showed the frame at once (`simLive` stayed true) while the app was starting, over the still:
+  `follow` (app.contract) now resets `simFramed` / `simLive`, so every visit shows the still until the app has drawn
+  again and cross-fades as the first does (sampled 50-1000 ms after each return: frame opacity 0 over the still,
+  1 from 1.5 s).
