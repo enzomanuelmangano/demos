@@ -1,7 +1,7 @@
 // `inspiration-sheet`: the demo screen's Inspiration sheet, a real UIKit sheet
-// (UISheetPresentationController) with a detent fitted to its content, a grabber, the system
-// background in the dark appearance and drag to dismiss. Content: a bold title, the story, and a
-// full-width capsule action (glassProminent from iOS 26, borderedProminent earlier).
+// (UISheetPresentationController) with a detent fitted to its content, a grabber, the system's
+// own sheet material in the app's appearance and drag to dismiss. Content: a bold title, the
+// story, and a full-width capsule action (glassProminent from iOS 26, borderedProminent earlier).
 //
 // The view itself is an empty box; the sheet is presented from the top-most view controller,
 // because the full-screen demo route cannot present a dialog itself. Props: `open` ("true"
@@ -146,14 +146,14 @@ final class InspirationSheet: ExactNativeInstance {
         let events = self.events
         model.bottom = top.view.window?.safeAreaInsets.bottom ?? 0
         let host = UIHostingController(rootView: InspirationBody(model: model, action: { events.press() }))
-        host.overrideUserInterfaceStyle = .dark
         // iOS 26's sheet floats inset from the display's corners. With no bottom safe area the
         // action sits one inset (24) above the sheet's edge, so its capsule is concentric with the
         // sheet's corners and the display's.
         host.safeAreaRegions = []
-        // The sheet's glass samples the demo behind it, so on a light demo it turned light grey
-        // under the white text: an opaque dark fill keeps it the dark sheet the RN one is.
-        host.view.backgroundColor = UIColor(white: 0.11, alpha: 1)
+        // The system's sheet material, not a fill of ours. No forced appearance: a dark one put white
+        // labels on the glass that a light demo turns light; in the app's own appearance the glass and
+        // its label colours (.primary) are the pair a native sheet has, readable over any demo.
+        host.view.backgroundColor = .clear
         host.modalPresentationStyle = .pageSheet
         if let controller = host.sheetPresentationController {
             // fitToContents: the content's own height at the screen's width.

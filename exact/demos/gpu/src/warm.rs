@@ -3,9 +3,9 @@
 //!
 //! The `warm` surface sits in the app's plan with a 1 × 1 canvas. Its first render hands the
 //! module's device to a thread of utility priority, which draws one small frame of every other
-//! surface into an offscreen target, one at a time with a pause between, so the compiled shaders
-//! are in the device's caches before a demo opens. [`prioritize`] moves one demo to the front
-//! (the finger is down on its icon).
+//! surface into an offscreen target (recorded, never submitted: see [`warm`]), one at a time with
+//! a pause between, so the compiled shaders are in the device's caches before a demo opens.
+//! [`prioritize`] moves one demo to the front (the finger is down on its icon).
 
 use std::collections::VecDeque;
 #[cfg(not(target_arch = "wasm32"))]
@@ -177,7 +177,12 @@ pub fn warm(name: &str, device: &wgpu::Device, queue: &wgpu::Queue) {
     let view = target.create_view(&Default::default());
     let mut encoder = device.create_command_encoder(&Default::default());
     surface.render(&frame, device, queue, &mut encoder, &view, format);
-    queue.submit([encoder.finish()]);
+    // Recorded, never submitted: the shaders and pipelines are built by now, which is what the warm-up is for.
+    // A submit from this thread can land while the main thread configures a new canvas's surface; wgpu then
+    // fails the configure ("failed to wait for GPU to come idle"), leaves the surface unconfigured with no
+    // error sink, and the canvas's acquisition thread aborts the app in `get_current_texture` (the SIGABRT
+    // of rapid Calendar Days opens). Queue writes made here ride the main thread's next submit.
+    drop(encoder.finish());
     surface.submitted();
     let _ = exact_gpu::block_on(scope.pop());
 }
