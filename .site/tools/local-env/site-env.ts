@@ -4,6 +4,8 @@
 //   SITE_ACCOUNTS=1, EXPO_PUBLIC_WEBSITE_URL=http://localhost:<site port>
 //   EXPO_PUBLIC_AMPLITUDE_API_KEY, EXPO_PUBLIC_SENTRY_DSN from the env file (public in the reference too: its browser
 //   bundle carries them); tools/observability.ts writes them into the pages, and on localhost they never send.
+//   EXPO_PUBLIC_ACCESS_KEY (public too: the reference's token obfuscation key), for tools/storage-bridge.ts: the old
+//   site's session stays the new site's (docs/storage.md).
 // No server secret is ever written. Prints names only.
 //   bun tools/local-env/site-env.ts [--site-port 4314] [--off]   (--off removes the file: the public build again)
 import { existsSync, rmSync, writeFileSync } from 'node:fs';
@@ -24,7 +26,7 @@ const i = process.argv.indexOf('--site-port');
 const port = i < 0 ? process.env.SITE_PORT ?? '4314' : process.argv[i + 1];
 const file = readEnvFile();
 const lines = ['SITE_ACCOUNTS=1', `EXPO_PUBLIC_WEBSITE_URL=http://localhost:${port}`];
-for (const k of ['EXPO_PUBLIC_AMPLITUDE_API_KEY', 'EXPO_PUBLIC_SENTRY_DSN']) {
+for (const k of ['EXPO_PUBLIC_AMPLITUDE_API_KEY', 'EXPO_PUBLIC_SENTRY_DSN', 'EXPO_PUBLIC_ACCESS_KEY']) {
   const v = file?.get(k);
   if (v && !/[\s"'`$\\]/.test(v)) lines.push(`${k}=${v}`);
 }
