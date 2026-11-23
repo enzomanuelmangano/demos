@@ -1,0 +1,398 @@
+{
+ "version": 1,
+ "generated": "2026-11-16",
+ "entries": [
+  {
+   "file": "app.contract",
+   "rule": "unused-state",
+   "hash": "a97b5d0b10",
+   "count": 1,
+   "line": 265,
+   "message": "state noSubpage is never read in Demos: remove it (it is still written and recomputed on every commit)"
+  },
+  {
+   "file": "demos/action-tray/action-tray.contract",
+   "rule": "min-touch-target",
+   "hash": "b38569e263",
+   "count": 1,
+   "line": 182,
+   "message": "PressableScale is 40 x 40 pt, under 44 pt: add padding, or -exact-hit-slop=\"2px\" (grows the hit area, paints nothing)"
+  },
+  {
+   "file": "demos/action-tray/action-tray.contract",
+   "rule": "stacked-haptic",
+   "hash": "f60a4a05f3",
+   "count": 1,
+   "line": 182,
+   "message": "dismiss plays haptic(\"impact-light\") and is a PressableScale press: pressto's global haptic already plays on that press, so the two stack (toast, clerk-toast, floating-modal fixed exactly this)"
+  },
+  {
+   "file": "demos/action-tray/action-tray.contract",
+   "rule": "stacked-haptic",
+   "hash": "e7dbe6b7bd",
+   "count": 1,
+   "line": 216,
+   "message": "next plays haptic(\"success\") and is a PressableScale press: pressto's global haptic already plays on that press, so the two stack (toast, clerk-toast, floating-modal fixed exactly this)"
+  },
+  {
+   "file": "demos/add-to-cart/add-to-cart.contract",
+   "rule": "corner-shape-continuous",
+   "hash": "bb831cf07a",
+   "count": 1,
+   "line": 255,
+   "message": "border-radius without corner-shape=\"-exact-continuous\": iOS rounds with squircles, a plain radius reads as a different shape"
+  },
+  {
+   "file": "demos/airbnb-slider/airbnb-slider.contract",
+   "rule": "corner-shape-continuous",
+   "hash": "a0a1c5c03c",
+   "count": 1,
+   "line": 50,
+   "message": "border-radius without corner-shape=\"-exact-continuous\": iOS rounds with squircles, a plain radius reads as a different shape"
+  },
+  {
+   "file": "demos/alert-drawer/alert-drawer.contract",
+   "rule": "min-touch-target",
+   "hash": "cb8d08209f",
+   "count": 1,
+   "line": 84,
+   "message": "PressableScale is 32 x 32 pt, under 44 pt: add padding, or -exact-hit-slop=\"6px\" (grows the hit area, paints nothing)"
+  },
+  {
+   "file": "demos/audio-player/audio-player.contract",
+   "rule": "box-sizing-border-box",
+   "hash": "e6e884b65a",
+   "count": 1,
+   "line": 119,
+   "message": "width=art plus padding grows the box past art: content-box sizing adds them (the sudoku card was 422 pt on a 402 pt screen): add box-sizing=\"border-box\""
+  },
+  {
+   "file": "demos/chessboard/chessboard.contract",
+   "rule": "spring-consistency",
+   "hash": "33ae5c8abf",
+   "count": 1,
+   "line": 74,
+   "message": "ad-hoc spring (342, 30.3, 1) = 18.5 rad/s, damping ratio 0.82: use springBouncy() (250, 30, 1) from motion.contract, or comment the RN constants (mass, damping, stiffness) it copies"
+  },
+  {
+   "file": "demos/clerk-toast/clerk-toast.contract",
+   "rule": "corner-shape-continuous",
+   "hash": "cf11d029bd",
+   "count": 1,
+   "line": 170,
+   "message": "border-radius without corner-shape=\"-exact-continuous\": iOS rounds with squircles, a plain radius reads as a different shape"
+  },
+  {
+   "file": "demos/clerk-toast/clerk-toast.contract",
+   "rule": "native-overlay-pointer-events",
+   "hash": "90f18752f8",
+   "count": 1,
+   "line": 161,
+   "message": "variable-blur without pointer-events=\"none\": the native view takes the touches that belong to the boxes under it (liquid-glass-playground, variable-blur)"
+  },
+  {
+   "file": "demos/dot-sheet/dot-sheet.contract",
+   "rule": "stacked-haptic",
+   "hash": "d845e0822e",
+   "count": 1,
+   "line": 127,
+   "message": "submit plays haptic(\"success\") and is a PressableScale press: pressto's global haptic already plays on that press, so the two stack (toast, clerk-toast, floating-modal fixed exactly this)"
+  },
+  {
+   "file": "demos/expandable-mini-player/expandable-mini-player.contract",
+   "rule": "corner-shape-continuous",
+   "hash": "dba5f79cb6",
+   "count": 1,
+   "line": 223,
+   "message": "border-radius without corner-shape=\"-exact-continuous\": iOS rounds with squircles, a plain radius reads as a different shape"
+  },
+  {
+   "file": "demos/expandable-mini-player/expandable-mini-player.contract",
+   "rule": "corner-shape-continuous",
+   "hash": "92330d7072",
+   "count": 1,
+   "line": 253,
+   "message": "border-radius without corner-shape=\"-exact-continuous\": iOS rounds with squircles, a plain radius reads as a different shape"
+  },
+  {
+   "file": "demos/fibonacci-shader/fibonacci-shader.contract",
+   "rule": "box-sizing-border-box",
+   "hash": "cd94f60ef9",
+   "count": 1,
+   "line": 49,
+   "message": "width=floatingWidth(env.width, fibInset()) plus padding-left grows the box past floatingWidth(env.width, fibInset()): content-box sizing adds them (the sudoku card was 422 pt on a 402 pt screen): add box-sizing=\"border-box\""
+  },
+  {
+   "file": "demos/fibonacci-shader/fibonacci-shader.contract",
+   "rule": "corner-shape-continuous",
+   "hash": "ae0bd359bb",
+   "count": 1,
+   "line": 67,
+   "message": "border-radius without corner-shape=\"-exact-continuous\": iOS rounds with squircles, a plain radius reads as a different shape"
+  },
+  {
+   "file": "demos/online-offline/online-offline.contract",
+   "rule": "spring-consistency",
+   "hash": "44f23c7cbb",
+   "count": 1,
+   "line": 39,
+   "message": "ad-hoc spring (120, 20, 1) = 11.0 rad/s, damping ratio 0.91: use springSlow() (400, 80, 4) from motion.contract, or comment the RN constants (mass, damping, stiffness) it copies"
+  },
+  {
+   "file": "demos/route-alert.contract",
+   "rule": "box-sizing-border-box",
+   "hash": "bf55c8b1e3",
+   "count": 1,
+   "line": 49,
+   "message": "width=300 plus padding grows the box past 300: content-box sizing adds them (the sudoku card was 422 pt on a 402 pt screen): add box-sizing=\"border-box\""
+  },
+  {
+   "file": "demos/route-alert.contract",
+   "rule": "corner-shape-continuous",
+   "hash": "73b60f64b4",
+   "count": 1,
+   "line": 59,
+   "message": "border-radius without corner-shape=\"-exact-continuous\": iOS rounds with squircles, a plain radius reads as a different shape"
+  },
+  {
+   "file": "demos/route-alert.contract",
+   "rule": "corner-shape-continuous",
+   "hash": "4ba220d62f",
+   "count": 1,
+   "line": 63,
+   "message": "border-radius without corner-shape=\"-exact-continuous\": iOS rounds with squircles, a plain radius reads as a different shape"
+  },
+  {
+   "file": "demos/scroll-progress/scroll-progress.contract",
+   "rule": "concentric-bottom-ui",
+   "hash": "6e09eb4884",
+   "count": 1,
+   "line": 165,
+   "message": "bottom=4.66667 with border-radius=29.49: 4.66667 + 29.49 is 34.15667, not the display corner 62; use floatingInset(want, height) and concentricRadius(inset, height) from env.contract"
+  },
+  {
+   "file": "demos/scroll-progress/scroll-progress.contract",
+   "rule": "corner-shape-continuous",
+   "hash": "8d62125c1c",
+   "count": 1,
+   "line": 138,
+   "message": "border-radius without corner-shape=\"-exact-continuous\": iOS rounds with squircles, a plain radius reads as a different shape"
+  },
+  {
+   "file": "demos/scroll-progress/scroll-progress.contract",
+   "rule": "corner-shape-continuous",
+   "hash": "c50b2e9771",
+   "count": 1,
+   "line": 159,
+   "message": "border-radius without corner-shape=\"-exact-continuous\": iOS rounds with squircles, a plain radius reads as a different shape"
+  },
+  {
+   "file": "demos/scroll-progress/scroll-progress.contract",
+   "rule": "native-overlay-pointer-events",
+   "hash": "43808ec114",
+   "count": 1,
+   "line": 120,
+   "message": "variable-blur without pointer-events=\"none\": the native view takes the touches that belong to the boxes under it (liquid-glass-playground, variable-blur)"
+  },
+  {
+   "file": "demos/split-button/split-button.contract",
+   "rule": "corner-shape-continuous",
+   "hash": "f7715371d0",
+   "count": 2,
+   "line": 70,
+   "message": "border-radius without corner-shape=\"-exact-continuous\": iOS rounds with squircles, a plain radius reads as a different shape"
+  },
+  {
+   "file": "demos/split-button/split-button.contract",
+   "rule": "stacked-haptic",
+   "hash": "bec117fdaa",
+   "count": 1,
+   "line": 62,
+   "message": "pressLeft plays haptic(\"impact-soft\") and is a PressableScale press: pressto's global haptic already plays on that press, so the two stack (toast, clerk-toast, floating-modal fixed exactly this)"
+  },
+  {
+   "file": "demos/split-button/split-button.contract",
+   "rule": "stacked-haptic",
+   "hash": "bbfa0dce5c",
+   "count": 1,
+   "line": 83,
+   "message": "pressRight plays haptic(activated ? \"impact-soft\" : \"impact-light\") and is a PressableScale press: pressto's global haptic already plays on that press, so the two stack (toast, clerk-toast, floating-modal fixed exactly this)"
+  },
+  {
+   "file": "demos/sudoku/sudoku.contract",
+   "rule": "box-sizing-border-box",
+   "hash": "3cba2553d1",
+   "count": 1,
+   "line": 128,
+   "message": "width=sdkPadW(env.width) plus padding grows the box past sdkPadW(env.width): content-box sizing adds them (the sudoku card was 422 pt on a 402 pt screen): add box-sizing=\"border-box\""
+  },
+  {
+   "file": "demos/sudoku/sudoku.contract",
+   "rule": "box-sizing-border-box",
+   "hash": "bee1a62675",
+   "count": 1,
+   "line": 171,
+   "message": "width=46 plus border-width grows the box past 46: content-box sizing adds them (the sudoku card was 422 pt on a 402 pt screen): add box-sizing=\"border-box\""
+  },
+  {
+   "file": "demos/sudoku/sudoku.contract",
+   "rule": "exact-easing",
+   "hash": "33a7bc1a70",
+   "count": 1,
+   "line": 18,
+   "message": "cubic-bezier(0.455, 0.03, 0.515, 0.955) is 1.9 % off Reanimated's inOut(quad): use the linear() that `bun tools/easing.ts inOutQuad` prints"
+  },
+  {
+   "file": "demos/sudoku/sudoku.contract",
+   "rule": "spring-consistency",
+   "hash": "29e6073055",
+   "count": 1,
+   "line": 176,
+   "message": "ad-hoc spring (100, 10, 0.3) = 18.3 rad/s, damping ratio 0.91: use springBouncy() (250, 30, 1) from motion.contract, or comment the RN constants (mass, damping, stiffness) it copies"
+  },
+  {
+   "file": "demos/telegram-theme-switch/telegram-theme-switch.contract",
+   "rule": "box-sizing-border-box",
+   "hash": "df64b3f1d0",
+   "count": 1,
+   "line": 178,
+   "message": "height=76 plus border-bottom-width grows the box past 76: content-box sizing adds them (the sudoku card was 422 pt on a 402 pt screen): add box-sizing=\"border-box\""
+  },
+  {
+   "file": "demos/telegram-theme-switch/telegram-theme-switch.contract",
+   "rule": "box-sizing-border-box",
+   "hash": "1169bcd984",
+   "count": 1,
+   "line": 213,
+   "message": "width=barW plus padding grows the box past barW: content-box sizing adds them (the sudoku card was 422 pt on a 402 pt screen): add box-sizing=\"border-box\""
+  },
+  {
+   "file": "demos/telegram-theme-switch/telegram-theme-switch.contract",
+   "rule": "corner-shape-continuous",
+   "hash": "260799e9fd",
+   "count": 1,
+   "line": 131,
+   "message": "border-radius without corner-shape=\"-exact-continuous\": iOS rounds with squircles, a plain radius reads as a different shape"
+  },
+  {
+   "file": "demos/telegram-theme-switch/telegram-theme-switch.contract",
+   "rule": "corner-shape-continuous",
+   "hash": "ae830446a7",
+   "count": 1,
+   "line": 193,
+   "message": "border-radius without corner-shape=\"-exact-continuous\": iOS rounds with squircles, a plain radius reads as a different shape"
+  },
+  {
+   "file": "demos/telegram-theme-switch/telegram-theme-switch.contract",
+   "rule": "corner-shape-continuous",
+   "hash": "a83010bde1",
+   "count": 1,
+   "line": 226,
+   "message": "border-radius without corner-shape=\"-exact-continuous\": iOS rounds with squircles, a plain radius reads as a different shape"
+  },
+  {
+   "file": "demos/telegram-theme-switch/telegram-theme-switch.contract",
+   "rule": "corner-shape-continuous",
+   "hash": "55f4b1b4db",
+   "count": 1,
+   "line": 277,
+   "message": "border-radius without corner-shape=\"-exact-continuous\": iOS rounds with squircles, a plain radius reads as a different shape"
+  },
+  {
+   "file": "demos/telegram-theme-switch/telegram-theme-switch.contract",
+   "rule": "hairline-border",
+   "hash": "2cada8e898",
+   "count": 1,
+   "line": 179,
+   "message": "border-bottom-width=0.5 is a hand-picked hairline: use \"-exact-hairline\" (one device pixel on every screen)"
+  },
+  {
+   "file": "demos/verification-code-face/verification-code-face.contract",
+   "rule": "testid-on-interactive",
+   "hash": "19b8a24b7d",
+   "count": 1,
+   "line": 115,
+   "message": "row is interactive and has no testId or aria-label"
+  },
+  {
+   "file": "home/atlas.contract",
+   "rule": "box-sizing-border-box",
+   "hash": "dbe3267321",
+   "count": 1,
+   "line": 74,
+   "message": "width=(airW() * k) plus border-width grows the box past (airW() * k): content-box sizing adds them (the sudoku card was 422 pt on a 402 pt screen): add box-sizing=\"border-box\""
+  },
+  {
+   "file": "home/atlas.contract",
+   "rule": "box-sizing-border-box",
+   "hash": "faf2bd5c8c",
+   "count": 1,
+   "line": 126,
+   "message": "width=20 plus border-width grows the box past 20: content-box sizing adds them (the sudoku card was 422 pt on a 402 pt screen): add box-sizing=\"border-box\""
+  },
+  {
+   "file": "home/atlas.contract",
+   "rule": "box-sizing-border-box",
+   "hash": "482fd10aba",
+   "count": 1,
+   "line": 147,
+   "message": "width=12 plus border-width grows the box past 12: content-box sizing adds them (the sudoku card was 422 pt on a 402 pt screen): add box-sizing=\"border-box\""
+  },
+  {
+   "file": "home/atlas.contract",
+   "rule": "box-sizing-border-box",
+   "hash": "1a44e20b00",
+   "count": 1,
+   "line": 149,
+   "message": "width=260 plus padding grows the box past 260: content-box sizing adds them (the sudoku card was 422 pt on a 402 pt screen): add box-sizing=\"border-box\""
+  },
+  {
+   "file": "home/atlas.contract",
+   "rule": "box-sizing-border-box",
+   "hash": "0b85150bc5",
+   "count": 1,
+   "line": 402,
+   "message": "width=(airW() * scale) plus border-width grows the box past (airW() * scale): content-box sizing adds them (the sudoku card was 422 pt on a 402 pt screen): add box-sizing=\"border-box\""
+  },
+  {
+   "file": "home/atlas.contract",
+   "rule": "box-sizing-border-box",
+   "hash": "2d5fd026e7",
+   "count": 1,
+   "line": 443,
+   "message": "width=(airW() * focusScale) plus border-width grows the box past (airW() * focusScale): content-box sizing adds them (the sudoku card was 422 pt on a 402 pt screen): add box-sizing=\"border-box\""
+  },
+  {
+   "file": "home/atlas.contract",
+   "rule": "corner-shape-continuous",
+   "hash": "9a333aa5a0",
+   "count": 1,
+   "line": 150,
+   "message": "border-radius without corner-shape=\"-exact-continuous\": iOS rounds with squircles, a plain radius reads as a different shape"
+  },
+  {
+   "file": "home/atlas.contract",
+   "rule": "corner-shape-continuous",
+   "hash": "b7699b37fc",
+   "count": 1,
+   "line": 422,
+   "message": "border-radius without corner-shape=\"-exact-continuous\": iOS rounds with squircles, a plain radius reads as a different shape"
+  },
+  {
+   "file": "home/atlas.contract",
+   "rule": "min-touch-target",
+   "hash": "06fca1a45f",
+   "count": 1,
+   "line": 124,
+   "message": "button is 20 x 20 pt, under 44 pt: add padding, or -exact-hit-slop=\"12px\" (grows the hit area, paints nothing)"
+  },
+  {
+   "file": "home/demo-screen.contract",
+   "rule": "corner-shape-continuous",
+   "hash": "566facd9c0",
+   "count": 1,
+   "line": 70,
+   "message": "border-radius without corner-shape=\"-exact-continuous\": iOS rounds with squircles, a plain radius reads as a different shape"
+  }
+ ]
+}

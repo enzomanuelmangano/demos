@@ -1,0 +1,22 @@
+[package]
+name = "demos-apple"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+build = "build.rs"
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+exact-logic = { path = "../.exact/checkout/logic" }
+exact-apple = { path = "../.exact/checkout/host/apple" }
+exact-apple-update = { path = "../.exact/checkout/host/apple-update" }
+exact-js = { path = "../.exact/checkout/js" }
+
+[build-dependencies]
+exact-js-bake = { path = "../.exact/checkout/js/bake" }
+
+[dependencies.ibex2-sqlite]
+path = "../.exact/checkout/vendor/ibex/crates/ibex2-sqlite"

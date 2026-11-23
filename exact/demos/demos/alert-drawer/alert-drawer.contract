@@ -1,0 +1,129 @@
+// Alert Drawer: a red Continue pill that, tapped, opens a white card at the bottom of the screen
+// (an alert with an icon, a title, a description and Cancel). Cancel or the close button folds it back.
+// The card is an iOS 26 floating sheet: 10 pt from the sides and the bottom, continuous, and
+// concentric with the display. Its capsule buttons share the card corner's centre.
+// The card and a scrim rise on a critically damped spring. Only translates are animated, and the
+// Continue pill narrows into the card's Continue place.
+use PressableScale, PressableScaleLayout from "pressto"
+use DemoEnv, floatingWidth, concentricInset, concentricRadius from "../env.contract"
+use PillFill from "../pill-fill.contract"
+
+// Honk has one face, so the bold weight draws the same face.
+fn buttonWidth(w: number): number = w * 0.82
+fn minButtonWidth(w: number): number = (floatingWidth(w, btnInset()) - 12) / 2
+// The 50 pt capsule buttons: btnInset() from the display, btnPad() from the card.
+fn btnInset(): number = concentricInset(50)
+fn btnPad(): number = btnInset() - 10
+fn cardWidth(w: number): number = w * 0.9
+fn inset(w: number): number = (cardWidth(w) - buttonWidth(w)) / 2
+
+// The expansion progress is a critically damped 400 ms spring. The content fades in late, out
+// early, and drops on progress², the spring squared. That is not a spring, so its curve is sampled as linear() stops.
+keyframes contentIn
+  from opacity=0
+  to opacity=1
+keyframes contentOut
+  from opacity=1
+  to opacity=0
+keyframes dropIn
+  from translate="0px 0px"
+  to translate="0px 10px"
+keyframes dropOut
+  from translate="0px 10px"
+  to translate="0px 0px"
+fn squaredIn(): string = "600ms linear(0, 0.009, 0.0759, 0.2093, 0.3725, 0.5301, 0.6629, 0.7657, 0.8409, 0.8939, 0.9301, 0.9545, 0.9706, 0.9811, 0.9879, 0.9923, 0.9952, 0.9969, 0.9981, 0.9988, 0.9992, 0.9995, 0.9997, 0.9998, 1) both"
+fn squaredOut(): string = "600ms linear(0, 0.1808, 0.4751, 0.7056, 0.8482, 0.9261, 0.9655, 0.9844, 0.9931, 0.997, 0.9987, 0.9995, 0.9998, 0.9999, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1) both"
+
+// Critically damped, 400 ms.
+fn drawerSpring(): string = "-exact-spring(1699.5858, 164.9042, 4)"
+
+component AlertDrawer
+  props
+    env: DemoEnv
+  state isExpanded = false
+  // Nothing plays before the first tap.
+  state toggles = 0
+  derive w = env.width
+  action toggleExpansion
+    isExpanded = not isExpanded
+    toggles = toggles + 1
+  // A tap on the scrim folds it back.
+  action fold
+    if isExpanded
+      isExpanded = false
+      toggles = toggles + 1
+  // The pill expands the card when folded. Expanded, it does nothing.
+  action pressMain
+    if not isExpanded
+      isExpanded = true
+      toggles = toggles + 1
+  view
+    column position="absolute" inset=0 background-color="#ffffff" testId="alert-drawer"
+      // The scrim rises and falls on the card's spring.
+      view position="absolute" inset=0 background-color="rgba(0, 0, 0, 0.2)"
+        opacity=(isExpanded ? 1 : 0) transition=`opacity ${drawerSpring()}`
+        pointer-events=(isExpanded ? "auto" : "none") press=fold aria-hidden=true testId="scrim"
+      // The card grows out of the Continue pill. Folded, it is the pill's frame (btnInset() from the
+      // sides and the bottom, 50 pt tall, the pill's corner) and sits under the pill; expanded, it is
+      // the 311 pt floating sheet (the 300 pt content plus the 11 pt the concentric buttons rise).
+      // Its frame and corner ride the pill's spring. It is white like the page, so folded it
+      // cannot be told from it under the pill. Its content keeps the sheet's size and is clipped
+      // by the growing frame.
+      column position="absolute" overflow="hidden" corner-shape="-exact-continuous" background-color="#ffffff"
+        left=(isExpanded ? 10 : btnInset()) bottom=(isExpanded ? 10 : btnInset())
+        width=(isExpanded ? floatingWidth(w, 10) : floatingWidth(w, btnInset()))
+        height=(isExpanded ? 311 : 50)
+        border-radius=(isExpanded ? concentricRadius(10, 311) : concentricRadius(btnInset(), 50))
+        box-shadow=(isExpanded ? "0px 2px 30px rgba(0, 0, 0, 0.1)" : "0px 0px 0px rgba(0, 0, 0, 0)")
+        -exact-layout-transition=drawerSpring()
+        transition=`border-radius ${drawerSpring()}, box-shadow ${drawerSpring()}`
+        pointer-events=(isExpanded ? "auto" : "none") aria-hidden=(not isExpanded) testId="card"
+        column position="absolute" left=0 bottom=0 width=floatingWidth(w, 10) height=311
+          box-sizing="border-box" padding=16 -exact-layout-transition=drawerSpring()
+          opacity=(isExpanded ? 1 : 0)
+          animation=(toggles == 0 ? "none" : (isExpanded ? "contentIn 200ms ease-out 100ms both" : "contentOut 90ms ease-in both"))
+          // The top part drops by 10 pt on progress².
+          column flex=1 testId="card-content"
+            column animation=(toggles == 0 ? "none" : (isExpanded ? `dropIn ${squaredIn()}` : `dropOut ${squaredOut()}`))
+              translate=(isExpanded ? "0px 10px" : "0px 0px")
+              row
+                image "symbol:icon.exclamationmark-circle" font-size=48 color="color(display-p3 0.9412 0.1294 0.1686)" aria-hidden=true
+                view flex=1
+                // The close button: a 50 pt hit area around a 32 pt disc.
+                view display="flex" flex-direction="column" width=50 height=50 align-items="center" justify-content="center"
+                  view width=32 height=32
+                    PressableScale(press=toggleExpansion)
+                      row aria-label="Close" testId="close-card" width=32 height=32 border-radius=16 text-align="center"
+                        background-color="color(display-p3 0.9725 0.9725 0.9804)" align-items="center"
+                        justify-content="center"
+                        image "symbol:icon.xmark" font-size=14 color="color(display-p3 0.6314 0.6275 0.6353)"
+              column margin-top=8 padding=8
+                text "Are you sure?" font-family="Honk-Regular" font-size=20
+                  letter-spacing=0.5 color="#000000" testId="card-title"
+                text "You haven't backed up your wallet yet. If you remove it, you could lose access forever. We suggest tapping Cancel and backing up your wallet first with a valid recovery method."
+                  font-family="Honk-Regular" font-size=15 letter-spacing=0.5 margin-top=8
+                  color="#999999"
+            // Cancel: a capsule, btnPad() from the card's left and bottom, so concentric with it.
+            view position="absolute" left=btnPad() bottom=btnPad() width=minButtonWidth(w) height=50
+              display="flex" flex-direction="column"
+              PressableScale(press=toggleExpansion)
+                row testId="cancel" height=50 text-align="center"
+                  border-radius=concentricRadius(btnInset(), 50) corner-shape="-exact-continuous"
+                  background-color="#dfdfdf" padding-left=20 padding-right=20 box-sizing="border-box"
+                  align-items="center" justify-content="center"
+                  text "Cancel" font-family="Honk-Regular" font-size=16 color="#111111"
+      // The Continue pill: btnInset() from the right and the bottom, which is where the card's
+      // Continue lands. It narrows to the card's button width when expanded.
+      view position="absolute" right=btnInset() bottom=btnInset()
+        width=(isExpanded ? minButtonWidth(w) : floatingWidth(w, btnInset())) height=50
+        display="flex" flex-direction="column" z-index=2
+        -exact-layout-transition=drawerSpring()
+        PressableScaleLayout(press=pressMain, layout=drawerSpring())
+          row testId="continue" height=50 text-align="center" position="relative"
+            padding-left=20 padding-right=20 box-sizing="border-box" align-items="center"
+            justify-content="center" -exact-layout-transition=drawerSpring()
+            // The fill is PillFill. Its cap is 40, past the corner's reach of 38.
+            PillFill(color="color(display-p3 0.9412 0.1294 0.1686)", radius=concentricRadius(btnInset(), 50), cap=40,
+              spring=drawerSpring())
+            text "Continue" font-family="Honk-Regular" font-size=16 color="#ffffff"
+              -exact-layout-transition=drawerSpring()

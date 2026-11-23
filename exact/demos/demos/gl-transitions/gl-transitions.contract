@@ -1,0 +1,87 @@
+// GL Transitions: a notes list whose new-note screen slides up from the + and leaves through a
+// GL transition between snapshots of the two screens. The check prepends the note; an empty one
+// asks for text first. The canvas draws everything; the text field is a real input mounted over it.
+use DemoEnv, demoButtonRow from "../env.contract"
+use RouteAlert from "../route-alert.contract"
+
+// Top of the note field: the row, the card's padding, and the label above the input.
+fn fieldTop(safeTop: number): number = safeTop + demoButtonRow() + 48 + 16 + 16 + 8 + 14.333 + 4 + 16
+// With the glass header, the card starts 16 under the glass row.
+fn fieldTopGlass(safeTop: number): number = safeTop + 48 + 16 + 16 + 8 + 14.333 + 4 + 16
+
+component GlTransitions
+  props
+    env: DemoEnv
+  // While the note screen is up, the demo's close button acts as its Back.
+  inject
+    demoSubpage: action
+    demoBackChrome: bool
+    demoBacks: number
+  // The note text, whether the field is mounted, and whether the transition's canvas covers it.
+  state text = ""
+  state field = false
+  state veiled = false
+  // Drawn in the route: a native dialog is never shown there.
+  state empty = false
+  // Set once the surface takes the glass Back.
+  state glassReady = false
+  // Set once the surface draws the glass header; the titles then sit on that row.
+  state glassHeader = false
+  state adds = 0
+  state checks = 0
+  action addPressed
+    haptic("selection")
+    adds = adds + 1
+  action checkPressed
+    haptic("selection")
+    checks = checks + 1
+  action emptySeen
+    empty = false
+  action heard(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "glass-back"
+      glassReady = true
+    if m == "glass-header"
+      glassHeader = true
+    if m == "presented"
+      field = true
+      veiled = false
+      if glassReady
+        demoSubpage("#gl-transitions")
+    if m == "alert"
+      empty = true
+    if m == "transition"
+      veiled = true
+    // Dismissed: the field and its keyboard go with the screen.
+    if m == "dismiss"
+      field = false
+      veiled = false
+      text = ""
+      demoSubpage("")
+  action typed(v: string)
+    text = v
+  view
+    column position="absolute" inset=0 background-color="#f0f0f0" testId="gl-transitions"
+      canvas surface=gl_transitions(env.safeTop, env.safeBottom, text, field, demoBacks, demoBackChrome, adds, checks) message=heard
+        position="absolute" top=0 left=0 width=env.width height=env.height touch-action="none"
+        aria-label="Notes: + adds a note; the new note screen has close and save"
+        testId="gl-transitions-canvas"
+      if field
+        input id="note-input" value=text input=typed placeholder="Write your ideas here..."
+          position="absolute" left=24 top=(glassHeader ? fieldTopGlass(env.safeTop) : fieldTop(env.safeTop)) width=(env.width - 48) height=24
+          font-size=20 color="#333333" caret-color="color(display-p3 0.92157 0.39216 0.22353)"
+          background-color="transparent" border="none" padding=0 outline="none"
+          opacity=(veiled ? 0 : 1) aria-label="Note" testId="note-input"
+      // Glass header controls: + on the notes, the check on the new note, on the demo screen's row.
+      if glassHeader and demoBackChrome
+        if field
+          glass-button press=checkPressed caption="Save" symbol="checkmark" edge="trailing"
+            aria-label="Save" testId="gl-glass-check" position="absolute" top=env.safeTop right=72 width=48 height=48
+        else
+          glass-button press=addPressed caption="Add note" symbol="plus" edge="trailing"
+            aria-label="Add note" testId="gl-glass-add" position="absolute" top=env.safeTop right=72 width=48 height=48
+      // The Empty Note alert's one OK button.
+      RouteAlert(shown=empty, title="Empty Note", message="Please write something before saving",
+        cancelLabel="", confirm="OK", destructive=false, dismiss=emptySeen, accept=emptySeen,
+        testId="empty-note")

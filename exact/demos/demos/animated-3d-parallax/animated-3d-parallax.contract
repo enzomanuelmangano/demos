@@ -1,0 +1,9 @@
+// Animated 3D Parallax: a 300 pt card that tilts in 3D toward the finger. Its logo tilts after it
+// on a looser spring, so the logo lags behind the card. The card, logo, pan and springs are a
+// Rust surface (gpu/src/animated_3d_parallax.rs).
+
+component Animated3dParallax
+  view
+    canvas surface=animated_3d_parallax() position="absolute" top=0 left=0 width="100%" height="100%"
+      background-color="color(display-p3 0.0902 0.1255 0.1647)" touch-action="none" testId="parallax-canvas"
+      aria-label="Card: drag to tilt"

@@ -1,0 +1,47 @@
+// GitHub Contributions: a GitHub-style contribution calendar with a random level per day; a tap
+// sweeps every square from grey to its green, and a second tap puts them back.
+use PressableScale from "pressto"
+use DemoEnv, roll from "../env.contract"
+
+// The calendar spans the days that fit the width, ending on the day the demo opened.
+fn dayCount(w: number): number = floor(w * 0.9 / 3)
+// Days since 1970-01-01, in local time.
+fn today(env: DemoEnv): number = floor((env.epoch + env.utcOffset * 60000) / 86400000)
+// Weeks start on Monday (0); 1970-01-01 was a Thursday.
+fn weekday(d: number): number = (d + 3) % 7
+fn firstDay(env: DemoEnv): number = today(env) - (dayCount(env.width) - 1)
+fn calendarStart(env: DemoEnv): number = firstDay(env) - weekday(firstDay(env))
+fn weekCount(env: DemoEnv): number = (today(env) + 6 - weekday(today(env)) - calendarStart(env) + 1) / 7
+// Range ends are UTC midnights while days are local: east of UTC the first day is left empty,
+// west of UTC the last one is.
+fn inRange(env: DemoEnv, d: number): bool = (d > firstDay(env) or (d == firstDay(env) and env.utcOffset <= 0)) and (d < today(env) or (d == today(env) and env.utcOffset >= 0))
+// A random level from 0 to 4 per day.
+fn levelOf(env: DemoEnv, d: number): number = roll(env.seed, d - firstDay(env), 5)
+
+// One character per calendar day, week by week from Monday: its level, or `.` outside the range.
+fn levelsOf(env: DemoEnv): string = range(weekCount(env) * 7).map(i => inRange(env, calendarStart(env) + i) ? `${levelOf(env, calendarStart(env) + i)}` : ".").join("")
+
+component GithubContributions
+  props
+    env: DemoEnv
+  // The surface starts the sweep on an odd press and resets it on an even one.
+  state presses = 0
+  derive weeks = weekCount(env)
+  action toggleAnimation
+    presses = presses + 1
+  view
+    column position="absolute" inset=0 background-color="#f7f7f7" align-items="center"
+      justify-content="center" testId="github-contributions"
+      PressableScale(press=toggleAnimation)
+        column testId="calendar-press" aria-label="Animate the contributions" flex-grow=1 text-align="center"
+          align-items="center" justify-content="center"
+          column background-color="#ffffff" border-radius=16 corner-shape="-exact-continuous"
+            box-shadow="0px 0px 20px 0px rgba(0, 0, 0, 0.05)" padding=16 testId="calendar"
+            row align-items="flex-start"
+              column justify-content="flex-start" margin-right=8
+                for day in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] key=day
+                  // Sits one device pixel lower to match the native text.
+                  text day color="color(display-p3 0.3961 0.4275 0.4627)" font-family="regular" font-size=11
+                    height=14 margin-bottom=3 text-align="left" width=25 position="relative" top=0.5
+              canvas surface=github_contributions(levelsOf(env), presses, env.seed) width=(weeks * 17)
+                height=119 pointer-events="none" testId="grid" aria-hidden=true

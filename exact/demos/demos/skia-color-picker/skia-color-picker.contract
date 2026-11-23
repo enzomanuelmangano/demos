@@ -1,0 +1,21 @@
+// Skia color picker: a hue/saturation wheel the width of the screen, with a soft halo. A drop-shaped
+// picker follows the finger, clamped to the wheel and filled with the colour under its tip.
+// Drawn in Rust (gpu/src/skia_color_picker.rs).
+use DemoEnv from "../env.contract"
+
+component SkiaColorPicker
+  props
+    env: DemoEnv
+  // Light on grab, selection per 30 degrees of hue, rigid when the finger leaves the rim.
+  action heard(m: string)
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-rigid"
+      haptic("impact-rigid")
+  view
+    column position="absolute" inset=0 background-color="color(display-p3 0 0 0)" align-items="center"
+      justify-content="center" testId="skia-color-picker"
+      canvas surface=skia_color_picker() message=heard width=env.width height=env.width flex-shrink=0
+        touch-action="none" testId="skia-color-picker-canvas" aria-label="Colour wheel"

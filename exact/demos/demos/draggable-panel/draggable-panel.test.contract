@@ -1,0 +1,4 @@
+at "/demo/draggable-panel"
+
+test "the panel is there"
+  expect tree has "draggable-panel"

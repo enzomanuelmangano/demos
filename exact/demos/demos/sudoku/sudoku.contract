@@ -1,0 +1,208 @@
+// Sudoku: a title over a card. The card holds a Start Game button; started, it holds the board
+// and, after a moment, a number pad with Undo and Notes under it, and New Game sits under the
+// title. A cell selects, a pad key fills it, the title solves the board, New Game asks first.
+// The board is a canvas surface (gpu/src/sudoku.rs) that also plays the haptics; the gradient
+// behind everything is another, and a third over everything throws the confetti when the board is
+// solved (by the title or by hand): each `solved` the board posts raises `burst`. The pad sends each press as `cmd` plus a new `token` (1-9 a
+// digit, 10 Erase, 11 Undo, 12 solve).
+use DemoEnv from "../env.contract"
+use RouteAlert from "../route-alert.contract"
+use PressableScale from "pressto"
+
+// The board is the width less 48, at most 400; the card is at least the content's width and wide
+// enough for the board; the pad leaves its room to the sides.
+fn sdkBoard(w: number): number = min(w - 48, 400)
+fn sdkCardW(w: number): number = max(w - 40, sdkBoard(w) + 34)
+fn sdkPadW(w: number): number = min(w - 74, 400)
+// How many of this digit are left to place. Empty until the surface reports it.
+fn sdkDone(remain: string, d: number): bool = remain != "" and remain.slice(d - 1, d) == "0"
+fn sdkEase(): string = "cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+fn sdkSlide(): string = `300ms ${sdkEase()}`
+
+keyframes sdkFade
+  from opacity=0
+  to opacity=1
+keyframes sdkRise
+  from opacity=0 translate="0px 25px"
+  to opacity=1 translate="0px 0px"
+
+component Sudoku
+  props
+    env: DemoEnv
+  state started = false
+  // Each New Game is a new seed, so a new board canvas.
+  state games = 0
+  // The pad's last press: its command, and a token that changes with every press.
+  state cmd = 0
+  state token = 0
+  state notes = false
+  // Reported by the surface: the pad's appearance, the selected number, each number's count
+  // left to place.
+  state padReady = false
+  state lit = 0
+  state remain = ""
+  state asking = false
+  state genius = false
+  // Raised on each solved board: the confetti surface throws a new burst per rise.
+  state burst = 0
+  action heard(m: string)
+    if m.startsWith("remain:")
+      remain = m.slice(7)
+    if m.startsWith("hl:")
+      lit = match parseNumber(m.slice(3)) { case some(n) => n, case none => lit }
+    if m == "pad"
+      padReady = true
+    if m == "solved"
+      burst = burst + 1
+    if m == "alert:genius"
+      genius = true
+    // Haptics: the host plays these only where the surface cannot.
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+    if m == "haptic:impact-medium"
+      haptic("impact-medium")
+    if m == "haptic:impact-heavy"
+      haptic("impact-heavy")
+    if m == "haptic:success"
+      haptic("success")
+    if m == "haptic:error"
+      haptic("error")
+  action start
+    started = true
+  // The surface plays the haptic once it knows what the entry did, so the press plays none.
+  action send(c: number)
+    cmd = c
+    token = token + 1
+  action solve
+    if started
+      cmd = 12
+      token = token + 1
+  action toggleNotes
+    notes = not notes
+  action askNewGame
+    asking = true
+  // Back to the Start Game card, with a new puzzle for the next start.
+  action reset
+    started = false
+    padReady = false
+    notes = false
+    lit = 0
+    remain = ""
+    games = games + 1
+  action newGame
+    asking = false
+    reset()
+  action keepGame
+    asking = false
+  action geniusOk
+    genius = false
+    reset()
+  view
+    column position="absolute" inset=0 background-color="#0A1222" testId="sudoku"
+      canvas surface=sudoku_backdrop() position="absolute" top=0 left=0 width=env.width height=env.height
+        pointer-events="none" aria-hidden=true
+      column position="absolute" inset=0 align-items="center" justify-content="center" padding=20
+        column align-items="center" margin-bottom=48 animation=`sdkFade 1000ms ${sdkEase()} both`
+          -exact-layout-transition=sdkSlide() testId="sudoku-header"
+          PressableScale(press=solve)
+            text "Sudoku" font-size=40 font-weight=700 letter-spacing=1 text-transform="uppercase"
+              color="#FAFAFA" testId="sudoku-title"
+          text "Challenge your mind" font-size=15 letter-spacing=0.3 margin-top=6 color="#94A3B8"
+          if started
+            view margin-top=16 animation=`sdkFade 400ms ${sdkEase()} both`
+              SudokuButton(title="New Game", press=askNewGame, testId="sudoku-new-game", filled=false,
+                size=14, padX=12, padY=6, minW=64)
+        column width=sdkCardW(env.width) min-height=160 padding=16 box-sizing="border-box" align-items="center"
+          justify-content="center" background-color="#121D33" border-radius=16
+          corner-shape="-exact-continuous" border-width=1 border-style="solid"
+          border-color="rgba(148, 163, 184, 0.25)" box-shadow="0px 3px 6px rgba(0, 0, 0, 0.23)"
+          overflow="hidden" -exact-layout-transition=sdkSlide() testId="sudoku-card"
+          if started
+            column align-items="center" justify-content="center"
+              animation=`sdkFade 800ms ${sdkEase()} both` testId="sudoku-play"
+              view width=sdkBoard(env.width) height=sdkBoard(env.width) flex-shrink=0
+                animation=`sdkRise 200ms ${sdkEase()} both`
+                canvas surface=sudoku(env.seed + games, cmd, token, notes ? 1 : 0)
+                  width=sdkBoard(env.width) height=sdkBoard(env.width) flex-shrink=0
+                  touch-action="none" message=heard testId="sudoku-canvas"
+                  aria-label="Sudoku board: tap a cell, then a number"
+              if padReady
+                row flex-wrap="wrap" gap=10 justify-content="center" margin-top=32 padding=12
+                  width=sdkPadW(env.width) testId="sudoku-keys"
+                  for d in [1, 2, 3, 4, 5, 6, 7, 8, 9] key=d
+                    SudokuKey(press=send(d), label=`${d}`, testId=`sudoku-key-${d}`, lit=(lit == d),
+                      gone=sdkDone(remain, d))
+                      text `${d}` font-size=18 font-weight=500 color=(lit == d ? "#60A5FA" : "#FFFFFF")
+                  SudokuKey(press=send(10), label="Erase", testId="sudoku-erase", lit=false, gone=false)
+                    image "symbol:icon.delete-left" font-size=20 color="#E2E8F0" aria-hidden=true
+                row gap=10 align-items="center" justify-content="center"
+                  SudokuButton(title="Undo", press=send(11), testId="sudoku-undo", filled=false,
+                    size=14, padX=12, padY=6, minW=88)
+                  SudokuButton(title=(notes ? "Notes On" : "Notes"), press=toggleNotes, testId="sudoku-notes",
+                    filled=notes, size=14, padX=12, padY=6, minW=88)
+          else
+            column align-items="center" padding=24
+              SudokuButton(title="Start Game", press=start, testId="sudoku-start", filled=true,
+                size=16, padX=20, padY=10, minW=200)
+      canvas surface=sudoku_confetti(burst) position="absolute" top=0 left=0 width=env.width height=env.height
+        pointer-events="none" aria-hidden=true testId="sudoku-confetti"
+      RouteAlert(shown=asking, title="New Game",
+        message="Are you sure you want to start a new game? Your current progress will be lost.",
+        cancelLabel="Cancel", confirm="New Game", destructive=true, dismiss=keepGame, accept=newGame,
+        testId="new-game-alert")
+      RouteAlert(shown=genius, title="Genius!", message="Ready for another challenge?",
+        cancelLabel="", confirm="OK", destructive=false, dismiss=geniusOk, accept=geniusOk,
+        testId="genius-alert")
+
+// A pad key: 46 square, lit while it is the selected number, dimmed once none is left to place.
+component SudokuKey
+  props
+    press: action
+    label: string
+    testId: string
+    lit: bool
+    gone: bool
+  slot
+  state pressing = false
+  action pressIn
+    pressing = true
+    stopPropagation()
+  action pressOut
+    pressing = false
+  action pressed
+    press()
+  view
+    view role="button" aria-label=label testId=testId press=pressed pointerdown=pressIn
+      pointerup=pressOut width=46 height=46 display="flex" flex-direction="column"
+      align-items="center" justify-content="center" border-radius=12 corner-shape="-exact-continuous"
+      border-width=1 border-style="solid"
+      border-color=(lit ? "#3B82F6" : "rgba(148, 163, 184, 0.25)")
+      background-color=(lit ? "rgba(59, 130, 246, 0.35)" : "#121D33")
+      scale=(pressing ? 0.95 : 1) transition="scale -exact-spring(100, 10, 0.3)"
+      opacity=(gone ? 0.3 : 1) pointer-events=(gone ? "none" : "auto") aria-hidden=gone
+      children
+
+// A button: outlined, or filled blue.
+component SudokuButton
+  props
+    title: string
+    press: action
+    testId: string
+    filled: bool
+    size: number
+    padX: number
+    padY: number
+    minW: number
+  view
+    view align-self="flex-start" min-width=minW border-radius=10 corner-shape="-exact-continuous"
+      overflow="hidden" box-shadow="0px 2px 6px rgba(0, 0, 0, 0.08)"
+      background-color=(filled ? "rgba(59, 130, 246, 0.03)" : "rgba(0, 0, 0, 0)")
+      PressableScale(press=press)
+        row align-items="center" justify-content="center" gap=8 padding=`${padY}px ${padX}px`
+          border-radius=10 corner-shape="-exact-continuous" testId=testId aria-label=title
+          background-color=(filled ? "#3B82F6" : "rgba(0, 0, 0, 0)")
+          border-width=(filled ? 0 : 1) border-style="solid" border-color="rgba(148, 163, 184, 0.25)"
+          text title font-size=size font-weight=500 letter-spacing=0.2
+            color=(filled ? "#FAFAFA" : "#E2E8F0") testId=`${testId}-label`

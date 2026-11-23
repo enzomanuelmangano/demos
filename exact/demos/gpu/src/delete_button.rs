@@ -1,0 +1,410 @@
+//! Delete Button: a red "Delete" pill that, tapped, slides left, turns black and reads "Confirm",
+//! while a black close circle slides out of its right end. The circle's "X" puts it back.
+//!
+//! - The pill and circle merge into one gooey shape. It is drawn analytically in one pass: the
+//!   blur threshold is solved per pixel, so the edge is one pixel of antialiasing, not a grey rim.
+//! - Hit testing uses the shapes' current animated positions. The pill is registered first, so it
+//!   wins where the two overlap.
+//! - A press shrinks the touched shape to 0.95 on a spring. Every animated value starts from where
+//!   it is, so a tap mid-animation reverses smoothly.
+//! - Haptics: a selection on each tap that lands on a shape.
+
+use exact_gpu::wgpu;
+use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
+use gestures::{Event, Phase, TapGesture};
+use motion::{Easing, Spring, Timing, GENTLE};
+use draw2d::{Color, Font, Matrix, Paint, Path};
+
+use crate::gooey::ColorTiming;
+use crate::{gfx, shaders};
+use shaders::delete_button::{entry, module, Uniforms, GROUP_0, TOP, U};
+
+/// Pill width, pt.
+const WIDTH: f32 = 150.0;
+/// Pill height, pt.
+const HEIGHT: f32 = 50.0;
+/// Extra width on the right, for the close circle, pt.
+const ADDITIONAL: f32 = 80.0;
+/// Pill corner radius, pt.
+const RECT_RADIUS: f32 = 20.0;
+/// Label font size, pt.
+const FONT_SIZE: f32 = 14.0;
+/// Length of each cross bar, pt.
+const BAR_LENGTH: f32 = 12.0 * std::f32::consts::SQRT_2 + 2.0;
+/// Thickness of each cross bar, pt.
+const BAR_THICKNESS: f32 = 2.0;
+/// Button labels.
+const DELETE: &str = "Delete";
+const CONFIRM: &str = "Confirm";
+/// Blur sigma, pt.
+const SIGMA: f32 = 10.0;
+/// Blurred alpha at the layer's edge: (0.5 + 10) / 18.
+const THRESHOLD: f32 = 10.5 / 18.0;
+const RED: [u8; 3] = [255, 0, 0];
+const BLACK: [u8; 3] = [0, 0, 0];
+/// Helvetica Bold, subset to the labels.
+static HELVETICA_BOLD: &[u8] = include_bytes!("../fonts/helvetica-bold-subset.ttf");
+
+/// The demo's surface.
+pub fn surface() -> Box<dyn Surface> {
+    // Tap: 500 ms, no distance limit.
+    let tap = TapGesture::default();
+    let font = Font::new(HELVETICA_BOLD, FONT_SIZE);
+    let widths = font.as_ref().map_or((0.0, 0.0), |f| (f.measure_text(DELETE).width, f.measure_text(CONFIRM).width));
+    Box::new(DeleteButton {
+        font,
+        widths,
+        cross: cross_path(),
+        toggled: false,
+        rect_x: Spring::at((ADDITIONAL / 2.0) as f64),
+        color: ColorTiming::at(RED),
+        scale: Spring::at(1.0),
+        close_x: Spring::at((WIDTH / 2.0 + ADDITIONAL / 2.0) as f64),
+        close_opacity: Timing::at(0.0),
+        close_scale: Spring::at(1.0),
+        delete_opacity: Timing::at(1.0),
+        confirm_opacity: Timing::at(0.0),
+        finger: None,
+        tap,
+        melt: Melt::default(),
+        posted: Vec::new(),
+    })
+}
+
+/// The two bars of the close icon, centred on the origin, as one path.
+fn cross_path() -> Path {
+    let bar = draw2d::rrect_path(-BAR_LENGTH / 2.0, -BAR_THICKNESS / 2.0, BAR_LENGTH, BAR_THICKNESS, BAR_THICKNESS / 2.0);
+    let a = draw2d::transform_path(&bar, &Matrix::rotate(std::f32::consts::FRAC_PI_4));
+    let b = draw2d::transform_path(&bar, &Matrix::rotate(-std::f32::consts::FRAC_PI_4));
+    let mut builder = Path::builder();
+    builder.extend_from_paths(&[a.as_slice(), b.as_slice()]);
+    builder.build()
+}
+
+/// The shape a touch belongs to.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Shape {
+    Rect,
+    Circle,
+}
+
+struct DeleteButton {
+    font: Option<Font>,
+    /// Label widths, for centring.
+    widths: (f32, f32),
+    cross: Path,
+    /// Whether the button shows Confirm.
+    toggled: bool,
+    /// Pill's left edge, pt.
+    rect_x: Spring,
+    /// Pill colour, red or black.
+    color: ColorTiming,
+    /// Pill scale while pressed.
+    scale: Spring,
+    /// Close circle's centre x, pt.
+    close_x: Spring,
+    close_opacity: Timing,
+    /// Close circle's scale while pressed.
+    close_scale: Spring,
+    delete_opacity: Timing,
+    confirm_opacity: Timing,
+    /// The pressing finger, and the shape it landed on.
+    finger: Option<(u32, Option<Shape>)>,
+    tap: TapGesture,
+    melt: Melt,
+    /// Haptics for the app to play.
+    posted: Vec<String>,
+}
+
+impl DeleteButton {
+    /// The first registered shape whose path holds (x, y), at its props' current values.
+    fn shape_at(&self, x: f32, y: f32) -> Option<Shape> {
+        if in_rrect(x, y, self.rect_x.value as f32, 0.0, WIDTH, HEIGHT, RECT_RADIUS) {
+            return Some(Shape::Rect);
+        }
+        let cx = self.close_x.value as f32;
+        if (x - cx).hypot(y - HEIGHT / 2.0) <= HEIGHT / 2.0 {
+            return Some(Shape::Circle);
+        }
+        None
+    }
+
+    fn press(&mut self, shape: Shape, pressed: bool) {
+        let s = match shape {
+            Shape::Rect => &mut self.scale,
+            Shape::Circle => &mut self.close_scale,
+        };
+        s.retarget(if pressed { 0.95 } else { 1.0 }, GENTLE);
+    }
+
+    fn toggle(&mut self, on: bool) {
+        if self.toggled == on {
+            return;
+        }
+        self.toggled = on;
+        self.rect_x.retarget(if on { 0.0 } else { (ADDITIONAL / 2.0) as f64 }, GENTLE);
+        self.color.to(if on { BLACK } else { RED }, 300.0);
+        self.close_x.retarget((if on { WIDTH + ADDITIONAL / 2.0 } else { WIDTH / 2.0 + ADDITIONAL / 2.0 }) as f64, GENTLE);
+        let (one, zero) = if on { (1.0, 0.0) } else { (0.0, 1.0) };
+        self.close_opacity.to(one, 300.0, Easing::timing_default());
+        self.delete_opacity.to(zero, 300.0, Easing::timing_default());
+        self.confirm_opacity.to(one, 300.0, Easing::timing_default());
+    }
+}
+
+/// Whether (x, y) is inside the rounded rect (Skia's `contains` of an `addRRect` path).
+fn in_rrect(x: f32, y: f32, rx: f32, ry: f32, w: f32, h: f32, r: f32) -> bool {
+    if x < rx || x > rx + w || y < ry || y > ry + h {
+        return false;
+    }
+    let r = r.min(w / 2.0).min(h / 2.0);
+    let cx = x.clamp(rx + r, rx + w - r);
+    let cy = y.clamp(ry + r, ry + h - r);
+    (x - cx).hypot(y - cy) <= r
+}
+
+/// The gooey layer's shapes and what is drawn over them, and their GPU state (kept between frames).
+#[derive(Default)]
+struct Melt {
+    /// What the canvas draws after the layer (the labels, the cross), recorded each frame.
+    top: draw2d::Canvas,
+    renderer: draw2d::Renderer,
+    gpu: Option<MeltGpu>,
+}
+
+struct MeltGpu {
+    format: wgpu::TextureFormat,
+    generation: u32,
+    pixels: (u32, u32),
+    pipeline: wgpu::RenderPipeline,
+    uniforms: wgpu::Buffer,
+    top: wgpu::TextureView,
+    bind: wgpu::BindGroup,
+}
+
+impl Melt {
+    #[allow(clippy::too_many_arguments)]
+    fn draw(&mut self, frame: &Frame, device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut wgpu::CommandEncoder, target: &wgpu::TextureView, format: wgpu::TextureFormat, uniforms: &Uniforms) {
+        let (pw, ph) = frame.pixels();
+        if self.gpu.as_ref().map(|g| (g.format, g.generation, g.pixels)) != Some((format, frame.shader_generation, (pw, ph))) {
+            let shader = device.create_shader_module(module());
+            let layout = device.create_bind_group_layout(&GROUP_0);
+            let buffer = device.create_buffer(&wgpu::BufferDescriptor { label: Some("delete button"), size: Uniforms::SIZE as u64, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
+            let top = draw2d::render::sampled_target(device, "delete button top", draw2d::blur::GRAPHITE_FORMAT, pw, ph);
+            let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("delete button"),
+                layout: &layout,
+                entries: &[
+                    wgpu::BindGroupEntry { binding: U.binding, resource: buffer.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: TOP.binding, resource: wgpu::BindingResource::TextureView(&top) },
+                ],
+            });
+            self.gpu = Some(MeltGpu {
+                format,
+                generation: frame.shader_generation,
+                pixels: (pw, ph),
+                pipeline: draw2d::render::fullscreen_pipeline(device, &shader, &layout, entry::COMPOSE, format, None),
+                uniforms: buffer,
+                top,
+                bind,
+            });
+        }
+        let gpu = self.gpu.as_ref().unwrap();
+        self.renderer.draw(device, queue, encoder, &self.top, &gpu.top, draw2d::blur::GRAPHITE_FORMAT, pw, ph, wgpu::Color::TRANSPARENT);
+        queue.write_buffer(&gpu.uniforms, 0, &uniforms.bytes());
+        draw2d::render::fullscreen_pass(encoder, "delete button", target, &gpu.pipeline, &gpu.bind);
+    }
+}
+
+impl Surface for DeleteButton {
+    fn bind(&mut self, _: &[Value], _: Option<f64>) -> Result<(), SurfaceError> {
+        Ok(())
+    }
+
+    fn wants_input(&self) -> bool {
+        true
+    }
+
+    fn messages(&mut self) -> Vec<String> {
+        crate::haptic::host(std::mem::take(&mut self.posted))
+    }
+
+    fn agent(&mut self, _request: &str) -> Option<String> {
+        Some(format!(
+            "{{\"toggled\":{},\"rectX\":{:.2},\"closeX\":{:.2},\"scale\":{:.3},\"closeScale\":{:.3}}}",
+            self.toggled, self.rect_x.value, self.close_x.value, self.scale.value, self.close_scale.value
+        ))
+    }
+
+    fn input(&mut self, event: &InputEvent) {
+        let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
+        let phase = gfx::phase(phase);
+        // Pan: a press on a shape presses it; lifting releases it.
+        match phase {
+            Phase::Down if self.finger.is_none() => {
+                let shape = self.shape_at(x, y);
+                self.finger = Some((id, shape));
+                if let Some(shape) = shape {
+                    self.press(shape, true);
+                }
+            }
+            Phase::Up | Phase::Cancel if self.finger.is_some_and(|(f, _)| f == id) => {
+                if let Some((_, Some(shape))) = self.finger.take() {
+                    self.press(shape, false);
+                }
+            }
+            _ => {}
+        }
+        // Tap: lifting on a shape activates it.
+        if let Event::Tap { x, y } = self.tap.event(id, phase, x, y, at_ms, true) {
+            match self.shape_at(x, y) {
+                Some(Shape::Rect) => {
+                    self.press(Shape::Rect, false);
+                    self.posted.push("haptic:selection".into());
+                    // The pill stays on Confirm until the circle is tapped.
+                    self.toggle(true);
+                }
+                Some(Shape::Circle) => {
+                    self.press(Shape::Circle, false);
+                    self.toggle(false);
+                    self.posted.push("haptic:selection".into());
+                }
+                None => {}
+            }
+        }
+    }
+
+    fn render(
+        &mut self,
+        frame: &Frame,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        encoder: &mut wgpu::CommandEncoder,
+        target: &wgpu::TextureView,
+        format: wgpu::TextureFormat,
+    ) -> bool {
+        let now = frame.now_ms;
+        let mut moving = false;
+        for s in [&mut self.rect_x, &mut self.scale, &mut self.close_x, &mut self.close_scale] {
+            moving |= s.step(now);
+        }
+        for t in [&mut self.close_opacity, &mut self.delete_opacity, &mut self.confirm_opacity] {
+            moving |= t.step(now);
+        }
+        moving |= self.color.step(now);
+
+        let rect_x = self.rect_x.value as f32;
+        let close_x = self.close_x.value as f32;
+        let close_opacity = self.close_opacity.value as f32;
+        // Scales about the pill's centre.
+        let (s, ox, oy) = (self.scale.value as f32, WIDTH / 2.0, HEIGHT / 2.0);
+        let rect = [ox + (rect_x + WIDTH / 2.0 - ox) * s, oy, WIDTH / 2.0 * s, HEIGHT / 2.0 * s];
+        // Scales about the circle's centre.
+        let (cs, cox) = (self.close_scale.value as f32, WIDTH + ADDITIONAL / 2.0);
+        let circle = [cox + (close_x - cox) * cs, oy, HEIGHT / 2.0 * cs];
+        let [r, g, b] = self.color.rgb();
+        let uniforms = Uniforms {
+            rect,
+            shape: [RECT_RADIUS * s, circle[0], circle[1], circle[2]],
+            layer: [close_opacity.clamp(0.0, 1.0), frame.scale, gfx::srgb_flag(format), SIGMA],
+            color: [r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0, THRESHOLD],
+        };
+        let top = &mut self.melt.top;
+        top.begin(frame.scale);
+        if let Some(font) = &self.font {
+            let baseline = FONT_SIZE / 3.0 + HEIGHT / 2.0;
+            for (text, width, opacity) in [(DELETE, self.widths.0, self.delete_opacity.value), (CONFIRM, self.widths.1, self.confirm_opacity.value)] {
+                if opacity > 0.0 {
+                    top.draw_text(text, rect_x + WIDTH / 2.0 - width / 2.0, baseline, font, &Paint::fill(Color::WHITE).with_opacity(opacity as f32));
+                }
+            }
+        }
+        if close_opacity > 0.0 {
+            top.save();
+            top.translate(close_x, HEIGHT / 2.0);
+            top.draw_path(&self.cross, &Paint::fill(Color::WHITE).with_opacity(close_opacity));
+            top.restore();
+        }
+        self.melt.draw(frame, device, queue, encoder, target, format, &uniforms);
+        moving || self.finger.is_some()
+    }
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    use super::*;
+    use exact_gpu::{fixture, PointerKind, PointerPhase};
+
+    fn frame(now_ms: f64) -> Frame {
+        Frame { width: WIDTH + ADDITIONAL, height: HEIGHT, scale: 3.0, now_ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: exact_gpu::shaders::shader_generation(), headroom: 1.0 }
+    }
+
+    fn pointer(phase: PointerPhase, x: f32, at_ms: f64) -> InputEvent {
+        InputEvent::Pointer { id: 1, phase, x, y: 25.0, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false }
+    }
+
+    #[test]
+    fn delete_turns_into_confirm_and_the_cross_puts_it_back() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
+        exact_gpu::shaders::load_dir(&dir, &crate::REGISTRY).unwrap();
+        let gpu = match fixture::device() {
+            Ok(gpu) => gpu,
+            Err(error) => return eprintln!("{error}; skipped"),
+        };
+        let mut s = surface();
+        let (img, moving) = fixture::render(&gpu, s.as_mut(), &frame(0.0)).unwrap();
+        gfx::save_over(&img, "delete-button-rest", [255, 255, 255]);
+        assert!(!moving);
+        // At rest: a crisp red pill with white text, nothing outside it.
+        let red = |p: [u8; 4]| p[0] > 200 && p[1] < 40 && p[3] > 200;
+        assert!(red(img.at(3 * 60, 75)), "pill {:?}", img.at(180, 75));
+        assert!(red(img.at(3 * 175, 75)), "pill right {:?}", img.at(525, 75));
+        assert_eq!(img.at(3 * 20, 75)[3], 0, "left of it");
+        assert_eq!(img.at(3 * 215, 75)[3], 0, "right of it");
+        assert_eq!(img.at(3 * 115, 3)[3], 0, "the top edge is eaten by the goo");
+        assert!(red(img.at(3 * 115, 9)), "2.1 pt in, the pill {:?}", img.at(345, 9));
+        let row: Vec<u8> = (124..136).map(|x| img.at(x, 75)[3]).collect();
+        assert!(row.iter().filter(|&&a| a > 0 && a < 255).count() <= 1, "{row:?}");
+        let white = img.data.chunks(4).filter(|p| p[0] > 200 && p[1] > 200 && p[3] > 200).count();
+        assert!(white > 300, "the white label, {white} px");
+
+        s.input(&pointer(PointerPhase::Down, 115.0, 10.0));
+        assert!(s.agent("").unwrap().contains("\"toggled\":false"));
+        s.input(&pointer(PointerPhase::Up, 115.0, 80.0));
+        assert_eq!(s.messages(), vec!["haptic:selection".to_string()]);
+        let mut ms = 16.0;
+        let mut img = img;
+        let mut moving = true;
+        while moving && ms < 4000.0 {
+            ms += 16.0;
+            (img, moving) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
+            for at in [96.0, 192.0, 288.0, 400.0] {
+                if ms == at {
+                    gfx::save_over(&img, &format!("delete-button-split-{at}"), [255, 255, 255]);
+                }
+            }
+        }
+        gfx::save_over(&img, "delete-button-confirm", [255, 255, 255]);
+        assert!(s.agent("").unwrap().contains("\"toggled\":true"));
+        let black = |p: [u8; 4]| p[0] < 30 && p[3] > 200;
+        assert!(black(img.at(3 * 20, 75)), "pill {:?}", img.at(60, 75));
+        assert!(black(img.at(3 * 172, 75)), "circle's rim {:?}", img.at(516, 75));
+        assert_eq!(img.at(3 * 190, 75)[..3], [255, 255, 255], "the cross's centre");
+        assert_eq!(img.at(3 * 157, 75)[3], 0, "the gap {:?}", img.at(471, 75));
+
+        s.input(&pointer(PointerPhase::Down, 190.0, ms));
+        s.input(&pointer(PointerPhase::Up, 190.0, ms + 60.0));
+        assert_eq!(s.messages(), vec!["haptic:selection".to_string()]);
+        assert!(s.agent("").unwrap().contains("\"toggled\":false"));
+        let mut t = ms + 60.0;
+        while t < ms + 1200.0 {
+            t += 16.0;
+            let (img, _) = fixture::render(&gpu, s.as_mut(), &frame(t)).unwrap();
+            for at in [96.0, 192.0, 288.0] {
+                if (t - ms - 60.0 - at).abs() < 8.0 {
+                    gfx::save_over(&img, &format!("delete-button-join-{at}"), [255, 255, 255]);
+                }
+            }
+        }
+    }
+}

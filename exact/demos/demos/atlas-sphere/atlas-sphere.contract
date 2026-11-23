@@ -1,0 +1,27 @@
+// Atlas Sphere: a grid of small cyan dots. Under a finger they shrink with their distance from
+// it and gather toward it, forming a sphere that follows the finger and spreads back on release.
+// Inspired by @philipcdavis. The grid, pan and springs are a Rust surface (gpu/src/atlas_sphere.rs).
+use DemoEnv from "../env.contract"
+
+// The canvas is a whole number of 48 pt cells that fit the screen, drawn at 40 pt each.
+fn canvasWidth(w: number): number = 40 * floor(w / 48)
+// Screen height less 200 pt.
+fn canvasHeight(h: number): number = h - 200
+
+component AtlasSphere
+  props
+    env: DemoEnv
+  // Haptics: impact-light on the grab, selection for the ticks as the dots roll, impact-soft on release.
+  action heard(m: string)
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-soft"
+      haptic("impact-soft")
+  view
+    column position="absolute" inset=0 box-sizing="border-box" padding-top=70 background-color="#000000"
+      align-items="center" justify-content="center" testId="atlas-sphere"
+      canvas surface=atlas_sphere() message=heard width=canvasWidth(env.width) height=canvasHeight(env.height)
+        flex-shrink=0 touch-action="none" testId="atlas-sphere-canvas"
+        aria-label="Drag to gather the dots into a sphere"

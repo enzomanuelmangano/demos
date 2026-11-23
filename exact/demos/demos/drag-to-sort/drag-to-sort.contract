@@ -1,0 +1,19 @@
+// Drag to Sort: nine habit rows on a scroll view; a row held 500 ms lifts and follows the finger,
+// the others sliding into the order its position makes, the list scrolling near its edges. One
+// canvas draws the rows and owns the scroll.
+use DemoEnv from "../env.contract"
+
+component DragToSort
+  props
+    env: DemoEnv
+  // Haptics: a light impact as the row lifts, a soft one as the drop settles.
+  action heard(m: string)
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+    // The drop settles with a soft impact.
+    if m == "haptic:impact-soft"
+      haptic("impact-soft")
+  view
+    canvas surface=drag_to_sort(env.safeTop) message=heard position="absolute" top=0 left=0
+      width=env.width height=env.height touch-action="none" testId="drag-to-sort"
+      aria-label="Habits: hold a row, then drag it to reorder"

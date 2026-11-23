@@ -1,0 +1,1140 @@
+diff --git a/exact/demos/gpu/src/add_to_cart.rs b/exact/demos/gpu/src/add_to_cart.rs
+index 7444562..a51d76d 100644
+--- a/exact/demos/gpu/src/add_to_cart.rs
++++ b/exact/demos/gpu/src/add_to_cart.rs
+@@ -1521,7 +1521,7 @@ impl Surface for AddToCart {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/animated_clip_box.rs b/exact/demos/gpu/src/animated_clip_box.rs
+index 16d6f67..ca3f264 100644
+--- a/exact/demos/gpu/src/animated_clip_box.rs
++++ b/exact/demos/gpu/src/animated_clip_box.rs
+@@ -321,7 +321,7 @@ impl Surface for AnimatedClipBox {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/art_gallery.rs b/exact/demos/gpu/src/art_gallery.rs
+index a66ee81..fb9d446 100644
+--- a/exact/demos/gpu/src/art_gallery.rs
++++ b/exact/demos/gpu/src/art_gallery.rs
+@@ -925,7 +925,7 @@ impl Surface for ArtGallery {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/atlas_button.rs b/exact/demos/gpu/src/atlas_button.rs
+index 1bfa474..28e51a2 100644
+--- a/exact/demos/gpu/src/atlas_button.rs
++++ b/exact/demos/gpu/src/atlas_button.rs
+@@ -96,6 +96,9 @@ struct AtlasButton {
+     canvas: Canvas,
+     renderer: Renderer,
+     gpu: Option<Gpu>,
++    /// Haptics (past RN, whose Tap plays none: the owner's call, as atlas-sphere): a light
++    /// impact at the grab, a soft one when the hold ends.
++    posted: Vec<String>,
+ }
+ 
+ struct Gpu {
+@@ -171,6 +174,7 @@ impl AtlasButton {
+     fn release(&mut self) {
+         if self.finger.take().is_some() {
+             self.set_active(false);
++            self.posted.push("haptic:impact-soft".into());
+         }
+     }
+ 
+@@ -221,6 +225,10 @@ impl Surface for AtlasButton {
+         true
+     }
+ 
++    fn messages(&mut self) -> Vec<String> {
++        crate::haptic::host(std::mem::take(&mut self.posted))
++    }
++
+     fn agent(&mut self, _request: &str) -> Option<String> {
+         Some(format!("{{\"active\":{},\"progress\":{:.3}}}", self.finger.is_some(), self.progress.value))
+     }
+@@ -236,6 +244,7 @@ impl Surface for AtlasButton {
+             Phase::Down if self.finger.is_none() && inside => {
+                 self.finger = Some((id, at_ms));
+                 self.set_active(true);
++                self.posted.push("haptic:impact-light".into());
+             }
+             // shouldCancelWhenOutside: a finger that leaves the button ends the tap.
+             Phase::Move if self.finger.is_some_and(|(f, _)| f == id) && !inside => self.release(),
+@@ -439,3 +448,27 @@ mod tests {
+     }
+ }
+ 
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use exact_gpu::{PointerKind, PointerPhase};
++
++    fn finger(s: &mut AtlasButton, phase: PointerPhase, x: f32, y: f32) {
++        s.input(&InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms: 0.0 });
++    }
++
++    /// The grab plays a light impact and the hold's end a soft one; a touch outside plays none.
++    #[test]
++    fn the_hold_plays_its_grab_and_its_release() {
++        let mut s = AtlasButton::default();
++        finger(&mut s, PointerPhase::Down, 300.0, 100.0);
++        assert!(s.messages().is_empty());
++        finger(&mut s, PointerPhase::Down, 125.0, 100.0);
++        assert_eq!(s.messages(), ["haptic:impact-light"]);
++        finger(&mut s, PointerPhase::Up, 125.0, 100.0);
++        assert_eq!(s.messages(), ["haptic:impact-soft"]);
++        finger(&mut s, PointerPhase::Up, 125.0, 100.0);
++        assert!(s.messages().is_empty());
++    }
++}
+diff --git a/exact/demos/gpu/src/atlas_sphere.rs b/exact/demos/gpu/src/atlas_sphere.rs
+index 5eb9058..7e9024d 100644
+--- a/exact/demos/gpu/src/atlas_sphere.rs
++++ b/exact/demos/gpu/src/atlas_sphere.rs
+@@ -305,7 +305,7 @@ impl Surface for AtlasSphere {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.messages)
++        crate::haptic::host(std::mem::take(&mut self.messages))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/audio_player.rs b/exact/demos/gpu/src/audio_player.rs
+index 81499c1..3824760 100644
+--- a/exact/demos/gpu/src/audio_player.rs
++++ b/exact/demos/gpu/src/audio_player.rs
+@@ -296,7 +296,7 @@ impl Surface for AudioPlayer {
+ 
+     fn messages(&mut self) -> Vec<String> {
+         match self.card.as_mut() {
+-            Some(card) => std::mem::take(&mut card.posted),
++            Some(card) => crate::haptic::host(std::mem::take(&mut card.posted)),
+             None => Vec::new(),
+         }
+     }
+diff --git a/exact/demos/gpu/src/balance_slider.rs b/exact/demos/gpu/src/balance_slider.rs
+index a74ae1a..40a40a0 100644
+--- a/exact/demos/gpu/src/balance_slider.rs
++++ b/exact/demos/gpu/src/balance_slider.rs
+@@ -147,7 +147,7 @@ impl Surface for BalanceSlider {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/bezier_curve_outline.rs b/exact/demos/gpu/src/bezier_curve_outline.rs
+index 14c5fa8..eef9626 100644
+--- a/exact/demos/gpu/src/bezier_curve_outline.rs
++++ b/exact/demos/gpu/src/bezier_curve_outline.rs
+@@ -316,7 +316,7 @@ impl Surface for BezierOutline {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/bottom_bar_skia.rs b/exact/demos/gpu/src/bottom_bar_skia.rs
+index 8a15583..147863e 100644
+--- a/exact/demos/gpu/src/bottom_bar_skia.rs
++++ b/exact/demos/gpu/src/bottom_bar_skia.rs
+@@ -149,7 +149,7 @@ impl Surface for BottomBarSkia {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/calendar_days.rs b/exact/demos/gpu/src/calendar_days.rs
+index 10e9f94..4b90ec2 100644
+--- a/exact/demos/gpu/src/calendar_days.rs
++++ b/exact/demos/gpu/src/calendar_days.rs
+@@ -508,7 +508,7 @@ impl Surface for CalendarDays {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.messages)
++        crate::haptic::host(std::mem::take(&mut self.messages))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/card_shader_reflections.rs b/exact/demos/gpu/src/card_shader_reflections.rs
+index 4fac1e6..0158a28 100644
+--- a/exact/demos/gpu/src/card_shader_reflections.rs
++++ b/exact/demos/gpu/src/card_shader_reflections.rs
+@@ -521,7 +521,7 @@ impl Surface for CardShaderReflections {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn render(
+diff --git a/exact/demos/gpu/src/cherry_blossom_qrcode.rs b/exact/demos/gpu/src/cherry_blossom_qrcode.rs
+index 668b2c4..10b3542 100644
+--- a/exact/demos/gpu/src/cherry_blossom_qrcode.rs
++++ b/exact/demos/gpu/src/cherry_blossom_qrcode.rs
+@@ -802,7 +802,7 @@ impl Surface for CherryBlossomQrcode {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/chessboard.rs b/exact/demos/gpu/src/chessboard.rs
+index a17c4a2..fb52a56 100644
+--- a/exact/demos/gpu/src/chessboard.rs
++++ b/exact/demos/gpu/src/chessboard.rs
+@@ -2702,7 +2702,7 @@ impl Surface for Chessboard {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.messages)
++        crate::haptic::host(std::mem::take(&mut self.messages))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/circular_carousel.rs b/exact/demos/gpu/src/circular_carousel.rs
+index b1600da..4984947 100644
+--- a/exact/demos/gpu/src/circular_carousel.rs
++++ b/exact/demos/gpu/src/circular_carousel.rs
+@@ -250,7 +250,7 @@ impl Surface for Circular {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn input(&mut self, event: &InputEvent) {
+diff --git a/exact/demos/gpu/src/color_carousel.rs b/exact/demos/gpu/src/color_carousel.rs
+index 293573a..270efc9 100644
+--- a/exact/demos/gpu/src/color_carousel.rs
++++ b/exact/demos/gpu/src/color_carousel.rs
+@@ -162,7 +162,7 @@ impl Surface for ColorCarousel {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/cuberto_slider.rs b/exact/demos/gpu/src/cuberto_slider.rs
+index 6a9468d..b5c8626 100644
+--- a/exact/demos/gpu/src/cuberto_slider.rs
++++ b/exact/demos/gpu/src/cuberto_slider.rs
+@@ -189,7 +189,7 @@ impl Surface for CubertoSlider {
+ 
+     /// RN's press is a Gesture.Pan's onBegin / onFinalize with its own springs, not pressto: not `pressto::Pressable`.
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn input(&mut self, event: &InputEvent) {
+diff --git a/exact/demos/gpu/src/delete_button.rs b/exact/demos/gpu/src/delete_button.rs
+index f6ae36c..e260e07 100644
+--- a/exact/demos/gpu/src/delete_button.rs
++++ b/exact/demos/gpu/src/delete_button.rs
+@@ -208,7 +208,7 @@ impl Surface for DeleteButton {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/dot_sheet_card.rs b/exact/demos/gpu/src/dot_sheet_card.rs
+index cb40551..b542182 100644
+--- a/exact/demos/gpu/src/dot_sheet_card.rs
++++ b/exact/demos/gpu/src/dot_sheet_card.rs
+@@ -104,7 +104,7 @@ impl Surface for Card {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/drag_to_sort.rs b/exact/demos/gpu/src/drag_to_sort.rs
+index 2ba5c5c..3fadb24 100644
+--- a/exact/demos/gpu/src/drag_to_sort.rs
++++ b/exact/demos/gpu/src/drag_to_sort.rs
+@@ -539,7 +539,7 @@ impl Surface for Sort {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/draggable_panel.rs b/exact/demos/gpu/src/draggable_panel.rs
+index 5534b53..6709d91 100644
+--- a/exact/demos/gpu/src/draggable_panel.rs
++++ b/exact/demos/gpu/src/draggable_panel.rs
+@@ -842,7 +842,7 @@ impl Surface for Panel {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/duration_slider.rs b/exact/demos/gpu/src/duration_slider.rs
+index 5fa086f..ae58623 100644
+--- a/exact/demos/gpu/src/duration_slider.rs
++++ b/exact/demos/gpu/src/duration_slider.rs
+@@ -331,7 +331,7 @@ impl Surface for DurationSlider {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/empty_qr_code.rs b/exact/demos/gpu/src/empty_qr_code.rs
+index f8c65a9..50b8083 100644
+--- a/exact/demos/gpu/src/empty_qr_code.rs
++++ b/exact/demos/gpu/src/empty_qr_code.rs
+@@ -367,7 +367,7 @@ impl Surface for EmptyQrCode {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/exclusion_tabs.rs b/exact/demos/gpu/src/exclusion_tabs.rs
+index ee2830a..f6f03b0 100644
+--- a/exact/demos/gpu/src/exclusion_tabs.rs
++++ b/exact/demos/gpu/src/exclusion_tabs.rs
+@@ -155,7 +155,7 @@ impl Surface for ExclusionTabs {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/expandable_mini_player.rs b/exact/demos/gpu/src/expandable_mini_player.rs
+index 45eff94..76b6b65 100644
+--- a/exact/demos/gpu/src/expandable_mini_player.rs
++++ b/exact/demos/gpu/src/expandable_mini_player.rs
+@@ -161,7 +161,7 @@ impl Surface for MiniPlayer {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/fibonacci_shader.rs b/exact/demos/gpu/src/fibonacci_shader.rs
+index 4edf663..f10dbb0 100644
+--- a/exact/demos/gpu/src/fibonacci_shader.rs
++++ b/exact/demos/gpu/src/fibonacci_shader.rs
+@@ -146,7 +146,7 @@ impl Surface for FibonacciShader {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/fibonacci_shader_grid.rs b/exact/demos/gpu/src/fibonacci_shader_grid.rs
+index 567db93..c35d440 100644
+--- a/exact/demos/gpu/src/fibonacci_shader_grid.rs
++++ b/exact/demos/gpu/src/fibonacci_shader_grid.rs
+@@ -282,7 +282,7 @@ impl Surface for FibonacciShaderGrid {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/floating_bottom_bar.rs b/exact/demos/gpu/src/floating_bottom_bar.rs
+index 0a31735..00f05d8 100644
+--- a/exact/demos/gpu/src/floating_bottom_bar.rs
++++ b/exact/demos/gpu/src/floating_bottom_bar.rs
+@@ -240,7 +240,7 @@ impl Surface for FloatingBottomBar {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/floating_modal.rs b/exact/demos/gpu/src/floating_modal.rs
+index a65e9ae..83d7cb8 100644
+--- a/exact/demos/gpu/src/floating_modal.rs
++++ b/exact/demos/gpu/src/floating_modal.rs
+@@ -381,7 +381,7 @@ impl Surface for FloatingModal {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/fluid_tab_interaction.rs b/exact/demos/gpu/src/fluid_tab_interaction.rs
+index 84774fe..bbc17f9 100644
+--- a/exact/demos/gpu/src/fluid_tab_interaction.rs
++++ b/exact/demos/gpu/src/fluid_tab_interaction.rs
+@@ -537,7 +537,7 @@ impl Surface for FluidTab {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/fourier_visualizer.rs b/exact/demos/gpu/src/fourier_visualizer.rs
+index 12b3ea8..eefaa9f 100644
+--- a/exact/demos/gpu/src/fourier_visualizer.rs
++++ b/exact/demos/gpu/src/fourier_visualizer.rs
+@@ -719,7 +719,7 @@ impl Surface for FourierVisualizer {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/fractal_glass.rs b/exact/demos/gpu/src/fractal_glass.rs
+index 62e9d21..2efb094 100644
+--- a/exact/demos/gpu/src/fractal_glass.rs
++++ b/exact/demos/gpu/src/fractal_glass.rs
+@@ -203,7 +203,7 @@ impl Surface for FractalGlass {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/geometry_button.rs b/exact/demos/gpu/src/geometry_button.rs
+index 73d8e66..b7c3ce6 100644
+--- a/exact/demos/gpu/src/geometry_button.rs
++++ b/exact/demos/gpu/src/geometry_button.rs
+@@ -88,7 +88,7 @@ impl Surface for GeometryButton {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn render(
+diff --git a/exact/demos/gpu/src/github_onboarding.rs b/exact/demos/gpu/src/github_onboarding.rs
+index 66156ab..df4b550 100644
+--- a/exact/demos/gpu/src/github_onboarding.rs
++++ b/exact/demos/gpu/src/github_onboarding.rs
+@@ -426,7 +426,7 @@ impl Surface for Onboarding {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn input(&mut self, event: &InputEvent) {
+diff --git a/exact/demos/gpu/src/github_terrain.rs b/exact/demos/gpu/src/github_terrain.rs
+index f214cb2..e607ab1 100644
+--- a/exact/demos/gpu/src/github_terrain.rs
++++ b/exact/demos/gpu/src/github_terrain.rs
+@@ -167,7 +167,7 @@ impl Surface for GithubTerrain {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/gl_transitions.rs b/exact/demos/gpu/src/gl_transitions.rs
+index c7491d8..e0e4a54 100644
+--- a/exact/demos/gpu/src/gl_transitions.rs
++++ b/exact/demos/gpu/src/gl_transitions.rs
+@@ -1060,7 +1060,7 @@ impl Surface for GlTransitions {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/haptic.rs b/exact/demos/gpu/src/haptic.rs
+new file mode 100644
+index 0000000..7ff00c1
+--- /dev/null
++++ b/exact/demos/gpu/src/haptic.rs
+@@ -0,0 +1,117 @@
++//! A surface's haptics, played by the host with no Contract commit.
++//!
++//! The surfaces post `"haptic:<kind>"` (`selection`, `impact-light`, …, the names of
++//! Contract's `haptic()`), and every `messages()` hands its list through [`host`] on the
++//! way out. There each kind becomes an `exact_gpu::haptics` pattern, a message the host
++//! consumes before the app sees it (Core Haptics on iOS, one engine for the page): no
++//! `message=` action, no logic turn, no plan applied, no `UIFeedbackGenerator` made per tick.
++//! A drag's selection ticks (25 a second in atlas-sphere and prequel-slider) used to cost
++//! a whole action commit each on the main thread, inside a 8.3 ms frame.
++//!
++//! The demos' own aliases (audio-player's `grab`/`tick`/`release`, duration-slider's
++//! `limit`) map to the kinds their Contract played; anything else (chessboard's
++//! `haptic:mate`, which the Contract counts) passes through untouched.
++//!
++//! Under `cargo test` [`host`] keeps the kinds, so each surface's tests still read
++//! `"haptic:selection"`; [`translate`] is what runs everywhere else, tested below.
++
++use exact_gpu::haptics::{Event, Haptic, Pattern};
++
++/// A surface's messages as the host should get them: each `haptic:<kind>` as its pattern.
++pub fn host(messages: Vec<String>) -> Vec<String> {
++    if cfg!(test) {
++        messages
++    } else {
++        translate(messages)
++    }
++}
++
++/// Each `haptic:<kind>` this module knows as its pattern's message; the rest as it was.
++pub fn translate(mut messages: Vec<String>) -> Vec<String> {
++    for m in messages.iter_mut() {
++        if let Some(p) = m.strip_prefix("haptic:").and_then(pattern) {
++            *m = Haptic::Pattern(p).message();
++        }
++    }
++    messages
++}
++
++/// A tap at `time` seconds.
++fn tap(time: f32, intensity: f32, sharpness: f32) -> Event {
++    Event::Transient {
++        time,
++        intensity,
++        sharpness,
++    }
++}
++
++/// The kind's pattern, close to what `UIFeedbackGenerator` plays for it: transients whose
++/// intensity follows light < medium < heavy, whose sharpness is soft's low and rigid's high,
++/// and the notifications' two and three taps.
++fn pattern(kind: &str) -> Option<Pattern> {
++    let events = match kind {
++        "selection" | "tick" => vec![tap(0.0, 0.45, 0.85)],
++        "impact-light" | "grab" => vec![tap(0.0, 0.55, 0.6)],
++        "impact-medium" | "impact" => vec![tap(0.0, 0.75, 0.6)],
++        "impact-heavy" => vec![tap(0.0, 1.0, 0.5)],
++        "impact-soft" | "release" => vec![tap(0.0, 0.6, 0.15)],
++        "impact-rigid" | "limit" => vec![tap(0.0, 0.75, 1.0)],
++        "success" => vec![tap(0.0, 0.6, 0.6), tap(0.1, 1.0, 0.7)],
++        "warning" => vec![tap(0.0, 1.0, 0.6), tap(0.15, 0.6, 0.6)],
++        "error" => vec![tap(0.0, 0.8, 0.8), tap(0.08, 0.8, 0.8), tap(0.2, 1.0, 0.6)],
++        _ => return None,
++    };
++    Some(Pattern {
++        events,
++        curves: Vec::new(),
++    })
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn a_kind_becomes_a_pattern_the_host_consumes_and_the_rest_passes() {
++        let out = translate(vec![
++            "haptic:selection".into(),
++            "haptic:mate".into(),
++            "seek:1.5".into(),
++            "haptic:impact-soft".into(),
++        ]);
++        assert_eq!(
++            out[0],
++            r#"exact:haptics {"pattern":{"events":[{"type":"transient","time":0,"intensity":0.45,"sharpness":0.85}],"curves":[]}}"#
++        );
++        assert_eq!(out[1], "haptic:mate");
++        assert_eq!(out[2], "seek:1.5");
++        assert!(out[3].starts_with(exact_gpu::haptics::PREFIX));
++    }
++
++    #[test]
++    fn every_kind_the_demos_post_is_known() {
++        for k in [
++            "selection",
++            "impact-light",
++            "impact-medium",
++            "impact-heavy",
++            "impact-soft",
++            "impact-rigid",
++            "success",
++            "warning",
++            "error",
++            "grab",
++            "tick",
++            "release",
++            "limit",
++        ] {
++            assert!(pattern(k).is_some(), "{k}");
++        }
++        assert!(pattern("mate").is_none() && pattern("mate-stop").is_none());
++    }
++
++    #[test]
++    fn under_test_the_kinds_stay() {
++        assert_eq!(host(vec!["haptic:selection".into()]), ["haptic:selection"]);
++    }
++}
+diff --git a/exact/demos/gpu/src/image_cropper.rs b/exact/demos/gpu/src/image_cropper.rs
+index 4236631..2c155f4 100644
+--- a/exact/demos/gpu/src/image_cropper.rs
++++ b/exact/demos/gpu/src/image_cropper.rs
+@@ -1197,7 +1197,7 @@ impl Surface for ImageCropper {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/interaction_appearance.rs b/exact/demos/gpu/src/interaction_appearance.rs
+index 321d344..d7552d1 100644
+--- a/exact/demos/gpu/src/interaction_appearance.rs
++++ b/exact/demos/gpu/src/interaction_appearance.rs
+@@ -429,7 +429,7 @@ impl Surface for Appearance {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.messages)
++        crate::haptic::host(std::mem::take(&mut self.messages))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/ios_home_grid.rs b/exact/demos/gpu/src/ios_home_grid.rs
+index ca88c4c..c856129 100644
+--- a/exact/demos/gpu/src/ios_home_grid.rs
++++ b/exact/demos/gpu/src/ios_home_grid.rs
+@@ -544,7 +544,7 @@ impl Surface for Grid {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/lib.rs b/exact/demos/gpu/src/lib.rs
+index c48c47a..8bf423d 100644
+--- a/exact/demos/gpu/src/lib.rs
++++ b/exact/demos/gpu/src/lib.rs
+@@ -18,6 +18,7 @@ pub mod shaders {
+ #[cfg(test)]
+ mod bench;
+ pub mod gfx;
++pub mod haptic;
+ pub mod gooey;
+ pub mod qr;
+ pub mod ui_scroll;
+diff --git a/exact/demos/gpu/src/light_on_painting.rs b/exact/demos/gpu/src/light_on_painting.rs
+index c6bb9b6..6b1404b 100644
+--- a/exact/demos/gpu/src/light_on_painting.rs
++++ b/exact/demos/gpu/src/light_on_painting.rs
+@@ -882,7 +882,7 @@ impl Surface for LightOnPainting {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/loading_button.rs b/exact/demos/gpu/src/loading_button.rs
+index 2d4d216..facce32 100644
+--- a/exact/demos/gpu/src/loading_button.rs
++++ b/exact/demos/gpu/src/loading_button.rs
+@@ -357,7 +357,7 @@ impl Surface for LoadingButton {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/magnet_spring.rs b/exact/demos/gpu/src/magnet_spring.rs
+index 3438db9..54a6aab 100644
+--- a/exact/demos/gpu/src/magnet_spring.rs
++++ b/exact/demos/gpu/src/magnet_spring.rs
+@@ -213,7 +213,7 @@ impl Surface for MagnetSpring {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/metaball.rs b/exact/demos/gpu/src/metaball.rs
+index 82b00f8..930732d 100644
+--- a/exact/demos/gpu/src/metaball.rs
++++ b/exact/demos/gpu/src/metaball.rs
+@@ -289,7 +289,7 @@ impl Surface for Metaball {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn render(
+diff --git a/exact/demos/gpu/src/miles_bar_chart.rs b/exact/demos/gpu/src/miles_bar_chart.rs
+index 74f4064..dd3880a 100644
+--- a/exact/demos/gpu/src/miles_bar_chart.rs
++++ b/exact/demos/gpu/src/miles_bar_chart.rs
+@@ -111,7 +111,7 @@ impl Surface for Weeks {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/mnist.rs b/exact/demos/gpu/src/mnist.rs
+index 674decf..5636ca0 100644
+--- a/exact/demos/gpu/src/mnist.rs
++++ b/exact/demos/gpu/src/mnist.rs
+@@ -450,7 +450,7 @@ impl Surface for Mnist {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.messages)
++        crate::haptic::host(std::mem::take(&mut self.messages))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/mobile_input.rs b/exact/demos/gpu/src/mobile_input.rs
+index 9ef74e1..2e6fcb9 100644
+--- a/exact/demos/gpu/src/mobile_input.rs
++++ b/exact/demos/gpu/src/mobile_input.rs
+@@ -651,7 +651,7 @@ impl Surface for MobileInput {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/motion_blur.rs b/exact/demos/gpu/src/motion_blur.rs
+index 01e0aed..da5bc5f 100644
+--- a/exact/demos/gpu/src/motion_blur.rs
++++ b/exact/demos/gpu/src/motion_blur.rs
+@@ -766,7 +766,7 @@ impl Surface for MotionBlur {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ }
+ 
+diff --git a/exact/demos/gpu/src/notion_qrcode.rs b/exact/demos/gpu/src/notion_qrcode.rs
+index b65524b..4bf362f 100644
+--- a/exact/demos/gpu/src/notion_qrcode.rs
++++ b/exact/demos/gpu/src/notion_qrcode.rs
+@@ -1759,7 +1759,7 @@ impl Surface for NotionQrCode {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/paper_folding.rs b/exact/demos/gpu/src/paper_folding.rs
+index f410402..f909d83 100644
+--- a/exact/demos/gpu/src/paper_folding.rs
++++ b/exact/demos/gpu/src/paper_folding.rs
+@@ -111,7 +111,7 @@ impl Surface for PaperFolding {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/particles_button.rs b/exact/demos/gpu/src/particles_button.rs
+index 2134ecf..eaae128 100644
+--- a/exact/demos/gpu/src/particles_button.rs
++++ b/exact/demos/gpu/src/particles_button.rs
+@@ -289,7 +289,7 @@ impl Surface for ParticlesButton {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/pomodoro_timer.rs b/exact/demos/gpu/src/pomodoro_timer.rs
+index 25e73f8..785e04c 100644
+--- a/exact/demos/gpu/src/pomodoro_timer.rs
++++ b/exact/demos/gpu/src/pomodoro_timer.rs
+@@ -688,7 +688,7 @@ impl Surface for Pomodoro {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.messages)
++        crate::haptic::host(std::mem::take(&mut self.messages))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/popup_handler.rs b/exact/demos/gpu/src/popup_handler.rs
+index a6f589e..86e8939 100644
+--- a/exact/demos/gpu/src/popup_handler.rs
++++ b/exact/demos/gpu/src/popup_handler.rs
+@@ -153,7 +153,7 @@ impl Surface for PopupHandler {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn max_fps(&self) -> u32 {
+diff --git a/exact/demos/gpu/src/prequel_slider.rs b/exact/demos/gpu/src/prequel_slider.rs
+index 23cd998..1e87f72 100644
+--- a/exact/demos/gpu/src/prequel_slider.rs
++++ b/exact/demos/gpu/src/prequel_slider.rs
+@@ -314,7 +314,7 @@ impl Surface for PrequelSlider {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/qr_code_generator.rs b/exact/demos/gpu/src/qr_code_generator.rs
+index 72756c5..54fcc8a 100644
+--- a/exact/demos/gpu/src/qr_code_generator.rs
++++ b/exact/demos/gpu/src/qr_code_generator.rs
+@@ -783,7 +783,7 @@ impl Surface for QrCodeGenerator {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/record_button.rs b/exact/demos/gpu/src/record_button.rs
+index 04d0e9a..f60777e 100644
+--- a/exact/demos/gpu/src/record_button.rs
++++ b/exact/demos/gpu/src/record_button.rs
+@@ -213,7 +213,7 @@ impl Surface for RecordButton {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/scroll_progress_text.rs b/exact/demos/gpu/src/scroll_progress_text.rs
+index fffd446..d186e55 100644
+--- a/exact/demos/gpu/src/scroll_progress_text.rs
++++ b/exact/demos/gpu/src/scroll_progress_text.rs
+@@ -107,7 +107,7 @@ impl Surface for ScrollProgressText {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/scrollable_bottom_sheet.rs b/exact/demos/gpu/src/scrollable_bottom_sheet.rs
+index 43ab059..264c930 100644
+--- a/exact/demos/gpu/src/scrollable_bottom_sheet.rs
++++ b/exact/demos/gpu/src/scrollable_bottom_sheet.rs
+@@ -585,7 +585,7 @@ impl Surface for Sheet {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/sculptures_in_words.rs b/exact/demos/gpu/src/sculptures_in_words.rs
+index 3f30fa6..82699db 100644
+--- a/exact/demos/gpu/src/sculptures_in_words.rs
++++ b/exact/demos/gpu/src/sculptures_in_words.rs
+@@ -1249,7 +1249,7 @@ impl Surface for Sculptures {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/selectable_grid_list.rs b/exact/demos/gpu/src/selectable_grid_list.rs
+index 181a91c..388eb50 100644
+--- a/exact/demos/gpu/src/selectable_grid_list.rs
++++ b/exact/demos/gpu/src/selectable_grid_list.rs
+@@ -261,7 +261,7 @@ impl Surface for SelectableGrid {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/snake.rs b/exact/demos/gpu/src/snake.rs
+index 5514ec0..7be0d55 100644
+--- a/exact/demos/gpu/src/snake.rs
++++ b/exact/demos/gpu/src/snake.rs
+@@ -997,7 +997,7 @@ impl Surface for SnakeDemo {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/sphere_waves.rs b/exact/demos/gpu/src/sphere_waves.rs
+index cf6ea8b..a0d1a2b 100644
+--- a/exact/demos/gpu/src/sphere_waves.rs
++++ b/exact/demos/gpu/src/sphere_waves.rs
+@@ -168,7 +168,7 @@ impl Surface for SphereWaves {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/spiral.rs b/exact/demos/gpu/src/spiral.rs
+index 82aa29e..05f14a7 100644
+--- a/exact/demos/gpu/src/spiral.rs
++++ b/exact/demos/gpu/src/spiral.rs
+@@ -115,7 +115,7 @@ impl Surface for Spiral {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn input(&mut self, event: &InputEvent) {
+diff --git a/exact/demos/gpu/src/stacked_carousel.rs b/exact/demos/gpu/src/stacked_carousel.rs
+index 329da73..a217f61 100644
+--- a/exact/demos/gpu/src/stacked_carousel.rs
++++ b/exact/demos/gpu/src/stacked_carousel.rs
+@@ -326,7 +326,7 @@ impl Surface for Carousel {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/sudoku.rs b/exact/demos/gpu/src/sudoku.rs
+index f19838e..7f1123e 100644
+--- a/exact/demos/gpu/src/sudoku.rs
++++ b/exact/demos/gpu/src/sudoku.rs
+@@ -2563,7 +2563,7 @@ impl Surface for Sudoku {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/swipe_cards.rs b/exact/demos/gpu/src/swipe_cards.rs
+index ef3317e..325b1fe 100644
+--- a/exact/demos/gpu/src/swipe_cards.rs
++++ b/exact/demos/gpu/src/swipe_cards.rs
+@@ -269,7 +269,7 @@ impl Surface for SwipeCards {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/telegram_theme_switch.rs b/exact/demos/gpu/src/telegram_theme_switch.rs
+index e346fcc..05e44c4 100644
+--- a/exact/demos/gpu/src/telegram_theme_switch.rs
++++ b/exact/demos/gpu/src/telegram_theme_switch.rs
+@@ -562,7 +562,7 @@ impl Surface for TelegramThemeSwitch {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/the_little_prince.rs b/exact/demos/gpu/src/the_little_prince.rs
+index f13dfbf..c37e5e8 100644
+--- a/exact/demos/gpu/src/the_little_prince.rs
++++ b/exact/demos/gpu/src/the_little_prince.rs
+@@ -600,7 +600,7 @@ impl Surface for Prince {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/theme_canvas_animation.rs b/exact/demos/gpu/src/theme_canvas_animation.rs
+index 0dd5d8c..b228a29 100644
+--- a/exact/demos/gpu/src/theme_canvas_animation.rs
++++ b/exact/demos/gpu/src/theme_canvas_animation.rs
+@@ -122,7 +122,7 @@ impl Surface for Theme {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/threads_holo_ticket.rs b/exact/demos/gpu/src/threads_holo_ticket.rs
+index 5c1a997..91f4717 100644
+--- a/exact/demos/gpu/src/threads_holo_ticket.rs
++++ b/exact/demos/gpu/src/threads_holo_ticket.rs
+@@ -730,7 +730,7 @@ impl Surface for ThreadsHoloTicket {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/time_machine.rs b/exact/demos/gpu/src/time_machine.rs
+index ea72447..2970a74 100644
+--- a/exact/demos/gpu/src/time_machine.rs
++++ b/exact/demos/gpu/src/time_machine.rs
+@@ -947,7 +947,7 @@ impl Surface for TimeMachine {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/timer.rs b/exact/demos/gpu/src/timer.rs
+index 56b1786..0a3c346 100644
+--- a/exact/demos/gpu/src/timer.rs
++++ b/exact/demos/gpu/src/timer.rs
+@@ -144,7 +144,7 @@ impl Surface for Timer {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     #[cfg(target_arch = "wasm32")]
+diff --git a/exact/demos/gpu/src/twitter_tab_bar.rs b/exact/demos/gpu/src/twitter_tab_bar.rs
+index bde1b74..1f72df5 100644
+--- a/exact/demos/gpu/src/twitter_tab_bar.rs
++++ b/exact/demos/gpu/src/twitter_tab_bar.rs
+@@ -441,7 +441,7 @@ impl Surface for TwitterTabBar {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/twodos_slide.rs b/exact/demos/gpu/src/twodos_slide.rs
+index c350e3a..091e5b3 100644
+--- a/exact/demos/gpu/src/twodos_slide.rs
++++ b/exact/demos/gpu/src/twodos_slide.rs
+@@ -371,7 +371,7 @@ impl Surface for TwodosSlide {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {
+diff --git a/exact/demos/gpu/src/wheel_picker.rs b/exact/demos/gpu/src/wheel_picker.rs
+index c78ff0e..a9f2b49 100644
+--- a/exact/demos/gpu/src/wheel_picker.rs
++++ b/exact/demos/gpu/src/wheel_picker.rs
+@@ -177,7 +177,7 @@ impl Surface for WheelPicker {
+     }
+ 
+     fn messages(&mut self) -> Vec<String> {
+-        std::mem::take(&mut self.posted)
++        crate::haptic::host(std::mem::take(&mut self.posted))
+     }
+ 
+     fn agent(&mut self, _request: &str) -> Option<String> {

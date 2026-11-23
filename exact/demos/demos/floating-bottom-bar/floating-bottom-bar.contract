@@ -1,0 +1,28 @@
+// Floating Bottom Bar: a black floating tab bar of five icons; a light hangs over the selected
+// one and springs to the tab pressed. One canvas draws the light, the icons and their fades: the
+// chosen tab fades in as the light comes to rest, and the one left fades out at once.
+use DemoEnv, floatingWidth, concentricInset, concentricRadius from "../env.contract"
+
+// A continuous capsule, 65 tall, whose ends are concentric with the display corner, so it floats
+// 29.5 in from the display's sides and bottom.
+fn barInset(): number = concentricInset(65)
+fn barWidth(w: number): number = floatingWidth(w, barInset())
+
+component FloatingBottomBar
+  props
+    env: DemoEnv
+  inject
+    pressablesOnPress: action
+  // pressto's global onPress (the selection haptic) for a tab press.
+  action heard(m: string)
+    if m == "haptic:selection"
+      pressablesOnPress()
+  view
+    column position="absolute" inset=0 background-color="rgb(242, 242, 242)" testId="floating-bottom-bar"
+      // Black bar, 65 tall, rounded concentric with the display.
+      view position="absolute" left=barInset() bottom=barInset()
+        width=barWidth(env.width) height=65 background-color="#000000" border-radius=concentricRadius(barInset(), 65) corner-shape="-exact-continuous"
+        testId="tab-bar"
+        canvas surface=floating_bottom_bar() message=heard position="absolute" left=0 top=0
+          width=barWidth(env.width) height=65 touch-action="none" testId="tab-bar-canvas"
+          aria-label="Tabs: Home, Bookmark, Add, Profile, Settings"

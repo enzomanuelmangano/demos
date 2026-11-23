@@ -1,0 +1,241 @@
+// The web's launcher: the springboard without its native views (icon-grid, page-dots, still-art, search-reveal
+// have no web module), and the demo opened over it. On a phone's browser it fills the screen like an app; on a
+// desktop it is an iPhone Air in a device frame (framed). The iPhone and the Mac never build this (app.contract).
+use Demo from "../demos.contract"
+use DemoEnv from "../demos/env.contract"
+use DemoScreen from "./demo-screen.contract"
+use gridCols, cellWidth, iconSize, perPage, pageCount from "./springboard.contract"
+
+// iPhone Air, portrait: the display in points, its safe areas (status bar + Dynamic Island, home
+// indicator) and corner radius, and the frame around it.
+fn airW(): number = 420
+fn airH(): number = 912
+fn airTop(): number = 62
+fn airBottom(): number = 34
+fn bezel(): number = 12
+// The display's outline: a 420 x 912 rectangle with UIKit's continuous 62 pt corners (each corner three
+// cubics from 1.52866 r along the side, PaintCode's reverse-engineered UIBezierPath constants).
+fn airDisplayPath(): string = "M94.78 0L325.22 0C352.51 0 366.16 0 380.85 4.64C396.88 10.48 409.52 23.12 415.36 39.15C420 53.84 420 67.49 420 94.78L420 817.22C420 844.51 420 858.16 415.36 872.85C409.52 888.88 396.88 901.52 380.85 907.36C366.16 912 352.51 912 325.22 912L94.78 912C67.49 912 53.84 912 39.15 907.36C23.12 901.52 10.48 888.88 4.64 872.85C0 858.16 0 844.51 0 817.22L0 94.78C0 67.49 0 53.84 4.64 39.15C10.48 23.12 23.12 10.48 39.15 4.64C53.84 0 67.49 0 94.78 0Z"
+fn frameW(): number = airW() + 2 * bezel()
+fn frameH(): number = airH() + 2 * bezel()
+// The frame fits the window with 24 pt around, never grows past its own size.
+fn frameScale(w: number, h: number): number = min(1, min((h - 48) / frameH(), (w - 48) / frameW()))
+
+component WebSpringboard
+  props
+    demos: Demo[]
+    sw: number
+    sh: number
+    safeTop: number
+    safeBottom: number
+    open: action
+  state page = 0
+  derive area = sh - safeTop - safeBottom
+  derive per = perPage(sw, area)
+  derive pages = sw > 0 and area > 0 ? range(pageCount(demos.length, per)) : []
+  action scrolled(x: number, y: number)
+    page = max(0, floor(x / sw + 0.5))
+  view
+    column position="absolute" inset=0 testId="springboard"
+      // A static wallpaper, edge to edge: the iPhone's PNG as WebP (2.0 MB -> 0.29 MB, same 1206 x 2622).
+      image "assets/web/home-wallpaper.webp" position="absolute" left=0 top=0 width="100%" height="100%" object-fit="cover" aria-hidden=true
+      // The icons and the dots (never the wallpaper): what the launch zooms and the pull-to-search moves.
+      column position="absolute" inset=0 padding-top=safeTop padding-bottom=safeBottom box-sizing="border-box" testId="web-home-zoom"
+        // What the pull-to-search moves down on its rubber band (the page module's `search-reveal`).
+        column flex=1 min-height=0 testId="web-home-pull"
+          // Every page is a snap stop the width of the screen, as the native pager.
+          row testId="pager" flex=1 min-height=0 overflow-x="auto" overflow-y="hidden" scroll-snap-type="x mandatory"
+            scrollbar-width="none"
+            // contract-lint-disable-next-line no-per-frame-commit -- written only when the page number changes
+            scroll=scrolled
+            for p in pages key=p
+              column width=sw height="100%" flex-shrink=0 scroll-snap-align="start" scroll-snap-stop="always"
+                padding="16px 22px 0" box-sizing="border-box"
+                row flex-wrap="wrap" align-content="flex-start" row-gap=22
+                  for d in demos.slice(p * per, (p + 1) * per) key=d.slug
+                    button press=open(d.slug) appearance="none" testId=`icon-${d.slug}` aria-label=d.name padding=0
+                      border-width=0 width=cellWidth(sw) display="flex" flex-direction="column" align-items="center" gap=6
+                      background-color="rgba(0,0,0,0)"
+                      :hover
+                        background-color = "rgba(0,0,0,0)"
+                      :active
+                        -exact-press-scale = 0.9
+                      image d.icon width=iconSize(sw) height=iconSize(sw) border-radius=(iconSize(sw) * 0.2237)
+                        corner-shape="-exact-continuous" aria-hidden=true
+                      text d.label font-size=11 font-weight=500 color="#ffffff" text-align="center" white-space="nowrap"
+                        overflow="hidden" text-overflow="ellipsis" max-width=(cellWidth(sw) - 4)
+          if pages.length > 1
+            row height=44 flex-shrink=0 justify-content="center" align-items="center" gap=9 aria-hidden=true
+              for p in pages key=p
+                view width=7 height=7 border-radius=3.5 background-color=(p == page ? "#ffffff" : "rgba(255,255,255,0.4)")
+                  transition="background-color 160ms ease"
+      // The icons' long-press menu (and a right click on a desktop): Inspiration, Share, View Code, as AppIcon.swift's
+      // context menu, drawn by the page module's `icon-grid` over the lifted icon.
+      icon-grid slugs=demos.map(d => d.slug).join("|") demo-names=demos.map(d => d.name).join("|")
+        inspirations=demos.map(d => d.inspiration).join("|") position="absolute" left=0 top=0 width=0 height=0
+        pointer-events="none" aria-hidden=true
+      // Pull down on the pager to search (modules/web/index.js, after modules/apple/SearchReveal.swift): the icons ride
+      // the finger, the home blurs, the field slides in; released past the trigger it holds the field, Cancel and the
+      // results. A tapped result arrives as `change(slug)` and opens like an icon.
+      search-reveal slugs=demos.map(d => d.slug).join("|") names=demos.map(d => d.name).join("|")
+        labels=demos.map(d => d.label).join("|") icons=demos.map(d => d.icon).join("|") icon-size=iconSize(sw)
+        side-margin=22 safe-top=safeTop safe-bottom=safeBottom change=open position="absolute" inset=0 testId="search"
+
+// A hex colour's brightness 0..255 (the status bar's ink follows the page it is over, as iOS's does).
+fn hexv(c: string, i: number): number = "0123456789abcdef".indexOf(c.slice(i, i + 1).toLowerCase()) * 16 + "0123456789abcdef".indexOf(c.slice(i + 1, i + 2).toLowerCase())
+fn brightness(c: string): number = (hexv(c, 1) * 299 + hexv(c, 3) * 587 + hexv(c, 5) * 114) / 1000
+fn inkOver(c: string): string = brightness(c) > 150 ? "#000000" : "#ffffff"
+// The frame's status bar and home indicator ink: over the demo's backdrop, except where what the demo draws under the
+// bar is the other way (a light page on a dark backdrop, a dark photo on a light one), measured on the desktop frame.
+fn screenInk(slug: string, backdrop: string): string = (
+  slug == "time-machine" or slug == "gl-transitions" ? "#000000" :
+  slug == "clerk-toast" or slug == "skia-color-picker" ? "#ffffff" :
+  inkOver(backdrop))
+
+// The iPhone's status bar, drawn white over the app at the frame's top: the time, the signal, wifi and battery.
+component WebStatusBar
+  props
+    ink: string
+  view
+    view position="absolute" left=0 right=0 top=0 height=62 pointer-events="none" aria-hidden=true z-index=40
+      view position="absolute" inset=0
+        row position="absolute" left=36 top=19 width=96 height=22 align-items="center" justify-content="center"
+          text "9:41" font-size=17 font-weight=600 color=ink letter-spacing=-0.2
+        row position="absolute" right=30 top=19 width=110 height=22 align-items="center" justify-content="center" gap=7
+          svg width=19 height=12 viewBox="0 0 19 12"
+            rect x=0 y=7.5 width=3.2 height=4.5 rx=0.9 fill=ink
+            rect x=5 y=5 width=3.2 height=7 rx=0.9 fill=ink
+            rect x=10 y=2.5 width=3.2 height=9.5 rx=0.9 fill=ink
+            rect x=15 y=0 width=3.2 height=12 rx=0.9 fill=ink
+          svg width=17 height=12 viewBox="0 0 17 12" fill="none"
+            path d="M1.2 4.3C5.2 0.4 11.8 0.4 15.8 4.3" stroke=ink stroke-width=1.9 stroke-linecap="round"
+            path d="M3.6 6.8C6.2 4.3 10.8 4.3 13.4 6.8" stroke=ink stroke-width=1.9 stroke-linecap="round"
+            path d="M6 9.2C7.4 7.9 9.6 7.9 11 9.2" stroke=ink stroke-width=1.9 stroke-linecap="round"
+          svg width=28 height=13 viewBox="0 0 28 13" fill="none"
+            rect x=0.5 y=0.5 width=23 height=12 rx=3.8 stroke=ink stroke-opacity=0.4
+            rect x=2 y=2 width=20 height=9 rx=2.4 fill=ink
+            path d="M25 4.4V8.6C25.9 8.2 26.5 7.4 26.5 6.5C26.5 5.6 25.9 4.8 25 4.4Z" fill=ink fill-opacity=0.5
+      // The Dynamic Island.
+      view position="absolute" left=147 top=11 width=126 height=37 border-radius=18.5 background-color="#000000"
+
+// The screen: the springboard, and over it the opened demo. The open out of the tapped icon, the swipe-down close
+// and the flight back into the icon are the page module's `demo-card` (modules/web/index.js, after
+// modules/apple/DemoLaunch.swift): it moves `web-card` (the clip), `web-card-content` (the demo at the card's scale),
+// `web-home-zoom` (the icons behind), `web-dim` and `web-blur` by transform and opacity on the compositor.
+component WebScreen
+  props
+    demos: Demo[]
+    // Every demo, the unstable ones too: a link opens one the launcher does not list.
+    all: Demo[]
+    env: DemoEnv
+    slug: string
+    // Where the swipe-down close may start (app.contract closeZone).
+    zone: string
+    sw: number
+    sh: number
+    safeTop: number
+    safeBottom: number
+    framed: bool
+    // The demo opened out of its icon (app.contract `flown`).
+    flown: string
+    open: action
+    leave: action
+  state closing = false
+  derive demo = first(all.filter(d => d.slug == slug))
+  // The close button or a drag past the threshold: the card flies home, then `landed` hands the route back.
+  action beginClose
+    closing = true
+  action landed(v: string)
+    leave()
+  action finishClose
+    leave()
+  // The demo mounts a frame after its card: the card's flight starts in the tap's own task (the compositor runs it
+  // from there), and the demo's first commit (80-400 ms, a GPU demo's first surface longer) runs under the flight
+  // instead of holding its first frame. Until then the card shows the icon's art over the demo's backdrop.
+  // Only an open from an icon (`flown`) waits: a link has no flight and shows its demo at once.
+  state mountedSlug = ""
+  action mountDemo
+    mountedSlug = slug
+  task mounting when slug != "" and slug == flown and mountedSlug != slug key=slug
+    after(1, mountDemo)
+  // With no page module (?hatches=off) nothing lands: the route goes after the flight's length.
+  task finishing when closing key=slug
+    after(1400, finishClose)
+  view
+    column position="absolute" inset=0 overflow="hidden" background-color="#000000" testId="web-screen"
+      // The home behind a closing card takes no tap until the card has landed and the route is the home's again.
+      column position="absolute" inset=0 pointer-events=(closing ? "none" : "auto")
+        WebSpringboard(demos=demos, sw=sw, sh=sh, safeTop=safeTop, safeBottom=safeBottom, open=open)
+      if slug != ""
+        match demo
+          case some(d)
+            view position="absolute" inset=0 background-color="#000000" opacity=0 pointer-events="none" aria-hidden=true
+              testId="web-dim"
+            view position="absolute" inset=0 backdrop-filter="blur(25px)" opacity=0 visibility="hidden" pointer-events="none"
+              aria-hidden=true testId="web-blur"
+            column position="absolute" inset=0 overflow="hidden" testId="web-card" background-color=d.backdrop
+              column position="absolute" left=0 top=0 width=sw height=sh testId="web-card-content"
+                column position="absolute" inset=0 pointer-events=(closing ? "none" : "auto")
+                  if mountedSlug == d.slug or flown != d.slug
+                    DemoScreen(demo=d, env=DemoEnv(env, width=sw, height=sh), ownsDrags=false, zone="", leave=beginClose, web=true,
+                      insetTop=(framed ? airTop() : safeTop), insetBottom=(framed ? airBottom() : safeBottom))
+              demo-card slug=d.slug art=d.icon zone=zone closing=(closing ? "true" : "false") framed=(framed ? "true" : "false")
+                safe-top=safeTop press=beginClose change=landed position="absolute" inset=0 pointer-events="none" aria-hidden=true
+          case none
+            view
+
+// What the web route draws. Not framed (a phone, or a window narrower than a phone's): the screen fills the
+// page and the device's own safe areas apply. Framed (a desktop): an iPhone Air centred on a dark page.
+component WebShell
+  props
+    demos: Demo[]
+    all: Demo[]
+    env: DemoEnv
+    slug: string
+    zone: string
+    framed: bool
+    vw: number
+    vh: number
+    safeTop: number
+    safeBottom: number
+    flown: string
+    open: action
+    leave: action
+  derive s = frameScale(vw, vh)
+  derive bd = all.filter(d => d.slug == slug).map(d => d.backdrop).join("")
+  derive backdrop = bd == "" ? "#000000" : bd
+  view
+    column position="absolute" inset=0 background-color="#141414"
+      if framed
+        column position="absolute" inset=0 align-items="center" justify-content="center" overflow="hidden"
+          background-color="#0c0c0e"
+          background-image="radial-gradient(ellipse 90% 70% at 50% 35%, #2b2b31, #161619 60%, #0a0a0b)" testId="web-stage"
+          column width=frameW() height=frameH() flex-shrink=0 position="relative" scale=s
+            // The titanium band, then the black glass edge, then the display.
+            view position="absolute" inset=0 border-radius=74 corner-shape="-exact-continuous"
+              background-image="linear-gradient(150deg, #e4e5e8, #8f9197 22%, #cfd0d3 48%, #7d7f85 74%, #babcc0)"
+              box-shadow="0px 50px 120px rgba(0,0,0,0.6), 0px 14px 34px rgba(0,0,0,0.45)"
+            // contract-lint-disable-next-line concentric-bottom-ui -- the device frame, not an app control
+            view position="absolute" left=3 top=3 right=3 bottom=3 border-radius=71 corner-shape="-exact-continuous" background-color="#050506"
+              box-shadow="inset 0px 0px 0px 1px rgba(255,255,255,0.08)"
+            // The side buttons: the action button and the volume keys on the left, the power key on the right.
+            view position="absolute" left=-3 top=150 width=4 height=30 border-radius=2 background-color="#9a9ca2"
+            view position="absolute" left=-3 top=215 width=4 height=58 border-radius=2 background-color="#9a9ca2"
+            view position="absolute" left=-3 top=290 width=4 height=58 border-radius=2 background-color="#9a9ca2"
+            view position="absolute" right=-3 top=245 width=4 height=92 border-radius=2 background-color="#9a9ca2"
+            // The display, clipped to its continuous corners by a clip path (UIBezierPath's continuous 62 pt
+            // corner, PaintCode's constants, airDisplayPath). Not a rounded overflow clip: under one Chrome drops
+            // the mask of every backdrop-filter inside (a progressive blur, clerk-toast's or scroll-progress's,
+            // became one hard-edged full blur).
+            view position="absolute" left=bezel() top=bezel() width=airW() height=airH() clip-path=`path('${airDisplayPath()}')`
+              overflow="hidden" background-color="#000000" testId="web-device"
+              WebScreen(demos=demos, all=all, env=env, slug=slug, zone=zone, sw=airW(), sh=airH(), safeTop=airTop(), safeBottom=airBottom(),
+                framed=true, flown=flown, open=open, leave=leave)
+              WebStatusBar(ink=screenInk(slug, backdrop))
+              // The home indicator.
+              // contract-lint-disable-next-line concentric-bottom-ui -- the home indicator bar
+              view position="absolute" left=140 bottom=8 width=140 height=5 border-radius=2.5 background-color=screenInk(slug, backdrop)
+                opacity=0.85 pointer-events="none" aria-hidden=true z-index=40
+      else
+        WebScreen(demos=demos, all=all, env=env, slug=slug, zone=zone, sw=vw, sh=vh, safeTop=safeTop, safeBottom=safeBottom, framed=false,
+          flown=flown, open=open, leave=leave)

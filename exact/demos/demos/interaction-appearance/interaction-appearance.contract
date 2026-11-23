@@ -1,0 +1,46 @@
+// Interaction Appearance: a movie page whose floating sun button switches the light and dark
+// themes; while it is held the page shrinks, the poster's glow fades and a blur rises over it.
+// The page is a canvas (gpu/src/interaction_appearance.rs); the button is a real Liquid Glass pane
+// above it, so it stays sharp over the blur.
+use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+use DemoEnv, demoButtonRow, concentricInset from "../env.contract"
+
+// The 64 pt circle sits concentric with the display's corner, 30 pt from the sides and the bottom.
+fn sunSize(): number = 64
+
+component InteractionAppearance
+  inject
+    pressto: PressablesConfig
+  props
+    env: DemoEnv
+  // The theme and whether the button is held, which the page follows.
+  state dark = false
+  state held = false
+  state pressing = pressNone()
+  action holdOn
+    pressing = pressDown(pressing, 0)
+    held = true
+  action holdOff
+    pressing = pressUp(pressing)
+    held = false
+  // A lift inside the button switches the theme.
+  action pressed
+    dark = not dark
+    haptic("selection")
+  view
+    column position="absolute" inset=0 testId="interaction-appearance"
+      // The page starts below the demo's button row, clear of the close and info buttons.
+      canvas surface=interaction_appearance(env.safeTop + demoButtonRow(), env.safeBottom, held, dark) position="absolute" top=0 left=0
+        width=env.width height=env.height touch-action="none"
+        testId="interaction-appearance-canvas"
+        aria-label="Past Lives: hold the sun button to switch the theme"
+      view position="absolute" right=concentricInset(sunSize()) bottom=concentricInset(sunSize())
+        width=sunSize() height=sunSize() border-radius=32 corner-shape="-exact-continuous" role="button" aria-label="Switch theme"
+        press=pressed pointerdown=holdOn pointerup=holdOff testId="sun"
+        scale=pressableScale(pressing, 0, pressto) transition=pressTransition("scale", pressto)
+        glass-pane glass-style="regular" corner-size="32" interactive="true" continuous="true"
+          scheme=(dark ? "dark" : "light")
+          position="absolute" inset=0 pointer-events="none" aria-hidden=true
+        column position="absolute" inset=0 align-items="center" justify-content="center"
+          pointer-events="none" aria-hidden=true
+          image "symbol:icon.sun-max-fill" font-size=22 color=(dark ? "#FFFFFF" : "#000000")

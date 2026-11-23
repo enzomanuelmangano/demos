@@ -1,0 +1,14 @@
+// Fractal Glass: an orange circle dragged behind a pane of reeded (fluted) glass, each flute a
+// lens that refracts and frosts it. It is dark only.
+
+component FractalGlass
+  // The only haptic: a light one when a finger lands on the circle.
+  action heard(m: string)
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+  view
+    // The canvas draws the black background and the circle.
+    column position="absolute" inset=0 testId="fractal-glass"
+      canvas surface=fractal_glass(1) message=heard position="absolute" top=0 left=0 width="100%"
+        height="100%" touch-action="none" testId="fractal-glass-canvas"
+        aria-label="Drag the circle behind the glass"

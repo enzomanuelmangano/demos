@@ -1,0 +1,29 @@
+// The app's named springs, for UI that is not a copy of an RN constant (the launcher, new
+// screens, anything designed here). Each returns a `-exact-spring(stiffness, damping, mass)` string:
+//
+//   transition=`translate ${springGentle()}`      -exact-layout-transition=springBouncy()
+//
+// Derived from the springs the demos use today (tools/contract-lint, rule spring-consistency):
+// a spring is its natural frequency w = sqrt(stiffness / mass) in rad/s and its damping ratio
+// z = damping / (2 * sqrt(stiffness * mass)); mass only scales the other two, so (100, 12, 0.4)
+// and (250, 30, 1) are the same spring. The demos cluster at z = 1 (critically damped, no
+// overshoot) at a handful of speeds, plus one under-damped feel for layout reflow:
+//
+//   name      stiffness damping mass   w    z     springs of the 40 in the demos within 12 % of w, 0.04 of z
+//   Slow          400      80    4    10   1      2
+//   Gentle        900     120    4    15   1     17  (Reanimated's default withSpring(), 7 of them exactly)
+//   Bouncy        250      30    1   15.8  0.95   9  (chip reflow; (100, 12, 0.4) is the same spring)
+//   Firm         1600     160    4    20   1      4
+//   Snappy       2500     200    4    25   1      3
+//   Quick        4356     264    4    33   1      1
+// Four springs match none (120/20/1, 100/10/0.3, 342/30.3/1, 740/86/2.5): one-offs from an RN
+// constant, each with its numbers named in a comment or reported by the linter.
+//
+// A demo that ports an RN spring keeps RN's numbers (the port rule: no "close enough") and names
+// them in a comment; the linter lets that through. New design takes a preset.
+fn springSlow(): string = "-exact-spring(400, 80, 4)"
+fn springGentle(): string = "-exact-spring(900, 120, 4)"
+fn springBouncy(): string = "-exact-spring(250, 30, 1)"
+fn springFirm(): string = "-exact-spring(1600, 160, 4)"
+fn springSnappy(): string = "-exact-spring(2500, 200, 4)"
+fn springQuick(): string = "-exact-spring(4356, 264, 4)"

@@ -1,0 +1,485 @@
+// The atlas: every demo as an iPhone Air screen (420x912 points) scaled into a tile, all in one
+// process. A tile shows the demo's static frame (assets/atlas/<slug>.jpg) until the pointer moves
+// over it, which mounts the demo live. A tile's name opens it large (the focus view). A right-click
+// on a tile or the large view leaves feedback: a numbered pin and a comment.
+// On the Mac the atlas is the window's root (app.contract); elsewhere `demos-exact://atlas`.
+use Demo from "../demos.contract"
+use PortedDemo from "../demos/index.contract"
+use DemoEnv from "../demos/env.contract"
+use atlasStatus, atlasScore from "./atlas-data.contract"
+
+// iPhone Air in points, its safe-area insets (portrait) and its display's corner radius.
+fn airW(): number = 420
+fn airH(): number = 912
+fn airTop(): number = 62
+fn airBottom(): number = 34
+fn airCorner(): number = 62
+
+// A claimed demo counts as unverified until it is done.
+fn statusOf(slug: string): string = atlasStatus(slug) == "claimed" ? "unverified" : atlasStatus(slug)
+fn statusLabel(slug: string): string = atlasStatus(slug) == "done" ? "Done" : atlasStatus(slug) == "open" ? "Open" : atlasStatus(slug) == "claimed" ? "In progress" : "Unverified"
+fn statusDot(slug: string): string = statusOf(slug) == "done" ? "-exact-system-green" : statusOf(slug) == "open" ? "-exact-system-orange" : "-exact-tertiary-label"
+fn statusRank(slug: string): number = ["done", "open", "claimed", "unverified"].indexOf(atlasStatus(slug))
+fn matches(d: Demo, q: string, status: string): bool =
+  (q == "" or d.name.toLowerCase().includes(q) or d.slug.includes(q)) and (status == "all" or statusOf(d.slug) == status)
+fn sorted(ds: Demo[], by: string): Demo[] =
+  by == "name" ? sortBy(ds, d => d.name) : by == "status" ? sortBy(ds, d => statusRank(d.slug)) : by == "score" ? sortBy(ds, d => atlasScore(d.slug), "desc") : ds
+fn sortLabel(by: string): string = by == "name" ? "Name" : by == "status" ? "Status" : by == "score" ? "Parity Score" : "App Order"
+fn detail(slug: string): string = atlasScore(slug) >= 0 ? `${statusLabel(slug)} · Δ ${atlasScore(slug).toFixed(1)}` : statusLabel(slug)
+// A demo's env inside a tile: the iPhone Air's screen, and one seed so a random demo lays out as its static frame.
+fn airEnv(env: DemoEnv): DemoEnv = DemoEnv(env, width=airW(), height=airH(), safeTop=airTop(), safeBottom=airBottom(), seed=atlasSeed(), tile=true)
+fn atlasSeed(): number = 20260101
+// A tile's static frame is the demo `idleMs()` after it mounts: entrances done, a looping demo at
+// a fixed time. A live tile stays under its frame until then, then fades in.
+fn idleMs(): number = 1200
+
+fn frameServer(): string = "http://127.0.0.1:5350"
+
+// The route the snapshot tool captures (demos-exact://snap/<slug>): one demo as a tile mounts it, at
+// `snapScale()`, `snapLeft()`, `snapTop()` points into the window, captured once the app reports it idle.
+fn snapScale(): number = 0.8
+fn snapLeft(): number = 20
+fn snapTop(): number = 64
+component SnapFrame
+  props
+    slug: string
+    backdrop: string
+    env: DemoEnv
+  view
+    column position="absolute" inset=0 background-color="#ffffff" testId="atlas-snap"
+      view position="absolute" left=snapLeft() top=snapTop() width=(airW() * snapScale()) height=(airH() * snapScale())
+        overflow="hidden" background-color=backdrop testId="atlas-snap-frame"
+        column position="absolute" width=airW() height=airH() background-color=backdrop
+          left=(0 - airW() * (1 - snapScale()) / 2) top=(0 - airH() * (1 - snapScale()) / 2) scale=snapScale()
+          PortedDemo(slug=slug, env=airEnv(env))
+
+// A demo route on the Mac (demos-exact://demo/<slug>): an iPhone Air at the window's height.
+component DeskDemo
+  props
+    slug: string
+    name: string
+    backdrop: string
+    env: DemoEnv
+    routeKey: string
+    leave: action
+  derive k = min(1, max(0.3, (env.height - 120) / airH()))
+  view
+    column navigationKey=routeKey position="absolute" inset=0 background-color="-exact-secondary-background"
+      color-scheme="light" testId="desk-demo"
+      header display="flex" flex-direction="row" align-items="center"
+        button id="back" press=leave aria-label="Back to Atlas" aria-keyshortcuts="Escape" testId="desk-demo-close"
+          image "symbol:back"
+        text name role="heading" aria-level=2
+      column flex=1 align-items="center" justify-content="center"
+        view width=(airW() * k) height=(airH() * k) position="relative" overflow="hidden" border-radius=(airCorner() * k)
+          corner-shape="-exact-continuous" background-color=backdrop border-width=1 border-style="solid"
+          border-color="-exact-separator" box-shadow="0px 2px 8px rgba(0,0,0,0.08), 0px 24px 60px rgba(0,0,0,0.16)"
+          column position="absolute" width=airW() height=airH() background-color=backdrop
+            left=(0 - airW() * (1 - k) / 2) top=(0 - airH() * (1 - k) / 2) scale=k
+            PortedDemo(slug=slug, env=airEnv(env))
+
+keyframes atlasReveal
+  from opacity=0
+  88% opacity=0
+  to opacity=1
+
+// Feedback, kept by the feedback server (app.contract's feedback sources).
+shape FeedbackNote
+  id: string
+  slug: string
+  n: number
+  x: number
+  y: number
+  element: string
+  comment: string
+  status: string
+
+fn notesOf(ns: FeedbackNote[], slug: string): FeedbackNote[] = ns.filter(n => n.slug == slug)
+fn openCount(ns: FeedbackNote[], slug: string): number = ns.filter(n => n.slug == slug and n.status == "open").length
+fn noteStatus(ns: FeedbackNote[], id: string): string = match first(ns.filter(n => n.id == id)) {
+  case some(n) => n.status,
+  case none => "open"
+}
+// The nearest id under the point that is the demo's own (not the atlas's frames or pins).
+fn demoHit(ids: string[]): string = match first(ids.filter(i => not i.startsWith("atlas-"))) {
+  case some(i) => i,
+  case none => ""
+}
+
+// A tile's lift: the frame around the screen (whose children change as it goes live) eases as one layer.
+style Lift
+  :hover
+    box-shadow = "0px 3px 8px rgba(0,0,0,0.10), 0px 16px 36px rgba(0,0,0,0.15)"
+    scale = 1.015
+
+// A demo's pins over its frame (w×h on screen): numbered, the comment as the tooltip; a click opens the note.
+component Pins
+  props
+    notes: FeedbackNote[]
+    w: number
+    h: number
+    open: action
+  view
+    for n in notes key=n.id
+      button appearance="none" press=open(n) title=n.comment aria-label=`Note ${n.n}: ${n.comment}`
+        testId=`atlas-pin-${n.slug}-${n.n}` position="absolute" left=(n.x * w - 10) top=(n.y * h - 10)
+        width=20 height=20 border-radius=10 padding=0 border-width=2 border-style="solid" border-color="#ffffff"
+        background-color=(n.status == "open" ? "-exact-system-orange" : "-exact-system-gray")
+        box-shadow="0px 1px 3px rgba(0,0,0,0.3)" display="flex" align-items="center" justify-content="center"
+        text `${n.n}` font-size=10 font-weight=700 color="#ffffff"
+
+// The comment field at the pin: Return saves, Esc cancels; an existing note also resolves (or reopens) and deletes.
+component NoteEditor
+  props
+    x: number
+    y: number
+    w: number
+    h: number
+    hit: string
+    editing: bool
+    status: string
+    words: string
+    typed: action
+    save: action
+    cancel: action
+    mark: action
+  view
+    view position="absolute" left=(x - 6) top=(y - 6) width=12 height=12 border-radius=6
+      background-color="-exact-system-orange" border-width=2 border-style="solid" border-color="#ffffff" pointer-events="none"
+    column position="absolute" top=(min(y + 12, h - 60)) left=(min(max(x - 130, -60), w - 200)) width=260 gap=8 padding=10
+      border-radius=12 background-color="-exact-background" border-width=1 border-style="solid" border-color="-exact-separator"
+      box-shadow="0px 8px 28px rgba(0,0,0,0.18)" z-index=3 testId="atlas-note"
+      if hit != ""
+        text `on #${hit}` font-size=11 color="-exact-secondary-label" white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
+      input type="text" value=words input=typed submit=save autofocus=true placeholder="What should change?"
+        aria-label="Feedback" testId="atlas-note-text"
+      row gap=6 justify-content="flex-end"
+        if editing
+          button press=mark("deleted") destructive=true testId="atlas-note-delete"
+            text "Delete"
+          button press=mark(status == "open" ? "resolved" : "open") testId="atlas-note-resolve"
+            text (status == "open" ? "Resolve" : "Reopen")
+        button press=cancel aria-keyshortcuts="Escape" testId="atlas-note-cancel"
+          text "Cancel"
+        button press=save testId="atlas-note-save"
+          text (editing ? "Save" : "Add")
+
+component Atlas
+  props
+    demos: Demo[]
+    env: DemoEnv
+    // False while a demo is open over the atlas: every tile unmounts, so no surface runs twice.
+    active: bool
+    // The route's key: the atlas's root column is the route, so its header is the window's bar.
+    routeKey: string
+    // False where the atlas is the stack's root (the Mac): no Back but out of the focus view.
+    closable: bool
+    leave: action
+    // The feedback store's notes, and its writes: add(slug, x, y, element, ex, ey, ew, eh,
+    // comment) and edit(slug, id, comment, status).
+    notes: FeedbackNote[]
+    add: action
+    edit: action
+  state q = ""
+  state status = "all"
+  state by = "order"
+  state scale = 0.36
+  // "hover": the last `cap` tiles the pointer moved over are live; "visible": the tiles on screen.
+  // "near" (default): the `cap` tiles nearest the grid's middle, and the hovered one, re-picked only when a scroll ends.
+  state mode = "near"
+  state cap = 12
+  state scrolling = false
+  state settled: string[] = []
+  state recent: string[] = []
+  state paused = false
+  state focused = ""
+  state inView: string[] = []
+  // Feedback: where the last right-click (or F's click) was, in the demo's frame, and the element under it;
+  // `draft` is the demo whose editor is open, `picked` the note it edits.
+  state armed = false
+  state at = ""
+  state draft = ""
+  state dx = 0
+  state dy = 0
+  state hit = ""
+  state hx = 0
+  state hy = 0
+  state hw = 0
+  state hh = 0
+  state picked = ""
+  state words = ""
+  derive shown = sorted(demos.filter(d => d.ported and matches(d, q, status)), by)
+  derive visible = shown.filter(d => inView.includes(d.slug)).map(d => d.slug)
+  derive middle = visible.slice(max(0, floor((visible.length - cap) / 2)), max(0, floor((visible.length - cap) / 2)) + cap)
+  derive hovered = recent.slice(0, 1).filter(s => inView.includes(s))
+  derive nearSet = scrolling ? settled.filter(s => inView.includes(s)) : middle
+  derive live = (paused or not active or focused != "") ? [] : mode == "hover" ? recent.filter(s => inView.includes(s)).slice(0, cap) : mode == "near" ? nearSet.concat(hovered.filter(s => not nearSet.includes(s))) : visible.slice(0, cap)
+  derive focusScale = min(1, max(0.3, (env.height - 140) / airH()))
+
+  action typed(v: string)
+    q = v.toLowerCase()
+  // The grid's scroll: the first event marks it moving (one commit), its end re-picks.
+  action scrolled(x: number, y: number)
+    if not scrolling
+      settled = middle
+      scrolling = true
+  action scrollDone
+    scrolling = false
+  action seen(slug: string, e: IntersectionObserverEntry)
+    if e.isIntersecting and not inView.includes(slug)
+      inView = inView.concat([slug])
+    if not e.isIntersecting
+      inView = inView.filter(s => s != slug)
+  action pick(s: string)
+    status = s
+  action sortOn(s: string)
+    by = s
+  action sized(v: number)
+    scale = v
+  action zoomOut
+    scale = max(0.12, round(scale / 1.25 * 100) / 100)
+  action zoomIn
+    scale = min(0.9, round(scale * 1.25 * 100) / 100)
+  action zoomReset
+    scale = 0.36
+  action liveAs(m: string, n: number)
+    mode = m
+    cap = n
+  action hover(slug: string)
+    if recent.indexOf(slug) != 0
+      recent = [slug].concat(recent.filter(s => s != slug)).slice(0, 8)
+  action pause
+    paused = not paused
+  action focus(slug: string)
+    focused = slug
+  action unfocus
+    focused = ""
+  // Esc and the bar's Back: the note first, then out of the focus view, then out of the atlas.
+  action goBack
+    if draft != ""
+      closeNote()
+    else if focused != ""
+      focused = ""
+    else if closable
+      leave()
+
+  action point(slug: string, box: string, e: PointerEvent)
+    let f = frame(box)
+    let k = f.width / airW()
+    let id = demoHit(elementsFromPoint(e.clientX, e.clientY))
+    at = slug
+    dx = max(0, min(1, (e.clientX - f.x) / f.width))
+    dy = max(0, min(1, (e.clientY - f.y) / f.height))
+    hit = id
+    hx = id == "" ? 0 : (frame(id).x - f.x) / k
+    hy = id == "" ? 0 : (frame(id).y - f.y) / k
+    hw = id == "" ? 0 : frame(id).width / k
+    hh = id == "" ? 0 : frame(id).height / k
+  action menuAt(slug: string, box: string, e: PointerEvent)
+    point(slug, box, e)
+  action noteHere
+    draft = at
+    picked = ""
+    words = ""
+  action arm
+    armed = not armed
+  action armedClick(slug: string, box: string, e: PointerEvent)
+    point(slug, box, e)
+    armed = false
+    noteHere()
+  action copySlug
+    copyText(at)
+  action openLarge
+    focused = at
+  action showNotes
+    match first(notesOf(notes, at).filter(n => n.status == "open"))
+      case some(n)
+        openNote(n)
+      case none
+        focused = at
+  action openNote(n: FeedbackNote)
+    draft = n.slug
+    picked = n.id
+    dx = n.x
+    dy = n.y
+    hit = ""
+    words = n.comment
+  action typedWords(v: string)
+    words = v
+  action saveNote
+    if picked != ""
+      edit(draft, picked, words.trim(), "")
+      closeNote()
+    else if words.trim() != ""
+      add(draft, dx, dy, hit, hx, hy, hw, hh, words.trim())
+      closeNote()
+  action markNote(s: string)
+    edit(draft, picked, "", s)
+    closeNote()
+  action closeNote
+    draft = ""
+    picked = ""
+    words = ""
+
+  view
+    column navigationKey=routeKey -exact-safe-area="top" position="absolute" inset=0 color-scheme="light" background-color="-exact-background" color="-exact-label"
+      font-family="system-ui" testId="atlas"
+      // The window's title bar and toolbar on the Mac (the route's first child, so they are AppKit's own items):
+      // title, subtitle, sort and live menus, status segments, pause, feedback, search.
+      header display="flex" flex-direction="row" align-items="center" gap=8 padding="8px 16px" flex-shrink=0
+        if closable
+          button id="back" press=goBack aria-label=(focused != "" ? "Back to Atlas" : "Close Atlas")
+            aria-keyshortcuts="Escape" testId="atlas-close"
+            image "symbol:back"
+        else if focused != ""
+          button press=goBack aria-label="Back to Atlas" aria-keyshortcuts="Escape" testId="atlas-close"
+            image "symbol:icon.chevron-backward"
+        text "Demo Atlas" role="heading" aria-level=2
+        text `${shown.length} ${shown.length == 1 ? "demo" : "demos"} · ${live.length} live` font-size=12 color="-exact-secondary-label"
+        row role="tablist" aria-label="Status" testId="atlas-status"
+          for s in ["all", "done", "open", "unverified"] key=s
+            button role="tab" aria-selected=(status == s) press=pick(s) testId=`atlas-status-${s}`
+              text (s == "all" ? "All" : s == "done" ? "Done" : s == "open" ? "Open" : "Unverified")
+        button popovertarget="atlas-sort" aria-label=`Sort: ${sortLabel(by)}` testId="atlas-sort"
+          image "symbol:icon.arrow-up-arrow-down"
+        button popovertarget="atlas-live" aria-label=(mode == "near" ? "12 Live" : mode == "hover" ? "Live on Hover" : "Live When Visible") testId="atlas-live"
+          image "symbol:icon.square-grid-3x3"
+        button press=pause aria-label=(paused ? "Resume Atlas" : "Pause Atlas") testId="atlas-pause"
+          -exact-menu="view" aria-keyshortcuts="Meta+Shift+P"
+          image (paused ? "symbol:icon.play-fill" : "symbol:icon.pause-fill")
+        button press=arm aria-label=(armed ? "Cancel Feedback" : "Add Feedback") aria-pressed=armed aria-keyshortcuts="F"
+          testId="atlas-feedback"
+          image (armed ? "symbol:icon.text-bubble-fill" : "symbol:icon.text-bubble")
+        input type="search" value=q input=typed placeholder="Search" testId="atlas-search" width=180
+      column id="atlas-sort" popover="auto" role="menu" position="absolute" aria-label="Sort By"
+        for s in ["order", "name", "status", "score"] key=s
+          button press=sortOn(s) role="menuitemradio" aria-checked=(by == s) popovertarget="atlas-sort"
+            popovertargetaction="hide" testId=`atlas-sort-${s}`
+            text sortLabel(s)
+      column id="atlas-live" popover="auto" role="menu" position="absolute" aria-label="Live Tiles"
+        button press=liveAs("near", 12) role="menuitemradio" aria-checked=(mode == "near" and cap == 12) popovertarget="atlas-live"
+          popovertargetaction="hide" testId="atlas-live-near-12"
+          text "12 Live, Nearest the Middle"
+        button press=liveAs("hover", 1) role="menuitemradio" aria-checked=(mode == "hover" and cap == 1) popovertarget="atlas-live"
+          popovertargetaction="hide" testId="atlas-live-hover-1"
+          text "Live on Hover: 1"
+        button press=liveAs("hover", 2) role="menuitemradio" aria-checked=(mode == "hover" and cap == 2) popovertarget="atlas-live"
+          popovertargetaction="hide" testId="atlas-live-hover-2"
+          text "Live on Hover: 2"
+        button press=liveAs("hover", 4) role="menuitemradio" aria-checked=(mode == "hover" and cap == 4) popovertarget="atlas-live"
+          popovertargetaction="hide" testId="atlas-live-hover-4"
+          text "Live on Hover: 4"
+        button press=liveAs("visible", 12) role="menuitemradio" aria-checked=(mode == "visible" and cap == 12) popovertarget="atlas-live"
+          popovertargetaction="hide" testId="atlas-live-visible-12"
+          text "Live When Visible: 12"
+        button press=liveAs("visible", 24) role="menuitemradio" aria-checked=(mode == "visible" and cap == 24) popovertarget="atlas-live"
+          popovertargetaction="hide" testId="atlas-live-visible-24"
+          text "Live When Visible: 24"
+      // A tile's (and the large view's) right-click menu: the point is `at`'s, set by menuAt.
+      column id="atlas-menu" popover="auto" role="menu" position="absolute" aria-label="Demo"
+        button press=noteHere popovertarget="atlas-menu" popovertargetaction="hide" testId="atlas-menu-note"
+          text "Add Feedback Here…"
+        if openCount(notes, at) > 0
+          button press=showNotes popovertarget="atlas-menu" popovertargetaction="hide" testId="atlas-menu-show"
+            text `Show Feedback (${openCount(notes, at)})`
+        hr
+        button press=openLarge popovertarget="atlas-menu" popovertargetaction="hide" testId="atlas-menu-large"
+          text "Open Large"
+        button press=copySlug popovertarget="atlas-menu" popovertargetaction="hide" testId="atlas-menu-copy"
+          text "Copy Demo Slug"
+
+      // Below the window's bar: nothing scrolls under it.
+      column flex=1 min-height=0 position="relative" margin-top="var(--exact-safe-area-inset-top)"
+        scroll flex=1 min-height=0 overflow-y="auto" overflow-x="hidden" testId="atlas-grid"
+          scroll=scrolled scrollend=scrollDone
+          row flex-wrap="wrap" column-gap=28 row-gap=30 padding="28px 32px 40px" align-content="flex-start" justify-content="center"
+            for d in shown key=d.slug
+              column width=(airW() * scale) gap=10 align-items="center" position="relative" z-index=(draft == d.slug ? 2 : 0)
+                view class=Lift width=(airW() * scale) height=(airH() * scale) position="relative"
+                  border-radius=(airCorner() * scale) corner-shape="-exact-continuous"
+                  box-shadow="0px 1px 2px rgba(0,0,0,0.06), 0px 6px 18px rgba(0,0,0,0.07)"
+                  transition="scale 200ms ease-out, box-shadow 200ms ease-out"
+                  view width=(airW() * scale) height=(airH() * scale) position="relative" overflow="hidden"
+                    border-radius=(airCorner() * scale) corner-shape="-exact-continuous" background-color=d.backdrop
+                    border-width=1 border-style="solid" border-color="-exact-separator"
+                    intersect=seen(d.slug) pointermove=hover(d.slug) testId=`atlas-tile-${d.slug}` id=`atlas-tile-${d.slug}`
+                    contextmenu=menuAt(d.slug, `atlas-tile-${d.slug}`) contextPopover="atlas-menu"
+                    image `assets/atlas/${d.slug}.jpg` position="absolute" inset=0 width="100%" height="100%"
+                      object-fit="cover" aria-hidden=true
+                    image `${frameServer()}/snap/${d.slug}.jpg?v=${env.epoch}` position="absolute" inset=0 width="100%" height="100%"
+                      object-fit="cover" aria-hidden=true
+                    if live.includes(d.slug)
+                      column position="absolute" width=airW() height=airH()
+                        left=(0 - airW() * (1 - scale) / 2) top=(0 - airH() * (1 - scale) / 2) scale=scale
+                        background-color=d.backdrop animation="atlasReveal 1350ms linear both"
+                        PortedDemo(slug=d.slug, env=airEnv(env))
+                    if armed
+                      view position="absolute" inset=0 cursor="crosshair" testId=`atlas-drop-${d.slug}`
+                        pointerdown=armedClick(d.slug, `atlas-tile-${d.slug}`)
+                    Pins(notes=notesOf(notes, d.slug), w=(airW() * scale), h=(airH() * scale), open=openNote)
+                if openCount(notes, d.slug) > 0
+                  text `${openCount(notes, d.slug)}` position="absolute" top=-6 right=-6 min-width=18 height=18
+                    padding="0px 5px" border-radius=9 background-color="-exact-system-orange" color="#ffffff"
+                    font-size=11 font-weight=700 text-align="center" line-height="18px" pointer-events="none"
+                    testId=`atlas-badge-${d.slug}`
+                if draft == d.slug and focused == ""
+                  NoteEditor(x=(dx * airW() * scale), y=(dy * airH() * scale), w=(airW() * scale), h=(airH() * scale),
+                    hit=hit, editing=(picked != ""), status=noteStatus(notes, picked), words=words, typed=typedWords,
+                    save=saveNote, cancel=closeNote, mark=markNote)
+                button appearance="none" press=focus(d.slug) aria-label=`Focus ${d.name}` testId=`atlas-open-${d.slug}`
+                  padding=0 border-width=0 background-color="transparent" max-width="100%"
+                  column gap=2 align-items="center" max-width="100%"
+                    text d.name font-size=13 font-weight=500 color="-exact-label" white-space="nowrap" overflow="hidden"
+                      text-overflow="ellipsis" max-width="100%"
+                    row gap=5 align-items="center"
+                      view width=6 height=6 border-radius=3 background-color=statusDot(d.slug)
+                      text detail(d.slug) font-size=11 color="-exact-secondary-label"
+
+        if focused != ""
+          column position="absolute" inset=0 background-color="-exact-secondary-background" align-items="center"
+            justify-content="center" gap=14 testId="atlas-focus"
+            text demoName(demos, focused) font-size=13 font-weight=500 color="-exact-secondary-label"
+            view position="relative" width=(airW() * focusScale) height=(airH() * focusScale)
+              view width=(airW() * focusScale) height=(airH() * focusScale) position="relative" overflow="hidden"
+                border-radius=(airCorner() * focusScale) corner-shape="-exact-continuous" background-color=demoBackdrop(demos, focused)
+                border-width=1 border-style="solid" border-color="-exact-separator"
+                box-shadow="0px 2px 8px rgba(0,0,0,0.08), 0px 24px 60px rgba(0,0,0,0.16)"
+                testId="atlas-focus-screen" id="atlas-focus-screen"
+                contextmenu=menuAt(focused, "atlas-focus-screen") contextPopover="atlas-menu"
+                column position="absolute" width=airW() height=airH()
+                  left=(0 - airW() * (1 - focusScale) / 2) top=(0 - airH() * (1 - focusScale) / 2) scale=focusScale
+                  background-color=demoBackdrop(demos, focused)
+                  PortedDemo(slug=focused, env=airEnv(env))
+                if armed
+                  view position="absolute" inset=0 cursor="crosshair" testId="atlas-drop-focus"
+                    pointerdown=armedClick(focused, "atlas-focus-screen")
+                Pins(notes=notesOf(notes, focused), w=(airW() * focusScale), h=(airH() * focusScale), open=openNote)
+              if draft == focused
+                NoteEditor(x=(dx * airW() * focusScale), y=(dy * airH() * focusScale), w=(airW() * focusScale),
+                  h=(airH() * focusScale), hit=hit, editing=(picked != ""), status=noteStatus(notes, picked), words=words,
+                  typed=typedWords, save=saveNote, cancel=closeNote, mark=markNote)
+            text `${detail(focused)} · Esc to close · right-click to leave feedback` font-size=11 color="-exact-tertiary-label"
+
+      row flex-shrink=0 align-items="center" justify-content="flex-end" gap=10 padding="6px 16px" border-top-width=1
+        border-top-style="solid" border-color="-exact-separator" background-color="-exact-background"
+        text (paused ? "Paused" : armed ? "Click a demo to leave feedback · Esc to cancel" : `${live.length} of ${cap} live`)
+          font-size=11 color="-exact-secondary-label" margin-right="auto"
+        button appearance="none" press=zoomOut -exact-menu="view" aria-keyshortcuts="Meta+-" aria-label="Zoom Out"
+          testId="atlas-zoom-out" padding=0 border-width=0 background-color="transparent"
+          image "symbol:icon.rectangle-grid-3x2" width=12 height=12 color="-exact-secondary-label"
+        input type="range" min=0.12 max=0.9 step=0.01 value=scale input=sized aria-label="Tile size" width=120 testId="atlas-size"
+        button appearance="none" press=zoomIn -exact-menu="view" aria-keyshortcuts="Meta+=" aria-label="Zoom In"
+          testId="atlas-zoom-in" padding=0 border-width=0 background-color="transparent"
+          image "symbol:icon.rectangle-grid-1x2" width=14 height=14 color="-exact-secondary-label"
+        button appearance="none" press=zoomReset -exact-menu="view" aria-keyshortcuts="Meta+0" aria-label="Actual Size"
+          testId="atlas-zoom-reset" display="none"
+          text "Actual Size"
+
+fn demoName(ds: Demo[], slug: string): string = match first(ds.filter(d => d.slug == slug)) {
+  case some(d) => d.name,
+  case none => slug
+}
+fn demoBackdrop(ds: Demo[], slug: string): string = match first(ds.filter(d => d.slug == slug)) {
+  case some(d) => d.backdrop,
+  case none => "#000000"
+}

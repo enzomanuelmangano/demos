@@ -1,0 +1,4 @@
+at "/demo/blurred-scroll"
+
+test "the list's canvas is there"
+  expect tree has "blurred-scroll-canvas"

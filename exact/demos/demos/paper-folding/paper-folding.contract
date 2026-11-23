@@ -1,0 +1,15 @@
+// Paper folding: a sheet of paper in three folds over a soft grey sweep. A tap anywhere unfolds
+// it or folds it back. Drawn in Rust (gpu/src/paper_folding.rs).
+// Haptics: selection on touch, then a soft impact as each fold lands.
+
+component PaperFolding
+  action buzz(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-soft"
+      haptic("impact-soft")
+  view
+    column position="absolute" inset=0 testId="paper-folding"
+      canvas surface=paper_folding() position="absolute" top=0 left=0 width="100%" height="100%"
+        touch-action="none" message=buzz testId="paper-folding-canvas"
+        aria-label="Tap to fold or unfold the paper"

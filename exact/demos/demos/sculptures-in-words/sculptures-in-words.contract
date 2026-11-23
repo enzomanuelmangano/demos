@@ -1,0 +1,50 @@
+// Sculptures in words: three articles (the Venus de Milo, the Victory of Samothrace, Rodin's
+// Thinker). The letters of an article lift off the column onto its statue when the corner button
+// is pressed, and back. Sideways, while a statue shows, the letters re-seat onto the next one.
+// Drawn in Rust (gpu/src/sculptures_in_words.rs). The button and its icon crossfade are here.
+//
+// A toggle within 120 ms of the last one is ignored: a press animation can fire twice on one tap.
+use PressableScale from "pressto"
+use DemoEnv from "../env.contract"
+
+// Crossfade curve: inOut quad over 350 ms. The icon layers are linear in the same progress, so
+// easing the progress eases them too.
+fn inOutQuad(): string = "linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
+
+component SculpturesInWords
+  props
+    env: DemoEnv
+  state revealed = false
+  state lastToggle = -1000000
+  action toggle
+    let now = performanceNow()
+    if now - lastToggle >= 120
+      lastToggle = now
+      revealed = not revealed
+  action heard(m: string)
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+  view
+    // Paper-white page.
+    view position="absolute" top=0 left=0 width=env.width height=env.height background-color="#ffffff"
+      testId="sculptures-in-words"
+      canvas surface=sculptures_in_words(revealed) message=heard position="absolute" top=0
+        left=0 width=env.width height=env.height aria-hidden=true testId="sculptures-canvas"
+      // A 48-point disc at the bottom-right corner, with a 16-point slop around it. It sits above
+      // the canvas, which takes every touch under it. The outer view places it; the pressable and
+      // its disc are inside.
+      view position="absolute" z-index=1 right=(env.width * 0.09 - 16) bottom=(env.width * 0.09 - 16)
+        width=80 height=80 display="flex" flex-direction="column"
+        PressableScale(press=toggle)
+          column flex-grow=1 padding=16 box-sizing="border-box" text-align="center"
+            aria-label="Switch between the article and the sculpture" testId="sculptures-toggle"
+            view position="relative" width=48 height=48 border-radius=24 corner-shape="-exact-continuous"
+              background-color="#1c1a17"
+              view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
+                opacity=(revealed ? 0 : 1) scale=(revealed ? 0.85 : 1)
+                transition=`opacity 350ms ${inOutQuad()}, scale 350ms ${inOutQuad()}`
+                image "symbol:icon.textformat" font-size=13.7931 font-weight=600 position="relative" top="0.2833px" left="0.12px" color="#F5F1E8" aria-hidden=true
+              view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
+                opacity=(revealed ? 1 : 0) scale=(revealed ? 1 : 0.85)
+                transition=`opacity 350ms ${inOutQuad()}, scale 350ms ${inOutQuad()}`
+                image "symbol:icon.person-crop-circle" font-size=16.6667 font-weight=600 color="#F5F1E8" aria-hidden=true

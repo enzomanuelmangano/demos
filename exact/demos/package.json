@@ -1,0 +1,20 @@
+{
+  "name": "demos",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "bun exact.mjs web-build --out dist",
+    "start": "bun exact.mjs serve dist",
+    "lint": "tools/lint.sh all",
+    "lint:contract": "tools/lint.sh contract",
+    "lint:rust": "tools/lint.sh rust",
+    "lint:fix": "tools/lint.sh fix"
+  },
+  "dependencies": {
+    "pressto": "workspace:*",
+    "@exact/motion": "file:.exact/checkout/packages/motion",
+    "demos-gpu-images": "workspace:*"
+  }
+}

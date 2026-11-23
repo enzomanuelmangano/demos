@@ -1,0 +1,5 @@
+at "/demo/color-carousel"
+
+test "the glow, the cards and their scroll are one canvas"
+  expect tree has "color-carousel"
+  expect tree has "color-carousel-canvas"

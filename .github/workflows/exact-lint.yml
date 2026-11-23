@@ -1,0 +1,78 @@
+name: Exact lint
+
+# Quality checks for the Exact app (exact/demos): Contract files, Rust, the Bun tooling.
+# Separate from lint.yml (the React Native app's ESLint / tsc / Prettier), which is untouched.
+#
+# The Exact app depends on a local checkout of exact2 (a path dependency in exact/demos/Cargo.toml,
+# ../../../../../../.exact/exact2/<hash>), and a GitHub runner has none. So this workflow runs only
+# the checks that need nothing but git, bun and rustfmt:
+#
+#   runs here                                         tools/lint.sh
+#   - Contract linter against its baseline + tests    contract   (new findings fail; accepted debt is listed)
+#   - rustfmt --check on the .rs files the PR changes rust       (rust-toolchain.toml's rustfmt; informational until the cargo fmt commit)
+#   - tsc over the Bun tooling                        ts         (exact/tsconfig.json)
+#   - generated files are up to date                  generated  (regenerates into scratch, reports drift; informational today)
+#
+#   only local, where the Exact checkout exists (run `exact/demos/tools/lint.sh all`)
+#   - `bun exact.mjs contract build app.contract --errors-only`   (the compiler)
+#   - clippy against tools/rust-lint-baseline.txt                 (cargo needs the workspace to resolve)
+#
+# tools/lint.sh skips those two itself when the checkout is missing and says so in the log.
+
+on:
+  pull_request:
+    paths:
+      - 'exact/**'
+      - '.github/workflows/exact-lint.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: exact-lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  exact-lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: exact/demos
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # The Rust format check diffs against the base branch.
+          fetch-depth: 0
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Set up Rust (the toolchain rust-toolchain.toml pins, rustfmt only)
+        run: |
+          channel="$(sed -n 's/^channel *= *"\(.*\)"/\1/p' rust-toolchain.toml)"
+          rustup toolchain install "$channel" --profile minimal --component rustfmt --no-self-update
+
+      - name: Contract linter
+        run: tools/lint.sh contract
+
+      # Informational until the whole-tree `cargo fmt` commit lands: the Rust of the exact branch was
+      # never formatted, and every file of it is "changed" against main (a PR that adds the app would
+      # fail here for a reason that is not the PR's). After that commit, delete the next line.
+      - name: Rust format (changed files)
+        continue-on-error: true
+        env:
+          LINT_BASE: origin/${{ github.base_ref }}
+        run: tools/lint.sh rust
+
+      - name: TypeScript (Bun tooling)
+        run: tools/lint.sh ts
+
+      # Informational for now: at the time of writing the committed demos/index.contract and
+      # Architecture.generated.swift differ from what their generators write (gen-index.ts names the
+      # first component of a file, `MpArt` for expandable-mini-player, where the committed file has
+      # ExpandableMiniPlayer; the Architecture file's order and two entries differ). Regenerate
+      # (or fix the generators), then delete the next line.
+      - name: Generated files are up to date
+        continue-on-error: true
+        run: tools/lint.sh generated

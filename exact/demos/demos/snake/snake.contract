@@ -1,0 +1,26 @@
+// Snake: a white card with the score over a 10 x 10 board. The snake moves every 120 ms, turned by
+// flings and growing on food. When it bites itself, "Life goes on..." fades in over the board and
+// restarts it. Drawn in Rust (gpu/src/snake.rs, gpu/shaders/snake.wgsl), which posts a selection
+// haptic on each fling and on restart.
+use DemoEnv from "../env.contract"
+
+// Board side: 70% of the width, rounded down to a multiple of 10.
+fn boardSize(width: number): number = floor(width * 0.7 / 10) * 10
+// Canvas height: the score label and count, above the board.
+fn contentHeight(width: number): number = ceil(21.48046875 * 3) / 3 + 4 + 30 + 8 + boardSize(width)
+
+component Snake
+  props
+    env: DemoEnv
+  action buzz(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+  view
+    column position="absolute" inset=0 background-color="#ffffff" align-items="center"
+      justify-content="center" testId="snake"
+      column background-color="#ffffff" border-radius=18 corner-shape="-exact-continuous"
+        box-shadow="0px 2px 10px rgba(92, 92, 92, 0.2)" padding=10 align-items="center"
+        justify-content="center" testId="snake-card"
+        canvas surface=snake(env.seed, env.width, env.height) width=boardSize(env.width)
+          height=contentHeight(env.width) flex-shrink=0 touch-action="none" message=buzz
+          testId="snake-canvas" aria-label="Swipe on the board to turn the snake"

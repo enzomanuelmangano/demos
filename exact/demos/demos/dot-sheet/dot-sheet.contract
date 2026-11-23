@@ -1,0 +1,184 @@
+// Dot Sheet: a blurred rose-and-white sweep behind "One more thing"; a small tilted white card
+// grows into a full sheet with a text field when tapped, and shrinks back from the chevron. The
+// background and card are canvases; the field sits on top of the card.
+use PressableScale from "pressto"
+use DemoEnv, demoButtonRow, floatingWidth, concentricInset, concentricRadius from "../env.contract"
+
+
+// How long after a tap the field takes focus (the keyboard), once the card is opening.
+fn keysDelay(): number = 260
+// Card spring: 350 ms once the surface reports it can run that fast, 800 ms otherwise.
+fn cardSpring(ms: number): string = ms == 350 ? "-exact-spring(2219.8672, 188.4619, 4)" : "-exact-spring(424.9, 82.5, 4)"
+// The open sheet starts just under the button row; the surface adds 56 + 52 to the safe top.
+fn header(): number = 0
+fn sheetLift(): number = 52
+fn cardHeight(h: number, open: bool): number = open ? h : h / 2.8
+fn cardWidth(w: number, h: number, open: bool): number = open ? w - 2 : h / 2.8 * (3 / 4)
+fn cardTop(h: number, safeTop: number, open: bool): number = open ? safeTop + demoButtonRow() + header() : (h - h / 2.8) / 2 + 35
+fn cardLeft(w: number, h: number, open: bool): number = open ? 1 : (w - h / 2.8 * (3 / 4)) / 2
+fn cardCentreX(w: number, h: number, open: bool): number = cardLeft(w, h, open) + cardWidth(w, h, open) / 2
+fn cardCentreY(h: number, safeTop: number, open: bool): number = cardTop(h, safeTop, open) + cardHeight(h, open) / 2
+
+// The field is laid out once at its open size and moved with transforms: fontSize can't animate,
+// and a layout change would show the new size on the commit's first frame. Scale and translate
+// keep it on the card as the spring runs.
+fn fieldW(w: number): number = w - 2 - 28
+fn fieldH(h: number): number = h - 24
+fn fieldScale(open: bool): number = open ? 1 : 14 / 24
+// Padding that puts the first baseline on the same line in both states.
+fn padOpen(): number = 24 * 461 / 2048 - 1 / 3
+fn padClosed(): number = 14 * 461 / 2048 + 5 / 3
+fn fieldTop(open: bool): number = open ? 24 : 16 + padClosed() - 14 / 24 * padOpen()
+fn fieldX(w: number, h: number, open: bool): number = 16 - cardWidth(w, h, open) / 2 - (1 - fieldScale(open)) * fieldW(w) / 2
+fn fieldY(h: number, open: bool): number = fieldTop(open) - cardHeight(h, open) / 2 - (1 - fieldScale(open)) * fieldH(h) / 2
+
+component DotSheet
+  props
+    env: DemoEnv
+  // While open, the demo's close button acts as the sheet's Back.
+  inject
+    demoSubpage: action
+    demoBackChrome: bool
+  state open = false
+  // Return or the send arrow submits: success haptic, keyboard down, sheet closes with the note kept.
+  state note = ""
+  action typed(v: string)
+    if v.endsWith("\n")
+      note = v.slice(0, v.length - 1)
+      submit()
+    else
+      note = v
+  action submit
+    if note.trim() != ""
+      haptic("success")
+      blur("dot-input")
+  // The card's spring duration, as its surface reports it (800 until it says otherwise).
+  state cardMs = 800
+  // Height is pinned on focus, so the keyboard never resizes the layout.
+  state pinH = 0
+  derive h = max(env.height, pinH)
+  // progress === 0: the card's surface says when its spring has landed closed.
+  state still = true
+  action heard(m: string)
+    if m == "card:rest"
+      still = true
+    // Already set by opened: no commit lands mid-animation.
+    if m == "card:moving" and still
+      still = false
+    if m == "card:ms:350"
+      cardMs = 350
+  // Focusing or blurring the field opens or closes the card.
+  action opened
+    pinH = max(pinH, env.height)
+    open = true
+    // Commit now: card:moving would otherwise commit on the card's first frame, mid-animation.
+    still = false
+    demoSubpage("dot-input")
+  action closed
+    open = false
+    keysWanted = false
+    demoSubpage("")
+  // The keyboard's first layout blocks the main thread for about 100 ms, which stops the card in
+  // the middle of its spring. So a tap opens the card first and the field takes focus once the
+  // spring has nearly landed (keysDelay), where a stall shows least.
+  state keysWanted = false
+  state keysToken = 0
+  // On the web the field takes focus in the tap itself: the timer's message never arrives there
+  // (the host delivers no surface messages), and a phone browser raises its keyboard only for a
+  // focus inside the user's gesture.
+  action openCard
+    pinH = max(pinH, env.height)
+    open = true
+    still = false
+    if env.web
+      focus("dot-input")
+    else
+      keysWanted = true
+      keysToken = keysToken + 1
+    demoSubpage("dot-input")
+  action showKeys(m: string)
+    if open and keysWanted and m == `timer:${keysToken}`
+      keysWanted = false
+      focus("dot-input")
+  // Open only when the card is fully closed, not while it is still closing.
+  action tapCard
+    if not open and still
+      openCard()
+  action start
+    if not open
+      openCard()
+  action back
+    blur("dot-input")
+  view
+    column position="absolute" top=0 left=0 width=env.width height=h testId="dot-sheet"
+      canvas surface=dot_sheet() position="absolute" top=0 left=0 width=env.width height=h
+        aria-hidden=true testId="dot-sheet-canvas"
+      // Fires keysDelay() after a tap opens the card (the surface is idle at token 0).
+      canvas surface=timer(keysToken, keysDelay()) message=showKeys width=1 height=1 position="absolute"
+        left=0 top=0 aria-hidden=true pointer-events="none"
+      // Positioned, so it paints over the canvas.
+      column flex=1 position="relative" align-items="center" justify-content="center"
+        // Explicit line-heights and small offsets match the native text metrics. The title's frame
+        // clips its descender.
+        view height=33.6667 overflow="hidden" position="relative" top=-0.3333 left=-0.3333
+          text "One more thing" font-family="AddingtonCF-Light" font-size=28 letter-spacing=-0.5
+            line-height="33.591796875px" position="relative" top=1 color="#000000" role="heading"
+        text "This animation is inspired by Dot and made with React Native." color="#6c6c6c"
+          font-family="AddingtonCF-Light" font-size=18 letter-spacing=-0.5 line-height="21.5947265625px"
+          position="relative" top=0.3333 margin-top=12 max-width="60%"
+          text-align="center"
+      column flex=1
+      // Back button, centred under the close button and above the card's canvas so taps reach it.
+      // The press box is 4 pt larger than the 32 pt button on each side.
+      if not demoBackChrome
+        view position="absolute" top=(env.safeTop + 62 - 4) left=20 width=40 height=40
+          z-index=2 display="flex" flex-direction="column"
+          PressableScale(press=back)
+            row flex-grow=1 margin=4 align-items="center" justify-content="center" text-align="center"
+              opacity=(open ? 1 : 0) transition=`opacity ${cardSpring(cardMs)}` aria-label="Back" testId="dot-back"
+              image "symbol:icon.chevron-backward" font-size=24 color="#323232" aria-hidden=true
+      // Capsule whose ends are concentric with the display corner.
+      view position="absolute" top=(h - concentricInset(52) - 52) left=concentricInset(52)
+        width=floatingWidth(env.width, concentricInset(52)) height=52 z-index=(not open and still ? 2 : 0) display="flex" flex-direction="column"
+        PressableScale(press=start)
+          row flex-grow=1 border-radius=concentricRadius(concentricInset(52), 52) corner-shape="-exact-continuous"
+            background-color="rgba(55, 55, 55, 0.2)" text-align="center"
+            align-items="center" justify-content="center" testId="dot-start"
+            text "Start your Journey" color="#ffffff" font-size=16 font-weight=700 line-height="19.09375px"
+              position="relative" top=0.3333
+      // Send arrow: centred on the field's first line, with a 44 pt touch target around a 36 pt disc.
+      view position="absolute" z-index=3 width=44 height=44
+        left=(env.width - 1 - 16 - 36 - 4) top=(cardTop(h, env.safeTop, true) + 44 - 22)
+        opacity=(open ? (note.trim() != "" ? 1 : 0.35) : 0) transition=`opacity ${cardSpring(cardMs)}`
+        pointer-events=(open and note.trim() != "" ? "auto" : "none") display="flex" flex-direction="column"
+        PressableScale(press=submit)
+          column flex-grow=1 align-items="center" justify-content="center" aria-label="Send" testId="dot-send"
+            column width=36 height=36 border-radius=18 background-color="#323232" align-items="center"
+              justify-content="center"
+              image "symbol:icon.arrow-up" font-size=17 font-weight=600 color="#ffffff" aria-hidden=true
+      // Frame, radius and rotation interpolate with the progress: a small tilted card when closed,
+      // the full-width sheet when open.
+      canvas surface=dot_sheet_card(open, env.safeTop - sheetLift()) message=heard position="absolute" top=0 left=0
+        width=env.width height=h z-index=1 pointer-events="none" aria-hidden=true
+        testId="dot-card-canvas"
+      // Touch box for the card, at its target frame; the canvas above draws it.
+      column position="absolute" z-index=1 top=cardTop(h, env.safeTop, open)
+        left=cardLeft(env.width, h, open) width=cardWidth(env.width, h, open)
+        height=cardHeight(h, open) rotate=(open ? "0deg" : "-4deg") press=tapCard testId="dot-card"
+      // Zero-size box turned with the card, so the field rotates about its own place.
+      view position="absolute" z-index=1 top=0 left=0 width=0 height=0
+        translate=`${cardCentreX(env.width, h, open)}px ${cardCentreY(h, env.safeTop, open)}px`
+        rotate=(open ? "0deg" : "-4deg") transition=`translate ${cardSpring(cardMs)}, rotate ${cardSpring(cardMs)}`
+        column position="absolute" top=0 left=0 width=fieldW(env.width) height=fieldH(h)
+          translate=`${fieldX(env.width, h, open)}px ${fieldY(h, open)}px` scale=fieldScale(open)
+          transition=`translate ${cardSpring(cardMs)}, scale ${cardSpring(cardMs)}`
+          pointer-events=(open ? "auto" : "none")
+          // Baseline offsets against the native text view: a third of a point up open, five thirds down closed.
+          textarea id="dot-input" placeholder="Hello there 👋" autocorrect="off" autocapitalize="none"
+            value=note input=typed enterkeyhint="send"
+            focus=opened blur=closed font-family="AddingtonCF-Light" font-size=24
+            flex=1 min-height=0 margin=0
+            background-color="transparent" border="none" padding=0 color="#000000" outline="none" padding-right=44
+            padding-top=padOpen() resize="none" aria-label="Note" testId="dot-input"
+            ::placeholder
+              color="#b4b4b4"

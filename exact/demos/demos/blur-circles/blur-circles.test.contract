@@ -1,0 +1,4 @@
+at "/demo/blur-circles"
+
+test "the canvas is there"
+  expect tree has "blur-circles"

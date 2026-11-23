@@ -1,0 +1,80 @@
+// The launcher: an iOS Home Screen of demo icons, paged sideways.
+use Demo from "../demos.contract"
+
+// The icon keeps one physical size; columns and rows follow the screen.
+fn gridCols(w: number): number = min(6, max(3, floor((w - 44 + 22) / (62 + 22))))
+fn cellWidth(w: number): number = (w - 44) / gridCols(w)
+fn iconSize(w: number): number = min(62, cellWidth(w) - 8)
+// The page's height is the route's (the safe area already out); 16 on top, 44 for the dots.
+fn gridRows(w: number, h: number): number = max(1, floor((h - 16 - 44 + 22) / (iconSize(w) + 26 + 22)))
+fn perPage(w: number, h: number): number = gridCols(w) * gridRows(w, h)
+fn pageCount(n: number, per: number): number = per > 0 ? ceil(n / per) : 0
+
+component Springboard
+  props
+    demos: Demo[]
+    changed: string[]
+    open: action
+  state boxW = 0
+  state boxH = 0
+  derive per = perPage(boxW, boxH)
+  derive pages = boxW > 0 and boxH > 0 ? range(pageCount(demos.length, per)) : []
+  // The demos' rows, as the native views (the icon grid and the pull-to-search) take them: one "|" list per field.
+  derive searchSlugs = demos.map(d => d.slug).join("|")
+  derive searchNames = demos.map(d => d.name).join("|")
+  derive searchLabels = demos.map(d => d.label).join("|")
+  derive searchIcons = demos.map(d => d.icon).join("|")
+  derive inspirations = demos.map(d => d.inspiration).join("|")
+  derive changedKey = changed.join("|")
+
+  // The icons' long-press menu rows (icon-grid, AppIcon.swift) arrive as "share:<slug>", "inspiration:<url>" or "code:<slug>".
+  action iconMenu(text: string)
+    if text.startsWith("share:")
+      share(text=`${demoName(demos, text.slice(6))} — ${sourceUrl(text.slice(6))}`, url=sourceUrl(text.slice(6)))
+    else if text.startsWith("inspiration:")
+      openURL(text.slice(12))
+    else if text.startsWith("code:")
+      openURL(sourceUrl(text.slice(5)))
+
+  action fit(w: number, h: number)
+    boxW = w
+    boxH = h
+
+  view
+    column position="absolute" inset=0 testId="springboard"
+      // A static wallpaper, edge to edge. It never scales: the launch (DemoLaunch.swift) zooms
+      // `springboard-zoom` alone, as SpringBoard zooms its icons over a still wallpaper.
+      // A native picture (StillArt.swift), predecoded at launch: an `image` node lands a frame or many later.
+      still-art art="assets/home-wallpaper.png" mode="cover" position="absolute" inset=0 width="100%" height="100%"
+        aria-hidden=true
+      column flex=1 min-height=0 resize=fit position="relative"
+        padding-top="env(safe-area-inset-top)" padding-bottom="env(safe-area-inset-bottom)"
+        testId="springboard-zoom"
+        // The pull-to-search moves the icons and the dots (never the wallpaper) by this box's sublayer transform
+        // (SearchReveal.swift): a layer property, no layout.
+        column flex=1 min-height=0 testId="springboard-pull"
+          // Native paging: every page is a snap stop the width of the pager, so a fling is
+          // interruptible. The hatch hands the scroll view to the page dots (PageDots.swift).
+          row testId="pager" hatch="page-scroller" data-scroller="pager" flex=1 min-height=0 overflow-x="auto" overflow-y="hidden"
+            scroll-snap-type="x mandatory" scrollbar-width="none"
+            for p in pages key=p
+              column id=`page-${p}` width=boxW height="100%" flex-shrink=0 scroll-snap-align="start"
+                scroll-snap-stop="always" padding="16px 22px 0" box-sizing="border-box"
+                // The whole page is one native view (modules/apple/AppIcon.swift): its icons, their badges, the press, the
+                // long-press menu and the launch's squares. Page 1 builds in the first commit, the rest right after it.
+                icon-grid scroller="pager" slugs=searchSlugs demo-names=searchNames captions=searchLabels arts=searchIcons
+                  inspirations=inspirations grid-page=p grid-per=per grid-cols=gridCols(boxW) cell-width=cellWidth(boxW)
+                  art-size=iconSize(boxW) badge-changed=changedKey change=open message=iconMenu
+                  width="100%" flex=1 min-height=0 testId=`icons-${p}`
+          // Page dots: native, they read the pager's offset in the same frame as the scroll (PageDots.swift).
+          if pages.length > 1
+            page-dots scroller="pager" count=pages.length height=44 flex-shrink=0 aria-hidden=true
+        // Pull down on the pager to search: a native overlay (SearchReveal.swift) blurs the home, shows the field
+        // and the results, and filters as you type, all off the plan. It passes every touch through until
+        // the search is committed; a tapped result arrives here as `change(slug)` and opens like an icon.
+        search-reveal scroller="pager" slugs=searchSlugs names=searchNames labels=searchLabels icons=searchIcons
+          icon-size=iconSize(boxW) side-margin=22 change=open position="absolute" inset=0 testId="search"
+
+fn demoName(demos: Demo[], slug: string): string = demos.filter(d => d.slug == slug).map(d => d.name).join("")
+
+fn sourceUrl(slug: string): string = `https://github.com/enzomanuelmangano/demos/tree/main/src/animations/${slug}`

@@ -1,0 +1,14 @@
+at "/demo/animated-indicator-list"
+
+test "the headers and the indicator follow the list"
+  expect tree has "animated-indicator-list"
+  expect tree has "header-0"
+  expect tree has "indicator"
+  tap "animated-indicator-list-scroll" drag 0 -400
+  clock settle
+  expect tree has "header-1"
+
+test "a header scrolls the list to its section"
+  tap "header-2"
+  clock settle
+  expect tree has "animated-indicator-list"

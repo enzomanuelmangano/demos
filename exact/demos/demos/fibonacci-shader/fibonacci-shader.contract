@@ -1,0 +1,71 @@
+// Fibonacci Shader: XorDev's sphere of glowing points, turning; a slider sets how many (5 to 350)
+// and a button makes a new spiral. Controls are a floating glass bar with a native slider. Until
+// the surface reports `native`, a drawn slider and a round button are used instead.
+use PressableScale from "pressto"
+use DemoEnv, roll, floatingWidth, concentricInset, concentricRadius from "../env.contract"
+
+// The bar: 64 tall, its ends concentric with the display corner, so 30 in from the edges.
+// The button is 48 round, centred on the same point.
+fn fibInset(): number = concentricInset(fibBarH())
+fn fibBarH(): number = 64
+fn fibButton(): number = 48
+// The slider's 0…1 as N, clamped to [5, 350].
+fn fibN(p: number): number = 5 + min(max(p, 0), 1) * 345
+
+component FibonacciShader
+  props
+    env: DemoEnv
+  // The spiral's multiplier: 2.4 at first, then a fresh random value per press.
+  state magic = 2.4
+  state presses = 0
+  // Native slider value, 0…1; 0 gives N = 5.
+  state progress = 0
+  // Set once the surface reports that it takes N from the native slider.
+  state native = false
+  action wand
+    magic = roll(env.seed, presses, 1000000) / 10000
+    presses = presses + 1
+  action sparkle
+    haptic("selection")
+    magic = roll(env.seed, presses, 1000000) / 10000
+    presses = presses + 1
+  action moved(v: string)
+    progress = match parseNumber(v) { case some(n) => n, case none => progress }
+  // Drawn slider haptics: light on the grab, rigid at an end of the track.
+  action heard(m: string)
+    if m == "native"
+      native = true
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+    if m == "haptic:impact-rigid"
+      haptic("impact-rigid")
+  view
+    column position="absolute" inset=0 background-color="#000000" color-scheme="dark"
+      testId="fibonacci-shader"
+      canvas surface=fibonacci_shader(magic, fibN(progress)) message=heard position="absolute" top=0 left=0
+        width="100%" height="100%" touch-action="none" pointer-events=(native ? "none" : "auto")
+        aria-label="Fibonacci sphere" testId="fibonacci-canvas"
+      if native
+        // The padding is inside the bar's width (border-box): content-box put the bar's right end
+        // 30 pt past its place, at the display's edge, and the button off it.
+        row position="absolute" left=fibInset() bottom=fibInset() width=floatingWidth(env.width, fibInset())
+          height=fibBarH() box-sizing="border-box" border-radius=concentricRadius(fibInset(), fibBarH())
+          corner-shape="-exact-continuous" backgroundMaterial="glass"
+          -exact-glass-tint="rgba(255, 255, 255, 0.04)" align-items="center"
+          padding-left=22 padding-right=(fibBarH() - fibButton()) / 2 gap=14 testId="fibonacci-bar"
+          // The count is quiet: the sphere is the subject.
+          text `${round(fibN(progress))}` width=34 font-size=15 font-weight=600
+            font-variant-numeric="tabular-nums" color="rgba(255, 255, 255, 0.6)"
+            aria-hidden=true testId="fibonacci-count"
+          swift-slider progress="0" change=moved flex=1 height=32 min-width=0
+            role="slider" aria-label="Points" testId="fibonacci-slider"
+          button buttonStyle="glass" press=sparkle width=fibButton() height=fibButton()
+            flex-shrink=0 aria-label="New spiral" testId="wand"
+            image "symbol:sparkles" font-size=19
+      else
+        // Round button, used when the native bar is absent.
+        view position="absolute" bottom=120 right=60 width=64 height=64 display="flex" flex-direction="column"
+          PressableScale(press=wand)
+            row flex-grow=1 border-radius=32 background-color="#232323" text-align="center"
+              align-items="center" justify-content="center" aria-label="New spiral" testId="wand"
+              text "🪄" font-size=32

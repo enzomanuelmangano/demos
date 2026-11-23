@@ -1,0 +1,7 @@
+at "/demo/radar-chart"
+
+test "the chart and its shuffle are there"
+  expect tree has "radar-canvas"
+  tap "shuffle"
+  clock settle
+  expect tree has "radar-canvas"

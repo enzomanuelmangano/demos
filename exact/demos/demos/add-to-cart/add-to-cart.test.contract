@@ -1,0 +1,33 @@
+at "/demo/add-to-cart"
+
+test "twenty product cards, each with its cart button, and the sheet's photo always mounted"
+  expect tree has "add-to-cart"
+  expect tree has "card-0"
+  expect tree has "buy-0"
+  expect tree has "card-19"
+  expect tree has "sheet-photo"
+  expect tree missing "badge-0"
+
+test "the cart button opens the product's sheet, and the backdrop closes it without adding"
+  tap "buy-3"
+  clock settle
+  expect text "sheet-title" == "Item 3"
+  tap "add-to-cart-backdrop"
+  clock settle
+  expect tree missing "badge-3"
+  tap "buy-4"
+  clock settle
+  expect text "sheet-title" == "Item 4"
+
+test "confirming counts the product on its cart badge"
+  tap "card-5"
+  clock settle
+  expect text "sheet-title" == "Item 5"
+  tap "add-to-cart-confirm"
+  clock settle
+  expect text "badge-5" == "1"
+  tap "buy-5"
+  clock settle
+  tap "add-to-cart-confirm"
+  clock settle
+  expect text "badge-5" == "2"

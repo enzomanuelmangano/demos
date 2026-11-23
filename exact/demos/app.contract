@@ -1,0 +1,338 @@
+// Demos on Exact: the launcher (an iOS SpringBoard of demo icons) and each demo, opened
+// out of its icon. RN: app/_layout.tsx, app/index.tsx, src/navigation/home/*.
+use Demo, allDemos from "./demos.contract"
+use Springboard from "./home/springboard.contract"
+use DemoScreen from "./home/demo-screen.contract"
+use Atlas, SnapFrame, DeskDemo, FeedbackNote from "./home/atlas.contract"
+use DemoEnv from "./demos/env.contract"
+use WebShell from "./home/web-phone.contract"
+use startSensorInput, stopSensorInput, SensorInput from "@exact/motion"
+use defaultPressablesConfig from "pressto"
+
+routes nav
+  home "/"
+    demo "/demo/:slug"
+    open "/open"
+    atlas "/atlas"
+    snap "/snap/:slug"
+
+shape Host
+  width: number
+  height: number
+  prefersReducedMotion: bool
+  pointer: string
+  safeAreaTop: number
+  safeAreaBottom: number
+  keyboardHeight: number
+
+// Which host this is: the web has no native views, so it draws its own launcher (home/web-phone.contract).
+shape Page
+  platform: string
+
+// The web's `timer` surfaces: the token each live one last fired (gpu/src/timer.rs).
+shape Timers
+  fired: number[]
+
+shape Time
+  seed: number
+  epochAtZero: number
+  utcOffset: number
+
+// The atlas's feedback store on this Mac's loopback (exact/parity-tools/feedback/server.ts):
+// every note, a new one, and an edit (status "resolved", "open" or "deleted"). With the server
+// down the atlas just shows no pins.
+source feedbackNotes() as shape FeedbackNote[]
+  url "http://127.0.0.1:5350/notes"
+  pointer "/notes"
+
+source feedbackAdd(slug: string, x: number, y: number, element: string, ex: number, ey: number, ew: number, eh: number, comment: string) as shape FeedbackNote
+  url "http://127.0.0.1:5350/add"
+  method "POST"
+  body json
+
+source feedbackEdit(slug: string, id: string, comment: string, status: string) as shape FeedbackNote
+  url "http://127.0.0.1:5350/edit"
+  method "POST"
+  body json
+
+// The demos with a live fix since the owner last opened them (orange on the home icon), and the
+// open that clears it, on the Mac's LAN address (the phone's feedback host). With the server
+// unreachable, no badges.
+source changedDemos() as shape string[]
+  url "http://192.168.1.206:5350/changed"
+  pointer "/slugs"
+
+// The snap route's "idle now": gen-snapshots.ts waits on the server for it, then captures.
+shape SnapAck
+  ok: bool
+
+source demoSeen(slug: string) as shape SnapAck
+  url "http://192.168.1.206:5350/seen"
+  method "POST"
+  body json
+
+source snapIdle(slug: string) as shape SnapAck
+  url "http://127.0.0.1:5350/snap-idle"
+  method "POST"
+  body json
+
+// Where a demo lets the swipe-down close start. RN's CloseGesture is a pan over the whole screen that a
+// demo's own gesture can claim first; here the demo's canvas takes touches natively and the close cannot
+// ask it mid-gesture (switching per touch costs a commit that holds the canvas's first frames), so each
+// demo says where its own vertical or free 2D drags live (exact/demos/tools/close-gesture.md has the table).
+// Words, space-separated (read by CloseZone in modules/apple/DemoLaunch.swift): "" = from anywhere;
+// "x0,y0,x1,y1" = a rect in fractions of the screen where the close must not start; "strip" = only the
+// top strip (the demo's drags need the whole screen). A real vertical scroller needs no word: the close
+// takes over from it at its top and never from the middle of its content.
+fn closeZone(slug: string): string = (
+  slug == "action-tray" ? "0,0.56,1,1" :
+  slug == "add-to-cart" ? "0,0.29,1,1" :
+  slug == "animated-3d-parallax" ? "0.09,0.31,0.91,0.69" :
+  slug == "art-gallery" ? "strip" :
+  slug == "atlas-sphere" ? "strip" :
+  slug == "audio-player" ? "0.04,0.75,0.96,0.89" :
+  slug == "balance-slider" ? "0.04,0.45,0.96,0.55" :
+  slug == "bezier-curve-outline" ? "strip" :
+  slug == "blurred-scroll" ? "strip" :
+  slug == "calendar-days" ? "0.05,0.60,0.95,0.69" :
+  slug == "chessboard" ? "0,0.24,1,0.74" :
+  slug == "clock-time-picker" ? "0.50,0.41,0.83,0.59" :
+  slug == "drag-to-sort" ? "strip" :
+  slug == "draggable-panel" ? "strip" :
+  slug == "duration-slider" ? "0.07,0.30,0.93,0.70" :
+  slug == "expandable-mini-player" ? "strip" :
+  slug == "fibonacci-shader-grid" ? "0.20,0.56,0.80,0.84" :
+  slug == "floating-bottom-bar" ? "0,0.88,1,0.97" :
+  slug == "floating-modal" ? "0,0.73,1,1" :
+  slug == "fourier-visualizer" ? "strip" :
+  slug == "fractal-glass" ? "strip" :
+  slug == "gl-transitions" ? "strip" :
+  slug == "ios-home-bouncy" ? "strip" :
+  slug == "light-on-painting" ? "0.27,0,0.73,1" :
+  slug == "liquid-glass-playground" ? "strip" :
+  slug == "magnet-spring" ? "strip" :
+  slug == "metaball" ? "0.24,0.37,0.76,0.63" :
+  slug == "mnist" ? "0.12,0.48,0.88,0.84" :
+  slug == "scroll-transition-3d" ? "strip" :
+  slug == "scrollable-bottom-sheet" ? "0,0.41,1,1" :
+  slug == "sculptures-in-words" ? "strip" :
+  slug == "selectable-grid-list" ? "strip" :
+  slug == "skia-color-picker" ? "0,0.25,1,0.75" :
+  slug == "slide-to-reveal" ? "0.15,0.43,0.85,0.57" :
+  slug == "snake" ? "0.12,0.36,0.88,0.71" :
+  slug == "stacked-bottom-sheet" ? "0,0.57,1,1" :
+  slug == "swipe-cards" ? "0.02,0.16,0.98,0.71" :
+  slug == "time-machine" ? "strip" :
+  slug == "toast" ? "0.02,0.85,0.98,0.96" :
+  "")
+// The route's platform dismissal is refused for every demo whose close is restricted.
+fn ownsDrags(slug: string): bool = closeZone(slug) != ""
+
+// The keyboard over a demo: RN on iOS never resizes the screen for it. A demo that moves for
+// the keys does so itself (cherry-blossom-qrcode's input riding useKeyboardHandler's height as
+// a keyboard toolbar here; verification-code(-face) lifting by half of it; KeyboardAvoidingView
+// nowhere): gl-transitions, dot-sheet and qrcode let the keys cover. So every
+// demo overlays the keys (`overlays-content`), and DemoScreen lays the demo out at the screen's
+// full height (the host still ends a full-screen route's own box at the keys).
+fn overlaysKeyboard(slug: string): bool = true
+// Demos whose GPU surface reads the attitude (RN: useAnimatedSensor(SensorType.ROTATION)).
+fn turns(slug: string): bool = slug == "threads-holo-ticket"
+// Demos whose GPU surface lights itself by the phone's attitude (past RN: card-shader-reflections).
+fn lights(slug: string): bool = slug == "card-shader-reflections"
+
+// A link `demos-exact://demo/<slug>` arrives as `/open?u=<the link, encoded>`: its path.
+fn linkPath(u: string): string = linkRoute(u.replaceAll("%3A", ":").replaceAll("%2F", "/").split("://").slice(1).join("://"))
+// `demo/x`, `/demo/x`, `///` or `` (the launcher): its non-empty segments under `/`.
+fn linkRoute(rest: string): string = `/${rest.split("/").filter(p => p != "").join("/")}`
+
+fn demoOf(slug: string): Demo = match first(allDemos().filter(d => d.slug == slug)) {
+  case some(d) => d,
+  case none => Demo(slug=slug, name=slug, label=slug, icon="assets/app-icons/_placeholder.png", backdrop="#000000", inspiration="", story="", actionLabel="", actionUrl="", unstable=false, ported=false)
+}
+
+component Demos
+  resource host = exactViewport() as shape Host
+  resource time = exactTime() as shape Time
+  resource page = exactPage() as shape Page
+  resource timers = exactSurface("timer") as shape Timers
+  derive env = DemoEnv(width=host.width, height=host.height, safeTop=0, safeBottom=0, epoch=time.epochAtZero, utcOffset=time.utcOffset, seed=time.seed, reducedMotion=host.prefersReducedMotion, timers=timers.fired, tile=false, web=page.platform == "web", keyboardHeight=(page.platform == "web" ? host.keyboardHeight : 0))
+  // "Show Unstable" (the General tray): the work-in-progress demos are listed only with it on.
+  state showUnstable = false persist
+  resource feedback = feedbackNotes() when atlasShown as shape FeedbackNote[] else empty()
+  mutation noted as shape FeedbackNote refreshes feedback
+  // The web is never the Mac's atlas window: a desktop browser gets an iPhone Air in a frame (`framed`).
+  derive web = page.platform == "web"
+  derive desk = not web and host.pointer == "fine" and host.width >= 600
+  derive framed = web and host.pointer == "fine" and host.width >= 600
+  // The phone's home badges: asked once the home has shown again, after the close flight has landed
+  // (DemoLaunch's flight is ~0.7-1 s): an ask is a whole-plan apply on the main thread (10-14 ms on the
+  // simulator), so it never lands inside a flight or a scroll, and there is no periodic poll.
+  derive homeShown = top(nav).name == "home" and not desk
+  // The last answers ride in storage (a `persist` state is in the first commit, a resource's own answer is not: this source is
+  // declared here), so the badges are in the home's first frame and the ask only changes what changed.
+  state savedChanged: string[] = [] persist
+  action keepBadges
+    savedChanged = changed
+  task keepingBadges when current(changed) key=changed.join(",")
+    change(keepBadges)
+  task changedOnHome when homeShown key=top(nav).id
+    after(1500, refreshChanged, wait=idle, max=6000)
+  // The GPU module loads when the first canvas exists (shader registry, device: ~85 ms on the simulator),
+  // which was the first Rust demo's open. A 1 px canvas on the home, mounted once the home has settled,
+  // loads it there, and its surface (gpu/src/warm.rs) then compiles every demo's pipelines in the background.
+  state gpuWarm = false
+  action warmGpu
+    gpuWarm = true
+  task warmingGpu when homeShown and not gpuWarm key=top(nav).id
+    after(4000, warmGpu, wait=idle, max=10000)
+  resource changed = changedDemos() when homeShown as shape string[] else empty()
+  derive changedSlugs = failed(changed) ? [] : (current(changed) ? changed : savedChanged)
+  action refreshChanged
+    refresh changed
+  // A demo opened on the phone is seen: its orange badge goes at the home's next ask.
+  mutation seen as shape SnapAck
+  task seeing when top(nav).name == "demo" and not desk key=top(nav).id
+    after(1, markSeen)
+  action markSeen
+    if top(nav).name == "demo"
+      send seen = demoSeen(top(nav).params.slug)
+  derive atlasShown = desk or stack(nav).map(e => e.name).includes("atlas")
+  derive demos = showUnstable ? allDemos() : allDemos().filter(d => not d.unstable)
+  action open(slug: string)
+    haptic("selection")
+    nav = push(nav, path("demo", slug))
+  // The web: the demo last opened out of its icon, whose demo mounts a frame after its card (home/web-phone.contract).
+  state flown = ""
+  action openFlown(slug: string)
+    flown = slug
+    open(slug)
+  // The atlas (home/atlas.contract): every demo live at once. demos-exact://atlas, or on the Mac
+  // View › Demo Atlas (⇧⌘A).
+  action openAtlas
+    if top(nav).name != "atlas"
+      nav = push(nav, "/atlas")
+  action addNote(slug: string, x: number, y: number, element: string, ex: number, ey: number, ew: number, eh: number, comment: string)
+    send noted = feedbackAdd(slug, x, y, element, ex, ey, ew, eh, comment)
+  action editNote(slug: string, id: string, comment: string, status: string)
+    send noted = feedbackEdit(slug, id, comment, status)
+  mutation snapped as shape SnapAck
+  // 1200: home/atlas.contract idleMs() (a timer takes a literal).
+  task snapping when top(nav).name == "snap" key=top(nav).id
+    after(1200, snapNow)
+  action snapNow
+    if top(nav).name == "snap"
+      send snapped = snapIdle(top(nav).params.slug)
+  mutation sensors as shape SensorInput
+  // demo-screen.tsx: a close, by the button or by the drag past CLOSE_SCALE, plays
+  // Presets.System.impactMedium() when it commits, before the flight home: the launch does
+  // (modules/apple/DemoLaunch.swift), and lets the route go here at expansion 0.2.
+  action back
+    if top(nav).name == "demo" and turns(top(nav).params.slug) and not web
+      send sensors = stopSensorInput(surface="threads_holo_ticket", sensor="relativeOrientation")
+    else if top(nav).name == "demo" and lights(top(nav).params.slug) and not web
+      send sensors = stopSensorInput(surface="card_shader_reflections", sensor="relativeOrientation")
+    nav = back(nav)
+  // Linear Sensors' gravity is fed by its own `motion-feed` node (modules/apple/MotionFeed.swift).
+  // Threads Holo Ticket's feed: Core Motion's attitude at 62.5 Hz (RN's interval 16 ms is
+  // deviceMotionUpdateInterval 0.016 s), into its surface.
+  // The web has no canvas input for @exact/motion (startSensorInput is NotSupportedError there): its feed is the page
+  // module's `motion-feed` beside the demo (below).
+  task turn when top(nav).name == "demo" and turns(top(nav).params.slug) and not web key=top(nav).id
+    after(1, startTurn)
+  action startTurn
+    send sensors = startSensorInput(surface="threads_holo_ticket", sensor="relativeOrientation", frequency=62.5)
+  // Card Shader Reflections' light: Core Motion's attitude at 62.5 Hz into its surface, which
+  // turns the cards' room frame by it (gpu/src/card_shader_reflections.rs, past RN).
+  task light when top(nav).name == "demo" and lights(top(nav).params.slug) and not web key=top(nav).id
+    after(1, startLight)
+  action startLight
+    send sensors = startSensorInput(surface="card_shader_reflections", sensor="relativeOrientation", frequency=62.5)
+  action follow(url: string)
+    let n = go(nav, url)
+    nav = top(n).name == "open" ? replace(n, linkPath(searchParam(top(n), "u"))) : n
+  // A cold link: the launch location is the /open route; it becomes what it names.
+  task opened when top(nav).name == "open" key=top(nav).id
+    after(1, redirect)
+  action redirect
+    nav = replace(nav, linkPath(searchParam(top(nav), "u")))
+
+  // <PressablesConfig globalHandlers={{ onPress: () => Haptics.selectionAsync() }}> around
+  // the app (app/_layout.tsx): pressto's default timing and config, and the global onPress.
+  action pressablesOnPress
+    haptic("selection")
+  // A demo in a sub-page (dot-sheet's open sheet) names the field whose blur takes it back, so
+  // the demo screen's close button turns into Back (home/demo-screen.contract provides its own
+  // pair); elsewhere (the atlas) nothing takes it, and the demo keeps its own back button.
+  state noSubpage = ""
+  action demoSubpage(field: string)
+    noSubpage = field
+  provide
+    pressto = defaultPressablesConfig()
+    pressablesOnPress
+    demoSubpage
+    demoBackChrome = false
+    demoBacks = 0
+  view
+    main testId="root" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow
+      navigationHistory=(desk and stack(nav).length == 1 ? "none" : "back forward")
+      width="100%" height="100%" color-scheme="dark" viewport-fit="cover"
+      // A demo is presented full screen, and the host ends a presented route at the keys and
+      // paints under them the colour at the bottom of the page beneath it (this one): the demo's
+      // backdrop there, not black (cherry-blossom-qrcode's and verification-code-face's keys
+      // showed black through their glass).
+      background-color=(top(nav).name == "demo" and not desk ? demoOf(top(nav).params.slug).backdrop : "#000000")
+      // The phone's home overlays the keys too: its search blurs the home down to the screen's edge under them, and a
+      // shorter page would re-grid every page of icons (and show the root's black under the keys) as they rise.
+      interactive-widget=((top(nav).name == "home" and not desk) or (top(nav).name == "demo" and overlaysKeyboard(top(nav).params.slug)) ? "overlays-content" : "resizes-content")
+      for e in stack(nav) key=e.id
+        // The Mac (a fine pointer in a window wider than a phone) has the atlas as its home, the
+        // window's root: no Back. The SpringBoard is the phone's home.
+        if e.name == "home" and desk
+          Atlas(demos=allDemos(), env=env, active=(top(nav).name == "home"), routeKey=`${e.id}`,
+            closable=false, leave=back, notes=feedback, add=addNote, edit=editNote)
+        if e.name == "home" and web
+          column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" position="absolute" inset=0
+            WebShell(demos=demos, all=allDemos(), env=env, slug="", zone="", framed=framed, vw=host.width, vh=host.height,
+              safeTop=host.safeAreaTop, safeBottom=host.safeAreaBottom, open=openFlown, flown=flown, leave=back)
+            if gpuWarm
+              canvas surface=warm() width=1 height=1 position="absolute" left=0 top=0 pointer-events="none"
+                aria-hidden=true testId="gpu-warm"
+        if e.name == "home" and not desk and not web
+          column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" position="absolute" inset=0
+            Springboard(demos=demos, changed=changedSlugs, open=open)
+            if gpuWarm
+              canvas surface=warm() width=1 height=1 position="absolute" left=0 top=0 pointer-events="none"
+                aria-hidden=true testId="gpu-warm"
+            // A Mac (a fine pointer) files this under View; the iPhone's home is unchanged.
+            if host.pointer == "fine"
+              button press=openAtlas -exact-menu="view" aria-keyshortcuts="Meta+Shift+A" aria-label="Demo Atlas"
+                testId="open-atlas" position="absolute" right=12 bottom=12
+                text "Demo Atlas"
+        if e.name == "atlas"
+          Atlas(demos=allDemos(), env=env, active=(top(nav).name == "atlas"), routeKey=`${e.id}`,
+            closable=(stack(nav).length > 1), leave=back, notes=feedback, add=addNote, edit=editNote)
+        // One demo as an atlas tile mounts it, for exact/parity-tools/screen-atlas/gen-snapshots.ts.
+        if e.name == "snap"
+          column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" position="absolute" inset=0
+            SnapFrame(slug=e.params.slug, backdrop=demoOf(e.params.slug).backdrop, env=env)
+        if e.name == "demo" and desk
+          DeskDemo(slug=e.params.slug, name=demoOf(e.params.slug).name, backdrop=demoOf(e.params.slug).backdrop, env=env,
+            routeKey=`${e.id}`, leave=back)
+        if e.name == "demo" and web
+          column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" navigationPresentation="fullscreen"
+            position="absolute" inset=0
+            WebShell(demos=demos, all=allDemos(), env=env, slug=e.params.slug, zone=closeZone(e.params.slug), framed=framed, vw=host.width, vh=host.height,
+              safeTop=host.safeAreaTop, safeBottom=host.safeAreaBottom, open=openFlown, flown=flown, leave=back)
+            // The attitude the iPhone feeds these surfaces from Core Motion (startTurn, startLight), from the browser's
+            // device orientation (or, on a desktop, the pointer over the screen): modules/web/index.js `motion-feed`.
+            if turns(e.params.slug) or lights(e.params.slug)
+              motion-feed feed=(turns(e.params.slug) ? "threads_holo_ticket" : "card_shader_reflections") sensor="relativeOrientation"
+                frequency=62.5 position="absolute" left=0 top=0 width=0 height=0 pointer-events="none" aria-hidden=true
+        if e.name == "demo" and not desk and not web
+          // The open out of the icon and the close into it are RN's launch, drawn by the app's
+          // module (DemoLaunch.swift) on UIKit's fullscreen presentation, not UIKit's zoom.
+          column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" navigationPresentation="fullscreen"
+            position="absolute" inset=0
+            background-color=demoOf(e.params.slug).backdrop closedby=(ownsDrags(e.params.slug) ? "none" : "closerequest")
+            DemoScreen(demo=demoOf(e.params.slug), env=env, ownsDrags=ownsDrags(e.params.slug), zone=closeZone(e.params.slug), leave=back,
+              web=false, insetTop=0, insetBottom=0)

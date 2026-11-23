@@ -1,0 +1,293 @@
+// Stacked bottom sheet: a "Show stacked tray" button. Each press stacks the next white sheet at the
+// bottom. Older sheets rise, shrink and fade, and the front one swipes down to dismiss. The wand
+// stacks a taller sheet that holds the spiral.
+use PressableScale from "pressto"
+use DemoEnv from "../env.contract"
+
+fn sheetNum(xs: number[], i: number): number = match xs.at(i) { case some(v) => v, case none => 0 }
+fn sheetSet(xs: number[], i: number, v: number): number[] = range(xs.length).map(j => j == i ? v : sheetNum(xs, j))
+// Sheet heights per config; config 7 is the wand's taller sheet.
+fn sheetHeightOf(cfg: number): number = match [140, 160, 180, 200, 250, 275, 350, 300].at(cfg) { case some(h) => h, case none => 0 }
+// A live sheet's rank: how many newer sheets are still live.
+fn sheetNewer(gone: number[], i: number): number = range(gone.length).filter(j => j > i and sheetNum(gone, j) != 2).length
+// The tallest height among the live sheets.
+fn sheetBiggest(hs: number[]): number = match [350, 300, 275, 250, 200, 180, 160, 140].filter(x => hs.includes(x)).at(0) { case some(x) => x, case none => 0 }
+// Vertical lift: keeps the bottom edges aligned; older sheets lift 35 points more.
+fn sheetLift(biggest: number, h: number, id: number): number = biggest - h + (id > 0 ? 35 : 0)
+
+// The sheets' entry spring and a 300 ms ease-in-out timing curve.
+fn sheetSpring(): string = "-exact-spring(900, 120, 4)"
+fn sheetTiming(): string = "300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
+// Swipe-away throw: a 250 ms critically damped spring.
+fn sheetThrow(): string = "-exact-spring(4350.9397, 263.8467, 4)"
+
+// Sheets float 10 points from the sides and bottom of the display. Their corners are concentric
+// with the display's 62-point corner radius.
+fn sheetInset(): number = 10
+fn sheetCorner(): number = 62 - sheetInset()
+// The swipe handle covers the sheet's top. On the wand's sheet it is only a strip, so the spiral's
+// canvas below it still takes taps.
+fn sheetGripOf(cfg: number): number = cfg == 7 ? 44 : sheetHeightOf(cfg)
+
+// Each entry rises from below. There is one keyframe per possible height, sampled from a
+// critically damped spring over 800 ms. A later bottom change is a translate transition on the
+// wrapper, and the spring is linear, so the two sum correctly.
+keyframes sheetIn190
+  from translate="0px 190px"
+  to translate="0px 0px"
+keyframes sheetIn210
+  from translate="0px 210px"
+  to translate="0px 0px"
+keyframes sheetIn230
+  from translate="0px 230px"
+  to translate="0px 0px"
+keyframes sheetIn250
+  from translate="0px 250px"
+  to translate="0px 0px"
+keyframes sheetIn300
+  from translate="0px 300px"
+  to translate="0px 0px"
+keyframes sheetIn325
+  from translate="0px 325px"
+  to translate="0px 0px"
+keyframes sheetIn350
+  from translate="0px 350px"
+  to translate="0px 0px"
+keyframes sheetIn400
+  from translate="0px 400px"
+  to translate="0px 0px"
+fn sheetEnterName(biggest: number): string = biggest + 50 == 190 ? "sheetIn190" : (biggest + 50 == 210 ? "sheetIn210" : (biggest + 50 == 230 ? "sheetIn230" : (biggest + 50 == 250 ? "sheetIn250" : (biggest + 50 == 300 ? "sheetIn300" : (biggest + 50 == 325 ? "sheetIn325" : (biggest + 50 == 350 ? "sheetIn350" : "sheetIn400"))))))
+fn sheetEnterTiming(): string = "800ms linear(0, 0.055, 0.1734, 0.3101, 0.4422, 0.5591, 0.6575, 0.7374, 0.8009, 0.8503, 0.8883, 0.9172, 0.9389, 0.9551, 0.9672, 0.9761, 0.9826, 0.9874, 0.9909, 0.9935, 0.9953, 0.9966, 0.9976, 0.9983, 0.9988, 0.9991, 0.9994, 0.9996, 0.9997, 0.9998, 0.9998, 0.9999, 1) both"
+
+// The front sheet follows the drag 1:1 down. Up, past its resting place, it stretches with iOS's
+// rubber band, (1 - 1/(d * 0.55 / 120 + 1)) * 120 for a finger d up, over the range -1000..2000.
+keyframes sheetSwipeY
+  0% translate="0px -98.51px"
+  6% translate="0px -94.78px"
+  12% translate="0px -89.49px"
+  16.6667% translate="0px -83.54px"
+  20.6667% translate="0px -76.23px"
+  23.6667% translate="0px -68.48px"
+  26% translate="0px -60.25px"
+  27.8333% translate="0px -51.67px"
+  29.3333% translate="0px -42.58px"
+  30.5% translate="0px -33.64px"
+  31.4% translate="0px -25.20px"
+  32.0667% translate="0px -17.80px"
+  32.5667% translate="0px -11.44px"
+  32.9333% translate="0px -6.26px"
+  33.1667% translate="0px -2.69px"
+  33.3333% translate="0px 0px"
+  100% translate="0px 2000px"
+
+component StackedBottomSheet
+  props
+    env: DemoEnv
+  // Presses so far, and a unique key for each sheet.
+  state increment = 0
+  state serial = 0
+  // Live sheets, oldest first: key, config, mount height, gone state (1 = swiped and sliding out,
+  // 2 = dismissed), drag offset, time and lift at the swipe.
+  state keys = []
+  state cfgs = []
+  state mountB = []
+  state gone = []
+  state goneY = []
+  state goneAt = []
+  state goneL = []
+  // Dismissal waits 250 ms for the slide. That delay is a timer surface, since the host ignores
+  // transition delays.
+  state timerToken = 0
+  // A dismissing release puts the drag layer back at 0 at once: the next sheet follows the layer
+  // from that frame, so a spring back from the release point would drag it down with it.
+  state snap = false
+  // Web: the timer posts its token instead of a dismissed message. A swiped sheet is dismissed
+  // once its token has fired.
+  state goneT = []
+  derive firedT = match range(timerToken + 1).filter(t => t > 0 and env.timers.includes(t)).at(-1) { case some(t) => t, case none => 0 }
+  derive vGone = range(gone.length).map(j => sheetNum(gone, j) == 1 and sheetNum(goneT, j) <= firedT ? 2 : sheetNum(gone, j))
+  derive w = env.width
+  // The front sheet: the newest one still live (-1: none). Only it has a drag handle.
+  derive front = match range(keys.length).filter(j => sheetNum(vGone, j) == 0).at(-1) { case some(j) => j, case none => -1 }
+  derive biggest = sheetBiggest(range(keys.length).filter(j => sheetNum(vGone, j) != 2).map(j => sheetHeightOf(sheetNum(cfgs, j))))
+
+  // Adds a sheet at the front and moves the others back one place. A sheet past its 250 ms slide
+  // leaves the list. Both buttons are PressableScales, which play the global haptic first.
+  //
+  // Haptics: the press's own selection, plus one medium impact when a swipe dismisses a sheet.
+  // Anything more was over-firing.
+  action push(wand: bool)
+    let cfg = wand ? 7 : min(increment, 6)
+    let now = performanceNow()
+    let keep = range(keys.length).filter(j => sheetNum(vGone, j) == 0 or now < sheetNum(goneAt, j) + 250)
+    let hs = keep.filter(j => sheetNum(vGone, j) != 2).map(j => sheetHeightOf(sheetNum(cfgs, j))).concat([sheetHeightOf(cfg)])
+    keys = keep.map(j => sheetNum(keys, j)).concat([serial])
+    cfgs = keep.map(j => sheetNum(cfgs, j)).concat([cfg])
+    mountB = keep.map(j => sheetNum(mountB, j)).concat([sheetBiggest(hs)])
+    gone = keep.map(j => sheetNum(vGone, j)).concat([0])
+    goneY = keep.map(j => sheetNum(goneY, j)).concat([0])
+    goneAt = keep.map(j => sheetNum(goneAt, j)).concat([0])
+    goneL = keep.map(j => sheetNum(goneL, j)).concat([0])
+    goneT = keep.map(j => sheetNum(goneT, j)).concat([0])
+    serial = serial + 1
+    if not wand
+      increment = increment + 1
+
+  // The drag binding needs a geometry action. It records nothing: a commit when the finger lands
+  // would stall the first frames of the pan, and the front sheet is already the one bound to the
+  // drag, so the release does not wait on it either.
+  action began(bw: number, bh: number, pw: number, ph: number)
+    timerToken = timerToken
+
+  // A medium impact when a release past 50 points dismisses the sheet. Otherwise it springs home.
+  action released(x: number, y: number, scale: number, vx: number, vy: number, vscale: number)
+    let i = front
+    snap = i >= 0 and y > 50 and sheetNum(vGone, i) == 0
+    if i >= 0 and y > 50 and sheetNum(vGone, i) == 0
+      haptic("impact-medium")
+      goneL = sheetSet(goneL, i, sheetLift(biggest, sheetHeightOf(sheetNum(cfgs, i)), 0))
+      gone = sheetSet(vGone, i, 1)
+      goneY = sheetSet(goneY, i, y)
+      goneAt = sheetSet(goneAt, i, performanceNow())
+      goneT = sheetSet(goneT, i, timerToken + 1)
+      timerToken = timerToken + 1
+
+  // Sheets that have slid for their 250 ms leave the stack.
+  action dismissed(m: string)
+    let now = performanceNow()
+    gone = range(gone.length).map(j => sheetNum(gone, j) == 1 and now >= sheetNum(goneAt, j) + 200 ? 2 : sheetNum(gone, j))
+
+  view
+    column position="absolute" inset=0 background-color="#fefefe" align-items="center"
+      justify-content="center" overflow="hidden" timeline-scope="--sheetSwipe"
+      testId="stacked-bottom-sheet"
+      canvas surface=timer(timerToken, 250) message=dismissed width=1 height=1 position="absolute"
+        left=0 top=0 aria-hidden=true pointer-events="none"
+      // The button is a capsule of Liquid Glass tinted with the page's near-black, so it reads on
+      // the white page (clear glass over white goes a muddy grey), with a white label. The glass
+      // takes no touches, so the press lands on the capsule.
+      view display="flex" flex-direction="column" margin-bottom=20
+        PressableScale(press=push(false))
+          column position="relative" height=52 padding="0px 28px" border-radius=26
+            corner-shape="-exact-continuous" align-items="center"
+            justify-content="center" aria-label="Show stacked tray" testId="sheet-button"
+            glass-pane glass-style="regular" pane-tint="#111111" corner-size="26" interactive="false"
+              continuous="true" position="absolute" inset=0 pointer-events="none" aria-hidden=true
+            // The label sits in its own box above the glass: text painted by the capsule itself
+            // would lie under the glass view.
+            view position="relative" z-index=1 pointer-events="none"
+              text "Show stacked tray" color="#FFFFFF" font-family="SF-Pro-Rounded-Bold" font-size=17
+                line-height="22px"
+      // Dismissed sheets are no longer drawn.
+      for key, i in keys key=key
+        if sheetNum(vGone, i) != 2
+          StackedSheetCard(env=env, sheetKey=key, cfg=sheetNum(cfgs, i),
+            id=(sheetNum(vGone, i) >= 1 ? 0 : sheetNewer(vGone, i)),
+            lift=(sheetNum(vGone, i) >= 1 ? sheetNum(goneL, i) : sheetLift(biggest, sheetHeightOf(sheetNum(cfgs, i)), sheetNewer(vGone, i))),
+            mountBiggest=sheetNum(mountB, i), goneMode=sheetNum(vGone, i), goneY=sheetNum(goneY, i),
+            dragged=(sheetNum(vGone, i) == 0 and i == front), magic=push(true))
+      // One drag layer drives the front sheet's vertical translate, under an unmoved, clipping parent.
+      column position="absolute" inset=0 overflow="hidden" pointer-events="none" z-index=2000
+        column id="sheet-drag" width="100%" height="100%" box-sizing="border-box"
+          position="relative" translate="0px 0px"
+          transition=(snap ? "none" : `translate ${sheetSpring()}`)
+          -exact-drag-timeline="--sheetSwipe y"
+          // One handle, moved to whichever sheet is in front, so the binding and its geometry stay
+          // the same view: the next sheet is draggable the moment the last one is thrown, not
+          // after its slide ends and a new handle reports its geometry.
+          if front >= 0
+            // The spiral's canvas takes taps, so its handle is a strip at the top. Other sheets
+            // drag from anywhere.
+            view position="absolute" left=sheetInset()
+              bottom=(sheetInset() + sheetLift(biggest, sheetHeightOf(sheetNum(cfgs, front)), sheetNewer(vGone, front)) + sheetHeightOf(sheetNum(cfgs, front)) - sheetGripOf(sheetNum(cfgs, front)))
+              width=(w - 2 * sheetInset()) height=sheetGripOf(sheetNum(cfgs, front)) pointer-events="auto"
+              touch-action="none" transformDragFor="sheet-drag" transformgeometry=began
+              transformrelease=released aria-label="Swipe the sheet down"
+              testId=`sheet-handle-${sheetNum(keys, front)}`
+              // The wand is a second, unseen copy of the third sheet's button, so the press
+              // lands where the wand is drawn.
+              if sheetNum(cfgs, front) == 2
+                column position="absolute" inset=0
+                  SheetContent(cfg=2, ghost=true, width=(w - 2 * sheetInset()), magic=push(true))
+
+component StackedSheetCard
+  props
+    env: DemoEnv
+    sheetKey: number
+    cfg: number
+    id: number
+    lift: number
+    mountBiggest: number
+    goneMode: number
+    goneY: number
+    dragged: bool
+    magic: action
+  derive w = env.width
+  derive h = sheetHeightOf(cfg)
+  view
+    // Inset on three sides. Newer sheets stack on top.
+    column position="absolute" left=sheetInset() bottom=sheetInset() width=(w - 2 * sheetInset()) z-index=(100 - id)
+      pointer-events="none" testId=`sheet-${sheetKey}`
+      column animation=`${sheetEnterName(mountBiggest)} ${sheetEnterTiming()}`
+        // Vertical lift, springing as the stack changes.
+        column translate=`0px ${0 - lift}px` transition=`translate ${sheetSpring()}`
+          // Each older sheet scales down a step.
+          column scale=(1 - id * 0.05) transition=`scale ${sheetSpring()}`
+            // The drag offset, then the dismiss throw.
+            column translate=(goneMode >= 1 ? `0px ${goneY}px` : "0px 0px")
+              animation=(dragged ? "sheetSwipeY 1s linear both" : "none")
+              animation-timeline=(dragged ? "--sheetSwipe" : "auto") animation-range="-1000px 2000px"
+              column translate=(goneMode >= 1 ? `0px ${h + sheetInset() - goneY}px` : "0px 0px")
+                transition=`translate ${sheetThrow()}`
+                // White rounded container. Its shadow lightens for older sheets.
+                column background-color="#ffffff" border-radius=sheetCorner() corner-shape="-exact-continuous"
+                  box-shadow=`0px 0px 10px rgba(0, 0, 0, 0.03), 0px -3px ${2 * max(10 - id * 2.5, 2)}px rgba(0, 0, 0, ${max(0.1 - id * 0.025, 0.05)})`
+                  transition=`box-shadow ${sheetTiming()}`
+                  // Content fades out for sheets past the second.
+                  column width=(w - 2 * sheetInset()) height=h border-radius=sheetCorner() corner-shape="-exact-continuous"
+                    overflow="hidden" position="relative" opacity=(id <= 1 ? 1 : 0)
+                    transition=`opacity ${sheetTiming()}`
+                    SheetGrabber(light=false)
+                    // Content is only mounted for the front three sheets.
+                    if id <= 2
+                      SheetContent(cfg=cfg, ghost=false, width=(w - 2 * sheetInset()), magic=magic)
+
+// Centred grip at the top of each sheet. The wand's sheet has a lighter one over the spiral.
+component SheetGrabber
+  props
+    light: bool
+  view
+    view position="absolute" top=7.5 left="50%" margin-left=-25 width=50 height=2 border-radius=5
+      background-color=(light ? "rgba(255, 255, 255, 0.5)" : "rgba(0, 0, 0, 0.08)")
+      z-index=(light ? 2 : 0) pointer-events="none" aria-hidden=true
+
+component SheetContent
+  props
+    cfg: number
+    ghost: bool
+    width: number
+    magic: action
+  view
+    column flex=1 opacity=(ghost ? 0 : 1) pointer-events=(ghost ? "none" : "auto")
+      if cfg == 0 or cfg == 1
+        column flex=1 align-items="center" justify-content="center"
+          text (cfg == 0 ? "You can put here" : "Whatever you want") font-family="SF-Pro-Rounded-Bold"
+            font-size=20 color="#000000"
+      if cfg == 2
+        // The text and the wand button.
+        row flex=1 align-items="center" justify-content="center" gap=10
+          text "Let's add a bit of magic" font-family="SF-Pro-Rounded-Bold" font-size=20
+            color="#000000"
+          view pointer-events="auto" display="flex" flex-direction="column"
+            PressableScale(press=magic)
+              view border-width=1
+                border-style="solid" border-color="rgba(0, 0, 0, 0.1)" padding=10 border-radius=10
+                corner-shape="-exact-continuous" aria-label="Add a bit of magic"
+                testId=(ghost ? "sheet-wand" : "sheet-wand-drawn")
+                text "🪄" font-size=14
+      if cfg == 7
+        // The spiral sheet: a canvas under its grip.
+        column flex=1 position="relative"
+          canvas surface=spiral() width=width height=300 background-color="#010101"
+            aria-label="Tap to turn the spiral" testId="sheet-spiral"
+          SheetGrabber(light=true)

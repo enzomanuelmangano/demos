@@ -1,0 +1,54 @@
+// Airbnb Slider: a price from $0 to $4500 set by a slider. Each digit rolls to its value, the
+// leading zeros fade out and the number re-centres. The price is a Rust surface
+// (gpu/src/airbnb_slider.rs); the slider is SwiftUI's Slider, hosted by the `swift-slider` view.
+use DemoEnv from "../env.contract"
+
+// The price a slider value shows, and its digit count (the number re-centres when it changes).
+fn priceOf(v: number): number = round(min(max(v, 0), 1) * 4500)
+fn digitsOf(p: number): number = p >= 1000 ? 4 : (p >= 100 ? 3 : (p >= 10 ? 2 : 1))
+fn atEnd(p: number): bool = p == 0 or p == 4500
+// Haptic hysteresis, in dollars (about 2 pt of the slider). A digit-count change is felt only
+// once the price passes its line (10, 100, 1000) by this much, and an end re-arms only this far
+// from it. A price hovering at $999/$1000 or an end therefore does not flap.
+fn hapticGap(): number = 30
+fn feltDigits(p: number, d: number): number =
+  digitsOf(max(p - hapticGap(), 0)) > d ? digitsOf(max(p - hapticGap(), 0)) : (digitsOf(p + hapticGap()) < d ? digitsOf(p + hapticGap()) : d)
+
+component AirbnbSlider
+  props
+    env: DemoEnv
+  // The slider's value (0…1): `sliderProgress`.
+  state progress = 0
+  // The digit count last felt, and whether an end's rigid has played and is not re-armed yet.
+  // It starts on $0, so leaving that end is silent.
+  state felt = 1
+  state ended = true
+  // Haptics, at most one per change: impact-rigid when the price reaches $0 or $4500 (once per
+  // excursion), else selection when the digit count changes (9 → 10, 99 → 100, 999 → 1000).
+  // There are only a few crossings in the whole range, so no rate limit is needed.
+  action moved(v: string)
+    // An action's writes land when it ends: the checks read the new value through `next`, not
+    // `progress` (which would judge the previous change, so the end's bump came one move late).
+    let next = match parseNumber(v) { case some(n) => n, case none => progress }
+    let p = priceOf(next)
+    progress = next
+    if atEnd(p) and not ended
+      haptic("impact-rigid")
+    else
+      if feltDigits(p, felt) != felt
+        haptic("selection")
+    felt = atEnd(p) ? digitsOf(p) : feltDigits(p, felt)
+    ended = atEnd(p) or (ended and (p < hapticGap() or p > 4500 - hapticGap()))
+  view
+    column position="absolute" inset=0 background-color="color(display-p3 0.8902 0.9255 0.9804)"
+      align-items="center" justify-content="center" testId="airbnb-slider"
+      // The price row: 36 pt tall, 50 pt above the slider.
+      canvas surface=airbnb_slider(round(min(max(progress, 0), 1) * 4500)) width=env.width height=36
+        margin-bottom=50 flex-shrink=0 testId="airbnb-slider-price" aria-label="Price"
+      // The host is 60 pt tall and inset 45 pt on each side. The Slider is 32 pt tall (the 24 pt
+      // thumb plus 4 pt above and below), centred in it. Its width is in points: a native view
+      // given 100% takes a narrower box. The native view draws the unfilled track itself (its own
+      // is cleared), so nothing here follows the thumb.
+      column position="relative" width=env.width - 90 height=60 flex-shrink=0 justify-content="center"
+        swift-slider progress="0" max-track-tint="#00000000" change=moved width=env.width - 90 height=32 flex-shrink=0
+          role="slider" aria-label="Price" testId="airbnb-slider-range"

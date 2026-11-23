@@ -1,0 +1,21 @@
+// Time machine: a drag-to-sort todo list. Each reorder keeps the old order as a card behind it.
+// Dragging the screen down opens the time machine, where the cards form a stack over a starfield
+// and can be scrolled sideways. Dragging up closes it on the card in front.
+use DemoEnv from "../env.contract"
+
+component TimeMachine
+  props
+    env: DemoEnv
+  action buzz(m: string)
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+    // Haptics: selection per row crossed and per card leafed, medium impact when it opens or closes.
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-medium"
+      haptic("impact-medium")
+  view
+    canvas surface=time_machine(env.safeTop) position="absolute" top=0 left=0 width=env.width
+      height=env.height background-color="#000" touch-action="none" message=buzz
+      testId="time-machine"
+      aria-label="Todo list: drag a row to reorder it, drag the screen down to open the time machine"

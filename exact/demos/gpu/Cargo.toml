@@ -1,0 +1,37 @@
+# The Demos app's GPU module, as Exact loads it (`<app>-gpu`, from the app's gpu/): every demo
+# the RN app draws with Skia, three.js or WebGPU, drawn with wgpu on exact-gpu's `Surface`.
+[package]
+name = "demos-gpu"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "The Demos app's GPU surfaces: the RN demos' Skia and WebGPU drawing on wgpu"
+publish = false
+build = "build.rs"
+
+[lib]
+name = "demos_gpu"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+motion = { path = "../packages/motion" }
+gestures = { path = "../packages/gestures" }
+draw2d = { path = "../packages/draw2d" }
+pressto = { path = "../packages/pressto" }
+noise = { path = "../packages/noise" }
+# Inflates the bitmaps in images/ (zlib), once, when a surface first draws.
+miniz_oxide = "0.9"
+# Decodes the photo skia-bottom-sheet draws (images/), once, when it first draws.
+zune-jpeg = "0.5"
+exact-gpu = { workspace = true }
+
+[build-dependencies]
+exact-gpu-reflect = { workspace = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "=0.2.130"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = ["HtmlCanvasElement"] }
+
+[lints]
+workspace = true

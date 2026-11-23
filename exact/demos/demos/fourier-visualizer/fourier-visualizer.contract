@@ -1,0 +1,16 @@
+// Fourier Visualizer: draw a stroke on the grey canvas; when the finger lifts, its FFT becomes
+// a chain of epicycles (circles on circles, largest first) that retraces it over 20 s, and a
+// round button clears it. One canvas draws all of it.
+use DemoEnv from "../env.contract"
+
+component FourierVisualizer
+  props
+    env: DemoEnv
+  // Selection haptic when the button clears the canvas.
+  action heard(m: string)
+    if m == "press"
+      haptic("selection")
+  view
+    canvas surface=fourier_visualizer() message=heard position="absolute" top=0 left=0
+      width=env.width height=env.height background-color="#D4D4D4" touch-action="none"
+      testId="fourier-visualizer" aria-label="Fourier canvas: draw a stroke to retrace it with epicycles"

@@ -1,0 +1,121 @@
+// A demo, opened out of its icon: the demo itself and the way out over it.
+use Demo from "../demos.contract"
+use PortedDemo from "../demos/index.contract"
+use DemoEnv from "../demos/env.contract"
+use WebRoundButton, WebSheet from "./web-chrome.contract"
+
+component DemoScreen
+  props
+    demo: Demo
+    env: DemoEnv
+    ownsDrags: bool
+    zone: string
+    leave: action
+    // The web has no native modules: it draws its own buttons and sheet (web-chrome.contract), and
+    // a desktop frame adds its simulated insets (the browser's env() is 0 there). Both 0 / false on iOS.
+    web: bool
+    insetTop: number
+    insetBottom: number
+  // Demos pad their own top: the route keeps the whole screen (`-exact-safe-area="none"`) and
+  // `demo-safe`, a box at the safe-area insets, gives the demo its safeTop and safeBottom.
+  state top = 0
+  state bottom = 0
+  state inspiring = false
+  // A demo's sub-page: the field whose blur takes the demo back, or a name starting with "#" for a
+  // demo that counts the Backs (demoBacks) itself; "" on its first page. Close is Back meanwhile.
+  state subField = ""
+  state backs = 0
+  // When the sub-page last ended: a tap on Back can blur the field first (on the web), so the
+  // press must not also close the demo.
+  state subEnded = -1000
+  action demoSubpage(field: string)
+    if field == "" and subField != ""
+      subEnded = performanceNow()
+    subField = field
+  action closeOrBack
+    if subField != ""
+      haptic("selection")
+      if subField.startsWith("#")
+        backs = backs + 1
+      else
+        blur(subField)
+    else
+      if performanceNow() - subEnded > 400
+        leave()
+  provide
+    demoSubpage
+    demoBackChrome = true
+    demoBacks = backs
+  action inspire
+    haptic("impact-light")
+    inspiring = true
+  action sheetChanged(v: string)
+    inspiring = false
+  action dismissSheet
+    inspiring = false
+  action follow
+    inspiring = false
+    openURL(demo.actionUrl)
+  action placed(w: number, h: number)
+    let g = frame("demo-safe")
+    // Read once: the keyboard never moves the buttons or a demo's safe area.
+    // A framed web screen is scaled and offset in the page, so its simulated insets are taken as they are.
+    // On the web the card is mid-flight (scaled) when it is first placed, so a measured box would be the flight's: the
+    // web's insets are given (the frame's simulated ones, or the browser's own safe areas).
+    if web and top == 0 and bottom == 0
+      top = insetTop
+      bottom = insetBottom
+    else if insetTop > 0 and top == 0 and bottom == 0
+      top = insetTop
+      bottom = insetBottom
+    else if not g.unavailable and top == 0 and bottom == 0
+      top = g.y
+      bottom = max(0, env.height - g.y - g.height)
+  view
+    column id="demo-route" position="absolute" inset=0 resize=placed testId=`demo-${demo.slug}`
+      // The host ends a full-screen route's box at the keyboard whatever `interactive-widget` says;
+      // env.height is the viewport's, which stays whole, so the demo keeps the full screen height.
+      view position="absolute" top=0 left=0 width=env.width height=env.height pointer-events="none"
+        aria-hidden=true
+        view id="demo-safe" position="absolute" left=0 right=0 top="env(safe-area-inset-top)"
+          bottom="env(safe-area-inset-bottom)" margin-top=insetTop margin-bottom=insetBottom pointer-events="none" aria-hidden=true
+      column position="absolute" top=0 left=0 width=env.width height=env.height background-color=demo.backdrop
+        if demo.ported
+          PortedDemo(slug=demo.slug, env=DemoEnv(env, safeTop=top, safeBottom=bottom))
+        else
+          column flex=1 align-items="center" justify-content="center" padding=32
+            column align-items="center" gap=10 padding="28px 32px" border-radius=28 backgroundMaterial="regular"
+              color-scheme="dark"
+              image demo.icon width=96 height=96 border-radius=21.5 corner-shape="-exact-continuous" aria-hidden=true
+              text demo.name font-size=22 font-weight=700 color="#ffffff" text-align="center" margin-top=4
+              text "Not on Exact yet." font-size=15 color="#8e8e93" text-align="center" testId="not-ported"
+        // The card in the demo's backdrop, with the demo fading in once painted, and the launch
+        // around it (open, close drag, flight home): `demo-card` (modules/apple/DemoLaunch.swift).
+        if not web
+          demo-card press=leave slug=demo.slug caption=demo.name tint=demo.backdrop zone=zone owns=(ownsDrags ? "drags" : "")
+            position="absolute" inset=0 pointer-events="none" aria-hidden=true
+        // The close button: a real SwiftUI glass button (`glass-button`, modules/apple/Demos.swift).
+        // In a demo's sub-page it is Back and plays the demo's own way back instead of closing.
+        if not web
+          glass-button press=closeOrBack caption=(subField != "" ? "Back" : "Close") kind=(subField != "" ? "back" : "close")
+            symbol=(subField != "" ? "chevron.backward" : "xmark")
+            aria-label=(subField != "" ? "Back" : "Close")
+            testId="close" position="absolute" top=top left=16 width=48 height=48
+          // The info button, when the demo credits someone: it opens the Inspiration sheet.
+          if demo.story != ""
+            glass-button press=inspire caption="Inspiration" symbol="info" edge="trailing"
+              aria-label="Inspiration" testId="inspiration" position="absolute" top=top right=16 width=48
+              height=48
+        if web
+          column position="absolute" top=top left=16 z-index=20
+            WebRoundButton(kind=(subField != "" ? "back" : "close"), label=(subField != "" ? "Back" : "Close"), press=closeOrBack, id="close")
+          if demo.story != ""
+            column position="absolute" top=top right=16 z-index=20
+              WebRoundButton(kind="info", label="Inspiration", press=inspire, id="inspiration")
+      // The Inspiration sheet: a real UIKit sheet (`inspiration-sheet`, modules/apple/InspirationSheet.swift).
+      if demo.story != "" and not web
+        inspiration-sheet open=(inspiring ? "true" : "false") caption="Inspiration" story=demo.story
+          icon=demo.icon action-url=demo.actionUrl action-label=demo.actionLabel press=follow change=sheetChanged position="absolute" left=0
+          top=0 width=0 height=0 aria-hidden=true testId="inspiration-sheet"
+      if demo.story != "" and web
+        WebSheet(open=inspiring, story=demo.story, icon=demo.icon, actionLabel=demo.actionLabel, safeBottom=bottom, dismiss=dismissSheet, follow=follow)

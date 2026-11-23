@@ -1,0 +1,427 @@
+//! CPU and GPU time per frame of the heaviest Skia surfaces, plus an audit of every surface.
+//! Each case runs a scripted interaction so that it redraws something that moves.
+//!
+//! `cargo test --release -p demos-gpu bench -- --ignored --nocapture` prints, per surface, the
+//! min, median and p90 over `BENCH_FRAMES` frames (default 300); `BENCH_ONLY` filters by name.
+
+use exact_gpu::{fixture, wgpu, Frame, InputEvent, PointerKind, PointerPhase, Surface, Value};
+
+/// This thread's CPU time in microseconds (what the frame cost, not what the scheduler took).
+#[cfg(target_vendor = "apple")]
+fn cpu_us() -> f64 {
+    extern "C" {
+        fn clock_gettime_nsec_np(clock: u32) -> u64;
+    }
+    unsafe { clock_gettime_nsec_np(16) as f64 / 1e3 }
+}
+#[cfg(not(target_vendor = "apple"))]
+fn cpu_us() -> f64 {
+    use std::sync::OnceLock;
+    static START: OnceLock<std::time::Instant> = OnceLock::new();
+    START.get_or_init(std::time::Instant::now).elapsed().as_secs_f64() * 1e6
+}
+
+fn frame(w: f32, h: f32, scale: f32, now_ms: f64) -> Frame {
+    Frame { width: w, height: h, scale, now_ms, seekable: true, period_ms: 0.0, children_generation: 0, shader_generation: exact_gpu::shaders::shader_generation(), headroom: 1.0 }
+}
+
+fn pointer(id: u32, phase: PointerPhase, x: f32, y: f32, at_ms: f64) -> InputEvent {
+    InputEvent::Pointer { id, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms, shift_key: false, ctrl_key: false, alt_key: false, meta_key: false }
+}
+
+/// One surface's script: its frame size, a setup, and what happens before frame `i` (at `ms`).
+struct Case {
+    name: &'static str,
+    make: fn() -> Box<dyn Surface>,
+    size: (f32, f32, f32),
+    setup: fn(&mut dyn Surface),
+    tick: fn(&mut dyn Surface, usize, f64),
+}
+
+fn cases() -> Vec<Case> {
+    vec![
+        Case {
+            name: "card-shader-reflections",
+            make: crate::card_shader_reflections::surface,
+            size: (420.0, 912.0, 3.0),
+            setup: |_| {},
+            // A finger dragging 0.8 pt a frame (every visible card redraws), re-pressed every 150 frames.
+            tick: |s, i, ms| {
+                let k = i % 150;
+                let x = 360.0 - 0.8 * k as f32;
+                let phase = match k {
+                    0 => PointerPhase::Down,
+                    149 => PointerPhase::Up,
+                    _ => PointerPhase::Move,
+                };
+                s.input(&pointer(1, phase, x, 430.0 + 0.3 * k as f32, ms));
+            },
+        },
+        Case {
+            name: "spiral",
+            make: crate::spiral::surface,
+            size: (420.0, 912.0, 3.0),
+            setup: |_| {},
+            // A tap every 120 frames: all 1641 circles spring to a new angle.
+            tick: |s, i, ms| {
+                if i % 120 == 1 {
+                    s.input(&pointer(1, PointerPhase::Down, 200.0, 400.0, ms));
+                    s.input(&pointer(1, PointerPhase::Up, 200.0, 400.0, ms + 1.0));
+                }
+            },
+        },
+        Case {
+            name: "radar-chart",
+            make: crate::radar_chart::surface,
+            size: (400.0, 400.0, 3.0),
+            setup: |s| s.bind(&[1.0, 0.6, 0.1, 0.1, 0.5, 0.2, 0.1, 0.5, 0.9, 0.8].map(Value::Number), None).unwrap(),
+            // New data every 60 frames: the polygons spring.
+            tick: |s, i, ms| {
+                if i % 60 == 0 {
+                    let k = (i / 60) as f64;
+                    let v: [f64; 10] = std::array::from_fn(|j| 0.1 + 0.8 * (((j as f64 + 1.0) * (k + 1.0) * 0.37).sin() * 0.5 + 0.5));
+                    s.bind(&v.map(Value::Number), Some(ms)).unwrap();
+                }
+            },
+        },
+        Case {
+            name: "slide-to-reveal",
+            make: crate::slide_to_reveal::surface,
+            size: (252.0, 80.0, 3.0),
+            setup: |_| {},
+            // A finger sliding back and forth across the digits.
+            tick: |s, i, ms| {
+                let x = 20.0 + 210.0 * (((i as f32) * 0.05).sin() * 0.5 + 0.5);
+                let phase = if i == 0 { PointerPhase::Down } else { PointerPhase::Move };
+                s.input(&pointer(1, phase, x, 45.0, ms));
+            },
+        },
+        Case {
+            name: "fibonacci-shader",
+            make: crate::fibonacci_shader::surface,
+            size: (402.0, 874.0, 3.0),
+            // 350 points over the whole screen.
+            setup: |s| s.bind(&[Value::Number(2.4), Value::Number(350.0)], None).unwrap(),
+            // A new N every frame across the top range.
+            tick: |s, i, _| s.bind(&[Value::Number(2.4), Value::Number(300.0 + 50.0 * ((i as f64 * 0.1).sin() * 0.5 + 0.5))], None).unwrap(),
+        },
+        Case {
+            name: "scroll-transition-3d",
+            make: crate::scroll_transition_3d::surface,
+            size: (402.0, 874.0, 3.0),
+            setup: |_| {},
+            // A flick every 240 frames: 8 frames of 40 pt (the list is inverted: down scrolls on),
+            // lifted fast, then the glide and snap.
+            tick: |s, i, ms| {
+                let k = i % 240;
+                let y = 100.0 + 40.0 * k as f32;
+                match k {
+                    0 => s.input(&pointer(1, PointerPhase::Down, 200.0, 100.0, ms)),
+                    1..=8 => s.input(&pointer(1, PointerPhase::Move, 200.0, y, ms)),
+                    9 => s.input(&pointer(1, PointerPhase::Up, 200.0, 100.0 + 360.0, ms)),
+                    _ => {}
+                }
+            },
+        },
+        Case {
+            name: "family-number",
+            make: crate::family_number::surface,
+            size: (402.0, 389.0, 3.0),
+            setup: |s| s.bind(&[Value::str("1")], None).unwrap(),
+            // A key at 6 Hz for 200 frames, then one every 3 frames for 60: each time up to 11
+            // digits (the commas appear past 3 and 6, regroup at every length) and back down to 1.
+            tick: |s, i, _| {
+                let k = i % 260;
+                let (step, key) = if k < 200 { (k / 10, k % 10 == 0) } else { ((k - 200) / 3, (k - 200) % 3 == 0) };
+                if key {
+                    let n = step % 20;
+                    let len = if n <= 10 { 1 + n } else { 21 - n };
+                    s.bind(&[Value::str(&"1234567890123"[..len])], None).unwrap();
+                }
+            },
+        },
+        Case {
+            name: "sphere-waves",
+            make: crate::sphere_waves::surface,
+            size: (420.0, 912.0, 3.0),
+            setup: |_| {},
+            tick: |_, _, _| {},
+        },
+        Case {
+            name: "the-little-prince",
+            make: crate::the_little_prince::surface,
+            size: (420.0, 912.0, 3.0),
+            setup: |s| s.bind(&[Value::Number(3.0), Value::Bool(false)], None).unwrap(),
+            // The page flies into the picture and back, every 150 frames.
+            tick: |s, i, _| {
+                if i % 150 == 0 {
+                    s.bind(&[Value::Number(3.0), Value::Bool((i / 150) % 2 == 0)], None).unwrap();
+                }
+            },
+        },
+        Case {
+            name: "steddy-graph-interaction",
+            make: crate::steddy_graph_interaction::surface,
+            size: (420.0, 200.0, 3.0),
+            setup: |s| s.bind(&[Value::Number(1.0)], None).unwrap(),
+            tick: |s, i, _| {
+                if i % 60 == 0 {
+                    s.bind(&[Value::Number(((i / 60) % 3) as f64)], None).unwrap();
+                }
+            },
+        },
+        Case {
+            name: "fourier-visualizer",
+            make: crate::fourier_visualizer::surface,
+            size: (402.0, 874.0, 3.0),
+            setup: |_| {},
+            // A finger draws a 2.5 s figure-eight and lifts; the epicycles then retrace it (20 s).
+            // Run with BENCH_FRAMES=1200.
+            tick: |s, i, ms| {
+                if i <= 150 {
+                    let t = i as f32 / 150.0 * std::f32::consts::TAU;
+                    let (x, y) = (201.0 + 150.0 * t.sin(), 437.0 + 200.0 * (2.0 * t).sin());
+                    let phase = match i { 0 => PointerPhase::Down, 150 => PointerPhase::Up, _ => PointerPhase::Move };
+                    s.input(&pointer(1, phase, x, y, ms));
+                }
+            },
+        },
+    ]
+}
+
+/// Minimum, median and p90 CPU microseconds of `render` over `frames` frames of `case`.
+fn measure(gpu: &exact_gpu::Gpu, case: &Case, frames: usize) -> (f64, f64, f64) {
+    let (w, h, scale) = case.size;
+    let format = wgpu::TextureFormat::Rgba8Unorm;
+    let texture = gpu.device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("bench"),
+        size: wgpu::Extent3d { width: (w * scale) as u32, height: (h * scale) as u32, depth_or_array_layers: 1 },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+        view_formats: &[],
+    });
+    let view = texture.create_view(&Default::default());
+    let mut s = (case.make)();
+    (case.setup)(s.as_mut());
+    // Warm-up: pipelines, assets, buffers grown to size (not timed).
+    for i in 0..30 {
+        let ms = i as f64 * 16.67;
+        let mut encoder = gpu.device.create_command_encoder(&Default::default());
+        s.render(&frame(w, h, scale, ms), &gpu.device, &gpu.queue, &mut encoder, &view, format);
+        gpu.queue.submit([encoder.finish()]);
+        s.submitted();
+        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    }
+    let mut times = Vec::with_capacity(frames);
+    for i in 0..frames {
+        let ms = 1000.0 + i as f64 * 16.67;
+        (case.tick)(s.as_mut(), i, ms);
+        let _ = s.messages();
+        let mut encoder = gpu.device.create_command_encoder(&Default::default());
+        let t = cpu_us();
+        s.render(&frame(w, h, scale, ms), &gpu.device, &gpu.queue, &mut encoder, &view, format);
+        times.push(cpu_us() - t);
+        gpu.queue.submit([encoder.finish()]);
+        s.submitted();
+        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    }
+    times.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    (times[0], times[frames / 2], times[frames * 9 / 10])
+}
+
+/// Minimum, median and p90 wall microseconds from submitting a frame of `case` to the GPU
+/// going idle: the GPU's time for it (plus the driver's, small), the CPU's recording excluded.
+fn measure_gpu(gpu: &exact_gpu::Gpu, case: &Case, frames: usize) -> (f64, f64, f64) {
+    let (w, h, scale) = case.size;
+    let format = wgpu::TextureFormat::Rgba8Unorm;
+    let texture = gpu.device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("bench"),
+        size: wgpu::Extent3d { width: (w * scale) as u32, height: (h * scale) as u32, depth_or_array_layers: 1 },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+        view_formats: &[],
+    });
+    let view = texture.create_view(&Default::default());
+    let mut s = (case.make)();
+    (case.setup)(s.as_mut());
+    let mut times = Vec::with_capacity(frames);
+    for i in 0..frames + 30 {
+        let ms = i as f64 * 16.67;
+        (case.tick)(s.as_mut(), i, ms);
+        let _ = s.messages();
+        let mut encoder = gpu.device.create_command_encoder(&Default::default());
+        s.render(&frame(w, h, scale, ms), &gpu.device, &gpu.queue, &mut encoder, &view, format);
+        let buffer = encoder.finish();
+        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+        let t = std::time::Instant::now();
+        gpu.queue.submit([buffer]);
+        s.submitted();
+        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+        if i >= 30 {
+            times.push(t.elapsed().as_secs_f64() * 1e6);
+        }
+    }
+    times.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    (times[0], times[frames / 2], times[frames * 9 / 10])
+}
+
+#[test]
+#[ignore = "a benchmark: run with --release --ignored --nocapture"]
+fn bench_gpu_per_frame() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
+    exact_gpu::shaders::load_dir(&dir, &crate::REGISTRY).unwrap();
+    let Some(gpu) = fixture::device_or_skip(fixture::device()) else { return };
+    let frames = std::env::var("BENCH_FRAMES").ok().and_then(|v| v.parse().ok()).unwrap_or(300);
+    let only = std::env::var("BENCH_ONLY").ok();
+    for case in cases() {
+        if only.as_deref().is_some_and(|o| !case.name.contains(o)) {
+            continue;
+        }
+        let (min, median, p90) = measure_gpu(&gpu, &case, frames);
+        println!("bench-gpu {:<22} min {:>7.1}  median {:>7.1}  p90 {:>7.1} us (submit to idle)", case.name, min, median, p90);
+    }
+}
+
+#[test]
+#[ignore = "a benchmark: run with --release --ignored --nocapture"]
+fn bench_cpu_per_frame() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
+    exact_gpu::shaders::load_dir(&dir, &crate::REGISTRY).unwrap();
+    let Some(gpu) = fixture::device_or_skip(fixture::device()) else { return };
+    let frames = std::env::var("BENCH_FRAMES").ok().and_then(|v| v.parse().ok()).unwrap_or(300);
+    let only = std::env::var("BENCH_ONLY").ok();
+    for case in cases() {
+        if only.as_deref().is_some_and(|o| !case.name.contains(o)) {
+            continue;
+        }
+        let (min, median, p90) = measure(&gpu, &case, frames);
+        println!("bench {:<26} min {:>7.1}  median {:>7.1}  p90 {:>7.1} us (thread CPU)", case.name, min, median, p90);
+    }
+}
+
+/// The inputs each surface is bound with (iPhone 17 screen, safe areas 62/34).
+fn audit_inputs(name: &str, arity: usize) -> Vec<Value> {
+    let n = Value::Number;
+    let b = Value::Bool;
+    match name {
+        "calendar_days" | "drag_to_sort" => vec![n(62.0)],
+        "airbnb_flip_card" | "circular_carousel" | "wheel_picker" => vec![b(false)],
+        "airbnb_flip_pages" | "dot_sheet_card" => vec![b(false), n(62.0)],
+        "cherry_blossom_qrcode" => vec![n(402.0), n(874.0), n(7.0), Value::str("https://reactiive.io")],
+        "gl_transitions" => vec![n(62.0), n(34.0), Value::str("Hello"), n(0.0)],
+        "light_on_painting" => vec![b(true), b(true), n(0.0), b(false)],
+        "mobile_input" | "prequel_slider" | "selectable_grid_list" => vec![n(62.0), n(34.0)],
+        "radar_chart" => [1.0, 0.6, 0.1, 0.1, 0.5, 0.2, 0.1, 0.5, 0.9, 0.8].map(n).to_vec(),
+        "snake" => vec![n(7.0), n(402.0), n(874.0)],
+        "staggered_card_number" => vec![b(false), n(45.1), n(417.3)],
+        "sudoku" => vec![n(7.0), n(0.0), n(0.0), n(0.0)],
+        "swipe_cards" => vec![n(62.0), n(0.0), n(0.0), n(0.0)],
+        "the_little_prince" => vec![n(3.0), b(false)],
+        "timer" => vec![n(0.0), n(250.0)],
+        _ => vec![n(0.0); arity],
+    }
+}
+
+/// Every registered surface at 402 x 874 @3, 120 Hz steps: whether it still asks for frames
+/// after 4 s untouched, and the CPU time and heap allocations of one `render` at rest and under
+/// a drag. Run with `cargo test --release -p demos-gpu audit -- --ignored --nocapture`.
+#[test]
+#[ignore = "an audit: run with --release --ignored --nocapture"]
+fn audit_every_surface() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
+    exact_gpu::shaders::load_dir(&dir, &crate::REGISTRY).unwrap();
+    let Some(gpu) = fixture::device_or_skip(fixture::device()) else { return };
+    let only = std::env::var("BENCH_ONLY").ok();
+    let (w, h, scale) = (402.0f32, 874.0f32, 3.0f32);
+    let format = wgpu::TextureFormat::Bgra8UnormSrgb;
+    let texture = gpu.device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("audit"),
+        size: wgpu::Extent3d { width: (w * scale) as u32, height: (h * scale) as u32, depth_or_array_layers: 1 },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+        view_formats: &[],
+    });
+    let view = texture.create_view(&Default::default());
+    println!("audit {:<26} {:>5} {:>8} {:>8} {:>7} | {:>8} {:>8} {:>7}", "surface", "rest?", "idle µs", "p90", "allocs", "drag µs", "p90", "allocs");
+    for &(name, arity, make) in crate::REGISTRY.surfaces {
+        if only.as_deref().is_some_and(|o| !name.contains(o)) {
+            continue;
+        }
+        let mut s = make();
+        s.size(w, h);
+        if let Err(e) = s.bind(&audit_inputs(name, arity), Some(0.0)) {
+            println!("audit {name:<26} bind refused: {e:?}");
+            continue;
+        }
+        let step = 1000.0 / 120.0;
+        let mut i = 0usize;
+        let mut run = |s: &mut Box<dyn Surface>, i: &mut usize| -> (f64, u64, bool) {
+            let ms = *i as f64 * step;
+            *i += 1;
+            let _ = s.messages();
+            let mut encoder = gpu.device.create_command_encoder(&Default::default());
+            let t = cpu_us();
+            let (more, da) = crate::steddy_graph_interaction::tests::counted(|| s.render(&frame(w, h, scale, ms), &gpu.device, &gpu.queue, &mut encoder, &view, format));
+            let dt = cpu_us() - t;
+            let da = da as u64;
+            gpu.queue.submit([encoder.finish()]);
+            s.submitted();
+            let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+            (dt, da, more)
+        };
+        // 4 s untouched; the last second is "at rest".
+        let mut idle = Vec::new();
+        let mut more = true;
+        for f in 0..480 {
+            let r = run(&mut s, &mut i);
+            more = r.2;
+            if f >= 360 {
+                idle.push(r);
+            }
+        }
+        // At rest: whether it still asks for frames, and at what cap (`max_fps`) if it does.
+        let cap = s.max_fps();
+        // A finger: down at the centre, 2 s of a figure-eight across the middle, up.
+        let mut drag = Vec::new();
+        let input = s.wants_input();
+        if input {
+            for f in 0..240 {
+                let ms = i as f64 * step;
+                let t = f as f32 / 240.0 * std::f32::consts::TAU;
+                let (x, y) = (w * (0.5 + 0.35 * t.sin()), h * (0.5 + 0.2 * (2.0 * t).sin()));
+                let phase = if f == 0 { PointerPhase::Down } else { PointerPhase::Move };
+                s.input(&pointer(1, phase, x, y, ms));
+                drag.push(run(&mut s, &mut i));
+            }
+            let ms = i as f64 * step;
+            s.input(&pointer(1, PointerPhase::Up, w * 0.5, h * 0.5, ms));
+            for _ in 0..60 {
+                drag.push(run(&mut s, &mut i));
+            }
+        }
+        let stats = |v: &mut Vec<(f64, u64, bool)>| -> (f64, f64, u64) {
+            if v.is_empty() {
+                return (0.0, 0.0, 0);
+            }
+            let mut t: Vec<f64> = v.iter().map(|r| r.0).collect();
+            t.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            let mut a: Vec<u64> = v.iter().map(|r| r.1).collect();
+            a.sort();
+            (t[t.len() / 2], t[t.len() * 9 / 10], a[a.len() / 2])
+        };
+        let (im, ip, ia) = stats(&mut idle);
+        let (dm, dp, da) = stats(&mut drag);
+        let rest = match (more, cap) { (false, _) => "rests".to_string(), (true, 0) => "REDRAW".to_string(), (true, c) => format!("{c}fps") };
+        let d = if input { format!("{dm:>8.0} {dp:>8.0} {da:>7}") } else { format!("{:>8} {:>8} {:>7}", "-", "-", "-") };
+        println!("audit {name:<26} {rest:>5} {im:>8.0} {ip:>8.0} {ia:>7} | {d}");
+    }
+}

@@ -1,0 +1,85 @@
+// Steps: three dots over a Back / Continue pair. Continue fills the dots one by one under a green
+// bar that springs to the active one. Back appears after the first step, and the last step turns
+// Continue into Finish.
+use PressableScale, PressableScaleLayout from "pressto"
+use DemoEnv from "../env.contract"
+use PillFill from "../pill-fill.contract"
+
+// Width of the green bar under the active dot.
+fn barWidth(i: number): number = (i + 1) * 10 + i * 20 + 20
+
+// The buttons sit concentric with the display's bottom corners: the inset from the sides and
+// the bottom is the display's corner radius less the pill's radius.
+fn displayRadius(): number = 62
+fn edgeInset(): number = displayRadius() - 30
+// The back button takes a quarter of the row's inner width.
+fn backWidth(w: number): number = (w - edgeInset() * 2 - 10) * 0.25
+// Critically damped spring. Both progresses (back, icon) ride it, and every value
+// interpolated on them is linear in the progress.
+fn labelWidth(i: number): number = i == 2 ? 51.666667 : 79
+fn stepSpring(): string = "-exact-spring(2011.7188, 179.4088, 4)"
+
+component Steps
+  props
+    env: DemoEnv
+  state activeIndex = 0
+  action onContinue
+    activeIndex = (activeIndex + 1) % 3
+  action onBack
+    activeIndex = max(0, activeIndex - 1)
+  view
+    column position="absolute" inset=0 background-color="#fff" align-items="center"
+      justify-content="flex-end" padding-bottom=edgeInset() testId="steps"
+      // The dots, with the green bar under the active one.
+      row padding-left=10 padding-right=10 gap=20 align-items="center" position="relative"
+        testId="dots"
+        // The bar is drawn behind the dots.
+        view position="absolute" left=0 top=-10 height=30 width=barWidth(activeIndex)
+          background-color="color(display-p3 0.4 0.8784 0.4392)" border-radius=15 corner-shape="-exact-continuous"
+          -exact-layout-transition="-exact-spring(900, 120, 4)" testId="bar"
+        // Dots fade to white when reached, 200 ms ease-in-out.
+        for i in range(3) key=i
+          view width=10 height=10 border-radius=5 corner-shape="-exact-continuous" position="relative"
+            background-color=(activeIndex >= i ? "white" : "rgba(0,0,0,0.15)")
+            transition="background-color 200ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%)"
+            testId=`dot-${i}`
+      // The Back and Continue buttons.
+      row height=60 margin-top=48 padding-left=edgeInset() padding-right=edgeInset() align-self="stretch"
+        // Back slides in from zero width.
+        view width=(activeIndex > 0 ? backWidth(env.width) : 0)
+          margin-right=(activeIndex > 0 ? 10 : 0) overflow="hidden"
+          -exact-layout-transition=stepSpring() testId="back-clip"
+          view opacity=(activeIndex > 0 ? 1 : 0) transition=`opacity ${stepSpring()}`
+            PressableScale(press=onBack)
+              row testId="back" text-align="center"
+                width=backWidth(env.width) height=60 border-radius=30 corner-shape="-exact-continuous"
+                background-color="rgba(0,0,0,0.08)" align-items="center" justify-content="center"
+                text "Back" color="black" font-family="SF-Pro-Rounded-Bold" font-size=18
+                  letter-spacing=0.5
+        // The Continue button fills the rest of the row.
+        view display="flex" flex-direction="column" flex=1 -exact-layout-transition=stepSpring()
+          PressableScaleLayout(press=onContinue, layout=stepSpring())
+            // The pill's fill is drawn by PillFill, so its corner stays smooth as the button resizes.
+            row testId="continue" text-align="center" position="relative"
+              flex=1 height=60
+              display="flex" flex-direction="row" align-items="center" justify-content="center"
+              -exact-layout-transition=stepSpring()
+              PillFill(color="color(display-p3 0.0471 0.5255 0.9686)", radius=30, cap=50, spring=stepSpring())
+              // The label row is laid out by hand at a fixed width. A layout transition would
+              // otherwise slide "Finish" in from where "Continue" began.
+              row width=200 height=60 position="relative" flex-shrink=0
+                -exact-layout-transition=stepSpring()
+                // The check icon, shown on the last step.
+                column position="absolute" top=0 bottom=0 left=(100 - labelWidth(activeIndex) / 2 - 14)
+                  width=22 align-items="center" justify-content="center"
+                  translate=`${activeIndex == 2 ? 0 : 3}px 0px` opacity=(activeIndex == 2 ? 1 : 0)
+                  transition=`translate ${stepSpring()}, opacity ${stepSpring()}` testId="check"
+                  svg width=16 height=16.75 viewBox="0 0 512 536" aria-hidden=true
+                    path d="M239 8Q304 4 362.5 30.5Q421 57 461 109Q494 153 506 206Q518 262 506.5 317Q495 372 460 417Q398 500 292 517Q279 519 256.5 519Q234 519 221 517Q142 504 84 453Q17 392 2 298Q0 285 0 263Q0 241 2 228Q13 160 51 109Q110 32 203 13Q223 9 239 8ZM283 52Q278 52 261.5 51.5Q245 51 241 51Q238 51 230 52Q211 54 192 60Q142 76 105 113.5Q68 151 53 202Q44 230 44 263Q44 286 48 306Q63 380 122 428Q159 458 204 469Q227 475 256 475Q286 475 309 469Q364 454 403.5 416Q443 378 459 324Q468 296 468 263Q468 230 459 202Q444 151 406 113Q368 75 317 60Q302 55 283 52ZM328 174Q325 176 322.5 178.5Q320 181 276 242Q232 302 230 302Q229 301 211 276Q190 247 186 244Q182 241 165 240Q146 240 145 244Q144 245 146 248Q148 251 183.5 300.5Q219 350 223 352Q236 358 245 348Q246 347 305 264.5Q364 182 366 179Q368 177 367 175L365 173H348Q332 173 328 174Z" fill="white"
+                // The label: "Continue", or "Finish" on the last step.
+                column position="absolute" top=0 bottom=0 left=(100 - labelWidth(activeIndex) / 2)
+                  justify-content="center" translate=`${activeIndex == 2 ? 14 : 0}px 0px`
+                  transition=`translate ${stepSpring()}`
+                  text (activeIndex == 2 ? "Finish" : "Continue") color="white" font-family="SF-Pro-Rounded-Bold"
+                    font-size=18 letter-spacing=0.5 white-space="nowrap"
+                    testId="continue-label"

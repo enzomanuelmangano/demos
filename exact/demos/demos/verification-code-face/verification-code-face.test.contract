@@ -1,0 +1,17 @@
+at "/demo/verification-code-face"
+
+test "digits flip into their boxes"
+  expect tree has "verification-code-face"
+  expect tree has "face"
+  expect tree missing "digit-0"
+  type "code-field" "12"
+  clock settle
+  expect text "digit-0" == "1"
+  expect text "digit-1" == "2"
+  expect tree missing "digit-2"
+
+test "a wrong code still shows its four digits"
+  type "code-field" "1234"
+  clock settle
+  expect tree has "digit-3"
+  expect tree has "code"

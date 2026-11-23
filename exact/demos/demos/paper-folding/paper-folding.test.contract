@@ -1,0 +1,5 @@
+at "/demo/paper-folding"
+
+test "the paper is there"
+  expect tree has "paper-folding"
+  expect tree has "paper-folding-canvas"

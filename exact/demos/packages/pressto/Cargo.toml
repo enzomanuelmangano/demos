@@ -1,0 +1,26 @@
+# pressto 0.7.0's press machine, for the Demos app's GPU surfaces: what BasePressable does
+# (RNGH's BaseButton + a withTiming / withSpring progress + isToggled + the global onPress
+# haptic), as designed, fed the pointer events a canvas receives. Pure Rust, no GPU.
+# The Contract side of pressto is pressto.contract beside it.
+[package]
+name = "pressto"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+keywords = ["press", "button", "pressable", "animation", "input"]
+categories = ["gui", "game-development"]
+description = "pressto's BasePressable press machine (press, progress, isToggled, haptic callback), frame by frame, fed pointer events"
+publish = false
+
+[lib]
+name = "pressto"
+
+[dependencies]
+motion = { workspace = true }
+gestures = { workspace = true }
+
+[lints]
+workspace = true

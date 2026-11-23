@@ -1,0 +1,27 @@
+// Radar chart: two translucent polygons over a pentagon grid of five chess skills. Shuffle
+// springs them to new random values. Drawn in Rust (gpu/src/radar_chart.rs).
+use PressableScale from "pressto"
+use DemoEnv, roll from "../env.contract"
+
+// Five values in [0, 1) per draw, from the draw's own run of rolls.
+fn value(seed: number, draw: number, k: number): number = roll(seed, draw * 10 + k, 1000000) / 1000000
+
+component RadarChart
+  props
+    env: DemoEnv
+  state draw = 0
+  action shuffle
+    draw = draw + 1
+  view
+    column position="absolute" inset=0 background-color="#000000" align-items="center"
+      justify-content="center" padding="0px 20px" testId="radar-chart"
+      canvas surface=radar_chart(value(env.seed, draw, 0), value(env.seed, draw, 1), value(env.seed, draw, 2),
+        value(env.seed, draw, 3), value(env.seed, draw, 4), value(env.seed, draw, 5), value(env.seed, draw, 6),
+        value(env.seed, draw, 7), value(env.seed, draw, 8), value(env.seed, draw, 9))
+        width=env.width height=env.width flex-shrink=0 aria-label="Radar chart" testId="radar-canvas"
+      // A white capsule: the screen's one action, so it is filled.
+      view width=220 height=52 margin-top=40 display="flex" flex-direction="column"
+        PressableScale(press=shuffle)
+          column flex-grow=1 background-color="#ffffff" border-radius=26 corner-shape="-exact-continuous"
+            align-items="center" justify-content="center" testId="shuffle" aria-label="Shuffle"
+            text "Shuffle" color="#000000" font-size=17 font-weight=600

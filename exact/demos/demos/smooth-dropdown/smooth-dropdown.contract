@@ -1,0 +1,129 @@
+// Smooth dropdown: a header card over a stack of four option cards. A tap on the header springs
+// the options open into a list and turns the chevron. A tap on an option picks it.
+use PressableScale from "pressto"
+
+shape DropdownOption
+  label: string
+  // SVG path data for the icon.
+  icon: string
+
+// The header is the first entry; the rest are the options.
+fn fullOptions(): DropdownOption[] = [
+  DropdownOption(label="Header", icon="M86 232Q106 226 120 241.5Q134 257 125 276Q116 294 96 294Q84 294 75 286Q61 274 64.5 256Q68 238 86 232ZM247 232Q250 231 257 231Q264 231 270 234Q279 238 284 247.5Q289 257 288 267Q284 287 265.5 293Q247 299 234 285Q222 273 224 258Q228 238 247 232ZM406 232Q388 238 384.5 256Q381 274 395 286Q404 294 416 294Q436 294 445 276Q454 257 440 241.5Q426 226 406 232Z"),
+  DropdownOption(label="Charts", icon="M39 63Q41 61 57.5 61Q74 61 76 63L78 64V244V423H275Q473 423 474 424Q475 425 475 443.5Q475 462 473.5 463Q472 464 256 464Q40 464 39 463L37 462V263V64ZM387 140Q389 139 405.5 139.5Q422 140 423.5 141Q425 142 425 258Q425 374 423.5 375.5Q422 377 404.5 377Q387 377 385.5 375.5Q384 374 384 258V141ZM210 281.5Q210 189 211.5 187Q213 185 231 185Q249 185 250.5 187Q252 189 252 281.5Q252 374 250 375.5Q248 377 230.5 377Q213 377 211.5 375.5Q210 374 210 281.5ZM297 303.5Q297 233 298.5 231.5Q300 230 317.5 230Q335 230 336.5 231Q338 232 338 303.5Q338 375 336.5 376Q335 377 317.5 377Q300 377 298.5 375.5Q297 374 297 303.5ZM125 287Q124 288 124 332Q124 376 125.5 376.5Q127 377 144.5 377Q162 377 163.5 375.5Q165 374 165 331.5Q165 289 163.5 287.5Q162 286 144 286Q126 286 125 287Z"),
+  DropdownOption(label="Book", icon="M65 9 69 7H256H443L447 9Q452 12 454 16L457 20V263V506L454 510Q452 514 447 517L443 519H256H69L65 517Q60 514 58 510L55 506V263V20L58 16Q60 12 65 9ZM256 134V48H176H96V263V478H256H416V263V48H398H380V133Q380 202 379.5 212.5Q379 223 375 225Q371 228 366.5 225.5Q362 223 343 209Q320 192 318.5 192Q317 192 293 209Q269 226 266 227Q259 228 257 222Q256 219 256 134ZM345 108Q345 127 345 138Q345 149 344.5 156Q344 163 344 165Q344 167 344 167Q342 166 330.5 157.5Q319 149 318.5 149Q318 149 304.5 158.5Q291 168 290.5 168Q290 168 290 108V48H317H345V108Z"),
+  DropdownOption(label="Calendar", icon="M144 36Q146 34 162.5 34Q179 34 181 35.5Q183 37 183 56V75H256H329V56Q329 37 330.5 35.5Q332 34 349.5 34Q367 34 368.5 35.5Q370 37 370 56V75H420Q471 76 474 77Q482 81 484 89Q485 92 485 284V477L482 482Q480 486 476 489L472 491H256H40L36 489Q32 486 30 482L27 477V284Q27 92 28 88.5Q29 85 32 82Q37 77 43 76.5Q49 76 92 75H142V56Q142 37 144 36ZM142 131V117H105H68V156V195H256H444V156V117H407H370V131Q370 146 368.5 147.5Q367 149 350 149Q333 149 331 148Q329 147 329 132V117H256H183V132Q183 147 181 148Q179 149 161.5 149Q144 149 143 147.5Q142 146 142 131ZM444 342V451H256H68V342V233H256H444V342Z"),
+  DropdownOption(label="Camera", icon="M164 49Q167 48 258 48H349L352 50Q356 52 358 55Q360 58 370 85L379 112H422Q465 112 471 114Q495 122 501 147Q503 152 503 288Q503 424 501 430Q494 457 466 463Q460 464 256 464Q87 464 65 463.5Q43 463 34 459Q21 453 15 440Q10 432 9.5 416.5Q9 401 9 288Q9 151 11 146Q18 122 41 114Q47 112 90 112H133L142 85Q152 58 154 55Q158 50 164 49ZM339 122 328 90H256Q184 90 183.5 91Q183 92 173 123L162 153L107 154Q52 154 51 155.5Q50 157 50 288.5Q50 420 51.5 421.5Q53 423 256 423Q459 423 460.5 421.5Q462 420 462 288.5Q462 157 461 155.5Q460 154 405 154L350 153ZM246 191Q253 190 254 190Q256 190 265 190Q293 193 315 211.5Q337 230 344 258Q347 267 347 281.5Q347 296 345 304Q338 327 322 344Q295 372 256 372Q217 372 190 344Q174 327 167 304Q165 296 165 281.5Q165 267 168 258Q174 235 191 217.5Q208 200 231 193Q238 191 246 191ZM273 229Q291 235 301 250.5Q311 266 310 284Q309 305 295 320Q286 329 273 333Q266 336 256 336Q246 336 239 333Q212 324 204 298Q199 284 203 269Q206 255 215 245Q228 230 248 227Q260 225 273 229Z")
+]
+
+// Four 75-point rows with 10-point gaps: the open list is 340 points tall. Each row's bottom
+// moves between its collapsed and open positions.
+fn itemBottom(open: bool, i: number): number = open ? 340 / 2 - i * (75 + 10) : i * 15
+// Collapsed rows shrink 5% per step back from the header.
+fn itemScale(open: bool, i: number): number = open ? 1 : 1 - i * 0.05
+// Collapsed row colours step lighter toward the back.
+fn collapsedColor(i: number): string = match ["#1B1B1B", "#202020", "#262626", "#2B2B2B", "#313131"].at(i) {
+  case some(c) => c,
+  case none => "#1B1B1B"
+}
+
+// The toggle runs a critically damped spring from rest, so every run is one eased curve from the
+// current value. A -exact-spring would keep the reversing velocity.
+fn dropdownEase(): string = "833.333ms linear(0 0%, 0.00066 0.29515%, 0.00259 0.5903%, 0.00569 0.88544%, 0.00987 1.18059%, 0.0165 1.54953%, 0.02455 1.91846%, 0.03386 2.2874%, 0.04432 2.65633%, 0.05881 3.1175%, 0.07468 3.57867%, 0.09172 4.03984%, 0.1144 4.6163%, 0.13832 5.19276%, 0.16953 5.91333%, 0.20992 6.81405%, 0.33569 9.56283%, 0.38591 10.68873%, 0.42485 11.58945%, 0.46247 12.49017%, 0.49859 13.39089%, 0.52635 14.11147%, 0.55304 14.83204%, 0.57865 15.55262%, 0.60316 16.2732%, 0.62657 16.99377%, 0.6489 17.71435%, 0.67015 18.43492%, 0.69035 19.1555%, 0.71414 20.05622%, 0.73638 20.95694%, 0.75712 21.85766%, 0.77644 22.75838%, 0.7944 23.6591%, 0.81106 24.55982%, 0.82651 25.46054%, 0.84081 26.36126%, 0.85403 27.26198%, 0.86915 28.38788%, 0.88281 29.51378%, 0.89514 30.63968%, 0.90625 31.76558%, 0.91625 32.89148%, 0.92735 34.29885%, 0.93704 35.70623%, 0.94549 37.1136%, 0.95455 38.87282%, 0.96215 40.63204%, 0.96852 42.39126%, 0.97505 44.59028%, 0.98025 46.78931%, 0.98529 49.53809%, 0.98907 52.28686%, 0.99235 55.56569%, 0.99547 60.33678%, 0.99749 65.66029%, 0.99909 74.66224%, 0.99986 90.87841%, 1 100%)"
+
+// The host shortens a reversing transition, so each toggle adds a tiny offset that keeps every run
+// a real new start.
+fn nudge(n: number): number = (n % 3) * 0.0001
+
+// e^-u from multiplication only: a Taylor series at u / 1024, squared ten times.
+fn sq(x: number): number = x * x
+fn taylorExp(x: number): number = 1 + x * (1 + x / 2 * (1 + x / 3 * (1 + x / 4 * (1 + x / 5 * (1 + x / 6)))))
+fn expNeg(u: number): number = sq(sq(sq(sq(sq(sq(sq(sq(sq(sq(taylorExp(0 - u / 1024)))))))))))
+// Share of a run still to go, ms into it: (1 + wt) e^-wt for the critically damped spring.
+fn remaining(ms: number): number = ms <= 0 ? 1 : (ms >= 2500 / 3 ? 0 : (1 + 0.015 * ms) * expNeg(0.015 * ms))
+
+// The background flips where progress crosses 0.5. The crossing time is solved numerically,
+// by bisection, for toggles made mid-flight.
+shape Bracket
+  lo: number
+  hi: number
+fn halve(b: Bracket, r: number): Bracket = (1 + (b.lo + b.hi) / 2) * expNeg((b.lo + b.hi) / 2) > r ? Bracket(lo=(b.lo + b.hi) / 2, hi=b.hi) : Bracket(lo=b.lo, hi=(b.lo + b.hi) / 2)
+fn halve5(b: Bracket, r: number): Bracket = halve(halve(halve(halve(halve(b, r), r), r), r), r)
+fn solveU(r: number): number = halve5(halve5(halve5(halve5(halve5(halve5(halve5(halve5(Bracket(lo=0, hi=12.5), r), r), r), r), r), r), r), r).lo
+fn crossMs(p: number, target: number): number = (target == 1 ? p < 0.5 : p >= 0.5) ? solveU((0.5 - target) / (p - target)) / 0.015 : 0
+
+component SmoothDropdown
+  state open = false
+  // The run in flight: from, to, its start time, the toggle count and the background's step.
+  state fromP = 0
+  state toP = 0
+  state at = -100000
+  state n = 0
+  state bgMs = 0
+  action pick(i: number)
+    if i == 0
+      let now = performanceNow()
+      let p = toP + (fromP - toP) * remaining(now - at)
+      let target = open ? 0 : 1
+      bgMs = crossMs(p, target)
+      fromP = p
+      toP = target
+      at = now
+      n = n + 1
+      open = not open
+  view
+    column position="absolute" inset=0 background-color="#000000" testId="smooth-dropdown"
+      // No size of its own: each item's bottom is measured from the screen's centre line.
+      view position="absolute" left=0 right=0 top="50%" height=0
+        for o, i in fullOptions() key=i
+          DropdownItem(option=o, index=i, open=open, n=n, bgMs=bgMs, press=pick(i))
+
+component DropdownItem
+  props
+    option: DropdownOption
+    index: number
+    open: bool
+    n: number
+    bgMs: number
+    press: action
+  derive isHeader = index == 0
+  view
+    // Collapsed options sit behind the header and take no touches. The press scale is on the
+    // inner row; the item's place and motion are on this view.
+    view position="absolute" bottom=0 left="10%" width="80%" height=75 padding=0 text-align="center"
+      // Pointer events switch at the tap, not mid-transition, so a tap in the first ~112 ms can differ.
+      z-index=(5 - index) pointer-events=(open or isHeader ? "auto" : "none")
+      display="flex" flex-direction="row" align-items="stretch"
+      translate=`0px ${0 - itemBottom(open, index) + nudge(n)}px` scale=(itemScale(open, index) + nudge(n) / 100)
+      transition=`translate ${dropdownEase()}, scale ${dropdownEase()}`
+      PressableScale(press=press)
+        row flex=1 padding=15 box-sizing="border-box" align-items="stretch"
+          testId=(isHeader ? "dropdown-header" : `dropdown-${option.label.toLowerCase()}`)
+          aria-label=option.label aria-expanded=open
+          border-radius=10 corner-shape="-exact-continuous"
+          background-color=(open ? "#1B1B1B" : collapsedColor(index))
+          transition=`background-color ${bgMs}ms step-end`
+          row flex=1 align-items="center" opacity=(open or isHeader ? 1 - nudge(n) / 100 : nudge(n) / 100)
+            transition=`opacity ${dropdownEase()}`
+            view height="80%" aspect-ratio=1 background-color="#0C0C0C" border-radius=10 corner-shape="-exact-continuous"
+              margin-right=12 display="flex" align-items="center" justify-content="center"
+              // Sub-pixel offset, so the icon sits on the device pixel grid.
+              svg width=20 height=(20 * 536 / 512) viewBox="0 2.7333 512 536" aria-hidden=true
+                position="relative" left="-0.3333px" top="0.3333px"
+                path d=option.icon fill="#ffffff"
+            // Raised 1 pt to match the native label.
+            text option.label.toUpperCase() color="#ffffff" font-size=16 letter-spacing=1.2
+              position="relative" top="-1px"
+            view flex=1
+            // The chevron turns with the same spring as the rows.
+            view height="80%" margin-right=5 display="flex" align-items="center" justify-content="center"
+              // The pivot is the glyph's centre.
+              column width="20.3333px" height="20.3333px" position="relative" top="0.1667px"
+                rotate=(isHeader ? `${(open ? 90 : 0) + nudge(n)}deg` : "0deg")
+                transition=`rotate ${dropdownEase()}`
+                if isHeader
+                  svg width=20 height=20 viewBox="0 0 512 512" aria-hidden=true
+                    path d="M133 432 171 469 384 256 171 43 133 80 308 256Z" fill="rgba(255,255,255,0.8)"
+                else
+                  svg width=20 height=20 viewBox="0 0 512 512" aria-hidden=true
+                    path d="M256 85 427 256 256 427 226 397 345 277H85V235H345L226 115Z" fill="rgba(255,255,255,0.5)"

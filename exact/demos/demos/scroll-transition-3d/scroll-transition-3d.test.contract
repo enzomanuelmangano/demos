@@ -1,0 +1,6 @@
+at "/demo/scroll-transition-3d"
+
+// Checks the canvas is present. Scroll, snap, tilt, fade and blur are covered by the Rust tests.
+test "the canvas fills the screen"
+  expect tree has "scroll-transition-3d"
+  expect tree has "scroll-transition-3d-canvas"

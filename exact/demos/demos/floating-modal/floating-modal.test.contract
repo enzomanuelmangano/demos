@@ -1,0 +1,4 @@
+at "/demo/floating-modal"
+
+test "the button is there"
+  expect tree has "floating-modal"

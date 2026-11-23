@@ -1,0 +1,17 @@
+// Infinite Carousel: twelve calculator themes on a circular carousel the finger pans, each card
+// turned in 3D by its distance from the centre, over a background fading to the centred theme's
+// colour. One canvas draws it all.
+use DemoEnv from "../env.contract"
+
+component InfiniteCarousel
+  props
+    env: DemoEnv
+  // Selection haptic as the centred theme changes.
+  action heard(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+  view
+    column position="absolute" inset=0 testId="infinite-carousel"
+      canvas surface=infinite_carousel() message=heard position="absolute" top=0 left=0 width=env.width height=env.height
+        touch-action="none" testId="infinite-carousel-canvas"
+        aria-label="Theme carousel: drag sideways or tap a card"

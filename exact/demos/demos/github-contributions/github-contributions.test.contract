@@ -1,0 +1,14 @@
+at "/demo/github-contributions"
+
+test "the calendar is drawn with its day labels"
+  expect tree has "github-contributions"
+  expect tree has "calendar"
+  expect tree has "grid"
+
+test "a tap sweeps the squares in and a second tap puts them back"
+  tap "calendar-press"
+  clock settle
+  expect tree has "calendar"
+  tap "calendar-press"
+  clock settle
+  expect tree has "grid"

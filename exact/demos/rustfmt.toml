@@ -1,0 +1,32 @@
+# rustfmt for gpu/ and packages/* (web/ and apple/ are generated host crates: leave them alone).
+# Stable options only. tools/rust-lint.sh `fmt` checks the .rs files a branch changes against this file.
+#
+# Why these values. The tree was never formatted as a whole and holds two hand-written styles at once:
+# about 45 files close to rustfmt's default (100 columns) and the rest in a long-line style (struct
+# literals, calls and chains kept on one line up to about 160 columns). Measured on 2026-11-15 with
+# rustfmt 1.97 (`rustfmt --check --edition 2021 --config-path <dir> <all 125 .rs files of gpu/ and
+# packages/>`, changed lines = lines starting with + or - in the diff), 85.5k lines of Rust:
+#
+#   candidate                                                    diff lines   files that change
+#   default (no rustfmt.toml)                                         43944   117 of 125
+#   max_width 100  + Max heuristics                                   39765   122
+#   max_width 120  + Max                                              35848   119
+#   max_width 140  + Max                                              32223   114
+#   max_width 100 / 120 / 140 / 160, default heuristics               43944 / 40723 / 38672 / 37142
+#   max_width 100, use_small_heuristics = "Off"                       48094   122
+#   max_width 150  + Max + no import/mod reorder                      31125   112
+#   max_width 160  + Max (CHOSEN)                                     31028   114
+#   max_width 160  + Max + reorder_imports/reorder_modules = false    30460   112
+#   max_width 170 / 180 / 200 + Max + no reorder                      30469 / 30499 / 32476
+#   max_width 160  + Max + fn_params_layout = "Compressed"            31747   113
+#
+# So a whole-tree `cargo fmt` would rewrite about 31k lines in 114 files whatever the setting: the
+# long-line files are the bulk, and 160 columns with "Max" is the floor (about 29% fewer changed
+# lines than the default). Turning off import and module reordering would save another 1.8%; it is
+# not worth leaving imports unsorted, so they keep rustfmt's ordering. 11 files are clean at these
+# settings (gpu/build.rs, noise/src/lib.rs, six packages/motion files, three packages/draw2d files).
+# Do not run `cargo fmt` over the whole tree in one go: format the files you touch.
+edition = "2021"
+max_width = 160
+use_small_heuristics = "Max"
+newline_style = "Unix"

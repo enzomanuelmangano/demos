@@ -1,0 +1,9 @@
+at "/demo/sculptures-in-words"
+
+test "the column and its button are there"
+  expect tree has "sculptures-canvas"
+  expect tree has "sculptures-toggle"
+
+test "the button toggles"
+  tap "sculptures-toggle"
+  expect tree has "sculptures-canvas"

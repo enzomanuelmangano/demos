@@ -1,0 +1,15 @@
+// Stacked carousel: twenty white cards in a pile. A horizontal swipe pages through them, and a
+// paginator of dots follows the page.
+use DemoEnv from "../env.contract"
+
+component StackedCarousel
+  props
+    env: DemoEnv
+  // Selection haptic each time the page changes.
+  action buzz(text: string)
+    if text == "haptic:selection"
+      haptic("selection")
+  view
+    column position="absolute" inset=0 background-color="#eeeeee" testId="stacked-carousel"
+      canvas surface=stacked_carousel() message=buzz position="absolute" top=0 left=0 width=env.width
+        height=env.height touch-action="none" aria-label="Cards" testId="stacked-carousel-list"

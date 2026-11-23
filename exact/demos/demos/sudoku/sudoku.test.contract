@@ -1,0 +1,42 @@
+at "/demo/sudoku"
+
+// The web host gives a surface no touches: the game, the pad's appearance, the haptics and the
+// celebration are the Rust fixture tests' (gpu/src/sudoku.rs); here what the Contract holds.
+test "the title and Start Game are there, the board is not"
+  expect tree has "sudoku"
+  expect tree has "sudoku-title"
+  expect tree has "sudoku-card"
+  expect tree has "sudoku-confetti"
+  expect tree has "sudoku-start"
+  expect tree missing "sudoku-canvas"
+  expect tree missing "sudoku-new-game"
+
+test "Start Game shows the board and New Game"
+  tap "sudoku-start"
+  clock settle
+  expect tree has "sudoku-canvas"
+  expect tree has "sudoku-new-game"
+  expect tree missing "sudoku-start"
+
+test "the Genius alert is declared, closed"
+  clock settle
+  expect tree has "genius-alert"
+  expect tree missing "genius-alert-confirm"
+
+test "New Game asks first and goes back to Start Game"
+  tap "sudoku-start"
+  clock settle
+  expect tree missing "new-game-alert-cancel"
+  tap "sudoku-new-game"
+  clock settle
+  expect tree has "new-game-alert-cancel"
+  tap "new-game-alert-cancel"
+  clock settle
+  expect tree missing "new-game-alert-cancel"
+  expect tree has "sudoku-canvas"
+  tap "sudoku-new-game"
+  clock settle
+  tap "new-game-alert-confirm"
+  clock settle
+  expect tree has "sudoku-start"
+  expect tree missing "sudoku-canvas"

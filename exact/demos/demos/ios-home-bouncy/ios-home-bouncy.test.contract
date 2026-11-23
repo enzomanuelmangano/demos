@@ -1,0 +1,4 @@
+at "/demo/ios-home-bouncy"
+
+test "the grid is there"
+  expect tree has "ios-home-bouncy"

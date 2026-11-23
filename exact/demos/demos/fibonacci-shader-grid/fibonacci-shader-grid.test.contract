@@ -1,0 +1,5 @@
+at "/demo/fibonacci-shader-grid"
+
+test "the canvas is there"
+  expect tree has "fibonacci-shader-grid"
+  expect tree has "fibonacci-grid-canvas"

@@ -1,0 +1,24 @@
+at "/demo/steps"
+
+test "the first step shows Continue and no Back"
+  expect tree has "steps"
+  expect text "continue-label" == "Continue"
+
+test "Continue walks to the last step, which reads Finish, and wraps"
+  tap "continue"
+  clock settle
+  expect text "continue-label" == "Continue"
+  tap "continue"
+  clock settle
+  expect text "continue-label" == "Finish"
+  tap "continue"
+  clock settle
+  expect text "continue-label" == "Continue"
+
+test "Back steps down"
+  tap "continue"
+  tap "continue"
+  clock settle
+  tap "back"
+  clock settle
+  expect text "continue-label" == "Continue"

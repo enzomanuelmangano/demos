@@ -1,0 +1,38 @@
+at "/demo/checkbox-interactions"
+
+test "a chip checks and unchecks"
+  expect tree has "checkbox-interactions"
+  expect tree missing "cuisine-3-check"
+  tap "cuisine-3"
+  clock settle
+  expect tree has "cuisine-3-check"
+  expect tree missing "cuisine-4-check"
+  tap "cuisine-3"
+  clock settle
+  expect tree missing "cuisine-3-check"
+
+test "twenty different cuisines, each with its emoji"
+  expect text "cuisine-0-emoji" == "🍝"
+  expect text "cuisine-0-name" == "Italian"
+  expect text "cuisine-1-emoji" == "🍣"
+  expect text "cuisine-1-name" == "Japanese"
+  expect text "cuisine-4-emoji" == "🌶️"
+  expect text "cuisine-4-name" == "Thai"
+  expect text "cuisine-10-emoji" == "🧆"
+  expect text "cuisine-10-name" == "Lebanese"
+  expect text "cuisine-19-emoji" == "🥥"
+  expect text "cuisine-19-name" == "Caribbean"
+
+test "several chips check at once and each unchecks on its own"
+  tap "cuisine-0"
+  tap "cuisine-7"
+  tap "cuisine-19"
+  clock settle
+  expect tree has "cuisine-0-check"
+  expect tree has "cuisine-7-check"
+  expect tree has "cuisine-19-check"
+  tap "cuisine-7"
+  clock settle
+  expect tree missing "cuisine-7-check"
+  expect tree has "cuisine-0-check"
+  expect tree has "cuisine-19-check"

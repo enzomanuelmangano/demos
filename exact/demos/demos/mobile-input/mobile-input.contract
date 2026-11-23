@@ -1,0 +1,16 @@
+// Mobile input: a PIN lock screen. A glowing ring breathes and a face reacts to the digits: it
+// smiles at the right PIN and frowns at a wrong one, while the PIN area shakes. Backspace clears.
+// The whole screen is one Rust surface (gpu/src/mobile_input.rs).
+use DemoEnv from "../env.contract"
+
+component MobileInput
+  props
+    env: DemoEnv
+  // Selection haptic on each key press.
+  action heard(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+  view
+    canvas surface=mobile_input(env.safeTop, env.safeBottom) message=heard position="absolute" top=0
+      left=0 width=env.width height=env.height touch-action="none" testId="mobile-input"
+      aria-label="Enter PIN Mode: a keypad of 1 to 9, 0 and backspace"

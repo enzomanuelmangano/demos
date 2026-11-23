@@ -1,0 +1,38 @@
+# Rust lint baseline: findings per lint over the workspace, ratcheted by tools/rust-lint.sh clippy.
+# Format: <count> <level> <lint>. Every level is 'warn': the run uses --cap-lints warn.
+# Updated: 2026-11-15. Toolchain: rustc 1.97.0 (2d8144b78 2026-07-07).
+# Command: cargo clippy --workspace --all-targets --message-format=json -- --cap-lints warn -W unreachable_pub -W rust_2018_idioms -W clippy::print_stdout -W clippy::explicit_iter_loop -W clippy::cloned_instead_of_copied -W clippy::manual_let_else -W clippy::needless_pass_by_value -W clippy::uninlined_format_args -W clippy::implicit_clone
+# Total findings: 198, lints: 32.
+# Findings by crate (not enforced): draw2d 36, gpu 160, motion 1, noise 1.
+1 warn clippy::almost_swapped
+1 warn clippy::approx_constant
+5 warn clippy::cloned_instead_of_copied
+2 warn clippy::collapsible_match
+2 warn clippy::eq_op
+44 warn clippy::explicit_iter_loop
+1 warn clippy::field_reassign_with_default
+2 warn clippy::if_same_then_else
+1 warn clippy::int_plus_one
+1 warn clippy::items_after_test_module
+8 warn clippy::manual_clamp
+1 warn clippy::manual_contains
+1 warn clippy::manual_div_ceil
+14 warn clippy::manual_is_multiple_of
+3 warn clippy::manual_let_else
+1 warn clippy::manual_pattern_char_comparison
+2 warn clippy::manual_range_contains
+1 warn clippy::manual_repeat_n
+1 warn clippy::manual_rotate
+1 warn clippy::needless_pass_by_value
+8 warn clippy::print_stdout
+2 warn clippy::should_implement_trait
+1 warn clippy::uninlined_format_args
+1 warn clippy::unnecessary_cast
+1 warn clippy::unnecessary_lazy_evaluations
+2 warn clippy::unnecessary_map_or
+1 warn clippy::useless_vec
+4 warn dead_code
+8 warn elided_lifetimes_in_paths
+73 warn unreachable_pub
+2 warn unused_imports
+2 warn unused_mut

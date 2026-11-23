@@ -1,0 +1,4 @@
+at "/demo/cuberto-slider"
+
+test "the slider is there"
+  expect tree has "cuberto-slider"

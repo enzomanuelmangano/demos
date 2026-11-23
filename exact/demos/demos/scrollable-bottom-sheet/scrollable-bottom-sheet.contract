@@ -1,0 +1,23 @@
+// Scrollable bottom sheet: a gradient button opens a dark sheet of three horizontal pages. Paging
+// springs the sheet's height to each page's. The last page's button closes it, and a drag down or
+// a tap on the backdrop closes it too. Drawn in Rust (gpu/src/scrollable_bottom_sheet.rs).
+use DemoEnv from "../env.contract"
+
+component ScrollableBottomSheet
+  props
+    env: DemoEnv
+  action heard(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+    // Light on grab, medium when a pull closes the sheet, soft when it springs back and lands.
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+    if m == "haptic:impact-medium"
+      haptic("impact-medium")
+    if m == "haptic:impact-soft"
+      haptic("impact-soft")
+  view
+    canvas surface=scrollable_bottom_sheet() message=heard position="absolute" top=0 left=0
+      width=env.width height=env.height background-color="#000" touch-action="none"
+      testId="scrollable-bottom-sheet"
+      aria-label="A gradient button opens a sheet of three pages; swipe the pages, drag the sheet down or tap outside it to close"

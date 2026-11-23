@@ -1,0 +1,221 @@
+//! The Demos app's GPU module: one wgpu module per demo, named after its slug, loaded by Exact
+//! after the first pixel. `gfx` and `spring` are shared by all of them.
+//!
+//! A demo's gestures and motion run here, on the host's frame clock: a touch inside a canvas
+//! that asks for input never reaches the app's runner, and nothing is committed per frame.
+
+#![deny(missing_docs)]
+
+use exact_gpu::Registry;
+
+/// Shader interfaces reflected from WGSL during the build.
+#[allow(missing_docs)]
+pub mod shaders {
+    include!(concat!(env!("OUT_DIR"), "/shaders.rs"));
+}
+#[cfg(test)]
+mod bench;
+/// The images the surfaces draw: embedded on native, fetched per demo on the web.
+pub mod bytes;
+pub mod gfx;
+pub mod haptic;
+pub mod gooey;
+pub mod qr;
+pub mod ui_scroll;
+
+pub mod airbnb_flip_card;
+pub mod airbnb_flip_pages;
+pub mod airbnb_slider;
+pub mod animated_3d_parallax;
+pub mod animated_clip_box;
+pub mod art_gallery;
+pub mod atlas_button;
+pub mod atlas_sphere;
+pub mod audio_player;
+pub mod balance_slider;
+pub mod bezier_curve_outline;
+pub mod blur_cards;
+pub mod blur_circles;
+pub mod blurred_scroll;
+pub mod bottom_bar_skia;
+pub mod calendar_days;
+pub mod card_shader_reflections;
+pub mod circular_carousel;
+pub mod cherry_blossom_qrcode;
+pub mod chessboard;
+pub mod clock_time_picker;
+pub mod color_carousel;
+pub mod coverflow_carousel;
+pub mod cuberto_slider;
+pub mod delete_button;
+pub mod dot_sheet;
+pub mod dot_sheet_card;
+pub mod drag_to_sort;
+pub mod draggable_panel;
+pub mod duration_slider;
+pub mod empty_qr_code;
+pub mod exclusion_tabs;
+pub mod family_number;
+pub mod fibonacci_shader;
+pub mod fibonacci_shader_grid;
+pub mod floating_bottom_bar;
+pub mod floating_modal;
+pub mod fluid_slider;
+pub mod fluid_tab_interaction;
+pub mod fourier_visualizer;
+pub mod fractal_glass;
+pub mod geometry_button;
+pub mod github_contributions;
+pub mod github_onboarding;
+pub mod github_terrain;
+pub mod gl_transitions;
+pub mod grid_visualizer;
+pub mod imessage_stack;
+pub mod infinite_carousel;
+pub mod interaction_appearance;
+pub mod ios_home_bouncy;
+pub mod light_on_painting;
+pub mod linear_sensors;
+pub mod loading_button;
+pub mod magnet_spring;
+pub mod metaball;
+pub mod miles_bar_chart;
+pub mod mnist;
+pub mod mobile_input;
+pub mod motion_blur;
+pub mod notion_qrcode;
+pub mod paper_folding;
+pub mod pomodoro_timer;
+pub mod prequel_slider;
+pub mod radar_chart;
+pub mod scroll_progress_text;
+pub mod scroll_transition_3d;
+pub mod scrollable_bottom_sheet;
+pub mod scrollable_shapes;
+pub mod sculptures_in_words;
+pub mod selectable_grid_list;
+pub mod skia_color_picker;
+pub mod slide_to_reveal;
+pub mod snake;
+pub mod sphere_waves;
+pub mod spiral;
+pub mod stacked_carousel;
+pub mod staggered_card_number;
+pub mod steddy_graph_interaction;
+pub mod story_list;
+pub mod sudoku;
+pub mod swipe_cards;
+pub mod telegram_lottie;
+pub mod the_little_prince;
+pub mod theme_canvas_animation;
+pub mod threads_holo_ticket;
+pub mod time_machine;
+pub mod timer;
+pub mod twodos_slide;
+pub mod verification_code_face;
+pub mod warm;
+pub mod wheel_picker;
+
+/// The module's surfaces and its reflected shaders.
+pub static REGISTRY: Registry = Registry {
+    surfaces: &[
+        ("airbnb_flip_card", 1, airbnb_flip_card::surface),
+        ("airbnb_flip_pages", 2, airbnb_flip_pages::surface),
+        ("airbnb_slider", 1, airbnb_slider::surface),
+        ("animated_3d_parallax", 0, animated_3d_parallax::surface),
+        ("animated_clip_box", 1, animated_clip_box::surface),
+        ("art_gallery", 2, art_gallery::surface),
+        ("atlas_button", 1, atlas_button::surface),
+        ("atlas_sphere", 0, atlas_sphere::surface),
+        ("audio_player", 7, audio_player::surface),
+        ("balance_slider", 0, balance_slider::surface),
+        ("bezier_curve_outline", 2, bezier_curve_outline::surface),
+        ("blur_cards", 1, blur_cards::surface),
+        ("blur_circles", 0, blur_circles::surface),
+        ("blurred_scroll", 0, blurred_scroll::surface),
+        ("bottom_bar_skia", 1, bottom_bar_skia::surface),
+        ("calendar_days", 1, calendar_days::surface),
+        ("card_shader_reflections", 0, card_shader_reflections::surface),
+        ("circular_carousel", 1, circular_carousel::surface),
+        ("cherry_blossom_qrcode", 4, cherry_blossom_qrcode::surface),
+        ("chessboard", 0, chessboard::surface),
+        ("clock_time_picker", 0, clock_time_picker::surface),
+        ("color_carousel", 0, color_carousel::surface),
+        ("coverflow_carousel", 0, coverflow_carousel::surface),
+        ("cuberto_slider", 0, cuberto_slider::surface),
+        ("delete_button", 0, delete_button::surface),
+        ("dot_sheet", 0, dot_sheet::surface),
+        ("dot_sheet_card", 2, dot_sheet_card::surface),
+        ("drag_to_sort", 1, drag_to_sort::surface),
+        ("draggable_panel", 1, draggable_panel::surface),
+        ("duration_slider", 0, duration_slider::surface),
+        ("empty_qr_code", 0, empty_qr_code::surface),
+        ("exclusion_tabs", 0, exclusion_tabs::surface),
+        ("family_number", 1, family_number::surface),
+        ("fibonacci_shader", 2, fibonacci_shader::surface),
+        ("fibonacci_shader_grid", 0, fibonacci_shader_grid::surface),
+        ("floating_bottom_bar", 0, floating_bottom_bar::surface),
+        ("floating_modal", 0, floating_modal::surface),
+        ("fluid_slider", 0, fluid_slider::surface),
+        ("fluid_tab_interaction", 0, fluid_tab_interaction::surface),
+        ("fourier_visualizer", 0, fourier_visualizer::surface),
+        ("fractal_glass", 1, fractal_glass::surface),
+        ("geometry_button", 0, geometry_button::surface),
+        ("github_contributions", 0, github_contributions::surface),
+        ("github_onboarding", 0, github_onboarding::surface),
+        ("github_terrain", 1, github_terrain::surface),
+        ("gl_transitions", 4, gl_transitions::surface),
+        ("grid_visualizer", 1, grid_visualizer::surface),
+        ("imessage_stack", 0, imessage_stack::surface),
+        ("infinite_carousel", 0, infinite_carousel::surface),
+        ("interaction_appearance", 4, interaction_appearance::surface),
+        ("ios_home_bouncy", 1, ios_home_bouncy::surface),
+        ("light_on_painting", 4, light_on_painting::surface),
+        ("linear_sensors", 0, linear_sensors::surface),
+        ("loading_button", 0, loading_button::surface),
+        ("magnet_spring", 0, magnet_spring::surface),
+        ("metaball", 0, metaball::surface),
+        ("miles_bar_chart", 7, miles_bar_chart::surface),
+        ("mnist", 0, mnist::surface),
+        ("mobile_input", 2, mobile_input::surface),
+        ("motion_blur", 5, motion_blur::surface),
+        ("notion_qrcode", 0, notion_qrcode::surface),
+        ("paper_folding", 0, paper_folding::surface),
+        ("pomodoro_timer", 1, pomodoro_timer::surface),
+        ("prequel_slider", 2, prequel_slider::surface),
+        ("radar_chart", 10, radar_chart::surface),
+        ("scroll_progress_meter", 2, scroll_progress_text::meter),
+        ("scroll_progress_text", 1, scroll_progress_text::surface),
+        ("scroll_transition_3d", 0, scroll_transition_3d::surface),
+        ("scrollable_bottom_sheet", 0, scrollable_bottom_sheet::surface),
+        ("scrollable_shapes", 0, scrollable_shapes::surface),
+        ("sculptures_in_words", 1, sculptures_in_words::surface),
+        ("selectable_grid_list", 1, selectable_grid_list::surface),
+        ("skia_color_picker", 0, skia_color_picker::surface),
+        ("slide_to_reveal", 0, slide_to_reveal::surface),
+        ("snake", 3, snake::surface),
+        ("sphere_waves", 0, sphere_waves::surface),
+        ("spiral", 0, spiral::surface),
+        ("stacked_carousel", 0, stacked_carousel::surface),
+        ("staggered_card_number", 0, staggered_card_number::surface),
+        ("steddy_graph_interaction", 1, steddy_graph_interaction::surface),
+        ("steddy_highlight", 1, steddy_graph_interaction::highlight),
+        ("story_list", 0, story_list::surface),
+        ("sudoku", 4, sudoku::surface),
+        ("sudoku_backdrop", 0, sudoku::backdrop),
+        ("sudoku_confetti", 1, sudoku::confetti),
+        ("swipe_cards", 4, swipe_cards::surface),
+        ("the_little_prince", 2, the_little_prince::surface),
+        ("theme_canvas_animation", 0, theme_canvas_animation::surface),
+        ("threads_holo_ticket", 0, threads_holo_ticket::surface),
+        ("time_machine", 1, time_machine::surface),
+        ("timer", 2, timer::surface),
+        ("twodos_slide", 0, twodos_slide::surface),
+        ("verification_code_face", 6, verification_code_face::surface),
+        ("warm", 0, warm::surface),
+        ("wheel_picker", 1, wheel_picker::surface),
+    ],
+    shaders: shaders::SHADERS,
+};
+
+exact_gpu::module!(REGISTRY);

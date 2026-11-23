@@ -1,0 +1,18 @@
+// Notion QR code: 348 avatars on a rotating 3D torus. The round button morphs them, in a wave,
+// into the QR code of the site URL and back, cross-fading its icon and label. Drawn in Rust
+// (gpu/src/notion_qrcode.rs), which also posts the haptics.
+use DemoEnv from "../env.contract"
+
+component NotionQrCode
+  props
+    env: DemoEnv
+  action buzz(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+    if m == "haptic:impact-light"
+      haptic("impact-light")
+  view
+    column position="absolute" inset=0 background-color="color(display-p3 0.960784 0.960784 0.960784)" testId="notion-qrcode"
+      canvas surface=notion_qrcode() position="absolute" top=0 left=0 width=env.width height=env.height
+        touch-action="none" message=buzz testId="notion-qrcode-canvas"
+        aria-label="Tap the button to turn the avatars into a QR code"

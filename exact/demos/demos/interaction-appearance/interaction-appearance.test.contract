@@ -1,0 +1,6 @@
+at "/demo/interaction-appearance"
+
+// Press, theme switch, blur and glow are covered by the Rust test; this checks the rest.
+test "the canvas fills the screen"
+  expect tree has "interaction-appearance"
+  expect tree has "interaction-appearance-canvas"

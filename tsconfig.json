@@ -14,6 +14,9 @@
     "jest.config.js",
     // A standalone Node tool with its own dependencies, pinned to a headless
     // Skia build; it is installed and compiled on its own.
-    "scripts/generate-app-icon"
+    "scripts/generate-app-icon",
+    // The Exact app (Contract + Rust + Bun tooling) is its own project with its
+    // own toolchain; the React Native type check must not compile it.
+    "exact"
   ]
 }

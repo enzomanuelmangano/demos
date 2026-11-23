@@ -1,0 +1,4 @@
+at "/demo/magnet-spring"
+
+test "the magnets are there"
+  expect tree has "magnet-canvas"

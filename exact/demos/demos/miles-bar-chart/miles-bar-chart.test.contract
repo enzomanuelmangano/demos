@@ -1,0 +1,10 @@
+seed 5
+epoch "2026-11-09T12:00:00Z"
+time-zone "UTC"
+at "/demo/miles-bar-chart"
+
+test "seven bars over the week strip"
+  expect tree has "miles-bar-chart"
+  expect tree has "bar-0"
+  expect tree has "bar-6"
+  expect tree has "miles-weeks"

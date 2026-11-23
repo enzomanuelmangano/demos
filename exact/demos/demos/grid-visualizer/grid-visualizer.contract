@@ -1,0 +1,11 @@
+// Grid Visualizer: a 35 × 50 grid of tiny white squares on black; the squares inside a number's
+// glyphs spring outward. A tap clears the number and, 700 ms later, shows a random one.
+use DemoEnv from "../env.contract"
+
+component GridVisualizer
+  props
+    env: DemoEnv
+  view
+    canvas surface=grid_visualizer(env.seed) position="absolute" top=0 left=0 width=env.width
+      height=env.height touch-action="none" testId="grid-visualizer"
+      aria-label="A number drawn by a grid of squares: tap for another"

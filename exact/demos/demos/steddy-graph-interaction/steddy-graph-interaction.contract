@@ -1,0 +1,40 @@
+// Steddy graph: a segmented control (Light, Standard, Pro) over a graph. Picking a difficulty
+// slides the highlight and springs the graph line to that difficulty's scores.
+use PressableScale from "pressto"
+use DemoEnv from "../env.contract"
+
+font "SF-Compact-Rounded-Medium" = "assets/fonts/SF-Compact-Rounded-Medium.otf"
+
+fn difficultyName(i: number): string = i == 0 ? "Light" : (i == 1 ? "Standard" : "Pro")
+// The control is the window width less 30, split into three equal cells.
+fn controlWidth(w: number): number = w - 30
+fn cellWidth(w: number): number = controlWidth(w) / 3
+
+component SteddyGraphInteraction
+  props
+    env: DemoEnv
+  // Starts on Standard.
+  state selected = 1
+  action pick(i: number)
+    selected = i
+  view
+    column position="absolute" inset=0 background-color="#F1EEE8" align-items="center"
+      justify-content="center" testId="steddy-graph-interaction"
+      // The control: a rounded track with padding around three labels.
+      row position="relative" box-sizing="border-box" width=controlWidth(env.width) height=56 padding=5
+        background-color="#E5E2DC" border="1px solid #E5E2DC" border-radius=18 corner-shape="-exact-continuous"
+        flex-shrink=0 testId="steddy-control"
+        for i in range(3) key=i
+          view flex=1 height="100%" z-index=2 display="flex" flex-direction="column"
+            PressableScale(press=pick(i))
+              row flex-grow=1 align-items="center" justify-content="center" text-align="center"
+                aria-pressed=(i == selected) testId=`steddy-${difficultyName(i)}`
+                text difficultyName(i) font-family="SF-Compact-Rounded-Medium" font-size=17 color="#30302E"
+                  text-align="center"
+        // The highlight behind the selected label. It sits under the labels.
+        canvas surface=steddy_highlight(selected) position="absolute" left=0 top=0
+          width=(controlWidth(env.width) - 2) height=54 z-index=1 pointer-events="none"
+          aria-hidden=true testId="steddy-highlight"
+      // The graph, 200 tall.
+      canvas surface=steddy_graph_interaction(selected) width=env.width height=200 margin-top=20
+        flex-shrink=0 aria-hidden=true testId="steddy-graph"
