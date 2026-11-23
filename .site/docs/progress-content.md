@@ -33,6 +33,36 @@ first skipped one differ from live by design).
 | `/docs`, `/docs/terms`, `/docs/privacy`, `/docs/license` | legal pages, not demo content |
 | interactive components of the 11 articles that have them (37 exports) | all 11 articles are ported |
 
-## Status
+## Status (2026-11-23)
 
-- Live reference shot with `tools/parity/shoot.ts` into `/tmp/content-live` (`CDP_PORT_OFFSET=100`).
+The converter works end to end (`tools/gen-content.ts`, authoring guide `docs/content.md`): MDX stays the source
+(`.content/`), output generated and gitignored; strict (unknown tag, expression, raw HTML, `index.json` field: build
+error with file and line); `--watch` for authoring; RSS and the articles' share images at their live URLs
+(`.out/content/`, copied by compose); sitemap from Exact's build. All ported pages build: 22 articles, 4 series,
+`/articles`, `/docs` + 3 docs. Preview: `bun tools/serve.ts --port 4311` on the composed output.
+
+Parity, full page, share of differing pixels (`compare.ts`, live shot into `/tmp/content-live`, `CDP_PORT_OFFSET=100`):
+
+| page | 1440 | 390 | note |
+|---|---|---|---|
+| docs terms / privacy / license | 0.06 / 0.10 / 0.01 % | 0.08 / 0.14 / 0.02 % | |
+| `/docs` | 0.02 % | 0.22 % | |
+| series exploring-skia / toolbelt / gestures | 0.07 / 0.06 / 0.05 % | 0.26 / 0.28 / 0.34 % | dates: Inter ASCII subset lacks `tnum` (see open) |
+| series animate-with-reanimated | 7.2 % | 37 % | tall page: live's reveal-on-scroll timing in the capture; to check |
+| `/articles` | 40 % | 45 % | by design: 22 cards, not 26 (scope cut) |
+| 11 articles without interactive components | 0.02-0.33 % | 0.05-0.89 % | animated-flat-list, appjs-2025, circular-progress-bar, haptic-feedback, interpolate-with-scrollview, pinch-gesture-handler, setup-reanimated-gestures, smooth-dropdown, the-hidden-gems, the-power-of-lottie; introducing-refined 4.4 / 8.9 % (to check) |
+| 11 articles with interactive components | 0.2-9.8 % | 0.9-12.5 % | the components are empty 16:9 frames (live's size, so the rest is in place) |
+
+## Open, in order
+
+1. Interactive components (37 exports, 11 articles): placeholders now; port in batches (`interactive/<slug>/`).
+   Known special sizes: checkbox-interactions `Demo`/`StaticDemo` (not 16:9), metaball `CanvasKitJsAlert` (drawn
+   as nothing now), animated-loader-skia `WithProgressLoaderWithSkia` at 390.
+2. Inline maths (animated-spiral): SVG sizes and baseline against live's MathJax.
+3. The Inter ASCII subset (`assets/fonts/InterAscii.woff2`, branch `site`) has no `tnum`: tabular dates are 5 px
+   narrower than live. Rebuild it with `--layout-features='*'`.
+4. Perf: an article's HTML is ~2.5x live's document (smooth-dropdown 80 KB vs 32 KB brotli): every code token is a
+   styled element. Merge equal-style tokens, class the colours, then the perf gate.
+5. GitHub card: live clips a squircle (figma-squircle 0.6) with a gradient rim; here a 14 px radius and the
+   `--shadow-surface` fallback the reference uses before measuring.
+6. `og:type` article, JSON-LD NewsArticle (phase 6 postbuild); the motion, nav and perf sweep at the end.
