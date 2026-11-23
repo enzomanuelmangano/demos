@@ -185,7 +185,7 @@ component GithubCard
                 if repo.path != ""
                   row align-items="center"
                     text repo.name color="var(--color-text-tertiary)"
-                    image "/assets/images/chevron.svg" alt="" aria-hidden=true width=12 height=12 margin="0 4px"
+                    image "/assets/images/chevron.svg" alt="" aria-hidden=true width=12 height=12 margin="0 4px" flex-shrink=1 min-width=0
                     text repo.path color="var(--color-text-primary)" font-weight=600
                 else
                   text `${repo.owner}/${repo.name}` font-weight=600 color="var(--color-text-primary)" overflow="hidden" text-overflow="ellipsis" white-space="nowrap"
