@@ -36,8 +36,18 @@ Branch `site` (worktree `thank-you-site`), draft PR #115 into `main`. Update thi
   1440x900 and 1920x1080), the still draws the bezel under it. head.css colours are literals: the theme is not CSS
   variables at run time (the /demos subtitle colour was silently dropped before).
 
+- **2026-11-23, block 4** (perf): content and static pages `activate=interaction` (D16): no runtime until a press, a
+  field or a demo / embed in view; the header's scrolled look in CSS; code blocks a text per run coloured by CSS
+  highlights (pan-gesture-handler 2,763 nodes to 543). TBT at 4g ≤ live on `/`, `/articles`, three articles, a doc,
+  `/course` (pan 72 vs 84, others 0 vs 63-85; perf.md). Display maths as live's MathJax (animated-spiral boxes at
+  live's place to 0.08 px, page height equal). Link and GitHub card hovers 0 differences (hover.ts, 4 articles);
+  italics slanted as live (Exact's root `font-synthesis: none`). Owner bug fixed: an article opened in-app kept
+  /articles' scroll and its content popped in under the footer (CLS 0.13 -> 0, starts at the top).
+
 ## Next, in order
 
+0. Scroll jank on pages that wake while scrolled (perf.md, D16): embeds as native lazy frames; demo buttons'
+   press look before the runtime (hover.ts: transform vs scale, Sign In / Subscribe :active on a page not yet awake).
 1. The one automated sweep over every page (pixel, motion, hover.ts, nav, perf), per the lead's plan.
 2. Open: `/demos` @390 cable LCP ~1.6 s (live ~1.5 s): the pill's blur-in end; the testimonial cards' squircle
    (live: figma-squircle 18 / 0.6 clip and gradient rim; here border-radius 18 + hairline, pixels within 0.04 %); the
