@@ -62,7 +62,7 @@ fn mpAlbums(): MpAlbum[] = [
   MpAlbum(src="assets/demos/dynamic-tab-indicator/japan.jpg", iw=1920, ih=2560, title="Neon Rain", artist="Kaito"),
 ]
 
-fn mpTabIcon(i: number): string = i == 0 ? "symbol:sf/house.fill" : (i == 1 ? "symbol:sf/square.grid.2x2.fill" : (i == 2 ? "symbol:sf/dot.radiowaves.left.and.right" : "symbol:sf/music.note.square.stack.fill"))
+fn mpTabIcon(i: number): string = i == 0 ? "symbol:icon.house-fill" : (i == 1 ? "symbol:icon.square-grid-2x2-fill" : (i == 2 ? "symbol:icon.dot-radiowaves-left-and-right" : "symbol:icon.music-note-square-stack-fill"))
 fn mpTabName(i: number): string = i == 0 ? "Home" : (i == 1 ? "New" : (i == 2 ? "Radio" : "Library"))
 
 // Covers a w × h clip, centred. The iOS host pins object-fit cover to the top, so the sizing is done here.
@@ -294,7 +294,7 @@ component ExpandableMiniPlayer
         width=30 height=30 border-radius=15 background-color="rgba(255, 255, 255, 0.14)"
         align-items="center" justify-content="center" pointer-events="none"
         animation="mpFade 1s linear both" animation-timeline="--mp" animation-range="0px 732px"
-        image "symbol:sf/ellipsis" font-size=15 font-weight=700 color=mpLabel() aria-hidden=true
+        image "symbol:icon.ellipsis" font-size=15 font-weight=700 color=mpLabel() aria-hidden=true
       // The open player's scrubber and times.
       column position="absolute" left=mpSide() width=cover top=mpScrubTop(coverTop, cover)
         pointer-events="none" animation="mpFade 1s linear both" animation-timeline="--mp"
@@ -315,36 +315,36 @@ component ExpandableMiniPlayer
         height=64 align-items="center" justify-content="space-evenly" pointer-events="none"
         column width=64 height=64 align-items="center" justify-content="center"
           animation="mpFade 1s linear both" animation-timeline="--mp" animation-range="0px 732px"
-          image "symbol:sf/backward.fill" font-size=30 color=mpLabel() aria-hidden=true
+          image "symbol:icon.backward-fill" font-size=30 color=mpLabel() aria-hidden=true
         column width=64 height=64 align-items="center" justify-content="center"
           transform-origin="0px 0px" animation="mpPlay 1s linear both" animation-timeline="--mp"
           animation-range="0px 732px"
-          image (playing ? "symbol:sf/pause.fill" : "symbol:sf/play.fill") font-size=44
+          image (playing ? "symbol:icon.pause-fill" : "symbol:icon.play-fill") font-size=44
             color=mpLabel() aria-hidden=true
         column width=64 height=64 align-items="center" justify-content="center"
           transform-origin="0px 0px" animation="mpNext 1s linear both" animation-timeline="--mp"
           animation-range="0px 732px"
-          image "symbol:sf/forward.fill" font-size=30 color=mpLabel() aria-hidden=true
+          image "symbol:icon.forward-fill" font-size=30 color=mpLabel() aria-hidden=true
       // The volume row.
       row position="absolute" left=mpSide() width=cover align-items="center" gap=12
         top=mpVolumeTop(coverTop, cover)
         pointer-events="none" animation="mpFade 1s linear both" animation-timeline="--mp"
         animation-range="0px 732px"
-        image "symbol:sf/speaker.fill" font-size=13 color=mpSecondary() aria-hidden=true
+        image "symbol:icon.speaker-fill" font-size=13 color=mpSecondary() aria-hidden=true
         view flex=1 height=6 border-radius=3 corner-shape="-exact-continuous"
           background-color="rgba(255, 255, 255, 0.2)" overflow="hidden"
           view position="absolute" left=0 top=0 bottom=0 width="62%"
             background-color="rgba(255, 255, 255, 0.82)"
-        image "symbol:sf/speaker.wave.3.fill" font-size=13 color=mpSecondary()
+        image "symbol:icon.speaker-wave-3-fill" font-size=13 color=mpSecondary()
           aria-hidden=true
       // Lyrics, AirPlay and the queue, above the home indicator.
       row position="absolute" left=mpSide() width=cover top=(H - env.safeBottom - 40) height=32
         align-items="center" justify-content="space-between" padding="0px 30px"
         box-sizing="border-box" pointer-events="none" animation="mpFade 1s linear both"
         animation-timeline="--mp" animation-range="0px 732px"
-        image "symbol:sf/quote.bubble" font-size=19 color=mpSecondary() aria-hidden=true
-        image "symbol:sf/airplay.audio" font-size=19 color=mpSecondary() aria-hidden=true
-        image "symbol:sf/list.bullet" font-size=19 color=mpSecondary() aria-hidden=true
+        image "symbol:icon.quote-bubble" font-size=19 color=mpSecondary() aria-hidden=true
+        image "symbol:icon.airplay-audio" font-size=19 color=mpSecondary() aria-hidden=true
+        image "symbol:icon.list-bullet" font-size=19 color=mpSecondary() aria-hidden=true
       // The grabber of the open sheet.
       view position="absolute" top=(env.safeTop + 6) left=((W - 36) / 2) width=36 height=5
         border-radius=2.5 corner-shape="-exact-continuous" background-color="rgba(255, 255, 255, 0.35)"

@@ -103,7 +103,7 @@ component FamilyNumberInput
               if k == -2
                 column flex-grow=1 align-items="center" justify-content="center"
                   pointerdown=holdStart(k) pointerup=holdEnd(k) aria-label="Delete" testId=`key-${k}`
-                  image "symbol:sf/delete.left.fill" font-size=24 color="#ffffff" aria-hidden=true
+                  image "symbol:icon.delete-left-fill" font-size=24 color="#ffffff" aria-hidden=true
               if k != -2
                 column flex-grow=1 align-items="center" justify-content="center"
                   aria-label=(k >= 0 ? `${k}` : "") testId=`key-${k}`

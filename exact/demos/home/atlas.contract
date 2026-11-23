@@ -333,7 +333,7 @@ component Atlas
             image "symbol:back"
         else if focused != ""
           button press=goBack aria-label="Back to Atlas" aria-keyshortcuts="Escape" testId="atlas-close"
-            image "symbol:sf/chevron.backward"
+            image "symbol:icon.chevron-backward"
         text "Demo Atlas" role="heading" aria-level=2
         text `${shown.length} ${shown.length == 1 ? "demo" : "demos"} · ${live.length} live` font-size=12 color="-exact-secondary-label"
         row role="tablist" aria-label="Status" testId="atlas-status"
@@ -341,15 +341,15 @@ component Atlas
             button role="tab" aria-selected=(status == s) press=pick(s) testId=`atlas-status-${s}`
               text (s == "all" ? "All" : s == "done" ? "Done" : s == "open" ? "Open" : "Unverified")
         button popovertarget="atlas-sort" aria-label=`Sort: ${sortLabel(by)}` testId="atlas-sort"
-          image "symbol:sf/arrow.up.arrow.down"
+          image "symbol:icon.arrow-up-arrow-down"
         button popovertarget="atlas-live" aria-label=(mode == "near" ? "12 Live" : mode == "hover" ? "Live on Hover" : "Live When Visible") testId="atlas-live"
-          image "symbol:sf/square.grid.3x3"
+          image "symbol:icon.square-grid-3x3"
         button press=pause aria-label=(paused ? "Resume Atlas" : "Pause Atlas") testId="atlas-pause"
           -exact-menu="view" aria-keyshortcuts="Meta+Shift+P"
-          image (paused ? "symbol:sf/play.fill" : "symbol:sf/pause.fill")
+          image (paused ? "symbol:icon.play-fill" : "symbol:icon.pause-fill")
         button press=arm aria-label=(armed ? "Cancel Feedback" : "Add Feedback") aria-pressed=armed aria-keyshortcuts="F"
           testId="atlas-feedback"
-          image (armed ? "symbol:sf/text.bubble.fill" : "symbol:sf/text.bubble")
+          image (armed ? "symbol:icon.text-bubble-fill" : "symbol:icon.text-bubble")
         input type="search" value=q input=typed placeholder="Search" testId="atlas-search" width=180
       column id="atlas-sort" popover="auto" role="menu" position="absolute" aria-label="Sort By"
         for s in ["order", "name", "status", "score"] key=s
@@ -466,11 +466,11 @@ component Atlas
           font-size=11 color="-exact-secondary-label" margin-right="auto"
         button appearance="none" press=zoomOut -exact-menu="view" aria-keyshortcuts="Meta+-" aria-label="Zoom Out"
           testId="atlas-zoom-out" padding=0 border-width=0 background-color="transparent"
-          image "symbol:sf/rectangle.grid.3x2" width=12 height=12 color="-exact-secondary-label"
+          image "symbol:icon.rectangle-grid-3x2" width=12 height=12 color="-exact-secondary-label"
         input type="range" min=0.12 max=0.9 step=0.01 value=scale input=sized aria-label="Tile size" width=120 testId="atlas-size"
         button appearance="none" press=zoomIn -exact-menu="view" aria-keyshortcuts="Meta+=" aria-label="Zoom In"
           testId="atlas-zoom-in" padding=0 border-width=0 background-color="transparent"
-          image "symbol:sf/rectangle.grid.1x2" width=14 height=14 color="-exact-secondary-label"
+          image "symbol:icon.rectangle-grid-1x2" width=14 height=14 color="-exact-secondary-label"
         button appearance="none" press=zoomReset -exact-menu="view" aria-keyshortcuts="Meta+0" aria-label="Actual Size"
           testId="atlas-zoom-reset" display="none"
           text "Actual Size"

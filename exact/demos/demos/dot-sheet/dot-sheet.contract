@@ -130,7 +130,7 @@ component DotSheet
           PressableScale(press=back)
             row flex-grow=1 margin=4 align-items="center" justify-content="center" text-align="center"
               opacity=(open ? 1 : 0) transition=`opacity ${cardSpring(cardMs)}` aria-label="Back" testId="dot-back"
-              image "symbol:sf/chevron.backward" font-size=24 color="#323232" aria-hidden=true
+              image "symbol:icon.chevron-backward" font-size=24 color="#323232" aria-hidden=true
       // Capsule whose ends are concentric with the display corner.
       view position="absolute" top=(h - concentricInset(52) - 52) left=concentricInset(52)
         width=floatingWidth(env.width, concentricInset(52)) height=52 z-index=(not open and still ? 2 : 0) display="flex" flex-direction="column"
@@ -149,7 +149,7 @@ component DotSheet
           column flex-grow=1 align-items="center" justify-content="center" aria-label="Send" testId="dot-send"
             column width=36 height=36 border-radius=18 background-color="#323232" align-items="center"
               justify-content="center"
-              image "symbol:sf/arrow.up" font-size=17 font-weight=600 color="#ffffff" aria-hidden=true
+              image "symbol:icon.arrow-up" font-size=17 font-weight=600 color="#ffffff" aria-hidden=true
       // Frame, radius and rotation interpolate with the progress: a small tilted card when closed,
       // the full-width sheet when open.
       canvas surface=dot_sheet_card(open, env.safeTop - sheetLift()) message=heard position="absolute" top=0 left=0

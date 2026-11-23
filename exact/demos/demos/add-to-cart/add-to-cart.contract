@@ -238,7 +238,7 @@ component AddToCart
                 row height=confirmHeight() align-items="center" justify-content="center" gap=8
                   background-color="#000000" border-radius=(confirmHeight() / 2)
                   corner-shape="-exact-continuous" aria-label="Add to Cart" testId="add-to-cart-confirm"
-                  image "symbol:sf/cart.fill" font-size=17 font-weight=600 color="#FFFFFF" aria-hidden=true
+                  image "symbol:icon.cart-fill" font-size=17 font-weight=600 color="#FFFFFF" aria-hidden=true
                   text "Add to Cart" font-size=17 font-weight=600 line-height="22px" color="#FFFFFF"
           // The flying photo: laid out at the sheet's hero, moved by transform only.
           view position="absolute" left=hx top=hy width=hero height=hero transform-origin="0px 0px"
@@ -290,7 +290,7 @@ component Card
             column width=buyButton() height=buyButton() align-items="center" justify-content="center"
               background-color="#000000" border-radius=cardInner() corner-shape="-exact-continuous"
               id=`buy-${i}` aria-label=`Add Item ${i} to cart` testId=`buy-${i}`
-              image "symbol:sf/cart" font-size=17 font-weight=600 color="#FFFFFF" aria-hidden=true
+              image "symbol:icon.cart" font-size=17 font-weight=600 color="#FFFFFF" aria-hidden=true
           if count > 0
             for c in [count] key=c
               view position="absolute" top=-6 right=-6 min-width=20 height=20 padding="0px 5px"

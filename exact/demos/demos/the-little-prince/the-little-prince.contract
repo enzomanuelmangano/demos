@@ -38,8 +38,8 @@ component TheLittlePrince
               view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
                 opacity=(revealed ? 0 : 1) scale=(revealed ? 0.85 : 1)
                 transition=`opacity 240ms ${outCubic()}, scale 240ms ${outCubic()}`
-                image "symbol:sf/photo" font-size=20 font-weight=600 color="#efe7d6" aria-hidden=true
+                image "symbol:icon.photo" font-size=20 font-weight=600 color="#efe7d6" aria-hidden=true
               view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
                 opacity=(revealed ? 1 : 0) scale=(revealed ? 1 : 0.85)
                 transition=`opacity 240ms ${outCubic()}, scale 240ms ${outCubic()}`
-                image "symbol:sf/textformat" font-size=20 font-weight=600 color="#efe7d6" aria-hidden=true
+                image "symbol:icon.textformat" font-size=20 font-weight=600 color="#efe7d6" aria-hidden=true

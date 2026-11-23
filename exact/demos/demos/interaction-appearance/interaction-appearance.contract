@@ -43,4 +43,4 @@ component InteractionAppearance
           position="absolute" inset=0 pointer-events="none" aria-hidden=true
         column position="absolute" inset=0 align-items="center" justify-content="center"
           pointer-events="none" aria-hidden=true
-          image "symbol:sf/sun.max.fill" font-size=22 color=(dark ? "#FFFFFF" : "#000000")
+          image "symbol:icon.sun-max-fill" font-size=22 color=(dark ? "#FFFFFF" : "#000000")
