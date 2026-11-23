@@ -321,3 +321,17 @@ Cost: the CTA and hint are a few plan nodes (app.js +~1 KB) and ~2.5 KB of head 
   `follow` (app.contract) now resets `simFramed` / `simLive`, so every visit shows the still until the app has drawn
   again and cross-fades as the first does (sampled 50-1000 ms after each return: frame opacity 0 over the still,
   1 from 1.5 s).
+- **The title's entrance (owner: "animate 'Demos' as if we were drawing it… Apple").** Three variants recorded at
+  1728x960 (`/tmp/demos-variants/title-{v1-draw,v2-sweep,v3-draw-fill}.mp4|png`): **V1** the outlines drawn on
+  (D → e → m → o → s, 1 s each, 150 ms apart, ease-in-out), then the text fades in under them; **V2** the live
+  rise and one soft light passing over a dimmed word; **V3 (chosen)** V1's drawing, then the fill follows the pen
+  from left to right behind a soft light (a mask and a highlight moving together over the text, 1.3 s from 650 ms) while
+  the strokes fade (done at 2.35 s). V1's cross-fade reads as two objects swapping; V2 is pretty but not "drawing";
+  V3 is both. The outlines are Inter itself (`tools/title-draw.py`: the variable font instanced at weight 600 and
+  opsz 32, the size Chrome picks at 144 px, overlaps removed, shaped by HarfBuzz with the -0.04em tracking, placed on
+  the text's line box): one decorative SVG (aria-hidden, no pointer) over the real h1, which stays the text. Only
+  from 1024 px, where the title is 600 (under it the live 500 title keeps the live entrance); off under
+  prefers-reduced-motion. The end is the static title: 0 pixels over 32/255 against the reduced-motion render at 2x.
+  Cost: the SVG's 8 paths (~3.9 KB raw, ~1.7 KB gzip in the page) and 1.3 KB of CSS; the title is not the LCP
+  element (gradient-clipped text): `/demos` 1440 LCP cable 212 → 188 ms, 4g 648 → 668 ms (noise; 3 runs, AC power),
+  CLS 0, page TBT 17 → 16 ms.
