@@ -57,12 +57,12 @@ export class Page {
   }
 }
 
-export async function launch({ port = 9340 } = {}) {
+export async function launch({ port = 9340, headed = false } = {}) {
   // CDP_PORT_OFFSET shifts every tool's port, so two worktrees can run the parity tools at once.
   port += Number(process.env.CDP_PORT_OFFSET ?? 0);
   const dir = mkdtempSync(join(tmpdir(), 'site-chrome-'));
   const proc = spawn(CHROME, [
-    `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, '--no-first-run', '--no-default-browser-check', '--headless=new',
+    `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, '--no-first-run', '--no-default-browser-check', ...(headed ? ['--disable-backgrounding-occluded-windows', '--disable-features=CalculateNativeWinOcclusion'] : ['--headless=new']),
     '--enable-unsafe-webgpu', '--use-angle=metal', '--enable-gpu-rasterization', '--ignore-gpu-blocklist', '--hide-scrollbars',
     '--force-color-profile=srgb', '--font-render-hinting=none', '--disable-background-timer-throttling', '--disable-renderer-backgrounding',
     '--window-size=1440,900', 'about:blank',
@@ -77,8 +77,8 @@ export async function launch({ port = 9340 } = {}) {
 }
 
 /** A fresh browser context (cold cache, no storage) with one page at the live sweep's viewports. */
-export async function newPage(cdp: Cdp, width: number) {
-  const mobile = width < 800, height = mobile ? 844 : 900;
+export async function newPage(cdp: Cdp, width: number, { height = width < 800 ? 844 : 900, scale = 1 } = {}) {
+  const mobile = width < 800;
   const { browserContextId } = await cdp.send('Target.createBrowserContext', { disposeOnDetach: true });
   const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank', browserContextId, width, height });
   const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
@@ -86,7 +86,7 @@ export async function newPage(cdp: Cdp, width: number) {
   await page.send('Page.enable');
   await page.send('Runtime.enable');
   await page.send('Network.enable');
-  await page.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile });
+  await page.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: scale, mobile });
   if (mobile) await page.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
   return page;
 }

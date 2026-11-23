@@ -15,6 +15,7 @@ import { spawnSync } from 'node:child_process';
 import { BASE, keyAt } from './demos-web/build.ts';
 import { ALIASES, LEGACY_DEMO_POSTS } from './demos-web/legacy-posts.ts';
 import { demosHead } from './demos-web/head.ts';
+import { patchDemos } from './demos-web/patches.ts';
 import { NOT_PORTED_REDIRECTS } from './seo/site.ts';
 
 type Route = { src?: string; dest?: string; status?: number; headers?: Record<string, string>; handle?: string; continue?: boolean };
@@ -72,6 +73,8 @@ if (existsSync(pub)) for (const n of readdirSync(pub)) {
 // the root and merge them; the site's `Allow: /` already covers /demos/). The demos build has no .well-known/.
 copy(demosDist, join(staticDir, MOUNT.slice(1)), ['robots.txt']);
 if (existsSync(join(demosDist, '.well-known'))) throw new Error('compose: the demos build has .well-known/: merge it at the origin root');
+// Exact web-host fixes the pinned Exact lacks (tools/demos-web/patches.ts, decisions.md D18).
+for (const line of patchDemos(join(staticDir, MOUNT.slice(1)))) console.log(`compose: patched ${line}`);
 
 // The /demos/app/ head: /demos's title, description and share card (a CI-only overlay of the built HTML, never of the
 // tracked demos sources). The page is one shell for every demos route.
