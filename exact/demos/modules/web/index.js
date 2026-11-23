@@ -13,6 +13,26 @@ export const roster = Object.fromEntries(tags.map((t) => [t, { snapshot: false }
 // The build imports this module in Bun to read `roster` (no DOM there): what touches the page runs only in one.
 const DOM = typeof document !== 'undefined';
 const num = (v, d) => { const n = Number(v); return v !== undefined && v !== '' && Number.isFinite(n) ? n : d; };
+// The CSS family of a bundled font (assets/fonts/<name>.ttf|otf): the host declares each face as
+// `ExactPlanStack<i>` with the file as its src, so a PostScript name finds it by the file's name.
+const faces = new Map();
+const bundledFace = (name) => {
+  if (faces.has(name)) return faces.get(name);
+  let found = null;
+  for (const sheet of document.styleSheets) {
+    let rules;
+    try { rules = sheet.cssRules; } catch { continue; }
+    for (const r of rules) {
+      if (r instanceof CSSFontFaceRule && r.style.getPropertyValue('src').includes(`fonts/${name}.`)) {
+        found = r.style.getPropertyValue('font-family').replace(/["']/g, '');
+        break;
+      }
+    }
+    if (found) break;
+  }
+  if (found) faces.set(name, found);
+  return found;
+};
 const base = ':host{display:block;position:relative;box-sizing:border-box}*{box-sizing:border-box}';
 const shadow = (el, css) => {
   const root = el.shadowRoot ?? el.attachShadow({ mode: 'open' });
@@ -1657,8 +1677,11 @@ const views = {
     let text = null, last = {};
     const draw = (p) => {
       const top = p.anchor === 'top-leading';
-      const family = p.family ? `"${p.family}", ` : '';
-      const weight = { ultraLight: 200, thin: 100, light: 300, regular: 400, medium: 500, semibold: 600, bold: 700, heavy: 800, black: 900 }[p.weight] ?? 700;
+      // A bundled face: the host declares it as `ExactPlanStack<i>`, not under its PostScript name, and the
+      // iPhone draws it as is (`.custom(family, fixedSize:)`), so its own weight, not the rounded bold.
+      const face = p.family ? bundledFace(p.family) : null;
+      const family = face ? `"${face}", ` : p.family ? `"${p.family}", ` : '';
+      const weight = face ? 400 : { ultraLight: 200, thin: 100, light: 300, regular: 400, medium: 500, semibold: 600, bold: 700, heavy: 800, black: 900 }[p.weight] ?? 700;
       const design = { default: 'system-ui', rounded: 'ui-rounded, "SF Pro Rounded", system-ui', monospaced: 'ui-monospace, monospace', serif: 'ui-serif, serif' }[p.design] ?? 'ui-rounded, "SF Pro Rounded", system-ui';
       t.style.cssText = `font:${weight} ${num(p.points, 17)}px/1 ${family}${design};letter-spacing:${num(p.tracking, 0)}px;color:${p.tint ?? '#000'};` +
         (top ? 'left:0;top:0' : 'left:0;right:0;top:0;justify-content:center;text-align:center');
