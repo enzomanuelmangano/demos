@@ -1807,7 +1807,7 @@ const views = {
   },
   // A sheet of switches over the demo.
   'toggle-sheet'(el, props, event) {
-    let layer = null, p = props;
+    let layer = null, p = props, switches = null;
     const close = () => { layer?.close(); layer = null; };
     const open = () => {
       if (layer) return;
@@ -1818,21 +1818,48 @@ const views = {
       root.innerHTML = `<style>*{box-sizing:border-box;font-family:-apple-system,system-ui,sans-serif}.s{position:absolute;inset:0;background:rgba(0,0,0,.4);pointer-events:auto;animation:f .25s both}.p{position:absolute;left:0;right:0;bottom:0;background:#1c1c1e;color:#fff;border-radius:38px 38px 0 0;padding:28px 22px 44px;pointer-events:auto;animation:u .38s cubic-bezier(.32,.72,0,1) both}.g{position:absolute;top:8px;left:50%;width:36px;height:5px;margin-left:-18px;border-radius:3px;background:#555}h2{font-size:20px;font-weight:600;text-align:center;margin:6px 0 22px}.r{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;font-size:17px}.w{width:51px;height:31px;border-radius:16px;background:#39393d;position:relative;transition:background .2s;cursor:pointer}.w::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.3);transition:transform .2s}.w.on::after{transform:translateX(20px)}@keyframes f{from{opacity:0}}@keyframes u{from{transform:translateY(100%)}}</style><div class="s"></div><div class="p"><div class="g"></div><h2></h2></div>`;
       root.querySelector('h2').textContent = p.caption ?? '';
       const panel = root.querySelector('.p');
+      switches = new Map();
       for (const r of rows) {
         const row = document.createElement('div'); row.className = 'r';
         const label = document.createElement('span'); label.textContent = r.label;
-        const sw = document.createElement('div'); sw.className = 'w' + (r.on ? ' on' : ''); sw.setAttribute('role', 'switch');
-        if (r.on) sw.style.background = tint;
-        sw.addEventListener('click', () => { r.on = !r.on; sw.classList.toggle('on', r.on); sw.style.background = r.on ? tint : ''; event(1, `${r.id}:${r.on}`); });
+        const sw = document.createElement('div'); sw.setAttribute('role', 'switch');
+        const show = (on) => { r.on = on; sw.className = 'w' + (on ? ' on' : ''); sw.style.background = on ? tint : ''; sw.setAttribute('aria-checked', String(on)); };
+        show(r.on);
+        // A flip plays the selection haptic, as ToggleSheet.swift's Toggle does.
+        sw.addEventListener('click', () => { show(!r.on); haptics.play('selection'); event(1, `${r.id}:${r.on}`); });
+        switches.set(r.id, show);
         row.append(label, sw); panel.append(row);
       }
+      // A drag down on the panel (not on a switch) follows the finger and dismisses past a third of it or on a flick, as
+      // the iPhone's sheet; short of that it springs back.
+      panel.style.touchAction = 'none';
+      panel.addEventListener('pointerdown', (e) => {
+        if (e.target.closest?.('[role="switch"]')) return;
+        const y0 = e.clientY, k = panel.getBoundingClientRect().height / panel.offsetHeight || 1;
+        let dy = 0, last = [performance.now(), 0], v = 0;
+        panel.setPointerCapture(e.pointerId); panel.style.animation = 'none'; panel.style.transition = 'none';
+        const move = (m) => { dy = Math.max(0, (m.clientY - y0) / k); const t = performance.now(); v = (dy - last[1]) / Math.max(1, t - last[0]); last = [t, dy]; panel.style.transform = `translateY(${dy}px)`; };
+        const up = () => {
+          panel.removeEventListener('pointermove', move); panel.removeEventListener('pointerup', up); panel.removeEventListener('pointercancel', up);
+          panel.style.transition = 'transform .3s cubic-bezier(.32,.72,0,1)';
+          if (dy > panel.offsetHeight / 3 || (v > 0.5 && dy > 12)) { panel.style.transform = 'translateY(100%)'; root.querySelector('.s').style.opacity = '0'; setTimeout(() => { close(); event(1, 'dismissed'); }, 250); }
+          else panel.style.transform = '';
+        };
+        panel.addEventListener('pointermove', move); panel.addEventListener('pointerup', up); panel.addEventListener('pointercancel', up);
+      });
       // Only a press that began on the scrim dismisses: the double tap that opened the sheet ends (its click) on it.
       const scrim = root.querySelector('.s');
       let pressed = false;
       scrim.addEventListener('pointerdown', () => { pressed = true; });
       scrim.addEventListener('click', () => { if (!pressed) return; pressed = false; close(); event(1, 'dismissed'); });
     };
-    const set = (n) => { p = n; n.open === 'true' ? open() : close(); };
+    // While it is up the rows follow the props, as the iPhone's model does (light-on-painting's Cord turns off with
+    // the Bulb).
+    const set = (n) => {
+      p = n;
+      if (layer && switches) for (const r of String(n.switches ?? '').split('|').filter(Boolean)) { const [id, on] = r.split(':'); switches.get(id)?.(on === '1' || on === 'true'); }
+      n.open === 'true' ? open() : close();
+    };
     set(props);
     return { set, destroy: close };
   },
