@@ -431,3 +431,7 @@ Every demo of the pass measured with `VSYNC=1` (display pace) in the per-demo dr
 fibonacci-shader, verification-code, gl-transitions); each was rerun twice with the same steps and none recurred:
 first-use pipeline or font work in a cold profile, not the demo. Two drivers in parallel print in finish order, not
 launch order: label runs or run them one at a time.
+Same session, after split-button: circular-carousel, selectable-grid-list and radar-chart at 60 fps with no late frame.
+animated-indicator-list (now that its named scroll timelines run, ef0c3e92): wheel 60 fps on desktop and at 390 pt;
+under touch emulation the list scrolls at 30 fps while its 12 scroll-driven animations are live (p95 33.4 ms, 45 late
+frames in two 400 ms drags). Not traced yet.
