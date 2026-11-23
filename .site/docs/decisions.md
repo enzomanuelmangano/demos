@@ -238,7 +238,85 @@ Measured on the home page, the gallery build (all 22 gesture/UI demos in the pla
 The remaining cost is the components' plan and classes, which every page loads. Removing it needs per-route plans
 and keyframes from Exact (feedback noted).
 
-## D16. /demos on a desktop, redesigned: the header's columns, two calls to action, a lit device (owner, 2026-11-23)
+## D15. The accounts: the reference's API as the backend, its client ported, off without the env (branch site-env, 2026-11-23)
+
+- **Backend: the reference's own Next API, unchanged.** Locally `tools/local-env/api.ts` runs it from a `git archive`
+  copy (never the reference clone) on :3000 with the owner's env file in its process environment only;
+  `tools/serve.ts` proxies `/api/*` same-origin (redirects unfollowed, so OAuth works). In production compose's
+  rewrite to `LEGACY_API_ORIGIN` does the same. Evaluated and rejected: server functions on the Exact web host. Exact's
+  web output here is a static Build Output tree (`render=build` pages, `--render js`); compose could add Vercel
+  functions, but that is a rewrite of 22 route handlers, the DB layer and the webhook for no gain over keeping the
+  deployment that already runs them, and the OAuth clients' redirect URIs already name `https://reactiive.io/api/...`.
+- **Session: the reference's, byte for byte on the wire.** Its callbacks answer 302 to
+  `${EXPO_PUBLIC_WEBSITE_URL}/profile?accessToken=<JWT>`; the client keeps the JWT and sends `Authorization: Bearer`.
+  Here the root's `state accessToken = "" persist` (localStorage) takes it from the URL and replaces the URL; the data
+  module (`components/account/account.ts`) sends it with `credentials: 'omit'` (no cookie exists). A 401 forgets it. Not
+  carried over: the reference's XOR obfuscation of the stored token under `@AccessStorage` (obfuscation with a public
+  key, not security); after the cutover a signed-in visitor signs in once more.
+- **Sign-in buttons are links.** The reference asks `/api/auth/{google,apple}-sign-up` at the press and sets
+  `window.location`. Contract has no same-tab navigation to another origin from an action (`openURL` opens a new tab),
+  so the URLs are asked when the dialog opens and the buttons are plain links to the provider (same requests, same
+  page; a spinner while the answer is out).
+- **On/off.** `SITE_ACCOUNTS=1` (public setting) turns the accounts on; `EXPO_PUBLIC_WEBSITE_URL` is the API base
+  (default `https://reactiive.io`). Unset, the header draws the signed-out "Sign In" that opens nothing, no request is
+  made, `/profile` 307s to `/demos` (compose, unless `LEGACY_API_ORIGIN`), the star count is the snapshot, and no
+  analytics script is written: the public build is the earlier one.
+- **Payments are not ported** (owner): no checkout, plan UI, subscription modals or refunds; `/manage-subscription`
+  always 307s to `/demos`; the menu's support entry and the profile's SubscriptionBox are left out.
+- **Analytics and Sentry** are a script `tools/observability.ts` writes into the built pages when the public keys are
+  in the build's env: the vendors' CDN builds (pinned, SRI) with the reference's options; never sending on localhost.
+- **Secrets.** Only public values reach the site build (`.env.local`: `SITE_ACCOUNTS`, `EXPO_PUBLIC_*`); server values
+  live in the API process only. `tools/check-secrets.ts` scans the staged diff, the tracked tree and build outputs
+  against patterns and the env file's values.
+
+### D15, inherited from the reference: the session's known weaknesses (security review of PR #121, 2026-11-23)
+
+Kept as they are, since the backend is the reference's, unchanged; listed with the fixes recommended upstream (in the
+reference's API, then mirrored here):
+
+- **The JWT lives in localStorage** (here a persisted state; there XOR-obfuscated): any XSS on the origin can read it.
+  Upstream: an `HttpOnly; Secure; SameSite=Lax` `__Host-` session cookie set by the callback (Exact's
+  `recipes/web-sessions.md`), the page never holding the token.
+- **The token travels in the callback's URL** (`/profile?accessToken=`): it lands in history, logs and Referer.
+  Mitigated here: the page replaces the URL at once, Sentry scrubs it from every event, the profile page loads no
+  third-party resource before the replacement. Upstream: the cookie above, or a single-use code exchanged by POST.
+- **The JWT does not expire** and cannot be revoked (no `exp`, no server-side session). Upstream: `exp` (hours),
+  refresh with rotation, a revocation list or session table.
+- **OAuth `state` carries only utm_source, no anti-CSRF value; no PKCE.** Upstream: a random, single-use `state`
+  bound to the browser (cookie) and checked in the callback; PKCE for the code exchange.
+
+## D16. Content and static pages activate on the reader's intent; the runtime adopts fewer nodes (2026-11-23)
+
+Article pages blocked the main thread 225-430 ms at 4g / 4x CPU (live: ~75) because each page started Exact's whole
+runtime once idle (`activate=idle`): one task that builds the page's view tree and adopts every node the build
+rendered (~55 ms plus ~0.07 ms a node at 4x CPU; `pan-gesture-handler` had 2,763 nodes, 2,050 of them code tokens).
+
+- **`activate=interaction`** on `/articles`, `/articles/:post`, `/series/:series`, `/docs`, `/docs/:post`, `/course`,
+  `/inspirations`, `/demos-app` (`/` and `/demos`, ~140 nodes and their own clocks, stay `idle`). Such a page loads no
+  script of the runtime until intent: a press on a control with a handler (the menu, Sign In, the copy button, the
+  newsletter field), which Exact's capture script records and replays after the boot, or a node with an `intersect`
+  handler entering the window (and the first scroll once one exists: Exact's own rule, `host/web-js/capture.js`).
+  The interactive demos and the YouTube / X embeds carry one (`components/markdown.contract`), so a demo activates the
+  page when it is seen; a page with none never loads the runtime. Text, links, entrances, the card cascade and every
+  hover are HTML and CSS (D11) and work without it.
+- **The header's scrolled look moved out of the runtime**: `web/reveal.js` sets `html[data-scrolled]` past 10 px (one
+  passive scroll listener writing on change), `web/head.css` colours `[data-motion~=bar]` (the mobile bar too while its
+  menu is open, `bar open`). The `scrolled` state, its 10 px marker and `topSeen` are gone, so no page has an
+  `intersect` node at the top that would wake it at once.
+- **Code blocks are a text node per run, not a span per token.** A block without diff marks is one pre-formatted text
+  (its line feeds inside); the runs between italic comments are one text each, coloured by the CSS Custom Highlight API
+  (`::highlight(tok-<letter>)`, web/content.css; `web/reveal.js` registers one `StaticRange` per token from the run's
+  `data-hl` list, as the parser adds it, and again if a text node is replaced). Comments stay italic spans.
+  `pan-gesture-handler`: 2,763 nodes to 543; HTML 310 to 212 KB. Glyphs are the same at the same places; anti-aliasing
+  at former span starts differs by subpixel offsets (code blocks 0.01-0.24 % px at threshold 32). Without the API
+  (Chrome < 105, Safari < 17.2, Firefox < 140) code is drawn in its block's colour.
+- **Navigation.** Before activation a link is a document navigation (Exact: "real links navigate before
+  activation"); the head's speculation rules prerender a same-origin page on hover (`moderate`; not `/demos*`,
+  `/profile`, `/api/*`), so it swaps in at once with the header in place. After activation links are in-app as before.
+- Rejected: deferring the idle activation past the measurement window (the same work, later, during the reader's first
+  scroll); `paint`/`render` policies (they change when a page is drawn, not what activation costs); time-slicing the
+  boot (Exact's adoption is one task; not ours to split).
+## D17. /demos on a desktop, redesigned: the header's columns, two calls to action, a lit device (owner, 2026-11-23)
 
 The owner: "I think you can also hugely improve the design of this one". Today's page (D12 revised) put the hero in the
 72rem container while the header (shared by every page, unchanged) is in 48rem: at 1440 the title started 193 px left
@@ -273,9 +351,9 @@ The pill's floating stars rise 170 px over the copy; beside the copy they would 
 their canvas is masked to the 26 px between the subtitle and the pill and kept off the device's side: no sparkle
 inside the text's box. Screens after this fix: `/tmp/demos-variants/A2@<w>x<h>.png`.
 
-Cost: the CTA and hint are a few plan nodes (app.js +~1 KB) and ~2.5 KB of head CSS; perf.md 2026-11-23 (D16).
+Cost: the CTA and hint are a few plan nodes (app.js +~1 KB) and ~2.5 KB of head CSS; perf.md 2026-11-23 (D17).
 
-### D16, revised the same day (owner: "I don't like the Get the app button"; "everything is a bit too cramped")
+### D17, revised the same day (owner: "I don't like the Get the app button"; "everything is a bit too cramped")
 
 - **No "Get the app".** Removed on every width; the live pill is back exactly ("Demos is Open Source | ★ 3,248", its
   icon, 36 px, hover, the spinning count, "Source code" under 640 px), the only control under the subtitle. The hint
@@ -349,3 +427,10 @@ Cost: the CTA and hint are a few plan nodes (app.js +~1 KB) and ~2.5 KB of head 
   outside the flow there: the page's own frame is used, created per visit, with the still (from 768 px) until it has
   drawn. The device's entrance (rise, 700 ms) replays with the copy's on each return (a `display` change restarts CSS
   animations); the app inside keeps its state.
+- **Review fixes (PR #122).** Focus order: the kept layer comes after the routed page, so from 1024 px the page's own
+  footer keeps its place but is `visibility: hidden` (not focusable) and the layer draws the footer again after the
+  phone: header, pill, phone, footer. One app at a time: a box 1 px wide from 1024 px and 0 under it (`resize`) sets
+  `wide`; the kept frame loads only when wide, the page's own only when not, and crossing 1024 px sends the other back
+  to about:blank (measured: 1440 → 900 → 1440 leaves one `/demos/app/` frame each time). With D16's activation on
+  intent: `/articles` (no runtime) → Demos is a document navigation and `/demos` loads cold, lazily as before; after
+  activation, `/demos` → `/articles` → `/demos` finds the kept frame live (opacity 1 at 150 ms, no load).

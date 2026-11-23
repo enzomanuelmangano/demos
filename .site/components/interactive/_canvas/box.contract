@@ -16,7 +16,7 @@ style ButtonLight
   :hover
     background-color = "#E5E7EB"
     scale = 0.95
-    box-shadow = "0 0 0 1px oklch(27.8% 0.033 256.848), 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)"
+    box-shadow = "0 0 0 1px #1f2937, 0 1px 3px 0 rgb(0 0 0 / 0.35), 0 1px 2px 0 rgb(0 0 0 / 0.25)"
   :focus-visible
     box-shadow = "var(--shadow-focus)"
 style ButtonDark
@@ -26,7 +26,7 @@ style ButtonDark
   :hover
     background-color = "#000000"
     scale = 0.95
-    box-shadow = "0 0 0 1px oklch(27.8% 0.033 256.848), 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)"
+    box-shadow = "0 0 0 1px #1f2937, 0 1px 3px 0 rgb(0 0 0 / 0.35), 0 1px 2px 0 rgb(0 0 0 / 0.25)"
   :focus-visible
     box-shadow = "var(--shadow-focus)"
 
@@ -40,11 +40,11 @@ component InteractiveButton
   view
     view position="absolute" bottom=0 right=right display="flex" flex-direction="column"
       if theme == "dark"
-        button press=press aria-label=label title=label class=ButtonDark
+        button press=press aria-label=label title=label class=ButtonDark data-motion="focus"
           svg width=18 height=18 viewBox="0 0 24 24" fill="#FFFFFF" aria-hidden=true
             path d=iconPath(kind) fill="#FFFFFF" stroke=(kind == "reset" ? "none" : "#FFFFFF") stroke-width=1.5 stroke-linecap="round" stroke-linejoin="round"
       else
-        button press=press aria-label=label title=label class=ButtonLight
+        button press=press aria-label=label title=label class=ButtonLight data-motion="focus"
           svg width=18 height=18 viewBox="0 0 24 24" fill="#303030" aria-hidden=true
             path d=iconPath(kind) fill="#303030" stroke=(kind == "reset" ? "none" : "#303030") stroke-width=1.5 stroke-linecap="round" stroke-linejoin="round"
 

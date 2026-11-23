@@ -3,7 +3,7 @@
 # optical size Chrome picks for it at 144 px) as one SVG, shaped as the browser shapes it (HarfBuzz: kerning, the
 # -0.04em tracking after every letter) and placed on the text's own line box (line-height 1, the font's hhea
 # ascent/descent, as Chrome's half-leading model): an em-sized drawing that lies exactly over the title, for its
-# draw-on entrance (docs/decisions.md D16). Needs fonttools, skia-pathops and uharfbuzz (a throwaway venv):
+# draw-on entrance (docs/decisions.md D17). Needs fonttools, skia-pathops and uharfbuzz (a throwaway venv):
 #   python3 -m venv /tmp/ft && /tmp/ft/bin/pip install fonttools brotli skia-pathops uharfbuzz && /tmp/ft/bin/python -I tools/title-draw.py
 import io, os, sys
 from fontTools.ttLib import TTFont

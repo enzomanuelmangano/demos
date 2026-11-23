@@ -1,10 +1,11 @@
+/* NB: the theme (app.forma) is not CSS custom properties at run time: write literal colours here, never var(--color-…). */
 /* The content pages' rules Contract does not express (docs/decisions.md D11), appended to web/head.css by tools/head.ts.
    Ported from the reference's src/components/mdx (mdx.css, code-highlight.tsx) and components/ArticleList.tsx. */
 
-/* A prose link (mdx Anchor): the colour turns in 500 ms and a hairline grows under it from the left. */
-[data-motion~=mdx-link]{position:relative;transition:color 500ms ease-out}
+/* A prose link (mdx Anchor): transition-colors, 500 ms ease-out; a hairline grows under it from the left. */
+[data-motion~=mdx-link]{position:relative;transition-property:color,background-color,border-color,outline-color,text-decoration-color,fill,stroke;transition-duration:500ms;transition-timing-function:cubic-bezier(0,0,.2,1)}
 [data-motion~=mdx-link]::after{content:'';position:absolute;bottom:0;left:0;height:1px;width:0;background:rgb(159 174 244 / .6);transition:all 500ms ease-out}
-[data-motion~=mdx-link]:hover{color:var(--color-text-linkHover) !important}
+[data-motion~=mdx-link]:hover{color:#9faef4 !important}
 [data-motion~=mdx-link]:hover::after{width:100%}
 
 /* A code block's copy button: shown while the block is hovered or the button focused, always on a touch screen. */
@@ -15,8 +16,8 @@
 [data-motion~=pre]:focus-visible{outline-offset:-2px}
 
 /* The GitHub card: its surface turns to the code colour in 150 ms on hover. */
-[data-motion~=surface]{transition:background-color 150ms var(--ease-snappy)}
-[data-motion~=card-link]:hover [data-motion~=surface]{background-color:var(--color-surface-code)}
+[data-motion~=surface]{transition-property:color,background-color,border-color,outline-color,text-decoration-color,fill,stroke;transition-duration:150ms;transition-timing-function:var(--ease-snappy)}
+[data-motion~=card-link]:hover [data-motion~=surface]{background-color:oklch(18.5% 0.0058 286) !important}
 /* The GitHub card's squircle (live: components/squircle Surface, figma-squircle radius 14, smoothing 0.6): the
    corners are the same at any size, so the fill is masked by four 24 px corner tiles and two bars, and the rim is
    four 25 px corner strokes and four edges; the drop shadows follow the masked shape (tools/squircle-css.ts). */
@@ -41,3 +42,14 @@
 [data-motion~=article-grid]>:nth-child(1){--motion-delay:100ms}
 [data-motion~=article-grid]>:nth-child(2){--motion-delay:160ms}
 [data-motion~=article-grid]>:nth-child(3){--motion-delay:220ms}
+
+/* The article demos' controls: no press dim (Exact's 0.65 on a pressed button; the reference's buttons keep their
+   opacity: hover and press scale them to 0.95). */
+#exact-root [data-motion~=demo] :is(button,[data-exact-on~="press"])[data-pressed]{opacity:1 !important}
+
+/* A code token's colour by its palette letter (tools/gen-content.ts PALETTE): the reference's themePlus (palenight with
+   its overrides) and the terminal theme's command colour. The runs between comments are coloured by the CSS Custom
+   Highlight API (web/reveal.js registers one highlight per letter); a comment is its own italic span. */
+::highlight(tok-a){color:#abb2bf}::highlight(tok-f){color:#4b9fe4}::highlight(tok-k){color:#c678dd}::highlight(tok-n){color:#d19a66}
+::highlight(tok-y){color:#e5c07b}::highlight(tok-s){color:#e06c75}::highlight(tok-w){color:#f2f5f7}::highlight(tok-t){color:rgb(98, 114, 164)}
+[data-tok=c]{color:#8b919d;font-style:italic}

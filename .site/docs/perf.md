@@ -91,7 +91,27 @@ the font's arrival. Median of 3, machine load 13-15, AC power:
 All pass; the 404 at 390 4g LCP is fixed (the open "second candidate"). A first visit pays one request more; every later page
 reads the font from the cache (it was re-downloaded inside each page's HTML before). Pixels: `/` 0.03 / 0.28 %, 404 0.03 / 0.28 %.
 
-## 2026-11-23, /demos redesign (D16): before (origin/site 5b032ed5) against after
+## 2026-11-23, content pages activate on intent (D16)
+
+Median of 3, live = reactiive.io, same session, AC power (machine load 8-60 for the "before" run). TBT in ms; 4g is
+170 ms RTT + 4x CPU. Before = `319dac3a` (every route `activate=idle`), after = `85fada28`.
+
+| route | live TBT 4g (1440 / 390) | before | after | after: KB 4g, LCP 4g (1440), CLS |
+|---|---|---|---|---|
+| `/` | 66-79 / 64-73 | 5 / 6 | 44 / 6 | 391, 1540 (live 1752), 0 |
+| `/articles` | 69-74 / 64-69 | 20 / 22 | 0 / 0 | 961, 740 (live 3072), 0 |
+| `/articles/pan-gesture-handler` (demo in the first viewport) | 74-84 / 71-110 | 225 / 259 | 72 / 73 | 1814, 440 (live 608), 0 |
+| `/articles/smooth-dropdown` | 74-76 / 74-77 | 317 / 429 | 0 / 0 | 554, 460 (live 636), 0 |
+| `/articles/the-hidden-gems-of-react-native` (no demo) | 81 / 71-85 | 110 / 106 | 0 / 0 | 1010, 444 (live 624), 0.004 (live 0.004) |
+| `/docs/license` | 65 / 62-72 | 14 / 16 | 0 / 0 | 63, 428 (live 576), 0 |
+| `/course` | 63-64 / 70-171 | 26 / 81 | 0 / 0 | 1030, 508 (live 724), 0 |
+
+Cable: TBT 0 everywhere, FCP / LCP under live's on every route. Every TBT, LCP, FCP, CLS and transfer cell is ≤ live.
+**Open: scroll jank on pages that wake while scrolled.** A page with an `intersect` node (a demo, a YouTube / X embed)
+wakes the runtime at the reader's first scroll (Exact's rule), and the boot lands in that scroll: `smooth-dropdown`
+2-3 frames over 20 ms (max 150-183 ms at 4x CPU), `pan-gesture-handler` 1-3 (max 50-67 ms); live 0. Next: embeds as
+native `loading="lazy"` frames (no `intersect`), so only demo pages wake.
+## 2026-11-23, /demos redesign (D17): before (origin/site 5b032ed5) against after
 
 `perf.ts http://localhost:4316 (before) http://localhost:4315 (after) /demos --runs 3`: both builds composed with the
 same Demos artifact, served locally. **Caveat: machine load 88 and on battery (18 %)**, so headless Chrome ran at

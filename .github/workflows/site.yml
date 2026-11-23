@@ -66,6 +66,9 @@ jobs:
       - name: Install (the site's own lockfile)
         run: bun install --frozen-lockfile
 
+      - name: Secret check (patterns only: CI has no env file; .site/docs/local-env.md)
+        run: bun tools/check-secrets.ts --tracked --patterns-only
+
       - name: Typecheck the tooling
         run: bun x tsc -p tsconfig.json
 

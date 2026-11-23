@@ -70,12 +70,13 @@ function dict(theme: { plain: any; styles: { types: string[]; style: Style }[] }
 }
 const PLUS = dict(themePlus), TERM = dict(terminalTheme);
 
-// A code line, compact (it is in the page's checkpoint as well as its HTML: docs/perf.md): one string, its diff mark
-// (" " none, "+" added, "-" removed, "=" the pad of an unmarked line in a diff block) then its tokens, each a
-// palette letter and its text, joined by U+E000. Empty tokens are dropped; the others stay one span each, as live
-// (prism-react-renderer: a span per token, so every token box is at live's place). The palette is the theme's colours,
-// the letters drawn by components/markdown.contract `Tok`.
-const SEP = '\uE000';
+// A code line, compact (it is in the page's checkpoint as well as its HTML: docs/perf.md; a block without diff marks
+// is a single "line" holding the line feeds): one string, its diff mark (" " none, "+" added, "-" removed, "=" the pad
+// of an unmarked line in a diff block) then its segments joined by U+E000: `c<text>` an italic comment, `h<spec>U+E001<text>` the runs between, `<spec>` their palette letters and
+// lengths in UTF-16 units (`k5.a1.w3`). Live has a span per token; here the runs between comments are one text node
+// coloured by the CSS Custom Highlight API, so a content page's runtime adopts a node per segment, not per token
+// (docs/decisions.md D16). Same glyphs at the same places. The letters: PALETTE (`_` the block's own colour).
+const SEP = '\uE000', SPEC = '\uE001';
 const PALETTE: Record<string, string> = { '': '_', '#abb2bf': 'a', '#4b9fe4': 'f', '#c678dd': 'k', '#d19a66': 'n', '#e5c07b': 'y', '#e06c75': 's', '#8b919d/i': 'c', '#f2f5f7': 'w', 'rgb(98, 114, 164)': 't' };
 type Line = string;
 
@@ -97,19 +98,47 @@ function highlight(raw: string, langIn: string, meta: string): { lang: string; t
   const grammar = (Prism.languages as any)[language];
   const tokens = grammar ? normalizeTokens(Prism.tokenize(code, grammar) as any) : normalizeTokens([code]);
   const d = terminal ? TERM : PLUS;
-  const lines = tokens.map((line, i) => {
-    const runs: [string, string][] = [];
+  // A token of blanks takes the colour of the one before it (blanks draw no ink, and the font is monospaced), and
+  // neighbours of one colour are one run.
+  const add = (runs: [string, string][], letter: string, text: string) => {
+    const last = runs[runs.length - 1];
+    if (last && (last[0] === letter || /^\s+$/.test(text))) last[1] += text;
+    else if (last && /^\s+$/.test(last[1])) { last[0] = letter; last[1] += text; }
+    else runs.push([letter, text]);
+  };
+  const runsOf = (line: (typeof tokens)[number], runs: [string, string][] = []) => {
     for (const t of line) {
       const text = t.empty ? '' : t.content;
       if (!text) continue;
       const style: Style = t.types.length === 1 && t.types[0] === 'plain' ? {} : t.types.length === 1 && t.empty != null ? d[t.types[0]] ?? {} : Object.assign({}, ...t.types.map((x) => d[x]));
       const key = (style?.color ?? '') + (style?.fontStyle === 'italic' ? '/i' : '');
       const letter = PALETTE[key];
-      if (!letter) throw new Error(`code: the colour ${key} is not in the palette (tools/gen-content.ts PALETTE, components/markdown.contract Tok)`);
-      runs.push([letter, text]);
+      if (!letter) throw new Error(`code: the colour ${key} is not in the palette (tools/gen-content.ts PALETTE)`);
+      add(runs, letter, text);
     }
-    return (hasDiff ? marks[i] || '=' : ' ') + runs.map(([l, t]) => l + t).join(SEP);
-  });
+    return runs;
+  };
+  // The segments: an italic comment is a span of its own (`c`); the runs between are one text each (`h`), coloured
+  // by the CSS Custom Highlight API from its `<letter><length>.…` list (web/reveal.js, web/content.css).
+  const segments = (runs: [string, string][]) => {
+    const segs: string[] = [];
+    let spec: string[] = [], text = '';
+    const flush = () => { if (text) segs.push('h' + spec.join('.') + SPEC + text); spec = []; text = ''; };
+    for (const [l, t] of runs) {
+      if (l === 'c') { flush(); segs.push('c' + t); continue; }
+      spec.push(l + t.length); text += t;
+    }
+    flush();
+    return segs.join(SEP);
+  };
+  // A block without diff marks is one "line" whose text holds the line feeds (one pre-formatted text, as many lines as
+  // live's, each 21 px); a diff block keeps a line per line, each with its mark's background and rule.
+  if (!hasDiff) {
+    const runs: [string, string][] = [];
+    tokens.forEach((line, i) => { if (i) add(runs, '_', '\n'); runsOf(line, runs); });
+    return { lang, terminal, diff: false, lines: [' ' + segments(runs)] };
+  }
+  const lines = tokens.map((line, i) => (marks[i] || '=') + segments(runsOf(line)));
   return { lang, terminal, diff: hasDiff, lines };
 }
 
@@ -180,7 +209,7 @@ async function math() {
   const adaptor = liteAdaptor();
   RegisterHTMLHandler(adaptor);
   const doc = mj.document('', { InputJax: new TeX({ packages: AllPackages }), OutputJax: new SVG({ fontCache: 'none' }) });
-  const EX = 8.5; // px per ex of Inter at 16 px (MathJax measures the surrounding font; 0.53 em)
+  const EX = 8.675; // px per ex as live's MathJax measures it in Inter at 16 px (19.63 px for 2.262 ex, 8.84 for 1.02)
   mathjax = {
     tex2svg(tex, display) {
       const node = doc.convert(tex, { display });
@@ -208,12 +237,12 @@ const fmtCount = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$
 
 const INTERACTIVE_ARTICLES = new Set<string>();
 
-// The ported interactive demos (components/interactive/<article>/index.contract, drawn by ArticleDemo in
-// components/interactive/demo.contract; the mapping: docs/progress-comp-gesture.md). Per article, each MDX export
-// and its props: a bool (`x`, `x={true}`, `x={false}`) or one of a string's values, with the reference's default
-// (Contract props have none, so every prop is passed); none when the reference has no default (the MDX must pass
-// it). BOXED: the articles whose every demo the MDX wraps in `<InteractiveBox>` (ArticleDemo draws the box). A tag, prop or value not listed here fails the build. An article not
-// listed keeps the reference's empty 16:9 frame (the canvas demos, not ported yet).
+// The interactive demos (components/interactive/<article>/, drawn by ArticleDemo in components/interactive/demo.contract;
+// the mappings: docs/progress-comp-gesture.md, docs/progress-comp-canvas.md). Per article, each MDX export and its
+// props: a bool (`x`, `x={true}`, `x={false}`) or one of a string's values, with the reference's default (Contract
+// props have none, so every prop is passed); none when the reference has no default (the MDX must pass it). BOXED:
+// the articles whose every demo the MDX wraps in `<InteractiveBox>` (ArticleDemo draws the box). A tag, prop or value
+// not listed here fails the build.
 type DemoProp = { values: (boolean | string)[]; default?: boolean | string };
 const BOOL = (d: boolean): DemoProp => ({ values: [true, false], default: d });
 const DEMOS: Record<string, Record<string, Record<string, DemoProp>>> = {
@@ -228,6 +257,11 @@ const DEMOS: Record<string, Record<string, Record<string, DemoProp>>> = {
   },
   'pan-gesture-handler': { InteractivePanGesture: {} },
   'skeleton-loader': { InteractiveSkeletonDemo: {}, InteractiveContactItem: {}, InteractiveJustSkeleton: {} },
+  // The canvas demos (docs/progress-comp-canvas.md): each article's dispatcher takes the tag's name.
+  'animated-gradient': { AnimatedGradientWithSkia: {}, GlitchedAnimatedGradientWithSkia: {}, NonInteractiveAnimatedGradientWithSkia: {} },
+  'animated-loader-skia': { BasicLoaderWithSkia: {}, WithGradientLoaderWithSkia: {}, WithProgressLoaderWithSkia: {}, WithBasicAnimationLoaderWithSkia: {}, WithAnimationLoaderWithSkia: {} },
+  'animated-spiral': { AnimatedSpiralWithSkia: {}, AnimatedInteractiveSnappySpiralWhite: {}, AnimatedInteractiveSnappySpiralGradient: {}, AnimatedInteractiveAnimatedSpiralFixedRadiusGradient: {} },
+  metaball: { BasicMetaballWithSkia: {}, WithPanMetaballWithSkia: {}, WithColorMatrixMetaballWithSkia: {}, WithBlurMetaballWithSkia: {}, CanvasKitJsAlert: {} },
 };
 const BOXED = new Set(['bottom-sheet-animation', 'css-animations-react-native']);
 
@@ -400,7 +434,9 @@ async function convert(page: Page, meta: any) {
           // inside the paragraph, whose bottom margin it keeps.
           if (parts.length && parts.every((c: any) => c.type === 'mdxJsxTextElement' && c.name !== 'InlineMath' && c.name !== 'br')) {
             walk(parts.map((c: any) => ({ ...c, type: 'mdxJsxFlowElement' })), depth, inLoose);
-            blocks[blocks.length - 1].mb += inLoose || depth === 0 ? 20 : 0;
+            // Display maths excepted: live's paragraph of BlockMath adds nothing under its last formula (each formula
+            // is MathJax's display container, 16 px above and below, measured on live's animated-spiral).
+            if (blocks[blocks.length - 1].kind !== 'math') blocks[blocks.length - 1].mb += inLoose || depth === 0 ? 20 : 0;
             break;
           }
           block({ kind: 'paragraph', depth, runs: runs(n.children), mb: inLoose || depth === 0 ? 20 : 0 });
@@ -439,8 +475,11 @@ async function convert(page: Page, meta: any) {
           }
           if (name === 'BlockMath') { const m = mathFile(plain(n), true); block({ kind: 'math', depth, src: m.src, width: m.width, height: m.height }); break; }
           if (name === 'InlineMath') { const m = mathFile(plain(n), false); block({ kind: 'paragraph', depth, runs: [{ text: '', code: false, strong: false, em: false, href: '', brand: false, math: m.src, width: m.width, height: m.height, valign: m.valign }], mb: 20 }); break; }
-          if (imported.has(name) && DEMOS[page.slug]) { demo(n, depth, false); break; }
-          if (imported.has(name)) { INTERACTIVE_ARTICLES.add(page.slug); block({ kind: 'interactive', depth, title: name, lang: page.slug }); break; }
+          if (imported.has(name)) {
+            if (!DEMOS[page.slug]) throw new Error(`${where(n)}: <${name}>: ${page.slug} has no ported demos (DEMOS in tools/gen-content.ts)`);
+            demo(n, depth, false);
+            break;
+          }
           throw new Error(`${where(n)}: <${name}> is not known to the converter`);
         }
         default: throw new Error(`${where(n)}: ${n.type} is not known to the converter`);

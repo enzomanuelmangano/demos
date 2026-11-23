@@ -48,7 +48,11 @@ const LOOK = (i: number) => `(() => {
   // A bare text wrapper in the element's colour (the reference writes a text node there) is not a part.
   const ecs = getComputedStyle(el);
   const bare = (c) => { const cs = getComputedStyle(c); return c.children.length === 0 && c.textContent.trim() && cs.backgroundColor === 'rgba(0, 0, 0, 0)' && cs.boxShadow === 'none' && rgba(cs.color) === rgba(ecs.color) && cs.opacity === '1' && cs.transform === 'none'; };
-  const kids = [...new Set([...el.querySelectorAll('*')].filter((c) => !bare(c)).map(pick))].filter((p) => p !== own).sort();
+  // A code run coloured by the CSS Custom Highlight API (data-hl, docs/decisions.md D16) counts as the token spans it
+  // stands for: one part per highlight it uses, in that highlight's colour.
+  const hl = [];
+  for (const e of el.querySelectorAll('[data-hl]')) for (const t of e.getAttribute('data-hl').split('.')) { const name = 'tok-' + t[0]; if (CSS.highlights?.has(name)) hl.push([rgba(getComputedStyle(e, '::highlight(' + name + ')').color), ...pick(e).split(' ; ').slice(1)].join(' ; ')); }
+  const kids = [...new Set([...[...el.querySelectorAll('*')].filter((c) => !bare(c)).map(pick), ...hl])].filter((p) => p !== own).sort();
   return [own, ...kids].slice(0, 8);
 })()`;
 
@@ -110,7 +114,7 @@ async function capture(page: Page, url: string, width: number, side: string, tag
     await Bun.sleep(300);
     const focusable = await page.eval<boolean>(`window.__hover[${t.i}].tabIndex >= 0`);
     let focus = null;
-    if (focusable) { await page.eval(`window.__hover[${t.i}].focus({ focusVisible: true })`); await Bun.sleep(300); focus = await page.eval(LOOK(t.i)); await page.eval(`document.activeElement?.blur?.()`); }
+    if (focusable) { await page.eval(`window.__hover[${t.i}].focus({ focusVisible: true })`); await Bun.sleep(700); focus = await page.eval(LOOK(t.i)); await page.eval(`document.activeElement?.blur?.()`); }
     res[t.key] = { tag: t.tag, cursor, transition: r.transition, rest, hover, active, focus, file };
   }
   return res;
@@ -148,7 +152,7 @@ for (const route of routes) for (const w of widths) for (const menu of w < 768 ?
   diffs += issues.length;
   report.push({ route, width: w, menu, compared, issues, live: L, local: B });
   console.log(`${route} @${w}${menu ? ' menu' : ''}: ${compared} elements compared, ${issues.length} differences`);
-  for (const i of issues.slice(0, 60)) console.log('  ' + i.slice(0, 420));
+  for (const i of issues.slice(0, 60)) console.log('  ' + (process.env.HOVER_FULL ? i : i.slice(0, 420)));
 }
 await Bun.write(`${out}/report.json`, JSON.stringify(report, null, 2));
 kill();

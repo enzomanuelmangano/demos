@@ -4,13 +4,16 @@ import * as content from './content-gen/index.ts';
 // The newsletter posts to the public subscribe endpoint (no secret: subs.reactiive.io's own server holds the
 // Beehiiv key). Nothing else here reaches the network.
 const SUBSCRIBE = 'https://subs.reactiive.io/api/subscribe';
-export const grants = `net.fetch ${SUBSCRIBE}`;
+// The accounts' API (components/account/account.ts): the reference's /api/*, same origin as the site.
+import { API, accountSources } from './components/account/account.ts';
+export const grants = `net.fetch ${SUBSCRIBE}\nnet.fetch ${API}`;
 
 // The content (tools/gen-content.ts): one module per page, imported only by the page that shows it.
 const empty = { slug: '', title: '', description: '', image: '', date: '', tags: [], blocks: [] };
 const load = async (table: Record<string, () => Promise<{ default: unknown }>>, slug: string) => (table[slug] ? ((await table[slug]()).default as Result<'loadArticle'>) : empty);
 
 const sources: Sources = {
+  ...accountSources,
   articleSlugs: async () => content.articleSlugs,
   docSlugs: async () => content.docSlugs,
   seriesSlugs: async () => content.seriesSlugs,

@@ -67,7 +67,7 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 }
 /* /demos under 1024 px: the frame's stage fades into the page at its sides (12 %). */
 [data-motion~=sim-sides]{mask-image:linear-gradient(to right,transparent 0%,#000 12%,#000 88%,transparent 100%)}
-/* /demos from 1024 px (D12, redesigned in D16): one row wider than the header's container (--W: 720-960 px, the
+/* /demos from 1024 px (D12, redesigned in D17): one row wider than the header's container (--W: 720-960 px, the
    viewport less 480 px, at most 960 px: 120 px past the header's on each side), centred on it: the copy left, the device right, a wide gap between (--gap: 7vw, 64-112 px);
    the copy optically centred on the device (2vh above its centre line). The device: --pw wide (80 % of the height under
    the header, at most 332 px; 46 % of the row after the gap on narrow windows), straight on the page, the app's frame
@@ -77,16 +77,19 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
    144 px, live's), the subtitle as live (two lines, one gradient, at most 20 px, never wrapped), the live pill. The
    device rises in with the copy (no delay: a delayed entrance would delay its largest paint); the spiral steps back
    behind the copy. */
-/* /demos's kept frame (app.contract, D16): shown from 1024 px on /demos only. */
+/* /demos's kept frame (app.contract, D17): shown from 1024 px on /demos only. */
 [data-motion~=sim-keep-layer]{display:none}
 @keyframes device-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 @media (min-width:1024px){
 :root{--sub-em:20.2;--W:clamp(720px,100vw - 480px,960px);--gap:clamp(64px,7vw,112px);--avail:calc(100dvh - 185px);--m:clamp(24px,5dvh,64px);--ph:clamp(420px,var(--avail) - 2 * var(--m) - 7px,min(700px,(var(--W) - var(--gap)) * .46 / .474359));--pw:calc(var(--ph) * .474359);--col:calc(var(--W) - var(--gap) - var(--pw))}
 main:has([data-motion~=d-page]){min-height:0 !important}
 [data-motion~=d-page]{max-width:calc(var(--W) + 48px) !important}
-[data-motion~=d-row]{min-height:var(--avail);box-sizing:border-box;padding-top:calc(var(--m) + 7px);padding-bottom:var(--m);padding-right:calc(var(--pw) + var(--gap));flex-wrap:nowrap !important;align-items:center !important}
-/* The device is the app's kept frame (app.contract, D16), placed where the row leaves its column: the page's own frame is not used here. */
+[data-motion~=d-row]{min-height:max(var(--avail),var(--ph) + 2 * var(--m) + 7px);box-sizing:border-box;padding-top:calc(var(--m) + 7px);padding-bottom:var(--m);padding-right:calc(var(--pw) + var(--gap));flex-wrap:nowrap !important;align-items:center !important}
+/* The device is the app's kept frame (app.contract, D17), placed where the row leaves its column: the page's own frame is not used here. */
 [data-motion~=sim-route]{display:none !important}
+/* The page's own footer keeps its place but not the focus; the kept layer draws it again after the phone (app.contract). */
+main:has([data-motion~=d-page]) ~ *{visibility:hidden}
+[data-motion~=sim-keep-footer]{top:calc(80px + max(var(--avail),var(--ph) + 2 * var(--m) + 7px))}
 [data-motion~=sim-keep-layer][data-motion~=on]{display:block}
 [data-motion~=sim-col][data-motion~=sim-keep]{position:absolute;right:calc((100% - var(--W)) / 2);top:calc(80px + var(--m) + 7px + max(0px,(var(--avail) - 2 * var(--m) - 7px - var(--ph)) / 2))}
 [data-motion~=d-hero]{width:auto !important;flex:1 1 0 !important;min-width:0;position:relative;z-index:1;box-sizing:border-box;margin-top:-2vh}
@@ -108,7 +111,7 @@ main:has([data-motion~=d-page]){min-height:0 !important}
 [data-motion~=spiral]{opacity:.4 !important;mask-image:linear-gradient(to right,#000 0%,#000 30%,transparent 55%)}
 }
 @media (min-width:1024px) and (prefers-reduced-motion:reduce){[data-motion~=sim-col]{animation:none}}
-/* /demos's title entrance from 1024 px (D16, V3 of three): the outlines drawn on (pages/demos-title.contract,
+/* /demos's title entrance from 1024 px (D17, V3 of three): the outlines drawn on (pages/demos-title.contract,
    tools/title-draw.py), then the fill follows the pen left to right behind a soft light while the strokes fade; the end
    is the static title (0 px over 32/255 against prefers-reduced-motion, which keeps it static). */
 [data-motion~=d-draw]{display:none}
@@ -166,3 +169,9 @@ html #exact-root input:not([data-native]):focus-visible{outline:none}
 /* Footer links: underline-offset-2. */
 [data-motion~=footer-link]{text-underline-offset:2px}
 @media (prefers-reduced-motion:reduce){[data-motion~=course-in],[data-motion~=title],[data-motion~=blur-in],[data-motion~=card-in],[data-motion~=qr],[data-motion~=pop-in],[data-motion~=fade-in]{animation:none}}
+/* The header's bars past 10 px of scroll (html[data-scrolled], web/reveal.js) and the mobile bar under its open menu:
+   the page's colour and a white/5 hairline (components/shell.contract HeaderBar). */
+html[data-scrolled] [data-motion~=bar],[data-motion~=bar][data-motion~=open]{background-color:oklch(15.5% 0.0041 286) !important;border-bottom-color:rgb(255 255 255 / .05) !important}
+/* Italic as live draws it: Inter and Source Code Pro have no italic face here or there, and live's browser slants the
+   upright one; Exact's root says font-synthesis: none, which drew every em, italic link and code comment upright. */
+html #exact-root{font-synthesis-style:auto}

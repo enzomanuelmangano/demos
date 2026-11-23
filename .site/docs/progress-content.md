@@ -52,7 +52,7 @@ Parity, full page, share of differing pixels (`compare.ts`, live shot into `/tmp
 | series animate-with-reanimated | 0.18 % | 0.25 % | shot with `--scroll 300,150`: live's RevealOnScroll misses cards passed at the default 600 px / 60 ms (they stay paused in live's shot); a reader's scroll reveals them on both |
 | `/articles` | 40 % | 45 % | by design: 22 cards, not 26 (D13); every card's cover, title, description and date at live's offsets, grid and gaps equal |
 | 11 articles without interactive components | 0-0.33 % | 0.03-0.89 % | introducing-refined 0.00 / 0.03 % (the X post's frame has live's measured height) |
-| 11 articles with interactive components | 0.2-9.8 % | 0.9-12.5 % | the components are empty 16:9 frames (live's size, so the rest is in place) |
+| 11 articles with interactive components | 0-0.13 % (spiral 3.1 %) | 0.01-0.42 % (spiral 10 %) | the live demos since 2026-11-23 (below); animated-spiral's shift is its BlockMath (open 3) |
 
 Review fixes (2026-11-23, PR #117): a failed conversion keeps the previous pages (temp dir + rename); compact code lines
 in the checkpoint; og:image keeps the original of a featured WebP wider than 1440 px; the 4 skipped articles and 2
@@ -62,11 +62,14 @@ series 308 (D13). Article weight, smooth-dropdown, gzip: 105.7 KB -> 40.5 KB (fo
 
 ## Open, in order
 
-1. Interactive components (37 exports, 11 articles): ported on `site-comp-canvas` and `site-comp-gesture` under
-   `components/interactive/<article>/`; not in `site` yet. When merged: map the MDX tags to them in the converter
-   (`interactive` blocks, `INTERACTIVE_ARTICLES`) instead of the empty frames. Known special sizes: checkbox-interactions
-   `Demo`/`StaticDemo` (not 16:9), metaball `CanvasKitJsAlert` (drawn as nothing now), animated-loader-skia
-   `WithProgressLoaderWithSkia` at 390.
+1. Done (2026-11-23): the 37 exports are wired (`DEMOS` in `tools/gen-content.ts` → `components/interactive/demo.contract`).
+   Every demo answers a press or drag (sheet drag, chips, Play/Restart, canvases), checked at 1440 and 390. Cost on
+   every page (the plan is one `app.js`, D14), gzip: app.js 100.8 → 119.7 KB, style.css 18.8 → 21.9 KB, HTML +1 KB
+   (home 19.8 → 20.9, smooth-dropdown 40.8 → 41.8); articles and docs now share one ArticlePage call site, else the plan held the demos twice
+   (140.5 KB). Removing the cost from pages without demos needs per-route plans from Exact. perf.ts (median of 3)
+   against live, pan-gesture-handler 1440 / 390: LCP 76 / 64 ms cable, 524 / 528 ms 4g (live 216-668: better);
+   **TBT 26 / 22 cable, 326 / 302 4g against live's 0 / 0 and 115 / 108: fails**. Most of it predates the demos (the
+   same page without them, measured side by side: 4g 286 → 320 ms, smooth-dropdown 375 → 443 ms): Exact's boot.
 2. Article weight 40.5 vs live 38 KB gzip (smooth-dropdown): the squircle CSS could be one sprite (0.4 KB); the rest
    is Exact's head (page style, boot script).
 3. Inline maths (animated-spiral): SVG sizes and baseline against live's MathJax.

@@ -1,0 +1,307 @@
+// The signed-in features (docs/stubs.md, decisions.md D15), ported from the reference: the header's auth slot
+// (components/header/sign-in-button), the sign-in modal (providers/modal/sign-in-modal), /profile (app/profile:
+// SendFeedback, MobileSignOut; its SubscriptionBox is payments and is not ported), the feedback modal
+// (providers/modal/feedback-modal + components/feedback-base-modal) and the toasts they raise (sonner).
+// The data: components/account/account.ts. With the accounts off (no EXPO_PUBLIC_WEBSITE_URL in the build) the slot
+// draws the signed-out "Sign In" as before and the dialogs never open.
+use ButtonSecondary, ButtonPrimary from "../look.contract"
+
+shape Me
+  signedIn: bool
+  rejected: bool
+  id: string
+  name: string
+  email: string
+  picture: string
+  relay: bool
+  supporter: bool
+
+shape SiteConfig
+  accounts: bool
+
+shape Sent
+  ok: bool
+
+keyframes accountSpin
+  from rotate="0deg"
+  to rotate="360deg"
+
+// The reference's Modal on a desktop (Radix Dialog, md:max-w-md, rounded-card, the elevated surface and the overlay
+// shadow, over bg-background/80).
+style ModalBox
+  width="calc(100% - 32px)" max-width=448 padding=0 margin="auto" border="none" border-radius="var(--radius-card)" box-sizing="border-box"
+  background-color="var(--color-surface-elevated)" box-shadow="var(--shadow-overlay)" color="var(--color-text-body)" overflow="hidden"
+
+// lucide's Loader2, turning (animate-spin: 1 s linear, endless).
+component Spinner
+  view
+    svg width=16 height=16 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width=2 stroke-linecap="round" stroke-linejoin="round"
+      aria-hidden=true flex-shrink=0 animation="accountSpin 1000ms linear infinite"
+      path d="M21 12a9 9 0 1 1-6.219-8.56"
+
+// The close X of the reference's DialogContent: top right, 70 % until hovered.
+component CloseX
+  props
+    dialog: string
+  view
+    button commandfor=dialog command="close" appearance="none" aria-label="Close" position="absolute" top=16 right=16 padding=4
+      border-radius="var(--radius-md)" opacity=0.7 color="var(--color-text-secondary)" cursor="pointer" background-color="transparent" data-motion="colors focus"
+      :hover
+        opacity = 1
+        background-color = "rgb(255 255 255 / 0.06)"
+      svg width=16 height=16 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width=2 stroke-linecap="round" stroke-linejoin="round" aria-hidden=true
+        path d="M18 6 6 18"
+        path d="m6 6 12 12"
+
+// ---------------------------------------------------------------- the header's slot
+
+// AuthSlot: while the session loads, the place the result will take (an invisible "Sign In"); then "Sign In", or
+// the avatar and its menu, popping in.
+component AccountSlot
+  props
+    accounts: bool
+    loading: bool
+    me: Me
+    openSignIn: action
+    signOut: action
+  state menu = false
+  action hover(on: bool)
+    menu = on
+  // The reference opens it on hover only; a press (a touch screen) opens it too.
+  action toggle
+    menu = true
+  action out
+    menu = false
+    signOut()
+  view
+    row justify-content="flex-end"
+      if accounts and loading
+        button appearance="none" class=ButtonSecondary height=40 padding="0 16px" border-radius="var(--radius-control)" font-size="0.875rem"
+          line-height="1.25rem" font-weight=500 visibility="hidden" aria-hidden=true tabindex=-1
+          text "Sign In"
+      else if accounts and me.signedIn
+        view position="relative" hover=hover data-motion="pop-in" testId="account"
+          button appearance="none" press=toggle aria-label="Account" aria-expanded=menu width=32 height=32 padding=0 border-radius=9999 cursor="pointer"
+            display="flex" align-items="center" justify-content="center" background-color="transparent"
+            box-shadow="0 0 0 1px rgb(from var(--color-border) r g b / 0.5)" testId="avatar"
+            Avatar(me=me)
+          // The dropdown: w-56, rounded-[14px], the elevated surface, 200 ms in and out.
+          column position="absolute" right=0 top=32 padding-top=12 width=224 z-index=60 opacity=(menu ? 1 : 0) translate=(menu ? "0 0" : "0 -8px")
+            pointer-events=(menu ? "auto" : "none") transition="opacity 200ms cubic-bezier(0, 0, 0.2, 1), translate 200ms cubic-bezier(0, 0, 0.2, 1)"
+            column border-radius=14 background-color="var(--color-surface-elevated)" box-shadow="var(--shadow-overlay)" padding="4px 0" overflow="hidden"
+              column padding="12px 16px" border-bottom="1px solid var(--color-hairline)"
+                if not me.relay and not me.name.includes("undefined")
+                  text me.name font-size="0.875rem" line-height="1.25rem" font-weight=500 color="var(--color-text-primary)"
+                text me.email font-size="0.875rem" line-height="1.25rem" color="var(--color-text-secondary)" max-width=250 overflow="hidden"
+                  text-overflow="ellipsis" white-space="nowrap"
+              link href="/profile" class=MenuItem data-motion="colors" testId="menu-profile"
+                svg width=16 height=16 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width=2 stroke-linecap="round" stroke-linejoin="round"
+                  aria-hidden=true color="var(--color-text-secondary)" margin-right=8
+                  path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"
+                  circle cx=12 cy=7 r=4
+                text "Profile" font-size="0.875rem" line-height="1.25rem" color="var(--color-text-secondary)"
+              button appearance="none" press=out class=MenuItem data-motion="colors" testId="menu-sign-out"
+                svg width=16 height=16 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width=2 stroke-linecap="round" stroke-linejoin="round"
+                  aria-hidden=true color="var(--color-danger)" margin-right=8
+                  path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"
+                  path d="m16 17 5-5-5-5"
+                  path d="M21 12H9"
+                text "Sign out" font-size="0.875rem" line-height="1.25rem" color="var(--color-danger)"
+      else
+        button appearance="none" press=openSignIn class=ButtonSecondary height=40 padding="0 16px" border-radius="var(--radius-control)" font-size="0.875rem"
+          line-height="1.25rem" font-weight=500 testId="sign-in" data-motion="pop-in button focus"
+          text "Sign In"
+
+style MenuItem
+  display="flex" align-items="center" width="100%" padding="8px 16px" box-sizing="border-box" cursor="pointer" text-decoration-line="none"
+  background-color="transparent" text-align="left"
+  :hover
+    background-color = "rgb(from var(--color-surface-secondary) r g b / 0.5)"
+
+// AvatarImage: the profile picture (30 px, round), or the pink gradient for an Apple private-relay address or none.
+component Avatar
+  props
+    me: Me
+  view
+    if me.relay or me.picture == ""
+      view width=30 height=30 border-radius=9999 background-image="linear-gradient(90deg, #FFC0CB, #FF69B4)"
+    else
+      image me.picture alt="Profile" width=30 height=30 border-radius=9999 object-fit="cover"
+
+// ---------------------------------------------------------------- the sign-in modal
+
+// "Sign in to Reactiive": Google and Apple, each a link to the provider's page (the URL the API answers, asked when
+// the dialog opens). While that answer is out, the button shows the spinner, as the reference's while its request is.
+component SignInDialog
+  props
+    google: string
+    apple: string
+    googleFailed: bool
+    appleFailed: bool
+  view
+    dialog id="signin-modal" class=ModalBox closedby="any" aria-labelledby="sign-in-title" testId="sign-in-dialog"
+      ::backdrop
+        background-color="rgb(from var(--color-background) r g b / 0.8)"
+      column padding=32 width="100%" box-sizing="border-box"
+        column align-items="center" gap=8 text-align="center"
+          text "Sign in to Reactiive" id="sign-in-title" role="heading" aria-level=2 font-size="1.25rem" line-height="1.75rem" font-weight=600
+            letter-spacing="-0.01em" color="var(--color-text-primary)"
+          text "Use your Google or Apple account." max-width=320 font-size="0.875rem" line-height="1.5rem" color="var(--color-text-secondary)"
+        column margin-top=28 gap=12
+          ProviderButton(url=google, failed=googleFailed, label="Continue with Google", provider="google")
+          ProviderButton(url=apple, failed=appleFailed, label="Continue with Apple", provider="apple")
+        text "Signing in subscribes you to the newsletter: new content and the occasional promotion. Unsubscribe at any time."
+          margin-top=24 text-align="center" font-size="0.75rem" line-height="1.25rem" color="var(--color-text-tertiary)"
+      CloseX(dialog="signin-modal")
+
+component ProviderButton
+  props
+    url: string
+    failed: bool
+    label: string
+    provider: string
+  view
+    if url != ""
+      link href=url class=ButtonSecondary display="flex" align-items="center" justify-content="center" gap=10 height=44 padding="0 24px" border-radius="var(--radius-control)" font-size="15px" line-height="1.5rem" font-weight=500 text-decoration-line="none" box-sizing="border-box" width="100%" data-motion="button focus" testId=`sign-in-${provider}`
+        ProviderIcon(provider=provider)
+        text label
+    else
+      button appearance="none" disabled=true class=ButtonSecondary display="flex" align-items="center" justify-content="center" gap=10 height=44 padding="0 24px" border-radius="var(--radius-control)" font-size="15px" line-height="1.5rem" font-weight=500 text-decoration-line="none" box-sizing="border-box" width="100%" opacity=(failed ? 0.5 : 1) testId=`sign-in-${provider}`
+        if failed
+          ProviderIcon(provider=provider)
+        else
+          Spinner()
+        text label
+
+component ProviderIcon
+  props
+    provider: string
+  view
+    if provider == "google"
+      svg width=16 height=16 viewBox="0 0 488 512" aria-hidden=true flex-shrink=0
+        path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"
+    else
+      svg width=16 height=16 viewBox="0 0 384 512" aria-hidden=true flex-shrink=0
+        path fill="currentColor" d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"
+
+// ---------------------------------------------------------------- /profile
+
+// "Profile Settings": the reference's page without its SubscriptionBox (payments, not ported): the feedback card and,
+// under 768 px, the sign-out card. Shown only signed in; the root sends a signed-out visitor to /demos.
+component ProfilePage
+  props
+    openFeedback: action
+    signOut: action
+  view
+    column width="100%" padding-top=md(16, 32) margin-top=16 gap=24
+      column margin-bottom=8
+        text "Profile Settings" role="heading" aria-level=1 font-size="1.5rem" line-height="2rem" font-weight=500 color="var(--color-text-primary)"
+        text "Manage your account settings" margin-top=4 font-size="0.875rem" line-height="1.25rem" color="var(--color-text-secondary)"
+      SendFeedback(open=openFeedback)
+      // MobileSignOut: md:hidden.
+      view max-height=md(9999, 0) overflow="hidden"
+        column class=Surface padding=24
+          row align-items="center" gap=12 margin-bottom=16
+            svg width=24 height=24 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width=1.5 aria-hidden=true color="var(--color-text-primary)"
+              path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"
+            text "Sign Out" role="heading" aria-level=2 font-size="15px" font-weight=500 color="var(--color-text-primary)"
+          text "Tap the button below to sign out of your account." margin-bottom=16 font-size="0.875rem" line-height="1.25rem" color="var(--color-text-tertiary)"
+          button appearance="none" press=signOut height=40 border-radius="var(--radius-control)" font-size="0.875rem" font-weight=500 cursor="pointer"
+            background-color="rgb(from var(--color-danger) r g b / 0.1)" color="var(--color-danger-400)" data-motion="button focus" testId="profile-sign-out"
+            :hover
+              background-color = "rgb(from var(--color-danger) r g b / 0.15)"
+            :active
+              background-color = "rgb(from var(--color-danger) r g b / 0.2)"
+            text "Sign Out"
+
+// The reference's Surface before its squircle measure: radius 18, the elevated surface, --shadow-surface.
+style Surface
+  border-radius="var(--radius-card)" background-color="var(--color-surface-elevated)" box-shadow="var(--shadow-surface)" box-sizing="border-box"
+  user-select="none"
+
+fn md(narrow: number, wide: number): string = `clamp(${narrow}px, (100vw - 767px) * 1000, ${wide}px)`
+
+component SendFeedback
+  props
+    open: action
+  view
+    column class=Surface padding=24 margin-top=8 width="100%"
+      row flex-wrap="wrap" align-items="center" column-gap=24 row-gap=20
+        row flex="1 1 280px" align-items="flex-start" gap=16
+          view width=36 height=36 flex-shrink=0 border-radius=10 background-color="rgb(255 255 255 / 0.06)" color="var(--color-text-secondary)"
+            display="flex" align-items="center" justify-content="center"
+            svg width=18 height=18 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width=1.75 stroke-linecap="round" stroke-linejoin="round" aria-hidden=true
+              path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"
+          column gap=4 flex=1
+            text "Share your feedback" role="heading" aria-level=2 font-size="15px" line-height="1.5rem" font-weight=500 color="var(--color-text-primary)"
+            text font-size="0.875rem" line-height="1.5rem" color="var(--color-text-tertiary)" user-select="text"
+              text "Ideas, bugs, or anything that felt off: I read every message. For anything else, write to "
+              text "hello@reactiive.io" href="mailto:hello@reactiive.io" color="var(--color-text-secondary)" text-decoration-line="underline"
+                data-motion="colors"
+              text "."
+        button appearance="none" press=open class=ButtonSecondary height=36 padding="0 12px" border-radius="var(--radius-control)" font-size="0.875rem"
+          line-height="1.25rem" font-weight=500 flex-shrink=0 data-motion="button focus" testId="send-feedback"
+          text "Send feedback"
+
+// ---------------------------------------------------------------- the feedback modal
+
+component FeedbackDialog
+  props
+    sending: bool
+    send: action
+  state draft = ""
+  state anonymous = false
+  action edit(v: string)
+    draft = v
+  action anon(on: bool)
+    anonymous = on
+  action submit
+    send(draft.trim(), anonymous)
+  action reset
+    draft = ""
+    anonymous = false
+  view
+    dialog id="feedback" class=ModalBox closedby="any" aria-labelledby="feedback-title" testId="feedback-dialog"
+      ::backdrop
+        background-color="rgb(from var(--color-background) r g b / 0.8)"
+      column padding=32 width="100%" box-sizing="border-box"
+        column align-items="center" gap=8 text-align="center"
+          text "Send feedback" id="feedback-title" role="heading" aria-level=2 font-size="1.25rem" line-height="1.75rem" font-weight=600
+            letter-spacing="-0.01em" color="var(--color-text-primary)"
+          text "Ideas, bugs, or anything that felt off: I read every message." max-width=340 font-size="0.875rem" line-height="1.5rem"
+            color="var(--color-text-secondary)"
+        column margin-top=24 gap=12
+          textarea value=draft input=edit placeholder="Write your feedback here…" aria-label="Send feedback" min-height=128 padding=12
+            box-sizing="border-box" font-size="0.875rem" line-height="1.25rem" color="var(--color-text-primary)" background-color="rgb(255 255 255 / 0.03)"
+            border="none" border-radius="var(--radius-control)" box-shadow="inset 0 0 0 1px rgb(255 255 255 / 0.06)" outline="none" resize="none"
+            testId="feedback-text"
+            ::placeholder
+              color = "var(--color-text-disabled)"
+            :focus-visible
+              background-color = "rgb(255 255 255 / 0.045)"
+              box-shadow = "inset 0 0 0 1px rgb(255 255 255 / 0.18)"
+          row align-items="center" gap=8
+            input type="checkbox" checked=anonymous change=anon aria-label="Submit anonymously" testId="feedback-anonymous"
+            text "Submit anonymously" font-size="0.875rem" color="var(--color-text-secondary)"
+        button appearance="none" press=submit disabled=(draft.trim() == "" or sending) class=ButtonPrimary height=44 margin-top=28
+          border-radius="var(--radius-control)" font-size="1rem" font-weight=500 display="flex" align-items="center" justify-content="center" gap=8
+          opacity=(draft.trim() == "" or sending ? 0.5 : 1) data-motion="button focus" testId="feedback-send"
+          if sending
+            Spinner()
+            text "Sending…"
+          else
+            text "Send Feedback"
+      CloseX(dialog="feedback")
+
+// sonner's toast, bottom right: a message for 4 s.
+component Toast
+  props
+    message: string
+    tone: string
+  view
+    row position="absolute" right=24 top="calc(100vh - 88px)" z-index=70 min-width=280 max-width=356 padding="14px 16px" gap=8 align-items="center"
+      border-radius=8 background-color="var(--color-surface-elevated)" box-shadow="var(--shadow-overlay)" font-size="13px" font-weight=500
+      color=(tone == "error" ? "var(--color-danger-400)" : "var(--color-text-primary)") opacity=(message == "" ? 0 : 1)
+      translate=(message == "" ? "0 16px" : "0 0") pointer-events="none" transition="opacity 400ms ease, translate 400ms ease" role="status"
+      testId="toast"
+      text message
