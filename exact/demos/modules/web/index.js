@@ -416,6 +416,23 @@ if (DOM) {
   addEventListener('load', strip);
 }
 
+// Classic scrollbars: where the system draws scrollbars that take room (a desktop with a mouse, Windows, Linux,
+// headless Chrome), every scroller in a demo lost 15 px of its width to a grey bar the iPhone never shows (add-to-cart's
+// cards ended 15 px short of the frame's edge). Hidden there; overlay scrollbars (a Mac trackpad, phone browsers),
+// which take no room and show only while scrolling as the iPhone's indicator does, are kept.
+if (DOM) {
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:absolute;top:-200px;width:100px;height:100px;overflow:scroll;visibility:hidden';
+  document.documentElement.append(probe);
+  const classic = probe.offsetWidth - probe.clientWidth > 0;
+  probe.remove();
+  if (classic) {
+    const sheet = document.createElement('style');
+    sheet.textContent = '#exact-root *{scrollbar-width:none}#exact-root ::-webkit-scrollbar{display:none}';
+    document.head.append(sheet);
+  }
+}
+
 // Named scroll timelines (`scroll-timeline="--name y"` on a scroller, `animation-timeline="--name"` on views outside it
 // under a `timeline-scope`): the host writes them as `--exact-scroll-timeline` / `--exact-animation-timeline` and its
 // motion glue hands a name the browser runs to CSS only when it follows a drag timeline, which a page with no drag never
