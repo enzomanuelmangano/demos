@@ -114,8 +114,8 @@ component Metaball
   action idle
     easing = easing
   view
-    InteractiveBox(theme="light", shape=(type == "with-color-matrix" ? "square" : "video"), withPlay=false, withReset=(type == "with-color-matrix"), play=idle, reset=reset)
-      column flex=1 min-height=0 min-width=0 position="relative" intersect=seen intersect-margin="300px"
+    InteractiveBox(theme="light", shape=(type == "with-color-matrix" ? "square" : "video"), withPlay=false, withReset=(type == "with-color-matrix"), play=idle, reset=reset, seen=seen)
+      column flex=1 min-height=0 min-width=0 position="relative"
         if type == "with-color-matrix"
           svg width=0 height=0 position="absolute" aria-hidden=true
             filter id=`${key}-goo`

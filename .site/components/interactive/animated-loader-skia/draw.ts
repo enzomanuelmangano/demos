@@ -8,7 +8,7 @@ import { SWEEP, halo, HALO_OFFSET, interpolate, memo, sample, sweepGradient, typ
 
 const SIZE = 128, STROKE = 15, RADIUS = (SIZE - STROKE) / 2;
 const TAU = Math.PI * 2;
-const HALO_STEP = 2; // degrees per halo piece
+const HALO_STEP = 8; // degrees per halo piece
 
 type State = { start: number; spinning: boolean; presses: number };
 const state = memo<State>();

@@ -58,9 +58,12 @@ component InteractiveBox
     withReset: bool
     play: action
     reset: action
+    // Hears the box entering and leaving 300 px around the viewport (it must be outside the box's own clip: an
+    // IntersectionObserver's root is the nearest clipping ancestor).
+    seen: action
   slot
   view
-    view position="relative" width="100%" margin-bottom=16 aspect-ratio=(shape == "square" ? "1 / 1" : shape == "video" ? "16 / 9" : "auto")
+    view position="relative" width="100%" margin-bottom=16 intersect=seen intersect-margin="300px" aspect-ratio=(shape == "square" ? "1 / 1" : shape == "video" ? "16 / 9" : "auto")
       if shape == "portrait"
         view width="100%" padding-top="clamp(56.25%, (100vh - 100vw + 1px) * 1000, 100%)"
       row position="absolute" inset=0 justify-content="center" align-items="center"

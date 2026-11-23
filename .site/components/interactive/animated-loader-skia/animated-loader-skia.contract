@@ -21,10 +21,13 @@ component Loader
     visible: bool
     presses: number
     kind: string
+    near: bool
   view
+    // The box is on the page from the start, so its fade runs at load as the reference's; the canvas comes when near.
     row flex=1 align-items="center" justify-content="center"
       view width=158 height=158 animation=((type == "with-animation" or type == "with-basic-animation") ? "loaderFadeIn 1000ms ease-out" : "none")
-        canvas surface=loader(key, type, start, visible, presses, kind) aria-hidden=true width=158 height=158
+        if near
+          canvas surface=loader(key, type, start, visible, presses, kind) aria-hidden=true width=158 height=158
 
 // The progress demo's slider (components/loader/animated-slider.tsx): 200 px, a 2 px track (#b0b8ff up to the knob's
 // centre, #6370CA after), a 30 px #b0b8ff knob dragged by the pointer, the label above and the value below.
@@ -84,17 +87,16 @@ component LoaderDemo
   view
     // The progress demo is square in a portrait window (the reference's Dimensions check).
     InteractiveBox(theme="light", shape=(type == "with-progress" ? "portrait" : "video"), withPlay=withButtons,
-      withReset=withButtons, play=play, reset=reset)
-      column flex=1 min-height=0 intersect=seen intersect-margin="300px"
+      withReset=withButtons, play=play, reset=reset, seen=seen)
+      column flex=1 min-height=0
         if type == "with-progress"
           column flex=1 align-items="center" gap=20 justify-content="center"
             row flex=2 align-items="center" justify-content="center"
-              if near
-                Loader(key=key, type=type, start=start, visible=visible, presses=presses, kind=kind)
+              Loader(key=key, type=type, start=start, visible=visible, presses=presses, kind=kind, near=near)
             row flex=1 align-items="center" justify-content="center" margin-bottom=20
               StartSlider(value=start, change=slide)
-        else if near
-          Loader(key=key, type=type, start=0, visible=visible, presses=presses, kind=kind)
+        else
+          Loader(key=key, type=type, start=0, visible=visible, presses=presses, kind=kind, near=near)
 
 // The MDX's names (content/articles/animated-loader-skia/components/index.tsx).
 component BasicLoaderWithSkia
