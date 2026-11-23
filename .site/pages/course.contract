@@ -1,0 +1,100 @@
+// /course (reference app/course/page.tsx and components/landing/tabs/learn): the Reanimate.dev header, rising in
+// (framer: 20 px, 400 ms, cubic-bezier(.25,.46,.45,.94)), its link, and the testimonials in balanced columns (1, 2
+// from 768 px, 3 from 1024 px: web/head.css `masonry`), each a flat card that darkens under the pointer.
+use md, sm from "../components/responsive.contract"
+
+shape Testimonial
+  author: string
+  role: string
+  content: string
+  avatar: string
+  url: string
+  x: bool
+
+fn testimonials(): Testimonial[] = [
+  Testimonial(author="Expo", role="The platform for making universal apps", content="If you ever get a chance to see @reactiive_ speak don't miss it. He's a unique talent and a great teacher.", avatar="/assets/images/avatars/expo.jpg", url="https://x.com/expo/status/2006138768143585652", x=true),
+  Testimonial(author="Infinite Red", role="Creators of ChainReactConf, Ignite, and more", content="Open sourced 'Demos'… a collection of React Native animation examples. Extremely useful!", avatar="/assets/images/avatars/infinite-red.jpg", url="https://x.com/infinite_red/status/2006100939535794348", x=true),
+  Testimonial(author="Vadim Savin", role="notJust.dev", content="Shoutout to Demos by @reactiive_", avatar="/assets/images/avatars/vadim-savin.jpg", url="https://x.com/VadimNotJustDev/status/1991917929647190366", x=true),
+  Testimonial(author="baam", role="Software Engineer", content="Your Demos are sick and very useful, big thanks", avatar="/assets/images/avatars/baam.jpg", url="https://x.com/TheBaamAhmed/status/1995915882074169358", x=true),
+  Testimonial(author="Hirbod", role="Software Engineer", content="One of the best React Native animation resources out there—beautifully crafted, clean, and stunning. Sign up, worth every penny!", avatar="/assets/images/avatars/hirbod.jpg", url="https://x.com/hirbod_dev/status/1866936168895611088", x=true),
+  Testimonial(author="Daniel Nguyen", role="Software Engineer", content="Check out this exclusive collection of React Native animations", avatar="/assets/images/avatars/daniel-nguyen.jpg", url="https://x.com/hey_thien/status/1971202721916256447", x=true),
+  Testimonial(author="Rafa", role="Software Engineer", content="I use the toast component from @reactiive_ and it works fantastic", avatar="/assets/images/avatars/rafa-muttoni.jpg", url="https://x.com/rafaelmuttoni/status/1986087498389307680", x=true),
+  Testimonial(author="Upendra Sahni", role="Software Engineer", content="Thanks to @reactiive_ for the fantastic tutorials… Your videos made it so much easier to learn", avatar="/assets/images/avatars/upendra-sahni.jpg", url="https://x.com/Upendra17916450/status/1797250824328073527", x=true),
+  Testimonial(author="Lennart Brandt", role="Software Engineer", content="Huge thanks to @reactiive_ for the awesome YouTube explanation on layout transitions!", avatar="/assets/images/avatars/lennart-brandt.jpg", url="https://x.com/brandtnewlabs/status/1880262760174588006", x=true),
+  Testimonial(author="Daniel Friyia", role="Software Engineer", content="@reactiive_ is the master of creative QRCodes", avatar="/assets/images/avatars/daniel-friyia.jpg", url="https://x.com/wa2goose/status/2005037188124418313", x=true),
+  Testimonial(author="Miru", role="Software Engineer", content="Thanks to the inspiration from @reactiive_… building great user experiences has become relatively simple", avatar="/assets/images/avatars/miru.jpg", url="https://x.com/MiruDaws/status/1775548694785601884", x=true),
+  Testimonial(author="Just Patrick", role="Software Engineer", content="Learn from the goats @reactiive_ and @wcandillon", avatar="/assets/images/avatars/just-patrick.jpg", url="https://x.com/PnTX10/status/1768383774344007913", x=true),
+  Testimonial(author="Abinash Karmakar", role="Software Engineer", content="Inspired by @reactiive_'s video, I implemented a 3D wallet card", avatar="/assets/images/avatars/abinash-karmakar.jpg", url="https://x.com/codeAbinash/status/1814608446102381036", x=true),
+  Testimonial(author="hamed", role="Software Engineer", content="Inspired me to learn skia/reanimated in-depth", avatar="/assets/images/avatars/hamed.jpg", url="https://x.com/hamedmp/status/1942336266982314423", x=true),
+  Testimonial(author="mr asante", role="Software Engineer", content="Big thanks to @wcandillon and @reactiive_", avatar="/assets/images/avatars/mr-asante.jpg", url="https://x.com/k_asante10/status/1732523640590115297", x=true),
+  Testimonial(author="Evan Bacon", role="Creator of Expo Router", content="Check out this beautiful Expo website for exploring Enzo's animation collection! Exciting to see web adoption pick up so much!", avatar="/assets/images/avatars/bacon.jpg", url="https://x.com/Baconbrix/status/1882963868919673320", x=true),
+  Testimonial(author="Christian Falch", role="React Native Skia co-Creator", content="Amazing and inspiring.", avatar="/assets/images/avatars/christian-falch.jpg", url="https://bsky.app/profile/chrfalch.bsky.social/post/3ld4ipbmxf22k", x=false),
+  Testimonial(author="Beto", role="Dev Success @Expo", content="What a great resource 👏", avatar="/assets/images/avatars/beto.jpg", url="https://bsky.app/profile/codewithbeto.dev/post/3ld4gogkii22a", x=false),
+  Testimonial(author="Daehyeon 대현", role="Founding Engineer at Callie", content="If you wanna make beautiful stuffs in React Native, his tutorial is a good starting point. \"from scratch\" means you can make your own beautiful animations.", avatar="/assets/images/avatars/daehyeon.jpg", url="https://x.com/DaehyeonMun/status/1907687962986635699", x=true),
+  Testimonial(author="Arunabh Verma", role="Mobile Developer", content="😍 This is the most stunning thing I've seen today on X", avatar="/assets/images/avatars/arunabh.jpg", url="https://x.com/iamarunabh/status/1895166199417446793", x=true),
+  Testimonial(author="vo—va 🇺🇦", role="Product Engineer", content="What kind of dark magic is this 🤯", avatar="/assets/images/avatars/vova.jpg", url="https://x.com/vovacodes/status/1930259330047070510", x=true),
+  Testimonial(author="Dak", role="Software Engineer", content="That UI is B-U-T-T-E-RRRRRRRR", avatar="/assets/images/avatars/dak.jpg", url="https://x.com/dakdevs/status/1881142398987989274", x=true),
+  Testimonial(author="Flor Luz Duarte", role="Frontend Developer", content="Such a good collection! All of them look great! 🤯", avatar="/assets/images/avatars/flor.jpg", url="https://bsky.app/profile/unicornio.dev/post/3ld5kopdptc2d", x=false),
+  Testimonial(author="MadMax", role="Software Engineer", content="Amazing collection.", avatar="/assets/images/avatars/madmax.jpg", url="https://bsky.app/profile/madanbazgai.bsky.social/post/3ld3c5zua2s2f", x=false),
+  Testimonial(author="Simon Grimm", role="Galaxies.dev", content="Enzo is one of the best when it comes to animations - this looks awesome 🔥", avatar="/assets/images/avatars/simon-grimm.jpg", url="https://x.com/schlimmson/status/1795123030173036582", x=true),
+  Testimonial(author="Dima Ageev", role="Software Engineer", content="Our whole team learned animation basics with your tutorials of Reanimated and Gesture Handler, you did an amazing job 🙏", avatar="/assets/images/avatars/dima-ageev.jpg", url="https://x.com/dimaageev48/status/1724543149685576152", x=true)
+]
+
+component SocialBadge
+  props
+    x: bool
+  view
+    // absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-gradient-to-br rounded-full ring-2 ring-surface-elevated.
+    row position="absolute" bottom=-2 right=-2 width=16 height=16 border-radius=9999 align-items="center" justify-content="center"
+      background-image=(x ? "linear-gradient(to bottom right, #000000, #181818)" : "linear-gradient(to bottom right, #0085FF, #0066CC)")
+      box-shadow="0 0 0 2px var(--color-surface-elevated)"
+      if x
+        svg width=8 height=8 viewBox="0 0 24 24" fill="white"
+          path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"
+      else
+        svg width=8 height=8 viewBox="0 0 64 57" fill="white"
+          path d="M13.873 3.805C21.21 9.332 29.103 20.537 32 26.55v15.882c0-.338-.13.044-.41.867-1.512 4.456-7.418 21.847-20.923 7.944-7.111-7.32-3.819-14.64 9.125-16.85-7.405 1.264-15.73-.825-18.014-9.015C1.12 23.022 0 8.51 0 6.55 0-3.268 8.579-.182 13.873 3.805ZM50.127 3.805C42.79 9.332 34.897 20.537 32 26.55v15.882c0-.338.13.044.41.867 1.512 4.456 7.418 21.847 20.923 7.944 7.111-7.32 3.819-14.64-9.125-16.85 7.405 1.264 15.73-.825 18.014-9.015C62.88 23.022 64 8.51 64 6.55c0-9.818-8.578-6.732-13.873-2.745Z"
+
+component TestimonialCard
+  props
+    t: Testimonial
+  view
+    link href=t.url target="_blank" display="block" margin-bottom=16 -exact-hover-effect="none" text-decoration-line="none" data-motion="plain card-group"
+      // Surface elevation="flat": surface-elevated, 18 px corners, the control's hairline; group-hover:bg-surface-code.
+      view padding=20 border-radius=18 background-color="var(--color-surface-elevated)" box-shadow="inset 0 0 0 1px rgb(255 255 255 / 0.06)"
+        data-motion="card-surface"
+        row align-items="center" gap=12 margin-bottom=16
+          view position="relative" flex-shrink=0
+            image t.avatar alt=t.author width=40 height=40 border-radius=9999 object-fit="cover" display="block"
+            SocialBadge(x=t.x)
+          column min-width=0 flex=1
+            text t.author role="heading" aria-level=4 font-size="0.875rem" line-height="1.25rem" font-weight=500 color="var(--color-text-primary)"
+              overflow="hidden" text-overflow="ellipsis" white-space="nowrap"
+            text t.role font-size="0.75rem" line-height="1rem" color="var(--color-text-tertiary)" overflow="hidden" text-overflow="ellipsis" white-space="nowrap"
+        text `"${t.content}"` font-size=15 line-height=1.625 color="var(--color-text-secondary)"
+
+component CoursePage
+  view
+    // Container size xl, mt-4 under 640 px; Learn: pt-4 pb-32 px-6, centred.
+    column width="100%" max-width="72rem" margin-left="auto" margin-right="auto" padding-left=24 padding-right=24 box-sizing="border-box"
+      margin-top=sm(16, 0)
+      column width="100%" padding="16px 24px 128px" box-sizing="border-box" align-items="center"
+        column width="100%" max-width="42rem" align-items="center" text-align="center" margin-bottom=64
+          column align-items="center" data-motion="course-in"
+            text "Reanimate.dev" role="heading" aria-level=2 font-size=md(30, 36) line-height=md(36, 40) font-weight=600
+              letter-spacing="-0.02em" color="var(--color-text-primary)" margin-bottom=12
+            text "The complete guide to React Native animations." max-width="28rem" margin-bottom=24 color="var(--color-text-secondary)"
+            link href="https://reanimate.dev" target="_blank" display="flex" align-items="center" gap=8 padding="10px 20px" border-radius=9999
+              background-color="rgb(97 114 232 / 0.1)" box-shadow="0 0 0 1px rgb(97 114 232 / 0.2)" color="var(--color-primary-400)"
+              font-size="0.875rem" line-height="1.25rem" font-weight=500 -exact-hover-effect="none" data-motion="plain course-cta"
+              :hover
+                background-color = "rgb(97 114 232 / 0.15)"
+                box-shadow = "0 0 0 1px rgb(97 114 232 / 0.3)"
+              text "Start animating your ideas today"
+              svg width=14 height=14 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width=2 stroke-linecap="round" stroke-linejoin="round"
+                path d="M7 17L17 7"
+                path d="M7 7h10v10"
+        view width="100%" data-motion="masonry"
+          for t in testimonials() key=t.url
+            view width="100%"
+              TestimonialCard(t=t)

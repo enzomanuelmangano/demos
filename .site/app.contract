@@ -7,6 +7,7 @@ use NotFound from "./pages/not-found.contract"
 use Newsletter from "./components/newsletter.contract"
 use DemosPage from "./pages/demos.contract"
 use InspirationsPage from "./pages/inspirations.contract"
+use CoursePage from "./pages/course.contract"
 use DemosAppPage from "./pages/demos-app.contract"
 use Page from "./components/markdown.contract"
 use Card, ArticleList, ArticlePage from "./pages/articles.contract"
@@ -18,6 +19,7 @@ routes nav
   demos "/demos" render=build activate=idle
   inspirations "/inspirations" render=build activate=idle
   demosApp "/demos-app" render=build activate=idle
+  course "/course" render=build activate=idle
   // The content (tools/gen-content.ts, docs/progress-content.md).
   articles "/articles" render=build activate=idle
   article "/articles/:post" render=build activate=idle pages=articleSlugs()
@@ -156,6 +158,10 @@ component App
                   image="/og/main.png" canonical="/inspirations"
                 Container()
                   InspirationsPage()
+              else if e.name == "course"
+                head title="Course | Reactiive" description="Reanimate.dev — the complete guide to React Native animations, from the basics to advanced techniques."
+                  image="/og/main.png" canonical="/course"
+                CoursePage()
               else if e.name == "demosApp"
                 head title="Demos (TestFlight) | Reactiive" description="Get 120+ React Native animation demos on your phone through the TestFlight beta."
                   image="/og/demos.png" canonical="/demos-app"
