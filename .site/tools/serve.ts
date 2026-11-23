@@ -19,7 +19,10 @@ const isFile = (p: string) => p.startsWith(root) && existsSync(p) && statSync(p)
 
 function file(path: string, status: number, headers: Record<string, string>, req: Request) {
   const p = join(root, decodeURIComponent(path));
-  const h = new Headers({ 'content-type': TYPES[extname(p)] ?? 'application/octet-stream', 'cache-control': 'public, max-age=0, must-revalidate', ...headers });
+  // A validator, as the host sends one (Vercel: ETag), so a revalidation is a 304 with no body, as in production.
+  const st = statSync(p), etag = `"${st.size.toString(36)}-${Math.floor(st.mtimeMs).toString(36)}"`;
+  const h = new Headers({ 'content-type': TYPES[extname(p)] ?? 'application/octet-stream', 'cache-control': 'public, max-age=0, must-revalidate', etag, ...headers });
+  if (status === 200 && req.headers.get('if-none-match') === etag) return new Response(null, { status: 304, headers: h });
   if (COMPRESS.has(extname(p)) && (req.headers.get('accept-encoding') ?? '').includes('br')) {
     const key = `${p}:${statSync(p).mtimeMs}`; // a recomposed tree is served fresh without a restart
     let b = brCache.get(key);
