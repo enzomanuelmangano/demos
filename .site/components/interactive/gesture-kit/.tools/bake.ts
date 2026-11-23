@@ -82,17 +82,11 @@ function write(file: string, blocks: { text: string; ms: number; name: string }[
 const root = join(import.meta.dir, '../..');
 const named = (name: string, k: { text: string; ms: number }) => ({ name, ...k });
 
-/** MorphSquare's eight keyframes (gesture-kit/box.contract) for radii `rs` (one per stop, or two for a timed path). */
+/** MorphSquare's two keyframes (gesture-kit/box.contract) for radii `rs` (one per frame, or two for a timed path). */
 function morph(prefix: string, rs: number[], size: number, rmax: number, timed: boolean) {
   const parts: [string, (r: number) => string][] = [
-    ['T', (r) => `translate="0px ${r4(r)}px"`],
-    ['B', (r) => `translate="0px ${r4(-r)}px"`],
-    ['L', (r) => `translate="${r4(r)}px 0px"`],
-    ['R', (r) => `translate="${r4(-r)}px 0px"`],
-    ['TL', (r) => `scale=${r4(r / rmax)} translate="${r4(r - rmax)}px ${r4(r - rmax)}px"`],
-    ['TR', (r) => `scale=${r4(r / rmax)} translate="${r4(rmax - r)}px ${r4(r - rmax)}px"`],
-    ['BL', (r) => `scale=${r4(r / rmax)} translate="${r4(r - rmax)}px ${r4(rmax - r)}px"`],
-    ['BR', (r) => `scale=${r4(r / rmax)} translate="${r4(rmax - r)}px ${r4(rmax - r)}px"`],
+    ['Bar', (r) => `translate="0px ${r4(r)}px"`],
+    ['Disc', (r) => `scale=${r4(r / rmax)} translate="${r4(r - rmax)}px ${r4(r - rmax)}px"`],
   ];
   return parts.map(([part, row]) => timed
     ? { name: prefix + part, ms: 0, text: `keyframes ${prefix + part}\n  from ${row(rs[0])}\n  to ${row(rs[1])}` }

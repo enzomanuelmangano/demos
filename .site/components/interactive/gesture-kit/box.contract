@@ -42,13 +42,12 @@ component BoxButton
 
 // A square whose corner radius animates, built of parts the compositor moves: SVG keyframes do not render ahead
 // (Exact's build-time render reads an SVG node's animation through a DOM it does not have) and `border-radius`
-// does not animate, so the square is four half-bars, each slid r towards the middle inside its half (`translate`
-// under `overflow="hidden"`: the two horizontal halves make the bar between y = r and size - r, the vertical ones
-// between x = r and size - r), and
-// four discs of radius r at the corners (`scale` r/rmax, `translate` to (r, r)), all opaque in a group whose
-// `opacity` is the colour's alpha. gesture-kit/.tools/bake.ts writes each motion's eight keyframes `<prefix>T`, `B`,
-// `L`, `R`, `TL`, `TR`, `BL`, `BR` for a radius path; `timing` is the rest of the animation shorthand, `on` false
-// shows `rest` still.
+// does not animate. The square is four quarter-turns of one part: a half-bar slid r towards the middle inside its
+// half (`translate` under `overflow="hidden"`: the top and bottom halves make the bar between y = r and size - r,
+// the turned ones the bar between x = r and size - r) and a disc of radius r in its corner (`scale` r/rmax,
+// `translate` to (r, r)), all opaque in a group whose `opacity` is the colour's alpha. So a motion is two keyframes,
+// `<prefix>Bar` and `<prefix>Disc` (gesture-kit/.tools/bake.ts writes them for a radius path); `timing` is the rest
+// of the animation shorthand, `on` false shows `rest` still.
 component MorphSquare
   props
     size: number
@@ -59,28 +58,24 @@ component MorphSquare
     prefix: string
     timing: string
     on: bool
-  derive half = size / 2
-  derive disc = rest / rmax
-  derive shift = rest - rmax
   view
     view position="relative" width=size height=size opacity=alpha flex-shrink=0
-      view position="absolute" left=0 top=0 width=size height=half overflow="hidden"
-        view width=size height=half background-color=color translate=`0px ${rest}px`
-          animation=(on ? `${prefix}T ${timing}` : "none")
-      view position="absolute" left=0 bottom=0 width=size height=half overflow="hidden"
-        view width=size height=half background-color=color translate=`0px ${0 - rest}px`
-          animation=(on ? `${prefix}B ${timing}` : "none")
-      view position="absolute" left=0 top=0 width=half height=size overflow="hidden"
-        view width=half height=size background-color=color translate=`${rest}px 0px`
-          animation=(on ? `${prefix}L ${timing}` : "none")
-      view position="absolute" right=0 top=0 width=half height=size overflow="hidden"
-        view width=half height=size background-color=color translate=`${0 - rest}px 0px`
-          animation=(on ? `${prefix}R ${timing}` : "none")
+      for turn in [0, 90, 180, 270] key=turn
+        MorphQuarter(size=size, color=color, rest=rest, rmax=rmax, turn=turn,
+          bar=(on ? `${prefix}Bar ${timing}` : "none"), disc=(on ? `${prefix}Disc ${timing}` : "none"))
+
+component MorphQuarter
+  props
+    size: number
+    color: string
+    rest: number
+    rmax: number
+    turn: number
+    bar: string
+    disc: string
+  view
+    view position="absolute" left=0 top=0 width=size height=size rotate=`${turn}deg`
+      view position="absolute" left=0 top=0 width=size height=(size / 2) overflow="hidden"
+        view width=size height=(size / 2) background-color=color translate=`0px ${rest}px` animation=bar
       view position="absolute" left=0 top=0 width=(rmax * 2) height=(rmax * 2) border-radius="50%" background-color=color
-        scale=disc translate=`${shift}px ${shift}px` animation=(on ? `${prefix}TL ${timing}` : "none")
-      view position="absolute" right=0 top=0 width=(rmax * 2) height=(rmax * 2) border-radius="50%" background-color=color
-        scale=disc translate=`${0 - shift}px ${shift}px` animation=(on ? `${prefix}TR ${timing}` : "none")
-      view position="absolute" left=0 bottom=0 width=(rmax * 2) height=(rmax * 2) border-radius="50%" background-color=color
-        scale=disc translate=`${shift}px ${0 - shift}px` animation=(on ? `${prefix}BL ${timing}` : "none")
-      view position="absolute" right=0 bottom=0 width=(rmax * 2) height=(rmax * 2) border-radius="50%" background-color=color
-        scale=disc translate=`${0 - shift}px ${0 - shift}px` animation=(on ? `${prefix}BR ${timing}` : "none")
+        scale=(rest / rmax) translate=`${rest - rmax}px ${rest - rmax}px` animation=disc

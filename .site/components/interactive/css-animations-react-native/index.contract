@@ -14,36 +14,12 @@ keyframes caSquare
   from scale=0.5 rotate="0deg" opacity=0.5
   to scale=1 rotate="360deg" opacity=1
 // <baked> (gesture-kit/.tools/bake.ts writes this block)
-keyframes caCornerT
+keyframes caCornerBar
   from translate="0px 0px"
   to translate="0px 20px"
 
-keyframes caCornerB
-  from translate="0px 0px"
-  to translate="0px -20px"
-
-keyframes caCornerL
-  from translate="0px 0px"
-  to translate="20px 0px"
-
-keyframes caCornerR
-  from translate="0px 0px"
-  to translate="-20px 0px"
-
-keyframes caCornerTL
+keyframes caCornerDisc
   from scale=0 translate="-20px -20px"
-  to scale=1 translate="0px 0px"
-
-keyframes caCornerTR
-  from scale=0 translate="20px -20px"
-  to scale=1 translate="0px 0px"
-
-keyframes caCornerBL
-  from scale=0 translate="-20px 20px"
-  to scale=1 translate="0px 0px"
-
-keyframes caCornerBR
-  from scale=0 translate="20px 20px"
   to scale=1 translate="0px 0px"
 // </baked>
 

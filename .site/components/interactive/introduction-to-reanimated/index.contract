@@ -81,8 +81,8 @@ keyframes irFinalProgress
   100% opacity=0.5 rotate="180deg"
 fn irFinalProgressMs(): number = 1017
 
-// irFinalCornerT: 1017 ms
-keyframes irFinalCornerT
+// irFinalCornerBar: 1017 ms
+keyframes irFinalCornerBar
   0% translate="0px 50px" animation-timing-function="cubic-bezier(0.3333, 0, 0.6667, 0.4932)"
   4.918% translate="0px 46.3665px" animation-timing-function="cubic-bezier(0.3333, 0.2827, 0.6667, 0.6429)"
   9.836% translate="0px 39.8532px" animation-timing-function="cubic-bezier(0.3333, 0.3403, 0.6667, 0.6889)"
@@ -105,88 +105,10 @@ keyframes irFinalCornerT
   93.443% translate="0px 24.9758px" animation-timing-function="cubic-bezier(0.3333, 0.4826, 0.6667, 1.6623)"
   98.361% translate="0px 24.9329px" animation-timing-function="cubic-bezier(0.3333, 0.1412, 0.6667, 1)"
   100% translate="0px 25px"
-fn irFinalCornerTMs(): number = 1017
+fn irFinalCornerBarMs(): number = 1017
 
-// irFinalCornerB: 1017 ms
-keyframes irFinalCornerB
-  0% translate="0px -50px" animation-timing-function="cubic-bezier(0.3333, 0, 0.6667, 0.4932)"
-  4.918% translate="0px -46.3665px" animation-timing-function="cubic-bezier(0.3333, 0.2827, 0.6667, 0.6429)"
-  9.836% translate="0px -39.8532px" animation-timing-function="cubic-bezier(0.3333, 0.3403, 0.6667, 0.6889)"
-  14.754% translate="0px -33.0178px" animation-timing-function="cubic-bezier(0.3333, 0.379, 0.6667, 0.7198)"
-  19.672% translate="0px -27.4071px" animation-timing-function="cubic-bezier(0.3333, 0.4199, 0.6667, 0.7525)"
-  24.59% translate="0px -23.6632px" animation-timing-function="cubic-bezier(0.3333, 0.4901, 0.6667, 0.8087)"
-  29.508% translate="0px -21.7726px" animation-timing-function="cubic-bezier(0.3333, 0.8454, 0.6667, 1.0929)"
-  34.426% translate="0px -21.3447px" animation-timing-function="cubic-bezier(0.3333, 0.0784, 0.6667, 0.4794)"
-  39.344% translate="0px -21.8516px" animation-timing-function="cubic-bezier(0.3333, 0.2798, 0.6667, 0.6405)"
-  44.262% translate="0px -22.7949px" animation-timing-function="cubic-bezier(0.3333, 0.3388, 0.6667, 0.6877)"
-  49.18% translate="0px -23.796px" animation-timing-function="cubic-bezier(0.3333, 0.3777, 0.6667, 0.7188)"
-  54.098% translate="0px -24.6238px" animation-timing-function="cubic-bezier(0.3333, 0.4182, 0.6667, 0.7512)"
-  59.016% translate="0px -25.1806px" animation-timing-function="cubic-bezier(0.3333, 0.4862, 0.6667, 0.8056)"
-  63.934% translate="0px -25.4655px" animation-timing-function="cubic-bezier(0.3333, 0.8051, 0.6667, 1.0606)"
-  68.852% translate="0px -25.5343px" animation-timing-function="cubic-bezier(0.3333, 0.0591, 0.6667, 0.464)"
-  73.77% translate="0px -25.4638px" animation-timing-function="cubic-bezier(0.3333, 0.2767, 0.6667, 0.638)"
-  78.689% translate="0px -25.3273px" animation-timing-function="cubic-bezier(0.3333, 0.3372, 0.6667, 0.6864)"
-  83.607% translate="0px -25.1807px" animation-timing-function="cubic-bezier(0.3333, 0.3764, 0.6667, 0.7177)"
-  88.525% translate="0px -25.0586px" animation-timing-function="cubic-bezier(0.3333, 0.4165, 0.6667, 0.7498)"
-  93.443% translate="0px -24.9758px" animation-timing-function="cubic-bezier(0.3333, 0.4826, 0.6667, 1.6623)"
-  98.361% translate="0px -24.9329px" animation-timing-function="cubic-bezier(0.3333, 0.1412, 0.6667, 1)"
-  100% translate="0px -25px"
-fn irFinalCornerBMs(): number = 1017
-
-// irFinalCornerL: 1017 ms
-keyframes irFinalCornerL
-  0% translate="50px 0px" animation-timing-function="cubic-bezier(0.3333, 0, 0.6667, 0.4932)"
-  4.918% translate="46.3665px 0px" animation-timing-function="cubic-bezier(0.3333, 0.2827, 0.6667, 0.6429)"
-  9.836% translate="39.8532px 0px" animation-timing-function="cubic-bezier(0.3333, 0.3403, 0.6667, 0.6889)"
-  14.754% translate="33.0178px 0px" animation-timing-function="cubic-bezier(0.3333, 0.379, 0.6667, 0.7198)"
-  19.672% translate="27.4071px 0px" animation-timing-function="cubic-bezier(0.3333, 0.4199, 0.6667, 0.7525)"
-  24.59% translate="23.6632px 0px" animation-timing-function="cubic-bezier(0.3333, 0.4901, 0.6667, 0.8087)"
-  29.508% translate="21.7726px 0px" animation-timing-function="cubic-bezier(0.3333, 0.8454, 0.6667, 1.0929)"
-  34.426% translate="21.3447px 0px" animation-timing-function="cubic-bezier(0.3333, 0.0784, 0.6667, 0.4794)"
-  39.344% translate="21.8516px 0px" animation-timing-function="cubic-bezier(0.3333, 0.2798, 0.6667, 0.6405)"
-  44.262% translate="22.7949px 0px" animation-timing-function="cubic-bezier(0.3333, 0.3388, 0.6667, 0.6877)"
-  49.18% translate="23.796px 0px" animation-timing-function="cubic-bezier(0.3333, 0.3777, 0.6667, 0.7188)"
-  54.098% translate="24.6238px 0px" animation-timing-function="cubic-bezier(0.3333, 0.4182, 0.6667, 0.7512)"
-  59.016% translate="25.1806px 0px" animation-timing-function="cubic-bezier(0.3333, 0.4862, 0.6667, 0.8056)"
-  63.934% translate="25.4655px 0px" animation-timing-function="cubic-bezier(0.3333, 0.8051, 0.6667, 1.0606)"
-  68.852% translate="25.5343px 0px" animation-timing-function="cubic-bezier(0.3333, 0.0591, 0.6667, 0.464)"
-  73.77% translate="25.4638px 0px" animation-timing-function="cubic-bezier(0.3333, 0.2767, 0.6667, 0.638)"
-  78.689% translate="25.3273px 0px" animation-timing-function="cubic-bezier(0.3333, 0.3372, 0.6667, 0.6864)"
-  83.607% translate="25.1807px 0px" animation-timing-function="cubic-bezier(0.3333, 0.3764, 0.6667, 0.7177)"
-  88.525% translate="25.0586px 0px" animation-timing-function="cubic-bezier(0.3333, 0.4165, 0.6667, 0.7498)"
-  93.443% translate="24.9758px 0px" animation-timing-function="cubic-bezier(0.3333, 0.4826, 0.6667, 1.6623)"
-  98.361% translate="24.9329px 0px" animation-timing-function="cubic-bezier(0.3333, 0.1412, 0.6667, 1)"
-  100% translate="25px 0px"
-fn irFinalCornerLMs(): number = 1017
-
-// irFinalCornerR: 1017 ms
-keyframes irFinalCornerR
-  0% translate="-50px 0px" animation-timing-function="cubic-bezier(0.3333, 0, 0.6667, 0.4932)"
-  4.918% translate="-46.3665px 0px" animation-timing-function="cubic-bezier(0.3333, 0.2827, 0.6667, 0.6429)"
-  9.836% translate="-39.8532px 0px" animation-timing-function="cubic-bezier(0.3333, 0.3403, 0.6667, 0.6889)"
-  14.754% translate="-33.0178px 0px" animation-timing-function="cubic-bezier(0.3333, 0.379, 0.6667, 0.7198)"
-  19.672% translate="-27.4071px 0px" animation-timing-function="cubic-bezier(0.3333, 0.4199, 0.6667, 0.7525)"
-  24.59% translate="-23.6632px 0px" animation-timing-function="cubic-bezier(0.3333, 0.4901, 0.6667, 0.8087)"
-  29.508% translate="-21.7726px 0px" animation-timing-function="cubic-bezier(0.3333, 0.8454, 0.6667, 1.0929)"
-  34.426% translate="-21.3447px 0px" animation-timing-function="cubic-bezier(0.3333, 0.0784, 0.6667, 0.4794)"
-  39.344% translate="-21.8516px 0px" animation-timing-function="cubic-bezier(0.3333, 0.2798, 0.6667, 0.6405)"
-  44.262% translate="-22.7949px 0px" animation-timing-function="cubic-bezier(0.3333, 0.3388, 0.6667, 0.6877)"
-  49.18% translate="-23.796px 0px" animation-timing-function="cubic-bezier(0.3333, 0.3777, 0.6667, 0.7188)"
-  54.098% translate="-24.6238px 0px" animation-timing-function="cubic-bezier(0.3333, 0.4182, 0.6667, 0.7512)"
-  59.016% translate="-25.1806px 0px" animation-timing-function="cubic-bezier(0.3333, 0.4862, 0.6667, 0.8056)"
-  63.934% translate="-25.4655px 0px" animation-timing-function="cubic-bezier(0.3333, 0.8051, 0.6667, 1.0606)"
-  68.852% translate="-25.5343px 0px" animation-timing-function="cubic-bezier(0.3333, 0.0591, 0.6667, 0.464)"
-  73.77% translate="-25.4638px 0px" animation-timing-function="cubic-bezier(0.3333, 0.2767, 0.6667, 0.638)"
-  78.689% translate="-25.3273px 0px" animation-timing-function="cubic-bezier(0.3333, 0.3372, 0.6667, 0.6864)"
-  83.607% translate="-25.1807px 0px" animation-timing-function="cubic-bezier(0.3333, 0.3764, 0.6667, 0.7177)"
-  88.525% translate="-25.0586px 0px" animation-timing-function="cubic-bezier(0.3333, 0.4165, 0.6667, 0.7498)"
-  93.443% translate="-24.9758px 0px" animation-timing-function="cubic-bezier(0.3333, 0.4826, 0.6667, 1.6623)"
-  98.361% translate="-24.9329px 0px" animation-timing-function="cubic-bezier(0.3333, 0.1412, 0.6667, 1)"
-  100% translate="-25px 0px"
-fn irFinalCornerRMs(): number = 1017
-
-// irFinalCornerTL: 1017 ms
-keyframes irFinalCornerTL
+// irFinalCornerDisc: 1017 ms
+keyframes irFinalCornerDisc
   0% scale=1 translate="0px 0px" animation-timing-function="cubic-bezier(0.3333, 0, 0.6667, 0.4932)"
   4.918% scale=0.9273 translate="-3.6335px -3.6335px" animation-timing-function="cubic-bezier(0.3333, 0.2827, 0.6667, 0.6429)"
   9.836% scale=0.7971 translate="-10.1468px -10.1468px" animation-timing-function="cubic-bezier(0.3333, 0.3403, 0.6667, 0.6889)"
@@ -209,117 +131,15 @@ keyframes irFinalCornerTL
   93.443% scale=0.4995 translate="-25.0242px -25.0242px" animation-timing-function="cubic-bezier(0.3333, 0.4826, 0.6667, 1.6623)"
   98.361% scale=0.4987 translate="-25.0671px -25.0671px" animation-timing-function="cubic-bezier(0.3333, 0.1412, 0.6667, 1)"
   100% scale=0.5 translate="-25px -25px"
-fn irFinalCornerTLMs(): number = 1017
+fn irFinalCornerDiscMs(): number = 1017
 
-// irFinalCornerTR: 1017 ms
-keyframes irFinalCornerTR
-  0% scale=1 translate="0px 0px" animation-timing-function="cubic-bezier(0.3333, 0, 0.6667, 0.4932)"
-  4.918% scale=0.9273 translate="3.6335px -3.6335px" animation-timing-function="cubic-bezier(0.3333, 0.2827, 0.6667, 0.6429)"
-  9.836% scale=0.7971 translate="10.1468px -10.1468px" animation-timing-function="cubic-bezier(0.3333, 0.3403, 0.6667, 0.6889)"
-  14.754% scale=0.6604 translate="16.9822px -16.9822px" animation-timing-function="cubic-bezier(0.3333, 0.379, 0.6667, 0.7198)"
-  19.672% scale=0.5481 translate="22.5929px -22.5929px" animation-timing-function="cubic-bezier(0.3333, 0.4199, 0.6667, 0.7525)"
-  24.59% scale=0.4733 translate="26.3368px -26.3368px" animation-timing-function="cubic-bezier(0.3333, 0.4901, 0.6667, 0.8087)"
-  29.508% scale=0.4355 translate="28.2274px -28.2274px" animation-timing-function="cubic-bezier(0.3333, 0.8454, 0.6667, 1.0929)"
-  34.426% scale=0.4269 translate="28.6553px -28.6553px" animation-timing-function="cubic-bezier(0.3333, 0.0784, 0.6667, 0.4794)"
-  39.344% scale=0.437 translate="28.1484px -28.1484px" animation-timing-function="cubic-bezier(0.3333, 0.2798, 0.6667, 0.6405)"
-  44.262% scale=0.4559 translate="27.2051px -27.2051px" animation-timing-function="cubic-bezier(0.3333, 0.3388, 0.6667, 0.6877)"
-  49.18% scale=0.4759 translate="26.204px -26.204px" animation-timing-function="cubic-bezier(0.3333, 0.3777, 0.6667, 0.7188)"
-  54.098% scale=0.4925 translate="25.3762px -25.3762px" animation-timing-function="cubic-bezier(0.3333, 0.4182, 0.6667, 0.7512)"
-  59.016% scale=0.5036 translate="24.8194px -24.8194px" animation-timing-function="cubic-bezier(0.3333, 0.4862, 0.6667, 0.8056)"
-  63.934% scale=0.5093 translate="24.5345px -24.5345px" animation-timing-function="cubic-bezier(0.3333, 0.8051, 0.6667, 1.0606)"
-  68.852% scale=0.5107 translate="24.4657px -24.4657px" animation-timing-function="cubic-bezier(0.3333, 0.0591, 0.6667, 0.464)"
-  73.77% scale=0.5093 translate="24.5362px -24.5362px" animation-timing-function="cubic-bezier(0.3333, 0.2767, 0.6667, 0.638)"
-  78.689% scale=0.5065 translate="24.6727px -24.6727px" animation-timing-function="cubic-bezier(0.3333, 0.3372, 0.6667, 0.6864)"
-  83.607% scale=0.5036 translate="24.8193px -24.8193px" animation-timing-function="cubic-bezier(0.3333, 0.3764, 0.6667, 0.7177)"
-  88.525% scale=0.5012 translate="24.9414px -24.9414px" animation-timing-function="cubic-bezier(0.3333, 0.4165, 0.6667, 0.7498)"
-  93.443% scale=0.4995 translate="25.0242px -25.0242px" animation-timing-function="cubic-bezier(0.3333, 0.4826, 0.6667, 1.6623)"
-  98.361% scale=0.4987 translate="25.0671px -25.0671px" animation-timing-function="cubic-bezier(0.3333, 0.1412, 0.6667, 1)"
-  100% scale=0.5 translate="25px -25px"
-fn irFinalCornerTRMs(): number = 1017
-
-// irFinalCornerBL: 1017 ms
-keyframes irFinalCornerBL
-  0% scale=1 translate="0px 0px" animation-timing-function="cubic-bezier(0.3333, 0, 0.6667, 0.4932)"
-  4.918% scale=0.9273 translate="-3.6335px 3.6335px" animation-timing-function="cubic-bezier(0.3333, 0.2827, 0.6667, 0.6429)"
-  9.836% scale=0.7971 translate="-10.1468px 10.1468px" animation-timing-function="cubic-bezier(0.3333, 0.3403, 0.6667, 0.6889)"
-  14.754% scale=0.6604 translate="-16.9822px 16.9822px" animation-timing-function="cubic-bezier(0.3333, 0.379, 0.6667, 0.7198)"
-  19.672% scale=0.5481 translate="-22.5929px 22.5929px" animation-timing-function="cubic-bezier(0.3333, 0.4199, 0.6667, 0.7525)"
-  24.59% scale=0.4733 translate="-26.3368px 26.3368px" animation-timing-function="cubic-bezier(0.3333, 0.4901, 0.6667, 0.8087)"
-  29.508% scale=0.4355 translate="-28.2274px 28.2274px" animation-timing-function="cubic-bezier(0.3333, 0.8454, 0.6667, 1.0929)"
-  34.426% scale=0.4269 translate="-28.6553px 28.6553px" animation-timing-function="cubic-bezier(0.3333, 0.0784, 0.6667, 0.4794)"
-  39.344% scale=0.437 translate="-28.1484px 28.1484px" animation-timing-function="cubic-bezier(0.3333, 0.2798, 0.6667, 0.6405)"
-  44.262% scale=0.4559 translate="-27.2051px 27.2051px" animation-timing-function="cubic-bezier(0.3333, 0.3388, 0.6667, 0.6877)"
-  49.18% scale=0.4759 translate="-26.204px 26.204px" animation-timing-function="cubic-bezier(0.3333, 0.3777, 0.6667, 0.7188)"
-  54.098% scale=0.4925 translate="-25.3762px 25.3762px" animation-timing-function="cubic-bezier(0.3333, 0.4182, 0.6667, 0.7512)"
-  59.016% scale=0.5036 translate="-24.8194px 24.8194px" animation-timing-function="cubic-bezier(0.3333, 0.4862, 0.6667, 0.8056)"
-  63.934% scale=0.5093 translate="-24.5345px 24.5345px" animation-timing-function="cubic-bezier(0.3333, 0.8051, 0.6667, 1.0606)"
-  68.852% scale=0.5107 translate="-24.4657px 24.4657px" animation-timing-function="cubic-bezier(0.3333, 0.0591, 0.6667, 0.464)"
-  73.77% scale=0.5093 translate="-24.5362px 24.5362px" animation-timing-function="cubic-bezier(0.3333, 0.2767, 0.6667, 0.638)"
-  78.689% scale=0.5065 translate="-24.6727px 24.6727px" animation-timing-function="cubic-bezier(0.3333, 0.3372, 0.6667, 0.6864)"
-  83.607% scale=0.5036 translate="-24.8193px 24.8193px" animation-timing-function="cubic-bezier(0.3333, 0.3764, 0.6667, 0.7177)"
-  88.525% scale=0.5012 translate="-24.9414px 24.9414px" animation-timing-function="cubic-bezier(0.3333, 0.4165, 0.6667, 0.7498)"
-  93.443% scale=0.4995 translate="-25.0242px 25.0242px" animation-timing-function="cubic-bezier(0.3333, 0.4826, 0.6667, 1.6623)"
-  98.361% scale=0.4987 translate="-25.0671px 25.0671px" animation-timing-function="cubic-bezier(0.3333, 0.1412, 0.6667, 1)"
-  100% scale=0.5 translate="-25px 25px"
-fn irFinalCornerBLMs(): number = 1017
-
-// irFinalCornerBR: 1017 ms
-keyframes irFinalCornerBR
-  0% scale=1 translate="0px 0px" animation-timing-function="cubic-bezier(0.3333, 0, 0.6667, 0.4932)"
-  4.918% scale=0.9273 translate="3.6335px 3.6335px" animation-timing-function="cubic-bezier(0.3333, 0.2827, 0.6667, 0.6429)"
-  9.836% scale=0.7971 translate="10.1468px 10.1468px" animation-timing-function="cubic-bezier(0.3333, 0.3403, 0.6667, 0.6889)"
-  14.754% scale=0.6604 translate="16.9822px 16.9822px" animation-timing-function="cubic-bezier(0.3333, 0.379, 0.6667, 0.7198)"
-  19.672% scale=0.5481 translate="22.5929px 22.5929px" animation-timing-function="cubic-bezier(0.3333, 0.4199, 0.6667, 0.7525)"
-  24.59% scale=0.4733 translate="26.3368px 26.3368px" animation-timing-function="cubic-bezier(0.3333, 0.4901, 0.6667, 0.8087)"
-  29.508% scale=0.4355 translate="28.2274px 28.2274px" animation-timing-function="cubic-bezier(0.3333, 0.8454, 0.6667, 1.0929)"
-  34.426% scale=0.4269 translate="28.6553px 28.6553px" animation-timing-function="cubic-bezier(0.3333, 0.0784, 0.6667, 0.4794)"
-  39.344% scale=0.437 translate="28.1484px 28.1484px" animation-timing-function="cubic-bezier(0.3333, 0.2798, 0.6667, 0.6405)"
-  44.262% scale=0.4559 translate="27.2051px 27.2051px" animation-timing-function="cubic-bezier(0.3333, 0.3388, 0.6667, 0.6877)"
-  49.18% scale=0.4759 translate="26.204px 26.204px" animation-timing-function="cubic-bezier(0.3333, 0.3777, 0.6667, 0.7188)"
-  54.098% scale=0.4925 translate="25.3762px 25.3762px" animation-timing-function="cubic-bezier(0.3333, 0.4182, 0.6667, 0.7512)"
-  59.016% scale=0.5036 translate="24.8194px 24.8194px" animation-timing-function="cubic-bezier(0.3333, 0.4862, 0.6667, 0.8056)"
-  63.934% scale=0.5093 translate="24.5345px 24.5345px" animation-timing-function="cubic-bezier(0.3333, 0.8051, 0.6667, 1.0606)"
-  68.852% scale=0.5107 translate="24.4657px 24.4657px" animation-timing-function="cubic-bezier(0.3333, 0.0591, 0.6667, 0.464)"
-  73.77% scale=0.5093 translate="24.5362px 24.5362px" animation-timing-function="cubic-bezier(0.3333, 0.2767, 0.6667, 0.638)"
-  78.689% scale=0.5065 translate="24.6727px 24.6727px" animation-timing-function="cubic-bezier(0.3333, 0.3372, 0.6667, 0.6864)"
-  83.607% scale=0.5036 translate="24.8193px 24.8193px" animation-timing-function="cubic-bezier(0.3333, 0.3764, 0.6667, 0.7177)"
-  88.525% scale=0.5012 translate="24.9414px 24.9414px" animation-timing-function="cubic-bezier(0.3333, 0.4165, 0.6667, 0.7498)"
-  93.443% scale=0.4995 translate="25.0242px 25.0242px" animation-timing-function="cubic-bezier(0.3333, 0.4826, 0.6667, 1.6623)"
-  98.361% scale=0.4987 translate="25.0671px 25.0671px" animation-timing-function="cubic-bezier(0.3333, 0.1412, 0.6667, 1)"
-  100% scale=0.5 translate="25px 25px"
-fn irFinalCornerBRMs(): number = 1017
-
-keyframes irRadiusCornerT
+keyframes irRadiusCornerBar
   from translate="0px 50px"
   to translate="0px 25px"
 
-keyframes irRadiusCornerB
-  from translate="0px -50px"
-  to translate="0px -25px"
-
-keyframes irRadiusCornerL
-  from translate="50px 0px"
-  to translate="25px 0px"
-
-keyframes irRadiusCornerR
-  from translate="-50px 0px"
-  to translate="-25px 0px"
-
-keyframes irRadiusCornerTL
+keyframes irRadiusCornerDisc
   from scale=1 translate="0px 0px"
   to scale=0.5 translate="-25px -25px"
-
-keyframes irRadiusCornerTR
-  from scale=1 translate="0px 0px"
-  to scale=0.5 translate="25px -25px"
-
-keyframes irRadiusCornerBL
-  from scale=1 translate="0px 0px"
-  to scale=0.5 translate="-25px 25px"
-
-keyframes irRadiusCornerBR
-  from scale=1 translate="0px 0px"
-  to scale=0.5 translate="25px 25px"
 
 // irFinalScale: 1033 ms
 keyframes irFinalScale
