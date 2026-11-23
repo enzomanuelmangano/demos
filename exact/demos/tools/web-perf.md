@@ -327,10 +327,13 @@ display's pace as a person's browser does; a "presented" gap over a period with 
 Still open:
 
 - The GPU module's embedded images: done (third session, below).
-- **sculptures-in-words' 2 MB/frame**: the instances buffer is already built once per size; the per-frame bytes are
-  draw2d's immediate-mode geometry for the column of text (`draw_glyphs_subpixel` per visible line, every frame
-  while the column scrolls). A fix is caching the column as a texture per page (shared Rust, both platforms). At vsync
-  the demo runs at 60 fps on desktop; left for after the images.
+- sculptures-in-words' 2 MB/frame: done. Off Apple the column at rest is drawn by the letters' quads (the instances
+  are built once per size; the scroll is a uniform, rounded to device pixels as the text's shift is), not by draw2d's
+  per-frame glyph outlines: touch scroll for 4.3 s at 390 x 844 @3, writeBuffer 594 MB (2.3 MB per submit) -> 0.45 MB
+  (1.7 KB, the uniforms). The quads put CoreText's column on its pixels within one level on the Mac (new test
+  `the_quads_draw_the_column_at_any_scroll`); on the web the letters now sit on whole pixels and quarter-pixel phases,
+  as CoreText places them on the iPhone (the outline column put each line at its fractional y: half a pixel apart
+  from the iPhone's). The iPhone keeps CoreText's column (the switch is `cfg(not(target_vendor = "apple"))`).
 - scroll-progress commits `offset` per scroll event (its GPU meter reads it).
 - Per-frame uploads in notion-qrcode, mnist, drag-to-sort, fourier-visualizer, gl-transitions, github-contributions
   (uncapped numbers; recheck at vsync before touching them).
