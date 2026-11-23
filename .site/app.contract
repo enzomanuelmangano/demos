@@ -255,11 +255,6 @@ component App
                 head title=`${titleCase(e.params.series)} | Reactiive` description=`Articles in the ${titleCase(e.params.series)} series on React Native animations.`
                   image="/og/articles.png" canonical=`/series/${e.params.series}`
                 ArticleList(cards=cards)
-              else if e.name == "article"
-                head title=`${article.title} | Reactiive` description=article.description image=`/content-assets/articles/${e.params.post}/images/header.webp`
-                  canonical=`/articles/${e.params.post}`
-                ArticlePage(page=article, article=true, copied=copied, copy=copyCode, near=near, seen=embedSeen)
-                  Newsletter(showTitle=true, status=newsletterStatus, subscribe=subscribe)
               else if e.name == "profile"
                 head title="Profile | Reactiive" robots="noindex, nofollow" canonical="/profile"
                 Container()
@@ -268,10 +263,18 @@ component App
               else if e.name == "docs"
                 head title="Reactiive" description="Discover the beauty of React Native and how to build stunning animations with Reanimated and Skia"
                   image="/og/main.png" canonical="/"
-              else if e.name == "docPage"
-                head title=`${docTitle(e.params.post)} | Reactiive` description="Discover the beauty of React Native and how to build stunning animations with Reanimated and Skia"
-                  image="/og/main.png" canonical=`/docs/${e.params.post}`
-                ArticlePage(page=doc, article=false, copied=copied, copy=copyCode, near=near, seen=embedSeen)
+              else if e.name == "article" or e.name == "docPage"
+                // One ArticlePage for both routes: the plan holds a component's tree once per call site, and the
+                // article demos' trees are large (docs/progress-content.md).
+                if e.name == "article"
+                  head title=`${article.title} | Reactiive` description=article.description image=`/content-assets/articles/${e.params.post}/images/header.webp`
+                    canonical=`/articles/${e.params.post}`
+                else
+                  head title=`${docTitle(e.params.post)} | Reactiive` description="Discover the beauty of React Native and how to build stunning animations with Reanimated and Skia"
+                    image="/og/main.png" canonical=`/docs/${e.params.post}`
+                ArticlePage(page=(e.name == "article" ? article : doc), article=(e.name == "article"), copied=copied, copy=copyCode, near=near, seen=embedSeen)
+                  if e.name == "article"
+                    Newsletter(showTitle=true, status=newsletterStatus, subscribe=subscribe)
               else
                 head title="Page not found | Reactiive" status=404 robots="noindex"
                   description="Discover the beauty of React Native and how to build stunning animations with Reanimated and Skia"
