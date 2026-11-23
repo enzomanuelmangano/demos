@@ -422,3 +422,12 @@ How to rerun: `bun exact.mjs web-build --out /tmp/perf-dist`, `bun tools/web-per
 `bun tools/web-perf/trace.ts http://127.0.0.1:5391 --light`, `bun tools/web-perf/load.ts http://127.0.0.1:5391/ prod
 --net 4g --cpu 4 --mobile`, `bun tools/web-perf/runtime.ts http://127.0.0.1:5391 prod --out /tmp/rt.jsonl` and
 `bun tools/web-perf/report.ts runtime /tmp/rt.jsonl`.
+
+## Per-demo pass, third session (2026-11-23: stacked-list to split-button)
+
+Every demo of the pass measured with `VSYNC=1` (display pace) in the per-demo driver, desktop 1440 x 900 framed and
+390 x 844 touch, cold profile, no screenshots inside a timed run: 31 demos, every interaction run at 60 fps with p95
+16.7-16.8 ms. Six runs had one late frame (33-266 ms: action-tray, fourier-visualizer, stacked-bottom-sheet,
+fibonacci-shader, verification-code, gl-transitions); each was rerun twice with the same steps and none recurred:
+first-use pipeline or font work in a cold profile, not the demo. Two drivers in parallel print in finish order, not
+launch order: label runs or run them one at a time.
