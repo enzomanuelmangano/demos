@@ -1,3 +1,4 @@
+/* NB: the theme (app.forma) is not CSS custom properties at run time: write literal colours here, never var(--color-…). */
 /* The site's page stylesheet, added by a head script (tools/head.ts writes it into app.json's host.web.head; the head
    takes no style tag). What Contract does not express is here, written as the reference wrote it (src/app/globals.css),
    and hooked to the page by the app's declared data-* words (app.json "data"): docs/decisions.md D7, D11. */
@@ -14,6 +15,11 @@
    neither reflows the page nor makes a new largest paint. */
 @font-face{font-family:'Inter Fallback';src:local(Arial);ascent-override:89.79%;descent-override:22.36%;line-gap-override:0%;size-adjust:107.89%}
 @font-face{font-family:'Source Code Pro Fallback';src:local(Arial);ascent-override:74.83%;descent-override:20.76%;line-gap-override:0%;size-adjust:131.49%}
+/* The scrollbar's track is always there (globals.css: html overflow-y scroll), so a page shorter than the window and
+   a longer one lay out at the same width: navigating never moves the header or the content sideways; the !important
+   zeros counter any scroll lock that pads the root. */
+html{overflow-y:scroll;padding-right:0 !important;margin-right:0 !important}
+body{padding-right:0 !important;margin-right:0 !important}
 body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}
 ::selection{background:#262935db;color:#ffffffdb}
 
@@ -64,7 +70,7 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 [data-motion~=d-row]{min-height:calc(100vh - 80px);flex-wrap:nowrap !important;align-items:center !important}
 [data-motion~=d-hero]{width:auto !important;flex:1 1 0 !important;position:relative;z-index:1;padding-right:48px;box-sizing:border-box}
 [data-motion~=d-title]{font-size:clamp(72px,6.25vw,96px) !important;font-weight:600 !important;letter-spacing:-.035em !important;line-height:1.05 !important;margin-top:0 !important;margin-bottom:20px !important}
-[data-motion~=d-sub]{background-image:none !important;color:var(--color-text-secondary) !important;font-size:22px !important;line-height:1.45 !important;letter-spacing:-.01em !important}
+[data-motion~=d-sub]{background-image:none !important;color:oklch(81.8% 0.0042 286) !important;font-size:22px !important;line-height:1.45 !important;letter-spacing:-.01em !important}
 [data-motion~=d-pill]{margin-top:32px !important}
 [data-motion~=sim-col]{width:auto !important;flex:1 1 0 !important;height:var(--ph);margin-top:0 !important;display:flex;align-items:center;justify-content:center;animation:device-in 700ms cubic-bezier(.16,1,.3,1) backwards}
 [data-motion~=sim-wrap]{overflow:visible !important;mask-image:none !important;padding:0 !important;margin:0 !important;flex-shrink:0}
@@ -101,7 +107,19 @@ html #exact-root input:not([data-native]):focus-visible{outline:none}
 @media (hover:hover){[data-motion~=qr-card]:hover{scale:1.05;box-shadow:0 24px 56px -12px rgb(0 0 0 / .7)}}
 [data-motion~=qr-card]:active{scale:.95}
 /* A link run inside a paragraph (its hover cannot be a Contract look): hover:text-text-primary. */
-@media (hover:hover){[data-motion~=hover-primary]:hover{color:var(--color-text-primary) !important}}
+@media (hover:hover){[data-motion~=hover-primary]:hover{color:oklch(92% 0.004 286) !important}}
+/* /course (components/landing/tabs/learn): the header rises in (framer: y 20, 400 ms); the link's transition-all
+   duration-200; the testimonials in balanced columns (columns-1 md:columns-2 lg:columns-3 gap-4), each card darker
+   under the pointer (group-hover:bg-surface-code, transition-colors 150 ms snappy). */
+@keyframes course-in{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+[data-motion~=course-in]{animation:course-in 400ms cubic-bezier(.25,.46,.45,.94) backwards}
+[data-motion~=course-cta]{transition:all 200ms cubic-bezier(.4,0,.2,1) !important}
+[data-motion~=masonry]{columns:1;column-gap:16px;column-fill:balance}
+@media (min-width:768px){[data-motion~=masonry]{columns:2}}
+@media (min-width:1024px){[data-motion~=masonry]{columns:3}}
+[data-motion~=masonry]>*{display:inline-block !important;width:100%;break-inside:avoid-column}
+[data-motion~=card-surface]{transition:background-color 150ms var(--ease-snappy),color 150ms var(--ease-snappy),border-color 150ms var(--ease-snappy),outline-color 150ms var(--ease-snappy),text-decoration-color 150ms var(--ease-snappy),fill 150ms var(--ease-snappy),stroke 150ms var(--ease-snappy)}
+@media (hover:hover){[data-motion~=card-group]:hover [data-motion~=card-surface]{background-color:oklch(18.5% 0.0058 286) !important}}
 /* Footer links: underline-offset-2. */
 [data-motion~=footer-link]{text-underline-offset:2px}
-@media (prefers-reduced-motion:reduce){[data-motion~=title],[data-motion~=blur-in],[data-motion~=card-in],[data-motion~=qr],[data-motion~=pop-in],[data-motion~=fade-in]{animation:none}}
+@media (prefers-reduced-motion:reduce){[data-motion~=course-in],[data-motion~=title],[data-motion~=blur-in],[data-motion~=card-in],[data-motion~=qr],[data-motion~=pop-in],[data-motion~=fade-in]{animation:none}}
