@@ -1,6 +1,8 @@
 // The frame every interactive article demo sits in, and its round control buttons: the reference's
 // components/interactive (InteractiveBox, InteractiveButtons, CustomButton), shared by the gesture/UI articles.
-// Light theme (the only one these articles use): a 1 px #242424 border, radius 10, 16:9, 16 px below.
+// Light theme (the only one these articles use): a 1 px #242424 border, radius 10, 16:9, 16 px below. It clips with
+// `overflow: clip`, not `hidden`: Exact observes `intersect` against the nearest auto/scroll/hidden ancestor, so a
+// hidden frame would read its demos as always on screen and the off-screen pause would never happen.
 
 // The light buttons' look: #b8b8b8, on hover #e5e7eb at 0.95 with a 1 px gray-800 ring and shadow-sm, every
 // property over 300 ms (the reference's `transition: all 300ms` on onMouseEnter/onMouseLeave).
@@ -17,7 +19,7 @@ component DemoFrame
   slot
   view
     row width="100%" aspect-ratio="16 / 9" margin-bottom=16 justify-content="center" align-items="center"
-      border-radius=10 overflow="hidden" border="1px solid #242424" box-sizing="border-box"
+      border-radius=10 overflow="clip" border="1px solid #242424" box-sizing="border-box"
       column position="relative" flex=1 min-width=0 min-height=0 height="100%" cursor="pointer"
         children
 
