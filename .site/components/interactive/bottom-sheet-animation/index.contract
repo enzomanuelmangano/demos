@@ -83,7 +83,12 @@ component Sheet
   // the stage. Ids would name the first demo of a page, not this one.
   state stageHeight = 403
   state pressTop = 0
+  state onSheet = false
   state grabY = 0
+  // Held under a press: the sheet stops where it is drawn and waits for the drag. The reference reads its value at
+  // the press too, but lets the spring run until the first move and then jumps back to that value plus the move;
+  // the drag lands at the same places without the jump. A press that never drags settles on release, as there.
+  state held = false
   action measured(cw: number, ch: number)
     w = cw
     springing = false
@@ -96,8 +101,19 @@ component Sheet
     stageHeight = ch
   action sheetDown(e: PointerEvent)
     pressTop = e.clientY - e.offsetY
+    onSheet = kind != "basic"
   action stageDown(e: PointerEvent)
-    grabY = pressTop - (e.clientY - e.offsetY) - (stageHeight - 400) / 2
+    let g = pressTop - (e.clientY - e.offsetY) - (stageHeight - 400) / 2
+    grabY = g
+    if onSheet
+      onSheet = false
+      held = true
+      y = g
+      at = "free"
+  action sheetUp(e: PointerEvent)
+    if held and not dragging
+      held = false
+      settle(y > 200 ? bottom : top)
   action drag(dx: number, dy: number)
     if kind != "basic"
       let base = dragging ? from : grabY
@@ -110,6 +126,7 @@ component Sheet
   action release(vx: number, vy: number)
     if kind != "basic"
       dragging = false
+      held = false
       settle(y > 200 ? bottom : top)
   action toggle
     settle(active ? bottom : top)
@@ -127,16 +144,16 @@ component Sheet
             background-color="transparent" tabindex=-1
             view position="absolute" inset=0 background-color="rgba(255, 255, 255, 0.05)" opacity=(active ? 1 : 0)
               transition="opacity 200ms linear"
-      view testId="sheet" position="absolute" pointerdown=sheetDown left="50%" top="50%" margin-left=(w > 0 ? `${0 - sheetWidth(w) / 2}px` : "calc(min(60vw, 350px) / -2)")
+      view testId="sheet" position="absolute" pointerdown=sheetDown pointerup=sheetUp left="50%" top="50%" margin-left=(w > 0 ? `${0 - sheetWidth(w) / 2}px` : "calc(min(60vw, 350px) / -2)")
         margin-top=-200 width=(w > 0 ? `${sheetWidth(w)}px` : "min(60vw, 350px)") height=400 z-index=100
         translate=(w > 0 or at == "free" ? `0px ${shownY}px` : `0px ${sheetBottomCss()}`)
-        transition=(dragging or not springing ? "none" : `translate ${spring}`) -exact-translate-velocity="0 0"
+        transition=(dragging or held or not springing ? "none" : `translate ${spring}`) -exact-translate-velocity="0 0"
         pan=drag panrelease=release
         touch-action=(kind == "basic" ? "auto" : "none") user-select="none" cursor="grab"
         filter="drop-shadow(0px 2px 1.92px rgba(0, 0, 0, 0.25))"
         svg position="absolute" left=0 top=0 width="100%" height=400 aria-hidden=true
           rect x=0 y=0 width="100%" height=400 fill="white" rx=(w > 0 ? lerpClamp(shownY, top, bottom, 5, 25) : 25)
-            transition=(dragging or not springing ? "none" : `rx ${spring}`)
+            transition=(dragging or held or not springing ? "none" : `rx ${spring}`)
         column position="absolute" inset=0
           view width=75 height=4 background-color="grey" align-self="center" margin-top=15 margin-bottom=15
             border-radius=2 flex-shrink=0
