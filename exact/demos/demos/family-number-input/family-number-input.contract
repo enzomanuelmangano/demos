@@ -16,6 +16,8 @@ fn grouped(s: string): string = range(s.length).map(j => (j > 0 and (s.length - 
 // The hold's next step: 100 ms, then 15 % shorter each time, toward 50 ms (50 + 50 × 0.85ⁿ).
 fn repeatMs(n: number): number = match [100, 92.5, 86.13, 80.71, 76.1, 72.19, 68.86, 66.03, 63.62, 61.58, 59.84, 58.37].at(n) { case some(v) => v, case none => 50 }
 fn dropLast(s: string): string = s.length > 1 ? s.slice(0, s.length - 1) : "0"
+// The number after k backspaces.
+fn dropN(s: string, k: number): string = s == "0" or k <= 0 ? s : (k >= s.length ? "0" : s.slice(0, s.length - k))
 
 component FamilyNumberInput
   props
@@ -30,6 +32,15 @@ component FamilyNumberInput
   // The last haptic asked for, "<kind>:<n>": the surface plays each new one.
   state beats = 0
   state buzz = ""
+  // Web: the timer reports its tokens in env.timers instead of its message (empty on iOS), so a held
+  // backspace's deletions are counted there: the hold's k-th token fired means k + 1 deletions, the
+  // next token arms the next wait, and the release commits them.
+  derive webTicks = match env.timers.filter(t => holding and t >= holdToken).map(t => t - holdToken + 1).at(0) { case some(k) => k, case none => 0 }
+  derive webSteps = min(webTicks, input == "0" ? 0 : input.length)
+  derive shown = dropN(input, webSteps)
+  derive shownBuzz = webSteps > 0 ? `${shown == "0" ? "impact-medium" : "impact-light"}:${beats + webSteps}` : buzz
+  derive timerToken = holding and not (webSteps > 0 and shown == "0") ? holdToken + webSteps : 0
+  derive timerMs = webSteps > 0 ? repeatMs(webSteps - 1) : holdMs
   // pressto's global handler (a selection per press), here the surface's haptic.
   action pressablesOnPress
     beats = beats + 1
@@ -60,6 +71,12 @@ component FamilyNumberInput
       holdMs = 400
       holdToken = holdToken + 1
   action holdEnd(k: number)
+    if k == -2 and webSteps > 0
+      input = shown
+      repeats = webSteps
+      beats = beats + webSteps
+      buzz = shownBuzz
+      holdToken = holdToken + webSteps
     if k == -2
       holding = false
   // The timer fired: delete one, then arm the next step, unless released or at 0.
@@ -81,15 +98,15 @@ component FamilyNumberInput
       padding-bottom=env.safeBottom testId="family-number-input"
       // The surface fills the top half and centres the row in it.
       column flex=1 position="relative"
-        canvas surface=family_number(input, buzz) message=heard position="absolute" top=0 left=0 width=env.width
+        canvas surface=family_number(shown, shownBuzz) message=heard position="absolute" top=0 left=0 width=env.width
           height=((env.height - env.safeTop - env.safeBottom) / 2) aria-hidden=true
         // The number for VoiceOver and tests, not drawn.
-        text grouped(input) testId="number" position="absolute" top=0 left=0 opacity=0
+        text grouped(shown) testId="number" position="absolute" top=0 left=0 opacity=0
           pointer-events="none"
         // Fades the bottom into black.
         view position="absolute" left=0 right=0 bottom=0 height="38%" pointer-events="none"
           background-image="linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, #000000 33.333%, #000000 66.667%, #000000 100%)"
-      canvas surface=timer(holding ? holdToken : 0, holdMs) message=tick width=1 height=1 position="absolute"
+      canvas surface=timer(timerToken, timerMs) message=tick width=1 height=1 position="absolute"
         pointer-events="none" aria-hidden=true
       row flex=1 flex-wrap="wrap" align-items="center" align-content="flex-start"
         for k in keys() key=k
