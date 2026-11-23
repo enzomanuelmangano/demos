@@ -275,3 +275,19 @@ document.addEventListener('click', function (e) {
   addEventListener('pointerup', end, true);
   addEventListener('pointercancel', end, true);
 })();
+/* The 404 page adopts its document. Exact renders afresh a document made for another path (the checkpoint's location,
+   /404.html, is not the address), so a press made before its runtime started was replayed on nodes no longer there
+   (the menu or a link of the 404, cold: a dead tap). The not-found page draws the same at every path and reads nothing
+   of it, so its checkpoint is moved to the address before the runtime reads it (a mismatch still falls back to a fresh
+   render, Exact's own check). */
+(function () {
+  function fix() {
+    var c = document.querySelector('script[type="application/vnd.exact.checkpoint"]');
+    if (!c) return;
+    try {
+      var cp = JSON.parse(c.textContent);
+      if (cp.location == '/404.html' && location.pathname != '/404.html') { cp.location = location.pathname; c.textContent = JSON.stringify(cp); }
+    } catch (e) {}
+  }
+  if (document.readyState != 'loading') fix(); else document.addEventListener('DOMContentLoaded', fix, { once: true });
+})();
