@@ -61,16 +61,18 @@ component AudioPlayer
       playing = false
       big = false
     if m.startsWith("seek:")
-      seekN = seekN + 1
-      seek = `${seekN}:${m.slice(5)}`
+      let n = seekN + 1
+      seekN = n
+      seek = `${n}:${m.slice(5)}`
   action track(m: string)
     if m.startsWith("ready:")
       duration = m.slice(6)
     if m.startsWith("wave:")
       wave = m.slice(5)
     if m.startsWith("time:")
-      syncN = syncN + 1
-      sync = `${syncN}:${m.slice(5)}`
+      let n = syncN + 1
+      syncN = n
+      sync = `${n}:${m.slice(5)}`
     if m == "ended:" or m == "paused:"
       playing = false
       big = false
@@ -82,11 +84,13 @@ component AudioPlayer
   action coverFailed(message: string)
     coverReady = false
   action back
-    skipN = skipN + 1
-    skip = `${skipN}:-15`
+    let n = skipN + 1
+    skipN = n
+    skip = `${n}:-15`
   action ahead
-    skipN = skipN + 1
-    skip = `${skipN}:15`
+    let n = skipN + 1
+    skipN = n
+    skip = `${n}:15`
   derive top = env.safeTop + demoButtonRow() + 8
   derive bottom = audioFloatInset()
   derive slotWidth = env.width - 2 * audioFloatInset() - 2 * audioCardInset()
