@@ -2,7 +2,8 @@
 // rss.xml/route.ts, public/manifest.json), generated from the content index at build.
 import { loadArticles, RSS_URL, SITE_URL } from './site.ts';
 
-const cdata = (v: string) => `<![CDATA[${v}]]>`;
+// A "]]>" inside the text would end the section early: split it across two sections.
+const cdata = (v: string) => `<![CDATA[${v.replaceAll("]]>", "]]]]><![CDATA[>")}]]>`;
 const entry = (loc: string, extra: string) => `<url>\n<loc>${loc}</loc>\n${extra}</url>`;
 const freq = (f: string, p: number) => `<changefreq>${f}</changefreq>\n<priority>${p}</priority>\n`;
 

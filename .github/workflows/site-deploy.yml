@@ -26,6 +26,10 @@ on:
         description: 'Deploy to production (the reactiive.io alias). Off: a preview deployment (its own URL).'
         type: boolean
         default: false
+      skip_head_parity:
+        description: 'Skip the head comparison with the live site (emergency deploys, or the live site is down).'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -36,6 +40,8 @@ concurrency:
 
 jobs:
   deploy:
+    # Production only from main: a preview can come from any branch.
+    if: ${{ !inputs.production || github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
@@ -140,6 +146,7 @@ jobs:
         run: bun run build
 
       - name: Head parity with the live site (built pages only)
+        if: ${{ !inputs.skip_head_parity }}
         working-directory: .site
         run: bun tools/parity/head-diff.ts --ours dist
 
@@ -155,7 +162,7 @@ jobs:
         run: |
           flags="--prebuilt --token=$VERCEL_TOKEN"
           if [ "${{ inputs.production }}" = "true" ]; then flags="$flags --prod"; fi
-          url=$(bunx vercel@latest deploy $flags)
+          url=$(bunx vercel@66.6.0 deploy $flags)
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Deployed: $url" >> "$GITHUB_STEP_SUMMARY"
 
