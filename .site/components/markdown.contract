@@ -3,7 +3,7 @@
 // resolved at build (Block.mt / Block.mb), so this column is a plain flex column, as the reference's .mdx-content.
 // What Contract cannot say (a link's growing underline, the copy button shown on hover, the list's dot) is
 // web/content.css, hooked by `data-motion` words (docs/decisions.md D11).
-use md from "./responsive.contract"
+use md, from from "./responsive.contract"
 
 shape Run
   text: string
@@ -63,6 +63,8 @@ style Mono
 
 // A paragraph's runs (mdx.css): links in the link colour with a 500 ms colour change and a growing underline
 // (content.css `mdx-link`), a brand link keeping its element's look, strong in the heading colour, inline code.
+// A plain run inherits its block's weight (`weight`: the block's, for a strong run's); each look is a literal per
+// branch, so a run is a class, not an inline style.
 component Runs
   props
     runs: Run[]
@@ -74,11 +76,20 @@ component Runs
       else if r.code
         text r.text class=Mono font-size="0.875em" font-weight=500 color="#e5c07b" background-color="rgb(255 255 255 / 0.06)" padding="3px 7px" border-radius=6 box-shadow="0 0 0 1px var(--color-hairline)" white-space="pre-wrap"
       else if r.href != "" and not r.brand
-        text r.text href=r.href data-motion="mdx-link" color=(r.strong ? "var(--color-text-heading)" : "var(--color-text-link)") text-decoration-line="none" font-weight=(r.strong ? 600 : weight) font-style=(r.em ? "italic" : "normal")
+        if r.strong
+          text r.text href=r.href data-motion="mdx-link" color="var(--color-text-heading)" text-decoration-line="none" font-weight=600 font-style=(r.em ? "italic" : "normal")
+        else if r.em
+          text r.text href=r.href data-motion="mdx-link" color="var(--color-text-link)" text-decoration-line="none" font-style="italic"
+        else
+          text r.text href=r.href data-motion="mdx-link" color="var(--color-text-link)" text-decoration-line="none"
       else if r.href != ""
         text r.text href=r.href color=(r.strong ? "var(--color-text-heading)" : "inherit") font-weight=(r.strong ? 600 : weight) font-style=(r.em ? "italic" : "normal")
+      else if r.strong
+        text r.text font-weight=600 color="var(--color-text-heading)" font-style=(r.em ? "italic" : "normal")
+      else if r.em
+        text r.text font-style="italic"
       else
-        text r.text font-weight=(r.strong ? 600 : weight) font-style=(r.em ? "italic" : "normal") color=(r.strong ? "var(--color-text-heading)" : "inherit")
+        text r.text
 
 // A code line's tokens (tools/gen-content.ts `highlight`): a palette letter and the text; the colours are the
 // reference's themePlus (palenight with its overrides) and the terminal theme. One literal colour per branch, so a
@@ -261,8 +272,8 @@ component Blocks
         Runs(runs=block.runs, weight=400)
     else if block.kind == "tweet"
       row justify-content="center" width="100%"
-        view width="100%" max-width=550 margin-bottom=block.mb overflow="hidden" intersect=seen(block.id) intersect-margin="50% 0px"
-          iframe (near.includes(block.id) ? `https://platform.twitter.com/embed/Tweet.html?id=${block.text}&theme=dark&hideThread=true` : "about:blank") title="X post" width="100%" height=600 border-width=0 display="block"
+        view width="100%" max-width=550 margin-top=block.mt margin-bottom=block.mb overflow="hidden" intersect=seen(block.id) intersect-margin="50% 0px"
+          iframe (near.includes(block.id) ? `https://platform.twitter.com/embed/Tweet.html?id=${block.text}&theme=dark&hideThread=true` : "about:blank") title="X post" width="100%" height=from(598, block.width, block.height) border-width=0 display="block"
     else if block.kind == "interactive"
       // Not yet ported (docs/progress-content.md): the reference's frame (components/interactive: 16:9, 10 px radius,
       // a 1 px #242424 border, 16 px under it), empty, so the page around it is laid out as live.

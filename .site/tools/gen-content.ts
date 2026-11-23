@@ -106,10 +106,7 @@ function highlight(raw: string, langIn: string, meta: string): { lang: string; t
       const key = (style?.color ?? '') + (style?.fontStyle === 'italic' ? '/i' : '');
       const letter = PALETTE[key];
       if (!letter) throw new Error(`code: the colour ${key} is not in the palette (tools/gen-content.ts PALETTE, components/markdown.contract Tok)`);
-      const last = runs[runs.length - 1];
-      if (last && (last[0] === letter || !text.trim())) last[1] += text;
-      else if (last && !last[1].trim()) { last[0] = letter; last[1] += text; }
-      else runs.push([letter, text]);
+      runs.push([letter, text]);
     }
     return (hasDiff ? marks[i] || '=' : ' ') + runs.map(([l, t]) => l + t).join(SEP);
   });
@@ -210,6 +207,9 @@ const repos: Record<string, any> = JSON.parse(readFileSync(join(SRC, 'github-rep
 const fmtCount = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k' : String(n));
 
 const INTERACTIVE_ARTICLES = new Set<string>();
+
+// The X posts' frame heights on live (iframe rect, tools/parity/shoot.ts), [550 px column, 342 px column].
+const TWEETS: Record<string, [number, number]> = { '1954286123406262280': [817, 625] };
 
 function slugger() {
   const seen = new Map<string, number>();
@@ -368,7 +368,12 @@ async function convert(page: Page, meta: any) {
           if (name === 'Embed') {
             const url = attr(n, 'url'), id = url.match(/\/status\/(\d+)/)?.[1];
             if (!/^https:\/\/(twitter\.com|x\.com)\/(.*)\/status\//.test(url) || !id) break; // the reference renders nothing
-            block({ kind: 'tweet', depth, href: url, text: id, mb: 80 });
+            // Live, X's widgets.js sizes the frame to the post (and gives it 10 px above and below); a frame of
+            // Tweet.html cannot tell its height across origins, so it is the live one, measured per post (TWEETS):
+            // `height` in a 550 px column (from a 598 px window), `width` at 342 px (a 390 px phone).
+            const size = TWEETS[id];
+            if (!size) throw new Error(`${where(n)}: the post ${id} has no measured height (TWEETS in tools/gen-content.ts)`);
+            block({ kind: 'tweet', depth, href: url, text: id, height: size[0], width: size[1], mt: 10, mb: 90 });
             break;
           }
           if (name === 'BlockMath') { const m = mathFile(plain(n), true); block({ kind: 'math', depth, src: m.src, width: m.width, height: m.height }); break; }
