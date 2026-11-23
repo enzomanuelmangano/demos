@@ -329,7 +329,7 @@ component PortedDemo
       if slug == "twodos-slide"
         TwodosSlide()
       if slug == "verification-code"
-        VerificationCode()
+        VerificationCode(env=env)
       if slug == "verification-code-face"
         VerificationCodeFace(env=env)
       if slug == "wheel-picker"

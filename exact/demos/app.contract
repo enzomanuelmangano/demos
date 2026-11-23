@@ -23,6 +23,7 @@ shape Host
   pointer: string
   safeAreaTop: number
   safeAreaBottom: number
+  keyboardHeight: number
 
 // Which host this is: the web has no native views, so it draws its own launcher (home/web-phone.contract).
 shape Page
@@ -154,7 +155,7 @@ component Demos
   resource time = exactTime() as shape Time
   resource page = exactPage() as shape Page
   resource timers = exactSurface("timer") as shape Timers
-  derive env = DemoEnv(width=host.width, height=host.height, safeTop=0, safeBottom=0, epoch=time.epochAtZero, utcOffset=time.utcOffset, seed=time.seed, reducedMotion=host.prefersReducedMotion, timers=timers.fired, tile=false, web=page.platform == "web")
+  derive env = DemoEnv(width=host.width, height=host.height, safeTop=0, safeBottom=0, epoch=time.epochAtZero, utcOffset=time.utcOffset, seed=time.seed, reducedMotion=host.prefersReducedMotion, timers=timers.fired, tile=false, web=page.platform == "web", keyboardHeight=(page.platform == "web" ? host.keyboardHeight : 0))
   // "Show Unstable" (the General tray): the work-in-progress demos are listed only with it on.
   state showUnstable = false persist
   resource feedback = feedbackNotes() when atlasShown as shape FeedbackNote[] else empty()

@@ -55,8 +55,11 @@ component VerificationCodeFace
   state glyphs: Glyph[] = []
   state nextKey = 0
   state shakes = 0
-  // The keyboard is up: the content lifts 118 pt, so the boxes stay visible.
+  // The keyboard is up: the content lifts 118 pt, so the boxes stay visible. On the web the lift is
+  // RN's, half the keys' cover (useReanimatedKeyboardAnimation's height / 2): a desktop has no keys
+  // to dodge, a phone browser's are its own height.
   state keyboard = false
+  derive lift = env.web ? env.keyboardHeight / 2 : (keyboard ? 118 : 0)
   action keyboardUp
     keyboard = true
   action keyboardDown
@@ -96,7 +99,7 @@ component VerificationCodeFace
   view
     column position="absolute" inset=0 background-color="#ffffff" align-items="center" justify-content="center"
       testId="verification-code-face"
-      column width="100%" translate=(keyboard ? "0px -118px" : "0px 0px")
+      column width="100%" translate=`0px -${lift}px`
         transition="translate 500ms cubic-bezier(0.19, 0.91, 0.38, 1)"
         // The face. Its canvas extends 12 pt past the square, to leave room for the tilt.
         column align-items="center" justify-content="center" margin-bottom=80
@@ -126,7 +129,7 @@ component VerificationCodeFace
       input id="code-field" value=field input=typed inputmode="numeric" autofocus=(not env.tile)
         autocomplete="one-time-code" focus=keyboardUp blur=keyboardDown
         aria-label="Verification code" testId="code-field" position="absolute" top=0 left=0 width=1 height=1
-        padding=0 color="transparent" caret-color="transparent" background-color="transparent" border="none"
+        padding=0 color="transparent" caret-color="transparent" background-color="transparent" border="none" outline="none"
 
 // Exit at the reset, as keyframes: a transition's delay does not hold on iOS, an animation's
 // does. Nodes that turn about x use transform-origin "left center", or iOS turns them flat.
