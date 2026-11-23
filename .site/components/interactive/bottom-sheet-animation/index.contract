@@ -1,0 +1,160 @@
+// bottom-sheet-animation's demos (reference: content/articles/bottom-sheet-animation/components/bottom-sheet.tsx and
+// constants.ts): a white sheet dragged over #111 between two stops that depend on the window's width, springing
+// (stiffness 120, damping 50, mass 0.3) to the nearer one on release, its top corners 25 px at the bottom stop and
+// 5 px at the top stop, interpolated on the way. Exact's spring is the analytic one Reanimated's withSpring
+// integrates; the live page's own integrator diverges at 60 Hz (the sheet leaves the stage on the first tap:
+// docs/progress-comp-gesture.md), so the reference here is the spring it asks for, as a 120 Hz screen shows it.
+//
+// Exports, as the article's MDX names them:
+//   InteractiveBox            the frame, its demo indented under it
+//   InitialSetup()            the empty stage
+//   BasicComponent()          the sheet at rest
+//   PanGesture()              the sheet dragged
+//   BorderRadius()            the same (the reference's PanGesture already interpolates the radius)
+//   FinalDemo(hasBackdrop)    the round button that opens and closes it, with or without the tappable backdrop
+use DemoFrame from "../gesture-kit/box.contract"
+
+// The window-width-dependent stops (constants.ts useSheetPosition): 240 → 300 px and 100 → 20 px from 375 to 1024.
+fn sheetBottom(w: number): number = min(max(round(240 + (w - 375) / 649 * 60), 240), 300)
+fn sheetTop(w: number): number = min(max(round(100 + (w - 375) / 649 * (0 - 80)), 20), 100)
+// `interpolate(v, [a, b], [p, q])`, clamped at both ends (the reference's interpolate).
+fn lerpClamp(v: number, a: number, b: number, p: number, q: number): number = v <= a ? p : v >= b ? q : p + (q - p) * (v - a) / (b - a)
+fn sheetWidth(w: number): number = min(w * 0.6, 350)
+// The bottom stop as CSS of the viewport, before the window's width is known.
+fn sheetBottomCss(): string = "clamp(240px, calc(240px + (100vw - 375px) * 60 / 649), 300px)"
+
+component InteractiveBox
+  slot
+  view
+    DemoFrame()
+      children
+
+component InitialSetup
+  view
+    view flex=1 position="relative" background-color="#111" overflow="hidden"
+
+component BasicComponent
+  view
+    Sheet(kind="basic", hasBackdrop=false)
+
+component PanGesture
+  view
+    Sheet(kind="pan", hasBackdrop=false)
+
+component BorderRadius
+  view
+    Sheet(kind="pan", hasBackdrop=false)
+
+component FinalDemo
+  props
+    hasBackdrop: bool
+  view
+    Sheet(kind="final", hasBackdrop=hasBackdrop)
+
+// kind: "basic" (still), "pan" (draggable), "final" (draggable, with the round button and, if asked, the backdrop).
+// The sheet follows the pointer with no transition and springs on release from rest (the reference's `spring()`
+// starts at velocity 0); its corner radius is an SVG rect's `rx` on the same spring, so it stays the reference's
+// `interpolate(y, [top, bottom], [5, 25])` through the motion. A drag that starts mid-spring starts where the sheet
+// is drawn (the press's own geometry).
+component Sheet
+  props
+    kind: string
+    hasBackdrop: bool
+  // The window's width (the reference's useWindowDimensions): a 100vw box's resize. 0 until laid out, when the
+  // stops and the width are CSS of the viewport (the same formulas), so the page rendered ahead fits any window.
+  state w = 0
+  // Where the sheet rests: "bottom" or "top" (following the stops as the window resizes), else "free" at `y`.
+  state at = "bottom"
+  state y = 0
+  state dragging = false
+  state from = 0
+  state dragged = 0
+  // FinalDemo: whether the sheet was last sent up (the reference's isActive).
+  state active = false
+  // Whether a release or a press set the sheet springing: a change of the stops (the window's width arriving, a
+  // resize) moves it at once instead, as the reference's `translateY.set` does.
+  state springing = false
+  derive bottom = sheetBottom(w)
+  derive top = sheetTop(w)
+  derive shownY = at == "bottom" ? bottom : at == "top" ? top : y
+  derive spring = "-exact-spring(120, 50, 0.3)"
+  // Where the sheet is drawn when a press lands on it (mid-spring included): its top in the viewport from the
+  // press's own event (clientY less the offset into the sheet), then the stage's from the same press as it reaches
+  // the stage. Ids would name the first demo of a page, not this one.
+  state stageHeight = 403
+  state pressTop = 0
+  state onSheet = false
+  state grabY = 0
+  // Held under a press: the sheet stops where it is drawn and waits for the drag. The reference reads its value at
+  // the press too, but lets the spring run until the first move and then jumps back to that value plus the move;
+  // the drag lands at the same places without the jump. A press that never drags settles on release, as there.
+  state held = false
+  action measured(cw: number, ch: number)
+    w = cw
+    springing = false
+  action settle(dest: number)
+    springing = true
+    y = dest
+    at = dest == bottom ? "bottom" : "top"
+    active = dest != bottom
+  action staged(cw: number, ch: number)
+    stageHeight = ch
+  action sheetDown(e: PointerEvent)
+    pressTop = e.clientY - e.offsetY
+    onSheet = kind != "basic"
+  action stageDown(e: PointerEvent)
+    let g = pressTop - (e.clientY - e.offsetY) - (stageHeight - 400) / 2
+    grabY = g
+    if onSheet
+      onSheet = false
+      held = true
+      y = g
+      at = "free"
+  action sheetUp(e: PointerEvent)
+    if held and not dragging
+      held = false
+      settle(y > 200 ? bottom : top)
+  action drag(dx: number, dy: number)
+    if kind != "basic"
+      let base = dragging ? from : grabY
+      let sum = dragging ? dragged + dy : dy
+      dragging = true
+      from = base
+      dragged = sum
+      y = max(base + sum, top)
+      at = "free"
+  action release(vx: number, vy: number)
+    if kind != "basic"
+      dragging = false
+      held = false
+      settle(y > 200 ? bottom : top)
+  action toggle
+    settle(active ? bottom : top)
+  action close
+    settle(bottom)
+  view
+    view flex=1 position="relative" resize=staged pointerdown=stageDown background-color="#111" overflow="hidden" display="flex" align-items="center"
+      justify-content="center"
+      view position="absolute" left=0 top=0 width="100vw" height=0 resize=measured aria-hidden=true
+      if kind == "final"
+        button press=toggle aria-label="Open or close the sheet" width=50 height=50 border-radius=25 border="none"
+          padding=0 background-color="white" opacity=0.6 z-index=50 cursor="pointer"
+        if hasBackdrop
+          button press=close aria-label="Close the sheet" position="absolute" inset=0 border="none" padding=0
+            background-color="transparent" tabindex=-1
+            view position="absolute" inset=0 background-color="rgba(255, 255, 255, 0.05)" opacity=(active ? 1 : 0)
+              transition="opacity 200ms linear"
+      view testId="sheet" position="absolute" pointerdown=sheetDown pointerup=sheetUp left="50%" top="50%" margin-left=(w > 0 ? `${0 - sheetWidth(w) / 2}px` : "calc(min(60vw, 350px) / -2)")
+        margin-top=-200 width=(w > 0 ? `${sheetWidth(w)}px` : "min(60vw, 350px)") height=400 z-index=100
+        translate=(w > 0 or at == "free" ? `0px ${shownY}px` : `0px ${sheetBottomCss()}`)
+        transition=(dragging or held or not springing ? "none" : `translate ${spring}`) -exact-translate-velocity="0 0"
+        pan=drag panrelease=release
+        touch-action=(kind == "basic" ? "auto" : "none") user-select="none" cursor="grab"
+        filter="drop-shadow(0px 2px 1.92px rgba(0, 0, 0, 0.25))"
+        svg position="absolute" left=0 top=0 width="100%" height=400 aria-hidden=true
+          rect x=0 y=0 width="100%" height=400 fill="white" rx=(w > 0 ? lerpClamp(shownY, top, bottom, 5, 25) : 25)
+            transition=(dragging or held or not springing ? "none" : `rx ${spring}`)
+        column position="absolute" inset=0
+          view width=75 height=4 background-color="grey" align-self="center" margin-top=15 margin-bottom=15
+            border-radius=2 flex-shrink=0
+          view flex=1 background-color="orange"

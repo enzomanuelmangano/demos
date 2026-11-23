@@ -209,3 +209,31 @@ each with a 308 (permanent, method kept; the same kind as D5's demo posts), with
 
 One list, `NOT_PORTED_REDIRECTS` in `tools/seo/site.ts`: the converter skips its articles (`SKIPPED`), the SEO
 postbuild leaves them out of the sitemap and the feed, compose writes the redirects.
+
+## D14. Interactive demos: motion as transitions, keyframes only for endless loops (gesture/UI group, 2026-11-23)
+
+Exact emits CSS globally. Every `keyframes` in the plan becomes an `@keyframes` rule in every page's head and in
+`style.css`, whichever route uses it (`host/web-js/src/emit.rs`, "The plan's `@keyframes`"). Each rule that animates
+`scale` or `translate` also gets an `-exact-press` copy, which is what a pressable node plays. The view plan is a
+single `app.js`. A demo therefore costs every page of the site, not just its article.
+
+Rules for `components/interactive/`:
+
+- Motion that restarts on a press is a transition on a fresh node keyed per press. The node's first layout
+  (`resize`) sets its end values. Spring transitions (`-exact-spring`) and timed ones are written inline on the
+  node, so they add no global rule.
+- `keyframes` are used only for endless loops (the skeleton shimmer, the CSS square) and exit animations, with two
+  stops each. No baked stop lists.
+- Galleries for development are not routes. `components/interactive/gesture-kit/.tools/gallery.ts` adds the route
+  to a temporary copy of `app.contract` and builds it into `dist/gallery`.
+
+Measured on the home page, the gallery build (all 22 gesture/UI demos in the plan) against none:
+
+| | none | before (baked keyframes) | after |
+|---|---|---|---|
+| HTML (raw / gzip) | 90.2 / 18.9 KB | 128.5 / 22.7 KB | 93.4 / 19.3 KB |
+| `style.css` | 135.0 / 18.5 KB | 188.1 / 23.4 KB | 152.9 / 20.2 KB |
+| `app.js` | 366.8 / 97.1 KB | 398.6 / 103.9 KB | 403.1 / 104.9 KB |
+
+The remaining cost is the components' plan and classes, which every page loads. Removing it needs per-route plans
+and keyframes from Exact (feedback noted).

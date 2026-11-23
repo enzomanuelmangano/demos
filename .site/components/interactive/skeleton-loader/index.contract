@@ -1,0 +1,112 @@
+// skeleton-loader's demos (reference: content/articles/skeleton-loader/components/interactive.tsx): a contact row
+// (320×90, a 50 px avatar, name and email) and its skeleton (moti's dark Skeleton: #1b1b1b → #3a3a3a → #1b1b1b
+// sliding left to right, 1 s linear, endless). The shimmer is the reference's `background-position` 200% → -200%
+// over a 200%-wide gradient, written as what the compositor moves: a strip of three gradient tiles (each twice the
+// bone's width) sliding from -4 to 0 bone widths inside the bone, which repeats it at the same phase. Play shows the
+// skeleton for 2 s, then the contact fading in (1 s ease-out, its texts 1.5 s): a fresh row per play whose layers
+// switch on their own animation delays.
+//
+// Exports, as the article's MDX names them:
+//   InteractiveSkeletonDemo()     the contact, Play to load it again
+//   InteractiveContactItem()      the contact, fading in
+//   InteractiveJustSkeleton()     the skeleton alone
+use DemoFrame, BoxButton from "../gesture-kit/box.contract"
+
+keyframes skSlide50
+  from translate="-200px 0px"
+  to translate="0px 0px"
+keyframes skSlide180
+  from translate="-720px 0px"
+  to translate="0px 0px"
+keyframes skSlide160
+  from translate="-640px 0px"
+  to translate="0px 0px"
+keyframes skFadeIn
+  from opacity=0
+  to opacity=1
+// shown until the contact arrives, then gone
+keyframes skUntilLoaded
+  0% opacity=1
+  99.9% opacity=1
+  100% opacity=0
+
+
+component InteractiveSkeletonDemo
+  view
+    SkeletonDemo(mode="play")
+
+component InteractiveContactItem
+  view
+    SkeletonDemo(mode="contact")
+
+component InteractiveJustSkeleton
+  view
+    SkeletonDemo(mode="skeleton")
+
+// mode: play (contact, Play reloads), contact, skeleton.
+component SkeletonDemo
+  props
+    mode: string
+  state plays = 0
+  state seen = false
+  action play
+    plays = plays + 1
+  action visible(entry: IntersectionObserverEntry)
+    seen = entry.isIntersecting
+  view
+    DemoFrame()
+      view flex=1 display="flex" justify-content="center" align-items="center" intersect=visible
+        for p in [plays] key=p
+          view position="relative" width=320 height=90 flex-shrink=0
+            if mode == "skeleton" or plays > 0
+              view position="absolute" inset=0 animation=(plays > 0 ? "skUntilLoaded 2000ms linear both" : "none")
+                SkeletonRow(seen=seen, loading=(mode == "skeleton" or plays > 0))
+            if mode != "skeleton"
+              ContactRow(delay=(plays > 0 ? 2000 : 0))
+      if mode == "play"
+        BoxButton(kind="play", index=0, label="Play", press=play)
+
+// One bone: `width`×`height`, its radius, the gradient strip sliding inside it.
+component Bone
+  props
+    width: number
+    height: number
+    radius: number
+    run: bool
+  view
+    view width=width height=height border-radius=radius overflow="hidden" flex-shrink=0
+      row width=(width * 6) height=height animation=`skSlide${width} 1000ms linear infinite both ${run ? "running" : "paused"}`
+        translate=`${0 - width * 4}px 0px`
+        for t in [0, 1, 2] key=t
+          view width=(width * 2) height=height flex-shrink=0
+            background-image="linear-gradient(90deg, #1b1b1b 25%, #3a3a3a 50%, #1b1b1b 75%)"
+
+component SkeletonRow
+  props
+    seen: bool
+    loading: bool
+  view
+    row width=320 height=90 box-sizing="border-box" align-items="center" padding-left=20 padding-right=20
+      border="1px solid #ffffff37" background-color="#ffffff04" border-radius=12
+      Bone(width=50, height=50, radius=25, run=(seen and loading))
+      column margin-left=15
+        Bone(width=180, height=20, radius=8, run=(seen and loading))
+        view height=5
+        Bone(width=160, height=15, radius=8, run=(seen and loading))
+
+component ContactRow
+  props
+    delay: number
+  view
+    row position="absolute" inset=0 box-sizing="border-box" align-items="center" padding-left=20 padding-right=20
+      border="1px solid #ffffff37" background-color="#ffffff04" border-radius=12
+      animation=`skFadeIn 1000ms ease-out ${delay}ms both`
+      view width=50 height=50 border-radius=35 background-color="#005CB7" display="flex" justify-content="center"
+        align-items="center" flex-shrink=0
+        text "J" font-family="-apple-system, 'system-ui', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size=25 line-height="normal" color="white"
+      column margin-left=15
+        text "John Doe" font-family="-apple-system, 'system-ui', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size=18 line-height="normal" color="#ffffff"
+          animation=`skFadeIn 1500ms ease-out ${delay}ms both`
+        view height=5
+        text "john.doe@example.com" font-family="-apple-system, 'system-ui', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size=15 line-height="normal" color="#d4d4d4"
+          animation=`skFadeIn 1500ms ease-out ${delay}ms both`

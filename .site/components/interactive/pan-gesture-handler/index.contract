@@ -1,0 +1,63 @@
+// pan-gesture-handler's demo (reference: content/articles/pan-gesture-handler/components/pan-gesture/{base,
+// interactive}.tsx): a 100 px half-blue rounded square in a 400 px ring on white. It follows the pointer (pointer
+// and touch, its own `touch-action: none`); let go inside the ring's reach (centre within 250 px) it springs home
+// (withSpring's default, stiffness 100, damping 10, mass 1, from rest), outside it stays. Play springs it to a
+// random point in the ring. A drag that starts mid-spring starts where the square is drawn (`frame`).
+//
+// Exports, as the article's MDX names them:
+//   InteractivePanGesture()
+use DemoFrame, BoxButton from "../gesture-kit/box.contract"
+
+// A pseudo-random number in [0, 1) from a seed (the data module's clock is not the view's; `performanceNow()` at the
+// press seeds it).
+fn pgRandom(seed: number): number = sin(seed * 12.9898) * 43758.5453 - floor(sin(seed * 12.9898) * 43758.5453)
+
+component InteractivePanGesture
+  view
+    DemoFrame()
+      PanGestureDemo()
+      
+component PanGestureDemo
+  state x = 0
+  state y = 0
+  state dragging = false
+  state fromX = 0
+  state fromY = 0
+  state sumX = 0
+  state sumY = 0
+  action drag(dx: number, dy: number)
+    let f = frame("pg-square")
+    let c = frame("pg-ring")
+    let atX = f.unavailable ? x : f.x + f.width / 2 - (c.x + c.width / 2)
+    let atY = f.unavailable ? y : f.y + f.height / 2 - (c.y + c.height / 2)
+    let baseX = dragging ? fromX : atX
+    let baseY = dragging ? fromY : atY
+    let nextX = dragging ? sumX + dx : dx
+    let nextY = dragging ? sumY + dy : dy
+    dragging = true
+    fromX = baseX
+    fromY = baseY
+    sumX = nextX
+    sumY = nextY
+    x = baseX + nextX
+    y = baseY + nextY
+  action release(vx: number, vy: number)
+    dragging = false
+    if x * x + y * y < 250 * 250
+      x = 0
+      y = 0
+  action play
+    let s = performanceNow()
+    let angle = pgRandom(s) * 2 * 3.141592653589793
+    let distance = pgRandom(s + 1) * 150
+    x = cos(angle) * distance
+    y = sin(angle) * distance
+  view
+    view flex=1 min-width=0 min-height=0 display="flex" align-items="center" justify-content="center" background-color="#fff"
+      view id="pg-ring" display="flex" flex-shrink=0 width=400 height=400 box-sizing="border-box" align-items="center"
+        justify-content="center" border-radius=200 border="5px solid rgba(0, 0, 255, 0.5)"
+        view id="pg-square" width=100 height=100 flex-shrink=0 background-color="rgba(0, 0, 255, 0.5)" border-radius=20
+          cursor="grab" touch-action="none" user-select="none" translate=`${x}px ${y}px`
+          transition=(dragging ? "none" : "translate -exact-spring(100, 10, 1)") -exact-translate-velocity="0 0"
+          pan=drag panrelease=release
+    BoxButton(kind="play", index=0, label="Play", press=play)
