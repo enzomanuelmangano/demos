@@ -29,7 +29,6 @@ component MetaballSlider
     label: string
     progress: number
     shown: number
-    eased: bool
     change: action
   // The bar's laid-out width (min(50vw, 250px)), for turning a drag into progress.
   state width = 250
@@ -53,13 +52,19 @@ component MetaballSlider
       view position="relative" flex-shrink=0 width="min(50vw, 250px)" height=2 resize=fit border-radius=5 background-color="rgba(255, 255, 255, 0.2)"
         view position="absolute" top=0 bottom=0 left=0 right=0 overflow="hidden"
           view position="absolute" top=0 bottom=0 left=0 width="100%" background-color="white"
-            translate=`calc(${max(0, min(1, progress)) * 100}% - 100%) 0px` transition=(eased ? "translate 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)" : "none")
+            translate=`calc(${max(0, min(1, progress)) * 100}% - 100%) 0px`
         view position="absolute" left=0 top=-16.5 width=35 height=35 border-radius=17.5 background-color="white" cursor="grab"
           touch-action="none" user-select="none" translate=`calc(min(50vw, 250px) * ${progress} - 17.5px) 0px` scale=(dragging ? 1 : 0.8)
-          transition=(eased ? "translate 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955), scale 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)" : "scale 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)")
+          transition="scale 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)"
           pointerdown=down pointermove=move pointerup=up
 
 fn lerp(p: number, a: number, b: number): number = a + (b - a) * max(0, min(1, p))
+// How far the clock box has run, 0-1: up on odd Restarts, down on even ones.
+fn clockAt(restarts: number, h: number): number = min(1, max(0, restarts % 2 == 1 ? h / 300 : 1 - h / 300))
+fn easeInOutQuad(t: number): number = t < 0.5 ? 2 * t * t : 1 - (2 - 2 * t) * (2 - 2 * t) / 2
+
+// Restart's clock: a hidden box whose height eases 0 ↔ 300 px over 300 ms (linear), one way per Restart; its resize
+// event, once a frame, says how far the 300 ms are (a child here may own no task: the page renders it under a `for`).
 
 component Metaball
   props
@@ -75,8 +80,13 @@ component Metaball
   state blurP = 0.3
   state alphaP = 0.6
   state posP = 0.3
-  // Restart eases the pickers back (300 ms, easeInOutQuad, the reference's timing); a drag moves them at once.
+  // Restart eases the three values back (300 ms, easeInOutQuad, the reference's slider timing): the pickers, the
+  // labels, the blur and the matrix move together, every frame; a drag moves them at once.
   state easing = false
+  state restarts = 0
+  state fromBlur = 0.3
+  state fromAlpha = 0.6
+  state fromPos = 0.3
   action seen(entry: IntersectionObserverEntry)
     if entry.isIntersecting
       near = true
@@ -107,10 +117,18 @@ component Metaball
     easing = false
     posP = p
   action reset
+    fromBlur = max(0, min(1, blurP))
+    fromAlpha = max(0, min(1, alphaP))
+    fromPos = max(0, min(1, posP))
+    restarts = restarts + 1
     easing = true
-    blurP = 0.3
-    alphaP = 0.6
-    posP = 0.3
+  action tick(w: number, h: number)
+    if easing
+      blurP = fromBlur + (0.3 - fromBlur) * easeInOutQuad(clockAt(restarts, h))
+      alphaP = fromAlpha + (0.6 - fromAlpha) * easeInOutQuad(clockAt(restarts, h))
+      posP = fromPos + (0.3 - fromPos) * easeInOutQuad(clockAt(restarts, h))
+      if clockAt(restarts, h) >= 1
+        easing = false
   action idle
     easing = easing
   view
@@ -141,10 +159,13 @@ component Metaball
               text "Slooow down - Continue reading 👀" font-weight=500 line-height="19.5px"
               text "The Pan Gesture implementation is in the next demo 👇" line-height="18.2px"
         if type == "with-color-matrix"
+          view position="absolute" left=0 top=0 width=1 height=(restarts % 2 == 0 ? 0 : 300) transition="height 300ms linear"
+            visibility="hidden" pointer-events="none" aria-hidden=true resize=tick
+        if type == "with-color-matrix"
           column flex-shrink=0 width="100%" align-items="center" margin-bottom=50
-            MetaballSlider(label="blur", progress=blurP, shown=lerp(blurP, 0, 100), eased=easing, change=setBlur)
-            MetaballSlider(label="alpha", progress=alphaP, shown=lerp(alphaP, 1, 100), eased=easing, change=setAlpha)
-            MetaballSlider(label="pos", progress=posP, shown=lerp(posP, 0, 100), eased=easing, change=setPos)
+            MetaballSlider(label="blur", progress=blurP, shown=lerp(blurP, 0, 100), change=setBlur)
+            MetaballSlider(label="alpha", progress=alphaP, shown=lerp(alphaP, 1, 100), change=setAlpha)
+            MetaballSlider(label="pos", progress=posP, shown=lerp(posP, 0, 100), change=setPos)
 
 // The MDX's names (content/articles/metaball/components/index.tsx; CanvasKitJsAlert is src/components/ui/alert.tsx's).
 component BasicMetaballWithSkia
