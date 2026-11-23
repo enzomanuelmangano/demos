@@ -98,6 +98,8 @@ for (const slug of LEGACY_DEMO_POSTS) {
 // Signed-out /profile and /manage-subscription sent a visitor to /demos (client-side, in the reference); at the edge now.
 routes.push({ src: '^/(?:profile|manage-subscription)/?$', status: 307, headers: { Location: '/demos' } });
 routes.push({ src: `^/((?!${esc(MOUNT.slice(1))}/).+)/$`, status: 308, headers: { Location: '/$1' } });
+// The articles' images keep their live URL (og:image, JSON-LD and external caches name it): /content-assets/… is the content pipeline's assets/content/….
+routes.push({ src: '^/content-assets/(.*)$', dest: '/assets/content/$1' });
 if (process.env.LEGACY_API_ORIGIN) routes.push({ src: '^/api/(.*)$', dest: `${process.env.LEGACY_API_ORIGIN.replace(/\/$/, '')}/api/$1` });
 // /demos frames the app sandboxed (no allow-same-origin: an opaque origin, so Chrome runs it in a renderer process of
 // its own, off the page's main thread; decisions.md D12): its scripts, wasm and fonts are then CORS fetches. Public,
