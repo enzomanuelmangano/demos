@@ -40,8 +40,20 @@ export const ARTICLES_DESCRIPTION = 'Interactive articles about React Native ani
 export const DEMOS_DESCRIPTION = 'Explore the beauty of React Native animations with Reanimated, Skia and Gesture Handler';
 export const COURSE_DESCRIPTION = 'Reanimate.dev — the complete guide to React Native animations, from the basics to advanced techniques.';
 
-/** Articles that present the Demos app are not ported (docs/progress-content.md; tools/gen-content.ts SKIPPED): their page is a 404 here, so sitemap and feed leave them out. */
-export const NOT_PORTED = new Set(['building-demos', 'leaving-patreon', 'patreon-migration', 'open-sourcing-demos']);
+/**
+ * Articles that present the Demos app are not ported (docs/progress-content.md; tools/gen-content.ts SKIPPED), nor
+ * the two series made only of them: sitemap and feed leave them out, and their live URLs answer a permanent redirect
+ * (tools/compose.ts; docs/decisions.md D13): the Patreon ones to /articles, the Demos ones to /demos.
+ */
+export const NOT_PORTED_REDIRECTS: Record<string, string> = {
+  '/articles/building-demos': '/demos',
+  '/articles/open-sourcing-demos': '/demos',
+  '/articles/leaving-patreon': '/articles',
+  '/articles/patreon-migration': '/articles',
+  '/series/engineering': '/articles',
+  '/series/thoughts': '/articles',
+};
+export const NOT_PORTED = new Set(Object.keys(NOT_PORTED_REDIRECTS).filter((p) => p.startsWith('/articles/')).map((p) => p.slice('/articles/'.length)));
 
 const SITE_DIR = join(import.meta.dir, '../..');
 
