@@ -47,7 +47,9 @@ and the off-screen pause use an IntersectionObserver whose root is the nearest c
   ('lighter'); spiral: 48 pieces laid over (dots overlap).
 - Metaball: CSS `blur()` + SVG `feColorMatrix` on the canvas box, as the reference. The basic demo's sonner toast is a
   `popover="manual"` (top layer, position fixed) with `role="alertdialog"` (Exact's popover CSS anchors every other
-  role to an invoker); its life is one 3.4 s keyframes animation, pixel-equal to live's at 1440 and 390.
+  role to an invoker); its life is one 3.4 s keyframes animation, pixel-equal to live's at 1440 and 390. Restart
+  eases the three sliders' values every frame over 300 ms: no task may live under the page's `for`, so the clock is a
+  hidden box whose `height` transitions 0 ↔ 300 px (linear) and whose `resize` event (once a frame) gives the time.
 - Lazy: the canvas (and the canvas2d chunk) mounts when the box is within 300 px of the viewport; animations draw
   only while it is; the loaders' fade-in box is on the page from load, as live's.
 - Randomness (Play) is a stream seeded from the frame's time at the press (data modules may not call Math.random).
@@ -60,7 +62,7 @@ Box screenshots vs live, share of pixels differing > 32/255 (and > 8/255):
 |---|---|---|
 | gradient ×3 | 0 % (0 %) | |
 | spiral white | 0 % (0 %) | |
-| spiral gradient ×2, animated spiral | 0-0.07 % (0.15-0.25 %) | halo a few levels brighter on the axis |
+| spiral gradient ×2, animated spiral | 0-0.07 % (0-0.09 %) | halo pieces centred on the axes (a spoke split over two pieces glowed twice) |
 | loaders ×4 | 0.09-0.30 % (0.18-0.62 %) | live snaps the 158 px canvas at y = 123.5 down, ours up: a 1 px ring offset |
 | metaball ×4 | 0-0.02 % | toast 0.08 % |
 
@@ -68,11 +70,25 @@ DPR 2: same halo width as live (sigma in bitmap px). 390: differences are the ca
 (box border and buttons offset too), not content. Frames: spiral animation, loader spin (after the 8° pieces;
 2° pieces dropped 30 of 53 frames), metaball touch drag: 0 frames over 20 ms. Touch drag does not scroll the page.
 
+## Motion, frame by frame (CDP screencast, live vs local, 1440, /tmp/cc/cast.ts)
+
+Each group recorded a few seconds around one scripted interaction, every composited frame (60 Hz). Progress = mean
+|frame − first| / |last − first| of the demo's box; "direct" = share of pixels > 32/255 between frames at the same
+time since the motion's start.
+
+| group (demo, interaction) | frames live / local | progress curve | direct |
+|---|---|---|---|
+| loader (WithAnimation, Play, 2.5 s) | 151 / 150 | within 0.03 at every mark (0-2 s) | median 0.27 %, max 0.56 % |
+| metaball (WithPan, 15-step drag + release, 2.5 s) | 141 / 140 | drag one frame behind live (pointer → runner → draw), spring-back same curve | median 0.18 %, max 8.6 % (during the drag) |
+| gradient (AnimatedGradient, Play) | 20 / 20 | 250 ms ease, within 0.06 (one-frame phase) | n/a: random colours |
+| spiral (FixedRadiusGradient, Play) | 93 / 93 | 1.5 s easeInOutQuad, same shape, ±1 frame | n/a: random angle |
+
+Restart on the colour-matrix demo: labels, matrix and blur logged every frame for 330 ms after the press, live and
+local: the same values at the same times (e.g. 128 ms: blur 11, alpha 85, pos 61 on both; ends at 323-329 ms).
+
 ## Open
 
-1. The loaders' 1 px snap (above) and the spiral halo's slight brightness on the axis (bucket seam at angle 0).
-2. Restart on the colour-matrix demo eases the pickers (300 ms) but the labels, blur and matrix jump to the end
-   value (live interpolates them each frame).
+1. The loaders' 1 px snap in the gallery (not on the article pages).
+2. Metaball drag lags live by one frame (Exact's pointer → state → draw round trip).
 3. Bundle: the four articles' components + the gallery add ~49 KB raw / ~15 KB gzip to the shared `app-*.js` (Exact
    has no per-route code split); the draw code ~2.7 KB gzip.
-4. Motion parity was checked by eye and frame timing, not frame-by-frame against a live screencast.
