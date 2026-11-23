@@ -1,4 +1,4 @@
-import type { Answer, Result, Sources } from './app.contract.d.ts';
+import type { Answer, Draw, Result, Sources } from './app.contract.d.ts';
 import * as content from './content-gen/index.ts';
 
 // The newsletter posts to the public subscribe endpoint (no secret: subs.reactiive.io's own server holds the
@@ -30,5 +30,9 @@ const sources: Sources = {
 };
 export const answer: Answer = (source, args, store, storage, native) => sources[source](args, store, storage, native);
 
-// The /demos hero's Canvas 2D surfaces (components/hero-canvas.ts).
-export { heroSurfaces as surfaces, drawHero as draw } from './components/hero-canvas';
+// The Canvas 2D surfaces: the /demos hero's (components/hero-canvas.ts) and the canvas article demos'
+// (components/interactive/_canvas/surfaces.ts).
+import { heroSurfaces, drawHero } from './components/hero-canvas';
+import { interactiveSurfaces, drawInteractive } from './components/interactive/_canvas/surfaces';
+export const surfaces: Record<string, number> = { ...heroSurfaces, ...interactiveSurfaces };
+export const draw: Draw = (surface, args, ctx, frame) => (surface in interactiveSurfaces ? drawInteractive : drawHero)(surface, args, ctx, frame);
