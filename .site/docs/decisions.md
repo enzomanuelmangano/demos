@@ -291,3 +291,13 @@ Cost: the CTA and hint are a few plan nodes (app.js +~1 KB) and ~2.5 KB of head 
 - **Focus ring after a click.** A link that opens a new tab kept the focus; back on the tab the browser could draw the
   keyboard ring on the pill. `web/reveal.js` drops the focus of such a link after a pointer click (`detail > 0`);
   keyboard activation keeps it (and its ring).
+- **No hint.** The owner removed "Running live. Tap any app on the screen." and its dot too: the copy is the title,
+  the subtitle and the pill (title → subtitle ~34 px, subtitle → pill 40 px), centred 2vh above the device's centre.
+- **Wider than the header (owner: "I'd like the layout to take more space", horizontally).** This overrides the
+  header-container alignment above: from 1024 px the hero's row is `--W = clamp(720px, 100vw - 360px, 1200px)` wide,
+  centred on the header (1440: 1080, 1728+: 1200; the header's own container is unchanged). Copy left, device right,
+  gap `clamp(64px, 8vw, 160px)` (1440: 115, 1728: 138); the device keeps its height (80 % of the height under the
+  header, at most 332 px wide); the title as wide as live's (up to 144 px), the subtitle up to 20 px, never wrapped.
+- **Bottom space (owner: "too much bottom padding").** The row no longer fills the viewport: as much space under the
+  device as above it (`--m = clamp(48px, 7vh, 96px)` under the 87 px header; 63 px both sides at 1440x900), then the
+  footer at its usual 40 px. Screens: `/tmp/demos-variants/A6@{1280x720,1440x900,1728x960,1920x1080,390x844}.png`.

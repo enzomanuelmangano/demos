@@ -144,10 +144,6 @@ component DemosPage
             column flex-shrink=0 data-motion="blur-in" data-delay="550"
               StarsPill(seed=seed, counted=counted)
             view width=centring() flex-shrink=1
-          // From 1024 px: the device is live, say so and point at it (the dot lights when the app has drawn).
-          row align-items="center" gap=8 margin-top=0 max-height=0 overflow="hidden" data-motion="d-hint" aria-hidden=true
-            view width=6 height=6 border-radius=3 flex-shrink=0 data-motion=(simLive ? "d-dot on" : "d-dot")
-            text "Running live. Tap any app on the screen." font-size="0.8125rem" line-height="1.25rem" color="var(--color-text-tertiary)"
         DemosSim(ready=simReady, live=simLive, seen=simSeen, loaded=simLoaded)
 
 // The Demos app (its own build at /demos/app/), in a sandboxed frame: an opaque origin, so Chrome gives it its own
