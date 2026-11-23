@@ -14,7 +14,7 @@ there by hand. `tools/gen-content.ts` turns them into pages at build; its output
 2. Run `bun tools/gen-content.ts` (or keep `bun run content:watch` running).
 
 It then has its page at `/articles/<slug>`, a card on `/articles` (newest first) and on `/series/<series>`, an entry in
-`/rss.xml` and in `sitemap.xml`. A new `series` value makes a new `/series/<series>` page (titled from the slug).
+`/rss.xml` and `sitemap.xml`, and its head and JSON-LD (`tools/seo/postbuild.ts`, from the same `index.json`). A new `series` value makes a new `/series/<series>` page (titled from the slug).
 
 ## index.json
 

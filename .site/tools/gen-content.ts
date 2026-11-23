@@ -27,8 +27,9 @@ const OUT = join(SITE, 'content-gen');
 const ASSETS = join(SITE, 'assets/content');
 const ASSET_URL = '/assets/content';
 
-// The owner's scope cut (docs/progress-content.md): articles that present Demos are not ported.
-export const SKIPPED = new Set(['building-demos', 'leaving-patreon', 'patreon-migration', 'open-sourcing-demos']);
+// The owner's scope cut (docs/progress-content.md): articles that present Demos are not ported. One list, shared
+// with the SEO files (tools/seo: head, JSON-LD, sitemap and RSS read the same .content/ index.json files).
+import { NOT_PORTED as SKIPPED } from './seo/site.ts';
 
 // ---------------------------------------------------------------------------------------------------------------
 // Syntax highlighting: prism-react-renderer's Prism with the languages the reference loads (code-highlight.tsx
@@ -122,7 +123,9 @@ function imageSize(file: string): { width: number; height: number } {
 }
 
 const MAX_WIDTH = 1440;
-function asset(kind: string, slug: string, rel: string): { url: string; width: number; height: number } {
+// `original`: the file is also kept under its own name (an article's featured image: its live URL,
+// /content-assets/…, is routed to assets/content/… by tools/compose.ts and named by og:image and JSON-LD).
+function asset(kind: string, slug: string, rel: string, original = false): { url: string; width: number; height: number } {
   const file = join(SRC, kind, slug, rel);
   if (!existsSync(file)) throw new Error(`${kind}/${slug}: image ${rel} does not exist`);
   const { width, height } = imageSize(file);
@@ -141,6 +144,8 @@ function asset(kind: string, slug: string, rel: string): { url: string; width: n
     if (statSync(out).size < statSync(file).size) name = webp;
     else rmSync(out);
   }
+  const own = join(outDir, basename(rel));
+  if (original && name !== basename(rel) && (!existsSync(own) || statSync(own).size !== statSync(file).size)) copyFileSync(file, own);
   if (name === basename(rel) && (!existsSync(target()) || statSync(target()).size !== statSync(file).size)) copyFileSync(file, target());
   return { url: `${ASSET_URL}/${kind}/${slug}/${join(dirname(rel), name).replace(/^\.\//, '')}`, width, height };
 }
@@ -427,7 +432,7 @@ for (const slug of readdirSync(join(SRC, 'articles')).sort()) {
   const meta = JSON.parse(readFileSync(join(SRC, 'articles', slug, 'index.json'), 'utf8'));
   checkMeta(slug, meta);
   const blocks = await convert({ kind: 'articles', slug, file: join(SRC, 'articles', slug, 'index.mdx') }, meta);
-  const cover = asset('articles', slug, String(meta.featuredImage).replace(/^\.\//, ''));
+  const cover = asset('articles', slug, String(meta.featuredImage).replace(/^\.\//, ''), true);
   const page = { slug, title: meta.title, description: meta.subtitle, image: cover.url, date: meta.date, tags: meta.tags ?? [], blocks };
   writeFileSync(join(OUT, 'articles', `${slug}.ts`), `export default ${JSON.stringify(page)};\n`);
   articles.push({ slug, title: meta.shortTitle ?? meta.title, description: meta.subtitle, value: shortDate(meta.date), date: meta.date, href: `/articles/${slug}`, series: meta.series ?? '', cover: cover.url, coverWidth: cover.width, coverHeight: cover.height });
@@ -439,47 +444,6 @@ for (const slug of readdirSync(join(SRC, 'docs')).sort()) {
   writeFileSync(join(OUT, 'docs', `${slug}.ts`), `export default ${JSON.stringify({ slug, title: DOC_TITLES[slug] ?? slug, description: '', image: '', date: '', tags: [], blocks })};\n`);
   docs.push(slug);
 }
-// Files served at fixed root URLs, beside the build (tools/compose.ts copies .out/content/ to the root): the RSS feed
-// (app/rss.xml/route.ts's format, byte for byte) and each article's share image at its live URL
-// (/content-assets/articles/<slug>/images/…, the og:image every share of an article already points to).
-const FEED = join(SITE, '.out/content');
-rmSync(FEED, { recursive: true, force: true });
-mkdirSync(FEED, { recursive: true });
-const SITE_URL = 'https://reactiive.io';
-const cdata = (v: string) => `<![CDATA[${v}]]>`;
-const metas = articles.map((a) => ({ ...JSON.parse(readFileSync(join(SRC, 'articles', a.slug, 'index.json'), 'utf8')) }));
-const items = metas.map((m) => {
-  const url = `${SITE_URL}/articles/${m.slug}`;
-  return `    <item>
-      <title>${cdata(m.title)}</title>
-      <link>${url}</link>
-      <guid isPermaLink="true">${url}</guid>
-      <author>hello@reactiive.io (Enzo Manuel Mangano)</author>
-      <description>${cdata(m.subtitle)}</description>
-      <content:encoded>${cdata(`<h1>${m.title}</h1>\n      <p>${m.subtitle}</p>\n      <p>Read the full article at: <a href="${url}">${url}</a></p>`)}</content:encoded>
-      <pubDate>${new Date(m.date).toUTCString()}</pubDate>
-    </item>`;
-}).join('\n\n');
-writeFileSync(join(FEED, 'rss.xml'), `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" 
-     xmlns:atom="http://www.w3.org/2005/Atom"
-     xmlns:content="http://purl.org/rss/1.0/modules/content/">
-  <channel>
-    <title>Reactiive.io blog</title>
-    <link>${SITE_URL}</link>
-    <description>Latest articles from Reactiive.io</description>
-    <language>en</language>
-    <atom:link href="${SITE_URL}/rss.xml" rel="self" type="application/rss+xml"/>
-
-${items}
-  </channel>
-</rss>`);
-for (const m of metas) {
-  const rel = String(m.featuredImage).replace(/^\.\//, '');
-  mkdirSync(join(FEED, 'content-assets/articles', m.slug, dirname(rel)), { recursive: true });
-  copyFileSync(join(SRC, 'articles', m.slug, rel), join(FEED, 'content-assets/articles', m.slug, rel));
-}
-
 const series = [...new Set(articles.map((a) => a.series).filter(Boolean))].sort();
 const cards = articles.map(({ date, ...a }, i) => ({ id: a.slug, ...a, index: i }));
 writeFileSync(join(OUT, 'cards.ts'), `export default ${JSON.stringify(cards)};\n`);
