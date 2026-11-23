@@ -1,6 +1,8 @@
 // /_dev/interactive-ui: every gesture/UI article demo on one page, unlinked, noindex and out of the sitemap, for
 // checking them against the live articles (each in a 720 px column, as an article's prose; full width on a phone).
 use InteractiveBox as BottomSheetBox, InitialSetup, BasicComponent, PanGesture, BorderRadius, FinalDemo from "../components/interactive/bottom-sheet-animation/index.contract"
+use InteractiveBox as CssBox, AnimatedSquare from "../components/interactive/css-animations-react-native/index.contract"
+use FinalAnimatedSquareDemo, AnimatedSquareOpacityDemo, AnimatedSquareOpacityAndScaleDemo from "../components/interactive/introduction-to-reanimated/index.contract"
 
 component DevLabel
   props
@@ -33,3 +35,22 @@ component DevInteractiveUi
       DevLabel(label="bottom-sheet-animation · FinalDemo")
       BottomSheetBox()
         FinalDemo(hasBackdrop=true)
+      DevLabel(label="css-animations-react-native · AnimatedSquare")
+      CssBox()
+        AnimatedSquare(withoutRepeat=false, withoutPause=false)
+      DevLabel(label="css-animations-react-native · AnimatedSquare withoutRepeat")
+      CssBox()
+        AnimatedSquare(withoutRepeat=true, withoutPause=false)
+      DevLabel(label="css-animations-react-native · AnimatedSquare withoutPause")
+      CssBox()
+        AnimatedSquare(withoutRepeat=false, withoutPause=true)
+      DevLabel(label="introduction-to-reanimated · AnimatedSquareOpacityDemo")
+      AnimatedSquareOpacityDemo()
+      DevLabel(label="introduction-to-reanimated · AnimatedSquareOpacityAndScaleDemo timing")
+      AnimatedSquareOpacityAndScaleDemo(scaleAnimationType="timing", showBorderRadiusAnimation=false)
+      DevLabel(label="introduction-to-reanimated · AnimatedSquareOpacityAndScaleDemo spring")
+      AnimatedSquareOpacityAndScaleDemo(scaleAnimationType="spring", showBorderRadiusAnimation=false)
+      DevLabel(label="introduction-to-reanimated · AnimatedSquareOpacityAndScaleDemo spring, radius")
+      AnimatedSquareOpacityAndScaleDemo(scaleAnimationType="spring", showBorderRadiusAnimation=true)
+      DevLabel(label="introduction-to-reanimated · FinalAnimatedSquareDemo")
+      FinalAnimatedSquareDemo()
