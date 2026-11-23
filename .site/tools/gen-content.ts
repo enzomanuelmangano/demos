@@ -72,8 +72,8 @@ const PLUS = dict(themePlus), TERM = dict(terminalTheme);
 
 // A code line, compact (it is in the page's checkpoint as well as its HTML: docs/perf.md): one string, its diff mark
 // (" " none, "+" added, "-" removed, "=" the pad of an unmarked line in a diff block) then its tokens, each a
-// palette letter and its text, joined by U+E000. Equal-coloured neighbours are merged and a blank token joins its
-// neighbour (a space has no colour), so a line is as few runs as its colours. The palette is the theme's colours,
+// palette letter and its text, joined by U+E000. Empty tokens are dropped; the others stay one span each, as live
+// (prism-react-renderer: a span per token, so every token box is at live's place). The palette is the theme's colours,
 // the letters drawn by components/markdown.contract `Tok`.
 const SEP = '\uE000';
 const PALETTE: Record<string, string> = { '': '_', '#abb2bf': 'a', '#4b9fe4': 'f', '#c678dd': 'k', '#d19a66': 'n', '#e5c07b': 'y', '#e06c75': 's', '#8b919d/i': 'c', '#f2f5f7': 'w', 'rgb(98, 114, 164)': 't' };

@@ -171,33 +171,36 @@ component GithubCard
     repo: Repo
   view
     link href=block.href target="_blank" display="block" margin-bottom=block.mb -exact-hover-effect="none" text-decoration-line="none" data-motion="card-link"
-      view padding=16 border-radius=14 background-color="var(--color-surface-elevated)" box-shadow="var(--shadow-surface)" data-motion="surface"
-        row align-items="flex-start" gap=12
-          if repo.avatar != ""
-            image repo.avatar alt=repo.owner width=40 height=40 border-radius=9999 flex-shrink=0
-          column flex=1 min-width=0
-            row align-items="center" gap=8
-              image "/assets/images/github.svg" alt="" aria-hidden=true width=20 height=20 flex-shrink=1 min-width=0
-              if repo.path != ""
-                row align-items="center"
-                  text repo.name color="var(--color-text-tertiary)"
-                  image "/assets/images/chevron.svg" alt="" aria-hidden=true width=12 height=12 margin="0 4px"
-                  text repo.path color="var(--color-text-primary)" font-weight=600
-              else
-                text `${repo.owner}/${repo.name}` font-weight=600 color="var(--color-text-primary)" overflow="hidden" text-overflow="ellipsis" white-space="nowrap"
-            if repo.description != ""
-              text repo.description margin-top=4 font-size=14 line-height="20px" color="var(--color-text-secondary)" line-clamp=2
-            row align-items="center" gap=16 margin-top=12 font-size=12 line-height="16px" color="var(--color-text-tertiary)"
-              if repo.language != ""
+      view position="relative" data-motion="squircle-shadow"
+        // The squircle (live's Surface, figma-squircle 14 / 0.6): the mask, the rim and the shadows are web/content.css's.
+        view position="absolute" inset=-1 pointer-events="none" z-index=1 aria-hidden=true data-motion="squircle-rim"
+        view padding=16 background-color="var(--color-surface-elevated)" data-motion="surface squircle"
+          row align-items="flex-start" gap=12
+            if repo.avatar != ""
+              image repo.avatar alt=repo.owner width=40 height=40 border-radius=9999 flex-shrink=0
+            column flex=1 min-width=0
+              row align-items="center" gap=8
+                image "/assets/images/github.svg" alt="" aria-hidden=true width=20 height=20 flex-shrink=1 min-width=0
+                if repo.path != ""
+                  row align-items="center"
+                    text repo.name color="var(--color-text-tertiary)"
+                    image "/assets/images/chevron.svg" alt="" aria-hidden=true width=12 height=12 margin="0 4px"
+                    text repo.path color="var(--color-text-primary)" font-weight=600
+                else
+                  text `${repo.owner}/${repo.name}` font-weight=600 color="var(--color-text-primary)" overflow="hidden" text-overflow="ellipsis" white-space="nowrap"
+              if repo.description != ""
+                text repo.description margin-top=4 font-size=14 line-height="20px" color="var(--color-text-secondary)" line-clamp=2
+              row align-items="center" gap=16 margin-top=12 font-size=12 line-height="16px" color="var(--color-text-tertiary)"
+                if repo.language != ""
+                  row align-items="center" gap=4
+                    view width=12 height=12 border-radius=9999 background-color="var(--color-warning)"
+                    text repo.language
                 row align-items="center" gap=4
-                  view width=12 height=12 border-radius=9999 background-color="var(--color-warning)"
-                  text repo.language
-              row align-items="center" gap=4
-                image "/assets/images/star.svg" alt="" aria-hidden=true width=16 height=16
-                text repo.stars
-              row align-items="center" gap=4
-                image "/assets/images/fork.svg" alt="" aria-hidden=true width=16 height=16
-                text repo.forks
+                  image "/assets/images/star.svg" alt="" aria-hidden=true width=16 height=16
+                  text repo.stars
+                row align-items="center" gap=4
+                  image "/assets/images/fork.svg" alt="" aria-hidden=true width=16 height=16
+                  text repo.forks
 
 // A YouTube video (embeds/YouTube.tsx: full width, 400 px): the privacy-enhanced player, framed only once the
 // reader comes near it, so a page loads no YouTube until then.
