@@ -58,6 +58,8 @@ export class Page {
 }
 
 export async function launch({ port = 9340 } = {}) {
+  // CDP_PORT_OFFSET shifts every tool's port, so two worktrees can run the parity tools at once.
+  port += Number(process.env.CDP_PORT_OFFSET ?? 0);
   const dir = mkdtempSync(join(tmpdir(), 'site-chrome-'));
   const proc = spawn(CHROME, [
     `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, '--no-first-run', '--no-default-browser-check', '--headless=new',
