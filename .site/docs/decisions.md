@@ -268,3 +268,19 @@ and keyframes from Exact (feedback noted).
 - **Secrets.** Only public values reach the site build (`.env.local`: `SITE_ACCOUNTS`, `EXPO_PUBLIC_*`); server values
   live in the API process only. `tools/check-secrets.ts` scans the staged diff, the tracked tree and build outputs
   against patterns and the env file's values.
+
+### D15, inherited from the reference: the session's known weaknesses (security review of PR #121, 2026-11-23)
+
+Kept as they are, since the backend is the reference's, unchanged; listed with the fixes recommended upstream (in the
+reference's API, then mirrored here):
+
+- **The JWT lives in localStorage** (here a persisted state; there XOR-obfuscated): any XSS on the origin can read it.
+  Upstream: an `HttpOnly; Secure; SameSite=Lax` `__Host-` session cookie set by the callback (Exact's
+  `recipes/web-sessions.md`), the page never holding the token.
+- **The token travels in the callback's URL** (`/profile?accessToken=`): it lands in history, logs and Referer.
+  Mitigated here: the page replaces the URL at once, Sentry scrubs it from every event, the profile page loads no
+  third-party resource before the replacement. Upstream: the cookie above, or a single-use code exchanged by POST.
+- **The JWT does not expire** and cannot be revoked (no `exp`, no server-side session). Upstream: `exp` (hours),
+  refresh with rotation, a revocation list or session table.
+- **OAuth `state` carries only utm_source, no anti-CSRF value; no PKCE.** Upstream: a random, single-use `state`
+  bound to the browser (cookie) and checked in the callback; PKCE for the code exchange.

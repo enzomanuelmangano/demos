@@ -3,6 +3,13 @@
 How to run the site with the owner's real env values, what each feature needs (by variable NAME only), and what is
 verified. Design: `decisions.md` D15. Never commit a value: `bun tools/check-secrets.ts` before every commit.
 
+**The secret check.** `bun tools/check-secrets.ts` scans the staged diff (default), `--tracked` the tracked tree,
+`--dir dist .vercel/output` a build; with the env file present it also matches every value (multi-line ones line by
+line), `--patterns-only` skips that (CI runs `--tracked --patterns-only` in `.github/workflows/site.yml`). As a
+pre-commit hook, once per clone, by hand: `git config core.hooksPath .site/.githooks` (the hook is
+`.site/.githooks/pre-commit`; it honours `GIT_INDEX_FILE`). Note that this repo setting applies to every worktree of
+the clone; a worktree without `.site/.githooks` then runs no hook.
+
 ## The env file
 
 The owner's Vercel pull lives outside every repo: `<reactiive>/.secrets/reactiive-io.production.env` (chmod 600).
