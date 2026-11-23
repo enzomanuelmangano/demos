@@ -41,14 +41,12 @@ component NonInteractiveAnimatedGradientWithSkia
   view
     AnimatedGradient(key="non-interactive-animated-gradient", animated=true, withPlay=false)
 
+
 // One entry for the content converter: the export named `name` (an MDX tag of this article), nothing for another.
+// One call site per component (the plan's code grows with each).
 component AnimatedGradientInteractive
   props
     name: string
   view
-    if name == "AnimatedGradientWithSkia"
-      AnimatedGradientWithSkia()
-    else if name == "GlitchedAnimatedGradientWithSkia"
-      GlitchedAnimatedGradientWithSkia()
-    else if name == "NonInteractiveAnimatedGradientWithSkia"
-      NonInteractiveAnimatedGradientWithSkia()
+    if name == "AnimatedGradientWithSkia" or name == "GlitchedAnimatedGradientWithSkia" or name == "NonInteractiveAnimatedGradientWithSkia"
+      AnimatedGradient(key=name, animated=(name != "GlitchedAnimatedGradientWithSkia"), withPlay=(name != "NonInteractiveAnimatedGradientWithSkia"))

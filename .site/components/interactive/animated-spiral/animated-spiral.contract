@@ -47,16 +47,13 @@ component AnimatedInteractiveAnimatedSpiralFixedRadiusGradient
   view
     AnimatedSpiral(key="spiral-fixed-radius-gradient", fixedRadius=true, sweep=true, animated=true)
 
+
 // One entry for the content converter: the export named `name` (an MDX tag of this article), nothing for another.
+// One call site per component (the plan's code grows with each).
 component AnimatedSpiralInteractive
   props
     name: string
   view
-    if name == "AnimatedSpiralWithSkia"
-      AnimatedSpiralWithSkia()
-    else if name == "AnimatedInteractiveSnappySpiralWhite"
-      AnimatedInteractiveSnappySpiralWhite()
-    else if name == "AnimatedInteractiveSnappySpiralGradient"
-      AnimatedInteractiveSnappySpiralGradient()
-    else if name == "AnimatedInteractiveAnimatedSpiralFixedRadiusGradient"
-      AnimatedInteractiveAnimatedSpiralFixedRadiusGradient()
+    if name == "AnimatedSpiralWithSkia" or name == "AnimatedInteractiveSnappySpiralWhite" or name == "AnimatedInteractiveSnappySpiralGradient" or name == "AnimatedInteractiveAnimatedSpiralFixedRadiusGradient"
+      AnimatedSpiral(key=name, fixedRadius=(name != "AnimatedSpiralWithSkia"), sweep=(name != "AnimatedInteractiveSnappySpiralWhite"),
+        animated=(name == "AnimatedSpiralWithSkia" or name == "AnimatedInteractiveAnimatedSpiralFixedRadiusGradient"))

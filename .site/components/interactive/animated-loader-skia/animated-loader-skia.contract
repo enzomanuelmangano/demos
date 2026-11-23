@@ -125,18 +125,13 @@ component WithAnimationLoaderWithSkia
   view
     LoaderDemo(key="animation-loader", type="with-animation", withButtons=true)
 
+
 // One entry for the content converter: the export named `name` (an MDX tag of this article), nothing for another.
+// One call site per component (the plan's code grows with each).
+fn loaderType(name: string): string = name == "BasicLoaderWithSkia" ? "basic" : name == "WithGradientLoaderWithSkia" ? "with-gradient" : name == "WithProgressLoaderWithSkia" ? "with-progress" : name == "WithBasicAnimationLoaderWithSkia" ? "with-basic-animation" : name == "WithAnimationLoaderWithSkia" ? "with-animation" : ""
 component AnimatedLoaderSkiaInteractive
   props
     name: string
   view
-    if name == "BasicLoaderWithSkia"
-      BasicLoaderWithSkia()
-    else if name == "WithGradientLoaderWithSkia"
-      WithGradientLoaderWithSkia()
-    else if name == "WithProgressLoaderWithSkia"
-      WithProgressLoaderWithSkia()
-    else if name == "WithBasicAnimationLoaderWithSkia"
-      WithBasicAnimationLoaderWithSkia()
-    else if name == "WithAnimationLoaderWithSkia"
-      WithAnimationLoaderWithSkia()
+    if loaderType(name) != ""
+      LoaderDemo(key=name, type=loaderType(name), withButtons=(loaderType(name) == "with-basic-animation" or loaderType(name) == "with-animation"))

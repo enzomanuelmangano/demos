@@ -203,18 +203,15 @@ component CanvasKitJsAlert
       text "⚠️ Known Issues" role="heading" aria-level=5 margin-bottom=4 font-weight=500 line-height=1 letter-spacing="-0.025em"
       text "I am currently updating the article to support CanvasKitJs, which is causing some demos to break. Please note that the code will still work perfectly in your own apps." opacity=0.9
 
+
 // One entry for the content converter: the export named `name` (an MDX tag of this article), nothing for another.
+// One call site per component (the plan's code grows with each).
+fn metaballType(name: string): string = name == "BasicMetaballWithSkia" ? "basic" : name == "WithPanMetaballWithSkia" ? "with-pan" : name == "WithBlurMetaballWithSkia" ? "with-blur" : name == "WithColorMatrixMetaballWithSkia" ? "with-color-matrix" : ""
 component MetaballInteractive
   props
     name: string
   view
-    if name == "BasicMetaballWithSkia"
-      BasicMetaballWithSkia()
-    else if name == "WithPanMetaballWithSkia"
-      WithPanMetaballWithSkia()
-    else if name == "WithBlurMetaballWithSkia"
-      WithBlurMetaballWithSkia()
-    else if name == "WithColorMatrixMetaballWithSkia"
-      WithColorMatrixMetaballWithSkia()
-    else if name == "CanvasKitJsAlert"
+    if name == "CanvasKitJsAlert"
       CanvasKitJsAlert()
+    else if metaballType(name) != ""
+      Metaball(key=`${metaballType(name)}-metaball`, type=metaballType(name))
