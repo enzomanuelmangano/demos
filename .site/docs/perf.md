@@ -111,3 +111,18 @@ Cable: TBT 0 everywhere, FCP / LCP under live's on every route. Every TBT, LCP, 
 wakes the runtime at the reader's first scroll (Exact's rule), and the boot lands in that scroll: `smooth-dropdown`
 2-3 frames over 20 ms (max 150-183 ms at 4x CPU), `pan-gesture-handler` 1-3 (max 50-67 ms); live 0. Next: embeds as
 native `loading="lazy"` frames (no `intersect`), so only demo pages wake.
+## 2026-11-23, /demos redesign (D17): before (origin/site 5b032ed5) against after
+
+`perf.ts http://localhost:4316 (before) http://localhost:4315 (after) /demos --runs 3`: both builds composed with the
+same Demos artifact, served locally. **Caveat: machine load 88 and on battery (18 %)**, so headless Chrome ran at
+30 fps (jank 90/91 on both: the battery cap, see above) and times are noisy; the two columns ran interleaved.
+
+| width | profile | before: KB / req, FCP, LCP, page TBT (+ app), CLS | after: KB / req, FCP, LCP, page TBT (+ app), CLS |
+|---|---|---|---|
+| 1440 | cable | 3680 / 185, 252, 1508, 0 (+88), 0 | 3681 / 185, 88, 260, 0 (+100), 0 |
+| 1440 | 4g | 3680 / 186, 324, 660, 28 (+800), 0 | 3681 / 186, 328, 672, 27 (+737), 0 |
+| 390 | cable | 5522 / 197, 160, 1696, 0 (+97), 0 | 5522 / 197, 80, 1632, 0 (+83), 0 |
+| 390 | 4g | 3550 / 184, 352, 1420, 26 (+603), 0 | 3551 / 184, 324, 1420, 20 (+677), 0 |
+
++1 KB on the wire, no new request, CLS 0, page TBT equal or lower; 1440 4g FCP/LCP +4/+12 ms are within this run's
+noise. To re-run on AC power with an idle machine before merging.

@@ -67,24 +67,43 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 }
 /* /demos under 1024 px: the frame's stage fades into the page at its sides (12 %). */
 [data-motion~=sim-sides]{mask-image:linear-gradient(to right,transparent 0%,#000 12%,#000 88%,transparent 100%)}
-/* /demos from 1024 px (D12, the owner's Apple-style revision): two equal columns in the container, the copy left and
-   optically centred on the device's centre line, the device centred in the right column at --ph tall (the viewport
-   under the header less 48 px above and below, at most 780 px), straight on the page: the app's frame is masked to
-   the iPhone's own silhouette (its continuous 74 pt corners and side keys, the app's 444 x 936 frame), so no stage
-   shows; a soft shadow under it; the frame (600 px wide, the app's 24 px kept) overflows the column on both sides,
-   under the copy. The device rises in with the copy (no delay: a delayed entrance would delay its largest paint); the spiral steps back behind the copy. */
+/* /demos from 1024 px (D12, redesigned in D17): one row wider than the header's container (--W: 720-960 px, the
+   viewport less 480 px, at most 960 px: 120 px past the header's on each side), centred on it: the copy left, the device right, a wide gap between (--gap: 7vw, 64-112 px);
+   the copy optically centred on the device (2vh above its centre line). The device: --pw wide (80 % of the height under
+   the header, at most 332 px; 46 % of the row after the gap on narrow windows), straight on the page, the app's frame
+   masked to the iPhone's silhouette (its continuous 74 pt corners and side keys, the app's 444 x 936 frame); the frame
+   (600 px wide, the app's 24 px kept) overflows the device's column on both sides, under the copy. It stands in a soft
+   cool spotlight (no panel, no edge) over a contact shadow. The copy: the title as large as the column allows (at most
+   144 px, live's), the subtitle as live (two lines, one gradient, at most 20 px, never wrapped), the live pill. The
+   device rises in with the copy (no delay: a delayed entrance would delay its largest paint); the spiral steps back
+   behind the copy. */
+/* /demos's kept frame (app.contract, D17): shown from 1024 px on /demos only. */
+[data-motion~=sim-keep-layer]{display:none}
 @keyframes device-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 @media (min-width:1024px){
-:root{--ph:min(100vh - 176px,780px);--pw:calc(var(--ph) * .474359)}
-[data-motion~=d-row]{min-height:calc(100vh - 80px);flex-wrap:nowrap !important;align-items:center !important}
-[data-motion~=d-hero]{width:auto !important;flex:1 1 0 !important;position:relative;z-index:1;padding-right:48px;box-sizing:border-box}
-[data-motion~=d-title]{font-size:clamp(72px,6.25vw,96px) !important;font-weight:600 !important;letter-spacing:-.035em !important;line-height:1.05 !important;margin-top:0 !important;margin-bottom:20px !important}
-[data-motion~=d-sub]{background-image:none !important;color:oklch(81.8% 0.0042 286) !important;font-size:22px !important;line-height:1.45 !important;letter-spacing:-.01em !important}
-[data-motion~=d-pill]{margin-top:32px !important}
-[data-motion~=sim-col]{width:auto !important;flex:1 1 0 !important;height:var(--ph);margin-top:0 !important;display:flex;align-items:center;justify-content:center;animation:device-in 700ms cubic-bezier(.16,1,.3,1) backwards}
+:root{--sub-em:20.2;--W:clamp(720px,100vw - 480px,960px);--gap:clamp(64px,7vw,112px);--avail:calc(100dvh - 185px);--m:clamp(24px,5dvh,64px);--ph:clamp(420px,var(--avail) - 2 * var(--m) - 7px,min(700px,(var(--W) - var(--gap)) * .46 / .474359));--pw:calc(var(--ph) * .474359);--col:calc(var(--W) - var(--gap) - var(--pw))}
+main:has([data-motion~=d-page]){min-height:0 !important}
+[data-motion~=d-page]{max-width:calc(var(--W) + 48px) !important}
+[data-motion~=d-row]{min-height:max(var(--avail),var(--ph) + 2 * var(--m) + 7px);box-sizing:border-box;padding-top:calc(var(--m) + 7px);padding-bottom:var(--m);padding-right:calc(var(--pw) + var(--gap));flex-wrap:nowrap !important;align-items:center !important}
+/* The device is the app's kept frame (app.contract, D17), placed where the row leaves its column: the page's own frame is not used here. */
+[data-motion~=sim-route]{display:none !important}
+/* The page's own footer keeps its place but not the focus; the kept layer draws it again after the phone (app.contract). */
+main:has([data-motion~=d-page]) ~ *{visibility:hidden}
+[data-motion~=sim-keep-footer]{top:calc(80px + max(var(--avail),var(--ph) + 2 * var(--m) + 7px))}
+[data-motion~=sim-keep-layer][data-motion~=on]{display:block}
+[data-motion~=sim-col][data-motion~=sim-keep]{position:absolute;right:calc((100% - var(--W)) / 2);top:calc(80px + var(--m) + 7px + max(0px,(var(--avail) - 2 * var(--m) - 7px - var(--ph)) / 2))}
+[data-motion~=d-hero]{width:auto !important;flex:1 1 0 !important;min-width:0;position:relative;z-index:1;box-sizing:border-box;margin-top:-2vh}
+[data-motion~=d-title]{font-size:min(144px,var(--col) / 3.1) !important;font-weight:600 !important;letter-spacing:-.04em !important;line-height:1 !important;margin-top:0 !important;margin-bottom:28px !important;padding-bottom:.06em !important;margin-left:-.05em}
+[data-motion~=d-sub]{font-size:min(20px,var(--col) / var(--sub-em)) !important;white-space:nowrap}
+[data-motion~=d-pill]{margin-top:40px !important}
+[data-motion~=pill-stars]{mask-image:linear-gradient(to top,#000 0,#000 10px,transparent 26px)}
+[data-motion~=sim-col]{width:var(--pw) !important;flex:0 0 var(--pw) !important;height:var(--ph);margin-top:0 !important;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;isolation:isolate;animation:device-in 700ms cubic-bezier(.16,1,.3,1) backwards}
+/* The light the device stands in: a soft cool spotlight behind it (no panel, no edge), and the floor it casts on. */
+[data-motion~=sim-col]::after{content:'';position:absolute;z-index:-1;left:50%;top:50%;width:calc(var(--pw) * 2.8);height:calc(var(--ph) * 1.3);translate:-50% -50%;background:radial-gradient(closest-side,rgb(140 156 250 / .2),rgb(125 143 239 / .07) 48%,transparent);pointer-events:none}
 [data-motion~=sim-wrap]{overflow:visible !important;mask-image:none !important;padding:0 !important;margin:0 !important;flex-shrink:0}
 [data-motion~=sim-sides]{mask-image:none;position:relative}
 [data-motion~=sim-sides]::before{content:'';position:absolute;left:50%;top:50%;width:calc(var(--pw) * .9);height:calc(var(--ph) * .96);translate:-50% -48%;border-radius:calc(var(--ph) * .08);box-shadow:0 calc(var(--ph) * .05) calc(var(--ph) * .12) rgb(0 0 0 / .55),0 calc(var(--ph) * .015) calc(var(--ph) * .03) rgb(0 0 0 / .35);pointer-events:none}
+[data-motion~=sim-sides]::after{content:'';position:absolute;left:50%;top:calc(50% + var(--ph) / 2 - var(--ph) * .012);width:calc(var(--pw) * 1.1);height:calc(var(--ph) * .05);translate:-50% 0;background:radial-gradient(closest-side,rgb(0 0 0 / .7),transparent);pointer-events:none;z-index:-1}
 [data-motion~=sim-frame]{height:calc(var(--ph) + 48px) !important}
 :root{--fh:calc(var(--ph) + 48px)}
 [data-motion~=sim-phone]{mask:url("data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%27-4%200%20452%20936%27%3E%3Cpath%20d=%27M113.12%200L330.88%200C363.45%200%20379.74%200%20397.27%205.54C416.41%2012.51%20431.49%2027.59%20438.46%2046.73C444%2064.26%20444%2080.55%20444%20113.12L444%20822.88C444%20855.45%20444%20871.74%20438.46%20889.27C431.49%20908.41%20416.41%20923.49%20397.27%20930.46C379.74%20936%20363.45%20936%20330.88%20936L113.12%20936C80.55%20936%2064.26%20936%2046.73%20930.46C27.59%20923.49%2012.51%20908.41%205.54%20889.27C0%20871.74%200%20855.45%200%20822.88L0%20113.12C0%2080.55%200%2064.26%205.54%2046.73C12.51%2027.59%2027.59%2012.51%2046.73%205.54C64.26%200%2080.55%200%20113.12%200Z%27/%3E%3Crect%20x=%27-3%27%20y=%27150%27%20width=%274%27%20height=%2730%27%20rx=%272%27/%3E%3Crect%20x=%27-3%27%20y=%27215%27%20width=%274%27%20height=%2758%27%20rx=%272%27/%3E%3Crect%20x=%27-3%27%20y=%27290%27%20width=%274%27%20height=%2758%27%20rx=%272%27/%3E%3Crect%20x=%27443%27%20y=%27245%27%20width=%274%27%20height=%2792%27%20rx=%272%27/%3E%3C/svg%3E") 50% 50%/auto var(--ph) no-repeat}
@@ -92,6 +111,23 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 [data-motion~=spiral]{opacity:.4 !important;mask-image:linear-gradient(to right,#000 0%,#000 30%,transparent 55%)}
 }
 @media (min-width:1024px) and (prefers-reduced-motion:reduce){[data-motion~=sim-col]{animation:none}}
+/* /demos's title entrance from 1024 px (D17, V3 of three): the outlines drawn on (pages/demos-title.contract,
+   tools/title-draw.py), then the fill follows the pen left to right behind a soft light while the strokes fade; the end
+   is the static title (0 px over 32/255 against prefers-reduced-motion, which keeps it static). */
+[data-motion~=d-draw]{display:none}
+@media (min-width:1024px) and (prefers-reduced-motion:no-preference){
+/* V3 draw-on, then light fill: the outlines drawn as V1; the fill then follows the pen from left to right behind a soft
+   light (the sweep of V2 from nothing rather than from dim), and the strokes fade out. */
+@keyframes d-stroke{to{stroke-dashoffset:0}}
+@keyframes d-out{to{opacity:0}}
+@keyframes d-sweep{from{background-position:100% 0,0 0;mask-position:100% 0}to{background-position:0 0,0 0;mask-position:0 0}}
+[data-motion~=title]{animation:none !important}
+[data-motion~=d-draw]{display:block;animation:d-out 600ms ease-out 1750ms forwards}
+[data-motion~=d-draw] path{fill:none;stroke:#f4f4f5;stroke-width:1.25px;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-dasharray:1 1;stroke-dashoffset:1;animation:d-stroke 1000ms cubic-bezier(.65,0,.35,1) var(--sd,200ms) forwards}
+[data-motion~=d-draw] path:nth-child(n+3){--sd:340ms}[data-motion~=d-draw] path:nth-child(n+5){--sd:480ms}
+[data-motion~=d-draw] path:nth-child(n+6){--sd:620ms}[data-motion~=d-draw] path:nth-child(n+8){--sd:760ms}
+[data-motion~=d-title]:not(svg){background-image:linear-gradient(100deg,transparent 0 37%,rgb(255 255 255 / .95) 43%,transparent 49% 100%),linear-gradient(to right,#ffffffd9,#ffffff,#ffffffd9) !important;background-size:300% 100%,100% 100% !important;background-repeat:no-repeat !important;background-position:0 0,0 0;mask-image:linear-gradient(100deg,#000 0 40%,transparent 48% 100%);mask-size:300% 100%;mask-repeat:no-repeat;mask-position:0 0;animation:d-sweep 1300ms cubic-bezier(.45,0,.2,1) 650ms backwards}
+}
 /* Interaction transitions, as the reference's classes compute them. */
 [data-motion~=colors]{transition-property:color,background-color,border-color,outline-color,text-decoration-color,fill,stroke !important;transition-duration:150ms !important;transition-timing-function:cubic-bezier(.4,0,.2,1) !important;transition-delay:0s !important}
 /* /demos's pill: transition-colors duration-200. */

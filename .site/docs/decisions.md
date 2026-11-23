@@ -316,3 +316,121 @@ rendered (~55 ms plus ~0.07 ms a node at 4x CPU; `pan-gesture-handler` had 2,763
 - Rejected: deferring the idle activation past the measurement window (the same work, later, during the reader's first
   scroll); `paint`/`render` policies (they change when a page is drawn, not what activation costs); time-slicing the
   boot (Exact's adoption is one task; not ours to split).
+## D17. /demos on a desktop, redesigned: the header's columns, two calls to action, a lit device (owner, 2026-11-23)
+
+The owner: "I think you can also hugely improve the design of this one". Today's page (D12 revised) put the hero in the
+72rem container while the header (shared by every page, unchanged) is in 48rem: at 1440 the title started 193 px left
+of the logo, the left column was mostly empty, and the device floated alone on the right.
+
+Three variants, all from 1024 px only (under 1024 px the stacked layout of D10 is unchanged, apart from the new
+"Get the app" button beside the pill, same height, so the app's frame does not move), shot at 1440x900, 1920x1080,
+1280x720 and 390x844 (`/tmp/demos-variants/{before,A,B,C}@<w>x<h>.png`):
+
+- **A (chosen).** One row in the header's own container (48rem): the title starts under the logo, the device's right
+  edge ends under Sign In. The title as large as the column allows (`min(104px, (672px - device width) / 3.1)`, 600,
+  -0.04em, the live gradient), the subtitle exactly as live (owner, after a two-tone, three-line try: "awful"): the
+  same two lines, one gradient, weight 500, line-height 1.55, -0.01em, at 18 px or slightly less
+  (`min(18px, column / 20.2)`, 17.2 px at 1440 and 1920) so the second line never wraps; two calls to action: "Get the app" (the page's one light button: `/demos-app`, the TestFlight
+  page) and the GitHub pill with the star count (its label shortened to "GitHub" beside the button); under them a
+  quiet hint, "Running live. Tap any app on the screen.", whose dot turns green when the app has drawn (the screen
+  "turns on" under it: the frame's fade over the still). The device stands in a soft cool spotlight (a radial gradient
+  of the primary blue at 20 %, no panel, no edge) over a contact shadow; at most 700 px tall, so the composition is the
+  same at 1440x900 and 1920x1080. The copy sits 2vh above the device's centre line (optical centre).
+- **B.** A, quieter: no spotlight, the hint as a caption under the device ("Live in your browser. Tap any app."), the
+  title 88 px, a one-colour subtitle. The caption reads well but sits on the fold at 1280x720 and the device is
+  smaller; without the light the device is again a cut-out on black.
+- **C.** A with a wider, brighter spotlight and a slow idle float of the device (±4 px, 3.2 s). The haze muddies the
+  copy's side and moving an interactive target (the screen takes taps) has no purpose: rejected.
+
+**A featured-demos list that opens a demo inside the phone** was considered and dropped: the app's
+`/demos/app/demo/<slug>` draws the demo full window, not inside its framed iPhone (checked in a 600 px window), so the
+frame would show a frameless demo; and a src change reloads the app (D10). Doing it properly needs the app's own
+deep link into its framed launcher: a change in the Demos app, not here.
+
+The pill's floating stars rise 170 px over the copy; beside the copy they would cross the subtitle, so from 1024 px
+their canvas is masked to the 26 px between the subtitle and the pill and kept off the device's side: no sparkle
+inside the text's box. Screens after this fix: `/tmp/demos-variants/A2@<w>x<h>.png`.
+
+Cost: the CTA and hint are a few plan nodes (app.js +~1 KB) and ~2.5 KB of head CSS; perf.md 2026-11-23 (D17).
+
+### D17, revised the same day (owner: "I don't like the Get the app button"; "everything is a bit too cramped")
+
+- **No "Get the app".** Removed on every width; the live pill is back exactly ("Demos is Open Source | ★ 3,248", its
+  icon, 36 px, hover, the spinning count, "Source code" under 640 px), the only control under the subtitle. The hint
+  stays below it: with the pill alone it reads as the pill's caption about the device, not as an orphan.
+- **Air, still inside the header's container** (both edges kept on the logo and Sign In). The gap between the copy and
+  the device is `clamp(64px, 6.67vw, 112px)` (1280: 85, 1440: 96, 1728+: 112); the device is
+  `min((720px - gap) * 48 %, 80 % of the height under the header, 332 px)` wide (1440x900: 300 x 632, 78 % of the
+  height), so copy and device have about equal widths; the title and the subtitle size to the copy column
+  (title `min(104px, column / 3.1)`, subtitle `min(18px, column / 20.2)`: 18 px at 1024-1280, 16 px at 1440,
+  15.7 px from 1728); rhythm title → subtitle ~34 px, subtitle → pill 40, pill → hint 28. Measured: the subtitle's
+  second line ends 97-112 px before the device at every width from 1024 to 1920. A wider hero container was not
+  needed. Screens: `/tmp/demos-variants/A4@{1280x720,1440x900,1728x960,1920x1080,390x844}.png`.
+- **Focus ring after a click.** A link that opens a new tab kept the focus; back on the tab the browser could draw the
+  keyboard ring on the pill. `web/reveal.js` drops the focus of such a link after a pointer click (`detail > 0`);
+  keyboard activation keeps it (and its ring).
+- **No hint.** The owner removed "Running live. Tap any app on the screen." and its dot too: the copy is the title,
+  the subtitle and the pill (title → subtitle ~34 px, subtitle → pill 40 px), centred 2vh above the device's centre.
+- **Wider than the header (owner: "I'd like the layout to take more space", horizontally).** This overrides the
+  header-container alignment above: from 1024 px the hero's row is `--W = clamp(720px, 100vw - 360px, 1200px)` wide,
+  centred on the header (1440: 1080, 1728+: 1200; the header's own container is unchanged). Copy left, device right,
+  gap `clamp(64px, 8vw, 160px)` (1440: 115, 1728: 138); the device keeps its height (80 % of the height under the
+  header, at most 332 px wide); the title as wide as live's (up to 144 px), the subtitle up to 20 px, never wrapped.
+- **Bottom space (owner: "too much bottom padding").** The row no longer fills the viewport: as much space under the
+  device as above it (`--m = clamp(48px, 7vh, 96px)` under the 87 px header; 63 px both sides at 1440x900), then the
+  footer at its usual 40 px. Screens: `/tmp/demos-variants/A6@{1280x720,1440x900,1728x960,1920x1080,390x844}.png`.
+- **The middle ground (owner: "it still looks too wide").** `--W = clamp(720px, 100vw - 480px, 960px)`: 120 px past
+  the header's container on each side from 1440 (centred on it), gap `clamp(64px, 7vw, 112px)` (1440: 101, 1728: 112);
+  the rest as above. Screens: `/tmp/demos-variants/A7@{1440x900,1728x960}.png`.
+- **One screen, no scroll (owner, on a 1728 x 960-1000 MacBook; the footer kept).** From 1024 px the whole page is the
+  window: `main`'s 80vh floor is dropped on this page (`main:has(d-page)`), the hero row is `100dvh` less the 80 px
+  header band and the footer's 105 px, the device as tall as that less equal margins above and below
+  (`clamp(24px, 5dvh, 64px)`), clamped 420-700 px (a shorter window scrolls rather than shrink the device further).
+  Measured scrollHeight == clientHeight at 1728x960, 1728x1000, 1512x982, 1440x900, 1280x720 (device 456 px, 36 px
+  margins) and 1024x768; under 1024 px the stacked page scrolls as before (390x844: 1196 px).
+  Screens: `/tmp/demos-variants/A7@{1728x960,1440x900,1280x720,390x844}.png`.
+- **"The sim reloads when I switch tabs" (owner).** Measured with CDP at 1728x960 (child-frame navigations of the
+  sandboxed frame): 10 browser-tab switches (the page hidden, half of them also frozen and resumed): **0 reloads**;
+  the app's own reload path (Exact's generation reload) needs sessionStorage, which the opaque-origin frame lacks, so it
+  never fires there. 5 in-app round trips (Articles ↔ Demos): 5 loads, by design of the router: the page's entry is
+  keyed per visit, so the frame is created again, and keeping it alive outside the routed content would mean placing
+  it over a box whose place only the page's layout knows (the stacked layout under 1024 px). The jump was that the
+  second visit showed the frame at once (`simLive` stayed true) while the app was starting, over the still:
+  `follow` (app.contract) now resets `simFramed` / `simLive`, so every visit shows the still until the app has drawn
+  again and cross-fades as the first does (sampled 50-1000 ms after each return: frame opacity 0 over the still,
+  1 from 1.5 s).
+- **The title's entrance (owner: "animate 'Demos' as if we were drawing it… Apple").** Three variants recorded at
+  1728x960 (`/tmp/demos-variants/title-{v1-draw,v2-sweep,v3-draw-fill}.mp4|png`): **V1** the outlines drawn on
+  (D → e → m → o → s, 1 s each, 150 ms apart, ease-in-out), then the text fades in under them; **V2** the live
+  rise and one soft light passing over a dimmed word; **V3 (chosen)** V1's drawing, then the fill follows the pen
+  from left to right behind a soft light (a mask and a highlight moving together over the text, 1.3 s from 650 ms) while
+  the strokes fade (done at 2.35 s). V1's cross-fade reads as two objects swapping; V2 is pretty but not "drawing";
+  V3 is both. The outlines are Inter itself (`tools/title-draw.py`: the variable font instanced at weight 600 and
+  opsz 32, the size Chrome picks at 144 px, overlaps removed, shaped by HarfBuzz with the -0.04em tracking, placed on
+  the text's line box): one decorative SVG (aria-hidden, no pointer) over the real h1, which stays the text. Only
+  from 1024 px, where the title is 600 (under it the live 500 title keeps the live entrance); off under
+  prefers-reduced-motion. The end is the static title: 0 pixels over 32/255 against the reduced-motion render at 2x.
+  Cost: the SVG's 8 paths (~3.9 KB raw, ~1.7 KB gzip in the page) and 1.3 KB of CSS; the title is not the LCP
+  element (gradient-clipped text): `/demos` 1440 LCP cable 212 → 188 ms, 4g 648 → 668 ms (noise; 3 runs, AC power),
+  CLS 0, page TBT 17 → 16 ms.
+- **Tab switches, re-measured in a headed Chrome (owner's report).** A normal window (`--user-data-dir`, no
+  extensions), /demos in tab A, example.com in tab B, 10 switches 2-10 s apart, one minimise/restore, one
+  freeze/resume: **0 child-frame navigations**, the frame's src unchanged, `live` kept, and a screencast of the
+  device over 3 returns shows the launcher still (only its own wallpaper light moving). Nothing in the page reloads
+  the frame on visibility or focus (Exact does not re-render the route on either).
+- **Articles ↔ Demos: the frame is kept (from 1024 px).** It now lives outside the routed entry, in `app.contract`
+  (mounted from the first visit, `keepSim`; hidden with `display: none` on any other page, which keeps a frame
+  loaded; never moved, which would reload it), placed by CSS exactly where the hero leaves its column (the row's
+  right padding is the device's width plus the gap; `sim-keep`'s top and right are computed from the same `--W`,
+  `--m`, `--avail`, `--ph`). Measured: 5 round trips, **0 loads of the app**, the frame at opacity 1 from the first
+  50 ms of each return. Under 1024 px the hero's height depends on its wrapped text, so no CSS can place a frame
+  outside the flow there: the page's own frame is used, created per visit, with the still (from 768 px) until it has
+  drawn. The device's entrance (rise, 700 ms) replays with the copy's on each return (a `display` change restarts CSS
+  animations); the app inside keeps its state.
+- **Review fixes (PR #122).** Focus order: the kept layer comes after the routed page, so from 1024 px the page's own
+  footer keeps its place but is `visibility: hidden` (not focusable) and the layer draws the footer again after the
+  phone: header, pill, phone, footer. One app at a time: a box 1 px wide from 1024 px and 0 under it (`resize`) sets
+  `wide`; the kept frame loads only when wide, the page's own only when not, and crossing 1024 px sends the other back
+  to about:blank (measured: 1440 → 900 → 1440 leaves one `/demos/app/` frame each time). With D16's activation on
+  intent: `/articles` (no runtime) → Demos is a document navigation and `/demos` loads cold, lazily as before; after
+  activation, `/demos` → `/articles` → `/demos` finds the kept frame live (opacity 1 at 150 ms, no load).

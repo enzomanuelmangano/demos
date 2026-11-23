@@ -102,3 +102,11 @@
     return r;
   };
 })();
+/* A link that opens a new tab keeps the focus when clicked; back on this tab (closed with the keyboard) the browser can
+   then draw the keyboard ring on it (seen on /demos's pill). A pointer click (detail > 0) drops that focus; a keyboard
+   activation (detail 0) keeps it, so the ring stays for keyboard users. */
+document.addEventListener('click', function (e) {
+  if (!e.detail) return;
+  var a = e.target.closest && e.target.closest('a[target="_blank"]');
+  if (a) a.blur();
+}, true);

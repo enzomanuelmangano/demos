@@ -3,6 +3,7 @@
 // grid, the Demos app itself: its own web build, mounted at /demos/app/ and shown here in a frame (an iframe), so the
 // app stays its own artifact (docs/decisions.md D10).
 use sm, md, lg from "../components/responsive.contract"
+use TitleDraw from "./demos-title.contract"
 
 // The entrances (motion-title, motion-blur-in) and the 3D lift are the reference's CSS, in web/head.css, hooked by
 // data-motion: Contract keyframes take no filter and boxes no 3D transform (docs/decisions.md D11).
@@ -73,7 +74,7 @@ component StarsPill
   view
     row position="relative" hover=hover
       // FloatingStars: 170 px of canvas above the pill, 56 px past each side.
-      canvas surface=stars(hovered ? 1 : 0, seed) aria-hidden=true position="absolute" left=-56 right=-56 bottom="100%" height=170
+      canvas surface=stars(hovered ? 1 : 0, seed) aria-hidden=true data-motion="pill-stars" position="absolute" left=-56 right=-56 bottom="100%" height=170
         pointer-events="none"
       link href="https://github.com/enzomanuelmangano/demos" target="_blank" rel="noopener noreferrer" display="flex" height=36
         align-items="center" border-radius=9999 padding-left=10 padding-right=11 background-color="rgb(255 255 255 / 0.06)"
@@ -109,8 +110,10 @@ component DemosPage
     simLoaded: action
   view
     // Container size xl: 1152 px at most, 24 px each side; mt-4 under 640 px.
+    // From 1024 px a 960 px row (web/head.css d-page: the viewport less 480 px, 720-960 px, plus the 24 px sides),
+    // centred on the header; the device is app.contract's kept frame, placed in the row's right padding (D17).
     column width="100%" max-width="72rem" margin-left="auto" margin-right="auto" padding-left=24 padding-right=24 box-sizing="border-box"
-      margin-top=sm(16, 0)
+      margin-top=sm(16, 0) data-motion="d-page"
       // Under 1024 px the hero and, below it, the app; from 1024 px the hero on the left, vertically centred, and the
       // app on the right (D12): one wrapping row, whose hero is the full width under 1024 px, so the app wraps below.
       row flex-wrap="wrap" align-items="center" data-motion="d-row"
@@ -120,12 +123,15 @@ component DemosPage
           width=`calc(100% - ${lg(0, simColumn())})`
           row
             view width=centring() flex-shrink=1
-            column flex-shrink=0 data-motion="title"
+            column flex-shrink=0 position="relative" data-motion="title"
               text "Demos" role="heading" aria-level=1 class=Gradient data-motion="lift-20 d-title" pointerup=tap cursor="pointer" user-select="none"
                 font-size=titleSize() line-height=1.05 letter-spacing="-0.04em" padding-bottom="0.04em"
                 margin-top=steps(8, 32, 56, 56) margin-bottom=steps(20, 32, 36, 36) transition="opacity 150ms cubic-bezier(0, 0, 0.2, 1)"
                 :hover
                   opacity = 0.9
+              // The title's entrance from 1024 px: its outlines drawn on, then the text fills in behind a light (D17,
+              // web/head.css). On the text's own line box (1.05 em under 1024 px: half the extra leading above).
+              TitleDraw(size=titleSize(), top=`calc(${steps(8, 32, 56, 56)} + 0.025em)`)
             view width=centring() flex-shrink=1
           column data-motion="blur-in" data-delay="450"
             // From 640 px two lines, one gradient across both (centred, left from 1024 px); under it one
@@ -147,7 +153,7 @@ component DemosPage
             column flex-shrink=0 data-motion="blur-in" data-delay="550"
               StarsPill(seed=seed, counted=counted, stars=stars)
             view width=centring() flex-shrink=1
-        DemosSim(ready=simReady, live=simLive, seen=simSeen, loaded=simLoaded)
+        DemosSim(ready=simReady, live=simLive, seen=simSeen, loaded=simLoaded, place="sim-route")
 
 // The Demos app (its own build at /demos/app/), in a sandboxed frame: an opaque origin, so Chrome gives it its own
 // renderer process and its start never blocks this page's main thread (D12; the app's files answer any origin,
@@ -175,9 +181,10 @@ component DemosSim
     live: bool
     seen: action
     loaded: action
+    place: string
   view
     column flex-shrink=0 width=`min(100%, ${lg(9999, simColumn())})` margin-top=`min(${steps(32, 32, 32, 48)}, ${lg(9999, 0)})`
-      data-motion="sim-col" intersect=seen intersect-margin="100% 0px"
+      data-motion=`sim-col ${place}` intersect=seen intersect-margin="100% 0px"
       column margin-left=md(-24, 0) margin-right=md(-24, 0) overflow="hidden" data-motion="sim-wrap"
         padding-top=md(24, 0) mask-image="linear-gradient(to bottom, transparent 0px, #000000 24px)"
         column align-items="center" padding-bottom=md(24, 0) data-motion="sim-wrap" mask-image="linear-gradient(to top, transparent 0px, #000000 24px)"
