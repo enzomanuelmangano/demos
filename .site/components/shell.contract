@@ -50,8 +50,14 @@ component SiteHeader
     signOut: action
     openProfile: action
   state menu = false
+  // The page the menu was opened on: a link of the menu navigates (a link's own `press` would replace its navigation,
+  // Exact's rule), and the menu closes once the route has changed.
+  state openedOn = ""
   action toggle
     menu = not menu
+    openedOn = current
+  task closeOnRoute when menu and current != openedOn
+    after(1, close)
   action close
     menu = false
   // The menu's last entry: Profile signed in, else Sign In (handleProfileClick).
@@ -80,7 +86,7 @@ component SiteHeader
       view class=HeaderBar height=md(73, 0) testId="header-mobile" data-motion=(menu ? "bar open" : "bar")
         Container()
           row justify-content="space-between" align-items="center" padding-top=16 padding-bottom=16
-            link href="/" aria-label="Reactiive, home" border-radius="var(--radius-md)" display="flex" press=close class=Plain data-motion="plain focus" -exact-hover-effect="none"
+            link href="/" aria-label="Reactiive, home" border-radius="var(--radius-md)" display="flex" class=Plain data-motion="plain focus" -exact-hover-effect="none"
               view margin-right=35.6
                 LogoHome(width=114.4, height=28)
             button press=toggle appearance="none" aria-label=(menu ? "Close menu" : "Open menu") aria-expanded=menu
@@ -116,13 +122,14 @@ component MenuEntry
     href: string
     name: string
     on: bool
+    // The current page's entry only closes the menu (a link with a `press` does not navigate: it is the page shown).
     pick: action
   view
     if on
       link href=href class=MenuLink data-motion="plain colors" press=pick color="#ffffff" background-color="rgb(255 255 255 / 0.1)"
         text name
     else
-      link href=href class=MenuLinkIdle data-motion="plain colors" press=pick
+      link href=href class=MenuLinkIdle data-motion="plain colors"
         text name
 
 // Container size md: 768 px wide at most, 24 px each side, a flex column that fills.
