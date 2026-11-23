@@ -54,7 +54,12 @@ Note: runs on battery (low power) cap headless Chrome at 30 fps (every frame "ja
   reserved (CLS 0) and from 768 px a 133 KB still of the launcher stands in until it has drawn.
   The page around it (hero, header, footer) is 246 KB, the same as `/`. Live `/demos` on a phone drops 90 of 91
   frames while scrolling its video grid; the rebuild drops none.
-- **404 at 4g, LCP (open).** The same text element is the LCP twice: first in the metric-matched fallback
+- **404 at 4g, LCP: fixed at 1440, open at 390.** Inter's printable ASCII is now inlined (a 41 KB subset of the same
+  variable file as a data: URL in the head; the rest of the file by unicode-range, fetched only by a page that uses
+  one of those characters; no preload). The first paint is in Inter: 404 @1440 4g LCP 276 (live 528), `/` @1440 4g FCP
+  304, LCP 1480 (live 564 / 1760); transfer 213 KB (was 246). At 390 4g a second, 1.4 % larger candidate of the same
+  paragraph is reported at ~770 ms, when the runtime's stylesheet arrives (its box and computed style do not change:
+  measured every frame); LCP 768 vs live 568: open. Previous analysis, kept for the record: The same text element is the LCP twice: first in the metric-matched fallback
   (`Inter Fallback`, next/font's numbers), then ~4 % larger when Inter swaps in at ~800 ms. Live paints first at
   ~500 ms with Inter already there (Vercel's edge: HTTP/2, the preload fetched with the document). To re-measure on a
   preview deploy before any change (`font-display: block` would only move FCP later).

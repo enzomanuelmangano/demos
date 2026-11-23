@@ -7,7 +7,10 @@ import { join } from 'node:path';
 const site = join(import.meta.dir, '..');
 const css = readFileSync(join(site, 'web/head.css'), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, '')
-  .split('\n').map((l) => l.trim()).filter(Boolean).join('');
+  .split('\n').map((l) => l.trim()).filter(Boolean).join('')
+  // url(@inline:<path>): the file as a data: URL (the ASCII subset of Inter, web/head.css). Rebuild the subset with
+  // fonttools: pyftsubset assets/fonts/InterVariable.woff2 --unicodes=U+0020-007E --flavor=woff2 --output-file=assets/fonts/InterAscii.woff2
+  .replace(/url\(@inline:([^)]+)\)/g, (_, f: string) => `url(data:font/woff2;base64,${readFileSync(join(site, f)).toString('base64')})`);
 const text = `(function(){var s=document.createElement('style');s.textContent=${JSON.stringify(css)};document.head.appendChild(s)})();`;
 const path = join(site, 'app.json');
 const app = JSON.parse(readFileSync(path, 'utf8'));

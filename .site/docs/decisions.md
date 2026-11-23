@@ -84,6 +84,10 @@ reference does, in a head script that adds the `@font-face` rules (`app.json` `h
 Rows name `font-family="Inter, …"`. The same script sets the reference's body text rendering
 (`optimizeLegibility`, antialiased) and `::selection`, which are not Contract properties.
 
+(D7 amended, 2026-11-23: Inter's printable ASCII is inlined as a 41 KB data: URL face, `unicode-range: U+20-7E`; the
+reference's file serves the rest by unicode-range and is no longer preloaded. Pixel parity unchanged: `/` 0.04 % /
+0.28 %, 404 0.03 % / 0.28 %.)
+
 ## D8. The header's scrolled look: an intersection marker, not a scroll handler
 
 The bar takes the page colour and a hairline past 10 px of scroll. A scroll-driven CSS animation was emitted but
