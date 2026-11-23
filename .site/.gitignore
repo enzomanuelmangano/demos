@@ -12,4 +12,6 @@
 /.env
 /.env.*
 /content-gen/
+/.content-gen.next/
+/.content-gen.old/
 /assets/content/

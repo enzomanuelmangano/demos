@@ -17,13 +17,17 @@ import remarkMdx from 'remark-mdx';
 import remarkGfm from 'remark-gfm';
 import { Prism, normalizeTokens, themes } from 'prism-react-renderer';
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, extname, join, relative } from 'node:path';
 import { createRequire } from 'node:module';
 
 const SITE = join(import.meta.dir, '..');
 const SRC = join(SITE, '.content');
-const OUT = join(SITE, 'content-gen');
+// The pages are written to a dot directory beside content-gen/ (dot directories are never captured by Exact) and
+// renamed into place only once every page converted: a failed run (a bad edit under `--watch`) leaves the previous
+// pages as they were.
+const FINAL = join(SITE, 'content-gen');
+const OUT = join(SITE, '.content-gen.next');
 const ASSETS = join(SITE, 'assets/content');
 const ASSET_URL = '/assets/content';
 
@@ -458,4 +462,10 @@ writeFileSync(join(OUT, 'index.ts'), [
   `export const docs: Record<string, () => Promise<{ default: unknown }>> = {\n${docs.map((d) => `  ${JSON.stringify(d)}: () => import('./docs/${d}.ts'),`).join('\n')}\n};`,
   '',
 ].join('\n'));
+// Every page converted: swap the new tree in (two renames on one filesystem; the old tree removed after).
+const OLD = join(SITE, '.content-gen.old');
+rmSync(OLD, { recursive: true, force: true });
+if (existsSync(FINAL)) renameSync(FINAL, OLD);
+renameSync(OUT, FINAL);
+rmSync(OLD, { recursive: true, force: true });
 console.log(`content: ${articles.length} articles (${SKIPPED.size} skipped: demo-tied), ${docs.length} docs, ${series.length} series; interactive in ${INTERACTIVE_ARTICLES.size} articles`);
