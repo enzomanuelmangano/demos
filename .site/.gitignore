@@ -1,0 +1,13 @@
+/target/
+/dist/
+/dist.*
+/dist-windows/
+/node_modules/
+/app.contract.d.ts
+/.exact/
+/.env.local
+# The site's own outputs (docs/architecture.md): the demos artifact cache, the composed deploy tree, parity shots.
+/.out/
+/.vercel/
+/.env
+/.env.*

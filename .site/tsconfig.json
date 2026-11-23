@@ -1,0 +1,21 @@
+{
+  // The site's Bun tooling. Only files under .site/: the Demos app's tsconfig (repo root) and .legacy's are separate
+  // projects and are never read from here. app.ts is checked by the Exact build itself (it imports the generated
+  // app.contract.d.ts).
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "types": ["bun"]
+  },
+  "include": ["tools/**/*.ts"],
+  "exclude": ["node_modules", "dist", ".out", ".vercel", ".exact"]
+}

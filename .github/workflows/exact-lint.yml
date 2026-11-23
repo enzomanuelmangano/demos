@@ -21,13 +21,15 @@ name: Exact lint
 
 on:
   pull_request:
-    # Everything but the React Native app (.legacy/, lint.yml) and the other workflows.
+    # Everything but the React Native app (.legacy/, lint.yml), the website (.site/, site.yml) and the other workflows.
     paths:
       - '**'
       - '.parity/**'
       - '.claude/**'
       - '.cargo/**'
       - '!.legacy/**'
+      # The website (.site/, its own Exact app) has site.yml.
+      - '!.site/**'
       - '!.github/**'
       - '.github/workflows/exact-lint.yml'
 

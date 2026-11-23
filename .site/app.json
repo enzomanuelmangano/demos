@@ -1,0 +1,20 @@
+{
+  "$schema": ".exact/checkout/scripts/app.schema.json",
+  "name": "Reactiive",
+  "short_name": "Reactiive",
+  "id": "io.reactiive.site",
+  "start_url": "/",
+  "display": "standalone",
+  "app": {
+    "id": "io.reactiive.site",
+    "name": "Reactiive"
+  },
+  "host": {
+    "web": {}
+  },
+  "deploy": {
+    "store": {
+      "web": "0"
+    }
+  }
+}

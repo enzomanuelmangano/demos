@@ -1,0 +1,2 @@
+test "the home page renders"
+  expect tree has "home"

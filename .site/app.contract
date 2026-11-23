@@ -1,0 +1,22 @@
+// Phase 0 skeleton: the routes that prove the /demos/ mount and the build-rendered page layout. Phase 1 replaces it.
+routes nav
+  home "/" render=build activate=idle
+  articles "/articles" render=build activate=idle
+  article "/articles/:post" render=build activate=idle pages=articleSlugs()
+  notfound render=build
+
+component Site
+  view
+    main navigationKey=`${top(nav).id}`
+      for e in stack(nav).slice(-1) key=e.id
+        column navigationKey=`${e.id}` testId=e.name
+          if e.name == "notfound"
+            head title="Page not found | Reactiive" status=404
+            text "404"
+          else
+            head title=e.name
+            text e.name
+            link href="/demos/"
+              text "Demos"
+            link href="/articles"
+              text "Articles"

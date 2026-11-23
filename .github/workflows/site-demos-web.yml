@@ -1,0 +1,85 @@
+name: Site / demos web artifact
+
+# The Demos app's web build for reactiive.io/demos/, on a GitHub runner (the site's phase 0 question: can CI build it,
+# with expo/exact at the demos' pinned seed, Rust and wasm-bindgen?). It builds only; it publishes nothing.
+# The artifact is cached by the demos' inputs (.site/tools/demos-web/build.ts: every tracked path but
+# .site .legacy .parity .github and *.md, plus the Exact seed), so a site-only change reuses it.
+on:
+  push:
+    branches: [site]
+    paths:
+      - '.site/tools/demos-web/**'
+      - '.github/workflows/site-demos-web.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-demos-web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  demos-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Bun (the version Exact pins)
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Demos inputs key and Exact seed
+        id: key
+        run: |
+          echo "key=$(bun .site/tools/demos-web/build.ts --key-only)" >> "$GITHUB_OUTPUT"
+          echo "seed=$(sed -n 's/^const seed = ".*\/\([0-9a-f]\{40\}\)";$/\1/p' exact.mjs)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the artifact
+        id: artifact
+        uses: actions/cache@v4
+        with:
+          path: .site/.out/demos-web/${{ steps.key.outputs.key }}
+          key: demos-web-${{ steps.key.outputs.key }}
+
+      - name: Checkout expo/exact at the demos' seed
+        if: steps.artifact.outputs.cache-hit != 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: expo/exact
+          ref: ${{ steps.key.outputs.seed }}
+          path: .exact-sdk
+
+      - name: Cache Rust (toolchains, registry, build)
+        if: steps.artifact.outputs.cache-hit != 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.rustup
+            ~/.cargo/bin
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cache/exact
+            /tmp/demos-web-target
+          key: demos-web-rust-${{ steps.key.outputs.seed }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: demos-web-rust-${{ steps.key.outputs.seed }}-
+
+      - name: Exact web prerequisites (Rust, wasm32, wasm-bindgen, Binaryen; no Hermes)
+        if: steps.artifact.outputs.cache-hit != 'true'
+        run: bun .exact-sdk/scripts/exact.mjs setup --platform web
+
+      - name: Build the demos web at base /demos/
+        if: steps.artifact.outputs.cache-hit != 'true'
+        env:
+          EXACT: ${{ github.workspace }}/.exact-sdk
+          CARGO_TARGET_DIR: /tmp/demos-web-target
+          DEMOS_WEB_SCRATCH: /tmp/demos-web-src
+        run: bun .site/tools/demos-web/build.ts
+
+      - name: Report
+        run: |
+          cat .site/.out/demos-web/${{ steps.key.outputs.key }}/demos-web.json
+          du -sh .site/.out/demos-web/${{ steps.key.outputs.key }}/dist
