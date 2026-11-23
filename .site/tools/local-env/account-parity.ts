@@ -1,0 +1,118 @@
+#!/usr/bin/env bun
+// The signed-in screens, old site against new, on the one origin of tools/local-env/switch.ts (the same setup as
+// storage-continuity.ts): for each user state (no plan, an active monthly plan, a cancelled annual one, a billing issue)
+// both sides are shot at 1440 and 390 (first viewport): /profile, /manage-subscription, the avatar's menu (1440), the
+// cancel confirmation; signed out: the sign-in dialog. Then each pair is diffed (threshold 32/255).
+//   bun tools/local-env/account-parity.ts [--origin http://localhost:4317] [--out /tmp/account-parity]
+// /api/user/info is answered in the browser (the reference's shape) for a made-up token; /api/purchase/* is never
+// forwarded. Nothing reaches production.
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { launch, Page } from '../parity/cdp.ts';
+import { diffImages } from '../parity/diff.ts';
+
+const arg = (n: string, d: string) => { const i = process.argv.indexOf(n); return i < 0 ? d : process.argv[i + 1]; };
+const ORIGIN = arg('--origin', 'http://localhost:4317').replace(/\/$/, '');
+const OUT = arg('--out', '/tmp/account-parity');
+mkdirSync(OUT, { recursive: true });
+const TOKEN = 'parity.' + crypto.randomUUID();
+const USER = { id: 1, name: 'Parity Person', email: 'parity.person@example.com', profilePicture: 'https://reactiive.io/og/main.png' };
+const PLANS: Record<string, unknown> = {
+  none: null,
+  active: { id: 1, userId: 1, itemId: 'x', subscriptionType: 'monthly', status: 'active', expiresAt: '2027-01-15T12:00:00.000Z' },
+  cancelled: { id: 1, userId: 1, itemId: 'x', subscriptionType: 'annual', status: 'cancelled', expiresAt: '2027-03-02T12:00:00.000Z' },
+  pastdue: { id: 1, userId: 1, itemId: 'x', subscriptionType: 'monthly', status: 'past_due', expiresAt: '2027-01-15T12:00:00.000Z' },
+};
+const side = async (to: string) => { await fetch(`${ORIGIN}/__switch?to=${to}`, { method: 'POST' }); };
+
+const { cdp, kill } = await launch({ port: 9481 });
+async function open(width: number, plan: unknown) {
+  const mobile = width < 800;
+  const { browserContextId } = await cdp.send('Target.createBrowserContext', { disposeOnDetach: true });
+  const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank', browserContextId });
+  const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
+  const page = new Page(cdp, sessionId, targetId, browserContextId);
+  for (const d of ['Page', 'Runtime', 'Network']) await page.send(`${d}.enable`);
+  await page.send('Emulation.setDeviceMetricsOverride', { width, height: mobile ? 844 : 900, deviceScaleFactor: 1, mobile });
+  await page.send('Fetch.enable', { patterns: ['*/api/user/info*', '*/api/purchase/*', '*amplitude.com/2/*', '*api2.amplitude.com*', '*sentry.io*'].map((urlPattern) => ({ urlPattern })) });
+  page.on(async (e) => {
+    if (e.method !== 'Fetch.requestPaused') return;
+    const { requestId, request } = e.params;
+    if (/amplitude|sentry/.test(request.url)) return page.send('Fetch.failRequest', { requestId, errorReason: 'BlockedByClient' });
+    const body = request.url.includes('/purchase/') ? { success: true } : { user: USER, plan, github: null, patreon: null };
+    if (!request.url.includes('/purchase/') && !(request.headers.Authorization ?? request.headers.authorization ?? '').endsWith(TOKEN)) return page.send('Fetch.continueRequest', { requestId });
+    await page.send('Fetch.fulfillRequest', { requestId, responseCode: 200, responseHeaders: [{ name: 'Content-Type', value: 'application/json' }], body: Buffer.from(JSON.stringify(body)).toString('base64') });
+  });
+  return page;
+}
+const until = async (page: Page, expr: string, ms = 15000) => { for (let t = 0; t < ms; t += 150) { if (await page.eval(`!!(${expr})`).catch(() => false)) return true; await Bun.sleep(150); } return false; };
+async function at(page: Page, finder: string, type: 'click' | 'hover') {
+  const r = await page.eval(`(() => { const e = ${finder}; if (!e) return null; const b = e.getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; })()`);
+  if (!r) return false;
+  await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: r.x, y: r.y });
+  if (type === 'click') for (const t of ['mousePressed', 'mouseReleased']) await page.send('Input.dispatchMouseEvent', { type: t, x: r.x, y: r.y, button: 'left', clickCount: 1 });
+  return true;
+}
+const byText = (sel: string, text: string) => `[...document.querySelectorAll(${JSON.stringify(sel)})].find(e => e.innerText && e.innerText.trim() === ${JSON.stringify(text)} && e.getClientRects().length)`;
+async function shot(page: Page, name: string) {
+  await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1, y: 899 }).catch(() => {});
+  const { data } = await page.send('Page.captureScreenshot', { format: 'png' });
+  writeFileSync(join(OUT, `${name}.png`), Buffer.from(data, 'base64'));
+}
+
+const shots: string[] = [];
+for (const s of ['old', 'new']) {
+  await side(s);
+  for (const width of [1440, 390]) {
+    for (const [state, plan] of Object.entries(PLANS)) {
+      const page = await open(width, plan);
+      await page.goto(`${ORIGIN}/profile?accessToken=${TOKEN}`);
+      await until(page, `location.search === '' && document.body.innerText.includes('Profile Settings')`);
+      await page.goto(`${ORIGIN}/profile`);
+      await until(page, `document.body.innerText.includes('Profile Settings')`);
+      await Bun.sleep(1800);
+      await shot(page, `${s}.profile-${state}@${width}`); shots.push(`profile-${state}@${width}`);
+      await page.goto(`${ORIGIN}/manage-subscription`);
+      await until(page, `document.body.innerText.includes('View and manage your support options')`);
+      await Bun.sleep(1800);
+      await shot(page, `${s}.manage-${state}@${width}`); shots.push(`manage-${state}@${width}`);
+      if (state === 'active') {
+        await at(page, byText('button', 'Cancel Plan'), 'click');
+        await until(page, `document.body.innerText.includes('Cancel subscription?')`);
+        await Bun.sleep(900);
+        await shot(page, `${s}.cancel-dialog@${width}`); shots.push(`cancel-dialog@${width}`);
+      }
+      if (state === 'active' && width === 1440) {
+        await page.goto(`${ORIGIN}/demos`);
+        await until(page, `document.querySelector('img[alt="Profile"]')`);
+        // A hover before the new site's runtime has started is not replayed (Exact's capture keeps presses and fields).
+        await until(page, `!document.querySelector('script[type="application/vnd.exact.checkpoint"]') || (self.exact && self.exact.ready)`);
+        await Bun.sleep(1200);
+        await at(page, `document.querySelector('img[alt="Profile"]')`, 'hover');
+        await Bun.sleep(600);
+        const { data } = await page.send('Page.captureScreenshot', { format: 'png', clip: { x: 800, y: 0, width: 320, height: 300, scale: 1 } });
+        writeFileSync(join(OUT, `${s}.menu@${width}.png`), Buffer.from(data, 'base64')); shots.push(`menu@${width}`);
+      }
+      await page.close();
+    }
+    const page = await open(width, null);
+    await page.goto(`${ORIGIN}/demos`);
+    await Bun.sleep(2500);
+    await at(page, byText('button', 'Sign In'), 'click');
+    await until(page, `document.body.innerText.includes('Sign in to Reactiive')`);
+    await Bun.sleep(1200);
+    await shot(page, `${s}.sign-in@${width}`); shots.push(`sign-in@${width}`);
+    await page.close();
+  }
+}
+await side('old');
+const page = await open(1440, null);
+const results: Record<string, number> = {};
+for (const n of [...new Set(shots)]) {
+  const r = await diffImages(page, join(OUT, `old.${n}.png`), join(OUT, `new.${n}.png`), { diffOut: join(OUT, `diff.${n}.png`) }).catch(() => null);
+  results[n] = r ? Math.round(r.ratio * 10000) / 100 : -1;
+  console.log(`${n.padEnd(28)} ${results[n]} % px differ`);
+}
+writeFileSync(join(OUT, 'results.json'), JSON.stringify(results, null, 1));
+kill();
+process.exit(0);
