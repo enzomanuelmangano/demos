@@ -1,0 +1,165 @@
+name: 'Site / deploy (manual only, prepared, never run)'
+
+# Builds reactiive.io (.site/) and the cached /demos/app/ artifact, composes the Build Output API v3 tree and deploys it
+# to Vercel with `vercel deploy --prebuilt`. See .site/docs/deploy.md for the one-time steps the owner does first.
+#
+# DISABLED ON PURPOSE: `workflow_dispatch` only. The secrets VERCEL_TOKEN / VERCEL_ORG_ID / VERCEL_PROJECT_ID do not
+# exist yet; the first step fails with a clear message when they are missing, before anything is built. To make it
+# automatic after the owner has added the secrets and checked a preview, replace the `on:` block with the one in the
+# comment below (push to `site` -> main once the site lands there), nothing else changes.
+#
+#   on:
+#     push:
+#       branches: [main]
+#       paths:        # .site/** and every input of the /demos/app/ artifact (tools/demos-web/build.ts isInput):
+#         - '**'      # every tracked path but the deny-list below, plus this file
+#         - '!.legacy/**'
+#         - '!.parity/**'
+#         - '!.github/**'
+#         - '!**/*.md'
+#         - '.github/workflows/site-deploy.yml'
+#     workflow_dispatch: ...
+on:
+  workflow_dispatch:
+    inputs:
+      production:
+        description: 'Deploy to production (the reactiive.io alias). Off: a preview deployment (its own URL).'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      # The canonical origin written into the heads, sitemap and feed. A preview links to itself (relative links) but
+      # advertises the real origin, as the live site's previews would.
+      SITE_ORIGIN: https://reactiive.io
+      # The old Next deployment that keeps answering /api/* (repository variable; docs/stubs.md). Unset: no rewrite.
+      LEGACY_API_ORIGIN: ${{ vars.LEGACY_API_ORIGIN }}
+    steps:
+      - name: The deploy secrets exist
+        run: |
+          missing=""
+          for v in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
+            [ -n "${!v}" ] || missing="$missing $v"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing secrets:$missing. Add them first (.site/docs/deploy.md, step 2). Nothing was built or deployed."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Bun (the version Exact pins)
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Keys and Exact seeds
+        id: key
+        run: |
+          echo "key=$(bun .site/tools/demos-web/build.ts --key-only)" >> "$GITHUB_OUTPUT"
+          echo "demos-seed=$(sed -n 's/^const seed = ".*\/\([0-9a-f]\{40\}\)";$/\1/p' exact.mjs)" >> "$GITHUB_OUTPUT"
+          echo "site-seed=$(sed -n 's/^const seed = ".*\/\([0-9a-f]\{40\}\)";$/\1/p' .site/exact.mjs)" >> "$GITHUB_OUTPUT"
+
+      # ---- the /demos/app/ artifact: cached by the demos' inputs; a site-only change is a cache hit --------------------
+      - name: Restore the demos artifact
+        id: artifact
+        uses: actions/cache@v4
+        with:
+          path: .site/.out/demos-web/${{ steps.key.outputs.key }}
+          key: demos-web-${{ steps.key.outputs.key }}
+
+      - name: Checkout expo/exact at the demos' seed
+        if: steps.artifact.outputs.cache-hit != 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: expo/exact
+          ref: ${{ steps.key.outputs.demos-seed }}
+          path: .exact-demos
+
+      - name: Cache Rust
+        if: steps.artifact.outputs.cache-hit != 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.rustup
+            ~/.cargo/bin
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cache/exact
+            /tmp/demos-web-target
+          key: demos-web-rust-${{ steps.key.outputs.demos-seed }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: demos-web-rust-${{ steps.key.outputs.demos-seed }}-
+
+      - name: Exact web prerequisites for the demos build
+        if: steps.artifact.outputs.cache-hit != 'true'
+        run: bun .exact-demos/scripts/exact.mjs setup --platform web
+
+      - name: Build the demos web (base /demos/app/)
+        if: steps.artifact.outputs.cache-hit != 'true'
+        env:
+          EXACT: ${{ github.workspace }}/.exact-demos
+          CARGO_TARGET_DIR: /tmp/demos-web-target
+          DEMOS_WEB_SCRATCH: /tmp/demos-web-src
+        run: bun .site/tools/demos-web/build.ts
+
+      # ---- the site -----------------------------------------------------------------------------------------------
+      - name: Checkout expo/exact at the site's seed
+        uses: actions/checkout@v4
+        with:
+          repository: expo/exact
+          ref: ${{ steps.key.outputs.site-seed }}
+          path: .exact-site
+
+      - name: Install the site's dependencies
+        working-directory: .site
+        run: bun install --frozen-lockfile
+
+      - name: Content (articles, docs) to typed modules
+        working-directory: .site
+        run: |
+          if [ -f tools/gen-content.ts ]; then bun tools/gen-content.ts; else echo "no content pipeline on this branch"; fi
+
+      - name: Build the site (web-build, then head, JSON-LD, sitemap, robots, feed, manifest)
+        working-directory: .site
+        env:
+          EXACT: ${{ github.workspace }}/.exact-site
+        run: bun run build
+
+      - name: Head parity with the live site (built pages only)
+        working-directory: .site
+        run: bun tools/parity/head-diff.ts --ours dist
+
+      - name: Compose the deploy tree (.site/.vercel/output)
+        working-directory: .site
+        run: bun tools/compose.ts
+
+      # ---- deploy ---------------------------------------------------------------------------------------------------
+      # `--prebuilt` uploads .vercel/output as is. VERCEL_ORG_ID + VERCEL_PROJECT_ID stand in for `vercel link`.
+      - name: Deploy to Vercel
+        id: deploy
+        working-directory: .site
+        run: |
+          flags="--prebuilt --token=$VERCEL_TOKEN"
+          if [ "${{ inputs.production }}" = "true" ]; then flags="$flags --prod"; fi
+          url=$(bunx vercel@latest deploy $flags)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Deployed: $url" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Head parity against the deployment (informational, a protected preview answers 401)
+        continue-on-error: true
+        working-directory: .site
+        run: bun tools/parity/head-diff.ts --ours-url "${{ steps.deploy.outputs.url }}"
