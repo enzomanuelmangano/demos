@@ -2,7 +2,8 @@
 // The signed-in screens, old site against new, on the one origin of tools/local-env/switch.ts (the same setup as
 // storage-continuity.ts): for each user state (no plan, an active monthly plan, a cancelled annual one, a billing issue)
 // both sides are shot at 1440 and 390 (first viewport): /profile, /manage-subscription, the avatar's menu (1440), the
-// cancel confirmation; signed out: the sign-in dialog. Then each pair is diffed (threshold 32/255).
+// cancel confirmation; signed out: the sign-in dialog over /articles. Then each pair is diffed (threshold 32/255); it
+// exits 1 when a pair is over its budget (2 %; /manage-subscription 10 %: the price cards removed by design).
 //   bun tools/local-env/account-parity.ts [--origin http://localhost:4317] [--out /tmp/account-parity]
 // /api/user/info is answered in the browser (the reference's shape) for a made-up token; /api/purchase/* is never
 // forwarded. Nothing reaches production.
@@ -90,29 +91,45 @@ for (const s of ['old', 'new']) {
         await Bun.sleep(1200);
         await at(page, `document.querySelector('img[alt="Profile"]')`, 'hover');
         await Bun.sleep(600);
-        const { data } = await page.send('Page.captureScreenshot', { format: 'png', clip: { x: 800, y: 0, width: 320, height: 300, scale: 1 } });
+        const { data } = await page.send('Page.captureScreenshot', { format: 'png', clip: { x: 852, y: 24, width: 232, height: 234, scale: 1 } /* the avatar and the menu (opaque) only */ });
         writeFileSync(join(OUT, `${s}.menu@${width}.png`), Buffer.from(data, 'base64')); shots.push(`menu@${width}`);
       }
       await page.close();
     }
+    // Signed out: the sign-in dialog over /articles (the same page on both sides; /demos is the redesigned page, D17).
     const page = await open(width, null);
-    await page.goto(`${ORIGIN}/demos`);
+    await page.goto(`${ORIGIN}/articles`);
     await Bun.sleep(2500);
-    await at(page, byText('button', 'Sign In'), 'click');
+    if (width < 768) {
+      // Under 768 px Sign In is the mobile menu's last entry (the header's handleProfileClick).
+      await at(page, `[...document.querySelectorAll('button')].find(b => /menu/i.test(b.getAttribute('aria-label') || '') && b.getClientRects().length)`, 'click');
+      await Bun.sleep(700);
+      await at(page, `[...document.querySelectorAll('button,a,[role=button]')].filter(e => e.innerText && e.innerText.trim() === 'Sign In' && e.getClientRects().length).pop()`, 'click');
+    } else await at(page, byText('button', 'Sign In'), 'click');
     await until(page, `document.body.innerText.includes('Sign in to Reactiive')`);
     await Bun.sleep(1200);
-    await shot(page, `${s}.sign-in@${width}`); shots.push(`sign-in@${width}`);
+    // The dialog's own box only: the page behind it (article cards, their images still decoding) is not the account UI.
+    const box = await page.eval<{ x: number; y: number; width: number; height: number }>(`(() => { const h = [...document.querySelectorAll('body *')].filter(e => e.textContent.trim() === 'Sign in to Reactiive' && e.getClientRects().length).pop(); const d = (h && h.closest('dialog,[role=dialog],[data-vaul-drawer]')) || document.documentElement; const r = d === document.documentElement ? { x: 0, y: 0, width: innerWidth, height: innerHeight } : d.getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(Math.min(r.height, innerHeight - r.y)) }; })()`);
+    const { data } = await page.send('Page.captureScreenshot', { format: 'png', clip: { ...box, scale: 1 } });
+    writeFileSync(join(OUT, `${s}.sign-in@${width}.png`), Buffer.from(data, 'base64')); shots.push(`sign-in@${width}`);
     await page.close();
   }
 }
 await side('old');
 const page = await open(1440, null);
 const results: Record<string, number> = {};
+// The most a pair may differ (% of pixels over 32/255, first viewport). /manage-subscription lacks the reference's price
+// cards by the owner's decision (docs/stubs.md): its budget covers their area; everything else is the same screen.
+const budget = (n: string) => n.startsWith('manage-') ? 10 : 2;
+const over: string[] = [];
 for (const n of [...new Set(shots)]) {
   const r = await diffImages(page, join(OUT, `old.${n}.png`), join(OUT, `new.${n}.png`), { diffOut: join(OUT, `diff.${n}.png`) }).catch(() => null);
   results[n] = r ? Math.round(r.ratio * 10000) / 100 : -1;
-  console.log(`${n.padEnd(28)} ${results[n]} % px differ`);
+  const ok = results[n] >= 0 && results[n] <= budget(n);
+  if (!ok) over.push(n);
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${n.padEnd(28)} ${results[n]} % px differ (budget ${budget(n)} %)`);
 }
 writeFileSync(join(OUT, 'results.json'), JSON.stringify(results, null, 1));
 kill();
-process.exit(0);
+console.log(over.length ? `${over.length} over budget: ${over.join(', ')}` : 'all within budget');
+process.exit(over.length ? 1 : 0);
