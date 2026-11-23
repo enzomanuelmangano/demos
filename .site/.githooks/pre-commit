@@ -1,0 +1,6 @@
+#!/bin/sh
+# The site's secret check on the staged diff (docs/local-env.md). Enable once per clone/worktree:
+#   git config core.hooksPath .site/.githooks
+# It honours GIT_INDEX_FILE (a private index's commit is checked too). Prints names, never values.
+top=$(git rev-parse --show-toplevel) || exit 1
+exec bun "$top/.site/tools/check-secrets.ts"

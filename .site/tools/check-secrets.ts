@@ -4,6 +4,7 @@
 //
 //   bun tools/check-secrets.ts                 the staged diff (git diff --cached), the default
 //   bun tools/check-secrets.ts --tracked       every tracked file under .site/
+//   bun tools/check-secrets.ts --patterns-only  (with any mode) the patterns alone: CI, where no env file exists
 //   bun tools/check-secrets.ts --dir <path>…   files under a build output (dist, .vercel/output): no SERVER value may be
 //                                              there (public client keys may: the reference ships them too)
 //
@@ -43,9 +44,17 @@ function scanText(where: string, text: string, values: [string, string][]): Find
   });
   return out;
 }
+// A multi-line value (APPLE_PRIVATE_KEY's PEM body) is matched line by line too: each of its lines of 16 characters or
+// more (its BEGIN/END lines are the pattern rule's).
 const envValues = (allowPublic: boolean): [string, string][] => {
-  if (!env) return [];
-  return [...env.entries()].filter(([k, v]) => v.length > 7 && !IGNORED_KEYS.test(k) && !isPublicUrl(v) && !(allowPublic && (PUBLIC_KEYS as readonly string[]).includes(k)));
+  if (!env || process.argv.includes('--patterns-only')) return [];
+  const out: [string, string][] = [];
+  for (const [k, v] of env.entries()) {
+    if (v.length <= 7 || IGNORED_KEYS.test(k) || isPublicUrl(v) || (allowPublic && (PUBLIC_KEYS as readonly string[]).includes(k))) continue;
+    if (!v.includes('\n')) { out.push([k, v]); continue; }
+    for (const part of v.split('\n').map((l) => l.trim())) if (part.length >= 16 && !part.startsWith('-----')) out.push([`${k} (a line of it)`, part]);
+  }
+  return out;
 };
 
 const findings: Finding[] = [];
@@ -94,5 +103,5 @@ if (dirAt >= 0) {
 
 const unit = dirAt >= 0 ? 'files' : process.argv.includes('--tracked') ? 'files' : 'added lines';
 for (const f of findings) console.log(`check-secrets: ${f.where}: ${f.rule}`);
-console.log(`check-secrets: ${scanned} ${unit} scanned${env ? ' (env file values included)' : ' (no env file: patterns only)'}, ${findings.length} finding(s)`);
+console.log(`check-secrets: ${scanned} ${unit} scanned${env && !process.argv.includes('--patterns-only') ? ' (env file values included)' : ' (patterns only)'}, ${findings.length} finding(s)`);
 process.exit(findings.length ? 1 : 0);
