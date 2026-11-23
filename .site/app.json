@@ -43,5 +43,9 @@
   "data": [
     "motion",
     "delay"
+  ],
+  "env": [
+    "EXPO_PUBLIC_WEBSITE_URL",
+    "SITE_ACCOUNTS"
   ]
 }

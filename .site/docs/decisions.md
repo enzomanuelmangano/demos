@@ -237,3 +237,50 @@ Measured on the home page, the gallery build (all 22 gesture/UI demos in the pla
 
 The remaining cost is the components' plan and classes, which every page loads. Removing it needs per-route plans
 and keyframes from Exact (feedback noted).
+
+## D15. The accounts: the reference's API as the backend, its client ported, off without the env (branch site-env, 2026-11-23)
+
+- **Backend: the reference's own Next API, unchanged.** Locally `tools/local-env/api.ts` runs it from a `git archive`
+  copy (never the reference clone) on :3000 with the owner's env file in its process environment only;
+  `tools/serve.ts` proxies `/api/*` same-origin (redirects unfollowed, so OAuth works). In production compose's
+  rewrite to `LEGACY_API_ORIGIN` does the same. Evaluated and rejected: server functions on the Exact web host. Exact's
+  web output here is a static Build Output tree (`render=build` pages, `--render js`); compose could add Vercel
+  functions, but that is a rewrite of 22 route handlers, the DB layer and the webhook for no gain over keeping the
+  deployment that already runs them, and the OAuth clients' redirect URIs already name `https://reactiive.io/api/...`.
+- **Session: the reference's, byte for byte on the wire.** Its callbacks answer 302 to
+  `${EXPO_PUBLIC_WEBSITE_URL}/profile?accessToken=<JWT>`; the client keeps the JWT and sends `Authorization: Bearer`.
+  Here the root's `state accessToken = "" persist` (localStorage) takes it from the URL and replaces the URL; the data
+  module (`components/account/account.ts`) sends it with `credentials: 'omit'` (no cookie exists). A 401 forgets it. Not
+  carried over: the reference's XOR obfuscation of the stored token under `@AccessStorage` (obfuscation with a public
+  key, not security); after the cutover a signed-in visitor signs in once more.
+- **Sign-in buttons are links.** The reference asks `/api/auth/{google,apple}-sign-up` at the press and sets
+  `window.location`. Contract has no same-tab navigation to another origin from an action (`openURL` opens a new tab),
+  so the URLs are asked when the dialog opens and the buttons are plain links to the provider (same requests, same
+  page; a spinner while the answer is out).
+- **On/off.** `SITE_ACCOUNTS=1` (public setting) turns the accounts on; `EXPO_PUBLIC_WEBSITE_URL` is the API base
+  (default `https://reactiive.io`). Unset, the header draws the signed-out "Sign In" that opens nothing, no request is
+  made, `/profile` 307s to `/demos` (compose, unless `LEGACY_API_ORIGIN`), the star count is the snapshot, and no
+  analytics script is written: the public build is the earlier one.
+- **Payments are not ported** (owner): no checkout, plan UI, subscription modals or refunds; `/manage-subscription`
+  always 307s to `/demos`; the menu's support entry and the profile's SubscriptionBox are left out.
+- **Analytics and Sentry** are a script `tools/observability.ts` writes into the built pages when the public keys are
+  in the build's env: the vendors' CDN builds (pinned, SRI) with the reference's options; never sending on localhost.
+- **Secrets.** Only public values reach the site build (`.env.local`: `SITE_ACCOUNTS`, `EXPO_PUBLIC_*`); server values
+  live in the API process only. `tools/check-secrets.ts` scans the staged diff, the tracked tree and build outputs
+  against patterns and the env file's values.
+
+### D15, inherited from the reference: the session's known weaknesses (security review of PR #121, 2026-11-23)
+
+Kept as they are, since the backend is the reference's, unchanged; listed with the fixes recommended upstream (in the
+reference's API, then mirrored here):
+
+- **The JWT lives in localStorage** (here a persisted state; there XOR-obfuscated): any XSS on the origin can read it.
+  Upstream: an `HttpOnly; Secure; SameSite=Lax` `__Host-` session cookie set by the callback (Exact's
+  `recipes/web-sessions.md`), the page never holding the token.
+- **The token travels in the callback's URL** (`/profile?accessToken=`): it lands in history, logs and Referer.
+  Mitigated here: the page replaces the URL at once, Sentry scrubs it from every event, the profile page loads no
+  third-party resource before the replacement. Upstream: the cookie above, or a single-use code exchanged by POST.
+- **The JWT does not expire** and cannot be revoked (no `exp`, no server-side session). Upstream: `exp` (hours),
+  refresh with rotation, a revocation list or session table.
+- **OAuth `state` carries only utm_source, no anti-CSRF value; no PKCE.** Upstream: a random, single-use `state`
+  bound to the browser (cookie) and checked in the callback; PKCE for the code exchange.

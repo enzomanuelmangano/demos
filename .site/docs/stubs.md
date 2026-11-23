@@ -1,19 +1,22 @@
-# Env-dependent features: stubbed, not ported
+# Env-dependent features: what is ported, what is stubbed
 
-No build or page of the site reads a secret. What the reference site does with each `.env` key (names only, from the
+No build or page of the site reads a secret. The accounts' client side is ported (branch `site-env`,
+`decisions.md` D15, `local-env.md`): it is ON only in a build with `SITE_ACCOUNTS=1`; without it (the public build)
+everything below behaves as the "stub" column says. What the reference site does with each `.env` key (names only, from the
 reference's `.env.example` / `src/server/env`; values never read) and what the rebuild does instead:
 
 | Feature | Reference keys | In the rebuild |
 |---|---|---|
-| Sign in (Google, GitHub, Apple, Patreon), session JWT | `GOOGLE_CLIENT_{ID,SECRET}`, `GITHUB_CLIENT_{ID,SECRET}`, `PATREON_CLIENT_{ID,SECRET}`, `APPLE_{TEAM_ID,CLIENT_ID,KEY_ID,PRIVATE_KEY}`, `AUTH_JWT_SECRET`, `EXPO_PUBLIC_ACCESS_KEY` | header "Sign In" drawn as today (signed-out); pressing it opens nothing yet |
-| `/profile`, `/manage-subscription` | auth, `DATABASE_URL`, `LEMON_SQUEEZY_*` | edge 307 to `/demos/` (what a signed-out visitor got) |
-| Payments, refunds, subscription webhook | `LEMON_SQUEEZY_{API_KEY,STORE_ID,MONTHLY_SUPPORTER_VARIANT_ID,ANNUAL_SUPPORTER_VARIANT_ID,WEBHOOK_SECRET}`, `DATABASE_URL` | not ported; no entry point is visible signed out |
-| Feedback / demo requests | auth, `TELEGRAM_{BOT_TOKEN,CHAT_ID}` | the demo-post pages that showed it now redirect into the Demos app |
-| Live GitHub stars and repo cards | `GITHUB_OAUTH_TOKEN` | build-time snapshot (the reference's own fallback, `src/data/github-repos.json`) |
-| Analytics | `EXPO_PUBLIC_AMPLITUDE_API_KEY` | none |
-| Error reporting | `EXPO_PUBLIC_SENTRY_DSN` | none |
-| Website URL for the API client | `EXPO_PUBLIC_WEBSITE_URL` | not needed (no API client) |
+| Sign in (Google, Apple), session JWT | `GOOGLE_CLIENT_{ID,SECRET}`, `APPLE_{TEAM_ID,CLIENT_ID,KEY_ID,PRIVATE_KEY}`, `AUTH_JWT_SECRET` | ported (components/account): the sign-in modal, the reference's Bearer JWT from `/profile?accessToken=`, kept in localStorage; avatar and menu. Stub without the env: "Sign In" opens nothing |
+| `/profile` | auth, `DATABASE_URL` | ported without its SubscriptionBox (payments): feedback card, mobile sign-out. Without the env (or `LEGACY_API_ORIGIN`): edge 307 to `/demos` |
+| Payments: `/manage-subscription`, checkout, plan cards, subscription modals, refunds, webhook | `LEMON_SQUEEZY_*`, `DATABASE_URL` | **not ported (owner, 2026-11-23)**: `/manage-subscription` always 307s to `/demos`; the menu's "Support Demos" / "Manage Support" entry and the profile's SubscriptionBox are left out; the old deployment keeps the webhook |
+| Feedback | auth, `TELEGRAM_{BOT_TOKEN,CHAT_ID}` | ported on `/profile` (the feedback modal, POST `/api/feedback/submit`); demo requests lived on the demo posts, which redirect into the Demos app |
+| Live GitHub stars | `GITHUB_OAUTH_TOKEN` (server) | ported: the /demos pill asks `/api/github/stars` on the reader's page; the build-time snapshot (3,248) is the fallback and the public build's value |
+| Analytics | `EXPO_PUBLIC_AMPLITUDE_API_KEY` | ported (tools/observability.ts): the reference's init and its one event, `utm_source_open`; opted out on localhost |
+| Error reporting | `EXPO_PUBLIC_SENTRY_DSN` | ported (tools/observability.ts, client only): the reference's options; disabled on localhost. Sentry user context is not set (the reference's `useSentryUserContext`) |
+| Website URL for the API client | `EXPO_PUBLIC_WEBSITE_URL` | the accounts' API base (public); `SITE_ACCOUNTS=1` turns them on |
 | Media CDN | `EXPO_PUBLIC_MEDIA_CDN_URL` | public value, not a secret: written in the content where used |
 | Newsletter | `BEEHIIV_{API_KEY,PUBLICATION_ID}` (server side of subs.reactiive.io only) | the form posts to the public `https://subs.reactiive.io/api/subscribe`, as today: kept |
-| `/api/*` (22 routes: OAuth callbacks, webhook, purchase, feedback, stars) | all of the above | `tools/compose.ts` proxies `/api/*` to `LEGACY_API_ORIGIN` (the old Next deployment) when set; unset in this branch |
+| `/api/*` (22 routes: OAuth callbacks, webhook, purchase, feedback, stars) | all of the above | `tools/compose.ts` proxies `/api/*` to `LEGACY_API_ORIGIN` (the old Next deployment) when set; locally `tools/serve.ts` proxies it to the reference's API run by `tools/local-env/api.ts` |
+| GitHub / Patreon "connect" | `GITHUB_CLIENT_*`, `PATREON_CLIENT_*` | not ported: the reference's ConnectionBox is not rendered on any live page (its API routes stay on the old deployment) |
 | Deploy | `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` (to be created) | no deploy workflow runs from this branch |

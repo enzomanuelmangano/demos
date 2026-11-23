@@ -31,11 +31,29 @@ function file(path: string, status: number, headers: Record<string, string>, req
   return new Response(Bun.file(p), { status, headers: h });
 }
 
+// A proxied answer as the host gives it: redirects passed through (OAuth answers 302/307 to the provider or back to
+// the page), Set-Cookie kept, the body re-encoded by this server (fetch decodes it). LEGACY_API_ORIGIN at serve time
+// proxies /api/* even when the composed tree has no such route (docs/local-env.md).
+const HOP = ['connection', 'keep-alive', 'transfer-encoding', 'content-encoding', 'content-length', 'host'];
+async function proxy(dest: string, req: Request) {
+  const headers = new Headers(req.headers);
+  for (const h of HOP) headers.delete(h);
+  headers.set('x-forwarded-host', new URL(req.url).host);
+  headers.set('x-forwarded-proto', 'http');
+  const body = req.method === 'GET' || req.method === 'HEAD' ? undefined : await req.arrayBuffer();
+  const r = await fetch(dest, { method: req.method, headers, body, redirect: 'manual' });
+  const out = new Headers(r.headers);
+  for (const h of HOP) out.delete(h);
+  return new Response(r.status === 204 || r.status === 304 || req.method === 'HEAD' ? null : await r.arrayBuffer(), { status: r.status, statusText: r.statusText, headers: out });
+}
+const LEGACY_API = process.env.LEGACY_API_ORIGIN?.replace(/\/$/, '');
+
 Bun.serve({
   port, hostname: '127.0.0.1', idleTimeout: 0,
   fetch(req) {
     const url = new URL(req.url);
     let path = url.pathname;
+    if (LEGACY_API && path.startsWith('/api/')) return proxy(LEGACY_API + path + url.search, req);
     const headers: Record<string, string> = {};
     for (const r of routes) {
       if (r.handle === 'filesystem') {
@@ -52,7 +70,7 @@ Bun.serve({
       if (r.continue) continue;
       if (r.dest) {
         const dest = sub(r.dest);
-        if (/^https?:/.test(dest)) return fetch(dest + url.search, { method: req.method, headers: req.headers, body: req.body });
+        if (/^https?:/.test(dest)) return proxy(dest + url.search, req);
         path = dest;
         if (isFile(join(root, path))) return file(path, r.status ?? 200, headers, req);
       }
@@ -61,4 +79,4 @@ Bun.serve({
     return new Response('not found', { status: 404 });
   },
 });
-console.log(`serve: ${out} at http://127.0.0.1:${port}/`);
+console.log(`serve: ${out} at http://127.0.0.1:${port}/${LEGACY_API ? ` (/api/* -> ${LEGACY_API})` : ''}`);
