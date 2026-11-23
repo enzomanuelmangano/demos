@@ -450,3 +450,81 @@ Cost: the CTA and hint are a few plan nodes (app.js +~1 KB) and ~2.5 KB of head 
   to about:blank (measured: 1440 → 900 → 1440 leaves one `/demos/app/` frame each time). With D16's activation on
   intent: `/articles` (no runtime) → Demos is a document navigation and `/demos` loads cold, lazily as before; after
   activation, `/demos` → `/articles` → `/demos` finds the kept frame live (opacity 1 at 150 ms, no load).
+
+## D18. Navigating the framed Demos app: what the embedding costs, and fixes on both sides (owner, 2026-11-23)
+
+The owner: "test the navigation on /demos and make it as fast and effective as possible"; "frames still drop a lot when
+navigating the app from the site". Measured with `tools/parity/sim-frames.ts` (headed Chrome, real vsync: rAF intervals
+inside the app's own renderer process and the page's, per interaction; site vs the app alone at the top) and
+`tools/parity/composable-text.ts`; numbers in perf.md "Navigating the sim".
+
+- **The embedding's costs, removed.** From 1024 px the frame was clipped by a rounded `clip-path` and its column masked by
+  an SVG of the iPhone's silhouette; 768-1023 px stacked three gradient masks (two wrappers and the sides). A mask or a
+  rounded clip over an out-of-process frame makes the compositor draw the whole frame into a render pass and mask it,
+  every frame the app draws. Now: the frame is clipped to the display's plain rectangle (still a clip path, so the
+  wheel over the bezel stays the page's) and the app's own bezel draws the corners; the silhouette mask is dropped (the
+  still under the frame is transparent around the phone, so nothing showed through it); 768-1023 px fades the stage
+  with two overlays painted in the page's colour (`sim-sides::before/::after`), no mask. The spotlight and the contact
+  shadow are static layers, never over the frame's area.
+- **The bezel is concentric** (owner: "the border around the sim must ALWAYS be equidistant from the mockup"). The app's
+  rim and black glass were circular (`corner-shape` round, 74 / 70 pt) around a continuous 62 pt display, so the
+  bezel thickened at the corners (up to 5.9 px more at 3x). Rim and glass are now the display's outline offset along
+  its normals (`tools/air-frame-paths.ts` at the repo root, polygons under 0.02 pt from the true offset, used as clip
+  paths in `home/web-phone.contract`; the drop shadow is its own box 6 pt inside). Sampled along the normals at 0-90°
+  of each corner and on the edges at 3x: max deviation 0.3 px at 1440x900, 0.4 px at 1728x960 (was 5.5 / 5.9 px).
+  The launcher still is re-shot from it.
+- **Glass buttons.** The web stand-in for iOS 26's glass close / info buttons read as flat grey discs over light demos;
+  now a neutral translucent tint over a blur, a specular rim lit from the top, a soft lift shadow and a white glyph
+  with a hairline shadow (`home/web-chrome.contract` WebRoundButton; Exact's `backdrop-filter` takes blur and saturate
+  only).
+- **Composable Text "often breaks"**: the leaving letters (i, n, g of "Using Max") drew on top of each other. Cause, in
+  Exact's web-js host: a region's removal calls the presence `exit()` once per leaving node, and each read its box after
+  the previous sibling had already been taken out of flow, so every later sibling read the first one's place.
+  Web only (iOS ghosts are native snapshots). Fixed by `tools/demos-web/patches.ts`, applied by `tools/compose.ts` to
+  the artifact's `presence-glue-*.js` (each edit must match exactly once, or the compose fails): an exit with no
+  reading takes its ghost out of flow at the end of the task, or before the next measure. Reported to Exact
+  (`exact feedback note`); drop the patch when the pinned Exact has the fix. Regression check:
+  `bun tools/parity/composable-text.ts <origin>` (exit 1 if leaving letters collapse; 1440 and 390 touch).
+- **The sandbox costs the frame its HTTP cache.** Measured: a repeat visit to `/demos` re-downloads every file of the
+  app, the content-hashed `immutable` ones included (144 requests, ~5 MB on cable), because a frame with an opaque
+  origin gets a transient cache partition; the same files at the top level come from the cache. Kept anyway: the
+  frame's own renderer process is what keeps the app's start and its frames off the page's main thread (D12), and the
+  owner's first ask is smooth navigation inside it; on a desktop the kept frame (D17) means one load per tab, not per
+  visit. The fix for both is to serve the app from its own site (another registrable domain: its own process without
+  a sandbox, and a cache), a deployment decision for the owner. A service worker cannot help (an opaque-origin frame is
+  never controlled by one), nor can a prefetch from the page (another partition).
+
+## D19. The framed app says it is live: a one-time touch demo (owner, 2026-11-23)
+
+The owner: "add a way to make people understand they can interact with the sim; right now it almost looks like an
+image" (a caption was rejected, D17 revised). Variants considered (recordings: `/tmp/demos-variants/hint-*`):
+
+- **(a) chosen: a touch demo.** Once per session (`sessionStorage` `reactiive.demos.hint`), 1.2 s after the framed app
+  has drawn, an iOS-style touch indicator (a soft grey disc with a light rim, 44 px) rises onto Composable Text's icon
+  and taps it (the app opens it), taps its pill ("Use Max" morphs to "Using Max"), then taps close; ~5 s. Any pointer,
+  wheel or key on the page, or the first real input inside the app, stops it at once (the disc fades in 200 ms; the
+  app stays where it is); also skipped with reduced motion, Save-Data, or a hidden tab. It never blocks: the disc
+  takes no pointer.
+- **(b) the launcher pages once by itself**: rejected; a page that moves without the reader reads as a glitch, and a
+  synthetic drag through the app's pager is fragile.
+- **(c) a touch-circle cursor and icon lift on hover**: not possible from the site: the cursor and hover over an
+  out-of-process frame belong to the framed document, and doing it there changes the app for every web reader.
+
+How it drives the app without coupling: `web/sim-hint.js` (a head script) only posts messages; the app (when framed,
+`modules/web/index.js`, web only, guarded by `window.parent !== window` and `event.source === parent`) answers
+`{ demos: 'rect', target }` with that testId's box and performs `{ demos: 'press', target }` as a tap, and tells the
+parent `{ demos: 'input' }` on real input. Nothing else is read or answered.
+
+## D20. /demos on a phone: the app full screen, not framed in the page (owner, 2026-11-23)
+
+The owner: "handle the mobile view perfectly … an iframe inside a scrolling page fights the page scroll and looks
+cramped". Under 768 px the page shows the hero as live, then an "Open the demos" pill button (light, 52 px, a grid
+glyph) and, under it, the launcher's still in its iPhone as a tappable preview; both go to `/demos/app/`, the app full
+screen (its own manifest is `standalone`; the head adds the Apple web-app tags; safe areas from its viewport's
+`viewport-fit=cover`). The way back is the browser's (a plain link, so Back returns to `/demos`). The links are
+prerendered on press (the speculation rules' `moderate` rule for `/demos/app/*`, only these links exist under 768 px),
+so the app's downloads start before the tap ends. No frame loads under 768 px at all (the page's frame is
+`display:none`, so never near, never `ready`). **Tablets (768-1023 px) keep the framed phone** (D10): there the phone
+fits beside nothing and the stage has room; it looked right at 768x1024 and 1023x768, and the page's scroll is the
+margins'. Shots and the flow (hero → button → app → demo → back): `/tmp/demos-variants/mobile-*` (390x844, 360x780,
+430x932), `/tmp/demos-variants/mobile-flow-390.mp4`.

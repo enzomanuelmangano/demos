@@ -89,7 +89,7 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
    viewport less 480 px, at most 960 px: 120 px past the header's on each side), centred on it: the copy left, the device right, a wide gap between (--gap: 7vw, 64-112 px);
    the copy optically centred on the device (2vh above its centre line). The device: --pw wide (80 % of the height under
    the header, at most 332 px; 46 % of the row after the gap on narrow windows), straight on the page, the app's frame
-   masked to the iPhone's silhouette (its continuous 74 pt corners and side keys, the app's 444 x 936 frame); the frame
+   clipped to the display's rectangle, the still drawing the phone around it (no mask over the frame, D18); the frame
    (600 px wide, the app's 24 px kept) overflows the device's column on both sides, under the copy. It stands in a soft
    cool spotlight (no panel, no edge) over a contact shadow. The copy: the title as large as the column allows (at most
    144 px, live's), the subtitle as live (two lines, one gradient, at most 20 px, never wrapped), the live pill. The
