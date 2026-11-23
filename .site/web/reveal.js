@@ -179,3 +179,15 @@ document.addEventListener('click', function (e) {
     if (document.referrer && new URL(document.referrer).origin == location.origin) document.documentElement.setAttribute('data-nav', 'in');
   } catch (e) {}
 })();
+/* Sign In opens its dialog at the press, before the runtime has started (a page that activates on interaction,
+   docs/decisions.md D16, starts it at this press and replays it: up to ~2 s cold at 4x CPU). The dialog is in the
+   built page; it is shown here at once and the replayed press finds it open (showModal on an open modal dialog does
+   nothing). The provider buttons are asked for once the runtime runs. */
+(function () {
+  addEventListener('click', function (e) {
+    var b = e.target && e.target.closest && e.target.closest('[data-testid="sign-in"]');
+    var d = b && document.getElementById('signin-modal');
+    if (!d || d.open || typeof d.showModal != 'function') return;
+    try { d.showModal(); } catch (err) {}
+  }, true);
+})();
