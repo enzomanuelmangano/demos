@@ -2,26 +2,10 @@
 // cubic-bezier(.22,1,.36,1), delays 80-650 ms: web/head.css, docs/decisions.md D11); the hand waves 4 times.
 use md from "../components/responsive.contract"
 use Newsletter from "../components/newsletter.contract"
+use ProjectItem from "../components/project-item.contract"
 
 style Caption
   font-size="0.875rem" line-height="1.25rem" color="var(--color-text-tertiary)"
-
-component ProjectItem
-  props
-    title: string
-    description: string
-    tag: string
-    href: string
-    newPage: bool
-  view
-    link href=href target=(newPage ? "_blank" : "_self") display="flex" flex-direction="column" -exact-hover-effect="none"
-      column padding="16px 12px" margin="0 -12px" border-radius="var(--radius-md)"
-        :hover
-          background-color = "rgba(30, 30, 32, 0.5)"
-        row justify-content="space-between" align-items="baseline"
-          text title font-weight=500 color="var(--color-text-primary)"
-          text tag class=Caption
-        text description class=Caption margin-top=4
 
 component HomePage
   props

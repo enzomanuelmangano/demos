@@ -1,0 +1,23 @@
+// A project or a link with a line about it (reference components/project-item): a row that lights up under the
+// pointer (hover:bg-surface-secondary/50, no transition), the title in the primary colour, the tag in the caption
+// style on the right, the line below. `tag` "" draws none; a new tab unless `newPage` is false.
+style ItemCaption
+  font-size="0.875rem" line-height="1.25rem" color="var(--color-text-tertiary)"
+
+component ProjectItem
+  props
+    title: string
+    description: string
+    tag: string
+    href: string
+    newPage: bool
+  view
+    link href=href target=(newPage ? "_blank" : "_self") display="flex" flex-direction="column" -exact-hover-effect="none"
+      column padding="16px 12px" margin="0 -12px" border-radius="var(--radius-md)"
+        :hover
+          background-color = "rgba(30, 30, 32, 0.5)"
+        row justify-content="space-between" align-items="baseline"
+          text title font-weight=500 color="var(--color-text-primary)"
+          if tag != ""
+            text tag class=ItemCaption
+        text description class=ItemCaption margin-top=4
