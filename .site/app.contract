@@ -11,6 +11,7 @@ use CoursePage from "./pages/course.contract"
 use DemosAppPage from "./pages/demos-app.contract"
 use Page from "./components/markdown.contract"
 use Card, ArticleList, ArticlePage from "./pages/articles.contract"
+use DevInteractive from "./pages/dev-interactive.contract"
 
 // The faces (Inter variable, Source Code Pro) are declared in app.json's head, font-display: swap and Inter
 // preloaded, as the reference: docs/decisions.md D7.
@@ -26,6 +27,8 @@ routes nav
   series "/series/:series" render=build activate=idle pages=seriesSlugs()
   docs "/docs" render=build activate=idle
   docPage "/docs/:post" render=build activate=idle pages=docSlugs()
+  // Not linked, noindex, not in the sitemap: the canvas article demos side by side (pages/dev-interactive.contract).
+  devInteractive "/_dev/interactive" render=build activate=idle
   notfound render=build
 
 // The footer's Terms | Privacy variant, on the reference's paths (its /demos, /profile and /manage-subscription
@@ -185,6 +188,9 @@ component App
                 head title=`${docTitle(e.params.post)} | Reactiive` description="Discover the beauty of React Native and how to build stunning animations with Reanimated and Skia"
                   image="/og/main.png" canonical=`/docs/${e.params.post}`
                 ArticlePage(page=doc, article=false, copied=copied, copy=copyCode, near=near, seen=embedSeen)
+              else if e.name == "devInteractive"
+                head title="Interactive demos | Reactiive" robots="noindex" description="The canvas article demos, for checking." canonical="/_dev/interactive"
+                DevInteractive()
               else
                 head title="Page not found | Reactiive" status=404 robots="noindex"
                   description="Discover the beauty of React Native and how to build stunning animations with Reanimated and Skia"

@@ -1,0 +1,58 @@
+// /_dev/interactive: every canvas article demo on one page, for checking them against the live articles (not linked,
+// noindex, not in the sitemap). Each sits in a 720 px column, as in an article at 1440 px.
+use BasicLoaderWithSkia, WithGradientLoaderWithSkia, WithProgressLoaderWithSkia, WithBasicAnimationLoaderWithSkia, WithAnimationLoaderWithSkia from "../components/interactive/animated-loader-skia/animated-loader-skia.contract"
+use AnimatedSpiralWithSkia, AnimatedInteractiveSnappySpiralWhite, AnimatedInteractiveSnappySpiralGradient, AnimatedInteractiveAnimatedSpiralFixedRadiusGradient from "../components/interactive/animated-spiral/animated-spiral.contract"
+use BasicMetaballWithSkia, WithPanMetaballWithSkia, WithBlurMetaballWithSkia, WithColorMatrixMetaballWithSkia, CanvasKitJsAlert from "../components/interactive/metaball/metaball.contract"
+use AnimatedGradientWithSkia, GlitchedAnimatedGradientWithSkia, NonInteractiveAnimatedGradientWithSkia from "../components/interactive/animated-gradient/animated-gradient.contract"
+
+component DevDemo
+  props
+    name: string
+  slot
+  view
+    column width="100%" gap=8 margin-top=24 testId=`demo-${name}`
+      text name font-family="'Source Code Pro', ui-monospace, monospace" font-size=13 color="var(--color-text-secondary)"
+      children
+
+component DevInteractive
+  view
+    column width="100%" max-width=768 margin="0 auto" padding="0 24px" box-sizing="border-box"
+      text "Interactive demos: canvas" role="heading" aria-level=1 font-size=28 font-weight=600 color="var(--color-text-heading)"
+      text "animated-gradient" role="heading" aria-level=2 margin-top=32 font-size=20 font-weight=600 color="var(--color-text-heading)"
+      DevDemo(name="NonInteractiveAnimatedGradientWithSkia")
+        NonInteractiveAnimatedGradientWithSkia()
+      DevDemo(name="GlitchedAnimatedGradientWithSkia")
+        GlitchedAnimatedGradientWithSkia()
+      DevDemo(name="AnimatedGradientWithSkia")
+        AnimatedGradientWithSkia()
+      text "animated-loader-skia" role="heading" aria-level=2 margin-top=32 font-size=20 font-weight=600 color="var(--color-text-heading)"
+      DevDemo(name="BasicLoaderWithSkia")
+        BasicLoaderWithSkia()
+      DevDemo(name="WithGradientLoaderWithSkia")
+        WithGradientLoaderWithSkia()
+      DevDemo(name="WithProgressLoaderWithSkia")
+        WithProgressLoaderWithSkia()
+      DevDemo(name="WithBasicAnimationLoaderWithSkia")
+        WithBasicAnimationLoaderWithSkia()
+      DevDemo(name="WithAnimationLoaderWithSkia")
+        WithAnimationLoaderWithSkia()
+      text "animated-spiral" role="heading" aria-level=2 margin-top=32 font-size=20 font-weight=600 color="var(--color-text-heading)"
+      DevDemo(name="AnimatedSpiralWithSkia")
+        AnimatedSpiralWithSkia()
+      DevDemo(name="AnimatedInteractiveSnappySpiralWhite")
+        AnimatedInteractiveSnappySpiralWhite()
+      DevDemo(name="AnimatedInteractiveSnappySpiralGradient")
+        AnimatedInteractiveSnappySpiralGradient()
+      DevDemo(name="AnimatedInteractiveAnimatedSpiralFixedRadiusGradient")
+        AnimatedInteractiveAnimatedSpiralFixedRadiusGradient()
+      text "metaball" role="heading" aria-level=2 margin-top=32 font-size=20 font-weight=600 color="var(--color-text-heading)"
+      DevDemo(name="BasicMetaballWithSkia")
+        BasicMetaballWithSkia()
+      DevDemo(name="WithPanMetaballWithSkia")
+        WithPanMetaballWithSkia()
+      DevDemo(name="WithBlurMetaballWithSkia")
+        WithBlurMetaballWithSkia()
+      DevDemo(name="CanvasKitJsAlert")
+        CanvasKitJsAlert()
+      DevDemo(name="WithColorMatrixMetaballWithSkia")
+        WithColorMatrixMetaballWithSkia()
