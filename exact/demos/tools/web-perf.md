@@ -305,17 +305,39 @@ single max is noisy; the counts (commits, calls, layouts) are not.
 | 4. Back unanimated | 75145828 | one `popstate` task of 30-170 ms tearing the demo down, 8-12 presented frames, no flight | the card flies into its icon (caught at the Navigation API's cancelable `navigate`, the traversal replayed on landing); close sudoku by Back: 772 presented frames, p95 2.7 ms |
 | 5. blocking wheel listeners | 115b205b | pager trackpad: Contract 2400-2600 calls / 250-445 ms, main busy 810-1070 ms | 826 calls / 136 ms, main busy 638 ms; presented max still 765 ms (GPU process busy 1970 ms of 4 s) |
 
-Still open from the ranked list (next session):
+## Fixes and findings (second session, 2026-11-23)
 
-- Close of a GPU demo (chessboard, swipe or Back): 18-26 presented frames in 1.5 s, gaps ~240 ms, GPU process busy
-  1.1-1.7 s: the demo's WebGPU canvas inside the flying card. Next: stop the card's surfaces from rendering during
-  a close (a `paused` hold from the page module, or `visibility` on the canvas once the art covers it).
-- The swipe close's `pointerup` cost and `put()`'s inline-style writes (`:has()` invalidations) are unchanged.
-- Pager mouse drag: presented max 480 ms; the icon press (`--exact-press-factor`) is not cancelled on drag start.
-- scroll-progress still commits `offset` per scroll event (its GPU meter reads it); stacked-list was the only
-  demo whose cards were driven from `state scroll`.
-- radar-chart panic, sculptures-in-words' 2 MB/frame upload, the 7 preloaded fonts, the embedded images: Rust and
-  asset changes, held while native builds are paused.
+A caution first, found while measuring the close: the tools run Chrome uncapped (`--disable-gpu-vsync
+--disable-frame-rate-limit`), and there a GPU surface that redraws every frame submits ~1000 frames a second
+(chessboard: 630-2300 submits in a 1.5 s close) and floods the GPU process. `VSYNC=1` (cdp.ts, any tool) runs at the
+display's pace as a person's browser does; a "presented" gap over a period with no damage is idle, not a stall (the
+~170 ms "gap" after every close is the home at rest after the card landed, nothing waits there).
+
+| item | commit | before | after |
+|---|---|---|---|
+| Close of a GPU demo | 8654230e | uncapped: chessboard close presented 10-35 frames in 1.5 s, gap p95 140-247 ms, max 150-370 (GPU process waiting on the demo's WebGPU canvas before each composite: `IOSurfaceImageBacking::WaitForCommandsToBeScheduled::Dawn`, 173 ms of WebGPU work in one 277 ms window) | the closing (dragged or flying) card shows each GPU canvas as a 2D still copied in the frame it drew, placed right after it: uncapped 95-470 frames, gap p95 4-20 ms; swipe close presented 336-470. At 60 Hz vsync the close was already smooth before and after (chessboard, sculptures-in-words, fibonacci-shader-grid: 84 / 45 frames for swipe / Back, p95 16.8-18.6 ms, no gap but the idle one), so this is headroom for a busy GPU, not a visible fix on a fast Mac. |
+| Swipe close's finger-up cost | (earlier passes) | `pointerup` 77-162 ms | 2.8 ms (trace, uncapped): nothing left to fix. |
+| Pager mouse drag "gaps up to 480 ms" | - | 487 ms gaps | the 550 ms pauses between the scripted drags (no damage, nothing to present): at vsync the drags run at rAF p95 16.8 / max 16.8 ms, no long frame. Not a stall. |
+| Icon press not cancelled on a pager drag | - | - | it is: the pager's 6 pt activation sends the press a pointercancel; `--exact-press-factor` 0.9 while pressed, 1 while dragging (measured). |
+| radar-chart `RuntimeError: unreachable` | - | panicked on open in the runtime pass | no error on the dev or a fresh production build (opened from its icon, by link, desktop and 4x mobile, flights and runtime pass): gone since the canvas is sized at its resting size at creation (bbf33b3e), presumably a zero/tiny first size. |
+| Fonts preloaded on the launcher | 0d50b053 | 7 faces 5.2 MB (2.99 MB br), SF-Pro-Rounded-Bold 4.32 MB | SF-Pro-Rounded-Bold subset to Latin (143 KB, every layout feature, trak kept; the iPhone draws the same ASCII strings in the four demos that use it): fonts 0.43 MB on the wire, done at 0.8 s on 4G. |
+| Wallpaper | 7948ef45 | home-wallpaper.png 2.0 MB, loaded at 5.9 s on 4G | web-phone.contract draws a WebP of it (0.29 MB, same size): loaded at 3.6 s; launcher images 4.1 -> 2.4 MB. |
+| Cold load, 4G + 4x CPU, 390 x 844 (prod) | | FCP 3.94 s, launcher drawn 5.29 s | FCP 2.76-2.91 s, launcher drawn 4.21-4.24 s (now the 105 icons and icon.png). GPU ready still ~30 s: the wasm's embedded images (below). |
+
+Still open:
+
+- **The GPU module's embedded images (24.9 MB of the 32 MB load)**: not started. The plan below stands; the
+  open question found this session: `assets/` is shipped to the iPhone too, so copying gpu/images there doubles 25 MB
+  in the iOS bundle unless Exact gets a web-only asset directory (or the iPhone switches to the fetched copies as
+  well). The asset path (`Surface::assets` / `asset`) works today; 18 surfaces need a "not yet" path at their
+  image's use.
+- **sculptures-in-words' 2 MB/frame**: the instances buffer is already built once per size; the per-frame bytes are
+  draw2d's immediate-mode geometry for the column of text (`draw_glyphs_subpixel` per visible line, every frame
+  while the column scrolls). A fix is caching the column as a texture per page (shared Rust, both platforms). At vsync
+  the demo runs at 60 fps on desktop; left for after the images.
+- scroll-progress commits `offset` per scroll event (its GPU meter reads it).
+- Per-frame uploads in notion-qrcode, mnist, drag-to-sort, fourier-visualizer, gl-transitions, github-contributions
+  (uncapped numbers; recheck at vsync before touching them).
 
 ## What was changed here
 
@@ -323,6 +345,9 @@ Only the measuring tools (`tools/web-perf/`) and this report: every high-value f
 (modules/web, home/web-*, demos/*.contract, gpu/src) or in Exact itself. No change to app.json, Cargo profiles or
 assets: the build settings are already size-optimised (fat LTO, `opt-level = "z"`, `wasm-opt -Oz`, brotli/gzip in
 `exact serve`), and the remaining load cost is data (images, fonts), not code.
+
+`tools/web-perf/flight.ts <url> --demos a,b --runs 3 [--close swipe|back] [--set <js>]` repeats open / close flights with a
+light trace (presented frames, gaps with their offsets, submits, console errors); prefix `VSYNC=1` for display pace.
 
 How to rerun: `bun exact.mjs web-build --out /tmp/perf-dist`, `bun tools/web-perf/serve.ts /tmp/perf-dist 5391`, then
 `bun tools/web-perf/trace.ts http://127.0.0.1:5391 --light`, `bun tools/web-perf/load.ts http://127.0.0.1:5391/ prod
