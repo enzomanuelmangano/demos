@@ -5,6 +5,10 @@
 /* Faces: the reference's WOFF2 files, font-display: swap (D7). */
 @font-face{font-family:Inter;src:url(/assets/fonts/InterVariable.woff2) format('woff2');font-weight:100 900;font-style:normal;font-display:swap}
 @font-face{font-family:'Source Code Pro';src:url(/assets/fonts/SourceCodePro_400Regular.woff2) format('woff2');font-weight:400;font-style:normal;font-display:swap}
+/* next/font's metric-matched fallbacks: text set in Arial before Inter arrives takes Inter's size, so the swap
+   neither reflows the page nor makes a new largest paint. */
+@font-face{font-family:'Inter Fallback';src:local(Arial);ascent-override:89.79%;descent-override:22.36%;line-gap-override:0%;size-adjust:107.89%}
+@font-face{font-family:'Source Code Pro Fallback';src:local(Arial);ascent-override:74.83%;descent-override:20.76%;line-gap-override:0%;size-adjust:131.49%}
 body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}
 ::selection{background:#262935db;color:#ffffffdb}
 
@@ -37,4 +41,18 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 [data-motion~=perspective]{perspective:1000px}
 [data-motion~=lift-20]{transform:translateZ(20px)}
 [data-motion~=lift-10]{transform:translateZ(10px)}
+/* Interaction transitions, as the reference's classes compute them. */
+[data-motion~=colors]{transition-property:color,background-color,border-color,outline-color,text-decoration-color,fill,stroke !important;transition-duration:150ms !important;transition-timing-function:cubic-bezier(.4,0,.2,1) !important;transition-delay:0s !important}
+[data-motion~=button]{cursor:pointer;transition-property:background-color,color,box-shadow,transform,scale !important;transition-duration:150ms !important;transition-timing-function:var(--ease-snappy) !important;transition-delay:0s !important}
+[data-motion~=plain]:hover{text-decoration:none !important}
+/* Exact's default hover feedback (a translucent wash, a 65 % dim) on links and buttons: the reference has none; each
+   control's own hover look is its Contract :hover. */
+#exact-root :is(button,a[data-view][href]){--exact-hover-wash:none !important;--exact-hover-dim:1 !important}
+#exact-root a[data-view][href]{opacity:1 !important}
+/* Header nav: a link's underline grows on hover (group-hover:scale-x-100). */
+@media (hover:hover){[data-motion~=nav-link]:hover [data-motion~=underline]{scale:1 !important}}
+/* Focus rings: focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]. */
+[data-motion~=focus]:focus-visible{outline:none !important;box-shadow:0 0 0 2px oklch(15.5% 0.0041 286),0 0 0 4px oklch(72% 0.12 274 / .8) !important}
+/* Footer links: underline-offset-2. */
+[data-motion~=footer-link]{text-underline-offset:2px}
 @media (prefers-reduced-motion:reduce){[data-motion~=title],[data-motion~=blur-in],[data-motion~=card-in],[data-motion~=qr],[data-motion~=pop-in],[data-motion~=fade-in]{animation:none}}

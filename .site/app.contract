@@ -39,6 +39,11 @@ component App
     after(500, countStars)
   action countStars
     counted = true
+  state simReady = false
+  task sim when not simReady
+    after(1600, readySim)
+  action readySim
+    simReady = true
   action spiralTap
     spiralTaps = spiralTaps + 1
   action follow(url: string)
@@ -59,7 +64,13 @@ component App
         newsletterStatus = "error"
   view
     view navigationKey=`${top(nav).id}` navigate=follow width="100%" min-height="100%" background-color="var(--color-surface-primary)"
-      font-family="Inter, ui-sans-serif, system-ui, sans-serif" color="var(--color-text-body)" font-size=16 line-height="1.5rem"
+      font-family="Inter, 'Inter Fallback', ui-sans-serif, system-ui, sans-serif" color="var(--color-text-body)" font-size=16 line-height="1.5rem"
+      // The header: fixed over the page in the reference, mounted once in its root layout, so a navigation never
+      // redraws it. Here too: outside the routed entry, a zero-height sticky box at the top of the page's box (which
+      // is as tall as the page, the document scrolling), the bars hanging from it (Contract positions are relative,
+      // absolute or sticky). Its place in the flow is the reference's mb-20, in the entry below.
+      view position="sticky" top=0 height=0 z-index=50
+        SiteHeader(current=top(nav).name, scrolled=scrolled)
       for e in stack(nav).slice(-1) key=e.id
         column navigationKey=`${e.id}` navigationScroll=`page-${e.id}` position="absolute" inset=0
           scroll document id=`page-${e.id}` flex=1 min-height=0
@@ -72,11 +83,6 @@ component App
               view position="absolute" left=0 top="-15vh" width="100%" height=500 z-index=-1 pointer-events="none"
                 data-motion="fade-in" data-delay="1200"
                 canvas surface=spiral(time.seed, spiralTaps) aria-hidden=true width="100%" height="100%" opacity=0.7
-            // The header: fixed over the page in the reference; here a zero-height sticky box at the scroller's top, the
-            // bars hanging from it (Contract positions are relative, absolute or sticky). Its place in the flow is the
-            // reference's mb-20, below.
-            view position="sticky" top=0 height=0 z-index=50
-              SiteHeader(current=e.name, scrolled=scrolled)
             view height=80 flex-shrink=0
               view height=10 intersect=topSeen
             main id="main" display="flex" flex-direction="column" min-height="80vh"
@@ -88,7 +94,7 @@ component App
               else if e.name == "demos"
                 head title="Demos | Reactiive" description="Explore the beauty of React Native animations with Reanimated, Skia and Gesture Handler"
                   image="/og/demos.png" canonical="/demos"
-                DemosPage(seed=time.seed, taps=spiralTaps, tap=spiralTap, counted=counted)
+                DemosPage(seed=time.seed, taps=spiralTaps, tap=spiralTap, counted=counted, simReady=simReady)
               else
                 head title="Page not found | Reactiive" status=404 robots="noindex"
                   description="Discover the beauty of React Native and how to build stunning animations with Reanimated and Skia"

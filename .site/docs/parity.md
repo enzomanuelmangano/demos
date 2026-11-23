@@ -15,19 +15,25 @@ bun tools/parity/compare.ts /tmp/live /tmp/local
 
 ## Status
 
-| page | 1440 px | 390 px | texts placed | open |
-|---|---|---|---|---|
-| `/` | 0.05 % | 0.29 % | 22/23, 20/23 | JSON-LD (phase 6); 3 wrapped paragraphs' glyph boxes 4 px narrower (same lines, same wraps) |
-| 404 | 0.05 % | 0.28 % | 12/12 | `twitter:card` is `summary_large_image` (the reference's 404 says `summary`): postbuild, phase 6 |
-| `/demos` | hero: every text box at the live place to 0.1 px (title, subtitle, pill); the spiral is random per visit, as live | same | 4/4, 4/4 | the app below is `/demos/app/` in a frame (D10) |
+Motion (`tools/parity/motion.ts`): every entrance's keyframes, duration, delay, iterations and five sampled frames,
+and every link's and button's cursor, transition and hover look, live against local. Header stillness across in-app
+navigations (`tools/parity/nav.ts`, screencast). Interaction states (`tools/parity/states.ts`: the mobile menu,
+the scrolled bar, /demos's frame). Performance: `tools/parity/perf.ts`, docs/perf.md.
+
+| page | 1440 px | 390 px | texts placed | motion (1440 / 390) | open |
+|---|---|---|---|---|---|
+| `/` | 0.05 % | 0.29 % | 22/23, 20/23 | 0 / 0 differences; project-row hover 0 px against live; header still across `/` ↔ `/demos` (0 px, both widths) | JSON-LD (phase 6); 3 wrapped paragraphs' glyph boxes 4 px narrower (same lines, same wraps) |
+| 404 | 0.05 % | 0.28 % | 12/12 | shell as `/` | `twitter:card` is `summary_large_image` (the reference's 404 says `summary`): postbuild, phase 6 |
+| `/demos` | hero: every text box at the live place to 0.1 px (title, subtitle, pill); the spiral is random per visit, as live | same | 4/4, 4/4 | hero entrances as live (title-in, blur-in 450/550 ms); the grid's card-ins are gone with the grid (D10) | the app below is `/demos/app/` in a frame (D10) |
 | `/demos/app/` | the Demos app: 0 px against its own build (decisions.md D3) | 0 px | | |
 | all other pages | not built yet | | | |
 
 ## Open differences (the owner's bar is identity in pixels and in motion: each is to be fixed, none is accepted)
 
-- **Underline offset.** `text-underline-offset` is not a Contract property: the footer links' underlines sit at the
-  font's default offset, 2 px higher than the reference's.
 - **Icons are images.** The logo and the menu icon are `<img>` of SVG files (the reference inlines `<svg>`), so the
   image count differs (3 vs 0) and their edges antialias slightly differently.
-- **The nav underline's hover.** The reference grows a link's underline on hover (`group-hover`); a Contract
-  `:hover` look styles the node it is on, not a child, so only the current page's underline shows.
+- Fixed since (D11, `web/head.css`): the entrance blur, the footer links' underline offset, the nav underline's
+  hover growth, the button and link transitions, focus rings, Exact's default link wash/dim/press fade (the reference
+  has none), the project rows' hover colour.
+- The project rows' tag: the reference's class says `font-mono`, but its `Text` component's font wins: live computes
+  Inter (`inter, "inter Fallback", …`), so the rebuild draws Inter too.

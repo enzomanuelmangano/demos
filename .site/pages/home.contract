@@ -14,10 +14,10 @@ component ProjectItem
     href: string
     newPage: bool
   view
-    link href=href target=(newPage ? "_blank" : "_self") display="flex" flex-direction="column"
+    link href=href target=(newPage ? "_blank" : "_self") display="flex" flex-direction="column" -exact-hover-effect="none"
       column padding="16px 12px" margin="0 -12px" border-radius="var(--radius-md)"
         :hover
-          background-color = "rgb(35 35 38 / 0.5)"
+          background-color = "rgba(30, 30, 32, 0.5)"
         row justify-content="space-between" align-items="baseline"
           text title font-weight=500 color="var(--color-text-primary)"
           text tag class=Caption

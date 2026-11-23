@@ -11,11 +11,19 @@ Branch `site` (worktree `thank-you-site`), draft PR #115 into `main`. Update thi
   menu overlay, scrolled look D8), `SiteFooter` (both variants), `Container`, responsive helpers (D9), the 404.
   Reference assets imported (`tools/import-reference.ts`: `.content/`, `assets/`, `public/`).
 - **Phase 2** (started): `/` at parity (0.05 % / 0.29 % px), newsletter wired to the public endpoint.
-- Parity tooling: `tools/parity/{shoot,compare,diff,cdp}.ts` (docs/parity.md).
+- Parity tooling: `tools/parity/{shoot,compare,diff,cdp}.ts` (docs/parity.md), p## Next, in order
 
-## Next, in order
+1. `docs/perf.md` gate: keep every route ≤ live (the /demos exemptions are the app itself, D10); re-run
+   `perf.ts` after each block. The site's own Exact pin is still 2180d806: move it to 98ed61fb (`bun exact.mjs
+   update` with the new seed) and re-verify `/`, `/demos`, 404.
+2. Remaining motion items: hero pill's entrance key in motion.ts (labels differ, parameters equal), the mobile menu's
+   open/close timing check in motion.ts, the spiral's tap easter egg toast (sonner) on the 7th tap.
+3. Phase 2: `/inspirations`, `/demos-app` (QR at build), `/course`, `/docs` (header + footer only). Live captures with
+   `shoot.ts` + `states.ts` + `motion.ts`; for each: compare, motion, perf.
+4. Phase 3: `tools/gen-content.ts`, `Markdown` + `CodeBlock`, `/docs/{terms,privacy,license}`.
+5. Phase 4 articles and series (26), 5 interactive components (37), 6 SEO/feeds, 7 deploy workflow (prepared only).
 
-1. Finish phase 1: check the header's menu overlay and scrolled state against the live site (scripted: open the
+verlay and scrolled state against the live site (scripted: open the
    menu at 390, scroll 30 px at 1440, screenshot both sides); `/docs` (header + footer only).
 2. Phase 2: `/inspirations`, `/demos-app` (QR at build: `qrcode-generator` in a tool → SVG rects), `/course`
    (testimonials, avatars in `assets/images/avatars`). Live captures: `bun tools/parity/shoot.ts https://reactiive.io

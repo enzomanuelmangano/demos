@@ -81,6 +81,7 @@ component DemosPage
     taps: number
     tap: action
     counted: bool
+    simReady: bool
   view
     // Container size xl: 1152 px at most, 24 px each side; mt-4 under 640 px.
     column width="100%" max-width="72rem" margin-left="auto" margin-right="auto" padding-left=24 padding-right=24 box-sizing="border-box"
@@ -110,7 +111,7 @@ component DemosPage
           column flex-shrink=0 data-motion="blur-in" data-delay="550"
             StarsPill(seed=seed, counted=counted)
           view width=sm(0, 9999) flex-shrink=1
-      DemosSim()
+      DemosSim(ready=simReady)
 
 // The Demos app (its own build at /demos/app/). From 768 px a desktop browser's window of 600 px by the viewport's
 // height under the 87 px header (600-1080 px) makes the app draw its framed iPhone Air on its stage, scaled to fit,
@@ -119,6 +120,10 @@ component DemosPage
 // the 73 px header, so once scrolled to it owns the touches; the header and the hero stay the page's handles, and the
 // fades fall in the padding and past the window's sides, outside the app.
 component DemosSim
+  props
+    // The frame's page loads once the hero's entrances are done (1.6 s, decided in App), so the app's start never
+    // competes with them; until then its box holds the same size (no layout shift).
+    ready: bool
   view
     column margin-top=steps(32, 32, 32, 48) margin-left=md(-24, 0) margin-right=md(-24, 0) overflow="hidden"
       padding-top=md(24, 0) mask-image="linear-gradient(to bottom, transparent 0px, #000000 24px)"
@@ -126,6 +131,6 @@ component DemosSim
         row flex-shrink=0 justify-content="center"
           width="calc(clamp(0px, (767px - 100vw) * 1000, 100vw + 260px) + clamp(0px, (100vw - 767px) * 1000, 600px))"
           mask-image="linear-gradient(to right, transparent 0%, #000000 12%, #000000 88%, transparent 100%)"
-          iframe "/demos/app/" title="Demos" flex-shrink=0 border-width=0 display="block"
+          iframe (ready ? "/demos/app/" : "about:blank") title="Demos" flex-shrink=0 border-width=0 display="block"
             width="calc(clamp(0px, (767px - 100vw) * 1000, 100vw) + clamp(0px, (100vw - 767px) * 1000, 600px))"
             height="calc(clamp(0px, (767px - 100vw) * 1000, 100vh - 73px) + clamp(0px, (100vw - 767px) * 1000, clamp(600px, 100vh - 87px, 1080px)))"

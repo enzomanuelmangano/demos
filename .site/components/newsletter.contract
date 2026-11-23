@@ -1,3 +1,4 @@
+use ButtonPrimary from "./look.contract"
 // The newsletter form (reference components/newsletter): posts to the public https://subs.reactiive.io/api/subscribe
 // (no secret; app.ts's `subscribe`), then thanks the reader or says it went wrong. The request is the root's
 // (App's `newsletter` mutation); this form keeps the address and shows the status it is given.
@@ -27,8 +28,7 @@ component Newsletter
             ::placeholder
               color = "var(--color-text-disabled)"
           button press=submit appearance="none" disabled=(status == "loading") height=40 padding="0 16px" border-radius="var(--radius-control)"
-            background-color="var(--color-primary-600)" color="#ffffff" font-size="0.875rem" line-height="1.25rem" font-weight=500
-            box-shadow="inset 0 1px 0 rgb(255 255 255 / 0.18), 0 1px 2px rgb(0 0 0 / 0.4)" testId="newsletter-subscribe"
+            class=ButtonPrimary font-size="0.875rem" line-height="1.25rem" font-weight=500 testId="newsletter-subscribe" data-motion="button focus"
             text "Subscribe"
         if status == "error"
           text "Something went wrong. Please try again." margin-top=12 font-size="0.875rem" color="var(--color-danger)"

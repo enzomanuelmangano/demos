@@ -1,6 +1,8 @@
 // The frame of every page: the fixed header (desktop from 768 px, a bar with a menu below it), the page's container
 // and the footer. Ports of the reference's components/header, components/container and components/Footer.tsx.
 use md, sm from "./responsive.contract"
+use ButtonSecondary from "./look.contract"
+use LogoHome, MenuIcon from "./icons.contract"
 
 shape NavItem
   name: string
@@ -16,7 +18,6 @@ style HeaderBar
 
 style NavLink
   font-size="0.875rem" line-height="1.25rem" font-weight=500 white-space="nowrap" color="var(--color-text-secondary)"
-  transition="color 150ms cubic-bezier(0.4, 0, 0.2, 1)"
   :hover
     color = "#ffffff"
 
@@ -40,13 +41,14 @@ component SiteHeader
         background-color=(scrolled ? "var(--color-background)" : "transparent") border-bottom-color=(scrolled ? "rgb(255 255 255 / 0.05)" : "transparent")
         Container()
           row justify-content="space-between" align-items="center" padding-top=sm(16, 20) padding-bottom=sm(16, 20)
-            link href="/" aria-label="Reactiive, home" margin-top=6 border-radius="var(--radius-md)" display="flex"
-              image "assets/logo-home.svg" alt="" width=143 height=35 margin-right=47
+            link href="/" aria-label="Reactiive, home" margin-top=6 border-radius="var(--radius-md)" display="flex" class=Plain data-motion="plain focus" -exact-hover-effect="none"
+              view margin-right=47
+                LogoHome(width=143, height=35)
             nav aria-label="Main" display="flex" align-items="center" gap=28 margin-left="auto" margin-top=6
               for item in navItems() key=item.route
-                link href=item.href class=NavLink color=(current == item.route ? "var(--color-text-primary)" : "var(--color-text-secondary)")
+                link href=item.href class=NavLink data-motion="nav-link colors focus" color=(current == item.route ? "var(--color-text-primary)" : "var(--color-text-secondary)")
                   text item.name
-                  view height=1.5 border-radius="var(--radius-sm)" background-color="var(--color-text-primary)" transform-origin="left"
+                  view height=1.5 border-radius="var(--radius-sm)" background-color="var(--color-text-primary)" transform-origin="left" data-motion="underline"
                     scale=(current == item.route ? 1 : 0) transition="scale 300ms cubic-bezier(0.23, 1, 0.32, 1)"
               SignIn()
       // Phones and narrow windows.
@@ -54,11 +56,15 @@ component SiteHeader
         background-color=(scrolled or menu ? "var(--color-background)" : "transparent") border-bottom-color=(scrolled or menu ? "rgb(255 255 255 / 0.05)" : "transparent")
         Container()
           row justify-content="space-between" align-items="center" padding-top=16 padding-bottom=16
-            link href="/" aria-label="Reactiive, home" border-radius="var(--radius-md)" display="flex" press=close
-              image "assets/logo-home.svg" alt="" width=114.4 height=28 margin-right=35.6
+            link href="/" aria-label="Reactiive, home" border-radius="var(--radius-md)" display="flex" press=close class=Plain data-motion="plain focus" -exact-hover-effect="none"
+              view margin-right=35.6
+                LogoHome(width=114.4, height=28)
             button press=toggle appearance="none" aria-label=(menu ? "Close menu" : "Open menu") aria-expanded=menu
               aria-controls="mobile-menu" padding=8 border-radius="var(--radius-md)" color="var(--color-text-secondary)" testId="menu"
-              image (menu ? "symbol:xmark" : "symbol:line.3.horizontal") aria-hidden=true width=24 height=24
+              cursor="pointer" data-motion="colors focus"
+              :hover
+                color = "#ffffff"
+              MenuIcon(open=menu)
       view id="mobile-menu" inert=(not menu) position="absolute" top=0 left=0 right=0 z-index=40 height="clamp(0px, (768px - 100vw) * 1000, 100vh)" overflow="hidden"
         opacity=(menu ? 1 : 0) pointer-events=(menu ? "auto" : "none") transition="opacity 300ms cubic-bezier(0.4, 0, 0.2, 1)"
         view position="absolute" inset=0 background-color="rgb(0 0 0 / 0.6)" press=close
@@ -80,10 +86,11 @@ component SiteHeader
 // Sign-in needs the reference's OAuth secrets (docs/stubs.md): drawn as a signed-out visitor sees it.
 component SignIn
   view
-    button appearance="none" height=40 padding="0 16px" border-radius="var(--radius-control)" background-color="rgb(255 255 255 / 0.08)"
-      box-shadow="inset 0 1px 0 rgb(255 255 255 / 0.06)" color="var(--color-text-primary)" font-size="0.875rem" line-height="1.25rem"
-      font-weight=500 testId="sign-in"
-      text "Sign In"
+    // AuthSlot: the slot pops in (motion-pop-in) once the session is known; signed out, at once.
+    row justify-content="flex-end" data-motion="pop-in"
+      button appearance="none" class=ButtonSecondary height=40 padding="0 16px" border-radius="var(--radius-control)" font-size="0.875rem"
+        line-height="1.25rem" font-weight=500 testId="sign-in" data-motion="button focus"
+        text "Sign In"
 
 // Container size md: 768 px wide at most, 24 px each side, a flex column that fills.
 component Container
@@ -91,6 +98,11 @@ component Container
   view
     column width="100%" max-width="48rem" margin-left="auto" margin-right="auto" padding-left=24 padding-right=24 box-sizing="border-box" flex=1
       children
+
+style Plain
+  color="var(--color-text-primary)" text-decoration-line="none"
+  :hover
+    color = "var(--color-text-primary)"
 
 style FooterLink
   text-decoration-line="underline" color="var(--color-text-tertiary)" font-size="0.75rem" line-height="1rem"
@@ -107,15 +119,15 @@ component SiteFooter
         // No gap: the "|" before Inspirations is not drawn under 640 px, and takes its space with it.
         row flex-wrap="wrap" justify-content="center" align-items="center" font-size="0.75rem" line-height="1rem" color="var(--color-text-tertiary)"
           if legal
-            link href="/docs/terms" class=FooterLink
+            link href="/docs/terms" class=FooterLink data-motion="footer-link colors focus"
               text "Terms"
             text "|" margin-left=8
-            link href="/docs/privacy" class=FooterLink margin-left=8
+            link href="/docs/privacy" class=FooterLink data-motion="footer-link colors focus" margin-left=8
               text "Privacy Policy"
           else
             text "Follow me on"
-            link href="https://x.com/reactiive_" target="_blank" class=FooterLink margin-left=8
+            link href="https://x.com/reactiive_" target="_blank" class=FooterLink data-motion="footer-link colors focus" margin-left=8
               text "Twitter"
             text "|" width=sm(0, 4) margin-left=sm(0, 8) overflow="hidden"
-            link href="/inspirations" class=FooterLink margin-left=8
+            link href="/inspirations" class=FooterLink data-motion="footer-link colors focus" margin-left=8
               text "Inspirations"

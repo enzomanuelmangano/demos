@@ -78,3 +78,13 @@ wasm-bindgen 0.2.130, Binaryen; Hermes is not needed for the web and is skipped)
 (local macOS build: 787 files, 72,431,653 bytes). The trees are not byte-identical across machines (the bundler's path
 comments and a natively built wasm), so the artifact is keyed by its inputs, never compared by hash across builders.
 The artifact is cached by key (`actions/cache`), so later runs on the same demos inputs skip the build.
+
+## Re-verified after the rebase onto the Exact upgrade (2026-11-23, `origin/main` `a00ed9ca`, Exact 98ed61fb)
+
+`site` rebased onto `a00ed9ca` (PR #116). Proof 1: the Demos capture of `git archive origin/main` and of `git archive
+HEAD` (with `.site/`, the /demos page and the motion stylesheet) are both **481 files / 21,465,912 bytes**, `--list`
+outputs byte-identical. The demos artifact key is `d2f01f0a…` at both revs (a site-only change reuses it); the
+artifact, rebuilt at the new seed and base `/demos/app/` (D10), is 787 files, 60.3 MiB, in 79 s.
+`tools/parity/demos-mount.ts` on the composed output: launcher, legacy deep link → `/demos/app/demo/chessboard`,
+reload, Back, Forward all draw at 1440 and 390; `gpu_bg.wasm` and the shader bundle 200; 0 failed requests, 0
+exceptions. CI triggers (proof 4): unchanged.
