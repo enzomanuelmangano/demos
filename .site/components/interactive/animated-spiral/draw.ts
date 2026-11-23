@@ -57,10 +57,13 @@ export function drawSpiral(ctx: Ctx2D, f: Frame, [key, fixedRadius, sweep, anima
     ctx.fill();
   };
   if (sweep) {
-    // The halo: each dot's colour is the sweep's at its angle, so the dots go to pieces by angle.
+    // The halo: each dot's colour is the sweep's at its angle, so the dots go to pieces by angle. The pieces are
+    // centred on the axes (the boundaries half a piece off them): the spiral at π/2 (Restart's) is four spokes of
+    // overlapping dots on the axes, and a spoke split over two pieces had its halo counted twice (one fill covers a
+    // point once; two shadows over each other add up), a brighter glow along the x axis than live's.
     const bucket = new Int32Array(COUNT);
-    for (let i = 0; i < COUNT; i++) bucket[i] = Math.min(HALO_BUCKETS - 1, Math.floor(turn(s.now[i * 2], s.now[i * 2 + 1]) * HALO_BUCKETS));
-    halo(ctx, f, 5, HALO_BUCKETS, (t) => sample(SWEEP, t), (from) => {
+    for (let i = 0; i < COUNT; i++) bucket[i] = Math.floor(turn(s.now[i * 2], s.now[i * 2 + 1]) * HALO_BUCKETS + 0.5) % HALO_BUCKETS;
+    halo(ctx, f, 5, HALO_BUCKETS, (t) => sample(SWEEP, (t - 0.5 / HALO_BUCKETS + 1) % 1), (from) => {
       const b = Math.round(from * HALO_BUCKETS);
       dots((i) => bucket[i] === b, -HALO_OFFSET);
     }, false);
