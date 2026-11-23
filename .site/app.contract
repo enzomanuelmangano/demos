@@ -165,6 +165,7 @@ component App
                 head title="Articles | Reactiive" description="Interactive articles about React Native animations by Reactiive"
                   image="/og/articles.png" canonical="/articles"
                 text "Articles" role="heading" aria-level=1 position="absolute" width=1 height=1 margin=-1 overflow="hidden" clip-path="inset(50%)" white-space="nowrap"
+                  font-size=16 font-weight=400 line-height="24px"
                 ArticleList(cards=cards, shown=shown, seen=cardSeen)
               else if e.name == "series"
                 head title=`${titleCase(e.params.series)} | Reactiive` description=`Articles in the ${titleCase(e.params.series)} series on React Native animations.`
