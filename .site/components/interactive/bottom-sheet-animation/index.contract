@@ -55,7 +55,7 @@ component FinalDemo
 // The sheet follows the pointer with no transition and springs on release from rest (the reference's `spring()`
 // starts at velocity 0); its corner radius is an SVG rect's `rx` on the same spring, so it stays the reference's
 // `interpolate(y, [top, bottom], [5, 25])` through the motion. A drag that starts mid-spring starts where the sheet
-// is drawn (`frame`).
+// is drawn (the press's own geometry).
 component Sheet
   props
     kind: string
@@ -71,21 +71,36 @@ component Sheet
   state dragged = 0
   // FinalDemo: whether the sheet was last sent up (the reference's isActive).
   state active = false
+  // Whether a release or a press set the sheet springing: a change of the stops (the window's width arriving, a
+  // resize) moves it at once instead, as the reference's `translateY.set` does.
+  state springing = false
   derive bottom = sheetBottom(w)
   derive top = sheetTop(w)
   derive shownY = at == "bottom" ? bottom : at == "top" ? top : y
   derive spring = "-exact-spring(120, 50, 0.3)"
+  // Where the sheet is drawn when a press lands on it (mid-spring included): its top in the viewport from the
+  // press's own event (clientY less the offset into the sheet), then the stage's from the same press as it reaches
+  // the stage. Ids would name the first demo of a page, not this one.
+  state stageHeight = 403
+  state pressTop = 0
+  state grabY = 0
   action measured(cw: number, ch: number)
     w = cw
+    springing = false
   action settle(dest: number)
+    springing = true
     y = dest
     at = dest == bottom ? "bottom" : "top"
     active = dest != bottom
+  action staged(cw: number, ch: number)
+    stageHeight = ch
+  action sheetDown(e: PointerEvent)
+    pressTop = e.clientY - e.offsetY
+  action stageDown(e: PointerEvent)
+    grabY = pressTop - (e.clientY - e.offsetY) - (stageHeight - 400) / 2
   action drag(dx: number, dy: number)
     if kind != "basic"
-      let f = frame("sheet")
-      let g = frame("stage")
-      let base = dragging ? from : f.unavailable ? shownY : f.y - g.y - (g.height - 400) / 2
+      let base = dragging ? from : grabY
       let sum = dragging ? dragged + dy : dy
       dragging = true
       from = base
@@ -101,7 +116,7 @@ component Sheet
   action close
     settle(bottom)
   view
-    view id="stage" flex=1 position="relative" background-color="#111" overflow="hidden" display="flex" align-items="center"
+    view flex=1 position="relative" resize=staged pointerdown=stageDown background-color="#111" overflow="hidden" display="flex" align-items="center"
       justify-content="center"
       view position="absolute" left=0 top=0 width="100vw" height=0 resize=measured aria-hidden=true
       if kind == "final"
@@ -112,16 +127,16 @@ component Sheet
             background-color="transparent" tabindex=-1
             view position="absolute" inset=0 background-color="rgba(255, 255, 255, 0.05)" opacity=(active ? 1 : 0)
               transition="opacity 200ms linear"
-      view id="sheet" position="absolute" left="50%" top="50%" margin-left=(w > 0 ? `${0 - sheetWidth(w) / 2}px` : "calc(min(60vw, 350px) / -2)")
+      view testId="sheet" position="absolute" pointerdown=sheetDown left="50%" top="50%" margin-left=(w > 0 ? `${0 - sheetWidth(w) / 2}px` : "calc(min(60vw, 350px) / -2)")
         margin-top=-200 width=(w > 0 ? `${sheetWidth(w)}px` : "min(60vw, 350px)") height=400 z-index=100
         translate=(w > 0 or at == "free" ? `0px ${shownY}px` : `0px ${sheetBottomCss()}`)
-        transition=(dragging ? "none" : `translate ${spring}`) -exact-translate-velocity="0 0"
+        transition=(dragging or not springing ? "none" : `translate ${spring}`) -exact-translate-velocity="0 0"
         pan=drag panrelease=release
         touch-action=(kind == "basic" ? "auto" : "none") user-select="none" cursor="grab"
         filter="drop-shadow(0px 2px 1.92px rgba(0, 0, 0, 0.25))"
         svg position="absolute" left=0 top=0 width="100%" height=400 aria-hidden=true
           rect x=0 y=0 width="100%" height=400 fill="white" rx=(w > 0 ? lerpClamp(shownY, top, bottom, 5, 25) : 25)
-            transition=(dragging ? "none" : `rx ${spring}`)
+            transition=(dragging or not springing ? "none" : `rx ${spring}`)
         column position="absolute" inset=0
           view width=75 height=4 background-color="grey" align-self="center" margin-top=15 margin-bottom=15
             border-radius=2 flex-shrink=0
