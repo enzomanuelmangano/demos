@@ -32,15 +32,23 @@ loads = 0;
 const exclude = await page.eval<number[][]>(`[...document.querySelectorAll('header nav a, header [aria-controls=mobile-menu]')].map((a) => { const r = a.getBoundingClientRect(); return [r.x - 2, r.y - 2, r.width + 4, r.height + 6]; }).filter((r) => r[2] > 4 && r[3] > 4)`);
 await page.send('Page.startScreencast', { format: 'png', everyNthFrame: 1, maxWidth: width, maxHeight: 900 });
 for (const to of path.slice(1)) {
-  if (mobile) {
+  // A path the header (or the mobile menu) does not link, e.g. an article, is reached by the page's own link to it
+  // (a card), clicked with the pointer where it is on screen.
+  const inHeader = await page.eval<boolean>(`[...document.querySelectorAll(${JSON.stringify(mobile ? '#mobile-menu a, header a' : 'header a')})].some((a) => new URL(a.href).pathname === ${JSON.stringify(to)})`);
+  if (mobile && inHeader) {
     await page.eval(`document.querySelector('[aria-controls="mobile-menu"]').click()`);
     await Bun.sleep(500);
     await page.eval(`[...document.querySelectorAll('#mobile-menu a')].find((a) => new URL(a.href).pathname === ${JSON.stringify(to)}).click()`);
   } else {
-    const p = await page.eval<number[]>(`(() => { const a = [...document.querySelectorAll('header a')].find((a) => a.getBoundingClientRect().width > 0 && new URL(a.href).pathname === ${JSON.stringify(to)}); const r = a.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()`);
+    const scope = inHeader ? 'header a' : 'main a, a';
+    const p = await page.eval<number[]>(`(() => { const a = [...document.querySelectorAll(${JSON.stringify(scope)})].find((a) => a.getBoundingClientRect().width > 0 && new URL(a.href).pathname === ${JSON.stringify(to)}); const r = a.getBoundingClientRect(); return [r.x + r.width / 2, r.y + Math.min(r.height / 2, 20)]; })()`);
+    // A reader's pointer rests on a link before the press: the head's speculation rules prerender a page not yet awake
+    // on that hover (docs/decisions.md D16), as they would for the reader.
+    await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: p[0], y: p[1] });
+    await Bun.sleep(1000);
     for (const type of ['mousePressed', 'mouseReleased']) await page.send('Input.dispatchMouseEvent', { type, x: p[0], y: p[1], button: 'left', clickCount: 1 });
   }
-  await Bun.sleep(1500);
+  await Bun.sleep(2500);
 }
 await page.send('Page.stopScreencast');
 const r = await page.eval<any>(`(async () => {
