@@ -11,28 +11,28 @@ Branch `site` (worktree `thank-you-site`), draft PR #115 into `main`. Update thi
   menu overlay, scrolled look D8), `SiteFooter` (both variants), `Container`, responsive helpers (D9), the 404.
   Reference assets imported (`tools/import-reference.ts`: `.content/`, `assets/`, `public/`).
 - **Phase 2** (started): `/` at parity (0.05 % / 0.29 % px), newsletter wired to the public endpoint.
-- Parity tooling: `tools/parity/{shoot,compare,diff,cdp}.ts` (docs/parity.md), p## Next, in order
+- Parity tooling: `tools/parity/{shoot,compare,diff,cdp}.ts` (docs/parity.md), p- **2026-11-23, block 2**: the site on Exact **98ed61fb** (seed in `exact.mjs`; `/`, 404 pixel parity 0.04 / 0.28 % and
+  0.03 / 0.28 %, motion 0 differences, header still across `/` ↔ `/demos` 0 px, isolation lists identical, 481 files).
+  `/demos` from 1024 px: Apple-style copy left / device right (owner, D12 + revision), the app **sandboxed in its own
+  renderer process** (page TBT 4g 7-85 ms vs live 66-142, the app's ~500 ms in its OOPIF), a launcher still until the
+  frame has drawn, the frame loading at 1.6 s when near the viewport. `perf.ts`: OOPIFs attached and throttled,
+  `--block`, `--local-only`. Inter's ASCII inlined (41 KB data: URL): 404 @1440 4g LCP 276 (live 528), every page 213 KB.
+  Touch (390 touch emulation, CDP touch into the sandboxed frame): Chessboard opens by tap; a swipe down from its
+  top zone closes it, with the page at scrollY 254 and with the frame half scrolled in (scrollY 100); the page
+  never scrolls. A drag that starts on the board plays the board, as in the standalone app (closeZone).
 
-1. `docs/perf.md` gate: keep every route ≤ live (the /demos exemptions are the app itself, D10); re-run
-   `perf.ts` after each block. The site's own Exact pin is still 2180d806: move it to 98ed61fb (`bun exact.mjs
-   update` with the new seed) and re-verify `/`, `/demos`, 404.
-2. Remaining motion items: hero pill's entrance key in motion.ts (labels differ, parameters equal), the mobile menu's
-   open/close timing check in motion.ts, the spiral's tap easter egg toast (sonner) on the 7th tap.
-3. Phase 2: `/inspirations`, `/demos-app` (QR at build), `/course`, `/docs` (header + footer only). Live captures with
-   `shoot.ts` + `states.ts` + `motion.ts`; for each: compare, motion, perf.
-4. Phase 3: `tools/gen-content.ts`, `Markdown` + `CodeBlock`, `/docs/{terms,privacy,license}`.
-5. Phase 4 articles and series (26), 5 interactive components (37), 6 SEO/feeds, 7 deploy workflow (prepared only).
+## Next, in order
 
-verlay and scrolled state against the live site (scripted: open the
-   menu at 390, scroll 30 px at 1440, screenshot both sides); `/docs` (header + footer only).
-2. Phase 2: `/inspirations`, `/demos-app` (QR at build: `qrcode-generator` in a tool → SVG rects), `/course`
-   (testimonials, avatars in `assets/images/avatars`). Live captures: `bun tools/parity/shoot.ts https://reactiive.io
-   /tmp/site-live-dom /inspirations /demos-app /course /docs` (the old `/tmp/reactiive-live/` JPEGs are the sweep's;
-   shoot.ts also writes the `.dom.json` structure compare.ts needs).
-3. Phase 3: `tools/gen-content.ts` (MDX in `.content/` → typed block modules in `content-gen/`, gitignored;
-   images to `assets/content/`, gitignored), `Markdown` + `CodeBlock` (palenight), `/docs/{terms,privacy,license}`.
-4. Phase 4 articles and series; 5 interactive components; 6 SEO/feeds (postbuild: JSON-LD, twitter:card on the
-   404, sitemap/robots/rss/manifest); 7 the deploy workflow (prebuilt output; never run from an agent).
+1. Open: 404 @390 4g LCP 768 vs live 568 (a second candidate of the same paragraph at ~770 ms when the runtime's
+   stylesheet arrives; box and style unchanged: find what repaints it); `/demos` @390 cable LCP ~1.6 s (the pill's
+   blur-in end; live's is a thumbnail at ~1.5 s). The motion.ts matcher keys the pill differently (labels differ,
+   parameters equal).
+2. Audit every hover/group-hover in reactiive.io/src against ours (grep `hover:` / `group-hover:`), then phase 2:
+   `/inspirations`, `/demos-app` (QR at build), `/course`, `/docs`; each through shoot/compare, motion, nav, perf.
+3. Phase 3 content pipeline (`tools/gen-content.ts`, Markdown + CodeBlock, `/docs/{terms,privacy,license}`); 4
+   articles; 5 interactive components; 6 SEO/feeds; 7 deploy workflow (prepared only; production needs
+   `Access-Control-Allow-Origin: *` under `/demos/app/`, compose writes it).
+4. Measure perf on AC power with a quiet machine (load was 25-30 during this block; battery caps headless Chrome at 30 fps).
 
 ## Local setup notes
 
