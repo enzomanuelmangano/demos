@@ -1,0 +1,43 @@
+<Title date="2024-06-25" slug="atlas-sphere" basePath="demos">
+  Atlas Sphere with React Native Skia
+</Title>
+
+<Demo />
+
+<GithubCard repo="enzomanuelmangano/demos" path="src/animations/atlas-sphere" />
+
+An interactive particle sphere effect built with React Native Skia's Atlas API. Touch and drag to create a mesmerizing gravitational distortion effect on a grid of particles.
+
+## What's This About?
+
+This component creates a grid of circular particles that respond to touch interactions with a sphere-like gravitational effect. When you touch the screen, particles near your finger scale up and move towards the touch point, creating an immersive 3D-like distortion.
+
+## Technical Implementation
+
+The component leverages Skia's powerful Atlas API for rendering thousands of particles efficiently. Key features include:
+
+- **RSXform Buffers**: Uses `useRSXformBuffer` for high-performance transformations of all particles in a single draw call
+- **Texture Caching**: Pre-renders a single particle texture and reuses it across all instances
+- **Distance-Based Scaling**: Particles scale based on their distance from the touch point
+- **Smooth Animations**: Spring animations for natural-feeling interactions
+
+## How It Works
+
+1. A grid of particles is generated based on screen dimensions
+2. Each particle's position and scale is calculated relative to the touch point
+3. Distance from touch determines the scale factor (closer = larger)
+4. Particles also translate towards the touch point creating a "gravity" effect
+5. Spring animations smooth the transitions when touching and releasing
+
+## Usage
+
+```tsx
+import { AtlasSphere } from './atlas-sphere';
+
+// Simply render the component - it's fully self-contained
+<AtlasSphere />;
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

@@ -1,0 +1,73 @@
+<Title date="2024-04-17" slug="twodos-slide" basePath="demos">
+  Unlock Twodos with Reanimated, Gesture Handler and Skia
+</Title>
+
+<Demo />
+
+<GithubCard repo="enzomanuelmangano/demos" path="src/animations/twodos-slide" />
+
+A slide-to-unlock interface with animated squares and haptic feedback.
+
+## What's This About?
+
+This component creates an interactive slide-to-unlock interface with animated squares that respond to the sliding gesture. It features a friction slider with haptic feedback, debounced interactions, and smooth animations. The implementation includes gesture handling, progress tracking, and visual feedback through animated squares, making it perfect for unlock screens or interactive sliders requiring visual feedback.
+
+## Technical Implementation
+
+The component uses:
+
+- Gesture handling
+- Haptic feedback
+- Progress tracking
+- Animated squares
+- Debounced interactions
+
+## Usage
+
+```tsx
+// Basic usage
+<TwodosSlide />
+
+// Friction slider with progress tracking
+<FrictionSlider
+  containerStyle={styles.container}
+  onProgressChange={({
+    clampedProgress,
+    realProgress
+  }) => {
+    'worklet';
+    if (progress.value >= 1) {
+      runOnJS(debouncedHapticFeedback)();
+    }
+    progress.value = realProgress;
+    clampedProgress.value = clampedProgress;
+  }}
+>
+  <Text>Slide to Unlock</Text>
+  <AntDesign name="arrowright" size={20} color="gray" />
+</FrictionSlider>
+
+// Animated squares
+<AnimatedSquares
+  clampedProgress={clampedProgress}
+  progress={progress}
+  size={120}
+/>
+
+// Debounced haptic feedback
+const debouncedHapticFeedback = useMemo(
+  () => debounce(hapticFeedback, 1000, {
+    leading: true,
+    trailing: false
+  }),
+  []
+);
+
+// Progress tracking
+const progress = useSharedValue(0);
+const clampedProgress = useSharedValue(0);
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

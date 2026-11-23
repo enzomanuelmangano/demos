@@ -1,0 +1,50 @@
+<Title date="2025-11-28" slug="blur-cards" basePath="demos">
+  Blur Cards with React Native Skia
+</Title>
+
+<Demo />
+
+<GithubCard repo="enzomanuelmangano/demos" path="src/animations/blur-cards" />
+
+A stunning visual effect featuring multiple blurred glass cards that fan out in 3D space when tapped. Built with React Native Skia's BackdropBlur for beautiful frosted glass aesthetics.
+
+## What's This About?
+
+This component creates a stack of translucent cards with backdrop blur effects. On tap, the cards animate outward with 3D rotation and translation, creating an elegant card fan effect against a radial gradient background.
+
+## Technical Implementation
+
+The effect combines several Skia features:
+
+- **BackdropBlur**: Creates the frosted glass effect by blurring content behind each card
+- **Radial Gradient**: Beautiful violet-to-black gradient background
+- **3D Transforms**: Perspective, rotateY, and standard rotation for depth
+- **Clipping Paths**: Rounded rectangle paths for card shapes with stroke borders
+
+## How It Works
+
+1. Five cards are stacked at the center of the screen
+2. Each card has a semi-transparent fill and a stroke border
+3. On press, a spring animation drives the expansion
+4. Cards rotate, translate, and gain blur intensity simultaneously
+5. The `progress` shared value controls all animations (0 = collapsed, 1 = expanded)
+
+## Animation Details
+
+- **Rotation**: Cards rotate -90 degrees as they expand
+- **Translation**: Each card moves horizontally based on its index
+- **Perspective**: 3D depth effect with rotateY
+- **Blur**: Blur intensity increases from 0 to 5 as cards expand
+
+## Usage
+
+```tsx
+import { BlurCards } from './blur-cards';
+
+// Tap anywhere to toggle the card fan animation
+<BlurCards />;
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

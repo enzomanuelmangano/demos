@@ -1,0 +1,66 @@
+<Title date="2024-03-27" slug="prequel-slider" basePath="demos">
+  Image Editor with Skia, Reanimated and Gesture Handler
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/prequel-slider"
+/>
+
+An image editor with interactive slider and transition effects.
+
+## What's This About?
+
+This component creates a sophisticated image editing interface with a custom slider control and visual transitions. It features a draggable slider that controls both a circular progress indicator and image transition effects. The component includes smooth color interpolation, safe area handling, and WebGL-based image transitions, making it suitable for photo editing applications.
+
+## Technical Implementation
+
+The component uses:
+
+- Skia for rendering
+- WebGL transitions
+- Color interpolation
+- Gesture handling
+- Progress indicators
+
+## Usage
+
+```tsx
+// Basic usage
+<PrequelSlider />
+
+// Image editor with transitions
+<ImageEditor
+  width={imageEditorWidth}
+  height={imageEditorHeight}
+  glEffect={ButterflyWaveScrawlerGL}
+  image={demoImage}
+  progress={progressPercentage}
+  style={{
+    borderRadius: 10,
+    overflow: 'hidden',
+    borderCurve: 'continuous'
+  }}
+/>
+
+// Draggable slider configuration
+<DraggableSlider
+  linesAmount={50}
+  spacePerLine={10}
+  maxLineHeight={12}
+  minLineHeight={5}
+  bigLineIndexOffset={10}
+  lineWidth={2}
+  snapEach={1}
+  scrollableAreaHeight={60}
+  onProgressChange={(progress) => {
+    // Handle progress updates
+  }}
+/>
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

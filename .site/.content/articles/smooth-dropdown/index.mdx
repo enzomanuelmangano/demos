@@ -1,0 +1,775 @@
+<Title date="2023-09-13" slug="smooth-dropdown">
+  Creating a Smooth Dropdown Menu Animation in React Native Reanimated
+</Title>
+
+Hello fellow Mobile developers! Today, we're diving into the exciting world of React Native as we craft, from the ground up, a sleek dropdown animation using the power of the Reanimated package. My inspiration for this project came from a captivating Twitter post showcasing a similar animation created in Framer.
+
+Here it is: [Smooth Dropdown in Framer](https://x.com/traf/status/1634279149182369792?s=20)
+
+If you're passionate about crafting eye-catching animations in React Native, consider [supporting me on Demos](/demos). I regularly share the source code for new animations every week. Additionally, you can stay updated with my latest endeavors by following me on Twitter at @reactive. Lately, I've been dedicating more and more time to React Native animations, so you won't want to miss out.
+
+I've already set up a React Native project with the necessary groundwork, including some constants. You can see we've defined options and a header that we'll be using later to build our dropdown menu.
+
+In the _package.json_ file, I've installed the Reanimated package, the Vector package for displaying icons, and the Color package, which will come in handy as we manipulate colors later in the project.
+
+A crucial reminder when using Reanimated: don't forget to add the Reanimated plugin to your _babel.config.js_. Without this step, your project won't function as expected. So, make sure you've got that in place, and we're ready to embark on this exciting animation journey!
+
+<GithubCard
+  repo="enzomanuelmangano/animate-with-reanimated"
+  path="src/animations/16-smooth-dropdown"
+/>
+
+### YouTube Channel
+
+Are you more of a visual learner? Check out my YouTube channel and subscribe for more React Native content.
+
+<YouTubeEmbed videoId="LtgHWjf7BA8" />
+
+## Setup Components
+
+Now that we've made the initial setup for our React Native project and included the necessary packages, it's time to start building our dropdown animation.
+
+### Updating Background Color and State Bar Color
+
+Before we dive into the animation, let's make some initial adjustments. We'll update the background color and fix the State Bar color.
+
+### Defining the Dropdown Component
+
+Our dropdown animation will consist of a header and a list of options. Let's create a reusable dropdown component to handle this structure.
+
+```tsx
+// components/Dropdown.tsx
+
+import React from 'react';
+import { View, StyleSheet } from 'react-native';
+
+type DropdownItemProps = {
+  // Define your properties here
+};
+
+type DropdownProps = {
+  header: DropdownItemProps;
+  options: DropdownItemProps[];
+};
+
+const Dropdown: React.FC<DropdownProps> = ({ header, options }) => {
+  const dropdownItems = [header, ...options];
+  const dropdownItemHeight = 80;
+
+  const styles = StyleSheet.create({
+    dropdownItem: {
+      width: '95%',
+      height: dropdownItemHeight,
+      backgroundColor: '#1B1B1B', // Replace with your desired background color
+      // Add other styles as needed
+    },
+  });
+
+  return (
+    <View>
+      {dropdownItems.map((item, index) => (
+        <View key={index} style={styles.dropdownItem}>
+          {/* Content for each item */}
+        </View>
+      ))}
+    </View>
+  );
+};
+
+export default Dropdown;
+```
+
+### Displaying Dropdown Items
+
+Inside the Dropdown component, we display the header and options as dropdown items. We map through these items and apply styling.
+
+```tsx
+const dropdownItems = [header, ...options];
+const dropdownItemHeight = 80;
+
+const styles = StyleSheet.create({
+  dropdownItem: {
+    width: '95%',
+    height: dropdownItemHeight,
+    backgroundColor: '#1B1B1B', // Replace with your desired background color
+    // Add other styles as needed
+  },
+});
+
+return (
+  <View>
+    {dropdownItems.map((item, index) => (
+      <View key={index} style={styles.dropdownItem}>
+        {/* Content for each item */}
+      </View>
+    ))}
+  </View>
+);
+```
+
+With these components in place, we've set up the foundation for our React Native dropdown animation. As we proceed, we'll add more complexity to achieve the desired animation effect. For now, this structure provides a solid starting point for your project.
+
+### Absolute Positioning
+
+In our quest to create a captivating dropdown animation, we'll transition from relative positioning to absolute positioning. Why, you might ask? Well, in my experience, it's much simpler to handle animations by updating the position of elements when working with absolute positioning, especially for this type of animation. So, let's convert our properties accordingly to achieve the same result as before, but this time with position:absolute.
+
+Our width and height properties will remain unchanged from their previous values. However, we'll need to make some adjustments to the "top" property. This property will now depend heavily on the item's index in the dropdown. To achieve this, we'll need to import the index and pass it as a parameter from the dropdown list item.
+
+```tsx
+// Inside the DropdownListItem component
+
+const DropdownListItem: React.FC<DropdownItemProps & { index: number }> = ({
+  label,
+  icon,
+  index,
+}) => {
+  // Other properties and styles remain the same
+  const styles = StyleSheet.create({
+    dropdownItem: {
+      width: '95%',
+      height: dropdownItemHeight,
+      backgroundColor: '#1B1B1B', // Replace with your desired background color
+      marginTop: 10, // Add margin for spacing
+      position: 'absolute',
+      top: index * (dropdownItemHeight + 10), // Adjust the top property based on the index
+      // Add other styles as needed
+    },
+  });
+
+  // Rest of the component
+};
+```
+
+At this point, we should aim to center all the items on the screen. To achieve this, we need to calculate the total height of the dropdown and offset each item by half of that height. We'll also need to know the total number of items in the dropdown. So, let's introduce these changes:
+
+```tsx
+// Inside the Dropdown component
+
+const Dropdown: React.FC<DropdownProps> = ({ header, options }) => {
+  const dropdownItems = [header, ...options];
+  const dropdownItemHeight = 80;
+
+  // Calculate the total number of items in the dropdown
+  const dropdownItemsCount = dropdownItems.length;
+
+  return (
+    <View>
+      {dropdownItems.map((item, index) => (
+        <DropdownListItem
+          key={index}
+          label={item.label}
+          icon={item.icon}
+          index={index}
+          dropdownItemsCount={dropdownItemsCount}
+        />
+      ))}
+    </View>
+  );
+};
+```
+
+And then internally in the DropdownListItem component:
+
+```tsx
+// Inside the DropdownListItem component
+
+const DropdownListItem: React.FC<
+  DropdownItemProps & {
+    index: number;
+    dropdownItemsCount: number;
+  }
+> = ({ label, icon, index, dropdownItemsCount }) => {
+  // Calculate the total height of the dropdown
+  const fullDropdownHeight = dropdownItemsCount * (dropdownItemHeight + 10); // Including margin
+
+  // Other properties and styles remain the same
+  const styles = StyleSheet.create({
+    dropdownItem: {
+      width: '95%',
+      height: dropdownItemHeight,
+      backgroundColor: '#1B1B1B', // Replace with your desired background color
+      marginTop: 10, // Add margin for spacing
+      position: 'absolute',
+      top: index * (dropdownItemHeight + 10), // Adjust the top property based on the index
+      transform: [
+        {
+          translateY: -fullDropdownHeight / 2, // Offset each item by half of the dropdown height
+        },
+      ],
+      // Add other styles as needed
+    },
+  });
+
+  // Rest of the component
+};
+```
+
+With these changes, we've successfully transitioned to absolute positioning. Although it may not appear to have made a significant difference yet, this shift in approach sets the stage for creating two distinct states for our dropdown animation: open and closed. We'll continue building on this foundation as we progress.
+
+## The Collapsed & Expanded States
+
+Our dropdown animation will have two distinct states: the collapsed state and the expanded state. To achieve this, we'll work extensively with the _top_ property. Let's define the _collapsedTop_ and _expandedTop_ properties for our items.
+
+```tsx
+// Inside the DropdownListItem component
+
+const DropdownListItem: React.FC<DropdownItemProps & { index: number }> = ({
+  label,
+  icon,
+  index,
+}) => {
+  // Other properties and styles remain the same
+
+  // Define the collapsed and expanded top values
+  const collapsedTop = fullDropdownHeight / 2 - dropdownItemHeight; // Centered when collapsed
+  const expandedTop = index * (dropdownItemHeight + 10);
+
+  // Rest of the component
+};
+```
+
+Currently, we have the _expandedTop_ value defined, but we need to work on how the items should be positioned when they are collapsed. For simplicity, we'll set the _collapsedTop_ value to half of the full dropdown height to center the items.
+
+Now, let's animate these two values. To do this, we'll convert our View into an Animated.View and move these values into Reanimated styles. We'll remove _top_ from the styles and create the Reanimated style using _useAnimatedStyle_. Initially, we'll return _top_ with the _expandedTop_ value.
+
+```tsx
+// Inside the DropdownListItem component
+
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+
+const DropdownListItem: React.FC<DropdownItemProps & { index: number }> = ({
+  label,
+  icon,
+  index,
+}) => {
+  // Other properties and styles remain the same
+
+  // Define the collapsed and expanded top values
+  const collapsedTop = fullDropdownHeight / 2 - dropdownItemHeight; // Centered when collapsed
+  const expandedTop = index * (dropdownItemHeight + 10);
+
+  // Create the Reanimated style
+  const itemStyle = useAnimatedStyle(() => {
+    return {
+      top: expandedTop, // Initially set to expandedTop
+    };
+  });
+
+  // Rest of the component
+};
+```
+
+But we also need a way to access the current state of the dropdown. To do this, we'll define a state variable called _isExpanded_ as a shared value with an initial value of _false_. This variable will represent the state of our dropdown, starting with the collapsed state.
+
+```tsx
+// Inside the Dropdown component
+
+import { useSharedValue } from 'react-native-reanimated';
+
+const Dropdown: React.FC<DropdownProps> = ({ header, options }) => {
+  // ...
+
+  // Define the state variable for dropdown state
+  const isExpanded = useSharedValue(false);
+
+  return (
+    <View>
+      {dropdownItems.map((item, index) => (
+        <DropdownListItem
+          key={index}
+          label={item.label}
+          icon={item.icon}
+          index={index}
+          isExpanded={isExpanded}
+        />
+      ))}
+    </View>
+  );
+};
+```
+
+Now, we can update the _top_ property of our items based on the _isExpanded_ value. If the dropdown is expanded, we'll set it to the _expandedTop_ value; otherwise, it will be _collapsedTop_.
+
+```tsx
+// Inside the DropdownListItem component
+
+const DropdownListItem: React.FC<
+  DropdownItemProps & {
+    index: number;
+    isExpanded: Animated.SharedValue<boolean>;
+  }
+> = ({ label, icon, index, isExpanded }) => {
+  // ...
+
+  // Update the itemStyle to set top based on isExpanded
+  const itemStyle = useAnimatedStyle(() => {
+    return {
+      top: isExpanded.value ? expandedTop : collapsedTop,
+    };
+  });
+
+  // ...
+
+  return (
+    <Animated.View style={[styles.dropdownItem, itemStyle]}>
+      {/* Content for each item */}
+    </Animated.View>
+  );
+};
+```
+
+To toggle the _isExpanded_ value, we can use a simple touch event. For example, we can use the _onPress_ callback for the Animated.View to toggle the dropdown state.
+
+```tsx
+// Inside the DropdownListItem component
+
+const DropdownListItem: React.FC<
+  DropdownItemProps & {
+    index: number;
+    isExpanded: Animated.SharedValue<boolean>;
+  }
+> = ({ label, icon, index, isExpanded }) => {
+  // ...
+
+  // Toggle the isExpanded value on press
+  const toggleDropdown = () => {
+    isExpanded.value = !isExpanded.value;
+  };
+
+  return (
+    <Animated.View
+      style={[styles.dropdownItem, itemStyle]}
+      onTouchStart={toggleDropdown}
+    >
+      {/* Content for each item */}
+    </Animated.View>
+  );
+};
+```
+
+Finally, let's add some animation to our dropdown using the _withSpring_ higher-order function from Reanimated.
+
+```tsx
+// Inside the Dropdown component
+
+import { withSpring } from 'react-native-reanimated';
+
+const Dropdown: React.FC<DropdownProps> = ({ header, options }) => {
+  // ...
+
+  // Add animation to the top property
+  const itemStyle = useAnimatedStyle(() => {
+    return {
+      top: withSpring(isExpanded.value ? expandedTop : collapsedTop),
+    };
+  });
+
+  // ...
+
+  return (
+    <View>
+      {dropdownItems.map((item, index) => (
+        <DropdownListItem
+          key={index}
+          label={item.label}
+          icon={item.icon}
+          index={index}
+          isExpanded={isExpanded}
+        />
+      ))}
+    </View>
+  );
+};
+```
+
+With these changes, our dropdown now has two states: collapsed and expanded. Tapping on it toggles between these states with a smooth spring animation. We've set the stage for further animation enhancements as we continue to refine our React Native dropdown animation.
+
+## Fixing Items Order
+
+While we've made progress with our animation, there's still an issue we need to address. The problem arises when we want to toggle the animation by tapping on the header. Currently, tapping anywhere in the dropdown triggers the animation. We can easily fix this by introducing a variable called _isHeader_ to control animation toggling. We'll ensure that only the header triggers the animation.
+
+```tsx
+// Inside the DropdownListItem component
+
+const DropdownListItem: React.FC<
+  DropdownItemProps & {
+    index: number;
+    isExpanded: Animated.SharedValue<boolean>;
+  }
+> = ({ label, icon, index, isExpanded }) => {
+  // Check if this item is the header
+  const isHeader = index === 0;
+
+  // Toggle the isExpanded value on press only if this item is the header
+  const toggleDropdown = () => {
+    if (isHeader) {
+      isExpanded.value = !isExpanded.value;
+    }
+  };
+
+  return (
+    <Animated.View
+      style={[styles.dropdownItem, itemStyle]}
+      onTouchStart={toggleDropdown}
+    >
+      {/* Content for each item */}
+    </Animated.View>
+  );
+};
+```
+
+With this change, only tapping on the header will trigger the animation, as intended.
+
+However, we still have an issue with the order of items. Currently, all items are stacked on top of each other, and the header is at the bottom. To fix this, we'll adjust the _zIndex_ property to ensure that the header always appears on top.
+
+```tsx
+// Inside the DropdownListItem component
+
+const DropdownListItem: React.FC<
+  DropdownItemProps & {
+    index: number;
+    isExpanded: Animated.SharedValue<boolean>;
+  }
+> = ({ label, icon, index, isExpanded }) => {
+  // Determine zIndex based on the item's position
+  const zIndex = dropdownItemsCount - index;
+
+  // Update the itemStyle to set top, zIndex, and scale based on isExpanded
+  const itemStyle = useAnimatedStyle(() => {
+    return {
+      top: withSpring(isExpanded.value ? expandedTop : collapsedTop),
+      zIndex: zIndex, // Header always on top
+    };
+  });
+
+  return (
+    <Animated.View
+      style={[styles.dropdownItem, itemStyle]}
+      onTouchStart={toggleDropdown}
+    >
+      {/* Content for each item */}
+    </Animated.View>
+  );
+};
+```
+
+Now, we've fixed the order of items. The header will always appear on top, thanks to the _zIndex_ property. Additionally, we've introduced a scaling animation to provide a more visually appealing transition when collapsing the dropdown. The header now triggers the animation, ensuring a smoother user experience.
+
+With these adjustments, we've resolved issues related to item order and animation toggling in our React Native dropdown animation.
+
+## Animate the Scale
+
+To enhance the collapsed state of our dropdown, we'll focus on animating the scale of the items. We'll create two scale values, _expandedScale_ and _collapsedScale_, and adjust them based on the item's index.
+
+```tsx
+// Inside the DropdownListItem component
+
+const DropdownListItem: React.FC<
+  DropdownItemProps & {
+    index: number;
+    isExpanded: Animated.SharedValue<boolean>;
+  }
+> = ({ label, icon, index, isExpanded }) => {
+  // Determine zIndex based on the item's position
+  const zIndex = dropdownItemsCount - index;
+
+  // Define the scale values for expanded and collapsed states
+  const expandedScale = 1; // No scaling when expanded
+  const collapsedScale = 1 - index * 0.08; // Slightly scale down items in the collapsed state
+
+  // Update the itemStyle to set top, zIndex, and scale based on isExpanded
+  const itemStyle = useAnimatedStyle(() => {
+    return {
+      top: isExpanded.value ? expandedTop : collapsedTop,
+      zIndex: isHeader ? dropdownItemsCount + 1 : zIndex, // Header always on top
+      transform: [
+        { scale: isExpanded.value ? expandedScale : collapsedScale }, // Adjust scale
+        {
+          translateY: fullDropdownHeight / 2,
+        },
+      ],
+    };
+  });
+
+  return (
+    <Animated.View
+      style={[styles.dropdownItem, itemStyle]}
+      onTouchStart={toggleDropdown}
+    >
+      {/* Content for each item */}
+    </Animated.View>
+  );
+};
+```
+
+In this code, we've introduced two scale values, _expandedScale_ and _collapsedScale_. When the dropdown is in the collapsed state, all items except the header (_isHeader_) will be slightly scaled down (_collapsedScale = 0.8_). The header remains at its normal scale (_collapsedScale = 1_).
+
+We've also adjusted the order of transformations within the _transform_ array to ensure that scaling is applied before translation. This ensures the correct rendering order.
+
+Finally, we'll add the spring transition to the scale animation for a smoother effect:
+
+```tsx
+// Inside the DropdownListItem component
+
+const DropdownListItem: React.FC<
+  DropdownItemProps & {
+    index: number;
+    isExpanded: Animated.SharedValue<boolean>;
+  }
+> = ({ label, icon, index, isExpanded }) => {
+  // ...
+
+  // Add animation to the scale property
+  const itemStyle = useAnimatedStyle(() => {
+    return {
+      top: withSpring(isExpanded.value ? expandedTop : collapsedTop),
+      zIndex: zIndex,
+      transform: [
+        {
+          scale: withSpring(isExpanded.value ? expandedScale : collapsedScale),
+        }, // Adjust scale with spring transition
+        {
+          translateY: fullDropdownHeight / 2,
+        },
+      ],
+    };
+  });
+
+  // ...
+
+  return (
+    <Animated.View
+      style={[styles.dropdownItem, itemStyle]}
+      onTouchStart={toggleDropdown}
+    >
+      {/* Content for each item */}
+    </Animated.View>
+  );
+};
+```
+
+Now, with the scaling animation applied, our dropdown will smoothly transition between collapsed and expanded states, providing a more visually appealing user experience.
+
+## Animate the Background Color
+
+In the collapsed state, we aim to introduce dynamic changes to the background color by adjusting the brightness of each dropdown list item. Conversely, in the expanded state, we simply want to retain the existing color. Similar to our previous work with the "top" property and the "scale" property, we will now focus on animating the expanded background color.
+
+For the expanded state, we will keep the default value and the collapsed background color. To achieve this, let's include the background color and reuse the code we previously used. It might be beneficial to wrap it with a higher-order function that incorporates timing for smoother animation. In my opinion, this approach should yield better results, but feel free to choose your preferred method.
+
+Of course, it's a good idea to remove the background color from where it was previously set since the background color will now be applied automatically through reanimated styles. As we mentioned at the beginning of this tutorial, our goal is to manipulate the color, and the best way to do that is by using the color package. Let's import the "color" package:
+
+```tsx
+import color from 'color';
+```
+
+Now, let's begin with the expanded background color. Our objective is to adjust the brightness of the color. To achieve this, we can use the "lighten" function. As the index increases, we want the brightness to increase as well. Let's add this value, as suggested by Pilot in a specific case. This way, the header will maintain the same brightness as before when the index of the header is zero. As the index increases, we will gradually increase the brightness. Finally, let's return the hex value so you can see the changes effectively:
+
+```tsx
+// Assuming 'colorToAnimate' is your color variable
+const expandedBackgroundColor = '#1B1B1B';
+const collapsedBackgroundColor = Color(expandedBackgroundColor)
+  .lighten(index * 0.25)
+  .hex();
+
+// Inside the DropdownListItem component
+
+const rStyle = useAnimatedStyle(() => {
+  return {
+    backgroundColor: withTiming(
+      isExpanded.value ? expandedBackgroundColor : collapsedBackgroundColor
+    ),
+    top: withSpring(isExpanded.value ? expandedTop : collapsedTop),
+    transform: [
+      {
+        scale: withSpring(isExpanded.value ? expandedScale : collapsedScale),
+      },
+      {
+        translateY: fullDropdownHeight / 2,
+      },
+    ],
+  };
+}, []);
+```
+
+You can experiment with the brightness value; for example, a value of 0.25 might work perfectly. We are almost finished. You can also adjust the dropdown list item height, perhaps setting it to 85. At this point, we can start adding the remaining information inside these elements.
+
+## Complete the Layout
+
+To complete the layout of our React Native dropdown, we'll focus on styling and positioning the label, left icon, and right icon. Let's organize and style these elements within a container view.
+
+First, let's define the container style using React Native's StyleSheet:
+
+```tsx
+import { StyleSheet } from 'react-native';
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  label: {
+    color: 'white',
+    fontSize: 16,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  iconContainer: {
+    width: 50,
+    aspectRatio: 1,
+    backgroundColor: 'black',
+    borderRadius: 5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'absolute',
+  },
+});
+```
+
+Now, let's incorporate these styles into our layout:
+
+```tsx
+// Inside your component
+import { View, Text } from 'react-native';
+
+const DropdownHeader = () => {
+  // ...
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.label}>Your Label</Text>
+      <View style={styles.iconContainer}>
+        {/* Left Icon */}
+        <MaterialIcons name="arrow-forward" size={24} color="white" />
+      </View>
+      <View style={[styles.iconContainer, { right: 15 }]}>
+        {/* Right Icon */}
+        {isHeader ? (
+          <AntDesign name="arrowforward" size={24} color="white" />
+        ) : (
+          <Ionicons name="ios-arrow-forward" size={24} color="white" />
+        )}
+      </View>
+    </View>
+  );
+};
+```
+
+In this code:
+
+- We've defined a set of styles using _StyleSheet.create_.
+- The _container_ style sets up the overall layout of the header, aligning the label, left icon, and right icon.
+- The _label_ style defines the text style for the label.
+- The _iconContainer_ style styles the containers for both left and right icons.
+- We've positioned the right icon using the _right_ property to ensure it's on the right side of the container.
+
+You can adjust the label text, icon names, and other styles as needed to match your design preferences. This code provides a well-organized layout for your React Native dropdown header.
+
+## Animate the Arrow
+
+To achieve the desired arrow animation in your React Native dropdown, we'll update the icon's rotation when the dropdown is expanded or collapsed. This animation will make the arrow point downwards when the dropdown is collapsed. To implement this, we'll use Reanimated to animate the arrow's rotation.
+
+First, ensure you have imported the necessary libraries at the beginning of your component:
+
+```tsx
+import { View } from 'react-native';
+import { AntDesign } from '@expo/vector-icons';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
+```
+
+Now, let's implement the arrow animation:
+
+```tsx
+// Inside the Dropdown ListItem component
+
+const rHeaderArrowIconStyle = useAnimatedStyle(() => {
+  return {
+    transform: [
+      {
+        rotate: withTiming(isHeader && isExpanded.value ? '90deg' : '0deg'),
+      },
+    ],
+  };
+});
+
+return (
+  // ...
+  <Animated.View
+    style={[
+      styles.iconContainer,
+      rHeaderArrowIconStyle,
+      {
+        right: 15,
+        backgroundColor: 'transparent',
+      },
+    ]}
+  >
+    <MaterialIcons
+      name={isHeader ? 'arrow-forward-ios' : 'arrow-forward'}
+      size={25}
+      color={'#D4D4D4'}
+    />
+  </Animated.View>
+);
+```
+
+By implementing these changes, your arrow icon will smoothly animate its rotation when the dropdown is toggled, providing the desired visual feedback.
+
+## Animate the Icon Opacity
+
+To control the opacity of the left icon in your React Native dropdown header based on its state (expanded or collapsed), you can use Reanimated to animate the opacity. Here's how you can achieve this:
+
+Make sure you have imported the required libraries and dependencies at the beginning of your component:
+
+```tsx
+import { View } from 'react-native';
+import { AntDesign } from '@expo/vector-icons';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
+```
+
+Now, let's implement the icon opacity animation:
+
+```tsx
+// Inside the Dropdown ListItem component
+const rLeftIconOpacityStyle = useAnimatedStyle(() => {
+  return {
+    opacity: withTiming(isHeader ? 1 : isExpanded.value ? 1 : 0),
+  };
+}, [isHeader]);
+
+return (
+  //
+  <View style={styles.container}>
+    <Animated.View
+      style={[
+        styles.iconContainer,
+        {
+          left: 15,
+        },
+        rLeftIconOpacityStyle,
+      ]}
+    >
+      <AntDesign name={iconName as any} size={25} color="#D4D4D4" />
+    </Animated.View>
+    <Text style={styles.label}>{label}</Text>
+    // Arrow Icon Component ...
+  </View>
+);
+```
+
+## Conclusion
+
+In this tutorial, we've explored how to create a React Native dropdown header with smooth animations using the Reanimated library. We've covered various aspects of the implementation, including positioning, scaling, background color changes, arrow rotation, and icon opacity animation.
+
+By following these steps and utilizing Reanimated, you can create a polished and interactive dropdown header that enhances the user experience in your React Native applications. Customizing the animations and styles allows you to tailor the dropdown to match your app's design and functionality requirements.
+
+Remember that React Native and Reanimated provide a powerful combination for building dynamic and engaging user interfaces, and you can further extend these concepts to create even more complex animations and interactions in your mobile apps. Experiment with different animations and styles to make your dropdown header uniquely suited to your project's needs.

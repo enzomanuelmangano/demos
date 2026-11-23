@@ -1,0 +1,305 @@
+import { BasicLoaderWithSkia, WithGradientLoaderWithSkia, WithProgressLoaderWithSkia, WithBasicAnimationLoaderWithSkia, WithAnimationLoaderWithSkia } from './mdx-client';
+
+<Title date="2025-01-09" slug="animated-loader">
+  Animated Loader with React Native Skia
+</Title>
+
+Looking to create a beautiful and smooth activity indicator for your React Native app? In this tutorial, we'll guide you through building a custom animated loader using React Native Skia and Reanimated.
+
+This is not just another loader tutorial – it's an excellent opportunity to explore the fundamentals of React Native Skia while creating something practical and visually appealing.
+
+If you're passionate about React Native animations, consider supporting me on [Demos](/demos), where I share the source code of a new animation every week.
+
+Feel free to check the source code directly:
+
+<GithubCard repo="enzomanuelmangano/exploring-skia" path="activity-indicator" />
+
+## YouTube Channel
+
+Prefer to learn visually? Watch the video version of this tutorial on my YouTube channel:
+
+<YouTubeEmbed videoId="7pCiGUrJuow" />
+
+## Project Setup
+
+For this tutorial, we'll start with a React Native project initialized with Expo. We'll need two main dependencies:
+
+1. React Native Skia - For creating the loader's UI
+2. Reanimated - For handling the animations
+
+Make sure you have these packages installed in your project before proceeding.
+
+```bash
+npx expo install @shopify/react-native-skia react-native-reanimated
+```
+
+## Building the Basic Circle
+
+Let's start by creating our custom activity indicator component. First, we'll create a basic circle using Skia's Circle component:
+
+```tsx
+import { Canvas, Circle } from '@shopify/react-native-skia';
+
+export const ActivityIndicator = () => {
+  const size = 128;
+  const strokeWidth = 10;
+  const radius = (size - strokeWidth) / 2;
+  const canvasSize = size + 30;
+
+  return (
+    <Canvas style={{ width: canvasSize, height: canvasSize }}>
+      <Circle
+        cx={canvasSize / 2}
+        cy={canvasSize / 2}
+        r={radius}
+        color="white"
+        style="stroke"
+        strokeWidth={strokeWidth}
+      />
+    </Canvas>
+  );
+};
+```
+
+<BasicLoaderWithSkia />
+
+Here we've created a simple circle with:
+
+- A canvas to hold our Skia components
+- A circle positioned at the center of the canvas
+- _style="stroke"_ to only show the border
+- _strokeWidth_ to control the thickness
+
+## Converting to a Skia Path
+
+While the Circle component works, we need more control over the circle's appearance. We'll convert it to a Skia Path, which will allow us to control exactly how much of the circle is shown:
+
+```tsx
+import { Canvas, Path, Skia } from '@shopify/react-native-skia';
+import { useMemo } from 'react';
+
+export const ActivityIndicator = () => {
+  const size = 128;
+  const strokeWidth = 15;
+  const radius = (size - strokeWidth) / 2;
+  const canvasSize = size + 30;
+
+  const circle = useMemo(() => {
+    const skPath = Skia.Path.Make();
+    skPath.addCircle(canvasSize / 2, canvasSize / 2, radius);
+    return skPath;
+  }, [canvasSize, radius]);
+
+  return (
+    <Canvas style={{ width: canvasSize, height: canvasSize }}>
+      <Path
+        path={circle}
+        color="#6370CA"
+        style="stroke"
+        strokeWidth={strokeWidth}
+        start={0.6}
+        end={1}
+        strokeCap="round"
+      />
+    </Canvas>
+  );
+};
+```
+
+The Path component gives us access to _start_ and _end_ properties, allowing us to control exactly how much of the circle is shown. Try adjusting the start value using the progress bar:
+
+<WithProgressLoaderWithSkia />
+
+This control over the path's length will be crucial for creating our dynamic animation later.
+
+## Adding Gradient and Blur Effects
+
+To make our loader more visually appealing, let's add a sweep gradient and a blur effect:
+
+```tsx
+<Path
+  path={circle}
+  style="stroke"
+  strokeWidth={strokeWidth}
+  start={0.6}
+  end={1}
+  strokeCap="round"
+>
+  <SweepGradient
+    c={vec(canvasSize / 2, canvasSize / 2)}
+    colors={['cyan', 'magenta', 'yellow', 'cyan']}
+  />
+  <BlurMask blur={5} style="solid" />
+</Path>
+```
+
+The SweepGradient creates a beautiful color transition around the circle, while the BlurMask adds a soft glow effect.
+
+## Adding Smooth Animations
+
+Let's bring our loader to life step by step. First, let's add a simple rotation animation:
+
+```tsx
+export const ActivityIndicator = () => {
+  const progress = useSharedValue(0);
+
+  // Basic rotation animation
+  useEffect(() => {
+    progress.value = withRepeat(
+      withTiming(1, { duration: 1000, easing: Easing.linear }),
+      -1,
+      false
+    );
+  }, []);
+
+  const rContainerStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${2 * Math.PI * progress.value}rad` }],
+  }));
+
+  return (
+    <Animated.View style={rContainerStyle}>
+      <Canvas style={{ width: canvasSize, height: canvasSize }}>
+        <Path
+          path={circle}
+          style="stroke"
+          strokeWidth={strokeWidth}
+          start={0.6}
+          end={1}
+          strokeCap="round"
+        >
+          <SweepGradient {...gradientProps} />
+          <BlurMask blur={5} style="solid" />
+        </Path>
+      </Canvas>
+    </Animated.View>
+  );
+};
+```
+
+Here's how it looks with just the basic rotation animation. Notice how mechanical and unrealistic it feels:
+
+<WithBasicAnimationLoaderWithSkia />
+
+To make it more dynamic and engaging, let's animate the path's _start_ and _end_ properties as well:
+
+```tsx
+export const ActivityIndicator = () => {
+  // ... previous code
+
+  // Dynamic path animation
+  const startPath = useDerivedValue(() =>
+    interpolate(progress.value, [0, 0.5, 1], [0.6, 0.3, 0.6])
+  );
+
+  return (
+    <Animated.View
+      entering={FadeIn.duration(1000)}
+      exiting={FadeOut.duration(1000)}
+      style={rContainerStyle}
+    >
+      <Canvas style={{ width: canvasSize, height: canvasSize }}>
+        <Path
+          path={circle}
+          style="stroke"
+          strokeWidth={strokeWidth}
+          start={startPath} // Now animated!
+          end={1}
+          strokeCap="round"
+        >
+          <SweepGradient {...gradientProps} />
+          <BlurMask blur={5} style="solid" />
+        </Path>
+      </Canvas>
+    </Animated.View>
+  );
+};
+```
+
+By animating the _start_ property between different values (0.6 → 0.3 → 0.6) as the loader rotates, we create a more organic "chasing" effect. The path appears to stretch and contract as it spins, making the animation feel more natural and visually interesting.
+
+<WithAnimationLoaderWithSkia />
+
+Here's the complete implementation with both rotation and path animations working together:
+
+```tsx
+import {
+  BlurMask,
+  Canvas,
+  Path,
+  SweepGradient,
+  Skia,
+  vec,
+} from '@shopify/react-native-skia';
+import { useImperativeHandle, useMemo } from 'react';
+import { View, StyleSheet } from 'react-native';
+import Animated, {
+  Easing,
+  FadeIn,
+  FadeOut,
+  interpolate,
+  useAnimatedStyle,
+  useDerivedValue,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+  cancelAnimation,
+} from 'react-native-reanimated';
+
+export const ActivityIndicator = () => {
+  const progress = useSharedValue(0);
+
+  // Animation setup
+  const play = () => {
+    progress.value = withRepeat(
+      withTiming(1, { duration: 1000, easing: Easing.linear }),
+      -1,
+      false
+    );
+  };
+
+  const rContainerStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${2 * Math.PI * progress.value}rad` }],
+  }));
+
+  const startPath = useDerivedValue(() =>
+    interpolate(progress.value, [0, 0.5, 1], [0.6, 0.3, 0.6])
+  );
+
+  return (
+    <Animated.View
+      entering={FadeIn.duration(1000)}
+      exiting={FadeOut.duration(1000)}
+      style={rContainerStyle}
+    >
+      <Canvas style={{ width: canvasSize, height: canvasSize }}>
+        <Path
+          path={circle}
+          style="stroke"
+          strokeWidth={strokeWidth}
+          start={startPath}
+          end={1}
+          strokeCap="round"
+        >
+          <SweepGradient
+            c={vec(canvasSize / 2, canvasSize / 2)}
+            colors={['cyan', 'magenta', 'yellow', 'cyan']}
+          />
+          <BlurMask blur={5} style="solid" />
+        </Path>
+      </Canvas>
+    </Animated.View>
+  );
+};
+```
+
+## Summary
+
+In this tutorial, we've learned how to:
+
+1. Create a basic circle using Skia
+2. Convert it to a Path for more control
+3. Add beautiful gradients and blur effects
+4. Create smooth animations with Reanimated
+5. Add enter/exit animations for a polished look
+
+Each step builds upon the previous one, gradually transforming a simple circle into a beautiful, animated loader. Try experimenting with different colors, sizes, and animation timings to create your own unique variations!

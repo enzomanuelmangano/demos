@@ -1,0 +1,18 @@
+{
+  "title": "Building a BottomSheet from scratch in React Native",
+  "shortTitle": "Building a BottomSheet from scratch in React Native",
+  "subtitle": "Learn how to create a smooth and interactive bottom sheet animation using React Native Reanimated and Gesture Handler, with advanced features like interpolated border radius and external control.",
+  "author": "Enzo Manuel Mangano",
+  "date": "2025-01-30",
+  "slug": "bottom-sheet-animation",
+  "tags": [
+    "react-native",
+    "react",
+    "animation",
+    "reanimated",
+    "gesture-handler",
+    "bottom-sheet"
+  ],
+  "featuredImage": "./images/header.webp",
+  "series": "what-about-gestures"
+}

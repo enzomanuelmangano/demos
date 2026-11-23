@@ -1,0 +1,57 @@
+<Title date="2023-02-15" slug="bottom-bar-skia" basePath="demos">
+  Fancy Bottom Bar with React Native Skia 🎨
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/bottom-bar-skia"
+/>
+
+A custom bottom navigation bar built with Skia for high-performance rendering and smooth animations. Features a clean, modern design with fluid transitions between tabs.
+
+## What's This About?
+
+This component implements a bottom navigation bar using Skia for rendering, providing butter-smooth animations and transitions. It integrates seamlessly with React Navigation's bottom tab navigator while offering enhanced visual effects and performance.
+
+## Technical Implementation
+
+The component leverages Skia for rendering and React Navigation for routing:
+
+- Custom tab bar implementation with Skia
+- Seamless integration with React Navigation
+- Optimized performance through hardware acceleration
+- Support for standard navigation patterns
+
+## Usage
+
+```tsx
+// Setup the navigator
+const BottomTab = createBottomTabNavigator();
+
+// Basic usage
+<BottomBarSkia />
+
+// Full configuration
+<BottomTab.Navigator
+  tabBar={props => <BottomTabBar {...props} />}
+>
+  <BottomTab.Screen
+    name="Home"
+    component={HomeScreen}
+  />
+  <BottomTab.Screen
+    name="Search"
+    component={SearchScreen}
+  />
+  <BottomTab.Screen
+    name="User"
+    component={UserScreen}
+  />
+</BottomTab.Navigator>
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

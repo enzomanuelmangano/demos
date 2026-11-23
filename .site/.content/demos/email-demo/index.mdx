@@ -1,0 +1,59 @@
+<Title date="2024-02-07" slug="email-demo" basePath="demos">
+  Dynamic FlatList with React Native Reanimated 👇
+</Title>
+
+<Demo />
+
+<GithubCard repo="enzomanuelmangano/demos" path="src/animations/email-demo" />
+
+# Email Demo
+
+An email list interface with "delete and restore" functionality. Features gradient overlays and shake animations.
+
+## What's This About?
+
+This component creates an email interface with:
+
+- Delete and restore actions
+- Shake feedback for invalid actions
+- Gradient overlays for depth
+- Safe area handling
+
+## Technical Implementation
+
+The component uses:
+
+- Reanimated for list animations
+- Shared values for state management
+- Custom hooks for shake animations
+- Linear gradients for visual effects
+- List virtualization for performance
+
+## Usage
+
+```tsx
+type EmailItem = {
+  id: string;
+  title: string;
+  content: string;
+};
+
+// Basic usage
+<EmailDemo />;
+
+// List item configuration
+const ITEM_HEIGHT = 100;
+const ITEM_MARGIN = 10;
+
+// Custom list implementation
+<InteractiveList
+  data={items}
+  itemHeight={ITEM_HEIGHT + ITEM_MARGIN}
+  amountToShift={erasedItems}
+  renderItem={({ item }) => <ListItem item={item} itemHeight={ITEM_HEIGHT} />}
+/>;
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

@@ -1,0 +1,248 @@
+import { AnimatedSquare, InteractiveBox } from './mdx-client';
+
+<Title date="2025-01-21" slug="css-animations-react-native">
+  CSS Animations but in React Native
+</Title>
+
+## Introduction
+
+I started creating YouTube tutorials in 2021, and everything started with this video: ["Introduction to Reanimated 2"](https://youtu.be/yz9E10Dq8Bg). If you're curious, here's the written [article](/articles/introduction-to-reanimated).
+
+Since then, Reanimated is still the best way to animate in React Native and the content explained in the video is still valid.
+
+However, today [Software Mansion has announced Reanimated 4](https://x.com/swmansion/status/1881733960478421037) and it's a game changer ([here's the blog post](https://blog.swmansion.com/reanimated-4-is-new-but-also-very-familiar-b926dd59aa40)).
+
+Two new ingredients have been added to the mix: **CSS Animations and Transitions**.
+
+Let's see how things have changed 👇
+
+## What's new?
+
+Do you remember how we used to animate a simple square in React Native?
+
+<InteractiveBox><AnimatedSquare /></InteractiveBox>
+
+The key tools we used for this animation were useSharedValue, useAnimatedStyle, withTiming, and withRepeat.
+
+To implement the pause functionality, we used withPause from [react-native-redash](https://github.com/software-mansion/react-native-redash).
+
+Here's a quick refresher on how to create this animation step-by-step:
+
+```tsx
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import Animated, {
+  withRepeat,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+  useDerivedValue,
+} from 'react-native-reanimated';
+import { withPause } from 'react-native-redash';
+
+const SIZE = 100;
+
+export const AnimatedSquare = () => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const isPaused = useDerivedValue(() => !isPlaying, [isPlaying]);
+  const progress = useSharedValue(0);
+
+  const rStyle = useAnimatedStyle(() => ({
+    borderRadius: progress.value * 20,
+    transform: [
+      { scale: 0.5 + progress.value * 0.5 },
+      { rotate: `${progress.value * 360}deg` },
+    ],
+    opacity: 0.5 + progress.value * 0.5,
+  }));
+
+  useEffect(() => {
+    progress.value = withPause(
+      withRepeat(withTiming(1, { duration: 2000 }), -1, true),
+      isPaused
+    );
+  }, [isPaused]);
+
+  return (
+    <View style={styles.container}>
+      <Animated.View style={[styles.square, rStyle]} />
+      <Button
+        onPress={() => setIsPlaying((prev) => !prev)}
+        state={isPlaying ? 'active' : 'inactive'}
+      />
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1a1a1a',
+  },
+  square: {
+    height: SIZE,
+    width: SIZE,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+  },
+});
+```
+
+## CSS Animations
+
+First of all, let's make a premise. The code above is still valid and great, sometimes you need to have a lot of control over the animation you're building and the ingredients mentioned above are most likely the best way to do it.
+
+However, here we just wanted to build an animated square. There must be a better way to do it.
+
+Starting from Reanimated 4, we can now pass the initial and final state of the animation within the Animated.View component.
+
+Here's how it works:
+
+```tsx
+const InitialState = {
+  borderRadius: 0,
+  opacity: 0.5,
+  transform: [
+    { rotate: '0deg' },
+    {
+      scale: 0.5,
+    },
+  ],
+} as const;
+
+const FinalState = {
+  borderRadius: 20,
+  opacity: 1,
+  transform: [
+    { rotate: '360deg' },
+    {
+      scale: 1,
+    },
+  ],
+} as const;
+
+export const AnimatedSquare = () => {
+  return (
+    <View style={styles.container}>
+      <Animated.View
+        style={[
+          styles.square,
+          {
+            animationDuration: 2000,
+            animationTimingFunction: 'easeInOut', // use the curve you'd like the most
+            animationName: {
+              from: InitialState,
+              to: FinalState,
+            },
+          },
+        ]}
+      />
+    </View>
+  );
+};
+```
+
+Doesn't it look cleaner?
+
+<InteractiveBox><AnimatedSquare withoutRepeat /></InteractiveBox>
+
+## Repeating the animation
+
+So how do we repeat the animation 🧐
+
+Since we're passing the initial and final state of the animation, we can't use the _withRepeat_ high-order function.
+
+Again, there must be a better way to do it.
+
+```tsx
+... // InitialState and FinalState
+
+export const AnimatedSquare = () => {
+  return (
+    <View style={styles.container}>
+      <Animated.View
+        style={[
+          styles.square,
+          {
+            animationDuration: 2000,
+            animationTimingFunction: 'easeInOut',
+            animationIterationCount: 'infinite', // repeat the animation infinitely (or just 1, 2, 3, etc...)
+            animationDirection: 'alternate', // alternate the animation direction to create a boomerang effect
+            animationName: {
+              from: InitialState,
+              to: FinalState,
+            },
+          },
+        ]}
+      />
+    </View>
+  );
+};
+```
+
+Here's how it looks with the animation repeating infinitely:
+
+<InteractiveBox><AnimatedSquare withoutPause /></InteractiveBox>
+
+## Playing/Pausing the animation
+
+Pausing the animation is now as easy as setting the _animationPlayState_ property to _paused_.
+
+```tsx
+... // InitialState and FinalState
+
+export const AnimatedSquare = () => {
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  return (
+    <View style={styles.container}>
+      <Animated.View
+        style={[
+          styles.square,
+          {
+            animationDuration: 2000,
+            animationTimingFunction: 'easeInOut',
+            animationIterationCount: 'infinite',
+            animationDirection: 'alternate',
+            animationPlayState: isPlaying ? 'running' : 'paused',
+            animationName: {
+              from: InitialState,
+              to: FinalState,
+            },
+          },
+        ]}
+      />
+      <Button
+        onPress={() => setIsPlaying((prev) => !prev)}
+        state={isPlaying ? 'play' : 'pause'}
+      />
+    </View>
+  );
+};
+```
+
+And here's the magic happening ✨
+
+<InteractiveBox><AnimatedSquare /></InteractiveBox>
+
+## Additional amazing resources
+
+Still collecting resources, but here are some of the most interesting ones:
+
+- [Reanimated 4 Announcement Blog Post](https://blog.swmansion.com/reanimated-4-is-new-but-also-very-familiar-b926dd59aa40)
+- [Interactive Docs from Software Mansion](https://docs.swmansion.com/react-native-reanimated/docs/next/css-transitions/transition-property/)
+
+## Final Thoughts
+
+The introduction of CSS Animations and Transitions in Reanimated 4 brings several advantages:
+
+- **Simpler Syntax**: Define animations using familiar CSS-like properties instead of complex animation worklets
+- **Declarative Approach**: Specify the initial and final states directly in your component's style
+- **Built-in Controls**: Easy-to-use animation controls like _animationPlayState_, _animationIterationCount_, and _animationDirection_
+- **Reduced Boilerplate**: No need for multiple _useSharedValue_ and _useAnimatedStyle_ hooks for basic animations
+- **Better Developer Experience**: More intuitive API that feels closer to web development
+
+While the traditional **Reanimated API is still valuable for complex animations and precise control**, the new CSS animations provide a more straightforward approach for common use cases.
+
+This addition makes React Native animations more accessible to developers coming from web development and **greatly simplifies** the implementation of basic animations.

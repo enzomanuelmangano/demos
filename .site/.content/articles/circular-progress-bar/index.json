@@ -1,0 +1,17 @@
+{
+  "title": "Circular Progress Bar Animation with React Native Reanimated",
+  "shortTitle": "Circular Progress Bar Animation",
+  "subtitle": "Master Circular Progress Bar Animation: Enhance your React Native app with Reanimated hooks and UI thread text animation for a captivating user experience.",
+  "author": "Enzo Manuel Mangano",
+  "date": "2023-08-25",
+  "slug": "circular-progress-bar",
+  "tags": [
+    "react-native",
+    "react",
+    "animation",
+    "react-native-skia",
+    "gradient"
+  ],
+  "featuredImage": "./images/header.webp",
+  "series": "animate-with-reanimated"
+}

@@ -1,0 +1,311 @@
+import { Demo, StaticDemo } from './mdx-client';
+
+<Title date="2025-02-13" slug="checkbox-interactions">
+  Checkbox Interactions - The beauty of Layout Animations
+</Title>
+
+Have you ever wondered how to create those satisfying checkbox animations that make your app feel more polished and engaging? In this tutorial, we'll explore how to build a beautiful checkbox component that not only looks great but also provides delightful feedback through smooth animations.
+
+<Demo />
+
+## Source Code
+
+Here you can find the final source code 👇
+
+<GithubCard
+  repo="enzomanuelmangano/animate-with-reanimated"
+  path="src/animations/23-checkbox-interactions"
+/>
+
+## YouTube Tutorial
+
+If you're more of a visual learner, check out the YouTube tutorial:
+
+<YouTubeEmbed videoId="NPq_MFLnQrQ" />
+
+## Project Setup
+
+Let's set up our project with the necessary tools:
+
+```bash
+npx expo install react-native-reanimated @expo/vector-icons react-native-safe-area-context color
+```
+
+Our project follows a simple structure:
+
+```
+src/
+  ├── components/checkbox.tsx      # Our checkbox component
+  ├── constants/index.ts          # Colors and data configuration
+  ├── hooks/useCuisines.ts        # State management logic
+  └── App.tsx                     # Main layout and composition
+```
+
+## Part 1: Building the Basic Checkbox
+
+Let's start by creating a simple, functional checkbox component without animations. This will serve as our foundation.
+
+First, let's define our constants in _constants/index.ts_:
+
+```tsx
+export const ACTIVE_COLOR = '#EF8E52';
+export const INACTIVE_COLOR = '#B3B1B4';
+```
+
+Next, let's create our state management hook in _hooks/useCuisines.ts_:
+
+```tsx
+import { useCallback, useState } from 'react';
+
+const Cuisines = new Array(20).fill('Italian').map((cuisine, i) => ({
+  id: i,
+  name: cuisine,
+  selected: false,
+}));
+
+export const useCuisines = () => {
+  const [cuisines, setCuisines] = useState(Cuisines);
+
+  const toggleCuisine = useCallback((id: number) => {
+    setCuisines((prevCuisines) => {
+      return prevCuisines.map((cuisine) => {
+        if (cuisine.id === id) {
+          return { ...cuisine, selected: !cuisine.selected };
+        }
+        return cuisine;
+      });
+    });
+  }, []);
+
+  return { cuisines, toggleCuisine };
+};
+```
+
+Now, let's create our basic checkbox component in _components/checkbox.tsx_:
+
+```tsx
+import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
+import { AntDesign } from '@expo/vector-icons';
+import { ACTIVE_COLOR, INACTIVE_COLOR } from '../constants';
+
+type CheckboxProps = {
+  label: string;
+  checked: boolean;
+  onPress: () => void;
+};
+
+export const Checkbox: React.FC<CheckboxProps> = ({
+  label,
+  checked,
+  onPress,
+}) => {
+  return (
+    <TouchableOpacity
+      style={[
+        styles.container,
+        {
+          backgroundColor: checked ? 'rgba(239, 142, 82, 0.1)' : 'transparent',
+          borderColor: checked ? ACTIVE_COLOR : INACTIVE_COLOR,
+        },
+      ]}
+      onPress={onPress}
+    >
+      <Text
+        style={[
+          styles.label,
+          { color: checked ? ACTIVE_COLOR : INACTIVE_COLOR },
+        ]}
+      >
+        {label}
+      </Text>
+      {checked && (
+        <View style={styles.iconContainer}>
+          <AntDesign name="checkcircle" size={20} color={ACTIVE_COLOR} />
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderRadius: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  label: {
+    fontSize: 18,
+    fontFamily: 'SF-Pro-Rounded-Bold',
+  },
+  iconContainer: {
+    marginLeft: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: 20,
+    width: 20,
+  },
+});
+```
+
+Here's what we achieved so far 👇
+
+<StaticDemo />
+
+It looks a bit too static, doesn't it? Let's add some animations to it.
+
+## Part 2: Adding the animations
+
+Now that we have our basic checkbox working, let's enhance it with smooth animations using Reanimated. We'll transform our component to include:
+
+- Smooth color transitions
+- Layout animations for the check icon
+- Container width adjustments
+- Fluid text color changes
+
+Here's our enhanced animated checkbox:
+
+```tsx
+import { StyleSheet } from 'react-native';
+import Color from 'color';
+import { AntDesign } from '@expo/vector-icons';
+import Animated, {
+  FadeIn,
+  FadeOut,
+  LinearTransition,
+  useAnimatedStyle,
+  withTiming,
+} from 'react-native-reanimated';
+import { ACTIVE_COLOR, INACTIVE_COLOR } from '../constants';
+
+type CheckboxProps = {
+  label: string;
+  checked: boolean;
+  onPress: () => void;
+};
+
+const TimingConfig = {
+  duration: 150,
+};
+
+export const Checkbox: React.FC<CheckboxProps> = ({
+  label,
+  checked,
+  onPress,
+}) => {
+  const fadedActiveColor = Color(ACTIVE_COLOR).alpha(0.1).toString();
+
+  const rContainerStyle = useAnimatedStyle(() => {
+    return {
+      backgroundColor: withTiming(
+        checked ? fadedActiveColor : 'transparent',
+        TimingConfig
+      ),
+      borderColor: withTiming(
+        checked ? ACTIVE_COLOR : INACTIVE_COLOR,
+        TimingConfig
+      ),
+      paddingLeft: 20,
+      paddingRight: !checked ? 20 : 14,
+    };
+  }, [checked]);
+
+  const rTextStyle = useAnimatedStyle(() => {
+    return {
+      color: withTiming(checked ? ACTIVE_COLOR : INACTIVE_COLOR, TimingConfig),
+    };
+  }, [checked]);
+
+  return (
+    <Animated.View
+      layout={LinearTransition.springify().mass(0.8)}
+      style={[styles.container, rContainerStyle]}
+      onTouchEnd={onPress}
+    >
+      <Animated.Text style={[styles.label, rTextStyle]}>{label}</Animated.Text>
+      {checked && (
+        <Animated.View
+          entering={FadeIn.duration(350)}
+          exiting={FadeOut}
+          style={styles.iconContainer}
+        >
+          <AntDesign name="checkcircle" size={20} color={ACTIVE_COLOR} />
+        </Animated.View>
+      )}
+    </Animated.View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderRadius: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  label: {
+    fontSize: 18,
+    fontFamily: 'SF-Pro-Rounded-Bold',
+  },
+  iconContainer: {
+    marginLeft: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: 20,
+    width: 20,
+  },
+});
+```
+
+Let's break down the key animation elements:
+
+1. **Layout Animation**:
+
+This is where the magic really happens.
+
+```tsx
+layout={LinearTransition.springify().mass(0.8)}
+```
+
+This creates a spring-based layout animation with a heavier mass for smoother transitions.
+
+2. **Icon Animation**:
+
+```tsx
+<Animated.View
+  entering={FadeIn.duration(350)}
+  exiting={FadeOut}
+>
+```
+
+The check icon smoothly fades in over 350ms and fades out with default timing.
+
+3. **Color and Padding Animations**:
+
+```tsx
+const rContainerStyle = useAnimatedStyle(() => ({
+  backgroundColor: withTiming(checked ? fadedActiveColor : 'transparent'),
+  borderColor: withTiming(checked ? ACTIVE_COLOR : INACTIVE_COLOR),
+  paddingRight: !checked ? 20 : 14,
+}));
+```
+
+## Final Thoughts: the magic of Layout Animations
+
+What makes this animation special is how Layout Animations handle all the complex calculations for us:
+
+1. **Smart Width Adjustment**: The container width smoothly adjusts when the check icon appears/disappears
+2. **Automatic Reflow**: Other checkboxes in the same row smoothly reposition themselves
+3. **Multiple Synchronized Animations**:
+   - Background color fades in/out
+   - Border color transitions
+   - Text color changes
+   - Check icon fades in/out
+   - Container padding adjusts
+
+The beauty? Everything is handled automatically. We're just trusting Reanimated to do the right thing. And that trust is well worth it.

@@ -1,0 +1,17 @@
+{
+  "title": "Animated Spiral with React Native Skia",
+  "shortTitle": "Animated Spiral with React Native Skia",
+  "subtitle": "Learn how to create an animated spiral with React Native Skia and Reanimated.",
+  "author": "Enzo Manuel Mangano",
+  "date": "2024-10-24",
+  "slug": "animated-spiral",
+  "tags": [
+    "react-native",
+    "react",
+    "animation",
+    "reanimated",
+    "react-native-skia"
+  ],
+  "featuredImage": "./images/header.webp",
+  "series": "exploring-skia"
+}

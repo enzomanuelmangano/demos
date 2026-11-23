@@ -1,0 +1,48 @@
+<Title date="2023-01-25" slug="animated-clip-box" basePath="demos">
+  React Native Animated Clip Box Animation 📦
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/animated-clip-box"
+/>
+
+# Animated Clip Box
+
+An interactive button component featuring a dynamic clip effect that expands from a circle into a full background color. The animation creates an engaging visual transition when users interact with the button.
+
+## What's This About?
+
+This component creates an interactive button that responds to touch with a smooth expanding circle animation. The circle clips the content and changes text colors dynamically, creating a fluid transition between states. When pressed, the circle expands to fill the entire button while smoothly transitioning text colors.
+
+## Technical Implementation
+
+The component uses spring animations and color interpolation for smooth transitions. It features precise clipping calculations and touch handling to ensure the expanding circle animation feels natural and responsive.
+
+## Usage
+
+```tsx
+type ClipBoxButtonProps = {
+  style: StyleProp<ViewStyle>;
+  initialRadius?: number;
+  primaryColor?: string;
+  highlightColor?: string;
+  description: string;
+  actionTitle: string;
+  onPress?: () => void;
+};
+
+// Example usage
+<ClipBoxButton
+  description="Button description here"
+  actionTitle="Click Me"
+  primaryColor="#4BA2E4"
+  highlightColor="#83C5F1"
+/>;
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

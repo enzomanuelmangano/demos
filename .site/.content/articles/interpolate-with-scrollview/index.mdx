@@ -1,0 +1,655 @@
+<Title date="2022-12-17" slug="interpolate-with-scrollview">
+  Interpolate with ScrollView like a Pro (Reanimated)
+</Title>
+
+Today we are going to unleash the power of the interpolate function from the Reanimated package.
+To do it we're going to build this amazing animation.
+
+Let's try to see what's going on here.
+
+Looking closely at the square we can see that:
+
+1. The borderRadius is animating (Circle -> Square)
+2. The square's scale is animating
+
+By looking at the text we can notice that:
+
+3. It scales
+4. It fades depending on its position
+
+The interesting part is that everything depends on just a single SharedValue: the translateX (the amount that we're scrolling on the horizontal axis).
+
+<GithubCard
+  repo="enzomanuelmangano/animate-with-reanimated"
+  path="src/animations/02-interpolate-with-scrollview"
+/>
+
+### YouTube Channel
+
+Wait what? Would you prefer a YouTube tutorial? Here it is!
+
+<YouTubeEmbed videoId="SqwpRr7kbnQ" />
+
+## Code setup
+
+I've built up an Expo project with the Expo CLI and I included the Reanimated library.
+
+In this tutorial we're going to use Reanimated **v2.1.0** but of course, every version above v2.0.0 is fine for this tutorial:
+
+```bash
+yarn add react-native-reanimated
+```
+
+**To get a more detailed explanation of my setup, feel free to [click here!](/articles/setup-reanimated-gestures)**.
+
+## Setup the ScrollView
+
+To achieve the final goal, it's quite obvious that we need to find a way to get the translateX value.
+The key hides behind the **Animated.ScrollView** component (**Animated imported from Reanimated**).
+We're going to scroll a bunch of pages, and each page will have a word centered.
+Hence, we create our WORDS array:
+
+```tsx
+const WORDS = ["What's", 'up', 'mobile', 'devs?'];
+```
+
+At this stage, we can create our pages by mapping the **WORDS** array and by passing the **title** and the **index** (both values are going to be helpful later). To enable the scroll (and to access the translateX value later), we need to wrap everything with the Animated.ScrollView,
+
+```tsx
+import React from 'react';
+import { StyleSheet } from 'react-native';
+import Animated from 'react-native-reanimated';
+
+const WORDS = ["What's", 'up', 'mobile', 'devs?'];
+
+export default function App() {
+  return (
+    <Animated.ScrollView horizontal style={styles.container}>
+      {WORDS.map((title, index) => {
+        return (
+          <Page // We need to define it
+            key={index.toString()}
+            title={title}
+          />
+        );
+      })}
+    </Animated.ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+});
+```
+
+Here we've used the Page component, but as you might notice, React Native is complaining, since we haven't defined it yet.
+
+Just to be more clear, create the components folder and in it, add the Page.tsx file (since we're using Typescript).
+
+To make things work, for now, simply create an empty component that takes as **props** a title and an index:
+
+```tsx
+import React from 'react';
+import { View, StyleSheet } from 'react-native';
+
+interface PageProps {
+  title: string;
+  index: number;
+}
+
+const Page: React.FC<PageProps> = ({ index, title }) => {
+  return <View />;
+};
+
+const styles = StyleSheet.create({});
+```
+
+Each page needs to fit completely the Screen size. To meet this requirement we can use the Dimensions APIs from react-native and pass the screen's height and the screen's width to the Page component.
+
+```tsx
+import React from 'react';
+import { Dimensions, View, StyleSheet } from 'react-native';
+
+interface PageProps {
+  title: string;
+  index: number;
+}
+
+const { height, width } = Dimensions.get('window');
+
+const Page: React.FC<PageProps> = ({ index, title }) => {
+  return <View style={styles.container} />;
+};
+
+const styles = StyleSheet.create({
+  container: {
+    width,
+    height,
+  },
+});
+```
+
+To improve the UI and to distinguish every Page, we can define the backgroundColor based on the current Page index, by using the _rgba_ notation in that way:
+
+```js
+// The "+ 2" is needed just to avoid
+// the opacity equal to zero on the first page
+-> `rgba(0,0,255, 0.${index + 2})`
+```
+
+Hence, we can apply this concept to the Page component, in order to get multiple shades of blue:
+
+```tsx
+import React from 'react';
+import { Dimensions, View, StyleSheet } from 'react-native';
+
+interface PageProps {
+  title: string;
+  index: number;
+}
+
+const { height, width } = Dimensions.get('window');
+
+const Page: React.FC<PageProps> = ({ index, title }) => {
+  return (
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: `rgba(0,0,255, 0.${index + 2})` },
+      ]}
+    />
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    width,
+    height,
+  },
+});
+```
+
+## The Animated Square, ehm... Circle
+
+One of the main elements of the final animation is definitely the Square -> Circle.
+Under the hood, the square is just a simple Animated.View (since we're going to animate it later), then let's try to add it and center it on the Page component.
+
+```tsx
+...
+
+import Animated from 'react-native-reanimated'
+
+const SIZE = width * 0.7;
+
+...
+
+const Page: React.FC<PageProps> = ({ index, title }) => {
+  return <View style={[
+      styles.container,
+      { backgroundColor: `rgba(0,0,255, 0.${index + 2})` },
+    ]}
+  >
+    <Animated.View style={styles.square} />
+  </View>
+}
+
+const styles = StyleSheet.create({
+  container: {
+    width,
+    height,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  square: {
+    width: SIZE,
+    height: SIZE,
+    backgroundColor: 'rgba(0, 0, 255, 0.4)',
+  },
+})
+```
+
+To this point, we "just" need to animate. I know it seems intimidating but it will be easier than
+you might think.
+
+We're going to follow the following steps:
+
+1. Retrieve the translateX from the Animated.ScrollView
+2. Pass the translateX value to the Page component
+3. Interpolate the translateX in order to get the animated scale
+4. Pass the animated scale to the square's style component
+
+### Retrieve the translateX
+
+In order to retrieve the translateX value, we need to pass a scrollHandler to the Animated.ScrollView.
+
+- Import the useAnimatedScrollHandler hook from Reanimated
+- Assign the useAnimatedScrollHandler's result to the scrollHandler
+- Set the scrollEventThrottle equal to 16
+
+```tsx
+...
+
+import Animated, {
+  useAnimatedScrollHandler,
+} from 'react-native-reanimated';
+
+const WORDS = ["What's", 'up', 'mobile', 'devs?'];
+
+export default function App() {
+
+  const scrollHandler = useAnimatedScrollHandler((event) => {
+    console.log(event.contentOffset.x)
+  });
+
+  return (
+    <Animated.ScrollView
+      onScroll={scrollHandler}
+      scrollEventThrottle={16}
+      horizontal
+      style={styles.container}
+    >
+      {WORDS.map((title, index) => {
+        return (
+          <Page
+            key={index.toString()}
+            title={title}
+            index={index}
+          />
+        );
+      })}
+    </Animated.ScrollView>
+  );
+}
+
+...
+```
+
+But why do we need to set the scrollEventThrottle equal to 16? The purpose is to reach a 60 fps (frame-per-second) animation. To do it, we need to tell the ScrollView component to handle a frame every 16 milliseconds (1/60).
+
+### Pass the translateX to the ScrollView
+
+By scrolling the Pages we should be able to visualize the amount that we're scrolling on the horizontal axis (event.contentOffset.x). This value is quite useful, isn't it?
+
+The next step is to use the translateX value inside the Page component. To handle this requirement, we can:
+
+1. Create a SharedValue
+2. Store the event.contentOffset.x value inside the SharedValue
+3. Pass the SharedValue to the Page component
+
+```tsx
+import React from 'react';
+import { StyleSheet } from 'react-native';
+import Animated, {
+  useAnimatedScrollHandler,
+  useSharedValue,
+} from 'react-native-reanimated';
+import { Page } from './components/Page';
+
+const WORDS = ["What's", 'up', 'mobile', 'devs?'];
+
+export default function App() {
+  const translateX = useSharedValue(0);
+
+  const scrollHandler = useAnimatedScrollHandler((event) => {
+    translateX.value = event.contentOffset.x;
+  });
+
+  return (
+    <Animated.ScrollView
+      onScroll={scrollHandler}
+      pagingEnabled
+      scrollEventThrottle={16}
+      horizontal
+      style={styles.container}
+    >
+      {WORDS.map((title, index) => {
+        return (
+          <Page
+            key={index.toString()}
+            title={title}
+            translateX={translateX}
+            index={index}
+          />
+        );
+      })}
+    </Animated.ScrollView>
+  );
+}
+
+...
+```
+
+Keep in mind, since we're using TypeScript, to update the **PageProps** interface on the **Page.tsx** file.
+
+```tsx
+...
+
+interface PageProps {
+  title: string;
+  translateX: Animated.SharedValue<number>
+  index: number;
+}
+
+...
+```
+
+### Interpolate the translateX
+
+Now that we have the translateX SharedValue on the Page.tsx we can finally start animating things around.
+The purpose is to animate the scale of the square based on the translateX. To achieve this goal, the secret ingredient is definitely the interpolate function from Reanimated.
+
+First of all, we must create a **reanimatedStyle** with the **"useAnimatedStyle"** hook. Inside it, we're going to retrieve the animated scale.
+
+```tsx
+...
+
+import Animated, {
+  Extrapolate,
+  interpolate,
+  useAnimatedStyle,
+} from 'react-native-reanimated';
+
+...
+
+const Page: React.FC<PageProps> = ({ index, translateX, title }) => {
+  const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
+
+  const rStyle = useAnimatedStyle(() => {
+    const scale = interpolate(
+      translateX.value,
+      inputRange,
+      [0, 1, 0],
+      Extrapolate.CLAMP
+    );
+
+    return {
+      transform: [{ scale }],
+    };
+  });
+
+  return (
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: `rgba(0,0,255, 0.${index + 2})` },
+      ]}
+    >
+      <Animated.View style={[styles.square, rStyle]} />
+    </View>
+  );
+};
+
+...
+```
+
+Well, seems perfect right? But let's focus on this piece of code and let's try to understand why it's working:
+
+```tsx
+const inputRange = [(index - 1) * width, index * width, (index + 1) * width]
+
+...
+
+const scale = interpolate(translateX.value, inputRange, [0, 1, 0], Extrapolate.CLAMP)
+```
+
+This code is using the interpolate function from the Reanimated package to perform linear interpolation between three values. The interpolate function takes four arguments:
+
+1. The input value, which is the translateX.value in this case.
+2. An array of input values, which are the values that the input value will be compared to. In this case, the input values are (index - 1) <em> width, index </em> width, and (index + 1) \* width.
+3. An array of output values, which are the values that will be returned based on the input value. In this case, the output values are 0, 1, and 0.
+4. An extrapolation mode, which specifies how the function should behave when the input value is outside the range of the input values. In this case, the Extrapolate.CLAMP mode is used, which means that the output value will be clamped to the nearest input value when the input value is outside the range.
+
+The **interpolate** function will compare the input value to the input values and return a corresponding output value based on the position of the input value within the range. For example, if the input value is equal to the first input value _(index - 1) \* width_ the output value will be 0. If the input value is equal to the second input value _index \* width_, the output value will be 1. If the input value is equal to the third input value _(index + 1) \* width_, the output value will be 0. If the input value is between the first and second input values, the output value will be a value between 0 and 1, and so on.
+
+If this concept is clear, we can move forward and try to animate the borderRadius with the same recipe. The purpose of the borderRadius animation is to temporarily convert the square to a circle while scrolling the list.
+
+```tsx
+const rStyle = useAnimatedStyle(() => {
+  const scale = interpolate(
+    translateX.value,
+    inputRange,
+    [0, 1, 0],
+    Extrapolate.CLAMP
+  );
+
+  const borderRadius = interpolate(
+    translateX.value,
+    inputRange,
+    [0, SIZE / 2, 0],
+    Extrapolate.CLAMP
+  );
+
+  return {
+    borderRadius,
+    transform: [{ scale }],
+  };
+});
+```
+
+## Text Animation
+
+Right now, we can finally move to the end part of this tutorial. We just need to define and animate the Text for each screen.
+Since we're going to make a lot of animation with our Text component, it's definitely better to wrap it with an Animated.View
+
+```tsx
+const Page: React.FC<PageProps> = ({ index, translateX, title }) => {
+  const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
+
+  const rStyle = useAnimatedStyle(() => {
+    const scale = interpolate(
+      translateX.value,
+      inputRange,
+      [0, 1, 0],
+      Extrapolate.CLAMP
+    );
+
+    const borderRadius = interpolate(
+      translateX.value,
+      inputRange,
+      [0, SIZE / 2, 0],
+      Extrapolate.CLAMP
+    );
+
+    return {
+      borderRadius,
+      transform: [{ scale }],
+    };
+  });
+
+  return (
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: `rgba(0,0,255, 0.${index + 2})` },
+      ]}
+    >
+      <Animated.View style={[styles.square, rStyle]} />
+      <Animated.View style={[styles.textContainer, rTextStyle]}>
+        <Text style={styles.text}>{title}</Text>
+      </Animated.View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    width,
+    height,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  square: {
+    width: SIZE,
+    height: SIZE,
+    backgroundColor: 'rgba(0, 0, 255, 0.4)',
+  },
+  text: {
+    fontSize: 60,
+    color: 'white',
+    textTransform: 'uppercase',
+    fontWeight: '700',
+  },
+  textContainer: { position: 'absolute' },
+});
+
+export { Page };
+```
+
+Once the Text is defined, we can move on by animating stuff. In particular, we want to animate the:
+
+1. Y position;
+2. Text Opacity.
+
+As we wish to animate the Y position of the Text, based on the amount that we've scrolled on the horizontal axis, once again, we're going to use the interpolate function.
+
+P.S: Here I'm using **ScreenHeight/2** in the output range, but feel free to use whatever value you want!
+
+```tsx
+const rTextStyle = useAnimatedStyle(() => {
+  const translateY = interpolate(
+    translateX.value,
+    inputRange,
+    [height / 2, 0, -height / 2],
+    Extrapolate.CLAMP
+  );
+
+  return {
+    transform: [{ translateY: translateY }],
+  };
+});
+```
+
+In order to animate the opacity, we're going to use a "special" output range.
+
+```tsx
+const rTextStyle = useAnimatedStyle(() => {
+  const translateY = interpolate(
+    translateX.value,
+    inputRange,
+    [height / 2, 0, -height / 2],
+    Extrapolate.CLAMP
+  );
+
+  const opacity = interpolate(
+    translateX.value,
+    inputRange,
+    [-2, 1, -2],
+    Extrapolate.CLAMP
+  );
+
+  return {
+    opacity,
+    transform: [{ translateY: translateY }],
+  };
+});
+```
+
+Of course, opacity equal to -2 doesn't make any sense. The point is that React Native will deal with the -2 as if it was 0. So the intention is to have a faster animation from 0 -> 1. Obviously, the best way to understand these choices is to play a little bit with the output range by choosing your values.
+
+The animation looks great right now!
+
+```tsx
+...
+
+const Page: React.FC<PageProps> = ({ index, translateX, title }) => {
+  const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
+
+  const rStyle = useAnimatedStyle(() => {
+    const scale = interpolate(
+      translateX.value,
+      inputRange,
+      [0, 1, 0],
+      Extrapolate.CLAMP
+    );
+
+    const borderRadius = interpolate(
+      translateX.value,
+      inputRange,
+      [0, SIZE / 2, 0],
+      Extrapolate.CLAMP
+    );
+
+    return {
+      borderRadius,
+      transform: [{ scale }],
+    };
+  });
+
+  const rTextStyle = useAnimatedStyle(() => {
+    const translateY = interpolate(
+      translateX.value,
+      inputRange,
+      [height / 2, 0, -height / 2],
+      Extrapolate.CLAMP
+    );
+
+    const opacity = interpolate(
+      translateX.value,
+      inputRange,
+      [-2, 1, -2],
+      Extrapolate.CLAMP
+    );
+
+    return {
+      opacity,
+      transform: [{ translateY: translateY }],
+    };
+  });
+
+  return (
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: `rgba(0,0,255, 0.${index + 2})` },
+      ]}
+    >
+      <Animated.View style={[styles.square, rStyle]} />
+      <Animated.View style={[styles.textContainer, rTextStyle]}>
+        <Text style={styles.text}>{title}</Text>
+      </Animated.View>
+    </View>
+  );
+};
+
+...
+
+export { Page };
+```
+
+## Final Touches
+
+If you want to recreate a kind of "onboarding effect", you can toggle the pagingEnabled parameter in the Animated.ScrollView.
+
+```tsx
+...
+  return (
+    <Animated.ScrollView
+      onScroll={scrollHandler}
+      pagingEnabled
+      scrollEventThrottle={16}
+      horizontal
+      style={styles.container}
+    >
+      {WORDS.map((title, index) => {
+        return (
+          <Page
+            key={index.toString()}
+            title={title}
+            translateX={translateX}
+            index={index}
+          />
+        );
+      })}
+    </Animated.ScrollView>
+  );
+...
+```
+
+## Conclusion
+
+In this article, we've seen how to create a simple onboarding screen using React Native and Reanimated. We've seen how to animate the position of the Text and the opacity of the Text. We've also seen how to animate the scale of the square and the border radius of the square. We've also seen how to use the interpolate function to create a custom animation.
+
+I hope you enjoyed this article. If you have any questions, feel free to ask them in the comments below. If you want to see the code, you can find it on my GitHub.

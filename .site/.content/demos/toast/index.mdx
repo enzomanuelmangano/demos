@@ -1,0 +1,70 @@
+<Title date="2023-11-22" slug="toast" basePath="demos">
+  Toast Manager with Reanimated and Gesture Handler 🍞
+</Title>
+
+<Demo />
+
+<GithubCard repo="enzomanuelmangano/demos" path="src/animations/toast" />
+
+A customizable toast notification system with gesture support.
+
+## What's This About?
+
+This component creates an interactive toast notification system with gesture-based dismissal. It features customizable toast messages with icons, auto-dismiss functionality, and smooth animations. The implementation includes a provider-based toast management system, gesture handling for swipe-to-dismiss, and support for multiple concurrent toasts, making it perfect for applications requiring user feedback and notifications.
+
+## Technical Implementation
+
+The component uses:
+
+- Toast management
+- Gesture handling
+- Auto-dismiss
+- Custom icons
+- Provider pattern
+
+## Usage
+
+```tsx
+// Basic usage with provider
+<ToastProvider>
+  <App />
+</ToastProvider>;
+
+// Show a toast
+const { showToast } = useToast();
+
+// Simple toast
+showToast({
+  title: 'Simple toast message',
+  leading: () => <AntDesign name="checkcircle" size={20} color="black" />,
+});
+
+// Advanced toast with subtitle and auto-dismiss
+showToast({
+  title: 'Advanced toast',
+  subtitle: 'With more details',
+  autodismiss: true,
+  leading: () => <AntDesign name="user" size={20} color="black" />,
+});
+
+// Toast with custom key
+showToast({
+  title: 'Custom toast',
+  key: `toast-${Math.random()}`,
+  leading: () => <AntDesign name="twitter" size={20} color="black" />,
+});
+
+// Toast configuration type
+type ToastType = {
+  id: string;
+  title: string;
+  subtitle?: string;
+  autodismiss?: boolean;
+  leading: () => React.ReactNode;
+  key?: string;
+};
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

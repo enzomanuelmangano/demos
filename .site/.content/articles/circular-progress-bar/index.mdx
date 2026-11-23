@@ -1,0 +1,156 @@
+<Title date="2023-08-25" slug="circular-progress-bar">
+  Circular Progress Bar Animation with React Native Reanimated
+</Title>
+
+What's up mobile devs?
+Get ready for an exciting journey as we dive into creating a captivating circular progress bar animation using React Native's Reanimated library. While this animation might seem trivial at first glance, its implementation is far from simple. We'll be using a combination of Reanimated hooks and the React Native Redash package to achieve a smooth and visually appealing animation.
+To achieve this effect, we'll be utilizing Reanimated hooks, particularly the **useAnimatedProps**, which adds a layer of complexity and depth to our animation arsenal.
+
+One intriguing aspect of this project is that we'll be animating text on the UI thread using a special component from the React Native Redash package. So, let's roll up our sleeves and let's get started!
+
+### YouTube Channel
+
+What about the same tutorial as a video?
+
+<YouTubeEmbed videoId="9n2mQJ7TO6Y" />
+
+## Setup and Dependencies
+
+First things first, let's set up the project. I've already laid the groundwork by creating a React Native project with Expo CLI. Additionally, I've defined some color constants that will be used throughout the project. These include the background color for the screen, background stroke color, and stroke color for the animated circle.
+
+```tsx
+const BACKGROUND_COLOR = '#444B6F';
+const BACKGROUND_STROKE_COLOR = '#303858';
+const STROKE_COLOR = '#A6E1FA';
+```
+
+Our project's dependencies include the following packages:
+
+- [react-native-reanimated](https://docs.swmansion.com/react-native-reanimated/): For animating the circle stroke.
+- [react-native-svg](https://github.com/software-mansion/react-native-svg): For building the background and animated strokes.
+- [react-native-redash](https://github.com/wcandillon/react-native-redash): For animating text on the UI thread.
+
+You can easily follow along by referring to the following repo:
+
+<GithubCard
+  repo="enzomanuelmangano/animate-with-reanimated"
+  path="src/animations/08-circular-progress-bar"
+/>
+
+## Building the Circular Progress Bar
+
+Let's start by constructing the core components of our circular progress bar animation. We'll create a background stroke and an animated circle using React Native's SVG component. To center the circle, we'll retrieve the screen dimensions using the Dimensions API.
+
+```tsx
+// ... (imports)
+import Svg, { Circle } from 'react-native-svg';
+
+export default function App() {
+  const progress = useSharedValue(0);
+
+  return (
+    <View style={styles.container}>
+      <Svg style={{ position: 'absolute' }}>
+        <Circle
+          cx={width / 2}
+          cy={height / 2}
+          r={R}
+          stroke={BACKGROUND_STROKE_COLOR}
+          strokeWidth={30}
+        />
+        <AnimatedCircle
+          cx={width / 2}
+          cy={height / 2}
+          r={R}
+          stroke={STROKE_COLOR}
+          strokeWidth={15}
+          strokeDasharray={CIRCLE_LENGTH}
+          strokeLinecap={'round'}
+        />
+      </Svg>
+      <TouchableOpacity onPress={onPress} style={styles.button}>
+        <Text style={styles.buttonText}>Run</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: BACKGROUND_COLOR,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressText: {
+    fontSize: 80,
+    color: 'rgba(256,256,256,0.7)',
+    width: 200,
+    textAlign: 'center',
+  },
+  button: {
+    position: 'absolute',
+    bottom: 80,
+    width: width * 0.7,
+    height: 60,
+    backgroundColor: BACKGROUND_STROKE_COLOR,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonText: {
+    fontSize: 25,
+    color: 'white',
+    letterSpacing: 2.0,
+  },
+});
+```
+
+To animate the circular stroke, we'll use the **strokeDashoffset** property along with the **useAnimatedProps** hook from Reanimated. This property allows us to achieve a smooth and visually appealing animation of the circle's stroke.
+
+```tsx
+const animatedProps = useAnimatedProps(() => ({
+  strokeDashoffset: CIRCLE_LENGTH * (1 - progress.value),
+}));
+
+return (
+  // ... (Previous code)
+
+  <AnimatedCircle
+    // ... (Previous attributes)
+    animatedProps={animatedProps}
+  />
+);
+```
+
+## Animating the Text
+
+Now, let's add text to our animation. We'll use the **ReText** component from the _react-native-redash_ package to animate the text smoothly on the UI thread. This component behaves similarly to an animated text input.
+
+```tsx
+<ReText style={styles.progressText} text={/* Animated Value */} />
+```
+
+We'll define a progress shared value to control the animation. When we press the "Run" button, the animation will either progress from 0 to 1 or revert from 1 to 0.
+
+```tsx
+const progress = useSharedValue(0);
+
+const onPress = useCallback(() => {
+  progress.value = withTiming(progress.value > 0 ? 0 : 1, { duration: 2000 });
+}, []);
+```
+
+To animate the text value, we'll use the _useDerivedValue_ hook.
+
+```tsx
+const progressText = useDerivedValue(() => {
+  return `${Math.floor(progress.value * 100)}`;
+});
+```
+
+## Conclusion
+
+And there you have it! With the combination of React Native, Reanimated, and the React Native Redash package, we've created an impressive circular progress bar animation. By using **useAnimatedProps** and **useDerivedValue**, we smoothly animated the circle's stroke and text on the UI thread, resulting in a visually engaging user experience.
+
+Remember, animations might appear simple on the surface, but they often involve intricate techniques to achieve that polished look. This project provides a valuable learning opportunity for developers aiming to enhance their animation skills. Feel free to explore other animation libraries and techniques to further expand your knowledge and creativity in the world of mobile development. Happy coding!

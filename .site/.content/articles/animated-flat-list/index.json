@@ -1,0 +1,11 @@
+{
+  "title": "Animated FlatList in React Native Reanimated",
+  "shortTitle": "Animated FlatList in React Native Reanimated",
+  "subtitle": "Learn how to create captivating animations for a FlatList in React Native using the power of Reanimated. Elevate your app's user experience with fluid and dynamic content transitions.",
+  "author": "Enzo Manuel Mangano",
+  "date": "2024-01-13",
+  "slug": "animated-flat-list",
+  "tags": ["react-native", "react", "reanimated", "animation", "flatlist"],
+  "featuredImage": "./images/header.webp",
+  "series": "animate-with-reanimated"
+}

@@ -1,0 +1,64 @@
+<Title date="2024-08-20" slug="pomodoro-timer" basePath="demos">
+  Pomodoro Timer with Reanimated
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/pomodoro-timer"
+/>
+
+A circular timer component with draggable interface and haptic feedback.
+
+## What's This About?
+
+This component creates an interactive Pomodoro timer with a circular draggable interface. Users can set the timer duration by dragging along a circular slider, with haptic feedback for precise control. The component features an animated count display, customizable visual elements, and completion alerts. The timer can be started, stopped, and reset, making it perfect for time management applications.
+
+## Technical Implementation
+
+The component uses:
+
+- Circular slider
+- Haptic feedback
+- Animated counting
+- Timer controls
+- Completion alerts
+
+## Usage
+
+```tsx
+// Basic usage
+<PomodoroTimer />
+
+// Animated count display
+<AnimatedCount
+  count={animatedNumber}
+  maxDigits={5}
+  textDigitWidth={68}
+  textDigitHeight={120}
+  fontSize={100}
+  color="#fff"
+  gradientAccentColor="#000"
+/>
+
+// Circular slider
+<CircularDraggableSlider
+  linesAmount={200}
+  indicatorColor="orange"
+  maxLineHeight={40}
+  lineColor="rgba(255,255,255,0.5)"
+  bigLineColor="white"
+  minLineHeight={30}
+  onCompletion={() => {
+    // Handle timer completion
+  }}
+  onProgressChange={(progress) => {
+    // Handle progress updates
+  }}
+/>
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

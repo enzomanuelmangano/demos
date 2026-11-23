@@ -1,0 +1,47 @@
+<Title date="2024-01-17" slug="family-number-input" basePath="demos">
+  Family Number Input with Reanimated
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/family-number-input"
+/>
+
+A number input component with animated display and a grid of buttons inspired by the Family number input.
+
+## What's This About?
+
+This component creates a number input that:
+
+- Shows animated number changes
+- Provides a button grid interface
+- Handles input validation
+- Includes reset functionality
+- Uses gradient overlay effects
+
+## Usage
+
+```tsx
+// Basic usage
+<FamilyNumberInput />
+
+// Component structure
+<SafeAreaView>
+  <AnimatedNumber value={input} />
+  <ButtonsGrid
+    input={input}
+    onUpdate={(value) => setInput(value)}
+    onBackspace={(value) => setInput(value)}
+    onReset={() => setInput(0)}
+    onMaxReached={() => {
+      // Handle maximum value reached
+    }}
+  />
+</SafeAreaView>
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

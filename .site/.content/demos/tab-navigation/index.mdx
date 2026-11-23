@@ -1,0 +1,71 @@
+<Title date="2024-11-12" slug="tab-navigation" basePath="demos">
+  Tab Navigation with React Native Reanimated
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/tab-navigation"
+/>
+
+A smooth animated tab navigation component.
+
+## What's This About?
+
+This component creates a tab navigation interface with smooth transitions between tabs. It features state management for active tab tracking and customizable tab data. The implementation includes animated transitions and tab selection handling, making it perfect for applications requiring intuitive navigation between different sections.
+
+## Technical Implementation
+
+The component uses:
+
+- Tab management
+- State handling
+- Smooth transitions
+- Active tracking
+- Custom styling
+
+## Usage
+
+```tsx
+// Basic usage
+<TabNavigation />
+
+// Tabs component
+<Tabs
+  tabs={TABS_DATA}
+  activeTabIndex={activeTabIndex}
+  setActiveTabIndex={setActiveTabIndex}
+/>
+
+// Tab state management
+const [activeTabIndex, setActiveTabIndex] = useState(0);
+
+// Tab data structure
+const TABS_DATA = [
+  {
+    id: 'tab1',
+    title: 'Tab 1',
+    content: 'Content 1'
+  },
+  {
+    id: 'tab2',
+    title: 'Tab 2',
+    content: 'Content 2'
+  }
+];
+
+// Styling
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center'
+  }
+});
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

@@ -1,0 +1,65 @@
+<Title date="2024-08-06" slug="miles-bar-chart" basePath="demos">
+  Weekly Bar Chart with Reanimated
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/miles-bar-chart"
+/>
+
+A scrollable weekly bar chart component with date navigation.
+
+## What's This About?
+
+This component creates an interactive bar chart visualization that displays weekly data with smooth horizontal scrolling. The chart synchronizes the scroll position with the displayed data, featuring automatic snapping to weeks and formatted date labels. It handles the complex task of converting animated values to regular state for proper rendering, ensuring smooth transitions between different weeks of data.
+
+## Technical Implementation
+
+The component uses:
+
+- Reanimated scrolling
+- Animated reactions
+- Date formatting
+- Window dimensions
+- Scroll synchronization
+
+## Usage
+
+```tsx
+// Data structure
+type WeekData = {
+  day: Date;
+  value: number;
+}[];
+
+// Component props
+type WeeklyChartProps = {
+  width: number;
+  height: number;
+  data: WeekData;
+};
+
+// Basic usage
+<WeeklyChart
+  width={windowWidth}
+  height={150}
+  data={weeklyData}
+/>
+
+// Scrollable container
+<Animated.ScrollView
+  horizontal
+  snapToInterval={windowWidth}
+  showsHorizontalScrollIndicator={false}
+  decelerationRate="fast"
+>
+  {/* Week labels */}
+  <Text>week of {format(day, 'd MMMM')}</Text>
+</Animated.ScrollView>
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

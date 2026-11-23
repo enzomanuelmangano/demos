@@ -1,0 +1,54 @@
+<Title date="2024-11-19" slug="mnist" basePath="demos">
+  MNIST Neural Network Digit Recognition
+</Title>
+
+<Demo />
+
+<GithubCard repo="enzomanuelmangano/demos" path="src/animations/mnist" />
+
+A complete neural network implementation running entirely in React Native. Draw a digit on the canvas and watch the network predict the number in real-time with animated visualizations.
+
+## What's This About?
+
+This demo implements a fully functional neural network for handwritten digit recognition (MNIST), running entirely on the UI thread using Reanimated worklets. Draw any digit 0-9 and see live predictions along with a visualization of the network's internal state.
+
+## Technical Implementation
+
+A remarkable feat of React Native animation:
+
+- **Pure JavaScript Neural Network**: Forward propagation implemented in worklets
+- **Pre-trained Weights**: Model weights loaded from JSON for instant predictions
+- **Real-time Inference**: Predictions update as you draw, running on UI thread
+- **Network Visualization**: Animated display of neuron activations
+- **28x28 Grid Input**: Standard MNIST input size with touch drawing
+
+## Architecture
+
+The neural network consists of:
+
+1. **Input Layer**: 784 neurons (28x28 pixel grid)
+2. **Hidden Layer**: Dense layer with pre-trained weights
+3. **Output Layer**: 10 neurons (digits 0-9)
+4. **Activation**: ReLU/Softmax for predictions
+
+## How It Works
+
+1. Draw on the grid canvas to create a digit
+2. The drawing is converted to a 28x28 grayscale matrix
+3. Matrix is fed through the neural network in a worklet
+4. Predictions update in real-time as activations propagate
+5. Output probabilities are displayed for all 10 digits
+6. Clear button resets the canvas for a new drawing
+
+## Usage
+
+```tsx
+import { Mnist } from './mnist';
+
+// Self-contained component with drawing grid and predictions
+<Mnist />;
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

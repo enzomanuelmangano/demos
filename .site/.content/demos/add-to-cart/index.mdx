@@ -1,0 +1,39 @@
+<Title date="2023-02-08" slug="add-to-cart" basePath="demos">
+  Add to Cart Animation with Reanimated and Gesture Handler
+</Title>
+
+<Demo />
+
+<GithubCard repo="enzomanuelmangano/demos" path="src/animations/add-to-cart" />
+
+A polished shopping cart animation that provides smooth transitions when adding items to a cart. The component combines a scrollable product list with an interactive bottom sheet for a seamless shopping experience.
+
+## What's This About?
+
+The animation creates an engaging shopping experience by combining a product grid with smooth transitions and a detailed view when selecting items. Each interaction is accompanied by fluid animations that provide visual feedback for the user's actions.
+
+## Core Components
+
+The animation consists of a main list view that displays products, an animated bottom sheet for item details, and a dynamic confirmation button. When an item is selected, the bottom sheet slides up smoothly while the background dims to focus attention on the active content.
+
+## Technical Implementation
+
+The component uses shared values and interpolated animations for state management. It handles layout measurements to ensure precise positioning and implements cancellable animations for a better user experience.
+
+## Usage
+
+```tsx
+type Item = {
+  id: number;
+  title: string;
+  imageUri: string;
+  description: string;
+  count: number;
+};
+
+// The component automatically manages item selection and cart quantities
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

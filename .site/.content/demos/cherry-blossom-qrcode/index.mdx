@@ -1,0 +1,101 @@
+<Title date="2026-04-04" slug="cherry-blossom-qrcode" basePath="demos">
+  Cherry Blossom QR Code with WebGPU
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/cherry-blossom-qrcode"
+/>
+
+A scannable QR code transformed into a 3D cherry blossom tree, rendered entirely with WebGPU. The dark modules of the QR code become pink sakura canopy, brown trunk, and green grass, while light modules form the ground beneath. Tap to smoothly transition between the isometric tree view and a flat, scannable QR code.
+
+## How It Works
+
+This demo uses _react-native-wgpu_ to render thousands of 3D blocks with custom WGSL shaders. The QR code structure is preserved throughout - every block position maps directly to a QR module, so the code remains scannable even in 3D.
+
+The tree is built from five block types:
+
+- **Dirt/Path** (QR light modules) - bright cream colors for scannability
+- **Cherry Blossoms** (QR dark modules in canopy) - stacked pink cubes forming the dome
+- **Trunk** (QR dark modules at center) - vertically stacked brown blocks
+- **Grass** (QR dark modules outside tree) - green ground blocks
+- **Fallen Petals** (QR dark modules under canopy) - mixed brown and green
+
+## Canopy Generation
+
+The sakura canopy forms a dome shape using vertically stacked blocks. More layers accumulate near the center, fewer at the edges:
+
+```tsx
+const t = 1 - dist / canopyOuterRadius; // 1 at center, 0 at edge
+const layersHere = Math.max(3, Math.round(maxLayers * (0.25 + 0.75 * t * t)));
+
+for (let layer = 0; layer < layersHere; layer++) {
+  const domeOffset = Math.floor(t * 3) * cubeHeight;
+  baseY.push(canopyBaseHeight + layer * cubeHeight + domeOffset);
+  types.push(1); // cherry blossom
+}
+```
+
+Extra blocks are added pseudo-randomly on top for organic variation, while maintaining strict grid alignment to preserve QR scannability.
+
+## Lighting Model
+
+The fragment shader implements several lighting techniques to give the scene depth:
+
+- **Directional sun** from top-left-front with warm color temperature
+- **Canopy self-shadowing** - lower layers of blossoms receive less light
+- **Tree shadow on ground** - blocks under the canopy are darkened
+- **Height-based ambient occlusion** - trunk blocks darken toward the base
+- **Rounded edge effect** - subtle darkening at cube edges for softer appearance
+- **ACES film tonemapping** for natural color response
+
+```wgsl
+// Canopy self-shadowing - lower layers darker
+let maxCanopyLayer = 15.0;
+let layerRatio = min(layer / maxCanopyLayer, 1.0);
+let canopyAO = 0.65 + layerRatio * 0.35; // Bottom 65%, top 100%
+```
+
+## View Transitions
+
+Tapping toggles between isometric 3D and flat 2D views using lerp with easing:
+
+```tsx
+const target = isFlat.current ? 1 : 0;
+rawProgressRef.current +=
+  (target - rawProgressRef.current) * Math.min(1, LERP_SPEED * dt);
+progressRef.current = easeInOutCubic(rawProgressRef.current);
+
+// In shader: interpolate camera angles
+let isoAngleY = mix(0.78, 0.0, progress); // Y rotation
+let isoAngleX = mix(-0.55, -1.5708, progress); // X rotation (top-down)
+```
+
+The rounded edge effect fades out during transition so the flat view scans cleanly.
+
+## Drop Shadow
+
+A soft elliptical shadow beneath the platform sells the floating effect. It's rendered as a separate quad with Gaussian falloff:
+
+```wgsl
+let dist = length(centered);
+let falloff = exp(-dist * dist * 2.5);
+let alpha = 0.08 * falloff;
+```
+
+The shadow offset shifts based on sun direction and fades when viewing top-down.
+
+## Key Features
+
+- **WebGPU Rendering**: Native GPU acceleration via react-native-wgpu
+- **Scannable QR**: The code works in both 3D isometric and 2D flat views
+- **Dynamic Content**: Text input to change QR content in real-time
+- **Realistic Lighting**: Sun, shadows, ambient occlusion, and color temperature
+- **Smooth Transitions**: Eased interpolation between viewing angles
+- **Organic Variation**: Per-block color noise for natural appearance
+
+<ReanimatePromo />
+
+<SendFeedback />

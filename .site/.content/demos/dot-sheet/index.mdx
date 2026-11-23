@@ -1,0 +1,55 @@
+<Title date="2024-07-16" slug="dot-sheet" basePath="demos">
+  Dot Sheet Animation with Reanimated and Skia
+</Title>
+
+<Demo />
+
+<GithubCard repo="enzomanuelmangano/demos" path="src/animations/dot-sheet" />
+
+A card input component with a gradient background and bottom sheet interaction. Inspired by the Dot app's design.
+
+## What's This About?
+
+This component creates a card input form with:
+
+- Bottom sheet for card details
+- Gradient background
+- Call-to-action button
+- Safe area handling
+
+## Technical Implementation
+
+The component uses:
+
+- Reanimated for animations
+- Gradient background with Skia
+- Custom font integration
+- Bottom sheet gestures
+- Ref-based focus management
+
+## Usage
+
+```tsx
+// Basic usage
+<DotSheet />;
+
+// Card input reference
+const cardInputRef = useRef<CardInputRefType>(null);
+
+// Component structure
+<>
+  <BackgroundGradient />
+  <CardInput ref={cardInputRef} />
+  <PressableScale
+    onPress={() => {
+      cardInputRef.current?.focus();
+    }}
+  >
+    <Text>Start your Journey</Text>
+  </PressableScale>
+</>;
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

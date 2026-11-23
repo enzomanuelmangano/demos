@@ -1,0 +1,65 @@
+<Title date="2025-01-27" slug="fluid-tab-interaction" basePath="demos">
+  Fluid Tab Interaction
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/fluid-tab-interaction"
+/>
+
+A customizable segmented control component for React Native featuring smooth animations and blur effects.
+
+Inspiration: [Fluid Tab Interaction](https://x.com/nitishkmrk/status/1834915715490758731)
+
+Previously, I created a YouTube tutorial demonstrating how to build a similar component (without the animated blur effect).
+
+If you're interested, you can watch the tutorial here: [Custom Segmented Control in React Native (Reanimated)](https://youtu.be/RTYNKDODSfw)
+
+## Usage
+
+```typescript
+import { SegmentedControl } from './components/segmented-control';
+
+// Define your data structure
+const data = [
+  { name: 'Accounts', icon: 'wallet-outline' },
+  { name: 'Deposits', icon: 'bank' },
+  { name: 'Funds', icon: 'chart-bar' },
+];
+
+// Use the component
+const MyComponent = () => {
+  const [selected, setSelected] = useState(data[0]);
+  const { width } = useWindowDimensions();
+
+  return (
+    <SegmentedControl
+      data={data}
+      onPress={setSelected}
+      selected={selected}
+      width={width - 40}
+      height={50}
+    />
+  );
+};
+```
+
+## Props
+
+The SegmentedControl component accepts the following props:
+
+```typescript
+type SegmentedControlProps<T extends { name: string; icon: string }> = {
+  data: readonly T[]; // Array of items to display in the control
+  onPress: (item: T) => void; // Callback function when an item is selected
+  selected: T; // Currently selected item
+  width: number; // Width of the control
+  height: number; // Height of the control
+};
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

@@ -1,0 +1,17 @@
+{
+  "title": "Introduction to Pan Gesture Handler in Reanimated",
+  "shortTitle": "Introduction to Pan Gesture Handler in Reanimated",
+  "subtitle": "In this article we're going to unleash the power of the PanGestureHandler in React Native thanks to Reanimated. Seems interesting? Give it a look!",
+  "author": "Enzo Manuel Mangano",
+  "date": "2022-06-13",
+  "slug": "pan-gesture-handler",
+  "tags": [
+    "react-native",
+    "react",
+    "reanimated",
+    "pan-gesture-handler",
+    "react-native-gesture-handler"
+  ],
+  "featuredImage": "./images/header.webp",
+  "series": "animate-with-reanimated"
+}

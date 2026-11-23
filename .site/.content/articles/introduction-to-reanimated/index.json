@@ -1,0 +1,11 @@
+{
+  "title": "Introduction to Reanimated",
+  "shortTitle": "Introduction to Reanimated",
+  "subtitle": "In this tutorial we’ll learn the basics of React Native Reanimated package. We will understand why Reanimated is the best choice for dealing with animations in React Native and when it could be useful...",
+  "author": "Enzo Manuel Mangano",
+  "date": "2024-10-17",
+  "slug": "introduction-to-reanimated",
+  "tags": ["react-native", "react", "reanimated"],
+  "featuredImage": "./images/header.webp",
+  "series": "animate-with-reanimated"
+}

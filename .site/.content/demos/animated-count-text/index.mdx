@@ -1,0 +1,35 @@
+<Title date="2023-07-05" slug="animated-count-text" basePath="demos">
+  Animated Text Count with Reanimated
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/animated-count-text"
+/>
+
+A smooth number animation component that creates fluid transitions between different numbers. Features a shuffle button that generates random numbers with varying digits, creating engaging visual transitions.
+
+## What's This About?
+
+This component animates number changes with a rolling animation effect. When the number updates, each digit smoothly transitions to its new value, creating a polished counting animation that's perfect for displaying dynamic numerical data.
+
+## Technical Implementation
+
+The component uses shared values and interpolated animations to handle individual digit transitions. It supports numbers of varying lengths and automatically adjusts its layout to accommodate different digit counts.
+
+## Usage
+
+```tsx
+// Basic usage
+<AnimatedCount number={42} />;
+
+// With dynamic updates
+const [number, setNumber] = useState(1);
+<AnimatedCount number={number} />;
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

@@ -1,0 +1,348 @@
+<Title date="2022-12-27" slug="pinch-gesture-handler">
+  Exploring Pinch Gesture in React Native (Reanimated)
+</Title>
+
+In this tutorial, we will learn about the basics of the PinchGestureHandler component from the react-native-gesture-handler package. To understand how it works, we will use a simple example that demonstrates how to zoom in and out of an image using a pinch gesture.
+
+As we interact with the image, we will see how the focal point, which is the point where we are pinching, influences the scaling of the image. When we release our fingers, the scale value will return back to its original value of 1. Remember to check out the source code on GitHub and don't forget to subscribe to this channel to stay updated on future content about the **react-native-reanimated** package. Alright, let's get started!
+
+<GithubCard
+  repo="enzomanuelmangano/animate-with-reanimated"
+  path="src/animations/04-pinch-gesture-handler-basics"
+/>
+
+### YouTube Channel
+
+Do you need further clarification? I can recommend my YouTube tutorial if that would be helpful. Here it is!
+
+<YouTubeEmbed videoId="R7vyLItMQJw" />
+
+## Code setup
+
+I've built up an Expo project with the Expo CLI and I included the Reanimated library.
+
+In this tutorial we're going to use Reanimated **v2.1.0** but of course, every version above v2.0.0 is fine for this tutorial:
+
+```bash
+yarn add react-native-reanimated
+```
+
+We're going to install also the **react-native-gesture-handler** library:
+
+```bash
+yarn add react-native-gesture-handler
+```
+
+**To get a more detailed explanation of my setup, feel free to [click here!](/articles/setup-reanimated-gestures)**.
+
+## The Code
+
+First things first, let's define some constants and objects that we will use later in the code.
+
+```tsx
+// Credit to Mariana Ibanez https://unsplash.com/photos/NJ8Z8Y_xUKc
+const imageUri =
+  'https://images.unsplash.com/photo-1621569642780-4864752e847e?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=668&q=80';
+
+const AnimatedImage = Animated.createAnimatedComponent(Image);
+
+const { width, height } = Dimensions.get('window');
+```
+
+In this code snippet, a constant called imageUri is defined as a string containing the URL of an image. This image is a photo by Mariana Ibanez that can be found on the Unsplash website at the specified URL.
+
+The AnimatedImage constant is defined using the **createAnimatedComponent** function from the react-native-reanimated library. This function takes an existing component (in this case, the Image component from react-native) and returns a new component that can be animated using the react-native-reanimated library.
+
+The width and height constants are defined using the Dimensions component from react-native. The Dimensions component allows you to get the dimensions of the device's window, and the get method is used to retrieve the width and height values. These values will be used later in the code to transform the image.
+
+### Define the PinchGestureHandler component
+
+The **PinchGestureHandler** component is a component from the _react-native-gesture-handler_ library that allows us to detect pinch gestures. The **onGestureEvent** prop is used to define a function that will be called when the gesture is detected.
+
+In the following code, I've defined a PinchGestureHandler component that wraps an Animated.View component.
+
+In order to use the PinchGestureHandler component, we need to wrap the App function with the GestureHandlerRootView component.
+
+Right now the PinchGestureHandler component doesn't do anything. We need to define the onGestureEvent function that will be called when the gesture is detected.
+
+```tsx
+function App() {
+  return (
+    <PinchGestureHandler onGestureEvent={???}>
+      <Animated.View style={{ flex: 1 }}>
+        <AnimatedImage style={[{ flex: 1 }]} source={{ uri: imageUri }} />
+      </Animated.View>
+    </PinchGestureHandler>
+  )
+}
+
+export default () => {
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <App />
+    </GestureHandlerRootView>
+  )
+}
+```
+
+### Define the onGestureEvent function
+
+The **onGestureEvent** function is defined using the **useAnimatedGestureHandler** function from the react-native-reanimated library. This function takes an object as a parameter and returns a function that will be called when the gesture is detected.
+
+The object that is passed to the **useAnimatedGestureHandler** function contains the following properties:
+
+- **onStart**: A function that will be called when the gesture starts.
+- **onActive**: A function that will be called when the gesture is active.
+- **onEnd**: A function that will be called when the gesture ends.
+
+The **onStart** function is called when the gesture starts. In this function, we can define the initial values of the animated values that we will use in the **onActive** function.
+
+The **onActive** function is called when the gesture is active. In this function, we can define the values of the animated values that we will use in the **onEnd** function.
+
+The **onEnd** function is called when the gesture ends. In this function, we can define the final values of the animated values that we will use in the **onActive** function.
+
+```tsx
+function App() {
+  const scale = useSharedValue(1)
+  const focalX = useSharedValue(0)
+  const focalY = useSharedValue(0)
+
+  const pinchHandler = useAnimatedGestureHandler<PinchGestureHandlerGestureEvent>({
+    onActive: (event) => { ... },
+    onEnd: () => { ... },
+  })
+  return <PinchGestureHandler onGestureEvent={pinchHandler}>{...}</PinchGestureHandler>
+}
+```
+
+Since we have specified the PinchGestureHandlerGestureEvent type in the **useAnimatedGestureHandler** function, the event object that is passed to the onStart, onActive, onEnd functions will contain the following properties:
+
+- **scale**: The scale value of the gesture. This value is a number that represents the scale of the gesture. For example, if the scale value is 1.5, it means that the gesture is 1.5 times bigger than its original size.
+- **focalX**: The x coordinate of the focal point of the gesture.
+- **focalY**: The y coordinate of the focal point of the gesture.
+
+Since we are interested in these properties we can save them in three different SharedValues.
+
+```tsx
+function App() {
+  const scale = useSharedValue(1)
+  const focalX = useSharedValue(0)
+  const focalY = useSharedValue(0)
+
+  const pinchHandler = useAnimatedGestureHandler<PinchGestureHandlerGestureEvent>({
+    onActive: (event) => {
+      scale.value = event.scale
+      focalX.value = event.focalX
+      focalY.value = event.focalY
+    },
+    onEnd: () => {
+      scale.value = withTiming(1)
+    },
+  })
+  return <PinchGestureHandler onGestureEvent={pinchHandler}>{...}</PinchGestureHandler>
+}
+```
+
+The advantage of using SharedValues is that we can use them in order to easily define the Reanimated style of the AnimatedImage component.
+
+```tsx
+function App() {
+
+  ...
+
+  const rStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { translateX: focalX.value },
+        { translateY: focalY.value },
+        { translateX: -width / 2 },
+        { translateY: -height / 2 },
+        { scale: scale.value },
+        { translateX: -focalX.value },
+        { translateY: -focalY.value },
+        { translateX: width / 2 },
+        { translateY: height / 2 },
+      ],
+    }
+  })
+
+  return (
+    <PinchGestureHandler onGestureEvent={pinchHandler}>
+      <Animated.View style={{ flex: 1 }}>
+        <AnimatedImage style={[{ flex: 1 }, rStyle]} source={{ uri: imageUri }} />
+      </Animated.View>
+    </PinchGestureHandler>
+  )
+}
+```
+
+The code above is definitely not trivial to understand. In particular, it is not clear what the transform property of the rStyle object is doing.
+
+Basically, the transform property is used to apply transformations such as translation, scaling, and rotation to a view. In this case, the array of transform operations appears to be performing the following transformations:
+
+1. Translate the view horizontally by the value of focalX.value.
+2. Translate the view vertically by the value of focalY.value.
+3. Translate the view horizontally by -width / 2.
+4. Translate the view vertically by -height / 2.
+5. Scale the view by the value of scale.value.
+6. Translate the view horizontally by -focalX.value.
+7. Translate the view vertically by -focalY.value.
+8. Translate the view horizontally by width / 2.
+9. Translate the view vertically by height / 2.
+
+It is worth noting that the order of these transformations is important, as the transformations are applied in the order that they appear in the array. For example, the scaling transformation (step 5) will be applied to the view after it has been translated by the values of focalX.value and focalY.value (steps 1 and 2), and before it is translated by the values of -focalX.value and -focalY.value (steps 6 and 7).
+
+You can then use the rStyle object as the value for the style prop of a view component to apply the animated transformation to the view.
+
+### Visualize the focal point of the gesture
+
+In order to visualize the focal point of the gesture, we can simply define an Animated.View component (as a blue circle) and then we can create another Reanimated Style that centers the Animated.View on the focal point of the gesture.
+
+```tsx
+function App() {
+
+  ...
+
+  const focalPointStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateX: focalX.value }, { translateY: focalY.value }],
+    }
+  })
+
+  return (
+    <PinchGestureHandler onGestureEvent={pinchHandler}>
+      <Animated.View style={{ flex: 1 }}>
+        <AnimatedImage style={[{ flex: 1 }, rStyle]} source={{ uri: imageUri }} />
+        <Animated.View style={[styles.focalPoint, focalPointStyle]} />
+      </Animated.View>
+    </PinchGestureHandler>
+  )
+}
+
+const styles = StyleSheet.create({
+  ...
+  focalPoint: {
+    position: 'absolute',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: 'red',
+  },
+})
+```
+
+## Recap
+
+This code is a React Native component that displays an image that can be zoomed in and out using a pinch gesture. It makes use of the _react-native-gesture-handler_ and _react-native-reanimated_ libraries to handle gestures and animate the image.
+
+The component is made up of two main parts: a **PinchGestureHandler** that listens for pinch gestures and updates the scale of the image, and an **AnimatedImage** component that is transformed based on the scale and position of the pinch gesture.
+
+When the user starts a pinch gesture, the **PinchGestureHandler**'s onActive event is called with an event object that contains the scale and position (focal point) of the pinch gesture. The onActive event updates the scale, focalX, and focalY shared values, which are used to control the transformation of the **AnimatedImage**. When the user ends the pinch gesture, the PinchGestureHandler's onEnd event is called, and the scale value is reset to 1 with a smooth animation using the withTiming function from _react-native-reanimated_.
+
+The **AnimatedImage** component is transformed using the useAnimatedStyle hook, which returns an animated style object that is based on the current values of the scale, focalX, and focalY shared values. The style object applies a series of transformations to the image, including translations and scaling, to achieve the desired zooming effect.
+
+There is also a small blue circle, called the focal point, that is displayed over the image and follows the position of the pinch gesture. This is implemented using another Animated.View component and the focalPointStyle animated style object, which is based on the focalX and focalY shared values.
+
+Finally, the component is wrapped in a **GestureHandlerRootView** component from _react-native-gesture-handler_, which is necessary for gestures to work correctly.
+
+```jsx
+import React from 'react';
+import { StyleSheet, Image, Dimensions } from 'react-native';
+import {
+  GestureHandlerRootView,
+  PinchGestureHandler,
+  PinchGestureHandlerGestureEvent,
+} from 'react-native-gesture-handler';
+import Animated, {
+  useAnimatedGestureHandler,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+
+// Credit to Mariana Ibanez https://unsplash.com/photos/NJ8Z8Y_xUKc
+const imageUri =
+  'https://images.unsplash.com/photo-1621569642780-4864752e847e?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=668&q=80';
+
+const AnimatedImage = Animated.createAnimatedComponent(Image);
+
+const { width, height } = Dimensions.get('window');
+
+function App() {
+  const scale = useSharedValue(1);
+  const focalX = useSharedValue(0);
+  const focalY = useSharedValue(0);
+
+  const pinchHandler =
+    useAnimatedGestureHandler <
+    PinchGestureHandlerGestureEvent >
+    {
+      onActive: (event) => {
+        scale.value = event.scale;
+        focalX.value = event.focalX;
+        focalY.value = event.focalY;
+      },
+      onEnd: () => {
+        scale.value = withTiming(1);
+      },
+    };
+
+  const rStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { translateX: focalX.value },
+        { translateY: focalY.value },
+        { translateX: -width / 2 },
+        { translateY: -height / 2 },
+        { scale: scale.value },
+        { translateX: -focalX.value },
+        { translateY: -focalY.value },
+        { translateX: width / 2 },
+        { translateY: height / 2 },
+      ],
+    };
+  });
+
+  const focalPointStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateX: focalX.value }, { translateY: focalY.value }],
+    };
+  });
+
+  return (
+    <PinchGestureHandler onGestureEvent={pinchHandler}>
+      <Animated.View style={{ flex: 1 }}>
+        <AnimatedImage
+          style={[{ flex: 1 }, rStyle]}
+          source={{ uri: imageUri }}
+        />
+        <Animated.View style={[styles.focalPoint, focalPointStyle]} />
+      </Animated.View>
+    </PinchGestureHandler>
+  );
+}
+
+export default () => {
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <App />
+    </GestureHandlerRootView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  focalPoint: {
+    ...StyleSheet.absoluteFillObject,
+    width: 20,
+    height: 20,
+    backgroundColor: 'blue',
+    borderRadius: 10,
+  },
+});
+```

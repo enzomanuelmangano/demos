@@ -1,0 +1,71 @@
+<Title date="2023-11-15" slug="action-tray" basePath="demos">
+  Family Action Tray with Reanimated and Gesture Handler
+</Title>
+
+<Demo />
+
+<GithubCard repo="enzomanuelmangano/demos" path="src/animations/action-tray" />
+
+A highly interactive and customizable bottom sheet component for React Native that provides a smooth sliding tray interface with gesture controls.
+
+## What's This About?
+
+The Action Tray creates a bottom sheet interface that:
+
+- Slides up from the bottom of the screen
+- Responds to touch gestures for opening and closing
+- Features smooth spring animations
+- Includes a backdrop overlay
+- Supports dynamic content height changes
+
+## How It Works
+
+The component is built with two main parts:
+
+1. **ActionTray**: The core component that:
+   - Handles gesture interactions
+   - Manages the sliding animation
+   - Controls the tray's position
+   - Provides imperative methods for programmatic control
+
+2. **Main Interface**: A demonstration that showcases:
+   - Multiple content states
+   - Dynamic height adjustments
+   - Smooth transitions between states
+   - A toggle button with rotation animation
+
+## Technical Details
+
+- Built with _react-native-reanimated_ for fluid animations
+- Uses _react-native-gesture-handler_ for touch interactions
+- Implements worklet functions for native-thread performance
+- Features spring animations for natural movement
+- Supports custom styling and height configurations
+
+## Implementation Notes
+
+- Uses shared values for smooth state management
+- Implements gesture clamping for controlled movements
+- Provides ref-based control methods (open/close)
+- Supports custom maximum height configuration
+- Includes a backdrop component with fade animations
+
+## Usage
+
+```tsx
+// Create a ref to control the tray
+const ref = useRef<ActionTrayRef>(null);
+
+// Open the tray
+ref.current?.open();
+
+// Close the tray
+ref.current?.close();
+
+// Check if tray is active
+const isActive = ref.current?.isActive();
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

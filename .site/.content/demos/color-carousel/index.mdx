@@ -1,0 +1,61 @@
+<Title date="2023-05-17" slug="color-carousel" basePath="demos">
+  Fancy Color Carousel with Reanimated and Skia 🌈
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/color-carousel"
+/>
+
+A visually stunning carousel that combines smooth item transitions with dynamic radial gradient backgrounds. Features a responsive design that adapts the background color based on the active item.
+
+## What's This About?
+
+This component creates an interactive carousel where each item transition is accompanied by a smooth color transformation in the background. The radial gradient background dynamically changes to match the active item's accent color, creating a cohesive and engaging visual experience.
+
+## Technical Implementation
+
+The component leverages Skia for high-performance rendering and implements:
+
+- Smooth carousel transitions
+- Dynamic radial gradient backgrounds
+- Configurable number of visible items
+- Optimized rendering with a fixed number of items
+- Shared value animations for color transitions
+
+## Usage
+
+```tsx
+type CarouselItem = {
+  accentColor: string;
+  // other item properties
+};
+
+// Basic usage
+<ColorCarousel />
+
+// Custom implementation
+<Carousel
+  items={data}
+  maxRenderedItems={5}  // Must be an odd number
+  width={windowWidth}
+  activeIndex={activeIndex}
+/>
+
+// With background gradient
+<Canvas style={StyleSheet.absoluteFill}>
+  <Rect x={0} y={0} width={width} height={height}>
+    <RadialGradient
+      c={vec(width/2, height/2)}
+      r={width/2}
+      colors={colors}
+    />
+  </Rect>
+</Canvas>
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

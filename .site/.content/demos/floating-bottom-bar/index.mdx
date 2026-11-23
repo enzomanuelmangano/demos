@@ -1,0 +1,44 @@
+<Title date="2023-01-18" slug="floating-bottom-bar" basePath="demos">
+  React Native Floating Bottom Bar Animation 🚀
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/floating-bottom-bar"
+/>
+
+A bottom navigation bar that floats above the content with custom tab animations.
+
+## What's This About?
+
+This component creates a bottom bar that:
+
+- Floats above screen content
+- Shows tab icons
+- Handles navigation
+- Uses custom tab bar
+- Supports multiple screens
+
+## Usage
+
+```tsx
+// Basic usage
+<FloatingBottomBar />;
+
+// Navigation setup
+const BottomTab = createBottomTabNavigator();
+
+<BottomTab.Navigator tabBar={(props) => <BottomTabBar {...props} />}>
+  <BottomTab.Screen name="Home" component={HomeScreen} />
+  <BottomTab.Screen name="Bookmark" component={BookmarkScreen} />
+  <BottomTab.Screen name="Add" component={AddScreen} />
+  <BottomTab.Screen name="Profile" component={ProfileScreen} />
+  <BottomTab.Screen name="Settings" component={SettingsScreen} />
+</BottomTab.Navigator>;
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

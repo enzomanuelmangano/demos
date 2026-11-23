@@ -1,0 +1,38 @@
+<Title date="2023-05-24" slug="animated-3d-parallax" basePath="demos">
+  Animated 3D Parallax with Reanimated 🌌
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/animated-3d-parallax"
+/>
+
+A stunning 3D card component that responds to touch with realistic perspective and parallax effects. The card and its content smoothly rotate in 3D space based on touch position, creating an engaging interactive experience.
+
+## What's This About?
+
+This component creates an immersive 3D effect where touch input controls the card's rotation. The content follows with a slight delay, creating a parallax effect that adds depth to the interaction. The result is a polished, iOS-like 3D card that responds naturally to user input.
+
+## Technical Implementation
+
+The component uses spring animations and gesture handling for smooth interactions. It implements custom 3D rotation calculations with perspective transforms and interpolated values to achieve realistic motion.
+
+## Usage
+
+```tsx
+type Use3DRotationStyleParams = {
+  x: Animated.SharedValue<number>;
+  y: Animated.SharedValue<number>;
+  maxSize: number;
+  maxRotation: number;
+};
+
+// Example usage
+<Animated3DParallax />;
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

@@ -1,0 +1,81 @@
+<Title date="2022-12-14" slug="swipe-cards" basePath="demos">
+  React Native Swipe Cards Animation (Tinder-like) 👀
+</Title>
+
+<Demo />
+
+<GithubCard repo="enzomanuelmangano/demos" path="src/animations/swipe-cards" />
+
+A Tinder-like card swipe interface with like/dislike actions.
+
+## What's This About?
+
+This component creates an interactive card swipe interface similar to dating apps. It features smooth swipe animations, like/dislike actions, and a reset function. The implementation includes gesture handling for card swipes, fade animations for card transitions, and control buttons for manual actions, making it perfect for any interface requiring card-based decision making.
+
+## Technical Implementation
+
+The component uses:
+
+- Swipe gestures
+- Card stacking
+- Action buttons
+- Fade animations
+- State tracking
+
+## Usage
+
+```tsx
+// Basic usage
+<SwipeCards />
+
+// Swipeable card
+<SwipeableCard
+  index={index}
+  activeIndex={activeIndex}
+  image={image}
+  ref={cardRef}
+  onSwipeRight={() => {
+    liked.current += 1;
+  }}
+  onSwipeLeft={() => {
+    disliked.current += 1;
+  }}
+/>
+
+// Control buttons
+<View style={styles.buttonsContainer}>
+  <PressableScale
+    style={styles.button}
+    onPress={swipeLeft}
+  >
+    <AntDesign name="close" size={32} color="white" />
+  </PressableScale>
+
+  <PressableScale
+    style={styles.button}
+    onPress={reset}
+  >
+    <AntDesign name="reload1" size={24} color="white" />
+  </PressableScale>
+
+  <PressableScale
+    style={styles.button}
+    onPress={swipeRight}
+  >
+    <AntDesign name="heart" size={32} color="white" />
+  </PressableScale>
+</View>
+
+// Swipe controls hook
+const {
+  activeIndex,
+  refs,
+  swipeRight,
+  swipeLeft,
+  reset
+} = useSwipeControls();
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

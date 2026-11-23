@@ -1,0 +1,80 @@
+<Title date="2024-08-13" slug="steps" basePath="demos">
+  Steps Pager with Reanimated
+</Title>
+
+<Demo />
+
+<GithubCard repo="enzomanuelmangano/demos" path="src/animations/steps" />
+
+A step-by-step interface with animated transitions and split button controls.
+
+## What's This About?
+
+This component creates an interactive step progression interface with animated dots and a split button control. It features smooth transitions between steps, a dynamic button that splits to reveal back/continue actions, and keyframe animations for icons. The implementation includes state management for step progression and completion, making it perfect for wizards, tutorials, or multi-step forms.
+
+## Technical Implementation
+
+The component uses:
+
+- Keyframe animations
+- Split button controls
+- Step indicators
+- State management
+- Icon transitions
+
+## Usage
+
+```tsx
+// Basic usage
+<Steps />
+
+// Dots indicator
+<Dots
+  activeIndex={activeIndex}
+  count={3}
+  dotSize={10}
+/>
+
+// Split button
+<SplitButton
+  splitted={splitted}
+  mainAction={{
+    label: 'Continue',
+    labelColor: 'white',
+    onPress: () => {
+      increaseActiveIndex();
+      setSplitted(true);
+    },
+    backgroundColor: '#0c86f7'
+  }}
+  leftAction={{
+    label: 'Back',
+    labelColor: 'black',
+    onPress: () => handleBack(),
+    backgroundColor: 'rgba(0,0,0,0.08)'
+  }}
+  rightAction={{
+    label: rightLabel,
+    labelColor: 'white',
+    icon: <AnimatedIcon />,
+    iconVisible: isLastStep,
+    onPress: () => handleNext()
+  }}
+/>
+
+// Keyframe animations
+const ScaleIconKeyframe = new Keyframe({
+  from: {
+    opacity: 0,
+    transform: [{ scale: 0 }]
+  },
+  to: {
+    opacity: 1,
+    transform: [{ scale: 1 }]
+  }
+}).duration(250);
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

@@ -1,0 +1,69 @@
+<Title date="2023-10-11" slug="scrollable-bottom-sheet" basePath="demos">
+  Scrollable Bottom Sheet with Reanimated and Gesture Handler
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/scrollable-bottom-sheet"
+/>
+
+A multi-page bottom sheet with horizontal and vertical scrolling.
+
+## What's This About?
+
+This component creates an interactive bottom sheet that supports both vertical and horizontal scrolling between pages. Each page can have its own height and content, with smooth transitions between states. The implementation includes a gradient button trigger, page navigation controls, and programmatic scrolling methods, making it suitable for complex modal interfaces.
+
+## Technical Implementation
+
+The component uses:
+
+- Multi-page navigation
+- Vertical/horizontal scrolling
+- Height management
+- Gradient effects
+- Ref-based control
+
+## Usage
+
+```tsx
+// Page configuration
+const pages = [
+  {
+    height: 350,
+    component: (
+      <BottomSheetPage
+        onPress={() => {
+          bottomSheetRef.current?.scrollToX(windowWidth);
+        }}
+        buttonTitle="Next Page"
+      />
+    ),
+  },
+  {
+    height: 500,
+    component: (
+      <BottomSheetPage
+        onPress={() => {
+          bottomSheetRef.current?.scrollToX(windowWidth * 2);
+        }}
+        buttonTitle="Next Page"
+      />
+    ),
+  },
+];
+
+// Basic usage
+<ScrollableBottomSheet ref={bottomSheetRef} pages={pages} />;
+
+// Control methods
+bottomSheetRef.current?.scrollToY(-pageHeight);
+bottomSheetRef.current?.scrollToX(windowWidth);
+bottomSheetRef.current?.close();
+bottomSheetRef.current?.isActive();
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

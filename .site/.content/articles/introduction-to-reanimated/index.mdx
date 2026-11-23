@@ -1,0 +1,422 @@
+import { FinalAnimatedSquareDemo, AnimatedSquareOpacityDemo, AnimatedSquareOpacityAndScaleDemo } from './mdx-client';
+
+<Title date="2024-10-17" slug="introduction-to-reanimated">
+  Introduction to Reanimated
+</Title>
+
+Today, we are going to explore the basics of Reanimated.
+
+First of all, what is Reanimated and why is it needed?
+Reanimated is a React Native animation package that allows you to write animations that can run entirely on the UI thread.
+Of course in React Native, you have the option to build up animations with the React Native Animated APIs and usually that's not a huge issue (especially if the animation is a kind of a fire and forget animation).
+
+However, achieving a fluid and visually pleasing animation, especially when dealing with gesture animations, can be challenging.
+
+The issue is caused by the fact that when you're using Animated APIs and React Native Pan Responder your animation depends on the communication between the JavaScript Thread and the UI thread.
+Reanimated completely solves this problem by running the animation exclusively on the UI thread.
+How? This is possible thanks to the _worklets_.
+
+Worklets are just simple javascript functions that can be handled entirely on the UI thread.
+In practice, a worklet is just a javascript function with the "worklet" keyword.
+
+So let's get our hands dirty and let's start to build our simple Reanimated animation.
+
+<GithubCard
+  repo="enzomanuelmangano/animate-with-reanimated"
+  path="src/animations/00-introduction-to-reanimated"
+/>
+
+### YouTube Channel
+
+Wait what? Would you prefer a YouTube tutorial? Here it is!
+
+<YouTubeEmbed videoId="yz9E10Dq8Bg" />
+
+## Code setup
+
+I've built up an Expo project with the Expo CLI and I included the Reanimated library.
+
+In this tutorial we're going to use **Reanimated v3** but these concepts are valid also if you're using Reanimated v2.0.0 (or any version above it):
+
+```bash
+yarn add react-native-reanimated
+```
+
+To get a more detailed explanation of my setup, feel free to [click here!](/articles/setup-reanimated-gestures).
+
+## Reanimated ingredients
+
+So let's discover together which are the most important ingredients to build up a Reanimated animation.
+
+### First ingredient: Shared Values
+
+The first ingredient is the Shared Value. Shared Values are JavaScript values that can be handled by the UI Thread.
+
+```tsx
+const progress = useSharedValue(0);
+```
+
+**It's important to note that a Shared Value can be any type of object.**
+
+### Second ingredient: Reanimated Style
+
+The second crucial ingredient is the useAnimatedStyle hook, necessary for creating Reanimated styles. With this hook, we can return a style very similar to the StyleSheet style used by React Native.
+
+```tsx
+const reanimatedStyle = useAnimatedStyle(() => {
+  return {
+    opacity: progress.value,
+  };
+}, []);
+```
+
+If we look closely, we can see that the useAnimatedStyle hook requires two parameters:
+
+- A function that returns a style
+- An optional dependency list
+
+In our case, the useAnimatedStyle depends on the _progress.value_, but we don't need to specify it in the dependency list since it's a Shared Value. If the style was dependent on a React state, it would have been necessary to specify the React state in the dependency list.
+
+```tsx
+// Example of how to use the dependency list in combination with a React state
+
+const [progress, setProgress] = useState(0);
+
+const reanimatedStyle = useAnimatedStyle(() => {
+  return {
+    opacity: progress,
+  };
+}, [progress]);
+```
+
+### Third ingredient: Animated View
+
+We're going to animate something, right? Therefore we need something more powerful than a simple React Native View. The answer to this need is the _Animated.View_ component.
+
+In fact, an _Animated.View_ is simply a React Native View that can also accept Reanimated Styles as input styles.
+
+In order to use an _Animated.View_, let's just import Animated from _'react-native-reanimated'_ and let's use it in the App component.
+
+```tsx
+import { View } from 'react-native'
+import Animated, { useSharedValue, useAnimatedStyle } from 'react-native-reanimated'
+
+export default function App() {
+  // ... animation ingredients
+  return (
+    <View style={styles.container}>
+      <Animated.View style={...some stuffs} />
+    </View>
+  )
+}
+```
+
+Of course, we need to style a little bit our Animated.View. Therefore let's use create a blue square style:
+
+```tsx
+const SIZE = 100.0;
+
+export default function App() {
+  // ... animation ingredients
+  return (
+    <View style={styles.container}>
+      <Animated.View
+        style={{ height: SIZE, width: SIZE, backgroundColor: 'blue' }}
+      />
+    </View>
+  );
+}
+```
+
+### Fourth ingredient: High order functions
+
+Currently, we are not animating our Animated.View. We need of course to pass the Reanimated style. Let's say we want to animate the opacity from 0 to 1:
+
+1. We need to change the _progress_ initial value
+2. We must set the _"end animation value"_ inside a _useEffect_ hook.
+
+```tsx
+const progress = useSharedValue(0);
+
+useEffect(() => {
+  progress.value = 1;
+}, []);
+```
+
+The final touch? Let's just wrap the _"1"_ with the _withTiming_ High Order Function:
+
+```tsx
+import Animated, { ..., withTiming } from 'react-native-reanimated'
+
+const progress = useSharedValue(0)
+
+useEffect(() => {
+  progress.value = withTiming(1, { duration: 5000 })
+}, [])
+```
+
+It may feel like magic, doesn't it?
+
+<AnimatedSquareOpacityDemo />
+
+Just to be sure you're on the right track, here's all the code we've written so far:
+
+```tsx
+import React, { useEffect } from 'react';
+import { StyleSheet, View } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+} from 'react-native-reanimated';
+
+const SIZE = 100.0;
+
+export default function App() {
+  const progress = useSharedValue(0);
+
+  const reanimatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: progress.value,
+    };
+  }, []);
+
+  useEffect(() => {
+    progress.value = withTiming(1, { duration: 5000 });
+  }, []);
+
+  return (
+    <View style={styles.container}>
+      <Animated.View
+        style={[
+          { height: SIZE, width: SIZE, backgroundColor: 'blue' },
+          reanimatedStyle,
+        ]}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: 'white',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
+```
+
+#### Animate everything
+
+Right now we've been able to animate the opacity? But there are a lot of properties we can animate!
+
+Let's define for example another Shared Value called _"scale"_ with the initial value equal to 1 and let's add it to the Reanimated Style.
+
+```tsx
+const progress = useSharedValue(0);
+const scale = useSharedValue(1);
+
+const reanimatedStyle = useAnimatedStyle(() => {
+  return {
+    opacity: progress.value,
+    transform: [{ scale: scale.value }],
+  };
+}, []);
+```
+
+To be able to animate the scale parameter as well, we can also apply the **withTiming** function:
+
+```tsx
+...
+useEffect(() => {
+    progress.value = withTiming(1, { duration: 5000 })
+    scale.value = withTiming(2)
+}, [])
+...
+```
+
+<AnimatedSquareOpacityAndScaleDemo scaleAnimationType="timing" />
+
+#### withSpring
+
+The _timing_ animation is definitely great but with Reanimated we can push forward this tutorial with a _spring_ animation.
+
+The difference between the two approaches is that:
+
+- withTiming: is based on duration and on a curve
+- withSpring: is based on physics (mass, damping, stiffness, etc...)
+
+How to use it? Just replace the withTiming function applied for the scale animation:
+
+```tsx
+...
+useEffect(() => {
+    progress.value = withTiming(1, { duration: 5000 })
+    scale.value = withSpring(2)
+}, [])
+...
+```
+
+For design purposes we can update the opacity animation:
+
+1. Animate the opacity from 1 -> 0.5
+2. Use a spring animation for the opacity as well
+
+```tsx
+...
+const progress = useSharedValue(1)
+const scale = useSharedValue(1)
+
+useEffect(() => {
+    progress.value = withSpring(0.5)
+    scale.value = withSpring(2)
+}, [])
+...
+```
+
+<AnimatedSquareOpacityAndScaleDemo scaleAnimationType="spring" />
+
+Let's say that we want to change also the border-radius. We aren't forced to use another Shared Value.
+We can just reuse the previous progress Shared Value multiplied by some value.
+
+```tsx
+...
+const reanimatedStyle = useAnimatedStyle(() => {
+    return {
+        opacity: progress.value,
+        borderRadius: progress.value * SIZE / 2,
+        transform: [{scale: scale.value}]
+    }
+}, [])
+...
+```
+
+<AnimatedSquareOpacityAndScaleDemo
+  scaleAnimationType="spring"
+  showBorderRadiusAnimation={true}
+/>
+
+### Fifth ingredient: Repetitions
+
+Let's add another ingredient to our recipe the **withRepeat** High Order Function. Wouldn't it be great to repeat the animation?
+
+In order to achieve our goal, let's just wrap the withSpring animations with the **withRepeat** function:
+
+```tsx
+...
+useEffect(() => {
+    progress.value = withRepeat(withSpring(0.5))
+    scale.value = withRepeat(withSpring(2))
+}, [])
+...
+```
+
+Let's say that we want to repeat it three times and with a "reverse effect" enabled.
+
+**Tip:** In order to fully understand the power of reverse, feel free to toggle the reverse value and check the differences.
+
+```tsx
+...
+useEffect(() => {
+    /* N of repetitions */, true /* reverse enabled */ )
+    progress.value = withRepeat(withSpring(0.5), 3
+    scale.value = withRepeat(withSpring(2), 3, true)
+}, [])
+...
+```
+
+Just for the sake of clarity, let's also rotate the Animated.View with an animation. To rotate the object we can use the same technique that we used previously with the _borderRadius_ animation.
+Therefore let's multiply the _(progress.value \* 2PI)rad_ (of course 2\*Math.PI is just a random constant, feel free to use whatever value you want).
+
+```tsx
+...
+const reanimatedStyle = useAnimatedStyle(() => {
+    return {
+        opacity: progress.value,
+        borderRadius: progress.value * SIZE / 2,
+        transform: [
+            {scale: scale.value},
+            {rotate: `${progress.value * 2 * Math.PI}rad`}
+        ]
+    }
+}, [])
+...
+```
+
+I find it almost incredible.
+
+This animation is quite amazing and we can repeat much more than three times.
+Let's say that we want to repeat it **infinite** times. We can easily do that by replacing the **N of repetitions** with **-1**:
+
+```tsx
+...
+useEffect(() => {
+    progress.value = withRepeat(withSpring(0.5), -1 /* N of repetitions (-1 means infinite) */, true /* reverse enabled */ )
+    scale.value = withRepeat(withSpring(2), -1, true)
+}, [])
+...
+```
+
+<FinalAnimatedSquareDemo />
+
+### Last ingredient: Worklets
+
+The final question is, _"when do we need to use worklets?"_.
+At the beginning of this tutorial we talked about the magical worklet function but till now we didn't use them.
+I'm going to answer this question but for now, let's focus on a specific task.
+
+Let's say that we need to extract the logic required for the **rotate** animation. We can easily create a function called **handleRotation** and we can return the previous result.
+
+```tsx
+...
+const handleRotation = (progress: Animated.SharedValue<number>) => {
+  return `${progress.value * 2 * Math.PI}rad`;
+};
+
+export default function App() {
+...
+}
+```
+
+Intuitively at this point, we can simply call handleTranslation in the useAnimatedStyle hook, right?
+
+```tsx
+...
+const reanimatedStyle = useAnimatedStyle(() => {
+    return {
+        opacity: progress.value,
+        borderRadius: progress.value * SIZE / 2,
+        transform: [
+            {scale: scale.value},
+            {rotate: handleRotation(progress)}
+        ]
+    }
+}, [])
+...
+```
+
+By running the following code within the app, you'll notice that it starts crashing.
+
+That's because **handleRotation** is a _javascript_ function that can be handled just from the JS thread.
+**The point is that we're already dealing with worklets since useAnimatedStyle, withRepeat, withSpring (and so on and so forth) under the hood are worklets.**
+
+The issue is that we can't call a JS function from the UI Thread synchronously. In order to fix this problem, we just need to mark the handleRotation function as a worklet.
+
+```tsx
+...
+const handleRotation = (progress: Animated.SharedValue<number>) => {
+    "worklet"; // here's the magic
+    return `${progress.value * 2 * Math.PI}rad`;
+};
+
+export default function App() {
+...
+}
+```
+
+## Conclusions
+
+In conclusion, this tutorial explored the core concepts of React Native Reanimated, emphasizing its practical use for intricate animations and gesture-based interactions.
+
+The focus was on optimizing performance through worklets, executing animations directly on the _UI thread_. Key components, such as Shared Values, Reanimated Styles, Animated Views, and High Order Functions, were introduced. Practical implementation demonstrated the creation of a dynamic animation, highlighting the effective use of `useEffect` and advanced techniques like reusable worklet functions. With this knowledge, developers are equipped to leverage React Native Reanimated for creating responsive and fluid user interfaces.

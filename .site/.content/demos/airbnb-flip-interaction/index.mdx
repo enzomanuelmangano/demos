@@ -1,0 +1,86 @@
+<Title date="2025-09-02" slug="airbnb-flip-interaction" basePath="demos">
+  Airbnb Flip Interaction with Reanimated
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/airbnb-flip-interaction"
+/>
+
+An interactive profile card that flips like a real credit card. Tap it to see smooth 3D animations as it rotates to show more details on the back.
+
+## What it does
+
+Picture flipping over a credit card to read the details on the back. That's exactly what this component does, but digitally.
+
+The front shows a colorful card with the person's name and photo. Tap it, and watch it smoothly flip over to reveal stats like how many trips they've taken and places they've visited. Everything feels smooth and natural.
+
+Below the card, there's text that changes depending on which side you're looking at. During the flip, the background gets a nice blur effect to keep your focus on the card animation.
+
+## Usage
+
+```tsx
+import { FlipCard } from './flip-interaction';
+import type { ProfileType } from './flip-interaction/components/card/types';
+
+const profile: ProfileType = {
+  name: 'John Doe',
+  location: 'San Francisco',
+  trips: 12,
+  reviews: 8,
+  yearsOnAirbnb: 3,
+  birthDecade: 'Born in the 90s',
+  languages: ['Speaks English', 'Speaks Spanish'],
+  isIdentityVerified: true,
+  visitedPlaces: [
+    {
+      name: 'Paris',
+      country: 'Paris, France',
+      code: 'FR',
+      visitDate: 'March 2023',
+    },
+  ],
+};
+
+const [isFlipped, setIsFlipped] = useState(false);
+
+<TouchableOpacity onPress={() => setIsFlipped(!isFlipped)}>
+  <FlipCard profile={profile} isFlipped={isFlipped} angle="horizontal" />
+</TouchableOpacity>;
+```
+
+## How it works
+
+Uses React Native Reanimated for the animations. The card has two sides that are stacked on top of each other - when you tap, one rotates away while the other rotates into view.
+
+The blur effect in the background is timed to happen during the middle of the flip, so it looks like the card is the main focus.
+
+Everything is built with TypeScript, so you get helpful autocomplete when setting up profile data.
+
+## File structure
+
+```
+src/
+├── index.tsx                 # Main app
+├── constants.ts              # Spacing values
+└── flip-interaction/
+    └── components/card/
+        ├── index.tsx         # The flip card
+        ├── front.tsx         # Front side
+        ├── back.tsx          # Back side
+        └── pages/            # Content below card
+```
+
+The card front and back are separate components, so you can easily change how each side looks. The main card component handles all the flipping animation.
+
+I hope you find this useful! If you have any questions or feedback, feel free to reach out.
+
+## Minor Note
+
+For some reason, on the newArch the flipping animation looks blurred (as it feels that during the rotation the card gets rasterized). I'm currently investigating why this is happening.
+
+<ReanimatePromo />
+
+<SendFeedback />

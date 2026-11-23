@@ -1,0 +1,523 @@
+import { InteractivePanGesture } from './mdx-client';
+
+<Title date="2022-06-13" slug="pan-gesture-handler">
+  Introduction to Pan Gesture Handler in Reanimated
+</Title>
+
+What's up mobile devs? Today we're going to understand the basics of the PanGestureHandler component from the **react-native-gesture-handler** package. We'll also play around with the animations by using Reanimated v2.
+The result will be this nice and clean animation composed of two elements:
+
+1. A Circle 🟣
+2. A Square 🟪
+
+The purpose of this animation is to be able to drag the square in and out of the circle:
+
+- When the square is released inside the circle the spring animation will be handled
+- When the square is released outside the circle the square stays in its position
+
+<InteractivePanGesture />
+
+Try dragging the square around! When released inside the circle, it springs back to the center. When released outside, it stays in place.
+
+<GithubCard
+  repo="enzomanuelmangano/animate-with-reanimated"
+  path="src/animations/01-pan-gesture-handler-basics"
+/>
+
+### YouTube Channel
+
+What about the same tutorial as a video? 🙄
+
+<YouTubeEmbed videoId="4HUreYYoE6U" />
+
+## Project setup
+
+I've built up an Expo project with the Expo CLI and I've included the Reanimated library.
+
+```bash
+yarn add react-native-reanimated
+```
+
+**To get a super detailed explanation, [click here!](/articles/setup-reanimated-gestures)**.
+
+## Setup the main components
+
+Let's start to place the square in the center of the screen.
+
+```tsx
+...
+const SIZE = 100.0;
+
+export default function App() {
+  return (
+    <GestureHandlerRootView style={{flex: 1}}>
+      <View style={styles.container}>
+        <View style={styles.square} />
+      </View>
+    </GestureHandlerRootView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  square: {
+    width: SIZE,
+    height: SIZE,
+    backgroundColor: 'rgba(0,0,255,0.5)',
+    borderRadius: 20 // just for fun :)
+  }
+});
+```
+
+## Let's define the PanGestureHandler
+
+We need to move around the square: how to do it? Of course, we need to import our Pan Gesture Handler from **react-native-gesture-handler** and we need to wrap the square with it.
+
+```tsx
+import Animated from 'react-native-reanimated'
+import { PanGestureHandler } from 'react-native-gesture-handler'
+
+const SIZE = 100.0
+
+export default function App() {
+  return (
+    <GestureHandlerRootView style={{flex: 1}}>
+      <View style={styles.container}>
+        <PanGestureHandler>
+          <Animated.View style={styles.square} />
+        </PanGestureHandler>
+      <View style={styles.container}>
+    </GestureHandlerRootView>
+  );
+}
+```
+
+Of course, right now we cannot drag our square. To do it we need to provide the onGestureEvent property to the Pan Handler.
+
+```tsx
+<PanGestureHandler onGestureEvent={🧐🧐🧐}>
+...
+</PanGestureHandler>
+```
+
+How to do it? The answer to this question hides behind the _useAnimatedGestureHandler_ hook from **react-native-reanimated**. This hook is quite magical. It could be really helpful to handle much more than a PanGesture.
+
+The purpose of this hook is to provide us with some event callbacks:
+
+- onStart
+- onActive
+- onEnd
+- A lot more...
+
+```tsx
+import Animated, { useAnimatedGestureHandler } from 'react-native-reanimated'
+...
+
+export default function App() {
+
+  const panGestureEvent = useAnimatedGestureHandler<
+    PanGestureHandlerGestureEvent
+  >({
+    onStart: () => {},
+    onActive: (event) => {
+      console.log(event.translationX)
+    },
+    onEnd: () => {},
+  });
+
+  return (
+    <GestureHandlerRootView style={{flex: 1}}>
+      <View style={styles.container}>
+        <PanGestureHandler onGestureEvent={panGestureEvent}>
+          <Animated.View style={styles.square} />
+        </PanGestureHandler>
+      <View style={styles.container}>
+    </GestureHandlerRootView>
+  );
+}
+```
+
+Try to drag the square around the screen and check your console. I know... You can spend all day watching the console 👀.
+
+Wouldn't be great to apply this _translateX_ value to the Animated.View?
+
+To achieve this goal, we just need to take four steps:
+
+1. Create a _translateX_ Shared Value
+2. Assign the _event.translationX_ to the _translateX_ Shared Value
+3. Handle the _translateX_ Shared Value inside a Reanimated Style
+4. Apply the Reanimated Style to the Animated.View (our square)
+
+Let's do it 💪🏼
+
+```tsx
+...
+
+export default function App() {
+  // 1.
+  const translateX = useSharedValue(0)
+
+  const panGestureEvent = useAnimatedGestureHandler<
+    PanGestureHandlerGestureEvent
+  >({
+    onStart: () => {},
+    onActive: (event) => {
+      // 2.
+      translateX.value = event.translationX
+    },
+    onEnd: () => {},
+  });
+
+  // 3.
+  const rStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        {
+          translateX: translateX.value,
+        },
+      ],
+    };
+  });
+
+  return (
+    <GestureHandlerRootView style={{flex: 1}}>
+      <View style={styles.container}>
+        <PanGestureHandler onGestureEvent={panGestureEvent}>
+          <Animated.View style={[styles.square, rStyle]} /> {/* 4. */}
+        </PanGestureHandler>
+      <View style={styles.container}>
+    </GestureHandlerRootView>
+  );
+}
+```
+
+At this point, we're able to drag around the square. On the first try, everything seems to work perfectly but on the second try we can already feel that something is going wrong 🕵🏼‍♀️.
+
+The point is that we're not keeping the previous position. So on the second try, the translateX Shared Value will start again from the initial position. To fix this behavior we need to deal with the context object.
+
+## How to deal with "Context"?
+
+The context is nothing more than a simple object where we can easily store stuff. In our case, we want to store, for now, just the previous translateX position.
+
+We can access the context object from the _useAnimatedGestureHandler_ hook as the second parameter of each callback.
+
+```tsx
+...
+const panGestureEvent = useAnimatedGestureHandler<
+  PanGestureHandlerGestureEvent
+>({
+  onStart: (_, context) => {},
+  onActive: (event, context) => {
+    translateX.value = event.translationX
+  },
+  onEnd: () => {},
+});
+...
+```
+
+Now that we know what's the context, we can use it to handle the translation state. The steps are the following:
+
+1. Store the previous _translateX.value_ position in the _context.translateX_
+2. Apply the previous position to the current _translateX.value_
+
+```tsx
+...
+const panGestureEvent = useAnimatedGestureHandler<
+  PanGestureHandlerGestureEvent
+>({
+  onStart: (_, context) => {
+    context.translateX = translateX.value // 1.
+  },
+  onActive: (event, context) => {
+    translateX.value = event.translationX + context.translateX // 2.
+  },
+  onEnd: () => {},
+});
+...
+```
+
+If you reload you can see that everything is working nicely but _TypeScript_ is complaining about the _context.translateX_. That's because we need to specify the Context Type in the _useAnimatedGestureHandler_ hook:
+
+```tsx
+const panGestureEvent = useAnimatedGestureHandler<
+  PanGestureHandlerGestureEvent,
+  🦄🦄🦄
+>({
+  ...
+})
+```
+
+Let's fix it by creating the **ContextType**:
+
+```tsx
+
+type ContextType = {
+  translateX: number;
+};
+
+export default function App() {
+  ...
+  const panGestureEvent = useAnimatedGestureHandler<
+    PanGestureHandlerGestureEvent,
+    ContextType
+  >({
+    ...
+  })
+  ...
+}
+...
+```
+
+To deal with the y-axis we just need to replicate this code. As before...
+
+1. Define our translateY as a SharedValue with an initial value equal to zero
+2. Handle the **onActive** callback
+3. Handle the **onStart** callback
+4. Add the translateY type in the **ContextType**
+5. Add the translateY SharedValue in the Reanimated Style
+
+```tsx
+...
+
+type ContextType = {
+  translateX: number;
+  translateY: number;
+};
+
+export default function App() {
+  const translateX = useSharedValue(0)
+  const translateY = useSharedValue(0)
+
+  const panGestureEvent = useAnimatedGestureHandler<
+    PanGestureHandlerGestureEvent,
+    ContextType
+  >({
+    onStart: () => {
+      context.translateX = translateX.value
+      context.translateY = translateY.value
+    },
+    onActive: (event) => {
+      translateX.value = event.translationX + context.translateX
+      translateY.value = event.translationY + context.translateY
+    },
+    onEnd: () => {},
+  });
+
+
+  const rStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        {
+          translateX: translateX.value,
+        },
+        {
+          translateY: translateY.value,
+        },
+      ],
+    };
+  });
+
+  return (
+    <GestureHandlerRootView style={{flex: 1}}>
+      <View style={styles.container}>
+        <PanGestureHandler onGestureEvent={panGestureEvent}>
+          <Animated.View style={[styles.square, rStyle]} />
+        </PanGestureHandler>
+      <View style={styles.container}>
+    </GestureHandlerRootView>
+  );
+}
+```
+
+What is missing right now?
+
+- The spring animation
+- Create the circle container
+
+### Spring Animation
+
+Let's start with the spring animation. The purpose is to handle the spring animation when we release the finger from the screen. To handle this use case we just need to handle the "onEnd" callback.
+
+In particular, we need, for now, to set inside the "onEnd" callback both the translateX and translateY values equal to zero.
+
+```tsx
+...
+
+const panGestureEvent = useAnimatedGestureHandler<
+  PanGestureHandlerGestureEvent,
+  ContextType
+>({
+  onStart: () => {
+    context.translateX = translateX.value
+    context.translateY = translateY.value
+  },
+  onActive: (event) => {
+    translateX.value = event.translationX + context.translateX
+    translateY.value = event.translationY + context.translateY
+  },
+  onEnd: () => {
+    translateX.value = 0
+    translateY.value = 0
+  },
+});
+
+...
+```
+
+Right now, if you run the code, you'll see that the animation looks a little bit glitchy. That's kind of expected since we need to add the _"spring effect"_ by simple wrapping the zero value with the _"withSpring"_ high order function (from Reanimated)
+
+```tsx
+...
+import { withSpring } from 'react-native-reanimated'
+...
+
+const panGestureEvent = useAnimatedGestureHandler<
+  PanGestureHandlerGestureEvent,
+  ContextType
+>({
+  onStart: () => {
+    context.translateX = translateX.value
+    context.translateY = translateY.value
+  },
+  onActive: (event) => {
+    translateX.value = event.translationX + context.translateX
+    translateY.value = event.translationY + context.translateY
+  },
+  onEnd: () => {
+    translateX.value = withSpring(0)
+    translateY.value = withSpring(0)
+  },
+});
+
+...
+```
+
+If you're not familiar with these kinds of utilities like "withTiming", "withSpring" and so on, I highly recommend you to check out my previous video about Reanimated.
+
+Run again... And everything should be fine 😎
+
+### Outer Circle Stroke
+
+Our last step is to handle the outer circle stroke. To create this stroke we're just going to use a simple View component from react-native.
+
+So... Let's wrap our PanGestureHandler with a View from 'react-native'
+
+```tsx
+return (
+  <GestureHandlerRootView style={{ flex: 1 }}>
+    <View style={styles.container}>
+      <View style={styles.circle}>
+        <PanGestureHandler onGestureEvent={panGestureEvent}>
+          <Animated.View style={[styles.square, rStyle]} />
+        </PanGestureHandler>
+      </View>
+    </View>
+  </GestureHandlerRootView>
+);
+```
+
+Here's the circle style:
+
+```tsx
+const CIRCLE_RADIUS = SIZE * 2;
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  square: {
+    width: SIZE,
+    height: SIZE,
+    backgroundColor: 'rgba(0, 0, 255, 0.5)',
+    borderRadius: 20,
+  },
+  circle: {
+    width: CIRCLE_RADIUS * 2,
+    height: CIRCLE_RADIUS * 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: CIRCLE_RADIUS,
+    borderWidth: 5,
+    borderColor: 'rgba(0, 0, 255, 0.5)',
+  },
+});
+```
+
+At this point, we need to handle two different behaviors:
+
+1. When the square is released outside the circle ring, it must stay in its position
+2. When the square is released inside the circle ring, it must be animated with a spring animation till the initial value
+
+To handle this request we just need to deal a little bit more with the "onEnd" callback.
+
+```tsx
+...
+
+const panGestureEvent = useAnimatedGestureHandler<
+  PanGestureHandlerGestureEvent,
+  ContextType
+>({
+  onStart: () => {
+    context.translateX = translateX.value
+    context.translateY = translateY.value
+  },
+  onActive: (event) => {
+    translateX.value = event.translationX + context.translateX
+    translateY.value = event.translationY + context.translateY
+  },
+  onEnd: () => {
+    const distance = Math.sqrt(translateX.value ** 2 + translateY.value ** 2);
+
+    if (distance < CIRCLE_RADIUS) {
+      translateX.value = withSpring(0);
+      translateY.value = withSpring(0);
+    }
+  },
+});
+
+...
+```
+
+To evaluate the distance I've simply used the [Pythagorean theorem](https://www.britannica.com/science/Pythagorean-theorem).
+
+To be fully precise, we need to cover an additional edge case... In particular, when we release the finger and the square is partially outside, it must always return to the origin.
+
+To handle this use case we must check an additional distance given by half of the square size...
+
+```tsx
+...
+
+const panGestureEvent = useAnimatedGestureHandler<
+  PanGestureHandlerGestureEvent,
+  ContextType
+>({
+  onStart: () => {
+    context.translateX = translateX.value
+    context.translateY = translateY.value
+  },
+  onActive: (event) => {
+    translateX.value = event.translationX + context.translateX
+    translateY.value = event.translationY + context.translateY
+  },
+  onEnd: () => {
+    const distance = Math.sqrt(translateX.value ** 2 + translateY.value ** 2);
+
+    if (distance < CIRCLE_RADIUS + SIZE / 2) {
+      translateX.value = withSpring(0);
+      translateY.value = withSpring(0);
+    }
+  },
+});
+
+...
+```
+
+And here we go...

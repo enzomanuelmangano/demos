@@ -1,0 +1,62 @@
+<Title date="2023-03-08" slug="shared-transitions" basePath="demos">
+  Shared Element Transitions with Reanimated 🔄
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/shared-transitions"
+/>
+
+A navigation system with shared element transitions between screens.
+
+## What's This About?
+
+This component implements a navigation stack with smooth shared element transitions between screens. When navigating between the home screen and details screen, elements that appear in both screens can animate smoothly from their position in one screen to their position in the other. The implementation uses React Navigation with custom animation configurations for seamless transitions.
+
+## Technical Implementation
+
+The component uses:
+
+- React Navigation
+- Stack navigation
+- Shared elements
+- Custom animations
+- Screen transitions
+
+## Usage
+
+```tsx
+// Navigation setup
+const Stack = createNativeStackNavigator<RootStackParamsList>();
+
+// Basic usage
+<Stack.Navigator
+  initialRouteName="Home"
+  screenOptions={{
+    animation: 'fade',
+    animationDuration: 300,
+  }}
+>
+  <Stack.Screen name="Home" component={HomeScreen} />
+  <Stack.Screen name="Details" component={DetailsScreen} />
+</Stack.Navigator>;
+
+// Screen types
+type RootStackParamsList = {
+  Home: undefined;
+  Details: {
+    // Screen params
+  };
+};
+
+// Navigation
+navigation.navigate('Details', {
+  // Navigation params
+});
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

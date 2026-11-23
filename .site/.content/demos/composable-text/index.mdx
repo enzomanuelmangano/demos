@@ -1,0 +1,50 @@
+<Title date="2025-02-18" slug="composable-text" basePath="demos">
+  Composable Text with Reanimated 👋
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/composable-text"
+/>
+
+A React Native component that provides smooth, per-character animations for text transitions. Built with Reanimated's Layout Animations, it assigns a unique key to each character, enabling fluid individual character animations during text changes.
+
+## Features
+
+- Smooth per-character animations using Reanimated's Layout Animations
+- Automatic character transitions with unique key bindings
+- Customizable text and container styles
+- Optimized performance for text changes
+
+## Usage
+
+```tsx
+import { ComposableText } from 'composable-text';
+import { StyleSheet, TouchableOpacity } from 'react-native';
+
+const MyComponent = () => {
+  const [text, setText] = useState('Use Max');
+
+  return (
+    <TouchableOpacity
+      onPress={() =>
+        setText((prevText) =>
+          prevText === 'Use Max' ? 'Using Max' : 'Use Max'
+        )
+      }
+    >
+      <ComposableText
+        text={text}
+        style={styles.text}
+        containerStyle={styles.container}
+      />
+    </TouchableOpacity>
+  );
+};
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

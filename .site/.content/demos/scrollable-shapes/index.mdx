@@ -1,0 +1,80 @@
+<Title date="2025-12-16" slug="scrollable-shapes" basePath="demos">
+  Scrollable Shapes with Skia and Reanimated
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/scrollable-shapes"
+/>
+
+Swipe horizontally to morph between 3D shapes (sphere → cube → torus → heart). Each shape is rendered as 3,000 glowing points that continuously rotate.
+
+## How it works
+
+The trick is that all four shapes share the same point count. Point #0 in the sphere becomes point #0 in the cube, and so on. This lets us simply interpolate x/y/z coordinates based on scroll position to get smooth morphing.
+
+### Point distribution
+
+Getting 3,000 evenly-spaced points on a sphere isn't trivial. A naive lat/long grid clusters points at the poles. Instead, we use the Fibonacci lattice which distributes points using the golden ratio:
+
+```typescript
+const theta = (2 * Math.PI * i) / GOLDEN_RATIO;
+const phi = Math.acos(1 - 2 * (i / total));
+```
+
+The other shapes build on this. The cube maps Fibonacci sphere points onto cube faces. The torus uses a parametric grid. The heart feeds Fibonacci angles into a heart surface equation.
+
+### Rendering pipeline
+
+```
+scrollX → interpolate coords → rotate in 3D → perspective project → draw circles
+```
+
+An invisible `ScrollView` captures swipes and updates a shared value. On each frame, we:
+
+1. Interpolate each point's x/y/z between all four shapes based on scroll position
+2. Rotate the point cloud (fixed 0.2rad X-tilt + animated Y-rotation)
+3. Apply perspective projection: `scale = distance / (distance + z)`
+4. Draw a tiny circle at the projected position, sized by depth for parallax
+
+All this runs on the UI thread via Reanimated worklets. The 3,000 circles get batched into a single Skia `Path` to minimize draw calls.
+
+### Performance note
+
+The coordinate arrays are pre-structured for fast interpolation:
+
+```typescript
+// shapes/index.ts
+ALL_SHAPES_X[pointIndex] = [sphere.x, cube.x, torus.x, heart.x];
+```
+
+This avoids nested object access in the hot loop.
+
+## Adding a new shape
+
+Create a file in `shapes/` that exports an array of 3,000 `Point3D` objects, then add it to `ALL_SHAPES` in `shapes/index.ts`. The paginator and scroll snapping adjust automatically.
+
+```typescript
+// shapes/pyramid.ts
+import { N_POINTS } from './constants';
+import { normalizeShape } from './utils';
+
+const generatePyramidPoints = () => {
+  const points = [];
+  for (let i = 0; i < N_POINTS; i++) {
+    // your math here
+    points.push({ x, y, z });
+  }
+  return points;
+};
+
+export const PYRAMID_POINTS = normalizeShape(generatePyramidPoints());
+```
+
+Use `normalizeShape()` to center and scale your shape to match the others.
+
+<ReanimatePromo />
+
+<SendFeedback />

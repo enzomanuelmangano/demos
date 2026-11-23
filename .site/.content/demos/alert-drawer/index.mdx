@@ -1,0 +1,40 @@
+<Title date="2024-09-17" slug="alert-drawer" basePath="demos">
+  Family Alert Drawer with Reanimated
+</Title>
+
+<Demo />
+
+<GithubCard repo="enzomanuelmangano/demos" path="src/animations/alert-drawer" />
+
+An animated alert component that smoothly expands from a button into a detailed confirmation dialog. Inspired by modern mobile UI patterns, it provides an engaging way to present important alerts to users.
+
+## What's This About?
+
+This component transforms between two states: a compact button and an expanded alert card. When activated, it smoothly animates to reveal additional information, action buttons, and a close option, creating a seamless transition that maintains context.
+
+## Technical Implementation
+
+The component uses interpolated animations for size, color, and position transitions. It features precise timing controls and smooth state management to ensure fluid transformations between the button and expanded states.
+
+## Usage
+
+```tsx
+type AlertDrawerProps = {
+  title: string;
+  description: string;
+  buttonLabel: string;
+  onConfirm?: () => void;
+};
+
+// Example usage
+<AlertDrawer
+  title="Are you sure?"
+  description="Confirmation message here"
+  buttonLabel="Continue"
+  onConfirm={() => console.log('Confirmed')}
+/>;
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

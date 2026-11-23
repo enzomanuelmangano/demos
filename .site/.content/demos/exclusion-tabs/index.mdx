@@ -1,0 +1,63 @@
+<Title date="2024-08-27" slug="exclusion-tabs" basePath="demos">
+  Exclusion Tabs with React Native Skia
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/exclusion-tabs"
+/>
+
+A tab bar component with an exclusion blend effect for tab switching.
+
+## What's This About?
+
+This component creates a tab bar that:
+
+- Uses blend mode effects
+- Handles tab switching
+- Adapts to screen width
+- Manages active tab state
+
+## Usage
+
+```tsx
+type ExclusionTabsProps = {
+  tabs: string[];
+  activeTabIndex: number;
+  onTabChange: (tab: string) => void;
+  containerWidth: number;
+  height: number;
+};
+
+// Basic usage
+const tabs = ['Home', 'Changelog', 'Career', 'About'];
+
+<ExclusionTabs
+  tabs={tabs}
+  activeTabIndex={0}
+  onTabChange={(tab) => {
+    console.log('Selected tab:', tab);
+  }}
+  containerWidth={windowWidth}
+  height={45}
+/>;
+
+// With state management
+const [activeTabIndex, setActiveTabIndex] = useState(0);
+
+<ExclusionTabs
+  tabs={tabs}
+  activeTabIndex={activeTabIndex}
+  onTabChange={(tab) => {
+    setActiveTabIndex(tabs.indexOf(tab));
+  }}
+  containerWidth={windowWidth}
+  height={45}
+/>;
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

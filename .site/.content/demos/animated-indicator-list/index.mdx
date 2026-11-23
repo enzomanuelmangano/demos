@@ -1,0 +1,42 @@
+<Title date="2023-06-02" slug="animated-indicator-list" basePath="demos">
+  Animated Section List with Reanimated 📜
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/animated-indicator-list"
+/>
+
+A sophisticated list component with an animated header indicator that smoothly tracks scroll position. Features section headers that respond to both scroll and touch interactions, creating an intuitive navigation experience.
+
+## What's This About?
+
+This component implements a sectioned list with an animated indicator that follows the current section. As users scroll through the list or tap on section headers, the indicator smoothly animates to highlight the active section, providing clear visual feedback about the current position in the list.
+
+## Technical Implementation
+
+The component uses shared values to track scroll position and header layouts. It features precise measurements for header positioning, smooth animations for the indicator, and optimized scroll performance with event throttling.
+
+## Usage
+
+```tsx
+type HeaderListItem = {
+  header: string;
+  type: 'header';
+};
+
+type ListItem = {
+  id: string;
+  type: 'item';
+  title: string;
+};
+
+// Example usage
+<AnimatedIndicatorList />;
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

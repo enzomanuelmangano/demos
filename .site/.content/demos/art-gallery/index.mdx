@@ -1,0 +1,37 @@
+<Title date="2026-04-25" slug="art-gallery" basePath="demos">
+  Art Gallery with React Native WebGPU and Nitro
+</Title>
+
+<Demo />
+
+A photo mosaic that recreates famous paintings using 10,000 photos.
+
+## How it works
+
+Every photo from your gallery gets color-analyzed and placed on a grid to recreate a masterpiece. Pinch to zoom and you'll see that every tile is a real photo. Select a different painting from the dropdown and watch all 10,000 photos rearrange themselves.
+
+## Rendering: React Native WebGPU
+
+My first attempt used Atlas from Skia, but with 10k pictures the performance wasn't there. WebGPU buffers turned out to be way more powerful - all 10,000 tiles render in a single draw call using instanced rendering, running smoothly at 60fps.
+
+The photos are stored across 7 atlas textures (8000x8000 pixels each) to minimize texture switches and enable efficient batched rendering.
+
+## Color Matching: Nitro
+
+Every time you pick a new painting, all 10,000 photos need to be rearranged based on their dominant color. The algorithm uses LAB color space (which represents perceptual color similarity better than RGB) to find the best match for each grid cell.
+
+In JavaScript this took ~1100ms - way too slow, felt glitchy. By rewriting the same function in C++ with an internal Nitro module, it takes ~50ms. That's roughly 20x faster.
+
+The matching uses bucketed greedy matching - photos are grouped by hue, and each cell picks the best available match from its bucket.
+
+## Interactions
+
+- **Pinch to zoom** - Zoom into the mosaic to see individual photos
+- **Double tap** - Quick zoom to a specific cell
+- **Pan** - Navigate around when zoomed in
+- **Grid mode** - When zoomed in enough, cells snap into place for easy browsing
+- **Painting selection** - Header menu to switch between paintings organized by art movement and painter
+
+<GitHubRepoButtons />
+
+<SendFeedback />

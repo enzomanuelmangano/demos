@@ -1,0 +1,65 @@
+<Title date="2025-01-07" slug="everybody-can-cook" basePath="demos">
+  Everybody can cook
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/everybody-can-cook"
+/>
+
+Inspiration: [Everybody can cook from jhey ▲🐻🎈](https://x.com/jh3yy/status/1849618145545191821)
+
+Staggered text can be hypnotic and it's quite an easy way to bring a bit of joy to your projects.
+I used something very similar in Demos. Just try to search for a very specific Demo in the Home.
+
+This demo shows how to create a fun cooking-themed animation using staggered text. Each letter smoothly animates in sequence, creating a wave-like effect that makes the text come alive. The animation is powered by Reanimated and can be easily customized with different timing, delays, and even reverse animations.
+
+The component is highly reusable and can be dropped into any React Native project. You can control the animation programmatically through refs, making it perfect for interactive experiences or micro-interactions throughout your app.
+
+## Usage
+
+The main component _StaggeredText_ can be used to create animated text:
+
+```tsx
+import { useRef } from 'react';
+import {
+  StaggeredText,
+  type StaggeredTextRef,
+} from './components/staggered-text';
+
+const MyComponent = () => {
+  const textRef = useRef<StaggeredTextRef>(null);
+
+  return (
+    <StaggeredText
+      text="Hello World"
+      ref={textRef}
+      fontSize={50}
+      delay={300}
+      // Optional: Enable reverse animation
+      // enableReverse={true}
+    />
+  );
+};
+```
+
+### Controlling the Animation
+
+The component exposes three methods through its ref:
+
+```tsx
+// Start the animation
+textRef.current?.animate();
+
+// Reset to initial state
+textRef.current?.reset();
+
+// Toggle animation (requires enableReverse prop)
+textRef.current?.toggleAnimate();
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

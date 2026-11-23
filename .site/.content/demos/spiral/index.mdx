@@ -1,0 +1,67 @@
+<Title date="2022-12-21" slug="spiral" basePath="demos">
+  React Native Spiral Animation 🌀
+</Title>
+
+<Demo />
+
+<GithubCard repo="enzomanuelmangano/demos" path="src/animations/spiral" />
+
+A mesmerizing spiral animation using Skia and mathematical functions.
+
+## What's This About?
+
+This component creates an interactive spiral animation using logarithmic spiral mathematics and Skia rendering. It features touch-based interaction that triggers smooth transitions between different spiral states. The implementation includes dynamic radius calculations, gradient effects, and blur masking, creating a visually stunning and performant animation.
+
+## Technical Implementation
+
+The component uses:
+
+- Skia rendering
+- Mathematical functions
+- Touch handling
+- Gradient effects
+- Blur masking
+
+## Usage
+
+```tsx
+// Basic usage
+<Spiral />
+
+// With custom dimensions
+<Spiral
+  dimensions={{
+    width: windowWidth,
+    height: windowHeight
+  }}
+/>
+
+// Logarithmic spiral calculation
+const logarithmicSpiral = ({
+  angle,
+  index
+}: {
+  angle: number;
+  index: number;
+}) => {
+  const a = index / 4;
+  const k = 0.005;
+  return {
+    x: a * Math.exp(k * angle) * Math.cos(angle * index),
+    y: a * Math.exp(k * angle) * Math.sin(angle * index)
+  };
+};
+
+// Touch interaction
+const touchHandler = useTouchHandler({
+  onStart: () => {
+    progress.value = withTiming(1, {
+      duration: 2500
+    });
+  }
+});
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

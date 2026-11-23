@@ -1,0 +1,210 @@
+<Title date="2023-08-03" slug="the-power-of-lottie">
+  Unlocking the Power of Lottie in React Native
+</Title>
+
+## Introduction
+
+What's up, mobile devs? Today, we are going to explore the exciting world of Lottie animation in React Native. In this tutorial, we will handle two different Lottie animations - an astronaut animation and an add animation. The astronaut animation will have autoplay and loop properties enabled, while we will have full control over the add animation.
+
+Resources:
+
+- [Add Animation](https://lottiefiles.com/animations/add-new-iHJ5pxET6C)
+- [Astronaut Animation](https://lottiefiles.com/animations/astronaut-light-theme-keS0ihnMAU)
+
+### YouTube Channel
+
+Are you more a visual learner? If so, check out the video version of this tutorial on our YouTube channel. Don't forget to subscribe to our channel for more exciting content!
+
+<YouTubeEmbed videoId="fLbtTL0rOcU" />
+
+## Get Started
+
+To get started, simply create a new React Native with the Expo CLI:
+
+```bash
+npx create-expo-app -t the-power-of-lottie
+```
+
+Then, install the Lottie package:
+
+```bash
+npx expo install lottie-react-native
+```
+
+You can find the starter code in the GitHub repository, along with the final result:
+
+<GithubCard repo="enzomanuelmangano/the-power-of-lottie" />
+
+## What is Lottie?
+
+Before diving into the implementation, let's briefly understand what Lottie is all about. Lottie is a package designed by the Airbnb team. It is more than just a React Native package; Lottie is a library that renders After Effects animations in real-time on iOS, Android, and React Native.
+
+If you are not familiar with After Effects, don't worry! You can download various Lottie animations from the LottieFiles.com website. For this tutorial, I have already selected the astronaut and add animations and downloaded their respective Lottie JSON files.
+
+### Handling the Astronaut Animation
+
+To use the astronaut animation in our React Native code, we need to download the Lottie JSON file for the animation. Let's begin by creating a container view that will display the astronaut animation when there are no items in the list. Otherwise, it will show the list of items.
+
+```tsx
+import React from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
+import LottieView from 'lottie-react-native';
+
+interface AnimatedWrapperProps {
+  showAnimation: boolean;
+}
+
+const AnimatedWrapper: React.FC<AnimatedWrapperProps> = ({
+  children,
+  showAnimation,
+}) => {
+  if (showAnimation) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <LottieView
+          source={require('./assets/lottie/astronaut.json')}
+          style={{ width: '80%', aspectRatio: 1, marginBottom: 30 }}
+          autoPlay
+          loop
+        />
+        {children}
+      </View>
+    );
+  } else {
+    return <>{children}</>;
+  }
+};
+
+export default AnimatedWrapper;
+```
+
+In the code above, we have created a reusable component called AnimatedWrapper. This component takes two props - showAnimation (a boolean indicating whether to display the animation) and children (the list of items). If showAnimation is true, it will show the astronaut animation along with the list of items; otherwise, it will only show the list of items.
+
+Now, we can use this AnimatedWrapper in our main view to handle the astronaut animation:
+
+```tsx
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import AnimatedWrapper from './components/AnimatedWrapper';
+
+const MainView: React.FC = () => {
+  const [items, setItems] = useState<{ id: number }[]>([]);
+
+  const handleAddItem = () => {
+    setItems([...items, { id: items.length + 1 }]);
+  };
+
+  const handleDeleteItem = (id: number) => {
+    setItems(items.filter((item) => item.id !== id));
+  };
+
+  return (
+    <AnimatedWrapper showAnimation={items.length === 0}>
+      {items.length > 0 ? (
+        <ScrollView>
+          {items.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              onPress={() => handleDeleteItem(item.id)}
+              style={{
+                padding: 20,
+                borderBottomWidth: 1,
+                borderBottomColor: '#ccc',
+              }}
+            >
+              <Text>Item {item.id}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      ) : (
+        <Text>Add new items</Text>
+      )}
+      <TouchableOpacity
+        onPress={handleAddItem}
+        style={{ position: 'absolute', bottom: 20, right: 20 }}
+      >
+        <Text>Add</Text>
+      </TouchableOpacity>
+    </AnimatedWrapper>
+  );
+};
+
+export default MainView;
+```
+
+In the main view, we use the AnimatedWrapper component and pass the condition items.length === 0 to the showAnimation prop. When the items array is empty, the astronaut animation will be shown. Otherwise, it will display the list of items.
+
+### Handling the "Add" Animation
+
+Now let's handle the "add" animation. We want to run the animation whenever the "Add" button is pressed. To do this, we need to create a reference to the LottieView component and use it to play the animation when the button is pressed.
+
+```tsx
+import React, { useRef } from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
+import LottieView from 'lottie-react-native';
+
+const AddAnimation: React.FC = () => {
+  const buttonRef = useRef<LottieView>(null);
+
+  const handleOnPress = () => {
+    buttonRef.current?.reset();
+    buttonRef.current?.play(0, 75);
+  };
+
+  return (
+    <TouchableOpacity onPress={handleOnPress}>
+      <LottieView
+        ref={buttonRef}
+        source={require('./assets/lottie/add.json')}
+        style={{ width: '100%', aspectRatio: 1 }}
+        loop={false}
+      />
+    </TouchableOpacity>
+  );
+};
+
+export default AddAnimation;
+```
+
+In the code above, we use the useRef hook to create a reference called buttonRef for the LottieView. In the handleOnPress function, we reset the animation to its initial frame and then play it from frame 0 to frame 75 (assuming the animation has 75 frames).
+
+Now, let's add the "Add" animation to our main view:
+
+```tsx
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import AnimatedWrapper from './components/AnimatedWrapper';
+import AddAnimation from './components/AddAnimation';
+
+const MainView: React.FC = () => {
+  // ... (previous code)
+
+  return (
+    <AnimatedWrapper showAnimation={items.length === 0}>
+      {items.length > 0 ? (
+        // ... (previous code)
+      ) : (
+        <>
+          <AddAnimation />
+          <Text>Add new items</Text>
+        </>
+      )}
+      <TouchableOpacity onPress={handleAddItem} style={{ position: 'absolute', bottom: 20, right: 20 }}>
+        <Text>Add</Text>
+      </TouchableOpacity>
+    </AnimatedWrapper>
+  );
+};
+
+export default MainView;
+```
+
+Now, when we tap the "Add" button, the "Add" animation will run once.
+
+## Conclusion
+
+In this tutorial, we explored the power of Lottie animation in React Native. We created a reusable component called AnimatedWrapper to handle the astronaut animation when the list is empty. Additionally, we implemented the "Add" animation, which plays when we tap the "Add" button.
+
+Lottie allows us to add visually engaging animations to our React Native apps with ease. If you liked this tutorial, don't forget to leave a like and subscribe to our channel for more exciting content!
+
+Happy coding!

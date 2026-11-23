@@ -1,0 +1,11 @@
+{
+  "title": "Unlocking the Power of Lottie in React Native",
+  "shortTitle": "The Power of Lottie in React Native",
+  "subtitle": "Learn how to leverage Lottie animation in React Native to create visually engaging animations for your mobile apps. Enhance user experience and make your app more appealing with After Effects animations rendered in real-time.",
+  "author": "Enzo Manuel Mangano",
+  "date": "2023-08-03",
+  "slug": "the-power-of-lottie",
+  "tags": ["react", "react-native", "coding", "development", "javascript"],
+  "featuredImage": "./images/header.webp",
+  "series": "react-native-toolbelt"
+}

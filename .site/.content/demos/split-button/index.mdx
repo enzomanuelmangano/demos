@@ -1,0 +1,68 @@
+<Title date="2023-09-06" slug="split-button" basePath="demos">
+  Split Button with Reanimated and Gesture Handler 🪀
+</Title>
+
+<Demo />
+
+<GithubCard repo="enzomanuelmangano/demos" path="src/animations/split-button" />
+
+A customizable split button with icon support and gesture handling.
+
+## What's This About?
+
+This component creates an interactive split button that can display different icons on each side. It features gesture handling for smooth interactions and supports custom icon integration from Expo's vector icons library. The implementation is perfect for social login buttons, toggle switches, or any interface requiring a dual-state button.
+
+## Technical Implementation
+
+The component uses:
+
+- Gesture handling
+- Icon integration
+- Split states
+- Custom styling
+- Touch feedback
+
+## Usage
+
+```tsx
+// Basic usage
+<SplitButton />
+
+// With custom icons
+<SplitButton
+  rightIcon={
+    <AntDesign
+      name="apple1"
+      size={21}
+      color={colors.background}
+    />
+  }
+  leftIcon={
+    <AntDesign
+      name="google"
+      size={22}
+      color={colors.almostBlack}
+    />
+  }
+/>
+
+// Full implementation
+<GestureHandlerRootView style={{ flex: 1 }}>
+  <View style={styles.container}>
+    <SplitButton
+      rightIcon={rightIcon}
+      leftIcon={leftIcon}
+    />
+  </View>
+</GestureHandlerRootView>
+
+// Color theming
+const colors = {
+  background: '#FFFFFF',
+  almostBlack: '#1A1A1A'
+};
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

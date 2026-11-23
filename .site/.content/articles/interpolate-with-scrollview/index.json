@@ -1,0 +1,11 @@
+{
+  "title": "Interpolate with ScrollView like a Pro (Reanimated)",
+  "shortTitle": "Interpolate with ScrollView",
+  "subtitle": "This tutorial is going to show you how to use the interpolate function from the Reanimated package to create an amazing animation.",
+  "author": "Enzo Manuel Mangano",
+  "date": "2022-12-17",
+  "slug": "interpolate-with-scrollview",
+  "tags": ["react", "react-native", "reanimated", "animation"],
+  "featuredImage": "./images/header.webp",
+  "series": "animate-with-reanimated"
+}
