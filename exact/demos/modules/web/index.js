@@ -595,7 +595,7 @@ let lastTap = null;
 const noteTap = (e) => {
   const b = e.target?.closest?.('[data-testid^="icon-"]');
   if (!b) return;
-  lastTap = { slug: b.getAttribute('data-testid').slice(5), at: performance.now(), scroll: b.closest('[data-testid="pager"]')?.scrollLeft ?? 0 };
+  lastTap = { slug: b.getAttribute('data-testid').slice(5), at: performance.now(), scroll: pagerOffset(b.closest('[data-testid="pager"]')) };
 };
 if (DOM) document.addEventListener('pointerdown', noteTap, true);
 if (DOM) document.addEventListener('click', noteTap, true);
@@ -768,7 +768,7 @@ function launch(el, props, event) {
     art.src = new URL(p.art ?? '', document.baseURI).href;
     install();
     const tapped = lastTap && lastTap.slug === p.slug && performance.now() - lastTap.at < 2500;
-    if (tapped) { const pager = screen.querySelector('[data-testid="pager"]'); if (pager) pager.scrollLeft = lastTap.scroll; }
+    if (tapped) placePager(screen.querySelector('[data-testid="pager"]'), lastTap.scroll);
     lastTap = null;
     findIcon();
     if (!tapped || !iconFrame || reducedMotion()) {
@@ -798,7 +798,9 @@ function launch(el, props, event) {
     }
     const img = screen.querySelector(`[data-testid="icon-${CSS.escape(p.slug)}"] img`);
     if (!img) return;
+    // The layout box, moved by the pager's track (a transform frameIn leaves out).
     const f = frameIn(img, screen);
+    f.x -= pagerOffset(img.closest('[data-testid="pager"]'));
     if (f.w > 0 && f.x + f.w > 0 && f.x < sw && f.y + f.h > 0 && f.y < sh) { iconFrame = f; icon = img; iconRadius = f.w * K.iconRadiusRatio; }
   };
 
@@ -1227,6 +1229,8 @@ input{all:unset;position:absolute;inset:0;padding:0 16px 0 41px;color:#fff;font-
   // ---- the pull, on the pager ----
   const toScreen = (e) => { const r = screen.getBoundingClientRect(), k = r.width / sw || 1; return { x: (e.clientX - r.left) / k, y: (e.clientY - r.top) / k }; };
   const down = (e) => {
+    // A press the pages took never reaches this view's `up` (they stop its pointerup): a new press drops it.
+    if (track && !track.active) track = null;
     if (committed || track || !e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
     if (screen.querySelector('[data-testid="web-card"]')) return;
     const caught = !!run;
@@ -1240,9 +1244,9 @@ input{all:unset;position:absolute;inset:0;padding:0 16px 0 41px;color:#fff;font-
     if (dt > 0) track.v = track.v * 0.5 + ((pt.y - track.last.y) / dt) * 0.5;
     track.last = { y: pt.y, t: e.timeStamp };
     if (!track.active) {
-      if (Math.abs(dx) > PULL.failX || dy < -PULL.failX) { const caught = track.caught; track = null; if (caught) settleBack(0); return; }
+      if (pagerShared.dragging || Math.abs(dx) > PULL.failX || dy < -PULL.failX) { const caught = track.caught; track = null; if (caught) settleBack(0); return; }
       if (!(dy >= PULL.activate && dy > Math.abs(dx) * 1.5)) return;
-      track.active = true; armed = false;
+      track.active = true; armed = false; pagerShared.pulling = true;
       pullBase = grid > 0.5 ? unrubber(grid) : 0;
       try { track.target.dispatchEvent(new PointerEvent('pointercancel', { pointerId: track.id, pointerType: e.pointerType, isPrimary: true, bubbles: true })); } catch {}
     }
@@ -1258,6 +1262,7 @@ input{all:unset;position:absolute;inset:0;padding:0 16px 0 41px;color:#fff;font-
     if (!track || e.pointerId !== track.id || !e.isTrusted) return;
     const t = track; track = null;
     if (!t.active) { if (t.caught) settleBack(0); return; }
+    pagerShared.pulling = false;
     e.stopImmediatePropagation(); e.preventDefault();
     const swallow = (c) => { c.stopImmediatePropagation(); c.preventDefault(); };
     addEventListener('click', swallow, { capture: true, once: true }); setTimeout(() => removeEventListener('click', swallow, true), 400);
@@ -1272,9 +1277,9 @@ input{all:unset;position:absolute;inset:0;padding:0 16px 0 41px;color:#fff;font-
   // and when they stop the pull lands (past the trigger) or springs back.
   let wheel = null;
   const onWheel = (e) => {
-    if (committed || Math.abs(e.deltaY) <= Math.abs(e.deltaX) || screen.querySelector('[data-testid="web-card"]')) return;
+    if (committed || pagerShared.dragging || Math.abs(e.deltaY) <= Math.abs(e.deltaX) || screen.querySelector('[data-testid="web-card"]')) return;
     if (!wheel && e.deltaY >= 0) return;
-    if (!wheel) { stopRun(); wheel = { travel: PULL.activate, timer: 0 }; armed = false; pullBase = 0; }
+    if (!wheel) { stopRun(); wheel = { travel: PULL.activate, timer: 0 }; armed = false; pullBase = 0; pagerShared.pulling = true; }
     wheel.travel = Math.max(0, wheel.travel - e.deltaY * (e.deltaMode === 1 ? 16 : 1) * 0.5);
     const x = Math.max(0, wheel.travel - PULL.activate), pp = damp(x);
     reveal = Math.min(pp / damp(PULL.trigger - PULL.activate), 1); pull = pp; grid = rubber(x);
@@ -1282,7 +1287,7 @@ input{all:unset;position:absolute;inset:0;padding:0 16px 0 41px;color:#fff;font-
     if (!armed && wheel.travel > PULL.trigger) { armed = true; haptics.play('impact-light'); }
     else if (armed && wheel.travel < PULL.trigger * PULL.disarm) armed = false;
     clearTimeout(wheel.timer);
-    wheel.timer = setTimeout(() => { wheel = null; if (armed) commit(); else settleBack(0); }, 140);
+    wheel.timer = setTimeout(() => { wheel = null; pagerShared.pulling = false; if (armed) commit(); else settleBack(0); }, 140);
   };
 
   // ---- the committed search ----
@@ -1295,7 +1300,7 @@ input{all:unset;position:absolute;inset:0;padding:0 16px 0 41px;color:#fff;font-
     const row = e.target.closest?.('.row');
     if (row) {
       haptics.play('selection');
-      lastTap = { slug: row.dataset.slug, at: performance.now(), scroll: pager?.scrollLeft ?? 0 };
+      lastTap = { slug: row.dataset.slug, at: performance.now(), scroll: pagerOffset(pager) };
       event(1, row.dataset.slug);
       setTimeout(() => input.blur(), 120);
       return;
@@ -1323,8 +1328,8 @@ input{all:unset;position:absolute;inset:0;padding:0 16px 0 41px;color:#fff;font-
     sw = screen.offsetWidth; sh = screen.offsetHeight;
     if (box) box.style.transformOrigin = '50% 50%';
     if (pager) {
-      // The pager scrolls sideways itself; a vertical pull is this view's (no browser pan takes the touch).
-      pager.style.touchAction = 'pan-x';
+      // No browser pan takes the touch (the contract's touch-action none): the pages are `pagerDrive`'s, a vertical
+      // pull is this view's.
       pager.addEventListener('pointerdown', down, true);
       pager.addEventListener('touchmove', touchmove, { capture: true, passive: false });
       // Passive: the pull's wheel needs no preventDefault (the pager does not scroll vertically), and a blocking
@@ -1342,6 +1347,8 @@ input{all:unset;position:absolute;inset:0;padding:0 16px 0 41px;color:#fff;font-
     set(n) { p = n; setRows(); layout(); },
     destroy() {
       stopRun(); searches.delete(me);
+      if (track?.active || wheel) pagerShared.pulling = false;
+      clearTimeout(wheel?.timer);
       pager?.removeEventListener('pointerdown', down, true); pager?.removeEventListener('touchmove', touchmove, { capture: true }); pager?.removeEventListener('wheel', onWheel, { passive: true });
       removeEventListener('pointermove', move, true); removeEventListener('pointerup', up, true); removeEventListener('pointercancel', up, true);
       if (box) box.style.transform = '';
@@ -1359,92 +1366,279 @@ const MENU_ICONS = {
   share: '<path d="M10 2.8V12.5M6.6 6.1L10 2.8L13.4 6.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 8.6H5.6C4.7 8.6 4 9.3 4 10.2V16C4 16.9 4.7 17.6 5.6 17.6H14.4C15.3 17.6 16 16.9 16 16V10.2C16 9.3 15.3 8.6 14.4 8.6H13" stroke-linecap="round"/>',
   code: '<path d="M5.5 2.8H11.5L15.5 6.8V16.2C15.5 16.9 14.9 17.5 14.2 17.5H5.8C5.1 17.5 4.5 16.9 4.5 16.2V3.8C4.5 3.2 4.9 2.8 5.5 2.8Z" stroke-linejoin="round"/><path d="M11.3 2.9V7H15.4M7.5 10.5H12.5M7.5 13.5H12.5" stroke-linecap="round"/>',
 };
-// ---- The launcher's pager on a desktop: a mouse drags the pages, a page snaps -----------------------------------
-// Touch and trackpads scroll the pager natively (scroll-snap, momentum, the browser's rubber band); a mouse cannot
-// scroll sideways, so a press-and-drag moves the pages with the pointer (in the frame's scaled coordinates), resists
-// past the first and last page, and a release snaps one page on by the throw (or back). Arrow keys page, a tap on
-// the dots pages toward its side (as iOS's page control), and the icons are loaded at once rather than lazily, so a
-// page swiped to never shows empty tiles (the phone draws them predecoded).
+// ---- The launcher's pager: a paging UIScrollView on the web ---------------------------------------------------------
+// One path for a mouse, a trackpad and a finger: the pages sit on a track (`pager-track`) this moves by `transform`
+// only (the pager itself never scrolls natively, so no browser snap or momentum runs alongside). Dragging follows the
+// pointer 1:1 (in the frame's scaled coordinates) and resists past the first and last page on UIScrollView's rubber
+// band; the release picks the page as UIKit's paging does (a throw over 0.5 pt/ms goes one page its way from where the
+// pages are, never more; slower, the nearer page) and settles there on a critically damped spring (response 0.4 s)
+// that starts at the release velocity, so the motion decelerates out of the throw with no jump. A new press catches
+// the pages mid-settle where they are. A trackpad's two-finger swipe is the same drag: its deltas move the pages, and
+// the gesture ends when its events pause or the OS's momentum tail begins (the deltas start decaying), after which the
+// tail is ignored. Arrow keys page, a tap on the dots pages toward its side (as iOS's page control), the current dot
+// follows the pages live, and the icons are loaded at once rather than lazily, so a page swiped to never shows empty
+// tiles (the phone draws them predecoded).
+const PAGER = { response: 0.4, slowest: 0.7, flick: 500, rubber: 0.55, mouseSlop: 6, touchSlop: 8, wheelGap: 60, velocityMs: 80 };
+// Where the launcher's pages are, in pages, shared by its copies (the home's route and the one under an open demo).
+// `dragging` and `pulling` keep the pages and the pull-to-search from both taking one gesture.
+const pagerShared = { page: 0, dragging: false, pulling: false };
+const pagers = new WeakMap(), placed = new WeakMap();
+// The launcher pager's offset in pt (what its track is moved by).
+const pagerOffset = (pager) => (pager ? pagers.get(pager)?.offset() ?? placed.get(pager) ?? 0 : 0);
+// Shows `pager` at `offset` pt, before its drive runs too (the copy under a demo opening out of a tapped icon).
+const placePager = (pager, offset) => {
+  if (!pager) return;
+  const d = pagers.get(pager);
+  if (d) return d.set(offset);
+  placed.set(pager, offset);
+  pagerShared.page = offset / (pager.clientWidth || 1);
+  const track = pager.querySelector('[data-testid="pager-track"]');
+  if (track) track.style.transform = offset ? `translate3d(${-offset}px,0,0)` : '';
+};
 function pagerDrive(board, screenOf) {
-  const pager = board.querySelector('[data-testid="pager"]');
-  if (!pager) return () => {};
+  const pager = board.querySelector('[data-testid="pager"]'), track = pager?.querySelector('[data-testid="pager-track"]');
+  if (!pager || !track) return () => {};
+  track.style.willChange = 'transform';
   const width = () => pager.clientWidth || 1;
-  const pages = () => Math.max(1, Math.round(pager.scrollWidth / width()));
-  const page = () => Math.round(pager.scrollLeft / width());
-  const go = (n) => { const to = Math.max(0, Math.min(pages() - 1, n)); pager.scrollTo({ left: to * width(), behavior: reducedMotion() ? 'auto' : 'smooth' }); };
-  let drag = null;
+  const pages = () => Math.max(1, Math.round(track.scrollWidth / width()));
+  // Sizes are read at a press, a wheel gesture's start, a page call and a resize, never per frame: read after the last
+  // frame's transform write, each forced a style recalc.
+  let w = width(), count = pages(), max = (count - 1) * w;
+  const measure = () => { w = width(); count = pages(); max = (count - 1) * w; };
+  let pos = Math.min(Math.max(0, pagerShared.page), count - 1) * w, vel = 0, anim = 0, drag = null, wheel = null, lit = -1;
   const scale = () => { const s = screenOf(); return s ? s.getBoundingClientRect().width / (s.offsetWidth || 1) : 1; };
-  const rubber = (x, d) => (1 - 1 / (Math.abs(x) * 0.55 / d + 1)) * d * Math.sign(x);
+  // UIScrollView's rubber band: `d` pt pulled past an end shows (1 - 1 / (d * 0.55 / w + 1)) * w; and its inverse.
+  const band = (d) => (1 - 1 / (d * PAGER.rubber / w + 1)) * w;
+  const unband = (x) => w / PAGER.rubber * (1 / (1 - Math.min(x, w * 0.99) / w) - 1);
+  const shown = (raw) => (raw < 0 ? -band(-raw) : raw > max ? max + band(raw - max) : raw);
+  const unshown = (p) => (p < 0 ? -unband(-p) : p > max ? max + unband(p - max) : p);
+  const dots = () => board.querySelector('[data-testid="page-dots"]');
+  const light = () => {
+    const n = Math.min(Math.max(0, Math.round(pos / w)), count - 1);
+    const row = dots();
+    if (n === lit && row?.dataset.lit === String(n)) return;
+    lit = n;
+    if (!row) return;
+    row.dataset.lit = String(n);
+    [...row.children].forEach((d, i) => { d.style.backgroundColor = i === n ? '#ffffff' : 'rgba(255,255,255,0.4)'; });
+  };
+  // While the pages move the icons take no hit tests (a press lands on the pager, which catches them): the content
+  // moving under a still pointer re-ran hover and hit testing, and restyled the icons, every frame.
+  let moving = false;
+  const still = (m) => { if (m !== moving) { moving = m; track.style.pointerEvents = m ? 'none' : ''; } };
+  // The track's transform is a paused animation's time, never its style attribute: the host's sheets select on
+  // `[style*=...]` inside `:has()`, so every write of an inline style restyled the ~350 elements of the home (1.7 ms a
+  // frame). One linear keyframe pair spans the offsets the pages can show (a screen past either end, the rubber band's
+  // limit), 1 ms of time per pt.
+  let shift = null, lo = 0, hi = 0;
+  const place = () => {
+    if (!shift || lo !== -w || hi !== max + w) {
+      shift?.cancel();
+      lo = -w; hi = max + w;
+      shift = track.animate([{ transform: `translate3d(${-lo}px,0,0)` }, { transform: `translate3d(${-hi}px,0,0)` }], { duration: hi - lo, fill: 'both', easing: 'linear' });
+      shift.pause();
+      track.style.transform = '';
+    }
+    shift.currentTime = Math.min(Math.max(pos, lo), hi) - lo;
+  };
+  const render = () => {
+    still(!!(anim || drag?.active || (wheel && !wheel.released)));
+    place();
+    pagerShared.page = pos / w;
+    light();
+  };
+  const stop = () => { if (anim) { cancelAnimationFrame(anim); anim = 0; } };
+  // The settle: x(t) = target + e^(-wt) (x0 + (v0 + w x0) t), critically damped, starting at the release velocity.
+  // Its acceleration at the release is w^2 D - 2 w v0 (D the distance left, v0 the speed toward it), so a throw that
+  // carries the page (v0 >= w D / 2) only decelerates from the finger's speed, as iOS's paging does; w is eased down to
+  // 2 v0 / D (no slower than a 0.7 s response) so a medium throw decays too instead of being kicked on (blended in up to
+  // the flick speed, so a gentle release is no slower than one at rest); and a throw fast enough to carry past the page
+  // (v0 > w D) stiffens it to w = v0 / D, the plain exponential approach, so a page never overshoots its edge. Released
+  // at rest or away from the page, it is the 0.4 s response spring.
+  const settle = (target, v0) => {
+    stop();
+    if (reducedMotion()) { pos = target; vel = 0; render(); return; }
+    const x0 = pos - target, D = Math.abs(x0), toward = -v0 * Math.sign(x0);
+    let om = 2 * Math.PI / PAGER.response;
+    if (D > 0.5 && toward > 0) {
+      const eased = Math.max(Math.min(om, 2 * toward / D), 2 * Math.PI / PAGER.slowest);
+      om = Math.max(om + (eased - om) * Math.min(1, toward / PAGER.flick), toward / D);
+    }
+    // The clock starts a frame before the first settle frame, which so moves on by one frame's travel from the last
+    // dragged one (a rAF time can precede the release's own timestamp, which ran the curve backwards for a frame).
+    const B = v0 + om * x0;
+    let t0 = -1;
+    const tick = (now) => {
+      if (t0 < 0) t0 = now - 1000 / 60;
+      const t = (now - t0) / 1000, e = Math.exp(-om * t);
+      pos = target + e * (x0 + B * t); vel = e * (v0 - om * B * t);
+      if (Math.abs(pos - target) < 0.05 && Math.abs(vel) < 2) { pos = target; vel = 0; anim = 0; render(); return; }
+      render();
+      anim = requestAnimationFrame(tick);
+    };
+    anim = requestAnimationFrame(tick);
+  };
+  // UIKit's paging target: a throw moves one page its way from where the pages are, else the nearer page.
+  const release = (v) => {
+    const p = pos / w;
+    let to = v > PAGER.flick ? Math.floor(p) + 1 : v < -PAGER.flick ? Math.ceil(p) - 1 : Math.round(p);
+    to = Math.max(0, Math.min(count - 1, to));
+    settle(to * w, v);
+  };
+  const go = (n) => { measure(); settle(Math.max(0, Math.min(count - 1, n)) * w, anim ? vel : 0); };
+  // The release velocity (pt/s of the offset): the samples of the last 80 ms before the lift, none if the finger rested.
+  const velocity = (samples, at) => {
+    const s = samples.filter((q) => at - q.t <= PAGER.velocityMs);
+    if (s.length < 2 || at - s.at(-1).t > 50) return 0;
+    const a = s[0], b = s.at(-1);
+    return b.t > a.t ? (b.p - a.p) / (b.t - a.t) * 1000 : 0;
+  };
+
+  // ---- pointer (mouse and touch) ----
   const down = (e) => {
-    if (e.pointerType !== 'mouse' || e.button !== 0 || drag) return;
-    // Sizes are read here, once: read in a move, after the last move's writes, each forced a style and layout.
-    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, from: pager.scrollLeft, startPage: page(), active: false, samples: [], k: scale(), w: width(), max: (pages() - 1) * width() };
+    if (drag && !drag.active) drag = null;
+    if (drag || !e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    const screen = screenOf();
+    if (screen?.querySelector('[data-testid="web-card"]')) return;
+    measure();
+    const caught = !!anim;
+    stop(); vel = 0; wheel = null;
+    drag = { id: e.pointerId, type: e.pointerType, x: e.clientX, y: e.clientY, from: unshown(pos), active: false, caught, samples: [], k: scale(), target: e.target };
+    // A press that stops moving pages is not a tap on the icon under it (as a UIScrollView catching its deceleration).
+    if (caught) { cancelPress(e); drag.swallow = true; }
+  };
+  const cancelPress = (e) => {
+    try { e.target.dispatchEvent(new PointerEvent('pointercancel', { pointerId: e.pointerId, pointerType: e.pointerType, isPrimary: true, bubbles: true })); } catch {}
   };
   const move = (e) => {
     if (!drag || e.pointerId !== drag.id) return;
     const dx = (e.clientX - drag.x) / drag.k, dy = (e.clientY - drag.y) / drag.k;
     if (!drag.active) {
-      if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { drag = null; return; }
-      if (Math.abs(dx) < 6) return;
-      drag.active = true;
-      pager.style.scrollSnapType = 'none';
-      try { e.target.dispatchEvent(new PointerEvent('pointercancel', { pointerId: e.pointerId, pointerType: 'mouse', bubbles: true })); } catch {}
+      // The pull-to-search took the press, or it goes up or down: not the pages'.
+      if (pagerShared.pulling || (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx))) { const d = drag; drag = null; if (d.caught) release(0); return; }
+      if (Math.abs(dx) < (e.pointerType === 'mouse' ? PAGER.mouseSlop : PAGER.touchSlop) || Math.abs(dx) <= Math.abs(dy)) return;
+      drag.active = true; pagerShared.dragging = true;
+      // Tracking starts at the finger, not at the slop: the pages take the slop's travel at once, as UIKit's pan does.
+      if (!drag.caught) cancelPress(e);
     }
     e.stopImmediatePropagation(); e.preventDefault();
-    drag.samples.push({ t: e.timeStamp, x: dx });
-    while (drag.samples.length > 2 && e.timeStamp - drag.samples[0].t > 100) drag.samples.shift();
-    const max = drag.max, want = drag.from - dx;
-    const over = want < 0 ? want : want > max ? want - max : 0;
-    pager.scrollLeft = Math.max(0, Math.min(max, want));
-    const band = over ? `translateX(${-rubber(over, drag.w)}px)` : '';
-    if (band !== drag.band) { pager.style.transform = band; drag.band = band; }
+    pos = shown(drag.from - dx);
+    drag.samples.push({ t: e.timeStamp, p: pos });
+    while (drag.samples.length > 2 && e.timeStamp - drag.samples[0].t > 150) drag.samples.shift();
+    render();
   };
   const up = (e) => {
+    // Not the pointercancel this (or the pull) sends the icon under the press.
     if (!drag || e.pointerId !== drag.id || !e.isTrusted) return;
-    const d = drag; drag = null;
-    if (!d.active) return;
-    e.stopImmediatePropagation();
-    const swallow = (c) => { c.stopImmediatePropagation(); c.preventDefault(); };
-    addEventListener('click', swallow, { capture: true, once: true }); setTimeout(() => removeEventListener('click', swallow, true), 400);
-    const a = d.samples[0], b = d.samples.at(-1), v = a && b && b.t > a.t ? (b.x - a.x) / (b.t - a.t) * 1000 : 0;
-    const moved = d.from - pager.scrollLeft;
-    let to = d.startPage;
-    if (v < -300 || (Math.abs(v) <= 300 && moved < -width() / 2)) to = d.startPage + 1;
-    else if (v > 300 || (Math.abs(v) <= 300 && moved > width() / 2)) to = d.startPage - 1;
-    if (pager.style.transform) {
-      pager.animate([{ transform: pager.style.transform }, { transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.25,1,.35,1)' });
-      pager.style.transform = '';
+    const d = drag; drag = null; if (d.active) pagerShared.dragging = false;
+    if (d.active || d.swallow) {
+      e.stopImmediatePropagation();
+      const swallow = (c) => { c.stopImmediatePropagation(); c.preventDefault(); };
+      addEventListener('click', swallow, { capture: true, once: true }); setTimeout(() => removeEventListener('click', swallow, true), 400);
     }
-    pager.style.scrollSnapType = '';
-    go(to);
+    if (!d.active) { if (d.caught) release(0); return; }
+    release(e.type === 'pointerup' ? velocity(d.samples, e.timeStamp) : 0);
   };
+  const touchmove = (e) => { if (drag?.active && e.cancelable) e.preventDefault(); };
+
+  // ---- trackpad (a two-finger swipe arrives as wheel deltaX) ----
+  // While the fingers are down the deltas move the pages 1:1. The gesture ends after `wheelGap` ms without an event or
+  // when the deltas start decaying as the OS's momentum does (five in a row, each a steady fraction of the one before:
+  // a finger's deltas jitter); the release then runs as a drag's. The momentum events that follow are ignored, unless
+  // one grows or turns, which is new fingers.
+  const momentum = (m) => {
+    if (m.length < 5 || m[4] > m[0] * 0.9) return false;
+    const r = m.slice(1).map((x, i) => x / m[i]);
+    return Math.max(...r) <= 1 && Math.min(...r) >= 0.7 && Math.max(...r) - Math.min(...r) < 0.12;
+  };
+  const endWheel = () => {
+    const g = wheel;
+    if (!g || g.released) return;
+    clearTimeout(g.timer);
+    g.released = true; pagerShared.dragging = false;
+    release(velocity(g.samples, g.last));
+    g.timer = setTimeout(() => { if (wheel === g) wheel = null; }, 160);
+  };
+  const onWheel = (e) => {
+    const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? w : 1;
+    const dx = e.deltaX * unit, dy = e.deltaY * unit;
+    if (!wheel && Math.abs(dx) <= Math.abs(dy)) return;
+    if (pagerShared.pulling || screenOf()?.querySelector('[data-testid="web-card"]')) return;
+    // A horizontal wheel here is the pages' (and never the browser's history swipe).
+    if (e.cancelable) e.preventDefault();
+    // The frame's scale, read once a gesture (read per event, after the last write, it forced a layout).
+    const k = wheel?.k ?? scale(), d = dx / k, mag = Math.abs(d), dir = Math.sign(d);
+    if (wheel?.released) {
+      clearTimeout(wheel.timer);
+      const tail = (dir === 0 || dir === wheel.dir) && mag <= wheel.prev * 1.15 + 0.5 && e.timeStamp - wheel.last < 120;
+      wheel.prev = mag; wheel.last = e.timeStamp;
+      if (tail) { const g = wheel; g.timer = setTimeout(() => { if (wheel === g) wheel = null; }, 160); return; }
+      wheel = null;
+    }
+    if (!wheel) {
+      measure(); stop(); vel = 0;
+      wheel = { k, raw: unshown(pos), samples: [], last: e.timeStamp, prev: mag, dir, mags: [], timer: 0, released: false };
+      pagerShared.dragging = true;
+    }
+    const g = wheel;
+    if (dir !== g.dir || mag === 0) g.mags = [];
+    g.mags.push(mag); if (g.mags.length > 5) g.mags.shift();
+    if (dir) g.dir = dir;
+    g.prev = mag; g.last = e.timeStamp;
+    g.raw += d; pos = shown(g.raw);
+    g.samples.push({ t: e.timeStamp, p: pos });
+    while (g.samples.length > 2 && e.timeStamp - g.samples[0].t > 150) g.samples.shift();
+    render();
+    clearTimeout(g.timer);
+    if (momentum(g.mags)) endWheel();
+    else g.timer = setTimeout(endWheel, PAGER.wheelGap);
+  };
+
   // A tap on the dots: a page toward the tapped side of the current dot.
-  const dots = pager.nextElementSibling;
   const dotTap = (e) => {
-    const r = dots.getBoundingClientRect(), n = pages(), at = (e.clientX - r.left) / r.width;
-    const current = (page() + 0.5) / n;
-    if (Math.abs(at - current) > 0.5 / n) go(page() + (at > current ? 1 : -1));
+    const row = e.target.closest?.('[data-testid="page-dots"]');
+    if (!row || !board.contains(row)) return;
+    measure();
+    const r = row.getBoundingClientRect(), n = count, at = (e.clientX - r.left) / r.width, now = Math.round(pos / w);
+    const current = (now + 0.5) / n;
+    if (Math.abs(at - current) > 0.5 / n) go(now + (at > current ? 1 : -1));
   };
-  if (dots) { dots.style.cursor = 'pointer'; dots.addEventListener('click', dotTap); }
   const key = (e) => {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
     const screen = screenOf();
     if (!screen || screen.querySelector('[data-testid="web-card"]') || !pager.offsetParent || /INPUT|TEXTAREA/.test(document.activeElement?.tagName ?? '')) return;
     if (document.activeElement?.shadowRoot?.activeElement) return;
     e.preventDefault();
-    go(page() + (e.key === 'ArrowRight' ? 1 : -1));
+    go(Math.round(pos / w) + (e.key === 'ArrowRight' ? 1 : -1));
   };
-  // Every icon now, not when its page nears the screen.
-  const eager = () => { for (const img of board.querySelectorAll('[data-testid^="icon-"] img')) if (img.loading !== 'eager') { img.loading = 'eager'; img.decode?.().catch(() => {}); } };
-  eager();
+  // Every icon now, not when its page nears the screen; the dots relit when the pages change.
+  const eager = () => {
+    for (const img of board.querySelectorAll('[data-testid^="icon-"] img')) if (img.loading !== 'eager') { img.loading = 'eager'; img.decode?.().catch(() => {}); }
+    if (!drag && !wheel && !anim) measure();
+    light();
+  };
+  // A resize (a new screen width) keeps the page, not the pixels.
+  const resized = () => { if (drag || wheel || anim) return; const p = pos / w; measure(); pos = Math.min(Math.max(0, Math.round(p)), count - 1) * w; render(); };
+  const ro = new ResizeObserver(resized);
+  ro.observe(pager);
+  eager(); render();
   const watch = new MutationObserver(eager);
   watch.observe(pager, { childList: true, subtree: true });
+  const me = { offset: () => pos, set(p) { stop(); drag = null; wheel = null; measure(); pos = p; render(); } };
+  pagers.set(pager, me);
+  board.addEventListener('click', dotTap);
   pager.addEventListener('pointerdown', down, true);
+  pager.addEventListener('touchmove', touchmove, { capture: true, passive: false });
+  pager.addEventListener('wheel', onWheel, { passive: false });
   addEventListener('pointermove', move, true); addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true);
   addEventListener('keydown', key);
   return () => {
-    watch.disconnect(); dots?.removeEventListener('click', dotTap);
+    stop(); shift?.cancel(); watch.disconnect(); ro.disconnect(); pagers.delete(pager); clearTimeout(wheel?.timer);
+    if (drag?.active || (wheel && !wheel.released)) pagerShared.dragging = false;
+    board.removeEventListener('click', dotTap);
     pager.removeEventListener('pointerdown', down, true);
+    pager.removeEventListener('touchmove', touchmove, { capture: true });
+    pager.removeEventListener('wheel', onWheel, { passive: false });
     removeEventListener('pointermove', move, true); removeEventListener('pointerup', up, true); removeEventListener('pointercancel', up, true);
     removeEventListener('keydown', key);
   };

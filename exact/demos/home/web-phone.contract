@@ -29,12 +29,9 @@ component WebSpringboard
     safeTop: number
     safeBottom: number
     open: action
-  state page = 0
   derive area = sh - safeTop - safeBottom
   derive per = perPage(sw, area)
   derive pages = sw > 0 and area > 0 ? range(pageCount(demos.length, per)) : []
-  action scrolled(x: number, y: number)
-    page = max(0, floor(x / sw + 0.5))
   view
     column position="absolute" inset=0 testId="springboard"
       // A static wallpaper, edge to edge: the iPhone's PNG as WebP (2.0 MB -> 0.29 MB, same 1206 x 2622).
@@ -43,31 +40,31 @@ component WebSpringboard
       column position="absolute" inset=0 padding-top=safeTop padding-bottom=safeBottom box-sizing="border-box" testId="web-home-zoom"
         // What the pull-to-search moves down on its rubber band (the page module's `search-reveal`).
         column flex=1 min-height=0 testId="web-home-pull"
-          // Every page is a snap stop the width of the screen, as the native pager.
-          row testId="pager" flex=1 min-height=0 overflow-x="auto" overflow-y="hidden" scroll-snap-type="x mandatory"
-            scrollbar-width="none"
-            // contract-lint-disable-next-line no-per-frame-commit -- written only when the page number changes
-            scroll=scrolled
-            for p in pages key=p
-              column width=sw height="100%" flex-shrink=0 scroll-snap-align="start" scroll-snap-stop="always"
-                padding="16px 22px 0" box-sizing="border-box"
-                row flex-wrap="wrap" align-content="flex-start" row-gap=22
-                  for d in demos.slice(p * per, (p + 1) * per) key=d.slug
-                    button press=open(d.slug) appearance="none" testId=`icon-${d.slug}` aria-label=d.name padding=0
-                      border-width=0 width=cellWidth(sw) display="flex" flex-direction="column" align-items="center" gap=6
-                      background-color="rgba(0,0,0,0)"
-                      :hover
-                        background-color = "rgba(0,0,0,0)"
-                      :active
-                        -exact-press-scale = 0.9
-                      image d.icon width=iconSize(sw) height=iconSize(sw) border-radius=(iconSize(sw) * 0.2237)
-                        corner-shape="-exact-continuous" aria-hidden=true
-                      text d.label font-size=11 font-weight=500 color="#ffffff" text-align="center" white-space="nowrap"
-                        overflow="hidden" text-overflow="ellipsis" max-width=(cellWidth(sw) - 4)
-          if pages.length > 1
-            row height=44 flex-shrink=0 justify-content="center" align-items="center" gap=9 aria-hidden=true
+          // The pages, a screen wide each, on one track the page module moves (modules/web/index.js `pagerDrive`): a
+          // paging UIScrollView on the web, one code path for a mouse, a trackpad and a finger (no native scroll, so
+          // no browser snap or momentum fights it). The page module also lights the current dot.
+          row testId="pager" flex=1 min-height=0 overflow="hidden" touch-action="none"
+            row testId="pager-track" flex-shrink=0 height="100%"
               for p in pages key=p
-                view width=7 height=7 border-radius=3.5 background-color=(p == page ? "#ffffff" : "rgba(255,255,255,0.4)")
+                column width=sw height="100%" flex-shrink=0
+                  padding="16px 22px 0" box-sizing="border-box"
+                  row flex-wrap="wrap" align-content="flex-start" row-gap=22
+                    for d in demos.slice(p * per, (p + 1) * per) key=d.slug
+                      button press=open(d.slug) appearance="none" testId=`icon-${d.slug}` aria-label=d.name padding=0
+                        border-width=0 width=cellWidth(sw) display="flex" flex-direction="column" align-items="center" gap=6
+                        background-color="rgba(0,0,0,0)"
+                        :hover
+                          background-color = "rgba(0,0,0,0)"
+                        :active
+                          -exact-press-scale = 0.9
+                        image d.icon width=iconSize(sw) height=iconSize(sw) border-radius=(iconSize(sw) * 0.2237)
+                          corner-shape="-exact-continuous" aria-hidden=true
+                        text d.label font-size=11 font-weight=500 color="#ffffff" text-align="center" white-space="nowrap"
+                          overflow="hidden" text-overflow="ellipsis" max-width=(cellWidth(sw) - 4)
+          if pages.length > 1
+            row testId="page-dots" height=44 flex-shrink=0 justify-content="center" align-items="center" gap=9 aria-hidden=true
+              for p in pages key=p
+                view width=7 height=7 border-radius=3.5 background-color="rgba(255,255,255,0.4)"
                   transition="background-color 160ms ease"
       // The icons' long-press menu (and a right click on a desktop): Inspiration, Share, View Code, as AppIcon.swift's
       // context menu, drawn by the page module's `icon-grid` over the lifted icon.

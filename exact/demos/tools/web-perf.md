@@ -17,8 +17,15 @@ The final sweep and the launcher runs are in web-parity.md ("Final summary"). Pr
 `serve.ts`; `load.ts` as below.
 
 Open (not fixed, each small): scroll-progress commits `offset` per scroll event (its first scroll has one 33 ms
-frame, the host's layout-transition glue's first run); a trackpad swipe on the pager has one 33 ms frame at its snap;
-the first open of a GPU demo in a page (see the hard limits in web-parity.md).
+frame, the host's layout-transition glue's first run); the first open of a GPU demo in a page (see the hard limits in web-parity.md).
+
+Home pager (2026-11-23, branch web-home-scroll): one JS paging scroll view for mouse, trackpad and touch
+(`pagerDrive`, modules/web/index.js), the track moved by a paused animation's time, never an inline style (the host's
+`:has([style*=...])` rules restyled ~350 elements per style write: UpdateLayoutTree 476 -> 16 ms over 4 mouse drags,
+main thread 707 -> 139 ms). VSYNC=1: drags and settles 0 frames over 16.7 ms (desktop mouse, trackpad wheel with a
+momentum tail, touch at 4x CPU); uncapped rAF p95 0.3-0.7 ms. A flick released at 1491 pt/s settles at 1480 pt/s in
+its first frame and decelerates to the page with no overshoot; the trackpad's snap frame of 33 ms is gone (no native
+snap).
 
 The Demos app on the web, measured 2026-11-22 on branch `exact-web` (Apple M3 Pro, Chrome 1xx headless with the real
 GPU: Metal through ANGLE/Dawn, `--disable-gpu-vsync --disable-frame-rate-limit`, so rAF is not capped at 60 Hz).
