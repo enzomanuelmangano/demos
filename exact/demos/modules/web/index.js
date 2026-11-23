@@ -416,6 +416,42 @@ if (DOM) {
   addEventListener('load', strip);
 }
 
+// Named scroll timelines (`scroll-timeline="--name y"` on a scroller, `animation-timeline="--name"` on views outside it
+// under a `timeline-scope`): the host writes them as `--exact-scroll-timeline` / `--exact-animation-timeline` and its
+// motion glue hands a name the browser runs to CSS only when it follows a drag timeline, which a page with no drag never
+// does, so the consumers stayed paused at their start (animated-indicator-list's header and bar never moved). Hand them
+// over here, as the glue would: the name as `animation-timeline`, the animations running. Only names a scroller in the
+// page declares; a drag timeline stays the glue's.
+if (DOM && typeof CSS !== 'undefined' && CSS.supports?.('animation-timeline', 'scroll()')) {
+  let queued = false;
+  const hand = () => {
+    queued = false;
+    const names = new Set([...document.querySelectorAll('[style*="--exact-scroll-timeline"]')]
+      .map((e) => e.style.getPropertyValue('--exact-scroll-timeline').trim().split(/\s+/)[0]).filter((n) => n.startsWith('--')));
+    if (!names.size) return;
+    for (const el of document.querySelectorAll('[style*="--exact-animation-timeline"]')) {
+      const name = el.style.getPropertyValue('--exact-animation-timeline').trim();
+      if (!names.has(name) || el.style.getPropertyValue('animation-timeline').trim() === name) continue;
+      el.style.setProperty('animation-timeline', name);
+      el.style.setProperty('animation-play-state', 'running');
+    }
+  };
+  // Only mutations that touch a consumer or a scroller wake it: a flight's or a drag's style writes do not.
+  const KEY = '-exact-animation-timeline', SRC = '-exact-scroll-timeline';
+  const relevant = (n) => n.nodeType === 1 && (n.getAttribute('style')?.includes(KEY) || n.getAttribute('style')?.includes(SRC)
+    || n.querySelector?.(`[style*="${KEY}"],[style*="${SRC}"]`));
+  new MutationObserver((records) => {
+    if (queued) return;
+    for (const r of records) {
+      if (r.type === 'attributes' ? (r.target.getAttribute('style')?.includes(KEY) || r.target.getAttribute('style')?.includes(SRC))
+        : [...r.addedNodes].some(relevant)) { queued = true; requestAnimationFrame(hand); return; }
+    }
+  }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
+  // This module can load after a demo opened by its link has mounted: look once now.
+  queued = true;
+  requestAnimationFrame(hand);
+}
+
 // ---- SF Symbols the web host's table lacks ----------------------------------------------------------------------
 // The host draws `symbol:sf/<name>` from its own subset of paths; a name outside it is an empty image. Each one a demo
 // uses is drawn here at the symbol's semibold box in ems of its point size (as the iPhone sizes it): textformat ("Aa",
