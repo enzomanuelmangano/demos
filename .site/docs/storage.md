@@ -18,7 +18,7 @@ characters of the public Amplitude key.
 
 | Where | Key | Written by | Value | New site |
 |---|---|---|---|---|
-| localStorage | `@AccessStorage` | `src/client/jwt` (jotai `atomWithStorage`, `getOnInit`) after the OAuth callback's `?accessToken=`; removed by sign-out | the session JWT, each char XOR `EXPO_PUBLIC_ACCESS_KEY[i % len]`, then `btoa` (no JSON); undecodable = no session | **read and written in that format**: the runtime's `accessToken` |
+| localStorage | `@AccessStorage` | `src/client/jwt` (jotai `atomWithStorage`, `getOnInit`) after the OAuth callback's `?accessToken=`; removed by sign-out only (a 401 from `/api/user/info` shows the reader signed out but keeps the key: `src/client/index.ts`, `src/states/auth/user.ts`) | the session JWT, each char XOR `EXPO_PUBLIC_ACCESS_KEY[i % len]`, then `btoa` (no JSON); undecodable = no session | **read and written in that format**: the runtime's `accessToken` |
 | localStorage | `@UtmSource` | `src/states/analytics` on a URL with `utm_source` (after Amplitude's init); never removed | plain text | **read and written**: the runtime's `utmSource` (sent with a sign-up) |
 | localStorage | `reactiive:signed-in` | the header's AuthSlot: `"1"` when signed in, removed when signed out | `"1"` | **read and written**: the runtime's `signedHint`; sets `html[data-auth=in]` as the old head script did |
 | localStorage | `REACTIIVE_CACHE` | TanStack Query's `createSyncStoragePersister` (throttle 1 s), `buster: '1.0'`, `maxAge` 1 week | `{ buster, timestamp, clientState: { mutations, queries } }`; the only persisted query is `['github-stars', repo]` (user info lives in jotai-tanstack-query's own, unpersisted client) | **left as is** (never read, written or removed): the star count is asked live; a rollback finds the cache |
@@ -51,16 +51,30 @@ reference key; the reference ignores them, so they are harmless on a rollback.
    `reactiive:signed-in` becomes `exact.state.signedHint` and, with a session, `html[data-auth=in]`. A hint without a
    session is dropped at once (the old AuthSlot would have removed it on rendering "Sign In").
 2. **Every write of the runtime** to one of those three is mirrored the reference's way (`Storage.prototype.setItem` /
-   `removeItem` wrapped for `localStorage`, only for these keys): a token is encrypted into `@AccessStorage` (`""`
-   removes it, as `useSignOut`); a non-empty utm source is written to `@UtmSource` (never removed, as the reference);
-   the hint writes `"1"` or removes the key and `data-auth`.
+   `removeItem` wrapped for `localStorage`, only for these keys): a token is encrypted into `@AccessStorage`; the change
+   from a token to none (a sign-out, `useSignOut`) removes it, and nothing else does: an empty write by a runtime that
+   never held a token (a new visitor, a seed that failed) is ignored; a non-empty utm source is written to
+   `@UtmSource` (never removed, as the reference); the hint writes `"1"` or removes the key and `data-auth`.
+   **A rejected token (401)** is not a sign-out: the page drops it from its session (`app.contract` `dropped`, the
+   reader shown signed out, the hint removed, as the reference) and keeps it stored; the next visit asks again, as the
+   reference's does.
+   **A full quota**: a runtime key that cannot take the reference's value is removed and written again (a removal frees
+   space); failing that it stays removed, so an older runtime value never wins over a newer reference key.
+   **Several tabs**: Exact's own `storage` listener carries a sign-in or sign-out to the other tabs of the new site;
+   the bridge follows the same events, so each tab knows the token its runtime holds.
 3. **A signed-in reader on a page that starts its runtime only on intent** (D16: articles, docs, course, …): the
    runtime is started once the page is idle, so the circle reserved by `data-auth=in` becomes the avatar without a
    press. A signed-out reader's pages are unchanged (no runtime until intent).
 
 The key `EXPO_PUBLIC_ACCESS_KEY` is public (the old site inlines it in its browser bundle) but is a value of the env:
 it reaches the page only through the build's env (`.env.local`, gitignored; CI: a repository variable), never git.
-`tools/storage-bridge.ts` refuses an accounts build without it: such a build would sign every reader out.
+`tools/storage-bridge.ts` refuses an accounts build without it, and with any other key than the old site's: a
+SHA-256 fingerprint of it (salted with `reactiive-access-key:`) is committed there and checked by every build and by
+the deploy workflow (`--check-key`); a wrong key would decode every stored session to garbage and overwrite it. The
+key is written into the page as a JSON string (no `$` expansion; `$`, quotes, backquotes and `<` are refused).
+
+The callback's token is in no URL after the landing (the page replaces it), nor in `history.state` or sessionStorage
+(Exact keeps no navigation there): checked by the test.
 
 ## Proof: tools/local-env/storage-continuity.ts
 
@@ -97,8 +111,14 @@ are recorded and compared), Amplitude's and Sentry's ingestion (failed: nothing 
    in with it.
 6. **A brand-new visitor** (empty profile): "Sign In", no `data-auth`, no session invented, no reference key written;
    the old site works for them too.
+7. **A token the API rejects (401)**: the new site shows "Sign In", keeps `@AccessStorage` byte-identical and drops the
+   hint; the old site (rollback) does the same and, once the API takes the token again, both are signed in again.
+8. **Two tabs of the new site**: a sign-out in one signs the other out, a sign-in signs it in; one session in the old
+   format afterwards.
+9. **Network**: the origin's own log (`/__switch/forwarded`) shows no `/api/purchase/*` or `/api/refund/*` request
+   reached either site; the browser asked only the cancel, once per site.
 
-Result 2026-11-23: 51/51 PASS, headless and headed.
+Result 2026-11-24: see the table printed by the run (all PASS, headless and headed).
 
 ## Not carried, on purpose
 

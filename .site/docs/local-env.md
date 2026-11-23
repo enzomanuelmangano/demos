@@ -92,13 +92,13 @@ the URL, session, profile, sign out) is verified with a test token (below).
 ## What the e2e check verifies (`tools/local-env/e2e.ts`)
 
 Headless Chrome against the composed site and the local API. Real requests where nothing is written: the sign-in URLs
-(`/api/auth/{google,apple}-sign-up`: host and `redirect_uri` checked), a rejected token (the real API's 401 signs out
-and forgets it), the live star count. Mocked in the browser (CDP Fetch) where a real session would be needed or a
+(`/api/auth/{google,apple}-sign-up`: host and `redirect_uri` checked), a rejected token (the real API's 401 shows "Sign In"
+and keeps the token stored, as the old site: docs/storage.md), the live star count. Mocked in the browser (CDP Fetch) where a real session would be needed or a
 message would be sent: `/api/user/info` for a test token, `/api/feedback/submit` (method, path, `Authorization`, JSON
 body checked; no Telegram message). Steps: Sign In opens the dialog, Escape closes it; the callback landing
 `/profile?accessToken=…` keeps the token and cleans the URL; avatar, menu (name, email), `/profile`; the session
 survives navigation and reload; feedback; sign out; `/profile` signed out goes to `/demos`; Amplitude initialised
-opted out and Sentry disabled on localhost, and no request to either's ingestion. 25/25 on 2026-11-23.
+opted out and Sentry disabled on localhost, and no request to either's ingestion. 25/25 on 2026-11-24.
 
 ## The cutover on one origin: storage continuity and the signed-in screens
 

@@ -9,7 +9,7 @@ at the cutover. Contract and proof of (B): `docs/storage.md`. What is ported and
 - **Storage (B).** `web/storage.js` (first script of every page, `tools/storage-bridge.ts`): `@AccessStorage` (XOR +
   base64 with the public `EXPO_PUBLIC_ACCESS_KEY`), `@UtmSource`, `reactiive:signed-in` (+ `html[data-auth=in]`) are the
   runtime's persisted states both ways; every other key untouched; a signed-in reader's intent-activated page starts its
-  runtime when idle. `tools/local-env/storage-continuity.ts`: 51/51 PASS headless and headed (old → new → rollback →
+  runtime when idle. `tools/local-env/storage-continuity.ts`: 65/65 PASS headless and headed (old → new → rollback →
   sign-out → sign-in → new visitor, one origin via `tools/local-env/switch.ts`).
 - **Screens (A).** Avatar menu with "Support Demos" / "Manage Support"; `/profile` with the SubscriptionBox (both faces)
   and the legal footer; `/manage-subscription` (header, billing-issue and cancelled banners' text, the current plan's
@@ -23,8 +23,21 @@ at the cutover. Contract and proof of (B): `docs/storage.md`. What is ported and
   every plan state), 0.81 % (390); cancel dialog 0.04 % / 0.45 %; `/manage-subscription` 0.8-8 % (the removed price
   cards, by design); the sign-in dialog differs only by the page behind it (/demos is the redesigned page, D17).
 
+## Review fixes (PR #123, 2026-11-24)
+
+- A 401 no longer deletes `@AccessStorage`: the page drops the token from its session only (`dropped`), as the old
+  site; only a sign-out (a token, then none) removes the key. The mirror ignores an empty write by a runtime that never
+  held a token; a full quota cannot leave an older runtime token winning (remove, then write again).
+- `EXPO_PUBLIC_ACCESS_KEY` is checked against a committed SHA-256 fingerprint by every build and the deploy workflow;
+  it is written as a JSON string (no `$` expansion) and `$`, quotes, backquotes and `<` are refused.
+- Sign-in links are asked only in an accounts build; the deploy workflow fails a production run unless `SITE_ACCOUNTS`
+  and `LEGACY_API_ORIGIN` are both set.
+- The mobile sheet follows a downward drag (overlay fading) and closes past 25 % or 0.4 px/ms, vaul's thresholds;
+  Sentry's user, subscription context and tags are set as the reference's `useSentryUserContext`.
+- Tests: storage-continuity.ts 65/65 (adds the 401, two tabs, the token in no URL / history / sessionStorage, and
+  the origin's own log of money endpoints: none reached a site); e2e 25/25; account-parity.ts fails over budget.
+
 ## Not done / owner
 
-- Swipe-to-dismiss of the mobile sheet (vaul's drag) is not ported: overlay tap and Escape close it.
-- Sentry user context (`use-sentry-user-context`) is not set.
+- The `checkout.reactiive.io/billing` link on the billing-issue banner is kept for live parity (flagged to the owner).
 - Production: repository variables `SITE_ACCOUNTS=1`, `EXPO_PUBLIC_ACCESS_KEY`, Amplitude, Sentry (`docs/deploy.md`).

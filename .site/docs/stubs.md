@@ -13,7 +13,7 @@ reference's `.env.example` / `src/server/env`; values never read) and what the r
 | Feedback | auth, `TELEGRAM_{BOT_TOKEN,CHAT_ID}` | ported on `/profile` (the feedback modal, POST `/api/feedback/submit`); demo requests lived on the demo posts, which redirect into the Demos app |
 | Live GitHub stars | `GITHUB_OAUTH_TOKEN` (server) | ported: the /demos pill asks `/api/github/stars` on the reader's page; the build-time snapshot (3,248) is the fallback and the public build's value |
 | Analytics | `EXPO_PUBLIC_AMPLITUDE_API_KEY` | ported (tools/observability.ts): the reference's init and its one event, `utm_source_open`; opted out on localhost |
-| Error reporting | `EXPO_PUBLIC_SENTRY_DSN` | ported (tools/observability.ts, client only): the reference's options; disabled on localhost. Sentry user context is not set (the reference's `useSentryUserContext`) |
+| Error reporting | `EXPO_PUBLIC_SENTRY_DSN` | ported (tools/observability.ts, client only): the reference's options; disabled on localhost. Sentry's user, subscription context and tags as the reference's `useSentryUserContext` (components/account/account.ts) |
 | Website URL for the API client | `EXPO_PUBLIC_WEBSITE_URL` | the accounts' API base (public); `SITE_ACCOUNTS=1` turns them on |
 | Media CDN | `EXPO_PUBLIC_MEDIA_CDN_URL` | public value, not a secret: written in the content where used |
 | Newsletter | `BEEHIIV_{API_KEY,PUBLICATION_ID}` (server side of subs.reactiive.io only) | the form posts to the public `https://subs.reactiive.io/api/subscribe`, as today: kept |
