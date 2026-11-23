@@ -97,7 +97,9 @@ for (const slug of LEGACY_DEMO_POSTS) {
   routes.push({ src: `^/demos/${esc(slug)}/?$`, status: 308, headers: { Location: to ? `${BASE}demo/${to}` : '/demos' } });
 }
 // Signed-out /profile and /manage-subscription sent a visitor to /demos (client-side, in the reference); at the edge now.
-routes.push({ src: '^/(?:profile|manage-subscription)/?$', status: 307, headers: { Location: '/demos' } });
+// With the accounts' API behind /api/* (LEGACY_API_ORIGIN), /profile is the site's page (components/account); payments
+// are not ported, so /manage-subscription always goes to /demos (docs/stubs.md).
+routes.push({ src: process.env.LEGACY_API_ORIGIN ? '^/manage-subscription/?$' : '^/(?:profile|manage-subscription)/?$', status: 307, headers: { Location: '/demos' } });
 // The content not ported (Demos-tied articles and their two series, docs/decisions.md D13): permanent redirects.
 for (const [from, to] of Object.entries(NOT_PORTED_REDIRECTS)) routes.push({ src: `^${esc(from)}/?$`, status: 308, headers: { Location: to } });
 routes.push({ src: `^/((?!${esc(MOUNT.slice(1))}/).+)/$`, status: 308, headers: { Location: '/$1' } });

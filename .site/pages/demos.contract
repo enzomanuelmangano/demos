@@ -27,9 +27,12 @@ fn deskOnly(): string = "clamp(0px, (100vw - 1023px) * 1000, 9999px)"
 fn phoneMask(): string = `linear-gradient(to right, transparent min(50% - ${phoneW()} / 2 - 24px, ${deskOnly()}), #000000 min(50% - ${phoneW()} / 2, ${deskOnly()}), #000000 calc(100% - min(50% - ${phoneW()} / 2, ${deskOnly()})), transparent calc(100% - min(50% - ${phoneW()} / 2 - 24px, ${deskOnly()})))`
 fn titleSize(): string = `min(${steps(40, 80, 112, 144)}, max(${lg(9999, 0)}, (min(100vw, 1200px) - 648px) / 3))`
 
-// The pill's star count: the reference fetched it live (GITHUB_OAUTH_TOKEN, docs/stubs.md); a snapshot of
-// enzomanuelmangano/demos's stargazers on 2026-11-23, as the live page showed it.
-fn starCount(): string = "3,248"
+// The pill's star count: live from GET /api/github/stars when the accounts' API is configured (app.contract `stars`,
+// components/account/account.ts), else the snapshot of enzomanuelmangano/demos's stargazers on 2026-11-23 (3,248).
+fn digitsOf(n: number): number[] = `${n}`.split("").map(c => "0123456789".indexOf(c))
+fn thousands(n: number): number[] = digitsOf(floor(n / 1000))
+fn units(n: number): number[] = digitsOf(1000 + n % 1000).slice(1)
+fn starCount(n: number): string = `${floor(n / 1000)},${`${1000 + n % 1000}`.slice(1)}`
 
 // The reference's hero text gradient (GRADIENT_ROW): white at 85 % on the sides, full in the middle, clipped to text.
 style Gradient
@@ -63,6 +66,7 @@ component StarsPill
   props
     seed: number
     counted: bool
+    stars: number
   state hovered = false
   action hover(on: bool)
     hovered = on
@@ -81,16 +85,16 @@ component StarsPill
         text "Source code" margin-left=sm(10, 0) max-width=sm(200, 0) overflow="hidden" white-space="nowrap"
         text "Demos is Open Source" margin-left=sm(0, 10) max-width=sm(0, 300) overflow="hidden" white-space="nowrap"
         view width=sm(0, 1) height=16 margin-left=sm(0, 10) background-color="rgb(255 255 255 / 0.12)" aria-hidden=true
-        row align-items="center" margin-left=sm(0, 10) max-width=sm(0, 200) overflow="hidden" white-space="nowrap" aria-label=`${starCount()} stars`
+        row align-items="center" margin-left=sm(0, 10) max-width=sm(0, 200) overflow="hidden" white-space="nowrap" aria-label=`${starCount(stars)} stars`
           svg width=12 height=12 viewBox="0 0 16 16" fill="currentColor" color="var(--color-text-secondary)" aria-hidden=true flex-shrink=0
             path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"
           row margin-left=6 letter-spacing="0.02em"
-            Digit(d=3, counted=counted)
+            for d, i in thousands(stars) key=i
+              Digit(d=d, counted=counted)
             // The separator enters with the digits (NumberFlow), so it fades in as they spin.
             text "," opacity=(counted ? 1 : 0) transition="opacity 1500ms cubic-bezier(0.16, 1, 0.3, 1)" aria-hidden=true
-            Digit(d=2, counted=counted)
-            Digit(d=4, counted=counted)
-            Digit(d=8, counted=counted)
+            for d, i in units(stars) key=i
+              Digit(d=d, counted=counted)
 
 component DemosPage
   props
@@ -98,6 +102,7 @@ component DemosPage
     taps: number
     tap: action
     counted: bool
+    stars: number
     simReady: bool
     simLive: bool
     simSeen: action
@@ -140,7 +145,7 @@ component DemosPage
           row margin-top=sm(24, 28) data-motion="d-pill"
             view width=centring() flex-shrink=1
             column flex-shrink=0 data-motion="blur-in" data-delay="550"
-              StarsPill(seed=seed, counted=counted)
+              StarsPill(seed=seed, counted=counted, stars=stars)
             view width=centring() flex-shrink=1
         DemosSim(ready=simReady, live=simLive, seen=simSeen, loaded=simLoaded)
 

@@ -11,6 +11,7 @@ use CoursePage from "./pages/course.contract"
 use DemosAppPage from "./pages/demos-app.contract"
 use Page from "./components/markdown.contract"
 use Card, ArticleList, ArticlePage from "./pages/articles.contract"
+use Me, SiteConfig, Sent, SignInDialog, FeedbackDialog, ProfilePage, Toast from "./components/account/account.contract"
 
 // The faces (Inter variable, Source Code Pro) are declared in app.json's head, font-display: swap and Inter
 // preloaded, as the reference: docs/decisions.md D7.
@@ -26,6 +27,9 @@ routes nav
   series "/series/:series" render=build activate=idle pages=seriesSlugs()
   docs "/docs" render=build activate=idle
   docPage "/docs/:post" render=build activate=idle pages=docSlugs()
+  // Signed in only (components/account): the shell, drawn on the reader's page. Without the env the host sends it
+  // to /demos (tools/compose.ts), as the reference did for a signed-out visitor.
+  profile "/profile" render=client
   notfound render=build
 
 // The footer's Terms | Privacy variant, on the reference's paths (its /demos, /profile and /manage-subscription
@@ -47,6 +51,80 @@ component App
   // viewport then (an IntersectionObserver, no per-scroll work).
   state scrolled = false
   mutation newsletter as shape Subscribed then subscribed
+  // ------------------------------------------------ the account (components/account, docs/decisions.md D15)
+  // The session: the reference's Bearer JWT, which its OAuth callback hands to /profile?accessToken=…; kept by the
+  // page (localStorage), sent by the data module. The utm_source a visit came with goes with the sign-up.
+  state accessToken = "" persist
+  state utmSource = "" persist
+  resource config = siteConfig() as shape SiteConfig
+  resource me = userInfo(accessToken) as shape Me
+  derive accounts = config.accounts
+  derive meLoading = accounts and accessToken != "" and not current(me)
+  derive tokenInUrl = searchParam(top(nav), "accessToken")
+  derive utmInUrl = searchParam(top(nav), "utm_source")
+  task takeToken when tokenInUrl != ""
+    after(1, keepToken)
+  action keepToken
+    accessToken = tokenInUrl
+    nav = replace(nav, path("profile"))
+  task takeUtm when utmInUrl != "" and utmInUrl != utmSource
+    after(1, keepUtm)
+  action keepUtm
+    utmSource = utmInUrl
+  task forgetRejected when me.rejected
+    after(1, signOut)
+  // /profile signed out (or once the session is known to be none): /demos, with the reference's toast.
+  task leaveProfile when top(nav).name == "profile" and tokenInUrl == "" and not meLoading and not me.signedIn and (current(me) or accessToken == "")
+    after(1, toDemos)
+  action toDemos
+    nav = replace(nav, "/demos")
+    toast = "You don't have access to this page"
+    toastTone = "info"
+    toasts = toasts + 1
+  // The sign-in dialog: its provider links are asked the first time it opens.
+  state signInArmed = false
+  resource googleUrl = authUrl("google", utmSource, signInArmed) as shape string
+  resource appleUrl = authUrl("apple", utmSource, signInArmed) as shape string
+  action openSignIn
+    if accounts
+      signInArmed = true
+      showModal("signin-modal")
+  action signOut
+    accessToken = ""
+  action openProfile
+    nav = go(nav, path("profile"))
+  // Feedback (POST /api/feedback/submit) and the toasts (sonner's).
+  state feedbackSending = false
+  mutation feedback as shape Sent then feedbackSent
+  state toast = ""
+  state toastTone = "success"
+  state toasts = 0
+  action openFeedback
+    showModal("feedback")
+  action sendFeedback(text: string, anonymous: bool)
+    feedbackSending = true
+    send feedback = sendFeedback(accessToken, text, anonymous, "")
+  action feedbackSent
+    feedbackSending = false
+    match feedback
+      case some(r)
+        if r.ok
+          close("feedback")
+          toast = "Thank you for your feedback!"
+          toastTone = "success"
+        else
+          toast = "Something went wrong. Please try again."
+          toastTone = "error"
+      case none
+        toast = "Something went wrong. Please try again."
+        toastTone = "error"
+    toasts = toasts + 1
+  task clearToast when toast != "" key=toasts
+    after(4000, forgetToast)
+  action forgetToast
+    toast = ""
+  // The /demos pill's live star count (GET /api/github/stars), asked on the reader's page with the spin.
+  resource stars = githubStars("enzomanuelmangano/demos", 3248, counted) as shape number
   // The content pages' data: one generated module per page (app.ts), none on the other routes.
   derive post = top(nav).name == "article" or top(nav).name == "docPage" ? top(nav).params.post : ""
   derive seriesSlug = top(nav).name == "series" ? top(nav).params.series : ""
@@ -123,7 +201,11 @@ component App
       // is as tall as the page, the document scrolling), the bars hanging from it (Contract positions are relative,
       // absolute or sticky). Its place in the flow is the reference's mb-20, in the entry below.
       view position="sticky" top=0 height=0 z-index=50
-        SiteHeader(current=top(nav).name, scrolled=scrolled)
+        SiteHeader(current=top(nav).name, scrolled=scrolled, accounts=accounts, loading=meLoading, me=me, openSignIn=openSignIn,
+          signOut=signOut, openProfile=openProfile)
+        Toast(message=toast, tone=toastTone)
+      SignInDialog(google=googleUrl, apple=appleUrl, googleFailed=failed(googleUrl), appleFailed=failed(appleUrl))
+      FeedbackDialog(sending=feedbackSending, send=sendFeedback)
       for e in stack(nav).slice(-1) key=e.id
         column navigationKey=`${e.id}` navigationScroll=`page-${e.id}` position="absolute" inset=0
           scroll document id=`page-${e.id}` flex=1 min-height=0
@@ -147,7 +229,7 @@ component App
               else if e.name == "demos"
                 head title="Demos | Reactiive" description="Explore the beauty of React Native animations with Reanimated, Skia and Gesture Handler"
                   image="/og/demos.png" canonical="/demos"
-                DemosPage(seed=time.seed, taps=spiralTaps, tap=spiralTap, counted=counted, simReady=(simSettled and simNear),
+                DemosPage(seed=time.seed, taps=spiralTaps, tap=spiralTap, counted=counted, stars=stars, simReady=(simSettled and simNear),
                   simLive=simLive, simSeen=simSeen, simLoaded=simLoaded)
               else if e.name == "inspirations"
                 head title="Inspirations | Reactiive" description="The blogs, docs and creators whose work shaped Reactiive.io."
@@ -178,6 +260,11 @@ component App
                   canonical=`/articles/${e.params.post}`
                 ArticlePage(page=article, article=true, copied=copied, copy=copyCode, near=near, seen=embedSeen)
                   Newsletter(showTitle=true, status=newsletterStatus, subscribe=subscribe)
+              else if e.name == "profile"
+                head title="Profile | Reactiive" robots="noindex, nofollow" canonical="/profile"
+                Container()
+                  if accounts and me.signedIn
+                    ProfilePage(openFeedback=openFeedback, signOut=signOut)
               else if e.name == "docs"
                 head title="Reactiive" description="Discover the beauty of React Native and how to build stunning animations with Reanimated and Skia"
                   image="/og/main.png" canonical="/"
