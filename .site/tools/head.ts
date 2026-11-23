@@ -5,7 +5,8 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const site = join(import.meta.dir, '..');
-const css = readFileSync(join(site, 'web/head.css'), 'utf8')
+// web/content.css (the content pages' rules, branch site-content) follows head.css in the same sheet.
+const css = (readFileSync(join(site, 'web/head.css'), 'utf8') + '\n' + readFileSync(join(site, 'web/content.css'), 'utf8'))
   .replace(/\/\*[\s\S]*?\*\//g, '')
   .split('\n').map((l) => l.trim()).filter(Boolean).join('')
   // url(@inline:<path>): the file as a data: URL (the ASCII subset of Inter, web/head.css). Rebuild the subset with
