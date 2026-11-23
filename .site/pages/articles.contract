@@ -50,15 +50,13 @@ component ArticlePage
     article: bool
     copied: string
     copy: action
-    near: string[]
-    seen: action
   slot
   view
     column width="100%" max-width="48rem" margin-left="auto" margin-right="auto" padding-left=24 padding-right=24 box-sizing="border-box" flex=1
       column padding-top=24 padding-bottom=24
         column flex=1 min-width="100%"
           for b in page.blocks key=b.id
-            Blocks(block=b, copied=copied, copy=copy, near=near, seen=seen)
+            Blocks(block=b, copied=copied, copy=copy)
           children
           // The newsletter's mb-32 (withBottomMargin, its default on the article pages).
           view height=(article ? 128 : 0)

@@ -110,3 +110,38 @@ document.addEventListener('click', function (e) {
   var a = e.target.closest && e.target.closest('a[target="_blank"]');
   if (a) a.blur();
 }, true);
+/* A page with an interactive demo starts its runtime before the reader reaches the demo, never inside a scroll frame
+   (docs/decisions.md D16). Such a page activates on interaction; a page with an `intersect` node (a canvas demo's own)
+   would start it at the reader's first scroll, in that scroll's frame (2-3 frames over 16.7 ms at 4x CPU), so the
+   demo's frame and the embeds carry none. Once the page is parsed, an idle callback starts it as Exact's capture
+   script does (the checkpoint's entry module, its answers fetched beside it); if the reader scrolled in the last
+   250 ms it waits for the scroll to settle and tries again, so the start (one task: the view tree and the adoption)
+   lands between scrolls, before the reader reaches a demo. A press before then starts it at once (Exact's capture). */
+(function () {
+  var last = -1e9, x;
+  addEventListener('scroll', function () { last = performance.now(); }, { passive: true, capture: true });
+  function start() {
+    var c = document.querySelector('script[type="application/vnd.exact.checkpoint"]');
+    x = self.exact = self.exact || {};
+    if (!c || x.ready || c.dataset.activate != 'interaction' || !document.querySelector('[data-motion~=demo]')) return;
+    if (performance.now() - last < 250) return setTimeout(idle, 250);
+    if (c.dataset.src) x.answers = fetch(c.dataset.src).then(function (r) { return r.ok ? r.text() : null; }, function () { return null; });
+    x.ready = import(c.dataset.entry);
+  }
+  function idle() { (self.requestIdleCallback || setTimeout)(start, { timeout: 3000 }); }
+  if (document.readyState != 'loading') idle(); else document.addEventListener('DOMContentLoaded', idle, { once: true });
+})();
+/* The articles' YouTube and X frames are the browser's lazy frames: the built pages carry `loading="lazy"`
+   (tools/seo/postbuild.ts); a frame the runtime draws (an in-app navigation) gets it here and its source set again,
+   so it too waits until the reader comes near it. */
+(function () {
+  var sel = 'iframe[title="YouTube video player"]:not([loading]),iframe[title="X post"]:not([loading])';
+  function lazy(f) { f.setAttribute('loading', 'lazy'); var s = f.getAttribute('src'); if (s) f.setAttribute('src', s); }
+  new MutationObserver(function (records) {
+    for (var i = 0; i < records.length; i++) for (var j = 0; j < records[i].addedNodes.length; j++) {
+      var n = records[i].addedNodes[j];
+      if (n.nodeType != 1) continue;
+      if (n.matches(sel)) lazy(n); else if (n.firstElementChild) [].forEach.call(n.querySelectorAll(sel), lazy);
+    }
+  }).observe(document.documentElement, { childList: true, subtree: true });
+})();

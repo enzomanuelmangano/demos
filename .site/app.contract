@@ -134,13 +134,9 @@ component App
   // layout shift of 0.13 on every article opened from /articles; live swaps the page in when its data is there).
   derive held = ((top(nav).name == "article" and not current(article)) or (top(nav).name == "docPage" and not current(doc))
     or ((top(nav).name == "articles" or top(nav).name == "series") and not current(cards)))
-  // The YouTube and X frames near the window, the code block just copied.
-  state near: string[] = []
+  // The code block just copied.
   state copied = ""
   state copies = 0
-  action embedSeen(id: string, entry: IntersectionObserverEntry)
-    if entry.isIntersecting and not near.includes(id)
-      near = near.concat([id])
   action copyCode(id: string, code: string)
     copyText(code)
     copied = id
@@ -311,7 +307,7 @@ component App
                 if held
                   view height="100vh"
                 else
-                  ArticlePage(page=(e.name == "article" ? article : doc), article=(e.name == "article"), copied=copied, copy=copyCode, near=near, seen=embedSeen)
+                  ArticlePage(page=(e.name == "article" ? article : doc), article=(e.name == "article"), copied=copied, copy=copyCode)
                     if e.name == "article"
                       Newsletter(showTitle=true, status=newsletterStatus, subscribe=subscribe)
               else

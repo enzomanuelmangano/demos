@@ -58,7 +58,10 @@ for (const m of pages) {
   // charset is Exact's (and ours): written once, at the head's start.
   const generated = renderTags(tags.filter((t) => !(t.tag === 'meta' && 'charset' in t.attrs)));
   const ld = jsonLd(m);
-  html = head.replace('\u0000', generated + (ld ? jsonLdScript(ld) : '')) + rest;
+  // The articles' YouTube and X frames load lazily (the browser's own `loading="lazy"`, which Exact's `iframe` does
+  // not take): no `intersect` node, so they never start the page's runtime (docs/decisions.md D16).
+  const body = rest.replace(/<iframe (?![^>]*\bloading=)(?=[^>]*\btitle="(?:YouTube video player|X post)")/g, '<iframe loading="lazy" ');
+  html = head.replace('\u0000', generated + (ld ? jsonLdScript(ld) : '')) + body;
   writeFileSync(file, html);
   done++;
 }
