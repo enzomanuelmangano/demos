@@ -91,7 +91,9 @@ component FamilyNumberInput
         buzz = `impact-medium:${beats}`
       else
         buzz = `impact-light:${beats}`
-        holdMs = repeatMs(repeats - 1)
+        // `repeats` still reads its value before this tick (writes land when the action ends):
+        // after the first deletion the wait is repeatMs(0), 100 ms.
+        holdMs = repeatMs(repeats)
         holdToken = holdToken + 1
   view
     column position="absolute" inset=0 background-color="#000000" padding-top=env.safeTop
