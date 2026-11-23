@@ -13,6 +13,9 @@ fn airH(): number = 912
 fn airTop(): number = 62
 fn airBottom(): number = 34
 fn bezel(): number = 12
+// The display's outline: a 420 x 912 rectangle with UIKit's continuous 62 pt corners (each corner three
+// cubics from 1.52866 r along the side, PaintCode's reverse-engineered UIBezierPath constants).
+fn airDisplayPath(): string = "M94.78 0L325.22 0C352.51 0 366.16 0 380.85 4.64C396.88 10.48 409.52 23.12 415.36 39.15C420 53.84 420 67.49 420 94.78L420 817.22C420 844.51 420 858.16 415.36 872.85C409.52 888.88 396.88 901.52 380.85 907.36C366.16 912 352.51 912 325.22 912L94.78 912C67.49 912 53.84 912 39.15 907.36C23.12 901.52 10.48 888.88 4.64 872.85C0 858.16 0 844.51 0 817.22L0 94.78C0 67.49 0 53.84 4.64 39.15C10.48 23.12 23.12 10.48 39.15 4.64C53.84 0 67.49 0 94.78 0Z"
 fn frameW(): number = airW() + 2 * bezel()
 fn frameH(): number = airH() + 2 * bezel()
 // The frame fits the window with 24 pt around, never grows past its own size.
@@ -214,8 +217,12 @@ component WebShell
             view position="absolute" left=-3 top=215 width=4 height=58 border-radius=2 background-color="#9a9ca2"
             view position="absolute" left=-3 top=290 width=4 height=58 border-radius=2 background-color="#9a9ca2"
             view position="absolute" right=-3 top=245 width=4 height=92 border-radius=2 background-color="#9a9ca2"
-            view position="absolute" left=bezel() top=bezel() width=airW() height=airH() border-radius=62
-              corner-shape="-exact-continuous" overflow="hidden" background-color="#000000" testId="web-device"
+            // The display, clipped to its continuous corners by a clip path (UIBezierPath's continuous 62 pt
+            // corner, PaintCode's constants, airDisplayPath). Not a rounded overflow clip: under one Chrome drops
+            // the mask of every backdrop-filter inside (a progressive blur, clerk-toast's or scroll-progress's,
+            // became one hard-edged full blur).
+            view position="absolute" left=bezel() top=bezel() width=airW() height=airH() clip-path=`path('${airDisplayPath()}')`
+              overflow="hidden" background-color="#000000" testId="web-device"
               WebScreen(demos=demos, all=all, env=env, slug=slug, zone=zone, sw=airW(), sh=airH(), safeTop=airTop(), safeBottom=airBottom(),
                 framed=true, flown=flown, open=open, leave=leave)
               WebStatusBar(ink=inkOver(backdrop))
