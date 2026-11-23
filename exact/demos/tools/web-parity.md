@@ -4,6 +4,58 @@ The Demos app on the web (`bun exact.mjs web`), against the iPhone. Desktop: an 
 window). Phone browser: full screen like an app. Measured in headless Chrome 1440 x 900 (desktop, mouse) and 390 x 844 DPR 2
 (touch emulation, coarse pointer), WebGPU on Metal, 2026-11-22, branch `exact-web`.
 
+## Final summary (2026-11-23)
+
+All 109 demos are PERFECT in the per-demo pass below: each checked framed on a 1440 x 900 desktop (mouse, trackpad
+where it applies) and under 390 x 844 touch emulation, cold profile, against the iPhone (Contract, gpu/src/<slug>.rs,
+the RN original on main), every interaction, at 60 fps (VSYNC=1).
+
+Final sweep, on the production build (`web-build`, served brotli by tools/web-perf/serve.ts), VSYNC=1, one page per
+mode: every demo opened from its icon on the launcher (by link for the four unstable ones), 1.2 s, then 2 s of
+interaction (a sideways drag, a drag up, two taps), then Back.
+
+| | desktop framed (mouse) | mobile (390 x 844 touch) |
+|---|---|---|
+| demos opened / stayed open through the interaction / back home | 109 / 109 / 109 | 109 / 109 / 109 |
+| console errors, exceptions | 0 | 0 |
+| interaction with no frame over 25 ms | 103 of 105 (art-gallery one 167 ms, fourier-visualizer one 67 ms: neither recurred in 2 reruns each) | 99 of 105 (clock-time-picker, expandable-mini-player, staggered-card-number one 33 ms each: none recurred in 2 reruns; scroll-progress one 33 ms (its first scroll, below); stacked-list and animated-indicator-list 30 fps: headless Chrome's touch scroll with scroll-driven animations, 0 late headed) |
+| first open of a demo with no frame over 25 ms | 30 of 105 (the rest: one or two late frames, 33-500 ms, median ~67 ms: the first open compiles the demo's pipelines / fetches its image pieces) | 82 of 105 |
+| Back with no frame over 25 ms | 101 of 105 | 102 of 105 |
+
+Launcher (production build, VSYNC=1; drivers not in the repo, as the per-demo ones):
+
+| scenario | desktop: frames / p95 / max ms / late | mobile touch: frames / p95 / max / late |
+|---|---|---|
+| idle home 2 s | 119 / 16.8 / 16.8 / 0 | 120 / 16.8 / 16.8 / 0 |
+| pager: four page drags | 295 / 16.7 / 16.8 / 0 | 298 / 16.8 / 33.4 / 4 (headed Chrome at 120 Hz: 1 frame of 27 ms) |
+| pager: slow half-page drag, settle back | 135 / 16.7 / 16.8 / 0 | 136 / 16.8 / 33.2 / 1 |
+| pager: trackpad swipes (four) | 300 / 16.7 / 33.4 / 4 (one at each snap) | - |
+| pull-to-search, type, results, Cancel | 0 late (a first-use 167 ms frame in one of three runs) | 0 late |
+| long-press / right-click menu, dismiss | 0 late (a first-use 150 ms frame in one of three runs) | 0 late |
+| open + swipe-down close + open + Back: chessboard, sudoku, stacked-list, clerk-toast, fluid-slider | first opens 0-2 late frames of 33 ms; warm opens 0-1; closes 0 | first opens 0-1 late; warm opens 0; closes 0-1 |
+
+Found and fixed by the sweep: on a production page a touch's swipe-down close never began over a touch-action:auto
+view (sudoku, stacked-list, clerk-toast, fluid-slider, every Contract demo opened from its icon; b889015e).
+
+Hard web limits (what the browser cannot do as the iPhone does):
+
+- WebGPU needs a secure context: the dev loop's LAN URL (plain HTTP) draws no GPU demo; use localhost, an HTTPS
+  tunnel or a deployed build.
+- The first open of a GPU demo in a page compiles its pipelines on the GPU process (wgpu's createRenderPipeline is
+  synchronous; the iPhone warms them in the background, gpu/src/warm.rs, a no-op on wasm) and fetches its images
+  (64 KiB pieces): 1-2 late frames on most first opens; warm opens are smooth.
+- Fonts: SF is not shipped; GPU surfaces draw system-font text in Inter (OFL); `ui-rounded` exists only in Safari
+  (wheel-picker's count is SF Rounded there, the system face in Chrome).
+- Native views are web approximations: liquid glass (backdrop-filter), sheets, menus, switches, the tab bar.
+- Haptics: `navigator.vibrate` (Android); iOS Safari has no vibration API.
+- Motion sensors need a permission on iOS Safari (asked on the first tap); a desktop tilts by the pointer.
+  Real-device phone browsers not verified (iPhone Safari, Android Chrome).
+- No software keyboard on a desktop: cherry-blossom-qrcode's keyboard toolbar sits at the bottom.
+- Scroll physics are the browser's (rubber band on iOS Safari, none on desktop Chrome).
+- The status bar in the desktop frame is drawn (its ink chosen per demo); a phone browser shows its own.
+- Headless Chrome only (not a limit of the app): a touch scroll that drives scroll-driven animations runs rAF at
+  30 Hz in headless (any page, also plain HTML); the same runs headed have no late frame.
+
 ## How it is measured
 
 - Idle: each demo opened by its link (`/demo/<slug>`), 4.5 s after load, `requestAnimationFrame` deltas over 2 s (fps).

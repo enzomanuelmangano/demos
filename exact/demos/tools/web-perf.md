@@ -1,5 +1,25 @@
 # Web performance
 
+## Final summary (2026-11-23)
+
+| measure | first measured (2026-11-22) | final |
+|---|---|---|
+| production cold load, 4G + 4x CPU, 390 x 844: bytes on the wire / requests | 32.7 MB / 199 | 5.77 MB / 145 |
+| same: FCP / launcher drawn / GPU module ready (wasm + shaders) | 3.94 s / 5.29 s / 30.9 s | 2.77-2.78 s / 4.02-4.18 s / 9.65 s |
+| same: main-thread long tasks at startup | 7 / 1908 ms / max 1298 | 3 / 1097-1101 ms / max 971-977 (app.js's first run, 4x CPU) |
+| cable, 1x, 1440 x 900: FCP / launcher drawn / GPU ready | 0.88 / 1.04 / 7.28 s | 0.90 / 0.98 / 5.12 s |
+| `gpu_bg.wasm` | 28.5 MB (24.7 MB br) | 4.7 MB (2.06 MB br) |
+| fonts / wallpaper | 2.99 MB br / 2.0 MB PNG | 0.43 MB br / 0.29 MB WebP |
+| every demo's 2 s interaction at the display's pace (production, VSYNC=1) | not measured at vsync | desktop 103 / 105 with no late frame, mobile 99 / 105; the remaining single frames did not recur (web-parity.md) |
+| open / close flights | 140-1500 ms worst frames (uncapped), Back unanimated | warm opens 0-1 late frames of 33 ms, closes 0; first opens 1-2 late frames (pipeline compile, image pieces) |
+
+The final sweep and the launcher runs are in web-parity.md ("Final summary"). Production builds were served by
+`serve.ts`; `load.ts` as below.
+
+Open (not fixed, each small): scroll-progress commits `offset` per scroll event (its first scroll has one 33 ms
+frame, the host's layout-transition glue's first run); a trackpad swipe on the pager has one 33 ms frame at its snap;
+the first open of a GPU demo in a page (see the hard limits in web-parity.md).
+
 The Demos app on the web, measured 2026-11-22 on branch `exact-web` (Apple M3 Pro, Chrome 1xx headless with the real
 GPU: Metal through ANGLE/Dawn, `--disable-gpu-vsync --disable-frame-rate-limit`, so rAF is not capped at 60 Hz).
 The machine was shared with other agents' builds (load average 6-8 on 12 cores): single runs vary by up to 2x, so
