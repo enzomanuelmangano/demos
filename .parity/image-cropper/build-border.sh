@@ -19,4 +19,4 @@ xcrun clang -fobjc-arc -O1 -target arm64-apple-ios17.0-macabi -isysroot "$sdk" \
   -iframework "$sdk/System/iOSSupport/System/Library/Frameworks" -I "$tmp" \
   -framework UIKit -framework CoreGraphics -framework Foundation \
   -o "$tmp/border-image" "$here/border-image.m" "$tmp/RCTBorderDrawing.m"
-"$tmp/border-image" "$here/../../../gpu/images/image-cropper/border-17pt-r8-w1-3x.a8"
+"$tmp/border-image" "$here/../../gpu/images/image-cropper/border-17pt-r8-w1-3x.a8"

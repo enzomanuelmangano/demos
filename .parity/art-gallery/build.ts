@@ -44,7 +44,7 @@ import { join } from 'path';
 const root = new URL('../../', import.meta.url).pathname;
 const rn = `${root}.legacy/src/animations/art-gallery/`;
 const out = `${root}gpu/images/art-gallery/gallery.bin`;
-const NM = `${root}../thank-you/.legacy/node_modules/`;
+const NM = `${root}.legacy/node_modules/`;
 
 Bun.plugin({
   name: 'jpg-path',

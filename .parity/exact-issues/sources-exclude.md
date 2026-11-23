@@ -47,7 +47,7 @@ project people are meant to find and run.
 
 One of:
 
-- an `app.json` key, e.g. `"sources": { "exclude": ["legacy", "tools/parity"] }`, applied by the
+- an `app.json` key, e.g. `"sources": { "exclude": ["legacy", ".parity"] }`, applied by the
   capture walk, the web build's capture and the dev watcher alike; or
 - a boundary rule: a directory with its own `package.json` that is not one of the app's workspaces
   (`workspaces` of the app's `package.json`) is another project and is not captured or watched

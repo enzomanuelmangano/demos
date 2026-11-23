@@ -45,7 +45,7 @@ import { execFileSync } from 'child_process';
 
 const root = new URL('../../', import.meta.url).pathname;
 const rn = `${root}.legacy/src/animations/sculptures-in-words/`;
-const NM = `${root}../thank-you/.legacy/node_modules/`;
+const NM = `${root}.legacy/node_modules/`;
 const outDir = `${root}gpu/images/sculptures-in-words/`;
 
 const W_MIN = 320;

@@ -9,7 +9,7 @@ import sharp from "sharp";
 import { INBOX, lanAddresses, phone } from "./phone";
 
 export const DATA = resolve(import.meta.dir, "data");
-const SNAPS = resolve(import.meta.dir, "../../../assets/atlas");
+const SNAPS = resolve(import.meta.dir, "../../assets/atlas");
 const PORT = +(process.env.FEEDBACK_PORT ?? 5350);
 // The demo's frame: an iPhone Air in points (home/atlas.contract airW/airH).
 const W = 420, H = 912, CROP = 220;

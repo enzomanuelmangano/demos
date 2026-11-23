@@ -1,5 +1,5 @@
 #!/bin/sh
-# The photos as RN shows them (demos/gpu/images/circular-carousel): each Unsplash JPEG (w=400)
+# The photos as RN shows them (gpu/images/circular-carousel): each Unsplash JPEG (w=400)
 # decoded by ImageIO (the iOS decoder; zune/libjpeg differ by ~1 level, in 8x8 blocks), and the
 # 400 x 600 ones downscaled as expo-image does (89 x 134 pt at 3x: 267 x 402). RGB rows, zlib.
 set -e
