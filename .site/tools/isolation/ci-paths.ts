@@ -39,6 +39,7 @@ else {
     ['site only', ['.site/app.contract', '.site/tools/compose.ts', '.site/docs/progress.md', '.site/.content/articles/metaball/index.mdx']],
     ['demos app only', ['app.contract', 'demos/chessboard/chessboard.contract', 'gpu/src/lib.rs', 'app.forma', '.cargo/config.toml']],
     ['legacy only', ['.legacy/src/App.tsx']],
+    ['legacy demo registry (gen-demos input)', ['.legacy/src/animations/registry.ts']],
     ['parity tooling only', ['.parity/README.md']],
     ['site demos-web tooling only', ['.site/tools/demos-web/patches.ts']],
     ['demos web module only', ['modules/web/index.js']],

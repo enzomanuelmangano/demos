@@ -20,14 +20,42 @@ name: Exact lint
 # tools/lint.sh skips those two itself when the checkout is missing and says so in the log.
 
 on:
+  # Everything but the React Native app (.legacy/, lint.yml; but for the generators' RN inputs), the website
+  # (.site/, site.yml) and the other workflows. The two lists are the same.
   pull_request:
-    # Everything but the React Native app (.legacy/, lint.yml), the website (.site/, site.yml) and the other workflows.
     paths:
       - '**'
       - '.parity/**'
       - '.claude/**'
       - '.cargo/**'
       - '!.legacy/**'
+      # Except what tools/gen-demos.ts reads from the RN app to write demos.contract and assets/app-icons/:
+      # a change there can make the generated files stale, so it runs the generated check here.
+      - '.legacy/src/animations/registry.ts'
+      - '.legacy/src/animations/inspirations.ts'
+      - '.legacy/src/navigation/home/icon-colors.generated.ts'
+      - '.legacy/src/navigation/home/inspiration-copy.ts'
+      - '.legacy/assets/app-icons/**'
+      # The website (.site/, its own Exact app) has site.yml.
+      - '!.site/**'
+      - '!.github/**'
+      - '.github/workflows/exact-lint.yml'
+  # On main too: what merges (alone or together) must leave the generated files up to date.
+  push:
+    branches: [main]
+    paths:
+      - '**'
+      - '.parity/**'
+      - '.claude/**'
+      - '.cargo/**'
+      - '!.legacy/**'
+      # Except what tools/gen-demos.ts reads from the RN app to write demos.contract and assets/app-icons/:
+      # a change there can make the generated files stale, so it runs the generated check here.
+      - '.legacy/src/animations/registry.ts'
+      - '.legacy/src/animations/inspirations.ts'
+      - '.legacy/src/navigation/home/icon-colors.generated.ts'
+      - '.legacy/src/navigation/home/inspiration-copy.ts'
+      - '.legacy/assets/app-icons/**'
       # The website (.site/, its own Exact app) has site.yml.
       - '!.site/**'
       - '!.github/**'
@@ -68,6 +96,8 @@ jobs:
       # conflicts with every open Rust branch), not something to fold into another PR. After it, delete
       # the next line. On a PR that changes no Rust the step passes and says so.
       - name: Rust format (changed files)
+        # A PR's changed files against its base; a push to main has no base to diff against.
+        if: github.event_name == 'pull_request'
         continue-on-error: true
         env:
           LINT_BASE: origin/${{ github.base_ref }}

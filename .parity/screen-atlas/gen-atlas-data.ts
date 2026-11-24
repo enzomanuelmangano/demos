@@ -1,6 +1,8 @@
 // Writes home/atlas-data.contract: the parity queue's status per demo and the last
 // RN-vs-Exact iOS score (out/scores.json), for the app's own `atlas` route.
 //   bun gen-atlas-data.ts
+// The committed file carries no scores (out/ is gitignored, so CI has none): commit what
+// `ATLAS_OUT=$(mktemp -d) bun gen-atlas-data.ts` writes, which is what tools/lint.sh generated checks.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DEMOS, OUT, demos } from "./lib";
