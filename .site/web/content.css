@@ -30,11 +30,12 @@
 @media (min-width:768px){[data-motion~=article-grid]{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (min-width:1024px){[data-motion~=article-grid]{grid-template-columns:repeat(3,minmax(0,1fr))}}
 [data-motion~=article-card]{cursor:pointer;transition:all 200ms cubic-bezier(.4,0,.2,1)}
-[data-motion~=article-card]:hover{background-color:rgb(255 255 255 / .04) !important;translate:0 -2px}
+/* Live's card keeps its colours under the pointer: its inline styles (background, the texts' colours) win over the
+   hover classes (hover:bg-white/[0.04], group-hover text-white/95 and /80), so only the lift and the cover's 0.95 apply
+   (hover.ts: computed looks and box pixels against live). */
+[data-motion~=article-card]:hover{translate:0 -2px}
 [data-motion~=article-card]:active{scale:.99;opacity:.95}
 [data-motion~=article-card]:hover [data-motion~=article-cover]{opacity:.95}
-[data-motion~=article-card]:hover [data-motion~=article-title]{color:rgb(255 255 255 / .95) !important}
-[data-motion~=article-card]:hover [data-motion~=article-dim]{color:rgb(255 255 255 / .8) !important}
 
 /* RevealOnScroll: a card past the first three waits, paused on its first frame, until web/reveal.js sees it; the
    first three start from the CSS at once, at 100, 160, 220 ms. */
