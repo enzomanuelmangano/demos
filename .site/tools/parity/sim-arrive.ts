@@ -10,6 +10,8 @@
 // Then, in the app (desktop: in the frame; phone: full screen): tap → demo mounted, for 10 demos in a row (GPU and
 // plain), and a deep link /demos/<slug> (a legacy post, 308) → that demo drawn.
 // 4g: 170 ms RTT, 9 / 1.5 Mbps, 4x CPU, on the page and on the app's process.
+import { mkdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { launch, newPage, type Page } from './cdp.ts';
 
 const args = process.argv.slice(2);
@@ -18,7 +20,9 @@ const origin = args[0].replace(/\/$/, '');
 const [W, H] = opt('--size', '1440x900')!.split('x').map(Number);
 const profile = opt('--profile', 'cable')!;
 const runs = Number(opt('--runs', '3'));
-const out = opt('--out', `/tmp/sim-arrive-${W}-${profile}.json`)!;
+// --out <file>, else $SIM_OUT (a directory), else .out/parity/ under the working directory (dot directories are never captured).
+const out = opt('--out') ?? join(process.env.SIM_OUT ?? '.out/parity', `sim-arrive-${W}-${profile}.json`);
+mkdirSync(dirname(out), { recursive: true });
 const phone = W < 800;
 const SLUGS = ['composable-text', 'chessboard', 'calendar-days', 'sculptures-in-words', 'blur-cards', 'the-little-prince', 'magnet-spring', 'sphere-waves', 'clock-time-picker', 'card-shader-reflections'];
 const NET = { offline: false, latency: 170, downloadThroughput: (9 * 1024 * 1024) / 8, uploadThroughput: (1.5 * 1024 * 1024) / 8 };

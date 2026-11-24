@@ -525,10 +525,10 @@ image" (a caption was rejected, D17 revised). Variants considered:
   Save-Data, or a hidden tab; on other pages it does not poll (it waits again on a route change to `/demos`, 30 s at
   most per visit). It never blocks: the disc takes no pointer. Checked in headed and headless Chrome at 1440x900: the
   disc rises on the icon at ~1.2 s after live, Composable Text opens, "Use Max" becomes "Using Max", the app closes,
-  the disc fades (about 5 s); a wheel mid-demo stops it and the app is back on the launcher; Back mid-demo first
-  closes the demo the hint opened (the frame's history is joint with the page's: the app's open pushes an entry and
-  its close goes back), with the disc gone; a second Back leaves `/demos`. A completed or stopped demo leaves the
-  history as it found it (open pushes, close pops).
+  the disc fades (about 5 s); a wheel mid-demo stops it and the app is back on the launcher; Back mid-demo returns to the page before
+  `/demos`, with the disc gone; a site link at any moment of it leaves the app on its launcher. The demo's open and
+  close never add a history entry (the app replaces them when its parent asks, isolation.md §6), so a full demo
+  leaves the history as it found it and Forward never reopens the demo.
 - **(b) the launcher pages once by itself**: rejected; a page that moves without the reader reads as a glitch, and a
   synthetic drag through the app's pager is fragile.
 - **(c) a touch-circle cursor and icon lift on hover**: not possible from the site: the cursor and hover over an

@@ -9,6 +9,8 @@
 // Per interaction, frame intervals are read from requestAnimationFrame in the app's own document (its renderer
 // process) and in the page's (site mode): dropped = Σ(round(interval / vsync) - 1), p95 = the 95th percentile
 // interval, vsync = the median idle interval. Also: tap → the demo's root mounted, and its first frame after.
+import { mkdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { launch, newPage, type Page } from './cdp.ts';
 
 const args = process.argv.slice(2);
@@ -23,7 +25,9 @@ const only = opt('--only')?.split(',');
 const css = opt('--css');
 // --hint-off: mark the one-time touch demo seen, so it never runs during a measurement.
 const hintOff = !args.includes('--hint-on');
-const out = opt('--out', `/tmp/sim-frames-${mode}-${W}.json`)!;
+// --out <file>, else $SIM_OUT (a directory), else .out/parity/ under the working directory (dot directories are never captured).
+const out = opt('--out') ?? join(process.env.SIM_OUT ?? '.out/parity', `sim-frames-${mode}-${W}.json`);
+mkdirSync(dirname(out), { recursive: true });
 const phone = W < 800;
 const SLUGS = (opt('--demos') ?? 'sculptures-in-words,light-on-painting,the-little-prince,chessboard,art-gallery,cherry-blossom-qrcode,github-terrain,sphere-waves,calendar-days,blur-cards,composable-text,card-shader-reflections').split(',');
 

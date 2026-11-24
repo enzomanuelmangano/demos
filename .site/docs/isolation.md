@@ -96,12 +96,21 @@ sandboxed frame of `/demos/app/`, both ends small and guarded:
 
 - **The app's end** (`modules/web/index.js`, the web module only; iOS and the Mac never load it). Installed only when
   the app is framed (`window.parent !== window`); at the top level, which is every phone (D20) and every direct visit,
-  none of it exists: no listener, no style, nothing posted. It accepts a message only from its parent window
-  (`e.source === window.parent`) and from an allowed origin (`https://reactiive.io`, `https://www.reactiive.io`,
-  `https://<name>.vercel.app` previews, `http://localhost:<port>`, `http://127.0.0.1:<port>`); only two verbs, by
-  testId (`[a-z0-9-]{1,80}`): `rect` (answers that element's box) and `press` (a tap there: the same as the reader's
-  own); answers go to that origin only, never `*`. Once the parent has spoken, real input is reported (`input`) so the
-  parent stops its demo. Nothing else is read, written or answered.
+  none of it exists: no listener, no style, nothing posted, no history wrapper. It accepts a message only from its
+  parent window (`e.source === window.parent`) and only from the origin that serves the app itself (the site and the
+  app are one deployment: production's parent is `https://reactiive.io`, a preview's is that preview, a local
+  server's is that server; no other origin, no wildcard); only two verbs, by testId (`[a-z0-9-]{1,80}`): `rect`
+  (answers that element's box) and `press` (a tap there). Answers go to that origin only, never `*`. Once the parent
+  has spoken, real input is reported (`input`) so the parent stops its demo. Nothing else is read, written or answered.
+- **The frame's history is the page's (joint).** Framed, the module mirrors the router's entries (each state carries
+  its index) and keeps the two in step: a route a parent's `press` opens replaces the entry, and its close replaces
+  back to it (never a `go(-1)`), so the reader's Back never steps through the parent's demo and a full demo leaves no
+  forward entry; once the page has moved on (it pushed entries since the frame's last move) or the frame does not
+  render (hidden by the page: no animation frame for a second), a router's `go(-n)` is made a replace to the target
+  entry plus the `popstate` the router awaits, never a traversal of the page's history. A `press close` while hidden
+  goes home at once, and a hidden document's close lands at once (no flight). Checked by
+  `tools/parity/sim-history.ts` (a link at five moments of the demo, Back mid-demo, a full demo then Back / Forward,
+  then a reader's own open and close moving the history by one).
 - **In a sandboxed frame** (an opaque origin, only `/demos` frames it so) the app's desktop frame also drops its stage,
   rim, glass and shadow (a style sheet from the same module): the page draws the phone around the display (D18), with
   no seam. Outside a frame, unchanged.

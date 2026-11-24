@@ -75,7 +75,7 @@ jobs:
       - name: ImageMagick as `magick` (gen-content resizes images with it; the runner ships ImageMagick 6's `convert`)
         run: |
           if ! command -v magick >/dev/null; then
-            command -v convert >/dev/null || sudo apt-get install -y imagemagick
+            command -v convert >/dev/null || { sudo apt-get update -q && sudo apt-get install -y -q imagemagick; }
             mkdir -p "$HOME/.local/bin"
             printf '#!/bin/sh\nexec convert "$@"\n' > "$HOME/.local/bin/magick"
             chmod +x "$HOME/.local/bin/magick"
