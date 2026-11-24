@@ -3,7 +3,7 @@
   "private": true,
   "description": "reactiive.io on Exact. Its own install, lockfile and tsconfig: nothing here is shared with the Demos app at the repo root or with .legacy/.",
   "scripts": {
-    "build": "bun tools/gen-content.ts && bun exact.mjs web-build --out dist && bun tools/seo/postbuild.ts dist && bun tools/observability.ts dist && bun tools/storage-bridge.ts dist",
+    "build": "bun tools/gen-content.ts && bun exact.mjs web-build --out dist && bun tools/entry-url.ts dist && bun tools/seo/postbuild.ts dist && bun tools/observability.ts dist && bun tools/storage-bridge.ts dist",
     "start": "bun exact.mjs serve dist",
     "demos-web": "bun tools/demos-web/build.ts",
     "compose": "bun tools/compose.ts",

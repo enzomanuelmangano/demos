@@ -72,6 +72,9 @@ jobs:
       - name: Typecheck the tooling
         run: bun x tsc -p tsconfig.json
 
+      - name: app.json's head is current (web/head.css, content.css and the web/*.js scripts it inlines; tools/head.ts)
+        run: bun tools/head.ts --check
+
       - name: ImageMagick as `magick` (gen-content resizes images with it; the runner ships ImageMagick 6's `convert`)
         run: |
           if ! command -v magick >/dev/null; then
@@ -89,3 +92,6 @@ jobs:
         env:
           EXACT: ${{ github.workspace }}/.exact-sdk
         run: bun exact.mjs web-build --out dist
+
+      - name: The runtime entry root-relative on every page (Safari resolves an inline import() against the page's address; tools/entry-url.ts)
+        run: bun tools/entry-url.ts dist

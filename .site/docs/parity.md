@@ -95,6 +95,37 @@ the 404 0.39 %, /series/what-about-gestures 0.32 % at 320; /course, /inspiration
 1.2 % at 320 only (live's cut Subscribe); every resize, static and started, equal to a fresh load (and the real window
 on /, an article, /docs/terms). Classic scrollbars (`--scrollbars`): no overflow on any of the 38 pages.
 
+## Safari (`tools/parity/safari.ts`)
+
+The rest of `tools/parity` drives Chrome over CDP; `safari.ts` checks what WebKit does differently, with the real
+Safari (safaridriver: Safari > Settings > Advanced > "Show features for web developers", then Developer > "Allow remote
+automation") or, as a proxy, Playwright's WebKit installed outside the repo (`--driver webkit --pw <dir>`). Found and
+fixed on 2026-11-24 (Safari 27.0.1 on macOS, iOS 27.0 Safari in the simulator, Playwright WebKit 27.2):
+
+- **Nested pages never started their runtime in Safari.** The built pages name the runtime as
+  `data-entry="./app-<hash>.js"` and import() it from an inline script; Chrome resolves that against `<base href="/">`,
+  WebKit against the page's address, so /articles/<slug>, /series/<slug>, /docs/<page> and the demo posts fetched
+  `/articles/app-<hash>.js` (a 404 or HTML): no in-app navigation (every link a document load after the 2.5 s safety
+  net), and on a demo post at 768 px and up the framed phone never went to the demo. `tools/entry-url.ts` (in `build`)
+  writes the entry root-relative.
+- **The framed Demos app could not open a demo in Safari.** WebKit refuses a pushState or replaceState that changes the
+  path in a sandboxed (opaque-origin) document ("Paths and fragments must match for a sandboxed document"): the router
+  threw half way, leaving a black card with no close (the touch demo on first visit too). `tools/demos-web/bridge.js`
+  makes the entry without its URL when refused; the router keeps each entry's URL itself, so routes, Back and Forward
+  are unchanged, and the frame's address stays /demos/app/.
+- **Without the Navigation API** (Safari before 26.2) the header's Demos link on a demo post left the deep link's demo
+  open (the post and /demos are one page: no DOM change, no popstate). `web/sim-goto.js` watches the history writes.
+
+Re-run with the real Safari 27.0.1 (safaridriver) after the rebase on #127: every check passes on this branch; main
+fails the nested-page, framed-open and deep-link checks (the run stops at a click that hangs on the broken page).
+WebDriver note: a press with a pause between down and up reaches the app as a long press (its context menu), so the
+probe's clicks have none.
+
+Not fixed (no site-side fix, or not Safari's): the account dialogs close without their fade in Safari (no `overlay`
+transition, so the dialog leaves the top layer at once); iOS Safari shows its light keyboard over the Demos app's dark
+search (likely the field's `color-scheme`: the Demos app's, not the site's); in a sandboxed frame WebKit logs a Web
+Share permission-policy error (harmless: the check is in a try).
+
 ## Open differences (the owner's bar is identity in pixels and in motion: each is to be fixed, none is accepted)
 
 - **Icons are images.** The logo and the menu icon are `<img>` of SVG files (the reference inlines `<svg>`), so the
