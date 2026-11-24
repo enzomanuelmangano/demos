@@ -511,6 +511,15 @@ inside the app's own renderer process and the page's, per interaction; site vs t
   (`exact feedback note`); drop the patch when the pinned Exact has the fix. The patched file keeps its name (its content-named importers
   stay the build's), so compose serves it revalidated, not `immutable`. Regression check:
   `bun tools/parity/composable-text.ts <origin>` (exit 1 if leaving letters collapse; 1440 and 390 touch).
+- **Miles Bar Chart's bars jumped** to the new week's heights while their colour sprang. The `week` message arrives and
+  `active` changes; the cause is in Exact's web-js host: height is one of the properties its motion engine plays as
+  physics, so the CSS lowering keeps only `height 0s ease 0s` for it, but motion.js tells the engine a node's height
+  only for a height drag's owner, so any other `height -exact-spring()` lands in one frame (iOS springs it). Measured
+  before: every bar 0 in-between frames; after: 15-30 per bar over ~0.7 s, settling on 30 + 120 × value. The same fix
+  (`tools/demos-web/patches.ts`, the artifact's `motion-*.js`) also springs Clerk Toast's backdrop strip (iOS-only
+  drawing, its height snapped too). No other demo has a `height` spring; width and the other non-physics properties
+  spring as CSS `linear()` and were fine. Reported to Exact (`exact feedback note`). Regression check:
+  `bun tools/parity/height-spring.ts <origin>` (exit 1 on a snap; 390 touch and 1440 mouse).
 - **The frame loads 600 ms in** (it waited for the hero's 1.6 s entrances): its start is in its own process, so it never
   competed with them on the page's main thread; live 1.0-1.3 s sooner on cable and 4g (perf.md).
 - **The sandbox costs the frame its HTTP cache.** Measured: a repeat visit to `/demos` re-downloads every file of the
