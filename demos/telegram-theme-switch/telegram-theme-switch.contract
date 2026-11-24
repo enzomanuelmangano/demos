@@ -162,8 +162,9 @@ component TtsScreen
                 view width=56 height=56 border-radius=28 background-image=ttsAvatar(c.hue)
                   flex-shrink=0 display="flex" align-items="center" justify-content="center"
                   text ttsInitials(c.name) font-size=22 font-weight=600 color="#FFFFFF"
+              // border-box: the hairline sits inside the 76 pt row (content-box made it 76.5).
               column flex=1 min-width=0 height=76 justify-content="center" padding-right=14
-                border-bottom-width=0.5 border-bottom-style="solid"
+                box-sizing="border-box" border-bottom-width=0.5 border-bottom-style="solid"
                 border-bottom-color=ttsSeparator(dark) gap=2
                 row align-items="center" gap=6
                   text c.name flex=1 min-width=0 font-size=16 line-height="21px" font-weight=600
@@ -177,7 +178,8 @@ component TtsScreen
                     color=ttsSecondary(dark) white-space="nowrap" overflow="hidden"
                     text-overflow="ellipsis"
                   if c.unread > 0
-                    view min-width=22 height=22 border-radius=11 padding="0px 7px"
+                    // border-box: one digit is a 22 pt circle (content-box made it 36 × 22).
+                    view min-width=22 height=22 border-radius=11 padding="0px 7px" box-sizing="border-box"
                       background-color=ttsBadge(dark, c.muted) display="flex"
                       align-items="center" justify-content="center"
                       text `${c.unread}` font-size=14 line-height="18px" font-weight=600

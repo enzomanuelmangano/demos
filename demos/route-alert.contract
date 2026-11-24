@@ -46,7 +46,8 @@ component RouteAlert
         alert-appearance="dark" position="absolute" top=0 left=0 width=0 height=0
         aria-hidden=true testId=`${testId}-system`
       if shown and not native
-        column aria-label=title width=300 color-scheme="dark"
+        // border-box: 300 wide with its padding inside (content-box made it 336).
+        column aria-label=title width=300 box-sizing="border-box" color-scheme="dark"
           backgroundMaterial="regular" border-radius=34 corner-shape="-exact-continuous"
           padding="22px 18px 18px" gap=4 align-items="stretch"
           animation="routeAlertIn 300ms cubic-bezier(0.32, 0.72, 0, 1) both"
