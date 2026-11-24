@@ -48,9 +48,22 @@ if (existsSync(join(siteDist, 'demos'))) for (const n of readdirSync(join(siteDi
 for (const s of postSlugs) if (!existsSync(join(siteDist, 'demos', s, 'index.html'))) throw new Error(`compose: the site build lacks the demo post /demos/${s}`);
 for (const r of siteRoutes.routes) if (r.pattern.startsWith('/demos/') && !(r.name === 'demoPost' && r.pattern === '/demos/:demo' && r.render === 'build')) throw new Error(`compose: site route ${r.name} (${r.pattern}) is under /demos/, the Demos app's`);
 
-// The app's demo slugs, from the launcher list of the same tree the demos build came from.
-const demosRev = (() => { try { return readJson(join(demosDist, '..', 'demos-web.json')).rev; } catch { return 'HEAD'; } })();
-const appSlugs = new Set([...spawnSync('git', ['show', `${demosRev}:demos.contract`], { cwd: site, encoding: 'utf8' }).stdout.matchAll(/Demo\(slug="([^"]+)"/g)].map((m) => m[1]));
+// The app's demo slugs, from the launcher list of the same tree the demos build came from. demos.contract is a key
+// input (tools/demos-web/build.ts isInput), so an artifact keyed by HEAD's inputs was built from HEAD's demos.contract:
+// read it at HEAD (a CI clone is shallow; the commit the cached artifact was built at, main's, is not in it). Any other
+// artifact (--demos): at its recorded commit when this clone has it; else at HEAD only when the demos.contract blob it
+// recorded is HEAD's, and the compose fails if it is not.
+const gitIn = (...a: string[]) => spawnSync('git', a, { cwd: site, encoding: 'utf8' });
+const demosRev = (() => {
+  let record: { key?: string; rev?: string; contract?: string };
+  try { record = readJson(join(demosDist, '..', 'demos-web.json')); } catch { return 'HEAD'; }
+  if (record.key === keyAt('HEAD').key) return 'HEAD';
+  if (record.rev && gitIn('cat-file', '-e', `${record.rev}^{commit}`).status === 0) return record.rev;
+  const head = gitIn('rev-parse', 'HEAD:demos.contract').stdout.trim();
+  if (record.contract && record.contract === head) return 'HEAD';
+  throw new Error(`compose: the demos build was made at ${record.rev}, which this clone lacks, and its demos.contract (${record.contract ?? 'not recorded'}) is not HEAD's (${head}): fetch ${record.rev} or rebuild the artifact`);
+})();
+const appSlugs = new Set([...gitIn('show', `${demosRev}:demos.contract`).stdout.matchAll(/Demo\(slug="([^"]+)"/g)].map((m) => m[1]));
 if (appSlugs.size < 100) throw new Error(`compose: ${appSlugs.size} demo slugs read from demos.contract at ${demosRev}`);
 for (const [from, to] of Object.entries(ALIASES)) if (!appSlugs.has(to)) throw new Error(`compose: alias ${from} → ${to}, which the app does not have`);
 // Each post's demo is the app's (its icon is what the phone opens), and each post kept out really lacks one.
