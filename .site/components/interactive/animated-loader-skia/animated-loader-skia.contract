@@ -133,6 +133,8 @@ fn loaderType(name: string): string = name == "BasicLoaderWithSkia" ? "basic" : 
 component AnimatedLoaderSkiaInteractive
   props
     name: string
+    // The block's id on its page (ArticleDemo): part of the canvas's key, so two of one export keep two memories.
+    at: string
   view
     if loaderType(name) != ""
-      LoaderDemo(key=name, type=loaderType(name), withButtons=(loaderType(name) == "with-basic-animation" or loaderType(name) == "with-animation"))
+      LoaderDemo(key=`${name}#${at}`, type=loaderType(name), withButtons=(loaderType(name) == "with-basic-animation" or loaderType(name) == "with-animation"))

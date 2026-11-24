@@ -81,7 +81,7 @@ time since the motion's start.
 | loader (WithAnimation, Play, 2.5 s) | 151 / 150 | within 0.03 at every mark (0-2 s) | median 0.27 %, max 0.56 % |
 | metaball (WithPan, 15-step drag + release, 2.5 s) | 141 / 140 | drag one frame behind live (pointer → runner → draw), spring-back same curve | median 0.18 %, max 8.6 % (during the drag) |
 | gradient (AnimatedGradient, Play) | 20 / 20 | 250 ms ease, within 0.06 (one-frame phase) | n/a: random colours |
-| spiral (FixedRadiusGradient, Play) | 93 / 93 | 1.5 s easeInOutQuad, same shape, ±1 frame | n/a: random angle |
+| spiral (FixedRadiusGradient, Play) | 93 / 93 | 1.5 s easeInOutQuad, same shape, ±1 frame | n/a: live's angle is random; here Play steps through six fixed angles (PR #128) |
 
 Restart on the colour-matrix demo: labels, matrix and blur logged every frame for 330 ms after the press, live and
 local: the same values at the same times (e.g. 128 ms: blur 11, alpha 85, pos 61 on both; ends at 323-329 ms).

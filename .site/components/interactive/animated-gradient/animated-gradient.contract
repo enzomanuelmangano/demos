@@ -48,6 +48,8 @@ component NonInteractiveAnimatedGradientWithSkia
 component AnimatedGradientInteractive
   props
     name: string
+    // The block's id on its page (ArticleDemo): part of the canvas's key, so two of one export keep two memories.
+    at: string
   view
     if name == "AnimatedGradientWithSkia" or name == "GlitchedAnimatedGradientWithSkia" or name == "NonInteractiveAnimatedGradientWithSkia"
-      AnimatedGradient(key=name, animated=(name != "GlitchedAnimatedGradientWithSkia"), withPlay=(name != "NonInteractiveAnimatedGradientWithSkia"))
+      AnimatedGradient(key=`${name}#${at}`, animated=(name != "GlitchedAnimatedGradientWithSkia"), withPlay=(name != "NonInteractiveAnimatedGradientWithSkia"))

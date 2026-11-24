@@ -1,5 +1,7 @@
 // An article's interactive demo, as its MDX names it: the `demo` blocks of tools/gen-content.ts (DEMOS there).
-// `article` and `name` pick the export; `args` is its props as the converter wrote them, every prop given
+// `article` and `name` pick the export; `at` is the block's id, unique on its page, so the same export twice on a page
+// (animated-spiral shows AnimatedSpiralWithSkia at its top and its end) keys two canvases, two memories; `args` is its
+// props as the converter wrote them, every prop given
 // (`hasBackdrop=true`, `scaleAnimationType="spring", showBorderRadiusAnimation=false`: the converter checked each
 // name and value against the reference's); `boxed` puts it in the article's InteractiveBox, as the MDX does.
 // Each demo draws its own frame and the space under it (docs/progress-comp-gesture.md, progress-comp-canvas.md).
@@ -21,6 +23,7 @@ component ArticleDemo
     article: string
     name: string
     args: string
+    at: string
   view
     if article == "bottom-sheet-animation"
       SheetBox()
@@ -52,13 +55,13 @@ component ArticleDemo
       else
         InteractiveSkeletonDemo()
     else if article == "animated-gradient"
-      AnimatedGradientInteractive(name=name)
+      AnimatedGradientInteractive(name=name, at=at)
     else if article == "animated-loader-skia"
-      AnimatedLoaderSkiaInteractive(name=name)
+      AnimatedLoaderSkiaInteractive(name=name, at=at)
     else if article == "animated-spiral"
-      AnimatedSpiralInteractive(name=name)
+      AnimatedSpiralInteractive(name=name, at=at)
     else if article == "metaball"
-      MetaballInteractive(name=name)
+      MetaballInteractive(name=name, at=at)
 
 component BottomSheetDemo
   props

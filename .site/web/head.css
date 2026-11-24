@@ -53,7 +53,7 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 [data-delay="80"]{--motion-delay:80ms}[data-delay="170"]{--motion-delay:170ms}[data-delay="250"]{--motion-delay:250ms}
 [data-delay="350"]{--motion-delay:350ms}[data-delay="450"]{--motion-delay:450ms}[data-delay="470"]{--motion-delay:470ms}
 [data-delay="530"]{--motion-delay:530ms}[data-delay="550"]{--motion-delay:550ms}[data-delay="590"]{--motion-delay:590ms}
-[data-delay="650"]{--motion-delay:650ms}[data-delay="1200"]{--motion-delay:1200ms}
+[data-delay="650"]{--motion-delay:650ms}
 /* /demos's hero: the header's 1000 px perspective, and the title and subtitle lifted toward the reader
    (translateZ: 3D, which a Contract box does not take). */
 [data-motion~=perspective]{perspective:1000px}
