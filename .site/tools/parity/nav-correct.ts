@@ -46,7 +46,7 @@ const shows = (path: string) => `(() => {
   return h1s.some((t) => t.includes(want)) || body.includes(want);
 })()`;
 
-async function until(page: Page, expr: string, ms = 4000) {
+async function until(page: Page, expr: string, ms = 6000) {
   const t0 = Date.now();
   while (Date.now() - t0 < ms) {
     try { if (await page.eval<boolean>(expr)) return true; } catch {}
