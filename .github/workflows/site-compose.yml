@@ -1,0 +1,145 @@
+name: Site / compose
+
+# The deploy tree, composed on every PR that can change it (.site/tools/compose.ts): the site's build and the /demos/app/
+# artifact side by side, with the compose-time patches to the artifact (.site/tools/demos-web/patches.ts) applied. A
+# patch whose text or names a demos change or an Exact upgrade moved fails here, not only at deploy time.
+# The artifact is restored from the cache by its inputs' key (.site/tools/demos-web/build.ts; site-demos-web.yml warms
+# it on main) and built only on a miss. It composes; it deploys nothing.
+#
+# Paths: the site and every input of the artifact (build.ts isInput: every tracked path but .site .legacy .parity
+# .github and *.md), so a pure .legacy (or .parity, or docs) change never runs it (docs/isolation.md §4).
+on:
+  pull_request:
+    paths:
+      - '**'
+      - '!.legacy/**'
+      - '!.parity/**'
+      - '!.github/**'
+      - '!**/*.md'
+      - '.site/**'
+      - '.github/workflows/site-compose.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-compose-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Bun (the version Exact pins)
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Demos inputs key and Exact seeds
+        id: key
+        run: |
+          echo "key=$(bun .site/tools/demos-web/build.ts --key-only)" >> "$GITHUB_OUTPUT"
+          echo "demos-seed=$(sed -n 's/^const seed = ".*\/\([0-9a-f]\{40\}\)";$/\1/p' exact.mjs)" >> "$GITHUB_OUTPUT"
+          echo "site-seed=$(sed -n 's/^const seed = ".*\/\([0-9a-f]\{40\}\)";$/\1/p' .site/exact.mjs)" >> "$GITHUB_OUTPUT"
+
+      # ---- the /demos/app/ artifact: the cached one where there is one -----------------------------------------------
+      - name: Restore the demos artifact
+        id: artifact
+        uses: actions/cache@v4
+        with:
+          path: .site/.out/demos-web/${{ steps.key.outputs.key }}
+          key: demos-web-${{ steps.key.outputs.key }}
+
+      - name: Checkout expo/exact at the demos' seed
+        if: steps.artifact.outputs.cache-hit != 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: expo/exact
+          ref: ${{ steps.key.outputs.demos-seed }}
+          path: .exact-demos
+
+      - name: Cache Rust (toolchains, registry, build)
+        if: steps.artifact.outputs.cache-hit != 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.rustup
+            ~/.cargo/bin
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cache/exact
+            /tmp/demos-web-target
+          key: demos-web-rust-${{ steps.key.outputs.demos-seed }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: demos-web-rust-${{ steps.key.outputs.demos-seed }}-
+
+      # The root Cargo.toml names the vendored crates under .exact/checkout (exact.mjs's link to the checkout, made
+      # locally on first use); setup reads that manifest, so the link must exist first.
+      - name: Link .exact/checkout to the checked-out Exact
+        if: steps.artifact.outputs.cache-hit != 'true'
+        run: mkdir -p .exact && ln -sfn "$GITHUB_WORKSPACE/.exact-demos" .exact/checkout
+
+      - name: Exact web prerequisites for the demos build
+        if: steps.artifact.outputs.cache-hit != 'true'
+        run: bun .exact-demos/scripts/exact.mjs setup --platform web
+
+      - name: Build the demos web (base /demos/app/)
+        if: steps.artifact.outputs.cache-hit != 'true'
+        env:
+          EXACT: ${{ github.workspace }}/.exact-demos
+          CARGO_TARGET_DIR: /tmp/demos-web-target
+          DEMOS_WEB_SCRATCH: /tmp/demos-web-src
+        run: bun .site/tools/demos-web/build.ts
+
+      # ---- the site -----------------------------------------------------------------------------------------------
+      - name: Checkout expo/exact at the site's seed
+        uses: actions/checkout@v4
+        with:
+          repository: expo/exact
+          ref: ${{ steps.key.outputs.site-seed }}
+          path: .exact-site
+
+      # site.yml's cache (the same key). On an artifact miss the demos' Rust cache above was restored instead.
+      - name: Cache Rust and Exact's compiled web modules (the site's)
+        if: steps.artifact.outputs.cache-hit == 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.rustup
+            ~/.cargo/bin
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cache/exact
+          key: site-rust-${{ steps.key.outputs.site-seed }}
+
+      - name: Exact web prerequisites for the site
+        working-directory: .site
+        run: bun ../.exact-site/scripts/exact.mjs setup --platform web
+
+      - name: Install the site's dependencies
+        working-directory: .site
+        run: bun install --frozen-lockfile
+
+      - name: ImageMagick as `magick` (gen-content resizes images with it; the runner ships ImageMagick 6's `convert`)
+        run: |
+          if ! command -v magick >/dev/null; then
+            command -v convert >/dev/null || { sudo apt-get update -q && sudo apt-get install -y -q imagemagick; }
+            mkdir -p "$HOME/.local/bin"
+            printf '#!/bin/sh\nexec convert "$@"\n' > "$HOME/.local/bin/magick"
+            chmod +x "$HOME/.local/bin/magick"
+            echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          fi
+
+      - name: Build the site (web-build, then head, JSON-LD, sitemap, robots, feed, manifest)
+        working-directory: .site
+        env:
+          EXACT: ${{ github.workspace }}/.exact-site
+        run: bun run build
+
+      # ---- compose ------------------------------------------------------------------------------------------------
+      - name: Compose the deploy tree (every demos patch must apply exactly)
+        working-directory: .site
+        run: bun tools/compose.ts

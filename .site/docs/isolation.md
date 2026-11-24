@@ -51,14 +51,21 @@ Both dev loops at once (`bun exact.mjs web --port 5351` at the root, `--port 535
 
 | change | pull_request triggers | push triggers |
 |---|---|---|
-| site only (`.site/**`) | site.yml | site.yml |
-| demos app only (`app.contract`, `demos/**`, `gpu/**`, `app.forma`, `.cargo/**`) | exact-lint.yml | none |
+| site only (`.site/**`) | site.yml, site-compose.yml | site.yml |
+| demos app only (`app.contract`, `demos/**`, `gpu/**`, `app.forma`, `.cargo/**`) | exact-lint.yml, site-compose.yml | site-demos-web.yml |
+| demos web module only (`modules/web/index.js`) | exact-lint.yml, site-compose.yml | site-demos-web.yml |
+| root Exact app file only (`exact.mjs`) | exact-lint.yml, site-compose.yml | site-demos-web.yml |
 | legacy only (`.legacy/**`) | lint.yml | lint.yml |
 | parity tooling only (`.parity/**`) | exact-lint.yml | none |
+| docs only (`README.md`) | exact-lint.yml | none |
 
-`exact-lint.yml` gained one line (`'!.site/**'`); `lint.yml` is unchanged. `site-demos-web.yml` (the `/demos/` artifact)
-runs on its own tool's changes; the future deploy workflow runs on site *and* demos inputs by design (the deployed
-`/demos/` embeds the demos build).
+`exact-lint.yml` gained one line (`'!.site/**'`); `lint.yml` is unchanged. `site-compose.yml` composes the deploy tree
+on a PR that changes the site or any input of the `/demos/` artifact (the inputs `tools/demos-web/build.ts` keys it by),
+so a compose-time patch (`tools/demos-web/patches.ts`) that a demos change or an Exact upgrade made stale fails in the
+PR; it restores the cached artifact and builds it only on a miss. `site-demos-web.yml` (the artifact) builds on a push
+to main that changes those inputs or its own tool, which keeps main's cache warm for the PRs. The deploy workflow stays
+manual; it runs on site *and* demos inputs by design (the deployed `/demos/` embeds the demos build). None of the
+site's workflows runs on a pure `.legacy/` change.
 
 ## 5. `.legacy/` is read by neither build
 
