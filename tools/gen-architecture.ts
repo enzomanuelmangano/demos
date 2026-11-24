@@ -30,7 +30,9 @@ const nativeNames: Record<string, string> = {
   'rolling-count': 'Rolling count',
   'mate-haptic': 'Mate haptic',
 };
-const registered = new Set([...read('modules/apple/Demos.swift').matchAll(/^\s*(?:return \[)?"([a-z-]+)": ExactNativeFactory/gm)].map(m => m[1]));
+// A registration is `"tag": ExactNativeFactory …` or `"tag": native("tag") { … }` (the helper that times
+// each view's first make for StartupProbe).
+const registered = new Set([...read('modules/apple/Demos.swift').matchAll(/^\s*(?:return \[)?"([a-z-]+)": (?:ExactNativeFactory|native\()/gm)].map(m => m[1]));
 const tags = Object.keys(nativeNames).filter(t => registered.has(t));
 
 // Contract text without comment lines.
@@ -99,7 +101,9 @@ const facts = (slug: string): Arch | null => {
   const nativeViews = tags.filter(t => new RegExp(`^\\s*${t}\\b`, 'm').test(scanned)).map(t => nativeNames[t]);
   const systemAPIs: string[] = [];
   if (/\bhaptic\(/.test(scanned)) systemAPIs.push('Haptics');
-  if (surfaces.some(s => sensorSurfaces.has(s))) systemAPIs.push('Motion sensors');
+  // Sensors reach a surface either through app.contract's startSensorInput or a `motion-feed` node
+  // (modules/apple/MotionFeed.swift, Linear Sensors' gravity).
+  if (surfaces.some(s => sensorSurfaces.has(s)) || /^\s*motion-feed\b/m.test(scanned)) systemAPIs.push('Motion sensors');
 
   return {
     contractLines: own.split('\n').length - (own.endsWith('\n') ? 1 : 0),

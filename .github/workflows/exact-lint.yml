@@ -11,7 +11,7 @@ name: Exact lint
 #   - Contract linter against its baseline + tests    contract   (new findings fail; accepted debt is listed)
 #   - rustfmt --check on the .rs files the PR changes rust       (rust-toolchain.toml's rustfmt; informational until the cargo fmt commit)
 #   - tsc over the Bun tooling                        ts         (tsconfig.json)
-#   - generated files are up to date                  generated  (regenerates into scratch, reports drift; informational today)
+#   - generated files are up to date                  generated  (regenerates into scratch, fails on drift)
 #
 #   only local, where the Exact checkout exists (run `tools/lint.sh all`)
 #   - `bun exact.mjs contract build app.contract --errors-only`   (the compiler)
@@ -61,9 +61,12 @@ jobs:
       - name: Contract linter
         run: tools/lint.sh contract
 
-      # Informational until the whole-tree `cargo fmt` commit lands: the Rust of the exact branch was
-      # never formatted, and every file of it is "changed" against main (a PR that adds the app would
-      # fail here for a reason that is not the PR's). After that commit, delete the next line.
+      # Informational until the whole-tree `cargo fmt` commit lands: the Rust under gpu/ and packages/
+      # was never formatted (`tools/rust-lint.sh fmt-all`, 2026-11-24: 115 of 128 files would change,
+      # ~33k diff lines), so a PR that touches any of those files would fail here for formatting it did
+      # not write. That commit is a one-off, coordinated change (it rewrites nearly every Rust file and
+      # conflicts with every open Rust branch), not something to fold into another PR. After it, delete
+      # the next line. On a PR that changes no Rust the step passes and says so.
       - name: Rust format (changed files)
         continue-on-error: true
         env:
@@ -73,11 +76,6 @@ jobs:
       - name: TypeScript (Bun tooling)
         run: tools/lint.sh ts
 
-      # Informational for now: at the time of writing the committed demos/index.contract and
-      # Architecture.generated.swift differ from what their generators write (gen-index.ts names the
-      # first component of a file, `MpArt` for expandable-mini-player, where the committed file has
-      # ExpandableMiniPlayer; the Architecture file's order and two entries differ). Regenerate
-      # (or fix the generators), then delete the next line.
       - name: ImageMagick as `magick` (the generators resize icons with it; the runner ships ImageMagick 6's `convert`)
         run: |
           if ! command -v magick >/dev/null; then
@@ -88,6 +86,6 @@ jobs:
             echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           fi
 
+      # Gating: run `tools/lint.sh generated` locally; it prints the generator commands to refresh.
       - name: Generated files are up to date
-        continue-on-error: true
         run: tools/lint.sh generated

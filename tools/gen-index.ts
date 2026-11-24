@@ -11,9 +11,15 @@ const rows = dirs.flatMap(slug => {
   const file = resolve(APP, `demos/${slug}/${slug}.contract`);
   if (!existsSync(file)) return [];
   const text = readFileSync(file, 'utf8');
-  const name = text.match(/^component (\w+)/m)?.[1];
+  // The demo's entry component: the one named after the slug (`expandable-mini-player` is
+  // ExpandableMiniPlayer, `notion-qrcode` NotionQrCode), not whichever helper a file declares first
+  // (MpArt, TtsPhoto); the first component only when none is.
+  const names = [...text.matchAll(/^component (\w+)/gm)].map(m => m[1]);
+  const name = names.find(n => n.toLowerCase() === slug.replace(/-/g, '').toLowerCase()) ?? names[0];
   if (!name) return [];
-  const env = new RegExp(`component ${name}\\s*\\n\\s*props[\\s\\S]*?\\n\\s+env: DemoEnv`).test(text);
+  // Whether its props take `env: DemoEnv` (an `inject` block may come before `props`).
+  const body = text.slice(text.search(new RegExp(`^component ${name}\\b`, 'm'))).split(/\n(?=\S)/)[0];
+  const env = /^\s+props\s*\n(?:\s{4,}.*\n)*?\s{4,}env: DemoEnv\b/m.test(body);
   return [{ slug, name, env }];
 });
 writeFileSync(resolve(APP, 'demos/index.contract'), `// The demos ported to Exact, by slug. Each lives in demos/<slug>/. Written by tools/gen-index.ts.
