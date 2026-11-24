@@ -106,7 +106,7 @@ const page = await newPage(cdp, 1440, { height: 1000, scale: args.includes('--dp
 // The page's one-time touch demo (web/sim-hint.js) and hero arrow are marked seen for this session, so nothing but
 // the probe drives the phone.
 await page.goto(`${origin}/demos`);
-await page.eval(`sessionStorage.setItem('reactiive.demos.hint', '1'); sessionStorage.setItem('reactiive.demos.arrow', '1')`);
+await page.eval(`sessionStorage.setItem('reactiive.demos.hint', '1'); sessionStorage.setItem('reactiive.demos.arrow', 'off')`);
 await page.goto(`${origin}/demos`);
 await until(() => page.eval(`!!document.querySelector('iframe[data-motion~=live]')?.checkVisibility()`), 30000);
 let app = (await frameApp())!;

@@ -42,7 +42,7 @@
   }).observe(document.documentElement, { childList: true, subtree: true });
   all();
 })();
-/* /demos's one-time touch demo (D19): once per session, 1.2 s after the framed Demos app has drawn, an iOS-style touch
+/* /demos's arrow (D22: on every arrival at /demos) and one-time touch demo (D19): once per session, 1.2 s after the framed Demos app has drawn, an iOS-style touch
    indicator taps an app on the phone (it opens), taps inside it (Composable Text's pill morphs), and closes it, so the
    phone reads as a live device, not a picture. The app is driven only through its framed-app messages
    (modules/web/index.js: `rect` and `press` by testId, docs/isolation.md); nothing here reaches into it. Only where the
@@ -51,23 +51,25 @@
    opened is closed again, so the kept frame never carries it around the site. Never blocks: the indicator takes no
    pointer. */
 (function () {
-  var KEY = 'reactiive.demos.hint', AKEY = 'reactiive.demos.arrow';
+  var KEY = 'reactiive.demos.hint';
   var seen = function () { try { return sessionStorage.getItem(KEY) === '1'; } catch (e) { return true; } };
   var mark = function () { try { sessionStorage.setItem(KEY, '1'); } catch (e) {} };
-  var aseen = function () { try { return sessionStorage.getItem(AKEY) === '1'; } catch (e) { return true; } };
-  var amark = function () { try { sessionStorage.setItem(AKEY, '1'); } catch (e) {} };
   var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // The measuring tools turn the arrow off for their session (`reactiive.demos.arrow` = 'off'); a reader never does.
+  var noArrow = function () { try { return sessionStorage.getItem('reactiive.demos.arrow') === 'off'; } catch (e) { return false; } };
   // The arrow plays with reduced motion too (still, only faded) and with Save-Data (it costs no bytes); the touch demo not.
   var touchOk = function () { return !seen() && !reduce && !(navigator.connection && navigator.connection.saveData); };
-  if (!touchOk() && aseen()) return;
   var wide = matchMedia('(min-width: 768px)');
   var onDemos = function () { return /^\/demos\/?$/.test(location.pathname); };
-  var state = 'idle', dot = null, frame = null, opened = false, waits = {}, timer = 0, tries = 0;
+  // idle: waiting for /demos; armed: the arrow (then the touch demo's wait); playing: the touch demo; rest: done for
+  // this visit (a new arrival makes it idle again). `visit` tags each arrival, so a late callback of an earlier one
+  // (a quick back-and-forth) does nothing.
+  var state = 'idle', dot = null, frame = null, opened = false, waits = {}, timer = 0, tries = 0, visit = 0, lastInput = -1e9;
   var visible = function () { return !!frame && frame.isConnected && frame.checkVisibility() && onDemos(); };
   function stop() {
     if (state !== 'playing' && state !== 'armed') return;
     var was = state;
-    state = 'done';
+    state = 'rest';
     mark();
     clearTimeout(timer);
     off();
@@ -92,7 +94,10 @@
   }
   addEventListener('message', function (e) {
     var m = e.data;
-    if (!frame || e.source !== frame.contentWindow || !m || typeof m.demos !== 'string') return;
+    if (!m || typeof m.demos !== 'string') return;
+    // The reader's own input in the app, wherever it is framed: an arrival right after it skips the arrow.
+    if (m.demos === 'input') lastInput = performance.now();
+    if (!frame || e.source !== frame.contentWindow) return;
     if (m.demos === 'input') stop();
     if (m.demos === 'rect' && waits[m.target]) { var w = waits[m.target]; delete waits[m.target]; w(m.rect); }
   });
@@ -157,7 +162,7 @@
   // has drawn), then 1.2 s more. A route change restarts the wait with its own budget; elsewhere nothing polls.
   function wait() {
     clearTimeout(timer);
-    if (state !== 'idle' || (!touchOk() && aseen())) return;
+    if (state !== 'idle') return;
     if (!onDemos() || !wide.matches) return;
     if (++tries > 120) return; // 30 s on this visit of /demos
     var f = Array.prototype.find.call(document.querySelectorAll('iframe[data-motion~=live]'), function (f) {
@@ -166,12 +171,15 @@
     if (!f) { timer = setTimeout(wait, 250); return; }
     frame = f;
     state = 'armed';
+    var v = ++visit;
     on();
-    if (aseen()) { timer = setTimeout(touchOk() ? play : stop, 1200); return; }
-    amark();
+    // The arrow on every arrival (owner: "in every session"); the touch demo after it, once per session.
+    var next = function (ms) { if (state === 'armed' && v === visit) timer = setTimeout(touchOk() ? play : stop, ms); };
     settle(function () {
-      if (state !== 'armed') return;
-      if (!visible() || !arrow(function () { if (state === 'armed') timer = setTimeout(touchOk() ? play : stop, 350); })) timer = setTimeout(touchOk() ? play : stop, 1200);
+      if (state !== 'armed' || v !== visit) return;
+      // Already at the phone (the app's input in the last 3 s, or the pointer resting on it): no arrow.
+      if (performance.now() - lastInput < 3000 || near(lastPointer) || noArrow()) return next(1200);
+      if (!visible() || !arrow(function () { next(350); })) next(1200);
     });
   }
   // The hero's entrance (live's motion: the title, the subtitle and the pill blur in, the device rises) runs on every
@@ -205,7 +213,19 @@
     anims.forEach(function (x) { x.pause(); });
     a.animate([{ opacity: o }, { opacity: 0 }], { duration: ms, easing: 'ease-out', fill: 'forwards' }).onfinish = function () { a.remove(); };
   }
-  var phone = null;
+  var phone = null, lastPointer = null;
+  // The last place the pointer was seen on the page (the frame is another process: over the screen it reports nothing).
+  addEventListener('pointermove', function (e) { lastPointer = { x: e.clientX, y: e.clientY }; }, { passive: true });
+  function phoneOf(f) {
+    var fr = f.getBoundingClientRect(), sw = Math.min(420, (fr.height - 48) * 0.448718), sh = Math.min(912, (fr.height - 48) * 0.974359), bez = sw * 0.04;
+    var sl = fr.left + (fr.width - sw) / 2, st = fr.top + (fr.height - sh) / 2;
+    return { l: sl - bez, r: sl + sw + bez, t: st - bez, b: st + sh + bez, sl: sl, st: st, sw: sw, sh: sh };
+  }
+  function near(pt) {
+    if (!pt || !frame) return false;
+    var r = phoneOf(frame);
+    return pt.x > r.l - 40 && pt.x < r.r + 40 && pt.y > r.t - 40 && pt.y < r.b + 40;
+  }
   function onNear(e) {
     // The frame is another process: the page sees no move once the pointer is on the screen, so the phone counts
     // from 40 px around it (a moving pointer always reports there first).
@@ -218,9 +238,8 @@
     var fr = frame.getBoundingClientRect(), pr = pill.getBoundingClientRect();
     if (!pr.width || !fr.width) return false;
     // The app's display inside its frame (web/head.css sim-frame's clip) and the phone around it.
-    var sw = Math.min(420, (fr.height - 48) * 0.448718), sh = Math.min(912, (fr.height - 48) * 0.974359), bez = sw * 0.04;
-    var sl = fr.left + (fr.width - sw) / 2, st = fr.top + (fr.height - sh) / 2;
-    phone = { l: sl - bez, r: sl + sw + bez, t: st - bez, b: st + sh + bez };
+    phone = phoneOf(frame);
+    var sw = phone.sw, sh = phone.sh, sl = phone.sl, st = phone.st;
     var side = phone.l > pr.right + 60, S, E;
     if (side) {
       S = { x: pr.right + 26, y: pr.top + pr.height / 2 + 4 };
@@ -286,8 +305,14 @@
     last.onfinish = function () { if (arr === svg) { unarrow(0); done(); } };
     return true;
   }
+  // A route change: leaving /demos stops what plays; arriving at it (from another page) starts a new visit. A change
+  // that keeps the page on /demos (a replace, a second event for the same navigation) is not an arrival.
+  var wasOn = onDemos();
   function route() {
-    if (state === 'armed' || state === 'playing') { if (!onDemos()) stop(); return; }
+    var on = onDemos(), arrived = on && !wasOn;
+    wasOn = on;
+    if (state === 'armed' || state === 'playing') { if (!on) stop(); return; }
+    if (state === 'rest' && arrived) state = 'idle';
     if (state === 'idle') { tries = 0; frame = null; wait(); }
   }
   // Exact routes with the History API: a route change is a navigation (Navigation API) or a popstate.

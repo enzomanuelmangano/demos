@@ -11,8 +11,8 @@
      (a link or Back), close the demo the goto opened; elsewhere, stop a sequence under way and leave the demo open
      for a return.
    - Any pointer, wheel or key on the page during the sequence stops the rest (input inside the app stops it there).
-   - The one-time touch demo and the arrow (web/sim-hint.js) are for a reader who has not found the phone: a deep link
-     marks both as seen for the session.
+   - The one-time touch demo (web/sim-hint.js) is for a reader who has not found the phone: a deep link marks it seen
+     for the session. The arrow plays on /demos only (every arrival there, D22), so a deep link never shows it.
    - Reduced motion: `still`, the pages jump and the demo opens without its flight. */
 (function () {
   // The posts whose demo the app has under another slug (tools/demos-web/legacy-posts.ts ALIASES; compose checks).
@@ -26,7 +26,7 @@
     return frames().find(function (f) { var r = f.getBoundingClientRect(); return f.matches('[data-motion~=live]') && r.width > 0 && r.top < innerHeight && r.bottom > 0 && f.checkVisibility(); }) || null;
   }
   function say(f, m) { try { f.contentWindow.postMessage(m, '*'); } catch (e) {} }
-  function mark() { try { ['hint', 'arrow'].forEach(function (k) { sessionStorage.setItem('reactiive.demos.' + k, '1'); }); } catch (e) {} }
+  function mark() { try { sessionStorage.setItem('reactiive.demos.hint', '1'); } catch (e) {} }
   function stop(close) {
     clearTimeout(timer);
     if (!running && !close) return;
