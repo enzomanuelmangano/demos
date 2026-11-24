@@ -13,7 +13,7 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statS
 import { join, relative, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { BASE, keyAt } from './demos-web/build.ts';
-import { ALIASES, LEGACY_DEMO_POSTS } from './demos-web/legacy-posts.ts';
+import { ALIASES, DEMO_POSTS, LEGACY_DEMO_POSTS, NOT_IN_APP } from './demos-web/legacy-posts.ts';
 import { demosHead } from './demos-web/head.ts';
 import { patchDemos } from './demos-web/patches.ts';
 import { NOT_PORTED_REDIRECTS } from './seo/site.ts';
@@ -39,17 +39,26 @@ const demosRoutes = readJson(join(demosDist, 'routes.json'));
 if ((siteRoutes.base ?? '/') !== '/') throw new Error('compose: the site builds at /');
 if (demosRoutes.base !== BASE) throw new Error(`compose: the demos build's base is ${demosRoutes.base}, not ${BASE}`);
 
-// /demos is the site's page; everything under /demos/ is the Demos app's mount (/demos/app/) or a redirect into it.
+// /demos is the site's page, and so is each demo post (/demos/<slug>, D21: the same page, its phone opening the demo);
+// everything else under /demos/ is the Demos app's mount (/demos/app/), a redirect, or a 404.
 const MOUNT = BASE.replace(/\/$/, '');
+const postSlugs = new Set(DEMO_POSTS.map((d) => d.slug));
 if (existsSync(join(siteDist, MOUNT.slice(1)))) throw new Error(`compose: the site build has ${MOUNT}/, the Demos app's mount`);
-if (existsSync(join(siteDist, 'demos')) && readdirSync(join(siteDist, 'demos')).some((n) => n !== 'index.html')) throw new Error('compose: the site build has paths under /demos/');
-for (const r of siteRoutes.routes) if (r.pattern.startsWith('/demos/')) throw new Error(`compose: site route ${r.name} (${r.pattern}) is under /demos/, the Demos app's`);
+if (existsSync(join(siteDist, 'demos'))) for (const n of readdirSync(join(siteDist, 'demos'))) if (n !== 'index.html' && !postSlugs.has(n)) throw new Error(`compose: the site build has /demos/${n}, which is not a demo post`);
+for (const s of postSlugs) if (!existsSync(join(siteDist, 'demos', s, 'index.html'))) throw new Error(`compose: the site build lacks the demo post /demos/${s}`);
+for (const r of siteRoutes.routes) if (r.pattern.startsWith('/demos/') && !(r.name === 'demoPost' && r.pattern === '/demos/:demo' && r.render === 'build')) throw new Error(`compose: site route ${r.name} (${r.pattern}) is under /demos/, the Demos app's`);
 
 // The app's demo slugs, from the launcher list of the same tree the demos build came from.
 const demosRev = (() => { try { return readJson(join(demosDist, '..', 'demos-web.json')).rev; } catch { return 'HEAD'; } })();
 const appSlugs = new Set([...spawnSync('git', ['show', `${demosRev}:demos.contract`], { cwd: site, encoding: 'utf8' }).stdout.matchAll(/Demo\(slug="([^"]+)"/g)].map((m) => m[1]));
 if (appSlugs.size < 100) throw new Error(`compose: ${appSlugs.size} demo slugs read from demos.contract at ${demosRev}`);
 for (const [from, to] of Object.entries(ALIASES)) if (!appSlugs.has(to)) throw new Error(`compose: alias ${from} → ${to}, which the app does not have`);
+// Each post's demo is the app's (its icon is what the phone opens), and each post kept out really lacks one.
+for (const { slug, app } of DEMO_POSTS) if (!appSlugs.has(app)) throw new Error(`compose: demo post ${slug} opens ${app}, which the app does not have (move it to NOT_IN_APP)`);
+for (const slug of NOT_IN_APP) if (appSlugs.has(slug) || ALIASES[slug]) throw new Error(`compose: ${slug} is in NOT_IN_APP but the app has it: make it a demo post`);
+// The page's driver (web/sim-goto.js) maps a post to its app slug by the same aliases.
+const goto = readFileSync(join(site, 'web/sim-goto.js'), 'utf8');
+for (const [from, to] of Object.entries(ALIASES)) if (!goto.includes(`'${from}': '${to}'`)) throw new Error(`compose: web/sim-goto.js lacks the alias '${from}': '${to}'`);
 const reserved = ['demo', 'open', 'atlas', 'snap', 'assets', 'modules', 'shaders'];
 for (const s of LEGACY_DEMO_POSTS) if (reserved.includes(s) || (s as string) === 'app') throw new Error(`compose: legacy post ${s} collides with a demos app path`);
 
@@ -104,12 +113,9 @@ const immutable = { 'cache-control': 'public, max-age=31536000, immutable' };
 const routes: Route[] = [];
 // Redirects first (Next.js's: a trailing slash drops with 308; Exact's: the mount's root gains one).
 routes.push({ src: `^${esc(MOUNT)}$`, status: 308, headers: { Location: BASE } });
-// A legacy demo post opens that demo in the app, full window (D5, D10); a demo the app lacks, the /demos page.
-for (const slug of LEGACY_DEMO_POSTS) {
-  const to = ALIASES[slug] ?? (appSlugs.has(slug) ? slug : null);
-  // A demo the app has: 308 (permanent, the same demo). One it lacks: 307 to the launcher (not a permanent equivalent).
-  routes.push({ src: `^/demos/${esc(slug)}/?$`, status: to ? 308 : 307, headers: { Location: to ? `${BASE}demo/${to}` : '/demos' } });
-}
+// A legacy demo post whose demo the app has is a page again (D21: the site's /demos/<slug>, below); one it lacks is a
+// 307 to the launcher (not a permanent equivalent, D5).
+for (const slug of NOT_IN_APP) routes.push({ src: `^/demos/${esc(slug)}/?$`, status: 307, headers: { Location: '/demos' } });
 // Signed-out /profile and /manage-subscription sent a visitor to /demos (client-side, in the reference); at the edge now.
 // With the accounts' API behind /api/* (LEGACY_API_ORIGIN), /profile and /manage-subscription (a subscription's status
 // and its cancel only, docs/stubs.md) are the site's pages (components/account), which send a signed-out reader there.

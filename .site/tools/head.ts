@@ -36,6 +36,12 @@ const hint = readFileSync(join(site, 'web/sim-hint.js'), 'utf8').replace(/\/\*[\
 const hi = next.findIndex((h) => typeof h.script?.text === 'string' && h.script.text.includes('reactiive.demos.hint'));
 if (hi >= 0) next[hi] = { script: { text: hint } };
 else next.splice(next.findIndex((h) => h.script?.text?.includes('IntersectionObserver')) + 1, 0, { script: { text: hint } });
+// web/sim-goto.js (a demo post's deep link, D21), its own script after sim-hint.js, comments dropped.
+const goto = readFileSync(join(site, 'web/sim-goto.js'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').split('\n').map((l) => l.trim()).filter(Boolean).join('\n');
+const isGoto = (h: any) => typeof h.script?.text === 'string' && h.script.text.includes("demos: 'goto'");
+const gi = next.findIndex(isGoto);
+if (gi >= 0) next[gi] = { script: { text: goto } };
+else next.splice(next.findIndex((h) => typeof h.script?.text === 'string' && h.script.text.includes('reactiive.demos.hint')) + 1, 0, { script: { text: goto } });
 if (process.argv.includes('--check')) {
   if (JSON.stringify(next) !== JSON.stringify(head)) { console.error('head: app.json is stale: run bun tools/head.ts'); process.exit(1); }
   process.exit(0);

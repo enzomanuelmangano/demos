@@ -12,9 +12,9 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
-import { allPages, headTags, htmlFile, livePath, renderTags } from '../seo/metadata.ts';
+import { allPages, headTags, htmlFile, livePath, renderTags, type PageMetadata } from '../seo/metadata.ts';
 import { jsonLd, jsonLdScript } from '../seo/jsonld.ts';
-import { NOT_PORTED } from '../seo/site.ts';
+import { NOT_PORTED, OG, SITE_URL, loadDemoPosts } from '../seo/site.ts';
 import { manifestJson, robotsTxt, rssXml, sitemapXml } from '../seo/feeds.ts';
 
 const site = resolve(import.meta.dir, '../..');
@@ -83,6 +83,23 @@ function headOf(html: string): Head {
   tags.delete('meta|charset=utf-8');
   return { tags, ld: ld.sort() };
 }
+/**
+ * The demo posts (docs/decisions.md D21) differ from live on purpose, in exactly these values: live's og:image
+ * (/demos/og-image/<slug>) answers 404, so ours is the /demos card, in the tags and the JSON-LD; and live's description
+ * was the site's (the posts had none), ours the post's first paragraph. Live's head is rewritten to those values before
+ * the diff, so any other difference, or ours lacking them, still fails.
+ */
+function expectedLive(m: PageMetadata, l: Head): Head {
+  if (m.jsonLd?.kind !== 'demo') return l;
+  const slug = m.jsonLd.slug, img = (u: string) => u.replace(`${live}/demos/og-image/${slug}`, `${SITE_URL}${OG.demos.url}`).replace(`https://reactiive.io/demos/og-image/${slug}`, `${SITE_URL}${OG.demos.url}`);
+  const tags = new Map<string, number>();
+  for (const [k, n] of l.tags) {
+    let key = img(k);
+    if (/\|(name=description|property=og:description|name=twitter:description)(\||$)/.test(key)) key = key.replace(/content=[^|]*/, `content=${m.description}`);
+    tags.set(key, (tags.get(key) ?? 0) + n);
+  }
+  return { tags, ld: l.ld.map((j) => img(j)) };
+}
 function diffHeads(l: Head, o: Head): string[] {
   const out: string[] = [];
   for (const [k, n] of l.tags) if ((o.tags.get(k) ?? 0) < n && !ignored(k)) out.push(`  - missing in ours: ${k}`);
@@ -101,7 +118,7 @@ for (const m of allPages()) {
   const [l, o] = [await fetchLive(lp), await ours(m.path === '/404' ? '/this-page-does-not-exist' : m.path, htmlFile(m.path))];
   const want = m.path === '/404' ? 404 : 200;
   if (o === undefined) { if (strict) report(m.path, ['  not built']); else skipped.push(m.path); continue; }
-  const lines = l.status === want ? diffHeads(headOf(l.body), headOf(o)) : [`  live answers ${l.status}, expected ${want}`];
+  const lines = l.status === want ? diffHeads(expectedLive(m, headOf(l.body)), headOf(o)) : [`  live answers ${l.status}, expected ${want}`];
   report(m.path, lines);
 }
 
@@ -126,8 +143,10 @@ for (const [path, generated, norm] of files) {
     // The four articles that present Demos are not ported (owner's scope cut): named, accepted.
     for (const u of la) if (!lb.has(u) && [...NOT_PORTED].some((n) => u.endsWith(`/articles/${n}`))) la.delete(u);
     for (const u of la) if (!lb.has(u)) lines.push(`  - not in ours: ${u}`);
+    // The demo posts are listed by ours only (live left them out; D21): named, accepted, and all must be there.
+    if (path === '/sitemap.xml') for (const d of loadDemoPosts()) { const u = `${SITE_URL}/demos/${d.slug}`; if (lb.has(u)) lb.delete(u); else lines.push(`  - demo post not listed: ${u}`); }
     for (const u of lb) if (!la.has(u)) lines.push(`  + only in ours: ${u}`);
-    if (!lines.length && locs(l.body).filter((u) => la.has(u)).join() !== locs(text).join()) lines.push('  ~ same URLs, different order');
+    if (!lines.length && locs(l.body).filter((u) => la.has(u)).join() !== locs(text).filter((u) => la.has(u)).join()) lines.push('  ~ same URLs, different order');
     if (!lines.length && !NOT_PORTED.size) { const x = a.filter((s, i) => s !== b[i]); if (x.length) lines.push(`  ~ ${x.length} lines differ, first: ${x[0]}`); }
   } else {
     a.forEach((s, i) => { if (s !== b[i]) lines.push(`  ~ line ${i + 1}: live ${JSON.stringify(s)} ours ${JSON.stringify(b[i])}`); });

@@ -146,6 +146,8 @@ component DemosPage
     simLive: bool
     simSeen: action
     simLoaded: action
+    // Where the phone's button goes (D20): /demos/app/, or on a demo post that demo full screen (D21).
+    launch: string
   view
     // Container size xl: 1152 px at most, 24 px each side; mt-4 under 640 px.
     // From 1024 px a 960 px row (web/head.css d-page: the viewport less 480 px, 720-960 px, plus the 24 px sides),
@@ -193,26 +195,30 @@ component DemosPage
             TestFlightLink()
             view width=centring() flex-shrink=1
         DemosSim(ready=simReady, live=simLive, seen=simSeen, loaded=simLoaded, place="sim-route")
-        DemosLaunch()
+        DemosLaunch(href=launch)
 
 // Under 768 px (phones) the app is not framed inside the page (D20): a frame under a scrolling page fought the page's
 // scroll and was cramped. Instead one primary button and, under it, the launcher's still in its iPhone (a tappable
 // preview); both open /demos/app/ full screen, the app as on a phone's home screen. Hidden from 768 px (web/head.css
 // d-launch), where the framed app is the page's; the still is a background from the same media query, so a desktop
 // never downloads it here.
+// On a demo post (/demos/<slug>, D21) both open that demo full screen instead (/demos/app/demo/<slug>): one tap to
+// what the link was for, and the app's close then shows its launcher; the way back is still the browser's.
 component DemosLaunch
+  props
+    href: string
   view
     column width="100%" align-items="center" margin-top=36 data-motion="d-launch blur-in" data-delay="650"
-      link href="/demos/app/" display="flex" align-items="center" justify-content="center" gap=10 height=52 padding-left=28
+      link href=href display="flex" align-items="center" justify-content="center" gap=10 height=52 padding-left=28
         padding-right=24 border-radius=9999 background-color="#f5f5f7" color="#0b0b0d" font-size=17 font-weight=600
         letter-spacing="-0.01em" white-space="nowrap" data-motion="button d-launch-button" testId="open-demos"
-        text "Open the demos"
+        text (href == "/demos/app/" ? "Open the demos" : "Open the demo")
         svg width=18 height=18 viewBox="0 0 18 18" fill="none" aria-hidden=true
           rect x=1.5 y=1.5 width=6 height=6 rx=1.8 fill="currentColor"
           rect x=10.5 y=1.5 width=6 height=6 rx=1.8 fill="currentColor"
           rect x=1.5 y=10.5 width=6 height=6 rx=1.8 fill="currentColor"
           rect x=10.5 y=10.5 width=6 height=6 rx=1.8 fill="currentColor" opacity=0.45
-      link href="/demos/app/" aria-label="Open the demos app" display="block" margin-top=28 width="min(78vw, 320px)"
+      link href=href aria-label=(href == "/demos/app/" ? "Open the demos app" : "Open the demo") display="block" margin-top=28 width="min(78vw, 320px)"
         data-motion="d-launch-still button" testId="open-demos-still"
         view width="100%" padding-top="200%" aria-hidden=true
 

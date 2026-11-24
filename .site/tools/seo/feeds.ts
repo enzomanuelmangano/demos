@@ -1,19 +1,21 @@
 // sitemap.xml, robots.txt, rss.xml and manifest.json: the live site's files (src/app/sitemap.ts, robots.ts,
 // rss.xml/route.ts, public/manifest.json), generated from the content index at build.
-import { loadArticles, RSS_URL, SITE_URL } from './site.ts';
+import { loadArticles, loadDemoPosts, RSS_URL, SITE_URL } from './site.ts';
 
 // A "]]>" inside the text would end the section early: split it across two sections.
 const cdata = (v: string) => `<![CDATA[${v.replaceAll("]]>", "]]]]><![CDATA[>")}]]>`;
 const entry = (loc: string, extra: string) => `<url>\n<loc>${loc}</loc>\n${extra}</url>`;
 const freq = (f: string, p: number) => `<changefreq>${f}</changefreq>\n<priority>${p}</priority>\n`;
 
-/** /demos is the Demos hub only: the demo posts and /_dev/* are never listed (the reference leaves the posts out too). */
+/** The reference listed /demos only; the demo posts are pages again (decisions.md D21), so they are listed too, after the
+ *  articles, with their dates. /_dev/* is never listed. */
 export function sitemapXml(): string {
   const urls = [
     entry(SITE_URL, freq('weekly', 1)),
     entry(`${SITE_URL}/demos`, freq('daily', 1)),
     entry(`${SITE_URL}/articles`, freq('weekly', 0.8)),
     ...loadArticles().map((a) => entry(`${SITE_URL}/articles/${a.slug}`, `<lastmod>${a.date}</lastmod>\n${freq('weekly', 0.5)}`)),
+    ...loadDemoPosts().map((d) => entry(`${SITE_URL}/demos/${d.slug}`, `<lastmod>${d.date}</lastmod>\n${freq('monthly', 0.4)}`)),
   ];
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>\n`;
 }

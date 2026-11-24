@@ -1,5 +1,5 @@
 // JSON-LD identical to the live site's (src/app/page.tsx, src/app/articles/[post]/page.tsx): key order included.
-import { HOME_DESCRIPTION, loadArticles, PERSON, SITE_NAME, SITE_URL } from './site.ts';
+import { HOME_DESCRIPTION, loadArticles, loadDemoPosts, OG, PERSON, SITE_NAME, SITE_URL } from './site.ts';
 import type { PageMetadata } from './metadata.ts';
 
 export function jsonLd(m: PageMetadata): object | undefined {
@@ -19,6 +19,16 @@ export function jsonLd(m: PageMetadata): object | undefined {
       '@context': 'https://schema.org', '@type': 'NewsArticle', headline: a.title, preview: a.subtitle, slug: a.slug,
       url: `${SITE_URL}/articles/${a.slug}`, status: 'Published', image: [`${SITE_URL}${a.image}`],
       datePublished: a.date, dateModified: a.date, author: [PERSON],
+    };
+  }
+  if (m.jsonLd?.kind === 'demo') {
+    // Live's demo post (src/app/demos/[post]/page.tsx): the same NewsArticle, its image the /demos card (live's 404s).
+    const slug = m.jsonLd.slug;
+    const d = loadDemoPosts().find((x) => x.slug === slug)!;
+    return {
+      '@context': 'https://schema.org', '@type': 'NewsArticle', headline: d.title, slug: d.slug,
+      url: `${SITE_URL}/demos/${d.slug}`, status: 'Published', image: [`${SITE_URL}${OG.demos.url}`],
+      datePublished: d.date, dateModified: d.date, author: [PERSON],
     };
   }
   return undefined;

@@ -4,7 +4,8 @@
    route change (the Navigation API's navigate, at once, before the route's own work; popstate) and every change of
    the frame's visibility (IntersectionObserver) or the tab's. */
 (function () {
-  var onDemos = function (path) { return /^\/demos\/?$/.test(path); };
+  // A demo post (/demos/<slug>, D21) is the /demos page too.
+  var onDemos = function (path) { return /^\/demos(\/(?!app(\/|$))[a-z0-9-]+)?\/?$/.test(path); };
   var current = onDemos(location.pathname), seen = new WeakSet(), shown = new WeakMap();
   var io = 'IntersectionObserver' in window ? new IntersectionObserver(function (es) {
     for (var i = 0; i < es.length; i++) { shown.set(es[i].target, es[i].isIntersecting); tell(es[i].target); }

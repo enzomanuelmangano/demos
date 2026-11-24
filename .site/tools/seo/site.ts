@@ -2,6 +2,7 @@
 // reference's lib/metadata.ts, constants/og.ts and the root layout's metadata, so every value here has a line there.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { DEMO_POSTS } from '../demos-web/legacy-posts.ts';
 
 export const SITE_URL = (process.env.SITE_ORIGIN ?? 'https://reactiive.io').replace(/\/$/, '');
 export const SITE_NAME = 'Reactiive';
@@ -84,3 +85,33 @@ export function loadArticles(includeNotPorted = false): Article[] {
 }
 
 export const titleCase = (slug: string) => slug.split('-').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
+
+export type DemoPost = { slug: string; app: string; title: string; description: string; date: string; tags: string[] };
+
+/** A post's description: its first paragraph of prose (the reference's posts had none of their own, so the live head
+ *  showed the site's), as whole sentences up to 160 characters, else cut at a word with an ellipsis. */
+function firstParagraph(mdx: string): string {
+  const para = mdx.replace(/```[\s\S]*?```/g, '').split(/\n\s*\n/).map((p) => p.trim())
+    .find((p) => /^[A-Za-z0-9"'“(]/.test(p) && !p.startsWith('import ') && !p.startsWith('export ')) ?? '';
+  const plain = para.replace(/!\[[^\]]*\]\([^)]*\)/g, '').replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/[*_`]/g, '').replace(/\s+/g, ' ').trim();
+  if (!plain) return SITE_DESCRIPTION;
+  let out = '';
+  for (const s of plain.match(/[^.!?]+[.!?]+(\s|$)|[^.!?]+$/g) ?? [plain]) { if ((out + s).trim().length > 160) break; out += s; }
+  out = out.trim();
+  if (out) return out;
+  const cut = plain.slice(0, 158);
+  return cut.slice(0, cut.lastIndexOf(' ')).replace(/[,;:]$/, '') + '…';
+}
+
+/** The demo posts kept as pages (tools/demos-web/legacy-posts.ts DEMO_POSTS), with the reference's frontmatter
+ *  (.content/demos/<slug>/index.js: title, date, tags) and a description from the post's first paragraph. */
+export function loadDemoPosts(): DemoPost[] {
+  return DEMO_POSTS.map(({ slug, app }) => {
+    const dir = join(SITE_DIR, '.content/demos', slug);
+    const mod = { exports: {} as Record<string, unknown> };
+    new Function('module', readFileSync(join(dir, 'index.js'), 'utf8'))(mod);
+    const j = mod.exports as { title?: string; date?: string; tags?: string[]; slug?: string };
+    if (j.slug !== slug || typeof j.title !== 'string' || typeof j.date !== 'string') throw new Error(`seo: .content/demos/${slug}/index.js: slug, title or date`);
+    return { slug, app, title: j.title, description: firstParagraph(readFileSync(join(dir, 'index.mdx'), 'utf8')), date: j.date, tags: j.tags ?? [] };
+  });
+}

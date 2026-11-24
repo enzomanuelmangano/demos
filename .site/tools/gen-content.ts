@@ -33,7 +33,7 @@ const ASSET_URL = '/assets/content';
 
 // The owner's scope cut (docs/progress-content.md): articles that present Demos are not ported. One list, shared
 // with the SEO files (tools/seo: head, JSON-LD, sitemap and RSS read the same .content/ index.json files).
-import { NOT_PORTED as SKIPPED } from './seo/site.ts';
+import { NOT_PORTED as SKIPPED, loadDemoPosts } from './seo/site.ts';
 
 // ---------------------------------------------------------------------------------------------------------------
 // Syntax highlighting: prism-react-renderer's Prism with the languages the reference loads (code-highlight.tsx
@@ -578,6 +578,9 @@ writeFileSync(join(OUT, 'index.ts'), [
   `export const docSlugs: string[] = ${JSON.stringify(docs)};`,
   `export const seriesSlugs: string[] = ${JSON.stringify(series)};`,
   `export const seriesTitles: Record<string, string> = ${JSON.stringify(Object.fromEntries(series.map((s) => [s, titleCase(s)])))};`,
+  // The demo posts kept as pages (decisions.md D21): /demos/<slug>, its title, and the app's slug its phone opens.
+  `export const demoPostSlugs: string[] = ${JSON.stringify(loadDemoPosts().map((d) => d.slug))};`,
+  `export const demoPosts: Record<string, { title: string; app: string }> = ${JSON.stringify(Object.fromEntries(loadDemoPosts().map((d) => [d.slug, { title: d.title, app: d.app }])))};`,
   "export const cards = () => import('./cards.ts');",
   `export const articles: Record<string, () => Promise<{ default: unknown }>> = {\n${articles.map((a) => `  ${JSON.stringify(a.slug)}: () => import('./articles/${a.slug}.ts'),`).join('\n')}\n};`,
   `export const docs: Record<string, () => Promise<{ default: unknown }>> = {\n${docs.map((d) => `  ${JSON.stringify(d)}: () => import('./docs/${d}.ts'),`).join('\n')}\n};`,

@@ -53,7 +53,7 @@ route sets no title from `og:site_name` (navigation.js), which turned the tab in
 `robots.txt` (`Allow: /demos/`) is dropped: the origin's is the site's (`Allow: /`). The demos build has no
 `.well-known/`.
 
-## D5. Legacy `/demos/<slug>` posts become 308s into the app
+## D5. Legacy `/demos/<slug>` posts become 308s into the app (the 109 with a demo are pages again since D21)
 
 108 of the 126 post slugs are demos of the app (`demos.contract`): `/demos/<slug>` → `/demos/demo/<slug>`.
 `3d-scroll-transition` → `scroll-transition-3d` (same demo, renamed in the port). The other 17 (animated-count-text,
@@ -593,6 +593,64 @@ margins'. Checked with touch at 390x844, 360x780 and 430x932: no frame in the pa
 (centred, 52 px, at y ≈ 333 px, inside the first viewport) and the still under it; a tap opens `/demos/app/` full
 screen (the launcher, edge to edge); a tap on an icon opens the demo, close returns to the launcher, Back returns to
 `/demos` with the hero as it was.
+
+## D21. A demo post is /demos, whose phone opens that demo by itself (owner, 2026-11-24; amends D5)
+
+The owner: "with the link demos/<slug> I'd like the same screen to open, and the phone to page automatically to the
+launcher page that has it and open the animation". So the 109 posts whose demo the app has are no longer 308s into
+`/demos/app/demo/<slug>`; each is a page of its own.
+
+- **A real page, not a redirect.** The site's route `demoPost "/demos/:demo" render=build pages=demoPostSlugs()` renders
+  the same `DemosPage` as `/demos`, prerendered per post (`dist/demos/<slug>/index.html`), so the URL stays
+  `/demos/<slug>`. Its head is the live post's (title `<post title> | Reactiive`, keywords, `og:type` article,
+  `article:published_time` and tags, the NewsArticle JSON-LD) with two deliberate differences: the description is the
+  post's first paragraph of prose (live showed the site's generic one), and the share image is the `/demos` card (live's
+  `/demos/og-image/<slug>` answers 404). The canonical is the post itself (it is indexed under that URL, and the title
+  differs from `/demos`). The posts join the sitemap (monthly, 0.4, their dates). `tools/parity/head-diff.ts` compares
+  each post against live after rewriting live's head to those two values only; the sitemap accepts the 109 extra URLs
+  by name. The list: `tools/demos-web/legacy-posts.ts` `DEMO_POSTS` (the 126 posts less `NOT_IN_APP`, aliases applied);
+  `tools/compose.ts` fails if a post's demo is not in the app's `demos.contract` or a `NOT_IN_APP` one is. The 17
+  without a demo stay a 307 to `/demos`. `/demos/app/demo/<slug>` (the app's own route) is unchanged.
+  The client router: `/demos/:demo` would match `/demos/app`, but the site links only `/demos/app/` (a path with a
+  trailing slash matches no route, so it still leaves the runtime) and compose refuses any other site route or built
+  page under `/demos/`.
+- **From 768 px (the framed phone).** `web/sim-goto.js` waits for the visible frame to be live (the app has drawn and
+  faded in over the still) plus 300 ms, then posts `{ demos: 'goto', slug, still }`; the deep link costs the frame's
+  first paint nothing. The bridge (`tools/demos-web/bridge.js`, the site's code in the artifact's HTML) does the rest
+  inside the app: it waits for the launcher's pager to be driven, finds the icon's page from the launcher's real
+  layout (the icon's box against the pager's, so a reorder or a new page size needs nothing), pages there one swipe at
+  a time through the pager's own input path (trackpad-style wheel deltas that grow, then decay the way the pager reads
+  as fingers lifting, so it releases at once with a flick's speed and settles on its own paging spring, as a reader's
+  swipe does), waits for the pager to rest, and presses the icon (the app's own open flight). The last page (3 pages
+  over) takes about 1 s of paging. Reduced motion: the pages jump (the pager's arrow keys, which jump under reduced
+  motion) and the app opens without its flight (its own rule).
+- **History: the open replaces.** The goto's open is a parent's press, so it replaces the frame's entry (D19's rule):
+  the URL stays `/demos/<slug>` and the reader's Back leaves the page for wherever they came from, as for any link.
+  A pushed entry was rejected: an entry the reader did not make is a Back trap, Chrome skips entries added without a
+  user activation on Back anyway, and the open demo is what the URL names.
+- **In-site navigation, the kept frame alive (D17).** To `/demos/<slug>`: the goto runs in the live frame, no reload
+  (a demo already open closes first; the same demo is left open). To `/demos` (a link or Back from the post): the demo
+  the goto opened closes (`{ demos: 'goto', slug: '' }`), so `/demos` always shows the launcher it promises. Elsewhere:
+  a sequence under way stops, and the demo stays open for a return to its post (the frame is hidden there).
+- **Robustness.** An icon not on the launcher (the four demos the web launcher hides as unstable: grid-visualizer,
+  ios-home-bouncy, shared-transitions, time-machine) leaves the launcher as it is (`missing`). Any pointer, wheel or
+  key on the page, or real input in the app, stops the rest. The touch demo and the arrow (D19, `web/sim-hint.js`) are
+  for a reader who has not found the phone: a deep link marks both seen for the session. `web/sim-hint.js`'s frame host
+  counts a post as `/demos` (`current`), so the frame's history rules hold there too.
+- **Phones (under 768 px).** The same hero; the button reads "Open the demo" and, like the still under it, opens
+  `/demos/app/demo/<slug>`: one tap to the demo full screen (the app's close then shows its launcher; Back returns to
+  the post). An automatic open was rejected: leaving the page the reader landed on without a gesture is hostile to
+  them and to Back (the post would redirect again), and paging a full-screen launcher before the demo only delays
+  what they came for. A launcher deep link (`/demos/app/` that pages, then opens) was rejected for the same delay.
+- **Checked** by `tools/parity/sim-goto.ts` (three posts on the first, a middle and the last launcher page, cold, with
+  frame timing against the same paging and open by hand; Back; in-site with the kept frame; input; reduced motion;
+  a phone; a missing icon) and `tools/parity/links.ts` (every internal URL of the composed site, the 126 legacy posts
+  and the other redirects), with `sim-history.ts` and `head-diff.ts` re-run. Frame timing, headed Chrome at 120 Hz
+  (rAF in the app's own process, medians of 3 cold runs, the hand's paging by the app's arrow keys and its open by a
+  click at the same moment after live): paging dropped **0** frames on every deep link (posts on launcher pages 1, 2
+  and 4); the open dropped 40 / 14 / 27 against 49 / 9 / 23 by hand: the cost of a cold demo's first mount (10-50
+  frames either way, run to run), not of the deep link. Head-diff: 150 routes ok against live (109 posts with the two
+  rewrites above); links: 360 internal URLs 200, 261 legacy URLs as specified.
 
 ## D22. An arrow to the phone; Sponsor in the pill; TestFlight, quietly (owner, 2026-11-24)
 

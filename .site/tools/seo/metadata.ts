@@ -1,6 +1,6 @@
 // Per-route head tags, identical to the live site's: the reference's pageMetadata() (src/lib/metadata.ts) over its root
 // layout metadata, as Next.js renders them (same tags, same order). One typed place: add a page kind here, nowhere else.
-import { COURSE_DESCRIPTION, DEMOS_DESCRIPTION, DOC_TITLES, HOME_DESCRIPTION, loadArticles, OG, SITE_AUTHOR_NAME, SITE_DESCRIPTION, SITE_NAME, SITE_TWITTER, SITE_URL, THEME_COLOR, ARTICLES_DESCRIPTION, RSS_URL, titleCase, type OgImage } from './site.ts';
+import { COURSE_DESCRIPTION, DEMOS_DESCRIPTION, DOC_TITLES, HOME_DESCRIPTION, loadArticles, OG, SITE_AUTHOR_NAME, SITE_DESCRIPTION, SITE_NAME, SITE_TWITTER, SITE_URL, THEME_COLOR, ARTICLES_DESCRIPTION, RSS_URL, titleCase, loadDemoPosts, type OgImage } from './site.ts';
 
 export type Tag = { tag: 'title'; text: string } | { tag: 'meta' | 'link'; attrs: Record<string, string> };
 
@@ -18,7 +18,7 @@ export type PageMetadata = {
   layoutOnly?: boolean;
   noindex?: boolean;
   /** 'home' carries the WebSite + Person graph, 'article' a NewsArticle. */
-  jsonLd?: { kind: 'home' } | { kind: 'article'; slug: string };
+  jsonLd?: { kind: 'home' } | { kind: 'article'; slug: string } | { kind: 'demo'; slug: string };
   /** Plain title (no ' | Reactiive'): the home page, and layoutOnly pages. */
   plainTitle?: boolean;
 };
@@ -106,6 +106,13 @@ export function allPages(): PageMetadata[] {
   return [
     { path: '/', title: 'Home', plainTitle: true, description: HOME_DESCRIPTION, image: OG.home, jsonLd: { kind: 'home' } },
     { path: '/demos', title: 'Demos', description: DEMOS_DESCRIPTION, image: OG.demos },
+    // The demo posts kept as pages (docs/decisions.md D21): the live post's tags (title, keywords, article type and date,
+    // NewsArticle), but a description of its own (live showed the site's) and the /demos card (live's
+    // /demos/og-image/<slug> answers 404).
+    ...loadDemoPosts().map((d): PageMetadata => ({
+      path: `/demos/${d.slug}`, title: d.title, description: d.description, image: { ...card(OG.demos), alt: d.title },
+      keywords: d.tags, type: 'article', publishedTime: d.date, jsonLd: { kind: 'demo', slug: d.slug },
+    })),
     { path: '/articles', title: 'Articles', description: ARTICLES_DESCRIPTION, image: OG.articles },
     ...articles.map((a): PageMetadata => ({
       path: `/articles/${a.slug}`, title: a.title, description: a.subtitle, image: { url: a.image, alt: a.subtitle },

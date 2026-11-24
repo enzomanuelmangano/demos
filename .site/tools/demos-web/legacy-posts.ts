@@ -1,6 +1,6 @@
 // The 126 demo-post URLs the Next.js site served at /demos/<slug> (reference repo content/demos at ef912464).
-// The rebuild maps each to the Demos app (tools/compose.ts): a 308 to /demos/demo/<slug> when the app has that demo,
-// an explicit alias below when it has it under another slug, else /demos/ (the launcher).
+// The rebuild keeps each post whose demo the app has as a page of its own (DEMO_POSTS, decisions.md D21: /demos, its phone opening that demo),
+// under its app slug or an explicit alias below; the others (NOT_IN_APP) are a 307 to /demos (the launcher).
 export const LEGACY_DEMO_POSTS = [
   '3d-scroll-transition',
   'action-tray',
@@ -134,3 +134,18 @@ export const LEGACY_DEMO_POSTS = [
 export const ALIASES: Record<string, string> = {
   '3d-scroll-transition': 'scroll-transition-3d',
 };
+
+/** Posts whose demo the app lacks (decisions.md D5): they stay a 307 to the /demos launcher. tools/compose.ts checks this
+ *  list against the app's demos.contract, so a newly ported demo fails the compose until it is moved out of here. */
+export const NOT_IN_APP: readonly string[] = [
+  'animated-count-text', 'animated-grid-list', 'blurred-bottom-bar', 'dynamic-blur-tabs', 'dynamic-tab-indicator',
+  'email-demo', 'image-cropper', 'inner-shared-transition', 'instagram-shared-transition', 'ios-home-grid',
+  'particles-button', 'popup-handler', 'qr-code-generator', 'record-button', 'shake-to-delete', 'skia-bottom-sheet',
+  'twitter-tab-bar',
+];
+
+/** The 109 posts whose demo the app has: each is a page of its own at /demos/<slug>, the /demos page whose framed
+ *  phone pages to that demo and opens it (decisions.md D21). `app` is the app's slug (its icon's testId `icon-<app>`). */
+export const DEMO_POSTS: { slug: string; app: string }[] = LEGACY_DEMO_POSTS
+  .filter((s) => !NOT_IN_APP.includes(s))
+  .map((slug) => ({ slug, app: ALIASES[slug] ?? slug }));

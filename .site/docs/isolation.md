@@ -101,8 +101,9 @@ sandboxed frame of `/demos/app/`, both ends small and guarded:
   no listener, no style, nothing posted, no history wrapper. It accepts a message only from its parent window
   (`e.source === window.parent`) and only from the origin that serves the app itself (the site and the app are one
   deployment: production's parent is `https://reactiive.io`, a preview's is that preview, a local server's is that
-  server; no other origin, no wildcard); only two verbs, by testId (`[a-z0-9-]{1,80}`): `rect` (answers that element's
-  box) and `press` (a tap there). Answers go to that origin only, never `*`. Once the parent has spoken, real input is
+  server; no other origin, no wildcard); only these verbs, by testId (`[a-z0-9-]{1,80}`): `rect` (answers that element's
+  box) and `press` (a tap there); and, for a demo post's deep link (D21), `goto` (page the launcher to a slug's icon
+  through the pager's own input, then press it; `slug: ''` stops, and closes the demo it opened). Answers go to that origin only, never `*`. Once the parent has spoken, real input is
   reported (`input`) so the parent stops its demo. Nothing else is read, written or answered.
 - **The frame's history is the page's (joint).** Framed, the module mirrors the router's entries (each state carries
   its index) and keeps the two in step: a route a parent's `press` opens replaces the entry, and its close replaces
