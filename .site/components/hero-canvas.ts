@@ -1,13 +1,14 @@
 // The /demos hero's two Canvas 2D surfaces, ported line for line from the reference:
-// - `spiral(seed, taps)`: components/animated-spiral/spiral.tsx, 2,500 dots on a logarithmic spiral that ease
-//   (in-out cubic, 2.5 s) to a new random angle 500 ms after mount (live also on each tap of the title; the title is
-//   not pressable here, so app.contract passes taps = 0 and the taps branch never runs);
+// - `spiral()`: components/animated-spiral/spiral.tsx, 2,500 dots on a logarithmic spiral, drawn once at a fixed angle
+//   when it mounts and on a resize. Live picks a random angle, fades it in 1.2 s late and eases it (2.5 s) to a second
+//   random angle 500 ms in, repainting every dot each frame while the page and the Demos app load; the owner
+//   (2026-11-24): no randomness, load it directly, no animation. The title is not pressable, so nothing turns it.
 // - `stars(hovered, seed)`: components/landing/hero/github-stars-button.tsx's FloatingStars, the soft 4-point stars
 //   that rise out of the "Demos is Open Source" pill (one every 0.6 s, as live). Hovered, live bursts 28 and fountains
 //   ~50 a second at up to 8.5 px and full white; the owner found that "extreme" (2026-11-24), so here a hover lifts
 //   a light fountain: 6 to start, ~14 a second, 2.5-5 px, at most 85 %, fanning a little.
 // Data modules may not read the clock or Math.random (Exact: time and seeds are source arguments), so time is the
-// frame's and the randomness a seeded stream from exactTime()'s per-launch seed.
+// frame's and the stars' randomness a seeded stream from exactTime()'s per-launch seed. The spiral has none.
 import type { Ctx2D, Frame } from '../app.contract.d.ts';
 
 /** mulberry32: a small, good 32-bit stream. */
@@ -24,51 +25,34 @@ function stream(seed: number) {
 
 // ---------------------------------------------------------------- spiral
 const COUNT = 2500;
-const DURATION = 2500;
 const COLOR = '#efefef';
 const spiralAt = (angle: number, i: number, out: Float64Array, o: number) => {
   const a = (i / 4) * Math.exp(0.005 * angle);
   out[o] = a * Math.cos(angle * i);
   out[o + 1] = a * Math.sin(angle * i);
 };
-const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+// An angle with clear arms (one a little off reads as noise or as straight spokes), in live's random range [0, π/2).
+const ANGLE = 0.66;
+let dots: Float64Array | null = null;
 
-type Spiral = { rand: () => number; from: Float64Array; to: Float64Array; now: Float64Array; start: number; taps: number; first: number };
-let spiral: Spiral | null = null;
-
-function retarget(s: Spiral, time: number) {
-  const angle = (s.rand() * Math.PI) / 2;
-  s.from.set(s.now);
-  for (let i = 0; i < COUNT; i++) spiralAt(angle, i, s.to, i * 2);
-  s.start = time;
-}
-
-function drawSpiral(ctx: Ctx2D, f: Frame, [seed, taps]: number[]): boolean {
-  if (!spiral || f.cause === 'mount') {
-    const rand = stream(seed * 2654435761 + 1);
-    const now = new Float64Array(COUNT * 2), angle = (rand() * Math.PI) / 2;
-    for (let i = 0; i < COUNT; i++) spiralAt(angle, i, now, i * 2);
-    spiral = { rand, from: now.slice(), to: now.slice(), now, start: f.time, taps, first: f.time + 500 };
+function drawSpiral(ctx: Ctx2D, f: Frame): boolean {
+  if (!dots) {
+    dots = new Float64Array(COUNT * 2);
+    for (let i = 0; i < COUNT; i++) spiralAt(ANGLE, i, dots, i * 2);
   }
-  const s = spiral;
-  if (s.first && f.time >= s.first) { s.first = 0; retarget(s, f.time); }
-  if (taps !== s.taps) { s.taps = taps; retarget(s, f.time); }
-  const p = Math.min((f.time - s.start) / DURATION, 1), e = easeInOutCubic(p);
-  for (let i = 0; i < COUNT * 2; i++) s.now[i] = s.from[i] + (s.to[i] - s.from[i]) * e;
-
   const { width, height } = f, hw = width / 2, hh = height / 2;
   const maxDistance = Math.sqrt(hw * hw + hh * hh) * 0.8;
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = COLOR;
   ctx.beginPath();
   for (let i = 0; i < COUNT; i++) {
-    const x = s.now[i * 2], y = s.now[i * 2 + 1];
+    const x = dots[i * 2], y = dots[i * 2 + 1];
     if (y < 0) continue;
     const radius = 0.7 * (1 - Math.min(Math.sqrt(x * x + y * y) / maxDistance, 1));
     if (radius > 0) { ctx.moveTo(hw + x + radius, y); ctx.arc(hw + x, y, radius, 0, Math.PI * 2); }
   }
   ctx.fill();
-  return p < 1 || s.first !== 0;
+  return false;
 }
 
 // ---------------------------------------------------------------- stars
@@ -144,7 +128,7 @@ function drawStars(ctx: Ctx2D, f: Frame, [hoveredArg, seed]: number[]): boolean 
   return true;
 }
 
-export const heroSurfaces: Record<string, number> = { spiral: 2, stars: 2 };
+export const heroSurfaces: Record<string, number> = { spiral: 0, stars: 2 };
 export function drawHero(surface: string, args: any[], ctx: Ctx2D, frame: Frame): boolean {
-  return surface === 'spiral' ? drawSpiral(ctx, frame, args) : drawStars(ctx, frame, args);
+  return surface === 'spiral' ? drawSpiral(ctx, frame) : drawStars(ctx, frame, args);
 }

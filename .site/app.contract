@@ -192,8 +192,8 @@ component App
     after(2000, forgetCopied)
   action forgetCopied
     copied = ""
-  // /demos: the per-launch seed of the spiral's and the stars' randomness, and the star count's spin, 500 ms after the
-  // page starts (GitHubStarsButton). The title is not pressable (owner, 2026-11-24): the spiral turns on its own only.
+  // /demos: the per-launch seed of the stars' randomness, and the star count's spin, 500 ms after the page starts
+  // (GitHubStarsButton). The title is not pressable (owner, 2026-11-24); the spiral is drawn once, fixed.
   resource time = exactTime() as shape Seeded
   state counted = false
   task count when not counted
@@ -295,11 +295,11 @@ component App
             link href="#main" position="absolute" width=1 height=1 margin=-1 overflow="hidden" clip-path="inset(50%)" white-space="nowrap"
               text "Skip to content"
             // /demos: the spiral behind the page (SpiralBackdrop): the window's width, 500 px tall from 15 % of the
-            // window's height above the page's top, shown 1.2 s in (fadeIn 1.4 s) at 70 %.
+            // window's height above the page's top, at 70 %, drawn once with the page at a fixed angle: no fade-in, no
+            // entrance turn, no random angle (live shows it 1.2 s in and turns it for 2.5 s; owner, 2026-11-24: it stuttered).
             if isDemos(e.name)
               view position="absolute" left=0 top="-15vh" width="100%" height=500 z-index=-1 pointer-events="none"
-                data-motion="fade-in" data-delay="1200"
-                canvas surface=spiral(time.seed, 0) aria-hidden=true width="100%" height="100%" opacity=0.7 data-motion="spiral"
+                canvas surface=spiral() aria-hidden=true width="100%" height="100%" opacity=0.7 data-motion="spiral"
             view height=80 flex-shrink=0
             main id="main" display="flex" flex-direction="column" min-height="80vh"
               if e.name == "home"
