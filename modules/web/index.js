@@ -621,7 +621,7 @@ if (FRAMED) {
 // shadow are transparent, so the page's own drawing shows around the display with no seam at any scale.
 if (FRAMED && self.origin === 'null') {
   const sheet = document.createElement('style');
-  sheet.textContent = 'html,body,#exact-root,:has(> [data-testid="web-stage"]),[data-testid="web-stage"]{background:transparent !important}'
+  sheet.textContent = ':has([data-testid="web-stage"]),[data-testid="web-stage"]{background:transparent !important}'
     + '[data-testid="web-stage"] > * > :not([data-testid="web-device"]){visibility:hidden !important}';
   document.head.appendChild(sheet);
 }
