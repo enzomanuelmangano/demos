@@ -1,0 +1,62 @@
+<Title date="2024-02-21" slug="3d-scroll-transition" basePath="demos">
+  Scroll Transition with Reanimated and Skia
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/3d-scroll-transition"
+/>
+
+This is a cool 3D scroll animation that creates an awesome visual effect when you scroll through a list of numbers. It's built using Reanimated and Skia.
+
+## What's This All About?
+
+This animation creates a mesmerizing 3D effect where:
+
+- Numbers float in a vertical list
+- As you scroll, each number rotates in 3D space
+- Items blur and fade smoothly as they move away from the center
+- There's a beautiful gradient effect that makes everything pop!
+
+## How It Works
+
+The magic happens through two main components:
+
+1. **ScrollTransition3D**: The main component that:
+   - Sets up a vertical scrolling list
+   - Handles smooth scroll animations
+   - Uses efficient native thread animations for buttery-smooth performance
+   - Manages item sizing and layout
+
+2. **BlurredListItem**: The individual items that:
+   - Create that sweet 3D rotation effect
+   - Handle blurring and opacity transitions
+   - Apply a gorgeous gradient overlay
+   - Use Skia for high-performance rendering
+
+## Technical Details
+
+- Uses _react-native-reanimated_ for smooth animations
+- Leverages _@shopify/react-native-skia_ for high-performance graphics
+- Implements smart performance optimizations like:
+  - Worklet-based scroll handling
+  - Efficient blur effects
+  - Optimized window sizing
+  - Smart item recycling
+
+## Implementation Notes
+
+- The animation uses _windowSize={2}_ for optimal performance
+- Items snap into place thanks to _snapToInterval_
+- The blur effect is optimized to only apply when necessary
+- Everything runs on the native thread for maximum smoothness
+
+## Usage
+
+Just import _ScrollTransition3D_ and drop it into your app - it's that simple! The component will handle all the fancy 3D transitions and effects automatically.
+
+<ReanimatePromo />
+
+<SendFeedback />

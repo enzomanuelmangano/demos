@@ -3,8 +3,15 @@ at "/demo/audio-player"
 test "the player is there"
   expect tree has "audio-player"
   expect tree has "audio-waveform"
-  expect text "audio-title" == "Run"
+  expect text "audio-title" == "Now, Run"
   expect text "audio-artist" == "Hania Rani"
   expect tree has "audio-play"
   expect tree has "audio-back"
   expect tree has "audio-ahead"
+
+// The drawn face is the artwork's square, its padding inside: content-box made it 48 wider and
+// taller, so it hung past the box's right and bottom edges (off centre by 24).
+// 320.4 is `art` at the test viewport.
+test "the drawn face is as big as the artwork"
+  expect layout "audio-artwork-face" width == 320.4
+  expect layout "audio-artwork" width == 320.4

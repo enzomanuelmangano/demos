@@ -1,0 +1,393 @@
+// reactiive.io: the routes and the page frame. One page per route, rendered at build. `/` and `/demos` start their
+// runtime once the page is idle; the content and static pages only on the reader's intent (a press, a field) or when
+// an observed node (a demo, an embed) enters the window: docs/decisions.md D16. /demos/ is not a route of this app: it is
+// the Demos app's own build, mounted beside it (tools/compose.ts), and a link to it leaves this app.
+use SiteHeader, SiteFooter, Container from "./components/shell.contract"
+use HomePage from "./pages/home.contract"
+use NotFound from "./pages/not-found.contract"
+use Newsletter from "./components/newsletter.contract"
+use DemosPage, DemosSim from "./pages/demos.contract"
+use InspirationsPage from "./pages/inspirations.contract"
+use CoursePage from "./pages/course.contract"
+use DemosAppPage from "./pages/demos-app.contract"
+use Page from "./components/markdown.contract"
+use Card, ArticleList, ArticlePage from "./pages/articles.contract"
+use Me, SiteConfig, Sent, SignInDialog, FeedbackDialog, ProfilePage, ManageSubscriptionPage, CancelDialog, Toast from "./components/account/account.contract"
+
+// The faces (Inter variable, Source Code Pro) are declared in app.json's head, font-display: swap and Inter
+// preloaded, as the reference: docs/decisions.md D7.
+routes nav
+  home "/" render=build activate=idle
+  demos "/demos" render=build activate=idle
+  // A demo post of the old site (decisions.md D21): the same /demos page under the post's URL and title, whose framed
+  // phone pages to that demo and opens it (web/sim-goto.js). Only the posts whose demo the app has are listed (the
+  // others are 307s to /demos, tools/compose.ts); every other path under /demos/ is the Demos app's mount or a 404.
+  demoPost "/demos/:demo" render=build activate=idle pages=demoPostSlugs()
+  inspirations "/inspirations" render=build activate=interaction
+  demosApp "/demos-app" render=build activate=interaction
+  course "/course" render=build activate=interaction
+  // The content (tools/gen-content.ts, docs/progress-content.md).
+  articles "/articles" render=build activate=interaction
+  article "/articles/:post" render=build activate=interaction pages=articleSlugs()
+  series "/series/:series" render=build activate=interaction pages=seriesSlugs()
+  docs "/docs" render=build activate=interaction
+  docPage "/docs/:post" render=build activate=interaction pages=docSlugs()
+  // Signed in only (components/account): the shell, drawn on the reader's page. Without the env the host sends it
+  // to /demos (tools/compose.ts), as the reference did for a signed-out visitor.
+  profile "/profile" render=client
+  // A subscription's status and its cancel (no plans, no prices: docs/stubs.md); signed in only, as /profile.
+  manageSubscription "/manage-subscription" render=client
+  notfound render=build
+
+// The footer's Terms | Privacy variant, on the reference's paths (components/Footer: /demos, /profile,
+// /manage-subscription, /privacy, /terms).
+// /demos and a demo post (D21) are one page.
+fn isDemos(name: string): bool = name == "demos" or name == "demoPost"
+fn legalFooter(name: string, post: string): bool = isDemos(name) or name == "profile" or name == "manageSubscription" or (name == "docPage" and (post == "terms" or post == "privacy"))
+fn titleCase(slug: string): string = slug.split("-").map(w => w.slice(0, 1).toUpperCase() + w.slice(1)).join(" ")
+fn docTitle(slug: string): string = slug == "terms" ? "Terms of Service" : slug == "privacy" ? "Privacy Policy" : slug == "license" ? "License" : slug
+
+shape Subscribed
+  ok: bool
+
+shape Seeded
+  seed: number
+
+shape DemoPost
+  title: string
+  app: string
+
+component App
+  // The newsletter form's request (components/newsletter.contract): idle, loading, success or error.
+  state newsletterStatus = "idle"
+  mutation newsletter as shape Subscribed then subscribed
+  // ------------------------------------------------ the account (components/account, docs/decisions.md D15)
+  // The session: the reference's Bearer JWT, which its OAuth callback hands to /profile?accessToken=…; kept by the
+  // page (localStorage), sent by the data module. The utm_source a visit came with goes with the sign-up.
+  state accessToken = "" persist
+  state utmSource = "" persist
+  // Whether the last visit ended signed in: web/storage.js mirrors it to the reference's `reactiive:signed-in`, which
+  // reserves the avatar's place before the session is known (docs/storage.md).
+  state signedHint = false persist
+  resource config = siteConfig() as shape SiteConfig
+  // A token the API rejects (401) is dropped for this page only: the reader is shown signed out, as the reference's
+  // user query does on its error, but the stored token stays (the reference never removes @AccessStorage on a 401;
+  // only a sign-out does: docs/storage.md). The next visit asks again, as the reference's does.
+  state dropped = ""
+  derive session = accessToken != dropped ? accessToken : ""
+  resource me = userInfo(session) as shape Me
+  derive accounts = config.accounts
+  derive meLoading = accounts and session != "" and not current(me)
+  derive tokenInUrl = searchParam(top(nav), "accessToken")
+  derive utmInUrl = searchParam(top(nav), "utm_source")
+  task takeToken when tokenInUrl != ""
+    after(1, keepToken)
+  action keepToken
+    accessToken = tokenInUrl
+    dropped = ""
+    nav = replace(nav, path("profile"))
+  task takeUtm when utmInUrl != "" and utmInUrl != utmSource
+    after(1, keepUtm)
+  action keepUtm
+    utmSource = utmInUrl
+  task hint when accounts and not meLoading and signedHint != me.signedIn
+    after(1, keepHint)
+  action keepHint
+    signedHint = me.signedIn
+  task forgetRejected when me.rejected
+    after(1, dropSession)
+  action dropSession
+    dropped = accessToken
+  // /profile signed out (or once the session is known to be none): /demos, with the reference's toast.
+  task leaveProfile when (top(nav).name == "profile" or top(nav).name == "manageSubscription") and tokenInUrl == "" and not meLoading and not me.signedIn and (current(me) or session == "")
+    after(1, toDemos)
+  action toDemos
+    nav = replace(nav, "/demos")
+    toast = "You don't have access to this page"
+    toastTone = "info"
+    toasts = toasts + 1
+  // The sign-in dialog: its provider links are asked the first time it opens.
+  state signInArmed = false
+  // Sign In opens the dialog on every build, as live (the owner); the provider links are asked of /api/* (the old
+  // deployment, or tools/local-env/api.ts locally). Where it does not answer, a press on a provider says so in a toast
+  // and asks again (signInTry), never a dead control.
+  state signInTry = 0
+  resource googleUrl = authUrl("google", utmSource, signInArmed, signInTry) as shape string
+  resource appleUrl = authUrl("apple", utmSource, signInArmed, signInTry) as shape string
+  action openSignIn
+    signInArmed = true
+    showModal("signin-modal")
+  action signInFailed
+    toast = "Sign in is not available right now. Please try again."
+    toastTone = "error"
+    toasts = toasts + 1
+    signInTry = signInTry + 1
+  action signOut
+    accessToken = ""
+  action openProfile
+    nav = go(nav, path("profile"))
+  // The subscription's cancel (hooks/use-subscription.ts): the confirmation, then POST /api/purchase/cancel-subscription;
+  // on success the user's info is asked again and the dialog closes; on a failure it stays open, as the reference's.
+  mutation cancelled as shape Sent refreshes me then cancelDone
+  action openCancel
+    showModal("cancel-subscription")
+  action confirmCancel
+    send cancelled = cancelSubscription(session)
+  action cancelDone
+    if match cancelled { case some(r) => r.ok, case none => false }
+      close("cancel-subscription")
+  // Feedback (POST /api/feedback/submit) and the toasts (sonner's).
+  state feedbackSending = false
+  mutation feedback as shape Sent then feedbackSent
+  state toast = ""
+  state toastTone = "success"
+  state toasts = 0
+  action openFeedback
+    showModal("feedback")
+  action sendFeedback(text: string, anonymous: bool)
+    feedbackSending = true
+    send feedback = sendFeedback(session, text, anonymous, "")
+  action feedbackSent
+    feedbackSending = false
+    match feedback
+      case some(r)
+        if r.ok
+          close("feedback")
+          toast = "Thank you for your feedback!"
+          toastTone = "success"
+        else
+          toast = "Something went wrong. Please try again."
+          toastTone = "error"
+      case none
+        toast = "Something went wrong. Please try again."
+        toastTone = "error"
+    toasts = toasts + 1
+  task clearToast when toast != "" key=toasts
+    after(4000, forgetToast)
+  action forgetToast
+    toast = ""
+  // The /demos pill's live star count (GET /api/github/stars), asked on the reader's page with the spin.
+  resource stars = githubStars("enzomanuelmangano/demos", 3248, counted) as shape number
+  // The content pages' data: one generated module per page (app.ts), none on the other routes.
+  derive post = top(nav).name == "article" or top(nav).name == "docPage" ? top(nav).params.post : ""
+  derive seriesSlug = top(nav).name == "series" ? top(nav).params.series : ""
+  resource article = loadArticle(top(nav).name == "article" ? post : "") as shape Page
+  resource doc = loadDoc(top(nav).name == "docPage" ? post : "") as shape Page
+  // A demo post's title and the app's slug of its demo (D21); none elsewhere.
+  resource demoPost = loadDemoPost(top(nav).name == "demoPost" ? top(nav).params.demo : "") as shape DemoPost
+  resource cards = loadCards(top(nav).name == "articles" ? "*" : seriesSlug) as shape Card[]
+  // An in-app navigation to a content page draws it once its module has answered: until then a window-tall blank under
+  // the header, not the newsletter and the footer at the top of an empty page that the content then pushes down (a
+  // layout shift of 0.13 on every article opened from /articles; live swaps the page in when its data is there).
+  derive held = ((top(nav).name == "article" and not current(article)) or (top(nav).name == "docPage" and not current(doc))
+    or ((top(nav).name == "articles" or top(nav).name == "series") and not current(cards)))
+  // The code block just copied.
+  state copied = ""
+  state copies = 0
+  action copyCode(id: string, code: string)
+    copyText(code)
+    copied = id
+    copies = copies + 1
+  task clearCopied when copied != "" key=copies
+    after(2000, forgetCopied)
+  action forgetCopied
+    copied = ""
+  // /demos: the per-launch seed of the spiral's and the stars' randomness, the taps on the title (each turns the
+  // spiral), and the star count's spin, 500 ms after the page starts (GitHubStarsButton).
+  resource time = exactTime() as shape Seeded
+  state spiralTaps = 0
+  state counted = false
+  task count when not counted
+    after(500, countStars)
+  action countStars
+    counted = true
+  // /demos's frame (pages/demos.contract DemosSim): its page loads 600 ms in (the hero has painted; was 1.6 s, the
+  // entrances' end: the frame's start runs in its own process, D18) once its box is within a viewport of the window;
+  // the launcher's still over it fades 800 ms after the frame's load.
+  state simSettled = false
+  state simNear = false
+  state simFramed = false
+  state simLive = false
+  // From 1024 px the frame is not the page's: it is kept here, outside the routed entry, from the first visit on, and
+  // only hidden while another page is shown, so a return to /demos finds the app as it was left (D17). Under 1024 px
+  // the page's own frame (above) is used, created per visit.
+  state keepSim = false
+  state keepNear = false
+  state keepFramed = false
+  state keepLive = false
+  // One app at a time: the kept frame loads only from 1024 px, the page's own only under it (`wide`, read from a box
+  // 1 px wide from 1024 px and 0 under it); crossing the width unloads the other (its src back to about:blank).
+  state wide = false
+  action widthSeen(cw: number, ch: number)
+    wide = cw > 0.5
+    if wide
+      simFramed = false
+      simLive = false
+    else
+      keepFramed = false
+      keepLive = false
+  task keep when not keepSim and isDemos(top(nav).name)
+    after(1, keepIt)
+  action keepIt
+    keepSim = true
+  action keepSeen(entry: IntersectionObserverEntry)
+    if entry.isIntersecting
+      keepNear = true
+  action keepLoaded
+    if simSettled and keepNear and wide
+      keepFramed = true
+  task keepReveal when keepFramed and not keepLive
+    after(800, keepShow)
+  action keepShow
+    keepLive = true
+  task sim when not simSettled
+    after(600, settleSim)
+  action settleSim
+    simSettled = true
+  action simSeen(entry: IntersectionObserverEntry)
+    if entry.isIntersecting
+      simNear = true
+  action simLoaded
+    if simSettled and simNear and not wide
+      simFramed = true
+  task reveal when simFramed and not simLive
+    after(800, showSim)
+  action showSim
+    simLive = true
+  action spiralTap
+    spiralTaps = spiralTaps + 1
+  action follow(url: string)
+    nav = go(nav, url)
+    // Leaving or entering a page unmounts /demos's frame (its entry is keyed per visit), so the next visit loads the
+    // app again: show the launcher's still until it has drawn again, as on the first visit (D17), never a blank frame.
+    simFramed = false
+    simLive = false
+  action subscribe(email: string)
+    if email == ""
+      newsletterStatus = "error"
+    else
+      newsletterStatus = "loading"
+      send newsletter = subscribe(email)
+  action subscribed
+    match newsletter
+      case some(s)
+        newsletterStatus = s.ok ? "success" : "error"
+      case none
+        newsletterStatus = "error"
+  view
+    view navigationKey=`${top(nav).id}` navigate=follow width="100%" min-height="100%" background-color="var(--color-surface-primary)"
+      font-family="Inter, 'Inter Fallback', ui-sans-serif, system-ui, sans-serif" color="var(--color-text-body)" font-size=16 line-height="1.5rem"
+      // The header: fixed over the page in the reference, mounted once in its root layout, so a navigation never
+      // redraws it. Here too: outside the routed entry, a zero-height sticky box at the top of the page's box (which
+      // is as tall as the page, the document scrolling), the bars hanging from it (Contract positions are relative,
+      // absolute or sticky). Its place in the flow is the reference's mb-20, in the entry below.
+      view position="sticky" top=0 height=0 z-index=50
+        SiteHeader(current=(isDemos(top(nav).name) ? "demos" : top(nav).name), accounts=accounts, loading=meLoading, me=me, openSignIn=openSignIn,
+          signOut=signOut, openProfile=openProfile)
+        Toast(message=toast, tone=toastTone)
+      SignInDialog(google=googleUrl, apple=appleUrl, googleFailed=failed(googleUrl), appleFailed=failed(appleUrl), retry=signInFailed)
+      // Only a signed-in reader can open these (the profile's feedback, the subscription's cancel): no one else's page
+      // builds and adopts their nodes (final sweep: every page's runtime start pays for each node).
+      if accounts and me.signedIn
+        FeedbackDialog(sending=feedbackSending, send=sendFeedback)
+        CancelDialog(expires=me.expires, sending=pending(cancelled), confirm=confirmCancel)
+      for e in stack(nav).slice(-1) key=e.id
+        column navigationKey=`${e.id}` navigationScroll=`page-${e.id}` position="absolute" inset=0
+          scroll document id=`page-${e.id}` flex=1 min-height=0
+            // The reference's skip link: off screen until focused.
+            link href="#main" position="absolute" width=1 height=1 margin=-1 overflow="hidden" clip-path="inset(50%)" white-space="nowrap"
+              text "Skip to content"
+            // /demos: the spiral behind the page (SpiralBackdrop): the window's width, 500 px tall from 15 % of the
+            // window's height above the page's top, shown 1.2 s in (fadeIn 1.4 s) at 70 %.
+            if isDemos(e.name)
+              view position="absolute" left=0 top="-15vh" width="100%" height=500 z-index=-1 pointer-events="none"
+                data-motion="fade-in" data-delay="1200"
+                canvas surface=spiral(time.seed, spiralTaps) aria-hidden=true width="100%" height="100%" opacity=0.7 data-motion="spiral"
+            view height=80 flex-shrink=0
+            main id="main" display="flex" flex-direction="column" min-height="80vh"
+              if e.name == "home"
+                head title="Home" description="Dive into the world of React Native - Discover the resources that helped me start my journey to building React Native animations"
+                  image="/og/main.png" canonical="/"
+                Container()
+                  HomePage(newsletterStatus=newsletterStatus, subscribe=subscribe)
+              else if isDemos(e.name)
+                if e.name == "demoPost"
+                  // The rest of the post's head (description, og, JSON-LD) is tools/seo/metadata.ts's, written at build.
+                  head title=`${demoPost.title} | Reactiive` description="Explore the beauty of React Native animations with Reanimated, Skia and Gesture Handler"
+                    image="/og/demos.png" canonical=`/demos/${e.params.demo}`
+                else
+                  head title="Demos | Reactiive" description="Explore the beauty of React Native animations with Reanimated, Skia and Gesture Handler"
+                    image="/og/demos.png" canonical="/demos"
+                DemosPage(launch=(e.name == "demoPost" and demoPost.app != "" ? `/demos/app/demo/${demoPost.app}` : "/demos/app/"),seed=time.seed, taps=spiralTaps, tap=spiralTap, counted=counted, stars=stars, simReady=(simSettled and simNear and not wide),
+                  simLive=simLive, simSeen=simSeen, simLoaded=simLoaded)
+              else if e.name == "inspirations"
+                head title="Inspirations | Reactiive" description="The blogs, docs and creators whose work shaped Reactiive.io."
+                  image="/og/main.png" canonical="/inspirations"
+                Container()
+                  InspirationsPage()
+              else if e.name == "course"
+                head title="Course | Reactiive" description="Reanimate.dev — the complete guide to React Native animations, from the basics to advanced techniques."
+                  image="/og/main.png" canonical="/course"
+                CoursePage()
+              else if e.name == "demosApp"
+                head title="Demos (TestFlight) | Reactiive" description="Get 120+ React Native animation demos on your phone through the TestFlight beta."
+                  image="/og/demos.png" canonical="/demos-app"
+                Container()
+                  DemosAppPage()
+              else if e.name == "articles"
+                head title="Articles | Reactiive" description="Interactive articles about React Native animations by Reactiive"
+                  image="/og/articles.png" canonical="/articles"
+                text "Articles" role="heading" aria-level=1 position="absolute" width=1 height=1 margin=-1 overflow="hidden" clip-path="inset(50%)" white-space="nowrap"
+                  font-size=16 font-weight=400 line-height="24px"
+                ArticleList(cards=cards)
+              else if e.name == "series"
+                head title=`${titleCase(e.params.series)} | Reactiive` description=`Articles in the ${titleCase(e.params.series)} series on React Native animations.`
+                  image="/og/articles.png" canonical=`/series/${e.params.series}`
+                ArticleList(cards=cards)
+              else if e.name == "profile"
+                head title="Profile | Reactiive" robots="noindex, nofollow" canonical="/profile"
+                Container()
+                  if accounts and me.signedIn
+                    ProfilePage(me=me, openFeedback=openFeedback, signOut=signOut)
+              else if e.name == "manageSubscription"
+                head title="Support Demos | Reactiive" robots="noindex, nofollow" canonical="/manage-subscription"
+                Container()
+                  if accounts and me.signedIn
+                    ManageSubscriptionPage(me=me, cancel=openCancel)
+              else if e.name == "docs"
+                head title="Reactiive" description="Discover the beauty of React Native and how to build stunning animations with Reanimated and Skia"
+                  image="/og/main.png" canonical="/"
+              else if e.name == "article" or e.name == "docPage"
+                // One ArticlePage for both routes: the plan holds a component's tree once per call site, and the
+                // article demos' trees are large (docs/progress-content.md).
+                if e.name == "article"
+                  head title=`${article.title} | Reactiive` description=article.description image=`/content-assets/articles/${e.params.post}/images/header.webp`
+                    canonical=`/articles/${e.params.post}`
+                else
+                  head title=`${docTitle(e.params.post)} | Reactiive` description="Discover the beauty of React Native and how to build stunning animations with Reanimated and Skia"
+                    image="/og/main.png" canonical=`/docs/${e.params.post}`
+                if held
+                  view height="100vh"
+                else
+                  ArticlePage(page=(e.name == "article" ? article : doc), article=(e.name == "article"), copied=copied, copy=copyCode)
+                    if e.name == "article"
+                      Newsletter(showTitle=true, status=newsletterStatus, subscribe=subscribe)
+              else
+                head title="Page not found | Reactiive" status=404 robots="noindex"
+                  description="Discover the beauty of React Native and how to build stunning animations with Reanimated and Skia"
+                  image="/og/main.png" canonical="/"
+                NotFound()
+            if held
+              view height="100vh"
+            else
+              SiteFooter(legal=legalFooter(e.name, e.name == "docPage" ? e.params.post : ""))
+      // /demos's frame from 1024 px, kept across pages (D17): placed where the page's hero leaves its column (web/head.css
+      // sim-keep), hidden on any other page and under 1024 px (a hidden frame stays loaded; it is never moved).
+      // The page's footer is drawn again after it (and the page's own hidden there, web/head.css): the focus order stays
+      // the hero's pill, the phone, the footer.
+      view position="absolute" left=0 top=0 width="clamp(0px, (100vw - 1023px) * 1000, 1px)" height=0 resize=widthSeen aria-hidden=true
+      if keepSim or isDemos(top(nav).name)
+        view position="absolute" top=0 left=0 right=0 height=0 data-motion=(isDemos(top(nav).name) ? "sim-keep-layer on" : "sim-keep-layer")
+          DemosSim(ready=(simSettled and keepNear and wide), live=keepLive, seen=keepSeen, loaded=keepLoaded, place="sim-keep")
+          view position="absolute" left=0 right=0 data-motion="sim-keep-footer"
+            SiteFooter(legal=true)

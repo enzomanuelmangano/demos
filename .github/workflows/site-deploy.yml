@@ -1,0 +1,217 @@
+name: 'Site / deploy (manual only, prepared, never run)'
+
+# Builds reactiive.io (.site/) and the cached /demos/app/ artifact, composes the Build Output API v3 tree and deploys it
+# to Vercel with `vercel deploy --prebuilt`. See .site/docs/deploy.md for the one-time steps the owner does first.
+#
+# DISABLED ON PURPOSE: `workflow_dispatch` only. The secrets VERCEL_TOKEN / VERCEL_ORG_ID / VERCEL_PROJECT_ID do not
+# exist yet; the first step fails with a clear message when they are missing, before anything is built. To make it
+# automatic after the owner has added the secrets and checked a preview, replace the `on:` block with the one in the
+# comment below (push to `site` -> main once the site lands there), nothing else changes.
+#
+#   on:
+#     push:
+#       branches: [main]
+#       paths:        # .site/** and every input of the /demos/app/ artifact (tools/demos-web/build.ts isInput):
+#         - '**'      # every tracked path but the deny-list below, plus this file
+#         - '!.legacy/**'
+#         - '!.parity/**'
+#         - '!.github/**'
+#         - '!**/*.md'
+#         - '.github/workflows/site-deploy.yml'
+#     workflow_dispatch: ...
+on:
+  workflow_dispatch:
+    inputs:
+      production:
+        description: 'Deploy to production (the reactiive.io alias). Off: a preview deployment (its own URL).'
+        type: boolean
+        default: false
+      skip_head_parity:
+        description: 'Skip the head comparison with the live site (emergency deploys, or the live site is down).'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # Production only from main: a preview can come from any branch.
+    if: ${{ !inputs.production || github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      # The canonical origin written into the heads, sitemap and feed. A preview links to itself (relative links) but
+      # advertises the real origin, as the live site's previews would.
+      SITE_ORIGIN: https://reactiive.io
+      # The old Next deployment that keeps answering /api/* (repository variable; docs/stubs.md). Unset: no rewrite.
+      LEGACY_API_ORIGIN: ${{ vars.LEGACY_API_ORIGIN }}
+    steps:
+      - name: The deploy secrets exist
+        run: |
+          missing=""
+          for v in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
+            [ -n "${!v}" ] || missing="$missing $v"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing secrets:$missing. Add them first (.site/docs/deploy.md, step 2). Nothing was built or deployed."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # The accounts and the old API go together (docs/storage.md, docs/stubs.md): with the accounts on and no
+      # LEGACY_API_ORIGIN the sign-in's callback has nowhere to land; with neither, Sign In still shows (it opens on
+      # every build) but no provider can be reached, and every reader signed in on the old site would look signed out.
+      # A production run therefore needs both; a preview only warns.
+      - name: The accounts and the old API are configured together
+        env:
+          ACCOUNTS: ${{ vars.SITE_ACCOUNTS }}
+          PRODUCTION: ${{ inputs.production }}
+        run: |
+          if [ "$ACCOUNTS" = "1" ] && [ -n "$LEGACY_API_ORIGIN" ]; then echo "accounts on, /api/* -> the old deployment"; exit 0; fi
+          if [ -n "$LEGACY_API_ORIGIN" ]; then legacy="set"; else legacy="unset"; fi
+          msg="SITE_ACCOUNTS is '${ACCOUNTS:-unset}' and LEGACY_API_ORIGIN is $legacy: production needs SITE_ACCOUNTS=1 and LEGACY_API_ORIGIN (with EXPO_PUBLIC_ACCESS_KEY), or readers lose their session at the cutover (.site/docs/deploy.md, step 2)"
+          if [ "$PRODUCTION" = "true" ]; then echo "::error::$msg"; exit 1; fi
+          echo "::warning::$msg"
+
+
+      - name: Set up Bun (the version Exact pins)
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Keys and Exact seeds
+        id: key
+        run: |
+          echo "key=$(bun .site/tools/demos-web/build.ts --key-only)" >> "$GITHUB_OUTPUT"
+          echo "demos-seed=$(sed -n 's/^const seed = ".*\/\([0-9a-f]\{40\}\)";$/\1/p' exact.mjs)" >> "$GITHUB_OUTPUT"
+          echo "site-seed=$(sed -n 's/^const seed = ".*\/\([0-9a-f]\{40\}\)";$/\1/p' .site/exact.mjs)" >> "$GITHUB_OUTPUT"
+
+      # ---- the /demos/app/ artifact: cached by the demos' inputs; a site-only change is a cache hit --------------------
+      - name: Restore the demos artifact
+        id: artifact
+        uses: actions/cache@v4
+        with:
+          path: .site/.out/demos-web/${{ steps.key.outputs.key }}
+          key: demos-web-${{ steps.key.outputs.key }}
+
+      - name: Checkout expo/exact at the demos' seed
+        if: steps.artifact.outputs.cache-hit != 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: expo/exact
+          ref: ${{ steps.key.outputs.demos-seed }}
+          path: .exact-demos
+
+      - name: Cache Rust
+        if: steps.artifact.outputs.cache-hit != 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.rustup
+            ~/.cargo/bin
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cache/exact
+            /tmp/demos-web-target
+          key: demos-web-rust-${{ steps.key.outputs.demos-seed }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: demos-web-rust-${{ steps.key.outputs.demos-seed }}-
+
+      # The root Cargo.toml names the vendored crates under .exact/checkout (exact.mjs's link to the checkout, made
+      # locally on first use); setup reads that manifest, so the link must exist first.
+      - name: Link .exact/checkout to the checked-out Exact
+        if: steps.artifact.outputs.cache-hit != 'true'
+        run: mkdir -p .exact && ln -sfn "$GITHUB_WORKSPACE/.exact-demos" .exact/checkout
+
+      - name: Exact web prerequisites for the demos build
+        if: steps.artifact.outputs.cache-hit != 'true'
+        run: bun .exact-demos/scripts/exact.mjs setup --platform web
+
+      - name: Build the demos web (base /demos/app/)
+        if: steps.artifact.outputs.cache-hit != 'true'
+        env:
+          EXACT: ${{ github.workspace }}/.exact-demos
+          CARGO_TARGET_DIR: /tmp/demos-web-target
+          DEMOS_WEB_SCRATCH: /tmp/demos-web-src
+        run: bun .site/tools/demos-web/build.ts
+
+      # ---- the site -----------------------------------------------------------------------------------------------
+      - name: Checkout expo/exact at the site's seed
+        uses: actions/checkout@v4
+        with:
+          repository: expo/exact
+          ref: ${{ steps.key.outputs.site-seed }}
+          path: .exact-site
+
+      - name: Install the site's dependencies
+        working-directory: .site
+        run: bun install --frozen-lockfile
+
+      - name: Content (articles, docs) to typed modules
+        working-directory: .site
+        run: |
+          if [ -f tools/gen-content.ts ]; then bun tools/gen-content.ts; else echo "no content pipeline on this branch"; fi
+
+      # The accounts (docs/stubs.md, docs/storage.md): public settings only, from repository VARIABLES, into the
+      # gitignored .env.local the build reads. Off unless vars.SITE_ACCOUNTS is 1; then EXPO_PUBLIC_ACCESS_KEY (the old
+      # site's token key) is required, or every reader signed in on the old site would be signed out at the cutover.
+      - name: The accounts' public settings
+        if: ${{ vars.SITE_ACCOUNTS == '1' }}
+        working-directory: .site
+        env:
+          WEBSITE_URL: ${{ vars.EXPO_PUBLIC_WEBSITE_URL || 'https://reactiive.io' }}
+          AMPLITUDE: ${{ vars.EXPO_PUBLIC_AMPLITUDE_API_KEY }}
+          SENTRY: ${{ vars.EXPO_PUBLIC_SENTRY_DSN }}
+          ACCESS_KEY: ${{ vars.EXPO_PUBLIC_ACCESS_KEY }}
+        run: |
+          if [ -z "$ACCESS_KEY" ]; then echo "::error::SITE_ACCOUNTS=1 needs the EXPO_PUBLIC_ACCESS_KEY variable (.site/docs/storage.md)"; exit 1; fi
+          umask 077
+          {
+            echo "SITE_ACCOUNTS=1"
+            echo "EXPO_PUBLIC_WEBSITE_URL=$WEBSITE_URL"
+            if [ -n "$AMPLITUDE" ]; then echo "EXPO_PUBLIC_AMPLITUDE_API_KEY=$AMPLITUDE"; fi
+            if [ -n "$SENTRY" ]; then echo "EXPO_PUBLIC_SENTRY_DSN=$SENTRY"; fi
+            echo "EXPO_PUBLIC_ACCESS_KEY=$ACCESS_KEY"
+          } > .env.local
+          bun tools/storage-bridge.ts --check-key
+
+      - name: Build the site (web-build, then head, JSON-LD, sitemap, robots, feed, manifest)
+        working-directory: .site
+        env:
+          EXACT: ${{ github.workspace }}/.exact-site
+        run: bun run build
+
+      - name: Head parity with the live site (built pages only)
+        if: ${{ !inputs.skip_head_parity }}
+        working-directory: .site
+        run: bun tools/parity/head-diff.ts --ours dist
+
+      - name: Compose the deploy tree (.site/.vercel/output)
+        working-directory: .site
+        run: bun tools/compose.ts
+
+      # ---- deploy ---------------------------------------------------------------------------------------------------
+      # `--prebuilt` uploads .vercel/output as is. VERCEL_ORG_ID + VERCEL_PROJECT_ID stand in for `vercel link`.
+      - name: Deploy to Vercel
+        id: deploy
+        working-directory: .site
+        run: |
+          flags="--prebuilt --token=$VERCEL_TOKEN"
+          if [ "${{ inputs.production }}" = "true" ]; then flags="$flags --prod"; fi
+          url=$(bunx vercel@66.6.0 deploy $flags)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Deployed: $url" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Head parity against the deployment (informational, a protected preview answers 401)
+        continue-on-error: true
+        working-directory: .site
+        run: bun tools/parity/head-diff.ts --ours-url "${{ steps.deploy.outputs.url }}"

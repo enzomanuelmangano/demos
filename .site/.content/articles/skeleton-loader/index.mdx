@@ -1,0 +1,241 @@
+import { InteractiveSkeletonDemo, InteractiveContactItem, InteractiveJustSkeleton } from './mdx-client';
+
+<Title date="2024-12-20" slug="skeleton-loader">
+  Skeleton Animation in React Native with Moti
+</Title>
+
+In this tutorial, we'll explore how to create an engaging skeleton loading animation in a React Native application using the Moti library.
+
+Moti is a powerful animation library built on top of Reanimated, providing a straightforward way to add complex animations to your React Native projects.
+
+<InteractiveSkeletonDemo />
+
+## Source Code
+
+You can find the source code on GitHub:
+
+<GithubCard
+  repo="enzomanuelmangano/animate-with-reanimated"
+  path="src/animations/18-skeleton-animation"
+/>
+
+### YouTube Channel
+
+Are you more of a visual learner? Here you can find my full video tutorial
+
+<YouTubeEmbed videoId="vunwBbFx_F8" />
+
+## Project Setup
+
+To get started, we'll create an Expo Go project with TypeScript:
+
+```bash
+npx create-expo-app --template blank-typescript
+```
+
+The goal will be to focus on the Skeleton Loader animation, but of course we'll need a simple placeholder component to display the animation.
+To keep things simple, we'll create a ContactListItem component that will display the Skeleton Loader if the contact is null.
+
+```tsx
+type ContactListItemProps = {
+  contact?: ContactInfo | null;
+};
+
+const ContactListItem: React.FC<ContactListItemProps> = ({ contact }) => {
+  return (
+    <Animated.View style={styles.container} entering={FadeIn.duration(1000)}>
+      <View style={styles.circleContainer}>
+        <Text style={styles.avatarText}>{contact.name?.[0]}</Text>
+      </View>
+      <View style={styles.content}>
+        <Animated.Text entering={FadeIn.duration(1500)} style={styles.nameText}>
+          {contact.name}
+        </Animated.Text>
+        <View style={styles.separator} />
+        <Animated.Text
+          entering={FadeIn.duration(1500)}
+          style={styles.emailText}
+        >
+          {contact.email}
+        </Animated.Text>
+      </View>
+    </Animated.View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    width: 320,
+    height: 90,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderColor: '#ffffff37',
+    backgroundColor: '#ffffff04',
+    borderRadius: 12,
+    borderCurve: 'continuous',
+  },
+  content: { marginLeft: 15 },
+  circleContainer: {
+    backgroundColor: '#005CB7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: 50,
+    width: 50,
+    borderRadius: 25,
+  },
+  avatarText: { fontSize: 25, color: 'white' },
+  nameText: { fontSize: 18, color: '#ffffff' },
+  emailText: { fontSize: 15, color: '#d4d4d4' },
+  separator: { height: 5 },
+});
+```
+
+You can easily display the placeholder component by passing null as the contact prop.
+
+```tsx
+<InteractiveContactItem
+  contact={{
+    name: 'John Doe',
+    email: 'john.doe@example.com',
+  }}
+/>
+```
+
+This should be the current state:
+
+<InteractiveContactItem />
+
+## The Skeleton Loader
+
+Wait, where's our skeleton loader?
+
+To create it, we'll use the Moti library. I'm a huge fan of creating things from scratch, but in this specific case, there's no need to reinvent the wheel.
+
+```bash
+npx expo install moti
+```
+
+This is not enough. You can easily understand why by asking yourself: **What would I need to do if I wanted to create a Skeleton loader?**
+
+1. A Linear Gradient to create the effect -> _expo-linear-gradient_
+2. A way to animate the gradient -> _react-native-reanimated_
+
+_Note: if you're not using Expo, you can use *react-native-linear-gradient* instead of *expo-linear-gradient* (**but why aren't you using Expo?!**)_
+
+```bash
+npx expo install react-native-reanimated expo-linear-gradient
+```
+
+Once we have the dependencies installed, we can start to create the Skeleton Loader component.
+
+```tsx
+// These are just some nice defaults
+const SkeletonCommonProps = {
+  colorMode: 'dark',
+  transition: {
+    type: 'timing',
+    duration: 1000,
+  },
+} as const;
+
+const ContactListSkeleton = () => {
+  return (
+    <View style={styles.container}>
+      <Skeleton.Group show={true}>
+        <Skeleton
+          radius={'round'}
+          height={50}
+          width={50}
+          {...SkeletonCommonProps}
+        />
+        <View style={styles.content}>
+          <Skeleton height={20} width={180} {...SkeletonCommonProps} />
+          <View style={styles.spacer} />
+          <Skeleton height={15} width={160} {...SkeletonCommonProps} />
+        </View>
+      </Skeleton.Group>
+    </View>
+  );
+};
+```
+
+<InteractiveJustSkeleton />
+
+## Managing Loading State
+
+Now that we have both our ContactListItem and Skeleton components, let's combine them to handle loading states elegantly. We'll modify our ContactListItem to show the skeleton when the contact data is loading:
+
+```tsx
+type ContactListItemProps = {
+  contact?: ContactInfo | null;
+};
+
+const ContactListItem: React.FC<ContactListItemProps> = ({ contact }) => {
+  const isLoading = contact == null;
+
+  if (isLoading) {
+    return <ContactListSkeleton />;
+  }
+
+  return (
+    <Animated.View style={styles.container} entering={FadeIn.duration(1000)}>
+      <View style={styles.circleContainer}>
+        <Text style={styles.avatarText}>{contact.name?.[0]}</Text>
+      </View>
+      <View style={styles.content}>
+        <Animated.Text entering={FadeIn.duration(1500)} style={styles.nameText}>
+          {contact.name}
+        </Animated.Text>
+        <View style={styles.separator} />
+        <Animated.Text
+          entering={FadeIn.duration(1500)}
+          style={styles.emailText}
+        >
+          {contact.email}
+        </Animated.Text>
+      </View>
+    </Animated.View>
+  );
+};
+```
+
+The key points here are:
+
+1. We check if the contact is null using _const isLoading = contact == null_
+2. If it's loading, we render the skeleton component
+3. Once the data is available, we render the actual content with a fade-in animation
+
+You can simulate a loading state in your application like this:
+
+```tsx
+const [contact, setContact] = useState<ContactInfo | null>(null);
+
+const fetchContact = async () => {
+  setContact(null); // Show skeleton
+
+  // Simulate API call
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+
+  setContact({
+    name: 'John Doe',
+    email: 'john.doe@example.com',
+  });
+};
+```
+
+Try clicking the play button above to see the skeleton loader in action!
+
+<InteractiveSkeletonDemo />
+
+## Conclusion
+
+Skeleton loaders are an excellent way to improve the perceived performance of your React Native applications. Using Moti makes implementing these animations straightforward and maintainable. Remember these key takeaways:
+
+- Use skeleton loaders to indicate that content is loading
+- Leverage Moti's built-in skeleton components for easy implementation
+- Handle loading states by showing skeletons: here we used a simple _null_ check, but usually it would be better to use a proper loading state.
+- Add smooth transitions between loading and loaded states using animations
+
+The combination of Moti, Reanimated, and Linear Gradient provides a powerful toolkit for creating beautiful loading experiences in your React Native applications.

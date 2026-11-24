@@ -1,0 +1,268 @@
+// "/demos": the reference's app/demos page down to its hero (components/landing/hero: the spiral backdrop, the
+// "Demos" title, the subtitle, the open-source pill with its stars), and below it, in place of the reference's video
+// grid, the Demos app itself: its own web build, mounted at /demos/app/ and shown here in a frame (an iframe), so the
+// app stays its own artifact (docs/decisions.md D10).
+use sm, md, lg from "../components/responsive.contract"
+use TestFlightQr from "../components/qr.contract"
+use testFlightUrl from "./demos-app.contract"
+
+// The entrances (motion-title, motion-blur-in) and the 3D lift are the reference's CSS, in web/head.css, hooked by
+// data-motion: Contract keyframes take no filter and boxes no 3D transform (docs/decisions.md D11).
+
+// A length that steps up at Tailwind's sm, md and lg (px): the largest of the steps that apply.
+fn steps(base: number, s: number, m: number, l: number): string = `max(${base}px, ${sm(0, s)}, ${md(0, m)}, ${lg(0, l)})`
+
+// The hero's alignment: left under 640 px (the reference's), centred from 640 px, and left again from 1024 px, where
+// the Demos app sits beside it (D12). A spacer each side of a line: this wide, so equal spacers centre it, or 0 px.
+fn centring(): string = `min(${sm(0, 9999)}, ${lg(9999, 0)})`
+
+// From 1024 px (D12): the app's column is 600 px (the app frames its iPhone from a 600 px wide window) and as tall as
+// the viewport under the header and 16 px, 560-1032 px; the hero takes the rest of the container.
+fn simColumn(): number = 600
+fn deskSimHeight(): string = "clamp(560px, 100vh - 96px, 1032px)"
+// The title's size beside it: the reference's 144 px, smaller when the column is narrower than 3 em (1024-1079 px).
+// The title's size beside it: the reference's 144 px, smaller when the column is narrower than 3 em (1024-1079 px).
+// The phone's width beside the hero, and a mask that keeps it and fades the stage out within 24 px of its sides
+// (identity under 1024 px: every stop at the edges).
+fn phoneW(): string = "min(444px, (clamp(560px, 100vh - 96px, 1032px) - 48px) * 0.474359)"
+fn deskOnly(): string = "clamp(0px, (100vw - 1023px) * 1000, 9999px)"
+fn phoneMask(): string = `linear-gradient(to right, transparent min(50% - ${phoneW()} / 2 - 24px, ${deskOnly()}), #000000 min(50% - ${phoneW()} / 2, ${deskOnly()}), #000000 calc(100% - min(50% - ${phoneW()} / 2, ${deskOnly()})), transparent calc(100% - min(50% - ${phoneW()} / 2 - 24px, ${deskOnly()})))`
+fn titleSize(): string = `min(${steps(40, 80, 112, 144)}, max(${lg(9999, 0)}, (min(100vw, 1200px) - 648px) / 3))`
+
+// The pill's star count: live from GET /api/github/stars when the accounts' API is configured (app.contract `stars`,
+// components/account/account.ts), else the snapshot of enzomanuelmangano/demos's stargazers on 2026-11-23 (3,248).
+fn digitsOf(n: number): number[] = `${n}`.split("").map(c => "0123456789".indexOf(c))
+fn thousands(n: number): number[] = digitsOf(floor(n / 1000))
+fn units(n: number): number[] = digitsOf(1000 + n % 1000).slice(1)
+fn starCount(n: number): string = `${floor(n / 1000)},${`${1000 + n % 1000}`.slice(1)}`
+
+// The reference's hero text gradient (GRADIENT_ROW): white at 85 % on the sides, full in the middle, clipped to text.
+style Gradient
+  background-image="linear-gradient(to right, #ffffffd9, #ffffff, #ffffffd9)" background-clip="text" color="transparent"
+  font-weight=500
+
+component GitHubMark
+  props
+    size: number
+  view
+    svg width=size height=size viewBox="0 0 24 24" fill="currentColor" aria-hidden=true flex-shrink=0
+      path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"
+
+// One digit of the count, as NumberFlow draws it: a column of 0-9 that spins from 0 to its digit (1.5 s,
+// cubic-bezier(0.16, 1, 0.3, 1)) once `counted`, 500 ms after the page starts.
+component Digit
+  props
+    d: number
+    counted: bool
+  view
+    // The box takes the final digit's own width (an invisible copy, as the reference's width keeper); the column
+    // spins inside it.
+    view height=20 overflow="hidden" position="relative" aria-hidden=true
+      text `${d}` visibility="hidden" line-height="20px"
+      column position="absolute" left=0 top=0 align-items="flex-start" translate=(counted ? `0px ${d * -20}px` : "0px 0px")
+        transition="translate 1500ms cubic-bezier(0.16, 1, 0.3, 1)"
+        for n in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] key=n
+          text `${n}` height=20 line-height="20px"
+
+component StarsPill
+  props
+    seed: number
+    counted: bool
+    stars: number
+  state hovered = false
+  action hover(on: bool)
+    hovered = on
+  view
+    row position="relative" hover=hover
+      // FloatingStars: 170 px of canvas above the pill, 56 px past each side.
+      canvas surface=stars(hovered ? 1 : 0, seed) aria-hidden=true data-motion="pill-stars" position="absolute" left=-56 right=-56 bottom="100%" height=170
+        pointer-events="none"
+      // One pill, two hit areas (owner, 2026-11-24): the repository and its stars, then Sponsor (GitHub Sponsors). Each
+      // lights its own half on hover, as live's pill lights whole (rgb 255 / 0.06 to about 0.09, 200 ms).
+      row height=36 align-items="center" border-radius=9999 overflow="hidden" background-color="rgb(255 255 255 / 0.06)"
+        font-size="0.875rem" line-height="1.25rem" color="var(--color-text-primary)"
+        link href="https://github.com/enzomanuelmangano/demos" target="_blank" rel="noopener noreferrer" display="flex" height=36
+          align-items="center" padding-left=10 padding-right=11
+          transition="background-color 200ms cubic-bezier(0.4, 0, 0.2, 1)" data-motion="colors-200"
+          :hover
+            background-color = "rgb(255 255 255 / 0.03)"
+          GitHubMark(size=16)
+          // Under 640 px the pill reads "Source code"; from 640 px the full line with the star count.
+          text "Source code" margin-left=sm(10, 0) max-width=sm(200, 0) overflow="hidden" white-space="nowrap"
+          text "Demos is Open Source" margin-left=sm(0, 10) max-width=sm(0, 300) overflow="hidden" white-space="nowrap"
+          view width=sm(0, 1) height=16 margin-left=sm(0, 10) background-color="rgb(255 255 255 / 0.12)" aria-hidden=true
+          row align-items="center" margin-left=sm(0, 10) max-width=sm(0, 200) overflow="hidden" white-space="nowrap" aria-label=`${starCount(stars)} stars`
+            svg width=12 height=12 viewBox="0 0 16 16" fill="currentColor" color="var(--color-text-secondary)" aria-hidden=true flex-shrink=0
+              path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"
+            row margin-left=6 letter-spacing="0.02em"
+              for d, i in thousands(stars) key=i
+                Digit(d=d, counted=counted)
+              // The separator enters with the digits (NumberFlow), so it fades in as they spin.
+              text "," opacity=(counted ? 1 : 0) transition="opacity 1500ms cubic-bezier(0.16, 1, 0.3, 1)" aria-hidden=true
+              for d, i in units(stars) key=i
+                Digit(d=d, counted=counted)
+        view width=1 height=16 flex-shrink=0 background-color="rgb(255 255 255 / 0.12)" aria-hidden=true
+        // GitHub's Sponsor button: Octicon heart-fill in its sponsor pink.
+        link href="https://github.com/sponsors/enzomanuelmangano" target="_blank" rel="noopener noreferrer"
+          aria-label="Sponsor Enzo Manuel Mangano on GitHub" display="flex" height=36 align-items="center" padding-left=10
+          padding-right=12 white-space="nowrap" transition="background-color 200ms cubic-bezier(0.4, 0, 0.2, 1)" data-motion="colors-200"
+          :hover
+            background-color = "rgb(255 255 255 / 0.03)"
+          svg width=16 height=16 viewBox="0 0 16 16" fill="#db61a2" aria-hidden=true flex-shrink=0
+            path d="M7.655 14.916v-.001h-.002l-.006-.003-.018-.01a22.066 22.066 0 0 1-3.744-2.584C2.045 10.731 0 8.35 0 5.5 0 2.836 2.086 1 4.25 1 5.797 1 7.153 1.802 8 3.02 8.847 1.802 10.203 1 11.75 1 13.914 1 16 2.836 16 5.5c0 2.85-2.044 5.231-3.886 6.818a22.094 22.094 0 0 1-3.433 2.414 7.152 7.152 0 0 1-.31.17l-.018.01-.008.004a.75.75 0 0 1-.69 0Z"
+          text "Sponsor" margin-left=7
+
+// The Demos app on TestFlight, quietly (owner, 2026-11-24: not a big call to action): a small grey link under the
+// pill. From 1024 px with a mouse, hovering it (or focusing it) shows the TestFlight QR code under it, to scan with
+// the phone (web/head.css d-tf-qr); the link still opens TestFlight's page. One element at every width: on a phone it
+// sits right above "Open the demos" and installs directly.
+component TestFlightLink
+  view
+    view position="relative" data-motion="d-tf"
+      link href=testFlightUrl() target="_blank" rel="noopener noreferrer" aria-label="Try the Demos app on iPhone with TestFlight"
+        display="flex" align-items="center" gap=6 height=24 font-size=13 line-height="20px" color="rgb(255 255 255 / 0.5)"
+        white-space="nowrap" transition="color 200ms cubic-bezier(0.4, 0, 0.2, 1)" data-motion="colors-200"
+        :hover
+          color = "rgb(255 255 255 / 0.8)"
+        svg width=14 height=14 viewBox="0 0 14 14" fill="none" aria-hidden=true flex-shrink=0
+          rect x=3.25 y=0.75 width=7.5 height=12.5 rx=2 stroke="currentColor" stroke-width=1.3
+          rect x=5.5 y=2.3 width=3 height=1 rx=0.5 fill="currentColor"
+        text "Try it on iPhone"
+        // The north-east arrow drawn, not typed: U+2197 is outside the preloaded ASCII face and would fetch the full Inter.
+        svg width=9 height=9 viewBox="0 0 9 9" fill="none" aria-hidden=true flex-shrink=0 opacity=0.7
+          path d="M2 7 7 2M3 2h4v4" stroke="currentColor" stroke-width=1.2 stroke-linecap="round" stroke-linejoin="round"
+      view position="absolute" left=-12 top="100%" margin-top=10 padding=12 border-radius=16 background-color="#16171b"
+        pointer-events="none" aria-hidden=true data-motion="d-tf-qr"
+        TestFlightQr(size=112)
+
+component DemosPage
+  props
+    seed: number
+    taps: number
+    tap: action
+    counted: bool
+    stars: number
+    simReady: bool
+    simLive: bool
+    simSeen: action
+    simLoaded: action
+    // Where the phone's button goes (D20): /demos/app/, or on a demo post that demo full screen (D21).
+    launch: string
+  view
+    // Container size xl: 1152 px at most, 24 px each side; mt-4 under 640 px.
+    // From 1024 px a 960 px row (web/head.css d-page: the viewport less 480 px, 720-960 px, plus the 24 px sides),
+    // centred on the header; the device is app.contract's kept frame, placed in the row's right padding (D17).
+    column width="100%" max-width="72rem" margin-left="auto" margin-right="auto" padding-left=24 padding-right=24 box-sizing="border-box"
+      margin-top=sm(16, 0) data-motion="d-page"
+      // Under 1024 px the hero and, below it, the app; from 1024 px the hero on the left, vertically centred, and the
+      // app on the right (D12): one wrapping row, whose hero is the full width under 1024 px, so the app wraps below.
+      row flex-wrap="wrap" align-items="center" data-motion="d-row"
+        // The hero (LandingHero): left-aligned under 640 px, centred from it (left again from 1024 px). A flex
+        // alignment cannot step at a width with no runtime, so each line sits between two spacers (centring()).
+        header appearance="none" display="flex" flex-direction="column" flex-shrink=0 data-motion="perspective d-hero"
+          width=`calc(100% - ${lg(0, simColumn())})`
+          row
+            view width=centring() flex-shrink=1
+            column flex-shrink=0 position="relative" data-motion="title"
+              text "Demos" role="heading" aria-level=1 class=Gradient data-motion="lift-20 d-title" pointerup=tap cursor="pointer" user-select="none"
+                font-size=titleSize() line-height=1.05 letter-spacing="-0.04em" padding-bottom="0.04em"
+                margin-top=steps(8, 32, 56, 56) margin-bottom=steps(20, 32, 36, 36) transition="opacity 150ms cubic-bezier(0, 0, 0.2, 1)"
+                :hover
+                  opacity = 0.9
+            view width=centring() flex-shrink=1
+          column data-motion="blur-in" data-delay="450"
+            // From 640 px two lines, one gradient across both (centred, left from 1024 px); under it one
+            // left-aligned paragraph, 320 px.
+            column class=Gradient data-motion="lift-10 d-sub" font-size=steps(14, 16, 18, 18) line-height=1.55
+              letter-spacing="-0.01em" max-height=sm(0, 200) overflow="hidden"
+              row
+                view width=centring() flex-shrink=1
+                text "120+ React Native animations" flex-shrink=0
+                view width=centring() flex-shrink=1
+              row
+                view width=centring() flex-shrink=1
+                text "with Skia, Reanimated and Gesture Handler" flex-shrink=0
+                view width=centring() flex-shrink=1
+            text "120+ React Native animations with Skia, Reanimated and Gesture Handler" class=Gradient data-motion="lift-10" font-size="0.875rem"
+              line-height=1.55 letter-spacing="-0.01em" max-width=320 max-height=sm(200, 0) overflow="hidden" aria-hidden=true
+          row margin-top=sm(24, 28) data-motion="d-pill"
+            view width=centring() flex-shrink=1
+            column flex-shrink=0 data-motion="blur-in" data-delay="550"
+              StarsPill(seed=seed, counted=counted, stars=stars)
+            view width=centring() flex-shrink=1
+          row margin-top=16 data-motion="d-tf-row blur-in" data-delay="650"
+            view width=centring() flex-shrink=1
+            TestFlightLink()
+            view width=centring() flex-shrink=1
+        DemosSim(ready=simReady, live=simLive, seen=simSeen, loaded=simLoaded, place="sim-route")
+        DemosLaunch(href=launch)
+
+// Under 768 px (phones) the app is not framed inside the page (D20): a frame under a scrolling page fought the page's
+// scroll and was cramped. Instead one primary button and, under it, the launcher's still in its iPhone (a tappable
+// preview); both open /demos/app/ full screen, the app as on a phone's home screen. Hidden from 768 px (web/head.css
+// d-launch), where the framed app is the page's; the still is a background from the same media query, so a desktop
+// never downloads it here.
+// On a demo post (/demos/<slug>, D21) both open that demo full screen instead (/demos/app/demo/<slug>): one tap to
+// what the link was for, and the app's close then shows its launcher; the way back is still the browser's.
+component DemosLaunch
+  props
+    href: string
+  view
+    column width="100%" align-items="center" margin-top=36 data-motion="d-launch blur-in" data-delay="650"
+      link href=href display="flex" align-items="center" justify-content="center" gap=10 height=52 padding-left=28
+        padding-right=24 border-radius=9999 background-color="#f5f5f7" color="#0b0b0d" font-size=17 font-weight=600
+        letter-spacing="-0.01em" white-space="nowrap" data-motion="button d-launch-button" testId="open-demos"
+        text (href == "/demos/app/" ? "Open the demos" : "Open the demo")
+        svg width=18 height=18 viewBox="0 0 18 18" fill="none" aria-hidden=true
+          rect x=1.5 y=1.5 width=6 height=6 rx=1.8 fill="currentColor"
+          rect x=10.5 y=1.5 width=6 height=6 rx=1.8 fill="currentColor"
+          rect x=1.5 y=10.5 width=6 height=6 rx=1.8 fill="currentColor"
+          rect x=10.5 y=10.5 width=6 height=6 rx=1.8 fill="currentColor" opacity=0.45
+      link href=href aria-label=(href == "/demos/app/" ? "Open the demos app" : "Open the demo") display="block" margin-top=28 width="min(78vw, 320px)"
+        data-motion="d-launch-still button" testId="open-demos-still"
+        view width="100%" padding-top="200%" aria-hidden=true
+
+// The Demos app (its own build at /demos/app/), in a sandboxed frame: an opaque origin, so Chrome gives it its own
+// renderer process and its start never blocks this page's main thread (D12; the app's files answer any origin,
+// tools/compose.ts). The window it is given decides what it draws:
+// - from 1024 px: 600 px by deskSimHeight(), beside the hero. The app draws its iPhone Air at
+//   min(1, (height - 48) / 936) with 24 px around (home/web-phone.contract frameScale); the frame is clipped to the
+//   display's rectangle and the still draws the phone around it (no mask over the frame, D18);
+// - 768-1023 px: 600 px by the viewport's height under the 87 px header (600-1080 px), below the hero, the stage's
+//   edges faded by page-coloured overlays (top and bottom 24 px, sides 12 %; D18);
+// - under 768 px: none: the page links to /demos/app/ full screen instead (DemosLaunch, D20); this frame is hidden
+//   there, so it is never near and never loads.
+// From 768 px a still of the app's launcher (tools/sim-still.ts: the framed phone at scale 1, 492 x 984 with its
+// 24 px) is drawn where the app's phone will be, at the app's own scale, as a background from web/head.css (so a phone
+// never downloads it), under the frame and blind to the pointer. From 768 px the frame is clipped to the app's display
+// (web/head.css sim-frame: a clip path also clips hit testing), so the wheel and the touches over the bezel, the keys,
+// the stage and the margins are the page's, and only the screen's go to the app; the still draws the bezel around
+// it, and the frame fades in over the still once it has loaded and drawn (`live`).
+// The frame's page loads (`ready`, App) once its box is within a viewport's height of the window and the page has
+// run 600 ms (D18), whichever is later. The fades are
+// web/head.css's (sim-sides): a gradient stop cannot step at a width in Contract.
+component DemosSim
+  props
+    ready: bool
+    live: bool
+    seen: action
+    loaded: action
+    place: string
+  view
+    column flex-shrink=0 width=`min(100%, ${lg(9999, simColumn())})` margin-top=`min(${steps(32, 32, 32, 48)}, ${lg(9999, 0)})`
+      data-motion=`sim-col ${place}` intersect=seen intersect-margin="100% 0px"
+      column margin-left=md(-24, 0) margin-right=md(-24, 0) overflow="hidden" data-motion="sim-wrap"
+        padding-top=md(24, 0) mask-image="linear-gradient(to bottom, transparent 0px, #000000 24px)"
+        column align-items="center" padding-bottom=md(24, 0) data-motion="sim-wrap" mask-image="linear-gradient(to top, transparent 0px, #000000 24px)"
+          // Under 1024 px the stage's sides fade over 12 %; from 1024 px (the inner row) within 24 px of the phone.
+          row flex-shrink=0 justify-content="center"
+            width="calc(clamp(0px, (767px - 100vw) * 1000, 100vw + 260px) + clamp(0px, (100vw - 767px) * 1000, 600px))"
+            data-motion="sim-sides"
+            row flex-shrink=0 position="relative" data-motion="sim-phone"
+              iframe (ready ? "/demos/app/" : "about:blank") title="Demos" flex-shrink=0 border-width=0 display="block"
+                data-motion=(live ? "sim-frame live" : "sim-frame") position="relative" z-index=1
+                sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-pointer-lock allow-downloads"
+                load=loaded
+                width="calc(clamp(0px, (767px - 100vw) * 1000, 100vw) + clamp(0px, (100vw - 767px) * 1000, 600px))"
+                height="calc(clamp(0px, (767px - 100vw) * 1000, 100vh - 73px) + clamp(0px, min(100vw - 767px, 1024px - 100vw) * 1000, clamp(600px, 100vh - 87px, 1080px)) + clamp(0px, (100vw - 1023px) * 1000, clamp(560px, 100vh - 96px, 1032px)))"
+              view position="absolute" inset=0 pointer-events="none" aria-hidden=true data-motion="sim-still"

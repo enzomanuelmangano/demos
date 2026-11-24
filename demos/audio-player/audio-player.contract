@@ -120,11 +120,15 @@ component AudioPlayer
         view width=art height=art scale=(big ? 1 : 0.9)
           transition="scale -exact-spring(200, 28.2843, 1)"
           aria-label=`${trackTitle()} by ${trackArtist()}` testId="audio-artwork"
-          column position="absolute" top=0 left=0 width=art height=art border-radius=30
-            corner-shape="-exact-continuous" background-color="#2a221d"
+          // border-box: its padding of 24 stays inside the art × art square. A Contract box is
+          // content-box (CSS's), so without it the face was art + 48 wide and tall, hanging 48 past
+          // the box's right and bottom edges: off centre by 24 (the web shows it; iOS hides it under
+          // the cover image).
+          column position="absolute" top=0 left=0 width=art height=art box-sizing="border-box"
+            border-radius=30 corner-shape="-exact-continuous" background-color="#2a221d"
             background-image="radial-gradient(110% 80% at 18% 8%, rgba(240, 222, 196, 0.95) 0%, rgba(240, 222, 196, 0) 62%), radial-gradient(90% 70% at 100% 100%, rgba(84, 70, 128, 0.85) 0%, rgba(84, 70, 128, 0) 70%), linear-gradient(165deg, #8a6f57 0%, #3b2f28 55%, #1b1614 100%)"
             justify-content="space-between" padding=24 opacity=(coverReady ? 0 : 1)
-            aria-hidden=true
+            aria-hidden=true testId="audio-artwork-face"
             text trackArtist() font-size=13 font-weight=600 letter-spacing=2.4
               color="rgba(30, 22, 18, 0.72)" text-transform="uppercase"
             text trackTitle() font-family="AddingtonCF-Light" font-size=(art * 0.19) line-height=1

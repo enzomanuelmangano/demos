@@ -1,0 +1,48 @@
+// /_dev/interactive: every canvas article demo on one page, for checking them against the live articles. Not a route
+// of the site: components/interactive/_canvas/.tools/gallery.ts builds it into a dev-only dist. Each sits in a 720 px
+// column, as in an article at 1440 px, rendered the way an article page does: a list of (article, name) blocks, each
+// through its article's dispatcher.
+use AnimatedGradientInteractive from "../components/interactive/animated-gradient/animated-gradient.contract"
+use AnimatedLoaderSkiaInteractive from "../components/interactive/animated-loader-skia/animated-loader-skia.contract"
+use AnimatedSpiralInteractive from "../components/interactive/animated-spiral/animated-spiral.contract"
+use MetaballInteractive from "../components/interactive/metaball/metaball.contract"
+
+shape DevBlock
+  article: string
+  name: string
+
+fn devBlocks(): DevBlock[] = [
+  DevBlock(article="animated-gradient", name="NonInteractiveAnimatedGradientWithSkia"),
+  DevBlock(article="animated-gradient", name="GlitchedAnimatedGradientWithSkia"),
+  DevBlock(article="animated-gradient", name="AnimatedGradientWithSkia"),
+  DevBlock(article="animated-loader-skia", name="BasicLoaderWithSkia"),
+  DevBlock(article="animated-loader-skia", name="WithGradientLoaderWithSkia"),
+  DevBlock(article="animated-loader-skia", name="WithProgressLoaderWithSkia"),
+  DevBlock(article="animated-loader-skia", name="WithBasicAnimationLoaderWithSkia"),
+  DevBlock(article="animated-loader-skia", name="WithAnimationLoaderWithSkia"),
+  DevBlock(article="animated-spiral", name="AnimatedSpiralWithSkia"),
+  DevBlock(article="animated-spiral", name="AnimatedInteractiveSnappySpiralWhite"),
+  DevBlock(article="animated-spiral", name="AnimatedInteractiveSnappySpiralGradient"),
+  DevBlock(article="animated-spiral", name="AnimatedInteractiveAnimatedSpiralFixedRadiusGradient"),
+  DevBlock(article="metaball", name="BasicMetaballWithSkia"),
+  DevBlock(article="metaball", name="WithPanMetaballWithSkia"),
+  DevBlock(article="metaball", name="WithBlurMetaballWithSkia"),
+  DevBlock(article="metaball", name="CanvasKitJsAlert"),
+  DevBlock(article="metaball", name="WithColorMatrixMetaballWithSkia")
+]
+
+component DevInteractive
+  view
+    column width="100%" max-width=768 margin="0 auto" padding="0 24px" box-sizing="border-box"
+      text "Interactive demos: canvas" role="heading" aria-level=1 font-size=28 font-weight=600 color="var(--color-text-heading)"
+      for b in devBlocks() key=b.name
+        column width="100%" gap=8 margin-top=24 testId=`demo-${b.name}`
+          text `${b.article} / ${b.name}` font-family="'Source Code Pro', ui-monospace, monospace" font-size=13 color="var(--color-text-secondary)" overflow-wrap="anywhere"
+          if b.article == "animated-gradient"
+            AnimatedGradientInteractive(name=b.name)
+          else if b.article == "animated-loader-skia"
+            AnimatedLoaderSkiaInteractive(name=b.name)
+          else if b.article == "animated-spiral"
+            AnimatedSpiralInteractive(name=b.name)
+          else if b.article == "metaball"
+            MetaballInteractive(name=b.name)

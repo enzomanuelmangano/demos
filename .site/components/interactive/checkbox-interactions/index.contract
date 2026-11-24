@@ -1,0 +1,75 @@
+// checkbox-interactions's demos (reference: content/articles/checkbox-interactions/components/checkbox/): twenty
+// cuisine chips under "What are your favourite cuisines?", Italian picked; a tap toggles one. Demo animates it as
+// the reference's framer-motion does: the chip's fill and border and the label's colour on a spring (stiffness 500,
+// damping 30), the check icon coming in (opacity 150 ms, scale 0.5 → 1 on a spring 500/25) and going out the same way
+// back, the chip's growth and the other chips' moves a layout spring 500/30.
+// StaticDemo changes at once.
+//
+// The check is the reference's glyph (U+F429 of its one-glyph AntDesign font, antdesign-check-circle.woff2) as an
+// SVG path in the glyph's em box: 18 px, 512 units per em, ascent 455, descent 81, centred in the 16 px slot as the
+// reference's line box is.
+//
+// Exports, as the article's MDX names them:
+//   Demo()
+//   StaticDemo()
+// Going out: the reference's exit (opacity 150 ms, scale towards 0.5 on the spring) is invisible after 150 ms, so
+// both end there.
+keyframes cbIconOut
+  from opacity=1 scale=1
+  to opacity=0 scale=0.5
+
+fn cbSpring(p: string): string = `${p} -exact-spring(500, 30, 1)`
+
+component Demo
+  view
+    Cuisines(animated=true)
+
+component StaticDemo
+  view
+    Cuisines(animated=false)
+
+component Cuisines
+  props
+    animated: bool
+  state picked = ["Italian"]
+  action toggle(name: string)
+    picked = picked.includes(name) ? picked.filter(p => p != name) : picked.concat([name])
+  view
+    column background-color="#0d0d0d" border="1px solid #777777" padding=24 margin-bottom=24 border-radius=16
+      text "What are your favourite cuisines?" color="#fff" font-size=26 font-family="-apple-system, 'system-ui', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" line-height="normal"
+        white-space="pre-wrap" margin-bottom=24
+      row flex-wrap="wrap" gap=12
+        for name in ["Italian", "Japanese", "Mexican", "Chinese", "Indian", "Thai", "French", "Mediterranean", "American", "Korean", "Vietnamese", "Greek", "Spanish", "Middle Eastern", "Brazilian", "Turkish", "Lebanese", "Moroccan", "Ethiopian", "Caribbean"] key=name
+          Chip(label=name, checked=picked.includes(name), animated=animated, press=toggle(name))
+
+component Chip
+  props
+    label: string
+    checked: bool
+    animated: bool
+    press: action
+  // The icon's first layout sets its end values (opacity 1, scale 1), which its transitions carry it to; a tap
+  // clears it for the next time it comes in.
+  state shown = false
+  action tap
+    shown = false
+    press()
+  action iconMounted(w: number, h: number)
+    shown = true
+  derive full = shown or not animated
+  view
+    row press=tap padding="12px 20px" border-width=1 border-style="solid" border-radius=60 align-items="center"
+      justify-content="center" cursor="pointer" -exact-hover-effect="none"
+      background-color=(checked ? "rgba(239, 142, 82, 0.1)" : "rgba(239, 142, 82, 0)")
+      border-color=(checked ? "#EF8E52" : "#B3B1B4")
+      transition=(animated ? `${cbSpring("background-color")}, ${cbSpring("border-color")}` : "none")
+      -exact-layout-transition=(animated ? "-exact-spring(500, 30, 1)" : "none")
+      text label font-size=18 line-height="27px" user-select="none" color=(checked ? "#EF8E52" : "#B3B1B4")
+        transition=(animated ? cbSpring("color") : "none")
+      if checked
+        view display="flex" justify-content="center" align-items="center" height=16 width=18 margin-left=8
+          resize=iconMounted opacity=(full ? 1 : 0) scale=(full ? 1 : 0.5)
+          transition=(animated ? "opacity 150ms ease-out, scale -exact-spring(500, 25, 1)" : "none")
+          -exact-exit-animation=(animated ? "cbIconOut 150ms ease-out both" : "none")
+          svg width=18 height=18.84 viewBox="0 -455 512 536" fill="#EF8E52" aria-hidden=true flex-shrink=0
+            path d="M239 -447Q304 -451 362.5 -424.5Q421 -398 461 -346Q494 -302 506 -249Q518 -193 506.5 -138.0Q495 -83 460 -38Q398 45 292 62Q279 64 256.5 64.0Q234 64 221 62Q142 49 84 -2Q17 -63 2 -157Q0 -170 0.0 -192.0Q0 -214 2 -227Q13 -295 51 -346Q110 -423 203 -442Q223 -446 239 -447ZM283 -403Q278 -403 261.5 -403.5Q245 -404 241 -404Q238 -404 230 -403Q211 -401 192 -395Q142 -379 105.0 -341.5Q68 -304 53 -253Q44 -225 44 -192Q44 -169 48 -149Q63 -75 122 -27Q159 3 204 14Q227 20 256 20Q286 20 309 14Q364 -1 403.5 -39.0Q443 -77 459 -131Q468 -159 468.0 -192.0Q468 -225 459 -253Q444 -304 406.0 -342.0Q368 -380 317 -395Q302 -400 283 -403ZM328 -281Q325 -279 322.5 -276.5Q320 -274 276 -213Q232 -153 230 -153Q229 -154 211 -179Q190 -208 186.0 -211.0Q182 -214 165 -215Q146 -215 145 -211Q144 -210 146.0 -207.0Q148 -204 183.5 -154.5Q219 -105 223 -103Q236 -97 245 -107Q246 -108 305.0 -190.5Q364 -273 366 -276Q368 -278 367 -280L365 -282H348Q332 -282 328 -281Z"

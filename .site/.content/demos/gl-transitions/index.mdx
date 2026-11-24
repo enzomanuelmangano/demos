@@ -1,0 +1,55 @@
+<Title date="2024-03-20" slug="gl-transitions" basePath="demos">
+  GL Transitions with Skia
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/gl-transitions"
+/>
+
+A navigation component that uses WebGL transitions for screen animations.
+
+## What's This About?
+
+This component enhances navigation transitions using WebGL shaders. It provides a collection of pre-built transitions like DirectionalWarp, LinearBlur, CrossZoom, and Hexagonalize, which can be easily swapped to create different visual effects during screen navigation. The transitions are powered by GLSL shaders and can be extended with custom transitions from the GL Transitions gallery.
+
+## Technical Implementation
+
+The component uses:
+
+- WebGL shaders
+- Navigation integration
+- GLSL transitions
+- Screen management
+- Custom providers
+
+## Usage
+
+```tsx
+// Available transitions
+import {
+  DirectionalWarp,
+  LinearBlur,
+  CrossZoom,
+  Hexagonalize,
+} from './the-magic';
+
+// Basic usage with a transition
+<GLTransitionsProvider transition={DirectionalWarp}>
+  <NavigationContainer>
+    <Stack.Navigator>
+      <Stack.Screen name="Home" component={HomeScreen} />
+      <Stack.Screen name="AddNote" component={AddNoteScreen} />
+    </Stack.Navigator>
+  </NavigationContainer>
+</GLTransitionsProvider>;
+
+// Custom transitions can be added from:
+// https://gl-transitions.com/gallery
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

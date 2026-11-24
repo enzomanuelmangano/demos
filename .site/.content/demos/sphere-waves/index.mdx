@@ -1,0 +1,101 @@
+<Title date="2025-12-09" slug="sphere-waves" basePath="demos">
+  Sphere Waves with Skia
+</Title>
+
+<Demo />
+
+<GithubCard repo="enzomanuelmangano/demos" path="src/animations/sphere-waves" />
+
+A mesmerizing 3D particle sphere with animated wave distortions and interactive gestures. Built with React Native Skia, this demo renders 2000 points using a Fibonacci-based distribution that creates organic, flowing patterns with color-shifting gradients.
+
+## What's This About?
+
+This component creates an interactive particle sphere using a mathematical pattern based on the Fibonacci sequence. The sphere continuously animates with layered wave patterns, and users can tap to randomize the pattern or pinch to zoom in and out. The colors shift through a rainbow gradient over time, creating a hypnotic visual experience.
+
+## Fibonacci Point Distribution
+
+The sphere is constructed using an enhanced Fibonacci spiral pattern. Each point's position is calculated using a "magical multiplier" that determines the spiral density:
+
+```tsx
+for (let i = 0; i < N; i++) {
+  const a = i / (N * 0.5) - 1.0;
+  const px = Math.cos(i * magicalMul + iTime) * Math.sqrt(1.0 - a * a);
+  const py = Math.cos(i * magicalMul + iTime + 11) * Math.sqrt(1.0 - a * a);
+  // ...
+}
+```
+
+The `magicalMul` value controls how tightly the spiral winds. Tapping on the right side of the screen generates a new random value, creating entirely different patterns.
+
+## Layered Wave Animation
+
+The 3D depth effect comes from combining three sine/cosine waves at different frequencies. This creates complex, organic movement as the waves interfere with each other:
+
+```tsx
+const wave1 = Math.sin(i * 0.1 + iTime * 0.7) * 80;
+const wave2 = Math.cos(i * 0.05 + iTime * 0.3) * 40;
+const wave3 = Math.sin(i * 0.15 + iTime * 1.2) * 20;
+const z = wave1 + wave2 + wave3;
+```
+
+Each wave operates at a different scale and speed, producing the flowing, almost liquid appearance of the sphere.
+
+## Perspective Projection
+
+Points are projected from 3D to 2D using a simple perspective formula. The `distance` value (controlled by pinch gestures) affects how dramatically the depth is perceived:
+
+```tsx
+const scale = distance / (distance + z);
+const x = centerX + px * CANVAS_WIDTH * 0.4 * scale;
+const y = centerY + a * CANVAS_WIDTH * 0.4 * scale;
+```
+
+Pinching in creates a zoom effect by adjusting the perspective distance, with haptic feedback when reaching extreme zoom levels.
+
+## Dynamic Particle Sizing
+
+Each particle pulses independently based on its position and the current time. This creates a breathing effect across the entire sphere:
+
+```tsx
+const pulse = Math.sin(i * 0.2 + iTime * 2.0) * 0.3 + 1.0;
+const timePulse = Math.sin(iTime * 0.8) * 0.2 + 1.0;
+const radius = baseRadius * pulse * timePulse;
+```
+
+The intensity also varies based on each point's depth, making particles appear larger or smaller as they move through the wave patterns.
+
+## Color-Shifting Gradient
+
+The sphere's colors continuously shift through a rainbow spectrum using HSL color values. The gradient is applied via Skia's `LinearGradient`:
+
+```tsx
+const animatedColors = useDerivedValue(() => {
+  'worklet';
+  const hueShift = (iTime.value * 40) % 360;
+  return [
+    `hsl(${(340 + hueShift) % 360}, 90%, 70%)`,
+    `hsl(${(280 + hueShift) % 360}, 85%, 75%)`,
+    // ... more color stops
+  ];
+});
+```
+
+## Gesture Interactions
+
+The demo supports two gestures:
+
+- **Tap**: Left side goes back in pattern history, right side generates a new random pattern
+- **Pinch**: Zoom in/out with spring return and haptic feedback at extremes
+
+## Usage
+
+```tsx
+import { SphereWaves } from './sphere-waves';
+
+// Interactive sphere with tap and pinch gestures
+<SphereWaves />;
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

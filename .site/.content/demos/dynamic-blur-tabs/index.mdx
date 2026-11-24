@@ -1,0 +1,62 @@
+<Title date="2024-10-15" slug="dynamic-blur-tabs" basePath="demos">
+  Dynamic Blur TabBar with Reanimated and Expo Blur
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/dynamic-blur-tabs"
+/>
+
+A bottom tab navigator with dynamic blur effects based on scroll position. Built with React Navigation.
+
+## What's This About?
+
+This component creates a tab bar that:
+
+- Shows blur effects while scrolling
+- Uses React Navigation for routing
+- Supports multiple screens
+- Freezes inactive screens
+
+## Technical Implementation
+
+The component uses:
+
+- React Navigation's bottom tabs
+- Custom tab bar component
+- Screen freezing for performance
+- Dynamic screen mapping
+- Gradient backgrounds
+
+## Usage
+
+```tsx
+// Basic usage
+<DynamicBlurTabs />;
+
+// Component structure
+const BottomTab = createBottomTabNavigator();
+
+<BottomTab.Navigator
+  initialRouteName="home"
+  screenOptions={{
+    headerShown: false,
+  }}
+  tabBar={(props) => <BottomTabBar {...props} />}
+>
+  {screens.map((screen) => (
+    <BottomTab.Screen
+      key={screen.name}
+      name={screen.name}
+      component={screen.component}
+      options={{ freezeOnBlur: true }}
+    />
+  ))}
+</BottomTab.Navigator>;
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

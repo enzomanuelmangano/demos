@@ -1,0 +1,59 @@
+<Title date="2024-06-12" slug="imessage-stack" basePath="demos">
+  Swipe Cards with React Native Reanimated
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/imessage-stack"
+/>
+
+A horizontal scrolling stack of cards inspired by iMessage interactions.
+
+## What's This About?
+
+This component creates a horizontally scrollable stack of cards that mimics the behavior of iMessage's media browser. It uses a single ScrollView with paging enabled to handle an infinite number of cards smoothly. The implementation focuses on performance and smooth animations by leveraging native scroll behavior instead of custom gesture handlers. Each card can be customized with different colors and content.
+
+## Technical Implementation
+
+The component uses:
+
+- Reanimated ScrollView
+- Paging behavior
+- Scroll offset tracking
+- Card positioning
+- Custom styling
+
+## Usage
+
+```tsx
+// Card configuration
+const CARD_HEIGHT = 100;
+const CARD_WIDTH = 100;
+
+// Sample cards data
+const CARDS = [
+  { color: '#F1EEE0' },
+  { color: '#F3D9BC' },
+  { color: '#F4ACB7' },
+  // ... more cards
+];
+
+// Basic usage
+<IMessageStack />
+
+// ScrollView configuration
+<Animated.ScrollView
+  horizontal
+  snapToInterval={CARD_WIDTH}
+  disableIntervalMomentum
+  pagingEnabled
+  showsHorizontalScrollIndicator={false}
+  decelerationRate="fast"
+/>
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

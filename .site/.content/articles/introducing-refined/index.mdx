@@ -1,0 +1,234 @@
+<Title date="2025-12-06" slug="introducing-refined">
+  Introducing Refined: optimize your React Native styles by default
+</Title>
+
+![eslint-plugin-refined](./images/package.webp)
+
+Over the past years of creating user interfaces, I've accumulated a set of styling best practices that I find myself applying over and over again. The problem is that these details are easy to forget, and they often slip through code reviews.
+
+So I decided to build an ESLint plugin that enforces these patterns automatically.
+
+Small details compound. Some of these tips may sound trivial, but how many times have you forgotten about them? **Refined** has you covered.
+
+<GithubCard repo="enzomanuelmangano/eslint-plugin-refined" />
+
+## Introducing Refined
+
+[eslint-plugin-refined](https://github.com/enzomanuelmangano/eslint-plugin-refined) is an ESLint plugin that helps **encoding best practices** that make your app look and feel more polished.
+
+```bash
+bun add -d eslint-plugin-refined
+```
+
+### Why an ESLint Plugin?
+
+I could have written a single blog post about these best practices. But blog posts get forgotten. Documentation gets skipped. Are you actually reading this? 🤔
+
+An ESLint plugin integrates directly into your workflow. It catches issues as you write code, provides auto-fixes, and ensures consistency across your entire team.
+
+You don't need to be a designer to spot these details. You should be able to catch them before they even reach code review.
+
+### Quick Setup
+
+```js
+import refined from 'eslint-plugin-refined';
+
+export default [
+  {
+    plugins: {
+      refined,
+    },
+    rules: refined.configs.recommended.rules,
+  },
+];
+```
+
+That's it. Now let's dive into the rules.
+
+## The Rules
+
+### 1. border-radius-with-curve
+
+When using `borderRadius` properties, you should also specify `borderCurve: 'continuous'` for beautiful rounded corners on iOS.
+
+```tsx diff
+const styles = StyleSheet.create({
+  submitButton: {
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 10,
++     borderCurve: 'continuous',
+    flex: 1,
+    justifyContent: 'center',
+    paddingVertical: 14,
+  },
+});
+```
+
+The `continuous` border curve creates smoother, more natural-looking corners. It's the same style Apple uses throughout iOS. A subtle difference, but it makes your UI feel more native.
+
+The rule is smart enough to skip circular shapes (when `borderRadius >= half of width/height` or `>= 9999`), where `borderCurve` has no visual effect.
+
+If you really care about squircle corners, you might want to have a look also at [react-native-fast-squircle](https://github.com/fbeccaceci/react-native-fast-squircle).
+
+<Embed url="https://twitter.com/ipla03/status/1954286123406262280" />
+
+### 2. prefer-box-shadow
+
+This is not about having clean code. It helps you support beautiful shadows on Android too (requires `newArchEnabled`).
+
+```tsx diff
+const styles = StyleSheet.create({
+  card: {
+    justifyContent: 'space-between',
+    alignItems: 'center',
+-     shadowColor: 'black',
+-     shadowOffset: { width: 0, height: 3 },
+-     shadowOpacity: 0.5,
+-     shadowRadius: 10,
++     boxShadow: '0px 3px 10px rgba(0, 0, 0, 0.5)',
+  },
+});
+```
+
+The unified `boxShadow` syntax works across platforms when you have the New Architecture enabled. No more `elevation` hacks for Android!
+
+### 3. prefer-hairline-width
+
+Suggests using `StyleSheet.hairlineWidth` for border widths less than or equal to a configurable threshold (default: 0.3).
+
+```tsx diff
+const styles = StyleSheet.create({
+  divider: {
+-     borderWidth: 0.3,
++     borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+});
+```
+
+`StyleSheet.hairlineWidth` gives you the thinnest possible line that's still visible on the device's screen. It accounts for pixel density differences, ensuring your thin borders look crisp on every device.
+
+### 4. avoid-touchable-opacity
+
+Stop using `TouchableOpacity` in React Native.
+
+Your app deserves better tap interactions.
+
+```tsx diff
+- <TouchableOpacity
+-   onPress={handlePress}
+-   style={styles.button}
+- >
+-   <Text>Press me</Text>
+- </TouchableOpacity>
+```
+
+Instead, use [Pressto](https://github.com/enzomanuelmangano/pressto), a library I built specifically for this. It provides smooth, 60fps animated pressables powered by Reanimated and Gesture Handler:
+
+```tsx
+import { PressableScale } from 'pressto';
+
+<PressableScale onPress={handlePress} style={styles.button}>
+  <Text>Press me</Text>
+</PressableScale>;
+```
+
+Pressto comes with `PressableScale` and `PressableOpacity` out of the box, plus a `createAnimatedPressable` function if you want to build custom press animations. All animations run on the UI thread, so your interactions stay responsive even when JavaScript is busy.
+
+### 5. require-hitslop-small-touchables
+
+Requires `hitSlop` on touchable elements that are smaller than a configurable threshold (default: 40pt) to improve tap target size.
+
+```tsx diff
+<Pressable
+  onPress={toggleMute}
+  style={styles.icon}
++   hitSlop={8}
+>
+  <MaterialCommunityIcon
+    name="plus"
+    size={25}
+    color={Palette.background}
+  />
+</Pressable>
+```
+
+[Apple's Human Interface Guidelines](https://developer.apple.com/design/human-interface-guidelines/accessibility#Buttons-and-controls) recommend a minimum tap target of 44pt. This rule ensures your small interactive elements are still easy to tap, improving accessibility for all users.
+
+The rule automatically calculates the required `hitSlop` value to reach the minimum size threshold.
+
+### 6. spring-config-consistency
+
+Enforces that spring animations either have all three spring physics parameters (`mass`, `damping`, `stiffness`) or none of them.
+
+```tsx diff
+const animatedValue = withSpring(targetValue, {
+  damping: 25,
+  stiffness: 120,
++   mass: 4,
+});
+```
+
+Reanimated v4 changed the default spring values. If you only specified `damping` in v3, your animations now behave differently after upgrading, even without changing any code. This rule ensures your spring physics are fully explicit, so the recent library update won't affect your animations.
+
+The rule supports both Reanimated v3 and v4, with appropriate default values for each version:
+
+```js
+'refined/spring-config-consistency': ['warn', { reanimatedVersion: 'v4' }]
+```
+
+**Migration tip:** Before upgrading to Reanimated v4, temporarily enable this rule with `reanimatedVersion: 'v3'`. Fix all warnings to make your spring configs explicit. Then bump to v4 and your animations will behave exactly the same.
+
+It also works with layout transitions:
+
+```tsx diff
+- <Animated.View layout={LinearTransition.springify().damping(20)} />
++ <Animated.View
++   layout={LinearTransition.springify().damping(20).mass(4).stiffness(900)}
++ />
+```
+
+## Configuration Options
+
+Refined comes with three preset configurations:
+
+### Base Config
+
+Core style rules only (excludes `spring-config-consistency` and `avoid-touchable-opacity`):
+
+```js
+rules: refined.configs.base.rules;
+```
+
+### Recommended Config
+
+All rules enabled with warning level:
+
+```js
+rules: refined.configs.recommended.rules;
+```
+
+### Strict Config
+
+All rules enabled with error level:
+
+```js
+rules: refined.configs.strict.rules;
+```
+
+### Custom Configuration
+
+You can customize individual rule options:
+
+```js
+rules: {
+  ...refined.configs.base.rules,
+  'refined/prefer-hairline-width': ['warn', { threshold: 0.5 }],
+  'refined/require-hitslop-small-touchables': ['warn', { minSize: 44 }],
+  'refined/spring-config-consistency': ['warn', { reanimatedVersion: 'v4' }],
+  'refined/avoid-touchable-opacity': 'error',
+}
+```
+
+Contributions are always welcome. Feel free to open an issue or a pull request.

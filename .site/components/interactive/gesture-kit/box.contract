@@ -1,0 +1,88 @@
+// The frame every interactive article demo sits in, and its round control buttons: the reference's
+// components/interactive (InteractiveBox, InteractiveButtons, CustomButton), shared by the gesture/UI articles.
+// Light theme (the only one these articles use): a 1 px #242424 border, radius 10, 16:9, 16 px below. It clips with
+// `overflow: clip`, not `hidden`: Exact observes `intersect` against the nearest auto/scroll/hidden ancestor, so a
+// hidden frame would read its demos as always on screen and the off-screen pause would never happen.
+
+// The light buttons' look: #b8b8b8, on hover #e5e7eb at 0.95 with a 1 px gray-800 ring and the shadow live computes
+// (black at 0.35 and 0.25), every property over 300 ms (the reference's `transition: all 300ms` on hover). The 0.95
+// is a `transform` as live's inline style (web/content.css `data-motion~=demo-button`): a box's `transform` lowers to
+// the `scale` property here.
+style BoxButtonLight
+  background-color="#b8b8b8" box-shadow="0 0 #0000" cursor="pointer"
+  transition="all 300ms ease"
+  :hover
+    background-color = "#e5e7eb"
+    box-shadow = "0 0 0 1px #1f2937, 0 1px 3px 0 rgb(0 0 0 / 0.35), 0 1px 2px 0 rgb(0 0 0 / 0.25)"
+
+// The reference's InteractiveBox: the demo is its children.
+component DemoFrame
+  slot
+  view
+    row width="100%" aspect-ratio="16 / 9" margin-bottom=16 justify-content="center" align-items="center"
+      border-radius=10 overflow="clip" border="1px solid #242424" box-sizing="border-box"
+      column position="relative" flex=1 min-width=0 min-height=0 height="100%" cursor="pointer"
+        children
+
+// One round button, `index` places from the right (0 rightmost, 44.8 px apart). `kind`: play, pause, reset.
+component BoxButton
+  props
+    kind: string
+    index: number
+    label: string
+    press: action
+  view
+    button press=press aria-label=label title=label class=BoxButtonLight data-motion="focus demo-button" position="absolute"
+      right=`${16 + index * 44.8}px` bottom=16 width=36 height=36 border-radius=12 border="none" padding=0
+      display="flex" align-items="center" justify-content="center"
+      svg width=18 height=18 viewBox="0 0 24 24" fill="#303030" aria-hidden=true
+        if kind == "reset"
+          path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z" fill="#303030"
+        else if kind == "pause"
+          path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" stroke="#303030" fill="#303030" stroke-width=1.5 stroke-linecap="round" stroke-linejoin="round"
+        else
+          path d="M8 5.14v14.72L19 12 8 5.14z" stroke="#303030" fill="#303030" stroke-width=1.5 stroke-linecap="round" stroke-linejoin="round"
+
+// A square whose corner radius animates, built of parts the compositor moves: SVG keyframes do not render ahead
+// (Exact's build-time render reads an SVG node's animation through a DOM it does not have) and `border-radius`
+// does not animate. The square is four quarter-turns of one part: a half-bar slid r towards the middle inside its
+// half (`translate` under `overflow="hidden"`: the top and bottom halves make the bar between y = r and size - r,
+// the turned ones the bar between x = r and size - r) and a disc of radius r in its corner (`scale` r/rmax,
+// `translate` to (r, r)), all opaque in a group whose `opacity` is the colour's alpha.
+// The radius moves either by a transition (`radius` changes, `timing` the transition's timing after its property,
+// "none" for none) or by an endless keyframes pair `<prefix>Bar` / `<prefix>Disc` (`loop` the rest of the
+// shorthand, "none" for none).
+component MorphSquare
+  props
+    size: number
+    color: string
+    alpha: number
+    radius: number
+    rmax: number
+    timing: string
+    prefix: string
+    loop: string
+  view
+    view position="relative" width=size height=size opacity=alpha flex-shrink=0
+      for turn in [0, 90, 180, 270] key=turn
+        MorphQuarter(size=size, color=color, radius=radius, rmax=rmax, turn=turn, timing=timing,
+          bar=(loop == "none" ? "none" : `${prefix}Bar ${loop}`), disc=(loop == "none" ? "none" : `${prefix}Disc ${loop}`))
+
+component MorphQuarter
+  props
+    size: number
+    color: string
+    radius: number
+    rmax: number
+    turn: number
+    timing: string
+    bar: string
+    disc: string
+  view
+    view position="absolute" left=0 top=0 width=size height=size rotate=`${turn}deg`
+      view position="absolute" left=0 top=0 width=size height=(size / 2) overflow="hidden"
+        view width=size height=(size / 2) background-color=color translate=`0px ${radius}px` animation=bar
+          transition=(timing == "none" ? "none" : `translate ${timing}`)
+      view position="absolute" left=0 top=0 width=(rmax * 2) height=(rmax * 2) border-radius="50%" background-color=color
+        scale=(radius / rmax) translate=`${radius - rmax}px ${radius - rmax}px` animation=disc
+        transition=(timing == "none" ? "none" : `translate ${timing}, scale ${timing}`)

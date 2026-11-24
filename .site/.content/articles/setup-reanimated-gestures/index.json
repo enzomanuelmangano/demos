@@ -1,0 +1,16 @@
+{
+  "title": "How to install React Native Reanimated and Gesture Handler",
+  "shortTitle": "How to install React Native Reanimated and Gesture Handler",
+  "subtitle": "There are two packages that you need to know if you like React Native development: Reanimated and Gesture Handler. In this article we're going to discover how to install both packages...",
+  "author": "Enzo Manuel Mangano",
+  "date": "2024-01-06",
+  "slug": "setup-reanimated-gestures",
+  "tags": [
+    "react-native",
+    "react",
+    "reanimated",
+    "react-native-gesture-handler"
+  ],
+  "featuredImage": "./images/header.webp",
+  "series": "animate-with-reanimated"
+}

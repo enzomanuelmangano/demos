@@ -1,0 +1,55 @@
+<Title date="2025-12-01" slug="calendar-days" basePath="demos">
+  Calendar Days Flip Animation
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/calendar-days"
+/>
+
+A calendar card with page-flip animations controlled by a slider. Each day flips independently with spring physics, allowing multiple pages to animate simultaneously when scrubbing quickly.
+
+Inspired by [@austinvalleskey](https://x.com/austinvalleskey/status/1990438034064466290)
+
+## What's This About?
+
+This component recreates the classic paper calendar flip effect. A slider controls which day is displayed, and as you scrub through days, the pages flip with realistic spring animations. The key innovation is that each page animates independently, so fast scrubbing creates a beautiful cascade of flipping pages.
+
+## Technical Implementation
+
+The animation system features:
+
+- **Independent Page Springs**: Each of the 31 pages has its own spring animation
+- **Worklet-based Updates**: All calculations run on the UI thread for smooth 60fps
+- **Haptic Feedback**: Subtle haptic feedback when crossing page boundaries
+- **Custom Slider**: An animated slider component that drives the progress value
+
+## How It Works
+
+1. A progress value (0-1) maps to 31 days
+2. Each page calculates whether it should be "flipped" based on the current progress
+3. Pages use spring animations to flip, allowing natural settling
+4. Multiple pages can be mid-flip simultaneously during fast scrubbing
+5. Haptics trigger on each page boundary crossing
+
+## Animation Details
+
+- **Progress Range**: 0 to 1, mapped to 31 pages
+- **Page Independence**: Each page manages its own flip state
+- **Spring Physics**: Natural, paper-like flip motion
+- **Haptic Integration**: Uses `expo-haptics` with `react-native-worklets` for UI-thread haptics
+
+## Usage
+
+```tsx
+import { CalendarDays } from './calendar-days';
+
+// Drag the slider to flip through days
+<CalendarDays />;
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

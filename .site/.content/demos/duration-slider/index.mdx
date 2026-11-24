@@ -1,0 +1,66 @@
+<Title date="2024-09-10" slug="duration-slider" basePath="demos">
+  Duration Slider with React Native Skia 🕒
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/duration-slider"
+/>
+
+A circular slider component for selecting duration values. Uses Skia for rendering and custom font integration.
+
+## What's This About?
+
+This component creates a circular slider that:
+
+- Shows duration values from 1 to 12
+- Updates value through rotation
+- Uses custom SF Pro Rounded font
+- Adapts to screen width
+
+## Technical Implementation
+
+The component uses:
+
+- Skia for rendering
+- Custom font loading
+- Responsive sizing
+- Value range management
+- Rotation gesture handling
+
+## Usage
+
+```tsx
+type CircularSliderProps = {
+  minVal: number;
+  maxVal: number;
+  width: number;
+  height: number;
+  font: SkFont;
+  onValueChange: (value: number) => void;
+};
+
+// Basic usage
+const font = useFont(sfProRoundedBold, 100);
+
+{
+  font && (
+    <CircularSlider
+      minVal={1}
+      maxVal={12}
+      width={300}
+      height={300}
+      font={font}
+      onValueChange={(value) => {
+        console.log('Selected duration:', value);
+      }}
+    />
+  );
+}
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

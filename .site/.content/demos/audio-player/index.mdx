@@ -1,0 +1,34 @@
+<Title date="2023-05-10" slug="audio-player" basePath="demos">
+  Waveform Scrubber with React Native Reanimated 🎵
+</Title>
+
+<Demo />
+
+<GithubCard repo="enzomanuelmangano/demos" path="src/animations/audio-player" />
+
+A sleek waveform-based audio scrubber that provides an intuitive way to navigate through audio content. Features a responsive waveform visualization with smooth scrubbing interactions and real-time time display.
+
+## What's This About?
+
+This component creates an interactive audio waveform display where users can scrub through the audio content. The waveform responds to touch gestures, providing visual feedback as users navigate through the track, while a time display updates in real-time.
+
+## Technical Implementation
+
+The component uses gesture handling for smooth scrubbing interactions and derived values for time calculations. It features a dynamic waveform visualization that responds to the current playback position and user interaction state.
+
+## Usage
+
+```tsx
+type WaveformScrubberProps = {
+  waveformSamples: number[];  // Array of amplitude values
+};
+
+// Example usage
+<WaveformScrubber
+  waveformSamples={[0.5, 0.8, 0.3, ...]} // Amplitude values between 0 and 1
+/>
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

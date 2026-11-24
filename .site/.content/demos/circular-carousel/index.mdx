@@ -1,0 +1,53 @@
+<Title date="2023-08-30" slug="circular-carousel" basePath="demos">
+  Circular Carousel with React Native Reanimated 🪄
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/circular-carousel"
+/>
+
+A beautiful circular image carousel with smooth animations and optional scaling effects. Perfect for showcasing images in a unique and engaging circular layout.
+
+## What's This About?
+
+This component creates an interactive circular carousel where images are arranged in a circle. Users can rotate through the images with smooth animations, and an optional scaling effect can be toggled to enhance the visual experience.
+
+## Technical Implementation
+
+The component implements:
+
+- Circular layout arrangement
+- Smooth rotation animations
+- Optional scale effects
+- Image preloading and optimization
+- Touch gesture handling
+- Configurable visual options
+
+## Usage
+
+```tsx
+type CircularListProps = {
+  data: string[];  // Array of image URLs
+  scaleEnabled: boolean;
+};
+
+// Basic usage
+<CircularCarousel />
+
+// Custom implementation
+<CircularList
+  data={[
+    'https://example.com/image1.jpg',
+    'https://example.com/image2.jpg',
+    // ...more images
+  ]}
+  scaleEnabled={true}
+/>
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

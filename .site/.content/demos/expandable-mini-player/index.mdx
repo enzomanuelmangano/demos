@@ -1,0 +1,53 @@
+<Title date="2024-10-29" slug="expandable-mini-player" basePath="demos">
+  Expandable Mini Player with Reanimated
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/expandable-mini-player"
+/>
+
+A music player component that expands from a mini player to a full screen view.
+
+## What's This About?
+
+This component creates a music player that:
+
+- Transitions between mini and full view
+- Shows track information
+- Includes playback controls
+- Handles gesture interactions
+- Maintains state during transitions
+
+## Usage
+
+```tsx
+type MiniPlayerProps = {
+  track: {
+    title: string;
+    artist: string;
+    artwork: string;
+  };
+  isPlaying?: boolean;
+  onPlayPause?: () => void;
+};
+
+// Basic usage
+<ExpandableMiniPlayer
+  track={{
+    title: 'Track Name',
+    artist: 'Artist Name',
+    artwork: 'artwork-url',
+  }}
+  isPlaying={false}
+  onPlayPause={() => {
+    // Handle play/pause
+  }}
+/>;
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

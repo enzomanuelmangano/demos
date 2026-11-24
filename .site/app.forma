@@ -1,0 +1,109 @@
+forma app
+
+theme
+  // forma:import tokens.css
+  color-gray-300 = #d1d5db  scheme=fixed
+  color-gray-500 = #6b7280  scheme=fixed
+  color-gray-800 = #1f2937  scheme=fixed
+  color-red-500 = #ef4444  scheme=fixed
+  color-red-600 = #dc2626  scheme=fixed
+  color-yellow-400 = #facc15  scheme=fixed
+  color-yellow-500 = #eab308  scheme=fixed
+  color-orange-500 = #f97316  scheme=fixed
+  color-green-400 = #4ade80  scheme=fixed
+  color-emerald-400 = #34d399  scheme=fixed
+  color-background = oklch(15.5% 0.0041 286)  scheme=fixed
+  color-background-200 = oklch(39.5% 0.005 286)  scheme=fixed
+  color-background-300 = oklch(34.1% 0.0034 286)  scheme=fixed
+  color-background-400 = oklch(27% 0.0073 286)  scheme=fixed
+  color-background-600 = oklch(14.5% 0.0021 286)  scheme=fixed
+  color-background-950 = oklch(0% 0 0)  scheme=fixed
+  color-surface-primary = oklch(15.5% 0.0041 286)  scheme=fixed
+  color-surface-secondary = oklch(23% 0.0057 286)  scheme=fixed
+  color-surface-tertiary = oklch(26.5% 0.0055 286)  scheme=fixed
+  color-surface-overlay = rgba(97, 114, 232, 0.15)  scheme=fixed
+  color-surface-elevated = oklch(19.5% 0.0058 286)  scheme=fixed
+  color-surface-code = oklch(18.5% 0.0058 286)  scheme=fixed
+  color-primary = #6172e8  scheme=fixed
+  color-primary-400 = #7d8fef  scheme=fixed
+  color-primary-600 = #4a5ad4  scheme=fixed
+  color-primary-700 = #3c49b0  scheme=fixed
+  color-primary-800 = #303a8a  scheme=fixed
+  color-text-primary = oklch(92% 0.004 286)  scheme=fixed
+  color-text-heading = oklch(92% 0.004 286)  scheme=fixed
+  color-text-secondary = oklch(81.8% 0.0042 286)  scheme=fixed
+  color-text-body = oklch(81.8% 0.0042 286)  scheme=fixed
+  color-text-code = oklch(88% 0.004 286)  scheme=fixed
+  color-text-tertiary = oklch(66% 0.0042 286)  scheme=fixed
+  color-text-disabled = oklch(50% 0.004 286)  scheme=fixed
+  color-text-inverse = oklch(15.5% 0.0041 286)  scheme=fixed
+  color-text-link = #7d8fef  scheme=fixed
+  color-text-linkHover = #9faef4  scheme=fixed
+  color-hairline = rgb(255 255 255 / 0.08)  scheme=fixed
+  color-hairline-strong = rgb(255 255 255 / 0.14)  scheme=fixed
+  color-border = rgb(255 255 255 / 0.12)  scheme=fixed
+  color-border-muted = rgb(255 255 255 / 0.08)  scheme=fixed
+  color-border-light = #cacacc  scheme=fixed
+  color-border-dark = #16161a  scheme=fixed
+  color-border-primary = #6172e8  scheme=fixed
+  color-success = #22c97e  scheme=fixed
+  color-success-400 = #30d990  scheme=fixed
+  color-success-500 = #22c97e  scheme=fixed
+  color-success-600 = #16a866  scheme=fixed
+  color-success-700 = #128c56  scheme=fixed
+  color-danger = #ef5544  scheme=fixed
+  color-danger-400 = #f47363  scheme=fixed
+  color-danger-500 = #ef5544  scheme=fixed
+  color-danger-600 = #dc4234  scheme=fixed
+  color-danger-700 = #b93528  scheme=fixed
+  color-warning = #e9b308  scheme=fixed
+  color-warning-400 = #f0d52c  scheme=fixed
+  color-warning-500 = #e9b308  scheme=fixed
+  color-warning-600 = #cd9806  scheme=fixed
+  color-info = #4d7df6  scheme=fixed
+  color-info-600 = #3a63e5  scheme=fixed
+  color-info-700 = #2f50c4  scheme=fixed
+  color-subtle = #c3c3c6  scheme=fixed
+  color-subtle-50 = #ffffff  scheme=fixed
+  color-subtle-300 = #e1e1e3  scheme=fixed
+  color-subtle-400 = #d4d4d6  scheme=fixed
+  color-subtle-500 = #c3c3c6  scheme=fixed
+  color-subtle-600 = #a7a7aa  scheme=fixed
+  color-subtle-700 = oklch(66% 0.0042 286)  scheme=fixed
+  color-subtle-800 = oklch(58% 0.0042 286)  scheme=fixed
+  color-subtle-900 = #4a4a4c  scheme=fixed
+  radius-none = 0px
+  radius-xs = 2px
+  radius-sm = 4px
+  radius = 6px
+  radius-md = 8px
+  radius-lg = 12px
+  radius-xl = 16px
+  radius-2xl = 20px
+  radius-3xl = 24px
+  radius-full = 9999px
+  radius-card = 18px
+  radius-control = 10px
+  blur-sm = 4px
+  // forma:end
+  // Written by hand: forma import refuses these from CSS (a shadow needs its kind, an easing a dotted name, and
+  // calc() takes px only: --spacing-mdrail is calc(1.5rem + 65px) at the 16px root).
+  shadow-highlight: box-shadow = inset 0 1px 0 rgb(255 255 255 / 0.05)
+  shadow-xs: box-shadow = 0 1px 2px rgb(0 0 0 / 0.3)
+  shadow-sm: box-shadow = 0 1px 3px rgb(0 0 0 / 0.35), 0 1px 2px rgb(0 0 0 / 0.25)
+  shadow: box-shadow = 0 4px 10px -2px rgb(0 0 0 / 0.4)
+  shadow-md: box-shadow = 0 8px 20px -6px rgb(0 0 0 / 0.5)
+  shadow-lg: box-shadow = 0 16px 36px -10px rgb(0 0 0 / 0.6)
+  shadow-xl: box-shadow = 0 24px 56px -12px rgb(0 0 0 / 0.7)
+  shadow-2xl: box-shadow = 0 32px 72px -16px rgb(0 0 0 / 0.75)
+  shadow-inner: box-shadow = inset 0 2px 4px rgb(0 0 0 / 0.3)
+  shadow-none: box-shadow = 0 0 #0000
+  shadow-surface: box-shadow = inset 0 1px 0 0 rgb(255 255 255 / 0.04), inset 0 0 0 1px rgb(255 255 255 / 0.045), 0 1px 2px rgb(0 0 0 / 0.14), 0 6px 16px rgb(0 0 0 / 0.1)
+  shadow-overlay: box-shadow = inset 0 1px 0 0 rgb(255 255 255 / 0.06), inset 0 0 0 1px rgb(255 255 255 / 0.07), 0 0 0 1px rgb(0 0 0 / 0.4), 0 8px 16px -4px rgb(0 0 0 / 0.4), 0 24px 48px -12px rgb(0 0 0 / 0.6)
+  shadow-control: box-shadow = inset 0 0 0 1px rgb(255 255 255 / 0.06)
+  shadow-control-focus: box-shadow = inset 0 0 0 1px rgb(255 255 255 / 0.18)
+  shadow-focus: box-shadow = 0 0 0 2px oklch(15.5% 0.0041 286), 0 0 0 4px oklch(72% 0.12 274 / 0.8)
+  easing.ease-motion = cubic-bezier(0.22, 1, 0.36, 1)
+  easing.ease-snappy = cubic-bezier(0.23, 1, 0.32, 1)
+  easing.ease-out-expo = cubic-bezier(0.19, 1, 0.22, 1)
+  spacing-mdrail = 89px

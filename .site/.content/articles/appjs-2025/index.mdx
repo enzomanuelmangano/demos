@@ -1,0 +1,47 @@
+<Title date="2025-06-22" slug="appjs-2025">
+  Speaking at App.js 2025
+</Title>
+
+In May 2025, I had the incredible opportunity to speak at **App.js Conf** in Kraków, Poland. As someone who's spent the past two years creating weekly React Native animations, standing on that stage felt surreal.
+
+This post is a reflection on that experience and a collection of resources that really helped me prepare for the talk.
+
+All the animations from the talk are open source:
+
+<GithubCard repo="enzomanuelmangano/appjs-talk-demos" />
+
+## The Talk
+
+My talk, "Everybody **Can** Cook with React Native", was inspired by Ratatouille's philosophy that greatness can come from anywhere. Just as Remy proves that anyone can cook with the right ingredients and techniques, I believe anyone can create stunning React Native animations.
+
+The presentation revealed some "tips" I've discovered while building [110+ React Native demos](/demos)
+
+<YouTubeEmbed videoId="kaUamUQXeo0" />
+
+## The Journey to App.js
+
+When I submitted the proposal, I had a very different talk in mind.
+
+Before starting to prepare the talk, I decided to dive deeper into multiple resources and ended up learning a lot during the preparation process.
+
+Here, I'd like to share some of those resources. While many didn't make it directly into the talk, they helped me visualize concepts more clearly.
+
+- [Great Animations](https://emilkowal.ski/ui/great-animations) by [Emil Kowalski](https://x.com/emilkowalski_): An article about what makes animations great. Emil also created what is arguably the best course on animations: [animations.dev](https://animations.dev), which has been a constant source of inspiration for me.
+- [The Basics of Easing](https://web.dev/articles/the-basics-of-easing) by [Paul Lewis](https://x.com/aerotwist): An introduction to easing functions and how to choose the right one for your animation.
+- [A handbook to animation easings](https://pow.rs/blog/animation-easings/) by [Drew Powers](https://bsky.app/profile/pow.rs): A comprehensive visual reference for easing functions with examples and explanations for choosing between different options. I borrowed the "flat tire" reference for the animated spinner from this resource.
+- [The physics behind spring animations](https://blog.maximeheckel.com/posts/the-physics-behind-spring-animations/) by [Maxime Heckel](https://x.com/MaximeHeckel): This resource was instrumental in building [motion.reactiive.io](https://motion.reactiive.io).
+- [Designing Spring Animations for the Web](https://felixrunquist.com/posts/designing-spring-animations-for-the-web) by [Felix Runquist](https://x.com/felixrunquist): I initially planned to include a section about when to use animations appropriately (and when you don't really want to overcook). In the end, I decided to leave it out as it was a bit confusing to insert it in the narrative I had in mind.
+- [Animate with Springs - WWDC 2023](https://youtu.be/HaZ2jw9rx9M) by [Jacob Xiao](https://x.com/jacobx): A unique overview of the physics behind spring animations and how to use them in iOS. I was strongly inspired by the demo comparing Timing vs Spring animations in the Drag and Drop gesture.
+- [Invisible Details of Interaction Design](https://rauno.me/craft/interaction-design) by [Rauno](https://x.com/rauno): A masterpiece on the importance of details in interaction design. I was inspired to discuss matching animations to interactions, but I ended up re-thinking the talk and accepting the idea I didn't really have enough knowledge to do it.
+- [React Native Skia—For Us, For You, and For Fun](https://shopify.engineering/react-native-skia-shopify) by [Colin Gray](https://x.com/colinta): A great overview of the Skia library and how it can be used in React Native to bridge the gap between graphic designers and React Native.
+- [Tutorials - React Native Skia](https://shopify.github.io/react-native-skia/docs/tutorials/): A collection of great tutorials on how to use the Skia library in React Native.
+- [React Native Fast Confetti](https://github.com/AlirezaHadjar/react-native-fast-confetti) from [Alireza Hadjar](https://x.com/alireza_hadjar): A library to create fast confetti animations in React Native. This package is such a great example of how Skia can be used as a tool to increase performance.
+
+### The Motion
+
+During the talk I quickly presented [motion.reactiive.io](https://motion.reactiive.io) (source code [here](https://github.com/enzomanuelmangano/motion.reactiive.io)) which is a website I created to approximate Timing animations with Spring animations and vice versa.
+The website has been created with [Expo](https://expo.dev/) and is powered by [Reanimated](https://docs.swmansion.com/react-native-reanimated/) and [React Native Skia](https://shopify.github.io/react-native-skia/).
+
+## Looking back
+
+Speaking at App.js Conf was a dream come true. Coming back from the event, I felt more inspired than ever and deeply grateful to be part of this incredible community.

@@ -1,0 +1,10 @@
+{
+  "title": "Speaking at App.js 2025",
+  "shortTitle": "Speaking at App.js 2025",
+  "subtitle": "My journey from creating weekly animations to speaking at my first React Native conference — and what I learned along the way.",
+  "author": "Enzo Manuel Mangano",
+  "date": "2025-06-22",
+  "slug": "appjs-2025",
+  "tags": ["react-native", "conference", "app.js"],
+  "featuredImage": "./images/header.webp"
+}

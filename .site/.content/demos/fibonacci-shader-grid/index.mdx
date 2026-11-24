@@ -1,0 +1,64 @@
+<Title date="2024-01-24" slug="fibonacci-shader-grid" basePath="demos">
+  Enhanced Fibonacci Sphere with React Native Skia 🌐
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/fibonacci-shader-grid"
+/>
+
+A shader-based grid animation with interactive controls for pattern customization.
+
+## What's This About?
+
+This component creates a shader grid that:
+
+- Shows multiple pattern instances
+- Provides control panel
+- Allows pattern adjustment
+- Handles performance scaling
+- Supports value constraints
+
+## Technical Implementation
+
+The component uses:
+
+- Skia shader rendering
+- Control panel interface
+- Value range management
+- Performance optimization
+- Dynamic shader updates
+
+## Usage
+
+```tsx
+// Basic usage
+<FibonacciShaderGrid />;
+
+// Configuration constants
+const RESCALE_FACTOR = 3;
+const MIN_CIRCLES_AMOUNT = 5;
+const MAX_CIRCLES_AMOUNT = 175;
+const MIN_MAGICAL_MUL = 1.2;
+const MAX_MAGICAL_MUL = 3.6;
+
+// Control values
+const n = useSharedValue(INITIAL_CIRCLES_AMOUNT);
+const magicalMul = useSharedValue(INITIAL_MAGICAL_MUL);
+
+// Control panel
+<ControlPanel
+  n={n}
+  magicalMul={magicalMul}
+  minN={MIN_CIRCLES_AMOUNT}
+  maxN={MAX_CIRCLES_AMOUNT}
+  minMagicalMul={MIN_MAGICAL_MUL}
+  maxMagicalMul={MAX_MAGICAL_MUL}
+/>;
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

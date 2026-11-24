@@ -1,0 +1,53 @@
+<Title date="2025-06-03" slug="ios-home-grid" basePath="demos">
+  iOS Home Grid Animation
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/ios-home-grid"
+/>
+
+Have you ever wondered how Apple creates those buttery-smooth animations when you tap an app icon on your iPhone?
+
+I wondered about this too 😅
+
+When you tap an app icon, watch as it elegantly expands from its tiny square into a full-screen experience - just like on your iPhone home screen.
+
+I had this idea in mind since forever and I'm not done with it yet!
+
+In the next weeks, I'll be doing a series of improvements to this one.
+
+## How It Works
+
+The magic happens in several steps:
+
+1. **Touch Detection** - Captures tap location using React Native Gesture Handler
+2. **Position Measurement** - Gets icon dimensions and position using layout measurements
+3. **Expansion Animation** - Scales up the icon using spring physics with Reanimated
+4. **Border Radius** - Animates border radius from icon corners to full screen
+5. **Navigation** - Handles screen transitions and back gesture interactions
+
+The reverse animation when going back is equally smooth, shrinking from full screen right back to the original icon position.
+
+### How the Code is Organized
+
+```
+src/
+├── apps-list/
+│   ├── index.tsx           → The main grid that shows all the app icons
+│   ├── app-item.tsx        → Each individual app icon component
+│   └── constants.ts        → All the beautiful gradient color combinations
+├── navigation/
+│   ├── expansion-provider.tsx    → The brain that orchestrates all animations
+│   ├── navigation-item.tsx       → Handles taps and triggers transitions
+│   ├── MainScreenWrapper.tsx     → Wraps the home screen with special powers
+│   └── DetailScreenWrapper.tsx   → Wraps the detail screen for smooth exits
+├── app-detail-screen.tsx   → The full-screen view you see after tapping
+└── index.tsx              → Brings everything together with navigation
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

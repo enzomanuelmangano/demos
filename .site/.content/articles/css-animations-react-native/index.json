@@ -1,0 +1,11 @@
+{
+  "title": "CSS Animations but in React Native",
+  "shortTitle": "CSS Animations but in React Native",
+  "subtitle": "Learn how to use the new CSS Animations and Transitions API in Reanimated 4 to create simple and powerful animations in React Native",
+  "author": "Enzo Manuel Mangano",
+  "date": "2025-01-21",
+  "slug": "css-animations-react-native",
+  "tags": ["react-native", "react", "reanimated", "animation"],
+  "featuredImage": "./images/header.webp",
+  "series": "animate-with-reanimated"
+}

@@ -1,0 +1,11 @@
+{
+  "title": "Animated Loader with React Native (Skia)",
+  "shortTitle": "Animated Loader with React Native (Skia)",
+  "subtitle": "Learn how to create a beautiful animated loader in React Native using Skia and Reanimated. From basic shapes to dynamic path animations, discover how to build engaging loading indicators.",
+  "author": "Enzo Manuel Mangano",
+  "date": "2025-01-09",
+  "slug": "animated-loader-skia",
+  "tags": ["react-native", "react", "reanimated", "animation", "skia"],
+  "featuredImage": "./images/header.webp",
+  "series": "exploring-skia"
+}

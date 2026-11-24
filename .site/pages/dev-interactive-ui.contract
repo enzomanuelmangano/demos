@@ -1,0 +1,75 @@
+// /_dev/interactive-ui, development only (gesture-kit/.tools/gallery.ts builds it; no route of the site): every
+// gesture/UI article demo on one page, for checking them against the live articles (each in a 720 px column, as an
+// article's prose; full width on a phone).
+use InteractiveBox as BottomSheetBox, InitialSetup, BasicComponent, PanGesture, BorderRadius, FinalDemo from "../components/interactive/bottom-sheet-animation/index.contract"
+use InteractiveBox as CssBox, AnimatedSquare from "../components/interactive/css-animations-react-native/index.contract"
+use InteractivePanGesture from "../components/interactive/pan-gesture-handler/index.contract"
+use IntroToGesturesDemo from "../components/interactive/introduction-to-gestures/index.contract"
+use InteractiveSkeletonDemo, InteractiveContactItem, InteractiveJustSkeleton from "../components/interactive/skeleton-loader/index.contract"
+use Demo as CheckboxDemo, StaticDemo as CheckboxStaticDemo from "../components/interactive/checkbox-interactions/index.contract"
+use FinalAnimatedSquareDemo, AnimatedSquareOpacityDemo, AnimatedSquareOpacityAndScaleDemo from "../components/interactive/introduction-to-reanimated/index.contract"
+
+component DevLabel
+  props
+    label: string
+  view
+    text label font-size=13 line-height="1.25rem" color="var(--color-text-tertiary)" margin-top=32 margin-bottom=8
+      font-family="'Source Code Pro', ui-monospace, monospace"
+
+component DevInteractiveUi
+  view
+    column width="100%" max-width=768 margin-left="auto" margin-right="auto" padding-left=24 padding-right=24
+      box-sizing="border-box"
+      text "Interactive demos: gesture and UI" role="heading" aria-level=1 font-size="1.875rem" line-height="2.25rem"
+        font-weight=600 color="var(--color-text-primary)"
+      DevLabel(label="bottom-sheet-animation · InitialSetup")
+      BottomSheetBox()
+        InitialSetup()
+      DevLabel(label="bottom-sheet-animation · BasicComponent")
+      BottomSheetBox()
+        BasicComponent()
+      DevLabel(label="bottom-sheet-animation · PanGesture")
+      BottomSheetBox()
+        PanGesture()
+      DevLabel(label="bottom-sheet-animation · BorderRadius")
+      BottomSheetBox()
+        BorderRadius()
+      DevLabel(label="bottom-sheet-animation · FinalDemo hasBackdrop=false")
+      BottomSheetBox()
+        FinalDemo(hasBackdrop=false)
+      DevLabel(label="bottom-sheet-animation · FinalDemo")
+      BottomSheetBox()
+        FinalDemo(hasBackdrop=true)
+      DevLabel(label="css-animations-react-native · AnimatedSquare")
+      CssBox()
+        AnimatedSquare(withoutRepeat=false, withoutPause=false)
+      DevLabel(label="css-animations-react-native · AnimatedSquare withoutRepeat")
+      CssBox()
+        AnimatedSquare(withoutRepeat=true, withoutPause=false)
+      DevLabel(label="css-animations-react-native · AnimatedSquare withoutPause")
+      CssBox()
+        AnimatedSquare(withoutRepeat=false, withoutPause=true)
+      DevLabel(label="introduction-to-reanimated · AnimatedSquareOpacityDemo")
+      AnimatedSquareOpacityDemo()
+      DevLabel(label="introduction-to-reanimated · AnimatedSquareOpacityAndScaleDemo timing")
+      AnimatedSquareOpacityAndScaleDemo(scaleAnimationType="timing", showBorderRadiusAnimation=false)
+      DevLabel(label="introduction-to-reanimated · AnimatedSquareOpacityAndScaleDemo spring")
+      AnimatedSquareOpacityAndScaleDemo(scaleAnimationType="spring", showBorderRadiusAnimation=false)
+      DevLabel(label="introduction-to-reanimated · AnimatedSquareOpacityAndScaleDemo spring, radius")
+      AnimatedSquareOpacityAndScaleDemo(scaleAnimationType="spring", showBorderRadiusAnimation=true)
+      DevLabel(label="introduction-to-reanimated · FinalAnimatedSquareDemo")
+      FinalAnimatedSquareDemo()
+      DevLabel(label="pan-gesture-handler · InteractivePanGesture")
+      InteractivePanGesture()
+      DevLabel(label="introduction-to-gestures · IntroToGesturesDemo")
+      IntroToGesturesDemo()
+      DevLabel(label="skeleton-loader · InteractiveSkeletonDemo")
+      InteractiveSkeletonDemo()
+      DevLabel(label="skeleton-loader · InteractiveContactItem")
+      InteractiveContactItem()
+      DevLabel(label="skeleton-loader · InteractiveJustSkeleton")
+      InteractiveJustSkeleton()
+      DevLabel(label="checkbox-interactions · Demo")
+      CheckboxDemo()
+      DevLabel(label="checkbox-interactions · StaticDemo")
+      CheckboxStaticDemo()

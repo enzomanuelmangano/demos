@@ -1,0 +1,18 @@
+{
+  "title": "How did I build Demos: a high-level overview",
+  "shortTitle": "How did I build Demos?",
+  "subtitle": "Explore the technical decisions and architecture behind Demos, from choosing Expo for web development to handling payments with LemonSqueezy.",
+  "author": "Enzo Manuel Mangano",
+  "date": "2025-01-17",
+  "slug": "building-demos",
+  "tags": [
+    "react-native",
+    "react",
+    "expo",
+    "supabase",
+    "lemonsqueezy",
+    "vercel"
+  ],
+  "featuredImage": "./images/header.webp",
+  "series": "engineering"
+}

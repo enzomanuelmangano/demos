@@ -1,0 +1,22 @@
+{
+  "title": "Checkbox Interactions - The beauty of Layout Animations",
+  "shortTitle": "Checkbox Interactions - The beauty of Layout Animations",
+  "subtitle": "Create smooth checkbox interactions using React Native Reanimated's Layout Animations. A practical example of how layout transitions can create complex animations with minimal code.",
+  "author": "Enzo Manuel Mangano",
+  "date": "2025-02-13",
+  "slug": "checkbox-interactions",
+  "tags": [
+    "react-native",
+    "react",
+    "reanimated",
+    "animation",
+    "layout-animations",
+    "expo"
+  ],
+  "featuredImage": "./images/header.webp",
+  "series": "animate-with-reanimated",
+  "repository": {
+    "url": "https://github.com/enzomanuelmangano/animate-with-reanimated",
+    "directory": "src/animations/23-checkbox-interactions"
+  }
+}

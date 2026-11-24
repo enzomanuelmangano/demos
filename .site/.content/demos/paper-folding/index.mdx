@@ -1,0 +1,52 @@
+<Title date="2024-07-30" slug="paper-folding" basePath="demos">
+  Paper Folding Animation with React Native Skia
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/paper-folding"
+/>
+
+A paper folding animation component with touch interaction.
+
+## What's This About?
+
+This component creates an interactive paper folding animation that responds to touch events. When touched, a paper-like element smoothly transitions between folded and unfolded states, creating a realistic folding effect. The component includes a gradient background that enhances the visual depth of the animation, making the paper appear to float above the surface.
+
+## Technical Implementation
+
+The component uses:
+
+- Touch handling
+- Timing animations
+- Gradient backgrounds
+- Paper folding effects
+- Dimension control
+
+## Usage
+
+```tsx
+// Basic usage
+<PaperFolding />;
+
+// Component configuration
+const PaperWidth = 250;
+const PaperHeight = 330;
+
+// Animation control
+const progress = useSharedValue(0);
+
+// Paper component with props
+<Paper width={PaperWidth} height={PaperHeight} progress={progress} />;
+
+// Animation trigger
+progress.value = withTiming(progress.value > 0 ? 0 : 1, {
+  duration: 800,
+});
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

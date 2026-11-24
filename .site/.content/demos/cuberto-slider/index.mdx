@@ -1,0 +1,52 @@
+<Title date="2023-02-22" slug="cuberto-slider" basePath="demos">
+  Balloons Slider Animation with React Native 🎈
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/cuberto-slider"
+/>
+
+A sleek and modern slider component inspired by Cuberto's design aesthetic. Features smooth animations and intuitive gesture interactions for a polished user experience.
+
+## What's This About?
+
+This component creates an interactive slider with a unique visual style and smooth animations. The slider responds to user gestures with fluid transitions and provides visual feedback through elegant animations, making it perfect for settings, preferences, or any numerical input.
+
+## Technical Implementation
+
+The component leverages gesture handling and animations to create a polished experience:
+
+- Gesture-based interactions
+- Smooth value transitions
+- Custom styling and theming
+- Performance optimizations with React.memo
+- Responsive layout adaptations
+
+## Usage
+
+```tsx
+// Basic usage with default settings
+<CubertoSlider />
+
+// Custom implementation
+<Slider
+  min={0}
+  max={100}
+  step={1}
+  onValueChange={(value) => {
+    console.log('Current value:', value);
+  }}
+/>
+
+// With gesture handler root
+<GestureHandlerRootView>
+  <CubertoSlider />
+</GestureHandlerRootView>
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

@@ -1,0 +1,69 @@
+<Title date="2024-05-15" slug="record-button" basePath="demos">
+  Record Button Animation with Skia 🎤
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/record-button"
+/>
+
+A scrollable interface with an animated record button and snapping behavior.
+
+## What's This About?
+
+This component creates an interactive record button interface with sophisticated scroll animations. As users scroll, the interface smoothly transitions between states, featuring border radius animations and a custom record button. The implementation includes scroll-based interpolation, snapping behavior, and precise animation timing, making it suitable for media recording applications.
+
+## Technical Implementation
+
+The component uses:
+
+- Scroll offset tracking
+- Interpolated animations
+- Snapping behavior
+- Border radius transitions
+- Custom button styling
+
+## Usage
+
+```tsx
+// Basic usage
+<RecordButton />;
+
+// Button configuration
+const ButtonConfig = {
+  width: 90,
+  height: 40,
+  radius: 20,
+  strokeWidth: 1,
+  color: '#ed4e3c',
+};
+
+// Scroll interpolation
+const progress = useDerivedValue(() => {
+  return interpolate(
+    scrollOffset.value,
+    [WindowHeight * 0.08, WindowHeight * 0.2],
+    [0, 1],
+    Extrapolation.CLAMP
+  );
+});
+
+// Border radius animation
+const rMainPageStyle = useAnimatedStyle(() => {
+  return {
+    borderCurve: 'continuous',
+    borderRadius: interpolate(
+      scrollOffset.value,
+      [0, 0.1],
+      [0, 35],
+      Extrapolation.CLAMP
+    ),
+  };
+});
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

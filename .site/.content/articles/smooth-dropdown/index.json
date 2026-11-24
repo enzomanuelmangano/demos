@@ -1,0 +1,11 @@
+{
+  "title": "Creating a Smooth Dropdown Menu Animation in React Native Reanimated",
+  "shortTitle": "Creating a Smooth Dropdown Menu Animation in React Native Reanimated",
+  "subtitle": "Learn how to create a polished and smooth dropdown menu animation in React Native using the Reanimated library.",
+  "author": "Enzo Manuel Mangano",
+  "date": "2023-09-13",
+  "slug": "smooth-dropdown",
+  "tags": ["react-native", "react", "reanimated", "animations"],
+  "featuredImage": "./images/header.webp",
+  "series": "animate-with-reanimated"
+}

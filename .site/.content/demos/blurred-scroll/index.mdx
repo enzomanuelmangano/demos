@@ -1,0 +1,50 @@
+<Title date="2023-10-25" slug="blurred-scroll" basePath="demos">
+  Blurred Scroll with React Native Skia
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/blurred-scroll"
+/>
+
+A sophisticated scrolling animation that applies dynamic blur effects based on scroll position. Features smooth transitions and responsive layout adjustments for an engaging visual experience.
+
+## What's This About?
+
+This component creates a scrollable list where items dynamically blur and transform based on their position relative to the scroll offset. As users scroll through the list, items smoothly transition between focused and blurred states, creating a depth effect.
+
+## Technical Implementation
+
+The component leverages Reanimated for smooth scroll handling and implements:
+
+- Dynamic blur effects based on scroll position
+- Optimized scroll performance with event throttling
+- Pre-calculated item layouts for smooth scrolling
+- Responsive sizing based on window dimensions
+- Fade-in animations for items
+
+## Usage
+
+```tsx
+// Core animation setup
+const contentOffsetY = useSharedValue(0);
+const scrollHandler = useAnimatedScrollHandler({
+  onScroll: (event) => {
+    contentOffsetY.value = event.contentOffset.y;
+  },
+});
+
+// Item configuration
+<BlurredItem
+  width={windowWidth}
+  height={blurredItemContainerHeight}
+  index={index}
+  contentOffsetY={contentOffsetY}
+/>;
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

@@ -1,0 +1,57 @@
+<Title date="2024-07-03" slug="checkbox-interactions" basePath="demos">
+  Checkbox Interactions with Reanimated
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/checkbox-interactions"
+/>
+
+An elegant checkbox component with smooth animations and interactions. Perfect for creating engaging selection interfaces with beautiful transitions and visual feedback.
+
+## What's This About?
+
+This component creates an interactive checkbox interface for selecting favorite cuisines. Each checkbox features smooth animations for selection and deselection, with a modern design that provides clear visual feedback for user interactions.
+
+## Technical Implementation
+
+The component implements:
+
+- Custom checkbox animations
+- Safe area handling for proper layout
+- Flexible grid layout for multiple options
+- State management for selections
+- Typography and spacing optimizations
+
+## Usage
+
+```tsx
+type Cuisine = {
+  id: string;
+  name: string;
+  selected: boolean;
+};
+
+// Basic checkbox usage
+<Checkbox label="Italian" checked={isSelected} onPress={handleSelection} />;
+
+// Full implementation
+const { cuisines, toggleCuisine } = useCuisines();
+
+<View>
+  {cuisines.map((cuisine) => (
+    <Checkbox
+      key={cuisine.id}
+      label={cuisine.name}
+      checked={cuisine.selected}
+      onPress={() => toggleCuisine(cuisine.id)}
+    />
+  ))}
+</View>;
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

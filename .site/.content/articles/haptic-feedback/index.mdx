@@ -1,0 +1,93 @@
+<Title date="2022-04-13" slug="haptic-feedback">
+  The Secret Ingredient: React Native Haptic Feedback
+</Title>
+
+Have you ever felt your app is a bit flat?
+Yes, sure you can add **animations**, **micro-interactions**, some feedback, but in the end it always feels like the interaction with the app is flat.
+Fortunately, the answer is simpler than you think. The trick lies behind the [**react-native-haptic-feedback**](https://www.npmjs.com/package/react-native-haptic-feedback) package.
+
+### Disclaimer
+
+If you prefer a video tutorial, the same content of this article is fully available here:
+
+<YouTubeEmbed videoId="Yo-VhV1JZSg" />
+
+## React Native CLI
+
+You can install it in your app by simply running:
+
+```bash
+yarn add react-native-haptic-feedback
+```
+
+On iOS always remember to run pod install from the iOS folder:
+
+```bash
+cd ios && pod install
+```
+
+And there it is, ready to be used.
+
+```tsx
+import HapticFeedback from 'react-native-haptic-feedback';
+
+const App: React.FC = () => {
+  ...
+};
+```
+
+Simply import the package into your React Native app and implement the trigger method.
+The method accepts two parameters:
+
+- A type of **HapticFeedback**
+- A set of options related to the operating system.
+
+The types of HapticFeedback you have at your disposal are countless.
+_impactLight_, _impactMedium_, _impactHeavy_, _rigid_, _soft_, _notificationSuccess_... and so on.
+
+To start with, I suggest you simply start with **impactLight**.
+
+Connect the onPress function to the Touchable and you will immediately notice a huge improvement in the User Experience.
+
+```tsx
+import HapticFeedback from 'react-native-haptic-feedback';
+
+const App: React.FC = () => {
+  const onPress = useCallback(() => {
+    HapticFeedback.trigger('impactLight');
+  }, []);
+
+  return (
+    <View style={styles.container}>
+      <TouchableOpacity onPress={onPress}>
+        <View style={styles.square} />
+      </TouchableOpacity>
+    </View>
+  );
+};
+```
+
+If on some versions of **Android** or **iOS** you don't notice the expected behavior, keep in mind that the trigger function accepts as a second parameter a set of options related to the operating system.
+
+```tsx
+import HapticFeedback from 'react-native-haptic-feedback';
+
+const options = {
+  enableVibrateFallback: true /* iOS Only */,
+  ignoreAndroidSystemSettings: false /* Android Only */,
+};
+
+HapticFeedback.trigger('impactLight', options);
+```
+
+## Expo CLI
+
+If your app is initialized with Expo, you can use the built-in [Haptics](https://docs.expo.dev/versions/latest/sdk/haptics/) module instead by running:
+
+```bash
+expo install expo-haptics
+```
+
+## Conclusion
+
+Want to learn more? Don't forget to subscribe to my [YouTube channel](https://www.youtube.com/c/reactiive) or to the mailing list below!

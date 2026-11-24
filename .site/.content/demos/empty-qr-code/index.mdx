@@ -1,0 +1,57 @@
+<Title date="2024-04-03" slug="empty-qr-code" basePath="demos">
+  Animated Logo/QRCode with React Native Skia
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/empty-qr-code"
+/>
+
+A QR code component with share functionality and toggle animation.
+
+## What's This About?
+
+This component creates a QR code display that:
+
+- Shows/hides with animation
+- Includes share functionality
+- Uses pressable scale feedback
+- Handles QR code generation
+
+## Technical Implementation
+
+The component uses:
+
+- QR code generation
+- Ref-based toggle control
+- Pressable scale animations
+- Memoization for performance
+- Custom share sheet
+
+## Usage
+
+```tsx
+type QRCodeShareProps = {
+  qrCodeValue: string;
+};
+
+// Basic usage
+<EmptyQRCode />;
+
+// Custom implementation
+const qrCodeShareRef = useRef<QRCodeShareRefType>(null);
+
+<PressableScale
+  onPress={() => {
+    qrCodeShareRef.current?.toggle();
+  }}
+>
+  <QRCodeShare ref={qrCodeShareRef} qrCodeValue="https://example.com" />
+</PressableScale>;
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

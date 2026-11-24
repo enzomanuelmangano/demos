@@ -1,0 +1,47 @@
+<Title date="2024-09-03" slug="clerk-toast" basePath="demos">
+  Clerk Toast with Reanimated
+</Title>
+
+<Demo />
+
+<GithubCard repo="enzomanuelmangano/demos" path="src/animations/clerk-toast" />
+
+A sophisticated toast notification system inspired by Clerk's design, featuring stacked notifications with smooth animations and gesture interactions. Perfect for displaying multiple notifications in an organized and visually appealing way.
+
+## What's This About?
+
+This component implements a stacked toast notification system where multiple notifications can be displayed simultaneously. Each toast can be interacted with through gestures, and the stack automatically manages the layout and animations of multiple notifications.
+
+## Technical Implementation
+
+The component implements:
+
+- Stacked notification management
+- Gesture-based interactions
+- Smooth enter/exit animations
+- Safe area handling
+- Automatic toast queuing
+- Scale animations on press
+- Custom styling options
+
+## Usage
+
+```tsx
+// Setup the provider
+<StackedToastProvider>
+  <App />
+</StackedToastProvider>;
+
+// Using the toast hook
+const { showToast } = useStackedToast();
+
+// Show a toast
+showToast({
+  title: 'Notification Title',
+  message: 'Your notification message here',
+});
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

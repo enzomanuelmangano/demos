@@ -1,0 +1,76 @@
+<Title date="2023-03-15" slug="story-list" basePath="demos">
+  Story List UI App in React Native 📚
+</Title>
+
+<Demo />
+
+<GithubCard repo="enzomanuelmangano/demos" path="src/animations/story-list" />
+
+A horizontal scrollable story list with customizable item dimensions and animations.
+
+## What's This About?
+
+This component creates an interactive story list with smooth scrolling and image display. It features customizable item dimensions, gap spacing, and the number of visible items. The implementation includes image caching, gesture handling, and responsive layout calculations, making it perfect for story viewers, image galleries, or horizontal carousels.
+
+## Technical Implementation
+
+The component uses:
+
+- Gesture handling
+- Image caching
+- Responsive layout
+- Custom scrolling
+- Item visibility
+
+## Usage
+
+```tsx
+// Basic usage
+<StoryList />
+
+// Customized story list
+<StoryList
+  stories={stories}
+  pagingEnabled={false}
+  storyItemDimensions={{
+    width: windowWidth * 0.7,
+    height: windowWidth
+  }}
+  visibleItems={3}
+  gap={35}
+  renderItem={({ image }) => (
+    <Image
+      contentFit="cover"
+      cachePolicy="memory-disk"
+      style={[
+        {
+          borderRadius: 20
+        },
+        storyItemDimensions
+      ]}
+      source={image}
+    />
+  )}
+/>
+
+// Story data structure
+const stories = [
+  {
+    image: require('./assets/image_01.png')
+  },
+  {
+    image: require('./assets/image_02.jpg')
+  }
+];
+
+// Dimensions calculation
+const { width } = useWindowDimensions();
+const storyItemDimensions = useMemo(() => ({
+  width: width * 0.7,
+  height: width
+}), [width]);
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

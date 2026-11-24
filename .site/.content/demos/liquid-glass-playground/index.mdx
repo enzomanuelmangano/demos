@@ -1,0 +1,54 @@
+<Title date="2025-11-24" slug="liquid-glass-playground" basePath="demos">
+  Liquid Glass Playground
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/liquid-glass-playground"
+/>
+
+An experimental playground for iOS-style liquid glass effects. Drag the overlay to reveal the background image with progressive haptic feedback that intensifies as you pull further.
+
+## What's This About?
+
+Inspired by Apple's iOS design language, this component demonstrates a draggable glass overlay with sophisticated haptic feedback. As you drag the overlay, haptic intensity progressively increases, creating a tactile experience that matches the visual feedback.
+
+## Technical Implementation
+
+The component features:
+
+- **Pan Gesture**: Vertical dragging with horizontal fail offset to prevent conflicts
+- **Drag Friction**: Applied damping for natural-feeling movement
+- **Progressive Haptics**: Haptic intensity scales with drag distance
+- **Platform-specific Overlays**: Different implementations for iOS and other platforms
+- **Spring Return**: Smooth spring animation back to origin on release
+
+## How It Works
+
+1. A glass overlay covers a background image
+2. Pan gesture tracks vertical movement with friction applied
+3. Haptic feedback triggers at intervals based on drag distance
+4. Intensity increases as you drag further (up to a maximum threshold)
+5. On release, the overlay springs back to its original position
+
+## Haptic Configuration
+
+- **Drag Friction**: Damping factor for natural movement feel
+- **Intensity Scaling**: Haptic strength increases with distance
+- **Max Intensity**: Caps haptic feedback to prevent over-stimulation
+- **Position Tracking**: Prevents duplicate haptics at the same position
+
+## Usage
+
+```tsx
+import { Playground } from './liquid-glass-playground';
+
+// Drag vertically to interact with the glass effect
+<Playground />;
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

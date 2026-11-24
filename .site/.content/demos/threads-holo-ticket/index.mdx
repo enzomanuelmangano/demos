@@ -1,0 +1,73 @@
+<Title date="2025-01-14" slug="threads-holo-ticket" basePath="demos">
+  Threads Holo Ticket
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/threads-holo-ticket"
+/>
+
+A React Native demo showcasing an interactive, flippable holographic ticket component built with Expo. Features a beautiful holographic effect using Skia for high-performance graphics.
+
+## Features
+
+- Interactive 3D flippable ticket with smooth animations
+- Stunning holographic card effect with dynamic gradient patterns
+- Gesture-based interaction (pan and tap)
+- QR code on the back side with gradient fill (using [react-native-qrcode-skia](https://github.com/enzomanuelmangano/react-native-qrcode-skia))
+- Built with TypeScript for type safety
+
+## Project Structure
+
+```
+src/
+├── components/
+│   ├── ticket/
+│   │   ├── front-side.tsx  # Front side of the ticket with event details
+│   │   ├── back-side.tsx   # Back side with QR code
+│   │   └── index.tsx       # Main ticket component with flip animation
+│   └── holographic-card.tsx # Holographic effect using Skia
+└── index.tsx               # App entry point
+```
+
+## Usage
+
+The _Ticket_ component is the main component that provides the flippable ticket functionality:
+
+```tsx
+import { Ticket } from './components/ticket';
+import { FrontSide } from './components/ticket/front-side';
+import { BackSide } from './components/ticket/back-side';
+
+const App = () => {
+  return (
+    <View style={styles.container}>
+      <Ticket
+        width={300}
+        height={400}
+        frontSide={<FrontSide />}
+        backSide={<BackSide />}
+      />
+    </View>
+  );
+};
+```
+
+### Props
+
+- _width_: Width of the ticket in pixels
+- _height_: Height of the ticket in pixels
+- _frontSide_: React component to render on the front of the ticket
+- _backSide_: React component to render on the back of the ticket
+
+### Interactions
+
+- **Pan**: Swipe horizontally to rotate the ticket
+- **Tap**: Tap to snap the ticket to the nearest complete rotation
+- **Holographic Effect**: The holographic pattern responds to the ticket's rotation
+
+<ReanimatePromo />
+
+<SendFeedback />

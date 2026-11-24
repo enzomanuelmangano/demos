@@ -1,0 +1,53 @@
+<Title date="2024-11-26" slug="linear-sensors" basePath="demos">
+  Linear Sensors with Skia and Reanimated
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/linear-sensors"
+/>
+
+A 3D card effect that responds to device orientation using gyroscope and gravity sensors. Tilt your device to see the card rotate with realistic shadows that follow the light source.
+
+## What's This About?
+
+This component creates a polished 3D card that reacts to how you hold your device. Using Reanimated's sensor APIs, it reads rotation and gravity data to create perspective transforms, making the card feel like a physical object responding to real-world movement.
+
+## Technical Implementation
+
+The effect combines multiple technologies:
+
+- **useAnimatedSensor**: Reads ROTATION and GRAVITY sensor data at 20ms intervals
+- **Skia Rendering**: High-performance canvas rendering with gradients and shadows
+- **Dynamic Shadows**: Shadow offset calculated based on rotation to simulate light source
+- **3D Perspective**: True perspective transform for realistic depth
+
+## How It Works
+
+1. Device roll (ROTATION sensor) controls Y-axis rotation
+2. Device gravity Z-axis controls X-axis rotation
+3. Both values are interpolated and clamped to reasonable ranges
+4. Shadow dx/dy values are derived from rotation for realistic lighting
+5. A React Native logo sits on the card surface
+
+## Sensor Mapping
+
+- **Roll** (-1 to 1) maps to **rotateY** (-22.5 to 22.5 degrees)
+- **Gravity Z** (-10 to -1) maps to **rotateX** (-22.5 to 22.5 degrees)
+- **Perspective**: 200 units for subtle 3D depth
+- **Shadow**: Moves opposite to rotation to simulate top light source
+
+## Usage
+
+```tsx
+import { LinearSensors } from './linear-sensors';
+
+// Tilt your device to see the 3D effect
+<LinearSensors />;
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

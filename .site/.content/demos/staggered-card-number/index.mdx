@@ -1,0 +1,68 @@
+<Title date="2024-03-06" slug="staggered-card-number" basePath="demos">
+  Staggered Card Number Input with Reanimated
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/staggered-card-number"
+/>
+
+A credit card number display with staggered animation effects.
+
+## What's This About?
+
+This component creates an animated display for credit card numbers with staggered reveal animations. Each digit appears with a coordinated timing sequence, creating a smooth and engaging reveal effect. The implementation is perfect for payment interfaces or any scenario where card numbers need to be displayed with visual flair.
+
+## Technical Implementation
+
+The component uses:
+
+- Staggered animations
+- Number formatting
+- Card validation
+- Coordinated timing
+- Visual feedback
+
+## Usage
+
+```tsx
+// Basic usage
+<StaggeredCardNumber />
+
+// Card info component
+<CardInfo
+  cardNumber={2223000048400011}
+/>
+
+// Styling
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#eaeaea',
+    alignItems: 'center',
+    justifyContent: 'center'
+  }
+});
+
+// Types
+type CardInfoProps = {
+  cardNumber: number;
+  // Additional props for customization
+  format?: boolean;
+  animate?: boolean;
+  staggerDelay?: number;
+};
+
+// Card number formatting
+const formatCardNumber = (number: number) => {
+  return number.toString()
+    .replace(/(\d{4})/g, '$1 ')
+    .trim();
+};
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

@@ -1,0 +1,67 @@
+<Title date="2024-04-10" slug="infinite-carousel" basePath="demos">
+  Infinite Carousel with Reanimated and Gesture Handler
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/infinite-carousel"
+/>
+
+A circular carousel component with infinite scrolling and dynamic theming.
+
+## What's This About?
+
+This component creates an advanced carousel that provides seamless infinite scrolling in both directions. It features dynamic theme transitions, where the background color smoothly changes based on the active item. The carousel supports custom item rendering, precise snap behavior, and configurable interpolation for item animations. The implementation includes optimizations for smooth performance and a visually appealing interface with gradient backgrounds.
+
+## Technical Implementation
+
+The component uses:
+
+- Circular scrolling logic
+- Dynamic theming
+- Custom interpolation
+- Gradient backgrounds
+- Item animations
+
+## Usage
+
+```tsx
+// Basic usage with configuration
+<InfiniteCircularCarousel
+  ref={carouselRef}
+  data={ThemeData}
+  listItemWidth={ListItemSize}
+  centered
+  snapEnabled
+  onActiveIndexChanged={(index) => {
+    // Handle index change
+  }}
+  interpolateConfig={{
+    inputRange: (index) => [
+      (index - 2) * ListItemSize,
+      (index - 1) * ListItemSize,
+      index * ListItemSize,
+      (index + 1) * ListItemSize,
+      (index + 2) * ListItemSize,
+    ],
+    outputRange: () => [-1, -1.5, 0, 1.5, 1],
+    extrapolationType: Extrapolation.CLAMP,
+  }}
+  renderItem={({ item, index, progress }) => (
+    <ListItemCard
+      item={item}
+      index={index}
+      progress={progress}
+      onPress={() => {
+        carouselRef.current?.scrollToIndex(index);
+      }}
+    />
+  )}
+/>
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

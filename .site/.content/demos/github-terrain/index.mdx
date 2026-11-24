@@ -1,0 +1,108 @@
+<Title date="2026-03-29" slug="github-terrain" basePath="demos">
+  GitHub Terrain with WebGPU
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/github-terrain"
+/>
+
+A 3D terrain visualization of GitHub contribution data, built entirely with WebGPU. Your contribution history transforms from a flat GitHub-style chart into an isometric mountain range, where each contribution becomes a block rising from the landscape.
+
+Tap anywhere to toggle between the flat contribution view and the 3D terrain. Use the switch to alternate between real GitHub data and synthetic patterns.
+
+## How It Works
+
+This demo uses _react-native-wgpu_ for GPU-accelerated rendering. Instead of relying on Skia or Canvas2D, it renders thousands of instanced 3D blocks directly on the GPU with custom WGSL shaders, maintaining 60fps even with complex lighting and shadow calculations.
+
+## WebGPU Rendering Pipeline
+
+The entire scene is rendered using a single draw call with GPU instancing. Each contribution square becomes a 3D block, and the GPU handles all transformations, lighting, and color calculations in parallel:
+
+```tsx
+// Single draw call renders all blocks
+renderPass.draw(36, NUM_BLOCKS); // 36 vertices per cube, instanced
+```
+
+The vertex shader transforms each block based on animation progress, interpolating between flat chart positions and 3D terrain coordinates.
+
+## Spring-Based View Transitions
+
+The transition between 2D and 3D views uses critically damped spring physics:
+
+```tsx
+function springStep(
+  current: number,
+  velocity: number,
+  target: number,
+  dt: number
+) {
+  const displacement = current - target;
+  const decay = Math.exp(-SPRING_OMEGA * dt);
+  return {
+    position:
+      target +
+      (displacement + (velocity + SPRING_OMEGA * displacement) * dt) * decay,
+    velocity:
+      (velocity -
+        SPRING_OMEGA * (velocity + SPRING_OMEGA * displacement) * dt) *
+      decay,
+  };
+}
+```
+
+Critically damped springs reach the target without overshooting.
+
+## Lighting Model
+
+The fragment shader implements multiple lighting techniques:
+
+- **Diffuse lighting** with soft shadows cast between neighboring blocks
+- **Valley ambient occlusion** that darkens low-lying areas surrounded by peaks
+- **Rim lighting** that highlights block edges from behind
+- **Fresnel effect** for edge glow based on view angle
+- **Color temperature shifts** warmer at peaks, cooler in valleys
+- **Atmospheric haze** that desaturates distant low areas
+- **Film grain** for added texture
+
+## Data Interpolation
+
+The demo smoothly interpolates between two complete data sets (synthetic and real GitHub contributions). Both color levels and block heights animate independently:
+
+```wgsl
+let blockHeight = mix(heightA, heightB, uniforms.dataProgress);
+let blockColor = select(colorA, colorB, uniforms.dataProgress > 0.5);
+```
+
+## The Code Structure
+
+```
+github-terrain/
+├── index.tsx               # Main component with gesture handling
+├── constants.ts            # Grid dimensions, camera angles, colors
+├── contribution-data.ts    # Real and synthetic contribution data
+├── hooks/
+│   └── use-webgpu-renderer.ts  # WebGPU initialization and render loop
+├── shaders/
+│   ├── vertex.ts           # 3D transformations and lighting prep
+│   └── fragment.ts         # Final color calculations
+└── utils/
+    ├── scene-data.ts       # Block position and color generation
+    └── spring.ts           # Physics-based animation utilities
+```
+
+## Key Features
+
+- **WebGPU Rendering**: Native GPU acceleration via react-native-wgpu
+- **GPU Instancing**: Thousands of blocks rendered in a single draw call
+- **WGSL Shaders**: Custom vertex and fragment shaders for all visual effects
+- **Spring Physics**: Critically damped springs for smooth transitions
+- **Dual Data Sets**: Toggle between real and synthetic contribution patterns
+- **Lighting Effects**: Shadows, AO, rim lights, and atmospheric haze
+- **Responsive Layout**: Adapts to any screen size with proper aspect ratio handling
+
+<ReanimatePromo />
+
+<SendFeedback />

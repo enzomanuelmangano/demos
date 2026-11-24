@@ -1,0 +1,311 @@
+import { BasicMetaballWithSkia, WithPanMetaballWithSkia, WithColorMatrixMetaballWithSkia, WithBlurMetaballWithSkia, CanvasKitJsAlert } from './mdx-client';
+
+<Title date="2024-11-08" slug="metaball">
+  Metaball Animation with React Native Skia
+</Title>
+
+## Introduction
+
+The Gooey effect is one of the most interesting techniques in modern UI design. When used subtly, it can add an organic and fluid quality to interfaces.
+
+One of the best ways to understand and experiment with the Gooey effect is by creating **Metaball** animations - where shapes smoothly blend and interact with each other like liquid mercury.
+
+This article was inspired by William Candillon's tutorial about the [Headspace Player](https://youtu.be/pErnuAx5GjE).
+
+### GitHub Repo
+
+Are you in a hurry? You can find the complete code below:
+
+<GithubCard repo="enzomanuelmangano/exploring-skia" path="metaball" />
+
+### YouTube Tutorial
+
+Want to follow along with a video? Check out the step-by-step tutorial on my YouTube channel:
+
+<YouTubeEmbed videoId={'HOxZegqnDC4'} />
+
+### Getting Started
+
+To get started, you'll need to start an Expo Go project:
+
+```bash
+npx create-expo-app --template blank-typescript
+```
+
+Then, we'll need Skia and Skia Gesture:
+
+```bash
+npx expo install @shopify/react-native-skia react-native-skia-gesture
+```
+
+Since we're going to animate things, as usual we'll need **React Native Reanimated**.
+
+```bash
+npx expo install react-native-reanimated
+```
+
+## Here's the plan
+
+This article is divided into three parts:
+
+1. The basic Circle UI: We'll build the basic UI of the Circle with the Path component.
+2. Adding the Gestures: We'll add the gestures to the circles.
+3. The Metaball effect: We'll add the blur and color matrix effects to the circles.
+
+## The basic Circle UI
+
+Everything magical starts with a Skia Canvas and a Circle. In this case, we'll create a simple circle and position it at the center of the screen.
+
+We'll also add a beautiful gradient to make it more visually appealing.
+
+Let's start adding it in our project.
+
+```tsx
+import { Canvas, Circle, SweepGradient } from '@shopify/react-native-skia';
+
+const Radius = 80;
+
+const App = () => {
+  const { width, height } = useWindowDimensions();
+
+  const cx = width / 2;
+  const cy = height / 2;
+
+  return (
+    <Canvas style={styles.fill}>
+      <Circle cx={cx} cy={cy} r={RADIUS} />
+      {/** If you want to feel smart, always use the SweepGradient */}
+      <SweepGradient c={vec(0, 0)} colors={['cyan', 'magenta', 'cyan']} />
+    </Canvas>
+  );
+};
+```
+
+Look what we've done so far, isn't it beautiful?
+Yep, you can't do much with a simple circle, but we'll fix that in the next step.
+
+<BasicMetaballWithSkia />
+
+## The interactive Circles
+
+Have you tried to interact with the circle? Bad news, it's not interactive.
+
+This seems like a good opportunity to learn how to interact with a Skia Canvas. Unfortunately, there is no gesture handler for the Canvas component, so if you want to manage gestures you'll need to get creative.
+
+There are two options:
+
+1. You can create a "fake" transparent circle and use gesture-handler with Reanimated ([docs](https://shopify.github.io/react-native-skia/docs/animations/gestures/))
+2. You can use [react-native-skia-gesture](https://github.com/enzomanuelmangano/react-native-skia-gesture)
+
+To keep things simple, we'll use the second option, though the first one is perfectly valid.
+
+First, we'll need to convert the Canvas to a Touchable.Canvas.
+
+```tsx
+import { Touchable } from 'react-native-skia-gesture';
+
+...
+
+<Touchable.Canvas>
+  ...
+</Touchable.Canvas>
+```
+
+Then we can start adding the Touchable.Circle.
+
+```tsx
+const App = () => {
+  const { width, height } = useWindowDimensions();
+
+  const cx = width / 2;
+  const cy = height / 2;
+
+  const rCenterX = useSharedValue(cx);
+  const rCenterY = useSharedValue(cy);
+
+  return (
+    <Touchable.Canvas style={styles.fill}>
+      <Touchable.Circle cx={rCenterX} cy={rCenterY} r={RADIUS} />
+      <Circle cx={cx} cy={cy} r={RADIUS} />
+      {/** If you want to feel smart, always use the SweepGradient */}
+      <SweepGradient c={vec(0, 0)} colors={['cyan', 'magenta', 'cyan']} />
+    </Touchable.Canvas>
+  );
+};
+```
+
+We've completed the Skia Gesture basic setup but nothing has changed. Although we can finally start using the "useGestureHandler" hook.
+
+```tsx
+const rCenterX = useSharedValue(cx);
+const rCenterY = useSharedValue(cy);
+
+const ctx = useSharedValue({ x: 0, y: 0 });
+
+const circleGesture = useGestureHandler<{
+  x: number;
+  y: number;
+}>({
+  onStart: () => {
+    'worklet'; // IMPORTANT
+    ctx.value = { x: rCenterX.value, y: rCenterY.value };
+  },
+  onActive: ({ translationX, translationY }) => {
+    'worklet'; // IMPORTANT
+    rCenterX.value = ctx.value.x + translationX;
+    rCenterY.value = ctx.value.y + translationY;
+  },
+  onEnd: () => {
+    'worklet';
+    rCenterX.value = withSpring(cx);
+    rCenterY.value = withSpring(cy);
+  },
+});
+```
+
+Once we have the gesture handler, we can use it in the Touchable.Circle.
+
+```tsx
+<Touchable.Circle cx={rCenterX} cy={rCenterY} r={RADIUS} {...circleGesture} />
+```
+
+Now you can interact with the circle 🎉
+
+<WithPanMetaballWithSkia />
+
+## The Metaball effect
+
+Let's be honest, if you don't know the trick behind this animation, you'll feel like you're witnessing magic. I've always been fascinated by this kind of animation, and I've always wanted to build one.
+
+The fun part is that it's crazy simple to build. It just requires two ingredients:
+
+1. A Blur
+2. A ColorMatrix
+
+### Start with a Paint
+
+To use the ingredients mentioned above, we need to set up our pot. Well, in this case I'm talking about a Paint object.
+
+```tsx
+const layer = useMemo(() => {
+  return <Paint></Paint>;
+}, []);
+```
+
+We can easily apply the Paint object to a Group.
+
+```tsx
+<Touchable.Canvas onSize={canvasSize} style={styles.fill}>
+  <Group layer={layer}>
+    <Touchable.Circle
+      cx={rCenterX}
+      cy={rCenterY}
+      r={RADIUS}
+      {...gestureHandler}
+    />
+    <Circle cx={cx} cy={cy} r={RADIUS} />
+    <SweepGradient c={vec(0, 0)} colors={['cyan', 'magenta', 'cyan']} />
+  </Group>
+</Touchable.Canvas>
+```
+
+It seems like nothing has changed, but we've just set up our pot.
+
+Now we can start adding the ingredients.
+
+### The Blur
+
+```tsx
+...
+const layer = useMemo(() => {
+  return (
+    <Paint>
+      <Blur blur={30} />
+    </Paint>
+  );
+}, []);
+...
+```
+
+And that's the output.
+
+<CanvasKitJsAlert />
+
+<WithBlurMetaballWithSkia />
+
+### The ColorMatrix
+
+If you try moving around the circle, you'll see that actually with the blur applied it seems that we're very close to the final result.
+
+If only we could focus things again without losing the fluid effect given by the blur.
+
+Luckly, we can do that with a ColorMatrix.
+
+```tsx
+...
+const layer = useMemo(() => {
+  return (
+    <Paint>
+      <Blur blur={30} />
+      <ColorMatrix
+        matrix={[
+          // R, G, B, A, Position
+          1, 0, 0, 0, 0,
+          0, 1, 0, 0, 0,
+          0, 0, 1, 0, 0,
+          0, 0, 0, 60, -30,
+        ]}
+      />
+    </Paint>
+  );
+}, []);
+...
+```
+
+The metaball effect creates a fluid, organic connection between shapes using a combination of blur and color matrix transformations. Here's how it works:
+
+#### Core Formula
+
+The effect is based on this transformation:
+
+```
+α_new = alphaMultiplier × α - alphaThreshold
+```
+
+#### Key Parameters
+
+1. **alphaMultiplier** (default: 60)
+   - Controls the edge sharpness of the metaball
+   - Higher values (e.g., 80) = Sharper edges
+   - Lower values (e.g., 40) = Softer edges
+   - Must be positive
+
+2. **alphaThreshold** (default: 30)
+   - Controls the connection area size
+   - Higher values = Smaller connection area
+   - Lower values = Larger connection area
+
+#### How It Works
+
+1. First, the blur spreads out the alpha values of both circles, creating a gradient falloff
+2. The color matrix then applies the transformation:
+   - Areas where α < (threshold ÷ multiplier) become transparent
+   - Areas where α > (threshold ÷ multiplier) become visible
+   - The transition point occurs at α = 0.5 (with default values)
+
+Why don't you try to play with the parameters?
+
+_Note: by setting the alpha to 1 and the threshold to 0 you'll get the blurred effect._
+
+<WithColorMatrixMetaballWithSkia />
+
+## Conclusion
+
+I hope you enjoyed this tutorial and that you learned something new. I'm really excited to see what you will create with this technique and I'm looking forward to seeing your creations. Feel free to share them with me on [Twitter](https://x.com/reactiive_).
+
+Here some of my experiments:
+
+- [Delete Button](https://x.com/reactiive_/status/1843577074692567093)
+- [Exclusion Tabs](https://x.com/reactiive_/status/1828356782131212447)
+- [Fluid Slider](https://x.com/reactiive_/status/1662020758413926401)
+- [Fancy Bottom Tab Bar](https://x.com/reactiive_/status/1625429138159947776)

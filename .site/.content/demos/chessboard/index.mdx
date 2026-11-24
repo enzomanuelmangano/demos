@@ -1,0 +1,53 @@
+<Title date="2026-06-06" slug="chessboard" basePath="demos">
+  Chessboard Shader
+</Title>
+
+<Demo />
+
+A chessboard that replays a full game by itself — and on checkmate a glass ripple sweeps out from the mated king, blurring and tinting the whole board in its wake.
+
+## The transition is a screenshot
+
+The effect isn't drawn on top of the board — it _is_ the board. On checkmate the live view is snapshotted into an `SkImage` with `makeImageFromView`, and that bitmap is fed into a full-screen SkSL shader as a texture. From there the React tree is frozen and everything you see is the shader sampling the snapshot.
+
+```tsx
+const snapshot = useSharedValue<SkImage | null>(null);
+const progress = useSharedValue(0); // the shell sweeping out, 0 → 1
+
+// on checkmate
+snapshot.value = await makeImageFromView(rootRef);
+progress.value = withTiming(1, { duration: WAVE_MS, easing: Easing.out(Easing.ease) });
+
+return (
+  <Canvas style={StyleSheet.absoluteFill}>
+    <Fill>
+      <Shader source={WAVE} uniforms={uniforms}>
+        <ImageShader image={snapshot} fit="cover" rect={rect} />
+      </Shader>
+    </Fill>
+  </Canvas>
+);
+```
+
+## The wave (SkSL)
+
+The shader takes the snapshot plus a handful of uniforms driven from the worklet. `u_origin` is the mated king, `u_progress` is the expanding shell:
+
+```glsl
+uniform shader image;       // snapshot of the screen
+uniform float2 u_origin;    // wipe origin (the mated king)
+uniform float  u_progress;  // 0 → 1 (the shell sweeping out)
+uniform float  u_band;      // shell softness / thickness (px)
+uniform float  u_amplitude; // refraction at the shell (px)
+uniform float  u_maxBlur;   // blur radius reached behind the front (px)
+```
+
+Ahead of the front the board stays sharp; at the crest it refracts like a glass dome (`lens = exp(-x*x / (2*w*w))`); behind it the wake frosts over with a **golden-angle (Vogel) disk blur** — 32 taps on a spiral with `sqrt`-distributed radii so the blur is gaussian-smooth and gridless, and scales for free with how far behind the front each pixel sits.
+
+## Architecture
+
+All behaviour — replay, pause, clocks, haptics, the aura — lives in a single `useChessGame` hook; the screen itself is pure layout. A separate `HistorySync` drives the board off the selected ply, isolated from the main tree so scrubbing the move history never re-renders the board.
+
+<GitHubRepoButtons />
+
+<SendFeedback />

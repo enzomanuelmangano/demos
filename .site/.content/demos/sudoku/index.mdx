@@ -1,0 +1,70 @@
+<Title date="2025-04-03" slug="sudoku" basePath="demos">
+  Sudoku with React Native Reanimated & Skia
+</Title>
+
+<Demo />
+
+<GithubCard repo="enzomanuelmangano/demos" path="src/animations/sudoku" />
+
+During a period in my life, I was really into Sudoku. I considered creating a Sudoku app multiple times but never actually took the time to build it 😅
+
+A few months ago, I started prototyping some ideas for fun but eventually set them aside.
+
+While I don't plan to publish a new app anytime soon, I thought it would be fun to share the demo with you!
+
+_Pro tip_: long press on the title to solve programmatically the puzzle and quickly fire the confetti!
+
+### Packages Used:
+
+- [react-native-reanimated](https://github.com/software-mansion/react-native-reanimated)
+- [react-native-fast-confetti](https://github.com/AlirezaHadjar/react-native-fast-confetti)
+
+Please consider leaving a star ⭐️ on both repositories!
+
+React Native Fast Confetti is built on top of Reanimated and Skia (Skia must be installed as a dependency).
+
+## Project Structure
+
+```
+src/
+├── components/
+│   └── sudoku-board/     # Main game board component
+│       ├── cell.tsx      # Individual cell component
+│       ├── cell-container.tsx
+│       ├── constants.ts
+│       ├── index.tsx
+│       └── styles.ts
+├── logic/               # Game logic and utilities
+├── theme/              # Theme configuration
+└── index.tsx          # App entry point
+```
+
+### SudokuBoard
+
+The main game board component that manages the game state and renders the interactive Sudoku grid.
+
+```typescript
+import { SudokuBoard } from './components/sudoku-board';
+
+// Usage
+<SudokuBoard
+  initialBoard={board}  // Initial Sudoku puzzle
+  delay={600}           // Animation delay in ms
+  onComplete={() => {}} // Callback when puzzle is solved (Used to trigger confetti)
+  ref={sudokuRef}       // Ref for accessing solve method
+/>
+```
+
+#### Props
+
+- _initialBoard_: The initial Sudoku puzzle board
+- _delay?_: Animation delay in milliseconds (default: 0)
+- _onComplete?_: Callback function when the puzzle is solved
+
+#### Ref Methods
+
+- _solve()_: Attempts to solve the puzzle programmatically
+
+<ReanimatePromo />
+
+<SendFeedback />

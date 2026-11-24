@@ -1,0 +1,11 @@
+{
+  "title": "Introduction to React Native Gesture Handler",
+  "shortTitle": "Introduction to React Native Gesture Handler",
+  "subtitle": "Dealing with gestures can be quite challenging, especially in React Native. This tutorial will teach you how to use the React Native Gesture Handler package to work with gestures...",
+  "author": "Enzo Manuel Mangano",
+  "date": "2024-01-13",
+  "slug": "introduction-to-gestures",
+  "tags": ["react-native", "react", "gestures", "react-native-gesture-handler"],
+  "featuredImage": "./images/header.webp",
+  "series": "what-about-gestures"
+}

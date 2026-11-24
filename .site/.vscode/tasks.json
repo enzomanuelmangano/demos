@@ -1,0 +1,62 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "contract: build this file",
+      "type": "shell",
+      "command": "bun exact.mjs contract build \"${file}\"",
+      "problemMatcher": "$exact-contract",
+      "presentation": {
+        "reveal": "silent",
+        "clear": true
+      }
+    },
+    {
+      "label": "contract: format this file",
+      "type": "shell",
+      "command": "bun exact.mjs contract fmt \"${file}\"",
+      "problemMatcher": "$exact-contract",
+      "presentation": {
+        "reveal": "silent",
+        "clear": true
+      }
+    },
+    {
+      "label": "app: web dev loop",
+      "type": "shell",
+      "command": "bun exact.mjs web",
+      "problemMatcher": "$exact-contract"
+    },
+    {
+      "label": "app: test on web",
+      "type": "shell",
+      "command": "bun exact.mjs test web",
+      "problemMatcher": [
+        "$exact-contract",
+        "$rustc"
+      ],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "app: run on macOS",
+      "type": "shell",
+      "command": "bun exact.mjs mac --run",
+      "problemMatcher": [
+        "$exact-contract",
+        "$rustc"
+      ]
+    },
+    {
+      "label": "app: run on an iOS simulator",
+      "type": "shell",
+      "command": "bun exact.mjs ios --run",
+      "problemMatcher": [
+        "$exact-contract",
+        "$rustc"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "title": "The Secret Ingredient: React Native Haptic Feedback",
+  "shortTitle": "The Secret Ingredient: React Native Haptic Feedback",
+  "subtitle": "Have you ever thought that your React Native app looks a bit flat? In this article we're going to discover the missing ingredient in few seconds.",
+  "author": "Enzo Manuel Mangano",
+  "date": "2022-04-13",
+  "slug": "haptic-feedback",
+  "tags": ["react", "react-native", "reanimated", "animation"],
+  "featuredImage": "./images/header.webp",
+  "series": "react-native-toolbelt"
+}

@@ -1,0 +1,10 @@
+{
+  "title": "Introducing Refined: optimize your React Native styles by default",
+  "shortTitle": "Introducing Refined",
+  "subtitle": "An ESLint plugin that enforces React Native styling best practices, so you never forget the small details that make your app shine.",
+  "author": "Enzo Manuel Mangano",
+  "date": "2025-12-06",
+  "slug": "introducing-refined",
+  "tags": ["react-native", "eslint", "tooling", "styling"],
+  "featuredImage": "./images/header.webp"
+}

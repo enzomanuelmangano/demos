@@ -1,0 +1,137 @@
+<Title date="2024-01-06" slug="setup-reanimated-gestures">
+  How to install React Native Reanimated and Gesture Handler
+</Title>
+
+This article guides you through the process of initializing a React Native (with and without Expo) project using Reanimated and React Native Gesture Handler fully configured.
+
+Don't worry, it will be easier than you might think.
+
+Since we're going to use Expo, make sure to have it already installed. If you don't have the Expo CLI installed, just run the following command:
+
+**Ensure Expo is Installed:**
+
+Before we start, make sure you have Expo installed. If not, run the following command:
+
+```bash
+npm install --global expo-cli
+```
+
+**Now, let's dive in:**
+
+```bash
+npx create-expo-app YOUR-PROJECT-NAME -t expo-template-blank-typescript
+```
+
+If everything is successful, you'll see the default _App.tsx_ file with a basic component.
+
+```tsx
+import { StatusBar } from 'expo-status-bar';
+import React from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+
+export default function App() {
+  return (
+    <View style={styles.container}>
+      <Text>Open up App.tsx to start working on your app!</Text>
+      <StatusBar style="auto" />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
+```
+
+## Installing Reanimated
+
+To install Reanimated, run:
+
+```bash
+npx expo install react-native-reanimated
+```
+
+However, simply installing the package is not enough. If you try to use Reanimated methods in the _App_ component without configuring Babel, your app will crash. To fix this, add the Reanimated babel plugin in the _babel.config.js_ file:
+
+```js
+module.exports = function (api) {
+  api.cache(true);
+  return {
+    presets: ['babel-preset-expo'],
+    plugins: ['react-native-reanimated/plugin'],
+  };
+};
+```
+
+Now, you might be wondering how to use Reanimated. I've created a series on this topic. [Click here if you're interested](/series/animate-with-reanimated).
+
+## Installing React Native Gesture Handler
+
+For React Native Gesture Handler, the process is similar. Run:
+
+```bash
+npx expo install react-native-gesture-handler
+```
+
+To complete the installation, ensure that all components are wrapped with _GestureHandlerRootView_:
+
+```tsx
+...
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
+export default function App() {
+  return (
+    <GestureHandlerRootView style={{flex: 1}}>
+      <View style={styles.container}>
+        <Text>Open up App.tsx to start working on your app!</Text>
+        <StatusBar style="auto" />
+      </View>
+    </GestureHandlerRootView>
+  );
+}
+
+...
+```
+
+If you want to explore gestures in React Native, I've created a series called _"What about Gestures"_ [Click here to learn more](/series/what-about-gestures).
+
+## Using React Native CLI
+
+For React Native CLI, the process is almost identical. Replace a few commands:
+
+### Project Setup
+
+Instead of _expo init_, run:
+
+```bash
+npx react-native init AwesomeTSProject --template react-native-template-typescript
+```
+
+### Packages Installation
+
+Replace:
+
+```bash
+npx expo install react-native-reanimated react-native-gesture-handler
+```
+
+with **yarn**:
+
+```bash
+yarn add react-native-reanimated react-native-gesture-handler
+```
+
+or if you're using **npm**:
+
+```bash
+npm install react-native-reanimated react-native-gesture-handler
+```
+
+## Conclusions
+
+In conclusion, setting up a React Native project with Expo, Reanimated, and React Native Gesture Handler is a straightforward process. Ensure you follow the steps outlined above, and you'll be ready to explore the powerful capabilities these libraries offer in enhancing your React Native applications. Happy coding!

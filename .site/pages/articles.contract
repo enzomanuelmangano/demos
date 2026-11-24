@@ -1,0 +1,62 @@
+// /articles, /series/:series (components/ArticleList.tsx): a grid of cards (1, 2, then 3 columns at 768 and 1024 px)
+// in a 1200 px column, 96 px under the header from 640 px. Each card rises in (motion-card-in, 700 ms): the first
+// three at once from the page's CSS (100, 160, 220 ms), the others when they come into view, in a cascade
+// (RevealOnScroll: paused until web/reveal.js, a head script, sees them and sets their delays).
+// /docs (app/docs/page.tsx) is an empty page, as live.
+use sm from "../components/responsive.contract"
+use Page, Blocks from "../components/markdown.contract"
+
+shape Card
+  id: string
+  slug: string
+  title: string
+  description: string
+  value: string
+  href: string
+  series: string
+  cover: string
+  coverWidth: number
+  coverHeight: number
+  index: number
+
+component ArticleCard
+  props
+    card: Card
+  view
+    link href=card.href display="flex" flex-direction="column" height="100%" overflow="hidden" border-radius=8 border="1px solid rgba(255, 255, 255, 0.05)"
+      background-color="rgba(255, 255, 255, 0.03)" -exact-hover-effect="none" text-decoration-line="none" data-motion="article-card"
+      view width="100%" aspect-ratio=1.85 overflow="hidden" background-color="rgba(0, 0, 0, 0.1)" data-motion="article-cover"
+        image card.cover alt="" width="100%" height="100%" object-fit="cover" display="block"
+      column padding=12 flex=1
+        column gap=4 margin-bottom=6
+          text card.title font-size=15 font-weight=600 line-height="20px" letter-spacing="-0.005em" color="var(--color-text-primary)" line-clamp=2 white-space="pre-wrap" data-motion="article-title"
+          text card.description font-size=13 line-height="18px" color="var(--color-text-tertiary)" overflow="hidden" text-overflow="ellipsis" white-space="nowrap" data-motion="article-dim"
+        text card.value font-size=12 line-height="normal" color="var(--color-text-tertiary)" font-variant-numeric="tabular-nums" data-motion="article-dim"
+
+component ArticleList
+  props
+    cards: Card[]
+  view
+    column width="100%" align-items="center" margin-top=sm(48, 96) padding-left=24 padding-right=24 box-sizing="border-box"
+      view width="100%" max-width=1200 display="grid" gap=24 data-motion="article-grid"
+        for c, i in cards key=c.id
+          view data-motion=(i < 3 ? "card-in" : "card-in wait")
+            ArticleCard(card=c)
+
+// /articles/:post and /docs/:post (app/articles/[post]/page.tsx): the MDX in a 768 px column, 24 px down.
+component ArticlePage
+  props
+    page: Page
+    article: bool
+    copied: string
+    copy: action
+  slot
+  view
+    column width="100%" max-width="48rem" margin-left="auto" margin-right="auto" padding-left=24 padding-right=24 box-sizing="border-box" flex=1
+      column padding-top=24 padding-bottom=24
+        column flex=1 min-width="100%"
+          for b in page.blocks key=b.id
+            Blocks(block=b, copied=copied, copy=copy)
+          children
+          // The newsletter's mb-32 (withBottomMargin, its default on the article pages).
+          view height=(article ? 128 : 0)

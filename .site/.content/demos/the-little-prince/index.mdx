@@ -1,0 +1,50 @@
+<Title date="2026-06-27" slug="the-little-prince" basePath="demos">
+  The Little Prince — Text to Image Morph
+</Title>
+
+<Demo />
+
+A page of text that flies apart and reassembles into a picture — the rose and fox farewell from The Little Prince morphing into an illustration of the prince on his planet. The screen is one instance of a generic text-to-image morph: feed it a `paragraph` and an `image`, and every glyph travels to a point in the picture.
+
+```tsx
+export const TheLittlePrinceScreen = () => {
+  const { width, height } = useWindowDimensions();
+  return (
+    <TextImageMorph
+      width={width}
+      height={height}
+      image={require('./assets/prince.png')}
+      paragraph={LITTLE_PRINCE_TEXT}
+    />
+  );
+};
+```
+
+## Two layouts per glyph
+
+Each character has a start (its spot on the typeset page) and an end (a point sampled from the image). The hook builds both: `buildLayout` lays the book page out of a Skia glyph atlas, then `computeTargets` samples the picture into a per-glyph destination `picXY` plus a `delays` array for the stagger.
+
+```ts
+const layout  = buildLayout(atlas, paragraph, font, width, height); // pageXY
+const targets = computeTargets(layout.pageXY, pictureImage, width, height);
+// targets: { picXY: Float32Array, delays: Float32Array }
+```
+
+Sampling is deferred one tick past first paint (`setTimeout`) so the text renders instantly and the morph data fills in behind it.
+
+## Where the dots land
+
+`computeTargets` reads the image pixels and places destinations by **ink probability** — luminance maps to how likely a glyph lands on a given pixel, so dark regions of the illustration pull more characters and the picture emerges from text density. A prune pass drops points with too few neighbours to keep edges clean.
+
+```ts
+const lum = 0.299 * r + 0.587 * g + 0.114 * b; // per-pixel
+// darker pixel ⇒ higher ink probability ⇒ more glyphs settle there
+```
+
+## Rendering
+
+Per frame, a worklet interpolates each glyph from `pageXY` to `picXY` by its delay, and Skia's `<Atlas>` draws the thousands of sprites in a single pass — so the whole page can fly at once and still hold 60fps. The passage is about seeing with the heart; the words literally become the thing they describe.
+
+<GitHubRepoButtons />
+
+<SendFeedback />

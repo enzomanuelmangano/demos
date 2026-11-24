@@ -1,0 +1,91 @@
+name: Site
+
+# The reactiive.io site (.site/, its own Exact app): typecheck its tooling and build it. Its paths are .site/ and this
+# file only, so the Demos app (exact-lint.yml) and the React Native app (lint.yml) never trigger it, and it never
+# triggers them (docs/isolation.md). It builds; it deploys nothing.
+on:
+  pull_request:
+    paths:
+      - '.site/**'
+      - '.github/workflows/site.yml'
+  push:
+    branches: [main, site]
+    paths:
+      - '.site/**'
+      - '.github/workflows/site.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: .site
+
+jobs:
+  site:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Bun (the version Exact pins)
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: The site's Exact seed
+        id: seed
+        run: echo "seed=$(sed -n 's/^const seed = ".*\/\([0-9a-f]\{40\}\)";$/\1/p' exact.mjs)" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout expo/exact at the site's seed
+        uses: actions/checkout@v4
+        with:
+          repository: expo/exact
+          ref: ${{ steps.seed.outputs.seed }}
+          path: .exact-sdk
+
+      - name: Cache Rust and Exact's compiled web modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.rustup
+            ~/.cargo/bin
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cache/exact
+          key: site-rust-${{ steps.seed.outputs.seed }}
+
+      - name: Exact web prerequisites
+        run: bun ../.exact-sdk/scripts/exact.mjs setup --platform web
+
+      - name: Install (the site's own lockfile)
+        run: bun install --frozen-lockfile
+
+      - name: 'Secret check (patterns only: CI has no env file; .site/docs/local-env.md)'
+        run: bun tools/check-secrets.ts --tracked --patterns-only
+
+      - name: Typecheck the tooling
+        run: bun x tsc -p tsconfig.json
+
+      - name: ImageMagick as `magick` (gen-content resizes images with it; the runner ships ImageMagick 6's `convert`)
+        run: |
+          if ! command -v magick >/dev/null; then
+            command -v convert >/dev/null || { sudo apt-get update -q && sudo apt-get install -y -q imagemagick; }
+            mkdir -p "$HOME/.local/bin"
+            printf '#!/bin/sh\nexec convert "$@"\n' > "$HOME/.local/bin/magick"
+            chmod +x "$HOME/.local/bin/magick"
+            echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          fi
+
+      - name: Generate the content modules (content-gen/ is generated, never tracked; app.ts imports it)
+        run: bun tools/gen-content.ts
+
+      - name: Build
+        env:
+          EXACT: ${{ github.workspace }}/.exact-sdk
+        run: bun exact.mjs web-build --out dist

@@ -1,0 +1,62 @@
+<Title date="2025-11-17" slug="magnet-spring" basePath="demos">
+  Magnet Spring Animation
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/magnet-spring"
+/>
+
+A physics-based magnetic snap interaction where a draggable object snaps to the nearest magnet point with spring animations. Magnets react visually as the object approaches them.
+
+## What's This About?
+
+This component simulates magnetic attraction physics. Drag the main object around the screen, and when released, it springs to the nearest magnet point. The magnets themselves scale up and change color as the object gets closer, creating an engaging visual feedback loop.
+
+## Technical Implementation
+
+The interaction features sophisticated physics:
+
+- **Fibonacci Positioning**: Magnets are placed using golden ratio spiral for aesthetic arrangement
+- **Nearest Neighbor**: Efficient distance calculation to find closest magnet
+- **Spring Physics**: Mass, damping, and stiffness tuned for metallic feel
+- **Reactive Magnets**: Scale and color interpolate based on object proximity
+- **Velocity Preservation**: Release velocity is passed to spring for natural motion
+
+## How It Works
+
+1. Magnets are positioned in a Fibonacci spiral pattern plus center point
+2. Drag the main object anywhere on screen
+3. Object scales up slightly while being dragged
+4. On release, nearest magnet is calculated using Euclidean distance
+5. Object springs to nearest magnet with velocity-aware animation
+6. Nearby magnets visually react by scaling and changing color
+
+## Spring Configuration
+
+- **Mass**: 0.4 for responsive feel
+- **Damping**: 15 for metallic bounce
+- **Stiffness**: 120 for rigid metallic behavior
+- **Velocity**: Preserved from drag gesture for natural motion
+
+## Usage
+
+```tsx
+import { Magnets } from './magnet-spring';
+
+// Customizable props available
+<Magnets
+  magnets={customPositions} // Array of {x, y} positions
+  initialPosition={{ x: 100, y: 100 }}
+  magnetRadius={10}
+  magnetColor="#c1c1c1"
+  objectRadius={25}
+  objectColor="#3b3b3b"
+/>;
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

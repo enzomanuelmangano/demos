@@ -1,0 +1,18 @@
+{
+  "title": "Exploring Pinch Gesture in React Native (Reanimated)",
+  "shortTitle": "Exploring Pinch Gesture in React Native (Reanimated)",
+  "subtitle": "This tutorial will teach you how to use the PinchGestureHandler component from the GestureHandler package to detect pinch gestures in React Native.",
+  "author": "Enzo Manuel Mangano",
+  "date": "2022-12-27",
+  "slug": "pinch-gesture-handler",
+  "tags": [
+    "react-native",
+    "react",
+    "reanimated",
+    "gestures",
+    "pinch-gesture-handler",
+    "react-native-gesture-handler"
+  ],
+  "featuredImage": "./images/header.webp",
+  "series": "animate-with-reanimated"
+}

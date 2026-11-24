@@ -1,0 +1,67 @@
+// css-animations-react-native's demo (reference: content/articles/css-animations-react-native/components/
+// animated-square.tsx): a 100 px white square (90 %) on the frame's 20 % black, its progress 0 → 1 over 2 s
+// (Easing.inOut(Easing.quad)) driving scale 0.5 → 1, a full turn, opacity 0.5 → 1 and corners 0 → 20, back and
+// forth, on the compositor; the corners are gesture-kit's MorphSquare.
+//
+// Exports, as the article's MDX names them:
+//   InteractiveBox                                   the frame, its demo indented under it
+//   AnimatedSquare(withoutRepeat, withoutPause)      false, false: Play/Pause over a loop that starts paused;
+//                                                    true, false: Play runs it once from 0;
+//                                                    false, true: Play loops it from 0, Restart stops it at 0
+use DemoFrame, BoxButton, MorphSquare from "../gesture-kit/box.contract"
+
+keyframes caSquare
+  from scale=0.5 rotate="0deg" opacity=0.5
+  to scale=1 rotate="360deg" opacity=1
+// MorphSquare's corners 0 → 20 (rmax 20), on the square's own timing
+keyframes caCornerBar
+  from translate="0px 0px"
+  to translate="0px 20px"
+keyframes caCornerDisc
+  from scale=0 translate="-20px -20px"
+  to scale=1 translate="0px 0px"
+
+fn caTiming(loop: bool, running: bool): string = `2000ms cubic-bezier(0.455, 0.03, 0.515, 0.955) 0ms ${loop ? "infinite alternate" : "1 normal"} both ${running ? "running" : "paused"}`
+fn caAnim(name: string, loop: bool, running: bool): string = `${name} ${caTiming(loop, running)}`
+
+component InteractiveBox
+  slot
+  view
+    DemoFrame()
+      children
+
+component AnimatedSquare
+  props
+    withoutRepeat: bool
+    withoutPause: bool
+  // The default demo's Play/Pause.
+  state playing = false
+  // withoutRepeat / withoutPause: presses of Play (a fresh run each), 0 at rest at progress 0.
+  state runs = 0
+  // On screen: a loop off screen holds its place (the page's animations do not run unseen).
+  state seen = false
+  derive loops = not withoutRepeat
+  derive started = withoutRepeat or withoutPause ? runs > 0 : true
+  derive running = (withoutRepeat or withoutPause ? true : playing) and seen
+  action toggle
+    playing = not playing
+  action run
+    runs = runs + 1
+  action restart
+    runs = 0
+  action visible(entry: IntersectionObserverEntry)
+    seen = entry.isIntersecting
+  view
+    view flex=1 display="flex" align-items="center" justify-content="center" background-color="#00000033" intersect=visible
+      for r in [runs] key=r
+        view width=100 height=100 flex-shrink=0 scale=0.5 opacity=0.5
+          animation=(started ? caAnim("caSquare", loops, running) : "none")
+          MorphSquare(size=100, color="white", alpha=0.9, radius=0, rmax=20, timing="none", prefix="caCorner",
+            loop=(started ? caTiming(loops, running) : "none"))
+    if withoutRepeat
+      BoxButton(kind="play", index=0, label="Play", press=run)
+    else if withoutPause
+      BoxButton(kind="play", index=0, label="Play", press=run)
+      BoxButton(kind="reset", index=1, label="Restart", press=restart)
+    else
+      BoxButton(kind=(playing ? "pause" : "play"), index=0, label=(playing ? "Pause" : "Play"), press=toggle)

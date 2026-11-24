@@ -1,0 +1,56 @@
+<Title date="2025-04-08" slug="particles-button" basePath="demos">
+  Particles Button with Reanimated and Skia
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/particles-button"
+/>
+
+A minimalistic and performant button component featuring a particle blast effect animation.
+
+This button component is built using Reanimated and Skia. While rendering particles can be computationally expensive without Skia (even with just 20 particles, performance could suffer with more), Skia's Atlas API efficiently renders multiple sprites using the same texture - making it perfect for this use case.
+
+Resources:
+
+- [Skia Atlas Docs](https://shopify.github.io/react-native-skia/docs/shapes/atlas/)
+- [Pressto](https://github.com/enzomanuelmangano/pressto): the subtle scale animation is built on top of pressto ✨
+
+## Usage
+
+```tsx
+import { CircularButton } from 'sparks-button';
+
+const App = () => {
+  return (
+    <CircularButton
+      size={48}
+      blastRadius={48}
+      onPress={() => {
+        console.log('Button pressed!');
+      }}
+    />
+  );
+};
+```
+
+## Props
+
+The CircularButton component accepts the following props:
+
+```typescript
+type CircularButtonProps = {
+  size: number; // Size of the circular button
+  blastRadius: number; // Radius of the blast effect animation
+  baseIcon?: React.ReactNode; // Custom icon for the base state (defaults to Plus icon)
+  activeIcon?: React.ReactNode; // Custom icon for the active state (defaults to Check icon)
+  autoReset?: boolean; // Whether to automatically reset the button state after animation (defaults to true)
+  onPress?: () => void; // Callback function called when the button is pressed
+};
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

@@ -1,0 +1,138 @@
+// The animated-loader-skia article's demos (the reference's content/articles/animated-loader-skia/components): a
+// round-capped arc in a 158 px canvas at the box's centre. The canvas mounts when the box comes within 300 px of the
+// viewport (its drawing code loads then) and spins only while visible.
+use InteractiveBox from "../_canvas/box.contract"
+
+// The reference's RN_TEXT (src/lib/rn-text.ts): a react-native-web <Text>'s system font and normal line height.
+style RnText
+  font-family="-apple-system, 'system-ui', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" line-height="normal"
+  white-space="pre-wrap" overflow-wrap="break-word"
+
+component Loader
+  props
+    key: string
+    type: string
+    start: number
+    visible: bool
+    presses: number
+    kind: string
+    near: bool
+  // tailwind's animate-[fadeIn_1000ms_ease-out] on the spinning loaders' box (globals.css fadeIn), as a transition
+  // armed by the box's first layout (keyframes would land in every page's head). The box is on the page from the
+  // start, so the fade runs at load as the reference's; the canvas comes when near.
+  state shown = false
+  action arm(w: number, h: number)
+    shown = true
+  view
+    row flex=1 align-items="center" justify-content="center"
+      view width=158 height=158 resize=arm opacity=((type == "with-animation" or type == "with-basic-animation") and not shown ? 0 : 1)
+        transition="opacity 1000ms ease-out"
+        if near
+          canvas surface=loader(key, type, start, visible, presses, kind) aria-hidden=true width=158 height=158
+
+// The progress demo's slider (components/loader/animated-slider.tsx): 200 px, a 2 px track (#b0b8ff up to the knob's
+// centre, #6370CA after), a 30 px #b0b8ff knob dragged by the pointer, the label above and the value below.
+component StartSlider
+  props
+    value: number
+    change: action
+  state x = 0
+  state from = 0
+  state anchor = 0
+  state dragging = false
+  action down(e: PointerEvent)
+    dragging = true
+    from = x
+    anchor = e.clientX
+  // A cancelled pointer (a touch the browser takes for a scroll, the window losing focus) ends as `pointerup` in Exact
+  // (host pointer.js hears pointercancel, pointerout of the window and blur): `up` covers it. A move with no button
+  // held ends a drag too, in case an end was missed.
+  action move(e: PointerEvent)
+    if dragging and e.buttons == 0
+      dragging = false
+    else if dragging
+      x = max(0, min(170, from + e.clientX - anchor))
+      change(max(0, min(170, from + e.clientX - anchor)) / 170)
+  action up(e: PointerEvent)
+    dragging = false
+  view
+    column align-items="center" margin-top=10 margin-bottom=10
+      text "Start" class=RnText font-size=16 margin-bottom=5 color="#bdbdbd"
+      column position="relative" width=200 height=40 justify-content="center"
+        row position="absolute" top="50%" width=200 height=2 overflow="hidden"
+          view height="100%" width=(x + 15) background-color="#b0b8ff"
+          view height="100%" width=(185 - x) background-color="#6370CA"
+        view position="absolute" top="50%" width=200 height=20 translate="0px -50%"
+        view position="absolute" top="50%" margin-top=-15 width=30 height=30 border-radius=15 background-color="#b0b8ff"
+          box-shadow="0 2px 3.84px rgba(0, 0, 0, 0.25)" cursor="grab" touch-action="none" user-select="none" translate=`${x}px 0px`
+          pointerdown=down pointermove=move pointerup=up
+      text value.toFixed(2) class=RnText font-size=14 margin-top=5 color="#bdbdbd"
+
+component LoaderDemo
+  props
+    key: string
+    type: string
+    withButtons: bool
+  // Mounted with the page (final sweep): a canvas mounted inside a scroll cost a whole-document style pass (Exact's :has rules, ~27 ms at 4x CPU); its first paint still waits for the scroll to settle (_canvas/draws.ts).
+  state near = true
+  state visible = false
+  state presses = 0
+  state kind = "reset"
+  state start = 0
+  action seen(entry: IntersectionObserverEntry)
+    visible = entry.isIntersecting
+    if entry.isIntersecting
+      near = true
+  action play
+    kind = "play"
+    presses = presses + 1
+  action reset
+    kind = "reset"
+    presses = presses + 1
+  action slide(value: number)
+    start = value
+  view
+    // The progress demo is square in a portrait window (the reference's Dimensions check).
+    InteractiveBox(theme="light", shape=(type == "with-progress" ? "portrait" : "video"), withPlay=withButtons,
+      withReset=withButtons, play=play, reset=reset, seen=seen)
+      column flex=1 min-height=0
+        if type == "with-progress"
+          column flex=1 align-items="center" gap=20 justify-content="center"
+            row flex=2 align-items="center" justify-content="center"
+              Loader(key=key, type=type, start=start, visible=visible, presses=presses, kind=kind, near=near)
+            row flex=1 align-items="center" justify-content="center" margin-bottom=20
+              StartSlider(value=start, change=slide)
+        else
+          Loader(key=key, type=type, start=0, visible=visible, presses=presses, kind=kind, near=near)
+
+// The MDX's names (content/articles/animated-loader-skia/components/index.tsx).
+component BasicLoaderWithSkia
+  view
+    LoaderDemo(key="basic-loader", type="basic", withButtons=false)
+
+component WithGradientLoaderWithSkia
+  view
+    LoaderDemo(key="gradient-loader", type="with-gradient", withButtons=false)
+
+component WithProgressLoaderWithSkia
+  view
+    LoaderDemo(key="progress-loader", type="with-progress", withButtons=false)
+
+component WithBasicAnimationLoaderWithSkia
+  view
+    LoaderDemo(key="basic-animation-loader", type="with-basic-animation", withButtons=true)
+
+component WithAnimationLoaderWithSkia
+  view
+    LoaderDemo(key="animation-loader", type="with-animation", withButtons=true)
+
+
+// One entry for the content converter: the export named `name` (an MDX tag of this article), nothing for another.
+// One call site per component (the plan's code grows with each).
+fn loaderType(name: string): string = name == "BasicLoaderWithSkia" ? "basic" : name == "WithGradientLoaderWithSkia" ? "with-gradient" : name == "WithProgressLoaderWithSkia" ? "with-progress" : name == "WithBasicAnimationLoaderWithSkia" ? "with-basic-animation" : name == "WithAnimationLoaderWithSkia" ? "with-animation" : ""
+component AnimatedLoaderSkiaInteractive
+  props
+    name: string
+  view
+    if loaderType(name) != ""
+      LoaderDemo(key=name, type=loaderType(name), withButtons=(loaderType(name) == "with-basic-animation" or loaderType(name) == "with-animation"))

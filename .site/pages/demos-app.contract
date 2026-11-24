@@ -1,0 +1,40 @@
+// /demos-app (reference app/demos-app/page.tsx): the Demos app's TestFlight beta, its QR code (computed at build:
+// tools/qr.ts) on a card that grows under the pointer and shrinks when pressed, and how to install it.
+use md from "../components/responsive.contract"
+use TestFlightQr from "../components/qr.contract"
+
+// The Demos app's TestFlight beta (also /demos's "Try it on iPhone", pages/demos.contract).
+fn testFlightUrl(): string = "https://testflight.apple.com/join/uB9PQHuT"
+
+style Body
+  font-size="1rem" line-height="1.5rem" color="var(--color-text-body)"
+
+component DemosAppPage
+  view
+    column gap=24 max-width="42rem" margin-top=md(0, 96) margin-bottom=12
+      text "Demos (TestFlight)" role="heading" aria-level=4 font-size="1.875rem" line-height="2.25rem" font-weight=600 color="var(--color-text-heading)"
+      text "Get access to 120+ React Native animation demos on your phone. Scan the QR code below to join the TestFlight beta. (Android coming soon)" class=Body
+    column align-items="center" gap=16 margin-top=32
+      // bg-gradient-to-br from-surface-secondary to-surface-elevated, rounded-2xl, shadow-lg; the hover and press
+      // scales and the shadow's growth are web/head.css's (data-motion qr-card: transition-all 200 ms).
+      view position="relative" padding=32 border-radius="var(--radius-2xl)" data-motion="qr-card"
+        background-image="linear-gradient(to bottom right, var(--color-surface-secondary), var(--color-surface-elevated))"
+        TestFlightQr(size=240)
+      column align-items="center" gap=8
+        text "Scan to install via TestFlight" font-size="0.875rem" line-height="1.25rem" color="var(--color-text-body)"
+        link href=testFlightUrl() target="_blank" rel="noopener noreferrer"
+          font-size="0.75rem" line-height="1rem" color="var(--color-text-link)" text-decoration-line="underline" data-motion="footer-link colors"
+          :hover
+            color = "#9faef4"
+          text "Or tap here on mobile"
+    column gap=16 max-width="42rem" margin-top=56
+      text "How to Install" role="heading" aria-level=5 font-size="1.5rem" line-height="2rem" font-weight=500 color="var(--color-text-heading)"
+      column gap=12
+        p class=Body margin=0
+          text "1. If you don't have TestFlight, download it from the "
+          text "App Store" href="https://apps.apple.com/app/testflight/id899247664" target="_blank"
+            color="var(--color-text-secondary)" text-decoration-line="underline" data-motion="footer-link hover-primary"
+          text "."
+        text "2. Open your iPhone camera and point it at the QR code. Tap the notification that appears." class=Body
+        text "3. In TestFlight, tap \"Accept\" to join the beta and install the app." class=Body
+        text "4. Once installed, explore all the animation demos with full source code access." class=Body

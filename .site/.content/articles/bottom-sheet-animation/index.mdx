@@ -1,0 +1,322 @@
+import { InteractiveBox, InitialSetup, BasicComponent, PanGesture, BorderRadius, FinalDemo } from './mdx-client';
+
+<Title date="2025-01-30" slug="bottom-sheet-animation">
+  Building a BottomSheet from scratch in React Native
+</Title>
+
+BottomSheets are a very common UI pattern in mobile apps. They are used to display additional content or actions without disrupting the main view.
+
+In this tutorial, we'll focus on creating a bottom sheet that not only looks great but also feels natural to interact with. We'll implement features like:
+
+- Smooth spring animations for natural movement
+- Pan gesture handling with proper context preservation
+- Dynamic border radius that changes based on position
+- External control methods for programmatic manipulation
+
+The best part? We'll achieve all of this using just two powerful packages: React Native Reanimated and React Native Gesture Handler.
+
+Here's what we'll be building 👇
+
+<InteractiveBox><FinalDemo /></InteractiveBox>
+
+### YouTube Tutorial
+
+Want to follow along with the video tutorial? Check it out here:
+
+<YouTubeEmbed videoId="KvRqsRwpwhY" />
+
+## Setup
+
+First, let's create a new React Native project with Expo and TypeScript:
+
+```bash
+npx create-expo-app BottomSheetAnimation -t expo-template-blank-typescript
+cd BottomSheetAnimation
+```
+
+Next, install the required dependencies:
+
+```bash
+npx expo install react-native-reanimated react-native-gesture-handler
+```
+
+## Initial UI Setup
+
+Let's start by setting up our _App.tsx_ with a dark background and proper status bar configuration:
+
+```typescript
+import { StatusBar } from 'expo-status-bar';
+import { StyleSheet, View } from 'react-native';
+import { gestureHandlerRootHOC } from 'react-native-gesture-handler';
+
+function App() {
+  return (
+    <View style={styles.container}>
+      <StatusBar style="light" />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#111',
+  },
+});
+
+export default gestureHandlerRootHOC(App);
+```
+
+## Creating the Bottom Sheet Component
+
+Now, let's create our bottom sheet component with a basic UI structure:
+
+```typescript
+import { Dimensions, StyleSheet, View } from 'react-native';
+import React from 'react';
+import { GestureDetector } from 'react-native-gesture-handler';
+import Animated from 'react-native-reanimated';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+type BottomSheetProps = {
+  children?: React.ReactNode;
+};
+
+const BottomSheet: React.FC<BottomSheetProps> = ({ children }) => {
+  const gesture = Gesture.Pan();
+
+  return (
+    <GestureDetector gesture={gesture}>
+      <Animated.View style={[styles.bottomSheetContainer]}>
+        <View style={styles.line} />
+        {children}
+      </Animated.View>
+    </GestureDetector>
+  );
+};
+
+const styles = StyleSheet.create({
+  bottomSheetContainer: {
+    height: SCREEN_HEIGHT,
+    width: '100%',
+    backgroundColor: 'white',
+    position: 'absolute',
+    top: SCREEN_HEIGHT,
+    borderRadius: 25,
+  },
+  line: {
+    width: 75,
+    height: 4,
+    backgroundColor: 'grey',
+    alignSelf: 'center',
+    marginVertical: 15,
+    borderRadius: 2,
+  },
+});
+
+export default BottomSheet;
+```
+
+## Implementing Pan Gesture
+
+Now, let's make our bottom sheet interactive by implementing the pan gesture handler:
+
+```typescript
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
+
+const MAX_TRANSLATE_Y = -SCREEN_HEIGHT + 50;
+
+const BottomSheet: React.FC<BottomSheetProps> = ({ children }) => {
+  const translateY = useSharedValue(0);
+  const context = useSharedValue({ y: 0 });
+
+  const gesture = Gesture.Pan()
+    .onStart(() => {
+      context.value = { y: translateY.value };
+    })
+    .onUpdate((event) => {
+      translateY.value = event.translationY + context.value.y;
+      translateY.value = Math.max(translateY.value, MAX_TRANSLATE_Y);
+    })
+    .onEnd(() => {
+      if (translateY.value > -SCREEN_HEIGHT / 3) {
+        translateY.value = withSpring(0);
+      } else if (translateY.value < -SCREEN_HEIGHT / 1.5) {
+        translateY.value = withSpring(MAX_TRANSLATE_Y);
+      }
+    });
+
+  const rBottomSheetStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateY: translateY.value }],
+    };
+  });
+
+  return (
+    <GestureDetector gesture={gesture}>
+      <Animated.View style={[styles.bottomSheetContainer, rBottomSheetStyle]}>
+        <View style={styles.line} />
+        {children}
+      </Animated.View>
+    </GestureDetector>
+  );
+};
+```
+
+Try it out 👇
+
+<InteractiveBox><PanGesture /></InteractiveBox>
+
+## Adding Interpolated Border Radius
+
+To make our bottom sheet more visually appealing, let's add an interpolated border radius:
+
+```typescript
+import {
+  Extrapolate,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
+
+// ... inside the BottomSheet component
+const rBottomSheetStyle = useAnimatedStyle(() => {
+  const borderRadius = interpolate(
+    translateY.value,
+    [MAX_TRANSLATE_Y + 50, MAX_TRANSLATE_Y],
+    [25, 5],
+    Extrapolate.CLAMP
+  );
+
+  return {
+    borderRadius,
+    transform: [{ translateY: translateY.value }],
+  };
+});
+```
+
+See how the border radius changes:
+
+<InteractiveBox><BorderRadius /></InteractiveBox>
+
+## Adding External Control
+
+Finally, let's add external control capabilities to our bottom sheet:
+
+```typescript
+import React, { useCallback, useImperativeHandle, forwardRef } from 'react';
+
+export type BottomSheetRefProps = {
+  scrollTo: (destination: number) => void;
+  isActive: () => boolean;
+};
+
+const BottomSheet = forwardRef<BottomSheetRefProps, BottomSheetProps>(
+  ({ children }, ref) => {
+    const translateY = useSharedValue(0);
+    const active = useSharedValue(false);
+
+    const scrollTo = useCallback((destination: number) => {
+      'worklet';
+      active.value = destination !== 0;
+      translateY.value = withSpring(destination, { damping: 50 });
+    }, []);
+
+    const isActive = useCallback(() => {
+      return active.value;
+    }, []);
+
+    useImperativeHandle(ref, () => ({ scrollTo, isActive }), [
+      scrollTo,
+      isActive,
+    ]);
+
+    // ... rest of the component implementation
+  }
+);
+```
+
+Try clicking the white button to control the bottom sheet:
+
+<InteractiveBox><FinalDemo hasBackdrop={false} /></InteractiveBox>
+
+## Adding the Backdrop
+
+In this specific case, since there's basically nothing in the background, it doesn't really matter if there's a backdrop or not. However, in a real use case, adding a backdrop is always a good idea.
+
+```tsx
+type AnimatedBackdropProps = {
+  active: SharedValue<boolean>;
+  onTap: () => void;
+};
+
+const AnimatedBackdrop: React.FC<AnimatedBackdropProps> = ({
+  active,
+  onTap,
+}) => {
+  const rBackdropStyle = useAnimatedStyle(() => {
+    return {
+      // if the sheet is active, the backdrop is visible
+      opacity: withTiming(active.value ? 1 : 0, { duration: 200 }),
+      // if the sheet isn't active, the backdrop shouldn't be touchable (otherwise the background is blocked)
+      pointerEvents: active.value ? 'auto' : 'none',
+    };
+  });
+
+  return (
+    <Animated.View
+      style={[StyleSheet.absoluteFill, styles.container, rBackdropStyle]}
+    />
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    // the backdrop is a semi-transparent white color (but this depends on your design)
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+});
+```
+
+Once we have the backdrop, we can add it to our bottom sheet component.
+
+```tsx
+const BottomSheet: React.FC<BottomSheetProps> = ({ children }) => {
+  // ... existing code
+
+  return (
+    <>
+      <AnimatedBackdrop
+        active={active}
+        onTap={() => {
+          // when the backdrop is tapped, we close the bottom sheet
+          scrollTo(0);
+        }}
+      />
+      <GestureDetector gesture={gesture}>
+        <Animated.View style={[styles.bottomSheetContainer, rBottomSheetStyle]}>
+          <View style={styles.line} />
+          {children}
+        </Animated.View>
+      </GestureDetector>
+    </>
+  );
+};
+```
+
+There we go ✨
+
+<InteractiveBox><FinalDemo /></InteractiveBox>
+
+## Conclusion
+
+We've built a bottom sheet component that combines smooth animations with natural gesture interactions. The implementation uses React Native Reanimated's spring animations and Gesture Handler's pan handler to create a fluid user experience. The component is type-safe, maintainable, and easily extendable.
+
+For real-world applications, consider enhancing the component with features like snap points, backdrop overlays, or dynamic content sizing based on your specific needs.

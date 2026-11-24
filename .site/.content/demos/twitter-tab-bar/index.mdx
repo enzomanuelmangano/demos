@@ -1,0 +1,82 @@
+<Title date="2023-08-02" slug="twitter-tab-bar" basePath="demos">
+  Twitter Tab Bar with React Navigation and Reanimated
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/twitter-tab-bar"
+/>
+
+A Twitter-style bottom tab navigation with smooth animations.
+
+## What's This About?
+
+This component recreates Twitter's bottom tab navigation system with smooth transitions and animations. It features a custom tab bar implementation with context-based active tab management and theme integration. The implementation includes screen navigation, custom styling, and animated tab indicators, making it perfect for applications requiring a polished, Twitter-like navigation experience.
+
+## Technical Implementation
+
+The component uses:
+
+- Navigation system
+- Context management
+- Theme integration
+- Custom tab bar
+- Screen mapping
+
+## Usage
+
+```tsx
+// Basic usage
+<TwitterTabBar />
+
+// Full implementation with context
+<NavigationContainer theme={AppTheme}>
+  <ActiveTabBarContextProvider>
+    <BottomTab.Navigator
+      tabBar={(props) => (
+        <BottomTabBar {...props} />
+      )}
+    >
+      {screens.map(screen => (
+        <BottomTab.Screen
+          key={screen}
+          name={screen}
+          component={ScreenMap[screen]}
+        />
+      ))}
+    </BottomTab.Navigator>
+  </ActiveTabBarContextProvider>
+</NavigationContainer>
+
+// Theme configuration
+const AppTheme = {
+  colors: {
+    background: Palette.background,
+    text: Palette.text,
+    border: Palette.text,
+    card: Palette.card
+  }
+};
+
+// Screen mapping
+const ScreenMap = {
+  Home: HomeScreen,
+  Search: SearchScreen,
+  Notifications: NotificationsScreen,
+  Message: MessageScreen
+};
+
+// Screen names
+const ScreenNames = {
+  Home: 'Home',
+  Search: 'Search',
+  Notifications: 'Notifications',
+  Message: 'Message'
+};
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

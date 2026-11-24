@@ -1,0 +1,59 @@
+<Title date="2023-10-18" slug="skia-color-picker" basePath="demos">
+  Color Picker with React Native Skia
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/skia-color-picker"
+/>
+
+A high-performance color picker component using Skia for rendering.
+
+## What's This About?
+
+This component creates an interactive color picker using Skia for optimal performance. It features a responsive canvas that adapts to the screen width, customizable blur effects, and real-time color updates. The implementation provides smooth color selection with gesture handling, making it suitable for applications requiring precise color picking capabilities.
+
+## Technical Implementation
+
+The component uses:
+
+- Skia rendering
+- Gesture handling
+- Blur effects
+- Color updates
+- Screen adaptation
+
+## Usage
+
+```tsx
+// Basic usage
+<SkiaColorPicker />
+
+// Color picker with custom props
+<ColorPicker
+  canvasSize={windowWidth}
+  blur={20}
+  onColorUpdate={(color) => {
+    // Handle color updates
+    console.log(color);
+  }}
+/>
+
+// With gesture handler root
+<GestureHandlerRootView style={{ flex: 1 }}>
+  <ColorPicker
+    canvasSize={windowWidth}
+    blur={20}
+    onColorUpdate={handleColorUpdate}
+  />
+</GestureHandlerRootView>
+
+// Window dimensions
+const { width: canvasSize } = useWindowDimensions();
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

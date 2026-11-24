@@ -1,0 +1,77 @@
+<Title date="2024-01-31" slug="verification-code" basePath="demos">
+  Verification Code Input with Reanimated
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/verification-code"
+/>
+
+A verification code input interface with validation and animations.
+
+## What's This About?
+
+This component creates an interactive verification code input screen with validation and feedback animations. It features a customizable code length, validation against a correct code, and visual feedback for user input. The implementation includes digit input handling, validation logic, and animated transitions, making it perfect for authentication flows or any scenario requiring secure code verification.
+
+## Technical Implementation
+
+The component uses:
+
+- Code validation
+- Input handling
+- Visual feedback
+- Animated transitions
+- State management
+
+## Usage
+
+```tsx
+// Basic usage with correct code
+<VerificationCode correctCode={31415} />
+
+// Verification code screen
+<VerificationCodeScreen
+  correctCode={correctCode}
+  onSuccess={() => {
+    // Handle successful verification
+  }}
+  onError={() => {
+    // Handle verification error
+  }}
+/>
+
+// Code validation
+const validateCode = (input: string) => {
+  return input === String(correctCode);
+};
+
+// Input handling
+const handleCodeChange = (code: string) => {
+  if (code.length === CODE_LENGTH) {
+    const isValid = validateCode(code);
+    if (isValid) {
+      onSuccess?.();
+    } else {
+      onError?.();
+    }
+  }
+};
+
+// Animated feedback
+const animatedStyle = useAnimatedStyle(() => ({
+  transform: [
+    {
+      translateX: withSpring(isError.value ? 10 : 0, {
+        damping: 3,
+        stiffness: 100
+      })
+    }
+  ]
+}));
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

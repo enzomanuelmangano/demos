@@ -1,0 +1,63 @@
+<Title date="2026-08-27" slug="light-on-painting" basePath="demos">
+  Light on Painting — Depth-Aware Relighting
+</Title>
+
+<Demo />
+
+A bulb on a cord, hanging over a painting. Drag it and the painting is lit from wherever you put it — the girl's cheek catches the light, her headscarf casts a shadow across the wall behind her, the diner's windows go warm as the bulb swings past. Swipe to carry the same bulb onto the next painting.
+
+The relighting idea and the shader it grew from are [Konrad Reczko's](https://x.com/reczko_konrad/status/2089670934009413751) — his monocular light injection example for [TypeGPU](https://github.com/software-mansion/TypeGPU) is what this is built on. This is that technique in React Native, with a rope tied to it.
+
+## A flat image has no geometry — so bake some
+
+A painting is pixels. To light it you need to know which way each pixel faces and how far away it is, and neither is in the file. Both are estimated offline, before the app ever runs: **Depth Anything V2** for depth, **Marigold** for surface normals. A script bakes the two into a single texture.
+
+```
+python scripts/bake-painting-surface.py \
+  --image girl-with-a-pearl-earring.jpg \
+  --out girl-with-a-pearl-earring-surface.bin \
+  --width 640 --normals --relief 1.0 --smooth 0.8
+```
+
+The result is an `rgba16float` field — `[slopeX, slopeY, occlusion, depth]` per texel — shipped next to the JPEG as a raw `.bin`. Metro serves it verbatim, so the half-floats reach `writeTexture` with nothing lost to an 8-bit image container.
+
+Doing it ahead of time is the whole trick. Konrad's original runs the depth model live, which is the more impressive engineering; baking buys resolution and a fragment shader cheap enough to leave headroom for everything else on screen.
+
+## One fragment pass
+
+Every frame is a single draw of three vertices. The fragment shader reads the surface field, reconstructs a normal from the slopes, and does ordinary lambert-plus-specular against the bulb's position — then marches the depth field toward the light to decide whether the pixel is in shadow.
+
+```wgsl
+let slope = surface.xy * (params.relief * RELIEF_SCALE);
+// Compressing the slope keeps depth cliffs from folding the normal flat.
+let tilt = -slope / (1.0 + length(slope) * SLOPE_COMPRESSION);
+let normal = normalize(vec3f(tilt, 1.0));
+```
+
+The bulb is drawn in the same pass, and it is _in_ the scene rather than on top of it: geometry nearer the camera than the bulb occludes it, so pushing the light behind the girl's shoulder tucks it out of sight.
+
+## The cord is a rope, not a line
+
+The bulb hangs off a twelve-node Verlet rope — position from the previous two frames, then distance and bend constraints solved ten times per step to carry tension along it.
+
+The detail that matters is the timestep. Verlet integrated on a variable frame delta stretches: on a long frame the implied velocity jumps, the constraint solver overcorrects, and the bulb visibly bounces on its cord for no physical reason. Fixed slices fix it.
+
+```ts
+light.carry += frame;
+let slices = 0;
+while (light.carry >= PHYSICS_STEP && slices < PHYSICS_MAX_STEPS) {
+  integrateCord(light, settings, PHYSICS_STEP, anchorY);
+  light.carry -= PHYSICS_STEP;
+  slices += 1;
+}
+```
+
+Dragging pays cord out and reels it in within its limits, and the bulb eases onto a target rather than being pinned to your fingertip — touch events arrive slower than frames, so a pinned bulb moves in steps you can see.
+
+## Nothing waits on JS
+
+Physics, uniform packing, command encoding and present all run on the UI thread. The gestures are worklets too, so a drag never crosses a thread boundary. The only hop back to JS is opening the settings sheet, which is React state and has to be.
+
+<GitHubRepoButtons />
+
+<SendFeedback />

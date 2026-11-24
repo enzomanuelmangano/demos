@@ -1,0 +1,58 @@
+<Title date="2023-07-26" slug="popup-handler" basePath="demos">
+  Popup Handler with Gesture Handler and Skia
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/popup-handler"
+/>
+
+A draggable popup component with position snapping and blurred background.
+
+## What's This About?
+
+This component creates an interactive popup interface that can be dragged around the screen and snaps to different corners. It features a blurred background effect and supports various positioning options (top-left, top-right, bottom-left, bottom-right). The popup includes rotation animations based on its position and gesture handling for smooth dragging interactions.
+
+## Technical Implementation
+
+The component uses:
+
+- Gesture handling
+- Position snapping
+- Blurred backgrounds
+- Corner rotation
+- Spring animations
+
+## Usage
+
+```tsx
+// Basic usage
+<PopupHandler />;
+
+// Popup configuration
+type Angle = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+
+// Gesture setup
+const gesture = Gesture.Pan()
+  .onBegin(() => {
+    context.value = {
+      x: translateX.value,
+      y: translateY.value,
+    };
+  })
+  .onUpdate((event) => {
+    translateX.value = event.translationX + context.value.x;
+    translateY.value = event.translationY + context.value.y;
+  });
+
+// With blurred background
+<BlurredPopupProvider>
+  <TouchablePopupHandler>{/* Popup content */}</TouchablePopupHandler>
+</BlurredPopupProvider>;
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

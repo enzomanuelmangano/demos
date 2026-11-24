@@ -1,0 +1,71 @@
+// introduction-to-reanimated's demos (reference: content/articles/introduction-to-reanimated/components/
+// animated-square.tsx): a 100 px blue square on white, in the frame, played by its round buttons. Each Play shows the
+// square's starting state at once and animates 100 ms later (the reference's reset, then setTimeout 100): here a
+// fresh node per play (keyed by the count) that, once laid out, takes its end values through transitions delayed
+// 100 ms. withTiming is Easing.inOut(Easing.quad) (CSS cubic-bezier(0.455, 0.03, 0.515, 0.955)), withSpring Exact's
+// spring 100/10/1 from rest. Transitions are inline: no keyframes reach the page's stylesheet. The corners are
+// gesture-kit's MorphSquare. As live, the final square's
+// "repeat" plays one leg: the reference's bounce restarts the spring inside the finishing frame, which then clears it.
+//
+// Exports, as the article's MDX names them:
+//   AnimatedSquareOpacityDemo()                                              opacity 0 → 1, 500 ms
+//   AnimatedSquareOpacityAndScaleDemo(scaleAnimationType="timing", showBorderRadiusAnimation=false)
+//                                                                           opacity 0 → 1, scale 1 → 2 (300 ms)
+//   AnimatedSquareOpacityAndScaleDemo(scaleAnimationType="spring", showBorderRadiusAnimation=false|true)
+//                                                                           opacity 1 → 0.5, scale spring 1 → 2,
+//                                                                           corners 50 → 25 when asked
+//   FinalAnimatedSquareDemo()                                                Play and Restart
+use DemoFrame, BoxButton, MorphSquare from "../gesture-kit/box.contract"
+
+fn irQuad(ms: number): string = `${ms}ms cubic-bezier(0.455, 0.03, 0.515, 0.955) 100ms`
+fn irSpring(): string = "0s -exact-spring(100, 10, 1) 100ms"
+
+component AnimatedSquareOpacityDemo
+  view
+    IrSquare(kind="opacity")
+
+component AnimatedSquareOpacityAndScaleDemo
+  props
+    scaleAnimationType: string
+    showBorderRadiusAnimation: bool
+  view
+    IrSquare(kind=(scaleAnimationType == "spring" ? (showBorderRadiusAnimation ? "springRadius" : "spring") : "timing"))
+
+component FinalAnimatedSquareDemo
+  view
+    IrSquare(kind="final")
+
+// kind: opacity, timing, spring, springRadius, final.
+component IrSquare
+  props
+    kind: string
+  // 0 before the first Play (and after Restart): the square's starting state, still.
+  state plays = 0
+  // The play whose square has mounted: its first layout (`resize`) sets its end values, which its transitions
+  // carry it to (CSS transitions need a change after the node exists: a fresh node per play is the reset).
+  state armed = 0
+  derive go = plays > 0 and armed == plays
+  derive rounded = kind == "springRadius" or kind == "final"
+  derive opacity = kind == "opacity" or kind == "timing" ? (go ? 1 : 0) : (go ? 0.5 : 1)
+  derive scale = kind == "final" ? (go ? 1 : 2) : kind == "opacity" ? 1 : (go ? 2 : 1)
+  derive fade = kind == "final" ? irSpring() : irQuad(500)
+  derive grow = kind == "timing" ? irQuad(300) : irSpring()
+  derive radius = rounded ? (go ? 25 : 50) : 0
+  derive corner = plays == 0 ? "none" : kind == "final" ? irSpring() : kind == "springRadius" ? irQuad(500) : "none"
+  action play
+    plays = plays + 1
+  action restart
+    plays = 0
+  action mounted(w: number, h: number)
+    armed = plays
+  view
+    DemoFrame()
+      view flex=1 display="flex" align-items="center" justify-content="center" background-color="white"
+        for p in [plays] key=p
+          view width=100 height=100 flex-shrink=0 opacity=opacity scale=scale resize=mounted
+            rotate=(kind == "final" ? (go ? "180deg" : "360deg") : "0deg")
+            transition=(plays == 0 ? "none" : `opacity ${fade}, scale ${grow}, rotate ${fade}`)
+            MorphSquare(size=100, color="blue", alpha=1, radius=radius, rmax=50, timing=corner, prefix="", loop="none")
+      BoxButton(kind="play", index=0, label="Play", press=play)
+      if kind == "final"
+        BoxButton(kind="reset", index=1, label="Restart", press=restart)

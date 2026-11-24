@@ -1,0 +1,17 @@
+{
+  "title": "Metaball Animation with React Native Skia",
+  "shortTitle": "Metaball Animation with React Native Skia",
+  "subtitle": "In this tutorial, we'll explore how to create a mesmerizing Metaball animation using React Native Skia and React Native Skia Gesture.",
+  "author": "Enzo Manuel Mangano",
+  "date": "2024-11-08",
+  "slug": "metaball",
+  "tags": [
+    "react-native",
+    "react",
+    "animation",
+    "react-native-skia",
+    "metaball"
+  ],
+  "featuredImage": "./images/header.webp",
+  "series": "exploring-skia"
+}

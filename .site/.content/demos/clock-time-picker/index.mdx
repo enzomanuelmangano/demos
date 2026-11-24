@@ -1,0 +1,44 @@
+<Title date="2025-03-25" slug="clock-time-picker" basePath="demos">
+  Clock Time Picker with Reanimated & Skia
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/clock-time-picker"
+/>
+
+**Isn't it beautiful?** I'm always amazed by animations that replicate real-world interactions.
+
+This is a time picker component for React Native, featuring a custom analog clock and smooth time range selector.
+
+**Inspiration**: [time picker / interaction post on X](https://x.com/proskuaaa/status/1901890724452311188)
+
+## Components
+
+### Clock
+
+A custom analog clock component built with Skia.
+
+```tsx
+<Clock date={sharedDateValue} size={100} />
+```
+
+### TimeRange
+
+A scrollable time selector with smooth animations and gradient overlays.
+
+```tsx
+<TimeRange
+  dates={timeOptions}
+  onDateChange={(dateMs) => {
+    'worklet';
+    handleTimeChange(dateMs);
+  }}
+/>
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

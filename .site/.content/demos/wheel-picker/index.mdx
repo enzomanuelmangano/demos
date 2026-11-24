@@ -1,0 +1,74 @@
+<Title date="2024-04-24" slug="wheel-picker" basePath="demos">
+  Wheel Picker with Reanimated and Gesture Handler
+</Title>
+
+<Demo />
+
+<GithubCard repo="enzomanuelmangano/demos" path="src/animations/wheel-picker" />
+
+A customizable wheel picker with animated count display and draggable slider.
+
+## What's This About?
+
+This component creates an interactive wheel picker with an animated number display and a draggable slider. It features expandable line spacing, smooth animations, and precise value selection. The implementation includes a customizable slider with gradient boundaries, animated count display, and responsive layout, making it perfect for numeric value selection or any interface requiring precise control over numerical values.
+
+## Technical Implementation
+
+The component uses:
+
+- Animated counting
+- Draggable slider
+- Space animation
+- Progress tracking
+- Gradient boundaries
+
+## Usage
+
+```tsx
+// Basic usage
+<WheelPicker />
+
+// Animated count display
+<AnimatedCount
+  count={animatedNumber}
+  maxDigits={10}
+  textDigitWidth={44}
+  textDigitHeight={80}
+  fontSize={65}
+/>
+
+// Draggable slider
+<DraggableSlider
+  scrollableAreaHeight={150}
+  spacePerLine={animatedSpacePerLine}
+  showBoundaryGradient
+  bigLineIndexOffset={20}
+  snapEach={1}
+  linesAmount={50}
+  maxLineHeight={20}
+  minLineHeight={10}
+  onProgressChange={(progress) => {
+    'worklet';
+    if (progress < 0) return;
+    animatedValue.value = progress;
+  }}
+/>
+
+// Space animation
+const animatedSpacePerLine = useDerivedValue(() => {
+  return withTiming(isExpanded ? 50 : 20);
+}, [isExpanded]);
+
+// Progress tracking
+const progress = useSharedValue(0);
+const animatedNumber = useDerivedValue(() => {
+  const multiplier = 1;
+  return Math.ceil(
+    progress.value * LinesAmount * multiplier
+  );
+}, [progress]);
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

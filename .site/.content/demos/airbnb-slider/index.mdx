@@ -1,0 +1,39 @@
+<Title date="2023-11-01" slug="airbnb-slider" basePath="demos">
+  Airbnb Slider with Reanimated and Gesture Handler
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/airbnb-slider"
+/>
+
+An elegant price range slider inspired by Airbnb's design, featuring smooth animations and a dynamic price display. The component combines a custom slider with animated digits for a polished user experience.
+
+## What's This About?
+
+This component recreates Airbnb's price selector with animated transitions for both the slider and price display. As users adjust the slider, the price updates with a rolling number animation while the currency symbol smoothly repositions itself.
+
+## Technical Implementation
+
+The component uses spring animations for natural movement and shared values for state management. The price display intelligently handles digit spacing and currency positioning, while the slider provides smooth, responsive feedback.
+
+## Usage
+
+```tsx
+// The component accepts these main props
+type Props = {
+  initialProgress?: number;
+  minValue?: number;
+  maxValue: number;
+  onUpdate: (value: number) => void;
+};
+
+// Example usage
+<AirbnbSlider maxValue={4500} onUpdate={(price) => console.log(price)} />;
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

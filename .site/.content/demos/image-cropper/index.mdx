@@ -1,0 +1,60 @@
+<Title date="2023-06-19" slug="image-cropper" basePath="demos">
+  Image Cropper with React Native Skia 🖼️
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/image-cropper"
+/>
+
+An interactive image cropping component with navigation and preview capabilities.
+
+## What's This About?
+
+This component provides a sophisticated image cropping interface that allows users to select and adjust portions of images. The component features a modal-based navigation flow where users can crop an image and then view the cropped result in detail. The interface is designed with a dark theme and smooth transitions between screens, making it ideal for photo editing applications.
+
+## Technical Implementation
+
+The component uses:
+
+- Stack navigation
+- Modal presentations
+- Image manipulation
+- Screen transitions
+- Dark theme styling
+
+## Usage
+
+```tsx
+// Navigation types
+type RootStackParamList = {
+  ImageCropper: undefined;
+  DetailCroppedImage: {
+    // Image details
+  };
+};
+
+// Basic usage
+<ImageCropper />;
+
+// Navigation setup
+const Stack = createNativeStackNavigator<RootStackParamList>();
+
+<Stack.Navigator
+  screenOptions={{
+    presentation: 'modal',
+    contentStyle: {
+      backgroundColor: '#000',
+    },
+  }}
+>
+  <Stack.Screen name="ImageCropper" component={ImageCropperScreen} />
+  <Stack.Screen name="DetailCroppedImage" component={DetailImageScreen} />
+</Stack.Navigator>;
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

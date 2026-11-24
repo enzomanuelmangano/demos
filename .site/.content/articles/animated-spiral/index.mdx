@@ -1,0 +1,301 @@
+import { AnimatedSpiralWithSkia, AnimatedInteractiveSnappySpiralWhite, AnimatedInteractiveSnappySpiralGradient, AnimatedInteractiveAnimatedSpiralFixedRadiusGradient, InlineMath, BlockMath } from './mdx-client';
+
+<Title date="2024-10-24" slug="animated-spiral">
+  Animated Spiral with React Native Skia
+</Title>
+
+Spirals are simply magical.
+
+Honestly, you'll not use them in your day-to-day projects, but they are still beautiful and fun to play with.
+
+In this article, we'll create an animated logarithmic spiral by combining React Native Skia and Reanimated.
+We'll start with the math behind these spirals, implement it in code, and use Skia to render smooth animations of our spiral design.
+
+Hopefully, even though you won't use the animation frequently, you'll learn a lot of new interesting things.
+
+<AnimatedSpiralWithSkia />
+
+The source code is available on GitHub:
+
+<GithubCard repo="enzomanuelmangano/animated-skia-spiral" />
+
+## Setting up the repo
+
+We'll start by creating a new Expo project.
+
+```bash
+npx create-expo-app animated-spiral --template expo-template-blank-typescript
+```
+
+Then, we'll install the necessary dependencies.
+
+```bash
+npx expo install react-native-reanimated @shopify/react-native-skia
+```
+
+That's it! We're ready to start coding.
+
+### The approach
+
+First of all, we need to create a spiral. In this specific use case I was deeply inspired by the definition of logarithmic spiral.
+
+<BlockMath>r = a \cdot \exp(k \cdot \theta)</BlockMath>
+
+Where <InlineMath>r</InlineMath> is the radius, <InlineMath>a</InlineMath> is the constant, <InlineMath>k</InlineMath> is the growth factor and <InlineMath>\theta</InlineMath> is the angle.
+
+In the implementation, I opted for the Cartesian coordinate system rather than the polar system. This choice necessitates a conversion from polar to Cartesian coordinates. The conversion is straightforward and allows for more intuitive manipulation of the spiral's position in the 2D plane. Here's how we transform the polar coordinates (r, θ) to Cartesian coordinates (x, y):
+
+<BlockMath>x = r \cdot \cos(\theta)</BlockMath>
+<BlockMath>y = r \cdot \sin(\theta)</BlockMath>
+
+To be more precise, we can replace <InlineMath>r</InlineMath> with the previous value:
+
+<BlockMath>x = a \cdot \exp(k \cdot \theta) \cdot \cos(\theta)</BlockMath>
+<BlockMath>y = a \cdot \exp(k \cdot \theta) \cdot \sin(\theta)</BlockMath>
+
+These two equations are the key to our animation, and are wrapped in the _logarithmicSpiral_ function.
+
+```tsx
+const logarithmicSpiral = ({
+  angle,
+  index,
+}: {
+  angle: number;
+  index: number;
+}) => {
+  'worklet'; // You'll see why below 👇
+  const a = index / 4;
+  const k = 0.005;
+  return {
+    x: a * Math.exp(k * angle) * Math.cos(angle * index),
+    y: a * Math.exp(k * angle) * Math.sin(angle * index),
+  };
+};
+```
+
+## The Circles Path
+
+The theory is great, but how can we apply it to our animation?
+
+It's all about the circles. We need to create a path with a lot of circles and position them according to the logarithmic spiral.
+
+Every time the user will interact with the spiral, we'll need to update the angle. Then, the spiral coordinates will be updated according to the new angle.
+
+### The spiral coordinates
+
+Since the coordinates depend on the angle, we can use the _useDerivedValue_ hook to create an array of coordinates.
+
+As you can see, the _logarithmicSpiral_ function is called inside the _useDerivedValue_ hook. That's why we need to support the 'worklet' keyword.
+
+```tsx
+const spiralCircleCount = 1500; // feel free to play with this
+
+const angle = useSharedValue(Math.PI / 2);
+
+const spiralCoordinates = useDerivedValue(() => {
+  return Array.from({ length: spiralCircleCount }, (_, index) => {
+    const { x, y } = logarithmicSpiral({
+      angle: angle.value,
+      index,
+    });
+    return { x, y };
+  });
+});
+```
+
+Once we have the spiral coordinates, we can easily create a Skia Path. Theoretically, we could use the _useDerivedValue_ hook, but we'll use the [_usePathValue hook_](https://shopify.github.io/react-native-skia/docs/animations/hooks/#usepathvalue) because it ensures that the path updates in the most efficient way (thanks to [Terry](https://x.com/terrysahaidak/status/1849819584829726752) for the tip!).
+
+```tsx
+const path = usePathValue((skPath) => {
+  'worklet';
+  skPath.reset();
+
+  for (let index = 0; index < spiralCircleCount; index++) {
+    const x = spiralCoordinates.value[index].x;
+    const y = spiralCoordinates.value[index].y;
+
+    // x, y, radius
+    skPath.addCircle(x, y, 1);
+  }
+
+  return skPath;
+});
+```
+
+## Visualizing the Spiral
+
+Right now, we have defined the base ingredients of our animation. But we don't have a visual representation of the spiral yet.
+
+We can use the _Skia.Canvas_ component to visualize the spiral.
+
+```tsx
+<Canvas style={{ flex: 1 }}>
+  <Group
+    transform={
+      ({
+        translateX: windowWidth / 2,
+      },
+      {
+        translateY: windowHeight / 2,
+      })
+    }
+  >
+    <Path path={path} color={'white'} />
+  </Group>
+</Canvas>
+```
+
+To keep things simple, we can update the angle value with the onTouchEnd event from the View component.
+
+```tsx
+<View
+  onTouchEnd={() => {
+    angle.value = Math.PI * 2 * Math.random();
+  }}
+>
+  {...PreviousCode}
+</View>
+```
+
+And there we go:
+
+<AnimatedInteractiveSnappySpiralWhite />
+
+## Sweep Gradient is your friend
+
+If you want to add a bit more visual interest to the spiral, you can add a SweepGradient.
+Personally, I love to copy and paste the gradient from the [Skia documentation](https://shopify.github.io/react-native-skia/docs/shaders/gradients/).
+
+```tsx
+<Group transform={rGroupTransform}>
+  <Path path={path} />
+  <SweepGradient c={vec(0, 0)} colors={['cyan', 'magenta', 'yellow', 'cyan']} />
+</Group>
+```
+
+Usually, I add a BlurMask to the SweepGradient to make it look a bit more subtle (_optional_).
+
+```tsx
+<Group transform={rGroupTransform}>
+  <Path path={path} />
+  <SweepGradient c={vec(0, 0)} colors={['cyan', 'magenta', 'yellow', 'cyan']} />
+  <BlurMask blur={5} style="solid" /> {/* 👈 */}
+</Group>
+```
+
+<AnimatedInteractiveSnappySpiralGradient />
+
+## Animating the spiral
+
+Animating 1500 circles is not an easy task, but as always, there is a trick!
+
+The trick is to split the coordinates into two arrays: one for the x coordinates and one for the y coordinates.
+
+Once we have the two arrays, we can animate them independently.
+
+This is going to be extremely performant thanks to Reanimated's magic.
+
+```tsx
+const animatedSpiralCoordinatesX = useDerivedValue(() => {
+  return withTiming(
+    spiralCoordinates.value.map((coordinate) => {
+      return coordinate.x;
+    }),
+    {
+      duration: 1500,
+    }
+  );
+});
+
+const animatedSpiralCoordinatesY = useDerivedValue(() => {
+  return withTiming(
+    spiralCoordinates.value.map((coordinate) => {
+      return coordinate.y;
+    }),
+    {
+      duration: 1500,
+    }
+  );
+});
+```
+
+Once we have the two arrays, we can replace the _spiralCoordinates_ with the _animatedSpiralCoordinatesX_ and _animatedSpiralCoordinatesY_.
+
+```tsx
+const path = usePathValue((skPath) => {
+  'worklet';
+  skPath.reset();
+
+  for (let index = 0; index < spiralCircleCount; index++) {
+    const x = animatedSpiralCoordinatesX.value[index];
+    const y = animatedSpiralCoordinatesY.value[index];
+
+    // x, y, radius
+    skPath.addCircle(x, y, 1);
+  }
+
+  return skPath;
+});
+```
+
+<AnimatedInteractiveAnimatedSpiralFixedRadiusGradient />
+
+## Final touches
+
+To add more visual interest to our spiral, we can implement a dynamic radius for each circle. This will make the spiral appear to taper off as it expands outwards, creating a more organic and visually appealing effect.
+
+The key to this effect is to calculate the radius of each circle based on its distance from the center. We'll use Reanimated's _interpolate_ function to smoothly transition the radius from larger near the center to smaller at the edges.
+
+Here's how we can modify our path creation:
+
+```tsx
+// Pythagorean theorem
+const MAX_DISTANCE_FROM_CENTER = Math.sqrt(
+  (windowWidth / 2) ** 2 + (windowHeight / 2) ** 2
+);
+
+const path = usePathValue((skPath) => {
+  'worklet';
+  skPath.reset();
+
+  for (let index = 0; index < spiralCircleCount; index++) {
+    const x = animatedSpiralCoordinatesX.value[index];
+    const y = animatedSpiralCoordinatesY.value[index];
+
+    const distanceFromCenter = Math.sqrt(x ** 2 + y ** 2);
+    const radius = interpolate(
+      distanceFromCenter,
+      [0, MAX_DISTANCE_FROM_CENTER],
+      [1, 0.1],
+      Extrapolate.CLAMP
+    );
+
+    skPath.addCircle(x, y, radius);
+  }
+
+  return skPath;
+});
+```
+
+Let's break down what's happening here:
+
+1. We calculate the maximum possible distance from the center of the canvas. This will be used as a reference for our interpolation.
+
+2. For each circle, we calculate its distance from the center using the Pythagorean theorem.
+
+3. We use Reanimated's _interpolate_ function to determine the radius. This function maps the distance from the center to a radius value:
+   - At the center (distance = 0), the radius will be 1.
+   - At the maximum distance, the radius will be 0.1.
+   - For all points in between, the radius will be smoothly interpolated.
+
+4. We use this calculated radius when adding each circle to our path.
+
+The result is a spiral that starts bold at the center and gradually becomes more delicate towards the edges, creating a beautiful tapering effect.
+
+<AnimatedSpiralWithSkia />
+
+## Conclusion
+
+In this article, we've explored how to create a mesmerizing animated spiral using React Native Skia and Reanimated. We've covered the mathematical foundations of the logarithmic spiral, implemented basic and gradient-based visualizations, added smooth animations, and finally, enhanced the visual appeal with a dynamic radius effect.
+
+Feel free to experiment further with the provided code. You could try different color schemes, adjust the spiral parameters, or even add interactive elements like pinch-to-zoom or rotation gestures.

@@ -1,0 +1,72 @@
+<Title date="2025-07-15" slug="draggable-panel" basePath="demos">
+  Draggable Panel with Reanimated and Gesture Handler
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/draggable-panel"
+/>
+
+A floating panel that you can literally flick around your screen. When you're done with it, it snaps to the nearest corner like a well-trained pet.
+
+The fun part? When you tap the little button, it expands into a full control panel where you can play with different spring physics. "Elegant" gives you that Apple-like smoothness. "Springy" adds some bounce. "Super-springy"? Well, that's just showing off.
+
+## The code structure
+
+```
+src/
+├── components/
+│   ├── draggable-panel/
+│   │   └── draggable-control-panel.tsx  # The main draggable logic
+│   └── spring-animation-panel/
+│       ├── index.tsx                     # Manages spring states
+│       ├── panel-content.tsx             # The UI for spring selection
+│       └── collapsed-button.tsx          # That little settings icon
+└── index.tsx                             # Entry point
+```
+
+## Want to use it?
+
+The `DraggableControlPanel` component needs you to provide the collapsed and expanded states as render props. Here's how it actually works:
+
+```tsx
+import { DraggableControlPanel } from './components/draggable-panel/draggable-control-panel';
+import { useSharedValue } from 'react-native-reanimated';
+
+function App() {
+  return (
+    <View style={{ flex: 1 }}>
+      {/* Your app goes here */}
+      <DraggableControlPanel
+        springConfig={{
+          damping: 30,
+          stiffness: 200,
+        }}
+        collapsedChildren={(toggleCollapse) => (
+          <Pressable onPress={toggleCollapse}>
+            <Text>👆</Text>
+          </Pressable>
+        )}
+        expandedChildren={(toggleCollapse) => (
+          <View>
+            <Text>Your expanded content here</Text>
+            <Button onPress={toggleCollapse} title="Collapse" />
+          </View>
+        )}
+        collapsedWidth={64}
+        collapsedHeight={64}
+        expandedWidth={280}
+        expandedHeight={150}
+      />
+    </View>
+  );
+}
+```
+
+Or check out the **SpringAnimationPanel** component in the source to see a full example of how to build a complete control panel with it.
+
+<ReanimatePromo />
+
+<SendFeedback />

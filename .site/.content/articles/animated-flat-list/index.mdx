@@ -1,0 +1,239 @@
+<Title date="2024-01-13" slug="animated-flat-list">
+  Animated FlatList in React Native Reanimated
+</Title>
+
+## Introduction
+
+Hey there, mobile developers! In today's tutorial, we're going to create a super simple animation in React Native using the React Native Reanimated package. This animation not only serves an educational purpose but can also be easily adapted for various use cases. To start off, I came across an animation on [Twitter](https://twitter.com/roaakdm/status/1558450169057779718) a few months back that caught my attention. You can find the reference to the tweet in the video description if you'd like to check it out.
+
+Before we dive in, I'd like to remind you that if you're interested in React Native content, you can support me by subscribing to the channel!
+
+<YouTubeEmbed videoId="3ox0R5jPb04" />
+
+## Source Code
+
+If you're in a hurry, you can find the source code for this tutorial on GitHub
+
+<GithubCard
+  repo="enzomanuelmangano/animate-with-reanimated"
+  path="src/animations/15-animated-flatlist"
+/>
+
+## Setting Up the Project
+
+Let's begin by initializing a React Native project using the Expo CLI. Make sure you have the Expo CLI installed and create your project. Next, install the react-native-reanimated package within your project. As part of the installation process, you'll also need to include the reanimated plugin in the babel.config.js file. Once that's done, we can move on to the next steps.
+
+```bash
+# Create a new React Native project with Expo CLI
+npx create-expo-app -t expo-template-blank-typescript AnimatedFlatlist
+
+# Navigate to your project directory
+cd AnimatedFlatlist
+
+# Install react-native-reanimated
+npx expo install react-native-reanimated
+```
+
+Add reanimated plugin to babel.config.js
+
+```js
+module.exports = function (api) {
+  api.cache(true);
+  return {
+    presets: ['babel-preset-expo'],
+    plugins: ['react-native-reanimated/plugin'],
+  };
+};
+```
+
+## Defining the FlatList Component
+
+Our animation will involve a flat list of items. We'll create the list using the FlatList component and define the individual list items in the renderItem function. Each item will be represented as a view with a specified height and width. For now, let's set the background color to red. We'll also populate the list with an array of 50 different objects, each having an incremental ID.
+
+```tsx
+import React from 'react';
+import { View, FlatList, StyleSheet } from 'react-native';
+
+const data = new Array(50).fill(0).map((_, index) => ({ id: index }));
+// [{id: 0}, {id: 1}, {id: 2}, ..., {id: 49}]
+
+export default function App() {
+  const viewableItems = useSharedValue<ViewToken[]>([]);
+
+  return (
+    <View style={styles.container}>
+      <FlatList
+        data={data}
+        contentContainerStyle={{ paddingTop: 40 }}
+        renderItem={({ item }) => {
+          return <ListItem item={item} viewableItems={viewableItems} />;
+        }}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+});
+
+export default App;
+```
+
+## Creating a List Item Component
+
+To better organize our code and promote reusability, it's a good practice to create a separate component for the list items. This will allow us to focus on animating each item individually. We'll define the ListItem component and pass in the necessary data and viewability information as props.
+
+```tsx
+import React from 'react';
+import Animated, {
+  useAnimatedStyle,
+  withTiming,
+} from 'react-native-reanimated';
+
+type ListItemProps = {
+  viewableItems: Animated.SharedValue<ViewToken[]>;
+  item: {
+    id: number;
+  };
+};
+const ListItem: React.FC<ListItemProps> = React.memo(
+  ({ item, viewableItems }) => {
+    return (
+      <View
+        style={[
+          {
+            height: 80,
+            width: '90%',
+            backgroundColor: '#78CAD2',
+            alignSelf: 'center',
+            borderRadius: 15,
+            marginTop: 20,
+          },
+        ]}
+      />
+    );
+  }
+);
+
+export { ListItem };
+```
+
+## Animating with onViewableItemsChanged
+
+To animate the list items based on their visibility, we'll utilize the onViewableItemsChanged callback provided by the FlatList component. This callback allows us to access the currently viewable items and determine whether an item is visible or not. By employing shared values from the react-native-reanimated library, we can seamlessly integrate animation into our app.
+
+```tsx
+<FlatList
+  data={data}
+  contentContainerStyle={{ paddingTop: 40 }}
+  onViewableItemsChanged={({ viewableItems: vItems }) => {
+    viewableItems.value = vItems;
+  }}
+  renderItem={({ item }) => {
+    return <ListItem item={item} viewableItems={viewableItems} />;
+  }}
+/>
+```
+
+## Preparing the Animation
+
+Before we jump into the animation code, let's recap the steps we'll be taking:
+
+1. We'll create a shared value for storing viewable items.
+2. Inside the ListItem component, we'll convert the view into an animated view using useAnimatedStyle.
+3. We'll check whether the current item is visible by comparing it with the viewable items array.
+
+```tsx
+import React from 'react';
+import { View, Animated } from 'react-native';
+
+interface ListItemProps {
+  item: { id: number };
+  viewableItems: Array<{ id: number }>;
+}
+
+const ListItem: React.FC<ListItemProps> = ({ item, viewableItems }) => {
+  const rStyle = useAnimatedStyle(() => {
+    const isVisible = Boolean(
+      viewableItems.value
+        .filter((item) => item.isViewable)
+        .find((viewableItem) => viewableItem.item.id === item.id)
+    );
+
+    return {
+      opacity: withTiming(isVisible ? 1 : 0),
+    };
+  }, []);
+
+  return <Animated.View style={[styles.item, rStyle]} />;
+};
+
+const styles = {
+  item: {
+    height: 100,
+    width: '90%',
+    backgroundColor: '#34B7F1',
+    marginVertical: 20,
+    borderRadius: 15,
+    alignSelf: 'center',
+  },
+};
+
+export default ListItem;
+```
+
+## Scaling Animation
+
+Our animation won't be complete without adding some dynamic effects. In addition to animating opacity, we can also animate the scale property. By using the withTiming function from the react-native-reanimated library, we can adjust the scale based on the item's visibility.
+
+```tsx
+import React from 'react';
+import { View, Animated } from 'react-native';
+
+interface ListItemProps {
+  item: { id: number };
+  viewableItems: Array<{ id: number }>;
+}
+
+const ListItem: React.FC<ListItemProps> = ({ item, viewableItems }) => {
+  const rStyle = useAnimatedStyle(() => {
+    const isVisible = Boolean(
+      viewableItems.value
+        .filter((item) => item.isViewable)
+        .find((viewableItem) => viewableItem.item.id === item.id)
+    );
+
+    return {
+      opacity: withTiming(isVisible ? 1 : 0),
+      transform: [
+        {
+          scale: withTiming(isVisible ? 1 : 0.6),
+        },
+      ],
+    };
+  }, []);
+
+  return <Animated.View style={[styles.item, rStyle]} />;
+};
+
+const styles = {
+  item: {
+    height: 100,
+    width: '90%',
+    backgroundColor: '#34B7F1',
+    marginVertical: 20,
+    borderRadius: 15,
+    alignSelf: 'center',
+  },
+};
+
+export default ListItem;
+```
+
+## Final Thoughts
+
+And that's it! We've successfully built a simple animation in React Native using the **react-native-reanimated** package. This animation can be adapted to various scenarios and use cases. It's a great foundation to build upon and explore more advanced animations. I hope you found this tutorial helpful. Remember to subscribe to the channel and leave a comment if you have any suggestions or questions for future videos. Thanks for joining me, and I'll see you in the next one!

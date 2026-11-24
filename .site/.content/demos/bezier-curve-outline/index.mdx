@@ -1,0 +1,47 @@
+<Title date="2024-11-05" slug="bezier-curve-outline" basePath="demos">
+  Bézier Curve Outline with React Native Skia
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/bezier-curve-outline"
+/>
+
+An elegant animation that demonstrates the power of Bézier curves with interactive outlines. Features smooth transitions between normal and outline modes, with dynamic blur effects and color interpolation.
+
+## What's This About?
+
+This component creates an interactive animation where a square moves along a Bézier curve path. When activated, it transitions into an outline mode with beautiful blur effects and color transitions. The animation includes smooth scaling and movement along the curve.
+
+## Technical Implementation
+
+The component leverages Skia for high-performance path rendering and Reanimated for fluid animations. It features:
+
+- Smooth spring animations for transitions
+- Path-based movement with progress tracking
+- Dynamic blur intensity
+- Color interpolation for status bar and text
+- Gesture-based interactions
+
+## Usage
+
+```tsx
+// The component is self-contained and can be used directly
+<BezierCurveOutline />;
+
+// Core animation values
+const outlineMode = useSharedValue(false);
+const blurIntensity = useSharedValue(0);
+const skiaPath = useSharedValue(Skia.Path.Make());
+
+// Animation hook for path movement
+const { progress, startAnimation, reverseAnimation } = useAnimateThroughPath({
+  pathReference: skiaPath,
+});
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

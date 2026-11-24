@@ -1,0 +1,58 @@
+<Title date="2023-11-29" slug="slide-to-reveal" basePath="demos">
+  Slide to Reveal with React Native Skia 🪄
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/slide-to-reveal"
+/>
+
+A slide-to-reveal component with gesture-based interaction.
+
+## What's This About?
+
+This component creates an interactive slide-to-reveal interface where users can slide to reveal a hidden code or content. It features a customizable width and height that adapts to the screen size, and supports gesture handling for smooth sliding interactions. The implementation is perfect for verification screens, security features, or any interface requiring a sliding gesture to reveal information.
+
+## Technical Implementation
+
+The component uses:
+
+- Gesture handling
+- Screen adaptation
+- Code revelation
+- Size customization
+- Interactive sliding
+
+## Usage
+
+```tsx
+// Basic usage
+<SlideToReveal />
+
+// With custom dimensions and code
+<SlideToReveal
+  code={112358}
+  width={windowWidth * 0.6}
+  height={80}
+/>
+
+// Full implementation
+<GestureHandlerRootView style={{ flex: 1 }}>
+  <View style={styles.container}>
+    <SlideToReveal
+      code={112358}
+      width={windowWidth * 0.6}
+      height={80}
+    />
+  </View>
+</GestureHandlerRootView>
+
+// Window dimensions
+const { width: windowWidth } = useWindowDimensions();
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

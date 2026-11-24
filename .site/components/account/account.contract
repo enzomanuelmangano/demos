@@ -1,0 +1,523 @@
+// The signed-in features (docs/stubs.md, decisions.md D15), ported from the reference: the header's auth slot
+// (components/header/sign-in-button), the sign-in modal (providers/modal/sign-in-modal), /profile (app/profile:
+// SendFeedback, MobileSignOut; its SubscriptionBox is payments and is not ported), the feedback modal
+// (providers/modal/feedback-modal + components/feedback-base-modal) and the toasts they raise (sonner).
+// The data: components/account/account.ts. With the accounts off (no EXPO_PUBLIC_WEBSITE_URL in the build) the slot
+// draws the signed-out "Sign In" as before and the dialogs never open.
+use ButtonSecondary, ButtonPrimary from "../look.contract"
+
+shape Me
+  signedIn: bool
+  rejected: bool
+  id: string
+  name: string
+  email: string
+  picture: string
+  relay: bool
+  supporter: bool
+  // currentPlan (states/auth/user.ts): "monthly" or "annual" for a supporter (active or cancelled), else "".
+  plan: string
+  // planData: the plan's type and Lemon Squeezy status whatever it is ("" without a plan), its date written out.
+  planType: string
+  planStatus: string
+  expires: string
+
+shape SiteConfig
+  accounts: bool
+
+shape Sent
+  ok: bool
+
+keyframes accountSpin
+  from rotate="0deg"
+  to rotate="360deg"
+
+// The reference's Modal on a desktop (Radix Dialog, md:max-w-md, rounded-card, the elevated surface and the overlay
+// shadow, over bg-background/80).
+style ModalBox
+  width="calc(100% - 32px)" max-width=448 padding=0 margin="auto" border="none" border-radius="var(--radius-card)" box-sizing="border-box"
+  background-color="var(--color-surface-elevated)" box-shadow="var(--shadow-overlay)" color="var(--color-text-body)" overflow="hidden"
+
+// lucide's Loader2, turning (animate-spin: 1 s linear, endless).
+component Spinner
+  view
+    svg width=16 height=16 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width=2 stroke-linecap="round" stroke-linejoin="round"
+      aria-hidden=true flex-shrink=0 animation="accountSpin 1000ms linear infinite"
+      path d="M21 12a9 9 0 1 1-6.219-8.56"
+
+// Up to 640 px the reference's Modal is vaul's Drawer, not a dialog: a sheet from the bottom (rounded-t-card, full width)
+// with this handle on top (my-3 h-1.5 w-16 rounded-full bg-white/15) and no close X. web/head.css turns the dialogs
+// into that sheet there and shows the handle.
+component DrawerHandle
+  view
+    view data-motion="drawer-handle" aria-hidden=true width="100%" justify-content="center" align-items="center"
+      view width=64 height=6 margin="12px 0" border-radius=9999 background-color="rgb(255 255 255 / 0.15)"
+
+// The close X of the reference's DialogContent: top right, 70 % until hovered.
+component CloseX
+  props
+    dialog: string
+  view
+    button commandfor=dialog command="close" appearance="none" aria-label="Close" position="absolute" top=16 right=16 padding=4
+      border-radius="var(--radius-md)" opacity=0.7 color="var(--color-text-secondary)" cursor="pointer" background-color="transparent" data-motion="colors focus dialog-x"
+      :hover
+        opacity = 1
+        background-color = "rgb(255 255 255 / 0.06)"
+      svg width=16 height=16 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width=2 stroke-linecap="round" stroke-linejoin="round" aria-hidden=true
+        path d="M18 6 6 18"
+        path d="m6 6 12 12"
+
+// ---------------------------------------------------------------- the header's slot
+
+// AuthSlot: while the session loads, the place the result will take (an invisible "Sign In"); then "Sign In", or
+// the avatar and its menu, popping in.
+component AccountSlot
+  props
+    accounts: bool
+    loading: bool
+    me: Me
+    openSignIn: action
+    signOut: action
+  state menu = false
+  action hover(on: bool)
+    menu = on
+  // The reference opens it on hover only; a press (a touch screen) opens it too.
+  action toggle
+    menu = true
+  action out
+    menu = false
+    signOut()
+  view
+    row justify-content="flex-end"
+      if accounts and loading
+        button appearance="none" class=ButtonSecondary height=40 padding="0 16px" border-radius="var(--radius-control)" font-size="0.875rem"
+          line-height="1.25rem" font-weight=500 visibility="hidden" aria-hidden=true tabindex=-1 data-motion="auth-signin"
+          text "Sign In"
+        AuthHint()
+      else if accounts and me.signedIn
+        view position="relative" hover=hover data-motion="pop-in" testId="account"
+          button appearance="none" press=toggle aria-label="Account" aria-expanded=menu width=32 height=32 padding=0 border-radius=9999 cursor="pointer"
+            display="flex" align-items="center" justify-content="center" background-color="transparent"
+            box-shadow="0 0 0 1px rgb(from var(--color-border) r g b / 0.5)" testId="avatar"
+            Avatar(me=me)
+          // The dropdown: w-56, rounded-[14px], the elevated surface, 200 ms in and out.
+          column position="absolute" right=0 top=32 padding-top=12 width=224 z-index=60 opacity=(menu ? 1 : 0) translate=(menu ? "0 0" : "0 -8px")
+            pointer-events=(menu ? "auto" : "none") transition="opacity 200ms cubic-bezier(0, 0, 0.2, 1), translate 200ms cubic-bezier(0, 0, 0.2, 1)"
+            column border-radius=14 background-color="var(--color-surface-elevated)" box-shadow="var(--shadow-overlay)" padding="4px 0" overflow="hidden"
+              column padding="12px 16px" border-bottom="1px solid var(--color-hairline)"
+                if not me.relay and not me.name.includes("undefined")
+                  text me.name font-size="0.875rem" line-height="1.25rem" font-weight=500 color="var(--color-text-primary)"
+                text me.email font-size="0.875rem" line-height="1.25rem" color="var(--color-text-secondary)" max-width=250 overflow="hidden"
+                  text-overflow="ellipsis" white-space="nowrap"
+              link href="/profile" class=MenuItem data-motion="colors" testId="menu-profile"
+                svg width=16 height=16 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width=2 stroke-linecap="round" stroke-linejoin="round"
+                  aria-hidden=true color="var(--color-text-secondary)" margin-right=8
+                  path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"
+                  circle cx=12 cy=7 r=4
+                text "Profile" font-size="0.875rem" line-height="1.25rem" color="var(--color-text-secondary)"
+              // "Support Demos" / "Manage Support": the page shows a subscription's status and its cancel only (no
+              // plans, no prices, no checkout: owner, docs/stubs.md).
+              link href="/manage-subscription" class=MenuItem data-motion="colors" testId="menu-support"
+                svg width=16 height=16 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width=2 stroke-linecap="round" stroke-linejoin="round"
+                  aria-hidden=true color="var(--color-text-secondary)" margin-right=8
+                  path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+                  circle cx=12 cy=12 r=3
+                text (me.supporter ? "Manage Support" : "Support Demos") font-size="0.875rem" line-height="1.25rem" color="var(--color-text-secondary)"
+              button appearance="none" press=out class=MenuItem data-motion="colors" testId="menu-sign-out"
+                svg width=16 height=16 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width=2 stroke-linecap="round" stroke-linejoin="round"
+                  aria-hidden=true color="var(--color-danger)" margin-right=8
+                  path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"
+                  path d="m16 17 5-5-5-5"
+                  path d="M21 12H9"
+                text "Sign out" font-size="0.875rem" line-height="1.25rem" color="var(--color-danger)"
+      else
+        button appearance="none" press=openSignIn class=ButtonSecondary height=40 padding="0 16px" border-radius="var(--radius-control)" font-size="0.875rem"
+          line-height="1.25rem" font-weight=500 testId="sign-in" data-motion="pop-in button press-secondary focus auth-signin"
+          text "Sign In"
+        AuthHint()
+
+// The reference's place for the avatar while the session loads, for a visitor signed in at the last visit (its head
+// script sets html[data-auth=in] from localStorage `reactiive:signed-in`; here web/storage.js does): a 32 px circle in
+// place of the invisible "Sign In". web/head.css shows it and hides "Sign In" under html[data-auth=in]; the page's
+// first paint is the build's signed-out header, so that rule covers it until the session is known (docs/storage.md).
+component AuthHint
+  view
+    view width=32 height=32 border-radius=9999 background-color="rgb(255 255 255 / 0.06)" aria-hidden=true data-motion="auth-hint"
+
+style MenuItem
+  display="flex" align-items="center" width="100%" padding="8px 16px" box-sizing="border-box" cursor="pointer" text-decoration-line="none"
+  background-color="transparent" text-align="left"
+  :hover
+    background-color = "rgb(from var(--color-surface-secondary) r g b / 0.5)"
+
+// AvatarImage: the profile picture (30 px, round), or the pink gradient for an Apple private-relay address or none.
+component Avatar
+  props
+    me: Me
+  view
+    if me.relay or me.picture == ""
+      view width=30 height=30 border-radius=9999 background-image="linear-gradient(90deg, #FFC0CB, #FF69B4)"
+    else
+      image me.picture alt="Profile" width=30 height=30 border-radius=9999 object-fit="cover"
+
+// ---------------------------------------------------------------- the sign-in modal
+
+// "Sign in to Reactiive": Google and Apple, each a link to the provider's page (the URL the API answers, asked when
+// the dialog opens). While that answer is out, the button shows the spinner, as the reference's while its request is.
+component SignInDialog
+  props
+    google: string
+    apple: string
+    googleFailed: bool
+    appleFailed: bool
+    retry: action
+  view
+    dialog id="signin-modal" class=ModalBox closedby="any" aria-labelledby="sign-in-title" testId="sign-in-dialog"
+      ::backdrop
+        background-color="rgb(from var(--color-background) r g b / 0.8)"
+      DrawerHandle()
+      column padding=32 width="100%" box-sizing="border-box"
+        column align-items="center" gap=8 text-align="center"
+          text "Sign in to Reactiive" id="sign-in-title" role="heading" aria-level=2 font-size="1.25rem" line-height="1.75rem" font-weight=600
+            letter-spacing="-0.01em" color="var(--color-text-primary)"
+          text "Use your Google or Apple account." max-width=320 font-size="0.875rem" line-height="1.5rem" color="var(--color-text-secondary)"
+        column margin-top=28 gap=12
+          ProviderButton(url=google, failed=googleFailed, label="Continue with Google", provider="google", retry=retry)
+          ProviderButton(url=apple, failed=appleFailed, label="Continue with Apple", provider="apple", retry=retry)
+        text "Signing in subscribes you to the newsletter: new content and the occasional promotion. Unsubscribe at any time."
+          margin-top=24 text-align="center" font-size="0.75rem" line-height="1.25rem" color="var(--color-text-tertiary)"
+      CloseX(dialog="signin-modal")
+
+component ProviderButton
+  props
+    url: string
+    failed: bool
+    label: string
+    provider: string
+    retry: action
+  view
+    if url != ""
+      link href=url class=ButtonSecondary display="flex" align-items="center" justify-content="center" gap=10 height=44 padding="0 24px" border-radius="var(--radius-control)" font-size="15px" line-height="1.5rem" font-weight=500 text-decoration-line="none" box-sizing="border-box" width="100%" data-motion="button press-secondary focus" testId=`sign-in-${provider}`
+        ProviderIcon(provider=provider)
+        text label
+    else if failed
+      // The API did not answer: the button stays live; a press says so (a toast) and asks again.
+      button appearance="none" press=retry class=ButtonSecondary display="flex" align-items="center" justify-content="center" gap=10 height=44 padding="0 24px" border-radius="var(--radius-control)" font-size="15px" line-height="1.5rem" font-weight=500 text-decoration-line="none" box-sizing="border-box" width="100%" cursor="pointer" data-motion="button press-secondary focus" testId=`sign-in-${provider}`
+        ProviderIcon(provider=provider)
+        text label
+    else
+      button appearance="none" disabled=true class=ButtonSecondary display="flex" align-items="center" justify-content="center" gap=10 height=44 padding="0 24px" border-radius="var(--radius-control)" font-size="15px" line-height="1.5rem" font-weight=500 text-decoration-line="none" box-sizing="border-box" width="100%" testId=`sign-in-${provider}`
+        Spinner()
+        text label
+
+component ProviderIcon
+  props
+    provider: string
+  view
+    if provider == "google"
+      svg width=16 height=16 viewBox="0 0 488 512" aria-hidden=true flex-shrink=0
+        path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"
+    else
+      svg width=16 height=16 viewBox="0 0 384 512" aria-hidden=true flex-shrink=0
+        path fill="currentColor" d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"
+
+// ---------------------------------------------------------------- /profile
+
+// "Profile Settings": the SubscriptionBox (both faces, as live: its "Manage Subscription" leads to the status-only
+// /manage-subscription), the feedback card and, under 768 px, the sign-out card. Shown only signed in; the root sends a
+// signed-out visitor to /demos.
+component ProfilePage
+  props
+    me: Me
+    openFeedback: action
+    signOut: action
+  view
+    column width="100%" padding-top=md(16, 32) margin-top=16 gap=24
+      column margin-bottom=8
+        text "Profile Settings" role="heading" aria-level=1 font-size="1.5rem" line-height="2rem" font-weight=500 color="var(--color-text-primary)"
+        text "Manage your account settings" margin-top=4 font-size="0.875rem" line-height="1.25rem" color="var(--color-text-secondary)"
+      SubscriptionBox(me=me)
+      SendFeedback(open=openFeedback)
+      // MobileSignOut: md:hidden.
+      view data-motion="md-hidden"
+        column class=Surface padding=24
+          row align-items="center" gap=12 margin-bottom=16
+            svg width=24 height=24 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width=1.5 aria-hidden=true color="var(--color-text-primary)"
+              path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"
+            text "Sign Out" role="heading" aria-level=2 font-size="15px" font-weight=500 color="var(--color-text-primary)"
+          text "Tap the button below to sign out of your account." margin-bottom=16 font-size="0.875rem" line-height="1.25rem" color="var(--color-text-tertiary)"
+          button appearance="none" press=signOut height=40 border-radius="var(--radius-control)" font-size="0.875rem" font-weight=500 cursor="pointer"
+            background-color="rgb(from var(--color-danger) r g b / 0.1)" color="var(--color-danger-400)" data-motion="button focus" testId="profile-sign-out"
+            :hover
+              background-color = "rgb(from var(--color-danger) r g b / 0.15)"
+            :active
+              background-color = "rgb(from var(--color-danger) r g b / 0.2)"
+            text "Sign Out"
+
+// The reference's Surface before its squircle measure: radius 18, the elevated surface, --shadow-surface.
+style Surface
+  border-radius="var(--radius-card)" background-color="var(--color-surface-elevated)" box-shadow="var(--shadow-surface)" box-sizing="border-box"
+  user-select="none"
+
+fn md(narrow: number, wide: number): string = `clamp(${narrow}px, (100vw - 767px) * 1000, ${wide}px)`
+
+component SendFeedback
+  props
+    open: action
+  view
+    column class=Surface padding=24 margin-top=32 width="100%"
+      row flex-wrap="wrap" align-items="center" column-gap=24 row-gap=20
+        row flex="1 1 280px" align-items="flex-start" gap=16
+          view width=36 height=36 flex-shrink=0 border-radius=10 background-color="rgb(255 255 255 / 0.06)" color="var(--color-text-secondary)"
+            display="flex" align-items="center" justify-content="center"
+            svg width=18 height=18 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width=1.75 stroke-linecap="round" stroke-linejoin="round" aria-hidden=true
+              path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"
+          column gap=4 flex=1
+            text "Share your feedback" role="heading" aria-level=2 font-size="15px" line-height="1.5rem" font-weight=500 color="var(--color-text-primary)"
+            text font-size="0.875rem" line-height="1.5rem" color="var(--color-text-tertiary)" user-select="text"
+              text "Ideas, bugs, or anything that felt off: I read every message. For anything else, write to "
+              text "hello@reactiive.io" href="mailto:hello@reactiive.io" color="var(--color-text-secondary)" text-decoration-line="underline"
+                data-motion="colors"
+              text "."
+        button appearance="none" press=open class=ButtonSecondary height=36 padding="0 12px" border-radius="var(--radius-control)" font-size="0.875rem"
+          line-height="1.25rem" font-weight=500 flex-shrink=0 data-motion="button press-secondary focus" testId="send-feedback"
+          text "Send feedback"
+
+// ---------------------------------------------------------------- the feedback modal
+
+component FeedbackDialog
+  props
+    sending: bool
+    send: action
+  state draft = ""
+  state anonymous = false
+  action edit(v: string)
+    draft = v
+  action anon(on: bool)
+    anonymous = on
+  action submit
+    send(draft.trim(), anonymous)
+  action reset
+    draft = ""
+    anonymous = false
+  view
+    dialog id="feedback" class=ModalBox closedby="any" aria-labelledby="feedback-title" testId="feedback-dialog"
+      ::backdrop
+        background-color="rgb(from var(--color-background) r g b / 0.8)"
+      DrawerHandle()
+      column padding=32 width="100%" box-sizing="border-box"
+        column align-items="center" gap=8 text-align="center"
+          text "Send feedback" id="feedback-title" role="heading" aria-level=2 font-size="1.25rem" line-height="1.75rem" font-weight=600
+            letter-spacing="-0.01em" color="var(--color-text-primary)"
+          text "Ideas, bugs, or anything that felt off: I read every message." max-width=340 font-size="0.875rem" line-height="1.5rem"
+            color="var(--color-text-secondary)"
+        column margin-top=24 gap=12
+          textarea value=draft input=edit placeholder="Write your feedback here…" aria-label="Send feedback" min-height=128 padding=12
+            box-sizing="border-box" font-size="0.875rem" line-height="1.25rem" color="var(--color-text-primary)" background-color="rgb(255 255 255 / 0.03)"
+            border="none" border-radius="var(--radius-control)" box-shadow="inset 0 0 0 1px rgb(255 255 255 / 0.06)" outline="none" resize="none"
+            testId="feedback-text"
+            ::placeholder
+              color = "var(--color-text-disabled)"
+            :focus-visible
+              background-color = "rgb(255 255 255 / 0.045)"
+              box-shadow = "inset 0 0 0 1px rgb(255 255 255 / 0.18)"
+          row align-items="center" gap=8
+            input type="checkbox" checked=anonymous change=anon aria-label="Submit anonymously" testId="feedback-anonymous"
+            text "Submit anonymously" font-size="0.875rem" color="var(--color-text-secondary)"
+        button appearance="none" press=submit disabled=(draft.trim() == "" or sending) class=ButtonPrimary height=44 margin-top=28
+          border-radius="var(--radius-control)" font-size="1rem" font-weight=500 display="flex" align-items="center" justify-content="center" gap=8
+          opacity=(draft.trim() == "" or sending ? 0.5 : 1) data-motion="button press-primary focus" testId="feedback-send"
+          if sending
+            Spinner()
+            text "Sending…"
+          else
+            text "Send Feedback"
+      CloseX(dialog="feedback")
+
+// sonner's toast, bottom right: a message for 4 s.
+component Toast
+  props
+    message: string
+    tone: string
+  view
+    row position="absolute" right=24 top="calc(100vh - 88px)" z-index=70 min-width=280 max-width=356 padding="14px 16px" gap=8 align-items="center"
+      border-radius=8 background-color="var(--color-surface-elevated)" box-shadow="var(--shadow-overlay)" font-size="13px" font-weight=500
+      color=(tone == "error" ? "var(--color-danger-400)" : "var(--color-text-primary)") opacity=(message == "" ? 0 : 1)
+      translate=(message == "" ? "0 16px" : "0 0") pointer-events="none" transition="opacity 400ms ease, translate 400ms ease" role="status"
+      testId="toast"
+      text message
+
+// ---------------------------------------------------------------- the subscription (status and cancel only)
+
+fn capitalize(s: string): string = s.slice(0, 1).toUpperCase() + s.slice(1)
+// utils/get-payment-issue.ts
+fn paymentIssue(status: string): bool = status == "past_due" or status == "unpaid"
+fn planIssue(status: string): bool = paymentIssue(status) or status == "expired" or status == "paused" or status == "pause" or status == "on_trial"
+
+// components/profile/SubscriptionBox: the plan's badge and sentence, and "Manage Subscription" (PlanButtons).
+component SubscriptionBox
+  props
+    me: Me
+  view
+    column class=Surface padding=24 testId="subscription-box"
+      row align-items="center" justify-content="space-between" margin-bottom=16
+        row align-items="center" gap=12
+          view width=24 height=24 display="flex" align-items="center" justify-content="center" color="var(--color-text-secondary)"
+            svg width=24 height=24 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width=2 aria-hidden=true
+              rect x=3 y=5 width=18 height=14 rx=2
+              line x1=3 y1=10 x2=21 y2=10
+          text "Subscription" role="heading" aria-level=2 font-size="15px" line-height="1.5rem" font-weight=500 color="var(--color-text-secondary)"
+        text (me.plan != "" ? `${capitalize(me.plan)} Plan` : "No Active Plan") padding="4px 12px" border-radius=9999 font-size="0.75rem" line-height="1rem"
+          user-select="none" background-color=(me.plan != "" ? "rgb(from var(--color-success-500) r g b / 0.1)" : "rgb(255 255 255 / 0.06)")
+          color=(me.plan != "" ? "var(--color-success-400)" : "var(--color-text-tertiary)") testId="plan-badge"
+      text (me.plan != "" ? `You are currently on the ${capitalize(me.plan)} plan. ${me.planStatus == "active" ? "The plan will renew on" : "You will have access until"} ${me.expires != "" ? me.expires : "Unknown"}. Manage your subscription below.` : "Choose a subscription plan to access premium features and support our work.")
+        margin-bottom=24 font-size="0.875rem" line-height="1.25rem" color="var(--color-text-body)"
+      row
+        link href="/manage-subscription" height=40 padding="0 16px" border-radius="var(--radius-control)" font-size="0.875rem" line-height="1.25rem"
+          font-weight=500 display="flex" align-items="center" justify-content="center" text-decoration-line="none" color="var(--color-text-primary)"
+          box-shadow="var(--shadow-control)" background-color="transparent" data-motion="button focus press-outline" testId="manage-subscription"
+          :hover
+            background-color = "rgb(255 255 255 / 0.05)"
+          text "Manage Subscription"
+
+// app/manage-subscription: "Support Demos", its status and its cancel. The reference's PricingInfo without the plan
+// cards' prices and purchase, upgrade, downgrade and resume buttons (owner: no prices, no checkout): the warning
+// banners' text, the current plan's card (its features, its badge, "Cancel Plan" while active) and Plan Benefits. Without
+// a plan: the page's header and paragraph only (neutral), as the reference's `mb-32` spacer below them.
+component ManageSubscriptionPage
+  props
+    me: Me
+    cancel: action
+  view
+    column width="100%" padding-top=md(16, 32) margin-top=16 gap=24 testId="manage-page"
+      column margin-bottom=8
+        text "Support Demos" role="heading" aria-level=1 font-size="1.5rem" line-height="2rem" font-weight=500 color="var(--color-text-primary)"
+        text "View and manage your support options" margin-top=4 font-size="0.875rem" line-height="1.25rem" color="var(--color-text-secondary)"
+      text "All 120+ React Native animations are now free and open source! Your support helps me continue creating and maintaining these resources."
+        font-size="0.875rem" line-height="1.25rem" color="var(--color-text-secondary)"
+      column gap=24 max-width=672 width="100%"
+        if planIssue(me.planStatus)
+          column padding=16 border-radius=14 gap=16 background-color="rgb(from var(--color-warning) r g b / 0.1)"
+            box-shadow="inset 0 0 0 1px color-mix(in oklab, var(--color-warning) 22%, transparent)" testId="billing-warning"
+            text (paymentIssue(me.planStatus) ? "There might be an issue with your payment. Please review your billing details. A failed payment can be due to a variety of reasons, including a card being declined due to LemonSqueezy not being supported in your country. Sometimes using a VPN can help." : "Your subscription is no longer active. Please review your billing details.")
+              font-size="0.875rem" line-height="1.25rem" color="var(--color-warning)"
+            row
+              link href="https://checkout.reactiive.io/billing" target="_blank" rel="noopener" height=36 padding="0 12px" border-radius="var(--radius-control)"
+                font-size="0.875rem" line-height="1.25rem" font-weight=500 display="flex" align-items="center" text-decoration-line="none"
+                color="var(--color-warning)" background-color="rgb(from var(--color-warning) r g b / 0.1)"
+                box-shadow="0 0 0 1px rgb(from var(--color-warning) r g b / 0.3)" data-motion="button focus"
+                :hover
+                  background-color = "rgb(from var(--color-warning) r g b / 0.2)"
+                text "Review Billing Details"
+        if me.planStatus == "cancelled"
+          view padding=16 border-radius=14 background-color="rgb(from var(--color-warning) r g b / 0.1)"
+            box-shadow="inset 0 0 0 1px color-mix(in oklab, var(--color-warning) 22%, transparent)" testId="cancelled-banner"
+            text "👋 Your subscription has been properly cancelled. Since Demos is free and open source, you are always eligible for a full refund!"
+              font-size="0.875rem" line-height="1.25rem" color="var(--color-warning-400)"
+        if me.plan != ""
+          // The plans' grid (grid-cols-1 sm:grid-cols-2 gap-4) with the current plan's card alone in it.
+          view display="grid" gap=16 data-motion="plan-grid"
+            PlanCardOwn(me=me, cancel=cancel)
+          column class=Surface padding=24
+            text "Plan Benefits" role="heading" aria-level=2 margin-bottom=16 font-size="1.125rem" line-height="1.75rem" font-weight=500
+              color="var(--color-text-primary)"
+            column gap=16
+              Benefit(title="Access to All Animations", description="Get access to all animation repositories, perfect for learning and implementing beautiful animations in your React Native apps.")
+              if me.plan == "annual" and me.planStatus == "active"
+                Benefit(title="Full Demos App Access", description="Access the Demos App source code, a comprehensive collection of demos maintained weekly and executable via Expo Go.")
+        else
+          view height=128
+
+// components/subscription/plan-card, the current plan's only, without its price: title, badge, features, and while the
+// plan is active (and has no billing issue) "Cancel Plan", which opens the confirmation. Card md: the surface's radius
+// and shadow, p-6, its background bg-white/[0.03] (later in the reference's CSS than bg-surface-elevated, so it wins);
+// border-success-500/30 colours a border of width 0 (preflight), so nothing is drawn for it.
+component PlanCardOwn
+  props
+    me: Me
+    cancel: action
+  view
+    column class=Surface padding=24 background-color="rgb(255 255 255 / 0.03)" height="100%" testId="plan-card"
+      row align-items="center" justify-content="space-between" margin-bottom=8
+        text (me.plan == "annual" ? "Annual" : "Monthly") role="heading" aria-level=3 font-size="1rem" line-height="1.5rem" font-weight=500
+          color="var(--color-text-primary)"
+        text (me.planStatus == "active" ? "Current Plan" : "Cancelled") padding="4px 8px" border-radius=9999 font-size="0.75rem" line-height="1rem"
+          background-color=(me.planStatus == "active" ? "rgb(from var(--color-success-500) r g b / 0.1)" : "rgb(from var(--color-warning-500) r g b / 0.1)")
+          color=(me.planStatus == "active" ? "var(--color-success-400)" : "var(--color-warning-400)") testId="plan-status"
+      column margin-top=16 gap=10
+        Feature(text="Get discounts on my future courses")
+        Feature(text="Early access to new content")
+        if me.plan == "annual"
+          Feature(text="Prioritized animation requests")
+          Feature(text="Support long-term development")
+      if me.planStatus == "active" and not planIssue(me.planStatus)
+        view padding-top=16 margin-top="auto"
+          // Button ghost md + bg-danger-500/10 text-danger-400: in the reference's CSS the ghost's text-text-secondary,
+          // hover:text-text-primary hover:bg-white/[0.06] and active:bg-white/[0.09] come later and win.
+          button appearance="none" press=cancel title="Your plan will remain active until the end of the billing period" width="100%" height=40
+            box-sizing="border-box" padding="0 16px" border-radius="var(--radius-control)" font-size="0.875rem" line-height="1.25rem" font-weight=500
+            background-color="rgb(from var(--color-danger-500) r g b / 0.1)" color="var(--color-text-secondary)" data-motion="button focus press-ghost"
+            testId="cancel-plan"
+            :hover
+              background-color = "rgb(255 255 255 / 0.06)"
+              color = "var(--color-text-primary)"
+            text "Cancel Plan"
+
+component Feature
+  props
+    text: string
+  view
+    row align-items="center" gap=8 font-size="0.875rem" line-height="1.25rem" color="var(--color-text-tertiary)"
+      svg width=16 height=16 viewBox="0 0 24 24" fill="currentColor" aria-hidden=true flex-shrink=0 color="var(--color-success-400)"
+        path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-.997-6l7.07-7.071-1.414-1.414-5.656 5.657-2.829-2.829-1.414 1.414L11.003 16z"
+      text text
+
+component Benefit
+  props
+    title: string
+    description: string
+  view
+    row gap=12
+      view width=20 height=20 margin-top=2 flex-shrink=0 color="var(--color-success-400)"
+        svg width=20 height=20 viewBox="0 0 24 24" fill="currentColor" aria-hidden=true
+          path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-.997-6l7.07-7.071-1.414-1.414-5.656 5.657-2.829-2.829-1.414 1.414L11.003 16z"
+      column
+        text title role="heading" aria-level=3 font-size="1rem" line-height="1.5rem" font-weight=500 color="var(--color-text-primary)"
+        text description margin-top=4 font-size="0.875rem" line-height="1.25rem" color="var(--color-text-tertiary)"
+
+// providers/modal/cancel-subscription-modal: "Cancel subscription?", the ModalLayout's inline actions (stacked in
+// reverse under 640 px, side by side from it), "Cancel subscription" with the spinner while the request is out.
+component CancelDialog
+  props
+    expires: string
+    sending: bool
+    confirm: action
+  view
+    dialog id="cancel-subscription" class=ModalBox closedby="any" aria-labelledby="cancel-title" testId="cancel-dialog"
+      ::backdrop
+        background-color="rgb(from var(--color-background) r g b / 0.8)"
+      DrawerHandle()
+      column padding=32 width="100%" box-sizing="border-box"
+        column align-items="center" gap=8 text-align="center"
+          text "Cancel subscription?" id="cancel-title" role="heading" aria-level=2 font-size="1.25rem" line-height="1.75rem" font-weight=600
+            letter-spacing="-0.01em" color="var(--color-text-primary)"
+          text (expires != "" ? `You'll keep access until ${expires}.` : "You'll keep access until the end of the current period.") max-width=340
+            font-size="0.875rem" line-height="1.5rem" color="var(--color-text-secondary)"
+        view margin-top=28 display="flex" gap=12 data-motion="modal-actions"
+          button appearance="none" commandfor="cancel-subscription" command="close" class=ButtonSecondary height=44 padding="0 24px"
+            border-radius="var(--radius-control)" font-size="1rem" font-weight=500 data-motion="button press-secondary focus" testId="cancel-keep"
+            text "Keep subscription"
+          // Button secondary lg + bg-danger/[0.12] text-danger-400 shadow-none hover:bg-danger/20 active:bg-danger/25: in the
+          // reference's CSS the secondary's background, text and hover/active colours come later and win; shadow-none wins
+          // over its inset line. So it draws as a secondary button without the line.
+          button appearance="none" press=confirm disabled=sending height=44 padding="0 24px" border-radius="var(--radius-control)"
+            font-size="1rem" font-weight=500 display="flex" align-items="center" justify-content="center" cursor="pointer"
+            background-color="rgb(255 255 255 / 0.08)" color="var(--color-text-primary)" opacity=(sending ? 0.5 : 1)
+            data-motion="button focus press-secondary" testId="cancel-confirm"
+            :hover
+              background-color = "rgb(255 255 255 / 0.12)"
+            if sending
+              Spinner()
+              view width=8
+            text "Cancel subscription"
+      CloseX(dialog="cancel-subscription")

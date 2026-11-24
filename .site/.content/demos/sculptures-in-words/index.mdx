@@ -1,0 +1,79 @@
+<Title date="2026-10-04" slug="sculptures-in-words" basePath="demos">
+  Sculptures in Words — Text to Statue Morph
+</Title>
+
+<Demo />
+
+Three articles, three statues: the Venus de Milo, the Victory of Samothrace and Rodin's Thinker. Each article is about as long as its statue has points, because every letter becomes one point on the figure. Read the column, tap the button, and the text you were reading lifts off the page and lands on the statue, which then turns slowly on a turntable. Tap again and every letter goes back to its place.
+
+## Two renderers, one device
+
+Skia and WebGPU draw every frame on the same Dawn device. With Skia on Graphite, `importDevice(Skia.getNativeDevice())` hands react-native-webgpu the device Skia already renders with, so textures cross between the two with no copy.
+
+```ts
+let nativeDevice: bigint;
+try {
+  nativeDevice = Skia.getNativeDevice();
+} catch {
+  setStatus(s => ({ ...s, error: 'needs Skia Graphite' }));
+  return;
+}
+const device = importDevice(nativeDevice);
+```
+
+There is no capability flag to ask: `getNativeDevice` throws on a build without Graphite, so the throw is the feature detection.
+
+Each library does the part it is good at. Skia draws the column at rest: a `Paragraph` set in Newsreader, real vector outlines. WebGPU draws the figure: one instanced quad per letter, with a depth buffer so the near side of the statue hides the far side. It renders into a texture that Skia composites as an `Image` in the same frame.
+
+## The handoff you can't see
+
+The moment the morph starts, the whole column switches from Skia's text to WebGPU's quads in one step. For that to be invisible, a quad drawn over its letter has to cover the same pixels, not just look similar.
+
+The glyph atlas is drawn with the paragraph's own `SkFont`, through a canvas scaled by the pixel ratio, so it is the same strike Skia uses on screen. Skia places a glyph at quarter-pixel horizontal positions and whole-pixel vertical ones, and the mask differs for each of the four phases. So every glyph gets four cells, and the shader rounds exactly as Skia does to pick the right one:
+
+```wgsl
+let xo = pagePx.x * u.ratio;
+let yo = homeY * u.ratio;
+let q = floor((xo + 0.125) * 4.0);
+let x0 = floor(q * 0.25);
+let subpixel = q - x0 * 4.0;
+let y0 = floor(yo + 0.5);
+```
+
+Get either coordinate wrong by a fraction and the bilinear filter smears the letter, and the handoff becomes a visible soften.
+
+Hiding Skia's column has its own trap. A `Group`'s opacity does not reach a `Paragraph`, so fading the group left the text on screen under its own copy, every edge drawn twice. An empty clip is honoured by everything:
+
+```ts
+const columnClip = useDerivedValue(
+  () =>
+    progress.get() > 0.003
+      ? Skia.XYWHRect(0, 0, 0, 0)
+      : Skia.XYWHRect(0, 0, width, tallest),
+  [width, tallest],
+);
+```
+
+## Letters into points
+
+The statues are baked point clouds: float32 records of `x, y, z, nx, ny, nz, ao`, one per letter, shipped as raw `.bin` files that Metro serves verbatim. Each scan arrived normalised on its own terms, so all three are scaled to the same bounding-box diagonal, which gives them one scale and roughly one density of letters.
+
+Pairing letters with points by index would send every letter across the whole frame to a random spot, and a few thousand crossing paths is noise. Instead both sets are sorted by angle around their centroid and zipped together, so the paths stay roughly parallel and mostly short, and the transition reads as one wave rather than a shuffle.
+
+```ts
+pageAngles[i] = Math.atan2(pcy - pageXY[i * 2 + 1], pageXY[i * 2] - pcx);
+bustAngles[i] = Math.atan2(
+  bust[i * POINT_STRIDE + 1] - bcy,
+  bust[i * POINT_STRIDE] - bcx,
+);
+```
+
+The same winding pairs one statue with the next, so swiping sideways moves a letter high on one shoulder to somewhere high on the next figure, while the column underneath changes to that statue's article.
+
+## Nothing waits on JS
+
+The figure's frame loop runs on the UI thread. It reads the morph clock where Reanimated springs it, writes the uniforms, encodes one instanced draw, and hands the texture to Skia on the thread that draws it, so the GPU pass and the canvas advance on the same frame. While you are reading, the loop clears the layer once and then does no GPU work until the next tap.
+
+<GitHubRepoButtons />
+
+<SendFeedback />

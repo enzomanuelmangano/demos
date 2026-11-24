@@ -1,0 +1,95 @@
+<Title date="2025-12-27" slug="notion-qrcode" basePath="demos">
+  Notion-Style QR Code Animation
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/notion-qrcode"
+/>
+
+A 3D animation where avatar images arranged in a rotating torus morph into a scannable QR code. This demo showcases Skia rendering, optimal point matching with the Hungarian algorithm, and wave-based staggered transitions.
+
+## What's This About?
+
+This animation features:
+
+- Avatar images float in a 3D rotating torus (donut shape)
+- On toggle, avatars smoothly morph into a functional QR code
+- A wave effect sweeps around the torus during the transition
+- Corner radius animates from circular (torus) to square (QR)
+- Haptic feedback provides tactile response during morphing
+
+## How It Works
+
+The animation pipeline has three main stages:
+
+1. **Shape Generation** (useShapeData hook):
+   - Generates N points distributed on a 3D torus surface using Fibonacci distribution
+   - Generates N points for the QR code (one per black module)
+   - Uses the **Hungarian algorithm** to find optimal 1:1 mapping between torus and QR points, minimizing total travel distance for smooth morphing
+
+2. **Animation Loop** (createPicture worklet):
+   - Runs every frame on the UI thread via Skia
+   - Interpolates each point's position between torus → QR based on progress
+   - Applies 3D rotation with perspective projection
+   - Depth-sorts all points for correct occlusion (painter's algorithm)
+
+3. **Wave Effect**:
+   - Points don't animate simultaneously - they have staggered delays
+   - Delay is based on angular position around the torus
+   - Creates a "wave" that sweeps around during morphing
+
+## Technical Highlights
+
+- **React Native Skia**: Picture-based rendering for 60fps performance
+- **Reanimated Worklets**: All animation logic runs on the native UI thread
+- **Hungarian Algorithm**: O(n³) optimal assignment for smooth point transitions
+- **Perspective Projection**: True 3D depth with objects scaling based on distance
+- **Haptic Feedback**: Front-loaded burst of haptics at animation start
+
+## Component API
+
+The component is fully configurable:
+
+```tsx
+import { QRCodeAnimation, QRCodeAnimationRef } from './notion-qrcode';
+
+const ref = useRef<QRCodeAnimationRef>(null);
+const progress = useSharedValue(0);
+
+<QRCodeAnimation
+  ref={ref}
+  qrData="https://your-url.com"
+  sprite={{
+    source: require('./avatars.png'),
+    cols: 5,
+    rows: 4,
+    cellSize: 128,
+    numAvatars: 20,
+  }}
+  colors={{
+    hue: 220,
+    saturationRange: [30, 70],
+    lightnessRange: [70, 85],
+  }}
+  progress={progress}
+/>;
+
+// Toggle between torus and QR code
+ref.current?.toggle();
+```
+
+## Props
+
+- **qrData** (_string_) - URL or text to encode in the QR code
+- **sprite** (_SpriteConfig_) - Avatar sprite sheet configuration
+- **colors** (_ColorConfig_) - HSL color palette for backgrounds
+- **torus** (_TorusConfig_) - Torus dimensions (major/minor radius)
+- **progress** (_SharedValue\<number\>_) - External progress value for button sync
+- **ref** (_RefObject_) - Exposes _toggle()_ method
+
+<ReanimatePromo />
+
+<SendFeedback />

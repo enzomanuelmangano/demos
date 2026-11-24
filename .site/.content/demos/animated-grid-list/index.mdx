@@ -1,0 +1,43 @@
+<Title date="2023-01-11" slug="animated-grid-list" basePath="demos">
+  Grid List Layout Animation with Reanimated
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/animated-grid-list"
+/>
+
+A dynamic grid-list component that smoothly transitions between grid and list layouts. Features fluid animations for both layout changes and content visibility, creating a polished user experience.
+
+## What's This About?
+
+This component provides a seamless way to display content in both grid and list views. Users can toggle between layouts with a floating button, and the content smoothly animates between states. Images resize and reposition while text fades in and out appropriately.
+
+## Technical Implementation
+
+The component uses layout animations for smooth transitions and handles image aspect ratios dynamically. It features fade animations for text content and supports custom rendering of items in both layouts.
+
+## Usage
+
+```tsx
+type Item = {
+  img: string;
+  title: string;
+  subtitle: string;
+};
+
+// Example usage
+<AnimatedLayoutList
+  data={items}
+  layout="grid"
+  renderItem={(item, index, isExpanded) => (
+    // Custom render implementation
+  )}
+/>
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

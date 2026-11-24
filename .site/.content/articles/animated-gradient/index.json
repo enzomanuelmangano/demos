@@ -1,0 +1,17 @@
+{
+  "title": "Animated Gradient in React Native (Skia)",
+  "shortTitle": "Animated Gradient in React Native (Skia)",
+  "subtitle": "In this tutorial we're going to make a simple and powerful Gradient animation by using the combination of React Native Skia and Reanimated. I think that this animation is a perfect example of how using the right tool greatly simplifies the work...",
+  "author": "Enzo Manuel Mangano",
+  "date": "2024-10-14",
+  "slug": "animated-gradient",
+  "tags": [
+    "react-native",
+    "react",
+    "animation",
+    "react-native-skia",
+    "gradient"
+  ],
+  "featuredImage": "./images/header.webp",
+  "series": "exploring-skia"
+}

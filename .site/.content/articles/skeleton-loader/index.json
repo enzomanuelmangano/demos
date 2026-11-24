@@ -1,0 +1,11 @@
+{
+  "title": "Skeleton Animation in React Native with Moti",
+  "shortTitle": "Skeleton Animation in React Native with Moti",
+  "subtitle": "Skeleton Loader is a common UI component used to improve the user experience when loading content. This tutorial will teach you how to create a skeleton animation in React Native using the Moti library.",
+  "author": "Enzo Manuel Mangano",
+  "date": "2024-12-20",
+  "slug": "skeleton-loader",
+  "tags": ["react-native", "react", "moti", "skeleton-loader"],
+  "featuredImage": "./images/header.webp",
+  "series": "animate-with-reanimated"
+}

@@ -1,0 +1,62 @@
+<Title date="2023-10-04" slug="loading-button" basePath="demos">
+  Loading Button Animation with Reanimated, RN Skia and Moti 🫣
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/loading-button"
+/>
+
+An animated button component with multiple states and loading animations.
+
+## What's This About?
+
+This component creates an interactive button that provides visual feedback for asynchronous operations. The button smoothly transitions between different states (idle, loading, success, error) with appropriate colors and text labels. It integrates with React Query for handling asynchronous state management and includes configurable timeouts and retry logic for robust error handling.
+
+## Technical Implementation
+
+The component uses:
+
+- State transitions
+- Gesture handling
+- Async operations
+- Visual feedback
+
+## Usage
+
+```tsx
+// Basic usage with state management
+const { status, mutateAsync } = useMutation(async () => {
+  // Your async operation
+  await someAsyncOperation();
+});
+
+<LoadingButton
+  status={status}
+  onPress={async () => {
+    await mutateAsync();
+  }}
+  style={{
+    height: 60,
+    borderRadius: 25,
+  }}
+  colorFromStatusMap={{
+    idle: '#47A1E6',
+    loading: '#47A1E6',
+    success: '#5BC682',
+    error: '#CD5454',
+  }}
+  titleFromStatusMap={{
+    idle: 'Check Transaction',
+    loading: 'Analyzing Transaction',
+    success: 'Transaction Safe',
+    error: 'Transaction Unsafe',
+  }}
+/>;
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

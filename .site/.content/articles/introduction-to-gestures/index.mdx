@@ -1,0 +1,601 @@
+import { IntroToGesturesDemo } from './mdx-client';
+
+<Title date="2024-01-13" slug="introduction-to-gestures">
+  Introduction to React Native Gesture Handler
+</Title>
+
+Today we are going to build from scratch, as usual, this simple and powerful animation React Native using mainly the react-native-gesture-handler package and the reanimated package.
+
+So in this article, we're going to introduce a new series called "What about gestures?". The aim is to take an in-depth look at the React Native animations closely related to gestures.
+
+Obviously, the "Animate with Reanimated" series will not be interrupted and will continue to bring content related to animations.
+
+Let me tell you that this animation is heavily inspired by the **Chat Heads example** already uploaded in the react-native-gesture-handler repository ([Learn more](https://github.com/software-mansion/react-native-gesture-handler/blob/main/example/src/showcase/chatHeads/index.tsx)).
+
+That said we can finally move to the code part.
+
+<GithubCard
+  repo="enzomanuelmangano/what-about-gestures"
+  path="00-introduction-to-gestures"
+/>
+
+### YouTube Channel
+
+Are you more of a visual learner? Here you can find my full video tutorial
+
+<YouTubeEmbed videoId="xpT2shjX790" />
+
+## Code Setup
+
+Here I've created a React Native project with the latest version of the Expo SDK (v44 till now).
+
+```bash
+npx expo install react-native-reanimated react-native-gesture-handler
+```
+
+**To get a more detailed explanation of my setup, feel free to [click here!](/articles/setup-reanimated-gestures)**.
+
+## Setup the Pan Animation
+
+We can start to display our first blue circle in the middle of the screen.
+
+```tsx
+import { Dimensions, StyleSheet, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+const SIZE = 80;
+
+export default function App() {
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={styles.container}>
+        <View style={styles.circle} />
+      </View>
+    </GestureHandlerRootView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  circle: {
+    position: 'absolute',
+    height: SIZE,
+    aspectRatio: 1,
+    backgroundColor: 'blue',
+    borderRadius: SIZE / 2,
+    opacity: 0.8,
+  },
+});
+```
+
+At this point, you can already start to see how the new version of the **Gesture Handler** package works.
+
+Normally, if we wanted to move this circle on the screen, we would have to use the **PanGestureHandler** component from react-native-gesture-handler (version < 2.0.0).
+
+With the new version, we can simply use the **GestureDetector** to handle every kind of gesture animation.
+
+So the difference is that, instead of using a PanGestureHandler, TapGestureHandler, PinchGestureHandler (and so on...), **we can just use and define every gesture with the GestureDetector component**.
+
+Since we're going to animate the circle, we can convert it into an **Animated.View**.
+
+```tsx
+...
+
+import {
+  GestureDetector,
+  GestureHandlerRootView,
+} from 'react-native-gesture-handler';
+
+...
+
+export default function App() {
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={styles.container}>
+        <GestureDetector gesture={🧐}>
+          <Animated.View style={styles.circle} />
+        </GestureDetector>
+      </View>
+    </GestureHandlerRootView>
+  );
+}
+
+...
+```
+
+To move around it, we definitely need to specify the "gesture" property inside the GestureDetector component.
+
+We can define the "gesture" value as follows, **by implementing the onUpdate callback**:
+
+```tsx
+...
+
+import {
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
+} from 'react-native-gesture-handler';
+
+...
+
+export default function App() {
+
+  const gesture = Gesture.Pan()
+    .onUpdate((event) => {
+      console.log(event.translationX)
+  })
+
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={styles.container}>
+        <GestureDetector gesture={gesture}>
+          <Animated.View style={styles.circle} />
+        </GestureDetector>
+      </View>
+    </GestureHandlerRootView>
+  );
+}
+
+...
+```
+
+Since we need to use the event.translationX value we can just define a SharedValue and store it inside a SharedValue.
+
+```tsx
+const translateX = useSharedValue(0);
+
+const gesture = Gesture.Pan().onUpdate((event) => {
+  translateX.value = event.translationX;
+});
+```
+
+Finally, we can easily create the Reanimated Style and pass it to the circle.
+
+```tsx
+const rStyle = useAnimatedStyle(() => {
+  return {
+    transform: [{ translateX: translateX.value }],
+  };
+});
+```
+
+Since we're going to animate also on the vertical axis, **let's handle in the same way the translateY** value.
+
+```tsx
+const translateX = useSharedValue(0);
+const translateY = useSharedValue(0);
+
+const gesture = Gesture.Pan().onUpdate((event) => {
+  translateX.value = event.translationX;
+  translateY.value = event.translationY;
+});
+
+const rStyle = useAnimatedStyle(() => {
+  return {
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+    ],
+  };
+});
+```
+
+<IntroToGesturesDemo />
+
+**By moving the circle a little bit, you can notice a glitchy behavior.** That is caused by the fact that we're not handling the previous position. So on the second try, the translateX Shared Value will start again from the initial position.
+To handle this use case, we need to store and retrieve the animation context.
+
+```tsx
+const translateX = useSharedValue(0);
+const translateY = useSharedValue(0);
+
+const context = useSharedValue({ x: 0, y: 0 });
+
+const gesture = Gesture.Pan()
+  .onStart(() => {
+    context.value = { x: translateX.value, y: translateY.value };
+  })
+  .onUpdate((event) => {
+    translateX.value = event.translationX + context.value.x;
+    translateY.value = event.translationY + context.value.y;
+  });
+
+const rStyle = useAnimatedStyle(() => {
+  return {
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+    ],
+  };
+});
+```
+
+So let's reload and you can see that everything is working.
+
+We're able to scroll everywhere the circle, **but it isn't the animation that we want**. We don't want the circle to follow our finger perfectly but we want it to follow with a spring animation.
+
+In order to do it, **let's derive the followX position**.
+Basically, this followX position will be derived from the translateX value by simply applying a spring animation (the same concept can be of course iterated for the y axis as follows):
+
+```tsx
+...
+
+const translateX = useSharedValue(0)
+const translateY = useSharedValue(0)
+
+const context = useSharedValue({ x: 0, y: 0 })
+
+const gesture = Gesture.Pan()
+  .onStart(() => {
+    context.value = { x: translateX.value, y: translateY.value }
+  })
+  .onUpdate((event) => {
+    translateX.value = event.translationX + context.value.x
+    translateY.value = event.translationY + context.value.y
+  })
+
+const followX = useDerivedValue(() => {
+  return withSpring(translateX.value)
+})
+
+const followY = useDerivedValue(() => {
+  return withSpring(translateY.value)
+})
+
+...
+```
+
+Let's specify replace both translateX and translateY values with followX, followY and let's see what's going on:
+
+```tsx
+...
+
+const rStyle = useAnimatedStyle(() => {
+  return {
+    transform: [{ translateX: followX.value }, { translateY: followY.value }],
+  }
+})
+```
+
+## Abstract the logic inside a custom hook: useFollowAnimatedPosition
+
+Right now, we definitely need to create and animate the red circle. **The purpose of the red circle will be to follow the blue one.**
+What does it mean? **That we're going to replicate basically the same exact logic again**.
+
+To avoid the code replication, we can simply abstract the previous logic inside a custom hook called **"useFollowAnimatedPosition"** (feel free to use whatever name you want).
+
+This hook should make an easy job. It should take the x and y positions to follow and return the springified followX and followY positions with their Reanimated style. Here it is:
+
+```tsx
+...
+interface AnimatedPosition {
+  x: Animated.SharedValue<number>
+  y: Animated.SharedValue<number>
+}
+
+const useFollowAnimatedPosition = ({ x, y }: AnimatedPosition) => {
+  const followX = useDerivedValue(() => {
+    return withSpring(x.value)
+  })
+
+  const followY = useDerivedValue(() => {
+    return withSpring(y.value)
+  })
+
+  const rStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateX: followX.value }, { translateY: followY.value }],
+    }
+  })
+
+  return { followX, followY, rStyle }
+}
+...
+```
+
+At this point, we're almost done.
+
+First of all, let's replace all our previous code with the new custom hook:
+
+```tsx
+...
+
+export default function App() {
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+
+  const context = useSharedValue({ x: 0, y: 0 });
+
+  const gesture = Gesture.Pan()
+    .onStart(() => {
+      context.value = { x: translateX.value, y: translateY.value };
+    })
+    .onUpdate((event) => {
+      translateX.value = event.translationX + context.value.x;
+      translateY.value = event.translationY + context.value.y;
+    })
+
+  const {
+    followX: blueFollowX,
+    followY: blueFollowY,
+    rStyle: rBlueCircleStyle,
+  } = useFollowAnimatedPosition({
+    x: translateX,
+    y: translateY,
+  });
+
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={styles.container}>
+        <GestureDetector gesture={gesture}>
+          <Animated.View style={[styles.circle, rBlueCircleStyle]} />
+        </GestureDetector>
+      </View>
+    </GestureHandlerRootView>
+  );
+}
+
+...
+```
+
+Right now, everything should work as before, but we can easily start to add the red circle and let him follow the blue one by reusing the same custom hook.
+
+```tsx
+const {
+  followX: blueFollowX,
+  followY: blueFollowY,
+  rStyle: rBlueCircleStyle,
+} = useFollowAnimatedPosition({
+  x: translateX,
+  y: translateY,
+});
+
+const {
+  followX: redFollowX,
+  followY: redFollowY,
+  rStyle: rRedCircleStyle,
+} = useFollowAnimatedPosition({
+  x: blueFollowX,
+  y: blueFollowY,
+});
+
+return (
+  <GestureHandlerRootView style={{ flex: 1 }}>
+    <View style={styles.container}>
+      <Animated.View
+        style={[styles.circle, { backgroundColor: 'red' }, rRedCircleStyle]}
+      />
+      <GestureDetector gesture={gesture}>
+        <Animated.View style={[styles.circle, rBlueCircleStyle]} />
+      </GestureDetector>
+    </View>
+  </GestureHandlerRootView>
+);
+```
+
+### Why we're passing the followX and followY
+
+Basically, we want the red circle to follow the blue circle instead of following our finger (the blue circle will follow the finger).
+
+## Animating the green circle
+
+The last circle that we want to animate is the green circle and at this stage, everything should be almost easy to do. We're just going to replicate, once again, the same logic used for the blue and the red circles, but this time we're going to use the relation between the red and the green circle.
+
+```tsx
+const {
+  followX: blueFollowX,
+  followY: blueFollowY,
+  rStyle: rBlueCircleStyle,
+} = useFollowAnimatedPosition({
+  x: translateX,
+  y: translateY,
+});
+
+const {
+  followX: redFollowX,
+  followY: redFollowY,
+  rStyle: rRedCircleStyle,
+} = useFollowAnimatedPosition({
+  x: blueFollowX,
+  y: blueFollowY,
+});
+
+const { rStyle: rGreenCircleStyle } = useFollowAnimatedPosition({
+  x: redFollowX,
+  y: redFollowY,
+});
+
+return (
+  <GestureHandlerRootView style={{ flex: 1 }}>
+    <View style={styles.container}>
+      <Animated.View
+        style={[styles.circle, { backgroundColor: 'green' }, rGreenCircleStyle]}
+      />
+      <Animated.View
+        style={[styles.circle, { backgroundColor: 'red' }, rRedCircleStyle]}
+      />
+      <GestureDetector gesture={gesture}>
+        <Animated.View style={[styles.circle, rBlueCircleStyle]} />
+      </GestureDetector>
+    </View>
+  </GestureHandlerRootView>
+);
+```
+
+## Final Touches
+
+The last thing that we want to check is the current position of this blue circle in order to move the circles to the closest edge.
+
+1. If the blue circle is on the left side of the screen, we want to push all the circles to the closest left edge;
+2. If the blue circle is on the right side of the screen, we want to push all the circles to the closest right edge;
+
+Hence, we can easily handle this requirement inside the "onEnd" callback:
+
+```tsx
+const gesture = Gesture.Pan()
+  .onStart(() => {
+    context.value = { x: translateX.value, y: translateY.value };
+  })
+  .onUpdate((event) => {
+    translateX.value = event.translationX + context.value.x;
+    translateY.value = event.translationY + context.value.y;
+  })
+  .onEnd(() => {
+    if (translateX.value > SCREEN_WIDTH / 2) {
+      translateX.value = SCREEN_WIDTH;
+    } else {
+      translateX.value = 0;
+    }
+  });
+```
+
+To enhance the animation, we need to consider in the condition also the circle's size.
+
+```tsx
+const gesture = Gesture.Pan()
+  .onStart(() => {
+    context.value = { x: translateX.value, y: translateY.value };
+  })
+  .onUpdate((event) => {
+    translateX.value = event.translationX + context.value.x;
+    translateY.value = event.translationY + context.value.y;
+  })
+  .onEnd(() => {
+    if (translateX.value > SCREEN_WIDTH / 2) {
+      translateX.value = SCREEN_WIDTH - SIZE;
+    } else {
+      translateX.value = 0;
+    }
+  });
+```
+
+Here you can give a look to our final result!
+
+```tsx
+import { Dimensions, StyleSheet, View } from 'react-native';
+import {
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
+} from 'react-native-gesture-handler';
+import Animated, {
+  useAnimatedGestureHandler,
+  useAnimatedStyle,
+  useDerivedValue,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
+
+interface AnimatedPosition {
+  x: Animated.SharedValue<number>;
+  y: Animated.SharedValue<number>;
+}
+
+const useFollowAnimatedPosition = ({ x, y }: AnimatedPosition) => {
+  const followX = useDerivedValue(() => {
+    return withSpring(x.value);
+  });
+
+  const followY = useDerivedValue(() => {
+    return withSpring(y.value);
+  });
+
+  const rStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateX: followX.value }, { translateY: followY.value }],
+    };
+  });
+
+  return { followX, followY, rStyle };
+};
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+const SIZE = 80;
+
+export default function App() {
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+
+  const context = useSharedValue({ x: 0, y: 0 });
+
+  const gesture = Gesture.Pan()
+    .onStart(() => {
+      context.value = { x: translateX.value, y: translateY.value };
+    })
+    .onUpdate((event) => {
+      translateX.value = event.translationX + context.value.x;
+      translateY.value = event.translationY + context.value.y;
+    })
+    .onEnd(() => {
+      if (translateX.value > SCREEN_WIDTH / 2) {
+        translateX.value = SCREEN_WIDTH - SIZE;
+      } else {
+        translateX.value = 0;
+      }
+    });
+
+  const {
+    followX: blueFollowX,
+    followY: blueFollowY,
+    rStyle: rBlueCircleStyle,
+  } = useFollowAnimatedPosition({
+    x: translateX,
+    y: translateY,
+  });
+
+  const {
+    followX: redFollowX,
+    followY: redFollowY,
+    rStyle: rRedCircleStyle,
+  } = useFollowAnimatedPosition({
+    x: blueFollowX,
+    y: blueFollowY,
+  });
+
+  const { rStyle: rGreenCircleStyle } = useFollowAnimatedPosition({
+    x: redFollowX,
+    y: redFollowY,
+  });
+
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={styles.container}>
+        <Animated.View
+          style={[
+            styles.circle,
+            { backgroundColor: 'green' },
+            rGreenCircleStyle,
+          ]}
+        />
+        <Animated.View
+          style={[styles.circle, { backgroundColor: 'red' }, rRedCircleStyle]}
+        />
+        <GestureDetector gesture={gesture}>
+          <Animated.View style={[styles.circle, rBlueCircleStyle]} />
+        </GestureDetector>
+      </View>
+    </GestureHandlerRootView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  circle: {
+    position: 'absolute',
+    height: SIZE,
+    aspectRatio: 1,
+    backgroundColor: 'blue',
+    borderRadius: SIZE / 2,
+    opacity: 0.8,
+  },
+});
+```

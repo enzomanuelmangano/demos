@@ -1,0 +1,33 @@
+// /inspirations (reference app/inspirations/page.tsx): two paragraphs, the blogs and docs that shaped the site, one
+// mention, and the way back home.
+use md from "../components/responsive.contract"
+use ProjectItem from "../components/project-item.contract"
+
+style SectionTitle
+  font-size="1.5rem" line-height="2rem" font-weight=600 color="#ffffff" margin-bottom=8
+
+component BackHome
+  view
+    link href="/" display="flex" align-items="center" margin-top=32 font-size=14 line-height="normal" color="var(--color-text-secondary)" data-motion="plain"
+      text "Back to Home" font-weight=600 text-decoration-line="underline" color="var(--color-text-secondary)" data-motion="footer-link"
+
+component InspirationsPage
+  view
+    column margin-top=md(32, 144) gap=24 justify-content="center" flex=1 color="var(--color-text-secondary)"
+      text "Ideas always come from many small connections."
+      text "Everything happens by observing what others create. This blog was born as an output of ideas that came to me from looking at projects and other blogs."
+    column margin-top=56
+      text "Inspirations" role="heading" aria-level=2 class=SectionTitle
+      ProjectItem(title="Evan Bacon's Portfolio", href="https://evanbacon.dev", tag="", newPage=true,
+        description="I think this is the first available blog built on top of expo-router. Besides being a really useful blog content-wise, the shape of it really inspired me to recreate my blog entirely on top of Expo & React Native.")
+      ProjectItem(title="Emil Kowalski's Blog", href="https://emilkowal.ski", tag="", newPage=true,
+        description="Emil is a tremendous source of inspiration. His way of presenting articles by adding interactivity as an ingredient was a major factor for me in trying to recreate my blog.")
+      ProjectItem(title="Maxime Heckel's Blog", href="https://blog.maximeheckel.com", tag="", newPage=true,
+        description="The quality of Maxime Heckel's blog is out of this world. The 👋 you see on the home page is inspired by his home page. The quality of his content, on the other hand, is an ongoing reference.")
+      ProjectItem(title="Reanimated Docs", href="https://docs.swmansion.com/react-native-reanimated/", tag="", newPage=true,
+        description="The whole Reanimated Docs is a source of inspiration. I love the way it's explained and how the animations are implemented.")
+    column margin-top=56
+      text "Mentions" role="heading" aria-level=2 class=SectionTitle
+      ProjectItem(title="William Candillon", href="https://www.youtube.com/@wcandillon", tag="", newPage=true,
+        description="If you want to see something magical, simply go to William Candillon's Youtube Channel. I started and continue to develop animations by obsessively watching what he creates. As if that was not enough, together with Christian Falch, he co-created React Native Skia.")
+    BackHome()

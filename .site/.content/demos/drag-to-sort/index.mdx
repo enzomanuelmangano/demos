@@ -1,0 +1,61 @@
+<Title date="2023-12-20" slug="drag-to-sort" basePath="demos">
+  Drag to Sort with Reanimated and Gesture Handler 🤌🏽
+</Title>
+
+<Demo />
+
+<GithubCard repo="enzomanuelmangano/demos" path="src/animations/drag-to-sort" />
+
+A list component that allows reordering through drag and drop gestures. Includes visual feedback and position tracking.
+
+## What's This About?
+
+This component creates a list where:
+
+- Items can be dragged to reorder
+- Visual feedback shows current position
+- Items adjust their shape while dragging
+- Gradient overlay adds depth
+
+## Technical Implementation
+
+The component uses:
+
+- Reanimated for drag gestures
+- Custom list implementation for z-index handling
+- Position tracking with shared values
+- Linear gradient overlay
+- Safe area handling
+
+## Usage
+
+```tsx
+type Item = {
+  id: string;
+  title: string;
+  // other item properties
+};
+
+// Basic usage
+<SortableList
+  data={items}
+  listItemHeight={80}
+  onDragEnd={(positions) => {
+    console.log('New order:', positions);
+  }}
+  renderItem={({ item, index }) => (
+    <ListItem
+      item={item}
+      index={index}
+      style={{
+        height: 80,
+        margin: 6,
+      }}
+    />
+  )}
+/>;
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

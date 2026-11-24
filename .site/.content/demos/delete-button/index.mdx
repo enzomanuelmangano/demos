@@ -1,0 +1,76 @@
+<Title date="2024-10-08" slug="delete-button" basePath="demos">
+  Gooey Delete Button with React Native Skia
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/delete-button"
+/>
+
+Delete button component with fluid animations and a gooey effect. Features a two-state interaction pattern with smooth transitions and confirmations.
+
+## What's This About?
+
+This component creates an interactive delete button that expands to reveal a confirmation state. It features:
+
+- Smooth expansion animation with a gooey effect
+- Close button that appears during confirmation
+- Dynamic text transitions between states
+- Gesture-based interactions
+- Customizable dimensions and text
+
+## Technical Implementation
+
+The component leverages Skia for high-performance rendering and implements:
+
+- Gooey effect using Skia layer blending
+- Complex gesture handling with Skia touch events
+- Multiple coordinated animations:
+  - Button expansion/contraction
+  - Color transitions
+  - Text opacity and position
+  - Close button reveal
+- Custom font handling
+
+## Usage
+
+```tsx
+type DeleteButtonProps = {
+  onConfirmDeletion: () => void;
+  height: number;
+  width: number;
+  initialText?: string;
+  confirmText?: string;
+  additionalWidth: number;
+  closeOnConfirm?: boolean;
+};
+
+// Basic usage
+<DeleteButton
+  height={50}
+  width={150}
+  additionalWidth={80}
+  onConfirmDeletion={() => {
+    console.log('Confirmed deletion');
+  }}
+/>
+
+// Customized version
+<DeleteButton
+  height={50}
+  width={150}
+  additionalWidth={80}
+  initialText="Remove"
+  confirmText="Sure?"
+  closeOnConfirm={true}
+  onConfirmDeletion={() => {
+    handleDeletion();
+  }}
+/>
+```
+
+<ReanimatePromo />
+
+<SendFeedback />

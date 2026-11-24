@@ -1,0 +1,73 @@
+<Title date="2023-06-28" slug="selectable-grid-list" basePath="demos">
+  Selectable Grid List with Reanimated and Gesture Handler
+</Title>
+
+<Demo />
+
+<GithubCard
+  repo="enzomanuelmangano/demos"
+  path="src/animations/selectable-grid-list"
+/>
+
+A grid list component with multi-select capabilities and animated feedback.
+
+## What's This About?
+
+This component creates an interactive grid list where items can be selected and deselected with animated transitions. It features a configurable grid layout, a floating action button that responds to selection state, and smooth animations for selection feedback. The implementation includes safe area handling and dynamic item sizing based on screen width, making it suitable for gallery or file selection interfaces.
+
+## Technical Implementation
+
+The component uses:
+
+- Grid layout management
+- Multi-selection handling
+- Animated transitions
+- Floating action button
+- Safe area awareness
+
+## Usage
+
+```tsx
+// Grid configuration
+const GridConfig = {
+  itemsPerRow: 4,
+  internalPadding: 4,
+};
+
+// Basic usage
+<SelectableGridList
+  data={items}
+  numColumns={GridConfig.itemsPerRow}
+  itemSize={itemSize}
+  onSelectionChange={(indexes) => {
+    selectedIndexesAmount.value = indexes.length;
+  }}
+  renderItem={({ index, activeIndexes }) => (
+    <SelectableListItem
+      index={index}
+      internalPadding={GridConfig.internalPadding}
+      containerWidth={itemSize}
+      containerHeight={itemSize}
+      activeIndexes={activeIndexes}
+    />
+  )}
+/>;
+
+// Reset selection
+gridListRef.current?.reset();
+
+// Floating button animation
+const rFloatingButtonStyle = useAnimatedStyle(() => {
+  return {
+    transform: [
+      {
+        translateY: withSpring(selectedIndexesAmount.value === 0 ? 150 : 0),
+      },
+    ],
+  };
+});
+```
+
+<ReanimatePromo />
+
+<SendFeedback />
