@@ -50,6 +50,51 @@ demo buttons' 0.95 is a `transform` as live's inline style (pan-gesture-handler 
 the same): the one left is a button focused after a hover, where live keeps `scale(1)` inline (matrix(1) vs none, same
 pixels).
 
+## Responsive (`tools/parity/responsive.ts`)
+
+Every width and height, and a window resized live, not only 1440 and 390:
+
+```sh
+bun tools/parity/responsive.ts https://reactiive.io http://127.0.0.1:4310            # the default routes, the whole matrix
+bun tools/parity/responsive.ts https://reactiive.io http://127.0.0.1:4310 /docs/terms --widths 320,390 --no-resize
+bun tools/parity/responsive.ts https://reactiive.io http://127.0.0.1:4310 / --no-matrix --window   # + a real headed window
+```
+
+- **Matrix**: 27 widths (320 … 1920, both sides of every Tailwind breakpoint: 639/640, 767/768, 1023/1024, 1279/1280,
+  1536) at 844 (under 800 px, touch) or 900 px tall, plus 600 and 700 px tall at 390, 768, 1024 and 1440. Per cell, live
+  then local (one at a time, each settled and scrolled through, `--scroll 400,100`): the local page must not scroll
+  sideways (`scrollWidth > clientWidth`, whatever live does), and its full page (capped at 6000 px) must differ from
+  live's by at most the route's pixel budget (0.5 %, or the recorded deliberate difference in `budget()`: /articles
+  D13, /demos D10/D12/D17/D20, signed-out /profile and /manage-subscription, the home page under 360 px where live cuts
+  its own Subscribe button). A cell over budget is shot once more before it fails (live's YouTube player is made by
+  its API script, sometimes after the settle). Texts placed are reported as compare.ts does.
+- **Live resize**: one desktop page (no touch) loaded at 1440 x 900, resized by `Emulation.setDeviceMetricsOverride`
+  1440 → 390 → 1440 through every breakpoint, then to 1440 x 700, 1440 x 600, 1024 x 600, 768 x 700, 390 x 600, in two
+  phases: the static HTML (the runtime held off: `exact.ready` set to a promise that never settles before the capture
+  script runs) and the started runtime (its entry imported). After each step every box (tag, rect, font size) must
+  equal a fresh load at that size in the same phase to 1 px, with no sideways overflow. `--window` repeats it through a
+  real headed window (`Browser.setWindowBounds`, 1440 → 500 → 1440; macOS keeps a window ≥ ~500 px wide).
+- `--scrollbars` runs with classic scrollbars (a desktop with a mouse: the layout is 15 px narrower than the window, and
+  a `100vw` box is 15 px wider than the page).
+- Exits 1 on an overflow, a cell over budget or a resize that differs; `<out>/responsive.json` has every row, and a
+  diff PNG is written for each cell over budget.
+
+2026-11-24 (owner: "il sito non è responsive per niente"): the layout was already fluid: every breakpoint is CSS
+(`components/responsive.contract`'s clamp() against 100vw, web/head.css media queries), so the static HTML is right at
+any width before the runtime, and a resize equals a fresh load in both phases on every route (emulated and real
+window). What was wrong, all fixed in shared CSS (b903ede8): the body lacked the reference's `overflow-x: hidden`, so
+anything past the window's side made a phone's page pan sideways (/docs/terms at 320 px by 18 px: a long URL; /demos
+from 1024 px by 24 px: the device's spotlight), now `overflow-x: clip` (a hidden body is a scroll container and would
+hold the sticky header); the two header bars were only 0 px tall on the other side of 768 px, their links still in the
+tab order and the accessibility tree (now `display: none`, as live's `hidden md:block` / `md:hidden`); the menu's
+Sign In row ran 32 px past the window (width 100 % plus padding, now border-box).
+
+Result on the fixed build (2026-11-24, 15 routes x 35 sizes, `--jobs 3`, ~70 min): no overflow anywhere (before: /docs/terms
+at 320, /demos, /profile and /manage-subscription at 1024-1440); every judged cell within 0.5 % (max: /docs 0.31 %,
+the 404 0.39 %, /series/what-about-gestures 0.32 % at 320; /course, /inspirations, articles ≤ 0.16 %); the home page
+1.2 % at 320 only (live's cut Subscribe); every resize, static and started, equal to a fresh load (and the real window
+on /, an article, /docs/terms). Classic scrollbars (`--scrollbars`): no overflow on any of the 38 pages.
+
 ## Open differences (the owner's bar is identity in pixels and in motion: each is to be fixed, none is accepted)
 
 - **Icons are images.** The logo and the menu icon are `<img>` of SVG files (the reference inlines `<svg>`), so the
