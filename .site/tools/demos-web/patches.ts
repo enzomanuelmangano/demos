@@ -1,8 +1,8 @@
 // Fixes to the Demos app's web artifact that belong to Exact's web host, applied by tools/compose.ts to its copy of the
 // artifact until the Exact the demos pin carries them (docs/decisions.md D18). Each patch names the exact text it
 // replaces and fails the compose when that text is not there exactly once, so a new Exact never gets a stale patch.
-// A patched file keeps its name: the patch is deterministic per name, so a content-named URL still has one content
-// in every deployment of this site.
+// A patched file keeps its name, so its importers (themselves content-named) stay byte for byte the build's; its name
+// then no longer hashes its content, so compose.ts serves it revalidated (max-age 0, ETag), not `immutable`.
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -29,7 +29,7 @@ export const PATCHES: Patch[] = [
 
 /** Applies every patch to the artifact at `dir` (the copy under the composed output); returns what it changed. */
 export function patchDemos(dir: string) {
-  const done: string[] = [];
+  const done: { file: string; why: string }[] = [];
   for (const p of PATCHES) {
     const files = readdirSync(dir).filter((n) => p.file.test(n));
     if (files.length !== 1) throw new Error(`demos patch (${p.why}): ${files.length} files match ${p.file}`);
@@ -41,7 +41,7 @@ export function patchDemos(dir: string) {
       text = text.replace(from, () => to);
     }
     writeFileSync(path, (p.prepend ?? '') + text);
-    done.push(`${files[0]}: ${p.why}`);
+    done.push({ file: files[0], why: p.why });
   }
   return done;
 }

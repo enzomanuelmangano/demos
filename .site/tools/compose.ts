@@ -51,7 +51,7 @@ const appSlugs = new Set([...spawnSync('git', ['show', `${demosRev}:demos.contra
 if (appSlugs.size < 100) throw new Error(`compose: ${appSlugs.size} demo slugs read from demos.contract at ${demosRev}`);
 for (const [from, to] of Object.entries(ALIASES)) if (!appSlugs.has(to)) throw new Error(`compose: alias ${from} → ${to}, which the app does not have`);
 const reserved = ['demo', 'open', 'atlas', 'snap', 'assets', 'modules', 'shaders'];
-for (const s of LEGACY_DEMO_POSTS) if (reserved.includes(s) || s === 'app') throw new Error(`compose: legacy post ${s} collides with a demos app path`);
+for (const s of LEGACY_DEMO_POSTS) if (reserved.includes(s) || (s as string) === 'app') throw new Error(`compose: legacy post ${s} collides with a demos app path`);
 
 // ---------------------------------------------------------------- files
 rmSync(out, { recursive: true, force: true });
@@ -74,7 +74,8 @@ if (existsSync(pub)) for (const n of readdirSync(pub)) {
 copy(demosDist, join(staticDir, MOUNT.slice(1)), ['robots.txt']);
 if (existsSync(join(demosDist, '.well-known'))) throw new Error('compose: the demos build has .well-known/: merge it at the origin root');
 // Exact web-host fixes the pinned Exact lacks (tools/demos-web/patches.ts, decisions.md D18).
-for (const line of patchDemos(join(staticDir, MOUNT.slice(1)))) console.log(`compose: patched ${line}`);
+const patched = patchDemos(join(staticDir, MOUNT.slice(1)));
+for (const { file, why } of patched) console.log(`compose: patched ${file}: ${why}`);
 
 // The /demos/app/ head: /demos's title, description and share card (a CI-only overlay of the built HTML, never of the
 // tracked demos sources). The page is one shell for every demos route.
@@ -115,7 +116,9 @@ if (process.env.LEGACY_API_ORIGIN) routes.push({ src: '^/api/(.*)$', dest: `${pr
 routes.push({ src: `^${esc(BASE)}.*$`, headers: { 'Access-Control-Allow-Origin': '*' }, continue: true });
 // Content-named files may be cached for good (routes.json `files`).
 for (const [base, r] of [['/', siteRoutes], [BASE, demosRoutes]] as const) {
-  const names = Object.values(r.files as Record<string, string>).filter((n) => n !== 'app.plan');
+  // A patched file's content no longer matches the hash in its name (tools/demos-web/patches.ts): it is revalidated
+  // like any unnamed file, never cached for good, so a fix to the patch reaches every reader.
+  const names = Object.values(r.files as Record<string, string>).filter((n) => n !== 'app.plan' && !(base === BASE && patched.some((p) => p.file === n)));
   if (names.length) routes.push({ src: `^${esc(base)}(?:${names.map(esc).join('|')})$`, headers: immutable, continue: true });
 }
 // The site's fonts: their URLs carry a content hash (?v=, tools/head.ts), so they may be cached for good.

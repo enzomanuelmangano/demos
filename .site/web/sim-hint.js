@@ -1,20 +1,44 @@
 /* /demos's one-time touch demo (D19): once per session, 1.2 s after the framed Demos app has drawn, an iOS-style touch
    indicator taps an app on the phone (it opens), taps inside it (Composable Text's pill morphs), and closes it, so the
    phone reads as a live device, not a picture. The app is driven only through its framed-app messages
-   (modules/web/index.js: `rect` and `press` by testId); nothing here reaches into it. Skipped with reduced motion or
-   Save-Data; stopped at once by any input on the page or in the app (the app reports its first real input), or when
-   the tab is hidden. Never blocks: the indicator takes no pointer, and the frame keeps every touch. */
+   (modules/web/index.js: `rect` and `press` by testId, docs/isolation.md); nothing here reaches into it. Only where the
+   page frames the app (from 768 px, on /demos); skipped with reduced motion or Save-Data. Stopped at once by any input
+   on the page or in the app (the app reports real input), a hidden tab, or leaving /demos (Back included); a demo it
+   opened is closed again, so the kept frame never carries it around the site. Never blocks: the indicator takes no
+   pointer. */
 (function () {
   var KEY = 'reactiive.demos.hint';
   var seen = function () { try { return sessionStorage.getItem(KEY) === '1'; } catch (e) { return true; } };
+  var mark = function () { try { sessionStorage.setItem(KEY, '1'); } catch (e) {} };
   if (seen() || matchMedia('(prefers-reduced-motion: reduce)').matches || (navigator.connection && navigator.connection.saveData)) return;
-  var stopped = false, dot = null, frame = null, waits = {};
+  var wide = matchMedia('(min-width: 768px)');
+  var onDemos = function () { return /^\/demos\/?$/.test(location.pathname); };
+  var state = 'idle', dot = null, frame = null, opened = false, waits = {}, timer = 0, tries = 0;
+  var visible = function () { return !!frame && frame.isConnected && frame.checkVisibility() && onDemos(); };
   function stop() {
-    if (stopped) return;
-    stopped = true;
-    try { sessionStorage.setItem(KEY, '1'); } catch (e) {}
-    if (dot) { var d = dot; d.animate([{ opacity: getComputedStyle(d).opacity }, { opacity: 0 }], { duration: 200, fill: 'forwards' }).onfinish = function () { d.remove(); }; }
-    removeEventListener('pointerdown', stop, true); removeEventListener('wheel', stop, true); removeEventListener('keydown', stop, true);
+    if (state !== 'playing' && state !== 'armed') return;
+    var was = state;
+    state = 'done';
+    mark();
+    clearTimeout(timer);
+    off();
+    // A demo the hint opened is closed again before the indicator leaves.
+    if (was === 'playing' && opened && frame && frame.contentWindow) frame.contentWindow.postMessage({ demos: 'press', target: 'close' }, '*');
+    opened = false;
+    if (dot) { var d = dot; dot = null; d.animate([{ opacity: getComputedStyle(d).opacity }, { opacity: 0 }], { duration: 200, fill: 'forwards' }).onfinish = function () { d.remove(); }; }
+  }
+  function onInput() { stop(); }
+  function onHide() { if (document.hidden) stop(); }
+  function onLeave() { stop(); }
+  function on() {
+    addEventListener('pointerdown', onInput, true); addEventListener('wheel', onInput, { capture: true, passive: true }); addEventListener('keydown', onInput, true);
+    document.addEventListener('visibilitychange', onHide); addEventListener('popstate', onLeave); addEventListener('pagehide', onLeave);
+    if (window.navigation) navigation.addEventListener('navigate', onLeave);
+  }
+  function off() {
+    removeEventListener('pointerdown', onInput, true); removeEventListener('wheel', onInput, true); removeEventListener('keydown', onInput, true);
+    document.removeEventListener('visibilitychange', onHide); removeEventListener('popstate', onLeave); removeEventListener('pagehide', onLeave);
+    if (window.navigation) navigation.removeEventListener('navigate', onLeave);
   }
   addEventListener('message', function (e) {
     var m = e.data;
@@ -54,40 +78,53 @@
   function tap() {
     return dot.animate([{ scale: 1, opacity: 1 }, { scale: .78, opacity: 1, offset: .45 }, { scale: 1, opacity: 1 }], { duration: 320, easing: 'ease-out' }).finished;
   }
+  var live = function () { return state === 'playing' && visible(); };
   async function step(target, after) {
-    if (stopped) return false;
+    if (!live()) return false;
     var r = await rect(target);
-    if (stopped || !r) return false;
+    if (!live() || !r) return false;
     var at = place(r);
     if (!dot) await show(at); else await move(at);
-    if (stopped) return false;
+    if (!live() || !dot) return false;
     var t = tap();
     await sleep(120);
-    if (stopped) return false;
+    if (!live()) return false;
     frame.contentWindow.postMessage({ demos: 'press', target: target }, '*');
+    if (target.indexOf('icon-') === 0) opened = true;
+    if (target === 'close') opened = false;
     await t;
     await sleep(after);
-    return !stopped;
+    return live();
   }
   async function play() {
-    if (stopped || seen()) return;
-    try { sessionStorage.setItem(KEY, '1'); } catch (e) {}
+    if (state !== 'armed' || seen() || !visible()) return stop();
+    state = 'playing';
+    mark();
     (await step('icon-composable-text', 900)) && (await step('toggle', 1100)) && (await step('close', 500));
     stop();
   }
-  // Wait for the visible framed app to go live (the page marks it once the app has drawn), then 1.2 s more.
-  var tries = 0;
-  (function wait() {
-    if (stopped || ++tries > 600) return;
-    if (!/^\/demos\/?$/.test(location.pathname)) return void setTimeout(wait, 500);
-    var live = Array.prototype.find.call(document.querySelectorAll('iframe[data-motion~=live]'), function (f) {
+  // Wait, on /demos only and from 768 px only, for the visible framed app to go live (the page marks it once the app
+  // has drawn), then 1.2 s more. A route change restarts the wait with its own budget; elsewhere nothing polls.
+  function wait() {
+    clearTimeout(timer);
+    if (state !== 'idle' || seen()) return;
+    if (!onDemos() || !wide.matches) return;
+    if (++tries > 120) return; // 30 s on this visit of /demos
+    var f = Array.prototype.find.call(document.querySelectorAll('iframe[data-motion~=live]'), function (f) {
       var r = f.getBoundingClientRect(); return r.width > 0 && r.top < innerHeight && r.bottom > 0 && f.checkVisibility();
     });
-    if (!live) return void setTimeout(wait, 250);
-    frame = live;
-    // From here, on /demos with the app live, any input means the reader has found it: no demo.
-    addEventListener('pointerdown', stop, true); addEventListener('wheel', stop, { capture: true, passive: true }); addEventListener('keydown', stop, true);
-    document.addEventListener('visibilitychange', function () { if (document.hidden) stop(); });
-    setTimeout(play, 1200);
-  })();
+    if (!f) { timer = setTimeout(wait, 250); return; }
+    frame = f;
+    state = 'armed';
+    on();
+    timer = setTimeout(play, 1200);
+  }
+  function route() {
+    if (state === 'armed' || state === 'playing') { if (!onDemos()) stop(); return; }
+    if (state === 'idle') { tries = 0; frame = null; wait(); }
+  }
+  // Exact routes with the History API: a route change is a navigation (Navigation API) or a popstate.
+  if (window.navigation) navigation.addEventListener('navigatesuccess', route); else addEventListener('popstate', route);
+  addEventListener('popstate', route);
+  wait();
 })();

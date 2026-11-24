@@ -134,7 +134,7 @@ async function run() {
   return r;
 }
 
-const all = [];
+const all: any[] = [];
 for (let i = 0; i < runs; i++) { all.push(await run()); console.error(`run ${i + 1}: ${JSON.stringify(all.at(-1))}`); }
 const med = (a: number[]) => { const s = a.filter(Number.isFinite).sort((x, y) => x - y); return s.length ? s[Math.floor(s.length / 2)] : null; };
 const summary: any = { size: `${W}x${H}`, profile };
