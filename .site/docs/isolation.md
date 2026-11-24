@@ -127,6 +127,13 @@ sandboxed frame of `/demos/app/`, both ends small and guarded:
   overlay over the display (built on the first focus), types with `execCommand` (real `beforeinput` / `input`) and
   lifts `data-toolbarplacement="keyboard"` bars with the keys. Reads nothing outside its frame, posts nothing. Checked
   by `tools/parity/sim-keyboard.ts`.
+- **A mouse drags the framed phone's scroll views** (`.site/tools/demos-web/mouse-scroll.js`, 2026-11-24): inlined after
+  the keyboard, framed only. The app's scroll views on the web are the browser's `overflow: auto` boxes, which a mouse
+  never drags; this pans them as the iOS Simulator's finger does (1:1, the rubber band, UIScrollView's 0.998/ms
+  deceleration, paging on mandatory snapping, no tap or selection from a drag; the wheel stays the browser's). It reads
+  and writes only the frame's own scrollers and posts nothing. A compose-time patch (`tools/demos-web/patches.ts`) lets
+  the app's own pans (the pages, the pull to search, a card's close) hear the lift it dispatches when a drag leaves the
+  phone's screen (the frame's pointer is not captured across it). Checked by `tools/parity/mouse-scroll.ts`.
 - **The site's end** (`web/sim-hint.js`, a head script): only on `/demos`, from 768 px, once per session; posts to the
   frame's window (target `*`: a sandboxed frame's origin is opaque, so no other target can name it) and reads only the
   frame's answers (`e.source === frame.contentWindow`).

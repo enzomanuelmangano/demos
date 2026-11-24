@@ -97,7 +97,11 @@ if (bridge.includes('</script')) throw new Error('compose: the bridge cannot be 
 // bridge; it runs only in a frame with a fine pointer and builds its nodes on the first focus in the drawn phone.
 const keyboard = readFileSync(join(site, 'tools/demos-web/keyboard.js'), 'utf8').replace(/\/\*[\s\S]*?\*\//, '').trim();
 if (keyboard.includes('</script')) throw new Error('compose: the keyboard cannot be inlined');
-const bridgeScript = `<script>${bridge}</script><script>${keyboard}</script>`;
+// A mouse drags the framed app's scroll views as a finger does (tools/demos-web/mouse-scroll.js: 1:1, the rubber band,
+// UIScrollView's deceleration and paging, no tap from a drag): the same kind of site code, inlined after the keyboard.
+const mouseScroll = readFileSync(join(site, 'tools/demos-web/mouse-scroll.js'), 'utf8').replace(/\/\*[\s\S]*?\*\//, '').trim();
+if (mouseScroll.includes('</script')) throw new Error('compose: the mouse scroll cannot be inlined');
+const bridgeScript = `<script>${bridge}</script><script>${keyboard}</script><script>${mouseScroll}</script>`;
 for (const page of ['index.html', 'shell.html']) {
   const p = join(staticDir, MOUNT.slice(1), page);
   const html = readFileSync(p, 'utf8');

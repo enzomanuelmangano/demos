@@ -81,6 +81,25 @@ export const PATCHES: Patch[] = [
        "    card.setAttribute('data-launched', '');\n    content = card.querySelector('[data-testid=\"web-card-content\"]');\n    zoom = screen.querySelector('[data-testid=\"web-home-zoom\"]'); dim = screen.querySelector('[data-testid=\"web-dim\"]'); blur = screen.querySelector('[data-testid=\"web-blur\"]');\n    const device = screen.parentElement;\n    inks = ['status', 'indicator'].flatMap((k) => [[device?.querySelector(`[data-testid=\"web-${k}-home\"]`), false], [device?.querySelector(`[data-testid=\"web-${k}-demo\"]`), true]]).filter(([el]) => el);\n    sw = screen.offsetWidth; sh = screen.offsetHeight; R = framed() ? 62 : 48;\n    card.style.transformOrigin = '0 0'; content.style.transformOrigin = '0 0'; zoom.style.transformOrigin = '50% 50%';\n    // Promoted for good: every flight then moves layers that already exist (see `behind`).\n"],
     ],
   },
+  {
+    // A mouse drag of the launcher's pages, the pull to search or a demo card's close, released outside the phone's
+    // screen in reactiive.io's /demos, never ended: the framed app's pointer is not captured across its frame, so the
+    // release went to the page and the pages stayed mid-drag (then followed the mouse with no button held). The bridge's
+    // mouse scroll (tools/demos-web/mouse-scroll.js) sees the pointer leave the screen and dispatches the lift itself
+    // (a pointerup marked `exactLifted`, where the pointer left); these three pans hear only trusted releases, so they
+    // hear that mark too. Checked by tools/parity/mouse-scroll.ts (4).
+    file: /^index\.js$/,
+    dir: 'modules',
+    why: "a mouse drag of the app's own pans released outside the framed phone never ends",
+    edits: [
+      ["    // The cancel this close sends the demo is not the finger's.\n    if (!track || e.pointerId !== track.id || !e.isTrusted) return;\n",
+       "    // The cancel this close sends the demo is not the finger's.\n    if (!track || e.pointerId !== track.id || !(e.isTrusted || e.exactLifted === true)) return;\n"],
+      ["  const up = (e) => {\n    if (!track || e.pointerId !== track.id || !e.isTrusted) return;\n    const t = track; track = null;\n    if (!t.active) { if (t.caught) settleBack(0); return; }\n",
+       "  const up = (e) => {\n    if (!track || e.pointerId !== track.id || !(e.isTrusted || e.exactLifted === true)) return;\n    const t = track; track = null;\n    if (!t.active) { if (t.caught) settleBack(0); return; }\n"],
+      ["    // Not the pointercancel this (or the pull) sends the icon under the press.\n    if (!drag || e.pointerId !== drag.id || !e.isTrusted) return;\n",
+       "    // Not the pointercancel this (or the pull) sends the icon under the press.\n    if (!drag || e.pointerId !== drag.id || !(e.isTrusted || e.exactLifted === true)) return;\n"],
+    ],
+  },
 ];
 
 /** Applies every patch to the artifact at `dir` (the copy under the composed output); returns what it changed. */
