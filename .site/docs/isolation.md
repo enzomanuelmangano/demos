@@ -88,3 +88,25 @@ artifact, rebuilt at the new seed and base `/demos/app/` (D10), is 787 files, 60
 `tools/parity/demos-mount.ts` on the composed output: launcher, legacy deep link → `/demos/app/demo/chessboard`,
 reload, Back, Forward all draw at 1440 and 390; `gpu_bg.wasm` and the shader bundle 200; 0 failed requests, 0
 exceptions. CI triggers (proof 4): unchanged.
+
+## 6. The one runtime contact: the framed app's message bridge (D19, 2026-11-24)
+
+The site never imports or reads the Demos app; at run time the only contact is `postMessage` between `/demos` and the
+sandboxed frame of `/demos/app/`, both ends small and guarded:
+
+- **The app's end** (`modules/web/index.js`, the web module only; iOS and the Mac never load it). Installed only when
+  the app is framed (`window.parent !== window`); at the top level, which is every phone (D20) and every direct visit,
+  none of it exists: no listener, no style, nothing posted. It accepts a message only from its parent window
+  (`e.source === window.parent`) and from an allowed origin (`https://reactiive.io`, `https://www.reactiive.io`,
+  `https://<name>.vercel.app` previews, `http://localhost:<port>`, `http://127.0.0.1:<port>`); only two verbs, by
+  testId (`[a-z0-9-]{1,80}`): `rect` (answers that element's box) and `press` (a tap there: the same as the reader's
+  own); answers go to that origin only, never `*`. Once the parent has spoken, real input is reported (`input`) so the
+  parent stops its demo. Nothing else is read, written or answered.
+- **In a sandboxed frame** (an opaque origin, only `/demos` frames it so) the app's desktop frame also drops its stage,
+  rim, glass and shadow (a style sheet from the same module): the page draws the phone around the display (D18), with
+  no seam. Outside a frame, unchanged.
+- **The site's end** (`web/sim-hint.js`, a head script): only on `/demos`, from 768 px, once per session; posts to the
+  frame's window (target `*`: a sandboxed frame's origin is opaque, so no other target can name it) and reads only the
+  frame's answers (`e.source === frame.contentWindow`).
+
+Cost to the Demos app outside a frame: one `window.parent !== window` test at module load.

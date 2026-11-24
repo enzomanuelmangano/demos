@@ -483,7 +483,9 @@ inside the app's own renderer process and the page's, per interaction; site vs t
   its normals (`tools/air-frame-paths.ts` at the repo root, polygons under 0.02 pt from the true offset, used as clip
   paths in `home/web-phone.contract`; the drop shadow is its own box 6 pt inside). Sampled along the normals at 0-90°
   of each corner and on the edges at 3x: max deviation 0.3 px at 1440x900, 0.4 px at 1728x960 (was 5.5 / 5.9 px).
-  The launcher still is re-shot from it.
+  The launcher still is re-shot from it. In the site's frame the app now draws only its display (in a sandboxed frame
+  its stage, rim, glass and shadow are transparent, isolation.md §6), so the still's phone shows around the display
+  rectangle with no lighter corner and no step where the clip meets the rim, at any scale or DPR.
 - **Glass buttons.** The web stand-in for iOS 26's glass close / info buttons read as flat grey discs over light demos;
   now a neutral translucent tint over a blur, a specular rim lit from the top, a soft lift shadow and a white glyph
   with a hairline shadow (`home/web-chrome.contract` WebRoundButton; Exact's `backdrop-filter` takes blur and saturate
@@ -494,7 +496,8 @@ inside the app's own renderer process and the page's, per interaction; site vs t
   Web only (iOS ghosts are native snapshots). Fixed by `tools/demos-web/patches.ts`, applied by `tools/compose.ts` to
   the artifact's `presence-glue-*.js` (each edit must match exactly once, or the compose fails): an exit with no
   reading takes its ghost out of flow at the end of the task, or before the next measure. Reported to Exact
-  (`exact feedback note`); drop the patch when the pinned Exact has the fix. Regression check:
+  (`exact feedback note`); drop the patch when the pinned Exact has the fix. The patched file keeps its name (its content-named importers
+  stay the build's), so compose serves it revalidated, not `immutable`. Regression check:
   `bun tools/parity/composable-text.ts <origin>` (exit 1 if leaving letters collapse; 1440 and 390 touch).
 - **The frame loads 600 ms in** (it waited for the hero's 1.6 s entrances): its start is in its own process, so it never
   competed with them on the page's main thread; live 1.0-1.3 s sooner on cable and 4g (perf.md).
@@ -510,14 +513,20 @@ inside the app's own renderer process and the page's, per interaction; site vs t
 ## D19. The framed app says it is live: a one-time touch demo (owner, 2026-11-23)
 
 The owner: "add a way to make people understand they can interact with the sim; right now it almost looks like an
-image" (a caption was rejected, D17 revised). Variants considered (recordings: `/tmp/demos-variants/hint-*`):
+image" (a caption was rejected, D17 revised). Variants considered:
 
 - **(a) chosen: a touch demo.** Once per session (`sessionStorage` `reactiive.demos.hint`), 1.2 s after the framed app
   has drawn, an iOS-style touch indicator (a soft grey disc with a light rim, 44 px) rises onto Composable Text's icon
   and taps it (the app opens it), taps its pill ("Use Max" morphs to "Using Max"), then taps close; ~5 s. Any pointer,
   wheel or key on the page, or the first real input inside the app, stops it at once (the disc fades in 200 ms; the
-  app stays where it is); also skipped with reduced motion, Save-Data, or a hidden tab. It never blocks: the disc
-  takes no pointer.
+  app is closed again if the demo had opened, so the kept frame never carries it around the site); leaving `/demos`
+  (a link, Back: `popstate`, `pagehide`, the Navigation API's `navigate`) stops it the same way, and each step checks
+  that the page is still `/demos` with the frame visible. Skipped under 768 px (no frame, D20), with reduced motion,
+  Save-Data, or a hidden tab; on other pages it does not poll (it waits again on a route change to `/demos`, 30 s at
+  most per visit). It never blocks: the disc takes no pointer. Checked in headed and headless Chrome at 1440x900: the
+  disc rises on the icon at ~1.2 s after live, Composable Text opens, "Use Max" becomes "Using Max", the app closes,
+  the disc fades (about 5 s); a wheel at 0.5 s in stops it and the app is back on the launcher; Back mid-demo leaves
+  /articles with no disc.
 - **(b) the launcher pages once by itself**: rejected; a page that moves without the reader reads as a glitch, and a
   synthetic drag through the app's pager is fragile.
 - **(c) a touch-circle cursor and icon lift on hover**: not possible from the site: the cursor and hover over an
@@ -526,7 +535,8 @@ image" (a caption was rejected, D17 revised). Variants considered (recordings: `
 How it drives the app without coupling: `web/sim-hint.js` (a head script) only posts messages; the app (when framed,
 `modules/web/index.js`, web only, guarded by `window.parent !== window` and `event.source === parent`) answers
 `{ demos: 'rect', target }` with that testId's box and performs `{ demos: 'press', target }` as a tap, and tells the
-parent `{ demos: 'input' }` on real input. Nothing else is read or answered.
+parent `{ demos: 'input' }` on real input. Nothing else is read or answered; the bridge's guards (parent window, allowed
+origins) are in isolation.md §6.
 
 ## D20. /demos on a phone: the app full screen, not framed in the page (owner, 2026-11-23)
 
@@ -539,5 +549,7 @@ prerendered on press (the speculation rules' `moderate` rule for `/demos/app/*`,
 so the app's downloads start before the tap ends. No frame loads under 768 px at all (the page's frame is
 `display:none`, so never near, never `ready`). **Tablets (768-1023 px) keep the framed phone** (D10): there the phone
 fits beside nothing and the stage has room; it looked right at 768x1024 and 1023x768, and the page's scroll is the
-margins'. Shots and the flow (hero → button → app → demo → back): `/tmp/demos-variants/mobile-*` (390x844, 360x780,
-430x932), `/tmp/demos-variants/mobile-flow-390.mp4`.
+margins'. Checked with touch at 390x844, 360x780 and 430x932: no frame in the page; the hero, then the button
+(centred, 52 px, at y ≈ 333 px, inside the first viewport) and the still under it; a tap opens `/demos/app/` full
+screen (the launcher, edge to edge); a tap on an icon opens the demo, close returns to the launcher, Back returns to
+`/demos` with the hero as it was.
