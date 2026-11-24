@@ -73,7 +73,7 @@ component StarsPill
   action hover(on: bool)
     hovered = on
   view
-    row position="relative" hover=hover
+    row position="relative"
       // FloatingStars: 170 px of canvas above the pill, 56 px past each side.
       canvas surface=stars(hovered ? 1 : 0, seed) aria-hidden=true data-motion="pill-stars" position="absolute" left=-56 right=-56 bottom="100%" height=170
         pointer-events="none"
@@ -81,8 +81,9 @@ component StarsPill
       // lights its own half on hover, as live's pill lights whole (rgb 255 / 0.06 to about 0.09, 200 ms).
       row height=36 align-items="center" border-radius=9999 overflow="hidden" background-color="rgb(255 255 255 / 0.06)"
         font-size="0.875rem" line-height="1.25rem" color="var(--color-text-primary)"
+        // Only this part lifts the stars (live's pill is all repository); Sponsor answers with its heart instead.
         link href="https://github.com/enzomanuelmangano/demos" target="_blank" rel="noopener noreferrer" display="flex" height=36
-          align-items="center" padding-left=10 padding-right=11
+          align-items="center" padding-left=10 padding-right=11 hover=hover
           transition="background-color 200ms cubic-bezier(0.4, 0, 0.2, 1)" data-motion="colors-200"
           :hover
             background-color = "rgb(255 255 255 / 0.03)"
@@ -105,10 +106,11 @@ component StarsPill
         // GitHub's Sponsor button: Octicon heart-fill in its sponsor pink.
         link href="https://github.com/sponsors/enzomanuelmangano" target="_blank" rel="noopener noreferrer"
           aria-label="Sponsor Enzo Manuel Mangano on GitHub" display="flex" height=36 align-items="center" padding-left=10
-          padding-right=12 white-space="nowrap" transition="background-color 200ms cubic-bezier(0.4, 0, 0.2, 1)" data-motion="colors-200"
+          padding-right=12 white-space="nowrap" transition="background-color 200ms cubic-bezier(0.4, 0, 0.2, 1)" data-motion="colors-200 d-sponsor"
           :hover
             background-color = "rgb(255 255 255 / 0.03)"
-          svg width=16 height=16 viewBox="0 0 16 16" fill="#db61a2" aria-hidden=true flex-shrink=0
+          // The heart beats once per hover or focus (web/head.css d-heart), and warms a little.
+          svg width=16 height=16 viewBox="0 0 16 16" fill="currentColor" color="#db61a2" aria-hidden=true flex-shrink=0 data-motion="d-heart"
             path d="M7.655 14.916v-.001h-.002l-.006-.003-.018-.01a22.066 22.066 0 0 1-3.744-2.584C2.045 10.731 0 8.35 0 5.5 0 2.836 2.086 1 4.25 1 5.797 1 7.153 1.802 8 3.02 8.847 1.802 10.203 1 11.75 1 13.914 1 16 2.836 16 5.5c0 2.85-2.044 5.231-3.886 6.818a22.094 22.094 0 0 1-3.433 2.414 7.152 7.152 0 0 1-.31.17l-.018.01-.008.004a.75.75 0 0 1-.69 0Z"
           text "Sponsor" margin-left=7
 
@@ -138,8 +140,6 @@ component TestFlightLink
 component DemosPage
   props
     seed: number
-    taps: number
-    tap: action
     counted: bool
     stars: number
     simReady: bool
@@ -164,11 +164,12 @@ component DemosPage
           row
             view width=centring() flex-shrink=1
             column flex-shrink=0 position="relative" data-motion="title"
-              text "Demos" role="heading" aria-level=1 class=Gradient data-motion="lift-20 d-title" pointerup=tap cursor="pointer" user-select="none"
-                font-size=titleSize() line-height=1.05 letter-spacing="-0.04em" padding-bottom="0.04em"
-                margin-top=steps(8, 32, 56, 56) margin-bottom=steps(20, 32, 36, 36) transition="opacity 150ms cubic-bezier(0, 0, 0.2, 1)"
-                :hover
-                  opacity = 0.9
+              // Not pressable (owner, 2026-11-24): no handler, cursor or hover. The gradient paints only inside the box, and
+              // the -0.04em tracking ends the box before the s's ink (1-2 px cut at 1024-1440 px): 0.1em of padding on the
+              // right, given back by the margin, lets the ink in without moving anything.
+              text "Demos" role="heading" aria-level=1 class=Gradient data-motion="lift-20 d-title"
+                font-size=titleSize() line-height=1.05 letter-spacing="-0.04em" padding-bottom="0.04em" padding-right="0.1em" margin-right="-0.1em"
+                margin-top=steps(8, 32, 56, 56) margin-bottom=steps(20, 32, 36, 36)
             view width=centring() flex-shrink=1
           column data-motion="blur-in" data-delay="450"
             // From 640 px two lines, one gradient across both (centred, left from 1024 px); under it one
