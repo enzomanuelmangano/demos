@@ -662,7 +662,11 @@ The touch demo after it stays once per session. Each arrival is its own visit: a
 back-and-forth) does nothing, leaving `/demos` cancels an arrow under way (200 ms fade), and listeners are added once
 per visit and removed with it. Skipped when the reader is already at the phone: the app reported input in the last
 3 s, or the pointer was last seen within 40 px of the phone. The measuring tools turn it off for their session
-(`sessionStorage` `reactiive.demos.arrow` = `off`):
+(`sessionStorage` `reactiive.demos.arrow` = `off`); `tools/parity/sim-arrow.ts` tests it with the arrow on (a load, a
+reload, /demos → Articles → the Demos link, Back and Forward, leaving mid-arrow, a rapid back-and-forth, listeners
+after 20 round trips, a demo post, a phone). A return by the header's link can be a traverse whose `navigate` and
+`popstate` fire after the new visit has armed: those stop it only when their destination (or the address after the
+popstate) is not `/demos`:
 
 - **When.** Once the visible frame is live and the hero's entrance (live's motion: title, subtitle, pill, device) has
   ended (its finite animations' `finished`, at most 3 s): about 2.4 s after a load. The header and the entrance are

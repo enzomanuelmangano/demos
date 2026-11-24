@@ -81,7 +81,14 @@
   }
   function onInput() { stop(); }
   function onHide() { if (document.hidden) stop(); }
-  function onLeave() { stop(); }
+  // Leaving: the page is hidden, or a navigation's destination (or, after a popstate, the address) is not /demos. A
+  // traversal back to /demos fires navigate and popstate too; it must not stop the visit it has just begun.
+  var isDemos = function (path) { return /^\/demos\/?$/.test(path); };
+  function onLeave(e) {
+    if (e && e.type === 'navigate') { try { if (isDemos(new URL(e.destination.url).pathname)) return; } catch (x) {} }
+    else if (e && e.type === 'popstate' && isDemos(location.pathname)) return;
+    stop();
+  }
   function on() {
     addEventListener('pointerdown', onInput, true); addEventListener('wheel', onInput, { capture: true, passive: true }); addEventListener('keydown', onInput, true);
     document.addEventListener('visibilitychange', onHide); addEventListener('popstate', onLeave); addEventListener('pagehide', onLeave);

@@ -1,6 +1,7 @@
 // The /demos hero's two Canvas 2D surfaces, ported line for line from the reference:
 // - `spiral(seed, taps)`: components/animated-spiral/spiral.tsx, 2,500 dots on a logarithmic spiral that ease
-//   (in-out cubic, 2.5 s) to a new random angle 500 ms after mount and on each tap of the title;
+//   (in-out cubic, 2.5 s) to a new random angle 500 ms after mount (live also on each tap of the title; the title is
+//   not pressable here, so app.contract passes taps = 0 and the taps branch never runs);
 // - `stars(hovered, seed)`: components/landing/hero/github-stars-button.tsx's FloatingStars, the soft 4-point stars
 //   that rise out of the "Demos is Open Source" pill (one every 0.6 s, as live). Hovered, live bursts 28 and fountains
 //   ~50 a second at up to 8.5 px and full white; the owner found that "extreme" (2026-11-24), so here a hover lifts
