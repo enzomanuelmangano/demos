@@ -94,14 +94,16 @@ exceptions. CI triggers (proof 4): unchanged.
 The site never imports or reads the Demos app; at run time the only contact is `postMessage` between `/demos` and the
 sandboxed frame of `/demos/app/`, both ends small and guarded:
 
-- **The app's end** (`modules/web/index.js`, the web module only; iOS and the Mac never load it). Installed only when
-  the app is framed (`window.parent !== window`); at the top level, which is every phone (D20) and every direct visit,
-  none of it exists: no listener, no style, nothing posted, no history wrapper. It accepts a message only from its
-  parent window (`e.source === window.parent`) and only from the origin that serves the app itself (the site and the
-  app are one deployment: production's parent is `https://reactiive.io`, a preview's is that preview, a local
-  server's is that server; no other origin, no wildcard); only two verbs, by testId (`[a-z0-9-]{1,80}`): `rect`
-  (answers that element's box) and `press` (a tap there). Answers go to that origin only, never `*`. Once the parent
-  has spoken, real input is reported (`input`) so the parent stops its demo. Nothing else is read, written or answered.
+- **The app's end is the site's code, not the app's** (`.site/tools/demos-web/bridge.js`). `tools/compose.ts` writes it
+  inline into the head of the artifact's `index.html` and `shell.html` (its copy under `/demos/app/`, never the Demos
+  app's sources or its own build), a classic script that runs before the app's modules. Installed only when framed
+  (`window.parent !== window`); at the top level, which is every phone (D20) and every direct visit, none of it acts:
+  no listener, no style, nothing posted, no history wrapper. It accepts a message only from its parent window
+  (`e.source === window.parent`) and only from the origin that serves the app itself (the site and the app are one
+  deployment: production's parent is `https://reactiive.io`, a preview's is that preview, a local server's is that
+  server; no other origin, no wildcard); only two verbs, by testId (`[a-z0-9-]{1,80}`): `rect` (answers that element's
+  box) and `press` (a tap there). Answers go to that origin only, never `*`. Once the parent has spoken, real input is
+  reported (`input`) so the parent stops its demo. Nothing else is read, written or answered.
 - **The frame's history is the page's (joint).** Framed, the module mirrors the router's entries (each state carries
   its index) and keeps the two in step: a route a parent's `press` opens replaces the entry, and its close replaces
   back to it (never a `go(-1)`), so the reader's Back never steps through the parent's demo and a full demo leaves no
@@ -109,15 +111,38 @@ sandboxed frame of `/demos/app/`, both ends small and guarded:
   at every route change, the frame's visibility (IntersectionObserver) and the tab's), a router's `go(-n)` is made a
   replace to the target entry plus the `popstate` the router awaits, never a traversal of the page's history; on
   `/demos` the router's moves are the browser's. A `press close` while the page is elsewhere or the frame off screen
-  goes home at once, and a hidden document's close lands at once (no flight). Checked by
+  goes home at once, and a hidden document's close lands at once (no flight: a compose-time patch of the artifact's
+  `modules/index.js`, `tools/demos-web/patches.ts`, exact-match and loud, as the presence-glue fix). Checked by
   `tools/parity/sim-history.ts` (a link at five moments of the demo, Back mid-demo, a full demo then Back / Forward,
   then a reader's own open and close moving the history by one; a reader's open, a site link, Back, then close; a
   tablet's off-screen frame closed by Back).
 - **In a sandboxed frame** (an opaque origin, only `/demos` frames it so) the app's desktop frame also drops its stage,
-  rim, glass and shadow (a style sheet from the same module): the page draws the phone around the display (D18), with
+  rim, glass and shadow (a style sheet from the same bridge): the page draws the phone around the display (D18), with
   no seam. Outside a frame, unchanged.
 - **The site's end** (`web/sim-hint.js`, a head script): only on `/demos`, from 768 px, once per session; posts to the
   frame's window (target `*`: a sandboxed frame's origin is opaque, so no other target can name it) and reads only the
   frame's answers (`e.source === frame.contentWindow`).
 
-Cost to the Demos app outside a frame: one `window.parent !== window` test at module load.
+Cost to the Demos app: none. Its sources and its own web build carry no bridge code; only the composed copy under
+`/demos/app/` does.
+
+## 7. Re-measured after the final review (2026-11-24, `site` vs `origin/main` `a00ed9ca`)
+
+The review found the Demos app's capture at 482 files (+16.6 KB) against main: the bridge (+6.9 KB) in
+`modules/web/index.js`, and `tools/air-frame-paths.ts` (a tool for the frame's outlines) captured as a source. Now the
+bridge is `.site/tools/demos-web/bridge.js` (above), the hidden-tab close fix a compose-time patch, the tool
+`.site/tools/demos-web/air-frame-paths.ts`. `tools/isolation/capture.ts --list` on `git archive origin/main` and on
+`git archive HEAD`:
+
+| tree | files | bytes |
+|---|---|---|
+| `origin/main` | 481 | 21,465,912 |
+| `site` HEAD | 481 | 21,475,737 |
+
+The lists differ in exactly two entries, both by the owner's request for the web desktop frame (the concentric bezel
+and the glass buttons, #124): `home/web-chrome.contract` (3,600 → 4,556 bytes) and `home/web-phone.contract`
+(16,174 → 25,043 bytes). They are Demos-app web sources: the app's own web build shows the same frame, and the
+artifact key differs from main's (`d2f01f0a…` → `878ba5c4…`) because of them alone. Nothing else outside `.site/`
+changes but the four workflow files (`git diff --stat origin/main...HEAD -- . ':(exclude).site' ':(exclude).github'`:
+the two contracts only).
+

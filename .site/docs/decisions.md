@@ -60,7 +60,8 @@ route sets no title from `og:site_name` (navigation.js), which turned the tab in
 animated-grid-list, blurred-bottom-bar, dynamic-blur-tabs, dynamic-tab-indicator, email-demo, image-cropper,
 inner-shared-transition, instagram-shared-transition, ios-home-grid, particles-button, popup-handler,
 qr-code-generator, record-button, shake-to-delete, skia-bottom-sheet, twitter-tab-bar) are not ported to Exact:
-→ `/demos/`. `/profile` and `/manage-subscription` (signed-out visitors were sent to `/demos` client-side) are 307s to
+→ `/demos/` with a **307** (amended after the final review: the launcher is not a permanent equivalent of those
+posts, so search engines keep the old URLs; the 109 with a demo stay 308). `/profile` and `/manage-subscription` (signed-out visitors were sent to `/demos` client-side) are 307s to
 `/demos/` at the edge.
 
 ## D6. Building the demos web: two local gotchas, both handled in the tool

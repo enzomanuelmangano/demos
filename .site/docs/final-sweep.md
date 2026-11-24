@@ -19,7 +19,7 @@ Demos-tied article/series URLs and `/manage-subscription` as redirects.
 | 4. head parity | `head-diff --strict`: 41 / 41 (every route plus robots, sitemap, RSS, manifest); 2 fixed |
 | 5. perf | LCP ≤ live on 140 of 148 cells: 5 static pages at cable by 8-44 ms in single runs (localhost HTTP/1.1, under the noise of one run), `/demos` @390 cable +68 ms, `pan-gesture-handler` @390 4g +120 ms; CLS 0 everywhere (live up to 0.036); transfer ≤ live everywhere but `/demos` (the app, exempt); TBT ≤ live except 3 demo articles at 4g (+2 to +181 ms); scroll: 0 frames over 20 ms on the 3 long articles at cable, isolated 33-50 ms frames on 7 demo-article cells at 4g |
 | 6. links | 156 internal links and assets referenced by the 40 built HTML files, CSS, sitemap, RSS, manifest: 156 × 200, 0 broken; 126 + 6 + 2 redirects land on 200 pages |
-| 7. isolation | Demos capture identical (481 files / 21,465,912 bytes, lists byte-identical, `origin/main` vs HEAD); artifact key equal at both; root `bun.lock` untouched, `.site` installs alone; outside `.site/` only 4 workflow files |
+| 7. isolation | (re-measured after #124 and the review, isolation.md §7) Demos capture 481 files at both `origin/main` and HEAD; the lists differ only in `home/web-chrome.contract` and `home/web-phone.contract` (the owner's frame bezel and glass buttons, +9,825 bytes), so the artifact key differs from main's; the framed-app bridge and the hidden-tab fix are the site's, written into the artifact copy at compose; root `bun.lock` untouched, `.site` installs alone; outside `.site/` only those two contracts and 4 workflow files |
 | 8. secrets | `check-secrets --tracked`: 513 files, 0 findings; `--dir dist .vercel/output`: 0 findings |
 | navigation (owner bug) | `nav-correct.ts`: every header / menu link × 8 page kinds × cold / warm / hovered / mid-scroll / keyboard × 1440 / 390, Back and Forward (and Back must stay back 3 s): 21 rounds (7 processes × 3), 7,938 checks, **0 failures** |
 | Sign In (owner bug) | `sign-in.ts`: 5 pages × cold / warm / in-app × 1440 / 390: 60 checks, 0 failures; the dialog opens in ≤ 90 ms, a provider the API cannot answer shows the error toast |
@@ -278,8 +278,9 @@ re-run (live 0): see the misses.
 
 `/tmp`-only crawler over `.vercel/output/static` (every `href`, `src`, `srcset`, `data-entry`, URL-valued `content`,
 CSS `url()`, sitemap/RSS `<loc>`/`<link>`, manifest icons; `<base href>` honoured; reactiive.io URLs mapped to the local
-origin): 156 unique URLs, 156 answered 200 (redirects followed), 0 broken. Redirects: 126 `/demos/<slug>` → 308 (109 to
-`/demos/app/demo/<slug>`, whose slug `compose.ts` checks against `demos.contract`, 17 to `/demos`), all landing 200;
+origin): 156 unique URLs, 156 answered 200 (redirects followed), 0 broken. Redirects: 126 `/demos/<slug>`: 109 → 308 to
+`/demos/app/demo/<slug>`, whose slug `compose.ts` checks against `demos.contract`, and 17 → 307 to `/demos` (the app
+lacks those demos: not a permanent equivalent; 308 until the review), all landing 200;
 `/articles/{building-demos,open-sourcing-demos}` → `/demos`, `/articles/{leaving-patreon,patreon-migration}` and
 `/series/{thoughts,engineering}` → `/articles` (308, with or without a trailing slash); `/profile`, `/manage-subscription`
 → 307 `/demos` signed out.
@@ -288,10 +289,10 @@ origin): 156 unique URLs, 156 answered 200 (redirects followed), 0 broken. Redir
 
 | proof | result |
 |---|---|
-| Demos capture (`tools/isolation/capture.ts --list`) | `git archive origin/main` (`a00ed9ca`) and `git archive HEAD`: 481 files, 21,465,912 bytes each, lists byte-identical. The worktree itself lists 482: `packages/gpu-images/exact.json`, a gitignored file the Demos app's own build generates (not the site's) |
-| `/demos/` artifact key | `d2f01f0a…` at `origin/main` and at HEAD |
+| Demos capture (`tools/isolation/capture.ts --list`) | At the sweep: `git archive origin/main` (`a00ed9ca`) and `git archive HEAD` 481 files, 21,465,912 bytes each, lists byte-identical. After #124 and the review's fixes (isolation.md §7): 481 / 21,475,737 bytes at HEAD; only `home/web-chrome.contract` and `home/web-phone.contract` differ (the owner's frame). A worktree that has built the app lists 482: `packages/gpu-images/exact.json`, a gitignored file the Demos app's own build generates (not the site's) |
+| `/demos/` artifact key | `d2f01f0a…` at `origin/main` and at the sweep's HEAD; `878ba5c4…` after #124 (the two frame contracts) |
 | installs | root `bun.lock` md5 `ffc3b799…` before and after `.site`'s `bun install --frozen-lockfile` (no changes) |
-| outside `.site/` | `git diff --name-only origin/main...HEAD`: `.github/workflows/{exact-lint,site-demos-web,site-deploy,site}.yml` only |
+| outside `.site/` | at the sweep: `.github/workflows/{exact-lint,site-demos-web,site-deploy,site}.yml` only; after #124: those and `home/web-{chrome,phone}.contract` |
 | CI triggers (`ci-paths.ts`) | site-only → site.yml; demos-only → exact-lint.yml; legacy-only → lint.yml; disjoint (the tool failed on the invalid site.yml until fix 3) |
 
 ## 8. Secrets
