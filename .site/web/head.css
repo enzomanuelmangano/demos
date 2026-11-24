@@ -62,7 +62,7 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 /* /demos: the still of the Demos app's launcher where the framed app will draw its phone (D12), at the app's scale:
    min(1, (frame height - 48) / 936), the still being the phone plus 24 px (984 px tall at scale 1). From 768 px only,
    so a phone never downloads it. */
-@media (min-width:768px){[data-motion~=sim-still]{background:url(/assets/images/demos/sim-still.webp) 50% 50%/auto min(984px,(clamp(600px,100vh - 87px,1080px) - 48px) * 1.051282) no-repeat}}
+@media (min-width:768px){[data-motion~=sim-still]{background:url(/assets/images/demos/sim-still.webp) 50% 50%/auto min(984px,(clamp(320px,100vh - 87px,1080px) - 48px) * 1.051282) no-repeat}}
 /* /demos under 768 px (D20): no frame in the page; the button and the launcher's still open /demos/app/ full screen. */
 [data-motion~=d-launch]{display:none !important}
 @media (max-width:767px){
@@ -78,7 +78,7 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
    at scale min(1, (frame height - 48) / 936), centred in the 600 px frame; the still under it draws the bezel. The
    frame fades in over the still once it has drawn (data-motion live). */
 @media (min-width:768px){
-:root{--fh:clamp(600px,100vh - 87px,1080px)}
+:root{--fh:clamp(320px,100vh - 87px,1080px)}
 [data-motion~=sim-frame]{--sh:min(912px,(var(--fh) - 48px) * .974359);--sw:min(420px,(var(--fh) - 48px) * .448718);clip-path:inset(calc((var(--fh) - var(--sh)) / 2) calc((600px - var(--sw)) / 2));overscroll-behavior:contain;opacity:0;transition:opacity 300ms ease-out}
 [data-motion~=sim-frame][data-motion~=live]{opacity:1}
 }

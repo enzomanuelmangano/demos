@@ -231,8 +231,9 @@ component DemosLaunch
 // - from 1024 px: 600 px by deskSimHeight(), beside the hero. The app draws its iPhone Air at
 //   min(1, (height - 48) / 936) with 24 px around (home/web-phone.contract frameScale); the frame is clipped to the
 //   display's rectangle and the still draws the phone around it (no mask over the frame, D18);
-// - 768-1023 px: 600 px by the viewport's height under the 87 px header (600-1080 px), below the hero, the stage's
-//   edges faded by page-coloured overlays (top and bottom 24 px, sides 12 %; D18);
+// - 768-1023 px: 600 px by the viewport's height under the 87 px header (320-1080 px: the phone never taller than the
+//   window under the header, D24), below the hero, the stage's edges faded by page-coloured overlays (top and bottom
+//   24 px, sides 12 %; D18);
 // - under 768 px: none: the page links to /demos/app/ full screen instead (DemosLaunch, D20); this frame is hidden
 //   there, so it is never near and never loads.
 // From 768 px a still of the app's launcher (tools/sim-still.ts: the framed phone at scale 1, 492 x 984 with its
@@ -267,5 +268,5 @@ component DemosSim
                 sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-pointer-lock allow-downloads"
                 load=loaded
                 width="calc(clamp(0px, (767px - 100vw) * 1000, 100vw) + clamp(0px, (100vw - 767px) * 1000, 600px))"
-                height="calc(clamp(0px, (767px - 100vw) * 1000, 100vh - 73px) + clamp(0px, min(100vw - 767px, 1024px - 100vw) * 1000, clamp(600px, 100vh - 87px, 1080px)) + clamp(0px, (100vw - 1023px) * 1000, clamp(560px, 100vh - 96px, 1032px)))"
+                height="calc(clamp(0px, (767px - 100vw) * 1000, 100vh - 73px) + clamp(0px, min(100vw - 767px, 1024px - 100vw) * 1000, clamp(320px, 100vh - 87px, 1080px)) + clamp(0px, (100vw - 1023px) * 1000, clamp(560px, 100vh - 96px, 1032px)))"
               view position="absolute" inset=0 pointer-events="none" aria-hidden=true data-motion="sim-still"
