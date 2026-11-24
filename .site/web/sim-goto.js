@@ -67,5 +67,14 @@
     navigation.addEventListener('navigateerror', function () { at(location.pathname); });
   }
   addEventListener('popstate', function () { at(location.pathname); });
+  // Without the Navigation API (Safari before 26.2, older Firefox) an in-app link (the runtime's pushState) fires no
+  // popstate, and /demos/<slug> to /demos changes no DOM (one page): the history writes themselves are watched (this
+  // script runs in the head, before the runtime). at() ignores a path it already acted on.
+  if (!window.navigation) {
+    ['pushState', 'replaceState'].forEach(function (k) {
+      var write = history[k];
+      history[k] = function () { var from = location.pathname, r = write.apply(this, arguments); if (location.pathname !== from) at(location.pathname); return r; };
+    });
+  }
   at(location.pathname);
 })();
