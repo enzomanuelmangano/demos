@@ -3,8 +3,9 @@
 // replaces and fails the compose when that text is not there exactly once, so a new Exact never gets a stale patch.
 // A patched file keeps its name, so its importers (themselves content-named) stay byte for byte the build's; its name
 // then no longer hashes its content, so compose.ts serves it revalidated (max-age 0, ETag), not `immutable`.
-import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 
 // `requires`: text the edits depend on but do not replace (the minified names they use, by the declarations that bind
 // them). Each must be in the file exactly once, after `requires[0]` (the scope that binds them) and before the first
@@ -131,12 +132,13 @@ export function patchDemos(dir: string) {
     const count = (s: string) => text.split(s).length - 1;
     if (p.requires) {
       const first = text.indexOf(p.edits[0][0]);
+      if (first < 0) throw new Error(`demos patch (${p.why}): ${files[0]} has 0 copies of ${JSON.stringify(p.edits[0][0].slice(0, 60))}`);
       const scope = text.indexOf(p.requires[0]);
       for (const r of p.requires) {
         const n = count(r);
         if (n !== 1) throw new Error(`demos patch (${p.why}): ${files[0]} has ${n} copies of the required ${JSON.stringify(r.slice(0, 80))}`);
         const at = text.indexOf(r);
-        if (at < scope || first < 0 || at > first) throw new Error(`demos patch (${p.why}): ${files[0]}: the required ${JSON.stringify(r.slice(0, 80))} is not between ${JSON.stringify(p.requires[0].slice(0, 40))} and the first edit`);
+        if (at < scope || at > first) throw new Error(`demos patch (${p.why}): ${files[0]}: the required ${JSON.stringify(r.slice(0, 80))} is not between ${JSON.stringify(p.requires[0].slice(0, 40))} and the first edit`);
       }
     }
     for (const [from, to] of p.edits) {
@@ -148,4 +150,21 @@ export function patchDemos(dir: string) {
     done.push({ file: p.dir ? `${p.dir}/${files[0]}` : files[0], why: p.why });
   }
   return done;
+}
+
+// A dry run on a copy of an artifact's dist (the post-merge check, .github/workflows/site-demos-web.yml): every patch
+// must apply exactly; the artifact itself is not touched. Exit 1 when one does not.
+//   bun tools/demos-web/patches.ts --dry-run <demos dist>
+if (import.meta.main) {
+  const i = process.argv.indexOf('--dry-run');
+  if (i < 0 || !process.argv[i + 1]) { console.error('usage: bun tools/demos-web/patches.ts --dry-run <demos dist>'); process.exit(2); }
+  const copy = mkdtempSync(join(tmpdir(), 'demos-patch-dry-'));
+  try {
+    cpSync(resolve(process.argv[i + 1]), copy, { recursive: true });
+    for (const { file, why } of patchDemos(copy)) console.log(`demos patch (dry run): ${file}: ${why}`);
+    console.log(`demos patch (dry run): all ${PATCHES.length} patches apply`);
+  } catch (e) {
+    console.error(`::error::${(e as Error).message}`);
+    process.exitCode = 1;
+  } finally { rmSync(copy, { recursive: true, force: true }); }
 }
