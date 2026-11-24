@@ -40,6 +40,7 @@ else {
     ['demos app only', ['app.contract', 'demos/chessboard/chessboard.contract', 'gpu/src/lib.rs', 'app.forma', '.cargo/config.toml']],
     ['legacy only', ['.legacy/src/App.tsx']],
     ['parity tooling only', ['.parity/README.md']],
+    ['site demos-web tooling only', ['.site/tools/demos-web/patches.ts']],
     ['demos web module only', ['modules/web/index.js']],
     ['root Exact app file only', ['exact.mjs']],
     ['docs only', ['README.md']],

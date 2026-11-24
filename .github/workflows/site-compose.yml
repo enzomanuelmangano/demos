@@ -1,21 +1,17 @@
 name: Site / compose
 
-# The deploy tree, composed on every PR that can change it (.site/tools/compose.ts): the site's build and the /demos/app/
-# artifact side by side, with the compose-time patches to the artifact (.site/tools/demos-web/patches.ts) applied. A
-# patch whose text or names a demos change or an Exact upgrade moved fails here, not only at deploy time.
-# The artifact is restored from the cache by its inputs' key (.site/tools/demos-web/build.ts; site-demos-web.yml warms
-# it on main) and built only on a miss. It composes; it deploys nothing.
+# The deploy tree, composed on every PR that changes the site (.site/tools/compose.ts): the site's build and the
+# /demos/app/ artifact side by side, with the compose-time patches to the artifact (.site/tools/demos-web/patches.ts)
+# applied, so a site change that breaks the compose fails in its PR, not at deploy time. The artifact is restored from
+# the cache by its inputs' key (.site/tools/demos-web/build.ts; site-demos-web.yml builds it on main) and built only on
+# a miss. It composes; it deploys nothing.
 #
-# Paths: the site and every input of the artifact (build.ts isInput: every tracked path but .site .legacy .parity
-# .github and *.md), so a pure .legacy (or .parity, or docs) change never runs it (docs/isolation.md §4).
+# Paths: .site/** and this file only. The Demos app pays nothing for the site (docs/isolation.md §4): a demos-only PR
+# runs no site build, no compose and shows no site check. A demos or Exact change that makes a patch stale is caught
+# after the merge instead, by site-demos-web.yml's dry run of the patches on the new artifact.
 on:
   pull_request:
     paths:
-      - '**'
-      - '!.legacy/**'
-      - '!.parity/**'
-      - '!.github/**'
-      - '!**/*.md'
       - '.site/**'
       - '.github/workflows/site-compose.yml'
 

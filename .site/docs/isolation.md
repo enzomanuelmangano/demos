@@ -52,20 +52,23 @@ Both dev loops at once (`bun exact.mjs web --port 5351` at the root, `--port 535
 | change | pull_request triggers | push triggers |
 |---|---|---|
 | site only (`.site/**`) | site.yml, site-compose.yml | site.yml |
-| demos app only (`app.contract`, `demos/**`, `gpu/**`, `app.forma`, `.cargo/**`) | exact-lint.yml, site-compose.yml | site-demos-web.yml |
-| demos web module only (`modules/web/index.js`) | exact-lint.yml, site-compose.yml | site-demos-web.yml |
-| root Exact app file only (`exact.mjs`) | exact-lint.yml, site-compose.yml | site-demos-web.yml |
+| site's demos-web tooling (`.site/tools/demos-web/**`) | site.yml, site-compose.yml | site.yml, site-demos-web.yml |
+| demos app only (`app.contract`, `demos/**`, `gpu/**`, `app.forma`, `.cargo/**`) | exact-lint.yml | site-demos-web.yml |
+| demos web module only (`modules/web/index.js`) | exact-lint.yml | site-demos-web.yml |
+| root Exact app file only (`exact.mjs`) | exact-lint.yml | site-demos-web.yml |
 | legacy only (`.legacy/**`) | lint.yml | lint.yml |
 | parity tooling only (`.parity/**`) | exact-lint.yml | none |
 | docs only (`README.md`) | exact-lint.yml | none |
 
-`exact-lint.yml` gained one line (`'!.site/**'`); `lint.yml` is unchanged. `site-compose.yml` composes the deploy tree
-on a PR that changes the site or any input of the `/demos/` artifact (the inputs `tools/demos-web/build.ts` keys it by),
-so a compose-time patch (`tools/demos-web/patches.ts`) that a demos change or an Exact upgrade made stale fails in the
-PR; it restores the cached artifact and builds it only on a miss. `site-demos-web.yml` (the artifact) builds on a push
-to main that changes those inputs or its own tool, which keeps main's cache warm for the PRs. The deploy workflow stays
-manual; it runs on site *and* demos inputs by design (the deployed `/demos/` embeds the demos build). None of the
-site's workflows runs on a pure `.legacy/` change.
+`exact-lint.yml` gained one line (`'!.site/**'`); `lint.yml` is unchanged. A demos PR runs exact-lint.yml alone: no
+site build, no compose, no site check (the Demos app pays nothing for the site). `site-compose.yml` composes the deploy
+tree on a site PR (`.site/**` only), with the cached `/demos/` artifact for HEAD's demos inputs (built on a miss).
+`site-demos-web.yml` (the artifact) builds on a push to main that changes the artifact's inputs (the paths
+`tools/demos-web/build.ts` keys it by) or its own tool, which keeps main's cache warm for the site PRs; then it dry-runs
+the compose-time patches (`tools/demos-web/patches.ts --dry-run`) on a copy of the new artifact, so a demos or Exact
+change that makes one stale turns that post-merge run red without ever gating the demos PR. It is read-only, has no
+secrets and deploys nothing. The deploy workflow stays manual; it runs on site *and* demos inputs by design (the
+deployed `/demos/` embeds the demos build). None of the site's workflows runs on a pure `.legacy/` change.
 
 ## 5. `.legacy/` is read by neither build
 
