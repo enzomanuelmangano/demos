@@ -157,11 +157,14 @@ for (const delay of [0, 400, 1200, 2200, 3200]) {
   const h0 = await hist(page);
   await tapApp(page, 'icon-calendar-days');
   const opened = await until(async () => (await appPath(page)).includes('/demo/'), 8000); await Bun.sleep(1200);
-  await page.eval(`(() => { const s = document.scrollingElement; s.scrollTop = 0; for (const e of document.querySelectorAll('*')) if (e.scrollHeight > e.clientHeight + 10 && getComputedStyle(e).overflowY !== 'visible') e.scrollTop = 0; })()`);
+  // The page is too short to scroll the whole frame away at tablet sizes: moved off screen by a transform instead (the
+  // same for the browser: no intersection, no animation frames for the cross-origin frame).
+  await page.eval(`(() => { const st = document.createElement('style'); st.id = 'offscreen'; st.textContent = 'iframe[title="Demos"]{transform:translateY(4000px)}'; document.head.appendChild(st); })()`);
   await Bun.sleep(800);
   const off = await page.eval<boolean>(`(() => { const r = document.querySelector('iframe[title="Demos"]').getBoundingClientRect(); return r.bottom <= 0 || r.top >= innerHeight; })()`);
   await back(page);
   const closed = await launcher(page); await Bun.sleep(800);
+  await page.eval(`document.getElementById('offscreen')?.remove()`);
   const h1 = await hist(page);
   check(opened && closed && h1.index === h0.index && (await page.eval('location.pathname')) === '/demos', `6 off screen (${off ? 'off' : 'partly on'} screen), Back closes the demo one entry back (@${h0.index} → @${h1.index})`);
   await back(page);
