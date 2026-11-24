@@ -161,7 +161,12 @@ try {
   await until(page, textHas('Cancel Plan'));
   await clickWhere(page, byText('button', 'Cancel Plan'));
   await until(page, textHas('Cancel subscription?'));
+  // The reference's dialog scales in (200 ms): a press during it can miss its button (a warm `next start` opens it
+  // fast enough to press mid-animation); press once it rests, and again if no request left.
+  await Bun.sleep(400);
   await clickWhere(page, byText('button', 'Cancel subscription'));
+  for (let i = 0; i < 20 && !sentPurchase.some((s) => s.side === 'old'); i++) await Bun.sleep(150);
+  if (!sentPurchase.some((s) => s.side === 'old')) await clickWhere(page, byText('button', 'Cancel subscription'));
   for (let i = 0; i < 40 && !sentPurchase.some((s) => s.side === 'old'); i++) await Bun.sleep(150);
   check('old: cancel request sent (answered in the browser)', sentPurchase.some((s) => s.side === 'old'));
   await Bun.sleep(1500); // Amplitude's throttled writes and the persister's (1 s)

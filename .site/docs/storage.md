@@ -120,6 +120,80 @@ are recorded and compared), Amplitude's and Sentry's ingestion (failed: nothing 
 
 Result 2026-11-24: see the table printed by the run (all PASS, headless and headed).
 
+Re-run on the final `site` (2026-11-24, after the review's fixes; the new site built from `cddb6c5d` with the accounts on,
+the old site the reference's production build from `reactiive-ref-accounts`, the API from `reactiive-api-local`'s
+env): **65/65 PASS**, twice in a row, headless. (Two earlier runs that morning had 3 FAILs, all the OLD site's cancel
+press landing while the reference's dialog was still scaling in; the run now presses once the dialog rests and again
+if no request left: never more than one cancel per site, checked by phase 9.)
+
+| Phase | Check | Result | Detail |
+|---|---|---|---|
+| 1 old site | old: Amplitude device id cookie created | PASS |  |
+| 1 old site | old: @UtmSource stored from ?utm_source | PASS |  |
+| 1 old site | old: TanStack persisted cache REACTIIVE_CACHE (stars) | PASS |  |
+| 1 old site | old: token stored under @AccessStorage (XOR + base64) | PASS |  |
+| 1 old site | old: URL cleaned, /profile drawn | PASS |  |
+| 1 old site | old: signed-in hint reactiive:signed-in = 1 | PASS |  |
+| 1 old site | old: avatar drawn | PASS | img src set |
+| 1 old site | old: cancel request sent (answered in the browser) | PASS |  |
+| 1 old site | old: Amplitude device id readable | PASS |  |
+| 2 new site | new: the old session is taken (exact.state.accessToken = the token) | PASS |  |
+| 2 new site | new: html[data-auth=in] before the session is known | PASS |  |
+| 2 new site | new: signed in: avatar in the header | PASS |  |
+| 2 new site | new: user/info asked with the old token | PASS |  |
+| 2 new site | new: same avatar picture | PASS |  |
+| 2 new site | new: menu open and on top: name, email, Manage Support | PASS |  |
+| 2 new site | new: signed in on a page that activates on intent (no press) | PASS |  |
+| 2 new site | new: utm_source carried (exact.state.utmSource) | PASS |  |
+| 2 new site | new: Amplitude: same device id | PASS | amplitude.getDeviceId() equals the old cookie's |
+| 2 new site | new: /profile drawn, the subscription box from the plan | PASS |  |
+| 2 new site | new: /manage-subscription: status, no price | PASS |  |
+| 2 new site | new: cancel confirmation as live | PASS |  |
+| 2 new site | new: cancel request identical to the old site's (method, path, Authorization, Accept, Content-Type, body) | PASS | POST /api/purchase/cancel-subscription, body empty |
+| 2 new site | new: the dialog closes on success, the user asked again | PASS |  |
+| 2 new site | new: no localStorage key of the old site deleted | PASS | 6 keys kept |
+| 2 new site | new: no cookie deleted | PASS | 2 cookies kept |
+| 2 new site | new: no IndexedDB database deleted | PASS | 1 kept |
+| 2 new site | new: @AccessStorage byte-identical | PASS |  |
+| 2 new site | new: @UtmSource byte-identical | PASS |  |
+| 2 new site | new: reactiive:signed-in byte-identical | PASS |  |
+| 2 new site | new: REACTIIVE_CACHE byte-identical | PASS |  |
+| 2 new site | new: Amplitude cookie still names the same device | PASS |  |
+| 2 new site | new: Amplitude session continued (same session id) | PASS |  |
+| 2 new site | new: no sessionStorage key deleted | PASS | 2 kept |
+| 2 new site | new: its own keys namespaced (exact.*), none collides | PASS | exact.state.signedHint, exact.state.accessToken, exact.state.utmSource |
+| 3 rollback | old again: still signed in, /profile drawn | PASS |  |
+| 3 rollback | old again: user/info with the same token | PASS |  |
+| 3 rollback | old again: /demos works with the new site's keys present | PASS |  |
+| 3 rollback | old again: same Amplitude device id | PASS |  |
+| 4 sign-out | new: sign out removes @AccessStorage and the hint | PASS |  |
+| 4 sign-out | new: html[data-auth] dropped, "Sign In" shown | PASS |  |
+| 4 sign-out | old: signed out too | PASS |  |
+| 4 sign-out | old: kept @UtmSource and REACTIIVE_CACHE | PASS |  |
+| 5 new sign-in | new: callback landing signs in | PASS |  |
+| 5 new sign-in | new: token written in the old format (@AccessStorage decrypts to it) | PASS |  |
+| 5 new sign-in | new: hint written (reactiive:signed-in = 1) | PASS |  |
+| 5 new sign-in | new: the callback's token is in no URL, history state or sessionStorage | PASS |  |
+| 5 new sign-in | old: signed in with the new site's session | PASS |  |
+| 6 new visitor | new: "Sign In" shown, no data-auth | PASS |  |
+| 6 new visitor | new: no session invented (@AccessStorage absent, token "") | PASS |  |
+| 6 new visitor | new: no reference key written for a stranger | PASS | exact.state.signedHint, exact.state.accessToken, exact.state.utmSource, AMP_remote_config_<key10> |
+| 6 new visitor | old: the same visitor, signed out, works | PASS |  |
+| 7 rejected token | new: a 401 shows the reader signed out ("Sign In") | PASS |  |
+| 7 rejected token | new: the stored token survives the 401 byte-identical | PASS |  |
+| 7 rejected token | new: the hint is dropped, as the old site does when it shows "Sign In" | PASS |  |
+| 7 rejected token | old (rollback): also signed out on the 401, and also keeps @AccessStorage | PASS |  |
+| 7 rejected token | old: once the API takes the token again, signed in (the key was kept) | PASS |  |
+| 7 rejected token | new: the same, signed in again on the next visit | PASS |  |
+| 8 two tabs | tab B: signed in too | PASS |  |
+| 8 two tabs | tab A signs out: @AccessStorage removed | PASS |  |
+| 8 two tabs | tab B follows: "Sign In", no avatar | PASS |  |
+| 8 two tabs | tab A signs in again | PASS |  |
+| 8 two tabs | tab B follows: avatar | PASS |  |
+| 8 two tabs | one session in the old format after both tabs | PASS |  |
+| 9 network | no /api/purchase/* or /api/refund/* request reached either site (the origin's own log) | PASS | 0 forwarded |
+| 9 network | the browser asked only the cancel, once per site (answered in the browser) | PASS | 2 asked: POST /api/purchase/cancel-subscription |
+
 ## Not carried, on purpose
 
 - `REACTIIVE_CACHE` is not read: its one query is the star count, which the new site asks live with the build's
