@@ -19,16 +19,25 @@
     if (!seen.has(f)) { seen.add(f); f.addEventListener('load', function () { tell(f); }); if (io) io.observe(f); }
     tell(f);
   }
-  function at(path) { current = onDemos(path); all(); }
-  if (window.navigation) navigation.addEventListener('navigate', function (e) { try { at(new URL(e.destination.url).pathname); } catch (x) {} });
+  var shownPath = location.pathname;
+  function at(path) { shownPath = path; current = onDemos(path); all(); }
+  if (window.navigation) {
+    navigation.addEventListener('navigate', function (e) { try { at(new URL(e.destination.url).pathname); } catch (x) {} });
+    // A navigate that is cancelled or fails leaves the page where it was: derive again from the address.
+    navigation.addEventListener('navigateerror', function () { at(location.pathname); });
+    navigation.addEventListener('navigatesuccess', function () { if (location.pathname !== shownPath) at(location.pathname); });
+  }
   addEventListener('popstate', function () { at(location.pathname); });
   addEventListener('pageshow', function () { at(location.pathname); });
   document.addEventListener('visibilitychange', all);
-  new MutationObserver(function (ms) {
-    for (var i = 0; i < ms.length; i++) for (var j = 0; j < ms[i].addedNodes.length; j++) {
-      var n = ms[i].addedNodes[j];
-      if (n.nodeType === 1 && (n.tagName === 'IFRAME' || n.querySelector('iframe'))) return all();
-    }
+  // A route drawn or a frame added: derive `current` from the address again. Without the Navigation API (Safari before
+  // 26, older Firefox) an in-app link away from /demos fires no popstate; the route's own DOM change catches it.
+  // (With the API the navigate events keep it; the address may lag a navigate under way, so it is not read here.)
+  // The frames are a live list: each batch looks at those few, never at every node added.
+  var live = document.getElementsByTagName('iframe');
+  new MutationObserver(function () {
+    if (!window.navigation && location.pathname !== shownPath) return at(location.pathname);
+    for (var i = 0; i < live.length; i++) if (!seen.has(live[i]) && live[i].title === 'Demos') return at(location.pathname);
   }).observe(document.documentElement, { childList: true, subtree: true });
   all();
 })();
