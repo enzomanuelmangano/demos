@@ -307,3 +307,46 @@ document.addEventListener('click', function (e) {
   }
   if (document.readyState != 'loading') fix(); else document.addEventListener('DOMContentLoaded', fix, { once: true });
 })();
+/* The mobile menu opens at the first tap, before the runtime has started (a page that activates on interaction starts
+   it at that tap and replays it: 0.3-1.2 s at cable). html[data-menu-early] draws the open menu (web/head.css) and
+   the panel loses `inert` so its links can be pressed; a tap on the button or the backdrop meanwhile closes it again
+   (the runtime replays those taps too, in order). Once the runtime runs, it draws the menu itself and the flag goes. */
+(function () {
+  var html = document.documentElement;
+  function up() { return !!(self.exact && self.exact.views); }
+  function set(open) {
+    var m = document.getElementById('mobile-menu');
+    if (!m) return;
+    if (open) { html.setAttribute('data-menu-early', ''); m.removeAttribute('inert'); }
+    else { html.removeAttribute('data-menu-early'); m.setAttribute('inert', ''); }
+    if (open) (function wait() { if (!html.hasAttribute('data-menu-early')) return; if (up()) return requestAnimationFrame(function () { html.removeAttribute('data-menu-early'); }); setTimeout(wait, 30); })();
+  }
+  addEventListener('click', function (e) {
+    if (up() || !e.target || !e.target.closest) return;
+    if (e.target.closest('[aria-controls="mobile-menu"]')) set(!html.hasAttribute('data-menu-early'));
+    else if (html.hasAttribute('data-menu-early') && e.target.closest('#mobile-menu>:first-child')) set(false);
+  }, true);
+})();
+/* The first frame of the menu or the sign-in dialog before the runtime's start. A press on either starts the runtime
+   (Exact's capture script imports it at the click, in the same task), and loading and compiling it held back the
+   frame that shows the menu (~15 ms more than live at 4x CPU). On the press's pointerdown the start is taken over
+   here: `exact.ready` is set to a start that runs 350 ms after the click, once the menu's 300 ms opening has played
+   (the capture script then only queues the press, which the runtime replays as before), or 900 ms after the
+   pointerdown if no click follows. */
+(function () {
+  addEventListener('pointerdown', function (e) {
+    var x = self.exact = self.exact || {};
+    var c = document.querySelector('script[type="application/vnd.exact.checkpoint"]');
+    if (x.ready || x.views || !c || !e.target || !e.target.closest || !e.target.closest('[aria-controls="mobile-menu"],[data-testid="sign-in"]')) return;
+    var go, started = false;
+    x.ready = new Promise(function (r) { go = r; });
+    function start() {
+      if (started) return;
+      started = true;
+      if (c.dataset.src) x.answers = fetch(c.dataset.src).then(function (r) { return r.ok ? r.text() : null; }, function () { return null; });
+      go(import(c.dataset.entry));
+    }
+    addEventListener('click', function () { setTimeout(start, 350); }, { once: true });
+    setTimeout(start, 900);
+  }, true);
+})();
