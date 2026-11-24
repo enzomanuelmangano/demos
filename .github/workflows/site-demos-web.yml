@@ -67,6 +67,12 @@ jobs:
           key: demos-web-rust-${{ steps.key.outputs.seed }}-${{ hashFiles('Cargo.lock') }}
           restore-keys: demos-web-rust-${{ steps.key.outputs.seed }}-
 
+      # The root Cargo.toml names the vendored crates under .exact/checkout (exact.mjs's link to the checkout, made
+      # locally on first use); setup reads that manifest, so the link must exist first.
+      - name: Link .exact/checkout to the checked-out Exact
+        if: steps.artifact.outputs.cache-hit != 'true'
+        run: mkdir -p .exact && ln -sfn "$GITHUB_WORKSPACE/.exact-sdk" .exact/checkout
+
       - name: Exact web prerequisites (Rust, wasm32, wasm-bindgen, Binaryen; no Hermes)
         if: steps.artifact.outputs.cache-hit != 'true'
         run: bun .exact-sdk/scripts/exact.mjs setup --platform web
