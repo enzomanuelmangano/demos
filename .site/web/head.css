@@ -221,9 +221,18 @@ html #exact-root input:not([data-native]):focus-visible{outline:none}
 /* Footer links: underline-offset-2. */
 [data-motion~=footer-link]{text-underline-offset:2px}
 @media (prefers-reduced-motion:reduce){[data-motion~=course-in],[data-motion~=title],[data-motion~=blur-in],[data-motion~=card-in],[data-motion~=qr],[data-motion~=pop-in],[data-motion~=fade-in]{animation:none}}
+/* The mobile menu opened at the first tap on a page whose runtime has not started (web/reveal.js sets
+   html[data-menu-early] until the runtime, which replays the tap, draws the menu itself): the open look of
+   components/shell.contract (the panel, its slide, the X icon from the three lines). */
+html[data-menu-early] #mobile-menu{opacity:1 !important;pointer-events:auto !important}
+html[data-menu-early] #mobile-menu>:nth-child(2){translate:0 0 !important;opacity:1 !important}
+html[data-menu-early] [aria-controls=mobile-menu] line{transform-origin:12px 12px}
+html[data-menu-early] [aria-controls=mobile-menu] line:nth-child(1){opacity:0}
+html[data-menu-early] [aria-controls=mobile-menu] line:nth-child(2){transform:translateY(6px) rotate(45deg) scale(.75)}
+html[data-menu-early] [aria-controls=mobile-menu] line:nth-child(3){transform:translateY(-6px) rotate(-45deg) scale(.75)}
 /* The header's bars past 10 px of scroll (html[data-scrolled], web/reveal.js) and the mobile bar under its open menu:
    the page's colour and a white/5 hairline (components/shell.contract HeaderBar). */
-html[data-scrolled] [data-motion~=bar],[data-motion~=bar][data-motion~=open]{background-color:oklch(15.5% 0.0041 286) !important;border-bottom-color:rgb(255 255 255 / .05) !important}
+html[data-scrolled] [data-motion~=bar],[data-motion~=bar][data-motion~=open],html[data-menu-early] [data-testid=header-mobile]{background-color:oklch(15.5% 0.0041 286) !important;border-bottom-color:rgb(255 255 255 / .05) !important}
 /* Italic as live draws it: Inter and Source Code Pro have no italic face here or there, and live's browser slants the
    upright one; Exact's root says font-synthesis: none, which drew every em, italic link and code comment upright. */
 html #exact-root{font-synthesis-style:auto}

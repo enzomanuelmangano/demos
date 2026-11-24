@@ -51,9 +51,15 @@ Branch `site` (worktree `thank-you-site`), draft PR #115 into `main`. Update thi
   another colour). Sign In / Subscribe / the account buttons press in CSS (`:active`), so before the runtime too; the
   demo buttons scale by `transform` as live (hover.ts).
 
+- **2026-11-24, final sweep** (docs/final-sweep.md): every route × 1440 / 390: pixels (34 / 38 pages ≤ 0.5 %, the 4 others
+  deliberate or a live-capture artifact), motion / reveal / hover classified, header 0 px over the in-app round trip,
+  head-diff 41 / 41, links 156 / 156, isolation and secrets clean; perf misses only on canvas-demo articles at 4g.
+  Owner bugs fixed: the /demos title back to live's entrance, Sign In opens at once on every build, the mobile menu's
+  links navigate, no stuck navigation (nav-correct.ts: 21 rounds, 7,938 checks, 0 failures).
+
 ## Next, in order
 
-1. The one automated sweep over every page (pixel, motion, hover.ts, nav, perf), per the lead's plan.
+1. Done: the final sweep (docs/final-sweep.md). Its open list is what remains.
 2. Open: `/demos` @390 cable LCP ~1.6 s (live ~1.5 s): the pill's blur-in end; the testimonial cards' squircle
    (live: figma-squircle 18 / 0.6 clip and gradient rim; here border-radius 18 + hairline, pixels within 0.04 %); the
    menu's Sign In row is 32 px wider than live's at 700 px (pixels equal); `/demos` 390 touch: the app owns its

@@ -37,6 +37,12 @@ stagger in DOM order, first batch from 280 ms), not Exact's `intersect`, which o
 batches and easing, no flash or restart; /articles differs only where D13's skipped cards shift the order. Live's
 first batch starts ~40 ms later than local's (its hydration).
 
+Navigation correctness (`tools/parity/nav-correct.ts <origin> [--rounds n] [--port p]`): every header / menu link from
+8 page kinds, pressed cold (at parse), warm, after a hover (prerender), mid-scroll and by keyboard, at 1440 and 390;
+the URL and the drawn page must agree within 6 s, Back and Forward too, and Back must stay back. Sign In
+(`tools/parity/sign-in.ts`): the dialog opens on 5 pages cold / warm / in-app at both widths, and a provider the API
+cannot answer shows the error toast. Final sweep: docs/final-sweep.md.
+
 Hover audit: `tools/parity/hover.ts <live> <local> <route>… [--widths 1440,700]` (700 also opens the menu).
 2026-11-23 (leftovers): `/articles/smooth-dropdown` 0 differences (35 elements, Sign In and Subscribe pressed with CSS
 `:active`, also measured before the runtime starts: `rgb(255 255 255/.14)` / `#3c49b0` at scale 0.97, as live); the
