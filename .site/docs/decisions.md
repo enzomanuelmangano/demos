@@ -757,3 +757,41 @@ gradient. Measured on the composed build: each line one line at 1440, 1180, 1024
 - **The other demos copy (same day).** The home page's Demos row reads "100+ animations in Exact, Rust and WebGPU." ("built
   with" made it 346 px, one line too long at 390 px; this is 297 px, one line like live's at 390 and 1440), and the
   support page "All 100+ animations, built with Exact, Rust and WebGPU, are now free and open source! ...".
+
+## D24. The framed app always lays out as an iPhone Air; pages preload only their own content (2026-11-24)
+
+**The tablet launcher in the phone.** From 768 px (and 1024 px+ too) the frame showed the app's full-screen *tablet*
+launcher (5 columns, no status bar) cut by the page's phone outline, and an opened demo's close button (x = 16 px in the
+frame) fell in the clipped strip. Cause: the app frames itself (`framed`, app.contract) only for
+`web and host.pointer == "fine" and host.width >= 600`; its pointer is `(pointer: coarse)` (Exact's
+`navigation/environment.js`), so a touch tablet (an iPad without a trackpad, 768-1032 px) or a browser emulating one got
+the unframed layout filling the 600 px window. Width was never the trigger (the frame is 600 px at every page width).
+Reproduced in Chrome with `--blink-settings=primaryPointerType=2,primaryHoverType=1` at 800x900 and 1024x900.
+
+- **The fix: the site's frame always frames** (`tools/demos-web/bridge.js`): in the sandboxed frame only,
+  `matchMedia('(pointer: coarse)')` and `('(pointer: none)')` answer no, so the app draws its iPhone Air for every
+  reader; the host's input mode (`data-exact-input`) is set from the real query first, so a finger stays a finger;
+  `(pointer: fine)` (the site keyboard's gate), every other query and the app's CSS are the browser's. The Demos app's
+  sources are untouched. With a coarse pointer at 768/800/900/1023 x900, 1024x900, 1180x820, 1440x900, 800x600,
+  1023x640, 1024x640 and 800x500: framed every time, an opened demo's close button inside the display.
+- **Tried and dropped: a fixed 600 x 984 window scaled by a CSS transform.** It made the app's layout independent of
+  the page's size, but it blurred the app on every desktop (Laplacian sharpness at DPR 2 59.6 to 38.5, at DPR 3 47.1 to
+  21.7, independent review): the app's own `scale` rasterizes at the final size, a transform on the frame does not.
+  The frame keeps its real size; the pointer was the only cause.
+- **Short windows (768-1023 px).** The frame was at least 600 px tall, so under about 690 px of height the phone was
+  taller than the window under the 87 px sticky header, and its top (a demo's close button) stayed under the header
+  however the page was scrolled. Now `--fh = clamp(320px, 100vh - 87px, 1080px)` (`web/head.css`, the contract's
+  height, the still's size): the phone always fits under the header (at 800x600 the frame is 513 px, its close button
+  at y 148 with the frame scrolled to the header).
+
+**Preloads.** Exact's entry prepares every chunk its page's head does not preload (`host/web-js/build.mjs`,
+`__EXACT_DEFERRED_CHUNKS__`: a low-priority `modulepreload` each, appended to `document.head` as it starts), so every
+page fetched all 22 articles' bodies, 3 docs' and the cards module (26 scripts) whether it links to them or not; Safari
+warns of each. `tools/preloads.ts` (in `bun run build`) writes `web/preloads.js` first into every page's head with this
+build's content chunk names: the entry's `head.append` of those links is held unless the chunk is the page's own
+(`/articles/<slug>`, `/docs/<slug>`, the cards on `/articles` and `/series/<s>`). Once the page has loaded and is idle
+(`requestIdleCallback`, a timeout in Safari) the chunks of the pages it links to are fetched at low priority, so a tap or
+a click with no hover before it finds its chunk as before (holding them until intent alone made a tap 210 ms against
+45 ms, review); a link about to be followed (pointer over, focus, touch or press) fetches its chunk at once if not yet.
+Exact's own pieces are left as Exact prepares them. The build fails if the entry stops appending its modulepreloads that
+way or a content module has no chunk of its own. Numbers: docs/perf.md "2026-11-24, preloads".

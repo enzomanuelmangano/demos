@@ -55,6 +55,22 @@ run the reference's migration, refund or webhook scripts against it.
 route): redirects passed through unfollowed (OAuth), `Set-Cookie` kept, bodies re-encoded, `X-Forwarded-Host` set.
 Same origin, as production's rewrite to the old deployment.
 
+## The Demos app's artifact (wasm-bindgen)
+
+`bun tools/demos-web/build.ts` runs the `wasm-bindgen` CLI found on `PATH`, which must be exactly the version the pinned
+Exact's GPU crates link (its `game/Cargo.toml`); a different one fails with "rust Wasm file schema version ... this
+binary schema version ...". When the default one differs, put a directory holding the pinned CLI first, before
+`~/.cargo/bin` (named explicitly, so a shell profile that prepends `~/.cargo/bin` when it is missing leaves the order
+as it is), and give the build a private `TMPDIR` (its scratch tree and Cargo target live there and are wiped per build,
+so two builds on one `TMPDIR` delete each other's):
+
+```sh
+cd .site
+TMPDIR=/tmp/<worktree>-tmp/ PATH="<dir with the pinned wasm-bindgen>:$HOME/.cargo/bin:$PATH" bun tools/demos-web/build.ts
+```
+
+The artifact is cached in `.out/demos-web/<key>/`; a site-only change keeps the key.
+
 ## Features and the variables they need
 
 | Feature | Site build (public, inlined) | API (server, never in the site) |

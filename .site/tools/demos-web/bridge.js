@@ -187,6 +187,17 @@
   // under the frame, from a still) the desktop frame draws only its display: the stage, the rim, the glass and the
   // shadow are transparent, so the page's own drawing shows around the display with no seam at any scale.
   if (FRAMED && self.origin === 'null') {
+    // The page always shows an iPhone Air here, so the app must always draw one (its `framed`, app.contract), whatever
+    // the reader's pointer. The app frames itself only for a fine pointer (`exactViewport().pointer`, read from
+    // `(pointer: coarse)` and `(pointer: none)`): on a touch tablet (an iPad, 768-1032 px) it filled the frame with its
+    // full-screen tablet launcher instead, which the page's phone outline cut (the close button fell in the clipped
+    // strip). Those two queries answer "no" in this frame only; every other query, and the app's own CSS, are the
+    // browser's. The host's input mode (touch or mouse) is set from the real query first, so a finger stays a finger.
+    const realMatch = window.matchMedia.bind(window);
+    const html = document.documentElement;
+    if (!html.dataset.exactInput) html.dataset.exactInput = realMatch('(pointer: coarse)').matches ? 'touch' : 'mouse';
+    const no = (media) => ({ matches: false, media, onchange: null, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, dispatchEvent: () => false });
+    window.matchMedia = (q) => (/^\(\s*pointer\s*:\s*(?:coarse|none)\s*\)$/.test(String(q).trim()) ? no(String(q)) : realMatch(q));
     const sheet = document.createElement('style');
     sheet.textContent = ':has([data-testid="web-stage"]),[data-testid="web-stage"]{background:transparent !important}'
       + '[data-testid="web-stage"] > * > :not([data-testid="web-device"]){visibility:hidden !important}';

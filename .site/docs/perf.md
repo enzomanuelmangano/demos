@@ -264,3 +264,26 @@ FCP / LCP / CLS / bytes ≤ live in every cell (LCP 436-456 vs 592-632). What ch
 
 Pixels unchanged (compare.ts over every article, the docs, `/`, `/course`, `/inspirations`: the same values as the
 final sweep, ≤ 0.31 % against the re-shot live captures).
+
+## 2026-11-24, preloads (D24): main (`42317636`) against `site-tablet-sim`
+
+Cold, 1440x900, DevTools throttling at 4G (150 ms RTT, 1.6 Mbps down, 750 kbps up), cache off, the page's renderer
+only (the framed app's own requests are another process's). Transfer and requests 12 s after load, median of 3:
+
+| Page | Transfer | Requests | JS files | LCP |
+|---|---|---|---|---|
+| /demos main | 685 KB | 52 | 45 | 1764 ms |
+| /demos PR | 593 KB | 29 | 22 | 1776 ms |
+| / main | 425 KB | 49 | 45 | 864 ms |
+| / PR | 319 KB | 24 | 20 | 860 ms |
+
+Input on the header's "Articles" 3 s after load → /articles with its cards drawn, median of 5 (same throttling; a tap
+holds the finger 60 ms):
+
+| From | Tap main / PR | Click (no move) main / PR | Hover 300 ms, click main / PR |
+|---|---|---|---|
+| / | 125 / 108 ms | 32 / 31 ms | 37 / 28 ms |
+| /demos | 143 / 136 ms | 31 / 30 ms | 30 / 29 ms |
+
+Crispness of the framed app (the display's crop, 1440x900, Laplacian standard deviation): identical to main at DPR 2
+and 3 (the frame is main's; only the bridge's pointer answer changed).
