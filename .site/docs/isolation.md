@@ -53,12 +53,13 @@ Both dev loops at once (`bun exact.mjs web --port 5351` at the root, `--port 535
 |---|---|---|
 | site only (`.site/**`) | site.yml, site-compose.yml | site.yml |
 | site's demos-web tooling (`.site/tools/demos-web/**`) | site.yml, site-compose.yml | site.yml, site-demos-web.yml |
-| demos app only (`app.contract`, `demos/**`, `gpu/**`, `app.forma`, `.cargo/**`) | exact-lint.yml | site-demos-web.yml |
-| demos web module only (`modules/web/index.js`) | exact-lint.yml | site-demos-web.yml |
-| root Exact app file only (`exact.mjs`) | exact-lint.yml | site-demos-web.yml |
+| demos app only (`app.contract`, `demos/**`, `gpu/**`, `app.forma`, `.cargo/**`) | exact-lint.yml | exact-lint.yml, site-demos-web.yml |
+| demos web module only (`modules/web/index.js`) | exact-lint.yml | exact-lint.yml, site-demos-web.yml |
+| root Exact app file only (`exact.mjs`) | exact-lint.yml | exact-lint.yml, site-demos-web.yml |
 | legacy only (`.legacy/**`) | lint.yml | lint.yml |
-| parity tooling only (`.parity/**`) | exact-lint.yml | none |
-| docs only (`README.md`) | exact-lint.yml | none |
+| legacy demo registry (`tools/gen-demos.ts`'s RN inputs: `registry.ts`, `inspirations.ts`, `icon-colors.generated.ts`, `inspiration-copy.ts`, `assets/app-icons/**`) | lint.yml, exact-lint.yml | lint.yml, exact-lint.yml |
+| parity tooling only (`.parity/**`) | exact-lint.yml | exact-lint.yml |
+| docs only (`README.md`) | exact-lint.yml | exact-lint.yml |
 
 `exact-lint.yml` gained one line (`'!.site/**'`); `lint.yml` is unchanged. A demos PR runs exact-lint.yml alone: no
 site build, no compose, no site check (the Demos app pays nothing for the site). `site-compose.yml` composes the deploy
@@ -68,7 +69,8 @@ tree on a site PR (`.site/**` only), with the cached `/demos/` artifact for HEAD
 the compose-time patches (`tools/demos-web/patches.ts --dry-run`) on a copy of the new artifact, so a demos or Exact
 change that makes one stale turns that post-merge run red without ever gating the demos PR. It is read-only, has no
 secrets and deploys nothing. The deploy workflow stays manual; it runs on site *and* demos inputs by design (the
-deployed `/demos/` embeds the demos build). None of the site's workflows runs on a pure `.legacy/` change.
+deployed `/demos/` embeds the demos build). None of the site's workflows runs on a pure `.legacy/` change. exact-lint.yml runs on a push to main as well as on a PR (its generated-files check must hold on
+main), and on the `.legacy/` files `tools/gen-demos.ts` reads, since a change there can make `demos.contract` stale.
 
 ## 5. `.legacy/` is read by neither build
 

@@ -102,7 +102,11 @@ lint_generated() {
   bun tools/gen-demos.ts >/dev/null
   bun tools/gen-index.ts >/dev/null
   bun tools/gen-architecture.ts >/dev/null
-  bun .parity/screen-atlas/gen-atlas-data.ts >/dev/null
+  # The atlas data with no local scores: .parity/screen-atlas/out/ is gitignored, so CI never has
+  # scores.json and a developer who ran the atlas would otherwise see their scores as drift.
+  local atlas_out; atlas_out="$(mktemp -d)"
+  ATLAS_OUT="$atlas_out" bun .parity/screen-atlas/gen-atlas-data.ts >/dev/null
+  rm -rf "$atlas_out"
   for f in "${GENERATED[@]}"; do
     cp "$f" "$out/$f"
     cmp -s "$f" "$keep/$f" || stale+=("$f")
@@ -111,7 +115,7 @@ lint_generated() {
     echo "${red}generated files out of date: ${stale[*]}${off}"
     for f in "${stale[@]}"; do diff -u "$keep/$f" "$out/$f" | cut -c1-200 | head -30 || true; done
     echo "regenerated copies: $out (the files in the tree were left as they are)"
-    echo "to refresh: bun tools/gen-demos.ts && bun tools/gen-index.ts && bun tools/gen-architecture.ts && bun .parity/screen-atlas/gen-atlas-data.ts"
+    echo "to refresh: bun tools/gen-demos.ts && bun tools/gen-index.ts && bun tools/gen-architecture.ts && ATLAS_OUT=\"\$(mktemp -d)\" bun .parity/screen-atlas/gen-atlas-data.ts"
     return 1
   fi
   echo "generated files are up to date"
