@@ -46,7 +46,7 @@ const shows = (path: string) => `(() => {
   return h1s.some((t) => t.includes(want)) || body.includes(want);
 })()`;
 
-async function until(page: Page, expr: string, ms = 4000) {
+async function until(page: Page, expr: string, ms = 6000) {
   const t0 = Date.now();
   while (Date.now() - t0 < ms) {
     try { if (await page.eval<boolean>(expr)) return true; } catch {}
@@ -84,8 +84,10 @@ for (let round = 0; round < rounds; round++) for (const w of widths) for (const 
       const m = await page.eval<number[]>(`(() => { const r = document.querySelector('[aria-controls="mobile-menu"]').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()`);
       await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: m[0], y: m[1] });
       for (const type of ['mousePressed', 'mouseReleased']) await page.send('Input.dispatchMouseEvent', { type, x: m[0], y: m[1], button: 'left', clickCount: 1 });
-      await until(page, `!!document.querySelector('#mobile-menu a')`, 3000);
-      await Bun.sleep(400);
+      // The menu opens once the press is handled (a page not yet awake starts its runtime at it): wait until its
+      // links can be pressed.
+      await until(page, `[...document.querySelectorAll('#mobile-menu a')].some((a) => hit(a))`, 6000);
+      await Bun.sleep(350);
     }
     const sel = mobile ? '#mobile-menu a' : 'header a';
     const p = await page.eval<number[] | null>(`(() => { const a = [...document.querySelectorAll(${JSON.stringify(sel)})].find((a) => hit(a) && new URL(a.href).pathname === ${JSON.stringify(to)}); if (!a) return null; const r = a.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()`);
@@ -103,7 +105,10 @@ for (let round = 0; round < rounds; round++) for (const w of widths) for (const 
     if (timing === 'cold' || timing === 'hovered') {
       await page.eval('history.back()');
       checks++;
-      if (!(await until(page, at(start)))) fail(`${name}: Back → ${await page.eval('location.pathname').catch(() => '?')}, drawn ${await page.eval(`[...document.querySelectorAll('h1')].map(h=>h.textContent.trim().slice(0,20)).join('|')`).catch(() => '?')}`);
+      // Back must stay back: nothing armed on the restored page may carry it forward again (3 s later).
+      const back = await until(page, at(start));
+      if (back) { await Bun.sleep(3000); if (!(await page.eval<boolean>(at(start)).catch(() => false))) { fail(`${name}: Back bounced to ${await page.eval('location.pathname').catch(() => '?')}`); await page.close(); continue; } }
+      if (!back) fail(`${name}: Back → ${await page.eval('location.pathname').catch(() => '?')}, drawn ${await page.eval(`[...document.querySelectorAll('h1')].map(h=>h.textContent.trim().slice(0,20)).join('|')`).catch(() => '?')}`);
       else {
         await page.eval('history.forward()');
         checks++;

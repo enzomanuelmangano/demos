@@ -29,6 +29,7 @@ const OPEN = `!!document.querySelector('#signin-modal[open]')`;
 
 const { cdp, kill } = await launch({ port: 9351 });
 let failures = 0, checks = 0;
+const menuMs: number[] = [];
 const fail = (s: string) => { failures++; console.log('FAIL ' + s); };
 for (let round = 0; round < rounds; round++) for (const w of widths) for (const route of routes) for (const when of ['cold', 'warm', 'in-app']) {
   const page = await newPage(cdp, w);
@@ -49,7 +50,11 @@ for (let round = 0; round < rounds; round++) for (const w of widths) for (const 
     } else { await page.goto(origin + route); await Bun.sleep(2500); }
     if (w < 768) {
       if (!(await press(page, '[aria-controls="mobile-menu"]'))) { fail(`${name}: no menu button`); continue; }
-      if ((await until(page, `!!document.querySelector('#mobile-menu [data-testid="menu-sign-in"], #mobile-menu button')`, 3000)) < 0) { fail(`${name}: menu`); continue; }
+      // The menu opens once its press is handled (a page not yet awake starts its runtime at it): wait until its
+      // Sign In can be pressed, and report how long the menu took.
+      const m = await until(page, `(() => { const b = document.querySelector('#mobile-menu button'); if (!b) return false; const r = b.getBoundingClientRect(); const h = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); return !!h && (h === b || b.contains(h)) && getComputedStyle(document.getElementById('mobile-menu')).opacity === '1'; })()`, 6000);
+      if (m < 0) { fail(`${name}: menu`); continue; }
+      menuMs.push(m);
       await Bun.sleep(350);
       if (!(await press(page, '#mobile-menu button'))) { fail(`${name}: no menu Sign In`); continue; }
     } else if (!(await press(page, 'header button'))) { fail(`${name}: no Sign In button`); continue; }
@@ -62,6 +67,8 @@ for (let round = 0; round < rounds; round++) for (const w of widths) for (const 
     const isLink = await page.eval<boolean>(`document.querySelector('#signin-modal [data-testid="sign-in-google"]').localName === 'a'`);
     checks++;
     if (!isLink) {
+      // Up to 640 px the dialog is a drawer sliding up (500 ms): press once it rests.
+      await Bun.sleep(w <= 640 ? 700 : 0);
       await press(page, '#signin-modal [data-testid="sign-in-google"]');
       if ((await until(page, `document.body.innerText.includes('Sign in is not available right now')`, 3000)) < 0) fail(`${name}: no toast after a failed provider`);
     }
@@ -69,6 +76,6 @@ for (let round = 0; round < rounds; round++) for (const w of widths) for (const 
   } catch (e) { fail(`${name}: ${String(e).slice(0, 160)}`); }
   finally { await page.close().catch(() => {}); }
 }
-console.log(JSON.stringify({ origin, checks, failures }));
+console.log(JSON.stringify({ origin, checks, failures, menuOpenMs: menuMs.sort((a, b) => a - b) }));
 kill();
 process.exit(failures ? 1 : 0);

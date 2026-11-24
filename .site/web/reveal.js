@@ -191,6 +191,45 @@ document.addEventListener('click', function (e) {
     try { d.showModal(); } catch (err) {}
   }, true);
 })();
+/* A safety net for in-app navigation. A press on a link of this site not carried out 2.5 s later loads that address as
+   a document: either the address changed and the page did not (the head title, which every route sets, is still the
+   old page's), or neither changed: a press that landed while the runtime was starting, which its router swallowed or
+   whose link was replaced between the press and the release, so no click reached it (measured on the 404: ~1 press in
+   40 in the first 20 ms of the start). Armed by the click (keyboard too) and by a pointer released on the link it was
+   pressed on. A stuck page is never left on screen. */
+(function () {
+  var down = null, armed = 0;
+  function arm(href) {
+    var url; try { url = new URL(href, location.href); } catch (err) { return; }
+    if (url.origin != location.origin || url.pathname == location.pathname) return;
+    var title = document.title, from = location.pathname, path = url.pathname, id = ++armed, t0 = Date.now();
+    // Watched every 200 ms: once the page has moved on (another address, or the title of the new page), the press
+    // was carried out and nothing more is done, even if the reader comes back (Back) before the 2.5 s are up.
+    var timer = setInterval(function () {
+      if (id != armed || document.title != title || (location.pathname != from && location.pathname != path)) return clearInterval(timer);
+      if (Date.now() - t0 < 2500) return;
+      clearInterval(timer);
+      if (location.pathname == path) location.reload();
+      else location.assign(url.href);
+    }, 200);
+  }
+  // A page left (a document navigation, the back/forward cache) drops what it armed: restored by Back, it must not
+  // carry out a press made before it was left.
+  addEventListener('pagehide', function () { armed++; });
+  function plain(e, a) { return a && !e.button && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && !(a.target && a.target != '_self') && !a.hasAttribute('download'); }
+  addEventListener('pointerdown', function (e) {
+    var a = e.target && e.target.closest && e.target.closest('a[href]');
+    down = plain(e, a) ? { href: a.href, r: a.getBoundingClientRect() } : null;
+  }, true);
+  addEventListener('pointerup', function (e) {
+    var d = down; down = null;
+    if (d && e.clientX >= d.r.left && e.clientX <= d.r.right && e.clientY >= d.r.top && e.clientY <= d.r.bottom) arm(d.href);
+  }, true);
+  addEventListener('click', function (e) {
+    var a = e.target && e.target.closest && e.target.closest('a[href]');
+    if (plain(e, a) && !e.detail) arm(a.href);
+  }, true);
+})();
 /* Up to 640 px the account dialogs are vaul's Drawer (web/head.css): dragged down they follow the finger (the overlay
    fading with the share dragged), and released past 25 % of their height or faster than 0.4 px/ms they close (vaul's
    closeThreshold and velocity threshold); otherwise they slide back (500 ms, vaul's cubic-bezier(.32,.72,0,1)). An
@@ -242,4 +281,20 @@ document.addEventListener('click', function (e) {
   }
   addEventListener('pointerup', end, true);
   addEventListener('pointercancel', end, true);
+})();
+/* The 404 page adopts its document. Exact renders afresh a document made for another path (the checkpoint's location,
+   /404.html, is not the address), so a press made before its runtime started was replayed on nodes no longer there
+   (the menu or a link of the 404, cold: a dead tap). The not-found page draws the same at every path and reads nothing
+   of it, so its checkpoint is moved to the address before the runtime reads it (a mismatch still falls back to a fresh
+   render, Exact's own check). */
+(function () {
+  function fix() {
+    var c = document.querySelector('script[type="application/vnd.exact.checkpoint"]');
+    if (!c) return;
+    try {
+      var cp = JSON.parse(c.textContent);
+      if (cp.location == '/404.html' && location.pathname != '/404.html') { cp.location = location.pathname; c.textContent = JSON.stringify(cp); }
+    } catch (e) {}
+  }
+  if (document.readyState != 'loading') fix(); else document.addEventListener('DOMContentLoaded', fix, { once: true });
 })();
