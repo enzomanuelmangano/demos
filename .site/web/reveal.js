@@ -203,16 +203,16 @@ document.addEventListener('click', function (e) {
     var url; try { url = new URL(href, location.href); } catch (err) { return; }
     if (url.origin != location.origin || url.pathname == location.pathname) return;
     var title = document.title, from = location.pathname, path = url.pathname, id = ++armed, t0 = Date.now();
-    // Watched every 200 ms: once the page has moved on (another address, or the title of the new page), the press
-    // was carried out and nothing more is done, even if the reader comes back (Back) before the 2.5 s are up.
+    // Watched every 200 ms. The address is the target but the page is not drawn 2.5 s later: reload it. A navigation
+    // toward it has started (the Navigation API's navigate event: the router's pushState, or a document load under
+    // way, which a second load would only duplicate in the history), or the page has moved on: done, even if the
+    // reader comes back (Back) before the 2.5 s are up. Neither moved: the press was lost, load the address.
     var timer = setInterval(function () {
-      if (id != armed || document.title != title || (location.pathname != from && location.pathname != path)) return clearInterval(timer);
-      if (Date.now() - t0 < 2500) return;
-      clearInterval(timer);
-      if (location.pathname == path) location.reload();
-      // Still here: unless a navigation to it is under way (a document load in progress, which a second one would
-      // only duplicate in the history), the press was lost.
-      else if (!(navTo == path && navAt >= t0)) location.assign(url.href);
+      var late = Date.now() - t0 >= 2500;
+      if (id != armed || document.title != title) return clearInterval(timer);
+      if (location.pathname == path) { if (late) { clearInterval(timer); location.reload(); } return; }
+      if ((navTo == path && navAt >= t0) || location.pathname != from) return clearInterval(timer);
+      if (late) { clearInterval(timer); location.assign(url.href); }
     }, 200);
   }
   // Navigations started (the Navigation API's navigate event: links, document loads, the router's pushState).
