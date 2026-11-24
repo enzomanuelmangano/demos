@@ -593,7 +593,9 @@ if (DOM) document.addEventListener('click', noteTap, true);
 // it as a tap would). Only from the parent window, and only from the origin that serves this app (the site and the
 // app are one deployment: reactiive.io's parent on reactiive.io, a preview's on that preview, a local server's on
 // it); answers go to that origin only. Once the parent has spoken, real input here is told to it
-// (`{ demos: 'input' }`) so it stops its demo. Nothing else is read or answered. At the top level none of this exists.
+// (`{ demos: 'input' }`) so it stops its demo. The page also says where it is (`{ demos: 'page', current, visible }`:
+// on /demos or not, the frame on screen or not), which the frame's history follows (below). Nothing else is read or
+// answered. At the top level none of this exists.
 const FRAMED = DOM && window.parent !== window;
 if (FRAMED) {
   const HOME = new URL(location.href).origin;
@@ -604,70 +606,62 @@ if (FRAMED) {
   // state carries its index (`exact`). Mirrored here, so a move can be made without traversing the joint history:
   // - a route a parent's press opens REPLACES the entry (the reader's Back never steps through the parent's demo, and
   //   a full demo leaves no forward entry), and its close is a replace back to the entry it replaced, never a go(-1);
-  // - once the page has moved on (it pushed entries after this frame's last move: a site link) or this frame does not
-  //   render (hidden by the page: no animation frame comes), a go(-n) of the router would traverse the PAGE's history
-  //   (Back out of /articles, say): it is made a replace to the target entry too, with the popstate the router waits
-  //   for. The router then holds the state it asked for, and later opens and closes move the history as before.
+  // - while the page says it is elsewhere (`{ demos: 'page', current: false }`: a site link took it off /demos, and
+  //   this frame is kept hidden), a go(-n) of the router would traverse the PAGE's history (Back out of /articles,
+  //   say): it is made a replace to the target entry, with the popstate the router waits for. Back on /demos
+  //   (`current: true`) the router's moves are the browser's again. Without a word from the page, nothing changes.
   const states = new Map(), replacedAt = new Set(), H = history;
   const push = H.pushState, replace = H.replaceState, go = H.go, back = H.back;
-  let pressUntil = 0, ownLength = H.length;
+  const page = { current: true, visible: true };
+  let pressUntil = 0;
   const note = (state, url) => { if (state && typeof state.exact === 'number') states.set(state.exact, { state, url: url == null ? location.href : new URL(url, location.href).href }); };
   note(H.state, null);
   H.pushState = function (state, title, url) {
     if (performance.now() < pressUntil && state && typeof state.exact === 'number') {
       replacedAt.add(state.exact);
       const r = replace.call(H, state, title, url);
-      note(state, url); ownLength = H.length;
+      note(state, url);
       return r;
     }
     const r = push.call(H, state, title, url);
-    note(state, url); ownLength = H.length;
+    note(state, url);
     return r;
   };
-  H.replaceState = function (state, title, url) { const r = replace.call(H, state, title, url); note(state, url); ownLength = H.length; return r; };
-  addEventListener('popstate', () => { note(H.state, null); ownLength = H.length; }, true);
-  const rendering = () => new Promise((res) => {
-    if (document.hidden) return res(false);
-    let done = false;
-    requestAnimationFrame(() => { if (!done) { done = true; res(true); } });
-    // A frame that renders answers within a vsync; a hidden one never. A second, not less: a loaded machine can starve
-    // a visible frame for a few hundred ms, and a wrong "hidden" would move the history in place.
-    setTimeout(() => { if (!done) { done = true; res(false); } }, 1000);
-  });
+  H.replaceState = function (state, title, url) { const r = replace.call(H, state, title, url); note(state, url); return r; };
+  addEventListener('popstate', () => note(H.state, null), true);
   // A move to entry `to` in place: the URL and state replaced, then the popstate a traversal would have sent.
   const moveTo = (to) => {
     const t = states.get(to), cur = H.state?.exact;
     if (typeof cur === 'number') replacedAt.delete(cur);
-    replace.call(H, t.state, '', t.url); ownLength = H.length;
+    replace.call(H, t.state, '', t.url);
     dispatchEvent(new PopStateEvent('popstate', { state: H.state }));
   };
-  const travel = async (d, real) => {
+  const inPlace = (d) => {
     const cur = H.state?.exact, to = typeof cur === 'number' ? cur + d : NaN;
-    const inPlace = states.has(to) && d < 0 && (replacedAt.has(cur) || H.length !== ownLength || !(await rendering()));
-    if (inPlace) moveTo(to); else real();
+    return d < 0 && states.has(to) && (replacedAt.has(cur) || !page.current) ? to : null;
   };
-  H.go = function (d = 0) { if (typeof d === 'number' && d < 0) { travel(d, () => go.call(H, d)); return; } return go.call(H, d); };
-  H.back = function () { travel(-1, () => back.call(H)); };
-  // A close the parent asks for while this frame does not render (the page has hidden it): the route goes home at
-  // once, no flight (a flight would wait for frames that never come).
-  const closeNow = async () => {
-    if (await rendering()) return false;
+  H.go = function (d = 0) { const to = typeof d === 'number' ? inPlace(d) : null; if (to !== null) return void setTimeout(() => moveTo(to)); return go.call(H, d); };
+  H.back = function () { const to = inPlace(-1); if (to !== null) return void setTimeout(() => moveTo(to)); return back.call(H); };
+  // A close the parent asks for while the page is elsewhere or this frame is off screen: the route goes home at
+  // once, no flight (a flight would wait for frames that never come). On screen, the close button's own flight.
+  const closeNow = () => {
     const cur = H.state?.exact;
-    if (typeof cur !== 'number' || !states.has(cur - 1) || !location.pathname.includes('/demo/')) return false;
+    if (page.current && page.visible || typeof cur !== 'number' || !states.has(cur - 1) || !location.pathname.includes('/demo/')) return false;
     moveTo(cur - 1);
     return true;
   };
-  addEventListener('message', async (e) => {
+  addEventListener('message', (e) => {
     const m = e.data;
-    if (e.source !== window.parent || e.origin !== HOME) return;
-    if (!m || (m.demos !== 'rect' && m.demos !== 'press') || typeof m.target !== 'string' || !/^[a-z0-9-]{1,80}$/.test(m.target)) return;
+    if (e.source !== window.parent || e.origin !== HOME || !m) return;
+    if (m.demos === 'page') { page.current = m.current !== false; page.visible = m.visible !== false; return; }
+    if ((m.demos !== 'rect' && m.demos !== 'press') || typeof m.target !== 'string' || !/^[a-z0-9-]{1,80}$/.test(m.target)) return;
     parentOrigin = e.origin;
     const el = document.querySelector(`[data-testid="${m.target}"]`);
     if (m.demos === 'rect') {
       const r = el?.getBoundingClientRect();
       return post({ demos: 'rect', target: m.target, rect: r && r.width > 0 ? { x: r.x, y: r.y, width: r.width, height: r.height } : null });
     }
-    if (m.target === 'close' && await closeNow()) return;
+    if (m.target === 'close' && closeNow()) return;
     if (!el) return;
     pressUntil = performance.now() + 1500;
     const r = el.getBoundingClientRect(), at = { bubbles: true, cancelable: true, composed: true, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2, pointerId: 7, pointerType: 'touch', isPrimary: true, button: 0 };
