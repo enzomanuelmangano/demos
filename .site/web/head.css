@@ -20,6 +20,11 @@
    zeros counter any scroll lock that pads the root. */
 html{overflow-y:scroll;padding-right:0 !important;margin-right:0 !important}
 body{padding-right:0 !important;margin-right:0 !important}
+/* globals.css body overflow-x hidden: nothing reaches past the window's sides (a long URL in /docs/terms at 320 px, a
+   shadow or a spotlight wider than the page), so a phone's page never pans sideways. `clip`, not `hidden`: a hidden
+   body is a scroll container, which would hold the header's sticky box (app.contract) to the body instead of the
+   window; clip cuts the same pixels and makes no scroller. */
+body{overflow-x:clip}
 body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}
 ::selection{background:#262935db;color:#ffffffdb}
 
@@ -183,6 +188,11 @@ main:has([data-motion~=d-page]) ~ *{visibility:hidden}
 /* The desktop header bar is 0 px tall and clipped under 768 px; from 768 px it must not clip: the avatar's menu (w-56,
    mt-3 under a 32 px avatar) hangs 190 px below the 87 px bar. */
 @media (min-width:768px){[data-motion~=bar][data-motion~=desk]{overflow:visible !important}}
+/* Each bar is out of the page on the other side of md, as the reference's hidden md:block / md:hidden: drawn 0 px tall
+   there already (components/shell.contract), but its links stayed in the tab order and the accessibility tree, and the
+   closed menu's panel kept its height for a window resized across 768 px. */
+@media (max-width:767px){[data-testid=header-desktop]{display:none !important}}
+@media (min-width:768px){[data-testid=header-mobile],#mobile-menu{display:none !important}}
 /* md:hidden (the profile's mobile sign-out card), and the plans' grid: grid-cols-1 sm:grid-cols-2. */
 @media (min-width:768px){[data-motion~=md-hidden]{display:none !important}}
 [data-motion~=plan-grid]{grid-template-columns:repeat(1,minmax(0,1fr))}

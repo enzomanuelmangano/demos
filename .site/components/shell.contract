@@ -26,12 +26,12 @@ style NavLink
     color = "#ffffff"
 
 style MenuLink
-  display="block" padding="12px 16px" border-radius="var(--radius-lg)" font-size="1rem" line-height="1.5rem" font-weight=500
+  display="block" box-sizing="border-box" padding="12px 16px" border-radius="var(--radius-lg)" font-size="1rem" line-height="1.5rem" font-weight=500
   color="var(--color-text-secondary)" cursor="pointer"
 
 // A menu entry that is not the current page: hover:text-white hover:bg-white/5 (transition-colors, web/head.css).
 style MenuLinkIdle
-  display="block" padding="12px 16px" border-radius="var(--radius-lg)" font-size="1rem" line-height="1.5rem" font-weight=500
+  display="block" box-sizing="border-box" padding="12px 16px" border-radius="var(--radius-lg)" font-size="1rem" line-height="1.5rem" font-weight=500
   color="var(--color-text-secondary)" cursor="pointer"
   :hover
     color = "#ffffff"
