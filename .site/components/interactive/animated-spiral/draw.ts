@@ -1,14 +1,17 @@
 // animated-spiral: the reference's content/articles/animated-spiral/components/animated-spiral/spiral.tsx.
-// 1,500 dots on a logarithmic spiral (x = i/4 · e^(0.005·θ) · cos(θ·i)) around the canvas's centre on #0a0a0a; Play
-// moves them to a random angle, Reset to π/2, over 1.5 s (easeInOutQuad) or at once (`animated` false), from where the
+// 1,500 dots on a logarithmic spiral (x = i/4 · e^(0.005·θ) · cos(θ·i)) around the canvas's centre on #0a0a0a, drawn
+// at π/2 when it mounts (no entrance); Play moves them to the next angle of a fixed cycle (the reference's is random:
+// the same reader sees the same spirals, owner 2026-11-24), Reset to π/2, over 1.5 s (easeInOutQuad) or at once (`animated` false), from where the
 // last move aimed. Radius 1, or 1 → 0.1 with the distance from the centre; white, or the cyan-magenta-yellow sweep
 // with its blurred halo (Skia's BlurMask style "solid", 5 px). `spiral(key, fixedRadius, sweep, animated, visible,
 // presses, kind)`.
-import { SWEEP, easeInOutQuad, halo, HALO_OFFSET, interpolate, memo, sample, seeded, sweepGradient, turn, type Ctx2D, type Frame } from '../_canvas/util';
+import { SWEEP, easeInOutQuad, halo, HALO_OFFSET, interpolate, memo, sample, sweepGradient, turn, type Ctx2D, type Frame } from '../_canvas/util';
 
 const COUNT = 1500;
 const DURATION = 1500;
 const HALO_BUCKETS = 48;
+// Play's angles, in order (a press past the last starts over): spread over the reference's random range [0, 2π).
+const PLAY = [2.4, 4.1, 0.9, 5.3, 3.2, 1.6];
 
 function coordinates(angle: number) {
   const out = new Float64Array(COUNT * 2), e = Math.exp(0.005 * angle);
@@ -20,18 +23,18 @@ function coordinates(angle: number) {
   return out;
 }
 
-type State = { from: Float64Array; to: Float64Array; start: number; presses: number; now: Float64Array; r: Float64Array };
+type State = { from: Float64Array; to: Float64Array; start: number; presses: number; plays: number; now: Float64Array; r: Float64Array };
 const state = memo<State>();
 
 export function drawSpiral(ctx: Ctx2D, f: Frame, [key, fixedRadius, sweep, animated, visible, presses, kind]: [string, boolean, boolean, boolean, boolean, number, string]): boolean {
   const s = state(key, f, () => {
     const to = coordinates(Math.PI / 2);
-    return { from: to, to, start: -Infinity, presses, now: new Float64Array(COUNT * 2), r: new Float64Array(COUNT) };
+    return { from: to, to, start: -Infinity, presses, plays: 0, now: new Float64Array(COUNT * 2), r: new Float64Array(COUNT) };
   });
   if (presses !== s.presses) {
     s.presses = presses;
     s.from = s.to;
-    s.to = coordinates(kind === 'reset' ? Math.PI / 2 : Math.PI * 2 * seeded(f.time, presses)());
+    s.to = coordinates(kind === 'reset' ? Math.PI / 2 : PLAY[s.plays++ % PLAY.length]);
     s.start = f.time;
   }
   const t = animated ? Math.min((f.time - s.start) / DURATION, 1) : 1;
