@@ -630,7 +630,9 @@ if (FRAMED) {
     if (document.hidden) return res(false);
     let done = false;
     requestAnimationFrame(() => { if (!done) { done = true; res(true); } });
-    setTimeout(() => { if (!done) { done = true; res(false); } }, 160);
+    // A frame that renders answers within a vsync; a hidden one never. A second, not less: a loaded machine can starve
+    // a visible frame for a few hundred ms, and a wrong "hidden" would move the history in place.
+    setTimeout(() => { if (!done) { done = true; res(false); } }, 1000);
   });
   // A move to entry `to` in place: the URL and state replaced, then the popstate a traversal would have sent.
   const moveTo = (to) => {
