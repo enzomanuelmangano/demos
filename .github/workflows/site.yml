@@ -72,6 +72,9 @@ jobs:
       - name: Typecheck the tooling
         run: bun x tsc -p tsconfig.json
 
+      - name: Generate the content modules (content-gen/ is generated, never tracked; app.ts imports it)
+        run: bun tools/gen-content.ts
+
       - name: Build
         env:
           EXACT: ${{ github.workspace }}/.exact-sdk
