@@ -132,6 +132,14 @@ main:has([data-motion~=d-page]) ~ *{visibility:hidden}
 [data-motion~=spiral]{opacity:.4 !important;mask-image:linear-gradient(to right,#000 0%,#000 30%,transparent 55%)}
 }
 @media (min-width:1024px) and (prefers-reduced-motion:reduce){[data-motion~=sim-col]{animation:none}}
+/* /demos's TestFlight link (pages/demos.contract TestFlightLink): its QR code shows under it on hover or focus, from
+   1024 px with a mouse, to scan with the phone; enters 200 ms (strong ease-out, from 96 % at its corner), leaves 150 ms. */
+[data-motion~=d-tf-qr]{display:none}
+@media (min-width:1024px) and (hover:hover) and (pointer:fine){
+[data-motion~=d-tf-qr]{display:block;z-index:45;visibility:hidden;opacity:0;scale:.96;translate:0 -4px;transform-origin:24px 0;box-shadow:0 0 0 1px rgb(255 255 255 / .08),0 16px 40px rgb(0 0 0 / .55);transition:opacity 150ms ease-out,scale 150ms ease-out,translate 150ms ease-out,visibility 0s 150ms}
+[data-motion~=d-tf]:is(:hover,:focus-within) [data-motion~=d-tf-qr]{visibility:visible;opacity:1;scale:1;translate:none;transition:opacity 200ms cubic-bezier(.23,1,.32,1) 60ms,scale 200ms cubic-bezier(.23,1,.32,1) 60ms,translate 200ms cubic-bezier(.23,1,.32,1) 60ms,visibility 0s 60ms}
+}
+@media (min-width:1024px) and (hover:hover) and (pointer:fine) and (prefers-reduced-motion:reduce){[data-motion~=d-tf-qr]{scale:1;translate:none}}
 /* Interaction transitions, as the reference's classes compute them. */
 [data-motion~=colors]{transition-property:color,background-color,border-color,outline-color,text-decoration-color,fill,stroke !important;transition-duration:150ms !important;transition-timing-function:cubic-bezier(.4,0,.2,1) !important;transition-delay:0s !important}
 /* /demos's pill: transition-colors duration-200. */

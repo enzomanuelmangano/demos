@@ -593,3 +593,53 @@ margins'. Checked with touch at 390x844, 360x780 and 430x932: no frame in the pa
 (centred, 52 px, at y ≈ 333 px, inside the first viewport) and the still under it; a tap opens `/demos/app/` full
 screen (the launcher, edge to edge); a tap on an icon opens the demo, close returns to the launcher, Back returns to
 `/demos` with the hero as it was.
+
+## D22. An arrow to the phone; Sponsor in the pill; TestFlight, quietly (owner, 2026-11-24)
+
+**The arrow** ("as soon as one lands on /demos, a pretty animated arrow toward the sim, as if to invite interacting
+with it"; no words, D17). `web/sim-hint.js`, before the touch demo (D19), once per session (`sessionStorage`
+`reactiive.demos.arrow`), from 768 px on `/demos` only, arrived at by load or in-site navigation:
+
+- **When.** Once the visible frame is live and the hero's entrance (live's motion: title, subtitle, pill, device) has
+  ended (its finite animations' `finished`, at most 3 s): about 2.4 s after a load. The header and the entrance are
+  untouched.
+- **What.** One hand-drawn swoop (an SVG cubic that dips under the line, then rises into the phone; 1.75 px, a white
+  gradient 18 % at the tail to 85 % at the head; two 11 px head strokes at ±29°) from the pill's end to 20 px off the
+  phone's bezel at 44 % of the screen's height (from 1024 px; under the subtitle's end, never across it; a gap under
+  160 px starts under the pill's end and rises gently), or from the pill's end down to the phone's top (768-1023 px).
+  The line draws on (stroke-dashoffset, 950 ms, `cubic-bezier(.6,0,.2,1)`: it lands slowly at the phone), the head
+  follows (200 ms strong ease-out), it nudges 5 px toward the phone twice (2 x 1.2 s ease-in-out, transform only),
+  then eases 8 px into it while fading (450 ms); ~4 s. Then the touch demo starts (350 ms later): the arrow says
+  where, the demo says how. Sequenced, not merged: two cues at once compete for the eye.
+- **Dismissed** at once (a 200 ms fade, held where it is) by any pointer, wheel or key, the app's own input, leaving
+  `/demos`, a resize, or the pointer within 40 px of the phone (the frame is another process: the page sees no move on
+  the screen itself, so the bezel's surroundings count); any of these also skips the touch demo (the reader has found
+  the phone). Reduced motion: the same arrow, still, faded in (400 ms), held, faded out; no touch demo (D19).
+  Save-Data: the arrow (it costs no bytes), no touch demo.
+- **Never in the way.** An absolutely placed `svg` (`pointer-events: none`, `aria-hidden`), no layout: CLS 0, no long
+  task while it plays, clicks into the sim unchanged (the frame stays the hit target). Only the line's draw paints
+  (a ~400 px path for 950 ms); the rest is compositor work.
+- **Phones (under 768 px): nothing.** The hero's next element is already the primary "Open the demos" button, the
+  page's one action; an arrow toward it would be noise.
+- Variants recorded (headless Chrome, 1440x900, 1024x768, 820x1180, frames every 50 ms): (a) **the swoop, chosen**;
+  (b) the swoop with a hand-drawn curl before the phone: charming, but a notebook doodle next to Apple-grade type, and
+  at 1024 px it crossed the subtitle; (c) a light running the line (a bright 30 % dash over a faint full line): its
+  hard dash ends read as a glitch.
+
+**Sponsor and TestFlight** (owner: a GitHub Sponsor button and a small TestFlight button, without too many buttons).
+Variants mocked at 1440, 1024 and 390: (a) Sponsor in the pill, TestFlight a ghost pill under it: two stacked pills,
+and on a phone a second TestFlight next to "Open the demos"; (b) **chosen**: Sponsor as the pill's third segment, and
+TestFlight a quiet grey link under the pill; (c) Sponsor and TestFlight as two more pills in the pill's row: wrapped
+under the phone at 1024 px.
+
+- **The pill** stays one visual pill with two hit areas: the repository and its stars, then Octicon heart-fill in
+  GitHub's sponsor pink (`#db61a2`) and "Sponsor" (`https://github.com/sponsors/enzomanuelmangano`, its own
+  aria-label). Each lights its own part on hover (+3 % white over the pill's 6 %, about live's 9 %, 200 ms).
+- **TestFlight**: "Try it on iPhone" (13 px, 50 % white, 80 % on hover), a phone glyph and a drawn north-east arrow (a
+  typed U+2197 is outside the preloaded ASCII face and fetched the full Inter: a 1e-5 CLS). One element at every
+  width: on a phone it sits right above "Open the demos" and installs directly. From 1024 px with a mouse, hover or
+  focus shows the TestFlight QR code under it (112 px on a dark card; 200 ms strong ease-out in from 96 % at its
+  corner, 150 ms out): a desktop reader cannot install TestFlight there, a phone can scan it. The URL is one function,
+  `pages/demos-app.contract` `testFlightUrl()`, used by both pages.
+- The arrow starts from the pill's last segment, so it never crosses Sponsor; the link sits under the pill's start.
+  The desktop hero still fits without scroll (1440x900, and D17's short-window matrix).
