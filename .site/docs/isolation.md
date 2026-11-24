@@ -61,7 +61,8 @@ Both dev loops at once (`bun exact.mjs web --port 5351` at the root, `--port 535
 | parity tooling only (`.parity/**`) | exact-lint.yml | exact-lint.yml |
 | docs only (`README.md`) | exact-lint.yml | exact-lint.yml |
 
-`exact-lint.yml` gained one line (`'!.site/**'`); `lint.yml` is unchanged. A demos PR runs exact-lint.yml alone: no
+`exact-lint.yml` excludes the site with `'!.site/**'` and runs on PRs and on pushes to main, also for the `.legacy/`
+files `tools/gen-demos.ts` reads (its generated-files check gates); `lint.yml` is unchanged. A demos PR runs exact-lint.yml alone: no
 site build, no compose, no site check (the Demos app pays nothing for the site). `site-compose.yml` composes the deploy
 tree on a site PR (`.site/**` only), with the cached `/demos/` artifact for HEAD's demos inputs (built on a miss).
 `site-demos-web.yml` (the artifact) builds on a push to main that changes the artifact's inputs (the paths

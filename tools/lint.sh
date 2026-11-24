@@ -39,15 +39,15 @@ exact_checkout() {
 
 lint_contract() {
   step "contract: tests"
-  bun tools/contract-lint/tests/run.ts
+  bun tools/contract-lint/tests/run.ts || return 1
   step "contract: lint (baseline: tools/contract-lint/baseline.json)"
   local fmt=stylish
   [ -n "${GITHUB_ACTIONS:-}" ] && fmt=github
-  bun tools/lint-contract.ts --baseline tools/contract-lint/baseline.json --max-warnings 0 --format "$fmt"
+  bun tools/lint-contract.ts --baseline tools/contract-lint/baseline.json --max-warnings 0 --format "$fmt" || return 1
   local checkout; checkout="$(exact_checkout)"
   if [ -n "$checkout" ]; then
     step "contract: compiler (bun exact.mjs contract build app.contract --errors-only)"
-    bun exact.mjs contract build app.contract --errors-only
+    bun exact.mjs contract build app.contract --errors-only || return 1
   else
     echo "${yellow}skipped: contract build (the Exact checkout is not at the path in Cargo.toml; set EXACT)${off}"
   fi
@@ -57,10 +57,10 @@ lint_rust() {
   local checkout; checkout="$(exact_checkout)"
   if [ -n "$checkout" ]; then
     step "rust: rustfmt on changed files + clippy against the baseline"
-    tools/rust-lint.sh all ${LINT_BASE:+"$LINT_BASE"}
+    tools/rust-lint.sh all ${LINT_BASE:+"$LINT_BASE"} || return 1
   else
     step "rust: rustfmt on changed files"
-    tools/rust-lint.sh fmt ${LINT_BASE:+"$LINT_BASE"}
+    tools/rust-lint.sh fmt ${LINT_BASE:+"$LINT_BASE"} || return 1
     echo "${yellow}skipped: clippy (the workspace needs the Exact checkout; set EXACT)${off}"
   fi
 }
@@ -74,11 +74,11 @@ lint_ts() {
     local deps="${TMPDIR:-/tmp}/exact-ts-deps"
     mkdir -p "$deps"
     [ -f "$deps/package.json" ] || echo '{"private":true}' > "$deps/package.json"
-    (cd "$deps" && bun add --silent typescript @types/node)
+    (cd "$deps" && bun add --silent typescript @types/node) || return 1
     tsc="$deps/node_modules/.bin/tsc"
     extra=(--typeRoots "$deps/node_modules/@types")
   fi
-  "$tsc" -p "$ROOT/tsconfig.json" --noEmit ${extra[@]+"${extra[@]}"}
+  "$tsc" -p "$ROOT/tsconfig.json" --noEmit ${extra[@]+"${extra[@]}"} || return 1
   echo "tsconfig.json: clean"
   local n
   n="$("$tsc" -p "$ROOT/.parity/tsconfig.json" --noEmit ${extra[@]+"${extra[@]}"} 2>&1 | grep -c 'error TS' || true)"
@@ -97,15 +97,22 @@ lint_generated() {
   keep="$(mktemp -d)"; out="${TMPDIR:-/tmp}/lint-generated"
   rm -rf "$out"; mkdir -p "$out"
   for f in "${GENERATED[@]}"; do mkdir -p "$keep/$(dirname "$f")" "$out/$(dirname "$f")"; cp "$f" "$keep/$f"; done
+  # Put the originals back when this function returns, however it returns. A RETURN trap stays set
+  # after the function that set it, so the trap clears itself first (a `trap -` inside restore, a
+  # function of its own, would not reach it): otherwise it fires again when the caller (run_all)
+  # returns, with $keep out of scope ("keep: unbound variable" under set -u).
   restore() { for f in "${GENERATED[@]}"; do cp "$keep/$f" "$f"; done; rm -rf "$keep"; }
-  trap restore RETURN
-  bun tools/gen-demos.ts >/dev/null
-  bun tools/gen-index.ts >/dev/null
-  bun tools/gen-architecture.ts >/dev/null
+  trap 'trap - RETURN; restore' RETURN
+  # Each generator's failure fails the check (and returns, so restore runs): under `all` this runs
+  # inside `if !`, where set -e is off, and in `generated` mode set -e would exit without restoring.
+  bun tools/gen-demos.ts >/dev/null || { echo "${red}generated: tools/gen-demos.ts failed${off}"; return 1; }
+  bun tools/gen-index.ts >/dev/null || { echo "${red}generated: tools/gen-index.ts failed${off}"; return 1; }
+  bun tools/gen-architecture.ts >/dev/null || { echo "${red}generated: tools/gen-architecture.ts failed${off}"; return 1; }
   # The atlas data with no local scores: .parity/screen-atlas/out/ is gitignored, so CI never has
   # scores.json and a developer who ran the atlas would otherwise see their scores as drift.
   local atlas_out; atlas_out="$(mktemp -d)"
-  ATLAS_OUT="$atlas_out" bun .parity/screen-atlas/gen-atlas-data.ts >/dev/null
+  ATLAS_OUT="$atlas_out" bun .parity/screen-atlas/gen-atlas-data.ts >/dev/null \
+    || { rm -rf "$atlas_out"; echo "${red}generated: .parity/screen-atlas/gen-atlas-data.ts failed${off}"; return 1; }
   rm -rf "$atlas_out"
   for f in "${GENERATED[@]}"; do
     cp "$f" "$out/$f"
