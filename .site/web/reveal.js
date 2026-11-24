@@ -203,6 +203,7 @@ document.addEventListener('click', function (e) {
     var url; try { url = new URL(href, location.href); } catch (err) { return; }
     if (url.origin != location.origin || url.pathname == location.pathname) return;
     var title = document.title, from = location.pathname, path = url.pathname, id = ++armed, t0 = Date.now();
+    var mine = current = { path: path, started: false };
     // Watched every 200 ms. The address is the target but the page is not drawn 2.5 s later: reload it. A navigation
     // toward it has started (the Navigation API's navigate event: the router's pushState, or a document load under
     // way, which a second load would only duplicate in the history), or the page has moved on: done, even if the
@@ -211,14 +212,15 @@ document.addEventListener('click', function (e) {
       var late = Date.now() - t0 >= 2500;
       if (id != armed || document.title != title) return clearInterval(timer);
       if (location.pathname == path) { if (late) { clearInterval(timer); location.reload(); } return; }
-      if ((navTo == path && navAt >= t0) || location.pathname != from) return clearInterval(timer);
+      if (mine.started || location.pathname != from) return clearInterval(timer);
       if (late) { clearInterval(timer); location.assign(url.href); }
     }, 200);
   }
-  // Navigations started (the Navigation API's navigate event: links, document loads, the router's pushState).
-  var navTo = '', navAt = 0;
+  // A navigation toward the armed link has started (the Navigation API's navigate event: the router's pushState, a
+  // document load): marked at once, so a Back right after it cannot hide it from the next check.
+  var current = null;
   if (self.navigation && navigation.addEventListener) navigation.addEventListener('navigate', function (e) {
-    try { navTo = new URL(e.destination.url).pathname; navAt = Date.now(); } catch (err) {}
+    try { if (current && new URL(e.destination.url).pathname == current.path) current.started = true; } catch (err) {}
   });
   // A page left (a document navigation, the back/forward cache) drops what it armed: restored by Back, it must not
   // carry out a press made before it was left.
