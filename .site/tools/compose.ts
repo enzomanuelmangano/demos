@@ -103,7 +103,8 @@ routes.push({ src: `^${esc(MOUNT)}$`, status: 308, headers: { Location: BASE } }
 // A legacy demo post opens that demo in the app, full window (D5, D10); a demo the app lacks, the /demos page.
 for (const slug of LEGACY_DEMO_POSTS) {
   const to = ALIASES[slug] ?? (appSlugs.has(slug) ? slug : null);
-  routes.push({ src: `^/demos/${esc(slug)}/?$`, status: 308, headers: { Location: to ? `${BASE}demo/${to}` : '/demos' } });
+  // A demo the app has: 308 (permanent, the same demo). One it lacks: 307 to the launcher (not a permanent equivalent).
+  routes.push({ src: `^/demos/${esc(slug)}/?$`, status: to ? 308 : 307, headers: { Location: to ? `${BASE}demo/${to}` : '/demos' } });
 }
 // Signed-out /profile and /manage-subscription sent a visitor to /demos (client-side, in the reference); at the edge now.
 // With the accounts' API behind /api/* (LEGACY_API_ORIGIN), /profile and /manage-subscription (a subscription's status
