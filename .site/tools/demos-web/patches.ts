@@ -6,7 +6,10 @@
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-type Patch = { file: RegExp; why: string; edits: [string, string][]; prepend?: string; dir?: string };
+// `requires`: text the edits depend on but do not replace (the minified names they use, by the declarations that bind
+// them). Each must be in the file exactly once, after `requires[0]` (the scope that binds them) and before the first
+// edit, so a rename in a new Exact fails the compose instead of shipping a patch that calls the wrong thing.
+type Patch = { file: RegExp; why: string; edits: [string, string][]; prepend?: string; dir?: string; requires?: string[] };
 
 export const PATCHES: Patch[] = [
   {
@@ -36,10 +39,24 @@ export const PATCHES: Patch[] = [
     // follows) tells the engine a followed, non-owner node's px height when its transition springs height (or `all`);
     // the first time, the height it had before the write first, so the first change already springs. The write still
     // lands inline (the hook returns as before); the engine's `animate` op plays the spring over it at the flush.
-    // Names are the minified build's (motion.js): p the wasm, b `nodes`, P `owner`, _ `now`, s `viewId`, x `authored`.
-    // Checked by tools/parity/height-spring.ts.
+    // Names are the minified build's (motion.js): p the wasm, b `nodes`, P `owner`, _ `now`, s `viewId`, x `authored`,
+    // c the hooks. `requires` pins each to the declaration that binds it, in the function whose return sets c.style:
+    // the function's own parameters (s, c), the wasm's exports (p), the clock (_), the maps (b, x), the owner (P), the
+    // owner's own height write (P, b's `transition`, p.m_height(id, px, seconds), _), and the drag modules' arguments
+    // (p as `w`, s, _, x). Checked by tools/parity/height-spring.ts.
     file: /^motion-(?!glue-)[\w-]+\.js$/,
     why: 'a height -exact-spring transition snaps (only a height drag owner tells the engine its height)',
+    requires: [
+      'async function _({clock:t,wall:r,views:o,viewId:s,hooks:c,say:l,inflight:u}){',
+      ',p=(f.instance??f).exports,',
+      ',_=()=>t.agent?t.now:Math.max(t.now,r()),',
+      ',b=new Map,x=new Map,S=new Map,',
+      ',M=new Map,N=new Map,P=null,',
+      'n!==P&&(P!=null&&p.m_unheight(P)&&R.retire(P,`height`),P=n,',
+      'function L(e,[t,n]=[]){if(e!==P||typeof t!=`number`)return;let r=b.get(e);r||b.set(e,r={}),r.transition!==n&&(r.transition=n,p.m_transitions(e,h(n??``))),p.m_height(e,t,_()/1e3)}',
+      'z=a({w:p,views:o,viewId:s,api:R,lower:y,ops:D,now:_,authored:x,holds:S,',
+      'return c.observe=E,c.style=(e,t,n)=>{',
+    ],
     prepend: 'const __xhPx=v=>{let m=/^\\s*(-?(?:\\d+\\.?\\d*|\\.\\d+)(?:e[+-]?\\d+)?)px\\s*$/i.exec(v??``);return m?Number(m[1]):NaN},__xhSprings=t=>typeof t==`string`&&t.toLowerCase().split(/,(?![^(]*\\))/).some(e=>{if(!/-exact-spring\\(/.test(e))return!1;let w=e.replace(/-exact-spring\\([^)]*\\)/g,` `).trim().split(/\\s+/).filter(t=>t&&!/^[\\d.]+m?s$/.test(t));return!w.length||w.includes(`height`)||w.includes(`all`)});\n',
     edits: [[
       'c.style=(e,t,n)=>{let r=s(e);if(!x.has(r))return!1;',
@@ -111,8 +128,19 @@ export function patchDemos(dir: string) {
     if (files.length !== 1) throw new Error(`demos patch (${p.why}): ${files.length} files match ${p.file}`);
     const path = join(at, files[0]);
     let text = readFileSync(path, 'utf8');
+    const count = (s: string) => text.split(s).length - 1;
+    if (p.requires) {
+      const first = text.indexOf(p.edits[0][0]);
+      const scope = text.indexOf(p.requires[0]);
+      for (const r of p.requires) {
+        const n = count(r);
+        if (n !== 1) throw new Error(`demos patch (${p.why}): ${files[0]} has ${n} copies of the required ${JSON.stringify(r.slice(0, 80))}`);
+        const at = text.indexOf(r);
+        if (at < scope || first < 0 || at > first) throw new Error(`demos patch (${p.why}): ${files[0]}: the required ${JSON.stringify(r.slice(0, 80))} is not between ${JSON.stringify(p.requires[0].slice(0, 40))} and the first edit`);
+      }
+    }
     for (const [from, to] of p.edits) {
-      const n = text.split(from).length - 1;
+      const n = count(from);
       if (n !== 1) throw new Error(`demos patch (${p.why}): ${files[0]} has ${n} copies of ${JSON.stringify(from.slice(0, 60))}`);
       text = text.replace(from, () => to);
     }
