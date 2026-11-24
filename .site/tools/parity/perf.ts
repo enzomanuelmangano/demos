@@ -97,9 +97,12 @@ const report: any[] = [];
 let failed = 0;
 for (const route of routes) for (const w of widths) for (const profile of profiles) {
   const row: any = { route, width: w, profile };
-  for (const [side, origin] of (localOnly ? [['local', local]] : [['live', live], ['local', local]]) as [string, string][]) {
-    const samples = [];
-    for (let i = 0; i < runs; i++) { const page = await newPage(cdp, w); samples.push(await measure(page, origin + route, profile)); await page.close(); }
+  // Interleaved: run i of live, then run i of local, so a change in the machine's load reaches both sides alike.
+  const sides = (localOnly ? [['local', local]] : [['live', live], ['local', local]]) as [string, string][];
+  const all: Record<string, any[]> = {};
+  for (let i = 0; i < runs; i++) for (const [side, origin] of sides) { const page = await newPage(cdp, w); (all[side] ??= []).push(await measure(page, origin + route, profile)); await page.close(); }
+  for (const [side] of sides) {
+    const samples = all[side];
     const pick: any = {};
     for (const k of Object.keys(samples[0])) pick[k] = typeof samples[0][k] === 'number' ? median(samples.map((s) => s[k])) : samples[Math.floor(runs / 2)][k];
     row[side] = pick;

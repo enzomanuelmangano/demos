@@ -61,6 +61,9 @@ export async function settle(page: any) {
   // paused, unplayed, in the shot); 300,150 reveals them as a reader's scroll does.
   const [step, ms] = (opt('--scroll') ?? '600,60').split(',').map(Number);
   await page.eval(`(async()=>{const h=document.documentElement.scrollHeight;for(let y=0;y<h;y+=${step}){scrollTo(0,y);await new Promise(r=>setTimeout(r,${ms}))}scrollTo(0,0)})()`);
+  // A page whose demos are far down starts its runtime when the reader pauses near one (web/reveal.js); the scroll
+  // above never pauses, so the shot (the whole page, every demo drawn, as a reader who reached them sees it) starts it.
+  await page.eval(`self.exact && self.exact.startNow && self.exact.startNow()`);
   await Bun.sleep(1200);
 }
 
@@ -77,6 +80,10 @@ if (import.meta.main) {
       await settle(page);
       const m = await page.eval(METRICS_JS);
       const h = Math.min(m.height, 16000);
+      // A full-page capture draws beyond the window, where `content-visibility: auto` skips a box's contents (the code
+      // blocks', web/content.css): show them all for the shot, as a reader scrolling there sees them.
+      await page.eval(`document.head.appendChild(Object.assign(document.createElement('style'), { textContent: '*{content-visibility:visible !important}' })); document.body.offsetHeight`);
+      await Bun.sleep(100);
       const shot = await page.send('Page.captureScreenshot', { format: 'jpeg', quality: 70, captureBeyondViewport: true, clip: { x: 0, y: 0, width: w, height: h, scale: 1 } });
       await Bun.write(`${outDir}/${slugName(route)}@${w}.jpg`, Buffer.from(shot.data, 'base64'));
       await Bun.write(`${outDir}/${slugName(route)}@${w}.dom.json`, JSON.stringify(await page.eval(DOM_JS)));
