@@ -213,3 +213,13 @@ pull to search 44 / 0 / 1 (before / after / app alone). Phone 390x844, the app f
 round): drag 4, flick 1, open 20, close 3, pull to search 22, scroll 0. **Verdict: not yet 0 on open.** The target
 (0 dropped on paging / open / close on a desktop) is met for paging and close within noise; open keeps the GPU
 demos' first-use compile stalls, the app's own, same embedded or alone.
+
+### Re-run after the review fixes (2026-11-24: the app draws only its display in the frame, the hint's stops; load 90-280)
+
+One round, same build, 1440x900, dropped 120 Hz frames (before = the old embedding CSS put back / after / the app
+alone): drag 7 / 9 / 62, flick 0 / 0 / 0, open (median of 10 demos) 33.5 / 17.5 / 33, close 1 / 0 / 4, pull to search
+21 / 0 / 1, scroll in a demo 0 / 0 / 0; p95 9.9-10.4 ms everywhere. Arrival, one run (cable / 4g): cold live
+2013 / 4658, warm 1937 / 4930, in-app 1868 / 5822 ms; ten demos tap → mounted median 27 / 205 ms; deep link 356 /
+2819 ms. Phones: tap "Open the demos" → the launcher drawn in 500-770 ms on cable at 390x844, 360x780, 430x932.
+Composable Text check: pass. The corners of the display, sampled at DPR 2 and 3 (1440x900, 1728x960) and DPR 2
+(820x1180): no lighter corner, no step at the clip's edge (≤ 1/255 across it).
