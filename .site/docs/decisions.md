@@ -525,8 +525,10 @@ image" (a caption was rejected, D17 revised). Variants considered:
   Save-Data, or a hidden tab; on other pages it does not poll (it waits again on a route change to `/demos`, 30 s at
   most per visit). It never blocks: the disc takes no pointer. Checked in headed and headless Chrome at 1440x900: the
   disc rises on the icon at ~1.2 s after live, Composable Text opens, "Use Max" becomes "Using Max", the app closes,
-  the disc fades (about 5 s); a wheel at 0.5 s in stops it and the app is back on the launcher; Back mid-demo leaves
-  /articles with no disc.
+  the disc fades (about 5 s); a wheel mid-demo stops it and the app is back on the launcher; Back mid-demo first
+  closes the demo the hint opened (the frame's history is joint with the page's: the app's open pushes an entry and
+  its close goes back), with the disc gone; a second Back leaves `/demos`. A completed or stopped demo leaves the
+  history as it found it (open pushes, close pops).
 - **(b) the launcher pages once by itself**: rejected; a page that moves without the reader reads as a glitch, and a
   synthetic drag through the app's pager is fragile.
 - **(c) a touch-circle cursor and icon lift on hover**: not possible from the site: the cursor and hover over an
