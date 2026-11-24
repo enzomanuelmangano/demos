@@ -1,3 +1,37 @@
+/* /demos's frame host (D19, docs/isolation.md §6): tells every framed Demos app where the page is, so the app's
+   history (joint with the page's) moves in place only while the page is really elsewhere. `{ demos: 'page', current,
+   visible }`: current = the page is on /demos, visible = the frame is on screen; sent when a frame loads, at every
+   route change (the Navigation API's navigate, at once, before the route's own work; popstate) and every change of
+   the frame's visibility (IntersectionObserver) or the tab's. */
+(function () {
+  var onDemos = function (path) { return /^\/demos\/?$/.test(path); };
+  var current = onDemos(location.pathname), seen = new WeakSet(), shown = new WeakMap();
+  var io = 'IntersectionObserver' in window ? new IntersectionObserver(function (es) {
+    for (var i = 0; i < es.length; i++) { shown.set(es[i].target, es[i].isIntersecting); tell(es[i].target); }
+  }) : null;
+  function tell(f) {
+    if (!f.contentWindow || !/\/demos\/app\//.test(f.src)) return;
+    f.contentWindow.postMessage({ demos: 'page', current: current, visible: !document.hidden && shown.get(f) !== false && f.checkVisibility() }, '*');
+  }
+  function frames() { return document.querySelectorAll('iframe[title="Demos"]'); }
+  function all() { var fs = frames(); for (var i = 0; i < fs.length; i++) adopt(fs[i]); }
+  function adopt(f) {
+    if (!seen.has(f)) { seen.add(f); f.addEventListener('load', function () { tell(f); }); if (io) io.observe(f); }
+    tell(f);
+  }
+  function at(path) { current = onDemos(path); all(); }
+  if (window.navigation) navigation.addEventListener('navigate', function (e) { try { at(new URL(e.destination.url).pathname); } catch (x) {} });
+  addEventListener('popstate', function () { at(location.pathname); });
+  addEventListener('pageshow', function () { at(location.pathname); });
+  document.addEventListener('visibilitychange', all);
+  new MutationObserver(function (ms) {
+    for (var i = 0; i < ms.length; i++) for (var j = 0; j < ms[i].addedNodes.length; j++) {
+      var n = ms[i].addedNodes[j];
+      if (n.nodeType === 1 && (n.tagName === 'IFRAME' || n.querySelector('iframe'))) return all();
+    }
+  }).observe(document.documentElement, { childList: true, subtree: true });
+  all();
+})();
 /* /demos's one-time touch demo (D19): once per session, 1.2 s after the framed Demos app has drawn, an iOS-style touch
    indicator taps an app on the phone (it opens), taps inside it (Composable Text's pill morphs), and closes it, so the
    phone reads as a live device, not a picture. The app is driven only through its framed-app messages

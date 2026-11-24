@@ -105,12 +105,14 @@ sandboxed frame of `/demos/app/`, both ends small and guarded:
 - **The frame's history is the page's (joint).** Framed, the module mirrors the router's entries (each state carries
   its index) and keeps the two in step: a route a parent's `press` opens replaces the entry, and its close replaces
   back to it (never a `go(-1)`), so the reader's Back never steps through the parent's demo and a full demo leaves no
-  forward entry; once the page has moved on (it pushed entries since the frame's last move) or the frame does not
-  render (hidden by the page: no animation frame for a second), a router's `go(-n)` is made a replace to the target
-  entry plus the `popstate` the router awaits, never a traversal of the page's history. A `press close` while hidden
+  forward entry; while the page says it is elsewhere (`{ demos: 'page', current, visible }`, posted by `web/sim-hint.js`'s frame host
+  at every route change, the frame's visibility (IntersectionObserver) and the tab's), a router's `go(-n)` is made a
+  replace to the target entry plus the `popstate` the router awaits, never a traversal of the page's history; on
+  `/demos` the router's moves are the browser's. A `press close` while the page is elsewhere or the frame off screen
   goes home at once, and a hidden document's close lands at once (no flight). Checked by
   `tools/parity/sim-history.ts` (a link at five moments of the demo, Back mid-demo, a full demo then Back / Forward,
-  then a reader's own open and close moving the history by one).
+  then a reader's own open and close moving the history by one; a reader's open, a site link, Back, then close; a
+  tablet's off-screen frame closed by Back).
 - **In a sandboxed frame** (an opaque origin, only `/demos` frames it so) the app's desktop frame also drops its stage,
   rim, glass and shadow (a style sheet from the same module): the page draws the phone around the display (D18), with
   no seam. Outside a frame, unchanged.

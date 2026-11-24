@@ -10,6 +10,10 @@
 //    forward entry reopens the demo).
 // 4. After all of that, a reader's own open and close move the history: +1 entry with the demo, back to the
 //    launcher and the same index after the close.
+// 5. A reader opens a demo, follows a site link, comes Back (the demo still open), then closes it: the close goes back
+//    one entry (the page told the app it is on /demos again), and the next Back reaches the page before: no dead entry.
+// 6. On a tablet (820x1180) a reader opens a demo, scrolls the frame off screen, presses Back: the demo closes by
+//    going back one entry (an off-screen frame draws nothing, yet the page is on /demos), and the next Back leaves.
 import { launch, newPage, type Page } from './cdp.ts';
 
 const origin = (process.argv[2] ?? 'http://127.0.0.1:4318').replace(/\/$/, '');
@@ -36,6 +40,11 @@ const dot = (page: Page) => page.eval<boolean>(`[...document.body.children].some
 const hintOpened = (page: Page) => until(async () => (await appPath(page)).includes('/demo/'), 20000);
 const back = async (page: Page) => { const h = await hist(page); await page.send('Page.navigateToHistoryEntry', { entryId: h.entries[h.index - 1].id }); };
 const forward = async (page: Page) => { const h = await hist(page); await page.send('Page.navigateToHistoryEntry', { entryId: h.entries[h.index + 1].id }); };
+const tapApp = async (page: Page, testId: string) => {
+  const off = await page.eval<any>(`(() => { const f = [...document.querySelectorAll('iframe[data-motion~=live]')].find((f) => f.checkVisibility()); const r = f.getBoundingClientRect(); return { x: r.x, y: r.y }; })()`);
+  const p = await (await app(page))!.eval<any>(`(() => { const e = document.querySelector('[data-testid=${testId}]'); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
+  if (p) await click(page, off.x + p.x, off.y + p.y);
+};
 const launcher = (page: Page) => until(async () => (await appPath(page)).replace(/\/$/, '') === '/demos/app', 8000);
 
 // 1. A link at several moments of the touch demo.
@@ -109,6 +118,54 @@ for (const delay of [0, 400, 1200, 2200, 3200]) {
   await Bun.sleep(600);
   const after = await hist(page);
   check(closed && after.index === before.index && (await page.eval('location.pathname')) === '/demos', `4 its close goes back to the launcher, same index: @${after.index}, page ${await page.eval('location.pathname')}`);
+  await page.close();
+}
+
+// 5. The reader's open, a site link, Back, then the close button.
+{
+  const page = await newPage(cdp, 1440);
+  await page.send('Page.addScriptToEvaluateOnNewDocument', { source: `try { sessionStorage.setItem('reactiive.demos.hint', '1') } catch {}` });
+  await page.goto(`${origin}/articles`); await Bun.sleep(2000);
+  let l = await link(page, '/demos'); await click(page, l.x, l.y);
+  await live(page); await Bun.sleep(800);
+  const h0 = await hist(page);
+  await tapApp(page, 'icon-calendar-days');
+  await until(async () => (await appPath(page)).includes('/demo/'), 8000); await Bun.sleep(1200);
+  l = await link(page, '/articles'); await click(page, l.x, l.y);
+  await until(() => page.eval(`location.pathname === '/articles'`), 8000); await Bun.sleep(1200);
+  await back(page);
+  await until(() => page.eval(`location.pathname === '/demos'`), 8000); await Bun.sleep(1200);
+  const open = (await appPath(page)).includes('/demo/calendar-days');
+  await tapApp(page, 'close');
+  const closed = await launcher(page); await Bun.sleep(800);
+  const h1 = await hist(page);
+  check(open && closed && h1.index === h0.index && (await page.eval('location.pathname')) === '/demos', `5 link, Back, close: the close goes back one entry (@${h0.index} → @${h1.index}, ${h1.paths.join(' ')})`);
+  await back(page);
+  check(await until(() => page.eval(`location.pathname === '/articles'`), 8000), '5 the next Back reaches /articles (no dead entry)');
+  await page.close();
+}
+
+// 6. Tablet: open, scroll the frame off screen, Back.
+{
+  const page = await newPage(cdp, 820, { height: 1180 });
+  await page.send('Page.addScriptToEvaluateOnNewDocument', { source: `try { sessionStorage.setItem('reactiive.demos.hint', '1') } catch {}` });
+  await page.goto(`${origin}/articles`); await Bun.sleep(2000);
+  const l = await link(page, '/demos'); await click(page, l.x, l.y);
+  await until(() => page.eval(`location.pathname === '/demos'`), 8000);
+  await page.eval(`document.querySelector('iframe[title="Demos"]')?.scrollIntoView({ block: 'center' })`);
+  await live(page); await Bun.sleep(1000);
+  const h0 = await hist(page);
+  await tapApp(page, 'icon-calendar-days');
+  const opened = await until(async () => (await appPath(page)).includes('/demo/'), 8000); await Bun.sleep(1200);
+  await page.eval(`(() => { const s = document.scrollingElement; s.scrollTop = 0; for (const e of document.querySelectorAll('*')) if (e.scrollHeight > e.clientHeight + 10 && getComputedStyle(e).overflowY !== 'visible') e.scrollTop = 0; })()`);
+  await Bun.sleep(800);
+  const off = await page.eval<boolean>(`(() => { const r = document.querySelector('iframe[title="Demos"]').getBoundingClientRect(); return r.bottom <= 0 || r.top >= innerHeight; })()`);
+  await back(page);
+  const closed = await launcher(page); await Bun.sleep(800);
+  const h1 = await hist(page);
+  check(opened && closed && h1.index === h0.index && (await page.eval('location.pathname')) === '/demos', `6 off screen (${off ? 'off' : 'partly on'} screen), Back closes the demo one entry back (@${h0.index} → @${h1.index})`);
+  await back(page);
+  check(await until(() => page.eval(`location.pathname === '/articles'`), 8000), '6 the next Back reaches /articles (no dead entry)');
   await page.close();
 }
 
