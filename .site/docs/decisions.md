@@ -743,8 +743,17 @@ gradient. Measured on the composed build: each line one line at 1440, 1180, 1024
 - **Head.** /demos's description, og:description and twitter:description (and the /demos/app/ shell's, `tools/demos-web/head.ts`)
   are now "100+ animations built with Exact, Rust and WebGPU, running live in the browser." (`DEMOS_DESCRIPTION`,
   `tools/seo/site.ts`; the runtime `head` in `app.contract` says the same). The demo posts keep their own first
-  paragraph (D21). Other pages' copy is unchanged (/demos-app still says "120+ React Native animation demos": the
-  TestFlight app is the React Native one). The share card's alt ("Exclusive weekly React Native animations source
-  code.") is live's and does not carry this copy; unchanged.
+  paragraph (D21). Articles, the course and other pages are unchanged.
 - **Parity.** A deliberate difference from live: `tools/parity/head-diff.ts` rewrites live's three /demos description
   tags to `DEMOS_DESCRIPTION` before the diff (as it does for the posts, D21), so any other difference still fails.
+- **/demos-app and the share card (same day; owner: the TestFlight app will be the Exact one).** /demos-app's text reads
+  "Get access to 100+ animations built with Exact, Rust and WebGPU on your phone. ..." and its description (og, twitter
+  and the card's alt, which is the description) "Get 100+ animations built with Exact, Rust and WebGPU on your iPhone
+  through the TestFlight beta." (`DEMOS_APP_DESCRIPTION`). The /demos card's alt (/demos and the /demos/app/ shell) is
+  "Demos: 100+ animations built with Exact, Rust and WebGPU", not live's "Exclusive weekly React Native animations
+  source code.". The TestFlight link, its QR and "Try it on iPhone" (aria-label "Try the Demos app on iPhone with
+  TestFlight") are unchanged. head-diff rewrites live's description tags and og:image:alt on both pages to ours.
+
+- **The other demos copy (same day).** The home page's Demos row reads "100+ animations in Exact, Rust and WebGPU." ("built
+  with" made it 346 px, one line too long at 390 px; this is 297 px, one line like live's at 390 and 1440), and the
+  support page "All 100+ animations, built with Exact, Rust and WebGPU, are now free and open source! ...".

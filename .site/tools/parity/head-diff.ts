@@ -14,7 +14,7 @@ import { join, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import { allPages, headTags, htmlFile, livePath, renderTags, type PageMetadata } from '../seo/metadata.ts';
 import { jsonLd, jsonLdScript } from '../seo/jsonld.ts';
-import { DEMOS_DESCRIPTION, NOT_PORTED, OG, SITE_URL, loadDemoPosts } from '../seo/site.ts';
+import { DEMOS_APP_DESCRIPTION, DEMOS_DESCRIPTION, NOT_PORTED, OG, SITE_URL, loadDemoPosts } from '../seo/site.ts';
 import { manifestJson, robotsTxt, rssXml, sitemapXml } from '../seo/feeds.ts';
 
 const site = resolve(import.meta.dir, '../..');
@@ -83,6 +83,11 @@ function headOf(html: string): Head {
   tags.delete('meta|charset=utf-8');
   return { tags, ld: ld.sort() };
 }
+/** D23: the pages whose description and share-card alt are deliberately not live's. */
+const OWN_COPY: Record<string, { description: string; alt: string }> = {
+  '/demos': { description: DEMOS_DESCRIPTION, alt: OG.demos.alt },
+  '/demos-app': { description: DEMOS_APP_DESCRIPTION, alt: DEMOS_APP_DESCRIPTION },
+};
 /** The three description tags (name=description, og:description, twitter:description). */
 const DESCRIPTIONS = /\|(name=description|property=og:description|name=twitter:description)(\||$)/;
 /**
@@ -92,11 +97,15 @@ const DESCRIPTIONS = /\|(name=description|property=og:description|name=twitter:d
  * the diff, so any other difference, or ours lacking them, still fails.
  */
 function expectedLive(m: PageMetadata, l: Head): Head {
-  // /demos's description is its own copy (owner, 2026-11-24, docs/decisions.md D23: "100+ animations built with Exact,
-  // Rust and WebGPU"), not live's: live's three description tags are rewritten to it, nothing else.
-  if (m.path === '/demos') {
+  // /demos and /demos-app have their own copy (owner, 2026-11-24, docs/decisions.md D23: "100+ animations built with
+  // Exact, Rust and WebGPU"), not live's: live's description tags and card alt are rewritten to ours, nothing else.
+  const own = OWN_COPY[m.path];
+  if (own) {
     const tags = new Map<string, number>();
-    for (const [k, n] of l.tags) { const key = DESCRIPTIONS.test(k) ? k.replace(/content=[^|]*/, `content=${DEMOS_DESCRIPTION}`) : k; tags.set(key, (tags.get(key) ?? 0) + n); }
+    for (const [k, n] of l.tags) {
+      const key = DESCRIPTIONS.test(k) ? k.replace(/content=[^|]*/, `content=${own.description}`) : /\|property=og:image:alt(\||$)/.test(k) ? k.replace(/content=[^|]*/, `content=${own.alt}`) : k;
+      tags.set(key, (tags.get(key) ?? 0) + n);
+    }
     return { tags, ld: l.ld };
   }
   if (m.jsonLd?.kind !== 'demo') return l;

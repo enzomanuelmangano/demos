@@ -13,7 +13,7 @@ component DemosAppPage
   view
     column gap=24 max-width="42rem" margin-top=md(0, 96) margin-bottom=12
       text "Demos (TestFlight)" role="heading" aria-level=4 font-size="1.875rem" line-height="2.25rem" font-weight=600 color="var(--color-text-heading)"
-      text "Get access to 120+ React Native animation demos on your phone. Scan the QR code below to join the TestFlight beta. (Android coming soon)" class=Body
+      text "Get access to 100+ animations built with Exact, Rust and WebGPU on your phone. Scan the QR code below to join the TestFlight beta. (Android coming soon)" class=Body
     column align-items="center" gap=16 margin-top=32
       // bg-gradient-to-br from-surface-secondary to-surface-elevated, rounded-2xl, shadow-lg; the hover and press
       // scales and the shadow's growth are web/head.css's (data-motion qr-card: transition-all 200 ms).

@@ -69,5 +69,5 @@ uploads that tree with `vercel deploy --prebuilt`. Vercel builds nothing.
   sitemap or the feed here; live lists them. Everything else is byte-identical to live (checked by head-diff).
 - `/_dev/*` and the Demos app's paths are never listed; `/demos` is the only demos URL in the sitemap.
 - Known accepted head difference: Next's `next-size-adjust` marker.
-- Deliberate head difference: /demos's description (and og/twitter) is its own, "100+ animations built with Exact, Rust
-  and WebGPU, running live in the browser." (D23); head-diff expects it in place of live's.
+- Deliberate head differences (D23): /demos's and /demos-app's descriptions (and og/twitter, og:image:alt) are their
+  own ("100+ animations built with Exact, Rust and WebGPU ..."); head-diff expects them in place of live's.
