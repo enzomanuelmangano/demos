@@ -211,8 +211,10 @@ fn metaballType(name: string): string = name == "BasicMetaballWithSkia" ? "basic
 component MetaballInteractive
   props
     name: string
+    // The block's id on its page (ArticleDemo): part of the canvas's key, so two of one export keep two memories.
+    at: string
   view
     if name == "CanvasKitJsAlert"
       CanvasKitJsAlert()
     else if metaballType(name) != ""
-      Metaball(key=`${metaballType(name)}-metaball`, type=metaballType(name))
+      Metaball(key=`${metaballType(name)}-metaball#${at}`, type=metaballType(name))

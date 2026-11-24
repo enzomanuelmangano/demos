@@ -253,7 +253,7 @@ component Blocks
       // start the runtime at the reader's first scroll, inside a scroll frame. web/reveal.js starts it for a page
       // with a demo once the page is idle after load, never while the reader is scrolling.
       view margin-left=(block.depth * 26) data-motion="demo" testId=`demo-${block.title}`
-        ArticleDemo(article=block.lang, name=block.title, args=block.text)
+        ArticleDemo(article=block.lang, name=block.title, args=block.text, at=block.id)
     else if block.kind == "title"
       PostTitle(block=block)
     else if block.kind == "youtube"

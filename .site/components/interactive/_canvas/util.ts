@@ -87,8 +87,10 @@ export function halo(ctx: Ctx2D, f: Frame, sigma: number, buckets: number, color
   ctx.restore();
 }
 
-/** Per-canvas memory of a surface: by the demo's key and the canvas's mount time, so the same demo twice on a page
- * (animated-spiral shows AnimatedSpiralWithSkia at its top and its end) keeps two memories. */
+/** Per-canvas memory of a surface: by the demo's key and the canvas's mount time (a canvas mounted again starts over;
+ * a resize keeps it). The key tells canvases apart, not the mount time, which two canvases mounted in one frame share:
+ * the same demo twice on a page (animated-spiral shows AnimatedSpiralWithSkia at its top and its end) keeps two memories
+ * because each key carries its block's id (ArticleDemo's `at`). */
 export function memo<T>() {
   const all = new Map<string, T>();
   return (key: string, f: Frame, make: () => T): T => {

@@ -39,10 +39,10 @@ component DevInteractive
         column width="100%" gap=8 margin-top=24 testId=`demo-${b.name}`
           text `${b.article} / ${b.name}` font-family="'Source Code Pro', ui-monospace, monospace" font-size=13 color="var(--color-text-secondary)" overflow-wrap="anywhere"
           if b.article == "animated-gradient"
-            AnimatedGradientInteractive(name=b.name)
+            AnimatedGradientInteractive(name=b.name, at="dev")
           else if b.article == "animated-loader-skia"
-            AnimatedLoaderSkiaInteractive(name=b.name)
+            AnimatedLoaderSkiaInteractive(name=b.name, at="dev")
           else if b.article == "animated-spiral"
-            AnimatedSpiralInteractive(name=b.name)
+            AnimatedSpiralInteractive(name=b.name, at="dev")
           else if b.article == "metaball"
-            MetaballInteractive(name=b.name)
+            MetaballInteractive(name=b.name, at="dev")

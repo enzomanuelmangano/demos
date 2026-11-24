@@ -1,5 +1,5 @@
 // The animated-spiral article's demos (the reference's content/articles/animated-spiral/components): 1,500 dots on a
-// logarithmic spiral; Play turns it to a random angle, Restart back to π/2. The canvas mounts when the box comes
+// logarithmic spiral, drawn at π/2 when it mounts; Play turns it to the next of six fixed angles, Restart back to π/2. The canvas mounts when the box comes
 // within 300 px of the viewport (its drawing code loads then) and animates only while visible. The article's
 // InlineMath / BlockMath are the content converter's (MathJax to SVG at build).
 use InteractiveBox from "../_canvas/box.contract"
@@ -56,7 +56,9 @@ component AnimatedInteractiveAnimatedSpiralFixedRadiusGradient
 component AnimatedSpiralInteractive
   props
     name: string
+    // The block's id on its page (ArticleDemo): part of the canvas's key, so two of one export keep two memories.
+    at: string
   view
     if name == "AnimatedSpiralWithSkia" or name == "AnimatedInteractiveSnappySpiralWhite" or name == "AnimatedInteractiveSnappySpiralGradient" or name == "AnimatedInteractiveAnimatedSpiralFixedRadiusGradient"
-      AnimatedSpiral(key=name, fixedRadius=(name != "AnimatedSpiralWithSkia"), sweep=(name != "AnimatedInteractiveSnappySpiralWhite"),
+      AnimatedSpiral(key=`${name}#${at}`, fixedRadius=(name != "AnimatedSpiralWithSkia"), sweep=(name != "AnimatedInteractiveSnappySpiralWhite"),
         animated=(name == "AnimatedSpiralWithSkia" or name == "AnimatedInteractiveAnimatedSpiralFixedRadiusGradient"))
