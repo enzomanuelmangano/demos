@@ -28,10 +28,24 @@
     //   say): it is made a replace to the target entry, with the popstate the router waits for. Back on /demos
     //   (`current: true`) the router's moves are the browser's again. Without a word from the page, nothing changes.
     const states = new Map(), replacedAt = new Set(), H = history;
-    const push = H.pushState, replace = H.replaceState, go = H.go, back = H.back;
+    // Safari (WebKit) refuses a pushState or replaceState that changes the path in an opaque-origin document (this
+    // sandboxed frame): only the same URL or a fragment, else a SecurityError, which left the router half way (a demo's
+    // card open and black, no close). Refused, the entry is still made, without its URL: the router keeps each entry's
+    // URL itself (its states' `exact` index), so its routes, Back and Forward are unchanged; the frame's address stays
+    // where it was, and the route's URL is the one recorded here (`here`). Chrome takes the URL as before.
+    const keepUrl = (fn) => function (state, title, url) {
+      try { return fn.call(H, state, title, url); } catch (e) {
+        if (!e || e.name !== 'SecurityError' || url == null) throw e;
+        return fn.call(H, state, title);
+      }
+    };
+    const push = keepUrl(H.pushState), replace = keepUrl(H.replaceState), go = H.go, back = H.back;
     const page = { current: true, visible: true };
     let pressUntil = 0;
-    const note = (state, url) => { if (state && typeof state.exact === 'number') states.set(state.exact, { state, url: url == null ? location.href : new URL(url, location.href).href }); };
+    // An entry's URL: the one given, else (a popstate) the one already recorded for it, else the address.
+    const note = (state, url) => { if (state && typeof state.exact === 'number') states.set(state.exact, { state, url: url != null ? new URL(url, location.href).href : states.get(state.exact)?.url ?? location.href }); };
+    // The route's path: the recorded URL of the entry shown (the address, unless Safari refused it).
+    const here = () => { const s = states.get(H.state?.exact); return s ? new URL(s.url).pathname : location.pathname; };
     note(H.state, null);
     H.pushState = function (state, title, url) {
       if (performance.now() < pressUntil && state && typeof state.exact === 'number') {
@@ -63,7 +77,7 @@
     // once, no flight (a flight would wait for frames that never come). On screen, the close button's own flight.
     const closeNow = () => {
       const cur = H.state?.exact;
-      if (page.current && page.visible || typeof cur !== 'number' || !states.has(cur - 1) || !location.pathname.includes('/demo/')) return false;
+      if (page.current && page.visible || typeof cur !== 'number' || !states.has(cur - 1) || !here().includes('/demo/')) return false;
       moveTo(cur - 1);
       return true;
     };
@@ -104,7 +118,7 @@
     // `close: false` (the page went elsewhere: the demo stays for a return to its post). Progress is posted
     // back as `{ demos: 'goto', slug, state }`: paged, opened, missing, stopped.
     let gotoRun = 0, gotoOpened = '';
-    const openSlug = () => (/\/demo\/([^/]+)\/?$/.exec(location.pathname) || [])[1] || '';
+    const openSlug = () => (/\/demo\/([^/]+)\/?$/.exec(here()) || [])[1] || '';
     const later = (ms) => new Promise((r) => setTimeout(r, ms));
     const nextFrame = () => new Promise((r) => { let done = false; const go = () => { if (!done) { done = true; r(); } }; requestAnimationFrame(go); setTimeout(go, 100); });
     const until = async (f, ms, live) => { const t = performance.now(); while (performance.now() - t < ms) { if (!live()) return false; if (f()) return true; await later(40); } return f(); };
