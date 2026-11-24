@@ -105,7 +105,10 @@ for (let round = 0; round < rounds; round++) for (const w of widths) for (const 
     if (timing === 'cold' || timing === 'hovered') {
       await page.eval('history.back()');
       checks++;
-      if (!(await until(page, at(start)))) fail(`${name}: Back → ${await page.eval('location.pathname').catch(() => '?')}, drawn ${await page.eval(`[...document.querySelectorAll('h1')].map(h=>h.textContent.trim().slice(0,20)).join('|')`).catch(() => '?')}`);
+      // Back must stay back: nothing armed on the restored page may carry it forward again (3 s later).
+      const back = await until(page, at(start));
+      if (back) { await Bun.sleep(3000); if (!(await page.eval<boolean>(at(start)).catch(() => false))) { fail(`${name}: Back bounced to ${await page.eval('location.pathname').catch(() => '?')}`); await page.close(); continue; } }
+      if (!back) fail(`${name}: Back → ${await page.eval('location.pathname').catch(() => '?')}, drawn ${await page.eval(`[...document.querySelectorAll('h1')].map(h=>h.textContent.trim().slice(0,20)).join('|')`).catch(() => '?')}`);
       else {
         await page.eval('history.forward()');
         checks++;

@@ -209,6 +209,9 @@ document.addEventListener('click', function (e) {
       else if (location.pathname == from) location.assign(url.href);
     }, 2500);
   }
+  // A page left (a document navigation, the back/forward cache) drops what it armed: restored by Back, it must not
+  // carry out a press made before it was left.
+  addEventListener('pagehide', function () { armed++; });
   function plain(e, a) { return a && !e.button && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && !(a.target && a.target != '_self') && !a.hasAttribute('download'); }
   addEventListener('pointerdown', function (e) {
     var a = e.target && e.target.closest && e.target.closest('a[href]');
