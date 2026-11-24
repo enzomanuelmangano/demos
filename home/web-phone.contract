@@ -98,8 +98,10 @@ fn screenInk(slug: string, backdrop: string): string = (
 
 // The iPhone's status bar, drawn over the app at the frame's top: the time, the signal, wifi and battery. Its ink is
 // the launcher's (`home`) until an opening demo's card covers the bar, then the demo's (`ink`): two copies, one per
-// ink, cross-faded by opacity with the open and close flight (modules/web/index.js `demo-card` moves
-// `web-status-home` and `web-status-demo` in its flight's frames; a demo shown without a flight shows its own ink).
+// ink, cross-faded by opacity with the open and close flight. That cross-fade is reactiive.io's only: the site's
+// compose-time patch to modules/web/index.js `demo-card` (.site/tools/demos-web/patches.ts) moves `web-status-home`
+// and `web-status-demo` in its flight's frames. Without it (this app's own web build), and for a demo shown without a
+// flight, the visible copy (`web-status-demo`) takes the route's ink at once.
 component StatusGlyphs
   props
     ink: string

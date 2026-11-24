@@ -4,10 +4,22 @@ name: Site / demos web artifact
 # with expo/exact at the demos' pinned seed, Rust and wasm-bindgen?). It builds only; it publishes nothing.
 # The artifact is cached by the demos' inputs (.site/tools/demos-web/build.ts: every tracked path but
 # .site .legacy .parity .github and *.md, plus the Exact seed), so a site-only change reuses it.
+# It runs on a push that changes those inputs (demos/, home/, modules/, gpu/, the root Exact app files: app.contract,
+# app.json, exact.mjs, Cargo.lock, package.json, ...) or its own tool, so main's cache holds the artifact that the site
+# PRs' compose check (site-compose.yml) restores, and then dry-runs the site's compose-time patches
+# (.site/tools/demos-web/patches.ts) on a copy of it: a demos or Exact change that makes one stale fails here, after the
+# merge, never as a check on the demos PR (docs/isolation.md §4). Never on a pure .legacy, .parity or docs change. No
+# secrets, read-only; it publishes and deploys nothing.
 on:
   push:
-    branches: [site]
+    branches: [main, site]
     paths:
+      - '**'
+      - '!.legacy/**'
+      - '!.parity/**'
+      - '!.github/**'
+      - '!**/*.md'
+      - '!.site/**'
       - '.site/tools/demos-web/**'
       - '.github/workflows/site-demos-web.yml'
   workflow_dispatch:
@@ -85,7 +97,12 @@ jobs:
           DEMOS_WEB_SCRATCH: /tmp/demos-web-src
         run: bun .site/tools/demos-web/build.ts
 
+      # Non-blocking for the demos (post-merge): a stale patch turns this run red; nothing is published either way.
+      - name: Dry run of the site's compose-time patches on a copy of the artifact
+        run: bun .site/tools/demos-web/patches.ts --dry-run .site/.out/demos-web/${{ steps.key.outputs.key }}/dist
+
       - name: Report
+        if: always()
         run: |
           cat .site/.out/demos-web/${{ steps.key.outputs.key }}/demos-web.json
           du -sh .site/.out/demos-web/${{ steps.key.outputs.key }}/dist

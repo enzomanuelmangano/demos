@@ -9,6 +9,7 @@
 // 2. verification-code: the number pad (318 pt) and env.keyboardHeight: the code lifts by half of it; digits type.
 // 2b. dot-sheet's text view: the blue "send" key; Return types its new line, which the demo takes as send (keys down).
 // 3. gl-transitions' note field: the text keyboard with suggestions (344.2 pt) and a capital first letter.
+// 3b. prefers-reduced-motion (emulated in the frame): the keys fade out and in place, by opacity only, never moving.
 // 4. The home's pull-down search: a dark keyboard (the home's colour scheme) with a blue search key; typing filters
 //    the results; Cancel lets go of the field and the keys slide down; nothing of the keyboard is left visible.
 // 5. Not framed (the app at /demos/app/ full window): no keyboard is ever built.
@@ -26,13 +27,13 @@ const fails: string[] = [];
 const check = (ok: boolean, what: string) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`); if (!ok) fails.push(what); };
 const until = async (f: () => Promise<boolean>, ms = 20000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await f().catch(() => false)) return true; await Bun.sleep(50); } return false; };
 
-type App = { eval: <T = any>(e: string) => Promise<T> };
+type App = { eval: <T = any>(e: string) => Promise<T>; send: (method: string, params?: object) => Promise<any> };
 async function frameApp(): Promise<App | null> {
   const { targetInfos } = await cdp.send('Target.getTargets');
   const t = targetInfos.filter((t: any) => t.type === 'iframe' && t.url.includes('/demos/app/')).pop();
   if (!t) return null;
   const { sessionId } = await cdp.send('Target.attachToTarget', { targetId: t.targetId, flatten: true });
-  return { eval: async (e) => { const r = await cdp.send('Runtime.evaluate', { expression: e, returnByValue: true, awaitPromise: true }, sessionId); if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description ?? r.exceptionDetails.text); return r.result.value; } };
+  return { send: (method, params = {}) => cdp.send(method, params, sessionId), eval: async (e) => { const r = await cdp.send('Runtime.evaluate', { expression: e, returnByValue: true, awaitPromise: true }, sessionId); if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description ?? r.exceptionDetails.text); return r.result.value; } };
 }
 // The keyboard's state, read in the frame, in display points.
 // The drawn phone in use (each route draws its own): the one holding the focus, else the last drawn.
@@ -225,6 +226,21 @@ for (const [name, act] of [['down', `document.querySelector('[data-testid="note-
   await settled();
 }
 await shot(page, app, '3-note-refocused');
+// 3b. Reduce Motion: the same blur and focus fade the keys in place (opacity only), and they still go when let go.
+await app.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+for (const [name, act, up] of [['out', `document.querySelector('[data-testid="note-input"]').blur()`, false], ['in', `document.querySelector('[data-testid="note-input"]').focus()`, true]] as const) {
+  // Read a few frames into the first animation the act starts (a blur lets go of the keys 80 ms later).
+  const mid = await app.eval<any>(`new Promise((r) => { const kb = document.querySelector('[data-site-keyboard] .kb'), t0 = performance.now(); ${act};
+    const read = () => r({ props: kb.getAnimations().map((a) => Object.keys(a.effect.getKeyframes()[0]).filter((k) => !['offset', 'easing', 'composite', 'computedOffset'].includes(k)).join()), opacity: Number(getComputedStyle(kb).opacity) });
+    const poll = () => kb.getAnimations().length ? setTimeout(read, 50) : performance.now() - t0 > 500 ? read() : requestAnimationFrame(poll); poll(); })`);
+  const during = await app.eval<any>(KB);
+  await Bun.sleep(400);
+  const after = await app.eval<any>(KB);
+  const opacity = await app.eval<number>(`Number(getComputedStyle(document.querySelector('[data-site-keyboard] .kb')).opacity)`);
+  check(mid.props.length === 1 && mid.props[0] === 'opacity' && mid.opacity > 0.02 && mid.opacity < 0.98 && Math.abs(during.top + during.height - 912) < 0.6 && after.visible === up && opacity === (up ? 1 : 0),
+    `3b reduced motion: the keys fade ${name} in place (animated: ${mid.props.join(' ') || 'nothing'}, opacity ${mid.opacity.toFixed(2)} 50 ms in, bottom ${(during.top + during.height).toFixed(2)} pt; then ${after.visible ? 'shown' : 'hidden'})`);
+}
+await app.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
 
 // 4. The home's search.
 await home(page);

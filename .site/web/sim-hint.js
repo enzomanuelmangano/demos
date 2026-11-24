@@ -291,7 +291,7 @@
     if (state === 'idle') { tries = 0; frame = null; wait(); }
   }
   // Exact routes with the History API: a route change is a navigation (Navigation API) or a popstate.
-  if (window.navigation) navigation.addEventListener('navigatesuccess', route); else addEventListener('popstate', route);
+  if (window.navigation) navigation.addEventListener('navigatesuccess', route);
   addEventListener('popstate', route);
   wait();
 })();

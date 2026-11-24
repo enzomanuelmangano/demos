@@ -9,7 +9,8 @@
    Cost before the first focus: one focusin listener; the keyboard's nodes are built on the first focus.
    Geometry and colours are measured on an iPhone Air simulator (iOS 26.5, 3x screenshots, .site/.out/keyboard-ref):
    points of the 420 x 912 display. Motion: show = a critically damped spring (omega 23/s, 400 ms), hide =
-   UIKit's keyboard curve over 220 ms, both fitted to a 30 fps recording of the simulator. */
+   UIKit's keyboard curve over 220 ms, both fitted to a 30 fps recording of the simulator; under
+   prefers-reduced-motion, a 160 ms opacity fade in place instead of the slide. */
 (function () {
   if (window.parent === window || !window.matchMedia || !matchMedia('(pointer: fine)').matches) return;
 
@@ -47,6 +48,10 @@
   const SHOW_MS = 400, HIDE_MS = 220;
   const SHOW_EASE = 'linear(' + Array.from({ length: 33 }, (_, i) => { const t = i / 32 * SHOW_MS / 1000, w = 23; const v = i === 32 ? 1 : 1 - (1 + w * t) * Math.exp(-w * t); return `${v.toFixed(4)} ${(i / 32 * 100).toFixed(2)}%`; }).join(',') + ')';
   const HIDE_EASE = 'cubic-bezier(0.38,0.7,0.125,1)';
+  // Reduce Motion: iOS cross-fades the keyboard in place instead of sliding it; a short opacity fade, the bars it lifts
+  // moved at once.
+  const FADE_MS = 160;
+  const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   // The display's bottom outline (airDisplayPath), for the keys' panel.
   const BOTTOM = 'L420 817.22C420 844.51 420 858.16 415.36 872.85C409.52 888.88 396.88 901.52 380.85 907.36C366.16 912 352.51 912 325.22 912L94.78 912C67.49 912 53.84 912 39.15 907.36C23.12 901.52 10.48 888.88 4.64 872.85C0 858.16 0 844.51 0 817.22';
 
@@ -137,7 +142,7 @@
     kb.addEventListener('pointercancel', cancel);
     addEventListener('resize', place);
     new ResizeObserver(place).observe(document.documentElement);
-    built = { root, kb, panel, caps, keys, pred, pop, list: [], anim: null };
+    built = { root, kb, panel, caps, keys, pred, pop, list: [], anim: null, out: true };
     return built;
   }
 
@@ -392,19 +397,36 @@
   // animated: the keys (and the lifted bars) leave the compositor's animated layer and raster sharp at the frame's scale.
   function slide(to, from) {
     const b = built, show = to === 0;
+    if (reduced()) return fade(show);
     const start = from ?? ty(b.kb);
     b.anim?.cancel();
+    b.kb.style.opacity = ''; b.out = !show;
     const opts = { duration: show ? SHOW_MS : HIDE_MS, easing: show ? SHOW_EASE : HIDE_EASE };
     b.kb.style.transform = `translateY(${to}px)`;
     b.anim = b.kb.animate([{ transform: `translateY(${start}px)` }, { transform: `translateY(${to}px)` }], opts);
     // Keyboard toolbars ride the keys' top (iOS lifts them by the keys' height): each from where the keys' top is now.
     const bars = dev?.isConnected ? [...dev.querySelectorAll('[data-toolbarplacement="keyboard"]')] : [];
-    for (const l of lifted) if (!bars.includes(l.el)) { l.a.cancel(); l.el.style.translate = ''; }
+    for (const l of lifted) if (!bars.includes(l.el)) { l.a?.cancel(); l.el.style.translate = ''; }
     lifted = bars.map((el) => {
-      lifted.find((l) => l.el === el)?.a.cancel();
+      lifted.find((l) => l.el === el)?.a?.cancel();
       el.style.translate = show ? `0 ${-K}px` : '';
       return { el, a: el.animate([{ translate: `0 ${-(K - start)}px` }, { translate: `0 ${-(K - to)}px` }], opts) };
     });
+    b.anim.onfinish = () => { b.anim = null; if (!shown) { b.root.style.visibility = 'hidden'; lifted = []; } };
+  }
+  // The Reduce Motion show and hide: the keys at rest in place, their opacity faded from where it is now (from nothing
+  // when they were away, so a show fades in; at full when only their height changed).
+  function fade(show) {
+    const b = built;
+    const start = b.anim ? Number(getComputedStyle(b.kb).opacity) : b.out ? 0 : 1;
+    b.anim?.cancel();
+    b.out = !show;
+    b.kb.style.transform = 'translateY(0px)';
+    b.kb.style.opacity = show ? '1' : '0';
+    b.anim = b.kb.animate([{ opacity: start }, { opacity: show ? 1 : 0 }], { duration: FADE_MS, easing: 'ease-out' });
+    const bars = dev?.isConnected ? [...dev.querySelectorAll('[data-toolbarplacement="keyboard"]')] : [];
+    for (const l of lifted) { l.a?.cancel(); if (!bars.includes(l.el)) l.el.style.translate = ''; }
+    lifted = bars.map((el) => { el.style.translate = show ? `0 ${-K}px` : ''; return { el, a: null }; });
     b.anim.onfinish = () => { b.anim = null; if (!shown) { b.root.style.visibility = 'hidden'; lifted = []; } };
   }
 

@@ -111,7 +111,10 @@ if (import.meta.main) {
     mkdirSync(out, { recursive: true });
     cpSync(dist, join(out, 'dist'), { recursive: true });
     const digest = treeDigest(join(out, 'dist'));
-    const record = { key, rev, seed, base: BASE, inputs: paths, overlay: OVERLAY_VERSION, builtAt: new Date().toISOString(), seconds: Math.round((Date.now() - started) / 1000), dist: digest };
+    // demos.contract's blob: tools/compose.ts reads the app's slugs at HEAD for an artifact from a commit it lacks only if
+    // this matches HEAD's.
+    const contract = git('rev-parse', `${rev}:demos.contract`).trim();
+    const record = { key, rev, seed, contract, base: BASE, inputs: paths, overlay: OVERLAY_VERSION, builtAt: new Date().toISOString(), seconds: Math.round((Date.now() - started) / 1000), dist: digest };
     writeFileSync(join(out, 'demos-web.json'), JSON.stringify(record, null, 2) + '\n');
     console.log(`demos-web: built ${key}: ${digest.files} files, ${(digest.bytes / 2 ** 20).toFixed(1)} MiB, sha256 ${digest.sha256.slice(0, 16)}… in ${record.seconds}s`);
   } finally {
