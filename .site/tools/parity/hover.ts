@@ -82,6 +82,9 @@ const mouse = (page: Page, type: string, x: number, y: number, extra: any = {}) 
 async function capture(page: Page, url: string, width: number, side: string, tag: string, menu: boolean) {
   await page.goto(url);
   await Bun.sleep(4500);
+  // Boxes `content-visibility: auto` skips off screen (the code blocks) have no layout until a reader nears them:
+  // rendered here, so every element is audited as a reader who reaches it sees it.
+  await page.eval(`document.head.appendChild(Object.assign(document.createElement('style'), { textContent: '*{content-visibility:visible !important}' })); document.body.offsetHeight`);
   if (menu) {
     const p = await page.eval<any>(`(() => { const b = document.querySelector('[aria-controls=mobile-menu]'); if (!b) return null; const r = b.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
     if (!p) return null;
