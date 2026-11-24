@@ -6,7 +6,7 @@
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-type Patch = { file: RegExp; why: string; edits: [string, string][]; prepend?: string };
+type Patch = { file: RegExp; why: string; edits: [string, string][]; prepend?: string; dir?: string };
 
 export const PATCHES: Patch[] = [
   {
@@ -25,15 +25,28 @@ export const PATCHES: Patch[] = [
       ['after(e,t){let n=new Set(', 'after(e,t){__xgFlush();let n=new Set('],
     ],
   },
+  {
+    // The framed app on reactiive.io's /demos (D19): a close asked for while the tab is hidden waited for frames that
+    // never come, so the route heard of the close only when the tab came back. A hidden document lands the card at
+    // once. A site fix to the Demos app's web module, kept out of its sources (isolation.md §6) and applied here.
+    file: /^index\.js$/,
+    dir: 'modules',
+    why: 'a close in a hidden tab waits for frames that never come',
+    edits: [[
+      '    if (!iconFrame) findIcon();\n    if (!iconFrame || reducedMotion()) {',
+      '    if (!iconFrame) findIcon();\n    if (document.hidden) { stopFlight(); landed(); return; }\n    if (!iconFrame || reducedMotion()) {',
+    ]],
+  },
 ];
 
 /** Applies every patch to the artifact at `dir` (the copy under the composed output); returns what it changed. */
 export function patchDemos(dir: string) {
   const done: { file: string; why: string }[] = [];
   for (const p of PATCHES) {
-    const files = readdirSync(dir).filter((n) => p.file.test(n));
+    const at = p.dir ? join(dir, p.dir) : dir;
+    const files = readdirSync(at).filter((n) => p.file.test(n));
     if (files.length !== 1) throw new Error(`demos patch (${p.why}): ${files.length} files match ${p.file}`);
-    const path = join(dir, files[0]);
+    const path = join(at, files[0]);
     let text = readFileSync(path, 'utf8');
     for (const [from, to] of p.edits) {
       const n = text.split(from).length - 1;
@@ -41,7 +54,7 @@ export function patchDemos(dir: string) {
       text = text.replace(from, () => to);
     }
     writeFileSync(path, (p.prepend ?? '') + text);
-    done.push({ file: files[0], why: p.why });
+    done.push({ file: p.dir ? `${p.dir}/${files[0]}` : files[0], why: p.why });
   }
   return done;
 }

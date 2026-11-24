@@ -2,7 +2,7 @@
 // The iPhone Air frame's rim and black glass outlines for the web's desktop frame (home/web-phone.contract): the display's
 // continuous 62 pt outline (airDisplayPath) offset outward along its normals, so the bezel and the rim are the same
 // thickness everywhere, corners included (a polygon: 13 points per cubic, under 0.02 pt from the true offset).
-//   bun tools/air-frame-paths.ts <offset> <translate>   (rim 12 12, rim highlight 11 12, glass 8 8, glass highlight 7 8)
+//   bun .site/tools/demos-web/air-frame-paths.ts <offset> <translate>   (rim 12 12, rim highlight 11 12, glass 8 8, glass highlight 7 8)
 const P = "M94.78 0L325.22 0C352.51 0 366.16 0 380.85 4.64C396.88 10.48 409.52 23.12 415.36 39.15C420 53.84 420 67.49 420 94.78L420 817.22C420 844.51 420 858.16 415.36 872.85C409.52 888.88 396.88 901.52 380.85 907.36C366.16 912 352.51 912 325.22 912L94.78 912C67.49 912 53.84 912 39.15 907.36C23.12 901.52 10.48 888.88 4.64 872.85C0 858.16 0 844.51 0 817.22L0 94.78C0 67.49 0 53.84 4.64 39.15C10.48 23.12 23.12 10.48 39.15 4.64C53.84 0 67.49 0 94.78 0Z";
 export function offsetPath(d: number, t: number, n = 12) {
   const toks = P.match(/[MLCZ]|-?[\d.]+/g)!;
