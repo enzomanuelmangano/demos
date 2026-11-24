@@ -14,6 +14,10 @@
 [data-motion~=code]:hover [data-motion~=copy],[data-motion~=copy]:focus-visible{opacity:1}
 @media (hover:none){[data-motion~=copy]{opacity:1}}
 [data-motion~=pre]:focus-visible{outline-offset:-2px}
+/* A code block off screen is neither shaped nor laid out (final sweep: pan-gesture-handler's first layout 105 -> 86 ms
+   at 4x CPU). Its size without them: 16 px padding twice and a 21 px line each, at every width (the block scrolls
+   sideways), so nothing moves when it renders. Only where attr() reads a number (else the size would be a guess). */
+@supports (x: attr(x type(*))){[data-motion~=code-box]{content-visibility:auto;contain-intrinsic-size:auto calc(32px + 21px * attr(data-lines type(<number>), 10))}}
 
 /* The GitHub card: its surface turns to the code colour in 150 ms on hover. */
 [data-motion~=surface]{transition-property:color,background-color,border-color,outline-color,text-decoration-color,fill,stroke;transition-duration:150ms;transition-timing-function:var(--ease-snappy)}

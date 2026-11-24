@@ -351,6 +351,13 @@ rendered (~55 ms plus ~0.07 ms a node at 4x CPU; `pan-gesture-handler` had 2,763
   viewports away: a reader scrolling steadily is mid-scroll then, the very frame to avoid; idle once parsed is earlier
   and between scrolls.
 
+- **Amended again (2026-11-24, perf follow-up of the final sweep; docs/perf.md).** A demo page's runtime starts on idle
+  only when a demo is within 2.5 viewports below or 1.5 above; otherwise each time the reader's scroll settles near
+  one. The start is the page's own (`exact.ready` set by `web/reveal.js`), so Exact's capture script never starts it
+  inside a scroll; a press starts it at once. A reader who scrolls without pausing onto a far demo sees its box empty
+  until the first pause (250 ms): the price of no long task in the scroll. Canvas demos mount with the page and paint
+  first once the scroll settles. Code blocks off screen are `content-visibility: auto` at their exact size.
+
 ## D17. /demos on a desktop, redesigned: the header's columns, two calls to action, a lit device (owner, 2026-11-23)
 
 The owner: "I think you can also hugely improve the design of this one". Today's page (D12 revised) put the hero in the

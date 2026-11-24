@@ -62,7 +62,8 @@ component Metaball
   props
     key: string
     type: string
-  state near = false
+  // Mounted with the page (final sweep): a canvas mounted inside a scroll cost a whole-document style pass (Exact's :has rules, ~27 ms at 4x CPU); its first paint still waits for the scroll to settle (_canvas/draws.ts).
+  state near = true
   state dragging = false
   state anchorX = 0
   state anchorY = 0

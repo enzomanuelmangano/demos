@@ -274,8 +274,11 @@ component App
           signOut=signOut, openProfile=openProfile)
         Toast(message=toast, tone=toastTone)
       SignInDialog(google=googleUrl, apple=appleUrl, googleFailed=failed(googleUrl), appleFailed=failed(appleUrl), retry=signInFailed)
-      FeedbackDialog(sending=feedbackSending, send=sendFeedback)
-      CancelDialog(expires=me.expires, sending=pending(cancelled), confirm=confirmCancel)
+      // Only a signed-in reader can open these (the profile's feedback, the subscription's cancel): no one else's page
+      // builds and adopts their nodes (final sweep: every page's runtime start pays for each node).
+      if accounts and me.signedIn
+        FeedbackDialog(sending=feedbackSending, send=sendFeedback)
+        CancelDialog(expires=me.expires, sending=pending(cancelled), confirm=confirmCancel)
       for e in stack(nav).slice(-1) key=e.id
         column navigationKey=`${e.id}` navigationScroll=`page-${e.id}` position="absolute" inset=0
           scroll document id=`page-${e.id}` flex=1 min-height=0

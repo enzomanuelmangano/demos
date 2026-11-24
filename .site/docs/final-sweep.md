@@ -299,6 +299,15 @@ origin): 156 unique URLs, 156 answered 200 (redirects followed), 0 broken. Redir
 `bun tools/check-secrets.ts --tracked`: 513 files (env-file values included), 0 findings. `--dir dist .vercel/output`:
 0 findings. Nothing printed.
 
+## Follow-up (2026-11-24): the demo articles and the mobile menu
+
+- The canvas-demo articles at 4g are now ≤ live in TBT and scroll (5 interleaved runs each; docs/perf.md, last section):
+  pan-gesture-handler TBT 74 / 69 vs live 84 / 81, introduction-to-reanimated, metaball, interpolate-with-scrollview,
+  smooth-dropdown and the-hidden-gems 0 vs 76-82, animated-spiral 118 / 110 vs 190 / 188; 0 frames over 20 ms in
+  every scroll. The open item on them below is closed.
+- The mobile menu opens at the first tap before the runtime starts (`tools/parity/menu-time.ts`, 4x CPU, 2 x 5
+  interleaved: live 63 / 63 ms, local 64 / 63 ms to the first visible frame; was 300+ ms).
+
 ## Open issues (bigger than this sweep)
 
 - **Perf misses on the canvas-demo articles at 4g** (`introduction-to-reanimated` TBT +35-42 ms, `metaball` +2-3 ms,

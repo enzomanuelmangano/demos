@@ -72,7 +72,11 @@ component Runs
     weight: number
   view
     for r, i in runs key=i
-      if r.math != ""
+      // The plain run first (final sweep): it is most runs, and each condition passed before a match is another anchor
+      // the runtime places and adopts (pan-gesture-handler: ~1,000 of them inside its paragraphs).
+      if r.math == "" and not r.code and r.href == "" and not r.strong and not r.em
+        text r.text
+      else if r.math != ""
         image r.math alt="" width=r.width height=r.height vertical-align="middle"
       else if r.code
         text r.text class=Mono font-size="0.875em" font-weight=500 color="#e5c07b" background-color="rgb(255 255 255 / 0.06)" padding="3px 7px" border-radius=6 box-shadow="0 0 0 1px var(--color-hairline)" white-space="pre-wrap"
@@ -88,10 +92,8 @@ component Runs
         text r.text href=r.href color=(r.strong ? "var(--color-text-heading)" : "inherit") font-weight=(r.strong ? 600 : weight) font-style=(r.em ? "italic" : "normal")
       else if r.strong
         text r.text font-weight=600 color="var(--color-text-heading)" font-style=(r.em ? "italic" : "normal")
-      else if r.em
-        text r.text font-style="italic"
       else
-        text r.text
+        text r.text font-style="italic"
 
 // A code line's segments (tools/gen-content.ts `highlight`): an italic comment (`c`), coloured by web/content.css's
 // `[data-tok=c]`; the runs between, one text each, coloured by the CSS Custom Highlight API from `data-hl` (web/reveal.js
@@ -120,7 +122,9 @@ component CodeBlock
     copy: action
   view
     view position="relative" margin-bottom=block.mb border-radius=14 max-width="calc(100vw - 2.9rem)" data-motion="code"
-      view position="relative" border-radius=14 box-shadow="var(--shadow-control)" overflow="hidden"
+      // Off screen its lines are neither shaped nor laid out (web/content.css, data-motion code-box: content-visibility;
+      // its size is known from data-lines without them).
+      view position="relative" border-radius=14 box-shadow="var(--shadow-control)" overflow="hidden" data-motion="code-box" data-lines=`${codeText(block.lines).split("\n").length}`
         button press=copy(block.id, codeText(block.lines)) appearance="none" aria-label="Copy code" position="absolute" z-index=10
           right=(codeText(block.lines).includes("\n") ? 8 : 4) top=(codeText(block.lines).includes("\n") ? 8 : 4) display="flex" align-items="center" justify-content="center"
           padding=10 border-radius="var(--radius-control)" background-color="rgb(255 255 255 / 0.06)" backdrop-filter="blur(4px)" box-shadow="var(--shadow-control)"
@@ -206,14 +210,32 @@ component PostTitle
       row align-items="center" gap=8
         text block.title font-size=13 line-height="normal" color="var(--color-text-tertiary)" font-variant-numeric="tabular-nums"
 
+// Runs that are all plain text (no math, code, link, bold or italic): drawn as one text.
+fn plainRuns(runs: Run[]): bool = runs.length > 0 and not runs.map(r => r.math == "" and not r.code and r.href == "" and not r.strong and not r.em).includes(false)
+
 component Blocks
   props
     block: Block
     copied: string
     copy: action
   view
-    if block.kind == "title"
-      PostTitle(block=block)
+    // Most frequent kinds first (final sweep): each `else if` the runtime passes is another anchor it places and adopts
+    // (~10 per block with paragraphs third in line); paragraphs, items, code and headings are 94 % of the blocks.
+    if block.kind == "paragraph"
+      // A paragraph of plain runs only is its text alone: no row, no anchors for the runtime to adopt.
+      if plainRuns(block.runs)
+        text block.runs.map(r => r.text).join("") margin-left=(block.depth * 26) margin-bottom=block.mb white-space="pre-wrap" font-size=16 line-height="28px" color="var(--color-text-body)"
+      else
+        text margin-left=(block.depth * 26) margin-bottom=block.mb white-space="pre-wrap" font-size=16 line-height="28px" color="var(--color-text-body)"
+          Runs(runs=block.runs, weight=400)
+    else if block.kind == "item"
+      view position="relative" margin-left=(block.depth * 26 + 8) padding-left=18 margin-bottom=block.mb
+        view position="absolute" left=0 top=11 width=6 height=6 border-radius=3 background-color="var(--color-text-tertiary)"
+        text white-space="pre-wrap" overflow-wrap="break-word" font-size=16 line-height="28px" color="var(--color-text-body)"
+          Runs(runs=block.runs, weight=400)
+    else if block.kind == "code"
+      view margin-left=(block.depth * 26)
+        CodeBlock(block=block, copied=copied, copy=copy)
     else if block.kind == "heading"
       if block.depth == 2
         h2 id=block.href margin-top=block.mt margin-bottom=block.mb margin-left=(block.lang == "0" ? 0 : 26) font-size=20 line-height="28px" font-weight=600 letter-spacing="-0.01em" color="var(--color-text-heading)"
@@ -224,31 +246,28 @@ component Blocks
       else
         h4 id=block.href margin-top=block.mt margin-bottom=block.mb font-size=16 line-height="24px" font-weight=600 color="var(--color-text-heading)"
           Runs(runs=block.runs, weight=600)
-    else if block.kind == "paragraph"
-      text margin-left=(block.depth * 26) margin-bottom=block.mb white-space="pre-wrap" font-size=16 line-height="28px" color="var(--color-text-body)"
-        Runs(runs=block.runs, weight=400)
-    else if block.kind == "item"
-      view position="relative" margin-left=(block.depth * 26 + 8) padding-left=18 margin-bottom=block.mb
-        view position="absolute" left=0 top=11 width=6 height=6 border-radius=3 background-color="var(--color-text-tertiary)"
-        text white-space="pre-wrap" overflow-wrap="break-word" font-size=16 line-height="28px" color="var(--color-text-body)"
-          Runs(runs=block.runs, weight=400)
-    else if block.kind == "code"
-      view margin-left=(block.depth * 26)
-        CodeBlock(block=block, copied=copied, copy=copy)
-    else if block.kind == "image"
-      image block.src alt=block.text width="100%" aspect-ratio=(block.width > 0 ? `${block.width} / ${block.height}` : "auto")
-        min-height=180 max-height=480 object-fit="contain" border-radius="1rem" margin-bottom=block.mb margin-left=(block.depth * 26)
-    else if block.kind == "video"
-      video block.src autoplay=true loop=true muted=true playsinline=true controls=true width="100%" min-height=180 max-height=480 object-fit="contain" border-radius="1rem" margin-bottom=block.mb
+    else if block.kind == "demo"
+      // No `intersect`: a content page activates on interaction (docs/decisions.md D16) and an observed node would
+      // start the runtime at the reader's first scroll, inside a scroll frame. web/reveal.js starts it for a page
+      // with a demo once the page is idle after load, never while the reader is scrolling.
+      view margin-left=(block.depth * 26) data-motion="demo" testId=`demo-${block.title}`
+        ArticleDemo(article=block.lang, name=block.title, args=block.text)
+    else if block.kind == "title"
+      PostTitle(block=block)
+    else if block.kind == "youtube"
+      YouTube(block=block)
     else if block.kind == "github"
       for r in block.repo key=r.url
         GithubCard(block=block, repo=r)
-    else if block.kind == "youtube"
-      YouTube(block=block)
+    else if block.kind == "image"
+      image block.src alt=block.text width="100%" aspect-ratio=(block.width > 0 ? `${block.width} / ${block.height}` : "auto")
+        min-height=180 max-height=480 object-fit="contain" border-radius="1rem" margin-bottom=block.mb margin-left=(block.depth * 26)
     else if block.kind == "math"
       // MathJax's display container on live: centred, 16 px above and below the formula.
       row justify-content="center" margin-bottom=block.mb padding="16px 0"
         image block.src alt="" width=block.width height=block.height
+    else if block.kind == "video"
+      video block.src autoplay=true loop=true muted=true playsinline=true controls=true width="100%" min-height=180 max-height=480 object-fit="contain" border-radius="1rem" margin-bottom=block.mb
     else if block.kind == "rule"
       view margin-top=block.mt margin-bottom=block.mb padding-top=24 padding-bottom=10 border-bottom="1px solid var(--color-hairline)"
     else if block.kind == "quote"
@@ -258,9 +277,3 @@ component Blocks
       row justify-content="center" width="100%"
         view width="100%" max-width=550 margin-top=block.mt margin-bottom=block.mb overflow="hidden"
           iframe `https://platform.twitter.com/embed/Tweet.html?id=${block.text}&theme=dark&hideThread=true` title="X post" width="100%" height=from(598, block.width, block.height) border-width=0 display="block"
-    else if block.kind == "demo"
-      // No `intersect`: a content page activates on interaction (docs/decisions.md D16) and an observed node would
-      // start the runtime at the reader's first scroll, inside a scroll frame. web/reveal.js starts it for a page
-      // with a demo once the page is idle after load, never while the reader is scrolling.
-      view margin-left=(block.depth * 26) data-motion="demo" testId=`demo-${block.title}`
-        ArticleDemo(article=block.lang, name=block.title, args=block.text)

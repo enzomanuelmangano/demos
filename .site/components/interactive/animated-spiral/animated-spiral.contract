@@ -10,7 +10,8 @@ component AnimatedSpiral
     fixedRadius: bool
     sweep: bool
     animated: bool
-  state near = false
+  // Mounted with the page (final sweep): a canvas mounted inside a scroll cost a whole-document style pass (Exact's :has rules, ~27 ms at 4x CPU); its first paint still waits for the scroll to settle (_canvas/draws.ts).
+  state near = true
   state visible = false
   state presses = 0
   state kind = "play"
@@ -28,7 +29,9 @@ component AnimatedSpiral
     InteractiveBox(theme="light", shape="video", withPlay=true, withReset=true, play=play, reset=reset, seen=seen)
       view flex=1 min-height=0 background-color="#0a0a0a"
         if near
-          canvas surface=articleSpiral(key, fixedRadius, sweep, animated, visible, presses, kind) aria-hidden=true width="100%" height="100%" flex=1
+          // Not told when it enters or leaves the view (final sweep): a changed argument repaints the whole spiral (20-35 ms
+          // at 4x CPU) inside the scroll that moved it; it only animates for 1.5 s after a press, seen or not.
+          canvas surface=articleSpiral(key, fixedRadius, sweep, animated, true, presses, kind) aria-hidden=true width="100%" height="100%" flex=1
 
 // The MDX's names (content/articles/animated-spiral/mdx-client.tsx).
 component AnimatedSpiralWithSkia

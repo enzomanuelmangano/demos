@@ -223,3 +223,44 @@ alone): drag 7 / 9 / 62, flick 0 / 0 / 0, open (median of 10 demos) 33.5 / 17.5 
 2819 ms. Phones: tap "Open the demos" → the launcher drawn in 500-770 ms on cable at 390x844, 360x780, 430x932.
 Composable Text check: pass. The corners of the display, sampled at DPR 2 and 3 (1440x900, 1728x960) and DPR 2
 (820x1180): no lighter corner, no step at the clip's edge (≤ 1/255 across it).
+
+## 2026-11-24, the canvas-demo articles at 4g: TBT and scroll ≤ live (final sweep follow-up)
+
+`perf.ts` now interleaves runs (live run i, then local run i). 4g + 4x CPU, median of 5 interleaved runs each, machine
+load 7-9, AC power. TBT ms (the page's own; the YouTube frame's process apart, equal on both); jank = frames over 20 ms
+in the 3 s scroll.
+
+| route | width | before (final sweep): TBT / jank | after: TBT / jank | live: TBT / jank |
+|---|---|---|---|---|
+| `/articles/pan-gesture-handler` | 1440 | 99 / 0 | 74 / 0 | 84 / 0 |
+| `/articles/pan-gesture-handler` | 390 | 89 / 0 | 69 / 0 | 81 / 0 |
+| `/articles/introduction-to-reanimated` | 1440 | 115 / 0 | 0 / 0 | 82 / 0 |
+| `/articles/introduction-to-reanimated` | 390 | 116 / 0 | 0 / 0 | 79 / 0 |
+| `/articles/metaball` | 1440 | 84 / 5 | 0 / 0 | 80 / 0 |
+| `/articles/metaball` | 390 | 84 / 0 | 0 / 0 | 78 / 0 |
+| `/articles/animated-spiral` | 1440 | 94 / 5 (max 67 ms) | 118 / 0 | 190 / 0 |
+| `/articles/animated-spiral` | 390 | 83 / 2 | 110 / 0 | 188 / 0 |
+| `/articles/interpolate-with-scrollview` | 1440 / 390 | 0 / 0 | 0 / 0 | 78-79 / 0 |
+| `/articles/smooth-dropdown`, `the-hidden-gems-of-react-native` | 1440 / 390 | | 0 / 0 | 76-82 / 0 |
+
+FCP / LCP / CLS / bytes ≤ live in every cell (LCP 436-456 vs 592-632). What changed, and why (traces at 4x CPU):
+
+- **The runtime's start on a page whose demos are far down waits until the reader pauses near one** (2.5 viewports
+  below, 1.5 above; `web/reveal.js`). It used to start on idle after the load (115 ms of TBT on
+  introduction-to-reanimated, whose first demo is 5 viewports down). The start is taken over from Exact's capture
+  script (`exact.ready` is ours), so the capture's own triggers (an `intersect` node entering the window, the first
+  scroll) can no longer start it inside a scroll; a press still starts it at once and is replayed.
+- **Canvas demos mount with the page and paint first only when the scroll has settled** (one per frame;
+  `components/interactive/_canvas/draws.ts`). A canvas mounted inside a scroll cost a whole-document style pass (~27 ms:
+  Exact's runtime CSS has ~40 `:has()` rules, so any insertion restyles the document); the spiral no longer takes its
+  visibility as an argument (a changed argument repainted 1,500 dots and their halo, 20-35 ms, inside the scroll).
+- **Code blocks off screen are neither shaped nor laid out** (`content-visibility: auto`, their exact size
+  `32 + 21 × lines` px from `data-lines`: no layout shift, page heights unchanged); their highlight ranges are painted
+  when they are about to render or in idle time after the load. First layout of pan-gesture-handler 105 → 86 ms.
+- **Fewer nodes for the runtime to place at its start**: the inline runs' plain case first and the article blocks'
+  kinds by frequency (each `else if` passed is an anchor the runtime inserts: pan-gesture-handler 3,014 → 1,766
+  insertions at the start); a paragraph of plain runs is one text; the feedback and cancel dialogs only for a signed-in
+  reader. The head scripts' observers look at live lists, not at every added node.
+
+Pixels unchanged (compare.ts over every article, the docs, `/`, `/course`, `/inspirations`: the same values as the
+final sweep, ≤ 0.31 % against the re-shot live captures).

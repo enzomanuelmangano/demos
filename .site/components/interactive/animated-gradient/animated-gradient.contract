@@ -8,7 +8,8 @@ component AnimatedGradient
     key: string
     animated: bool
     withPlay: bool
-  state near = false
+  // Mounted with the page (final sweep): a canvas mounted inside a scroll cost a whole-document style pass (Exact's :has rules, ~27 ms at 4x CPU); its first paint still waits for the scroll to settle (_canvas/draws.ts).
+  state near = true
   state visible = false
   state presses = 0
   state kind = "play"

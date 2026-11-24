@@ -99,15 +99,50 @@
     }
     painted.set(el, { node: node, ranges: ranges });
   }
+  // A code block off screen is not rendered (web/content.css: content-visibility on data-motion code-box), so its
+  // ranges wait until it is about to be (its contentvisibilityautostatechange, not skipped): the parse no longer makes
+  // a range per token of every block (final sweep). The page's first two blocks are painted at once, so a block in the
+  // first screen is never drawn uncoloured for a frame.
+  var lazy = api && 'ContentVisibilityAutoStateChangeEvent' in window, order = new WeakMap(), boxes = 0, shown = new WeakSet();
+  function want(el) {
+    var box = lazy && el.closest('[data-motion~=code-box]');
+    if (!box) return paint(el);
+    if (!order.has(box)) order.set(box, boxes++);
+    if (order.get(box) < 2 || shown.has(box)) paint(el);
+  }
+  if (lazy) addEventListener('contentvisibilityautostatechange', function (e) {
+    var box = e.target;
+    if (e.skipped || !box.matches || !box.matches('[data-motion~=code-box]')) return;
+    show(box);
+  }, true);
+  // The rest are painted in idle time after the load, a few lines per idle period (never a long task), so no block
+  // waits for its event when it is reached.
+  function show(box) {
+    if (shown.has(box)) return;
+    shown.add(box);
+    var all = box.querySelectorAll('[data-hl]');
+    for (var i = 0; i < all.length; i++) paint(all[i]);
+  }
+  if (lazy) addEventListener('load', function () {
+    var ric = self.requestIdleCallback || function (f) { return setTimeout(function () { f({ timeRemaining: function () { return 8; } }); }, 50); };
+    (function step(d) {
+      var all = document.querySelectorAll('[data-motion~=code-box]');
+      for (var i = 0; i < all.length; i++) {
+        if (shown.has(all[i])) continue;
+        if (d.timeRemaining() < 4) return ric(step);
+        show(all[i]);
+      }
+    })({ timeRemaining: function () { return 0; } });
+  });
   function visit(n) {
     if (n.nodeType != 1) return;
-    if (n.hasAttribute('data-hl')) paint(n);
-    else if (n.firstElementChild) { var all = n.querySelectorAll('[data-hl]'); for (var i = 0; i < all.length; i++) paint(all[i]); }
+    if (n.hasAttribute('data-hl')) want(n);
+    else if (n.firstElementChild) { var all = n.querySelectorAll('[data-hl]'); for (var i = 0; i < all.length; i++) want(all[i]); }
   }
   new MutationObserver(function (records) {
     for (var i = 0; i < records.length; i++) {
       var rec = records[i], t = rec.target;
-      if (t.nodeType == 1 && t.hasAttribute('data-hl')) paint(t);
+      if (t.nodeType == 1 && t.hasAttribute('data-hl')) want(t);
       for (var j = 0; j < rec.addedNodes.length; j++) visit(rec.addedNodes[j]);
     }
   }).observe(document.documentElement, { childList: true, subtree: true });
@@ -141,18 +176,54 @@ document.addEventListener('click', function (e) {
    250 ms it waits for the scroll to settle and tries again, so the start (one task: the view tree and the adoption)
    lands between scrolls, before the reader reaches a demo. A press before then starts it at once (Exact's capture). */
 (function () {
-  var last = -1e9, x;
-  addEventListener('scroll', function () { last = performance.now(); }, { passive: true, capture: true });
-  function start() {
-    var c = document.querySelector('script[type="application/vnd.exact.checkpoint"]');
-    x = self.exact = self.exact || {};
-    if (!c || x.ready || c.dataset.activate != 'interaction' || !document.querySelector('[data-motion~=demo]')) return;
-    if (performance.now() - last < 250) return setTimeout(idle, 250);
-    if (c.dataset.src) x.answers = fetch(c.dataset.src).then(function (r) { return r.ok ? r.text() : null; }, function () { return null; });
-    x.ready = import(c.dataset.entry);
+  var last = -1e9, x, waiting = false, settle = 0, still = 0;
+  addEventListener('scroll', function () {
+    last = performance.now();
+    // Read by the canvas demos' drawing code (components/interactive/_canvas/draws.ts): no first paint mid-scroll.
+    self.__siteScrolling = true; clearTimeout(still); still = setTimeout(function () { self.__siteScrolling = false; }, 250);
+    if (waiting) { clearTimeout(settle); settle = setTimeout(idle, 250); }
+  }, { passive: true, capture: true });
+  // Amended (final sweep): only when a demo is within 2.5 viewports below or 1.5 above. A page whose demos are further
+  // down (introduction-to-reanimated's first at 5 viewports) waits: each time the reader's scroll settles (250 ms
+  // without one) it looks again, so the start still lands between scrolls, before the demo is reached.
+  function near() {
+    var h = innerHeight;
+    return [].some.call(document.querySelectorAll('[data-motion~=demo]'), function (d) { var r = d.getBoundingClientRect(); return r.top < h * 2.5 && r.bottom > -h * 1.5; });
   }
+  // The start is taken over from Exact's capture script on such a page: `exact.ready` is a start of ours, so the capture
+  // script's own triggers (an `intersect` node entering the window, the first scroll: inside a scroll's frames) only
+  // queue; a press still starts it at once (its replay is the capture script's queue, as before).
+  var go = null, c = null;
+  function take() {
+    c = document.querySelector('script[type="application/vnd.exact.checkpoint"]');
+    x = self.exact = self.exact || {};
+    if (!c || x.ready || c.dataset.activate != 'interaction' || !document.querySelector('[data-motion~=demo]')) return false;
+    x.ready = new Promise(function (r) { go = r; });
+    x.startNow = now;
+    return true;
+  }
+  function now() {
+    if (!go) return;
+    var r = go; go = null; waiting = false;
+    if (c.dataset.src) x.answers = fetch(c.dataset.src).then(function (r) { return r.ok ? r.text() : null; }, function () { return null; });
+    r(import(c.dataset.entry));
+  }
+  function start() {
+    if (!go) return;
+    if (performance.now() - last < 250) return setTimeout(idle, 250);
+    if (!near()) { waiting = true; return; }
+    now();
+  }
+  ['click', 'keydown', 'input', 'change'].forEach(function (k) {
+    addEventListener(k, function (e) {
+      if (!go || !e.target || !e.target.closest || !e.target.closest('[data-exact-on]')) return;
+      // The menu and Sign In open from the head scripts at once; the start follows their opening (below).
+      if (k == 'click' && e.target.closest('[aria-controls="mobile-menu"],[data-testid="sign-in"]')) setTimeout(now, 350); else now();
+    }, true);
+  });
   function idle() { (self.requestIdleCallback || setTimeout)(start, { timeout: 3000 }); }
-  if (document.readyState != 'loading') idle(); else document.addEventListener('DOMContentLoaded', idle, { once: true });
+  function ready() { if (take()) idle(); }
+  if (document.readyState != 'loading') ready(); else document.addEventListener('DOMContentLoaded', ready, { once: true });
 })();
 /* The articles' YouTube and X frames are the browser's lazy frames: the built pages carry `loading="lazy"`
    (tools/seo/postbuild.ts); a frame the runtime draws (an in-app navigation) gets it here and its source set again,
@@ -160,12 +231,11 @@ document.addEventListener('click', function (e) {
 (function () {
   var sel = 'iframe[title="YouTube video player"]:not([loading]),iframe[title="X post"]:not([loading])';
   function lazy(f) { f.setAttribute('loading', 'lazy'); var s = f.getAttribute('src'); if (s) f.setAttribute('src', s); }
-  new MutationObserver(function (records) {
-    for (var i = 0; i < records.length; i++) for (var j = 0; j < records[i].addedNodes.length; j++) {
-      var n = records[i].addedNodes[j];
-      if (n.nodeType != 1) continue;
-      if (n.matches(sel)) lazy(n); else if (n.firstElementChild) [].forEach.call(n.querySelectorAll(sel), lazy);
-    }
+  // The page's frames, a live list: each mutation batch looks at those few, not at every node added (the parse adds
+  // them one by one: a query per node showed in the first long task, final sweep).
+  var frames = document.getElementsByTagName('iframe');
+  new MutationObserver(function () {
+    for (var i = 0; i < frames.length; i++) if (frames[i].matches(sel)) lazy(frames[i]);
   }).observe(document.documentElement, { childList: true, subtree: true });
 })();
 /* The header is the reference's root layout, kept across its in-app navigations, so its one entrance (Sign In's
