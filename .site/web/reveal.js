@@ -210,9 +210,16 @@ document.addEventListener('click', function (e) {
       if (Date.now() - t0 < 2500) return;
       clearInterval(timer);
       if (location.pathname == path) location.reload();
-      else location.assign(url.href);
+      // Still here: unless a navigation to it is under way (a document load in progress, which a second one would
+      // only duplicate in the history), the press was lost.
+      else if (!(navTo == path && navAt >= t0)) location.assign(url.href);
     }, 200);
   }
+  // Navigations started (the Navigation API's navigate event: links, document loads, the router's pushState).
+  var navTo = '', navAt = 0;
+  if (self.navigation && navigation.addEventListener) navigation.addEventListener('navigate', function (e) {
+    try { navTo = new URL(e.destination.url).pathname; navAt = Date.now(); } catch (err) {}
+  });
   // A page left (a document navigation, the back/forward cache) drops what it armed: restored by Back, it must not
   // carry out a press made before it was left.
   addEventListener('pagehide', function () { armed++; });
