@@ -597,11 +597,6 @@ const FRAMED = DOM && window.parent !== window;
 const PARENT_ORIGIN = /^(https:\/\/(www\.)?reactiive\.io|https:\/\/[a-z0-9-]+\.vercel\.app|http:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?)$/;
 if (FRAMED) {
   let parentOrigin = null;
-  // A press the parent asks for is not the reader's: the route it opens replaces the history entry instead of adding
-  // one, so the reader's Back never steps through the parent's demo (the frame's history is the page's, joint).
-  let parentPressUntil = 0;
-  const push = history.pushState;
-  history.pushState = function (...a) { return performance.now() < parentPressUntil ? history.replaceState(...a) : push.apply(this, a); };
   const post = (m) => { if (parentOrigin) try { window.parent.postMessage(m, parentOrigin); } catch {} };
   addEventListener('message', (e) => {
     const m = e.data;
@@ -614,7 +609,6 @@ if (FRAMED) {
       return post({ demos: 'rect', target: m.target, rect: r && r.width > 0 ? { x: r.x, y: r.y, width: r.width, height: r.height } : null });
     }
     if (!el) return;
-    parentPressUntil = performance.now() + 1500;
     const r = el.getBoundingClientRect(), at = { bubbles: true, cancelable: true, composed: true, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2, pointerId: 7, pointerType: 'touch', isPrimary: true, button: 0 };
     el.dispatchEvent(new PointerEvent('pointerdown', { ...at, buttons: 1 }));
     el.dispatchEvent(new PointerEvent('pointerup', at));
