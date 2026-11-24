@@ -116,6 +116,11 @@ fixed on 2026-11-24 (Safari 27.0.1 on macOS, iOS 27.0 Safari in the simulator, P
 - **Without the Navigation API** (Safari before 26.2) the header's Demos link on a demo post left the deep link's demo
   open (the post and /demos are one page: no DOM change, no popstate). `web/sim-goto.js` watches the history writes.
 
+Re-run with the real Safari 27.0.1 (safaridriver) after the rebase on #127: every check passes on this branch; main
+fails the nested-page, framed-open and deep-link checks (the run stops at a click that hangs on the broken page).
+WebDriver note: a press with a pause between down and up reaches the app as a long press (its context menu), so the
+probe's clicks have none.
+
 Not fixed (no site-side fix, or not Safari's): the account dialogs close without their fade in Safari (no `overlay`
 transition, so the dialog leaves the top layer at once); iOS Safari shows its light keyboard over the Demos app's dark
 search (likely the field's `color-scheme`: the Demos app's, not the site's); in a sandboxed frame WebKit logs a Web

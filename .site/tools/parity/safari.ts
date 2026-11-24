@@ -92,7 +92,8 @@ async function safariDriver(): Promise<Driver> {
   await until(async () => (await fetch(`${base}/status`)).ok, 5000);
   let sid = '';
   const call = async (method: string, path: string, body?: unknown) => {
-    const r = await fetch(`${base}/session${sid ? '/' + sid : ''}${path}`, { method, headers: { 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+    const r = await fetch(`${base}/session${sid ? '/' + sid : ''}${path}`, { method, headers: { 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(90000) })
+      .catch((e) => { throw new Error(`safaridriver ${method} ${path}: no answer (${e?.name ?? e})`); });
     const j: any = await r.json();
     if (j.value?.error) throw new Error(`safaridriver ${path}: ${j.value.error}: ${j.value.message}`);
     return j.value;
@@ -104,7 +105,7 @@ async function safariDriver(): Promise<Driver> {
     name: 'Safari (safaridriver)',
     async open() {
       sid = '';
-      const s = await call('POST', '', { capabilities: { alwaysMatch: { browserName: 'safari' } } });
+      const s = await call('POST', '', { capabilities: { alwaysMatch: { browserName: 'safari', timeouts: { script: 45000, pageLoad: 60000 } } } });
       sid = s.sessionId; version = s.capabilities?.browserVersion ?? '';
       d.name = `Safari ${version} (safaridriver)`;
       await call('POST', '/window/rect', { width: 1440, height: 900 + 90 }).catch(() => {});
@@ -118,7 +119,7 @@ async function safariDriver(): Promise<Driver> {
       await call('POST', '/frame', { id: el });
       try { return await exec(body); } finally { await call('POST', '/frame/parent', {}); }
     },
-    click: (x, y) => call('POST', '/actions', { actions: [{ type: 'pointer', id: 'mouse', parameters: { pointerType: 'mouse' }, actions: [{ type: 'pointerMove', x: Math.round(x), y: Math.round(y), origin: 'viewport' }, { type: 'pointerDown', button: 0 }, { type: 'pause', duration: 50 }, { type: 'pointerUp', button: 0 }] }] }),
+    click: (x, y) => call('POST', '/actions', { actions: [{ type: 'pointer', id: 'mouse', parameters: { pointerType: 'mouse' }, actions: [{ type: 'pointerMove', x: Math.round(x), y: Math.round(y), origin: 'viewport' }, { type: 'pointerDown', button: 0 }, { type: 'pointerUp', button: 0 }] }] }),
     key: () => call('POST', '/actions', { actions: [{ type: 'key', id: 'kb', actions: [{ type: 'keyDown', value: '' }, { type: 'keyUp', value: '' }] }] }),
     back: () => call('POST', '/back', {}),
     forward: () => call('POST', '/forward', {}),
@@ -160,6 +161,10 @@ async function clickInFrame(sel: string) {
 async function clickPage(sel: string) { const p = await drv.eval<{ x: number; y: number } | null>(rectOf(sel)); if (!p) return false; await drv.click(p.x, p.y); return true; }
 const path = () => drv.eval<string>(`return location.pathname`);
 
+// One session at a time, and it always ends (no window is left on the owner's screen): a failure or a signal still
+// deletes the session and stops safaridriver.
+for (const sig of ['SIGINT', 'SIGTERM'] as const) process.on(sig, () => { drv.quit().finally(() => process.exit(130)); });
+try {
 // ---------------------------------------------------------------- 0. what the engine has
 info('API support', await drv.eval(`return {
   checkVisibility: 'checkVisibility' in Element.prototype, navigationApi: 'navigation' in window, requestIdleCallback: 'requestIdleCallback' in window,
@@ -181,7 +186,7 @@ for (const route of ['/articles/animated-gradient', '/demos/composable-text']) {
   // A press starts the runtime (pages activate on interaction, D16); once it runs, a header link is an in-app
   // navigation: the window (a mark set here) survives it. Without the runtime the press is a document load.
   await Bun.sleep(1000);
-  await drv.click(1400, 450);
+  await drv.click(60, 450);
   await Bun.sleep(6000);
   await drv.eval(`window.__safariProbe = 1`);
   await clickPage('header a[href="/articles"]');
@@ -247,7 +252,11 @@ await drv.key('Escape');
 check(await until(() => drv.eval<boolean>(`return !document.querySelector('#signin-modal[open]')`), 4000), '7 Escape closes it');
 check(await drv.eval<string>(`try { localStorage.setItem('__safari_probe', '1'); const v = localStorage.getItem('__safari_probe'); localStorage.removeItem('__safari_probe'); return v; } catch (e) { return String(e); }`) === '1', '7 localStorage writes and reads back');
 
-if (errors.size) info('page errors', [...errors]);
-await drv.quit();
+} catch (e) {
+  check(false, `the run stopped: ${String(e).slice(0, 200)}`);
+} finally {
+  if (errors.size) info('page errors', [...errors]);
+  await drv.quit().catch(() => {});
+}
 console.log(fails.length ? `${fails.length} failed` : 'all passed');
 process.exit(fails.length ? 1 : 0);
