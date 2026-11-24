@@ -1,6 +1,6 @@
 // Per-route head tags, identical to the live site's: the reference's pageMetadata() (src/lib/metadata.ts) over its root
 // layout metadata, as Next.js renders them (same tags, same order). One typed place: add a page kind here, nowhere else.
-import { COURSE_DESCRIPTION, DEMOS_DESCRIPTION, DOC_TITLES, HOME_DESCRIPTION, loadArticles, OG, SITE_AUTHOR_NAME, SITE_DESCRIPTION, SITE_NAME, SITE_TWITTER, SITE_URL, THEME_COLOR, ARTICLES_DESCRIPTION, RSS_URL, titleCase, loadDemoPosts, type OgImage } from './site.ts';
+import { COURSE_DESCRIPTION, DEMOS_APP_DESCRIPTION, DEMOS_DESCRIPTION, DOC_TITLES, HOME_DESCRIPTION, loadArticles, OG, SITE_AUTHOR_NAME, SITE_DESCRIPTION, SITE_NAME, SITE_TWITTER, SITE_URL, THEME_COLOR, ARTICLES_DESCRIPTION, RSS_URL, titleCase, loadDemoPosts, type OgImage } from './site.ts';
 
 export type Tag = { tag: 'title'; text: string } | { tag: 'meta' | 'link'; attrs: Record<string, string> };
 
@@ -123,7 +123,7 @@ export function allPages(): PageMetadata[] {
       return { path: `/series/${s}`, title, description: `Articles in the ${title} series on React Native animations.`, image: card(OG.articles) };
     }),
     { path: '/inspirations', title: 'Inspirations', description: 'The blogs, docs and creators whose work shaped Reactiive.io.', image: card(OG.home) },
-    { path: '/demos-app', title: 'Demos (TestFlight)', description: 'Get 120+ React Native animation demos on your phone through the TestFlight beta.', image: card(OG.demos) },
+    { path: '/demos-app', title: 'Demos (TestFlight)', description: DEMOS_APP_DESCRIPTION, image: card(OG.demos) },
     { path: '/course', title: 'Course', description: COURSE_DESCRIPTION, image: card(OG.home) },
     { path: '/docs', title: SITE_NAME, layoutOnly: true },
     ...Object.entries(DOC_TITLES).map(([slug, title]): PageMetadata => ({ path: `/docs/${slug}`, title, image: card(OG.home) })),

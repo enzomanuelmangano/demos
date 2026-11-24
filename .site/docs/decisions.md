@@ -729,3 +729,31 @@ under the phone at 1024 px.
   to start, ~14 a second, 2.5-5 px, at most 85 %, a narrow fan); idle as live. From 1024 px the stars dissolve over 38
   px (they were cut at 26 px). Sponsor's heart beats once per hover or keyboard focus (scale 1, 1.18, 0.96, 1.08, 1 in
   600 ms, transform only) and its pink warms (#db61a2 to #f27bbd, 200 ms); reduced motion, the colour only.
+
+## D23. /demos's subtitle names what it is built with now (owner, 2026-11-24)
+
+The /demos hero subtitle read live's "120+ React Native animations / with Skia, Reanimated and Gesture Handler"; the
+demos on this site run on Exact, Rust and WebGPU. Owner's copy, exactly: "100+ animations" (first line) and "built with
+Exact, Rust and WebGPU" (second line). Same two lines from 640 px, the same gradient across both and the same entrance
+(`blur-in` 450 ms, `lift-10`). Under 640 px the paragraph (left-aligned, 320 px at most, 14 px) breaks at the same place:
+wrapped as one text it left "WebGPU" alone on the second line at 390 px, so it is now the same two lines in one
+gradient. Measured on the composed build: each line one line at 1440, 1180, 1024, 820 and 390; /demos at 1440x900 is
+900 px tall (no vertical scroll), no sideways overflow anywhere. The /demos/<slug> posts render the same hero.
+
+- **Head.** /demos's description, og:description and twitter:description (and the /demos/app/ shell's, `tools/demos-web/head.ts`)
+  are now "100+ animations built with Exact, Rust and WebGPU, running live in the browser." (`DEMOS_DESCRIPTION`,
+  `tools/seo/site.ts`; the runtime `head` in `app.contract` says the same). The demo posts keep their own first
+  paragraph (D21). Articles, the course and other pages are unchanged.
+- **Parity.** A deliberate difference from live: `tools/parity/head-diff.ts` rewrites live's three /demos description
+  tags to `DEMOS_DESCRIPTION` before the diff (as it does for the posts, D21), so any other difference still fails.
+- **/demos-app and the share card (same day; owner: the TestFlight app will be the Exact one).** /demos-app's text reads
+  "Get access to 100+ animations built with Exact, Rust and WebGPU on your phone. ..." and its description (og, twitter
+  and the card's alt, which is the description) "Get 100+ animations built with Exact, Rust and WebGPU on your iPhone
+  through the TestFlight beta." (`DEMOS_APP_DESCRIPTION`). The /demos card's alt (/demos and the /demos/app/ shell) is
+  "Demos: 100+ animations built with Exact, Rust and WebGPU", not live's "Exclusive weekly React Native animations
+  source code.". The TestFlight link, its QR and "Try it on iPhone" (aria-label "Try the Demos app on iPhone with
+  TestFlight") are unchanged. head-diff rewrites live's description tags and og:image:alt on both pages to ours.
+
+- **The other demos copy (same day).** The home page's Demos row reads "100+ animations in Exact, Rust and WebGPU." ("built
+  with" made it 346 px, one line too long at 390 px; this is 297 px, one line like live's at 390 and 1440), and the
+  support page "All 100+ animations, built with Exact, Rust and WebGPU, are now free and open source! ...".

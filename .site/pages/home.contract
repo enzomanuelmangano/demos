@@ -28,6 +28,6 @@ component HomePage
       column data-motion="blur-in rise" data-delay="530"
         ProjectItem(title="Reanimate.dev", href="https://reanimate.dev", tag="Course", description="Designed to guide you from the basics to advanced techniques.", newPage=true)
       column data-motion="blur-in rise" data-delay="590"
-        ProjectItem(title="Demos", href="/demos/", tag="Open Source", description="120+ React Native experiments and demos.", newPage=false)
+        ProjectItem(title="Demos", href="/demos/", tag="Open Source", description="100+ animations in Exact, Rust and WebGPU.", newPage=false)
       column data-motion="blur-in rise" data-delay="650"
         ProjectItem(title="YouTube", href="https://youtube.com/@Reactiive", tag="Tutorials", description="React Native tutorials and animation breakdowns.", newPage=true)

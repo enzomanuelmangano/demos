@@ -17,7 +17,8 @@ export type OgImage = { url: string; width: number; height: number; alt: string 
 /** The three static share cards (public/og/*.png, 1280x720). */
 export const OG = {
   home: { url: '/og/main.png', width: 1280, height: 720, alt: 'React Native animations by Reactiive' },
-  demos: { url: '/og/demos.png', width: 1280, height: 720, alt: 'Exclusive weekly React Native animations source code.' },
+  // Not live's "Exclusive weekly React Native animations source code." (D23).
+  demos: { url: '/og/demos.png', width: 1280, height: 720, alt: 'Demos: 100+ animations built with Exact, Rust and WebGPU' },
   articles: { url: '/og/articles.png', width: 1280, height: 720, alt: 'Interactive articles about React Native animations by Reactiive' },
 } satisfies Record<string, OgImage>;
 
@@ -38,7 +39,11 @@ export const PERSON = {
 
 export const DOC_TITLES: Record<string, string> = { terms: 'Terms of Service', privacy: 'Privacy Policy', license: 'License' };
 export const ARTICLES_DESCRIPTION = 'Interactive articles about React Native animations by Reactiive';
-export const DEMOS_DESCRIPTION = 'Explore the beauty of React Native animations with Reanimated, Skia and Gesture Handler';
+// /demos's own copy (owner, 2026-11-24, D23): differs from live's "Explore the beauty of React Native animations ..." on
+// purpose; tools/parity/head-diff.ts expects it.
+export const DEMOS_DESCRIPTION = '100+ animations built with Exact, Rust and WebGPU, running live in the browser.';
+// /demos-app's: the TestFlight app is the Exact one too (owner, 2026-11-24, D23); live said "120+ React Native animation demos".
+export const DEMOS_APP_DESCRIPTION = 'Get 100+ animations built with Exact, Rust and WebGPU on your iPhone through the TestFlight beta.';
 export const COURSE_DESCRIPTION = 'Reanimate.dev — the complete guide to React Native animations, from the basics to advanced techniques.';
 
 /**

@@ -393,7 +393,7 @@ component ManageSubscriptionPage
       column margin-bottom=8
         text "Support Demos" role="heading" aria-level=1 font-size="1.5rem" line-height="2rem" font-weight=500 color="var(--color-text-primary)"
         text "View and manage your support options" margin-top=4 font-size="0.875rem" line-height="1.25rem" color="var(--color-text-secondary)"
-      text "All 120+ React Native animations are now free and open source! Your support helps me continue creating and maintaining these resources."
+      text "All 100+ animations, built with Exact, Rust and WebGPU, are now free and open source! Your support helps me continue creating and maintaining these resources."
         font-size="0.875rem" line-height="1.25rem" color="var(--color-text-secondary)"
       column gap=24 max-width=672 width="100%"
         if planIssue(me.planStatus)
