@@ -96,29 +96,42 @@ fn screenInk(slug: string, backdrop: string): string = (
   slug == "clerk-toast" or slug == "skia-color-picker" ? "#ffffff" :
   inkOver(backdrop))
 
-// The iPhone's status bar, drawn white over the app at the frame's top: the time, the signal, wifi and battery.
-component WebStatusBar
+// The iPhone's status bar, drawn over the app at the frame's top: the time, the signal, wifi and battery. Its ink is
+// the launcher's (`home`) until an opening demo's card covers the bar, then the demo's (`ink`): two copies, one per
+// ink, cross-faded by opacity with the open and close flight (modules/web/index.js `demo-card` moves
+// `web-status-home` and `web-status-demo` in its flight's frames; a demo shown without a flight shows its own ink).
+component StatusGlyphs
   props
     ink: string
   view
+    view position="absolute" inset=0
+      row position="absolute" left=36 top=19 width=96 height=22 align-items="center" justify-content="center"
+        text "9:41" font-size=17 font-weight=600 color=ink letter-spacing=-0.2
+      row position="absolute" right=30 top=19 width=110 height=22 align-items="center" justify-content="center" gap=7
+        svg width=19 height=12 viewBox="0 0 19 12"
+          rect x=0 y=7.5 width=3.2 height=4.5 rx=0.9 fill=ink
+          rect x=5 y=5 width=3.2 height=7 rx=0.9 fill=ink
+          rect x=10 y=2.5 width=3.2 height=9.5 rx=0.9 fill=ink
+          rect x=15 y=0 width=3.2 height=12 rx=0.9 fill=ink
+        svg width=17 height=12 viewBox="0 0 17 12" fill="none"
+          path d="M1.2 4.3C5.2 0.4 11.8 0.4 15.8 4.3" stroke=ink stroke-width=1.9 stroke-linecap="round"
+          path d="M3.6 6.8C6.2 4.3 10.8 4.3 13.4 6.8" stroke=ink stroke-width=1.9 stroke-linecap="round"
+          path d="M6 9.2C7.4 7.9 9.6 7.9 11 9.2" stroke=ink stroke-width=1.9 stroke-linecap="round"
+        svg width=28 height=13 viewBox="0 0 28 13" fill="none"
+          rect x=0.5 y=0.5 width=23 height=12 rx=3.8 stroke=ink stroke-opacity=0.4
+          rect x=2 y=2 width=20 height=9 rx=2.4 fill=ink
+          path d="M25 4.4V8.6C25.9 8.2 26.5 7.4 26.5 6.5C26.5 5.6 25.9 4.8 25 4.4Z" fill=ink fill-opacity=0.5
+
+component WebStatusBar
+  props
+    home: string
+    ink: string
+  view
     view position="absolute" left=0 right=0 top=0 height=62 pointer-events="none" aria-hidden=true z-index=40
-      view position="absolute" inset=0
-        row position="absolute" left=36 top=19 width=96 height=22 align-items="center" justify-content="center"
-          text "9:41" font-size=17 font-weight=600 color=ink letter-spacing=-0.2
-        row position="absolute" right=30 top=19 width=110 height=22 align-items="center" justify-content="center" gap=7
-          svg width=19 height=12 viewBox="0 0 19 12"
-            rect x=0 y=7.5 width=3.2 height=4.5 rx=0.9 fill=ink
-            rect x=5 y=5 width=3.2 height=7 rx=0.9 fill=ink
-            rect x=10 y=2.5 width=3.2 height=9.5 rx=0.9 fill=ink
-            rect x=15 y=0 width=3.2 height=12 rx=0.9 fill=ink
-          svg width=17 height=12 viewBox="0 0 17 12" fill="none"
-            path d="M1.2 4.3C5.2 0.4 11.8 0.4 15.8 4.3" stroke=ink stroke-width=1.9 stroke-linecap="round"
-            path d="M3.6 6.8C6.2 4.3 10.8 4.3 13.4 6.8" stroke=ink stroke-width=1.9 stroke-linecap="round"
-            path d="M6 9.2C7.4 7.9 9.6 7.9 11 9.2" stroke=ink stroke-width=1.9 stroke-linecap="round"
-          svg width=28 height=13 viewBox="0 0 28 13" fill="none"
-            rect x=0.5 y=0.5 width=23 height=12 rx=3.8 stroke=ink stroke-opacity=0.4
-            rect x=2 y=2 width=20 height=9 rx=2.4 fill=ink
-            path d="M25 4.4V8.6C25.9 8.2 26.5 7.4 26.5 6.5C26.5 5.6 25.9 4.8 25 4.4Z" fill=ink fill-opacity=0.5
+      view position="absolute" inset=0 opacity=0 testId="web-status-home"
+        StatusGlyphs(ink=home)
+      view position="absolute" inset=0 testId="web-status-demo"
+        StatusGlyphs(ink=ink)
       // The Dynamic Island.
       view position="absolute" left=147 top=11 width=126 height=37 border-radius=18.5 background-color="#000000"
 
@@ -241,11 +254,13 @@ component WebShell
               overflow="hidden" background-color="#000000" testId="web-device"
               WebScreen(demos=demos, all=all, env=env, slug=slug, zone=zone, sw=airW(), sh=airH(), safeTop=airTop(), safeBottom=airBottom(),
                 framed=true, flown=flown, open=open, leave=leave)
-              WebStatusBar(ink=screenInk(slug, backdrop))
-              // The home indicator.
+              WebStatusBar(home="#ffffff", ink=screenInk(slug, backdrop))
+              // The home indicator, in two inks cross-faded with the flight, as the status bar's (web-indicator-home,
+              // web-indicator-demo).
               // contract-lint-disable-next-line concentric-bottom-ui -- the home indicator bar
-              view position="absolute" left=140 bottom=8 width=140 height=5 border-radius=2.5 background-color=screenInk(slug, backdrop)
-                opacity=0.85 pointer-events="none" aria-hidden=true z-index=40
+              view position="absolute" left=140 bottom=8 width=140 height=5 pointer-events="none" aria-hidden=true z-index=40 opacity=0.85
+                view position="absolute" inset=0 border-radius=2.5 corner-shape="-exact-continuous" background-color="#ffffff" opacity=0 testId="web-indicator-home"
+                view position="absolute" inset=0 border-radius=2.5 corner-shape="-exact-continuous" background-color=screenInk(slug, backdrop) testId="web-indicator-demo"
       else
         WebScreen(demos=demos, all=all, env=env, slug=slug, zone=zone, sw=vw, sh=vh, safeTop=safeTop, safeBottom=safeBottom, framed=false,
           flown=flown, open=open, leave=leave)
