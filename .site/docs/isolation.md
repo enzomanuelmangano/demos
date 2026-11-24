@@ -88,3 +88,36 @@ artifact, rebuilt at the new seed and base `/demos/app/` (D10), is 787 files, 60
 `tools/parity/demos-mount.ts` on the composed output: launcher, legacy deep link → `/demos/app/demo/chessboard`,
 reload, Back, Forward all draw at 1440 and 390; `gpu_bg.wasm` and the shader bundle 200; 0 failed requests, 0
 exceptions. CI triggers (proof 4): unchanged.
+
+## 6. The one runtime contact: the framed app's message bridge (D19, 2026-11-24)
+
+The site never imports or reads the Demos app; at run time the only contact is `postMessage` between `/demos` and the
+sandboxed frame of `/demos/app/`, both ends small and guarded:
+
+- **The app's end** (`modules/web/index.js`, the web module only; iOS and the Mac never load it). Installed only when
+  the app is framed (`window.parent !== window`); at the top level, which is every phone (D20) and every direct visit,
+  none of it exists: no listener, no style, nothing posted, no history wrapper. It accepts a message only from its
+  parent window (`e.source === window.parent`) and only from the origin that serves the app itself (the site and the
+  app are one deployment: production's parent is `https://reactiive.io`, a preview's is that preview, a local
+  server's is that server; no other origin, no wildcard); only two verbs, by testId (`[a-z0-9-]{1,80}`): `rect`
+  (answers that element's box) and `press` (a tap there). Answers go to that origin only, never `*`. Once the parent
+  has spoken, real input is reported (`input`) so the parent stops its demo. Nothing else is read, written or answered.
+- **The frame's history is the page's (joint).** Framed, the module mirrors the router's entries (each state carries
+  its index) and keeps the two in step: a route a parent's `press` opens replaces the entry, and its close replaces
+  back to it (never a `go(-1)`), so the reader's Back never steps through the parent's demo and a full demo leaves no
+  forward entry; while the page says it is elsewhere (`{ demos: 'page', current, visible }`, posted by `web/sim-hint.js`'s frame host
+  at every route change, the frame's visibility (IntersectionObserver) and the tab's), a router's `go(-n)` is made a
+  replace to the target entry plus the `popstate` the router awaits, never a traversal of the page's history; on
+  `/demos` the router's moves are the browser's. A `press close` while the page is elsewhere or the frame off screen
+  goes home at once, and a hidden document's close lands at once (no flight). Checked by
+  `tools/parity/sim-history.ts` (a link at five moments of the demo, Back mid-demo, a full demo then Back / Forward,
+  then a reader's own open and close moving the history by one; a reader's open, a site link, Back, then close; a
+  tablet's off-screen frame closed by Back).
+- **In a sandboxed frame** (an opaque origin, only `/demos` frames it so) the app's desktop frame also drops its stage,
+  rim, glass and shadow (a style sheet from the same module): the page draws the phone around the display (D18), with
+  no seam. Outside a frame, unchanged.
+- **The site's end** (`web/sim-hint.js`, a head script): only on `/demos`, from 768 px, once per session; posts to the
+  frame's window (target `*`: a sandboxed frame's origin is opaque, so no other target can name it) and reads only the
+  frame's answers (`e.source === frame.contentWindow`).
+
+Cost to the Demos app outside a frame: one `window.parent !== window` test at module load.

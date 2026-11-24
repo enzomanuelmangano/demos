@@ -27,6 +27,11 @@ export function demosHead(origin: string) {
     ['name', 'twitter:title', 'Demos'],
     ['name', 'twitter:description', DESCRIPTION],
     ['name', 'twitter:image', image],
+    // Full screen from a phone's home screen, as the manifest's `standalone` already is elsewhere (D20).
+    ['name', 'apple-mobile-web-app-capable', 'yes'],
+    ['name', 'mobile-web-app-capable', 'yes'],
+    ['name', 'apple-mobile-web-app-status-bar-style', 'black-translucent'],
+    ['name', 'apple-mobile-web-app-title', 'Demos'],
   ];
   return [
     '<title>Demos | Reactiive</title>',

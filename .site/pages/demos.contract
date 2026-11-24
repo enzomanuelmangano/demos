@@ -150,27 +150,48 @@ component DemosPage
               StarsPill(seed=seed, counted=counted, stars=stars)
             view width=centring() flex-shrink=1
         DemosSim(ready=simReady, live=simLive, seen=simSeen, loaded=simLoaded, place="sim-route")
+        DemosLaunch()
+
+// Under 768 px (phones) the app is not framed inside the page (D20): a frame under a scrolling page fought the page's
+// scroll and was cramped. Instead one primary button and, under it, the launcher's still in its iPhone (a tappable
+// preview); both open /demos/app/ full screen, the app as on a phone's home screen. Hidden from 768 px (web/head.css
+// d-launch), where the framed app is the page's; the still is a background from the same media query, so a desktop
+// never downloads it here.
+component DemosLaunch
+  view
+    column width="100%" align-items="center" margin-top=36 data-motion="d-launch blur-in" data-delay="650"
+      link href="/demos/app/" display="flex" align-items="center" justify-content="center" gap=10 height=52 padding-left=28
+        padding-right=24 border-radius=9999 background-color="#f5f5f7" color="#0b0b0d" font-size=17 font-weight=600
+        letter-spacing="-0.01em" white-space="nowrap" data-motion="button d-launch-button" testId="open-demos"
+        text "Open the demos"
+        svg width=18 height=18 viewBox="0 0 18 18" fill="none" aria-hidden=true
+          rect x=1.5 y=1.5 width=6 height=6 rx=1.8 fill="currentColor"
+          rect x=10.5 y=1.5 width=6 height=6 rx=1.8 fill="currentColor"
+          rect x=1.5 y=10.5 width=6 height=6 rx=1.8 fill="currentColor"
+          rect x=10.5 y=10.5 width=6 height=6 rx=1.8 fill="currentColor" opacity=0.45
+      link href="/demos/app/" aria-label="Open the demos app" display="block" margin-top=28 width="min(78vw, 320px)"
+        data-motion="d-launch-still button" testId="open-demos-still"
+        view width="100%" padding-top="200%" aria-hidden=true
 
 // The Demos app (its own build at /demos/app/), in a sandboxed frame: an opaque origin, so Chrome gives it its own
 // renderer process and its start never blocks this page's main thread (D12; the app's files answer any origin,
 // tools/compose.ts). The window it is given decides what it draws:
 // - from 1024 px: 600 px by deskSimHeight(), beside the hero. The app draws its iPhone Air at
-//   min(1, (height - 48) / 936) with 24 px around (home/web-phone.contract frameScale); a mask keeps the phone and
-//   fades the app's stage out within 24 px of it, so the page's spiral shows around the phone;
+//   min(1, (height - 48) / 936) with 24 px around (home/web-phone.contract frameScale); the frame is clipped to the
+//   display's rectangle and the still draws the phone around it (no mask over the frame, D18);
 // - 768-1023 px: 600 px by the viewport's height under the 87 px header (600-1080 px), below the hero, the stage's
-//   edges faded (top and bottom 24 px, sides 12 %);
-// - under 768 px: the window's width and its height under the 73 px header: the app's phone layout, owning the
-//   touches once scrolled to (the app's head sets overscroll-behavior: none); the header, the hero and the footer stay
-//   the page's handles.
+//   edges faded by page-coloured overlays (top and bottom 24 px, sides 12 %; D18);
+// - under 768 px: none: the page links to /demos/app/ full screen instead (DemosLaunch, D20); this frame is hidden
+//   there, so it is never near and never loads.
 // From 768 px a still of the app's launcher (tools/sim-still.ts: the framed phone at scale 1, 492 x 984 with its
 // 24 px) is drawn where the app's phone will be, at the app's own scale, as a background from web/head.css (so a phone
 // never downloads it), under the frame and blind to the pointer. From 768 px the frame is clipped to the app's display
 // (web/head.css sim-frame: a clip path also clips hit testing), so the wheel and the touches over the bezel, the keys,
 // the stage and the margins are the page's, and only the screen's go to the app; the still draws the bezel around
 // it, and the frame fades in over the still once it has loaded and drawn (`live`).
-// The frame's page loads (`ready`, App) once its box is within a viewport's height of the window and the hero's
-// entrances are done (1.6 s), whichever is later: on a desktop at 1.6 s, on a phone when scrolled near. The masks are
-// web/head.css's (sim-sides, sim-phone): a gradient stop cannot step at a width in Contract.
+// The frame's page loads (`ready`, App) once its box is within a viewport's height of the window and the page has
+// run 600 ms (D18), whichever is later. The fades are
+// web/head.css's (sim-sides): a gradient stop cannot step at a width in Contract.
 component DemosSim
   props
     ready: bool

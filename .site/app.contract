@@ -189,8 +189,9 @@ component App
     after(500, countStars)
   action countStars
     counted = true
-  // /demos's frame (pages/demos.contract DemosSim): its page loads once the hero's entrances are done (1.6 s) and its
-  // box is within a viewport of the window; the launcher's still over it fades 800 ms after the frame's load.
+  // /demos's frame (pages/demos.contract DemosSim): its page loads 600 ms in (the hero has painted; was 1.6 s, the
+  // entrances' end: the frame's start runs in its own process, D18) once its box is within a viewport of the window;
+  // the launcher's still over it fades 800 ms after the frame's load.
   state simSettled = false
   state simNear = false
   state simFramed = false
@@ -228,7 +229,7 @@ component App
   action keepShow
     keepLive = true
   task sim when not simSettled
-    after(1600, settleSim)
+    after(600, settleSim)
   action settleSim
     simSettled = true
   action simSeen(entry: IntersectionObserverEntry)
