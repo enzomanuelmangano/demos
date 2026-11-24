@@ -310,10 +310,10 @@ component App
               else if isDemos(e.name)
                 if e.name == "demoPost"
                   // The rest of the post's head (description, og, JSON-LD) is tools/seo/metadata.ts's, written at build.
-                  head title=`${demoPost.title} | Reactiive` description="Explore the beauty of React Native animations with Reanimated, Skia and Gesture Handler"
+                  head title=`${demoPost.title} | Reactiive` description="100+ animations built with Exact, Rust and WebGPU, running live in the browser."
                     image="/og/demos.png" canonical=`/demos/${e.params.demo}`
                 else
-                  head title="Demos | Reactiive" description="Explore the beauty of React Native animations with Reanimated, Skia and Gesture Handler"
+                  head title="Demos | Reactiive" description="100+ animations built with Exact, Rust and WebGPU, running live in the browser."
                     image="/og/demos.png" canonical="/demos"
                 DemosPage(launch=(e.name == "demoPost" and demoPost.app != "" ? `/demos/app/demo/${demoPost.app}` : "/demos/app/"),seed=time.seed, counted=counted, stars=stars, simReady=(simSettled and simNear and not wide),
                   simLive=simLive, simSeen=simSeen, simLoaded=simLoaded)

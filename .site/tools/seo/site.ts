@@ -38,7 +38,9 @@ export const PERSON = {
 
 export const DOC_TITLES: Record<string, string> = { terms: 'Terms of Service', privacy: 'Privacy Policy', license: 'License' };
 export const ARTICLES_DESCRIPTION = 'Interactive articles about React Native animations by Reactiive';
-export const DEMOS_DESCRIPTION = 'Explore the beauty of React Native animations with Reanimated, Skia and Gesture Handler';
+// /demos's own copy (owner, 2026-11-24, D23): differs from live's "Explore the beauty of React Native animations ..." on
+// purpose; tools/parity/head-diff.ts expects it.
+export const DEMOS_DESCRIPTION = '100+ animations built with Exact, Rust and WebGPU, running live in the browser.';
 export const COURSE_DESCRIPTION = 'Reanimate.dev — the complete guide to React Native animations, from the basics to advanced techniques.';
 
 /**

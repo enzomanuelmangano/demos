@@ -14,7 +14,7 @@ import { join, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import { allPages, headTags, htmlFile, livePath, renderTags, type PageMetadata } from '../seo/metadata.ts';
 import { jsonLd, jsonLdScript } from '../seo/jsonld.ts';
-import { NOT_PORTED, OG, SITE_URL, loadDemoPosts } from '../seo/site.ts';
+import { DEMOS_DESCRIPTION, NOT_PORTED, OG, SITE_URL, loadDemoPosts } from '../seo/site.ts';
 import { manifestJson, robotsTxt, rssXml, sitemapXml } from '../seo/feeds.ts';
 
 const site = resolve(import.meta.dir, '../..');
@@ -83,6 +83,8 @@ function headOf(html: string): Head {
   tags.delete('meta|charset=utf-8');
   return { tags, ld: ld.sort() };
 }
+/** The three description tags (name=description, og:description, twitter:description). */
+const DESCRIPTIONS = /\|(name=description|property=og:description|name=twitter:description)(\||$)/;
 /**
  * The demo posts (docs/decisions.md D21) differ from live on purpose, in exactly these values: live's og:image
  * (/demos/og-image/<slug>) answers 404, so ours is the /demos card, in the tags and the JSON-LD; and live's description
@@ -90,12 +92,19 @@ function headOf(html: string): Head {
  * the diff, so any other difference, or ours lacking them, still fails.
  */
 function expectedLive(m: PageMetadata, l: Head): Head {
+  // /demos's description is its own copy (owner, 2026-11-24, docs/decisions.md D23: "100+ animations built with Exact,
+  // Rust and WebGPU"), not live's: live's three description tags are rewritten to it, nothing else.
+  if (m.path === '/demos') {
+    const tags = new Map<string, number>();
+    for (const [k, n] of l.tags) { const key = DESCRIPTIONS.test(k) ? k.replace(/content=[^|]*/, `content=${DEMOS_DESCRIPTION}`) : k; tags.set(key, (tags.get(key) ?? 0) + n); }
+    return { tags, ld: l.ld };
+  }
   if (m.jsonLd?.kind !== 'demo') return l;
   const slug = m.jsonLd.slug, img = (u: string) => u.replace(`${live}/demos/og-image/${slug}`, `${SITE_URL}${OG.demos.url}`).replace(`https://reactiive.io/demos/og-image/${slug}`, `${SITE_URL}${OG.demos.url}`);
   const tags = new Map<string, number>();
   for (const [k, n] of l.tags) {
     let key = img(k);
-    if (/\|(name=description|property=og:description|name=twitter:description)(\||$)/.test(key)) key = key.replace(/content=[^|]*/, `content=${m.description}`);
+    if (DESCRIPTIONS.test(key)) key = key.replace(/content=[^|]*/, `content=${m.description}`);
     tags.set(key, (tags.get(key) ?? 0) + n);
   }
   return { tags, ld: l.ld.map((j) => img(j)) };

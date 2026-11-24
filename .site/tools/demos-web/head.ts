@@ -1,8 +1,11 @@
 // The /demos/ page's head, today's (the live reactiive.io/demos, 2026-11-23), written over the demos build's
 // `<title>Demos</title>` by tools/compose.ts. Absolute URLs are made against the deploy's canonical origin.
-// One difference from today's head, on purpose: no og:site_name. Exact's runtime titles a page with no route title by
-// og:site_name when the head has one (navigation.js), so with it the tab would read "Reactiive", not "Demos | Reactiive".
-const DESCRIPTION = 'Explore the beauty of React Native animations with Reanimated, Skia and Gesture Handler';
+// Two differences from today's head, on purpose: the description is /demos's own (D23, tools/seo/site.ts), and no
+// og:site_name. Exact's runtime titles a page with no route title by og:site_name when the head has one
+// (navigation.js), so with it the tab would read "Reactiive", not "Demos | Reactiive".
+import { DEMOS_DESCRIPTION } from '../seo/site.ts';
+
+const DESCRIPTION = DEMOS_DESCRIPTION;
 const attr = (s: string) => s.replaceAll('&', '&amp;').replaceAll('"', '&quot;');
 
 export function demosHead(origin: string) {
