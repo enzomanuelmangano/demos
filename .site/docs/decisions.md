@@ -655,8 +655,18 @@ launcher page that has it and open the animation". So the 109 posts whose demo t
 ## D22. An arrow to the phone; Sponsor in the pill; TestFlight, quietly (owner, 2026-11-24)
 
 **The arrow** ("as soon as one lands on /demos, a pretty animated arrow toward the sim, as if to invite interacting
-with it"; no words, D17). `web/sim-hint.js`, before the touch demo (D19), once per session (`sessionStorage`
-`reactiive.demos.arrow`), from 768 px on `/demos` only, arrived at by load or in-site navigation:
+with it"; no words, D17). `web/sim-hint.js`, before the touch demo (D19), on **every arrival** at `/demos` (a load, a
+reload, in-site navigation back to it; owner, later the same day: "the arrow must appear in every session", which
+replaced a once-per-session gate), from 768 px, on `/demos` only (a demo post, `/demos/<slug>`, never shows it).
+The touch demo after it stays once per session. Each arrival is its own visit: a callback of an earlier one (a quick
+back-and-forth) does nothing, leaving `/demos` cancels an arrow under way (200 ms fade), and listeners are added once
+per visit and removed with it. Skipped when the reader is already at the phone: the app reported input in the last
+3 s, or the pointer was last seen within 40 px of the phone. The measuring tools turn it off for their session
+(`sessionStorage` `reactiive.demos.arrow` = `off`); `tools/parity/sim-arrow.ts` tests it with the arrow on (a load, a
+reload, /demos → Articles → the Demos link, Back and Forward, leaving mid-arrow, a rapid back-and-forth, listeners
+after 20 round trips, a demo post, a phone). A return by the header's link can be a traverse whose `navigate` and
+`popstate` fire after the new visit has armed: those stop it only when their destination (or the address after the
+popstate) is not `/demos`:
 
 - **When.** Once the visible frame is live and the hero's entrance (live's motion: title, subtitle, pill, device) has
   ended (its finite animations' `finished`, at most 3 s): about 2.4 s after a load. The header and the entrance are
@@ -701,3 +711,21 @@ under the phone at 1024 px.
   `pages/demos-app.contract` `testFlightUrl()`, used by both pages.
 - The arrow starts from the pill's last segment, so it never crosses Sponsor; the link sits under the pill's start.
   The desktop hero still fits without scroll (1440x900, and D17's short-window matrix).
+
+### D22 follow-ups (owner, 2026-11-24)
+
+- **The title is not pressable.** "Demos" was live's spiral toggle (a press turned the spiral). Now no handler, no
+  pointer cursor, no hover dim, no focus stop; still an `h1` with live's look and `motion-title-in`. The spiral turns on
+  its own only (the app's `spiralTaps` and `spiralTap` are gone).
+- **The s of "Demos" was cut.** The title's gradient is `background-clip: text`, painted only inside the box, and the
+  -0.04em tracking ends the box before the s's ink: measured at rest, the gradient's ink stopped exactly at the box
+  while the glyph's own ink went 1 px (1024, 1440) to 2 px (1180) further: a hard vertical edge, at widths where the
+  fraction rounds badly (hence "often"). Not the font load (the face is preloaded, `font-display: block`) and not the
+  entrance (it leaves no clip). Fixed with `padding-right: 0.1em; margin-right: -0.1em`: the ink is whole, and nothing
+  moves (pixel diff at rest against before). /demos's subtitle is the only other gradient text on the site.
+- **The pill's stars and the heart.** Live's FloatingStars (the port is line for line) bursts 28 stars on hover and
+  then fountains ~50 a second at up to 8.5 px, full white; the owner: "the stars are extreme... when I highlight the
+  heart I want the heart to animate, not the stars". So: only the repository part lifts stars, and a lighter hover (6
+  to start, ~14 a second, 2.5-5 px, at most 85 %, a narrow fan); idle as live. From 1024 px the stars dissolve over 38
+  px (they were cut at 26 px). Sponsor's heart beats once per hover or keyboard focus (scale 1, 1.18, 0.96, 1.08, 1 in
+  600 ms, transform only) and its pink warms (#db61a2 to #f27bbd, 200 ms); reduced motion, the colour only.

@@ -123,7 +123,7 @@ main:has([data-motion~=d-page]) ~ *{visibility:hidden}
 [data-motion~=d-title]{font-size:min(144px,var(--col) / 3.1,var(--avail) * .3) !important;font-weight:600 !important;letter-spacing:-.04em !important;line-height:1 !important;margin-top:0 !important;margin-bottom:28px !important;padding-bottom:.06em !important;margin-left:-.05em}
 [data-motion~=d-sub]{font-size:min(20px,var(--col) / var(--sub-em),var(--avail) / 22) !important;white-space:nowrap}
 [data-motion~=d-pill]{margin-top:clamp(24px,var(--avail) * .07,40px) !important}
-[data-motion~=pill-stars]{mask-image:linear-gradient(to top,#000 0,#000 10px,transparent 26px)}
+[data-motion~=pill-stars]{mask-image:linear-gradient(to top,#000 0,#000 8px,transparent 38px)}
 [data-motion~=sim-col]{width:var(--pw) !important;flex:0 0 var(--pw) !important;height:var(--ph);margin-top:0 !important;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;isolation:isolate;animation:device-in 700ms cubic-bezier(.16,1,.3,1) backwards}
 /* The light the device stands in: a soft cool spotlight behind it (no panel, no edge), and the floor it casts on. */
 [data-motion~=sim-col]::after{content:'';position:absolute;z-index:-1;left:50%;top:50%;width:calc(var(--pw) * 2.8);height:calc(var(--ph) * 1.3);translate:-50% -50%;background:radial-gradient(closest-side,rgb(140 156 250 / .2),rgb(125 143 239 / .07) 48%,transparent);pointer-events:none}
@@ -145,6 +145,13 @@ main:has([data-motion~=d-page]) ~ *{visibility:hidden}
 [data-motion~=d-tf]:is(:hover,:focus-within) [data-motion~=d-tf-qr]{visibility:visible;opacity:1;scale:1;translate:none;transition:opacity 200ms cubic-bezier(.23,1,.32,1) 60ms,scale 200ms cubic-bezier(.23,1,.32,1) 60ms,translate 200ms cubic-bezier(.23,1,.32,1) 60ms,visibility 0s 60ms}
 }
 @media (min-width:1024px) and (hover:hover) and (pointer:fine) and (prefers-reduced-motion:reduce){[data-motion~=d-tf-qr]{scale:1;translate:none}}
+/* /demos's Sponsor heart (pages/demos.contract StarsPill): one heartbeat per hover or keyboard focus (the animation
+   restarts each time the rule starts to match), 600 ms, two beats settling, transform only; the pink warms in 200 ms.
+   Reduced motion: the colour only. */
+@keyframes heart-beat{0%{transform:scale(1);animation-timing-function:cubic-bezier(.33,0,.2,1)}18%{transform:scale(1.18);animation-timing-function:cubic-bezier(.4,0,.2,1)}38%{transform:scale(.96);animation-timing-function:cubic-bezier(.33,0,.2,1)}58%{transform:scale(1.08);animation-timing-function:cubic-bezier(.23,1,.32,1)}100%{transform:scale(1)}}
+[data-motion~=d-heart]{transition:color 200ms ease}
+[data-motion~=d-sponsor]:is(:hover,:focus-visible) [data-motion~=d-heart]{color:#f27bbd !important;animation:heart-beat 600ms both}
+@media (prefers-reduced-motion:reduce){[data-motion~=d-sponsor]:is(:hover,:focus-visible) [data-motion~=d-heart]{animation:none}}
 /* Interaction transitions, as the reference's classes compute them. */
 [data-motion~=colors]{transition-property:color,background-color,border-color,outline-color,text-decoration-color,fill,stroke !important;transition-duration:150ms !important;transition-timing-function:cubic-bezier(.4,0,.2,1) !important;transition-delay:0s !important}
 /* /demos's pill: transition-colors duration-200. */

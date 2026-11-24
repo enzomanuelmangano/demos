@@ -1,8 +1,11 @@
 // The /demos hero's two Canvas 2D surfaces, ported line for line from the reference:
 // - `spiral(seed, taps)`: components/animated-spiral/spiral.tsx, 2,500 dots on a logarithmic spiral that ease
-//   (in-out cubic, 2.5 s) to a new random angle 500 ms after mount and on each tap of the title;
+//   (in-out cubic, 2.5 s) to a new random angle 500 ms after mount (live also on each tap of the title; the title is
+//   not pressable here, so app.contract passes taps = 0 and the taps branch never runs);
 // - `stars(hovered, seed)`: components/landing/hero/github-stars-button.tsx's FloatingStars, the soft 4-point stars
-//   that rise out of the "Demos is Open Source" pill (one every 0.6 s, a fountain of ~50 a second while hovered).
+//   that rise out of the "Demos is Open Source" pill (one every 0.6 s, as live). Hovered, live bursts 28 and fountains
+//   ~50 a second at up to 8.5 px and full white; the owner found that "extreme" (2026-11-24), so here a hover lifts
+//   a light fountain: 6 to start, ~14 a second, 2.5-5 px, at most 85 %, fanning a little.
 // Data modules may not read the clock or Math.random (Exact: time and seeds are source arguments), so time is the
 // frame's and the randomness a seeded stream from exactTime()'s per-launch seed.
 import type { Ctx2D, Frame } from '../app.contract.d.ts';
@@ -72,10 +75,11 @@ function drawSpiral(ctx: Ctx2D, f: Frame, [seed, taps]: number[]): boolean {
 type Particle = { x: number; y: number; size: number; speed: number; vx: number; opacity: number; rotation: number; rotationSpeed: number };
 const STAR = '#e4e4e7';
 const BLEED = 56;
-const BURST = 28;
+const BURST = 6;
 const IDLE_OPACITY = 0.8;
 const IDLE_SPAWN = 0.6;
-const ACTIVE_SPAWN = 0.02;
+const ACTIVE_SPAWN = 0.07;
+const ACTIVE_OPACITY = 0.85;
 type Stars = { rand: () => number; particles: Particle[]; last: number; spawn: number; fade: number; hovered: boolean };
 let stars: Stars | null = null;
 
@@ -105,7 +109,7 @@ function drawStars(ctx: Ctx2D, f: Frame, [hoveredArg, seed]: number[]): boolean 
       return { x, y: atY ?? height, size: idle ? 2 + r() * 2 : 3 + r() * 3, speed: idle ? 40 + r() * 30 : 80 + r() * 60, vx: 0, opacity: atY ? 0.8 : 0, rotation: r() * Math.PI * 2, rotationSpeed: (r() - 0.5) * 3 };
     }
     const fromCenter = (x - width / 2) / (width / 2);
-    return { x, y: atY ?? height, size: 3.5 + r() * 5, speed: 150 + r() * 190, vx: fromCenter * (60 + r() * 90) + (r() - 0.5) * 60, opacity: 0.6, rotation: r() * Math.PI * 2, rotationSpeed: (r() - 0.5) * 9 };
+    return { x, y: atY ?? height, size: 2.5 + r() * 2.5, speed: 90 + r() * 80, vx: fromCenter * (20 + r() * 30) + (r() - 0.5) * 20, opacity: 0.5, rotation: r() * Math.PI * 2, rotationSpeed: (r() - 0.5) * 5 };
   };
   if (!stars || f.cause === 'mount') {
     const s: Stars = { rand: stream(seed * 40503 + 7), particles: [], last: f.time, spawn: 0, fade: IDLE_OPACITY, hovered };
@@ -122,7 +126,7 @@ function drawStars(ctx: Ctx2D, f: Frame, [hoveredArg, seed]: number[]): boolean 
   const dt = Math.max(0, Math.min((f.time - s.last) / 1000, 0.1));
   s.last = f.time;
   ctx.clearRect(0, 0, width, height);
-  const target = hovered ? 1 : IDLE_OPACITY;
+  const target = hovered ? ACTIVE_OPACITY : IDLE_OPACITY;
   s.fade = s.fade < target ? Math.min(target, s.fade + dt * 4) : Math.max(target, s.fade - dt * 2);
   s.spawn += dt;
   if (s.spawn > (hovered ? ACTIVE_SPAWN : IDLE_SPAWN)) { s.spawn = 0; s.particles.push(make(s, undefined, !hovered)); }

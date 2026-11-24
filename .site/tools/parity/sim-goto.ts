@@ -71,7 +71,7 @@ const frameOff = (page: Page) => page.eval<{ x: number; y: number }>(`(() => { c
 const pages: Record<string, number> = {};
 {
   const page = await open(cdp, 1440, { height: 900 });
-  await page.send('Page.addScriptToEvaluateOnNewDocument', { source: `try { sessionStorage.setItem('reactiive.demos.hint', '1'); sessionStorage.setItem('reactiive.demos.arrow', '1') } catch {}` });
+  await page.send('Page.addScriptToEvaluateOnNewDocument', { source: `try { sessionStorage.setItem('reactiive.demos.hint', '1'); sessionStorage.setItem('reactiive.demos.arrow', 'off') } catch {}` });
   await page.goto(`${origin}/demos`);
   await live(page);
   const a = (await app())!;
@@ -121,7 +121,7 @@ if (part(1)) for (let rep = 0; rep < reps; rep++) for (const d of chosen) {
   // By hand, on the same terms: a fresh page cold at /demos (the same first load of the app and of the demo's code),
   // from the frame's live moment: its arrow keys to the icon's page, a click on the icon as long after live as the deep link's.
   const hp = await open(cdp, 1440, { height: 900, scale: 2 });
-  await hp.send('Page.addScriptToEvaluateOnNewDocument', { source: `try { sessionStorage.setItem('reactiive.demos.hint', '1'); sessionStorage.setItem('reactiive.demos.arrow', '1') } catch {}` });
+  await hp.send('Page.addScriptToEvaluateOnNewDocument', { source: `try { sessionStorage.setItem('reactiive.demos.hint', '1'); sessionStorage.setItem('reactiive.demos.arrow', 'off') } catch {}` });
   await hp.goto(`${origin}/demos`);
   await live(hp);
   const ha = (await app())!;
@@ -186,7 +186,7 @@ if (part(2)) {
 if (part(3)) {
   const d = chosen.at(-1)!, d2 = chosen[0];
   const page = await open(cdp, 1440, { height: 900 });
-  await page.send('Page.addScriptToEvaluateOnNewDocument', { source: LISTEN + `try { sessionStorage.setItem('reactiive.demos.hint', '1'); sessionStorage.setItem('reactiive.demos.arrow', '1') } catch {}` });
+  await page.send('Page.addScriptToEvaluateOnNewDocument', { source: LISTEN + `try { sessionStorage.setItem('reactiive.demos.hint', '1'); sessionStorage.setItem('reactiive.demos.arrow', 'off') } catch {}` });
   let loads = 0;
   page.on((e) => { if (e.method === 'Page.frameNavigated' && e.params.frame.parentId && String(e.params.frame.url).includes('/demos/app/')) loads++; });
   await page.goto(`${origin}/demos`);
