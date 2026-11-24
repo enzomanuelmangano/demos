@@ -79,7 +79,7 @@ component Runs
       else if r.math != ""
         image r.math alt="" width=r.width height=r.height vertical-align="middle"
       else if r.code
-        text r.text class=Mono font-size="0.875em" font-weight=500 color="#e5c07b" background-color="rgb(255 255 255 / 0.06)" padding="3px 7px" border-radius=6 box-shadow="0 0 0 1px var(--color-hairline)" white-space="pre-wrap"
+        text r.text role="code" class=Mono font-size="0.875em" font-weight=500 color="#e5c07b" background-color="rgb(255 255 255 / 0.06)" padding="3px 7px" border-radius=6 box-shadow="0 0 0 1px var(--color-hairline)" white-space="pre-wrap"
       else if r.href != "" and not r.brand
         if r.strong
           // A link in bold keeps the link colour (live: <strong><a>, the anchor's colour wins).
@@ -133,7 +133,9 @@ component CodeBlock
             background-color = "rgb(255 255 255 / 0.1)"
           image "/assets/images/copy.svg" alt="" aria-hidden=true width=20 height=20 display="block"
         view overflow-x="auto" tabindex=0 aria-label=`${block.lang} code` class=Mono font-size=14 line-height="21px" padding=16 color=(block.title == "terminal" ? "#F8F8F2" : "#bfc7d5") background-color=(block.title == "terminal" ? "#000000" : "var(--color-surface-code)") border-radius=14 data-motion="pre"
-          column min-width="100%" align-self="flex-start"
+          // Its lines are code to assistive technology (Exact has no `pre` or `code` element: ARIA's `code` role on the
+          // lines' box, inside the labelled, focusable scrolling region).
+          column min-width="100%" align-self="flex-start" role="code"
             for l, i in block.lines key=i
               if l.startsWith(" ")
                 text white-space="pre" min-height="21px"
