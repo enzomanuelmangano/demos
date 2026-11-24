@@ -19,6 +19,9 @@ const rect = await page.eval<{ x: number; y: number; w: number; h: number }>(`((
   const stage = document.querySelector('[data-testid="web-stage"]') ?? document.querySelector('[testid="web-stage"]');
   if (!stage) throw new Error('no web-stage');
   for (let n = stage; n; n = n.parentElement) { n.style.setProperty('background', 'transparent', 'important'); }
+  // No drop shadow in the still: cut at the still's edge it was a darker rectangle around the phone on the page
+  // (decisions.md D18); the page draws its own soft shadow under the device (web/head.css sim-sides::before).
+  for (const n of stage.querySelectorAll('*')) if (getComputedStyle(n).boxShadow.includes('rgba(0, 0, 0, 0.6)')) n.style.setProperty('box-shadow', 'none', 'important');
   document.documentElement.style.background = 'transparent'; document.body.style.background = 'transparent';
   const phone = stage.firstElementChild.getBoundingClientRect();
   return { x: phone.x - 24, y: phone.y - 24, w: phone.width + 48, h: phone.height + 48 };

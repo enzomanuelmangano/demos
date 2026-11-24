@@ -498,6 +498,19 @@ inside the app's own renderer process and the page's, per interaction; site vs t
   The launcher still is re-shot from it. In the site's frame the app now draws only its display (in a sandboxed frame
   its stage, rim, glass and shadow are transparent, isolation.md §6), so the still's phone shows around the display
   rectangle with no lighter corner and no step where the clip meets the rim, at any scale or DPR.
+- **The status bar follows the flight** (owner: "this bar stutters badly when it animates"). The framed phone's status
+  bar and home indicator took the demo's ink at the route's change: on a light demo the bar turned black in the tap's
+  first frame, over the launcher, while the card was still an icon, and turned white again only when the close had
+  landed (a 255-of-255 jump in one frame, both ways; `tools/parity/sim-statusbar.ts`). Each is now drawn in both inks
+  (`home/web-phone.contract` WebStatusBar) and cross-faded by opacity in the flight's own keyframes as the card covers
+  the bar (35-95 % of its width), on the compositor: at most 62-67 of 255 per frame, never before the card covers half
+  the screen, standalone and framed. The module change is a compose-time patch of the artifact's `modules/index.js`
+  (`tools/demos-web/patches.ts`); the Demos app's `modules/web/index.js` stays as on main.
+- **No dark rectangle around the phone** (owner: "what is this black area around the sim", outside the rim). The
+  launcher still had the app's drop shadow baked in, cut at the still's edge: a darker rectangle, 18 px past the rim,
+  with a 5-level step where it ended (sampled along a row at 1440, DPR 2). The still is shot without it
+  (`tools/sim-still.ts`), and the page's own soft shadow under the device is a little lighter (.42 / .28): the page's
+  gradient now runs right up to the rim (19-20 levels, no step).
 - **Glass buttons.** The web stand-in for iOS 26's glass close / info buttons read as flat grey discs over light demos;
   now a neutral translucent tint over a blur, a specular rim lit from the top, a soft lift shadow and a white glyph
   with a hairline shadow (`home/web-chrome.contract` WebRoundButton; Exact's `backdrop-filter` takes blur and saturate
