@@ -53,7 +53,8 @@ interface Driver {
   closeSession(): Promise<void>;
   quit(): Promise<void>;
 }
-const HIDE_HINTS = `try { sessionStorage.setItem('reactiive.demos.hint', '1'); sessionStorage.setItem('reactiive.demos.arrow', '1'); } catch (e) {}`;
+// The touch demo seen ('1') and the arrow off ('off', web/sim-hint.js: the measuring tools' switch) for the session.
+const HIDE_HINTS = `try { sessionStorage.setItem('reactiive.demos.hint', '1'); sessionStorage.setItem('reactiive.demos.arrow', 'off'); } catch (e) {}`;
 
 async function webkitDriver(): Promise<Driver> {
   const dir = opt('--pw') ?? process.env.PLAYWRIGHT_DIR;
@@ -87,6 +88,7 @@ async function webkitDriver(): Promise<Driver> {
 
 async function safariDriver(): Promise<Driver> {
   const port = 4600 + Math.floor(Math.random() * 300);
+  if (!Bun.which('safaridriver')) throw new Error('no safaridriver on this Mac (it ships with Safari, in /usr/bin)');
   const proc = Bun.spawn(['safaridriver', '-p', String(port)], { stdout: 'ignore', stderr: 'ignore' });
   const base = `http://127.0.0.1:${port}`;
   await until(async () => (await fetch(`${base}/status`)).ok, 5000);
@@ -120,7 +122,7 @@ async function safariDriver(): Promise<Driver> {
       try { return await exec(body); } finally { await call('POST', '/frame/parent', {}); }
     },
     click: (x, y) => call('POST', '/actions', { actions: [{ type: 'pointer', id: 'mouse', parameters: { pointerType: 'mouse' }, actions: [{ type: 'pointerMove', x: Math.round(x), y: Math.round(y), origin: 'viewport' }, { type: 'pointerDown', button: 0 }, { type: 'pointerUp', button: 0 }] }] }),
-    key: () => call('POST', '/actions', { actions: [{ type: 'key', id: 'kb', actions: [{ type: 'keyDown', value: '' }, { type: 'keyUp', value: '' }] }] }),
+    key: () => call('POST', '/actions', { actions: [{ type: 'key', id: 'kb', actions: [{ type: 'keyDown', value: '\uE00C' }, { type: 'keyUp', value: '\uE00C' }] }] }),
     back: () => call('POST', '/back', {}),
     forward: () => call('POST', '/forward', {}),
     shot: async (name) => { if (shots) await Bun.write(join(shots, `safari-${name}.png`), Buffer.from(await call('GET', '/screenshot'), 'base64')); },
@@ -135,10 +137,10 @@ const want = opt('--driver');
 let drv: Driver;
 if (want === 'webkit') { drv = await webkitDriver(); await drv.open(); }
 else {
-  drv = await safariDriver();
-  try { await drv.open(); }
+  let sd: Driver | undefined;
+  try { sd = await safariDriver(); await sd.open(); drv = sd; }
   catch (e) {
-    await drv.quit();
+    await sd?.quit().catch(() => {});
     if (want === 'safaridriver') throw e;
     console.log(`info safaridriver unavailable (${String(e).slice(0, 160)}): Safari > Settings > Advanced > "Show features for web developers", then Developer > "Allow remote automation". Falling back to Playwright WebKit.`);
     drv = await webkitDriver();

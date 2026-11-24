@@ -6,7 +6,7 @@
 // /demos/<slug>) Safari fetched /articles/app-<hash>.js or /demos/app-<hash>.js: the runtime never started (no in-app
 // navigation, no framed Demos app on a demo post's deep link). Written root-relative here, the same file for every
 // engine. Run right after web-build:
-//   bun tools/entry-url.ts [dist]      (exit 1 when a page names an entry this cannot make absolute)
+//   bun tools/entry-url.ts [dist]      (exit 1 when a page's runtime entry is not root-relative after it, or none is found)
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
@@ -15,7 +15,11 @@ const routes = JSON.parse(readFileSync(join(dist, 'routes.json'), 'utf8'));
 const base: string = routes.base ?? '/';
 if (!base.startsWith('/') || !base.endsWith('/')) throw new Error(`entry-url: the build's base ${base} is not an absolute directory`);
 
-let pages = 0, entries = 0;
+// Every page with the runtime's checkpoint script must end with a root-relative entry (one written here, or by an
+// earlier run: a re-run is a no-op). A page that keeps another entry, or a build where nothing names an entry at all,
+// fails the build: Safari would not start that page's runtime.
+let pages = 0, entries = 0, already = 0;
+const bad: string[] = [];
 const walk = (dir: string) => {
   for (const name of readdirSync(dir)) {
     const p = join(dir, name);
@@ -24,15 +28,17 @@ const walk = (dir: string) => {
     const html = readFileSync(p, 'utf8');
     let n = 0;
     const out = html.replace(/\bdata-entry="([^"]*)"/g, (all, url: string) => {
-      if (url.startsWith('/')) return all;
-      if (!url.startsWith('./') || url.includes('..')) throw new Error(`entry-url: ${p}: data-entry="${url}" is not ./<file>`);
+      if (url.startsWith('/')) { already++; return all; }
+      if (!url.startsWith('./') || url.includes('..')) { bad.push(`${p}: data-entry="${url}"`); return all; }
       n++;
       return `data-entry="${base}${url.slice(2)}"`;
     });
-    if (!n) continue;
-    writeFileSync(p, out);
-    pages++; entries += n;
+    if (n) { writeFileSync(p, out); pages++; entries += n; }
+    for (const tag of out.match(/<script\b[^>]*\btype="application\/vnd\.exact\.checkpoint"[^>]*>/g) ?? [])
+      if (!/\bdata-entry="\//.test(tag)) bad.push(`${p}: a checkpoint script without a root-relative data-entry`);
   }
 };
 walk(dist);
-console.log(`entry-url: ${entries} runtime entries made root-relative in ${pages} pages`);
+if (bad.length) { console.error(`entry-url: ${bad.length} page(s) Safari could not start:\n  ${bad.slice(0, 20).join('\n  ')}`); process.exit(1); }
+if (entries + already === 0) { console.error(`entry-url: no page in ${dist} names a runtime entry (data-entry): the build's loader changed; check tools/entry-url.ts`); process.exit(1); }
+console.log(`entry-url: ${entries} runtime entries made root-relative in ${pages} pages${already ? ` (${already} already were)` : ''}`);
