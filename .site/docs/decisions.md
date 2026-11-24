@@ -61,7 +61,11 @@ animated-grid-list, blurred-bottom-bar, dynamic-blur-tabs, dynamic-tab-indicator
 inner-shared-transition, instagram-shared-transition, ios-home-grid, particles-button, popup-handler,
 qr-code-generator, record-button, shake-to-delete, skia-bottom-sheet, twitter-tab-bar) are not ported to Exact:
 → `/demos/` with a **307** (amended after the final review: the launcher is not a permanent equivalent of those
-posts, so search engines keep the old URLs; the 109 with a demo stay 308). `/profile` and `/manage-subscription` (signed-out visitors were sent to `/demos` client-side) are 307s to
+posts, so search engines keep the old URLs; the 109 with a demo stay 308). No alias for `qr-code-generator`
+(checked against the reference's MDX, 2026-11-24): it is the RN app's `qrcode` demo (a text field, a gradient QR code,
+path-effect sliders), and none of the app's three QR demos is it (`cherry-blossom-qrcode` a 3D WebGPU tree,
+`empty-qr-code` the RN `empty-qrcode` logo / QR toggle with a share sheet, `notion-qrcode` a torus of avatars morphing
+into a QR code); the owner's decision is that no demo is ported to Exact, so it stays a 307 to the launcher. `/profile` and `/manage-subscription` (signed-out visitors were sent to `/demos` client-side) are 307s to
 `/demos/` at the edge.
 
 ## D6. Building the demos web: two local gotchas, both handled in the tool
