@@ -487,7 +487,7 @@ inside the app's own renderer process and the page's, per interaction; site vs t
 - **The bezel is concentric** (owner: "the border around the sim must ALWAYS be equidistant from the mockup"). The app's
   rim and black glass were circular (`corner-shape` round, 74 / 70 pt) around a continuous 62 pt display, so the
   bezel thickened at the corners (up to 5.9 px more at 3x). Rim and glass are now the display's outline offset along
-  its normals (`tools/air-frame-paths.ts` at the repo root, polygons under 0.02 pt from the true offset, used as clip
+  its normals (`.site/tools/demos-web/air-frame-paths.ts` (a site tool, outside the Demos app's capture), polygons under 0.02 pt from the true offset, used as clip
   paths in `home/web-phone.contract`; the drop shadow is its own box 6 pt inside). Sampled along the normals at 0-90°
   of each corner and on the edges at 3x: max deviation 0.3 px at 1440x900, 0.4 px at 1728x960 (was 5.5 / 5.9 px).
   The launcher still is re-shot from it. In the site's frame the app now draws only its display (in a sandboxed frame

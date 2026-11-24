@@ -80,11 +80,16 @@ for (const { file, why } of patched) console.log(`compose: patched ${file}: ${wh
 // The /demos/app/ head: /demos's title, description and share card (a CI-only overlay of the built HTML, never of the
 // tracked demos sources). The page is one shell for every demos route.
 const head = demosHead(origin);
+// The framed-app bridge (tools/demos-web/bridge.js: messages, history in place, the transparent stage in the sandboxed
+// frame): the site's, written into the artifact's HTML here, never into the Demos app's sources (isolation.md §6).
+const bridge = readFileSync(join(site, 'tools/demos-web/bridge.js'), 'utf8').replace(/\/\*[\s\S]*?\*\//, '').trim();
+if (bridge.includes('</script')) throw new Error('compose: the bridge cannot be inlined');
+const bridgeScript = `<script>${bridge}</script>`;
 for (const page of ['index.html', 'shell.html']) {
   const p = join(staticDir, MOUNT.slice(1), page);
   const html = readFileSync(p, 'utf8');
   if (!html.includes('<title>Demos</title>')) throw new Error(`compose: demos ${page} has no <title>Demos</title>`);
-  writeFileSync(p, html.replace('<title>Demos</title>', head));
+  writeFileSync(p, html.replace('<title>Demos</title>', head + bridgeScript));
 }
 
 // ---------------------------------------------------------------- routes
