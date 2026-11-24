@@ -119,6 +119,13 @@ sandboxed frame of `/demos/app/`, both ends small and guarded:
 - **In a sandboxed frame** (an opaque origin, only `/demos` frames it so) the app's desktop frame also drops its stage,
   rim, glass and shadow (a style sheet from the same bridge): the page draws the phone around the display (D18), with
   no seam. Outside a frame, unchanged.
+- **The framed phone's iOS keyboard** (`.site/tools/demos-web/keyboard.js`, 2026-11-24): inlined by `tools/compose.ts`
+  after the bridge, in the same composed HTML only. Acts only framed with a fine pointer (a desktop) and only for a field
+  inside the drawn phone (`web-device`); a phone's full-screen `/demos/app/` keeps the OS keyboard and none of it runs.
+  It stands in a `navigator.virtualKeyboard` (the rect the web host reads for `env.keyboardHeight`), draws the keys in an
+  overlay over the display (built on the first focus), types with `execCommand` (real `beforeinput` / `input`) and
+  lifts `data-toolbarplacement="keyboard"` bars with the keys. Reads nothing outside its frame, posts nothing. Checked
+  by `tools/parity/sim-keyboard.ts`.
 - **The site's end** (`web/sim-hint.js`, a head script): only on `/demos`, from 768 px, once per session; posts to the
   frame's window (target `*`: a sandboxed frame's origin is opaque, so no other target can name it) and reads only the
   frame's answers (`e.source === frame.contentWindow`).

@@ -84,12 +84,16 @@ const head = demosHead(origin);
 // frame): the site's, written into the artifact's HTML here, never into the Demos app's sources (isolation.md §6).
 const bridge = readFileSync(join(site, 'tools/demos-web/bridge.js'), 'utf8').replace(/\/\*[\s\S]*?\*\//, '').trim();
 if (bridge.includes('</script')) throw new Error('compose: the bridge cannot be inlined');
-const bridgeScript = `<script>${bridge}</script>`;
+// The framed desktop phone's iOS keyboard (tools/demos-web/keyboard.js): the same kind of site code, inlined after the
+// bridge; it runs only in a frame with a fine pointer and builds its nodes on the first focus in the drawn phone.
+const keyboard = readFileSync(join(site, 'tools/demos-web/keyboard.js'), 'utf8').replace(/\/\*[\s\S]*?\*\//, '').trim();
+if (keyboard.includes('</script')) throw new Error('compose: the keyboard cannot be inlined');
+const bridgeScript = `<script>${bridge}</script><script>${keyboard}</script>`;
 for (const page of ['index.html', 'shell.html']) {
   const p = join(staticDir, MOUNT.slice(1), page);
   const html = readFileSync(p, 'utf8');
   if (!html.includes('<title>Demos</title>')) throw new Error(`compose: demos ${page} has no <title>Demos</title>`);
-  writeFileSync(p, html.replace('<title>Demos</title>', head + bridgeScript));
+  writeFileSync(p, html.replace('<title>Demos</title>', () => head + bridgeScript));
 }
 
 // ---------------------------------------------------------------- routes
