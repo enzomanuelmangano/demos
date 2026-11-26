@@ -123,16 +123,19 @@ component TestFlightLink
   view
     view position="relative" data-motion="d-tf"
       link href=testFlightUrl() target="_blank" rel="noopener noreferrer" aria-label="Try the Demos app on iPhone with TestFlight"
-        display="flex" align-items="center" gap=6 height=24 font-size=13 line-height="20px" color="rgb(255 255 255 / 0.5)"
+        // Optically on the pill above: the phone in a 16 px box centred where the GitHub mark is (the pill's 10 px
+        // padding), and the words starting where "Demos is Open Source" does (the mark's 16 px and a 10 px gap). Only
+        // where the pill and the link are left-aligned (under 640 px and from 1024 px, `centring`); centred, no inset.
+        display="flex" align-items="center" gap=10 height=24 padding-left=`max(${sm(10, 0)}, ${lg(0, 10)})` font-size=13 line-height="20px" color="rgb(255 255 255 / 0.5)"
         white-space="nowrap" transition="color 200ms cubic-bezier(0.4, 0, 0.2, 1)" data-motion="colors-200"
         :hover
           color = "rgb(255 255 255 / 0.8)"
-        svg width=14 height=14 viewBox="0 0 14 14" fill="none" aria-hidden=true flex-shrink=0
-          rect x=3.25 y=0.75 width=7.5 height=12.5 rx=2 stroke="currentColor" stroke-width=1.3
-          rect x=5.5 y=2.3 width=3 height=1 rx=0.5 fill="currentColor"
+        svg width=16 height=16 viewBox="0 0 16 16" fill="none" aria-hidden=true flex-shrink=0
+          rect x=4 y=1.15 width=8 height=13.7 rx=2.1 stroke="currentColor" stroke-width=1.3
+          rect x=6.5 y=2.8 width=3 height=1 rx=0.5 fill="currentColor"
         text "Try it on iPhone"
         // The north-east arrow drawn, not typed: U+2197 is outside the preloaded ASCII face and would fetch the full Inter.
-        svg width=9 height=9 viewBox="0 0 9 9" fill="none" aria-hidden=true flex-shrink=0 opacity=0.7
+        svg width=9 height=9 viewBox="0 0 9 9" fill="none" aria-hidden=true flex-shrink=0 opacity=0.7 margin-left=-4
           path d="M2 7 7 2M3 2h4v4" stroke="currentColor" stroke-width=1.2 stroke-linecap="round" stroke-linejoin="round"
       view position="absolute" left=-12 top="100%" margin-top=10 padding=12 border-radius=16 background-color="#16171b"
         pointer-events="none" aria-hidden=true data-motion="d-tf-qr"
