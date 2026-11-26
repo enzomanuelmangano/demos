@@ -185,13 +185,15 @@ component Demos
     gpuWarm = true
   task warmingGpu when homeShown and not gpuWarm key=top(nav).id
     after(4000, warmGpu, wait=idle, max=10000)
-  resource changed = changedDemos() when homeShown as shape string[] else empty()
+  // The phone's feedback loop only (the Mac's LAN feedback server): never on the web, where every visitor's browser
+  // asked a private address that refused it (a console error on reactiive.io, the LAN address in the bundle's use).
+  resource changed = changedDemos() when homeShown and not web as shape string[] else empty()
   derive changedSlugs = failed(changed) ? [] : (current(changed) ? changed : savedChanged)
   action refreshChanged
     refresh changed
   // A demo opened on the phone is seen: its orange badge goes at the home's next ask.
   mutation seen as shape SnapAck
-  task seeing when top(nav).name == "demo" and not desk key=top(nav).id
+  task seeing when top(nav).name == "demo" and not desk and not web key=top(nav).id
     after(1, markSeen)
   action markSeen
     if top(nav).name == "demo"
