@@ -28,7 +28,7 @@ const until = async (f: () => Promise<boolean>, ms = 20000) => { const t = Date.
 type App = { page: Page; ev: <T = any>(e: string) => Promise<T>; off: { x: number; y: number }; sessionId: string };
 async function open(): Promise<App> {
   const page = await newPage(cdp, 1440);
-  // No one-time touch demo or arrow: this session has seen them.
+  // No arrow: this session turned it off.
   await page.send('Page.addScriptToEvaluateOnNewDocument', { source: `try{sessionStorage.setItem('reactiive.demos.hint','1');sessionStorage.setItem('reactiive.demos.arrow','off')}catch(e){}` });
   await page.goto(`${origin}/demos`);
   await until(() => page.eval(`!!document.querySelector('iframe[data-motion~=live]')?.checkVisibility()`));

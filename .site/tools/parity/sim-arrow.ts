@@ -21,7 +21,7 @@ const LOG = `(() => { window.__arr = { log: [], max: 0 }; const is = (n) => n.lo
     window.__arr.max = Math.max(window.__arr.max, [...document.body.children].filter(is).length); }).observe(document.documentElement, { childList: true, subtree: true }); })();`;
 async function open(width = 1440) {
   const page = await newPage(cdp, width);
-  // The touch demo is not under test (and would take the screen after the arrow).
+  // The session marked seen (the key the measuring tools share).
   await page.send('Page.addScriptToEvaluateOnNewDocument', { source: `try { sessionStorage.setItem('reactiive.demos.hint', '1') } catch {}; document.addEventListener('DOMContentLoaded', () => { ${LOG} });` });
   return page;
 }

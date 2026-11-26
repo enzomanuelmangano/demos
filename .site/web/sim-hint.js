@@ -42,42 +42,26 @@
   }).observe(document.documentElement, { childList: true, subtree: true });
   all();
 })();
-/* /demos's arrow (D22: on every arrival at /demos) and one-time touch demo (D19): once per session, 1.2 s after the framed Demos app has drawn, an iOS-style touch
-   indicator taps an app on the phone (it opens), taps inside it (Composable Text's pill morphs), and closes it, so the
-   phone reads as a live device, not a picture. The app is driven only through its framed-app messages
-   (modules/web/index.js: `rect` and `press` by testId, docs/isolation.md); nothing here reaches into it. Only where the
-   page frames the app (from 768 px, on /demos); skipped with reduced motion or Save-Data. Stopped at once by any input
-   on the page or in the app (the app reports real input), a hidden tab, or leaving /demos (Back included); a demo it
-   opened is closed again, so the kept frame never carries it around the site. Never blocks: the indicator takes no
-   pointer. */
+/* /demos's arrow (D22: on every arrival at /demos). The one-time touch demo that followed it (D19) is gone (owner,
+   2026-11-26: "the sim must be interactive and usable from the start; the arrow says it is interactive"): nothing here
+   ever presses anything in the app. The arrow takes no pointer and fades at the first input, hover of the phone, or
+   leaving /demos. */
 (function () {
-  var KEY = 'reactiive.demos.hint';
-  var seen = function () { try { return sessionStorage.getItem(KEY) === '1'; } catch (e) { return true; } };
-  var mark = function () { try { sessionStorage.setItem(KEY, '1'); } catch (e) {} };
   var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   // The measuring tools turn the arrow off for their session (`reactiive.demos.arrow` = 'off'); a reader never does.
   var noArrow = function () { try { return sessionStorage.getItem('reactiive.demos.arrow') === 'off'; } catch (e) { return false; } };
-  // The arrow plays with reduced motion too (still, only faded) and with Save-Data (it costs no bytes); the touch demo not.
-  var touchOk = function () { return !seen() && !reduce && !(navigator.connection && navigator.connection.saveData); };
   var wide = matchMedia('(min-width: 768px)');
   var onDemos = function () { return /^\/demos\/?$/.test(location.pathname); };
-  // idle: waiting for /demos; armed: the arrow (then the touch demo's wait); playing: the touch demo; rest: done for
-  // this visit (a new arrival makes it idle again). `visit` tags each arrival, so a late callback of an earlier one
+  // idle: waiting for /demos; armed: the arrow; rest: done for this visit (a new arrival makes it idle again). `visit` tags each arrival, so a late callback of an earlier one
   // (a quick back-and-forth) does nothing.
-  var state = 'idle', dot = null, frame = null, opened = false, waits = {}, timer = 0, tries = 0, visit = 0, lastInput = -1e9;
+  var state = 'idle', frame = null, timer = 0, tries = 0, visit = 0, lastInput = -1e9;
   var visible = function () { return !!frame && frame.isConnected && frame.checkVisibility() && onDemos(); };
   function stop() {
-    if (state !== 'playing' && state !== 'armed') return;
-    var was = state;
+    if (state !== 'armed') return;
     state = 'rest';
-    mark();
     clearTimeout(timer);
     off();
     unarrow(200);
-    // A demo the hint opened is closed again before the indicator leaves.
-    if (was === 'playing' && opened && frame && frame.contentWindow) frame.contentWindow.postMessage({ demos: 'press', target: 'close' }, '*');
-    opened = false;
-    if (dot) { var d = dot; dot = null; d.animate([{ opacity: getComputedStyle(d).opacity }, { opacity: 0 }], { duration: 200, fill: 'forwards' }).onfinish = function () { d.remove(); }; }
   }
   function onInput() { stop(); }
   function onHide() { if (document.hidden) stop(); }
@@ -106,65 +90,7 @@
     if (m.demos === 'input') lastInput = performance.now();
     if (!frame || e.source !== frame.contentWindow) return;
     if (m.demos === 'input') stop();
-    if (m.demos === 'rect' && waits[m.target]) { var w = waits[m.target]; delete waits[m.target]; w(m.rect); }
   });
-  var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
-  function rect(target) {
-    return new Promise(function (resolve) {
-      waits[target] = resolve;
-      frame.contentWindow.postMessage({ demos: 'rect', target: target }, '*');
-      setTimeout(function () { if (waits[target]) { delete waits[target]; resolve(null); } }, 500);
-    });
-  }
-  // The indicator: iOS's touch circle (a soft grey disc with a light rim), placed in page coordinates over the frame.
-  function place(r) {
-    var f = frame.getBoundingClientRect();
-    return { x: f.left + scrollX + r.x + r.width / 2, y: f.top + scrollY + r.y + r.height / 2 };
-  }
-  function show(at) {
-    dot = document.createElement('div');
-    dot.setAttribute('aria-hidden', 'true');
-    dot.style.cssText = 'position:absolute;left:0;top:0;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;pointer-events:none;z-index:50;'
-      + 'background:radial-gradient(circle,rgb(255 255 255 / .42) 0,rgb(255 255 255 / .28) 62%,rgb(255 255 255 / .18) 100%);'
-      + 'box-shadow:0 0 0 1px rgb(255 255 255 / .45),0 4px 14px rgb(0 0 0 / .28);opacity:0';
-    dot.style.translate = at.x + 'px ' + (at.y + 28) + 'px';
-    document.body.appendChild(dot);
-    return dot.animate([{ opacity: 0, translate: at.x + 'px ' + (at.y + 28) + 'px', scale: 1.15 }, { opacity: 1, translate: at.x + 'px ' + at.y + 'px', scale: 1 }],
-      { duration: 420, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'forwards' }).finished;
-  }
-  function move(at) {
-    var from = dot.style.translate;
-    dot.style.translate = at.x + 'px ' + at.y + 'px';
-    return dot.animate([{ translate: from, opacity: 1 }, { translate: at.x + 'px ' + at.y + 'px', opacity: 1 }], { duration: 520, easing: 'cubic-bezier(.45,0,.2,1)', fill: 'forwards' }).finished;
-  }
-  function tap() {
-    return dot.animate([{ scale: 1, opacity: 1 }, { scale: .78, opacity: 1, offset: .45 }, { scale: 1, opacity: 1 }], { duration: 320, easing: 'ease-out' }).finished;
-  }
-  var live = function () { return state === 'playing' && visible(); };
-  async function step(target, after) {
-    if (!live()) return false;
-    var r = await rect(target);
-    if (!live() || !r) return false;
-    var at = place(r);
-    if (!dot) await show(at); else await move(at);
-    if (!live() || !dot) return false;
-    var t = tap();
-    await sleep(120);
-    if (!live()) return false;
-    frame.contentWindow.postMessage({ demos: 'press', target: target }, '*');
-    if (target.indexOf('icon-') === 0) opened = true;
-    if (target === 'close') opened = false;
-    await t;
-    await sleep(after);
-    return live();
-  }
-  async function play() {
-    if (state !== 'armed' || seen() || !visible()) return stop();
-    state = 'playing';
-    mark();
-    (await step('icon-composable-text', 900)) && (await step('toggle', 1100)) && (await step('close', 500));
-    stop();
-  }
   // Wait, on /demos only and from 768 px only, for the visible framed app to go live (the page marks it once the app
   // has drawn), then 1.2 s more. A route change restarts the wait with its own budget; elsewhere nothing polls.
   function wait() {
@@ -180,8 +106,8 @@
     state = 'armed';
     var v = ++visit;
     on();
-    // The arrow on every arrival (owner: "in every session"); the touch demo after it, once per session.
-    var next = function (ms) { if (state === 'armed' && v === visit) timer = setTimeout(touchOk() ? play : stop, ms); };
+    // The arrow on every arrival (owner: "in every session"); then the visit is done.
+    var next = function (ms) { if (state === 'armed' && v === visit) timer = setTimeout(stop, ms); };
     settle(function () {
       if (state !== 'armed' || v !== visit) return;
       // Already at the phone (the app's input in the last 3 s, or the pointer resting on it): no arrow.
@@ -206,8 +132,8 @@
   // words): one hand-drawn swoop from the pill's end (its last segment, Sponsor) toward the phone (from 1024 px, beside the copy) or down to it (768-1023
   // px, below the copy). Its line draws on (stroke-dashoffset, 950 ms, an ease-in-out that lands slowly at the phone),
   // the head's two strokes follow, it nudges toward the phone twice (transform only), then eases into it and fades;
-  // ~4 s, then the touch demo. Hovering the phone, any input, leaving /demos or a resize fades it at once (and skips the
-  // touch demo: the reader has found the phone). Reduced motion: the same arrow, still, faded in and out. Never blocks.
+  // ~4 s. Hovering the phone, any input, leaving /demos or a resize fades it at once (the reader has found the
+  // phone). Reduced motion: the same arrow, still, faded in and out. Never blocks.
   var arr = null, arrAnims = [];
   function unarrow(ms) {
     if (!arr) return;
@@ -323,7 +249,7 @@
   function route() {
     var on = onDemos(), arrived = on && !wasOn;
     wasOn = on;
-    if (state === 'armed' || state === 'playing') { if (!on) stop(); return; }
+    if (state === 'armed') { if (!on) stop(); return; }
     if (state === 'rest' && arrived) state = 'idle';
     if (state === 'idle') { tries = 0; frame = null; wait(); }
   }

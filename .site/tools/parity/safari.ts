@@ -53,7 +53,7 @@ interface Driver {
   closeSession(): Promise<void>;
   quit(): Promise<void>;
 }
-// The touch demo seen ('1') and the arrow off ('off', web/sim-hint.js: the measuring tools' switch) for the session.
+// The arrow off ('off', web/sim-hint.js: the measuring tools' switch) for the session.
 const HIDE_HINTS = `try { sessionStorage.setItem('reactiive.demos.hint', '1'); sessionStorage.setItem('reactiive.demos.arrow', 'off'); } catch (e) {}`;
 
 async function webkitDriver(): Promise<Driver> {
